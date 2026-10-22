@@ -95,6 +95,10 @@ export const workOrderClose = {
     plannedStartFrom: '계획 시작일(부터)',
     plannedStartTo: '계획 시작일(까지)',
     status: '마감 상태',
+    judgment: '판정',
+    judgmentUnavailable: '마감·취소 상태에서는 판정으로 거를 수 없습니다.',
+    /** 처음 조회하는 진행·중단을 한 선택지로 — 마감할 수 있는 작업지시가 머무는 상태다. */
+    closableStatuses: '진행·중단',
     all: '전체',
     search: '조회',
     reset: '초기화',

@@ -27,6 +27,7 @@ const emptyFilters = {
   plannedStartFrom: '',
   plannedStartTo: '',
   statusCode: '',
+  judgmentCode: '',
 };
 
 describe('toWorkOrderCloseFilterInitialization', () => {
@@ -37,7 +38,7 @@ describe('toWorkOrderCloseFilterInitialization', () => {
 
     expectTypeOf<Checking['initialFilters']['statusCode']>().toEqualTypeOf<''>();
     expectTypeOf<Unavailable['initialFilters']['statusCode']>().toEqualTypeOf<''>();
-    expectTypeOf<Ready['initialFilters']['statusCode']>().toEqualTypeOf<'IN_PROGRESS'>();
+    expectTypeOf<Ready['initialFilters']['statusCode']>().toEqualTypeOf<'IN_PROGRESS,SUSPENDED'>();
   });
 
   it('prioritizes an error over loading and stale, truncated IN_PROGRESS data', () => {
@@ -115,7 +116,7 @@ describe('toWorkOrderCloseFilterInitialization', () => {
       ),
     ).toEqual({
       kind: 'READY',
-      initialFilters: { ...emptyFilters, statusCode: 'IN_PROGRESS' },
+      initialFilters: { ...emptyFilters, statusCode: 'IN_PROGRESS,SUSPENDED' },
       canLoadCandidates: true,
       statusUnavailableReason: null,
     });

@@ -1,11 +1,15 @@
 import { Button, Select, TextField, type SelectItems } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type JSX, useEffect, useId, useState } from 'react';
+
+import { canFilterByJudgment } from './filter-initialization';
 export interface WorkOrderCloseFilterValues {
   productionOrderId: string;
   plannedStartFrom: string;
   plannedStartTo: string;
   statusCode: string;
+  /** '' 이면 판정으로 거르지 않는다 */
+  judgmentCode: string;
 }
 export interface WorkOrderCloseFilterBarProps {
   appliedFilters: WorkOrderCloseFilterValues;
@@ -36,7 +40,10 @@ export const WorkOrderCloseFilterBar = ({
     plannedStartFrom,
     plannedStartTo,
     statusCode,
+    judgmentCode,
   } = appliedFilters;
+  const judgmentId = useId();
+  const judgmentNoteId = `${judgmentId}-note`;
 
   useEffect(() => {
     setDraft({
@@ -44,8 +51,10 @@ export const WorkOrderCloseFilterBar = ({
       plannedStartFrom,
       plannedStartTo,
       statusCode,
+      judgmentCode,
     });
-  }, [appliedProductionOrderId, plannedStartFrom, plannedStartTo, statusCode]);
+  }, [appliedProductionOrderId, plannedStartFrom, plannedStartTo, statusCode, judgmentCode]);
+  const judgmentEnabled = canFilterByJudgment(draft.statusCode);
 
   const productionOrderReason = productionOrderUnavailableReason;
   const statusReason =
@@ -126,6 +135,29 @@ export const WorkOrderCloseFilterBar = ({
           {statusReason === null ? null : (
             <p className="field-note" id={statusNoteId}>
               {statusReason}
+            </p>
+          )}
+        </div>
+        <div className="field-cell">
+          <label className="field-label" htmlFor={judgmentId}>
+            {t.judgment}
+          </label>
+          <Select
+            aria-describedby={judgmentEnabled ? undefined : judgmentNoteId}
+            disabled={!judgmentEnabled}
+            id={judgmentId}
+            options={[
+              { value: '', label: t.all },
+              { value: 'UNDER', label: messages.workOrderClose.detailSummary.judgments.UNDER },
+              { value: 'NORMAL', label: messages.workOrderClose.detailSummary.judgments.NORMAL },
+              { value: 'OVER', label: messages.workOrderClose.detailSummary.judgments.OVER },
+            ]}
+            value={judgmentEnabled ? draft.judgmentCode : ''}
+            onChange={(value) => setDraft((current) => ({ ...current, judgmentCode: value }))}
+          />
+          {judgmentEnabled ? null : (
+            <p className="field-note" id={judgmentNoteId}>
+              {t.judgmentUnavailable}
             </p>
           )}
         </div>

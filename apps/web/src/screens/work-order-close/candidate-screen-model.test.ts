@@ -20,12 +20,14 @@ const emptyFilters: WorkOrderCloseFilterValues = {
   plannedStartFrom: '',
   plannedStartTo: '',
   statusCode: '',
+  judgmentCode: '',
 };
 const searchedFilters: WorkOrderCloseFilterValues = {
   productionOrderId: '501',
   plannedStartFrom: '2026-08-23',
   plannedStartTo: '2026-08-24',
   statusCode: 'IN_PROGRESS',
+  judgmentCode: '',
 };
 const initialization = (
   kind: WorkOrderCloseFilterInitialization['kind'],
@@ -33,7 +35,7 @@ const initialization = (
   kind === 'READY'
     ? {
         kind,
-        initialFilters: { ...emptyFilters, statusCode: 'IN_PROGRESS' },
+        initialFilters: { ...emptyFilters, statusCode: 'IN_PROGRESS,SUSPENDED' },
         canLoadCandidates: true,
         statusUnavailableReason: null,
       }
@@ -126,7 +128,9 @@ describe('work-order close candidate screen state', () => {
     state = synchronize(state, 'UNAVAILABLE');
     expect(state).toEqual(expectedState('UNAVAILABLE'));
     state = synchronize(state, 'READY');
-    expect(state).toEqual(expectedState('READY', { ...emptyFilters, statusCode: 'IN_PROGRESS' }));
+    expect(state).toEqual(
+      expectedState('READY', { ...emptyFilters, statusCode: 'IN_PROGRESS,SUSPENDED' }),
+    );
     expect(checking).toEqual(checkingSnapshot);
   });
   it('owns SEARCH RESET CHANGE_PAGE and SELECT lifetimes without mutating filters', () => {
@@ -188,6 +192,7 @@ describe('work-order close candidate projections', () => {
     const snapshot = structuredClone(state);
     expect(toWorkOrderCloseCandidateFilters(state)).toEqual({
       statusCode: 'IN_PROGRESS',
+      completionJudgmentCode: null,
       productionOrderId: 501,
       plannedStartFrom: '2026-08-23',
       plannedStartTo: '2026-08-24',
@@ -196,7 +201,7 @@ describe('work-order close candidate projections', () => {
     expect(
       toWorkOrderCloseCandidateFilters({
         ...state,
-        appliedFilters: { ...emptyFilters, statusCode: 'IN_PROGRESS' },
+        appliedFilters: { ...emptyFilters, statusCode: 'IN_PROGRESS,SUSPENDED' },
       }),
     ).toMatchObject({ productionOrderId: null, plannedStartFrom: null, plannedStartTo: null });
     expect(state).toEqual(snapshot);
@@ -312,5 +317,17 @@ describe('work-order close candidate projections', () => {
       achievementLabel: '40%',
       judgmentLabel: '미달',
     });
+  });
+
+  it('판정은 끝나지 않은 상태로 볼 때만 서버로 보낸다 — 마감·취소가 섞이면 서버가 거부한다', () => {
+    const state = (statusCode: string) => ({
+      ...readyState(),
+      appliedFilters: { ...searchedFilters, statusCode, judgmentCode: 'UNDER' },
+    });
+
+    expect(
+      toWorkOrderCloseCandidateFilters(state('IN_PROGRESS,SUSPENDED')).completionJudgmentCode,
+    ).toBe('UNDER');
+    expect(toWorkOrderCloseCandidateFilters(state('CLOSED')).completionJudgmentCode).toBeNull();
   });
 });

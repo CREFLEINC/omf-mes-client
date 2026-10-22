@@ -11,6 +11,7 @@ const applied: WorkOrderCloseFilterValues = {
   plannedStartFrom: '',
   plannedStartTo: '',
   statusCode: 'READY',
+  judgmentCode: '',
 };
 const productionOrderOptions: SelectItems = [
   { value: 'plan-b', label: 'Synthetic plan B' },
@@ -48,6 +49,9 @@ describe('WorkOrderCloseFilterBar', () => {
       plannedStartFrom: '계획 시작일(부터)',
       plannedStartTo: '계획 시작일(까지)',
       status: '마감 상태',
+      judgment: '판정',
+      judgmentUnavailable: '마감·취소 상태에서는 판정으로 거를 수 없습니다.',
+      closableStatuses: '진행·중단',
       all: '전체',
       search: '조회',
       reset: '초기화',
@@ -101,6 +105,7 @@ describe('WorkOrderCloseFilterBar', () => {
       plannedStartFrom: '2026-08-10',
       plannedStartTo: '2026-08-11',
       statusCode: 'READY',
+      judgmentCode: '',
     };
     const props = propsOf({ appliedFilters: initial });
     const { rerender } = render(<WorkOrderCloseFilterBar {...props} />);
@@ -205,5 +210,23 @@ describe('WorkOrderCloseFilterBar', () => {
     expect(onReset).toHaveBeenCalledTimes(1);
     expect(input).toHaveValue('2026-08-01');
     expect(screen.getAllByRole('button')).toHaveLength(2);
+  });
+
+  it('판정을 골라 조회에 싣고, 마감 상태를 고르면 판정 칸을 막고 까닭을 말한다', async () => {
+    const user = userEvent.setup();
+    const { onSearch } = renderBar({
+      statusOptions: [...statusOptions, { value: 'CLOSED', label: 'Closed' }],
+    });
+
+    await user.click(screen.getByRole('combobox', { name: t.judgment }));
+    await user.click(screen.getByRole('option', { name: '미달' }));
+    await user.click(screen.getByRole('button', { name: t.search }));
+    expect(onSearch).toHaveBeenLastCalledWith(expect.objectContaining({ judgmentCode: 'UNDER' }));
+
+    await user.click(screen.getByRole('combobox', { name: t.status }));
+    await user.click(screen.getByRole('option', { name: 'Closed' }));
+    const judgment = screen.getByRole('combobox', { name: t.judgment });
+    expect(judgment).toBeDisabled();
+    expect(judgment).toHaveAccessibleDescription(t.judgmentUnavailable);
   });
 });

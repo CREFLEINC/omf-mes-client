@@ -39,6 +39,7 @@ export interface WorkOrderCloseDetailFact extends WorkOrderCloseFact {
 
 export interface WorkOrderCloseFilters {
   statusCode: string | null;
+  completionJudgmentCode: string | null;
   productionOrderId: number | null;
   plannedStartFrom: string | null;
   plannedStartTo: string | null;
@@ -113,6 +114,7 @@ export const workOrderCloseKeys = {
       'work-order-close',
       'candidates',
       filters.statusCode,
+      filters.completionJudgmentCode,
       filters.productionOrderId,
       filters.plannedStartFrom,
       filters.plannedStartTo,
@@ -172,6 +174,12 @@ export const useWorkOrderCloseCandidates = (
           params: {
             query: {
               statusCode,
+              ...(filters.completionJudgmentCode === null
+                ? {}
+                : {
+                    completionJudgmentCode: filters.completionJudgmentCode as
+                      'UNDER' | 'NORMAL' | 'OVER',
+                  }),
               ...(filters.productionOrderId === null
                 ? {}
                 : { productionOrderId: filters.productionOrderId }),

@@ -24,7 +24,10 @@ import {
   toWorkOrderCloseProductionOrderOptions,
 } from './code-options';
 import { WorkOrderCloseFilterBar } from './filter-bar';
-import { toWorkOrderCloseFilterInitialization } from './filter-initialization';
+import {
+  DEFAULT_STATUS_FILTER,
+  toWorkOrderCloseFilterInitialization,
+} from './filter-initialization';
 import type { WorkOrderCloseConfirmDetail } from './close-confirm-dialog';
 import { WorkOrderCloseExecution } from './close-execution';
 import {
@@ -512,7 +515,10 @@ export const WorkOrderCloseCandidateScreen = () => {
         productionOrderOptions={toWorkOrderCloseProductionOrderOptions(
           productionOrders.data?.items ?? [],
         )}
-        statusOptions={toWorkOrderCloseCodeOptions(status.data?.items ?? [])}
+        statusOptions={[
+          { value: DEFAULT_STATUS_FILTER, label: messages.workOrderClose.filter.closableStatuses },
+          ...toWorkOrderCloseCodeOptions(status.data?.items ?? []),
+        ]}
         productionOrderUnavailableReason={productionOrderReason(productionOrders)}
         statusUnavailableReason={initialization.statusUnavailableReason}
         onSearch={(next) => dispatch({ type: 'SEARCH', filters: next })}
