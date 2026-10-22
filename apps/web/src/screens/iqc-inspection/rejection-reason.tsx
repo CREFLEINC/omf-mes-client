@@ -214,7 +214,6 @@ export const RejectionReason = ({
         <TextField
           id={descriptionId}
           fullWidth
-          placeholder={t.descriptionPlaceholder}
           value={draft.description}
           disabled={disabled}
           onChange={(event) => {

@@ -136,7 +136,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       minorRequired: 'Nhóm lỗi này có mã chi tiết. Hãy chọn mã chi tiết.',
       noCodes: 'Chưa có mã lỗi nào. Hãy đăng ký trước tại Thông tin cơ sở > Mã lỗi·nguyên nhân.',
       selectPlaceholder: 'Hãy chọn',
-      descriptionPlaceholder: 'Hãy nhập lý do.',
       majorMissing: 'Hãy chọn nhóm lỗi.',
       minorMissing: 'Hãy chọn mã lỗi chi tiết.',
       cause: 'Nguyên nhân dự đoán',
@@ -148,7 +147,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       label: 'Hàng thay đổi 4M',
       hint: 'Chọn khi có thay đổi về con người, thiết bị, vật liệu hoặc phương pháp',
       remarks: 'Ghi chú',
-      remarksPlaceholder: 'Nhập nội dung thay đổi',
       remarksMissing: 'Hãy nhập ghi chú.',
       blocked: 'Hàng thay đổi 4M phải nhập ghi chú mới lưu được.',
     },
@@ -156,7 +154,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       basis: (acceptanceNumber: number): string =>
         `Tự động đánh giá: số không đạt ≤ ${String(acceptanceNumber)} → đạt`,
       reason: 'Lý do thay đổi đánh giá',
-      reasonPlaceholder: 'Hãy nhập lý do xác nhận khác với đánh giá tự động.',
       required: 'Đánh giá khác với đánh giá tự động phải nhập lý do thay đổi mới xác nhận được.',
       reasonMissing: 'Hãy nhập lý do thay đổi đánh giá.',
     },

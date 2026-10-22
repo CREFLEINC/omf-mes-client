@@ -74,7 +74,6 @@ export const JudgmentChange = ({
           <TextField
             id={reasonId}
             fullWidth
-            placeholder={t.reasonPlaceholder}
             value={reason}
             maxLength={JUDGMENT_CHANGE_REASON_MAX}
             disabled={disabled}

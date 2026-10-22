@@ -74,7 +74,6 @@ export const FourMChange = ({ draft, missing, onChange, disabled }: FourMChangeP
           <TextField
             id={remarksId}
             fullWidth
-            placeholder={t.remarksPlaceholder}
             value={draft.remarks}
             maxLength={FOUR_M_REMARKS_MAX}
             error={missing ? <ErrorText>{t.remarksMissing}</ErrorText> : undefined}

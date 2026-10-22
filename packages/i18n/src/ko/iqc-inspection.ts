@@ -238,7 +238,6 @@ export const iqcInspection = {
       minorRequired: '이 대분류에는 상세 코드가 있습니다. 상세 코드를 고르세요.',
       noCodes: '등록된 불량 코드가 없습니다. 기준정보 > 불량·원인 코드에서 먼저 등록하세요.',
       selectPlaceholder: '선택하세요',
-      descriptionPlaceholder: '사유를 입력해 주세요.',
       /** 칸 아래 필수 누락 표시 — 확정이 막힌 이유(required·minorRequired)는 확정 단추 곁에 그대로 둔다. */
       majorMissing: '불량 대분류를 선택하세요.',
       minorMissing: '불량 상세를 선택하세요.',
@@ -257,7 +256,6 @@ export const iqcInspection = {
       label: '4M 변경품',
       hint: '사람·설비·자재·방법 중 변경 사항이 있는 경우 선택',
       remarks: '비고',
-      remarksPlaceholder: '무엇이 바뀌었는지 입력',
       remarksMissing: '비고를 입력하세요.',
       blocked: '4M 변경품은 비고를 입력해야 저장할 수 있습니다.',
     },
@@ -265,7 +263,6 @@ export const iqcInspection = {
       basis: (acceptanceNumber: number): string =>
         `자동 판정: 불합격 수량 ${String(acceptanceNumber)}개 이하 → 합격`,
       reason: '판정 변경 사유',
-      reasonPlaceholder: '자동 판정과 다르게 확정하는 이유를 입력해 주세요.',
       required: '자동 판정과 다른 판정은 변경 사유를 입력해야 확정할 수 있습니다.',
       reasonMissing: '판정 변경 사유를 입력하세요.',
     },
