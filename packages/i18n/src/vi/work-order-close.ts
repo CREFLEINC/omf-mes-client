@@ -254,9 +254,13 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     reason: 'Lý do buộc kết thúc',
     reasonHelp: 'Ai đã đóng phiên và vì sao sẽ được ghi lại.',
     reasonRequired: 'Hãy nhập lý do buộc kết thúc.',
+    reasonTooLong: (max: number): string =>
+      `Hãy rút gọn lý do buộc kết thúc còn ${String(max)} ký tự trở xuống.`,
     cancel: 'Hủy',
     confirm: 'Buộc kết thúc',
     done: (terminal: string): string => `Đã buộc kết thúc phiên làm việc của ${terminal}.`,
+    alreadyEnded: (terminal: string): string =>
+      `Phiên làm việc của ${terminal} đã kết thúc từ trước. Đã kiểm tra lại điều kiện đóng.`,
   },
   closeResult: {
     pane: 'Kết quả đóng',
