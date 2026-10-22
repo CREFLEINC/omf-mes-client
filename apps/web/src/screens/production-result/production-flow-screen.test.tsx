@@ -11,6 +11,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { productionFlowKeys } from './flow-queries';
 import { ProductionFlowScreen } from './screen';
 import { STORAGE_KEY } from './outbox';
 
@@ -22,6 +23,9 @@ const LOT_ETAG = '"7"';
 const WORK_ORDER_ID = 701;
 const WORK_SESSION_ID = 8801;
 const pathOf = (request: Request): string => new URL(request.url).pathname;
+const NO_LOT_TEXT = t.flow.currentLot.none(
+  `${messages.productionOrder.breadcrumbRoot} › ${messages.workOrderClose.title}`,
+);
 
 const routes = (writes: Request[]): StubRoute[] => [
   {
@@ -494,10 +498,6 @@ describe('ProductionFlowScreen', () => {
   it('서버 적용 실적으로 재진입하면 수량을 잠그고 생산 실적 없이 라벨 단계만 재개한다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
-    /*
-     * ⚠ **현재 LOT 은 `completed=false` 로 좁힌다**(#1095). 서버 구현 기준선에 `currentOnly`
-     *    축이 없다 — 옛 질의를 흉내 내면 시험만 통과하고 실서버에서는 전체 목록이 온다.
-     */
     const appliedLot: StubRoute = {
       match: (request) => pathOf(request) === '/trace/lots',
       respond: (request) => {
@@ -1678,7 +1678,7 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
 
     renderScreen(writes, [emptyLots]);
 
-    await screen.findByText(t.flow.currentLot.none);
+    await screen.findByText(NO_LOT_TEXT);
 
     expect(screen.getByLabelText(t.flow.quantity.actual)).toBeDisabled();
     expect(screen.queryByText(t.flow.quantity.invalid)).not.toBeInTheDocument();
@@ -1698,7 +1698,7 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
 
     renderScreen(writes, [emptyLots]);
 
-    expect(await screen.findByText(t.flow.currentLot.none)).toBeInTheDocument();
+    expect(await screen.findByText(NO_LOT_TEXT)).toBeInTheDocument();
     expect(writes.some((request) => pathOf(request) === END_PATH)).toBe(false);
   });
 });
@@ -2803,5 +2803,184 @@ describe('ProductionFlowScreen 미달 LOT 마감', () => {
 
     expect(await screen.findByText('합성 — 시각 형식이 아닙니다.')).toBeInTheDocument();
     await waitFor(() => expect(scan).toBeEnabled());
+  });
+});
+
+describe('ProductionFlowScreen 현재 LOT', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save: vi.fn().mockResolvedValue('/tmp/lot.prn') } },
+    });
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.clear();
+    Reflect.deleteProperty(window, 'pop');
+  });
+
+  const NEXT_LOT_ID = LOT_ID + 1;
+  const NEXT_LOT_NO = 'LOT-SYN-0002';
+  const lotRow = (lotId: number, lotNo: string) => ({
+    lotId,
+    lotNo,
+    itemId: 101,
+    lotTypeCode: 'PRODUCTION',
+    plantId: 1,
+    initialQty: 12,
+    uomId: 1,
+    sourceTypeCode: 'WORK_ORDER',
+    sourceId: WORK_ORDER_ID,
+    statusCode: 'NORMAL',
+  });
+
+  it('첫 LOT 을 마감하면 서버가 고른 다음 회차 LOT 으로 넘어간다', async () => {
+    const writes: Request[] = [];
+    let completed = false;
+    const currentOnly: string[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      {
+        match: (request) =>
+          pathOf(request) === '/trace/lots' &&
+          new URL(request.url).searchParams.get('completed') !== 'true',
+        respond: (request) => {
+          currentOnly.push(new URL(request.url).searchParams.get('currentOnly') ?? '');
+          const lot = completed ? lotRow(NEXT_LOT_ID, NEXT_LOT_NO) : lotRow(LOT_ID, LOT_NO);
+          return jsonResponse({ items: [lot], page: { page: 1, size: 1, total: 1 } });
+        },
+      },
+      {
+        match: (request) => pathOf(request) === `/trace/lots/${String(NEXT_LOT_ID)}`,
+        respond: () =>
+          jsonResponse(
+            { lot: { lotId: NEXT_LOT_ID, lotNo: NEXT_LOT_NO }, externalReferences: [] },
+            { headers: { ETag: LOT_ETAG } },
+          ),
+      },
+      {
+        match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}:complete`,
+        respond: (request) => {
+          writes.push(request.clone());
+          completed = true;
+          return jsonResponse({
+            lotId: LOT_ID,
+            lotNo: LOT_NO,
+            completedAt: new Date().toISOString(),
+          });
+        },
+      },
+    ]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
+    await user.type(scan, LOT_NO);
+
+    expect((await screen.findAllByText(NEXT_LOT_NO)).length).toBeGreaterThan(0);
+    expect(screen.queryByText(NO_LOT_TEXT)).toBeNull();
+    expect(currentOnly.every((value) => value === 'true')).toBe(true);
+  });
+
+  it('남은 LOT 이 없으면 무엇이 문제이고 어디서 무엇을 할지 말한다', async () => {
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) => pathOf(request) === '/trace/lots',
+          respond: () => jsonResponse({ items: [], page: { page: 1, size: 1, total: 0 } }),
+        },
+      ],
+    );
+
+    expect(await screen.findByText(NO_LOT_TEXT)).toBeInTheDocument();
+  });
+
+  it.each([
+    ['두 건 이상', [lotRow(LOT_ID, LOT_NO), lotRow(NEXT_LOT_ID, NEXT_LOT_NO)]],
+    [
+      '이미 마감된 한 건',
+      [{ ...lotRow(LOT_ID, LOT_NO), completedAt: '2026-10-22T09:00:00+09:00' }],
+    ],
+  ])('서버가 현재 LOT 을 하나로 정하지 못하면(%s) 쓰지 않고 막는다', async (_case, items) => {
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) =>
+            pathOf(request) === '/trace/lots' &&
+            new URL(request.url).searchParams.get('completed') !== 'true',
+          respond: () => jsonResponse({ items, page: { page: 1, size: 20, total: items.length } }),
+        },
+      ],
+    );
+
+    const lotNos = items.map((item) => item.lotNo).join(', ');
+    expect(await screen.findByText(t.flow.currentLot.unreliable(lotNos))).toBeInTheDocument();
+    expect(screen.getByLabelText(t.flow.quantity.actual)).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+  });
+
+  it('다시 읽은 현재 LOT 을 쓸 수 없으면 앞서 읽은 LOT 도 쓰지 않는다', async () => {
+    let items = [lotRow(LOT_ID, LOT_NO)];
+    const { queryClient } = renderScreen(
+      [],
+      [
+        {
+          match: (request) =>
+            pathOf(request) === '/trace/lots' &&
+            new URL(request.url).searchParams.get('completed') !== 'true',
+          respond: () => jsonResponse({ items, page: { page: 1, size: 20, total: items.length } }),
+        },
+      ],
+    );
+    const shownLotNos = () =>
+      screen
+        .getAllByText(t.flow.currentLot.current)
+        .map((term) => term.nextElementSibling?.textContent);
+    await waitFor(() => expect(shownLotNos()).toContain(LOT_NO));
+
+    items = [lotRow(LOT_ID, LOT_NO), lotRow(NEXT_LOT_ID, NEXT_LOT_NO)];
+    await queryClient.invalidateQueries({ queryKey: productionFlowKeys.currentLot(WORK_ORDER_ID) });
+
+    expect(
+      await screen.findByText(t.flow.currentLot.unreliable(`${LOT_NO}, ${NEXT_LOT_NO}`)),
+    ).toBeInTheDocument();
+    expect(shownLotNos().every((lotNo) => lotNo === '—')).toBe(true);
+    expect(screen.getByLabelText(t.flow.quantity.actual)).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+  });
+
+  it('현재 LOT 을 못 불러오면 다시 시도할 길을 준다', async () => {
+    let attempts = 0;
+    const user = userEvent.setup();
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) =>
+            pathOf(request) === '/trace/lots' &&
+            new URL(request.url).searchParams.get('completed') !== 'true',
+          respond: () => {
+            attempts += 1;
+            return attempts === 1
+              ? jsonResponse({ message: '합성 실패' }, { status: 500 })
+              : jsonResponse({
+                  items: [lotRow(LOT_ID, LOT_NO)],
+                  page: { page: 1, size: 1, total: 1 },
+                });
+          },
+        },
+      ],
+    );
+
+    expect(await screen.findByText(t.flow.currentLot.loadFailed)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.flow.retry }));
+
+    await waitFor(() => expect(screen.queryByText(t.flow.currentLot.loadFailed)).toBeNull());
+    expect(attempts).toBe(2);
   });
 });
