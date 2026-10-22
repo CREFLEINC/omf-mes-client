@@ -178,14 +178,10 @@ describe('OperationsPane — 편집', () => {
     const { props, user } = renderPane();
     const rows = bodyRows();
 
-    await user.click(
-      within(rows[1] as HTMLElement).getByRole('button', { name: '2번 공정 수정' }),
-    );
+    await user.click(within(rows[1] as HTMLElement).getByRole('button', { name: '2번 공정 수정' }));
     expect(props.onEdit).toHaveBeenCalledWith(DRAFTS[1]?.draftId);
 
-    await user.click(
-      within(rows[0] as HTMLElement).getByRole('button', { name: '1번 공정 삭제' }),
-    );
+    await user.click(within(rows[0] as HTMLElement).getByRole('button', { name: '1번 공정 삭제' }));
     expect(props.onRemove).toHaveBeenCalledWith(DRAFTS[0]?.draftId);
   });
 
@@ -197,7 +193,9 @@ describe('OperationsPane — 편집', () => {
     renderPane();
     const rows = bodyRows();
 
-    expect(within(rows[0] as HTMLElement).getByRole('button', { name: '위로 이동' })).toBeDisabled();
+    expect(
+      within(rows[0] as HTMLElement).getByRole('button', { name: '위로 이동' }),
+    ).toBeDisabled();
     expect(
       within(rows[0] as HTMLElement).getByRole('button', { name: '아래로 이동' }),
     ).toBeEnabled();
@@ -282,5 +280,19 @@ describe('OperationsPane — 편집', () => {
     expect(screen.queryByRole('button', { name: '아래로 이동' })).not.toBeInTheDocument();
 
     expect(screen.getAllByText(OPERATIONS_LOCK_REASON).length).toBeGreaterThan(0);
+  });
+
+  it('잠긴 Rev 에서는 공정 수정·삭제 아이콘마다 까닭을 붙인다', () => {
+    renderPane({ isEditable: false });
+
+    const row = bodyRows()[0] as HTMLElement;
+    for (const icon of within(row).getAllByRole('button')) {
+      expect(icon).toBeDisabled();
+      expect(icon).toHaveAccessibleDescription(OPERATIONS_LOCK_REASON);
+    }
+    expect(within(row).getAllByRole('button')[0]?.parentElement).toHaveAttribute(
+      'title',
+      OPERATIONS_LOCK_REASON,
+    );
   });
 });
