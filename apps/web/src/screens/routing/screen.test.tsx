@@ -1417,3 +1417,47 @@ describe('RoutingScreen — 신규 Rev 발행과 첫 Rev 등록', () => {
     ).toBeGreaterThan(0);
   });
 });
+
+describe('RoutingScreen — 저장하지 않고 옮기기', () => {
+  const discard = messages.routing.discard;
+
+  it('저장하지 않은 편집이 있으면 다른 Rev 로 옮기기 전에 묻고, 계속 편집하면 그대로 둔다', async () => {
+    const { user } = renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001&rev=7003',
+    );
+
+    const code = await screen.findByLabelText('Routing 코드');
+    await user.type(code, '-X');
+    await user.click(screen.getByRole('button', { name: 'Rev 2' }));
+
+    const dialog = await screen.findByRole('dialog', { name: discard.title });
+    await user.click(within(dialog).getByRole('button', { name: discard.stay }));
+
+    expect(screen.queryByRole('dialog', { name: discard.title })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Rev 3' })).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByLabelText('Routing 코드')).toHaveValue('STANDARD-X');
+
+    await user.click(screen.getByRole('button', { name: 'Rev 2' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: discard.title })).getByRole('button', {
+        name: discard.confirm,
+      }),
+    );
+
+    expect(screen.getByRole('button', { name: 'Rev 2' })).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('고친 것이 없으면 묻지 않고 옮긴다', async () => {
+    const { user } = renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001&rev=7003',
+    );
+
+    await screen.findByLabelText('Routing 코드');
+    await user.click(screen.getByRole('button', { name: 'Rev 2' }));
+
+    expect(screen.queryByRole('dialog', { name: discard.title })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Rev 2' })).toHaveAttribute('aria-current', 'true');
+  });
+});

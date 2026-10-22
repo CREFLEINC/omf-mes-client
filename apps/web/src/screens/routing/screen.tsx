@@ -20,6 +20,7 @@ import { toApiError } from '../../patterns/request';
 import { HeaderPane } from './header-pane';
 import { ROUTING_HEADER_FORM_FIELDS, validateRoutingHeader } from './header-validation';
 import { ItemPane } from './item-pane';
+import { DiscardDialog, LeaveGuard } from './leave-guard';
 import {
   emptyHeaderFormValues,
   isSameHeaderValues,
@@ -329,18 +330,30 @@ const RoutingWorkspace = () => {
   };
 
   /** 품목을 바꾸면 Rev 선택을 지운다 — 다른 품목의 Rev를 가리키면 안 된다. */
+  /** 다른 품목·Rev 로 옮기기 전 저장하지 않은 편집이 있으면 먼저 묻는다 — 옮기면 그 편집은 사라진다. */
+  const [pendingMove, setPendingMove] = useState<(() => void) | null>(null);
+  const guardMove = (move: () => void) => {
+    if (hasUnsavedChanges) setPendingMove(() => move);
+    else move();
+  };
+
   const handleSelectItem = (itemId: number) => {
-    resetHeaderEditing();
-    resetOperationEditing();
-    resetTransition();
-    updateParams({ item: String(itemId), rev: null });
+    guardMove(() => {
+      resetHeaderEditing();
+      resetOperationEditing();
+      resetTransition();
+      updateParams({ item: String(itemId), rev: null });
+    });
   };
 
   const handleSelectRevision = (routingId: number) => {
-    resetHeaderEditing();
-    resetOperationEditing();
-    resetTransition();
-    updateParams({ rev: String(routingId) });
+    if (routingId === selectedRoutingId) return;
+    guardMove(() => {
+      resetHeaderEditing();
+      resetOperationEditing();
+      resetTransition();
+      updateParams({ rev: String(routingId) });
+    });
   };
 
   const itemPage = itemList.data?.page;
@@ -525,6 +538,10 @@ const RoutingWorkspace = () => {
    * 섞으면 「기준값이 서버에서 왔는가」가 흐려지고, 등록 성공 후 어느 쪽을 비울지도 갈린다.
    */
   const [createValues, setCreateValues] = useState<RoutingHeaderFormValues | null>(null);
+  const hasUnsavedChanges =
+    isHeaderDirty ||
+    isOperationsDirty ||
+    (createValues !== null && !isSameHeaderValues(createValues, emptyHeaderFormValues()));
   const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
 
   const createWrite = useMasterWrite<RoutingHeaderFormValues, Routing>({
@@ -762,6 +779,17 @@ const RoutingWorkspace = () => {
 
   return (
     <>
+      <LeaveGuard when={hasUnsavedChanges} />
+      {pendingMove !== null && (
+        <DiscardDialog
+          onStay={() => setPendingMove(null)}
+          onLeave={() => {
+            const move = pendingMove;
+            setPendingMove(null);
+            move();
+          }}
+        />
+      )}
       {/*
        * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
        * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
