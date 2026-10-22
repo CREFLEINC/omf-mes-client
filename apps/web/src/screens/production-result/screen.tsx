@@ -345,6 +345,12 @@ export const ProductionFlowScreen = () => {
   /* 달성은 화면이 세지 않는다 — 서버가 W/O 축으로 낸 완료 판정이 정상·초과면 지시 수량에 이르렀다. */
   const completionJudgment = workOrder.data?.progress?.completionJudgmentCode;
   const isPlanAchieved = completionJudgment === 'NORMAL' || completionJudgment === 'OVER';
+  /* 초과면 얼마나 넘었는지 — 서버의 차이(지시 − 양품)가 음수인 만큼이다. */
+  const overVariance = workOrder.data?.progress?.varianceQty;
+  const overAchievedQty =
+    completionJudgment === 'OVER' && overVariance !== undefined && overVariance < 0
+      ? -overVariance
+      : null;
   const tagMissing =
     parsedQty === null || serialCount === null
       ? null
@@ -1392,7 +1398,16 @@ export const ProductionFlowScreen = () => {
               ) : (
                 isPlanAchieved && (
                   <div className="production-flow-inline-note">
-                    <AlertBanner variant="success" title={t.overrun.achieved} />
+                    <AlertBanner
+                      variant="success"
+                      title={
+                        overAchievedQty === null
+                          ? t.overrun.achieved
+                          : t.overrun.achievedOver(
+                              `${formatQty(overAchievedQty)} ${uomLabel}`.trim(),
+                            )
+                      }
+                    />
                   </div>
                 )
               )}

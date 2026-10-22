@@ -219,6 +219,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       `Vượt mức — nhiều hơn số còn lại ${remaining} là ${over}.`,
     noticeNoRemaining: 'Vượt mức — lệnh sản xuất này không còn số lượng còn lại.',
     achieved: 'Đã đạt số lượng kế hoạch',
+    achievedOver: (over: string): string => `Đã đạt số lượng kế hoạch · vượt +${over}`,
   },
   actions: {
     save: 'Lưu',

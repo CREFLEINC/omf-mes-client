@@ -1046,6 +1046,51 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     expect(screen.queryByText(t.overrun.noticeNoRemaining)).toBeNull();
   });
 
+  it('저장 뒤 판정이 초과면 「계획 수량 달성 · +n 초과」로 말하고 초과 안내는 내지 않는다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    const progressAfterSave: StubRoute = {
+      ...workOrderWith(undefined),
+      respond: () =>
+        jsonResponse({
+          workOrderId: WORK_ORDER_ID,
+          workOrderNo: 'WO-SYN-001',
+          productionPlanId: 1,
+          routingOperationId: 1,
+          itemId: 101,
+          itemCode: 'ITEM-SYN-01',
+          orderQty: 10,
+          uomId: 1,
+          workOrderTypeCode: 'NORMAL',
+          statusCode: 'IN_PROGRESS',
+          priorityNo: 1,
+          progress:
+            savedCount(writes) > 0
+              ? {
+                  goodQty: 12,
+                  varianceQty: -2,
+                  achievementRate: 1.2,
+                  completionJudgmentCode: 'OVER',
+                }
+              : {
+                  goodQty: 0,
+                  varianceQty: 10,
+                  achievementRate: 0,
+                  completionJudgmentCode: 'UNDER',
+                },
+        }),
+    };
+    renderScreen(writes, [progressAfterSave]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    expect(await screen.findByText(t.overrun.achievedOver('2 EA'))).toBeInTheDocument();
+    expect(screen.queryByText(t.overrun.noticeNoRemaining)).toBeNull();
+    expect(screen.queryByText(/^초과 달성/)).toBeNull();
+  });
+
   it('잔여를 넘으면 수량 칸 아래에서 말하고, 저장은 그대로 나간다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
