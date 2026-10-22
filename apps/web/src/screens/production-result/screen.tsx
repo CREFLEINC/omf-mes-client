@@ -484,7 +484,10 @@ export const ProductionFlowScreen = () => {
         (refreshed.progress?.goodQty ?? 0) === 0
           ? t.flow.scan.noAllocation
           : judgment === 'UNDER'
-            ? t.flow.scan.workOrderClosed
+            ? t.flow.scan.workOrderClosed(
+                messages.workOrderClose.menuPath,
+                messages.workOrderClose.correction.pane,
+              )
             : (items[0]?.message ?? t.flow.scan.failed),
       );
       return;
@@ -1268,7 +1271,7 @@ export const ProductionFlowScreen = () => {
             variant="info"
             title={t.flow.currentLot.none(
               /* 메뉴 이름은 그 화면의 문구를 받아 쓴다 — 이름이 바뀌어도 어긋나지 않게. */
-              `${messages.workOrderClose.breadcrumbRoot} › ${messages.workOrderClose.title}`,
+              messages.workOrderClose.menuPath,
             )}
           />
         </div>

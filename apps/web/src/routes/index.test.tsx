@@ -508,7 +508,7 @@ const workOrderCloseRoutes = (): StubRoute[] => [
       const isStatus =
         new URL(request.url).searchParams.get('codeGroupCode') === 'WORK_ORDER_STATUS';
       const items = isStatus
-        ? [{ code: 'COMPLETED', codeName: '마감 완료', displayOrder: 1, isActive: true }]
+        ? [{ code: 'IN_PROGRESS', codeName: '진행', displayOrder: 1, isActive: true }]
         : [];
       return jsonResponse({ items, page: { page: 1, size: 200, total: items.length } });
     },
@@ -529,7 +529,7 @@ const workOrderCloseRoutes = (): StubRoute[] => [
             uomId: 9901,
             workOrderTypeCode: 'NORMAL',
             priorityNo: 1,
-            statusCode: 'COMPLETED',
+            statusCode: 'IN_PROGRESS',
           },
         ],
         page: { page: 1, size: 20, total: 1 },

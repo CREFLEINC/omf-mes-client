@@ -111,6 +111,7 @@ export type {
   ProductionOrderForward,
   ProductionOrderListQueryForward,
   WorkOrderForward,
+  WorkSessionForward,
   WorkSessionWorkerForward,
   ProductionResultForward,
   ProductionResultCreateForward,

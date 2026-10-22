@@ -23,9 +23,7 @@ const LOT_ETAG = '"7"';
 const WORK_ORDER_ID = 701;
 const WORK_SESSION_ID = 8801;
 const pathOf = (request: Request): string => new URL(request.url).pathname;
-const NO_LOT_TEXT = t.flow.currentLot.none(
-  `${messages.productionOrder.breadcrumbRoot} › ${messages.workOrderClose.title}`,
-);
+const NO_LOT_TEXT = t.flow.currentLot.none(messages.workOrderClose.menuPath);
 
 const routes = (writes: Request[]): StubRoute[] => [
   {
@@ -2750,7 +2748,15 @@ describe('ProductionFlowScreen 미달 LOT 마감', () => {
       within(await screen.findByRole('dialog')).getByRole('button', { name: '자재 부족' }),
     );
 
-    expect(await screen.findByText(t.flow.scan.workOrderClosed)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        t.flow.scan.workOrderClosed(
+          messages.workOrderClose.menuPath,
+          messages.workOrderClose.correction.pane,
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/마감 해제/)).toBeNull();
   });
 
   it('거부 뒤 LOT 을 다시 읽지 못하면 단정하지 않고 서버 문구를 보인다', async () => {

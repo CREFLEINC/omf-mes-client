@@ -8,6 +8,8 @@
 export const terminalProcessMap = {
   title: '단말기-공정 매핑 설정',
   breadcrumbRoot: '시스템 관리',
+  /** 메뉴에서 이 화면까지의 경로 — 다른 화면이 「어디로 가라」고 안내할 때 쓴다. 메뉴 라벨과 같아야 한다(app/nav-menu-path.test.ts). */
+  menuPath: '시스템 관리 › 단말기-공정 매핑',
 
   panes: {
     list: '단말 목록',

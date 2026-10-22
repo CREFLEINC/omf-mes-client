@@ -127,8 +127,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       failed: 'Không đóng được LOT. Hãy quét lại cùng nhãn.',
       alreadyCompleted: 'LOT này đã đóng. Đang tải lại trạng thái LOT hiện tại.',
       noAllocation: 'LOT này chưa có kết quả đã lưu nên không đóng được. Hãy lưu kết quả trước.',
-      workOrderClosed:
-        'MES W/O đã đóng nên không đóng LOT thiếu được. Hãy nhờ quản trị viên mở lại W/O.',
+      workOrderClosed: (menuPath: string, correction: string): string =>
+        `Lệnh sản xuất này đã đóng nên không đóng LOT thiếu được. Lệnh đã đóng không mở lại được, nếu cần sửa số lượng hãy nhờ quản trị viên dùng «${correction}» ở ${menuPath} trên web quản lý.`,
     },
     underReason: {
       title: 'Lý do thiếu',
