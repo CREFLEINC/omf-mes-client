@@ -2376,22 +2376,41 @@ describe('ProductionFlowScreen 미달 LOT 마감', () => {
     Reflect.deleteProperty(window, 'pop');
   });
 
-  const lotDetailJudged = (completionJudgmentCode: 'UNDER' | 'NORMAL'): StubRoute => ({
+  type LotState = {
+    completionJudgmentCode: 'UNDER' | 'NORMAL';
+    goodQty?: number;
+    completedAt?: string;
+  };
+  /** 부를 때마다 `next()` 가 그때의 LOT 상태를 낸다 — 마감 거부 뒤 다시 읽는 값을 바꿔 보려고. */
+  const lotDetailJudged = (
+    state: LotState['completionJudgmentCode'] | (() => LotState),
+  ): StubRoute => ({
     match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}`,
-    respond: () =>
-      jsonResponse(
+    respond: () => {
+      const now: LotState =
+        typeof state === 'function' ? state() : { completionJudgmentCode: state };
+      return jsonResponse(
         {
           lot: {
             lotId: LOT_ID,
             lotNo: LOT_NO,
-            /* 아직 적용 전이라 누계 0 — 판정만 서버가 내린 값을 쓴다. */
-            progress: { goodQty: 0, varianceQty: -12, completionJudgmentCode },
+            initialQty: 12,
+            /* 누계 0 이면 화면이 «적용 전»으로 읽는다 — 판정만 서버가 내린 값을 쓴다. */
+            progress: {
+              goodQty: now.goodQty ?? 0,
+              varianceQty: -12,
+              completionJudgmentCode: now.completionJudgmentCode,
+            },
+            ...(now.completedAt === undefined ? {} : { completedAt: now.completedAt }),
           },
           externalReferences: [],
         },
         { headers: { ETag: LOT_ETAG } },
-      ),
+      );
+    },
   });
+  const rejection = (field: string, code: string, message: string) =>
+    jsonResponse({ errors: [{ scope: 'field', field, code, message }] }, { status: 400 });
   const reasonCodes: StubRoute = {
     match: (request) =>
       pathOf(request) === '/mdm/code-values' &&
@@ -2534,33 +2553,124 @@ describe('ProductionFlowScreen 미달 LOT 마감', () => {
     await waitFor(() => expect(attempts).toBe(2));
   });
 
-  it('그 밖의 거부는 스캔 칸 아래 서버 문구로 말하고 스캔 칸을 잠그지 않는다', async () => {
+  it('낡은 미달 판정으로 사유를 실어 거부되면 다시 읽고, 미달이 아니면 사유 없이 다시 마감한다', async () => {
+    const writes: Request[] = [];
+    let reads = 0;
+    let attempts = 0;
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      /* 화면은 미달로 들고 있었지만, 거부 뒤 다시 읽으면 서버는 이미 정상이다. */
+      lotDetailJudged(() => {
+        reads += 1;
+        return { completionJudgmentCode: attempts === 0 ? 'UNDER' : 'NORMAL' };
+      }),
+      reasonCodes,
+      completeRoute(writes, () => {
+        attempts += 1;
+        return attempts === 1
+          ? rejection(
+              'completionVarianceReasonCode',
+              'INVALID',
+              '정상·초과 완료에는 사유를 담지 않습니다.',
+            )
+          : jsonResponse({ lotId: LOT_ID, lotNo: LOT_NO, completedAt: new Date().toISOString() });
+      }),
+    ]);
+
+    await user.type(await reachScan(user), LOT_NO);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '자재 부족' }),
+    );
+
+    await waitFor(() => expect(attempts).toBe(2));
+    const bodies = await completeBodies(writes);
+    expect(bodies[0]).toEqual(
+      expect.objectContaining({ completionVarianceReasonCode: 'MATERIAL_SHORT' }),
+    );
+    expect(bodies[1]).not.toHaveProperty('completionVarianceReasonCode');
+    expect(reads).toBeGreaterThan(1);
+    expect(screen.queryByRole('dialog', { name: t.flow.underReason.title })).toBeNull();
+  });
+
+  it('사유가 빠졌다고 거부되면 사유 창을 연다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      /* 화면은 정상으로 들고 있었지만 서버는 미달로 판정했다. */
+      lotDetailJudged('NORMAL'),
+      reasonCodes,
+      completeRoute(writes, () =>
+        rejection(
+          'completionVarianceReasonCode',
+          'REQUIRED',
+          '계획 수량에 미달한 완료는 사유가 필요합니다.',
+        ),
+      ),
+    ]);
+
+    await user.type(await reachScan(user), LOT_NO);
+
+    const dialog = await screen.findByRole('dialog', { name: t.flow.underReason.title });
+    expect(
+      within(dialog).getByText('계획 수량에 미달한 완료는 사유가 필요합니다.'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(t.flow.underReason.summary('12 EA', '0 EA')),
+    ).toBeInTheDocument();
+  });
+
+  it('실적이 배분되지 않은 LOT 의 거부는 화면 문구로 다음 할 일을 말하고 스캔 칸을 잠그지 않는다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
     renderScreen(writes, [
       lotDetailJudged('NORMAL'),
       completeRoute(writes, () =>
-        jsonResponse(
-          {
-            errors: [
-              {
-                scope: 'field',
-                field: 'lotId',
-                code: 'STATE_LOCKED',
-                message: '합성 — 이미 완료된 LOT 입니다.',
-              },
-            ],
-          },
-          { status: 400 },
-        ),
+        rejection('lotId', 'STATE_LOCKED', '실적이 배분되지 않은 LOT 은 완료할 수 없습니다.'),
       ),
     ]);
 
     const scan = await reachScan(user);
     await user.type(scan, LOT_NO);
 
-    expect(await screen.findByText('합성 — 이미 완료된 LOT 입니다.')).toBeInTheDocument();
+    expect(await screen.findByText(t.flow.scan.noAllocation)).toBeInTheDocument();
     expect(screen.queryByText(t.flow.scan.failed)).toBeNull();
+    await waitFor(() => expect(scan).toBeEnabled());
+  });
+
+  it('이미 마감된 LOT 이면 그 사실을 말한다', async () => {
+    const writes: Request[] = [];
+    let attempts = 0;
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      lotDetailJudged(() => ({
+        completionJudgmentCode: 'NORMAL',
+        ...(attempts > 0 ? { completedAt: '2026-10-22T09:00:00+09:00' } : {}),
+      })),
+      completeRoute(writes, () => {
+        attempts += 1;
+        return rejection('lotId', 'STATE_LOCKED', '이미 완료된 LOT 입니다.');
+      }),
+    ]);
+
+    await user.type(await reachScan(user), LOT_NO);
+
+    expect(await screen.findByText(t.flow.scan.alreadyCompleted)).toBeInTheDocument();
+  });
+
+  it('알 수 없는 거부는 서버 문구를 그대로 말한다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      lotDetailJudged('NORMAL'),
+      completeRoute(writes, () =>
+        rejection('occurredAt', 'INVALID', '합성 — 시각 형식이 아닙니다.'),
+      ),
+    ]);
+
+    const scan = await reachScan(user);
+    await user.type(scan, LOT_NO);
+
+    expect(await screen.findByText('합성 — 시각 형식이 아닙니다.')).toBeInTheDocument();
     await waitFor(() => expect(scan).toBeEnabled());
   });
 });

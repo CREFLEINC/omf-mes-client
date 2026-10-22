@@ -125,9 +125,13 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       completed: 'Đã đóng LOT · chuyển sang LOT kế tiếp.',
       failed: 'Không đóng được LOT. Hãy quét lại cùng nhãn.',
       alreadyCompleted: 'LOT này đã đóng. Đang tải lại trạng thái LOT hiện tại.',
+      noAllocation: 'LOT này chưa có kết quả đã lưu nên không đóng được. Hãy lưu kết quả trước.',
+      workOrderClosed:
+        'MES W/O đã đóng nên không đóng LOT thiếu được. Hãy nhờ quản trị viên mở lại W/O.',
     },
     underReason: {
       title: 'Lý do thiếu',
+      summary: (target: string, actual: string): string => `Mục tiêu ${target} · Thực tế ${actual}`,
       cancel: 'Hủy',
       loading: 'Đang tải lý do thiếu.',
       loadFailed: 'Không tải được lý do thiếu.',
