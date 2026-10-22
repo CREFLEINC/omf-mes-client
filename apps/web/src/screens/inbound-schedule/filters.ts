@@ -99,18 +99,21 @@ export const readPage = (params: URLSearchParams): number => {
  * 조건 전체를 주소로 옮긴다. **빈 조건·기본값은 키 자체를 두지 않는다** —
  * 같은 화면의 주소가 두 가지가 되지 않게 하고, 주소가 걸린 조건을 그대로 드러내게 한다.
  *
- * **기간도 빈 쪽은 적지 않는다.** 기본 기간을 심으면 「기간이 필수」로 읽힌다.
+ * 기간은 기본(오늘 앞뒤 2주)과 다를 때만 적는다.
  */
 export const toSearchParams = (
   period: PeriodInput,
   filters: ScheduleFilters,
   page: number,
+  fallback: PeriodInput,
 ): URLSearchParams => {
   const next = new URLSearchParams();
 
+  /* 기본 기간과 같은 쪽은 적지 않는다. 다르면 **빈 값도 적는다** — 지운 기간이 기본으로 되돌아가지 않게. */
+  if (period.from !== fallback.from) next.set('from', period.from);
+  if (period.to !== fallback.to) next.set('to', period.to);
+
   const entries: [string, string][] = [
-    ['from', period.from],
-    ['to', period.to],
     [URL_KEYS.supplier, readNumberFilter(filters.supplier)],
     [URL_KEYS.plant, readNumberFilter(filters.plant)],
     [URL_KEYS.item, readNumberFilter(filters.item)],

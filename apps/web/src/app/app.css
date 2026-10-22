@@ -6360,11 +6360,658 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * W-01-09 입하 예정 — 12열(P/O 라인 한 줄). 열별 폭의 도출 표는 screens/inbound-schedule/schedule-table.tsx에 있다
- * (지정 폭 1,128px + 흡수 열 「코드 · 이름」 둘 × 200px = 1,528px).
+ * W-01-09 입하 예정 — 왼쪽 P/O 묶음 표 · 오른쪽 라인 표.
+ *
+ * **행은 한 줄이다**(사용자 지시 2026-10-20). 고정 배치로 열 폭을 지키고 칸 안에서 줄을 바꾸지 않는다 —
+ * 자동 배치에서는 긴 이름 하나가 다른 열을 밀어낸다. 넘치는 이름은 `.po-board-one-line` 이 말줄임한다.
  */
-.wide-table.inbound-schedule-table table {
-  min-width: 96rem;
+.wide-table.po-board-table table {
+  table-layout: fixed;
+}
+
+/*
+ * 두 표(server #762) — 열별 폭의 도출 표는 order-table.tsx · line-table.tsx 에 있다.
+ * 열 폭을 끌어 바꾸면 최소 폭이 그만큼 따라간다(`--col-grow` · `--col-floor`, patterns/column-resize.tsx).
+ */
+.wide-table.po-board-orders table {
+  min-width: max(38rem + var(--col-grow, 0px), var(--col-floor, 0px));
+}
+
+.wide-table.po-board-lines table {
+  min-width: max(48rem + var(--col-grow, 0px), var(--col-floor, 0px));
+}
+
+/*
+ * 왼쪽 발주 묶음 · 오른쪽 고른 발주의 라인(사용자 결정 2026-10-20). 창이 1440px 보다 좁으면 위아래로 쌓는다.
+ * 나란히 설 때 표가 칸보다 넓으면 각 칸 안에서 가로로 넘긴다(표 최소 폭은 위 두 규칙).
+ */
+.po-board-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 1440px) {
+  /*
+   * 두 표가 창 바닥에서 멈춘다(사용자 지시 2026-10-21) — `--split-top` 은 표 구획의 창 안 윗변(screen.tsx).
+   * 남은 높이에서 바닥 여백을 빼고, 넘치는 줄은 각 표 안에서 스크롤한다(머리줄은 고정).
+   */
+  .po-board-split {
+    height: calc(100dvh - var(--split-top, 20rem) - var(--space-6));
+    min-height: 20rem;
+    align-items: stretch;
+  }
+
+  .po-board-pane {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-height: 0;
+  }
+
+  .po-board-pane > .po-board-table {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  /* (옛 초과 입하 분리) 오른쪽 구획은 라인 · 등록 정보 · 결과를 통째로 스크롤한다(등록 단추가 표 아래라서). */
+  .po-board-pane.po-board-scroll {
+    overflow: auto;
+  }
+
+  .po-board-pane.po-board-scroll > .po-board-table {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .po-board-split {
+    /*
+     * 발주 목록 : 상세 — 기본 1 : 2, 가운데 막대를 끌어 바꾼다(사용자 지시 2026-10-21).
+     * 비율은 `usePaneSplit` 이 `--split-left`·`--split-right` 로 싣는다. 막대가 없는 화면은 기본값이다.
+     */
+    grid-template-columns: minmax(0, var(--split-left, 1fr)) minmax(0, var(--split-right, 2fr));
+  }
+
+  .po-board-split:has(> .po-board-splitter) {
+    grid-template-columns:
+      minmax(0, var(--split-left, 1fr)) var(--space-5)
+      minmax(0, var(--split-right, 2fr));
+    column-gap: 0;
+  }
+
+  /*
+   * 끌기 막대 — **늘 보인다**(사용자 지시 2026-10-21). 가는 세로선 가운데에 잡는 손잡이(점 세 개)를 둬
+   * 끌어서 폭을 바꿀 수 있다는 것이 마우스를 올리기 전에도 읽힌다. 올리거나 초점이 오면 진해진다.
+   */
+  .po-board-split > .po-board-splitter {
+    position: relative;
+    display: block;
+    align-self: stretch;
+    margin: 0 auto;
+    width: var(--space-4);
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  .po-board-split > .po-board-splitter::before {
+    content: '';
+    position: absolute;
+    top: var(--space-2);
+    bottom: var(--space-2);
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    border-radius: var(--radius-full);
+    background: var(--outline-variant);
+  }
+
+  .po-board-split > .po-board-splitter::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 40px;
+    transform: translate(-50%, -50%);
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    background:
+      radial-gradient(circle, var(--on-surface-variant) 1.5px, transparent 2px) center / 4px 8px
+        repeat-y,
+      var(--surface);
+    box-shadow: var(--elevation-1);
+  }
+
+  .po-board-split > .po-board-splitter:hover::before,
+  .po-board-split > .po-board-splitter:focus-visible::before {
+    width: 4px;
+    background: var(--semantic-info);
+  }
+
+  .po-board-split > .po-board-splitter:hover::after,
+  .po-board-split > .po-board-splitter:focus-visible::after {
+    border-color: var(--semantic-info);
+  }
+
+  .po-board-split > .po-board-splitter:focus-visible {
+    outline: none;
+  }
+
+  .po-board-split > .po-board-splitter:focus-visible::after {
+    box-shadow: var(--focus-ring);
+  }
+
+  .po-board-split > .po-board-splitter:focus-visible {
+    box-shadow: var(--focus-ring);
+    outline: none;
+  }
+}
+
+/*
+ * 발주번호는 다른 칸과 같은 글자로 보인다(사용자 지시 2026-10-21) — 줄 전체가 고르는 자리라 링크처럼
+ * 꾸밀 까닭이 없다. 단추는 키보드로 고르는 자리로만 남는다(초점 테두리는 `.link-cell` 것을 그대로 쓴다).
+ */
+.po-board-orders .link-cell {
+  color: inherit;
+  text-decoration: none;
+}
+
+.po-board-orders .link-cell:hover {
+  background: none;
+}
+
+/*
+ * 발주 상세 머리 — 발주번호를 제목처럼 크게, 나머지는 세로 구분선으로 나눈 이름표·값 칸.
+ * 바탕은 표와 구분되는 한 단 높은 면이다.
+ */
+.po-board-order-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.po-board-order-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.po-board-order-eyebrow,
+.po-board-order-facts dt {
+  font: var(--type-label-md);
+  color: var(--on-surface-variant);
+}
+
+.po-board-order-no {
+  font: var(--type-title-sm);
+  color: var(--on-surface);
+}
+
+.po-board-order-facts {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.po-board-order-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0 var(--space-5);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.po-board-order-facts dd {
+  margin: 0;
+  font: var(--type-title-sm);
+  color: var(--on-surface);
+}
+
+/* 고른 발주 머리의 할 일 — 「입하 등록」. 머리 오른쪽 아래에 선다. */
+.po-board-order-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/*
+ * 표 머리줄은 늘 위에 고정(사용자 지시 2026-10-21). 디자인 시스템 표는 자기 안에 스크롤 상자를 두는데,
+ * 그 상자는 세로로 스크롤하지 않아 머리줄이 거기에 붙으면 고정되지 않는다 — 그 상자의 넘침을 풀어
+ * 머리줄이 **실제로 스크롤하는 자리**(나란히: 각 표 상자 · 쌓임: 본문)에 붙게 한다. 가로 넘침은
+ * 나란히 설 때 바깥 표 상자가 받는다.
+ */
+.po-board-table > :has(> table) {
+  overflow: visible;
+}
+
+.po-board-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-container);
+}
+
+/* 끌기 막대는 두 표가 나란히 설 때만 — 위아래로 쌓이면 감춘다. */
+.po-board-splitter {
+  display: none;
+}
+
+/* 끄는 동안 글자가 선택되거나 커서가 바뀌지 않게. */
+body.po-board-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* 입하 등록 — 등록 정보·결과는 라인 표 아래에 가는 선으로 나눈다. */
+.po-board-register {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/*
+ * W-01-03 입하 등록 — 라인 표(수량 · LOT 줄) · 표 위 도구 · 요약 · 등록 확인 · 결과.
+ * 열별 폭의 도출 표는 split-line-table.tsx 에 있다.
+ */
+.wide-table.ors-lines table {
+  min-width: max(62rem + var(--col-grow, 0px), var(--col-floor, 0px));
+}
+
+.ors-lines td {
+  white-space: nowrap;
+  /* LOT 입력이 빈 수량 칸 위로 이어진다 — 표 부품에 칸 병합이 없다. */
+  overflow: visible;
+}
+
+.ors-item-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ors-item-name > .po-board-one-line {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* LOT 줄 — 발주 라인 아래 한 단 낮은 면. 위 경계선을 지워 그 줄에 딸린 것으로 읽힌다. */
+.ors-lines tbody tr:has([data-lot-row]) > td {
+  background: var(--surface-container-low);
+  border-top: 0;
+}
+
+.ors-lot-part {
+  font: var(--type-label-md);
+  color: var(--on-surface-variant);
+}
+
+.ors-lot-editor {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: max-content;
+  max-width: 44rem;
+}
+
+.ors-lot-editor > :first-child {
+  width: 22rem;
+}
+
+.ors-lot-editor > label {
+  margin-top: var(--space-2);
+}
+
+/* 단계 안내 — 오른쪽 구획 맨 위. 지금 단계와 그 단계에서 할 일 한 줄. */
+.ors-guide {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.ors-guide-hint {
+  margin: 0;
+  font: var(--type-body-sm);
+  color: var(--on-surface);
+}
+
+/* 입력 구획의 제목과 설명. */
+.ors-section-head {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ors-section-title {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+/* 표 위 도구 — 라벨 스캔 칸과 「잔량으로 채우기」. */
+.ors-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+}
+
+.ors-scan {
+  min-width: 26rem;
+}
+
+/* 등록 단추 위의 요약 — 무엇이 몇 건 만들어지는지. */
+.ors-totals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  font: var(--type-label-lg);
+  color: var(--on-surface-variant);
+}
+
+.ors-totals strong {
+  color: var(--on-surface);
+}
+
+/* 등록 결과 — 전표마다 구분 칩 · 번호 · 상태 · (초과분만) 다음 길. */
+.ors-result {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ors-result-lead {
+  margin: 0;
+}
+
+.ors-result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ors-result-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ors-result-no {
+  font: var(--type-title-sm);
+}
+
+/* 등록 확인 창 — 실리는 줄 · 전표 머리 · 되돌릴 수 없다는 경고 띠. */
+.ors-confirm {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ors-confirm p,
+.ors-confirm dl,
+.ors-confirm dd {
+  margin: 0;
+}
+
+.ors-confirm-target {
+  font: var(--type-title-sm);
+}
+
+.ors-confirm-lead {
+  color: var(--on-surface-variant);
+}
+
+.ors-confirm-group {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.ors-confirm-group-title {
+  margin: 0;
+  font: var(--type-label-lg);
+  color: var(--on-surface-variant);
+}
+
+.ors-confirm-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+/*
+ * 한 줄 = 품목(위) · 수량(가운데) · LOT(아래)를 세로로 쌓는다 — 수량 문구에 「P/O 반영 · 초과분」이 붙으면
+ * 옆에 두었을 때 품목 칸이 눌려 글자가 한 자씩 꺾였다.
+ */
+.ors-confirm-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+}
+
+.ors-confirm-line-head {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ors-confirm-line-no {
+  font: var(--type-label-md);
+  color: var(--on-surface-variant);
+}
+
+.ors-confirm-line-qty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  padding-left: var(--space-5);
+}
+
+.ors-confirm-excess {
+  color: var(--semantic-warning);
+}
+
+.ors-confirm-line-lots {
+  padding-left: var(--space-5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.ors-confirm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+}
+
+.ors-confirm-grid > div {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.ors-confirm-grid dt {
+  font: var(--type-label-sm);
+  color: var(--on-surface-muted);
+}
+
+.ors-confirm-grid dd {
+  overflow-wrap: anywhere;
+}
+
+.ors-confirm-wide {
+  grid-column: 1 / -1;
+}
+
+.ors-confirm-warning {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--semantic-warning-container);
+}
+
+.ors-confirm-warning p {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ors-confirm-effects {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+/* 발주 줄은 어디를 눌러도 고른다(order-table.tsx). */
+.po-board-orders tbody tr {
+  cursor: pointer;
+}
+
+.po-board-orders tbody tr:hover > td {
+  background: var(--surface-container);
+}
+
+/*
+ * 고른 발주는 줄 배경으로 알린다 — 오른쪽이 어느 발주의 라인인지 왼쪽에서 바로 읽힌다.
+ * **칸(td)에 칠한다** — 표 부품이 칸 배경·hover 를 따로 칠해 줄(tr) 배경은 가려진다. 마우스를
+ * 올렸다 떼도 남도록 hover 보다 우선한다(사용자 지시 2026-10-21 「선택 행 하이라이트 유지」).
+ */
+/* 붉은 계열(primary)은 쓰지 않는다 — 문제가 있다는 뜻으로 읽힌다(사용자 지시 2026-10-21). 정보 파랑이다. */
+.po-board-orders tbody tr:has([aria-current='true']) > td,
+.po-board-orders tbody tr:has([aria-current='true']):hover > td {
+  background: var(--semantic-info-container);
+}
+
+.po-board-orders tbody tr:has([aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+
+.po-board-lines tbody tr:has([data-matched]) > td {
+  background: var(--surface-container-high);
+}
+
+/* 조회·초기화는 같은 폭(사용자 지시 2026-10-21) — 상세 조건 펼치기(글자 단추)는 제 폭이다. */
+.po-board-actions {
+  align-items: center;
+}
+
+.po-board-actions > button:not([aria-expanded]) {
+  min-width: 5.5rem;
+}
+
+.po-board-table td {
+  white-space: nowrap;
+}
+
+/*
+ * 열 폭 조절(사용자 지시 2026-10-22, patterns/column-resize.tsx) — 좁힌 칸의 글자는 이웃 칸을 덮지 않고
+ * 말줄임한다. 입하 등록의 라인 표는 LOT 입력이 이웃 칸 위로 이어져야 해서(`.ors-lines td`) 칸을 자르지 않는다.
+ */
+.po-board-table thead th,
+.po-board-table:not(.ors-lines) td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 끌기 손잡이 — 머리칸 오른쪽 끝. 머리칸은 고정(sticky)이라 이미 위치의 기준이다. */
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--space-2);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+/* 머리칸 사이의 가는 세로선 — 끌 수 있는 자리가 마우스를 올리기 전에도 보인다(두 표 사이 막대와 같은 판단). */
+.col-resizer::after {
+  content: '';
+  position: absolute;
+  top: var(--space-2);
+  right: 0;
+  bottom: var(--space-2);
+  width: 1px;
+  background: var(--outline-variant);
+}
+
+th:last-child > .col-resizer::after {
+  background: transparent;
+}
+
+.col-resizer:hover::after,
+.col-resizer:active::after {
+  width: 3px;
+  background: var(--semantic-info);
+}
+
+/*
+ * 잘린 이름의 전체 — 마우스를 올리면 곧바로 뜬다(사용자 지시 2026-10-21; 브라우저 `title` 은 1초 가까이 늦다).
+ * 표가 스크롤 상자 안이라 잘리지 않게 창 기준(fixed)으로 띄운다. 좌표는 receipt-status.tsx `OneLine` 이 잰다.
+ */
+.po-board-tip {
+  position: fixed;
+  z-index: 20;
+  max-width: 32rem;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--on-surface);
+  color: var(--surface);
+  font: var(--type-body-sm);
+  white-space: normal;
+  pointer-events: none;
+  box-shadow: var(--elevation-2);
+}
+
+.po-board-one-line {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 상태 칩과 지연 칩은 한 줄로 나란히 선다. */
+.po-board-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
+ * 조건 칸의 글자를 목록 머리글과 같은 14px 로 맞춘다(사용자 지시 2026-10-20). 디자인 시스템 입력·선택·
+ * 확인란이 쓰는 본문 큰 글자 토큰(16px)을 이 구획 안에서만 본문 작은 글자 토큰(14px)으로 바꾼다 —
+ * 부품의 해시 클래스 이름을 고르면 디자인 시스템 판이 바뀔 때 조용히 어긋난다. 칸 이름표(12px)는 그대로다.
+ *
+ * ⛔ **품목 선택 창(`<dialog>`)은 뺀다.** 그 창은 조건 줄 안에 그려져, 구획 전체에 걸면 창의 글자까지 작아진다.
+ */
+
+/* 빠른 조회 칸들은 조건 줄(납기 뒤 · 조회 단추 앞)의 칸으로 그대로 선다. */
+.po-board-quick {
+  display: contents;
+}
+
+.po-board-filter .filter-bar > :not(dialog) {
+  --type-body-lg: var(--type-body-sm);
+  --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
 }
 
 /*
@@ -6431,6 +7078,14 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+/* 좌우로 나란히 — 짧은 켜짐 표시 둘을 한 줄에 둔다. */
+.check-group.check-group-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
 }
 
 @media (max-width: 720px) {
@@ -13078,6 +13733,31 @@ button.app-button-neutral {
   box-shadow: inset 0 -1px 0 var(--outline-variant);
 }
 
+/* 탭 막대 + 오른쪽 일 단추 자리(`patterns/hub-actions.tsx`). 밑줄은 줄 전체에 긋는다. */
+.hub-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  box-shadow: inset 0 -1px 0 var(--outline-variant);
+}
+
+.hub-bar > .hub-tabs {
+  flex: 1;
+  min-width: 0;
+  box-shadow: none;
+}
+
+.hub-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.hub-actions:empty {
+  display: none;
+}
+
 .hub-tab {
   flex: none;
   padding: var(--space-2) var(--space-4);
@@ -15838,6 +16518,139 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+}
+
+/*
+ * 입하 예정 — 초과분 발주 연결(서버 장부 P-100). 탭 줄 끝의 진입 단추와 오른쪽에서 열리는 연결 창.
+ * 고른 줄 표시는 발주 목록과 같은 정보 파랑이다(붉은 계열은 문제로 읽힌다).
+ */
+.po-board-tools {
+  margin-left: auto;
+}
+
+.po-board-tool-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  background: var(--semantic-warning-container);
+  color: var(--semantic-on-warning-container, var(--on-surface));
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.excess-dialog {
+  --dialog-max-lg: 72rem;
+}
+
+/*
+ * 입하 예정 — 「입하 등록」 창(W-01-03). 옛 「초과 입하 분리」 화면의 오른쪽 구획이 이 창이 됐다.
+ * 라인 표가 넓어(P/O 반영 · 초과분 열까지) 연결 창보다 넓게 연다. 오류 · 요약 · 단추는 아래 띠에 늘 보인다.
+ */
+.register-dialog {
+  --dialog-max-lg: 88rem;
+}
+
+.register-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.register-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.register-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.register-footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.register-footer-row .form-actions {
+  margin: 0;
+}
+
+.excess-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.excess-guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.excess-table {
+  max-height: 40vh;
+  overflow: auto;
+}
+
+/* 열 폭을 끌어 바꾸면 최소 폭이 따라간다(patterns/column-resize.tsx). 기본은 `.wide-table` 의 58rem 이다. */
+.wide-table.excess-table table {
+  min-width: max(58rem + var(--col-grow, 0px), var(--col-floor, 0px));
+}
+
+.excess-table tbody tr {
+  cursor: pointer;
+}
+
+.excess-table tbody tr:has([aria-current='true']) > td,
+.excess-table tbody tr:has([aria-current='true']):hover > td {
+  background: var(--semantic-info-container);
+}
+
+.excess-table tbody tr:has([aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+
+.excess-receipt-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.excess-section-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+}
+
+.excess-section-sub {
+  color: var(--on-surface-variant);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.excess-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.excess-confirm {
+  flex: 1;
+  margin: 0;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

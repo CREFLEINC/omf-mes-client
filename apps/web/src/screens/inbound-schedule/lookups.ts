@@ -8,7 +8,8 @@ import { runRequest, toApiError } from '../../patterns/request';
 import type { LookupEntry, PageMeta } from './types';
 
 /**
- * 내부 번호(FK)·코드로 이어진 값을 이름으로 푼다 — 공급사·공장·품목·단위, 그리고 창고 코드.
+ * 내부 번호(FK)·코드로 이어진 값을 이름으로 푼다 — 공급사·공장(조건 선택지)·품목(조건 칩), 그리고 창고 코드.
+ * 표의 공급사·품목·단위 이름은 응답에 함께 온다(server #762) — 여기서 풀지 않는다.
  *
  * **넷은 목록으로 받고 품목만 번호로 하나씩 푼다.** 가름의 잣대는 마스터의 크기다 —
  * 품목은 수천 건이라 목록 한 쪽으로는 이름 대부분이 「알 수 없음」으로 선다(omf-all-around#37).
@@ -49,7 +50,10 @@ export interface LookupResult extends ReferenceSource {
  * **어느 갈래에도 번호를 담지 않는다**(#44). 담을 자리가 없으면 화면으로 샐 경로도 없다.
  */
 export type ReferenceState =
-  { kind: 'named'; label: string } | { kind: 'unknown' } | { kind: 'loading' } | { kind: 'failed' };
+  | { kind: 'named'; label: string; code?: string; name?: string }
+  | { kind: 'unknown' }
+  | { kind: 'loading' }
+  | { kind: 'failed' };
 
 /**
  * 참조 하나를 표기 상태로 옮긴다.
@@ -67,9 +71,12 @@ export const toReference = (
   if (source.isLoading) return { kind: 'loading' };
   if (id === null || id === undefined) return { kind: 'unknown' };
 
-  const label = source.entries.find((entry) => entry.value === String(id))?.label;
+  const entry = source.entries.find((candidate) => candidate.value === String(id));
+  if (entry === undefined) return { kind: 'unknown' };
 
-  return label === undefined ? { kind: 'unknown' } : { kind: 'named', label };
+  return entry.code === undefined
+    ? { kind: 'named', label: entry.label }
+    : { kind: 'named', label: entry.label, code: entry.code, name: entry.name ?? '' };
 };
 
 /** 표기 상태를 화면 문구로 옮긴다. 네 갈래의 문구가 서로 달라야 뜻이 구분된다. */
@@ -111,11 +118,10 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
 };
 
 export const lookupKeys = {
-  suppliers: ['inbound-schedule-lookups', 'suppliers'] as const,
-  plants: ['inbound-schedule-lookups', 'plants'] as const,
-  uoms: ['inbound-schedule-lookups', 'uoms'] as const,
-  itemName: (itemId: number) => ['inbound-schedule-lookups', 'item', itemId] as const,
-  storageLocations: ['inbound-schedule-lookups', 'code', 'SL_TYPE'] as const,
+  suppliers: ['po-board-lookups', 'suppliers'] as const,
+  plants: ['po-board-lookups', 'plants'] as const,
+  itemName: (itemId: number) => ['po-board-lookups', 'item', itemId] as const,
+  storageLocations: ['po-board-lookups', 'code', 'SL_TYPE'] as const,
 };
 
 /**
@@ -147,6 +153,8 @@ export const useSupplierOptions = (): LookupResult => {
         value: String(item.partnerId),
         label: `${item.partnerCode} · ${item.partnerName}`,
         isActive: item.isActive,
+        code: item.partnerCode,
+        name: item.partnerName,
       })) ?? EMPTY_ENTRIES,
     truncated: data?.truncated === true,
     isError: query.isError,
@@ -175,43 +183,10 @@ export const usePlantOptions = (): LookupResult => {
         value: String(item.plantId),
         label: `${item.plantCode} · ${item.plantName}`,
         isActive: item.isActive,
+        code: item.plantCode,
+        name: item.plantName,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: query.isError,
-    isLoading: query.isPending,
-    refetch: () => {
-      void query.refetch();
-    },
-  };
-};
-
-/**
- * 단위 — 표의 단위 칸이 쓴다. **코드만 낸다**(`EA`·`KG`) — 수량 옆 좁은 칸이라 「코드 · 이름」은
- * 접힌다. 끝까지 받는다 — 첫 쪽 밖의 단위가 「알 수 없음」으로 서지 않게.
- */
-export const useUomOptions = (): LookupResult => {
-  const { client } = useApiClient();
-
-  const query = useQuery({
-    queryKey: lookupKeys.uoms,
-    queryFn: () =>
-      fetchAllPages((page, size) =>
-        runRequest(() =>
-          client.GET('/mdm/uoms', { params: { query: { includeInactive: true, page, size } } }),
-        ),
-      ),
-  });
-
-  const data = query.data;
-
-  return {
-    entries:
-      data?.items.map((item) => ({
-        value: String(item.uomId),
-        label: item.uomCode,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data?.truncated === true,
     isError: query.isError,
     isLoading: query.isPending,
     refetch: () => {
@@ -245,7 +220,12 @@ export interface ItemNameLookup {
 
 type Client = ReturnType<typeof useApiClient>['client'];
 
-const fetchItemName = async (client: Client, itemId: number): Promise<string> => {
+interface ItemName {
+  code: string;
+  name: string;
+}
+
+const fetchItemName = async (client: Client, itemId: number): Promise<ItemName> => {
   const data = await runRequest(() =>
     client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
   );
@@ -253,7 +233,7 @@ const fetchItemName = async (client: Client, itemId: number): Promise<string> =>
   /* 상세는 봉투로 온다 — 편집 가능 여부(`editability`)는 이 화면이 쓰지 않는다. */
   const item = data.item;
 
-  return `${item.itemCode} · ${masterName(item, item.itemName)}`;
+  return { code: item.itemCode, name: masterName(item, item.itemName) };
 };
 
 export const useItemNames = (itemIds: readonly number[]): ItemNameLookup => {
@@ -280,7 +260,12 @@ export const useItemNames = (itemIds: readonly number[]): ItemNameLookup => {
 
       return result.data === undefined
         ? { kind: 'loading' }
-        : { kind: 'named', label: result.data };
+        : {
+            kind: 'named',
+            label: `${result.data.code} · ${result.data.name}`,
+            code: result.data.code,
+            name: result.data.name,
+          };
     },
     isError: results.some((result) => result.isError && !isNotFound(result.error)),
     refetch: () => {
@@ -321,4 +306,36 @@ export const useStorageLocationNames = (): ((code: string | null) => string) => 
 
     return names?.get(code) ?? code;
   };
+};
+
+/** 스캔·입력 한 번에 찾아볼 품목 수. 정확히 맞는 것을 고르는 데 쓰므로 많을 필요가 없다. */
+const SCAN_LOOKUP_SIZE = 20;
+
+export type ScannedItem =
+  { kind: 'found'; itemId: number } | { kind: 'ambiguous' } | { kind: 'none' };
+
+/**
+ * 바코드·품목번호 한 번으로 품목을 정한다(빠른 조회 「품목코드」).
+ *
+ * ⚠ **바코드 값이 품목코드라고 본다.** 다른 체계(공급사 품번·라벨 바코드)면 서버의 바코드 → 품목 조회가
+ * 들어온 뒤 이 함수만 바꾼다.
+ *
+ * 품목코드가 정확히 같은 것(대소문자 무시)이 있으면 그것, 없고 찾은 것이 하나뿐이면 그것이다.
+ * 둘 다 아니면 사람이 고른다(`ambiguous` → 품목 선택 창).
+ */
+export const resolveScannedItem = async (client: Client, raw: string): Promise<ScannedItem> => {
+  const value = raw.trim();
+  const data = await runRequest(() =>
+    client.GET('/mdm/items', {
+      params: { query: { q: value, includeInactive: true, size: SCAN_LOOKUP_SIZE } },
+    }),
+  );
+  const exact = data.items.find((item) => item.itemCode.toLowerCase() === value.toLowerCase());
+
+  if (exact !== undefined) return { kind: 'found', itemId: exact.itemId };
+  if (data.items.length === 1 && data.items[0] !== undefined) {
+    return { kind: 'found', itemId: data.items[0].itemId };
+  }
+
+  return data.items.length === 0 ? { kind: 'none' } : { kind: 'ambiguous' };
 };

@@ -1,5 +1,6 @@
 import { useHref, useLinkClickHandler } from 'react-router';
 
+import { HUB_ACTIONS_ID } from '../patterns/hub-actions';
 import { localizedLabel } from '../patterns/localized-label';
 import type { NavEntry, NavTab } from './nav-tree';
 
@@ -42,11 +43,16 @@ export interface HubTabsProps {
  *
  * ⛔ **셸이 그린다 — 화면이 그리지 않는다.** 화면마다 그리면 탭 목록이 화면 수만큼 복사되고,
  * 묶음을 바꾸는 날 한 곳이 남는다. 묶음은 `nav-tree.ts` 하나가 정한다.
+ *
+ * 탭 오른쪽 끝에 **화면의 일 단추 자리**(`patterns/hub-actions.tsx`)를 빈 상자로 둔다 — 링크 목록(`nav`) 밖이다.
  */
 export const HubTabs = ({ hub, activePath }: HubTabsProps) => (
-  <nav className="hub-tabs" aria-label={localizedLabel(hub)}>
-    {hub.tabs.map((tab) => (
-      <HubTabLink key={tab.to} tab={tab} isActive={tab.to === activePath} />
-    ))}
-  </nav>
+  <div className="hub-bar">
+    <nav className="hub-tabs" aria-label={localizedLabel(hub)}>
+      {hub.tabs.map((tab) => (
+        <HubTabLink key={tab.to} tab={tab} isActive={tab.to === activePath} />
+      ))}
+    </nav>
+    <div id={HUB_ACTIONS_ID} className="hub-actions" />
+  </div>
 );

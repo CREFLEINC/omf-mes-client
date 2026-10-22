@@ -44,7 +44,6 @@ import {
   notificationFixtures,
   notificationListBody,
 } from '../screens/notification-center/fixtures';
-import { poRegisterEntryPath } from '../screens/over-receipt-split/created-receipts-pane';
 import {
   businessUnitFixtures,
   inboundReceiptDetailBody,
@@ -613,10 +612,10 @@ describe('appRouter', () => {
   });
 
   /*
-   * W-01-03은 계약 경로도 `/logistics/**`라 둘이 우연히 같다. 그래도 근거는 섹션이다 —
-   * 계약 경로를 근거로 삼으면 W-01-07에서 앞머리가 갈렸을 것이다.
+   * W-01-03 은 화면이 아니라 입하 예정 조회의 「입하 등록」 창이다(사용자 지시 2026-10-21). 옛 주소는
+   * 즐겨찾기가 죽지 않게 라우트에 남아 그 창으로 옮겨 준다(`register-redirect.tsx` 가 옮기는 모양을 잰다).
    */
-  it('초과 입하 분리가 자재창고 앞머리로 등록돼 있다', () => {
+  it('옛 초과 입하 분리 주소가 자재창고 앞머리로 남아 있다', () => {
     expect(routedPaths()).toContain('/logistics/over-receipt-split');
   });
 
@@ -986,9 +985,13 @@ describe('appRouter — 재고조정의 진입 경로', () => {
  * **W-01-11은 이 저장소에서 처음으로 메뉴에 서지 않는 화면이다**(착수 이슈 §6 ① · 스펙 §5-2).
  *
  * 메뉴에 「신규 P/O 등록」이 서면 맥락 없는 진입이 기본 경로가 되고, 그때 사용자가 하는 일이
- * 곧 일반 구매 발주 등록이다. 그래서 **진입은 초과 입하 분리의 등록 결과 링크 하나뿐**이고,
- * 이 describe가 그 한 갈래를 양쪽에서 잰다 — 메뉴에는 없고, 링크가 가리키는 주소는 실재한다.
+ * 곧 일반 구매 발주 등록이다. 그래서 메뉴에는 없고, 맥락(`receipt`)을 실은 주소로만 화면이 선다.
+ *
+ * 입하 등록의 결과는 더 이상 이 화면으로 가지 않는다(서버 장부 P-100) — 초과분은 줄의 `excessQty` 로
+ * 실리고 「입하 예정 조회」의 초과분 연결 창으로 간다.
  */
+const PO_REGISTER_ENTRY = '/logistics/po-register?receipt=9101';
+
 describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
   /*
    * **C33** — 메뉴에 항목이 없다. 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가
@@ -997,8 +1000,8 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
   it('사이드바에도 입고 관리 탭 막대에도 이 화면 항목이 없다', async () => {
     const tabs = await hubTabLinks('입고 관리');
 
-    /* 짝 양성 — 탭 막대는 실제로 그려졌고 앞 화면(초과 입하 분리)은 거기 있다. */
-    expect(tabs).toContainEqual({ name: '초과 입하 분리', href: '/logistics/over-receipt-split' });
+    /* 짝 양성 — 탭 막대는 실제로 그려졌고 첫 화면(입하 예정 조회)은 거기 있다. */
+    expect(tabs).toContainEqual({ name: '입하 예정 조회', href: '/logistics/inbound-schedule' });
     expect(tabs.map((tab) => tab.href)).not.toContain('/logistics/po-register');
     expect(tabs.map((tab) => tab.name)).not.toContain('신규 P/O 등록');
 
@@ -1014,27 +1017,14 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
   });
 
   /*
-   * **사이드바 대조와 같은 형태의 이음매다.** 등록 결과의 링크와 라우트 표는 서로 다른 파일에
-   * 있고 서로를 참조하지 않는다 — 한쪽만 고치면 죽은 링크가 남는데, 그 슬라이스의 시험은
-   * `href` 글자만 보고 화면 시험은 라우트를 거치지 않아 **어느 쪽도 그 어긋남을 잡지 못한다.**
-   */
-  it('등록 결과 링크가 가리키는 주소가 라우트 표에 있다', () => {
-    const [pathname] = poRegisterEntryPath(9101).split('?');
-
-    expect(routedPaths()).toContain(pathname);
-  });
-
-  /*
-   * **C32·C37** — 그 링크의 주소로 들어가면 화면이 **그 맥락으로** 선다.
-   *
-   * 주소를 손으로 적지 않고 **링크가 만드는 값을 그대로 태운다** — 질의 열쇠(`receipt`)가
-   * 받는 쪽이 읽는 이름과 어긋나면 여기서 맥락 없는 화면이 서고 이 시험이 운다.
+   * **C32·C37** — 맥락(`receipt`)을 실은 주소로 들어가면 화면이 **그 맥락으로** 선다.
+   * 질의 열쇠(`receipt`)가 받는 쪽이 읽는 이름과 어긋나면 여기서 맥락 없는 화면이 서고 이 시험이 운다.
    */
   it('그 주소로 들어가면 대상 초과분이 실린 화면이 선다', async () => {
     renderWithProviders(<RoutedApp />, {
       session: SYNTHETIC_SESSION,
       fetch: createStubFetch(poRegisterRoutes()),
-      route: poRegisterEntryPath(9101),
+      route: PO_REGISTER_ENTRY,
     });
 
     expect(await screen.findByText('SAMPLE-IR-9101')).toBeInTheDocument();
@@ -1047,7 +1037,7 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
    * 실제로 다른 화면을 세우는 것을 함께 잰다. 질의 열쇠가 어긋나면 위 시험이 이쪽 모습을 본다.
    */
   it('맥락 없이 그 주소로 들어가면 넘어온 초과분이 없다고 말한다', async () => {
-    const [pathname] = poRegisterEntryPath(9101).split('?');
+    const [pathname] = PO_REGISTER_ENTRY.split('?');
 
     renderWithProviders(<RoutedApp />, {
       session: SYNTHETIC_SESSION,

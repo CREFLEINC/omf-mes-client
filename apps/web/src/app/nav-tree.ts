@@ -129,8 +129,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     icon: 'inventory_2',
     items: [
       /*
-       * 입고 관리 — 들어올 것(아직 다 들어오지 않은 P/O 라인)을 보고 → 도착한 것 중 초과분을 떼어 내고 → 창고로 받아들인다.
-       * 같은 입고 건을 따라가는 한 흐름이라, 한 건을 처리하려고 메뉴를 세 번 오가지 않게 묶었다.
+       * 입고 관리 — 들어올 것(아직 다 들어오지 않은 P/O 라인)을 보고 → 도착한 것을 등록하고 → 창고로 받아들인다.
+       * 같은 입고 건을 따라가는 한 흐름이라, 한 건을 처리하려고 메뉴를 오가지 않게 묶었다. 도착 등록(입하 등록)은
+       * 입하 예정 조회의 창이 됐다(사용자 지시 2026-10-21 — 분리된 화면을 그 화면으로 차츰 모은다).
        */
       {
         to: '/logistics/inbound-schedule',
@@ -142,11 +143,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             to: '/logistics/inbound-schedule',
             label: '입하 예정 조회',
             labelVi: 'Tra cứu kế hoạch nhập hàng',
-          },
-          {
-            to: '/logistics/over-receipt-split',
-            label: '초과 입하 분리',
-            labelVi: 'Tách phần nhập vượt',
           },
           {
             to: '/logistics/goods-receipt',

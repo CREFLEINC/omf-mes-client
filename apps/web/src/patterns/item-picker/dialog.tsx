@@ -93,6 +93,11 @@ export interface ItemPickerDialogProps {
    * 찾아보세요」라고만 하면, 있는 품목을 없다고 읽고 검색어만 바꾸게 된다(omf-all-around#43).
    */
   emptyText?: string;
+  /**
+   * 처음 검색어 — 창이 열리자마자 이 값으로 찾는다. 바코드·품목번호가 정확히 맞지 않아 창으로 넘어온
+   * 자리(W-01-09 빠른 조회)에서 사용자가 같은 값을 다시 치지 않게 한다.
+   */
+  initialKeyword?: string;
 }
 
 const describeAvailability = (state: AvailabilityState): string => {
@@ -118,13 +123,14 @@ export const ItemPickerDialog = ({
   hasRouting = false,
   compact = false,
   emptyText,
+  initialKeyword = '',
 }: ItemPickerDialogProps) => {
   const keywordId = useId();
   const typeId = useId();
 
-  const [keyword, setKeyword] = useState('');
+  const [keyword, setKeyword] = useState(initialKeyword);
   /** 실제로 조회에 나간 검색어. 「찾기」를 눌러야 바뀐다. */
-  const [submitted, setSubmitted] = useState('');
+  const [submitted, setSubmitted] = useState(initialKeyword);
   const [itemTypeCode, setItemTypeCode] = useState(defaultItemTypeCode);
   const [page, setPage] = useState(1);
   /** 고른 품목을 **줄 그대로** 들고 있는다 — 쪽을 넘겨도 고름이 남고, 확인할 때 다시 찾지 않는다. */
