@@ -26,6 +26,8 @@ const renderPane = (overrides: Partial<OperationsPaneProps> = {}) => {
     isDirty: false,
     isSaving: false,
     saveBlockedReason: null,
+    dependenciesBlockedReason: null,
+    removeBlockedReason: () => null,
     banner: null,
     onAdd: vi.fn(),
     onEdit: vi.fn(),
@@ -33,6 +35,7 @@ const renderPane = (overrides: Partial<OperationsPaneProps> = {}) => {
     onReorder: vi.fn(),
     onSave: vi.fn(),
     onCancel: vi.fn(),
+    onOpenDependencies: vi.fn(),
     ...overrides,
   };
 
@@ -143,15 +146,19 @@ describe('OperationsPane', () => {
     expect(screen.getByRole('status', { name: '공정 라인을 불러오는 중' })).toBeInTheDocument();
   });
 
-  it('범위 밖 액션을 감추지 않고 사유와 함께 비활성으로 둔다', () => {
-    renderPane();
+  it('선후행 설정을 막는 이유가 있으면 감추지 않고 사유와 함께 비활성으로 둔다', () => {
+    renderPane({ dependenciesBlockedReason: '선후행을 지금은 열 수 없습니다.' });
 
     expect(screen.getByRole('button', { name: '선후행 설정' })).toBeDisabled();
-    expect(
-      screen.getByText(
-        '선후행 설정은 아직 할 수 없습니다. 공정 사이의 선후 관계를 정하는 방식이 정해지면 이 버튼을 쓸 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('선후행을 지금은 열 수 없습니다.')).toBeInTheDocument();
+  });
+
+  it('잠긴 Rev 에서도 선후행 설정은 열 수 있다 — 읽기 전용으로 보여 준다', async () => {
+    const { props, user } = renderPane({ isEditable: false });
+
+    await user.click(screen.getByRole('button', { name: '선후행 설정' }));
+
+    expect(props.onOpenDependencies).toHaveBeenCalledTimes(1);
   });
 
   it('선택 목록 안내를 받으면 표 위에 낸다', () => {

@@ -17,6 +17,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel, selectableLookupOptions } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { DependencyDialog } from './dependency-dialog';
 import { HeaderPane } from './header-pane';
 import { ROUTING_HEADER_FORM_FIELDS, validateRoutingHeader } from './header-validation';
 import { ItemPane } from './item-pane';
@@ -46,6 +47,7 @@ import {
   routingDetailPath,
   routingKeys,
   useItemList,
+  useOperationDependencies,
   useProcessOptions,
   useRoutingDetail,
   useRoutingList,
@@ -218,6 +220,7 @@ const RoutingWorkspace = () => {
 
   const detail = useRoutingDetail(selectedRoutingId);
   const operationList = useRoutingOperations(selectedRoutingId);
+  const dependencyList = useOperationDependencies(selectedRoutingId);
   const processOptions = useProcessOptions();
 
   const [formState, setFormState] = useState<HeaderFormState | null>(null);
@@ -390,6 +393,7 @@ const RoutingWorkspace = () => {
   const [draftState, setDraftState] = useState<OperationDraftState | null>(null);
   const [operationDialog, setOperationDialog] = useState<OperationDialogState | null>(null);
   const [operationDialogErrors, setOperationDialogErrors] = useState<Record<string, string>>({});
+  const [isDependencyDialogOpen, setIsDependencyDialogOpen] = useState(false);
 
   /*
    * 라인은 화면의 로컬 초안 목록으로 다룬다 — 순서 컬럼에 유일 제약이 있어
@@ -453,6 +457,7 @@ const RoutingWorkspace = () => {
     setOperationDialog(null);
     setOperationDialogErrors({});
     setDraftState(null);
+    setIsDependencyDialogOpen(false);
   };
 
   const changeOperationDrafts = (next: (drafts: OperationDraft[]) => OperationDraft[]) => {
@@ -550,6 +555,7 @@ const RoutingWorkspace = () => {
    * 섞으면 「기준값이 서버에서 왔는가」가 흐려지고, 등록 성공 후 어느 쪽을 비울지도 갈린다.
    */
   const [createValues, setCreateValues] = useState<RoutingHeaderFormValues | null>(null);
+  const discardBody = createValues === null ? t.discard.body : t.discard.bodyCreating;
   const hasUnsavedChanges =
     isHeaderDirty ||
     isOperationsDirty ||
@@ -656,6 +662,60 @@ const RoutingWorkspace = () => {
 
     return null;
   })();
+
+  /*
+   * 선후행은 저장된 라인을 가리킨다 — 저장 전 라인에는 서버 식별자가 없어 고를 수 없다.
+   * 잠긴 Rev 는 읽기 전용으로 열리므로 건수 조건은 편집할 수 있을 때만 따진다.
+   */
+  const dependenciesBlockedReason = ((): string | null => {
+    if (!isOperationsEditable) return null;
+    if (isOperationsDirty) return t.actionReasons.dependenciesBlockedByUnsaved;
+    if (savedOperationCount < 2) return t.actionReasons.dependenciesNeedOperations;
+
+    return null;
+  })();
+
+  /*
+   * 선후행이 걸린 공정은 서버가 라인 저장 전체와 함께 거부한다 — 지우기 전에 막는다.
+   * 이름은 지금 표의 번호로 보인다. 사용자는 표를 보고 그 공정을 찾는다.
+   */
+  const removeBlockedReason = (draft: OperationDraft): string | null => {
+    const operationId = draft.routingOperationId;
+    if (operationId === null) return null;
+    /* 관계를 모르는 채 지우게 두면 서버가 라인 저장 전체를 거부한다 — 알 때까지 막는다. */
+    if (dependencyList.isPending) return t.actionReasons.removeBlockedWhileCheckingDependencies;
+    if (dependencyList.isError) return t.actionReasons.removeBlockedByDependencyLoadError;
+
+    const relations = (dependencyList.data?.items ?? []).filter(
+      (item) =>
+        item.predecessorOperationId === operationId || item.successorOperationId === operationId,
+    );
+    if (relations.length === 0) return null;
+
+    const labelOf = (id: number): string => {
+      const index = operationDrafts.findIndex((row) => row.routingOperationId === id);
+      const row = operationDrafts[index];
+
+      return row === undefined
+        ? t.dependencies.unknownOperation
+        : t.dependencies.operationOption(index + 1, row.operationName);
+    };
+
+    return t.actionReasons.removeBlockedByDependencies(
+      relations
+        .map(
+          (item) =>
+            `${labelOf(item.predecessorOperationId)} → ${labelOf(item.successorOperationId)}`,
+        )
+        .join(', '),
+    );
+  };
+
+  /* 표시 번호는 표와 같게 목록 안의 위치다. */
+  const dependencyOperations = (operationList.data?.items ?? []).map((operation, index) => ({
+    routingOperationId: operation.routingOperationId,
+    label: t.dependencies.operationOption(index + 1, operation.operationName),
+  }));
 
   /**
    * 선택 목록이 잘리거나 실패했다는 사실을 표 위에 낸다.
@@ -805,9 +865,11 @@ const RoutingWorkspace = () => {
         when={hasUnsavedChanges}
         watchedParams={EDIT_TARGET_PARAMS}
         bypassRef={confirmedMoveRef}
+        discardBody={discardBody}
       />
       {pendingMove !== null && (
         <DiscardDialog
+          body={discardBody}
           onStay={() => setPendingMove(null)}
           onLeave={() => {
             const move = pendingMove;
@@ -891,6 +953,8 @@ const RoutingWorkspace = () => {
             isDirty={isOperationsDirty}
             isSaving={operationsWrite.isSaving}
             saveBlockedReason={operationsSaveBlockedReason}
+            dependenciesBlockedReason={dependenciesBlockedReason}
+            removeBlockedReason={removeBlockedReason}
             /* 라인 저장에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니라 onReload를 넘기지 않는다. */
             banner={<SaveErrorBanner error={operationsWrite.error} />}
             onAdd={handleAddOperation}
@@ -903,6 +967,7 @@ const RoutingWorkspace = () => {
               changeOperationDrafts((drafts) => moveDraft(drafts, from, to));
             }}
             onSave={handleSaveOperations}
+            onOpenDependencies={() => setIsDependencyDialogOpen(true)}
             onCancel={() => {
               operationsWrite.reset();
               setDraftState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
@@ -939,6 +1004,18 @@ const RoutingWorkspace = () => {
             setOperationDialogErrors({});
           }}
           onSubmit={handleSubmitOperationDialog}
+        />
+      )}
+
+      {isDependencyDialogOpen && selectedRoutingId !== null && detail.data !== undefined && (
+        <DependencyDialog
+          routingId={selectedRoutingId}
+          subject={`${selectedItem?.itemCode ?? t.values.empty} · ${t.values.revision(detail.data.routing.routingVersion)}`}
+          operations={dependencyOperations}
+          isEditable={isOperationsEditable}
+          lockReason={t.actionReasons.operationsLocked}
+          renderLoadError={(error, onRetry) => <LoadErrorBanner error={error} onRetry={onRetry} />}
+          onClose={() => setIsDependencyDialogOpen(false)}
         />
       )}
 
