@@ -176,7 +176,10 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       unknown: 'Không xác định được',
       workerValue: (name: string, workerNo: string): string => `${name} (${workerNo})`,
       action: (holdScreen: string): string =>
-        `Hãy kết thúc phiên ở «${holdScreen}» trên POP của máy ở trên, rồi bấm [Kiểm tra lại].`,
+        `Hãy kết thúc phiên ở «${holdScreen}» trên POP của máy ở trên, rồi bấm [Kiểm tra lại]. Nếu không kết thúc được ở máy đó, hãy bấm [Buộc kết thúc].`,
+      actions: 'Xử lý',
+      forceEnd: 'Buộc kết thúc',
+      forceEndFor: (terminal: string): string => `Buộc kết thúc phiên của ${terminal}`,
       recheck: 'Kiểm tra lại',
     },
     heading: 'Trạng thái nhập hiện tại',
@@ -242,6 +245,22 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     },
     lockedFallback: 'Mục gửi này không thay đổi được.',
     sendTiming: (note: string) => `Thời điểm gửi: ${note}`,
+  },
+  forceEnd: {
+    title: 'Buộc kết thúc phiên làm việc?',
+    effect:
+      'Khi buộc kết thúc, phiên làm việc của máy đó kết thúc ngay. Nếu bấm tạm dừng, tiếp tục, kết thúc ở máy đó sẽ bị từ chối là «phiên đã kết thúc», và muốn làm tiếp phải bắt đầu công việc lại. Kết quả và việc đưa vật tư đã nhập hoặc chưa gửi vẫn được lưu như cũ.',
+    notify: 'Hãy báo cho công nhân ở máy đó trước khi buộc kết thúc.',
+    reason: 'Lý do buộc kết thúc',
+    reasonHelp: 'Ai đã đóng phiên và vì sao sẽ được ghi lại.',
+    reasonRequired: 'Hãy nhập lý do buộc kết thúc.',
+    reasonTooLong: (max: number): string =>
+      `Hãy rút gọn lý do buộc kết thúc còn ${String(max)} ký tự trở xuống.`,
+    cancel: 'Hủy',
+    confirm: 'Buộc kết thúc',
+    done: (terminal: string): string => `Đã buộc kết thúc phiên làm việc của ${terminal}.`,
+    alreadyEnded: (terminal: string): string =>
+      `Phiên làm việc của ${terminal} đã kết thúc từ trước. Đã kiểm tra lại điều kiện đóng.`,
   },
   closeResult: {
     pane: 'Kết quả đóng',

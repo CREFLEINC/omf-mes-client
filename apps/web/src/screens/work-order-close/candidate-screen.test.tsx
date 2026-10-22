@@ -307,6 +307,10 @@ const makeApi = (
         : response;
     }
     if (url.pathname === paths.uoms) return jsonResponse(uoms);
+    if (request.method === 'POST' && url.pathname.endsWith(':force-end')) {
+      hasOpenSession = false;
+      return jsonResponse({ workSessionId: 930001, statusCode: 'ENDED' });
+    }
     throw new Error(`Unexpected request: ${url.pathname}`);
   };
   return {
@@ -793,6 +797,31 @@ describe('WorkOrderCloseCandidateScreen', () => {
 
     expect(await screen.findByText(t.confirm.openLotsChecking)).toBeVisible();
     expect(action).toBeDisabled();
+  });
+
+  it('열린 세션을 강제 종료하면 마감 조건을 다시 읽어 막힘이 풀린다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setJudgment('NORMAL');
+    api.setHasOpenSession(true);
+    renderWithProviders(<View />, { fetch: api.fetch });
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+    const status = await screen.findByRole('region', { name: t.status.pane });
+    expect(await within(status).findByText(t.status.blockers.OPEN_SESSION)).toBeVisible();
+
+    await user.click(
+      within(status).getByRole('button', {
+        name: t.status.sessions.forceEndFor(t.status.sessions.unknown),
+      }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: t.forceEnd.title });
+    await user.type(within(dialog).getByLabelText(t.forceEnd.reason), '단말 고장');
+    await user.click(within(dialog).getByRole('button', { name: t.forceEnd.confirm }));
+
+    await waitFor(() =>
+      expect(within(status).queryByText(t.status.blockers.OPEN_SESSION)).toBeNull(),
+    );
+    expect(await within(status).findByText(t.status.complete)).toBeVisible();
   });
 
   it('W/O 에 실린 사유를 미리 골라 두고 어디서 온 값인지 적는다', async () => {
