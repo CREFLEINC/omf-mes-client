@@ -136,6 +136,14 @@ export const productionResult = {
       failed: 'LOT을 마감하지 못했습니다. 같은 라벨을 다시 스캔하세요.',
       alreadyCompleted: '이미 마감된 LOT입니다. 현재 LOT 상태를 다시 불러옵니다.',
     },
+    /** 목표에 못 미친 LOT 을 마감할 때 — 서버가 사유를 필수로 받는다. */
+    underReason: {
+      title: '미달 사유',
+      cancel: '취소',
+      loading: '미달 사유를 불러오는 중입니다.',
+      loadFailed: '미달 사유를 불러오지 못했습니다.',
+      empty: '고를 수 있는 미달 사유가 없습니다.',
+    },
     /**
      * 작업 세션 자동 종료 — 마지막 LOT 을 마감해 더 생산할 것이 남지 않았을 때 닫는다.
      *

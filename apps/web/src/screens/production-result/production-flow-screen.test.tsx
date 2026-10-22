@@ -2324,3 +2324,206 @@ describe('ProductionFlowScreen 불량', () => {
     await waitFor(() => expect(saveOnly).toHaveAccessibleDescription(t.gate.denied));
   });
 });
+
+describe('ProductionFlowScreen 미달 LOT 마감', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save: vi.fn().mockResolvedValue('/tmp/lot.prn') } },
+    });
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.clear();
+    Reflect.deleteProperty(window, 'pop');
+  });
+
+  const lotDetailJudged = (completionJudgmentCode: 'UNDER' | 'NORMAL'): StubRoute => ({
+    match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}`,
+    respond: () =>
+      jsonResponse(
+        {
+          lot: {
+            lotId: LOT_ID,
+            lotNo: LOT_NO,
+            /* 아직 적용 전이라 누계 0 — 판정만 서버가 내린 값을 쓴다. */
+            progress: { goodQty: 0, varianceQty: -12, completionJudgmentCode },
+          },
+          externalReferences: [],
+        },
+        { headers: { ETag: LOT_ETAG } },
+      ),
+  });
+  const reasonCodes: StubRoute = {
+    match: (request) =>
+      pathOf(request) === '/mdm/code-values' &&
+      new URL(request.url).searchParams.get('codeGroupCode') ===
+        'WORK_ORDER_COMPLETION_VARIANCE_REASON',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            codeValueId: 2,
+            code: 'MATERIAL_SHORT',
+            codeName: '자재 부족',
+            displayOrder: 2,
+            isActive: true,
+          },
+          {
+            codeValueId: 1,
+            code: 'EQUIPMENT_DOWN',
+            codeName: '설비 고장',
+            displayOrder: 1,
+            isActive: true,
+          },
+          { codeValueId: 3, code: 'OLD', codeName: '쓰지 않음', displayOrder: 3, isActive: false },
+        ],
+        page: { page: 1, size: 100, total: 3 },
+      }),
+  };
+  const completeRoute = (writes: Request[], respond?: () => Response): StubRoute => ({
+    match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}:complete`,
+    respond: (request) => {
+      writes.push(request.clone());
+      return (
+        respond?.() ??
+        jsonResponse({ lotId: LOT_ID, lotNo: LOT_NO, completedAt: new Date().toISOString() })
+      );
+    },
+  });
+  const reachScan = async (user: ReturnType<typeof userEvent.setup>) => {
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
+    return scan;
+  };
+  const completeBodies = async (writes: Request[]) =>
+    Promise.all(
+      writes
+        .filter((write) => pathOf(write).endsWith(':complete'))
+        .map(async (write) => (await write.clone().json()) as Record<string, unknown>),
+    );
+
+  it('미달 LOT 은 스캔하면 사유를 먼저 고르고, 고른 사유로 마감한다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [lotDetailJudged('UNDER'), reasonCodes, completeRoute(writes)]);
+
+    await user.type(await reachScan(user), LOT_NO);
+
+    const dialog = await screen.findByRole('dialog', { name: t.flow.underReason.title });
+    expect(
+      within(dialog)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['설비 고장', '자재 부족', t.flow.underReason.cancel]);
+    expect(await completeBodies(writes)).toHaveLength(0);
+
+    await user.click(within(dialog).getByRole('button', { name: '자재 부족' }));
+
+    await waitFor(async () =>
+      expect(await completeBodies(writes)).toEqual([
+        expect.objectContaining({ completionVarianceReasonCode: 'MATERIAL_SHORT' }),
+      ]),
+    );
+  });
+
+  it('정상 LOT 은 사유 없이 바로 마감한다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [lotDetailJudged('NORMAL'), reasonCodes, completeRoute(writes)]);
+
+    await user.type(await reachScan(user), LOT_NO);
+
+    await waitFor(async () => expect(await completeBodies(writes)).toHaveLength(1));
+    expect((await completeBodies(writes))[0]).not.toHaveProperty('completionVarianceReasonCode');
+    expect(screen.queryByRole('dialog', { name: t.flow.underReason.title })).toBeNull();
+  });
+
+  it('사유 창을 취소하면 마감하지 않고 스캔을 기다린다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [lotDetailJudged('UNDER'), reasonCodes, completeRoute(writes)]);
+
+    const scan = await reachScan(user);
+    await user.type(scan, LOT_NO);
+    const dialog = await screen.findByRole('dialog', { name: t.flow.underReason.title });
+    await user.click(within(dialog).getByRole('button', { name: t.flow.underReason.cancel }));
+
+    expect(await completeBodies(writes)).toHaveLength(0);
+    expect(scan).toBeEnabled();
+    expect(scan).toHaveValue('');
+  });
+
+  it('사유 때문에 거부되면 사유 창에 서버 문구를 보이고 다시 고르게 한다', async () => {
+    const writes: Request[] = [];
+    let attempts = 0;
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      lotDetailJudged('UNDER'),
+      reasonCodes,
+      completeRoute(writes, () => {
+        attempts += 1;
+        return attempts === 1
+          ? jsonResponse(
+              {
+                errors: [
+                  {
+                    scope: 'field',
+                    field: 'completionVarianceReasonCode',
+                    code: 'INVALID',
+                    message: '합성 사유 거부',
+                  },
+                ],
+              },
+              { status: 400 },
+            )
+          : jsonResponse({ lotId: LOT_ID, lotNo: LOT_NO, completedAt: new Date().toISOString() });
+      }),
+    ]);
+
+    await user.type(await reachScan(user), LOT_NO);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '자재 부족' }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: t.flow.underReason.title });
+    expect(await within(dialog).findByText('합성 사유 거부')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: '설비 고장' }));
+
+    await waitFor(() => expect(attempts).toBe(2));
+  });
+
+  it('그 밖의 거부는 스캔 칸 아래 서버 문구로 말하고 스캔 칸을 잠그지 않는다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      lotDetailJudged('NORMAL'),
+      completeRoute(writes, () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'lotId',
+                code: 'STATE_LOCKED',
+                message: '합성 — 이미 완료된 LOT 입니다.',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+    ]);
+
+    const scan = await reachScan(user);
+    await user.type(scan, LOT_NO);
+
+    expect(await screen.findByText('합성 — 이미 완료된 LOT 입니다.')).toBeInTheDocument();
+    expect(screen.queryByText(t.flow.scan.failed)).toBeNull();
+    await waitFor(() => expect(scan).toBeEnabled());
+  });
+});

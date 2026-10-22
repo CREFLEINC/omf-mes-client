@@ -28,6 +28,7 @@ import {
 } from './defect-draft';
 import { DefectPicker } from './defect-picker';
 import { useResultEntry } from './entry-context';
+import { UnderReasonDialog } from './under-reason-dialog';
 import { useFlowGates } from './flow-gating';
 import { useDocumentIssue, useLotComplete, useSerialIssue } from './flow-mutations';
 import { useLabelPrintRunner, type PrintTarget } from './flow-print';
@@ -50,6 +51,7 @@ import {
   useLotIssues,
   usePrinters,
   useReissueReasons,
+  useVarianceReasons,
   useSerials,
   useTagIssueSummary,
 } from './flow-queries';
@@ -246,6 +248,8 @@ export const ProductionFlowScreen = () => {
   const [outputPhase, setOutputPhase] = useState<OutputPhase>('idle');
   const [scanValue, setScanValue] = useState('');
   const [scanMismatch, setScanMismatch] = useState(false);
+  /** 미달 LOT 의 라벨을 맞게 읽었다 — 사유를 고르면 마감한다 */
+  const [isUnderReasonOpen, setUnderReasonOpen] = useState(false);
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
   const [completedPage, setCompletedPage] = useState(1);
   const [appliedLotId, setAppliedLotId] = useState<number | null>(null);
@@ -302,6 +306,7 @@ export const ProductionFlowScreen = () => {
   const serials = useSerials(currentLot.data?.lotId ?? null, isTagTarget === true);
   const tagIssueSummary = useTagIssueSummary(serials.data?.items ?? [], isTagTarget === true);
   const reissueReasons = useReissueReasons(isTagReissueOpen);
+  const varianceReasons = useVarianceReasons(isUnderReasonOpen);
   const lotIssues = useLotIssues(currentLot.data?.lotId ?? null);
   /*
    * ⭐ **마감이 실을 낙관적 잠금 값을 받아 두는 조회다**(#1005 · 공유계약 B-1). `ETag` 헤더가
@@ -343,6 +348,8 @@ export const ProductionFlowScreen = () => {
   const lot = currentLot.data ?? null;
   /* 진척은 상세에만 실린다(#1095) — 목록의 줄에서 찾으면 늘 「모름」이 된다. */
   const serverAppliedQty = appliedGoodQty(lotDetail.data?.lot);
+  /** 서버가 이 LOT 을 미달·정상·초과로 판정한 값 — 마감 본문의 사유 여부를 이것으로 가른다 */
+  const lotJudgment = lotDetail.data?.lot.progress?.completionJudgmentCode ?? null;
   const hasAppliedResult =
     lot !== null && (serverAppliedQty !== null || confirmedResultLotId === lot.lotId);
 
@@ -421,6 +428,21 @@ export const ProductionFlowScreen = () => {
       void currentLot.refetch();
     },
   });
+
+  /**
+   * 마감 실패를 무엇으로 말할지. 서버 문구를 그대로 보인다 — 「같은 라벨을 다시 스캔하세요」만으로는
+   * 사유가 빠졌는지, 이미 마감됐는지 알 수 없다. 사유 칸의 거부는 사유 창이 말한다.
+   */
+  const completeError = ((): { isReason: boolean; text: string } | null => {
+    const error = complete.error;
+    if (error === null) return null;
+    if (error.kind === 'validation' || error.kind === 'stateLocked') {
+      const reasonItem = error.errors.find((item) => item.field === 'completionVarianceReasonCode');
+      if (reasonItem !== undefined) return { isReason: true, text: reasonItem.message };
+      return { isReason: false, text: error.errors[0]?.message ?? t.flow.scan.failed };
+    }
+    return { isReason: false, text: t.flow.scan.failed };
+  })();
 
   /*
    * ## 작업 세션 자동 종료
@@ -655,7 +677,11 @@ export const ProductionFlowScreen = () => {
     if (complete.error !== null && outputPhase === 'completing') {
       setScanValue('');
       setOutputPhase('scanReady');
+      /* 사유 때문에 거부됐으면 사유 창을 다시 연다 — 거기서 서버 문구를 보이고 다시 고르게 한다. */
+      if (completeError?.isReason === true) setUnderReasonOpen(true);
     }
+    // 판정 값은 오류에서 나온다 — 오류가 바뀔 때만 다시 본다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [complete.error, outputPhase]);
 
   useEffect(() => {
@@ -1015,8 +1041,30 @@ export const ProductionFlowScreen = () => {
     }
     if (verdict !== 'match' || gates.complete !== 'allowed' || entry.workerNo === null) return;
 
+    /* 서버가 미달로 판정한 LOT 은 사유가 있어야 마감된다 — 보내기 전에 고르게 한다. */
+    if (lotJudgment === 'UNDER') {
+      complete.reset();
+      setUnderReasonOpen(true);
+      return;
+    }
+
     setOutputPhase('completing');
     complete.write(buildLotComplete(new Date()));
+  };
+
+  const completeUnder = (reasonCode: string): void => {
+    setUnderReasonOpen(false);
+    if (lot === null || gates.complete !== 'allowed' || entry.workerNo === null) return;
+
+    setOutputPhase('completing');
+    complete.write(buildLotComplete(new Date(), reasonCode));
+  };
+
+  /* 사유를 고르지 않고 닫으면 마감하지 않고 스캔을 기다린다. */
+  const cancelUnder = (): void => {
+    setUnderReasonOpen(false);
+    setScanValue('');
+    complete.reset();
   };
 
   const outputStatus = (() => {
@@ -1701,9 +1749,18 @@ export const ProductionFlowScreen = () => {
                * 실패한 것이 함께 서면, 다음에 무엇을 해야 하는지가 두 문장으로 갈린다. 어긋남은
                * 칸이 이미 말하고 있으므로 마감 실패는 그때만 선다.
                */}
-              {complete.error !== null && !scanMismatch && (
-                <p className="field-error">{t.flow.scan.failed}</p>
+              {completeError !== null && !completeError.isReason && !scanMismatch && (
+                <p className="field-error">{completeError.text}</p>
               )}
+              <UnderReasonDialog
+                open={isUnderReasonOpen}
+                reasons={varianceReasons.data ?? []}
+                isLoading={varianceReasons.isLoading}
+                isError={varianceReasons.isError}
+                error={completeError?.isReason === true ? completeError.text : null}
+                onPick={completeUnder}
+                onCancel={cancelUnder}
+              />
               {/*
                * 작업 세션 자동 종료가 **어긋났을 때만** 선다.
                *

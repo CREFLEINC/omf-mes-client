@@ -126,6 +126,13 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       failed: 'Không đóng được LOT. Hãy quét lại cùng nhãn.',
       alreadyCompleted: 'LOT này đã đóng. Đang tải lại trạng thái LOT hiện tại.',
     },
+    underReason: {
+      title: 'Lý do thiếu',
+      cancel: 'Hủy',
+      loading: 'Đang tải lý do thiếu.',
+      loadFailed: 'Không tải được lý do thiếu.',
+      empty: 'Không có lý do thiếu để chọn.',
+    },
     session: {
       failed: 'Không kết thúc được phiên làm việc. Hãy thử lại.',
       unrecoverable:
