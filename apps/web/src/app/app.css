@@ -15122,7 +15122,7 @@ button.app-button-neutral {
   margin: 0;
 }
 
-/* 단추 바로 왼쪽의 안내 한 줄 — 표식 + 글. 막힌 까닭은 표식·글 폭만큼 파란 바탕, 확정 경고는 경고색 글(#133). */
+/* 단추 바로 왼쪽의 안내 한 줄 — 표식 + 글 폭만큼만 바탕을 깐다. 막힌 까닭은 정보색, 확정 경고는 경고색(#133). */
 .iqc-inspection-action-note {
   display: inline-flex;
   align-items: center;
@@ -15132,15 +15132,19 @@ button.app-button-neutral {
   font: var(--type-body-md);
 }
 
-.iqc-inspection-action-note[data-tone='info'] {
+.iqc-inspection-action-note {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
+}
+
+.iqc-inspection-action-note[data-tone='info'] {
   background: var(--semantic-info-container);
   color: var(--on-semantic-info-container);
 }
 
 .iqc-inspection-action-note[data-tone='warning'] {
-  color: var(--semantic-warning);
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
 }
 
 .iqc-inspection-action-buttons {
