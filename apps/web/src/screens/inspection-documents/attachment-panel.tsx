@@ -1,4 +1,4 @@
-import { Button, Table, type Column } from '@crefle/web-ui';
+import { Button, IconButton, Table, type Column } from '@crefle/web-ui';
 import {
   createIdempotencyKey,
   type AttachmentTargetType,
@@ -175,8 +175,16 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
     {
       key: 'fileName',
       header: t.columns.fileName,
+      width: '60%',
+      /* 긴 이름은 말줄임 — 전체 이름은 마우스를 올리면 보인다(#133). */
       render: (row) => (
-        <Button variant="text" size="sm" onClick={() => void open(row)}>
+        <Button
+          variant="text"
+          size="sm"
+          className="inspection-documents-file-name"
+          title={row.fileName}
+          onClick={() => void open(row)}
+        >
           {row.fileName}
         </Button>
       ),
@@ -217,18 +225,19 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
                 className="inspection-documents-selected"
                 key={`${file.name}-${String(file.size)}-${String(file.lastModified)}`}
               >
-                <span className="inspection-documents-selected-name">{file.name}</span>
-                <span className="field-note">{sizeText(file.size)}</span>
-                <Button
-                  variant="text"
-                  size="sm"
-                  className="app-button-neutral"
+                {/* 이름 · 크기 · 제거 — 이름은 말줄임(전체 이름은 마우스를 올리면), 제거는 휴지통 표식 단추(#133). */}
+                <span className="inspection-documents-selected-name" title={file.name}>
+                  {file.name}
+                </span>
+                <span className="inspection-documents-selected-size">{sizeText(file.size)}</span>
+                <IconButton
+                  icon="delete"
+                  size="md"
                   aria-label={t.removeFile(file.name)}
+                  title={t.removeFile(file.name)}
                   disabled={upload.isSaving}
                   onClick={() => removeSelected(file)}
-                >
-                  {t.remove}
-                </Button>
+                />
                 {error !== null && <span className="field-error">{error}</span>}
               </div>
             );

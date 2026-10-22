@@ -14,7 +14,6 @@ export const inspectionDocuments = {
   /** 고른 파일은 [업로드]를 눌러야 올라간다(3단계 검증 · 담당자 지시). */
   submit: '업로드',
   submitCount: (count: number): string => `${String(count)}개 업로드`,
-  remove: '제거',
   removeFile: (name: string): string => `${name} 제거`,
   selected: '고른 파일',
   pending: (count: number): string => `업로드 대기 ${String(count)}개`,

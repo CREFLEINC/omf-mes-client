@@ -14686,24 +14686,27 @@ button.app-button-neutral {
 }
 
 /*
- * 검사 항목 칸(#133) — 「필수」는 왼쪽 끝, 항목명은 칸 한가운데. 양옆 같은 폭 격자라 「필수」가 있어도
- * 이름의 가운데가 움직이지 않는다.
+ * 검사 항목 칸(#133) — 항목명은 칸 한가운데, 「필수」는 이름 바로 왼쪽. 양옆 칸을 같은 폭(최소 「필수」 폭)으로
+ * 두어 「필수」가 있든 없든 이름의 가운데가 같은 자리다. 이름이 길면 가운데 칸 안에서 줄을 바꿔 「필수」와
+ * 겹치거나 칸 밖으로 나가지 않는다.
  */
 .iqc-inspection-item-cell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(2.75rem, 1fr) minmax(0, auto) minmax(2.75rem, 1fr);
   align-items: center;
   column-gap: var(--space-2);
 }
 
 .iqc-inspection-item-cell > :not(.iqc-inspection-item-name) {
   grid-column: 1;
-  justify-self: start;
+  justify-self: end;
 }
 
 .iqc-inspection-item-name {
   grid-column: 2;
   grid-row: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* 빈 표 안내는 줄 높이 한가운데에 — 공용 안내 글의 위·아래 여백을 뺀다(#133). */
@@ -14873,19 +14876,37 @@ button.app-button-neutral {
 
 .inspection-documents-selected {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) 6rem auto;
   align-items: center;
   gap: var(--space-1) var(--space-3);
   min-width: 0;
+  min-height: calc(var(--control-height-sm) + 2 * var(--space-2));
 }
 
-.inspection-documents-selected > .field-note {
-  margin: 0;
+.inspection-documents-selected + .inspection-documents-selected {
+  border-top: 1px solid var(--outline-variant);
 }
 
-.inspection-documents-selected-name {
+/* 긴 파일 이름은 한 줄로 말줄임 — 크기 · 제거 단추가 밀려 잘리지 않게(#133). */
+.inspection-documents-selected-name,
+.inspection-documents-file-name {
   min-width: 0;
-  overflow-wrap: anywhere;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspection-documents-file-name * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspection-documents-selected-size {
+  color: var(--on-surface-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
 }
 
 .inspection-documents-selected > .field-error {

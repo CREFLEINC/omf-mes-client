@@ -13,7 +13,6 @@ export const inspectionDocuments = {
   uploaded: 'Đã tải tài liệu lên.',
   submit: 'Tải lên',
   submitCount: (count: number): string => `Tải lên ${String(count)} file`,
-  remove: 'Bỏ',
   removeFile: (name: string): string => `Bỏ ${name}`,
   selected: 'File đã chọn',
   pending: (count: number): string => `Chờ tải lên ${String(count)} file`,
