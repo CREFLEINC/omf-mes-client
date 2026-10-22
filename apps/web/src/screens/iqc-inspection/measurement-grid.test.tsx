@@ -45,13 +45,16 @@ describe('MeasurementGrid', () => {
   it('필수 항목을 표시한다', () => {
     renderGrid([appearanceSpec]);
 
-    expect(screen.getByText(t.requiredMark)).toBeInTheDocument();
+    /* 머리줄의 같은 글은 화면 읽기용이다 — 본문 줄만 본다. */
+    const body = screen.getAllByRole('rowgroup')[1] as HTMLElement;
+    expect(within(body).getByText(t.requiredMark)).toBeInTheDocument();
   });
 
   it('필수가 아닌 항목에는 표시하지 않는다', () => {
     renderGrid([optionalSpec]);
 
-    expect(screen.queryByText(t.requiredMark)).not.toBeInTheDocument();
+    const body = screen.getAllByRole('rowgroup')[1] as HTMLElement;
+    expect(within(body).queryByText(t.requiredMark)).not.toBeInTheDocument();
   });
 
   it('규격을 목표와 상하한으로 보인다', () => {

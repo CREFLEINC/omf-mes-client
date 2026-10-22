@@ -15091,20 +15091,6 @@ button.app-button-neutral {
   margin-block-start: 0;
 }
 
-/*
- * 항목별 측정치 — 「필수」 칩 열은 오른쪽 끝, 항목 열은 왼쪽 끝에 붙여 칩과 항목명이 가깝게 선다.
- * 항목명끼리는 한 줄로 맞는다(#133). 나머지 열은 화면 공통대로 가운데.
- */
-.iqc-inspection-panes .iqc-inspection-measurements :is(th, td):nth-child(1) {
-  padding-inline-end: var(--space-1);
-  text-align: end;
-}
-
-.iqc-inspection-panes .iqc-inspection-measurements :is(th, td):nth-child(2) {
-  padding-inline-start: var(--space-1);
-  text-align: start;
-}
-
 /* 합격·불합격·보류 칸 옆 단위 코드 — 입력 상자의 세로 가운데에 맞춘다(라벨 층만큼 내리고 상자 높이 안에서 가운데). */
 .iqc-inspection-qty-field {
   display: grid;

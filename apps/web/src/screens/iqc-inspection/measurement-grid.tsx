@@ -154,7 +154,6 @@ export const MeasurementGrid = ({ rows, isLoading }: MeasurementGridProps) => (
     )}
 
     <Table
-      className="iqc-inspection-measurements"
       caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
       density="compact"
       columns={columns}
