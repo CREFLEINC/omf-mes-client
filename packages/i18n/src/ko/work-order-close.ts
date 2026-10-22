@@ -126,10 +126,14 @@ export const workOrderClose = {
   closeSuccess: (workOrderNo: string, menuPath: string): string =>
     `${workOrderNo} 마감을 마쳤습니다. ERP 송신 결과는 ${menuPath}에서 확인하세요.`,
   readState: {
-    progressUnavailable: '생산 실적 판정을 확인할 수 없습니다.',
-    openSessionFailed: '열린 작업 세션 여부를 확인할 수 없습니다.',
-    reasonFailed: '변동 사유를 불러오지 못했습니다.',
-    reasonTruncated: '변동 사유 목록 일부만 불러와 입력을 시작할 수 없습니다.',
+    progressUnavailable:
+      '생산 실적 판정을 불러오지 못해 마감할 수 없습니다. 다시 시도를 누르고, 계속되면 시스템 관리자에게 알리세요.',
+    openSessionFailed:
+      '열린 작업 세션이 있는지 확인하지 못해 마감할 수 없습니다. 다시 시도를 누르고, 계속되면 시스템 관리자에게 알리세요.',
+    reasonFailed:
+      '변동 사유 목록을 불러오지 못해 마감할 수 없습니다. 다시 시도를 누르고, 계속되면 시스템 관리자에게 알리세요.',
+    reasonTruncated:
+      '변동 사유 목록을 일부만 불러와 고를 수 없습니다. 시스템 관리자에게 사유 목록 확인을 요청하세요.',
   },
   status: {
     pane: '작업지시 마감 입력 상태',
@@ -167,7 +171,8 @@ export const workOrderClose = {
     reason: {
       label: '변동 사유',
       placeholder: '사유를 선택하세요.',
-      empty: '선택할 사유가 없습니다.',
+      empty:
+        '고를 수 있는 변동 사유가 없어 마감할 수 없습니다. 시스템 관리자에게 사유 등록을 요청하세요.',
       prefilled: 'LOT 마감 때 고른 사유입니다. 바꿀 수 있습니다.',
     },
     /** 소멸을 골랐을 때만 — 소멸은 아무 자원도 만들지 않아 이유가 여기와 처분 코드에만 남는다. */

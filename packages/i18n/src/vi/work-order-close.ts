@@ -140,10 +140,14 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   closeSuccess: (workOrderNo: string, menuPath: string): string =>
     `Đã đóng ${workOrderNo}. Hãy xem kết quả gửi sang ERP ở ${menuPath}.`,
   readState: {
-    progressUnavailable: 'Không xác nhận được đánh giá kết quả sản xuất.',
-    openSessionFailed: 'Không xác nhận được có phiên làm việc đang mở hay không.',
-    reasonFailed: 'Không tải được lý do chênh lệch.',
-    reasonTruncated: 'Chỉ tải được một phần danh sách lý do chênh lệch nên chưa bắt đầu nhập được.',
+    progressUnavailable:
+      'Không tải được đánh giá kết quả sản xuất nên chưa đóng được. Hãy bấm thử lại, nếu vẫn vậy hãy báo quản trị hệ thống.',
+    openSessionFailed:
+      'Chưa kiểm tra được có phiên làm việc đang mở hay không nên chưa đóng được. Hãy bấm thử lại, nếu vẫn vậy hãy báo quản trị hệ thống.',
+    reasonFailed:
+      'Không tải được danh sách lý do chênh lệch nên chưa đóng được. Hãy bấm thử lại, nếu vẫn vậy hãy báo quản trị hệ thống.',
+    reasonTruncated:
+      'Chỉ tải được một phần danh sách lý do chênh lệch nên chưa chọn được. Hãy nhờ quản trị hệ thống kiểm tra danh sách lý do.',
   },
   status: {
     pane: 'Trạng thái nhập khi đóng lệnh sản xuất',
@@ -180,7 +184,8 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     reason: {
       label: 'Lý do chênh lệch',
       placeholder: 'Hãy chọn lý do.',
-      empty: 'Không có lý do nào để chọn.',
+      empty:
+        'Không có lý do chênh lệch nào để chọn nên chưa đóng được. Hãy nhờ quản trị hệ thống đăng ký lý do.',
       prefilled: 'Đây là lý do đã chọn khi đóng LOT. Có thể đổi.',
     },
     /** 소멸은 다른 전표를 만들지 않아 이유가 이 비고에만 남는다 — 그 사실을 그대로 옮긴다. */
