@@ -19,7 +19,9 @@ export const lotGenealogyKeys = {
   serials: (lotId: number, page: number) => ['lot-genealogy', 'serials', lotId, page] as const,
 };
 
-const BasisNote = ({ basis }: { basis: TraceBasis }) => <p className="field-note">{t.basis[basis]}</p>;
+const BasisNote = ({ basis }: { basis: TraceBasis }) => (
+  <p className="field-note">{t.basis[basis]}</p>
+);
 
 /**
  * 생산 LOT 의 투입 자재(omf-all-around#166 · 서버 선행 P-107) — 전 자재를 보이고 4M 변경품은 변경 종류를 단다.
@@ -31,7 +33,9 @@ export const ProductionLotInputs = ({ lotId }: { lotId: number }) => {
   const inputs = useQuery({
     queryKey: lotGenealogyKeys.inputs(lotId),
     queryFn: (): Promise<InputMaterials> =>
-      runRequest(() => client.GET('/trace/lots/{lotId}/input-materials', { params: { path: { lotId } } })),
+      runRequest(() =>
+        client.GET('/trace/lots/{lotId}/input-materials', { params: { path: { lotId } } }),
+      ),
   });
 
   return (
@@ -54,7 +58,11 @@ export const ProductionLotInputs = ({ lotId }: { lotId: number }) => {
               rows={inputs.data.items}
               getRowId={(row) => String(row.lotId)}
               columns={[
-                { key: 'item', header: t.inputs.columns.item, render: (row) => `${row.itemName} (${row.itemCode})` },
+                {
+                  key: 'item',
+                  header: t.inputs.columns.item,
+                  render: (row) => `${row.itemName} (${row.itemCode})`,
+                },
                 { key: 'lot', header: t.inputs.columns.lot, render: (row) => row.lotNo },
                 {
                   key: 'fourM',
@@ -62,7 +70,13 @@ export const ProductionLotInputs = ({ lotId }: { lotId: number }) => {
                   render: (row) =>
                     row.fourMChange === undefined
                       ? t.empty
-                      : [changeTypeLabel(row.fourMChange.changeTypeCode), row.fourMChange.remarks]
+                      : [
+                          /* 변경 종류는 선택이다(#133) — 없으면 비고만. */
+                          row.fourMChange.changeTypeCode === undefined
+                            ? undefined
+                            : changeTypeLabel(row.fourMChange.changeTypeCode),
+                          row.fourMChange.remarks,
+                        ]
                           .filter((part) => part !== undefined)
                           .join(', '),
                 },
@@ -117,7 +131,11 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
             getRowId={(row) => String(row.lotId)}
             columns={[
               { key: 'lotNo', header: t.usage.lotColumns.lotNo, render: (row) => row.lotNo },
-              { key: 'workOrderNo', header: t.usage.lotColumns.workOrderNo, render: (row) => row.workOrderNo },
+              {
+                key: 'workOrderNo',
+                header: t.usage.lotColumns.workOrderNo,
+                render: (row) => row.workOrderNo,
+              },
             ]}
           />
           {serials.isError ? (
@@ -131,13 +149,19 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
                 rows={serials.data.items}
                 getRowId={(row) => String(row.serialNumberId)}
                 columns={[
-                  { key: 'serialNo', header: t.usage.serialColumns.serialNo, render: (row) => row.serialNo },
+                  {
+                    key: 'serialNo',
+                    header: t.usage.serialColumns.serialNo,
+                    render: (row) => row.serialNo,
+                  },
                   { key: 'lotNo', header: t.usage.serialColumns.lotNo, render: (row) => row.lotNo },
                   {
                     key: 'producedAt',
                     header: t.usage.serialColumns.producedAt,
                     render: (row) =>
-                      row.producedAt === undefined ? t.empty : (formatPlantDateTime(row.producedAt) ?? row.producedAt),
+                      row.producedAt === undefined
+                        ? t.empty
+                        : (formatPlantDateTime(row.producedAt) ?? row.producedAt),
                   },
                 ]}
               />

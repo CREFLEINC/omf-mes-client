@@ -59,6 +59,35 @@ describe('ProductionLotInputs', () => {
     expect(await screen.findByText('자재, 공급처 변경')).toBeInTheDocument();
   });
 
+  it('변경 종류 없이 적은 4M 변경품은 비고만 보인다(#133)', async () => {
+    renderWithProviders(<ProductionLotInputs lotId={501} />, {
+      fetch: createStubFetch([
+        codeValues,
+        {
+          match: (request) => request.url.includes('/trace/lots/501/input-materials'),
+          respond: () =>
+            jsonResponse({
+              basis: 'LOT_GENEALOGY_ESTIMATE',
+              items: [
+                {
+                  lotId: 78,
+                  lotNo: 'ML-78',
+                  itemId: 42,
+                  itemCode: 'F538',
+                  itemName: 'CASE',
+                  fourMChange: { remarks: '공급처 변경' },
+                },
+              ],
+            }),
+        },
+      ]),
+      session: null,
+    });
+
+    expect(await screen.findByText('ML-78')).toBeInTheDocument();
+    expect(screen.getByText('공급처 변경')).toBeInTheDocument();
+  });
+
   it('계보 이전 작업지시면 작업지시 단위 추정이라고 밝힌다', async () => {
     renderWithProviders(<ProductionLotInputs lotId={501} />, {
       fetch: createStubFetch([
