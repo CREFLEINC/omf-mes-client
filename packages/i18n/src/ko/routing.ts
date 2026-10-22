@@ -39,8 +39,10 @@ export const routing = {
     removeOperation: (displayNo: number): string => `${displayNo}번 공정 삭제`,
   },
   actionReasons: {
-    dependenciesUnavailable:
-      '선후행 설정은 아직 할 수 없습니다. 공정 사이의 선후 관계를 정하는 방식이 정해지면 이 버튼을 쓸 수 있습니다.',
+    /* 선후행은 저장된 라인만 가리킬 수 있다 — 저장 전 라인에는 서버 식별자가 없다. */
+    dependenciesBlockedByUnsaved:
+      '선후행 설정은 저장하지 않은 공정 라인이 있으면 할 수 없습니다. 먼저 공정을 저장하거나 취소하세요.',
+    dependenciesNeedOperations: '선후행 설정은 공정이 2건 이상 저장돼 있어야 할 수 있습니다.',
     compareRevisionsUnavailable:
       'Rev 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     changeHistoryUnavailable:
@@ -208,5 +210,49 @@ export const routing = {
       `이 공정을 참조하는 곳이 ${String(count)}건 있습니다.`,
     activateProcessTitle: '이 공정을 다시 사용할까요?',
     activateProcessDescription: '앞으로 새 공정 라인에서도 이 공정을 다시 고를 수 있습니다.',
+  },
+  /** 공정 선후행 설정 창. */
+  dependencies: {
+    title: (subject: string): string => `선후행 설정 — ${subject}`,
+    predecessor: '선행 공정',
+    successor: '후행 공정',
+    type: '관계',
+    remove: (rowNo: number): string => `${String(rowNo)}번째 선후행 삭제`,
+    rowField: (rowNo: number, field: string): string => `${String(rowNo)}번째 줄 ${field}`,
+    add: '관계 추가',
+    operationOption: (displayNo: number, name: string): string => `${String(displayNo)}. ${name}`,
+    /*
+     * 공통코드 이름(종료-시작 등)만으로는 처음 보는 사람이 뜻을 모른다 — 코드별 짧은 풀이를 붙인다.
+     * 모르는 코드는 풀이 없이 이름만 낸다.
+     */
+    typeHints: {
+      FINISH_TO_START: '앞 공정이 끝나야 시작',
+      START_TO_START: '앞 공정이 시작하면 함께 시작',
+      FINISH_TO_FINISH: '앞 공정이 끝나야 끝남',
+      START_TO_FINISH: '앞 공정이 시작해야 끝남',
+    } as Record<string, string>,
+    typeOption: (name: string, hint: string): string => `${name} (${hint})`,
+    loading: '선후행을 불러오는 중',
+    noneTitle: '등록된 선후행이 없습니다',
+    noneDescription: '「관계 추가」로 공정 사이의 순서를 정하세요.',
+    typesLoadFailed:
+      '관계 유형 목록을 불러오지 못했습니다. 다시 시도하세요. 불러오기 전에는 저장할 수 없습니다.',
+    saveBlockedByInvalid: '선후행 저장은 표에 표시된 문제를 고쳐야 할 수 있습니다.',
+    stateLocked:
+      '이 Rev는 이미 확정돼 선후행을 바꿀 수 없습니다. 목록을 새로 읽었습니다 — 바꾸려면 신규 Rev를 발행하세요.',
+    validation: {
+      required: '선행·후행 공정을 모두 고르세요.',
+      self: '선행과 후행에 같은 공정을 고를 수 없습니다. 다른 공정을 고르세요.',
+      duplicate: (from: string, to: string): string =>
+        `같은 선후행이 이미 있습니다(${from} → ${to}). 한 줄을 지우세요.`,
+      cycle: (path: string): string =>
+        `선후행이 순환합니다(${path}). 이 중 한 줄을 지우거나 방향을 바꾸세요.`,
+    },
+    discard: {
+      title: '저장하지 않은 선후행이 있습니다',
+      body: '닫으면 이 창에서 바꾼 선후행이 사라집니다.',
+      stay: '계속 편집',
+      confirm: '저장하지 않고 닫기',
+    },
   },
 } as const;

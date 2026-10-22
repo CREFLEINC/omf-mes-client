@@ -39,8 +39,9 @@ export const routing: Translated<typeof ko.routing> = {
     removeOperation: (displayNo: number): string => `Xóa công đoạn số ${displayNo}`,
   },
   actionReasons: {
-    dependenciesUnavailable:
-      'Việc thiết lập trước sau hiện chưa thể thực hiện. Khi cách định quan hệ trước sau giữa các công đoạn được ấn định thì có thể dùng nút này.',
+    dependenciesBlockedByUnsaved:
+      'Không thể thiết lập trước sau khi còn dòng công đoạn chưa lưu. Hãy lưu hoặc hủy công đoạn trước.',
+    dependenciesNeedOperations: 'Cần lưu ít nhất 2 công đoạn mới thiết lập được trước sau.',
     compareRevisionsUnavailable:
       'Việc so sánh Rev hiện chưa thể thực hiện. Khi chức năng so sánh sẵn sàng thì có thể dùng nút này.',
     changeHistoryUnavailable:
@@ -203,5 +204,45 @@ export const routing: Translated<typeof ko.routing> = {
       `Có ${String(count)} nơi đang tham chiếu công đoạn này.`,
     activateProcessTitle: 'Dùng lại công đoạn này?',
     activateProcessDescription: 'Từ nay có thể chọn lại công đoạn này ở dòng công đoạn mới.',
+  },
+  dependencies: {
+    title: (subject: string): string => `Thiết lập trước sau — ${subject}`,
+    predecessor: 'Công đoạn trước',
+    successor: 'Công đoạn sau',
+    type: 'Quan hệ',
+    remove: (rowNo: number): string => `Xóa quan hệ thứ ${String(rowNo)}`,
+    rowField: (rowNo: number, field: string): string => `${field} dòng ${String(rowNo)}`,
+    add: 'Thêm quan hệ',
+    operationOption: (displayNo: number, name: string): string => `${String(displayNo)}. ${name}`,
+    typeHints: {
+      FINISH_TO_START: 'công đoạn trước xong mới bắt đầu',
+      START_TO_START: 'công đoạn trước bắt đầu thì cùng bắt đầu',
+      FINISH_TO_FINISH: 'công đoạn trước xong mới kết thúc',
+      START_TO_FINISH: 'công đoạn trước bắt đầu mới kết thúc',
+    },
+    typeOption: (name: string, hint: string): string => `${name} (${hint})`,
+    loading: 'Đang tải quan hệ trước sau',
+    noneTitle: 'Chưa có quan hệ trước sau',
+    noneDescription: 'Dùng «Thêm quan hệ» để định thứ tự giữa các công đoạn.',
+    typesLoadFailed:
+      'Không tải được danh sách loại quan hệ. Hãy thử lại. Chưa tải xong thì chưa lưu được.',
+    saveBlockedByInvalid:
+      'Hãy sửa các vấn đề được đánh dấu trong bảng rồi mới lưu quan hệ trước sau.',
+    stateLocked:
+      'Rev này đã được xác nhận nên không thể đổi quan hệ trước sau. Đã tải lại danh sách — muốn đổi thì hãy phát hành Rev mới.',
+    validation: {
+      required: 'Hãy chọn cả công đoạn trước và công đoạn sau.',
+      self: 'Không thể chọn cùng một công đoạn cho trước và sau. Hãy chọn công đoạn khác.',
+      duplicate: (from: string, to: string): string =>
+        `Quan hệ này đã có (${from} → ${to}). Hãy xóa một dòng.`,
+      cycle: (path: string): string =>
+        `Quan hệ trước sau bị vòng lặp (${path}). Hãy xóa một dòng trong đó hoặc đổi chiều.`,
+    },
+    discard: {
+      title: 'Có quan hệ trước sau chưa lưu',
+      body: 'Nếu đóng, các thay đổi quan hệ trước sau trong cửa sổ này sẽ mất.',
+      stay: 'Tiếp tục sửa',
+      confirm: 'Đóng không lưu',
+    },
   },
 };

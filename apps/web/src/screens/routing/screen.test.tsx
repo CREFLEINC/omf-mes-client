@@ -1417,3 +1417,247 @@ describe('RoutingScreen — 신규 Rev 발행과 첫 Rev 등록', () => {
     ).toBeGreaterThan(0);
   });
 });
+
+const DEPENDENCIES_PATH = '/planning/routings/7003/operation-dependencies';
+
+const dependencyListRoute = (items: unknown[] = [], path = DEPENDENCIES_PATH): StubRoute => ({
+  match: (request) => isGet(request, path),
+  respond: () => jsonResponse({ items }),
+});
+
+const dependencyTypesRoute: StubRoute = {
+  match: (request) =>
+    isGet(request, '/mdm/code-values') &&
+    new URL(request.url).searchParams.get('codeGroupCode') === 'ROUTING_OPERATION_DEPENDENCY_TYPE',
+  respond: () =>
+    jsonResponse(
+      listBody(
+        [
+          ['FINISH_TO_START', '종료-시작', 1],
+          ['START_TO_START', '시작-시작', 2],
+        ].map(([code, codeName, displayOrder], index) => ({
+          codeValueId: 900 + index,
+          codeGroupId: 90,
+          code,
+          codeName,
+          displayOrder,
+          isActive: true,
+        })),
+      ),
+    ),
+};
+
+const dependencyPuts = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method === 'PUT' && request.url.pathname === DEPENDENCIES_PATH,
+  );
+
+const savedFs = {
+  predecessorOperationId: 8001,
+  successorOperationId: 8002,
+  dependencyTypeCode: 'FINISH_TO_START',
+};
+
+const openDependencies = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {
+  const button = await within(operationsRegion()).findByRole('button', { name: '선후행 설정' });
+  await waitFor(() => expect(button).toBeEnabled());
+  await user.click(button);
+
+  return screen.findByRole('dialog', { name: /선후행 설정/ });
+};
+
+describe('RoutingScreen — 공정 선후행 설정', () => {
+  it('작성중 Rev 에서 관계를 더해 목록 전체를 한 번에 저장한다', async () => {
+    const { requests, user } = renderDraftOperations([
+      dependencyListRoute(),
+      dependencyTypesRoute,
+      {
+        match: (request) =>
+          request.method === 'PUT' && new URL(request.url).pathname === DEPENDENCIES_PATH,
+        respond: () => jsonResponse({ items: [{ routingOperationDependencyId: 1, ...savedFs }] }),
+      },
+    ]);
+
+    const dialog = await openDependencies(user);
+    expect(within(dialog).getByText('선후행 설정 — ITM-001 · Rev 3')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: '관계 추가' }));
+
+    expect(within(dialog).getByText('선행·후행 공정을 모두 고르세요.')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
+
+    await user.click(within(dialog).getByRole('combobox', { name: '1번째 줄 선행 공정' }));
+    await user.click(await screen.findByRole('option', { name: '1. 1차 사출' }));
+    await user.click(within(dialog).getByRole('combobox', { name: '1번째 줄 후행 공정' }));
+    await user.click(await screen.findByRole('option', { name: '2. 2차 조립' }));
+    expect(within(dialog).getByRole('combobox', { name: '1번째 줄 관계' })).toHaveTextContent(
+      '종료-시작 (앞 공정이 끝나야 시작)',
+    );
+
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+    const put = dependencyPuts(requests);
+    expect(put).toHaveLength(1);
+    expect(JSON.parse(put[0]?.body ?? '{}')).toEqual({ dependencies: [savedFs] });
+    expect(put[0]?.headers.get('Idempotency-Key')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('순환이 생기면 그 경로를 보이고 저장을 막는다', async () => {
+    const { requests, user } = renderDraftOperations([
+      dependencyListRoute([{ routingOperationDependencyId: 1, ...savedFs }]),
+      dependencyTypesRoute,
+    ]);
+
+    const dialog = await openDependencies(user);
+    await user.click(await within(dialog).findByRole('button', { name: '관계 추가' }));
+    await user.click(within(dialog).getByRole('combobox', { name: '2번째 줄 선행 공정' }));
+    await user.click(await screen.findByRole('option', { name: '2. 2차 조립' }));
+    await user.click(within(dialog).getByRole('combobox', { name: '2번째 줄 후행 공정' }));
+    await user.click(await screen.findByRole('option', { name: '1. 1차 사출' }));
+
+    const message =
+      '선후행이 순환합니다(1. 1차 사출 → 2. 2차 조립 → 1. 1차 사출). 이 중 한 줄을 지우거나 방향을 바꾸세요.';
+    expect(within(dialog).getAllByText(message).length).toBeGreaterThan(0);
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(
+      within(dialog).getByText('선후행 저장은 표에 표시된 문제를 고쳐야 할 수 있습니다.'),
+    ).toBeInTheDocument();
+    expect(dependencyPuts(requests)).toHaveLength(0);
+  });
+
+  it('저장하지 않은 채 닫으려 하면 묻고, 계속 편집하면 남긴다', async () => {
+    const { user } = renderDraftOperations([dependencyListRoute(), dependencyTypesRoute]);
+
+    const dialog = await openDependencies(user);
+    await user.click(await within(dialog).findByRole('button', { name: '관계 추가' }));
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+
+    const confirm = await screen.findByRole('dialog', { name: '저장하지 않은 선후행이 있습니다' });
+    await user.click(within(confirm).getByRole('button', { name: '계속 편집' }));
+    expect(
+      within(dialog).getByRole('combobox', { name: '1번째 줄 선행 공정' }),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+    await user.click(
+      within(
+        await screen.findByRole('dialog', { name: '저장하지 않은 선후행이 있습니다' }),
+      ).getByRole('button', { name: '저장하지 않고 닫기' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('그사이 확정돼 거부되면 무엇이 일어났고 무엇을 할지 말하고 읽기 전용으로 돌린다', async () => {
+    let locked = false;
+    const { user } = renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        {
+          match: (request) => isGet(request, '/planning/routings/7003'),
+          respond: () =>
+            jsonResponse(
+              {
+                routing: { ...routingFixtures[0]!, statusCode: locked ? 'CONFIRMED' : 'DRAFT' },
+                editability: DEFAULT_EDITABILITY,
+              },
+              { headers: { ETag: '"7"' } },
+            ),
+        },
+        operationListRoute(),
+        processListRoute(),
+        dependencyListRoute(),
+        dependencyTypesRoute,
+        {
+          match: (request) =>
+            request.method === 'PUT' && new URL(request.url).pathname === DEPENDENCIES_PATH,
+          respond: () => {
+            locked = true;
+            return stateLockedResponse('작성중 Routing 만 선후행을 바꿀 수 있습니다.');
+          },
+        },
+      ],
+      '?item=5001&rev=7003',
+    );
+
+    const dialog = await openDependencies(user);
+    await user.click(await within(dialog).findByRole('button', { name: '관계 추가' }));
+    await user.click(within(dialog).getByRole('combobox', { name: '1번째 줄 선행 공정' }));
+    await user.click(await screen.findByRole('option', { name: '1. 1차 사출' }));
+    await user.click(within(dialog).getByRole('combobox', { name: '1번째 줄 후행 공정' }));
+    await user.click(await screen.findByRole('option', { name: '2. 2차 조립' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(
+      await within(dialog).findByText(
+        '이 Rev는 이미 확정돼 선후행을 바꿀 수 없습니다. 목록을 새로 읽었습니다 — 바꾸려면 신규 Rev를 발행하세요.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(within(dialog).queryByRole('combobox')).toBeNull());
+    expect(within(dialog).getByText('등록된 선후행이 없습니다')).toBeInTheDocument();
+  });
+
+  it('확정 Rev 에서는 관계를 읽기 전용으로 보이고 저장 자리에 잠금 사유를 붙인다', async () => {
+    const { user } = renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(routingFixtures[1]),
+        operationListRoute(7002),
+        processListRoute(),
+        dependencyListRoute([savedFs], '/planning/routings/7002/operation-dependencies'),
+        dependencyTypesRoute,
+      ],
+      '?item=5001&rev=7002',
+    );
+
+    const dialog = await openDependencies(user);
+
+    expect(await within(dialog).findByText('1. 1차 사출')).toBeInTheDocument();
+    expect(within(dialog).getByText('종료-시작 (앞 공정이 끝나야 시작)')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('combobox')).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: '관계 추가' })).toBeNull();
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(
+      within(dialog).getByText(
+        '공정 라인은 작성중 Rev에서만 편집할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('저장하지 않은 공정 라인이 있으면 선후행 설정을 막고 할 일을 말한다', async () => {
+    const { user } = renderDraftOperations();
+
+    await screen.findByText('1차 사출');
+    await user.click(within(operationsRegion()).getByRole('button', { name: '2번 공정 삭제' }));
+
+    expect(within(operationsRegion()).getByRole('button', { name: '선후행 설정' })).toBeDisabled();
+    expect(
+      within(operationsRegion()).getByText(
+        '선후행 설정은 저장하지 않은 공정 라인이 있으면 할 수 없습니다. 먼저 공정을 저장하거나 취소하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('저장된 공정이 2건보다 적으면 선후행 설정을 막는다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(),
+        operationListRoute(7003, routingOperationFixtures.slice(0, 1)),
+        processListRoute(),
+      ],
+      '?item=5001&rev=7003',
+    );
+
+    await screen.findByText('1차 사출');
+    expect(
+      await within(operationsRegion()).findByText(
+        '선후행 설정은 공정이 2건 이상 저장돼 있어야 할 수 있습니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(within(operationsRegion()).getByRole('button', { name: '선후행 설정' })).toBeDisabled();
+  });
+});

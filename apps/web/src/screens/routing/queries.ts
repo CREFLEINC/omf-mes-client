@@ -73,6 +73,7 @@ export const routingKeys = {
   list: (itemId: number) => ['routings', 'list', itemId] as const,
   detail: (routingId: number) => ['routings', 'detail', routingId] as const,
   operations: (routingId: number) => ['routings', 'operations', routingId] as const,
+  dependencies: (routingId: number) => ['routings', 'dependencies', routingId] as const,
 };
 
 /**
@@ -151,6 +152,58 @@ export const useRoutingOperations = (
           params: { path: { routingId } },
         }),
       );
+    },
+  });
+};
+
+type RoutingOperationDependencyListResponse =
+  components['schemas']['RoutingOperationDependencyListResponse'];
+
+/** 공정 선후행. 라인과 따로 저장되는 관계라 라인 목록과 별개로 받는다. */
+export const useOperationDependencies = (
+  routingId: number | null,
+): UseQueryResult<RoutingOperationDependencyListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: routingKeys.dependencies(routingId ?? 0),
+    enabled: routingId !== null,
+    queryFn: () => {
+      if (routingId === null) {
+        throw new Error('Rev를 고르기 전에는 선후행을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/planning/routings/{routingId}/operation-dependencies', {
+          params: { path: { routingId } },
+        }),
+      );
+    },
+  });
+};
+
+export interface DependencyTypeOption {
+  code: string;
+  codeName: string;
+}
+
+/** 선후행 유형은 시스템 소유 공통코드다 — 이름은 서버 값을 쓰고, 화면은 뜻풀이만 덧붙인다. */
+export const useDependencyTypeOptions = (): UseQueryResult<DependencyTypeOption[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['routing-dependency-types'] as const,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode: 'ROUTING_OPERATION_DEPENDENCY_TYPE' } },
+        }),
+      );
+
+      return data.items
+        .filter((item) => item.isActive)
+        .sort((left, right) => left.displayOrder - right.displayOrder)
+        .map((item) => ({ code: item.code, codeName: item.codeName }));
     },
   });
 };

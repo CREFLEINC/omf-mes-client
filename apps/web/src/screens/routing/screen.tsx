@@ -17,6 +17,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel, selectableLookupOptions } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { DependencyDialog } from './dependency-dialog';
 import { HeaderPane } from './header-pane';
 import { ROUTING_HEADER_FORM_FIELDS, validateRoutingHeader } from './header-validation';
 import { ItemPane } from './item-pane';
@@ -366,6 +367,7 @@ const RoutingWorkspace = () => {
   const [draftState, setDraftState] = useState<OperationDraftState | null>(null);
   const [operationDialog, setOperationDialog] = useState<OperationDialogState | null>(null);
   const [operationDialogErrors, setOperationDialogErrors] = useState<Record<string, string>>({});
+  const [isDependencyDialogOpen, setIsDependencyDialogOpen] = useState(false);
 
   /*
    * 라인은 화면의 로컬 초안 목록으로 다룬다 — 순서 컬럼에 유일 제약이 있어
@@ -429,6 +431,7 @@ const RoutingWorkspace = () => {
     setOperationDialog(null);
     setOperationDialogErrors({});
     setDraftState(null);
+    setIsDependencyDialogOpen(false);
   };
 
   const changeOperationDrafts = (next: (drafts: OperationDraft[]) => OperationDraft[]) => {
@@ -617,6 +620,24 @@ const RoutingWorkspace = () => {
 
     return null;
   })();
+
+  /*
+   * 선후행은 저장된 라인을 가리킨다 — 저장 전 라인에는 서버 식별자가 없어 고를 수 없다.
+   * 잠긴 Rev 는 읽기 전용으로 열리므로 건수 조건은 편집할 수 있을 때만 따진다.
+   */
+  const dependenciesBlockedReason = ((): string | null => {
+    if (!isOperationsEditable) return null;
+    if (isOperationsDirty) return t.actionReasons.dependenciesBlockedByUnsaved;
+    if (savedOperationCount < 2) return t.actionReasons.dependenciesNeedOperations;
+
+    return null;
+  })();
+
+  /* 표시 번호는 표와 같게 목록 안의 위치다. */
+  const dependencyOperations = (operationList.data?.items ?? []).map((operation, index) => ({
+    routingOperationId: operation.routingOperationId,
+    label: t.dependencies.operationOption(index + 1, operation.operationName),
+  }));
 
   /**
    * 선택 목록이 잘리거나 실패했다는 사실을 표 위에 낸다.
@@ -836,6 +857,7 @@ const RoutingWorkspace = () => {
             isDirty={isOperationsDirty}
             isSaving={operationsWrite.isSaving}
             saveBlockedReason={operationsSaveBlockedReason}
+            dependenciesBlockedReason={dependenciesBlockedReason}
             /* 라인 저장에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니라 onReload를 넘기지 않는다. */
             banner={<SaveErrorBanner error={operationsWrite.error} />}
             onAdd={handleAddOperation}
@@ -848,6 +870,7 @@ const RoutingWorkspace = () => {
               changeOperationDrafts((drafts) => moveDraft(drafts, from, to));
             }}
             onSave={handleSaveOperations}
+            onOpenDependencies={() => setIsDependencyDialogOpen(true)}
             onCancel={() => {
               operationsWrite.reset();
               setDraftState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
@@ -884,6 +907,18 @@ const RoutingWorkspace = () => {
             setOperationDialogErrors({});
           }}
           onSubmit={handleSubmitOperationDialog}
+        />
+      )}
+
+      {isDependencyDialogOpen && selectedRoutingId !== null && detail.data !== undefined && (
+        <DependencyDialog
+          routingId={selectedRoutingId}
+          subject={`${selectedItem?.itemCode ?? t.values.empty} · ${t.values.revision(detail.data.routing.routingVersion)}`}
+          operations={dependencyOperations}
+          isEditable={isOperationsEditable}
+          lockReason={t.actionReasons.operationsLocked}
+          renderLoadError={(error, onRetry) => <LoadErrorBanner error={error} onRetry={onRetry} />}
+          onClose={() => setIsDependencyDialogOpen(false)}
         />
       )}
 

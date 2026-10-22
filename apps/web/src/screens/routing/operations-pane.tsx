@@ -25,6 +25,8 @@ export interface OperationsPaneProps {
   isSaving: boolean;
   /** 잠금 말고 저장만 막는 이유(헤더 미저장·입력 미완성). 없으면 null */
   saveBlockedReason: string | null;
+  /** 선후행 창을 열 수 없는 이유. 잠긴 Rev 는 읽기 전용으로 열리므로 잠금은 이유가 아니다 */
+  dependenciesBlockedReason: string | null;
   /** 저장 실패 배너 슬롯 */
   banner: ReactNode;
   onAdd: () => void;
@@ -34,6 +36,7 @@ export interface OperationsPaneProps {
   onReorder: (from: number, to: number) => void;
   onSave: () => void;
   onCancel: () => void;
+  onOpenDependencies: () => void;
 }
 
 /**
@@ -77,6 +80,7 @@ export const OperationsPane = ({
   isDirty,
   isSaving,
   saveBlockedReason,
+  dependenciesBlockedReason,
   banner,
   onAdd,
   onEdit,
@@ -84,6 +88,7 @@ export const OperationsPane = ({
   onReorder,
   onSave,
   onCancel,
+  onOpenDependencies,
 }: OperationsPaneProps) => {
   const columns: Column<OperationDraft>[] = [
     {
@@ -218,10 +223,15 @@ export const OperationsPane = ({
             <DisabledAction label={t.actions.addOperation} reason={lockReason} />
           )}
 
-          <DisabledAction
-            label={t.actions.dependencies}
-            reason={t.actionReasons.dependenciesUnavailable}
-          />
+          {dependenciesBlockedReason === null ? (
+            <div className="field-cell">
+              <Button variant="outlined" onClick={onOpenDependencies}>
+                {t.actions.dependencies}
+              </Button>
+            </div>
+          ) : (
+            <DisabledAction label={t.actions.dependencies} reason={dependenciesBlockedReason} />
+          )}
         </div>
       )}
 
