@@ -392,8 +392,9 @@ describe('IqcInspectionScreen', () => {
     await findOpenButton('IR-2026-0002');
     await userEvent.click(openButton('IR-2026-0002'));
 
-    expect(await screen.findByRole('heading', { name: t.detail.sectionTitle })).toBeInTheDocument();
-    /* 경로에도 상세 자리가 한 단계 더 선다(#133). */
+    expect(await screen.findByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
+    /* 「검사 기본 정보」는 상자 제목이 아니라 경로의 한 단계로만 선다(#133). */
+    expect(screen.queryByRole('heading', { name: t.detail.sectionTitle })).not.toBeInTheDocument();
     expect(
       within(screen.getByRole('navigation', { name: messages.common.shell.breadcrumb })).getByText(
         t.detail.sectionTitle,

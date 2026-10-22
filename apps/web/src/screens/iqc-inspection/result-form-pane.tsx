@@ -304,7 +304,6 @@ export const ResultFormPane = ({
 
           {/* 입력 현황 — 「합계 / 검사수량」 · 잔여 · 막대 · 한 줄 안내. 계산은 그대로다. */}
           <div className="iqc-inspection-progress">
-            <span className="field-label">{t.progressTitle}</span>
             <div className="iqc-inspection-progress-row">
               <span className="iqc-inspection-progress-sum">
                 <span className="iqc-inspection-visually-hidden">{t.sum} </span>

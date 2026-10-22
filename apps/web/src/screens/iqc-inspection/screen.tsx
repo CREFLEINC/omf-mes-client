@@ -809,6 +809,7 @@ export const IqcInspectionScreen = () => {
           <details className="iqc-inspection-fold">
             <summary>{messages.inspectionHistory.heading}</summary>
             <InspectionHistoryPanel
+              hideSourceLot
               key={`${String(selectedId)}-${String(historyRounds.length)}`}
               inspectionRequestId={selectedId}
               judgmentLabelOf={(code) =>
@@ -904,7 +905,8 @@ export const IqcInspectionScreen = () => {
             ) : (
               <Button
                 variant="text"
-                size="sm"
+                size="md"
+                className="iqc-inspection-back-button"
                 onClick={() => (hasChanges ? setConfirmingLeave(true) : backToList())}
               >
                 {t.detail.backToList}

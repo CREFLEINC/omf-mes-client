@@ -1,7 +1,7 @@
 /** 검사 문서 첨부·LOT 스캔(omf-all-around#58) — IQC 판정 화면 등이 함께 쓴다. */
 export const inspectionDocuments = {
   heading: '첨부 문서',
-  help: 'PDF·이미지·엑셀/워드/파워포인트·CSV, 파일당 10MB까지 · 여러 파일을 한 번에 고를 수 있습니다',
+  help: 'PDF·이미지·엑셀/워드/파워포인트·CSV, 파일당 10MB까지',
   upload: '문서 올리기',
   uploading: '올리는 중…',
   open: '열기',
@@ -17,6 +17,7 @@ export const inspectionDocuments = {
   remove: '제거',
   removeFile: (name: string): string => `${name} 제거`,
   selected: '고른 파일',
+  pending: (count: number): string => `업로드 대기 ${String(count)}개`,
   unsupported:
     '올릴 수 없는 형식입니다. PDF·이미지·엑셀/워드/파워포인트·CSV·TXT 만 올릴 수 있습니다.',
   caption: '첨부 문서 목록',

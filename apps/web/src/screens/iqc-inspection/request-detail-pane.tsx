@@ -119,7 +119,7 @@ export const RequestDetailPane = ({
 
   return (
     <section className="iqc-inspection-section" aria-label={t.heading}>
-      <h3>{t.sectionTitle}</h3>
+      {/* 제목 글은 두지 않는다 — 쪽 머리 경로가 「검사 기본 정보」를 이미 말한다(#133). */}
       <dl className="iqc-inspection-facts">
         {items.map((item) => (
           <div className="iqc-inspection-fact" key={item.key}>

@@ -53,6 +53,8 @@ export interface InspectionHistoryPanelProps {
   revision?: string;
   /** 종합 판정 코드 → 화면 이름. 부르는 화면이 이미 가진 선택지로 준다. */
   judgmentLabelOf?: (code: string) => string;
+  /** 대상 LOT 을 감춘다 — 위에 같은 LOT 이 이미 보이는 자리(IQC 상세 · #133). */
+  hideSourceLot?: boolean;
 }
 
 /**
@@ -65,6 +67,7 @@ export const InspectionHistoryPanel = ({
   inspectionRequestId,
   revision = '',
   judgmentLabelOf,
+  hideSourceLot = false,
 }: InspectionHistoryPanelProps) => {
   const detailOf = (event: InspectionHistoryEvent): string[] => detailLines(event, judgmentLabelOf);
   const { client } = useApiClient();
@@ -92,10 +95,12 @@ export const InspectionHistoryPanel = ({
               <dt className="field-label">{t.source}</dt>
               <dd>{history.data.source.documentNo ?? t.empty}</dd>
             </div>
-            <div className="field-cell">
-              <dt className="field-label">{t.sourceLot}</dt>
-              <dd>{history.data.source.lotNo ?? t.empty}</dd>
-            </div>
+            {!hideSourceLot && (
+              <div className="field-cell">
+                <dt className="field-label">{t.sourceLot}</dt>
+                <dd>{history.data.source.lotNo ?? t.empty}</dd>
+              </div>
+            )}
           </dl>
           <ol className="inspection-history-events">
             {history.data.events.map((event, index) => (

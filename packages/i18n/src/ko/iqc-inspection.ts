@@ -178,8 +178,6 @@ export const iqcInspection = {
     /** 실시간 합계. 어긋난 값을 감추지 않는다. */
     sum: '합계',
     remaining: '잔여',
-    /** 합계·잔여·진행 막대를 묶은 줄의 작은 제목. */
-    progressTitle: '입력 현황',
     /** 진행 막대의 접근 이름. */
     progressLabel: '검사수량 대비 입력 합계',
     matched: '검사수량과 일치합니다.',

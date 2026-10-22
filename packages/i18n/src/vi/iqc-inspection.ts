@@ -98,7 +98,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     },
     sum: 'Tổng',
     remaining: 'Còn lại',
-    progressTitle: 'Tình trạng nhập',
     progressLabel: 'Tổng đã nhập so với số lượng kiểm tra',
     matched: 'Khớp với số lượng kiểm tra.',
     over: (over: string): string => `Nhiều hơn số lượng kiểm tra ${over}. Hãy giảm số lượng.`,

@@ -14405,7 +14405,7 @@ button.app-button-neutral {
 
 /* 입력 현황 아래 안내 한 줄(「검사수량과 일치합니다」 등)의 자리만 늘 비워 둔다 — 줄이 생겨도 아래가 밀리지 않는다. */
 .iqc-inspection-work .iqc-inspection-progress {
-  grid-template-rows: auto auto auto minmax(1lh, auto);
+  grid-template-rows: auto auto minmax(1lh, auto);
   align-content: start;
 }
 
@@ -14519,6 +14519,12 @@ button.app-button-neutral {
   margin-bottom: var(--space-3);
 }
 
+/* 「← 목록」 — 상세에서 가장 먼저 찾는 단추라 본문보다 한 단계 크게(#133). */
+.iqc-inspection-back-button {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
 .iqc-inspection-back > .field-note {
   max-width: none;
   margin: 0;
@@ -14630,6 +14636,13 @@ button.app-button-neutral {
   list-style: none;
 }
 
+/* IQC 상세 안에서는 이력이 길어져도 화면을 끝없이 늘리지 않고 그 목록만 구른다(#133). */
+.iqc-inspection-fold .inspection-history-events {
+  max-height: 16rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .inspection-history-events > li {
   display: grid;
   grid-template-columns: 9rem minmax(6rem, max-content) minmax(0, 1fr);
@@ -14663,15 +14676,21 @@ button.app-button-neutral {
 }
 
 /* 검사 문서 첨부(omf-all-around#58) — 고른 파일 한 줄: 이름 · 크기 · [제거], 사전 검사 오류는 그 아래. */
-/* 고른 파일 여러 개(omf-all-around#133) — 한 줄에 한 파일. */
+/*
+ * 업로드 대기 파일(omf-all-around#133) — 이미 올린 문서 표와 다른 점선 상자에 「업로드 대기 N개」와 한 줄에 한 파일
+ * (이름 · 크기 · [제거]), 오류는 그 줄 아래. 이름이 길어도 크기 · 제거 자리는 그대로다.
+ */
 .inspection-documents-selected-list {
   display: grid;
   gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--outline-variant);
+  border-radius: var(--radius-sm);
 }
 
 .inspection-documents-selected {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--space-1) var(--space-3);
   min-width: 0;
@@ -14687,7 +14706,7 @@ button.app-button-neutral {
 }
 
 .inspection-documents-selected > .field-error {
-  flex-basis: 100%;
+  grid-column: 1 / -1;
   margin: 0;
 }
 
@@ -14796,11 +14815,16 @@ button.app-button-neutral {
  * 같은 열에 맞춰 부가 정보(검사 유형 · 기준 버전 · 의뢰 일시)가 선다. LOT 열이 가장 넓고 길면 말줄임이다(#133).
  * 카드가 좁으면 두 열.
  */
-/* IQC 상세 「검사 수준」 칸 — 수준 이름 옆에 변경 버튼(omf-all-around#133). */
+/* IQC 상세 「검사 수준」 칸 — 수준 이름 바로 옆에 변경 버튼, 값 줄 높이를 넘지 않게(omf-all-around#133). */
 .iqc-inspection-level {
   display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.iqc-inspection-level > button {
+  min-height: 0;
+  padding-block: 0;
 }
 
 .iqc-inspection-facts {
@@ -14827,6 +14851,9 @@ button.app-button-neutral {
 .iqc-inspection-label-hint {
   margin-left: var(--space-2);
   color: var(--on-surface-muted);
+  /* 부가 설명이라 항목명보다 한 단계 작고 굵지 않게(#133). */
+  font: var(--type-label-sm);
+  font-weight: 400;
 }
 
 .iqc-inspection-fact-key {

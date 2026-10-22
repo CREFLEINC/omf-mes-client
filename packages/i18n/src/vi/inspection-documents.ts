@@ -1,7 +1,7 @@
 /** Đính kèm tài liệu kiểm tra · quét LOT (omf-all-around#58). */
 export const inspectionDocuments = {
   heading: 'Tài liệu đính kèm',
-  help: 'PDF · hình ảnh · Excel/Word/PowerPoint · CSV, mỗi file tối đa 10MB · có thể chọn nhiều file cùng lúc',
+  help: 'PDF · hình ảnh · Excel/Word/PowerPoint · CSV, mỗi file tối đa 10MB',
   upload: 'Tải tài liệu lên',
   uploading: 'Đang tải lên…',
   open: 'Mở',
@@ -16,6 +16,7 @@ export const inspectionDocuments = {
   remove: 'Bỏ',
   removeFile: (name: string): string => `Bỏ ${name}`,
   selected: 'File đã chọn',
+  pending: (count: number): string => `Chờ tải lên ${String(count)} file`,
   unsupported:
     'Định dạng không được hỗ trợ. Chỉ tải được PDF · hình ảnh · Excel/Word/PowerPoint · CSV · TXT.',
   caption: 'Danh sách tài liệu đính kèm',

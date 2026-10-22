@@ -191,14 +191,16 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
       <p className="field-note">{t.help}</p>
       {list.isError ? (
         <p className="field-note">{t.loadFailed}</p>
+      ) : list.isPending || list.data.length === 0 ? (
+        /* 올린 문서가 없으면 빈 표 대신 한 줄만 — 업로드 대기 파일과 헷갈리지 않고 자리도 덜 쓴다(#133). */
+        <p className="field-note">{list.isPending ? t.loading : t.none}</p>
       ) : (
         <Table
           caption={t.caption}
           density="compact"
           columns={columns}
-          rows={list.data ?? []}
+          rows={list.data}
           getRowId={(row) => String(row.attachmentId)}
-          empty={<p className="field-note">{list.isPending ? t.loading : t.none}</p>}
         />
       )}
       <SaveErrorBanner error={upload.error} />
@@ -207,7 +209,9 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
       )}
       {notice !== null && <p className="field-note">{notice}</p>}
       {selected.length > 0 && (
+        /* 업로드 대기 — 이미 올린 문서(위 표)와 다른 상자로 떼어 «아직 올라가지 않았음»을 보인다(#133). */
         <div className="inspection-documents-selected-list" aria-label={t.selected} role="group">
+          <span className="field-label">{t.pending(selected.length)}</span>
           {selected.map((file) => {
             const error = precheck(file);
             return (
