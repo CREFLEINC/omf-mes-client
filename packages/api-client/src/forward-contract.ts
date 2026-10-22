@@ -775,27 +775,31 @@ export type WorkOrderForward = components['schemas']['WorkOrder'] & {
   /** 계획 설비의 코드·이름 — 설비 없는 단말이 W/O 의 설비로 점검·시작할 때 그 설비를 보인다. */
   plannedEquipmentCode?: string | null;
   plannedEquipmentName?: string | null;
-  /** 서버 선행 P-104 — 미달 마감에서 고른 잔량 처분. 이월이어도 잔량 W/O 는 만들어지지 않는다. */
+  /** 서버 선행 P-105 — 미달 마감에서 고른 잔량 처분. 이월이어도 잔량 W/O 는 만들어지지 않는다. */
   closeDispositionCode?: 'CARRY_OVER' | 'WRITE_OFF';
-  /** 서버 선행 P-104 — POP 에서 마감한 작업자. 관리웹 마감이면 없다. */
+  /** 서버 선행 P-105 — POP 에서 마감한 작업자. 관리웹 마감이면 없다. */
   closedWorkerId?: number;
   closedWorkerNo?: string;
   closedWorkerName?: string;
-  /** 서버 선행 P-104 — 관리웹에서 마감한 계정. POP 마감이면 없다. */
+  /** 서버 선행 P-105 — 관리웹에서 마감한 계정. POP 마감이면 없다. */
   closedByUserId?: number;
   closedByUserName?: string;
-  /** 서버 선행 P-104 — 마감 시점 판정. `progress` 는 «지금» 판정이라 마감 뒤 지연 실적으로 바뀐다. */
+  /** 서버 선행 P-105 — 마감 시점 판정. `progress` 는 «지금» 판정이라 마감 뒤 지연 실적으로 바뀐다. */
   closeJudgmentCode?: 'UNDER' | 'NORMAL' | 'OVER';
-  /** 서버 선행 P-104 — 마감으로 폐번된 선발행 LOT 수. 상세의 마감된 W/O 에만 있다. */
+  /** 서버 선행 P-105 — 마감으로 폐번된 선발행 LOT 수. 상세의 마감된 W/O 에만 있다. */
   voidedLotCount?: number;
 };
 
+<<<<<<< HEAD
 /** 서버 선행 P-104 — 세션 강제 종료 본문. */
 export interface WorkSessionForceEnd {
   reason: string;
 }
 
 /** 서버 선행 P-104 — 세션 조회(목록·단건)가 단말 코드와 주작업자를 싣는다. */
+=======
+/** 서버 선행 P-105 — 세션 조회(목록·단건)가 단말 코드와 주작업자를 싣는다. */
+>>>>>>> feat/aa96-wo-close-pop
 export type WorkSessionForward = components['schemas']['WorkSession'] & {
   terminalCode?: string;
   workerId?: number;
