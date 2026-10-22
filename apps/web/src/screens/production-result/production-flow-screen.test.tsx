@@ -11,6 +11,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { productionFlowKeys } from './flow-queries';
 import { ProductionFlowScreen } from './screen';
 import { STORAGE_KEY } from './outbox';
 
@@ -2919,6 +2920,36 @@ describe('ProductionFlowScreen 현재 LOT', () => {
 
     const lotNos = items.map((item) => item.lotNo).join(', ');
     expect(await screen.findByText(t.flow.currentLot.unreliable(lotNos))).toBeInTheDocument();
+    expect(screen.getByLabelText(t.flow.quantity.actual)).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+  });
+
+  it('다시 읽은 현재 LOT 을 쓸 수 없으면 앞서 읽은 LOT 도 쓰지 않는다', async () => {
+    let items = [lotRow(LOT_ID, LOT_NO)];
+    const { queryClient } = renderScreen(
+      [],
+      [
+        {
+          match: (request) =>
+            pathOf(request) === '/trace/lots' &&
+            new URL(request.url).searchParams.get('completed') !== 'true',
+          respond: () => jsonResponse({ items, page: { page: 1, size: 20, total: items.length } }),
+        },
+      ],
+    );
+    const shownLotNos = () =>
+      screen
+        .getAllByText(t.flow.currentLot.current)
+        .map((term) => term.nextElementSibling?.textContent);
+    await waitFor(() => expect(shownLotNos()).toContain(LOT_NO));
+
+    items = [lotRow(LOT_ID, LOT_NO), lotRow(NEXT_LOT_ID, NEXT_LOT_NO)];
+    await queryClient.invalidateQueries({ queryKey: productionFlowKeys.currentLot(WORK_ORDER_ID) });
+
+    expect(
+      await screen.findByText(t.flow.currentLot.unreliable(`${LOT_NO}, ${NEXT_LOT_NO}`)),
+    ).toBeInTheDocument();
+    expect(shownLotNos().every((lotNo) => lotNo === '—')).toBe(true);
     expect(screen.getByLabelText(t.flow.quantity.actual)).toBeDisabled();
     expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
   });
