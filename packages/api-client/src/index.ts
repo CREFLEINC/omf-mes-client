@@ -107,8 +107,6 @@ export type {
   ProductionOrderForward,
   ProductionOrderListQueryForward,
   WorkOrderForward,
-  OpenWorkSession,
-  ProductionConflictResponseForward,
   WorkSessionForward,
   WorkSessionWorkerForward,
   ProductionResultForward,

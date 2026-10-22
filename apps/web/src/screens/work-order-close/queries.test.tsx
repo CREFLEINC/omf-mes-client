@@ -336,7 +336,7 @@ describe('work-order close readiness reads', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it('열린 세션이 없으면 없다고, 있으면 어느 단말·작업자의 세션인지 읽는다', async () => {
+  it('열린 세션이 없으면 없다고, 있으면 어느 단말과 작업자의 세션인지 읽는다', async () => {
     const session = {
       workSessionId: 1001,
       workOrderId: 702,
@@ -384,7 +384,7 @@ describe('work-order close readiness reads', () => {
     });
   });
 
-  it('서버가 단말·작업자를 싣지 않으면 모르는 값으로 둔다', async () => {
+  it('서버가 단말과 작업자를 싣지 않으면 모르는 값으로 둔다', async () => {
     const { fetch } = recordingFetch([
       getRoute('/production/work-sessions', {
         items: [

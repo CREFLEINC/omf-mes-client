@@ -96,9 +96,10 @@ export const workOrderClose = {
     plannedStartTo: '계획 시작일(까지)',
     status: '마감 상태',
     judgment: '판정',
-    judgmentUnavailable: '마감·취소 상태에서는 판정으로 거를 수 없습니다.',
+    judgmentUnavailable:
+      '마감 또는 취소 상태가 들어간 조회는 판정으로 거르지 않습니다. 판정으로 거르려면 진행, 중단, 완료 중에서 상태를 고르세요.',
     /** 처음 조회하는 진행·중단을 한 선택지로 — 마감할 수 있는 작업지시가 머무는 상태다. */
-    closableStatuses: '진행·중단',
+    closableStatuses: '진행 또는 중단',
     all: '전체',
     search: '조회',
     reset: '초기화',
@@ -130,6 +131,7 @@ export const workOrderClose = {
     openLots: (count: number, lotNos: string): string =>
       `마감되지 않은 LOT ${String(count)}건(${lotNos})은 그 상태로 남습니다.`,
     /* 한 쪽만 읽어 진행 여부를 모르는 LOT 이 남았을 때 — 없다고 단정하지 않는다. */
+    openLotsChecking: '진행 중인 LOT 을 확인하는 중입니다. 확인이 끝나면 마감할 수 있습니다.',
     openLotsUnknown:
       '진행 중인 LOT 을 확인하지 못했습니다. 마감해도 진행 중인 LOT 은 그 상태로 남습니다.',
     uncheckedLots: (count: number): string =>
@@ -171,12 +173,12 @@ export const workOrderClose = {
     complete: '현재 입력 조건이 모두 갖춰졌습니다.',
     blockers: {
       STATUS_NOT_CLOSABLE:
-        '이 작업지시는 지금 상태에서 마감할 수 없습니다. 진행·중단·완료 상태인 작업지시만 마감할 수 있으니, 목록의 상태를 확인하세요.',
+        '이 작업지시는 지금 상태에서 마감할 수 없습니다. 진행, 중단, 완료 상태인 작업지시만 마감할 수 있으니, 목록의 상태를 확인하세요.',
       OPEN_SESSION: '열린 작업 세션(중단 포함)이 있어 마감할 수 없습니다.',
       REMAINDER_DISPOSITION_REQUIRED:
         '미달이라 잔량 처리를 골라야 마감할 수 있습니다. 위 「잔량 처리」에서 이월 또는 소멸을 고르세요.',
       VARIANCE_REASON_REQUIRED:
-        '미달·초과라 변동 사유를 골라야 마감할 수 있습니다. 위 「변동 사유」에서 고르세요.',
+        '미달이나 초과라 변동 사유를 골라야 마감할 수 있습니다. 위 「변동 사유」에서 고르세요.',
     },
   },
   input: {
@@ -240,6 +242,8 @@ export const workOrderClose = {
     fields: {
       closedAt: '마감 일시',
       closedBy: '마감자',
+      closedByNo: '사번',
+      closedVia: '마감 경로',
       judgment: '판정',
       disposition: '잔량 처리',
       reason: '변동 사유',
@@ -248,7 +252,8 @@ export const workOrderClose = {
     values: {
       none: '없음',
       unknown: '확인할 수 없음',
-      popWorker: (name: string, workerNo: string): string => `${name}(${workerNo}) · POP`,
+      pop: 'POP',
+      web: '관리웹',
     },
   },
   correction: {

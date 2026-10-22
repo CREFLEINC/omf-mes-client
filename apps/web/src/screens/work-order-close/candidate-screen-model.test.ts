@@ -293,7 +293,7 @@ describe('work-order close candidate projections', () => {
     },
   );
 
-  it('목록 줄에 상태 이름·양품·달성률·판정을 한 칸에 하나씩 싣는다', () => {
+  it('목록 줄에 상태 이름, 양품, 달성률, 판정을 한 칸에 하나씩 싣는다', () => {
     const rows = toWorkOrderCloseCandidateRows(
       [
         {
@@ -319,7 +319,7 @@ describe('work-order close candidate projections', () => {
     });
   });
 
-  it('판정은 끝나지 않은 상태로 볼 때만 서버로 보낸다 — 마감·취소가 섞이면 서버가 거부한다', () => {
+  it('판정은 끝나지 않은 상태로 볼 때만 서버로 보낸다 — 마감이나 취소가 섞이면 서버가 거부한다', () => {
     const state = (statusCode: string) => ({
       ...readyState(),
       appliedFilters: { ...searchedFilters, statusCode, judgmentCode: 'UNDER' },
