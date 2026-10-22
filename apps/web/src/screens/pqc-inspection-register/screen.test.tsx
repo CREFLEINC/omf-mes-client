@@ -77,6 +77,20 @@ const renderScreen = (options: RenderOptions = {}) => {
     if (path === '/production/work-orders/701') {
       return jsonResponse({ workOrderId: 701, workOrderNo: 'WO-20261016-0701', itemId: 101 });
     }
+    if (path === '/mdm/items') {
+      return jsonResponse({
+        items: [
+          {
+            itemId: 101,
+            itemCode: 'F534F50200',
+            itemName: '합성 품목',
+            itemTypeCode: 'FG',
+            isActive: true,
+          },
+        ],
+        page: { page: 1, size: 20, total: 1 },
+      });
+    }
     if (path === '/mdm/items/101') {
       return jsonResponse({ item: { itemId: 101, itemCode: 'F534F50200', itemName: '합성 품목' } });
     }
@@ -145,6 +159,24 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
 
     await user.click(screen.getByRole('button', { name: t.filters.reset }));
     await waitFor(() => expect(queueQueries.at(-1)?.get('q')).toBeNull());
+  });
+
+  it('품목 검색의 × 를 누르면 품목 조건을 풀고 바로 다시 조회한다(#135)', async () => {
+    const user = userEvent.setup();
+    const { queueQueries } = renderScreen();
+    await screen.findByText(REQUEST.inspectionRequestNo);
+
+    await user.click(screen.getByLabelText(t.filters.item));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'F534F50200' }));
+    await user.click(within(dialog).getByRole('button', { name: t.filters.itemPick }));
+    await user.click(screen.getByRole('button', { name: t.filters.apply }));
+    await waitFor(() => expect(queueQueries.at(-1)?.get('itemId')).toBe('101'));
+
+    const before = queueQueries.length;
+    await user.click(screen.getByRole('button', { name: t.filters.itemClear }));
+    await waitFor(() => expect(queueQueries.length).toBeGreaterThan(before));
+    expect(queueQueries.at(-1)?.get('itemId')).toBeNull();
   });
 
   it('목록은 내부 번호가 아니라 작업지시 번호·품목 이름·코드를 보인다(#135)', async () => {

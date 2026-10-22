@@ -57,7 +57,11 @@ export const PqcFilterBar = ({ applied, onSearch, onReset }: PqcFilterBarProps) 
         onClick={open}
         onSearch={open}
         onChange={() => undefined}
-        onClear={() => setItemId(null)}
+        /* × 는 품목 조건을 풀고 바로 다시 조회한다 — 전 품목이 나온다(#135 · 담당자 지시). */
+        onClear={() => {
+          setItemId(null);
+          onSearch({ itemId: null, keyword: keyword.trim() });
+        }}
       />
       {isPickerOpen && (
         <ItemPickerDialog
