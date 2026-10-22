@@ -12463,38 +12463,130 @@ button.app-button-neutral {
 /* ------------------------------------------------------------------------ *
  * P-02-01 작업 시작(작업지시 선택)
  *
- * 스펙 §4가 1024×768의 **세로 예산을 슬랙 0으로** 짰다 — 헤더 64 + 본문 616(① 96 · ② 328 ·
- * ③ 160) + 액션바 88. ⚠ 그래서 **스크롤 구획은 ② 하나**이고 ③은 접지 않는다(E-4): 작업 전
- * 점검 통제 결과가 ③에 나오므로 접히면 못 본다.
+ * 화면 구성 규범 T-P-S 틀이다. 머리줄, 본문 좌우 2단(왼쪽 작업지시 목록, 오른쪽 작업 확인), 하단
+ * 동작 바(공용 `action-bar`). 스크롤은 왼쪽 목록과 오른쪽 구획이 각자 안에서 한다. 선택한 결과가
+ * 목록을 밀어내지 않는다(C-2, C-14).
  *
- * ⛔ 클래스 이름을 `work-start-` 로 시작한다 — POP 화면들이 같은 파일에 살아 일반명(`.pop-list`
- * 따위)을 쓰면 다른 화면과 조용히 겹친다.
+ * 클래스 이름을 `work-start-` 로 시작한다. POP 화면들이 같은 파일에 살아 일반명을 쓰면 겹친다.
+ * 이름에 `action` 을 넣지 않는다. POP 바닥 띠 규칙(`[class*='action']`)이 걸린다.
  * ------------------------------------------------------------------------ */
 
 .work-start-screen {
-  /* 본문이 늘어나도 액션바가 밀려 나가지 않게 한 열로 세운다. */
+  /* 본문이 늘어나도 동작 바가 밀려 나가지 않게 한 열로 세운다. */
   grid-template-columns: 1fr;
 }
 
-/* ① 사번 — 키패드가 붙는 구획이라 안쪽 간격을 따로 준다. */
-.work-start-worker {
-  display: grid;
-  gap: var(--space-3);
-  justify-items: start;
+/* 좌우 2단. 목록 카드와 확인 묶음이 같은 폭을 쓴다. */
+.work-start-panes {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
-.work-start-worker-confirmed {
+.work-start-list,
+.work-start-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.work-start-side {
+  gap: var(--space-4);
+}
+
+.work-start-side > .pane-title,
+.work-start-side > .banner-slot {
   margin: 0;
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
 }
 
-/* 함께 일하는 작업자 — 한 줄에 사람을 늘어놓고 끝에 더하기 단추를 둔다. */
-.work-start-crew {
-  display: grid;
+.work-start-list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* 목록만 스크롤한다. 구획이 준 높이를 그대로 쓴다(픽셀 상한을 두지 않는다). */
+.work-start-list .pop-card-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.work-start-list-foot {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* W/O 카드. 첫 줄은 번호와 상태, 다음 줄은 「라벨 값」 쌍을 간격으로 나눈다(가운뎃점 금지, C-10). */
+.work-start-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
 }
 
+.work-start-card-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin-top: var(--space-1);
+  color: var(--on-surface-variant);
+}
+
+.work-start-wo-no {
+  font-family: var(--font-mono);
+}
+
+.work-start-label {
+  color: var(--on-surface-variant);
+}
+
+/* 오른쪽 구획 안의 묶음. 상자를 겹치지 않고 소제목과 간격으로 나눈다(C-19). */
+.work-start-group {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.work-start-group-title {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.work-start-group > .banner-slot {
+  justify-self: stretch;
+}
+
+.work-start-pairs {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+
+.work-start-pair {
+  display: contents;
+}
+
+.work-start-pair > dt {
+  color: var(--on-surface-variant);
+}
+
+.work-start-pair > dd {
+  margin: 0;
+}
+
+.work-start-other-work {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* 함께 일하는 작업자. 한 줄에 사람을 늘어놓고 끝에 더하기 버튼을 둔다. */
 .work-start-crew-head {
   display: flex;
   align-items: baseline;
@@ -12515,55 +12607,10 @@ button.app-button-neutral {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
 }
 
-.work-start-list-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-/*
- * ② 목록만 스크롤한다 — **구획이 준 높이를 그대로 쓴다.**
- *
- * ⛔ **픽셀 상한을 두지 않는다.** 한때 `max-height: 328px` 였는데 그 값은 도면(§4)이 위에
- *    ① 사번 구획 96 을 두던 때의 몫이다. 사번 입력이 진입 화면·머리줄로 옮겨져 ① 이
- *    사라지자 구획은 447 로 자랐는데 목록만 328 에서 멈춰, **아래 53px 이 빈 채로 남고 네
- *    번째 줄이 잘린 채 걸렸다**(실측 · 사용자 지적). 구획 높이는 이미 화면 예산이 정하므로
- *    상한을 한 번 더 걸면 늘 둘 중 작은 쪽에 끌려간다.
- */
-.work-start-list .pop-card-list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* 지금 목록이 어느 범위인지 말하는 보조 문구 — 제목 바로 아래에 붙는다. */
-.work-start-scope-note {
-  margin: 0 0 var(--space-2);
-}
-
-/*
- * ③ 선택 확인 — ⛔ **접지 않는다**(E-4). 점검 통제 결과가 여기 나오므로 접히면 못 본다.
- * 그래서 이 구획에는 높이 상한도 스크롤도 두지 않는다 — 스크롤 구획은 ② 하나다.
- */
-
-.work-start-actions {
-  display: grid;
-  gap: var(--space-3);
-}
-
-/*
- * 액션바 — 되돌릴 수 없는 조작이 오른쪽 끝에 선다. 「다시 선택」과 붙여 두면 장갑 낀 손이
- * 옆 것을 누른다.
- */
-.work-start-actions-row {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-4);
+.work-start-worker-confirmed {
+  margin: 0;
 }
 
 /*

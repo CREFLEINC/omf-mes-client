@@ -1769,26 +1769,6 @@
       "n": 1,
       "text": "가운뎃점: throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');"
     },
-    "C-13|apps/web/src/screens/work-start/selection-card.tsx|381d6de55b6f": {
-      "n": 2,
-      "text": "가운뎃점: {workOrder.workOrderNo} · {itemText(workOrder)} ·{' '}"
-    },
-    "C-13|apps/web/src/screens/work-start/selection-card.tsx|af1eb26a5685": {
-      "n": 1,
-      "text": "가운뎃점: {`${"
-    },
-    "C-13|apps/web/src/screens/work-start/work-order-list.tsx|381d6de55b6f": {
-      "n": 1,
-      "text": "가운뎃점: {row.workOrderNo} · {itemText(row)}"
-    },
-    "C-13|apps/web/src/screens/work-start/work-order-list.tsx|4517966a565a": {
-      "n": 1,
-      "text": "가운뎃점: {`${qtyText(row.orderQty, uomCodeOf(row.uomId))} · ${t.columns.plannedStart} ${dateTimeText("
-    },
-    "C-13|apps/web/src/screens/work-start/work-order-list.tsx|890365e35604": {
-      "n": 1,
-      "text": "가운뎃점: : `${t.title} · ${isShowingAll ? t.scopeAll : t.scopeEquipment}`}"
-    },
     "C-13|apps/web/src/screens/worker-assignment/worker-card.tsx|2e44056a79b7": {
       "n": 1,
       "text": "가운뎃점: <p className=\"worker-card__name\">{`${worker.workerName} · ${worker.workerNo}`}</p>"
@@ -3365,10 +3345,6 @@
       "n": 1,
       "text": "가운뎃점: scope: (equipment: string, from: string): string => `설비 ${equipment} · 주기 내(${from}~)`,"
     },
-    "C-13|packages/i18n/src/ko/work-start.ts|5f89e520ad35": {
-      "n": 1,
-      "text": "가운뎃점: '이 단말에 매핑된 공정이 없습니다. 관리웹 단말·공정 매핑에서 공정을 지정해 주세요.',"
-    },
     "C-13|packages/i18n/src/ko/worker-assignment.ts|7e4a9c311fc8": {
       "n": 1,
       "text": "개발 사정 표현: preparing: '단말 등록 확인 및 업무 준비 중…',"
@@ -3872,10 +3848,6 @@
     "C-4|apps/web/src/screens/work-precheck-gate/gate.tsx|513f5b920173": {
       "n": 1,
       "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} d"
-    },
-    "C-4|apps/web/src/screens/work-start/action-bar.tsx|47acf2c41427": {
-      "n": 1,
-      "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} disabled={isBlock"
     },
     "C-4|apps/web/src/screens/work-start/crew-panel.tsx|029ccd7b5519": {
       "n": 1,

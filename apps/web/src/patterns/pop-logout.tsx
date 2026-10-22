@@ -60,9 +60,11 @@ export const PopLogoutButton = () => {
        * ⛔ **터치 등급(`pop-touch-*`)을 쓰지 않는다.** 그 등급은 「틀렸을 때 무엇이
        *    일어나는가」로 «크기를 키우는» 장치인데, 이 버튼은 작아야 한다는 것이
        *    요구다(사용자 지시 2026-09-08). 되돌리기도 쉽다 — 사번을 다시 넣으면 된다.
+       *
+       * 보조 동작이라 채움을 쓰지 않는다(화면 구성 규범 C-3, C-19). 채움은 화면의 주 동작 하나다.
        */}
       <Button
-        variant="filled"
+        variant="outlined"
         size="md"
         onClick={() => {
           setWorkerSession(null);

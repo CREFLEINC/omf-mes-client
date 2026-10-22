@@ -11,6 +11,8 @@ export interface PopHeaderProps {
   equipmentName: string | null;
   /** 확인이 끝난 사번. 아직이면 `null`. */
   workerNo: string | null;
+  /** 작업자 이름. 모르면 `null`이고 사번만 보인다. */
+  workerName?: string | null;
   /**
    * 서버에 닿았는가. **아직 모르면 `undefined`** — 그때는 아무 말도 하지 않는다.
    *
@@ -21,7 +23,11 @@ export interface PopHeaderProps {
 }
 
 /**
- * POP 상단 띠(스펙 §4 헤더 64) — **화면 이름 · 어느 설비 앞인가 · 누구로 기록되는가 · 연결**.
+ * POP 머리줄(C-11). 화면 이름, 설비(스테이션), 단말 코드, 작업자, 통신 상태. 설비와 작업자는
+ * 「이름 (코드)」로 보인다(C-10). 현재 W/O와 공정은 이 화면에서 아직 정해지지 않아 두지 않는다.
+ *
+ * 셸이 머리줄 오른쪽에 [화면 이동], [사용자 전환]을 앉힌다. 머리줄을 셸 공용으로 옮기는 일은
+ * POP 화면 전체의 작업이라 이번 범위 밖이다(omf-all-around#169).
  *
  * ⛔ **제품명을 넣지 않는다.** 셸 안에 이미 들어와 있는 사람에게 매 화면 시스템 이름을
  * 되풀이하면, 64픽셀짜리 띠에서 「지금 무슨 화면인가」가 밀린다.
@@ -35,6 +41,7 @@ export const PopHeader = ({
   equipmentCode,
   equipmentName,
   workerNo,
+  workerName = null,
   isConnected,
 }: PopHeaderProps) => {
   const t = messages.workStart;
@@ -60,7 +67,7 @@ export const PopHeader = ({
         <span>
           {workerNo === null || workerNo.trim() === ''
             ? t.header.workerUnset
-            : t.header.workerLabel(workerNo)}
+            : t.header.workerLabel(workerNo, workerName)}
         </span>
 
         {isConnected !== undefined && (

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { WorkOrder } from './types';
-import { HELD_STATUS_CODES, isHeld } from './work-order-status';
+import { HELD_STATUS_CODES, isHeld, sortForPick, statusKeyOf } from './work-order-status';
 
 const workOrderWith = (statusCode: string): WorkOrder =>
   ({
@@ -32,5 +32,22 @@ describe('작업지시 상태 코드', () => {
     expect(isHeld(workOrderWith('SUSPENDED'))).toBe(true);
     expect(isHeld(workOrderWith('SYN_ANY'))).toBe(false);
     expect(isHeld(workOrderWith(''))).toBe(false);
+  });
+});
+
+describe('작업지시 상태 이름과 순서(T-P-W)', () => {
+  it('코드값 대신 상태 이름의 키를 주고, 모르는 코드는 비운다', () => {
+    expect(statusKeyOf(workOrderWith('RELEASED'))).toBe('released');
+    expect(statusKeyOf(workOrderWith('IN_PROGRESS'))).toBe('inProgress');
+    expect(statusKeyOf(workOrderWith('SUSPENDED'))).toBe('suspended');
+    expect(statusKeyOf(workOrderWith('SYN_ANY'))).toBeNull();
+  });
+
+  it('진행 중을 위에 두고, 같은 순위는 받은 순서를 지킨다', () => {
+    const rows = ['RELEASED', 'SYN_ANY', 'SUSPENDED', 'IN_PROGRESS', 'RELEASED'].map(
+      (code, index) => ({ ...workOrderWith(code), workOrderId: index + 1 }),
+    );
+
+    expect(sortForPick(rows).map((row) => row.workOrderId)).toEqual([4, 3, 1, 5, 2]);
   });
 });

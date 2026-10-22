@@ -110,3 +110,42 @@ describe('P-02-01 작업지시 목록 쪽 넘김 (#1005)', () => {
     expect(screen.queryByRole('button', { name: nav.pageDown })).not.toBeInTheDocument();
   });
 });
+
+describe('P-02-01 작업지시 카드 — T-P-W 카드 정보', () => {
+  const row = (workOrderId: number, statusCode: string) => ({
+    workOrderId,
+    workOrderNo: `SYN-WO-${String(workOrderId)}`,
+    productionPlanId: 1,
+    routingOperationId: 1,
+    itemId: 1,
+    itemCode: 'SYN-ITEM-01',
+    processName: '합성 사출',
+    orderQty: 500,
+    uomId: 1,
+    workOrderTypeCode: 'NORMAL',
+    statusCode,
+    priorityNo: 100,
+    plannedEquipmentId: 1,
+    progress: { goodQty: 120, achievementRate: 0.24, completionJudgmentCode: 'UNDER' as const },
+  });
+
+  it('상태 이름, 품목, 공정, 실적과 지시를 보이고 코드값은 보이지 않는다', () => {
+    render(<WorkOrderList {...base} workOrders={[row(1, 'IN_PROGRESS')]} />);
+
+    expect(screen.getByText(t.status.inProgress)).toBeInTheDocument();
+    expect(screen.queryByText('IN_PROGRESS')).not.toBeInTheDocument();
+    expect(screen.getByText('SYN-ITEM-01')).toBeInTheDocument();
+    expect(screen.getByText('합성 사출')).toBeInTheDocument();
+    expect(screen.getByText(t.qty('120', '500'))).toBeInTheDocument();
+  });
+
+  it('진행 중인 W/O 를 위에 둔다', () => {
+    render(<WorkOrderList {...base} workOrders={[row(1, 'RELEASED'), row(2, 'IN_PROGRESS')]} />);
+
+    const cards = screen.getAllByRole('button', { name: /^SYN-WO-/ });
+    expect(cards.map((card) => card.getAttribute('aria-label'))).toEqual([
+      t.select('SYN-WO-2'),
+      t.select('SYN-WO-1'),
+    ]);
+  });
+});

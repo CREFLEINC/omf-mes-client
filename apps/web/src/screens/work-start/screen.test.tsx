@@ -18,7 +18,7 @@ import {
 const t = messages.workStart;
 
 /** 줄 전체가 누를 자리라, 카드의 이름으로 고른다. */
-const selectName = (workOrderNo: string): string => `${t.list.select} ${workOrderNo}`;
+const selectName = (workOrderNo: string): string => t.list.select(workOrderNo);
 
 /** 사번을 키패드로 넣고 확인까지 누른다 — 이 화면의 모든 쓰기가 이 앞에 선다. */
 const enterWorkerNo = async (user: ReturnType<typeof renderScreen>['user'], workerNo: string) => {
@@ -30,6 +30,9 @@ const enterWorkerNo = async (user: ReturnType<typeof renderScreen>['user'], work
 };
 
 const startButton = () => screen.getByRole('button', { name: t.actions.start });
+
+/** 하단 바 「남은 일」 문장. 사용자가 할 일이면 머리말이 붙는다(C-5). */
+const todo = (text: string): string => messages.screenPatterns.actionBar.remaining(text);
 
 /**
  * 세션을 여는 쓰기만 골라 낸다.
@@ -62,7 +65,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
   it('이 공정의 행이 없으면 닫고 푸는 곳을 말한다', async () => {
     renderScreen({ processes: [{ processId: PROCESS_ID + 1, canStartWork: true }] });
 
-    expect(await screen.findByText(t.blocked.denied)).toBeInTheDocument();
+    expect(await screen.findByText(todo(t.blocked.denied))).toBeInTheDocument();
     expect(startButton()).toBeDisabled();
   });
 
@@ -73,22 +76,22 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
   it('행은 있는데 canStartWork 가 응답에 없으면 닫는다', async () => {
     renderScreen({ processes: [{ processId: PROCESS_ID, processName: '합성 사출' }] });
 
-    expect(await screen.findByText(t.blocked.denied)).toBeInTheDocument();
+    expect(await screen.findByText(todo(t.blocked.denied))).toBeInTheDocument();
     expect(startButton()).toBeDisabled();
   });
 
   it('canStartWork 가 거짓이면 닫는다', async () => {
     renderScreen({ processes: [{ processId: PROCESS_ID, canStartWork: false }] });
 
-    expect(await screen.findByText(t.blocked.denied)).toBeInTheDocument();
+    expect(await screen.findByText(todo(t.blocked.denied))).toBeInTheDocument();
   });
 
   /** ⛔ 조회 실패를 통과로 처리하지 않는다(F-6). 「없습니다」와 다른 문장이다. */
   it('조회가 실패하면 「확인할 수 없다」로 닫고 다시 시도 경로를 준다', async () => {
     renderScreen({ processesStatus: 500 });
 
-    expect(await screen.findByText(t.blocked.unavailable)).toBeInTheDocument();
-    expect(screen.queryByText(t.blocked.denied)).not.toBeInTheDocument();
+    expect(await screen.findByText(todo(t.blocked.unavailable))).toBeInTheDocument();
+    expect(screen.queryByText(todo(t.blocked.denied))).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.blocked.retry })).toBeInTheDocument();
     expect(startButton()).toBeDisabled();
   });
@@ -104,8 +107,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     expect(first).not.toContain('plannedEquipmentId');
     expect(first).not.toContain('includeUnplannedEquipment');
     /* 좁힐 설비가 없으니 범위를 바꾸는 단추와 범위 안내가 없다. */
-    expect(screen.queryByRole('button', { name: t.list.showAll })).not.toBeInTheDocument();
-    expect(screen.queryByText(t.list.scopeNoteEquipment)).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: t.list.scopeAll })).not.toBeInTheDocument();
     expect(screen.queryByText(t.list.equipmentUnknown)).not.toBeInTheDocument();
 
     await enterWorkerNo(rendered.user, WORKER.workerNo);
@@ -167,13 +169,11 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     );
     await waitFor(() => expect(startButton()).toBeEnabled());
 
-    /* 선택 칸의 설비는 「확인 중」에 머물지 않고 미지정이라고 말한다. */
-    expect(
-      screen.getByText(new RegExp(`^${t.list.unassignedEquipmentBadge} · ${t.selection.mold}`)),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(new RegExp(`${t.selection.equipment} ${t.selection.unknown}`)),
-    ).toBeNull();
+    /* 선택 묶음의 설비는 비워 두지 않고 미지정이라고 말한다. */
+    const selection = screen.getByRole('group', { name: t.selection.title });
+    expect(within(selection).getByText(t.selection.equipment).nextSibling).toHaveTextContent(
+      t.list.unassignedEquipmentBadge,
+    );
     await rendered.user.click(startButton());
 
     await waitFor(() => expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(1));
@@ -204,7 +204,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
 
   it('공정이 없거나 여럿이면 등록 실패가 아니라 공정 매핑을 사유로 말한다', async () => {
     renderScreen({ identity: { ...IDENTITY, processes: [] } });
-    expect(await screen.findByText(t.blocked.processNone)).toBeInTheDocument();
+    expect(await screen.findByText(todo(t.blocked.processNone))).toBeInTheDocument();
   });
 
   describe('고른 W/O 의 공정으로 판정한다', () => {
@@ -226,12 +226,12 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
       });
       /* 고르기 전에는 판정할 공정이 없을 뿐이다 — 막지 않는다. */
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-      expect(screen.queryByText(t.blocked.processMultiple)).not.toBeInTheDocument();
+      expect(screen.queryByText(todo(t.blocked.processMultiple))).not.toBeInTheDocument();
 
       await pick(rendered);
 
       await waitFor(() => expect(startButton()).toBeEnabled());
-      expect(screen.queryByText(t.blocked.processMultiple)).not.toBeInTheDocument();
+      expect(screen.queryByText(todo(t.blocked.processMultiple))).not.toBeInTheDocument();
     });
 
     it('W/O 공정의 시작이 매핑되지 않았으면 그 공정 이름으로 막는다', async () => {
@@ -242,7 +242,9 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
 
       await pick(rendered);
 
-      expect(await screen.findByText(t.blocked.deniedProcess('합성 조립'))).toBeInTheDocument();
+      expect(
+        await screen.findByText(todo(t.blocked.deniedProcess('합성 조립'))),
+      ).toBeInTheDocument();
       expect(startButton()).toBeDisabled();
     });
 
@@ -251,8 +253,8 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
 
       await pick(rendered);
 
-      expect(await screen.findByText(t.blocked.processMultiple)).toBeInTheDocument();
-      expect(screen.queryByText(t.blocked.unidentified)).not.toBeInTheDocument();
+      expect(await screen.findByText(todo(t.blocked.processMultiple))).toBeInTheDocument();
+      expect(screen.queryByText(todo(t.blocked.unidentified))).not.toBeInTheDocument();
       expect(startButton()).toBeDisabled();
     });
   });
@@ -260,7 +262,9 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
   /** ⭐ 사용자 지시 2026-09-14 — 설비는 타이틀 옆, 단말은 오른쪽. */
   it('머리줄은 타이틀 옆에 설비, 오른쪽에 단말 코드를 보인다', async () => {
     renderScreen();
-    const equipment = await screen.findByText(`설비 ${TERMINAL.equipmentName}`);
+    const equipment = await screen.findByText(
+      t.header.equipmentLabel(TERMINAL.equipmentCode, TERMINAL.equipmentName),
+    );
     const terminalLabel = screen.getByText(t.header.terminalLabel(TERMINAL.terminalCode));
 
     expect(equipment.closest('.pop-context-right')).toBeNull();
@@ -281,7 +285,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
       identity: { terminalId: null, processes: null, equipment: null, workerNo: null },
     });
 
-    expect(await screen.findByText(t.blocked.unidentified)).toBeInTheDocument();
+    expect(await screen.findByText(todo(t.blocked.unidentified))).toBeInTheDocument();
     expect(recorded.urls.some((url) => url.includes('/processes'))).toBe(false);
   });
 });
@@ -313,26 +317,23 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     expect(listUrls(recorded.urls)[0]).toContain('withProgress=true');
   });
 
-  /**
-   * ⚠ **버튼 이름만으로는 무엇이 열리는지 읽히지 않는다**(사용자 확인 실측 · 2026-09-02).
-   * 지금 목록이 어느 범위인지, 누르면 무엇이 늘어나는지를 화면이 말해야 한다.
-   */
-  it('지금 목록이 어느 범위인지 글로 말하고, 범위를 바꾸면 그 글도 바뀐다', async () => {
+  /** 범위는 두 개 중 하나라 라디오다(C-12). 지금 범위가 선택 상태로 읽힌다. 버튼 이름이 바뀌지 않는다(C-3). */
+  it('지금 목록이 어느 범위인지 선택 상태로 말하고, 범위를 바꾸면 선택도 바뀐다', async () => {
     const { user } = renderScreen();
 
-    expect(await screen.findByText(t.list.scopeNoteEquipment)).toBeInTheDocument();
+    expect(await screen.findByRole('radio', { name: t.list.scopeEquipment })).toBeChecked();
 
-    await user.click(screen.getByRole('button', { name: t.list.showAll }));
+    await user.click(screen.getByRole('radio', { name: t.list.scopeAll }));
 
-    expect(await screen.findByText(t.list.scopeNoteAll)).toBeInTheDocument();
-    expect(screen.queryByText(t.list.scopeNoteEquipment)).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: t.list.scopeAll })).toBeChecked();
+    expect(screen.getByRole('radio', { name: t.list.scopeEquipment })).not.toBeChecked();
   });
 
   it('「전체 보기」는 설비 축만 뺀다', async () => {
     const { user, recorded } = renderScreen();
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    await user.click(screen.getByRole('button', { name: t.list.showAll }));
+    await user.click(screen.getByRole('radio', { name: t.list.scopeAll }));
 
     await waitFor(() => {
       expect(listUrls(recorded.urls).length).toBeGreaterThan(1);
@@ -364,7 +365,7 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
       within(card(WORK_ORDER.workOrderNo)).queryByText(t.list.unassignedEquipmentBadge),
     ).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: t.list.showAll }));
+    await user.click(screen.getByRole('radio', { name: t.list.scopeAll }));
 
     expect(await within(card(WORK_ORDER.workOrderNo)).findByText('SYN-PRS-01')).toBeInTheDocument();
   });
@@ -401,8 +402,8 @@ describe('P-02-01 작업 시작 — 사번', () => {
     const { user } = renderScreen();
 
     const card = await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    // 사유는 맨 위 공용 띠 하나로만 말한다(사용자 지시 2026-09-17).
-    expect(screen.getByText(messages.popChrome.workerMissing)).toBeInTheDocument();
+    // 사유는 하단 바 「남은 일」이 말한다(C-4).
+    expect(screen.getByText(todo(t.remaining.worker))).toBeInTheDocument();
     expect(
       screen.queryByText('작업지시 선택: 먼저 사번을 입력하고 확인하세요.'),
     ).not.toBeInTheDocument();
@@ -468,7 +469,9 @@ describe('P-02-01 작업 시작 — 사번 조회가 실패했을 때', () => {
     await enterWorkerNo(user, WORKER.workerNo);
     await user.click(await screen.findByRole('button', { name: t.worker.retry }));
 
-    expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
+    expect(
+      await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName)),
+    ).not.toHaveLength(0);
   });
 
   /** ⛔ 미등록·퇴사는 다시 물어도 답이 같다 — 없는 사람을 계속 찾게 하지 않는다. */
@@ -503,7 +506,7 @@ describe('P-02-01 작업 시작 — 사번을 바꿀 수 있는 자리인가', (
     const { user } = renderScreen();
 
     await enterWorkerNo(user, WORKER.workerNo);
-    await screen.findAllByText(t.header.workerLabel(WORKER.workerNo));
+    await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName));
 
     expect(screen.queryByRole('button', { name: t.worker.change })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.worker.confirm })).not.toBeInTheDocument();
@@ -525,7 +528,9 @@ describe('P-02-01 작업 시작 — 사번은 단말이 들고 있는 자리를 
     renderScreen();
 
     /* 머리띠와 ① 구획 둘 다 사번을 말한다 — 「하나만 있어야 한다」가 아니라 「선다」를 잰다. */
-    expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
+    expect(
+      await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName)),
+    ).not.toHaveLength(0);
     expect(screen.queryByRole('button', { name: t.worker.confirm })).not.toBeInTheDocument();
   });
 
@@ -539,12 +544,14 @@ describe('P-02-01 작업 시작 — 사번은 단말이 들고 있는 자리를 
     const first = renderScreen();
 
     await enterWorkerNo(first.user, WORKER.workerNo);
-    await screen.findAllByText(t.header.workerLabel(WORKER.workerNo));
+    await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName));
 
     first.unmount();
     renderScreen();
 
-    expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
+    expect(
+      await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName)),
+    ).not.toHaveLength(0);
   });
 
   /*
@@ -775,7 +782,9 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     );
 
     expect(await screen.findByText(t.blocked.alreadyOpen)).toBeInTheDocument();
-    expect(startButton()).toBeDisabled();
+    /* 주 동작이 [작업 이어하기]로 선다. 새 세션을 여는 [작업 시작]은 없다. */
+    expect(screen.queryByRole('button', { name: t.actions.start })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.continueToSession })).toBeEnabled();
   });
 });
 
@@ -792,7 +801,7 @@ describe('P-02-01 작업 시작 — 오프라인', () => {
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
     await enterWorkerNo(rendered.user, WORKER.workerNo);
 
-    expect(await screen.findByText(t.blocked.offline)).toBeInTheDocument();
+    expect(await screen.findByText(todo(t.blocked.offline))).toBeInTheDocument();
     expect(startButton()).toBeDisabled();
   });
 });
@@ -801,7 +810,14 @@ describe('P-02-01 작업 시작 — 계획 밖 설비', () => {
   /** ⚠ §8 미결 5 — 경고만 하고 막지 않는다. 실제 설비는 세션에 남아 사후 추적된다. */
   it('계획 설비가 다르면 경고하되 시작을 막지 않는다', async () => {
     const rendered = renderScreen({
-      workOrders: [{ ...WORK_ORDER, plannedEquipmentId: EQUIPMENT_ID + 7 }],
+      workOrders: [
+        {
+          ...WORK_ORDER,
+          plannedEquipmentId: EQUIPMENT_ID + 7,
+          plannedEquipmentCode: 'SYN-PRS-08',
+          plannedEquipmentName: '합성 프레스 8호기',
+        },
+      ],
     });
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
@@ -810,8 +826,9 @@ describe('P-02-01 작업 시작 — 계획 밖 설비', () => {
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
 
+    /* 계획 설비는 내부 번호가 아니라 「이름 (코드)」로 말한다(C-10, C-13). */
     expect(
-      await screen.findByText(t.selection.otherEquipment(`#${String(EQUIPMENT_ID + 7)}`)),
+      await screen.findByText(t.selection.otherEquipment('합성 프레스 8호기 (SYN-PRS-08)')),
     ).toBeInTheDocument();
 
     await waitFor(() => {
@@ -830,15 +847,13 @@ describe('P-02-01 작업 시작 — 계획 밖 설비', () => {
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
 
-    expect(
-      screen.queryByText(t.selection.otherEquipment(t.selection.none)),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/계획 설비는/)).not.toBeInTheDocument();
   });
 });
 
 /* 목록에서 본 긴급 표식이 «선택 확인»에서도 남는다(스펙 §5-3 · #1147). */
 describe('P-02-01 작업 시작 — 선택 확인의 긴급 표식', () => {
-  const selectionPane = (): HTMLElement => screen.getByRole('region', { name: t.selection.title });
+  const selectionPane = (): HTMLElement => screen.getByRole('group', { name: t.selection.title });
 
   it('긴급 지시를 고르면 선택 확인에도 긴급을 세운다', async () => {
     const rendered = renderScreen({
@@ -905,7 +920,7 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
 
     expect(await screen.findByText(t.blocked.alreadyOpen)).toBeInTheDocument();
 
-    await rendered.user.click(screen.getByRole('button', { name: t.blocked.continueToSession }));
+    await rendered.user.click(screen.getByRole('button', { name: t.actions.continueToSession }));
 
     expect(screen.getByTestId('location')).toHaveTextContent(
       `/pop/material-input?workOrderId=${String(WORK_ORDER.workOrderId)}`,
@@ -925,7 +940,7 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
       expect(screen.getByRole('button', { name: t.actions.resume })).toBeEnabled();
     });
     expect(
-      screen.queryByRole('button', { name: t.blocked.continueToSession }),
+      screen.queryByRole('button', { name: t.actions.continueToSession }),
     ).not.toBeInTheDocument();
   });
 
@@ -1083,7 +1098,7 @@ describe('P-02-01 작업 시작 — 지시 수량을 채운 작업지시(#45)', 
 
     expect(await screen.findByText(t.closing.fulfilledWithOpenSession)).toBeInTheDocument();
     expect(screen.queryByText(t.blocked.alreadyOpen)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.blocked.continueToSession })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.continueToSession })).toBeInTheDocument();
   });
 
   /** ⛔ 아직 못 채운 지시에는 마감을 말하지 않는다 — 안 끝난 작업을 끝난 것으로 보이게 한다. */
@@ -1112,7 +1127,7 @@ describe('P-02-01 작업 시작 — 지시 수량을 채운 작업지시(#45)', 
 
     await selectWorkOrder(rendered);
 
-    expect(await screen.findByText(t.blocked.offline)).toBeInTheDocument();
+    expect(await screen.findByText(todo(t.blocked.offline))).toBeInTheDocument();
     expect(screen.queryByText(t.closing.fulfilled)).not.toBeInTheDocument();
   });
 });
@@ -1161,14 +1176,18 @@ describe('P-02-01 작업 시작 — 다음 작업 화면으로 가는 길(omf-al
    *    풀어야 할 진짜 막힘과 구분되지 않는다. 디자인 시스템이 경고를 `alert`, 안내를
    *    `status` 로 내므로 그 역할로 잰다 — 색 이름은 화면 밖에서 볼 수 없다.
    */
-  it('진행 중 안내는 경고가 아니라 상태로 선다', async () => {
+  it('진행 중 안내는 경고 띠가 아니라 하단 바 「남은 일」로 선다', async () => {
     const rendered = renderScreen({ openSessions: [OPEN_SESSION] });
 
     await selectWorkOrder(rendered);
 
-    const banner = (await screen.findByText(t.blocked.alreadyOpen)).closest('[role]');
+    /* 진행 중 안내는 경고 띠가 아니라 하단 바 「남은 일」 한 줄이다(C-5). */
+    const line = await screen.findByText(t.blocked.alreadyOpen);
 
-    expect(banner).toHaveAttribute('role', 'status');
+    expect(line.closest('[role="alert"]')).toBeNull();
+    expect(line.closest('[role="region"]')).toHaveAccessibleName(
+      messages.screenPatterns.actionBar.region,
+    );
   });
 
   /**
@@ -1181,27 +1200,34 @@ describe('P-02-01 작업 시작 — 다음 작업 화면으로 가는 길(omf-al
 
     await selectWorkOrder(rendered);
 
-    const primary = await screen.findByRole('button', { name: t.blocked.continueToSession });
+    const primary = await screen.findByRole('button', { name: t.actions.continueToSession });
     const others = screen.getByRole('button', { name: t.blocked.holdWork }).closest('div');
 
-    expect(others).toHaveClass('work-start-entry-others');
-    expect(primary.closest('.work-start-entry-others')).toBeNull();
+    expect(others).toHaveClass('work-start-other-work');
+    expect(primary.closest('.work-start-other-work')).toBeNull();
+    /* 주 동작은 하단 바에, 보조 작업은 오른쪽 구획의 「다른 작업」 묶음에 선다. */
+    expect(primary.closest('[role="region"]')).toHaveAccessibleName(
+      messages.screenPatterns.actionBar.region,
+    );
+    expect(others?.closest('[role="group"]')).toHaveAccessibleName(t.selection.otherWork);
     for (const label of [t.blocked.runningChange, t.blocked.packingWork]) {
       expect(screen.getByRole('button', { name: label }).closest('div')).toBe(others);
     }
   });
 
   /** ⛔ 풀어야 하는 막힘까지 낮추지 않는다 — 눈에 걸리지 않으면 작업자가 지나친다. */
-  it('작업자가 풀어야 할 막힘은 경고 그대로 선다', async () => {
+  it('작업자가 풀어야 할 막힘은 하단 바 「남은 일」이 말하고 주 동작에 이어진다', async () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
 
     const rendered = renderScreen({ openSessions: [OPEN_SESSION] });
 
     await selectWorkOrder(rendered);
 
-    const banner = (await screen.findByText(t.blocked.offline)).closest('[role]');
+    /* 막힘 사유는 하단 바 「남은 일」이 말하고 잠긴 주 동작에 이어진다(C-4). */
+    const line = await screen.findByText(todo(t.blocked.offline));
 
-    expect(banner).toHaveAttribute('role', 'alert');
+    expect(startButton()).toBeDisabled();
+    expect(startButton()).toHaveAttribute('aria-describedby', line.id);
   });
 
   /** ⭐ 러닝체인지도 같은 자리에서 작업지시를 싣는다(체크리스트 43). */

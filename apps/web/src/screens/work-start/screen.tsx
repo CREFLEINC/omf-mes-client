@@ -1,12 +1,11 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
-import { messages } from '@omf-mes/i18n';
+import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
-import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PrecheckGate } from '../work-precheck-gate/gate';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 import { ActionBar } from './action-bar';
@@ -21,6 +20,7 @@ import {
   toResumeBody,
 } from './mutations';
 import { PopHeader } from './pop-header';
+import { plannedEquipmentText } from './row-view';
 import { isOrderQtyFulfilled } from './quantity-fulfilled';
 import { SelectionCard } from './selection-card';
 import {
@@ -34,6 +34,7 @@ import {
   useWorkerLookup,
 } from './queries';
 import { SessionEntryActions } from './session-entry-actions';
+import { POP_TOUCH_SIZE } from './touch-spec';
 import { toSessionRequest } from './session-request';
 import { assignedAtText, terminalNow } from './terminal-clock';
 import type { ControlOverride, WorkOrder, Worker } from './types';
@@ -44,6 +45,14 @@ import { verifyWorker } from './worker-verify';
 
 /**
  * `P-02-01` 작업 시작(작업지시 선택).
+ *
+ * 유형: T-P-S 단독형의 틀(머리줄, 본문 좌우 2단, 하단 동작 바). W/O 를 정하는 앞 단계 화면이라
+ *       POP 질문표가 유형을 정하지 않는다. 왼쪽 작업지시 목록, 오른쪽 작업 확인(작업자, 선택한
+ *       작업지시, 다른 작업), 하단 바 「남은 일」과 주 동작 하나.
+ * 이탈: C-3 주 동작 이름이 W/O 상태에 따라 [작업 시작], [재개], [작업 이어하기]로 바뀐다(경로가
+ *       다른 세 동작이라 한 이름으로 둘 수 없다). C-11 머리줄을 화면이 조립한다(셸 공용 머리줄은
+ *       POP 화면 전체 작업, omf-all-around#169). C-10 품목명과 금형은 계약에 없어 보이지 않는다
+ *       (C-15 계약 대기).
  *
  * ⭐ **POP 태스크의 시작점이다.** 사번을 받고, 이 설비에 배포된 작업지시를 골라 **세션을
  * 연다** — 다른 POP 화면이 그 세션 위에서 돈다.
@@ -442,33 +451,32 @@ export const WorkStartScreen = () => {
   });
 
   /**
-   * 시작·재개를 막는 사유. **순서가 뜻이다** — 단말이 못 하는 일이면 사번을 아무리 잘 넣어도
+   * 시작과 재개를 막는 사유. 순서가 뜻이다. 단말이 못 하는 일이면 사번을 아무리 잘 넣어도
    * 열리지 않으므로 그 사실을 먼저 말한다.
+   *
+   * 사유는 하단 바 「남은 일」이 말한다(C-4). `todo`가 참이면 「남은 일:」 머리말이 붙는다(C-5).
+   * 사유를 코드와 함께 낸다. 문구가 같은지로 갈래를 판정하지 않는다.
    */
   const block = ((): {
     code: 'notSelected' | 'alreadyOpen' | 'workerMissing' | 'other';
     text: string;
+    todo: boolean;
   } | null => {
-    /*
-     * ⚠ **사유를 «코드»와 함께 낸다.** 배너를 세울지는 「아무것도 안 골랐다」인지로 갈리는데,
-     *   그것을 번역 문구가 같은지로 판정하면 다른 사유가 같은 문장을 쓰게 되는 날 그 배너까지
-     *   함께 사라진다 — 화면이 조용히 말을 잃는다(리뷰 지적 2026-09-08).
-     */
-    const other = (text: string) => ({ code: 'other' as const, text });
+    const other = (text: string, todo = true) => ({ code: 'other' as const, text, todo });
 
-    /* ⭐ 사유별로 가른다(사용자 지시 2026-09-13) — 매핑이 비어 있는 것은 등록 실패가 아니다. */
+    /* 사유별로 가른다(사용자 지시 2026-09-13). 매핑이 비어 있는 것은 등록 실패가 아니다. */
     if (gate.verdict === 'unidentified') {
       if (identity.terminalId === null || identity.processes === null) {
         return other(t.blocked.unidentified);
       }
       if (identity.processes.length === 0) return other(t.blocked.processNone);
       /*
-       * 공정이 여럿인 단말은 W/O 를 고르기 전에는 판정할 공정이 없다 — 막지 않고 고르게 둔다.
+       * 공정이 여럿인 단말은 W/O 를 고르기 전에는 판정할 공정이 없다. 막지 않고 고르게 둔다.
        * 고른 W/O 가 공정을 싣지 않는 서버에서만 여기서 막힌다.
        */
       if (selected !== null) return other(t.blocked.processMultiple);
     }
-    if (gate.verdict === 'checking') return other(t.blocked.checking);
+    if (gate.verdict === 'checking') return other(t.blocked.checking, false);
     if (gate.verdict === 'unavailable') return other(t.blocked.unavailable);
     if (gate.verdict === 'denied') {
       return other(
@@ -477,25 +485,24 @@ export const WorkStartScreen = () => {
           : t.blocked.deniedProcess(selected.processName),
       );
     }
-    /* ⛔ 오프라인은 큐가 아니라 거부다 — 사유와 다음 행동을 함께 보인다. */
+    /* 오프라인은 큐가 아니라 거부다. */
     if (!isOnline) return other(t.blocked.offline);
-    /* ⭐ 사번 사유는 이 띠에 적지 않는다 — 맨 위 공용 띠가 말한다(사용자 지시 2026-09-17). 잠금은 그대로. */
-    if (confirmedNo === null) return { code: 'workerMissing', text: '' };
-    if (selected === null) return { code: 'notSelected', text: t.blocked.notSelected };
+    if (confirmedNo === null)
+      return { code: 'workerMissing', text: t.remaining.worker, todo: true };
+    if (selected === null) return { code: 'notSelected', text: t.remaining.select, todo: true };
 
     if (openSession.isError) return other(t.resume.sessionLookupFailed);
-    if (openSession.isPending) return other(t.resume.checking);
+    if (openSession.isPending) return other(t.resume.checking, false);
 
     if (isResume) {
-      /* ⛔ 열린 세션이 없으면 재개하지 않는다 — 새로 열면 중단 구간이 사라진다. */
+      /* 열린 세션이 없으면 재개하지 않는다. 새로 열면 중단 구간이 사라진다. */
       if (openSession.data === null) return other(t.resume.sessionNotFound);
     } else if (openSession.data !== null) {
       /*
-       * ⛔ 세션이 이미 열려 있으면 새로 열지 않는다(§6). ⭐ **다만 이어갈 길은 준다** —
-       *    같은 줄이 「그 세션으로 이동」이라고 적었고, 안내만 두고 길을 주지 않으면 작업자가
-       *    시킨 대로 할 수가 없다(#1148).
+       * 세션이 이미 열려 있으면 새로 열지 않는다(§6). 이어갈 길은 하단 바 주 동작
+       * [작업 이어하기]가 준다(#1148).
        */
-      return { code: 'alreadyOpen', text: t.blocked.alreadyOpen };
+      return { code: 'alreadyOpen', text: t.blocked.alreadyOpen, todo: false };
     }
 
     return null;
@@ -516,23 +523,6 @@ export const WorkStartScreen = () => {
 
     /* ⚠ 아직 답을 못 받은 사이(`undefined`)에는 진행 중이라고 말하지 않는다 — 모르는 것이다. */
     return openSession.data != null ? t.closing.fulfilledWithOpenSession : t.closing.fulfilled;
-  })();
-
-  /**
-   * 띠에 세울 글 한 줄.
-   *
-   * ⭐ **막힘 사유가 먼저다** — 못 하는 이유를 두고 마감부터 말하면 작업자가 풀어야 할 것을
-   *    못 본다. 다만 「이미 진행 중」은 **이 안내가 그 말을 품으므로** 자리를 넘긴다 — 같은
-   *    사실을 두 번 적지 않는다(사용자 지시 2026-09-21). [이어서 하기]는 그대로 선다.
-   *
-   * ⛔ **「아직 안 골랐다」·「사번이 없다」는 여기 내지 않는다**(아래 주석 · 사용자 지시).
-   */
-  const bannerText = ((): string | null => {
-    if (block === null) return closeNotice;
-    if (block.code === 'alreadyOpen') return closeNotice ?? block.text;
-    if (block.code === 'notSelected' || block.code === 'workerMissing') return null;
-
-    return block.text;
   })();
 
   const retryLabel = gate.verdict === 'unavailable' ? t.blocked.retry : null;
@@ -682,6 +672,28 @@ export const WorkStartScreen = () => {
    */
   const connectionVerdict = list.isError ? false : list.isSuccess ? true : undefined;
 
+  const isContinue = block?.code === 'alreadyOpen' && selected !== null;
+
+  /**
+   * 하단 바 「남은 일」 한 줄. 막힘 사유가 먼저다. 지시 수량을 채운 지시의 마감 안내는 막지 않는
+   * 안내라 그다음이고, 「진행 중」까지 함께 말하므로 진행 중 안내를 겹쳐 세우지 않는다
+   * (사용자 확정 2026-09-21, omf-all-around#45).
+   */
+  const remaining: { text: string; todo: boolean } =
+    block !== null && block.code !== 'alreadyOpen'
+      ? block
+      : closeNotice !== null
+        ? { text: closeNotice, todo: false }
+        : (block ?? { text: t.remaining.ready, todo: false });
+
+  /* 설비 없는 단말은 이 시작이 쓸 W/O 의 설비를 보인다. 그것도 없으면 「설비 미지정」. */
+  const selectionEquipmentText =
+    isEquipmentMissing && selected !== null
+      ? plannedEquipmentText(selected)
+      : equipmentCode === null || equipmentCode.trim() === ''
+        ? null
+        : named(equipmentName, equipmentCode);
+
   return (
     <main className="pop-shell pop-ui work-start-screen" aria-labelledby={titleId}>
       <PopHeader
@@ -690,216 +702,173 @@ export const WorkStartScreen = () => {
         equipmentCode={equipmentCode}
         equipmentName={equipmentName}
         workerNo={confirmedNo}
+        workerName={mainWorkerName}
         /*
-         * ⭐ 연결 여부는 «마지막 조회가 서버에 닿았는가»로 말한다 — 브라우저의 온라인 표시는
-         *    산업용 패널 PC 에서 사실과 다르다. 아직 답을 못 받았으면 «모른다»로 둔다.
+         * 연결 여부는 마지막 조회가 서버에 닿았는가로 말한다. 브라우저의 온라인 표시는 산업용
+         * 패널 PC 에서 사실과 다르다. 아직 답을 못 받았으면 모르는 것으로 둔다.
          */
         isConnected={connectionVerdict}
       />
 
-      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
-      <PopWorkerMissingBanner workerNo={confirmedNo} />
-
-      {/*
-       * 막힘 사유 — **머리줄 바로 아래**에 선다.
-       *
-       * ⭐ 「왜 못 하는지 + 무엇을 하면 되는지」를 함께 낸다(G-3 · §5-1 · §9-2). ⛔ 회색 버튼만
-       *    두지 않는다 — 작업자는 단말이 고장 난 줄 안다.
-       *
-       * ⛔ **「아직 안 골랐다」는 여기 내지 않는다**(사용자 지시 2026-09-08). 화면에 들어오면
-       *    아무것도 안 고른 것이 «정상 시작 상태»인데, 그것을 경고 배너로 내면 열자마자
-       *    무언가 잘못된 것처럼 보인다. 그 안내는 선택 카드가 이미 제자리에서 하고 있고
-       *    (`selection-card.tsx`), 시작 버튼도 그 사유로 잠긴 채 선다.
-       *
-       * ⚠ **자리는 설계가 정해 두지 않았다.** §6 은 사번 오류만 「인라인」으로 못박았고 시작
-       *    불가 사유의 자리는 비어 있으며, §4 도면에도 이 배너가 없다. 한때 액션바 안에 두었는데
-       *    ② 목록이 긴 화면에서 사유가 화면 맨 아래에 있어, 「왜 안 눌리지」 하고 버튼을 먼저
-       *    보게 된다. 머리줄 아래는 이 셸이 「지금 이 화면에 걸린 것」을 말해 온 자리다.
-       */}
-      {bannerText !== null && (
-        <div className="banner-slot">
-          {/*
-           * ⭐ **[ 다시 확인 ]은 띠의 조작 칸에 선다**(사용자 지시 2026-09-11 · POP 공통).
-           *    글 사이에 끼워 두면 화면마다 자리와 크기가 갈린다 — 다른 POP 화면의 실패 띠가
-           *    모두 `action` 으로 오른쪽 끝에 세우고 `sm` 으로 서 있다.
-           */}
-          <AlertBanner
-            /*
-             * ⭐ **막힌 것이 없으면 경고가 아니다**(omf-all-around#45). 「실적 등록이 완료됐다」는
-             *    잘못된 상태가 아니라 **남은 일의 안내**라, 경고색으로 세우면 다 만든 작업을
-             *    사고처럼 보이게 한다.
-             *
-             * ⭐ **「이미 진행 중」도 경고가 아니다**(사용자 지시 2026-09-21). 그것은 고장이
-             *    아니라 **지금의 상태**라, 띠 전체를 경고색 상자로 세우면 진짜 막힘(오프라인·
-             *    단말 권한·설비 미매핑)과 구분되지 않는다. 잠긴 [ 작업 시작 ]의 까닭은 색이
-             *    아니라 글과 곧바로 누를 수 있는 [ 작업 이어하기 ]가 말한다.
-             *
-             * ⚠ **나머지 막힘은 경고 그대로다** — 작업자가 풀어야 하는 것들이라 색이 낮아지면
-             *   눈에 걸리지 않는다.
-             */
-            variant={block === null || block.code === 'alreadyOpen' ? 'info' : 'warning'}
-            action={
-              block?.code === 'alreadyOpen' && selected !== null ? (
-                /*
-                 * ⭐ **진입 단추 묶음**(omf-all-around#42) — 다음 작업 화면들이 모두 작업지시를
-                 *    주소로 받아야 열리므로, 열린 세션이 있는 이 자리에서 길을 함께 낸다.
-                 *    묶음의 자리·규격·조건은 `session-entry-actions.tsx` 가 소유한다.
-                 */
-                <SessionEntryActions
-                  onContinue={() => {
-                    goToMaterialInput(selected.workOrderId);
-                  }}
-                  onHold={() => {
-                    goToWorkHold(selected.workOrderId);
-                  }}
-                  onRunningChange={() => {
-                    goToRunningChange(selected.workOrderId);
-                  }}
-                  onPacking={() => {
-                    goToPackingWork(selected.workOrderId);
-                  }}
-                  /* ⚠ 아직 못 받았거나 조회가 실패했으면 «없는 것»으로 둔다 — 지어내지 않는다. */
-                  pendingPqc={pendingPqc.data ?? []}
-                  onPqcInspection={goToPqcInspection}
-                />
-              ) : retryLabel === null ? undefined : (
-                <Button type="button" variant="outlined" size="sm" onClick={gate.retry}>
-                  {retryLabel}
-                </Button>
-              )
-            }
-          >
-            {bannerText}
-          </AlertBanner>
-        </div>
-      )}
-
-      {/*
-       * ⛔ **사번을 이미 아는 자리에서는 이 구획을 세우지 않는다**(사용자 지시 2026-09-08).
-       *
-       * 스펙 §4 ① 은 사번 구획을 96px 로 그려 두었지만, 그것은 **진입 화면이 없던 때**의
-       * 그림이다. 지금은 `P-CO-01`(사번 경량 인증)이 사번을 정해 `worker-session` 에 두고
-       * 오므로, 여기서 다시 묻는 것은 같은 것을 두 번 묻는 것이다 — 작업자가 사번을 두 번
-       * 친다.
-       *
-       * ⚠ **못 받았을 때는 남긴다.** 셸도 세션도 사번을 못 준 상태에서 자리까지 없애면
-       *   작업자가 되돌아갈 길이 없다. 그때만 키패드를 세운다.
-       *
-       * 작업자를 바꾸는 길은 머리줄의 **로그아웃**이다 — 사번을 놓고 진입 화면으로 돌아간다.
-       */}
-      {confirmedNo === null ? (
-        <WorkerPanel
-          draft={draft}
-          confirmed={confirmedNo}
-          onChange={setDraft}
-          onSubmit={() => {
-            setSubmittedNo(draft.trim());
-          }}
-          onReset={() => {
-            /* 작업자를 바꾼다 — 단말이 들고 있던 사번을 비운다. */
-            setWorkerSession(null);
-            setAppliedNo(null);
-            setSubmittedNo(null);
-            setDraft('');
+      {/* 본문 좌우 2단(T-P-S). 왼쪽 대상 목록, 오른쪽 확인. 고른 결과를 목록 아래에 쌓지 않는다(C-2). */}
+      <div className="pop-panes work-start-panes">
+        <WorkOrderList
+          uomCodeOf={uomCodeOf}
+          workOrders={rows}
+          isAsked={isListAsked}
+          isLoading={isListAsked && list.isPending}
+          isError={list.isError}
+          total={list.data?.page.total}
+          pageMeta={list.data?.page}
+          onPageChange={(page) => {
+            /* 쪽을 넘기면 고른 것을 놓는다. 다른 쪽의 지시를 고른 채로 두면 화면과 어긋난다. */
             setSelectedId(null);
+            submitAtRef.current = null;
+            setListPage(page);
           }}
-          canChange={identity.workerNo === null}
+          isShowingAll={isShowingAll}
+          isEquipmentMissing={isEquipmentMissing}
+          isEquipmentUnknown={equipmentId === null && !isEquipmentMissing}
+          canSelect={confirmedNo !== null}
+          selectedId={selectedId}
+          onSelect={selectWorkOrder}
+          onToggleScope={() => {
+            submitAtRef.current = null;
+            setSelectedId(null);
+            /* 축이 바뀌면 첫 쪽으로. 3쪽을 보던 중 전체 보기로 옮기면 빈 쪽이 뜬다. */
+            setListPage(1);
+            setShowingAll((previous) => !previous);
+          }}
           onRetry={() => {
-            void lookup.refetch();
+            void list.refetch();
           }}
-          isChecking={submittedNo !== null && confirmedNo === null && lookup.isFetching}
-          error={workerError}
         />
-      ) : (
-        <CrewPanel
-          members={crew}
-          disabled={!isOnline || joinCrew.isSaving || leaveCrew.isSaving}
-          error={crewError}
-          onAdd={addCrew}
-          onRemove={removeCrew}
-        />
-      )}
 
-      <WorkOrderList
-        uomCodeOf={uomCodeOf}
-        workOrders={rows}
-        isAsked={isListAsked}
-        isLoading={isListAsked && list.isPending}
-        isError={list.isError}
-        total={list.data?.page.total}
-        pageMeta={list.data?.page}
-        onPageChange={(page) => {
-          /* 쪽을 넘기면 고른 것을 놓는다 — 다른 쪽의 지시를 고른 채로 두면 화면과 어긋난다. */
-          setSelectedId(null);
-          submitAtRef.current = null;
-          setListPage(page);
-        }}
-        isShowingAll={isShowingAll}
-        isEquipmentMissing={isEquipmentMissing}
-        isEquipmentUnknown={equipmentId === null && !isEquipmentMissing}
-        canSelect={confirmedNo !== null}
-        selectedId={selectedId}
-        onSelect={selectWorkOrder}
-        onToggleScope={() => {
-          submitAtRef.current = null;
-          setSelectedId(null);
-          /* ⛔ 축이 바뀌면 첫 쪽으로 — 3쪽을 보던 중 전체 보기로 옮기면 빈 쪽이 뜬다. */
-          setListPage(1);
-          setShowingAll((previous) => !previous);
-        }}
-        onRetry={() => {
-          void list.refetch();
-        }}
-      />
+        <section className="pane work-start-side" aria-label={t.side.title}>
+          <h2 className="pane-title">{t.side.title}</h2>
 
-      <SelectionCard
-        workOrder={selected}
-        equipmentId={equipmentId}
-        /* 설비 없는 단말은 이 시작이 쓸 W/O 의 설비를 보인다 — 그것도 없으면 「설비 미지정」. */
-        equipmentCode={
-          isEquipmentMissing && selected !== null
-            ? (selected.plannedEquipmentCode ?? null)
-            : equipmentCode
-        }
-        isEquipmentUnassigned={
-          isEquipmentMissing && selected !== null && selected.plannedEquipmentId == null
-        }
-        uomCodeOf={uomCodeOf}
-      />
+          {/* 결과와 오류는 구획 맨 위 전체 폭에 둔다(C-19 안내 상자). */}
+          {outcome !== null && (
+            <div className="banner-slot">
+              <AlertBanner variant="success">{outcome}</AlertBanner>
+            </div>
+          )}
 
-      {outcome !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="success">{outcome}</AlertBanner>
-        </div>
-      )}
+          {chainError !== null && (
+            <div className="banner-slot">
+              <AlertBanner variant="error">{chainError}</AlertBanner>
+            </div>
+          )}
 
-      {chainError !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="error">{chainError}</AlertBanner>
-        </div>
-      )}
+          {writeError !== null && (
+            <div className="banner-slot">
+              <AlertBanner variant="error">
+                {isConflict(writeError)
+                  ? t.result.conflict
+                  : isResume
+                    ? t.result.resumeFailed
+                    : t.result.startFailed}
+              </AlertBanner>
+            </div>
+          )}
 
-      {writeError !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="error">
-            {isConflict(writeError)
-              ? t.result.conflict
-              : isResume
-                ? t.result.resumeFailed
-                : t.result.startFailed}
-          </AlertBanner>
-        </div>
-      )}
+          {/*
+           * 사번을 이미 아는 자리에서는 사번 입력을 세우지 않는다(사용자 지시 2026-09-08). 사번 경량
+           * 인증(P-CO-01)이 정해 오므로 다시 묻지 않는다. 못 받았을 때만 키패드를 세운다.
+           */}
+          {confirmedNo === null ? (
+            <WorkerPanel
+              draft={draft}
+              confirmed={confirmedNo}
+              onChange={setDraft}
+              onSubmit={() => {
+                setSubmittedNo(draft.trim());
+              }}
+              onReset={() => {
+                /* 작업자를 바꾼다. 단말이 들고 있던 사번을 비운다. */
+                setWorkerSession(null);
+                setAppliedNo(null);
+                setSubmittedNo(null);
+                setDraft('');
+                setSelectedId(null);
+              }}
+              canChange={identity.workerNo === null}
+              onRetry={() => {
+                void lookup.refetch();
+              }}
+              isChecking={submittedNo !== null && confirmedNo === null && lookup.isFetching}
+              error={workerError}
+            />
+          ) : (
+            <CrewPanel
+              members={crew}
+              disabled={!isOnline || joinCrew.isSaving || leaveCrew.isSaving}
+              error={crewError}
+              onAdd={addCrew}
+              onRemove={removeCrew}
+            />
+          )}
+
+          <SelectionCard
+            workOrder={selected}
+            equipmentId={equipmentId}
+            equipmentText={selectionEquipmentText}
+            isEquipmentUnassigned={
+              isEquipmentMissing && selected !== null && selected.plannedEquipmentId == null
+            }
+            uomCodeOf={uomCodeOf}
+          />
+
+          {/*
+           * 진행 중인 작업에서 갈 수 있는 다른 작업 화면(omf-all-around#42). 모두 작업지시를 주소로
+           * 받아야 열리므로 열린 세션이 있는 이 자리에서 길을 낸다.
+           */}
+          {isContinue && (
+            <SessionEntryActions
+              onHold={() => {
+                goToWorkHold(selected.workOrderId);
+              }}
+              onRunningChange={() => {
+                goToRunningChange(selected.workOrderId);
+              }}
+              onPacking={() => {
+                goToPackingWork(selected.workOrderId);
+              }}
+              /* 아직 못 받았거나 조회가 실패했으면 없는 것으로 둔다. 지어내지 않는다. */
+              pendingPqc={pendingPqc.data ?? []}
+              onPqcInspection={goToPqcInspection}
+            />
+          )}
+        </section>
+      </div>
 
       <ActionBar
-        mode={isResume ? 'resume' : 'start'}
-        isBlocked={block !== null}
+        mode={isContinue ? 'continue' : isResume ? 'resume' : 'start'}
+        remaining={remaining.text}
+        todo={remaining.todo}
+        isBlocked={block !== null && !isContinue}
         /*
-         * ⭐ **판정을 기록하는 동안도 「시작 중」이다**(#1148). 통과 판정이면 게이트가 아무것도
-         *    그리지 않으므로, 이 사이에 표시가 없으면 화면이 통째로 멎은 것처럼 보인다.
+         * 판정을 기록하는 동안도 「시작 중」이다(#1148). 통과 판정이면 게이트가 아무것도 그리지
+         * 않으므로, 이 사이에 표시가 없으면 화면이 멎은 것처럼 보인다.
          */
         isSaving={isResume ? resumeWork.isSaving : startWork.isSaving || attempt !== null}
-        onSubmit={submit}
+        onSubmit={() => {
+          /* 진행 중인 작업은 쓰기 없이 자재 투입으로 자리만 옮긴다. 재개(`RESUME` 적재)가 아니다. */
+          if (isContinue) {
+            goToMaterialInput(selected.workOrderId);
+
+            return;
+          }
+
+          submit();
+        }}
+        leading={
+          retryLabel === null ? undefined : (
+            <Button type="button" variant="outlined" size={POP_TOUCH_SIZE} onClick={gate.retry}>
+              {retryLabel}
+            </Button>
+          )
+        }
       />
 
       {/*

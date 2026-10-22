@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
  *
  * 사용자가 할 일이 있을 때만(`todo`) 「남은 일:」 머리말을 붙인다(C-5). 주 동작이 잠기면 이 줄이 사유이므로
  * 부르는 쪽이 `remainingId`를 버튼의 `aria-describedby`로 잇는다.
- * 미구현: POP와 모바일 셸 배치(관리웹 처리 화면만 쓴다).
+ * POP는 작업 시작(P-02-01)이 쓴다(`app/pop.css` 바닥 띠 규칙이 배치를 맡는다). 미구현: 모바일 셸 배치.
  */
 const t = messages.screenPatterns.actionBar;
 

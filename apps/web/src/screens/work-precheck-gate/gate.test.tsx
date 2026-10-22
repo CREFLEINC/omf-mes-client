@@ -21,7 +21,7 @@ import {
 const w = messages.workStart;
 const t = messages.workPrecheckGate;
 
-const selectName = (workOrderNo: string): string => `${w.list.select} ${workOrderNo}`;
+const selectName = (workOrderNo: string): string => w.list.select(workOrderNo);
 
 beforeEach(() => {
   setWorkerSession(null);

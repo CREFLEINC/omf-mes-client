@@ -38,7 +38,9 @@ const nameOf = (member: CrewMember): string =>
     : (member.workerName ?? member.workerNo ?? t.unknown);
 
 /**
- * 함께 일하는 작업자 — 사번을 확인한 사람이 정(맨 앞, 뺄 수 없음)이고 나머지는 부다.
+ * 함께 일하는 작업자. 사번을 확인한 사람이 정(맨 앞, 뺄 수 없음)이고 나머지는 부다.
+ *
+ * 오른쪽 「작업 확인」 구획 안의 묶음이다. 구획 상자 안에 상자를 겹치지 않는다(C-19).
  *
  * ⚠ 사번은 키패드로만 받는다 — 키오스크라 운영체제 키보드가 뜨면 화면을 덮는다.
  */
@@ -65,9 +67,9 @@ export const CrewPanel = ({ members, disabled, error, onAdd, onRemove }: CrewPan
   };
 
   return (
-    <section className="pane pop-fixed work-start-crew" aria-label={t.title}>
+    <div className="work-start-group work-start-crew" role="group" aria-label={t.title}>
       <div className="work-start-crew-head">
-        <h2 className="pane-title">{t.title}</h2>
+        <h3 className="work-start-group-title">{t.title}</h3>
         <span className="field-note">{t.count(members.length, CREW_MAX)}</span>
       </div>
 
@@ -161,6 +163,6 @@ export const CrewPanel = ({ members, disabled, error, onAdd, onRemove }: CrewPan
           </div>
         )}
       </Dialog>
-    </section>
+    </div>
   );
 };

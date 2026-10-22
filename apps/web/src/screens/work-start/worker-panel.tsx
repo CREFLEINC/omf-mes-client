@@ -29,7 +29,7 @@ export interface WorkerPanelProps {
 }
 
 /**
- * ① 사번 구획(스펙 §4 ① · 96px).
+ * 사번 입력 묶음. 사번을 받지 못하고 들어온 경우에만 선다.
  *
  * ⛔ **비밀번호 칸이 없다.** POP 은 로그인을 생략하고 사번만 받는다(REQ-PR-0023) — 이 화면이
  * 하는 것은 인증이 아니라 **귀속**이다. 「누가 한 일로 기록할 것인가」만 정한다.
@@ -51,13 +51,9 @@ export const WorkerPanel = ({
   isChecking,
   error,
 }: WorkerPanelProps) => (
-  /*
-   * `pop-fixed` — **내용만큼만 선다**(`app/pop.css` 「내용만큼만 서는 구획」). 사번이 확인된
-   * 뒤에는 이 구획에 한 줄만 남는데, 남는 높이를 나눠 받으면 그 한 줄이 빈 칸 가운데 떠서
-   * 화면에서 가장 헐거운 자리가 된다. 남는 높이는 아래 작업지시 목록이 가져가는 편이 맞다.
-   */
-  <section className="pane pop-fixed work-start-worker" aria-label={t.title}>
-    <h2 className="pane-title">{t.title}</h2>
+  /* 오른쪽 「작업 확인」 구획 안의 묶음이다. 구획 상자 안에 상자를 겹치지 않는다(C-19). */
+  <div className="work-start-group work-start-worker" role="group" aria-label={t.title}>
+    <h3 className="work-start-group-title">{t.title}</h3>
 
     {confirmed === null ? (
       <>
@@ -122,5 +118,5 @@ export const WorkerPanel = ({
         )}
       </p>
     )}
-  </section>
+  </div>
 );
