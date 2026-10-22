@@ -790,16 +790,12 @@ export type WorkOrderForward = components['schemas']['WorkOrder'] & {
   voidedLotCount?: number;
 };
 
-<<<<<<< HEAD
-/** 서버 선행 P-104 — 세션 강제 종료 본문. */
+/** 서버 선행 P-105 — 세션 강제 종료 본문. */
 export interface WorkSessionForceEnd {
   reason: string;
 }
 
-/** 서버 선행 P-104 — 세션 조회(목록·단건)가 단말 코드와 주작업자를 싣는다. */
-=======
 /** 서버 선행 P-105 — 세션 조회(목록·단건)가 단말 코드와 주작업자를 싣는다. */
->>>>>>> feat/aa96-wo-close-pop
 export type WorkSessionForward = components['schemas']['WorkSession'] & {
   terminalCode?: string;
   workerId?: number;
@@ -2098,7 +2094,7 @@ export interface ForwardPaths {
   '/quality/inspection-sheets/{inspectionSheetId}:approve': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:check': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:reopen': SheetAction<SheetId, { reason: string }>;
-  /** 서버 선행 P-104 — 관리웹에서 열린(중단 포함) 작업 세션을 닫는다. 사유는 기록으로 남아 필수다. */
+  /** 서버 선행 P-105 — 관리웹에서 열린(중단 포함) 작업 세션을 닫는다. 사유는 기록으로 남아 필수다. */
   '/production/work-sessions/{workSessionId}:force-end': Unused & {
     parameters: NoParameters;
     post: {
