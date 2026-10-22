@@ -136,4 +136,28 @@ describe('WorkOrderCloseStatusPane', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: t.sessions.recheck }));
     expect(onRecheckSessions).toHaveBeenCalledTimes(1);
   });
+
+  it('강제 종료를 주면 줄마다 단말 이름이 붙은 단추를 두고 그 세션을 넘긴다', async () => {
+    const onForceEnd = vi.fn();
+    const session = {
+      workSessionId: 7,
+      terminalCode: 'POP-SYN-7',
+      workerName: null,
+      workerNo: null,
+      startedAt: '2026-08-23T09:00:00+07:00',
+      statusCode: 'RUNNING',
+    };
+    render(
+      <WorkOrderCloseStatusPane
+        state={{ kind: 'RESOLVED', blockers: ['OPEN_SESSION'] }}
+        openSessions={[session]}
+        onForceEnd={onForceEnd}
+      />,
+    );
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: t.sessions.forceEndFor('POP-SYN-7') }));
+    expect(onForceEnd).toHaveBeenCalledWith(session);
+  });
 });

@@ -53,6 +53,7 @@ import {
 } from './detail-summary-pane';
 import { WorkOrderCloseOutboundItemsPane } from './outbound-items-pane';
 import { WorkOrderCloseResultPane } from './close-result-pane';
+import { SessionForceEndDialog } from './session-force-end-dialog';
 import { WorkOrderResultCorrectionWorkspace } from './result-correction-workspace';
 import {
   useWorkOrderCloseCandidates,
@@ -64,6 +65,7 @@ import {
   useWorkOrderCloseProductionOrders,
   type WorkOrderCloseDetailFact,
   type WorkOrderCloseOpenLots,
+  type WorkOrderCloseOpenSessionView,
   type WorkOrderCloseOutboundItemSetting,
 } from './queries';
 
@@ -302,6 +304,7 @@ export const WorkOrderCloseCandidateScreen = () => {
   const detail = useWorkOrderCloseDetail(state.selectedWorkOrderId);
   const openSession = useWorkOrderCloseOpenSession(closeSelectedWorkOrderId);
   const openLots = useWorkOrderCloseOpenLots(closeSelectedWorkOrderId);
+  const [forceEndTarget, setForceEndTarget] = useState<WorkOrderCloseOpenSessionView | null>(null);
   const snapshot = useMemo(
     () =>
       toWorkOrderCloseCandidateSnapshot({
@@ -592,6 +595,7 @@ export const WorkOrderCloseCandidateScreen = () => {
                 state={readinessState}
                 openSessions={openSession.data?.sessions ?? []}
                 onRecheckSessions={() => void openSession.refetch()}
+                onForceEnd={setForceEndTarget}
               />
             )}
             {outboundState.kind === 'HIDDEN' ? null : (
@@ -632,6 +636,13 @@ export const WorkOrderCloseCandidateScreen = () => {
           </div>
         )}
       </div>
+      {forceEndTarget === null ? null : (
+        <SessionForceEndDialog
+          key={forceEndTarget.workSessionId}
+          session={forceEndTarget}
+          onClose={() => setForceEndTarget(null)}
+        />
+      )}
     </div>
   );
 };

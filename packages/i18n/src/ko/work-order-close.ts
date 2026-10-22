@@ -163,7 +163,10 @@ export const workOrderClose = {
       unknown: '확인할 수 없음',
       workerValue: (name: string, workerNo: string): string => `${name}(${workerNo})`,
       action: (holdScreen: string): string =>
-        `위 단말의 POP 「${holdScreen}」에서 세션을 끝낸 뒤 [다시 확인]을 누르세요.`,
+        `위 단말의 POP 「${holdScreen}」에서 세션을 끝낸 뒤 [다시 확인]을 누르세요. 그 단말에서 끝낼 수 없으면 [강제 종료]를 누르세요.`,
+      actions: '조치',
+      forceEnd: '강제 종료',
+      forceEndFor: (terminal: string): string => `${terminal} 세션 강제 종료`,
       recheck: '다시 확인',
     },
     heading: '현재 입력 상태',
@@ -231,6 +234,19 @@ export const workOrderClose = {
     },
     lockedFallback: '이 송신 항목은 변경할 수 없습니다.',
     sendTiming: (note: string): string => `송신 시점: ${note}`,
+  },
+  /** 관리웹에서 열린 세션을 닫는 주의 창 — 그 단말에 무엇이 일어나는지 누르기 전에 알린다. */
+  forceEnd: {
+    title: '작업 세션을 강제로 끝낼까요?',
+    effect:
+      '강제 종료하면 그 단말의 작업 세션이 바로 끝납니다. 그 단말에서 중단·재개·종료를 누르면 「이미 종료된 작업 세션」으로 거부되고, 작업을 이어 가려면 작업 시작을 다시 해야 합니다. 이미 입력했거나 아직 보내지 못한 실적·자재 투입은 그대로 저장됩니다.',
+    notify: '강제 종료하기 전에 그 단말의 작업자에게 알리세요.',
+    reason: '강제 종료 사유',
+    reasonHelp: '누가 왜 세션을 닫았는지 기록으로 남습니다.',
+    reasonRequired: '강제 종료 사유를 입력하세요.',
+    cancel: '취소',
+    confirm: '강제 종료',
+    done: (terminal: string): string => `${terminal} 의 작업 세션을 강제 종료했습니다.`,
   },
   /** 마감된 W/O 의 마감 결과 — 무엇을 어떻게 닫았는지 정정 전에 본다. */
   closeResult: {

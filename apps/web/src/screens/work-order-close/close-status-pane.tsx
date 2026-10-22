@@ -16,6 +16,8 @@ export interface WorkOrderCloseStatusPaneProps {
   /** 마감을 막는 열린 세션. 막힘에 열린 세션이 있을 때만 표로 보인다 */
   openSessions?: readonly WorkOrderCloseOpenSessionView[];
   onRecheckSessions?: () => void;
+  /** 주면 줄마다 [강제 종료]를 둔다 */
+  onForceEnd?: (session: WorkOrderCloseOpenSessionView) => void;
 }
 
 const sessionText = messages.workOrderClose.status.sessions;
@@ -53,7 +55,28 @@ export const WorkOrderCloseStatusPane = ({
   state,
   openSessions = [],
   onRecheckSessions,
+  onForceEnd,
 }: WorkOrderCloseStatusPaneProps): JSX.Element => {
+  const columns: Column<WorkOrderCloseOpenSessionView>[] =
+    onForceEnd === undefined
+      ? SESSION_COLUMNS
+      : [
+          ...SESSION_COLUMNS,
+          {
+            key: 'actions',
+            header: sessionText.actions,
+            render: (row) => (
+              <Button
+                variant="outlined"
+                size="sm"
+                aria-label={sessionText.forceEndFor(row.terminalCode ?? sessionText.unknown)}
+                onClick={() => onForceEnd(row)}
+              >
+                {sessionText.forceEnd}
+              </Button>
+            ),
+          },
+        ];
   const t = messages.workOrderClose.status;
 
   return (
@@ -86,7 +109,7 @@ export const WorkOrderCloseStatusPane = ({
           <Table
             density="compact"
             caption={sessionText.label}
-            columns={SESSION_COLUMNS}
+            columns={columns}
             rows={[...openSessions]}
             getRowId={(row) => String(row.workSessionId)}
           />

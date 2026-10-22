@@ -790,6 +790,11 @@ export type WorkOrderForward = components['schemas']['WorkOrder'] & {
   voidedLotCount?: number;
 };
 
+/** 서버 선행 P-104 — 세션 강제 종료 본문. */
+export interface WorkSessionForceEnd {
+  reason: string;
+}
+
 /** 서버 선행 P-104 — 마감을 막은 열린 작업 세션 한 건(중단 포함). 작업자는 그 세션의 주작업자다. */
 export interface OpenWorkSession {
   workSessionId: number;
@@ -2108,6 +2113,25 @@ export interface ForwardPaths {
   '/quality/inspection-sheets/{inspectionSheetId}:approve': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:check': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:reopen': SheetAction<SheetId, { reason: string }>;
+  /** 서버 선행 P-104 — 관리웹에서 열린(중단 포함) 작업 세션을 닫는다. 사유는 기록으로 남아 필수다. */
+  '/production/work-sessions/{workSessionId}:force-end': Unused & {
+    parameters: NoParameters;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { workSessionId: number };
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': WorkSessionForceEnd } };
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': components['schemas']['WorkSession'] };
+        };
+      };
+    };
+  };
 }
 
 /** 같은 경로를 forward 가 다시 적으면 그쪽이 이긴다 — 교집합이면 좁은 쪽 enum 이 남는다(omf-all-around#58 첨부 대상). */

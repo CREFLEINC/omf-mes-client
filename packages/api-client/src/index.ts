@@ -110,6 +110,7 @@ export type {
   OpenWorkSession,
   ProductionConflictResponseForward,
   WorkSessionForward,
+  WorkSessionForceEnd,
   WorkSessionWorkerForward,
   ProductionResultForward,
   ProductionResultCreateForward,
