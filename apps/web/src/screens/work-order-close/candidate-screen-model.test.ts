@@ -33,7 +33,7 @@ const initialization = (
   kind === 'READY'
     ? {
         kind,
-        initialFilters: { ...emptyFilters, statusCode: 'COMPLETED' },
+        initialFilters: { ...emptyFilters, statusCode: 'IN_PROGRESS' },
         canLoadCandidates: true,
         statusUnavailableReason: null,
       }
@@ -80,7 +80,7 @@ const fact = (workOrderId: number, itemId = 910001, uomId = 920001): WorkOrderCl
   uomId,
   workOrderTypeCode: 'SYN-NORMAL',
   priorityNo: 2,
-  statusCode: 'COMPLETED',
+  statusCode: 'IN_PROGRESS',
   productionLineId: null,
   responsibleWorkerId: null,
   plannedStartAt: null,
@@ -115,7 +115,7 @@ describe('work-order close candidate screen state', () => {
     state = synchronize(state, 'UNAVAILABLE');
     expect(state).toEqual(expectedState('UNAVAILABLE'));
     state = synchronize(state, 'READY');
-    expect(state).toEqual(expectedState('READY', { ...emptyFilters, statusCode: 'COMPLETED' }));
+    expect(state).toEqual(expectedState('READY', { ...emptyFilters, statusCode: 'IN_PROGRESS' }));
     expect(checking).toEqual(checkingSnapshot);
   });
   it('owns SEARCH RESET CHANGE_PAGE and SELECT lifetimes without mutating filters', () => {
@@ -185,7 +185,7 @@ describe('work-order close candidate projections', () => {
     expect(
       toWorkOrderCloseCandidateFilters({
         ...state,
-        appliedFilters: { ...emptyFilters, statusCode: 'COMPLETED' },
+        appliedFilters: { ...emptyFilters, statusCode: 'IN_PROGRESS' },
       }),
     ).toMatchObject({ productionOrderId: null, plannedStartFrom: null, plannedStartTo: null });
     expect(state).toEqual(snapshot);

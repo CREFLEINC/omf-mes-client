@@ -9,7 +9,7 @@ import {
 
 const t = messages.workOrderClose.filter;
 const completed = {
-  code: 'COMPLETED',
+  code: 'IN_PROGRESS',
   codeName: 'Completed',
   displayOrder: 20,
   isActive: true,
@@ -37,10 +37,10 @@ describe('toWorkOrderCloseFilterInitialization', () => {
 
     expectTypeOf<Checking['initialFilters']['statusCode']>().toEqualTypeOf<''>();
     expectTypeOf<Unavailable['initialFilters']['statusCode']>().toEqualTypeOf<''>();
-    expectTypeOf<Ready['initialFilters']['statusCode']>().toEqualTypeOf<'COMPLETED'>();
+    expectTypeOf<Ready['initialFilters']['statusCode']>().toEqualTypeOf<'IN_PROGRESS'>();
   });
 
-  it('prioritizes an error over loading and stale, truncated COMPLETED data', () => {
+  it('prioritizes an error over loading and stale, truncated IN_PROGRESS data', () => {
     expect(
       toWorkOrderCloseFilterInitialization(
         snapshot({
@@ -57,7 +57,7 @@ describe('toWorkOrderCloseFilterInitialization', () => {
     });
   });
 
-  it('keeps checking while loading even when stale COMPLETED data exists', () => {
+  it('keeps checking while loading even when stale IN_PROGRESS data exists', () => {
     expect(toWorkOrderCloseFilterInitialization(snapshot({ isPending: true }))).toEqual({
       kind: 'CHECKING',
       initialFilters: emptyFilters,
@@ -75,24 +75,24 @@ describe('toWorkOrderCloseFilterInitialization', () => {
       t.statusLookupEmpty,
     ],
     [
-      'truncated values containing COMPLETED',
+      'truncated values containing IN_PROGRESS',
       { items: [completed], truncated: true },
       t.statusLookupTruncated,
     ],
     [
       'another active value',
       { items: [{ ...completed, code: 'READY' }], truncated: false },
-      t.completedStatusMissing,
+      t.inProgressStatusMissing,
     ],
     [
-      'lowercase COMPLETED',
-      { items: [{ ...completed, code: 'completed' }], truncated: false },
-      t.completedStatusMissing,
+      'lowercase IN_PROGRESS',
+      { items: [{ ...completed, code: 'in_progress' }], truncated: false },
+      t.inProgressStatusMissing,
     ],
     [
-      'space-padded COMPLETED',
-      { items: [{ ...completed, code: ' COMPLETED ' }], truncated: false },
-      t.completedStatusMissing,
+      'space-padded IN_PROGRESS',
+      { items: [{ ...completed, code: ' IN_PROGRESS ' }], truncated: false },
+      t.inProgressStatusMissing,
     ],
   ] as const)('blocks candidates for %s', (_case, data, statusUnavailableReason) => {
     expect(toWorkOrderCloseFilterInitialization(snapshot({ data }))).toEqual({
@@ -103,7 +103,7 @@ describe('toWorkOrderCloseFilterInitialization', () => {
     });
   });
 
-  it('returns READY only for an exact active COMPLETED value in a complete list', () => {
+  it('returns READY only for an exact active IN_PROGRESS value in a complete list', () => {
     expect(
       toWorkOrderCloseFilterInitialization(
         snapshot({
@@ -115,7 +115,7 @@ describe('toWorkOrderCloseFilterInitialization', () => {
       ),
     ).toEqual({
       kind: 'READY',
-      initialFilters: { ...emptyFilters, statusCode: 'COMPLETED' },
+      initialFilters: { ...emptyFilters, statusCode: 'IN_PROGRESS' },
       canLoadCandidates: true,
       statusUnavailableReason: null,
     });

@@ -106,8 +106,8 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     statusLookupEmpty: 'Không có trạng thái đóng nào dùng được.',
     statusLookupTruncated:
       'Chỉ tải được một phần danh sách trạng thái đóng nên chưa bắt đầu tra cứu lần đầu được.',
-    completedStatusMissing:
-      'Không xác nhận được trạng thái đã đóng nên chưa bắt đầu tra cứu lần đầu được.',
+    inProgressStatusMissing:
+      'Không xác nhận được trạng thái đang thực hiện nên chưa bắt đầu tra cứu lần đầu được. Nếu tải lại trang vẫn vậy, hãy báo quản trị hệ thống.',
   },
   confirm: {
     title: (workOrderNo: string) => `Đóng lệnh sản xuất — ${workOrderNo}`,
@@ -131,9 +131,13 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     loading: 'Đang xác nhận điều kiện nhập hiện tại.',
     complete: 'Các điều kiện nhập hiện tại đã đủ.',
     blockers: {
+      STATUS_NOT_CLOSABLE:
+        'Không thể đóng lệnh sản xuất này ở trạng thái hiện tại. Chỉ đóng được lệnh đang thực hiện hoặc đã hoàn thành, hãy kiểm tra trạng thái trong danh sách.',
       OPEN_SESSION: 'Hãy đóng phiên làm việc đang mở.',
-      REMAINDER_DISPOSITION_REQUIRED: 'Hãy chọn cách xử lý lượng còn lại.',
-      VARIANCE_REASON_REQUIRED: 'Hãy chọn lý do chênh lệch.',
+      REMAINDER_DISPOSITION_REQUIRED:
+        'Vì thiếu so với chỉ thị nên phải chọn cách xử lý lượng còn lại mới đóng được. Hãy chọn «Chuyển sang kỳ sau» hoặc «Xóa bỏ» ở mục «Xử lý lượng còn lại» phía trên.',
+      VARIANCE_REASON_REQUIRED:
+        'Vì thiếu hoặc vượt so với chỉ thị nên phải chọn lý do chênh lệch mới đóng được. Hãy chọn ở mục «Lý do chênh lệch» phía trên.',
     },
   },
   input: {

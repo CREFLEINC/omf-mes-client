@@ -76,7 +76,7 @@ export const reduceWorkOrderCloseCandidateScreen = (
     case 'RESET':
       return {
         ...state,
-        appliedFilters: initialFilters(state.initializationKind === 'READY' ? 'COMPLETED' : ''),
+        appliedFilters: initialFilters(state.initializationKind === 'READY' ? 'IN_PROGRESS' : ''),
         page: 1,
         selectedWorkOrderId: null,
       };

@@ -21,6 +21,7 @@ const input = (
   overrides: Partial<WorkOrderCloseReadinessInput> = {},
 ): WorkOrderCloseReadinessInput => ({
   completionJudgment: 'NORMAL',
+  isClosableStatus: true,
   hasOpenSession: false,
   hasRemainderDisposition: true,
   hasVarianceReason: true,
@@ -73,5 +74,15 @@ describe('isWorkOrderCloseReady', () => {
 
     expect(isWorkOrderCloseReady(value)).toBe(blockers.length === 0);
     expect(isWorkOrderCloseReady(value)).toBe(expected);
+  });
+});
+
+describe('workOrderCloseBlockers — 상태', () => {
+  it('진행·완료가 아닌 작업지시는 다른 조건보다 먼저 상태로 막는다', () => {
+    expect(
+      workOrderCloseBlockers(
+        input({ isClosableStatus: false, completionJudgment: 'UNDER', hasOpenSession: true }),
+      ),
+    ).toEqual(['STATUS_NOT_CLOSABLE', 'OPEN_SESSION']);
   });
 });

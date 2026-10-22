@@ -17,9 +17,13 @@ describe('WorkOrderCloseStatusPane', () => {
       loading: '현재 입력 조건을 확인하는 중입니다.',
       complete: '현재 입력 조건이 모두 갖춰졌습니다.',
       blockers: {
+        STATUS_NOT_CLOSABLE:
+          '이 작업지시는 지금 상태에서 마감할 수 없습니다. 진행 또는 완료 상태인 작업지시만 마감할 수 있으니, 목록의 상태를 확인하세요.',
         OPEN_SESSION: '열린 작업 세션을 마감하세요.',
-        REMAINDER_DISPOSITION_REQUIRED: '잔량 처리 방법을 선택하세요.',
-        VARIANCE_REASON_REQUIRED: '변동 사유를 선택하세요.',
+        REMAINDER_DISPOSITION_REQUIRED:
+          '미달이라 잔량 처리를 골라야 마감할 수 있습니다. 위 「잔량 처리」에서 이월 또는 소멸을 고르세요.',
+        VARIANCE_REASON_REQUIRED:
+          '미달·초과라 변동 사유를 골라야 마감할 수 있습니다. 위 「변동 사유」에서 고르세요.',
       },
     });
   });

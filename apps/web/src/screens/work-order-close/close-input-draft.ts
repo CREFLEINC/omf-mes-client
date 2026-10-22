@@ -41,8 +41,10 @@ export const workOrderCloseReadinessInputFrom = (
   draft: WorkOrderCloseInputDraft,
   completionJudgment: WorkOrderCloseCompletionJudgment,
   hasOpenSession: boolean,
+  isClosableStatus: boolean,
 ): WorkOrderCloseReadinessInput => ({
   completionJudgment,
+  isClosableStatus,
   hasOpenSession,
   hasRemainderDisposition: draft.remainderDisposition !== null,
   hasVarianceReason: draft.varianceReasonCode.trim() !== '',

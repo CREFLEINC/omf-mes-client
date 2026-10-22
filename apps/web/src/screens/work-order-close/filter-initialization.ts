@@ -18,7 +18,7 @@ export interface WorkOrderCloseStatusLookupSnapshot {
   isPending: boolean;
 }
 
-type WorkOrderCloseInitialFilters<StatusCode extends '' | 'COMPLETED'> = Omit<
+type WorkOrderCloseInitialFilters<StatusCode extends '' | 'IN_PROGRESS'> = Omit<
   WorkOrderCloseFilterValues,
   'statusCode'
 > & { statusCode: StatusCode };
@@ -43,7 +43,7 @@ export type WorkOrderCloseFilterInitialization =
     })
   | (WorkOrderCloseFilterInitializationBase & {
       kind: 'READY';
-      initialFilters: WorkOrderCloseInitialFilters<'COMPLETED'>;
+      initialFilters: WorkOrderCloseInitialFilters<'IN_PROGRESS'>;
       canLoadCandidates: true;
       statusUnavailableReason: null;
     });
@@ -83,13 +83,13 @@ export const toWorkOrderCloseFilterInitialization = (
 
   const activeValues = snapshot.data.items.filter((value) => value.isActive);
   if (activeValues.length === 0) return unavailable(t.statusLookupEmpty);
-  if (!activeValues.some((value) => value.code === 'COMPLETED')) {
-    return unavailable(t.completedStatusMissing);
+  if (!activeValues.some((value) => value.code === 'IN_PROGRESS')) {
+    return unavailable(t.inProgressStatusMissing);
   }
 
   return {
     kind: 'READY',
-    initialFilters: { ...emptyInitialFilters(), statusCode: 'COMPLETED' },
+    initialFilters: { ...emptyInitialFilters(), statusCode: 'IN_PROGRESS' },
     canLoadCandidates: true,
     statusUnavailableReason: null,
   };

@@ -58,7 +58,8 @@ describe('WorkOrderCloseFilterBar', () => {
       statusLookupFailed: '마감 상태 목록을 불러오지 못했습니다.',
       statusLookupEmpty: '사용 가능한 마감 상태가 없습니다.',
       statusLookupTruncated: '마감 상태 목록 일부만 불러와 최초 조회를 시작할 수 없습니다.',
-      completedStatusMissing: '마감 완료 상태를 확인할 수 없어 최초 조회를 시작할 수 없습니다.',
+      inProgressStatusMissing:
+        '진행 상태를 확인할 수 없어 처음 조회를 시작할 수 없습니다. 새로고침한 뒤에도 같으면 시스템 관리자에게 알리세요.',
     });
   });
 

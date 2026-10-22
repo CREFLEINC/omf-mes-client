@@ -36,6 +36,7 @@ import {
 } from './close-input-draft';
 import { WorkOrderCloseInputPane } from './close-input-pane';
 import {
+  CLOSABLE_WORK_ORDER_STATUSES,
   workOrderCloseBlockers,
   type WorkOrderCloseBlocker,
   type WorkOrderCloseCompletionJudgment,
@@ -359,7 +360,15 @@ export const WorkOrderCloseCandidateScreen = () => {
   const blockers =
     judgment === null
       ? []
-      : workOrderCloseBlockers(readinessInput(inputDraft, judgment, hasOpenSession));
+      : workOrderCloseBlockers(
+          readinessInput(
+            inputDraft,
+            judgment,
+            hasOpenSession,
+            detailState.kind === 'RESOLVED' &&
+              CLOSABLE_WORK_ORDER_STATUSES.includes(detailState.detail.statusCode),
+          ),
+        );
   let readinessState: WorkOrderCloseStatusPaneState | null = null;
   if (checking) readinessState = { kind: 'CHECKING' };
   else if (unavailableState !== null)

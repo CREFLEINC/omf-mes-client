@@ -91,7 +91,8 @@ export const workOrderClose = {
     statusLookupFailed: '마감 상태 목록을 불러오지 못했습니다.',
     statusLookupEmpty: '사용 가능한 마감 상태가 없습니다.',
     statusLookupTruncated: '마감 상태 목록 일부만 불러와 최초 조회를 시작할 수 없습니다.',
-    completedStatusMissing: '마감 완료 상태를 확인할 수 없어 최초 조회를 시작할 수 없습니다.',
+    inProgressStatusMissing:
+      '진행 상태를 확인할 수 없어 처음 조회를 시작할 수 없습니다. 새로고침한 뒤에도 같으면 시스템 관리자에게 알리세요.',
   },
   confirm: {
     title: (workOrderNo: string): string => `작업지시 마감 — ${workOrderNo}`,
@@ -114,9 +115,13 @@ export const workOrderClose = {
     loading: '현재 입력 조건을 확인하는 중입니다.',
     complete: '현재 입력 조건이 모두 갖춰졌습니다.',
     blockers: {
+      STATUS_NOT_CLOSABLE:
+        '이 작업지시는 지금 상태에서 마감할 수 없습니다. 진행 또는 완료 상태인 작업지시만 마감할 수 있으니, 목록의 상태를 확인하세요.',
       OPEN_SESSION: '열린 작업 세션을 마감하세요.',
-      REMAINDER_DISPOSITION_REQUIRED: '잔량 처리 방법을 선택하세요.',
-      VARIANCE_REASON_REQUIRED: '변동 사유를 선택하세요.',
+      REMAINDER_DISPOSITION_REQUIRED:
+        '미달이라 잔량 처리를 골라야 마감할 수 있습니다. 위 「잔량 처리」에서 이월 또는 소멸을 고르세요.',
+      VARIANCE_REASON_REQUIRED:
+        '미달·초과라 변동 사유를 골라야 마감할 수 있습니다. 위 「변동 사유」에서 고르세요.',
     },
   },
   input: {

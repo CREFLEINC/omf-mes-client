@@ -43,7 +43,7 @@ const outboundQueryKey = ['work-order-close', 'outbound-item-settings'] as const
 const emptyDraft = { remainderDisposition: null, varianceReasonCode: '', remarks: '' };
 const page = (total = 1, current = 1) => ({ page: current, size: 20, total });
 const statusBody = (total = 1) => ({
-  items: [{ code: 'COMPLETED', codeName: '마감 완료', displayOrder: 1, isActive: true }],
+  items: [{ code: 'IN_PROGRESS', codeName: '진행', displayOrder: 1, isActive: true }],
   page: { page: 1, size: 200, total },
 });
 const orderBody = (total = 1) => ({
@@ -61,7 +61,7 @@ const workOrder = (id: number, itemId = 910001) => ({
   workOrderTypeCode: 'NORMAL',
   processId: 901,
   priorityNo: 1,
-  statusCode: 'COMPLETED',
+  statusCode: 'IN_PROGRESS',
 });
 const detailBody = (workOrderId: number, judgment: Judgment = 'OVER') => ({
   ...workOrder(workOrderId),
@@ -806,7 +806,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(screen.queryByText(t.status.complete)).not.toBeInTheDocument();
   });
 
-  it('holds candidates until exact COMPLETED is ready and resolves only current-page references', async () => {
+  it('holds candidates until exact IN_PROGRESS is ready and resolves only current-page references', async () => {
     const api = makeApi('pending');
     renderWithProviders(<WorkOrderCloseCandidateScreen />, { fetch: api.fetch });
     const status = screen.getByRole('combobox', { name: t.filter.status });
@@ -817,7 +817,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     api.releaseStatus();
     expect(await screen.findByRole('button', { name: 'SYN-WO-701 선택' })).toBeVisible();
     const first = candidateUrls(api.urls)[0]!;
-    expect(first.searchParams.get('statusCode')).toBe('COMPLETED');
+    expect(first.searchParams.get('statusCode')).toBe('IN_PROGRESS');
     expect(first.searchParams.get('page')).toBe('1');
     expect(api.urls.filter((url) => url.pathname === '/mdm/items/910001')).toHaveLength(1);
     expect(
@@ -851,7 +851,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     } else {
       expect(await screen.findByRole('button', { name: 'SYN-WO-701 선택' })).toBeVisible();
       const request = candidateUrls(api.urls)[0]!;
-      expect(request.searchParams.get('statusCode')).toBe('COMPLETED');
+      expect(request.searchParams.get('statusCode')).toBe('IN_PROGRESS');
     }
   });
 
