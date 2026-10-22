@@ -385,4 +385,43 @@ export const goodsReceipt = {
       'ERP 송신 대기열에 적재되지 않았습니다. 상대 시스템 반영 여부는 연계 동기화 현황 화면에서 확인하세요.',
     erpUnknown: 'ERP 송신 대기열 적재 여부를 알 수 없습니다. 응답에 그 값이 오지 않았습니다.',
   },
+  /**
+   * 「입고 처리」 **오른쪽 창** — 입고 관리(입하 예정 조회)의 LOT 줄에서 열린다(사용자 지시 2026-10-22 · 입하·입고 일을
+   * 그 화면으로 모은다). 입력 칸·검증·확인 창·결과는 이 화면(W-01-10)의 것을 그대로 쓰고, 창은 LOT 하나로 선다.
+   */
+  panel: {
+    title: '입고 처리',
+    guide: {
+      label: '진행 단계',
+      steps: {
+        lot: 'LOT 선택',
+        info: '입고 정보',
+        post: '입고 처리',
+      },
+      /** 단계 아래 한 줄 — 지금 할 일. */
+      hint: {
+        loading: '입하 전표를 불러오는 중입니다.',
+        info: '입고 창고와 적치 위치를 고르세요.',
+        ready: '내용을 확인하고 「입고 처리」를 누르세요.',
+        gated: '이 LOT 은 지금 입고할 수 없습니다.',
+        done: '입고 전표가 만들어졌습니다. 창을 닫으면 LOT 줄이 다음 단계로 바뀝니다.',
+      },
+    },
+    /** LOT 머리 카드의 이름표. */
+    head: {
+      lot: 'LOT',
+      purchaseOrderNo: '발주번호',
+      supplier: '공급사',
+      item: '품목',
+      qty: '수량',
+      inboundReceiptNo: '입하번호',
+      inspection: '검사',
+    },
+    /** 아래 띠의 요약 — 「LOT · 수량 → 창고 · 위치」. 아직 고르지 않은 자리는 「—」. */
+    summary: (lot: string, qty: string, destination: string): string =>
+      `${lot} · ${qty} → ${destination}`,
+    loading: '입하 전표를 불러오는 중',
+    /** 진행 자료의 LOT 이 입하 전표에서 안 보인다 — 자료가 바뀌었다. */
+    lineMissing: '이 LOT 의 입하 라인을 찾지 못했습니다. 창을 닫고 다시 조회하세요.',
+  },
 } as const;

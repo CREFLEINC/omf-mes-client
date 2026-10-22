@@ -1,5 +1,10 @@
 import type { ExcessCandidate, InboundExcess } from './excess-types';
-import type { InboundScheduleLine, PurchaseOrderSummary } from './types';
+import type {
+  InboundLotProgress,
+  InboundScheduleLine,
+  InboundStageCounts,
+  PurchaseOrderSummary,
+} from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -281,3 +286,133 @@ export const candidateFixture = (overrides: Partial<ExcessCandidate> = {}): Exce
   exactMatch: false,
   ...overrides,
 });
+
+/**
+ * 입고 진행(계약 대기) — 한 발주의 LOT 줄. 내부 번호는 7500대(입하 전표) · 7600대(입하 라인) · 7700대(LOT) ·
+ * 7800대(검사 의뢰·입고 전표·적치 작업)다. LOT 번호는 합성값이고 「|」 구분자를 그대로 둔다(C-16 예외를 재는 데 쓴다).
+ */
+const BASE_LOT: InboundLotProgress = {
+  purchaseOrderLineId: 7301,
+  inboundReceiptId: 7501,
+  inboundReceiptNo: 'SAMPLE-IR-0001',
+  inboundReceiptLineId: 7601,
+  receiptDatetime: '2026-10-20T09:30:00+09:00',
+  lotId: 7701,
+  lotNo: 'SAMPLE|LOT|0001',
+  receivedQty: 60,
+  receivableQty: 60,
+  uomCode: 'SAMPLE-EA',
+  lotStatusCode: 'INSPECTION_PENDING',
+  stageCode: 'INSPECTION_REQUESTED',
+  nextActionCode: null,
+  blockedReasons: [],
+  inspection: {
+    inspectionRequestId: 7801,
+    inspectionRequestNo: 'SAMPLE-IQ-0001',
+    statusCode: 'REQUESTED',
+    requestedAt: '2026-10-20T09:30:00+09:00',
+    judgmentCode: null,
+    judgedAt: null,
+  },
+  goodsReceipt: null,
+  putaway: null,
+};
+
+export const lotProgress = (overrides: Partial<InboundLotProgress> = {}): InboundLotProgress => ({
+  ...BASE_LOT,
+  ...overrides,
+});
+
+/**
+ * 발주 7101 의 LOT 다섯 — 라인 7301 아래 넷(검사 의뢰 전 · 검사 대기 · 입고 대기 · 완료), 라인 7302 아래 하나(보류).
+ * 입하 일시가 뒤섞여 있어 정렬(입하 일시 → LOT 번호)을 함께 잰다.
+ */
+export const progressFixtures: InboundLotProgress[] = [
+  lotProgress({
+    lotId: 7703,
+    lotNo: 'SAMPLE|LOT|0003',
+    inboundReceiptLineId: 7603,
+    receiptDatetime: '2026-10-21T10:00:00+09:00',
+    receivedQty: 20,
+    receivableQty: 20,
+    lotStatusCode: 'NORMAL',
+    stageCode: 'RECEIPT_READY',
+    nextActionCode: 'POST_RECEIPT',
+    inspection: {
+      inspectionRequestId: 7803,
+      inspectionRequestNo: 'SAMPLE-IQ-0003',
+      statusCode: 'COMPLETED',
+      requestedAt: '2026-10-21T10:00:00+09:00',
+      judgmentCode: 'ACCEPTED',
+      judgedAt: '2026-10-21T15:00:00+09:00',
+    },
+  }),
+  lotProgress(),
+  lotProgress({
+    lotId: 7702,
+    lotNo: 'SAMPLE|LOT|0002',
+    inboundReceiptLineId: 7602,
+    receiptDatetime: '2026-10-20T09:30:00+09:00',
+    receivedQty: 10,
+    receivableQty: 10,
+    lotStatusCode: 'NORMAL',
+    stageCode: 'INSPECTION_REQUIRED',
+    nextActionCode: 'REQUEST_IQC',
+    inspection: null,
+  }),
+  lotProgress({
+    lotId: 7704,
+    lotNo: 'SAMPLE|LOT|0004',
+    inboundReceiptLineId: 7604,
+    receiptDatetime: '2026-10-19T08:00:00+09:00',
+    receivedQty: 10,
+    receivableQty: 0,
+    lotStatusCode: 'NORMAL',
+    stageCode: 'COMPLETED',
+    nextActionCode: null,
+    inspection: null,
+    goodsReceipt: {
+      goodsReceiptId: 7811,
+      goodsReceiptNo: 'SAMPLE-GR-0001',
+      receiptDatetime: '2026-10-19T11:00:00+09:00',
+      statusCode: 'POSTED',
+    },
+    putaway: {
+      putawayTaskId: 7821,
+      putawayTaskNo: 'SAMPLE-PT-0001',
+      statusCode: 'COMPLETED',
+      locationCode: 'SAMPLE-A-01',
+      locationName: '합성 위치 가',
+      completedAt: '2026-10-19T13:00:00+09:00',
+    },
+  }),
+  lotProgress({
+    purchaseOrderLineId: 7302,
+    lotId: 7705,
+    lotNo: 'SAMPLE|LOT|0005',
+    inboundReceiptLineId: 7605,
+    receiptDatetime: '2026-10-20T14:00:00+09:00',
+    receivedQty: 20,
+    receivableQty: 20,
+    lotStatusCode: 'INSPECTION_PENDING',
+    stageCode: 'INSPECTION_HELD',
+    nextActionCode: null,
+    blockedReasons: [{ code: 'SAMPLE-HOLD', name: '합성 보류 사유' }],
+    inspection: {
+      inspectionRequestId: 7805,
+      inspectionRequestNo: 'SAMPLE-IQ-0005',
+      statusCode: 'IN_PROGRESS',
+      requestedAt: '2026-10-20T14:00:00+09:00',
+      judgmentCode: 'HELD',
+      judgedAt: '2026-10-21T09:00:00+09:00',
+    },
+  }),
+];
+
+/** 탭 줄 칩의 묶음 수 — 검사 대기 4 · 보류 2 · 입고 대기 5 · 적치 대기 3. */
+export const stageCountsFixture: InboundStageCounts = {
+  INSPECTION: 4,
+  HELD: 2,
+  RECEIPT: 5,
+  PUTAWAY: 3,
+};
