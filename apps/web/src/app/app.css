@@ -14418,9 +14418,6 @@ button.app-button-neutral {
   grid-auto-rows: max-content;
   align-content: start;
   gap: var(--space-3);
-  max-height: 18rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .iqc-inspection-judgment-detail:empty {
@@ -14443,13 +14440,12 @@ button.app-button-neutral {
     grid-column: 1 / -1;
   }
 
-  .iqc-inspection-judgment-section > .iqc-inspection-judgment-field {
+  .iqc-inspection-judgment-section > .iqc-inspection-judgment-main {
     grid-column: 1;
   }
 
   .iqc-inspection-judgment-section > .iqc-inspection-judgment-detail {
     grid-column: 2;
-    max-height: 18rem;
   }
 }
 
@@ -14558,17 +14554,39 @@ button.app-button-neutral {
   font-weight: 400;
 }
 
-/* 4M 변경 정보(#133) — 판정 아래 따로 선 구획. 체크 · 안내를 한 줄에, 체크하면 비고 칸(최대 40rem). */
+/* 4M 변경 정보(#133) — 체크(굵게) · 그 아래 안내 · 체크하면 비고 칸(전체 폭)과 도움말. */
 .iqc-inspection-four-m-block .iqc-inspection-four-m {
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  column-gap: var(--space-3);
   margin-top: 0;
 }
 
-.iqc-inspection-four-m-block .iqc-inspection-four-m > .field-cell {
-  grid-column: 1 / -1;
-  max-width: 40rem;
+.iqc-inspection-four-m-label {
+  font-weight: 600;
+}
+
+/* 판정 변경 사유 · 최종 판정을 한 묶음으로 — 왼쪽 칸에 위아래로. */
+.iqc-inspection-judgment-main {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/*
+ * 빨간 안내 글 왼쪽에 오류 아이콘(#133) — 이 화면이 직접 그리는 `.field-error` 와 수량 초과 안내.
+ * DS 입력칸의 오류는 `ErrorText`(field-label.tsx)가 같은 아이콘을 넣는다.
+ */
+.iqc-inspection-detail .field-error,
+.iqc-inspection-progress[data-state='over'] > .field-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.iqc-inspection-detail .field-error::before,
+.iqc-inspection-progress[data-state='over'] > .field-note::before {
+  content: 'error';
+  font-family: 'Material Symbols Rounded';
+  font-size: 16px;
+  line-height: 1;
 }
 
 /* 「← 목록」 바로 아래 첫 구획은 위 구분선 없이 붙는다. */

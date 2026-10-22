@@ -682,14 +682,6 @@ export const IqcInspectionScreen = () => {
           confirmError={confirm.error}
           judgmentDetail={
             <>
-              {acceptanceNumber !== null && isOpenRound && (
-                <JudgmentChange
-                  needsReason={needsChangeReason}
-                  reason={changeReason}
-                  onReasonChange={setChangeReason}
-                  disabled={confirm.isSaving}
-                />
-              )}
               {isRejected && (
                 <RejectionReason
                   codes={defectCodes.data ?? []}
@@ -700,6 +692,16 @@ export const IqcInspectionScreen = () => {
                 />
               )}
             </>
+          }
+          judgmentBelow={
+            acceptanceNumber !== null && isOpenRound ? (
+              <JudgmentChange
+                needsReason={needsChangeReason}
+                reason={changeReason}
+                onReasonChange={setChangeReason}
+                disabled={confirm.isSaving}
+              />
+            ) : null
           }
           judgmentHint={
             acceptanceNumber !== null && isOpenRound

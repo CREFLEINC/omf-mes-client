@@ -104,6 +104,8 @@ export interface ResultFormPaneProps {
   saveBlockedReason?: string | null;
   /** 종합 판정 바로 아래 칸 — 불합격 사유(omf-all-around#106). 화면이 판정에 따라 채운다. */
   judgmentDetail?: ReactNode;
+  /** 최종 판정 칸 바로 아래 — 판정 변경 사유(#133). 없으면 두지 않는다 */
+  judgmentBelow?: ReactNode;
   /** 최종 판정 라벨 옆 보조 글 — 자동 판정 기준(#133). 없으면 두지 않는다 */
   judgmentHint?: string;
   /** 4M 변경 정보 — 판정과 다른 업무라 판정 아래 소제목을 두고 따로 선다(#133). 없으면 구획을 두지 않는다 */
@@ -151,6 +153,7 @@ export const ResultFormPane = ({
   judgmentDetail = null,
   fourMSlot = null,
   judgmentHint,
+  judgmentBelow = null,
   confirmOnlyBlockedReason = null,
   reinspectReplacement = null,
 }: ResultFormPaneProps) => {
@@ -356,29 +359,35 @@ export const ResultFormPane = ({
            * 빌 수 있는데, 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
            */}
           {/* 고른 판정을 테두리 색으로 바로 알아보게 한다(합격·불합격·보류 — app.css `[data-judgment]`). */}
-          <div
-            className="field-cell iqc-inspection-judgment-field"
-            data-judgment={judgment === '' ? undefined : judgment}
-          >
-            <FieldLabel htmlFor={judgmentId} label={t.judgment} required hint={judgmentHint} />
-            <Select
-              id={judgmentId}
-              options={judgmentOptions}
-              value={judgment}
-              placeholder={t.judgmentPlaceholder}
-              disabled={isConfirmed || judgmentOptions.length === 0}
-              onChange={onJudgmentChange}
-            />
-            {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
-            {/*
-             * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
-             * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
-             */}
-            {!isKnownCode(judgmentOptions, judgment) && (
-              <p className="field-note">{t.judgmentUnknown(judgment)}</p>
-            )}
+          <div className="iqc-inspection-judgment-main">
+            <div
+              className="field-cell iqc-inspection-judgment-field"
+              data-judgment={judgment === '' ? undefined : judgment}
+            >
+              <FieldLabel htmlFor={judgmentId} label={t.judgment} required hint={judgmentHint} />
+              <Select
+                id={judgmentId}
+                options={judgmentOptions}
+                value={judgment}
+                placeholder={t.judgmentPlaceholder}
+                disabled={isConfirmed || judgmentOptions.length === 0}
+                onChange={onJudgmentChange}
+              />
+              {judgmentOptions.length === 0 && (
+                <p className="field-note">{t.judgmentUnavailable}</p>
+              )}
+              {/*
+               * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
+               * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
+               */}
+              {!isKnownCode(judgmentOptions, judgment) && (
+                <p className="field-note">{t.judgmentUnknown(judgment)}</p>
+              )}
+            </div>
+            {/* 판정 변경 사유는 최종 판정 바로 아래 — 무엇을 왜 바꿨는지 한 자리에서 읽힌다(#133). */}
+            {judgmentBelow}
           </div>
-          {/* 판정에 따라 열리는 칸(자동 판정 근거 · 변경 사유 · 4M · 불합격 사유) — 넘치면 여기만 구른다(#133). */}
+          {/* 판정에 따라 열리는 칸(불합격 사유) — 구르지 않고 제 높이대로 선다(#133). */}
           <div className="iqc-inspection-judgment-detail">{judgmentDetail}</div>
 
           <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />

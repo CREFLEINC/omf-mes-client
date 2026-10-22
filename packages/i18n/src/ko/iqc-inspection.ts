@@ -255,9 +255,10 @@ export const iqcInspection = {
     fourMChange: {
       sectionTitle: '4M 변경 정보',
       label: '4M 변경품',
-      hint: '사람·설비·자재·방법이 바뀌어 들어온 자재',
+      hint: '사람·설비·자재·방법 중 변경 사항이 있는 경우 선택',
       remarks: '비고',
-      remarksPlaceholder: '무엇이 바뀌었는지 입력',
+      remarksPlaceholder: '예: 원자재 공급처 변경 (10/22부터)',
+      remarksHelp: '변경된 사항을 입력해 주세요.',
       remarksMissing: '비고를 입력하세요.',
       blocked: '4M 변경품은 비고를 입력해야 저장할 수 있습니다.',
     },

@@ -146,9 +146,10 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     fourMChange: {
       sectionTitle: 'Thông tin thay đổi 4M',
       label: 'Hàng thay đổi 4M',
-      hint: 'Vật tư có thay đổi con người, thiết bị, vật liệu hoặc phương pháp',
+      hint: 'Chọn khi có thay đổi về con người, thiết bị, vật liệu hoặc phương pháp',
       remarks: 'Ghi chú',
-      remarksPlaceholder: 'Nhập nội dung thay đổi',
+      remarksPlaceholder: 'VD: Đổi nhà cung cấp nguyên liệu (từ 10/22)',
+      remarksHelp: 'Hãy nhập nội dung đã thay đổi.',
       remarksMissing: 'Hãy nhập ghi chú.',
       blocked: 'Hàng thay đổi 4M phải nhập ghi chú mới lưu được.',
     },
