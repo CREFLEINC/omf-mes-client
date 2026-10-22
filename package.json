@@ -19,6 +19,7 @@
     "mock": "node tools/mock/seeded.mjs",
     "mock:smoke": "node tools/mock/smoke.mjs",
     "gen:api": "node tools/gen-api.mjs",
+    "ui:check": "node tools/ui-check/check-screen-rules.mjs",
     "dep:check": "depcruise apps packages --config .dependency-cruiser.cjs",
     "mock:contract": "node tools/mock/serve.mjs",
     "mock:seed-smoke": "node tools/mock/seed-smoke.mjs"
