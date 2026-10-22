@@ -18,12 +18,12 @@ import type {
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
-import { useApiClient } from '../../patterns/api-context';
-import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { SaveErrorBanner } from '../../patterns/master';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { PageNav } from '../oqc-inspection/page-nav';
 import { toPageView } from '../oqc-inspection/pagination';
-import { LEVEL_CODES, LevelDialog, type LevelDialogValues } from './level-dialog';
+import { LEVEL_CODES, LevelDialog } from './level-dialog';
+import { useLevelWrite } from './level-write';
 import {
   inspectionLevelKeys,
   type LevelListFilter,
@@ -45,21 +45,11 @@ export const historyReason = (row: ItemInspectionLevelHistory): string => {
   return row.reason ?? '—';
 };
 
-interface WriteVariables {
-  row: ItemInspectionLevel | null;
-  values: LevelDialogValues;
-}
-
-interface ToggleVariables {
-  row: ItemInspectionLevel;
-}
-
 /**
- * 검사 수준 관리(관리웹 · 품질 관리). 품목별 IQC 검사 수준을 지정·수동 변경하고, 자동 전환을 켜고 끄며,
- * 전환 이력을 본다. 자동 전환은 IQC 판정 확정 때 서버가 한다 — 이 화면은 결과를 보여 줄 뿐이다.
+ * 검사 수준 관리(관리웹 · 품질 관리). 품목별 IQC 검사 수준을 지정·수동 변경하고 전환 이력을 본다.
+ * 자동 전환은 없다 — 사용자가 정한 수준만 쓴다(omf-all-around#133). 이력의 「자동」 줄은 그 전 기록이다.
  */
 export const InspectionLevelScreen = () => {
-  const { client } = useApiClient();
   const toast = useToast();
   const keywordId = useId();
   const levelFilterId = useId();
@@ -76,60 +66,13 @@ export const InspectionLevelScreen = () => {
   const rows = list.data?.items ?? [];
   const historyRows = histories.data?.items ?? [];
 
-  const formWrite = useMasterWrite<WriteVariables, ItemInspectionLevel>({
-    request: ({ row, values }, headers) =>
-      row === null
-        ? client.POST('/quality/item-inspection-levels', {
-            params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-            body: {
-              itemId: values.itemId,
-              inspectionLevelCode: values.level,
-              autoSwitchEnabled: values.autoSwitchEnabled,
-              reason: values.reason === '' ? undefined : values.reason,
-            },
-          })
-        : client.PUT('/quality/item-inspection-levels/{itemInspectionLevelId}', {
-            params: {
-              path: { itemInspectionLevelId: row.itemInspectionLevelId },
-              /* 목록이 줄마다 `versionNo`를 준다 — 창을 연 시점의 판으로 잠근다. */
-              header: {
-                'Idempotency-Key': headers['Idempotency-Key'],
-                'If-Match': String(row.versionNo),
-              },
-            },
-            body: { inspectionLevelCode: values.level, reason: values.reason },
-          }),
-    etagPath: null,
-    invalidateKeys: [inspectionLevelKeys.all],
-    knownFields: ['itemId', 'inspectionLevelCode', 'reason'],
-    restateFieldError: (item) =>
-      item.code === 'UNIQUE_VIOLATION' ? t.dialog.duplicate : undefined,
-    onSuccess: () => {
-      setEditing(null);
-      toast.show({ variant: 'success', description: messages.common.saved });
-    },
+  const formWrite = useLevelWrite(() => {
+    setEditing(null);
+    toast.show({ variant: 'success', description: messages.common.saved });
   });
 
-  const toggleWrite = useMasterWrite<ToggleVariables, ItemInspectionLevel>({
-    request: ({ row }, headers) =>
-      client.PUT('/quality/item-inspection-levels/{itemInspectionLevelId}', {
-        params: {
-          path: { itemInspectionLevelId: row.itemInspectionLevelId },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': String(row.versionNo),
-          },
-        },
-        body: { autoSwitchEnabled: !row.autoSwitchEnabled },
-      }),
-    etagPath: null,
-    invalidateKeys: [inspectionLevelKeys.all],
-    knownFields: [],
-    onSuccess: () => toast.show({ variant: 'success', description: messages.common.saved }),
-  });
-
-  /* 줄 작업이 나가 있거나 목록을 다시 받는 동안에는 줄의 `versionNo`가 곧 낡는다. */
-  const rowLocked = toggleWrite.isSaving || list.isFetching;
+  /* 목록을 다시 받는 동안에는 줄의 `versionNo`가 곧 낡는다. */
+  const rowLocked = list.isFetching;
 
   const openDialog = (row: ItemInspectionLevel | null) => {
     formWrite.reset();
@@ -146,19 +89,6 @@ export const InspectionLevelScreen = () => {
       render: (row) => levelName(row.inspectionLevelCode),
     },
     {
-      key: 'autoSwitch',
-      header: t.columns.autoSwitch,
-      width: '96px',
-      render: (row) => (row.autoSwitchEnabled ? t.values.autoOn : t.values.autoOff),
-    },
-    {
-      key: 'streak',
-      header: t.columns.streak,
-      width: '96px',
-      align: 'end',
-      render: (row) => t.values.streak(row.consecutiveAcceptCount),
-    },
-    {
       key: 'updatedAt',
       header: t.columns.updatedAt,
       width: '150px',
@@ -167,7 +97,7 @@ export const InspectionLevelScreen = () => {
     {
       key: 'actions',
       header: t.columns.actions,
-      width: '260px',
+      width: '180px',
       render: (row) => (
         <>
           <Button
@@ -178,15 +108,6 @@ export const InspectionLevelScreen = () => {
             onClick={() => openDialog(row)}
           >
             {t.actions.changeLevel}
-          </Button>
-          <Button
-            size="sm"
-            variant="text"
-            disabled={rowLocked}
-            aria-label={t.actions.turnAutoRow(row.itemCode, !row.autoSwitchEnabled)}
-            onClick={() => toggleWrite.write({ row })}
-          >
-            {row.autoSwitchEnabled ? t.actions.turnAutoOff : t.actions.turnAutoOn}
           </Button>
           <Button
             size="sm"
@@ -254,13 +175,6 @@ export const InspectionLevelScreen = () => {
 
       <section className="pane" aria-label={t.list.heading}>
         <h2 className="pane-title">{t.list.heading}</h2>
-        <SaveErrorBanner
-          error={toggleWrite.error}
-          onReload={() => {
-            toggleWrite.reset();
-            void list.refetch();
-          }}
-        />
         {list.isError && (
           <AlertBanner variant="error">
             {t.list.loadFailed}{' '}

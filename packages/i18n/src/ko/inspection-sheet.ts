@@ -74,7 +74,7 @@ export const inspectionSheet = {
     rohs: (on: boolean): string => (on ? 'RoHS 대응 표시 있음' : 'RoHS 대응 표시 없음'),
     fourM: '변경품(투입 이력 기준)',
     fourMNote:
-      '이 시리얼의 작업지시에 투입된 4M 변경품 자재입니다. 시리얼별 투입 기록이 없어 작업지시 단위입니다.',
+      '이 시리얼을 만들 때 쓰던 4M 변경품 자재입니다(투입 시각 기준 추정). 계보 기록 이전 작업지시는 작업지시 단위입니다.',
     fourMNone: '투입된 변경품이 없습니다.',
     steps: '단계별 판정',
     stepsCaption: '단계별 판정과 서명',

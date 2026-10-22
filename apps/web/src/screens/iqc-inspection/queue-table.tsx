@@ -43,12 +43,54 @@ const columnsOf = (
   lotNumbers: NameLookup,
 ): Column<InspectionQueueRow>[] => [
   {
+    /* 첫 칸은 자재 LOT — 검사자가 손에 든 LOT 으로 줄을 찾는다(#133 · 담당자 지시). */
+    key: 'lotId',
+    header: t.columns.lotId,
+    width: '35%',
+    /*
+     * 열 폭은 품목 40 · LOT 35 · 상태 10 · 일시 15(%)로 고정한다(#133) — 값 길이로 폭이 흔들리지 않는다.
+     * LOT 번호는 한 줄이고, 모자라면 앞 마디만 말줄임이다(`iqc-inspection-lot`).
+     *
+     * 없는 것이 정상이다(작업지시 대상 검사 등) — 빈 칸으로 두면 못 불러온 것과 구분되지 않아
+     * 풀이가 네 갈래를 서로 다른 글자로 낸다.
+     */
+    render: (row) => {
+      const lotNo = lotNumbers.labelOf(row.lotId);
+      /* 줄을 바꾸지 않고 말줄임 — 전체 번호는 마우스를 올리면 보인다. */
+      /*
+       * 끝 마디(일련번호)는 늘 보이게 앞쪽만 줄인다 — 같은 품목·같은 날 LOT 은 끝 마디만 달라, 끝이 잘리면
+       * 줄끼리 구분이 안 된다(omf-all-around#133). 구분자가 없으면 통째로 말줄임이다.
+       * 4M 변경품이면 번호 오른쪽에 작게 붙인다 — 번호가 줄어도 표시는 남는다(omf-all-around#63).
+       */
+      const cut = lotNo.lastIndexOf('|') + 1;
+      return (
+        <span className="iqc-inspection-lot-cell">
+          <span className="iqc-inspection-lot" title={lotNo}>
+            {cut > 0 && cut < lotNo.length ? (
+              <>
+                <span className="iqc-inspection-lot-head">{lotNo.slice(0, cut)}</span>
+                <span className="iqc-inspection-lot-tail">{lotNo.slice(cut)}</span>
+              </>
+            ) : (
+              lotNo
+            )}
+          </span>
+          {row.isFourMChange && (
+            <Chip variant="status" size="sm" status="warning" title={t.fourMBadgeTitle}>
+              {t.fourMBadge}
+            </Chip>
+          )}
+        </span>
+      );
+    },
+  },
+  {
     key: 'item',
     header: t.columns.item,
-    /* 「이름 / 코드」 두 줄이 서는 폭. 종전 의뢰번호 칸과 같아 표의 폭 예산이 그대로다. */
-    width: '160px',
+    /* 「이름 / 코드」. 긴 이름은 두 줄까지 보이고 넘으면 말줄임, 전체 값은 마우스를 올리면 보인다(#133). */
+    width: '40%',
     /*
-     * **첫 칸이 곧 「이 줄을 연다」다** — 저장소의 목록 창들과 같은 관용구다. 종전에는 그 자리가
+     * **이 칸이 곧 「이 줄을 연다」다**(둘째 칸 · #133) — 저장소의 목록 창들과 같은 관용구다. 종전에는 그 자리가
      * 의뢰번호였는데, 고르는 데 필요한 값이 아니고 고른 뒤 우측 창이 먼저 보여 주므로
      * **검사자가 실제로 찾는 값**(무엇을 검사하는가)에 자리를 내줬다(사용자 지시 2026-09-21).
      *
@@ -64,6 +106,7 @@ const columnsOf = (
           type="button"
           className="link-cell iqc-inspection-queue-item"
           aria-current={row.inspectionRequestId === selectedId ? 'true' : undefined}
+          title={parts === null ? label : `${parts.name} · ${parts.code}`}
           aria-label={t.openRow(
             parts === null ? label : `${parts.name} ${parts.code}`,
             row.inspectionRequestNo,
@@ -83,32 +126,9 @@ const columnsOf = (
     },
   },
   {
-    key: 'lotId',
-    header: t.columns.lotId,
-    /*
-     * **폭을 지정하지 않는 흡수 열이 여기 하나다.** LOT 번호는 길이가 들쭉날쭉하고
-     * (`040101-00076|3925|260920|105900|0001`) 이 표에서 유일하게 길이가 정해지지 않은 값이라,
-     * 남는 폭을 이 칸이 받는다. 그래도 좁으면 칸 안에서 줄을 바꾼다(`iqc-inspection-lot`).
-     *
-     * 없는 것이 정상이다(작업지시 대상 검사 등) — 빈 칸으로 두면 못 불러온 것과 구분되지 않아
-     * 풀이가 네 갈래를 서로 다른 글자로 낸다.
-     */
-    /* 4M 변경품이면 번호 오른쪽에 작게 붙인다 — 번호가 줄을 바꿔도 표시는 남는다(omf-all-around#63). */
-    render: (row) => (
-      <span className="iqc-inspection-lot-cell">
-        <span className="iqc-inspection-lot">{lotNumbers.labelOf(row.lotId)}</span>
-        {row.isFourMChange && (
-          <Chip variant="status" size="sm" status="warning" title={t.fourMBadgeTitle}>
-            {t.fourMBadge}
-          </Chip>
-        )}
-      </span>
-    ),
-  },
-  {
     key: 'statusCode',
     header: t.columns.statusCode,
-    width: '72px',
+    width: '10%',
     render: (row) => {
       const badge = toStatusBadge(row.statusCode);
 
@@ -122,8 +142,7 @@ const columnsOf = (
   {
     key: 'requestedAt',
     header: t.columns.requestedAt,
-    /* 날짜·시각이 한 줄로 보이는 최소 폭(글자 118.6px + 좌우 여백 24px). 표가 더 넓으면 남는 폭은 네 열이 폭 비율대로 나눈다. */
-    width: '144px',
+    width: '15%',
     sortable: true,
     /* 정렬은 원문(RFC3339)으로 한다 — 표기용 문자열로 정렬하면 형식이 아닌 값이 섞일 때 어긋난다. */
     sortAccessor: (row) => row.requestedAt,
@@ -142,13 +161,29 @@ export const QueueTable = ({
   onSelect,
   empty,
 }: QueueTableProps) => (
-  <Table
-    /* 제목은 화면에서 감추고 표의 접근 이름으로만 남긴다. */
-    caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
-    density="compact"
-    columns={columnsOf(selectedId, onSelect, itemNames, lotNumbers)}
-    rows={rows}
-    getRowId={(row) => String(row.inspectionRequestId)}
-    empty={empty}
-  />
+  /*
+   * 줄 아무 곳이나 눌러도 고른다(omf-all-around#133) — DS 표에 줄 클릭이 없어 눌린 줄의 품목 단추로 넘긴다.
+   * 키보드·화면 낭독기는 종전처럼 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
+   */
+  <div
+    className="iqc-inspection-queue-rows"
+    onClick={(event) => {
+      const target = event.target as Element;
+      if (target.closest('button, a, input, select, textarea') !== null) return;
+      target
+        .closest('tbody tr')
+        ?.querySelector<HTMLButtonElement>('.iqc-inspection-queue-item')
+        ?.click();
+    }}
+  >
+    <Table
+      /* 제목은 화면에서 감추고 표의 접근 이름으로만 남긴다. */
+      caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
+      density="compact"
+      columns={columnsOf(selectedId, onSelect, itemNames, lotNumbers)}
+      rows={rows}
+      getRowId={(row) => String(row.inspectionRequestId)}
+      empty={empty}
+    />
+  </div>
 );

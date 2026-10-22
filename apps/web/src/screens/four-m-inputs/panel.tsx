@@ -36,18 +36,15 @@ export const useFourMChangeTypeLabel = (): ((code: string) => string) => {
 
 export interface FourMInputsPanelProps {
   workOrderId: number;
-  /** 생산 LOT 에서 부르면 참 — 자재와 생산 LOT 을 1:1 로 잇는 기록이 없어 W/O 단위 추정임을 밝힌다. */
-  estimate?: boolean;
 }
 
 /**
  * 4M 변경 자재 투입(omf-all-around#63 2단계 · 서버 선행 P-86) — 한 작업지시에 투입된 자재 중 IQC 에서
- * 4M 변경품으로 적힌 LOT 을 보인다. 작업지시 진행 상세와 LOT 상태 상세(생산 LOT)가 함께 쓴다.
+ * 4M 변경품으로 적힌 LOT 을 보인다. 작업지시 진행 상세가 쓴다 — 생산 LOT 은 계보 기준 「투입 자재」를 본다(#166).
  *
  * ⛔ 읽기 전용이다. 투입을 막거나 상태를 바꾸지 않는다.
- * ⚠ 생산 LOT 과의 연결은 W/O 단위 추정이다 — 자재 LOT → 생산 LOT 기록은 1차 범위 밖(설계 문의 052).
  */
-export const FourMInputsPanel = ({ workOrderId, estimate = false }: FourMInputsPanelProps) => {
+export const FourMInputsPanel = ({ workOrderId }: FourMInputsPanelProps) => {
   const { client } = useApiClient();
   const inputs = useQuery({
     queryKey: fourMInputsKeys.ofWorkOrder(workOrderId),
@@ -77,7 +74,6 @@ export const FourMInputsPanel = ({ workOrderId, estimate = false }: FourMInputsP
   return (
     <section aria-label={t.heading} className="four-m-inputs">
       <h3>{t.heading}</h3>
-      {estimate && <p className="field-note">{t.estimate}</p>}
       {inputs.isPending ? (
         <p className="field-note">{t.loading}</p>
       ) : inputs.isError ? (

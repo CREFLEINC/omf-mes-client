@@ -44,6 +44,24 @@ export const detailLines = (
   return parts;
 };
 
+/**
+ * 검사 이력 조회 — 구획과, 구획을 접는 줄의 건수(IQC · #133)가 같은 열쇠로 한 번만 부른다.
+ * 의뢰가 없으면 부르지 않는다.
+ */
+export const useInspectionHistory = (inspectionRequestId: number | null, revision = '') => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: [...inspectionHistoryKeys.one(inspectionRequestId ?? 0), revision],
+    enabled: inspectionRequestId !== null,
+    queryFn: (): Promise<InspectionHistory> =>
+      runRequest(() =>
+        client.GET('/quality/inspection-requests/{inspectionRequestId}/history', {
+          params: { path: { inspectionRequestId: inspectionRequestId ?? 0 } },
+        }),
+      ),
+  });
+};
+
 export interface InspectionHistoryPanelProps {
   inspectionRequestId: number;
   /**
@@ -53,6 +71,8 @@ export interface InspectionHistoryPanelProps {
   revision?: string;
   /** 종합 판정 코드 → 화면 이름. 부르는 화면이 이미 가진 선택지로 준다. */
   judgmentLabelOf?: (code: string) => string;
+  /** 대상 LOT 을 감춘다 — 위에 같은 LOT 이 이미 보이는 자리(IQC 상세 · #133). */
+  hideSourceLot?: boolean;
 }
 
 /**
@@ -65,18 +85,10 @@ export const InspectionHistoryPanel = ({
   inspectionRequestId,
   revision = '',
   judgmentLabelOf,
+  hideSourceLot = false,
 }: InspectionHistoryPanelProps) => {
   const detailOf = (event: InspectionHistoryEvent): string[] => detailLines(event, judgmentLabelOf);
-  const { client } = useApiClient();
-  const history = useQuery({
-    queryKey: [...inspectionHistoryKeys.one(inspectionRequestId), revision],
-    queryFn: (): Promise<InspectionHistory> =>
-      runRequest(() =>
-        client.GET('/quality/inspection-requests/{inspectionRequestId}/history', {
-          params: { path: { inspectionRequestId } },
-        }),
-      ),
-  });
+  const history = useInspectionHistory(inspectionRequestId, revision);
 
   return (
     <section aria-label={t.heading} className="inspection-history">
@@ -92,19 +104,24 @@ export const InspectionHistoryPanel = ({
               <dt className="field-label">{t.source}</dt>
               <dd>{history.data.source.documentNo ?? t.empty}</dd>
             </div>
-            <div className="field-cell">
-              <dt className="field-label">{t.sourceLot}</dt>
-              <dd>{history.data.source.lotNo ?? t.empty}</dd>
-            </div>
+            {!hideSourceLot && (
+              <div className="field-cell">
+                <dt className="field-label">{t.sourceLot}</dt>
+                <dd>{history.data.source.lotNo ?? t.empty}</dd>
+              </div>
+            )}
           </dl>
           <ol className="inspection-history-events">
             {history.data.events.map((event, index) => (
-              <li key={`${event.eventTypeCode}-${event.occurredAt}-${String(index)}`}>
-                <span className="field-label">
-                  {formatAt(event.occurredAt)} · {t.events[event.eventTypeCode]}
-                </span>
+              <li
+                key={`${event.eventTypeCode}-${event.occurredAt}-${String(index)}`}
+                data-event={event.eventTypeCode}
+              >
+                {/* 일시 · 작업 · 처리 결과를 각각 한 칸에 — 줄끼리 세로로 맞춰 읽힌다(app.css). */}
+                <span className="inspection-history-at">{formatAt(event.occurredAt)}</span>
+                <span className="field-label">{t.events[event.eventTypeCode]}</span>
                 {detailOf(event).length > 0 && (
-                  <span className="field-note"> {detailOf(event).join(' · ')}</span>
+                  <span className="field-note">{detailOf(event).join(' · ')}</span>
                 )}
               </li>
             ))}

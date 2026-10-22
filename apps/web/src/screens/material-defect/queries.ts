@@ -36,8 +36,8 @@ export const useDefectCodes = (enabled = true): UseQueryResult<DefectCode[]> => 
 };
 
 /**
- * 자재 LOT 이 들어간 생산 LOT. ⚠ **작업지시 기준 추정이다**(`basis`) — 투입이 LOT 계보를 만들지 않아
- * 그 자재가 투입된 작업지시의 생산 LOT 전부가 온다. 화면은 그 사실을 밝힌다.
+ * 자재 LOT 이 들어간 생산 LOT. ⚠ **추정이다**(`basis`) — 투입 시각 기준 계보(#166)거나, 계보 이전 작업지시면
+ * 그 작업지시의 생산 LOT 전부다. 화면은 어느 쪽인지 밝힌다.
  */
 export const useAffectedProductionLots = (
   lotId: number | null,
