@@ -356,6 +356,8 @@ export const iqcInspection = {
     },
     /** 필수 항목 표시. 라벨 문자열에 붙이지 않고 따로 낸다 — 접근 이름이 흐려지지 않게. */
     requiredMark: '필수',
+    /** 측정치 판정(`INSPECTION_MEASUREMENT_JUDGMENT`)의 화면 이름(#133) — 모르는 코드는 코드 그대로 보인다. */
+    judgmentNames: { ACCEPTED: '합격', REJECTED: '불합격' } as Record<string, string>,
     /** 「3 중 1」 — 이 항목이 요구하는 샘플 수 안에서 몇 번째인가. */
     sampleOf: (sampleNo: number, count: number): string => `${count} 중 ${sampleNo}`,
     /**

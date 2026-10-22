@@ -133,7 +133,10 @@ const columns: Column<MeasurementRow>[] = [
     key: 'judgment',
     header: t.columns.judgment,
     width: '96px',
-    render: (row) => row.measured?.judgmentCode ?? t.notMeasured,
+    render: (row) =>
+      row.measured === null
+        ? t.notMeasured
+        : (t.judgmentNames[row.measured.judgmentCode] ?? row.measured.judgmentCode),
   },
 ];
 

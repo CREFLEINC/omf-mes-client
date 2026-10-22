@@ -207,6 +207,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       judgment: 'Đánh giá',
     },
     requiredMark: 'Bắt buộc',
+    judgmentNames: { ACCEPTED: 'Đạt', REJECTED: 'Không đạt' } as Record<string, string>,
     sampleOf: (sampleNo: number, count: number): string => `${sampleNo} trên ${count}`,
     range: (lower: number, upper: number): string => `${lower} ~ ${upper}`,
     atLeast: (lower: number): string => `${lower} trở lên`,
