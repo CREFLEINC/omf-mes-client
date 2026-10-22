@@ -8,11 +8,13 @@ import {
   IconButton,
   TextField,
 } from '@crefle/web-ui';
+import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
+import { masterName } from '../../patterns/master-name';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopSelect as Select } from '../../patterns/pop-select';
@@ -28,6 +30,8 @@ import {
 } from './defect-draft';
 import { DefectPicker } from './defect-picker';
 import { useResultEntry } from './entry-context';
+import { UnderReasonDialog } from './under-reason-dialog';
+import { WorkOrderCloseAction } from './wo-close-action';
 import { useFlowGates } from './flow-gating';
 import { useDocumentIssue, useLotComplete, useSerialIssue } from './flow-mutations';
 import { useLabelPrintRunner, type PrintTarget } from './flow-print';
@@ -40,16 +44,17 @@ import {
 } from './session';
 import { buildProductionLotLabel } from './label-tspl';
 import {
+  CurrentLotUnreliableError,
   defaultPrinter,
   latestIssue,
   useCompletedLots,
-  CurrentLotAmbiguousError,
   useCurrentLot,
   useLotDetail,
   useItem,
   useLotIssues,
   usePrinters,
   useReissueReasons,
+  useVarianceReasons,
   useSerials,
   useTagIssueSummary,
 } from './flow-queries';
@@ -246,6 +251,8 @@ export const ProductionFlowScreen = () => {
   const [outputPhase, setOutputPhase] = useState<OutputPhase>('idle');
   const [scanValue, setScanValue] = useState('');
   const [scanMismatch, setScanMismatch] = useState(false);
+  /** 미달 LOT 의 라벨을 맞게 읽었다 — 사유를 고르면 마감한다 */
+  const [isUnderReasonOpen, setUnderReasonOpen] = useState(false);
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
   const [completedPage, setCompletedPage] = useState(1);
   const [appliedLotId, setAppliedLotId] = useState<number | null>(null);
@@ -302,6 +309,7 @@ export const ProductionFlowScreen = () => {
   const serials = useSerials(currentLot.data?.lotId ?? null, isTagTarget === true);
   const tagIssueSummary = useTagIssueSummary(serials.data?.items ?? [], isTagTarget === true);
   const reissueReasons = useReissueReasons(isTagReissueOpen);
+  const varianceReasons = useVarianceReasons(isUnderReasonOpen);
   const lotIssues = useLotIssues(currentLot.data?.lotId ?? null);
   /*
    * ⭐ **마감이 실을 낙관적 잠금 값을 받아 두는 조회다**(#1005 · 공유계약 B-1). `ETag` 헤더가
@@ -335,14 +343,25 @@ export const ProductionFlowScreen = () => {
   const remaining = reportedRemaining === null ? null : Math.max(0, reportedRemaining);
   /** 지금 입력이 잔여를 넘는가. 잔여를 모르면 넘는지도 모른다 — 그때는 묻지 않는다. */
   const isOverrun = exceedsRemaining(actualQty, remaining);
+  /* 달성은 화면이 세지 않는다 — 서버가 W/O 축으로 낸 완료 판정이 정상·초과면 지시 수량에 이르렀다. */
+  const completionJudgment = workOrder.data?.progress?.completionJudgmentCode;
+  const isPlanAchieved = completionJudgment === 'NORMAL' || completionJudgment === 'OVER';
+  /* 초과면 얼마나 넘었는지 — 서버의 차이(지시 − 양품)가 음수인 만큼이다. */
+  const overVariance = workOrder.data?.progress?.varianceQty;
+  const overAchievedQty =
+    completionJudgment === 'OVER' && overVariance !== undefined && overVariance < 0
+      ? -overVariance
+      : null;
   const tagMissing =
     parsedQty === null || serialCount === null
       ? null
       : missingIdentificationCount(parsedQty, serialCount);
-  const isCurrentLotAmbiguous = currentLot.error instanceof CurrentLotAmbiguousError;
-  const lot = currentLot.data ?? null;
+  /* 다시 읽기에 실패해도 React Query 는 앞 값을 남긴다 — 오류면 옛 LOT 으로 실적·마감을 내지 않게 비운다. */
+  const lot = currentLot.isError ? null : (currentLot.data ?? null);
   /* 진척은 상세에만 실린다(#1095) — 목록의 줄에서 찾으면 늘 「모름」이 된다. */
   const serverAppliedQty = appliedGoodQty(lotDetail.data?.lot);
+  /** 서버가 이 LOT 을 미달·정상·초과로 판정한 값 — 마감 본문의 사유 여부를 이것으로 가른다 */
+  const lotJudgment = lotDetail.data?.lot.progress?.completionJudgmentCode ?? null;
   const hasAppliedResult =
     lot !== null && (serverAppliedQty !== null || confirmedResultLotId === lot.lotId);
 
@@ -412,6 +431,9 @@ export const ProductionFlowScreen = () => {
       setOutputPhase('completed');
       setScanValue('');
       setScanMismatch(false);
+      /* 마감한 LOT 의 수량을 다음 LOT 이 서기 전까지 남기지 않는다 — 다음 LOT 이 서면 그 계획 수량이 들어온다. */
+      setActualQty('');
+      void lotDetail.refetch();
       /*
        * ⭐ **여기서 세션을 닫지 않는다.** 이 LOT 이 마지막인지는 아직 모른다 — 작업지시 하나에
        *    선발행 LOT 이 여럿 달릴 수 있어, 다시 읽어 「다음 LOT 이 없다」가 확인된 뒤에
@@ -421,6 +443,61 @@ export const ProductionFlowScreen = () => {
       void currentLot.refetch();
     },
   });
+
+  /** 마감이 거부된 까닭 — 스캔 칸 아래에 선다. 사유 칸의 거부는 사유 창이 말한다(`reasonError`). */
+  const [completeFailure, setCompleteFailure] = useState<string | null>(null);
+  const [reasonError, setReasonError] = useState<string | null>(null);
+
+  /**
+   * 마감이 거부되면 LOT 을 다시 읽고 그 상태로 무엇을 할지 가른다.
+   *
+   * ⚠ 화면이 들고 있던 판정이 낡았을 수 있다 — 미달로 보고 사유를 실었는데 서버는 이미 정상·초과면
+   *   INVALID 로 거부한다. 그때 창을 다시 열면 같은 거부가 되풀이되므로, 새 판정이 미달이 아니면
+   *   사유 없이 다시 마감한다. 서버 문구 대신 다시 읽은 상태로 알려진 거부를 가른다 — 문구는 바뀐다.
+   */
+  const handleCompleteFailure = async (error: ApiError): Promise<void> => {
+    setScanValue('');
+    setOutputPhase('scanReady');
+    const items = error.kind === 'validation' || error.kind === 'stateLocked' ? error.errors : [];
+    /* 다시 읽지 못했으면 옛 값으로 단정하지 않는다 — 「실적이 없다」로 읽으면 같은 실적을 또 올린다. */
+    const reread = await lotDetail.refetch();
+    const refreshed = reread.isError ? undefined : reread.data?.lot;
+    const judgment = refreshed?.progress?.completionJudgmentCode ?? null;
+    const reasonItem = items.find((item) => item.field === 'completionVarianceReasonCode');
+
+    if (reasonItem !== undefined) {
+      if (reasonItem.code !== 'REQUIRED' && judgment !== null && judgment !== 'UNDER') {
+        setOutputPhase('completing');
+        complete.write(buildLotComplete(new Date()));
+        return;
+      }
+      setReasonError(reasonItem.message);
+      setUnderReasonOpen(true);
+      return;
+    }
+    if (refreshed?.completedAt != null) {
+      setCompleteFailure(t.flow.scan.alreadyCompleted);
+      void currentLot.refetch();
+      return;
+    }
+    if (refreshed !== undefined && items.some((item) => item.code === 'STATE_LOCKED')) {
+      setCompleteFailure(
+        (refreshed.progress?.goodQty ?? 0) === 0
+          ? t.flow.scan.noAllocation
+          : judgment === 'UNDER'
+            ? t.flow.scan.workOrderClosed(
+                messages.workOrderClose.menuPath,
+                messages.workOrderClose.correction.pane,
+              )
+            : (items[0]?.message ?? t.flow.scan.failed),
+      );
+      return;
+    }
+    setCompleteFailure(items[0]?.message ?? t.flow.scan.failed);
+  };
+  /* 효과는 마감 오류가 바뀔 때만 돈다 — 처리기는 매 렌더의 것을 읽는다. */
+  const handleCompleteFailureRef = useRef(handleCompleteFailure);
+  handleCompleteFailureRef.current = handleCompleteFailure;
 
   /*
    * ## 작업 세션 자동 종료
@@ -591,6 +668,8 @@ export const ProductionFlowScreen = () => {
     setAppliedLabelQty(allocatedQty === undefined ? null : { lotId, qty: allocatedQty });
     setConfirmedResultLotId(lotId);
     setOutputPhase('issuing');
+    /* 실적이 붙었으니 LOT 의 미달·정상 판정이 바뀐다 — 마감 때 낡은 판정으로 사유를 묻지 않게 다시 읽는다. */
+    void lotDetail.refetch();
     /*
      * ⛔ **쓰기가 먹은 뒤 요약을 다시 읽는다**(#1093 ④). 잔여수량은 작업지시의 진척에서 오는데
      *    이 쓰기는 큐를 통해 나가므로 그 결과가 저절로 캐시에 반영되지 않는다 — 다시 읽지
@@ -652,11 +731,8 @@ export const ProductionFlowScreen = () => {
   }, [lotIssue.error, outputPhase]);
 
   useEffect(() => {
-    if (complete.error !== null && outputPhase === 'completing') {
-      setScanValue('');
-      setOutputPhase('scanReady');
-    }
-  }, [complete.error, outputPhase]);
+    if (complete.error !== null) void handleCompleteFailureRef.current(complete.error);
+  }, [complete.error]);
 
   useEffect(() => {
     if (outbox.rejection !== null && outputPhase === 'queued') setOutputPhase('idle');
@@ -1015,8 +1091,34 @@ export const ProductionFlowScreen = () => {
     }
     if (verdict !== 'match' || gates.complete !== 'allowed' || entry.workerNo === null) return;
 
+    setCompleteFailure(null);
+    setReasonError(null);
+    /* 서버가 미달로 판정한 LOT 은 사유가 있어야 마감된다 — 보내기 전에 고르게 한다. */
+    if (lotJudgment === 'UNDER') {
+      complete.reset();
+      setUnderReasonOpen(true);
+      return;
+    }
+
     setOutputPhase('completing');
     complete.write(buildLotComplete(new Date()));
+  };
+
+  const completeUnder = (reasonCode: string): void => {
+    setUnderReasonOpen(false);
+    setReasonError(null);
+    if (lot === null || gates.complete !== 'allowed' || entry.workerNo === null) return;
+
+    setOutputPhase('completing');
+    complete.write(buildLotComplete(new Date(), reasonCode));
+  };
+
+  /* 사유를 고르지 않고 닫으면 마감하지 않고 스캔을 기다린다. */
+  const cancelUnder = (): void => {
+    setUnderReasonOpen(false);
+    setReasonError(null);
+    setScanValue('');
+    complete.reset();
   };
 
   const outputStatus = (() => {
@@ -1137,24 +1239,36 @@ export const ProductionFlowScreen = () => {
         </div>
       )}
 
-      {/*
-       * ⛔ **가릴 수 없는 것과 못 불러온 것을 갈라 말한다**(#1095). 앞엣것은 다시 시도해도
-       *    풀리지 않고 작업자가 할 일이 다르다 — 「불러오지 못했다」로 뭉뚱그리면 현장이
-       *    새로고침만 반복한다.
-       */}
-      {currentLot.isError && (
+      {currentLot.error instanceof CurrentLotUnreliableError ? (
         <div className="banner-slot">
           <AlertBanner
-            variant={isCurrentLotAmbiguous ? 'warning' : 'error'}
-            title={isCurrentLotAmbiguous ? undefined : t.flow.currentLot.loadFailed}
-          >
-            {isCurrentLotAmbiguous ? t.flow.currentLot.ambiguous : undefined}
-          </AlertBanner>
+            variant="warning"
+            title={t.flow.currentLot.unreliable(currentLot.error.lotNos.join(', '))}
+          />
         </div>
+      ) : (
+        currentLot.isError && (
+          <div className="banner-slot">
+            <AlertBanner
+              variant="error"
+              title={t.flow.currentLot.loadFailed}
+              action={
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  disabled={currentLot.isFetching}
+                  onClick={() => void currentLot.refetch()}
+                >
+                  {t.flow.retry}
+                </Button>
+              }
+            />
+          </div>
+        )
       )}
-      {currentLot.data === null && (
+      {currentLot.data === null && !currentLot.isError && (
         <div className="banner-slot">
-          <AlertBanner variant="info" title={t.flow.currentLot.none} />
+          <AlertBanner variant="info" title={t.flow.currentLot.none(t.flow.woClose.button)} />
         </div>
       )}
       {workOrderPqc.isError && (
@@ -1225,6 +1339,19 @@ export const ProductionFlowScreen = () => {
                   </dd>
                 </div>
               </dl>
+              {entry.workOrderId !== null && workOrder.data !== undefined && (
+                <WorkOrderCloseAction
+                  workOrderId={entry.workOrderId}
+                  workOrderNo={workOrder.data.workOrderNo}
+                  statusCode={workOrder.data.statusCode}
+                  workerNo={entry.workerNo}
+                  gate={gates.close}
+                  isOnline={outbox.isOnline}
+                  pendingCount={outbox.pendingCount}
+                  terminalId={identity.terminalId}
+                  uomLabel={uom.labelOf(workOrder.data.uomId) ?? ''}
+                />
+              )}
             </Card.Body>
           </Card>
 
@@ -1284,7 +1411,11 @@ export const ProductionFlowScreen = () => {
                * ⛔ 막지 않는다 — 초과 생산은 허용이다(✓확정 QA #27 · `P-02-06` §5-4).
                * ⚠ 잔여를 모르면 넘었는지도 모른다 — `isOverrun` 이 그때 `false` 라 서지 않는다.
                */}
-              {isOverrun && parsedQty !== null && remaining !== null && (
+              {/*
+               * 초과는 «새로 칠 때만» 말한다 — 저장 뒤에는 칸에 저장한 수가 다시 서고 잔여가 0 이 되어,
+               * 다 만든 작업이 초과로 읽힌다. 그때는 서버의 완료 판정으로 달성을 말한다.
+               */}
+              {isOverrun && !isQuantityLocked && parsedQty !== null && remaining !== null ? (
                 <div className="production-flow-inline-note">
                   <AlertBanner
                     variant="warning"
@@ -1298,6 +1429,21 @@ export const ProductionFlowScreen = () => {
                     }
                   />
                 </div>
+              ) : (
+                isPlanAchieved && (
+                  <div className="production-flow-inline-note">
+                    <AlertBanner
+                      variant="success"
+                      title={
+                        overAchievedQty === null
+                          ? t.overrun.achieved
+                          : t.overrun.achievedOver(
+                              `${formatQty(overAchievedQty)} ${uomLabel}`.trim(),
+                            )
+                      }
+                    />
+                  </div>
+                )
               )}
               <section className="production-flow-defects" aria-label={t.flow.defects.title}>
                 <h3>{t.flow.defects.title}</h3>
@@ -1701,9 +1847,26 @@ export const ProductionFlowScreen = () => {
                * 실패한 것이 함께 서면, 다음에 무엇을 해야 하는지가 두 문장으로 갈린다. 어긋남은
                * 칸이 이미 말하고 있으므로 마감 실패는 그때만 선다.
                */}
-              {complete.error !== null && !scanMismatch && (
-                <p className="field-error">{t.flow.scan.failed}</p>
+              {completeFailure !== null && !scanMismatch && (
+                <p className="field-error">{completeFailure}</p>
               )}
+              <UnderReasonDialog
+                open={isUnderReasonOpen}
+                reasons={varianceReasons.data ?? []}
+                isLoading={varianceReasons.isLoading}
+                isError={varianceReasons.isError}
+                error={reasonError}
+                summary={
+                  lot === null
+                    ? null
+                    : t.flow.underReason.summary(
+                        `${formatQty(lot.initialQty)} ${uomLabel}`.trim(),
+                        `${formatQty(lotDetail.data?.lot.progress?.goodQty ?? 0)} ${uomLabel}`.trim(),
+                      )
+                }
+                onPick={completeUnder}
+                onCancel={cancelUnder}
+              />
               {/*
                * 작업 세션 자동 종료가 **어긋났을 때만** 선다.
                *
@@ -1833,7 +1996,7 @@ export const ProductionFlowScreen = () => {
             placeholder={t.flow.tag.reissueReasonPlaceholder}
             options={(reissueReasons.data ?? []).map((reason) => ({
               value: reason.code,
-              label: reason.codeName,
+              label: masterName(reason, reason.codeName),
             }))}
             onChange={setTagReissueReason}
           />

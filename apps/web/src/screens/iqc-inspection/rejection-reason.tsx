@@ -160,7 +160,7 @@ export const RejectionReason = ({
             id={majorId}
             options={majors.map(optionOf)}
             value={draft.majorId}
-            placeholder={t.selectPlaceholder}
+            placeholder={t.majorPlaceholder}
             invalid={majorMissing}
             aria-describedby={majorMissing ? `${majorId}-error` : undefined}
             disabled={disabled || majors.length === 0}
@@ -169,7 +169,7 @@ export const RejectionReason = ({
             }}
           />
           {majorMissing && (
-            <span id={`${majorId}-error`} className="field-error">
+            <span id={`${majorId}-error`} className="iqc-inspection-visually-hidden">
               {t.majorMissing}
             </span>
           )}
@@ -180,7 +180,7 @@ export const RejectionReason = ({
             id={minorId}
             options={minors.map(optionOf)}
             value={draft.minorId}
-            placeholder={t.selectPlaceholder}
+            placeholder={t.minorPlaceholder}
             invalid={minorMissing}
             aria-describedby={minorMissing ? `${minorId}-error` : undefined}
             disabled={disabled || !hasMinors}
@@ -189,7 +189,7 @@ export const RejectionReason = ({
             }}
           />
           {minorMissing && (
-            <span id={`${minorId}-error`} className="field-error">
+            <span id={`${minorId}-error`} className="iqc-inspection-visually-hidden">
               {t.minorMissing}
             </span>
           )}
@@ -214,7 +214,6 @@ export const RejectionReason = ({
         <TextField
           id={descriptionId}
           fullWidth
-          placeholder={t.descriptionPlaceholder}
           value={draft.description}
           disabled={disabled}
           onChange={(event) => {

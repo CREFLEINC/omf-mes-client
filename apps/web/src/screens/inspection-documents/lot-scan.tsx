@@ -1,6 +1,6 @@
 import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -20,12 +20,22 @@ export interface LotScanProps {
  * ⭐ 스캐너는 번호를 치고 Enter 를 보낸다 — 폼 제출 하나로 받는다. 찾으면 화면의 목록 조건은 그대로 두고
  *    그 의뢰를 «선택»만 한다(조건을 바꾸면 사용자가 걸어 둔 조건이 말없이 사라진다).
  * ⚠ 대기·진행 중인 의뢰만 찾는다 — 끝난 검사는 검사실적 조회(W-03-05)에서 판정으로 거른다.
+ * ⭐ 못 찾으면 칸에 남은 번호를 골라 둔다 — 다음 스캔이 덮어쓴다(뒤에 이어 붙지 않는다 · #133). 찾는 동안에도
+ *    칸을 잠그지 않아(읽기 전용) 커서가 칸을 떠나지 않는다 — 잠그면 다음 스캔이 갈 곳을 잃는다.
  */
 export const LotScan = ({ inspectionTypeCode, onFound }: LotScanProps) => {
   const { client } = useApiClient();
   const [value, setValue] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [isFinding, setIsFinding] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  /* 실패한 번호를 골라 둔다 — 다음 스캔이 그 자리를 덮어쓴다. */
+  const fail = (text: string): void => {
+    setMessage(text);
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  };
 
   const find = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -39,7 +49,7 @@ export const LotScan = ({ inspectionTypeCode, onFound }: LotScanProps) => {
       );
       const lot = lots.items.find((item) => item.lotNo === lotNo);
       if (lot === undefined) {
-        setMessage(t.notFound);
+        fail(t.notFound);
         return;
       }
       const requests = await runRequest(() =>
@@ -51,13 +61,13 @@ export const LotScan = ({ inspectionTypeCode, onFound }: LotScanProps) => {
       );
       const found = requests.items[0];
       if (found === undefined) {
-        setMessage(t.noRequest);
+        fail(t.noRequest);
         return;
       }
       setValue('');
       onFound(found.inspectionRequestId);
     } catch {
-      setMessage(t.failed);
+      fail(t.failed);
     } finally {
       setIsFinding(false);
     }
@@ -66,10 +76,11 @@ export const LotScan = ({ inspectionTypeCode, onFound }: LotScanProps) => {
   return (
     <form className="form-actions" aria-label={t.label} onSubmit={(event) => void find(event)}>
       <TextField
+        ref={inputRef}
         label={t.label}
         placeholder={t.placeholder}
         value={value}
-        disabled={isFinding}
+        readOnly={isFinding}
         onChange={(event) => setValue(event.target.value)}
       />
       <Button

@@ -19,6 +19,8 @@ export interface WorkOrderCloseInputPaneProps {
   draft: WorkOrderCloseInputDraft;
   reasonOptions: SelectItems;
   reasonUnavailableReason: string | null;
+  /** 사유가 W/O 에 이미 실린 값(LOT 마감 때 고른 것)으로 미리 골라져 있는가 */
+  isReasonPrefilled: boolean;
   onRemainderDispositionChange: (value: WorkOrderCloseRemainderDisposition) => void;
   onVarianceReasonCodeChange: (value: string) => void;
   onRemarksChange: (value: string) => void;
@@ -29,6 +31,7 @@ export const WorkOrderCloseInputPane = ({
   draft,
   reasonOptions,
   reasonUnavailableReason,
+  isReasonPrefilled,
   onRemainderDispositionChange,
   onVarianceReasonCodeChange,
   onRemarksChange,
@@ -37,8 +40,10 @@ export const WorkOrderCloseInputPane = ({
   const reasonId = useId();
   const reasonNoteId = `${reasonId}-note`;
   const remainderGroupName = useId();
+  const carryOverNoteId = `${remainderGroupName}-note`;
   const reasonNote =
-    reasonUnavailableReason ?? (reasonOptions.length === 0 ? t.reason.empty : null);
+    reasonUnavailableReason ??
+    (reasonOptions.length === 0 ? t.reason.empty : isReasonPrefilled ? t.reason.prefilled : null);
   const classificationMessageKey = CLASSIFICATION_MESSAGE_KEY[completionJudgment];
 
   return (
@@ -55,6 +60,7 @@ export const WorkOrderCloseInputPane = ({
           <div className="check-group">
             <Radio
               checked={draft.remainderDisposition === 'CARRY_OVER'}
+              aria-describedby={carryOverNoteId}
               name={remainderGroupName}
               value="CARRY_OVER"
               onChange={() => onRemainderDispositionChange('CARRY_OVER')}
@@ -70,6 +76,9 @@ export const WorkOrderCloseInputPane = ({
               {t.remainder.WRITE_OFF}
             </Radio>
           </div>
+          <p className="field-note" id={carryOverNoteId}>
+            {t.remainder.carryOverNote(messages.productionOrder.menuPath)}
+          </p>
         </fieldset>
       ) : null}
       {/* 소멸은 다른 전표를 만들지 않는다 — 고른 이유는 마감 비고(remarks)와 처분 코드에만 남는다. */}
@@ -92,7 +101,7 @@ export const WorkOrderCloseInputPane = ({
           <Select
             aria-describedby={reasonNote === null ? undefined : reasonNoteId}
             aria-required
-            disabled={reasonNote !== null}
+            disabled={reasonUnavailableReason !== null || reasonOptions.length === 0}
             id={reasonId}
             options={reasonOptions}
             placeholder={t.reason.placeholder}

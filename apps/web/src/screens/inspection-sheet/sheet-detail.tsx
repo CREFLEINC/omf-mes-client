@@ -239,7 +239,13 @@ export const SheetDetail = ({
         <ul className="inspection-sheet-events">
           {sheet.fourMChanges.map((change) => (
             <li key={change.lotNo}>
-              {`${changeTypeLabel(change.changeTypeCode)}, ${change.itemName} (${change.itemCode}), ${change.lotNo}`}
+              {[
+                change.changeTypeCode === undefined ? '' : changeTypeLabel(change.changeTypeCode),
+                `${change.itemName} (${change.itemCode})`,
+                change.lotNo,
+              ]
+                .filter((part) => part !== '')
+                .join(', ')}
               {change.remarks && `, ${change.remarks}`}
             </li>
           ))}

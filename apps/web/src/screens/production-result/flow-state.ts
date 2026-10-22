@@ -108,7 +108,15 @@ const offsetText = (at: Date): string => {
   return `${sign}${pad(Math.floor(absolute / 60), 2)}:${pad(absolute % 60, 2)}`;
 };
 
-export const buildLotComplete = (at: Date): LotComplete => ({
+/**
+ * LOT 마감 본문. 미달 사유는 서버가 «미달일 때만» 받는다 — 정상·초과에 실으면 400 이라, 미달이
+ * 아니면 키를 싣지 않는다.
+ */
+export const buildLotComplete = (
+  at: Date,
+  varianceReasonCode: string | null = null,
+): LotComplete => ({
+  ...(varianceReasonCode === null ? {} : { completionVarianceReasonCode: varianceReasonCode }),
   businessDate: `${String(at.getFullYear())}-${pad(at.getMonth() + 1, 2)}-${pad(at.getDate(), 2)}`,
   occurredAt: `${String(at.getFullYear())}-${pad(at.getMonth() + 1, 2)}-${pad(
     at.getDate(),

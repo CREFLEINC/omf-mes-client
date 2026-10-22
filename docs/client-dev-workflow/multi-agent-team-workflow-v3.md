@@ -155,6 +155,7 @@ pnpm workflow:check
 | 전체 테스트   | `pnpm test`                        |
 | 패키지 테스트 | `pnpm --filter <패키지명> test`    |
 | 의존 방향     | `pnpm dep:check`                   |
+| 화면 규칙     | `pnpm ui:check`                    |
 | 계약·목 서버  | `pnpm mock:smoke`                  |
 | 빌드          | `pnpm --filter @omf-mes/web build` |
 
@@ -168,6 +169,13 @@ UI는 `@crefle/web-ui`와 디자인 시스템의 컴포넌트 인벤토리를 �
 - 필요한 변형이나 prop이 부족하면 컴포넌트 언어로 DS 개선을 요청한다.
 - 기존 컴포넌트의 조합은 제품 저장소가 소유한다.
 - 새 원시 요소는 제품에서 먼저 검증하고 세 번째 사용처가 생길 때 DS 승격을 검토한다.
+
+### 화면 구성
+
+화면을 새로 만들거나 개선할 때는 `docs/screen-composition.md`(화면 구성 규범)와 `docs/client-dev-workflow/references/screen-composition-procedure.md`(화면 구성 절차)를 먼저 읽고 이를 기준으로 작업한다. 규범은 권장 기준이다. 화면의 업무 흐름과 사용성에 맞게 작업자가 판단해 구성하고, 규범과 다르게 정한 곳은 이유를 PR 설명에 적는다. 10장의 기존 화면 디자인 보존이 우선하며, 로직만 바꾸는 작업에서 기존 화면을 규범에 맞추려고 고치지 않는다.
+
+- 공용 부품(`apps/web/src/patterns/`)에 같은 역할이 있으면 먼저 쓴다.
+- 정적 검사 `pnpm ui:check`와 화면 실측 검사 `tools/ui-check/layout-probe.py`로 바꾼 화면을 점검할 수 있다. 실측 검사의 로그인 계정은 환경 변수로만 넘긴다.
 
 ## 13. PR과 병합
 
