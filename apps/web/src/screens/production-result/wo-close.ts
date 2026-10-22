@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
-import { runRequest } from '../../patterns/request';
+import { runRequest, runRequestWithResponse } from '../../patterns/request';
 import { RUNNING_STATUS_CODE } from '../work-hold-register/types';
 import { buildSessionEnd } from './session';
 
@@ -13,9 +13,6 @@ type WorkSessionEnd = components['schemas']['WorkSessionEnd'];
 
 /** 서버 마감 전이가 받는 출발 상태. */
 export const CLOSABLE_STATUSES: readonly string[] = ['IN_PROGRESS', 'SUSPENDED', 'COMPLETED'];
-
-export const workOrderClosePath = (workOrderId: number): string =>
-  `/production/work-orders/${String(workOrderId)}`;
 
 const closeKeys = {
   target: (workOrderId: number) => ['production-flow', 'close-target', workOrderId] as const,
@@ -32,29 +29,29 @@ export interface CloseTarget {
 /**
  * 창을 열 때 다시 읽는 마감 대상. 마감은 `If-Match` 가 필수라, 판정과 잠금 값이 같은 응답에서
  * 와야 한다. 잠금 값은 경로마다 하나만 보관되어 화면의 상세 조회가 다시 읽히면 바뀌므로, 이
- * 응답을 받은 순간의 값을 함께 잡아 둔다 — 창이 보인 판정과 다른 판의 잠금 값으로 마감하지 않게.
+ * 응답의 ETag 를 직접 잡아 둔다 — 창이 보인 판정과 다른 판의 잠금 값으로 마감하지 않게.
  */
 export const useCloseTarget = (
   workOrderId: number,
   enabled: boolean,
 ): UseQueryResult<CloseTarget> => {
-  const { client, etags } = useApiClient();
+  const { client } = useApiClient();
 
   return useQuery({
     queryKey: closeKeys.target(workOrderId),
     enabled,
     staleTime: 0,
     queryFn: async () => {
-      const workOrder = (await runRequest(() =>
+      const { data, response } = await runRequestWithResponse(() =>
         client.GET('/production/work-orders/{workOrderId}', {
           params: {
             path: { workOrderId },
             query: { withProgress: true, withPreIssuedLots: true },
           },
         }),
-      )) as WorkOrderForward;
+      );
 
-      return { workOrder, etag: etags.ifMatch(workOrderClosePath(workOrderId)) ?? null };
+      return { workOrder: data as WorkOrderForward, etag: response.headers.get('ETag') };
     },
   });
 };

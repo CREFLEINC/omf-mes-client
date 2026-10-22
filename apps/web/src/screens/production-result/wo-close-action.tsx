@@ -148,10 +148,13 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
    * 세션으로 보내지 않게.
    */
   const submitBlocked = ((): { text: string; shownAbove: boolean } | null => {
-    if (sessions.isPending || sessions.isFetching) return { text: st.checking, shownAbove: true };
+    /* 다시 읽는 동안에는 위에 「확인하는 중」이 서지 않는다 — 까닭을 단추 아래에 보인다. */
+    if (sessions.isPending || sessions.isFetching)
+      return { text: st.checking, shownAbove: sessions.isPending };
     if (sessions.isError || plan === null) return { text: st.loadFailed, shownAbove: true };
     if (plan.blockers.length > 0) return { text: st.blocked, shownAbove: true };
-    if (target.isPending || target.isFetching) return { text: t.loading, shownAbove: true };
+    if (target.isPending || target.isFetching)
+      return { text: t.loading, shownAbove: target.isPending };
     if (target.isError || etag === null) return { text: t.loadFailed, shownAbove: true };
     if (judgment === null) return { text: t.judgmentMissing, shownAbove: true };
     if (missing !== null) return { text: missing, shownAbove: false };
@@ -287,7 +290,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
 
           {target.isPending ? (
             <p role="status">{t.loading}</p>
-          ) : target.isError || target.data === undefined ? (
+          ) : target.isError || target.data === undefined || target.data.etag === null ? (
             <AlertBanner
               variant="error"
               title={t.loadFailed}

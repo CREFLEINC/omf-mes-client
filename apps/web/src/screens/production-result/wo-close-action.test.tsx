@@ -449,6 +449,55 @@ describe('WorkOrderCloseAction — 실패 경로', () => {
     },
   );
 
+  it('세션을 다시 읽는 동안 막힌 까닭을 단추 아래에 보인다', async () => {
+    const writes: Recorded[] = [];
+    const user = userEvent.setup();
+    let reads = 0;
+    renderAction([
+      {
+        match: (request) =>
+          request.method === 'GET' && new URL(request.url).pathname === '/production/work-sessions',
+        respond: () => {
+          reads += 1;
+          return reads === 1
+            ? jsonResponse({ items: ownRunning(), page: { page: 1, size: 50, total: 1 } })
+            : new Promise<Response>(() => undefined);
+        },
+      },
+      ...routes(writes, {
+        sessions: ownRunning,
+        end: () => stateLocked('이미 종료된 작업 세션입니다.'),
+      }),
+    ]);
+
+    const dialog = await openDialog(user);
+    await within(dialog).findByText(t.judgments.NORMAL);
+    await waitFor(() => expect(confirmOf(dialog)).toBeEnabled());
+    await user.click(confirmOf(dialog));
+
+    const note = await within(dialog).findByText(t.sessions.checking);
+    expect(note).toBeVisible();
+    expect(note).toHaveClass('field-note');
+    expect(confirmOf(dialog)).toHaveAccessibleDescription(t.sessions.checking);
+    expect(writes.map((write) => write.path)).toEqual([END]);
+  });
+
+  it('판정 응답에 잠금 값이 없으면 마감하지 않고 다시 읽을 길을 준다', async () => {
+    const user = userEvent.setup();
+    renderAction([
+      {
+        match: (request) => request.method === 'GET' && new URL(request.url).pathname === DETAIL,
+        respond: () => jsonResponse(detail('NORMAL')),
+      },
+      ...routes([], {}),
+    ]);
+
+    const dialog = await openDialog(user);
+    expect((await within(dialog).findAllByText(t.loadFailed))[0]).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: messages.common.retry })).toBeVisible();
+    expect(confirmOf(dialog)).toBeDisabled();
+  });
+
   it('창을 닫았다 다시 열면 앞 시도의 실패를 지우고 세션과 판정을 다시 읽는다', async () => {
     const writes: Recorded[] = [];
     const user = userEvent.setup();
