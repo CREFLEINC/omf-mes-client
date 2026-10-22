@@ -790,34 +790,27 @@ export type WorkOrderForward = components['schemas']['WorkOrder'] & {
   voidedLotCount?: number;
 };
 
-<<<<<<< HEAD
 /**
- * 서버 선행 P-104 — 단말 공정 매핑의 작업지시 마감 권한. 다른 권한과 달리 생략하면 열림이다.
+ * 서버 선행 P-105 — 단말 공정 매핑의 작업지시 마감 권한. 다른 권한과 달리 생략하면 열림이다.
  * 싣지 않는 옛 서버가 있어 선택으로 둔다.
  */
 export type TerminalProcessForward = components['schemas']['TerminalProcess'] & {
   canCloseWorkOrder?: boolean;
 };
 
-/** 서버 선행 P-104 — 매핑 저장 줄의 작업지시 마감 권한. 생략하면 서버가 열림으로 둔다. */
+/** 서버 선행 P-105 — 매핑 저장 줄의 작업지시 마감 권한. 생략하면 서버가 열림으로 둔다. */
 export type TerminalProcessReplaceForward = {
   items: (components['schemas']['TerminalProcessReplace']['items'][number] & {
     canCloseWorkOrder?: boolean;
   })[];
 };
 
-=======
-<<<<<<< HEAD
->>>>>>> feat/aa96-session-force-end
-/** 서버 선행 P-104 — 세션 강제 종료 본문. */
+/** 서버 선행 P-105 — 세션 강제 종료 본문. */
 export interface WorkSessionForceEnd {
   reason: string;
 }
 
-/** 서버 선행 P-104 — 세션 조회(목록·단건)가 단말 코드와 주작업자를 싣는다. */
-=======
 /** 서버 선행 P-105 — 세션 조회(목록·단건)가 단말 코드와 주작업자를 싣는다. */
->>>>>>> feat/aa96-wo-close-pop
 export type WorkSessionForward = components['schemas']['WorkSession'] & {
   terminalCode?: string;
   workerId?: number;
@@ -2116,7 +2109,7 @@ export interface ForwardPaths {
   '/quality/inspection-sheets/{inspectionSheetId}:approve': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:check': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:reopen': SheetAction<SheetId, { reason: string }>;
-  /** 서버 선행 P-104 — 관리웹에서 열린(중단 포함) 작업 세션을 닫는다. 사유는 기록으로 남아 필수다. */
+  /** 서버 선행 P-105 — 관리웹에서 열린(중단 포함) 작업 세션을 닫는다. 사유는 기록으로 남아 필수다. */
   '/production/work-sessions/{workSessionId}:force-end': Unused & {
     parameters: NoParameters;
     post: {
