@@ -18,17 +18,15 @@ const renderReason = (draft: RejectionDraft) =>
 
 /* 3단계 검증 — 대분류·상세 2열 + 사유 전체 폭, 라벨은 입력 위, 필수 누락은 그 칸 아래(omf-all-around#106). */
 describe('RejectionReason 배치', () => {
-  it('처음에는 대분류 아래에 누락을 말하고, 상세는 고를 수 없으며 사유에는 안내 글이 있다', () => {
+  it('처음에는 대분류 아래에 누락을 말하고, 상세는 고를 수 없으며 사유 칸에는 안내 글이 없다', () => {
     renderReason(EMPTY_REJECTION);
 
     expect(screen.getByRole('group', { name: t.heading })).toBeInTheDocument();
     expect(screen.getByLabelText(t.major)).toHaveAccessibleDescription(t.majorMissing);
     expect(screen.getByLabelText(t.minor)).toBeDisabled();
     expect(screen.queryByText(t.minorMissing)).not.toBeInTheDocument();
-    expect(screen.getByLabelText(t.description)).toHaveAttribute(
-      'placeholder',
-      t.descriptionPlaceholder,
-    ); /* 추정 원인(#130)은 선택 입력 — 필수 표시도 누락 안내도 없다. */
+    expect(screen.getByLabelText(t.description)).not.toHaveAttribute('placeholder');
+    /* 추정 원인(#130)은 선택 입력 — 필수 표시도 누락 안내도 없다. */
     expect(screen.getByLabelText(t.cause)).toHaveTextContent(t.causeNone);
     expect(screen.getByLabelText(t.cause)).not.toHaveAccessibleDescription();
   });

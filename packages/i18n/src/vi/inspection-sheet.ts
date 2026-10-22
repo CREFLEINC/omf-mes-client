@@ -74,7 +74,7 @@ export const inspectionSheet = {
     rohs: (on: boolean): string => (on ? 'Có hiển thị RoHS' : 'Không hiển thị RoHS'),
     fourM: 'Hàng thay đổi (theo lịch sử đưa vào)',
     fourMNote:
-      'Vật tư thay đổi 4M đã đưa vào lệnh sản xuất của số sê-ri này. Không có ghi chép theo từng sê-ri nên tính theo lệnh sản xuất.',
+      'Vật tư thay đổi 4M đang dùng khi làm ra số sê-ri này (ước tính theo thời điểm đưa vào). Lệnh trước khi có ghi chép phả hệ thì tính theo lệnh sản xuất.',
     fourMNone: 'Không có hàng thay đổi đã đưa vào.',
     steps: 'Phán định theo công đoạn',
     stepsCaption: 'Phán định và chữ ký theo công đoạn',

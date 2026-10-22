@@ -150,7 +150,7 @@ export const ScannedList = ({
                     </Chip>
                     <span className="field-note">
                       {[
-                        describeFourMType(material.fourMChange.changeTypeCode),
+                        describeFourMType(material.fourMChange.changeTypeCode ?? ''),
                         material.fourMChange.remarks,
                       ]
                         .filter((part) => part !== undefined && part !== '')
