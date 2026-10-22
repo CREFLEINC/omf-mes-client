@@ -2,7 +2,7 @@
 export const inspectionDocuments = {
   heading: 'Tài liệu đính kèm',
   help: 'PDF · hình ảnh · Excel/Word/PowerPoint · CSV, mỗi file tối đa 10MB',
-  upload: 'Tải tài liệu lên',
+  upload: 'Chọn file',
   uploading: 'Đang tải lên…',
   open: 'Mở',
   openFailed: 'Không mở được tài liệu. Hãy kiểm tra kết nối rồi thử lại.',

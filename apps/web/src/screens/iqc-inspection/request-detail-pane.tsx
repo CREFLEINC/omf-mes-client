@@ -107,8 +107,6 @@ export const RequestDetailPane = ({
         detail.inspectionPlanVersionId === null
           ? t.noPlanVersion
           : String(detail.inspectionPlanVersionId),
-      /* 버전 숫자만 보이면 왜 중요한지 알 수 없다. 고정된다는 사실을 항목명 오른쪽 같은 줄에서 말한다. */
-      hint: t.planVersionNote,
     },
     /* 값만 따로 두면 무슨 시각인지 모른다 — 필드(`requestedAt`) 이름을 붙인다. */
     { key: 'at', label: t.fields.requestedAt, value: formatDateTime(detail.requestedAt) },

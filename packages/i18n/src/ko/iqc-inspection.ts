@@ -103,9 +103,10 @@ export const iqcInspection = {
   /** 우측 창 — 고른 의뢰의 상세(스펙 §4-A 여섯 항목). */
   detail: {
     backToList: '← 목록',
-    leaveUnsaved: '저장하지 않은 입력이 있습니다. 목록으로 가면 입력이 사라집니다.',
-    keepEditing: '계속 입력',
-    leaveAnyway: '버리고 목록으로',
+    leaveUnsaved: '저장하지 않은 변경사항이 있습니다.',
+    leaveUnsavedNote: '이동하면 변경사항이 사라집니다.',
+    keepEditing: '계속 작성',
+    leaveAnyway: '저장하지 않고 이동',
     heading: '대상',
     /** 상세 카드 첫 구획의 제목 — 참고 정보(읽기 전용)임을 입력 구획과 가른다. */
     sectionTitle: '검사 기본 정보',
@@ -118,10 +119,10 @@ export const iqcInspection = {
        * 이 검사는 당시 버전으로 남는다. 버전을 감추면 검사자도, 나중에 결과를 읽는 사람도
        * 어느 기준으로 잰 값인지 알 수 없다.
        */
-      inspectionPlanVersionId: '검사기준 버전',
+      inspectionPlanVersionId: '적용 검사기준',
       lotId: '대상 LOT',
       itemId: '품목',
-      targetQty: '검사수량',
+      targetQty: '총 검사수량',
       /** 의뢰가 만들어진 시각(`requestedAt`) — 목록 열 「의뢰 일시」와 같은 값이다. */
       requestedAt: '의뢰 일시',
       /** 품목의 현재 IQC 검사 수준 — 이 화면에서 바로 바꾼다(omf-all-around#133). */
@@ -134,11 +135,6 @@ export const iqcInspection = {
       set: '지정',
     },
     /**
-     * 기준 버전이 고정된다는 사실을 화면이 말한다 — 숫자만 보이면 왜 중요한지 알 수 없다.
-     * 버전은 서버가 의뢰를 만들 때(입하·LOT 등록) 그날 유효한 확정 기준으로 정해 넣는다.
-     */
-    planVersionNote: '의뢰 시점 기준으로 고정',
-    /**
      * client#589 — 기준이 등록되지 않은 상태에서도 검사를 진행할 수 있어 이 칸이 빌 수 있다.
      * **없는 값과 모르는 값은 다른 모양이어야 한다**(공유계약 G-9) — 그래서 일반 빈 값
      * 표시(`emptyValue`)와 다른 전용 문구를 쓴다.
@@ -150,7 +146,7 @@ export const iqcInspection = {
   result: {
     heading: '수량 판정',
     /** 수량 입력 구획의 제목. */
-    sectionTitle: '검사 결과 수량',
+    sectionTitle: '검사 수량 입력',
     /** 종합 판정·임시 저장·판정 확정 구획의 제목. */
     judgmentSectionTitle: '판정',
     round: (round: number): string => `${round}회차`,
@@ -170,17 +166,16 @@ export const iqcInspection = {
       fourMChange: '4M 변경품',
     },
     fields: {
-      inspectedQty: '검사수량',
+      inspectedQty: '총 검사수량',
       accepted: '합격수량',
       rejected: '불합격수량',
       held: '보류수량',
     },
     /** 실시간 합계. 어긋난 값을 감추지 않는다. */
-    sum: '합계',
-    remaining: '잔여',
+    sum: '입력 완료',
+    remaining: '미입력',
     /** 진행 막대의 접근 이름. */
     progressLabel: '검사수량 대비 입력 합계',
-    matched: '검사수량과 일치합니다.',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
     over: (over: string): string => `검사수량보다 ${over}만큼 많습니다. 수량을 줄여 주세요.`,
     quantityInvalid: '0 이상의 숫자로 입력해 주세요. 소수점은 여섯 자리까지 됩니다.',
@@ -198,7 +193,7 @@ export const iqcInspection = {
     saveBlockedByInvalid: '수량 칸을 고친 뒤 저장할 수 있습니다.',
 
     /** 종합 판정. ⛔ 값 목록을 화면에 고정하지 않는다 — 공통코드 조회로 채운다. */
-    judgment: '종합 판정',
+    judgment: '최종 판정',
     judgmentPlaceholder: '판정을 선택해 주세요',
     /**
      * 코드값 시드가 아직 안 들어가 목록이 빌 수 있다. ⛔ **감추지 않고 사유를 밝힌다**
@@ -217,12 +212,12 @@ export const iqcInspection = {
      * ⛔ **되돌릴 수 없다.** 확정하는 순간 LOT 상태가 전이하고 보류 해제가 기록된다 —
      * 누르기 전에 그 사실을 알린다.
      */
-    confirmNote: '판정 확정 시 LOT 상태가 변경되며, 이후에는 되돌릴 수 없습니다.',
+    confirmNote: '판정 확정 후 수정이 불가합니다.',
     /**
      * 비활성 사유 — 무엇이 막혔는지와 어떻게 푸는지를 함께 말한다(공유계약 G-23).
      * 단추 바로 아래에 붙으므로 단추 이름을 되풀이하지 않는다.
      */
-    confirmBlockedByTotals: '입력 합계가 검사수량과 같아야 확정할 수 있습니다.',
+    confirmBlockedByTotals: '입력 수량이 총 검사 수량과 같아야 확정 가능합니다.',
     workerNotLinked:
       '이 계정에 연결된 작업자가 없어 판정을 저장할 수 없습니다. 사용자 관리에서 작업자를 연결해 주세요.',
     followUp: {
@@ -259,21 +254,20 @@ export const iqcInspection = {
     fourMChange: {
       label: '4M 변경품',
       hint: '사람·설비·자재·방법이 바뀌어 들어온 자재',
-      remarks: '변경 내용',
+      remarks: '비고',
       remarksPlaceholder: '무엇이 바뀌었는지 입력',
-      remarksMissing: '변경 내용을 입력하세요.',
-      blocked: '4M 변경품은 변경 내용을 입력해야 저장할 수 있습니다.',
+      remarksMissing: '비고를 입력하세요.',
+      blocked: '4M 변경품은 비고를 입력해야 저장할 수 있습니다.',
     },
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>
-        `합격판정개수 ${String(acceptanceNumber)} 기준 자동 판정`,
-      expected: (judgment: string): string => `자동 판정: ${judgment}`,
+        `자동 판정: 불합격 수량 ${String(acceptanceNumber)}개 이하 → 합격`,
       reason: '판정 변경 사유',
       reasonPlaceholder: '자동 판정과 다르게 확정하는 이유를 입력해 주세요.',
       required: '자동 판정과 다른 판정은 변경 사유를 입력해야 확정할 수 있습니다.',
       reasonMissing: '판정 변경 사유를 입력하세요.',
     },
-    confirmBlockedByJudgment: '종합 판정을 선택해야 확정할 수 있습니다.',
+    confirmBlockedByJudgment: '최종 판정을 선택해야 확정할 수 있습니다.',
     confirmBlockedByConfirmed: '이미 확정된 회차입니다.',
     /*
      * ⛔ 회차가 아직 없다. 확정은 회차 하나를 지목하는 쓰기라 지목할 것이 없으면 보낼 수
@@ -297,7 +291,7 @@ export const iqcInspection = {
      * ⛔ **누를 수 있게 두지 않는다.** 눌리면 LOT 수량을 정정하는데 어떻게 정정할지가
      * 정해지지 않았다.
      */
-    partialReceipt: '부분 입고 허용',
+    partialReceipt: '부분 입고',
     /** 「부분 입고 허용」 단추의 설명(마우스를 올리면 보이는 글). */
     partialReceiptPending: '부분 입고 허용은 업데이트 예정입니다.',
 
@@ -330,7 +324,7 @@ export const iqcInspection = {
     caption: '이전 검사 회차',
     columns: {
       round: '회차',
-      judgment: '종합 판정',
+      judgment: '최종 판정',
       accepted: '합격',
       rejected: '불합격',
       held: '보류',
@@ -343,7 +337,7 @@ export const iqcInspection = {
   /** 항목별 측정치 그리드(스펙 §4-C). 줄은 「항목 × 샘플」이다. */
   measurements: {
     heading: '점검 항목',
-    caption: '항목별 측정치',
+    caption: '검사 항목별 결과',
     loading: '점검 항목을 불러오는 중입니다.',
     /** 기준 버전에 항목이 하나도 없다. 화면이 고칠 수 있는 것이 아니다. */
     noItems: '이 검사기준 버전에는 점검 항목이 없습니다. 기준정보 담당자에게 문의하세요.',

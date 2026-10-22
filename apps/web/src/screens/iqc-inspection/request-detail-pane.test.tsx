@@ -65,7 +65,8 @@ describe('RequestDetailPane', () => {
       />,
     );
 
-    expect(screen.getByText(t.planVersionNote)).toBeInTheDocument();
+    /* 「의뢰 시점 기준으로 고정」 부가 설명은 두지 않는다(#133). */
+    expect(screen.queryByText('의뢰 시점 기준으로 고정')).not.toBeInTheDocument();
   });
 
   it('자재 LOT 이 없으면 빈 칸이 아니라 없음 표시를 낸다', () => {

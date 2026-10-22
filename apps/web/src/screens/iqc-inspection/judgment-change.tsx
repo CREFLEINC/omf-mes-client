@@ -48,8 +48,6 @@ export const needsJudgmentChangeReason = (
 
 export interface JudgmentChangeProps {
   acceptanceNumber: number;
-  /** 자동 판정의 표시명. 셀 수 없으면 `null` — 기준만 말한다 */
-  expectedLabel: string | null;
   needsReason: boolean;
   reason: string;
   onReasonChange: (reason: string) => void;
@@ -62,7 +60,6 @@ export interface JudgmentChangeProps {
  */
 export const JudgmentChange = ({
   acceptanceNumber,
-  expectedLabel,
   needsReason,
   reason,
   onReasonChange,
@@ -74,8 +71,8 @@ export const JudgmentChange = ({
   return (
     <>
       <p className="field-note">
+        {/* 기준 한 줄만 — 자동으로 고른 결과는 바로 위 최종 판정 칸이 이미 보인다(#133). */}
         {t.basis(acceptanceNumber)}
-        {expectedLabel !== null && ` · ${t.expected(expectedLabel)}`}
       </p>
       {needsReason && (
         <div className="field-cell">

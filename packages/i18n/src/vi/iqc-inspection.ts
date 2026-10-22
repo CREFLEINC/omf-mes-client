@@ -48,19 +48,20 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
   detail: {
     backToList: '← Danh sách',
-    leaveUnsaved: 'Có nội dung chưa lưu. Quay lại danh sách sẽ mất nội dung đã nhập.',
-    keepEditing: 'Tiếp tục nhập',
-    leaveAnyway: 'Bỏ và về danh sách',
+    leaveUnsaved: 'Có thay đổi chưa lưu.',
+    leaveUnsavedNote: 'Nếu rời đi, các thay đổi sẽ bị mất.',
+    keepEditing: 'Tiếp tục soạn',
+    leaveAnyway: 'Rời đi không lưu',
     heading: 'Đối tượng',
     sectionTitle: 'Thông tin kiểm tra cơ bản',
     loading: 'Đang tải yêu cầu.',
     fields: {
       inspectionRequestNo: 'Số yêu cầu',
       inspectionTypeCode: 'Loại kiểm tra',
-      inspectionPlanVersionId: 'Phiên bản tiêu chuẩn kiểm tra',
+      inspectionPlanVersionId: 'Tiêu chuẩn kiểm tra áp dụng',
       lotId: 'LOT liên quan',
       itemId: 'Mặt hàng',
-      targetQty: 'Số lượng kiểm tra',
+      targetQty: 'Tổng số lượng kiểm tra',
       requestedAt: 'Thời điểm yêu cầu',
       inspectionLevel: 'Mức kiểm tra',
     },
@@ -70,13 +71,12 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       change: 'Đổi',
       set: 'Chỉ định',
     },
-    planVersionNote: 'Cố định tại thời điểm yêu cầu',
     noPlanVersion: 'Không có tiêu chuẩn',
   },
 
   result: {
     heading: 'Đánh giá số lượng',
-    sectionTitle: 'Số lượng kết quả kiểm tra',
+    sectionTitle: 'Nhập số lượng kiểm tra',
     judgmentSectionTitle: 'Đánh giá',
     round: (round: number): string => `Lượt ${round}`,
     loading: 'Đang tải kết quả kiểm tra.',
@@ -91,15 +91,14 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       fourMChange: 'Hàng thay đổi 4M',
     },
     fields: {
-      inspectedQty: 'Số lượng kiểm tra',
+      inspectedQty: 'Tổng số lượng kiểm tra',
       accepted: 'Số lượng đạt',
       rejected: 'Số lượng không đạt',
       held: 'Số lượng tạm giữ',
     },
-    sum: 'Tổng',
-    remaining: 'Còn lại',
+    sum: 'Đã nhập',
+    remaining: 'Chưa nhập',
     progressLabel: 'Tổng đã nhập so với số lượng kiểm tra',
-    matched: 'Khớp với số lượng kiểm tra.',
     over: (over: string): string => `Nhiều hơn số lượng kiểm tra ${over}. Hãy giảm số lượng.`,
     quantityInvalid: 'Hãy nhập số từ 0 trở lên. Tối đa sáu chữ số thập phân.',
     save: 'Lưu tạm',
@@ -107,7 +106,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     saved: 'Đã lưu.',
     saveBlockedByInvalid: 'Hãy sửa các ô số lượng rồi mới lưu được.',
 
-    judgment: 'Đánh giá tổng hợp',
+    judgment: 'Đánh giá cuối cùng',
     judgmentPlaceholder: 'Hãy chọn đánh giá',
     judgmentUnavailable: 'Danh sách giá trị đánh giá chưa được chuẩn bị. Hãy hỏi người phụ trách.',
     judgmentUnknown: (code: string): string =>
@@ -115,8 +114,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
     confirm: 'Xác nhận đánh giá',
     confirming: 'Đang xác nhận',
-    confirmNote: 'Khi xác nhận đánh giá, trạng thái LOT sẽ thay đổi, sau đó không thể hoàn tác.',
-    confirmBlockedByTotals: 'Tổng đã nhập phải bằng số lượng kiểm tra mới xác nhận được.',
+    confirmNote: 'Sau khi xác nhận đánh giá, không thể sửa.',
+    confirmBlockedByTotals: 'Số lượng đã nhập phải bằng tổng số lượng kiểm tra mới xác nhận được.',
     workerNotLinked:
       'Tài khoản này chưa liên kết người lao động nên không lưu được phán định. Hãy liên kết người lao động trong Quản lý người dùng.',
     followUp: {
@@ -146,26 +145,25 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     fourMChange: {
       label: 'Hàng thay đổi 4M',
       hint: 'Vật tư có thay đổi con người, thiết bị, vật liệu hoặc phương pháp',
-      remarks: 'Nội dung thay đổi',
+      remarks: 'Ghi chú',
       remarksPlaceholder: 'Nhập nội dung thay đổi',
-      remarksMissing: 'Hãy nhập nội dung thay đổi.',
-      blocked: 'Hàng thay đổi 4M phải nhập nội dung thay đổi mới lưu được.',
+      remarksMissing: 'Hãy nhập ghi chú.',
+      blocked: 'Hàng thay đổi 4M phải nhập ghi chú mới lưu được.',
     },
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>
-        `Tự động đánh giá theo số chấp nhận ${String(acceptanceNumber)}`,
-      expected: (judgment: string): string => `Đánh giá tự động: ${judgment}`,
+        `Tự động đánh giá: số không đạt ≤ ${String(acceptanceNumber)} → đạt`,
       reason: 'Lý do thay đổi đánh giá',
       reasonPlaceholder: 'Hãy nhập lý do xác nhận khác với đánh giá tự động.',
       required: 'Đánh giá khác với đánh giá tự động phải nhập lý do thay đổi mới xác nhận được.',
       reasonMissing: 'Hãy nhập lý do thay đổi đánh giá.',
     },
-    confirmBlockedByJudgment: 'Phải chọn đánh giá tổng hợp mới xác nhận được.',
+    confirmBlockedByJudgment: 'Phải chọn đánh giá cuối cùng mới xác nhận được.',
     confirmBlockedByConfirmed: 'Lượt này đã được xác nhận.',
     confirmBlockedByUnsaved: 'Sau khi lưu tạm mới có thể xác nhận đánh giá.',
     confirmSucceeded: 'Đã xác nhận đánh giá.',
 
-    partialReceipt: 'Cho phép nhập kho một phần',
+    partialReceipt: 'Nhập kho một phần',
     partialReceiptPending: 'Chức năng cho phép nhập kho một phần sẽ được cập nhật.',
 
     reinspect: 'Thêm lượt kiểm tra lại',
@@ -182,7 +180,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     caption: 'Các lượt kiểm tra trước',
     columns: {
       round: 'Lượt',
-      judgment: 'Đánh giá tổng hợp',
+      judgment: 'Đánh giá cuối cùng',
       accepted: 'Đạt',
       rejected: 'Không đạt',
       held: 'Tạm giữ',
@@ -193,7 +191,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
   measurements: {
     heading: 'Hạng mục kiểm tra',
-    caption: 'Giá trị đo theo từng hạng mục',
+    caption: 'Kết quả theo hạng mục kiểm tra',
     loading: 'Đang tải các hạng mục kiểm tra.',
     noItems:
       'Phiên bản tiêu chuẩn kiểm tra này không có hạng mục nào. Hãy hỏi người phụ trách dữ liệu gốc.',

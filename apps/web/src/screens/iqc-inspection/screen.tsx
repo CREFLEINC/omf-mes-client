@@ -685,12 +685,6 @@ export const IqcInspectionScreen = () => {
               {acceptanceNumber !== null && isOpenRound && (
                 <JudgmentChange
                   acceptanceNumber={acceptanceNumber}
-                  expectedLabel={
-                    expectedJudgment === null
-                      ? null
-                      : (judgmentOptions.find((option) => option.value === expectedJudgment)
-                          ?.label ?? expectedJudgment)
-                  }
                   needsReason={needsChangeReason}
                   reason={changeReason}
                   onReasonChange={setChangeReason}
@@ -893,15 +887,31 @@ export const IqcInspectionScreen = () => {
            */}
           <div className="iqc-inspection-back">
             {confirmingLeave ? (
-              <>
-                <span className="field-note">{t.detail.leaveUnsaved}</span>
-                <Button variant="text" size="sm" onClick={() => setConfirmingLeave(false)}>
-                  {t.detail.keepEditing}
-                </Button>
-                <Button variant="outlined" size="sm" onClick={backToList}>
-                  {t.detail.leaveAnyway}
-                </Button>
-              </>
+              /* 떠날지 묻는 줄 — 제목 · 한 줄 설명, 오른쪽에 [계속 작성](일반) [저장하지 않고 이동](위험)(#133). */
+              <div className="iqc-inspection-leave" role="group" aria-label={t.detail.leaveUnsaved}>
+                <div className="iqc-inspection-leave-text">
+                  <strong>{t.detail.leaveUnsaved}</strong>
+                  <span className="field-note">{t.detail.leaveUnsavedNote}</span>
+                </div>
+                <div className="iqc-inspection-leave-actions">
+                  <Button
+                    variant="outlined"
+                    size="md"
+                    className="app-button-neutral"
+                    onClick={() => setConfirmingLeave(false)}
+                  >
+                    {t.detail.keepEditing}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="md"
+                    className="iqc-inspection-leave-discard"
+                    onClick={backToList}
+                  >
+                    {t.detail.leaveAnyway}
+                  </Button>
+                </div>
+              </div>
             ) : (
               <Button
                 variant="text"

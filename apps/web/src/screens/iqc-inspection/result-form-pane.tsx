@@ -210,7 +210,7 @@ export const ResultFormPane = ({
     totals.kind === 'uncountable'
       ? null
       : totals.matches
-        ? t.matched
+        ? null
         : totals.remaining > 0n
           ? null
           : t.over(withUom(formatMicro(-totals.remaining), uomCode));
@@ -306,7 +306,7 @@ export const ResultFormPane = ({
           <div className="iqc-inspection-progress">
             <div className="iqc-inspection-progress-row">
               <span className="iqc-inspection-progress-sum">
-                <span className="iqc-inspection-visually-hidden">{t.sum} </span>
+                <span className="iqc-inspection-progress-label">{t.sum} </span>
                 {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
               </span>
               <span>

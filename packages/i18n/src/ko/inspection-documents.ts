@@ -2,7 +2,7 @@
 export const inspectionDocuments = {
   heading: '첨부 문서',
   help: 'PDF·이미지·엑셀/워드/파워포인트·CSV, 파일당 10MB까지',
-  upload: '문서 올리기',
+  upload: '파일 선택',
   uploading: '올리는 중…',
   open: '열기',
   openFailed: '문서를 열지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
