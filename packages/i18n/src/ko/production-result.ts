@@ -303,6 +303,9 @@ export const productionResult = {
       `초과 달성 — 잔여 ${remaining} 보다 ${over} 많습니다.`,
     /** 잔여가 0 인 지시 — 「잔여 0 보다 …」는 뺄셈처럼 읽힌다. 숫자를 빼고 사실만 적는다. */
     noticeNoRemaining: '초과 달성 — 이 작업지시에 남은 수량이 없습니다.',
+    /** 양품 누계가 지시 수량에 이르렀다 — 서버의 완료 판정(정상·초과)이 근거다. */
+    achieved: '계획 수량 달성',
+    achievedOver: (over: string): string => `계획 수량 달성 · +${over} 초과`,
   },
 
   actions: {
