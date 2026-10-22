@@ -14663,6 +14663,12 @@ button.app-button-neutral {
 }
 
 /* 검사 문서 첨부(omf-all-around#58) — 고른 파일 한 줄: 이름 · 크기 · [제거], 사전 검사 오류는 그 아래. */
+/* 고른 파일 여러 개(omf-all-around#133) — 한 줄에 한 파일. */
+.inspection-documents-selected-list {
+  display: grid;
+  gap: var(--space-1);
+}
+
 .inspection-documents-selected {
   display: flex;
   flex-wrap: wrap;

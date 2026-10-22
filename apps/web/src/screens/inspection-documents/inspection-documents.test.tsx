@@ -57,11 +57,14 @@ describe('LotScan', () => {
 });
 
 describe('AttachmentPanel', () => {
-  const renderPanel = () => {
+  /** `failAt` 번째(1부터) 업로드를 서버가 거절한다. */
+  const renderPanel = (failAt?: number) => {
     const posts: Request[] = [];
+    let gets = 0;
     const fetch: StubFetch = async (request) => {
       const url = new URL(request.url);
       if (url.pathname === '/app/attachments' && request.method === 'GET') {
+        gets += 1;
         expect(url.searchParams.get('targetTypeCode')).toBe('LOT');
         return jsonResponse({
           items: [
@@ -79,12 +82,17 @@ describe('AttachmentPanel', () => {
       }
       if (url.pathname === '/app/attachments' && request.method === 'POST') {
         posts.push(request.clone());
+        if (posts.length === failAt)
+          return jsonResponse(
+            { errors: [{ scope: 'screen', code: 'SYNTH_REJECTED', message: '합성 거절' }] },
+            { status: 400 },
+          );
         return jsonResponse({}, { status: 201 });
       }
       throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
     };
     renderWithProviders(<AttachmentPanel targetTypeCode="LOT" targetId={8801} />, { fetch });
-    return { posts };
+    return { posts, gets: () => gets };
   };
 
   it('LOT 의 첨부 문서를 보이고, 문서를 올린다', async () => {
@@ -112,6 +120,47 @@ describe('AttachmentPanel', () => {
     expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
   });
 
+  it('여러 파일을 한 번에 고르고, 파일마다 따로(다른 멱등 키로) 올린다(#133)', async () => {
+    const { posts } = renderPanel();
+    await screen.findByText('시험성적서.pdf');
+    await userEvent.upload(screen.getByLabelText(t.upload), [
+      new File(['%PDF-1.7'], '측정1.pdf', { type: 'application/pdf' }),
+      new File(['%PDF-1.7'], '측정2.pdf', { type: 'application/pdf' }),
+    ]);
+    const selected = screen.getByRole('group', { name: t.selected });
+    expect(within(selected).getByText('측정1.pdf')).toBeInTheDocument();
+    expect(within(selected).getByText('측정2.pdf')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: t.submitCount(2) }));
+
+    await waitFor(() => expect(posts).toHaveLength(2));
+    const keys = posts.map((post) => post.headers.get('Idempotency-Key'));
+    expect(keys[0]).not.toBe(keys[1]);
+    expect(await screen.findByText(t.uploaded)).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: t.selected })).not.toBeInTheDocument();
+  });
+
+  it('중간에 실패하면 올라간 파일은 빼고 남은 파일만 남긴다 — 다시 올려도 중복이 없다(#133)', async () => {
+    const { posts, gets } = renderPanel(2);
+    await screen.findByText('시험성적서.pdf');
+    const before = gets();
+    await userEvent.upload(screen.getByLabelText(t.upload), [
+      new File(['%PDF-1.7'], '측정1.pdf', { type: 'application/pdf' }),
+      new File(['%PDF-1.7'], '측정2.pdf', { type: 'application/pdf' }),
+      new File(['%PDF-1.7'], '측정3.pdf', { type: 'application/pdf' }),
+    ]);
+    await userEvent.click(screen.getByRole('button', { name: t.submitCount(3) }));
+
+    expect(await screen.findByText('합성 거절')).toBeInTheDocument();
+    expect(posts).toHaveLength(2);
+    const selected = screen.getByRole('group', { name: t.selected });
+    expect(within(selected).queryByText('측정1.pdf')).not.toBeInTheDocument();
+    expect(within(selected).getByText('측정2.pdf')).toBeInTheDocument();
+    expect(within(selected).getByText('측정3.pdf')).toBeInTheDocument();
+    /* 앞서 올라간 파일이 목록에 보이도록 다시 부른다. */
+    await waitFor(() => expect(gets()).toBeGreaterThan(before));
+  });
+
   it('고른 파일은 [제거]로 비울 수 있고, 고르기 전에는 [업로드]가 막혀 있다', async () => {
     const { posts } = renderPanel();
     await screen.findByText('시험성적서.pdf');
@@ -122,7 +171,7 @@ describe('AttachmentPanel', () => {
       new File(['%PDF-1.7'], '측정.pdf', { type: 'application/pdf' }),
     );
     expect(screen.getByRole('button', { name: t.submit })).toBeEnabled();
-    await userEvent.click(screen.getByRole('button', { name: t.remove }));
+    await userEvent.click(screen.getByRole('button', { name: t.removeFile('측정.pdf') }));
 
     expect(screen.queryByText('측정.pdf')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();

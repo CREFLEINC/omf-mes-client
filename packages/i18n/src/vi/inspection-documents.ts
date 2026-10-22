@@ -1,7 +1,7 @@
 /** Đính kèm tài liệu kiểm tra · quét LOT (omf-all-around#58). */
 export const inspectionDocuments = {
   heading: 'Tài liệu đính kèm',
-  help: 'PDF · hình ảnh · Excel/Word/PowerPoint · CSV, mỗi file tối đa 10MB',
+  help: 'PDF · hình ảnh · Excel/Word/PowerPoint · CSV, mỗi file tối đa 10MB · có thể chọn nhiều file cùng lúc',
   upload: 'Tải tài liệu lên',
   uploading: 'Đang tải lên…',
   open: 'Mở',
@@ -12,7 +12,9 @@ export const inspectionDocuments = {
   tooLarge: 'Không thể tải file lớn hơn 10MB. Hãy giảm độ phân giải của PDF scan.',
   uploaded: 'Đã tải tài liệu lên.',
   submit: 'Tải lên',
+  submitCount: (count: number): string => `Tải lên ${String(count)} file`,
   remove: 'Bỏ',
+  removeFile: (name: string): string => `Bỏ ${name}`,
   selected: 'File đã chọn',
   unsupported:
     'Định dạng không được hỗ trợ. Chỉ tải được PDF · hình ảnh · Excel/Word/PowerPoint · CSV · TXT.',

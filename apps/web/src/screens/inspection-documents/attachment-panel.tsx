@@ -1,7 +1,11 @@
 import { Button, Table, type Column } from '@crefle/web-ui';
-import type { AttachmentTargetType, components } from '@omf-mes/api-client';
+import {
+  createIdempotencyKey,
+  type AttachmentTargetType,
+  type components,
+} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type ChangeEvent } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -57,14 +61,18 @@ export interface AttachmentPanelProps {
  * ⛔ 지우기·이름 바꾸기는 없다 — 첨부는 기록이고 계약에 그 경로가 없다.
  *
  * 고르기와 올리기를 나눈다(3단계 검증 · 담당자 지시): [문서 올리기]로 고르면 이름·크기를 보이고(제거 가능),
- * [업로드]를 눌러야 보낸다. 사전 검사에 걸리면 [업로드]가 막힌다. 한 번에 한 파일이다.
+ * [업로드]를 눌러야 보낸다. 사전 검사에 걸리면 [업로드]가 막힌다.
+ *
+ * 여러 파일을 한 번에 고르고 올린다(omf-all-around#133) — 서버는 요청 하나에 한 파일이라 고른 순서대로 하나씩
+ * 보낸다. 올라간 파일은 목록에서 바로 빠지므로, 중간에 실패하면 남은 파일만 다시 올리면 된다(중복 없음).
  */
 export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelProps) => {
   const { client } = useApiClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [selected, setSelected] = useState<File | null>(null);
-  const [selectError, setSelectError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<File[]>([]);
+  const queryClient = useQueryClient();
+  const listKey = attachmentKeys.list(targetTypeCode, targetId);
 
   const list = useQuery({
     queryKey: attachmentKeys.list(targetTypeCode, targetId),
@@ -74,41 +82,68 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
       ).then((response) => response.items),
   });
 
-  const upload = useMasterWrite<{ file: File }, Attachment>({
-    request: ({ file }, headers) => {
-      const form = new FormData();
-      form.append('targetTypeCode', targetTypeCode);
-      form.append('targetId', String(targetId));
-      form.append('file', file);
-      return client.POST('/app/attachments', {
-        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        body: form as unknown as AttachmentUpload,
-      });
+  /* 파일마다 따로 보내고 따로 멱등 키를 쓴다 — 한 키로 여러 파일을 보내면 서버가 뒤 파일을 앞의 중복으로 본다. */
+  const send = (file: File) => {
+    const form = new FormData();
+    form.append('targetTypeCode', targetTypeCode);
+    form.append('targetId', String(targetId));
+    form.append('file', file);
+    return client.POST('/app/attachments', {
+      params: { header: { 'Idempotency-Key': createIdempotencyKey() } },
+      body: form as unknown as AttachmentUpload,
+    });
+  };
+
+  const upload = useMasterWrite<{ files: File[] }, Attachment>({
+    request: async ({ files }) => {
+      for (const [index, file] of files.entries()) {
+        const result = await send(file);
+        if (result.error !== undefined) {
+          // 앞서 올라간 파일은 목록에 보이게 한다. 실패한 파일부터는 고른 목록에 남는다.
+          void queryClient.invalidateQueries({ queryKey: listKey });
+          return result;
+        }
+        setSelected((prev) => prev.filter((picked) => picked !== file));
+        if (index === files.length - 1) return result;
+      }
+      // [업로드]는 고른 파일이 없으면 꺼져 있다 — 여기 오지 않는다.
+      throw new Error('올릴 파일이 없습니다.');
     },
     etagPath: null,
-    invalidateKeys: [attachmentKeys.list(targetTypeCode, targetId)],
+    invalidateKeys: [listKey],
     knownFields: ['file'],
     onSuccess: () => {
-      setSelected(null);
       setNotice(t.uploaded);
     },
   });
 
   const pick = (event: ChangeEvent<HTMLInputElement>): void => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files ?? []);
     event.target.value = '';
-    if (file === undefined) return;
+    if (files.length === 0) return;
     upload.reset();
     setNotice(null);
-    setSelected(file);
-    setSelectError(precheck(file));
+    /* 다시 고르면 더한다 — 이미 고른 같은 파일은 한 번만 둔다. */
+    setSelected((prev) => [
+      ...prev,
+      ...files.filter(
+        (file) =>
+          !prev.some(
+            (picked) =>
+              picked.name === file.name &&
+              picked.size === file.size &&
+              picked.lastModified === file.lastModified,
+          ),
+      ),
+    ]);
   };
 
-  const clearSelection = (): void => {
+  const removeSelected = (file: File): void => {
     upload.reset();
-    setSelected(null);
-    setSelectError(null);
+    setSelected((prev) => prev.filter((picked) => picked !== file));
   };
+
+  const hasSelectError = selected.some((file) => precheck(file) !== null);
 
   /** PDF 는 새 탭에서 바로 열고, 그 밖은 내려받는다. 받지 못하면 그 사실을 알린다. */
   const open = async (row: Attachment): Promise<void> => {
@@ -171,26 +206,38 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
         <p className="field-note">{upload.fieldErrors.file}</p>
       )}
       {notice !== null && <p className="field-note">{notice}</p>}
-      {selected !== null && (
-        <div className="inspection-documents-selected" aria-label={t.selected} role="group">
-          <span className="inspection-documents-selected-name">{selected.name}</span>
-          <span className="field-note">{sizeText(selected.size)}</span>
-          <Button
-            variant="text"
-            size="sm"
-            className="app-button-neutral"
-            disabled={upload.isSaving}
-            onClick={clearSelection}
-          >
-            {t.remove}
-          </Button>
-          {selectError !== null && <span className="field-error">{selectError}</span>}
+      {selected.length > 0 && (
+        <div className="inspection-documents-selected-list" aria-label={t.selected} role="group">
+          {selected.map((file) => {
+            const error = precheck(file);
+            return (
+              <div
+                className="inspection-documents-selected"
+                key={`${file.name}-${String(file.size)}-${String(file.lastModified)}`}
+              >
+                <span className="inspection-documents-selected-name">{file.name}</span>
+                <span className="field-note">{sizeText(file.size)}</span>
+                <Button
+                  variant="text"
+                  size="sm"
+                  className="app-button-neutral"
+                  aria-label={t.removeFile(file.name)}
+                  disabled={upload.isSaving}
+                  onClick={() => removeSelected(file)}
+                >
+                  {t.remove}
+                </Button>
+                {error !== null && <span className="field-error">{error}</span>}
+              </div>
+            );
+          })}
         </div>
       )}
       <input
         ref={inputRef}
         type="file"
         accept={ACCEPT}
+        multiple
         hidden
         aria-label={t.upload}
         onChange={pick}
@@ -207,12 +254,14 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
         <Button
           size="sm"
           loading={upload.isSaving}
-          disabled={selected === null || selectError !== null || upload.isSaving}
-          onClick={() => {
-            if (selected !== null) upload.write({ file: selected });
-          }}
+          disabled={selected.length === 0 || hasSelectError || upload.isSaving}
+          onClick={() => upload.write({ files: selected })}
         >
-          {upload.isSaving ? t.uploading : t.submit}
+          {upload.isSaving
+            ? t.uploading
+            : selected.length > 1
+              ? t.submitCount(selected.length)
+              : t.submit}
         </Button>
       </div>
     </section>
