@@ -111,12 +111,8 @@ export const DependencyDialog = ({
     label: operation.label,
   }));
 
-  const typeLabel = (code: string): string => {
-    const name = types.data?.find((option) => option.code === code)?.codeName ?? code;
-    const hint = td.typeHints[code];
-
-    return hint === undefined ? name : td.typeOption(name, hint);
-  };
+  const typeLabel = (code: string): string =>
+    types.data?.find((option) => option.code === code)?.codeName ?? code;
   const typeOptions: SelectOption[] = (types.data ?? []).map((option) => ({
     value: option.code,
     label: typeLabel(option.code),

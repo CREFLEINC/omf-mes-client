@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 import type {
   ItemFilters,
@@ -187,7 +188,7 @@ export interface DependencyTypeOption {
   codeName: string;
 }
 
-/** 선후행 유형은 시스템 소유 공통코드다 — 이름은 서버 값을 쓰고, 화면은 뜻풀이만 덧붙인다. */
+/** 선후행 유형은 시스템 소유 공통코드다 — 이름은 서버 값(지금 언어 이름, 없으면 기본 이름)을 쓴다. */
 export const useDependencyTypeOptions = (): UseQueryResult<DependencyTypeOption[]> => {
   const { client } = useApiClient();
 
@@ -203,7 +204,7 @@ export const useDependencyTypeOptions = (): UseQueryResult<DependencyTypeOption[
       return data.items
         .filter((item) => item.isActive)
         .sort((left, right) => left.displayOrder - right.displayOrder)
-        .map((item) => ({ code: item.code, codeName: item.codeName }));
+        .map((item) => ({ code: item.code, codeName: masterName(item, item.codeName) }));
     },
   });
 };

@@ -233,17 +233,6 @@ export const routing = {
     rowField: (rowNo: number, field: string): string => `${String(rowNo)}번째 줄 ${field}`,
     add: '관계 추가',
     operationOption: (displayNo: number, name: string): string => `${String(displayNo)}. ${name}`,
-    /*
-     * 공통코드 이름(종료-시작 등)만으로는 처음 보는 사람이 뜻을 모른다 — 코드별 짧은 풀이를 붙인다.
-     * 모르는 코드는 풀이 없이 이름만 낸다.
-     */
-    typeHints: {
-      FINISH_TO_START: '앞 공정이 끝나야 시작',
-      START_TO_START: '앞 공정이 시작하면 함께 시작',
-      FINISH_TO_FINISH: '앞 공정이 끝나야 끝남',
-      START_TO_FINISH: '앞 공정이 시작해야 끝남',
-    } as Record<string, string>,
-    typeOption: (name: string, hint: string): string => `${name} (${hint})`,
     loading: '선후행을 불러오는 중',
     noneTitle: '등록된 선후행이 없습니다',
     noneDescription: '「관계 추가」로 공정 사이의 순서를 정하세요.',

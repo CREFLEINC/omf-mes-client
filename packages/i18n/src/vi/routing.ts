@@ -224,13 +224,6 @@ export const routing: Translated<typeof ko.routing> = {
     rowField: (rowNo: number, field: string): string => `${field} dòng ${String(rowNo)}`,
     add: 'Thêm quan hệ',
     operationOption: (displayNo: number, name: string): string => `${String(displayNo)}. ${name}`,
-    typeHints: {
-      FINISH_TO_START: 'công đoạn trước xong mới bắt đầu',
-      START_TO_START: 'công đoạn trước bắt đầu thì cùng bắt đầu',
-      FINISH_TO_FINISH: 'công đoạn trước xong mới kết thúc',
-      START_TO_FINISH: 'công đoạn trước bắt đầu mới kết thúc',
-    },
-    typeOption: (name: string, hint: string): string => `${name} (${hint})`,
     loading: 'Đang tải quan hệ trước sau',
     noneTitle: 'Chưa có quan hệ trước sau',
     noneDescription: 'Dùng «Thêm quan hệ» để định thứ tự giữa các công đoạn.',

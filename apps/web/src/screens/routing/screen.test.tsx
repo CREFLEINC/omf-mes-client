@@ -1435,8 +1435,8 @@ const dependencyTypesRoute: StubRoute = {
     jsonResponse(
       listBody(
         [
-          ['FINISH_TO_START', '종료-시작', 1],
-          ['START_TO_START', '시작-시작', 2],
+          ['FINISH_TO_START', '선행 완료 후 착수', 1],
+          ['START_TO_START', '동시 착수', 2],
         ].map(([code, codeName, displayOrder], index) => ({
           codeValueId: 900 + index,
           codeGroupId: 90,
@@ -1492,7 +1492,7 @@ describe('RoutingScreen — 공정 선후행 설정', () => {
     await user.click(within(dialog).getByRole('combobox', { name: '1번째 줄 후행 공정' }));
     await user.click(await screen.findByRole('option', { name: '2. 2차 조립' }));
     expect(within(dialog).getByRole('combobox', { name: '1번째 줄 관계' })).toHaveTextContent(
-      '종료-시작 (앞 공정이 끝나야 시작)',
+      '선행 완료 후 착수',
     );
 
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
@@ -1617,7 +1617,7 @@ describe('RoutingScreen — 공정 선후행 설정', () => {
     const dialog = await openDependencies(user);
 
     expect(await within(dialog).findByText('1. 1차 사출')).toBeInTheDocument();
-    expect(within(dialog).getByText('종료-시작 (앞 공정이 끝나야 시작)')).toBeInTheDocument();
+    expect(within(dialog).getByText('선행 완료 후 착수')).toBeInTheDocument();
     expect(within(dialog).queryByRole('combobox')).toBeNull();
     expect(within(dialog).queryByRole('button', { name: '관계 추가' })).toBeNull();
     expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
