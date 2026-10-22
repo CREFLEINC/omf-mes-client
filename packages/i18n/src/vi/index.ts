@@ -92,6 +92,7 @@ import { popLocationLabel } from './pop-location-label';
 import { inspectionDocuments } from './inspection-documents';
 import { inspectionHistory } from './inspection-history';
 import { fourMInputs } from './four-m-inputs';
+import { lotGenealogy } from './lot-genealogy';
 import { pqcInspectionRegister } from './pqc-inspection-register';
 import { inspectionLevel } from './inspection-level';
 import { inspectionSheet } from './inspection-sheet';
@@ -244,6 +245,7 @@ export const vi: Translated<Messages> = {
   inspectionDocuments,
   inspectionHistory,
   fourMInputs,
+  lotGenealogy,
   pqcInspectionRegister,
   inspectionLevel,
   inspectionSheet,

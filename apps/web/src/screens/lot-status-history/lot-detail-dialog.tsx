@@ -6,7 +6,8 @@ import { lookupDisplayLabelWithInactive, type LookupSource } from '../../pattern
 import type { FilterOption } from './lot-filter-bar';
 import { LotHoldDocuments } from './lot-hold-documents';
 import { LotTimeline } from './lot-timeline';
-import { FourMInputsPanel, useFourMChangeTypeLabel } from '../four-m-inputs/panel';
+import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
+import { MaterialLotUsage, ProductionLotInputs } from './lot-genealogy';
 import { lotStatusTone } from './options';
 import { useLotDetail } from './queries';
 import { useItemNameSources } from './reference-options';
@@ -131,10 +132,9 @@ export const LotDetailDialog = ({
         </dl>
       )}
 
-      {/* 생산 LOT — 만든 W/O 에 4M 변경품이 투입됐는지(W/O 단위 추정 · omf-all-around#63 2단계). */}
-      {detail.data?.sourceTypeCode === 'WORK_ORDER' && (
-        <FourMInputsPanel workOrderId={detail.data.sourceId} estimate />
-      )}
+      {/* 투입 자재 계보(omf-all-around#166) — 생산 LOT 은 들어간 자재, 모든 LOT 은 그 LOT 이 들어간 제품. */}
+      {detail.data?.sourceTypeCode === 'WORK_ORDER' && <ProductionLotInputs lotId={lotId} />}
+      {detail.data !== undefined && <MaterialLotUsage lotId={lotId} />}
 
       <LotTimeline lotId={lotId} statusOptions={statusOptions} />
 

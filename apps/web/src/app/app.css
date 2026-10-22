@@ -17301,6 +17301,14 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   margin: 0;
 }
 
+/* 투입 자재 계보(omf-all-around#166) — 들어간 시리얼 쪽 넘김 줄. */
+.lot-genealogy-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .four-m-inputs-caption {
   position: absolute;
   width: 1px;
