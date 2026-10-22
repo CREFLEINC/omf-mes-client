@@ -2,6 +2,8 @@ import { AlertBanner, Button, Dialog } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { masterName } from '../../patterns/master-name';
+
 const t = messages.productionResult.flow.underReason;
 
 type CodeValue = components['schemas']['CodeValue'];
@@ -13,6 +15,8 @@ export interface UnderReasonDialogProps {
   isError: boolean;
   /** 앞 마감이 사유 때문에 거부됐을 때 서버가 준 문구 */
   error: string | null;
+  /** 「목표 n · 실적 m」 — 왜 사유를 묻는지 숫자로 보인다 */
+  summary: string | null;
   onPick: (code: string) => void;
   onCancel: () => void;
 }
@@ -24,6 +28,7 @@ export const UnderReasonDialog = ({
   isLoading,
   isError,
   error,
+  summary,
   onPick,
   onCancel,
 }: UnderReasonDialogProps) => (
@@ -40,6 +45,7 @@ export const UnderReasonDialog = ({
       </Button>
     }
   >
+    {summary !== null && <p className="pop-figures-line">{summary}</p>}
     {error !== null && (
       <div className="banner-slot">
         <AlertBanner variant="error" title={error} />
@@ -60,7 +66,7 @@ export const UnderReasonDialog = ({
             size="xl"
             onClick={() => onPick(reason.code)}
           >
-            {reason.codeName}
+            {masterName(reason, reason.codeName)}
           </Button>
         ))}
       </div>

@@ -8,11 +8,13 @@ import {
   IconButton,
   TextField,
 } from '@crefle/web-ui';
+import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
+import { masterName } from '../../patterns/master-name';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopSelect as Select } from '../../patterns/pop-select';
@@ -429,20 +431,55 @@ export const ProductionFlowScreen = () => {
     },
   });
 
+  /** 마감이 거부된 까닭 — 스캔 칸 아래에 선다. 사유 칸의 거부는 사유 창이 말한다(`reasonError`). */
+  const [completeFailure, setCompleteFailure] = useState<string | null>(null);
+  const [reasonError, setReasonError] = useState<string | null>(null);
+
   /**
-   * 마감 실패를 무엇으로 말할지. 서버 문구를 그대로 보인다 — 「같은 라벨을 다시 스캔하세요」만으로는
-   * 사유가 빠졌는지, 이미 마감됐는지 알 수 없다. 사유 칸의 거부는 사유 창이 말한다.
+   * 마감이 거부되면 LOT 을 다시 읽고 그 상태로 무엇을 할지 가른다.
+   *
+   * ⚠ 화면이 들고 있던 판정이 낡았을 수 있다 — 미달로 보고 사유를 실었는데 서버는 이미 정상·초과면
+   *   INVALID 로 거부한다. 그때 창을 다시 열면 같은 거부가 되풀이되므로, 새 판정이 미달이 아니면
+   *   사유 없이 다시 마감한다. 서버 문구 대신 다시 읽은 상태로 알려진 거부를 가른다 — 문구는 바뀐다.
    */
-  const completeError = ((): { isReason: boolean; text: string } | null => {
-    const error = complete.error;
-    if (error === null) return null;
-    if (error.kind === 'validation' || error.kind === 'stateLocked') {
-      const reasonItem = error.errors.find((item) => item.field === 'completionVarianceReasonCode');
-      if (reasonItem !== undefined) return { isReason: true, text: reasonItem.message };
-      return { isReason: false, text: error.errors[0]?.message ?? t.flow.scan.failed };
+  const handleCompleteFailure = async (error: ApiError): Promise<void> => {
+    setScanValue('');
+    setOutputPhase('scanReady');
+    const items = error.kind === 'validation' || error.kind === 'stateLocked' ? error.errors : [];
+    const refreshed = (await lotDetail.refetch()).data?.lot;
+    const judgment = refreshed?.progress?.completionJudgmentCode ?? null;
+    const reasonItem = items.find((item) => item.field === 'completionVarianceReasonCode');
+
+    if (reasonItem !== undefined) {
+      if (reasonItem.code !== 'REQUIRED' && judgment !== null && judgment !== 'UNDER') {
+        setOutputPhase('completing');
+        complete.write(buildLotComplete(new Date()));
+        return;
+      }
+      setReasonError(reasonItem.message);
+      setUnderReasonOpen(true);
+      return;
     }
-    return { isReason: false, text: t.flow.scan.failed };
-  })();
+    if (refreshed?.completedAt != null) {
+      setCompleteFailure(t.flow.scan.alreadyCompleted);
+      void currentLot.refetch();
+      return;
+    }
+    if (items.some((item) => item.code === 'STATE_LOCKED')) {
+      setCompleteFailure(
+        (refreshed?.progress?.goodQty ?? 0) === 0
+          ? t.flow.scan.noAllocation
+          : judgment === 'UNDER'
+            ? t.flow.scan.workOrderClosed
+            : (items[0]?.message ?? t.flow.scan.failed),
+      );
+      return;
+    }
+    setCompleteFailure(items[0]?.message ?? t.flow.scan.failed);
+  };
+  /* 효과는 마감 오류가 바뀔 때만 돈다 — 처리기는 매 렌더의 것을 읽는다. */
+  const handleCompleteFailureRef = useRef(handleCompleteFailure);
+  handleCompleteFailureRef.current = handleCompleteFailure;
 
   /*
    * ## 작업 세션 자동 종료
@@ -613,6 +650,8 @@ export const ProductionFlowScreen = () => {
     setAppliedLabelQty(allocatedQty === undefined ? null : { lotId, qty: allocatedQty });
     setConfirmedResultLotId(lotId);
     setOutputPhase('issuing');
+    /* 실적이 붙었으니 LOT 의 미달·정상 판정이 바뀐다 — 마감 때 낡은 판정으로 사유를 묻지 않게 다시 읽는다. */
+    void lotDetail.refetch();
     /*
      * ⛔ **쓰기가 먹은 뒤 요약을 다시 읽는다**(#1093 ④). 잔여수량은 작업지시의 진척에서 오는데
      *    이 쓰기는 큐를 통해 나가므로 그 결과가 저절로 캐시에 반영되지 않는다 — 다시 읽지
@@ -674,15 +713,8 @@ export const ProductionFlowScreen = () => {
   }, [lotIssue.error, outputPhase]);
 
   useEffect(() => {
-    if (complete.error !== null && outputPhase === 'completing') {
-      setScanValue('');
-      setOutputPhase('scanReady');
-      /* 사유 때문에 거부됐으면 사유 창을 다시 연다 — 거기서 서버 문구를 보이고 다시 고르게 한다. */
-      if (completeError?.isReason === true) setUnderReasonOpen(true);
-    }
-    // 판정 값은 오류에서 나온다 — 오류가 바뀔 때만 다시 본다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [complete.error, outputPhase]);
+    if (complete.error !== null) void handleCompleteFailureRef.current(complete.error);
+  }, [complete.error]);
 
   useEffect(() => {
     if (outbox.rejection !== null && outputPhase === 'queued') setOutputPhase('idle');
@@ -1041,6 +1073,8 @@ export const ProductionFlowScreen = () => {
     }
     if (verdict !== 'match' || gates.complete !== 'allowed' || entry.workerNo === null) return;
 
+    setCompleteFailure(null);
+    setReasonError(null);
     /* 서버가 미달로 판정한 LOT 은 사유가 있어야 마감된다 — 보내기 전에 고르게 한다. */
     if (lotJudgment === 'UNDER') {
       complete.reset();
@@ -1054,6 +1088,7 @@ export const ProductionFlowScreen = () => {
 
   const completeUnder = (reasonCode: string): void => {
     setUnderReasonOpen(false);
+    setReasonError(null);
     if (lot === null || gates.complete !== 'allowed' || entry.workerNo === null) return;
 
     setOutputPhase('completing');
@@ -1063,6 +1098,7 @@ export const ProductionFlowScreen = () => {
   /* 사유를 고르지 않고 닫으면 마감하지 않고 스캔을 기다린다. */
   const cancelUnder = (): void => {
     setUnderReasonOpen(false);
+    setReasonError(null);
     setScanValue('');
     complete.reset();
   };
@@ -1749,15 +1785,23 @@ export const ProductionFlowScreen = () => {
                * 실패한 것이 함께 서면, 다음에 무엇을 해야 하는지가 두 문장으로 갈린다. 어긋남은
                * 칸이 이미 말하고 있으므로 마감 실패는 그때만 선다.
                */}
-              {completeError !== null && !completeError.isReason && !scanMismatch && (
-                <p className="field-error">{completeError.text}</p>
+              {completeFailure !== null && !scanMismatch && (
+                <p className="field-error">{completeFailure}</p>
               )}
               <UnderReasonDialog
                 open={isUnderReasonOpen}
                 reasons={varianceReasons.data ?? []}
                 isLoading={varianceReasons.isLoading}
                 isError={varianceReasons.isError}
-                error={completeError?.isReason === true ? completeError.text : null}
+                error={reasonError}
+                summary={
+                  lot === null
+                    ? null
+                    : t.flow.underReason.summary(
+                        `${formatQty(lot.initialQty)} ${uomLabel}`.trim(),
+                        `${formatQty(lotDetail.data?.lot.progress?.goodQty ?? 0)} ${uomLabel}`.trim(),
+                      )
+                }
                 onPick={completeUnder}
                 onCancel={cancelUnder}
               />
@@ -1890,7 +1934,7 @@ export const ProductionFlowScreen = () => {
             placeholder={t.flow.tag.reissueReasonPlaceholder}
             options={(reissueReasons.data ?? []).map((reason) => ({
               value: reason.code,
-              label: reason.codeName,
+              label: masterName(reason, reason.codeName),
             }))}
             onChange={setTagReissueReason}
           />
