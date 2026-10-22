@@ -6369,13 +6369,16 @@ dl.filter-bar.approval-inbox-detail-facts {
   table-layout: fixed;
 }
 
-/* 두 표(server #762) — 열별 폭의 도출 표는 order-table.tsx · line-table.tsx 에 있다. */
+/*
+ * 두 표(server #762) — 열별 폭의 도출 표는 order-table.tsx · line-table.tsx 에 있다.
+ * 열 폭을 끌어 바꾸면 최소 폭이 그만큼 따라간다(`--col-grow` · `--col-floor`, patterns/column-resize.tsx).
+ */
 .wide-table.po-board-orders table {
-  min-width: 38rem;
+  min-width: max(38rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
 
 .wide-table.po-board-lines table {
-  min-width: 48rem;
+  min-width: max(48rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
 
 /*
@@ -6619,7 +6622,7 @@ body.po-board-resizing {
  * 열별 폭의 도출 표는 split-line-table.tsx 에 있다.
  */
 .wide-table.ors-lines table {
-  min-width: 62rem;
+  min-width: max(62rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
 
 .ors-lines td {
@@ -6917,6 +6920,48 @@ body.po-board-resizing {
 
 .po-board-table td {
   white-space: nowrap;
+}
+
+/*
+ * 열 폭 조절(사용자 지시 2026-10-22, patterns/column-resize.tsx) — 좁힌 칸의 글자는 이웃 칸을 덮지 않고
+ * 말줄임한다. 입하 등록의 라인 표는 LOT 입력이 이웃 칸 위로 이어져야 해서(`.ors-lines td`) 칸을 자르지 않는다.
+ */
+.po-board-table thead th,
+.po-board-table:not(.ors-lines) td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 끌기 손잡이 — 머리칸 오른쪽 끝. 머리칸은 고정(sticky)이라 이미 위치의 기준이다. */
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--space-2);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+/* 머리칸 사이의 가는 세로선 — 끌 수 있는 자리가 마우스를 올리기 전에도 보인다(두 표 사이 막대와 같은 판단). */
+.col-resizer::after {
+  content: '';
+  position: absolute;
+  top: var(--space-2);
+  right: 0;
+  bottom: var(--space-2);
+  width: 1px;
+  background: var(--outline-variant);
+}
+
+th:last-child > .col-resizer::after {
+  background: transparent;
+}
+
+.col-resizer:hover::after,
+.col-resizer:active::after {
+  width: 3px;
+  background: var(--semantic-info);
 }
 
 /*
@@ -16556,6 +16601,11 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 .excess-table {
   max-height: 40vh;
   overflow: auto;
+}
+
+/* 열 폭을 끌어 바꾸면 최소 폭이 따라간다(patterns/column-resize.tsx). 기본은 `.wide-table` 의 58rem 이다. */
+.wide-table.excess-table table {
+  min-width: max(58rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
 
 .excess-table tbody tr {

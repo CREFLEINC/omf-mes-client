@@ -12,6 +12,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useColumnWidths } from '../../patterns/column-resize';
 import { formatDotDate, OneLine } from '../../patterns/po-board';
 import type { LotDraft } from './line-draft';
 import {
@@ -359,6 +360,7 @@ export const SplitLineTable = ({
     onChangeQty,
     onChangeLot,
   });
+  const resizable = useColumnWidths('omf-mes:inbound-schedule:columns:register', columns);
 
   const summary: SummaryItem[] = [
     { key: 'supplier', label: t.summary.supplier, value: supplierName },
@@ -414,10 +416,10 @@ export const SplitLineTable = ({
           <SkeletonText lines={2} />
         </div>
       ) : (
-        <div className="wide-table po-board-table ors-lines">
+        <div className="wide-table po-board-table ors-lines" style={resizable.style}>
           <Table
             density="compact"
-            columns={columns}
+            columns={resizable.columns}
             rows={toLineTableRows(rows)}
             getRowId={lineTableRowId}
             empty={

@@ -15,6 +15,7 @@ import { messages } from '@omf-mes/i18n';
 import type { MouseEvent, ReactNode } from 'react';
 import { useEffect, useId, useState } from 'react';
 
+import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner } from '../../patterns/master';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
@@ -400,6 +401,11 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
       render: (row) => qtyWithUom(row.roomQty, uomCode),
     },
   ];
+  const excessTable = useColumnWidths('omf-mes:inbound-schedule:columns:excess', excessColumns);
+  const candidateTable = useColumnWidths(
+    'omf-mes:inbound-schedule:columns:excess-candidates',
+    candidateColumns,
+  );
 
   const listBody = (kind: ExcessTab): ReactNode => {
     if (kind !== tab) return null;
@@ -427,6 +433,7 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
         {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
         <div
           className="wide-table po-board-table excess-table"
+          style={excessTable.style}
           onClick={(event) => {
             const id = pickedIdOf(event);
             if (id !== null) pickExcess(id);
@@ -435,7 +442,7 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
           <Table
             density="compact"
             caption={<span className="erp-data-table-caption">{t.tabs[kind]}</span>}
-            columns={excessColumns}
+            columns={excessTable.columns}
             rows={rows}
             getRowId={(row) => String(row.inboundReceiptExcessId)}
             empty={
@@ -478,6 +485,7 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
         /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
         <div
           className="wide-table po-board-table excess-table"
+          style={candidateTable.style}
           onClick={(event) => {
             const id = pickedIdOf(event);
             if (id !== null) pickLine(id);
@@ -486,7 +494,7 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
           <Table
             density="compact"
             caption={<span className="erp-data-table-caption">{t.candidates.title}</span>}
-            columns={candidateColumns}
+            columns={candidateTable.columns}
             rows={candidateRows}
             getRowId={(row) => String(row.purchaseOrderLineId)}
             empty={

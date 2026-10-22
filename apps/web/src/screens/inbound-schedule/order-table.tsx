@@ -2,6 +2,7 @@ import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/we
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useColumnWidths } from '../../patterns/column-resize';
 import { isOrderOverdue } from './overdue';
 import { formatDate } from './period';
 import { OneLine, orEmpty, OrderStateCell } from './receipt-status';
@@ -26,6 +27,8 @@ export interface OrderTableProps {
  * 품목·수량의 낱낱은 오른쪽 표가 낸다. 정렬은 서버 순서 그대로다 — 쪽을 넘는 정렬은 화면이 할 수 없다.
  *
  * 공급사 코드·남은 수량은 두지 않는다 — 오른쪽 발주 상세가 낸다(사용자 지시 2026-10-21).
+ *
+ * 아래는 기본 폭이다 — 머리칸 오른쪽 끝을 끌어 바꿀 수 있다(`patterns/column-resize.tsx`).
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
@@ -102,6 +105,7 @@ export const OrderTable = ({
       render: (row) => formatDate(row.orderDate),
     },
   ];
+  const resizable = useColumnWidths('omf-mes:inbound-schedule:columns:orders', columns);
 
   if (isLoading) {
     return (
@@ -158,6 +162,7 @@ export const OrderTable = ({
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
       className="wide-table po-board-table po-board-orders"
+      style={resizable.style}
       onClick={(event) => {
         const row = (event.target as HTMLElement).closest('tbody tr');
         const id = row?.querySelector<HTMLElement>('[data-po-id]')?.dataset.poId;
@@ -167,7 +172,7 @@ export const OrderTable = ({
       <Table
         density="compact"
         caption={<span className="erp-data-table-caption">{t.panes.orders}</span>}
-        columns={columns}
+        columns={resizable.columns}
         rows={rows}
         getRowId={(row) => String(row.purchaseOrderId)}
         empty={emptySlot()}

@@ -1,6 +1,7 @@
 import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { useColumnWidths } from '../../patterns/column-resize';
 import type { ExcessEntry } from './excess-entry';
 import { lineExcessesOf, type LineExcesses } from './excess-match';
 import { formatDate } from './period';
@@ -92,6 +93,8 @@ const ExcessCell = ({
  * 이름 칸이 라인에 함께 와(server #762) 품목·단위를 따로 부르지 않는다.
  *
  * 「입하 등록」은 **표 위에 한 번만** 둔다 — 발주 단위의 일이라 줄마다 되풀이할 까닭이 없다.
+ *
+ * 아래는 기본 폭이다 — 머리칸 오른쪽 끝을 끌어 바꿀 수 있다(`patterns/column-resize.tsx`).
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
@@ -193,6 +196,7 @@ export const LineTable = ({
       render: (row) => <OneLine text={storageLocationNameOf(row.erpStorageLocationCode)} />,
     },
   ];
+  const resizable = useColumnWidths('omf-mes:inbound-schedule:columns:lines', columns);
 
   if (order === null) {
     return (
@@ -262,11 +266,11 @@ export const LineTable = ({
           <SkeletonText lines={3} />
         </div>
       ) : (
-        <div className="wide-table po-board-table po-board-lines">
+        <div className="wide-table po-board-table po-board-lines" style={resizable.style}>
           <Table
             density="compact"
             caption={<span className="erp-data-table-caption">{t.panes.lines}</span>}
-            columns={columns}
+            columns={resizable.columns}
             rows={rows}
             getRowId={(row) => String(row.purchaseOrderLineId)}
             empty={<EmptyState size="sm" title={t.empty.noLinesTitle} />}
