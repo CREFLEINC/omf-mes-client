@@ -11,6 +11,7 @@ import { toPageView } from '../oqc-inspection/pagination';
 import { useInspectionQueue } from '../oqc-inspection/queries';
 import { useDirectSubmitter } from '../pqc-panel/direct-submitter';
 import { PqcPanel } from '../pqc-panel/panel';
+import { EMPTY_PQC_FILTERS, PqcFilterBar, type PqcFilters } from './filter-bar';
 import { PqcQueueTable } from './queue-table';
 
 const t = messages.pqcInspectionRegister;
@@ -38,11 +39,19 @@ export const PqcInspectionRegisterScreen = () => {
   const selectedId = toSelectedId(searchParams.get(SELECTED_KEY));
   const [pendingOnly, setPendingOnly] = useState(true);
   const [page, setPage] = useState(1);
+  const [filters, setFilters] = useState<PqcFilters>(EMPTY_PQC_FILTERS);
   const [dirty, setDirty] = useState(false);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   const submitter = useDirectSubmitter();
 
-  const queue = useInspectionQueue({ inspectionTypeCode: PQC, pendingOnly, page, size: PAGE_SIZE });
+  const queue = useInspectionQueue({
+    inspectionTypeCode: PQC,
+    pendingOnly,
+    ...(filters.itemId === null ? {} : { itemId: filters.itemId }),
+    ...(filters.keyword === '' ? {} : { q: filters.keyword }),
+    page,
+    size: PAGE_SIZE,
+  });
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
 
@@ -90,6 +99,17 @@ export const PqcInspectionRegisterScreen = () => {
 
       {selectedId === null ? (
         <section className="pane pqc-web-list" aria-label={t.queue.heading}>
+          <PqcFilterBar
+            applied={filters}
+            onSearch={(next) => {
+              setFilters(next);
+              setPage(1);
+            }}
+            onReset={() => {
+              setFilters(EMPTY_PQC_FILTERS);
+              setPage(1);
+            }}
+          />
           <Checkbox
             checked={pendingOnly}
             onChange={(event) => {

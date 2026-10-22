@@ -24,6 +24,17 @@ export const pqcInspectionRegister = {
     leaveAnyway: 'Rời đi không lưu',
   },
 
+  filters: {
+    item: 'Tìm mặt hàng',
+    itemPlaceholder: 'Nhập mặt hàng',
+    itemPick: 'Chọn',
+    itemClear: 'Xóa điều kiện mặt hàng',
+    keyword: 'Tìm số yêu cầu',
+    keywordPlaceholder: 'Nhập số yêu cầu',
+    apply: 'Tra cứu',
+    reset: 'Đặt lại',
+  },
+
   columns: {
     workOrder: 'Lệnh sản xuất',
     item: 'Mặt hàng',

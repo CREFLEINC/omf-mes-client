@@ -121,7 +121,7 @@ const web = t.web;
 
 /* 목록 줄의 의뢰번호 단추로 상세를 연다(#135 — 목록과 상세가 나뉜 화면). */
 const openRequest = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(await screen.findByRole('button', { name: REQUEST.inspectionRequestNo }));
+  await user.click(await screen.findByText(REQUEST.inspectionRequestNo));
   return within(await screen.findByRole('region', { name: t.detail.paneLabel }));
 };
 
@@ -132,6 +132,19 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     expect(await screen.findByText(REQUEST.inspectionRequestNo)).toBeInTheDocument();
     expect(queueQueries[0]?.get('inspectionTypeCode')).toBe('PQC');
     expect(queueQueries[0]?.get('pendingOnly')).toBe('true');
+  });
+
+  it('조건 줄의 의뢰번호 검색을 목록 질의 q 로 싣고, 초기화하면 뺀다(#135)', async () => {
+    const user = userEvent.setup();
+    const { queueQueries } = renderScreen();
+    await screen.findByText(REQUEST.inspectionRequestNo);
+
+    await user.type(screen.getByRole('textbox', { name: t.filters.keyword }), 'IR-PQC');
+    await user.click(screen.getByRole('button', { name: t.filters.apply }));
+    await waitFor(() => expect(queueQueries.at(-1)?.get('q')).toBe('IR-PQC'));
+
+    await user.click(screen.getByRole('button', { name: t.filters.reset }));
+    await waitFor(() => expect(queueQueries.at(-1)?.get('q')).toBeNull());
   });
 
   it('목록은 내부 번호가 아니라 작업지시 번호·품목 이름·코드를 보인다(#135)', async () => {
@@ -169,9 +182,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
 
     await user.click(screen.getByRole('button', { name: t.detail.backToList }));
     await user.click(await screen.findByRole('button', { name: t.detail.leaveAnyway }));
-    expect(
-      await screen.findByRole('button', { name: REQUEST.inspectionRequestNo }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(REQUEST.inspectionRequestNo)).toBeInTheDocument();
   });
 
   it('고른 의뢰를 판정해 바로 저장한다 — 사번 헤더를 싣지 않는다', async () => {

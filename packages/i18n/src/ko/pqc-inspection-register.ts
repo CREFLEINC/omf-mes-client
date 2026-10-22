@@ -31,6 +31,18 @@ export const pqcInspectionRegister = {
     leaveAnyway: '저장하지 않고 이동',
   },
 
+  /** 목록 조건 줄(#135) — IQC 판정 화면(#133)과 같은 말. */
+  filters: {
+    item: '품목 검색',
+    itemPlaceholder: '품목을 입력하세요',
+    itemPick: '선택',
+    itemClear: '품목 조건 지우기',
+    keyword: '의뢰번호 검색',
+    keywordPlaceholder: '의뢰번호를 입력하세요',
+    apply: '조회',
+    reset: '초기화',
+  },
+
   /** 목록 표 열(#135) — 내부 번호 대신 작업지시 번호 · 품목 이름·코드. */
   columns: {
     workOrder: '작업지시',

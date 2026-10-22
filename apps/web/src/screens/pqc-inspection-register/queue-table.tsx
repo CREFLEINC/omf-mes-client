@@ -34,7 +34,7 @@ export interface PqcQueueTableProps {
 }
 
 /**
- * W-03-11 목록(omf-all-around#135) — 의뢰번호 · 작업지시 · 품목 · 검사 수량 · 상태. 줄 아무 곳이나 누르면 상세가 열린다.
+ * W-03-11 목록(omf-all-around#135) — 의뢰번호 · 작업지시 · 품목 · 검사 수량 · 상태. 줄을 누르면 상세가 열린다.
  * ⚠ OQC 화면의 목록 표는 그대로 둔다 — 이 표는 PQC 화면만 쓴다.
  */
 export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueTableProps) => {
@@ -43,15 +43,7 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
       key: 'no',
       header: messages.pqcInspection.detail.fields.inspectionRequestNo,
       width: '18%',
-      render: (row) => (
-        <button
-          type="button"
-          className="link-cell pqc-web-queue-open"
-          onClick={() => onSelect(row.inspectionRequestId)}
-        >
-          {row.inspectionRequestNo}
-        </button>
-      ),
+      render: (row) => row.inspectionRequestNo,
     },
     {
       key: 'workOrder',
@@ -87,16 +79,15 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
   ];
 
   return (
-    /* 줄 아무 곳이나 눌러도 연다 — 눌린 줄의 의뢰번호 단추로 넘긴다(키보드는 그 단추로). */
+    /* 줄 아무 곳이나 눌러 연다(#135) — 의뢰번호를 따로 누르는 길은 두지 않는다. */
     <div
       className="pqc-web-queue"
       onClick={(event) => {
-        const target = event.target as Element;
-        if (target.closest('button, a, input') !== null) return;
-        target
-          .closest('tbody tr')
-          ?.querySelector<HTMLButtonElement>('.pqc-web-queue-open')
-          ?.click();
+        const row = (event.target as Element).closest('tbody tr');
+        if (row === null || row.parentElement === null) return;
+        const index = Array.from(row.parentElement.children).indexOf(row);
+        const picked = rows[index];
+        if (picked !== undefined) onSelect(picked.inspectionRequestId);
       }}
     >
       <Table
