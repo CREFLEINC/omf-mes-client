@@ -42,6 +42,8 @@ export const routing: Translated<typeof ko.routing> = {
     dependenciesBlockedByUnsaved:
       'Không thể thiết lập trước sau khi còn dòng công đoạn chưa lưu. Hãy lưu hoặc hủy công đoạn trước.',
     dependenciesNeedOperations: 'Cần lưu ít nhất 2 công đoạn mới thiết lập được trước sau.',
+    removeBlockedByDependencies: (relations: string): string =>
+      `Công đoạn này đang có quan hệ trước sau (${relations}). Hãy xóa quan hệ đó ở [Thiết lập trước sau] trước rồi mới xóa công đoạn.`,
     compareRevisionsUnavailable:
       'Việc so sánh Rev hiện chưa thể thực hiện. Khi chức năng so sánh sẵn sàng thì có thể dùng nút này.',
     changeHistoryUnavailable:

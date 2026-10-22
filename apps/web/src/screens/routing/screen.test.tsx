@@ -1664,6 +1664,102 @@ describe('RoutingScreen — 공정 선후행 설정', () => {
   });
 });
 
+describe('RoutingScreen — 선후행이 걸린 공정 삭제와 서버 거부', () => {
+  it('선후행이 걸린 공정은 삭제 아이콘을 막고 어떤 관계인지·어디서 풀지 말한다', async () => {
+    renderDraftOperations([dependencyListRoute([savedFs])]);
+
+    await screen.findByText('1차 사출');
+    const reason =
+      '이 공정에 선후행이 걸려 있습니다(1. 1차 사출 → 2. 2차 조립). 먼저 [선후행 설정]에서 그 관계를 지우고 공정을 지우세요.';
+    await waitFor(() =>
+      expect(
+        within(operationsRegion()).getByRole('button', { name: '1번 공정 삭제' }),
+      ).toBeDisabled(),
+    );
+    expect(
+      within(operationsRegion()).getByRole('button', { name: '2번 공정 삭제' }),
+    ).toBeDisabled();
+    expect(
+      within(operationsRegion()).getByRole('button', { name: '1번 공정 삭제' }),
+    ).toHaveAccessibleDescription(reason);
+    expect(within(operationsRegion()).getByRole('button', { name: '1번 공정 수정' })).toBeEnabled();
+  });
+
+  it('서버가 공정 삭제를 거부하면 서버 문구를 띠로 보인다', async () => {
+    const { user } = renderDraftOperations([
+      dependencyListRoute(),
+      operationSaveRoute(() =>
+        stateLockedResponse('선후행이 걸린 공정은 뺄 수 없습니다. 선후행을 먼저 정리하세요.'),
+      ),
+    ]);
+
+    await screen.findByText('1차 사출');
+    await user.click(within(operationsRegion()).getByRole('button', { name: '2번 공정 삭제' }));
+    await user.click(within(operationsRegion()).getByRole('button', { name: '저장' }));
+
+    expect(
+      await within(operationsRegion()).findByText(
+        '선후행이 걸린 공정은 뺄 수 없습니다. 선후행을 먼저 정리하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('선후행 저장에서 서버가 짚은 줄 오류는 그 줄에, 화면 전체 오류는 띠로 낸다', async () => {
+    let attempt = 0;
+    const { user } = renderDraftOperations([
+      dependencyListRoute(),
+      dependencyTypesRoute,
+      {
+        match: (request) =>
+          request.method === 'PUT' && new URL(request.url).pathname === DEPENDENCIES_PATH,
+        respond: () => {
+          attempt += 1;
+          return jsonResponse(
+            {
+              errors:
+                attempt === 1
+                  ? [
+                      {
+                        scope: 'field',
+                        field: 'dependencies[0].successorOperationId',
+                        code: 'INVALID',
+                        message: '이 Routing 의 공정이 아닙니다.',
+                      },
+                    ]
+                  : [
+                      {
+                        scope: 'screen',
+                        code: 'INVALID',
+                        message: '공정 선후행에 순환이 생깁니다.',
+                      },
+                    ],
+            },
+            { status: 400 },
+          );
+        },
+      },
+    ]);
+
+    const dialog = await openDependencies(user);
+    await user.click(await within(dialog).findByRole('button', { name: '관계 추가' }));
+    await user.click(within(dialog).getByRole('combobox', { name: '1번째 줄 선행 공정' }));
+    await user.click(await screen.findByRole('option', { name: '1. 1차 사출' }));
+    await user.click(within(dialog).getByRole('combobox', { name: '1번째 줄 후행 공정' }));
+    await user.click(await screen.findByRole('option', { name: '2. 2차 조립' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    const rowError = await within(dialog).findByText('이 Routing 의 공정이 아닙니다.');
+    expect(within(dialog).getByRole('combobox', { name: '1번째 줄 선행 공정' })).toHaveAttribute(
+      'aria-describedby',
+      rowError.id,
+    );
+
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+    expect(await within(dialog).findByText('공정 선후행에 순환이 생깁니다.')).toBeInTheDocument();
+    expect(within(dialog).queryByText('이 Routing 의 공정이 아닙니다.')).toBeNull();
+  });
+});
+
 describe('RoutingScreen — 저장하지 않고 옮기기', () => {
   const discard = messages.routing.discard;
 

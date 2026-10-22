@@ -43,6 +43,8 @@ export const routing = {
     dependenciesBlockedByUnsaved:
       '선후행 설정은 저장하지 않은 공정 라인이 있으면 할 수 없습니다. 먼저 공정을 저장하거나 취소하세요.',
     dependenciesNeedOperations: '선후행 설정은 공정이 2건 이상 저장돼 있어야 할 수 있습니다.',
+    removeBlockedByDependencies: (relations: string): string =>
+      `이 공정에 선후행이 걸려 있습니다(${relations}). 먼저 [선후행 설정]에서 그 관계를 지우고 공정을 지우세요.`,
     compareRevisionsUnavailable:
       'Rev 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     changeHistoryUnavailable:

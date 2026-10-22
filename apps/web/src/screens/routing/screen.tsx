@@ -47,6 +47,7 @@ import {
   routingDetailPath,
   routingKeys,
   useItemList,
+  useOperationDependencies,
   useProcessOptions,
   useRoutingDetail,
   useRoutingList,
@@ -219,6 +220,7 @@ const RoutingWorkspace = () => {
 
   const detail = useRoutingDetail(selectedRoutingId);
   const operationList = useRoutingOperations(selectedRoutingId);
+  const dependencyList = useOperationDependencies(selectedRoutingId);
   const processOptions = useProcessOptions();
 
   const [formState, setFormState] = useState<HeaderFormState | null>(null);
@@ -673,6 +675,39 @@ const RoutingWorkspace = () => {
     return null;
   })();
 
+  /*
+   * 선후행이 걸린 공정은 서버가 라인 저장 전체와 함께 거부한다 — 지우기 전에 막는다.
+   * 이름은 지금 표의 번호로 보인다. 사용자는 표를 보고 그 공정을 찾는다.
+   */
+  const removeBlockedReason = (draft: OperationDraft): string | null => {
+    const operationId = draft.routingOperationId;
+    if (operationId === null) return null;
+
+    const relations = (dependencyList.data?.items ?? []).filter(
+      (item) =>
+        item.predecessorOperationId === operationId || item.successorOperationId === operationId,
+    );
+    if (relations.length === 0) return null;
+
+    const labelOf = (id: number): string => {
+      const index = operationDrafts.findIndex((row) => row.routingOperationId === id);
+      const row = operationDrafts[index];
+
+      return row === undefined
+        ? String(id)
+        : t.dependencies.operationOption(index + 1, row.operationName);
+    };
+
+    return t.actionReasons.removeBlockedByDependencies(
+      relations
+        .map(
+          (item) =>
+            `${labelOf(item.predecessorOperationId)} → ${labelOf(item.successorOperationId)}`,
+        )
+        .join(', '),
+    );
+  };
+
   /* 표시 번호는 표와 같게 목록 안의 위치다. */
   const dependencyOperations = (operationList.data?.items ?? []).map((operation, index) => ({
     routingOperationId: operation.routingOperationId,
@@ -916,6 +951,7 @@ const RoutingWorkspace = () => {
             isSaving={operationsWrite.isSaving}
             saveBlockedReason={operationsSaveBlockedReason}
             dependenciesBlockedReason={dependenciesBlockedReason}
+            removeBlockedReason={removeBlockedReason}
             /* 라인 저장에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니라 onReload를 넘기지 않는다. */
             banner={<SaveErrorBanner error={operationsWrite.error} />}
             onAdd={handleAddOperation}

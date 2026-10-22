@@ -28,6 +28,7 @@ import { routingKeys, useDependencyTypeOptions, useOperationDependencies } from 
 import type { SelectOption } from './types';
 
 const t = messages.routing;
+const ROW_FIELDS = ['.predecessorOperationId', '.successorOperationId', '.dependencyTypeCode'];
 const td = messages.routing.dependencies;
 
 type DependencyList = components['schemas']['RoutingOperationDependencyListResponse'];
@@ -121,8 +122,8 @@ export const DependencyDialog = ({
     label: typeLabel(option.code),
   }));
 
-  const errors = isEditable ? validateDependencies(drafts, operationLabel) : {};
-  const hasErrors = Object.keys(errors).length > 0;
+  const localErrors = isEditable ? validateDependencies(drafts, operationLabel) : {};
+  const hasErrors = Object.keys(localErrors).length > 0;
 
   const write = useMasterWrite<DependencyDraft[], DependencyList>({
     request: (rows, headers) =>
@@ -142,8 +143,10 @@ export const DependencyDialog = ({
     /* 선후행에는 판 번호가 없다(부여·회수형) — 잠글 토큰이 없어 If-Match 를 싣지 않는다. */
     etagPath: null,
     invalidateKeys: [routingKeys.dependencies(routingId)],
-    /* 어느 줄의 오류인지 서버가 알려 주지 않는다 — 배너로 올린다. */
-    knownFields: [],
+    /* 줄 오류는 `dependencies[i]`·`dependencies[i].<칸>` 으로 온다 — 그 줄에 붙이고, 순환처럼 화면 전체 오류는 띠로 올린다. */
+    knownFields: drafts.flatMap((_row, index) =>
+      ['', ...ROW_FIELDS].map((field) => `dependencies[${String(index)}]${field}`),
+    ),
     onSuccess: () => {
       toast.show({ variant: 'success', description: messages.common.saved });
       onClose();
@@ -159,7 +162,18 @@ export const DependencyDialog = ({
     if (isStateLocked) void queryClient.invalidateQueries({ queryKey: routingKeys.all });
   }, [isStateLocked, queryClient]);
 
+  /* 서버가 짚은 줄은 보낼 때의 위치로 온다 — 표가 바뀌면 그 위치가 다른 줄을 가리키므로 함께 지운다. */
+  const errors: Record<string, string> = { ...localErrors };
+  drafts.forEach((row, index) => {
+    if (row.draftId in errors) return;
+    const serverError = ['', ...ROW_FIELDS]
+      .map((field) => write.fieldErrors[`dependencies[${String(index)}]${field}`])
+      .find((message) => message !== undefined);
+    if (serverError !== undefined) errors[row.draftId] = serverError;
+  });
+
   const changeDrafts = (next: (rows: DependencyDraft[]) => DependencyDraft[]) => {
+    write.reset();
     setState((prev) => (prev === null ? prev : { ...prev, drafts: next(prev.drafts) }));
   };
 

@@ -27,6 +27,7 @@ const renderPane = (overrides: Partial<OperationsPaneProps> = {}) => {
     isSaving: false,
     saveBlockedReason: null,
     dependenciesBlockedReason: null,
+    removeBlockedReason: () => null,
     banner: null,
     onAdd: vi.fn(),
     onEdit: vi.fn(),
