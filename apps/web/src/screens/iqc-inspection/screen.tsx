@@ -828,7 +828,12 @@ export const IqcInspectionScreen = () => {
         title={t.title}
         breadcrumb={
           <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            items={[
+              { label: t.breadcrumbRoot },
+              { label: t.title },
+              /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#133). */
+              ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
+            ]}
             aria-label={messages.common.shell.breadcrumb}
           />
         }
