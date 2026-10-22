@@ -14861,6 +14861,15 @@ button.app-button-neutral {
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* 「현재 검사 수준과 동일합니다.」 — 정보 아이콘 + 보조색 한 줄(오류색 아님). */
+.inspection-level-same {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
 /* 품목 값 — 항목명(작은 보조 글) 아래 본문보다 한 단계 큰 본문색(#133). */
 .inspection-level-form-item {
   margin: 0;
@@ -15058,12 +15067,14 @@ button.app-button-neutral {
   column-gap: var(--space-2);
 }
 
+/* 칸 옆 단위 — 「미입력 20 EA」의 숫자 · 단위와 같은 본문색 · 굵기(#133). */
 .iqc-inspection-qty-unit {
   display: flex;
   align-items: center;
   height: var(--control-height-md);
   margin-top: var(--field-label-layer);
-  color: var(--on-surface-variant);
+  color: var(--on-surface);
+  font-weight: 600;
 }
 
 /*

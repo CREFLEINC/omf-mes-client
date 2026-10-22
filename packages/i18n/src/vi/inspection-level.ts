@@ -50,7 +50,7 @@ export const inspectionLevel = {
     noItem: 'Hãy chọn vật tư.',
     level: 'Mức kiểm tra',
     reason: 'Lý do',
-    sameLevel: 'Trùng với mức hiện tại. Hãy chọn mức khác.',
+    sameLevel: 'Trùng với mức kiểm tra hiện tại.',
     duplicate: 'Vật tư này đã được chỉ định mức kiểm tra. Hãy dùng Đổi mức trong danh sách.',
   },
 

@@ -1,4 +1,4 @@
-import { Button, Dialog, Select, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Icon, Select, TextField } from '@crefle/web-ui';
 import type { InspectionLevelCode, ItemInspectionLevel } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId, useState } from 'react';
@@ -115,8 +115,16 @@ export const LevelDialog = ({
                 setErrors((prev) => ({ ...prev, inspectionLevelCode: '' }));
               }}
             />
-            {shown.inspectionLevelCode && (
-              <span className="field-error">{shown.inspectionLevelCode}</span>
+            {/* 같은 수준은 잘못이 아니라 «바뀌는 것이 없다»는 알림 — 빨간 오류가 아니라 정보 아이콘 + 보조색(#133). */}
+            {shown.inspectionLevelCode === t.dialog.sameLevel ? (
+              <span className="inspection-level-same">
+                <Icon name="info" size={16} aria-hidden />
+                {t.dialog.sameLevel}
+              </span>
+            ) : (
+              shown.inspectionLevelCode && (
+                <span className="field-error">{shown.inspectionLevelCode}</span>
+              )
             )}
           </div>
 

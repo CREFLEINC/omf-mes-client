@@ -50,7 +50,7 @@ export const inspectionLevel = {
     noItem: '품목을 고르세요.',
     level: '검사 수준',
     reason: '사유',
-    sameLevel: '지금과 같은 수준입니다. 다른 수준을 고르세요.',
+    sameLevel: '현재 검사 수준과 동일합니다.',
     duplicate: '이미 검사 수준을 지정한 품목입니다. 목록에서 수준 변경을 쓰세요.',
   },
 
