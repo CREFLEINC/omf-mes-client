@@ -38,6 +38,14 @@ const describeLimits = (spec: SpecRange): string | null => {
   return null;
 };
 
+/** 단위가 있으면 값 뒤에 붙인다(#133). 규격이 없거나(—) 단위를 모르면 그대로다. */
+const withUnit = (text: string, spec: SpecRange | null, unit: string | null): string => {
+  if (unit === null) return text;
+  if (spec !== null && spec.target === null && spec.lower === null && spec.upper === null)
+    return text;
+  return `${text} ${unit}`;
+};
+
 /** 부동소수 뺄셈 찌꺼기(0.09999…)를 지운다 — 규격 값은 소수 여섯째 자리를 넘지 않는다. */
 const tidy = (value: number): number => Number(value.toFixed(6));
 
@@ -70,7 +78,8 @@ const describeValue = (row: MeasurementRow): ReactNode => {
   const measured = row.measured;
 
   if (measured === null) return t.notMeasured;
-  if (measured.numericValue !== null) return String(measured.numericValue);
+  if (measured.numericValue !== null)
+    return withUnit(String(measured.numericValue), null, row.unit);
   if (measured.textValue !== null) return measured.textValue;
   /* 예/아니오 항목(외관 등) — 내부 값(true/false) 대신 양호 · 불량을 표식과 함께(#133). */
   if (measured.booleanValue !== null) {
@@ -99,35 +108,33 @@ export interface MeasurementGridProps {
 
 const columns: Column<MeasurementRow>[] = [
   {
-    /*
-     * 필수 여부 — 항목 열 왼쪽의 좁은 열에 DS 상태 칩(중립)으로. 항목 열에는 번호·이름만 서서
-     * 이름끼리 한 줄로 맞는다(#133). 머리줄 글은 화면 읽기용으로만 둔다.
-     */
-    key: 'required',
-    header: <span className="iqc-inspection-visually-hidden">{t.requiredMark}</span>,
-    width: '40px',
-    render: (row) =>
-      row.required ? (
-        <Chip variant="status" size="sm" status="idle">
-          {t.requiredMark}
-        </Chip>
-      ) : null,
-  },
-  {
     key: 'item',
     header: t.columns.item,
     /*
      * 다섯 열 모두 폭을 주어 표가 카드보다 넓을 때 남는 폭을 폭 비율대로 나눠 갖게 한다
      * (항목 열이 혼자 받지 않게). 긴 항목명은 칸 안에서 줄을 바꾼다.
      */
-    width: '160px',
-    render: (row) => row.itemName,
+    width: '200px',
+    /*
+     * 항목명은 칸 한가운데, 「필수」는 같은 칸 왼쪽 끝 — 셋으로 나눈 격자(1fr · 이름 · 1fr)라
+     * 「필수」가 있든 없든 이름의 가운데가 같은 자리다(#133 · 담당자 지시).
+     */
+    render: (row) => (
+      <span className="iqc-inspection-item-cell">
+        {row.required && (
+          <Chip variant="status" size="sm" status="idle">
+            {t.requiredMark}
+          </Chip>
+        )}
+        <span className="iqc-inspection-item-name">{row.itemName}</span>
+      </span>
+    ),
   },
   {
     key: 'spec',
     header: t.columns.spec,
     width: '148px',
-    render: (row) => describeSpec(row.spec),
+    render: (row) => withUnit(describeSpec(row.spec), row.spec, row.unit),
   },
   {
     key: 'sample',

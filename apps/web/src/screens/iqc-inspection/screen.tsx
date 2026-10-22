@@ -511,7 +511,11 @@ export const IqcInspectionScreen = () => {
     isReinspectingNow ? null : (round?.inspectionResultId ?? null),
   );
 
-  const measurementRows = toMeasurementRows(itemSpecs.data ?? [], measurements.data ?? []);
+  const measurementRows = toMeasurementRows(
+    itemSpecs.data ?? [],
+    measurements.data ?? [],
+    uoms.codeOf,
+  );
 
   /**
    * 저장이 보낼 값을 만든다.

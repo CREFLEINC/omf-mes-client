@@ -14652,7 +14652,15 @@ button.app-button-neutral {
 
 .iqc-inspection-fold [class*='_emptyCell'] > td {
   height: auto;
-  padding-block: var(--space-3);
+  padding-block: var(--space-2);
+}
+
+/* 첨부 파일이 없을 때의 줄 — 파일 줄(파일 이름 단추 높이)과 같은 높이로(#133). */
+.iqc-inspection-fold .inspection-documents [class*='_emptyCell'] > td .field-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-height-sm);
 }
 
 /* 검사 항목별 결과(#133) — 표를 얇은 테두리 상자로, 예/아니오 측정치는 표식 + 양호(성공색) · 불량(오류색). */
@@ -14675,6 +14683,27 @@ button.app-button-neutral {
 
 .iqc-inspection-measured-flag[data-ok='false'] > :first-child {
   color: var(--semantic-error);
+}
+
+/*
+ * 검사 항목 칸(#133) — 「필수」는 왼쪽 끝, 항목명은 칸 한가운데. 양옆 같은 폭 격자라 「필수」가 있어도
+ * 이름의 가운데가 움직이지 않는다.
+ */
+.iqc-inspection-item-cell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+.iqc-inspection-item-cell > :not(.iqc-inspection-item-name) {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.iqc-inspection-item-name {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 /* 빈 표 안내는 줄 높이 한가운데에 — 공용 안내 글의 위·아래 여백을 뺀다(#133). */
