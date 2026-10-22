@@ -292,7 +292,10 @@ const makeApi = (
         ? gate(response, (release) => (releaseSession = release))
         : response;
     }
-    if (url.pathname === paths.lots) return jsonResponse(openLotsBody);
+    if (url.pathname === paths.lots)
+      return openLotsBody === 'pending'
+        ? new Promise<Response>(() => undefined)
+        : jsonResponse(openLotsBody);
     if (url.pathname.startsWith('/mdm/items/'))
       return jsonResponse(itemBody(Number(url.pathname.split('/').at(-1))));
     if (url.pathname === paths.outbound) {
@@ -741,7 +744,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(api.urls.slice(progressBefore).map((url) => url.pathname)).toEqual([paths.detail(701)]);
   });
 
-  it('확인 창이 고른 내용과 폐번·남는 LOT 을 되풀이하고, 화면에도 미리 알린다', async () => {
+  it('확인 창이 고른 내용과 폐번되는 LOT, 남는 LOT 을 되풀이하고, 화면에도 미리 알린다', async () => {
     const user = userEvent.setup();
     const api = makeApi();
     api.setJudgment('UNDER');
@@ -778,6 +781,18 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(dialog).toHaveTextContent(voided);
     expect(dialog).toHaveTextContent(remaining);
     expect(dialog).not.toHaveTextContent('LOT-SYN-WAITING');
+  });
+
+  it('진행 중인 LOT 을 확인하는 동안에는 마감을 열지 않고 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setJudgment('NORMAL');
+    api.setOpenLots('pending');
+    renderWithProviders(<View />, { fetch: api.fetch });
+    const action = await selectCloseTarget(user);
+
+    expect(await screen.findByText(t.confirm.openLotsChecking)).toBeVisible();
+    expect(action).toBeDisabled();
   });
 
   it('W/O 에 실린 사유를 미리 골라 두고 어디서 온 값인지 적는다', async () => {

@@ -78,7 +78,7 @@ describe('isWorkOrderCloseReady', () => {
 });
 
 describe('workOrderCloseBlockers — 상태', () => {
-  it('진행·완료가 아닌 작업지시는 다른 조건보다 먼저 상태로 막는다', () => {
+  it('마감할 수 없는 상태의 작업지시는 다른 조건보다 먼저 상태로 막는다', () => {
     expect(
       workOrderCloseBlockers(
         input({ isClosableStatus: false, completionJudgment: 'UNDER', hasOpenSession: true }),
