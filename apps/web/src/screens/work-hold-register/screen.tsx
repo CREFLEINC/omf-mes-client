@@ -72,7 +72,6 @@ export const WorkHoldRegisterScreen = () => {
   const endedHere = outbox.lastSentType === DIRECTION_END;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  /* 큐가 들고 있는 것은 이미 정규화된 오류다 — 다시 정규화하면 서버 문구가 사라진다. */
   const isLockedRejection = outbox.rejection?.kind === 'stateLocked';
 
   /* 끝난 세션이라 거부됐으면 화면의 세션을 다시 읽어 「세션 없음」으로 맞춘다. */
@@ -252,7 +251,7 @@ export const WorkHoldRegisterScreen = () => {
       )}
 
       {/* 보낼 것이 남아 있을 때만 다시 보내기를 권한다 — 0건에 [다시 보내기]는 할 일이 아니다. */}
-      {outbox.isStalled && outbox.pendingCount > 0 && (
+      {outbox.isStalled && outbox.pendingCount > 0 && !isLockedRejection && (
         <div className="banner-slot">
           <AlertBanner
             variant="warning"
@@ -292,6 +291,7 @@ export const WorkHoldRegisterScreen = () => {
             </AlertBanner>
           </div>
         ) : (
+          /* 큐가 들고 있는 것은 이미 정규화된 오류다 — 다시 정규화하면 서버 문구가 사라진다. */
           <LoadErrorBanner
             error={new ApiRequestError(outbox.rejection)}
             title={t.outbox.rejected}

@@ -370,6 +370,44 @@ describe('P-02-10 작업 중단 등록', () => {
       expect(eventBody).toHaveProperty('occurredAt', expect.any(String));
     });
 
+    it('거부된 뒤 고쳐서 다시 등록하면 새 건이 나간다 — 거부로 멈춘 큐가 풀린다', async () => {
+      const user = userEvent.setup();
+      const sent: Request[] = [];
+      let attempt = 0;
+
+      renderScreen([
+        sessionsRoute([workSession()]),
+        eventsRoute([]),
+        {
+          match: (request) => request.method === 'POST',
+          respond: (request) => {
+            sent.push(request);
+            attempt += 1;
+            return attempt === 1
+              ? jsonResponse(
+                  {
+                    errors: [
+                      { scope: 'screen', code: 'INVALID', message: '합성 거부 사유입니다.' },
+                    ],
+                  },
+                  { status: 400 },
+                )
+              : jsonResponse({}, { status: 201 });
+          },
+        },
+      ]);
+
+      await user.click(await screen.findByRole('radio', { name: MOLD_CHANGE_NAME }));
+      await user.click(screen.getByRole('button', { name: t.form.stopAction }));
+      expect(await screen.findByText('합성 거부 사유입니다.')).toBeVisible();
+
+      await user.click(screen.getByRole('radio', { name: MOLD_CHANGE_NAME }));
+      await user.click(screen.getByRole('button', { name: t.form.stopAction }));
+
+      await waitFor(() => expect(paths(sent)).toEqual([HOLD_PATH, HOLD_PATH, EVENTS_PATH]));
+      expect(screen.queryByText(t.outbox.stalled)).toBeNull();
+    });
+
     /*
      * ⛔ **등록한 뒤에는 고른 표시가 남지 않는다.** 안쪽 초안은 비워지는데 화면만 골라진 채로
      * 남으면, 골랐다고 믿고 누른 사람에게 「사유를 고르세요」가 뜬다(실측 2026-09-09).
@@ -706,13 +744,21 @@ describe('P-02-10 작업 중단 등록', () => {
       const user = userEvent.setup();
       const message =
         '이미 종료된 작업 세션입니다(관리웹에서 종료됐을 수 있습니다). 작업을 계속하려면 작업 시작을 다시 하세요.';
+      let sessionReads = 0;
       const { router } = renderWithProviders(
         <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>
           <WorkHoldRegisterScreen />
         </PopIdentityProvider>,
         {
           fetch: createStubFetch([
-            sessionsRoute([workSession()]),
+            {
+              match: (request) => isGet(request, SESSIONS_PATH),
+              respond: () => {
+                sessionReads += 1;
+                const items = sessionReads === 1 ? [workSession()] : [];
+                return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
+              },
+            },
             eventsRoute([]),
             {
               match: (request) => request.method === 'POST',
@@ -737,6 +783,9 @@ describe('P-02-10 작업 중단 등록', () => {
       expect(screen.queryByRole('button', { name: t.outbox.retryNow })).toBeNull();
       expect(screen.queryByRole('button', { name: messages.common.retry })).toBeNull();
       expect(screen.queryByText(t.outbox.stalled)).toBeNull();
+      /* 끝난 세션이라 세션을 다시 읽어 「세션 없음」으로 맞춘다. */
+      await waitFor(() => expect(sessionReads).toBeGreaterThan(1));
+      expect(await screen.findByText(t.session.none)).toBeVisible();
 
       await user.click(
         screen.getByRole('button', { name: t.outbox.toWorkStart(messages.workStart.title) }),
