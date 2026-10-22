@@ -2750,7 +2750,15 @@ describe('ProductionFlowScreen 미달 LOT 마감', () => {
       within(await screen.findByRole('dialog')).getByRole('button', { name: '자재 부족' }),
     );
 
-    expect(await screen.findByText(t.flow.scan.workOrderClosed)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        t.flow.scan.workOrderClosed(
+          `${messages.workOrderClose.breadcrumbRoot} › ${messages.workOrderClose.title}`,
+          messages.workOrderClose.correction.pane,
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/마감 해제/)).toBeNull();
   });
 
   it('거부 뒤 LOT 을 다시 읽지 못하면 단정하지 않고 서버 문구를 보인다', async () => {

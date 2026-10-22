@@ -484,7 +484,10 @@ export const ProductionFlowScreen = () => {
         (refreshed.progress?.goodQty ?? 0) === 0
           ? t.flow.scan.noAllocation
           : judgment === 'UNDER'
-            ? t.flow.scan.workOrderClosed
+            ? t.flow.scan.workOrderClosed(
+                `${messages.workOrderClose.breadcrumbRoot} › ${messages.workOrderClose.title}`,
+                messages.workOrderClose.correction.pane,
+              )
             : (items[0]?.message ?? t.flow.scan.failed),
       );
       return;

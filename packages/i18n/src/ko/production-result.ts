@@ -137,8 +137,9 @@ export const productionResult = {
       failed: 'LOT을 마감하지 못했습니다. 같은 라벨을 다시 스캔하세요.',
       alreadyCompleted: '이미 마감된 LOT입니다. 현재 LOT 상태를 다시 불러옵니다.',
       noAllocation: '이 LOT에 저장된 실적이 없어 마감할 수 없습니다. 실적을 먼저 저장하세요.',
-      workOrderClosed:
-        'MES W/O가 이미 마감돼 미달로 마감할 수 없습니다. 관리자에게 W/O 마감 해제를 요청하세요.',
+      /* 마감된 작업지시는 다시 열 수 없다(서버에 재오픈이 없다) — 해제를 요청하라고 하면 갈 곳이 없다. */
+      workOrderClosed: (menuPath: string, correction: string): string =>
+        `이 작업지시는 이미 마감돼 LOT 을 미달로 마감할 수 없습니다. 마감된 작업지시는 다시 열 수 없으니, 수량을 고쳐야 하면 관리자에게 관리웹 ${menuPath}의 「${correction}」을 요청하세요.`,
     },
     /** 목표에 못 미친 LOT 을 마감할 때 — 서버가 사유를 필수로 받는다. */
     underReason: {
