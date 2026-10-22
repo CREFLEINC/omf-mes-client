@@ -702,6 +702,70 @@ describe('P-02-10 작업 중단 등록', () => {
       expect(screen.queryByText(t.session.none)).toBeNull();
     });
 
+    it('관리웹에서 이미 끝낸 세션이라 거부되면 서버 문구와 작업 시작으로 가는 길을 주고 다시 보내기를 권하지 않는다', async () => {
+      const user = userEvent.setup();
+      const message =
+        '이미 종료된 작업 세션입니다(관리웹에서 종료됐을 수 있습니다). 작업을 계속하려면 작업 시작을 다시 하세요.';
+      const { router } = renderWithProviders(
+        <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>
+          <WorkHoldRegisterScreen />
+        </PopIdentityProvider>,
+        {
+          fetch: createStubFetch([
+            sessionsRoute([workSession()]),
+            eventsRoute([]),
+            {
+              match: (request) => request.method === 'POST',
+              respond: () =>
+                jsonResponse(
+                  { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
+                  { status: 400 },
+                ),
+            },
+            reasonsRoute,
+          ]),
+          route: ROUTE,
+          dataRouter: true,
+        },
+      );
+
+      await user.click(await screen.findByRole('button', { name: t.end.action }));
+      await user.click(await screen.findByRole('button', { name: t.end.confirmAction }));
+
+      expect(await screen.findByText(t.outbox.locked)).toBeVisible();
+      expect(screen.getByText(message)).toBeVisible();
+      expect(screen.queryByRole('button', { name: t.outbox.retryNow })).toBeNull();
+      expect(screen.queryByRole('button', { name: messages.common.retry })).toBeNull();
+      expect(screen.queryByText(t.outbox.stalled)).toBeNull();
+
+      await user.click(
+        screen.getByRole('button', { name: t.outbox.toWorkStart(messages.workStart.title) }),
+      );
+      await waitFor(() => expect(router?.state.location.pathname).toBe('/pop/work-start'));
+    });
+
+    it('그 밖의 거부는 서버 문구를 그대로 보인다', async () => {
+      const user = userEvent.setup();
+      renderScreen([
+        sessionsRoute([workSession()]),
+        eventsRoute([]),
+        {
+          match: (request) => request.method === 'POST',
+          respond: () =>
+            jsonResponse(
+              { errors: [{ scope: 'screen', code: 'INVALID', message: '합성 거부 사유입니다.' }] },
+              { status: 400 },
+            ),
+        },
+      ]);
+
+      await user.click(await screen.findByRole('button', { name: t.end.action }));
+      await user.click(await screen.findByRole('button', { name: t.end.confirmAction }));
+
+      expect(await screen.findByText('합성 거부 사유입니다.')).toBeVisible();
+      expect(screen.getByText(t.outbox.rejected)).toBeVisible();
+    });
+
     /* ⛔ 확인 없이 닫지 않는다 — 닫은 세션은 다시 열 수 없다. */
     it('확인 창을 거친 뒤에야 세션을 닫는다', async () => {
       const user = userEvent.setup();

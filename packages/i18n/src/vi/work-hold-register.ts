@@ -65,6 +65,8 @@ export const workHoldRegister: Translated<typeof ko.workHoldRegister> = {
     offline: 'Đang ngoại tuyến. Khi có kết nối sẽ tự động gửi.',
     pending: (count: number) => `Chờ gửi ${String(count)} mục`,
     rejected: 'Máy chủ không nhận.',
+    locked: 'Công việc này đã kết thúc nên không ghi thêm được.',
+    toWorkStart: (screen: string): string => `Đến «${screen}»`,
     stalled: 'Máy chủ vẫn không nhận. Nội dung đã đăng ký vẫn còn nguyên.',
     retryNow: 'Gửi lại',
   },

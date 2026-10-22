@@ -94,6 +94,9 @@ export const workHoldRegister = {
     offline: '오프라인입니다. 연결되면 자동으로 보냅니다.',
     pending: (count: number) => `미전송 ${String(count)}건`,
     rejected: '서버가 받지 않았습니다.',
+    /** 끝난 세션, 더 바꿀 수 없는 작업지시 — 다시 보내도 같은 답이 온다. */
+    locked: '이 작업은 이미 끝나 더 기록할 수 없습니다.',
+    toWorkStart: (screen: string): string => `「${screen}」으로 가기`,
     stalled: '서버가 계속 받지 않습니다. 등록한 내용은 그대로 남아 있습니다.',
     retryNow: '다시 보내기',
   },
