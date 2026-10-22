@@ -132,8 +132,8 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
       />
       {/* 조회·초기화는 한 덩어리로 그 줄의 오른쪽 끝에 선다(줄이 바뀌어도 그 줄의 끝). */}
       <div className="filter-actions field-cell-unlabeled iqc-inspection-filter-actions">
-        {/* 조회는 위험 동작이 아니다 — 빨간 주 색(filled) 대신 중립 강조(tonal). */}
-        <Button type="submit" variant="tonal">
+        {/* 조회는 이 줄의 주 동작 — 주 색(filled · 빨강)으로(#133 · 담당자 지시). */}
+        <Button type="submit" variant="filled">
           {t.apply}
         </Button>
         <Button type="button" variant="outlined" onClick={reset}>
