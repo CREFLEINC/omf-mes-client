@@ -16,7 +16,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import { EndConfirmDialog } from './end-confirm-dialog';
 import { toEndGroup, toResumeGroup, toStopGroup, type HoldTarget } from './event-request';
 import { useWorkHoldOutbox, type OutboxDraft } from './outbox';
-import { useOpenSession, useSessionEvents, workHoldKeys } from './queries';
+import { useOpenSession, useSessionEvents, useWorkOrderNo, workHoldKeys } from './queries';
 import { useHoldReasons } from './reason-options';
 import { SessionPanel } from './session-panel';
 import { isRunningSession, isStoppedSession } from './types';
@@ -61,6 +61,9 @@ export const WorkHoldRegisterScreen = () => {
   const [isEndConfirmOpen, setEndConfirmOpen] = useState(false);
 
   const session = useOpenSession(workOrderId);
+  const workOrderNo = useWorkOrderNo(workOrderId);
+  /** 이 화면에서 방금 세션을 끝냈는가 — 「세션 없음」을 끝낸 결과로 말한다 */
+  const [endedHere, setEndedHere] = useState(false);
   const events = useSessionEvents(session.session?.workSessionId ?? null);
   const reasons = useHoldReasons();
   const outbox = useWorkHoldOutbox();
@@ -176,6 +179,7 @@ export const WorkHoldRegisterScreen = () => {
 
     setEndConfirmOpen(false);
     submit((target) => toEndGroup(endedAt, target));
+    setEndedHere(true);
   };
 
   return (
@@ -186,7 +190,9 @@ export const WorkHoldRegisterScreen = () => {
           {t.title}
         </h1>
         {workOrderId !== null && (
-          <p className="pop-context">{`${t.entry.workOrderLabel} #${String(workOrderId)}`}</p>
+          <p className="pop-context">
+            {`${t.entry.workOrderLabel} ${workOrderNo ?? t.session.unknownValue}`}
+          </p>
         )}
 
         <p className="pop-context pop-context-right">
@@ -272,7 +278,7 @@ export const WorkHoldRegisterScreen = () => {
         session.session === null && (
           <div className="banner-slot">
             <AlertBanner variant="warning" title={t.session.sectionLabel}>
-              {t.session.none}
+              {endedHere ? t.session.ended(messages.workStart.title) : t.session.none}
             </AlertBanner>
           </div>
         )}

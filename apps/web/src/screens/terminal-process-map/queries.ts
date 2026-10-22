@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, TerminalProcessReplaceForward } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -34,7 +34,7 @@ import {
 type Terminal = components['schemas']['Terminal'];
 type TerminalCreate = components['schemas']['TerminalCreate'];
 type TerminalUpdate = components['schemas']['TerminalUpdate'];
-type TerminalProcessReplace = components['schemas']['TerminalProcessReplace'];
+type TerminalProcessReplace = TerminalProcessReplaceForward;
 type TerminalRegistrationToken = components['schemas']['TerminalRegistrationToken'];
 
 export const PAGE_SIZE = 20;

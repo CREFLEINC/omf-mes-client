@@ -108,6 +108,8 @@ export type {
   ProductionOrderListQueryForward,
   WorkOrderForward,
   OpenWorkSession,
+  TerminalProcessForward,
+  TerminalProcessReplaceForward,
   ProductionConflictResponseForward,
   WorkSessionForward,
   WorkSessionWorkerForward,

@@ -76,6 +76,21 @@ const renderScreen = (routes: StubRoute[], route = ROUTE) =>
   );
 
 describe('P-02-10 작업 중단 등록', () => {
+  it('머리에 내부 id 대신 W/O 번호를 보인다', async () => {
+    renderScreen([
+      {
+        match: (request) => isGet(request, `/production/work-orders/${String(WORK_ORDER_ID)}`),
+        respond: () =>
+          jsonResponse({ workOrderId: Number(WORK_ORDER_ID), workOrderNo: 'WO-SYN-29' }),
+      },
+      sessionsRoute([workSession()]),
+      eventsRoute([]),
+    ]);
+
+    expect(await screen.findByText(`${t.entry.workOrderLabel} WO-SYN-29`)).toBeInTheDocument();
+    expect(screen.queryByText(/W\/O #/)).toBeNull();
+  });
+
   it('열린 세션의 번호·시작 시각을 세운다', async () => {
     renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
 
@@ -654,6 +669,37 @@ describe('P-02-10 작업 중단 등록', () => {
 
         return jsonResponse({}, { status: 201 });
       },
+    });
+
+    it('끝낸 뒤 세션이 없으면 「먼저 시작하세요」 대신 끝냈다는 사실과 다음 할 일을 말한다', async () => {
+      const user = userEvent.setup();
+      const sent: Request[] = [];
+      let ended = false;
+
+      renderScreen([
+        {
+          match: (request) => isGet(request, SESSIONS_PATH),
+          respond: () => {
+            const items = ended ? [] : [workSession()];
+            return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
+          },
+        },
+        eventsRoute([]),
+        {
+          match: (request) => request.method === 'POST',
+          respond: (request) => {
+            sent.push(request);
+            ended = true;
+            return jsonResponse({}, { status: 201 });
+          },
+        },
+      ]);
+
+      await user.click(await screen.findByRole('button', { name: t.end.action }));
+      await user.click(await screen.findByRole('button', { name: t.end.confirmAction }));
+
+      expect(await screen.findByText(t.session.ended(messages.workStart.title))).toBeVisible();
+      expect(screen.queryByText(t.session.none)).toBeNull();
     });
 
     /* ⛔ 확인 없이 닫지 않는다 — 닫은 세션은 다시 열 수 없다. */

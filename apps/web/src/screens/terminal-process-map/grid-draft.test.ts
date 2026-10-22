@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { ALL_CLOSED, FLAG_KEYS } from './flags';
+import { toProcessRowView } from './types';
 import {
   addProcess,
   hasNoFlag,
@@ -31,11 +32,14 @@ const row = (processId: number, patch: Partial<ProcessRowView> = {}): ProcessRow
 });
 
 describe('addProcess', () => {
-  it('새 줄은 작업 시작만 켜고 나머지는 닫는다', () => {
+  it('새 줄은 작업 시작과 기본이 열림인 작업지시 마감만 켜고 나머지는 닫는다', () => {
     const [added] = addProcess([], 7, '사출');
 
     expect(added).toBeDefined();
-    expect(FLAG_KEYS.filter((key) => added?.[key] === true)).toEqual(['canStartWork']);
+    expect(FLAG_KEYS.filter((key) => added?.[key] === true)).toEqual([
+      'canStartWork',
+      'canCloseWorkOrder',
+    ]);
   });
 
   it('이미 있는 공정은 두 줄로 두지 않는다', () => {
@@ -127,7 +131,7 @@ describe('toReplaceBody', () => {
     expect(toReplaceBody([]).items).toEqual([]);
   });
 
-  it('여덟 칸을 모두 싣는다 — 빠진 칸은 서버가 기본값으로 읽는다', () => {
+  it('모든 칸을 싣는다 — 빠진 칸은 서버가 기본값으로 읽는다', () => {
     const line = toReplaceBody([row(7, { canPrintLabel: true })]).items[0];
 
     expect(line).toBeDefined();
@@ -147,6 +151,8 @@ describe('기능 없는 줄과 서버의 줄 오류', () => {
   it('여덟 칸이 모두 꺼진 줄만 기능 없음이다', () => {
     expect(hasNoFlag(row(1))).toBe(true);
     expect(hasNoFlag(row(1, { canReturnMaterial: true }))).toBe(false);
+    /* 작업지시 마감만 켠 줄은 서버가 받지 않는다 — 할 수 있는 작업이 없는 줄이다. */
+    expect(hasNoFlag(row(1, { canCloseWorkOrder: true }))).toBe(true);
   });
 
   it('items[i] 는 보낸 순서로 공정을 찾고, 나머지는 띠로 남긴다', () => {
@@ -173,5 +179,21 @@ describe('기능 없는 줄과 서버의 줄 오류', () => {
       ],
     });
     expect(splitRowErrors(null, [31]).rest).toBeNull();
+  });
+});
+
+describe('toProcessRowView', () => {
+  it('응답에 없는 칸은 닫힘으로, 기본이 열림인 작업지시 마감만 열림으로 읽는다', () => {
+    const view = toProcessRowView({ processId: 7, processName: '사출' } as never);
+
+    expect(view.canCloseWorkOrder).toBe(true);
+    expect(view.canStartWork).toBe(false);
+  });
+
+  it('서버가 끈 작업지시 마감은 꺼진 채로 읽는다', () => {
+    expect(
+      toProcessRowView({ processId: 7, processName: '사출', canCloseWorkOrder: false } as never)
+        .canCloseWorkOrder,
+    ).toBe(false);
   });
 });

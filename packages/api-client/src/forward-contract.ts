@@ -785,6 +785,21 @@ export type WorkOrderForward = components['schemas']['WorkOrder'] & {
   voidedLotCount?: number;
 };
 
+/**
+ * 서버 선행 P-104 — 단말 공정 매핑의 작업지시 마감 권한. 다른 권한과 달리 생략하면 열림이다.
+ * 싣지 않는 옛 서버가 있어 선택으로 둔다.
+ */
+export type TerminalProcessForward = components['schemas']['TerminalProcess'] & {
+  canCloseWorkOrder?: boolean;
+};
+
+/** 서버 선행 P-104 — 매핑 저장 줄의 작업지시 마감 권한. 생략하면 서버가 열림으로 둔다. */
+export type TerminalProcessReplaceForward = {
+  items: (components['schemas']['TerminalProcessReplace']['items'][number] & {
+    canCloseWorkOrder?: boolean;
+  })[];
+};
+
 /** 서버 선행 P-104 — 마감을 막은 열린 작업 세션 한 건(중단 포함). 작업자는 그 세션의 주작업자다. */
 export interface OpenWorkSession {
   workSessionId: number;

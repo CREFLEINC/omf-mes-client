@@ -125,7 +125,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     saving: 'Đang lưu.',
     reset: 'Hủy thay đổi',
     duplicate: 'Công đoạn này đã được thêm.',
-    noFlag: 'Hãy bật ít nhất một chức năng',
+    noFlag: 'Hãy bật ít nhất một chức năng ngoài đóng lệnh sản xuất',
     selectTerminalTitle: 'Vui lòng chọn máy quét',
     selectTerminal:
       'Chọn máy quét trong danh sách bên trái để xem thông tin chi tiết và chức năng theo công đoạn.',
@@ -140,6 +140,7 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
   flags: {
     canStartWork: 'Bắt đầu công việc',
     canCompleteWork: 'Hoàn tất công việc',
+    canCloseWorkOrder: 'Đóng lệnh sản xuất',
     canInputMaterial: 'Đưa vật tư vào',
     canInputResult: 'Nhập kết quả',
     canInputInspection: 'Nhập kiểm tra',

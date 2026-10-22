@@ -21,6 +21,8 @@ export const workHoldRegister: Translated<typeof ko.workHoldRegister> = {
     loading: 'Đang kiểm tra phiên.',
     loadFailed: 'Không tải được phiên hiện tại.',
     none: 'Không có phiên làm việc đang chạy nên không đăng ký tạm dừng được. Hãy bắt đầu công việc trước.',
+    ended: (startScreen: string): string =>
+      `Đã kết thúc phiên làm việc. Muốn làm tiếp, hãy bắt đầu lại ở màn hình «${startScreen}».`,
     unknownValue: 'Không xác nhận được',
   },
   history: {

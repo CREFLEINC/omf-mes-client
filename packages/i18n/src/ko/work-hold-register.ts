@@ -30,6 +30,9 @@ export const workHoldRegister = {
     loadFailed: '현재 세션을 불러오지 못했습니다.',
     /** ⛔ 진입 차단 — 세션이 없으면 중단을 기록할 수 없다(스펙 §6). */
     none: '진행 중인 작업 세션이 없어 중단을 등록할 수 없습니다. 작업을 먼저 시작하세요.',
+    /* 방금 이 화면에서 끝낸 세션 — 「먼저 시작하세요」만 남으면 끝낸 일이 실패한 것처럼 읽힌다. */
+    ended: (startScreen: string): string =>
+      `작업 세션을 끝냈습니다. 이어서 작업하려면 「${startScreen}」 화면에서 작업을 다시 시작하세요.`,
     unknownValue: '확인할 수 없음',
   },
 
