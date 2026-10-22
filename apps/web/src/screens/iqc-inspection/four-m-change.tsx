@@ -77,7 +77,6 @@ export const FourMChange = ({ draft, missing, onChange, disabled }: FourMChangeP
             placeholder={t.remarksPlaceholder}
             value={draft.remarks}
             maxLength={FOUR_M_REMARKS_MAX}
-            helperText={t.remarksHelp}
             error={missing ? <ErrorText>{t.remarksMissing}</ErrorText> : undefined}
             disabled={disabled}
             onChange={(event) => {
