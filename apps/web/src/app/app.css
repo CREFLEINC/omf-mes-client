@@ -14815,16 +14815,11 @@ button.app-button-neutral {
  * 같은 열에 맞춰 부가 정보(검사 유형 · 기준 버전 · 의뢰 일시)가 선다. LOT 열이 가장 넓고 길면 말줄임이다(#133).
  * 카드가 좁으면 두 열.
  */
-/* IQC 상세 「검사 수준」 칸 — 수준 이름 바로 옆에 변경 버튼, 값 줄 높이를 넘지 않게(omf-all-around#133). */
+/* IQC 상세 「검사 수준」 칸 — 수준 이름 바로 옆에 테두리 있는 [변경] 버튼(omf-all-around#133). */
 .iqc-inspection-level {
   display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-1);
-}
-
-.iqc-inspection-level > button {
-  min-height: 0;
-  padding-block: 0;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .iqc-inspection-facts {

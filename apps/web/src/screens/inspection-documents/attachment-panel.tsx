@@ -249,14 +249,14 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
       <div className="form-actions">
         <Button
           variant="outlined"
-          size="sm"
+          size="md"
           disabled={upload.isSaving}
           onClick={() => inputRef.current?.click()}
         >
           {t.upload}
         </Button>
         <Button
-          size="sm"
+          size="md"
           loading={upload.isSaving}
           disabled={selected.length === 0 || hasSelectError || upload.isSaving}
           onClick={() => upload.write({ files: selected })}

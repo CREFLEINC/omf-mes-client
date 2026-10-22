@@ -64,8 +64,8 @@ export const ItemLevel = ({ itemId, item }: ItemLevelProps) => {
       <span>{label}</span>
       {canEdit && item !== null && level.isSuccess && (
         <Button
-          size="sm"
-          variant="text"
+          size="md"
+          variant="outlined"
           onClick={() => {
             write.reset();
             setEditing(true);
