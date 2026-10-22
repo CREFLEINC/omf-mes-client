@@ -115,7 +115,7 @@ export const LevelDialog = ({
                 setErrors((prev) => ({ ...prev, inspectionLevelCode: '' }));
               }}
             />
-            {/* 같은 수준은 잘못이 아니라 «바뀌는 것이 없다»는 알림 — 빨간 오류가 아니라 정보 아이콘 + 보조색(#133). */}
+            {/* 같은 수준이면 저장하지 않는다 — 정보 아이콘 + 오류색 한 줄(#133). */}
             {shown.inspectionLevelCode === t.dialog.sameLevel ? (
               <span className="inspection-level-same">
                 <Icon name="info" size={16} aria-hidden />

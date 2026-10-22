@@ -14861,12 +14861,13 @@ button.app-button-neutral {
   grid-template-columns: minmax(0, 1fr);
 }
 
-/* 「현재 검사 수준과 동일합니다.」 — 정보 아이콘 + 보조색 한 줄(오류색 아님). */
+/* 「현재 검사 수준과 동일합니다.」 — 정보 아이콘 + 오류색 한 줄, 선택칸과 한 칸 띄운다(#133). */
 .inspection-level-same {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  color: var(--on-surface-muted);
+  margin-top: var(--space-2);
+  color: var(--semantic-error-text);
   font: var(--type-body-sm);
 }
 
