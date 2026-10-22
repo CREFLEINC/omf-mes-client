@@ -819,6 +819,21 @@ export type WorkOrderForward = components['schemas']['WorkOrder'] & {
   voidedLotCount?: number;
 };
 
+/**
+ * 서버 선행 P-108 — 단말 공정 매핑의 작업지시 마감 권한. 다른 권한과 달리 생략하면 열림이다.
+ * 싣지 않는 옛 서버가 있어 선택으로 둔다.
+ */
+export type TerminalProcessForward = components['schemas']['TerminalProcess'] & {
+  canCloseWorkOrder?: boolean;
+};
+
+/** 서버 선행 P-108 — 매핑 저장 줄의 작업지시 마감 권한. 생략하면 서버가 열림으로 둔다. */
+export type TerminalProcessReplaceForward = {
+  items: (components['schemas']['TerminalProcessReplace']['items'][number] & {
+    canCloseWorkOrder?: boolean;
+  })[];
+};
+
 /** 서버 선행 P-108 — 세션 강제 종료 본문. */
 export interface WorkSessionForceEnd {
   reason: string;

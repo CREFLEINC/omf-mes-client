@@ -25,8 +25,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       pageDown: 'Trang dưới',
       pagePosition: (page: number, totalPages: number) =>
         `Trang ${String(page)}/${String(totalPages)}`,
-      none: (closeMenu: string): string =>
-        `W/O này không có LOT để sản xuất. Nếu đã sản xuất xong, hãy đóng ở «${closeMenu}» trên Web quản trị; nếu cần làm thêm, hãy báo cho quản trị viên.`,
+      none: (closeButton: string): string =>
+        `W/O này không còn LOT để sản xuất. Nếu đã sản xuất xong hãy bấm [${closeButton}] bên dưới, nếu cần làm thêm hãy báo quản trị viên.`,
       unreliable: (lotNos: string): string =>
         `Máy chủ không xác định được một LOT hiện tại (LOT ${lotNos}). Đã chặn nhập để kết quả không gắn vào LOT khác. Hãy nhờ quản trị viên kiểm tra máy chủ đã là bản mới nhất chưa.`,
       loadFailed: 'Không tải được LOT hiện tại. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
@@ -129,6 +129,91 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       noAllocation: 'LOT này chưa có kết quả đã lưu nên không đóng được. Hãy lưu kết quả trước.',
       workOrderClosed: (menuPath: string, correction: string): string =>
         `Lệnh sản xuất này đã đóng nên không đóng LOT thiếu được. Lệnh đã đóng không mở lại được, nếu cần sửa số lượng hãy nhờ quản trị viên dùng «${correction}» ở ${menuPath} trên web quản lý.`,
+    },
+    woClose: {
+      button: 'Đóng lệnh sản xuất',
+      title: (workOrderNo: string): string => `Đóng lệnh sản xuất — ${workOrderNo}`,
+      loading: 'Đang kiểm tra lệnh sản xuất cần đóng.',
+      loadFailed: 'Không tải được lệnh sản xuất. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
+      fields: {
+        orderQty: 'Số lượng lệnh',
+        goodQty: 'Lũy kế đạt',
+        judgment: 'Đánh giá',
+        shortfallQty: 'Số lượng thiếu',
+        overageQty: 'Số lượng vượt',
+        remainder: 'Xử lý lượng còn lại',
+        reason: 'Lý do',
+        remarks: 'Lý do xóa bỏ (ghi chú, tùy chọn)',
+      },
+      judgments: { UNDER: 'Thiếu', NORMAL: 'Bình thường', OVER: 'Vượt' },
+      remainder: { CARRY_OVER: 'Chuyển sang kỳ sau', WRITE_OFF: 'Xóa bỏ' },
+      carryOverNote: (menuPath: string): string =>
+        `W/O chuyển sang kỳ sau không được tạo tự động — sẽ lập mới ở ${menuPath} trên web quản lý.`,
+      prefilled: 'Đây là lý do đã chọn khi đóng LOT. Có thể đổi.',
+      reasonsLoading: 'Đang tải lý do.',
+      reasonsFailed: 'Không tải được lý do. Hãy kiểm tra kết nối rồi mở lại cửa sổ.',
+      reasonsEmpty: 'Không có lý do nào để chọn. Hãy nhờ quản trị viên đăng ký lý do.',
+      voidedSlots: (count: number): string =>
+        `${String(count)} LOT chưa có kết quả sẽ bị hủy số cùng lúc đóng.`,
+      openLots: (count: number, lotNos: string): string =>
+        `${String(count)} LOT chưa đóng (${lotNos}) sẽ giữ nguyên trạng thái.`,
+      irreversible:
+        'Đã đóng thì không hoàn tác được. Kết quả sản xuất sẽ vào hàng đợi gửi sang ERP cùng lúc đóng.',
+      needRemainder:
+        'Vì thiếu nên phải chọn xử lý lượng còn lại (chuyển sang kỳ sau hoặc xóa bỏ) mới đóng được.',
+      needReason: 'Vì thiếu hoặc vượt nên phải chọn lý do mới đóng được.',
+      judgmentMissing:
+        'Không tải được đánh giá nên chưa đóng được. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
+      openLotsChecking: 'Đang kiểm tra LOT đang thực hiện. Kiểm tra xong mới đóng được.',
+      openLotsUnknown:
+        'Chưa kiểm tra được LOT đang thực hiện. Dù đóng, LOT đang thực hiện vẫn giữ nguyên trạng thái.',
+      uncheckedLots: (count: number): string =>
+        `Còn ${String(count)} LOT chưa hoàn thành chưa kiểm tra được. Dù đóng, các LOT đó vẫn giữ nguyên trạng thái.`,
+      sessions: {
+        checking: 'Đang kiểm tra phiên làm việc của lệnh sản xuất này.',
+        loadFailed: 'Không kiểm tra được phiên làm việc. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
+        blocked:
+          'Các phiên làm việc dưới đây đang mở nên chưa đóng được. Hãy kết thúc phiên ở nơi kết thúc rồi bấm lại.',
+        listLabel: 'Phiên làm việc đang mở',
+        terminal: 'Máy',
+        worker: 'Công nhân',
+        state: 'Trạng thái',
+        where: 'Nơi kết thúc',
+        RUNNING: 'Đang làm',
+        STOPPED: 'Tạm dừng',
+        unknown: 'Không xác định được',
+        workerValue: (name: string, workerNo: string): string => `${name} (${workerNo})`,
+        here: (holdScreen: string): string => `Màn hình «${holdScreen}» của máy này`,
+        other: (webMenu: string): string =>
+          `Máy đó, hoặc buộc kết thúc ở ${webMenu} trên web quản lý`,
+      },
+      endForbidden:
+        'Máy này không có quyền kết thúc phiên làm việc nên chưa đóng. Hãy nhờ quản trị viên buộc kết thúc phiên trên web quản lý.',
+      endNotFound:
+        'Không tìm thấy phiên làm việc của máy này nên chưa đóng. Có thể đã kết thúc rồi, hãy đóng cửa sổ và mở lại.',
+      endedButNotClosed:
+        'Phiên làm việc của máy này đã kết thúc nhưng lệnh sản xuất chưa được đóng. Hãy xem lý do bên dưới rồi bấm lại.',
+      cancel: 'Hủy',
+      confirm: 'Đóng',
+      done: (workOrderNo: string): string =>
+        `Đã đóng ${workOrderNo}. Quay lại màn hình bắt đầu công việc.`,
+      blocked: {
+        denied: (webMenu: string, terminalMenu: string): string =>
+          `Máy này không được phép đóng lệnh sản xuất. Hãy đóng ở ${webMenu} trên web quản lý, hoặc nhờ quản trị viên bật «Đóng lệnh sản xuất» ở ${terminalMenu}.`,
+        checking: 'Đang kiểm tra quyền đóng của máy này.',
+        unavailable:
+          'Chưa kiểm tra được quyền đóng của máy này. Hãy kiểm tra kết nối rồi mở lại màn hình.',
+        offline: 'Mất kết nối nên không đóng được. Hãy kiểm tra kết nối rồi bấm lại.',
+        pending: (count: number): string =>
+          `Còn ${String(count)} kết quả chưa gửi. Hãy đóng sau khi đã gửi hết kết quả.`,
+        status:
+          'Lệnh sản xuất này chưa bắt đầu làm nên chưa đóng được. Chỉ đóng được lệnh đã bắt đầu làm.',
+        unidentified:
+          'Chưa xác định được máy hoặc công đoạn nên chưa đóng được. Hãy nhờ quản trị viên kiểm tra đăng ký máy và ánh xạ công đoạn.',
+        cancelled: 'Lệnh sản xuất đã hủy thì không đóng được.',
+      },
+      endFailed:
+        'Không kết thúc được phiên làm việc của máy này nên chưa đóng. Hãy kiểm tra kết nối rồi bấm lại.',
     },
     underReason: {
       title: 'Lý do thiếu',

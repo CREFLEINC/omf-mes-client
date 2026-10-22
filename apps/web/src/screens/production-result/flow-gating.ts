@@ -1,3 +1,4 @@
+import type { TerminalProcessForward } from '@omf-mes/api-client';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -9,6 +10,8 @@ export interface FlowGates {
   input: FlowGateVerdict;
   print: FlowGateVerdict;
   complete: FlowGateVerdict;
+  /** 작업지시 마감. 서버가 칸을 싣지 않으면(옛 서버) 마감도 열지 않는다 */
+  close: FlowGateVerdict;
   retry: () => void;
 }
 
@@ -31,7 +34,10 @@ export const useFlowGates = (terminalId: number | null, processId: number | null
         }),
       );
 
-      return data.items.find((item) => item.processId === processId) ?? null;
+      return (
+        (data.items as TerminalProcessForward[]).find((item) => item.processId === processId) ??
+        null
+      );
     },
   });
 
@@ -47,6 +53,7 @@ export const useFlowGates = (terminalId: number | null, processId: number | null
     input: verdict(query.data?.canInputResult),
     print: verdict(query.data?.canPrintLabel),
     complete: verdict(query.data?.canCompleteWork),
+    close: verdict(query.data?.canCloseWorkOrder),
     retry: () => {
       void query.refetch();
     },

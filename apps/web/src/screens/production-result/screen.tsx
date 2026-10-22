@@ -31,6 +31,7 @@ import {
 import { DefectPicker } from './defect-picker';
 import { useResultEntry } from './entry-context';
 import { UnderReasonDialog } from './under-reason-dialog';
+import { WorkOrderCloseAction } from './wo-close-action';
 import { useFlowGates } from './flow-gating';
 import { useDocumentIssue, useLotComplete, useSerialIssue } from './flow-mutations';
 import { useLabelPrintRunner, type PrintTarget } from './flow-print';
@@ -1267,13 +1268,7 @@ export const ProductionFlowScreen = () => {
       )}
       {currentLot.data === null && !currentLot.isError && (
         <div className="banner-slot">
-          <AlertBanner
-            variant="info"
-            title={t.flow.currentLot.none(
-              /* 메뉴 이름은 그 화면의 문구를 받아 쓴다 — 이름이 바뀌어도 어긋나지 않게. */
-              messages.workOrderClose.menuPath,
-            )}
-          />
+          <AlertBanner variant="info" title={t.flow.currentLot.none(t.flow.woClose.button)} />
         </div>
       )}
       {workOrderPqc.isError && (
@@ -1344,6 +1339,19 @@ export const ProductionFlowScreen = () => {
                   </dd>
                 </div>
               </dl>
+              {entry.workOrderId !== null && workOrder.data !== undefined && (
+                <WorkOrderCloseAction
+                  workOrderId={entry.workOrderId}
+                  workOrderNo={workOrder.data.workOrderNo}
+                  statusCode={workOrder.data.statusCode}
+                  workerNo={entry.workerNo}
+                  gate={gates.close}
+                  isOnline={outbox.isOnline}
+                  pendingCount={outbox.pendingCount}
+                  terminalId={identity.terminalId}
+                  uomLabel={uom.labelOf(workOrder.data.uomId) ?? ''}
+                />
+              )}
             </Card.Body>
           </Card>
 

@@ -111,6 +111,8 @@ export type {
   ProductionOrderForward,
   ProductionOrderListQueryForward,
   WorkOrderForward,
+  TerminalProcessForward,
+  TerminalProcessReplaceForward,
   WorkSessionForward,
   WorkSessionForceEnd,
   WorkSessionWorkerForward,

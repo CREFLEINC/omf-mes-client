@@ -23,7 +23,7 @@ const LOT_ETAG = '"7"';
 const WORK_ORDER_ID = 701;
 const WORK_SESSION_ID = 8801;
 const pathOf = (request: Request): string => new URL(request.url).pathname;
-const NO_LOT_TEXT = t.flow.currentLot.none(messages.workOrderClose.menuPath);
+const NO_LOT_TEXT = t.flow.currentLot.none(t.flow.woClose.button);
 
 const routes = (writes: Request[]): StubRoute[] => [
   {
