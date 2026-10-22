@@ -137,13 +137,28 @@ export const workOrderClose = {
   },
   status: {
     pane: '작업지시 마감 입력 상태',
+    /** 마감을 막는 세션 표 — 어느 단말에서 끝낼지 알리려고 단말·작업자를 보인다. */
+    sessions: {
+      label: '마감을 막는 작업 세션',
+      terminal: '단말',
+      worker: '작업자',
+      startedAt: '시작',
+      state: '상태',
+      RUNNING: '진행',
+      STOPPED: '중단',
+      unknown: '확인할 수 없음',
+      workerValue: (name: string, workerNo: string): string => `${name}(${workerNo})`,
+      action: (holdScreen: string): string =>
+        `위 단말의 POP 「${holdScreen}」에서 세션을 끝낸 뒤 [다시 확인]을 누르세요.`,
+      recheck: '다시 확인',
+    },
     heading: '현재 입력 상태',
     loading: '현재 입력 조건을 확인하는 중입니다.',
     complete: '현재 입력 조건이 모두 갖춰졌습니다.',
     blockers: {
       STATUS_NOT_CLOSABLE:
-        '이 작업지시는 지금 상태에서 마감할 수 없습니다. 진행 또는 완료 상태인 작업지시만 마감할 수 있으니, 목록의 상태를 확인하세요.',
-      OPEN_SESSION: '열린 작업 세션을 마감하세요.',
+        '이 작업지시는 지금 상태에서 마감할 수 없습니다. 진행·중단·완료 상태인 작업지시만 마감할 수 있으니, 목록의 상태를 확인하세요.',
+      OPEN_SESSION: '열린 작업 세션(중단 포함)이 있어 마감할 수 없습니다.',
       REMAINDER_DISPOSITION_REQUIRED:
         '미달이라 잔량 처리를 골라야 마감할 수 있습니다. 위 「잔량 처리」에서 이월 또는 소멸을 고르세요.',
       VARIANCE_REASON_REQUIRED:

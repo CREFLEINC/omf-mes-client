@@ -151,13 +151,27 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   },
   status: {
     pane: 'Trạng thái nhập khi đóng lệnh sản xuất',
+    sessions: {
+      label: 'Phiên làm việc đang chặn việc đóng',
+      terminal: 'Máy',
+      worker: 'Công nhân',
+      startedAt: 'Bắt đầu',
+      state: 'Trạng thái',
+      RUNNING: 'Đang làm',
+      STOPPED: 'Tạm dừng',
+      unknown: 'Không xác định được',
+      workerValue: (name: string, workerNo: string): string => `${name} (${workerNo})`,
+      action: (holdScreen: string): string =>
+        `Hãy kết thúc phiên ở «${holdScreen}» trên POP của máy ở trên, rồi bấm [Kiểm tra lại].`,
+      recheck: 'Kiểm tra lại',
+    },
     heading: 'Trạng thái nhập hiện tại',
     loading: 'Đang xác nhận điều kiện nhập hiện tại.',
     complete: 'Các điều kiện nhập hiện tại đã đủ.',
     blockers: {
       STATUS_NOT_CLOSABLE:
-        'Không thể đóng lệnh sản xuất này ở trạng thái hiện tại. Chỉ đóng được lệnh đang thực hiện hoặc đã hoàn thành, hãy kiểm tra trạng thái trong danh sách.',
-      OPEN_SESSION: 'Hãy đóng phiên làm việc đang mở.',
+        'Không thể đóng lệnh sản xuất này ở trạng thái hiện tại. Chỉ đóng được lệnh đang thực hiện, tạm dừng hoặc đã hoàn thành, hãy kiểm tra trạng thái trong danh sách.',
+      OPEN_SESSION: 'Có phiên làm việc đang mở (kể cả đang tạm dừng) nên chưa đóng được.',
       REMAINDER_DISPOSITION_REQUIRED:
         'Vì thiếu so với chỉ thị nên phải chọn cách xử lý lượng còn lại mới đóng được. Hãy chọn «Chuyển sang kỳ sau» hoặc «Xóa bỏ» ở mục «Xử lý lượng còn lại» phía trên.',
       VARIANCE_REASON_REQUIRED:

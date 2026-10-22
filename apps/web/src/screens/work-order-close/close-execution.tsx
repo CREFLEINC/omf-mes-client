@@ -22,6 +22,7 @@ export interface WorkOrderCloseExecutionProps {
   onClearSelection: () => void;
   onReloadCandidates: () => Promise<unknown>;
   onReloadDetail: () => Promise<unknown>;
+  onReloadSessions: () => Promise<unknown>;
 }
 const toFieldError = (fieldErrors: Record<string, string>): ApiError | null => {
   const errors = Object.entries(fieldErrors).map(([field, message]) =>
@@ -46,6 +47,12 @@ export const WorkOrderCloseExecution = (props: WorkOrderCloseExecutionProps) => 
       });
     },
   });
+  /* 그사이 다른 단말이 세션을 열었으면 상태 칸이 그 세션을 보이도록 다시 읽는다. */
+  const { onReloadSessions } = props;
+  const errorCode = write.error !== null && 'code' in write.error ? write.error.code : undefined;
+  useEffect(() => {
+    if (errorCode === 'OPEN_SESSION_EXISTS') void onReloadSessions();
+  }, [errorCode, onReloadSessions]);
   useEffect(() => {
     if (request !== null || confirmation === null || write.isSaving) return;
     setConfirmation(null);

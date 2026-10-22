@@ -557,7 +557,13 @@ export const WorkOrderCloseCandidateScreen = () => {
                 }
               />
             )}
-            {readinessState === null ? null : <WorkOrderCloseStatusPane state={readinessState} />}
+            {readinessState === null ? null : (
+              <WorkOrderCloseStatusPane
+                state={readinessState}
+                openSessions={openSession.data?.sessions ?? []}
+                onRecheckSessions={() => void openSession.refetch()}
+              />
+            )}
             {outboundState.kind === 'HIDDEN' ? null : (
               <WorkOrderCloseOutboundItemsPane
                 settings={readyOutboundSettings}
@@ -590,6 +596,7 @@ export const WorkOrderCloseCandidateScreen = () => {
                 onClearSelection={() => dispatch({ type: 'CLEAR_SELECTION' })}
                 onReloadCandidates={candidate.refetch}
                 onReloadDetail={detail.refetch}
+                onReloadSessions={openSession.refetch}
               />
             )}
           </div>

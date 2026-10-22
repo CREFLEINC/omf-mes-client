@@ -15,7 +15,11 @@ export type WorkOrderCloseBlocker =
   | 'VARIANCE_REASON_REQUIRED';
 
 /** 서버의 마감 전이가 받는 출발 상태. 다른 상태는 400 STATE_LOCKED 로 거부된다. */
-export const CLOSABLE_WORK_ORDER_STATUSES: readonly string[] = ['IN_PROGRESS', 'COMPLETED'];
+export const CLOSABLE_WORK_ORDER_STATUSES: readonly string[] = [
+  'IN_PROGRESS',
+  'SUSPENDED',
+  'COMPLETED',
+];
 
 export interface WorkOrderCloseReadinessInput {
   completionJudgment: WorkOrderCloseCompletionJudgment;

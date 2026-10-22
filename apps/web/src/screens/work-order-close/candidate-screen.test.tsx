@@ -37,7 +37,7 @@ type Judgment = 'UNDER' | 'NORMAL' | 'OVER' | null;
 type OutboundMode =
   'ready' | 'pending-ready' | 'pending-error' | 'error' | 'empty' | 'changed' | 'reappeared';
 type CloseMode = 'success' | 'pending' | 'pending-error' | CloseErrorMode;
-type CloseErrorMode = 'network' | '403' | '500' | 'conflict' | 'validation';
+type CloseErrorMode = 'network' | '403' | '500' | 'conflict' | 'validation' | 'open-session';
 type CloseRecord = { path: string; etag: string | null; key: string | null; body: unknown };
 const closeFields = ['remainderDispositionCode', 'reasonCode', 'remarks'] as const;
 const fieldMessage = (field: string) => `Synthetic ${field} error`;
@@ -260,6 +260,12 @@ const makeApi = (
           (release) => (releaseClose = release),
         );
       if (closeMode === 'network') throw new TypeError('Synthetic offline');
+      if (closeMode === 'open-session')
+        return errorResponse(409, {
+          code: 'OPEN_SESSION_EXISTS',
+          message: '열린 작업 세션이 있어 마감할 수 없습니다(단말 POP-SYN-1).',
+          openSessions: [],
+        });
       if (closeMode === 'conflict')
         return errorResponse(409, { conflictCause: 'user', message: 'Synthetic conflict' });
       if (closeMode === 'validation') return errorResponse(400, { errors: closeFields.map(issue) });
@@ -584,6 +590,17 @@ describe('WorkOrderCloseCandidateScreen', () => {
       etag: '"synthetic-close-version-8"',
     });
   });
+  it('그사이 세션이 열려 거부되면 서버 문구를 보이고 열린 세션을 다시 읽는다', async () => {
+    const { user, api, action } = await prepareClose('NORMAL', 'open-session');
+    await user.click(action);
+    const before = sessionUrls(api.urls).length;
+    const dialog = await confirmClose(user);
+
+    expect(
+      await within(dialog).findByText(/열린 작업 세션이 있어 마감할 수 없습니다\(단말 POP-SYN-1\)/),
+    ).toBeVisible();
+    await waitFor(() => expect(sessionUrls(api.urls).length).toBe(before + 1));
+  });
   it('shows all fields and reloads candidate plus exact detail only on 409', async () => {
     const { user, api, action } = await prepareClose('NORMAL', 'validation');
     await user.click(action);
@@ -698,7 +715,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
     expect(screen.getByRole('status', { name: t.status.loading })).toBeVisible();
     expect(screen.queryByRole('region', { name: t.input.pane })).not.toBeInTheDocument();
-    expect(sessionUrls(api.urls)[0]!.search).toBe('?open=true&workOrderId=701&page=1&size=1');
+    expect(sessionUrls(api.urls)[0]!.search).toBe('?open=true&workOrderId=701&page=1&size=20');
     api.releaseSession();
     expect(await screen.findByText(t.input.exactNote)).toBeVisible();
     expect(screen.getByRole('status')).toHaveTextContent(t.status.complete);

@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, WorkSessionForward } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -42,9 +42,22 @@ export interface WorkOrderCloseCandidatesResponse {
   page: PageMeta;
 }
 
+/** 마감을 막는 열린 세션 한 건 — 어느 단말에서 끝낼지 알리는 데 쓴다. */
+export interface WorkOrderCloseOpenSessionView {
+  workSessionId: number;
+  terminalCode: string | null;
+  workerName: string | null;
+  workerNo: string | null;
+  startedAt: string;
+  statusCode: string;
+}
+
 export interface WorkOrderCloseOpenSessionState {
   hasOpenSession: boolean;
+  sessions: WorkOrderCloseOpenSessionView[];
 }
+
+const OPEN_SESSION_PAGE_SIZE = 20;
 
 export interface WorkOrderCloseOutboundItemSetting {
   outboundItemCode: OutboundItemSetting['outboundItemCode'];
@@ -202,11 +215,22 @@ export const useWorkOrderCloseOpenSession = (
 
       const data = await runRequest(() =>
         client.GET('/production/work-sessions', {
-          params: { query: { open: true, workOrderId, page: 1, size: 1 } },
+          params: { query: { open: true, workOrderId, page: 1, size: OPEN_SESSION_PAGE_SIZE } },
         }),
       );
+      const items = data.items as WorkSessionForward[];
 
-      return { hasOpenSession: data.items.length > 0 };
+      return {
+        hasOpenSession: items.length > 0,
+        sessions: items.map((session) => ({
+          workSessionId: session.workSessionId,
+          terminalCode: session.terminalCode ?? null,
+          workerName: session.workerName ?? null,
+          workerNo: session.workerNo ?? null,
+          startedAt: session.startedAt,
+          statusCode: session.statusCode,
+        })),
+      };
     },
   });
 };

@@ -775,6 +775,41 @@ export type WorkOrderForward = components['schemas']['WorkOrder'] & {
   /** 계획 설비의 코드·이름 — 설비 없는 단말이 W/O 의 설비로 점검·시작할 때 그 설비를 보인다. */
   plannedEquipmentCode?: string | null;
   plannedEquipmentName?: string | null;
+  /** 서버 선행 P-104 — 미달 마감에서 고른 잔량 처분. 이월이어도 잔량 W/O 는 만들어지지 않는다. */
+  closeDispositionCode?: 'CARRY_OVER' | 'WRITE_OFF';
+  /** 서버 선행 P-104 — POP 에서 마감한 작업자. 관리웹 마감이면 없다. */
+  closedWorkerId?: number;
+  closedWorkerNo?: string;
+  closedWorkerName?: string;
+  /** 서버 선행 P-104 — 마감으로 폐번된 선발행 LOT 수. 상세의 마감된 W/O 에만 있다. */
+  voidedLotCount?: number;
+};
+
+/** 서버 선행 P-104 — 마감을 막은 열린 작업 세션 한 건(중단 포함). 작업자는 그 세션의 주작업자다. */
+export interface OpenWorkSession {
+  workSessionId: number;
+  terminalId: number;
+  terminalCode: string;
+  workerId?: number;
+  workerNo?: string;
+  workerName?: string;
+  startedAt: string;
+  /** RUNNING(진행) · STOPPED(중단) */
+  statusCode: string;
+}
+
+/** 서버 선행 P-104 — 마감 409 OPEN_SESSION_EXISTS 가 열린 세션들을 싣는다. */
+export type ProductionConflictResponseForward =
+  components['schemas']['ProductionConflictResponse'] & {
+    openSessions?: OpenWorkSession[];
+  };
+
+/** 서버 선행 P-104 — 세션 조회(목록·단건)가 단말 코드와 주작업자를 싣는다. */
+export type WorkSessionForward = components['schemas']['WorkSession'] & {
+  terminalCode?: string;
+  workerId?: number;
+  workerNo?: string;
+  workerName?: string;
 };
 
 /**
