@@ -43,7 +43,7 @@ const renderDialog = (
 };
 
 describe('SessionForceEndDialog', () => {
-  it('어느 단말·작업자의 세션인지와 그 단말에 일어나는 일을 보이고, 사유를 적어야 누를 수 있다', async () => {
+  it('어느 단말과 작업자의 세션인지와 그 단말에 일어나는 일을 보이고, 사유를 적어야 누를 수 있다', async () => {
     const sent: { body: unknown; key: string | null; ifMatch?: string | null }[] = [];
     const user = userEvent.setup();
     const { dialog, onClose } = renderDialog(() => jsonResponse({ workSessionId: 930001 }), sent);
