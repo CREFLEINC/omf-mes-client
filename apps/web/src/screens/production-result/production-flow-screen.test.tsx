@@ -23,9 +23,7 @@ const LOT_ETAG = '"7"';
 const WORK_ORDER_ID = 701;
 const WORK_SESSION_ID = 8801;
 const pathOf = (request: Request): string => new URL(request.url).pathname;
-const NO_LOT_TEXT = t.flow.currentLot.none(
-  `${messages.productionOrder.breadcrumbRoot} › ${messages.workOrderClose.title}`,
-);
+const NO_LOT_TEXT = t.flow.currentLot.none(messages.workOrderClose.menuPath);
 
 const routes = (writes: Request[]): StubRoute[] => [
   {
@@ -2753,7 +2751,7 @@ describe('ProductionFlowScreen 미달 LOT 마감', () => {
     expect(
       await screen.findByText(
         t.flow.scan.workOrderClosed(
-          `${messages.workOrderClose.breadcrumbRoot} › ${messages.workOrderClose.title}`,
+          messages.workOrderClose.menuPath,
           messages.workOrderClose.correction.pane,
         ),
       ),

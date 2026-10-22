@@ -1,6 +1,8 @@
 export const workOrderClose = {
   title: 'W/O 마감·ERP 실적 송신',
   breadcrumbRoot: '생산 관리',
+  /** 메뉴에서 이 화면까지의 경로 — 다른 화면이 「어디로 가라」고 안내할 때 쓴다. 메뉴 라벨과 같아야 한다(app/nav-menu-path.test.ts). */
+  menuPath: '생산 관리 › W/O 마감·ERP 실적 송신',
   description:
     '작업이 끝난 작업지시를 마감하고 생산 실적을 ERP 로 보냅니다. 마감하면 되돌릴 수 없습니다.',
   detailSummary: {

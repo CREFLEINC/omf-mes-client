@@ -15,6 +15,7 @@ import type { Translated } from './translated';
 export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
   title: 'Thiết lập ánh xạ máy quét - công đoạn',
   breadcrumbRoot: 'Quản trị hệ thống',
+  menuPath: 'Quản trị hệ thống › Ánh xạ máy quét - công đoạn',
 
   panes: {
     list: 'Danh sách máy quét',

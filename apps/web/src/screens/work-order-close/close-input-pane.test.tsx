@@ -261,9 +261,7 @@ describe('WorkOrderCloseInputPane — 소멸 비고', () => {
   it('미달이면 이월 옆에 이월 W/O 가 자동으로 만들어지지 않는다는 것과 어디서 편성할지 적는다', () => {
     renderPane();
 
-    const note = t.remainder.carryOverNote(
-      `${messages.productionOrder.breadcrumbRoot} › ${messages.productionOrder.title}`,
-    );
+    const note = t.remainder.carryOverNote(messages.productionOrder.menuPath);
     expect(screen.getByText(note)).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: t.remainder.CARRY_OVER })).toHaveAccessibleDescription(
       note,

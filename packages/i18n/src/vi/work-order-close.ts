@@ -15,6 +15,7 @@ import type { Translated } from './translated';
 export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   title: 'Đóng W/O · gửi kết quả sang ERP',
   breadcrumbRoot: 'Quản lý sản xuất',
+  menuPath: 'Quản lý sản xuất › Đóng W/O · gửi kết quả sang ERP',
   description:
     'Đóng lệnh sản xuất đã xong việc và gửi kết quả sản xuất sang ERP. Đã đóng thì không hoàn tác được.',
   detailSummary: {

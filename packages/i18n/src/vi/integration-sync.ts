@@ -10,6 +10,7 @@ import type { Translated } from './translated';
 export const integrationSync: Translated<typeof ko.integrationSync> = {
   title: 'Tình hình đồng bộ liên kết',
   breadcrumbRoot: 'Quản trị hệ thống',
+  menuPath: 'Quản trị hệ thống › Tình trạng · lịch sử liên kết ERP › Tình trạng · lịch sử liên kết',
   fields: {
     periodFrom: 'Bắt đầu kỳ',
     periodTo: 'Kết thúc kỳ',
