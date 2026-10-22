@@ -11,7 +11,7 @@ import {
 import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel, selectableLookupOptions } from '../../patterns/lookup-display';
@@ -340,12 +340,15 @@ const RoutingWorkspace = () => {
     if (hasUnsavedChanges) setPendingMove(() => move);
     else move();
   };
+  /* 이동이 끝나면 되돌린다 — 질의가 그대로인 이동이어도 기록 항목(key)은 바뀐다. */
+  const location = useLocation();
   useEffect(() => {
     confirmedMoveRef.current = false;
-  }, [searchParams]);
+  }, [location.key]);
 
   /** 품목을 바꾸면 Rev 선택을 지운다 — 다른 품목의 Rev를 가리키면 안 된다. */
   const handleSelectItem = (itemId: number) => {
+    if (itemId === selectedItemId) return;
     guardMove(() => {
       resetHeaderEditing();
       resetOperationEditing();
@@ -552,6 +555,14 @@ const RoutingWorkspace = () => {
     isOperationsDirty ||
     (createValues !== null && !isSameHeaderValues(createValues, emptyHeaderFormValues()));
   const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
+  /*
+   * 품목·Rev 가 바뀌면 첫 Rev 등록 칸을 닫는다 — 앞 품목에서 친 값이 새 품목 아래 남으면 엉뚱한 품목에
+   * Rev 가 생기고, 비우지 않은 칸 때문에 그 뒤 이동마다 다시 묻는다(뒤로가기로 바뀐 경우도 같다).
+   */
+  useEffect(() => {
+    setCreateValues(null);
+    setCreateFieldErrors({});
+  }, [selectedItemId, selectedRoutingId]);
 
   const createWrite = useMasterWrite<RoutingHeaderFormValues, Routing>({
     request: (values, headers) =>

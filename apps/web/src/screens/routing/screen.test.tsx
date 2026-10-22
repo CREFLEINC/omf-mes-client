@@ -1489,6 +1489,45 @@ describe('RoutingScreen — 저장하지 않고 옮기기', () => {
     expect(screen.queryByRole('dialog', { name: discard.title })).toBeNull();
   });
 
+  it('첫 Rev 등록 칸을 두고 다른 품목으로 옮기면 그 칸을 비우고, 그 뒤 이동은 다시 묻지 않는다', async () => {
+    const { user } = renderScreen(
+      [itemListRoute(), revisionListRoute([]), processListRoute()],
+      '?item=5001',
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Routing 등록' }));
+    await user.type(await screen.findByLabelText('Routing 코드'), 'LEFTOVER');
+    await user.click(screen.getByRole('button', { name: 'ITM-002' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: discard.title })).getByRole('button', {
+        name: discard.confirm,
+      }),
+    );
+
+    expect(screen.queryByDisplayValue('LEFTOVER')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'ITM-003' }));
+    expect(screen.queryByRole('dialog', { name: discard.title })).toBeNull();
+    expect(screen.getByRole('button', { name: 'ITM-003' })).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('같은 품목을 다시 눌러도 묻지 않고, 그 뒤 뒤로가기는 여전히 묻는다', async () => {
+    const { user, router } = renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001',
+    );
+    if (router === null) throw new Error('데이터 라우터가 없습니다');
+
+    await user.click(await screen.findByRole('button', { name: 'Rev 3' }));
+    await user.type(await screen.findByLabelText('Routing 코드'), '-X');
+    await user.click(screen.getByRole('button', { name: 'ITM-001' }));
+    expect(screen.queryByRole('dialog', { name: discard.title })).toBeNull();
+
+    await act(async () => {
+      await router.navigate(-1);
+    });
+    expect(await screen.findByRole('dialog', { name: discard.title })).toBeInTheDocument();
+  });
+
   it('고친 것이 없으면 묻지 않고 옮긴다', async () => {
     const { user } = renderScreen(
       [itemListRoute(), revisionListRoute(), routingDetailRoute()],
