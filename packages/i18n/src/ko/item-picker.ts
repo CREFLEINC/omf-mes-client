@@ -14,13 +14,13 @@ export const itemPicker = {
   typeFailed: '유형 목록을 불러오지 못했습니다. 「전체」로 찾을 수 있습니다.',
 
   keywordLabel: '검색어',
-  keywordPlaceholder: '품목 코드 또는 이름',
-  search: '찾기',
+  keywordPlaceholder: '품목 코드 또는 이름을 입력하세요',
+  search: '검색',
 
   columns: {
     select: '선택',
-    itemCode: '코드',
-    itemName: '이름',
+    itemCode: '품목 코드',
+    itemName: '품목 이름',
     itemType: '유형',
     availableQty: '가용',
   },

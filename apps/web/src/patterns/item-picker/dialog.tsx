@@ -183,6 +183,8 @@ export const ItemPickerDialog = ({
     {
       key: 'itemTypeCode',
       header: t.columns.itemType,
+      /* 유형은 짧은 분류 이름이라 가운데(#133). */
+      align: 'center',
       width: '128px',
       /* 서버가 준 코드 그대로다 — 이름은 유형 목록이 갖고, 없으면 지어내지 않는다. */
       render: (row) =>

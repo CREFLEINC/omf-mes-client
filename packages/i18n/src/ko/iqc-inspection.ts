@@ -66,21 +66,26 @@ export const iqcInspection = {
    * 고정하는 것은 금지이고(공유계약 G-6), 「대기·진행」은 이미 고정 축이 덮는다.
    */
   filters: {
-    item: '품목',
+    item: '품목 검색',
     /** 창을 여는 칸이다 — 「치세요」가 아니라 「고르세요」로 적는다. */
-    itemPlaceholder: '품목을 선택하세요',
+    itemPlaceholder: '품목을 입력하세요',
     itemPick: '선택',
     itemClear: '품목 조건 지우기',
-    supplier: '공급사',
-    supplierPlaceholder: '공급사 선택',
+    supplier: '공급사 검색',
+    supplierPlaceholder: '공급사를 입력하세요',
+    supplierClear: '공급사 조건 지우기',
+    /** 공급사 검색 창(#133) — 품목 검색 창과 같은 모양이라 공용 문구(검색어 · 검색 · 취소 · 쪽)는 그 창의 것을 쓴다. */
+    supplierPicker: {
+      title: '공급사 검색',
+      keywordPlaceholder: '공급사 코드 또는 이름을 입력하세요',
+      columns: { code: '공급사 코드', name: '공급사 이름' },
+      noResult: '검색 결과가 없습니다. 코드나 이름의 일부로 다시 찾아보세요.',
+      searchFailed: '공급사를 찾지 못했습니다.',
+      pick: '선택',
+    },
     /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
     all: '전체',
-    /**
-     * 공급사 선택지를 못 받았다. **조건을 못 쓰게 됐다는 사실을 적는다** — 빈 선택지를 그대로
-     * 두면 사용자는 「공급사가 하나도 없다」로 읽는다.
-     */
-    supplierLoadFailed: '공급사 선택지를 불러오지 못했습니다.',
-    keyword: '의뢰번호',
+    keyword: '의뢰번호 검색',
     keywordPlaceholder: '의뢰번호를 입력하세요',
     apply: '조회',
     reset: '초기화',

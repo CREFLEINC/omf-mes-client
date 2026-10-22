@@ -14072,6 +14072,11 @@ button.app-button-neutral {
   flex: 0 0 12rem;
 }
 
+/* 공급사 검색 창(IQC · #133)은 유형 칸이 없어 검색어 칸이 첫 칸이다 — 남는 폭을 검색어 칸이 받는다. */
+.supplier-picker-controls > .field-cell:first-child {
+  flex: 1 1 16rem;
+}
+
 .item-picker-controls > .field-cell {
   flex: 1 1 16rem;
   min-width: 0;
@@ -14163,6 +14168,12 @@ button.app-button-neutral {
 .iqc-inspection-queue-rows td {
   padding-block: var(--space-2);
   vertical-align: middle;
+}
+
+/* 첫 칸(자재 LOT)은 표 왼쪽 끝과 띄운다(#133). */
+.iqc-inspection-queue-rows th:first-child,
+.iqc-inspection-queue-rows td:first-child {
+  padding-inline-start: var(--space-5);
 }
 
 /* 줄무늬 바탕을 지운다 — 구분은 얇은 선으로, 강조는 고른 줄에만. */

@@ -12,13 +12,13 @@ export const itemPicker: Translated<typeof ko.itemPicker> = {
   typeFailed: 'Không tải được danh sách loại. Vẫn tìm được với «Tất cả».',
 
   keywordLabel: 'Từ khóa',
-  keywordPlaceholder: 'Mã hoặc tên mặt hàng',
+  keywordPlaceholder: 'Nhập mã hoặc tên mặt hàng',
   search: 'Tìm',
 
   columns: {
     select: 'Chọn',
-    itemCode: 'Mã',
-    itemName: 'Tên',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
     itemType: 'Loại',
     availableQty: 'Khả dụng',
   },
