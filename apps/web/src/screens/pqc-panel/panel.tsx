@@ -319,6 +319,8 @@ export const PqcPanel = ({
    * 저장된 회차를 다 읽기 전에는 잠근다(리뷰 M1) — 덜 읽은 칸으로 저장하면 서버가 그 회차를 덮어 저장된 값이 사라진다.
    * 실적 수는 모르면(조회 전·실패) 막지 않는다 — 서버가 같은 규칙으로 막는다.
    */
+  /* 실적이 없으면 서버가 저장·확정을 받지 않는다 — 입력 칸도 다 잠가 헛입력을 막는다(#135). */
+  const isInputLocked = isConfirmed || producedQty === 0;
   const roundLoadFailed =
     latestRoundQuery.isError || (savedRound !== null && savedMeasurements.isError);
   const roundLoading =
@@ -439,7 +441,7 @@ export const PqcPanel = ({
             judgmentOptions={itemJudgmentOptions}
             uomCodeOf={uomCodeOf}
             isLoading={itemSpecs.isLoading}
-            isLocked={isConfirmed}
+            isLocked={isInputLocked}
           />
         )}
 
@@ -465,7 +467,7 @@ export const PqcPanel = ({
           disposition={disposition}
           onDispositionChange={edited(setDisposition)}
           onPadFieldChange={() => undefined}
-          isLocked={isConfirmed}
+          isLocked={isInputLocked}
           judgmentBelow={
             planVersionId === null ? (
               /* 검사기준이 없다는 안내는 「검사 내용」 이름 옆에 둔다 — 직접 적을 칸이 바로 이 칸이다. */
@@ -479,7 +481,7 @@ export const PqcPanel = ({
                   fullWidth
                   placeholder={tNoStandard.remarksPlaceholder}
                   value={remarks}
-                  disabled={isConfirmed}
+                  disabled={isInputLocked}
                   onChange={(event) => edited(setRemarks)(event.target.value)}
                 />
               </div>
@@ -523,7 +525,7 @@ export const PqcPanel = ({
       )}
 
       {planVersionId === null ? (
-        <FreeInputPanel remarks={remarks} onRemarksChange={setRemarks} isLocked={isConfirmed} />
+        <FreeInputPanel remarks={remarks} onRemarksChange={setRemarks} isLocked={isInputLocked} />
       ) : variant === 'split' && itemSpecs.isSuccess && rows.length === 0 ? (
         /* 항목이 없는 기준은 빈 카드 대신 한 줄로 말한다(#107 UI/UX). */
         <p className="field-note pqc-panel-noitems">
@@ -543,7 +545,7 @@ export const PqcPanel = ({
           onJudgmentChange={changeMeasurementJudgment}
           judgmentOptions={itemJudgmentOptions}
           isLoading={itemSpecs.isLoading}
-          isLocked={isConfirmed}
+          isLocked={isInputLocked}
         />
       )}
 
@@ -564,7 +566,7 @@ export const PqcPanel = ({
         disposition={disposition}
         onDispositionChange={setDisposition}
         onPadFieldChange={(next) => pickPad(next)}
-        isLocked={isConfirmed}
+        isLocked={isInputLocked}
       />
 
       {withKeypad && padField !== null && (
@@ -582,7 +584,7 @@ export const PqcPanel = ({
             else if (padField.key === 'inspected') changeInspected(next);
             else changeDraft({ ...draft, [padField.key]: next });
           }}
-          isLocked={isConfirmed}
+          isLocked={isInputLocked}
           allowSignAndDecimal={padField.key === 'measurement'}
         />
       )}

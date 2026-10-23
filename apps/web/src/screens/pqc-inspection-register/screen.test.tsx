@@ -60,6 +60,8 @@ interface RenderOptions {
   holdSave?: boolean;
   /** 목록 응답 줄. 없으면 의뢰 하나. */
   queueItems?: object[];
+  /** 작업지시에 생산 실적이 하나도 없다(진척 수량 모두 0). */
+  noProduction?: boolean;
 }
 
 const renderScreen = (options: RenderOptions = {}) => {
@@ -128,7 +130,12 @@ const renderScreen = (options: RenderOptions = {}) => {
       return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
     }
     if (path === '/production/work-orders/701') {
-      return jsonResponse({ workOrderId: 701, workOrderNo: 'WO-20261016-0701', itemId: 101 });
+      return jsonResponse({
+        workOrderId: 701,
+        workOrderNo: 'WO-20261016-0701',
+        itemId: 101,
+        ...(options.noProduction === true ? { progress: { goodQty: 0 } } : {}),
+      });
     }
     if (path === '/mdm/items') {
       return jsonResponse({
@@ -451,6 +458,18 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const pane = await openRequest(user);
 
     expect(await pane.findByText(messages.httpError.description)).toBeInTheDocument();
+    expect(pane.getByRole('button', { name: pqc.result.save })).toBeDisabled();
+    expect(pane.getByRole('button', { name: web.actions.confirm })).toBeDisabled();
+  });
+
+  it('⛔ 생산 실적이 없으면 이유를 말하고 입력 칸을 모두 잠근다(#135)', async () => {
+    const user = userEvent.setup();
+    renderScreen({ noProduction: true });
+    const pane = await openRequest(user);
+
+    expect(await pane.findByText(pqc.result.noProductionResult)).toBeInTheDocument();
+    for (const box of pane.getAllByRole('textbox')) expect(box).toBeDisabled();
+    expect(pane.getByRole('combobox', { name: web.judgment.label })).toBeDisabled();
     expect(pane.getByRole('button', { name: pqc.result.save })).toBeDisabled();
     expect(pane.getByRole('button', { name: web.actions.confirm })).toBeDisabled();
   });

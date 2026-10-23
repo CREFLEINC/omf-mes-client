@@ -145,7 +145,7 @@ export const pqcInspection = {
       '이 단말은 이 공정의 검사 입력 권한이 없습니다. 단말 설정에서 권한을 부여하세요.',
     confirmSucceeded: '검사를 확정했습니다.',
     /** 분할 패널(omf-all-around#107) — 업무 순서가 «실적 입력 → PQC» 다. 서버도 같은 문구로 막는다(장부 P-49). */
-    noProductionResult: '이 작업지시의 생산 실적이 아직 없습니다. 실적을 먼저 등록하세요.',
+    noProductionResult: '생산 실적이 없으므로 판정할 수 없습니다.',
   },
 
   /**
