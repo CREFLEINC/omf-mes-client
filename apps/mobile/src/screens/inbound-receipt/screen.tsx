@@ -1,4 +1,13 @@
-import { AlertBanner, Chip, Icon, IconButton, Select, TextField } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Chip,
+  Icon,
+  IconButton,
+  Radio,
+  RadioGroup,
+  Select,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Fragment, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
@@ -56,6 +65,9 @@ const SHOW_DELIVERY_NOTE = false;
 
 /** 단계 번호. 발주 없이 받기는 라인 고르기 자리를 대신한다. */
 const STEP_COUNT = 3;
+
+/** 초과 예외 유형을 선택 단추로 세우는 한도. 넘으면 두 칸씩 세 줄을 넘어 선택칸이 더 짧다. */
+const EXCEPTION_TILES_MAX = 6;
 
 /** 단계마다 몇 번째인가. 발주 없이 받기는 라인 고르기 자리에 선다. */
 const STEP_INDEX: Record<ReceiptStep, number> = { scan: 1, line: 2, unordered: 2, qty: 3 };
@@ -774,7 +786,8 @@ export const InboundReceiptScreen = () => {
         </p>
         {splitQuantities === null ? null : (
           <section className="receipt__split">
-            <h2>{t.verdict.split.legend}</h2>
+            {/* 수량 판의 칩(+N)과 아래 세 칸이 무엇인지 말한다. 구획 이름은 낭독기에만 준다. */}
+            <h2 className="receipt__hidden">{t.verdict.split.legend}</h2>
             <dl className="receipt__counts receipt__tiles">
               <dt>{t.verdict.split.remaining}</dt>
               <dd>{`${String(splitQuantities.remaining)} ${uom}`}</dd>
@@ -784,27 +797,54 @@ export const InboundReceiptScreen = () => {
               <dd>{`${String(splitQuantities.excess)} ${uom}`}</dd>
             </dl>
 
-            <div className="receipt__field">
-              <label htmlFor="receipt-split-exception-type">
-                {required(t.verdict.split.exceptionType)}
-              </label>
-              <Select
-                id="receipt-split-exception-type"
-                placeholder={t.verdict.split.exceptionTypePlaceholder}
-                size="lg"
-                value={splitExceptionType === '' ? null : splitExceptionType}
-                onChange={(value) => {
-                  setSplitExceptionType(String(value));
-                }}
-                options={(exceptionTypes.data ?? []).map((each) => ({
-                  value: each.code,
-                  label: each.name,
-                }))}
-              />
-              {exceptionTypes.isError ? (
-                <p className="receipt__note">{t.verdict.split.exceptionTypeLoadFailed}</p>
-              ) : null}
-            </div>
+            {/*
+             * 유형이 몇 개뿐이면 선택칸 대신 두 칸씩 서는 선택 단추다 - 열고 고르는 두 번이 한 번이 되고,
+             * 펼친 목록이 화면을 덮지 않는다. 많으면(서버 코드값이 늘면) 선택칸으로 돌아간다.
+             */}
+            {(exceptionTypes.data ?? []).length > 0 &&
+            (exceptionTypes.data ?? []).length <= EXCEPTION_TILES_MAX ? (
+              <div className="receipt__field receipt__choices">
+                <span id="receipt-split-exception-type-label">
+                  {required(t.verdict.split.exceptionType)}
+                </span>
+                <RadioGroup
+                  name="receipt-split-exception-type"
+                  aria-labelledby="receipt-split-exception-type-label"
+                  value={splitExceptionType}
+                  onChange={(value) => {
+                    setSplitExceptionType(value);
+                  }}
+                >
+                  {(exceptionTypes.data ?? []).map((each) => (
+                    <Radio key={each.code} value={each.code}>
+                      {each.name}
+                    </Radio>
+                  ))}
+                </RadioGroup>
+              </div>
+            ) : (
+              <div className="receipt__field">
+                <label htmlFor="receipt-split-exception-type">
+                  {required(t.verdict.split.exceptionType)}
+                </label>
+                <Select
+                  id="receipt-split-exception-type"
+                  placeholder={t.verdict.split.exceptionTypePlaceholder}
+                  size="lg"
+                  value={splitExceptionType === '' ? null : splitExceptionType}
+                  onChange={(value) => {
+                    setSplitExceptionType(String(value));
+                  }}
+                  options={(exceptionTypes.data ?? []).map((each) => ({
+                    value: each.code,
+                    label: each.name,
+                  }))}
+                />
+              </div>
+            )}
+            {exceptionTypes.isError ? (
+              <p className="receipt__note">{t.verdict.split.exceptionTypeLoadFailed}</p>
+            ) : null}
 
             <TextField
               label={required(t.verdict.split.exceptionReason)}

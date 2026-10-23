@@ -1493,8 +1493,8 @@ describe('입하 등록 화면 — 초과 입하 분리', () => {
     await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '511');
-    await user.click(await screen.findByRole('combobox', { name: new RegExp('초과 예외 유형') }));
-    await user.click(await screen.findByRole('option', { name: '초과 납품' }));
+    /* 유형이 몇 개뿐이라 선택칸이 아니라 선택 단추(라디오)로 선다. */
+    await user.click(await screen.findByRole('radio', { name: '초과 납품' }));
     await user.type(screen.getByLabelText(/초과\ 사유/), '발주 허용치를 넘겨 도착');
   };
 

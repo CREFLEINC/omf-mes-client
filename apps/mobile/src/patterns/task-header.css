@@ -83,6 +83,13 @@
   margin: 0;
 }
 
+/* 화면이 직접 그린 카드 본문. 머리 오른쪽의 단추들과 한 줄을 나눠 쓴다. */
+.task-header__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: var(--space-1);
+}
+
 /* 브라우저 기본 dl 여백(위아래 1em)이 카드 아래에 빈 줄을 남겼다. */
 .task-header__codes {
   margin: 0;
