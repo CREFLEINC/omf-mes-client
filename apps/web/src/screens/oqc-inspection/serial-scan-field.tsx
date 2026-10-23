@@ -13,6 +13,11 @@ export interface SerialScanFieldProps {
    * 한 단계 큰 칸.
    */
   labelHint?: string;
+  /**
+   * 목록 위 검색 칸과 같은 모양(스캔 아이콘 · 한 단계 큰 칸 · 못 찾은 번호는 남김 · 오류 아이콘)으로 세운다(#136).
+   * `labelHint` 를 주면 늘 이 모양이다.
+   */
+  search?: boolean;
   /** 입력 칸 안내 글. 없으면 공용 스캔 안내다. */
   placeholder?: string;
   helperText?: ReactNode;
@@ -33,6 +38,7 @@ export interface SerialScanFieldProps {
 export const SerialScanField = ({
   label,
   labelHint,
+  search = labelHint !== undefined,
   placeholder = t.scanPlaceholder,
   helperText,
   error,
@@ -72,11 +78,9 @@ export const SerialScanField = ({
       id={labelHint === undefined ? undefined : inputId}
       label={labelHint === undefined ? label : undefined}
       fullWidth
-      size={labelHint === undefined ? 'sm' : 'md'}
+      size={search ? 'md' : 'sm'}
       leadingIcon={
-        labelHint === undefined ? undefined : (
-          <Icon name="qr_code_scanner" size={20} aria-hidden="true" />
-        )
+        !search ? undefined : <Icon name="qr_code_scanner" size={20} aria-hidden="true" />
       }
       placeholder={placeholder}
       value={value}
@@ -93,7 +97,8 @@ export const SerialScanField = ({
   );
 
   /* DS 라벨은 글만 받아 옆 안내를 붙일 수 없다 — 그때만 라벨을 직접 세우고 id 로 잇는다. */
-  if (labelHint === undefined) return field;
+  if (labelHint === undefined)
+    return search ? <div className="oqc-inspection-scan-search">{field}</div> : field;
 
   return (
     <div className="field-cell oqc-inspection-serial-scan">

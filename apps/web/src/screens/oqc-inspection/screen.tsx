@@ -384,6 +384,8 @@ export const OqcInspectionScreen = () => {
   const isOa = useOaAccess() === 'oa';
   const isShipmentTarget = detail.data?.targetTypeCode === 'SHIPMENT_REQUEST';
   const unitRecords = useOqcSerialRecords(selectedId, isOa && isShipmentTarget);
+  /* 「시리얼별 출하검사 이력」 접는 줄의 건수 — 구획 안 표와 같은 조회다(#136). */
+  const serialRecordCount = useOqcSerialRecords(selectedId, isShipmentTarget).data?.length;
   const pickedLots = usePickedLotNumbers(
     !isOa && isShipmentTarget && detail.data?.lotId == null
       ? (detail.data?.targetId ?? null)
@@ -618,7 +620,14 @@ export const OqcInspectionScreen = () => {
         {/* 시리얼 출하검사(#68) — 출하작업지시 의뢰만. 저장하면 새로 부른다. */}
         {detail.data.targetTypeCode === 'SHIPMENT_REQUEST' && (
           <details className="pane oqc-inspection-fold">
-            <summary>{t.serials.recordHeading}</summary>
+            <summary>
+              {t.serials.recordHeading}
+              {serialRecordCount !== undefined && (
+                <span className="oqc-inspection-fold-chip">
+                  {t.serials.recordCount(serialRecordCount)}
+                </span>
+              )}
+            </summary>
             <SerialRecords inspectionRequestId={selectedId} />
           </details>
         )}
@@ -634,6 +643,7 @@ export const OqcInspectionScreen = () => {
             )}
           </summary>
           <InspectionHistoryPanel
+            hideSourceLot
             key={`${String(selectedId)}-${String(roundCount)}`}
             inspectionRequestId={selectedId}
             judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}

@@ -465,29 +465,11 @@ export const ResultFormPane = ({
       {openedAt === null && banner}
 
       {/*
-       * 저장 줄 — 왼쪽 검사성적서 발행(비활성), 가운데 지금 상황의 안내(저장 결과 · 막힌 까닭 · 되돌릴 수 없다는 경고),
-       * 오른쪽 끝 단추(IQC #133 과 같은 배치 · #136).
+       * 저장 줄 — 지금 상황의 안내(저장 결과 · 막힌 까닭 · 되돌릴 수 없다는 경고), 오른쪽 끝 단추 묶음
+       * (검사성적서 발행 → 판정 저장 · #136).
        */}
       <div className="oqc-inspection-action-area">
         <div className="oqc-inspection-action-row">
-          {/*
-           * 검사성적서 발행 — ⚠ **자리를 두되 비활성으로 시작한다.** 감추면 이 화면에 그 갈래가 «없는 것»이 된다
-           * (공유계약 G-10·G-23). 「아직 열리지 않았다」는 늘 같은 말이라 단추의 설명(마우스를 올리면 보이는 글 · 화면 읽기)으로 둔다.
-           */}
-          <Button
-            type="button"
-            variant="outlined"
-            size="md"
-            disabled
-            title={t.coaPending}
-            aria-describedby={coaNoteId}
-          >
-            {t.coaIssue}
-          </Button>
-          <span id={coaNoteId} className="oqc-inspection-visually-hidden">
-            {t.coaPending}
-          </span>
-
           <div className="oqc-inspection-action-notes">
             {/*
              * ⛔ **되돌릴 수 없는 쓰기가 끝난 것을 말한다.** 아무 말이 없으면 사용자는 LOT 상태를
@@ -517,6 +499,23 @@ export const ResultFormPane = ({
           </div>
 
           <div className="oqc-inspection-action-buttons">
+            {/*
+             * 검사성적서 발행 — ⚠ **자리를 두되 비활성으로 시작한다.** 감추면 이 화면에 그 갈래가 «없는 것»이 된다
+             * (공유계약 G-10·G-23). 「아직 열리지 않았다」는 늘 같은 말이라 단추의 설명(마우스를 올리면 보이는 글 · 화면 읽기)으로 둔다.
+             */}
+            <Button
+              type="button"
+              variant="outlined"
+              size="md"
+              disabled
+              title={t.coaPending}
+              aria-describedby={coaNoteId}
+            >
+              {t.coaIssue}
+            </Button>
+            <span id={coaNoteId} className="oqc-inspection-visually-hidden">
+              {t.coaPending}
+            </span>
             {/*
              * ⛔ **확정된 회차에는 저장 자리를 만들지 않는다**(공유계약 G-23). 거기서 유일하게 할 수 있는 일이
              * 재검사다 — 잠긴 사유만 내고 길을 내지 않으면 쌓을 자리가 화면에 없다.

@@ -1,4 +1,4 @@
-import { Button, Table, type Column } from '@crefle/web-ui';
+import { Button, EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
@@ -13,6 +13,7 @@ import {
 } from './serials';
 
 const t = messages.oqcInspection.serials;
+const j = t.judge;
 
 export interface SerialJudgmentsProps {
   inspectionRequestId: number;
@@ -43,14 +44,25 @@ export const SerialJudgments = ({
     `${idPrefix}-previous-${String(serialNumberId)}`;
   const [scanError, setScanError] = useState<string | null>(null);
 
-  const scan = async (serialNo: string): Promise<void> => {
+  /** `false` 면 찾지 못했다 — 칸이 친 번호를 남긴다(목록 위 스캔 칸과 같은 동작 · #136). */
+  const scan = async (serialNo: string): Promise<boolean> => {
     const found = await lookup(serialNo);
-    if (found.kind === 'notFound') return setScanError(t.notFound(serialNo));
-    if (found.kind === 'failed') return setScanError(t.lookupFailed);
+    if (found.kind === 'notFound') {
+      setScanError(j.notFound);
+      return false;
+    }
+    if (found.kind === 'failed') {
+      setScanError(t.lookupFailed);
+      return true;
+    }
     const blocked = checkScannedSerial(found.scan, { inspectionRequestId, itemId, rows });
     setScanError(blocked);
     if (blocked === null) onChange([...rows, toSerialRow(found.scan)]);
+    return true;
   };
+
+  const okCount = rows.filter((row) => row.judgment === 'OK').length;
+  const ngCount = rows.filter((row) => row.judgment === 'NG').length;
 
   const setJudgment = (serialNumberId: number, judgment: SerialJudgment): void =>
     onChange(
@@ -58,11 +70,11 @@ export const SerialJudgments = ({
     );
 
   const columns: Column<SerialRow>[] = [
-    { key: 'serialNo', header: t.columns.serialNo, width: '168px' },
-    { key: 'lotNo', header: t.columns.lotNo },
+    { key: 'serialNo', header: j.columns.serialNo, width: '168px' },
+    { key: 'lotNo', header: j.columns.lotNo },
     {
       key: 'previous',
-      header: t.columns.previous,
+      header: j.columns.previous,
       render: (row) =>
         row.previous === undefined ? (
           ''
@@ -74,7 +86,7 @@ export const SerialJudgments = ({
     },
     {
       key: 'judgment',
-      header: t.columns.judgment,
+      header: j.columns.judgment,
       width: '200px',
       render: (row) => (
         <span className="form-actions">
@@ -112,23 +124,44 @@ export const SerialJudgments = ({
   ];
 
   return (
-    <section aria-label={t.heading}>
-      <h3>{t.heading}</h3>
-      <p className="field-note">{t.help}</p>
+    <section className="oqc-inspection-serial-box" aria-label={j.heading}>
+      {/* 제목 줄 — 검사·합격·불합격 건수를 칩으로(판정 확정 안내와 같은 모양 · #136). */}
+      <div className="oqc-inspection-serial-box-head">
+        <h3>{j.heading}</h3>
+        <span className="oqc-inspection-guide-chips">
+          <span>{j.inspected(rows.length)}</span>
+          <span data-tone="accepted">{j.accepted(okCount)}</span>
+          <span data-tone="rejected">{j.rejected(ngCount)}</span>
+        </span>
+      </div>
+      {/* 목록 위 「시리얼 번호 스캔」과 같은 칸(#136). */}
       <SerialScanField
-        label={t.scanLabel}
+        label={j.scanLabel}
+        search
+        placeholder={j.scanPlaceholder}
+        helperText={j.help}
         error={scanError ?? serverError ?? null}
         disabled={disabled}
         onScan={scan}
       />
-      <Table
-        caption={t.count(rows.length, rows.filter((row) => row.judgment === 'NG').length)}
-        density="compact"
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => String(row.serialNumberId)}
-        empty={<p className="field-note">{t.empty}</p>}
-      />
+      <div className="oqc-inspection-serial-box-table">
+        <Table
+          caption={<span className="oqc-inspection-visually-hidden">{j.heading}</span>}
+          density="compact"
+          columns={columns}
+          rows={rows}
+          getRowId={(row) => String(row.serialNumberId)}
+          empty={
+            <EmptyState
+              size="sm"
+              icon={<Icon name="qr_code_scanner" size={32} />}
+              title={j.emptyTitle}
+              description={j.emptyDescription}
+            />
+          }
+        />
+      </div>
+      <p className="field-note">{j.lotOnlyNote}</p>
     </section>
   );
 };
