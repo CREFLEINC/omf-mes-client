@@ -2280,6 +2280,51 @@ describe('ProductionFlowScreen 불량', () => {
     ).toBeInTheDocument();
   });
 
+  it('단말 권한으로 서버가 실적을 거부하면(401) 서버 문구를 그대로 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) =>
+            request.method === 'POST' && pathOf(request) === '/production/production-results',
+          respond: () =>
+            jsonResponse(
+              {
+                errors: [
+                  {
+                    scope: 'screen',
+                    code: 'PERMISSION_DENIED',
+                    message:
+                      '이 단말에는 이 W/O 공정의 실적 입력 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「실적 입력」을 켜세요.',
+                  },
+                ],
+              },
+              { status: 401 },
+            ),
+        },
+        ...defectRoutes,
+      ],
+    );
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(good).toBeEnabled());
+    await user.clear(good);
+    await user.type(good, '0');
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '긁힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+    await user.click(
+      within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
+    );
+
+    expect(await screen.findByText(t.save.failTitle)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '이 단말에는 이 W/O 공정의 실적 입력 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「실적 입력」을 켜세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('불량만 저장이 서버에서 거부되면 「기록했습니다」를 지우고 거부 띠만 남긴다', async () => {
     const user = userEvent.setup();
     renderScreen(

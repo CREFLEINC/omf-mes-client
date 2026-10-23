@@ -114,9 +114,9 @@ export const runningChange: Translated<typeof ko.runningChange> = {
 
   disabled: {
     checking: 'Đang kiểm tra quyền thay thế.',
-    denied: 'Máy trạm này không đưa vật tư vào được. Hãy hỏi người phụ trách.',
     unavailable: 'Không kiểm tra được quyền thay thế. Lát nữa hãy thử lại.',
-    unidentified: 'Chưa xác nhận máy trạm nên không đăng ký thay thế được.',
+    unidentified:
+      'Chưa xác nhận được máy hoặc công đoạn của lệnh sản xuất này nên chưa đăng ký thay thế được. Hãy chọn lại lệnh sản xuất ở màn hình bắt đầu công việc rồi vào lại.',
     targetMissing: 'Phải chọn đối tượng thay thế rồi mới đăng ký được.',
   },
 

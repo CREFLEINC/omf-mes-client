@@ -4,7 +4,12 @@ import { useEffect, useId, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
-import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { usePopIdentity } from '../../patterns/pop-identity';
+import {
+  popGateProcessId,
+  usePopProcessGate,
+  usePopWorkOrderProcess,
+} from '../../patterns/pop-process-gate';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 
 import { confirmBlockReason } from './block-reason';
@@ -25,7 +30,6 @@ import { toMaterialConsumption } from './post-request';
 import { readWorkOrderId } from './screen-params';
 import { useOutbox } from './outbox';
 import { useOpenWorkSession } from './session';
-import { useTerminalGate } from './terminal-gating';
 import { isEmergencyTypeCode } from './work-order-type';
 
 const t = messages.materialInputScan;
@@ -109,7 +113,6 @@ export const MaterialInputScanScreen = () => {
    * 모르는 것을 통과로 처리하지 않는다(F-6).
    */
   const { terminalId, processes, workerNo } = usePopIdentity();
-  const processId = soleProcessIdOf(processes);
 
   const titleId = useId();
   const confirmReasonId = useId();
@@ -123,8 +126,17 @@ export const MaterialInputScanScreen = () => {
   /* 표시용 이름 풀이. 어느 판정에도 쓰이지 않는다 — 읽을 수 있게 하는 데만 쓴다. */
   const statusLabels = useLotStatusLabels();
   const describeFourMType = useFourMChangeTypeLabels();
-  /* 단말 게이팅 — 스펙 §5-1. 화면의 잠금은 오조작을 줄이는 장치이지 집행이 아니다. */
-  const gate = useTerminalGate(terminalId, processId);
+  /*
+   * 단말 게이팅 — 스펙 §5-1. 화면의 잠금은 오조작을 줄이는 장치이지 집행이 아니다.
+   * 단말에 공정이 여럿이어도 «이 W/O 의 공정»으로 판정한다(작업 시작과 같은 규칙).
+   */
+  const workOrderProcess = usePopWorkOrderProcess(workOrderId);
+  const gate = usePopProcessGate({
+    terminalId,
+    processId: popGateProcessId(workOrderProcess.processId, processes),
+    workOrder: workOrderProcess,
+    flag: 'canInputMaterial',
+  });
   /*
    * 열린 세션 — **투입을 매다는 값이지 여는 조건이 아니다**(스펙 §5-5). 계약이 nullable로
    * 두었으므로 없어도 투입은 선다.
@@ -308,6 +320,7 @@ export const MaterialInputScanScreen = () => {
   /* 띠와 버튼이 같은 값으로 서게, 잠금 사유는 이 한 곳에서 읽는다. */
   const blockReason = confirmBlockReason({
     gate,
+    processFailureReason: workOrderProcess.failureReason,
     hasWorker: workerNo !== null,
     hasPending: pendingMaterials.length > 0,
   });

@@ -9,7 +9,7 @@ import { toLookupDisplayState, type LookupSource } from '../../patterns/lookup-d
 import { validateQty, type QtyDraft, type QtyProblem } from './input-qty';
 import type { ReferenceLabels } from './reference-labels';
 import type { ScannedPart } from './scan';
-import type { GateVerdict } from './terminal-gating';
+import type { PopGateVerdict as GateVerdict } from '../../patterns/pop-process-gate';
 import type { CurrentInputView } from './types';
 
 import { stripLeadingZeros } from './quantity-pad';
@@ -31,6 +31,10 @@ export type BlockReason =
 
 export interface ReplacePanelProps {
   gate: GateVerdict;
+  /** 단말 기능이 꺼져 있을 때의 문구 — 어느 공정의 무슨 기능인지와 켜는 곳 */
+  gateDeniedText: string;
+  /** 판정할 공정을 모를 때의 문구 — 원인·조치와 서버가 준 이유 */
+  gateUnidentifiedText: string;
   hasWorkOrder: boolean;
   hasWorker: boolean;
   part: ScannedPart | null;
@@ -130,7 +134,11 @@ export const toQtyProblem = (props: {
   return entered || ready ? validateQty(props.qty) : null;
 };
 
-const describeBlock = (reason: BlockReason): string | null => {
+const describeBlock = (
+  reason: BlockReason,
+  gateDeniedText: string,
+  gateUnidentifiedText: string,
+): string | null => {
   switch (reason) {
     case null:
     case 'allowed':
@@ -146,11 +154,11 @@ const describeBlock = (reason: BlockReason): string | null => {
     case 'checking':
       return t.disabled.checking;
     case 'denied':
-      return t.disabled.denied;
+      return gateDeniedText;
     case 'unavailable':
       return t.disabled.unavailable;
     case 'unidentified':
-      return t.disabled.unidentified;
+      return gateUnidentifiedText;
     case 'targetMissing':
       return t.disabled.targetMissing;
   }
@@ -166,6 +174,8 @@ const describeBlock = (reason: BlockReason): string | null => {
  */
 export const ReplacePanel = ({
   gate,
+  gateDeniedText,
+  gateUnidentifiedText,
   hasWorkOrder,
   hasWorker,
   part,
@@ -199,6 +209,8 @@ export const ReplacePanel = ({
     blocked === 'workerMissing'
       ? toBlockReason({ gate, hasWorkOrder, hasWorker: true, part, selectedTargetId, qty })
       : blocked,
+    gateDeniedText,
+    gateUnidentifiedText,
   );
 
   return (
@@ -335,7 +347,6 @@ export const ReplacePanel = ({
           </AlertBanner>
         </div>
       )}
-
 
       <div className="pop-rc-submit">
         <Button

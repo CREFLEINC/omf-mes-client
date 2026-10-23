@@ -107,10 +107,9 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     action: 'Xác nhận đưa vào',
     reasons: {
       nothingScanned: 'Xác nhận đưa vào: phải ghi ít nhất một vật tư mới nhấn được.',
-      denied:
-        'Máy trạm này không có quyền đưa vật tư vào ở công đoạn này. Hãy liên hệ quản trị viên.',
       unavailable: 'Không xác nhận được quyền đưa vào. Hãy thử lại.',
-      unidentified: 'Chưa xác nhận được máy trạm. Hãy chọn lệnh sản xuất rồi vào lại.',
+      unidentified:
+        'Chưa xác nhận được máy hoặc công đoạn của lệnh sản xuất này. Hãy chọn lại lệnh sản xuất ở màn hình bắt đầu công việc rồi vào lại.',
       checking: 'Đang kiểm tra quyền đưa vào.',
       qtyMissing: 'Còn vật tư chưa ghi. Hãy nhập số lượng để ghi, hoặc bỏ vật tư đó.',
       workerMissing: 'Chưa xác nhận được công nhân. Hãy xác nhận mã nhân viên rồi vào lại.',

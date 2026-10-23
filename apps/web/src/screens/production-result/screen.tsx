@@ -14,6 +14,8 @@ import { NumericKeypad } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
+import type { SplitError } from '../../patterns/master';
+import { serverReasonOf } from '../../patterns/server-reason';
 import { masterName } from '../../patterns/master-name';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
@@ -198,6 +200,17 @@ const lotTargetsOf = (
       workOrderNo: source.workOrderNo ?? '-',
     }),
   }));
+
+/** 저장 거부의 서버 이유 — 칸 오류와 서버 문구(`serverReasonOf`)를 함께 잇는다. */
+const rejectionText = (rejection: SplitError): string | null => {
+  const reason = rejection.error === null ? null : serverReasonOf(rejection.error);
+  const text = [...Object.values(rejection.fieldErrors), ...(reason === null ? [] : [reason])]
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+    .join(' ');
+
+  return text === '' ? null : text;
+};
 
 /** P-02-04 생산 실적·인식표·생산 LOT 라벨·스캔 마감을 한 주소와 한 상태 흐름으로 묶는다. */
 export const ProductionFlowScreen = () => {
@@ -1796,7 +1809,9 @@ export const ProductionFlowScreen = () => {
                */}
               {outbox.rejection !== null && (
                 <div className="banner-slot">
-                  <AlertBanner variant="error" title={t.save.failTitle} />
+                  <AlertBanner variant="error" title={t.save.failTitle}>
+                    {rejectionText(outbox.rejection)}
+                  </AlertBanner>
                 </div>
               )}
 
