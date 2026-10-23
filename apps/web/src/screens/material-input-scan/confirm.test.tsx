@@ -21,6 +21,12 @@ const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial')
 const t = messages.materialInputScan;
 const unsent = messages.popChrome.header.unsent;
 
+/** 수량 한 줄의 한 칸(「투입한 수량 12 EA」). 이름과 값이 다른 요소라 칸 전체 글자로 찾는다. */
+const qtyPart =
+  (text: string) =>
+  (_content: string, element: Element | null): boolean =>
+    element?.classList.contains('material-input-qty-part') === true && element.textContent === text;
+
 const TERMINAL_ID = 7901;
 const PROCESS_ID = 7902;
 const WORKER_NO = 'SAMPLE-W-0001';
@@ -184,7 +190,7 @@ const Here = () => {
 
 /** 담은 자재 목록. 화면에 목록이 여럿이라 이름으로 집는다. */
 /** 투입 수량 편집 영역. */
-const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.qty });
+const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.noSelection });
 
 const scannedList = (): HTMLElement => screen.getByRole('list', { name: t.scanned.materialsLabel });
 
@@ -194,7 +200,7 @@ const scannedList = (): HTMLElement => screen.getByRole('list', { name: t.scanne
  */
 const nothingScanned = (): boolean =>
   within(scannedList()).queryByText(t.scanned.pendingMark) === null &&
-  within(scannedList()).queryByText(t.scanned.recordedMark) === null;
+  within(scannedList()).queryByText(t.pairs.recordedQty) === null;
 
 const okRoute = (bodies: unknown[]): StubRoute => {
   let call = 0;
@@ -220,7 +226,7 @@ const prepare = async (
 ): Promise<void> => {
   for (const [code, qty] of entries) {
     await user.type(screen.getByLabelText(t.scan.label), `${code}{Enter}`);
-    await screen.findByText(t.scan.outcomes.material(code));
+    await screen.findByLabelText(t.scanned.qtyLabel(code));
     await user.clear(screen.getByLabelText(t.scanned.qtyLabel(code)));
     await user.type(screen.getByLabelText(t.scanned.qtyLabel(code)), qty);
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
@@ -234,7 +240,7 @@ const prepareWithoutRecord = async (
   qty: string,
 ): Promise<void> => {
   await user.type(screen.getByLabelText(t.scan.label), `${code}{Enter}`);
-  await screen.findByText(t.scan.outcomes.material(code));
+  await screen.findByLabelText(t.scanned.qtyLabel(code));
   /* 스캔하면 수령 − 기록 양이 미리 채워진다(PI-05). 감지기가 재는 값으로 바꿔 넣는다. */
   await user.clear(screen.getByLabelText(t.scanned.qtyLabel(code)));
   if (qty !== '') await user.type(screen.getByLabelText(t.scanned.qtyLabel(code)), qty);
@@ -330,7 +336,7 @@ describe('투입 기록 — 결과를 어떻게 말하는가', () => {
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
 
-    expect(await screen.findByText(t.scanned.unlinkedIssue)).toBeTruthy();
+    expect(await within(scannedList()).findByText(t.scanned.unlinkedIssue)).toBeTruthy();
   });
 
   /*
@@ -346,13 +352,13 @@ describe('투입 기록 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301, { shopfloorReceiptLineId: 7101 })]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await within(scannedList()).findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.pairs.recordedQty);
 
     const item = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li');
     expect(item).not.toBeNull();
     /* 줄에 서는 표시는 「기록됨」 하나뿐이다. */
     expect(within(item as HTMLElement).queryByText(t.scanned.unlinkedIssue)).toBeNull();
-    expect(within(item as HTMLElement).getByText(t.scanned.recordedMark)).toBeTruthy();
+    expect(within(item as HTMLElement).getByText(t.pairs.recordedQty)).toBeTruthy();
   });
 
   /*
@@ -364,7 +370,7 @@ describe('투입 기록 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301, { shopfloorReceiptLineId: 7101 })]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await within(scannedList()).findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.pairs.recordedQty);
 
     expect(screen.queryByText(t.scanned.unlinkedIssue)).toBeNull();
   });
@@ -375,7 +381,7 @@ describe('투입 기록 — 결과를 어떻게 말하는가', () => {
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
 
-    expect(await within(scannedList()).findByText(t.scanned.recordedMark)).toBeTruthy();
+    expect(await within(scannedList()).findByText(t.pairs.recordedQty)).toBeTruthy();
   });
 
   /*
@@ -387,7 +393,10 @@ describe('투입 기록 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await within(scannedList()).findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.pairs.recordedQty);
+    /* 결과 한 줄은 품목 이름과 방금 한 일이다. LOT 번호를 다시 쓰지 않는다(C-21). */
+    expect(screen.getByText(t.scan.outcomes.recorded('예시 자재 A', '12 EA'))).toBeTruthy();
+    expect(screen.queryByText(/SAMPLE-LOT-0001 /)).toBeNull();
 
     expect(
       screen.queryByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }),
@@ -411,7 +420,7 @@ describe('투입 기록 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await within(scannedList()).findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.pairs.recordedQty);
 
     expect(within(scannedList()).getByText('SAMPLE-LOT-0001')).toBeTruthy();
   });
@@ -433,7 +442,7 @@ describe('투입 기록 — 결과를 어떻게 말하는가', () => {
      * ⭐ **거절된 자재는 목록에서 빠진다** — 서버가 받지 않았으므로 원장에 없다. 남겨 두면
      * 기록된 것처럼 보이고, §6의 「자재LOT 스캔부터 루프백」이 성립하지 않는다.
      */
-    expect(within(scannedList()).queryByText(t.scanned.recordedMark)).toBeNull();
+    expect(within(scannedList()).queryByText(t.pairs.recordedQty)).toBeNull();
     await waitFor(() => {
       expect(nothingScanned()).toBe(true);
     });
@@ -499,7 +508,7 @@ describe('투입 기록 — 보내지 않는 경우', () => {
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
     /* 큐에 담기는 즉시 「기록됨」이다(C-1 #2) — 통신을 기다리지 않는다. */
-    await within(scannedList()).findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.pairs.recordedQty);
 
     /*
      * 기록하면 칸이 비어 [투입 기록]이 잠긴다. 같은 칸으로 한 번 더 눌러 같은 양이 두 번 들어가지
@@ -639,7 +648,7 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     expect(screen.queryByRole('button', { name: '투입 확정' })).toBeNull();
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await within(scannedList()).findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.pairs.recordedQty);
     expect(sent).toHaveLength(1);
 
     expect(next).toHaveProperty('disabled', false);
@@ -663,7 +672,7 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     );
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await within(scannedList()).findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.pairs.recordedQty);
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0002', '5');
 
     expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
@@ -685,8 +694,8 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
 
     const row = (): HTMLElement =>
       within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li') as HTMLElement;
-    expect(await screen.findByText(`${t.pairs.recordedQty} 30 EA`)).toBeTruthy();
-    expect(within(row()).getByText(t.scanned.recordedMark)).toBeTruthy();
+    expect(await screen.findByText(qtyPart(`${t.pairs.recordedQty} 30 EA`))).toBeTruthy();
+    expect(within(row()).getByText(t.pairs.recordedQty)).toBeTruthy();
     /* 이미 기록된 것이 있으니 다음 작업으로 갈 수 있다. */
     expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
       'disabled',
@@ -697,7 +706,7 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
     expect(field).toHaveProperty('value', '70');
     /* 편집 영역에 투입 누계와 남은 수량이 선다. */
-    expect(within(editor()).getByText(t.pairs.cumulativeQty)).toBeTruthy();
+    expect(within(editor()).getByText(t.pairs.recordedQty)).toBeTruthy();
     expect(within(editor()).getByText('30 EA')).toBeTruthy();
     expect(within(editor()).getByText('70 EA')).toBeTruthy();
   });
@@ -729,10 +738,12 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     ]);
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    expect(await within(scannedList()).findByText(`${t.pairs.recordedQty} 12 EA`)).toBeTruthy();
+    expect(
+      await within(scannedList()).findByText(qtyPart(`${t.pairs.recordedQty} 12 EA`)),
+    ).toBeTruthy();
 
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
-    expect(await screen.findByText(t.scan.outcomes.again('SAMPLE-LOT-0001'))).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.again('예시 자재 A'))).toBeTruthy();
     const field = screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
     expect(field).toHaveProperty('value', '88');
     expect(within(editor()).getByText('12 EA')).toBeTruthy();
@@ -748,7 +759,9 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     await user.type(field, '8');
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
-    expect(await within(scannedList()).findByText(`${t.pairs.recordedQty} 20 EA`)).toBeTruthy();
+    expect(
+      await within(scannedList()).findByText(qtyPart(`${t.pairs.recordedQty} 20 EA`)),
+    ).toBeTruthy();
     await waitFor(() => {
       expect(sent).toHaveLength(2);
     });
@@ -769,7 +782,7 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await within(scannedList()).findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.pairs.recordedQty);
 
     const row = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('button') as HTMLElement;
     await user.click(row);
@@ -823,7 +836,7 @@ describe('MaterialInputScanScreen — 담은 자재의 품목·수량', () => {
     /* 한 줄 안의 품목은 「이름 (코드)」다(C-10). */
     expect(within(row).getByText('예시 자재 A (SAMPLE-MAT-A)')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
-    expect(await within(row).findByText(`${t.pairs.recordedQty} 12 EA`)).toBeTruthy();
+    expect(await within(row).findByText(qtyPart(`${t.pairs.recordedQty} 12 EA`))).toBeTruthy();
   });
 
   /* 단위를 못 풀면 **빈 자리로 둔다** — 수량 뒤에 번호가 붙으면 그것이 값처럼 읽힌다. */
@@ -840,7 +853,7 @@ describe('MaterialInputScanScreen — 담은 자재의 품목·수량', () => {
 
     const row = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li') as HTMLElement;
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
-    expect(await within(row).findByText(`${t.pairs.recordedQty} 12`)).toBeTruthy();
+    expect(await within(row).findByText(qtyPart(`${t.pairs.recordedQty} 12`))).toBeTruthy();
     expect(screen.queryByText(/7401/)).toBeNull();
   });
 });
@@ -883,7 +896,7 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
     /* 담는 즉시 성공이고(C-1 #2), 아직 닿지 않았다는 사실은 건수가 말한다(C-1 #4). */
-    expect(await within(scannedList()).findByText(t.scanned.recordedMark)).toBeTruthy();
+    expect(await within(scannedList()).findByText(t.pairs.recordedQty)).toBeTruthy();
     expect(await screen.findByText(unsent(1))).toBeTruthy();
 
     releasePost();
@@ -1026,7 +1039,7 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
      * 받아들여진 첫 건은 목록에 그대로 남아 있어야 한다.
      */
     expect(within(scannedList()).getByText('SAMPLE-LOT-0001')).toBeTruthy();
-    expect(within(scannedList()).getByText(t.scanned.recordedMark)).toBeTruthy();
+    expect(within(scannedList()).getByText(t.pairs.recordedQty)).toBeTruthy();
   });
 });
 
@@ -1074,7 +1087,7 @@ describe('MaterialInputScanScreen — 게이트와 쓰기', () => {
 
     await user.click(record);
     expect(sent).toHaveLength(0);
-    expect(within(scannedList()).queryByText(t.scanned.recordedMark)).toBeNull();
+    expect(within(scannedList()).queryByText(t.pairs.recordedQty)).toBeNull();
   });
 
   /*

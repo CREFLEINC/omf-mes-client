@@ -1,10 +1,11 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
-import { messages } from '@omf-mes/i18n';
+import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { ActionBar } from '../../patterns/action-bar';
+import { josa } from '../../patterns/josa';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { PopHeader } from '../../patterns/pop-header';
@@ -29,7 +30,13 @@ import { materialInputScanKeys, useReceiptLines, useRecordedConsumptions } from 
 import { QtyEditor } from './qty-editor';
 import { describeRecordError } from './record-error';
 import { useReferenceLabels } from './reference-labels';
-import { applyScan, EMPTY_SCAN_DRAFT, type ScanDraft, type ScanOutcome } from './scan';
+import {
+  applyScan,
+  EMPTY_SCAN_DRAFT,
+  isShotCountExceeded,
+  type ScanDraft,
+  type ScanOutcome,
+} from './scan';
 import { ScanField, type ScanOutcomeView } from './scan-field';
 import { useScanLookup } from './scan-queries';
 import {
@@ -62,15 +69,26 @@ const describeOutcome = (
   outcome: ScanOutcome,
   /** 상태 코드를 사람이 읽는 말로 옮긴다. 화면이 그 말을 지어내지 않는다. */
   describeStatus: (code: string) => string,
+  /** LOT 번호의 품목 이름(C-21 대상은 이름으로). 모르면 품목 코드나 LOT 번호. */
+  itemOfLotNo: (lotNo: string) => string,
 ): ScanOutcomeView => {
   switch (outcome.kind) {
     case 'material':
-      return { tone: 'success', text: t.scan.outcomes.material(outcome.material.lotNo) };
+      return {
+        tone: 'success',
+        text: t.scan.outcomes.material(josa(itemOfLotNo(outcome.material.lotNo), '을/를')),
+      };
     case 'mold':
-      return { tone: 'success', text: t.scan.outcomes.mold(outcome.mold.moldCode) };
+      return {
+        tone: 'success',
+        text: t.scan.outcomes.mold(josa(outcome.mold.moldName || outcome.mold.moldCode, '을/를')),
+      };
     /* 담기지 «않았다» — 실패는 아니지만 그냥 넘어가면 같은 것을 또 읽는다. */
     case 'duplicate':
-      return { tone: 'warning', text: t.scan.outcomes.duplicate(outcome.lotNo) };
+      return {
+        tone: 'warning',
+        text: t.scan.outcomes.duplicate(josa(itemOfLotNo(outcome.lotNo), '은/는')),
+      };
     /*
      * 담기 전에 막은 것이다(스펙 §6 R37). 다 담고 수량까지 넣은 뒤 서버에 거부당하는
      * 헛수고를 여기서 끊는다. 서버 거부는 그대로 둔다 — 최종 판정은 서버다.
@@ -82,8 +100,8 @@ const describeOutcome = (
         tone: 'error',
         text:
           statusName === ''
-            ? t.scan.outcomes.blockedStatusUnknown(outcome.lotNo)
-            : t.scan.outcomes.blockedStatus(outcome.lotNo, statusName),
+            ? t.scan.outcomes.blockedStatusUnknown(itemOfLotNo(outcome.lotNo))
+            : t.scan.outcomes.blockedStatus(josa(itemOfLotNo(outcome.lotNo), '은/는'), statusName),
       };
     }
     case 'ambiguous':
@@ -309,7 +327,7 @@ export const MaterialInputScanScreen = () => {
               if (!armedLotIds.includes(scanned.lotId)) {
                 prefillQty(scanned.lotId, scanned.uomId);
                 arm(scanned.lotId);
-                setActionNotice(t.scan.outcomes.again(scanned.lotNo));
+                setActionNotice(t.scan.outcomes.again(itemNameOf(scanned.lotId, scanned.itemId)));
               }
             }
           }
@@ -392,6 +410,15 @@ export const MaterialInputScanScreen = () => {
      */
     setQtyDrafts((prev) => dropQty(prev, lotId));
     disarm(lotId);
+    /* 결과 한 줄은 방금 한 일(C-21). 앞 스캔 결과를 대신한다. */
+    scan.reset();
+    const unit = labels.describeUom(body.uomId);
+    setActionNotice(
+      t.scan.outcomes.recorded(
+        itemNameOf(lotId, material.itemId),
+        unit === '' ? String(body.inputQty) : `${String(body.inputQty)} ${unit}`,
+      ),
+    );
     /* 기록하지 않은 다음 LOT을 연다. 없으면 그대로 둔다. */
     const next = pendingMaterials.find((candidate) => candidate.lotId !== lotId);
     if (next !== undefined) setSelectedLotId(next.lotId);
@@ -461,7 +488,7 @@ export const MaterialInputScanScreen = () => {
           }
         : outcome === undefined
           ? null
-          : describeOutcome(outcome, statusLabels.describe);
+          : describeOutcome(outcome, statusLabels.describe, itemOfLotNo);
 
   /* 잠금 사유와 「남은 일」은 한 판정(`block-reason`)에서 읽는다. */
   const blockReason = confirmBlockReason({
@@ -516,11 +543,20 @@ export const MaterialInputScanScreen = () => {
   const hasRecorded =
     recorded.byLot.size > 0 ||
     draft.materials.some((material) => recordedQtyOf(material.lotId) !== null);
-  const itemNameOf = (lotId: number, itemId: number): string => {
+  function itemOfLotNo(lotNo: string): string {
+    const line = receipt.lines.find((candidate) => candidate.lotNo === lotNo);
+    if (line !== undefined) return itemNameOf(line.lotId, line.itemId);
+    const scanned = draft.materials.find((material) => material.lotNo === lotNo);
+
+    return scanned === undefined ? lotNo : itemNameOf(scanned.lotId, scanned.itemId);
+  }
+
+  function itemNameOf(lotId: number, itemId: number): string {
     const line = receipt.lines.find((candidate) => candidate.lotId === lotId);
 
     return line?.itemName ?? line?.itemCode ?? labels.describeItem(itemId);
-  };
+  }
+
   const remaining = remainingText({
     blockReason,
     hasWorkOrder: workOrderId !== null,
@@ -549,6 +585,9 @@ export const MaterialInputScanScreen = () => {
         workOrderNo={workOrder?.workOrderNo ?? null}
         processName={workOrder?.processName ?? workOrderProcess.processName}
         isEmergency={isEmergency}
+        /* 금형은 W/O 맥락이라 머리줄에 둔다. 지정했거나 W/O가 금형을 계획했을 때만(C-21). */
+        moldText={draft.mold === null ? null : named(draft.mold.moldName, draft.mold.moldCode)}
+        isMoldMissing={draft.mold === null && workOrder?.plannedMoldId != null}
         /*
          * 연결 상태와 미전송 건수(공유계약 C-1 #4). 「즉시 성공 표시」의 전제라 늘 보인다.
          * 미전송 칩은 남은 건이 있을 때만 선다(PG-24).
@@ -583,6 +622,16 @@ export const MaterialInputScanScreen = () => {
            * 부족이나 미수령은 투입을 막지 않는다(스펙 §6). 그런 LOT이 있을 때만 안내 상자로 말한다
            * (C-7, C-19). 어느 LOT인지는 그 줄의 상태 칩이 말한다(C-4).
            */}
+          {draft.mold !== null && isShotCountExceeded(draft.mold) && (
+            <div className="banner-slot">
+              <AlertBanner
+                variant="warning"
+                assertive={false}
+                title={t.scanned.shotCountExceeded(draft.mold.moldName || draft.mold.moldCode)}
+              />
+            </div>
+          )}
+
           {hasShortReceipt && (
             <div className="banner-slot">
               <AlertBanner variant="info" assertive={false} title={t.notes.shortAllowed} />
@@ -603,7 +652,7 @@ export const MaterialInputScanScreen = () => {
             isLoading={receipt.isPending && workOrderId !== null}
             hasWorkOrder={workOrderId !== null}
             isError={receipt.isError}
-            draft={draft}
+            remainingQtyOf={remainingQtyOf}
             describeItem={labels.describeItem}
             describeUom={labels.describeUom}
             notes={notes}
@@ -611,6 +660,9 @@ export const MaterialInputScanScreen = () => {
             recordedQtyOf={recordedQtyOf}
             selectedLotId={editingRow?.lotId ?? null}
             onSelect={(lotId) => {
+              /* 다음 동작을 하면 결과 한 줄을 지운다(C-21). */
+              setActionNotice(null);
+              scan.reset();
               /* 사번이 없으면 고르지 않고 사번 입력 창을 연다(PI-17). */
               if (isWorkerMissing) {
                 openWorkerDialog();
@@ -634,8 +686,8 @@ export const MaterialInputScanScreen = () => {
 
         {isWorkerMissing ? (
           /* 사번이 없으면 편집 영역 대신 작업 시작의 「작업자」 묶음과 같은 빈 상태와 [사번 입력]을 둔다. */
-          <section className="pane material-input-qty" aria-label={t.panes.qty}>
-            <h2 className="pane-title">{t.panes.qty}</h2>
+          <section className="pane material-input-qty" aria-label={t.panes.noSelection}>
+            <h2 className="pane-title">{t.panes.noSelection}</h2>
             <div className="material-input-worker">
               <h3>{messages.popChrome.workerNoDialog.groupTitle}</h3>
               <p className="field-note">{messages.popChrome.workerNoDialog.empty}</p>
@@ -654,13 +706,18 @@ export const MaterialInputScanScreen = () => {
             row={editingRow}
             isPending={editingRow !== null && armedLotIds.includes(editingRow.lotId)}
             recordedQty={editingRow === null ? null : recordedQtyOf(editingRow.lotId)}
-            remainingQty={
-              editingRow?.material === undefined
+            remainingQty={((): number | null => {
+              const uomId = editingRow?.material?.uomId ?? editingRow?.receipt?.uomId;
+
+              return editingRow === null || uomId === undefined
                 ? null
-                : remainingQtyOf(editingRow.lotId, editingRow.material.uomId)
-            }
+                : remainingQtyOf(editingRow.lotId, uomId);
+            })()}
             qtyDrafts={qtyDrafts}
-            statusLabels={statusLabels}
+            isUnlinked={
+              editingRow !== null &&
+              notes.some((note) => note.lotId === editingRow.lotId && note.unlinkedIssue)
+            }
             describeItem={labels.describeItem}
             describeUom={labels.describeUom}
             describeFourMType={describeFourMType}

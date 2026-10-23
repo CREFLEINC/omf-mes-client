@@ -12355,8 +12355,11 @@ button.app-button-neutral {
  * P-02-03 자재 투입
  *
  * 화면 구성 규범 T-P-W 작업형(투입 탭)이다. 머리줄, 본문 좌우 2단(왼쪽 투입 자재: 스캔 칸과 자재
- * 목록, 오른쪽 투입 수량: 고른 LOT의 편집 영역), 하단 동작 바(공용 `action-bar`). 자재 목록만 제
- * 구획 안에서 스크롤한다. 하단 바의 주 동작은 LOT을 몇 건 담아도 화면 안에 있다(C-14).
+ * 목록, 오른쪽 고른 자재의 편집 영역), 하단 동작 바(공용 `action-bar`). 자재 목록만 제 구획 안에서
+ * 스크롤한다. 하단 바의 주 동작은 LOT을 몇 건 담아도 화면 안에 있다(C-14).
+ *
+ * 현장 화면의 정보와 이름(C-21): 목록 줄과 편집 영역의 첫 줄은 품목 이름, LOT 번호는 목록 줄에만,
+ * 수량은 받은 → 투입한 → 남은 한 줄, 정상 값은 두지 않고 예외만 칩.
  *
  * 클래스 이름을 `material-input-` 로 시작한다. 이름에 `action` 을 넣지 않는다. POP 바닥 띠
  * 규칙(`[class*='action']`)이 걸린다.
@@ -12380,7 +12383,8 @@ button.app-button-neutral {
 .material-input-list > .pane-title,
 .material-input-list > .banner-slot,
 .material-input-qty > .pane-title,
-.material-input-qty > .field-note {
+.material-input-qty > .field-note,
+.material-input-qty > .banner-slot {
   flex: 0 0 auto;
   margin: 0;
 }
@@ -12431,41 +12435,58 @@ button.app-button-neutral {
   cursor: pointer;
 }
 
-/* LOT 번호는 저장값 그대로 고정폭 한 줄이다. 대조에 쓰이므로 자르지 않는다(C-10). */
-.material-input-lot-no,
-.material-input-qty-lot {
+/* 첫 줄은 품목 이름(C-21). 줄에서 가장 먼저 읽힌다. */
+.material-input-lot-name {
+  font-weight: 600;
+}
+
+/* LOT 번호는 라벨과 대조하는 값이다. 저장값 그대로 고정폭 한 줄, 이름보다 한 단 낮게(C-10, C-21). */
+.material-input-lot-no {
+  color: var(--on-surface-variant);
   font-family: var(--font-mono);
+  font-size: var(--pop-label);
   white-space: nowrap;
 }
 
-.material-input-lot-facts {
+.material-input-lot-facts,
+.material-input-exceptions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1) var(--space-3);
+}
+
+/* 수량 한 줄: 받은 → 투입한 → 남은(C-21). 이름은 흐린 색, 값은 본문 색. */
+.material-input-qty-relation {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+}
+
+.material-input-qty-part {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.material-input-qty-name,
+.material-input-qty-arrow {
   color: var(--on-surface-variant);
 }
 
-/* 금형 한 줄. 목록 아래 고정이다. */
-.material-input-mold {
-  display: flex;
+.material-input-qty-value {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+.material-input-qty-line {
   flex: 0 0 auto;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1) var(--space-3);
-  padding-block-start: var(--space-2);
-  border-block-start: 1px solid var(--outline-variant);
-}
-
-.material-input-mold-label {
-  color: var(--on-surface-variant);
-}
-
-.material-input-mold > .field-note {
   margin: 0;
 }
 
-/* 투입 수량 편집 영역. 머리 줄(제목과 [빼기]), LOT 번호, 라벨 값 쌍, 수량 칸과 [투입 기록], 키패드. */
+/* 편집 영역. 머리 줄(고른 품목 이름과 [스캔 취소]), 예외 칩, 수량 한 줄, 소제목 「이번 투입」 아래 입력. */
 .material-input-qty-head {
   display: flex;
   flex: 0 0 auto;
@@ -12478,52 +12499,10 @@ button.app-button-neutral {
   margin: 0;
 }
 
-.material-input-qty-lot {
-  font-family: var(--font-mono);
-  white-space: nowrap;
-}
-
-.material-input-lot-facts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1) var(--space-3);
-  color: var(--on-surface-variant);
-}
-
-/* 금형 한 줄. 목록 아래 고정이다. */
-.material-input-mold {
-  display: flex;
+.material-input-subtitle {
   flex: 0 0 auto;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1) var(--space-3);
-  padding-block-start: var(--space-2);
-  border-block-start: 1px solid var(--outline-variant);
-}
-
-.material-input-mold-label {
-  color: var(--on-surface-variant);
-}
-
-.material-input-mold > .field-note {
-  margin: 0;
-}
-
-/* 투입 수량 편집 영역. 머리(LOT 번호와 [빼기]), 라벨 값 쌍, 수량 칸과 [기록], 키패드. */
-.material-input-qty-head {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.material-input-qty-lot {
-  flex: 0 0 auto;
-  margin: 0;
+  margin: var(--space-2) 0 0;
   font: var(--type-title-sm);
-  font-family: var(--font-mono);
   letter-spacing: var(--type-title-sm-tracking);
 }
 
@@ -12543,39 +12522,6 @@ button.app-button-neutral {
   margin: 0;
   font: var(--type-title-sm);
   letter-spacing: var(--type-title-sm-tracking);
-}
-
-.material-input-pairs {
-  display: grid;
-  flex: 0 0 auto;
-  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-1) var(--space-4);
-  margin: 0;
-}
-
-.material-input-pair {
-  display: contents;
-}
-
-.material-input-pair > dt {
-  color: var(--on-surface-variant);
-  white-space: nowrap;
-}
-
-.material-input-pair > dd {
-  margin: 0;
-}
-
-.material-input-pair-wide > dd {
-  grid-column: span 3;
-}
-
-.material-input-pair-chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .material-input-qty-row {

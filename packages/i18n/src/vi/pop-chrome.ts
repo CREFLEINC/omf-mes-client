@@ -18,6 +18,8 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     workerLabel: (workerNo: string, workerName?: string | null): string =>
       `Người làm ${named(workerName, workerNo)}`,
     workOrderLabel: (workOrderNo: string): string => `W/O ${workOrderNo}`,
+    moldLabel: (mold: string): string => `Khuôn ${mold}`,
+    moldMissing: 'Cần quét khuôn',
     emergency: 'Khẩn',
     connected: common.connection.online,
     disconnected: common.connection.offline,

@@ -26,6 +26,10 @@ export const popChrome = {
     workerLabel: (workerNo: string, workerName?: string | null): string =>
       `작업자 ${named(workerName, workerNo)}`,
     workOrderLabel: (workOrderNo: string): string => `W/O ${workOrderNo}`,
+    /** 이 투입에 지정한 금형(C-21, 있을 때만). */
+    moldLabel: (mold: string): string => `금형 ${mold}`,
+    /** W/O에 계획 금형이 있는데 아직 스캔하지 않았을 때(예외만 보인다). */
+    moldMissing: '금형 스캔 필요',
     emergency: '긴급',
     connected: common.connection.online,
     disconnected: common.connection.offline,

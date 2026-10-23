@@ -6,29 +6,24 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
   title: 'Đưa vật tư vào',
   panes: {
     input: 'Vật tư đưa vào',
-    qty: 'Số lượng đưa vào',
+    noSelection: 'Vật tư đã chọn',
   },
   pairs: {
-    item: 'Mặt hàng',
-    issuedQty: 'Xuất kho',
     receivedQty: 'Đã nhận',
-    varianceQty: 'Chênh lệch',
-    receiptStatus: 'Trạng thái nhận',
     recordedQty: 'Đã đưa vào',
-    cumulativeQty: 'Lũy kế đưa vào',
-    remainingQty: 'Số lượng còn lại',
-    lotStatus: 'Trạng thái LOT',
+    remainingQty: 'Còn lại',
+    thisInput: 'Lần này',
   },
   receiptStatus: {
-    matched: 'Đã nhận đủ',
+    matched: 'Đã nhận',
     short: 'Nhận thiếu',
     none: 'Chưa nhận',
   },
   loading: {
-    receipt: 'Đang tải lịch sử nhận tại dòng',
+    receipt: 'Đang tải vật tư đã nhận',
   },
   empty: {
-    receiptTitle: 'Không có lịch sử nhận. Quét LOT vật tư để thêm vào danh sách.',
+    receiptTitle: 'Không có vật tư đã nhận. Quét LOT vật tư để thêm vào danh sách.',
     notQueriedTitle: 'Chưa chỉ định lệnh sản xuất.',
   },
   notes: {
@@ -39,56 +34,49 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     label: 'Quét',
     placeholder: 'LOT vật tư hoặc mã khuôn',
     outcomes: {
-      material: (lotNo: string): string => `Đã thêm ${lotNo}.`,
-      mold: (moldCode: string): string => `Đã chỉ định khuôn ${moldCode}.`,
-      again: (lotNo: string): string => `Có thể ghi thêm việc đưa vào ${lotNo}.`,
-      duplicate: (lotNo: string): string => `LOT ${lotNo} đã được thêm rồi.`,
-      blockedStatus: (lotNo: string, statusName: string): string =>
-        `LOT ${lotNo} đang ở trạng thái 「${statusName}」 nên không thêm được. Chỉ vật tư ở trạng thái bình thường mới đưa vào được.`,
-      blockedStatusUnknown: (lotNo: string): string =>
-        `Không xác nhận được trạng thái của LOT ${lotNo} nên không thêm được. Hãy quét lại.`,
+      material: (itemWithObject: string): string => `Đã thêm ${itemWithObject}.`,
+      mold: (moldWithObject: string): string => `Đã chỉ định khuôn ${moldWithObject}.`,
+      again: (item: string): string => `Có thể nhập thêm việc đưa vào ${item}.`,
+      duplicate: (itemWithTopic: string): string => `${itemWithTopic} đã được thêm rồi.`,
+      blockedStatus: (itemWithTopic: string, statusName: string): string =>
+        `${itemWithTopic} đang ở trạng thái 「${statusName}」 nên không thêm được.`,
+      blockedStatusUnknown: (item: string): string =>
+        `Không xác nhận được trạng thái của ${item}. Hãy quét lại.`,
       ambiguous: (count: number): string =>
         `Tìm thấy cùng lúc ${String(count)} mục. Hãy quét toàn bộ mã trên nhãn.`,
       notFound: (code: string): string =>
         `Không có LOT vật tư hoặc khuôn ứng với ${code}. Hãy kiểm tra mã.`,
       failed: 'Không tra cứu được. Hãy quét lại.',
       offline: 'Mất kết nối nên không tra cứu được vật tư. Hãy quét lại khi có kết nối.',
+      recorded: (item: string, qty: string): string => `Đã ghi đưa vào ${item} ${qty}.`,
     },
   },
   scanned: {
     materialsLabel: 'Danh sách vật tư',
-    moldLabel: 'Khuôn',
     remove: 'Hủy quét',
     removeMaterial: (lotNo: string): string => `Hủy quét ${lotNo}`,
     removed: (item: string): string => `Đã hủy quét ${item}.`,
-    qtyField: 'Số lượng đưa vào',
-    qtyLabel: (lotNo: string): string => `Số lượng đưa vào ${lotNo}`,
+    qtyLabel: (lotNo: string): string => `${lotNo} lần này`,
     qtyProblems: {
-      empty: 'Hãy nhập số lượng đưa vào.',
-      format: 'Hãy nhập số lượng đưa vào bằng chữ số.',
-      notPositive: 'Số lượng đưa vào phải lớn hơn 0.',
+      empty: 'Hãy nhập số lượng đưa vào lần này.',
+      format: 'Hãy nhập số lượng lần này bằng chữ số.',
+      notPositive: 'Số lượng lần này phải lớn hơn 0.',
     },
     unlinkedIssue: 'Xuất kho chưa gán',
     keypadLabel: (lotNo: string): string => `Bàn phím số lượng ${lotNo}`,
     keypadSubmit: 'Ghi đưa vào',
     keypadClear: 'Xóa hết',
     keypadBackspace: 'Xóa một ký tự',
-    recordedMark: 'Đã ghi',
-    pendingMark: 'Chưa ghi',
-    notScannedMark: 'Chưa quét',
+    pendingMark: 'Đang nhập lần này',
+    notScannedMark: 'Chưa đưa vào',
     noSelection: 'Hãy chọn vật tư trong danh sách hoặc quét nhãn LOT.',
-    scanToInput: 'Quét nhãn LOT để nhập số lượng đưa vào.',
-    moldEmpty: 'Chưa chỉ định khuôn nào.',
-    receivedNone: 'Không có lịch sử nhận',
-    heldMark: 'Đang tạm giữ',
+    scanToInput: 'Quét nhãn LOT để nhập số lượng lần này.',
+    heldMark: 'Cần kiểm tra tạm giữ',
     fourMChangeMark: 'Hàng thay đổi 4M',
-    statusLabelUnavailable: 'Không tải được tên trạng thái nên hiển thị bằng mã.',
-    shotCount: (current: number, guaranteed: number): string =>
-      `Nhát dập ${current.toLocaleString('ko-KR')} / ${guaranteed.toLocaleString('ko-KR')}`,
-    shotCountUnknown: (current: number): string =>
-      `Nhát dập ${current.toLocaleString('ko-KR')}, chưa đăng ký số nhát dập đảm bảo`,
-    shotCountExceeded:
-      'Đã vượt số nhát dập đảm bảo. Vẫn đưa vào được, nhưng hãy xem xét thay khuôn.',
+    fourMChangeLine: (detail: string): string => `Thay đổi 4M: ${detail}`,
+    unitMismatch: 'Khác đơn vị',
+    shotCountExceeded: (mold: string): string =>
+      `Khuôn ${mold} đã vượt số nhát dập đảm bảo. Vẫn đưa vào được, nhưng hãy xem xét thay khuôn.`,
   },
   remaining: {
     workOrderMissing:

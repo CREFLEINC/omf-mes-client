@@ -4,8 +4,9 @@
  * - 화면 구성 규범 C-5, C-13을 따른다. 하단 바 「남은 일」 문장은 머리말 없이 그대로 보인다.
  *   라벨과 구획 제목은 명사형, 안내와 오류는 상황과 할 일을 한두 문장으로 쓴다. 가운뎃점으로
  *   항목을 잇지 않는다.
- * - 조사가 LOT 번호 바로 뒤에 붙지 않게 쓴다. 번호의 끝 글자로는 받침을 알 수 없어 「LOT은」처럼
- *   업무 용어 뒤에 붙인다(C-5, `LOT` 은 「랏」으로 읽는다).
+ * - 현장 화면 규칙 C-21: 대상은 품목 이름으로 가리키고 LOT 번호는 목록 줄에서만 보인다. 수량 이름은
+ *   「받은 수량」, 「투입한 수량」, 「남은 수량」, 「이번 투입」이다. 정상 값은 두지 않고 예외만 칩으로 말한다.
+ * - 품목 이름 뒤 조사는 화면이 `patterns/josa`로 붙여 넘긴다(인자 이름의 `WithObject`, `WithTopic`).
  * - **「통과」가 「정상」이 아니다.** 출고 미귀속은 막지 않고 기록만 하는데, 나중에 계보를 추적할
  *   때 그 구분이 필요하다. 그래서 표시할 말이 따로 있다.
  * - 판정 문구를 화면이 지어내지 않는다. 자재 상태와 오투입 판정은 서버가 하고 화면은 옮긴다.
@@ -15,43 +16,40 @@ export const materialInputScan = {
   title: '자재 투입',
   panes: {
     input: '투입 자재',
-    qty: '투입 수량',
+    /** 편집 영역 제목. 고른 자재가 있으면 그 품목 이름이 제목이다(C-21 영역 제목). */
+    noSelection: '선택한 자재',
   },
-  /** 편집 영역의 라벨 값 쌍. 출고, 수령, 차이는 계획 대비 수령(생산창고 입고) 값이다. */
+  /** 수량 이름(C-21). 받은 수량 → 투입한 수량 → 남은 수량 순서로 한 줄에 둔다. */
   pairs: {
-    item: '품목',
-    issuedQty: '출고',
-    receivedQty: '수령',
-    varianceQty: '차이',
-    receiptStatus: '수령 상태',
-    /** 이 W/O에 이미 기록된 투입 수량(LOT별 합). */
-    recordedQty: '투입',
-    /** 편집 영역: 투입 누계와 남은 수량(수령 − 누계). 추가 투입은 새 기록이다(PI-18). */
-    cumulativeQty: '투입 누계',
+    receivedQty: '받은 수량',
+    /** 이 W/O에 기록된 투입의 LOT별 합. 추가 투입은 새 기록이다(PI-18). */
+    recordedQty: '투입한 수량',
+    /** 받은 수량 − 투입한 수량. */
     remainingQty: '남은 수량',
-    lotStatus: 'LOT 상태',
+    /** 지금 넣는 양. 입력 칸 묶음의 소제목이다. */
+    thisInput: '이번 투입',
   },
-  /** 수령 상태 — 서버가 계산한 차이 수량을 세 갈래로 옮긴 것이다. 값을 만들지 않는다. */
+  /**
+   * 받은 상태의 예외 칩(C-21 정상은 숨김). 서버가 계산한 차이 수량을 옮긴 것이다. 막지 않는다.
+   * `matched`는 화면에 두지 않는다.
+   */
   receiptStatus: {
-    matched: '수령 완료',
-    short: '수령 부족',
-    none: '미수령',
+    matched: '받음',
+    short: '덜 받음',
+    none: '못 받음',
   },
   loading: {
-    receipt: '라인 수령 내역을 불러오는 중',
+    receipt: '받은 자재를 불러오는 중',
   },
   empty: {
-    /* 수령 내역도 담은 자재도 없을 때. */
-    receiptTitle: '수령 내역이 없습니다. 자재 LOT을 스캔하면 목록에 담깁니다.',
+    /* 받은 자재도 담은 자재도 없을 때. */
+    receiptTitle: '받은 자재가 없습니다. 자재 LOT을 스캔하면 목록에 담깁니다.',
     /* 조회 자체가 나가지 않은 상태 — 「받은 자재가 없다」와 다른 말을 한다. */
     notQueriedTitle: '작업지시가 지정되지 않았습니다.',
   },
   notes: {
-    /**
-     * 부족이나 미수령은 투입을 막지 않는다(스펙 §6). 그런 LOT이 있을 때만 구획 맨 위 안내 상자로
-     * 보인다(C-7, C-19).
-     */
-    shortAllowed: '수령이 부족하거나 없는 자재가 있어도 받은 양만큼 투입할 수 있습니다.',
+    /** 덜 받거나 못 받은 자재가 있을 때만 구획 맨 위 안내 상자로 보인다(C-7, C-19). 투입을 막지 않는다. */
+    shortAllowed: '덜 받거나 못 받은 자재가 있어도 받은 수량만큼 투입할 수 있습니다.',
   },
 
   /** 스캔 칸 — 자재 LOT과 금형을 **같은 칸**에서 받는다(스펙 §3). 대상은 안내 문구에 적는다(C-13). */
@@ -59,22 +57,21 @@ export const materialInputScan = {
     label: '스캔',
     placeholder: '자재 LOT 또는 금형 코드',
     /**
-     * 스캔 한 번의 결과를 말하는 자리. 실패도 그 자리에서 말한다 — 화면을 옮기지 않는다.
-     *
-     * 결과 문장은 «해석된 것»만 말한다. 오타 확인이 필요한 경우(못 찾음)만 읽은 코드를 담는다.
+     * 스캔 한 번의 결과 한 줄(C-21). 대상은 품목 이름으로 말하고 LOT 번호를 다시 쓰지 않는다.
+     * 오타 확인이 필요한 경우(못 찾음)만 읽은 코드를 담는다.
      */
     outcomes: {
-      material: (lotNo: string): string => `${lotNo} 담았습니다.`,
+      material: (itemWithObject: string): string => `${itemWithObject} 담았습니다.`,
       /* 「물렸습니다」를 쓰지 않는다. 화면이 한 일은 이 투입에 딸린 금형으로 정한 것뿐이다. */
-      mold: (moldCode: string): string => `금형 ${moldCode} 지정했습니다.`,
-      again: (lotNo: string): string => `${lotNo} 추가 투입을 기록할 수 있습니다.`,
-      duplicate: (lotNo: string): string => `${lotNo} LOT은 이미 담겨 있습니다.`,
+      mold: (moldWithObject: string): string => `금형 ${moldWithObject} 지정했습니다.`,
+      again: (item: string): string => `${item} 추가 투입을 입력할 수 있습니다.`,
+      duplicate: (itemWithTopic: string): string => `${itemWithTopic} 이미 담겨 있습니다.`,
       /* 상태 «이름»은 코드값 조회로 받은 것을 그대로 넣는다(스펙 §5-2). */
-      blockedStatus: (lotNo: string, statusName: string): string =>
-        `${lotNo} LOT은 「${statusName}」 상태라 담을 수 없습니다. 정상 상태의 자재만 투입할 수 있습니다.`,
+      blockedStatus: (itemWithTopic: string, statusName: string): string =>
+        `${itemWithTopic} 「${statusName}」 상태라 담을 수 없습니다.`,
       /** 상태 자체를 받지 못한 경우. 모르는 것을 「정상」으로 그리지 않는다(스펙 §5-2). */
-      blockedStatusUnknown: (lotNo: string): string =>
-        `${lotNo} LOT의 상태를 확인하지 못해 담을 수 없습니다. 다시 스캔하세요.`,
+      blockedStatusUnknown: (item: string): string =>
+        `${item}의 상태를 확인하지 못했습니다. 다시 스캔하세요.`,
       ambiguous: (count: number): string =>
         `${String(count)}건이 함께 검색되었습니다. 라벨의 코드 전체를 스캔하세요.`,
       notFound: (code: string): string =>
@@ -82,27 +79,24 @@ export const materialInputScan = {
       failed: '조회하지 못했습니다. 다시 스캔하세요.',
       /** 끊긴 상태에서 「다시 스캔하세요」만 쓰면 될 것처럼 읽힌다. 연결이 먼저다. */
       offline: '연결이 끊겨 자재를 조회할 수 없습니다. 연결된 뒤 다시 스캔하세요.',
+      /** [투입 기록] 뒤 결과 한 줄. */
+      recorded: (item: string, qty: string): string => `${item} ${qty} 투입을 기록했습니다.`,
     },
   },
 
-  /**
-   * 자재 목록(수령한 LOT과 담은 LOT)과 금형. 수령한 LOT은 스캔하면 담기고, 담은 LOT마다 투입
-   * 수량을 넣고 기록한다.
-   */
+  /** 자재 목록(받은 LOT과 담은 LOT)과 편집 영역. */
   scanned: {
     materialsLabel: '자재 목록',
-    moldLabel: '금형',
     /** 스캔했지만 기록하지 않은 LOT을 목록에서 되돌린다(사용자 화면 확인 결정 2026-10-23, PI-08). */
     remove: '스캔 취소',
     removeMaterial: (lotNo: string): string => `${lotNo} 스캔 취소`,
     removed: (item: string): string => `${item} 스캔을 취소했습니다.`,
-    /** 투입 수량 칸. 보이는 라벨은 `qtyField`이고 접근 이름에 LOT 번호를 붙인다. */
-    qtyField: '투입 수량',
-    qtyLabel: (lotNo: string): string => `${lotNo} 투입 수량`,
+    /** 이번 투입 칸. 보이는 이름은 소제목 「이번 투입」이고 접근 이름에 LOT 번호를 붙인다. */
+    qtyLabel: (lotNo: string): string => `${lotNo} 이번 투입`,
     qtyProblems: {
-      empty: '투입 수량을 입력하세요.',
-      format: '투입 수량은 숫자로 입력하세요.',
-      notPositive: '투입 수량은 0보다 커야 합니다.',
+      empty: '이번 투입 수량을 입력하세요.',
+      format: '이번 투입 수량은 숫자로 입력하세요.',
+      notPositive: '이번 투입 수량은 0보다 커야 합니다.',
     },
     /** 서버가 통과시키되 기록만 한 것 — 스펙 §5-3. 「통과」가 「정상」이 아니다. */
     unlinkedIssue: '출고 미귀속',
@@ -111,31 +105,23 @@ export const materialInputScan = {
     keypadSubmit: '투입 기록',
     keypadClear: '전체 지움',
     keypadBackspace: '한 자 지움',
-    /* 큐에 담긴 것도 「기록됨」이다 — C-1 이 즉시 성공 표시를 택했다. 미전송 여부는 머리줄이 낸다. */
-    recordedMark: '기록됨',
-    pendingMark: '기록 전',
-    /** 수령한 LOT 중 아직 스캔하지 않은 것. */
-    notScannedMark: '스캔 전',
+    /** 목록 줄의 진행 칩(C-21 상태 하나). 기록된 줄은 칩 대신 「투입한 수량」이 진행을 말한다. */
+    pendingMark: '이번 투입 입력 중',
+    notScannedMark: '투입 전',
     /** 편집 영역에 고른 자재가 없을 때. */
     noSelection: '목록에서 자재를 고르거나 LOT 라벨을 스캔하세요.',
-    /** 수령한 LOT을 골랐지만 아직 스캔하지 않았을 때. 담기는 스캔으로만 한다. */
-    scanToInput: 'LOT 라벨을 스캔하면 투입 수량을 입력할 수 있습니다.',
-    moldEmpty: '지정한 금형이 없습니다.',
-    /** 같은 LOT의 수령 줄이 없을 때. 출고에 귀속되지 않은 자재다. */
-    receivedNone: '수령 내역 없음',
-    /** 품질 판정과 **다른 축**이다. 나란히 두면 모순처럼 읽혀 칩으로 따로 둔다. */
-    heldMark: '보류 중',
+    /** 받은 LOT을 골랐지만 이번 화면에서 아직 스캔하지 않았을 때. 담기는 스캔으로만 한다. */
+    scanToInput: 'LOT 라벨을 스캔하면 이번 투입을 입력할 수 있습니다.',
+    /** 예외 칩. 이름은 그 상태에서 할 일이 보이게 짓는다(C-17, C-21). */
+    heldMark: '보류 확인 필요',
     /* IQC 에서 적은 4M 변경품(omf-all-around#63) — 투입을 막지 않고 알린다. */
     fourMChangeMark: '4M 변경품',
-    /** 표시명을 못 받았을 때. 원문 코드를 그대로 보이므로 담당자에게 전할 단서는 남는다. */
-    statusLabelUnavailable: '상태 이름을 불러오지 못해 코드로 표시합니다.',
-    shotCount: (current: number, guaranteed: number): string =>
-      `타발 ${current.toLocaleString('ko-KR')} / ${guaranteed.toLocaleString('ko-KR')}`,
-    /* 적정 타수가 마스터에 없으면 남은 타수를 낼 수 없다. 0으로 채우지 않는다. */
-    shotCountUnknown: (current: number): string =>
-      `타발 ${current.toLocaleString('ko-KR')}, 적정 타수 미등록`,
+    fourMChangeLine: (detail: string): string => `4M 변경: ${detail}`,
+    /** 받은 줄의 단위와 LOT의 단위가 다르면 남은 수량을 셀 수 없다. */
+    unitMismatch: '단위 다름',
     /* 넘어도 막지 않는다(미결 #6 — 경고만). 그 사실을 문구가 함께 말한다. */
-    shotCountExceeded: '적정 타수를 넘었습니다. 투입할 수 있지만 금형 교체를 검토하세요.',
+    shotCountExceeded: (mold: string): string =>
+      `금형 ${mold} 적정 타수를 넘었습니다. 투입할 수 있지만 교체를 검토하세요.`,
   },
 
   /** 하단 바 「남은 일」(C-5). 문장 끝에 마침표를 두지 않는다. */

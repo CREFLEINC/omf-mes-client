@@ -100,7 +100,7 @@ const bodyRows = (): HTMLElement[] =>
   within(screen.getByRole('list', { name: t.scanned.materialsLabel })).getAllByRole('listitem');
 
 /** 투입 수량 편집 영역(고른 줄의 상세). */
-const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.qty });
+const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.noSelection });
 
 /* 사번이 없으면 화면이 줄 선택을 받지 않는다(PI-17). 이 감지기들은 단말이 사번을 들고 있는 상태에서 잰다. */
 beforeEach(() => {
@@ -140,7 +140,7 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
    * 부족과 미수령만 줄에 칩으로 세운다. 모든 줄에 같은 「수령 완료」가 서면 구분이 사라진다(C-4).
    * 수령 완료는 그 줄을 고르면 편집 영역의 「수령 상태」가 말한다.
    */
-  it('부족과 미수령은 줄에 칩으로, 수령 완료는 고른 줄의 편집 영역에 그린다', async () => {
+  it('덜 받음과 못 받음만 줄에 칩으로 보이고, 받음은 어디에도 두지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures)]);
 
@@ -154,10 +154,10 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
     expect(within(rows[2] as HTMLElement).getByText(t.receiptStatus.none)).toBeTruthy();
 
     await user.click(within(rows[0] as HTMLElement).getByRole('button'));
-    expect(within(editor()).getByText(t.receiptStatus.matched)).toBeTruthy();
-    /* 출고와 차이는 줄이 아니라 편집 영역이 보인다. */
-    expect(within(editor()).getByText(t.pairs.issuedQty)).toBeTruthy();
-    expect(within(editor()).getByText(t.pairs.varianceQty)).toBeTruthy();
+    expect(within(editor()).getByText(t.pairs.receivedQty)).toBeTruthy();
+    /* 정상(받음)과 다른 담당의 값(출고, 차이)은 두지 않는다(C-21). */
+    expect(within(editor()).queryByText(t.receiptStatus.matched)).toBeNull();
+    expect(within(editor()).queryByText(/출고|차이/)).toBeNull();
   });
 
   /*

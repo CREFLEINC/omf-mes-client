@@ -24,6 +24,10 @@ export interface PopHeaderProps {
   processName?: string | null;
   /** 긴급 W/O면 W/O 번호 앞에 긴급 칩을 둔다. */
   isEmergency?: boolean;
+  /** 이 작업에 지정한 금형 「이름 (코드)」. 없으면 자리를 두지 않는다(C-21, W/O 맥락). */
+  moldText?: string | null;
+  /** W/O에 계획 금형이 있는데 아직 지정하지 않았으면 예외 칩을 둔다. */
+  isMoldMissing?: boolean;
   /**
    * 서버에 닿았는가. **아직 모르면 `undefined`** — 그때는 아무 말도 하지 않는다.
    *
@@ -59,6 +63,8 @@ export const PopHeader = ({
   workOrderNo = null,
   processName = null,
   isEmergency = false,
+  moldText = null,
+  isMoldMissing = false,
   isConnected,
   unsentCount = 0,
 }: PopHeaderProps) => {
@@ -87,6 +93,19 @@ export const PopHeader = ({
           )}
           <span>{t.workOrderLabel(workOrderNo)}</span>
           {hasText(processName) && <span>{processName}</span>}
+        </p>
+      )}
+
+      {/* 금형은 W/O 맥락이다. 지정했거나 W/O가 계획했는데 아직 없을 때만 선다(C-21). */}
+      {(hasText(moldText) || isMoldMissing) && (
+        <p className="pop-context pop-header-work-order">
+          {hasText(moldText) ? (
+            <span>{t.moldLabel(moldText)}</span>
+          ) : (
+            <Chip variant="status" size="md" status="warning">
+              {t.moldMissing}
+            </Chip>
+          )}
         </p>
       )}
 
