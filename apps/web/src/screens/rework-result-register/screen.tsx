@@ -12,6 +12,7 @@ import { usePopIdentity } from '../../patterns/pop-identity';
 import {
   popGateDeniedText,
   popGateProcessId,
+  popGateUnidentifiedText,
   usePopProcessGate,
 } from '../../patterns/pop-process-gate';
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
@@ -140,7 +141,7 @@ export const ReworkResultRegisterScreen = () => {
     if (selected === null) return null;
     switch (gate.verdict) {
       case 'unidentified':
-        return t.gateUnidentified;
+        return popGateUnidentifiedText(t.gateUnidentified, null);
       case 'checking':
         return t.gateChecking;
       case 'unavailable':

@@ -33,6 +33,8 @@ export interface ReplacePanelProps {
   gate: GateVerdict;
   /** 단말 기능이 꺼져 있을 때의 문구 — 어느 공정의 무슨 기능인지와 켜는 곳 */
   gateDeniedText: string;
+  /** 판정할 공정을 모를 때의 문구 — 원인·조치와 서버가 준 이유 */
+  gateUnidentifiedText: string;
   hasWorkOrder: boolean;
   hasWorker: boolean;
   part: ScannedPart | null;
@@ -132,7 +134,11 @@ export const toQtyProblem = (props: {
   return entered || ready ? validateQty(props.qty) : null;
 };
 
-const describeBlock = (reason: BlockReason, gateDeniedText: string): string | null => {
+const describeBlock = (
+  reason: BlockReason,
+  gateDeniedText: string,
+  gateUnidentifiedText: string,
+): string | null => {
   switch (reason) {
     case null:
     case 'allowed':
@@ -152,7 +158,7 @@ const describeBlock = (reason: BlockReason, gateDeniedText: string): string | nu
     case 'unavailable':
       return t.disabled.unavailable;
     case 'unidentified':
-      return t.disabled.unidentified;
+      return gateUnidentifiedText;
     case 'targetMissing':
       return t.disabled.targetMissing;
   }
@@ -169,6 +175,7 @@ const describeBlock = (reason: BlockReason, gateDeniedText: string): string | nu
 export const ReplacePanel = ({
   gate,
   gateDeniedText,
+  gateUnidentifiedText,
   hasWorkOrder,
   hasWorker,
   part,
@@ -203,6 +210,7 @@ export const ReplacePanel = ({
       ? toBlockReason({ gate, hasWorkOrder, hasWorker: true, part, selectedTargetId, qty })
       : blocked,
     gateDeniedText,
+    gateUnidentifiedText,
   );
 
   return (

@@ -17,6 +17,9 @@ export const popChrome = {
   processGate: {
     denied: (process: string, feature: string, menuPath: string): string =>
       `이 단말은 ${process} 공정의 「${feature}」 기능이 꺼져 있습니다. 관리자에게 관리웹 ${menuPath}에서 ${process} 공정의 「${feature}」 기능을 켜 달라고 요청하세요.`,
+    checkMapping: (menuPath: string): string =>
+      `계속되면 관리자에게 관리웹 ${menuPath}에서 이 작업지시의 공정이 이 단말에 매핑돼 있는지 확인해 달라고 하세요.`,
+    serverReason: (reason: string): string => `(서버 응답: ${reason})`,
     deniedUnknownProcess: (feature: string, menuPath: string): string =>
       `이 단말은 이 작업지시 공정의 「${feature}」 기능이 꺼져 있습니다. 관리자에게 관리웹 ${menuPath}에서 그 공정의 「${feature}」 기능을 켜 달라고 요청하세요.`,
   },

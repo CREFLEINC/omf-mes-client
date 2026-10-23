@@ -19,11 +19,12 @@ import {
 } from '../../patterns/pop-identity';
 import { lot, mold, receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
-import { popGateDeniedText } from '../../patterns/pop-process-gate';
+import { popGateDeniedText, popGateUnidentifiedText } from '../../patterns/pop-process-gate';
 
 const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial');
 
 const t = messages.materialInputScan;
+const UNIDENTIFIED_TEXT = popGateUnidentifiedText(t.confirm.reasons.unidentified, null);
 
 /**
  * 담은 자재 목록. 화면에 목록이 여럿이라 이름으로 집는다.
@@ -645,7 +646,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     renderScreen([lotsRoute([lot()])]);
 
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
-    expect(screen.getByText(t.confirm.reasons.unidentified)).toBeTruthy();
+    expect(screen.getByText(UNIDENTIFIED_TEXT)).toBeTruthy();
   });
 
   it('사번이 없으면 막고 맨 위 공용 띠로만 말한다', async () => {
@@ -815,7 +816,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
   it('단말을 모르면 게이팅을 조회하지 않는다', async () => {
     const { requests } = renderScreen([lotsRoute([lot()])]);
 
-    await screen.findByText(t.confirm.reasons.unidentified);
+    await screen.findByText(UNIDENTIFIED_TEXT);
     expect(requests.some((request) => request.url.pathname.includes('/processes'))).toBe(false);
   });
 });
@@ -1045,13 +1046,37 @@ describe('MaterialInputScanScreen — 공정이 여럿인 단말', () => {
     /* 판정의 네 갈래 문구가 하나도 서지 않으면 열린 것이다. */
     await waitFor(() => expect(screen.queryByText(t.confirm.reasons.checking)).toBeNull());
     for (const blocked of [
-      t.confirm.reasons.unidentified,
+      UNIDENTIFIED_TEXT,
       t.confirm.reasons.unavailable,
       DENIED_TEXT,
       popGateDeniedText({ processName: '합성 사출' }, 'canInputMaterial'),
     ]) {
       expect(screen.queryByText(blocked)).toBeNull();
     }
+  });
+
+  it('작업지시를 읽지 못하면(401) 원인·조치와 매핑 확인 곳 아래에 서버 이유를 덧붙인다', async () => {
+    const reason = '단말 인증 범위 밖입니다.';
+    renderScreen(
+      [
+        lotsRoute([lot()]),
+        {
+          match: (request) => isGet(request, `/production/work-orders/${String(WORK_ORDER_ID)}`),
+          respond: () =>
+            jsonResponse(
+              { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: reason }] },
+              { status: 401 },
+            ),
+        },
+        mappingRoute(true),
+      ],
+      MULTI,
+    );
+
+    expect(
+      await screen.findByText(popGateUnidentifiedText(t.confirm.reasons.unidentified, reason)),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
   });
 
   it('W/O 공정의 자재 투입이 꺼져 있으면 공정 이름과 켜는 곳을 말하며 막는다', async () => {

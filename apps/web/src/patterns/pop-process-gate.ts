@@ -1,11 +1,11 @@
-import type { TerminalProcessForward, WorkOrderForward } from '@omf-mes/api-client';
+import type { ApiError, TerminalProcessForward, WorkOrderForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
 import { soleProcessIdOf } from './pop-identity';
 import type { TerminalProcessRow } from './pop-registration';
-import { runRequest } from './request';
+import { runRequest, toApiError } from './request';
 
 /**
  * POP 단말 기능 판정 — **이 단말이 «이 작업지시의 공정»에서 이 기능을 할 수 있는가.**
@@ -126,6 +126,8 @@ export const popGateDeniedText = (gate: Pick<PopProcessGate, 'processName'>, fla
 export interface PopWorkOrderProcess {
   processId: number | null;
   processName: string | null;
+  /** 작업지시를 읽지 못했을 때 서버가 준 이유. 막힘 문구 아래에 덧붙인다 */
+  failureReason: string | null;
   /** 아직 답을 기다리는가. 작업지시가 없으면(묻지 않으면) false */
   isPending: boolean;
 }
@@ -152,5 +154,34 @@ export const usePopWorkOrderProcess = (workOrderId: number | null): PopWorkOrder
     processId: query.data?.processId ?? null,
     processName: query.data?.processName ?? null,
     isPending: workOrderId !== null && query.isPending,
+    failureReason: query.isError ? serverReasonOf(toApiError(query.error)) : null,
   };
+};
+
+/** 서버가 실어 준 문구. 없으면 null — 일반 문구로 지어내지 않는다. */
+const serverReasonOf = (error: ApiError): string | null => {
+  const lines =
+    error.kind === 'validation' || error.kind === 'stateLocked'
+      ? error.errors.map((item) => item.message)
+      : (error.kind === 'http' || error.kind === 'conflict') && error.message !== undefined
+        ? [error.message]
+        : [];
+  const text = lines
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+    .join(' ');
+
+  return text === '' ? null : text;
+};
+
+/**
+ * 판정할 공정을 모를 때의 문구 — 화면의 원인·조치 뒤에 매핑을 확인할 곳을 더하고, 작업지시를
+ * 읽지 못했으면 서버가 준 이유를 덧붙인다. 서버 문구만으로는 할 일이 보이지 않는다.
+ */
+export const popGateUnidentifiedText = (screenText: string, failureReason: string | null) => {
+  const t = messages.popChrome.processGate;
+  const parts = [screenText, t.checkMapping(messages.terminalProcessMap.menuPath)];
+  if (failureReason !== null) parts.push(t.serverReason(failureReason));
+
+  return parts.join(' ');
 };

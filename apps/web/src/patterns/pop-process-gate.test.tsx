@@ -6,6 +6,7 @@ import { createStubFetch, jsonResponse, renderHookWithProviders } from '../test/
 import {
   popGateDeniedText,
   popGateProcessId,
+  popGateUnidentifiedText,
   usePopProcessGate,
   type PopProcessGateInput,
 } from './pop-process-gate';
@@ -112,5 +113,15 @@ describe('popGateDeniedText', () => {
     expect(text).toContain('합성 사출');
     expect(text).toContain(messages.terminalProcessMap.flags.canInputMaterial);
     expect(text).toContain(messages.terminalProcessMap.menuPath);
+  });
+
+  it('공정을 모를 때는 화면 문구 뒤에 매핑 확인 곳을, 있으면 서버 이유를 덧붙인다', () => {
+    const t = messages.popChrome.processGate;
+    expect(popGateUnidentifiedText('화면 문구.', null)).toBe(
+      `화면 문구. ${t.checkMapping(messages.terminalProcessMap.menuPath)}`,
+    );
+    expect(popGateUnidentifiedText('화면 문구.', '단말 인증 범위 밖입니다.')).toBe(
+      `화면 문구. ${t.checkMapping(messages.terminalProcessMap.menuPath)} ${t.serverReason('단말 인증 범위 밖입니다.')}`,
+    );
   });
 });

@@ -26,11 +26,12 @@ import {
   makeMold,
 } from './fixtures';
 import { RunningChangeScreen } from './screen';
-import { popGateDeniedText } from '../../patterns/pop-process-gate';
+import { popGateDeniedText, popGateUnidentifiedText } from '../../patterns/pop-process-gate';
 
 const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial');
 
 const t = messages.runningChange;
+const UNIDENTIFIED_TEXT = popGateUnidentifiedText(t.disabled.unidentified, null);
 
 const ENTRY_ROUTE = `/pop/running-change?workOrderId=${String(WORK_ORDER_ID)}`;
 
@@ -414,7 +415,7 @@ describe('러닝체인지 화면 — 단말 게이팅', () => {
   it('단말을 모르면 사유를 말하고 막는다', async () => {
     renderScreen({}, { terminalId: null, processes: null, equipment: null, workerNo: WORKER_NO });
 
-    expect(await screen.findByText(t.disabled.unidentified)).toBeInTheDocument();
+    expect(await screen.findByText(UNIDENTIFIED_TEXT)).toBeInTheDocument();
     expect(screen.getByText(t.header.terminalUnknown)).toBeInTheDocument();
   });
 
@@ -707,6 +708,35 @@ describe('러닝체인지 화면 — 공정이 여럿인 단말', () => {
     await waitFor(() => {
       expect(submitButton()).toBeEnabled();
     });
+  });
+
+  it('작업지시를 읽지 못하면(401) 원인·조치 아래에 서버 이유를 덧붙인다', async () => {
+    const reason = '단말 인증 범위 밖입니다.';
+    renderWithProviders(
+      <PopIdentityProvider value={MULTI}>
+        <RunningChangeScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) =>
+              request.method === 'GET' &&
+              pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+            respond: () =>
+              jsonResponse(
+                { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: reason }] },
+                { status: 401 },
+              ),
+          },
+          ...routes({ processRows: rows(true) }),
+        ]),
+        route: ENTRY_ROUTE,
+      },
+    );
+
+    expect(
+      await screen.findByText(popGateUnidentifiedText(t.disabled.unidentified, reason)),
+    ).toBeInTheDocument();
   });
 
   it('W/O 공정의 자재 투입이 꺼져 있으면 공정 이름과 켜는 곳을 말하며 막는다', async () => {

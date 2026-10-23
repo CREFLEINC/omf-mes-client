@@ -8,6 +8,7 @@ import { usePopIdentity } from '../../patterns/pop-identity';
 import {
   popGateDeniedText,
   popGateProcessId,
+  popGateUnidentifiedText,
   usePopProcessGate,
   usePopWorkOrderProcess,
 } from '../../patterns/pop-process-gate';
@@ -359,6 +360,10 @@ export const RunningChangeScreen = () => {
           <ReplacePanel
             gate={gate.verdict}
             gateDeniedText={popGateDeniedText(gate, 'canInputMaterial')}
+            gateUnidentifiedText={popGateUnidentifiedText(
+              t.disabled.unidentified,
+              workOrderProcess.failureReason,
+            )}
             hasWorkOrder={workOrderId !== null}
             hasWorker={workerNo !== null}
             part={part}

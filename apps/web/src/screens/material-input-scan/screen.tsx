@@ -321,6 +321,7 @@ export const MaterialInputScanScreen = () => {
   /* 띠와 버튼이 같은 값으로 서게, 잠금 사유는 이 한 곳에서 읽는다. */
   const blockReason = confirmBlockReason({
     gate,
+    processFailureReason: workOrderProcess.failureReason,
     hasWorker: workerNo !== null,
     hasPending: pendingMaterials.length > 0,
   });
