@@ -2296,7 +2296,7 @@ describe('ProductionFlowScreen 불량', () => {
                     scope: 'screen',
                     code: 'PERMISSION_DENIED',
                     message:
-                      '이 단말에는 이 W/O 공정의 실적 입력 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「실적 입력」을 켜세요.',
+                      '이 단말에는 이 W/O 공정의 실적 입력 권한이 없습니다. 관리웹 시스템 관리 › 단말기-공정 매핑에서 해당 공정의 「실적 입력」을 켜세요.',
                   },
                 ],
               },
@@ -2320,7 +2320,7 @@ describe('ProductionFlowScreen 불량', () => {
     expect(await screen.findByText(t.save.failTitle)).toBeInTheDocument();
     expect(
       screen.getByText(
-        '이 단말에는 이 W/O 공정의 실적 입력 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「실적 입력」을 켜세요.',
+        '이 단말에는 이 W/O 공정의 실적 입력 권한이 없습니다. 관리웹 시스템 관리 › 단말기-공정 매핑에서 해당 공정의 「실적 입력」을 켜세요.',
       ),
     ).toBeInTheDocument();
   });
