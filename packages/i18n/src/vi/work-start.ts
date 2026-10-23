@@ -86,6 +86,8 @@ export const workStart: Translated<typeof ko.workStart> = {
     retry: 'Thử lại',
 
     total: (total: number): string => `Tổng ${String(total)} mục`,
+    range: (total: number, from: number, to: number): string =>
+      `Mục ${String(from)}~${String(to)} trên tổng ${String(total)}`,
 
     pageNav: 'Chuyển trang danh sách lệnh sản xuất',
 
@@ -99,7 +101,6 @@ export const workStart: Translated<typeof ko.workStart> = {
 
   selection: {
     title: 'Lệnh sản xuất đã chọn',
-    notSelected: 'Hãy chọn lệnh sản xuất ở danh sách bên trái.',
     workOrderNo: 'Số W/O',
     status: 'Trạng thái',
     item: 'Mặt hàng',
@@ -125,6 +126,8 @@ export const workStart: Translated<typeof ko.workStart> = {
     worker: 'Hãy nhập mã nhân viên',
     select: 'Hãy chọn lệnh sản xuất',
     ready: 'Có thể chuyển sang nạp vật tư',
+    resume: 'Tiếp tục lại rồi chuyển sang nạp vật tư',
+    continue: 'Có thể tiếp tục sang nạp vật tư',
   },
 
   blocked: {
@@ -144,7 +147,6 @@ export const workStart: Translated<typeof ko.workStart> = {
 
     offline: 'Mất kết nối nên không bắt đầu được. Khi kết nối lại, danh sách sẽ được tải lại',
 
-    alreadyOpen: 'Đang có công việc dở dang',
     holdWork: 'Tạm dừng công việc',
     runningChange: 'Thay linh kiện',
     pqcInspection: 'Kiểm tra PQC',

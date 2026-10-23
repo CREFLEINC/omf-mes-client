@@ -436,7 +436,8 @@ describe('P-02-01 작업 시작 — 사번', () => {
 
     await user.click(card);
 
-    expect(screen.getByText(t.selection.notSelected)).toBeInTheDocument();
+    /* 잠긴 카드라 고르지 않는다. 고른 것이 없으면 선택 묶음을 세우지 않는다(C-4, 사유는 하단 바 한 곳). */
+    expect(screen.queryByRole('group', { name: t.selection.title })).not.toBeInTheDocument();
   });
 
   /**
@@ -821,7 +822,7 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
     );
 
-    expect(await screen.findByText(t.blocked.alreadyOpen)).toBeInTheDocument();
+    expect(await screen.findByText(t.remaining.continue)).toBeInTheDocument();
     /* 주 동작이 [작업 이어하기]로 선다. 새 세션을 여는 [작업 시작]은 없다. */
     expect(screen.queryByRole('button', { name: t.actions.start })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.continueToSession })).toBeEnabled();
@@ -958,7 +959,7 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
 
     await selectWorkOrder(rendered);
 
-    expect(await screen.findByText(t.blocked.alreadyOpen)).toBeInTheDocument();
+    expect(await screen.findByText(t.remaining.continue)).toBeInTheDocument();
 
     await rendered.user.click(screen.getByRole('button', { name: t.actions.continueToSession }));
 
@@ -979,6 +980,8 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.actions.resume })).toBeEnabled();
     });
+    /* 막힘 없음 문장이 주 동작이 가는 곳을 상태대로 말한다(C-5). */
+    expect(screen.getByText(t.remaining.resume)).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: t.actions.continueToSession }),
     ).not.toBeInTheDocument();
@@ -1137,7 +1140,7 @@ describe('P-02-01 작업 시작 — 지시 수량을 채운 작업지시(#45)', 
     await selectWorkOrder(rendered);
 
     expect(await screen.findByText(t.closing.fulfilledWithOpenSession)).toBeInTheDocument();
-    expect(screen.queryByText(t.blocked.alreadyOpen)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.remaining.continue)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.continueToSession })).toBeInTheDocument();
   });
 
@@ -1222,7 +1225,7 @@ describe('P-02-01 작업 시작 — 다음 작업 화면으로 가는 길(omf-al
     await selectWorkOrder(rendered);
 
     /* 진행 중 안내는 경고 띠가 아니라 하단 바 「남은 일」 한 줄이다(C-5). */
-    const line = await screen.findByText(t.blocked.alreadyOpen);
+    const line = await screen.findByText(t.remaining.continue);
 
     expect(line.closest('[role="alert"]')).toBeNull();
     expect(line.closest('[role="region"]')).toHaveAccessibleName(

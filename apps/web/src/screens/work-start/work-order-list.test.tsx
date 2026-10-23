@@ -150,3 +150,27 @@ describe('P-02-01 작업지시 카드 — T-P-W 카드 정보', () => {
     ]);
   });
 });
+
+describe('P-02-01 작업지시 목록 — 건수 줄', () => {
+  it('쪽이 하나면 전체 건수, 여럿이면 지금 쪽이 몇 번째부터 몇 번째인지 말한다', () => {
+    const { rerender } = render(
+      <WorkOrderList
+        {...base}
+        workOrders={[]}
+        total={13}
+        pageMeta={{ page: 1, size: 20, total: 13 }}
+      />,
+    );
+    expect(screen.getByText(t.total(13))).toBeInTheDocument();
+
+    rerender(
+      <WorkOrderList
+        {...base}
+        workOrders={[]}
+        total={29}
+        pageMeta={{ page: 2, size: 20, total: 29 }}
+      />,
+    );
+    expect(screen.getByText(t.range(29, 21, 29))).toBeInTheDocument();
+  });
+});

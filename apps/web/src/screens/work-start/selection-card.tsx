@@ -53,14 +53,8 @@ export const SelectionCard = ({
   isEquipmentUnassigned = false,
   uomCodeOf,
 }: SelectionCardProps) => {
-  if (workOrder === null) {
-    return (
-      <div className="work-start-group" role="group" aria-label={t.title}>
-        <h3 className="work-start-group-title">{t.title}</h3>
-        <p className="field-note">{t.notSelected}</p>
-      </div>
-    );
-  }
+  /* 고른 것이 없으면 묶음을 세우지 않는다. 할 일은 하단 바가 한 곳에서 말한다(C-4). */
+  if (workOrder === null) return null;
 
   const statusKey = statusKeyOf(workOrder);
   const order = qtyText(workOrder.orderQty, uomCodeOf(workOrder.uomId));

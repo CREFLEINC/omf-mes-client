@@ -499,7 +499,7 @@ export const WorkStartScreen = () => {
        * 세션이 이미 열려 있으면 새로 열지 않는다(§6). 이어갈 길은 하단 바 주 동작
        * [작업 이어하기]가 준다(#1148).
        */
-      return { code: 'alreadyOpen', text: t.blocked.alreadyOpen };
+      return { code: 'alreadyOpen', text: t.remaining.continue };
     }
 
     return null;
@@ -513,7 +513,7 @@ export const WorkStartScreen = () => {
    *    `block` 에 넣지 않는 이유가 이것이다. [작업 시작]·[이어서 하기]는 그대로 선다.
    *
    * ⭐ **진행 중인 작업이 있으면 다른 문장이다**(사용자 확정 2026-09-21). 그 문장이 「진행
-   *    중」까지 함께 말하므로 기존 안내(`blocked.alreadyOpen`)를 겹쳐 세우지 않는다.
+   *    중」까지 함께 말하므로 진행 중 안내(`remaining.continue`)를 겹쳐 세우지 않는다.
    */
   const closeNotice = ((): string | null => {
     if (selected === null || !isOrderQtyFulfilled(selected)) return null;
@@ -681,7 +681,7 @@ export const WorkStartScreen = () => {
       ? block
       : closeNotice !== null
         ? { text: closeNotice }
-        : (block ?? { text: t.remaining.ready });
+        : (block ?? { text: isResume ? t.remaining.resume : t.remaining.ready });
 
   /* 설비 없는 단말은 이 시작이 쓸 W/O 의 설비를 보인다. 그것도 없으면 「설비 미지정」. */
   const selectionEquipmentText =

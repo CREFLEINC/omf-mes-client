@@ -108,6 +108,9 @@ export const workStart = {
     retry: '다시 시도',
 
     total: (total: number): string => `전체 ${String(total)}건`,
+    /** 쪽이 여럿일 때. 지금 쪽이 전체의 몇 번째부터 몇 번째인지 말한다. */
+    range: (total: number, from: number, to: number): string =>
+      `전체 ${String(total)}건 중 ${String(from)}~${String(to)}번째`,
 
     pageNav: '작업지시 목록 페이지 이동',
 
@@ -124,7 +127,6 @@ export const workStart = {
   /** 선택한 작업지시 묶음. 값은 「라벨 값」 쌍으로 보인다. */
   selection: {
     title: '선택한 작업지시',
-    notSelected: '왼쪽 목록에서 작업지시를 고르세요.',
     workOrderNo: 'W/O 번호',
     status: '상태',
     item: '품목',
@@ -154,7 +156,10 @@ export const workStart = {
   remaining: {
     worker: '사번을 입력하세요',
     select: '작업지시를 고르세요',
+    /** 막힘 없음(C-5). 주 동작이 가는 곳을 상태마다 말한다. 세 동작 모두 자재 투입으로 간다. */
     ready: '자재 투입으로 진행할 수 있습니다',
+    resume: '재개하면 자재 투입으로 진행할 수 있습니다',
+    continue: '자재 투입으로 이어서 진행할 수 있습니다',
   },
 
   /** 시작과 재개를 막는 사유. 무엇이 막혔는지와 할 일을 함께 쓴다. */
@@ -178,7 +183,6 @@ export const workStart = {
     offline: '연결이 끊겨 작업을 시작할 수 없습니다. 연결되면 목록을 다시 불러옵니다',
 
     /** 이미 진행 중인 세션이 있으면 새로 시작하지 않는다. 주 동작이 [작업 이어하기]로 선다. */
-    alreadyOpen: '진행 중인 작업이 있습니다',
     holdWork: '작업 중단',
     runningChange: '부품 교체',
     pqcInspection: 'PQC 검사',
