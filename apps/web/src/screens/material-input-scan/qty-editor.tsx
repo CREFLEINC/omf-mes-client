@@ -23,10 +23,12 @@ const qtyError = (draft: string): string | undefined => {
 export interface QtyEditorProps {
   /** 편집 영역에 연 줄. 없으면 `null`. */
   row: MaterialRow | null;
-  /** 이 화면에서 기록한 LOT인가. 기록하면 수량을 고칠 수 없다. */
-  isRecorded: boolean;
-  /** 이 W/O에 기록된 투입 수량(LOT별 합). 없으면 `null`. */
+  /** 기록 전인가(스캔하거나 수량을 바꾸고 아직 기록하지 않음). 그때만 [스캔 취소]를 둔다. */
+  isPending: boolean;
+  /** 이 W/O에 기록된 투입 누계(LOT별 합). 없으면 `null`. */
   recordedQty: { qty: number; uomId: number } | null;
+  /** 남은 수량(수령 − 투입 누계). 모르면 `null`. */
+  remainingQty: number | null;
   qtyDrafts: QtyDrafts;
   statusLabels: LotStatusLabels;
   describeItem: (itemId: number) => string;
@@ -54,14 +56,16 @@ export interface QtyEditorProps {
  *
  * 머리 줄에 구획 제목과 [빼기](작게), 그 아래 LOT 번호, 라벨 값 쌍(품목, 출고, 수령, 차이, 수령 상태,
  * 이 W/O에 기록된 투입, LOT 상태), 투입 수량 칸과 [투입 기록], 키패드 순서다. [빼기]는 테두리, [투입 기록]은 이 영역의 채움
- * 버튼 하나다(C-3 영역마다 하나). 기록된 LOT은 고칠 수 없다(이력 불변 B-3) — 수량과 「기록됨」만 보인다.
+ * 버튼 하나다(C-3 영역마다 하나). 지난 기록은 고치지 않는다(이력 불변 B-3). 더 넣으면 새 기록이 덧붙는다(추가 투입, PI-18). 편집 영역은 투입
+ * 누계와 남은 수량을 보이고, 칸에는 남은 수량이 미리 채워진다.
  *
  * 스캔해 담으면 투입 수량 칸에 수령 − 기록 양이 미리 채워진다(PI-05, 화면이 채운다). 작업자가 바꿀 수 있다.
  */
 export const QtyEditor = ({
   row,
-  isRecorded,
+  isPending,
   recordedQty,
+  remainingQty,
   qtyDrafts,
   statusLabels,
   describeItem,
@@ -92,7 +96,7 @@ export const QtyEditor = ({
   };
   const itemCode = receipt?.itemCode ?? describeItem(row.itemId);
   const qty = readQty(qtyDrafts, row.lotId);
-  const canSubmit = canRecord && !isRecorded && validateQty(qty) === null;
+  const canSubmit = canRecord && validateQty(qty) === null;
   const fourM = material?.fourMChange ?? null;
   const fourMText =
     fourM === null
@@ -110,7 +114,7 @@ export const QtyEditor = ({
        */}
       <div className="material-input-qty-head">
         <h2 className="pane-title">{t.panes.qty}</h2>
-        {material !== undefined && !isRecorded && (
+        {material !== undefined && isPending && (
           <Button
             type="button"
             variant="outlined"
@@ -163,9 +167,15 @@ export const QtyEditor = ({
           </>
         )}
         {recordedQty !== null && (
-          <div className="material-input-pair material-input-pair-wide">
-            <dt>{t.pairs.recordedQty}</dt>
+          <div className="material-input-pair">
+            <dt>{t.pairs.cumulativeQty}</dt>
             <dd>{withUom(recordedQty.qty, recordedQty.uomId)}</dd>
+          </div>
+        )}
+        {recordedQty !== null && remainingQty !== null && (
+          <div className="material-input-pair">
+            <dt>{t.pairs.remainingQty}</dt>
+            <dd>{withUom(remainingQty)}</dd>
           </div>
         )}
         {material !== undefined && (
@@ -206,57 +216,46 @@ export const QtyEditor = ({
               inputMode="decimal"
               autoComplete="off"
               fullWidth
-              /* 기록된 뒤에는 고칠 수 없다. 투입은 새 기록으로만 고친다(B-3). */
-              readOnly={isRecorded}
               trailingIcon={
                 uom === '' ? undefined : <span className="material-input-uom">{uom}</span>
               }
-              error={isRecorded ? undefined : qtyError(qty)}
+              error={qtyError(qty)}
               onChange={(event) => {
                 onQtyChange(row.lotId, event.target.value);
               }}
             />
-
-            {isRecorded ? (
-              <Chip variant="status" size="md" status="success">
-                {t.scanned.recordedMark}
-              </Chip>
-            ) : (
-              /*
-               * [투입 기록]이 이 화면의 유일한 저장이다(§5-8 건별 저장, 사용자 화면 확인 결정
-               * 2026-10-23). 편집 영역의 채움 버튼 하나다(C-3 영역마다 하나). 수량이 없거나 단말이
-               * 막혔으면 누르지 못하고, 사유는 하단 바 「남은 일」이다.
-               */
-              <Button
-                type="button"
-                variant="filled"
-                size={POP_TOUCH_SIZE}
-                disabled={!canSubmit}
-                aria-describedby={canSubmit ? undefined : remainingId}
-                onClick={() => {
-                  onRecord(row.lotId);
-                }}
-              >
-                {t.scanned.keypadSubmit}
-              </Button>
-            )}
+            {/*
+             * [투입 기록]이 이 화면의 유일한 저장이다(§5-8 건별 저장, 사용자 화면 확인 결정
+             * 2026-10-23). 편집 영역의 채움 버튼 하나다(C-3 영역마다 하나). 수량이 없거나 단말이
+             * 막혔으면 누르지 못하고, 사유는 하단 바 「남은 일」이다.
+             */}
+            <Button
+              type="button"
+              variant="filled"
+              size={POP_TOUCH_SIZE}
+              disabled={!canSubmit}
+              aria-describedby={canSubmit ? undefined : remainingId}
+              onClick={() => {
+                onRecord(row.lotId);
+              }}
+            >
+              {t.scanned.keypadSubmit}
+            </Button>
           </div>
 
-          {!isRecorded && (
-            /* 소수점 키를 세우지 않는다(사용자 지시 2026-09-19, omf-all-around#35). */
-            <NumericKeypad
-              value={qty}
-              onChange={(next) => {
-                onQtyChange(row.lotId, next);
-              }}
-              dropLeadingZero
-              label={t.scanned.keypadLabel(row.lotNo)}
-              clearLabel={t.scanned.keypadClear}
-              backspaceLabel={t.scanned.keypadBackspace}
-              keySize={POP_TOUCH_SIZE}
-              className="material-input-keypad"
-            />
-          )}
+          {/* 소수점 키를 세우지 않는다(사용자 지시 2026-09-19, omf-all-around#35). */}
+          <NumericKeypad
+            value={qty}
+            onChange={(next) => {
+              onQtyChange(row.lotId, next);
+            }}
+            dropLeadingZero
+            label={t.scanned.keypadLabel(row.lotNo)}
+            clearLabel={t.scanned.keypadClear}
+            backspaceLabel={t.scanned.keypadBackspace}
+            keySize={POP_TOUCH_SIZE}
+            className="material-input-keypad"
+          />
         </>
       )}
     </section>

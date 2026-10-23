@@ -26,6 +26,9 @@ export const materialInputScan = {
     receiptStatus: '수령 상태',
     /** 이 W/O에 이미 기록된 투입 수량(LOT별 합). */
     recordedQty: '투입',
+    /** 편집 영역: 투입 누계와 남은 수량(수령 − 누계). 추가 투입은 새 기록이다(PI-18). */
+    cumulativeQty: '투입 누계',
+    remainingQty: '남은 수량',
     lotStatus: 'LOT 상태',
   },
   /** 수령 상태 — 서버가 계산한 차이 수량을 세 갈래로 옮긴 것이다. 값을 만들지 않는다. */
@@ -64,6 +67,7 @@ export const materialInputScan = {
       material: (lotNo: string): string => `${lotNo} 담았습니다.`,
       /* 「물렸습니다」를 쓰지 않는다. 화면이 한 일은 이 투입에 딸린 금형으로 정한 것뿐이다. */
       mold: (moldCode: string): string => `금형 ${moldCode} 지정했습니다.`,
+      again: (lotNo: string): string => `${lotNo} 추가 투입을 기록할 수 있습니다.`,
       duplicate: (lotNo: string): string => `${lotNo} LOT은 이미 담겨 있습니다.`,
       /* 상태 «이름»은 코드값 조회로 받은 것을 그대로 넣는다(스펙 §5-2). */
       blockedStatus: (lotNo: string, statusName: string): string =>

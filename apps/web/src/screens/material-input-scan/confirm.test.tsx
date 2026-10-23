@@ -183,6 +183,9 @@ const Here = () => {
 };
 
 /** 담은 자재 목록. 화면에 목록이 여럿이라 이름으로 집는다. */
+/** 투입 수량 편집 영역. */
+const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.qty });
+
 const scannedList = (): HTMLElement => screen.getByRole('list', { name: t.scanned.materialsLabel });
 
 /**
@@ -376,10 +379,10 @@ describe('투입 기록 — 결과를 어떻게 말하는가', () => {
   });
 
   /*
-   * ⛔ **기록된 줄은 잠근다.** 투입은 정정이 아니라 새 기록으로만 고칠 수 있는데(B-3) 계약에
-   * 그 경로가 없다(§8 미결 9) — 빼거나 고칠 수 있는 것처럼 두면 작업자가 그렇게 했다고 믿는다.
+   * ⛔ **지난 기록은 고치지 않는다**(B-3). 기록하면 칸을 비워 같은 양이 한 번 더 나가지 않게 하고,
+   * 기록 전이 아니므로 [스캔 취소]도 없다. 더 넣으려면 다시 스캔하거나 줄을 누른다(PI-18).
    */
-  it('기록된 줄은 빼거나 고칠 수 없다', async () => {
+  it('기록하면 칸이 비고 [스캔 취소]가 없다', async () => {
     const user = userEvent.setup();
     renderScreen([lot()], okRoute([consumption(7301)]));
 
@@ -390,7 +393,11 @@ describe('투입 기록 — 결과를 어떻게 말하는가', () => {
       screen.queryByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }),
     ).toBeNull();
     expect(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toHaveProperty(
-      'readOnly',
+      'value',
+      '',
+    );
+    expect(screen.getByRole('button', { name: t.scanned.keypadSubmit })).toHaveProperty(
+      'disabled',
       true,
     );
   });
@@ -462,7 +469,7 @@ describe('투입 기록 — 보내지 않는 경우', () => {
    * 실제로 막는 층은 **버튼 잠금**이다. 보내는 자리의 진행 중 검사는 버튼을 지나지 않는
    * 호출을 막는 둘째 겹이라 이 경로에서는 떼어내도 결과가 같다(등가).
    */
-  it('담긴 자재는 다시 담기지 않는다', async () => {
+  it('기록한 직후 같은 칸으로 한 번 더 기록되지 않는다', async () => {
     const user = userEvent.setup();
 
     let releasePost = (): void => undefined;
@@ -495,10 +502,12 @@ describe('투입 기록 — 보내지 않는 경우', () => {
     await within(scannedList()).findByText(t.scanned.recordedMark);
 
     /*
-     * 담긴 뒤에는 키패드가 사라지므로 다시 담을 길이 없다. 큐에 같은 자재가 두 번 들어가면
-     * 같은 자재가 두 번 투입되고, 되돌릴 수 없다.
+     * 기록하면 칸이 비어 [투입 기록]이 잠긴다. 같은 칸으로 한 번 더 눌러 같은 양이 두 번 들어가지
+     * 않는다(추가 투입은 다시 스캔해 남은 수량을 채운 뒤의 새 기록이다, PI-18).
      */
-    expect(screen.queryByRole('button', { name: t.scanned.keypadSubmit })).toBeNull();
+    const record = screen.getByRole('button', { name: t.scanned.keypadSubmit });
+    expect(record).toHaveProperty('disabled', true);
+    await user.click(record);
 
     releasePost();
     await waitFor(() => {
@@ -687,6 +696,10 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
     const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
     expect(field).toHaveProperty('value', '70');
+    /* 편집 영역에 투입 누계와 남은 수량이 선다. */
+    expect(within(editor()).getByText(t.pairs.cumulativeQty)).toBeTruthy();
+    expect(within(editor()).getByText('30 EA')).toBeTruthy();
+    expect(within(editor()).getByText('70 EA')).toBeTruthy();
   });
 
   it('기록 목록을 못 받으면 수령 수량을 미리 채운다', async () => {
@@ -703,6 +716,72 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     await waitFor(() => {
       expect(field).toHaveProperty('value', '100');
     });
+  });
+
+  /*
+   * 추가 투입(PI-18). 기록된 LOT을 다시 스캔하면 남은 수량(수령 − 누계)을 채우고, 기록하면 새 기록이
+   * 덧붙어 누계가 는다. 지난 기록은 고치지 않는다(B-3).
+   */
+  it('기록된 LOT을 다시 스캔하면 남은 수량을 채우고, 다시 기록하면 누계가 는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301), consumption(7301)]), [
+      recordedRoute([]),
+    ]);
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    expect(await within(scannedList()).findByText(`${t.pairs.recordedQty} 12 EA`)).toBeTruthy();
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    expect(await screen.findByText(t.scan.outcomes.again('SAMPLE-LOT-0001'))).toBeTruthy();
+    const field = screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(field).toHaveProperty('value', '88');
+    expect(within(editor()).getByText('12 EA')).toBeTruthy();
+    expect(within(editor()).getByText('88 EA')).toBeTruthy();
+    /* 다시 스캔한 LOT은 기록 전이다 — 다음 작업으로 가지 않고 품목 이름으로 말한다. */
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(screen.getByText(t.remaining.record('예시 자재 A'))).toBeTruthy();
+
+    await user.clear(field);
+    await user.type(field, '8');
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
+
+    expect(await within(scannedList()).findByText(`${t.pairs.recordedQty} 20 EA`)).toBeTruthy();
+    await waitFor(() => {
+      expect(sent).toHaveLength(2);
+    });
+    /* 지난 기록은 그대로이고 새 기록이 덧붙었다. */
+    expect(sent.map((one) => (one.body as { inputQty: number }).inputQty)).toEqual([12, 8]);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      false,
+    );
+  });
+
+  /*
+   * 줄만 눌러 연 기록된 LOT은 기록 전이 아니다. 다음 작업을 막는 것은 다시 스캔한(더 넣으려는) LOT
+   * 뿐이다(PI-18, 사용자 확인 2026-10-23).
+   */
+  it('기록된 LOT의 줄을 누르기만 하면 다음 작업을 막지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    await within(scannedList()).findByText(t.scanned.recordedMark);
+
+    const row = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('button') as HTMLElement;
+    await user.click(row);
+    const field = screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(field).toHaveProperty('value', '88');
+    const next = screen.getByRole('button', { name: t.confirm.goToProductionResult });
+    expect(next).toHaveProperty('disabled', false);
+    expect(screen.getByText(t.remaining.done)).toBeTruthy();
+    /* [스캔 취소]는 기록 전인 LOT에만 선다. */
+    expect(
+      screen.queryByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }),
+    ).toBeNull();
   });
 
   /* 서버가 받아 준 기록이 늘면 투입 합을 다시 읽는다. */

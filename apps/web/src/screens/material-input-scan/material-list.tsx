@@ -85,8 +85,8 @@ export interface MaterialListProps {
   describeUom: (uomId: number) => string;
   /** 서버가 통과시키되 기록만 한 것(§5-3). 기록된 줄에만 붙는다. */
   notes: readonly RecordedNote[];
-  /** 이 화면에서 기록한 LOT. 담았지만 여기 없으면 「기록 전」이다. */
-  recordedLotIds: readonly number[];
+  /** 기록 전인 LOT(스캔하거나 수량을 바꾸고 아직 기록하지 않음, PI-18). */
+  pendingLotIds: readonly number[];
   /** 이 W/O에 기록된 투입 수량(LOT별 합). 없으면 `null`. */
   recordedQtyOf: (lotId: number) => { qty: number; uomId: number } | null;
   /** 편집 영역에 연 LOT. 없으면 `null`. */
@@ -114,7 +114,7 @@ export const MaterialList = ({
   describeItem,
   describeUom,
   notes,
-  recordedLotIds,
+  pendingLotIds,
   recordedQtyOf,
   selectedLotId,
   onSelect,
@@ -152,7 +152,7 @@ export const MaterialList = ({
         <ul ref={listRef} className="material-input-lots" aria-label={t.scanned.materialsLabel}>
           {rows.map((row) => {
             const { material, receipt } = row;
-            const isPending = material !== undefined && !recordedLotIds.includes(row.lotId);
+            const isPending = material !== undefined && pendingLotIds.includes(row.lotId);
             const done = recordedQtyOf(row.lotId);
             const isRecorded = !isPending && done !== null;
             const isSelected = row.lotId === selectedLotId;

@@ -15,6 +15,8 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     varianceQty: 'Chênh lệch',
     receiptStatus: 'Trạng thái nhận',
     recordedQty: 'Đã đưa vào',
+    cumulativeQty: 'Lũy kế đưa vào',
+    remainingQty: 'Số lượng còn lại',
     lotStatus: 'Trạng thái LOT',
   },
   receiptStatus: {
@@ -39,6 +41,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     outcomes: {
       material: (lotNo: string): string => `Đã thêm ${lotNo}.`,
       mold: (moldCode: string): string => `Đã chỉ định khuôn ${moldCode}.`,
+      again: (lotNo: string): string => `Có thể ghi thêm việc đưa vào ${lotNo}.`,
       duplicate: (lotNo: string): string => `LOT ${lotNo} đã được thêm rồi.`,
       blockedStatus: (lotNo: string, statusName: string): string =>
         `LOT ${lotNo} đang ở trạng thái 「${statusName}」 nên không thêm được. Chỉ vật tư ở trạng thái bình thường mới đưa vào được.`,

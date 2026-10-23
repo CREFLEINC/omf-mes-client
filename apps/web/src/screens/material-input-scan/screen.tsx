@@ -114,6 +114,14 @@ const describeOutcome = (
  * 하단 바 [생산 작업으로]를 잠근다. 다만 그 잠금은 오조작을 줄이는 장치이지 집행이 아니다 — 집행은 서버의 403이고,
  * 오프라인 큐로 들어온 투입은 이 화면을 지나지 않는다.
  */
+/** 이 화면에서 큐에 담은 투입 한 건. `occurredAt`은 본문 그대로라 서버 응답, 거부와 맞출 수 있다. */
+interface LocalRecord {
+  lotId: number;
+  qty: number;
+  uomId: number;
+  occurredAt: string;
+}
+
 export const MaterialInputScanScreen = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -203,8 +211,22 @@ export const MaterialInputScanScreen = () => {
    * 않고, 미전송 건수를 머리줄이 낸다(C-1 #2·#4).
    */
   const outbox = useOutbox();
-  /* 화면에서 이미 치운 자재의 늦은 응답까지 되살리지 않는다. */
-  const [recordedLotIdsSeen, setRecordedLotIdsSeen] = useState<readonly number[]>([]);
+  /*
+   * 이 화면에서 큐에 담은 투입 기록. 투입은 덧붙이기만 한다(B-3) — LOT 하나에 여러 건이 쌓일 수 있다.
+   * 본문의 `occurredAt`으로 서버가 받아 준 건, 거부한 건과 맞춘다(outbox는 바꾸지 않는다).
+   */
+  const [localRecords, setLocalRecords] = useState<readonly LocalRecord[]>([]);
+  /*
+   * 기록 전인 LOT(PI-18, 사용자 확인 2026-10-23). 스캔하거나 다시 스캔하면 기록 전이고, [투입 기록]이나
+   * [스캔 취소]로 풀린다. 기록된 LOT의 줄만 눌러 연 경우는 수량을 고쳐도 기록 전이 아니다.
+   */
+  const [armedLotIds, setArmedLotIds] = useState<readonly number[]>([]);
+  const arm = (lotId: number): void => {
+    setArmedLotIds((prev) => (prev.includes(lotId) ? prev : [...prev, lotId]));
+  };
+  const disarm = (lotId: number): void => {
+    setArmedLotIds((prev) => prev.filter((one) => one !== lotId));
+  };
   /*
    * 편집 영역에 연 LOT(현재 LOT, PG-25). 새로 담은 LOT이 바로 골라진다. 목록에서 다른 행을 누르면
    * 바뀐다.
@@ -245,15 +267,9 @@ export const MaterialInputScanScreen = () => {
    * 수령 줄이 없거나 남은 양이 없으면 비워 둔다. 표시와 기본값일 뿐 판정이 아니다.
    */
   const prefillQty = (lotId: number, uomId: number): void => {
-    const line = receipt.lines.find((candidate) => candidate.lotId === lotId);
-    if (line === undefined || line.uomId !== uomId) return;
+    const left = remainingQtyOf(lotId, uomId);
 
-    const done = recorded.byLot.get(lotId);
-    const remainingQty =
-      line.receivedQty - (done !== undefined && done.uomId === uomId ? done.qty : 0);
-    if (remainingQty <= 0) return;
-
-    setQtyDrafts((prev) => writeQty(prev, lotId, String(remainingQty)));
+    setQtyDrafts((prev) => writeQty(prev, lotId, left !== null && left > 0 ? String(left) : ''));
   };
 
   const handleScan = (code: string): void => {
@@ -280,10 +296,22 @@ export const MaterialInputScanScreen = () => {
           if (outcome.kind === 'material') {
             setSelectedLotId(outcome.material.lotId);
             prefillQty(outcome.material.lotId, outcome.material.uomId);
+            arm(outcome.material.lotId);
           }
+          /*
+           * 이미 담긴 LOT을 다시 읽으면 그 LOT으로 옮긴다. 기록된 LOT이면 추가 투입이다(PI-18) — 남은
+           * 수량을 다시 채우고 기록 전으로 둔다. 기록 전인 LOT이면 입력 중인 수량을 그대로 둔다.
+           */
           if (outcome.kind === 'duplicate') {
             const scanned = draft.materials.find((material) => material.lotNo === outcome.lotNo);
-            if (scanned !== undefined) setSelectedLotId(scanned.lotId);
+            if (scanned !== undefined) {
+              setSelectedLotId(scanned.lotId);
+              if (!armedLotIds.includes(scanned.lotId)) {
+                prefillQty(scanned.lotId, scanned.uomId);
+                arm(scanned.lotId);
+                setActionNotice(t.scan.outcomes.again(scanned.lotNo));
+              }
+            }
           }
         },
       },
@@ -301,10 +329,12 @@ export const MaterialInputScanScreen = () => {
     }));
     /* 뺀 줄의 수량도 함께 버린다 — 남겨 두면 같은 LOT을 다시 담을 때 되살아난다. */
     setQtyDrafts((prev) => dropQty(prev, lotId));
+    disarm(lotId);
   };
 
-  const pendingMaterials = draft.materials.filter(
-    (material) => !recordedLotIdsSeen.includes(material.lotId),
+  /* 스캔했지만 기록하지 않은 LOT. [생산 작업으로]를 막는다. */
+  const pendingMaterials = draft.materials.filter((material) =>
+    armedLotIds.includes(material.lotId),
   );
 
   /* 수령한 LOT과 담은 LOT을 한 목록으로 맞춘다(표시만). */
@@ -342,8 +372,7 @@ export const MaterialInputScanScreen = () => {
     if (gate.verdict !== 'allowed') return;
 
     const material = draft.materials.find((candidate) => candidate.lotId === lotId);
-    /* 이미 담긴 줄은 다시 담지 않는다 — 같은 자재가 두 번 투입된 것이 된다. */
-    if (material === undefined || recordedLotIdsSeen.includes(lotId)) return;
+    if (material === undefined) return;
 
     const body = toMaterialConsumption(workOrderId, material, qtyDrafts, new Date(), workSessionId);
     if (body === null) return;
@@ -353,7 +382,16 @@ export const MaterialInputScanScreen = () => {
      * 기다리지 않는다」). 서버에 닿지 않은 사실은 **머리줄의 미전송 건수**가 말한다(C-1 #4).
      */
     outbox.enqueue(workerNo, body);
-    setRecordedLotIdsSeen((prev) => [...prev, lotId]);
+    setLocalRecords((prev) => [
+      ...prev,
+      { lotId, qty: body.inputQty, uomId: body.uomId, occurredAt: body.occurredAt },
+    ]);
+    /*
+     * 기록하면 칸을 비운다. 같은 칸으로 [투입 기록]을 한 번 더 누르면 같은 양이 또 기록되기 때문이다.
+     * 더 넣으려면 다시 스캔하거나 줄을 눌러 남은 수량을 다시 채운다(PI-18).
+     */
+    setQtyDrafts((prev) => dropQty(prev, lotId));
+    disarm(lotId);
     /* 기록하지 않은 다음 LOT을 연다. 없으면 그대로 둔다. */
     const next = pendingMaterials.find((candidate) => candidate.lotId !== lotId);
     if (next !== undefined) setSelectedLotId(next.lotId);
@@ -366,9 +404,11 @@ export const MaterialInputScanScreen = () => {
    */
   useEffect(() => {
     setNotes(
-      outbox.accepted.map(toRecordedNote).filter((note) => recordedLotIdsSeen.includes(note.lotId)),
+      outbox.accepted
+        .map(toRecordedNote)
+        .filter((note) => localRecords.some((one) => one.lotId === note.lotId)),
     );
-  }, [outbox.accepted, recordedLotIdsSeen]);
+  }, [outbox.accepted, localRecords]);
 
   /* 서버가 받아 준 기록이 늘면 이 W/O의 투입 기록을 다시 읽는다(LOT별 「투입」 합). */
   useEffect(() => {
@@ -391,7 +431,7 @@ export const MaterialInputScanScreen = () => {
       ...prev,
       materials: prev.materials.filter((material) => !rejected.includes(material.lotId)),
     }));
-    setRecordedLotIdsSeen((prev) => prev.filter((lotId) => !rejected.includes(lotId)));
+    setArmedLotIds((prev) => prev.filter((lotId) => !rejected.includes(lotId)));
   }, [outbox.rejections]);
 
   /**
@@ -431,29 +471,51 @@ export const MaterialInputScanScreen = () => {
     hasPending: pendingMaterials.length > 0,
   });
   /*
-   * LOT별 이 W/O에 기록된 투입 수량. 서버 기록 합에, 이 화면에서 방금 기록했지만 아직 그 합에 들지
-   * 않은 건(미전송, 다시 읽기 전)을 더한다. 표시만 한다.
+   * LOT별 이 W/O에 기록된 투입 누계. 서버 기록 합에, 이 화면에서 큐에 담았지만 아직 그 합에 들지
+   * 않은 건(미전송, 다시 읽기 전)을 더한다. 서버가 받아 준 건은 다시 읽은 합에 그 기록 번호가 들어
+   * 있으면 빼고(두 번 세지 않는다), 거부된 건은 더하지 않는다. 표시와 기본값에만 쓴다.
    */
+  const sameMoment = (a: string, b: string): boolean => Date.parse(a) === Date.parse(b);
   const recordedQtyOf = (lotId: number): { qty: number; uomId: number } | null => {
     const server = recorded.byLot.get(lotId);
     let qty = server?.qty ?? 0;
     let uomId = server?.uomId;
 
-    if (recordedLotIdsSeen.includes(lotId)) {
-      const accepted = outbox.accepted.find((one) => one.lotId === lotId);
+    for (const local of localRecords) {
+      if (local.lotId !== lotId) continue;
+      const isRejected = outbox.rejections.some(
+        (one) =>
+          one.entry.body.lotId === lotId && sameMoment(one.entry.body.occurredAt, local.occurredAt),
+      );
+      if (isRejected) continue;
+      const accepted = outbox.accepted.find(
+        (one) => one.lotId === lotId && sameMoment(one.occurredAt, local.occurredAt),
+      );
       const isInServer =
-        accepted !== undefined && server?.consumptionIds.includes(accepted.materialConsumptionId);
-      const local = toInputQty(readQty(qtyDrafts, lotId));
-      if (isInServer !== true && local !== null) {
-        qty += local;
-        uomId ??= draft.materials.find((material) => material.lotId === lotId)?.uomId;
-      }
+        accepted !== undefined &&
+        server?.consumptionIds.includes(accepted.materialConsumptionId) === true;
+      if (isInServer) continue;
+      qty += local.qty;
+      uomId ??= local.uomId;
     }
 
     return qty > 0 && uomId !== undefined ? { qty, uomId } : null;
   };
 
-  const hasRecorded = recorded.byLot.size > 0 || recordedLotIdsSeen.length > 0;
+  /* 남은 수량 = 수령 − 투입 누계. 수령 줄이 없거나 단위가 다르면 모른다(`null`). */
+  function remainingQtyOf(lotId: number, uomId: number): number | null {
+    const line = receipt.lines.find((candidate) => candidate.lotId === lotId);
+    if (line === undefined || line.uomId !== uomId) return null;
+
+    const done = recordedQtyOf(lotId);
+    if (done !== null && done.uomId !== uomId) return null;
+
+    return line.receivedQty - (done?.qty ?? 0);
+  }
+
+  const hasRecorded =
+    recorded.byLot.size > 0 ||
+    draft.materials.some((material) => recordedQtyOf(material.lotId) !== null);
   const itemNameOf = (lotId: number, itemId: number): string => {
     const line = receipt.lines.find((candidate) => candidate.lotId === lotId);
 
@@ -545,7 +607,7 @@ export const MaterialInputScanScreen = () => {
             describeItem={labels.describeItem}
             describeUom={labels.describeUom}
             notes={notes}
-            recordedLotIds={recordedLotIdsSeen}
+            pendingLotIds={armedLotIds}
             recordedQtyOf={recordedQtyOf}
             selectedLotId={editingRow?.lotId ?? null}
             onSelect={(lotId) => {
@@ -556,6 +618,14 @@ export const MaterialInputScanScreen = () => {
                 return;
               }
               setSelectedLotId(lotId);
+              /*
+               * 담은 LOT의 줄을 누르면 추가 투입을 받을 수 있게 남은 수량을 채운다. 입력 중(기록 전)인
+               * LOT은 친 값을 그대로 둔다. 줄만 누른 것은 기록 전으로 치지 않는다(PI-18).
+               */
+              const picked = draft.materials.find((material) => material.lotId === lotId);
+              if (picked !== undefined && !armedLotIds.includes(lotId)) {
+                prefillQty(lotId, picked.uomId);
+              }
               /* 줄을 눌러도 다음 스캔은 스캔 칸으로 들어가야 한다(PG-21). */
               setScanFocusRequest((prev) => prev + 1);
             }}
@@ -582,8 +652,13 @@ export const MaterialInputScanScreen = () => {
         ) : (
           <QtyEditor
             row={editingRow}
-            isRecorded={editingRow !== null && recordedLotIdsSeen.includes(editingRow.lotId)}
+            isPending={editingRow !== null && armedLotIds.includes(editingRow.lotId)}
             recordedQty={editingRow === null ? null : recordedQtyOf(editingRow.lotId)}
+            remainingQty={
+              editingRow?.material === undefined
+                ? null
+                : remainingQtyOf(editingRow.lotId, editingRow.material.uomId)
+            }
             qtyDrafts={qtyDrafts}
             statusLabels={statusLabels}
             describeItem={labels.describeItem}
