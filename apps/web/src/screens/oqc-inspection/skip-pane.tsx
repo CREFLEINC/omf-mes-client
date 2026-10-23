@@ -3,6 +3,7 @@ import type { components, paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { Fragment, useEffect, useId, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
@@ -42,6 +43,7 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
   const [notice, setNotice] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
   const reasonId = useId();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setReason('');
@@ -120,6 +122,9 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
   const canRequest = status === null || status === 'REJECTED';
   const isSaving = requestWrite.isSaving || executeWrite.isSaving;
   const reasonError = touched && reason.trim() === '' ? t.reasonRequired : undefined;
+  /** 지금 단계(0 요청 · 1 승인 · 2 실행). 결재 상태를 아직 모르면 어느 것도 가리키지 않는다(#136). */
+  const currentStep =
+    approval.isPending || approval.isError ? null : canRequest ? 0 : status === 'PENDING' ? 1 : 2;
 
   const submit = (): void => {
     setTouched(true);
@@ -133,14 +138,36 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
       <h3>{t.heading}</h3>
       {/* 요청 → 승인 → 실행 단계와 실행 결과(#136). */}
       <div className="oqc-inspection-skip-guide">
-        <ol className="oqc-inspection-skip-steps">
-          {t.steps.map((step, index) => (
-            <Fragment key={step}>
-              {index > 0 && <Icon name="arrow_forward" size={16} aria-hidden="true" />}
-              <li>{step}</li>
-            </Fragment>
-          ))}
-        </ol>
+        <div className="oqc-inspection-skip-steps-row">
+          <ol className="oqc-inspection-skip-steps">
+            {t.steps.map((step, index) => (
+              <Fragment key={step}>
+                {index > 0 && <Icon name="arrow_forward" size={16} aria-hidden="true" />}
+                <li
+                  aria-current={index === currentStep ? 'step' : undefined}
+                  title={index === currentStep ? t.currentStep : undefined}
+                >
+                  {step}
+                </li>
+              </Fragment>
+            ))}
+          </ol>
+          {/* 결재는 「특채·한도승인 승인 처리」에서 한다 — 요청이 있으면 그 요청을 골라 연다(#136). */}
+          <Button
+            type="button"
+            variant="outlined"
+            size="sm"
+            onClick={() =>
+              void navigate(
+                latest === null
+                  ? '/quality/approvals'
+                  : `/quality/approvals?approvalRequestId=${String(latest.approvalRequestId)}`,
+              )
+            }
+          >
+            {t.openApproval}
+          </Button>
+        </div>
         <p className="oqc-inspection-skip-result">
           <Icon name="info" size={18} aria-hidden="true" />
           {t.result}
@@ -178,6 +205,11 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
           <FieldLabel htmlFor={reasonId} label={t.reason} required />
           <TextArea
             id={reasonId}
+            containerClassName={
+              reason.trim() === ''
+                ? 'oqc-inspection-skip-reason is-required-empty'
+                : 'oqc-inspection-skip-reason'
+            }
             placeholder={t.reasonPlaceholder}
             rows={3}
             fullWidth
