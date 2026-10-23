@@ -191,7 +191,7 @@ export const oqcInspection = {
     quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
 
     /** 종합 판정. ⛔ 값 목록을 화면에 고정하지 않는다 — 공통코드 조회로 채운다. */
-    judgment: '종합 판정',
+    judgment: '최종 판정',
     judgmentPlaceholder: '판정을 선택하세요',
     /** 불합격 사유(선택 · #136) — 저장에는 비고로 실린다. */
     rejectionReason: '불합격 사유 (선택)',
@@ -321,7 +321,7 @@ export const oqcInspection = {
   /** 확인 창 — **쓰기는 이 창의 버튼에서만 나간다.** */
   confirm: {
     title: (inspectionRequestNo: string): string => `${inspectionRequestNo} 판정 저장`,
-    judgment: (label: string): string => `종합 판정: ${label}`,
+    judgment: (label: string): string => `최종 판정: ${label}`,
     /* ⛔ 수량 셋을 여기서 따로 내지 않는다 — 전이 경고 본문의 첫 규칙이 이미 그 세 값이다. */
     irreversible: '저장하면 되돌릴 수 없습니다.',
     cancel: '취소',

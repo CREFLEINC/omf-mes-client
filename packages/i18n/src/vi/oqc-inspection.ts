@@ -106,7 +106,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     over: (over: string): string => `Nhiều hơn số lượng kiểm tra ${over}.`,
     quantityInvalid: 'Số lượng phải từ 0 trở lên và tối đa sáu chữ số thập phân.',
 
-    judgment: 'Đánh giá tổng hợp',
+    judgment: 'Đánh giá cuối cùng',
     judgmentPlaceholder: 'Hãy chọn đánh giá',
     rejectionReason: 'Lý do không đạt (tùy chọn)',
     rejectionReasonPlaceholder: 'Nhập lý do không đạt',
@@ -183,7 +183,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
 
   confirm: {
     title: (inspectionRequestNo: string): string => `Lưu đánh giá ${inspectionRequestNo}`,
-    judgment: (label: string): string => `Đánh giá tổng hợp: ${label}`,
+    judgment: (label: string): string => `Đánh giá cuối cùng: ${label}`,
     irreversible: 'Lưu rồi thì không hoàn tác được.',
     cancel: 'Hủy',
     confirm: 'Lưu đánh giá',
