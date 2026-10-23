@@ -49,6 +49,7 @@ export const pqcInspectionRegister = {
     item: '품목',
     targetQty: '검사 수량',
     status: '상태',
+    requestedAt: '의뢰 일시',
   },
 
   /** 관리웹 상세(#135) — IQC 판정 화면(#133)과 같은 짜임·말. POP 의 말(`pqcInspection`)은 그대로 둔다. */
@@ -90,6 +91,7 @@ export const pqcInspectionRegister = {
     quantity: {
       heading: '검사 수량 입력',
       targetQty: '총 검사 수량',
+      round: (round: number): string => `${String(round)}회차`,
       inspectedQty: '검사 수량',
       accepted: '합격 수량',
       rejected: '불합격 수량',

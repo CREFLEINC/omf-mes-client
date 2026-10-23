@@ -40,6 +40,7 @@ export const pqcInspectionRegister = {
     item: 'Mặt hàng',
     targetQty: 'Số lượng kiểm tra',
     status: 'Trạng thái',
+    requestedAt: 'Thời gian yêu cầu',
   },
 
   web: {
@@ -80,6 +81,7 @@ export const pqcInspectionRegister = {
     quantity: {
       heading: 'Nhập số lượng kiểm tra',
       targetQty: 'Tổng số lượng kiểm tra',
+      round: (round: number): string => `Lượt ${String(round)}`,
       inspectedQty: 'Số lượng kiểm tra',
       accepted: 'Số lượng đạt',
       rejected: 'Số lượng không đạt',

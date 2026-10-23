@@ -460,6 +460,7 @@ export const PqcPanel = ({
           onInspectedChange={changeInspected}
           inspectedQty={inspectedQty}
           targetQty={storedInspectedQty}
+          inspectionRound={savedRound?.inspectionRound ?? null}
           uomCode={uomCodeOf(target.uomId)}
           draft={draft}
           onChange={changeDraft}

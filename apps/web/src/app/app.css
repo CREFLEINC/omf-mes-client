@@ -19070,14 +19070,46 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 .pqc-web-list {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
+}
+
+/*
+ * 목록 화면 — 조건 줄 · 쪽 넘김은 제자리에 두고 표만 안에서 구른다(#133 과 같다). 카드 높이를 창 높이에 맞추고,
+ * 표 머리줄은 구를 때 위에 붙어 있다.
+ */
+.pqc-web-list.pane {
+  height: calc(100dvh - 15rem);
+  min-height: 18rem;
+}
+
+.pqc-web-list > .pqc-web-queue {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* DS 표가 자기 감싸개(가로 넘침용)를 두므로, 세로로 구르는 상자도 그 감싸개가 맡아야 머리줄이 붙는다. */
+.pqc-web-list > .pqc-web-queue > div {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.pqc-web-queue thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 /* 목록 — 의뢰번호 · 작업지시 · 품목은 왼쪽, 검사 수량 · 상태는 가운데. 줄 아무 곳이나 눌러 연다. */
 .pqc-web-queue table {
   table-layout: fixed;
   width: 100%;
+  /* 여섯 칸이 한 줄 값으로 다 보이는 폭(품목 칸 12rem 이상). 창이 이보다 좁으면 표가 옆으로 구른다(DS 표 감싸개). */
+  min-width: 56rem;
 }
 
 .pqc-web-queue th:nth-child(n + 4),
@@ -19092,6 +19124,15 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 
 .pqc-web-queue tbody tr {
   cursor: pointer;
+}
+
+/* 의뢰번호 · 작업지시 · 의뢰 일시는 한 줄로 — 칸이 모자라면 끝을 말줄임하고 전체는 title 로 본다(#133 의 LOT 번호와 같다). */
+.pqc-web-queue td:nth-child(1),
+.pqc-web-queue td:nth-child(2),
+.pqc-web-queue td:nth-child(6) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pqc-web-queue tbody tr:hover {
@@ -19405,6 +19446,24 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   align-items: center;
   gap: var(--space-2) var(--space-3);
   padding-top: var(--space-3);
+}
+
+/*
+ * 저장 · 확정 — 창을 내려도 화면 아래에 붙어 있다(#133 과 같다). 바탕을 카드 색으로 채워 아래 내용이 비치지 않게 한다.
+ * 화면 높이가 낮으면(1024×768 등) 붙이지 않는다 — 붙은 줄이 수량 칸을 가린다.
+ */
+.pqc-web-detail .pqc-web-actions {
+  margin-inline: calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-container-low);
+}
+
+@media (min-height: 800px) {
+  .pqc-web-detail .pqc-web-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+  }
 }
 
 .pqc-web-action-notes {

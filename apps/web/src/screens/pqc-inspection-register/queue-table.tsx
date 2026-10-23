@@ -1,6 +1,7 @@
 import { Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { toStatusBadge } from '../oqc-inspection/status-badge';
 import type { InspectionQueueRow } from '../oqc-inspection/types';
 import { useItem } from '../production-result/flow-queries';
@@ -12,7 +13,8 @@ const empty = messages.pqcInspection.emptyValue;
 /** 작업지시 번호 — 대상(`targetId`)이 PQC 에서는 작업지시다(계약 「작업지시(PQC)」). */
 const WorkOrderCell = ({ workOrderId }: { workOrderId: number }) => {
   const workOrder = useWorkOrder(workOrderId);
-  return <>{workOrder.data?.workOrderNo ?? empty}</>;
+  const workOrderNo = workOrder.data?.workOrderNo;
+  return <span title={workOrderNo}>{workOrderNo ?? empty}</span>;
 };
 
 /** 품목 — 이름(주)과 코드(보조) 두 줄. 내부 번호는 내지 않는다(#135). */
@@ -34,39 +36,39 @@ export interface PqcQueueTableProps {
 }
 
 /**
- * W-03-11 목록(omf-all-around#135) — 의뢰번호 · 작업지시 · 품목 · 검사 수량 · 상태. 줄을 누르면 상세가 열린다.
+ * W-03-11 목록(omf-all-around#135) — 의뢰번호 · 작업지시 · 품목 · 검사 수량 · 상태 · 의뢰 일시. 줄을 누르면 상세가 열린다.
  * ⚠ OQC 화면의 목록 표는 그대로 둔다 — 이 표는 PQC 화면만 쓴다.
  */
+/* 번호 · 일시 칸은 한 줄 값이 다 보이는 고정 폭, 품목이 나머지를 쓴다. */
 export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueTableProps) => {
   const columns: Column<InspectionQueueRow>[] = [
     {
       key: 'no',
       header: messages.pqcInspection.detail.fields.inspectionRequestNo,
-      width: '18%',
-      render: (row) => row.inspectionRequestNo,
+      width: '12rem',
+      render: (row) => <span title={row.inspectionRequestNo}>{row.inspectionRequestNo}</span>,
     },
     {
       key: 'workOrder',
       header: t.columns.workOrder,
-      width: '18%',
+      width: '11rem',
       render: (row) => <WorkOrderCell workOrderId={row.targetId} />,
     },
     {
       key: 'item',
       header: t.columns.item,
-      width: '40%',
       render: (row) => <ItemCell itemId={row.itemId} />,
     },
     {
       key: 'qty',
       header: t.columns.targetQty,
-      width: '12%',
+      width: '5.5rem',
       render: (row) => String(row.targetQty),
     },
     {
       key: 'status',
       header: t.columns.status,
-      width: '12%',
+      width: '5.5rem',
       render: (row) => {
         const badge = toStatusBadge(row.statusCode);
         return (
@@ -75,6 +77,13 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
           </Chip>
         );
       },
+    },
+    {
+      /* ⛔ 정렬 단추를 두지 않는다 — 줄을 누르면 줄 차례로 의뢰를 찾는다(아래). */
+      key: 'requestedAt',
+      header: t.columns.requestedAt,
+      width: '10rem',
+      render: (row) => formatPlantDateTime(row.requestedAt) ?? row.requestedAt,
     },
   ];
 

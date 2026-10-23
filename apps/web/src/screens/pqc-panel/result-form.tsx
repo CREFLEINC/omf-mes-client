@@ -25,6 +25,8 @@ export interface ResultFormProps {
   inspectedQty: number;
   /** 총 검사 수량(의뢰 수량) — 「검사 수량 입력」 제목 줄 오른쪽 끝에 낸다(#133 과 같다). */
   targetQty: number;
+  /** 이어 쓰거나 확정된 회차 번호. 회차가 아직 없으면 `null` — 아무것도 보이지 않는다(#133 과 같다). */
+  inspectionRound?: number | null;
   uomCode: string | null;
   draft: QuantityDraft;
   onChange: (draft: QuantityDraft) => void;
@@ -66,6 +68,7 @@ export const ResultForm = ({
   onInspectedChange,
   inspectedQty,
   targetQty,
+  inspectionRound = null,
   uomCode,
   draft,
   onChange,
@@ -148,6 +151,9 @@ export const ResultForm = ({
       <section className="pqc-web-section" aria-label={t.quantity.heading}>
         <div className="pqc-web-section-head">
           <h3>{t.quantity.heading}</h3>
+          {inspectionRound !== null && (
+            <p className="field-note">{t.quantity.round(inspectionRound)}</p>
+          )}
           {/* 총 검사 수량은 제목 줄 오른쪽 끝에 — IQC 판정 화면(#133)과 같은 자리·모양이다. */}
           <dl className="pqc-web-qty-base">
             <dt className="pqc-web-progress-label">{t.quantity.targetQty}</dt>

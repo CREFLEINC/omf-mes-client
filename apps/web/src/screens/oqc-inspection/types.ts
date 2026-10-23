@@ -43,6 +43,8 @@ export interface InspectionQueueRow {
   /** 검사 수량. 합계 제약의 오른쪽 변이 될 값이다 */
   targetQty: number;
   statusCode: string;
+  /** 의뢰가 만들어진 시각 — PQC 목록(#135)의 「의뢰 일시」 열이 쓴다. */
+  requestedAt: string;
 }
 
 export interface InspectionQueueResult {
@@ -57,6 +59,7 @@ export const toInspectionQueueRow = (item: InspectionRequestResponse): Inspectio
   itemId: item.itemId,
   targetQty: item.targetQty,
   statusCode: item.statusCode,
+  requestedAt: item.requestedAt,
 });
 
 export const toInspectionQueueResult = (response: {

@@ -185,6 +185,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     expect(await screen.findByText('WO-20261016-0701')).toBeInTheDocument();
     expect(await screen.findByText('합성 품목')).toBeInTheDocument();
     expect(screen.getByText('F534F50200')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: t.columns.requestedAt })).toBeInTheDocument();
   });
 
   it('상세의 검사 기본 정보는 작업지시 번호·품목 이름·코드를 보이고, LOT 이 없으면 「—」(#135)', async () => {
@@ -224,6 +225,15 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
 
     const quantity = await pane.findByRole('region', { name: web.quantity.heading });
     await waitFor(() => expect(quantity).toHaveTextContent(`${web.quantity.targetQty}5`));
+  });
+
+  it('작성중 회차가 있으면 검사 수량 입력 제목 줄에 회차를 보인다(#135)', async () => {
+    const user = userEvent.setup();
+    renderScreen({ rounds: [ROUND] });
+    const pane = await openRequest(user);
+
+    const quantity = await pane.findByRole('region', { name: web.quantity.heading });
+    await waitFor(() => expect(quantity).toHaveTextContent(web.quantity.round(1)));
   });
 
   it('불합격 처분은 판정이 「불합격」일 때만 보이고, 다른 판정으로 바꾸면 고른 처분을 거둔다(#135)', async () => {
