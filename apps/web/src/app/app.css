@@ -16201,6 +16201,7 @@ main:has(> .oqc-inspection-panes) {
 }
 
 .oqc-inspection-records > .field-note {
+  max-width: none;
   margin: 0;
 }
 
@@ -16209,6 +16210,83 @@ main:has(> .oqc-inspection-panes) {
   max-height: 16rem;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+/*
+ * 참고 정보 탭(검사 이력 · 시리얼별 검사 이력 · #136). 탭 안은 제목 + 건수 칩, 그 아래 내용.
+ * 검사 처리 이력은 최근 사건이 위 — 표식을 세로선으로 잇고, 확정은 초록 체크로.
+ */
+.oqc-inspection-history-card {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.oqc-inspection-tab-body {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+}
+
+.oqc-inspection-tab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.oqc-inspection-tab-head > h3 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.oqc-inspection-tab-head > .oqc-inspection-fold-chip {
+  float: none;
+}
+
+.oqc-inspection-history-card .inspection-history-events {
+  display: flex;
+  flex-direction: column-reverse;
+  max-height: none;
+  overflow: visible;
+}
+
+.oqc-inspection-history-card .inspection-history-events > li {
+  position: relative;
+}
+
+/* 표식은 작업 이름 줄에 맞춰 위에 — 세로선이 그 아래에서 다음 표식까지 잇는다. */
+.oqc-inspection-history-card .inspection-history-events > li::before {
+  align-self: start;
+  margin-top: 2px;
+}
+
+/* 탭 안 제목(「검사 처리 이력」)이 이름을 맡는다 — 이력 부품의 제목은 화면 읽기에만 남긴다. */
+.oqc-inspection-history-card .inspection-history > h3 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.oqc-inspection-history-card .inspection-history-events > li:not(:first-child)::after {
+  position: absolute;
+  top: calc(var(--space-3) + 26px);
+  bottom: calc(-1 * var(--space-3) + 2px);
+  left: 9px;
+  width: 1px;
+  background: var(--outline-variant);
+  content: '';
+}
+
+.oqc-inspection-history-card
+  .inspection-history-events
+  > li[data-event='RESULT_CONFIRMED']::before {
+  color: var(--semantic-success-text);
+  content: 'check_circle';
 }
 
 /*

@@ -1,4 +1,4 @@
-import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -617,39 +617,62 @@ export const OqcInspectionScreen = () => {
           </details>
         )}
 
-        {/* 시리얼 출하검사(#68) — 출하작업지시 의뢰만. 저장하면 새로 부른다. */}
-        {detail.data.targetTypeCode === 'SHIPMENT_REQUEST' && (
-          <details className="pane oqc-inspection-fold">
-            <summary>
-              {t.serials.recordHeading}
-              {serialRecordCount !== undefined && (
-                <span className="oqc-inspection-fold-chip">
-                  {t.serials.recordCount(serialRecordCount)}
-                </span>
-              )}
-            </summary>
-            <SerialRecords inspectionRequestId={selectedId} />
-          </details>
-        )}
-
-        {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
-        <details className="pane oqc-inspection-fold">
-          <summary>
-            {messages.inspectionHistory.heading}
-            {historyCount !== undefined && (
-              <span className="oqc-inspection-fold-count">
-                {t.detail.historyCount(historyCount)}
-              </span>
-            )}
-          </summary>
-          <InspectionHistoryPanel
-            hideSourceLot
-            key={`${String(selectedId)}-${String(roundCount)}`}
-            inspectionRequestId={selectedId}
-            judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
-            revision={historyRevision}
+        {/*
+         * 검사 이력 · 시리얼별 검사 이력을 탭 하나로(#136). 시리얼 탭은 출하작업지시 의뢰만 — 저장하면 둘 다 새로 부른다.
+         * 의뢰를 바꾸면 첫 탭에서 다시 시작한다.
+         */}
+        <section className="pane oqc-inspection-fold oqc-inspection-history-card">
+          <Tabs
+            key={selectedId}
+            aria-label={messages.inspectionHistory.heading}
+            items={[
+              {
+                value: 'history',
+                label: messages.inspectionHistory.heading,
+                content: (
+                  <div className="oqc-inspection-tab-body">
+                    <div className="oqc-inspection-tab-head">
+                      <h3>{t.detail.historyTitle}</h3>
+                      {historyCount !== undefined && (
+                        <span className="oqc-inspection-fold-chip">
+                          {t.detail.historyCount(historyCount)}
+                        </span>
+                      )}
+                    </div>
+                    <InspectionHistoryPanel
+                      hideSourceLot
+                      key={`${String(selectedId)}-${String(roundCount)}`}
+                      inspectionRequestId={selectedId}
+                      judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
+                      revision={historyRevision}
+                    />
+                  </div>
+                ),
+              },
+              ...(detail.data.targetTypeCode === 'SHIPMENT_REQUEST'
+                ? [
+                    {
+                      value: 'serials',
+                      label: t.serials.recordTab,
+                      content: (
+                        <div className="oqc-inspection-tab-body">
+                          <div className="oqc-inspection-tab-head">
+                            <h3>{t.serials.recordHeading}</h3>
+                            {serialRecordCount !== undefined && (
+                              <span className="oqc-inspection-fold-chip">
+                                {t.serials.recordCount(serialRecordCount)}
+                              </span>
+                            )}
+                          </div>
+                          <SerialRecords inspectionRequestId={selectedId} />
+                        </div>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
           />
-        </details>
+        </section>
       </div>
     );
 

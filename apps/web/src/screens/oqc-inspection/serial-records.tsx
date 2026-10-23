@@ -10,8 +10,8 @@ const t = messages.oqcInspection.serials;
 const columns: Column<OqcSerialRecord>[] = [
   { key: 'serialNo', header: t.recordColumns.serialNo, width: '168px' },
   { key: 'lotNo', header: t.recordColumns.lotNo },
-  { key: 'firstJudgmentCode', header: t.recordColumns.first, width: '64px' },
-  { key: 'finalJudgmentCode', header: t.recordColumns.final, width: '64px' },
+  { key: 'firstJudgmentCode', header: t.recordColumns.first, width: '96px' },
+  { key: 'finalJudgmentCode', header: t.recordColumns.final, width: '96px' },
   {
     key: 'inspectionRound',
     header: t.recordColumns.round,

@@ -117,6 +117,8 @@ export const oqcInspection = {
     sectionTitle: '검사 기본 정보',
     /** 검사 이력 접는 줄 오른쪽 끝의 건수(#136). */
     historyCount: (count: number): string => `${String(count)}건`,
+    /** 검사 이력 탭 안 제목(#136). */
+    historyTitle: '검사 처리 이력',
     /** 검사 유형 코드 옆에 붙이는 이름(#136) — 모르는 코드는 코드만 보인다. */
     inspectionTypeNames: { OQC: '출하검사' } as Readonly<Record<string, string>>,
     loading: '의뢰를 불러오는 중입니다.',
@@ -452,6 +454,8 @@ export const oqcInspection = {
     tooManyNg: 'NG 시리얼 수가 불합격 수량보다 많습니다. 불합격 수량을 확인하세요.',
     count: (total: number, ng: number): string => `시리얼 ${total}대, NG ${ng}대`,
     recordHeading: '시리얼별 출하검사 이력',
+    /** 참고 정보 탭 이름(#136). */
+    recordTab: '시리얼별 검사 이력',
     recordHelp: '시리얼별 최초 검사와 재검사 결과를 확인할 수 있습니다.',
     recordEmpty: '출하검사 이력이 없습니다.',
     recordEmptyDescription: '검사 결과가 기록되면 이곳에 표시됩니다.',
