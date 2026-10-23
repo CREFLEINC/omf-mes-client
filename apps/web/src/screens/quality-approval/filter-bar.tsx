@@ -46,7 +46,6 @@ const CodeField = ({ label, options, value, onChange }: CodeFieldProps) => {
 
 export interface FilterBarProps {
   applied: RequestFilters;
-  typeOptions: CodeOption[];
   statusOptions: CodeOption[];
   pendingOnly: boolean;
   onApply: (filters: RequestFilters) => void;
@@ -56,7 +55,6 @@ export interface FilterBarProps {
 
 export const FilterBar = ({
   applied,
-  typeOptions,
   statusOptions,
   pendingOnly,
   onApply,
@@ -78,12 +76,6 @@ export const FilterBar = ({
 
   return (
     <div className="filter-bar quality-approval-filter">
-      <CodeField
-        label={messages.qualityApproval.fields.approvalTypeCode}
-        options={typeOptions}
-        value={draft.approvalTypeCode}
-        onChange={(value) => setDraft((current) => ({ ...current, approvalTypeCode: value }))}
-      />
       <CodeField
         label={messages.qualityApproval.fields.statusCode}
         options={statusOptions}

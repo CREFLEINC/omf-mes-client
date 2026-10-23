@@ -59,14 +59,16 @@ const dataRow = (requestNo: string): HTMLElement => {
 };
 
 describe('RequestList compact selection', () => {
-  it('최종 3구획의 왼쪽에 맞는 세 열과 원시 상태·내 차례를 표시한다', () => {
+  it('요청·대상·상태·승인 유형 네 열과 원시 상태·내 차례·유형 꼬리표를 표시한다', () => {
     renderList();
 
     expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
       t.fields.request,
       t.fields.target,
       t.fields.statusCode,
+      t.fields.approvalTypeCode,
     ]);
+    /* 모르는 유형 코드는 원문 그대로 꼬리표에 선다. */
     expect(dataRow('SYNTH-REQ-031')).toHaveTextContent('IQC_SKIP');
     expect(dataRow('SYNTH-REQ-031')).toHaveTextContent('SYNTH-PENDING');
     expect(dataRow('SYNTH-REQ-031')).toHaveTextContent(t.values.myTurn);

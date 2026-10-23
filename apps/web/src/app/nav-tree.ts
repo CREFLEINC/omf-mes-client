@@ -342,8 +342,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/quality/approvals',
         icon: 'approval',
-        label: '특채·한도승인 승인 처리',
-        labelVi: 'Xử lý phê duyệt đặc cách · hạn mức',
+        label: '품질 승인 처리',
+        labelVi: 'Xử lý phê duyệt chất lượng',
       },
       /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
       {

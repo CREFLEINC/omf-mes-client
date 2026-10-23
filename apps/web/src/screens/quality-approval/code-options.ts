@@ -16,5 +16,13 @@ export const QUALITY_APPROVAL_STATUS_CODES: readonly string[] = [];
 export const toCodeOptions = (codes: readonly string[]): CodeOption[] =>
   codes.map((code) => ({ value: code, label: code }));
 
+/** 승인 유형 코드 → 사용자 용어(`CONCESSION` → 「특채」). 모르는 코드는 원문 그대로 둔다. */
+export const approvalTypeLabelOf = (code: string): string =>
+  (messages.qualityApproval.typeLabels as Record<string, string | undefined>)[code] ?? code;
+
+/** 승인 유형 탭의 선택지 — 이름은 사용자 용어로 보인다. */
+export const toTypeOptions = (codes: readonly string[]): CodeOption[] =>
+  codes.map((code) => ({ value: code, label: approvalTypeLabelOf(code) }));
+
 export const approvalScopeWarning = (codes: readonly string[]): string | undefined =>
   codes.length === 0 ? messages.qualityApproval.scopeWarning : undefined;

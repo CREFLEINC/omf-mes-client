@@ -3854,16 +3854,26 @@ main > * + * {
   }
 }
 
-/* 특채·한도승인 승인 처리 — 목록에서 상세·결재로 이어지는 판단 흐름을 한 화면에 묶는다. */
+/*
+ * 품질 승인 처리 — 목록과 상세를 갈아 끼운다(#144). 목록은 화면 전체 폭, 요청을 고르면
+ * 요청 상세 | 결재 진행 두 칸이 나란히 선다.
+ */
+.quality-approval-type-tabs {
+  margin-bottom: var(--space-4);
+}
+
+.quality-approval-back {
+  margin-bottom: var(--space-3);
+}
+
 .quality-approval-workspace {
   display: grid;
-  grid-template-columns: minmax(32rem, 5fr) minmax(25rem, 4fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-5);
   align-items: start;
   min-width: 0;
 }
 
-.quality-approval-side,
 .quality-approval-pane,
 .quality-approval-list,
 .quality-approval-detail,
@@ -3887,9 +3897,10 @@ main > * + * {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+/* 조건 세 칸은 내용만큼 좁게, 남는 폭에 「결재 대기만 보기」와 [조회]·[초기화]를 한 줄로 둔다(#144). */
 .filter-bar.quality-approval-filter {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(11rem, 14rem)) minmax(0, 1fr);
   gap: var(--space-4);
   margin-bottom: 0;
 }
@@ -3905,16 +3916,19 @@ main > * + * {
 
 .quality-approval-filter-footer {
   display: flex;
-  grid-column: 1 / -1;
-  flex-wrap: wrap;
+  align-self: start;
+  flex-wrap: nowrap;
   align-items: center;
+  min-height: var(--control-height-md);
+  margin-top: var(--field-label-layer);
   justify-content: space-between;
   gap: var(--space-3);
 }
 
 .quality-approval-filter-footer .filter-actions {
+  flex-wrap: nowrap;
   justify-content: flex-end;
-  margin-left: auto;
+  margin: 0 0 0 auto;
 }
 
 .quality-approval-list-pane > .banner-slot {
@@ -4036,18 +4050,9 @@ main > * + * {
   justify-content: flex-end;
 }
 
-@media (min-width: 1500px) {
-  .quality-approval-workspace {
-    grid-template-columns: minmax(32rem, 5fr) repeat(2, minmax(22rem, 4fr));
-  }
-
-  .quality-approval-side {
-    display: contents;
-  }
-}
-
 @media (max-width: 1100px) {
-  .quality-approval-workspace {
+  .quality-approval-workspace,
+  .filter-bar.quality-approval-filter {
     grid-template-columns: 1fr;
   }
 }

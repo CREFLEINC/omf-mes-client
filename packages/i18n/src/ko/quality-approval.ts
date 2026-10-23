@@ -1,5 +1,5 @@
 export const qualityApproval = {
-  title: '특채·한도승인 승인 처리',
+  title: '품질 승인 처리',
   breadcrumbRoot: '품질 관리',
   scopeWarning:
     '승인 유형 기준값이 준비되지 않아 나에게 배정된 모든 유형의 요청을 표시합니다. 승인 유형 원문을 확인하세요.',
@@ -19,6 +19,11 @@ export const qualityApproval = {
   codePending: '선택할 기준값이 아직 준비되지 않았습니다',
   codePlaceholder: '기준값 준비 중',
   all: '전체',
+  /** 승인 유형 코드 → 사용자 용어. 목록 밖 코드는 원문 그대로 보인다(`approvalTypeLabelOf`). */
+  typeLabels: {
+    CONCESSION: '특채',
+    OQC_SKIP: 'OQC 생략',
+  },
   panes: {
     list: '승인 요청 목록',
     detail: '요청 상세',
@@ -33,8 +38,7 @@ export const qualityApproval = {
     goFirstPage: '첫 쪽으로',
   },
   detail: {
-    select: '승인 요청을 선택하세요',
-    progressPending: '요청을 선택하면 결재 진행이 표시됩니다',
+    backToList: '← 목록',
     loading: '승인 요청 상세 불러오는 중',
     notFound: '요청을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 요청을 선택하세요.',

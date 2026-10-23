@@ -1,7 +1,8 @@
-import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { approvalTypeLabelOf } from './code-options';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { RequestRow } from './types';
@@ -38,7 +39,7 @@ export const RequestList = ({
           aria-current={row.approvalRequestId === selectedId ? 'true' : undefined}
           onClick={() => onSelect(row.approvalRequestId)}
         >
-          {row.approvalTypeCode} · {row.approvalRequestNo}
+          {row.approvalRequestNo}
         </button>
       ),
     },
@@ -52,6 +53,12 @@ export const RequestList = ({
           {row.isMyTurn && <span className="field-note"> · {t.values.myTurn}</span>}
         </>
       ),
+    },
+    /* 승인 유형은 줄 끝 꼬리표로 — 탭으로 거른 목록에서도 어떤 결재인지 한눈에 보인다(#144). */
+    {
+      key: 'type',
+      header: t.fields.approvalTypeCode,
+      render: (row) => <Chip size="sm">{approvalTypeLabelOf(row.approvalTypeCode)}</Chip>,
     },
   ];
 

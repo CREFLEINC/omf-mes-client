@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { Fragment } from 'react';
 
+import { approvalTypeLabelOf } from './code-options';
 import type { RequestDetailView } from './types';
 
 export interface DetailPaneProps {
@@ -15,7 +16,7 @@ export const DetailPane = ({ view }: DetailPaneProps) => {
       <dl className="quality-approval-detail-facts">
         {[
           [t.fields.approvalRequestNo, view.approvalRequestNo],
-          [t.fields.approvalTypeCode, view.approvalTypeCode],
+          [t.fields.approvalTypeCode, approvalTypeLabelOf(view.approvalTypeCode)],
           [t.fields.requestedByName, view.requesterName],
           [t.fields.requestedAt, view.requestedAtText],
           [t.fields.statusCode, view.statusCode],

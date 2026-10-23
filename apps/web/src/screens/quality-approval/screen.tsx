@@ -23,6 +23,7 @@ import {
   QUALITY_APPROVAL_TYPE_CODES,
   approvalScopeWarning,
   toCodeOptions,
+  toTypeOptions,
 } from './code-options';
 import { ConditionPane } from './condition-pane';
 import { toConcessionCardinality } from './conditions';
@@ -52,6 +53,7 @@ import {
   useConcessionCandidates,
 } from './queries';
 import { RequestList } from './request-list';
+import { TypeTabs } from './type-tabs';
 import {
   toRequestDetailView,
   toRequestRow,
@@ -249,17 +251,6 @@ export const QualityApprovalScreen = ({
   }
 
   const detailSlot = (): ReactNode => {
-    if (selectedId === null) {
-      return (
-        <EmptyState
-          size="sm"
-          live={isDetailMissing}
-          title={isDetailMissing ? t.detail.notFound : t.detail.select}
-          description={isDetailMissing ? t.detail.notFoundDescription : undefined}
-        />
-      );
-    }
-
     if (detail.isPending) {
       return (
         <div role="status" aria-label={t.detail.loading}>
@@ -318,7 +309,7 @@ export const QualityApprovalScreen = ({
   };
 
   const progressSlot = (): ReactNode => {
-    if (selectedId === null) return <EmptyState size="sm" title={t.detail.progressPending} />;
+    if (selectedId === null) return null;
 
     if (detail.isPending) {
       return (
@@ -393,57 +384,90 @@ export const QualityApprovalScreen = ({
         title={t.title}
         breadcrumb={
           <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            items={[
+              { label: t.breadcrumbRoot },
+              { label: t.title },
+              /* 상세를 열면 지금 자리를 한 단계 더 보인다(#144). */
+              ...(selectedId === null ? [] : [{ label: t.panes.detail }]),
+            ]}
             aria-label={messages.common.shell.breadcrumb}
           />
         }
       />
-      <div className="quality-approval-workspace">
-        <section
-          className="pane quality-approval-pane quality-approval-list-pane"
-          aria-label={t.panes.list}
-        >
-          <h2 className="pane-title">{t.panes.list}</h2>
-          <FilterBar
-            applied={filters}
-            typeOptions={toCodeOptions(approvalTypeCodes)}
-            statusOptions={toCodeOptions(statusCodes)}
-            pendingOnly={pendingOnly}
-            onApply={(next) => apply(next, pendingOnly)}
-            onTogglePendingOnly={(next) => apply(filters, next)}
-            onReset={() => apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT)}
+      {/*
+       * 목록과 상세를 한 화면에 나란히 두지 않고 갈아 끼운다(#144, IQC #133 과 같은 방식) — 요청을 고르면
+       * (`?approvalRequestId=`) 요청 상세 · 결재 진행만, 목록으로 돌아오면 목록만 선다. 조건 · 쪽은 주소에 남는다.
+       */}
+      {selectedId === null ? (
+        <>
+          <TypeTabs
+            options={toTypeOptions(approvalTypeCodes)}
+            value={filters.approvalTypeCode}
+            onChange={(code) => apply({ ...filters, approvalTypeCode: code }, pendingOnly)}
           />
-          {scopeWarning !== undefined && (
-            <div className="banner-slot">
-              <AlertBanner variant="info">{scopeWarning}</AlertBanner>
-            </div>
-          )}
-          <RequestList
-            rows={rows}
-            isLoading={list.isPending}
-            error={error}
-            page={pageView}
-            selectedId={selectedId}
-            onSelect={(id) => {
-              setMissingContextKey(null);
-              setSearchParams((current) =>
-                withSelectedRequest(current, selectedId === id ? null : id),
-              );
-            }}
-            onChangePage={(nextPage) => apply(filters, pendingOnly, nextPage)}
-          />
-        </section>
-        <div className="pane-stack quality-approval-side">
-          <section className="pane quality-approval-pane" aria-label={t.panes.detail}>
-            <h2 className="pane-title">{t.panes.detail}</h2>
-            {detailSlot()}
+          <section
+            className="pane quality-approval-pane quality-approval-list-pane"
+            aria-label={t.panes.list}
+          >
+            <h2 className="pane-title">{t.panes.list}</h2>
+            <FilterBar
+              applied={filters}
+              statusOptions={toCodeOptions(statusCodes)}
+              pendingOnly={pendingOnly}
+              onApply={(next) => apply(next, pendingOnly)}
+              onTogglePendingOnly={(next) => apply(filters, next)}
+              onReset={() => apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT)}
+            />
+            {scopeWarning !== undefined && (
+              <div className="banner-slot">
+                <AlertBanner variant="info">{scopeWarning}</AlertBanner>
+              </div>
+            )}
+            {/* 열려던 요청이 없어 목록으로 돌아왔다 — 왜 돌아왔는지 목록 위에서 알린다. */}
+            {isDetailMissing && (
+              <div className="banner-slot">
+                <AlertBanner variant="info" title={t.detail.notFound}>
+                  {t.detail.notFoundDescription}
+                </AlertBanner>
+              </div>
+            )}
+            <RequestList
+              rows={rows}
+              isLoading={list.isPending}
+              error={error}
+              page={pageView}
+              selectedId={selectedId}
+              onSelect={(id) => {
+                setMissingContextKey(null);
+                setSearchParams((current) => withSelectedRequest(current, id));
+              }}
+              onChangePage={(nextPage) => apply(filters, pendingOnly, nextPage)}
+            />
           </section>
-          <section className="pane quality-approval-pane" aria-label={t.panes.progress}>
-            <h2 className="pane-title">{t.panes.progress}</h2>
-            {progressSlot()}
-          </section>
-        </div>
-      </div>
+        </>
+      ) : (
+        <>
+          <div className="quality-approval-back">
+            <Button
+              variant="text"
+              size="md"
+              onClick={() => setSearchParams((current) => withSelectedRequest(current, null))}
+            >
+              {t.detail.backToList}
+            </Button>
+          </div>
+          <div className="quality-approval-workspace">
+            <section className="pane quality-approval-pane" aria-label={t.panes.detail}>
+              <h2 className="pane-title">{t.panes.detail}</h2>
+              {detailSlot()}
+            </section>
+            <section className="pane quality-approval-pane" aria-label={t.panes.progress}>
+              <h2 className="pane-title">{t.panes.progress}</h2>
+              {progressSlot()}
+            </section>
+          </div>
+        </>
+      )}
       {dialogDraft !== null &&
         selectedId === dialogDraft.approvalRequestId &&
         !detail.isError &&

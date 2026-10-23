@@ -8,7 +8,7 @@ import type { Translated } from './translated';
  * 대신 자리를 붙여 가른다 — 결재 단계는 `bước phê duyệt`, 결재 차례는 `lượt phê duyệt`.
  */
 export const qualityApproval: Translated<typeof ko.qualityApproval> = {
-  title: 'Xử lý phê duyệt đặc cách · hạn mức',
+  title: 'Xử lý phê duyệt chất lượng',
   breadcrumbRoot: 'Quản lý chất lượng',
   scopeWarning:
     'Giá trị gốc của loại phê duyệt chưa sẵn sàng nên hiển thị mọi loại yêu cầu được giao cho tôi. Hãy kiểm tra nguyên văn loại phê duyệt.',
@@ -28,6 +28,10 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
   codePending: 'Giá trị gốc để chọn vẫn chưa sẵn sàng',
   codePlaceholder: 'Đang chuẩn bị giá trị gốc',
   all: 'Tất cả',
+  typeLabels: {
+    CONCESSION: 'Đặc cách',
+    OQC_SKIP: 'Bỏ qua OQC',
+  },
   panes: {
     list: 'Danh sách yêu cầu phê duyệt',
     detail: 'Chi tiết yêu cầu',
@@ -42,8 +46,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     goFirstPage: 'Về trang đầu',
   },
   detail: {
-    select: 'Hãy chọn một yêu cầu phê duyệt',
-    progressPending: 'Chọn yêu cầu thì tiến trình phê duyệt sẽ hiện ra',
+    backToList: '← Danh sách',
     loading: 'Đang tải chi tiết yêu cầu phê duyệt',
     notFound: 'Không tìm thấy yêu cầu',
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn yêu cầu khác.',
