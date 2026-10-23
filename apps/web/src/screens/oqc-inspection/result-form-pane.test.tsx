@@ -210,24 +210,15 @@ describe('ResultFormPane — 서버가 되돌린 것', () => {
 });
 
 describe('ResultFormPane — 전이 경고', () => {
-  it('판정 확정 안내 — 수량 · 고른 판정 · 되돌릴 수 없음 · 아는 판정의 방향(#136)', () => {
+  it('판정 확정 안내 — 되돌릴 수 없음 · 아는 판정의 방향, 수량·고른 판정은 되풀이하지 않는다(#136)', () => {
     renderPane({ draft: MATCHING, judgment: 'ACCEPTED' });
 
     const guide = screen.getByRole('region', { name: transition.guide.title });
 
-    expect(within(guide).getByText(transition.guide.accepted('480'))).toBeInTheDocument();
-    expect(within(guide).getByText(transition.guide.rejected('15'))).toBeInTheDocument();
-    expect(within(guide).getByText(transition.guide.held('5'))).toBeInTheDocument();
-    expect(within(guide).queryByText(transition.guide.notSelected)).not.toBeInTheDocument();
     expect(within(guide).getByText(transition.guide.irreversible)).toBeInTheDocument();
     expect(within(guide).getByText(transition.directionRelease)).toBeInTheDocument();
     expect(within(guide).getByText(transition.pickingImpact)).toBeInTheDocument();
-  });
-
-  it('판정을 안 골랐으면 「미선택」(#136)', () => {
-    renderPane({ draft: MATCHING, judgment: '' });
-
-    expect(screen.getByText(transition.guide.notSelected)).toBeInTheDocument();
+    expect(within(guide).queryByText(/480/)).not.toBeInTheDocument();
   });
 
   it('대상 LOT 이 없는 의뢰(출하작업지시 OQC)는 집은 LOT 의 방향을 말한다 — 경고와 확인 창 모두(omf-all-around#119)', async () => {

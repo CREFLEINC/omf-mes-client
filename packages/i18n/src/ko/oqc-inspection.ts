@@ -307,12 +307,6 @@ export const oqcInspection = {
     /** 판정 구획의 「판정 확정 안내」 상자(#136) — 수량 · 고른 판정 · 되돌릴 수 없음 · LOT 영향. */
     guide: {
       title: '판정 확정 안내',
-      quantities: '판정 수량',
-      accepted: (qty: string): string => `합격 ${qty}`,
-      rejected: (qty: string): string => `불합격 ${qty}`,
-      held: (qty: string): string => `보류 ${qty}`,
-      selected: '선택한 판정',
-      notSelected: '미선택',
       irreversible: '확정 후에는 판정을 수정할 수 없습니다.',
       irreversibleHint: '변경이 필요한 경우 재검사를 진행해야 합니다.',
     },
@@ -417,8 +411,9 @@ export const oqcInspection = {
       inspected: (count: number): string => `검사 ${String(count)}건`,
       accepted: (count: number): string => `합격 ${String(count)}건`,
       rejected: (count: number): string => `불합격 ${String(count)}건`,
-      scanLabel: '시리얼 번호',
-      scanPlaceholder: '시리얼 번호를 스캔하거나 입력한 후 Enter',
+      scanLabel: '시리얼 번호 스캔',
+      scanHint: '스캔하면 아래 표에 추가됩니다.',
+      scanPlaceholder: '시리얼 번호 스캔 또는 번호를 입력하세요',
       notFound: '등록되지 않은 시리얼 번호입니다.',
       columns: {
         serialNo: '시리얼 번호',

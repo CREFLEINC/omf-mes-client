@@ -141,7 +141,7 @@ export const SerialJudgments = ({
       {/* 목록 위 「시리얼 번호 스캔」과 같은 칸(#136). */}
       <SerialScanField
         label={j.scanLabel}
-        search
+        labelHint={j.scanHint}
         placeholder={j.scanPlaceholder}
         error={scanError ?? serverError ?? null}
         disabled={disabled}

@@ -70,22 +70,14 @@ export const TransitionWarningBody = ({ preview, hasLot = true }: TransitionWarn
   );
 };
 
-export interface JudgmentGuideProps extends TransitionWarningProps {
-  /** 고른 종합 판정 코드와 그 이름. 안 골랐으면 코드가 빈 문자열이다. */
-  judgment: string;
-  judgmentLabel: string;
-}
+export type JudgmentGuideProps = TransitionWarningProps;
 
 /**
- * 판정 구획의 「판정 확정 안내」(#136) — 확정 전에 수량 · 고른 판정 · 되돌릴 수 없음 · LOT 영향을 한 상자에.
+ * 판정 구획의 「판정 확정 안내」(#136) — 확정 전에 되돌릴 수 없음 · LOT 영향을 한 상자에. 수량과 고른 판정은
+ * 바로 위 칸들이 이미 보이므로 되풀이하지 않는다.
  * 규칙은 위 경고와 같다(셀 수 없으면 그리지 않는다 · 모르는 코드에 방향을 지어내지 않는다). 확인 창은 종전 본문을 그대로 쓴다.
  */
-export const JudgmentGuide = ({
-  preview,
-  hasLot = true,
-  judgment,
-  judgmentLabel,
-}: JudgmentGuideProps) => {
+export const JudgmentGuide = ({ preview, hasLot = true }: JudgmentGuideProps) => {
   if (preview === null) return null;
   const g = t.guide;
 
@@ -95,20 +87,6 @@ export const JudgmentGuide = ({
         <Icon name="info" size={20} aria-hidden="true" />
         {g.title}
       </h4>
-      <div className="oqc-inspection-guide-row">
-        <span>{g.quantities}</span>
-        <span className="oqc-inspection-guide-chips">
-          <span data-tone="accepted">{g.accepted(preview.accepted)}</span>
-          <span data-tone="rejected">{g.rejected(preview.rejected)}</span>
-          <span data-tone="held">{g.held(preview.held)}</span>
-        </span>
-      </div>
-      <div className="oqc-inspection-guide-row oqc-inspection-guide-divided">
-        <span>{g.selected}</span>
-        <span data-judgment={judgment === '' ? undefined : judgment}>
-          {judgment === '' ? g.notSelected : judgmentLabel}
-        </span>
-      </div>
       <p className="oqc-inspection-guide-line" data-tone="warning">
         <Icon name="warning" size={18} aria-hidden="true" />
         <span>
