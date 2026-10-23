@@ -133,8 +133,8 @@ export const pqcInspection = {
     judgmentUnknown: (code: string): string => `저장된 판정(${code})이 목록에 없습니다.`,
 
     confirm: '검사 확정',
-    confirmBlockedByTotals: '수량 합계가 검사 수량과 맞아야 확정할 수 있습니다.',
-    confirmBlockedByJudgment: '종합 판정을 골라야 확정할 수 있습니다.',
+    confirmBlockedByTotals: '수량 합계가 검사 수량과 일치해야 합니다.',
+    confirmBlockedByJudgment: '최종 판정을 선택해주세요.',
     /** 스펙 §5-9 「전 항목 판정」 — 무엇이 남았는지는 좌측 「진행 n / m」이 말한다. */
     confirmBlockedByItems: '검사 항목을 모두 판정해야 확정할 수 있습니다.',
     /**

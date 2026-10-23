@@ -196,10 +196,10 @@ export const oqcInspection = {
     blockedByConfirmed: '판정 저장 — 이미 확정된 회차입니다. 재검사로 새 회차를 쌓으세요.',
     blockedByDraftElsewhere:
       '판정 저장 — 다른 곳에서 작성 중인 회차입니다. 재검사로 새 회차를 쌓으세요.',
-    blockedByTotals: '판정 저장 — 수량 합계가 검사수량과 맞아야 저장할 수 있습니다.',
+    blockedByTotals: '수량 합계가 검사 수량과 일치해야 합니다.',
     blockedByJudgmentOptions:
       '판정 저장 — 판정 값 목록이 준비되지 않아 저장할 수 없습니다. 담당자에게 문의하세요.',
-    blockedByJudgment: '판정 저장 — 종합 판정을 골라야 저장할 수 있습니다.',
+    blockedByJudgment: '최종 판정을 선택해주세요.',
     /** 합격판정개수 기준 자동 판정(omf-all-around#126) — 기준에 합격판정개수가 있을 때만 선다. IQC(#125)와 같은 규칙이다. */
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>
