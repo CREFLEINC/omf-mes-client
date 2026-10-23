@@ -243,6 +243,20 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
       );
     }
 
+    if (
+      /^\/production\/work-sessions\/\d+\/events$/.test(url.pathname) &&
+      request.method === 'POST'
+    ) {
+      return jsonResponse(
+        {
+          workSessionEventId: 9701,
+          eventTypeCode: 'RESUME',
+          occurredAt: '2026-09-02T09:00:00+09:00',
+        },
+        { status: 201 },
+      );
+    }
+
     const crewPath = /^\/production\/work-sessions\/\d+\/workers$/;
     const leavePath = /^\/production\/work-sessions\/\d+\/workers\/(\d+):leave$/;
     const pathname = decodeURIComponent(url.pathname);

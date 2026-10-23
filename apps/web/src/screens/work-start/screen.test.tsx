@@ -987,7 +987,7 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
 
     it('그사이 다른 곳에서 세션이 열려 거절되면 서버 문구를 보이고 열린 세션을 다시 묻는다', async () => {
       const message =
-        '이 MES W/O 에 이미 열린 작업 세션이 있습니다. 목록을 새로 고친 뒤 [재개]를 누르세요 — 다른 단말의 세션이면 그 단말에서 재개·종료하거나 관리웹에서 강제 종료하세요.';
+        '이 MES W/O 에 이미 열린 작업 세션이 있습니다. 목록을 새로 고친 뒤 [재개] 또는 [작업 이어하기]로 그 세션을 이어 가세요 — 다른 단말의 세션이면 그 단말에서 재개·종료하거나 관리웹에서 강제 종료하세요.';
       const rendered = renderScreen({
         workOrders: [HELD],
         startOpenSessionMessage: message,
@@ -1054,6 +1054,31 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
       expect(screen.queryByText(message)).not.toBeInTheDocument();
     });
 
+    it('그사이 다른 단말이 먼저 다시 시작해 진행 중이 됐으면 서버 문구와 [작업 이어하기]가 선다', async () => {
+      const message =
+        '이 MES W/O 에 이미 열린 작업 세션이 있습니다. 목록을 새로 고친 뒤 [재개] 또는 [작업 이어하기]로 그 세션을 이어 가세요 — 다른 단말의 세션이면 그 단말에서 재개·종료하거나 관리웹에서 강제 종료하세요.';
+      const rendered = renderScreen({
+        workOrders: [HELD],
+        workOrdersAfter: [{ ...WORK_ORDER, statusCode: 'IN_PROGRESS' }],
+        startOpenSessionMessage: message,
+        openSessionsAfterConflict: [{ ...OPEN_SESSION, terminalId: 9194 }],
+      });
+
+      await selectWorkOrder(rendered);
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      await rendered.user.click(restartButton());
+
+      /* 진행 중인 세션은 중단된 것이 아니라 [재개]가 아니라 이어하기가 길이다. */
+      expect(
+        await screen.findByRole('button', { name: t.blocked.continueToSession }),
+      ).toBeEnabled();
+      expect(screen.getByText(message)).toBeInTheDocument();
+      expect(startButton()).toBeDisabled();
+      expect(screen.queryByRole('button', { name: t.actions.resume })).not.toBeInTheDocument();
+    });
+
     it('지시 수량을 이미 채웠으면 마감 안내도 함께 보인다', async () => {
       const rendered = renderScreen({
         workOrders: [{ ...HELD, progress: { goodQty: 500, achievementRate: 1 } }],
@@ -1099,6 +1124,30 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
   });
 
   describe('중단 세션이 열린 지시', () => {
+    it('재개하면 다시 읽은 목록에서 그 지시가 진행 중으로 선다', async () => {
+      const rendered = renderScreen({
+        workOrders: [{ ...WORK_ORDER, statusCode: 'SUSPENDED' }],
+        workOrdersAfter: [{ ...WORK_ORDER, statusCode: 'IN_PROGRESS' }],
+        openSessions: [OPEN_SESSION],
+      });
+
+      await selectWorkOrder(rendered);
+      expect(screen.getByText(t.list.heldBadge)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.actions.resume })).toBeEnabled();
+      });
+      const before = listUrls(rendered.recorded.urls).length;
+      await rendered.user.click(screen.getByRole('button', { name: t.actions.resume }));
+
+      expect(await screen.findByText(t.result.resumed(WORK_ORDER.workOrderNo))).toBeInTheDocument();
+      await waitFor(() => {
+        expect(listUrls(rendered.recorded.urls).length).toBeGreaterThan(before);
+      });
+      await waitFor(() => {
+        expect(screen.queryByText(t.list.heldBadge)).not.toBeInTheDocument();
+      });
+    });
+
     it('재개가 거부되면 재개하지 못했다는 말과 서버가 적은 까닭을 함께 보인다', async () => {
       const message = '이미 종료된 작업 세션입니다. 작업을 계속하려면 작업 시작을 다시 하세요.';
       const rendered = renderScreen({
