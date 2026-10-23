@@ -251,7 +251,9 @@ export const ResultForm = ({
                 value={disposition ?? ''}
                 disabled={isLocked || !canChoose}
                 aria-labelledby={dispositionLabelId}
-                onChange={(value) => onDispositionChange(value === '' ? null : toDisposition(value))}
+                onChange={(value) =>
+                  onDispositionChange(value === '' ? null : toDisposition(value))
+                }
               >
                 <Radio value="REWORK">{tDisposition.rework}</Radio>
                 <Radio value="SCRAP">{tDisposition.scrap}</Radio>

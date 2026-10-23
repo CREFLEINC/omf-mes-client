@@ -49,6 +49,7 @@ export const PqcInspectionRegisterScreen = () => {
     inspectionTypeCode: PQC,
     pendingOnly,
     ...(filters.itemId === null ? {} : { itemId: filters.itemId }),
+    ...(filters.workOrderId === null ? {} : { workOrderId: filters.workOrderId }),
     ...(filters.keyword === '' ? {} : { q: filters.keyword }),
     page,
     size: PAGE_SIZE,

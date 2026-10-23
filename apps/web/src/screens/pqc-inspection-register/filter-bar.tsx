@@ -2,18 +2,27 @@ import { Button, Checkbox, SearchInput, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState, type FormEvent } from 'react';
 
+import { useApiClient } from '../../patterns/api-context';
 import { ItemPickerDialog } from '../../patterns/item-picker';
+import { runRequest } from '../../patterns/request';
 import { useItem } from '../production-result/flow-queries';
 
 const t = messages.pqcInspectionRegister.filters;
 
-/** 걸어 둔 조건 — 품목(번호)과 의뢰번호 검색어. 비면 좁히지 않는다. */
+/** 걸어 둔 조건 — 품목(번호) · 작업지시(번호와 입력한 W/O 번호) · 의뢰번호 검색어. 비면 좁히지 않는다. */
 export interface PqcFilters {
   itemId: number | null;
+  workOrderId: number | null;
+  workOrderNo: string;
   keyword: string;
 }
 
-export const EMPTY_PQC_FILTERS: PqcFilters = { itemId: null, keyword: '' };
+export const EMPTY_PQC_FILTERS: PqcFilters = {
+  itemId: null,
+  workOrderId: null,
+  workOrderNo: '',
+  keyword: '',
+};
 
 export interface PqcFilterBarProps {
   applied: PqcFilters;
@@ -26,7 +35,7 @@ export interface PqcFilterBarProps {
 
 /**
  * W-03-11 목록 조건 줄(omf-all-around#135) — IQC 판정 화면(#133)의 조건 줄과 같은 모양이다.
- * 품목 검색(품목 검색 창으로 고른다) · 의뢰번호 검색 · [조회][초기화]. 서버 목록 질의 `itemId`·`q` 를 그대로 쓴다.
+ * 품목 검색(품목 검색 창으로 고른다) · 작업지시 검색(W/O 번호) · 의뢰번호 검색 · [조회][초기화]. 서버 목록 질의 `itemId`·`q` 를 그대로 쓴다.
  * PQC 는 대상이 작업지시라 공급사·LOT 스캔 조건이 없다.
  */
 export const PqcFilterBar = ({
@@ -38,6 +47,10 @@ export const PqcFilterBar = ({
 }: PqcFilterBarProps) => {
   const [itemId, setItemId] = useState<number | null>(applied.itemId);
   const [keyword, setKeyword] = useState(applied.keyword);
+  const [workOrderNo, setWorkOrderNo] = useState(applied.workOrderNo);
+  const [workOrderError, setWorkOrderError] = useState<string | null>(null);
+  const [isFinding, setIsFinding] = useState(false);
+  const { client } = useApiClient();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const item = useItem(itemId);
   const itemLabel =
@@ -48,13 +61,44 @@ export const PqcFilterBar = ({
         : `${item.data.itemCode} · ${item.data.itemName}`;
   const open = (): void => setIsPickerOpen(true);
 
-  const submit = (event: FormEvent<HTMLFormElement>): void => {
+  /*
+   * 작업지시 번호 → 작업지시 하나. 목록 질의는 번호(`workOrderId`)로 거르므로 조회 때 W/O 번호 검색으로 하나를 찾는다.
+   * 번호가 똑같은 것이 있으면 그것, 아니면 결과가 하나일 때만 그것이다 — 여럿이면 고르지 않고 정확히 입력하라고 한다.
+   */
+  const findWorkOrder = async (no: string): Promise<number | null> => {
+    const found = await runRequest(() =>
+      client.GET('/production/work-orders', { params: { query: { q: no, page: 1, size: 20 } } }),
+    );
+    const exact = found.items.find((row) => row.workOrderNo.toUpperCase() === no.toUpperCase());
+    if (exact !== undefined) return exact.workOrderId;
+    const [only, ...rest] = found.items;
+    if (only !== undefined && rest.length === 0) return only.workOrderId;
+    setWorkOrderError(only === undefined ? t.workOrderNotFound : t.workOrderAmbiguous);
+    return null;
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    onSearch({ itemId, keyword: keyword.trim() });
+    const no = workOrderNo.trim();
+    setWorkOrderError(null);
+    if (no === '') {
+      onSearch({ itemId, workOrderId: null, workOrderNo: '', keyword: keyword.trim() });
+      return;
+    }
+    setIsFinding(true);
+    try {
+      const workOrderId = await findWorkOrder(no);
+      if (workOrderId !== null)
+        onSearch({ itemId, workOrderId, workOrderNo: no, keyword: keyword.trim() });
+    } catch {
+      setWorkOrderError(t.workOrderFailed);
+    } finally {
+      setIsFinding(false);
+    }
   };
 
   return (
-    <form className="filter-bar pqc-web-filter-bar" onSubmit={submit}>
+    <form className="filter-bar pqc-web-filter-bar" onSubmit={(event) => void submit(event)}>
       <SearchInput
         label={t.item}
         value={itemLabel}
@@ -69,7 +113,8 @@ export const PqcFilterBar = ({
         /* × 는 품목 조건을 풀고 바로 다시 조회한다 — 전 품목이 나온다(#135 · 담당자 지시). */
         onClear={() => {
           setItemId(null);
-          onSearch({ itemId: null, keyword: keyword.trim() });
+          /* 다른 조건은 걸어 둔 그대로 — × 는 품목 하나만 푼다. */
+          onSearch({ ...applied, itemId: null });
         }}
       />
       {isPickerOpen && (
@@ -87,6 +132,16 @@ export const PqcFilterBar = ({
         />
       )}
       <TextField
+        label={t.workOrder}
+        placeholder={t.workOrderPlaceholder}
+        value={workOrderNo}
+        error={workOrderError ?? undefined}
+        onChange={(event) => {
+          setWorkOrderNo(event.target.value);
+          setWorkOrderError(null);
+        }}
+      />
+      <TextField
         label={t.keyword}
         placeholder={t.keywordPlaceholder}
         value={keyword}
@@ -103,7 +158,7 @@ export const PqcFilterBar = ({
         </div>
       </div>
       <div className="filter-actions field-cell-unlabeled pqc-web-filter-actions">
-        <Button type="submit" variant="filled">
+        <Button type="submit" variant="filled" disabled={isFinding}>
           {t.apply}
         </Button>
         <Button
@@ -111,6 +166,8 @@ export const PqcFilterBar = ({
           variant="outlined"
           onClick={() => {
             setItemId(null);
+            setWorkOrderNo('');
+            setWorkOrderError(null);
             setKeyword('');
             onReset();
           }}

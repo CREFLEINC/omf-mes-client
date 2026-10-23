@@ -77,6 +77,14 @@ const renderScreen = (options: RenderOptions = {}) => {
       return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
     }
     if (path === '/quality/inspection-requests/7101') return jsonResponse(REQUEST);
+    if (path === '/production/work-orders') {
+      const q = (url.searchParams.get('q') ?? '').toUpperCase();
+      const items = [
+        { workOrderId: 701, workOrderNo: 'WO-20261016-0701', itemId: 101 },
+        { workOrderId: 702, workOrderNo: 'WO-20261016-0702', itemId: 101 },
+      ].filter((row) => row.workOrderNo.includes(q));
+      return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
+    }
     if (path === '/production/work-orders/701') {
       return jsonResponse({ workOrderId: 701, workOrderNo: 'WO-20261016-0701', itemId: 101 });
     }
@@ -162,6 +170,32 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
 
     await user.click(screen.getByRole('button', { name: t.filters.reset }));
     await waitFor(() => expect(queueQueries.at(-1)?.get('q')).toBeNull());
+  });
+
+  it('작업지시 번호로 찾은 작업지시를 목록 질의 workOrderId 로 싣고, 못 찾거나 여럿이면 조회하지 않는다(#135)', async () => {
+    const user = userEvent.setup();
+    const { queueQueries } = renderScreen();
+    await screen.findByText(REQUEST.inspectionRequestNo);
+    const field = screen.getByRole('textbox', { name: t.filters.workOrder });
+    const asked = (): number => queueQueries.length;
+
+    await user.type(field, 'WO-9999');
+    let before = asked();
+    await user.click(screen.getByRole('button', { name: t.filters.apply }));
+    expect(await screen.findByText(t.filters.workOrderNotFound)).toBeInTheDocument();
+    expect(asked()).toBe(before);
+
+    await user.clear(field);
+    await user.type(field, '07');
+    before = asked();
+    await user.click(screen.getByRole('button', { name: t.filters.apply }));
+    expect(await screen.findByText(t.filters.workOrderAmbiguous)).toBeInTheDocument();
+    expect(asked()).toBe(before);
+
+    await user.clear(field);
+    await user.type(field, 'wo-20261016-0701');
+    await user.click(screen.getByRole('button', { name: t.filters.apply }));
+    await waitFor(() => expect(queueQueries.at(-1)?.get('workOrderId')).toBe('701'));
   });
 
   it('품목 검색의 × 를 누르면 품목 조건을 풀고 바로 다시 조회한다(#135)', async () => {
