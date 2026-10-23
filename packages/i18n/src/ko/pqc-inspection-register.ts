@@ -5,7 +5,7 @@
  * 두 자리가 다른 말로 부르지 않는다. 여기에는 목록·화면 틀의 말만 둔다.
  */
 export const pqcInspectionRegister = {
-  title: 'PQC 검사 등록·조회',
+  title: 'PQC (공정검사) 조회·판정',
   breadcrumbRoot: '품질 관리',
 
   queue: {

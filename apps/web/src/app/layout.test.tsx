@@ -536,15 +536,15 @@ describe('AppLayout', () => {
     const links = sidebarHrefs();
 
     expect(within(sidebar).getByText('품질 관리')).toBeInTheDocument();
-    expect(within(sidebar).getByRole('link', { name: 'IQC 수입검사·판정' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: 'IQC (수입검사) 조회·판정' })).toHaveAttribute(
       'href',
       '/logistics/iqc-inspection',
     );
-    expect(within(sidebar).getByRole('link', { name: 'PQC 검사 등록·조회' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: 'PQC (공정검사) 조회·판정' })).toHaveAttribute(
       'href',
       '/quality/pqc-inspections',
     );
-    expect(within(sidebar).getByRole('link', { name: 'OQC 출하검사 판정' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: 'OQC (출하검사) 조회·판정' })).toHaveAttribute(
       'href',
       '/shipment/oqc-inspection',
     );
@@ -1591,7 +1591,7 @@ describe('AppLayout — 화면 검색', () => {
     await user.type(searchBox(), 'iqc');
 
     expect(
-      within(navSidebar()).getByRole('link', { name: 'IQC 수입검사·판정' }),
+      within(navSidebar()).getByRole('link', { name: 'IQC (수입검사) 조회·판정' }),
     ).toBeInTheDocument();
   });
 });

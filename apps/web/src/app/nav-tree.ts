@@ -232,7 +232,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/logistics/iqc-inspection',
         icon: 'troubleshoot',
-        label: 'IQC 수입검사·판정',
+        label: 'IQC (수입검사) 조회·판정',
         labelVi: 'IQC kiểm tra đầu vào · đánh giá',
       },
       /*
@@ -248,13 +248,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/quality/pqc-inspections',
         icon: 'fact_check',
-        label: 'PQC 검사 등록·조회',
+        label: 'PQC (공정검사) 조회·판정',
         labelVi: 'Đăng ký · tra cứu kiểm tra PQC',
       },
       {
         to: '/shipment/oqc-inspection',
         icon: 'local_shipping',
-        label: 'OQC 출하검사 판정',
+        label: 'OQC (출하검사) 조회·판정',
         labelVi: 'OQC đánh giá kiểm tra xuất hàng',
       },
       {
