@@ -24,10 +24,7 @@ export interface WorkOrderListProps {
   onPageChange: (page: number) => void;
   /** 전체 보기인가 — 빈 상태 문구가 갈린다. */
   isShowingAll: boolean;
-  /**
-   * 단말에 설비가 매핑되지 않았는가. 서버가 목록 조회를 거부하므로 「전체 보기」를 두지 않는다
-   * (사용자 지시 2026-09-13).
-   */
+  /** 단말에 설비가 매핑되지 않았는가. 좁힐 설비가 없어 범위를 바꾸는 단추를 두지 않는다. */
   isEquipmentMissing?: boolean;
   /** 설비를 몰라 기본 목록을 세우지 못했는가. */
   isEquipmentUnknown: boolean;
@@ -78,7 +75,9 @@ export const WorkOrderList = ({
     <section className="pane work-start-list" aria-label={t.title}>
       <div className="work-start-list-head">
         <h2 className="pane-title">
-          {t.title} · {isShowingAll ? t.scopeAll : t.scopeEquipment}
+          {isEquipmentMissing
+            ? t.title
+            : `${t.title} · ${isShowingAll ? t.scopeAll : t.scopeEquipment}`}
         </h2>
 
         {/* 「전체 보기」는 조회 축 하나를 뺄 뿐이다 — 다른 조건은 그대로다(§5-5). */}
@@ -111,12 +110,6 @@ export const WorkOrderList = ({
        * ⚠ 설비를 몰라 기본 목록을 못 세운 상태는 **빈 목록이 아니다.** 사유와 다음 행동을
        *    함께 보인다 — 그러지 않으면 「이 설비에 지시가 없다」로 읽힌다.
        */}
-      {isEquipmentMissing && (
-        <div className="banner-slot">
-          <AlertBanner variant="info">{t.equipmentMissing}</AlertBanner>
-        </div>
-      )}
-
       {isEquipmentUnknown && !isShowingAll && (
         <div className="banner-slot">
           <AlertBanner variant="warning">{t.equipmentUnknown}</AlertBanner>
@@ -206,6 +199,23 @@ export const WorkOrderList = ({
                                 {t.heldBadge}
                               </Chip>{' '}
                             </>
+                          )}
+                          {/* 「이 설비」 목록은 모두 같은 설비라 코드를 되풀이하지 않는다. */}
+                          {row.plannedEquipmentId == null ? (
+                            <>
+                              <Chip status="info" size="md">
+                                {t.unassignedEquipmentBadge}
+                              </Chip>{' '}
+                            </>
+                          ) : (
+                            (isShowingAll || isEquipmentMissing) &&
+                            row.plannedEquipmentCode != null && (
+                              <>
+                                <Chip status="idle" size="md">
+                                  {row.plannedEquipmentCode}
+                                </Chip>{' '}
+                              </>
+                            )
                           )}
                           {row.workOrderNo} · {itemText(row)}
                         </p>

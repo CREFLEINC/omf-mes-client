@@ -1,14 +1,14 @@
 import { messages } from '@omf-mes/i18n';
 
 /**
- * 이 단말에서 이 공정의 무엇을 열어 둘 것인가 — 여덟 갈래.
+ * 이 단말에서 이 공정의 무엇을 열어 둘 것인가.
  *
  * ⭐ **오조작 방지이지 보안이 아니다.** 보안 경계는 단말 토큰 하나뿐이고, 실제 게이팅은
  * 서버의 거부가 맡는다. 여기서 닫는 것은 「현장에서 잘못 누르는 것」을 줄이는 일이다.
  *
  * ⛔ **승인 플래그를 만들지 않는다.** 계약에 없다.
  *
- * ⚠ **이름만 보면 창고 작업이 있어 보이지만 실재하는 여덟은 전부 생산 축이다.** 그래서
+ * ⚠ **이름만 보면 창고 작업이 있어 보이지만 실재하는 것은 전부 생산 축이다.** 그래서
  * 창고 전용 단말은 이 표에서 **행 0건이 정상**이고, 빈 결과를 오류로 그리지 않는다.
  *
  * 순서가 화면의 열 순서다 — 작업의 흐름(시작 → 완료 → 투입 → 실적 → 검사)을 따른다.
@@ -20,6 +20,7 @@ const t = messages.terminalProcessMap;
 export const FLAG_KEYS = [
   'canStartWork',
   'canCompleteWork',
+  'canCloseWorkOrder',
   'canInputMaterial',
   'canInputResult',
   'canInputInspection',
@@ -36,6 +37,7 @@ export const flagLabel = (key: FlagKey): string => t.flags[key];
 export const ALL_CLOSED: Record<FlagKey, boolean> = {
   canStartWork: false,
   canCompleteWork: false,
+  canCloseWorkOrder: false,
   canInputMaterial: false,
   canInputResult: false,
   canInputInspection: false,
@@ -43,3 +45,9 @@ export const ALL_CLOSED: Record<FlagKey, boolean> = {
   canCancelInput: false,
   canReturnMaterial: false,
 };
+
+/**
+ * 작업지시 마감만은 **기본이 열림**이다(사용자 결정) — 서버도 값이 없으면 열림으로 둔다.
+ * 그리고 이것만 켠 줄은 서버가 받지 않는다(그 공정에서 할 수 있는 작업이 없다).
+ */
+export const OPEN_BY_DEFAULT: readonly FlagKey[] = ['canCloseWorkOrder'];

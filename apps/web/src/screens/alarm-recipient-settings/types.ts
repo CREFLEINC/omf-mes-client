@@ -1,41 +1,32 @@
 import type { components } from '@omf-mes/api-client';
 
-export type NotificationEvent = components['schemas']['NotificationEvent'];
-export type NotificationSubscription = components['schemas']['NotificationSubscription'];
-export type NotificationRecipient = components['schemas']['NotificationRecipient'];
-export type NotificationSubscriptionReplace =
-  components['schemas']['NotificationSubscriptionReplace'];
-export type AppUser = components['schemas']['AppUser'];
-export type Role = components['schemas']['Role'];
-export type BusinessUnit = components['schemas']['BusinessUnit'];
+/**
+ * W-CO-11 — 부서 × 이벤트 알림 설정(001 재설계). 수신자는 개인 지정만 있다(결정 #19).
+ * api-client 는 `import type` 으로만 참조한다.
+ */
+type Schemas = components['schemas'];
 
-export interface RecipientDraft {
-  key: string;
-  recipientTypeCode: 'ROLE' | 'USER';
-  businessUnitId: string;
-  roleId: string;
-  userId: string;
-}
+export type NotificationEvent = Schemas['NotificationEvent'];
+export type Department = Schemas['Department'];
+export type SettingSummary = Schemas['NotificationSettingSummary'];
+export type SettingSummaryItem = SettingSummary['items'][number];
+export type Setting = Schemas['NotificationSetting'];
+export type SettingRecipient = Setting['recipients'][number];
+export type SettingReplace = Schemas['NotificationSettingReplace'];
+export type CandidatePage = Schemas['RecipientCandidatePage'];
+export type Candidate = CandidatePage['items'][number];
 
-export interface DraftError {
-  businessUnitId?: string;
-  roleId?: string;
-  userId?: string;
-  duplicate?: string;
+/**
+ * 고치는 중인 한 행. 수신자는 표시에 필요한 칸을 함께 든다 — 후보에서 고른 사람도 저장 전에
+ * 이름·부서·전화번호 여부가 보여야 한다.
+ */
+export interface SettingDraft {
+  enabled: boolean;
+  zaloEnabled: boolean;
+  recipients: SettingRecipient[];
 }
 
 export interface Option {
   value: string;
   label: string;
-}
-
-export interface PreviewResult {
-  resolvedAt: string;
-  totalCount: number;
-  users: {
-    userId: number;
-    userName: string;
-    departmentName?: string | null;
-    isActive: boolean;
-  }[];
 }

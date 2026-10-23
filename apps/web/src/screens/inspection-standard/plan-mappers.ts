@@ -14,6 +14,9 @@ type InspectionPlanUpdate = components['schemas']['InspectionPlanUpdate'];
  */
 
 /** 널·없음을 빈 문자열로 모은다 — 입력칸의 「지정하지 않음」이 하나의 값이어야 한다. */
+/** 생략 허용이 뜻을 갖는 유일한 검사 유형(omf-all-around#119). */
+const PQC = 'PQC';
+
 const optionalIdToText = (value: number | null | undefined): string =>
   value === null || value === undefined ? '' : String(value);
 
@@ -27,6 +30,7 @@ export const planToFormValues = (plan: InspectionPlan): PlanFormValues => ({
   itemId: optionalIdToText(plan.itemId),
   processId: optionalIdToText(plan.processId),
   routingId: optionalIdToText(plan.routingId),
+  pqcSkipAllowed: plan.pqcSkipAllowed ?? false,
 });
 
 export const emptyPlanFormValues = (): PlanFormValues => ({
@@ -36,6 +40,7 @@ export const emptyPlanFormValues = (): PlanFormValues => ({
   itemId: '',
   processId: '',
   routingId: '',
+  pqcSkipAllowed: false,
 });
 
 /**
@@ -52,6 +57,7 @@ export const toPlanUpdate = (values: PlanFormValues): InspectionPlanUpdate => ({
   itemId: textToOptionalId(values.itemId),
   processId: textToOptionalId(values.processId),
   routingId: textToOptionalId(values.routingId),
+  pqcSkipAllowed: values.inspectionTypeCode === PQC && values.pqcSkipAllowed,
 });
 
 /**
@@ -67,7 +73,8 @@ export const isSamePlanValues = (a: PlanFormValues, b: PlanFormValues): boolean 
   a.inspectionTypeCode === b.inspectionTypeCode &&
   a.itemId === b.itemId &&
   a.processId === b.processId &&
-  a.routingId === b.routingId;
+  a.routingId === b.routingId &&
+  a.pqcSkipAllowed === b.pqcSkipAllowed;
 
 /**
  * 승인 시각 표기. 값이 없으면 null이다.

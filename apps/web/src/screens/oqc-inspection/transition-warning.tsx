@@ -33,12 +33,20 @@ const DIRECTION_TEXT = {
   unknown: t.directionUnknown,
 } as const;
 
+/** 대상 LOT 이 없는 의뢰 = 출하작업지시 OQC — 서버가 집은(피킹) LOT 에 판정을 남긴다(omf-all-around#119 · 서버 P-83). */
+const PICKED_DIRECTION_TEXT = {
+  release: t.pickedDirectionRelease,
+  hold: t.pickedDirectionHold,
+  pending: t.pickedDirectionPending,
+  unknown: t.directionUnknown,
+} as const;
+
 export interface TransitionWarningProps {
   /** `null` 이면 아무것도 그리지 않는다 — 셀 수 없는 동안 숫자가 거짓이 된다 */
   preview: TransitionPreview | null;
   /**
-   * 의뢰에 대상 LOT 이 있는가. **없으면 서버가 LOT 을 옮기지 않는다**(전이 없이 확정만) — 그때는
-   * 방향·피킹 문장을 내지 않고 「바뀌지 않는다」고 말한다. 표시만 바뀌고 저장 조건은 그대로다.
+   * 의뢰에 대상 LOT 이 있는가. **없으면 출하작업지시 OQC 다** — 서버가 그 지시가 집은 LOT 에 판정을
+   * 남긴다(합격 C4 · 불합격 C6 · 보류는 그대로 · omf-all-around#119). 방향 문장만 바뀌고 저장 조건은 그대로다.
    */
   hasLot?: boolean;
 }
@@ -53,15 +61,9 @@ export const TransitionWarningBody = ({ preview, hasLot = true }: TransitionWarn
   return (
     <>
       <p>{t.quantities(preview.accepted, preview.rejected, preview.held)}</p>
-      {hasLot ? (
-        <>
-          <p>{DIRECTION_TEXT[preview.direction]}</p>
-          <p>{t.pickingImpact}</p>
-          <p>{t.pickedNotReturned}</p>
-        </>
-      ) : (
-        <p>{t.noLot}</p>
-      )}
+      <p>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</p>
+      <p>{t.pickingImpact}</p>
+      <p>{t.pickedNotReturned}</p>
       <p>{t.noAmendment}</p>
       <p>{t.dispositionPath}</p>
     </>
@@ -73,7 +75,7 @@ export const TransitionWarning = ({ preview, hasLot = true }: TransitionWarningP
 
   return (
     <div className="banner-slot">
-      <AlertBanner variant="warning" title={hasLot ? t.title : t.noLotTitle}>
+      <AlertBanner variant="warning" title={t.title}>
         <TransitionWarningBody preview={preview} hasLot={hasLot} />
       </AlertBanner>
     </div>

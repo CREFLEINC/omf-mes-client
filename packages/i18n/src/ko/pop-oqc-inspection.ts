@@ -89,8 +89,8 @@ export const popOqcInspection = {
   /**
    * 저장 전 안내 — 판정 확정이 LOT 에 미치는 영향. 보이는 조건은 W-04-03 의 전이 경고와 같다.
    * ⭐ 상태 이름은 서버 전이표(`core/document-state/transitions.ts` C4·C5·C6)와 맞췄다 —
-   *    합격 → 정상(다른 보류가 없을 때) · 보류 → 검사 대기 · 불합격 → 불량. 의뢰에 LOT 이 없으면
-   *    서버가 전이 없이 확정만 한다(`inspection-confirm.service.ts` moveTargetLot).
+   *    합격 → 정상(다른 보류가 없을 때) · 보류 → 검사 대기 · 불합격 → 불량. 의뢰에 LOT 이 없으면(출하작업지시 OQC)
+   *    서버가 그 지시가 집은 LOT 에 판정을 남긴다 — `picked*` 문장(omf-all-around#119 · 서버 P-83 · W-04-03 과 같은 말).
    */
   warning: {
     title: 'LOT 상태 변경',
@@ -98,7 +98,10 @@ export const popOqcInspection = {
     directionHold: "저장 시 LOT 상태가 '불량'으로 바뀝니다.",
     directionPending: "저장 시 LOT 상태가 '검사 대기'로 바뀝니다.",
     directionUnknown: '저장 시 LOT 상태가 바뀝니다.',
-    noLot: '대상 LOT 이 없어 LOT 상태는 바뀌지 않습니다.',
+    pickedDirectionRelease: '저장 시 이 LOT 이 출하할 수 있는 상태로 풀립니다.',
+    pickedDirectionHold: '저장 시 이 출하작업지시가 집은 LOT 이 불량 상태가 됩니다.',
+    pickedDirectionPending:
+      '보류는 LOT 상태를 바꾸지 않습니다. 이 출하작업지시는 판정이 끝날 때까지 출하할 수 없습니다.',
     picking: '이 LOT 을 쓰는 진행 중 피킹이 막히고, 이미 피킹된 수량은 되돌아오지 않습니다.',
     noAmendment: '저장 후에는 고칠 수 없습니다. 바꾸려면 재검사합니다.',
     dispositionPath: '불합격 수량의 처분(재작업·폐기)은 이 화면에서 정하지 않습니다.',

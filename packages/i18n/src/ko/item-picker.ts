@@ -5,7 +5,7 @@
  * 그 규칙 둘을 문구가 함께 말한다 — **검색어가 비면 조회하지 않는다**, **「찾기」로만 조회한다.**
  */
 export const itemPicker = {
-  title: '품목 선택',
+  title: '품목 검색',
 
   /** 유형은 코드 그룹에서 받는다 — 여기에 값 목록을 적지 않는다(공유계약 G-32). */
   typeLabel: '유형',
@@ -14,13 +14,13 @@ export const itemPicker = {
   typeFailed: '유형 목록을 불러오지 못했습니다. 「전체」로 찾을 수 있습니다.',
 
   keywordLabel: '검색어',
-  keywordPlaceholder: '품목 코드 또는 이름',
-  search: '찾기',
+  keywordPlaceholder: '품목 코드 또는 이름을 입력하세요',
+  search: '검색',
 
   columns: {
     select: '선택',
-    itemCode: '코드',
-    itemName: '이름',
+    itemCode: '품목 코드',
+    itemName: '품목 이름',
     itemType: '유형',
     availableQty: '가용',
   },

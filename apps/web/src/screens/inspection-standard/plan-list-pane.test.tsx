@@ -159,7 +159,11 @@ describe('PlanListPane — 조건', () => {
     renderPane({ plans: [], pageView: toPageView({ page: 1, size: 50, total: 0 }, 0) });
 
     expect(screen.getByLabelText('검사기준 검색')).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: '검사기준' })).getByRole('button', { name: '조회' })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: '검사기준' })).getByRole('button', {
+        name: '조회',
+      }),
+    ).toBeInTheDocument();
   });
 });
 

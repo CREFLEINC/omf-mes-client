@@ -3,9 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createDrafts,
+  EMPTY_LOT_DRAFT,
+  hasAnyLineInput,
   hasAnyQty,
   parseQty,
+  readDraft,
   readDraftQty,
+  setDraftLot,
   setDraftQty,
   type LineDrafts,
 } from './line-draft';
@@ -147,5 +151,53 @@ describe('hasAnyQty — 버릴 것이 있는가', () => {
   /* 잘못 친 값도 사용자가 친 값이다 — 버리기 전에 확인을 받아야 한다. */
   it('잘못 친 값도 채운 것으로 본다', () => {
     expect(hasAnyQty(setDraftQty(createDrafts(LINES), 9401, 'abc'))).toBe(true);
+  });
+});
+
+describe('setDraftLot — 줄 하나에 LOT 하나', () => {
+  it('그 줄의 LOT 만 바뀌고 수량과 다른 줄은 그대로다', () => {
+    const drafts = setDraftLot(setDraftQty(createDrafts(LINES), 9401, '12'), 9401, {
+      lotNo: 'L-2',
+    });
+
+    expect(readDraft(drafts, 9401)).toEqual({
+      qtyText: '12',
+      lot: { lotNo: 'L-2', labelMissing: false, reasonCode: '' },
+    });
+    expect(readDraft(drafts, 9402)).toEqual({ qtyText: '', lot: EMPTY_LOT_DRAFT });
+  });
+
+  it('조각만 고쳐도 나머지 칸은 남는다', () => {
+    const drafts = setDraftLot(
+      setDraftLot(createDrafts(LINES), 9401, {
+        labelMissing: true,
+        reasonCode: 'NO_LABEL',
+      }),
+      9401,
+      { lotNo: 'L-1' },
+    );
+
+    expect(readDraft(drafts, 9401).lot).toEqual({
+      lotNo: 'L-1',
+      labelMissing: true,
+      reasonCode: 'NO_LABEL',
+    });
+  });
+});
+
+describe('hasAnyLineInput — LOT 만 손대도 버릴 것이다', () => {
+  it('수량 없이 LOT 번호만 넣어도 참이다', () => {
+    expect(hasAnyLineInput(setDraftLot(createDrafts(LINES), 9401, { lotNo: 'L' }))).toBe(true);
+    expect(hasAnyQty(setDraftLot(createDrafts(LINES), 9401, { lotNo: 'L' }))).toBe(false);
+  });
+
+  it('라벨 없음만 켜도 참이다', () => {
+    expect(hasAnyLineInput(setDraftLot(createDrafts(LINES), 9402, { labelMissing: true }))).toBe(
+      true,
+    );
+  });
+
+  it('아무것도 손대지 않았으면 거짓이다', () => {
+    expect(hasAnyLineInput(createDrafts(LINES))).toBe(false);
   });
 });

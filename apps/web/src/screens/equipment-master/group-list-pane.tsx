@@ -152,6 +152,12 @@ export const GroupListPane = ({
       render: (row) => lookupLabel(plants, String(row.group.plantId)),
     },
     {
+      key: 'departmentName',
+      header: t.fields.department,
+      /* 응답이 이름을 함께 내린다 — 따로 풀지 않는다. 비면 비어 있음이 보여야 한다. */
+      render: (row) => row.group.departmentName ?? '—',
+    },
+    {
       key: 'isActive',
       header: t.fields.isActive,
       render: (row) => (row.group.isActive ? t.values.active : t.values.inactive),

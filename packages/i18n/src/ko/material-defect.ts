@@ -81,6 +81,8 @@ export const materialDefect = {
     caption: '영향 생산 LOT 목록',
     estimate:
       '작업지시 기준 추정 — 이 자재가 투입된 작업지시의 생산 LOT 전부입니다. 실제로 쓰인 LOT 보다 넓을 수 있습니다.',
+    genealogy:
+      '투입 시각 기준 추정 — 같은 작업지시, 같은 자재에서 다음 LOT 을 투입하기 전까지 만든 생산 LOT 입니다.',
     none: '이 자재가 투입된 작업지시가 없습니다.',
     loading: '영향 범위를 불러오는 중입니다.',
     loadFailed: '영향 범위를 불러오지 못했습니다.',

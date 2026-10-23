@@ -1,5 +1,5 @@
 export const workOrderRelease = {
-  title: 'W/O 확정·배포·생산LOT 선발행',
+  title: 'W/O 배포',
   breadcrumbRoot: '생산 관리',
   filter: {
     pane: '배포 후보 조회 조건',
@@ -114,10 +114,10 @@ export const workOrderRelease = {
     cancel: '취소',
     running: '일괄 배포 중입니다…',
     resultTitle: (released: number, skipped: number, failed: number): string =>
-      `일괄 배포 결과 — 배포 ${String(released)} · 건너뜀 ${String(skipped)} · 실패 ${String(failed)}`,
+      `일괄 배포 결과: 배포 ${String(released)}, 건너뜀 ${String(skipped)}, 실패 ${String(failed)}`,
     close: '닫기',
     reasons: {
-      setupMissing: '생산 라인·기본 위치가 설정되지 않았습니다(4M 자원배정).',
+      setupMissing: '생산 라인과 기본 위치가 정해지지 않았습니다.',
       noDefaultLotSize: '품목 기본 LOT 크기가 없거나 단위가 다릅니다(품목 확장속성).',
       failed: '배포하지 못했습니다.',
     },
@@ -156,7 +156,7 @@ export const workOrderRelease = {
     validationBlocked: '검증 결과의 차단 항목을 해결한 뒤 다시 확인하세요.',
     validationUnavailable:
       '검증 결과를 불러올 수 없습니다. 다시 선택하거나 새로고침한 뒤 계속하세요.',
-    missingDefaultLocations: '기본 WIP·완제품·스크랩 위치를 설정한 뒤 다시 확인하세요.',
+    missingDefaultLocations: '기본 WIP, 완제품, 스크랩 위치를 정한 뒤 다시 확인하세요.',
     /** 위치 누락·검증 차단은 둘 다 W-02-03 에서 고친다 — 그 화면으로 가는 버튼 */
     openAssignment: '4M 자원배정에서 설정',
   },

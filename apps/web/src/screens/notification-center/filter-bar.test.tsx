@@ -13,8 +13,8 @@ const PERIOD = { from: '2026-08-01', to: '2026-08-07' };
 
 const OPTIONS: SelectOption[] = [
   { value: '', label: t.filters.all },
-  { value: 'SYN-EVENT-01', label: '합성 이벤트 가' },
-  { value: 'SYN-EVENT-02', label: '합성 이벤트 나' },
+  { value: 'WORK_SESSION_STARTED', label: '생산 실행' },
+  { value: 'WORK_ORDER_CLOSED', label: '생산 마감' },
 ];
 
 const renderBar = (filters: NotificationFilters = DEFAULT_FILTERS, eventNote?: string) => {
@@ -76,16 +76,19 @@ describe('NotificationFilterBar', () => {
     const { onChangeFilters, user } = renderBar({ unreadOnly: false, eventCode: '' });
 
     await user.click(screen.getByRole('combobox', { name: t.fields.eventCode }));
-    await user.click(await screen.findByRole('option', { name: '합성 이벤트 가' }));
+    await user.click(await screen.findByRole('option', { name: '생산 실행' }));
 
-    expect(onChangeFilters).toHaveBeenCalledWith({ unreadOnly: false, eventCode: 'SYN-EVENT-01' });
+    expect(onChangeFilters).toHaveBeenCalledWith({
+      unreadOnly: false,
+      eventCode: 'WORK_SESSION_STARTED',
+    });
   });
 
   /** 「전체」가 값이 빈 선택지로 없으면 한 번 고른 뒤 조건을 해제할 방법이 사라진다. */
   it('「전체」로 되돌릴 수 있다', async () => {
     const { onChangeFilters, user } = renderBar({
       unreadOnly: true,
-      eventCode: 'SYN-EVENT-01',
+      eventCode: 'WORK_SESSION_STARTED',
     });
 
     await user.click(screen.getByRole('combobox', { name: t.fields.eventCode }));
@@ -107,11 +110,11 @@ describe('NotificationFilterBar', () => {
   });
 
   it('주소에 반영된 값을 그대로 보인다 — 자기 상태를 들지 않는다', () => {
-    renderBar({ unreadOnly: false, eventCode: 'SYN-EVENT-02' });
+    renderBar({ unreadOnly: false, eventCode: 'WORK_ORDER_CLOSED' });
 
     expect(screen.getByRole('checkbox', { name: t.fields.unreadOnly })).not.toBeChecked();
     expect(screen.getByRole('combobox', { name: t.fields.eventCode })).toHaveTextContent(
-      '합성 이벤트 나',
+      '생산 마감',
     );
   });
 });

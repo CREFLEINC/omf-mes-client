@@ -1,12 +1,10 @@
-import { AlertBanner, Breadcrumb, Button, Dialog, PageHeader, useToast } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import { Breadcrumb, Button, Dialog, PageHeader, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite } from '../../patterns/master';
-import { toApiError } from '../../patterns/request';
 import { toBatchResultView, type BatchResultView, type RequestedMessage } from './batch-result';
 import { BatchRetryDialog } from './batch-retry-dialog';
 import {
@@ -25,6 +23,7 @@ import {
   toSearchParams,
   type MessageFilters,
 } from './filters';
+import { LoadErrorBanner } from './load-error-banner';
 import { MessageDetailDialog } from './message-detail-dialog';
 import { MessageFilterBar } from './message-filter-bar';
 import { MessageTable } from './message-table';
@@ -34,58 +33,10 @@ import { defaultPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from '
 import { messageKeys, useFilterOptions, useMessageDetail, useMessageList } from './queries';
 import { retryMessage, retryMessagesBatch } from './requests';
 import { RetryErrorBanner } from './retry-error-banner';
+import { SyncTablePanel } from './sync-table-panel';
 import type { BatchResult, IntegrationMessageRow } from './types';
 
 const t = messages.integrationSync;
-
-/**
- * 조회 실패의 원인을 한 줄 안내로 옮긴다.
- * 저장 실패와 달리 사용자가 할 수 있는 조치가 재시도뿐이라 액션도 하나다.
- *
- * 다른 화면 슬라이스에도 같은 함수가 있으나 가져다 쓰지 않는다 —
- * 화면 슬라이스끼리 참조하면 한쪽의 사정이 다른 쪽 화면을 바꾼다.
- */
-const describeLoadError = (error: ApiError): string => {
-  switch (error.kind) {
-    case 'network':
-      return messages.httpError.offline;
-    case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
-      // 서버가 빈 message를 주는 일이 실제로 있다. ??는 빈 문자열을 통과시켜 본문을 지운다.
-      return error.message === undefined || error.message === ''
-        ? messages.httpError.description
-        : error.message;
-    case 'conflict':
-      return error.message === '' ? messages.httpError.description : error.message;
-    case 'stateLocked':
-    case 'validation': {
-      const lines = error.errors.map((item) => item.message).join(' ');
-      return lines === '' ? messages.httpError.description : lines;
-    }
-  }
-};
-
-interface LoadErrorBannerProps {
-  error: unknown;
-  onRetry: () => void;
-}
-
-/** 조회 실패 배너. 규범 6에 따라 화면이 직접 배치하는 배너는 화면이 이음매를 붙인다. */
-const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
-  <div className="banner-slot">
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {describeLoadError(toApiError(error))}
-    </AlertBanner>
-  </div>
-);
 
 interface RetryConfirmDialogProps {
   target: IntegrationMessageRow | null;
@@ -387,6 +338,9 @@ export const IntegrationSyncScreen = () => {
           />
         }
       />
+
+      {/* 연계 메시지 목록과 따로 읽는다 — 조회 조건과 무관한 지금 상태라 목록이 실패해도 보인다. */}
+      <SyncTablePanel />
 
       {list.isError && <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />}
 

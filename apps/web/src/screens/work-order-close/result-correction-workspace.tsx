@@ -344,6 +344,9 @@ export const WorkOrderResultCorrectionWorkspace = ({
     reasons.isError ||
     reasons.data?.truncated === true ||
     reasonOptions.length === 0;
+  const hasUnknownWorker = rows.some(
+    (row) => !(workers.data?.items ?? []).some((worker) => worker.workerId === row.workerId),
+  );
   const workerName = (workerId: number): string =>
     workers.data?.items.find((worker) => worker.workerId === workerId)?.workerName ??
     t.values.unknownWorker;
@@ -409,7 +412,8 @@ export const WorkOrderResultCorrectionWorkspace = ({
         <AlertBanner variant="warning">{t.truncated}</AlertBanner>
       ) : (
         <>
-          {(workers.isError || workers.data?.truncated === true) && (
+          {/* 이름을 못 찾은 행이 실제로 있을 때만 — 목록이 잘렸어도 이 실적의 등록자가 다 보이면 문제가 없다. */}
+          {!workers.isPending && hasUnknownWorker && (
             <AlertBanner variant="warning">{t.workersUnavailable}</AlertBanner>
           )}
           <div className="wide-table work-order-close-table production-result-correction-table">

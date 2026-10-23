@@ -368,7 +368,8 @@ export const GoodsReceiptScreen = () => {
     setPickedTargetLotId(null);
   }, [selectedIrId, selectedLineId]);
 
-  const warehouses = useWarehouseOptions(selectedIrId !== null);
+  /* 입고의 공장은 고른 입하 전표의 값이다 — 창고 선택지도 그 공장 창고로 좁힌다(P-109). */
+  const warehouses = useWarehouseOptions(selectedRow?.plantId ?? null);
   const selectedWarehouseId = draft.warehouse === '' ? null : Number(draft.warehouse);
   const locations = useLocationOptions(selectedWarehouseId);
 

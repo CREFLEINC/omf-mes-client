@@ -90,8 +90,8 @@ describe('useProductionOrderItemNames', () => {
 
     expect(paths).toEqual([itemPath(7101), itemPath(7202)]);
     expect(result.current.items).toEqual([
-      { itemId: 7101, status: 'named', label: 'MAT-7101 · Synthetic item 7101' },
-      { itemId: 7202, status: 'named', label: 'MAT-7202 · Synthetic item 7202' },
+      { itemId: 7101, status: 'named', label: 'Synthetic item 7101 (MAT-7101)' },
+      { itemId: 7202, status: 'named', label: 'Synthetic item 7202 (MAT-7202)' },
     ]);
   });
 
@@ -122,7 +122,7 @@ describe('useProductionOrderItemNames', () => {
     expect(result.current.items).toEqual([
       { itemId: 7303, status: 'unknown', label: null },
       { itemId: 7404, status: 'failed', label: null },
-      { itemId: 7505, status: 'named', label: 'MAT-7505 · Synthetic item 7505' },
+      { itemId: 7505, status: 'named', label: 'Synthetic item 7505 (MAT-7505)' },
     ]);
   });
 

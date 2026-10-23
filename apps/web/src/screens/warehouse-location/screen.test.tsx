@@ -177,7 +177,7 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     expect(screen.queryByText('아직 등록된 창고가 없습니다')).not.toBeInTheDocument();
     // 서버가 빈 message를 줘도 배너에 제목만 남으면 안 된다 — 무엇을 하라는 안내가 사라진다.
     expect(
-      screen.getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+      screen.getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
     ).toBeInTheDocument();
   });
 
@@ -300,6 +300,83 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     expect(first?.url.searchParams.get('q')).toBe('WH');
     expect(first?.url.searchParams.get('warehouseTypeCode')).toBe('MATERIAL');
     expect(first?.url.searchParams.get('includeInactive')).toBe('true');
+  });
+
+  /* 창고를 공장으로 거른다 — 서버 선행 P-109(omf-mes-server#809). */
+  it('공장 열은 공장 목록(GET /mdm/plants)으로 행의 plantId 를 이름으로 푼다', async () => {
+    renderScreen([warehouseListRoute(), ...lookupRoutes()]);
+
+    const rowOf = async (code: string) =>
+      (await screen.findByRole('button', { name: code })).closest('tr')!;
+    expect(await within(await rowOf('WH-01')).findByText('1공장')).toBeInTheDocument();
+    expect(within(await rowOf('WH-03')).getByText('2공장')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '공장' })).toBeInTheDocument();
+  });
+
+  it('공장은 고르는 즉시 적용된다 — [조회] 없이 plantId 가 실린다', async () => {
+    const { requests, user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
+    await screen.findByRole('button', { name: 'WH-01' });
+    expect(listRequests(requests)[0]?.url.searchParams.has('plantId')).toBe(false);
+
+    await user.click(screen.getByRole('combobox', { name: '공장' }));
+    await user.click(screen.getByRole('option', { name: '2공장' }));
+
+    await waitFor(() => {
+      expect(listRequests(requests).at(-1)?.url.searchParams.get('plantId')).toBe('12');
+    });
+    expect(screen.getByText('공장: 2공장')).toBeInTheDocument();
+  });
+
+  it('주소의 공장 조건이 첫 조회에 다른 조건과 함께 실린다', async () => {
+    const { requests } = renderScreen(
+      [warehouseListRoute(), ...lookupRoutes()],
+      '?plant=12&type=MATERIAL&inactive=1',
+    );
+    await screen.findByRole('button', { name: 'WH-01' });
+
+    const first = listRequests(requests)[0];
+    expect(first?.url.searchParams.get('plantId')).toBe('12');
+    expect(first?.url.searchParams.get('warehouseTypeCode')).toBe('MATERIAL');
+    expect(first?.url.searchParams.get('includeInactive')).toBe('true');
+  });
+
+  it('주소의 공장이 정수가 아니면 plantId 를 싣지 않는다 — 서버가 400 으로 거절할 값을 보내지 않는다', async () => {
+    const { requests } = renderScreen([warehouseListRoute(), ...lookupRoutes()], '?plant=abc');
+    await screen.findByRole('button', { name: 'WH-01' });
+
+    expect(
+      listRequests(requests).every((request) => !request.url.searchParams.has('plantId')),
+    ).toBe(true);
+  });
+
+  it('공장 칩을 지우면 plantId 없이 다시 조회한다', async () => {
+    const { requests, user } = renderScreen(
+      [warehouseListRoute(), ...lookupRoutes()],
+      '?plant=12&q=WH',
+    );
+    await user.click(await screen.findByRole('button', { name: '공장 조건 제거' }));
+
+    await waitFor(() => {
+      const last = listRequests(requests).at(-1);
+      expect(last?.url.searchParams.has('plantId')).toBe(false);
+      expect(last?.url.searchParams.get('q')).toBe('WH');
+    });
+  });
+
+  it('초기화를 누르면 공장 조건도 함께 빠진다', async () => {
+    const { requests, user } = renderScreen(
+      [warehouseListRoute(), ...lookupRoutes()],
+      '?plant=12&type=MATERIAL',
+    );
+    await screen.findByRole('button', { name: 'WH-01' });
+
+    await user.click(screen.getAllByRole('button', { name: '초기화' })[0]!);
+
+    await waitFor(() => {
+      const last = listRequests(requests).at(-1);
+      expect(last?.url.searchParams.has('plantId')).toBe(false);
+      expect(last?.url.searchParams.has('warehouseTypeCode')).toBe(false);
+    });
   });
 
   it('전체 건수가 받은 건수보다 많으면 잘림 안내를 낸다', async () => {
@@ -494,7 +571,9 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
       `?wh=${String(warehouse.warehouseId)}`,
     );
 
-    expect(await screen.findByText(messages.common.reference.failed)).toBeInTheDocument();
+    /* 목록의 공장 열도 같은 실패 상태를 낸다 — 상세 폼 안으로 범위를 좁힌다. */
+    const form = await screen.findByRole('region', { name: '창고 정보' });
+    expect(await within(form).findByText(messages.common.reference.failed)).toBeInTheDocument();
     expect(screen.queryByText('9999')).not.toBeInTheDocument();
   });
 
@@ -1073,7 +1152,9 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
 
     expect(screen.getByLabelText('창고 코드')).toHaveValue('');
     expect(screen.getByLabelText('창고명')).toHaveValue('');
-    expect(screen.getByRole('combobox', { name: '공장' })).not.toBeDisabled();
+    // 공장은 필터 바에도 있어 폼 안으로 범위를 좁힌다.
+    const form = screen.getByRole('region', { name: '창고 정보' });
+    expect(within(form).getByRole('combobox', { name: '공장' })).not.toBeDisabled();
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
 

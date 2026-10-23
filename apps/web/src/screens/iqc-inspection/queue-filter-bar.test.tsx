@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -76,7 +76,7 @@ const renderBar = (appliedFilters: QueueFilters = EMPTY_FILTERS, extra: StubRout
 };
 
 const itemBox = () => screen.getByLabelText(t.item);
-const supplierBox = () => screen.getByRole('combobox', { name: t.supplier });
+const supplierBox = () => screen.getByLabelText(t.supplier);
 const keywordBox = () => screen.getByLabelText(t.keyword);
 const apply = () => screen.getByRole('button', { name: t.apply });
 
@@ -107,56 +107,59 @@ describe('QueueFilterBar — 조건은 골라서 넣는다', () => {
     expect(itemBox()).not.toHaveValue('1001');
   });
 
-  it('공급사는 목록에서 고른다 — 주소로 들어온 값도 이름으로 선다', async () => {
+  it('공급사는 검색 창으로 고른다 — 주소로 들어온 값도 이름으로 선다(#133)', async () => {
     renderBar({ itemId: null, supplierId: 2002, keyword: '' });
 
     await waitFor(() => {
-      expect(supplierBox()).toHaveTextContent(SUPPLIER_LABEL);
+      expect(supplierBox()).toHaveValue(SUPPLIER_LABEL);
     });
+    expect(supplierBox()).toHaveAttribute('readonly');
+    expect(supplierBox()).toHaveAttribute('aria-haspopup', 'dialog');
   });
 
-  it('고른 공급사를 조건으로 올린다', async () => {
+  it('검색 창에서 고른 공급사를 조건으로 올린다', async () => {
     const { onSearch, user } = renderBar();
 
-    await waitFor(() => {
-      expect(supplierBox()).toBeInTheDocument();
-    });
-
     await user.click(supplierBox());
-    await user.click(await screen.findByRole('option', { name: SUPPLIER_LABEL }));
+    const dialog = await screen.findByRole('dialog', { name: t.supplierPicker.title });
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'SAMPLE-SUP-01' }));
+    await user.click(within(dialog).getByRole('button', { name: t.supplierPicker.pick }));
     await user.click(apply());
 
     expect(onSearch).toHaveBeenCalledWith({ itemId: null, supplierId: 2002, keyword: '' });
   });
 
-  /** 「전체」가 없으면 한 번 좁힌 조건을 선택칸에서 풀 방법이 사라진다. */
-  it('공급사 선택지에 「전체」가 있어 조건을 풀 수 있다', async () => {
-    const { onSearch, user } = renderBar({ itemId: null, supplierId: 2002, keyword: '' });
-
-    await waitFor(() => {
-      expect(supplierBox()).toHaveTextContent(SUPPLIER_LABEL);
-    });
-
-    await user.click(supplierBox());
-    await user.click(await screen.findByRole('option', { name: t.all }));
-    await user.click(apply());
-
-    expect(onSearch).toHaveBeenCalledWith({ itemId: null, supplierId: null, keyword: '' });
-  });
-
-  /*
-   * 빈 선택지를 그냥 두면 사용자가 「공급사가 하나도 없다」로 읽는다. 이 화면의 단위 조회가
-   * IQC 권한만 가진 사용자에게 403 이 난다고 적어 두었으므로 실제로 닿을 수 있는 자리다.
-   */
-  it('공급사 선택지를 못 받으면 그 사실을 적는다', async () => {
-    renderBar(EMPTY_FILTERS, [
+  it('검색어로 공급사를 찾는다 — 거래처 조회에 검색어를 싣는다', async () => {
+    const searched: string[] = [];
+    const { user } = renderBar(EMPTY_FILTERS, [
       {
-        match: (request) => isGet(request, '/mdm/partners'),
-        respond: () => jsonResponse({ message: '' }, { status: 403 }),
+        match: (request) => {
+          if (isGet(request, '/mdm/partners')) {
+            searched.push(new URL(request.url).searchParams.get('q') ?? '');
+          }
+          return false;
+        },
+        respond: () => jsonResponse({}),
       },
     ]);
 
-    expect(await screen.findByText(t.supplierLoadFailed)).toBeInTheDocument();
+    await user.click(supplierBox());
+    const dialog = await screen.findByRole('dialog', { name: t.supplierPicker.title });
+    await user.type(within(dialog).getByRole('textbox'), 'SUP-02{Enter}');
+
+    await waitFor(() => expect(searched).toContain('SUP-02'));
+  });
+
+  it('고른 공급사는 칸 안의 × 로 풀 수 있다', async () => {
+    const { onSearch, user } = renderBar({ itemId: null, supplierId: 2002, keyword: '' });
+
+    await waitFor(() => {
+      expect(supplierBox()).toHaveValue(SUPPLIER_LABEL);
+    });
+    await user.click(screen.getByRole('button', { name: t.supplierClear }));
+    await user.click(apply());
+
+    expect(onSearch).toHaveBeenCalledWith({ itemId: null, supplierId: null, keyword: '' });
   });
 });
 

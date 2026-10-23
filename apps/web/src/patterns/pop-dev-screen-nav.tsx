@@ -144,6 +144,7 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   { path: '/pop/location-label', label: 'P-06-01 창고 적재 위치 라벨 발행' },
   /* ⚠ 진입값이 없다 — LOT 스캔부터 시작한다. */
   { path: '/pop/material-defect', label: 'P-02-14 자재 불량 등록' },
+  { path: '/pop/inspection-sheet', label: 'P-02-15 제품 검사표 입력' },
   /* ⚠ 진입값이 없다 — 판정 대기 목록에서 의뢰를 고른다. */
   { path: '/pop/oqc-inspection', label: 'P-04-06 OQC 출하검사 판정' },
 ];

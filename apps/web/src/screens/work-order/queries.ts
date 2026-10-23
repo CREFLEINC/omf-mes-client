@@ -85,7 +85,7 @@ export const toWorkOrderFact = (workOrder: WorkOrder): WorkOrderFact => ({
   remarks: workOrder.remarks ?? null,
 });
 
-const toValidationReport = (
+export const toValidationReport = (
   report: components['schemas']['ValidationReport'],
 ): WorkOrderValidationReport => ({
   passed: report.passed,

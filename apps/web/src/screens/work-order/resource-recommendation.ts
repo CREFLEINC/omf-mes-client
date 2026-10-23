@@ -58,7 +58,7 @@ export const toRecommendationChips = (
   plannedEquipmentId: (data?.equipments ?? []).slice(0, CHIP_LIMIT).map((item) => ({
     value: String(item.equipmentId),
     code: item.equipmentCode,
-    label: `${item.equipmentCode} · ${item.equipmentName}`,
+    label: `${item.equipmentName} (${item.equipmentCode})`,
     source: item.source,
     productionLineId: item.productionLineId === null ? null : String(item.productionLineId),
     warning: !item.inService ? 'outOfService' : item.busy ? 'busy' : null,
@@ -66,7 +66,7 @@ export const toRecommendationChips = (
   plannedMoldId: (data?.molds ?? []).slice(0, CHIP_LIMIT).map((item) => ({
     value: String(item.moldId),
     code: item.moldCode,
-    label: `${item.moldCode} · ${item.moldName}`,
+    label: `${item.moldName} (${item.moldCode})`,
     source: item.source,
     productionLineId: null,
     warning: item.inService ? null : 'outOfService',
@@ -76,7 +76,7 @@ export const toRecommendationChips = (
     value: String(item.shiftId),
     code: item.shiftName,
     /* 교대 선택칸과 같은 이름 — 칩 툴팁이 칸의 선택지와 같은 말을 한다. */
-    label: `${item.shiftCode} · ${item.shiftName} (${formatDateRange(formatTimeOfDay(item.startTime), formatTimeOfDay(item.endTime))})`,
+    label: `${item.shiftName} (${item.shiftCode}) ${formatDateRange(formatTimeOfDay(item.startTime), formatTimeOfDay(item.endTime))}`,
     source: null,
     productionLineId: null,
     warning: item.busy && !slotChanged ? 'busy' : null,
@@ -84,7 +84,7 @@ export const toRecommendationChips = (
   responsibleWorkerId: (data?.workers ?? []).map((item, _index, workers) => ({
     value: String(item.workerId),
     code: workerChipText(workers, item),
-    label: `${item.workerNo} · ${item.workerName}`,
+    label: `${item.workerName} (${item.workerNo})`,
     source: workerSource(item.source),
     productionLineId: null,
     warning: item.busy && !slotChanged ? 'workerBusy' : null,

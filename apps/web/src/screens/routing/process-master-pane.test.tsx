@@ -92,10 +92,7 @@ const routes = (): StubRoute[] => [
     match: (request) =>
       request.method === 'PUT' && new URL(request.url).pathname === '/mdm/processes/9001',
     respond: () =>
-      jsonResponse(
-        { ...process, processName: '정밀 사출' },
-        { headers: { ETag: '"8"' } },
-      ),
+      jsonResponse({ ...process, processName: '정밀 사출' }, { headers: { ETag: '"8"' } }),
   },
   {
     match: (request) =>
@@ -143,6 +140,7 @@ const renderScreen = () => {
   renderWithProviders(<RoutingScreen />, {
     fetch,
     route: '/master-data/routing?tab=processes&inactive=1',
+    dataRouter: true,
   });
   return { recorded, user: userEvent.setup() };
 };
