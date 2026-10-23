@@ -378,7 +378,15 @@ describe('ERP W/O 처리 화면(T-W-C)', () => {
     const editor = await screen.findByRole('region', {
       name: tp.assign.editorLabel('SYN-WO-9001'),
     });
-    await user.click(await within(editor).findByRole('button', { name: tp.assign.actions.save }));
+    /*
+     * [저장]은 라인 기본 위치가 초안에 채워져야 열린다 — 라인 목록이 늦게 오면 편집기가 먼저
+     * 보이므로, 열리기 전에 누르면 아무 일도 일어나지 않는다.
+     */
+    const save = await within(editor).findByRole('button', { name: tp.assign.actions.save });
+    await waitFor(() => {
+      expect(save).toBeEnabled();
+    });
+    await user.click(save);
 
     expect(
       await screen.findByRole('region', { name: tp.assign.editorLabel('SYN-WO-9002') }),

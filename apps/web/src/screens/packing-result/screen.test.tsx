@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { PopIdentityProvider } from '../../patterns/pop-identity';
 import {
@@ -556,6 +556,11 @@ describe('PackingResultScreen', () => {
   /* ⭐ 스캐너가 Enter 를 붙이지 않아도 생산LOT 이 읽힌다(사용자 지시 2026-09-17). */
   it('생산LOT 은 Enter 없이 스캐너 속도로 들어오면 읽는다', async () => {
     const user = userEvent.setup();
+    /*
+     * 키 사이 간격을 0 으로 고정한다 — 실제 시계면 부하에 따라 손 속도로 읽힌다. 호출마다
+     * 늘리지 않는 것은 React 스케줄러도 이 시계를 불러 키 사이 간격이 부하만큼 벌어지기 때문이다.
+     */
+    const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
     renderScreen();
 
     await chooseShipment(user);
@@ -565,6 +570,7 @@ describe('PackingResultScreen', () => {
     await user.type(screen.getByLabelText(t.scan.label.productionLot), 'SYN-LOT-000123450');
 
     expect(await screen.findByText(t.match.ok('SYN-LOT-000123450'))).toBeTruthy();
+    now.mockRestore();
   });
 
   it('⛔ 품목이 다르면 «계약이 준 품목 코드»로 막는다 — 화면이 대응표를 갖지 않는다', async () => {

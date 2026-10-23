@@ -800,6 +800,11 @@ describe('P-02-08 포장 작업', () => {
   /* ⭐ 스캐너가 Enter 를 붙이지 않아도 읽힌다 — 손으로 치는 속도면 Enter 를 기다린다. */
   it('스캐너 속도로 들어온 코드는 Enter 없이 대상을 잡는다', async () => {
     const user = userEvent.setup();
+    /*
+     * 키 사이 간격을 0 으로 고정한다 — 실제 시계면 부하에 따라 손 속도로 읽힌다. 호출마다
+     * 늘리지 않는 것은 React 스케줄러도 이 시계를 불러 키 사이 간격이 부하만큼 벌어지기 때문이다.
+     */
+    const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
 
     renderScreen();
 
@@ -811,6 +816,7 @@ describe('P-02-08 포장 작업', () => {
       expect(screen.getByLabelText(t.scan.quantityLabel)).toHaveFocus();
     });
     expect(screen.getByLabelText(t.scan.label)).toHaveValue('');
+    now.mockRestore();
   });
 
   it('손으로 치는 속도의 입력은 Enter 전까지 제출하지 않는다', async () => {
