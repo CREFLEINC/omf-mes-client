@@ -1,11 +1,11 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { TerminalGate } from './terminal-gating';
+import { popGateDeniedText, type PopProcessGate } from '../../patterns/pop-process-gate';
 
 const t = messages.materialInputScan;
 
 export interface BlockReasonInput {
-  gate: TerminalGate;
+  gate: PopProcessGate;
   hasWorker: boolean;
   /** 아직 기록되지 않은 줄이 남았는가. 남은 채 닫으면 그 줄이 버려진다. */
   hasPending: boolean;
@@ -33,7 +33,7 @@ export const confirmBlockReason = ({
 }: BlockReasonInput): string | undefined => {
   switch (gate.verdict) {
     case 'denied':
-      return t.confirm.reasons.denied;
+      return popGateDeniedText(gate, 'canInputMaterial');
     case 'unavailable':
       return t.confirm.reasons.unavailable;
     case 'unidentified':

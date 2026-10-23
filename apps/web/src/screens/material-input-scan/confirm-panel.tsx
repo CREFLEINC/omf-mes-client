@@ -3,14 +3,14 @@ import { messages } from '@omf-mes/i18n';
 
 import { toApiError } from '../../patterns/request';
 
-import type { TerminalGate } from './terminal-gating';
+import type { PopProcessGate } from '../../patterns/pop-process-gate';
 
 const t = messages.materialInputScan;
 
 export interface ConfirmPanelProps {
   /** 기록된 자재가 하나라도 있는가. 닫을 것이 있어야 닫는다. */
   hasRecorded: boolean;
-  gate: TerminalGate;
+  gate: PopProcessGate;
   /**
    * 확정이 잠긴 사유 한 문장. 잠겼지만 말할 것이 없으면 `undefined`.
    *

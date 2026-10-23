@@ -14,6 +14,9 @@ import {
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import { lot, receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
+import { popGateDeniedText } from '../../patterns/pop-process-gate';
+
+const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial');
 
 const t = messages.materialInputScan;
 
@@ -864,7 +867,7 @@ describe('MaterialInputScanScreen — 게이트와 쓰기', () => {
       { fetch, route: ROUTE },
     );
 
-    await screen.findByText(t.confirm.reasons.denied);
+    await screen.findByText(DENIED_TEXT);
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
 
     /* 「기록」이 잠겨 있고, 눌러도 원장에 닿지 않는다 — 잠금과 보내는 자리가 각각 막는다. */
@@ -891,7 +894,7 @@ describe('MaterialInputScanScreen — 게이트와 쓰기', () => {
       { fetch: stub, route: ROUTE },
     );
 
-    await screen.findByText(t.confirm.reasons.denied);
+    await screen.findByText(DENIED_TEXT);
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '');
 
     await user.click(screen.getByRole('button', { name: '7' }));

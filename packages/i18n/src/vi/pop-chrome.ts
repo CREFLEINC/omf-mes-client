@@ -6,6 +6,12 @@ export const popChrome: Translated<typeof ko.popChrome> = {
   screenNav: 'Chuyển màn hình',
   userSwitch: 'Đổi người dùng',
   workerMissing: 'Chưa xác nhận mã nhân viên. Hãy xác thực mã nhân viên trước.',
+  processGate: {
+    denied: (process: string, feature: string, menuPath: string): string =>
+      `Máy này đang tắt «${feature}» của công đoạn ${process}. Hãy nhờ quản trị viên bật «${feature}» của công đoạn ${process} ở ${menuPath} trên web quản lý.`,
+    deniedUnknownProcess: (feature: string, menuPath: string): string =>
+      `Máy này đang tắt «${feature}» của công đoạn thuộc lệnh sản xuất này. Hãy nhờ quản trị viên bật «${feature}» của công đoạn đó ở ${menuPath} trên web quản lý.`,
+  },
   select: 'Chọn',
 
   selectDialog: {
