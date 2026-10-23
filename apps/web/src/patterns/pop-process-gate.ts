@@ -20,7 +20,12 @@ import { runRequest } from './request';
  */
 
 export type PopGateFlag =
-  'canStartWork' | 'canCompleteWork' | 'canInputMaterial' | 'canInputResult' | 'canPrintLabel';
+  | 'canStartWork'
+  | 'canCompleteWork'
+  | 'canInputMaterial'
+  | 'canInputResult'
+  | 'canPrintLabel'
+  | 'canCloseWorkOrder';
 
 /**
  * | 값 | 뜻 |
