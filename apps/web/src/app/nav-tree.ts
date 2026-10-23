@@ -233,7 +233,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         to: '/logistics/iqc-inspection',
         icon: 'troubleshoot',
         label: 'IQC (수입검사) 조회·판정',
-        labelVi: 'IQC kiểm tra đầu vào · đánh giá',
+        labelVi: 'IQC (kiểm tra đầu vào) tra cứu · đánh giá',
       },
       /*
        * W-01-02 — IQC 를 «생략할 것인가»를 판정하는 자리라 IQC 바로 뒤다. ⛔ IQC 와 탭으로 묶지
@@ -249,13 +249,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         to: '/quality/pqc-inspections',
         icon: 'fact_check',
         label: 'PQC (공정검사) 조회·판정',
-        labelVi: 'Đăng ký · tra cứu kiểm tra PQC',
+        labelVi: 'PQC (kiểm tra công đoạn) tra cứu · đánh giá',
       },
       {
         to: '/shipment/oqc-inspection',
         icon: 'local_shipping',
         label: 'OQC (출하검사) 조회·판정',
-        labelVi: 'OQC đánh giá kiểm tra xuất hàng',
+        labelVi: 'OQC (kiểm tra xuất hàng) tra cứu · đánh giá',
       },
       {
         to: '/master-data/inspection-standard',
