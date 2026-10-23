@@ -216,7 +216,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
   },
 
   skip: {
-    heading: 'Yêu cầu bỏ qua kiểm tra xuất hàng',
+    heading: 'Yêu cầu bỏ qua OQC (kiểm tra xuất hàng)',
     steps: ['1. Yêu cầu bỏ qua', '2. Phê duyệt', '3. Thực hiện bỏ qua'],
     result:
       'Sau khi được duyệt và thực hiện bỏ qua, các yêu cầu OQC còn lại sẽ được bỏ qua và kiểm tra xuất hàng được xử lý là đạt.',
@@ -226,6 +226,8 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     currentStep: 'Bước hiện tại',
     reasonCount: (count: number): string => `${String(count)} ký tự`,
     reasonRequired: 'Hãy nhập lý do bỏ qua.',
+    openRequest: 'Yêu cầu bỏ qua',
+    cancel: 'Hủy',
     request: 'Yêu cầu phê duyệt bỏ qua',
     requesting: 'Đang yêu cầu…',
     execute: 'Thực hiện bỏ qua OQC',
@@ -252,7 +254,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       rejected: (count: number): string => `Không đạt ${String(count)}`,
       scanLabel: 'Số serial',
       scanPlaceholder: 'Quét hoặc nhập số serial rồi nhấn Enter',
-      help: 'Nhập số serial của sản phẩm đã kiểm tra và chọn đạt hay không.',
       notFound: 'Số serial chưa được đăng ký.',
       columns: {
         serialNo: 'Số serial',
@@ -262,7 +263,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       },
       emptyTitle: 'Chưa có serial kiểm tra nào.',
       emptyDescription: 'Hãy quét hoặc nhập số serial ở phía trên.',
-      lotOnlyNote: 'Khi đánh giá theo LOT mà không có số serial thì không cần nhập serial.',
+      lotOnlyNote: 'Không dùng khi đánh giá theo LOT.',
     },
     scanLabel: 'Quét serial',
     scanPlaceholder: 'Quét hoặc nhập số serial rồi nhấn Enter',

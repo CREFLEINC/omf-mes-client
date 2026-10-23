@@ -15639,7 +15639,13 @@ main:has(> .oqc-inspection-panes) {
   gap: var(--space-2) var(--space-3);
 }
 
-.oqc-inspection-serial-box-head > h3 {
+.oqc-inspection-serial-box-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.oqc-inspection-serial-box-title > h3 {
   margin: 0;
 }
 
@@ -15647,10 +15653,6 @@ main:has(> .oqc-inspection-panes) {
   overflow: hidden;
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
-}
-
-.oqc-inspection-serial-box > .field-note {
-  margin: 0;
 }
 
 /* 판정 확정 안내(#136) — 수량 칩 · 고른 판정 · 되돌릴 수 없음(경고색) · LOT 영향. */
@@ -15826,6 +15828,16 @@ main:has(> .oqc-inspection-panes) {
 .oqc-inspection-skip-result > :first-child {
   flex: none;
   margin-top: 2px;
+}
+
+/* 생략 요청 창 — 결과 안내 · 사유 · 글자 수를 위에서 아래로(#136). */
+.oqc-inspection-skip-dialog {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.oqc-inspection-skip-dialog > .field-label {
+  margin-bottom: calc(-1 * var(--space-2));
 }
 
 /* 글자 수 — 입력칸 바로 아래 오른쪽, 보조색. */

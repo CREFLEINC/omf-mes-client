@@ -58,17 +58,18 @@ const renderPane = (latest: string | null, requestStatusCode = 'REQUESTED') => {
 describe('OQC 생략 구획', () => {
   it('자기 출하작업지시의 OQC_SKIP 결재를 찾는다', async () => {
     const { reads } = renderPane(null);
-    await screen.findByRole('button', { name: t.request });
+    await screen.findByRole('button', { name: t.openRequest });
 
     expect(reads[0]?.searchParams.get('approvalTypeCode')).toBe('OQC_SKIP');
     expect(reads[0]?.searchParams.get('targetTypeCode')).toBe('SHIPMENT_REQUEST');
     expect(reads[0]?.searchParams.get('targetId')).toBe('21');
   });
 
-  it('결재가 없으면 사유를 받아 생략을 요청한다 — 사유가 비면 보내지 않는다', async () => {
+  it('결재가 없으면 창에서 사유를 받아 생략을 요청한다 — 사유가 비면 보내지 않는다', async () => {
     const user = userEvent.setup();
     const { writes } = renderPane(null);
-    const button = await screen.findByRole('button', { name: t.request });
+    await user.click(await screen.findByRole('button', { name: t.openRequest }));
+    const button = screen.getByRole('button', { name: t.request });
 
     await user.click(button);
     expect(await screen.findByText(t.reasonRequired)).toBeInTheDocument();
@@ -87,7 +88,7 @@ describe('OQC 생략 구획', () => {
     renderPane('PENDING');
     expect(await screen.findByText(t.pending)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.openApproval })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.request })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.openRequest })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.execute })).not.toBeInTheDocument();
   });
 
@@ -104,7 +105,7 @@ describe('OQC 생략 구획', () => {
   it('반려됐으면 반려를 알리고 다시 요청할 수 있다', async () => {
     renderPane('REJECTED');
     expect(await screen.findByText(t.rejected)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.request })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.openRequest })).toBeInTheDocument();
   });
 
   it('생략으로 닫힌 의뢰는 그 사실만 말하고 결재를 묻지 않는다', async () => {

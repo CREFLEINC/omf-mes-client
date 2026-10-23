@@ -127,7 +127,11 @@ export const SerialJudgments = ({
     <section className="oqc-inspection-serial-box" aria-label={j.heading}>
       {/* 제목 줄 — 검사·합격·불합격 건수를 칩으로(판정 확정 안내와 같은 모양 · #136). */}
       <div className="oqc-inspection-serial-box-head">
-        <h3>{j.heading}</h3>
+        {/* LOT 단위 판정이면 쓰지 않는 구획이라는 것을 제목 바로 옆에(#136). */}
+        <div className="oqc-inspection-serial-box-title">
+          <h3>{j.heading}</h3>
+          <span className="oqc-inspection-label-hint">{j.lotOnlyNote}</span>
+        </div>
         <span className="oqc-inspection-guide-chips">
           <span>{j.inspected(rows.length)}</span>
           <span data-tone="accepted">{j.accepted(okCount)}</span>
@@ -139,7 +143,6 @@ export const SerialJudgments = ({
         label={j.scanLabel}
         search
         placeholder={j.scanPlaceholder}
-        helperText={j.help}
         error={scanError ?? serverError ?? null}
         disabled={disabled}
         onScan={scan}
@@ -161,7 +164,6 @@ export const SerialJudgments = ({
           }
         />
       </div>
-      <p className="field-note">{j.lotOnlyNote}</p>
     </section>
   );
 };

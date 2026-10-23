@@ -373,7 +373,7 @@ export const oqcInspection = {
    * ⭐ 단위는 출하작업지시 하나다 — 실행하면 그 출하작업지시의 열린 OQC 의뢰가 함께 생략된다.
    */
   skip: {
-    heading: '출하검사 생략 요청',
+    heading: 'OQC (출하검사) 생략 요청',
     /** 요청 → 승인 → 실행 단계(#136). */
     steps: ['1. 생략 요청', '2. 승인 처리', '3. 생략 실행'],
     /** 실행 뒤 결과 — 무엇이 바뀌는지(#136). */
@@ -386,6 +386,9 @@ export const oqcInspection = {
     /** 입력한 글자 수 — 상한은 없다(계약은 비우지만 않으면 된다 · #136). */
     reasonCount: (count: number): string => `${String(count)}자`,
     reasonRequired: '생략 사유를 입력하세요.',
+    /** 구획의 단추 — 사유를 쓰는 창을 연다(#136). */
+    openRequest: '생략 요청',
+    cancel: '취소',
     request: '생략 승인 요청',
     requesting: '요청하는 중…',
     execute: 'OQC 생략 실행',
@@ -416,7 +419,6 @@ export const oqcInspection = {
       rejected: (count: number): string => `불합격 ${String(count)}건`,
       scanLabel: '시리얼 번호',
       scanPlaceholder: '시리얼 번호를 스캔하거나 입력한 후 Enter',
-      help: '검사한 제품의 시리얼 번호를 입력하고 합격 여부를 선택하세요.',
       notFound: '등록되지 않은 시리얼 번호입니다.',
       columns: {
         serialNo: '시리얼 번호',
@@ -426,7 +428,7 @@ export const oqcInspection = {
       },
       emptyTitle: '등록된 검사 시리얼이 없습니다.',
       emptyDescription: '위에서 시리얼 번호를 스캔하거나 입력하세요.',
-      lotOnlyNote: '시리얼 번호 없이 LOT 단위로 판정하는 경우에는 시리얼 입력이 필요하지 않습니다.',
+      lotOnlyNote: 'LOT 단위로 판정하는 경우 사용하지 않습니다.',
     },
     scanLabel: '시리얼 스캔',
     scanPlaceholder: '시리얼 번호를 스캔하거나 입력 후 Enter',

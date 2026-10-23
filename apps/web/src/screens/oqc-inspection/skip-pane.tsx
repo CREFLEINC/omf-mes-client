@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Icon, TextArea } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon, TextArea } from '@crefle/web-ui';
 import type { components, paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
@@ -42,6 +42,7 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
   const [reason, setReason] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const reasonId = useId();
   const navigate = useNavigate();
 
@@ -49,6 +50,7 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
     setReason('');
     setNotice(null);
     setTouched(false);
+    setIsDialogOpen(false);
   }, [shipmentRequestId]);
 
   const approval = useQuery({
@@ -86,6 +88,7 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
     onSuccess: () => {
       setReason('');
       setTouched(false);
+      setIsDialogOpen(false);
       setNotice(t.requested);
     },
   });
@@ -126,6 +129,12 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
   const currentStep =
     approval.isPending || approval.isError ? null : canRequest ? 0 : status === 'PENDING' ? 1 : 2;
 
+  /* 창을 닫으면 쓰던 사유는 남긴다 — 다시 열면 이어 쓴다. 필수 표시만 거둔다. */
+  const closeDialog = (): void => {
+    setIsDialogOpen(false);
+    setTouched(false);
+  };
+
   const submit = (): void => {
     setTouched(true);
     if (reason.trim() === '') return;
@@ -152,11 +161,20 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
               </Fragment>
             ))}
           </ol>
+          {!approval.isPending && !approval.isError && canRequest && (
+            <Button
+              type="button"
+              variant="outlined"
+              size="md"
+              onClick={() => {
+                setNotice(null);
+                setIsDialogOpen(true);
+              }}
+            >
+              {t.openRequest}
+            </Button>
+          )}
         </div>
-        <p className="oqc-inspection-skip-result">
-          <Icon name="info" size={18} aria-hidden="true" />
-          {t.result}
-        </p>
       </div>
 
       {approval.isPending ? (
@@ -201,9 +219,36 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
         </>
       ) : null}
 
-      {!approval.isPending && !approval.isError && canRequest && (
-        <>
-          {status === 'REJECTED' && <p className="field-note">{t.rejected}</p>}
+      {!approval.isPending && !approval.isError && status === 'REJECTED' && (
+        <p className="field-note">{t.rejected}</p>
+      )}
+
+      {/* 사유 입력과 요청은 창에서(#136) — 구획에는 단계와 「생략 요청」 단추만 둔다. */}
+      <Dialog
+        open={isDialogOpen}
+        onClose={closeDialog}
+        title={t.heading}
+        footer={
+          <>
+            <Button
+              variant="outlined"
+              className="app-button-neutral"
+              disabled={requestWrite.isSaving}
+              onClick={closeDialog}
+            >
+              {t.cancel}
+            </Button>
+            <Button variant="filled" disabled={isSaving} onClick={submit}>
+              {requestWrite.isSaving ? t.requesting : t.request}
+            </Button>
+          </>
+        }
+      >
+        <div className="oqc-inspection-skip-dialog">
+          <p className="oqc-inspection-skip-result">
+            <Icon name="info" size={18} aria-hidden="true" />
+            {t.result}
+          </p>
           <FieldLabel htmlFor={reasonId} label={t.reason} required />
           <TextArea
             id={reasonId}
@@ -213,7 +258,7 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
                 : 'oqc-inspection-skip-reason'
             }
             placeholder={t.reasonPlaceholder}
-            rows={3}
+            rows={4}
             fullWidth
             value={reason}
             onChange={(event) => setReason(event.target.value)}
@@ -222,17 +267,12 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
           />
           {/* 글자 수 — DS 기본 표시는 숫자뿐이라 「N자」로 직접 둔다. 상한은 없다(계약 · #136). */}
           <p className="oqc-inspection-skip-count">{t.reasonCount(reason.length)}</p>
-          {/* 요청 단추는 입력칸 오른쪽 아래 — 사유를 쓰고 바로 누른다(#136). */}
-          <div className="oqc-inspection-skip-actions">
-            <Button variant="outlined" size="md" disabled={isSaving} onClick={submit}>
-              {requestWrite.isSaving ? t.requesting : t.request}
-            </Button>
-          </div>
-        </>
-      )}
+          <SaveErrorBanner error={requestWrite.error} />
+        </div>
+      </Dialog>
 
       {notice !== null && <AlertBanner variant="success" title={notice} />}
-      <SaveErrorBanner error={requestWrite.error ?? executeWrite.error} />
+      <SaveErrorBanner error={executeWrite.error} />
     </section>
   );
 };
