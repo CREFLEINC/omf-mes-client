@@ -15766,10 +15766,19 @@ button.app-button-neutral {
 }
 
 @media (min-height: 800px) {
+  /*
+   * 본문(main)의 아래 여백(--space-6)만큼 내려 붙인다 — `bottom: 0` 이면 그 여백 높이의 틈이 남아
+   * 줄 아래로 지나가는 내용이 비친다(#136). 카드 아래 여백(--space-4)은 줄이 채워, 끝까지 내렸을 때도
+   * 줄 아래에 빈 띠가 생기지 않고 카드 모서리에 맞는다.
+   */
   .oqc-inspection-detail form > .oqc-inspection-action-area {
     position: sticky;
-    bottom: 0;
+    bottom: calc(-1 * var(--space-6));
     z-index: 1;
+    margin-bottom: calc(-1 * var(--space-4));
+    padding-bottom: calc(var(--space-3) + var(--space-4));
+    border-end-start-radius: var(--radius-lg);
+    border-end-end-radius: var(--radius-lg);
   }
 }
 
