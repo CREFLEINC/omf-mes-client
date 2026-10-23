@@ -24,6 +24,7 @@ const base = {
   pageMeta: undefined,
   onPageChange: () => undefined,
   isShowingAll: false,
+  equipmentName: '합성 프레스 1호기',
   isEquipmentUnknown: false,
   canSelect: true,
   selectedId: null,
@@ -40,13 +41,13 @@ describe('P-02-01 작업지시 목록 — 「없다」와 「모른다」를 가
     render(<WorkOrderList {...base} isLoading />);
 
     expect(screen.getByText(t.loading)).toBeInTheDocument();
-    expect(screen.queryByText(t.empty)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.empty('합성 프레스 1호기'))).not.toBeInTheDocument();
   });
 
   it('다 받고 나서 비어 있을 때만 「없습니다」로 말한다', () => {
     render(<WorkOrderList {...base} workOrders={[]} />);
 
-    expect(screen.getByText(t.empty)).toBeInTheDocument();
+    expect(screen.getByText(t.empty('합성 프레스 1호기'))).toBeInTheDocument();
     expect(screen.queryByText(t.loading)).not.toBeInTheDocument();
   });
 
@@ -55,7 +56,7 @@ describe('P-02-01 작업지시 목록 — 「없다」와 「모른다」를 가
     render(<WorkOrderList {...base} isAsked={false} />);
 
     expect(screen.queryByText(t.loading)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.empty)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.empty('합성 프레스 1호기'))).not.toBeInTheDocument();
   });
 
   it('실패는 사유와 다시 시도할 경로를 함께 준다', () => {

@@ -4581,16 +4581,8 @@
       "n": 1,
       "text": "background: rgb(220 80 70 / 18%);"
     },
-    "COLOR|apps/web/src/app/pop.css|7479a1ebe10c": {
-      "n": 1,
-      "text": "background: #b3261e;"
-    },
-    "COLOR|apps/web/src/app/pop.css|8aa19e5952e9": {
-      "n": 1,
-      "text": "background: #8f1d17;"
-    },
     "COLOR|apps/web/src/app/pop.css|f949b42b61a6": {
-      "n": 2,
+      "n": 1,
       "text": "color: #fff;"
     },
     "TOKEN|apps/web/src/app/app.css|0854cc647aa0": {

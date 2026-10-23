@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Card, Chip, Radio, RadioGroup } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { dateTimeText, itemText, qtyNumber, qtyText } from './row-view';
+import { dateTimeText, itemText, plannedEquipmentText, qtyNumber, qtyText } from './row-view';
 import type { WorkOrder } from './types';
 import { sortForPick, statusKeyOf, type WorkOrderStatusKey } from './work-order-status';
 import { isEmergency } from './work-order-type';
@@ -35,6 +35,11 @@ export interface WorkOrderListProps {
   onPageChange: (page: number) => void;
   /** 전체 설비 범위인가. */
   isShowingAll: boolean;
+  /**
+   * 단말 설비의 이름(없으면 코드). 범위 첫 선택지와 빈 목록 문구가 「이 설비」 대신 이 이름을
+   * 쓴다(사용자 결정 2026-10-23). 모르면 `null`.
+   */
+  equipmentName: string | null;
   /** 단말에 설비가 매핑되지 않았는가. 좁힐 설비가 없어 범위 선택을 두지 않는다. */
   isEquipmentMissing?: boolean;
   /** 설비를 몰라 기본 목록을 세우지 못했는가. */
@@ -66,6 +71,7 @@ export const WorkOrderList = ({
   pageMeta,
   onPageChange,
   isShowingAll,
+  equipmentName,
   isEquipmentMissing = false,
   isEquipmentUnknown,
   canSelect,
@@ -76,6 +82,7 @@ export const WorkOrderList = ({
   uomCodeOf,
 }: WorkOrderListProps) => {
   const rows = sortForPick(workOrders ?? []);
+  const scopeEquipment = equipmentName ?? t.scopeEquipmentUnknown;
 
   return (
     <section className="pane work-start-list" aria-label={t.title}>
@@ -94,8 +101,9 @@ export const WorkOrderList = ({
               if ((value === SCOPE_ALL) !== isShowingAll) onToggleScope();
             }}
           >
-            <Radio value={SCOPE_EQUIPMENT}>{t.scopeEquipment}</Radio>
+            {/* 전체 설비를 왼쪽, 단말 설비를 오른쪽에 둔다(사용자 결정 2026-10-23). 기본값은 단말 설비다. */}
             <Radio value={SCOPE_ALL}>{t.scopeAll}</Radio>
+            <Radio value={SCOPE_EQUIPMENT}>{scopeEquipment}</Radio>
           </RadioGroup>
         )}
       </div>
@@ -124,7 +132,7 @@ export const WorkOrderList = ({
         isLoading ? (
           <p className="field-note">{t.loading}</p>
         ) : isAsked ? (
-          <p className="field-note">{isShowingAll ? t.emptyAll : t.empty}</p>
+          <p className="field-note">{isShowingAll ? t.emptyAll : t.empty(scopeEquipment)}</p>
         ) : null
       ) : (
         <ul className="pop-card-list" aria-label={t.caption}>
@@ -136,6 +144,11 @@ export const WorkOrderList = ({
             const good = qtyNumber(row.progress?.goodQty);
             const plannedStart = dateTimeText(row.plannedStartAt);
             const isSelected = selectedId === row.workOrderId;
+            /*
+             * 계획 설비는 두 범위 모두 「설비 이름 (코드)」 라벨 값 쌍으로 보인다(C-10, 사용자 결정
+             * 2026-10-23). 설비가 정해지지 않은 W/O 는 「설비 미지정」 칩이 말한다.
+             */
+            const equipment = plannedEquipmentText(row);
 
             return (
               <li key={String(row.workOrderId)}>
@@ -170,21 +183,13 @@ export const WorkOrderList = ({
                           {t.emergencyBadge}
                         </Chip>
                       )}
-                      {/* 「이 설비」 범위는 모두 같은 설비라 코드를 되풀이하지 않는다. */}
-                      {row.plannedEquipmentId == null ? (
+                      {row.plannedEquipmentId == null && (
                         <Chip status="info" size="md">
                           {t.unassignedEquipmentBadge}
                         </Chip>
-                      ) : (
-                        (isShowingAll || isEquipmentMissing) &&
-                        row.plannedEquipmentCode != null && (
-                          <Chip status="idle" size="md">
-                            {row.plannedEquipmentCode}
-                          </Chip>
-                        )
                       )}
                     </p>
-                    {(item !== null || process !== '') && (
+                    {(item !== null || process !== '' || equipment !== null) && (
                       <p className="work-start-card-line">
                         {item !== null && (
                           <span>
@@ -194,6 +199,11 @@ export const WorkOrderList = ({
                         {process !== '' && (
                           <span>
                             <span className="work-start-label">{labels.process}</span> {process}
+                          </span>
+                        )}
+                        {equipment !== null && (
+                          <span>
+                            <span className="work-start-label">{t.equipment}</span> {equipment}
                           </span>
                         )}
                       </p>

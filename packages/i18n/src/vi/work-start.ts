@@ -57,7 +57,7 @@ export const workStart: Translated<typeof ko.workStart> = {
   list: {
     title: 'Lệnh sản xuất',
     scopeLabel: 'Phạm vi lệnh sản xuất',
-    scopeEquipment: 'Thiết bị này',
+    scopeEquipmentUnknown: 'Thiết bị của máy trạm',
     scopeAll: 'Tất cả thiết bị',
 
     select: (workOrderNo: string): string => `Chọn ${workOrderNo}`,
@@ -72,10 +72,11 @@ export const workStart: Translated<typeof ko.workStart> = {
     unassignedEquipmentBadge: 'Chưa gán thiết bị',
 
     qty: (good: string, order: string): string => `Thực tế ${good} / Lệnh ${order}`,
+    equipment: 'Thiết bị',
     plannedStart: (at: string): string => `Bắt đầu theo kế hoạch ${at}`,
 
-    empty:
-      'Không có lệnh sản xuất nào phát hành cho thiết bị này. Đổi phạm vi sang tất cả thiết bị để xem lệnh của thiết bị khác.',
+    empty: (equipment: string): string =>
+      `Không có lệnh sản xuất nào phát hành cho ${equipment}. Đổi phạm vi sang tất cả thiết bị để xem lệnh của thiết bị khác.`,
     emptyAll: 'Không có lệnh sản xuất nào có thể thực hiện.',
     loading: 'Đang tải lệnh sản xuất.',
     loadError: 'Không tải được lệnh sản xuất. Hãy thử lại.',

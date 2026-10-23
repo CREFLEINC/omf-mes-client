@@ -321,12 +321,21 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
   it('지금 목록이 어느 범위인지 선택 상태로 말하고, 범위를 바꾸면 선택도 바뀐다', async () => {
     const { user } = renderScreen();
 
-    expect(await screen.findByRole('radio', { name: t.list.scopeEquipment })).toBeChecked();
+    /* 전체 설비가 왼쪽, 단말 설비가 오른쪽이다(사용자 결정 2026-10-23). */
+    await screen.findByRole('radio', { name: TERMINAL.equipmentName });
+    expect(screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))).toEqual([
+      'all',
+      'equipment',
+    ]);
+
+    /* 첫 선택지는 「이 설비」가 아니라 단말 설비의 실제 이름이다(사용자 결정 2026-10-23). */
+    expect(await screen.findByRole('radio', { name: TERMINAL.equipmentName })).toBeChecked();
+    expect(screen.queryByRole('radio', { name: '이 설비' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('radio', { name: t.list.scopeAll }));
 
     expect(screen.getByRole('radio', { name: t.list.scopeAll })).toBeChecked();
-    expect(screen.getByRole('radio', { name: t.list.scopeEquipment })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: TERMINAL.equipmentName })).not.toBeChecked();
   });
 
   it('「전체 보기」는 설비 축만 뺀다', async () => {
@@ -345,14 +354,20 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     expect(last).not.toContain('includeUnplannedEquipment');
   });
 
-  it('「이 설비」 목록은 설비 미지정만 표시하고, 「전체 보기」에서는 계획 설비 코드도 단다', async () => {
+  /** 카드의 계획 설비는 코드만 든 칩이 아니라 「설비 이름 (코드)」 라벨 값 쌍이다(C-10). */
+  it('두 범위 모두 계획 설비를 「설비 이름 (코드)」로 달고, 설비가 없으면 설비 미지정 칩을 단다', async () => {
     const { plannedEquipmentId: _ignored, ...withoutEquipment } = WORK_ORDER;
     const { user } = renderScreen({
       workOrders: [
         { ...withoutEquipment, workOrderId: 8102, workOrderNo: 'SYN-WO-0102' },
-        { ...WORK_ORDER, plannedEquipmentCode: 'SYN-PRS-01' },
+        {
+          ...WORK_ORDER,
+          plannedEquipmentCode: 'SYN-PRS-01',
+          plannedEquipmentName: '합성 프레스 1호기',
+        },
       ],
     });
+    const equipmentPair = `${t.list.equipment} 합성 프레스 1호기 (SYN-PRS-01)`;
     const card = (workOrderNo: string) =>
       screen.getByRole('button', { name: selectName(workOrderNo) });
 
@@ -360,24 +375,29 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     expect(
       within(card('SYN-WO-0102')).getByText(t.list.unassignedEquipmentBadge),
     ).toBeInTheDocument();
-    expect(within(card(WORK_ORDER.workOrderNo)).queryByText('SYN-PRS-01')).toBeNull();
+    expect(card(WORK_ORDER.workOrderNo)).toHaveTextContent(equipmentPair);
     expect(
       within(card(WORK_ORDER.workOrderNo)).queryByText(t.list.unassignedEquipmentBadge),
     ).toBeNull();
 
     await user.click(screen.getByRole('radio', { name: t.list.scopeAll }));
 
-    expect(await within(card(WORK_ORDER.workOrderNo)).findByText('SYN-PRS-01')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(card(WORK_ORDER.workOrderNo)).toHaveTextContent(equipmentPair);
+    });
+    /* 코드만 든 칩을 따로 세우지 않는다. */
+    expect(within(card(WORK_ORDER.workOrderNo)).queryByText('SYN-PRS-01')).toBeNull();
   });
 
-  it('설비 없는 단말의 목록에는 계획 설비 코드를 단다', async () => {
+  it('설비 없는 단말의 목록에는 계획 설비를 단다', async () => {
     renderScreen({
       terminal: { ...TERMINAL, equipmentId: null, equipmentCode: null, equipmentName: null },
       workOrders: [{ ...WORK_ORDER, plannedEquipmentCode: 'SYN-PRS-01' }],
     });
 
     const card = await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    expect(within(card).getByText('SYN-PRS-01')).toBeInTheDocument();
+    /* 이름을 못 받았으면 코드만 보인다(`named`). */
+    expect(card).toHaveTextContent(`${t.list.equipment} SYN-PRS-01`);
   });
 
   /** ⚠ 설비를 모르는 것은 「지시가 없다」와 다른 사실이다. */
@@ -385,14 +405,14 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     const { recorded } = renderScreen({ terminalStatus: 500 });
 
     expect(await screen.findByText(t.list.equipmentUnknown)).toBeInTheDocument();
-    expect(screen.queryByText(t.list.empty)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.list.empty(TERMINAL.equipmentName))).not.toBeInTheDocument();
     expect(listUrls(recorded.urls)).toHaveLength(0);
   });
 
   it('빈 목록은 오류가 아니라 다음 행동과 함께 보인다', async () => {
     renderScreen({ workOrders: [] });
 
-    expect(await screen.findByText(t.list.empty)).toBeInTheDocument();
+    expect(await screen.findByText(t.list.empty(TERMINAL.equipmentName))).toBeInTheDocument();
     expect(screen.queryByText(t.list.loadError)).not.toBeInTheDocument();
   });
 });

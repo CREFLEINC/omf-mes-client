@@ -68,9 +68,12 @@ export const workStart = {
   /** 왼쪽 작업지시 구획. */
   list: {
     title: '작업지시',
-    /** 범위 선택(두 개 중 하나, C-12). */
+    /**
+     * 범위 선택(두 개 중 하나, C-12). 첫 선택지는 「이 설비」가 아니라 단말 설비의 실제 이름이다
+     * (사용자 결정 2026-10-23). 이름을 아직 모를 때만 `scopeEquipmentUnknown`을 쓴다.
+     */
     scopeLabel: '작업지시 범위',
-    scopeEquipment: '이 설비',
+    scopeEquipmentUnknown: '단말 설비',
     scopeAll: '전체 설비',
 
     select: (workOrderNo: string): string => `${workOrderNo} 선택`,
@@ -86,11 +89,13 @@ export const workStart = {
     unassignedEquipmentBadge: '설비 미지정',
 
     qty: (good: string, order: string): string => `실적 ${good} / 지시 ${order}`,
+    /** 카드의 계획 설비. 「이름 (코드)」 한 줄이고 라벨 「설비」를 붙인다(C-10). */
+    equipment: '설비',
     plannedStart: (at: string): string => `계획 시작 ${at}`,
 
     /** 빈 목록은 오류가 아니다. 다음에 할 일까지 적는다. */
-    empty:
-      '이 설비에 배포된 작업지시가 없습니다. 범위를 전체 설비로 바꾸면 다른 설비의 작업지시가 보입니다.',
+    empty: (equipment: string): string =>
+      `${equipment}에 배포된 작업지시가 없습니다. 범위를 전체 설비로 바꾸면 다른 설비의 작업지시가 보입니다.`,
     emptyAll: '진행할 수 있는 작업지시가 없습니다.',
     /** 받는 중을 무표시로 두지 않는다. 「없다」와 구분되지 않는다. */
     loading: '작업지시를 불러오는 중입니다.',

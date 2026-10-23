@@ -727,6 +727,7 @@ export const WorkStartScreen = () => {
             setListPage(page);
           }}
           isShowingAll={isShowingAll}
+          equipmentName={equipmentName?.trim() || equipmentCode?.trim() || null}
           isEquipmentMissing={isEquipmentMissing}
           isEquipmentUnknown={equipmentId === null && !isEquipmentMissing}
           canSelect={confirmedNo !== null}

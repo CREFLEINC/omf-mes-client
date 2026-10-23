@@ -3641,8 +3641,10 @@
 }
 
 /*
- * ⚠ **빨간색은 여기서만 준다**(사용자 지시 2026-09-08). 디자인 시스템 버튼에 위험색 변형이
- *   없어 색을 겉에서 입힌다 — 부품을 고치는 것이 아니라 이 한 자리의 표현이다.
+ * ⛔ **색을 겉에서 입히지 않는다.** 보조 동작이라 DS 테두리 버튼(`variant="outlined"`) 모양
+ *   그대로 둔다(화면 구성 규범 C-3, C-19: 채움과 빨강은 화면의 주 동작 하나에만 쓴다). 전에는
+ *   여기서 바탕을 빨강으로 칠해 부품의 `variant` 를 바꿔도 화면이 그대로였다
+ *   (`app/pop-secondary-actions.test.ts` 가 막는다).
  */
 /*
  * ⚠ **작게 유지한다**(사용자 지시 2026-09-08 · 2026-09-09 재지시 「너무 크다」). 머리줄에
@@ -3659,16 +3661,6 @@
 .pop-ui .pop-terminal-header__reregister {
   min-height: 30px;
   padding-inline: 10px;
-  /*
-   * 바탕이 이미 빨강이라 테두리는 겹친 선일 뿐이다 — 지운다(사용자 지시 2026-09-08).
-   *
-   * ⚠ **`border` 만으로는 안 지워진다.** 디자인 시스템 버튼은 테두리를 «그림자»로 그린다
-   *   (`box-shadow: inset 0 0 0 1px`) — `border: 0` 만 두었더니 붉은 선이 그대로 남았다(실측).
-   */
-  border: 0;
-  box-shadow: none;
-  background: #b3261e;
-  color: #fff;
   font-size: 13px;
 }
 
@@ -3680,11 +3672,6 @@
  */
 .pop-ui .pop-terminal-header__reregister {
   border-radius: var(--radius-full);
-}
-
-.pop-logout button:hover,
-.pop-ui .pop-terminal-header__reregister:hover {
-  background: #8f1d17;
 }
 
 /* G-34 선택 필드 — 현재 값과 조작 버튼을 서로 다른 정보로 보인다. */
