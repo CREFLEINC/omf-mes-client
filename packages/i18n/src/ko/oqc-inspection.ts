@@ -25,6 +25,14 @@ export const oqcInspection = {
       targetQty: '검사수량',
       statusCode: '상태',
     },
+    /** OQC 목록의 「의뢰 일시」 열(#136). 종전 표(PQC 도 쓴다)의 `columns` 와 따로 둔다. */
+    requestedAtColumn: '의뢰 일시',
+    /** 대상 유형 코드의 이름(omf-all-around#136) — POP OQC 와 같은 말. 모르는 코드는 코드 그대로다. */
+    targetTypes: {
+      SHIPMENT_REQUEST: '출하요청',
+    } as Readonly<Record<string, string>>,
+    /** 「출하요청 #12」 — 대상 유형 이름과 대상번호(#136). */
+    target: (typeLabel: string, targetId: number): string => `${typeLabel} #${String(targetId)}`,
     /**
      * 줄의 둘째 행에 서는 대상번호. **머리글이 가리지 못하는 자리라 값이 스스로 이름을 단다** —
      * 좁은 창에 열을 더 세우는 대신 스펙 §3 처럼 한 줄을 두 행으로 쓴다.
@@ -62,18 +70,15 @@ export const oqcInspection = {
    */
   filters: {
     item: '품목',
-    itemPlaceholder: '품목 번호',
+    itemPlaceholder: '품목을 입력하세요',
+    itemPick: '선택',
+    itemClear: '품목 조건 지우기',
     keyword: '의뢰번호',
     keywordPlaceholder: '의뢰번호로 검색',
     /** 기본으로 켜져 있다 — 이 화면에 들어오는 이유가 「아직 판정하지 않은 것」이기 때문이다. */
     pendingOnly: '대기·진행만 보기',
     apply: '조회',
     reset: '초기화',
-    /**
-     * 번호 칸에 번호가 아닌 값이 들어왔다. **조용히 무시하지 않는다** — 무시하면 사용자는
-     * 자기가 좁혔다고 믿는데 결과는 좁혀지지 않은 상태가 된다.
-     */
-    identifierInvalid: '번호는 1 이상의 정수로 넣어 주세요.',
   },
 
   /**
@@ -98,15 +103,24 @@ export const oqcInspection = {
      */
     paneLabel: '판정 대상',
     heading: '대상 정보',
-    /** 아무것도 고르지 않았다. 무엇을 해야 하는지 말한다. */
-    nothingSelected: '왼쪽 목록에서 판정할 의뢰를 고르세요.',
+    /** 상세 맨 위 — 목록으로 돌아간다. 저장하지 않은 입력이 있으면 한 번 묻는다(IQC #133 과 같다 · #136). */
+    backToList: '← 목록',
+    leaveUnsaved: '변경사항을 저장하지 않았습니다',
+    leaveUnsavedNote: '저장하지 않고 이동하면 입력한 내용이 사라집니다.',
+    keepEditing: '계속 작성',
+    leaveAnyway: '저장하지 않고 이동',
+    /** 쪽 머리 경로의 마지막 마디 — 상세(판정)를 열었을 때(#136). */
+    sectionTitle: '검사 기본 정보',
+    /** 검사 이력 접는 줄 오른쪽 끝의 건수(#136). */
+    historyCount: (count: number): string => `${String(count)}건`,
+    /** 검사 유형 코드 옆에 붙이는 이름(#136) — 모르는 코드는 코드만 보인다. */
+    inspectionTypeNames: { OQC: '출하검사' } as Readonly<Record<string, string>>,
     loading: '의뢰를 불러오는 중입니다.',
     fields: {
       inspectionRequestNo: '의뢰번호',
       inspectionTypeCode: '검사 유형',
-      /** ⚠ 유형 코드 ↔ 대상 대응표가 아직 없다 — 코드를 그대로 보인다. */
-      targetTypeCode: '대상 유형',
-      targetId: '대상번호',
+      /** 대상 유형 · 대상번호를 한 칸으로(「출하요청 #12」 · #136). */
+      target: '대상',
       lotId: '대상 LOT',
       itemId: '품목',
       targetQty: '검사수량',
@@ -118,18 +132,11 @@ export const oqcInspection = {
       inspectionPlanVersionId: '적용 기준',
       requestedAt: '의뢰 일시',
     },
-    /** 기준 버전이 고정된다는 사실을 화면이 말한다 — 숫자만 보이면 왜 중요한지 알 수 없다. */
-    planVersionNote: '검사 시점의 기준 버전으로 고정됩니다.',
     /**
      * 기준이 등록되지 않은 상태에서도 검사를 진행할 수 있어 이 칸이 빌 수 있다.
      * **없는 값과 모르는 값은 다른 모양이어야 한다** — 그래서 일반 빈 값 표시와 다른 글자를 쓴다.
      */
     noPlanVersion: '기준 없음',
-    /**
-     * 단위는 번호로만 오고 표시명이 없다. **수량을 단위 없이 그린다** — 이름을 얻으려고 조회를
-     * 얹으면 그 조회의 실패가 이 창을 통째로 비게 만든다.
-     */
-    uomNote: '수량 단위는 아직 이름으로 표시하지 않습니다.',
   },
 
   /** 우측 창 ② — 판정 입력. 합계 제약이 이 구획을 지배한다. */
@@ -138,8 +145,6 @@ export const oqcInspection = {
     round: (round: number): string => `${round}회차`,
     /** 아직 만들어지지 않은 회차다 — 번호를 화면이 세지 않으므로 번호 없이 말한다. */
     reinspectRound: '새 회차 (재검사)',
-    /** 회차가 하나도 없다 — 아직 아무도 판정하지 않은 의뢰다. */
-    notStarted: '아직 입력된 검사 결과가 없습니다.',
     loading: '검사 결과를 불러오는 중입니다.',
     /**
      * 이 회차는 이미 확정됐다. ⛔ **고칠 수 있는 것처럼 보이지 않게 한다** — 판정은 수정하지
@@ -159,11 +164,17 @@ export const oqcInspection = {
       held: '보류수량',
     },
     /** 실시간 합계. 어긋난 값을 감추지 않는다. */
-    sum: '합계',
-    remaining: '잔여',
-    matched: '검사수량과 일치합니다.',
-    /** 모자란다. 얼마나 모자란지 함께 말한다 — 사용자가 다시 세지 않게. */
-    short: (remaining: string): string => `검사수량보다 ${remaining} 모자랍니다.`,
+    sum: '입력 완료',
+    remaining: '미입력',
+    /** 합계가 검사수량을 넘었을 때 오른쪽 상태(#136). */
+    overBy: (over: string): string => `${over} 초과`,
+    /** 입력 현황 막대의 접근 이름(#136). */
+    progressLabel: '검사 수량 대비 입력 합계',
+    /** 검사 수량 구획 · 판정 구획 제목(IQC #133 과 같은 말 · #136). */
+    sectionTitle: '검사 수량 입력',
+    judgmentSectionTitle: '판정',
+    /** 저장 단추 왼쪽 경고 — 저장이 곧 확정이라 되돌릴 수 없다(#136). */
+    saveNote: '판정 저장 후 수정이 불가합니다.',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
     over: (over: string): string => `검사수량보다 ${over} 많습니다.`,
     quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
@@ -206,7 +217,7 @@ export const oqcInspection = {
         `합격판정개수 ${String(acceptanceNumber)} 기준 자동 판정`,
       expected: (judgment: string): string => `자동 판정: ${judgment}`,
       reason: '판정 변경 사유',
-      reasonPlaceholder: '자동 판정과 다르게 저장하는 이유를 입력해 주세요.',
+      reasonPlaceholder: '판정 변경 사유를 입력하세요',
       required: '판정 저장 — 자동 판정과 다른 판정은 변경 사유를 입력해야 저장할 수 있습니다.',
       reasonMissing: '판정 변경 사유를 입력하세요.',
     },

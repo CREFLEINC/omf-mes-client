@@ -1,4 +1,4 @@
-import { Breadcrumb, Button, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -30,7 +30,7 @@ import {
   useSaveInspectionResult,
 } from './queries';
 import { QueueFilterBar } from './queue-filter-bar';
-import { QueueTable } from './queue-table';
+import { QueueListTable } from './queue-list-table';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
@@ -45,15 +45,18 @@ import {
   type SerialRow,
 } from './serials';
 import { SkipPane } from './skip-pane';
-import { InspectionHistoryPanel } from '../inspection-history/panel';
+import { InspectionHistoryPanel, useInspectionHistory } from '../inspection-history/panel';
 import { latestRound } from './types';
+import { useItemNames, useLotNumbers } from './reference-lookup';
+import { useUomLookup } from './uom-lookup';
 import { targetSignatureOf, type WriteTargetSignature } from './write-target';
 
 /**
  * W-04-03 OQC 출하검사 판정.
  *
- * 좌우 2단이다 — 왼쪽이 검사 대상 목록(약 1/3), 오른쪽이 고른 한 건의 대상 정보·판정 입력·회차
- * 이력이다(스펙 §3).
+ * 목록과 상세(판정)를 나란히 두지 않고 갈아 끼운다(omf-all-around#136 · IQC #133 과 같은 짜임) — 의뢰를 고르면
+ * (`?ir=`) 대상 정보·판정 입력만 서고, 「← 목록」으로 돌아오면 목록만 선다. 회차 이력 · 시리얼 기록 · 검사 이력은
+ * 판정 아래 접는 구획이다.
  *
  * **주소가 조건의 정본이다.** 조건·쪽·고른 의뢰가 전부 주소에 산다 — 새로고침·뒤로가기·공유가
  * 같은 결과를 내야 하기 때문이다. 읽고 쓰는 규칙은 `filters.ts` 가 소유한다.
@@ -265,6 +268,17 @@ export const OqcInspectionScreen = () => {
     setSearchParams(next);
   };
 
+  /* 상세에서 목록으로 — 고른 의뢰만 주소에서 뺀다(검색 조건 · 쪽은 그대로 · #136). */
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
+  useEffect(() => {
+    setConfirmingLeave(false);
+  }, [selectedId]);
+  const backToList = (): void => {
+    const next = new URLSearchParams(searchParams);
+    next.delete(URL_KEYS.selected);
+    setSearchParams(next);
+  };
+
   /**
    * 표 자리에 그릴 것. **네 갈래를 가른다** — 실패 · 부르는 중 · 이 쪽에 없음 · 조건에 맞는 것 없음.
    *
@@ -321,6 +335,29 @@ export const OqcInspectionScreen = () => {
     if (expected !== null) setJudgment(expected);
   };
 
+  /*
+   * 떠날 때 물을 입력(#136 · IQC #133 과 같은 규칙) — 열린 회차(회차가 아직 없거나 재검사 중)에 수량 · 판정 · 변경 사유 ·
+   * 검사한 시리얼 중 하나라도 들어 있으면 묻는다. 열린 회차의 기준은 늘 빈 상태다(이 화면은 회차가 있으면 잠근다).
+   * ⛔ 잠긴 회차는 고칠 칸이 없으니 묻지 않는다. 저장 요청 본문 · 저장 조건과는 무관하다 — 묻는 데만 쓴다.
+   */
+  const hasUnsavedInput =
+    isOpenRound &&
+    (draft.accepted !== '' ||
+      draft.rejected !== '' ||
+      draft.held !== '' ||
+      judgment !== '' ||
+      changeReason.trim() !== '' ||
+      serialRows.length > 0);
+
+  /*
+   * 품목·대상 LOT 은 번호마다 하나씩 이름으로 푼다(omf-all-around#40 · #136) — 목록에 선 줄과 고른 의뢰를 함께 넘긴다.
+   * 단위 코드는 수량 옆에 붙이는 표시 전용이다 — 저장 요청의 `uomId` 와 무관하다.
+   */
+  const itemNames = useItemNames([...rows.map((row) => row.itemId), detail.data?.itemId]);
+  const lotNumbers = useLotNumbers([detail.data?.lotId]);
+  const uoms = useUomLookup();
+  const uomCode = uoms.codeOf(detail.data?.uomId);
+
   /**
    * 저장이 보낼 값을 만든다.
    *
@@ -372,9 +409,8 @@ export const OqcInspectionScreen = () => {
    * 고르는데, 다시 골라도 같은 실패가 온다.
    */
   const detailContent =
-    selectedId === null ? (
-      <p className="field-note">{t.detail.nothingSelected}</p>
-    ) : detail.isError ? (
+    /* 고르지 않았으면 상세가 서지 않는다 — 목록만 선다(#136). 이 갈래는 아래 `selectedId` 를 좁히는 데만 쓴다. */
+    selectedId === null ? null : detail.isError ? (
       <QueueLoadErrorBanner
         error={toApiError(detail.error)}
         onRetry={() => void detail.refetch()}
@@ -383,7 +419,12 @@ export const OqcInspectionScreen = () => {
       <p className="field-note">{t.detail.loading}</p>
     ) : (
       <>
-        <RequestDetailPane detail={detail.data} />
+        <RequestDetailPane
+          detail={detail.data}
+          uomCode={uomCode}
+          itemNames={itemNames}
+          lotNumbers={lotNumbers}
+        />
 
         {/* OQC 생략(#119) — 출하작업지시 대상이고 판정이 아직 없을 때만. 확정 회차가 있으면 생략으로 덮지 않는다. */}
         {detail.data.targetTypeCode === 'SHIPMENT_REQUEST' &&
@@ -419,6 +460,7 @@ export const OqcInspectionScreen = () => {
             round={isReinspectingNow ? null : round}
             inspectionRequestNo={detail.data.inspectionRequestNo}
             inspectedQty={inspectedQty}
+            uomCode={uomCode}
             hasLot={detail.data.lotId !== null}
             draft={draft}
             onChange={changeDraftAndJudge}
@@ -480,28 +522,60 @@ export const OqcInspectionScreen = () => {
             }}
           />
         )}
+      </>
+    );
 
+  /*
+   * 참고 정보 — 판정 뒤에, 상세 카드 밖에 구획마다 접는 상자 하나로(#136 · IQC #133 과 같다). 내용과 동작은 그대로다.
+   * 회차 이력은 회차가 둘 이상(재검사 중이면 하나 이상)일 때만 선다 — 서지 않으면 접는 상자도 두지 않는다.
+   */
+  const historyRevision = `${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`;
+  const historyCount = useInspectionHistory(selectedId, historyRevision).data?.events.length;
+  const roundCount = rounds.data?.length ?? 0;
+  const showsRoundHistory = roundCount > 1 || (isReinspectingNow && roundCount > 0);
+
+  const auxContent =
+    selectedId === null || detail.isError || detail.data === undefined ? null : (
+      <div className="oqc-inspection-aux">
         {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */}
-        <RoundHistory
-          rounds={rounds.data ?? []}
-          currentResultId={isReinspectingNow ? null : roundId}
-          isReinspecting={isReinspectingNow}
-          judgmentOptions={judgmentOptions}
-        />
+        {showsRoundHistory && (
+          <details className="pane oqc-inspection-fold" open>
+            <summary>{t.history.heading}</summary>
+            <RoundHistory
+              rounds={rounds.data ?? []}
+              currentResultId={isReinspectingNow ? null : roundId}
+              isReinspecting={isReinspectingNow}
+              judgmentOptions={judgmentOptions}
+            />
+          </details>
+        )}
 
         {/* 시리얼 출하검사(#68) — 출하작업지시 의뢰만. 저장하면 새로 부른다. */}
         {detail.data.targetTypeCode === 'SHIPMENT_REQUEST' && (
-          <SerialRecords inspectionRequestId={selectedId} />
+          <details className="pane oqc-inspection-fold">
+            <summary>{t.serials.recordHeading}</summary>
+            <SerialRecords inspectionRequestId={selectedId} />
+          </details>
         )}
 
         {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
-        <InspectionHistoryPanel
-          key={`${String(selectedId)}-${String(rounds.data?.length ?? 0)}`}
-          inspectionRequestId={selectedId}
-          judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
-          revision={`${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`}
-        />
-      </>
+        <details className="pane oqc-inspection-fold">
+          <summary>
+            {messages.inspectionHistory.heading}
+            {historyCount !== undefined && (
+              <span className="oqc-inspection-fold-count">
+                {t.detail.historyCount(historyCount)}
+              </span>
+            )}
+          </summary>
+          <InspectionHistoryPanel
+            key={`${String(selectedId)}-${String(roundCount)}`}
+            inspectionRequestId={selectedId}
+            judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
+            revision={historyRevision}
+          />
+        </details>
+      </div>
     );
 
   return (
@@ -510,21 +584,32 @@ export const OqcInspectionScreen = () => {
         title={t.title}
         breadcrumb={
           <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            items={[
+              { label: t.breadcrumbRoot },
+              { label: t.title },
+              /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#136). */
+              ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
+            ]}
             aria-label={messages.common.shell.breadcrumb}
           />
         }
       />
 
-      <div className="two-pane">
-        <section className="pane" aria-label={t.queue.heading}>
-          <SerialOpenByScan onOpen={openBySerial} />
+      {selectedId === null ? (
+        <section
+          className="pane oqc-inspection-panes oqc-inspection-queue-pane"
+          aria-label={t.queue.heading}
+        >
+          {/* 검색 묶음 — 시리얼 스캔과 조회 조건이 같은 격자·높이로 선다(#136). */}
+          <div className="oqc-inspection-search">
+            <SerialOpenByScan onOpen={openBySerial} />
 
-          <QueueFilterBar
-            appliedFilters={filters}
-            onSearch={applyFilters}
-            onReset={() => applyFilters(EMPTY_FILTERS)}
-          />
+            <QueueFilterBar
+              appliedFilters={filters}
+              onSearch={applyFilters}
+              onReset={() => applyFilters(EMPTY_FILTERS)}
+            />
+          </div>
 
           {queue.isError && (
             <QueueLoadErrorBanner
@@ -533,7 +618,14 @@ export const OqcInspectionScreen = () => {
             />
           )}
 
-          <QueueTable rows={rows} selectedId={selectedId} onSelect={select} empty={emptyContent} />
+          <QueueListTable
+            rows={rows}
+            itemNames={itemNames}
+            uomCodeOf={(row) => uoms.codeOf(row.uomId)}
+            selectedId={selectedId}
+            onSelect={select}
+            empty={emptyContent}
+          />
 
           {/*
            * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
@@ -547,11 +639,57 @@ export const OqcInspectionScreen = () => {
             <PageNav view={pageView} disabled={save.isSaving} onChange={goToPage} />
           )}
         </section>
-
-        <section className="pane" aria-label={t.detail.paneLabel}>
+      ) : (
+        <section
+          className="pane oqc-inspection-panes oqc-inspection-detail"
+          aria-label={t.detail.paneLabel}
+        >
+          {/*
+           * 목록으로 — 저장하지 않은 입력이 있으면 바로 떠나지 않고 한 번 묻는다. 떠나면 그 입력은 버려진다
+           * (의뢰가 바뀌면 초안을 비우는 종전 규칙 그대로).
+           */}
+          <div className="oqc-inspection-back">
+            <Button
+              variant="text"
+              size="md"
+              className="oqc-inspection-back-button"
+              onClick={() => (hasUnsavedInput ? setConfirmingLeave(true) : backToList())}
+            >
+              {t.detail.backToList}
+            </Button>
+            {/*
+             * 저장하지 않고 떠날지 묻는 팝업 — 한 줄 설명, [계속 작성](테두리) [저장하지 않고 이동](채움).
+             * × 는 두지 않는다. Esc·바깥 누름은 «계속 작성»과 같다 — 입력은 그대로 남는다(IQC #133 과 같다).
+             */}
+            {confirmingLeave && (
+              <Dialog
+                open
+                onClose={() => setConfirmingLeave(false)}
+                showCloseButton={false}
+                title={t.detail.leaveUnsaved}
+                footer={
+                  <>
+                    <Button
+                      variant="outlined"
+                      className="app-button-neutral"
+                      onClick={() => setConfirmingLeave(false)}
+                    >
+                      {t.detail.keepEditing}
+                    </Button>
+                    <Button variant="filled" onClick={backToList}>
+                      {t.detail.leaveAnyway}
+                    </Button>
+                  </>
+                }
+              >
+                <p>{t.detail.leaveUnsavedNote}</p>
+              </Dialog>
+            )}
+          </div>
           {detailContent}
         </section>
-      </div>
+      )}
+      {auxContent}
     </>
   );
 };

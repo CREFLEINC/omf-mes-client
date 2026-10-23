@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type FormEvent } from 'react';
 
 import { EMPTY_FILTERS, type QueueFilters } from './filters';
+import { ItemFilterField } from './item-filter-field';
 import {
   EMPTY_DRAFT,
   hasError,
@@ -22,7 +23,8 @@ import {
  * 아니라 의뢰 생성 시각으로 걸러진다 — 화면은 멀쩡히 돌고 값만 틀린다.
  *
  * ⛔ **번호가 아닌 값을 조용히 무시하지 않는다.** 무시하면 사용자는 자기가 좁혔다고 믿는데
- * 결과는 좁혀지지 않은 상태가 된다.
+ * 결과는 좁혀지지 않은 상태가 된다. 품목은 이제 검색 창에서 고르므로(#136) 틀린 값이 칸에 들어올 길이
+ * 없고, 주소의 틀린 값은 `readFilters` 가 버린다 — 검증은 남겨 두되 칸 오류 글은 서지 않는다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -43,7 +45,6 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
    * 조회를 누를 때 `toFilters` 가 인자로 받아 조건에 합류한다.
    */
   const [pendingOnly, setPendingOnly] = useState(appliedFilters.pendingOnly);
-  const [showErrors, setShowErrors] = useState(false);
 
   /*
    * 주소가 정본이다 — 뒤로가기·초기화로 주소가 **바뀌면** 편집 중인 값도 그 값으로 되돌아간다.
@@ -60,7 +61,6 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
   useEffect(() => {
     setDraft(toDraft({ itemId, keyword, pendingOnly: appliedPendingOnly }));
     setPendingOnly(appliedPendingOnly);
-    setShowErrors(false);
   }, [itemId, keyword, appliedPendingOnly]);
 
   const errors = validateDraft(draft);
@@ -68,13 +68,9 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
 
-    /* 틀린 값을 실어 보내지 않는다. 그 대신 어느 칸이 틀렸는지 보인다. */
-    if (hasError(errors)) {
-      setShowErrors(true);
-      return;
-    }
+    /* 틀린 값을 실어 보내지 않는다. */
+    if (hasError(errors)) return;
 
-    setShowErrors(false);
     onSearch(toFilters(draft, pendingOnly));
   };
 
@@ -92,19 +88,17 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
      * 주소가 안 바뀌어 되돌림 effect 도 안 깨어나고 체크박스만 어긋난 채 남는다.
      */
     setPendingOnly(EMPTY_FILTERS.pendingOnly);
-    setShowErrors(false);
     onReset();
   };
 
   return (
     <form className="filter-bar" onSubmit={submit}>
-      <TextField
-        label={t.item}
-        placeholder={t.itemPlaceholder}
-        inputMode="numeric"
+      {/* 품목은 검색 창에서 고른다 — 내부 번호를 치지 않는다(IQC #133 과 같은 칸 · omf-all-around#136). */}
+      <ItemFilterField
         value={draft.item}
-        error={showErrors && errors.item ? t.identifierInvalid : undefined}
-        onChange={(event) => setDraft({ ...draft, item: event.target.value })}
+        onChange={(value) => {
+          setDraft({ ...draft, item: value });
+        }}
       />
       <TextField
         label={t.keyword}
@@ -112,17 +106,20 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
         value={draft.keyword}
         onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
       />
-      <div className="field-cell field-cell-unlabeled">
+      <div className="field-cell field-cell-unlabeled oqc-inspection-pending-only">
         <Checkbox checked={pendingOnly} onChange={(event) => setPendingOnly(event.target.checked)}>
           {t.pendingOnly}
         </Checkbox>
       </div>
-      <Button type="submit" variant="filled" size="sm">
-        {t.apply}
-      </Button>
-      <Button type="button" variant="outlined" size="sm" onClick={reset}>
-        {t.reset}
-      </Button>
+      {/* 조회·초기화는 한 덩어리로 그 줄의 오른쪽 끝에 선다(IQC 와 같은 자리). */}
+      <div className="filter-actions field-cell-unlabeled oqc-inspection-filter-actions">
+        <Button type="submit" variant="filled">
+          {t.apply}
+        </Button>
+        <Button type="button" variant="outlined" onClick={reset}>
+          {t.reset}
+        </Button>
+      </div>
     </form>
   );
 };

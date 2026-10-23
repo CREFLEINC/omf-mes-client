@@ -182,10 +182,20 @@ const renderScreen = (options: ScreenOptions = {}) => {
   };
 };
 
-const openRow = (inspectionRequestNo: string) =>
-  screen.getByRole('button', { name: t.queue.openRow(inspectionRequestNo) });
-
 const acceptedField = () => screen.getByLabelText(t.result.fields.accepted);
+
+/**
+ * 상세에서 다른 의뢰로 옮긴다 — 목록과 상세를 갈아 끼우므로(omf-all-around#136) 「← 목록」으로 돌아가(저장하지 않은
+ * 입력이 있으면 「저장하지 않고 이동」) 그 줄을 연다. 옮긴 뒤 지켜야 할 규칙(R2 · R3)은 종전과 같다.
+ */
+const switchTo = async (user: ReturnType<typeof userEvent.setup>, inspectionRequestNo: string) => {
+  await user.click(screen.getByRole('button', { name: t.detail.backToList }));
+  const leave = screen.queryByRole('button', { name: t.detail.leaveAnyway });
+  if (leave !== null) await user.click(leave);
+  await user.click(
+    await screen.findByRole('button', { name: t.queue.openRow(inspectionRequestNo) }),
+  );
+};
 
 /** 우측 창의 「대상 정보」 구획 — 좌측 표와 같은 숫자가 겹치므로 여기서 찾는다. */
 const detailPane = () => within(screen.getByRole('region', { name: t.detail.heading }));
@@ -314,7 +324,7 @@ describe('OqcInspectionScreen — 편집 초안 vs 서버 조회(V2)', () => {
     await user.type(acceptedField(), '480');
     expect(acceptedField()).toHaveValue('480');
 
-    await user.click(openRow(anotherWaitingRequest.inspectionRequestNo));
+    await switchTo(user, anotherWaitingRequest.inspectionRequestNo);
 
     await waitFor(() =>
       expect(detailPane().getByText(anotherWaitingRequest.inspectionRequestNo)).toBeInTheDocument(),
@@ -338,7 +348,7 @@ describe('OqcInspectionScreen — 편집 초안 vs 서버 조회(V2)', () => {
     await waitFor(() => expect(saves).toHaveLength(1));
 
     /* 나가 있는 사이에 다른 의뢰로 옮긴다 — 앞 대상의 쓰기는 이제 남의 것이다. */
-    await user.click(openRow(anotherWaitingRequest.inspectionRequestNo));
+    await switchTo(user, anotherWaitingRequest.inspectionRequestNo);
     await waitFor(() =>
       expect(detailPane().getByText(anotherWaitingRequest.inspectionRequestNo)).toBeInTheDocument(),
     );
@@ -508,7 +518,7 @@ describe('OqcInspectionScreen — 저장 이후(V6)', () => {
     await screen.findByLabelText(t.result.fields.accepted);
 
     /* ② A 로 옮겨 확인 창을 연다. */
-    await user.click(openRow(waitingRequest.inspectionRequestNo));
+    await switchTo(user, waitingRequest.inspectionRequestNo);
     await waitFor(() =>
       expect(detailPane().getByText(waitingRequest.inspectionRequestNo)).toBeInTheDocument(),
     );
@@ -518,7 +528,7 @@ describe('OqcInspectionScreen — 저장 이후(V6)', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     /* ③ 캐시가 찬 B 로 되돌아간다 — 폼이 자리를 지킨다. */
-    await user.click(openRow(anotherWaitingRequest.inspectionRequestNo));
+    await switchTo(user, anotherWaitingRequest.inspectionRequestNo);
     await waitFor(() =>
       expect(detailPane().getByText(anotherWaitingRequest.inspectionRequestNo)).toBeInTheDocument(),
     );
@@ -560,10 +570,16 @@ describe('OqcInspectionScreen — 좌측 네 갈래', () => {
 });
 
 describe('OqcInspectionScreen — 우측 네 갈래', () => {
-  it('고르기 전에는 무엇을 해야 하는지 말한다', async () => {
+  it('고르기 전에는 목록만 서고 상세(판정)는 서지 않는다(#136)', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.detail.nothingSelected)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', {
+        name: t.queue.openRow(waitingRequest.inspectionRequestNo),
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.detail.backToList })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(t.result.fields.accepted)).not.toBeInTheDocument();
   });
 
   it('상세를 부르는 중에는 「불러오는 중」이다', async () => {
@@ -583,7 +599,8 @@ describe('OqcInspectionScreen — 우측 네 갈래', () => {
     renderScreen({ route: '/?ir=999999' });
 
     expect(await screen.findByText(messages.httpError.loadTitle)).toBeInTheDocument();
-    expect(screen.queryByText(t.detail.nothingSelected)).not.toBeInTheDocument();
+    /* 고른 것이 사라진 것처럼 목록으로 돌아가지 않는다 — 상세 자리에 실패가 선다. */
+    expect(screen.getByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
   });
 
   it('고른 의뢰의 대상 정보와 판정 폼이 함께 선다', async () => {
@@ -592,7 +609,98 @@ describe('OqcInspectionScreen — 우측 네 갈래', () => {
     await screen.findByLabelText(t.result.fields.accepted);
 
     expect(detailPane().getByText(waitingRequest.inspectionRequestNo)).toBeInTheDocument();
-    expect(detailPane().getByText(waitingRequest.targetTypeCode)).toBeInTheDocument();
+    expect(
+      detailPane().getByText(
+        t.queue.target(t.queue.targetTypes.SHIPMENT_REQUEST ?? '', waitingRequest.targetId),
+      ),
+    ).toBeInTheDocument();
+    /* 목록은 서지 않는다 — 목록과 상세를 갈아 끼운다(#136). */
+    expect(
+      screen.queryByRole('button', { name: t.queue.openRow(waitingRequest.inspectionRequestNo) }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+/*
+ * omf-all-around#136 — 목록과 상세(판정)를 갈아 끼운다(IQC #133 과 같은 짜임). 「← 목록」은 검색 조건 · 쪽을 남기고,
+ * 저장하지 않은 입력이 있으면 한 번 묻는다.
+ */
+describe('OqcInspectionScreen — 목록 ↔ 상세(#136)', () => {
+  it('줄을 누르면 상세만 서고, 「← 목록」으로 돌아오면 검색 조건이 그대로다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({ route: '/?q=OQC&pd=0' });
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: t.queue.openRow(waitingRequest.inspectionRequestNo),
+      }),
+    );
+    await screen.findByLabelText(t.result.fields.accepted);
+
+    /* 입력이 없으면 묻지 않고 바로 돌아간다. */
+    await user.click(screen.getByRole('button', { name: t.detail.backToList }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(await screen.findByLabelText(t.filters.keyword)).toHaveValue('OQC');
+    expect(screen.getByRole('checkbox', { name: t.filters.pendingOnly })).not.toBeChecked();
+  });
+
+  it('저장하지 않은 수량이 있으면 묻고, 「계속 작성」이면 입력이 그대로 남는다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({ route: `/?ir=${String(waitingRequest.inspectionRequestId)}` });
+
+    await screen.findByLabelText(t.result.fields.accepted);
+    await user.type(acceptedField(), '480');
+    await user.click(screen.getByRole('button', { name: t.detail.backToList }));
+
+    expect(screen.getByRole('dialog', { name: t.detail.leaveUnsaved })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.detail.keepEditing }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(acceptedField()).toHaveValue('480');
+  });
+
+  it('「저장하지 않고 이동」이면 목록으로 돌아가고 아무것도 저장하지 않는다', async () => {
+    const user = userEvent.setup();
+    const { saves } = renderScreen({ route: `/?ir=${String(waitingRequest.inspectionRequestId)}` });
+
+    await screen.findByLabelText(t.result.fields.accepted);
+    await user.type(acceptedField(), '480');
+    await user.click(screen.getByRole('button', { name: t.detail.backToList }));
+    await user.click(screen.getByRole('button', { name: t.detail.leaveAnyway }));
+
+    expect(
+      await screen.findByRole('button', {
+        name: t.queue.openRow(waitingRequest.inspectionRequestNo),
+      }),
+    ).toBeInTheDocument();
+    expect(saves).toHaveLength(0);
+  });
+
+  it('확정된 회차는 고칠 칸이 없으니 묻지 않는다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({
+      route: `/?ir=${String(waitingRequest.inspectionRequestId)}`,
+      rounds: {
+        [waitingRequest.inspectionRequestId]: [
+          { ...confirmedRound, inspectionRequestId: waitingRequest.inspectionRequestId },
+        ],
+      },
+    });
+
+    await screen.findByRole('button', { name: t.result.reinspect });
+    await user.click(screen.getByRole('button', { name: t.detail.backToList }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', {
+        name: t.queue.openRow(waitingRequest.inspectionRequestNo),
+      }),
+    ).toBeInTheDocument();
   });
 });
 

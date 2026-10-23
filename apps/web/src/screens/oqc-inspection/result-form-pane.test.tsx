@@ -68,7 +68,6 @@ describe('ResultFormPane — 판정 폼', () => {
     renderPane();
 
     expect(screen.getByLabelText(t.fields.accepted)).toHaveValue('');
-    expect(screen.getByText(t.notStarted)).toBeInTheDocument();
   });
 
   it('검사성적서 발행 자리를 감추지 않고 비활성 + 사유로 세운다', () => {

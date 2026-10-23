@@ -39,14 +39,14 @@ describe('QueueFilterBar', () => {
     expect(onSearch).toHaveBeenCalledWith({ itemId: null, keyword: '', pendingOnly: false });
   });
 
-  it('번호가 아닌 값은 조용히 무시하지 않고 그 칸에 사유를 낸다', async () => {
+  it('품목은 번호를 치지 않고 검색 창에서 고른다 — 칸에 글자를 넣을 수 없다(#136)', async () => {
     const { onSearch } = renderBar();
 
-    await userEvent.type(screen.getByLabelText(t.item), 'abc');
+    expect(screen.getByLabelText(t.item)).toHaveAttribute('readonly');
+
     await userEvent.click(screen.getByRole('button', { name: t.apply }));
 
-    expect(screen.getByText(t.identifierInvalid)).toBeInTheDocument();
-    expect(onSearch).not.toHaveBeenCalled();
+    expect(onSearch).toHaveBeenCalledWith({ itemId: null, keyword: '', pendingOnly: true });
   });
 
   it('주소가 담은 토글 상태를 그대로 보인다 — 목록과 다른 조건을 보이지 않게', () => {
