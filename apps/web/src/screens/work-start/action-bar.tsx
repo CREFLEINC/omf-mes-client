@@ -15,8 +15,6 @@ export interface ActionBarProps {
   mode: 'start' | 'resume' | 'continue';
   /** 「남은 일」 문장. 주 동작이 잠기면 이 문장이 사유다(C-4). */
   remaining: string;
-  /** 사용자가 할 일인가. 참이면 「남은 일:」 머리말이 붙는다(C-5). */
-  todo: boolean;
   /** 막혀 있는가. 사유는 `remaining`이 말한다. */
   isBlocked: boolean;
   isSaving: boolean;
@@ -35,7 +33,6 @@ export interface ActionBarProps {
 export const ActionBar = ({
   mode,
   remaining,
-  todo,
   isBlocked,
   isSaving,
   onSubmit,
@@ -44,7 +41,7 @@ export const ActionBar = ({
   const remainingId = useId();
 
   return (
-    <SharedActionBar remaining={remaining} todo={todo} remainingId={remainingId} leading={leading}>
+    <SharedActionBar remaining={remaining} remainingId={remainingId} leading={leading}>
       <Button
         type="button"
         variant="filled"

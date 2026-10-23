@@ -454,15 +454,14 @@ export const WorkStartScreen = () => {
    * 시작과 재개를 막는 사유. 순서가 뜻이다. 단말이 못 하는 일이면 사번을 아무리 잘 넣어도
    * 열리지 않으므로 그 사실을 먼저 말한다.
    *
-   * 사유는 하단 바 「남은 일」이 말한다(C-4). `todo`가 참이면 「남은 일:」 머리말이 붙는다(C-5).
+   * 사유는 하단 바 「남은 일」 자리의 문장이 말한다(C-4). 머리말은 붙이지 않는다(사용자 결정 2026-10-23).
    * 사유를 코드와 함께 낸다. 문구가 같은지로 갈래를 판정하지 않는다.
    */
   const block = ((): {
     code: 'notSelected' | 'alreadyOpen' | 'workerMissing' | 'other';
     text: string;
-    todo: boolean;
   } | null => {
-    const other = (text: string, todo = true) => ({ code: 'other' as const, text, todo });
+    const other = (text: string) => ({ code: 'other' as const, text });
 
     /* 사유별로 가른다(사용자 지시 2026-09-13). 매핑이 비어 있는 것은 등록 실패가 아니다. */
     if (gate.verdict === 'unidentified') {
@@ -476,7 +475,7 @@ export const WorkStartScreen = () => {
        */
       if (selected !== null) return other(t.blocked.processMultiple);
     }
-    if (gate.verdict === 'checking') return other(t.blocked.checking, false);
+    if (gate.verdict === 'checking') return other(t.blocked.checking);
     if (gate.verdict === 'unavailable') return other(t.blocked.unavailable);
     if (gate.verdict === 'denied') {
       return other(
@@ -487,12 +486,11 @@ export const WorkStartScreen = () => {
     }
     /* 오프라인은 큐가 아니라 거부다. */
     if (!isOnline) return other(t.blocked.offline);
-    if (confirmedNo === null)
-      return { code: 'workerMissing', text: t.remaining.worker, todo: true };
-    if (selected === null) return { code: 'notSelected', text: t.remaining.select, todo: true };
+    if (confirmedNo === null) return { code: 'workerMissing', text: t.remaining.worker };
+    if (selected === null) return { code: 'notSelected', text: t.remaining.select };
 
     if (openSession.isError) return other(t.resume.sessionLookupFailed);
-    if (openSession.isPending) return other(t.resume.checking, false);
+    if (openSession.isPending) return other(t.resume.checking);
 
     if (isResume) {
       /* 열린 세션이 없으면 재개하지 않는다. 새로 열면 중단 구간이 사라진다. */
@@ -502,7 +500,7 @@ export const WorkStartScreen = () => {
        * 세션이 이미 열려 있으면 새로 열지 않는다(§6). 이어갈 길은 하단 바 주 동작
        * [작업 이어하기]가 준다(#1148).
        */
-      return { code: 'alreadyOpen', text: t.blocked.alreadyOpen, todo: false };
+      return { code: 'alreadyOpen', text: t.blocked.alreadyOpen };
     }
 
     return null;
@@ -679,12 +677,12 @@ export const WorkStartScreen = () => {
    * 안내라 그다음이고, 「진행 중」까지 함께 말하므로 진행 중 안내를 겹쳐 세우지 않는다
    * (사용자 확정 2026-09-21, omf-all-around#45).
    */
-  const remaining: { text: string; todo: boolean } =
+  const remaining: { text: string } =
     block !== null && block.code !== 'alreadyOpen'
       ? block
       : closeNotice !== null
-        ? { text: closeNotice, todo: false }
-        : (block ?? { text: t.remaining.ready, todo: false });
+        ? { text: closeNotice }
+        : (block ?? { text: t.remaining.ready });
 
   /* 설비 없는 단말은 이 시작이 쓸 W/O 의 설비를 보인다. 그것도 없으면 「설비 미지정」. */
   const selectionEquipmentText =
@@ -846,7 +844,6 @@ export const WorkStartScreen = () => {
       <ActionBar
         mode={isContinue ? 'continue' : isResume ? 'resume' : 'start'}
         remaining={remaining.text}
-        todo={remaining.todo}
         isBlocked={block !== null && !isContinue}
         /*
          * 판정을 기록하는 동안도 「시작 중」이다(#1148). 통과 판정이면 게이트가 아무것도 그리지

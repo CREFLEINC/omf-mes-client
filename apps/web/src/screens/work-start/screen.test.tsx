@@ -31,9 +31,6 @@ const enterWorkerNo = async (user: ReturnType<typeof renderScreen>['user'], work
 
 const startButton = () => screen.getByRole('button', { name: t.actions.start });
 
-/** 하단 바 「남은 일」 문장. 사용자가 할 일이면 머리말이 붙는다(C-5). */
-const todo = (text: string): string => messages.screenPatterns.actionBar.remaining(text);
-
 /**
  * 세션을 여는 쓰기만 골라 낸다.
  *
@@ -65,7 +62,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
   it('이 공정의 행이 없으면 닫고 푸는 곳을 말한다', async () => {
     renderScreen({ processes: [{ processId: PROCESS_ID + 1, canStartWork: true }] });
 
-    expect(await screen.findByText(todo(t.blocked.denied))).toBeInTheDocument();
+    expect(await screen.findByText(t.blocked.denied)).toBeInTheDocument();
     expect(startButton()).toBeDisabled();
   });
 
@@ -76,22 +73,22 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
   it('행은 있는데 canStartWork 가 응답에 없으면 닫는다', async () => {
     renderScreen({ processes: [{ processId: PROCESS_ID, processName: '합성 사출' }] });
 
-    expect(await screen.findByText(todo(t.blocked.denied))).toBeInTheDocument();
+    expect(await screen.findByText(t.blocked.denied)).toBeInTheDocument();
     expect(startButton()).toBeDisabled();
   });
 
   it('canStartWork 가 거짓이면 닫는다', async () => {
     renderScreen({ processes: [{ processId: PROCESS_ID, canStartWork: false }] });
 
-    expect(await screen.findByText(todo(t.blocked.denied))).toBeInTheDocument();
+    expect(await screen.findByText(t.blocked.denied)).toBeInTheDocument();
   });
 
   /** ⛔ 조회 실패를 통과로 처리하지 않는다(F-6). 「없습니다」와 다른 문장이다. */
   it('조회가 실패하면 「확인할 수 없다」로 닫고 다시 시도 경로를 준다', async () => {
     renderScreen({ processesStatus: 500 });
 
-    expect(await screen.findByText(todo(t.blocked.unavailable))).toBeInTheDocument();
-    expect(screen.queryByText(todo(t.blocked.denied))).not.toBeInTheDocument();
+    expect(await screen.findByText(t.blocked.unavailable)).toBeInTheDocument();
+    expect(screen.queryByText(t.blocked.denied)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.blocked.retry })).toBeInTheDocument();
     expect(startButton()).toBeDisabled();
   });
@@ -204,7 +201,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
 
   it('공정이 없거나 여럿이면 등록 실패가 아니라 공정 매핑을 사유로 말한다', async () => {
     renderScreen({ identity: { ...IDENTITY, processes: [] } });
-    expect(await screen.findByText(todo(t.blocked.processNone))).toBeInTheDocument();
+    expect(await screen.findByText(t.blocked.processNone)).toBeInTheDocument();
   });
 
   describe('고른 W/O 의 공정으로 판정한다', () => {
@@ -226,12 +223,12 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
       });
       /* 고르기 전에는 판정할 공정이 없을 뿐이다 — 막지 않는다. */
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-      expect(screen.queryByText(todo(t.blocked.processMultiple))).not.toBeInTheDocument();
+      expect(screen.queryByText(t.blocked.processMultiple)).not.toBeInTheDocument();
 
       await pick(rendered);
 
       await waitFor(() => expect(startButton()).toBeEnabled());
-      expect(screen.queryByText(todo(t.blocked.processMultiple))).not.toBeInTheDocument();
+      expect(screen.queryByText(t.blocked.processMultiple)).not.toBeInTheDocument();
     });
 
     it('W/O 공정의 시작이 매핑되지 않았으면 그 공정 이름으로 막는다', async () => {
@@ -242,9 +239,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
 
       await pick(rendered);
 
-      expect(
-        await screen.findByText(todo(t.blocked.deniedProcess('합성 조립'))),
-      ).toBeInTheDocument();
+      expect(await screen.findByText(t.blocked.deniedProcess('합성 조립'))).toBeInTheDocument();
       expect(startButton()).toBeDisabled();
     });
 
@@ -253,8 +248,8 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
 
       await pick(rendered);
 
-      expect(await screen.findByText(todo(t.blocked.processMultiple))).toBeInTheDocument();
-      expect(screen.queryByText(todo(t.blocked.unidentified))).not.toBeInTheDocument();
+      expect(await screen.findByText(t.blocked.processMultiple)).toBeInTheDocument();
+      expect(screen.queryByText(t.blocked.unidentified)).not.toBeInTheDocument();
       expect(startButton()).toBeDisabled();
     });
   });
@@ -285,7 +280,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
       identity: { terminalId: null, processes: null, equipment: null, workerNo: null },
     });
 
-    expect(await screen.findByText(todo(t.blocked.unidentified))).toBeInTheDocument();
+    expect(await screen.findByText(t.blocked.unidentified)).toBeInTheDocument();
     expect(recorded.urls.some((url) => url.includes('/processes'))).toBe(false);
   });
 });
@@ -423,7 +418,7 @@ describe('P-02-01 작업 시작 — 사번', () => {
 
     const card = await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
     // 사유는 하단 바 「남은 일」이 말한다(C-4).
-    expect(screen.getByText(todo(t.remaining.worker))).toBeInTheDocument();
+    expect(screen.getByText(t.remaining.worker)).toBeInTheDocument();
     expect(
       screen.queryByText('작업지시 선택: 먼저 사번을 입력하고 확인하세요.'),
     ).not.toBeInTheDocument();
@@ -821,7 +816,7 @@ describe('P-02-01 작업 시작 — 오프라인', () => {
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
     await enterWorkerNo(rendered.user, WORKER.workerNo);
 
-    expect(await screen.findByText(todo(t.blocked.offline))).toBeInTheDocument();
+    expect(await screen.findByText(t.blocked.offline)).toBeInTheDocument();
     expect(startButton()).toBeDisabled();
   });
 });
@@ -1147,7 +1142,7 @@ describe('P-02-01 작업 시작 — 지시 수량을 채운 작업지시(#45)', 
 
     await selectWorkOrder(rendered);
 
-    expect(await screen.findByText(todo(t.blocked.offline))).toBeInTheDocument();
+    expect(await screen.findByText(t.blocked.offline)).toBeInTheDocument();
     expect(screen.queryByText(t.closing.fulfilled)).not.toBeInTheDocument();
   });
 });
@@ -1244,7 +1239,7 @@ describe('P-02-01 작업 시작 — 다음 작업 화면으로 가는 길(omf-al
     await selectWorkOrder(rendered);
 
     /* 막힘 사유는 하단 바 「남은 일」이 말하고 잠긴 주 동작에 이어진다(C-4). */
-    const line = await screen.findByText(todo(t.blocked.offline));
+    const line = await screen.findByText(t.blocked.offline);
 
     expect(startButton()).toBeDisabled();
     expect(startButton()).toHaveAttribute('aria-describedby', line.id);

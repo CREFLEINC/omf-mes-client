@@ -20,7 +20,6 @@ export const screenPatterns = {
   /** C-5 하단 동작 바 */
   actionBar: {
     region: '하단 동작',
-    remaining: (text: string): string => `남은 일: ${text}`,
     prev: '이전',
     next: (stepName: string): string => `다음: ${stepName}`,
   },
