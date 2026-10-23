@@ -12,7 +12,17 @@ export interface LotScanProps {
   inspectionTypeCode: string;
   /** 찾은 의뢰를 고른다 — 화면의 기존 선택 함수를 그대로 넘긴다. */
   onFound: (inspectionRequestId: number) => void;
+  /**
+   * 의뢰를 무엇으로 잇는가. 기본은 LOT 그 자체(IQC). PQC 의뢰는 작업지시 단위라 LOT 칸이 비어 있다 —
+   * `workOrder` 면 생산 LOT 의 원천 작업지시로 의뢰를 찾는다(omf-all-around#135).
+   */
+  matchBy?: 'lot' | 'workOrder';
+  /** 대기 의뢰가 없을 때의 말. 기본은 수입검사 문구다. */
+  noRequestMessage?: string;
 }
+
+/** 생산 LOT 의 원천 유형 — 서버 `WORK_ORDER_LOT_SOURCE` 와 같은 값이다. */
+const WORK_ORDER_SOURCE = 'WORK_ORDER';
 
 /**
  * LOT 바코드로 검사 대상을 바로 연다(omf-all-around#58).
@@ -23,7 +33,12 @@ export interface LotScanProps {
  * ⭐ 못 찾으면 칸에 남은 번호를 골라 둔다 — 다음 스캔이 덮어쓴다(뒤에 이어 붙지 않는다 · #133). 찾는 동안에도
  *    칸을 잠그지 않아(읽기 전용) 커서가 칸을 떠나지 않는다 — 잠그면 다음 스캔이 갈 곳을 잃는다.
  */
-export const LotScan = ({ inspectionTypeCode, onFound }: LotScanProps) => {
+export const LotScan = ({
+  inspectionTypeCode,
+  onFound,
+  matchBy = 'lot',
+  noRequestMessage = t.noRequest,
+}: LotScanProps) => {
   const { client } = useApiClient();
   const [value, setValue] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -52,16 +67,21 @@ export const LotScan = ({ inspectionTypeCode, onFound }: LotScanProps) => {
         fail(t.notFound);
         return;
       }
+      if (matchBy === 'workOrder' && lot.sourceTypeCode !== WORK_ORDER_SOURCE) {
+        fail(noRequestMessage);
+        return;
+      }
+      const target = matchBy === 'workOrder' ? { workOrderId: lot.sourceId } : { lotId: lot.lotId };
       const requests = await runRequest(() =>
         client.GET('/quality/inspection-requests', {
           params: {
-            query: { inspectionTypeCode, pendingOnly: true, lotId: lot.lotId, page: 1, size: 5 },
+            query: { inspectionTypeCode, pendingOnly: true, ...target, page: 1, size: 5 },
           },
         }),
       );
       const found = requests.items[0];
       if (found === undefined) {
-        fail(t.noRequest);
+        fail(noRequestMessage);
         return;
       }
       setValue('');

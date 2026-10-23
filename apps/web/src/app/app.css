@@ -19507,6 +19507,29 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 /* PQC 목록 조건 줄(#135) — 품목 검색 · 의뢰번호 검색은 늘어나는 칸, 조회·초기화는 그 줄 오른쪽 끝. */
+/* 검색 묶음 — LOT 스캔 줄 아래 조건 줄, 묶음 아래 구분선(#133 의 `iqc-inspection-search` 와 같은 모양). */
+.pqc-web-search {
+  display: grid;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.pqc-web-search > form.form-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  justify-content: stretch;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+}
+
+.pqc-web-search > form.form-actions > .field-note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .pqc-web-filter-bar {
   display: flex;
   flex-wrap: wrap;

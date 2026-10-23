@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
+import { LotScan } from '../inspection-documents/lot-scan';
 import { PAGE_SIZE } from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from '../oqc-inspection/load-error-banner';
 /* 쪽 넘김 단추는 IQC 판정 화면(#133)의 것 — 같은 크기로 선다. */
@@ -101,23 +102,32 @@ export const PqcInspectionRegisterScreen = () => {
 
       {selectedId === null ? (
         <section className="pane pqc-web-list" aria-label={t.queue.heading}>
-          <PqcFilterBar
-            applied={filters}
-            pendingOnly={pendingOnly}
-            onTogglePendingOnly={(next) => {
-              /* 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. */
-              setPendingOnly(next);
-              setPage(1);
-            }}
-            onSearch={(next) => {
-              setFilters(next);
-              setPage(1);
-            }}
-            onReset={() => {
-              setFilters(EMPTY_PQC_FILTERS);
-              setPage(1);
-            }}
-          />
+          {/* 검색 묶음 — LOT 스캔과 조회 조건(IQC 판정 화면 #133 과 같은 자리). 생산 LOT 의 작업지시로 대기 의뢰를 바로 연다. */}
+          <div className="pqc-web-search">
+            <LotScan
+              inspectionTypeCode={PQC}
+              matchBy="workOrder"
+              noRequestMessage={t.filters.lotNoRequest}
+              onFound={select}
+            />
+            <PqcFilterBar
+              applied={filters}
+              pendingOnly={pendingOnly}
+              onTogglePendingOnly={(next) => {
+                /* 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. */
+                setPendingOnly(next);
+                setPage(1);
+              }}
+              onSearch={(next) => {
+                setFilters(next);
+                setPage(1);
+              }}
+              onReset={() => {
+                setFilters(EMPTY_PQC_FILTERS);
+                setPage(1);
+              }}
+            />
+          </div>
 
           {queue.isError && (
             <QueueLoadErrorBanner

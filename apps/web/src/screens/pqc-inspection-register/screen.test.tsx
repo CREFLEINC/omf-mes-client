@@ -71,12 +71,24 @@ const renderScreen = (options: RenderOptions = {}) => {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    if (path === '/quality/inspection-requests' && url.searchParams.has('workOrderId')) {
+      queueQueries.push(url.searchParams);
+      const items = url.searchParams.get('workOrderId') === '701' ? [REQUEST] : [];
+      return jsonResponse({ items, page: { page: 1, size: 5, total: items.length } });
+    }
     if (path === '/quality/inspection-requests') {
       queueQueries.push(url.searchParams);
       const items = options.queueItems ?? [REQUEST];
       return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
     }
     if (path === '/quality/inspection-requests/7101') return jsonResponse(REQUEST);
+    if (path === '/trace/lots') {
+      const lots = [
+        { lotId: 801, lotNo: 'M-LOT-0701', sourceTypeCode: 'WORK_ORDER', sourceId: 701 },
+        { lotId: 802, lotNo: 'M-LOT-0799', sourceTypeCode: 'WORK_ORDER', sourceId: 799 },
+      ].filter((lot) => lot.lotNo === url.searchParams.get('lotNo'));
+      return jsonResponse({ items: lots, page: { page: 1, size: 5, total: lots.length } });
+    }
     if (path === '/production/work-orders') {
       const q = (url.searchParams.get('q') ?? '').toUpperCase();
       const items = [
@@ -170,6 +182,23 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
 
     await user.click(screen.getByRole('button', { name: t.filters.reset }));
     await waitFor(() => expect(queueQueries.at(-1)?.get('q')).toBeNull());
+  });
+
+  it('LOT 스캔은 생산 LOT 의 작업지시로 대기 의뢰를 찾아 열고, 없으면 공정검사 문구를 낸다(#135)', async () => {
+    const user = userEvent.setup();
+    const { queueQueries } = renderScreen();
+    await screen.findByText(REQUEST.inspectionRequestNo);
+    const scan = screen.getByRole('textbox', { name: messages.inspectionDocuments.scan.label });
+
+    await user.type(scan, 'M-LOT-0799{Enter}');
+    expect(await screen.findByText(t.filters.lotNoRequest)).toBeInTheDocument();
+
+    await user.clear(scan);
+    await user.type(scan, 'M-LOT-0701{Enter}');
+    expect(await screen.findByRole('region', { name: t.detail.paneLabel })).toBeInTheDocument();
+    const asked = queueQueries.filter((query) => query.has('workOrderId'));
+    expect(asked.at(-1)?.get('workOrderId')).toBe('701');
+    expect(asked.at(-1)?.has('lotId')).toBe(false);
   });
 
   it('작업지시 번호로 찾은 작업지시를 목록 질의 workOrderId 로 싣고, 못 찾거나 여럿이면 조회하지 않는다(#135)', async () => {

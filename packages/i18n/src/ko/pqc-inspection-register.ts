@@ -42,6 +42,7 @@ export const pqcInspectionRegister = {
     workOrderNotFound: '일치하는 작업지시가 없습니다.',
     workOrderAmbiguous: '여러 작업지시가 맞습니다. 번호를 정확히 입력하세요.',
     workOrderFailed: '작업지시를 찾지 못했습니다. 다시 조회하세요.',
+    lotNoRequest: '이 LOT 의 작업지시에 대기 중인 공정검사 의뢰가 없습니다.',
     keyword: '의뢰번호 검색',
     keywordPlaceholder: '의뢰번호를 입력하세요',
     apply: '조회',

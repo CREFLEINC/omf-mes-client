@@ -34,6 +34,7 @@ export const pqcInspectionRegister = {
     workOrderNotFound: 'Không có lệnh sản xuất phù hợp.',
     workOrderAmbiguous: 'Có nhiều lệnh sản xuất phù hợp. Hãy nhập chính xác số lệnh.',
     workOrderFailed: 'Không tìm được lệnh sản xuất. Hãy tra cứu lại.',
+    lotNoRequest: 'Lệnh sản xuất của LOT này không có yêu cầu kiểm tra công đoạn đang chờ.',
     keyword: 'Tìm số yêu cầu',
     keywordPlaceholder: 'Nhập số yêu cầu',
     apply: 'Tra cứu',
