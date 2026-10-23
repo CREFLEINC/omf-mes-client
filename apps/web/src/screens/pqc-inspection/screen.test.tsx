@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useNavigate } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -955,13 +955,27 @@ describe('PqcInspectionScreen — 재조회는 친 것을 지우지 않는다', 
 
     await screen.findByText(t.measurements.heading);
 
-    const value = screen.getAllByLabelText(t.measurements.columns.value)[0] as HTMLInputElement;
+    const value = (
+      await screen.findAllByLabelText(t.measurements.columns.value)
+    )[0] as HTMLInputElement;
+    /*
+     * 줄이 선 뒤 빈 초안을 까는 효과가 돈 다음에 친다 — 화면에 줄이 보이는 것은 그 효과보다
+     * 먼저라, 부하가 걸리면 친 값을 그 효과가 덮는다.
+     */
+    await act(async () => {});
     await userEvent.type(value, '9');
+    expect(value.value).toBe('9');
 
     /* 임시 저장이 상세 재조회를 부른다(#601 1-7) — 여기서 초안이 날아가던 자리다. */
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
     await waitFor(() => expect(reads).toBeGreaterThan(1));
+    /* 다시 읽은 상세가 화면에 닿은 뒤에 본다 — 요청만 나간 때 보면 지우는 결함도 통과한다. */
+    await waitFor(() => {
+      expect(screen.getByLabelText(`${t.coverage.from} ${t.coverage.date}`)).toHaveValue(
+        '2026-09-12',
+      );
+    });
 
     const after = screen.getAllByLabelText(t.measurements.columns.value)[0] as HTMLInputElement;
     expect(after.value).toBe('9');
