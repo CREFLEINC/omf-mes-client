@@ -26,6 +26,9 @@ import {
   makeMold,
 } from './fixtures';
 import { RunningChangeScreen } from './screen';
+import { popGateDeniedText } from '../../patterns/pop-process-gate';
+
+const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial');
 
 const t = messages.runningChange;
 
@@ -77,6 +80,10 @@ interface Options {
   writeStatus?: number;
   /** 교체 등록이 **통신 실패**한다. 거부와 달리 큐에 남는다 */
   writeFails?: boolean;
+  /** 단말 기능 구성 행을 통째로 준다(공정이 여럿인 단말) */
+  processRows?: unknown[];
+  /** 작업지시 상세가 싣는 공정 */
+  workOrderProcess?: { processId: number; processName: string };
 }
 
 /** 스캔으로 걸리는 LOT. 보류 중이면 품질 상태 칩이 선다. */
@@ -87,11 +94,24 @@ const scannedLot = (options: Options) =>
 
 const routes = (options: Options): StubRoute[] => [
   {
+    match: (request) =>
+      options.workOrderProcess !== undefined &&
+      request.method === 'GET' &&
+      pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+    respond: () =>
+      jsonResponse({
+        workOrderId: WORK_ORDER_ID,
+        workOrderNo: 'SAMPLE-WO',
+        ...options.workOrderProcess,
+      }),
+  },
+  {
     match: (request) => pathOf(request).startsWith('/mdm/terminals/'),
     respond: () => {
       if (options.gateFails === true)
         return jsonResponse({ message: '조회 실패' }, { status: 500 });
       if (options.noProcessRow === true) return jsonResponse({ items: [] });
+      if (options.processRows !== undefined) return jsonResponse({ items: options.processRows });
 
       return jsonResponse({
         items: [{ processId: PROCESS_ID, canInputMaterial: options.canInputMaterial ?? true }],
@@ -367,7 +387,7 @@ describe('러닝체인지 화면 — 단말 게이팅', () => {
   it('플래그가 닫혀 있으면 막고 「권한이 없다」고 말한다', async () => {
     renderScreen({ canInputMaterial: false });
 
-    expect(await screen.findByText(t.disabled.denied)).toBeInTheDocument();
+    expect(await screen.findByText(DENIED_TEXT)).toBeInTheDocument();
     expect(submitButton()).toBeDisabled();
   });
 
@@ -375,7 +395,7 @@ describe('러닝체인지 화면 — 단말 게이팅', () => {
   it('이 공정의 구성 행이 아예 없으면 닫힌 것과 같이 다룬다', async () => {
     renderScreen({ noProcessRow: true });
 
-    expect(await screen.findByText(t.disabled.denied)).toBeInTheDocument();
+    expect(await screen.findByText(DENIED_TEXT)).toBeInTheDocument();
   });
 
   /* 「확인할 수 없다」와 「권한이 없다」는 작업자가 할 일이 다르다(G-3). */
@@ -632,6 +652,38 @@ describe('러닝체인지 화면 — 교체 등록', () => {
     });
 
     expect(screen.getByText(t.replace.partNone)).toBeInTheDocument();
+    expect(submitButton()).toBeDisabled();
+  });
+});
+
+describe('러닝체인지 화면 — 공정이 여럿인 단말', () => {
+  const OTHER_PROCESS_ID = PROCESS_ID + 1;
+  const MULTI: PopIdentity = {
+    ...IDENTIFIED,
+    processes: [{ processId: OTHER_PROCESS_ID }, { processId: PROCESS_ID }],
+  };
+  const rows = (canInputMaterial: boolean) => [
+    { processId: OTHER_PROCESS_ID, processName: '합성 조립', canInputMaterial: !canInputMaterial },
+    { processId: PROCESS_ID, processName: '합성 사출', canInputMaterial },
+  ];
+  const workOrderProcess = { processId: PROCESS_ID, processName: '합성 사출' };
+
+  it('W/O 의 공정으로 판정해 등록이 열린다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ processRows: rows(true), workOrderProcess }, MULTI);
+    await fillReplacement(user);
+
+    await waitFor(() => {
+      expect(submitButton()).toBeEnabled();
+    });
+  });
+
+  it('W/O 공정의 자재 투입이 꺼져 있으면 공정 이름과 켜는 곳을 말하며 막는다', async () => {
+    renderScreen({ processRows: rows(false), workOrderProcess }, MULTI);
+
+    expect(
+      await screen.findByText(popGateDeniedText({ processName: '합성 사출' }, 'canInputMaterial')),
+    ).toBeInTheDocument();
     expect(submitButton()).toBeDisabled();
   });
 });

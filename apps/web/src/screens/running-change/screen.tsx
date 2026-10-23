@@ -4,7 +4,13 @@ import { useEffect, useId, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
-import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { usePopIdentity } from '../../patterns/pop-identity';
+import {
+  popGateDeniedText,
+  popGateProcessId,
+  usePopProcessGate,
+  usePopWorkOrderProcess,
+} from '../../patterns/pop-process-gate';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 
 import { CurrentInputs } from './current-inputs';
@@ -20,7 +26,6 @@ import { ScanField, type ScanOutcomeView } from './scan-field';
 import { useScanLookup } from './scan-queries';
 import { readLotId, readWorkOrderId } from './screen-params';
 import { useOpenWorkSession } from './session';
-import { useTerminalGate } from './terminal-gating';
 import { useReferenceLabels } from './reference-labels';
 import { toApiError } from '../../patterns/request';
 
@@ -76,7 +81,6 @@ export const RunningChangeScreen = () => {
    * 않는다(F-6).
    */
   const { terminalId, processes, workerNo } = usePopIdentity();
-  const processId = soleProcessIdOf(processes);
 
   const titleId = useId();
 
@@ -87,8 +91,18 @@ export const RunningChangeScreen = () => {
   const currentLot = useCurrentLot(lotId);
   const session = useOpenWorkSession(workOrderId);
   const mold = useCurrentMold(session.moldId);
-  /* 교체도 자재 투입이므로 `P-02-03`과 같은 플래그를 쓴다(§5-1). */
-  const gate = useTerminalGate(terminalId, processId);
+  /*
+   * 교체도 자재 투입이므로 `P-02-03`과 같은 플래그를 쓴다(§5-1). 단말에 공정이 여럿이어도
+   * «이 W/O 의 공정»으로 판정한다.
+   */
+  const workOrderProcess = usePopWorkOrderProcess(workOrderId);
+  const gate = usePopProcessGate({
+    terminalId,
+    processId: popGateProcessId(workOrderProcess.processId, processes),
+    isProcessPending: workOrderProcess.isPending,
+    fallbackProcessName: workOrderProcess.processName,
+    flag: 'canInputMaterial',
+  });
 
   const [part, setPart] = useState<ScannedPart | null>(null);
   const [selectedTargetId, setSelectedTargetId] = useState<number | null>(null);
@@ -344,6 +358,7 @@ export const RunningChangeScreen = () => {
 
           <ReplacePanel
             gate={gate.verdict}
+            gateDeniedText={popGateDeniedText(gate, 'canInputMaterial')}
             hasWorkOrder={workOrderId !== null}
             hasWorker={workerNo !== null}
             part={part}
