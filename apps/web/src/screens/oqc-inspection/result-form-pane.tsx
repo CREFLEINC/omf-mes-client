@@ -1,4 +1,4 @@
-import { Button, Icon, Progress, Select, TextField } from '@crefle/web-ui';
+import { Button, Icon, Progress, Select, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import {
@@ -93,6 +93,9 @@ export interface ResultFormPaneProps {
   needsChangeReason: boolean;
   changeReason: string;
   onChangeReasonChange: (reason: string) => void;
+  /** 불합격 사유(선택 · #136) — 불합격을 골랐을 때만 칸이 선다. 저장에는 비고로 실린다. */
+  rejectionReason?: string;
+  onRejectionReasonChange?: (reason: string) => void;
 
   /**
    * 확인 창의 「판정 저장」이 부른다. **검사한 시각을 함께 넘긴다** — 아래 `openedAt` 주석 참조.
@@ -141,6 +144,8 @@ export const ResultFormPane = ({
   needsChangeReason,
   changeReason,
   onChangeReasonChange,
+  rejectionReason = '',
+  onRejectionReasonChange,
   onSave,
   isSaving,
   isJustSaved,
@@ -419,6 +424,19 @@ export const ResultFormPane = ({
               needsReason={needsChangeReason}
               reason={changeReason}
               onReasonChange={onChangeReasonChange}
+              disabled={isSaving}
+            />
+          )}
+
+          {/* 불합격 사유(선택 · #136) — 불합격을 골랐을 때만. 비워도 저장된다. */}
+          {!isLocked && judgment === 'REJECTED' && onRejectionReasonChange !== undefined && (
+            <TextArea
+              label={t.rejectionReason}
+              placeholder={t.rejectionReasonPlaceholder}
+              rows={2}
+              fullWidth
+              value={rejectionReason}
+              onChange={(event) => onRejectionReasonChange(event.target.value)}
               disabled={isSaving}
             />
           )}

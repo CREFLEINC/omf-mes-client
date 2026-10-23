@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, within } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -249,6 +249,19 @@ describe('ResultFormPane — 전이 경고', () => {
     renderPane({ draft: { accepted: 'abc', rejected: '15', held: '5' }, judgment: 'ACCEPTED' });
 
     expect(screen.queryByText(transition.guide.title)).not.toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 불합격 사유(선택 · #136)', () => {
+  it('불합격일 때만 칸이 서고, 비워도 저장을 막지 않는다', () => {
+    const onRejectionReasonChange = vi.fn();
+    renderPane({ draft: MATCHING, judgment: 'ACCEPTED', onRejectionReasonChange });
+    expect(screen.queryByLabelText(t.rejectionReason)).not.toBeInTheDocument();
+    cleanup();
+
+    renderPane({ draft: MATCHING, judgment: 'REJECTED', onRejectionReasonChange });
+    expect(screen.getByLabelText(t.rejectionReason)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.save })).toBeEnabled();
   });
 });
 

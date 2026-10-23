@@ -191,6 +191,9 @@ export const oqcInspection = {
     /** 종합 판정. ⛔ 값 목록을 화면에 고정하지 않는다 — 공통코드 조회로 채운다. */
     judgment: '종합 판정',
     judgmentPlaceholder: '판정을 선택하세요',
+    /** 불합격 사유(선택 · #136) — 저장에는 비고로 실린다. */
+    rejectionReason: '불합격 사유 (선택)',
+    rejectionReasonPlaceholder: '불합격 사유를 입력하세요',
     /**
      * 코드값 시드가 아직 안 들어가 목록이 빌 수 있다. ⛔ **감추지 않고 사유를 밝힌다** —
      * 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.

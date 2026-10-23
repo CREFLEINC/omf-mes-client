@@ -107,6 +107,8 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
 
     judgment: 'Đánh giá tổng hợp',
     judgmentPlaceholder: 'Hãy chọn đánh giá',
+    rejectionReason: 'Lý do không đạt (tùy chọn)',
+    rejectionReasonPlaceholder: 'Nhập lý do không đạt',
     judgmentUnavailable:
       'Danh sách giá trị đánh giá vẫn chưa được chuẩn bị. Hãy hỏi người phụ trách.',
     judgmentUnknown: (code: string): string =>

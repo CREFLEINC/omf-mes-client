@@ -245,6 +245,11 @@ export interface SaveResultVariables {
   judgmentChangeReason?: string;
   /** 검사한 시리얼별 판정(omf-all-around#68 · 서버 P-101). 비어 있으면 싣지 않는다 — LOT 판정만 저장한다. */
   serials?: OqcSerialJudgmentInput[];
+  /**
+   * 불합격 사유(선택 · #136) — 계약의 비고(`remarks`)에 싣는다. 불량 코드(`defects`)는 서버가 IQC 결과에만 받는다.
+   * 불합격이고 무언가 썼을 때만 싣는다.
+   */
+  remarks?: string;
 }
 
 /**
@@ -279,6 +284,7 @@ export const toResultCreateBody = (v: SaveResultVariables): InspectionResultCrea
   ...previousOf(v.previousResultId),
   ...(v.judgmentChangeReason === undefined ? {} : { judgmentChangeReason: v.judgmentChangeReason }),
   ...(v.serials === undefined || v.serials.length === 0 ? {} : { serials: v.serials }),
+  ...(v.remarks === undefined || v.remarks === '' ? {} : { remarks: v.remarks }),
 });
 
 /** 이 화면이 소유한 입력칸 — 서버 필드 오류를 인라인으로 낼지 배너로 올릴지 가르는 기준이다. */

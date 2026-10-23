@@ -43,6 +43,12 @@ describe('toResultCreateBody', () => {
     expect(toResultCreateBody(VARIABLES).statusCode).toBe('CONFIRMED');
   });
 
+  it('불합격 사유는 비고로 — 쓴 경우에만 싣는다(#136)', () => {
+    expect(toResultCreateBody({ ...VARIABLES, remarks: '외관 찍힘' }).remarks).toBe('외관 찍힘');
+    expect('remarks' in toResultCreateBody(VARIABLES)).toBe(false);
+    expect('remarks' in toResultCreateBody({ ...VARIABLES, remarks: '' })).toBe(false);
+  });
+
   it('고른 판정을 싣는다', () => {
     expect(toResultCreateBody(VARIABLES).overallJudgmentCode).toBe('ACCEPTED');
   });

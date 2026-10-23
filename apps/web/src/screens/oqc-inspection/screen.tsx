@@ -72,6 +72,8 @@ import { targetSignatureOf, type WriteTargetSignature } from './write-target';
  */
 
 const t = messages.oqcInspection;
+/** 불합격 판정 코드 — 불합격 사유(선택) 칸을 세우고 비고로 싣는 기준(#136 · `judgment-direction.ts` 와 같은 값). */
+const REJECTED = 'REJECTED';
 const referenceT = messages.common.reference;
 
 export const OqcInspectionScreen = () => {
@@ -132,6 +134,8 @@ export const OqcInspectionScreen = () => {
    * 판정 변경 사유(omf-all-around#126) — 확정 저장에만 싣는다. 의뢰·회차가 바뀌거나 재검사를 열고 닫으면 비운다.
    */
   const [changeReason, setChangeReason] = useState('');
+  /** 불합격 사유(선택 · #136) — 불합격을 골랐을 때만 칸이 서고, 저장에는 비고로 실린다. */
+  const [rejectionReason, setRejectionReason] = useState('');
 
   /*
    * 검사한 시리얼(omf-all-around#68) — 그 의뢰에 매인다. 다른 의뢰를 고르면 보이지 않고, 시리얼로 연 의뢰는 그 시리얼을 첫 줄로 받는다.
@@ -228,6 +232,7 @@ export const OqcInspectionScreen = () => {
     setIsReinspecting(false);
     setJudgment(storedJudgment);
     setChangeReason('');
+    setRejectionReason('');
     setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
@@ -360,6 +365,7 @@ export const OqcInspectionScreen = () => {
       draft.held !== '' ||
       judgment !== '' ||
       changeReason.trim() !== '' ||
+      rejectionReason.trim() !== '' ||
       serialRows.length > 0);
 
   /*
@@ -449,6 +455,9 @@ export const OqcInspectionScreen = () => {
       previousResultId,
       /* 자동 판정과 다르게 저장할 때만 싣는다(#126 · 서버 P-70). */
       ...(needsChangeReason ? { judgmentChangeReason: changeReason.trim() } : {}),
+      ...(judgment === REJECTED && rejectionReason.trim() !== ''
+        ? { remarks: rejectionReason.trim() }
+        : {}),
       serials: toSerialInputs(serialRows),
     });
   };
@@ -542,6 +551,8 @@ export const OqcInspectionScreen = () => {
             serialBlockedReason={serialBlockedReason(serialRows, inspectedQty, draft.rejected)}
             changeReason={changeReason}
             onChangeReasonChange={setChangeReason}
+            rejectionReason={rejectionReason}
+            onRejectionReasonChange={setRejectionReason}
             onSave={(inspectedAt) => {
               saveResult(selectedId, detail.data.uomId, inspectedAt);
             }}
@@ -557,6 +568,7 @@ export const OqcInspectionScreen = () => {
               setDraft(EMPTY_QUANTITY_DRAFT);
               setJudgment('');
               setChangeReason('');
+              setRejectionReason('');
               /* 시리얼로 연 완료 의뢰면 그 시리얼이 첫 줄로 남는다 — 재검사하려고 찍은 것이다. */
               setIsReinspecting(true);
             }}
@@ -570,6 +582,7 @@ export const OqcInspectionScreen = () => {
               setDraft(draftOf(round));
               setJudgment(storedJudgment);
               setChangeReason('');
+              setRejectionReason('');
               setSerialDraft({ inspectionRequestId: null, rows: [] });
             }}
           />
