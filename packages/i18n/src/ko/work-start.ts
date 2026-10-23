@@ -174,6 +174,8 @@ export const workStart = {
     start: '작업 시작',
     resume: '재개',
     restart: '작업 다시 시작',
+    /** 중단 W/O 의 열린 세션을 아직 모른다 — 재개인지 다시 시작인지 정하기 전이다. */
+    checking: '확인 중',
     starting: '시작 중',
   },
 

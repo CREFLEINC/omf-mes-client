@@ -988,7 +988,11 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
     it('그사이 다른 곳에서 세션이 열려 거절되면 서버 문구를 보이고 열린 세션을 다시 묻는다', async () => {
       const message =
         '이 MES W/O 에 이미 열린 작업 세션이 있습니다. 목록을 새로 고친 뒤 [재개]를 누르세요 — 다른 단말의 세션이면 그 단말에서 재개·종료하거나 관리웹에서 강제 종료하세요.';
-      const rendered = renderScreen({ workOrders: [HELD], startOpenSessionMessage: message });
+      const rendered = renderScreen({
+        workOrders: [HELD],
+        startOpenSessionMessage: message,
+        openSessionsAfterConflict: [OPEN_SESSION],
+      });
 
       await selectWorkOrder(rendered);
       await waitFor(() => {
@@ -1004,6 +1008,72 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
       await waitFor(() => {
         expect(asked()).toBeGreaterThan(askedBefore);
       });
+
+      /* 다시 읽은 열린 세션으로 [재개]가 서도 거절 문구는 그 쓰기의 것이라 남는다. */
+      expect(await screen.findByRole('button', { name: t.actions.resume })).toBeEnabled();
+      expect(screen.getByText(message)).toBeInTheDocument();
+    });
+
+    it('지시 수량을 이미 채웠으면 마감 안내도 함께 보인다', async () => {
+      const rendered = renderScreen({
+        workOrders: [{ ...HELD, progress: { goodQty: 500, achievementRate: 1 } }],
+      });
+
+      await selectWorkOrder(rendered);
+
+      expect(
+        await screen.findByText(`${t.restart.status} ${t.closing.fulfilled}`),
+      ).toBeInTheDocument();
+      expect(restartButton()).toBeEnabled();
+    });
+
+    it('열린 세션을 확인하는 동안은 재개와 다시 시작 어느 쪽으로도 이름 붙이지 않는다', async () => {
+      let release = (): void => undefined;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const rendered = renderScreen({ workOrders: [HELD], openSessionsGate: gate });
+
+      await selectWorkOrder(rendered);
+
+      expect(await screen.findByRole('button', { name: t.actions.checking })).toBeDisabled();
+      expect(screen.queryByRole('button', { name: t.actions.resume })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: t.actions.restart })).not.toBeInTheDocument();
+
+      release();
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+    });
+
+    it('열린 세션 조회가 실패하면 다시 시작으로 보내지 않고 사유를 말한다', async () => {
+      const rendered = renderScreen({ workOrders: [HELD], openSessionsStatus: 500 });
+
+      await selectWorkOrder(rendered);
+
+      expect(await screen.findByText(t.resume.sessionLookupFailed)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: t.actions.restart })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: t.actions.resume })).toBeDisabled();
+      expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(0);
+    });
+  });
+
+  describe('중단 세션이 열린 지시', () => {
+    it('재개가 거부되면 재개하지 못했다는 말과 서버가 적은 까닭을 함께 보인다', async () => {
+      const message = '이미 종료된 작업 세션입니다. 작업을 계속하려면 작업 시작을 다시 하세요.';
+      const rendered = renderScreen({
+        workOrders: [{ ...WORK_ORDER, statusCode: 'SUSPENDED' }],
+        openSessions: [OPEN_SESSION],
+        resumeLockedMessage: message,
+      });
+
+      await selectWorkOrder(rendered);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.actions.resume })).toBeEnabled();
+      });
+      await rendered.user.click(screen.getByRole('button', { name: t.actions.resume }));
+
+      expect(await screen.findByText(`${t.result.resumeFailed} ${message}`)).toBeInTheDocument();
     });
   });
 

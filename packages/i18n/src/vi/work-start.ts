@@ -120,6 +120,7 @@ export const workStart: Translated<typeof ko.workStart> = {
     start: 'Bắt đầu sản xuất',
     resume: 'Tiếp tục lại',
     restart: 'Bắt đầu lại công việc',
+    checking: 'Đang kiểm tra',
     starting: 'Đang bắt đầu',
   },
 

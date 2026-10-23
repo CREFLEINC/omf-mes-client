@@ -195,7 +195,13 @@ export const WorkStartScreen = () => {
    * ⚠ 조회가 끝나기 전(`undefined`)에는 다시 시작으로 읽지 않는다 — 열린 세션이 있을 수 있다.
    */
   const isRestart = isHeldSelected && openSession.data === null;
-  const isResume = isHeldSelected && !isRestart;
+  const isResume = isHeldSelected && openSession.data != null;
+
+  /*
+   * ⭐ 오류는 «지금 모드»가 아니라 «그 오류를 낸 쓰기»에 묶는다 — 다시 시작이 409 로 거절되면
+   *    열린 세션을 다시 읽어 모드가 재개로 바뀌는데, 그때 모드를 따라가면 거절 문구가 사라진다.
+   */
+  const [writeMode, setWriteMode] = useState<'start' | 'restart' | 'resume' | null>(null);
 
   /*
    * 고른 지시의 **끝나지 않은 PQC 검사 의뢰**(omf-all-around#42). 그 화면으로 가는 단추가
@@ -534,7 +540,11 @@ export const WorkStartScreen = () => {
    * ⛔ **「아직 안 골랐다」·「사번이 없다」는 여기 내지 않는다**(아래 주석 · 사용자 지시).
    */
   const bannerText = ((): string | null => {
-    if (block === null) return isRestart ? t.restart.status : closeNotice;
+    if (block === null) {
+      return isRestart
+        ? [t.restart.status, closeNotice].filter((line) => line !== null).join(' ')
+        : closeNotice;
+    }
     if (block.code === 'alreadyOpen') return closeNotice ?? block.text;
     if (block.code === 'notSelected' || block.code === 'workerMissing') return null;
 
@@ -543,7 +553,8 @@ export const WorkStartScreen = () => {
 
   const retryLabel = gate.verdict === 'unavailable' ? t.blocked.retry : null;
 
-  const writeError = isResume ? resumeWork.error : startWork.error;
+  const writeError =
+    writeMode === null ? null : writeMode === 'resume' ? resumeWork.error : startWork.error;
 
   /**
    * 서버가 「지금 보고 있는 것이 사실과 다르다」고 답했는가.
@@ -602,6 +613,10 @@ export const WorkStartScreen = () => {
     submitAtRef.current ??= terminalNow(new Date());
     const at = submitAtRef.current;
 
+    /* 열린 세션을 모르면 재개할지 다시 시작할지 정할 수 없다 — 막힘 사유가 이미 선다. */
+    if (isHeldSelected && !isResume && !isRestart) return;
+    setWriteMode(isResume ? 'resume' : isRestart ? 'restart' : 'start');
+
     if (isResume) {
       resumeWork.write(toResumeBody(at));
 
@@ -658,6 +673,7 @@ export const WorkStartScreen = () => {
     setAttempt(null);
     setChainError(null);
     setOutcome(null);
+    setWriteMode(null);
     setSelectedId(null);
   };
 
@@ -679,6 +695,7 @@ export const WorkStartScreen = () => {
     setAttempt(null);
     setChainError(null);
     setOutcome(null);
+    setWriteMode(null);
     setSelectedId(workOrder.workOrderId);
   };
 
@@ -890,12 +907,12 @@ export const WorkStartScreen = () => {
           <AlertBanner variant="error">
             {isConflict(writeError)
               ? /* 다시 시작이 충돌하는 까닭(이미 열린 세션)과 조치는 서버가 안다. */
-                isRestart
+                writeMode === 'restart'
                 ? (serverReasonOf(writeError) ?? t.result.conflict)
                 : t.result.conflict
               : /* 시작할 수 없는 상태의 거부는 까닭과 조치를 서버가 적어 보낸다. */
                 [
-                  isResume ? t.result.resumeFailed : t.result.startFailed,
+                  writeMode === 'resume' ? t.result.resumeFailed : t.result.startFailed,
                   serverReasonOf(writeError),
                 ]
                   .filter((line) => line !== null)
@@ -905,7 +922,17 @@ export const WorkStartScreen = () => {
       )}
 
       <ActionBar
-        mode={isResume ? 'resume' : isRestart ? 'restart' : 'start'}
+        mode={
+          isResume
+            ? 'resume'
+            : isRestart
+              ? 'restart'
+              : isHeldSelected && openSession.isPending
+                ? 'checking'
+                : isHeldSelected
+                  ? 'resume'
+                  : 'start'
+        }
         isBlocked={block !== null}
         /*
          * ⭐ **판정을 기록하는 동안도 「시작 중」이다**(#1148). 통과 판정이면 게이트가 아무것도

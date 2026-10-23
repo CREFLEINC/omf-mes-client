@@ -115,6 +115,13 @@ export interface StubOptions {
   listStatus?: number;
   /** 고른 작업지시의 열린 세션. 기본은 없음. */
   openSessions?: Record<string, unknown>[];
+  openSessionsStatus?: number;
+  /** 열린 세션 조회를 이 약속이 풀릴 때까지 붙든다 — 조회 중의 화면을 잰다. */
+  openSessionsGate?: Promise<unknown>;
+  /** 세션 열기가 409 로 거절된 뒤부터 답할 열린 세션 — 그사이 다른 곳에서 열린 경우를 잰다. */
+  openSessionsAfterConflict?: Record<string, unknown>[];
+  /** 재개 사건을 «더 할 수 없는 상태»(400 STATE_LOCKED)로 거절하며 싣는 서버 문구. */
+  resumeLockedMessage?: string;
   /** 고른 작업지시의 끝나지 않은 PQC 검사 의뢰. 기본은 없음 — PQC 대상이 아닌 지시다. */
   pendingPqc?: Record<string, unknown>[];
   pqcStatus?: number;
@@ -178,6 +185,7 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
   let listCalls = 0;
   let crew = [...(options.sessionWorkers ?? [])];
   let nextCrewId = 8801;
+  let isStartConflicted = false;
 
   const fetch: StubFetch = async (request) => {
     const url = new URL(request.url);
@@ -220,6 +228,19 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
           : (options.workOrders ?? [WORK_ORDER]);
 
       return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
+    }
+
+    if (
+      /^\/production\/work-sessions\/\d+\/events$/.test(url.pathname) &&
+      request.method === 'POST' &&
+      options.resumeLockedMessage !== undefined
+    ) {
+      return jsonResponse(
+        {
+          errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: options.resumeLockedMessage }],
+        },
+        { status: 400 },
+      );
     }
 
     const crewPath = /^\/production\/work-sessions\/\d+\/workers$/;
@@ -272,7 +293,15 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
     }
 
     if (url.pathname === '/production/work-sessions' && request.method === 'GET') {
-      const items = options.openSessions ?? [];
+      if (options.openSessionsGate !== undefined) await options.openSessionsGate;
+      if (options.openSessionsStatus !== undefined) {
+        return jsonResponse({ message: '실패' }, { status: options.openSessionsStatus });
+      }
+
+      const items =
+        isStartConflicted && options.openSessionsAfterConflict !== undefined
+          ? options.openSessionsAfterConflict
+          : (options.openSessions ?? []);
 
       return jsonResponse({ items, page: { page: 1, size: 2, total: items.length } });
     }
@@ -302,6 +331,8 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
         );
       }
       if (options.startOpenSessionMessage !== undefined) {
+        isStartConflicted = true;
+
         return jsonResponse(
           {
             conflictCause: 'user',
