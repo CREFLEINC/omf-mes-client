@@ -84,7 +84,8 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
     {
       key: 'lot',
       header: t.columns.lot,
-      width: '22rem',
+      /* 번호가 길다(30자 남짓) — 넓은 창에서는 다 보이고, 1440 창에서는 끝을 말줄임하고 전체는 title 로 본다. */
+      width: '28%',
       render: (row) => <LotCell workOrderId={row.targetId} />,
     },
     {
@@ -95,19 +96,19 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
     {
       key: 'workOrder',
       header: t.columns.workOrder,
-      width: '11rem',
+      width: '10rem',
       render: (row) => <WorkOrderCell workOrderId={row.targetId} />,
     },
     {
       key: 'no',
       header: messages.pqcInspection.detail.fields.inspectionRequestNo,
-      width: '12rem',
+      width: '10rem',
       render: (row) => <span title={row.inspectionRequestNo}>{row.inspectionRequestNo}</span>,
     },
     {
       key: 'qty',
       header: t.columns.targetQty,
-      width: '7rem',
+      width: '6rem',
       render: (row) => {
         const uomCode = uomCodeOf(row.uomId);
         return uomCode === undefined ? String(row.targetQty) : `${row.targetQty} ${uomCode}`;
@@ -129,7 +130,7 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
     {
       key: 'requestedAt',
       header: t.columns.requestedAt,
-      width: '10rem',
+      width: '9.5rem',
       sortable: true,
       render: (row) => formatPlantDateTime(row.requestedAt) ?? row.requestedAt,
     },

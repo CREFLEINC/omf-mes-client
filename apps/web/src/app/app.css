@@ -19108,8 +19108,8 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 .pqc-web-queue table {
   table-layout: fixed;
   width: 100%;
-  /* 일곱 칸이 한 줄 값으로 다 보이는 폭(품목 칸 12rem 이상). 창이 이보다 좁으면 표가 옆으로 구른다(DS 표 감싸개). */
-  min-width: 80rem;
+  /* 1440 창(본문 약 69rem)에서 일곱 칸이 옆으로 구르지 않는 폭. 창이 이보다 좁으면 표가 옆으로 구른다(DS 표 감싸개). */
+  min-width: 68rem;
 }
 
 .pqc-web-queue th:nth-child(n + 5),
@@ -19566,8 +19566,9 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   gap: var(--space-3);
 }
 
+/* 검색 칸 셋 + 체크 + 단추가 1440 창에서 한 줄에 서는 폭. */
 .pqc-web-filter-bar > * {
-  flex: 0 1 16rem;
+  flex: 0 1 14rem;
   min-width: 0;
 }
 
