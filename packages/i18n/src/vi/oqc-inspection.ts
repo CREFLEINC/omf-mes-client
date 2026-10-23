@@ -219,7 +219,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     heading: 'Yêu cầu bỏ qua OQC (kiểm tra xuất hàng)',
     steps: ['1. Yêu cầu bỏ qua', '2. Phê duyệt', '3. Thực hiện bỏ qua'],
     result:
-      'Sau khi được duyệt và thực hiện bỏ qua, các yêu cầu OQC còn lại sẽ được bỏ qua và kiểm tra xuất hàng được xử lý là đạt.',
+      'Sau khi yêu cầu và được phê duyệt bỏ qua, phần kiểm tra xuất hàng còn lại sẽ được bỏ qua và kết quả được xử lý là đạt.',
     reason: 'Lý do bỏ qua',
     reasonPlaceholder: 'Nhập lý do bỏ qua',
     openApproval: 'Đến phê duyệt yêu cầu này',
