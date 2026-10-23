@@ -6,24 +6,34 @@ export const qualityApproval = {
   fields: {
     approvalTypeCode: '승인 유형',
     statusCode: '상태',
-    period: '상신일',
+    /** 조회 조건 칸 이름(#144) — 목록·상세의 「상태」와 갈라 쓴다. */
+    statusSearch: '상태 검색',
+    periodFrom: '상신 시작일 검색',
+    periodTo: '상신 종료일 검색',
     q: '요청번호 검색',
     pendingOnly: '결재 대기만 보기',
     approvalRequestNo: '요청번호',
     requestedByName: '상신자',
     requestedAt: '상신 일시',
     reason: '사유',
-    request: '요청',
+    request: '요청번호',
     target: '대상',
+    /** 목록 표의 대상 열 머리(#144). 상세·확인 창은 「대상」 그대로다. */
+    targetLot: '대상 LOT',
+    myTurn: '결재 차례',
   },
-  codePending: '선택할 기준값이 아직 준비되지 않았습니다',
   codePlaceholder: '기준값 준비 중',
   all: '전체',
+  datePlaceholder: '날짜를 선택하세요',
+  qPlaceholder: '요청번호를 입력하세요',
   /** 승인 유형 코드 → 사용자 용어. 목록 밖 코드는 원문 그대로 보인다(`approvalTypeLabelOf`). */
   typeLabels: {
     CONCESSION: '특채',
-    OQC_SKIP: 'OQC 생략',
+    IQC_SKIP: 'IQC (수입검사) 생략',
+    OQC_SKIP: 'OQC (출하검사) 생략',
   },
+  /** 요청 상태 코드 → 사용자 용어(IQC 생략 화면과 같은 낱말). 색: 대기 주황 · 승인 초록 · 반려 빨강. */
+  statusLabels: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' },
   panes: {
     list: '승인 요청 목록',
     detail: '요청 상세',

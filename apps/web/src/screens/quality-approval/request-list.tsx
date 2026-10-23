@@ -2,7 +2,7 @@ import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@cre
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { approvalTypeLabelOf } from './code-options';
+import { approvalTypeLabelOf, statusBadgeOf } from './code-options';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { RequestRow } from './types';
@@ -43,22 +43,39 @@ export const RequestList = ({
         </button>
       ),
     },
-    { key: 'target', header: t.fields.target, render: (row) => row.targetName },
+    { key: 'target', header: t.fields.targetLot, render: (row) => row.targetName },
+    /* 상태는 코드 대신 사용자 용어 배지로(#144) — 대기 주황 · 승인 초록 · 반려 빨강. */
     {
       key: 'status',
       header: t.fields.statusCode,
+      align: 'center',
       render: (row) => (
-        <>
-          {row.statusCode}
-          {row.isMyTurn && <span className="field-note"> · {t.values.myTurn}</span>}
-        </>
+        <Chip size="sm" status={statusBadgeOf(row.statusCode).tone}>
+          {statusBadgeOf(row.statusCode).label}
+        </Chip>
       ),
     },
-    /* 승인 유형은 줄 끝 꼬리표로 — 탭으로 거른 목록에서도 어떤 결재인지 한눈에 보인다(#144). */
+    /* 승인 유형 꼬리표 — 탭으로 거른 목록에서도 어떤 결재인지 한눈에 보인다(#144). */
     {
       key: 'type',
       header: t.fields.approvalTypeCode,
+      align: 'center',
       render: (row) => <Chip size="sm">{approvalTypeLabelOf(row.approvalTypeCode)}</Chip>,
+    },
+    /*
+     * 내 차례는 줄 맨 오른쪽 꼬리표로(#144). 오른쪽 끝에 붙여 표 양 끝의 빈 자리를 같게 한다 —
+     * 왼쪽 요청번호도 칸 안쪽 여백만큼만 떨어져 있다.
+     */
+    {
+      key: 'myTurn',
+      header: t.fields.myTurn,
+      align: 'end',
+      render: (row) =>
+        row.isMyTurn ? (
+          <Chip size="sm" status="info">
+            {t.values.myTurn}
+          </Chip>
+        ) : null,
     },
   ];
 
@@ -89,7 +106,18 @@ export const RequestList = ({
 
   return (
     <div className="quality-approval-list">
-      <div className="quality-approval-table">
+      {/*
+       * 줄 아무 곳이나 눌러도 고른다(#144, IQC #133 과 같은 방식) — DS 표에 줄 클릭이 없어 눌린 줄의 요청 단추로
+       * 넘긴다. 키보드·화면 낭독기는 종전처럼 그 단추 하나로 고른다.
+       */}
+      <div
+        className="quality-approval-table"
+        onClick={(event) => {
+          const target = event.target as Element;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target.closest('tbody tr')?.querySelector<HTMLButtonElement>('.link-cell')?.click();
+        }}
+      >
         <Table
           density="compact"
           caption={<span className="quality-approval-table-caption">{t.panes.list}</span>}

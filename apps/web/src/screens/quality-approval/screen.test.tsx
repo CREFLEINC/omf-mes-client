@@ -302,7 +302,6 @@ describe('QualityApprovalScreen query and disclosure', () => {
 
     expect(await findRequest()).toBeInTheDocument();
     expect(screen.queryByText(t.scopeWarning)).not.toBeInTheDocument();
-    expect(screen.getByText(t.codePending)).toBeInTheDocument();
     expect(Object.fromEntries(recorded.urls[0]?.searchParams ?? [])).toEqual({
       assignedToMe: 'true',
       pendingOnly: 'true',
@@ -496,7 +495,7 @@ describe('QualityApprovalScreen detail', () => {
       'true',
     );
     expect(within(tabs).getByRole('tab', { name: '특채' })).toBeInTheDocument();
-    expect(within(tabs).getByRole('tab', { name: 'OQC 생략' })).toBeInTheDocument();
+    expect(within(tabs).getByRole('tab', { name: 'OQC (출하검사) 생략' })).toBeInTheDocument();
     /* 상세 · 결재 진행 구획과 빈 안내는 선택 전에는 서지 않는다. */
     expect(screen.queryByRole('region', { name: t.panes.detail })).toBeNull();
     expect(screen.queryByRole('region', { name: t.panes.progress })).toBeNull();
@@ -1192,7 +1191,7 @@ describe('QualityApprovalScreen decision action', () => {
 
     const dialog = await openConfirm(user, '  합성 반려 사유  ', '반려');
     expect(within(dialog).getByText('요청번호: SYNTH-REQ-031')).toBeInTheDocument();
-    expect(within(dialog).getByText('승인 유형: IQC_SKIP')).toBeInTheDocument();
+    expect(within(dialog).getByText('승인 유형: IQC (수입검사) 생략')).toBeInTheDocument();
     expect(within(dialog).getByText('대상: 합성 대상')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 반려 사유')).toBeInTheDocument();
     expect(within(dialog).getByText('반려는 상태만 변경합니다')).toBeInTheDocument();
@@ -1259,7 +1258,7 @@ describe('QualityApprovalScreen decision action', () => {
 
     const dialog = await openConfirm(user, '  합성 승인 사유  ');
     expect(within(dialog).getByText('요청번호: SYNTH-REQ-031')).toBeInTheDocument();
-    expect(within(dialog).getByText('승인 유형: IQC_SKIP')).toBeInTheDocument();
+    expect(within(dialog).getByText('승인 유형: IQC (수입검사) 생략')).toBeInTheDocument();
     expect(within(dialog).getByText('대상: 합성 대상')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 승인 사유')).toBeInTheDocument();
     expect(within(dialog).getByText('승인은 되돌릴 수 없습니다')).toBeInTheDocument();
