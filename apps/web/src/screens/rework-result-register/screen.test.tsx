@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { PopIdentityProvider } from '../../patterns/pop-identity';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { ReworkResultRegisterScreen } from './screen';
+import { popGateDeniedText } from '../../patterns/pop-process-gate';
 
 const t = messages.reworkResultRegister;
 
@@ -811,5 +812,86 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     });
 
     expect(Number(uomQuery?.get('size'))).toBeGreaterThanOrEqual(100);
+  });
+});
+
+describe('ReworkResultRegisterScreen — 공정이 여럿인 단말', () => {
+  const OTHER_PROCESS_ID = PROCESS_ID + 1;
+  const renderMulti = (canInputResult: boolean) => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: TERMINAL_ID,
+          processes: [{ processId: OTHER_PROCESS_ID }, { processId: PROCESS_ID }],
+          equipment: null,
+          workerNo: '100027',
+        }}
+      >
+        <ReworkResultRegisterScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: async (request) => {
+          const url = new URL(request.url);
+          if (url.pathname === `/mdm/terminals/${String(TERMINAL_ID)}/processes`) {
+            return jsonResponse({
+              items: [
+                {
+                  processId: OTHER_PROCESS_ID,
+                  processName: '합성 조립',
+                  canInputResult: !canInputResult,
+                },
+                { processId: PROCESS_ID, processName: '합성 재작업', canInputResult },
+              ],
+            });
+          }
+          if (url.pathname === '/production/work-orders') {
+            if (url.searchParams.get('statusCode') === 'PLANNED') {
+              return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
+            }
+            return jsonResponse({
+              items: [{ ...WORK_ORDER, processId: PROCESS_ID, processName: '합성 재작업' }],
+              page: { page: 1, size: 20, total: 1 },
+            });
+          }
+          return stubFetch(request);
+        },
+        route: '/pop/rework-results',
+      },
+    );
+    return user;
+  };
+
+  it('고르기 전에는 막는 문구를 내지 않는다', async () => {
+    renderMulti(false);
+
+    await screen.findByText(WORK_ORDER.workOrderNo);
+    expect(screen.queryByText(t.gateUnidentified)).toBeNull();
+    expect(
+      screen.queryByText(popGateDeniedText({ processName: '합성 재작업' }, 'canInputResult')),
+    ).toBeNull();
+  });
+
+  it('고른 W/O 의 공정으로 판정해 저장이 열린다', async () => {
+    const user = renderMulti(true);
+    await pickWorkOrder(user);
+
+    await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.save })).toBeEnabled();
+    });
+    expect(screen.queryByText(t.gateUnidentified)).toBeNull();
+  });
+
+  it('고른 W/O 공정의 실적 입력이 꺼져 있으면 공정 이름과 켜는 곳을 말하며 막는다', async () => {
+    const user = renderMulti(false);
+    await pickWorkOrder(user);
+
+    expect(
+      await screen.findByText(popGateDeniedText({ processName: '합성 재작업' }, 'canInputResult')),
+    ).toBeInTheDocument();
+    await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
   });
 });

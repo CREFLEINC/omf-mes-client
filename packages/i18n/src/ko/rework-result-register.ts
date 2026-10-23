@@ -139,9 +139,9 @@ export const reworkResultRegister = {
   queued: '실적을 저장했습니다.',
   queueError: '실적을 단말에 저장하지 못했습니다. 다시 시도해 주세요.',
   rejected: '서버가 실적을 받지 않았습니다. 입력 내용을 확인해 주세요.',
-  gateUnidentified: '단말과 공정이 확인되지 않아 저장할 수 없습니다.',
+  gateUnidentified:
+    '단말이나 고른 작업지시의 공정을 확인하지 못해 저장할 수 없습니다. 화면을 다시 연 뒤 작업지시를 다시 고르세요.',
   gateChecking: '단말 기능을 확인하고 있습니다.',
-  gateDenied: '이 단말에서는 실적을 입력할 수 없습니다.',
   gateUnavailable: '단말 기능을 확인할 수 없어 저장할 수 없습니다.',
   pending: (count: number) => `미전송 ${count}건`,
 } as const;

@@ -1,3 +1,4 @@
+import type { WorkOrderForward } from '@omf-mes/api-client';
 import { AlertBanner, Button, Card, Icon, Progress, Table, TextField } from '@crefle/web-ui';
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -7,14 +8,18 @@ import { useEffect, useId, useState } from 'react';
 import { PopSelect as Select } from '../../patterns/pop-select';
 
 import { useApiClient } from '../../patterns/api-context';
-import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { usePopIdentity } from '../../patterns/pop-identity';
+import {
+  popGateDeniedText,
+  popGateProcessId,
+  usePopProcessGate,
+} from '../../patterns/pop-process-gate';
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { drainReworkResults, enqueueReworkResult, pendingReworkResultCount } from './outbox';
 import {
   useDispositionDecisions,
-  useResultGate,
   useReworkDefectCodes,
   useReworkSource,
   useReworkSourceLot,
@@ -79,7 +84,20 @@ export const ReworkResultRegisterScreen = () => {
   const source = useReworkSource(nonconformanceId);
   const dispositions = useDispositionDecisions(nonconformanceId);
   const sourceLot = useReworkSourceLot(selected?.reworkSourceLotId ?? null);
-  const gate = useResultGate(identity.terminalId, soleProcessIdOf(identity.processes));
+  /*
+   * 고른 W/O 의 공정으로 「실적 입력」을 판정한다 — 단말에 공정이 여럿이어도 그 W/O 가 어느 공정의
+   * 일인지 안다. 고르기 전에는 판정할 공정이 없으므로 막지도 말하지도 않는다.
+   */
+  const gate = usePopProcessGate({
+    terminalId: identity.terminalId,
+    processId: popGateProcessId(
+      selected === null ? null : (selected as WorkOrderForward).processId,
+      identity.processes,
+    ),
+    fallbackProcessName:
+      selected === null ? null : ((selected as WorkOrderForward).processName ?? null),
+    flag: 'canInputResult',
+  });
   const uom = useUomLookup();
   const progress = reworkDispositionProgress(dispositions.data?.items ?? []);
   /* 이 화면이 보이는 처분은 «재작업» 한 건이다 — 다른 유형은 이 W/O 의 근거가 아니다. */
@@ -116,15 +134,21 @@ export const ReworkResultRegisterScreen = () => {
       globalThis.removeEventListener('offline', offline);
     };
   }, [client]);
-  const gateReason = gate.unidentified
-    ? t.gateUnidentified
-    : gate.checking
-      ? t.gateChecking
-      : gate.unavailable
-        ? t.gateUnavailable
-        : !gate.allowed
-          ? t.gateDenied
-          : null;
+  const gateReason = ((): string | null => {
+    if (selected === null) return null;
+    switch (gate.verdict) {
+      case 'unidentified':
+        return t.gateUnidentified;
+      case 'checking':
+        return t.gateChecking;
+      case 'unavailable':
+        return t.gateUnavailable;
+      case 'denied':
+        return popGateDeniedText(gate, 'canInputResult');
+      case 'allowed':
+        return null;
+    }
+  })();
   /*
    * ⚠ **고를 목록이 없으면 필수로 막지 않는다**(리뷰 M1). 조회 실패·0건에 막으면 저장이 영영
    *    열리지 않는다 — 고른 코드는 아직 서버로 가지도 않는다. 칸 옆이 그 사정을 말하고 다시 부른다.
