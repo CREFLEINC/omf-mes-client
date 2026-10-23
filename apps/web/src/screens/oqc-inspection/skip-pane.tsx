@@ -106,7 +106,7 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
   if (!OPEN_OR_SKIPPED.includes(requestStatusCode)) return null;
   if (requestStatusCode === 'SKIPPED') {
     return (
-      <section aria-label={t.heading}>
+      <section className="oqc-inspection-section oqc-inspection-skip" aria-label={t.heading}>
         <h3>{t.heading}</h3>
         <AlertBanner variant="info" title={notice ?? t.skipped} />
       </section>
@@ -127,9 +127,14 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
   };
 
   return (
-    <section aria-label={t.heading}>
+    <section className="oqc-inspection-section oqc-inspection-skip" aria-label={t.heading}>
       <h3>{t.heading}</h3>
-      <p className="field-note">{t.help}</p>
+      {/* 요청 → 결재 → 실행과 그 결과를 순서대로 — 긴 한 문단 대신(#136). */}
+      <ol className="oqc-inspection-skip-steps">
+        {t.steps.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ol>
 
       {approval.isPending ? (
         <p className="field-note">{t.loading}</p>
@@ -140,16 +145,19 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
       ) : status === 'APPROVED' ? (
         <>
           <AlertBanner variant="info" title={t.approved} />
-          <Button
-            variant="filled"
-            disabled={isSaving}
-            onClick={() => {
-              setNotice(null);
-              executeWrite.write({});
-            }}
-          >
-            {executeWrite.isSaving ? t.executing : t.execute}
-          </Button>
+          <div className="oqc-inspection-skip-actions">
+            <Button
+              variant="filled"
+              size="md"
+              disabled={isSaving}
+              onClick={() => {
+                setNotice(null);
+                executeWrite.write({});
+              }}
+            >
+              {executeWrite.isSaving ? t.executing : t.execute}
+            </Button>
+          </div>
         </>
       ) : null}
 
@@ -158,15 +166,20 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
           {status === 'REJECTED' && <p className="field-note">{t.rejected}</p>}
           <TextArea
             label={t.reason}
-            rows={2}
+            placeholder={t.reasonPlaceholder}
+            rows={3}
+            fullWidth
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             error={reasonError ?? requestWrite.fieldErrors.reason}
             disabled={isSaving}
           />
-          <Button variant="outlined" disabled={isSaving} onClick={submit}>
-            {requestWrite.isSaving ? t.requesting : t.request}
-          </Button>
+          {/* 요청 단추는 입력칸 오른쪽 아래 — 사유를 쓰고 바로 누른다(#136). */}
+          <div className="oqc-inspection-skip-actions">
+            <Button variant="outlined" size="md" disabled={isSaving} onClick={submit}>
+              {requestWrite.isSaving ? t.requesting : t.request}
+            </Button>
+          </div>
         </>
       )}
 

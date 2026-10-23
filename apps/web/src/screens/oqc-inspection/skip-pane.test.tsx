@@ -115,6 +115,6 @@ describe('OQC 생략 구획', () => {
   it('끝난 의뢰(완료)에는 구획을 세우지 않는다', () => {
     renderPane(null, 'COMPLETED');
     expect(screen.queryByRole('region', { name: t.heading })).not.toBeInTheDocument();
-    expect(screen.queryByText(t.help)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.steps[0] ?? '')).not.toBeInTheDocument();
   });
 });
