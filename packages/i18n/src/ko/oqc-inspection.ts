@@ -363,6 +363,8 @@ export const oqcInspection = {
     result: '승인 후 생략을 실행하면 남은 OQC 의뢰가 생략되고, 출하검사가 통과로 처리됩니다.',
     reason: '생략 사유',
     reasonPlaceholder: '출하검사를 생략하는 사유를 입력하세요.',
+    /** 입력한 글자 수 — 상한은 없다(계약은 비우지만 않으면 된다 · #136). */
+    reasonCount: (count: number): string => `${String(count)}자`,
     reasonRequired: '생략 사유를 입력하세요.',
     request: '생략 승인 요청',
     requesting: '요청하는 중…',

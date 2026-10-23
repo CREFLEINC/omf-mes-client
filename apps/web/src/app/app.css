@@ -15656,6 +15656,15 @@ button.app-button-neutral {
   margin-top: 2px;
 }
 
+/* 글자 수 — 입력칸 바로 아래 오른쪽, 보조색. */
+.oqc-inspection-skip-count {
+  margin: calc(-1 * var(--space-2)) 0 0;
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  text-align: end;
+}
+
 /* 사유 라벨과 입력칸 사이는 다른 칸처럼 붙인다(구획 간격 대신). */
 .oqc-inspection-skip > .field-label {
   margin-bottom: calc(-1 * var(--space-2));

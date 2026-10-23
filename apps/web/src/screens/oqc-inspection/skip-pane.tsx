@@ -181,12 +181,13 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
             placeholder={t.reasonPlaceholder}
             rows={3}
             fullWidth
-            showCount
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             error={reasonError ?? requestWrite.fieldErrors.reason}
             disabled={isSaving}
           />
+          {/* 글자 수 — DS 기본 표시는 숫자뿐이라 「N자」로 직접 둔다. 상한은 없다(계약 · #136). */}
+          <p className="oqc-inspection-skip-count">{t.reasonCount(reason.length)}</p>
           {/* 요청 단추는 입력칸 오른쪽 아래 — 사유를 쓰고 바로 누른다(#136). */}
           <div className="oqc-inspection-skip-actions">
             <Button variant="outlined" size="md" disabled={isSaving} onClick={submit}>
