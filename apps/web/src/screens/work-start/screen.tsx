@@ -106,7 +106,6 @@ export const WorkStartScreen = () => {
   const workerSession = useWorkerSession();
   const confirmedNo = identity.workerNo ?? workerSession?.worker.workerNo ?? null;
 
-  const [draft, setDraft] = useState('');
   /** 눌렀을 때만 조회한다 — 치는 동안 매 글자마다 물으면 아직 다 치지도 않은 사번으로 「없다」가 뜬다. */
   const [submittedNo, setSubmittedNo] = useState<string | null>(null);
   const lookup = useWorkerLookup(submittedNo);
@@ -773,25 +772,14 @@ export const WorkStartScreen = () => {
 
           {/*
            * 사번을 이미 아는 자리에서는 사번 입력을 세우지 않는다(사용자 지시 2026-09-08). 사번 경량
-           * 인증(P-CO-01)이 정해 오므로 다시 묻지 않는다. 못 받았을 때만 키패드를 세운다.
+           * 인증(P-CO-01)이 정해 오므로 다시 묻지 않는다. 못 받았을 때만 사번 입력 창을 여는 버튼을 세운다.
            */}
           {confirmedNo === null ? (
             <WorkerPanel
-              draft={draft}
-              confirmed={confirmedNo}
-              onChange={setDraft}
-              onSubmit={() => {
-                setSubmittedNo(draft.trim());
-              }}
-              onReset={() => {
-                /* 작업자를 바꾼다. 단말이 들고 있던 사번을 비운다. */
-                setWorkerSession(null);
-                setAppliedNo(null);
+              onSubmit={setSubmittedNo}
+              onDiscard={() => {
                 setSubmittedNo(null);
-                setDraft('');
-                setSelectedId(null);
               }}
-              canChange={identity.workerNo === null}
               onRetry={() => {
                 void lookup.refetch();
               }}

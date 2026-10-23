@@ -37,8 +37,12 @@ export const workStart = {
     backspace: '한 자 지움',
     clear: '전체 지움',
     confirm: '확인',
-    change: '다시 입력',
+    cancel: '취소',
     checking: '확인 중',
+    /** 사번이 없을 때의 빈 상태와 사번 입력 창을 여는 버튼(사용자 결정 2026-10-23). */
+    empty: '사번이 입력되지 않았습니다.',
+    open: '사번 입력',
+    dialogTitle: '사번 입력',
 
     /** 미등록과 퇴사를 가른다. 사용자가 할 일이 다르다. */
     unknown: '이 공장에 등록되지 않은 사번입니다. 사번을 다시 입력하세요.',

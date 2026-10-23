@@ -27,8 +27,11 @@ export const workStart: Translated<typeof ko.workStart> = {
     backspace: 'Xóa một ký tự',
     clear: 'Xóa hết',
     confirm: 'Xác nhận',
-    change: 'Nhập lại',
+    cancel: 'Hủy',
     checking: 'Đang kiểm tra',
+    empty: 'Chưa nhập mã nhân viên.',
+    open: 'Nhập mã nhân viên',
+    dialogTitle: 'Nhập mã nhân viên',
 
     unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này. Hãy nhập lại mã nhân viên.',
     inactive: 'Mã nhân viên này không còn làm việc. Hãy nhập lại mã nhân viên.',

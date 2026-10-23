@@ -3849,14 +3849,6 @@
       "n": 1,
       "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} d"
     },
-    "C-4|apps/web/src/screens/work-start/crew-panel.tsx|029ccd7b5519": {
-      "n": 1,
-      "text": "<Button size={POP_TOUCH_SIZE} disabled={draft.trim() === '' || isChecking}"
-    },
-    "C-4|apps/web/src/screens/work-start/worker-panel.tsx|f014290beb01": {
-      "n": 1,
-      "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} disabled="
-    },
     "C-4|apps/web/src/screens/worker-assignment/keypad-panel.tsx|cbb446075c64": {
       "n": 1,
       "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} className=\"worker-no-subm"

@@ -20,13 +20,21 @@ const t = messages.workStart;
 /** 줄 전체가 누를 자리라, 카드의 이름으로 고른다. */
 const selectName = (workOrderNo: string): string => t.list.select(workOrderNo);
 
-/** 사번을 키패드로 넣고 확인까지 누른다 — 이 화면의 모든 쓰기가 이 앞에 선다. */
+/**
+ * 사번 입력 창을 열어 키패드로 넣고 확인까지 누른다 — 이 화면의 모든 쓰기가 이 앞에 선다.
+ * 창이 이미 열려 있으면(앞 시도 실패) 그 창에 다시 넣는다.
+ */
 const enterWorkerNo = async (user: ReturnType<typeof renderScreen>['user'], workerNo: string) => {
+  if (screen.queryByRole('dialog', { name: t.worker.dialogTitle }) === null) {
+    await user.click(screen.getByRole('button', { name: t.worker.open }));
+  }
+  const dialog = await screen.findByRole('dialog', { name: t.worker.dialogTitle });
+
   for (const digit of workerNo) {
-    await user.click(screen.getByRole('button', { name: digit }));
+    await user.click(within(dialog).getByRole('button', { name: digit }));
   }
 
-  await user.click(screen.getByRole('button', { name: t.worker.confirm }));
+  await user.click(within(dialog).getByRole('button', { name: t.worker.confirm }));
 };
 
 const startButton = () => screen.getByRole('button', { name: t.actions.start });
@@ -418,7 +426,7 @@ describe('P-02-01 작업 시작 — 사번', () => {
 
     const card = await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
     // 사유는 하단 바 「남은 일」이 말한다(C-4).
-    expect(screen.getByText(t.remaining.worker)).toBeInTheDocument();
+    expect(await screen.findByText(t.remaining.worker)).toBeInTheDocument();
     expect(
       screen.queryByText('작업지시 선택: 먼저 사번을 입력하고 확인하세요.'),
     ).not.toBeInTheDocument();
@@ -509,7 +517,7 @@ describe('P-02-01 작업 시작 — 사번을 바꿀 수 있는 자리인가', (
     renderScreen({ identity: { ...IDENTITY, workerNo: WORKER.workerNo } });
 
     expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
-    expect(screen.queryByRole('button', { name: t.worker.change })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다시 입력' })).not.toBeInTheDocument();
   });
 
   /*
@@ -523,7 +531,7 @@ describe('P-02-01 작업 시작 — 사번을 바꿀 수 있는 자리인가', (
     await enterWorkerNo(user, WORKER.workerNo);
     await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName));
 
-    expect(screen.queryByRole('button', { name: t.worker.change })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다시 입력' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.worker.confirm })).not.toBeInTheDocument();
   });
 });
@@ -573,10 +581,19 @@ describe('P-02-01 작업 시작 — 사번은 단말이 들고 있는 자리를 
    * ⚠ **사번을 못 받았을 때만 키패드가 선다.** 자리까지 없애면 되돌아갈 길이 없다 —
    *   그 예외를 여기서 지킨다.
    */
-  it('사번이 없으면 키패드를 세운다', () => {
-    renderScreen();
+  it('사번이 없으면 키패드를 펼치지 않고 사번 입력 창을 여는 버튼을 세운다', async () => {
+    const { user } = renderScreen();
 
-    expect(screen.getByRole('button', { name: t.worker.confirm })).toBeInTheDocument();
+    /* 구획 안에는 빈 상태와 [사번 입력]만 있다(사용자 결정 2026-10-23). */
+    expect(screen.getByText(t.worker.empty)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '1' })).not.toBeInTheDocument();
+    expect(await screen.findByText(t.remaining.worker)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.worker.open }));
+    const dialog = await screen.findByRole('dialog', { name: t.worker.dialogTitle });
+    expect(within(dialog).getByRole('button', { name: t.worker.confirm })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '1' })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: t.worker.cancel }));
     /* 묶음 제목은 「작업자」이고 칸 라벨 「사번」을 되풀이하지 않는다(사용자 결정 2026-10-23). */
     const group = screen.getByRole('group', { name: t.coWorkers.title });
     expect(within(group).getByRole('heading', { name: t.coWorkers.title })).toBeInTheDocument();
@@ -1362,5 +1379,39 @@ describe('P-02-01 작업 시작 — 다음 작업 화면으로 가는 길(omf-al
     ]) {
       expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
     }
+  });
+});
+
+describe('P-02-01 작업 시작 — 사번 입력 창의 키보드와 스캐너 입력', () => {
+  it('칸에 치고 Enter 를 누르면 확인하고, 창이 닫히며 작업자가 선다', async () => {
+    const { user } = renderScreen();
+
+    await user.click(screen.getByRole('button', { name: t.worker.open }));
+    const dialog = await screen.findByRole('dialog', { name: t.worker.dialogTitle });
+    const field = within(dialog).getByLabelText(t.worker.fieldLabel);
+    await waitFor(() => {
+      expect(field).toHaveFocus();
+    });
+
+    await user.type(field, `${WORKER.workerNo}{Enter}`);
+
+    expect(
+      await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName)),
+    ).not.toHaveLength(0);
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.worker.dialogTitle })).not.toBeInTheDocument();
+    });
+  });
+
+  it('숫자가 아닌 글자는 받지 않는다', async () => {
+    const { user } = renderScreen();
+
+    await user.click(screen.getByRole('button', { name: t.worker.open }));
+    const dialog = await screen.findByRole('dialog', { name: t.worker.dialogTitle });
+    const field = within(dialog).getByLabelText(t.worker.fieldLabel);
+
+    await user.type(field, '33a9-1');
+
+    expect(field).toHaveValue('3391');
   });
 });

@@ -1,12 +1,10 @@
-import { AlertBanner, Button, Chip, Dialog, IconButton, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, IconButton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { NumericKeypad } from '@omf-mes/ui';
 import { useState } from 'react';
 
-import { POP_TOUCH_SIZE } from './touch-spec';
+import { WorkerNoDialog } from './worker-no-dialog';
 
 const t = messages.workStart.coWorkers;
-const keypad = messages.workStart.worker;
 
 /** 한 세션에 동시에 들어갈 수 있는 사람 수(정 포함). 서버도 같은 수로 막는다. */
 export const CREW_MAX = 4;
@@ -42,24 +40,22 @@ const nameOf = (member: CrewMember): string =>
  *
  * 오른쪽 「작업 확인」 구획 안의 묶음이다. 구획 상자 안에 상자를 겹치지 않는다(C-19).
  *
- * ⚠ 사번은 키패드로만 받는다 — 키오스크라 운영체제 키보드가 뜨면 화면을 덮는다.
+ * 사번은 공용 사번 입력 창(`worker-no-dialog`)으로 받는다. 작업자 사번 확인과 같은 창이다.
  */
 export const CrewPanel = ({ members, disabled, error, onAdd, onRemove }: CrewPanelProps) => {
   const [isAdding, setAdding] = useState(false);
-  const [draft, setDraft] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
   const [isChecking, setChecking] = useState(false);
   const isFull = members.length >= CREW_MAX;
 
   const close = () => {
     setAdding(false);
-    setDraft('');
     setAddError(null);
   };
 
-  const submit = async () => {
+  const submit = async (workerNo: string) => {
     setChecking(true);
-    const reason = await onAdd(draft.trim());
+    const reason = await onAdd(workerNo);
     setChecking(false);
 
     if (reason === null) close();
@@ -114,55 +110,21 @@ export const CrewPanel = ({ members, disabled, error, onAdd, onRemove }: CrewPan
         </div>
       )}
 
-      <Dialog
+      <WorkerNoDialog
         open={isAdding}
-        onClose={close}
         title={t.dialogTitle}
-        showCloseButton={false}
-        /* 터치 단말의 오조작 — 바깥을 눌러 닫히지 않는다. */
-        closeOnBackdropClick={false}
-        footer={
-          <>
-            <Button variant="outlined" size={POP_TOUCH_SIZE} onClick={close}>
-              {t.cancel}
-            </Button>
-            <Button
-              size={POP_TOUCH_SIZE}
-              disabled={draft.trim() === '' || isChecking}
-              onClick={() => {
-                void submit();
-              }}
-            >
-              {isChecking ? keypad.checking : t.confirm}
-            </Button>
-          </>
-        }
-      >
-        <TextField
-          label={keypad.fieldLabel}
-          value={draft}
-          size="xl"
-          readOnly
-          onChange={() => undefined}
-        />
-        <NumericKeypad
-          value={draft}
-          onChange={(value) => {
-            setDraft(value);
-            setAddError(null);
-          }}
-          label={keypad.keypadLabel}
-          backspaceLabel={keypad.backspace}
-          clearLabel={keypad.clear}
-          disabled={isChecking}
-          keySize={POP_TOUCH_SIZE}
-        />
-        {addError !== null && (
-          <div className="banner-slot">
-            <AlertBanner variant="error">{addError}</AlertBanner>
-          </div>
-        )}
-      </Dialog>
+        confirmLabel={t.confirm}
+        cancelLabel={t.cancel}
+        isChecking={isChecking}
+        error={addError}
+        onCancel={close}
+        onDraftChange={() => {
+          setAddError(null);
+        }}
+        onSubmit={(workerNo) => {
+          void submit(workerNo);
+        }}
+      />
     </div>
   );
 };
