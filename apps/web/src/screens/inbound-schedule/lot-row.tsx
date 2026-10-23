@@ -1,6 +1,7 @@
 import { Button, Chip, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { formatDate } from './period';
 import { OneLine } from './receipt-status';
 import { stageGroupTone, stageTone } from './stage';
@@ -8,11 +9,14 @@ import type { InboundLotProgress, InboundStageCode, InboundStageGroup } from './
 
 const t = messages.inboundSchedule;
 
-/** 날짜 칸 — 서버의 일시(`2026-10-21T10:00:00+09:00`)에서 날짜만 `YYYY.MM.DD` 로. 비면 「—」. */
+/**
+ * 날짜 칸 — 서버의 일시에서 **공장 달력의 날짜**만 `YYYY.MM.DD` 로. 비면 「—」.
+ * 앞 10자리를 자르면 UTC 날짜가 되어 공장 새벽(UTC 전날 밤)의 입하가 하루 앞당겨 보인다.
+ */
 const dateOf = (value: string | null | undefined): string =>
   value === null || value === undefined || value === ''
     ? t.values.empty
-    : formatDate(value.slice(0, 10));
+    : formatDate(toPlantDateTimeParts(value)?.date ?? value.slice(0, 10));
 
 /** 모르는 코드는 번역하지 않고 그대로, 중립 색으로 낸다 — 뜻을 지어내지 않는다(C-17 · receipt-status.tsx 와 같은 길). */
 const stageLabel = (code: string): string =>
