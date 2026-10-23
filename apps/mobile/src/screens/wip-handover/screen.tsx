@@ -336,7 +336,6 @@ export const WipHandoverScreen = () => {
           </section>
 
           <section className="handover__section">
-            {worker === null ? <p className="handover__note">{t.noWorker}</p> : null}
             {confirm.isError ? (
               <AlertBanner variant="error" title={t.failed.title}>
                 <Button variant="text" onClick={submit}>

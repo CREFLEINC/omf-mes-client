@@ -1,12 +1,13 @@
 import { AppShell, Icon, IconButton, Topbar } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 
-import { listenBackButton } from '../patterns/back-step';
+import { listenBackButton, runBackStep, useHasBackStep } from '../patterns/back-step';
 import { keepListboxesInSafeArea } from '../patterns/listbox-safe-area';
 import { useServerReachable } from '../patterns/online-status';
 import { ScanFlashHost } from '../patterns/scan-feedback';
+import { ScreenNoticeSlotProvider } from '../patterns/screen-notice';
 import {
   ScreenTitleProvider,
   useCompactTopbar,
@@ -15,7 +16,7 @@ import {
 import { useOutbox } from '../patterns/outbox';
 import { useWorkerSession } from '../patterns/worker-session';
 import { useRecordScreenVisit } from './frequent-screens';
-import { screenOf } from './home-menu';
+import { areaOfScreen, screenOf } from './home-menu';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -38,6 +39,16 @@ const ShellTopbar = () => {
    * 그 키를 여러 번 눌러야 했다. 작업 목록 자신과 사번 확인(한 줄 앱바)에는 갈 곳이 없어 두지 않는다.
    */
   const showHome = !compact && pathname !== HOME_PATH && pathname !== '/';
+  /*
+   * 한 층 위로 돌아가는 길. 화면 안에 지나온 단계가 있으면 그 단계로 하나 돌아간다 - 단말의
+   * 뒤로가기 키와 같은 일이지만, 키는 눈에 보이지 않아 수량 단계에서 라인을 다시 고르려는 사람이
+   * 찾지 못했다(사용자 지시 2026-10-21). 되돌릴 단계가 없는 작업 화면에서는 그 작업이 걸린 업무의
+   * 작업 목록으로 간다 - 홈 단추만 있으면 입하 등록에서 입고 목록으로 못 돌아가고 홈을 거쳐야
+   * 했다(사용자 지적 2026-10-21).
+   */
+  const hasBackStep = useHasBackStep();
+  const parentArea = areaOfScreen(pathname);
+  const showBack = !compact && (hasBackStep || parentArea !== undefined);
   // 귀속 정보는 상시 표시다 - 누구로 기록되는지 안 보이면 남의 사번으로 쌓인다(D-5).
   const { worker } = useWorkerSession();
   /*
@@ -62,6 +73,25 @@ const ShellTopbar = () => {
          * 첫 줄은 화면 이름과 지금 서버에 닿는가. 둘은 함께 읽는 값이다(사용자 지시 2026-09-21).
          */
         <div className="mobile-shell__titlebar">
+          {showBack ? (
+            <IconButton
+              className="mobile-shell__back"
+              icon="arrow_back"
+              size="lg"
+              aria-label={
+                hasBackStep || parentArea === undefined
+                  ? shell.back
+                  : shell.backToArea(parentArea.label)
+              }
+              onClick={() => {
+                if (runBackStep() || parentArea === undefined) {
+                  return;
+                }
+
+                void navigate(`/screens/${parentArea.id}`);
+              }}
+            />
+          ) : null}
           {showHome ? (
             <IconButton
               className="mobile-shell__home"
@@ -105,11 +135,15 @@ const ShellTopbar = () => {
             {worker === null ? (
               <span />
             ) : (
-              <span className="mobile-shell__worker">
+              /*
+               * 사번 칩을 누르면 사번 확인 화면으로 간다 - 교대 · 바꾸기 · 기기 등록 풀기가 거기 있다.
+               * 전에는 그 화면으로 가는 길이 없었다(사용자 지적 2026-10-21).
+               */
+              <Link to="/" className="mobile-shell__worker" aria-label={shell.changeWorker}>
                 <Icon name="person" size={16} />
                 <b>{worker.workerName}</b>
                 {` · ${worker.workerNo}`}
-              </span>
+              </Link>
             )}
             <QueueLinks pending={pending} rejected={rejected.length} />
           </div>
@@ -161,6 +195,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   }, [pathname, recordVisit]);
   /* 드롭다운 목록은 셸 밖에 그려져 시스템 바 여백을 못 받는다. 바 안쪽으로 다시 놓는다. */
   useEffect(() => keepListboxesInSafeArea(), []);
+  /* 앱바 바로 아래 알림 자리. 화면이 띄운 알림(`ScreenNotice`)이 여기로 온다. */
+  const [noticeSlot, setNoticeSlot] = useState<HTMLDivElement | null>(null);
+  /*
+   * 사번 없이 작업 화면에 들어오면 들어서자마자 알린다(사용자 지시 2026-10-21) - 화면마다 등록
+   * 직전에 띄우던 것을 셸이 한 번에 한다. 사번 확인 화면으로 가는 단추를 함께 둔다.
+   */
+  const { worker } = useWorkerSession();
+  const needsWorker = worker === null && screenOf(pathname) !== undefined;
 
   return (
     <ScreenTitleProvider>
@@ -170,7 +212,19 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         skipLinkLabel={shell.skipToMain}
         topbar={<ShellTopbar />}
       >
-        {children}
+        <div ref={setNoticeSlot} className="screen-notices">
+          {needsWorker ? (
+            /* 한 줄 알림 - 아이콘 · 말 · 사번 확인 단추. 본문을 밀어내지 않게 낮게 둔다. */
+            <div className="shell-notice" role="alert">
+              <Icon name="warning" size={20} />
+              <span className="shell-notice__text">{shell.noWorker}</span>
+              <Link to="/" className="screen-notice__action">
+                {shell.signIn}
+              </Link>
+            </div>
+          ) : null}
+        </div>
+        <ScreenNoticeSlotProvider value={noticeSlot}>{children}</ScreenNoticeSlotProvider>
       </AppShell>
       {/* 스캔·저장 결과를 화면 가장자리로 알린다. 화면들이 부르는 `signal` 이 여기로 온다. */}
       <ScanFlashHost />

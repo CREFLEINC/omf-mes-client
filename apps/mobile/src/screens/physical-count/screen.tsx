@@ -679,7 +679,6 @@ export const PhysicalCountScreen = () => {
                 {t.saveFailed.description}
               </AlertBanner>
             ) : null}
-            {worker === null ? <p className="physical-count__note">{t.noWorker}</p> : null}
             <Button
               className="physical-count__wide"
               variant="filled"

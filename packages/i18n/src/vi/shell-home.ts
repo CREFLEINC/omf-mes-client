@@ -38,6 +38,11 @@ export const shellHome: Translated<typeof ko.shellHome> = {
     packingRepack: 'Tách hoặc gộp kiện đóng gói',
   },
   frequent: 'Công việc hay dùng',
+  switchWorker: 'Đổi người dùng',
+  settings: {
+    label: 'Cài đặt',
+    device: 'Thiết bị',
+  },
   resume: {
     label: 'Làm tiếp',
     open: (title: string) => `Làm tiếp ${title}`,

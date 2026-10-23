@@ -6,10 +6,9 @@
 
 .scan-zone__box {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  min-height: 80px;
+  min-height: 72px;
   box-sizing: border-box;
   padding: var(--space-3) var(--space-2) var(--space-3) var(--space-3);
   border: 2px solid var(--outline-variant);
@@ -60,23 +59,8 @@
   color: var(--on-surface);
 }
 
-.scan-zone__text {
-  /* 너비를 글자에 묻지 않는다 - 줄 접기가 켜져 있어, 칸이 제 폭을 주장하면 단추가 아래로 밀린다. */
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* 오른쪽 끝에 다 들지 않는 단추들은 구역 안 아래 한 줄로 내려 선다. */
-.scan-zone__actions {
-  flex: 1 0 100%;
-  padding-bottom: var(--space-1);
-}
-
-/* 이름은 낭독기에만. 지시가 이름을 대신한다. */
-.scan-zone__label {
+/* 이름과 지시는 낭독기에만. 화면에서는 단계 제목이 같은 말을 한다. */
+.scan-zone__hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -86,11 +70,11 @@
 }
 
 /*
- * 칸 자체는 테두리 없이 구역에 녹는다. 비어 있는 동안 자리표시가 굵은 지시로 선다 - 흐린
+ * 칸 자체는 테두리 없이 구역에 녹는다. 비어 있는 동안 「SCAN」 한 낱말이 굵게 선다 - 흐린
  * 자리표시는 «여기 적으세요»로 읽혀 스캔하라는 말로 안 읽혔다.
  */
 .scan-zone__input {
-  width: 100%;
+  flex: 1 1 0;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -106,18 +90,45 @@
 .scan-zone__input::placeholder {
   color: var(--on-surface);
   opacity: 1;
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+  font-weight: 700;
 }
 
-/* 지시가 칸보다 길면(베트남어) 글자가 칸 끝에서 잘린 채 서지 않게 말줄임한다. */
+/* 손으로 넣은 값이 칸보다 길면 칸 끝에서 잘린 채 서지 않게 말줄임한다. */
 .scan-zone__input {
   text-overflow: ellipsis;
 }
 
-.scan-zone__hint {
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-  font-weight: 400;
-  color: var(--on-surface-muted);
+/*
+ * 직접 입력 · 목록에서 고르기. 화면 오른쪽 아래에 떠 있다 - 확정 바가 있으면 그 바로 위,
+ * 없으면 화면 바닥(사용자 지시 2026-10-21). 구역 안에 두면 「SCAN」 과 섞여 어디를 누르는지
+ * 흐렸고, 구역 아래 한 줄로 두면 그만큼 화면이 길어졌다. 엄지가 닿는 자리이기도 하다.
+ */
+.scan-zone__tools {
+  position: fixed;
+  z-index: 6;
+  right: calc(var(--space-4) + var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
+  bottom: calc(
+    var(--bottom-action-bar-height, 0px) + var(--space-3) +
+      var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
+  );
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* 떠 있는 단추라 아래 내용과 갈리게 바탕 · 테두리 · 그림자를 준다. */
+.scan-zone__tools button {
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 1px var(--outline-variant),
+    var(--elevation-2);
+}
+
+/* 숫자판이 화면 아래를 쓰는 동안은 숨는다 - 판의 키와 겹친다. */
+:root[data-docked-pad] .scan-zone__tools {
+  display: none;
 }
 
 /*
@@ -149,6 +160,7 @@
 .scan-zone--standby .scan-zone__input::placeholder {
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
+  font-weight: 700;
   color: var(--on-surface-variant);
 }
 

@@ -24,6 +24,7 @@ import { PutawayScreen } from '../screens/putaway/screen';
 import { RecycleEntryScreen } from '../screens/recycle-entry/screen';
 import { TemporaryPutawayScreen } from '../screens/temporary-putaway/screen';
 import { RepairRoundtripScreen } from '../screens/repair-roundtrip/screen';
+import { SettingsScreen } from '../screens/settings/screen';
 import { WipHandoverScreen } from '../screens/wip-handover/screen';
 
 export const appRoutes: RouteObject[] = [
@@ -61,6 +62,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'packing-repack', element: <PackingRepackScreen /> },
       { path: 'outbox', element: <OutboxPendingScreen /> },
       { path: 'rejections', element: <OutboxRejectionsScreen /> },
+      { path: 'settings', element: <SettingsScreen /> },
     ],
   },
 ];

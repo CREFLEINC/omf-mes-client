@@ -18,11 +18,11 @@
 }
 
 /*
- * 계기판이 앱바 아래로 이어지는 띠. 카드가 이 띠의 아래 끝에 겹쳐 서서, 앱바와 카드가 한
- * 덩어리의 「지금 하는 일」로 읽힌다. 다크 토큰은 이 띠에 건 data-theme 으로만 들어온다.
+ * 계기판이 앱바 아래로 이어지는 띠. 단계 막대만 싣는다. 다크 토큰은 이 띠에 건 data-theme
+ * 으로만 들어온다.
  */
 .task-header__panel {
-  padding: 0 var(--space-4) var(--space-5);
+  padding: 0 var(--space-4);
   background: var(--surface);
 }
 
@@ -48,9 +48,13 @@
   background: var(--on-surface);
 }
 
+/*
+ * 카드는 계기판 띠 아래 작업대 위에 따로 선다. 띠 끝에 겹쳐 세웠더니 카드가 검정과 회색에
+ * 반씩 걸쳐 어수선했다(사용자 지적 2026-10-21).
+ */
 .task-header__card {
   position: relative;
-  margin: calc(-1 * var(--space-4)) var(--space-4) 0;
+  margin: var(--space-2) var(--space-4) 0;
   padding: var(--space-2) var(--space-2) var(--space-3) var(--space-4);
   display: flex;
   flex-direction: column;

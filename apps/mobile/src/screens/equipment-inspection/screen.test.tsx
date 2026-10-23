@@ -393,7 +393,8 @@ describe('설비 점검 입력 화면', () => {
     ).toBeInTheDocument();
   });
 
-  it('사번을 확인하기 전에는 완료할 수 없고 이유를 말한다', async () => {
+  /* 사번이 없다는 말은 셸이 앱바 아래에 들어서자마자 띄운다(layout 시험) - 화면은 막기만 한다. */
+  it('사번을 확인하기 전에는 완료할 수 없다', async () => {
     const user = userEvent.setup();
     renderWithProviders(
       <MemoryRouter>
@@ -405,7 +406,6 @@ describe('설비 점검 입력 화면', () => {
 
     await user.type(screen.getByLabelText(/측정값/), '13.4');
 
-    expect(screen.getByText('사번을 먼저 확인하세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '점검 완료' })).toBeDisabled();
   });
   /*

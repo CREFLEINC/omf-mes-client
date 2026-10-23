@@ -190,3 +190,7 @@ export const screenOf = (path: string): HomeScreen | undefined =>
 
 export const areaOf = (id: string | undefined): HomeArea | undefined =>
   homeAreas.find((area) => area.id === id);
+
+/** 작업 화면이 걸린 업무. 작업 화면에서 그 업무의 작업 목록으로 돌아갈 때 쓴다. */
+export const areaOfScreen = (path: string): HomeArea | undefined =>
+  homeAreas.find((area) => area.screens.some((screen) => screen.to === path));

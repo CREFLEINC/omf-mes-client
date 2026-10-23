@@ -430,7 +430,6 @@ export const InboundVarianceScreen = () => {
                 {t.saveFailed.description}
               </AlertBanner>
             ) : null}
-            {worker === null ? <p className="variance__note">{t.noWorker}</p> : null}
           </section>
 
           {/* 수정도 삭제도 없다. 단추 바로 위에 늘 적어 두고, 누르면 한 번 더 묻는다. */}

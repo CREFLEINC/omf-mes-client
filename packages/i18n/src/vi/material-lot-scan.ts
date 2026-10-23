@@ -34,7 +34,6 @@ export const materialLotScan: Translated<typeof ko.materialLotScan> = {
     legend: 'Quét',
     scanLabel: 'Quét LOT vật tư',
     prompt: 'Nhấn nút máy quét',
-    hint: 'Chỉ nhận nhãn của mặt hàng dòng này',
     manualLabel: 'Nhập tay',
     manualSubmit: 'Đưa vào',
     problem: {

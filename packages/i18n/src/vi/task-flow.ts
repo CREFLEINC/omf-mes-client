@@ -8,5 +8,6 @@ export const taskFlow: Translated<typeof ko.taskFlow> = {
     less: 'Thu gọn',
     progress: (done: number, total: number) => `Xong ${String(done)}/${String(total)}`,
   },
+  scanZone: 'SCAN',
   step: (index: number, total: number) => `Bước ${String(index)}/${String(total)}`,
 };

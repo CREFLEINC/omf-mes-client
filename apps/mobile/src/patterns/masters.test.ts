@@ -8,7 +8,15 @@ import {
   renderHookWithProviders,
   type StubRoute,
 } from '../test/api-harness';
-import { uomLabelOf, useItem, useItemCodes, useItemLabels, useItemSearch } from './masters';
+import {
+  uomLabelOf,
+  useCustomerNames,
+  useItem,
+  useItemCodes,
+  useItemLabels,
+  useItemSearch,
+  useSuppliers,
+} from './masters';
 import { referenceLabel } from './reference';
 
 const page = { page: 0, size: 20, totalElements: 0, totalPages: 1 };
@@ -314,5 +322,61 @@ describe('단위 표기', () => {
   it('단위 번호가 없는 자리는 비운다', () => {
     expect(uomLabelOf(uoms, null)).toBe('');
     expect(uomLabelOf(uoms, undefined)).toBe('');
+  });
+});
+
+/** 거래처가 많은 곳을 흉내 낸다. 서버처럼 한 쪽은 200건까지만 답한다. */
+const partnerRoutes = (counts: Record<string, number>, seen: URL[]): StubRoute[] => [
+  {
+    match: (request) => new URL(request.url).pathname === '/mdm/partners',
+    respond: (request) => {
+      const url = new URL(request.url);
+      seen.push(url);
+      const role = url.searchParams.get('roleTypeCode') ?? '';
+      const total = counts[role] ?? 0;
+      const asked = Math.min(Number(url.searchParams.get('size') ?? '20'), 200);
+      const at = Math.max(Number(url.searchParams.get('page') ?? '1'), 1);
+      const from = (at - 1) * asked;
+      const items = Array.from(
+        { length: Math.max(Math.min(asked, total - from), 0) },
+        (_, index) => ({
+          partnerId: from + index + 1,
+          partnerName: `${role} ${String(from + index + 1)}`,
+        }),
+      );
+
+      return jsonResponse({ items, page: { page: at, size: asked, total } });
+    },
+  },
+];
+
+describe('거래처 이름', () => {
+  /*
+   * 로컬 실데이터에 공급사가 374곳이다. 첫 쪽만 받으면 201번째부터는 입하 등록 표에
+   * 「공급사 #번호」로 섰다.
+   */
+  it('공급사를 쪽을 넘겨 끝까지 받는다', async () => {
+    const seen: URL[] = [];
+    const fetch = createStubFetch(partnerRoutes({ SUPPLIER: 374 }, seen));
+
+    const { result } = renderHookWithProviders(() => useSuppliers(true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data).toHaveLength(374);
+    });
+    expect(result.current.data?.at(-1)?.partnerName).toBe('SUPPLIER 374');
+    expect(seen.map((url) => url.searchParams.get('page'))).toEqual(['1', '2']);
+  });
+
+  it('고객사도 쪽을 넘겨 끝까지 받는다', async () => {
+    const seen: URL[] = [];
+    const fetch = createStubFetch(partnerRoutes({ CUSTOMER: 639 }, seen));
+
+    const { result } = renderHookWithProviders(() => useCustomerNames(true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data?.get(639)).toBe('CUSTOMER 639');
+    });
+    expect(seen.map((url) => url.searchParams.get('page'))).toEqual(['1', '2', '3', '4']);
   });
 });

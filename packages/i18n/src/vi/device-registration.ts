@@ -58,7 +58,6 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
     confirm: 'Xác nhận',
     change: 'Đổi mã nhân viên',
     toWork: 'Đến danh sách công việc',
-    hint: 'Nhập đủ mã nhân viên là vào thẳng danh sách công việc',
     unknown: 'Mã nhân viên chưa đăng ký hoặc đã nghỉ việc',
     noDirectory: 'Chưa nhận được thông tin nhân viên',
     keypad: {

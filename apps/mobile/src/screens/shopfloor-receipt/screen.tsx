@@ -585,7 +585,6 @@ export const ShopfloorReceiptScreen = () => {
                 {t.saveFailed.description}
               </AlertBanner>
             ) : null}
-            {worker === null ? <p className="shopfloor-receipt__note">{t.noWorker}</p> : null}
             {lines.some((line) => needsReason(line, hasReasonOptions)) ? (
               <p className="shopfloor-receipt__note">{t.lines.reasonRequired}</p>
             ) : null}

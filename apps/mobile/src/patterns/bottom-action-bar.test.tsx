@@ -53,12 +53,12 @@ describe('하단 확정 바', () => {
     const onHold = vi.fn();
     render(
       <BottomActionBar
-        primary={{ label: '분할 납품으로 등록', onClick: vi.fn() }}
-        secondary={{ label: '보류로 받고 오류 등록', onClick: onHold }}
+        primary={{ label: '부분 입하 등록', onClick: vi.fn() }}
+        secondary={{ label: '다음 입하', onClick: onHold }}
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: '보류로 받고 오류 등록' }));
+    await user.click(screen.getByRole('button', { name: '다음 입하' }));
 
     expect(onHold).toHaveBeenCalledTimes(1);
   });

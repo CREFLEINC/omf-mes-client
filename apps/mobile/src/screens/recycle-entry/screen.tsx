@@ -351,7 +351,6 @@ export const RecycleEntryScreen = () => {
             ) : null}
             {/* 번호를 화면이 정하면 오프라인 두 단말이 같은 번호를 만든다. 먼저 말해 둔다. */}
             <p className="recycle__note">{t.numberLater}</p>
-            {worker === null ? <p className="recycle__note">{t.noWorker}</p> : null}
             <Button
               className="recycle__wide"
               variant="filled"

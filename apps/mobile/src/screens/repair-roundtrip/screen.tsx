@@ -362,7 +362,6 @@ export const RepairRoundtripScreen = () => {
             </AlertBanner>
           )}
 
-          {worker === null ? <p className="repair__note">{t.noWorker}</p> : null}
           {dispatch.error === null || dispatch.error === undefined ? null : isAlreadyOpen(
               toApiError(dispatch.error),
             ) ? (
@@ -463,7 +462,6 @@ export const RepairRoundtripScreen = () => {
 
           {/* 수리분은 원 LOT 으로 돌아가지 않는다. 이 화면이 그다음을 약속하지 않는다. */}
           <p className="repair__note">{t.return.afterNote}</p>
-          {worker === null ? <p className="repair__note">{t.noWorker}</p> : null}
           {returning.isError ? <AlertBanner variant="error" title={t.return.error} /> : null}
           <div className="action-bar">
             <Button

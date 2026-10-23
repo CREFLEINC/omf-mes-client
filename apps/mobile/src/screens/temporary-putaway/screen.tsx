@@ -340,12 +340,11 @@ export const TemporaryPutawayScreen = () => {
               ? t.location.notFound(scanned)
               : undefined
           }
-          /* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길을 늘 연다(공유계약 D-3). */
           /*
-           * 스캔이 정본이고 목록은 대체 경로다(공유계약 D-3). 목록을 여는 길은 구역 안 두 번째 단추로
-           * 둔다 - 구역 아래 한 줄로 두면 그만큼 화면이 길어진다.
+           * 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길을 늘 연다(공유계약 D-3). 스캔이 정본이고
+           * 목록은 대체 경로다. 둘 다 구역 아래 따로 선 아이콘이다(사용자 지시 2026-10-21).
            */
-          trailing={
+          tools={
             <span className="temporary__zone-buttons">
               {locations.data === undefined || listOpen ? null : (
                 <IconButton
@@ -483,7 +482,6 @@ export const TemporaryPutawayScreen = () => {
               {t.saveFailed.description}
             </AlertBanner>
           ) : null}
-          {worker === null ? <p className="temporary__note">{t.noWorker}</p> : null}
         </section>
       ) : null}
 

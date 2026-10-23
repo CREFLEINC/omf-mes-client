@@ -313,7 +313,6 @@ export const IqcSkipRequestScreen = () => {
           {t.saveFailed.description}
         </AlertBanner>
       ) : null}
-      {worker === null ? <p className="iqc-skip__note">{t.noWorker}</p> : null}
 
       <div className="action-bar">
         <Button

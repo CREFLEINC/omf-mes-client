@@ -54,6 +54,8 @@ export interface StepSectionProps {
   title: string;
   index: number;
   total: number;
+  /** 번호 칸에 번호 대신 적을 글. 한 단계 안의 하위 화면(「2-1」)에 쓴다. */
+  badge?: string;
   children?: ReactNode;
 }
 
@@ -63,7 +65,7 @@ export interface StepSectionProps {
  * 단계가 바뀌면 그 구획의 머리를 화면에 들인다 - 앞 단계 끝까지 내려가 있던 화면이 새 지시의
  * 아래쪽에서 열리면 무엇을 하라는지 보이지 않는다.
  */
-export const StepSection = ({ title, index, total, children }: StepSectionProps) => {
+export const StepSection = ({ title, index, total, badge, children }: StepSectionProps) => {
   const ref = useRef<HTMLElement | null>(null);
   const headingId = useId();
 
@@ -87,7 +89,7 @@ export const StepSection = ({ title, index, total, children }: StepSectionProps)
        */}
       <p className="step-section__count">{t.step(index, total)}</p>
       <span className="step-section__badge" aria-hidden="true">
-        {index}
+        {badge ?? index}
       </span>
       <h2 id={headingId} className="step-section__title">
         {title}

@@ -134,7 +134,8 @@ body {
 }
 
 /* 홈 단추가 앞에 서면 단추 안쪽 여백이 이미 간격이다. 더 띄우면 제목이 단추와 따로 논다. */
-.mobile-shell__home + .mobile-shell__title {
+.mobile-shell__home + .mobile-shell__title,
+.mobile-shell__back + .mobile-shell__title {
   padding-inline-start: 0;
 }
 
@@ -146,7 +147,8 @@ body {
 /*
  * 작업 목록으로 가는 단추. 제목 앞에 둔다 - 안드로이드 앱바의 «위로» 자리와 같아 손이 먼저 간다.
  */
-.mobile-shell__home {
+.mobile-shell__home,
+.mobile-shell__back {
   flex: 0 0 auto;
 }
 
@@ -373,4 +375,10 @@ section > h2 {
  */
 .mobile-shell__notice {
   padding: var(--space-4, 16px) var(--space-4, 16px) 0;
+}
+
+/* 사번 칩은 사번 확인 화면으로 가는 길이다. 글자 모양은 그대로, 밑줄만 없다. */
+a.mobile-shell__worker {
+  color: inherit;
+  text-decoration: none;
 }

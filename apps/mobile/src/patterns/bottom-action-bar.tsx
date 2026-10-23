@@ -1,5 +1,5 @@
 import { Icon } from '@crefle/web-ui';
-import { useId, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 
 import { Button } from './button';
 import './bottom-action-bar.css';
@@ -34,6 +34,11 @@ export interface BottomActionBarProps {
    * 눈높이에 둔다 - 본문에 두면 그 물음 하나 때문에 화면이 한 화면을 넘었다.
    */
   prompt?: ReactNode;
+  /**
+   * 주 단추를 한 단계 낮게(72 → 60px). 목록이 화면을 거의 다 쓰는 자리(발주 상세 목록)에서 목록을
+   * 한 줄이라도 더 보이려고 쓴다(사용자 지시 2026-10-22).
+   */
+  compact?: boolean;
 }
 
 /**
@@ -53,12 +58,46 @@ export const BottomActionBar = ({
   secondary,
   alternatives,
   prompt,
+  compact = false,
 }: BottomActionBarProps) => {
   const reasonId = useId();
   const locked = primary.disabled === true && primary.lockReason !== undefined;
+  const barRef = useRef<HTMLDivElement | null>(null);
+
+  /*
+   * 바의 높이를 문서에 알린다. 화면 오른쪽 아래에 뜨는 단추(스캔 구역의 직접 입력)가 바 바로 위에
+   * 서려면 바가 얼마나 높은지 알아야 하는데, 잠긴 이유 · 두 번째 길에 따라 높이가 달라져 CSS 에
+   * 적어 둘 수 없다.
+   */
+  useEffect(() => {
+    const bar = barRef.current;
+
+    if (bar === null) {
+      return;
+    }
+
+    const root = document.documentElement;
+    const record = () => {
+      root.style.setProperty('--bottom-action-bar-height', `${String(bar.offsetHeight)}px`);
+    };
+
+    record();
+
+    /* 이 기능이 없는 환경에서 던지면 화면이 통째로 멈춘다. 처음 잰 높이로 둔다. */
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(record) : null;
+    observer?.observe(bar);
+
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty('--bottom-action-bar-height');
+    };
+  }, []);
 
   return (
-    <div className="bottom-action-bar">
+    <div
+      ref={barRef}
+      className={compact ? 'bottom-action-bar bottom-action-bar--compact' : 'bottom-action-bar'}
+    >
       {prompt === undefined ? null : <div className="bottom-action-bar__prompt">{prompt}</div>}
       {locked ? (
         <p id={reasonId} className="bottom-action-bar__reason">

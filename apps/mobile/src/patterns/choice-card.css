@@ -52,6 +52,8 @@
 /* 보조 줄은 한 덩어리씩 한 줄로 선다. */
 .choice-card__body > span {
   display: block;
+  /* 셸은 단추 글자를 접지 않는다. 카드의 작은 줄은 접어야 카드 밖으로 넘치지 않는다. */
+  white-space: normal;
 }
 
 .choice-card__title {

@@ -65,6 +65,19 @@ describe('화면 아래 숫자판', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  /* 확인 키가 닫는 자리인 줄 모르는 사람이 있다 - 머리줄 오른쪽에 닫기를 따로 둔다(사용자 지시 2026-10-22). */
+  it('머리줄의 닫기 단추로 닫는다', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<DockedNumberPad head="수량" value="7" onChange={vi.fn()} onClose={onClose} />);
+
+    const close = screen.getByRole('button', { name: '닫기' });
+    expect(close.closest('.docked-pad__top')).toHaveTextContent('수량');
+    await user.click(close);
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
   /*
    * 줄 안에 끼우면 아래 줄이 화면 밖으로 밀린다. 붙박이로 서는지는 자리를 정하는 클래스로
    * 잰다 — 계산된 위치는 jsdom 이 내주지 않는다.
