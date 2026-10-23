@@ -15599,6 +15599,11 @@ button.app-button-neutral {
   letter-spacing: var(--type-title-sm-tracking);
 }
 
+/* 스캔 결과 문구는 칸 바로 아래에 붙인다 — 문단 기본 여백(위아래 14px)이 남으면 아래 조회 줄과 너무 벌어진다. */
+.oqc-inspection-serial-scan [class*='_error_srzap_'] {
+  margin: var(--space-1) 0 0;
+}
+
 /* 목록의 시리얼 번호 칸 「미등록」 — 값이 아니라 상태 표시라 보조색 · 칸 가운데. */
 .oqc-inspection-queue-unregistered {
   display: block;
