@@ -895,3 +895,49 @@ describe('ReworkResultRegisterScreen — 공정이 여럿인 단말', () => {
     expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
   });
 });
+
+describe('ReworkResultRegisterScreen — 서버 거부', () => {
+  afterEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  it('단말 권한으로 서버가 거부하면(401) 서버 문구를 그대로 보인다', async () => {
+    const message =
+      '이 단말에는 이 W/O 공정의 실적 입력 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「실적 입력」을 켜세요.';
+    const user = userEvent.setup();
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: TERMINAL_ID,
+          processes: [{ processId: PROCESS_ID }],
+          equipment: null,
+          workerNo: '100027',
+        }}
+      >
+        <ReworkResultRegisterScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: async (request) => {
+          if (
+            request.method === 'POST' &&
+            new URL(request.url).pathname === '/production/production-results'
+          ) {
+            return jsonResponse(
+              { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message }] },
+              { status: 401 },
+            );
+          }
+          return stubFetch(request);
+        },
+        route: '/pop/rework-results',
+      },
+    );
+    await pickWorkOrder(user);
+    await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+    await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: t.save }));
+
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(screen.getByText(t.rejected)).toBeInTheDocument();
+  });
+});

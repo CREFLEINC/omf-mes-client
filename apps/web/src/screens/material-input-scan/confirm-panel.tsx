@@ -157,9 +157,11 @@ const describeConfirmError = (error: unknown): string => {
     case 'network':
       return messages.httpError.offline;
     case 'http':
-      return apiError.status === 403
-        ? messages.httpError.forbidden
-        : messages.httpError.description;
+      if (apiError.status === 403) return messages.httpError.forbidden;
+      /* 단말 권한(401) 거부는 서버 문구가 켜는 곳을 말한다 — 일반 문구로 덮지 않는다. */
+      return apiError.message === undefined || apiError.message.trim() === ''
+        ? messages.httpError.description
+        : apiError.message;
     case 'conflict':
       return apiError.message === '' ? messages.httpError.description : apiError.message;
     case 'stateLocked':

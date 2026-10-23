@@ -1,4 +1,4 @@
-import type { WorkOrderForward } from '@omf-mes/api-client';
+import type { ApiError, WorkOrderForward } from '@omf-mes/api-client';
 import { AlertBanner, Button, Card, Icon, Progress, Table, TextField } from '@crefle/web-ui';
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -75,7 +75,8 @@ export const ReworkResultRegisterScreen = () => {
   const defectCodes = useReworkDefectCodes();
   const [queued, setQueued] = useState(false);
   const [queueError, setQueueError] = useState(false);
-  const [rejected, setRejected] = useState(false);
+  /** 서버가 거부한 까닭. 거부가 없으면 null */
+  const [rejection, setRejection] = useState<ApiError | null>(null);
   const [pendingCount, setPendingCount] = useState(pendingReworkResultCount);
   const [isOnline, setIsOnline] = useState(() => globalThis.navigator.onLine);
 
@@ -112,7 +113,7 @@ export const ReworkResultRegisterScreen = () => {
     setDefectCode(null);
     setQueued(false);
     setQueueError(false);
-    setRejected(false);
+    setRejection(null);
   }, [selectedId]);
   useEffect(() => {
     const drain = () => {
@@ -120,7 +121,7 @@ export const ReworkResultRegisterScreen = () => {
       void drainReworkResults(client)
         .then((result) => {
           setPendingCount(pendingReworkResultCount());
-          setRejected(result.rejected > 0);
+          setRejection(result.lastRejection);
           if (result.rejected > 0) setQueued(false);
         })
         .catch(() => setPendingCount(pendingReworkResultCount()));
@@ -185,7 +186,7 @@ export const ReworkResultRegisterScreen = () => {
       void drainReworkResults(client)
         .then((result) => {
           setPendingCount(pendingReworkResultCount());
-          setRejected(result.rejected > 0);
+          setRejection(result.lastRejection);
           if (result.rejected > 0) setQueued(false);
         })
         .catch(() => setPendingCount(pendingReworkResultCount()));
@@ -202,7 +203,7 @@ export const ReworkResultRegisterScreen = () => {
    */
   const hasSomethingToReset =
     selected !== null &&
-    (quantityKeys.some((key) => drafts[key] !== '') || queued || queueError || rejected);
+    (quantityKeys.some((key) => drafts[key] !== '') || queued || queueError || rejection !== null);
   /**
    * 칸 하나를 키패드의 대상으로 삼는다.
    *
@@ -218,7 +219,7 @@ export const ReworkResultRegisterScreen = () => {
     setDefectCode(null);
     setQueued(false);
     setQueueError(false);
-    setRejected(false);
+    setRejection(null);
   };
   return (
     <main className="pop-shell pop-ui rework-result-screen" aria-labelledby="rework-result-title">
@@ -714,7 +715,11 @@ export const ReworkResultRegisterScreen = () => {
            */}
           {queued && <AlertBanner variant="success">{t.queued}</AlertBanner>}
           {queueError && <AlertBanner variant="error">{t.queueError}</AlertBanner>}
-          {rejected && <AlertBanner variant="error">{t.rejected}</AlertBanner>}
+          {rejection !== null && (
+            <AlertBanner variant="error" title={t.rejected}>
+              {rejectionText(rejection)}
+            </AlertBanner>
+          )}
           {gateReason && <p>{gateReason}</p>}
         </div>
         <Button size="2xl" variant="outlined" disabled={!hasSomethingToReset} onClick={reset}>
@@ -726,4 +731,22 @@ export const ReworkResultRegisterScreen = () => {
       </div>
     </main>
   );
+}; /**
+ * 서버가 준 거부 사유 — 단말 권한(401)이든 검증이든 서버 문구가 무엇을 해야 하는지 말한다.
+ * 거부의 모양이 아니라 실린 문구를 본다.
+ */
+const rejectionText = (rejection: ApiError): string | null => {
+  const lines =
+    rejection.kind === 'validation' || rejection.kind === 'stateLocked'
+      ? rejection.errors.map((item) => item.message)
+      : (rejection.kind === 'http' || rejection.kind === 'conflict') &&
+          rejection.message !== undefined
+        ? [rejection.message]
+        : [];
+  const text = lines
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+    .join(' ');
+
+  return text === '' ? null : text;
 };

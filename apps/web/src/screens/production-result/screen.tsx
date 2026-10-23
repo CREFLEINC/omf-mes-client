@@ -14,6 +14,7 @@ import { NumericKeypad } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
+import type { SplitError } from '../../patterns/master';
 import { masterName } from '../../patterns/master-name';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
@@ -198,6 +199,29 @@ const lotTargetsOf = (
       workOrderNo: source.workOrderNo ?? '-',
     }),
   }));
+
+/**
+ * 서버가 준 거부 사유. 단말 권한(401)이든 검증이든 서버 문구가 무엇을 해야 하는지 말한다 — 제목만
+ * 두면 작업자는 왜 막혔는지 모른다.
+ */
+const rejectionText = (rejection: SplitError): string | null => {
+  const lines = Object.values(rejection.fieldErrors);
+  const error = rejection.error;
+  if (error?.kind === 'validation' || error?.kind === 'stateLocked') {
+    lines.push(...error.errors.map((item) => item.message));
+  } else if (
+    (error?.kind === 'http' || error?.kind === 'conflict') &&
+    error.message !== undefined
+  ) {
+    lines.push(error.message);
+  }
+  const text = lines
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+    .join(' ');
+
+  return text === '' ? null : text;
+};
 
 /** P-02-04 생산 실적·인식표·생산 LOT 라벨·스캔 마감을 한 주소와 한 상태 흐름으로 묶는다. */
 export const ProductionFlowScreen = () => {
@@ -1796,7 +1820,9 @@ export const ProductionFlowScreen = () => {
                */}
               {outbox.rejection !== null && (
                 <div className="banner-slot">
-                  <AlertBanner variant="error" title={t.save.failTitle} />
+                  <AlertBanner variant="error" title={t.save.failTitle}>
+                    {rejectionText(outbox.rejection)}
+                  </AlertBanner>
                 </div>
               )}
 

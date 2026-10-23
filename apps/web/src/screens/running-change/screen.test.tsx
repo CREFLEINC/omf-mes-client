@@ -78,6 +78,8 @@ interface Options {
   writes?: Request[];
   /** 교체 등록 응답 상태. 기본 201 */
   writeStatus?: number;
+  /** 거부 응답 몸체. 기본은 일반 거부 */
+  writeBody?: unknown;
   /** 교체 등록이 **통신 실패**한다. 거부와 달리 큐에 남는다 */
   writeFails?: boolean;
   /** 단말 기능 구성 행을 통째로 준다(공정이 여럿인 단말) */
@@ -142,7 +144,9 @@ const routes = (options: Options): StubRoute[] => [
       const status = options.writeStatus ?? 201;
 
       return status >= 400
-        ? jsonResponse({ code: 'INVALID_STATE', message: '받지 않았습니다' }, { status })
+        ? jsonResponse(options.writeBody ?? { code: 'INVALID_STATE', message: '받지 않았습니다' }, {
+            status,
+          })
         : jsonResponse(makeConsumption({ materialConsumptionId: 55002 }), { status });
     },
   },
@@ -576,6 +580,33 @@ describe('러닝체인지 화면 — 교체 등록', () => {
     await user.click(submitButton());
 
     expect(await screen.findByText(t.replace.recorded)).toBeInTheDocument();
+  });
+
+  it('단말 권한으로 서버가 거부하면(401) 서버 문구를 그대로 낸다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      writeStatus: 401,
+      writeBody: {
+        errors: [
+          {
+            scope: 'screen',
+            code: 'PERMISSION_DENIED',
+            message:
+              '이 단말에는 이 W/O 공정의 자재 투입 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「자재 투입」을 켜세요.',
+          },
+        ],
+      },
+    });
+
+    await fillReplacement(user);
+    await user.click(submitButton());
+
+    expect(
+      await screen.findByText(
+        '이 단말에는 이 W/O 공정의 자재 투입 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「자재 투입」을 켜세요.',
+        { exact: false },
+      ),
+    ).toBeInTheDocument();
   });
 
   it('서버가 거부하면 그 사유를 낸다', async () => {
