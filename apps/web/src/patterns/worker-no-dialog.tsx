@@ -1,11 +1,12 @@
-import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, TextField, type ButtonSize } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { POP_TOUCH_SIZE } from './touch-spec';
+const keypad = messages.popChrome.workerNoDialog;
 
-const keypad = messages.workStart.worker;
+/** POP 터치 규격(작업 시작 `touch-spec` 의 `POP_TOUCH_SIZE` 와 같은 값). 공용 부품이 화면 폴더를 읽지 않게 여기 둔다. */
+const POP_TOUCH_SIZE: ButtonSize = '2xl';
 
 export interface WorkerNoDialogProps {
   open: boolean;
@@ -27,8 +28,9 @@ export interface WorkerNoDialogProps {
 const DIGITS_ONLY = /\D/gu;
 
 /**
- * 사번 입력 창. 작업자 사번 확인과 부 작업자 추가가 같은 창과 키패드를 쓴다(사용자 화면 확인 결정
- * 2026-10-23). 키패드 하나를 두 곳에 따로 두지 않는다.
+ * 사번 입력 창(C-12 가끔 쓰는 숫자 입력은 창). 작업 시작의 작업자 사번 확인과 부 작업자 추가, 자재
+ * 투입의 사번 확인이 같은 창과 키패드를 쓴다(사용자 화면 확인 결정 2026-10-23). 화면마다 복제하지
+ * 않는다(C-8, C-20).
  *
  * - 키패드로 누르거나, 칸에 바코드 스캐너나 키보드로 친다. 칸은 열리자마자 포커스를 받고 Enter로
  *   확인한다. `inputMode="none"`이라 터치 단말에서 운영체제 키보드가 화면을 덮지 않는다.
@@ -90,13 +92,13 @@ export const WorkerNoDialog = ({
       }
     >
       {/* 칸, 키패드, 사유 사이는 같은 간격 토큰 하나로 띄운다(C-19). */}
-      <div className="work-start-worker-no">
+      <div className="worker-no-dialog">
         <TextField
           label={keypad.fieldLabel}
           value={draft}
           size="xl"
           ref={fieldRef}
-          containerClassName="work-start-worker-no-field"
+          containerClassName="worker-no-dialog-field"
           inputMode="none"
           autoComplete="off"
           onChange={(event) => {

@@ -1,7 +1,7 @@
 import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { WorkerNoDialog } from './worker-no-dialog';
+import { WorkerNoDialog } from '../../patterns/worker-no-dialog';
 
 const t = messages.workStart.worker;
 

@@ -26,6 +26,12 @@ export interface ScanFieldProps {
    * 들어가게 부르는 쪽이 값을 올린다(PG-21).
    */
   focusRequest?: number;
+  /**
+   * 사번이 없어 스캔을 받지 않는다(PI-17). 칸은 읽기 전용이고 포커스를 붙들지 않으며, 누르면
+   * `onLockedPress`로 사번 입력 창을 연다.
+   */
+  isLocked?: boolean;
+  onLockedPress?: () => void;
 }
 
 /**
@@ -42,7 +48,14 @@ export interface ScanFieldProps {
  * ⛔ **숫자 키패드를 여기 두지 않는다.** 그 부품은 다른 화면(`P-CO-01`)이 소유하고 있고,
  * 여기서 또 만들면 같은 것이 둘이 된다.
  */
-export const ScanField = ({ isScanning, onScan, outcome, focusRequest = 0 }: ScanFieldProps) => {
+export const ScanField = ({
+  isScanning,
+  onScan,
+  outcome,
+  focusRequest = 0,
+  isLocked = false,
+  onLockedPress,
+}: ScanFieldProps) => {
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -57,8 +70,8 @@ export const ScanField = ({ isScanning, onScan, outcome, focusRequest = 0 }: Sca
    * 조회가 끝난 시점을, `submit`은 버튼으로 보낸 직후를 맡는다.
    */
   useEffect(() => {
-    if (!isScanning) inputRef.current?.focus();
-  }, [isScanning, focusRequest]);
+    if (!isScanning && !isLocked) inputRef.current?.focus();
+  }, [isScanning, focusRequest, isLocked]);
 
   /*
    * ⭐ **스캔 한 번에 보낸다**(omf-all-around#35). 실기에서 LOT 을 읽고도 Enter 를 한 번 더
@@ -72,7 +85,7 @@ export const ScanField = ({ isScanning, onScan, outcome, focusRequest = 0 }: Sca
      * 막아 주어 「평소에는 걸릴 일이 없다」고 적어 두었으나, 그 단추가 사라졌다. 겹친 조회가
      * 나가면 **뒤 조회가 앞 조회의 후보 목록을 보고 중복을 판정해** 같은 자재가 두 줄로 담긴다.
      */
-    if (isScanning) return;
+    if (isScanning || isLocked) return;
 
     const code = normalizeScanCode(raw);
     if (code === null) return;
@@ -114,6 +127,8 @@ export const ScanField = ({ isScanning, onScan, outcome, focusRequest = 0 }: Sca
         value={value}
         fullWidth
         autoComplete="off"
+        readOnly={isLocked}
+        onClick={isLocked ? onLockedPress : undefined}
         /*
          * ⛔ **조회 중에도 칸을 잠그지 않는다.** 잠그면 그 순간 포커스가 칸을 떠나고, 되돌려
          * 놓기 전에 읽힌 코드가 사라진다 — 스캐너는 사람이 기다려 주지 않는다. 두 번 보내는

@@ -1,7 +1,9 @@
 import { messages } from '@omf-mes/i18n';
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { setWorkerSession } from '../../patterns/worker-session';
 
 import {
   createStubFetch,
@@ -77,6 +79,27 @@ const scanOnce = async (user: ReturnType<typeof userEvent.setup>): Promise<void>
   await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
   await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
 };
+
+/* 사번이 없으면 화면이 투입을 받지 않는다(PI-17). 이 감지기들은 단말이 사번을 들고 있는 상태에서 잰다. */
+beforeEach(() => {
+  setWorkerSession({
+    worker: {
+      workerId: 7001,
+      workerNo: 'SAMPLE-W-0001',
+      workerName: '합성 작업자',
+      businessUnitId: 1,
+      plantId: 1,
+      statusCode: 'SAMPLE_ACTIVE',
+      isActive: true,
+    },
+    assignedAt: '2026-10-23 09:00',
+    isOtherPlant: false,
+  });
+});
+
+afterEach(() => {
+  setWorkerSession(null);
+});
 
 describe('자재 상태 표시명', () => {
   /*

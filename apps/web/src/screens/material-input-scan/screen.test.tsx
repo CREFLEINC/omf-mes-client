@@ -1,7 +1,9 @@
 import { messages } from '@omf-mes/i18n';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { setWorkerSession } from '../../patterns/worker-session';
 
 import {
   createStubFetch,
@@ -99,6 +101,27 @@ const bodyRows = (): HTMLElement[] =>
 
 /** 투입 수량 편집 영역(고른 줄의 상세). */
 const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.qty });
+
+/* 사번이 없으면 화면이 줄 선택을 받지 않는다(PI-17). 이 감지기들은 단말이 사번을 들고 있는 상태에서 잰다. */
+beforeEach(() => {
+  setWorkerSession({
+    worker: {
+      workerId: 7001,
+      workerNo: 'SAMPLE-W-0001',
+      workerName: '합성 작업자',
+      businessUnitId: 1,
+      plantId: 1,
+      statusCode: 'SAMPLE_ACTIVE',
+      isActive: true,
+    },
+    assignedAt: '2026-10-23 09:00',
+    isOtherPlant: false,
+  });
+});
+
+afterEach(() => {
+  setWorkerSession(null);
+});
 
 describe('MaterialInputScanScreen — 계획 대비 수령', () => {
   it('작업지시가 실린 주소면 전표 목록과 상세를 부른다', async () => {

@@ -24,6 +24,23 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     unsent: (count: number): string => `Chờ gửi ${String(count)} mục`,
   },
   workerMissing: 'Chưa xác nhận mã nhân viên. Hãy xác thực mã nhân viên trước.',
+  workerNoDialog: {
+    title: 'Nhập mã nhân viên',
+    fieldLabel: 'Mã nhân viên',
+    keypadLabel: 'Bàn phím số nhập mã nhân viên',
+    backspace: 'Xóa một ký tự',
+    clear: 'Xóa hết',
+    confirm: 'Xác nhận',
+    cancel: 'Hủy',
+    checking: 'Đang kiểm tra',
+    groupTitle: 'Người làm',
+    empty: 'Chưa nhập mã nhân viên.',
+    open: 'Nhập mã nhân viên',
+    unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này. Hãy nhập lại mã nhân viên.',
+    inactive: 'Mã nhân viên này không còn làm việc. Hãy nhập lại mã nhân viên.',
+    lookupFailed: 'Không xác nhận được mã nhân viên. Hãy thử lại.',
+    retry: 'Thử lại',
+  },
   processGate: {
     denied: (process: string, feature: string, menuPath: string): string =>
       `Máy này đang tắt «${feature}» của công đoạn ${process}. Hãy nhờ quản trị viên bật «${feature}» của công đoạn ${process} ở ${menuPath} trên web quản lý.`,

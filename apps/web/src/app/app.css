@@ -12527,6 +12527,24 @@ button.app-button-neutral {
   letter-spacing: var(--type-title-sm-tracking);
 }
 
+/* 사번이 없을 때 편집 영역 자리의 「작업자」 빈 상태(작업 시작의 작업자 묶음과 같은 순서). */
+.material-input-worker {
+  display: grid;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.material-input-worker > .field-note {
+  margin: 0;
+}
+
+.material-input-worker > h3 {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
 .material-input-pairs {
   display: grid;
   flex: 0 0 auto;
@@ -12725,8 +12743,8 @@ button.app-button-neutral {
   gap: var(--space-2);
 }
 
-/* 사번 입력 창. 칸, 키패드, 사유 사이를 DS 창의 블록 간격(--space-4)과 같은 값으로 띄운다. */
-.work-start-worker-no {
+/* 공용 사번 입력 창(`patterns/worker-no-dialog`, 작업 시작과 자재 투입). 칸, 키패드, 사유 사이를 DS 창의 블록 간격(--space-4)과 같은 값으로 띄운다. */
+.worker-no-dialog {
   display: grid;
   gap: var(--space-4);
 }
@@ -12735,7 +12753,7 @@ button.app-button-neutral {
  * 사번 칸의 라벨과 입력 칸 사이(사용자 결정 2026-10-23). DS 칸 기본 간격(--space-1, 4px)이 장갑 낀
  * 손으로 보는 창에서 붙어 보여 이 창만 --space-2로 띄운다. DS 요청 후보(PG-19).
  */
-.work-start-worker-no .work-start-worker-no-field {
+.worker-no-dialog .worker-no-dialog-field {
   gap: var(--space-2);
 }
 

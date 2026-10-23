@@ -55,8 +55,9 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
   scanned: {
     materialsLabel: 'Danh sách vật tư',
     moldLabel: 'Khuôn',
-    remove: 'Bỏ',
-    removeMaterial: (lotNo: string): string => `Bỏ ${lotNo}`,
+    remove: 'Hủy quét',
+    removeMaterial: (lotNo: string): string => `Hủy quét ${lotNo}`,
+    removed: (item: string): string => `Đã hủy quét ${item}.`,
     qtyField: 'Số lượng đưa vào',
     qtyLabel: (lotNo: string): string => `Số lượng đưa vào ${lotNo}`,
     qtyProblems: {
@@ -101,7 +102,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
         'Chưa xác nhận được máy hoặc công đoạn của lệnh sản xuất. Hãy chọn lại lệnh sản xuất ở màn hình bắt đầu công việc rồi vào lại.',
       checking: 'Đang kiểm tra quyền đưa vào',
       qtyMissing: 'Còn vật tư chưa ghi. Hãy nhập số lượng rồi ghi, hoặc bỏ vật tư đó',
-      workerMissing: 'Chưa xác nhận được công nhân. Hãy xác nhận mã nhân viên rồi vào lại',
+      workerMissing: 'Hãy nhập mã nhân viên',
     },
     retry: 'Kiểm tra lại quyền đưa vào',
     goToProductionResult: 'Sang công việc sản xuất',

@@ -88,8 +88,10 @@ export const materialInputScan = {
   scanned: {
     materialsLabel: '자재 목록',
     moldLabel: '금형',
-    remove: '빼기',
-    removeMaterial: (lotNo: string): string => `${lotNo} 빼기`,
+    /** 스캔했지만 기록하지 않은 LOT을 목록에서 되돌린다(사용자 화면 확인 결정 2026-10-23, PI-08). */
+    remove: '스캔 취소',
+    removeMaterial: (lotNo: string): string => `${lotNo} 스캔 취소`,
+    removed: (item: string): string => `${item} 스캔을 취소했습니다.`,
     /** 투입 수량 칸. 보이는 라벨은 `qtyField`이고 접근 이름에 LOT 번호를 붙인다. */
     qtyField: '투입 수량',
     qtyLabel: (lotNo: string): string => `${lotNo} 투입 수량`,
@@ -160,7 +162,8 @@ export const materialInputScan = {
       checking: '투입 권한을 확인하는 중입니다',
       /* 건별 저장이라 「아직 기록되지 않은 줄」이 남아 있다는 뜻이다 — 닫으면 그 줄이 버려진다. */
       qtyMissing: '기록하지 않은 자재가 있습니다. 투입 수량을 입력하고 기록하거나 빼세요',
-      workerMissing: '작업자가 확인되지 않았습니다. 사번을 확인한 뒤 다시 들어오세요',
+      /* 이 화면에서 사번 입력 창을 연다(PI-17). 다른 화면으로 돌려보내지 않는다(C-13). */
+      workerMissing: '사번을 입력하세요',
     },
     /** 이 버튼이 하는 일은 **권한 조회 한 번**이다. */
     retry: '투입 권한 다시 조회',

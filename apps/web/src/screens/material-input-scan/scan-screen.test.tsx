@@ -2,7 +2,9 @@ import { messages } from '@omf-mes/i18n';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { setWorkerSession } from '../../patterns/worker-session';
 
 import {
   createStubFetch,
@@ -161,7 +163,14 @@ interface RecordedRequest {
   url: URL;
 }
 
-const renderScreen = (routes: StubRoute[], identity = UNKNOWN_POP_IDENTITY) => {
+/**
+ * 기본은 단말을 모르지만 사번은 있는 상태다. 사번이 없으면 화면이 투입을 받지 않으므로(PI-17) 스캔을
+ * 재는 감지기는 사번을 갖고 시작한다. 사번 없는 갈래는 따로 잰다.
+ */
+const renderScreen = (
+  routes: StubRoute[],
+  identity: PopIdentity = { ...UNKNOWN_POP_IDENTITY, workerNo: WORKER_NO },
+) => {
   const requests: RecordedRequest[] = [];
   const stub = createStubFetch([...receiptRoutes(), ...routes]);
   const fetch: StubFetch = async (request) => {
@@ -457,7 +466,12 @@ describe('MaterialInputScanScreen — 스캔', () => {
       return stub(request);
     };
 
-    renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE });
+    renderWithProviders(
+      <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: WORKER_NO }}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
 
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
 
@@ -498,7 +512,12 @@ describe('MaterialInputScanScreen — 스캔', () => {
       return stub(request);
     };
 
-    renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE });
+    renderWithProviders(
+      <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: WORKER_NO }}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
 
     const field = screen.getByLabelText(t.scan.label);
     await user.type(field, 'SAMPLE-LOT-0001{Enter}');
@@ -550,7 +569,12 @@ describe('MaterialInputScanScreen — 스캔', () => {
       return stub(request);
     };
 
-    renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE });
+    renderWithProviders(
+      <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: WORKER_NO }}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
 
     const field = screen.getByLabelText(t.scan.label);
     await user.type(field, 'SAMPLE-LOT-0001{Enter}');
@@ -600,6 +624,107 @@ describe('MaterialInputScanScreen — 스캔', () => {
     await waitFor(() => {
       expect(scannedHas('SAMPLE-LOT-0001')).toBe(false);
     });
+    /* 결과 줄이 방금 한 일(스캔 취소)을 말한다(PI-08). */
+    expect(screen.getByText(t.scanned.removed('예시 자재 A'))).toBeTruthy();
+  });
+});
+
+/**
+ * 사번이 없으면 투입을 받지 않는다(사용자 화면 확인 결정 2026-10-23, PI-17). 들어오자마자 사번 입력
+ * 창을 열고, 잠긴 동안 스캔 칸이나 목록을 누르면 다시 연다. 확인되면 같은 W/O에서 이어 간다.
+ */
+describe('MaterialInputScanScreen — 사번 없이 들어왔을 때', () => {
+  const dialogText = messages.popChrome.workerNoDialog;
+  const NO_WORKER: PopIdentity = { ...GATED, workerNo: null };
+
+  const workersRoute = (): StubRoute => ({
+    match: (request) => isGet(request, '/mdm/workers'),
+    respond: (request) => {
+      const workerNo = new URL(request.url).searchParams.get('workerNo');
+
+      return jsonResponse(
+        listBody(
+          workerNo === '7001'
+            ? [
+                {
+                  workerId: 7001,
+                  workerNo: '7001',
+                  workerName: '합성 작업자',
+                  businessUnitId: 1,
+                  plantId: 1,
+                  statusCode: 'SAMPLE_ACTIVE',
+                  isActive: true,
+                },
+              ]
+            : [],
+        ),
+      );
+    },
+  });
+
+  afterEach(() => {
+    setWorkerSession(null);
+  });
+
+  it('들어오자마자 사번 입력 창을 열고, 취소하면 잠긴 채 「사번을 입력하세요」라고 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot()]), gateRoute(true), workersRoute()], NO_WORKER);
+
+    const dialog = await screen.findByRole('dialog', { name: dialogText.title });
+    /* 칸이 곧바로 키보드와 스캐너 입력을 받는다. */
+    expect(document.activeElement).toBe(within(dialog).getByLabelText(dialogText.fieldLabel));
+
+    await user.click(within(dialog).getByRole('button', { name: dialogText.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: dialogText.title })).toBeNull();
+    });
+
+    expect(screen.getByText(t.confirm.reasons.workerMissing)).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    /* 스캔 칸은 받지 않고, 칠 수도 없다. */
+    expect(screen.getByLabelText(t.scan.label)).toHaveProperty('readOnly', true);
+    expect(screen.queryByRole('button', { name: t.scanned.keypadSubmit })).toBeNull();
+
+    /* 다시 여는 길: 「작업자」 빈 상태의 [사번 입력], 목록 줄, 스캔 칸. */
+    await user.click(screen.getByRole('button', { name: dialogText.open }));
+    expect(await screen.findByRole('dialog', { name: dialogText.title })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: dialogText.cancel }));
+
+    const row = await within(scannedList()).findByText('SAMPLE-LOT-0001');
+    await user.click(row);
+    expect(await screen.findByRole('dialog', { name: dialogText.title })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: t.panes.qty })).not.toBeNull();
+  });
+
+  it('사번을 확인하면 창이 닫히고 같은 W/O에서 스캔을 받는다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot()]), gateRoute(true), workersRoute()], NO_WORKER);
+
+    const dialog = await screen.findByRole('dialog', { name: dialogText.title });
+    await user.type(within(dialog).getByLabelText(dialogText.fieldLabel), '7001{Enter}');
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: dialogText.title })).toBeNull();
+    });
+    expect(screen.getByLabelText(t.scan.label)).toHaveProperty('readOnly', false);
+
+    await scanCode(user, 'SAMPLE-LOT-0001');
+    expect(await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeTruthy();
+    expect(screen.queryByText(t.confirm.reasons.workerMissing)).toBeNull();
+  });
+
+  it('없는 사번이면 창 안에서 사유를 말하고 잠근 채 둔다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot()]), gateRoute(true), workersRoute()], NO_WORKER);
+
+    const dialog = await screen.findByRole('dialog', { name: dialogText.title });
+    await user.type(within(dialog).getByLabelText(dialogText.fieldLabel), '9999{Enter}');
+
+    expect(await within(dialog).findByText(dialogText.unknown)).toBeTruthy();
+    expect(screen.getByLabelText(t.scan.label)).toHaveProperty('readOnly', true);
   });
 });
 

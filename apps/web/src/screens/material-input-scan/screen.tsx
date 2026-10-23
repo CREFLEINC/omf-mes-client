@@ -1,7 +1,7 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { ActionBar } from '../../patterns/action-bar';
@@ -15,7 +15,11 @@ import {
   usePopWorkOrder,
   usePopWorkOrderProcess,
 } from '../../patterns/pop-process-gate';
-import { useWorkerSession } from '../../patterns/worker-session';
+import { WorkerNoDialog } from '../../patterns/worker-no-dialog';
+import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
+import { useWorkerLookup } from '../work-start/queries';
+import { assignedAtText } from '../work-start/terminal-clock';
+import { verifyWorker } from '../work-start/worker-verify';
 import { POP_TOUCH_SIZE } from '../work-start/touch-spec';
 
 import { confirmBlockReason, remainingText } from './block-reason';
@@ -115,8 +119,39 @@ export const MaterialInputScanScreen = () => {
   const navigate = useNavigate();
   const workOrderId = readWorkOrderId(searchParams);
   /* 단말, 공정, 사번은 셸이 아는 것이라 주소가 아니라 컨텍스트로 온다(`patterns/pop-identity`). */
-  const { terminalId, processes, equipment, workerNo } = usePopIdentity();
+  const identity = usePopIdentity();
+  const { terminalId, processes, equipment } = identity;
   const workerSession = useWorkerSession();
+  /*
+   * 귀속 사번. 셸이 내려 준 값이 먼저이고, 이 화면의 사번 입력 창으로 정한 값(`worker-session`)이
+   * 그다음이다(작업 시작과 같은 자리를 읽고 쓴다).
+   */
+  const workerNo = identity.workerNo ?? workerSession?.worker.workerNo ?? null;
+  /*
+   * ⭐ **사번이 없으면 투입을 받지 않는다**(사용자 화면 확인 결정 2026-10-23, PI-17). 들어오자마자
+   *    사번 입력 창을 열고, 잠긴 동안 스캔 칸이나 목록을 누르면 다시 연다(PG-27과 같은 판단). 확인되면
+   *    같은 W/O에서 그대로 이어 간다. 작업 시작으로 돌려보내지 않는다.
+   */
+  const isWorkerMissing = workerNo === null;
+  const [isWorkerDialogOpen, setWorkerDialogOpen] = useState(isWorkerMissing);
+  const [submittedWorkerNo, setSubmittedWorkerNo] = useState<string | null>(null);
+  const workerLookup = useWorkerLookup(submittedWorkerNo);
+  /* 사번 확인은 작업 시작과 같은 판정이다. 단말 공장 비교는 이 화면에서 하지 않는다(서버가 집행). */
+  const verifiedWorker = useMemo(
+    () =>
+      submittedWorkerNo !== null && workerLookup.data !== undefined
+        ? verifyWorker(workerLookup.data, submittedWorkerNo, null)
+        : null,
+    [workerLookup.data, submittedWorkerNo],
+  );
+  const workerError = ((): string | null => {
+    if (submittedWorkerNo === null) return null;
+    if (workerLookup.isError) return messages.popChrome.workerNoDialog.lookupFailed;
+    if (verifiedWorker?.kind === 'unknown') return messages.popChrome.workerNoDialog.unknown;
+    if (verifiedWorker?.kind === 'inactive') return messages.popChrome.workerNoDialog.inactive;
+
+    return null;
+  })();
   const workerName =
     workerSession !== null && workerSession.worker.workerNo === workerNo
       ? (workerSession.worker.workerName ?? null)
@@ -178,6 +213,28 @@ export const MaterialInputScanScreen = () => {
   /* 기록한 뒤 스캔 칸으로 포커스를 되돌린다 — 다음 스캔이 칸으로 들어가야 한다. */
   const [scanFocusRequest, setScanFocusRequest] = useState(0);
 
+  /* 확인된 사번을 단말의 현재 작업자로 정하고 창을 닫는다. 렌더 중에 화면 밖 저장소를 쓰지 않는다. */
+  useEffect(() => {
+    if (verifiedWorker?.kind !== 'ok') return;
+
+    setWorkerSession({
+      worker: verifiedWorker.worker,
+      assignedAt: assignedAtText(new Date()),
+      isOtherPlant: verifiedWorker.isOtherPlant,
+    });
+    setSubmittedWorkerNo(null);
+    setWorkerDialogOpen(false);
+    setScanFocusRequest((prev) => prev + 1);
+  }, [verifiedWorker]);
+
+  const openWorkerDialog = (): void => {
+    setSubmittedWorkerNo(null);
+    setWorkerDialogOpen(true);
+  };
+
+  /* 스캔 칸 아래 결과 줄을 스캔 결과 대신 쓰는 안내(스캔 취소). 다음 스캔에서 지운다. */
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+
   /* 이 W/O에 이미 기록된 투입(PI-13). 화면을 다시 열어도 기록된 LOT이 「기록됨」으로 선다. */
   const recorded = useRecordedConsumptions(workOrderId);
   const queryClient = useQueryClient();
@@ -200,6 +257,7 @@ export const MaterialInputScanScreen = () => {
   };
 
   const handleScan = (code: string): void => {
+    setActionNotice(null);
     /*
      * **후보 목록을 그 순간의 값으로 넘긴다.** 중복 판정이 조회 쪽에서 일어나는데, 훅이
      * 목록을 따로 들고 있으면 화면과 훅에 정본이 둘 생긴다.
@@ -207,7 +265,12 @@ export const MaterialInputScanScreen = () => {
     scan.mutate(
       { draft, code },
       {
+        /* 스캔 취소 안내는 그 뒤에 온 스캔 결과가 대신한다. */
+        onError: () => {
+          setActionNotice(null);
+        },
         onSuccess: (outcome) => {
+          setActionNotice(null);
           /*
            * 함수형 갱신으로 담는다 — 연달아 읽힌 스캔 둘이 같은 `draft`를 각자 읽고 덮으면
            * **먼저 담긴 자재가 사라진다.** 현장에서는 이 연타가 기본 사용법이다.
@@ -228,6 +291,10 @@ export const MaterialInputScanScreen = () => {
   };
 
   const removeMaterial = (lotId: number): void => {
+    const removed = draft.materials.find((material) => material.lotId === lotId);
+    if (removed !== undefined) {
+      setActionNotice(t.scanned.removed(itemNameOf(removed.lotId, removed.itemId)));
+    }
     setDraft((prev) => ({
       ...prev,
       materials: prev.materials.filter((material) => material.lotId !== lotId),
@@ -344,14 +411,17 @@ export const MaterialInputScanScreen = () => {
    * 끊긴 것과 조회가 실패한 것은 **작업자가 할 일이 다르다**(G-3). 앞은 기다려야 풀리고 뒤는
    * 다시 읽으면 풀린다.
    */
-  const outcomeView: ScanOutcomeView | null = scan.isError
-    ? {
-        tone: 'error',
-        text: outbox.isOnline ? t.scan.outcomes.failed : t.scan.outcomes.offline,
-      }
-    : outcome === undefined
-      ? null
-      : describeOutcome(outcome, statusLabels.describe);
+  const outcomeView: ScanOutcomeView | null =
+    actionNotice !== null
+      ? { tone: 'success', text: actionNotice }
+      : scan.isError
+        ? {
+            tone: 'error',
+            text: outbox.isOnline ? t.scan.outcomes.failed : t.scan.outcomes.offline,
+          }
+        : outcome === undefined
+          ? null
+          : describeOutcome(outcome, statusLabels.describe);
 
   /* 잠금 사유와 「남은 일」은 한 판정(`block-reason`)에서 읽는다. */
   const blockReason = confirmBlockReason({
@@ -462,6 +532,8 @@ export const MaterialInputScanScreen = () => {
             onScan={handleScan}
             outcome={outcomeView}
             focusRequest={scanFocusRequest}
+            isLocked={isWorkerMissing}
+            onLockedPress={openWorkerDialog}
           />
 
           <MaterialList
@@ -477,6 +549,12 @@ export const MaterialInputScanScreen = () => {
             recordedQtyOf={recordedQtyOf}
             selectedLotId={editingRow?.lotId ?? null}
             onSelect={(lotId) => {
+              /* 사번이 없으면 고르지 않고 사번 입력 창을 연다(PI-17). */
+              if (isWorkerMissing) {
+                openWorkerDialog();
+
+                return;
+              }
               setSelectedLotId(lotId);
               /* 줄을 눌러도 다음 스캔은 스캔 칸으로 들어가야 한다(PG-21). */
               setScanFocusRequest((prev) => prev + 1);
@@ -484,21 +562,40 @@ export const MaterialInputScanScreen = () => {
           />
         </section>
 
-        <QtyEditor
-          row={editingRow}
-          isRecorded={editingRow !== null && recordedLotIdsSeen.includes(editingRow.lotId)}
-          recordedQty={editingRow === null ? null : recordedQtyOf(editingRow.lotId)}
-          qtyDrafts={qtyDrafts}
-          statusLabels={statusLabels}
-          describeItem={labels.describeItem}
-          describeUom={labels.describeUom}
-          describeFourMType={describeFourMType}
-          canRecord={gate.verdict === 'allowed' && workerNo !== null && workOrderId !== null}
-          remainingId={remainingId}
-          onQtyChange={changeQty}
-          onRecord={recordMaterial}
-          onRemove={removeMaterial}
-        />
+        {isWorkerMissing ? (
+          /* 사번이 없으면 편집 영역 대신 작업 시작의 「작업자」 묶음과 같은 빈 상태와 [사번 입력]을 둔다. */
+          <section className="pane material-input-qty" aria-label={t.panes.qty}>
+            <h2 className="pane-title">{t.panes.qty}</h2>
+            <div className="material-input-worker">
+              <h3>{messages.popChrome.workerNoDialog.groupTitle}</h3>
+              <p className="field-note">{messages.popChrome.workerNoDialog.empty}</p>
+              <Button
+                type="button"
+                variant="outlined"
+                size={POP_TOUCH_SIZE}
+                onClick={openWorkerDialog}
+              >
+                {messages.popChrome.workerNoDialog.open}
+              </Button>
+            </div>
+          </section>
+        ) : (
+          <QtyEditor
+            row={editingRow}
+            isRecorded={editingRow !== null && recordedLotIdsSeen.includes(editingRow.lotId)}
+            recordedQty={editingRow === null ? null : recordedQtyOf(editingRow.lotId)}
+            qtyDrafts={qtyDrafts}
+            statusLabels={statusLabels}
+            describeItem={labels.describeItem}
+            describeUom={labels.describeUom}
+            describeFourMType={describeFourMType}
+            canRecord={gate.verdict === 'allowed' && workerNo !== null && workOrderId !== null}
+            remainingId={remainingId}
+            onQtyChange={changeQty}
+            onRecord={recordMaterial}
+            onRemove={removeMaterial}
+          />
+        )}
       </div>
 
       <ActionBar
@@ -524,6 +621,37 @@ export const MaterialInputScanScreen = () => {
           {t.confirm.goToProductionResult}
         </Button>
       </ActionBar>
+
+      <WorkerNoDialog
+        open={isWorkerDialogOpen && isWorkerMissing}
+        title={messages.popChrome.workerNoDialog.title}
+        confirmLabel={messages.popChrome.workerNoDialog.confirm}
+        cancelLabel={messages.popChrome.workerNoDialog.cancel}
+        isChecking={submittedWorkerNo !== null && workerLookup.isFetching}
+        error={workerError}
+        errorAction={
+          workerLookup.isError ? (
+            <Button
+              type="button"
+              variant="outlined"
+              size="sm"
+              onClick={() => {
+                void workerLookup.refetch();
+              }}
+            >
+              {messages.popChrome.workerNoDialog.retry}
+            </Button>
+          ) : undefined
+        }
+        onCancel={() => {
+          setSubmittedWorkerNo(null);
+          setWorkerDialogOpen(false);
+        }}
+        onSubmit={setSubmittedWorkerNo}
+        onDraftChange={() => {
+          setSubmittedWorkerNo(null);
+        }}
+      />
     </main>
   );
 };

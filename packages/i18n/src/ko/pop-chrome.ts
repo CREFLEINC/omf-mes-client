@@ -36,6 +36,28 @@ export const popChrome = {
    * 같은 말을 쓴다(사용자 지시 2026-09-17).
    */
   workerMissing: '사번이 확인되지 않았습니다. 사번 인증을 먼저 진행해주세요.',
+  /**
+   * 공용 사번 입력 창(`patterns/worker-no-dialog`). 작업 시작과 자재 투입이 같은 창을 쓴다.
+   * 칸은 읽기 전용이 아니라 키보드와 스캐너 입력을 받는다.
+   */
+  workerNoDialog: {
+    title: '사번 입력',
+    fieldLabel: '사번',
+    keypadLabel: '사번 숫자 키패드',
+    backspace: '한 자 지움',
+    clear: '전체 지움',
+    confirm: '확인',
+    cancel: '취소',
+    checking: '확인 중',
+    /** 사번이 없을 때의 빈 상태와 창을 여는 버튼(작업 시작 「작업자」 묶음과 같은 말). */
+    groupTitle: '작업자',
+    empty: '사번이 입력되지 않았습니다.',
+    open: '사번 입력',
+    unknown: '이 공장에 등록되지 않은 사번입니다. 사번을 다시 입력하세요.',
+    inactive: '재직 중이 아닌 사번입니다. 사번을 다시 입력하세요.',
+    lookupFailed: '사번을 확인하지 못했습니다. 다시 시도하세요.',
+    retry: '다시 시도',
+  },
   /** 단말 기능 판정(`patterns/pop-process-gate`) — 어느 공정의 무슨 기능이 꺼졌는지와 켜는 곳. */
   processGate: {
     denied: (process: string, feature: string, menuPath: string): string =>
