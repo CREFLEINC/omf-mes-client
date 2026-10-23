@@ -63,6 +63,10 @@ export const pqcInspectionRegister = {
   web: {
     /** 생산 실적이 없어 판정을 막을 때(#135) — 관리웹 말. POP 의 말(`pqcInspection.result.noProductionResult`)은 그대로 둔다. */
     noProductionResult: '생산 실적이 없으므로 판정할 수 없습니다.',
+    /** 검사기준이 없을 때 「검사 내용」 이름 옆 안내와 입력 칸 안내(#135) — 관리웹 말. POP 의 말(`pqcInspection.noStandard`)은 그대로 둔다. */
+    noStandardNote:
+      '이 의뢰에는 검사기준이 등록되어 있지 않습니다. 필요 시 검사 내용을 입력하세요.',
+    remarksPlaceholder: '검사 내용을 입력하세요.',
     summary: {
       heading: '검사 기본 정보',
       inspectionRequestNo: '의뢰번호',

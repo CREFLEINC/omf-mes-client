@@ -1829,6 +1829,8 @@ describe('ProductionFlowScreen — PQC 분할', () => {
     expect(await panel.findAllByText(pqc.result.noProductionResult)).toHaveLength(1);
     expect(panel.getByRole('button', { name: pqc.result.save })).toBeDisabled();
     expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
+    /* 입력 칸까지 잠그는 것은 관리웹(#135)만이다 — POP 은 종전대로 칸을 열어 둔다. */
+    expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toBeEnabled();
   });
 
   it.each([

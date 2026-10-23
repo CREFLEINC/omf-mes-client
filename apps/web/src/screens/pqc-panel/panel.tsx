@@ -479,12 +479,14 @@ export const PqcPanel = ({
               <div className="field-cell pqc-web-remarks-field">
                 <span className="field-label">
                   <label htmlFor={remarksId}>{tNoStandard.remarks}</label>
-                  <span className="pqc-web-label-hint">{tNoStandard.note}</span>
+                  <span className="pqc-web-label-hint">
+                    {messages.pqcInspectionRegister.web.noStandardNote}
+                  </span>
                 </span>
                 <TextField
                   id={remarksId}
                   fullWidth
-                  placeholder={tNoStandard.remarksPlaceholder}
+                  placeholder={messages.pqcInspectionRegister.web.remarksPlaceholder}
                   value={remarks}
                   disabled={isInputLocked}
                   onChange={(event) => edited(setRemarks)(event.target.value)}

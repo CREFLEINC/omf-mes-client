@@ -94,9 +94,8 @@ export const pqcInspection: Translated<typeof ko.pqcInspection> = {
   },
   noStandard: {
     heading: 'Đánh giá kiểm tra',
-    note: 'Yêu cầu này chưa có tiêu chuẩn kiểm tra. Nhập nội dung kiểm tra nếu cần.',
+    note: 'Yêu cầu này chưa có tiêu chuẩn kiểm tra. Hãy tự ghi đánh giá và nội dung.',
     remarks: 'Nội dung kiểm tra',
-    remarksPlaceholder: 'Nhập nội dung kiểm tra.',
   },
   measurements: {
     heading: 'Hạng mục kiểm tra',

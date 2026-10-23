@@ -52,6 +52,8 @@ export const pqcInspectionRegister = {
 
   web: {
     noProductionResult: 'Không thể đánh giá vì chưa có kết quả sản xuất.',
+    noStandardNote: 'Yêu cầu này chưa có tiêu chuẩn kiểm tra. Nhập nội dung kiểm tra nếu cần.',
+    remarksPlaceholder: 'Nhập nội dung kiểm tra.',
     summary: {
       heading: 'Thông tin kiểm tra',
       inspectionRequestNo: 'Số yêu cầu',
