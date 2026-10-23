@@ -7,8 +7,8 @@ import {
   type RenderHookResult,
   type RenderResult,
 } from '@testing-library/react';
-import type { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router';
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import { MemoryRouter, RouterProvider, createMemoryRouter } from 'react-router';
 
 import { ApiClientProvider } from '../patterns/api-context';
 import { sessionKeys, type Session } from '../patterns/session';
@@ -73,11 +73,47 @@ export interface ProviderOptions {
    * 재는 시험이 조용히 사라진다.
    */
   session?: Session | null;
+  /**
+   * 앱과 같은 데이터 라우터(`createMemoryRouter`)로 감싼다. 이동을 막는 `useBlocker` 처럼 데이터
+   * 라우터에서만 서는 훅을 쓰는 화면이 켠다.
+   */
+  dataRouter?: boolean;
 }
+
+/* 데이터 라우터는 한 번 만들면 경로 요소가 고정된다 — 다시 그릴 때의 자식은 맥락으로 넘긴다. */
+const RoutedChildren = createContext<ReactNode>(null);
+const RoutedChildrenSlot = (): ReactNode => useContext(RoutedChildren);
+
+type MemoryDataRouter = ReturnType<typeof createMemoryRouter>;
+
+const DataRouterProvider = ({
+  route,
+  routerRef,
+  children,
+}: {
+  route: string;
+  routerRef: { current: MemoryDataRouter | null };
+  children: ReactNode;
+}) => {
+  const [router] = useState(() =>
+    createMemoryRouter([{ path: '*', element: <RoutedChildrenSlot /> }], {
+      initialEntries: [route],
+    }),
+  );
+  routerRef.current = router;
+
+  return (
+    <RoutedChildren.Provider value={children}>
+      <RouterProvider router={router} />
+    </RoutedChildren.Provider>
+  );
+};
 
 interface TestEnvironment {
   queryClient: QueryClient;
   apiClient: ApiClient;
+  /** `dataRouter` 일 때만 선다 — 시험이 뒤로가기 같은 이동을 직접 일으킬 때 쓴다 */
+  routerRef: { current: MemoryDataRouter | null };
   Providers: ({ children }: { children: ReactNode }) => ReactNode;
 }
 
@@ -106,23 +142,32 @@ const createEnvironment = (options: ProviderOptions): TestEnvironment => {
     queryClient.setQueryData(sessionKeys.current, options.session);
   }
   const route = options.route ?? '/';
+  const routerRef: { current: MemoryDataRouter | null } = { current: null };
 
   const Providers = ({ children }: { children: ReactNode }): ReactNode => (
     <QueryClientProvider client={queryClient}>
       <ApiClientProvider client={apiClient}>
         <ToastProvider>
-          <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+          {options.dataRouter === true ? (
+            <DataRouterProvider route={route} routerRef={routerRef}>
+              {children}
+            </DataRouterProvider>
+          ) : (
+            <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+          )}
         </ToastProvider>
       </ApiClientProvider>
     </QueryClientProvider>
   );
 
-  return { queryClient, apiClient, Providers };
+  return { queryClient, apiClient, routerRef, Providers };
 };
 
 export type ProvidedRenderResult = RenderResult & {
   queryClient: QueryClient;
   apiClient: ApiClient;
+  /** `dataRouter` 로 렌더했을 때의 라우터. 아니면 `null` */
+  router: MemoryDataRouter | null;
 };
 
 /** 화면을 앱과 같은 프로바이더 구성으로 렌더한다. */
@@ -130,11 +175,11 @@ export const renderWithProviders = (
   ui: ReactNode,
   options: ProviderOptions = {},
 ): ProvidedRenderResult => {
-  const { queryClient, apiClient, Providers } = createEnvironment(options);
+  const { queryClient, apiClient, routerRef, Providers } = createEnvironment(options);
 
   const result = render(<Providers>{ui}</Providers>);
 
-  return { ...result, queryClient, apiClient };
+  return { ...result, queryClient, apiClient, router: routerRef.current };
 };
 
 export type ProvidedRenderHookResult<TResult> = RenderHookResult<TResult, unknown> & {

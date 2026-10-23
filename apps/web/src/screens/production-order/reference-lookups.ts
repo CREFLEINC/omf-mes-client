@@ -1,4 +1,4 @@
-import { messages } from '@omf-mes/i18n';
+import { messages, named } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -77,7 +77,7 @@ export const useBusinessUnitReferenceLookup = (): ReferenceLookupResult => {
 
   return toLookupResult(query, (unit) => ({
     value: String(unit.businessUnitId),
-    label: `${unit.businessUnitCode} · ${unit.businessUnitName}`,
+    label: named(unit.businessUnitName, unit.businessUnitCode),
   }));
 };
 
@@ -91,7 +91,7 @@ export const usePlantReferenceLookup = (): ReferenceLookupResult => {
 
   return toLookupResult(query, (plant) => ({
     value: String(plant.plantId),
-    label: `${plant.plantCode} · ${plant.plantName}`,
+    label: named(plant.plantName, plant.plantCode),
   }));
 };
 

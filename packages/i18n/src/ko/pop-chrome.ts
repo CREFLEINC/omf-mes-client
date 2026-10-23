@@ -13,6 +13,16 @@ export const popChrome = {
    * 같은 말을 쓴다(사용자 지시 2026-09-17).
    */
   workerMissing: '사번이 확인되지 않았습니다. 사번 인증을 먼저 진행해주세요.',
+  /** 단말 기능 판정(`patterns/pop-process-gate`) — 어느 공정의 무슨 기능이 꺼졌는지와 켜는 곳. */
+  processGate: {
+    denied: (process: string, feature: string, menuPath: string): string =>
+      `이 단말은 ${process} 공정의 「${feature}」 기능이 꺼져 있습니다. 관리자에게 관리웹 ${menuPath}에서 ${process} 공정의 「${feature}」 기능을 켜 달라고 요청하세요.`,
+    checkMapping: (menuPath: string): string =>
+      `계속되면 관리자에게 관리웹 ${menuPath}에서 이 작업지시의 공정이 이 단말에 매핑돼 있는지 확인해 달라고 하세요.`,
+    serverReason: (reason: string): string => `(서버 응답: ${reason})`,
+    deniedUnknownProcess: (feature: string, menuPath: string): string =>
+      `이 단말은 이 작업지시 공정의 「${feature}」 기능이 꺼져 있습니다. 관리자에게 관리웹 ${menuPath}에서 그 공정의 「${feature}」 기능을 켜 달라고 요청하세요.`,
+  },
   /** 선택 단추가 따로 이름을 받지 않았을 때의 기본 이름. */
   select: '선택',
 

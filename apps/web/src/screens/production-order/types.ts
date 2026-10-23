@@ -1,21 +1,5 @@
 import type { ProductionOrderAutoPlan } from '@omf-mes/api-client';
 
-export interface ProductionOrderRow {
-  productionOrderId: number;
-  productionOrderNo: string;
-  erpProductionOrderNo: string | null;
-  itemLabel: string | null;
-  orderedQtyLabel: string;
-  dueDateLabel: string | null;
-  statusCode: string;
-  depth: number;
-  hasChildren: boolean;
-  isExpanded: boolean;
-  expandedWorkOrderCount: number | null;
-  plannedWorkOrderCount: number | null;
-  autoPlan: ProductionOrderAutoPlan | null;
-}
-
 export interface PageMeta {
   page: number;
   size: number;

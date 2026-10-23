@@ -24,7 +24,11 @@ import {
   toWorkOrderCloseProductionOrderOptions,
 } from './code-options';
 import { WorkOrderCloseFilterBar } from './filter-bar';
-import { toWorkOrderCloseFilterInitialization } from './filter-initialization';
+import {
+  DEFAULT_STATUS_FILTER,
+  toWorkOrderCloseFilterInitialization,
+} from './filter-initialization';
+import type { WorkOrderCloseConfirmDetail } from './close-confirm-dialog';
 import { WorkOrderCloseExecution } from './close-execution';
 import {
   EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT,
@@ -36,6 +40,7 @@ import {
 } from './close-input-draft';
 import { WorkOrderCloseInputPane } from './close-input-pane';
 import {
+  CLOSABLE_WORK_ORDER_STATUSES,
   workOrderCloseBlockers,
   type WorkOrderCloseBlocker,
   type WorkOrderCloseCompletionJudgment,
@@ -47,15 +52,20 @@ import {
   type WorkOrderCloseDetailSummaryState,
 } from './detail-summary-pane';
 import { WorkOrderCloseOutboundItemsPane } from './outbound-items-pane';
+import { WorkOrderCloseResultPane } from './close-result-pane';
+import { SessionForceEndDialog } from './session-force-end-dialog';
 import { WorkOrderResultCorrectionWorkspace } from './result-correction-workspace';
 import {
   useWorkOrderCloseCandidates,
   useWorkOrderCloseCodeValues,
   useWorkOrderCloseDetail,
+  useWorkOrderCloseOpenLots,
   useWorkOrderCloseOpenSession,
   useWorkOrderCloseOutboundItemSettings,
   useWorkOrderCloseProductionOrders,
   type WorkOrderCloseDetailFact,
+  type WorkOrderCloseOpenLots,
+  type WorkOrderCloseOpenSessionView,
   type WorkOrderCloseOutboundItemSetting,
 } from './queries';
 
@@ -178,6 +188,80 @@ export const toWorkOrderCloseSelectedDraft = (
 ): WorkOrderCloseInputDraft =>
   owned.workOrderId === selectedWorkOrderId ? owned.draft : EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT;
 
+const confirmText = messages.workOrderClose.confirm;
+
+/** 확인 창이 되풀이할 값 — 판정과 그 판정이 요구한 입력만 싣는다. */
+export const toWorkOrderCloseConfirmDetails = (source: {
+  detailState: WorkOrderCloseDetailScreenState;
+  judgment: WorkOrderCloseCompletionJudgment | null;
+  draft: WorkOrderCloseInputDraft;
+  reasonOptions: readonly { value: string; label: string }[];
+}): WorkOrderCloseConfirmDetail[] => {
+  const { detailState, judgment, draft } = source;
+  if (detailState.kind !== 'RESOLVED' || judgment === null) return [];
+
+  const summary = messages.workOrderClose.detailSummary;
+  const input = messages.workOrderClose.input;
+  const details: WorkOrderCloseConfirmDetail[] = [
+    { label: confirmText.fields.judgment, value: summary.judgments[judgment] },
+  ];
+  const variance = detailState.detail.progress?.varianceQty;
+  const unit = detailState.unitLabel ?? summary.values.unitNotConfirmed;
+  if (variance !== undefined && variance !== 0) {
+    details.push({
+      label: variance > 0 ? summary.fields.shortfallQty : summary.fields.overageQty,
+      value: `${String(Math.abs(variance))} ${unit}`,
+    });
+  }
+  if (judgment === 'UNDER' && draft.remainderDisposition !== null) {
+    details.push({
+      label: confirmText.fields.remainder,
+      value: input.remainder[draft.remainderDisposition],
+    });
+  }
+  const reason = source.reasonOptions.find((option) => option.value === draft.varianceReasonCode);
+  if (judgment !== 'NORMAL' && reason !== undefined) {
+    details.push({ label: confirmText.fields.reason, value: reason.label });
+  }
+  if (
+    judgment === 'UNDER' &&
+    draft.remainderDisposition === 'WRITE_OFF' &&
+    draft.remarks.trim() !== ''
+  ) {
+    details.push({ label: confirmText.fields.remarks, value: draft.remarks.trim() });
+  }
+
+  return details;
+};
+
+/** 마감과 함께 일어나는 일. 진행 중 LOT 을 모르면 없다고 단정하지 않는다. */
+export const toWorkOrderCloseWarnings = (source: {
+  detailState: WorkOrderCloseDetailScreenState;
+  openLots: WorkOrderCloseOpenLots | 'UNKNOWN' | 'CHECKING' | undefined;
+}): string[] => {
+  if (source.detailState.kind !== 'RESOLVED') return [];
+
+  const warnings: string[] = [];
+  const voided = source.detailState.detail.preIssuedLots?.withoutResultCount ?? 0;
+  if (voided > 0) warnings.push(confirmText.voidedSlots(voided));
+
+  const openLots = source.openLots;
+  if (openLots === 'UNKNOWN') {
+    warnings.push(confirmText.openLotsUnknown);
+  } else if (openLots === 'CHECKING') {
+    warnings.push(confirmText.openLotsChecking);
+  } else if (openLots !== undefined) {
+    if (openLots.lotNos.length > 0) {
+      warnings.push(confirmText.openLots(openLots.lotNos.length, openLots.lotNos.join(', ')));
+    }
+    if (openLots.uncheckedCount > 0) {
+      warnings.push(confirmText.uncheckedLots(openLots.uncheckedCount));
+    }
+  }
+
+  return warnings;
+};
+
 export const WorkOrderCloseCandidateScreen = () => {
   const status = useWorkOrderCloseCodeValues(WORK_ORDER_CLOSE_CODE_GROUPS.status);
   const productionOrders = useWorkOrderCloseProductionOrders();
@@ -219,8 +303,10 @@ export const WorkOrderCloseCandidateScreen = () => {
   const candidates = candidate.data?.items ?? [];
   const itemNames = useWorkOrderCloseItemNames(candidates.map((item) => item.itemId));
   const uoms = useWorkOrderCloseUomLookup();
-  const detail = useWorkOrderCloseDetail(closeSelectedWorkOrderId);
+  const detail = useWorkOrderCloseDetail(state.selectedWorkOrderId);
   const openSession = useWorkOrderCloseOpenSession(closeSelectedWorkOrderId);
+  const openLots = useWorkOrderCloseOpenLots(closeSelectedWorkOrderId);
+  const [forceEndTarget, setForceEndTarget] = useState<WorkOrderCloseOpenSessionView | null>(null);
   const snapshot = useMemo(
     () =>
       toWorkOrderCloseCandidateSnapshot({
@@ -348,18 +434,39 @@ export const WorkOrderCloseCandidateScreen = () => {
       hasOpenSession = openSession.data.hasOpenSession;
     }
   }
+  /* LOT 을 미달로 마감할 때 고른 사유가 W/O 에 실려 있다 — 같은 것을 다시 고르게 하지 않는다. */
+  const savedReasonCode =
+    detailState.kind === 'RESOLVED' ? detailState.detail.completionVarianceReasonCode : null;
+  const isReasonPrefilled =
+    judgment !== null &&
+    judgment !== 'NORMAL' &&
+    draft.varianceReasonCode === '' &&
+    savedReasonCode !== null &&
+    reasonOptions.some((option) => option.value === savedReasonCode);
+  const seededDraft =
+    isReasonPrefilled && savedReasonCode !== null
+      ? setWorkOrderCloseVarianceReasonCode(draft, savedReasonCode)
+      : draft;
   const inputDraft =
     judgment === 'NORMAL' ||
-    draft.varianceReasonCode === '' ||
-    reasonOptions.some((option) => option.value === draft.varianceReasonCode)
-      ? draft
-      : setWorkOrderCloseVarianceReasonCode(draft, '');
+    seededDraft.varianceReasonCode === '' ||
+    reasonOptions.some((option) => option.value === seededDraft.varianceReasonCode)
+      ? seededDraft
+      : setWorkOrderCloseVarianceReasonCode(seededDraft, '');
   const unavailableState = unavailable;
   const readinessInput = workOrderCloseReadinessInputFrom;
   const blockers =
     judgment === null
       ? []
-      : workOrderCloseBlockers(readinessInput(inputDraft, judgment, hasOpenSession));
+      : workOrderCloseBlockers(
+          readinessInput(
+            inputDraft,
+            judgment,
+            hasOpenSession,
+            detailState.kind === 'RESOLVED' &&
+              CLOSABLE_WORK_ORDER_STATUSES.includes(detailState.detail.statusCode),
+          ),
+        );
   let readinessState: WorkOrderCloseStatusPaneState | null = null;
   if (checking) readinessState = { kind: 'CHECKING' };
   else if (unavailableState !== null)
@@ -381,12 +488,25 @@ export const WorkOrderCloseCandidateScreen = () => {
       kind: 'RESOLVED',
       blockers,
     };
-  const executionRequest = toWorkOrderCloseExecutionRequest({
+  /* 그대로 남는 LOT 을 알리기 전에는 마감을 열지 않는다 — 확인 창이 그 사실을 빼고 묻게 된다. */
+  const isCheckingOpenLots = closeSelectedWorkOrderId !== null && openLots.isPending;
+  const executionCandidate = toWorkOrderCloseExecutionRequest({
     selectedWorkOrderId: state.selectedWorkOrderId,
     detailState,
     judgment,
     blockers,
     draft: inputDraft,
+  });
+  const executionRequest = isCheckingOpenLots ? null : executionCandidate;
+  const confirmDetails = toWorkOrderCloseConfirmDetails({
+    detailState,
+    judgment,
+    draft: inputDraft,
+    reasonOptions,
+  });
+  const closeWarnings = toWorkOrderCloseWarnings({
+    detailState,
+    openLots: openLots.isError ? 'UNKNOWN' : openLots.isPending ? 'CHECKING' : openLots.data,
   });
   const updateDraft = (
     update: (current: WorkOrderCloseInputDraft) => WorkOrderCloseInputDraft,
@@ -403,7 +523,10 @@ export const WorkOrderCloseCandidateScreen = () => {
         productionOrderOptions={toWorkOrderCloseProductionOrderOptions(
           productionOrders.data?.items ?? [],
         )}
-        statusOptions={toWorkOrderCloseCodeOptions(status.data?.items ?? [])}
+        statusOptions={[
+          { value: DEFAULT_STATUS_FILTER, label: messages.workOrderClose.filter.closableStatuses },
+          ...toWorkOrderCloseCodeOptions(status.data?.items ?? []),
+        ]}
         productionOrderUnavailableReason={productionOrderReason(productionOrders)}
         statusUnavailableReason={initialization.statusUnavailableReason}
         onSearch={(next) => dispatch({ type: 'SEARCH', filters: next })}
@@ -411,7 +534,10 @@ export const WorkOrderCloseCandidateScreen = () => {
       />
       <div className="work-order-close-content">
         <WorkOrderCloseCandidateListPane
-          rows={toWorkOrderCloseCandidateRows(candidates, itemNames.items, uoms)}
+          rows={toWorkOrderCloseCandidateRows(candidates, itemNames.items, uoms, (code) => {
+            const value = status.data?.items.find((item) => item.code === code);
+            return value === undefined ? code : toWorkOrderCloseCodeLabel(value);
+          })}
           selectedWorkOrderId={state.selectedWorkOrderId}
           isLoading={initialization.kind === 'CHECKING' || candidate.isFetching}
           loadError={loadError}
@@ -421,13 +547,33 @@ export const WorkOrderCloseCandidateScreen = () => {
           onChangePage={(nextPage) => dispatch({ type: 'CHANGE_PAGE', page: nextPage })}
         />
         {correctionMode ? (
-          <WorkOrderResultCorrectionWorkspace
-            workOrderId={state.selectedWorkOrderId}
-            workOrderNo={
-              candidates.find((item) => item.workOrderId === state.selectedWorkOrderId)
-                ?.workOrderNo ?? ''
-            }
-          />
+          <div className="work-order-close-detail">
+            {state.selectedWorkOrderId === null ? null : (
+              <WorkOrderCloseResultPane
+                state={
+                  detail.isPending
+                    ? { kind: 'CHECKING' }
+                    : detail.isError || detail.data === undefined
+                      ? { kind: 'UNAVAILABLE', onRetry: () => void detail.refetch() }
+                      : {
+                          kind: 'RESOLVED',
+                          detail: detail.data,
+                          reasonLabel: (code) => {
+                            const reason = reasons.data?.items.find((item) => item.code === code);
+                            return reason === undefined ? code : toWorkOrderCloseCodeLabel(reason);
+                          },
+                        }
+                }
+              />
+            )}
+            <WorkOrderResultCorrectionWorkspace
+              workOrderId={state.selectedWorkOrderId}
+              workOrderNo={
+                candidates.find((item) => item.workOrderId === state.selectedWorkOrderId)
+                  ?.workOrderNo ?? ''
+              }
+            />
+          </div>
         ) : (
           <div className="work-order-close-detail">
             <WorkOrderCloseDetailSummaryPane state={detailPaneState} />
@@ -437,6 +583,7 @@ export const WorkOrderCloseCandidateScreen = () => {
                 draft={inputDraft}
                 reasonOptions={reasonOptions}
                 reasonUnavailableReason={null}
+                isReasonPrefilled={isReasonPrefilled}
                 onRemainderDispositionChange={(value) =>
                   updateDraft((current) => setWorkOrderCloseRemainderDisposition(current, value))
                 }
@@ -448,7 +595,14 @@ export const WorkOrderCloseCandidateScreen = () => {
                 }
               />
             )}
-            {readinessState === null ? null : <WorkOrderCloseStatusPane state={readinessState} />}
+            {readinessState === null ? null : (
+              <WorkOrderCloseStatusPane
+                state={readinessState}
+                openSessions={openSession.data?.sessions ?? []}
+                onRecheckSessions={() => void openSession.refetch()}
+                onForceEnd={setForceEndTarget}
+              />
+            )}
             {outboundState.kind === 'HIDDEN' ? null : (
               <WorkOrderCloseOutboundItemsPane
                 settings={readyOutboundSettings}
@@ -476,14 +630,24 @@ export const WorkOrderCloseCandidateScreen = () => {
                 workOrderId={state.selectedWorkOrderId}
                 workOrderNo={detailState.kind === 'RESOLVED' ? detailState.detail.workOrderNo : ''}
                 request={executionRequest}
+                details={confirmDetails}
+                warnings={closeWarnings}
                 onClearSelection={() => dispatch({ type: 'CLEAR_SELECTION' })}
                 onReloadCandidates={candidate.refetch}
                 onReloadDetail={detail.refetch}
+                onReloadSessions={openSession.refetch}
               />
             )}
           </div>
         )}
       </div>
+      {forceEndTarget === null ? null : (
+        <SessionForceEndDialog
+          key={forceEndTarget.workSessionId}
+          session={forceEndTarget}
+          onClose={() => setForceEndTarget(null)}
+        />
+      )}
     </div>
   );
 };

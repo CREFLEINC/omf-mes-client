@@ -99,6 +99,8 @@ export interface UserFormValues {
   departmentId: string;
   /** 계약이 널을 허용한다 */
   email: string;
+  /** 베트남 휴대폰 번호. 비우면 삭제. 형식·정규화는 `user-validation.ts` 가 소유한다 */
+  phoneNumber: string;
   statusCode: string;
 }
 

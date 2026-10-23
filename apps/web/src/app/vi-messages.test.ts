@@ -47,6 +47,9 @@ const TRANSLATED = [
   /* #1121 — 알림. 알림센터 · 알람 수신자 설정 · 공지·전달 3화면. */
   'notificationCenter',
   'alarmRecipientSettings',
+  /* 001(omf-all-around#160) — 알림 연결 설정·알림 발송 이력. */
+  'zaloConnection',
+  'dispatchHistory',
   'notice',
   /* #1122 — 시스템 관리. 사용자·역할·권한 · 결재선 정의 · 단말기-공정 매핑 · 비밀번호 변경 4화면. */
   'usersRoles',

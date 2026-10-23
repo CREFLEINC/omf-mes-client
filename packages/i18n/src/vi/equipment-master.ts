@@ -103,6 +103,9 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     parentNone: 'Không có (cấp cao nhất)',
     locationNone: 'Không chỉ định',
     locationNeedsPlant: 'Chọn nhà máy để hiện vị trí của nhà máy đó.',
+    departmentNone: 'Không chỉ định',
+    departmentHelp:
+      'Thông báo phát sinh từ W/O và thiết bị của dây chuyền này sẽ đi theo thiết lập thông báo của phòng ban này. Không kế thừa phòng ban của nhóm cấp trên.',
   },
   equipmentForm: {
     createTitle: 'Đăng ký thiết bị',
@@ -161,6 +164,7 @@ export const equipmentMaster: Translated<typeof ko.equipmentMaster> = {
     defaultWipLocation: 'Vị trí WIP mặc định',
     defaultFgLocation: 'Vị trí thành phẩm mặc định',
     defaultScrapLocation: 'Vị trí phế liệu mặc định',
+    department: 'Phòng ban phụ trách',
     isActive: 'Sử dụng',
   },
   /** 계약이 닫은 두 값. 라인은 생산 라인이라 `chuyền sản xuất`, 작업구역은 `khu vực làm việc`. */

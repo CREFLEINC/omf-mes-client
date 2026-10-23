@@ -114,6 +114,8 @@ export interface QueueListQuery {
   inspectionTypeCode: string;
   pendingOnly: boolean;
   itemId?: number;
+  /** PQC 목록(#135)의 작업지시 검색이 싣는다. OQC 화면은 쓰지 않는다. */
+  workOrderId?: number;
   q?: string;
   page: number;
   size: number;

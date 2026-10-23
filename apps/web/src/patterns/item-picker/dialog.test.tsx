@@ -275,6 +275,21 @@ describe('ItemPickerDialog — 고르기', () => {
    * ⛔ **단일 선택에서 둘이 남지 않는다.** 남으면 무엇이 그 줄의 품목이 될지 갈린다 —
    *    앞의 고름을 밀어낸다.
    */
+  /* #133 — 줄의 다른 칸(이름 등)을 눌러도 그 품목을 고르고, 다시 누르면 푼다. */
+  it('줄 아무 곳이나 누르면 그 품목을 고른다', async () => {
+    const user = userEvent.setup();
+    renderDialog({ multiple: false });
+
+    await search(user);
+    await user.click(dialog().getByText('합성 품목 가'));
+
+    expect(dialog().getByRole('checkbox', { name: 'SYN-ITEM-01' })).toBeChecked();
+
+    await user.click(dialog().getByText('합성 품목 가'));
+
+    expect(dialog().getByRole('checkbox', { name: 'SYN-ITEM-01' })).not.toBeChecked();
+  });
+
   it('단일 선택이면 앞의 고름을 밀어낸다', async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();

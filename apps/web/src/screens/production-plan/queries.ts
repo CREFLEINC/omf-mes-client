@@ -39,6 +39,7 @@ export const toProductionPlanFact = (plan: ProductionPlan): ProductionPlanFact =
   statusCode: plan.statusCode,
   confirmedAt: plan.confirmedAt ?? null,
   remarks: plan.remarks ?? null,
+  versionNo: plan.versionNo ?? null,
 });
 
 const toListResponse = (response: {

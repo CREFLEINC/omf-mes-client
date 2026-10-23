@@ -27,7 +27,11 @@ const row = (overrides: Partial<WorkOrderCloseCandidateRow> = {}): WorkOrderClos
   workOrderId: 701,
   workOrderNo: 'SYN-WO-ALPHA',
   itemLabel: 'SYN-ITEM-ALPHA',
+  statusLabel: '진행',
   quantityLabel: '12.5 SYN-EA',
+  goodQtyLabel: '4 SYN-EA',
+  achievementLabel: '32%',
+  judgmentLabel: '미달',
   ...overrides,
 });
 
@@ -55,7 +59,7 @@ const bodyRows = (): HTMLElement[] =>
   within(screen.getByRole('table')).getAllByRole('row').slice(1);
 
 describe('WorkOrderCloseCandidateListPane', () => {
-  it('renders only the three close-candidate headers and preserves caller order', () => {
+  it('renders the close-candidate headers and preserves caller order', () => {
     renderPane({
       rows: [
         row({ workOrderId: 702, workOrderNo: 'SYN-WO-BRAVO' }),
@@ -69,7 +73,7 @@ describe('WorkOrderCloseCandidateListPane', () => {
       within(screen.getByRole('table', { name: t.pane }))
         .getAllByRole('columnheader')
         .map((header) => header.textContent ?? ''),
-    ).toEqual(['W/O 번호', '품목', '지시 수량']);
+    ).toEqual(['W/O 번호', '품목', '상태', '지시 수량', '양품', '달성률', '판정']);
     expect(bodyRows()[0]).toHaveTextContent('SYN-WO-BRAVO');
     expect(bodyRows()[1]).toHaveTextContent('SYN-WO-ALPHA');
   });

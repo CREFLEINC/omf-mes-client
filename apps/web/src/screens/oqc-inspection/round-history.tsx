@@ -1,6 +1,7 @@
 import { Stepper, type StepperItem } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { labelOfCode, type CodeOption } from './code-options';
 import { CONFIRMED_STATUS } from './inspection-status';
 import { formatDateTime, orderedRounds, type InspectionResultRound } from './types';
 
@@ -16,9 +17,8 @@ import { formatDateTime, orderedRounds, type InspectionResultRound } from './typ
  * ⛔ **`rejected` 상태를 쓰지 않는다.** 불합격 판정은 「반려」가 아니다 — 정상적으로 끝난 검사다.
  * 반려 표시를 쓰면 이력이 「무언가 잘못됐다」로 읽힌다.
  *
- * ⛔ **판정을 표시명으로 옮기지 않는다.** 옮기려면 공통코드 조회가 하나 더 필요하고, 그 조회가
- * 실패하면 이력이 통째로 비어 보인다. 사용 중지된 코드도 그대로 남아야 한다 — 이 자리가 하는
- * 일은 「앞에 무엇이 있었나」를 남기는 것이라 코드 그대로가 오히려 정확하다.
+ * ⭐ **판정은 화면이 이미 부른 종합 판정 선택지의 이름으로 보인다**(담당자 지시 2026-10-21). 선택지에 없는
+ * 코드(사용 중지·조회 실패)는 지어내지 않고 코드 그대로 둔다 — 이력이 비어 보이지 않는다.
  *
  * ⭐ **회차가 하나뿐이면 아무것도 그리지 않는다.** 「이전 회차 없음」을 내면 재검사가 없는
  * 대다수 의뢰에서 화면이 없는 것을 설명하느라 길어진다 — 이력은 쌓였을 때만 볼 것이다.
@@ -45,12 +45,21 @@ export interface RoundHistoryProps {
    * 채로** 되돌릴 수 없는 쓰기를 친다.
    */
   isReinspecting?: boolean;
+  /** 종합 판정 선택지 — 코드를 이름으로 옮긴다. 없거나 모르는 코드는 코드 그대로다. */
+  judgmentOptions?: readonly CodeOption[];
 }
 
-const toStep = (round: InspectionResultRound, currentResultId: number | null): StepperItem => ({
+const toStep = (
+  round: InspectionResultRound,
+  currentResultId: number | null,
+  judgmentOptions: readonly CodeOption[],
+): StepperItem => ({
   icon: String(round.inspectionRound),
-  /* 판정 코드 그대로. 비어 온 회차는 지어내지 않고 「없음」이라고 말한다. */
-  label: round.overallJudgmentCode.trim() === '' ? t.noJudgment : round.overallJudgmentCode,
+  /* 비어 온 회차는 지어내지 않고 「없음」이라고 말한다. */
+  label:
+    round.overallJudgmentCode.trim() === ''
+      ? t.noJudgment
+      : labelOfCode(judgmentOptions, round.overallJudgmentCode),
   status:
     round.statusCode === CONFIRMED_STATUS
       ? 'complete'
@@ -80,6 +89,7 @@ export const RoundHistory = ({
   rounds,
   currentResultId,
   isReinspecting = false,
+  judgmentOptions = [],
 }: RoundHistoryProps) => {
   /* 쌓였을 때만 볼 것이다 — 회차 하나짜리 이력은 설명할 것이 없다. 재검사 중에는 예외다. */
   if (rounds.length <= 1 && !isReinspecting) return null;
@@ -91,7 +101,9 @@ export const RoundHistory = ({
       <Stepper
         orientation="vertical"
         size="sm"
-        steps={orderedRounds(rounds).map((round) => toStep(round, currentResultId))}
+        steps={orderedRounds(rounds).map((round) =>
+          toStep(round, currentResultId, judgmentOptions),
+        )}
       />
     </section>
   );

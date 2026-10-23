@@ -12,8 +12,11 @@ const t = messages.productionResult.pqc;
 export interface PqcSplitProps {
   /** 오른쪽에 띄울 PQC 의뢰. `null`(검사 off)이면 나누지 않고 실적 화면만 그대로 그린다. */
   inspectionRequestId: number | null;
-  /** 검사 off 로 «확인됐다»(조회가 끝났고 PQC 의뢰가 없다). 조회 중·실패면 `false` — 모르는 것을 미검사로 말하지 않는다. */
-  isInspectionOff: boolean;
+  /**
+   * 검사 off 로 «확인된» 까닭 — 조회가 끝났고 PQC 의뢰가 없으면 `notInspected`, PQC 가 생략(SKIPPED · #119)이면 `skipped`.
+   * 조회 중·실패·검사 on 이면 `null` — 모르는 것을 미검사로 말하지 않는다.
+   */
+  inspectionOff: 'notInspected' | 'skipped' | null;
   workOrderId: number | null;
   workerNo: string | null;
   /** 실적 화면 본문(카드 격자). */
@@ -32,7 +35,7 @@ export interface PqcSplitProps {
  */
 export const PqcSplit = ({
   inspectionRequestId,
-  isInspectionOff,
+  inspectionOff,
   workOrderId,
   workerNo,
   children,
@@ -53,12 +56,15 @@ export const PqcSplit = ({
       title={messages.productionResult.zone.title}
       note={messages.productionResult.zone.note}
       status={
-        /* 검사 off 면 「PQC 미검사」를 중립 칩으로 알린다(사용자 지시 2026-10-19). on 이면 PQC 구획이 곧 표시다. */
-        isInspectionOff ? (
+        /*
+         * 검사 off 면 까닭을 중립 칩으로 알린다 — 의뢰 없음 「PQC 미검사」(사용자 지시 2026-10-19) · 생략 허용 기준으로 생략된
+         * PQC 「PQC 생략」(#119 결정). on 이면 PQC 구획이 곧 표시다.
+         */
+        inspectionOff === null ? null : (
           <Chip status="idle" size="md">
-            {t.notInspected}
+            {inspectionOff === 'skipped' ? t.skipped : t.notInspected}
           </Chip>
-        ) : null
+        )
       }
     />
   );

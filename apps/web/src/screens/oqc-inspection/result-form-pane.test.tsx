@@ -30,6 +30,11 @@ const renderPane = (overrides: Partial<ResultFormPaneProps> = {}) => {
     judgmentOptions: options,
     judgment: '',
     onJudgmentChange: vi.fn(),
+    acceptanceNumber: null,
+    expectedJudgmentLabel: null,
+    needsChangeReason: false,
+    changeReason: '',
+    onChangeReasonChange: vi.fn(),
     onSave,
     isSaving: false,
     isJustSaved: false,
@@ -95,6 +100,13 @@ describe('ResultFormPane — 막힌 사유 네 갈래', () => {
     expect(screen.getByText(t.judgmentUnavailable)).toBeInTheDocument();
     expect(screen.getByText(t.blockedByJudgmentOptions)).toBeInTheDocument();
     expect(screen.queryByText(t.blockedByJudgment)).not.toBeInTheDocument();
+  });
+
+  it('입력으로 풀 수 없는 막힘이면 수량 칸도 잠근다(#135)', () => {
+    renderPane({ draft: MATCHING, judgmentOptions: [], isInputLocked: true });
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.rejected)).toBeDisabled();
   });
 
   it('확정된 회차는 칸이 잠기고 재검사만 열린다', () => {
@@ -212,20 +224,19 @@ describe('ResultFormPane — 전이 경고', () => {
     expect(within(banner).getByText(transition.dispositionPath)).toBeInTheDocument();
   });
 
-  it('대상 LOT 이 없는 의뢰는 LOT 이 바뀌지 않는다고 말한다 — 경고와 확인 창 모두(서버가 전이 없이 확정만 한다)', async () => {
+  it('대상 LOT 이 없는 의뢰(출하작업지시 OQC)는 집은 LOT 의 방향을 말한다 — 경고와 확인 창 모두(omf-all-around#119)', async () => {
     const user = userEvent.setup();
     renderPane({ draft: MATCHING, judgment: 'REJECTED', hasLot: false });
 
     const banner = screen.getByRole('alert');
-    expect(within(banner).getByText(transition.noLotTitle)).toBeInTheDocument();
-    expect(within(banner).getByText(transition.noLot)).toBeInTheDocument();
+    expect(within(banner).getByText(transition.title)).toBeInTheDocument();
+    expect(within(banner).getByText(transition.pickedDirectionHold)).toBeInTheDocument();
     expect(within(banner).queryByText(transition.directionHold)).not.toBeInTheDocument();
-    expect(within(banner).queryByText(transition.pickingImpact)).not.toBeInTheDocument();
-    expect(screen.queryByText(transition.title)).not.toBeInTheDocument();
+    expect(within(banner).getByText(transition.pickingImpact)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.save }));
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText(transition.noLot)).toBeInTheDocument();
+    expect(within(dialog).getByText(transition.pickedDirectionHold)).toBeInTheDocument();
     expect(within(dialog).queryByText(transition.directionHold)).not.toBeInTheDocument();
   });
 
@@ -275,5 +286,69 @@ describe('ResultFormPane — 확인 창', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
+  });
+});
+
+/* omf-all-around#126 — 합격판정개수 기준 자동 판정과 변경 사유(IQC #125 와 같은 규칙). */
+describe('ResultFormPane — 합격판정개수 기준 자동 판정', () => {
+  const change = t.judgmentChange;
+
+  it('합격판정개수가 없으면 자동 판정 줄도 사유 칸도 없다(종전 그대로)', () => {
+    renderPane({ draft: MATCHING, judgment: 'ACCEPTED' });
+
+    expect(screen.queryByText(change.basis(5))).toBeNull();
+    expect(screen.queryByLabelText(change.reason)).toBeNull();
+  });
+
+  it('합격판정개수가 있으면 기준과 자동 판정을 한 줄로 말한다', () => {
+    renderPane({
+      draft: MATCHING,
+      judgment: 'REJECTED',
+      acceptanceNumber: 5,
+      expectedJudgmentLabel: '불합격',
+    });
+
+    expect(screen.getByText(`${change.basis(5)} · ${change.expected('불합격')}`)).toBeTruthy();
+    expect(screen.queryByLabelText(change.reason)).toBeNull();
+  });
+
+  it('자동 판정과 다르게 고르면 사유 칸이 서고, 비어 있으면 저장이 막힌다', () => {
+    renderPane({
+      draft: MATCHING,
+      judgment: 'ACCEPTED',
+      acceptanceNumber: 5,
+      expectedJudgmentLabel: '불합격',
+      needsChangeReason: true,
+    });
+
+    expect(screen.getByText(change.reasonMissing)).toBeTruthy();
+    expect(screen.getByText(change.required)).toBeTruthy();
+    expect((screen.getByRole('button', { name: t.save }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('사유를 넣으면 저장이 열린다', () => {
+    renderPane({
+      draft: MATCHING,
+      judgment: 'ACCEPTED',
+      acceptanceNumber: 5,
+      expectedJudgmentLabel: '불합격',
+      needsChangeReason: true,
+      changeReason: '고객 승인 — 출하 허용',
+    });
+
+    expect(screen.queryByText(change.required)).toBeNull();
+    expect((screen.getByRole('button', { name: t.save }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+
+  it('확정된 회차에는 자동 판정 줄을 내지 않는다', () => {
+    renderPane({
+      round: toInspectionResultRound(confirmedRound),
+      acceptanceNumber: 5,
+      expectedJudgmentLabel: null,
+    });
+
+    expect(screen.queryByText(change.basis(5))).toBeNull();
   });
 });

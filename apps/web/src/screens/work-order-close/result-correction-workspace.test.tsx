@@ -211,4 +211,65 @@ describe('마감 후 생산실적 정정', () => {
     expect(writes[1]?.body).not.toHaveProperty('approvalTypeCode');
     expect(writes[1]?.body).not.toHaveProperty('grade');
   });
+
+  it.each([
+    ['실적이 없으면', [], false],
+    ['실적이 있으면', [productionResult], true],
+  ])('등록자 목록을 못 받았을 때 %s 경고 여부가 갈린다', async (_case, items, warns) => {
+    renderWithProviders(
+      <WorkOrderResultCorrectionWorkspace workOrderId={WORK_ORDER_ID} workOrderNo="SYN-WO" />,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) => new URL(request.url).pathname === '/production/production-results',
+            respond: () =>
+              jsonResponse({ items, page: { page: 1, size: 200, total: items.length } }),
+          },
+          {
+            match: (request) => new URL(request.url).pathname === '/mdm/workers',
+            respond: () => jsonResponse({ message: '합성 실패' }, { status: 500 }),
+          },
+          {
+            match: (request) => new URL(request.url).pathname === '/mdm/code-values',
+            respond: () => jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } }),
+          },
+        ]),
+      },
+    );
+
+    await screen.findByRole('table');
+    await waitFor(() => expect(screen.queryByText(t.workersUnavailable) !== null).toBe(warns));
+  });
+
+  it('등록자 목록이 잘려 왔어도 이 실적의 등록자가 모두 보이면 경고하지 않는다', async () => {
+    renderWithProviders(
+      <WorkOrderResultCorrectionWorkspace workOrderId={WORK_ORDER_ID} workOrderNo="SYN-WO" />,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) => new URL(request.url).pathname === '/mdm/workers',
+            respond: () =>
+              jsonResponse({
+                items: [
+                  {
+                    workerId: 2001,
+                    workerNo: 'SYN-2001',
+                    workerName: '합성 작업자',
+                    businessUnitId: 1,
+                    plantId: 1,
+                    statusCode: 'ACTIVE',
+                    isActive: true,
+                  },
+                ],
+                page: { page: 1, size: 200, total: 500 },
+              }),
+          },
+          ...routes(() => jsonResponse({}), []),
+        ]),
+      },
+    );
+
+    expect(await screen.findByText('합성 작업자')).toBeVisible();
+    expect(screen.queryByText(t.workersUnavailable)).toBeNull();
+  });
 });
