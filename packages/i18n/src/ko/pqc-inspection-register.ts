@@ -89,6 +89,7 @@ export const pqcInspectionRegister = {
     },
     quantity: {
       heading: '검사 수량 입력',
+      targetQty: '총 검사 수량',
       inspectedQty: '검사 수량',
       accepted: '합격 수량',
       rejected: '불합격 수량',

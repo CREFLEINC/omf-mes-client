@@ -217,6 +217,39 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     expect(await screen.findByText(REQUEST.inspectionRequestNo)).toBeInTheDocument();
   });
 
+  it('검사 수량 입력 제목 줄에 총 검사 수량을 보인다(#135)', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    const pane = await openRequest(user);
+
+    const quantity = await pane.findByRole('region', { name: web.quantity.heading });
+    await waitFor(() => expect(quantity).toHaveTextContent(`${web.quantity.targetQty}5`));
+  });
+
+  it('불합격 처분은 판정이 「불합격」일 때만 보이고, 다른 판정으로 바꾸면 고른 처분을 거둔다(#135)', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    const pane = await openRequest(user);
+    const disposition = (): HTMLElement | null =>
+      pane.queryByRole('radio', { name: pqc.disposition.scrap });
+
+    await user.type(await pane.findByRole('textbox', { name: web.quantity.rejected }), '2');
+    expect(disposition()).toBeNull();
+
+    await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
+    await user.click(await screen.findByRole('option', { name: '불합격' }));
+    await user.click(await pane.findByRole('radio', { name: pqc.disposition.scrap }));
+    expect(disposition()).toBeChecked();
+
+    await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
+    await user.click(await screen.findByRole('option', { name: '합격' }));
+    expect(disposition()).toBeNull();
+
+    await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
+    await user.click(await screen.findByRole('option', { name: '불합격' }));
+    expect(await pane.findByRole('radio', { name: pqc.disposition.scrap })).not.toBeChecked();
+  });
+
   it('고른 의뢰를 판정해 바로 저장한다 — 사번 헤더를 싣지 않는다', async () => {
     const user = userEvent.setup();
     const { saves } = renderScreen();

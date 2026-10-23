@@ -79,6 +79,7 @@ export const pqcInspectionRegister = {
     },
     quantity: {
       heading: 'Nhập số lượng kiểm tra',
+      targetQty: 'Tổng số lượng kiểm tra',
       inspectedQty: 'Số lượng kiểm tra',
       accepted: 'Số lượng đạt',
       rejected: 'Số lượng không đạt',

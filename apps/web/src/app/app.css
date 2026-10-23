@@ -19144,6 +19144,27 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   border-top: 0;
 }
 
+.pqc-web-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+/* 「총 검사 수량 100 EA」 — 제목 줄 오른쪽 끝, 보조색 이름표 + 굵은 숫자(#133 과 같다). */
+.pqc-web-section .pqc-web-qty-base {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  margin-inline-start: auto;
+}
+
+.pqc-web-qty-base > dd {
+  margin: 0;
+  font-weight: 600;
+}
+
 .pqc-web-section h3 {
   margin: 0;
   color: var(--on-surface);

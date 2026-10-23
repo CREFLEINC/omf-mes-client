@@ -23,6 +23,8 @@ export interface ResultFormProps {
   inspectedDraft: string;
   onInspectedChange: (raw: string) => void;
   inspectedQty: number;
+  /** 총 검사 수량(의뢰 수량) — 「검사 수량 입력」 제목 줄 오른쪽 끝에 낸다(#133 과 같다). */
+  targetQty: number;
   uomCode: string | null;
   draft: QuantityDraft;
   onChange: (draft: QuantityDraft) => void;
@@ -47,6 +49,9 @@ const FIELD_OF: Record<string, keyof QuantityDraft> = {
 
 const rejectedMicro = (raw: string): bigint | null => (raw.trim() === '' ? 0n : toMicro(raw));
 
+/** 종합 판정 「불합격」 코드 — 이때만 불합격 처분 칸을 보인다(#135 · 담당자 지시). */
+const REJECTED_JUDGMENT = 'REJECTED';
+
 const toDisposition = (value: string): DispositionState =>
   value === 'REWORK' || value === 'SCRAP' ? value : null;
 
@@ -60,6 +65,7 @@ export const ResultForm = ({
   inspectedDraft,
   onInspectedChange,
   inspectedQty,
+  targetQty,
   uomCode,
   draft,
   onChange,
@@ -140,7 +146,14 @@ export const ResultForm = ({
     <>
       {/* ── 검사 수량 입력 — 검사 수량을 합격 · 불합격 · 보류로 나눈 결과와 그 입력 현황 ── */}
       <section className="pqc-web-section" aria-label={t.quantity.heading}>
-        <h3>{t.quantity.heading}</h3>
+        <div className="pqc-web-section-head">
+          <h3>{t.quantity.heading}</h3>
+          {/* 총 검사 수량은 제목 줄 오른쪽 끝에 — IQC 판정 화면(#133)과 같은 자리·모양이다. */}
+          <dl className="pqc-web-qty-base">
+            <dt className="pqc-web-progress-label">{t.quantity.targetQty}</dt>
+            <dd>{withUnit(String(targetQty))}</dd>
+          </dl>
+        </div>
 
         {errorBanner}
 
@@ -208,30 +221,37 @@ export const ResultForm = ({
                 judgmentOptions.length === 0 ? tResult.judgmentUnavailable : t.judgment.placeholder
               }
               disabled={isLocked || judgmentOptions.length === 0}
-              onChange={onJudgmentChange}
+              onChange={(code) => {
+                onJudgmentChange(code);
+                /* 불합격이 아니면 처분 칸이 사라진다 — 앞서 고른 처분이 숨은 채 남지 않게 거둔다. */
+                if (code !== REJECTED_JUDGMENT) onDispositionChange(null);
+              }}
             />
             {judgmentOptions.length > 0 && !isKnownCode(judgmentOptions, judgment) && (
               <p className="field-note">{tResult.judgmentUnknown(judgment)}</p>
             )}
           </div>
 
-          <div className="field-cell">
-            <span className="field-label" id={dispositionLabelId}>
-              {tDisposition.heading}
-              <span className="pqc-web-label-hint">{tDisposition.note}</span>
-            </span>
-            <RadioGroup
-              className="pqc-web-disposition"
-              name={dispositionName}
-              value={disposition ?? ''}
-              disabled={isLocked || !canChoose}
-              aria-labelledby={dispositionLabelId}
-              onChange={(value) => onDispositionChange(value === '' ? null : toDisposition(value))}
-            >
-              <Radio value="REWORK">{tDisposition.rework}</Radio>
-              <Radio value="SCRAP">{tDisposition.scrap}</Radio>
-            </RadioGroup>
-          </div>
+          {/* 불합격 처분은 판정이 「불합격」일 때만 보인다. 고를 수 있는 조건(불합격 수량)은 그대로다. */}
+          {judgment === REJECTED_JUDGMENT && (
+            <div className="field-cell">
+              <span className="field-label" id={dispositionLabelId}>
+                {tDisposition.heading}
+                <span className="pqc-web-label-hint">{tDisposition.note}</span>
+              </span>
+              <RadioGroup
+                className="pqc-web-disposition"
+                name={dispositionName}
+                value={disposition ?? ''}
+                disabled={isLocked || !canChoose}
+                aria-labelledby={dispositionLabelId}
+                onChange={(value) => onDispositionChange(value === '' ? null : toDisposition(value))}
+              >
+                <Radio value="REWORK">{tDisposition.rework}</Radio>
+                <Radio value="SCRAP">{tDisposition.scrap}</Radio>
+              </RadioGroup>
+            </div>
+          )}
         </div>
       </section>
     </>
