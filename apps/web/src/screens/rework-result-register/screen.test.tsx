@@ -940,4 +940,39 @@ describe('ReworkResultRegisterScreen — 서버 거부', () => {
     expect(await screen.findByText(message)).toBeInTheDocument();
     expect(screen.getByText(t.rejected)).toBeInTheDocument();
   });
+
+  it('목록 조회가 단말 권한(401)으로 거부되면 「불러오지 못했다」와 서버 문구를 함께 보인다', async () => {
+    const message = '단말 인증 범위 밖입니다.';
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: TERMINAL_ID,
+          processes: [{ processId: PROCESS_ID }],
+          equipment: null,
+          workerNo: '100027',
+        }}
+      >
+        <ReworkResultRegisterScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: async (request) => {
+          const url = new URL(request.url);
+          if (
+            url.pathname === '/production/work-orders' &&
+            url.searchParams.get('statusCode') === 'PLANNED'
+          ) {
+            return jsonResponse(
+              { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message }] },
+              { status: 401 },
+            );
+          }
+          return stubFetch(request);
+        },
+        route: '/pop/rework-results',
+      },
+    );
+
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(screen.getByText(t.loadError)).toBeInTheDocument();
+  });
 });

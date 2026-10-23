@@ -17,6 +17,7 @@ import {
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { popTouchClass } from '../../patterns/pop-touch';
+import { toApiError } from '../../patterns/request';
 import { drainReworkResults, enqueueReworkResult, pendingReworkResultCount } from './outbox';
 import {
   useDispositionDecisions,
@@ -266,7 +267,9 @@ export const ReworkResultRegisterScreen = () => {
         <section className="pane" aria-label={t.workOrders}>
           <h2 className="pane-title">{t.workOrders}</h2>
           {(releasedOrders.isError || plannedOrders.isError) && (
-            <AlertBanner variant="error">{t.loadError}</AlertBanner>
+            <AlertBanner variant="error" title={t.loadError}>
+              {rejectionText(toApiError(releasedOrders.error ?? plannedOrders.error))}
+            </AlertBanner>
           )}
           {releasedOrders.isSuccess && plannedOrders.isSuccess && rows.length === 0 && (
             <AlertBanner variant="info">{t.empty}</AlertBanner>
@@ -380,7 +383,9 @@ export const ReworkResultRegisterScreen = () => {
             <Card.Body>
               <h2 className="pane-title">{t.target}</h2>
               {(source.isError || dispositions.isError) && (
-                <AlertBanner variant="error">{t.loadError}</AlertBanner>
+                <AlertBanner variant="error" title={t.loadError}>
+                  {rejectionText(toApiError(source.error ?? dispositions.error))}
+                </AlertBanner>
               )}
               <dl className="pop-figures">
                 {/*
@@ -732,8 +737,8 @@ export const ReworkResultRegisterScreen = () => {
     </main>
   );
 }; /**
- * 서버가 준 거부 사유 — 단말 권한(401)이든 검증이든 서버 문구가 무엇을 해야 하는지 말한다.
- * 거부의 모양이 아니라 실린 문구를 본다.
+ * 서버가 준 사유 — 단말 권한(401)이든 검증이든 서버 문구가 무엇을 해야 하는지 말한다. 저장
+ * 거부와 조회 실패가 함께 쓴다. 거부의 모양이 아니라 실린 문구를 본다.
  */
 const rejectionText = (rejection: ApiError): string | null => {
   const lines =
