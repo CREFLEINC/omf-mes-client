@@ -16217,6 +16217,8 @@ main:has(> .oqc-inspection-panes) {
  * 검사 처리 이력은 최근 사건이 위 — 표식을 세로선으로 잇고, 확정은 초록 체크로.
  */
 .oqc-inspection-history-card {
+  /* 안에서 숨긴 제목(position: absolute)의 기준 — 없으면 문서 끝으로 빠져 화면 전체가 길어진다. */
+  position: relative;
   display: grid;
   gap: var(--space-3);
 }
