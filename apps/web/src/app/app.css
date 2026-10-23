@@ -15808,6 +15808,34 @@ main:has(> .oqc-inspection-panes) {
   overscroll-behavior-y: none;
 }
 
+/*
+ * 검사 수량 입력 · 시리얼별 검사 결과 탭(#136) — 탭 이름이 구획 제목을 맡으므로 안의 제목 글은 화면 읽기에만 남기고,
+ * 안쪽 구획의 위 선·테두리는 걷는다(탭 줄이 가른다).
+ */
+.oqc-inspection-entry-tabs .oqc-inspection-section {
+  padding-block: var(--space-4) 0;
+  border-top: 0;
+}
+
+.oqc-inspection-entry-tabs .oqc-inspection-section-head > h3,
+.oqc-inspection-entry-tabs .oqc-inspection-serial-box-title > h3 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.oqc-inspection-entry-tabs {
+  position: relative;
+}
+
+.oqc-inspection-entry-tabs .oqc-inspection-serial-box {
+  padding: var(--space-4) 0 0;
+  border: 0;
+}
+
 /* 시리얼별 검사 결과(#136) — 테두리 상자 · 제목 줄 건수 칩 · 표도 테두리 안에. */
 .oqc-inspection-serial-box {
   display: grid;

@@ -1,4 +1,4 @@
-import { Button, Icon, Progress, Select, TextArea, TextField } from '@crefle/web-ui';
+import { Button, Icon, Progress, Select, Tabs, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import {
@@ -300,82 +300,108 @@ export const ResultFormPane = ({
    */
   const banner = <SaveErrorBanner error={saveError} onReload={onReload} />;
 
+  /* ── 검사 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */
+  const quantitySection = (
+    <section className="oqc-inspection-section">
+      <div className="oqc-inspection-section-head">
+        <h3>{t.sectionTitle}</h3>
+        {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 저장 단추 옆이 말한다). */}
+        {isReinspecting ? (
+          <p className="field-note">{t.reinspectRound}</p>
+        ) : round !== null ? (
+          <p className="field-note">{t.round(round.inspectionRound)}</p>
+        ) : null}
+        {/* 기준값(검사수량)은 제목 줄 오른쪽 끝에 — 세 칸은 이 값을 나눈 결과다. */}
+        <dl className="oqc-inspection-qty-base">
+          <dt className="oqc-inspection-progress-label">{t.fields.inspectedQty}</dt>
+          <dd>{inspectedText}</dd>
+        </dl>
+      </div>
+
+      {/*
+       * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 대응 코드 그룹이
+       * 어디에도 없다. 감추지 않고 왜 없는지 밝힌다(공유계약 G-2).
+       */}
+      {isReinspecting && (
+        <>
+          <p className="field-note">{t.reinspectNote}</p>
+          <p className="field-note">{t.reinspectReasonPending}</p>
+        </>
+      )}
+
+      <div className="oqc-inspection-qty" data-over={isOver ? '' : undefined}>
+        {field('accepted', t.fields.accepted, errors.accepted)}
+        {field('rejected', t.fields.rejected, errors.rejected)}
+        {field('held', t.fields.held, errors.held)}
+      </div>
+
+      {/*
+       * 잠긴 이유를 **묶음에 한 번** 낸다.
+       *
+       * ⛔ 칸마다 `disabledReason` 을 달면 같은 문장이 세 번 연달아 선다 — 세 칸이 «각각 다른»
+       * 이유로 잠긴 것처럼 읽힌다. 잠긴 것은 칸 하나가 아니라 이 회차라 이유도 묶음의 것이다.
+       */}
+      {isLocked && (
+        <p className="field-note" id={lockNoteId}>
+          {isConfirmed ? t.confirmed : t.draftElsewhere}
+        </p>
+      )}
+
+      {/* 입력 현황 — 「입력 완료 / 검사수량」 · 미입력 · 막대. 계산은 그대로다. 셀 수 없을 때 0으로 읽은 합을 보이지 않는다. */}
+      <div
+        className="oqc-inspection-progress"
+        data-state={
+          isOver ? 'over' : totals.kind === 'counted' && totals.matches ? 'done' : undefined
+        }
+      >
+        <div className="oqc-inspection-progress-row">
+          <span className="oqc-inspection-progress-sum">
+            <span className="oqc-inspection-progress-label">{t.sum} </span>
+            {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
+          </span>
+          <span className="oqc-inspection-progress-status">{statusText}</span>
+        </div>
+        <Progress
+          value={progress.value}
+          tone={progress.tone}
+          label={t.progressLabel}
+          valueText={`${sumText} / ${inspectedText}`}
+        />
+        {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
+      </div>
+    </section>
+  );
+
   return (
     <form aria-label={t.heading} onSubmit={submit}>
       {/*
-       * 위에서 아래로 한 줄기 — 검사 수량 → 판정 → 검사한 시리얼, 그 아래 저장 줄(omf-all-around#136 · IQC #133 과 같다).
+       * 위에서 아래로 한 줄기 — 검사 수량(시리얼 판정 의뢰는 시리얼별 검사 결과와 탭) → 판정, 그 아래 저장 줄
+       * (omf-all-around#136 · IQC #133 과 같다).
        * 저장 줄은 창을 내려도 화면 아래에 붙어 있다.
        */}
       <div className="oqc-inspection-work">
-        {/* ── 검사 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}
-        <section className="oqc-inspection-section">
-          <div className="oqc-inspection-section-head">
-            <h3>{t.sectionTitle}</h3>
-            {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 저장 단추 옆이 말한다). */}
-            {isReinspecting ? (
-              <p className="field-note">{t.reinspectRound}</p>
-            ) : round !== null ? (
-              <p className="field-note">{t.round(round.inspectionRound)}</p>
-            ) : null}
-            {/* 기준값(검사수량)은 제목 줄 오른쪽 끝에 — 세 칸은 이 값을 나눈 결과다. */}
-            <dl className="oqc-inspection-qty-base">
-              <dt className="oqc-inspection-progress-label">{t.fields.inspectedQty}</dt>
-              <dd>{inspectedText}</dd>
-            </dl>
-          </div>
-
-          {/*
-           * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 대응 코드 그룹이
-           * 어디에도 없다. 감추지 않고 왜 없는지 밝힌다(공유계약 G-2).
-           */}
-          {isReinspecting && (
-            <>
-              <p className="field-note">{t.reinspectNote}</p>
-              <p className="field-note">{t.reinspectReasonPending}</p>
-            </>
-          )}
-
-          <div className="oqc-inspection-qty" data-over={isOver ? '' : undefined}>
-            {field('accepted', t.fields.accepted, errors.accepted)}
-            {field('rejected', t.fields.rejected, errors.rejected)}
-            {field('held', t.fields.held, errors.held)}
-          </div>
-
-          {/*
-           * 잠긴 이유를 **묶음에 한 번** 낸다.
-           *
-           * ⛔ 칸마다 `disabledReason` 을 달면 같은 문장이 세 번 연달아 선다 — 세 칸이 «각각 다른»
-           * 이유로 잠긴 것처럼 읽힌다. 잠긴 것은 칸 하나가 아니라 이 회차라 이유도 묶음의 것이다.
-           */}
-          {isLocked && (
-            <p className="field-note" id={lockNoteId}>
-              {isConfirmed ? t.confirmed : t.draftElsewhere}
-            </p>
-          )}
-
-          {/* 입력 현황 — 「입력 완료 / 검사수량」 · 미입력 · 막대. 계산은 그대로다. 셀 수 없을 때 0으로 읽은 합을 보이지 않는다. */}
-          <div
-            className="oqc-inspection-progress"
-            data-state={
-              isOver ? 'over' : totals.kind === 'counted' && totals.matches ? 'done' : undefined
-            }
-          >
-            <div className="oqc-inspection-progress-row">
-              <span className="oqc-inspection-progress-sum">
-                <span className="oqc-inspection-progress-label">{t.sum} </span>
-                {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
-              </span>
-              <span className="oqc-inspection-progress-status">{statusText}</span>
-            </div>
-            <Progress
-              value={progress.value}
-              tone={progress.tone}
-              label={t.progressLabel}
-              valueText={`${sumText} / ${inspectedText}`}
+        {/*
+         * ── 검사 수량 입력 · 시리얼별 검사 결과 — 시리얼 판정을 쓰는 의뢰(출하작업지시 · 열린 회차)는 탭으로 전환한다(#136).
+         * 어느 탭이든 아래 최종 판정과 함께 저장된다 — 탭을 바꿔도 입력한 값은 남는다.
+         */}
+        {!isLocked && serialSection !== undefined ? (
+          <section className="oqc-inspection-section oqc-inspection-entry-tabs">
+            <Tabs
+              key={inspectionRequestNo}
+              aria-label={t.sectionTitle}
+              items={[
+                { value: 'quantity', label: t.sectionTitle, content: quantitySection },
+                {
+                  value: 'serials',
+                  label: messages.oqcInspection.serials.judge.heading,
+                  content: serialSection,
+                },
+              ]}
             />
-            {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
-          </div>
-        </section>
+          </section>
+        ) : (
+          quantitySection
+        )}
 
         {/* ── 판정 — 종합 판정을 고르고, 자동 판정과 다르면 사유를 받는다 ── */}
         <section className="oqc-inspection-section">
@@ -452,11 +478,6 @@ export const ResultFormPane = ({
            */}
           {!isLocked && <JudgmentGuide preview={preview} hasLot={hasLot} />}
         </section>
-
-        {/* ── 검사한 시리얼(omf-all-around#68) — 출하작업지시 의뢰의 열린 회차에서만 ── */}
-        {!isLocked && serialSection !== undefined && (
-          <div className="oqc-inspection-section">{serialSection}</div>
-        )}
       </div>
 
       {/* 창이 열려 있는 동안에는 배너를 창 안에서 낸다 — 밖에 내면 창에 가려 보이지 않는다. */}
