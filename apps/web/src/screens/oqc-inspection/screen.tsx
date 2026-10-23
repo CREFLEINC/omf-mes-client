@@ -118,6 +118,8 @@ export const OqcInspectionScreen = () => {
    */
   const judgmentValues = useCodeValues(CODE_GROUPS.overallJudgment);
   const judgmentOptions = toCodeOptions(judgmentValues.data ?? []);
+  /* 판정 코드가 하나도 없으면 저장할 길이 없다 — 입력 칸도 잠근다(#135). 읽는 중에는 잠그지 않는다. */
+  const isInputLocked = judgmentValues.isSuccess && judgmentOptions.length === 0;
 
   const [judgment, setJudgment] = useState('');
 
@@ -441,11 +443,12 @@ export const OqcInspectionScreen = () => {
                   rows={serialRows}
                   onChange={setSerialRows}
                   serverError={save.fieldErrors.serials}
-                  disabled={save.isSaving}
+                  disabled={save.isSaving || isInputLocked}
                 />
               ) : undefined
             }
             serialBlockedReason={serialBlockedReason(serialRows, inspectedQty, draft.rejected)}
+            isInputLocked={isInputLocked}
             changeReason={changeReason}
             onChangeReasonChange={setChangeReason}
             onSave={(inspectedAt) => {

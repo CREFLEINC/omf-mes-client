@@ -102,6 +102,11 @@ export interface ResultFormPaneProps {
    * 저장이 400 이 된다. 누르고 실패하기 전에 무엇을 해야 하는지 말하고 저장·확정을 잠근다.
    */
   saveBlockedReason?: string | null;
+  /**
+   * 입력으로 풀 수 없는 막힘(작업자 미연결 등) — 저장·확정이 막힌 채 칸만 열려 있지 않게 입력 칸도 잠근다(#135).
+   * 수량·판정처럼 입력을 고쳐 푸는 막힘에는 쓰지 않는다.
+   */
+  isInputLocked?: boolean;
   /** 종합 판정 바로 아래 칸 — 불합격 사유(omf-all-around#106). 화면이 판정에 따라 채운다. */
   judgmentDetail?: ReactNode;
   /** 최종 판정 칸 바로 아래 — 판정 변경 사유(#133). 없으면 두지 않는다 */
@@ -150,6 +155,7 @@ export const ResultFormPane = ({
   onStartReinspection,
   onCancelReinspection,
   saveBlockedReason = null,
+  isInputLocked = false,
   judgmentDetail = null,
   fourMSlot = null,
   judgmentHint,
@@ -267,7 +273,7 @@ export const ResultFormPane = ({
         /* 「0」은 흐린 안내 글자일 뿐 값이 아니다 — 빈 칸은 저장 때 0 으로 보내던 그대로다. */
         placeholder="0"
         value={draft[key]}
-        disabled={isConfirmed || isSaving}
+        disabled={isConfirmed || isSaving || isInputLocked}
         /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
         error={serverErrorOf(key) ?? (showErrors && invalid ? t.quantityInvalid : undefined)}
         onChange={(event) => onChange({ ...draft, [key]: dropLeadingZeros(event.target.value) })}
@@ -370,7 +376,7 @@ export const ResultFormPane = ({
                 options={judgmentOptions}
                 value={judgment}
                 placeholder={t.judgmentPlaceholder}
-                disabled={isConfirmed || judgmentOptions.length === 0}
+                disabled={isConfirmed || isInputLocked || judgmentOptions.length === 0}
                 onChange={onJudgmentChange}
               />
               {judgmentOptions.length === 0 && (
