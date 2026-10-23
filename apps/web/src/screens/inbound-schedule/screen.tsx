@@ -3,7 +3,6 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
@@ -118,8 +117,8 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
   }));
 
 /**
- * W-01-09 컨테이너 — 「입고 관리」 허브의 첫 탭이다. **제목·경로 표시를 두지 않는다** — 탭 이름과 겹친다
- * (사용자 지시 2026-10-21).
+ * W-01-09 컨테이너 — 「입고 관리」 화면이다(사이드바 한 줄 · 탭 없음 — 2026-10-23 탭 합치기). 이름은 화면 막대에
+ * 한 번만 세우고 **경로 표시를 두지 않는다**(사용자 지시 2026-10-21 — 이름이 두 곳에 서지 않게).
  *
  * **입하 예정 = 아직 다 들어오지 않은 P/O 다**(omf-mes-server#741 · #762). 고객사가 ASN 을 쓰지 않는다.
  *
@@ -351,10 +350,9 @@ export const InboundScheduleScreen = () => {
     ) : undefined;
 
   /*
-   * 「초과분 연결」 진입 단추 — **탭 막대 오른쪽**(셸의 일 단추 자리)에 둔다. 조건 줄은 이미 꽉 차 있어 거기 두면
-   * 한 줄이 더 생긴다. 셸 밖에서 화면만 그리면(시험) 자리가 없어 조건 줄 끝에 둔다.
+   * 「초과분 연결」 진입 단추 — **화면 막대 오른쪽**(이름 「입고 관리」와 같은 줄)에 둔다. 조건 줄은 이미 꽉 차 있어
+   * 거기 두면 한 줄이 더 생긴다.
    */
-  const hubActionsTarget = useHubActionsTarget();
   const excessEntryButton = excessAvailable ? (
     <Button
       variant={unlinkedCount > 0 ? 'outlined' : 'text'}
@@ -378,7 +376,7 @@ export const InboundScheduleScreen = () => {
   ) : null;
 
   /*
-   * 단계 칩 — 탭 줄 오른쪽, 「초과분 연결」 앞. 누르면 그 묶음의 LOT 이 있는 발주만 남는다(조건이 바뀌니 첫 쪽으로).
+   * 단계 칩 — 화면 막대 오른쪽, 「초과분 연결」 앞. 누르면 그 묶음의 LOT 이 있는 발주만 남는다(조건이 바뀌니 첫 쪽으로).
    * 서버가 묶음 수를 셀 수 없으면(404·403) 세우지 않는다 — 조건·머리 건수·행 칩은 같은 기준이어야 한다(C-17).
    */
   const stageChips =
@@ -391,12 +389,12 @@ export const InboundScheduleScreen = () => {
         }}
       />
     ) : null;
-  const hubTools =
+  const barTools =
     stageChips !== null || excessEntryButton !== null ? (
-      <>
+      <div className="po-board-bar-tools">
         {stageChips}
         {excessEntryButton}
-      </>
+      </div>
     ) : null;
 
   /** 발주를 고른다 — 조건·쪽은 그대로 두고 `po` 만 바꾼다. 앞 발주의 IQC 의뢰 결과·실패는 걷는다. */
@@ -410,6 +408,15 @@ export const InboundScheduleScreen = () => {
 
   return (
     <>
+      {/*
+       * 화면 막대 — 이름 「입고 관리」 하나와 오른쪽의 단계 칩 · 「초과분 연결」(구성안 캔버스 2026-10-22). 옛 탭 막대와
+       * 같은 모양이다 — 탭을 합치며(2026-10-23) 셸의 탭 막대가 빠져 화면이 제 줄을 그린다. 경로 표시는 두지 않는다.
+       */}
+      <div className="po-board-bar">
+        <h1 className="po-board-title">{t.title}</h1>
+        {barTools}
+      </div>
+
       {/* 조회 실패는 빈 상태로 오인시키지 않는다 — 「없습니다」로 내면 자료가 없는 줄 안다. */}
       {list.isError && (
         <LoadErrorBanner
@@ -451,7 +458,6 @@ export const InboundScheduleScreen = () => {
           onReset={() => {
             applyQuery(fallbackPeriod, DEFAULT_FILTERS);
           }}
-          tools={hubActionsTarget === null ? hubTools : undefined}
           quick={
             <QuickLookupBar
               ref={quickRef}
@@ -527,10 +533,6 @@ export const InboundScheduleScreen = () => {
           )}
         </section>
       </div>
-
-      {hubActionsTarget !== null && hubTools !== null && (
-        <HubActions target={hubActionsTarget}>{hubTools}</HubActions>
-      )}
 
       {postLot !== null && postLine !== null && selectedOrder !== null && (
         <GoodsReceiptPostPanel

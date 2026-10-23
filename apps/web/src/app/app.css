@@ -17524,12 +17524,39 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 /*
- * 입하 예정 — 초과분 발주 연결(서버 장부 P-100). 탭 줄 끝의 진입 단추와 오른쪽에서 열리는 연결 창.
- * 고른 줄 표시는 발주 목록과 같은 정보 파랑이다(붉은 계열은 문제로 읽힌다).
+ * 입고 관리 — 화면 막대. 이름 「입고 관리」(옛 탭 막대의 켜진 탭 `.hub-tab[aria-current]` 과 같은 모양) + 오른쪽의
+ * 단계 칩 · 「초과분 연결」. 탭을 합치며(2026-10-23) 셸의 탭 막대(`.hub-bar`)가 빠져 화면이 같은 모양의 줄을 그린다.
+ * 밑줄은 줄 전체에 긋는다.
  */
-.po-board-tools {
+.po-board-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  box-shadow: inset 0 -1px 0 var(--outline-variant);
+}
+
+.po-board-title {
+  flex: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  color: var(--primary-text);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  white-space: nowrap;
+  box-shadow: inset 0 -2px 0 var(--primary-text);
+}
+
+.po-board-bar-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin-left: auto;
 }
+
+/*
+ * 입하 예정 — 초과분 발주 연결(서버 장부 P-100). 화면 막대 끝의 진입 단추와 오른쪽에서 열리는 연결 창.
+ * 고른 줄 표시는 발주 목록과 같은 정보 파랑이다(붉은 계열은 문제로 읽힌다).
+ */
 
 .po-board-tool-count {
   display: inline-flex;

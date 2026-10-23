@@ -6,7 +6,7 @@ import type { Translated } from './translated';
  * 참조 이름의 세 갈래(미도착·목록에 없음·실패)를 가른다.
  */
 export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
-  title: 'Tra cứu kế hoạch nhập hàng',
+  title: 'Quản lý nhập kho',
   breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   breadcrumbHub: 'Quản lý nhập kho',
   /** 두 표 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */

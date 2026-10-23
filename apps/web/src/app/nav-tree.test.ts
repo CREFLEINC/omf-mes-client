@@ -208,7 +208,6 @@ describe('주 메뉴 트리', () => {
     expect(allEntries.map((entry) => `${entry.to} → ${entry.icon}`)).toEqual([
       '/dashboard → dashboard',
       '/logistics/inbound-schedule → local_shipping',
-      '/logistics/goods-receipt → local_shipping',
       '/logistics/stock-status → inventory',
       '/logistics/stocktaking → inventory',
       '/logistics/stock-adjust → inventory',

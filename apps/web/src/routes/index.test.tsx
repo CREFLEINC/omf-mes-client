@@ -620,10 +620,10 @@ describe('appRouter', () => {
   });
 
   /*
-   * W-01-10의 계약 경로는 `/logistics/goods-receipts`(복수)인데 화면 주소는 단수다 —
-   * 주소는 **계약 리소스가 아니라 화면**을 가리키므로 다른 화면들과 같은 형태를 쓴다.
+   * W-01-10 은 화면이 아니라 입고 관리의 「입고 처리」 창이다(사용자 지시 2026-10-23 탭 합치기). 옛 「자재 입고 처리」
+   * 주소는 즐겨찾기가 죽지 않게 라우트에 남아 입고 관리로 옮겨 준다.
    */
-  it('자재 입고 처리가 자재 관리(/logistics) 앞머리로 등록돼 있다', () => {
+  it('옛 자재 입고 처리 주소가 자재창고 앞머리로 남아 있다', () => {
     expect(routedPaths()).toContain('/logistics/goods-receipt');
   });
 
@@ -997,13 +997,17 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
    * **C33** — 메뉴에 항목이 없다. 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가
    * 같은 화면을 열어도 통과하고, 글자만 보면 이름을 바꿔 단 메뉴가 통과한다.
    */
-  it('사이드바에도 입고 관리 탭 막대에도 이 화면 항목이 없다', async () => {
-    const tabs = await hubTabLinks('입고 관리');
+  it('사이드바에 이 화면 항목이 없다 — 입고 관리는 탭 없는 한 줄이다', () => {
+    renderWithProviders(
+      <SessionProvider>
+        <AppLayout>본문</AppLayout>
+      </SessionProvider>,
+      { session: SYNTHETIC_SESSION },
+    );
+    expandAllNavGroups();
 
-    /* 짝 양성 — 탭 막대는 실제로 그려졌고 첫 화면(입하 예정 조회)은 거기 있다. */
-    expect(tabs).toContainEqual({ name: '입하 예정 조회', href: '/logistics/inbound-schedule' });
-    expect(tabs.map((tab) => tab.href)).not.toContain('/logistics/po-register');
-    expect(tabs.map((tab) => tab.name)).not.toContain('신규 P/O 등록');
+    /* 입고 관리는 탭 묶음이 아니다(2026-10-23 탭 합치기) — 이 화면이 숨을 탭 막대도 없다. */
+    expect(screen.queryByRole('navigation', { name: '입고 관리' })).toBeNull();
 
     const nav = screen.getByRole('navigation', { name: '주 메뉴' });
     const hrefs = within(nav)

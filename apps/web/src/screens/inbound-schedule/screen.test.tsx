@@ -359,13 +359,14 @@ describe('InboundScheduleScreen — 첫 진입 조회', () => {
     expect(currentLocation()).toBe(ROUTE);
   });
 
-  it('제목·경로 표시와 안내 문장을 두지 않는다 — 탭 이름과 겹친다', async () => {
+  it('이름은 화면 막대에 한 번만 서고 경로 표시와 안내 문장은 두지 않는다', async () => {
     renderScreen([listRoute(), ...lookupRoutes()]);
 
     await screen.findByText('SAMPLE-PO-0001');
 
-    // 사용자 지시(2026-10-21) — 「입고 관리」 탭이 이미 이름을 보인다.
-    expect(screen.queryByRole('heading', { name: t.title })).not.toBeInTheDocument();
+    // 사용자 지시(2026-10-21) — 이름은 한 곳만. 탭을 합친 뒤(2026-10-23)에는 화면 막대의 「입고 관리」가 그 자리다.
+    expect(screen.getAllByRole('heading', { name: t.title })).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('입고 관리');
     expect(
       screen.queryByRole('navigation', { name: messages.common.shell.breadcrumb }),
     ).not.toBeInTheDocument();

@@ -19,7 +19,6 @@ import { WorkOrderCloseScreen } from '../screens/work-order-close/screen';
 import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen';
 import { MaterialIssueRequestScreen } from '../screens/material-issue-request/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
-import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-redirect';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
@@ -226,10 +225,14 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'logistics/iqc-inspection', element: <IqcInspectionScreen /> },
       /*
-       * W-01-10 — 같은 규칙(사이드바 섹션)을 따르고 차례도 업무 순서다: 도착을 처리한 뒤
-       * (입하 등록) 창고로 받아들이고(정상품 입하 처리) 그 결과를 재고에서 확인한다.
+       * W-01-10 「입고 처리」 — **화면이 아니라 입고 관리의 LOT 줄에서 여는 창이다**(사용자 지시 2026-10-23 탭 합치기).
+       * 옛 「자재 입고 처리」 주소는 즐겨찾기가 죽지 않게 입고 관리로 옮겨 준다. 옛 주소는 입하 전표를 골랐지만
+       * 창은 LOT 하나로 서므로 조건은 옮기지 않는다. 차례는 업무 순서(입하 등록 → 입고 → 재고)를 따른다.
        */
-      { path: 'logistics/goods-receipt', element: <GoodsReceiptScreen /> },
+      {
+        path: 'logistics/goods-receipt',
+        element: <Navigate to="/logistics/inbound-schedule" replace />,
+      },
       /*
        * W-01-07 — 앞머리는 **사이드바 섹션(도메인)을 따른다.** 계약 경로와 같아지는 경우가
        * 많지만 그것이 근거는 아니다: 이 화면의 계약 경로는 `/inventory/**`·`/trace/**`인데

@@ -27,11 +27,6 @@ export interface ScheduleFilterBarProps {
   onReset: () => void;
   /** 빠른 조회 칸들(공급업체 · 품목코드 · 오늘 도착 · 지연). 납기와 조회 단추 사이에 선다. */
   quick: ReactNode;
-  /**
-   * 조건 줄 오른쪽 끝의 도구 — 조회와 상관없는 이 화면의 다른 일로 가는 길(초과분 연결). 조건이 아니라
-   * 일이라 조회·초기화와 떨어진 끝에 둔다. 없으면 자리도 없다.
-   */
-  tools?: ReactNode;
 }
 
 /**
@@ -55,7 +50,6 @@ export const ScheduleFilterBar = ({
   onRemoveFilter,
   onReset,
   quick,
-  tools,
 }: ScheduleFilterBarProps) => {
   const reasonId = useId();
   const detailId = useId();
@@ -176,9 +170,6 @@ export const ScheduleFilterBar = ({
             </span>
           )}
         </div>
-        {tools !== undefined && (
-          <div className="field-cell field-cell-unlabeled po-board-tools">{tools}</div>
-        )}
       </div>
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
       <div id={detailId} hidden={!isOpen}>
