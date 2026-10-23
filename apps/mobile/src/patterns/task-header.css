@@ -1,0 +1,96 @@
+/*
+ * 본문 칸(main) 맨 위에 붙는다. 화면 뿌리의 좌우 16px 여백만큼 밖으로 늘려 앱바와 같은
+ * 폭으로 서게 한다 - 좁게 서면 그 틈으로 뒤에 흐르는 내용이 비친다.
+ */
+.task-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin-inline: calc(-1 * var(--space-4, 16px));
+  margin-top: calc(-1 * var(--space-4, 16px));
+  padding: var(--space-2, 8px) var(--space-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  background: var(--surface, #fff);
+  border-bottom: 1px solid var(--outline-variant, #d7d7dd);
+}
+
+.task-header__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2, 8px);
+}
+
+/* 값은 이름 없이 이어 쓴다. 이름은 화면 낭독기에만 준다 - 한 줄에 넣을 자리가 없다. */
+.task-header__fields {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-3, 12px);
+  row-gap: 2px;
+}
+
+.task-header__field {
+  display: contents;
+}
+
+.task-header__field dt {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.task-header__field dd {
+  margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+.task-header__field--strong dd {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.task-header__progress {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 2px var(--space-2, 8px);
+  border-radius: 999px;
+  background: var(--surface-container, #eee);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 글자 단추지만 장갑 낀 손이 짚을 수 있게 줄 높이를 넉넉히 준다. */
+.task-header__toggle {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary-text);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.task-header__toggle:focus-visible {
+  outline: 2px solid var(--primary, currentColor);
+  outline-offset: 2px;
+}
+
+.task-header__details {
+  padding-bottom: var(--space-2, 8px);
+}

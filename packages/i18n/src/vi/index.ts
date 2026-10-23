@@ -129,6 +129,7 @@ import { runningChange } from './running-change';
 import { save } from './save';
 import { session } from './session';
 import { shellHome } from './shell-home';
+import { taskFlow } from './task-flow';
 import { shellNav } from './shell-nav';
 import { shipmentConfirm } from './shipment-confirm';
 import { shipmentProcessing } from './shipment-processing';
@@ -283,6 +284,7 @@ export const vi: Translated<Messages> = {
   save,
   session,
   shellHome,
+  taskFlow,
   shellNav,
   shipmentConfirm,
   shipmentProcessing,
