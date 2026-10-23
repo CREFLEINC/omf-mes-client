@@ -20,7 +20,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     openRow: (item: string, inspectionRequestNo: string): string =>
       `${item} · Mở yêu cầu kiểm tra ${inspectionRequestNo}`,
     caption: 'Danh sách chờ kiểm tra',
-    empty: 'Không có yêu cầu kiểm tra nào khớp điều kiện. Hãy thử nới rộng điều kiện.',
+    empty: 'Không tìm thấy yêu cầu kiểm tra nào.',
+    emptyHint: 'Hãy thay đổi điều kiện tìm kiếm hoặc đặt lại bộ lọc.',
     unavailable: 'Không hiển thị được danh sách.',
     loading: 'Đang tải các yêu cầu kiểm tra.',
   },
