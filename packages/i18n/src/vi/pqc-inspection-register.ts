@@ -58,7 +58,7 @@ export const pqcInspectionRegister = {
       inspectionType: 'Loại kiểm tra',
       inspectionTypeName: 'PQC (Kiểm tra công đoạn)',
       plan: 'Tiêu chuẩn áp dụng',
-      noPlan: 'Không có tiêu chuẩn',
+      noPlan: 'Chưa chỉ định',
       planLabel: (code: string, version: number): string => `${code} v${String(version)}`,
       lot: 'LOT đối tượng',
       requestedAt: 'Thời gian yêu cầu',

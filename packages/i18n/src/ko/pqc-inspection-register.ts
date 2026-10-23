@@ -68,7 +68,7 @@ export const pqcInspectionRegister = {
       inspectionType: '검사 유형',
       inspectionTypeName: 'PQC (공정검사)',
       plan: '적용 검사 기준',
-      noPlan: '기준 없음',
+      noPlan: '미지정',
       planLabel: (code: string, version: number): string => `${code} v${String(version)}`,
       lot: '대상 LOT',
       requestedAt: '의뢰 일시',
