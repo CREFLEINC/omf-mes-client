@@ -6,6 +6,8 @@ import { lookupDisplayLabelWithInactive, type LookupSource } from '../../pattern
 import type { FilterOption } from './lot-filter-bar';
 import { LotHoldDocuments } from './lot-hold-documents';
 import { LotTimeline } from './lot-timeline';
+import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
+import { MaterialLotUsage, ProductionLotInputs } from './lot-genealogy';
 import { lotStatusTone } from './options';
 import { useLotDetail } from './queries';
 import { useItemNameSources } from './reference-options';
@@ -37,6 +39,7 @@ export const LotDetailDialog = ({
 }: LotDetailDialogProps) => {
   const detail = useLotDetail(lotId);
   const transitionNoteId = useId();
+  const fourMTypeLabel = useFourMChangeTypeLabel();
   const itemId = detail.data?.itemId;
   const itemNames = useItemNameSources(itemId === undefined ? [] : [itemId]);
   const itemSource: LookupSource = (itemId === undefined ? undefined : itemNames.get(itemId)) ?? {
@@ -99,6 +102,26 @@ export const LotDetailDialog = ({
               ['short', t.detail.fields.initialQty, String(detail.data.initialQty)],
               ['short', t.detail.fields.expiryDate, detail.data.expiryDate ?? EMPTY],
               ['short', t.detail.fields.manufacturedAt, formatDateTime(detail.data.manufacturedAt)],
+              /* IQC 에서 적은 4M 변경품 — 변경품일 때만 줄을 둔다(omf-all-around#63). */
+              ...(detail.data.fourMChange === null
+                ? []
+                : ([
+                    [
+                      'wide',
+                      t.detail.fields.fourMChange,
+                      <>
+                        <Chip variant="status" status="warning" size="sm">
+                          {t.detail.fields.fourMChange}
+                        </Chip>{' '}
+                        {[
+                          fourMTypeLabel(detail.data.fourMChange.changeTypeCode ?? ''),
+                          detail.data.fourMChange.remarks,
+                        ]
+                          .filter((part) => part !== undefined && part !== '')
+                          .join(' · ')}
+                      </>,
+                    ],
+                  ] as const)),
             ] as const
           ).map(([size, label, value]) => (
             <div className="lot-detail-field" data-size={size} key={label}>
@@ -108,6 +131,10 @@ export const LotDetailDialog = ({
           ))}
         </dl>
       )}
+
+      {/* 투입 자재 계보(omf-all-around#166) — 생산 LOT 은 들어간 자재, 모든 LOT 은 그 LOT 이 들어간 제품. */}
+      {detail.data?.sourceTypeCode === 'WORK_ORDER' && <ProductionLotInputs lotId={lotId} />}
+      {detail.data !== undefined && <MaterialLotUsage lotId={lotId} />}
 
       <LotTimeline lotId={lotId} statusOptions={statusOptions} />
 

@@ -113,6 +113,10 @@ describe('workOrderResourceKeys', () => {
     expect(workOrderResourceKeys.shifts(501, 1)).not.toEqual(
       workOrderResourceKeys.productionLines(501, 1),
     );
+    /* 창고는 공장으로 걸러 받는다(P-109) — 공장이 다르면 캐시도 갈린다. */
+    expect(workOrderResourceKeys.warehouses(501)).not.toEqual(
+      workOrderResourceKeys.warehouses(502),
+    );
   });
 });
 
@@ -155,6 +159,10 @@ describe('work-order resource queries', () => {
       LOCATIONS_PATH,
       LOCATIONS_PATH,
     ]);
+    /* 서버 선행 P-109(omf-mes-server#809) — 창고는 서버가 공장으로 거른다. */
+    expect(requests[0]?.url.searchParams.get('plantId')).toBe('501');
+    expect(requests[0]?.url.searchParams.get('includeInactive')).toBe('true');
+    expect(requests[0]?.url.searchParams.get('size')).toBe('200');
     expect(
       requests
         .filter((request) => request.url.pathname === LOCATIONS_PATH)
@@ -177,6 +185,28 @@ describe('work-order resource queries', () => {
     expect(result.current.truncated).toBe(false);
   });
 
+  it('P-109 전 서버가 plantId 를 무시하고 다른 공장 창고를 내도 그 창고의 위치는 부르지 않는다', async () => {
+    const { fetch, requests } = recordingFetch([
+      getRoute(WAREHOUSES_PATH, {
+        items: [warehouse(34), warehouse(37, true, 502)],
+        page: { page: 1, size: 200, total: 2 },
+      }),
+      getRoute(LOCATIONS_PATH, {
+        items: [location(601, 34)],
+        page: { page: 1, size: 200, total: 1 },
+      }),
+    ]);
+    const { result } = renderHookWithProviders(() => useWorkOrderLocations(501), { fetch });
+
+    await waitFor(() => expect(result.current.isPending).toBe(false));
+
+    expect(
+      requests
+        .filter((request) => request.url.pathname === LOCATIONS_PATH)
+        .map((request) => request.url.searchParams.get('warehouseId')),
+    ).toEqual(['34']);
+  });
+
   it('keeps all queries idle without a plant and sends zero fallback requests', () => {
     const { fetch, requests } = recordingFetch([]);
     const { result } = renderHookWithProviders(
@@ -184,9 +214,13 @@ describe('work-order resource queries', () => {
         lines: useWorkOrderProductionLines(null, 1),
         equipments: useWorkOrderEquipments(null, null, 1),
         shifts: useWorkOrderShifts(null, 1),
+        locations: useWorkOrderLocations(null),
       }),
       { fetch },
     );
+
+    expect(result.current.locations.items).toEqual([]);
+    expect(result.current.locations.isPending).toBe(false);
 
     expect(result.current.lines.fetchStatus).toBe('idle');
     expect(result.current.lines.data).toBeUndefined();

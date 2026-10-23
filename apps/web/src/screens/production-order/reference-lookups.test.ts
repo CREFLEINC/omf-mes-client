@@ -40,7 +40,7 @@ const recordingFetch = (routes: StubRoute[]): { fetch: StubFetch; urls: URL[] } 
 };
 
 const source = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
-  entries: [{ value: '3101', label: 'PLANT-SYN-01 · Synthetic Plant One' }],
+  entries: [{ value: '3101', label: 'Synthetic Plant One (PLANT-SYN-01)' }],
   isError: false,
   isLoading: false,
   truncated: false,
@@ -48,7 +48,7 @@ const source = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
 });
 
 describe('production-order reference lookups', () => {
-  it('사업부, plant, UOM을 비활성 포함 계약 요청으로 각각 읽어 code · name entries로 낸다', async () => {
+  it('사업부, plant, UOM을 비활성 포함 계약 요청으로 각각 읽어 「이름 (코드)」 entries로 낸다', async () => {
     const { fetch, urls } = recordingFetch([
       {
         match: (request) => isExactly(request, BUSINESS_UNITS_PATH),
@@ -115,10 +115,10 @@ describe('production-order reference lookups', () => {
     await waitFor(() => expect(result.current.uoms.entries).toHaveLength(1));
 
     expect(result.current.businessUnits.entries).toEqual([
-      { value: '2101', label: 'BU-SYN-01 · Synthetic Unit' },
+      { value: '2101', label: 'Synthetic Unit (BU-SYN-01)' },
     ]);
     expect(result.current.plants).toMatchObject({
-      entries: [{ value: '3101', label: 'PLANT-SYN-01 · Synthetic Plant One' }],
+      entries: [{ value: '3101', label: 'Synthetic Plant One (PLANT-SYN-01)' }],
       isLoading: false,
       isError: false,
       truncated: false,
@@ -199,7 +199,7 @@ describe('production-order reference lookups', () => {
     await waitFor(() => expect(result.current.uoms.isError).toBe(true));
 
     expect(result.current.plants).toMatchObject({
-      entries: [{ value: '3101', label: 'PLANT-SYN-01 · Synthetic Plant One' }],
+      entries: [{ value: '3101', label: 'Synthetic Plant One (PLANT-SYN-01)' }],
       isError: false,
     });
   });
@@ -217,7 +217,7 @@ describe('resolveReference', () => {
     });
     expect(resolveReference(source({ truncated: true }), 3101)).toEqual({
       kind: 'named',
-      label: 'PLANT-SYN-01 · Synthetic Plant One',
+      label: 'Synthetic Plant One (PLANT-SYN-01)',
     });
     expect(resolveReference(source({ entries: [], truncated: true }), 3101)).toEqual({
       kind: 'truncated',
@@ -253,8 +253,8 @@ describe('describeReference', () => {
     ];
 
     expect(new Set(descriptions).size).toBe(4);
-    expect(describeReference({ kind: 'named', label: 'PLANT-SYN-01 · Synthetic Plant One' })).toBe(
-      'PLANT-SYN-01 · Synthetic Plant One',
+    expect(describeReference({ kind: 'named', label: 'Synthetic Plant One (PLANT-SYN-01)' })).toBe(
+      'Synthetic Plant One (PLANT-SYN-01)',
     );
   });
 });

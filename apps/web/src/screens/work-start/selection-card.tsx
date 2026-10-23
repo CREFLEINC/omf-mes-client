@@ -12,6 +12,8 @@ export interface SelectionCardProps {
   /** 이 단말이 붙어 있는 설비. 계획 설비와 견주는 기준이다. */
   equipmentId: number | null;
   equipmentCode: string | null;
+  /** 이 시작이 쓸 설비가 없다 — 「설비 미지정」 한 말로 보인다. */
+  isEquipmentUnassigned?: boolean;
   /** 단위 번호를 코드로 옮긴다. 못 옮기면 `null` — 수량만 낸다. */
   uomCodeOf: (uomId: number | undefined) => string | null;
 }
@@ -33,6 +35,7 @@ export const SelectionCard = ({
   workOrder,
   equipmentId,
   equipmentCode,
+  isEquipmentUnassigned = false,
   uomCodeOf,
 }: SelectionCardProps) => (
   /*
@@ -64,9 +67,11 @@ export const SelectionCard = ({
             {qtyText(workOrder.orderQty, uomCodeOf(workOrder.uomId))}
           </p>
           <p className="field-note">
-            {`${t.equipment} ${equipmentCode ?? t.unknown} · ${t.mold} ${idText(
-              workOrder.plannedMoldId,
-            )}`}
+            {`${
+              isEquipmentUnassigned
+                ? messages.workStart.list.unassignedEquipmentBadge
+                : `${t.equipment} ${equipmentCode ?? t.unknown}`
+            } · ${t.mold} ${idText(workOrder.plannedMoldId)}`}
           </p>
 
           {isOtherEquipment(workOrder, equipmentId) && (

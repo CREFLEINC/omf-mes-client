@@ -4,7 +4,12 @@ import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { ApiRequestError } from '../../patterns/request';
 import { workStartKeys } from './queries';
-import type { WorkSession, WorkSessionCreate, WorkSessionEventCreate } from './types';
+import type {
+  WorkSession,
+  WorkSessionCreate,
+  WorkSessionEventCreate,
+  WorkSessionWorker,
+} from './types';
 
 /**
  * 이 화면의 쓰기 둘 — **작업 시작과 재개는 다른 경로다.**
@@ -164,3 +169,82 @@ export const toResumeBody = (occurredAt: string): WorkSessionEventCreate => ({
   eventTypeCode: RESUME_EVENT_TYPE_CODE,
   occurredAt,
 });
+
+export interface SessionWorkerWriteOptions {
+  workSessionId: number | null;
+  workerNo: string;
+  onSuccess: (worker: WorkSessionWorker) => void;
+}
+
+/* 고르기 전에는 부르지 않는다 — 보낼 수 없다고 판정한 실패를 연결 문제로 덮지 않게 정규화해 던진다. */
+const sessionUnknown = (): ApiRequestError =>
+  new ApiRequestError({
+    kind: 'validation',
+    errors: [
+      {
+        scope: 'screen',
+        code: 'SESSION_UNKNOWN',
+        message: messages.workStart.resume.sessionNotFound,
+      },
+    ],
+  });
+
+/** 열린 세션에 부 작업자를 들인다. 역할은 서버가 부로 정한다. */
+export const useJoinSession = ({
+  workSessionId,
+  workerNo,
+  onSuccess,
+}: SessionWorkerWriteOptions): MasterWriteResult<{ workerId: number; joinedAt: string }> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<{ workerId: number; joinedAt: string }, WorkSessionWorker>({
+    request: (body, headers) => {
+      if (workSessionId === null) throw sessionUnknown();
+
+      return client.POST('/production/work-sessions/{workSessionId}/workers', {
+        params: {
+          path: { workSessionId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'], 'X-Worker-No': workerNo },
+        },
+        body,
+      });
+    },
+    etagPath: null,
+    invalidateKeys: [workStartKeys.all],
+    knownFields: KNOWN_FIELDS,
+    onSuccess,
+  });
+};
+
+/** 부 작업자를 세션에서 내보낸다. 정은 서버가 막는다. */
+export const useLeaveSession = ({
+  workSessionId,
+  workerNo,
+  onSuccess,
+}: SessionWorkerWriteOptions): MasterWriteResult<{
+  workSessionWorkerId: number;
+  leftAt: string;
+}> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<{ workSessionWorkerId: number; leftAt: string }, WorkSessionWorker>({
+    request: ({ workSessionWorkerId, leftAt }, headers) => {
+      if (workSessionId === null) throw sessionUnknown();
+
+      return client.POST(
+        '/production/work-sessions/{workSessionId}/workers/{workSessionWorkerId}:leave',
+        {
+          params: {
+            path: { workSessionId, workSessionWorkerId },
+            header: { 'Idempotency-Key': headers['Idempotency-Key'], 'X-Worker-No': workerNo },
+          },
+          body: { leftAt },
+        },
+      );
+    },
+    etagPath: null,
+    invalidateKeys: [workStartKeys.all],
+    knownFields: KNOWN_FIELDS,
+    onSuccess,
+  });
+};

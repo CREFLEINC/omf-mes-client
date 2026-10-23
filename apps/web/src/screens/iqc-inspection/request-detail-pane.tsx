@@ -1,8 +1,9 @@
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { formatDateTime, type InspectionRequestDetail } from './types';
 import { withUom } from './uom-lookup';
-import type { NameLookup } from './reference-lookup';
+import type { ItemNameLookup, NameLookup } from './reference-lookup';
 
 /**
  * 고른 의뢰의 상세 — **스펙 §4-A 의 여섯 항목이다.**
@@ -25,10 +26,12 @@ export interface RequestDetailPaneProps {
   detail: InspectionRequestDetail;
   /** 수량 옆에 붙일 단위 코드. 모르면 `null` — 숫자만 둔다 */
   uomCode: string | null;
-  /** 품목 이름 풀이. **번호가 아니라 「코드 · 이름」을 보인다**(omf-all-around#40). */
-  itemNames: NameLookup;
+  /** 품목 이름 풀이. **번호가 아니라 이름(위)·코드(아래)를 보인다** — 대기 목록과 같은 모양(omf-all-around#40·#133). */
+  itemNames: ItemNameLookup;
   /** 자재 LOT 번호 풀이. 검사자가 손에 든 라벨과 대조하는 값이다. */
   lotNumbers: NameLookup;
+  /** 「검사 수준」 칸 — 품목의 현재 수준과 변경 버튼(omf-all-around#133). */
+  levelSlot?: ReactNode;
 }
 
 export const RequestDetailPane = ({
@@ -36,26 +39,56 @@ export const RequestDetailPane = ({
   uomCode,
   itemNames,
   lotNumbers,
+  levelSlot,
 }: RequestDetailPaneProps) => {
-  /* 식별에 쓰이는 넷(의뢰번호·품목·대상 LOT·검사수량)은 값을 조금 굵게 — 먼저 눈에 들어오게. */
-  const items = [
+  const itemParts = itemNames.partsOf(detail.itemId);
+  const itemLabel = itemNames.labelOf(detail.itemId);
+  const lotNo = lotNumbers.labelOf(detail.lotId);
+
+  /*
+   * 첫 줄은 검사 대상을 가리키는 넷(의뢰번호·품목·대상 LOT·검사수량) — 값을 굵게, 먼저 눈에 들어오게.
+   * 둘째 줄은 의뢰의 부가 정보다. 순서가 곧 격자 자리다(4열 · app.css `.iqc-inspection-facts`).
+   */
+  const items: {
+    key: string;
+    label: string;
+    value: ReactNode;
+    emphasized?: boolean;
+    hint?: string;
+  }[] = [
     {
       key: 'no',
       label: t.fields.inspectionRequestNo,
       value: detail.inspectionRequestNo,
       emphasized: true,
     },
-    { key: 'type', label: t.fields.inspectionTypeCode, value: detail.inspectionTypeCode },
     {
       key: 'item',
       label: t.fields.itemId,
-      value: itemNames.labelOf(detail.itemId),
+      /* 못 푼 갈래는 줄이 하나뿐이라 풀이가 사유를 그 자리에 낸다. */
+      value:
+        itemParts === null ? (
+          itemLabel
+        ) : (
+          <span
+            className="iqc-inspection-fact-item"
+            title={`${itemParts.name} · ${itemParts.code}`}
+          >
+            <span className="iqc-inspection-fact-item-name">{itemParts.name}</span>
+            <span className="iqc-inspection-fact-item-code">{itemParts.code}</span>
+          </span>
+        ),
       emphasized: true,
     },
     {
       key: 'lot',
       label: t.fields.lotId,
-      value: lotNumbers.labelOf(detail.lotId),
+      /* 구분자가 많은 번호라 칸 안에서 끊기면 읽기 어렵다 — 한 줄 말줄임, 전체는 title. */
+      value: (
+        <span className="iqc-inspection-lot" title={lotNo}>
+          {lotNo}
+        </span>
+      ),
       emphasized: true,
     },
     {
@@ -63,6 +96,15 @@ export const RequestDetailPane = ({
       label: t.fields.targetQty,
       value: withUom(String(detail.targetQty), uomCode),
       emphasized: true,
+    },
+    /* 둘째 줄 — 의뢰의 부가 정보(검사 유형 · 기준 버전 · 의뢰 일시 · 검사 수준). 값은 굵게 하지 않는다(#133). */
+    {
+      key: 'type',
+      label: t.fields.inspectionTypeCode,
+      value:
+        t.inspectionTypeNames[detail.inspectionTypeCode] === undefined
+          ? detail.inspectionTypeCode
+          : `${detail.inspectionTypeCode} (${t.inspectionTypeNames[detail.inspectionTypeCode]})`,
     },
     {
       key: 'plan',
@@ -72,16 +114,17 @@ export const RequestDetailPane = ({
         detail.inspectionPlanVersionId === null
           ? t.noPlanVersion
           : String(detail.inspectionPlanVersionId),
-      /* 버전 숫자만 보이면 왜 중요한지 알 수 없다. 고정된다는 사실을 항목명 오른쪽 같은 줄에서 말한다. */
-      hint: t.planVersionNote,
     },
     /* 값만 따로 두면 무슨 시각인지 모른다 — 필드(`requestedAt`) 이름을 붙인다. */
     { key: 'at', label: t.fields.requestedAt, value: formatDateTime(detail.requestedAt) },
+    ...(levelSlot === undefined
+      ? []
+      : [{ key: 'level', label: t.fields.inspectionLevel, value: levelSlot }]),
   ];
 
   return (
     <section className="iqc-inspection-section" aria-label={t.heading}>
-      <h3>{t.sectionTitle}</h3>
+      {/* 제목 글은 두지 않는다 — 쪽 머리 경로가 「검사 기본 정보」를 이미 말한다(#133). */}
       <dl className="iqc-inspection-facts">
         {items.map((item) => (
           <div className="iqc-inspection-fact" key={item.key}>

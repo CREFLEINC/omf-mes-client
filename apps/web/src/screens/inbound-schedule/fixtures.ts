@@ -1,4 +1,10 @@
-import type { InboundScheduleLine } from './types';
+import type { ExcessCandidate, InboundExcess } from './excess-types';
+import type {
+  InboundLotProgress,
+  InboundScheduleLine,
+  InboundStageCounts,
+  PurchaseOrderSummary,
+} from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -35,6 +41,12 @@ const BASE_LINE: InboundScheduleLine = {
   lineNo: 1,
   itemId: 8301,
   uomId: 8501,
+  itemCode: 'SAMPLE-ITEM-01',
+  itemName: '합성 품목 가',
+  supplierCode: 'SAMPLE-SUP-01',
+  supplierName: '합성 공급사 가',
+  uomCode: 'SAMPLE-EA',
+  uomName: '합성 단위 개',
   orderedQty: 100,
   receivedQty: 0,
   remainingQty: 100,
@@ -105,6 +117,81 @@ export const scheduleFixtures = (today: string): InboundScheduleLine[] => [
   }),
 ];
 
+const BASE_ORDER: PurchaseOrderSummary = {
+  purchaseOrderId: 7101,
+  purchaseOrderNo: 'SAMPLE-PO-0001',
+  erpPurchaseOrderNo: 'SAMPLE-ERP-0001',
+  supplierId: 8101,
+  plantId: 8201,
+  orderDate: '2026-10-01',
+  expectedReceiptDate: '2026-10-10',
+  statusCode: 'CONFIRMED',
+  supplierCode: 'SAMPLE-SUP-01',
+  supplierName: '합성 공급사 가',
+  lineCount: 2,
+  openLineCount: 2,
+  matchedLineCount: null,
+  uomId: 8501,
+  uomCode: 'SAMPLE-EA',
+  orderedQtyTotal: 150,
+  receivedQtyTotal: 0,
+  remainingQtyTotal: 150,
+  receiptStatusCode: 'NOT_STARTED',
+};
+
+/** 한 항목만 다른 발주 묶음을 만든다. */
+export const orderSummary = (
+  overrides: Partial<PurchaseOrderSummary> = {},
+): PurchaseOrderSummary => ({ ...BASE_ORDER, ...overrides });
+
+/**
+ * 왼쪽 표 응답의 네 발주(server #762).
+ *
+ * - 7101 — **어제** 납기 · 미착수 · 남은 라인 있음 → **지연**
+ * - 7102 — **오늘** 납기 · 부분 입하 → 지연 아님(당일 미포함)
+ * - 7103 — 어제 납기지만 **모든 라인이 취소됐다**(남은 라인 0) → 지연 아님, 「취소」
+ * - 7104 — 납기 **없음** · 입하 완료 · **라인 단위가 섞여** 합계가 null → 「—」
+ */
+export const orderFixtures = (today: string): PurchaseOrderSummary[] => [
+  orderSummary({ expectedReceiptDate: shiftDate(today, -1) }),
+  orderSummary({
+    purchaseOrderId: 7102,
+    purchaseOrderNo: 'SAMPLE-PO-0002',
+    erpPurchaseOrderNo: null,
+    supplierId: 8103,
+    supplierCode: 'SAMPLE-SUP-03',
+    supplierName: '합성 공급사 다',
+    expectedReceiptDate: today,
+    lineCount: 3,
+    openLineCount: 1,
+    orderedQtyTotal: 50,
+    receivedQtyTotal: 20,
+    remainingQtyTotal: 30,
+    receiptStatusCode: 'PARTIAL',
+  }),
+  orderSummary({
+    purchaseOrderId: 7103,
+    purchaseOrderNo: 'SAMPLE-PO-0003',
+    expectedReceiptDate: shiftDate(today, -1),
+    lineCount: 1,
+    openLineCount: 0,
+    remainingQtyTotal: 0,
+    receiptStatusCode: 'CANCELLED',
+  }),
+  orderSummary({
+    purchaseOrderId: 7104,
+    purchaseOrderNo: 'SAMPLE-PO-0004',
+    expectedReceiptDate: null,
+    openLineCount: 0,
+    uomId: null,
+    uomCode: null,
+    orderedQtyTotal: null,
+    receivedQtyTotal: null,
+    remainingQtyTotal: null,
+    receiptStatusCode: 'COMPLETED',
+  }),
+];
+
 /**
  * 참조 목록의 응답 본문. **화면이 읽는 필드만 담는다** — 스텁 응답은 JSON이라
  * 계약의 모든 필드를 갖출 필요가 없고, 갖추면 무엇을 읽는지가 오히려 가려진다.
@@ -125,11 +212,207 @@ export const itemDetailFixtures: Record<number, { item: Record<string, unknown> 
   8301: { item: { itemId: 8301, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목 가' } },
 };
 
-export const uomFixtures = [
-  { uomId: 8501, uomCode: 'SAMPLE-EA', uomName: '합성 단위 개', isActive: true },
-];
-
 /** 공통코드 `SL_TYPE` — 창고 이름. `SAMPLE-SL9` 는 일부러 없다(코드를 그대로 낸다). */
 export const storageLocationFixtures = [
   { code: 'SAMPLE-SL1', codeName: '합성 자재창고', isActive: true },
 ];
+
+/**
+ * 미연결 초과분 하나 — 7101 발주의 7301 라인(같은 공장·공급사·품목·단위, 남은 자리 100)에 연결할 수 있다.
+ * 처음 P/O 는 목록에 없는 다른 발주(SAMPLE-PO-0099)다. 번호는 모두 합성 값이다.
+ */
+const BASE_EXCESS: InboundExcess = {
+  inboundReceiptExcessId: 9501,
+  excessQty: 30,
+  linkedAt: null,
+  linkedOrderLine: null,
+  inboundReceiptId: 9401,
+  inboundReceiptNo: 'SAMPLE-IR-0001',
+  receiptDatetime: '2026-10-20T02:00:00.000Z',
+  inboundReceiptLineId: 9411,
+  lineNo: 1,
+  receivedQty: 130,
+  sourceOrderLine: {
+    purchaseOrderLineId: 7399,
+    purchaseOrderId: 7199,
+    purchaseOrderNo: 'SAMPLE-PO-0099',
+    erpPurchaseOrderNo: null,
+    lineNo: 1,
+  },
+  plantId: 8201,
+  supplierId: 8101,
+  supplierCode: 'SAMPLE-SUP-01',
+  supplierName: '합성 공급사 가',
+  itemId: 8301,
+  itemCode: 'SAMPLE-ITEM-01',
+  itemName: '합성 품목 가',
+  uomId: 8501,
+  uomCode: 'SAMPLE-EA',
+  lotId: 9601,
+  lotNo: 'SAMPLE-LOT-0001',
+};
+
+export const excessFixture = (overrides: Partial<InboundExcess> = {}): InboundExcess => ({
+  ...BASE_EXCESS,
+  ...overrides,
+});
+
+/** 같은 초과분이 7301 에 연결된 모양. */
+export const linkedExcessFixture = (overrides: Partial<InboundExcess> = {}): InboundExcess =>
+  excessFixture({
+    linkedAt: '2026-10-21T03:00:00.000Z',
+    linkedOrderLine: {
+      purchaseOrderLineId: 7301,
+      purchaseOrderId: 7101,
+      purchaseOrderNo: 'SAMPLE-PO-0001',
+      erpPurchaseOrderNo: 'SAMPLE-ERP-0001',
+      lineNo: 1,
+    },
+    ...overrides,
+  });
+
+/** 7101 발주 7301 라인 후보 — 남은 수량이 초과분과 다르다. */
+export const candidateFixture = (overrides: Partial<ExcessCandidate> = {}): ExcessCandidate => ({
+  purchaseOrderLineId: 7301,
+  purchaseOrderId: 7101,
+  purchaseOrderNo: 'SAMPLE-PO-0001',
+  erpPurchaseOrderNo: 'SAMPLE-ERP-0001',
+  lineNo: 1,
+  orderDate: '2026-10-01',
+  expectedReceiptDate: '2026-10-10',
+  orderedQty: 100,
+  receivedQty: 0,
+  roomQty: 100,
+  exactMatch: false,
+  ...overrides,
+});
+
+/**
+ * 입고 진행(계약 대기) — 한 발주의 LOT 줄. 내부 번호는 7500대(입하 전표) · 7600대(입하 라인) · 7700대(LOT) ·
+ * 7800대(검사 의뢰·입고 전표·적치 작업)다. LOT 번호는 합성값이고 「|」 구분자를 그대로 둔다(C-16 예외를 재는 데 쓴다).
+ */
+const BASE_LOT: InboundLotProgress = {
+  purchaseOrderLineId: 7301,
+  inboundReceiptId: 7501,
+  inboundReceiptNo: 'SAMPLE-IR-0001',
+  inboundReceiptLineId: 7601,
+  receiptDatetime: '2026-10-20T09:30:00+09:00',
+  lotId: 7701,
+  lotNo: 'SAMPLE|LOT|0001',
+  receivedQty: 60,
+  receivableQty: 60,
+  uomCode: 'SAMPLE-EA',
+  lotStatusCode: 'INSPECTION_PENDING',
+  stageCode: 'INSPECTION_REQUESTED',
+  nextActionCode: null,
+  blockedReasons: [],
+  inspection: {
+    inspectionRequestId: 7801,
+    inspectionRequestNo: 'SAMPLE-IQ-0001',
+    statusCode: 'REQUESTED',
+    requestedAt: '2026-10-20T09:30:00+09:00',
+    judgmentCode: null,
+    judgedAt: null,
+  },
+  goodsReceipt: null,
+  putaway: null,
+};
+
+export const lotProgress = (overrides: Partial<InboundLotProgress> = {}): InboundLotProgress => ({
+  ...BASE_LOT,
+  ...overrides,
+});
+
+/**
+ * 발주 7101 의 LOT 다섯 — 라인 7301 아래 넷(검사 의뢰 전 · 검사 대기 · 입고 대기 · 완료), 라인 7302 아래 하나(보류).
+ * 입하 일시가 뒤섞여 있어 정렬(입하 일시 → LOT 번호)을 함께 잰다.
+ */
+export const progressFixtures: InboundLotProgress[] = [
+  lotProgress({
+    lotId: 7703,
+    lotNo: 'SAMPLE|LOT|0003',
+    inboundReceiptLineId: 7603,
+    receiptDatetime: '2026-10-21T10:00:00+09:00',
+    receivedQty: 20,
+    receivableQty: 20,
+    lotStatusCode: 'NORMAL',
+    stageCode: 'RECEIPT_READY',
+    nextActionCode: 'POST_RECEIPT',
+    inspection: {
+      inspectionRequestId: 7803,
+      inspectionRequestNo: 'SAMPLE-IQ-0003',
+      statusCode: 'COMPLETED',
+      requestedAt: '2026-10-21T10:00:00+09:00',
+      judgmentCode: 'ACCEPTED',
+      judgedAt: '2026-10-21T15:00:00+09:00',
+    },
+  }),
+  lotProgress(),
+  lotProgress({
+    lotId: 7702,
+    lotNo: 'SAMPLE|LOT|0002',
+    inboundReceiptLineId: 7602,
+    receiptDatetime: '2026-10-20T09:30:00+09:00',
+    receivedQty: 10,
+    receivableQty: 10,
+    lotStatusCode: 'NORMAL',
+    stageCode: 'INSPECTION_REQUIRED',
+    nextActionCode: 'REQUEST_IQC',
+    inspection: null,
+  }),
+  lotProgress({
+    lotId: 7704,
+    lotNo: 'SAMPLE|LOT|0004',
+    inboundReceiptLineId: 7604,
+    receiptDatetime: '2026-10-19T08:00:00+09:00',
+    receivedQty: 10,
+    receivableQty: 0,
+    lotStatusCode: 'NORMAL',
+    stageCode: 'COMPLETED',
+    nextActionCode: null,
+    inspection: null,
+    goodsReceipt: {
+      goodsReceiptId: 7811,
+      goodsReceiptNo: 'SAMPLE-GR-0001',
+      receiptDatetime: '2026-10-19T11:00:00+09:00',
+      statusCode: 'POSTED',
+    },
+    putaway: {
+      putawayTaskId: 7821,
+      putawayTaskNo: 'SAMPLE-PT-0001',
+      statusCode: 'COMPLETED',
+      locationCode: 'SAMPLE-A-01',
+      locationName: '합성 위치 가',
+      completedAt: '2026-10-19T13:00:00+09:00',
+    },
+  }),
+  lotProgress({
+    purchaseOrderLineId: 7302,
+    lotId: 7705,
+    lotNo: 'SAMPLE|LOT|0005',
+    inboundReceiptLineId: 7605,
+    receiptDatetime: '2026-10-20T14:00:00+09:00',
+    receivedQty: 20,
+    receivableQty: 20,
+    lotStatusCode: 'INSPECTION_PENDING',
+    stageCode: 'INSPECTION_HELD',
+    nextActionCode: null,
+    blockedReasons: [{ code: 'SAMPLE-HOLD', name: '합성 보류 사유' }],
+    inspection: {
+      inspectionRequestId: 7805,
+      inspectionRequestNo: 'SAMPLE-IQ-0005',
+      statusCode: 'IN_PROGRESS',
+      requestedAt: '2026-10-20T14:00:00+09:00',
+      judgmentCode: 'HELD',
+      judgedAt: '2026-10-21T09:00:00+09:00',
+    },
+  }),
+];
+
+/** 탭 줄 칩의 묶음 수 — 검사 대기 4 · 보류 2 · 입고 대기 5 · 적치 대기 3. */
+export const stageCountsFixture: InboundStageCounts = {
+  INSPECTION: 4,
+  HELD: 2,
+  RECEIPT: 5,
+  PUTAWAY: 3,
+};

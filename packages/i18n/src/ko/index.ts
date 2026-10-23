@@ -59,6 +59,8 @@ import { putawayRule } from './putaway-rule';
 import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
 import { alarmRecipientSettings } from './alarm-recipient-settings';
+import { zaloConnection } from './zalo-connection';
+import { dispatchHistory } from './dispatch-history';
 import { iqcInspection } from './iqc-inspection';
 import { pqcInspection } from './pqc-inspection';
 import { productionResult } from './production-result';
@@ -139,7 +141,14 @@ import { workerAssignment } from './worker-assignment';
 import { popLocationLabel } from './pop-location-label';
 import { inspectionDocuments } from './inspection-documents';
 import { inspectionHistory } from './inspection-history';
+import { fourMInputs } from './four-m-inputs';
+import { lotGenealogy } from './lot-genealogy';
 import { pqcInspectionRegister } from './pqc-inspection-register';
+import { inspectionLevel } from './inspection-level';
+import { inspectionSheet } from './inspection-sheet';
+import { inspectionSheetPrint } from './inspection-sheet-print';
+import { inspectionSheetTemplate } from './inspection-sheet-template';
+import { popInspectionSheet } from './pop-inspection-sheet';
 import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
 import { popMaterialLotLabel } from './pop-material-lot-label';
@@ -157,6 +166,8 @@ import { lotStatusHistory } from './lot-status-history';
 import { inspectionResultInsights } from './inspection-result-insights';
 import { productDisposalRequest } from './product-disposal-request';
 import { productionPlan } from './production-plan';
+import { screenPatterns } from './screen-patterns';
+import { erpWorkOrderFlow } from './erp-work-order-flow';
 
 export const ko = {
   popChrome,
@@ -204,6 +215,8 @@ export const ko = {
   documentProgress,
   notificationCenter,
   alarmRecipientSettings,
+  zaloConnection,
+  dispatchHistory,
   iqcInspection,
   pqcInspection,
   productionResult,
@@ -281,7 +294,14 @@ export const ko = {
   popLocationLabel,
   inspectionDocuments,
   inspectionHistory,
+  fourMInputs,
+  lotGenealogy,
   pqcInspectionRegister,
+  inspectionLevel,
+  inspectionSheet,
+  inspectionSheetPrint,
+  inspectionSheetTemplate,
+  popInspectionSheet,
   materialDefect,
   popOqcInspection,
   popMaterialLotLabel,
@@ -300,6 +320,8 @@ export const ko = {
   physicalCount,
   productDisposalRequest,
   productionPlan,
+  screenPatterns,
+  erpWorkOrderFlow,
   lotStatusHistory,
   inspectionResultInsights,
 } as const;

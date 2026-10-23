@@ -1,3 +1,4 @@
+import { named } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -46,7 +47,7 @@ export const useProductionOrderItemNames = (
       if (result.isPending) return { itemId, status: 'loading', label: null };
       if (result.data !== undefined) {
         const { itemCode, itemName } = result.data.item;
-        return { itemId, status: 'named', label: `${itemCode} · ${itemName}` };
+        return { itemId, status: 'named', label: named(itemName, itemCode) };
       }
       return { itemId, status: isNotFound(result.error) ? 'unknown' : 'failed', label: null };
     }),
@@ -75,4 +76,33 @@ export const useItemDefaultLotSize = (
   if (detail === undefined || detail.baseUomId !== uomId) return null;
   const size = detail.defaultProductionLotSize ?? null;
   return size !== null && size > 0 ? size : null;
+};
+
+export interface ItemCodeName {
+  itemCode: string;
+  itemName: string;
+}
+
+/**
+ * 품목 코드와 이름을 따로 돌려준다. 표에서 코드 열과 이름 열을 나누기 위해서다(C-10).
+ * 같은 품목 상세 캐시를 쓰므로 화면에 선 품목 수만큼만 부른다.
+ */
+export const useItemCodeNames = (itemIds: readonly number[]): Map<number, ItemCodeName> => {
+  const { client } = useApiClient();
+  const uniqueIds = [...new Set(itemIds)];
+  const results = useQueries({
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: productionOrderItemKeys.detail(itemId),
+      queryFn: () =>
+        runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } })),
+    })),
+  });
+  const map = new Map<number, ItemCodeName>();
+  results.forEach((result, index) => {
+    const itemId = uniqueIds[index];
+    if (itemId !== undefined && result.data !== undefined) {
+      map.set(itemId, { itemCode: result.data.item.itemCode, itemName: result.data.item.itemName });
+    }
+  });
+  return map;
 };

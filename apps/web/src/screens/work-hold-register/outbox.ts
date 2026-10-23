@@ -54,11 +54,7 @@ import type {
 type Client = ApiClient['client'];
 
 /** 큐에 담긴 한 건이 **어느 경로로 나가는가.** */
-export type OutboxKind =
-  | 'work-order-hold'
-  | 'work-order-resume'
-  | 'session-event'
-  | 'session-end';
+export type OutboxKind = 'work-order-hold' | 'work-order-resume' | 'session-event' | 'session-end';
 
 /** 큐에 담긴 한 건. */
 export interface OutboxEntry {
@@ -376,6 +372,17 @@ export const useWorkHoldOutbox = (): Outbox => {
   /** 항목별 자동 재전송 시도 횟수. 메모리에만 둔다 — 새로 뜨면 다시 세는 것이 맞다. */
   const attempts = useRef(new Map<string, number>());
   const [isStalled, setIsStalled] = useState(false);
+  /**
+   * 거부로 멈췄는가. 거부된 묶음은 이미 내렸으므로, 작업자가 고쳐서 다시 등록하거나 거부를 닫으면
+   * 큐를 다시 돌린다 — 통신 실패로 멈춘 것(사람이 [다시 보내기]로 푼다)과 다르다.
+   */
+  const stalledByRejection = useRef(false);
+  const resumeAfterRejection = useCallback((): void => {
+    if (!stalledByRejection.current) return;
+    stalledByRejection.current = false;
+    attempts.current.clear();
+    setIsStalled(false);
+  }, []);
 
   useEffect(() => {
     const goOnline = (): void => {
@@ -456,6 +463,7 @@ export const useWorkHoldOutbox = (): Outbox => {
            */
           setRejection(toApiError(error));
           setIsStalled(true);
+          stalledByRejection.current = true;
           dropGroup = true;
         }
 
@@ -484,31 +492,37 @@ export const useWorkHoldOutbox = (): Outbox => {
    * StrictMode 는 그것을 두 번 부른다 — 안에서 키를 만들면 두 키가 생기고 저장도 두 번 돈다.
    * 키는 밖에서 한 번 만들고, 저장은 갱신이 끝난 뒤 효과가 한다.
    */
-  const enqueueGroup = useCallback((drafts: readonly OutboxDraft[]): void => {
-    if (drafts.length === 0) return;
+  const enqueueGroup = useCallback(
+    (drafts: readonly OutboxDraft[]): void => {
+      if (drafts.length === 0) return;
 
-    const groupId = createLocalKey();
-    const queued = drafts.map((draft) => ({
-      idempotencyKey: createIdempotencyKey(),
-      groupId,
-      ...draft,
-    }));
+      const groupId = createLocalKey();
+      const queued = drafts.map((draft) => ({
+        idempotencyKey: createIdempotencyKey(),
+        groupId,
+        ...draft,
+      }));
 
-    setRejection(null);
-    setEntries((prev) => {
-      const next = [...prev, ...queued];
-      pendingWrite.current = next;
+      setRejection(null);
+      resumeAfterRejection();
+      setEntries((prev) => {
+        const next = [...prev, ...queued];
+        pendingWrite.current = next;
 
-      return next;
-    });
-  }, []);
+        return next;
+      });
+    },
+    [resumeAfterRejection],
+  );
 
   const clearRejection = useCallback((): void => {
     setRejection(null);
-  }, []);
+    resumeAfterRejection();
+  }, [resumeAfterRejection]);
 
   const retryNow = useCallback((): void => {
     attempts.current.clear();
+    stalledByRejection.current = false;
     setIsStalled(false);
     setRetryTick((tick) => tick + 1);
   }, []);

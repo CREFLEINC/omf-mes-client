@@ -83,7 +83,7 @@ export const workOrderResourceKeys = {
     ['work-order-resources', 'equipment', equipmentId] as const,
   shifts: (plantId: number | null, page: number) =>
     ['work-order-resources', 'shifts', plantId, page] as const,
-  warehouses: ['work-order-resources', 'warehouses'] as const,
+  warehouses: (plantId: number | null) => ['work-order-resources', 'warehouses', plantId] as const,
   locations: (warehouseId: number) => ['work-order-resources', 'locations', warehouseId] as const,
 };
 
@@ -282,6 +282,35 @@ export const useWorkOrderShifts = (
 };
 
 /**
+ * 그 공장의 창고 — 서버가 공장으로 거른다(`plantId` — 서버 선행 P-109 · omf-mes-server#809).
+ * 공장을 모르면 부르지 않는다. 기본 위치 칸과 위치 고르기 팝업이 한 캐시를 나눠 쓴다.
+ *
+ * ⚠ P-109 전 서버는 `plantId` 를 무시하고 모든 공장의 창고를 낸다. 쓰는 쪽이 `plantId` 로 한 번 더
+ * 거르는 것은 그대로 둔다 — 다른 공장 위치가 W/O·라인 기본 위치로 들어가면 안 된다.
+ */
+export const useWorkOrderWarehouses = (
+  plantId: number | null,
+): UseQueryResult<{ items: Warehouse[]; page: PageMeta }> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderResourceKeys.warehouses(plantId),
+    enabled: plantId !== null,
+    queryFn: () => {
+      if (plantId === null) {
+        throw new Error('A plant is required to load warehouses.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/warehouses', {
+          params: { query: { plantId, includeInactive: true, size: 200 } },
+        }),
+      );
+    },
+  });
+};
+
+/**
  * 작업지시는 기본 위치의 창고를 별도로 갖지 않는다. Location API가 창고를 필수로 받으므로
  * 실제 창고별 목록을 합쳐 선택한다. 창고 ID를 화면이나 시드에 고정하지 않는다.
  *
@@ -290,13 +319,7 @@ export const useWorkOrderShifts = (
  */
 export const useWorkOrderLocations = (plantId: number | null): WorkOrderLocationLookup => {
   const { client } = useApiClient();
-  const warehouses = useQuery({
-    queryKey: workOrderResourceKeys.warehouses,
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/warehouses', { params: { query: { includeInactive: true, size: 200 } } }),
-      ),
-  });
+  const warehouses = useWorkOrderWarehouses(plantId);
   const activeWarehouseIds =
     warehouses.data?.items
       .filter(
@@ -336,7 +359,9 @@ export const useWorkOrderLocations = (plantId: number | null): WorkOrderLocation
       locations.some(
         (query) => query.data !== undefined && query.data.page.total > query.data.items.length,
       ),
-    isPending: warehouses.isPending || locations.some((query) => query.isPending),
+    /* 공장이 없으면 창고 조회가 꺼진 채 pending 이다 — 기다릴 것이 없으니 pending 으로 내지 않는다. */
+    isPending:
+      plantId !== null && (warehouses.isPending || locations.some((query) => query.isPending)),
     isError: warehouses.isError || locations.some((query) => query.isError),
   };
 };

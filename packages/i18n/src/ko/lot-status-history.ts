@@ -157,6 +157,8 @@ export const lotStatusHistory = {
       C19: '처분 정상',
       C20: '재고 재등록',
       C25: '특채 적용',
+      C26: 'PQC 생략',
+      C27: 'OQC 생략',
     },
     /** 최초 등록 전이는 이전 상태가 없다. */
     initialStatus: '최초',
@@ -198,6 +200,7 @@ export const lotStatusHistory = {
       initialQty: '초기 수량',
       expiryDate: '유효기한',
       manufacturedAt: '제조 시각',
+      fourMChange: '4M 변경품',
     },
     transition: '판정·전이 처리',
     /** 화면 코드 대신 메뉴에 보이는 화면 이름으로 안내한다(사용자 지시 2026-09-19). */

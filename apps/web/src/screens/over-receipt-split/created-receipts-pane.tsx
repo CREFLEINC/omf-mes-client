@@ -1,110 +1,65 @@
-import { Chip } from '@crefle/web-ui';
+import { Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { Link } from 'react-router';
 
-import type { CreatedReceiptView } from './types';
+import type { CreatedResult } from './types';
 
 const t = messages.overReceiptSplit;
 
-/**
- * 다음 화면(W-01-11 신규 P/O 등록)으로 가는 주소.
- *
- * **질의 열쇠 `receipt`는 받는 쪽이 읽는 이름이다** — 그쪽 화면은 진입 맥락을 주소에서만 읽으므로
- * (상태로 넘기면 새로고침·뒤로가기·공유에서 사라진다) 이 열쇠가 두 화면 사이의 계약이다.
- * 주소가 라우트 표에 실제로 있는지는 `routes/index.test.tsx`가 잇는다 — 한쪽만 고치면
- * 죽은 링크가 남는데, 이 슬라이스의 시험도 그쪽 화면의 시험도 그 어긋남을 보지 못한다.
- *
- * **내부 번호를 주소에 싣는 것은 표시가 아니다.** 계약이 입하 상세를 내부 번호로 받으므로
- * 업무 번호로는 조회 경로를 만들 수 없다 — 사람이 읽는 자리에는 넣지 않는다(#44).
- */
-export const poRegisterEntryPath = (inboundReceiptId: number): string =>
-  `/logistics/po-register?receipt=${String(inboundReceiptId)}`;
+/** 전표 상태 — 코드 사전(`LOGISTICS_DOCUMENT_STATUS`)의 네 값은 번역하고, 모르는 코드는 그대로. */
+export const docStatusLabel = (code: string): string => t.values.docStatus[code] ?? code;
 
 export interface CreatedReceiptsPaneProps {
-  /** 만들어진 전표. 갈래에 따라 1건 또는 2건이다 */
-  receipts: readonly CreatedReceiptView[];
-  /**
-   * 이 등록에 **초과분이 실렸는가**. 다음 화면(신규 P/O 등록)으로 가는 길을 세울지 가른다.
-   *
-   * **갈래(`mode`)를 받지 않는다** — 받으면 이 구획이 「어느 갈래로 등록했는지」를 표시 값으로
-   * 쓸 길이 생기고, 그것은 「어느 전표가 초과분인지」를 지어내는 것과 한 걸음 차이다.
-   */
-  hasExcess: boolean;
+  result: CreatedResult;
+  /** 「초과분 발주 연결」 — 방금 만든 전표를 앞에 세운 연결 창으로 간다(같은 「입하 예정 조회」 안이다). */
+  onOpenExcess: (inboundReceiptNo: string) => void;
 }
 
 /**
- * 등록 결과 — **만들어진 전표 번호**를 낸다.
+ * 등록 결과. **전표 번호는 사용자 대면 업무 번호라 낸다.** 사라지는 알림으로 내지 않는다 —
+ * 나중에 조회할 번호를 몇 초 뒤에 없애면 적어 둘 틈이 없다.
  *
- * **건수를 함께 밝힌다.** 두 건이 만들어졌다는 것이 이 화면의 요점인데 번호만 나열하면
- * 두 줄이 한 전표의 두 표기처럼 읽힐 수 있다.
- *
- * **어느 건이 정량분이고 어느 건이 초과분인지 응답이 알려 주지 않는다.** 배열 순서로
- * 추측해 라벨을 붙이면 틀린 라벨이 되돌릴 수 없는 전표에 붙는다 — 모른다는 사실을 밝힌다.
- *
- * **내부 번호를 내지 않는다**(#44). 이제는 받지만 **링크 주소에만** 싣는다 — 사람이 읽는
- * 자리(전표번호·상태·링크 이름)에는 넣지 않는다. `inboundReceiptNo`는 사용자가 나중에 이
- * 전표를 찾을 때 쓰는 업무 번호라 내는 것이 맞다 — 이 구분이 이 화면에서 처음 갈리는 자리다.
- *
- * **다음 화면으로 가는 길은 초과분이 실린 등록에만 선다**(계획 D-14 ② 개정 · 리뷰 R-33).
- * 정량분만 저장한 갈래의 전표는 **이미 발주가 있는 수량**이라 거기서 P/O를 또 만들면 중복
- * 발주가 되고, 취소는 승인을 타서 화면이 되돌릴 수 없다. 그 갈래에서는 길을 아예 세우지
- * 않는다 — 도착 화면의 배너로 막는 형태는 이 화면이 사이드바를 버리며 함께 버린 대안이다.
- *
- * **초과분이 실린 갈래 안에서는 전표마다 선다.** 두 건이 만들어졌을 때 하나로 합치면 어느
- * 전표를 정산하는지 화면이 지어내야 하는데, 응답은 그것을 알려 주지 않는다 — 위와 같은 사정이다.
- *
- * **버튼이 아니라 링크로 둔다.** 주소를 갖는 이동이라 새 탭·주소 복사가 그대로 되고,
- * 히스토리가 한 칸만 늘어 뒤로가기 한 번으로 이 결과 화면에 돌아온다.
- *
- * **사라지는 알림으로 내지 않는다.** 이 번호는 적어 두거나 옮겨 적을 값이라
- * 몇 초 뒤에 없어지면 안 된다 — 저장 성공을 토스트로 내는 다른 화면과 갈리는 자리다.
+ * 초과 몫을 실었으면 **그 몫이 아직 P/O 에 들어가지 않았다는 사실과 연결할 자리**를 함께 낸다 —
+ * 추가 P/O 는 ERP 가 만들고, 생기면 사람이 연결한다(서버 장부 P-100).
  */
-export const CreatedReceiptsPane = ({ receipts, hasExcess }: CreatedReceiptsPaneProps) => (
-  /* 사용자가 부르지 않은 시점에 나타나는 내용이라 살아 있는 영역으로 알린다. */
-  <div role="status" aria-label={t.panes.result}>
-    <p>{t.result.count(receipts.length)}</p>
+export const CreatedReceiptsPane = ({ result, onOpenExcess }: CreatedReceiptsPaneProps) => {
+  const first = result.receipts[0];
 
-    {/*
-     * **이름 하나에 값 하나로 짝을 맞춘다.** `<dt>` 하나 뒤의 `<dd>`는 전부 그 이름의 값이라,
-     * 상태 칩을 전표번호 아래에 그대로 두면 보조기술이 「전표번호: IR-…, SAMPLE_…」로 읽는다 —
-     * 이름 없는 값이 아니라 **틀린 이름이 붙은 값**이 된다.
-     */}
-    <dl className="filter-bar">
-      {receipts.map((created) => (
-        <div className="field-cell" key={created.inboundReceiptNo}>
-          <dt className="field-label">{t.result.receiptNo}</dt>
-          <dd>{created.inboundReceiptNo}</dd>
-          <dt className="field-label">{t.result.status}</dt>
-          <dd>
-            {/* 상태 코드는 값으로 분기하지 않고 그대로 보인다(공유계약 G-2). */}
+  return (
+    /* 사용자가 부르지 않은 시점에 나타나는 내용이라 살아 있는 영역으로 알린다. */
+    <div role="status" aria-label={t.panes.result} className="ors-result">
+      <p className="ors-result-lead">{t.result.count(result.receipts.length)}</p>
+
+      <ul className="ors-result-list">
+        {result.receipts.map((created) => (
+          <li className="ors-result-item" key={created.inboundReceiptNo}>
+            <span className="ors-result-no">{created.inboundReceiptNo}</span>
             <Chip variant="status" size="sm">
-              {created.statusCode}
+              {docStatusLabel(created.statusCode)}
             </Chip>
-          </dd>
-        </div>
-      ))}
-    </dl>
-
-    <p className="field-note">{t.result.unlabeled}</p>
-
-    {/*
-     * **이름-값 목록 밖에 둔다.** 이동은 이 전표가 **가진 값**이 아니라 그 전표로 하는 일이라,
-     * `<dd>`로 넣으면 보조기술이 「상태: …」의 값으로 읽고 `<dl>` 안에 그냥 두면 이름 없는
-     * 조각이 목록에 섞인다. 그래서 목록을 닫고 **자기 줄**에 세운다
-     * (`.filter-bar` — 이 파일 위쪽 `<dl>`과 같은 가로 줄). 이 배치는 감지기가 고정한다 —
-     * 「목록 안에는 링크가 0건」이 그 잣대다(`created-receipts-pane.test.tsx`).
-     *
-     * **어느 전표의 것인지는 보이는 글자가 밝힌다.** 두 건이면 링크도 둘이라 글자가 같으면
-     * 가릴 수 없고, 그때 고르는 것은 사용자 몫이다 — 화면이 어느 쪽이 초과분인지 지어내지 않는다.
-     */}
-    {hasExcess && (
-      <div className="filter-bar">
-        {receipts.map((created) => (
-          <Link key={created.inboundReceiptNo} to={poRegisterEntryPath(created.inboundReceiptId)}>
-            {t.result.registerPo(created.inboundReceiptNo)}
-          </Link>
+          </li>
         ))}
-      </div>
-    )}
-  </div>
-);
+      </ul>
+
+      {result.excessLines.length > 0 && first !== undefined && (
+        <div className="ors-result-excess">
+          <p>
+            {t.result.excessWaiting(
+              result.excessLines
+                .map((line) => t.result.excessLine(line.lineNo, line.excessQty.toLocaleString()))
+                .join(' · '),
+            )}
+          </p>
+          <Button
+            variant="outlined"
+            size="sm"
+            onClick={() => {
+              onOpenExcess(first.inboundReceiptNo);
+            }}
+          >
+            {t.result.goLinkExcess}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};

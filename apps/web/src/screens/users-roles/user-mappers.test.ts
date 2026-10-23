@@ -23,6 +23,7 @@ const filled: UserFormValues = {
   userName: '합성 사용자 A',
   departmentId: '3001',
   email: 'syn.user.a@example.invalid',
+  phoneNumber: '',
   statusCode: 'SYN-STATUS-A',
 };
 
@@ -50,6 +51,14 @@ describe('appUserToFormValues', () => {
 
     expect(values.departmentId).toBe('');
     expect(values.email).toBe('');
+  });
+
+  it('서버의 표준형 휴대폰 번호를 국내 표기로 옮기고, 칸이 없으면 빈 값이다', () => {
+    expect(
+      appUserToFormValues({ ...filledUserFixture, phoneNumber: '84912345678' } as never)
+        .phoneNumber,
+    ).toBe('0912 345 678');
+    expect(appUserToFormValues(filledUserFixture).phoneNumber).toBe('');
   });
 
   /** 값 목록이 미정이라 화면이 고른 적이 없다 — 받은 값을 그대로 들고 있어야 되돌려 실을 수 있다. */
@@ -140,6 +149,16 @@ describe('toAppUserUpdate', () => {
     expect(Object.keys(body)).toContain('email');
   });
 
+  /* 001 W-CO-02 — 생략은 「유지」라 비운 칸을 생략하면 삭제가 서버에 닿지 않는다. */
+  it('휴대폰 번호는 표준형으로 싣고, 비우면 널을 명시한다', () => {
+    expect(toAppUserUpdate({ ...filled, phoneNumber: '0912 345 678' }).phoneNumber).toBe(
+      '84912345678',
+    );
+    const body = toAppUserUpdate({ ...filled, phoneNumber: '' });
+    expect(Object.keys(body)).toContain('phoneNumber');
+    expect(body.phoneNumber).toBeNull();
+  });
+
   it('부서 번호를 숫자로 옮긴다 — 계약이 정수를 받는다', () => {
     expect(toAppUserUpdate(filled).departmentId).toBe(3001);
   });
@@ -219,6 +238,13 @@ describe('toAppUserCreate', () => {
 
     expect(body.departmentId).toBeNull();
     expect(body.email).toBeNull();
+  });
+
+  it('휴대폰 번호를 표준형으로 싣는다', () => {
+    expect(toAppUserCreate({ ...filled, phoneNumber: '+84 912-345-678' }).phoneNumber).toBe(
+      '84912345678',
+    );
+    expect(toAppUserCreate(filled).phoneNumber).toBeNull();
   });
 
   it('로그인 ID의 앞뒤 공백을 턴다', () => {

@@ -37,6 +37,20 @@ interface QuantityStat {
 const displayQuantity = (value: number | undefined): string =>
   value === undefined ? t.values.notConfirmed : String(value);
 
+/*
+ * 서버의 차이는 「지시 − 양품」이라 미달이 양수, 초과가 음수다. 부호를 그대로 보이면 읽는 사람이
+ * 음수를 수량으로 읽는다 — 미달·초과를 이름으로 가르고 값은 크기만 보인다.
+ */
+const varianceStat = (varianceQty: number | undefined): QuantityStat => {
+  if (varianceQty === undefined || varianceQty === 0) {
+    return { key: 'varianceQty', label: t.fields.varianceQty, value: varianceQty };
+  }
+
+  return varianceQty > 0
+    ? { key: 'varianceQty', label: t.fields.shortfallQty, value: varianceQty }
+    : { key: 'varianceQty', label: t.fields.overageQty, value: -varianceQty };
+};
+
 const quantityUnit = (unitLabel: string | null): string =>
   unitLabel === null || unitLabel.trim() === '' ? t.values.unitNotConfirmed : unitLabel;
 
@@ -80,7 +94,7 @@ export const WorkOrderCloseDetailSummaryPane = ({
           { key: 'holdQty', label: t.fields.holdQty, value: detail.progress.holdQty },
           { key: 'scrapQty', label: t.fields.scrapQty, value: detail.progress.scrapQty },
           { key: 'reworkQty', label: t.fields.reworkQty, value: detail.progress.reworkQty },
-          { key: 'varianceQty', label: t.fields.varianceQty, value: detail.progress.varianceQty },
+          varianceStat(detail.progress.varianceQty),
         ];
   const preIssuedLotStats: SummaryStat[] =
     detail.preIssuedLots === null

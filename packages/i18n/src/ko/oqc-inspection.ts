@@ -9,8 +9,8 @@
  */
 export const oqcInspection = {
   /* 화면 스펙 §1 의 이름 그대로다 — 사이드바 항목과 같은 글자여야 길을 잃지 않는다. */
-  title: 'OQC 출하검사 판정',
-  /** 머리는 관리웹 사이드바 묶음을 따른다 — 「품질 관리 > OQC 출하검사 판정」. */
+  title: 'OQC (출하검사) 조회·판정',
+  /** 머리는 관리웹 사이드바 묶음을 따른다 — 「품질 관리 > OQC (출하검사) 조회·판정」. */
   breadcrumbRoot: '품질 관리',
 
   queue: {
@@ -41,7 +41,9 @@ export const oqcInspection = {
      * ⛔ **기간을 가리키지 않는다** — 이 화면에 기간 조건이 없다. 없는 컨트롤을 넓히라고 하면
      * 사용자는 찾을 수 없는 것을 찾는다.
      */
-    empty: '조건에 맞는 검사 의뢰가 없습니다. 조건을 넓혀 보세요.',
+    empty: '조회된 검사 의뢰가 없습니다.',
+    /** 빈 목록 아래 안내 — 제목과 함께 `EmptyState` 로 보인다(omf-all-around#171). */
+    emptyHint: '검색 조건을 변경하거나 필터를 초기화하세요.',
     /**
      * 조회 자체가 실패했다. ⛔ **조건을 넓히라고 말하지 않는다** — 조건은 멀쩡한데 요청이
      * 실패한 것이라, 넓히라고 하면 사용자가 조건을 넓히다가 결국 못 찾는다.
@@ -194,10 +196,20 @@ export const oqcInspection = {
     blockedByConfirmed: '판정 저장 — 이미 확정된 회차입니다. 재검사로 새 회차를 쌓으세요.',
     blockedByDraftElsewhere:
       '판정 저장 — 다른 곳에서 작성 중인 회차입니다. 재검사로 새 회차를 쌓으세요.',
-    blockedByTotals: '판정 저장 — 수량 합계가 검사수량과 맞아야 저장할 수 있습니다.',
+    blockedByTotals: '수량 합계가 검사 수량과 일치해야 합니다.',
     blockedByJudgmentOptions:
       '판정 저장 — 판정 값 목록이 준비되지 않아 저장할 수 없습니다. 담당자에게 문의하세요.',
-    blockedByJudgment: '판정 저장 — 종합 판정을 골라야 저장할 수 있습니다.',
+    blockedByJudgment: '최종 판정을 선택해주세요.',
+    /** 합격판정개수 기준 자동 판정(omf-all-around#126) — 기준에 합격판정개수가 있을 때만 선다. IQC(#125)와 같은 규칙이다. */
+    judgmentChange: {
+      basis: (acceptanceNumber: number): string =>
+        `합격판정개수 ${String(acceptanceNumber)} 기준 자동 판정`,
+      expected: (judgment: string): string => `자동 판정: ${judgment}`,
+      reason: '판정 변경 사유',
+      reasonPlaceholder: '자동 판정과 다르게 저장하는 이유를 입력해 주세요.',
+      required: '판정 저장 — 자동 판정과 다른 판정은 변경 사유를 입력해야 저장할 수 있습니다.',
+      reasonMissing: '판정 변경 사유를 입력하세요.',
+    },
 
     /*
      * 재검사 — ⭐ 앞 회차를 고치는 것이 «아니라» 새 회차를 쌓는 일이라는 사실을 문면이 먼저
@@ -230,12 +242,6 @@ export const oqcInspection = {
    */
   transition: {
     title: '확정하면 LOT 상태가 바뀝니다',
-    /**
-     * 대상 LOT 이 없는 의뢰 — 서버가 LOT 전이 없이 확정만 한다(`inspection-confirm.service.ts`
-     * moveTargetLot). LOT 이 바뀐다고 말하면 거짓이다. POP P-04-06 과 같은 말이다.
-     */
-    noLotTitle: '확정 전에 확인하세요',
-    noLot: '대상 LOT 이 없어 LOT 상태는 바뀌지 않습니다.',
     /** ① 대상 규모를 숫자로 — 지금 친 값을 그대로 되읽는다. */
     quantities: (accepted: string, rejected: string, held: string): string =>
       `합격 ${accepted} · 불합격 ${rejected} · 보류 ${held}`,
@@ -243,10 +249,21 @@ export const oqcInspection = {
      * 아는 판정일 때만 방향을 말한다. ⛔ 모르는 코드에 방향을 지어내지 않는다.
      * ⭐ 상태 이름은 서버 전이표(`core/document-state/transitions.ts` C4·C5·C6)와 같다 — 합격 → 정상
      *    (다른 보류가 남아 있으면 그대로) · 불합격 → 불량 · 보류 → 검사 대기. POP P-04-06 과 같은 말이다.
+     *    대상 LOT 이 있는 의뢰(`lotId`)의 말이다.
      */
     directionRelease: "확정하면 이 LOT 이 '정상' 상태가 됩니다(다른 보류가 없을 때).",
     directionHold: "확정하면 이 LOT 이 '불량' 상태가 됩니다.",
     directionPending: "확정하면 이 LOT 이 '검사 대기' 상태가 됩니다.",
+    /**
+     * 대상 LOT 이 없는 의뢰 = 출하작업지시(헤더) OQC — 서버가 그 품목 검사 대상 라인이 집은(피킹) LOT 에
+     * 판정을 남긴다(`inspection-confirm.service.ts` movePickedOqcLots · omf-all-around#119 · 서버 P-83).
+     */
+    pickedDirectionRelease: '확정하면 이 LOT 이 출하할 수 있는 상태로 풀립니다.',
+    /** 불합격 — 서버가 피킹 LOT 을 불량(C6)으로 옮긴다(omf-all-around#119 D6-c · 서버 P-83). */
+    pickedDirectionHold: '확정하면 이 출하작업지시가 집은 LOT 이 불량 상태가 됩니다.',
+    /** 보류 — LOT 을 옮기지 않는다(omf-all-around#119 · 2026-10-20 결정 (A) · 서버 P-83). 출하는 관문이 막는다. */
+    pickedDirectionPending:
+      '보류는 LOT 상태를 바꾸지 않습니다. 이 출하작업지시는 판정이 끝날 때까지 출하할 수 없습니다.',
     /** 모르는 판정 코드 — 방향을 빼고 사실만 남긴다. */
     directionUnknown: '확정하면 LOT 상태가 바뀝니다.',
     /** ② 다른 화면에 미치는 영향. ⚠ 건수를 쓰지 않는다 — 셀 자리가 이 화면에 없다. */
@@ -313,5 +330,77 @@ export const oqcInspection = {
   save: {
     duplicateRound: '이미 같은 회차가 저장돼 있습니다. 최신 내용을 불러온 뒤 확인하세요.',
     invalidState: '판정은 수정할 수 없습니다 — 재검사로 진행하세요.',
+  },
+
+  /**
+   * OQC 생략(omf-all-around#119 · 서버 선행 P-83) — 요청 → 「특채·한도승인 승인 처리」 결재 → 여기서 실행.
+   * ⭐ 단위는 출하작업지시 하나다 — 실행하면 그 출하작업지시의 열린 OQC 의뢰가 함께 생략된다.
+   */
+  skip: {
+    heading: 'OQC 생략',
+    help: '검사를 하지 않고 출하하려면 생략을 요청합니다. 「특채·한도승인 승인 처리」에서 결재한 뒤 여기서 실행합니다. 실행하면 이 출하작업지시의 열린 OQC 의뢰가 모두 생략되고 출하검사가 통과로 바뀝니다.',
+    reason: '생략 사유',
+    reasonRequired: '생략 사유를 입력하세요.',
+    request: 'OQC 생략 요청',
+    requesting: '요청하는 중…',
+    execute: 'OQC 생략 실행',
+    executing: '실행하는 중…',
+    requested: 'OQC 생략을 요청했습니다. 결재가 끝나면 여기서 실행하세요.',
+    pending: '결재가 아직 진행 중입니다.',
+    approved: '생략이 승인됐습니다. 실행하면 이 출하작업지시의 OQC 가 생략됩니다.',
+    rejected: '직전 생략 요청이 반려됐습니다. 다시 요청할 수 있습니다.',
+    executed: 'OQC 를 생략했습니다. 출하검사가 통과로 바뀌었습니다.',
+    skipped: '이 의뢰는 OQC 생략으로 닫혔습니다.',
+    loading: '생략 결재 상태를 불러오는 중입니다.',
+    loadFailed: '생략 결재 상태를 불러오지 못했습니다.',
+  },
+  /**
+   * 시리얼 OQC(omf-all-around#68 · 서버 선행 P-101) — 검사한 시리얼과 OK/NG 를 판정과 함께 저장한다.
+   * 시리얼 판정은 시리얼당 한 줄로 남는다. 재검 회차는 1차를 그대로 두고 최종만 바꾼다.
+   */
+  serials: {
+    openByScan: '시리얼로 의뢰 열기',
+    openByScanHelp:
+      '시리얼을 스캔하면 그 LOT 을 피킹한 OQC 의뢰를 엽니다. 대기 또는 진행 중인 의뢰가 없으면 완료된 의뢰를 열어 재검사 회차를 더할 수 있습니다.',
+    scanLabel: '시리얼 스캔',
+    scanPlaceholder: '시리얼 번호를 스캔하거나 입력 후 Enter',
+    scanning: '시리얼을 확인하는 중…',
+    heading: '검사한 시리얼',
+    help: '검사한 시리얼을 스캔하고 OK/NG 를 고릅니다. 판정과 함께 저장되고 시리얼별 출하검사 기록으로 남습니다.',
+    notFound: (serialNo: string): string => `없는 시리얼입니다: ${serialNo}`,
+    noPickedRequest: (serialNo: string): string =>
+      `시리얼 ${serialNo} 의 LOT 을 피킹한 OQC 의뢰가 없습니다.`,
+    completedRequest: (requestNo: string): string => `${requestNo} (완료, 재검사)`,
+    pickRequest: '이 시리얼의 LOT 을 피킹한 OQC 의뢰가 여럿입니다. 열 의뢰를 고르세요.',
+    duplicate: (serialNo: string): string => `이미 목록에 있는 시리얼입니다: ${serialNo}`,
+    otherItem: (serialNo: string): string => `시리얼 ${serialNo} 은 이 의뢰의 품목이 아닙니다.`,
+    notPicked: (serialNo: string): string =>
+      `시리얼 ${serialNo} 의 LOT 은 이 출하작업지시가 피킹한 LOT 이 아닙니다.`,
+    lookupFailed: '시리얼을 확인하지 못했습니다. 다시 스캔하세요.',
+    columns: { serialNo: '시리얼', lotNo: 'LOT', previous: '이전 기록', judgment: '판정' },
+    previous: (first: string, final: string): string => `1차 ${first} → 최종 ${final}`,
+    firstOkLocked: '1차 OK — NG 로 바꿀 수 없습니다',
+    remove: '빼기',
+    ok: 'OK',
+    ng: 'NG',
+    empty: '스캔한 시리얼이 없습니다. 시리얼 없이 LOT 판정만 저장할 수도 있습니다.',
+    tooMany: '검사한 시리얼 수가 검사 수량보다 많습니다.',
+    tooManyNg: 'NG 시리얼 수가 불합격 수량보다 많습니다. 불합격 수량을 확인하세요.',
+    count: (total: number, ng: number): string => `시리얼 ${total}대, NG ${ng}대`,
+    recordHeading: '시리얼 출하검사',
+    recordHelp: '시리얼마다 1차 판정은 처음 기록 그대로이고, 재검 회차는 최종 판정만 바꿉니다.',
+    recordEmpty: '기록된 시리얼이 없습니다.',
+    recordLoading: '시리얼 출하검사를 불러오는 중입니다.',
+    recordFailed: '시리얼 출하검사를 불러오지 못했습니다.',
+    recordColumns: {
+      serialNo: '시리얼',
+      lotNo: 'LOT',
+      first: '1차',
+      final: '최종',
+      round: '마지막 회차',
+      inspector: '검사자',
+      inspectedAt: '검사 시각',
+    },
+    round: (round: number): string => `${round}회차`,
   },
 } as const;

@@ -100,7 +100,7 @@ describe('RetryErrorBanner — 400 검증 실패', () => {
     renderBanner({ kind: 'validation', errors: [errorItem('STANDARD', '')] });
 
     expect(
-      screen.getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+      screen.getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
     ).toBeInTheDocument();
   });
 
@@ -131,7 +131,7 @@ describe('RetryErrorBanner — 그 밖의 실패', () => {
     renderBanner({ kind: 'http', status: 422 });
 
     expect(
-      screen.getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+      screen.getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
     ).toBeInTheDocument();
   });
 

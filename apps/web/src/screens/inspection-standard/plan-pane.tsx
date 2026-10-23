@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
@@ -148,6 +148,19 @@ export const PlanPane = ({
           disabledReason={routingDisabledReason ?? undefined}
           error={fieldErrors.routingId}
         />
+
+        {/* PQC 생략 허용(omf-all-around#119) — PQC 기준에만 선다. 켜면 이 기준으로 배포한 W/O 의 PQC 가 생략된다. */}
+        {values.inspectionTypeCode === 'PQC' && (
+          <div className="field-cell">
+            <Checkbox
+              checked={values.pqcSkipAllowed}
+              onChange={(event) => onChange({ pqcSkipAllowed: event.target.checked })}
+            >
+              {t.fields.pqcSkipAllowed}
+            </Checkbox>
+            <p className="field-note">{t.values.pqcSkipAllowedNote}</p>
+          </div>
+        )}
 
         {/*
          * 등록 전에는 승인·사용 여부가 없다 — 서버가 채우는 값을 미리 지어내 보이지 않는다.

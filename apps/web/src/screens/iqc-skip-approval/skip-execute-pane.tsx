@@ -26,22 +26,26 @@ export const SkipExecutePane = ({ state, isSaving, onExecute, banner }: SkipExec
 
   if (state.kind !== 'executable') {
     return (
-      <section className="pane" aria-label={t.heading}>
-        <h3>{t.heading}</h3>
-        <p className="field-note">
-          {state.kind === 'executed'
-            ? t.executed
-            : state.kind === 'checking'
-              ? t.checking
-              : t.notPending(state.statusCode)}
-        </p>
+      <section
+        className="iqc-skip-approval-section iqc-skip-approval-execute"
+        aria-label={t.heading}
+      >
+        <h3 className="iqc-skip-approval-heading">{t.heading}</h3>
+        {state.kind === 'executed' ? (
+          /* 완료는 초록 글자로 — 실행 단추 대신 결과가 선다. */
+          <p className="iqc-skip-approval-done">{t.executed}</p>
+        ) : (
+          <p className="field-note">
+            {state.kind === 'checking' ? t.checking : t.notPending(state.statusCode)}
+          </p>
+        )}
       </section>
     );
   }
 
   return (
-    <section className="pane" aria-label={t.heading}>
-      <h3>{t.heading}</h3>
+    <section className="iqc-skip-approval-section iqc-skip-approval-execute" aria-label={t.heading}>
+      <h3 className="iqc-skip-approval-heading">{t.heading}</h3>
       {banner}
       <p className="field-note">{t.note}</p>
       <Button

@@ -32,31 +32,34 @@ export interface TargetPaneProps {
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const TargetPane = ({ name, openState, onOpen }: TargetPaneProps) => (
-  <div role="group" aria-label={t.panes.target}>
-    <dl className="filter-bar">
+  <div role="group" aria-label={t.panes.target} className="iqc-skip-approval-section">
+    <dl className="iqc-skip-approval-summary">
       <div className="field-cell">
         <dt className="field-label">{t.fields.target}</dt>
         <dd>{name}</dd>
       </div>
     </dl>
 
-    {openState.kind === 'open' ? (
-      <div className="field-cell">
-        <Button
-          variant="outlined"
-          size="sm"
-          onClick={() => {
-            onOpen(openState.path);
-          }}
-        >
-          {t.target.open}
-        </Button>
-      </div>
-    ) : (
-      /* 사유는 감추지 않는다 — 비활성 컨트롤은 포커스를 받지 못해 툴팁으로는 닿을 수 없다. */
-      <DisabledAction label={t.target.open} reason={describeOpenBlock(openState)} size="sm" />
-    )}
+    {/* 「열기」·잠긴 사유·안내를 한 줄로 — 좁으면 그때 접힌다. */}
+    <div className="iqc-skip-approval-target-open">
+      {openState.kind === 'open' ? (
+        <div className="field-cell">
+          <Button
+            variant="outlined"
+            size="sm"
+            onClick={() => {
+              onOpen(openState.path);
+            }}
+          >
+            {t.target.open}
+          </Button>
+        </div>
+      ) : (
+        /* 사유는 감추지 않는다 — 비활성 컨트롤은 포커스를 받지 못해 툴팁으로는 닿을 수 없다. */
+        <DisabledAction label={t.target.open} reason={describeOpenBlock(openState)} size="sm" />
+      )}
 
-    <p className="field-note">{t.target.note}</p>
+      <p className="field-note">{t.target.note}</p>
+    </div>
   </div>
 );

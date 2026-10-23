@@ -139,8 +139,8 @@ export const iqcSkipApproval = {
      * 아직 결재되지 않은 단계의 보조 라벨. **디자인 시스템의 상태 낱말이 스크린리더 전용**이라
      * 보이는 글자를 이 자리가 맡는다 — 색·아이콘에만 기대지 않는다.
      */
-    waitingCurrent: '지금 결재를 기다리는 단계입니다',
-    waitingPending: '아직 결재하지 않은 단계입니다',
+    waitingCurrent: '결재 대기',
+    waitingPending: '결재 전',
     /** 로그인 사용자가 승인자인 단계(`isMine`). */
     mine: '내 단계',
     /** 단계 배열이 비어 왔다. 계약이 배열을 필수로 두었으나 빈 배열은 스키마를 통과한다. */
@@ -156,6 +156,8 @@ export const iqcSkipApproval = {
   },
   filters: {
     all: '전체',
+    /** 상태 선택지가 빈 이유 — 칸 아래 한 줄이라 짧게 쓴다(자리표시가 이미 「준비 중」을 말한다). */
+    statusPendingNote: '상태 목록 확정 전',
     chipStatus: (value: string): string => `상태: ${value}`,
     chipPeriod: (from: string, to: string): string => `상신일: ${from} ~ ${to}`,
     chipPeriodFrom: (from: string): string => `상신일: ${from}부터`,
@@ -217,13 +219,12 @@ export const iqcSkipApproval = {
      * | ③ | 승인으로 **검사가 끝나고 Lot 상태가 넘어간다**는 오해 |
      */
     outcome: {
-      statusOnly:
-        '승인은 이 요청을 승인 상태로 바꿀 뿐입니다. 검사 생략이 이 승인으로 실행되지 않습니다.',
+      statusOnly: '승인하면 요청만 승인 상태가 됩니다. IQC 생략은 승인 뒤 따로 실행합니다.',
       /** 전표가 나가는 자리는 이 화면이 아니고, 거기서도 **합격품에 한해서만** 나간다. */
       noErpDocument:
-        '승인해도 입고 전표와 ERP 송신은 일어나지 않습니다. 그 처리는 「정상품 입하 처리」 화면에서 합격품에 한해 합니다.',
+        '입고 전표와 ERP 송신은 생기지 않습니다. 입고는 「정상품 입하 처리」 화면에서 합격품만 합니다.',
       inspectionPending:
-        '검사는 여전히 끝나지 않은 상태입니다. Lot Status 전이와 입고 처리는 「정상품 입하 처리」 화면에서 따로 합니다.',
+        '검사는 끝나지 않은 상태로 남습니다. LOT 상태 변경과 입고는 「정상품 입하 처리」 화면에서 따로 합니다.',
     },
     /**
      * 의견 입력칸 — **하나뿐이다.**
@@ -242,12 +243,6 @@ export const iqcSkipApproval = {
      */
     commentRejectGuide:
       '반려한다면 무엇을 고쳐야 다시 올릴 수 있는지 적으세요. 결재는 되돌릴 수 없고 번복은 새 요청입니다.',
-    /**
-     * 내 차례가 아니면 입력칸도 잠근다 — 보낼 수 없는 말을 적어 두는 자리가 아니다.
-     * **결재 진행 구획의 같은 뜻 문장과 글자가 다른 것이 맞다**: 저기는 요청의 상태를 말하고
-     * 여기는 **이 컨트롤이 왜 잠겼는지**를 말한다(배치 규범 4 — 사유는 컨트롤 이름으로 시작한다).
-     */
-    commentDisabledReason: '결재 의견: 지금은 이 요청을 결재할 차례가 아닙니다',
     /** 전송 중 잠금 사유. 같은 잠금을 여러 컨트롤이 나눠 쓰므로 무엇이 도는 중인지 밝힌다. */
     commentSendingReason: '결재 의견: 결재를 보내는 중입니다',
     /**
@@ -302,7 +297,7 @@ export const iqcSkipApproval = {
     irreversible: '실행한 뒤에는 되돌릴 수 없습니다.',
     done: 'IQC 생략을 실행했습니다',
     /** 실행 뒤에는 버튼 대신 결과를 말한다(#105 리뷰 — 버튼이 남아 다시 누르면 엉뚱한 문구가 떴다). */
-    executed: '실행됨 — LOT 이 정상입니다.',
+    executed: '생략 실행 완료 — LOT이 정상 상태가 되어 입고할 수 있습니다.',
     notPending: (status: string) =>
       `LOT 이 수입검사 대기가 아니라(상태 ${status}) 생략을 실행할 수 없습니다.`,
     checking: 'LOT 상태를 확인하는 중입니다.',
@@ -310,6 +305,17 @@ export const iqcSkipApproval = {
   toast: {
     approved: '승인했습니다',
     rejected: '반려했습니다',
+  },
+  /**
+   * 내부 코드를 사용자 용어로 읽는 표(omf-all-around#134). **표에 없는 코드는 화면이 이름을
+   * 짓지 않고 코드 그대로 보인다** — 값 목록이 늘면 이 표에 더한다.
+   */
+  labels: {
+    approvalType: { IQC_SKIP: 'IQC 생략' },
+    /** 서버 표시명 「INBOUND_LOT #12」의 앞머리 코드만 바꾼다. 번호는 서버 값 그대로다. */
+    targetType: { INBOUND_LOT: '입하 LOT' },
+    /** 요청 상태·단계 결재 결과가 같은 낱말을 쓴다. 색: 대기 주황 · 승인 초록 · 반려 빨강. */
+    status: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' },
   },
   values: {
     /** 이름이 오지 않았다. **번호를 대신 내지 않는다**(`omf-mes#44`). */

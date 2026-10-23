@@ -17,6 +17,8 @@ export interface ProductionPlanFact {
   statusCode: string;
   confirmedAt: string | null;
   remarks: string | null;
+  /** 낙관적 잠금 판. 서버 ETag와 같은 값이다(If-Match로 보낸다). */
+  versionNo: number | null;
 }
 
 export interface ProductionPlanListResponse {

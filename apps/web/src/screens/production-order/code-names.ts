@@ -16,6 +16,7 @@ export const PRODUCTION_ORDER_CODE_GROUPS = {
   productionPlanStatus: 'PRODUCTION_PLAN_STATUS',
   workOrderStatus: 'WORK_ORDER_STATUS',
   workOrderType: 'WORK_ORDER_TYPE',
+  masterVersionStatus: 'MASTER_VERSION_STATUS',
 } as const;
 
 type CodeGroupKey = keyof typeof PRODUCTION_ORDER_CODE_GROUPS;
@@ -52,4 +53,5 @@ export const useProductionOrderCodeNames = (): ProductionOrderCodeNames => ({
   productionPlanStatus: useCodeNameOf(PRODUCTION_ORDER_CODE_GROUPS.productionPlanStatus),
   workOrderStatus: useCodeNameOf(PRODUCTION_ORDER_CODE_GROUPS.workOrderStatus),
   workOrderType: useCodeNameOf(PRODUCTION_ORDER_CODE_GROUPS.workOrderType),
+  masterVersionStatus: useCodeNameOf(PRODUCTION_ORDER_CODE_GROUPS.masterVersionStatus),
 });

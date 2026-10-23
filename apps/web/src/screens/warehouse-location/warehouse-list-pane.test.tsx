@@ -1,12 +1,22 @@
 import { AlertBanner } from '@crefle/web-ui';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { defaultWarehouseFilters } from './code-options';
-import { lookupFixtures, warehouseFixtures } from './fixtures';
-import type { WarehouseFilters } from './types';
+import { lookupFixtures, plantFixtures, warehouseFixtures } from './fixtures';
+import type { LookupSources, WarehouseFilters } from './types';
 import { WarehouseListPane } from './warehouse-list-pane';
+
+const plantSource: LookupSources['plants'] = {
+  entries: plantFixtures.map((plant) => ({
+    value: String(plant.plantId),
+    label: plant.plantName,
+    isActive: plant.isActive,
+  })),
+  isError: false,
+  isLoading: false,
+};
 
 const renderPane = (overrides: Partial<Parameters<typeof WarehouseListPane>[0]> = {}) => {
   const onApplyFilters = vi.fn();
@@ -24,6 +34,8 @@ const renderPane = (overrides: Partial<Parameters<typeof WarehouseListPane>[0]> 
       onAddWarehouse={onAddWarehouse}
       loadError={null}
       warehouseTypeOptions={lookupFixtures.warehouseTypes}
+      plantOptions={lookupFixtures.plants}
+      plants={plantSource}
       {...overrides}
     />,
   );
@@ -97,6 +109,7 @@ describe('WarehouseListPane', () => {
     const user = userEvent.setup();
     const applied: WarehouseFilters = {
       q: 'WH',
+      plantId: '',
       warehouseTypeCode: 'MATERIAL',
       includeInactive: false,
     };
@@ -120,6 +133,7 @@ describe('WarehouseListPane', () => {
     const user = userEvent.setup();
     const applied: WarehouseFilters = {
       q: 'WH',
+      plantId: '12',
       warehouseTypeCode: 'MATERIAL',
       includeInactive: true,
     };
@@ -184,5 +198,59 @@ describe('WarehouseListPane', () => {
 
     expect(screen.queryByRole('button', { name: /조건 제거/u })).not.toBeInTheDocument();
     expect(document.querySelectorAll('.filter-bar')).toHaveLength(1);
+  });
+});
+
+/* 창고를 공장으로 거른다 — 서버 선행 P-109(omf-mes-server#809). */
+describe('WarehouseListPane — 공장', () => {
+  it('공장 열은 행의 plantId 를 공장 이름으로 푼다 — 머리는 「사업부」가 아니라 「공장」이다', () => {
+    renderPane();
+
+    expect(screen.getByRole('columnheader', { name: '공장' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: '사업부' })).not.toBeInTheDocument();
+
+    const rowOf = (code: string) => screen.getByRole('button', { name: code }).closest('tr')!;
+    expect(within(rowOf('WH-01')).getByText('1공장')).toBeInTheDocument();
+    expect(within(rowOf('WH-03')).getByText('2공장')).toBeInTheDocument();
+  });
+
+  it('공장 목록에 없는 plantId 는 이름 대신 미확인으로 보인다', () => {
+    renderPane({ items: [{ ...warehouseFixtures[0]!, plantId: 99 }] });
+
+    const row = screen.getByRole('button', { name: 'WH-01' }).closest('tr')!;
+    expect(within(row).queryByText('1공장')).not.toBeInTheDocument();
+    expect(within(row).getByText('알 수 없음')).toBeInTheDocument();
+  });
+
+  it('공장은 고르는 즉시 적용한다 — [조회] 없이 plantId 로 onApplyFilters 를 부른다', async () => {
+    const user = userEvent.setup();
+    const { onApplyFilters } = renderPane();
+
+    await user.click(screen.getByRole('combobox', { name: '공장' }));
+    await user.click(screen.getByRole('option', { name: '2공장' }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith({ ...defaultWarehouseFilters, plantId: '12' });
+  });
+
+  it('적용된 공장은 이름으로 칩에 보이고, 칩을 지우면 공장 조건만 되돌린다', async () => {
+    const user = userEvent.setup();
+    const applied: WarehouseFilters = { ...defaultWarehouseFilters, q: 'WH', plantId: '12' };
+    const { onApplyFilters } = renderPane({ appliedFilters: applied });
+
+    expect(screen.getByText('공장: 2공장')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '공장 조건 제거' }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith({ ...applied, plantId: '' });
+  });
+
+  it('공장만 걸려 있어도 0건이면 「조건에 맞는 결과가 없습니다」와 초기화를 낸다', () => {
+    renderPane({ items: [], appliedFilters: { ...defaultWarehouseFilters, plantId: '12' } });
+
+    expect(screen.getByText('조건에 맞는 결과가 없습니다')).toBeInTheDocument();
+    expect(screen.queryByText('아직 등록된 창고가 없습니다')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '창고 추가' })).not.toBeInTheDocument();
+    /* 필터 줄의 초기화와 빈 상태의 초기화 둘이다. */
+    expect(screen.getAllByRole('button', { name: '초기화' })).toHaveLength(2);
   });
 });

@@ -9,10 +9,21 @@ export interface WorkOrderCloseInputRequirements {
 }
 
 export type WorkOrderCloseBlocker =
-  'OPEN_SESSION' | 'REMAINDER_DISPOSITION_REQUIRED' | 'VARIANCE_REASON_REQUIRED';
+  | 'STATUS_NOT_CLOSABLE'
+  | 'OPEN_SESSION'
+  | 'REMAINDER_DISPOSITION_REQUIRED'
+  | 'VARIANCE_REASON_REQUIRED';
+
+/** 서버의 마감 전이가 받는 출발 상태. 다른 상태는 400 STATE_LOCKED 로 거부된다. */
+export const CLOSABLE_WORK_ORDER_STATUSES: readonly string[] = [
+  'IN_PROGRESS',
+  'SUSPENDED',
+  'COMPLETED',
+];
 
 export interface WorkOrderCloseReadinessInput {
   completionJudgment: WorkOrderCloseCompletionJudgment;
+  isClosableStatus: boolean;
   hasOpenSession: boolean;
   hasRemainderDisposition: boolean;
   hasVarianceReason: boolean;
@@ -37,6 +48,7 @@ export const workOrderCloseBlockers = (
   const requirements = workOrderCloseInputRequirements(input.completionJudgment);
   const blockers: WorkOrderCloseBlocker[] = [];
 
+  if (!input.isClosableStatus) blockers.push('STATUS_NOT_CLOSABLE');
   if (input.hasOpenSession) blockers.push('OPEN_SESSION');
   if (requirements.requiresRemainderDisposition && !input.hasRemainderDisposition) {
     blockers.push('REMAINDER_DISPOSITION_REQUIRED');

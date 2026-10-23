@@ -1,3 +1,4 @@
+import type { ApiError, WorkOrderForward } from '@omf-mes/api-client';
 import { AlertBanner, Button, Card, Icon, Progress, Table, TextField } from '@crefle/web-ui';
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -7,14 +8,21 @@ import { useEffect, useId, useState } from 'react';
 import { PopSelect as Select } from '../../patterns/pop-select';
 
 import { useApiClient } from '../../patterns/api-context';
-import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { usePopIdentity } from '../../patterns/pop-identity';
+import {
+  popGateDeniedText,
+  popGateProcessId,
+  popGateUnidentifiedText,
+  usePopProcessGate,
+} from '../../patterns/pop-process-gate';
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { popTouchClass } from '../../patterns/pop-touch';
+import { toApiError } from '../../patterns/request';
+import { serverReasonOf } from '../../patterns/server-reason';
 import { drainReworkResults, enqueueReworkResult, pendingReworkResultCount } from './outbox';
 import {
   useDispositionDecisions,
-  useResultGate,
   useReworkDefectCodes,
   useReworkSource,
   useReworkSourceLot,
@@ -70,7 +78,8 @@ export const ReworkResultRegisterScreen = () => {
   const defectCodes = useReworkDefectCodes();
   const [queued, setQueued] = useState(false);
   const [queueError, setQueueError] = useState(false);
-  const [rejected, setRejected] = useState(false);
+  /** 서버가 거부한 까닭. 거부가 없으면 null */
+  const [rejection, setRejection] = useState<ApiError | null>(null);
   const [pendingCount, setPendingCount] = useState(pendingReworkResultCount);
   const [isOnline, setIsOnline] = useState(() => globalThis.navigator.onLine);
 
@@ -79,7 +88,17 @@ export const ReworkResultRegisterScreen = () => {
   const source = useReworkSource(nonconformanceId);
   const dispositions = useDispositionDecisions(nonconformanceId);
   const sourceLot = useReworkSourceLot(selected?.reworkSourceLotId ?? null);
-  const gate = useResultGate(identity.terminalId, soleProcessIdOf(identity.processes));
+  /*
+   * 고른 W/O 의 공정으로 「실적 입력」을 판정한다 — 단말에 공정이 여럿이어도 그 W/O 가 어느 공정의
+   * 일인지 안다. 고르기 전에는 판정할 공정이 없으므로 막지도 말하지도 않는다.
+   */
+  const selectedWorkOrder: WorkOrderForward | null = selected;
+  const gate = usePopProcessGate({
+    terminalId: identity.terminalId,
+    processId: popGateProcessId(selectedWorkOrder?.processId, identity.processes),
+    workOrder: { processName: selectedWorkOrder?.processName ?? null },
+    flag: 'canInputResult',
+  });
   const uom = useUomLookup();
   const progress = reworkDispositionProgress(dispositions.data?.items ?? []);
   /* 이 화면이 보이는 처분은 «재작업» 한 건이다 — 다른 유형은 이 W/O 의 근거가 아니다. */
@@ -94,7 +113,7 @@ export const ReworkResultRegisterScreen = () => {
     setDefectCode(null);
     setQueued(false);
     setQueueError(false);
-    setRejected(false);
+    setRejection(null);
   }, [selectedId]);
   useEffect(() => {
     const drain = () => {
@@ -102,7 +121,7 @@ export const ReworkResultRegisterScreen = () => {
       void drainReworkResults(client)
         .then((result) => {
           setPendingCount(pendingReworkResultCount());
-          setRejected(result.rejected > 0);
+          setRejection(result.lastRejection);
           if (result.rejected > 0) setQueued(false);
         })
         .catch(() => setPendingCount(pendingReworkResultCount()));
@@ -116,15 +135,21 @@ export const ReworkResultRegisterScreen = () => {
       globalThis.removeEventListener('offline', offline);
     };
   }, [client]);
-  const gateReason = gate.unidentified
-    ? t.gateUnidentified
-    : gate.checking
-      ? t.gateChecking
-      : gate.unavailable
-        ? t.gateUnavailable
-        : !gate.allowed
-          ? t.gateDenied
-          : null;
+  const gateReason = ((): string | null => {
+    if (selected === null) return null;
+    switch (gate.verdict) {
+      case 'unidentified':
+        return popGateUnidentifiedText(t.gateUnidentified, null);
+      case 'checking':
+        return t.gateChecking;
+      case 'unavailable':
+        return t.gateUnavailable;
+      case 'denied':
+        return popGateDeniedText(gate, 'canInputResult');
+      case 'allowed':
+        return null;
+    }
+  })();
   /*
    * ⚠ **고를 목록이 없으면 필수로 막지 않는다**(리뷰 M1). 조회 실패·0건에 막으면 저장이 영영
    *    열리지 않는다 — 고른 코드는 아직 서버로 가지도 않는다. 칸 옆이 그 사정을 말하고 다시 부른다.
@@ -161,7 +186,7 @@ export const ReworkResultRegisterScreen = () => {
       void drainReworkResults(client)
         .then((result) => {
           setPendingCount(pendingReworkResultCount());
-          setRejected(result.rejected > 0);
+          setRejection(result.lastRejection);
           if (result.rejected > 0) setQueued(false);
         })
         .catch(() => setPendingCount(pendingReworkResultCount()));
@@ -178,7 +203,7 @@ export const ReworkResultRegisterScreen = () => {
    */
   const hasSomethingToReset =
     selected !== null &&
-    (quantityKeys.some((key) => drafts[key] !== '') || queued || queueError || rejected);
+    (quantityKeys.some((key) => drafts[key] !== '') || queued || queueError || rejection !== null);
   /**
    * 칸 하나를 키패드의 대상으로 삼는다.
    *
@@ -194,7 +219,7 @@ export const ReworkResultRegisterScreen = () => {
     setDefectCode(null);
     setQueued(false);
     setQueueError(false);
-    setRejected(false);
+    setRejection(null);
   };
   return (
     <main className="pop-shell pop-ui rework-result-screen" aria-labelledby="rework-result-title">
@@ -241,7 +266,9 @@ export const ReworkResultRegisterScreen = () => {
         <section className="pane" aria-label={t.workOrders}>
           <h2 className="pane-title">{t.workOrders}</h2>
           {(releasedOrders.isError || plannedOrders.isError) && (
-            <AlertBanner variant="error">{t.loadError}</AlertBanner>
+            <AlertBanner variant="error" title={t.loadError}>
+              {serverReasonOf(toApiError(releasedOrders.error ?? plannedOrders.error))}
+            </AlertBanner>
           )}
           {releasedOrders.isSuccess && plannedOrders.isSuccess && rows.length === 0 && (
             <AlertBanner variant="info">{t.empty}</AlertBanner>
@@ -355,7 +382,9 @@ export const ReworkResultRegisterScreen = () => {
             <Card.Body>
               <h2 className="pane-title">{t.target}</h2>
               {(source.isError || dispositions.isError) && (
-                <AlertBanner variant="error">{t.loadError}</AlertBanner>
+                <AlertBanner variant="error" title={t.loadError}>
+                  {serverReasonOf(toApiError(source.error ?? dispositions.error))}
+                </AlertBanner>
               )}
               <dl className="pop-figures">
                 {/*
@@ -690,7 +719,11 @@ export const ReworkResultRegisterScreen = () => {
            */}
           {queued && <AlertBanner variant="success">{t.queued}</AlertBanner>}
           {queueError && <AlertBanner variant="error">{t.queueError}</AlertBanner>}
-          {rejected && <AlertBanner variant="error">{t.rejected}</AlertBanner>}
+          {rejection !== null && (
+            <AlertBanner variant="error" title={t.rejected}>
+              {serverReasonOf(rejection) ?? t.rejectedHint}
+            </AlertBanner>
+          )}
           {gateReason && <p>{gateReason}</p>}
         </div>
         <Button size="2xl" variant="outlined" disabled={!hasSomethingToReset} onClick={reset}>

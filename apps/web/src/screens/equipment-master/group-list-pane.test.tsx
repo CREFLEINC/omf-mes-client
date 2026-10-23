@@ -255,4 +255,21 @@ describe('GroupListPane', () => {
 
     expect(onApplyFilters).toHaveBeenCalledWith(defaultGroupFilters);
   });
+
+  /* 001 W-05-12 — 응답의 부서명을 그대로 보이고, 없으면 비어 있음을 보인다. */
+  it('담당 부서 열에 부서명을, 없으면 — 를 보인다', () => {
+    renderPane({
+      rows: buildGroupRows(
+        [
+          { ...makeGroup(101, 'GRP-A'), departmentName: '생산1팀' } as never,
+          makeGroup(102, 'GRP-B'),
+        ],
+        ALL_EXPANDED,
+      ),
+    });
+
+    expect(screen.getByRole('columnheader', { name: t.fields.department })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '생산1팀' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '—' })).toBeInTheDocument();
+  });
 });

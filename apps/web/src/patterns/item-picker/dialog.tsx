@@ -93,6 +93,11 @@ export interface ItemPickerDialogProps {
    * 찾아보세요」라고만 하면, 있는 품목을 없다고 읽고 검색어만 바꾸게 된다(omf-all-around#43).
    */
   emptyText?: string;
+  /**
+   * 처음 검색어 — 창이 열리자마자 이 값으로 찾는다. 바코드·품목번호가 정확히 맞지 않아 창으로 넘어온
+   * 자리(W-01-09 빠른 조회)에서 사용자가 같은 값을 다시 치지 않게 한다.
+   */
+  initialKeyword?: string;
 }
 
 const describeAvailability = (state: AvailabilityState): string => {
@@ -118,13 +123,14 @@ export const ItemPickerDialog = ({
   hasRouting = false,
   compact = false,
   emptyText,
+  initialKeyword = '',
 }: ItemPickerDialogProps) => {
   const keywordId = useId();
   const typeId = useId();
 
-  const [keyword, setKeyword] = useState('');
+  const [keyword, setKeyword] = useState(initialKeyword);
   /** 실제로 조회에 나간 검색어. 「찾기」를 눌러야 바뀐다. */
-  const [submitted, setSubmitted] = useState('');
+  const [submitted, setSubmitted] = useState(initialKeyword);
   const [itemTypeCode, setItemTypeCode] = useState(defaultItemTypeCode);
   const [page, setPage] = useState(1);
   /** 고른 품목을 **줄 그대로** 들고 있는다 — 쪽을 넘겨도 고름이 남고, 확인할 때 다시 찾지 않는다. */
@@ -173,18 +179,28 @@ export const ItemPickerDialog = ({
         />
       ),
     },
-    /* ⭐ `compact` 인 창만 가운데 정렬이다 — 코드·유형이 짧아 왼쪽에 붙으면 열이 흩어져 보인다. */
+    /* 유형을 먼저 — 같은 코드 체계 안에서 원자재·제품을 먼저 가르고 코드·이름을 읽는다(#133). */
+    {
+      key: 'itemTypeCode',
+      header: t.columns.itemType,
+      /* 유형은 짧은 분류 이름이라 가운데(#133). */
+      align: 'center',
+      width: '128px',
+      /* 서버가 준 코드 그대로다 — 이름은 유형 목록이 갖고, 없으면 지어내지 않는다. */
+      render: (row) =>
+        types.data?.find((option) => option.code === row.itemTypeCode)?.codeName ??
+        row.itemTypeCode,
+    },
+    /* 글자 열은 왼쪽 정렬이다 — 머리줄과 값이 같은 줄에 선다(검사기준 검색 창과 같은 모양 · #133). */
     {
       key: 'itemCode',
       header: t.columns.itemCode,
-      ...(compact ? { align: 'center' as const } : {}),
       width: '160px',
       render: (row) => row.itemCode,
     },
     {
       key: 'itemName',
       header: t.columns.itemName,
-      ...(compact ? { align: 'center' as const } : {}),
       render: (row) => (
         <span>
           {row.itemName}
@@ -193,16 +209,6 @@ export const ItemPickerDialog = ({
           {addedItemIds.includes(row.itemId) ? ` · ${t.alreadyAdded}` : ''}
         </span>
       ),
-    },
-    {
-      key: 'itemTypeCode',
-      header: t.columns.itemType,
-      ...(compact ? { align: 'center' as const } : {}),
-      width: '128px',
-      /* 서버가 준 코드 그대로다 — 이름은 유형 목록이 갖고, 없으면 지어내지 않는다. */
-      render: (row) =>
-        types.data?.find((option) => option.code === row.itemTypeCode)?.codeName ??
-        row.itemTypeCode,
     },
     ...(showAvailability
       ? [
@@ -325,7 +331,21 @@ export const ItemPickerDialog = ({
           </div>
         )}
 
-        <div className="item-picker-results">
+        {/*
+         * 줄 아무 곳이나 눌러도 그 품목을 고른다(#133) — 눌린 줄의 선택 칸으로 넘긴다. 선택 칸 자체·단추를
+         * 누른 것은 그 부품이 처리하므로 건너뛴다. 키보드는 종전처럼 선택 칸으로 고른다.
+         */}
+        <div
+          className="item-picker-results"
+          onClick={(event) => {
+            const target = event.target as Element;
+            if (target.closest('input, button, a, label') !== null) return;
+            target
+              .closest('tbody tr')
+              ?.querySelector<HTMLInputElement>('input[type="checkbox"]')
+              ?.click();
+          }}
+        >
           <Table
             columns={columns}
             rows={rows}
