@@ -1,4 +1,4 @@
-import { Breadcrumb, Checkbox, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Checkbox, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -40,7 +40,13 @@ export const PqcInspectionRegisterScreen = () => {
   ) : queue.isPending ? (
     <p className="field-note">{t.queue.loading}</p>
   ) : (
-    <p className="field-note">{t.queue.empty}</p>
+    <EmptyState
+      size="sm"
+      live
+      icon={<Icon name="search_off" size={40} />}
+      title={t.queue.empty}
+      description={t.queue.emptyHint}
+    />
   );
 
   return (

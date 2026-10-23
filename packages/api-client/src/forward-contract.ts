@@ -1315,6 +1315,18 @@ type SheetPut<Path, B> = Unused & {
   >;
 };
 
+type WarehousesPath = paths['/mdm/warehouses'];
+type WarehousesGet = WarehousesPath['get'];
+
+/**
+ * ⚠ 서버 선행 P-109(omf-mes-server#809) — 창고 목록을 공장으로 거른다(질의 `plantId`). 정수가 아니면 400 이다.
+ * 계약 사본에 실려 `gen:api` 가 만들면 이 타입과 `ForwardPaths['/mdm/warehouses']` 를 지운다.
+ * P-109 전 서버는 이 질의를 모른 채 무시하고 모든 공장의 창고를 낸다.
+ */
+export type WarehouseListQueryForward = NonNullable<WarehousesGet['parameters']['query']> & {
+  plantId?: number;
+};
+
 export interface ForwardPaths {
   /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */
   '/quality/concessions': Omit<ConcessionsPath, 'post'> & {
@@ -2202,6 +2214,14 @@ export interface ForwardPaths {
   '/quality/inspection-sheets/{inspectionSheetId}:approve': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:check': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:reopen': SheetAction<SheetId, { reason: string }>;
+  /** 창고 조회(GET)에 공장 질의(`plantId`)를 더한다 — 서버 선행 P-109(omf-mes-server#809). 등록(POST)은 그대로다. */
+  '/mdm/warehouses': Omit<WarehousesPath, 'get'> & {
+    get: Omit<WarehousesGet, 'parameters'> & {
+      parameters: Omit<WarehousesGet['parameters'], 'query'> & {
+        query?: WarehouseListQueryForward;
+      };
+    };
+  };
   /** 서버 선행 P-108 — 관리웹에서 열린(중단 포함) 작업 세션을 닫는다. 사유는 기록으로 남아 필수다. */
   '/production/work-sessions/{workSessionId}:force-end': Unused & {
     parameters: NoParameters;

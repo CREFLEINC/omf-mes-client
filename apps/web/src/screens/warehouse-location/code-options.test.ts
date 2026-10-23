@@ -28,6 +28,7 @@ describe('defaultWarehouseFilters', () => {
   it('아무 조건도 걸지 않은 상태다', () => {
     expect(defaultWarehouseFilters).toEqual({
       q: '',
+      plantId: '',
       warehouseTypeCode: '',
       includeInactive: false,
     });

@@ -3,7 +3,7 @@ import type { Translated } from './translated';
 
 /** W-04-03 OQC 출하검사 판정. 저장은 한 번이고 되돌릴 수 없다 — 번복은 재검사 회차다. */
 export const oqcInspection: Translated<typeof ko.oqcInspection> = {
-  title: 'Đánh giá kiểm tra xuất hàng OQC',
+  title: 'OQC (kiểm tra xuất hàng) tra cứu · đánh giá',
   breadcrumbRoot: 'Quản lý chất lượng',
 
   queue: {
@@ -18,7 +18,8 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     emptyValue: '—',
     openRow: (inspectionRequestNo: string): string => `Mở yêu cầu kiểm tra ${inspectionRequestNo}`,
     caption: 'Danh sách đối tượng kiểm tra xuất hàng',
-    empty: 'Không có yêu cầu kiểm tra nào khớp điều kiện. Hãy nới rộng điều kiện.',
+    empty: 'Không tìm thấy yêu cầu kiểm tra nào.',
+    emptyHint: 'Hãy thay đổi điều kiện tìm kiếm hoặc đặt lại bộ lọc.',
     unavailable: 'Không hiển thị được danh sách.',
     loading: 'Đang tải các yêu cầu kiểm tra.',
   },
