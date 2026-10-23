@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { useOaAccess } from '../../patterns/oa-access';
 import { toApiError } from '../../patterns/request';
 import { CODE_GROUPS, labelOfCode, toCodeOptions } from './code-options';
 import {
@@ -27,6 +28,8 @@ import {
   useInspectionQueue,
   useInspectionRequestDetail,
   useInspectionRounds,
+  useOqcSerialRecords,
+  usePickedLotNumbers,
   useSaveInspectionResult,
 } from './queries';
 import { QueueFilterBar } from './queue-filter-bar';
@@ -69,6 +72,7 @@ import { targetSignatureOf, type WriteTargetSignature } from './write-target';
  */
 
 const t = messages.oqcInspection;
+const referenceT = messages.common.reference;
 
 export const OqcInspectionScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -367,6 +371,44 @@ export const OqcInspectionScreen = () => {
   const uoms = useUomLookup();
   const uomCode = uoms.codeOf(detail.data?.uomId);
 
+  /*
+   * 검사 기본 정보의 셋째 칸(#136) — OA 사업부 계정은 시리얼로 검사하므로 시리얼 번호를, 그 밖은 대상 LOT 을 본다.
+   * 출하요청 대상 의뢰에는 LOT 이 없어(편성 때 정해지지 않는다) 그 지시의 피킹 기록에서 읽는다. 둘 다 표시 전용이다.
+   */
+  const isOa = useOaAccess() === 'oa';
+  const isShipmentTarget = detail.data?.targetTypeCode === 'SHIPMENT_REQUEST';
+  const unitRecords = useOqcSerialRecords(selectedId, isOa && isShipmentTarget);
+  const pickedLots = usePickedLotNumbers(
+    !isOa && isShipmentTarget && detail.data?.lotId == null
+      ? (detail.data?.targetId ?? null)
+      : null,
+    detail.data?.itemId ?? 0,
+  );
+  const listOrUnregistered = (values: readonly string[]): string => {
+    const [first] = values;
+    if (first === undefined) return t.detail.unregistered;
+    return values.length === 1 ? first : t.detail.more(first, values.length - 1);
+  };
+  const unitFact = ((): { kind: 'serial' | 'lot'; value: string } | undefined => {
+    if (isOa) {
+      const scanned =
+        selectedId !== null && scannedSerial?.inspectionRequestIds.includes(selectedId) === true
+          ? [scannedSerial.serialNo]
+          : [];
+      const recorded = (unitRecords.data ?? []).map((record) => record.serialNo);
+      const values = [...new Set([...scanned, ...recorded])];
+      if (values.length === 0 && unitRecords.isPending && unitRecords.fetchStatus !== 'idle')
+        return { kind: 'serial', value: referenceT.loading };
+      if (values.length === 0 && unitRecords.isError)
+        return { kind: 'serial', value: referenceT.failed };
+      return { kind: 'serial', value: listOrUnregistered(values) };
+    }
+    if (detail.data?.lotId != null || !isShipmentTarget) return undefined;
+    if (pickedLots.isPending) return { kind: 'lot', value: referenceT.loading };
+    if (pickedLots.isError) return { kind: 'lot', value: referenceT.failed };
+    return { kind: 'lot', value: listOrUnregistered(pickedLots.data) };
+  })();
+
   /**
    * 저장이 보낼 값을 만든다.
    *
@@ -433,6 +475,7 @@ export const OqcInspectionScreen = () => {
           uomCode={uomCode}
           itemNames={itemNames}
           lotNumbers={lotNumbers}
+          unitFact={unitFact}
         />
 
         {/* OQC 생략(#119) — 출하작업지시 대상이고 판정이 아직 없을 때만. 확정 회차가 있으면 생략으로 덮지 않는다. */}
@@ -590,7 +633,7 @@ export const OqcInspectionScreen = () => {
   return (
     <>
       <PageHeader
-        title={t.title}
+        title={selectedId === null ? t.title : t.detail.sectionTitle}
         breadcrumb={
           <Breadcrumb
             items={[

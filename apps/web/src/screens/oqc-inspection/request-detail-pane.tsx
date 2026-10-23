@@ -34,6 +34,11 @@ export interface RequestDetailPaneProps {
   itemNames: ItemNameLookup;
   /** 대상 LOT 번호 풀이. 없는 의뢰(출하작업지시 대상)는 빈 값 표시다. */
   lotNumbers: NameLookup;
+  /**
+   * 셋째 칸을 무엇으로 채울지(#136) — OA 사업부 계정은 시리얼 번호, 그 밖은 대상 LOT.
+   * `value` 가 있으면 그 글을 그대로 쓴다(출하요청 의뢰는 LOT 이 의뢰가 아니라 피킹 기록에 있다).
+   */
+  unitFact?: { kind: 'serial' | 'lot'; value: string };
 }
 
 export const RequestDetailPane = ({
@@ -41,9 +46,10 @@ export const RequestDetailPane = ({
   uomCode,
   itemNames,
   lotNumbers,
+  unitFact,
 }: RequestDetailPaneProps) => {
   const itemParts = itemNames.partsOf(detail.itemId);
-  const lotNo = lotNumbers.labelOf(detail.lotId);
+  const lotNo = unitFact?.value ?? lotNumbers.labelOf(detail.lotId);
   const typeName = t.inspectionTypeNames[detail.inspectionTypeCode];
 
   const items: { key: string; label: string; value: ReactNode; emphasized?: boolean }[] = [
@@ -74,7 +80,7 @@ export const RequestDetailPane = ({
     },
     {
       key: 'lot',
-      label: t.fields.lotId,
+      label: unitFact?.kind === 'serial' ? t.serialNo : t.fields.lotId,
       /* 구분자가 많은 번호라 칸 안에서 끊기면 읽기 어렵다 — 한 줄 말줄임, 전체는 title. */
       value: (
         <span className="oqc-inspection-fact-ellipsis" title={lotNo}>

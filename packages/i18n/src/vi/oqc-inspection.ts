@@ -16,6 +16,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     },
     requestedAtColumn: 'Thời điểm yêu cầu',
     serialColumn: 'Số serial',
+    targetQtyColumn: 'SL kiểm tra',
     serialUnregistered: 'Chưa đăng ký',
     targetTypes: {
       SHIPMENT_REQUEST: 'Yêu cầu xuất hàng',
@@ -74,6 +75,9 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       requestedAt: 'Ngày giờ yêu cầu',
     },
     noPlanVersion: 'Không có tiêu chuẩn',
+    serialNo: 'Số serial',
+    unregistered: 'Chưa đăng ký',
+    more: (first: string, rest: number): string => `${first} và ${String(rest)} mục khác`,
   },
 
   result: {

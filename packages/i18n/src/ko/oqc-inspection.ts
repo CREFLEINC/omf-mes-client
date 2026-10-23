@@ -28,6 +28,8 @@ export const oqcInspection = {
     /** OQC 목록의 「의뢰 일시」 열(#136). 종전 표(PQC 도 쓴다)의 `columns` 와 따로 둔다. */
     requestedAtColumn: '의뢰 일시',
     serialColumn: '시리얼 번호',
+    /** OQC 목록의 수량 열 — IQC 와 같은 띄어쓰기(#136). 종전 표(PQC)의 `columns.targetQty` 는 그대로 둔다. */
+    targetQtyColumn: '검사 수량',
     serialUnregistered: '미등록',
     /** 대상 유형 코드의 이름(omf-all-around#136) — POP OQC 와 같은 말. 모르는 코드는 코드 그대로다. */
     targetTypes: {
@@ -125,7 +127,7 @@ export const oqcInspection = {
       target: '대상',
       lotId: '대상 LOT',
       itemId: '품목',
-      targetQty: '검사수량',
+      targetQty: '총 검사 수량',
       /**
        * ⚠ 감추지 않는다. 검사 시점의 기준 버전이 그 검사에 **고정되고** 이후 기준이 바뀌어도
        * 이 검사는 당시 버전으로 남는다. 버전을 감추면 검사자도, 나중에 결과를 읽는 사람도
@@ -139,6 +141,11 @@ export const oqcInspection = {
      * **없는 값과 모르는 값은 다른 모양이어야 한다** — 그래서 일반 빈 값 표시와 다른 글자를 쓴다.
      */
     noPlanVersion: '기준 없음',
+    /** OA 사업부 계정은 대상 LOT 대신 시리얼 번호를 본다(#136). */
+    serialNo: '시리얼 번호',
+    /** 시리얼·피킹 LOT 이 아직 없을 때 — 목록의 「미등록」과 같은 말. */
+    unregistered: '미등록',
+    more: (first: string, rest: number): string => `${first} 외 ${String(rest)}건`,
   },
 
   /** 우측 창 ② — 판정 입력. 합계 제약이 이 구획을 지배한다. */
@@ -160,15 +167,15 @@ export const oqcInspection = {
     draftElsewhere:
       '이 회차는 다른 곳에서 작성 중이라 이 화면에서는 고칠 수 없습니다. 다시 판정하려면 재검사 회차를 추가합니다.',
     fields: {
-      inspectedQty: '검사수량',
-      accepted: '합격수량',
-      rejected: '불합격수량',
-      held: '보류수량',
+      inspectedQty: '총 검사 수량',
+      accepted: '합격 수량',
+      rejected: '불합격 수량',
+      held: '보류 수량',
     },
     /** 실시간 합계. 어긋난 값을 감추지 않는다. */
     sum: '입력 완료',
     remaining: '미입력',
-    /** 합계가 검사수량을 넘었을 때 오른쪽 상태(#136). */
+    /** 합계가 검사 수량을 넘었을 때 오른쪽 상태(#136). */
     overBy: (over: string): string => `${over} 초과`,
     /** 입력 현황 막대의 접근 이름(#136). */
     progressLabel: '검사 수량 대비 입력 합계',
@@ -178,7 +185,7 @@ export const oqcInspection = {
     /** 저장 단추 왼쪽 경고 — 저장이 곧 확정이라 되돌릴 수 없다(#136). */
     saveNote: '판정 저장 후 수정이 불가합니다.',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
-    over: (over: string): string => `검사수량보다 ${over} 많습니다.`,
+    over: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
     quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
 
     /** 종합 판정. ⛔ 값 목록을 화면에 고정하지 않는다 — 공통코드 조회로 채운다. */
@@ -206,13 +213,12 @@ export const oqcInspection = {
     /**
      * 비활성 사유 — **뭉개지 않는다.** 푸는 방법이 서로 다르다(스펙 §6).
      */
-    blockedByConfirmed: '판정 저장 — 이미 확정된 회차입니다. 재검사로 새 회차를 쌓으세요.',
-    blockedByDraftElsewhere:
-      '판정 저장 — 다른 곳에서 작성 중인 회차입니다. 재검사로 새 회차를 쌓으세요.',
-    blockedByTotals: '판정 저장 — 수량 합계가 검사수량과 맞아야 저장할 수 있습니다.',
+    blockedByConfirmed: '이미 확정된 회차입니다. 재검사로 새 회차를 쌓으세요.',
+    blockedByDraftElsewhere: '다른 곳에서 작성 중인 회차입니다. 재검사로 새 회차를 쌓으세요.',
+    blockedByTotals: '입력 수량이 총 검사 수량과 같아야 저장 가능합니다.',
     blockedByJudgmentOptions:
-      '판정 저장 — 판정 값 목록이 준비되지 않아 저장할 수 없습니다. 담당자에게 문의하세요.',
-    blockedByJudgment: '판정 저장 — 종합 판정을 골라야 저장할 수 있습니다.',
+      '판정 값 목록이 준비되지 않아 저장할 수 없습니다. 담당자에게 문의하세요.',
+    blockedByJudgment: '종합 판정을 선택해야 저장 가능합니다.',
     /** 합격판정개수 기준 자동 판정(omf-all-around#126) — 기준에 합격판정개수가 있을 때만 선다. IQC(#125)와 같은 규칙이다. */
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>
@@ -220,7 +226,7 @@ export const oqcInspection = {
       expected: (judgment: string): string => `자동 판정: ${judgment}`,
       reason: '판정 변경 사유',
       reasonPlaceholder: '판정 변경 사유를 입력하세요',
-      required: '판정 저장 — 자동 판정과 다른 판정은 변경 사유를 입력해야 저장할 수 있습니다.',
+      required: '자동 판정과 다른 판정은 변경 사유를 입력해야 저장 가능합니다.',
       reasonMissing: '판정 변경 사유를 입력하세요.',
     },
 

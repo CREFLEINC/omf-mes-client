@@ -50,6 +50,37 @@ describe('RequestDetailPane', () => {
     expect(screen.getByText(`OQC (${t.inspectionTypeNames.OQC ?? ''})`)).toBeInTheDocument();
   });
 
+  it('셋째 칸 — OA 계정은 시리얼 번호, 그 밖은 피킹한 대상 LOT 을 보인다(#136)', () => {
+    const detail = toInspectionRequestDetail(waitingRequest);
+    const { unmount } = renderWithProviders(
+      <RequestDetailPane
+        detail={detail}
+        uomCode={null}
+        itemNames={itemNames}
+        lotNumbers={lotNumbers}
+        unitFact={{ kind: 'serial', value: 'SN-0001' }}
+      />,
+    );
+
+    expect(screen.getByText(t.serialNo)).toBeInTheDocument();
+    expect(screen.queryByText(t.fields.lotId)).not.toBeInTheDocument();
+    expect(screen.getByText('SN-0001')).toBeInTheDocument();
+    unmount();
+
+    renderWithProviders(
+      <RequestDetailPane
+        detail={detail}
+        uomCode={null}
+        itemNames={itemNames}
+        lotNumbers={lotNumbers}
+        unitFact={{ kind: 'lot', value: t.unregistered }}
+      />,
+    );
+
+    expect(screen.getByText(t.fields.lotId)).toBeInTheDocument();
+    expect(screen.getByText(t.unregistered)).toBeInTheDocument();
+  });
+
   it('모르는 대상 유형은 코드 그대로 보인다 — 이름을 지어내지 않는다', () => {
     renderPane({ ...toInspectionRequestDetail(waitingRequest), targetTypeCode: 'UNKNOWN_TYPE' });
 

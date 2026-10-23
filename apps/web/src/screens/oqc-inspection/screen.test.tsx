@@ -3,7 +3,9 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import {
   anotherWaitingRequest,
   codeValuesResponse,
@@ -108,6 +110,14 @@ const renderScreen = (options: ScreenOptions = {}) => {
     const path = url.pathname;
     const isSave = path === '/quality/inspection-results' && request.method === 'POST';
 
+    /* 세션 · OA 공장 판정(검사 기본 정보의 시리얼/LOT 칸 · #136) — 합성 계정은 OA 공장이 없다. */
+    if (path.endsWith('/app/sessions/current')) return jsonResponse(SYNTHETIC_SESSION);
+    if (path === '/mdm/plants')
+      return jsonResponse({
+        items: [],
+        page: { page: 1, size: 100, totalItems: 0, totalPages: 0 },
+      });
+
     if (path === '/quality/inspection-requests') {
       queueCalls += 1;
 
@@ -168,10 +178,15 @@ const renderScreen = (options: ScreenOptions = {}) => {
     throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
   };
 
-  const view = renderWithProviders(<OqcInspectionScreen />, {
-    route: options.route ?? '/',
-    fetch: stubFetch,
-  });
+  const view = renderWithProviders(
+    <SessionProvider>
+      <OqcInspectionScreen />
+    </SessionProvider>,
+    {
+      route: options.route ?? '/',
+      fetch: stubFetch,
+    },
+  );
 
   return {
     ...view,

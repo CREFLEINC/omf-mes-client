@@ -88,6 +88,9 @@ export const oqcInspectionKeys = {
   /** 그 의뢰의 시리얼 출하검사 줄(omf-all-around#68). 저장이 바꾸므로 저장 뒤 무효화 대상이다. */
   serialRecords: (inspectionRequestId: number) =>
     [...ALL_KEY, 'serial-records', inspectionRequestId] as const,
+  /** 출하요청이 피킹한 LOT(#136). */
+  pickedLots: (shipmentRequestId: number, itemId: number) =>
+    [...ALL_KEY, 'picked-lots', shipmentRequestId, itemId] as const,
 };
 
 const fetchQueue = (client: Client, query: QueueListQuery): Promise<InspectionQueueResult> =>
@@ -447,5 +450,33 @@ export const useOqcSerialRecords = (
         }),
       ).then((response) => response.items),
     enabled: inspectionRequestId !== null && enabled,
+  });
+};
+
+/**
+ * 출하요청 의뢰의 대상 LOT — 그 지시에서 이 품목 라인이 피킹한 LOT 번호들(#136).
+ * 출하요청 대상 의뢰에는 LOT 이 없다(편성 때는 LOT 이 정해지지 않는다) — 피킹 기록에서 읽는다. 표시 전용.
+ */
+export const usePickedLotNumbers = (
+  shipmentRequestId: number | null,
+  itemId: number,
+): UseQueryResult<string[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: oqcInspectionKeys.pickedLots(shipmentRequestId ?? 0, itemId),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/logistics/shipment-requests/{shipmentRequestId}', {
+          params: { path: { shipmentRequestId: shipmentRequestId as number } },
+        }),
+      ).then((request) => [
+        ...new Set(
+          (request.lines ?? [])
+            .filter((line) => line.itemId === itemId)
+            .flatMap((line) => line.picks.map((pick) => pick.lotNo ?? String(pick.lotId))),
+        ),
+      ]),
+    enabled: shipmentRequestId !== null,
   });
 };

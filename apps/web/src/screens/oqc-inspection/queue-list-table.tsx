@@ -92,7 +92,7 @@ const columnsOf = (
   },
   {
     key: 'targetQty',
-    header: t.columns.targetQty,
+    header: t.targetQtyColumn,
     width: '11%',
     render: (row) => {
       const code = uomCodeOf(row);
