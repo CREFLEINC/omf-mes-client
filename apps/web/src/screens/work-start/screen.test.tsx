@@ -577,6 +577,10 @@ describe('P-02-01 작업 시작 — 사번은 단말이 들고 있는 자리를 
     renderScreen();
 
     expect(screen.getByRole('button', { name: t.worker.confirm })).toBeInTheDocument();
+    /* 묶음 제목은 「작업자」이고 칸 라벨 「사번」을 되풀이하지 않는다(사용자 결정 2026-10-23). */
+    const group = screen.getByRole('group', { name: t.coWorkers.title });
+    expect(within(group).getByRole('heading', { name: t.coWorkers.title })).toBeInTheDocument();
+    expect(within(group).getAllByText(t.worker.fieldLabel)).toHaveLength(1);
   });
 });
 

@@ -21,7 +21,7 @@ export const workStart: Translated<typeof ko.workStart> = {
   },
 
   worker: {
-    title: 'Mã nhân viên',
+    title: 'Người làm',
     fieldLabel: 'Mã nhân viên',
     keypadLabel: 'Bàn phím số nhập mã nhân viên',
     backspace: 'Xóa một ký tự',
