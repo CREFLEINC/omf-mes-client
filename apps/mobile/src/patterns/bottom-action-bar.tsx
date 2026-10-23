@@ -59,10 +59,14 @@ export const BottomActionBar = ({ primary, secondary }: BottomActionBarProps) =>
       >
         {primary.label}
       </Button>
+      {/*
+       * 두 번째 길은 한 단계 낮춘다(60px). 둘 다 72px 이면 바가 화면 아래 4분의 1을 덮어, 고르기
+       * 전에 읽어야 할 물음이 그 밑에 깔린다.
+       */}
       {secondary === undefined ? null : (
         <Button
           variant="outlined"
-          size="2xl"
+          size="xl"
           className="bottom-action-bar__button"
           disabled={secondary.disabled}
           loading={secondary.busy}

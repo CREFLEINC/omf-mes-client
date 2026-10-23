@@ -9,10 +9,13 @@ import { currentPlantId } from '../../patterns/plant';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useCodeValues } from '../../patterns/code-values';
-import { useAdvanceTo } from '../../patterns/advance-to';
+import { useToast } from '@crefle/web-ui';
+
 import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useScannedLot } from '../../patterns/lots';
+import { signal } from '../../patterns/scan-feedback';
+import { useTaskDraft } from '../../patterns/task-draft';
 import {
   SUBSTITUTE_LOT_REASON,
   receiptKeys,
@@ -22,6 +25,9 @@ import {
 } from './queries';
 import {
   OVER,
+  UNDER,
+  autoLineOf,
+  autoOrderOf,
   canSubmit,
   defaultSubstituteLotReason,
   hasScannedLabel,
@@ -30,11 +36,14 @@ import {
   qtyProblem,
   queuedQtyOf,
   recordedOf,
+  remainingQtyOf,
   sourceOf,
   splitQuantitiesOf,
+  stepOf,
   submitLockOf,
   toOutboxDraft,
   toSplitOutboxDraft,
+  typedOverPlanned,
   verdictOf,
   type PurchaseOrderLine,
   type ReceiptDraft,
@@ -43,6 +52,19 @@ import {
 } from './receipt';
 
 const t = messages.inboundReceipt;
+
+/** 홈의 「이어서 하기」에 적을 한 줄. 라벨 품목과 고른 발주 — 실물과 대조할 값이다. */
+const summaryOf = (draft: ReceiptDraft): string | null => {
+  if (draft.supplierLotNo === '' && !draft.supplierLotMissing) {
+    return null;
+  }
+
+  const lot = draft.supplierLotMissing
+    ? t.recorded.lotMissing
+    : (itemCodeOf(draft.supplierLotNo) ?? draft.supplierLotNo);
+
+  return draft.purchaseOrder === null ? lot : `${lot} · ${draft.purchaseOrder.purchaseOrderNo}`;
+};
 const INBOUND_RECEIPT_EXCEPTION_TYPE = 'INBOUND_RECEIPT_EXCEPTION_TYPE';
 /** 계약 InboundReceiptLineUpsert.supplierLotNo의 varchar(100) 상한. 붙여넣기를 자르지 않는다. */
 const SUPPLIER_LOT_NO_MAX_LENGTH = 100;
@@ -82,7 +104,30 @@ export const useReceiptFlow = () => {
   const queryClient = useQueryClient();
   const { worker } = useWorkerSession();
 
-  const [draft, setDraft] = useState<ReceiptDraft>(emptyDraft);
+  const toast = useToast();
+  /*
+   * 적던 것은 화면 밖에 둔다. 홈에 다녀오거나 위치를 확인하고 돌아와도 스캔·선택을 처음부터
+   * 다시 하지 않는다. 등록을 마치면 거둔다(submit) - 남기면 홈이 끝난 일을 이어서 하라고 한다.
+   */
+  const [draft, setDraft, clearDraft] = useTaskDraft('inbound-receipt', emptyDraft, {
+    to: '/inbound-receipt',
+    title: t.title,
+    summarize: summaryOf,
+  });
+  /*
+   * 수량을 적다가 라인을 바꾸러 돌아온 상태. 고른 라인은 그대로 두어, 같은 라인을 다시 고르면
+   * 적어 둔 수량이 남는다.
+   */
+  const [changingLine, setChangingLine] = useState(false);
+  /*
+   * 라인을 고를 때 미리 채운 잔여 수량. 칸이 이 값 그대로인 동안은 «예정»이라 그렇다고 보이고,
+   * 그 위의 첫 숫자는 새로 치기 시작한 것으로 받는다(`typedOverPlanned`).
+   */
+  const [plannedQty, setPlannedQty] = useState<string | null>(null);
+  /* 등록한 품목. 등록하면 적던 것을 거두므로 결과 화면이 품목을 따로 붙든다. */
+  const [finishedItem, setFinishedItem] = useState<{ itemCode: string; itemName: string } | null>(
+    null,
+  );
   const [malformed, setMalformed] = useState<string | null>(null);
   /* 이미 등록된 LOT 이라 받지 않은 라벨(omf-all-around#28). 다음 스캔까지 사유를 남긴다. */
   const [registeredLotNo, setRegisteredLotNo] = useState<string | null>(null);
@@ -109,8 +154,8 @@ export const useReceiptFlow = () => {
   const [keypadFor, setKeypadFor] = useState<'received' | 'package' | null>(null);
   /* 담당자가 후보 밖에서 고르겠다고 한 상태. 한 번 넓히면 되돌리지 않는다. */
   const [showAllOrders, setShowAllOrders] = useState(false);
-  const poSection = useRef<HTMLElement | null>(null);
-  const qtySection = useRef<HTMLElement | null>(null);
+  /* 이 라벨에서 알아서 고르기를 이미 했는가. 한 라벨에 한 번만 한다 - 사람이 바꾼 것을 되돌리지 않는다. */
+  const autoPickedFor = useRef<string | null>(null);
   /*
    * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
    * 두 번째가 들어와 멱등키가 다른 두 건이 담기고, 서버가 흡수하지 못해 재고가 두 번 는다.
@@ -142,13 +187,37 @@ export const useReceiptFlow = () => {
    *    같은 번호를 다시 댔을 때 그대로 둔다.
    */
   const pickLine = (line: PurchaseOrderLine) => {
+    setChangingLine(false);
+
     if (draft.purchaseOrderLine?.purchaseOrderLineId === line.purchaseOrderLineId) {
       return;
     }
 
     /* 숫자판은 앞 자재의 칸에 열려 있다. 비운 칸 위에 그대로 두면 어디에 치는지 어긋난다. */
     setKeypadFor(null);
-    patch({ purchaseOrderLine: line, ...LINE_SCOPED_BLANK });
+
+    /*
+     * 잔여 수량을 미리 채운다(사용자 결정 2026-10-20). 대부분은 예정대로 도착해, 다시 치는 숫자
+     * 셋이 입하 한 건의 탭 절반이었다. 받을 것이 없는 라인은 채우지 않는다 - 0 을 채우면 그대로
+     * 등록을 눌러 수량 0 이 나간다.
+     */
+    const remaining = remainingQtyOf(line, queuedFor(line.purchaseOrderLineId));
+    const planned = remaining > 0 ? String(remaining) : null;
+
+    setPlannedQty(planned);
+    patch({ purchaseOrderLine: line, ...LINE_SCOPED_BLANK, receivedQty: planned ?? '' });
+  };
+
+  /** 실입하 수량을 고친다. 미리 채운 값 위의 첫 숫자는 새로 치기 시작한 것이다. */
+  const editReceivedQty = (next: string) => {
+    if (plannedQty !== null && draft.receivedQty === plannedQty) {
+      setPlannedQty(null);
+      patch({ receivedQty: typedOverPlanned(plannedQty, next) });
+      return;
+    }
+
+    setPlannedQty(null);
+    patch({ receivedQty: next });
   };
 
   const take = (value: string) => {
@@ -163,6 +232,16 @@ export const useReceiptFlow = () => {
 
     setMalformed(null);
     setRegisteredLotNo(null);
+    /* 받아들였다는 것을 앱이 말한다 - 단말의 소리는 «읽혔다»일 뿐이다. */
+    signal('confirm');
+
+    /*
+     * 결과 화면에서 다음 라벨을 읽으면 그 자리에서 다음 입하를 시작한다. 「다음 입하」를 누르고
+     * 다시 스캔하는 한 걸음을 줄인다.
+     */
+    if (outcome !== null) {
+      clearAll();
+    }
 
     /*
      * 라벨이 바뀌면 그 아래 고른 것을 비운다.
@@ -173,13 +252,15 @@ export const useReceiptFlow = () => {
      * 같은 라벨을 다시 댄 것은 바꾸는 것이 아니므로 그대로 둔다 - 비우면 잘못 읽어 다시 댄
      * 사람이 적어 둔 것을 잃는다.
      */
-    if (code !== draft.supplierLotNo) {
+    if (outcome !== null || code !== draft.supplierLotNo) {
       setContinueUnder(false);
       setVarianceNext(false);
       setSplitExceptionType('');
       setSplitExceptionReason('');
       setShowAllOrders(false);
       setKeypadFor(null);
+      setChangingLine(false);
+      setPlannedQty(null);
       setDraft({
         ...emptyDraft,
         supplierLotNo: code,
@@ -220,6 +301,7 @@ export const useReceiptFlow = () => {
     setMalformed(null);
     setRegisteredLotNo(null);
     setExternalLotError(null);
+    signal('confirm');
     patch({
       supplierLotNo: lotNo,
       supplierLotMissing: false,
@@ -233,9 +315,8 @@ export const useReceiptFlow = () => {
 
   const scanField = useScanField({ onScan: take, applied: draft.supplierLotNo });
 
-  /* 세로 화면이라 채운 구획이 화면을 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
-  useAdvanceTo(draft.supplierLotNo !== '' || draft.supplierLotMissing, poSection);
-  useAdvanceTo(draft.purchaseOrderLine !== null || draft.unordered, qtySection);
+  /* 지금 단계. 단계가 바뀌면 화면이 그 단계의 지시 하나만 세운다. */
+  const step = stepOf(draft, changingLine);
 
   /*
    * 스캔한 번호가 양식대로 읽혀 제품코드가 나오면 그 품목이 있는 미마감 자재 P/O 만 후보로 낸다
@@ -426,6 +507,21 @@ export const useReceiptFlow = () => {
     continueUnder,
   });
   const ready = lock === null && verdict !== OVER;
+  /*
+   * 부족일 때 「분할 납품으로 등록」 단추의 잠금. 그 단추를 누르는 것이 곧 「더 온다」는 답이라,
+   * 답을 받은 것으로 놓고 나머지 조건을 같은 한 곳(`submitLockOf`)에서 본다.
+   */
+  const underLock =
+    verdict === UNDER
+      ? submitLockOf(draft, {
+          loaded,
+          hasWorker: worker !== null,
+          plantId,
+          label: labelMismatch !== null ? 'mismatch' : labelChecking ? 'checking' : 'ok',
+          verdict,
+          continueUnder: true,
+        })
+      : null;
   const splitReady =
     loaded &&
     plantId !== null &&
@@ -465,7 +561,8 @@ export const useReceiptFlow = () => {
     return problem === null || draft.receivedQty === '' ? undefined : t.qty[problem];
   };
 
-  const restart = () => {
+  /** 한 건을 마치고 다음 건을 받을 자리로 돌린다. */
+  const clearAll = () => {
     setDraft(emptyDraft);
     setMalformed(null);
     setRegisteredLotNo(null);
@@ -473,14 +570,128 @@ export const useReceiptFlow = () => {
     setExternalLotNo('');
     setOutcome(null);
     setRecorded(null);
+    setFinishedItem(null);
     setContinueUnder(false);
     setVarianceNext(false);
     setSplitExceptionType('');
     setSplitExceptionReason('');
     setSaveFailed(false);
     setShowAllOrders(false);
+    setChangingLine(false);
+    setPlannedQty(null);
+  };
+
+  const restart = () => {
+    clearAll();
     scanField.focus();
   };
+
+  /*
+   * 단말의 뒤로가기는 화면을 나가기 전에 단계부터 되짚는다. 라우터 이력에는 이 화면 하나뿐이라,
+   * 두지 않으면 수량을 적던 사람이 한 번에 작업 목록까지 나가고 적어 둔 것을 잃었다.
+   *
+   * - 수량 → 라인 고르기: 적은 것은 그대로 둔다. 같은 라인을 다시 고르면 이어서 적는다.
+   * - 라인을 바꾸러 온 자리 → 수량: 아무것도 바꾸지 않고 돌아간다.
+   * - 발주 없이 받기 → 라인 고르기: 그 갈래를 접는다.
+   * - 라인 고르기 → 스캔: 라벨을 비운다. 다음 라벨을 받을 자리다.
+   *
+   * 조건을 서로 배타로 둔다 - 품목을 찾는 화면(`pickingItem`)이 열려 있으면 그것이 먼저다.
+   */
+  useBackStep(step === 'qty' && !pickingItem, () => {
+    setKeypadFor(null);
+    setChangingLine(true);
+  });
+  useBackStep(step === 'line' && changingLine && !pickingItem, () => {
+    setChangingLine(false);
+  });
+  useBackStep(step === 'unordered' && !pickingItem, () => {
+    patch({
+      unordered: false,
+      supplierId: null,
+      itemId: null,
+      uomId: null,
+      exceptionTypeCode: '',
+      exceptionReason: '',
+    });
+  });
+  useBackStep(step === 'line' && !changingLine && !pickingItem, () => {
+    restart();
+  });
+
+  /*
+   * 고를 것이 하나뿐이면 알아서 고른다 — 라벨 품목으로 좁힌 후보에서만, 한 라벨에 한 번만.
+   *
+   * 시험 키트의 정상 입하가 스캔 1회에 9탭이었고 그중 셋이 고를 것이 하나뿐인 자리였다. 고른
+   * 것은 알림으로 말한다 - 조용히 건너뛰면 무엇을 골랐는지 모른 채 수량을 적는다.
+   */
+  /*
+   * 이미 등록된 LOT 인지 묻는 동안은 고르지 않는다. 먼저 골라 두면 「골랐습니다」 뒤에 「이미
+   * 등록된 LOT」 으로 되돌아가, 무엇이 맞는 말인지 헷갈린다.
+   */
+  const autoNarrowed =
+    narrowed &&
+    strictLabel &&
+    !showAllOrders &&
+    loaded &&
+    lotCheck.fetchStatus !== 'fetching' &&
+    registeredLot === null;
+
+  useEffect(() => {
+    if (
+      !autoNarrowed ||
+      outcome !== null ||
+      draft.unordered ||
+      draft.purchaseOrder !== null ||
+      autoPickedFor.current === draft.supplierLotNo
+    ) {
+      return;
+    }
+
+    const order = autoOrderOf(orders.data, true);
+
+    if (order !== null) {
+      patch({ purchaseOrder: order, purchaseOrderLine: null, ...LINE_SCOPED_BLANK });
+    }
+    /* patch 는 그릴 때마다 새로 만들어진다. 고를 근거가 바뀔 때만 다시 본다. */
+  }, [autoNarrowed, orders.data, draft.purchaseOrder, draft.unordered, outcome]);
+
+  useEffect(() => {
+    if (
+      !autoNarrowed ||
+      outcome !== null ||
+      changingLine ||
+      draft.purchaseOrder === null ||
+      draft.purchaseOrderLine !== null ||
+      lines.data === undefined ||
+      autoPickedFor.current === draft.supplierLotNo
+    ) {
+      return;
+    }
+
+    /* 발주를 사람이 고른 뒤에도 한다 - 그 발주에 라벨 품목의 라인이 하나뿐이면 다시 고를 것이 없다. */
+    autoPickedFor.current = draft.supplierLotNo;
+    const line = autoLineOf(lines.data, scannedItem.data ?? null, queuedFor);
+
+    if (line === null) {
+      return;
+    }
+
+    pickLine(line);
+    /* 짧게 띄운다 — 알림은 화면 위에 떠 앱바(홈 단추·사번)를 덮는다. 고른 것은 헤더에도 남는다. */
+    toast.show({
+      variant: 'info',
+      description: t.auto.picked(draft.purchaseOrder.purchaseOrderNo, String(line.lineNo)),
+      duration: 2500,
+    });
+    /* pickLine · queuedFor · toast 는 그릴 때마다 새로 만들어진다. 고를 근거가 바뀔 때만 다시 본다. */
+  }, [
+    autoNarrowed,
+    lines.data,
+    draft.purchaseOrder,
+    draft.purchaseOrderLine,
+    changingLine,
+    outcome,
+  ]);
 
   const submit = async (splitMode?: SplitMode) => {
     if (worker === null || source === null || plantId === null || inFlight.current) {
@@ -521,6 +732,7 @@ export const useReceiptFlow = () => {
       try {
         await enqueue(entry);
       } catch {
+        signal('reject');
         setSaveFailed(true);
         return;
       }
@@ -530,6 +742,11 @@ export const useReceiptFlow = () => {
        * 갈려, 확인하려고 보는 수가 도리어 틀린 수가 된다.
        */
       setRecorded(recordedOf(draft, source, entry.path, entry.body));
+      setFinishedItem(
+        item.data === undefined
+          ? null
+          : { itemCode: item.data.itemCode, itemName: item.data.itemName },
+      );
 
       const result = await flush().catch(() => null);
       const mine = (each: { idempotencyKey: string }) =>
@@ -543,7 +760,9 @@ export const useReceiptFlow = () => {
         (result !== null && result.rejected.some((each) => mine(each.entry))) ||
         isRejected(entry.idempotencyKey)
       ) {
+        signal('reject');
         setOutcome('rejected');
+        finish();
         return;
       }
 
@@ -568,13 +787,41 @@ export const useReceiptFlow = () => {
         }
       }
 
+      signal('confirm');
       setOutcome(queued ? 'queued' : 'sent');
+      finish();
     } finally {
       inFlight.current = false;
     }
   };
 
+  /*
+   * 담아 보낸 뒤에는 적던 것을 거둔다. 남기면 홈이 이미 보낸 입하를 이어서 하라고 하고, 그리로
+   * 돌아온 사람이 같은 것을 한 번 더 등록한다. 결과 화면이 보일 것은 `recorded` 와
+   * `finishedItem` 이 들고 있다.
+   */
+  const finish = () => {
+    clearDraft();
+    setPlannedQty(null);
+    setChangingLine(false);
+    setKeypadFor(null);
+  };
+
+  /** 부족 납품을 「더 온다」로 받는다. 누르는 것이 곧 답이라 한 번에 등록한다. */
+  const submitContinueUnder = () => {
+    setContinueUnder(true);
+    void submit();
+  };
+
   return {
+    step,
+    changingLine,
+    setChangingLine,
+    qtyPlanned: plannedQty !== null && draft.receivedQty === plannedQty,
+    editReceivedQty,
+    finishedItem,
+    underLock,
+    submitContinueUnder,
     worker,
     draft,
     malformed,
@@ -601,8 +848,6 @@ export const useReceiptFlow = () => {
     keypadFor,
     setKeypadFor,
     setShowAllOrders,
-    poSection,
-    qtySection,
     patch,
     pickLine,
     takeExternalLot,

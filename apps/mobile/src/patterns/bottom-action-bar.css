@@ -48,5 +48,12 @@
   flex-direction: column;
   min-height: 100%;
   box-sizing: border-box;
+}
+
+/*
+ * 바 아래에 여백이 남으면 끝까지 내렸을 때 바가 바닥에서 떠 보인다. 화면마다 자기 CSS 에 바깥
+ * 여백을 두고 그 파일이 뒤에 실리므로, 클래스를 겹쳐 적어 무게를 올린다.
+ */
+.with-bottom-action-bar.with-bottom-action-bar {
   padding-bottom: 0;
 }

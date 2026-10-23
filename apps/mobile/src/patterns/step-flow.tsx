@@ -75,7 +75,8 @@ export const StepSection = ({ title, index, total, children }: StepSectionProps)
       return;
     }
 
-    node.scrollIntoView({ block: 'nearest' });
+    /* 앞 단계 끝까지 내려가 있던 화면이 새 지시의 아래쪽에서 열리지 않게 머리를 맞춘다. */
+    node.scrollIntoView({ block: 'start' });
   }, []);
 
   return (

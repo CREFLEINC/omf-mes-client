@@ -108,19 +108,37 @@
 }
 
 /*
- * 두 길은 세로로 서고 각자 설명을 데리고 있다. 나란히 두면 좁은 화면에서 단추가 줄어들고
- * 어느 설명이 어느 길의 것인지 흐려진다.
+ * 부족 납품의 물음. 두 길(분할 납품 · 보류로 받기)은 화면 바닥의 확정 바에 선다 — 여기에는
+ * 물음과 이번 도착·남는 몫, 두 길의 설명만 둔다.
  */
-.receipt__under-choice {
+.receipt__under {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5, 20px);
+  align-items: flex-start;
+  gap: var(--space-2, 8px);
 }
 
-.receipt__under-path {
+.receipt__under-ask {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 700;
+}
+
+.receipt__verdict {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2, 8px);
+}
+
+/* 라인 고르기 아래의 다른 길들. 글자 단추라 한 줄에 모아 세로를 아낀다. */
+.receipt__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: var(--space-2, 8px);
+}
+
+/* 라벨을 받은 뒤의 스캔 칸. 다음 라벨을 받으려고 남겨 둔 자리라 단계 제목 없이 선다. */
+.receipt__section--scan {
+  gap: var(--space-1, 4px);
 }
 
 .receipt__split {

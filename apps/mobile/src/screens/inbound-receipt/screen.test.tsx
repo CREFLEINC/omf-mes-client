@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -34,6 +34,14 @@ const tone = vi.hoisted(() => ({ played: 0 }));
 vi.mock('../../patterns/error-tone', () => ({
   playErrorTone: () => {
     tone.played += 1;
+  },
+}));
+/** 받아들였는지·거절했는지 앱이 낸 신호. 단말 스캐너의 소리는 «읽혔다»일 뿐이다. */
+const signals = vi.hoisted(() => [] as string[]);
+
+vi.mock('../../patterns/scan-feedback', () => ({
+  signal: (kind: string) => {
+    signals.push(kind);
   },
 }));
 /** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
@@ -199,11 +207,127 @@ const OTHER_LOT_NO = 'ABC-123|500|260731|SUP-002|0099';
  */
 const scanLabel = async (label: string = SCANNED, narrows = label.startsWith('ABC-123|')) => {
   scan(label);
-  await screen.findByText('자재 P/O 선택');
+  await screen.findByRole('heading', { name: new RegExp(`${LINE_STEP}|${QTY_STEP}`) });
 
+  /*
+   * 좁힌 후보가 하나뿐이면 알아서 골라 수량 단계로 간다(기본 대역이 그렇다). 그때는 좁혔다는
+   * 안내가 서지 않으므로 둘 중 먼저 오는 것을 기다린다.
+   */
   if (narrows) {
-    await screen.findByText('스캔한 자재의 품목이 있는 자재 P/O만 보입니다.');
+    await waitFor(() => {
+      expect(
+        screen.queryByText('스캔한 자재의 품목이 있는 자재 P/O만 보입니다.') ??
+          screen.queryByRole('heading', { name: QTY_STEP }),
+      ).not.toBeNull();
+    });
   }
+};
+
+/** 단계 제목. 한 단계에 지시 하나가 제목으로 선다. */
+const LINE_STEP = '자재 P/O 라인을 고르세요';
+const QTY_STEP = '수량을 확인하세요';
+
+/** 라인 카드 목록. 발주 카드도 같은 모양이라 발주 목록 이름이 붙은 것은 뺀다. */
+const lineCards = () => document.querySelector('ul.receipt__lines:not([aria-label]) li');
+
+/*
+ * 아직 고르지 않은 발주. 후보가 몇 건이면 카드로, 많으면 빈 선택칸으로 선다. 알아서 골랐으면
+ * 둘 다 없다(선택칸에 그 번호가 선다).
+ */
+const unpickedOrder = (): HTMLElement | null => {
+  const card = screen.queryByRole('button', { name: /^PO-2026-0003/ });
+
+  if (card !== null) {
+    return card;
+  }
+
+  const field = screen.queryByRole('combobox', { name: '자재 P/O 번호' });
+  return field !== null && !(field.textContent ?? '').includes('PO-2026-0003') ? field : null;
+};
+
+/* 고르지 않은 발주를 고른다 — 카드면 한 번, 선택칸이면 열고 고른다. */
+const pickUnpickedOrder = async (user: ReturnType<typeof userEvent.setup>) => {
+  const order = unpickedOrder();
+
+  if (order === null) {
+    return;
+  }
+
+  await user.click(order);
+
+  if (order.getAttribute('role') === 'combobox') {
+    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+  }
+};
+
+/*
+ * 라인 카드가 선 라인 고르기 단계까지 간다. 발주가 하나뿐이면 화면이 알아서 고르고, 라인까지
+ * 하나뿐이면 수량 단계로 넘어가 있다 — 그때는 라인 고르기로 되돌아온다.
+ */
+const showLines = async (user: ReturnType<typeof userEvent.setup>) => {
+  await waitFor(() => {
+    expect(
+      screen.queryByRole('heading', { name: QTY_STEP }) ?? lineCards() ?? unpickedOrder(),
+    ).not.toBeNull();
+  });
+
+  if (screen.queryByRole('heading', { name: QTY_STEP }) !== null) {
+    await backToLines(user);
+  } else if (lineCards() === null) {
+    await pickUnpickedOrder(user);
+  }
+
+  await waitFor(() => {
+    expect(lineCards()).not.toBeNull();
+  });
+};
+
+/* 작업 헤더의 「자세히」를 펼친다 — 견주는 수(발주·누적·잔여·허용)가 거기 있다. */
+const openHeaderDetails = async (user: ReturnType<typeof userEvent.setup>) => {
+  const header = screen.getByRole('group', { name: '처리 중인 작업' });
+  await user.click(within(header).getByRole('button', { name: '자세히' }));
+  return header;
+};
+
+/* 수량 단계에서 라인 고르기로 돌아간다. 적은 값은 같은 라인을 다시 고를 때까지 남는다. */
+const backToLines = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: '자재 P/O 라인 바꾸기' }));
+  await screen.findByRole('heading', { name: LINE_STEP });
+};
+
+/*
+ * 수량 단계까지 간다. 고를 것이 하나뿐이면 화면이 알아서 고르고, 아니면 발주와 라인을 고른다 —
+ * 알아서 고르는 것은 조회가 도착한 뒤라, 어느 쪽이 먼저 오든 같은 자리에 닿게 한다.
+ */
+const reachQty = async (user: ReturnType<typeof userEvent.setup>, lineName: RegExp) => {
+  await waitFor(() => {
+    expect(
+      screen.queryByRole('heading', { name: QTY_STEP }) ??
+        screen.queryByRole('button', { name: lineName }) ??
+        unpickedOrder(),
+    ).not.toBeNull();
+  });
+
+  if (screen.queryByRole('heading', { name: QTY_STEP }) !== null) {
+    return;
+  }
+
+  if (screen.queryByRole('button', { name: lineName }) === null) {
+    await pickUnpickedOrder(user);
+  }
+
+  await waitFor(() => {
+    expect(
+      screen.queryByRole('heading', { name: QTY_STEP }) ??
+        screen.queryByRole('button', { name: lineName }),
+    ).not.toBeNull();
+  });
+
+  if (screen.queryByRole('heading', { name: QTY_STEP }) === null) {
+    await user.click(screen.getByRole('button', { name: lineName }));
+  }
+
+  await screen.findByRole('heading', { name: QTY_STEP });
 };
 
 /** 쪽이 여럿 나오는 마스터. 한 쪽이 50건이라 그보다 많아야 더보기가 선다. */
@@ -354,9 +478,9 @@ describe('입하 등록 화면', () => {
     expect(
       await screen.findByText(/전체 자재 P\/O를 보입니다\. 라벨과 같은 품목의 발주를 고르세요/),
     ).toBeTruthy();
-    await user.click(await screen.findByRole('combobox', { name: '자재 P/O 번호' }));
-
-    expect(await screen.findByRole('option', { name: 'PO-2026-0003' })).toBeTruthy();
+    /* 좁히지 못한 목록은 알아서 고르지 않는다. 후보가 몇 건이라 카드로 늘어놓는다. */
+    expect(await screen.findByRole('button', { name: /^PO-2026-0003/ })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: QTY_STEP })).toBeNull();
   });
 
   /*
@@ -388,9 +512,29 @@ describe('입하 등록 화면', () => {
     await user.type(screen.getByLabelText('공급사 LOT 번호'), SCANNED);
     await user.click(screen.getByRole('button', { name: '공급사 LOT 번호 넣기' }));
 
-    await user.click(await screen.findByRole('combobox', { name: '자재 P/O 번호' }));
+    expect(await screen.findByRole('button', { name: /^PO-2026-0003/ })).toBeTruthy();
+  });
 
-    expect(await screen.findByRole('option', { name: 'PO-2026-0003' })).toBeTruthy();
+  /* 후보가 몇 건이면 카드로 한 번에 누른다. 선택칸은 열고 고르는 두 번이다. */
+  it('발주 카드를 누르면 그 발주의 라벨 품목 라인을 알아서 골라 수량 단계로 간다', async () => {
+    const user = userEvent.setup();
+    const second = { ...order, purchaseOrderId: 8, purchaseOrderNo: 'PO-2026-0004' };
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/purchase-orders',
+        respond: () => jsonResponse({ items: [order, second], page }),
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+
+    /* 후보가 둘이라 발주는 사람이 고른다. */
+    await user.click(await screen.findByRole('button', { name: /^PO-2026-0003/ }));
+
+    expect(await screen.findByRole('heading', { name: QTY_STEP })).toBeTruthy();
+    expect(screen.getByRole('group', { name: '처리 중인 작업' })).toHaveTextContent(
+      'PO-2026-0003 · 1번 라인',
+    );
   });
 
   /*
@@ -430,10 +574,11 @@ describe('입하 등록 화면', () => {
       await screen.findByLabelText('LOT 번호');
       scan(SCANNED);
 
-      await screen.findByText('자재 P/O 선택');
+      /* 고를 것이 하나뿐인 대역이라 라인까지 알아서 골라 수량 단계가 선다. */
+      await screen.findByRole('heading', { name: QTY_STEP });
       /* 스크롤은 구획이 그려진 뒤 효과에서 부른다. 글자가 보이는 순간 바로 재면 그 전일 수 있다. */
       await waitFor(() => {
-        expect(pulled.some((text) => text.startsWith('자재 P/O 선택'))).toBe(true);
+        expect(pulled.some((text) => text.startsWith('단계 3/3'))).toBe(true);
       });
     } finally {
       /* jsdom 에는 이 함수가 없다. 남겨 두면 뒤에 도는 시험이 다른 환경에서 돈다. */
@@ -493,14 +638,39 @@ describe('입하 등록 화면', () => {
     expect(screen.queryByText('자재 P/O 선택')).toBeNull();
   });
 
-  it('스캔하면 공급사 LOT으로 들고 발주 선택을 연다', async () => {
+  /*
+   * 라벨 품목으로 좁힌 발주가 하나, 그 품목의 받을 라인이 하나면 고를 것이 없다. 알아서 고르고
+   * 무엇을 골랐는지 알린다 — 정상 입하 한 건의 탭 셋이 이 자리였다.
+   */
+  it('스캔하면 라벨을 작업 헤더에 들고 하나뿐인 자재 P/O 라인을 알아서 고른다', async () => {
     mount();
 
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
-    expect(await screen.findByText(`공급사 LOT ${SCANNED}`)).toBeTruthy();
-    expect(screen.getByText('자재 P/O 선택')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: QTY_STEP })).toBeTruthy();
+    const header = screen.getByRole('group', { name: '처리 중인 작업' });
+    expect(header).toHaveTextContent(SCANNED);
+    expect(header).toHaveTextContent('PO-2026-0003 · 1번 라인');
+    expect(await screen.findByText('PO-2026-0003 · 1번 라인을 골랐습니다')).toBeTruthy();
+  });
+
+  /* 남은 수량을 미리 채운다(사용자 결정 2026-10-20). 예정대로면 등록 한 번으로 끝난다. */
+  it('고른 라인의 남은 수량을 미리 채우고 그 위의 첫 숫자는 새로 치기 시작한다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+
+    const qty = (await screen.findByLabelText(/실입하\ 수량/)) as HTMLInputElement;
+    expect(qty.value).toBe('500');
+    expect(screen.getByText('잔여 수량을 채워 두었습니다. 다르면 숫자를 누르세요.')).toBeTruthy();
+
+    await user.type(qty, '300');
+
+    expect(qty.value).toBe('300');
+    expect(screen.queryByText('잔여 수량을 채워 두었습니다. 다르면 숫자를 누르세요.')).toBeNull();
   });
 
   it('라벨 없는 외부 LOT 원문은 자재 LOT 번호 형식 강제 없이 받는다', async () => {
@@ -513,7 +683,8 @@ describe('입하 등록 화면', () => {
     await user.click(screen.getByRole('button', { name: '공급사 LOT 번호 넣기' }));
 
     expect(await screen.findByText('라벨 미부착 · 공급사 LOT 납품서-LOT/A-01')).toBeTruthy();
-    expect(screen.getByText('자재 P/O 선택')).toBeTruthy();
+    /* 라벨이 아니라 좁히지도 알아서 고르지도 않는다. 담당자가 고른다. */
+    expect(screen.getByRole('heading', { name: LINE_STEP })).toBeTruthy();
   });
 
   it('외부 LOT 원문이 계약 상한을 넘으면 자르지 않고 입력을 막는다', async () => {
@@ -566,6 +737,8 @@ describe('입하 등록 화면', () => {
     /* ⛔ 「공급사 LOT 번호가 없습니다」 띠는 세우지 않는다(사용자 지시 2026-09-19). */
     expect(screen.queryByText('공급사 LOT 번호가 없습니다.')).toBeNull();
 
+    /* 사유는 등록 바로 앞의 것이라 수량 단계에 선다. */
+    await reachQty(user, /ABC-123|31/);
     const reason = await screen.findByText(/대체\ LOT\ 사유/);
     const submit = screen.getByRole('button', { name: '입하 등록' });
 
@@ -599,9 +772,14 @@ describe('입하 등록 화면', () => {
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
+    /* 알아서 라인까지 골랐어도 라인 고르기로 돌아가 발주 없이 받는 길을 연다. */
+    await screen.findByRole('heading', { name: QTY_STEP });
+    await backToLines(user);
     await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
 
-    expect(await screen.findByText('자재 P/O 없이 도착')).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: '발주 없이 받을 품목과 수량을 적으세요' }),
+    ).toBeTruthy();
     expect(await screen.findByRole('combobox', { name: new RegExp('공급사') })).toBeTruthy();
     /* 품목은 마스터가 커서 폼 안의 목록이 아니라 찾는 화면으로 간다. */
     expect(screen.getByRole('button', { name: '품목 찾기' })).toBeTruthy();
@@ -619,6 +797,7 @@ describe('입하 등록 화면', () => {
 
     await screen.findByLabelText('LOT 번호');
     await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
+    await reachQty(user, /ABC-123|31/);
 
     /*
      * 목록이 도착하면 고른 값이 선택칸에 보인다 — 「사유를 고르세요」가 아니다.
@@ -672,49 +851,67 @@ describe('입하 등록 화면 — 자재를 바꿀 때', () => {
   const fillFirstLine = async (user: ReturnType<typeof userEvent.setup>) => {
     await screen.findByLabelText('LOT 번호');
     await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
-    await user.click(await screen.findByRole('combobox', { name: '자재 P/O 번호' }));
-    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
-    await user.click(await screen.findByRole('button', { name: /ABC-123|31/ }));
-    await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
+    await reachQty(user, /ABC-123|31/);
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '450');
     await user.type(screen.getByLabelText(/포장\ 수/), '10');
     await user.type(screen.getByLabelText('제조일 (선택)'), '2026-07-01');
   };
 
-  it('다른 자재로 옮기면 앞 자재에 적은 값을 비운다', async () => {
+  /* 다른 자재의 라인은 「라인 바꾸기」로 돌아가 고른다. */
+  const pickOtherLine = async (user: ReturnType<typeof userEvent.setup>, name: RegExp) => {
+    await backToLines(user);
+    await user.click(await screen.findByRole('button', { name }));
+    await screen.findByRole('heading', { name: QTY_STEP });
+  };
+
+  it('다른 자재로 옮기면 앞 자재에 적은 값을 비우고 그 자재의 남은 수량을 채운다', async () => {
     const user = userEvent.setup();
     mount([], twoLines);
     await fillFirstLine(user);
 
-    await user.click(await screen.findByRole('button', { name: /품목 정보 없음|32/ }));
+    await pickOtherLine(user, /품목 정보 없음|32/);
 
-    expect((screen.getByLabelText(/실입하\ 수량/) as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText(/실입하\ 수량/) as HTMLInputElement).value).toBe('80');
     expect((screen.getByLabelText(/포장\ 수/) as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('제조일 (선택)') as HTMLInputElement).value).toBe('');
   });
 
-  /* 앞 자재의 500 이 남으면 발주량 80 짜리에서 초과 판정이 나 등록 단추가 사라진다. */
+  /* 앞 자재의 수량이 남으면 발주량 80 짜리에서 초과 판정이 나 등록 단추가 사라진다. */
   it('다른 자재로 옮겨도 앞 자재의 수량으로 초과 판정하지 않는다', async () => {
     const user = userEvent.setup();
     mount([], twoLines);
     await fillFirstLine(user);
 
-    await user.click(await screen.findByRole('button', { name: /품목 정보 없음|32/ }));
+    await pickOtherLine(user, /품목 정보 없음|32/);
 
     expect(screen.queryByText('초과 입하 분리')).toBeNull();
     expect(screen.getByRole('button', { name: '입하 등록' })).toBeTruthy();
-    expect(await screen.findByText('실입하 수량을 먼저 적으세요')).toBeTruthy();
   });
 
-  /* 같은 자재를 다시 누른 것은 바꾸는 것이 아니다 - 적어 둔 것을 잃지 않는다. */
-  it('같은 자재를 다시 누르면 적어 둔 것을 잃지 않는다', async () => {
+  /* 같은 자재를 다시 고른 것은 바꾸는 것이 아니다 - 적어 둔 것을 잃지 않는다. */
+  it('라인을 바꾸러 갔다가 같은 자재를 다시 고르면 적어 둔 것을 잃지 않는다', async () => {
     const user = userEvent.setup();
     mount([], twoLines);
     await fillFirstLine(user);
 
-    await user.click(await screen.findByRole('button', { name: /ABC-123|31/ }));
+    await pickOtherLine(user, /ABC-123|31/);
 
-    expect((screen.getByLabelText(/실입하\ 수량/) as HTMLInputElement).value).toBe('500');
+    expect((screen.getByLabelText(/실입하\ 수량/) as HTMLInputElement).value).toBe('450');
     expect((screen.getByLabelText(/포장\ 수/) as HTMLInputElement).value).toBe('10');
+  });
+
+  /* 단말의 뒤로가기도 같다 — 수량에서 라인 고르기로, 다시 수량으로. 적은 것은 그대로다. */
+  it('단말의 뒤로가기는 라인 고르기로 갔다가 다시 수량으로 돌아온다', async () => {
+    const user = userEvent.setup();
+    mount([], twoLines);
+    await fillFirstLine(user);
+
+    runBackStep();
+    expect(await screen.findByRole('heading', { name: LINE_STEP })).toBeTruthy();
+
+    runBackStep();
+    expect(await screen.findByRole('heading', { name: QTY_STEP })).toBeTruthy();
+    expect((screen.getByLabelText(/실입하\ 수량/) as HTMLInputElement).value).toBe('450');
   });
 
   /* 공급사 LOT 과 대체 사유는 «이 도착»의 것이다. 비우면 자재마다 다시 고르게 된다. */
@@ -723,7 +920,7 @@ describe('입하 등록 화면 — 자재를 바꿀 때', () => {
     mount([], twoLines);
     await fillFirstLine(user);
 
-    await user.click(await screen.findByRole('button', { name: /품목 정보 없음|32/ }));
+    await pickOtherLine(user, /품목 정보 없음|32/);
 
     expect(screen.getByRole('button', { name: '스캔으로 되돌리기' })).toBeTruthy();
     expect(screen.getByText('라벨 없음')).toBeTruthy();
@@ -749,9 +946,7 @@ describe('입하 등록 화면 — 등록한 내용', () => {
 
     await screen.findByLabelText('LOT 번호');
     await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
-    await user.click(await screen.findByRole('combobox', { name: '자재 P/O 번호' }));
-    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
-    await user.click(await screen.findByRole('button', { name: /ABC-123|31/ }));
+    await reachQty(user, /ABC-123|31/);
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
     await user.type(screen.getByLabelText(/포장\ 수/), '10');
     await user.click(screen.getByRole('button', { name: '입하 등록' }));
@@ -772,10 +967,7 @@ describe('입하 등록 화면 — 등록한 내용', () => {
 
     await screen.findByLabelText('LOT 번호');
     await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
-    await user.click(await screen.findByRole('combobox', { name: '자재 P/O 번호' }));
-    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
-    await user.click(await screen.findByRole('button', { name: /ABC-123|31/ }));
-    await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
+    await reachQty(user, /ABC-123|31/);
     await user.click(screen.getByRole('button', { name: '입하 등록' }));
 
     await screen.findByText('등록한 내용');
@@ -793,9 +985,7 @@ const choosePoLine = async (
   narrows?: boolean,
 ) => {
   await scanLabel(label, narrows);
-  await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
-  await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
-  await user.click(await screen.findByRole('button', { name: lineName }));
+  await reachQty(user, lineName);
 };
 
 describe('입하 등록 화면 — 발주 경로', () => {
@@ -853,17 +1043,35 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
   });
 
-  it('발주 라인을 고르면 예정 수량과 누적 입하와 허용치를 보인다', async () => {
+  /* 카드는 받을 수량과 허용치를 한 줄로 말한다. 여섯 줄짜리 카드 둘이면 화면이 찼다. */
+  it('라인 카드는 받을 수량과 허용치를 한 줄로 보인다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText('LOT 번호');
     await scanLabel();
+    await showLines(user);
 
-    await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
-    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+    expect(screen.getByText(/발주량 500 EA · 허용 \+10 \/ -5/)).toBeTruthy();
+  });
 
-    expect(await screen.findByText(/누적 입하 0/)).toBeTruthy();
-    expect(screen.getByText(/허용 \+10 \/ -5/)).toBeTruthy();
+  /* 견주는 수는 작업 헤더의 「자세히」에 있다 — 수량을 적는 동안 화면 밖으로 나가지 않는다. */
+  it('라인을 고르면 작업 헤더가 발주·누적·허용치를 보인다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+
+    const header = await openHeaderDetails(user);
+    const terms = within(header)
+      .getAllByRole('term')
+      .map((node) => node.textContent);
+    const values = within(header)
+      .getAllByRole('definition')
+      .map((node) => node.textContent);
+
+    expect(values[terms.indexOf('발주')]).toBe('500 EA');
+    expect(values[terms.indexOf('누적')]).toBe('0 EA');
+    expect(values[terms.indexOf('허용')]).toBe('+10 / -5');
   });
 
   /*
@@ -881,9 +1089,8 @@ describe('입하 등록 화면 — 발주 경로', () => {
     });
     await screen.findByLabelText('LOT 번호');
     await scanLabel();
-
-    await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
-    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+    /* 라벨 품목(31)의 라인은 다 받아 고를 것이 없다 — 알아서 고르지 않고 카드를 세운다. */
+    await showLines(user);
 
     expect(await screen.findByText(/잔여 수량 0/)).toBeTruthy();
     expect(screen.getByText('다 받았습니다')).toBeTruthy();
@@ -921,9 +1128,14 @@ describe('입하 등록 화면 — 발주 경로', () => {
     /* 라벨 제품코드로는 품목을 찾아 좁히지만, 라인 카드가 쓰는 품목 단건 조회는 비어 있다. */
     await choosePoLine(user, /품목 정보 없음/, SCANNED, true);
 
-    /* 라인 카드와 품목·수량 확인 두 자리 모두에 선다. */
-    expect(await screen.findAllByText(/품목 정보 없음/)).toHaveLength(2);
-    expect(screen.getAllByText(/발주량 500 단위 없음/)).toHaveLength(2);
+    /* 작업 헤더의 견주는 수에도 단위가 없다고 선다. */
+    const header = await openHeaderDetails(user);
+    expect(within(header).getAllByText(/단위 없음/)).not.toHaveLength(0);
+
+    /* 라인 카드에도 선다. */
+    await backToLines(user);
+    expect(await screen.findByText(/품목 정보 없음/)).toBeTruthy();
+    expect(screen.getByText(/발주량 500 단위 없음/)).toBeTruthy();
   });
 
   /*
@@ -940,20 +1152,16 @@ describe('입하 등록 화면 — 발주 경로', () => {
     });
     await screen.findByLabelText('LOT 번호');
     await scanLabel();
+    await showLines(user);
 
-    await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
-    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+    /* 카드 차례로 잰다. 받을 것이 남은 둘째 라인(발주량 50)이 다 받은 첫째 라인보다 앞이다. */
+    const cards = [...document.querySelectorAll('.receipt__lines li')].map(
+      (each) => each.textContent ?? '',
+    );
 
-    /*
-     * ⚠ 차례는 «발주량» 줄로 잰다. 잔여 수량은 발주량과 같으면 서지 않으므로(사용자 지시
-     *   2026-09-19) 아직 하나도 받지 않은 줄에는 그 말이 없다.
-     */
-    const ordered = await screen.findAllByText(/발주량/);
-
-    /* 개수를 못 박지 않으면 위쪽에 같은 말이 하나 생길 때 차례가 아닌 것을 재게 된다. */
-    expect(ordered).toHaveLength(2);
-    expect(ordered[0]?.textContent).toMatch(/발주량 50/);
-    expect(ordered[1]?.textContent).toMatch(/발주량 100/);
+    expect(cards).toHaveLength(2);
+    expect(cards[0]).toMatch(/발주량 50/);
+    expect(cards[1]).toMatch(/다 받았습니다/);
   });
 
   /*
@@ -980,9 +1188,8 @@ describe('입하 등록 화면 — 발주 경로', () => {
     mount();
     await screen.findByLabelText('LOT 번호');
     await scanLabel();
-
-    await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
-    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+    /* 담아 둔 것까지 빼면 받을 것이 없다 — 알아서 고르지 않고 카드를 세운다. */
+    await showLines(user);
 
     expect(await screen.findByText(/잔여 수량 0/)).toBeTruthy();
     expect(screen.getByText('다 받았습니다')).toBeTruthy();
@@ -992,15 +1199,24 @@ describe('입하 등록 화면 — 발주 경로', () => {
    * 판정이 견주는 것은 발주 총량이 아니라 남은 예정이다. 총량만 칸 옆에 두면 적는 사람이
    * 그 수에 맞추려 하고, 판정은 다른 수로 나온다.
    */
-  it('칸 옆에 발주량을 보이고, 잔여가 그와 다를 때만 잔여 수량을 더한다', async () => {
+  it('작업 헤더가 발주량을 보이고, 잔여가 그와 다를 때만 잔여 수량을 더한다', async () => {
     const user = userEvent.setup();
     mount([], { lines: [poLine({ orderedQty: 500, receivedQty: 200 })] });
     await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
-    /* ⚠ 고른 라인 카드에도 같은 말이 선다 — 여기서 재는 것은 「있는가」다. */
-    expect(await screen.findAllByText('발주량 500 EA')).not.toHaveLength(0);
-    expect(screen.getAllByText('잔여 수량 300 EA')).not.toHaveLength(0);
+    const header = await openHeaderDetails(user);
+    const terms = within(header)
+      .getAllByRole('term')
+      .map((node) => node.textContent);
+    const values = within(header)
+      .getAllByRole('definition')
+      .map((node) => node.textContent);
+
+    expect(values[terms.indexOf('발주')]).toBe('500 EA');
+    expect(values[terms.indexOf('잔여 수량')]).toBe('300 EA');
+    /* 미리 채운 것도 판정이 견주는 그 수다. */
+    expect((screen.getByLabelText(/실입하\ 수량/) as HTMLInputElement).value).toBe('300');
   });
 
   /* ⭐ 같은 수를 두 번 말하지 않는다(사용자 지시 2026-09-19). */
@@ -1010,9 +1226,13 @@ describe('입하 등록 화면 — 발주 경로', () => {
     await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
-    expect(await screen.findAllByText('발주량 500 EA')).not.toHaveLength(0);
-    /* 라인 카드에도 칸 옆에도 서지 않는다 — 발주량과 같은 수다. */
-    expect(screen.queryAllByText('잔여 수량 500 EA')).toHaveLength(0);
+    const header = await openHeaderDetails(user);
+
+    expect(
+      within(header)
+        .getAllByRole('term')
+        .map((node) => node.textContent),
+    ).not.toContain('잔여 수량');
   });
 
   /* 허용치는 발주 라인이 갖고 있고 서버가 다시 판정하지 않는다. */
@@ -1069,20 +1289,26 @@ describe('입하 등록 화면 — 발주 경로', () => {
 
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '400');
 
-    await screen.findByText('더 들어올 물량이 있습니까?');
-    expect(screen.getByText('발주')).toBeTruthy();
-    expect(screen.getByText('누적')).toBeTruthy();
-    expect(screen.getByText('이번 도착')).toBeTruthy();
+    const ask = await screen.findByRole('group', { name: '더 들어올 물량이 있습니까?' });
+    expect(within(ask).getByText('이번 도착')).toBeTruthy();
     /*
      * 판정이 견주는 남은 예정이 아니라 이번 것까지 받고도 남는 몫이다. 둘을 같은 수로 보이면
      * 사람이 무엇을 고르는지 모른 채 고른다. 발주 500 · 누적 0 · 이번 400 이라 100 이다.
      */
-    const terms = screen.getAllByRole('term').map((node) => node.textContent);
-    const values = screen.getAllByRole('definition').map((node) => node.textContent);
+    const terms = within(ask)
+      .getAllByRole('term')
+      .map((node) => node.textContent);
+    const values = within(ask)
+      .getAllByRole('definition')
+      .map((node) => node.textContent);
 
     expect(values[terms.indexOf('남은')]).toBe('100 EA');
-    /* 두 길은 대등하다. 하나가 링크면 규격이 달라져 한쪽이 더 무겁게 보인다. */
-    expect(screen.getByRole('button', { name: '계속 등록' })).toBeTruthy();
+    /* 발주·누적은 작업 헤더의 「자세히」에 있다. */
+    const header = await openHeaderDetails(user);
+    expect(within(header).getByText('발주')).toBeTruthy();
+    expect(within(header).getByText('누적')).toBeTruthy();
+    /* 두 길은 화면 바닥에 나란히 선다. 고르는 단추가 곧 등록이다. */
+    expect(screen.getByRole('button', { name: '분할 납품으로 등록' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '보류로 받고 오류 등록' })).toBeTruthy();
     expect(screen.getByText(/분할 납품이면 그대로 등록합니다/)).toBeTruthy();
     expect(screen.getByText(/먼저 보류로 받아 둔 뒤에/)).toBeTruthy();
@@ -1104,25 +1330,48 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('포장 수'));
   });
 
-  it('부족인데 고르지 않으면 등록할 수 없다', async () => {
+  /*
+   * 부족이면 「더 오는가」를 사람이 답해야 등록된다. 그 답이 곧 등록 단추다 — 전에는 답을 고른
+   * 뒤 「입하 등록」을 한 번 더 눌러야 했고, 답만 고르고 떠나는 일이 생겼다.
+   */
+  it('부족이면 「입하 등록」 대신 더 오는지를 묻는 두 단추가 선다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '400');
-    await user.type(screen.getByLabelText('포장 수'), '10');
 
     await screen.findByText('더 들어올 물량이 있습니까?');
-    expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
-
-    await user.click(screen.getByRole('button', { name: '계속 등록' }));
-
-    expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
+    expect(screen.queryByRole('button', { name: '입하 등록' })).toBeNull();
+    expect(screen.getByRole('button', { name: '분할 납품으로 등록' })).not.toBeDisabled();
   });
 
-  /* 남겨 두면 부족하다고 답한 수량이 아닌 다른 수량이 그 답을 타고 넘어간다. */
-  it('수량을 고치면 앞서 받은 답을 버린다', async () => {
+  it('부족이면 「분할 납품으로 등록」 한 번으로 등록한다', async () => {
+    const sent: unknown[] = [];
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
+        respond: async (req) => {
+          sent.push(await req.json());
+          return jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 });
+        },
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '400');
+    await user.click(await screen.findByRole('button', { name: '분할 납품으로 등록' }));
+
+    expect(await screen.findByText('입하를 등록했습니다')).toBeTruthy();
+    expect(sent).toHaveLength(1);
+  });
+
+  /* 고쳐서 허용치 안으로 들어오면 물음이 걷히고 평소 등록 단추로 돌아온다. */
+  it('수량을 고쳐 허용치 안으로 오면 부족 물음을 걷는다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText('LOT 번호');
@@ -1130,16 +1379,14 @@ describe('입하 등록 화면 — 발주 경로', () => {
 
     const qty = await screen.findByLabelText(/실입하\ 수량/);
     await user.type(qty, '400');
-    await user.type(screen.getByLabelText('포장 수'), '10');
     await screen.findByText('더 들어올 물량이 있습니까?');
-    await user.click(screen.getByRole('button', { name: '계속 등록' }));
-    expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
 
     await user.clear(qty);
-    await user.type(qty, '300');
+    await user.type(qty, '500');
 
-    await screen.findByText('수량 부족 — 잔여 수량 500, 이번 도착 300');
-    expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
+    expect(await screen.findByText('잔여 수량과 맞습니다')).toBeTruthy();
+    expect(screen.queryByText('더 들어올 물량이 있습니까?')).toBeNull();
+    expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
   });
 
   it('유효기한이 제조일보다 앞서면 등록을 막는다', async () => {
@@ -1425,8 +1672,11 @@ describe('입하 등록 화면 — 되돌릴 수 없는 쓰기', () => {
 });
 
 describe('입하 등록 화면 — 발주 없이 도착', () => {
+  /* 기본 대역은 고를 것이 하나뿐이라 수량 단계까지 알아서 간다. 라인 고르기로 돌아가 연다. */
   const openUnordered = async (user: ReturnType<typeof userEvent.setup>) => {
     await scanLabel();
+    await screen.findByRole('heading', { name: QTY_STEP });
+    await backToLines(user);
     await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
   };
 
@@ -1604,8 +1854,7 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     mount();
 
     await screen.findByLabelText('LOT 번호');
-    scan(SCANNED);
-    await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
+    await openUnordered(user);
     await choose(user, '공급사', /합성공급사/);
 
     await user.click(await screen.findByRole('button', { name: '품목 찾기' }));
@@ -1615,7 +1864,7 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
 
     await user.click(screen.getByRole('button', { name: '고르지 않고 돌아가기' }));
 
-    expect(await screen.findByText(`공급사 LOT ${SCANNED}`)).toBeTruthy();
+    expect(await screen.findByRole('group', { name: '처리 중인 작업' })).toHaveTextContent(SCANNED);
     expect(await screen.findByRole('combobox', { name: /공급사/ })).toHaveTextContent(/합성공급사/);
   });
 
@@ -1628,15 +1877,16 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     mount();
 
     await screen.findByLabelText('LOT 번호');
-    scan(SCANNED);
-    await user.click(await screen.findByRole('button', { name: '자재 P/O 없이 등록' }));
+    await openUnordered(user);
     await user.click(await screen.findByRole('button', { name: '품목 찾기' }));
     await screen.findByLabelText('품목 검색');
 
     /* 단말의 뒤로가기가 부르는 것과 같은 자리다. */
     expect(runBackStep()).toBe(true);
 
-    expect(await screen.findByText(`공급사 LOT ${SCANNED}`)).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: '발주 없이 받을 품목과 수량을 적으세요' }),
+    ).toBeTruthy();
     expect(screen.queryByLabelText('품목 검색')).toBeNull();
   });
 
@@ -1831,15 +2081,20 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await screen.findByLabelText('LOT 번호');
     await openUnordered(user);
 
-    expect(await screen.findByText('목록에 없는 품목은 여기서 만들 수 없습니다')).toBeTruthy();
-    expect(screen.getByText('ERP에 품목이 만들어진 뒤에 고를 수 있습니다.')).toBeTruthy();
+    /* 띠가 아니라 한 줄로 말한다 — 할 수 있는 일이 없는 안내라 크게 세울 까닭이 없다. */
+    expect(
+      await screen.findByText(
+        '목록에 없는 품목은 여기서 만들 수 없습니다 ERP에 품목이 만들어진 뒤에 고를 수 있습니다.',
+      ),
+    ).toBeTruthy();
   });
 
   /*
    * 둘이 함께 서 있으면 고른 발주는 판정에 쓰이는데 실려 나가는 것은 손으로 고른 값이라,
-   * 화면이 보이는 것과 서버에 남는 것이 달라진다.
+   * 화면이 보이는 것과 서버에 남는 것이 달라진다. 발주 없이 받기는 라인 고르기 자리를 대신해,
+   * 발주를 고르려면 그 갈래를 접고 돌아간다.
    */
-  it('발주를 고르면 무발주 갈래를 접는다', async () => {
+  it('발주 없이 받기를 접으면 라인 고르기로 돌아오고 고른 공급사를 버린다', async () => {
     const user = userEvent.setup();
     mount();
 
@@ -1847,15 +2102,13 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await openUnordered(user);
     await choose(user, '공급사', /합성공급사/);
 
-    await screen.findByRole('combobox', { name: new RegExp('공급사') });
+    /* 둘이 함께 서지 않는다 — 발주 선택칸이 이 단계에 없다. */
+    expect(screen.queryByRole('combobox', { name: '자재 P/O 번호' })).toBeNull();
 
-    await user.click(screen.getByRole('combobox', { name: '자재 P/O 번호' }));
-    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+    await user.click(screen.getByRole('button', { name: '자재 P/O 고르기로 되돌리기' }));
 
-    await waitFor(() => {
-      expect(screen.queryByRole('combobox', { name: new RegExp('공급사') })).toBeNull();
-    });
-    expect(screen.queryByText('자재 P/O 없이 도착')).toBeNull();
+    expect(await screen.findByRole('heading', { name: LINE_STEP })).toBeTruthy();
+    expect(screen.queryByRole('combobox', { name: new RegExp('공급사') })).toBeNull();
     expect(screen.getByRole('button', { name: '자재 P/O 없이 등록' })).toBeTruthy();
   });
 
@@ -1936,14 +2189,14 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     mount();
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
-    await screen.findByText(`공급사 LOT ${SCANNED}`);
+    const header = await screen.findByRole('group', { name: '처리 중인 작업' });
 
     scan(OTHER_LOT_NO);
 
     /* 제목은 창이 닫혀도 DOM 에 남는다. 닿을 수 있는 단추로 열렸는지를 잰다. */
     expect(await screen.findByRole('button', { name: '그대로 두기' })).toBeTruthy();
     /* 묻는 동안에는 아직 바뀌지 않는다. */
-    expect(screen.queryByText(`공급사 LOT ${OTHER_LOT_NO}`)).toBeNull();
+    expect(header).not.toHaveTextContent(OTHER_LOT_NO);
   });
 
   it('되물은 창에서 새 값을 받으면 그때 대상이 바뀐다', async () => {
@@ -1951,32 +2204,39 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     mount();
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
-    await screen.findByText(`공급사 LOT ${SCANNED}`);
+    await screen.findByRole('group', { name: '처리 중인 작업' });
     scan(OTHER_LOT_NO);
 
     await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
 
-    expect(await screen.findByText(`공급사 LOT ${OTHER_LOT_NO}`)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('group', { name: '처리 중인 작업' })).toHaveTextContent(OTHER_LOT_NO);
+    });
   });
 
   /*
    * 라벨의 앞자리가 어느 발주 라인이 후보인지를 가른다. 다른 품목의 라벨로 바꿨는데 앞서 고른
    * 라인이 남으면, 그 라인에 남의 라벨이 붙은 채 등록된다 - 화면은 아무 말도 하지 않는다.
    *
-   * 되묻는 창이 이미 바꿀 것인지를 물었으므로 비워도 놀라지 않는다.
+   * 되묻는 창이 이미 바꿀 것인지를 물었으므로 비워도 놀라지 않는다. 같은 품목의 라벨이면 새
+   * 라벨로 다시 고르고 남은 수량을 새로 채운다 — 앞 라벨에 적은 수량은 남지 않는다.
    */
-  it('새 라벨을 받으면 그 아래 고른 것이 비워진다', async () => {
+  it('새 라벨을 받으면 그 아래 고른 것과 적은 것이 비워진다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
-    await screen.findByText('품목·수량 확인');
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '450');
+    await user.type(screen.getByLabelText('포장 수'), '10');
 
     scan(OTHER_LOT_NO);
     await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
 
-    expect(await screen.findByText(`공급사 LOT ${OTHER_LOT_NO}`)).toBeTruthy();
-    expect(screen.queryByText('품목·수량 확인')).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByRole('group', { name: '처리 중인 작업' })).toHaveTextContent(OTHER_LOT_NO);
+    });
+    expect(((await screen.findByLabelText(/실입하\ 수량/)) as HTMLInputElement).value).toBe('500');
+    expect((screen.getByLabelText('포장 수') as HTMLInputElement).value).toBe('');
   });
 });
 
@@ -2008,7 +2268,10 @@ describe('입하 등록 화면 — 이미 등록된 LOT 라벨(omf-all-around#28
     expect(await screen.findByText(`이미 등록된 LOT입니다. 읽은 값: ${SCANNED}`)).toBeTruthy();
     expect(asked).toEqual([SCANNED]);
     expect(tone.played).toBeGreaterThan(before);
-    expect(screen.queryByText('자재 P/O 선택')).toBeNull();
+    /* 스캔 단계에 머문다 — 라인도 수량도 서지 않고, 알아서 고르지도 않는다. */
+    expect(screen.getByRole('heading', { name: '자재 LOT 라벨을 스캔하세요' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: QTY_STEP })).toBeNull();
+    expect(screen.queryByText(/라인을 골랐습니다/)).toBeNull();
   });
 
   /* 서버 유일키는 공장 단위다 — 다른 공장의 같은 번호는 이 입하를 막지 않는다. */
@@ -2030,7 +2293,7 @@ describe('입하 등록 화면 — 이미 등록된 LOT 라벨(omf-all-around#28
     });
 
     expect(screen.queryByText(/이미 등록된 LOT입니다/)).toBeNull();
-    expect(screen.getByText('자재 P/O 선택')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: QTY_STEP })).toBeTruthy();
   });
 
   /* 「확인하지 못함」은 「없음」이 아니다 — 연결 없이도 입하가 담겨야 한다. 서버 거부로 남는다. */
@@ -2051,6 +2314,161 @@ describe('입하 등록 화면 — 이미 등록된 LOT 라벨(omf-all-around#28
     });
 
     expect(screen.queryByText(/이미 등록된 LOT입니다/)).toBeNull();
-    expect(screen.getByText('자재 P/O 선택')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: QTY_STEP })).toBeTruthy();
+  });
+});
+
+/**
+ * 공통 골격 위의 흐름 — 단계 되짚기 · 적던 것 붙들기 · 결과 신호 · 결과 화면에서 다음 스캔.
+ */
+describe('입하 등록 화면 — 단계와 이어 하기', () => {
+  const accepts: StubRoute = {
+    match: (req) =>
+      new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
+    respond: () => jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 }),
+  };
+
+  /* 홈에 다녀오는 것을 흉내 낸다 — 화면은 사라져도 셸의 공급자는 남는다. */
+  const Away = () => {
+    const [shown, setShown] = useState(true);
+
+    return (
+      <>
+        <button type="button" onClick={() => setShown((current) => !current)}>
+          홈 다녀오기
+        </button>
+        {shown ? <InboundReceiptScreen /> : null}
+      </>
+    );
+  };
+
+  const mountAway = (extra: StubRoute[] = []) =>
+    renderWithProviders(
+      <MemoryRouter>
+        <SignedIn>
+          <Away />
+        </SignedIn>
+      </MemoryRouter>,
+      { fetch: createStubFetch([...extra, ...routes()]) },
+    );
+
+  beforeEach(() => {
+    signals.length = 0;
+  });
+
+  /* 홈에서 위치를 확인하고 돌아왔을 뿐인데 스캔·선택을 처음부터 다시 했다. */
+  it('화면을 떠났다 돌아와도 적던 것이 남는다', async () => {
+    const user = userEvent.setup();
+    mountAway();
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '450');
+
+    await user.click(screen.getByRole('button', { name: '홈 다녀오기' }));
+    await user.click(screen.getByRole('button', { name: '홈 다녀오기' }));
+
+    expect(await screen.findByRole('heading', { name: QTY_STEP })).toBeTruthy();
+    expect(screen.getByRole('group', { name: '처리 중인 작업' })).toHaveTextContent(SCANNED);
+    expect((screen.getByLabelText(/실입하\ 수량/) as HTMLInputElement).value).toBe('450');
+  });
+
+  /* 등록을 마친 것을 남기면 돌아온 사람이 같은 입하를 한 번 더 등록한다. */
+  it('등록을 마치면 적던 것을 거둔다', async () => {
+    const user = userEvent.setup();
+    mountAway([accepts]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+    await screen.findByText('입하를 등록했습니다');
+
+    await user.click(screen.getByRole('button', { name: '홈 다녀오기' }));
+    await user.click(screen.getByRole('button', { name: '홈 다녀오기' }));
+
+    expect(await screen.findByRole('heading', { name: '자재 LOT 라벨을 스캔하세요' })).toBeTruthy();
+    expect(screen.queryByRole('group', { name: '처리 중인 작업' })).toBeNull();
+  });
+
+  /* 정상 입하는 스캔 한 번과 등록 한 번이다 — 미리 채운 수량 그대로, 알아서 고른 라인 그대로. */
+  it('예정대로 도착하면 스캔하고 등록 한 번으로 끝난다', async () => {
+    const sent: { lines: { purchaseOrderLineId: number; receivedQty: number }[] }[] = [];
+    const user = userEvent.setup();
+    mount([
+      {
+        ...accepts,
+        respond: async (req) => {
+          sent.push((await req.json()) as (typeof sent)[number]);
+          return jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 });
+        },
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+
+    await screen.findByRole('heading', { name: QTY_STEP });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
+    });
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+
+    expect(await screen.findByText('입하를 등록했습니다')).toBeTruthy();
+    expect(sent[0]?.lines[0]).toMatchObject({ purchaseOrderLineId: 41, receivedQty: 500 });
+  });
+
+  /* 화면을 보지 않는 손이 결과를 안다 — 받아들이면 confirm, 되돌아오면 reject. */
+  it('라벨을 받아들이고 등록을 마치면 받아들였다는 신호를 낸다', async () => {
+    const user = userEvent.setup();
+    mount([accepts]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    expect(signals).toEqual(['confirm']);
+
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+    await screen.findByText('입하를 등록했습니다');
+
+    expect(signals).toEqual(['confirm', 'confirm']);
+  });
+
+  it('담아 두지 못하면 거절 신호를 낸다', async () => {
+    held.failWrite = OUTBOX_KEY;
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+
+    expect(await screen.findByText('입하를 저장하지 못했습니다')).toBeTruthy();
+    expect(signals.at(-1)).toBe('reject');
+  });
+
+  /* 「다음 입하」를 누르고 다시 스캔하는 한 걸음을 줄인다. */
+  it('결과 화면에서 다음 라벨을 읽으면 그 자리에서 다음 입하를 시작한다', async () => {
+    const user = userEvent.setup();
+    mount([accepts]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+    await screen.findByText('입하를 등록했습니다');
+
+    scan(OTHER_LOT_NO);
+
+    expect(await screen.findByRole('heading', { name: QTY_STEP })).toBeTruthy();
+    expect(screen.getByRole('group', { name: '처리 중인 작업' })).toHaveTextContent(OTHER_LOT_NO);
+    expect(screen.queryByText('입하를 등록했습니다')).toBeNull();
+  });
+
+  /* 라인 고르기에서 뒤로가기는 라벨을 비우고 스캔 자리로 — 다음 라벨을 받을 자리다. */
+  it('라인 고르기에서 단말의 뒤로가기를 누르면 스캔 단계로 돌아간다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    /* 라벨이 없으면 알아서 고르지 않아 라인 고르기에 선다. */
+    await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
+    await screen.findByRole('heading', { name: LINE_STEP });
+
+    runBackStep();
+
+    expect(await screen.findByRole('heading', { name: '자재 LOT 라벨을 스캔하세요' })).toBeTruthy();
+    expect(screen.queryByRole('group', { name: '처리 중인 작업' })).toBeNull();
   });
 });

@@ -1,17 +1,21 @@
 import { AlertBanner, Button, Card, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { Fragment } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 
+import { BottomActionBar } from '../../patterns/bottom-action-bar';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { displayNameOf } from '../../patterns/code-values';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
+import { StepSection } from '../../patterns/step-flow';
+import { TaskHeader, type TaskHeaderField } from '../../patterns/task-header';
 import {
   NORMAL,
   OVER,
+  UNDER,
   isExpiryBeforeManufactured,
   LINE_SCOPED_BLANK,
   openLinesFirst,
@@ -44,7 +48,20 @@ const optional = messages.common.optional;
  */
 const SHOW_DELIVERY_NOTE = false;
 
-/*
+/** 단계 번호. 발주 없이 받기는 라인 고르기 자리를 대신한다. */
+const STEP_COUNT = 3;
+
+/** 발주 후보를 카드로 늘어놓는 한도. 넘으면 선택칸으로 둔다 — 카드가 라인을 화면 밖으로 민다. */
+const ORDER_CARDS_MAX = 4;
+
+/**
+ * 입하 등록 — 한 단계에 지시 하나씩.
+ *
+ * 전에는 스캔·발주·예외·수량·판정·사유가 한 장에 이어져 수량을 적으러 내려가면 무엇을 받는지가
+ * 화면 밖으로 나갔고, 정상 입하 한 건이 스캔 1회에 9탭이었다. 이제
+ * 1) 라벨을 스캔하고 2) 자재 P/O 라인을 고르고(하나뿐이면 알아서) 3) 미리 채운 수량을 확인한다.
+ * 처리 중인 값은 위의 작업 헤더가, 등록 단추는 화면 바닥이 늘 같은 자리에서 보인다.
+ *
  * 상태·판정·제출은 `useReceiptFlow` 가 들고 있다. 이 화면은 그 값을 그린다.
  */
 export const InboundReceiptScreen = () => {
@@ -53,6 +70,13 @@ export const InboundReceiptScreen = () => {
 
   const navigate = useNavigate();
   const {
+    step,
+    setChangingLine,
+    qtyPlanned,
+    editReceivedQty,
+    finishedItem,
+    underLock,
+    submitContinueUnder,
     worker,
     draft,
     malformed,
@@ -67,8 +91,6 @@ export const InboundReceiptScreen = () => {
     setExternalLotError,
     outcome,
     recorded,
-    continueUnder,
-    setContinueUnder,
     varianceNext,
     setVarianceNext,
     splitExceptionType,
@@ -79,8 +101,6 @@ export const InboundReceiptScreen = () => {
     keypadFor,
     setKeypadFor,
     setShowAllOrders,
-    poSection,
-    qtySection,
     patch,
     pickLine,
     takeExternalLot,
@@ -146,9 +166,27 @@ export const InboundReceiptScreen = () => {
     );
   }
 
+  /* 스캔 칸. 결과 화면과 단계마다 같은 칸이 단말 스캐너의 입력을 받는다. */
+  const scanInput = (placeholder: string) => (
+    <TextField
+      ref={scanField.ref}
+      label={t.scan.label}
+      placeholder={placeholder}
+      size="xl"
+      fullWidth
+      error={
+        malformed !== null
+          ? t.scan.malformed(malformed)
+          : registeredLotNo !== null
+            ? t.scan.registered(registeredLotNo)
+            : undefined
+      }
+    />
+  );
+
   if (outcome !== null) {
     return (
-      <div className="receipt">
+      <div className="receipt with-bottom-action-bar">
         {outcome === 'sent' ? (
           <AlertBanner variant="success" title={t.sent.title}>
             {t.sent.description}
@@ -159,17 +197,6 @@ export const InboundReceiptScreen = () => {
             {t.queued.description}
             {varianceNext ? ` ${t.queued.varianceLater}` : ''}
           </AlertBanner>
-        ) : null}
-        {/* 오류는 입하 라인에 달린다. 받아 둔 뒤에야 붙일 자리가 생긴다. */}
-        {varianceNext && outcome === 'sent' ? (
-          <Button
-            className="receipt__wide"
-            variant="filled"
-            size="2xl"
-            onClick={() => void navigate('/inbound-variance')}
-          >
-            {t.sent.toVariance}
-          </Button>
         ) : null}
         {outcome === 'rejected' ? (
           <AlertBanner variant="error" title={t.rejected.title}>
@@ -201,9 +228,9 @@ export const InboundReceiptScreen = () => {
               )}
               <dt>{t.recorded.item}</dt>
               <dd>
-                {item.data === undefined
+                {finishedItem === null
                   ? t.po.itemUnknown
-                  : `${item.data.itemCode} ${item.data.itemName}`}
+                  : `${finishedItem.itemCode} ${finishedItem.itemName}`}
               </dd>
               {recorded.parts.map((each) => (
                 <Fragment key={each.part ?? 'only'}>
@@ -247,112 +274,785 @@ export const InboundReceiptScreen = () => {
             </dl>
           </section>
         )}
-        <Button className="receipt__wide" variant="filled" size="2xl" onClick={restart}>
-          {t.another}
-        </Button>
+
+        {/* 다음 라벨을 읽으면 「다음 입하」를 누르지 않아도 그 자리에서 다음 입하가 선다. */}
+        <section className="receipt__section">{scanInput(t.nextScan)}</section>
+
+        {/* 오류는 입하 라인에 달린다. 받아 둔 뒤에야 붙일 자리가 생긴다. */}
+        <BottomActionBar
+          primary={
+            varianceNext && outcome === 'sent'
+              ? { label: t.sent.toVariance, onClick: () => void navigate('/inbound-variance') }
+              : { label: t.another, onClick: restart }
+          }
+          secondary={
+            varianceNext && outcome === 'sent' ? { label: t.another, onClick: restart } : undefined
+          }
+        />
       </div>
     );
   }
 
-  return (
-    <div className={keypadFor === null ? 'receipt' : 'receipt docked-pad-open'}>
-      <section className="receipt__section">
-        <h2>{t.scan.legend}</h2>
-        <TextField
-          ref={scanField.ref}
-          label={t.scan.label}
-          placeholder={t.scan.placeholder}
-          size="xl"
-          fullWidth
-          error={
-            malformed !== null
-              ? t.scan.malformed(malformed)
-              : registeredLotNo !== null
-                ? t.scan.registered(registeredLotNo)
-                : undefined
-          }
-        />
-        {/*
-         * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
-         * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
-         */}
-        {/*
-         * ⭐ **직접 입력과 되돌리기를 한 줄에 나란히 둔다**(사용자 지시 2026-09-19 ·
-         *    omf-all-around#34). 세로로 쌓으면 스캔 칸과 아래 구획 사이가 단추로 메워진다.
-         *
-         * ⛔ **「공급사 LOT 번호가 없습니다」 띠를 세우지 않는다**(같은 지시). 고른 사람이 방금
-         *    누른 것을 되풀이해 말할 뿐이고, 사유 선택칸이 아래에서 같은 사실을 이미 말한다.
-         *
-         * ⭐ **사유 입력은 여기 두지 않는다.** 고른 뒤 발주·수량을 거쳐 화면을 한참 내려가
-         *    등록하는데, 그 사이 사유는 화면 밖으로 밀려난다 — 등록 단추 바로 위로 옮겼다.
-         */}
-        <div className="receipt__row">
-          {scanField.manual ? (
-            <Button variant="outlined" size="xl" onClick={scanField.submitManual}>
-              {t.scan.manualSubmit}
-            </Button>
-          ) : (
-            <Button variant="text" size="xl" onClick={scanField.openManual}>
-              {t.scan.manualLabel}
-            </Button>
-          )}
-          {draft.supplierLotMissing ? (
-            <Button
-              variant="text"
-              size="xl"
+  const line = draft.purchaseOrderLine;
+  const lineRemaining = line === null ? null : remainingQtyOf(line, queuedQty);
+
+  /*
+   * 처리 중인 값 — 실물 라벨과 대조하는 것이 위에 붙어 있다. 품목 코드를 앞에 굵게 세운다.
+   * 라인을 고르기 전에는 라벨에서 읽은 제품코드를 쓴다.
+   */
+  const headerFields: TaskHeaderField[] = [
+    {
+      label: t.header.item,
+      value:
+        item.data?.itemCode ??
+        scannedCode ??
+        (draft.supplierLotMissing ? t.recorded.lotMissing : draft.supplierLotNo),
+      strong: true,
+    },
+    ...(item.data === undefined ? [] : [{ label: t.header.itemName, value: item.data.itemName }]),
+    ...(draft.purchaseOrder === null
+      ? []
+      : [
+          {
+            label: t.header.purchaseOrder,
+            value:
+              line === null
+                ? draft.purchaseOrder.purchaseOrderNo
+                : t.header.lineOf(draft.purchaseOrder.purchaseOrderNo, String(line.lineNo)),
+          },
+        ]),
+    ...(draft.supplierLotNo === '' ? [] : [{ label: t.header.lot, value: draft.supplierLotNo }]),
+  ];
+
+  /*
+   * 견주는 수는 「자세히」에 둔다. 판정이 견주는 것은 발주 총량이 아니라 남은 예정이다.
+   * ⭐ 남은 수량은 발주량과 다를 때만 세운다(사용자 지시 2026-09-19) — 같은 수를 두 번 말할 뿐이다.
+   */
+  const headerDetails =
+    line === null || lineRemaining === null ? undefined : (
+      <dl className="receipt__counts">
+        <dt>{t.verdict.counts.ordered}</dt>
+        <dd>{`${String(line.orderedQty)} ${uom}`}</dd>
+        <dt>{t.verdict.counts.received}</dt>
+        <dd>{`${String(line.receivedQty)} ${uom}`}</dd>
+        {lineRemaining === line.orderedQty ? null : (
+          <>
+            <dt>{t.verdict.split.remaining}</dt>
+            <dd>{`${String(lineRemaining)} ${uom}`}</dd>
+          </>
+        )}
+        <dt>{t.header.tolerance}</dt>
+        <dd>{`+${String(line.toleranceOverQty)} / -${String(line.toleranceUnderQty)}`}</dd>
+      </dl>
+    );
+
+  const lineCards = (
+    <ul className="receipt__lines">
+      {openLinesFirst(lines.data ?? [], queuedFor).map((each: PurchaseOrderLine) => {
+        /* 표시와 표식이 갈리지 않게 한 번만 센다. */
+        const remaining = remainingQtyOf(each, queuedFor(each.purchaseOrderLineId));
+        const parts = itemPartsOf(each.itemId);
+
+        return (
+          <li key={each.purchaseOrderLineId}>
+            <Card
+              bordered
+              interactive
               onClick={() => {
-                patch({
-                  supplierLotMissing: false,
-                  supplierLotLabelAttached: true,
-                  substituteLotReasonCode: '',
-                });
+                pickLine(each);
               }}
             >
-              {t.scan.back}
-            </Button>
-          ) : null}
-        </div>
+              <Card.Body className="card-body receipt__line">
+                {/* ⭐ 코드와 이름을 각자의 줄에 적는다(사용자 지시 2026-09-19). */}
+                {parts === null ? (
+                  <strong>{t.po.itemUnknown}</strong>
+                ) : (
+                  <>
+                    <strong>{t.po.lineItemCode(parts.code)}</strong>
+                    <p>{t.po.lineItemName(parts.name)}</p>
+                  </>
+                )}
+                {/*
+                 * 받을 것과 허용치를 한 줄로 줄인다. 카드 하나가 여섯 줄이라 두 장이면 화면이 찼다.
+                 * ⭐ 발주량과 같으면 남은 수를 따로 세우지 않는다 — 그때는 발주량이 곧 받을 것이다.
+                 */}
+                <p>
+                  {remaining === each.orderedQty
+                    ? t.po.lineOrdered(String(each.orderedQty), uomOf(each.uomId))
+                    : t.po.lineRemaining(String(remaining))}
+                  {' · '}
+                  {t.po.tolerance(String(each.toleranceOverQty), String(each.toleranceUnderQty))}
+                  {remaining > 0 ? null : (
+                    <>
+                      {' · '}
+                      <strong>{t.po.lineClosed}</strong>
+                    </>
+                  )}
+                </p>
+                {draft.purchaseOrderLine?.purchaseOrderLineId === each.purchaseOrderLineId ? (
+                  <Chip status="success">{t.po.linePicked}</Chip>
+                ) : null}
+              </Card.Body>
+            </Card>
+          </li>
+        );
+      })}
+    </ul>
+  );
 
-        {draft.supplierLotMissing ? null : draft.supplierLotNo === '' ? (
-          <>
-            {externalLotInput ? (
-              <div className="receipt__field">
-                <TextField
-                  label={t.scan.externalLabel}
-                  placeholder={t.scan.externalPlaceholder}
-                  size="xl"
-                  fullWidth
-                  value={externalLotNo}
-                  error={externalLotError ?? undefined}
-                  onChange={(event) => {
-                    setExternalLotNo(event.target.value);
-                    setExternalLotError(null);
-                  }}
-                />
-                <Button
-                  className="receipt__wide"
-                  variant="filled"
-                  size="xl"
-                  onClick={takeExternalLot}
-                >
-                  {t.scan.externalSubmit}
-                </Button>
-              </div>
-            ) : (
-              <Button
-                className="receipt__wide"
-                variant="outlined"
-                size="xl"
+  /*
+   * 발주를 고른다. 무발주 갈래를 접는다 — 둘이 함께 서 있으면 고른 발주는 판정에 쓰이는데 실려
+   * 나가는 것은 손으로 고른 값이라, 화면이 보이는 것과 서버에 남는 것이 달라진다.
+   */
+  const pickOrder = (picked: PurchaseOrder | undefined) => {
+    patch({
+      purchaseOrder: picked ?? null,
+      purchaseOrderLine: null,
+      unordered: false,
+      supplierId: null,
+      itemId: null,
+      uomId: null,
+      exceptionTypeCode: '',
+      exceptionReason: '',
+      ...LINE_SCOPED_BLANK,
+    });
+  };
+
+  /* 2단계 — 자재 P/O 와 그 라인. 고를 것이 하나뿐이면 이 단계는 알아서 지나간다. */
+  const lineStep = (
+    <StepSection title={t.steps.line} index={2} total={STEP_COUNT}>
+      {/* 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */}
+      {narrowedWithCandidates ? (
+        <p className="receipt__note">{t.po.narrowedNote}</p>
+      ) : candidates === null || narrowed ? null : (
+        <p className="receipt__note">{t.po.pickNote}</p>
+      )}
+      {itemCheck === 'pending' ? <p role="status">{t.po.itemChecking}</p> : null}
+      {itemCheck === 'failed' && strictLabel ? (
+        <FailureBanner
+          variant="error"
+          title={failureText(scannedItem.error, t.po.itemCheckFailed)}
+        />
+      ) : null}
+      {itemCheck === 'unknown' && strictLabel && scannedCode !== null ? (
+        <AlertBanner variant="warning" title={t.po.itemNotFound(scannedCode)} />
+      ) : null}
+      {candidates?.isPending ? <p role="status">{t.po.loading}</p> : null}
+      {candidates?.isError ? (
+        <FailureBanner variant="error" title={failureText(candidates.error, t.po.loadFailed)} />
+      ) : null}
+      {candidates?.isSuccess && candidates.data.length === 0 ? (
+        narrowed && strictLabel && scannedCode !== null ? (
+          <AlertBanner variant="warning" title={t.po.noneForItem(scannedCode)} />
+        ) : (
+          <p className="receipt__note">{t.po.none}</p>
+        )
+      ) : null}
+      {candidates === null ||
+      orders.data === undefined ||
+      (narrowed && orders.data.length === 0) ? null : draft.purchaseOrder === null &&
+        orders.data.length <= ORDER_CARDS_MAX ? (
+        /*
+         * 후보가 몇 건이면 카드로 늘어놓아 한 번에 누른다. 선택칸은 열고 고르는 두 번이다.
+         * 많으면 카드가 화면을 덮어 라인이 보이지 않으므로 선택칸으로 둔다.
+         */
+        <ul className="receipt__lines" aria-label={t.po.selectLabel}>
+          {orders.data.map((each) => (
+            <li key={each.purchaseOrderId}>
+              <Card
+                bordered
+                interactive
                 onClick={() => {
-                  setMalformed(null);
-                  setRegisteredLotNo(null);
-                  setExternalLotError(null);
-                  setExternalLotInput(true);
+                  pickOrder(each);
                 }}
               >
-                {t.scan.externalEntry}
+                <Card.Body className="card-body receipt__line">
+                  <strong>{each.purchaseOrderNo}</strong>
+                  <p>{t.po.orderDate(each.orderDate)}</p>
+                </Card.Body>
+              </Card>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="receipt__field">
+          <label htmlFor="receipt-po">{t.po.selectLabel}</label>
+          <Select
+            id="receipt-po"
+            placeholder={t.po.selectLabel}
+            size="xl"
+            value={
+              draft.purchaseOrder === null ? null : String(draft.purchaseOrder.purchaseOrderId)
+            }
+            onChange={(value) => {
+              pickOrder(
+                (orders.data as PurchaseOrder[]).find(
+                  (each) => each.purchaseOrderId === Number(value),
+                ),
+              );
+            }}
+            options={orders.data.map((each) => ({
+              value: String(each.purchaseOrderId),
+              label: each.purchaseOrderNo,
+            }))}
+          />
+        </div>
+      )}
+
+      {draft.purchaseOrder === null ? null : (
+        <>
+          {lines.isPending ? <p role="status">{t.po.linesLoading}</p> : null}
+          {lines.isError ? <AlertBanner variant="error" title={t.po.linesLoadFailed} /> : null}
+          {lines.isSuccess && lines.data.length === 0 ? (
+            <AlertBanner variant="warning" title={t.po.linesNone} />
+          ) : null}
+          {lineCards}
+        </>
+      )}
+
+      {/*
+       * 좁힌 것이 틀릴 수 있다. 번호 양식이 다르거나 다른 품목으로 들어온 물건이면
+       * 후보에 없다 - 막지 않고 전체로 넓힐 길을 둔다(화면 스펙 §3 · §6).
+       */}
+      <div className="receipt__links">
+        {narrowedWithCandidates ? (
+          <Button
+            variant="text"
+            size="xl"
+            onClick={() => {
+              setShowAllOrders(true);
+              patch({ purchaseOrder: null, purchaseOrderLine: null, ...LINE_SCOPED_BLANK });
+            }}
+          >
+            {t.po.showAll}
+          </Button>
+        ) : null}
+        {draft.purchaseOrder === null ? null : (
+          <Button
+            variant="text"
+            size="xl"
+            onClick={() => {
+              setChangingLine(false);
+              patch({ purchaseOrder: null, purchaseOrderLine: null, ...LINE_SCOPED_BLANK });
+            }}
+          >
+            {t.po.clear}
+          </Button>
+        )}
+        {/* 발주가 없으면 승계할 곳이 없어 담당자가 고른다. 고르지 않은 것과는 다른 상태다. */}
+        <Button
+          variant="text"
+          size="xl"
+          onClick={() => {
+            setChangingLine(false);
+            patch({
+              unordered: true,
+              purchaseOrder: null,
+              purchaseOrderLine: null,
+              exceptionTypeCode: '',
+              exceptionReason: '',
+              ...LINE_SCOPED_BLANK,
+            });
+          }}
+        >
+          {t.exception.open}
+        </Button>
+      </div>
+    </StepSection>
+  );
+
+  /* 발주 없이 받기 — 라인 고르기 자리를 대신한다. 품목을 고르면 같은 자리에서 수량까지 적는다. */
+  const unorderedFields = (
+    <>
+      <p className="receipt__note">{t.exception.openNote}</p>
+
+      {plantId === null ? <AlertBanner variant="error" title={t.exception.noPlant} /> : null}
+
+      {suppliers.isPending ? <p role="status">{t.exception.supplierLoading}</p> : null}
+      {suppliers.isError ? (
+        <AlertBanner variant="error" title={t.exception.supplierLoadFailed} />
+      ) : null}
+      {suppliers.isSuccess && suppliers.data.length === 0 ? (
+        <AlertBanner variant="warning" title={t.exception.supplierNone} />
+      ) : null}
+      {suppliers.data === undefined || suppliers.data.length === 0 ? null : (
+        <div className="receipt__field">
+          <label htmlFor="receipt-supplier">{required(t.exception.supplierLabel)}</label>
+          <Select
+            id="receipt-supplier"
+            placeholder={t.exception.supplierPlaceholder}
+            size="xl"
+            value={draft.supplierId === null ? null : String(draft.supplierId)}
+            onChange={(value) => {
+              patch({ supplierId: Number(value) });
+            }}
+            options={suppliers.data.map((each) => ({
+              value: String(each.partnerId),
+              label: each.partnerName,
+            }))}
+          />
+        </div>
+      )}
+
+      {/*
+        마스터가 9,000건인 곳이 있어 목록으로 늘어놓지 않는다. 앞에서 잘린 목록을
+        보이면 있는 품목이 없는 것으로 읽혀, 고르지 못하고도 이유를 알 수 없다.
+      */}
+      <div className="receipt__field">
+        <p>{required(t.exception.itemLabel)}</p>
+        {draft.itemId === null || item.data === undefined ? (
+          <p className="receipt__note">{t.exception.itemNone}</p>
+        ) : (
+          <p>
+            <strong>{`${item.data.itemCode} ${item.data.itemName}`}</strong>
+          </p>
+        )}
+        <Button
+          variant="outlined"
+          size="xl"
+          className="receipt__wide"
+          onClick={() => {
+            setPickingItem(true);
+          }}
+        >
+          {draft.itemId === null ? t.exception.itemPick : t.exception.itemChange}
+        </Button>
+        {/* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. 띠가 아니라 한 줄로 말한다. */}
+        <p className="receipt__note">{`${t.exception.itemUnregistered} ${t.exception.itemUnregisteredWhy}`}</p>
+      </div>
+
+      {uoms.isError ? <AlertBanner variant="error" title={t.exception.uomLoadFailed} /> : null}
+      {uoms.data === undefined ? null : (
+        <div className="receipt__field">
+          <label htmlFor="receipt-uom">{required(t.exception.uomLabel)}</label>
+          <Select
+            id="receipt-uom"
+            placeholder={t.exception.uomPlaceholder}
+            size="xl"
+            value={draft.uomId === null ? null : String(draft.uomId)}
+            onChange={(value) => {
+              patch({ uomId: Number(value) });
+            }}
+            options={[...uoms.data].map(([uomId, code]) => ({
+              value: String(uomId),
+              label: code,
+            }))}
+          />
+        </div>
+      )}
+
+      <div className="receipt__field">
+        <label htmlFor="receipt-unordered-exception-type">{required(t.exception.typeLabel)}</label>
+        <Select
+          id="receipt-unordered-exception-type"
+          placeholder={t.exception.typePlaceholder}
+          size="xl"
+          value={draft.exceptionTypeCode === '' ? null : draft.exceptionTypeCode}
+          onChange={(value) => {
+            patch({ exceptionTypeCode: String(value) });
+          }}
+          options={(exceptionTypes.data ?? []).map((each) => ({
+            value: each.code,
+            label: each.name,
+          }))}
+        />
+        {exceptionTypes.isError ? (
+          <p className="receipt__note">{t.exception.typeLoadFailed}</p>
+        ) : null}
+      </div>
+      <TextField
+        label={required(t.exception.reasonLabel)}
+        size="xl"
+        fullWidth
+        value={draft.exceptionReason}
+        onChange={(event) => {
+          patch({ exceptionReason: event.target.value });
+        }}
+      />
+
+      {/* 예정 수량이 없어 견줄 것이 없다. 판정하지 않는다는 사실을 말한다. */}
+      <p className="receipt__note">{t.exception.noVerdict}</p>
+
+      <Button
+        variant="text"
+        size="xl"
+        onClick={() => {
+          patch({
+            unordered: false,
+            supplierId: null,
+            itemId: null,
+            uomId: null,
+            exceptionTypeCode: '',
+            exceptionReason: '',
+          });
+        }}
+      >
+        {t.exception.close}
+      </Button>
+    </>
+  );
+
+  /* 판정. 정상은 칩 하나로 — 띠로 세우면 아무 일 없는 것이 가장 크게 보인다. */
+  const verdictView: ReactNode =
+    verdict === null || line === null ? null : verdict === NORMAL ? (
+      <div className="receipt__verdict">
+        <Chip status="success">{t.verdict.normal}</Chip>
+      </div>
+    ) : verdict === OVER ? (
+      <>
+        <AlertBanner
+          variant="warning"
+          title={t.verdict.over(String(remainingQtyOf(line, queuedQty)), String(received))}
+        >
+          {t.verdict.overNext}
+        </AlertBanner>
+        {splitQuantities === null ? null : (
+          <section className="receipt__split">
+            <h2>{t.verdict.split.legend}</h2>
+            <dl className="receipt__counts">
+              <dt>{t.verdict.split.remaining}</dt>
+              <dd>{`${String(splitQuantities.remaining)} ${uom}`}</dd>
+              <dt>{t.verdict.split.normal}</dt>
+              <dd>{`${String(splitQuantities.normal)} ${uom}`}</dd>
+              <dt>{t.verdict.split.excess}</dt>
+              <dd>{`${String(splitQuantities.excess)} ${uom}`}</dd>
+            </dl>
+
+            <div className="receipt__field">
+              <label htmlFor="receipt-split-exception-type">
+                {required(t.verdict.split.exceptionType)}
+              </label>
+              <Select
+                id="receipt-split-exception-type"
+                placeholder={t.verdict.split.exceptionTypePlaceholder}
+                size="xl"
+                value={splitExceptionType === '' ? null : splitExceptionType}
+                onChange={(value) => {
+                  setSplitExceptionType(String(value));
+                }}
+                options={(exceptionTypes.data ?? []).map((each) => ({
+                  value: each.code,
+                  label: each.name,
+                }))}
+              />
+              {exceptionTypes.isError ? (
+                <p className="receipt__note">{t.verdict.split.exceptionTypeLoadFailed}</p>
+              ) : null}
+            </div>
+
+            <TextField
+              label={required(t.verdict.split.exceptionReason)}
+              size="xl"
+              fullWidth
+              value={splitExceptionReason}
+              onChange={(event) => {
+                setSplitExceptionReason(event.target.value);
+              }}
+            />
+
+            {/* 세 길은 대등하지 않다 — 정량·초과를 함께 받는 것이 기본이라 그것만 채워 세운다. */}
+            <div className="receipt__split-actions">
+              <Button
+                variant="filled"
+                size="2xl"
+                disabled={
+                  !splitReady ||
+                  splitQuantities.normal <= 0 ||
+                  splitQuantities.excess <= 0 ||
+                  splitExceptionType === '' ||
+                  splitExceptionReason.trim() === ''
+                }
+                onClick={() => void submit('BOTH')}
+              >
+                {t.verdict.split.both}
+              </Button>
+              <Button
+                variant="outlined"
+                size="xl"
+                disabled={!splitReady || splitQuantities.normal <= 0}
+                onClick={() => void submit('NORMAL_ONLY')}
+              >
+                {t.verdict.split.normalOnly}
+              </Button>
+              <Button
+                variant="outlined"
+                size="xl"
+                disabled={
+                  !splitReady ||
+                  splitQuantities.excess <= 0 ||
+                  splitExceptionType === '' ||
+                  splitExceptionReason.trim() === ''
+                }
+                onClick={() => void submit('EXCESS_ONLY')}
+              >
+                {t.verdict.split.excessOnly}
+              </Button>
+            </div>
+            {/* 비활성은 사유를 함께 보인다(공유계약 G-1). 왜 못 누르는지 알아야 한다. */}
+            {splitExceptionType === '' || splitExceptionReason.trim() === '' ? (
+              <p className="receipt__note">{t.verdict.split.excessLocked}</p>
+            ) : null}
+            <p className="receipt__note">{t.verdict.split.atomic}</p>
+          </section>
+        )}
+      </>
+    ) : (
+      /*
+       * 부족 — 물음 하나와 하단의 두 단추. 전에는 띠 하나에 네 수·물음·단추 둘·설명 둘이 들어
+       * 있었고, 고른 뒤에도 등록 단추를 한 번 더 눌러야 했다. 이제 고르는 단추가 곧 등록이다.
+       * 네 수는 위의 「자세히」에 있다.
+       */
+      <div className="receipt__under" role="group" aria-label={t.verdict.underAsk}>
+        <Chip status="warning">
+          {t.verdict.under(String(remainingQtyOf(line, queuedQty)), String(received))}
+        </Chip>
+        <p className="receipt__under-ask">{t.verdict.underAsk}</p>
+        <dl className="receipt__counts">
+          <dt>{t.verdict.counts.arrived}</dt>
+          <dd>{`${String(received)} ${uom}`}</dd>
+          <dt>{t.verdict.counts.remaining}</dt>
+          <dd>{`${String(remainingAfterOf(line, received, queuedQty))} ${uom}`}</dd>
+        </dl>
+        <p className="receipt__note">{t.verdict.underContinueNote}</p>
+        <p className="receipt__note">{t.verdict.underVarianceNote}</p>
+      </div>
+    );
+
+  /* 3단계(및 발주 없이 받기)의 수량. */
+  const qtyFields = (
+    <>
+      {/*
+       * 숫자판은 화면 아래에 붙는다(공유계약 D-4). 어느 칸에 들어가는지는 머리줄과 칸 표시로
+       * 보인다. 늘 띄워 두면 그것이 흐려지고, 칸마다 하나씩 두면 큰 판이 둘이 되어 아래 칸을
+       * 화면 밖으로 민다.
+       */}
+      <div className="receipt__keypad-group">
+        <div className="receipt__qty-field">
+          <TextField
+            id="receipt-received-qty"
+            label={required(t.qty.received)}
+            inputMode="none"
+            size="xl"
+            fullWidth
+            value={draft.receivedQty}
+            onChange={(event) => {
+              editReceivedQty(event.target.value);
+            }}
+            onFocus={() => {
+              setKeypadFor('received');
+            }}
+            /* 미리 채운 값은 예정이다. 그대로인 동안 그렇다고 칸 아래에 적는다. */
+            helperText={qtyPlanned ? t.plannedQty : undefined}
+            error={qtyMessage()}
+          />
+        </div>
+
+        <div className="receipt__qty-field">
+          <TextField
+            id="receipt-package-count"
+            label={t.qty.packageCount}
+            inputMode="none"
+            size="xl"
+            fullWidth
+            value={draft.packageCount}
+            onChange={(event) => {
+              patch({ packageCount: event.target.value });
+            }}
+            onFocus={() => {
+              setKeypadFor('package');
+            }}
+            error={
+              packageProblem(draft.packageCount) === null ? undefined : t.qty.packageNotPositive
+            }
+          />
+        </div>
+      </div>
+
+      {verdictView}
+
+      <div className="receipt__row receipt__row--split">
+        <TextField
+          type="date"
+          label={optional(t.qty.manufactured)}
+          size="xl"
+          fullWidth
+          value={draft.manufacturedDate}
+          onChange={(event) => {
+            patch({ manufacturedDate: event.target.value });
+          }}
+        />
+        <TextField
+          type="date"
+          label={optional(t.qty.expiry)}
+          size="xl"
+          fullWidth
+          value={draft.expiryDate}
+          onChange={(event) => {
+            patch({ expiryDate: event.target.value });
+          }}
+          error={
+            isExpiryBeforeManufactured(draft.manufacturedDate, draft.expiryDate)
+              ? t.qty.expiryBeforeManufactured
+              : undefined
+          }
+        />
+      </div>
+
+      {item.isError ? <p className="receipt__note">{t.qty.itemLoadFailed}</p> : null}
+      <p className="receipt__note">{t.inspectionNote}</p>
+    </>
+  );
+
+  const showQty = step === 'qty' || (step === 'unordered' && draft.itemId !== null);
+
+  /*
+   * 등록 바로 앞의 확인들 — 라벨 대조·저장 실패·사번. 단추 가까이에 두어야 왜 막혔는지가 보인다.
+   *
+   * ⭐ **대체 LOT 사유는 등록 단추 바로 위에 선다**(사용자 지시 2026-09-19 · omf-all-around#34).
+   *    필수값이라 누르기 직전에 한 번 더 눈에 들어와야 한다.
+   */
+  const beforeSubmit = (
+    <>
+      {labelMismatch === null ? null : (
+        <AlertBanner variant="error" title={t.label[labelMismatch]}>
+          {t.label.rescan}
+        </AlertBanner>
+      )}
+      {labelChecking ? (
+        <p className="receipt__note" role="status">
+          {t.label.checking}
+        </p>
+      ) : null}
+      {labelUnverified ? <p className="receipt__note">{t.label.unverified}</p> : null}
+      {saveFailed ? (
+        <AlertBanner variant="error" title={t.saveFailed.title}>
+          {t.saveFailed.description}
+        </AlertBanner>
+      ) : null}
+      {worker === null ? <p className="receipt__note">{t.noWorker}</p> : null}
+      {draft.supplierLotMissing ? (
+        <div className="receipt__field">
+          <label htmlFor="receipt-reason">{required(t.scan.reasonLabel)}</label>
+          <Select
+            id="receipt-reason"
+            placeholder={t.scan.reasonPlaceholder}
+            size="xl"
+            value={draft.substituteLotReasonCode === '' ? null : draft.substituteLotReasonCode}
+            onChange={(value) => {
+              patch({ substituteLotReasonCode: String(value) });
+            }}
+            options={(reasons.data ?? []).map((each) => ({
+              value: each.code,
+              label: each.name,
+            }))}
+          />
+          {reasons.isError ? <p className="receipt__note">{t.scan.reasonLoadFailed}</p> : null}
+        </div>
+      ) : null}
+    </>
+  );
+
+  /*
+   * 화면 바닥의 확정 단추(공통 골격 S3). 숫자판이 열린 동안은 숨는다 - 전에 이 화면이 단추를
+   * 바닥에 붙이지 않았던 까닭(숫자판 아랫줄을 덮는다)이 그렇게 풀린다.
+   * - 초과: 분리 구획이 자기 단추를 가진다. 바를 세우지 않는다.
+   * - 부족: 「분할 납품으로 등록」 · 「보류로 받고 오류 등록」 두 길.
+   */
+  const bar =
+    !showQty || verdict === OVER ? null : verdict === UNDER ? (
+      <BottomActionBar
+        primary={{
+          label: t.verdict.underContinue,
+          onClick: submitContinueUnder,
+          disabled: underLock !== null,
+          lockReason: underLock === null ? undefined : t.locked[underLock],
+        }}
+        secondary={{
+          label: t.verdict.underVariance,
+          disabled: !varianceReady,
+          onClick: () => {
+            if (!varianceReady) {
+              return;
+            }
+
+            setVarianceNext(true);
+            void submit();
+          },
+        }}
+      />
+    ) : (
+      <BottomActionBar
+        primary={{
+          label: t.submit,
+          onClick: () => void submit(),
+          disabled: !ready,
+          /*
+           * 위에서부터 처음 비어 있는 것 하나만 말한다 - 다 늘어놓으면 무엇부터 할지가 흐려진다.
+           * 다음 것은 이것을 채우면 그 자리에 선다.
+           */
+          lockReason: lock === null ? undefined : t.locked[lock],
+        }}
+      />
+    );
+
+  return (
+    <div
+      className={
+        keypadFor === null
+          ? 'receipt with-bottom-action-bar'
+          : 'receipt with-bottom-action-bar docked-pad-open'
+      }
+    >
+      {started ? <TaskHeader fields={headerFields} details={headerDetails} /> : null}
+
+      {/*
+       * 1단계 — 스캔. 라벨을 받은 뒤에도 칸은 남는다: 단말 스캐너의 입력을 이 칸이 받아,
+       * 다른 라벨을 읽으면 되묻고 바꾼다.
+       */}
+      {step === 'scan' ? (
+        <StepSection title={t.steps.scan} index={1} total={STEP_COUNT}>
+          {scanInput(t.scan.placeholder)}
+          {/*
+           * ⭐ **직접 입력과 되돌리기를 한 줄에 나란히 둔다**(사용자 지시 2026-09-19 ·
+           *    omf-all-around#34). 세로로 쌓으면 스캔 칸과 아래 구획 사이가 단추로 메워진다.
+           */}
+          <div className="receipt__row">
+            {scanField.manual ? (
+              <Button variant="outlined" size="xl" onClick={scanField.submitManual}>
+                {t.scan.manualSubmit}
+              </Button>
+            ) : (
+              <Button variant="text" size="xl" onClick={scanField.openManual}>
+                {t.scan.manualLabel}
               </Button>
             )}
+          </div>
+
+          {/* 라벨이 없을 때의 두 길. 스캔이 기본이라 그 아래에 둔다. */}
+          {externalLotInput ? (
+            <div className="receipt__field">
+              <TextField
+                label={t.scan.externalLabel}
+                placeholder={t.scan.externalPlaceholder}
+                size="xl"
+                fullWidth
+                value={externalLotNo}
+                error={externalLotError ?? undefined}
+                onChange={(event) => {
+                  setExternalLotNo(event.target.value);
+                  setExternalLotError(null);
+                }}
+              />
+              <Button
+                className="receipt__wide"
+                variant="filled"
+                size="2xl"
+                onClick={takeExternalLot}
+              >
+                {t.scan.externalSubmit}
+              </Button>
+            </div>
+          ) : (
             <Button
               className="receipt__wide"
               variant="outlined"
@@ -360,768 +1060,133 @@ export const InboundReceiptScreen = () => {
               onClick={() => {
                 setMalformed(null);
                 setRegisteredLotNo(null);
-                setExternalLotInput(false);
                 setExternalLotError(null);
-                patch({
-                  supplierLotNo: '',
-                  supplierLotMissing: true,
-                  supplierLotLabelAttached: false,
-                });
+                setExternalLotInput(true);
               }}
             >
-              {t.scan.missing}
+              {t.scan.externalEntry}
             </Button>
-          </>
-        ) : (
-          <p className="receipt__note">
-            {draft.supplierLotLabelAttached
-              ? t.scan.scanned(draft.supplierLotNo)
-              : t.scan.externalTaken(draft.supplierLotNo)}
-          </p>
-        )}
-      </section>
-
-      {!started ? null : (
-        <>
-          <section className="receipt__section" ref={poSection}>
-            <h2>{t.po.legend}</h2>
-            {/* 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */}
-            {narrowedWithCandidates ? (
-              <p className="receipt__note">{t.po.narrowedNote}</p>
-            ) : candidates === null || narrowed ? null : (
-              <p className="receipt__note">{t.po.pickNote}</p>
+          )}
+          <Button
+            className="receipt__wide"
+            variant="outlined"
+            size="xl"
+            onClick={() => {
+              setMalformed(null);
+              setRegisteredLotNo(null);
+              setExternalLotInput(false);
+              setExternalLotError(null);
+              patch({
+                supplierLotNo: '',
+                supplierLotMissing: true,
+                supplierLotLabelAttached: false,
+              });
+            }}
+          >
+            {t.scan.missing}
+          </Button>
+        </StepSection>
+      ) : (
+        <section className="receipt__section receipt__section--scan">
+          {scanInput(t.scan.placeholder)}
+          {/*
+           * 손으로 넣은 납품서 번호는 라벨이 아니라는 것을 말한다 — 제품코드 대조도 자동 고르기도
+           * 하지 않는 번호라, 헤더의 번호만 보고는 라벨을 읽은 것과 가리지 못한다.
+           */}
+          {draft.supplierLotLabelAttached || draft.supplierLotNo === '' ? null : (
+            <p className="receipt__note">{t.scan.externalTaken(draft.supplierLotNo)}</p>
+          )}
+          {/*
+           * ⛔ **「공급사 LOT 번호가 없습니다」 띠를 세우지 않는다**(사용자 지시 2026-09-19).
+           *    고른 사람이 방금 누른 것을 되풀이해 말할 뿐이다 — 되돌리기 단추만 둔다.
+           */}
+          <div className="receipt__row">
+            {scanField.manual ? (
+              <Button variant="outlined" size="xl" onClick={scanField.submitManual}>
+                {t.scan.manualSubmit}
+              </Button>
+            ) : (
+              <Button variant="text" size="xl" onClick={scanField.openManual}>
+                {t.scan.manualLabel}
+              </Button>
             )}
-            {itemCheck === 'pending' ? <p role="status">{t.po.itemChecking}</p> : null}
-            {itemCheck === 'failed' && strictLabel ? (
-              <FailureBanner
-                variant="error"
-                title={failureText(scannedItem.error, t.po.itemCheckFailed)}
-              />
-            ) : null}
-            {itemCheck === 'unknown' && strictLabel && scannedCode !== null ? (
-              <AlertBanner variant="warning" title={t.po.itemNotFound(scannedCode)} />
-            ) : null}
-            {candidates?.isPending ? <p role="status">{t.po.loading}</p> : null}
-            {candidates?.isError ? (
-              <FailureBanner
-                variant="error"
-                title={failureText(candidates.error, t.po.loadFailed)}
-              />
-            ) : null}
-            {candidates?.isSuccess && candidates.data.length === 0 ? (
-              narrowed && strictLabel && scannedCode !== null ? (
-                <AlertBanner variant="warning" title={t.po.noneForItem(scannedCode)} />
-              ) : (
-                <p className="receipt__note">{t.po.none}</p>
-              )
-            ) : null}
-            {candidates === null ||
-            orders.data === undefined ||
-            (narrowed && orders.data.length === 0) ? null : (
-              <div className="receipt__field">
-                <label htmlFor="receipt-po">{t.po.selectLabel}</label>
-                <Select
-                  id="receipt-po"
-                  placeholder={t.po.selectLabel}
-                  size="xl"
-                  value={
-                    draft.purchaseOrder === null
-                      ? null
-                      : String(draft.purchaseOrder.purchaseOrderId)
-                  }
-                  onChange={(value) => {
-                    const picked = (orders.data as PurchaseOrder[]).find(
-                      (each) => each.purchaseOrderId === Number(value),
-                    );
-                    /*
-                     * 발주를 고르면 무발주 갈래를 접는다. 둘이 함께 서 있으면 고른 발주는
-                     * 판정에 쓰이는데 실려 나가는 것은 손으로 고른 값이라, 화면이 보이는
-                     * 것과 서버에 남는 것이 달라진다.
-                     */
-                    patch({
-                      purchaseOrder: picked ?? null,
-                      purchaseOrderLine: null,
-                      unordered: false,
-                      supplierId: null,
-                      itemId: null,
-                      uomId: null,
-                      exceptionTypeCode: '',
-                      exceptionReason: '',
-                      ...LINE_SCOPED_BLANK,
-                    });
-                  }}
-                  options={orders.data.map((each) => ({
-                    value: String(each.purchaseOrderId),
-                    label: each.purchaseOrderNo,
-                  }))}
-                />
-              </div>
-            )}
-
-            {/*
-             * 좁힌 것이 틀릴 수 있다. 번호 양식이 다르거나 다른 품목으로 들어온 물건이면
-             * 후보에 없다 - 막지 않고 전체로 넓힐 길을 둔다(화면 스펙 §3 · §6).
-             */}
-            {narrowedWithCandidates ? (
+            {draft.supplierLotMissing ? (
               <Button
-                className="receipt__wide"
                 variant="text"
                 size="xl"
                 onClick={() => {
-                  setShowAllOrders(true);
-                  patch({ purchaseOrder: null, purchaseOrderLine: null, ...LINE_SCOPED_BLANK });
-                }}
-              >
-                {t.po.showAll}
-              </Button>
-            ) : null}
-
-            {draft.purchaseOrder === null ? null : (
-              <>
-                {lines.isPending ? <p role="status">{t.po.linesLoading}</p> : null}
-                {lines.isError ? (
-                  <AlertBanner variant="error" title={t.po.linesLoadFailed} />
-                ) : null}
-                {lines.isSuccess && lines.data.length === 0 ? (
-                  <AlertBanner variant="warning" title={t.po.linesNone} />
-                ) : null}
-                <ul className="receipt__lines">
-                  {openLinesFirst(lines.data ?? [], queuedFor).map((line: PurchaseOrderLine) => {
-                    /* 표시와 표식이 갈리지 않게 한 번만 센다. */
-                    const lineRemaining = remainingQtyOf(line, queuedFor(line.purchaseOrderLineId));
-
-                    return (
-                      <li key={line.purchaseOrderLineId}>
-                        <Card
-                          bordered
-                          interactive
-                          onClick={() => {
-                            pickLine(line);
-                          }}
-                        >
-                          <Card.Body className="card-body receipt__line">
-                            {/* ⭐ 코드와 이름을 각자의 줄에 적는다(사용자 지시 2026-09-19). */}
-                            {itemPartsOf(line.itemId) === null ? (
-                              <strong>{t.po.itemUnknown}</strong>
-                            ) : (
-                              <>
-                                <strong>
-                                  {t.po.lineItemCode(itemPartsOf(line.itemId)?.code ?? '')}
-                                </strong>
-                                <p>{t.po.lineItemName(itemPartsOf(line.itemId)?.name ?? '')}</p>
-                              </>
-                            )}
-                            <p>{t.po.lineOrdered(String(line.orderedQty), uomOf(line.uomId))}</p>
-                            <p>{t.po.received(String(line.receivedQty))}</p>
-                            {/*
-                             * 후보 목록은 발주 단위라 그 품목의 라인이 다 찬 발주도 선다.
-                             * 견주는 수를 카드가 직접 말하지 않으면 발주량대로 적게 된다.
-                             *
-                             * ⭐ **발주량과 같으면 세우지 않는다**(사용자 지시 2026-09-19) — 같은
-                             *    수를 두 번 말할 뿐이고, 그때는 발주량대로 적는 것이 맞다.
-                             */}
-                            {lineRemaining === line.orderedQty ? null : (
-                              <p>
-                                {t.po.lineRemaining(String(lineRemaining))}
-                                {lineRemaining > 0 ? null : (
-                                  <>
-                                    {' · '}
-                                    <strong>{t.po.lineClosed}</strong>
-                                  </>
-                                )}
-                              </p>
-                            )}
-                            <p>
-                              {t.po.tolerance(
-                                String(line.toleranceOverQty),
-                                String(line.toleranceUnderQty),
-                              )}
-                            </p>
-                            {draft.purchaseOrderLine?.purchaseOrderLineId ===
-                            line.purchaseOrderLineId ? (
-                              <Chip status="success">{t.po.linePicked}</Chip>
-                            ) : null}
-                          </Card.Body>
-                        </Card>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <Button
-                  variant="text"
-                  size="lg"
-                  onClick={() => {
-                    patch({ purchaseOrder: null, purchaseOrderLine: null, ...LINE_SCOPED_BLANK });
-                  }}
-                >
-                  {t.po.clear}
-                </Button>
-              </>
-            )}
-            {/* 발주가 없으면 승계할 곳이 없어 담당자가 고른다. 고르지 않은 것과는 다른 상태다. */}
-            {draft.unordered ? null : (
-              <Button
-                variant="text"
-                size="lg"
-                onClick={() => {
                   patch({
-                    unordered: true,
-                    purchaseOrder: null,
-                    purchaseOrderLine: null,
-                    exceptionTypeCode: '',
-                    exceptionReason: '',
-                    ...LINE_SCOPED_BLANK,
+                    supplierLotMissing: false,
+                    supplierLotLabelAttached: true,
+                    substituteLotReasonCode: '',
                   });
                 }}
               >
-                {t.exception.open}
+                {t.scan.back}
               </Button>
-            )}
-          </section>
-
-          {draft.unordered ? (
-            <section className="receipt__section">
-              <h2>{t.exception.legend}</h2>
-              <p className="receipt__note">{t.exception.openNote}</p>
-
-              {plantId === null ? (
-                <AlertBanner variant="error" title={t.exception.noPlant} />
-              ) : null}
-
-              {suppliers.isPending ? <p role="status">{t.exception.supplierLoading}</p> : null}
-              {suppliers.isError ? (
-                <AlertBanner variant="error" title={t.exception.supplierLoadFailed} />
-              ) : null}
-              {suppliers.isSuccess && suppliers.data.length === 0 ? (
-                <AlertBanner variant="warning" title={t.exception.supplierNone} />
-              ) : null}
-              {suppliers.data === undefined || suppliers.data.length === 0 ? null : (
-                <div className="receipt__field">
-                  <label htmlFor="receipt-supplier">{required(t.exception.supplierLabel)}</label>
-                  <Select
-                    id="receipt-supplier"
-                    placeholder={t.exception.supplierPlaceholder}
-                    size="xl"
-                    value={draft.supplierId === null ? null : String(draft.supplierId)}
-                    onChange={(value) => {
-                      patch({ supplierId: Number(value) });
-                    }}
-                    options={suppliers.data.map((each) => ({
-                      value: String(each.partnerId),
-                      label: each.partnerName,
-                    }))}
-                  />
-                </div>
-              )}
-
-              {/*
-                마스터가 9,000건인 곳이 있어 목록으로 늘어놓지 않는다. 앞에서 잘린 목록을
-                보이면 있는 품목이 없는 것으로 읽혀, 고르지 못하고도 이유를 알 수 없다.
-              */}
-              <div className="receipt__field">
-                <p>{required(t.exception.itemLabel)}</p>
-                {draft.itemId === null || item.data === undefined ? (
-                  <p className="receipt__note">{t.exception.itemNone}</p>
-                ) : (
-                  <p>
-                    <strong>{`${item.data.itemCode} ${item.data.itemName}`}</strong>
-                  </p>
-                )}
-                <Button
-                  variant="outlined"
-                  size="xl"
-                  className="receipt__wide"
-                  onClick={() => {
-                    setPickingItem(true);
-                  }}
-                >
-                  {draft.itemId === null ? t.exception.itemPick : t.exception.itemChange}
-                </Button>
-              </div>
-              {/* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */}
-              <AlertBanner variant="info" title={t.exception.itemUnregistered}>
-                {t.exception.itemUnregisteredWhy}
-              </AlertBanner>
-
-              {uoms.isError ? (
-                <AlertBanner variant="error" title={t.exception.uomLoadFailed} />
-              ) : null}
-              {uoms.data === undefined ? null : (
-                <div className="receipt__field">
-                  <label htmlFor="receipt-uom">{required(t.exception.uomLabel)}</label>
-                  <Select
-                    id="receipt-uom"
-                    placeholder={t.exception.uomPlaceholder}
-                    size="xl"
-                    value={draft.uomId === null ? null : String(draft.uomId)}
-                    onChange={(value) => {
-                      patch({ uomId: Number(value) });
-                    }}
-                    options={[...uoms.data].map(([uomId, code]) => ({
-                      value: String(uomId),
-                      label: code,
-                    }))}
-                  />
-                </div>
-              )}
-
-              <div className="receipt__field">
-                <label htmlFor="receipt-unordered-exception-type">
-                  {required(t.exception.typeLabel)}
-                </label>
-                <Select
-                  id="receipt-unordered-exception-type"
-                  placeholder={t.exception.typePlaceholder}
-                  size="xl"
-                  value={draft.exceptionTypeCode === '' ? null : draft.exceptionTypeCode}
-                  onChange={(value) => {
-                    patch({ exceptionTypeCode: String(value) });
-                  }}
-                  options={(exceptionTypes.data ?? []).map((each) => ({
-                    value: each.code,
-                    label: each.name,
-                  }))}
-                />
-                {exceptionTypes.isError ? (
-                  <p className="receipt__note">{t.exception.typeLoadFailed}</p>
-                ) : null}
-              </div>
-              <TextField
-                label={required(t.exception.reasonLabel)}
-                size="xl"
-                fullWidth
-                value={draft.exceptionReason}
-                onChange={(event) => {
-                  patch({ exceptionReason: event.target.value });
-                }}
-              />
-
-              {/* 예정 수량이 없어 견줄 것이 없다. 판정하지 않는다는 사실을 말한다. */}
-              <p className="receipt__note">{t.exception.noVerdict}</p>
-
-              <Button
-                variant="text"
-                size="lg"
-                onClick={() => {
-                  patch({
-                    unordered: false,
-                    supplierId: null,
-                    itemId: null,
-                    uomId: null,
-                    exceptionTypeCode: '',
-                    exceptionReason: '',
-                  });
-                }}
-              >
-                {t.exception.close}
-              </Button>
-            </section>
-          ) : null}
-
-          {!SHOW_DELIVERY_NOTE ? null : (
-            <section className="receipt__section">
-              <h2>{t.note.legend}</h2>
-              <p className="receipt__note">{t.note.photoAbsent}</p>
-              <TextField
-                label={t.note.label}
-                size="xl"
-                fullWidth
-                value={draft.deliveryNoteNo}
-                onChange={(event) => {
-                  patch({ deliveryNoteNo: event.target.value });
-                }}
-              />
-
-              <TextField
-                label={t.note.vehicle}
-                size="xl"
-                fullWidth
-                value={draft.vehicleNo}
-                onChange={(event) => {
-                  patch({ vehicleNo: event.target.value });
-                }}
-              />
-              {draft.deliveryNoteNo.trim() === '' ? (
-                <AlertBanner variant="warning" title={t.note.absent} />
-              ) : null}
-            </section>
-          )}
-
-          {draft.purchaseOrderLine === null &&
-          !(draft.unordered && draft.itemId !== null) ? null : (
-            <section className="receipt__section" ref={qtySection}>
-              <h2>{t.qty.legend}</h2>
-              <Card bordered>
-                <Card.Body className="card-body receipt__card">
-                  {/* ⭐ 여기서도 코드와 이름을 각자의 줄에 적는다(사용자 지시 2026-09-19). */}
-                  {item.data === undefined ? (
-                    <strong>{t.po.itemUnknown}</strong>
-                  ) : (
-                    <>
-                      <strong>{t.qty.itemCode(item.data.itemCode)}</strong>
-                      <p>{t.qty.itemName(item.data.itemName)}</p>
-                    </>
-                  )}
-                  {item.isError ? <p className="receipt__note">{t.qty.itemLoadFailed}</p> : null}
-                  {/*
-                   * 발주가 없으면 견줄 수량이 없다. 없는 것을 0 으로 보이지 않는다.
-                   *
-                   * 판정이 견주는 것은 발주 총량이 아니라 남은 예정이다. 총량만 칸 옆에 두면
-                   * 적는 사람이 그 수에 맞추려 하고, 판정은 다른 수로 나온다.
-                   */}
-                  {draft.purchaseOrderLine === null ? null : (
-                    <>
-                      <p>{t.qty.ordered(String(draft.purchaseOrderLine.orderedQty), uom)}</p>
-                      {/* ⭐ 발주량과 같으면 세우지 않는다 — 같은 수를 두 번 말할 뿐이다. */}
-                      {remainingQtyOf(draft.purchaseOrderLine, queuedQty) ===
-                      draft.purchaseOrderLine.orderedQty ? null : (
-                        <p>
-                          <strong>
-                            {t.qty.remaining(
-                              String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
-                              uom,
-                            )}
-                          </strong>
-                        </p>
-                      )}
-                    </>
-                  )}
-                </Card.Body>
-              </Card>
-
-              {/*
-               * 숫자판은 고른 칸 바로 아래에 붙는다 - 부품의 골격이 포커스 연동 버퍼다
-               * (공유계약 D-4). 어느 칸에 들어가는지는 자리로 보인다. 늘 띄워 두면 그것이
-               * 흐려지고, 칸마다 하나씩 두면 큰 판이 둘이 되어 아래 칸을 화면 밖으로 민다.
-               */}
-              <div className="receipt__keypad-group">
-                <div className="receipt__qty-field">
-                  <TextField
-                    id="receipt-received-qty"
-                    label={required(t.qty.received)}
-                    inputMode="none"
-                    size="xl"
-                    fullWidth
-                    value={draft.receivedQty}
-                    onChange={(event) => {
-                      patch({ receivedQty: event.target.value });
-                    }}
-                    onFocus={() => {
-                      setKeypadFor('received');
-                    }}
-                    error={qtyMessage()}
-                  />
-                </div>
-
-                <div className="receipt__qty-field">
-                  <TextField
-                    id="receipt-package-count"
-                    label={t.qty.packageCount}
-                    inputMode="none"
-                    size="xl"
-                    fullWidth
-                    value={draft.packageCount}
-                    onChange={(event) => {
-                      patch({ packageCount: event.target.value });
-                    }}
-                    onFocus={() => {
-                      setKeypadFor('package');
-                    }}
-                    error={
-                      packageProblem(draft.packageCount) === null
-                        ? undefined
-                        : t.qty.packageNotPositive
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="receipt__row receipt__row--split">
-                <TextField
-                  type="date"
-                  label={optional(t.qty.manufactured)}
-                  size="xl"
-                  fullWidth
-                  value={draft.manufacturedDate}
-                  onChange={(event) => {
-                    patch({ manufacturedDate: event.target.value });
-                  }}
-                />
-                <TextField
-                  type="date"
-                  label={optional(t.qty.expiry)}
-                  size="xl"
-                  fullWidth
-                  value={draft.expiryDate}
-                  onChange={(event) => {
-                    patch({ expiryDate: event.target.value });
-                  }}
-                  error={
-                    isExpiryBeforeManufactured(draft.manufacturedDate, draft.expiryDate)
-                      ? t.qty.expiryBeforeManufactured
-                      : undefined
-                  }
-                />
-              </div>
-
-              {/* 판정 결과를 먼저 보인 뒤에 넘긴다. 조용히 넘기면 왜 왔는지 알 수 없다. */}
-              {verdict === null || draft.purchaseOrderLine === null ? null : verdict === NORMAL ? (
-                <AlertBanner variant="success" title={t.verdict.normal} />
-              ) : verdict === OVER ? (
-                <>
-                  <AlertBanner
-                    variant="warning"
-                    title={t.verdict.over(
-                      String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
-                      String(received),
-                    )}
-                  >
-                    {t.verdict.overNext}
-                  </AlertBanner>
-                  {splitQuantities === null ? null : (
-                    <section className="receipt__split">
-                      <h2>{t.verdict.split.legend}</h2>
-                      <dl className="receipt__counts">
-                        <dt>{t.verdict.split.remaining}</dt>
-                        <dd>{`${String(splitQuantities.remaining)} ${uom}`}</dd>
-                        <dt>{t.verdict.split.normal}</dt>
-                        <dd>{`${String(splitQuantities.normal)} ${uom}`}</dd>
-                        <dt>{t.verdict.split.excess}</dt>
-                        <dd>{`${String(splitQuantities.excess)} ${uom}`}</dd>
-                      </dl>
-
-                      <div className="receipt__field">
-                        <label htmlFor="receipt-split-exception-type">
-                          {required(t.verdict.split.exceptionType)}
-                        </label>
-                        <Select
-                          id="receipt-split-exception-type"
-                          placeholder={t.verdict.split.exceptionTypePlaceholder}
-                          size="xl"
-                          value={splitExceptionType === '' ? null : splitExceptionType}
-                          onChange={(value) => {
-                            setSplitExceptionType(String(value));
-                          }}
-                          options={(exceptionTypes.data ?? []).map((each) => ({
-                            value: each.code,
-                            label: each.name,
-                          }))}
-                        />
-                        {exceptionTypes.isError ? (
-                          <p className="receipt__note">{t.verdict.split.exceptionTypeLoadFailed}</p>
-                        ) : null}
-                      </div>
-
-                      <TextField
-                        label={required(t.verdict.split.exceptionReason)}
-                        size="xl"
-                        fullWidth
-                        value={splitExceptionReason}
-                        onChange={(event) => {
-                          setSplitExceptionReason(event.target.value);
-                        }}
-                      />
-
-                      <div className="receipt__split-actions">
-                        <Button
-                          variant="filled"
-                          size="xl"
-                          disabled={
-                            !splitReady ||
-                            splitQuantities.normal <= 0 ||
-                            splitQuantities.excess <= 0 ||
-                            splitExceptionType === '' ||
-                            splitExceptionReason.trim() === ''
-                          }
-                          onClick={() => void submit('BOTH')}
-                        >
-                          {t.verdict.split.both}
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          size="xl"
-                          disabled={!splitReady || splitQuantities.normal <= 0}
-                          onClick={() => void submit('NORMAL_ONLY')}
-                        >
-                          {t.verdict.split.normalOnly}
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          size="xl"
-                          disabled={
-                            !splitReady ||
-                            splitQuantities.excess <= 0 ||
-                            splitExceptionType === '' ||
-                            splitExceptionReason.trim() === ''
-                          }
-                          onClick={() => void submit('EXCESS_ONLY')}
-                        >
-                          {t.verdict.split.excessOnly}
-                        </Button>
-                      </div>
-                      {/* 비활성은 사유를 함께 보인다(공유계약 G-1). 왜 못 누르는지 알아야 한다. */}
-                      {splitExceptionType === '' || splitExceptionReason.trim() === '' ? (
-                        <p className="receipt__note">{t.verdict.split.excessLocked}</p>
-                      ) : null}
-                      <p className="receipt__note">{t.verdict.split.atomic}</p>
-                    </section>
-                  )}
-                </>
-              ) : (
-                <AlertBanner
-                  variant="warning"
-                  title={t.verdict.under(
-                    String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
-                    String(received),
-                  )}
-                >
-                  <dl className="receipt__counts">
-                    <dt>{t.verdict.counts.ordered}</dt>
-                    <dd>{`${String(draft.purchaseOrderLine.orderedQty)} ${uom}`}</dd>
-                    <dt>{t.verdict.counts.received}</dt>
-                    <dd>{`${String(draft.purchaseOrderLine.receivedQty)} ${uom}`}</dd>
-                    <dt>{t.verdict.counts.arrived}</dt>
-                    <dd>{`${String(received)} ${uom}`}</dd>
-                    <dt>{t.verdict.counts.remaining}</dt>
-                    <dd>
-                      {`${String(
-                        remainingAfterOf(draft.purchaseOrderLine, received, queuedQty),
-                      )} ${uom}`}
-                    </dd>
-                  </dl>
-                  <p>{t.verdict.underAsk}</p>
-                  {/*
-                   * 두 길을 세로로 세우고 각 길에 자기 설명을 붙인다. 나란히 두면 어느
-                   * 설명이 어느 길의 것인지 흐려지고, 설명을 하나만 두면 고르기 전에는
-                   * 다른 길이 무엇인지 알 수 없다.
-                   *
-                   * 둘 다 같은 부품·같은 크기다. 하나가 링크면 규격이 달라져 한쪽이 더
-                   * 무겁게 보이는데, 이 자리의 두 길은 대등하다.
-                   */}
-                  <div className="receipt__under-choice">
-                    <div className="receipt__under-path">
-                      <Button
-                        className="receipt__wide"
-                        variant={continueUnder ? 'filled' : 'outlined'}
-                        size="xl"
-                        onClick={() => {
-                          setContinueUnder(true);
-                        }}
-                      >
-                        {t.verdict.underContinue}
-                      </Button>
-                      <p className="receipt__note">{t.verdict.underContinueNote}</p>
-                    </div>
-                    <div className="receipt__under-path">
-                      <Button
-                        className="receipt__wide"
-                        variant="outlined"
-                        size="xl"
-                        disabled={!varianceReady}
-                        onClick={() => {
-                          if (!varianceReady) {
-                            return;
-                          }
-
-                          setVarianceNext(true);
-                          void submit();
-                        }}
-                      >
-                        {t.verdict.underVariance}
-                      </Button>
-                      <p className="receipt__note">{t.verdict.underVarianceNote}</p>
-                    </div>
-                  </div>
-                </AlertBanner>
-              )}
-
-              <p className="receipt__note">{t.inspectionNote}</p>
-            </section>
-          )}
-
-          <section className="receipt__section">
-            {labelMismatch === null ? null : (
-              <AlertBanner variant="error" title={t.label[labelMismatch]}>
-                {t.label.rescan}
-              </AlertBanner>
-            )}
-            {labelChecking ? (
-              <p className="receipt__note" role="status">
-                {t.label.checking}
-              </p>
             ) : null}
-            {labelUnverified ? <p className="receipt__note">{t.label.unverified}</p> : null}
-            {saveFailed ? (
-              <AlertBanner variant="error" title={t.saveFailed.title}>
-                {t.saveFailed.description}
-              </AlertBanner>
-            ) : null}
-            {worker === null ? <p className="receipt__note">{t.noWorker}</p> : null}
-          </section>
-
-          {/*
-           * 이 단추는 바닥에 붙이지 않는다. 붙이면 숫자판 아랫줄을 덮어 누를 수 없고, 덮이는
-           * 동안만 풀면 같은 단추가 상태에 따라 붙었다 흘렀다 한다. 등록은 다 채운 뒤에
-           * 하는 마지막 일이라 흐름 끝에 두어도 찾는 데 문제가 없다.
-           */}
-          {/*
-           * ⭐ **대체 LOT 사유는 등록 단추 바로 위에 선다**(사용자 지시 2026-09-19 ·
-           *    omf-all-around#34). 필수값이라 누르기 직전에 한 번 더 눈에 들어와야 한다 — 스캔
-           *    구역에 두면 발주·수량을 거치는 사이 화면 밖으로 밀려났다.
-           */}
-          {draft.supplierLotMissing ? (
-            <section className="receipt__section">
-              <div className="receipt__field">
-                <label htmlFor="receipt-reason">{required(t.scan.reasonLabel)}</label>
-                <Select
-                  id="receipt-reason"
-                  placeholder={t.scan.reasonPlaceholder}
-                  size="xl"
-                  value={
-                    draft.substituteLotReasonCode === '' ? null : draft.substituteLotReasonCode
-                  }
-                  onChange={(value) => {
-                    patch({ substituteLotReasonCode: String(value) });
-                  }}
-                  options={(reasons.data ?? []).map((each) => ({
-                    value: each.code,
-                    label: each.name,
-                  }))}
-                />
-                {reasons.isError ? (
-                  <p className="receipt__note">{t.scan.reasonLoadFailed}</p>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
-
-          {verdict === OVER ? null : (
-            <>
-              <Button
-                className="receipt__wide"
-                variant="filled"
-                size="2xl"
-                disabled={!ready}
-                onClick={() => void submit()}
-              >
-                {t.submit}
-              </Button>
-              {/*
-               * 잠긴 이유는 단추 «바로 아래»에 선다. 위에 두면 사유 선택칸과 붙어 그 칸의
-               * 설명으로 읽히고, 무엇이 안 눌리는지가 흐려진다.
-               *
-               * 위에서부터 처음 비어 있는 것 하나만 말한다 - 다 늘어놓으면 무엇부터 할지가
-               * 흐려진다. 다음 것은 이것을 채우면 그 자리에 선다.
-               */}
-              {lock === null ? null : (
-                <p className="receipt__note receipt__locked" role="status">
-                  {t.locked[lock]}
-                </p>
-              )}
-            </>
-          )}
-        </>
+          </div>
+        </section>
       )}
+
+      {step === 'line' ? lineStep : null}
+
+      {step === 'unordered' ? (
+        <StepSection title={t.steps.unordered} index={2} total={STEP_COUNT}>
+          {unorderedFields}
+          {showQty ? qtyFields : null}
+        </StepSection>
+      ) : null}
+
+      {step === 'qty' ? (
+        <StepSection title={t.steps.qty} index={3} total={STEP_COUNT}>
+          {qtyFields}
+          {/* 다른 라인으로 받을 것이면 돌아간다. 적은 값은 같은 라인을 다시 고를 때까지 남는다. */}
+          <Button
+            variant="text"
+            size="xl"
+            onClick={() => {
+              setKeypadFor(null);
+              setChangingLine(true);
+            }}
+          >
+            {t.header.changeLine}
+          </Button>
+        </StepSection>
+      ) : null}
+
+      {!SHOW_DELIVERY_NOTE || !started ? null : (
+        <section className="receipt__section">
+          <h2>{t.note.legend}</h2>
+          <p className="receipt__note">{t.note.photoAbsent}</p>
+          <TextField
+            label={t.note.label}
+            size="xl"
+            fullWidth
+            value={draft.deliveryNoteNo}
+            onChange={(event) => {
+              patch({ deliveryNoteNo: event.target.value });
+            }}
+          />
+
+          <TextField
+            label={t.note.vehicle}
+            size="xl"
+            fullWidth
+            value={draft.vehicleNo}
+            onChange={(event) => {
+              patch({ vehicleNo: event.target.value });
+            }}
+          />
+          {draft.deliveryNoteNo.trim() === '' ? (
+            <AlertBanner variant="warning" title={t.note.absent} />
+          ) : null}
+        </section>
+      )}
+
+      {showQty ? <section className="receipt__section">{beforeSubmit}</section> : null}
+
+      {bar}
 
       <ScanReplaceDialog field={scanField} />
 
@@ -1131,7 +1196,11 @@ export const InboundReceiptScreen = () => {
           fieldId={keypadFor === 'received' ? 'receipt-received-qty' : 'receipt-package-count'}
           value={keypadFor === 'received' ? draft.receivedQty : draft.packageCount}
           onChange={(value) => {
-            patch(keypadFor === 'received' ? { receivedQty: value } : { packageCount: value });
+            if (keypadFor === 'received') {
+              editReceivedQty(value);
+            } else {
+              patch({ packageCount: value });
+            }
           }}
           onClose={() => {
             setKeypadFor(null);
