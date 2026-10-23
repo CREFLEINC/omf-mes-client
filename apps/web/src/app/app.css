@@ -66,18 +66,10 @@
  * .pop-context   표제 옆의 맥락 표시(작업지시 등)
  * .pop-context-right  헤더 오른쪽 끝 — 세션·단말. 지금 어디서 찍고 있는지
  * .scan-manual   스캔 실패의 대체 경로 — 「직접 입력」과 그 설명
- * .receipt-summary  수령 표 아래, 모자란 것만 다시 세우는 자리
- * .numeric-keypad   화면 내장 숫자 키패드(공유계약 D-4) — OS 자판에 의존하지 않는다
- * .scanned-item-facts-line  담은 자재 한 줄의 사실 — 품목 · 수량 단위(스펙 §3)
  * .pop-panes     POP 화면의 좌우 두 구획 — 스캔이 주 입력이라 좌우로 편다
  * .pane-title    구획 표제
  * .scan-row      스캔 칸과 읽기 버튼을 한 줄에 — 버튼 높이를 칸의 라벨 층만큼 내린다
  * .scan-outcome  스캔 한 번의 결과가 서는 자리(늘 자리를 차지한다)
- * .scanned-items 담은 자재 목록
- * .scanned-item  그 한 줄
- * .scanned-code  LOT·금형 코드 — 멀리서 읽는다
- * .scanned-mold  물린 금형 구획
- * .confirm-row   투입 확정 버튼과 잠금 사유
  * .pop-touch-target  현장 단말의 업무 중요도 표식 — 렌더 높이는 관리웹 기본 토큰을 쓴다
  *
  * P-CO-01(작업자 지정) — ⚠ 위 `.pop-shell` 계열과 «다른» 어휘다. 그 화면들은 헤더에 표제를
@@ -8275,27 +8267,6 @@ button.app-button-neutral {
 }
 
 /*
- * 모자란 것만 다시 세우는 자리(스펙 §3). 표와 붙여 두되 «목록»이라 표와 다른 결로 보인다 —
- * 같은 표의 연장으로 보이면 다시 훑어야 하는 것이 된다.
- */
-.receipt-summary {
-  margin-block-start: var(--space-4);
-}
-
-.receipt-summary-title {
-  margin: 0 0 var(--space-2);
-  font: var(--type-title-sm);
-  color: var(--on-surface);
-}
-
-.receipt-summary-items {
-  margin: 0;
-  padding-inline-start: var(--space-5);
-  display: grid;
-  gap: var(--space-1);
-}
-
-/*
  * 스펙 §3 — **스캔이 주 입력이라 좌우로 편다.** 1024×768에서 세로 여유가 119px뿐이라
  * 위아래로 쌓으면 스캔 칸이 접힌 아래로 내려간다.
  */
@@ -8582,86 +8553,6 @@ button.app-button-neutral {
   margin: var(--space-3) 0 0;
   font: var(--type-body-lg);
   letter-spacing: var(--type-body-lg-tracking);
-}
-
-.scanned-items {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: var(--space-2);
-}
-
-/* 멀리서 읽는 값이라 본문보다 크게 두고, 자릿수가 흔들리지 않게 고정폭으로 그린다. */
-.scanned-code {
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
-  font-variant-numeric: tabular-nums;
-}
-
-.scanned-mold {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.confirm-row {
-  margin-top: var(--space-5);
-  display: grid;
-  gap: var(--space-2);
-  justify-items: start;
-}
-
-/* 품질 판정과 보류는 **다른 축**이라 코드 줄 아래에 따로 세운다(나란히 두면 모순처럼 읽힌다). */
-.scanned-item {
-  display: grid;
-  gap: var(--space-1);
-}
-
-.scanned-item-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.scanned-item-facts {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* 서버가 기록만 한 것을 상태 옆에 붙인다 — 「통과」가 「정상」이 아니다. */
-.scanned-item-notes {
-  display: inline-flex;
-  gap: var(--space-2);
-}
-
-/*
- * 화면 내장 숫자 키패드 — **공유계약 D-4**. 3열 격자로 전화기 배열을 따른다(1이 왼쪽 위).
- * 손이 기억한 위치가 화면마다 달라지면 오조작이 늘어, 배열을 사용처가 바꾸지 못하게 여기서
- * 고정한다.
- */
-.numeric-keypad {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2);
-  max-width: 22rem;
-  margin-block-start: var(--space-3);
-}
-
-/* 「기록」은 되돌릴 수 없는 조작이라 한 줄을 통째로 차지해 다른 키와 섞이지 않는다. */
-.numeric-keypad-submit {
-  grid-column: 1 / -1;
-}
-
-/*
- * 담은 자재의 「무엇을 얼마나」 — 스펙 §3의 `MAT-A  100 EA`. LOT 번호 바로 아래 붙여
- * **한 자재의 사실이 한 덩이로** 읽히게 한다. 상태·보류는 다른 축이라 아래 줄에 따로 선다.
- */
-.scanned-item-facts-line {
-  margin: var(--space-1) 0 0;
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
-  color: var(--on-surface);
 }
 
 /*
@@ -12460,6 +12351,219 @@ button.app-button-neutral {
     overflow-y: visible;
   }
 }
+/* ------------------------------------------------------------------------ *
+ * P-02-03 자재 투입
+ *
+ * 화면 구성 규범 T-P-W 작업형(투입 탭)이다. 머리줄, 본문 좌우 2단(왼쪽 투입 자재: 스캔 칸과 자재
+ * 목록, 오른쪽 투입 수량: 고른 LOT의 편집 영역), 하단 동작 바(공용 `action-bar`). 자재 목록만 제
+ * 구획 안에서 스크롤한다. 하단 바의 주 동작은 LOT을 몇 건 담아도 화면 안에 있다(C-14).
+ *
+ * 클래스 이름을 `material-input-` 로 시작한다. 이름에 `action` 을 넣지 않는다. POP 바닥 띠
+ * 규칙(`[class*='action']`)이 걸린다.
+ * ------------------------------------------------------------------------ */
+
+.material-input-screen {
+  /* 본문이 늘어나도 동작 바가 밀려 나가지 않게 한 열로 세운다. */
+  grid-template-columns: 1fr;
+}
+
+.pop-ui > .pop-panes.material-input-panes {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+/* 두 구획 모두 블록 사이를 같은 간격 하나로 띄운다. 제목과 안내 상자의 자기 여백을 턴다. */
+.material-input-list,
+.material-input-qty {
+  gap: var(--space-3);
+}
+
+.material-input-list > .pane-title,
+.material-input-list > .banner-slot,
+.material-input-qty > .pane-title,
+.material-input-qty > .field-note {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.material-input-scan {
+  display: grid;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+}
+
+/* 자재 목록. 남는 높이를 쓰고 이 목록만 스크롤한다. */
+.material-input-lots {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: var(--space-2);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+/* 자재 한 줄. 행 전체를 눌러 고른다(C-1). 고른 줄은 주 색 테두리와 한 단 올린 면이다. */
+.material-input-lot {
+  border: 1px solid var(--outline-variant);
+  border-inline-start-width: var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+.material-input-lot-selected {
+  border-color: var(--primary);
+  background: var(--surface-container-high);
+}
+
+.pop-ui .material-input-lot-select {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+/* LOT 번호는 저장값 그대로 고정폭 한 줄이다. 대조에 쓰이므로 자르지 않는다(C-10). */
+.material-input-lot-no,
+.material-input-qty-lot {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.material-input-lot-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  color: var(--on-surface-variant);
+}
+
+/* 금형 한 줄. 목록 아래 고정이다. */
+.material-input-mold {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--outline-variant);
+}
+
+.material-input-mold-label {
+  color: var(--on-surface-variant);
+}
+
+.material-input-mold > .field-note {
+  margin: 0;
+}
+
+/* 투입 수량 편집 영역. 머리(LOT 번호), 라벨 값 쌍, 수량 칸과 [기록] [빼기], 키패드. */
+.material-input-qty-lot {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.material-input-lot-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  color: var(--on-surface-variant);
+}
+
+/* 금형 한 줄. 목록 아래 고정이다. */
+.material-input-mold {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--outline-variant);
+}
+
+.material-input-mold-label {
+  color: var(--on-surface-variant);
+}
+
+.material-input-mold > .field-note {
+  margin: 0;
+}
+
+/* 투입 수량 편집 영역. 머리(LOT 번호와 [빼기]), 라벨 값 쌍, 수량 칸과 [기록], 키패드. */
+.material-input-qty-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.material-input-qty-lot {
+  flex: 0 0 auto;
+  margin: 0;
+  font: var(--type-title-sm);
+  font-family: var(--font-mono);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.material-input-pairs {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+
+.material-input-pair {
+  display: contents;
+}
+
+.material-input-pair > dt {
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.material-input-pair > dd {
+  margin: 0;
+}
+
+.material-input-pair-wide > dd {
+  grid-column: span 3;
+}
+
+.material-input-pair-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.material-input-qty-row {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.material-input-keypad {
+  flex: 0 0 auto;
+}
+
+.material-input-uom {
+  color: var(--on-surface-variant);
+}
+
 /* ------------------------------------------------------------------------ *
  * P-02-01 작업 시작(작업지시 선택)
  *

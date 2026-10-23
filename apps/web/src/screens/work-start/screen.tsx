@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 
+import { PopHeader } from '../../patterns/pop-header';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PrecheckGate } from '../work-precheck-gate/gate';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
@@ -19,7 +20,6 @@ import {
   useStartWork,
   toResumeBody,
 } from './mutations';
-import { PopHeader } from './pop-header';
 import { plannedEquipmentText } from './row-view';
 import { isOrderQtyFulfilled } from './quantity-fulfilled';
 import { SelectionCard } from './selection-card';
@@ -708,6 +708,7 @@ export const WorkStartScreen = () => {
     <main className="pop-shell pop-ui work-start-screen" aria-labelledby={titleId}>
       <PopHeader
         titleId={titleId}
+        title={t.title}
         terminalCode={terminal.data?.terminalCode ?? null}
         equipmentCode={equipmentCode}
         equipmentName={equipmentName}

@@ -1193,14 +1193,6 @@
       "n": 1,
       "text": "가운뎃점: label: `${code.defectCode} · ${code.defectName}`,"
     },
-    "C-13|apps/web/src/screens/material-input-scan/scanned-list.tsx|011ae369e9bc": {
-      "n": 1,
-      "text": "가운뎃점: .join(' · ')}"
-    },
-    "C-13|apps/web/src/screens/material-input-scan/scanned-list.tsx|381d6de55b6f": {
-      "n": 2,
-      "text": "가운뎃점: {t.scanned.statusLabel} · {statusLabels.describe(material.statusCode)}"
-    },
     "C-13|apps/web/src/screens/material-input-scan/terminal-gating.ts|7e176a98f3f3": {
       "n": 1,
       "text": "가운뎃점: throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');"
@@ -2549,26 +2541,6 @@
       "n": 1,
       "text": "개발 사정 표현: '대상 종류·사건 종류는 아직 확정되지 않은 임시 목록입니다. 조회한 기간의 기록에서 만들어, 한 번도 기록되지 않았거나 이 기간에 없는 값은 목록에 없습니다.',"
     },
-    "C-13|packages/i18n/src/ko/material-input-scan.ts|05688d566d61": {
-      "n": 1,
-      "text": "가운뎃점: shortAllowed: '부족·미수령이 있어도 수령한 양으로 투입할 수 있습니다.',"
-    },
-    "C-13|packages/i18n/src/ko/material-input-scan.ts|44c76ee51258": {
-      "n": 1,
-      "text": "가운뎃점: uom === '' ? `${item} · ${qty}` : `${item} · ${qty} ${uom}`,"
-    },
-    "C-13|packages/i18n/src/ko/material-input-scan.ts|5a8db673c947": {
-      "n": 1,
-      "text": "가운뎃점: label: '부족·미수령',"
-    },
-    "C-13|packages/i18n/src/ko/material-input-scan.ts|908e6dcdf143": {
-      "n": 1,
-      "text": "가운뎃점: `타발 ${current.toLocaleString('ko-KR')} · 적정 타수 없음`,"
-    },
-    "C-13|packages/i18n/src/ko/material-input-scan.ts|9a39f88c10c1": {
-      "n": 1,
-      "text": "가운뎃점: uom === '' ? `${item} · ${qty}` : `${item} · ${qty} ${uom}`,"
-    },
     "C-13|packages/i18n/src/ko/material-issue-request.ts|0face1a340c5": {
       "n": 1,
       "text": "가운뎃점: `${workOrderNo} · ${operation} · ${itemCode}`,"
@@ -3441,10 +3413,6 @@
       "n": 1,
       "text": "<Button className=\"temporary__wide\" variant=\"filled\" size=\"2xl\" disabl"
     },
-    "C-4|apps/web/src/ds-candidates/numeric-keypad.tsx|93da827721f1": {
-      "n": 1,
-      "text": "<Button type=\"button\" variant=\"filled\" size=\"xl\" className=\"pop-touch-target n"
-    },
     "C-4|apps/web/src/patterns/item-picker/dialog.tsx|334aa3d6ecaf": {
       "n": 1,
       "text": "<Button variant=\"filled\" disabled={picked.length === 0} onClick={() => {"
@@ -4205,10 +4173,6 @@
       "n": 1,
       "text": "pagination.ts"
     },
-    "C-8|apps/web/src/screens/material-input-scan/load-error-banner.tsx|da6b22b0db5e": {
-      "n": 1,
-      "text": "load-error-banner.tsx"
-    },
     "C-8|apps/web/src/screens/material-issue-request/load-error-banner.tsx|da6b22b0db5e": {
       "n": 1,
       "text": "load-error-banner.tsx"
@@ -4572,10 +4536,6 @@
     "COLOR|apps/web/src/app/pop.css|1953b9ad8785": {
       "n": 1,
       "text": "background: rgb(220 80 70 / 18%);"
-    },
-    "COLOR|apps/web/src/app/pop.css|f949b42b61a6": {
-      "n": 1,
-      "text": "color: #fff;"
     },
     "TOKEN|apps/web/src/app/app.css|0854cc647aa0": {
       "n": 1,

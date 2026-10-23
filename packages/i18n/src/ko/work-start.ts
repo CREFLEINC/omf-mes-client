@@ -7,25 +7,11 @@
  * 오프라인에서는 시작하지 않는다(큐에 담지 않는다). 그래서 문구도 「나중에 전송됩니다」가 아니다.
  */
 import { named } from '../named';
-import { common } from './common';
 
 export const workStart = {
   title: '작업 시작',
 
   /** 머리줄. 설비와 작업자는 「이름 (코드)」로 보인다(C-10). */
-  header: {
-    terminalUnknown: '단말 확인 전',
-    terminalLabel: (code: string): string => `단말 ${code}`,
-    equipmentLabel: (code: string, name: string): string => `설비 ${named(name, code)}`,
-
-    workerUnset: '사번 미입력',
-    workerLabel: (workerNo: string, workerName?: string | null): string =>
-      `작업자 ${named(workerName, workerNo)}`,
-
-    /* 연결 상태 문구는 공용 어휘를 쓴다(`common.connection`). */
-    connected: common.connection.online,
-    disconnected: common.connection.offline,
-  },
 
   /** 사번 입력. 사번을 받지 못하고 들어온 경우에만 선다. */
   worker: {

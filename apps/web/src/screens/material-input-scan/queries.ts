@@ -4,7 +4,6 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { toReceiptLineView, toReceiptView, type ReceiptLineView, type ReceiptView } from './types';
-import { usePopWorkOrder } from '../../patterns/pop-process-gate';
 
 /**
  * 이 슬라이스의 읽기 — **계획 대비 수령 한 구획뿐이다.** 스캔·투입 확정의 오퍼레이션은 뒤 슬라이스다.
@@ -109,13 +108,3 @@ export const useReceiptLines = (workOrderId: number | null): ReceiptLinesResult 
     },
   };
 };
-
-/**
- * 작업지시의 유형 코드 — **머리줄의 긴급 표식 하나**에만 쓴다(#1147).
- *
- * ⛔ 어느 판정에도 쓰지 않는다. 못 받으면 `undefined` 이고 표식을 세우지 않는다 — 투입은
- * 유형과 상관없이 같은 경로라, 이 조회가 실패했다고 화면을 막을 이유가 없다.
- */
-/** 넘겨받은 작업지시의 유형. 단말 판정과 같은 상세 조회를 함께 쓴다 — 같은 W/O 를 두 번 읽지 않는다. */
-export const useWorkOrderTypeCode = (workOrderId: number | null): string | undefined =>
-  usePopWorkOrder(workOrderId).data?.workOrderTypeCode ?? undefined;

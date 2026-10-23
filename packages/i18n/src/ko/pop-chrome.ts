@@ -3,11 +3,31 @@
  *
  * ⚠ 화면마다 다른 말을 만들지 않는다. 같은 조작이 화면마다 다르게 읽히면 작업자가 헷갈린다.
  */
+import { named } from '../named';
+import { common } from './common';
+
 export const popChrome = {
   /** 머리줄의 화면 이동 선택 단추. */
   screenNav: '화면 이동',
   /** 머리줄의 사번 놓기 단추. */
   userSwitch: '사용자 전환',
+  /**
+   * 공용 머리줄(`patterns/pop-header`, C-11). 설비와 작업자는 「이름 (코드)」, 단말은 단말 코드.
+   * 연결 상태 문구는 공용 어휘를 쓴다(`common.connection`).
+   */
+  header: {
+    terminalUnknown: '단말 확인 전',
+    terminalLabel: (code: string): string => `단말 ${code}`,
+    equipmentLabel: (code: string, name: string): string => `설비 ${named(name, code)}`,
+    workerUnset: '사번 미입력',
+    workerLabel: (workerNo: string, workerName?: string | null): string =>
+      `작업자 ${named(workerName, workerNo)}`,
+    workOrderLabel: (workOrderNo: string): string => `W/O ${workOrderNo}`,
+    emergency: '긴급',
+    connected: common.connection.online,
+    disconnected: common.connection.offline,
+    unsent: (count: number): string => `미전송 ${String(count)}건`,
+  },
   /**
    * 사번을 확인하지 못했을 때 맨 위 경고 띠(`patterns/pop-worker-missing-banner`). 모든 POP 화면이
    * 같은 말을 쓴다(사용자 지시 2026-09-17).

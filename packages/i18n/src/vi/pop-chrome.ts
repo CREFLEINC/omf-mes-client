@@ -1,10 +1,25 @@
 import type { ko } from '../ko';
+import { named } from '../named';
 import type { Translated } from './translated';
+import { common } from './common';
 
 /** POP 화면 위에 늘 서 있는 공통 조작 문구 — 모든 POP 화면이 함께 쓴다. */
 export const popChrome: Translated<typeof ko.popChrome> = {
   screenNav: 'Chuyển màn hình',
   userSwitch: 'Đổi người dùng',
+  header: {
+    terminalUnknown: 'Chưa xác nhận máy trạm',
+    terminalLabel: (code: string): string => `Máy trạm ${code}`,
+    equipmentLabel: (code: string, name: string): string => `Thiết bị ${named(name, code)}`,
+    workerUnset: 'Chưa nhập mã nhân viên',
+    workerLabel: (workerNo: string, workerName?: string | null): string =>
+      `Người làm ${named(workerName, workerNo)}`,
+    workOrderLabel: (workOrderNo: string): string => `W/O ${workOrderNo}`,
+    emergency: 'Khẩn',
+    connected: common.connection.online,
+    disconnected: common.connection.offline,
+    unsent: (count: number): string => `Chờ gửi ${String(count)} mục`,
+  },
   workerMissing: 'Chưa xác nhận mã nhân viên. Hãy xác thực mã nhân viên trước.',
   processGate: {
     denied: (process: string, feature: string, menuPath: string): string =>

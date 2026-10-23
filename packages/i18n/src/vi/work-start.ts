@@ -1,24 +1,10 @@
 import type { ko } from '../ko';
 import { named } from '../named';
 import type { Translated } from './translated';
-import { common } from './common';
 
 /** P-02-01 작업 시작(작업지시 선택). */
 export const workStart: Translated<typeof ko.workStart> = {
   title: 'Bắt đầu sản xuất',
-
-  header: {
-    terminalUnknown: 'Chưa xác nhận máy trạm',
-    terminalLabel: (code: string): string => `Máy trạm ${code}`,
-    equipmentLabel: (code: string, name: string): string => `Thiết bị ${named(name, code)}`,
-
-    workerUnset: 'Chưa nhập mã nhân viên',
-    workerLabel: (workerNo: string, workerName?: string | null): string =>
-      `Người làm ${named(workerName, workerNo)}`,
-
-    connected: common.connection.online,
-    disconnected: common.connection.offline,
-  },
 
   worker: {
     title: 'Người làm',

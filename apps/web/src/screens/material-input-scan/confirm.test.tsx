@@ -19,6 +19,7 @@ import { popGateDeniedText } from '../../patterns/pop-process-gate';
 const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial');
 
 const t = messages.materialInputScan;
+const unsent = messages.popChrome.header.unsent;
 
 const TERMINAL_ID = 7901;
 const PROCESS_ID = 7902;
@@ -184,6 +185,14 @@ const Here = () => {
 /** 담은 자재 목록. 화면에 목록이 여럿이라 이름으로 집는다. */
 const scannedList = (): HTMLElement => screen.getByRole('list', { name: t.scanned.materialsLabel });
 
+/**
+ * 담긴 LOT이 하나도 없는가. 자재 목록에는 수령한 LOT이 「스캔 전」으로 남으므로, 「기록 전」과
+ * 「기록됨」이 하나도 없는지를 본다.
+ */
+const nothingScanned = (): boolean =>
+  within(scannedList()).queryByText(t.scanned.pendingMark) === null &&
+  within(scannedList()).queryByText(t.scanned.recordedMark) === null;
+
 const okRoute = (bodies: unknown[]): StubRoute => {
   let call = 0;
 
@@ -331,11 +340,13 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301, { shopfloorReceiptLineId: 7101 })]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.scanned.recordedMark);
 
     const item = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li');
     expect(item).not.toBeNull();
-    expect((item as HTMLElement).querySelector('.scanned-item-notes')?.textContent).toBe('');
+    /* 줄에 서는 표시는 「기록됨」 하나뿐이다. */
+    expect(within(item as HTMLElement).queryByText(t.scanned.unlinkedIssue)).toBeNull();
+    expect(within(item as HTMLElement).getByText(t.scanned.recordedMark)).toBeTruthy();
   });
 
   /*
@@ -347,7 +358,7 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301, { shopfloorReceiptLineId: 7101 })]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.scanned.recordedMark);
 
     expect(screen.queryByText(t.scanned.unlinkedIssue)).toBeNull();
   });
@@ -358,7 +369,7 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
 
-    expect(await screen.findByText(t.scanned.recordedMark)).toBeTruthy();
+    expect(await within(scannedList()).findByText(t.scanned.recordedMark)).toBeTruthy();
   });
 
   /*
@@ -370,7 +381,7 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.scanned.recordedMark);
 
     expect(
       screen.queryByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }),
@@ -390,7 +401,7 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.scanned.recordedMark);
 
     expect(within(scannedList()).getByText('SAMPLE-LOT-0001')).toBeTruthy();
   });
@@ -412,9 +423,9 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
      * ⭐ **거절된 자재는 목록에서 빠진다** — 서버가 받지 않았으므로 원장에 없다. 남겨 두면
      * 기록된 것처럼 보이고, §6의 「자재LOT 스캔부터 루프백」이 성립하지 않는다.
      */
-    expect(screen.queryByText(t.scanned.recordedMark)).toBeNull();
+    expect(within(scannedList()).queryByText(t.scanned.recordedMark)).toBeNull();
     await waitFor(() => {
-      expect(screen.getByText(t.scanned.empty)).toBeTruthy();
+      expect(nothingScanned()).toBe(true);
     });
   });
 });
@@ -475,7 +486,7 @@ describe('투입 확정 — 보내지 않는 경우', () => {
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
     /* 큐에 담기는 즉시 「기록됨」이다(C-1 #2) — 통신을 기다리지 않는다. */
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.scanned.recordedMark);
 
     /*
      * 담긴 뒤에는 키패드가 사라지므로 다시 담을 길이 없다. 큐에 같은 자재가 두 번 들어가면
@@ -600,7 +611,7 @@ describe('MaterialInputScanScreen — 목록 닫기', () => {
     const sent = renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.scanned.recordedMark);
     expect(sent).toHaveLength(1);
 
     await user.click(screen.getByRole('button', { name: t.confirm.action }));
@@ -608,7 +619,9 @@ describe('MaterialInputScanScreen — 목록 닫기', () => {
     /* 닫아도 요청이 더 나가지 않는다 — 기록은 이미 끝나 있다. */
     expect(sent).toHaveLength(1);
     expect(await screen.findByText(t.confirm.closed(1))).toBeTruthy();
-    expect(screen.getByText(t.scanned.empty)).toBeTruthy();
+    expect(nothingScanned()).toBe(true);
+    /* 지난 스캔 결과 줄도 지운다. 「마쳤습니다」 옆에 「담았습니다」가 남지 않는다. */
+    expect(screen.queryByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeNull();
   });
 
   /*
@@ -624,7 +637,7 @@ describe('MaterialInputScanScreen — 목록 닫기', () => {
     renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.scanned.recordedMark);
 
     /* 닫기 전에는 없다 — 기록되지 않은 줄을 남긴 채 화면을 뜨는 길이 되면 안 된다. */
     expect(screen.queryByRole('button', { name: t.confirm.goToProductionResult })).toBeNull();
@@ -651,7 +664,7 @@ describe('MaterialInputScanScreen — 목록 닫기', () => {
     );
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(t.scanned.recordedMark);
 
     /* 둘째를 담기만 하고 기록하지 않는다. */
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0002', '5');
@@ -663,6 +676,7 @@ describe('MaterialInputScanScreen — 목록 닫기', () => {
 
 /**
  * 담은 자재 한 줄이 **무엇을 얼마나**인지 말한다 — 스펙 §3의 `LOT-…0031  MAT-A  100 EA`.
+ * 줄에는 LOT 번호, 품목 코드, 수령 수량, 투입 수량이 「라벨 값」으로 선다(가운뎃점 없음, C-10).
  *
  * LOT 번호만 보이면 잘못 읽힌 자재를 작업자가 알아채지 못한다. 스캔은 번호의 일부나 외부
  * 식별자로도 걸리므로 **읽은 것과 담긴 것이 다를 수 있다.**
@@ -674,9 +688,9 @@ describe('MaterialInputScanScreen — 담은 자재의 품목·수량', () => {
 
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
 
-    expect(
-      await screen.findByText(t.scanned.itemAndQty('SAMPLE-ITEM-7201', '12', 'EA')),
-    ).toBeTruthy();
+    const row = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li') as HTMLElement;
+    expect(within(row).getByText('SAMPLE-MAT-A')).toBeTruthy();
+    expect(await within(row).findByText(`${t.scanned.qtyField} 12 EA`)).toBeTruthy();
   });
 
   /* 단위를 못 풀면 **빈 자리로 둔다** — 수량 뒤에 번호가 붙으면 그것이 값처럼 읽힌다. */
@@ -691,9 +705,8 @@ describe('MaterialInputScanScreen — 담은 자재의 품목·수량', () => {
 
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
 
-    expect(
-      await screen.findByText(t.scanned.itemAndQty('SAMPLE-ITEM-7201', '12', '')),
-    ).toBeTruthy();
+    const row = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li') as HTMLElement;
+    expect(await within(row).findByText(`${t.scanned.qtyField} 12`)).toBeTruthy();
     expect(screen.queryByText(/7401/)).toBeNull();
   });
 });
@@ -728,18 +741,21 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
       { fetch, route: ROUTE },
     );
 
-    /* 담기 전에는 보낼 것이 없다. */
-    expect(await screen.findByText(t.header.synced)).toBeTruthy();
+    /* 담기 전에는 보낼 것이 없다. 미전송이 없으면 칩을 세우지 않는다(PG-24). */
+    await screen.findByLabelText(t.scan.label);
+    expect(screen.queryByText(unsent(1))).toBeNull();
 
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
     /* 담는 즉시 성공이고(C-1 #2), 아직 닿지 않았다는 사실은 건수가 말한다(C-1 #4). */
-    expect(await screen.findByText(t.scanned.recordedMark)).toBeTruthy();
-    expect(await screen.findByText(t.header.unsynced(1))).toBeTruthy();
+    expect(await within(scannedList()).findByText(t.scanned.recordedMark)).toBeTruthy();
+    expect(await screen.findByText(unsent(1))).toBeTruthy();
 
     releasePost();
-    expect(await screen.findByText(t.header.synced)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.queryByText(unsent(1))).toBeNull();
+    });
   });
 
   /*
@@ -777,7 +793,7 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
     /* 끊긴 건은 큐에 남는다 — 재전송을 유발한다. */
-    await screen.findByText(t.header.unsynced(1));
+    await screen.findByText(unsent(1));
     globalThis.dispatchEvent(new Event('online'));
 
     await waitFor(() => {
@@ -861,9 +877,14 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
       ['SAMPLE-LOT-0002', '5'],
     ]);
 
-    /* 거부된 둘째는 원장에 없으므로 목록에서 내려간다 — §6 「자재LOT 스캔부터 루프백」. */
+    /*
+     * 거부된 둘째는 원장에 없으므로 담은 자재에서 내려간다 — §6 「자재LOT 스캔부터 루프백」.
+     * 수령한 LOT이라 목록에는 「스캔 전」으로 돌아간다.
+     */
+    const rowOf = (lotNo: string): HTMLElement =>
+      within(scannedList()).getByText(lotNo).closest('li') as HTMLElement;
     await waitFor(() => {
-      expect(within(scannedList()).queryByText('SAMPLE-LOT-0002')).toBeNull();
+      expect(within(rowOf('SAMPLE-LOT-0002')).getByText(t.scanned.notScannedMark)).toBeTruthy();
     });
 
     /*
@@ -871,7 +892,7 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
      * 받아들여진 첫 건은 목록에 그대로 남아 있어야 한다.
      */
     expect(within(scannedList()).getByText('SAMPLE-LOT-0001')).toBeTruthy();
-    expect(screen.getByText(t.scanned.recordedMark)).toBeTruthy();
+    expect(within(scannedList()).getByText(t.scanned.recordedMark)).toBeTruthy();
   });
 });
 
@@ -919,7 +940,7 @@ describe('MaterialInputScanScreen — 게이트와 쓰기', () => {
 
     await user.click(record);
     expect(sent).toHaveLength(0);
-    expect(screen.queryByText(t.scanned.recordedMark)).toBeNull();
+    expect(within(scannedList()).queryByText(t.scanned.recordedMark)).toBeNull();
   });
 
   /*
@@ -1049,7 +1070,8 @@ describe('MaterialInputScanScreen — 회차 격리(리뷰 확인)', () => {
     await screen.findByText(t.scanned.unlinkedIssue);
 
     await user.click(screen.getByRole('button', { name: t.confirm.action }));
-    await screen.findByText(t.scanned.empty);
+    await screen.findByText(t.confirm.closed(1));
+    expect(nothingScanned()).toBe(true);
 
     /* 새 회차 — 같은 LOT을 다시 담는다. */
     await prepare(user, [['SAMPLE-LOT-0001', '7']]);
@@ -1097,8 +1119,10 @@ describe('MaterialInputScanScreen — 저장소에서 되살린 큐', () => {
     });
     expect(sent[0]?.headers.get('Idempotency-Key')).toBe('sound-1');
 
-    /* 깨진 둘은 큐에서 사라져 헤더가 「전송 완료」로 돌아온다 — 맨 앞에서 막히지 않는다. */
-    expect(await screen.findByText(t.header.synced)).toBeTruthy();
+    /* 깨진 둘은 큐에서 사라져 머리줄의 미전송 칩이 없어진다 — 맨 앞에서 막히지 않는다. */
+    await waitFor(() => {
+      expect(screen.queryByText(/미전송/)).toBeNull();
+    });
 
     globalThis.localStorage.clear();
   });

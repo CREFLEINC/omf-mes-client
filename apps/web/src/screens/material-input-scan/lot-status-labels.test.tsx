@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { act, screen } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -70,6 +70,9 @@ const flush = async (): Promise<void> => {
   });
 };
 
+/** 투입 수량 편집 영역. 담으면 그 LOT이 골라져 상태 이름이 여기 선다. */
+const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.qty });
+
 const scanOnce = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
   await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
@@ -93,7 +96,7 @@ describe('자재 상태 표시명', () => {
 
     await scanOnce(user);
 
-    expect(screen.getByText(`${t.scanned.statusLabel} · 정상`)).toBeTruthy();
+    expect(within(editor()).getByText('정상')).toBeTruthy();
     expect(screen.queryByText(/NORMAL/)).toBeNull();
 
     const lookup = requests.find((url) => url.pathname === CODE_VALUES_PATH);
@@ -119,7 +122,7 @@ describe('자재 상태 표시명', () => {
 
     await scanOnce(user);
 
-    expect(screen.getByText(`${t.scanned.statusLabel} · NORMAL`)).toBeTruthy();
+    expect(within(editor()).getByText('NORMAL')).toBeTruthy();
   });
 
   /* 표시명을 못 받아도 스캔은 계속돼야 한다 — 이름은 읽기 편하자고 붙인 것이지 자격이 아니다. */
@@ -132,7 +135,7 @@ describe('자재 상태 표시명', () => {
 
     await scanOnce(user);
 
-    expect(screen.getByText(`${t.scanned.statusLabel} · NORMAL`)).toBeTruthy();
+    expect(within(editor()).getByText('NORMAL')).toBeTruthy();
     expect(screen.getByText(t.scanned.statusLabelUnavailable)).toBeTruthy();
   });
 
@@ -143,7 +146,7 @@ describe('자재 상태 표시명', () => {
       respond: () => new Response(null, { status: 500 }),
     });
 
-    expect(await screen.findByText(t.scanned.empty)).toBeTruthy();
+    expect(await screen.findByText(t.scanned.noSelection)).toBeTruthy();
     /* 실패가 도착한 뒤에 재야 한다 — 렌더 직후에 재면 아직 오지 않은 실패를 통과시킨다. */
     await flush();
     expect(screen.queryByText(t.scanned.statusLabelUnavailable)).toBeNull();

@@ -2,12 +2,9 @@ import { AlertBanner, Button } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
-import { toApiError } from '../../patterns/request';
+import { toApiError } from './request';
 
-/**
- * 조회 실패의 원인을 한 줄 안내로 옮긴다.
- * 이 슬라이스는 쓰기가 없어 사용자가 할 수 있는 조치가 재시도뿐이라 액션도 하나다.
- */
+/** 조회 실패의 원인을 한 줄 안내로 옮긴다. 조회라 사용자가 할 수 있는 조치는 재시도뿐이다. */
 export const describeLoadError = (error: ApiError): string => {
   switch (error.kind) {
     case 'network':
@@ -36,10 +33,11 @@ export interface LoadErrorBannerProps {
 }
 
 /**
- * 조회 실패 배너. **실패를 빈 상태로 보이지 않는다** — 「없습니다」로 내면 작업자가 자재를
- * 못 받은 것으로 읽고 결품 처리를 시작한다.
+ * 목록과 상세의 조회 실패 배너(화면 구성 규범 6장 `LoadErrorBanner`, C-7). **실패를 빈 상태로
+ * 보이지 않는다** — 「없습니다」로 내면 사용자가 자료가 없는 것으로 읽는다.
  *
- * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
+ * 처음 쓴 곳은 자재 투입(P-02-03)이다. 화면 폴더의 같은 이름 복제본은 그 화면을 고칠 때 이것으로
+ * 바꾼다.
  */
 export const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => {
   const apiError = toApiError(error);

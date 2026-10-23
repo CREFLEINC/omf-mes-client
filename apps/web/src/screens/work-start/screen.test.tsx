@@ -266,9 +266,11 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
   it('머리줄은 타이틀 옆에 설비, 오른쪽에 단말 코드를 보인다', async () => {
     renderScreen();
     const equipment = await screen.findByText(
-      t.header.equipmentLabel(TERMINAL.equipmentCode, TERMINAL.equipmentName),
+      messages.popChrome.header.equipmentLabel(TERMINAL.equipmentCode, TERMINAL.equipmentName),
     );
-    const terminalLabel = screen.getByText(t.header.terminalLabel(TERMINAL.terminalCode));
+    const terminalLabel = screen.getByText(
+      messages.popChrome.header.terminalLabel(TERMINAL.terminalCode),
+    );
 
     expect(equipment.closest('.pop-context-right')).toBeNull();
     expect(terminalLabel.closest('.pop-context-right')).not.toBeNull();
@@ -514,7 +516,9 @@ describe('P-02-01 작업 시작 — 사번 조회가 실패했을 때', () => {
     await user.click(await screen.findByRole('button', { name: t.worker.retry }));
 
     expect(
-      await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName)),
+      await screen.findAllByText(
+        messages.popChrome.header.workerLabel(WORKER.workerNo, WORKER.workerName),
+      ),
     ).not.toHaveLength(0);
   });
 
@@ -537,7 +541,9 @@ describe('P-02-01 작업 시작 — 사번을 바꿀 수 있는 자리인가', (
   it('단말 토큰이 사번을 들고 있으면 「다시 입력」을 주지 않는다', async () => {
     renderScreen({ identity: { ...IDENTITY, workerNo: WORKER.workerNo } });
 
-    expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
+    expect(
+      await screen.findAllByText(messages.popChrome.header.workerLabel(WORKER.workerNo)),
+    ).not.toHaveLength(0);
     expect(screen.queryByRole('button', { name: '다시 입력' })).not.toBeInTheDocument();
   });
 
@@ -550,7 +556,9 @@ describe('P-02-01 작업 시작 — 사번을 바꿀 수 있는 자리인가', (
     const { user } = renderScreen();
 
     await enterWorkerNo(user, WORKER.workerNo);
-    await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName));
+    await screen.findAllByText(
+      messages.popChrome.header.workerLabel(WORKER.workerNo, WORKER.workerName),
+    );
 
     expect(screen.queryByRole('button', { name: '다시 입력' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.worker.confirm })).not.toBeInTheDocument();
@@ -573,7 +581,9 @@ describe('P-02-01 작업 시작 — 사번은 단말이 들고 있는 자리를 
 
     /* 머리띠와 ① 구획 둘 다 사번을 말한다 — 「하나만 있어야 한다」가 아니라 「선다」를 잰다. */
     expect(
-      await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName)),
+      await screen.findAllByText(
+        messages.popChrome.header.workerLabel(WORKER.workerNo, WORKER.workerName),
+      ),
     ).not.toHaveLength(0);
     expect(screen.queryByRole('button', { name: t.worker.confirm })).not.toBeInTheDocument();
   });
@@ -588,13 +598,17 @@ describe('P-02-01 작업 시작 — 사번은 단말이 들고 있는 자리를 
     const first = renderScreen();
 
     await enterWorkerNo(first.user, WORKER.workerNo);
-    await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName));
+    await screen.findAllByText(
+      messages.popChrome.header.workerLabel(WORKER.workerNo, WORKER.workerName),
+    );
 
     first.unmount();
     renderScreen();
 
     expect(
-      await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName)),
+      await screen.findAllByText(
+        messages.popChrome.header.workerLabel(WORKER.workerNo, WORKER.workerName),
+      ),
     ).not.toHaveLength(0);
   });
 
@@ -1423,7 +1437,9 @@ describe('P-02-01 작업 시작 — 사번 입력 창의 키보드와 스캐너 
     await user.type(field, `${WORKER.workerNo}{Enter}`);
 
     expect(
-      await screen.findAllByText(t.header.workerLabel(WORKER.workerNo, WORKER.workerName)),
+      await screen.findAllByText(
+        messages.popChrome.header.workerLabel(WORKER.workerNo, WORKER.workerName),
+      ),
     ).not.toHaveLength(0);
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: t.worker.dialogTitle })).not.toBeInTheDocument();
