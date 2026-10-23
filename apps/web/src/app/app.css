@@ -19435,8 +19435,14 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 .pqc-web-filter-bar > * {
-  flex: 1 1 14rem;
+  flex: 0 1 16rem;
   min-width: 0;
+}
+
+/* 「대기·진행만 보기」는 검색 칸 바로 옆, 같은 줄에 선다 — 글 폭만큼만 차지한다. */
+.pqc-web-filter-bar > .pqc-web-filter-check {
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .pqc-web-filter-bar > .pqc-web-filter-actions {

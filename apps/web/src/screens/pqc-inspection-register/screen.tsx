@@ -1,4 +1,4 @@
-import { Breadcrumb, Button, Checkbox, Dialog, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -101,6 +101,12 @@ export const PqcInspectionRegisterScreen = () => {
         <section className="pane pqc-web-list" aria-label={t.queue.heading}>
           <PqcFilterBar
             applied={filters}
+            pendingOnly={pendingOnly}
+            onTogglePendingOnly={(next) => {
+              /* 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. */
+              setPendingOnly(next);
+              setPage(1);
+            }}
             onSearch={(next) => {
               setFilters(next);
               setPage(1);
@@ -110,16 +116,6 @@ export const PqcInspectionRegisterScreen = () => {
               setPage(1);
             }}
           />
-          <Checkbox
-            checked={pendingOnly}
-            onChange={(event) => {
-              /* 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. */
-              setPendingOnly(event.target.checked);
-              setPage(1);
-            }}
-          >
-            {t.queue.pendingOnly}
-          </Checkbox>
 
           {queue.isError && (
             <QueueLoadErrorBanner

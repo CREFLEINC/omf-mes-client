@@ -1,4 +1,4 @@
-import { Button, SearchInput, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, SearchInput, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState, type FormEvent } from 'react';
 
@@ -17,6 +17,9 @@ export const EMPTY_PQC_FILTERS: PqcFilters = { itemId: null, keyword: '' };
 
 export interface PqcFilterBarProps {
   applied: PqcFilters;
+  /** 「대기·진행만 보기」 — 조회 단추를 거치지 않고 바로 반영된다. */
+  pendingOnly: boolean;
+  onTogglePendingOnly: (pendingOnly: boolean) => void;
   onSearch: (filters: PqcFilters) => void;
   onReset: () => void;
 }
@@ -26,7 +29,13 @@ export interface PqcFilterBarProps {
  * 품목 검색(품목 검색 창으로 고른다) · 의뢰번호 검색 · [조회][초기화]. 서버 목록 질의 `itemId`·`q` 를 그대로 쓴다.
  * PQC 는 대상이 작업지시라 공급사·LOT 스캔 조건이 없다.
  */
-export const PqcFilterBar = ({ applied, onSearch, onReset }: PqcFilterBarProps) => {
+export const PqcFilterBar = ({
+  applied,
+  pendingOnly,
+  onTogglePendingOnly,
+  onSearch,
+  onReset,
+}: PqcFilterBarProps) => {
   const [itemId, setItemId] = useState<number | null>(applied.itemId);
   const [keyword, setKeyword] = useState(applied.keyword);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -83,6 +92,16 @@ export const PqcFilterBar = ({ applied, onSearch, onReset }: PqcFilterBarProps) 
         value={keyword}
         onChange={(event) => setKeyword(event.target.value)}
       />
+      <div className="field-cell-unlabeled pqc-web-filter-check">
+        <div className="check-group">
+          <Checkbox
+            checked={pendingOnly}
+            onChange={(event) => onTogglePendingOnly(event.target.checked)}
+          >
+            {messages.pqcInspectionRegister.queue.pendingOnly}
+          </Checkbox>
+        </div>
+      </div>
       <div className="filter-actions field-cell-unlabeled pqc-web-filter-actions">
         <Button type="submit" variant="filled">
           {t.apply}
