@@ -987,7 +987,7 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
 
     it('그사이 다른 곳에서 세션이 열려 거절되면 서버 문구를 보이고 열린 세션을 다시 묻는다', async () => {
       const message =
-        '이 MES W/O 에 이미 열린 작업 세션이 있습니다. 목록을 새로 고친 뒤 그 세션을 이어서 하기로 재개하세요 — 다른 단말의 세션이면 그 단말에서 재개·종료하거나 관리웹에서 강제 종료하세요.';
+        '이 MES W/O 에 이미 열린 작업 세션이 있습니다. 목록을 새로 고친 뒤 [재개]를 누르세요 — 다른 단말의 세션이면 그 단말에서 재개·종료하거나 관리웹에서 강제 종료하세요.';
       const rendered = renderScreen({ workOrders: [HELD], startOpenSessionMessage: message });
 
       await selectWorkOrder(rendered);
