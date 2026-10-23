@@ -5,8 +5,9 @@ import { useState } from 'react';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { toStatusBadge } from '../oqc-inspection/status-badge';
 import type { InspectionQueueRow } from '../oqc-inspection/types';
+import { useUoms } from '../pqc-inspection/queries';
 import { useItem } from '../production-result/flow-queries';
-import { useWorkOrder } from '../production-result/queries';
+import { useTargetLots, useWorkOrder } from '../production-result/queries';
 
 const t = messages.pqcInspectionRegister;
 const empty = messages.pqcInspection.emptyValue;
@@ -16,6 +17,26 @@ const WorkOrderCell = ({ workOrderId }: { workOrderId: number }) => {
   const workOrder = useWorkOrder(workOrderId);
   const workOrderNo = workOrder.data?.workOrderNo;
   return <span title={workOrderNo}>{workOrderNo ?? empty}</span>;
+};
+
+const VOIDED_LIFECYCLE = 'VOIDED';
+
+/**
+ * 대상 LOT — PQC 의뢰는 작업지시 단위라 그 작업지시의 생산 LOT(폐번 제외)을 보인다(상세 「대상 LOT」과 같다).
+ * 여럿이면 첫 번호 「외 N건」, 전체 번호는 title 로 본다(#135).
+ */
+const LotCell = ({ workOrderId }: { workOrderId: number }) => {
+  const lots = useTargetLots(workOrderId);
+  const lotNos = (lots.data ?? [])
+    .filter((row) => row.lifecycleStatusCode !== VOIDED_LIFECYCLE)
+    .map((row) => row.lotNo);
+  const [firstLotNo, ...restLotNos] = lotNos;
+  if (firstLotNo === undefined) return <>{empty}</>;
+  return (
+    <span title={lotNos.join('\n')}>
+      {restLotNos.length === 0 ? firstLotNo : t.web.summary.lotMore(firstLotNo, restLotNos.length)}
+    </span>
+  );
 };
 
 /** 품목 — 이름(주)과 코드(보조) 두 줄. 내부 번호는 내지 않는다(#135). */
@@ -37,7 +58,7 @@ export interface PqcQueueTableProps {
 }
 
 /**
- * W-03-11 목록(omf-all-around#135) — 의뢰번호 · 작업지시 · 품목 · 검사 수량 · 상태 · 의뢰 일시. 줄을 누르면 상세가 열린다.
+ * W-03-11 목록(omf-all-around#135) — 대상 LOT · 품목 · 작업지시 · 의뢰번호 · 검사 수량 · 상태 · 의뢰 일시. 줄을 누르면 상세가 열린다.
  * ⚠ OQC 화면의 목록 표는 그대로 둔다 — 이 표는 PQC 화면만 쓴다.
  */
 /* 번호 · 일시 칸은 한 줄 값이 다 보이는 고정 폭, 품목이 나머지를 쓴다. */
@@ -47,6 +68,10 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
    * 화면에 그린 차례와 찾는 배열의 차례가 같아야 한다. 정렬은 원문(RFC3339)으로 한다.
    */
   const [sort, setSort] = useState<SortState | null>(null);
+  /* 검사 수량 옆 단위 코드(#135). 단위 목록을 못 읽으면 수량만 낸다. */
+  const uoms = useUoms();
+  const uomCodeOf = (uomId: number): string | undefined =>
+    uoms.data?.find((uom) => uom.uomId === uomId)?.uomCode;
   const shown =
     sort === null
       ? rows
@@ -57,10 +82,15 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
         );
   const columns: Column<InspectionQueueRow>[] = [
     {
-      key: 'no',
-      header: messages.pqcInspection.detail.fields.inspectionRequestNo,
-      width: '12rem',
-      render: (row) => <span title={row.inspectionRequestNo}>{row.inspectionRequestNo}</span>,
+      key: 'lot',
+      header: t.columns.lot,
+      width: '22rem',
+      render: (row) => <LotCell workOrderId={row.targetId} />,
+    },
+    {
+      key: 'item',
+      header: t.columns.item,
+      render: (row) => <ItemCell itemId={row.itemId} />,
     },
     {
       key: 'workOrder',
@@ -69,15 +99,19 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
       render: (row) => <WorkOrderCell workOrderId={row.targetId} />,
     },
     {
-      key: 'item',
-      header: t.columns.item,
-      render: (row) => <ItemCell itemId={row.itemId} />,
+      key: 'no',
+      header: messages.pqcInspection.detail.fields.inspectionRequestNo,
+      width: '12rem',
+      render: (row) => <span title={row.inspectionRequestNo}>{row.inspectionRequestNo}</span>,
     },
     {
       key: 'qty',
       header: t.columns.targetQty,
-      width: '5.5rem',
-      render: (row) => String(row.targetQty),
+      width: '7rem',
+      render: (row) => {
+        const uomCode = uomCodeOf(row.uomId);
+        return uomCode === undefined ? String(row.targetQty) : `${row.targetQty} ${uomCode}`;
+      },
     },
     {
       key: 'status',

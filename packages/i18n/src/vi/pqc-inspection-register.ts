@@ -42,6 +42,7 @@ export const pqcInspectionRegister = {
   },
 
   columns: {
+    lot: 'LOT đối tượng',
     workOrder: 'Lệnh sản xuất',
     item: 'Mặt hàng',
     targetQty: 'Số lượng kiểm tra',

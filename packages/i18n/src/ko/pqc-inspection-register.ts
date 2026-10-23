@@ -51,6 +51,7 @@ export const pqcInspectionRegister = {
 
   /** 목록 표 열(#135) — 내부 번호 대신 작업지시 번호 · 품목 이름·코드. */
   columns: {
+    lot: '대상 LOT',
     workOrder: '작업지시',
     item: '품목',
     targetQty: '검사 수량',

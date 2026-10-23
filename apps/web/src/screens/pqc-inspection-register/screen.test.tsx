@@ -295,7 +295,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     renderScreen({ queueItems: [LATER, REQUEST] });
 
     const firstNo = async (): Promise<string | null> =>
-      (await screen.findAllByRole('row'))[1]?.querySelector('td')?.textContent ?? null;
+      (await screen.findAllByRole('row'))[1]?.querySelector('td:nth-child(4)')?.textContent ?? null;
     await screen.findByText(LATER.inspectionRequestNo);
     expect(await firstNo()).toBe(LATER.inspectionRequestNo);
 

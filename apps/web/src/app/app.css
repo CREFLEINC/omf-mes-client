@@ -19104,16 +19104,16 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   z-index: 1;
 }
 
-/* 목록 — 의뢰번호 · 작업지시 · 품목은 왼쪽, 검사 수량 · 상태는 가운데. 줄 아무 곳이나 눌러 연다. */
+/* 목록 — 대상 LOT · 품목 · 작업지시 · 의뢰번호는 왼쪽, 검사 수량 · 상태 · 의뢰 일시는 가운데. 줄 아무 곳이나 눌러 연다. */
 .pqc-web-queue table {
   table-layout: fixed;
   width: 100%;
-  /* 여섯 칸이 한 줄 값으로 다 보이는 폭(품목 칸 12rem 이상). 창이 이보다 좁으면 표가 옆으로 구른다(DS 표 감싸개). */
-  min-width: 56rem;
+  /* 일곱 칸이 한 줄 값으로 다 보이는 폭(품목 칸 12rem 이상). 창이 이보다 좁으면 표가 옆으로 구른다(DS 표 감싸개). */
+  min-width: 80rem;
 }
 
-.pqc-web-queue th:nth-child(n + 4),
-.pqc-web-queue td:nth-child(n + 4) {
+.pqc-web-queue th:nth-child(n + 5),
+.pqc-web-queue td:nth-child(n + 5) {
   text-align: center;
 }
 
@@ -19126,10 +19126,11 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   cursor: pointer;
 }
 
-/* 의뢰번호 · 작업지시 · 의뢰 일시는 한 줄로 — 칸이 모자라면 끝을 말줄임하고 전체는 title 로 본다(#133 의 LOT 번호와 같다). */
+/* 대상 LOT · 작업지시 · 의뢰번호 · 의뢰 일시는 한 줄로 — 칸이 모자라면 끝을 말줄임하고 전체는 title 로 본다(#133 의 LOT 번호와 같다). */
 .pqc-web-queue td:nth-child(1),
-.pqc-web-queue td:nth-child(2),
-.pqc-web-queue td:nth-child(6) {
+.pqc-web-queue td:nth-child(3),
+.pqc-web-queue td:nth-child(4),
+.pqc-web-queue td:nth-child(7) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
