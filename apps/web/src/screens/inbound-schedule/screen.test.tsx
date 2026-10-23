@@ -19,6 +19,7 @@ import {
   candidateFixture,
   excessFixture,
   itemDetailFixtures,
+  labelPendingProgress,
   linkedExcessFixture,
   partnerFixtures,
   plantFixtures,
@@ -1439,6 +1440,8 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
   const progressRoutes = (
     rows: unknown[] = ROWS_WITH_STAGES,
     bodies: unknown[] = [],
+    items: unknown[] = progressFixtures,
+    counts: unknown = stageCountsFixture,
   ): StubRoute[] => [
     /* 발주 7101 의 라인 둘 — LOT 다섯이 7301 · 7302 아래로 갈린다. */
     linesRoute([
@@ -1452,8 +1455,8 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
         itemName: '합성 품목 나',
       }),
     ]),
-    progressRoute(),
-    stageCountsRoute(),
+    progressRoute(items),
+    stageCountsRoute(counts),
     iqcRequestRoute(bodies),
     listRoute(rows),
     ...lookupRoutes(),
@@ -1534,6 +1537,32 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     ).toBeInTheDocument();
   });
 
+  it('라벨 미부착 입하 줄은 「라벨 발행 대기」 · 「라벨 미부착」 · 입하번호 · 「POP에서 라벨 발행」으로 서고 단추가 없다', async () => {
+    renderScreen(
+      progressRoutes(ROWS_WITH_STAGES, [], [...progressFixtures, labelPendingProgress()], {
+        ...stageCountsFixture,
+        LABEL: 1,
+      }),
+      '?po=7101',
+    );
+
+    const missing = await within(linesPane()).findByText(t.lot.labelMissing);
+    const row = missing.closest('tr');
+    if (row === null) throw new Error('라벨 미부착 줄이 없습니다');
+
+    expect(row).toHaveTextContent(t.stage.code.LABEL_PENDING);
+    expect(row).toHaveTextContent(t.lot.evidence.receiptNo('SAMPLE-IR-0006'));
+    expect(row).toHaveTextContent(t.lot.receivedOn('2026.10.22'));
+    expect(row).toHaveTextContent(t.lot.issueLabelOnPop);
+    expect(within(row).queryByRole('button')).toBeNull();
+
+    /* 칩 줄 맨 앞에 라벨 발행 대기가 선다. */
+    const chips = screen.getByRole('group', { name: t.stage.label });
+    expect(within(chips).getAllByRole('button')[0]).toHaveTextContent(
+      t.stage.groupCount(t.stage.group.LABEL, 1),
+    );
+  });
+
   it('라인의 손잡이는 그 라인의 LOT 만, 머리의 손잡이는 전부를 접고 편다', async () => {
     const { user } = renderScreen(progressRoutes(), '?po=7101');
 
@@ -1579,6 +1608,8 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     const chips = await screen.findByRole('group', { name: t.stage.label });
     expect(chips).toHaveTextContent(t.stage.groupCount(t.stage.group.RECEIPT, 5));
     expect(chips).toHaveTextContent(t.stage.groupCount(t.stage.group.HELD, 2));
+    /* 앞선 서버는 라벨 발행 대기를 세지 않는다 — 그 칩만 빠진다. */
+    expect(chips).not.toHaveTextContent(t.stage.group.LABEL);
 
     await user.click(
       within(chips).getByRole('button', { name: t.stage.filterOn(t.stage.group.RECEIPT) }),

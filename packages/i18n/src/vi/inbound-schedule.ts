@@ -225,6 +225,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
   stage: {
     label: 'Giai đoạn nhập kho',
     group: {
+      LABEL: 'Chờ phát hành nhãn',
       INSPECTION: 'Chờ kiểm tra',
       HELD: 'Tạm giữ',
       RECEIPT: 'Chờ nhập kho',
@@ -234,6 +235,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     filterOn: (label: string): string => `Chỉ xem đơn ${label}`,
     filterOff: (label: string): string => `Bỏ điều kiện ${label}`,
     code: {
+      LABEL_PENDING: 'Chờ phát hành nhãn',
       INSPECTION_REQUIRED: 'Chưa yêu cầu kiểm tra',
       INSPECTION_REQUESTED: 'Chờ kiểm tra',
       INSPECTION_IN_PROGRESS: 'Đang kiểm tra',
@@ -251,7 +253,10 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
   lot: {
     receivedOn: (date: string): string => `Nhận ${date}`,
     putawayOnPda: 'Xếp kho trên PDA',
+    issueLabelOnPop: 'Phát hành nhãn trên POP',
+    labelMissing: 'Không dán nhãn',
     evidence: {
+      receiptNo: (inboundReceiptNo: string): string => `Số nhập hàng ${inboundReceiptNo}`,
       requested: (requestNo: string, date: string): string => `Yêu cầu ${requestNo} · ${date}`,
       accepted: (date: string): string => `Kiểm tra đạt ${date}`,
       rejected: 'Kiểm tra không đạt · chỉ kho hàng lỗi',

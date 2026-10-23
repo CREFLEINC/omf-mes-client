@@ -68,11 +68,11 @@ import { LineTable } from './line-table';
 import { OrderTable } from './order-table';
 import { scheduleKeys, usePurchaseOrderLines, usePurchaseOrderSummaries } from './queries';
 import { readRegisterEntry, withoutRegisterEntry, withRegisterEntry } from './register-entry';
-import { progressByLine } from './stage';
+import { hasLot, progressByLine } from './stage';
 import { StageChips } from './stage-chips';
 import type {
-  InboundLotProgress,
   InboundScheduleLine,
+  IssuedLotProgress,
   PurchaseOrderSummary,
   PurchaseOrderSummaryQuery,
   SelectOption,
@@ -292,12 +292,14 @@ export const InboundScheduleScreen = () => {
   const postLot =
     postLotId === null
       ? null
-      : (progress.data?.items.find((lot) => lot.lotId === postLotId) ?? null);
+      : (progress.data?.items.find(
+          (lot): lot is IssuedLotProgress => hasLot(lot) && lot.lotId === postLotId,
+        ) ?? null);
   const postLine =
     postLot === null
       ? null
       : (lineRows.find((line) => line.purchaseOrderLineId === postLot.purchaseOrderLineId) ?? null);
-  const openPost = (lot: InboundLotProgress): void => {
+  const openPost = (lot: IssuedLotProgress): void => {
     setSearchParams(
       withPostEntry(withoutExcessEntry(withoutRegisterEntry(searchParams)), lot.lotId),
     );
@@ -310,9 +312,9 @@ export const InboundScheduleScreen = () => {
    * 「IQC 의뢰 요청」 — LOT 줄의 단추가 바로 보낸다(되돌릴 수 있는 쓰기라 확인 창이 없다). 보내는 동안 그 단추만 돌고,
    * 결과는 표 위 한 줄로 알린다. 실패는 같은 자리의 배너다. 발주를 바꾸면 둘 다 걷는다.
    */
-  const [pendingIqcLot, setPendingIqcLot] = useState<InboundLotProgress | null>(null);
+  const [pendingIqcLot, setPendingIqcLot] = useState<IssuedLotProgress | null>(null);
   /* 되먹임(`onSuccess`)은 제출한 렌더의 닫힘을 들고 있어 그 렌더의 옛 상태를 본다 — 보낸 LOT 은 ref 에 적는다. */
-  const pendingIqcLotRef = useRef<InboundLotProgress | null>(null);
+  const pendingIqcLotRef = useRef<IssuedLotProgress | null>(null);
   const [iqcNote, setIqcNote] = useState<string | null>(null);
   const requestIqc = useRequestIqc({
     purchaseOrderId: selectedOrder?.purchaseOrderId ?? 0,
@@ -323,7 +325,7 @@ export const InboundScheduleScreen = () => {
       setPendingIqcLot(null);
     },
   });
-  const sendIqcRequest = (lot: InboundLotProgress): void => {
+  const sendIqcRequest = (lot: IssuedLotProgress): void => {
     setIqcNote(null);
     setPendingIqcLot(lot);
     pendingIqcLotRef.current = lot;

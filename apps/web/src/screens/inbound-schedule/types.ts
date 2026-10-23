@@ -153,6 +153,7 @@ export interface PurchaseOrderSummary {
  *
  * | 값 | 뜻(다음 할 일) | 근거 |
  * | --- | --- | --- |
+ * | `LABEL_PENDING` | 라벨 발행 대기 — POP 「자재LOT 등록·라벨 발행」 | 라벨 미부착 입하 라인이라 LOT 이 아직 없다 |
  * | `INSPECTION_REQUIRED` | 검사 의뢰 전 — 「IQC 의뢰 요청」 | 검사 대상인데 열린 검사 의뢰가 없다 |
  * | `INSPECTION_REQUESTED` · `INSPECTION_IN_PROGRESS` | 검사 대기 · 검사 중 — 품질팀 | 검사 의뢰 REQUESTED · IN_PROGRESS |
  * | `INSPECTION_HELD` | 보류 — 품질팀 | 판정 HELD 또는 LOT 보류 |
@@ -162,6 +163,7 @@ export interface PurchaseOrderSummary {
  * | `CANCELLED` | 취소 | 입하 전표 취소 |
  */
 export type InboundStageCode =
+  | 'LABEL_PENDING'
   | 'INSPECTION_REQUIRED'
   | 'INSPECTION_REQUESTED'
   | 'INSPECTION_IN_PROGRESS'
@@ -176,16 +178,22 @@ export type InboundStageCode =
  * 단계 **묶음** — 탭 줄의 건수 칩 · 왼쪽 표의 「진행」 열 · 목록 조건(`inboundStage`)이 쓰는 굵은 단위다.
  * 끝난 것(완료·취소)은 묶음이 아니다 — 세지도 거르지도 않는다.
  */
-export type InboundStageGroup = 'INSPECTION' | 'HELD' | 'RECEIPT' | 'PUTAWAY';
+export type InboundStageGroup = 'LABEL' | 'INSPECTION' | 'HELD' | 'RECEIPT' | 'PUTAWAY';
 
 export type InboundStageCounts = Partial<Record<InboundStageGroup, number>>;
 
-/** LOT 줄의 다음 할 일 — 서버가 정한다. `REQUEST_IQC` 만 이 화면이 직접 보내고, `PUTAWAY` 는 PDA 의 일이라 글자로만 낸다. */
-export type InboundNextActionCode = 'REQUEST_IQC' | 'POST_RECEIPT' | 'PUTAWAY';
+/**
+ * LOT 줄의 다음 할 일 — 서버가 정한다. `REQUEST_IQC` · `POST_RECEIPT` 는 이 화면이 하고,
+ * `ISSUE_LABEL`(POP) · `PUTAWAY`(PDA) 는 다른 기기의 일이라 글자로만 낸다.
+ */
+export type InboundNextActionCode = 'ISSUE_LABEL' | 'REQUEST_IQC' | 'POST_RECEIPT' | 'PUTAWAY';
 
 /**
  * 한 발주의 LOT 하나 — 입하 라인에서 나온 자재 LOT 과, 그 뒤 단계(검사·입고·적치)의 근거(⚠ 계약 대기).
  * `GET /logistics/purchase-orders/{purchaseOrderId}/inbound-progress` 의 `items[]`.
+ *
+ * **라벨 미부착 입하 라인도 한 줄이다**(`LABEL_PENDING` · 사용자 지시 2026-10-23 「라벨 미부착도 확인해야 해」). 그 줄은
+ * LOT 이 아직 없어 `lotId` · `lotNo` · `lotStatusCode` 가 `null` 이고, 줄은 입하 라인(`inboundReceiptLineId`)으로 가린다.
  */
 export interface InboundLotProgress {
   purchaseOrderLineId: number;
@@ -194,15 +202,16 @@ export interface InboundLotProgress {
   inboundReceiptLineId: number;
   /** 입하 일시 — 줄의 「입하 YYYY.MM.DD」. */
   receiptDatetime: string;
-  lotId: number;
-  /** 저장된 번호 그대로 — 끊거나 줄이지 않는다(규범 C-16 예외). */
-  lotNo: string;
+  /** 라벨 미부착이라 LOT 이 아직 없으면 `null`. */
+  lotId: number | null;
+  /** 저장된 번호 그대로 — 끊거나 줄이지 않는다(규범 C-16 예외). LOT 이 없으면 `null`. */
+  lotNo: string | null;
   receivedQty: number;
   /** 입고 가능 수량(서버 선행 P-56). 없으면 `null`. */
   receivableQty: number | null;
   uomCode: string;
-  /** LOT_STATUS */
-  lotStatusCode: string;
+  /** LOT_STATUS. LOT 이 없으면 `null`. */
+  lotStatusCode: string | null;
   stageCode: InboundStageCode | string;
   nextActionCode: InboundNextActionCode | null;
   /** 다음 단계를 막는 사유 — 이름까지 서버가 싣는다(C-17 사유 칩). 없으면 빈 배열. */
@@ -232,6 +241,9 @@ export interface InboundLotProgress {
     completedAt: string | null;
   } | null;
 }
+
+/** LOT 이 붙은 줄 — 「입고 처리」 · 「IQC 의뢰 요청」은 LOT 하나를 대상으로 하므로 이 줄에만 선다. */
+export type IssuedLotProgress = InboundLotProgress & { lotId: number; lotNo: string };
 
 export interface InboundProgressResult {
   items: InboundLotProgress[];

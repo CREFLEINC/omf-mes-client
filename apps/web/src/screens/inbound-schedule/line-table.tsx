@@ -23,7 +23,12 @@ import {
   toLineTableRows,
   type LineTableRow,
 } from './stage';
-import type { InboundLotProgress, InboundScheduleLine, PurchaseOrderSummary } from './types';
+import type {
+  InboundLotProgress,
+  InboundScheduleLine,
+  IssuedLotProgress,
+  PurchaseOrderSummary,
+} from './types';
 
 const t = messages.inboundSchedule;
 
@@ -56,9 +61,9 @@ export interface LineTableProps {
   /** 보내는 중인 IQC 의뢰의 LOT. 그 단추만 돈다. */
   requestingLotId?: number | null;
   /** LOT 줄의 「입고 처리」 — 없으면(권한 없음) 세우지 않는다. */
-  onPostReceipt?: (lot: InboundLotProgress) => void;
+  onPostReceipt?: (lot: IssuedLotProgress) => void;
   /** LOT 줄의 「IQC 의뢰 요청」. */
-  onRequestIqc?: (lot: InboundLotProgress) => void;
+  onRequestIqc?: (lot: IssuedLotProgress) => void;
 }
 
 const NO_LINE_EXCESSES: ReadonlyMap<number, LineExcesses> = new Map();

@@ -277,6 +277,8 @@ export const inboundSchedule = {
     /** 탭 줄 칩 묶음의 접근 이름. */
     label: '입고 단계',
     group: {
+      /** 라벨 미부착 입하 — LOT 이 아직 없다. POP 에서 라벨을 발행해야 검사·입고로 간다. */
+      LABEL: '라벨 발행 대기',
       INSPECTION: '검사 대기',
       HELD: '보류',
       RECEIPT: '입고 대기',
@@ -289,6 +291,7 @@ export const inboundSchedule = {
     filterOff: (label: string): string => `${label} 조건 해제`,
     /** LOT 줄의 칩. 모르는 코드는 번역하지 않고 그대로 낸다. */
     code: {
+      LABEL_PENDING: '라벨 발행 대기',
       INSPECTION_REQUIRED: '검사 의뢰 전',
       INSPECTION_REQUESTED: '검사 대기',
       INSPECTION_IN_PROGRESS: '검사 중',
@@ -311,7 +314,13 @@ export const inboundSchedule = {
     receivedOn: (date: string): string => `입하 ${date}`,
     /** 적치는 PDA 의 일이다 — 이 화면은 보기만 한다. */
     putawayOnPda: 'PDA에서 적치',
+    /** 라벨 발행(LOT 등록)은 POP 「자재LOT 등록·라벨 발행」의 일이다 — 이 화면은 보기만 한다. */
+    issueLabelOnPop: 'POP에서 라벨 발행',
+    /** LOT 번호 자리 — 라벨 미부착 입하라 LOT 이 아직 없다(PDA 입하 등록과 같은 말). */
+    labelMissing: '라벨 미부착',
     evidence: {
+      /** 라벨 미부착 줄 — POP 의 입하 라인 목록에서 찾는 번호. */
+      receiptNo: (inboundReceiptNo: string): string => `입하번호 ${inboundReceiptNo}`,
       requested: (requestNo: string, date: string): string => `의뢰 ${requestNo} · ${date}`,
       accepted: (date: string): string => `검사 합격 ${date}`,
       rejected: '검사 불합격 · 불량창고만',

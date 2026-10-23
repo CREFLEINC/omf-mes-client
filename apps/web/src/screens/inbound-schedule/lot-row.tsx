@@ -4,8 +4,13 @@ import { messages } from '@omf-mes/i18n';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { formatDate } from './period';
 import { OneLine } from './receipt-status';
-import { stageGroupTone, stageTone } from './stage';
-import type { InboundLotProgress, InboundStageCode, InboundStageGroup } from './types';
+import { hasLot, stageGroupTone, stageTone } from './stage';
+import type {
+  InboundLotProgress,
+  InboundStageCode,
+  InboundStageGroup,
+  IssuedLotProgress,
+} from './types';
 
 const t = messages.inboundSchedule;
 
@@ -75,12 +80,15 @@ export const TreeGuide = ({ isLast }: { isLast: boolean }) => (
 
 /**
  * LOT 줄의 근거 — 입하일로 시작하고, 그 뒤는 **서버가 준 값만** 적는다. 단계마다 무엇이 그 단계의 증거인지가 다르다:
- * 검사 단계는 의뢰번호·요청일, 보류는 사유 이름, 입고 대기는 검사 결과, 적치 이후는 입고 전표·적치일.
+ * 라벨 발행 대기는 입하번호(POP 의 입하 라인 목록에서 찾는 번호), 검사 단계는 의뢰번호·요청일, 보류는 사유 이름,
+ * 입고 대기는 검사 결과, 적치 이후는 입고 전표·적치일.
  * 문장이 아니라 「·」로 이은 조각이다(C-16 — 셀에 문장을 쓰지 않는다).
  */
 export const lotEvidence = (lot: InboundLotProgress): string => {
   const { inspection, goodsReceipt, putaway } = lot;
   const parts: string[] = [t.lot.receivedOn(dateOf(lot.receiptDatetime))];
+
+  if (!hasLot(lot)) parts.push(t.lot.evidence.receiptNo(lot.inboundReceiptNo));
 
   if (inspection !== null) {
     if (inspection.judgmentCode === 'ACCEPTED') {
@@ -113,13 +121,20 @@ export const lotEvidence = (lot: InboundLotProgress): string => {
   return parts.join(t.lot.evidence.separator);
 };
 
-/** 품목명 칸의 LOT 줄 — LOT 번호(그대로) + 근거(보조색 · 넘치면 말줄임). */
+/**
+ * 품목명 칸의 LOT 줄 — LOT 번호(그대로) + 근거(보조색 · 넘치면 말줄임).
+ * 라벨 미부착 줄은 LOT 번호 자리에 「라벨 미부착」을 보조색으로 적는다 — 번호를 지어내지 않는다.
+ */
 export const LotMainCell = ({ lot }: { lot: InboundLotProgress }) => {
   const evidence = lotEvidence(lot);
 
   return (
     <span className="po-board-lot-main">
-      <span className="po-board-lot-no">{lot.lotNo}</span>
+      {lot.lotNo === null ? (
+        <span className="po-board-lot-meta">{t.lot.labelMissing}</span>
+      ) : (
+        <span className="po-board-lot-no">{lot.lotNo}</span>
+      )}
       {evidence !== '' && <OneLine text={evidence} />}
     </span>
   );
@@ -141,12 +156,13 @@ export interface LotActionProps {
   /** 보내는 중인 IQC 의뢰의 LOT. 그 단추만 돈다. */
   requestingLotId: number | null;
   /** 없으면(권한 없음) 「입고 처리」 단추를 세우지 않는다 — 막는 것은 서버다. */
-  onPostReceipt?: (lot: InboundLotProgress) => void;
-  onRequestIqc?: (lot: InboundLotProgress) => void;
+  onPostReceipt?: (lot: IssuedLotProgress) => void;
+  onRequestIqc?: (lot: IssuedLotProgress) => void;
 }
 
 /**
- * 「다음 할 일」 칸 — **서버가 정한 것만** 선다(C-17). 이 화면이 하는 둘은 단추, PDA 의 일은 글자.
+ * 「다음 할 일」 칸 — **서버가 정한 것만** 선다(C-17). 이 화면이 하는 둘은 단추, POP · PDA 의 일은 글자.
+ * 단추 둘은 LOT 하나를 대상으로 하므로 LOT 이 없는 줄에는 서지 않는다.
  * 검사 자체는 품질팀의 일이라 검사 화면으로 가는 길을 두지 않는다 — 입고 담당이 하는 것은 **의뢰 요청**이다
  * (사용자 지시 2026-10-22).
  */
@@ -156,6 +172,14 @@ export const LotActionCell = ({
   onPostReceipt,
   onRequestIqc,
 }: LotActionProps) => {
+  if (lot.nextActionCode === 'ISSUE_LABEL') {
+    return <span className="po-board-lot-note">{t.lot.issueLabelOnPop}</span>;
+  }
+  if (lot.nextActionCode === 'PUTAWAY') {
+    return <span className="po-board-lot-note">{t.lot.putawayOnPda}</span>;
+  }
+  if (!hasLot(lot)) return null;
+
   switch (lot.nextActionCode) {
     case 'REQUEST_IQC':
       return onRequestIqc === undefined ? null : (
@@ -185,8 +209,6 @@ export const LotActionCell = ({
           {t.actions.postReceipt}
         </Button>
       );
-    case 'PUTAWAY':
-      return <span className="po-board-lot-note">{t.lot.putawayOnPda}</span>;
     default:
       return null;
   }

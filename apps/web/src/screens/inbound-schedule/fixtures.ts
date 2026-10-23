@@ -409,6 +409,29 @@ export const progressFixtures: InboundLotProgress[] = [
   }),
 ];
 
+/**
+ * 라벨 미부착 입하 줄(계약 대기) — LOT 이 아직 없다. 입하 라인 7606 · 7607 이 라인 7301 아래로 선다.
+ * 서버는 `lotId` · `lotNo` · `lotStatusCode` 를 `null` 로 싣는다.
+ */
+export const labelPendingProgress = (
+  overrides: Partial<InboundLotProgress> = {},
+): InboundLotProgress =>
+  lotProgress({
+    inboundReceiptId: 7506,
+    inboundReceiptNo: 'SAMPLE-IR-0006',
+    inboundReceiptLineId: 7606,
+    receiptDatetime: '2026-10-22T08:00:00+09:00',
+    lotId: null,
+    lotNo: null,
+    receivedQty: 30,
+    receivableQty: null,
+    lotStatusCode: null,
+    stageCode: 'LABEL_PENDING',
+    nextActionCode: 'ISSUE_LABEL',
+    inspection: null,
+    ...overrides,
+  });
+
 /** 탭 줄 칩의 묶음 수 — 검사 대기 4 · 보류 2 · 입고 대기 5 · 적치 대기 3. */
 export const stageCountsFixture: InboundStageCounts = {
   INSPECTION: 4,
