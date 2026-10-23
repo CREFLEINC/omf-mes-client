@@ -24,7 +24,7 @@ export interface ProgressPaneProps {
 
 export const ProgressPane = ({ view }: ProgressPaneProps) => {
   const steps: StepperItem[] = view.steps.map((step) => ({
-    label: step.approverName,
+    label: <span className="quality-approval-step-name">{step.approverName}</span>,
     status: step.status,
     icon: step.stepNo,
     description: describeStep(step),
@@ -36,7 +36,7 @@ export const ProgressPane = ({ view }: ProgressPaneProps) => {
       {steps.length === 0 ? (
         <p className="field-note">{t.progress.noSteps}</p>
       ) : (
-        <Stepper aria-label={t.progress.steps} orientation="horizontal" size="sm" steps={steps} />
+        <Stepper aria-label={t.progress.steps} orientation="horizontal" size="md" steps={steps} />
       )}
       <div className="quality-approval-progress-summary">
         <Icon name="info" size={20} />

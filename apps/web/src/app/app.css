@@ -4042,6 +4042,17 @@ main > * + * {
   margin-bottom: 0;
 }
 
+/* 결재 단계의 결재자 이름·상태 글은 한 단계 크게 — 작은 보조 글이면 멀리서 읽히지 않는다(#144). */
+.quality-approval-step-name {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.quality-approval-progress .field-note {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
 /* 결재 진행 — 가로 단계 아래 안내 줄(#144). 상세 두 칸과 사이를 띄운다. */
 .quality-approval-progress-pane {
   margin-bottom: var(--space-5);
