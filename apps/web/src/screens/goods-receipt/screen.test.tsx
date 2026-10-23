@@ -1842,6 +1842,35 @@ describe('GoodsReceiptScreen — 코드 목록이 채워지면', () => {
 });
 
 describe('GoodsReceiptScreen — 창고와 적치 위치', () => {
+  /*
+   * 서버 선행 P-109(omf-mes-server#809) — 입고의 공장은 고른 입하 전표의 값이다(`gr-request.ts`).
+   * 창고를 고르기 전에 공장이 정해져 있으므로 선택지도 그 공장 창고로 좁힌다.
+   */
+  it('창고 목록은 고른 입하 전표의 공장(plantId)으로 부른다', async () => {
+    fillCodeLists();
+
+    const { user, requests } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, WAREHOUSES_PATH).length).toBeGreaterThan(0);
+    });
+    expect(
+      requestsTo(requests, WAREHOUSES_PATH).map((request) =>
+        request.url.searchParams.get('plantId'),
+      ),
+    ).toEqual(['9201']);
+  });
+
+  it('입하 전표를 고르기 전에는 창고 목록을 부르지 않는다 — 공장을 아직 모른다', async () => {
+    const { requests } = renderScreen(allRoutes());
+
+    await screen.findAllByText('IR-2026-900001');
+
+    expect(requestsTo(requests, WAREHOUSES_PATH)).toHaveLength(0);
+  });
+
   /* **M22 · C22** — 계약이 위치 조회에 창고를 필수로 요구한다. 없이 부르면 422가 온다(실측). */
   it('창고를 고르기 전에는 위치를 부르지 않는다', async () => {
     fillCodeLists();

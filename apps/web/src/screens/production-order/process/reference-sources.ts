@@ -1,11 +1,10 @@
 import { messages } from '@omf-mes/i18n';
-import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { useApiClient } from '../../../patterns/api-context';
 import { REFERENCE_PAGE_SIZE, type ReferenceSource } from '../../../patterns/reference-picker';
 import { runRequest } from '../../../patterns/request';
-import { workOrderResourceKeys } from '../../work-order/resource-queries';
+import { useWorkOrderWarehouses } from '../../work-order/resource-queries';
 
 /**
  * 4M 배정과 생산계획 단계의 참조 선택 팝업 조회(C-12). 공장 안에서 사용 중인 것만 찾는다.
@@ -169,19 +168,15 @@ export const useWorkerSource = (plantId: number | null): ReferenceSource | null 
 /**
  * 위치는 창고에 딸린다(C-12 의존 관계). 칸의 창고 유형(완제품은 제품창고, 그 밖은 일반 창고)의 창고를 분류 필터로 두고,
  * 창고를 바꿔 가며 위치를 찾는다. 위치를 고르면 창고도 정해진다.
+ *
+ * 창고는 W/O 의 공장 창고만 받는다(`plantId` — 서버 선행 P-109). 기본 위치 칸과 같은 캐시를 쓴다.
  */
 export const useLocationSource = (
   plantId: number | null,
   warehouseTypeCode: string,
 ): ReferenceSource | null => {
   const { client } = useApiClient();
-  const warehouses = useQuery({
-    queryKey: workOrderResourceKeys.warehouses,
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/warehouses', { params: { query: { includeInactive: true, size: 200 } } }),
-      ),
-  });
+  const warehouses = useWorkOrderWarehouses(plantId);
   return useMemo(() => {
     const options = (warehouses.data?.items ?? [])
       .filter(

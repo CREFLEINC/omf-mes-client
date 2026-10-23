@@ -110,6 +110,7 @@ export type {
   ProductionOrderAutoPlanResult,
   ProductionOrderForward,
   ProductionOrderListQueryForward,
+  WarehouseListQueryForward,
   WorkOrderForward,
   TerminalProcessForward,
   TerminalProcessReplaceForward,
