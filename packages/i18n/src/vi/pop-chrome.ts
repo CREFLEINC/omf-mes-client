@@ -10,7 +10,10 @@ export const popChrome: Translated<typeof ko.popChrome> = {
   header: {
     terminalUnknown: 'Chưa xác nhận máy trạm',
     terminalLabel: (code: string): string => `Máy trạm ${code}`,
-    equipmentLabel: (code: string, name: string): string => `Thiết bị ${named(name, code)}`,
+    /** 머리줄은 1024 폭에 고정 항목이 다 들어가게 설비 이름만 보인다. 코드는 툴팁(`equipmentTitle`). */
+    equipmentLabel: (code: string, name: string): string =>
+      `Thiết bị ${name.trim() === '' ? code : name}`,
+    equipmentTitle: (code: string, name: string): string => `Thiết bị ${named(name, code)}`,
     workerUnset: 'Chưa nhập mã nhân viên',
     workerLabel: (workerNo: string, workerName?: string | null): string =>
       `Người làm ${named(workerName, workerNo)}`,

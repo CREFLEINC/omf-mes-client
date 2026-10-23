@@ -14,6 +14,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     receivedQty: 'Đã nhận',
     varianceQty: 'Chênh lệch',
     receiptStatus: 'Trạng thái nhận',
+    recordedQty: 'Đã đưa vào',
     lotStatus: 'Trạng thái LOT',
   },
   receiptStatus: {
@@ -65,7 +66,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     },
     unlinkedIssue: 'Xuất kho chưa gán',
     keypadLabel: (lotNo: string): string => `Bàn phím số lượng ${lotNo}`,
-    keypadSubmit: 'Ghi',
+    keypadSubmit: 'Ghi đưa vào',
     keypadClear: 'Xóa hết',
     keypadBackspace: 'Xóa một ký tự',
     recordedMark: 'Đã ghi',
@@ -89,14 +90,11 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     workOrderMissing:
       'Chưa chỉ định lệnh sản xuất. Hãy chọn lệnh sản xuất ở màn hình bắt đầu công việc',
     scan: 'Hãy quét LOT vật tư',
-    record: (lotNo: string): string => `Hãy nhập số lượng đưa vào của ${lotNo} rồi ghi`,
-    recordMany: (count: number, lotNo: string): string =>
-      `Còn ${String(count)} vật tư chưa ghi. Hãy nhập số lượng đưa vào của ${lotNo} rồi ghi`,
-    ready: 'Có thể chuyển sang xác nhận đưa vào',
+    record: (item: string): string => `Hãy ghi việc đưa vào ${item}`,
+    recordMany: (count: number): string => `Hãy ghi việc đưa vào ${String(count)} vật tư đã quét`,
     done: 'Có thể chuyển sang công việc sản xuất',
   },
   confirm: {
-    action: 'Xác nhận đưa vào',
     reasons: {
       unavailable: 'Không xác nhận được quyền đưa vào. Hãy nhấn kiểm tra lại quyền đưa vào',
       unidentified:
@@ -106,7 +104,6 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
       workerMissing: 'Chưa xác nhận được công nhân. Hãy xác nhận mã nhân viên rồi vào lại',
     },
     retry: 'Kiểm tra lại quyền đưa vào',
-    closed: (count: number): string => `Đã hoàn tất đưa vào với ${String(count)} vật tư.`,
     goToProductionResult: 'Sang công việc sản xuất',
     failed: 'Không ghi được việc đưa vào.',
   },

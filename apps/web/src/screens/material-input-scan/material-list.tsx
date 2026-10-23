@@ -2,7 +2,6 @@ import { Chip, type ChipStatus, EmptyState, Progress, SkeletonText } from '@cref
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useRef } from 'react';
 
-import { readQty, type QtyDrafts } from './input-qty';
 import type { RecordedNote } from './mutations';
 import { isShotCountExceeded, type ScanDraft, type ScannedMaterial } from './scan';
 import type { ReceiptLineStatus, ReceiptLineView } from './types';
@@ -84,10 +83,12 @@ export interface MaterialListProps {
   describeItem: (itemId: number) => string;
   /** 단위 번호를 코드로. 모르면 빈 문자열. */
   describeUom: (uomId: number) => string;
-  qtyDrafts: QtyDrafts;
   /** 서버가 통과시키되 기록만 한 것(§5-3). 기록된 줄에만 붙는다. */
   notes: readonly RecordedNote[];
+  /** 이 화면에서 기록한 LOT. 담았지만 여기 없으면 「기록 전」이다. */
   recordedLotIds: readonly number[];
+  /** 이 W/O에 기록된 투입 수량(LOT별 합). 없으면 `null`. */
+  recordedQtyOf: (lotId: number) => { qty: number; uomId: number } | null;
   /** 편집 영역에 연 LOT. 없으면 `null`. */
   selectedLotId: number | null;
   onSelect: (lotId: number) => void;
@@ -100,8 +101,8 @@ export interface MaterialListProps {
  * 확인하고, 라벨을 스캔하면 그 줄이 담기고 골라진다. 행 전체를 눌러 LOT 하나를 고르고(C-1), 고른
  * LOT은 오른쪽 편집 영역에서 수량을 넣는다. 카드 목록이라 선택은 `aria-pressed`로 알린다(PG-10).
  *
- * 행은 LOT 번호(저장값 그대로 고정폭 한 줄, C-10), 품목 코드, 수령 수량, 투입 수량, 상태 칩만
- * 보인다. 출고와 차이, 품목명은 편집 영역이 보인다(PI-04). 수령 상태는 부족이나 미수령일 때만 칩으로
+ * 행은 LOT 번호(저장값 그대로 고정폭 한 줄, C-10), 품목 「이름 (코드)」, 수령 수량, 이 W/O에 이미
+ * 기록된 투입 수량, 상태 칩만 보인다. 출고와 차이, 품목명은 편집 영역이 보인다(PI-04). 수령 상태는 부족이나 미수령일 때만 칩으로
  * 세운다. 모든 줄에 같은 「수령 완료」가 서면 구분이 사라진다.
  */
 export const MaterialList = ({
@@ -112,9 +113,9 @@ export const MaterialList = ({
   draft,
   describeItem,
   describeUom,
-  qtyDrafts,
   notes,
   recordedLotIds,
+  recordedQtyOf,
   selectedLotId,
   onSelect,
 }: MaterialListProps) => {
@@ -151,12 +152,16 @@ export const MaterialList = ({
         <ul ref={listRef} className="material-input-lots" aria-label={t.scanned.materialsLabel}>
           {rows.map((row) => {
             const { material, receipt } = row;
-            const isRecorded = recordedLotIds.includes(row.lotId);
+            const isPending = material !== undefined && !recordedLotIds.includes(row.lotId);
+            const done = recordedQtyOf(row.lotId);
+            const isRecorded = !isPending && done !== null;
             const isSelected = row.lotId === selectedLotId;
-            const qty = material === undefined ? '' : readQty(qtyDrafts, row.lotId);
-            const uomId = material?.uomId ?? receipt?.uomId;
-            const uom = uomId === undefined ? '' : describeUom(uomId);
-            const withUom = (value: string): string => (uom === '' ? value : `${value} ${uom}`);
+            const withUom = (value: number, uomId: number | undefined): string => {
+              const uom = uomId === undefined ? '' : describeUom(uomId);
+
+              return uom === '' ? String(value) : `${String(value)} ${uom}`;
+            };
+            const itemCode = receipt?.itemCode ?? describeItem(row.itemId);
             const isUnlinked = notes.some((note) => note.lotId === row.lotId && note.unlinkedIssue);
 
             return (
@@ -179,15 +184,16 @@ export const MaterialList = ({
                 >
                   <span className="material-input-lot-no">{row.lotNo}</span>
                   <span className="material-input-lot-facts">
-                    <span>{receipt?.itemCode ?? describeItem(row.itemId)}</span>
+                    {/* 한 줄 안의 기준 정보는 「이름 (코드)」다(C-10). 이름이 없으면 코드만. */}
+                    <span>{named(receipt?.itemName, itemCode)}</span>
                     {receipt !== undefined && (
                       <span>
-                        {t.pairs.receivedQty} {withUom(String(receipt.receivedQty))}
+                        {t.pairs.receivedQty} {withUom(receipt.receivedQty, receipt.uomId)}
                       </span>
                     )}
-                    {qty !== '' && (
+                    {done !== null && (
                       <span>
-                        {t.scanned.qtyField} {withUom(qty)}
+                        {t.pairs.recordedQty} {withUom(done.qty, done.uomId)}
                       </span>
                     )}
                     {receipt !== undefined && receipt.status !== 'matched' && (
@@ -198,13 +204,13 @@ export const MaterialList = ({
                     <Chip
                       variant="status"
                       size="md"
-                      status={isRecorded ? 'success' : material === undefined ? 'idle' : 'info'}
+                      status={isPending ? 'info' : isRecorded ? 'success' : 'idle'}
                     >
-                      {isRecorded
-                        ? t.scanned.recordedMark
-                        : material === undefined
-                          ? t.scanned.notScannedMark
-                          : t.scanned.pendingMark}
+                      {isPending
+                        ? t.scanned.pendingMark
+                        : isRecorded
+                          ? t.scanned.recordedMark
+                          : t.scanned.notScannedMark}
                     </Chip>
                     {material?.isHeld === true && (
                       <Chip variant="status" size="md" status="warning">

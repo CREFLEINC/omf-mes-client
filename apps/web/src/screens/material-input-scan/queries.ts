@@ -2,6 +2,7 @@ import type { ApiClient } from '@omf-mes/api-client';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
 import { toReceiptLineView, toReceiptView, type ReceiptLineView, type ReceiptView } from './types';
 
@@ -23,6 +24,8 @@ export const materialInputScanKeys = {
   receipts: (workOrderId: number) => ['material-input-scan', 'receipts', workOrderId] as const,
   receiptDetail: (shopfloorReceiptId: number) =>
     ['material-input-scan', 'receipt-detail', shopfloorReceiptId] as const,
+  consumptions: (workOrderId: number) =>
+    ['material-input-scan', 'consumptions', workOrderId] as const,
 };
 
 const fetchReceipts = async (client: Client, workOrderId: number): Promise<ReceiptView[]> => {
@@ -106,5 +109,66 @@ export const useReceiptLines = (workOrderId: number | null): ReceiptLinesResult 
         void detail.refetch();
       });
     },
+  };
+};
+
+/** 이 W/O에 이미 기록된 투입의 LOT별 합. 수량은 저장 단위(`uomId`) 그대로다. */
+export interface RecordedLot {
+  qty: number;
+  uomId: number;
+  /** 합에 들어간 투입 기록 번호. 화면이 방금 기록한 건이 이미 들어 있는지 가른다. */
+  consumptionIds: readonly number[];
+}
+
+export interface RecordedConsumptions {
+  byLot: ReadonlyMap<number, RecordedLot>;
+  isPending: boolean;
+  isError: boolean;
+}
+
+const EMPTY_RECORDED: ReadonlyMap<number, RecordedLot> = new Map();
+
+/**
+ * 이 W/O에 이미 기록된 투입(`GET /production/material-consumptions?workOrderId=`, 사용자 화면 확인
+ * 결정 2026-10-23, PI-13). 화면을 다시 열어도 기록된 LOT이 「스캔 전」으로 보이지 않게 하고, 스캔한
+ * LOT의 투입 수량 기본값(수령 − 기록)에 쓴다.
+ *
+ * ⛔ 판정에 쓰지 않는다. 표시와 기본값뿐이다. 못 받으면 비어 있는 것으로 두고 화면은 그대로 선다.
+ */
+export const useRecordedConsumptions = (workOrderId: number | null): RecordedConsumptions => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: materialInputScanKeys.consumptions(workOrderId ?? 0),
+    enabled: workOrderId !== null,
+    queryFn: async () => {
+      if (workOrderId === null) throw new Error('작업지시 없이는 투입 기록을 조회하지 않습니다.');
+
+      const data = await fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/production/material-consumptions', {
+            params: { query: { workOrderId, page, size } },
+          }),
+        ),
+      );
+
+      const byLot = new Map<number, RecordedLot>();
+      for (const item of data.items) {
+        const prev = byLot.get(item.lotId);
+        byLot.set(item.lotId, {
+          qty: (prev?.qty ?? 0) + item.inputQty,
+          uomId: item.uomId,
+          consumptionIds: [...(prev?.consumptionIds ?? []), item.materialConsumptionId],
+        });
+      }
+
+      return byLot;
+    },
+  });
+
+  return {
+    byLot: query.data ?? EMPTY_RECORDED,
+    isPending: workOrderId !== null && query.isPending,
+    isError: query.isError,
   };
 };

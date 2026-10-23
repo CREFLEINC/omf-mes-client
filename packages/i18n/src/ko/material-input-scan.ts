@@ -24,6 +24,8 @@ export const materialInputScan = {
     receivedQty: '수령',
     varianceQty: '차이',
     receiptStatus: '수령 상태',
+    /** 이 W/O에 이미 기록된 투입 수량(LOT별 합). */
+    recordedQty: '투입',
     lotStatus: 'LOT 상태',
   },
   /** 수령 상태 — 서버가 계산한 차이 수량을 세 갈래로 옮긴 것이다. 값을 만들지 않는다. */
@@ -100,7 +102,7 @@ export const materialInputScan = {
     unlinkedIssue: '출고 미귀속',
     keypadLabel: (lotNo: string): string => `${lotNo} 수량 키패드`,
     /** 고른 LOT 한 건을 기록한다(건별 저장, 스펙 §5-8). */
-    keypadSubmit: '기록',
+    keypadSubmit: '투입 기록',
     keypadClear: '전체 지움',
     keypadBackspace: '한 자 지움',
     /* 큐에 담긴 것도 「기록됨」이다 — C-1 이 즉시 성공 표시를 택했다. 미전송 여부는 머리줄이 낸다. */
@@ -134,16 +136,17 @@ export const materialInputScan = {
   remaining: {
     workOrderMissing: '작업지시가 지정되지 않았습니다. 작업 시작에서 작업지시를 고르세요',
     scan: '자재 LOT을 스캔하세요',
-    record: (lotNo: string): string => `${lotNo}의 투입 수량을 입력하고 기록하세요`,
-    recordMany: (count: number, lotNo: string): string =>
-      `기록하지 않은 자재 ${String(count)}건. ${lotNo}의 투입 수량을 입력하고 기록하세요`,
-    ready: '투입 확정으로 진행할 수 있습니다',
+    /** 기록하지 않은 LOT이 하나면 품목 이름으로 가리킨다. LOT 번호 전체를 쓰지 않는다(C-5 한 줄). */
+    record: (item: string): string => `${item}의 투입을 기록하세요`,
+    recordMany: (count: number): string => `스캔한 자재 ${String(count)}건의 투입을 기록하세요`,
     done: '생산 작업으로 진행할 수 있습니다',
   },
 
-  /** 투입 확정 — 기록을 마친 목록을 닫는다. 서버를 부르지 않는다(스펙 §5-8). */
+  /**
+   * 투입 기록과 다음 작업. 저장은 LOT마다 [투입 기록] 하나다. 따로 닫는 확정 동작은 없다
+   * (사용자 화면 확인 결정 2026-10-23, 두 번 확정하지 않는다).
+   */
   confirm: {
-    action: '투입 확정',
     /**
      * 잠긴 사유. 하단 바 「남은 일」 자리에 그대로 선다.
      *
@@ -161,8 +164,6 @@ export const materialInputScan = {
     },
     /** 이 버튼이 하는 일은 **권한 조회 한 번**이다. */
     retry: '투입 권한 다시 조회',
-    /** 몇 건으로 닫았는가. 기록은 이미 건별로 끝나 있다. */
-    closed: (count: number): string => `자재 ${String(count)}건으로 투입을 마쳤습니다.`,
     /** 다음 작업. 화면 이름 그대로 적는다(`pop-screen-catalog` 의 `P-02-04`). */
     goToProductionResult: '생산 작업으로',
     failed: '투입을 기록하지 못했습니다.',

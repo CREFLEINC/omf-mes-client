@@ -1,5 +1,6 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
@@ -20,14 +21,21 @@ import { POP_TOUCH_SIZE } from '../work-start/touch-spec';
 import { confirmBlockReason, remainingText } from './block-reason';
 import { useFourMChangeTypeLabels, useLotStatusLabels } from './lot-status-labels';
 import { MaterialList, toMaterialRows } from './material-list';
-import { useReceiptLines } from './queries';
+import { materialInputScanKeys, useReceiptLines, useRecordedConsumptions } from './queries';
 import { QtyEditor } from './qty-editor';
 import { describeRecordError } from './record-error';
 import { useReferenceLabels } from './reference-labels';
 import { applyScan, EMPTY_SCAN_DRAFT, type ScanDraft, type ScanOutcome } from './scan';
 import { ScanField, type ScanOutcomeView } from './scan-field';
 import { useScanLookup } from './scan-queries';
-import { dropQty, EMPTY_QTY_DRAFTS, writeQty, type QtyDrafts } from './input-qty';
+import {
+  dropQty,
+  EMPTY_QTY_DRAFTS,
+  readQty,
+  toInputQty,
+  writeQty,
+  type QtyDrafts,
+} from './input-qty';
 import { toRecordedNote, type RecordedNote } from './mutations';
 import { toMaterialConsumption } from './post-request';
 import { readWorkOrderId } from './screen-params';
@@ -90,16 +98,16 @@ const describeOutcome = (
  *       자재 목록은 수령한 LOT(계획 대비 수령)과 스캔해 담은 LOT을 한 줄씩 보인다(PI-04).
  * 이탈: T-P-W 왼쪽 세로 작업 탭을 두지 않는다(작업 탭은 POP 작업 화면 전체를 함께 바꾸는 셸 작업,
  *       PI-01). C-11 머리줄을 화면이 조립한다(공용 `patterns/pop-header`, 작업 시작과 같음).
- *       C-5 단계 표시를 두지 않는다(LOT마다 스캔, 수량, 기록을 반복하고 확정은 한 번, PI-03).
+ *       C-5 단계 표시를 두지 않는다(LOT마다 스캔, 수량, 기록을 반복한다, PI-03).
  *
  * 작업 순서: 자재 목록에서 받은 자재 확인 → LOT 라벨(필요하면 금형 코드) 스캔 → 담긴 LOT의 투입 수량과
- * [기록] → 하단 바 [투입 확정] → [생산 작업으로].
+ * [투입 기록](저장은 이것 하나) → 하단 바 [생산 작업으로].
  *
  * ⛔ **판정을 화면이 대신하지 않는다.** 오투입(BOM 정합), 자재 상태(Hold, 불량), 단말 게이팅은
  * 서버 몫이다. 화면은 읽은 것을 보이고 서버가 거절하면 그 말을 옮긴다.
  *
- * ⭐ **단말 게이팅은 미리 판정한다**(스펙 §5-1). 진입 시 `canInputMaterial`을 읽어 [기록]과
- * [투입 확정]을 잠근다. 다만 그 잠금은 오조작을 줄이는 장치이지 집행이 아니다 — 집행은 서버의 403이고,
+ * ⭐ **단말 게이팅은 미리 판정한다**(스펙 §5-1). 진입 시 `canInputMaterial`을 읽어 [투입 기록]과
+ * 하단 바 [생산 작업으로]를 잠근다. 다만 그 잠금은 오조작을 줄이는 장치이지 집행이 아니다 — 집행은 서버의 403이고,
  * 오프라인 큐로 들어온 투입은 이 화면을 지나지 않는다.
  */
 export const MaterialInputScanScreen = () => {
@@ -155,8 +163,6 @@ export const MaterialInputScanScreen = () => {
   const [qtyDrafts, setQtyDrafts] = useState<QtyDrafts>(EMPTY_QTY_DRAFTS);
   /* 기록된 줄. **되돌릴 수 없다** — 빼거나 고칠 수 없고 닫을 때까지 남는다(§5-8 · B-3). */
   const [notes, setNotes] = useState<readonly RecordedNote[]>([]);
-  /* 「투입 확정」으로 닫은 뒤 남길 건수. 닫기 전에는 `null`이다. */
-  const [closedCount, setClosedCount] = useState<number | null>(null);
   /*
    * 오프라인 폴백(스펙 §5-7 · 공유계약 C-1). **담는 것이 곧 성공이다** — 통신을 기다리지
    * 않고, 미전송 건수를 머리줄이 낸다(C-1 #2·#4).
@@ -171,6 +177,27 @@ export const MaterialInputScanScreen = () => {
   const [selectedLotId, setSelectedLotId] = useState<number | null>(null);
   /* 기록한 뒤 스캔 칸으로 포커스를 되돌린다 — 다음 스캔이 칸으로 들어가야 한다. */
   const [scanFocusRequest, setScanFocusRequest] = useState(0);
+
+  /* 이 W/O에 이미 기록된 투입(PI-13). 화면을 다시 열어도 기록된 LOT이 「기록됨」으로 선다. */
+  const recorded = useRecordedConsumptions(workOrderId);
+  const queryClient = useQueryClient();
+
+  /*
+   * 스캔해 담은 LOT의 투입 수량 기본값 = 수령 − 이 W/O에 이미 기록된 양(사용자 화면 확인 결정
+   * 2026-10-23, PI-05). 기록을 못 받았으면 수령 수량이다. 작업자가 바꿀 수 있다. 단위가 다르거나
+   * 수령 줄이 없거나 남은 양이 없으면 비워 둔다. 표시와 기본값일 뿐 판정이 아니다.
+   */
+  const prefillQty = (lotId: number, uomId: number): void => {
+    const line = receipt.lines.find((candidate) => candidate.lotId === lotId);
+    if (line === undefined || line.uomId !== uomId) return;
+
+    const done = recorded.byLot.get(lotId);
+    const remainingQty =
+      line.receivedQty - (done !== undefined && done.uomId === uomId ? done.qty : 0);
+    if (remainingQty <= 0) return;
+
+    setQtyDrafts((prev) => writeQty(prev, lotId, String(remainingQty)));
+  };
 
   const handleScan = (code: string): void => {
     /*
@@ -187,13 +214,14 @@ export const MaterialInputScanScreen = () => {
            */
           setDraft((prev) => applyScan(prev, outcome));
           /* 새로 담은 LOT을 편집 영역에 연다(현재 LOT, PG-25). 이미 담긴 LOT을 다시 읽으면 그 LOT으로 옮긴다. */
-          if (outcome.kind === 'material') setSelectedLotId(outcome.material.lotId);
+          if (outcome.kind === 'material') {
+            setSelectedLotId(outcome.material.lotId);
+            prefillQty(outcome.material.lotId, outcome.material.uomId);
+          }
           if (outcome.kind === 'duplicate') {
             const scanned = draft.materials.find((material) => material.lotNo === outcome.lotNo);
             if (scanned !== undefined) setSelectedLotId(scanned.lotId);
           }
-          /* 새로 담기 시작하면 앞 회차의 「마쳤습니다」는 사실이 아니게 된다. */
-          setClosedCount(null);
         },
       },
     );
@@ -242,8 +270,7 @@ export const MaterialInputScanScreen = () => {
     if (workOrderId === null || workerNo === null) return;
 
     /*
-     * ⭐ **게이트는 쓰기를 막아야 한다**(스펙 §5-1 · 조항 F-1). 원장에 남기는 것은 이 함수다 —
-     * 확정은 목록만 닫는다. 잠금을 확정에만 두면 **닫힌 단말에서 자재가 그대로 기록된다.**
+     * ⭐ **게이트는 쓰기를 막아야 한다**(스펙 §5-1 · 조항 F-1). 원장에 남기는 것은 이 함수 하나다.
      */
     if (gate.verdict !== 'allowed') return;
 
@@ -276,6 +303,15 @@ export const MaterialInputScanScreen = () => {
     );
   }, [outbox.accepted, recordedLotIdsSeen]);
 
+  /* 서버가 받아 준 기록이 늘면 이 W/O의 투입 기록을 다시 읽는다(LOT별 「투입」 합). */
+  useEffect(() => {
+    if (workOrderId === null || outbox.accepted.length === 0) return;
+
+    void queryClient.invalidateQueries({
+      queryKey: materialInputScanKeys.consumptions(workOrderId),
+    });
+  }, [outbox.accepted.length, queryClient, workOrderId]);
+
   /*
    * ⭐ **서버가 거부한 건만 되돌린다**(C-2 — 전체 롤백 금지). 그 자재는 원장에 없으므로
    * 목록에서 내려야 §6의 「자재LOT 스캔부터 루프백」이 성립한다.
@@ -290,27 +326,6 @@ export const MaterialInputScanScreen = () => {
     }));
     setRecordedLotIdsSeen((prev) => prev.filter((lotId) => !rejected.includes(lotId)));
   }, [outbox.rejections]);
-
-  /**
-   * 「투입 확정」 — **그날 목록을 닫는 완료 동작**이지 저장을 모아 보내는 버튼이 아니다(§5-8).
-   *
-   * ⛔ **서버를 부르지 않는다.** 기록은 이미 건별로 끝나 있다.
-   */
-  const closeList = (): void => {
-    setClosedCount(recordedLotIdsSeen.length);
-    setDraft(EMPTY_SCAN_DRAFT);
-    setQtyDrafts(EMPTY_QTY_DRAFTS);
-    setNotes([]);
-    setRecordedLotIdsSeen([]);
-    setSelectedLotId(null);
-    /* 지난 스캔 결과 줄도 지운다. 「마쳤습니다」 옆에 「담았습니다」가 남으면 아직 담는 중으로 읽힌다. */
-    scan.reset();
-    /*
-     * 지난 회차의 결과는 이 회차의 사실이 아니다 — 남겨 두면 같은 LOT을 다시 담았을 때
-     * 지난 판정이 딸려온다. ⛔ 큐는 비우지 않는다 — 아직 서버에 닿지 않은 건이 사라지지 않는다.
-     */
-    outbox.clearResults();
-  };
 
   /**
    * 투입을 마친 다음 작업 — **같은 작업지시의 생산 작업**(P-02-04, C-9).
@@ -345,19 +360,46 @@ export const MaterialInputScanScreen = () => {
     hasWorker: workerNo !== null,
     hasPending: pendingMaterials.length > 0,
   });
-  const isClosed = closedCount !== null;
+  /*
+   * LOT별 이 W/O에 기록된 투입 수량. 서버 기록 합에, 이 화면에서 방금 기록했지만 아직 그 합에 들지
+   * 않은 건(미전송, 다시 읽기 전)을 더한다. 표시만 한다.
+   */
+  const recordedQtyOf = (lotId: number): { qty: number; uomId: number } | null => {
+    const server = recorded.byLot.get(lotId);
+    let qty = server?.qty ?? 0;
+    let uomId = server?.uomId;
+
+    if (recordedLotIdsSeen.includes(lotId)) {
+      const accepted = outbox.accepted.find((one) => one.lotId === lotId);
+      const isInServer =
+        accepted !== undefined && server?.consumptionIds.includes(accepted.materialConsumptionId);
+      const local = toInputQty(readQty(qtyDrafts, lotId));
+      if (isInServer !== true && local !== null) {
+        qty += local;
+        uomId ??= draft.materials.find((material) => material.lotId === lotId)?.uomId;
+      }
+    }
+
+    return qty > 0 && uomId !== undefined ? { qty, uomId } : null;
+  };
+
+  const hasRecorded = recorded.byLot.size > 0 || recordedLotIdsSeen.length > 0;
+  const itemNameOf = (lotId: number, itemId: number): string => {
+    const line = receipt.lines.find((candidate) => candidate.lotId === lotId);
+
+    return line?.itemName ?? line?.itemCode ?? labels.describeItem(itemId);
+  };
   const remaining = remainingText({
     blockReason,
     hasWorkOrder: workOrderId !== null,
     /* 편집 영역에 연 LOT이 기록 전이면 그것부터 말한다. */
-    pendingLotNos: [...pendingMaterials]
+    pendingItems: [...pendingMaterials]
       .sort((a, b) => Number(b.lotId === editingRow?.lotId) - Number(a.lotId === editingRow?.lotId))
-      .map((material) => material.lotNo),
-    hasMaterials: draft.materials.length > 0,
-    isClosed,
+      .map((material) => itemNameOf(material.lotId, material.itemId)),
+    hasRecorded,
   });
-  const isConfirmBlocked =
-    workOrderId === null || blockReason !== undefined || recordedLotIdsSeen.length === 0;
+  /* 기록한 LOT이 있고 기록하지 않은 LOT이 없어야 다음 작업으로 간다(C-4, 사유는 「남은 일」). */
+  const isNextBlocked = workOrderId === null || blockReason !== undefined || !hasRecorded;
 
   const rejection = outbox.rejections.at(-1)?.error ?? null;
   const hasShortReceipt = receipt.lines.some((line) => line.status !== 'matched');
@@ -405,18 +447,11 @@ export const MaterialInputScanScreen = () => {
             </div>
           )}
 
-          {/* 몇 건으로 닫았는지 그 자리에서 말한다. 다음 작업은 하단 바 주 동작이다(C-9). */}
-          {isClosed && (
-            <div className="banner-slot">
-              <AlertBanner variant="success" title={t.confirm.closed(closedCount)} />
-            </div>
-          )}
-
           {/*
            * 부족이나 미수령은 투입을 막지 않는다(스펙 §6). 그런 LOT이 있을 때만 안내 상자로 말한다
            * (C-7, C-19). 어느 LOT인지는 그 줄의 상태 칩이 말한다(C-4).
            */}
-          {hasShortReceipt && !isClosed && (
+          {hasShortReceipt && (
             <div className="banner-slot">
               <AlertBanner variant="info" assertive={false} title={t.notes.shortAllowed} />
             </div>
@@ -437,9 +472,9 @@ export const MaterialInputScanScreen = () => {
             draft={draft}
             describeItem={labels.describeItem}
             describeUom={labels.describeUom}
-            qtyDrafts={qtyDrafts}
             notes={notes}
             recordedLotIds={recordedLotIdsSeen}
+            recordedQtyOf={recordedQtyOf}
             selectedLotId={editingRow?.lotId ?? null}
             onSelect={(lotId) => {
               setSelectedLotId(lotId);
@@ -452,6 +487,7 @@ export const MaterialInputScanScreen = () => {
         <QtyEditor
           row={editingRow}
           isRecorded={editingRow !== null && recordedLotIdsSeen.includes(editingRow.lotId)}
+          recordedQty={editingRow === null ? null : recordedQtyOf(editingRow.lotId)}
           qtyDrafts={qtyDrafts}
           statusLabels={statusLabels}
           describeItem={labels.describeItem}
@@ -477,29 +513,16 @@ export const MaterialInputScanScreen = () => {
           ) : undefined
         }
       >
-        {isClosed ? (
-          <Button
-            type="button"
-            variant="filled"
-            size={POP_TOUCH_SIZE}
-            disabled={workOrderId === null}
-            aria-describedby={remainingId}
-            onClick={goToProductionResult}
-          >
-            {t.confirm.goToProductionResult}
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            variant="filled"
-            size={POP_TOUCH_SIZE}
-            disabled={isConfirmBlocked}
-            aria-describedby={remainingId}
-            onClick={closeList}
-          >
-            {t.confirm.action}
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="filled"
+          size={POP_TOUCH_SIZE}
+          disabled={isNextBlocked}
+          aria-describedby={remainingId}
+          onClick={goToProductionResult}
+        >
+          {t.confirm.goToProductionResult}
+        </Button>
       </ActionBar>
     </main>
   );

@@ -605,15 +605,15 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
 describe('MaterialInputScanScreen — 터치 타겟', () => {
   /*
-   * 주 동작 [투입 확정]은 하단 동작 바에 선다(C-3). 크기는 작업 시작 하단 바와 같은 POP 터치
+   * 주 동작 [생산 작업으로]는 하단 동작 바에 선다(C-3). 크기는 작업 시작 하단 바와 같은 POP 터치
    * 규격이고 `pop.css` 바닥 띠 규칙이 맡는다 — jsdom은 스타일시트를 적용하지 않아 높이는 잴 수
    * 없다(측정 불가 경로). 여기서는 자리만 잰다.
    */
-  it('투입 확정은 하단 동작 바에 선다', () => {
+  it('주 동작은 하단 동작 바에 선다', () => {
     renderScreen([lotsRoute([lot()])]);
 
     const bar = screen.getByRole('region', { name: messages.screenPatterns.actionBar.region });
-    expect(within(bar).getByRole('button', { name: t.confirm.action })).toBeTruthy();
+    expect(within(bar).getByRole('button', { name: t.confirm.goToProductionResult })).toBeTruthy();
   });
 
   /*
@@ -653,7 +653,10 @@ describe('MaterialInputScanScreen — 금형 타발수', () => {
      * 뜨지 않은 채, 아직 기록된 것이 없어서 잠겨 있어야 한다.
      */
     expect(screen.queryByText(DENIED_TEXT)).toBeNull();
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 
   /* 적정 타수가 없으면 남은 타수를 낼 수 없다. 0으로 채우면 한도를 넘은 금형으로 보인다. */
@@ -681,7 +684,10 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
   it('단말을 모르면 막고 그 사실을 말한다', async () => {
     renderScreen([lotsRoute([lot()])]);
 
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(screen.getByText(UNIDENTIFIED_TEXT)).toBeTruthy();
   });
 
@@ -690,7 +696,10 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     renderScreen([lotsRoute([lot()]), gateRoute(true)], { ...GATED, workerNo: null });
 
     expect(await screen.findByText(t.confirm.reasons.workerMissing)).toBeTruthy();
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(screen.queryByText(messages.popChrome.workerMissing)).toBeNull();
   });
 
@@ -704,7 +713,10 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
 
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(screen.getByText(DENIED_TEXT)).toBeTruthy();
   });
 
@@ -771,7 +783,10 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     );
 
     expect(await screen.findByText(DENIED_TEXT)).toBeTruthy();
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 
   /* 권한이 없을 때 「다시 시도」를 두면 작업자가 풀 수 없는 것을 되풀이한다. */
@@ -809,14 +824,20 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     await waitFor(() => {
       expect(screen.getByText(t.confirm.reasons.checking)).toBeTruthy();
     });
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
 
     releaseGate();
     /* 확인이 끝나면 「확인 중」은 사라진다 — 그 뒤로는 담긴 것이 없어 말없이 잠겨 있다. */
     await waitFor(() => {
       expect(screen.queryByText(t.confirm.reasons.checking)).toBeNull();
     });
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 
   /*
@@ -824,28 +845,34 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
    * 유일한 상태다. **수량이 빠진 채로 열리면** 갖춰지지 않은 값이 되돌릴 수 없는 기록에 실린다.
    */
   /*
-   * ⭐ 「투입 확정」은 **목록을 닫는 동작**이라(§5-8) 기록된 것이 있어야 열린다. 담기만 하거나
+   * ⭐ 다음 작업 [생산 작업으로]는 기록된 것이 있어야 열린다(사용자 화면 확인 결정 2026-10-23). 담기만 하거나
    * 수량만 친 상태로 닫으면 그 줄은 아무 데도 남지 않고 사라진다 — 기록은 「기록」이 한다.
    */
-  it('기록된 것이 있어야 확정이 열린다', async () => {
+  it('기록된 것이 있어야 다음 작업이 열린다', async () => {
     const user = userEvent.setup();
     renderScreen([lotsRoute([lot()]), gateRoute(true)], GATED);
 
-    expect(await screen.findByRole('button', { name: t.confirm.action })).toHaveProperty(
-      'disabled',
-      true,
-    );
+    expect(
+      await screen.findByRole('button', { name: t.confirm.goToProductionResult }),
+    ).toHaveProperty('disabled', true);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
 
     /* 담기만 해서는 열리지 않는다 — 아직 기록되지 않았다(맨 위 띠는 세우지 않는다 · 2026-09-19). */
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(screen.queryByText(t.confirm.reasons.qtyMissing)).toBeNull();
 
     /* 수량을 쳐도 아직이다 — 「기록」을 눌러야 원장에 남는다. */
+    await user.clear(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001')));
     await user.type(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001')), '12');
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 
   /* 단말을 모르면 조회를 보내지 않는다 — 서버가 거절할 요청을 화면이 한 번 더 만들지 않는다. */
@@ -1033,7 +1060,7 @@ describe('MaterialInputScanScreen — 게이팅 캐시', () => {
     const stub = createStubFetch([...receiptRoutes(), lotsRoute([lot()]), twoProcesses]);
     renderWithProviders(<SwitchableProcess />, { fetch: stub, route: ROUTE });
 
-    await screen.findByRole('button', { name: t.confirm.action });
+    await screen.findByRole('button', { name: t.confirm.goToProductionResult });
     await user.click(screen.getByRole('button', { name: '공정 바꾸기' }));
 
     expect(await screen.findByText(DENIED_TEXT)).toBeTruthy();
@@ -1146,7 +1173,10 @@ describe('MaterialInputScanScreen — 공정이 여럿인 단말', () => {
     expect(
       await screen.findByText(popGateUnidentifiedText(t.confirm.reasons.unidentified, reason)),
     ).toBeTruthy();
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 
   it('W/O 공정의 자재 투입이 꺼져 있으면 공정 이름과 켜는 곳을 말하며 막는다', async () => {
@@ -1155,6 +1185,9 @@ describe('MaterialInputScanScreen — 공정이 여럿인 단말', () => {
     expect(
       await screen.findByText(popGateDeniedText({ processName: '합성 사출' }, 'canInputMaterial')),
     ).toBeTruthy();
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 });

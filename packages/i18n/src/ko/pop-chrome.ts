@@ -18,7 +18,10 @@ export const popChrome = {
   header: {
     terminalUnknown: '단말 확인 전',
     terminalLabel: (code: string): string => `단말 ${code}`,
-    equipmentLabel: (code: string, name: string): string => `설비 ${named(name, code)}`,
+    /** 머리줄은 1024 폭에 고정 항목이 다 들어가게 설비 이름만 보인다. 코드는 툴팁(`equipmentTitle`). */
+    equipmentLabel: (code: string, name: string): string =>
+      `설비 ${name.trim() === '' ? code : name}`,
+    equipmentTitle: (code: string, name: string): string => `설비 ${named(name, code)}`,
     workerUnset: '사번 미입력',
     workerLabel: (workerNo: string, workerName?: string | null): string =>
       `작업자 ${named(workerName, workerNo)}`,

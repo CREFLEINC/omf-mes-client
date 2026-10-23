@@ -12465,7 +12465,19 @@ button.app-button-neutral {
   margin: 0;
 }
 
-/* 투입 수량 편집 영역. 머리(LOT 번호), 라벨 값 쌍, 수량 칸과 [기록] [빼기], 키패드. */
+/* 투입 수량 편집 영역. 머리 줄(제목과 [빼기]), LOT 번호, 라벨 값 쌍, 수량 칸과 [투입 기록], 키패드. */
+.material-input-qty-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.material-input-qty-head > .pane-title {
+  margin: 0;
+}
+
 .material-input-qty-lot {
   font-family: var(--font-mono);
   white-space: nowrap;
@@ -12551,7 +12563,7 @@ button.app-button-neutral {
 .material-input-qty-row {
   display: grid;
   flex: 0 0 auto;
-  grid-template-columns: minmax(0, 1fr) max-content max-content;
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: end;
   gap: var(--space-3);
 }

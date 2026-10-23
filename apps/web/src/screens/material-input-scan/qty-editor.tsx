@@ -23,7 +23,10 @@ const qtyError = (draft: string): string | undefined => {
 export interface QtyEditorProps {
   /** 편집 영역에 연 줄. 없으면 `null`. */
   row: MaterialRow | null;
+  /** 이 화면에서 기록한 LOT인가. 기록하면 수량을 고칠 수 없다. */
   isRecorded: boolean;
+  /** 이 W/O에 기록된 투입 수량(LOT별 합). 없으면 `null`. */
+  recordedQty: { qty: number; uomId: number } | null;
   qtyDrafts: QtyDrafts;
   statusLabels: LotStatusLabels;
   describeItem: (itemId: number) => string;
@@ -49,15 +52,16 @@ export interface QtyEditorProps {
  * 같은 왼쪽 목록, 오른쪽 편집 영역). 수량은 작업 내내 반복해 넣는 값이라 창으로 열지 않고 화면에
  * 둔다(C-12). 키패드는 작업 시작의 사번 창과 같은 공용 부품이다.
  *
- * 머리에 LOT 번호, 그 아래 라벨 값 쌍(품목, 출고, 수령, 차이, 수령 상태, LOT 상태), 투입 수량 칸과
- * [기록], [빼기], 키패드 순서다. [기록]과 [빼기]는 테두리 버튼이다. 채움 버튼은 하단 바 주
- * 동작 하나다(C-3). 기록된 LOT은 고칠 수 없다(이력 불변 B-3) — 수량과 「기록됨」만 보인다.
+ * 머리 줄에 구획 제목과 [빼기](작게), 그 아래 LOT 번호, 라벨 값 쌍(품목, 출고, 수령, 차이, 수령 상태,
+ * 이 W/O에 기록된 투입, LOT 상태), 투입 수량 칸과 [투입 기록], 키패드 순서다. [빼기]는 테두리, [투입 기록]은 이 영역의 채움
+ * 버튼 하나다(C-3 영역마다 하나). 기록된 LOT은 고칠 수 없다(이력 불변 B-3) — 수량과 「기록됨」만 보인다.
  *
- * 수령 수량은 참고 값으로만 보이고 칸에 미리 채우지 않는다(PI-05).
+ * 스캔해 담으면 투입 수량 칸에 수령 − 기록 양이 미리 채워진다(PI-05, 화면이 채운다). 작업자가 바꿀 수 있다.
  */
 export const QtyEditor = ({
   row,
   isRecorded,
+  recordedQty,
   qtyDrafts,
   statusLabels,
   describeItem,
@@ -81,7 +85,11 @@ export const QtyEditor = ({
   const { material, receipt } = row;
   const uomId = material?.uomId ?? receipt?.uomId;
   const uom = uomId === undefined ? '' : describeUom(uomId);
-  const withUom = (qty: number): string => (uom === '' ? String(qty) : `${String(qty)} ${uom}`);
+  const withUom = (qty: number, ofUomId: number | undefined = uomId): string => {
+    const unit = ofUomId === undefined ? '' : describeUom(ofUomId);
+
+    return unit === '' ? String(qty) : `${String(qty)} ${unit}`;
+  };
   const itemCode = receipt?.itemCode ?? describeItem(row.itemId);
   const qty = readQty(qtyDrafts, row.lotId);
   const canSubmit = canRecord && !isRecorded && validateQty(qty) === null;
@@ -95,7 +103,27 @@ export const QtyEditor = ({
 
   return (
     <section className="pane material-input-qty" aria-label={t.panes.qty}>
-      <h2 className="pane-title">{t.panes.qty}</h2>
+      {/*
+       * 머리 줄: 구획 제목과 행 동작 [빼기](작게, 테두리). 저장 [투입 기록]과 떨어뜨려 잘못 누르지
+       * 않게 한다(PI-08). 기록된 LOT에는 [빼기]를 두지 않는다 — 화면에서 빼도 서버 기록은 남아
+       * 정정 경로조차 없다(이력 불변 B-3).
+       */}
+      <div className="material-input-qty-head">
+        <h2 className="pane-title">{t.panes.qty}</h2>
+        {material !== undefined && !isRecorded && (
+          <Button
+            type="button"
+            variant="outlined"
+            size="sm"
+            aria-label={t.scanned.removeMaterial(row.lotNo)}
+            onClick={() => {
+              onRemove(row.lotId);
+            }}
+          >
+            {t.scanned.remove}
+          </Button>
+        )}
+      </div>
 
       <h3 className="material-input-qty-lot">{row.lotNo}</h3>
 
@@ -133,6 +161,12 @@ export const QtyEditor = ({
               </dd>
             </div>
           </>
+        )}
+        {recordedQty !== null && (
+          <div className="material-input-pair material-input-pair-wide">
+            <dt>{t.pairs.recordedQty}</dt>
+            <dd>{withUom(recordedQty.qty, recordedQty.uomId)}</dd>
+          </div>
         )}
         {material !== undefined && (
           <div className="material-input-pair material-input-pair-wide">
@@ -188,40 +222,23 @@ export const QtyEditor = ({
                 {t.scanned.recordedMark}
               </Chip>
             ) : (
-              <>
-                {/*
-                 * 수량이 없거나 단말이 막혔으면 누르지 못한다. 사유는 하단 바 「남은 일」이다.
-                 * 「기록」이 곧 저장이다(§5-8 건별 저장) — 여기서 보내야 BOM 불일치가 스캔 자리에서
-                 * 드러나고, 그 자재가 원장에 남지 않는다.
-                 */}
-                <Button
-                  type="button"
-                  variant="outlined"
-                  size={POP_TOUCH_SIZE}
-                  disabled={!canSubmit}
-                  aria-describedby={canSubmit ? undefined : remainingId}
-                  onClick={() => {
-                    onRecord(row.lotId);
-                  }}
-                >
-                  {t.scanned.keypadSubmit}
-                </Button>
-                {/*
-                 * 기록된 LOT에는 「빼기」를 두지 않는다. 화면에서 빼도 서버 기록은 남아 정정 경로조차
-                 * 없다(이력 불변 B-3) — 뺄 수 있는 것처럼 보이면 지웠다고 믿고 넘어간다.
-                 */}
-                <Button
-                  type="button"
-                  variant="outlined"
-                  size={POP_TOUCH_SIZE}
-                  aria-label={t.scanned.removeMaterial(row.lotNo)}
-                  onClick={() => {
-                    onRemove(row.lotId);
-                  }}
-                >
-                  {t.scanned.remove}
-                </Button>
-              </>
+              /*
+               * [투입 기록]이 이 화면의 유일한 저장이다(§5-8 건별 저장, 사용자 화면 확인 결정
+               * 2026-10-23). 편집 영역의 채움 버튼 하나다(C-3 영역마다 하나). 수량이 없거나 단말이
+               * 막혔으면 누르지 못하고, 사유는 하단 바 「남은 일」이다.
+               */
+              <Button
+                type="button"
+                variant="filled"
+                size={POP_TOUCH_SIZE}
+                disabled={!canSubmit}
+                aria-describedby={canSubmit ? undefined : remainingId}
+                onClick={() => {
+                  onRecord(row.lotId);
+                }}
+              >
+                {t.scanned.keypadSubmit}
+              </Button>
             )}
           </div>
 

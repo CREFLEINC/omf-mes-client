@@ -423,16 +423,16 @@ describe('MaterialInputScanScreen — 품목 이름 풀이', () => {
     return bare;
   })();
 
-  it('수령 줄에 품목 코드가 없으면 번호 대신 조회한 품목 코드를 보인다', async () => {
+  it('수령 줄에 품목 코드가 없으면 번호 대신 조회한 품목 코드를 「이름 (코드)」로 보인다', async () => {
     renderScreen([listRoute(), detailRoute(7001, [lineWithoutItemCode]), itemRoute()]);
 
-    expect(await screen.findByText('SAMPLE-ITEM-7201')).toBeTruthy();
+    expect(await screen.findByText('예시 자재 A (SAMPLE-ITEM-7201)')).toBeTruthy();
   });
 
   it('수령 줄이 실은 품목 코드를 그대로 보인다', async () => {
     renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures), itemRoute()]);
 
-    expect(await screen.findByText('SAMPLE-MAT-B')).toBeTruthy();
+    expect(await screen.findByText('예시 자재 B (SAMPLE-MAT-B)')).toBeTruthy();
   });
 
   /*
@@ -450,7 +450,7 @@ describe('MaterialInputScanScreen — 품목 이름 풀이', () => {
       },
     ]);
 
-    expect(await screen.findByText('7201')).toBeTruthy();
+    expect(await screen.findByText('예시 자재 A (7201)')).toBeTruthy();
     /* 목록 자체는 실패로 물들지 않는다 — 이름 풀이는 목록의 선행이 아니다. */
     expect(screen.getByText(t.receiptStatus.short)).toBeTruthy();
   });

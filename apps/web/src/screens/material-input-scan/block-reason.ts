@@ -18,7 +18,7 @@ export interface BlockReasonInput {
 }
 
 /**
- * 「투입 확정」이 잠긴 사유 한 문장. 잠겼지만 말할 것이 없으면 `undefined`.
+ * 다음 작업([생산 작업으로])이 잠긴 사유 한 문장. 잠겼지만 말할 것이 없으면 `undefined`.
  *
  * **잠그는 이유가 다섯이고 순서가 뜻을 정한다.** 앞에 둔 것일수록 나중 조작으로 풀리지 않는
  * 사정이다 — 순서를 뒤집으면 「담으면 열린다」를 읽은 작업자가 다 담고 나서야 막힌 것을 안다.
@@ -68,40 +68,37 @@ export const confirmBlockReason = ({
 };
 
 export interface RemainingInput {
-  /** 「투입 확정」 잠금 사유(`confirmBlockReason`). 기록 안 한 자재의 사유는 아래 값으로 구체화한다. */
+  /** 잠금 사유(`confirmBlockReason`). 기록 안 한 자재의 사유는 아래 값으로 구체화한다. */
   blockReason: string | undefined;
   hasWorkOrder: boolean;
-  /** 담았지만 기록하지 않은 자재의 LOT 번호. 고른 것이 앞에 오도록 부르는 쪽이 정렬한다. */
-  pendingLotNos: readonly string[];
-  hasMaterials: boolean;
-  /** 「투입 확정」으로 목록을 닫았는가 */
-  isClosed: boolean;
+  /** 스캔했지만 기록하지 않은 자재의 품목 이름. 고른 것이 앞에 오도록 부르는 쪽이 정렬한다. */
+  pendingItems: readonly string[];
+  /** 이 W/O에 기록된 투입이 있는가(서버 기록이나 이 화면에서 방금 기록한 것). */
+  hasRecorded: boolean;
 }
 
 /**
- * 하단 바 「남은 일」 한 줄(C-4, C-5). 잠금 사유가 먼저이고, 막힘이 없으면 다음 할 일을 말한다.
+ * 하단 바 「남은 일」 한 줄(C-4, C-5). 기록하지 않은 자재가 먼저이고, 그다음 잠금 사유, 막힘이
+ * 없으면 다음 할 일을 말한다. 한 줄에 들어가게 LOT 번호 전체가 아니라 품목 이름과 건수로 쓴다.
  *
  * ⛔ **잠금은 여기서 정하지 않는다.** 잠금은 `confirmBlockReason`과 기록 여부가 정하고, 이 함수는
- *    그 결과를 문장으로 옮긴다. 기록하지 않은 자재가 있으면 어느 LOT을 기록할지까지 말한다.
+ *    그 결과를 문장으로 옮긴다.
  */
 export const remainingText = ({
   blockReason,
   hasWorkOrder,
-  pendingLotNos,
-  hasMaterials,
-  isClosed,
+  pendingItems,
+  hasRecorded,
 }: RemainingInput): string => {
   if (!hasWorkOrder) return t.remaining.workOrderMissing;
 
-  const [firstPending] = pendingLotNos;
+  const [firstPending] = pendingItems;
   if (blockReason === t.confirm.reasons.qtyMissing && firstPending !== undefined) {
-    return pendingLotNos.length === 1
+    return pendingItems.length === 1
       ? t.remaining.record(firstPending)
-      : t.remaining.recordMany(pendingLotNos.length, firstPending);
+      : t.remaining.recordMany(pendingItems.length);
   }
   if (blockReason !== undefined) return blockReason;
-  if (isClosed) return t.remaining.done;
-  if (!hasMaterials) return t.remaining.scan;
 
-  return t.remaining.ready;
+  return hasRecorded ? t.remaining.done : t.remaining.scan;
 };

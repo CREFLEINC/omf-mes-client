@@ -156,7 +156,7 @@ describe('자재 상태 표시명', () => {
    * 이름 풀이가 **판정에 쓰이지 않는다**(스펙 §5-2). 표시명을 못 받아도 확정 잠금 사유는
    * 그대로여야 한다 — 이름이 자격을 가르기 시작하면 화면이 판정하는 것이 된다.
    */
-  it('표시명 유무가 투입 확정 잠금에 영향을 주지 않는다', async () => {
+  it('표시명 유무가 다음 작업 잠금에 영향을 주지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen({
       match: (request) => isGet(request, CODE_VALUES_PATH),
@@ -165,7 +165,10 @@ describe('자재 상태 표시명', () => {
 
     await scanOnce(user);
 
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(screen.getByText(UNIDENTIFIED_TEXT)).toBeTruthy();
   });
 });

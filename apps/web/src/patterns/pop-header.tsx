@@ -40,7 +40,7 @@ const hasText = (value: string | null | undefined): value is string =>
 
 /**
  * POP 머리줄(C-11). 화면 이름, 설비(스테이션), 현재 W/O와 공정, 작업자, 통신 상태.
- * 설비와 작업자는 「이름 (코드)」로 보인다(C-10). 단말은 넘겼을 때만 내부 번호가 아니라 단말 코드로
+ * 설비는 이름(툴팁에 「이름 (코드)」), 작업자는 「이름 (사번)」으로 보인다(C-10, PI-02). 단말은 넘겼을 때만 내부 번호가 아니라 단말 코드로
  * 보인다(작업 시작). 폭이 모자라면 화면 이름, W/O, 오른쪽 덩어리는 그대로 두고 설비가 줄어든다.
  *
  * 작업 시작(P-02-01)과 자재 투입(P-02-03)이 쓴다. 셸이 머리줄 오른쪽에 [화면 이동], [사용자 전환]을
@@ -72,8 +72,8 @@ export const PopHeader = ({
 
       {/* 무엇 앞에 서 있는가(설비, W/O, 공정)는 타이틀 옆, 단말과 작업자와 연결은 오른쪽. */}
       {hasText(equipmentCode) && (
-        /* 폭이 모자라면 설비가 줄임표로 줄어든다. 전체는 툴팁으로 보인다. */
-        <p className="pop-context" title={t.equipmentLabel(equipmentCode, equipmentName ?? '')}>
+        /* 설비는 이름만 보이고 「이름 (코드)」는 툴팁이다(PI-02). 그래도 넘치면 줄임표로 줄어든다. */
+        <p className="pop-context" title={t.equipmentTitle(equipmentCode, equipmentName ?? '')}>
           {t.equipmentLabel(equipmentCode, equipmentName ?? '')}
         </p>
       )}
