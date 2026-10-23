@@ -28,6 +28,11 @@ export const materialLotScan = {
     pick: '입하 라인',
     pickPlaceholder: '라인을 고르세요',
     item: (lineNo: string, itemCode: string, qty: string) => `#${lineNo} · ${itemCode} · ${qty}`,
+    /** 작업 카드 머리의 아이콘 단추. 고른 라인을 놓고 라인 고르기로 돌아간다. */
+    change: '다른 라인 고르기',
+    /** 작업 카드 값의 이름(낭독기용). 화면에는 값이 생김새로 선다. */
+    itemLabel: '품목',
+    itemNameLabel: '품목명',
     /* 라벨과 눈으로 대조할 값이다. 번호만으로는 무엇을 집는지 알 수 없다. */
     pickedLine: (lineNo: string, itemCode: string, qty: string) =>
       `라인 #${lineNo} · ${itemCode} · ${qty}`,
@@ -35,7 +40,10 @@ export const materialLotScan = {
   scan: {
     legend: '스캔',
     scanLabel: '자재LOT 스캔',
-    scanPlaceholder: '자재 LOT 라벨을 스캔하세요',
+    /** 스캔 구역의 지시. 손이 할 일을 짧게 - 칸 한 줄에 들어가야 한다. */
+    prompt: '스캐너 단추를 누르세요',
+    /** 지시 아래 작은 안내. 이 구역이 무엇을 받는지. */
+    hint: '이 라인의 품목 라벨만 받습니다',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     problem: {
@@ -57,6 +65,11 @@ export const materialLotScan = {
   qtyDiffers: (labelQty: string, lineQty: string) =>
     `라벨 수량 ${labelQty} 이 라인 수량 ${lineQty} 과 다릅니다`,
   register: '이 라인 등록',
+  /** 「이 라인 등록」이 잠긴 이유(공유계약 G-1). */
+  locked: {
+    scan: '자재 LOT 라벨을 스캔하면 등록합니다',
+    problem: '받을 수 있는 라벨을 다시 스캔하세요',
+  },
   registered: {
     legend: (count: string) => `등록됨 (${count}건)`,
     /*
