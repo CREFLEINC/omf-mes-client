@@ -43,6 +43,16 @@ export const inboundSchedule = {
     register: '입하 등록',
     /* 발주마다 글자가 같다 — 접근 이름에 발주번호를 넣어 어느 발주인지 밝힌다. */
     registerRow: (purchaseOrderNo: string): string => `${purchaseOrderNo} 입하 등록`,
+    /** 라인 아래 LOT 줄 접기·펼치기 — 머리칸의 손잡이는 전부, 줄의 손잡이는 그 줄만. */
+    expandAll: 'LOT 모두 펼치기',
+    collapseAll: 'LOT 모두 접기',
+    expandLine: (lineNo: number): string => `${String(lineNo)}번 줄 LOT 펼치기`,
+    collapseLine: (lineNo: number): string => `${String(lineNo)}번 줄 LOT 접기`,
+    /** LOT 줄의 다음 할 일 — 서버가 정한 것만 선다(C-17). */
+    postReceipt: '입고 처리',
+    postReceiptRow: (lotNo: string): string => `${lotNo} 입고 처리`,
+    requestIqc: 'IQC 의뢰 요청',
+    requestIqcRow: (lotNo: string): string => `${lotNo} IQC 의뢰 요청`,
   },
   /** 비활성 사유·실패 사유는 그 컨트롤이나 대상의 이름으로 시작한다(배치 규범 4). */
   reasons: {
@@ -70,6 +80,8 @@ export const inboundSchedule = {
     uom: '단위',
     orderDate: '발주일',
     storageLocation: '창고',
+    /** 왼쪽 표 — 그 발주 LOT 들의 가장 뒤처진 단계. 서버가 묶음 수를 실을 때만 선다. */
+    progress: '진행',
   },
   /** 발주 상세(오른쪽) 머리의 이름표. */
   detail: {
@@ -256,5 +268,63 @@ export const inboundSchedule = {
     lineLinked: (qty: string): string => `${qty} 연결됨`,
     lineLinkedLabel: (lineNo: number, qty: string): string =>
       `${String(lineNo)}번 줄에 연결된 초과분 ${qty} 보기`,
+  },
+  /**
+   * 입고 단계 — **서버가 LOT 마다 판정한다**(규범 C-17 · 계약 대기). 이름은 「다음에 할 일」이다: 검사 대기는 품질팀이,
+   * 입고 대기는 이 화면이, 적치 대기는 PDA 가 할 차례다. 탭 줄 칩·왼쪽 「진행」 열·LOT 줄 칩이 같은 이름을 쓴다.
+   */
+  stage: {
+    /** 탭 줄 칩 묶음의 접근 이름. */
+    label: '입고 단계',
+    group: {
+      INSPECTION: '검사 대기',
+      HELD: '보류',
+      RECEIPT: '입고 대기',
+      PUTAWAY: '적치 대기',
+    },
+    /** 「검사 대기 4」 — 칩의 글자. */
+    groupCount: (label: string, count: number): string => `${label} ${String(count)}`,
+    /** 칩을 누르면 그 묶음의 LOT 이 있는 발주만 남는다. 다시 누르면 풀린다. */
+    filterOn: (label: string): string => `${label} 발주만 보기`,
+    filterOff: (label: string): string => `${label} 조건 해제`,
+    /** LOT 줄의 칩. 모르는 코드는 번역하지 않고 그대로 낸다. */
+    code: {
+      INSPECTION_REQUIRED: '검사 의뢰 전',
+      INSPECTION_REQUESTED: '검사 대기',
+      INSPECTION_IN_PROGRESS: '검사 중',
+      INSPECTION_HELD: '보류',
+      RECEIPT_READY: '입고 대기',
+      PUTAWAY_PENDING: '적치 대기',
+      PUTAWAY_TEMPORARY: '임시 적치',
+      COMPLETED: '완료',
+      CANCELLED: '취소',
+    },
+    /** 왼쪽 「진행」 칸 — 아직 LOT 이 하나도 없는 발주. */
+    beforeReceipt: '입하 전',
+    /** 가장 뒤처진 단계 뒤의 나머지 묶음 수(C-17 「외 N」). */
+    others: (count: number): string => `외 ${String(count)}`,
+    /** 발주 머리의 「진행」 — 묶음마다 「검사 대기 1」을 「·」로 잇는다. */
+    summarySeparator: ' · ',
+  },
+  /** 라인 아래 LOT 줄 — 번호 · 입하일 · 수량과, 그 단계의 근거(서버가 준 값만 적는다). */
+  lot: {
+    receivedOn: (date: string): string => `입하 ${date}`,
+    /** 적치는 PDA 의 일이다 — 이 화면은 보기만 한다. */
+    putawayOnPda: 'PDA에서 적치',
+    evidence: {
+      requested: (requestNo: string, date: string): string => `의뢰 ${requestNo} · ${date}`,
+      accepted: (date: string): string => `검사 합격 ${date}`,
+      rejected: '검사 불합격 · 불량창고만',
+      skipped: '검사 생략',
+      noInspection: '무검사',
+      posted: (goodsReceiptNo: string, date: string): string => `입고 ${goodsReceiptNo} · ${date}`,
+      putawayDone: (date: string): string => `적치 ${date}`,
+      separator: ' · ',
+    },
+    /** 「IQC 의뢰 요청」을 보낸 뒤 LOT 줄 위의 한 줄. */
+    requested: (lotNo: string, requestNo: string): string =>
+      `IQC 의뢰를 보냈습니다: ${lotNo} → ${requestNo}`,
+    loading: '입고 진행을 불러오는 중',
+    loadFailed: '입고 진행을 불러오지 못했습니다. 라인은 그대로 보입니다.',
   },
 } as const;

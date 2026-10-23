@@ -1,8 +1,10 @@
-import { AlertBanner, Button, Card, Select, TextArea, TextField } from '@crefle/web-ui';
+import { AlertBanner, Select, TextArea, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { useLocations } from '../../patterns/locations';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useUomCodes } from '../../patterns/masters';
@@ -349,7 +351,6 @@ export const RecycleEntryScreen = () => {
             ) : null}
             {/* 번호를 화면이 정하면 오프라인 두 단말이 같은 번호를 만든다. 먼저 말해 둔다. */}
             <p className="recycle__note">{t.numberLater}</p>
-            {worker === null ? <p className="recycle__note">{t.noWorker}</p> : null}
             <Button
               className="recycle__wide"
               variant="filled"

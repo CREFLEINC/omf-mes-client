@@ -4,7 +4,15 @@ import {
   type SessionWorker,
 } from '@omf-mes/api-client';
 import { hashKey, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { createContext, use, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import {
+  createContext,
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { useApiClient } from '../api-context';
 import { runRequest, toApiError } from '../request';
@@ -47,6 +55,14 @@ export interface SessionValue {
    * `useSignOut`이 하고, 이 함수는 그 성공 뒤에 불린다.
    */
   signOut: () => void;
+  /**
+   * 지금의 `anonymous`가 **이 브라우저에서 스스로 로그아웃한 결과**인가. 만료·첫 방문이면 `false`.
+   *
+   * ⭐ **가드가 막힌 주소를 들려 보낼지 이것으로 가른다**(omf-all-around#175). 스스로 나간 사람의
+   * 마지막 화면은 막힌 주소가 아니다 — 들려 보내면 **다음에 로그인한 사람**이 앞사람의 화면으로
+   * 들어가고, 권한이 다르면 그 자리에 오류만 남는다.
+   */
+  endedBySignOut: boolean;
   /** `unknown`에서 다시 물어본다. 다른 상태에서는 할 일이 없다. */
   retryRestore: () => void;
 }
@@ -161,8 +177,15 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
 
   useSignOutOnUnauthenticated(queryClient);
 
+  /*
+   * ⭐ **세션 칸과 같은 호출 안에서 바꾼다.** 따로 바꾸면 「미인증인데 스스로 나간 것은 아직
+   * 아니다」인 한 번의 그림이 생기고, 가드는 그 사이에 마지막 화면을 들려 보낸다.
+   */
+  const [endedBySignOut, setEndedBySignOut] = useState(false);
+
   const signIn = useCallback(
     (next: Session): void => {
+      setEndedBySignOut(false);
       /**
        * **응답을 그대로 담는다.** 필요한 것만 골라 담으면 뒤따르는 화면이 권한 범위를 읽을 때
        * 다시 로그인을 시켜야 한다 — 지금 그리는 것이 이름 하나뿐인 것과는 별개다.
@@ -173,6 +196,7 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
   );
 
   const signOut = useCallback((): void => {
+    setEndedBySignOut(true);
     queryClient.setQueryData<Session | null>(sessionKeys.current, null);
   }, [queryClient]);
 
@@ -189,9 +213,10 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
       session: status === 'authenticated' && query.data !== undefined ? query.data : null,
       signIn,
       signOut,
+      endedBySignOut: status === 'anonymous' && endedBySignOut,
       retryRestore,
     }),
-    [status, query.data, signIn, signOut, retryRestore],
+    [status, query.data, signIn, signOut, endedBySignOut, retryRestore],
   );
 
   return <SessionContext value={value}>{children}</SessionContext>;

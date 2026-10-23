@@ -1,20 +1,11 @@
-import {
-  AlertBanner,
-  Button,
-  Card,
-  Chip,
-  Radio,
-  RadioGroup,
-  Select,
-  TextArea,
-  TextField,
-} from '@crefle/web-ui';
+import { AlertBanner, Icon, IconButton, Radio, RadioGroup, Select, TextArea } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 
 import { useBackStep } from '../../patterns/back-step';
+import { BottomActionBar } from '../../patterns/bottom-action-bar';
 import { useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
@@ -22,6 +13,10 @@ import { uomLabelOf, useItemCodes, useUomCodes } from '../../patterns/masters';
 import { referenceLabel } from '../../patterns/reference';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
+import { ResultHead } from '../../patterns/result-head';
+import { ScanZone } from '../../patterns/scan-zone';
+import { TASK_FACTS, TaskRoute } from '../../patterns/task-facts';
+import { TaskHeader } from '../../patterns/task-header';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
@@ -239,14 +234,10 @@ export const TemporaryPutawayScreen = () => {
     return (
       <div className="temporary">
         {outcome === 'sent' ? (
-          <AlertBanner variant="success" title={t.sent.title}>
-            {t.sent.description}
-          </AlertBanner>
+          <ResultHead tone="success" title={t.sent.title} description={t.sent.description} />
         ) : null}
         {outcome === 'queued' ? (
-          <AlertBanner variant="warning" title={t.queued.title}>
-            {t.queued.description}
-          </AlertBanner>
+          <ResultHead tone="pending" title={t.queued.title} description={t.queued.description} />
         ) : null}
         {outcome === 'rejected' ? (
           <AlertBanner variant="error" title={t.rejected.title}>
@@ -262,40 +253,58 @@ export const TemporaryPutawayScreen = () => {
   }
 
   return (
-    <div className="temporary">
-      {/* 이 화면은 닫히지 않는다. 정위치로 옮기는 일이 남는다는 것을 먼저 말한다. */}
-      <AlertBanner variant="warning" title={t.banner.title}>
-        {t.banner.description}
-      </AlertBanner>
-
-      <section className="temporary__section">
-        <h2>{t.task.legend}</h2>
-        <Card bordered>
-          <Card.Body className="card-body temporary__card">
-            {/*
-              세 값에 이름을 붙여 세로로 세운다. 한 줄에 늘어놓으면 어느 것이 품목이고 어느
-              것이 지시 번호인지 형식을 아는 사람만 읽는다(배치 규범 9).
-            */}
-            <dl className="temporary__task-fields">
+    <div className="temporary with-bottom-action-bar">
+      {/*
+       * 무엇을 임시로 두는가. 계기판 아래 흰 작업 카드로 붙어 있어, 자리 · 사유를 적으러 내려가도
+       * 지시가 화면에 남는다.
+       */}
+      <TaskHeader fields={[]}>
+        <div className="temporary__card">
+          {/*
+            세 값에 이름을 붙인다. 한 줄에 늘어놓으면 어느 것이 품목이고 어느 것이 지시 번호인지
+            형식을 아는 사람만 읽는다(배치 규범 9).
+          */}
+          <dl className={`temporary__task-fields ${TASK_FACTS}`}>
+            <div>
               <dt>{t.task.itemLabel}</dt>
               <dd>
                 <strong>{referenceLabel(itemCode(task.itemId))}</strong>
               </dd>
+            </div>
+            <div>
               <dt>{t.task.taskNoLabel}</dt>
               <dd>{task.putawayTaskNo}</dd>
+            </div>
+            <div>
               <dt>{t.task.qtyLabel}</dt>
               <dd>{`${String(task.taskQty)} ${uomOf(task.uomId)}`}</dd>
-            </dl>
-            {/* 어디가 막혀서 여기 왔는지가 대상 정보의 일부다. */}
-            <p className="temporary__note">{t.task.origin(codeOf(task.fromLocationId))}</p>
-            {task.recommendedLocationId === null || task.recommendedLocationId === undefined ? (
-              <Chip status="warning">{t.task.noRule}</Chip>
-            ) : (
-              <Chip>{t.task.recommended(codeOf(task.recommendedLocationId))}</Chip>
-            )}
-          </Card.Body>
-        </Card>
+            </div>
+          </dl>
+          {/* 어디가 막혀서 여기 왔는지가 대상 정보의 일부다. */}
+          <TaskRoute
+            from={t.task.origin(codeOf(task.fromLocationId))}
+            to={
+              task.recommendedLocationId === null || task.recommendedLocationId === undefined
+                ? undefined
+                : t.task.recommended(codeOf(task.recommendedLocationId))
+            }
+            missing={t.task.noRule}
+          />
+        </div>
+      </TaskHeader>
 
+      {/*
+       * 이 화면은 닫히지 않는다. 정위치로 옮기는 일이 남는다는 것을 먼저 말한다. 띠 대신 한 줄 -
+       * 경고가 아니라 이 일의 성격이라, 큰 노란 띠가 화면 위 4분의 1을 차지할 까닭이 없다.
+       */}
+      <p className="temporary__notice">
+        <Icon name="info" size={20} />
+        <span>
+          <b>{t.banner.title}</b> <span>{t.banner.description}</span>
+        </span>
+      </p>
+
+      <section className="temporary__section">
         {/* 실제 적치 위치는 완료된 건에만 채워진다. 또 적으면 두 기록이 남는다. */}
         {known !== null && isAlreadyPutAway(known) ? (
           <AlertBanner variant="error" title={t.task.already}>
@@ -314,32 +323,50 @@ export const TemporaryPutawayScreen = () => {
       </section>
 
       <section className="temporary__section">
-        <h2>{t.location.legend}</h2>
+        {/* 스캔 구역이 같은 말(위치 라벨을 스캔하세요)을 한다. 구획 이름은 낭독기에만 준다. */}
+        <h2 className="temporary__hidden">{t.location.legend}</h2>
         {/* 고객이 임시 유형을 지우면 한 자리도 남지 않는다. 그때는 전체를 보이고 그 사실을 적는다. */}
         {locations.data !== undefined && !filtered ? (
           <p className="temporary__note">{t.location.unfiltered}</p>
         ) : null}
-        <TextField
-          ref={scanField.ref}
+        <ScanZone
+          field={scanField}
           label={t.location.scanLabel}
-          placeholder={t.location.scanPlaceholder}
-          size="xl"
-          fullWidth
+          /* 자리가 정해지면 대기 줄로 접는다. 스캔은 여전히 정본이라 다른 라벨을 읽으면 바뀐다. */
+          prompt={location === null ? t.location.scanPlaceholder : t.location.standby}
+          standby={location !== null}
           error={
             scanned !== null && byCode.isSuccess && byCode.data === null
               ? t.location.notFound(scanned)
               : undefined
           }
+          /*
+           * 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길을 늘 연다(공유계약 D-3). 스캔이 정본이고
+           * 목록은 대체 경로다. 둘 다 구역 아래 따로 선 아이콘이다(사용자 지시 2026-10-21).
+           */
+          tools={
+            <span className="temporary__zone-buttons">
+              {locations.data === undefined || listOpen ? null : (
+                <IconButton
+                  className="temporary__zone-button"
+                  icon="list"
+                  size="lg"
+                  aria-label={t.location.pickAction}
+                  onClick={() => {
+                    setListOpen(true);
+                  }}
+                />
+              )}
+              <IconButton
+                className="temporary__zone-button"
+                icon={scanField.manual ? 'keyboard_return' : 'keyboard'}
+                size="lg"
+                aria-label={scanField.manual ? t.location.manualSubmit : t.location.manual}
+                onClick={scanField.manual ? scanField.submitManual : scanField.openManual}
+              />
+            </span>
+          }
         />
-        {/* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길을 늘 연다(공유계약 D-3). */}
-        <Button
-          className="temporary__wide"
-          variant={scanField.manual ? 'outlined' : 'text'}
-          size="xl"
-          onClick={scanField.manual ? scanField.submitManual : scanField.openManual}
-        >
-          {scanField.manual ? t.location.manualSubmit : t.location.manual}
-        </Button>
         {/* 스캔한 코드를 확인하는 동안 등록이 잠긴다. 왜 잠겼는지 말하지 않으면 멈춘 것처럼 보인다. */}
         {scanned !== null && byCode.isPending ? <p role="status">{t.location.loading}</p> : null}
         {byCode.isError ? (
@@ -356,19 +383,6 @@ export const TemporaryPutawayScreen = () => {
         {locations.isSuccess && locations.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.location.none} />
         ) : null}
-        {/* 스캔이 정본이고 목록은 대체 경로다(공유계약 D-3). 접어 두어 스캔 칸을 앞에 세운다. */}
-        {locations.data === undefined || listOpen ? null : (
-          <Button
-            className="temporary__wide"
-            variant="text"
-            size="xl"
-            onClick={() => {
-              setListOpen(true);
-            }}
-          >
-            {t.location.pickAction}
-          </Button>
-        )}
         {locations.data === undefined || !listOpen ? null : (
           <div className="temporary__field">
             <label htmlFor="temporary-location">{t.location.pickLabel}</label>
@@ -398,7 +412,11 @@ export const TemporaryPutawayScreen = () => {
 
         {location === null ? null : (
           <>
-            <p>{t.location.chosen(location.locationCode, location.locationName)}</p>
+            {/* 정해진 자리. 초록 확인 줄 - 등록되는 곳이 바로 이곳이다. */}
+            <p className="temporary__chosen">
+              <Icon name="check_circle" size={20} />
+              <span>{t.location.chosen(location.locationCode, location.locationName)}</span>
+            </p>
             {/* 임시 위치는 수용량으로 막지 않는다. 값이 있으면 알리기만 한다. */}
             {location.capacityQty === null || location.capacityQty === undefined ? null : (
               <AlertBanner
@@ -423,8 +441,11 @@ export const TemporaryPutawayScreen = () => {
          * 비활성은 목록이 비어서 왔을 때만이다 - 불러오는 동안 잠그면 값이 있는데도 못 고른다.
          */}
         {reasons.data === undefined || reasons.data.length === 0 ? null : (
-          <div className="temporary__field">
-            <span id="temporary-reason-label">{t.reason.label}</span>
+          <div className="temporary__field temporary__reasons">
+            {/* 구획 제목(「적치 사유」)이 같은 말을 한다. 이름은 낭독기에만 준다. */}
+            <span id="temporary-reason-label" className="temporary__hidden">
+              {t.reason.label}
+            </span>
             <RadioGroup
               name="temporary-reason"
               aria-labelledby="temporary-reason-label"
@@ -452,34 +473,36 @@ export const TemporaryPutawayScreen = () => {
             patch({ remarks: event.target.value });
           }}
         />
-
-        {/* 서버가 둘 다 비면 막는다. 무엇이 있어야 하는지를 먼저 말한다. */}
-        {draft.reasonCode === '' && draft.remarks.trim() === '' ? (
-          <p className="temporary__note">{t.reason.needsOne}</p>
-        ) : null}
       </section>
 
-      <section className="temporary__section">
-        {saveFailed ? (
-          <AlertBanner variant="error" title={t.saveFailed.title}>
-            {t.saveFailed.description}
-          </AlertBanner>
-        ) : null}
-        {worker === null ? <p className="temporary__note">{t.noWorker}</p> : null}
-      </section>
+      {saveFailed || worker === null ? (
+        <section className="temporary__section">
+          {saveFailed ? (
+            <AlertBanner variant="error" title={t.saveFailed.title}>
+              {t.saveFailed.description}
+            </AlertBanner>
+          ) : null}
+        </section>
+      ) : null}
 
-      {/* 사유 목록이 길어지면 등록 단추가 접힌 자리로 밀린다(설계 §3 액션 72). */}
-      <div className="action-bar">
-        <Button
-          className="temporary__wide"
-          variant="filled"
-          size="2xl"
-          disabled={!ready}
-          onClick={() => void submit()}
-        >
-          {t.submit}
-        </Button>
-      </div>
+      {/*
+       * 사유 목록이 길어지면 등록 단추가 접힌 자리로 밀린다(설계 §3 액션 72). 잠겨 있으면 위에서부터
+       * 처음 비어 있는 것 하나를 말한다 - 자리, 그다음 사유 · 비고(서버가 둘 다 비면 막는다).
+       */}
+      <BottomActionBar
+        primary={{
+          label: t.submit,
+          disabled: !ready,
+          lockReason: ready
+            ? undefined
+            : location === null
+              ? t.location.locked
+              : draft.reasonCode === '' && draft.remarks.trim() === ''
+                ? t.reason.needsOne
+                : undefined,
+          onClick: () => void submit(),
+        }}
+      />
     </div>
   );
 };

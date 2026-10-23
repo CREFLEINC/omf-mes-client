@@ -1,12 +1,14 @@
 import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
+import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
+import { GoodsReceiptPostPanel } from '../goods-receipt/post-panel';
 import { ReceiptRegisterPanel } from '../over-receipt-split/register-panel';
 import {
   readExcessEntry,
@@ -33,6 +35,7 @@ import {
   type ScheduleFilters,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
+import { lotEvidence } from './lot-row';
 import {
   describeReference,
   lookupNote,
@@ -44,6 +47,14 @@ import {
   type LookupResult,
 } from './lookups';
 import { PageNav } from './page-nav';
+import { readPostEntry, withoutPostEntry, withPostEntry } from './post-entry';
+import {
+  isProgressUnavailable,
+  progressKeys,
+  useInboundProgress,
+  useInboundStageCounts,
+  useRequestIqc,
+} from './progress-queries';
 import { QuickLookupBar, type QuickLookupHandle } from './quick-lookup-bar';
 import { toPageView } from './pagination';
 import {
@@ -57,7 +68,10 @@ import { LineTable } from './line-table';
 import { OrderTable } from './order-table';
 import { scheduleKeys, usePurchaseOrderLines, usePurchaseOrderSummaries } from './queries';
 import { readRegisterEntry, withoutRegisterEntry, withRegisterEntry } from './register-entry';
+import { progressByLine } from './stage';
+import { StageChips } from './stage-chips';
 import type {
+  InboundLotProgress,
   InboundScheduleLine,
   PurchaseOrderSummary,
   PurchaseOrderSummaryQuery,
@@ -81,8 +95,14 @@ export const LIST_PAGE_SIZE = 20;
  */
 const REGISTER_PERMISSION = 'W-01-03';
 
-/** 등록 뒤 함께 다시 읽을 것 — 이 화면의 두 표(받은 수량·진행)와 초과분 목록(새 초과분). */
-const REGISTER_REFRESH_KEYS = [scheduleKeys.all, excessKeys.all] as const;
+/** 「입고 처리」의 권한 — 자재 입고 처리 화면(W-01-10)과 같다. 세션이 권한 목록을 주지 않았으면 단추를 세운다 — 막는 것은 서버다. */
+const POST_PERMISSION = 'W-01-10';
+
+/** 등록 뒤 함께 다시 읽을 것 — 이 화면의 두 표(받은 수량·진행)와 초과분 목록(새 초과분), 그리고 새 LOT 이 생긴 진행. */
+const REGISTER_REFRESH_KEYS = [scheduleKeys.all, excessKeys.all, progressKeys.all] as const;
+
+/** 입고 처리 뒤 함께 다시 읽을 것 — LOT 줄의 단계 · 왼쪽 「진행」 열 · 탭 줄 칩 수. */
+const POST_REFRESH_KEYS = [scheduleKeys.all, progressKeys.all] as const;
 
 /**
  * 참조 목록을 선택지로 옮긴다.
@@ -127,6 +147,8 @@ export const InboundScheduleScreen = () => {
   const { session } = useSession();
   const canRegister =
     session?.permissions === undefined || session.permissions.includes(REGISTER_PERMISSION);
+  const canPost =
+    session?.permissions === undefined || session.permissions.includes(POST_PERMISSION);
   const split = usePaneSplit('omf-mes:inbound-schedule:split', 0.4);
   const quickRef = useRef<QuickLookupHandle>(null);
 
@@ -161,6 +183,20 @@ export const InboundScheduleScreen = () => {
 
   const list = usePurchaseOrderSummaries(listQuery);
   const rows = list.data?.items ?? EMPTY_ROWS;
+
+  /*
+   * 탭 줄 칩의 묶음별 LOT 수(C-17 머리 건수) — 목록과 같은 조건이되 **쪽과 단계 조건은 빼고** 센다. 칩은 조건 전체의 수를
+   * 말해야 하고, 단계 칩을 눌러 좁힌 뒤에도 다른 칩의 수가 남아 있어야 옮겨 갈 수 있다. 서버가 모르면(404) 칩을 세우지 않는다.
+   */
+  const stageCounts = useInboundStageCounts(
+    periodReason === null
+      ? {
+          ...(filters.overdueOnly ? {} : toPeriodQuery(period)),
+          ...toFilterQuery({ ...filters, stage: '' }),
+        }
+      : null,
+  );
+  const stageAvailable = stageCounts.isSuccess && !isProgressUnavailable(stageCounts.error);
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
 
   /*
@@ -173,6 +209,17 @@ export const InboundScheduleScreen = () => {
     rows.find((row) => row.purchaseOrderId === poParam) ??
     (rows.length === 1 ? (rows[0] ?? null) : null);
   const lines = usePurchaseOrderLines(selectedOrder?.purchaseOrderId ?? null);
+
+  /*
+   * 고른 발주의 LOT 진행(계약 대기). 서버가 경로를 모르면(404)·권한이 없으면(403) 라인만 선다 — 지금의 두 표 그대로다.
+   * 다른 실패는 라인 아래 한 줄로 알리고 라인은 그대로 둔다.
+   */
+  const progress = useInboundProgress(selectedOrder?.purchaseOrderId ?? null);
+  const progressUnavailable = progress.isError && isProgressUnavailable(progress.error);
+  const lotsByLine = useMemo(
+    () => (progress.data === undefined ? undefined : progressByLine(progress.data.items)),
+    [progress.data],
+  );
 
   const suppliers = useSupplierOptions();
   const plants = usePlantOptions();
@@ -223,7 +270,7 @@ export const InboundScheduleScreen = () => {
   /* 창은 한 번에 하나다 — 하나를 열면 다른 하나의 키를 걷는다. */
   const excessEntry = readExcessEntry(searchParams);
   const openExcess = (entry: Partial<ExcessEntry> = {}): void => {
-    setSearchParams(withExcessEntry(withoutRegisterEntry(searchParams), entry));
+    setSearchParams(withExcessEntry(withoutRegisterEntry(withoutPostEntry(searchParams)), entry));
   };
   const closeExcess = (): void => {
     setSearchParams(withoutExcessEntry(searchParams));
@@ -231,11 +278,75 @@ export const InboundScheduleScreen = () => {
 
   const registerPoId = canRegister ? readRegisterEntry(searchParams) : null;
   const openRegister = (purchaseOrderId: number): void => {
-    setSearchParams(withRegisterEntry(searchParams, purchaseOrderId));
+    setSearchParams(withRegisterEntry(withoutPostEntry(searchParams), purchaseOrderId));
   };
   const closeRegister = (): void => {
     setSearchParams(withoutRegisterEntry(searchParams));
   };
+
+  /*
+   * 「입고 처리」 창 — LOT 줄에서 열린다(`post=<LOT>`). 대상 LOT 은 고른 발주의 진행 자료에서 찾는다 — 없으면(자료가 바뀌었다 ·
+   * 다른 발주의 주소) 창을 세우지 않는다. 창은 LOT 하나로 서고 전표·라인 값은 창이 전표 상세로 받는다.
+   */
+  const postLotId = canPost ? readPostEntry(searchParams) : null;
+  const postLot =
+    postLotId === null
+      ? null
+      : (progress.data?.items.find((lot) => lot.lotId === postLotId) ?? null);
+  const postLine =
+    postLot === null
+      ? null
+      : (lineRows.find((line) => line.purchaseOrderLineId === postLot.purchaseOrderLineId) ?? null);
+  const openPost = (lot: InboundLotProgress): void => {
+    setSearchParams(
+      withPostEntry(withoutExcessEntry(withoutRegisterEntry(searchParams)), lot.lotId),
+    );
+  };
+  const closePost = (): void => {
+    setSearchParams(withoutPostEntry(searchParams));
+  };
+
+  /*
+   * 「IQC 의뢰 요청」 — LOT 줄의 단추가 바로 보낸다(되돌릴 수 있는 쓰기라 확인 창이 없다). 보내는 동안 그 단추만 돌고,
+   * 결과는 표 위 한 줄로 알린다. 실패는 같은 자리의 배너다. 발주를 바꾸면 둘 다 걷는다.
+   */
+  const [pendingIqcLot, setPendingIqcLot] = useState<InboundLotProgress | null>(null);
+  /* 되먹임(`onSuccess`)은 제출한 렌더의 닫힘을 들고 있어 그 렌더의 옛 상태를 본다 — 보낸 LOT 은 ref 에 적는다. */
+  const pendingIqcLotRef = useRef<InboundLotProgress | null>(null);
+  const [iqcNote, setIqcNote] = useState<string | null>(null);
+  const requestIqc = useRequestIqc({
+    purchaseOrderId: selectedOrder?.purchaseOrderId ?? 0,
+    onSuccess: (data) => {
+      const sent = pendingIqcLotRef.current;
+      setIqcNote(sent === null ? null : t.lot.requested(sent.lotNo, data.inspectionRequestNo));
+      pendingIqcLotRef.current = null;
+      setPendingIqcLot(null);
+    },
+  });
+  const sendIqcRequest = (lot: InboundLotProgress): void => {
+    setIqcNote(null);
+    setPendingIqcLot(lot);
+    pendingIqcLotRef.current = lot;
+    requestIqc.write({
+      inspectionTypeCode: 'IQC',
+      targetTypeCode: 'LOT',
+      targetId: lot.lotId,
+      businessDate: today,
+      occurredAt: new Date().toISOString(),
+    });
+  };
+  const requestingLotId = requestIqc.isSaving ? (pendingIqcLot?.lotId ?? null) : null;
+  const linesNotice =
+    requestIqc.error !== null || iqcNote !== null ? (
+      <>
+        <SaveErrorBanner error={requestIqc.error} />
+        {iqcNote !== null && (
+          <p className="po-board-lines-status" role="status">
+            {iqcNote}
+          </p>
+        )}
+      </>
+    ) : undefined;
 
   /*
    * 「초과분 연결」 진입 단추 — **탭 막대 오른쪽**(셸의 일 단추 자리)에 둔다. 조건 줄은 이미 꽉 차 있어 거기 두면
@@ -264,11 +375,35 @@ export const InboundScheduleScreen = () => {
     </Button>
   ) : null;
 
-  /** 발주를 고른다 — 조건·쪽은 그대로 두고 `po` 만 바꾼다. */
+  /*
+   * 단계 칩 — 탭 줄 오른쪽, 「초과분 연결」 앞. 누르면 그 묶음의 LOT 이 있는 발주만 남는다(조건이 바뀌니 첫 쪽으로).
+   * 서버가 묶음 수를 셀 수 없으면(404·403) 세우지 않는다 — 조건·머리 건수·행 칩은 같은 기준이어야 한다(C-17).
+   */
+  const stageChips =
+    stageAvailable && stageCounts.data !== undefined ? (
+      <StageChips
+        counts={stageCounts.data.counts}
+        active={filters.stage}
+        onChange={(next) => {
+          applyQuery(period, { ...filters, stage: next });
+        }}
+      />
+    ) : null;
+  const hubTools =
+    stageChips !== null || excessEntryButton !== null ? (
+      <>
+        {stageChips}
+        {excessEntryButton}
+      </>
+    ) : null;
+
+  /** 발주를 고른다 — 조건·쪽은 그대로 두고 `po` 만 바꾼다. 앞 발주의 IQC 의뢰 결과·실패는 걷는다. */
   const selectOrder = (purchaseOrderId: number): void => {
     const next = toSearchParams(period, filters, page, fallbackPeriod);
     next.set('po', String(purchaseOrderId));
     setSearchParams(next);
+    setIqcNote(null);
+    requestIqc.reset();
   };
 
   return (
@@ -314,7 +449,7 @@ export const InboundScheduleScreen = () => {
           onReset={() => {
             applyQuery(fallbackPeriod, DEFAULT_FILTERS);
           }}
-          tools={hubActionsTarget === null ? excessEntryButton : undefined}
+          tools={hubActionsTarget === null ? hubTools : undefined}
           quick={
             <QuickLookupBar
               ref={quickRef}
@@ -380,13 +515,42 @@ export const InboundScheduleScreen = () => {
               lineExcesses={lineExcesses}
               onOpenExcess={openExcess}
               onRegister={canRegister ? openRegister : undefined}
+              {...(progressUnavailable || lotsByLine === undefined ? {} : { lots: lotsByLine })}
+              progressFailed={progress.isError && !progressUnavailable}
+              {...(linesNotice === undefined ? {} : { notice: linesNotice })}
+              requestingLotId={requestingLotId}
+              {...(canPost ? { onPostReceipt: openPost } : {})}
+              onRequestIqc={sendIqcRequest}
             />
           )}
         </section>
       </div>
 
-      {hubActionsTarget !== null && excessEntryButton !== null && (
-        <HubActions target={hubActionsTarget}>{excessEntryButton}</HubActions>
+      {hubActionsTarget !== null && hubTools !== null && (
+        <HubActions target={hubActionsTarget}>{hubTools}</HubActions>
+      )}
+
+      {postLot !== null && postLine !== null && selectedOrder !== null && (
+        <GoodsReceiptPostPanel
+          /* 다른 LOT 을 열면 창을 새로 세운다 — 앞 LOT 의 초안이 남지 않는다. */
+          key={postLot.lotId}
+          target={{
+            inboundReceiptId: postLot.inboundReceiptId,
+            inboundReceiptLineId: postLot.inboundReceiptLineId,
+            lotId: postLot.lotId,
+          }}
+          context={{
+            purchaseOrderNo: selectedOrder.purchaseOrderNo,
+            supplierName: selectedOrder.supplierName,
+            itemCode: postLine.itemCode,
+            itemName: postLine.itemName,
+            lotNo: postLot.lotNo,
+            uomCode: postLot.uomCode,
+            inspectionNote: lotEvidence(postLot) === '' ? null : lotEvidence(postLot),
+          }}
+          refreshKeys={POST_REFRESH_KEYS}
+          onClose={closePost}
+        />
       )}
 
       {registerPoId !== null && (

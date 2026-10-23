@@ -1,8 +1,10 @@
-import { AlertBanner, Button, Card, Radio, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Radio, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { useLocationByCode } from '../../patterns/locations';
 import { useScannedLot } from '../../patterns/lots';
 import { uomLabelOf, useItemLabels, useUomCodes } from '../../patterns/masters';
@@ -222,9 +224,10 @@ export const StockTransferScreen = () => {
    * 다음에 할 일 하나. 차례는 계약이 정한다 - 반출 스캔이 곧 이동 문서를 만드는 행위라 그
    * 본문에 도착 위치가 필수다. 그래서 적을 것이 먼저고 보낼 곳이 그다음이다.
    */
+  /* 사번이 없다는 말은 앱바 아래 알림이 한다(사용자 지시 2026-10-21) - 여기서 되풀이하지 않는다. */
   const nextStep =
     worker === null
-      ? t.noWorker
+      ? null
       : lines.length === 0
         ? t.noLine
         : toLocation === null
@@ -473,7 +476,6 @@ export const StockTransferScreen = () => {
 
       {shipped !== null ? (
         <section className="stock-transfer__section">
-          {worker === null ? <p className="stock-transfer__note">{t.noWorker}</p> : null}
           {toLocation === null ? <p className="stock-transfer__note">{t.noDestination}</p> : null}
           <Button
             className="stock-transfer__wide"

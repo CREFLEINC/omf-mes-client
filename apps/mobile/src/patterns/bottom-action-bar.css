@@ -10,7 +10,7 @@
   z-index: 5;
   margin-top: auto;
   margin-inline: calc(-1 * var(--space-4, 16px));
-  padding: var(--space-3, 12px) var(--space-4, 16px);
+  padding: var(--space-2) var(--space-4) var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 8px);
@@ -22,12 +22,39 @@
   width: 100%;
 }
 
+/*
+ * 바의 단추는 한 줄을 통째로 가진다. 글자가 길면(베트남어) 높이를 지킨 채 두 줄로 접는다 -
+ * 셸의 「단추 글자는 접지 않는다」는 칸 옆 단추를 위한 것이다.
+ */
+.bottom-action-bar__button.pda-button {
+  height: auto;
+  white-space: normal;
+  text-align: center;
+}
+
+.bottom-action-bar__button.pda-button--2xl {
+  min-height: var(--control-height-2xl);
+}
+
+.bottom-action-bar__button.pda-button--xl {
+  min-height: var(--control-height-xl);
+}
+
+/* 낮은 바 - 주 단추를 60px 로. 장갑 낀 손가락에 아직 넉넉한 높이다. */
+.bottom-action-bar--compact .bottom-action-bar__button.pda-button--2xl {
+  min-height: 60px;
+}
+
 /* 잠긴 이유. 단추 바로 위에 두어 단추를 보는 눈에 함께 걸린다. */
 .bottom-action-bar__reason {
   margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
-  color: var(--on-surface-variant);
+  color: var(--on-surface-muted);
   text-align: center;
 }
 
@@ -48,5 +75,32 @@
   flex-direction: column;
   min-height: 100%;
   box-sizing: border-box;
+}
+
+/*
+ * 바 아래에 여백이 남으면 끝까지 내렸을 때 바가 바닥에서 떠 보인다. 화면마다 자기 CSS 에 바깥
+ * 여백을 두고 그 파일이 뒤에 실리므로, 클래스를 겹쳐 적어 무게를 올린다.
+ *
+ * 숫자판이 열린 동안(`docked-pad-open`)은 비키다 - 그때는 판 높이만큼 아래를 비워야 적는 칸을
+ * 판 위로 올릴 수 있다. 같은 무게로 겨루면 이 파일이 뒤에 실려 이겨, 칸이 판에 덮였다.
+ */
+.with-bottom-action-bar.with-bottom-action-bar:not(.docked-pad-open) {
   padding-bottom: 0;
+}
+
+/* 단추 위의 물음. 단추를 보는 눈에 함께 걸리도록 바 안 맨 위에 둔다. */
+.bottom-action-bar__prompt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.bottom-action-bar__alternatives {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.bottom-action-bar__button.pda-button--lg {
+  min-height: var(--control-height-lg);
 }

@@ -550,7 +550,9 @@ describe('IqcInspectionScreen', () => {
     const { writes } = renderScreen('/?ir=1001');
 
     expect(await screen.findByText(t.result.workerNotLinked)).toBeInTheDocument();
-    await userEvent.type(screen.getByLabelText(t.result.fields.held), '1');
+    /* 입력으로 풀 수 없는 막힘이라 칸도 잠근다(#135). */
+    expect(screen.getByLabelText(t.result.fields.held)).toBeDisabled();
+    expect(screen.getByLabelText(t.result.fields.accepted)).toBeDisabled();
     expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
     expect(writes).toHaveLength(0);

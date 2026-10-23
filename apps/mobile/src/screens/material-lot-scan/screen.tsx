@@ -1,8 +1,9 @@
-import { AlertBanner, Button, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Icon, IconButton, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { Button } from '../../patterns/button';
 import { useItem, useItemLabels } from '../../patterns/masters';
 import type { MaterialLotCodes } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
@@ -13,6 +14,10 @@ import { playErrorTone } from '../../patterns/error-tone';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
+import { BottomActionBar } from '../../patterns/bottom-action-bar';
+import { ResultHead } from '../../patterns/result-head';
+import { ScanZone } from '../../patterns/scan-zone';
+import { TaskHeader } from '../../patterns/task-header';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
@@ -249,11 +254,9 @@ export const MaterialLotScanScreen = () => {
   if (outcome !== null) {
     return (
       <div className="material-lot-scan">
-        {outcome === 'sent' ? <AlertBanner variant="success" title={t.sent.title} /> : null}
+        {outcome === 'sent' ? <ResultHead tone="success" title={t.sent.title} /> : null}
         {outcome === 'held' ? (
-          <AlertBanner variant="warning" title={t.held.title}>
-            {t.held.description}
-          </AlertBanner>
+          <ResultHead tone="pending" title={t.held.title} description={t.held.description} />
         ) : null}
         {outcome === 'rejected' ? (
           <AlertBanner variant="error" title={t.rejected.title}>
@@ -261,46 +264,99 @@ export const MaterialLotScanScreen = () => {
             <Link to="/rejections">{t.rejected.action}</Link>
           </AlertBanner>
         ) : null}
-        <Button variant="filled" size="2xl" className="material-lot-scan__wide" onClick={restart}>
-          {t.another}
-        </Button>
+        <BottomActionBar primary={{ label: t.another, onClick: restart }} />
       </div>
     );
   }
 
-  return (
-    <div className="material-lot-scan">
-      <section className="material-lot-scan__section">
-        <h2>{t.receipt.legend}</h2>
-        {receiptsPending ? <p role="status">{t.receipt.loading}</p> : null}
-        {receipts.isError ? (
-          <FailureBanner
-            variant="error"
-            title={failureText(receipts.error, t.receipt.loadFailed)}
-          />
-        ) : null}
-        {!receiptsPending && !receipts.isError && openReceipts.length === 0 ? (
-          <p>{t.receipt.none}</p>
-        ) : null}
-        <label htmlFor="material-lot-scan-receipt">{t.receipt.pick}</label>
-        <Select
-          id="material-lot-scan-receipt"
-          placeholder={t.receipt.pickPlaceholder}
-          size="xl"
-          value={receiptId === null ? null : String(receiptId)}
-          onChange={(value) => {
-            setReceiptId(Number(value));
-            setLineId(null);
-            setScanned('');
-          }}
-          options={openReceipts.map((each) => ({
-            value: String(each.inboundReceiptId),
-            label: t.receipt.item(each.inboundReceiptNo, each.receiptDatetime.slice(0, 10)),
-          }))}
-        />
-      </section>
+  /*
+   * 「이 라인 등록」이 잠긴 이유(공유계약 G-1). 라벨이 없으면 스캔하라고, 받을 수 없는 라벨이면
+   * 다시 스캔하라고 한다. 사번 · 공장 · 품목 코드처럼 작업자가 풀 수 없는 것은 본문이 말한다.
+   */
+  const registerLock =
+    ready || line === null
+      ? undefined
+      : scanned.trim() === ''
+        ? t.locked.scan
+        : problem !== null
+          ? t.locked.problem
+          : undefined;
 
-      {chosenReceipt === null ? null : (
+  return (
+    <div className="material-lot-scan with-bottom-action-bar">
+      {/*
+       * 라인을 고르면 입하 건 · 라인 고르기를 걷고 계기판 작업 카드로 올린다. 스캔하는 동안 무엇을
+       * 채우는지(품목 · 라인 · 수량)가 늘 같은 자리에 있고, 고르는 칸 둘만큼 화면이 짧아진다.
+       */}
+      {line === null ? null : (
+        <TaskHeader
+          fields={[
+            {
+              label: t.line.itemLabel,
+              /* 품목을 아직 못 받았으면 자리만 둔다. 품목 코드를 지어내지 않는다 - 확인 중 · 실패는 본문이 말한다. */
+              value: lineItem.data?.itemCode ?? '—',
+              strong: true,
+            },
+            ...(lineItem.data === undefined
+              ? []
+              : [{ label: t.line.itemNameLabel, value: lineItem.data.itemName, caption: true }]),
+            ...(chosenReceipt === null
+              ? []
+              : [{ label: t.receipt.pick, value: chosenReceipt.inboundReceiptNo }]),
+            {
+              label: t.line.pick,
+              value: t.line.pickedLine(
+                String(line.lineNo),
+                lineItem.data?.itemCode ?? '',
+                String(line.receivedQty),
+              ),
+            },
+          ]}
+          step={{ index: 3, total: 3 }}
+          action={{
+            icon: 'swap_horiz',
+            label: t.line.change,
+            onClick: () => {
+              setLineId(null);
+              setScanned('');
+            },
+          }}
+        />
+      )}
+
+      {line !== null ? null : (
+        <section className="material-lot-scan__section">
+          <h2>{t.receipt.legend}</h2>
+          {receiptsPending ? <p role="status">{t.receipt.loading}</p> : null}
+          {receipts.isError ? (
+            <FailureBanner
+              variant="error"
+              title={failureText(receipts.error, t.receipt.loadFailed)}
+            />
+          ) : null}
+          {!receiptsPending && !receipts.isError && openReceipts.length === 0 ? (
+            <p>{t.receipt.none}</p>
+          ) : null}
+          <label htmlFor="material-lot-scan-receipt">{t.receipt.pick}</label>
+          <Select
+            id="material-lot-scan-receipt"
+            placeholder={t.receipt.pickPlaceholder}
+            size="xl"
+            value={receiptId === null ? null : String(receiptId)}
+            onChange={(value) => {
+              setReceiptId(Number(value));
+              setLineId(null);
+              setScanned('');
+            }}
+            options={openReceipts.map((each) => ({
+              value: String(each.inboundReceiptId),
+              label: t.receipt.item(each.inboundReceiptNo, each.receiptDatetime.slice(0, 10)),
+            }))}
+          />
+        </section>
+      )}
+
+      {chosenReceipt === null || line !== null ? null : (
         <section className="material-lot-scan__section" ref={lineSection}>
           <h2>{t.line.legend}</h2>
           {lines.isPending ? <p role="status">{t.line.loading}</p> : null}
@@ -336,14 +392,7 @@ export const MaterialLotScanScreen = () => {
         <>
           <section className="material-lot-scan__section" ref={scanSection}>
             <h2>{t.scan.legend}</h2>
-            {/* 라벨과 눈으로 대조할 값이다. 라인 번호만으로는 무엇을 집는지 알 수 없다. */}
-            <p>
-              {t.line.pickedLine(
-                String(line.lineNo),
-                lineItem.data?.itemCode ?? '',
-                String(line.receivedQty),
-              )}
-            </p>
+            {/* 라벨과 눈으로 대조할 값(라인 · 품목 · 수량)은 위의 작업 카드가 들고 있다. */}
             {codes !== null ? null : codesFailed ? (
               <>
                 <FailureBanner
@@ -362,36 +411,24 @@ export const MaterialLotScanScreen = () => {
             ) : (
               <p role="status">{t.codes.loading}</p>
             )}
-            <TextField
-              ref={scanField.ref}
-              label={required(t.scan.scanLabel)}
-              placeholder={t.scan.scanPlaceholder}
-              size="xl"
-              fullWidth
-            />
             {/*
              * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
-             * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+             * 입력(구역 아래 키보드 단추)을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
              */}
-            {scanField.manual ? (
-              <Button
-                className="material-lot-scan__wide"
-                variant="outlined"
-                size="xl"
-                onClick={scanField.submitManual}
-              >
-                {t.scan.manualSubmit}
-              </Button>
-            ) : (
-              <Button
-                className="material-lot-scan__wide"
-                variant="text"
-                size="xl"
-                onClick={scanField.openManual}
-              >
-                {t.scan.manualLabel}
-              </Button>
-            )}
+            <ScanZone
+              field={scanField}
+              label={required(t.scan.scanLabel)}
+              prompt={t.scan.prompt}
+              tools={
+                <IconButton
+                  className="material-lot-scan__zone-button"
+                  icon={scanField.manual ? 'keyboard_return' : 'keyboard'}
+                  size="lg"
+                  aria-label={scanField.manual ? t.scan.manualSubmit : t.scan.manualLabel}
+                  onClick={scanField.manual ? scanField.submitManual : scanField.openManual}
+                />
+              }
+            />
 
             {problem === null ? null : (
               <AlertBanner variant="error" title={t.scan.problem[problem]} />
@@ -401,7 +438,16 @@ export const MaterialLotScanScreen = () => {
              * 없으면, 스캐너가 잘못 읽은 것인지 라벨이 그런 것인지 가릴 수 없다.
              */}
             {scanned.trim() === '' ? null : (
-              <p className="material-lot-scan__scanned">{scanned.trim()}</p>
+              <p
+                className={
+                  problem === null
+                    ? 'material-lot-scan__read material-lot-scan__read--ok'
+                    : 'material-lot-scan__read'
+                }
+              >
+                <Icon name={problem === null ? 'check_circle' : 'qr_code_2'} size={20} />
+                <span className="material-lot-scan__scanned">{scanned.trim()}</span>
+              </p>
             )}
             {/* 라벨 수량은 최초 납품 스냅샷이라 라인 수량과 다를 수 있다. 막지 않는다. */}
             {problem === null && labelQty !== null && labelQty !== line.receivedQty ? (
@@ -412,24 +458,16 @@ export const MaterialLotScanScreen = () => {
             ) : null}
           </section>
 
-          <section className="material-lot-scan__section">
-            {saveFailed ? (
-              <AlertBanner variant="error" title={t.saveFailed.title}>
-                {t.saveFailed.description}
-              </AlertBanner>
-            ) : null}
-            {worker === null ? <p className="material-lot-scan__note">{t.noWorker}</p> : null}
-            {plantId === null ? <p className="material-lot-scan__note">{t.noPlant}</p> : null}
-            <Button
-              className="material-lot-scan__wide"
-              variant="filled"
-              size="2xl"
-              disabled={!ready}
-              onClick={() => void register()}
-            >
-              {t.register}
-            </Button>
-          </section>
+          {saveFailed || worker === null || plantId === null ? (
+            <section className="material-lot-scan__section">
+              {saveFailed ? (
+                <AlertBanner variant="error" title={t.saveFailed.title}>
+                  {t.saveFailed.description}
+                </AlertBanner>
+              ) : null}
+              {plantId === null ? <p className="material-lot-scan__note">{t.noPlant}</p> : null}
+            </section>
+          ) : null}
         </>
       )}
 
@@ -449,18 +487,25 @@ export const MaterialLotScanScreen = () => {
               </li>
             ))}
           </ul>
-          {/* 연속 작업이라 마침 단추가 목록 아래로 밀린다. 설계가 이 자리를 하단으로 잡았다. */}
-          <div className="action-bar">
-            <Button
-              className="material-lot-scan__wide"
-              variant="outlined"
-              size="2xl"
-              onClick={finish}
-            >
-              {t.done}
-            </Button>
-          </div>
         </section>
+      )}
+
+      {/*
+       * 라인을 고른 동안은 「이 라인 등록」이 주 단추이고, 등록한 것이 있으면 「등록 완료」가 그 아래
+       * 낮은 길이다. 라인을 고르기 전에는 마치는 것이 할 일이다.
+       */}
+      {line !== null ? (
+        <BottomActionBar
+          primary={{
+            label: t.register,
+            disabled: !ready,
+            lockReason: registerLock,
+            onClick: () => void register(),
+          }}
+          secondary={registered.length === 0 ? undefined : { label: t.done, onClick: finish }}
+        />
+      ) : registered.length === 0 ? null : (
+        <BottomActionBar primary={{ label: t.done, onClick: finish }} />
       )}
 
       <ScanReplaceDialog field={scanField} />

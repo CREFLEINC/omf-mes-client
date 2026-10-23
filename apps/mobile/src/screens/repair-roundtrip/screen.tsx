@@ -1,18 +1,11 @@
-import {
-  AlertBanner,
-  Button,
-  Card,
-  Chip,
-  Table,
-  Tabs,
-  TextField,
-  type Column,
-} from '@crefle/web-ui';
+import { AlertBanner, Chip, Table, Tabs, TextField, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
@@ -369,7 +362,6 @@ export const RepairRoundtripScreen = () => {
             </AlertBanner>
           )}
 
-          {worker === null ? <p className="repair__note">{t.noWorker}</p> : null}
           {dispatch.error === null || dispatch.error === undefined ? null : isAlreadyOpen(
               toApiError(dispatch.error),
             ) ? (
@@ -470,7 +462,6 @@ export const RepairRoundtripScreen = () => {
 
           {/* 수리분은 원 LOT 으로 돌아가지 않는다. 이 화면이 그다음을 약속하지 않는다. */}
           <p className="repair__note">{t.return.afterNote}</p>
-          {worker === null ? <p className="repair__note">{t.noWorker}</p> : null}
           {returning.isError ? <AlertBanner variant="error" title={t.return.error} /> : null}
           <div className="action-bar">
             <Button

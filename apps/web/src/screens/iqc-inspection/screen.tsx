@@ -112,6 +112,8 @@ export const IqcInspectionScreen = () => {
   const detail = useInspectionRequestDetail(selectedId);
   /* 검사자는 계정에 연결된 작업자다(omf-all-around#104) — 연결이 없으면 저장 전에 막는다. */
   const { session } = useSession();
+  /* 계정에 작업자가 없으면 서버가 검사자를 못 풀어 저장·확정이 다 막힌다 — 입력 칸도 잠근다(#135). */
+  const workerMissing = session?.worker === null;
   const queryClient = useQueryClient();
 
   /*
@@ -665,12 +667,13 @@ export const IqcInspectionScreen = () => {
           round={isReinspectingNow ? null : round}
           inspectedQty={inspectedQty}
           saveBlockedReason={
-            session?.worker === null
+            workerMissing
               ? t.result.workerNotLinked
               : fourMBlocked
                 ? t.result.fourMChange.blocked
                 : null
           }
+          isInputLocked={workerMissing}
           uomCode={uomCode}
           hasChanges={hasChanges}
           draft={draft}
@@ -713,7 +716,7 @@ export const IqcInspectionScreen = () => {
                     setIsSaved(false);
                     setRejection(next);
                   }}
-                  disabled={confirm.isSaving}
+                  disabled={confirm.isSaving || workerMissing}
                 />
               )}
             </>
@@ -727,7 +730,7 @@ export const IqcInspectionScreen = () => {
                   setIsSaved(false);
                   setChangeReason(next);
                 }}
-                disabled={confirm.isSaving}
+                disabled={confirm.isSaving || workerMissing}
               />
             ) : null
           }
@@ -745,7 +748,7 @@ export const IqcInspectionScreen = () => {
                   setIsSaved(false);
                   setFourM(next);
                 }}
-                disabled={confirm.isSaving}
+                disabled={confirm.isSaving || workerMissing}
               />
             ) : null
           }

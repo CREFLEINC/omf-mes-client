@@ -1,0 +1,186 @@
+/*
+ * 본문 칸(main) 맨 위에 붙는다. 화면 뿌리의 좌우 16px 여백만큼 밖으로 늘려 앱바와 같은
+ * 폭으로 서게 한다 - 좁게 서면 그 틈으로 뒤에 흐르는 내용이 비친다.
+ *
+ * 붙어 있는 동안 카드 양옆과 아래로 본문이 흘러 지나간다. 바탕을 작업대 색으로 채워 그 틈을
+ * 막는다.
+ */
+.task-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin-inline: calc(-1 * var(--space-4));
+  margin-top: calc(-1 * var(--space-4));
+  padding-bottom: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-container-low);
+}
+
+/*
+ * 계기판이 앱바 아래로 이어지는 띠. 단계 막대만 싣는다. 다크 토큰은 이 띠에 건 data-theme
+ * 으로만 들어온다.
+ */
+.task-header__panel {
+  padding: 0 var(--space-4);
+  background: var(--surface);
+}
+
+/* 단계 막대. 지나온 칸은 흐리게, 지금 칸은 밝게, 남은 칸은 선으로. */
+.task-header__steps {
+  display: flex;
+  gap: var(--space-1);
+  padding-bottom: var(--space-2);
+}
+
+.task-header__step {
+  flex: 1 1 0;
+  height: var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--outline-variant);
+}
+
+.task-header__step--done {
+  background: var(--on-surface-muted);
+}
+
+.task-header__step--current {
+  background: var(--on-surface);
+}
+
+/*
+ * 카드는 계기판 띠 아래 작업대 위에 따로 선다. 띠 끝에 겹쳐 세웠더니 카드가 검정과 회색에
+ * 반씩 걸쳐 어수선했다(사용자 지적 2026-10-21).
+ */
+.task-header__card {
+  position: relative;
+  margin: var(--space-2) var(--space-4) 0;
+  padding: var(--space-2) var(--space-2) var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--elevation-2);
+}
+
+.task-header__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* 코드와 이름은 한 줄에 잇는다. 이름이 길면 다음 줄로 접힌다 - 카드가 한 줄 짧아진다. */
+.task-header__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2);
+}
+
+.task-header__title dd,
+.task-header__values dd,
+.task-header__codes dd {
+  margin: 0;
+}
+
+/* 화면이 직접 그린 카드 본문. 머리 오른쪽의 단추들과 한 줄을 나눠 쓴다. */
+.task-header__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: var(--space-1);
+}
+
+/* 브라우저 기본 dl 여백(위아래 1em)이 카드 아래에 빈 줄을 남겼다. */
+.task-header__codes {
+  margin: 0;
+}
+
+/* 이름은 낭독기에만. 한 장의 카드에 넣을 자리가 없고, 제목 값은 생김새가 이름을 대신한다. */
+.task-header__hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 실물 라벨과 대조하는 값. 화면에서 가장 큰 글자다. */
+.task-header__code dd {
+  font: var(--type-headline-sm);
+  letter-spacing: var(--type-headline-sm-tracking);
+  color: var(--on-surface);
+}
+
+.task-header__caption dd {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 나머지 값은 이름표와 함께 한 줄로 잇는다. 줄이 넘치면 접힌다. */
+.task-header__values {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-3);
+  row-gap: 2px;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.task-header__value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.task-header__value dt {
+  color: var(--on-surface-muted);
+}
+
+.task-header__value dd {
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+/* 라벨에서 읽은 코드. 한 자씩 대조하므로 고정폭이고, 길어 줄 끝에서 접힌다. */
+.task-header__lot dd {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font: var(--type-label-sm);
+  letter-spacing: 0;
+  font-family: var(--font-mono);
+  color: var(--on-surface-muted);
+}
+
+.task-header__progress {
+  flex: 0 0 auto;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--surface-container);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.task-header__toggle {
+  flex: 0 0 auto;
+  color: var(--on-surface-muted);
+}
+
+.task-header__details {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--surface-container-high);
+}

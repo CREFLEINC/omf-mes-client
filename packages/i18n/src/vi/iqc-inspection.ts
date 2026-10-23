@@ -127,7 +127,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     confirm: 'Xác nhận đánh giá',
     confirming: 'Đang xác nhận',
     confirmNote: 'Sau khi xác nhận đánh giá, không thể sửa.',
-    confirmBlockedByTotals: 'Số lượng đã nhập phải bằng tổng số lượng kiểm tra mới xác nhận được.',
+    confirmBlockedByTotals: 'Tổng số lượng phải khớp với số lượng kiểm tra.',
     workerNotLinked:
       'Tài khoản này chưa liên kết người lao động nên không lưu được phán định. Hãy liên kết người lao động trong Quản lý người dùng.',
     followUp: {
@@ -171,7 +171,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       required: 'Đánh giá khác với đánh giá tự động phải nhập lý do thay đổi mới xác nhận được.',
       reasonMissing: 'Hãy nhập lý do thay đổi đánh giá.',
     },
-    confirmBlockedByJudgment: 'Phải chọn đánh giá cuối cùng mới xác nhận được.',
+    confirmBlockedByJudgment: 'Vui lòng chọn đánh giá cuối cùng.',
     confirmBlockedByConfirmed: 'Lượt này đã được xác nhận.',
     confirmBlockedByUnsaved: 'Sau khi lưu tạm mới có thể xác nhận đánh giá.',
     confirmSucceeded: 'Đã xác nhận đánh giá.',

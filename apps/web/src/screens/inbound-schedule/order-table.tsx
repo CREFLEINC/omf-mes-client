@@ -3,9 +3,11 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnWidths } from '../../patterns/column-resize';
+import { StageGroupChip } from './lot-row';
 import { isOrderOverdue } from './overdue';
 import { formatDate } from './period';
 import { OneLine, orEmpty, OrderStateCell } from './receipt-status';
+import { hasStageCounts, stageLead } from './stage';
 import type { PurchaseOrderSummary } from './types';
 
 const t = messages.inboundSchedule;
@@ -23,6 +25,35 @@ export interface OrderTableProps {
 }
 
 /**
+ * 「진행」 칸 — 그 발주 LOT 들의 **가장 뒤처진** 단계 묶음과 수, 나머지 묶음은 「외 N」(C-17 「첫 사유와 외 N」).
+ * LOT 이 하나도 없으면 미착수는 「입하 전」, 그 밖(모두 끝남)은 「—」. 묶음 수를 싣지 않은 줄도 「—」.
+ */
+const ProgressCell = ({ row }: { row: PurchaseOrderSummary }) => {
+  const counts = row.inboundStageCounts;
+
+  if (counts === undefined) return t.values.empty;
+
+  const lead = stageLead(counts);
+
+  if (lead === null) {
+    return row.receiptStatusCode === 'NOT_STARTED' ? (
+      <span className="po-board-lot-meta">{t.stage.beforeReceipt}</span>
+    ) : (
+      t.values.empty
+    );
+  }
+
+  return (
+    <span className="po-board-progress">
+      <StageGroupChip group={lead.group} count={lead.count} />
+      {lead.others > 0 && (
+        <span className="po-board-progress-others">{t.stage.others(lead.others)}</span>
+      )}
+    </span>
+  );
+};
+
+/**
  * 왼쪽 표 — **P/O 묶음 한 줄**(server #762). 발주·공급사처럼 묶음 단위로 말할 수 있는 것만 둔다.
  * 품목·수량의 낱낱은 오른쪽 표가 낸다. 정렬은 서버 순서 그대로다 — 쪽을 넘는 정렬은 화면이 할 수 없다.
  *
@@ -35,6 +66,7 @@ export interface OrderTableProps {
  * | 상태 | 64px | 칩 「지연」·「정상」 36px + 여백(끝난 발주는 「—」) |
  * | 납기 | 104px | `YYYY.MM.DD` 75px + 여백 |
  * | 발주번호 | 120px | 10자 ASCII 80px + 여백. 이 칸이 고르는 단추다 |
+ * | 진행 | 132px · 서버가 묶음 수를 실을 때만 | 칩 「검사 대기 4」 + 「외 2」. 가장 뒤처진 단계 하나만 — 칸 하나에 칩 둘 이상이면 줄이 넘친다(C-17) |
  * | **공급사명** | **미지정** | 남는 폭을 흡수한다. 넘치면 말줄임 |
  * | 미입고 품목 | 96px | 「99 / 99」 + 여백 |
  * | 발주일 | 104px | `YYYY.MM.DD` + 여백 |
@@ -83,6 +115,17 @@ export const OrderTable = ({
         </button>
       ),
     },
+    /* 「진행」은 발주번호 바로 뒤 — 가로로 넘기지 않아도 보인다. 서버가 묶음 수를 실을 때만 선다(앞선 서버는 열이 없다). */
+    ...(hasStageCounts(rows)
+      ? [
+          {
+            key: 'inboundStage',
+            header: t.table.progress,
+            width: '132px',
+            render: (row: PurchaseOrderSummary) => <ProgressCell row={row} />,
+          } satisfies Column<PurchaseOrderSummary>,
+        ]
+      : []),
     {
       key: 'supplierName',
       header: t.table.supplierName,

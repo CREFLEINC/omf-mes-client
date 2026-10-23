@@ -1,0 +1,182 @@
+.scan-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.scan-zone__box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 72px;
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-3);
+  border: 2px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--elevation-1);
+  cursor: text;
+}
+
+/*
+ * 칸이 잡혀 있다 - 지금 쏘면 들어간다. 굵은 차콜 테두리가 천천히 숨 쉰다. 빨강을 쓰지 않는다:
+ * 늘 서 있는 표시라 빨강이면 화면이 늘 경고 중이다.
+ */
+.scan-zone__box:focus-within {
+  border-color: var(--on-surface);
+  animation: scan-zone-armed 1.8s var(--ease-standard) infinite;
+}
+
+@keyframes scan-zone-armed {
+  0%,
+  100% {
+    box-shadow:
+      var(--elevation-1),
+      0 0 0 0 var(--state-disabled-fill);
+  }
+
+  50% {
+    box-shadow:
+      var(--elevation-1),
+      0 0 0 6px var(--state-disabled-fill);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-zone__box:focus-within {
+    animation: none;
+  }
+}
+
+.scan-zone__tile {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+/* 이름과 지시는 낭독기에만. 화면에서는 단계 제목이 같은 말을 한다. */
+.scan-zone__hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * 칸 자체는 테두리 없이 구역에 녹는다. 비어 있는 동안 「SCAN」 한 낱말이 굵게 선다 - 흐린
+ * 자리표시는 «여기 적으세요»로 읽혀 스캔하라는 말로 안 읽혔다.
+ */
+.scan-zone__input {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 600;
+}
+
+.scan-zone__input::placeholder {
+  color: var(--on-surface);
+  opacity: 1;
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+  font-weight: 700;
+}
+
+/* 손으로 넣은 값이 칸보다 길면 칸 끝에서 잘린 채 서지 않게 말줄임한다. */
+.scan-zone__input {
+  text-overflow: ellipsis;
+}
+
+/*
+ * 직접 입력 · 목록에서 고르기. 화면 오른쪽 아래에 떠 있다 - 확정 바가 있으면 그 바로 위,
+ * 없으면 화면 바닥(사용자 지시 2026-10-21). 구역 안에 두면 「SCAN」 과 섞여 어디를 누르는지
+ * 흐렸고, 구역 아래 한 줄로 두면 그만큼 화면이 길어졌다. 엄지가 닿는 자리이기도 하다.
+ */
+.scan-zone__tools {
+  position: fixed;
+  z-index: 6;
+  right: calc(var(--space-4) + var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
+  bottom: calc(
+    var(--bottom-action-bar-height, 0px) + var(--space-3) +
+      var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
+  );
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* 떠 있는 단추라 아래 내용과 갈리게 바탕 · 테두리 · 그림자를 준다. */
+.scan-zone__tools button {
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 1px var(--outline-variant),
+    var(--elevation-2);
+}
+
+/* 숫자판이 화면 아래를 쓰는 동안은 숨는다 - 판의 키와 겹친다. */
+:root[data-docked-pad] .scan-zone__tools {
+  display: none;
+}
+
+/*
+ * 받은 뒤의 대기 줄. 스캐너는 여전히 이 칸으로 들어오지만 다음 단계가 주인공이라, 낮고 흐린
+ * 한 줄로 접는다.
+ */
+.scan-zone--standby .scan-zone__box {
+  min-height: 48px;
+  padding-block: 2px;
+  border-width: 1px;
+  background: var(--surface-container);
+  box-shadow: none;
+}
+
+.scan-zone--standby .scan-zone__box:focus-within {
+  border-color: var(--outline);
+  animation: none;
+}
+
+.scan-zone--standby .scan-zone__tile {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--on-surface-variant);
+}
+
+.scan-zone--standby .scan-zone__input,
+.scan-zone--standby .scan-zone__input::placeholder {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  font-weight: 700;
+  color: var(--on-surface-variant);
+}
+
+/* 받을 수 없는 값. 구역 테두리와 아래 한 줄이 함께 바뀐다 - 색만 바꾸지 않는다. */
+.scan-zone--error .scan-zone__box,
+.scan-zone--error .scan-zone__box:focus-within {
+  border-color: var(--semantic-error);
+}
+
+.scan-zone__error {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--semantic-error-text);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  font-weight: 600;
+}

@@ -32,6 +32,11 @@ export const common: Translated<typeof ko.common> = {
     mainMenu: 'Menu chính',
     breadcrumb: 'Đường dẫn điều hướng',
     home: 'Danh sách công việc',
+    back: 'Bước trước',
+    backToArea: (area: string) => `Công việc ${area}`,
+    noWorker: 'Hãy xác nhận mã nhân viên trước',
+    signIn: 'Xác nhận mã NV',
+    changeWorker: 'Đổi mã nhân viên',
   },
   connection: {
     online: 'Trực tuyến',

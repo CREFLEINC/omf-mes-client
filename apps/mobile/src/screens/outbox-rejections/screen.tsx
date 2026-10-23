@@ -1,7 +1,9 @@
-import { Button, Card, EmptyState } from '@crefle/web-ui';
+import { EmptyState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { detailsOf, reasonOf, whenOf } from './record';

@@ -119,6 +119,10 @@ export interface ResultFormPaneProps {
   serialSection?: ReactNode;
   /** 시리얼이 수량과 모순되면 그 이유(담당자 결정 Q3). */
   serialBlockedReason?: string | null;
+  /**
+   * 입력으로 풀 수 없는 막힘(판정 코드 미등록) — 저장이 막힌 채 칸만 열려 있지 않게 입력 칸도 잠근다(#135).
+   */
+  isInputLocked?: boolean;
 }
 
 /** 계약이 짚어 줄 수 있는 칸 이름 ↔ 화면의 초안 칸. */
@@ -157,6 +161,7 @@ export const ResultFormPane = ({
   onCancelReinspection,
   serialSection,
   serialBlockedReason = null,
+  isInputLocked = false,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const lockNoteId = useId();
@@ -274,7 +279,7 @@ export const ResultFormPane = ({
         label={label}
         inputMode="decimal"
         value={draft[key]}
-        disabled={isLocked || isSaving}
+        disabled={isLocked || isSaving || isInputLocked}
         /*
          * ⭐ **묶음에 한 번 낸 사유를 세 칸이 «가리킨다».** 디자인 시스템의 `disabledReason` 은
          * 사유를 보이면서 `aria-describedby` 로도 이어 주는데, 같은 문장을 세 번 내지 않으려고
@@ -424,7 +429,7 @@ export const ResultFormPane = ({
               needsReason={needsChangeReason}
               reason={changeReason}
               onReasonChange={onChangeReasonChange}
-              disabled={isSaving}
+              disabled={isSaving || isInputLocked}
             />
           )}
 

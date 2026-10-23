@@ -1,0 +1,613 @@
+/* 이름은 낭독기에만. 표 머리가 화면에서 같은 말을 한다. */
+.lotless__hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 걸린 건수와 「받을 것만」. */
+.lotless__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.lotless__count {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
+  color: var(--on-surface-variant);
+}
+
+.lotless__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-height-lg);
+  padding-inline: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/*
+ * 표는 제 상자 안에서 스크롤한다. 머리는 그 위에 붙어 있어, 아래로 내려도 어느 칸이 무엇인지
+ * 늘 보인다(사용자 지시 2026-10-21). 상자 높이는 화면의 절반 남짓 - 위의 작업 카드 · 단계 제목과
+ * 아래 단추가 한 화면에 함께 든다. 입고 예정 표는 화면 바닥까지 키운다(`fillHeightRef` 가 이 값을
+ * 덮는다, 사용자 지시 2026-10-22).
+ */
+.lotless__table-wrap {
+  max-height: 48dvh;
+  overflow-y: auto;
+  /*
+   * 외곽선은 테두리로 긋는다 - 안쪽 그림자로 그으면 머리칸 바탕이 그 위를 덮어 머리 둘레만 선이
+   * 사라졌다. 행 사이 선과 같은 색 · 굵기다. 모서리는 덜 둥글게(사용자 지시 2026-10-22).
+   */
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.lotless__table {
+  width: 100%;
+  border-collapse: collapse;
+  /* 칸 폭을 내용에 묻지 않는다 - 긴 이름이 한 칸을 넓혀 행이 두 줄이 되지 않게 말줄임한다. */
+  table-layout: fixed;
+}
+
+.lotless__table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 40px;
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--surface-container);
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 700;
+  color: var(--on-surface-variant);
+  text-align: start;
+}
+
+/* 행은 한 줄이다. 넘치면 말줄임한다. 한 화면에 더 들도록 낮게 - 처음 56px 의 2/3(사용자 지시 2026-10-22). */
+.lotless__table td {
+  height: 37px;
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+.lotless__table tbody tr {
+  position: relative;
+}
+
+.lotless__table tbody tr + tr td {
+  border-top: 1px solid var(--outline-variant);
+}
+
+/*
+ * 입고 예정 - P/O No. | 공급사 | 납기예정일(사용자 지시 2026-10-22). 칸 사이를 좁힌다. 공급사명이
+ * 남는 폭을 가진다 - P/O No. 칸은 화면이 번호 길이에 맞춘다.
+ */
+.lotless__table--orders th,
+.lotless__table--orders td {
+  padding-inline: var(--space-1);
+}
+
+.lotless__table--orders th:first-child,
+.lotless__table--orders td:first-child {
+  padding-inline-start: var(--space-3);
+}
+
+.lotless__table--orders .lotless__date {
+  text-align: end;
+  font: var(--type-label-sm);
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.lotless__table--orders th.lotless__date {
+  font-weight: 700;
+}
+
+.lotless__table--orders th:last-child,
+.lotless__table--orders td:last-child {
+  padding-inline-end: var(--space-3);
+}
+
+/* 행을 누르는 단추는 P/O No. 칸에 든다. 덮개가 행 전체로 번진다. */
+.lotless__table--orders .lotless__pick {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 700;
+}
+
+/* 자재 P/O 번호. 한 자씩 대조하는 번호라 고정폭이다. */
+.lotless__table td.lotless__code {
+  font: var(--type-label-sm);
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  color: var(--on-surface);
+}
+
+/* 「1000/1000 EA」 가 드는 폭(글자 폭 기준, 칸 여백은 따로). 품목 칸이 남는 폭을 가진다. */
+.lotless__table--items th:last-child,
+.lotless__table--items td:last-child {
+  width: 26%;
+}
+
+.lotless__num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.lotless__table th.lotless__num {
+  text-align: end;
+}
+
+.lotless__table td.lotless__num {
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+/* 첫 칸의 이름이 행을 누르는 단추다. 단추의 덮개가 행 전체로 번진다. */
+.lotless__pick {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 700;
+  text-align: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lotless__pick::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.lotless__table tbody tr:active {
+  background: var(--surface-container);
+}
+
+/* 지금 고른 행. 왼쪽 굵은 띠와 바탕으로 선다. */
+.lotless__table tbody tr.lotless__row--picked {
+  background: var(--surface-container);
+  box-shadow: inset 4px 0 0 var(--on-surface);
+}
+
+/*
+ * 다 받은 라인. 초록 바탕으로 끝난 것을 가른다(사용자 지시 2026-10-21). 누를 곳이 없어 눌린 표시도
+ * 없다.
+ */
+.lotless__table tbody tr.lotless__row--closed,
+.lotless__table tbody tr.lotless__row--closed:active {
+  background: var(--semantic-success-container);
+}
+
+/* 이름 칸 - 단추 대신 글자만 선다. 단추와 같은 굵기 · 말줄임이다. */
+.lotless__name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 700;
+}
+
+/* 칸 사이는 좁게, 표 가장자리는 넓게 - 이름 칸이 가장 넓게 남는다. */
+.lotless__table th:first-child,
+.lotless__table td:first-child {
+  padding-inline-start: var(--space-3);
+}
+
+.lotless__table th:last-child,
+.lotless__table td:last-child {
+  padding-inline-end: var(--space-3);
+}
+
+/* 거르기 칸. 「필터」 단추로 펼친다. 아래 display 가 hidden 을 덮지 않게 먼저 못박는다. */
+.lotless__filters[hidden] {
+  display: none;
+}
+
+.lotless__filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+}
+
+.lotless__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.lotless__period-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--on-surface);
+}
+
+/* 기간 기준 - 입고예정일 / 발주일. 둘 중 하나를 고른 칸이 차콜로 찬다. */
+.lotless__basis {
+  display: inline-flex;
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+  overflow: hidden;
+}
+
+.lotless__basis > button {
+  min-height: 40px;
+  padding-inline: var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lotless__basis > button[aria-pressed='true'] {
+  background: var(--on-surface);
+  color: var(--surface);
+}
+
+.lotless__period {
+  width: 100%;
+}
+
+.lotless__clear {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-height-lg);
+  padding-inline: var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/*
+ * 체크 칸. 장갑 낀 손이 짚도록 칸은 넓게, 상자는 24px. 행 전체를 덮는 이름 단추의 덮개보다 위에
+ * 선다 - 덮개 아래면 체크하려던 손이 수량 단계로 간다.
+ */
+.lotless__table .lotless__check-cell {
+  position: relative;
+  z-index: 2;
+  width: 34px;
+  padding-inline: var(--space-3) 0;
+  text-align: center;
+}
+
+.lotless__check {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--on-surface);
+  cursor: pointer;
+}
+
+/* 체크 칸이 폭을 나눠 쓴다. 품목명이 한 줄에 더 들도록 입고 예정 표와 같은 크기로 적는다. */
+.lotless__table--items .lotless__pick {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 700;
+}
+
+/*
+ * 입고 예정 표는 칸마다 같은 글자(사용자 지시 2026-10-21) - 한 칸만 크고 굵으면 다른 칸과 따로
+ * 논다. 날짜 「YY.MM.DD」 둘과 자재 P/O 번호가 한 줄에 들도록 작은 글자로 맞춘다.
+ */
+.lotless__table--orders td,
+.lotless__table--orders td.lotless__code,
+.lotless__table--orders td.lotless__date,
+.lotless__table--orders .lotless__pick {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 400;
+  color: var(--on-surface);
+}
+
+/*
+ * 납기예정일 칸은 머리 「납기예정일」 다섯 자가 드는 폭이다 - 값 「YY.MM.DD」 는 그보다 좁다.
+ * 날짜는 잘리면 안 된다(사용자 지시 2026-10-21). 머리 경계를 끌어 바꾼 폭이 이 값을 덮는다.
+ */
+.lotless__table--orders th.lotless__date {
+  width: 5.25em;
+}
+
+/* P/O No. 칸의 단추 글자도 한 자씩 대조하는 번호라 고정폭이다. */
+.lotless__table--orders td.lotless__code .lotless__pick {
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+}
+
+/* 보고 있는 구매 발주 - 이름표와 값을 한 줄씩. */
+.lotless__order-info {
+  margin: 0;
+  /* 이름표 칸은 가장 긴 이름표에 맞춘다 - 베트남어에서 값이 줄마다 다른 곳에서 시작했다. */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-3);
+  row-gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+}
+
+.lotless__order-info > div {
+  display: contents;
+}
+
+.lotless__order-info dt {
+  align-self: baseline;
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.lotless__order-info dd {
+  align-self: baseline;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+/*
+ * 품목 표의 칸은 모두 같은 크기 글자(사용자 지시 2026-10-21). 품목명과 수량만 굵게 - 그 둘이
+ * 고르는 근거다.
+ */
+.lotless__table--items td,
+.lotless__table--items .lotless__pick {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.lotless__table--items .lotless__pick,
+.lotless__table--items td.lotless__num {
+  font-weight: 700;
+}
+
+/* 체크해서 발주 수량으로 채운 입고 수량. 등록하면 바뀌는 수라 파랗게 드러낸다. */
+.lotless__filled {
+  color: var(--semantic-info);
+}
+
+/* 「받을 것만」 과 「필터」 를 오른쪽에 함께. 좁으면(베트남어) 아래로 접힌다. */
+.lotless__head {
+  flex-wrap: wrap;
+}
+
+.lotless__head-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  margin-inline-start: auto;
+}
+
+/*
+ * 다 받은 행의 글자. 입고 예정 표는 칸마다 글자 색을 못 박아 두어(위 규칙) 그보다 뒤 · 같은 무게
+ * 이상으로 둔다.
+ */
+.lotless__table tr.lotless__row--closed td,
+.lotless__table--orders tr.lotless__row--closed td,
+.lotless__table--orders tr.lotless__row--closed .lotless__pick {
+  color: var(--on-semantic-success-container);
+}
+
+/*
+ * 품목 칸 - 품목명 아래 품목코드(사용자 지시 2026-10-22). 두 줄이 37px 행 안에 들도록 줄 높이를
+ * 좁히고 코드는 한 단계 작게 적는다. 줄마다 따로 말줄임한다.
+ */
+.lotless__table--items td.lotless__item {
+  line-height: 1;
+}
+
+.lotless__item .lotless__pick,
+.lotless__item .lotless__name {
+  display: block;
+  font-size: 12px;
+  line-height: 15px;
+}
+
+.lotless__item-code {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 13px;
+  letter-spacing: 0;
+  color: var(--on-surface-variant);
+}
+
+.lotless__table tr.lotless__row--closed .lotless__item-code {
+  color: var(--on-semantic-success-container);
+}
+
+/* 기간 - 기준 단추와 기간 칸을 한 줄에 낮게. 접지 않고 늘 보인다(사용자 지시 2026-10-22). */
+.lotless__period-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lotless__period-row .lotless__basis {
+  flex: none;
+}
+
+.lotless__period-row .lotless__basis > button {
+  min-height: 36px;
+  padding-inline: var(--space-2);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 600;
+}
+
+.lotless__period-row .lotless__period {
+  flex: 1;
+  min-width: 0;
+}
+
+/*
+ * 머리의 「모두 선택」 칸도 머리에 붙어 있다. 위의 체크 칸 규칙(position: relative)이 머리칸의
+ * sticky 를 풀어, 스크롤하면 그 칸만 행과 함께 올라가 머리 자리가 비어 보였다.
+ */
+.lotless__table th.lotless__check-cell {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+/* 기간 기준 - 납기예정일 하나라 단추가 아니라 글자로 적는다. */
+.lotless__period-label {
+  flex: none;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+/* 「품목 N건」 옆 체크한 수. */
+.lotless__checked {
+  color: var(--semantic-info);
+}
+
+/* 건수 · 「받을 것만」 · 「필터」 줄은 낮게 - 표가 한 줄이라도 더 보인다(사용자 지시 2026-10-22). */
+.lotless__head .lotless__toggle {
+  min-height: 36px;
+}
+
+/*
+ * 발주 상세 목록 - 표가 바닥 바에 바로 닿는다(사용자 지시 2026-10-22). 바 위 틈은 화면 뿌리의 줄
+ * 간격과 비어 있는 단추 줄의 간격이었다. 바가 제 테두리로 갈라 준다.
+ */
+.receipt:has(> .bottom-action-bar--compact) {
+  row-gap: 0;
+}
+
+.receipt__acts:empty {
+  display: none;
+}
+
+/* 품목 표의 행 번호 - 세 자리까지 드는 폭. 체크 칸 바로 뒤에 좁게. */
+.lotless__table .lotless__no {
+  width: 2.5em;
+  padding-inline: var(--space-1);
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 2-1 「필터」 카드 - 공급사명 칸 하나라 여백을 좁게(사용자 지시 2026-10-22).
+ */
+#lotless-filter.lotless__filters {
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+#lotless-filter .lotless__clear {
+  min-height: 32px;
+}
+
+/*
+ * 켜고 끄는 단추 - 원래 아이콘을 쓰되 켜지면 몸통을 진하게 채워 꺼짐(테두리만)과 갈린다
+ * (사용자 지시 2026-10-22).
+ */
+.lotless__toggle[aria-pressed] > :first-child {
+  color: var(--on-surface-variant);
+}
+
+.lotless__toggle[aria-pressed='true'] > :first-child {
+  position: relative;
+  isolation: isolate;
+  color: var(--surface);
+}
+
+/* 아이콘 글꼴에는 채운 모양이 없어 둥근 몸통 자리를 진하게 칠한다 - 손잡이 · 테두리는 흰색으로 뜬다. */
+.lotless__toggle[aria-pressed='true'] > :first-child::before {
+  content: '';
+  position: absolute;
+  inset: 25% 4%;
+  z-index: -1;
+  border-radius: 999px;
+  background: var(--on-surface);
+}
+
+/* 부분 입하한 행의 받은 수 - 옅은 노랑 바탕(사용자 지시 2026-10-22). 「모두 선택」이 빼는 행이다. */
+.lotless__partial {
+  padding-inline: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--semantic-warning-container);
+}
+
+/* 「필터」 카드 안의 켜고 끄기는 왼쪽에 붙인다. */
+.lotless__filter-toggle {
+  align-self: flex-start;
+  padding-inline: 0;
+}
+
+/* 정보 칸의 강조 줄 - 부분 입하 화면의 기입하 수량(사용자 지시 2026-10-22). 수를 크게, 초록으로. */
+.lotless__order-info-strong dt {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+.lotless__order-info-strong dd {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 700;
+  color: var(--semantic-success);
+}

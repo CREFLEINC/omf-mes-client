@@ -34,6 +34,14 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     selectOrder: (purchaseOrderNo: string): string => `Xem dòng của ${purchaseOrderNo}`,
     register: 'Đăng ký nhập hàng',
     registerRow: (purchaseOrderNo: string): string => `Đăng ký nhập hàng cho ${purchaseOrderNo}`,
+    expandAll: 'Mở tất cả LOT',
+    collapseAll: 'Thu gọn tất cả LOT',
+    expandLine: (lineNo: number): string => `Mở LOT của dòng ${String(lineNo)}`,
+    collapseLine: (lineNo: number): string => `Thu gọn LOT của dòng ${String(lineNo)}`,
+    postReceipt: 'Xử lý nhập kho',
+    postReceiptRow: (lotNo: string): string => `Xử lý nhập kho ${lotNo}`,
+    requestIqc: 'Yêu cầu kiểm tra IQC',
+    requestIqcRow: (lotNo: string): string => `Yêu cầu kiểm tra IQC cho ${lotNo}`,
   },
   reasons: {
     periodInvalid: 'Hạn giao phải là ngày có thật. Hãy chọn lại ngày bắt đầu và ngày kết thúc.',
@@ -59,6 +67,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     uom: 'Đơn vị',
     orderDate: 'Ngày đặt hàng',
     storageLocation: 'Kho',
+    progress: 'Tiến độ',
   },
   detail: {
     purchaseOrderNo: 'Số đơn mua',
@@ -212,5 +221,50 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     lineLinked: (qty: string): string => `Đã liên kết ${qty}`,
     lineLinkedLabel: (lineNo: number, qty: string): string =>
       `Xem phần vượt ${qty} đã liên kết vào dòng ${String(lineNo)}`,
+  },
+  stage: {
+    label: 'Giai đoạn nhập kho',
+    group: {
+      INSPECTION: 'Chờ kiểm tra',
+      HELD: 'Tạm giữ',
+      RECEIPT: 'Chờ nhập kho',
+      PUTAWAY: 'Chờ xếp kho',
+    },
+    groupCount: (label: string, count: number): string => `${label} ${String(count)}`,
+    filterOn: (label: string): string => `Chỉ xem đơn ${label}`,
+    filterOff: (label: string): string => `Bỏ điều kiện ${label}`,
+    code: {
+      INSPECTION_REQUIRED: 'Chưa yêu cầu kiểm tra',
+      INSPECTION_REQUESTED: 'Chờ kiểm tra',
+      INSPECTION_IN_PROGRESS: 'Đang kiểm tra',
+      INSPECTION_HELD: 'Tạm giữ',
+      RECEIPT_READY: 'Chờ nhập kho',
+      PUTAWAY_PENDING: 'Chờ xếp kho',
+      PUTAWAY_TEMPORARY: 'Xếp kho tạm',
+      COMPLETED: 'Hoàn tất',
+      CANCELLED: 'Đã hủy',
+    },
+    beforeReceipt: 'Chưa nhận hàng',
+    others: (count: number): string => `và ${String(count)} khác`,
+    summarySeparator: ' · ',
+  },
+  lot: {
+    receivedOn: (date: string): string => `Nhận ${date}`,
+    putawayOnPda: 'Xếp kho trên PDA',
+    evidence: {
+      requested: (requestNo: string, date: string): string => `Yêu cầu ${requestNo} · ${date}`,
+      accepted: (date: string): string => `Kiểm tra đạt ${date}`,
+      rejected: 'Kiểm tra không đạt · chỉ kho hàng lỗi',
+      skipped: 'Bỏ qua kiểm tra',
+      noInspection: 'Không kiểm tra',
+      posted: (goodsReceiptNo: string, date: string): string =>
+        `Nhập kho ${goodsReceiptNo} · ${date}`,
+      putawayDone: (date: string): string => `Xếp kho ${date}`,
+      separator: ' · ',
+    },
+    requested: (lotNo: string, requestNo: string): string =>
+      `Đã gửi yêu cầu IQC: ${lotNo} → ${requestNo}`,
+    loading: 'Đang tải tiến độ nhập kho',
+    loadFailed: 'Không tải được tiến độ nhập kho. Các dòng vẫn hiển thị như cũ.',
   },
 };

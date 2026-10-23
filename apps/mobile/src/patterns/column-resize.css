@@ -1,0 +1,34 @@
+/*
+ * 칸 경계 손잡이. 보이는 선은 가늘지만 잡는 자리는 넓다 - 장갑 낀 손가락이 머리 오른쪽 끝을 짚어
+ * 끈다. 끄는 동안 표가 스크롤로 받지 않게 터치 동작을 막는다.
+ */
+.column-resize {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: 2;
+  width: 20px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.column-resize::after {
+  content: '';
+  position: absolute;
+  inset-block: 10px;
+  inset-inline-end: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--outline-variant);
+}
+
+.column-resize:focus-visible {
+  outline: none;
+}
+
+.column-resize:focus-visible::after,
+.column-resize[data-dragging]::after {
+  inset-block: 4px;
+  width: 3px;
+  background: var(--on-surface);
+}

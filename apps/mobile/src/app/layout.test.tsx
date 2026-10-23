@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { render, screen, within } from '@testing-library/react';
+import { useState, type ReactNode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useBackStep } from '../patterns/back-step';
 import { noteServerSilent } from '../patterns/online-status';
 import { ApiRequestError } from '../patterns/request';
 import { useScreenTitle } from '../patterns/screen-title';
@@ -194,25 +195,36 @@ describe('AppLayout', () => {
     expect(screen.queryByRole('navigation')).toBeNull();
   });
 
-  it('연결·전송 상태는 제목과 같은 줄, 사번은 아래 줄에 선다', async () => {
-    /* 화면 이름과 「지금 보낼 수 있는가」는 함께 읽는 값이다(사용자 지시 2026-09-21). */
+  it('연결 상태는 제목과 같은 줄, 사번과 보내지 못한 건수는 아래 줄에 선다', async () => {
+    /*
+     * 화면 이름과 「지금 보낼 수 있는가」는 함께 읽는 값이다(사용자 지시 2026-09-21). 사번과 아직
+     * 안 간 건수는 「누구로, 무엇이 남았나」라 아래 줄에 함께 선다(사용자 결정 2026-10-21).
+     */
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
     const user = userEvent.setup();
     render(
-      <Shell>
+      <Shell send={() => Promise.reject(new ApiRequestError({ kind: 'network' }))}>
         <SignedInScreen />
+        <EnqueueScreen />
       </Shell>,
     );
     await user.click(screen.getByRole('button', { name: '사번 세우기' }));
+    await user.click(screen.getByRole('button', { name: '담기' }));
 
     const banner = screen.getByRole('banner');
     const titleRow = banner.querySelector('.mobile-shell__titlebar');
+    const statusRow = banner.querySelector('.mobile-shell__statusbar');
 
     expect(titleRow).not.toBeNull();
+    expect(statusRow).not.toBeNull();
     expect(titleRow).toHaveTextContent('온라인');
-    /* 사번은 제목 줄에 끼지 않는다 — 성격이 다른 값이라 아래 줄에 혼자 선다. */
+    /* 사번은 제목 줄에 끼지 않는다 — 성격이 다른 값이라 아래 줄에 선다. */
     expect(titleRow).not.toHaveTextContent('900029');
-    expect(banner).toHaveTextContent('작업자 2 · 900029');
+    expect(statusRow).toHaveTextContent('작업자 2 · 900029');
+    expect(
+      await within(statusRow as HTMLElement).findByRole('link', { name: '전송 대기 1' }),
+    ).toBeInTheDocument();
+    expect(titleRow).not.toHaveTextContent('전송 대기');
   });
 
   it('연결돼 있으면 온라인으로 보인다', () => {
@@ -297,6 +309,101 @@ describe('AppLayout', () => {
     await user.click(screen.getByRole('button', { name: '작업 목록' }));
 
     expect(await screen.findByText('작업 목록 화면')).toBeInTheDocument();
+  });
+
+  /* 단말의 뒤로가기 키는 눈에 보이지 않는다. 같은 일을 앱바 단추로도 한다. */
+  it('되돌릴 단계가 있으면 앱바의 「이전 단계」가 그 단계로 돌아간다', async () => {
+    const user = userEvent.setup();
+    const StepScreen = () => {
+      const [deep, setDeep] = useState(true);
+      useBackStep(deep, () => {
+        setDeep(false);
+      });
+
+      return <p>{deep ? '수량 단계' : '라인 단계'}</p>;
+    };
+    render(
+      <Shell>
+        <StepScreen />
+      </Shell>,
+    );
+
+    await user.click(await screen.findByRole('button', { name: '이전 단계' }));
+
+    expect(screen.getByText('라인 단계')).toBeInTheDocument();
+    /* 더 되돌릴 단계가 없으면 단추를 거둔다 - 화면을 나가는 길은 홈 단추다. */
+    expect(screen.queryByRole('button', { name: '이전 단계' })).toBeNull();
+  });
+
+  /*
+   * 되돌릴 단계가 없는 작업 화면에서 ← 는 그 작업이 걸린 업무의 작업 목록으로 간다 - 홈 단추만
+   * 있으면 입하 등록에서 입고 목록으로 못 돌아가고 홈을 거쳐야 했다(사용자 지적 2026-10-21).
+   */
+  it('작업 화면의 ← 는 되돌릴 단계가 없으면 그 업무의 작업 목록으로 간다', async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell path="/inbound-receipt">
+        <Routes>
+          <Route path="/inbound-receipt" element={<p>입하 화면</p>} />
+          <Route path="/screens/:area" element={<p>업무 작업 목록 화면</p>} />
+        </Routes>
+      </Shell>,
+    );
+
+    expect(screen.queryByRole('button', { name: '이전 단계' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '입고 작업 목록' }));
+
+    expect(await screen.findByText('업무 작업 목록 화면')).toBeInTheDocument();
+  });
+
+  it('되돌릴 단계가 없으면 「이전 단계」를 두지 않는다', () => {
+    renderLayout('본문 자리');
+
+    expect(screen.queryByRole('button', { name: '이전 단계' })).toBeNull();
+  });
+
+  /*
+   * 사번 없이 작업 화면에 들어오면 들어서자마자 앱바 아래에 알린다 - 다 적고 등록하려는 순간에
+   * 알면 적은 것을 들고 사번 화면을 다녀와야 한다(사용자 지시 2026-10-21).
+   */
+  it('사번 없이 작업 화면에 들어오면 앱바 아래에 알리고 사번 확인으로 가는 길을 둔다', async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell path="/inbound-receipt">
+        <Routes>
+          <Route path="/inbound-receipt" element={<p>입하 화면</p>} />
+          <Route path="/" element={<p>사번 확인 화면</p>} />
+        </Routes>
+      </Shell>,
+    );
+
+    expect(await screen.findByText('사번을 먼저 확인하세요')).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: '사번 확인' }));
+    expect(await screen.findByText('사번 확인 화면')).toBeInTheDocument();
+  });
+
+  it.each(['/screens', '/'])('%s 에는 사번 알림을 띄우지 않는다', (path) => {
+    render(<Shell path={path}>본문 자리</Shell>);
+
+    expect(screen.queryByText('사번을 먼저 확인하세요')).toBeNull();
+  });
+
+  /* 사번 확인 화면으로 가는 길이 없었다(사용자 지적 2026-10-21). 앱바의 사번 칩이 그 길이다. */
+  it('앱바의 사번 칩을 누르면 사번 확인 화면으로 간다', async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell path="/inbound-receipt">
+        <SignedInScreen />
+        <Routes>
+          <Route path="/" element={<p>사번 확인 화면</p>} />
+        </Routes>
+      </Shell>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '사번 세우기' }));
+    expect(screen.queryByText('사번을 먼저 확인하세요')).toBeNull();
+    await user.click(await screen.findByRole('link', { name: '사번 바꾸기' }));
+    expect(await screen.findByText('사번 확인 화면')).toBeInTheDocument();
   });
 
   it.each(['/screens', '/'])('%s 에는 홈 단추를 두지 않는다', (path) => {

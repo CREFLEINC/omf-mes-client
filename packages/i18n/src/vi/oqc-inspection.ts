@@ -122,11 +122,10 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     blockedByConfirmed: 'Lưu đánh giá — đây là lượt đã chốt. Hãy thêm lượt mới bằng kiểm tra lại.',
     blockedByDraftElsewhere:
       'Lưu đánh giá — đây là lượt đang được soạn ở nơi khác. Hãy thêm lượt mới bằng kiểm tra lại.',
-    blockedByTotals:
-      'Lưu đánh giá — tổng các số lượng phải khớp với số lượng kiểm tra thì mới lưu được.',
+    blockedByTotals: 'Tổng số lượng phải khớp với số lượng kiểm tra.',
     blockedByJudgmentOptions:
       'Lưu đánh giá — danh sách giá trị đánh giá chưa sẵn sàng nên không lưu được. Hãy hỏi người phụ trách.',
-    blockedByJudgment: 'Lưu đánh giá — phải chọn đánh giá tổng hợp thì mới lưu được.',
+    blockedByJudgment: 'Vui lòng chọn đánh giá cuối cùng.',
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>
         `Tự động đánh giá theo số chấp nhận ${String(acceptanceNumber)}`,

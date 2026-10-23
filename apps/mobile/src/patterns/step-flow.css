@@ -1,0 +1,59 @@
+/*
+ * 첫 줄은 번호 칸 · 지시 · 몇 번째인가, 그 아래는 단계의 내용이 한 줄씩 통째로 선다. 머리를
+ * 한 줄로 묶으려고 감싸지 않는다 - 지시는 구획의 제목(`section > h2`)이라 구획 바로 아래에 있어야
+ * 앱 전체의 구획 제목 규칙을 받는다.
+ */
+.step-section {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  /* 지시가 두 줄로 접혀도(베트남어) 번호 칸과 단계 수는 첫 줄에 붙는다. */
+  align-items: start;
+  column-gap: var(--space-3);
+  row-gap: var(--space-3);
+  /*
+   * 작업 헤더가 위에 붙어 있다. 머리를 화면에 들일 때 그 밑에 깔리지 않게 비운다. 헤더는
+   * 계기판 띠와 카드(제목 · 이름 · 값 한 줄 · LOT 한 줄)라 목 서버 촬영에서 184px 이었다.
+   */
+  scroll-margin-block-start: 200px;
+}
+
+.step-section > * {
+  grid-column: 1 / -1;
+}
+
+/* 몇 번째 단계인가. 지시가 앞에 서고, 이것은 오른쪽 끝의 약한 확인이다. */
+.step-section > .step-section__count {
+  grid-column: 3;
+  grid-row: 1;
+  margin: 0;
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  /* 지시 첫 줄(28px)의 가운데에 맞춘다. */
+  margin-top: 6px;
+}
+
+.step-section > .step-section__badge {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  padding-inline: 6px;
+  border-radius: var(--radius-sm);
+  background: var(--on-surface);
+  color: var(--surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.step-section > .step-section__title {
+  grid-column: 2;
+  grid-row: 1;
+}

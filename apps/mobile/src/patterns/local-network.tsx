@@ -1,7 +1,9 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
+import { AlertBanner } from '@crefle/web-ui';
 import { Capacitor, registerPlugin, type PermissionState } from '@capacitor/core';
 import { messages } from '@omf-mes/i18n';
 import { createContext, use, useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+
+import { Button } from './button';
 
 const t = messages.deviceRegistration;
 
@@ -56,7 +58,11 @@ interface LocalNetworkState {
  * 공급자 없이 세운 화면(개별 화면 시험)은 제한이 없는 것으로 둔다 — 묻지 않는 자리에서
  * 경고가 뜨면 안 된다. 앱은 `AppProviders` 에서 공급자를 세운다.
  */
-const NOT_REQUIRED: LocalNetworkState = { status: 'granted', settled: true, request: () => undefined };
+const NOT_REQUIRED: LocalNetworkState = {
+  status: 'granted',
+  settled: true,
+  request: () => undefined,
+};
 
 const LocalNetworkContext = createContext<LocalNetworkState>(NOT_REQUIRED);
 

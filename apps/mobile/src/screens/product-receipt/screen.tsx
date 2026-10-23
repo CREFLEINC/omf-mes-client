@@ -1,10 +1,11 @@
-import { AlertBanner, Button, Chip, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
+import { Button } from '../../patterns/button';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocationByCode, useLocations } from '../../patterns/locations';
@@ -570,7 +571,6 @@ export const ProductReceiptScreen = () => {
                 {t.saveFailed.description}
               </AlertBanner>
             ) : null}
-            {worker === null ? <p className="product-receipt__note">{t.noWorker}</p> : null}
             {plantId === null ? <p className="product-receipt__note">{t.noPlant}</p> : null}
             <div className="action-bar">
               <Button
