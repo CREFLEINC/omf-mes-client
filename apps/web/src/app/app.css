@@ -15585,6 +15585,27 @@ button.app-button-neutral {
   white-space: nowrap;
 }
 
+/* 시리얼 번호 스캔 — 검색 묶음의 머리라 라벨을 제목 크기로, 안내는 그 옆 같은 줄(#136). */
+.oqc-inspection-serial-scan > .field-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin-bottom: var(--space-2);
+}
+
+.oqc-inspection-serial-scan > .field-label > label {
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 목록의 시리얼 번호 칸 「미등록」 — 값이 아니라 상태 표시라 보조색 · 칸 가운데. */
+.oqc-inspection-queue-unregistered {
+  display: block;
+  color: var(--on-surface-muted);
+  text-align: center;
+}
+
 /* 라벨 오른쪽 같은 줄의 짧은 안내(보조색 · 한 단계 작게). */
 .oqc-inspection-label-hint {
   margin-left: var(--space-2);
@@ -15678,6 +15699,7 @@ button.app-button-neutral {
 }
 
 .oqc-inspection-detail .field-error,
+.oqc-inspection-serial-scan [class*='_error_srzap_'],
 .oqc-inspection-progress[data-state='over'] > .field-note {
   display: flex;
   align-items: center;
@@ -15685,6 +15707,7 @@ button.app-button-neutral {
 }
 
 .oqc-inspection-detail .field-error::before,
+.oqc-inspection-serial-scan [class*='_error_srzap_']::before,
 .oqc-inspection-progress[data-state='over'] > .field-note::before {
   content: 'error';
   font-family: 'Material Symbols Rounded';

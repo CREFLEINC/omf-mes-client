@@ -16,6 +16,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     },
     requestedAtColumn: 'Thời điểm yêu cầu',
     serialColumn: 'Số serial',
+    serialUnregistered: 'Chưa đăng ký',
     targetTypes: {
       SHIPMENT_REQUEST: 'Yêu cầu xuất hàng',
     } as Readonly<Record<string, string>>,
@@ -35,8 +36,8 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     itemPlaceholder: 'Chọn mặt hàng',
     itemPick: 'Chọn',
     itemClear: 'Xóa điều kiện mặt hàng',
-    keyword: 'Số yêu cầu',
-    keywordPlaceholder: 'Tìm theo số yêu cầu',
+    keyword: 'Tìm số yêu cầu',
+    keywordPlaceholder: 'Nhập số yêu cầu',
     pendingOnly: 'Chỉ xem mục chờ và đang làm',
     apply: 'Tra cứu',
     reset: 'Đặt lại',
@@ -217,9 +218,9 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
   },
   serials: {
     openByScan: 'Quét số serial',
-    openByScanHelp:
-      'Quét số serial để mở yêu cầu OQC đã lấy hàng LOT đó. Nếu không có yêu cầu đang chờ/đang làm, sẽ mở yêu cầu đã hoàn thành để thêm lượt kiểm tra lại.',
+    openByScanHelp: 'Nhập số serial để tra cứu yêu cầu kiểm tra OQC tương ứng.',
     openByScanPlaceholder: 'Quét hoặc nhập số serial',
+    openByScanNotFound: 'Số serial chưa được đăng ký.',
     scanLabel: 'Quét serial',
     scanPlaceholder: 'Quét hoặc nhập số serial rồi nhấn Enter',
     scanning: 'Đang kiểm tra serial…',

@@ -16,7 +16,7 @@ import { formatDateTime, type InspectionQueueRow } from './types';
  * 번호 대신 이름·코드를, 의뢰 일시를 한 열로 더 싣는다. 의뢰번호 칸은 의뢰번호(위)·대상(아래)의 두 행이다.
  *
  * ⚠ **시리얼 번호 칸은 방금 스캔한 시리얼만 보인다.** 의뢰는 LOT 단위라 시리얼이 여럿이고 목록 계약에
- * 시리얼이 없다 — 스캔한 시리얼의 LOT 을 피킹한 의뢰 줄에만 그 번호를 두고 나머지는 빈 값 표시다.
+ * 시리얼이 없다 — 스캔한 시리얼의 LOT 을 피킹한 의뢰 줄에만 그 번호를 두고 나머지는 「미등록」이다.
  *
  * ⛔ **회차·검사일 칸을 지어내지 않는다** — 계약이 이 축에 주지 않는 값이다(`types.ts` 머리 참조).
  * 빈 칸으로 세워 두면 「아직 없음」과 「못 불러옴」이 화면에서 같아 보인다.
@@ -41,7 +41,10 @@ const columnsOf = (
     header: t.serialColumn,
     /* 열 폭은 시리얼 15 · 품목 28 · 의뢰 22 · 수량 11 · 상태 9 · 일시 15(%)로 고정한다 — 값 길이로 폭이 흔들리지 않는다(#136). */
     width: '15%',
-    render: (row) => serialOf(row) ?? t.emptyValue,
+    render: (row) =>
+      serialOf(row) ?? (
+        <span className="oqc-inspection-queue-unregistered">{t.serialUnregistered}</span>
+      ),
   },
   {
     key: 'itemId',
@@ -132,7 +135,7 @@ export interface QueueListTableProps {
   itemNames: ItemNameLookup;
   /** 줄의 단위 코드. 모르면 `null` — 숫자만 둔다(표시 전용). */
   uomCodeOf?: (row: InspectionQueueRow) => string | null;
-  /** 줄의 시리얼 번호 — 스캔한 시리얼이 걸린 줄만 값이 있다. 없으면 `null`(빈 값 표시). */
+  /** 줄의 시리얼 번호 — 스캔한 시리얼이 걸린 줄만 값이 있다. 없으면 `null`(「미등록」). */
   serialOf?: (row: InspectionQueueRow) => string | null;
   /** 고른 의뢰. 없으면 `null` — 아무 줄도 현재가 아니다 */
   selectedId: number | null;

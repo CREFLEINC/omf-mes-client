@@ -28,6 +28,7 @@ export const oqcInspection = {
     /** OQC 목록의 「의뢰 일시」 열(#136). 종전 표(PQC 도 쓴다)의 `columns` 와 따로 둔다. */
     requestedAtColumn: '의뢰 일시',
     serialColumn: '시리얼 번호',
+    serialUnregistered: '미등록',
     /** 대상 유형 코드의 이름(omf-all-around#136) — POP OQC 와 같은 말. 모르는 코드는 코드 그대로다. */
     targetTypes: {
       SHIPMENT_REQUEST: '출하요청',
@@ -74,8 +75,8 @@ export const oqcInspection = {
     itemPlaceholder: '품목을 입력하세요',
     itemPick: '선택',
     itemClear: '품목 조건 지우기',
-    keyword: '의뢰번호',
-    keywordPlaceholder: '의뢰번호로 검색',
+    keyword: '의뢰번호 검색',
+    keywordPlaceholder: '의뢰번호를 입력하세요',
     /** 기본으로 켜져 있다 — 이 화면에 들어오는 이유가 「아직 판정하지 않은 것」이기 때문이다. */
     pendingOnly: '대기·진행만 보기',
     apply: '조회',
@@ -372,9 +373,9 @@ export const oqcInspection = {
    */
   serials: {
     openByScan: '시리얼 번호 스캔',
-    openByScanHelp:
-      '시리얼을 스캔하면 그 LOT 을 피킹한 OQC 의뢰를 엽니다. 대기 또는 진행 중인 의뢰가 없으면 완료된 의뢰를 열어 재검사 회차를 더할 수 있습니다.',
+    openByScanHelp: '시리얼 번호를 입력하면 해당 OQC 검사 의뢰를 조회합니다.',
     openByScanPlaceholder: '시리얼 번호 스캔 또는 번호를 입력하세요',
+    openByScanNotFound: '등록되지 않은 시리얼 번호입니다.',
     scanLabel: '시리얼 스캔',
     scanPlaceholder: '시리얼 번호를 스캔하거나 입력 후 Enter',
     scanning: '시리얼을 확인하는 중…',
