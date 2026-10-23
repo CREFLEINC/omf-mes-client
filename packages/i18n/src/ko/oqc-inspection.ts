@@ -183,6 +183,8 @@ export const oqcInspection = {
     progressLabel: '검사 수량 대비 입력 합계',
     /** 검사 수량 구획 · 판정 구획 제목(IQC #133 과 같은 말 · #136). */
     sectionTitle: '검사 수량 입력',
+    /** 시리얼 판정 의뢰의 입력 탭 이름(#136). */
+    entryTabs: { lot: 'LOT별 검사', serial: '시리얼별 검사' },
     judgmentSectionTitle: '판정',
     /** 저장 단추 왼쪽 경고 — 저장이 곧 확정이라 되돌릴 수 없다(#136). */
     saveNote: '판정 저장 후 수정이 불가합니다.',

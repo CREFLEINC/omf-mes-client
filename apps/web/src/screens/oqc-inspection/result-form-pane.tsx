@@ -390,10 +390,10 @@ export const ResultFormPane = ({
               key={inspectionRequestNo}
               aria-label={t.sectionTitle}
               items={[
-                { value: 'quantity', label: t.sectionTitle, content: quantitySection },
+                { value: 'quantity', label: t.entryTabs.lot, content: quantitySection },
                 {
                   value: 'serials',
-                  label: messages.oqcInspection.serials.judge.heading,
+                  label: t.entryTabs.serial,
                   content: serialSection,
                 },
               ]}

@@ -101,6 +101,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     overBy: (over: string): string => `Vượt ${over}`,
     progressLabel: 'Tổng đã nhập so với số lượng kiểm tra',
     sectionTitle: 'Nhập số lượng kiểm tra',
+    entryTabs: { lot: 'Kiểm tra theo LOT', serial: 'Kiểm tra theo serial' },
     judgmentSectionTitle: 'Đánh giá',
     saveNote: 'Sau khi lưu đánh giá sẽ không thể sửa.',
     over: (over: string): string => `Nhiều hơn số lượng kiểm tra ${over}.`,
