@@ -15392,11 +15392,14 @@ button.app-button-neutral {
   width: 100%;
 }
 
-.oqc-inspection-queue-rows th:nth-child(-n + 3),
-.oqc-inspection-queue-rows td:nth-child(-n + 3) {
+.oqc-inspection-queue-rows th:nth-child(n + 2):nth-child(-n + 3),
+.oqc-inspection-queue-rows td:nth-child(n + 2):nth-child(-n + 3) {
   text-align: left;
 }
 
+/* 시리얼 번호 칸은 검사수량처럼 머리·값 모두 가운데(#136). */
+.oqc-inspection-queue-rows th:first-child,
+.oqc-inspection-queue-rows td:first-child,
 .oqc-inspection-queue-rows th:nth-child(n + 4),
 .oqc-inspection-queue-rows td:nth-child(n + 4) {
   text-align: center;
@@ -15419,11 +15422,6 @@ button.app-button-neutral {
 .oqc-inspection-queue-rows td {
   padding-block: var(--space-2);
   vertical-align: middle;
-}
-
-.oqc-inspection-queue-rows th:first-child,
-.oqc-inspection-queue-rows td:first-child {
-  padding-inline-start: var(--space-7);
 }
 
 /* 줄무늬 바탕을 지우고, 마우스를 올리면 옅게 · 고른 줄은 바탕 + 왼쪽 강조선. 줄 아무 곳이나 눌러 고른다. */
@@ -15604,11 +15602,18 @@ button.app-button-neutral {
   margin: var(--space-1) 0 0;
 }
 
-/* 목록의 시리얼 번호 칸 「미등록」 — 값이 아니라 상태 표시라 보조색 · 칸 가운데. */
+/* 목록 아래 [이전][다음] — 공용 쪽 넘김(size sm)을 이 화면에서만 한 단계 키운다(#136 · PQC 등 같은 부품을 쓰는 화면은 그대로). */
+.oqc-inspection-queue-pane > nav.form-actions button {
+  height: var(--control-height-md);
+  min-height: var(--control-height-md);
+  padding-inline: var(--space-5);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/* 목록의 시리얼 번호 칸 「미등록」 — 값이 아니라 상태 표시라 보조색. */
 .oqc-inspection-queue-unregistered {
-  display: block;
   color: var(--on-surface-muted);
-  text-align: center;
 }
 
 /* 라벨 오른쪽 같은 줄의 짧은 안내(보조색 · 한 단계 작게). */
