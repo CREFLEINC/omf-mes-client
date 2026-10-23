@@ -553,6 +553,19 @@ export const WorkStartScreen = () => {
 
   const retryLabel = gate.verdict === 'unavailable' ? t.blocked.retry : null;
 
+  const actionMode = (): 'start' | 'resume' | 'restart' | 'checking' => {
+    if (isResume) return 'resume';
+    if (isRestart) return 'restart';
+    if (!isHeldSelected) return 'start';
+    if (openSession.isPending) return 'checking';
+
+    /*
+     * 조회가 실패한 중단 W/O 는 재개 이름으로 잠가 둔다 — 띠가 「세션을 확인하지 못했다」고
+     * 말하고, 다시 시작으로 이름 붙이면 확인 못 한 것을 새 세션으로 연다고 읽힌다.
+     */
+    return 'resume';
+  };
+
   const writeError =
     writeMode === null ? null : writeMode === 'resume' ? resumeWork.error : startWork.error;
 
@@ -605,6 +618,8 @@ export const WorkStartScreen = () => {
 
   const submit = () => {
     if (selected === null || confirmedNo === null) return;
+    /* 열린 세션을 모르면 재개할지 다시 시작할지 정할 수 없다 — 막힘 사유가 이미 선다. */
+    if (isHeldSelected && !isResume && !isRestart) return;
 
     setOutcome(null);
     setChainError(null);
@@ -613,8 +628,6 @@ export const WorkStartScreen = () => {
     submitAtRef.current ??= terminalNow(new Date());
     const at = submitAtRef.current;
 
-    /* 열린 세션을 모르면 재개할지 다시 시작할지 정할 수 없다 — 막힘 사유가 이미 선다. */
-    if (isHeldSelected && !isResume && !isRestart) return;
     setWriteMode(isResume ? 'resume' : isRestart ? 'restart' : 'start');
 
     if (isResume) {
@@ -662,6 +675,13 @@ export const WorkStartScreen = () => {
     writeSession(target, attempt?.at ?? submitAtRef.current ?? terminalNow(new Date()), override);
   };
 
+  /** 지난 쓰기의 오류를 버린다 — 다른 대상을 보는데 앞 대상의 거절 문구가 남지 않게 한다. */
+  const forgetWrite = () => {
+    setWriteMode(null);
+    startWork.reset();
+    resumeWork.reset();
+  };
+
   /**
    * 고른 것을 «비운다» — 시각·판정·결과 문구까지 함께 버린다.
    *
@@ -673,7 +693,7 @@ export const WorkStartScreen = () => {
     setAttempt(null);
     setChainError(null);
     setOutcome(null);
-    setWriteMode(null);
+    forgetWrite();
     setSelectedId(null);
   };
 
@@ -695,7 +715,7 @@ export const WorkStartScreen = () => {
     setAttempt(null);
     setChainError(null);
     setOutcome(null);
-    setWriteMode(null);
+    forgetWrite();
     setSelectedId(workOrder.workOrderId);
   };
 
@@ -855,6 +875,7 @@ export const WorkStartScreen = () => {
           /* 쪽을 넘기면 고른 것을 놓는다 — 다른 쪽의 지시를 고른 채로 두면 화면과 어긋난다. */
           setSelectedId(null);
           submitAtRef.current = null;
+          forgetWrite();
           setListPage(page);
         }}
         isShowingAll={isShowingAll}
@@ -866,6 +887,7 @@ export const WorkStartScreen = () => {
         onToggleScope={() => {
           submitAtRef.current = null;
           setSelectedId(null);
+          forgetWrite();
           /* ⛔ 축이 바뀌면 첫 쪽으로 — 3쪽을 보던 중 전체 보기로 옮기면 빈 쪽이 뜬다. */
           setListPage(1);
           setShowingAll((previous) => !previous);
@@ -922,17 +944,7 @@ export const WorkStartScreen = () => {
       )}
 
       <ActionBar
-        mode={
-          isResume
-            ? 'resume'
-            : isRestart
-              ? 'restart'
-              : isHeldSelected && openSession.isPending
-                ? 'checking'
-                : isHeldSelected
-                  ? 'resume'
-                  : 'start'
-        }
+        mode={actionMode()}
         isBlocked={block !== null}
         /*
          * ⭐ **판정을 기록하는 동안도 「시작 중」이다**(#1148). 통과 판정이면 게이트가 아무것도

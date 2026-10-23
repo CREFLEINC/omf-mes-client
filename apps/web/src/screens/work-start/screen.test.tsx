@@ -1014,6 +1014,46 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
       expect(screen.getByText(message)).toBeInTheDocument();
     });
 
+    it('한 W/O 의 다시 시작이 거절된 뒤 다른 W/O 를 다시 시작하는 점검 중에도, 돌아간 뒤에도 앞 거절 문구를 보이지 않는다', async () => {
+      const message = '이 MES W/O 에 이미 열린 작업 세션이 있습니다.';
+      const { plannedEquipmentId: _ignored, ...withoutEquipment } = HELD;
+      const other = { ...HELD, workOrderId: WORK_ORDER.workOrderId + 1, workOrderNo: 'WO-OTHER-1' };
+      const rendered = renderScreen({
+        terminal: { ...TERMINAL, equipmentId: null, equipmentCode: null, equipmentName: null },
+        workOrders: [withoutEquipment, other],
+        startOpenSessionMessage: message,
+        /* 합격 이력이 없어 차단 — 두 번째 W/O 에서 점검 창이 선다. */
+        inspections: [],
+      });
+
+      /* 설비 없는 첫 W/O 는 점검 없이 바로 보내져 거절된다. */
+      await selectWorkOrder(rendered);
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      await rendered.user.click(restartButton());
+      expect(await screen.findByText(message)).toBeInTheDocument();
+
+      await rendered.user.click(
+        screen.getByRole('button', { name: selectName(other.workOrderNo) }),
+      );
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      await rendered.user.click(restartButton());
+
+      const back = await screen.findByRole('button', {
+        name: messages.workPrecheckGate.actions.back,
+      });
+      expect(screen.queryByText(message)).not.toBeInTheDocument();
+
+      await rendered.user.click(back);
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      expect(screen.queryByText(message)).not.toBeInTheDocument();
+    });
+
     it('지시 수량을 이미 채웠으면 마감 안내도 함께 보인다', async () => {
       const rendered = renderScreen({
         workOrders: [{ ...HELD, progress: { goodQty: 500, achievementRate: 1 } }],
