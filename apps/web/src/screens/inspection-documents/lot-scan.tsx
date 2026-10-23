@@ -106,7 +106,7 @@ export const LotScan = ({
       <Button
         type="submit"
         variant="outlined"
-        size="sm"
+        size="md"
         disabled={isFinding || value.trim() === ''}
       >
         {t.find}
