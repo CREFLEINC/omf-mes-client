@@ -1,6 +1,6 @@
-import type { ApiError, components } from '@omf-mes/api-client';
+import type { ApiError, components, TerminalProcessReplaceForward } from '@omf-mes/api-client';
 
-import { ALL_CLOSED, FLAG_KEYS, type FlagKey } from './flags';
+import { ALL_CLOSED, FLAG_KEYS, OPEN_BY_DEFAULT, type FlagKey } from './flags';
 import type { ProcessRowView } from './types';
 
 /**
@@ -18,7 +18,7 @@ import type { ProcessRowView } from './types';
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-type TerminalProcessReplace = components['schemas']['TerminalProcessReplace'];
+type TerminalProcessReplace = TerminalProcessReplaceForward;
 
 export type GridDraft = ProcessRowView[];
 
@@ -33,7 +33,10 @@ export const hasProcess = (draft: GridDraft, processId: number): boolean =>
 export const addProcess = (draft: GridDraft, processId: number, processName: string): GridDraft => {
   if (hasProcess(draft, processId)) return draft;
 
-  return [...draft, { processId, processName, ...ALL_CLOSED, canStartWork: true }];
+  return [
+    ...draft,
+    { processId, processName, ...ALL_CLOSED, canStartWork: true, canCloseWorkOrder: true },
+  ];
 };
 
 export const removeProcess = (draft: GridDraft, processId: number): GridDraft =>
@@ -42,7 +45,7 @@ export const removeProcess = (draft: GridDraft, processId: number): GridDraft =>
 export const toggleFlag = (draft: GridDraft, processId: number, key: FlagKey): GridDraft =>
   draft.map((row) => (row.processId === processId ? { ...row, [key]: !row[key] } : row));
 
-/** 한 줄을 통째로 열거나 닫는다 — 여덟 칸을 하나씩 누르지 않게 한다. */
+/** 한 줄을 통째로 열거나 닫는다 — 칸을 하나씩 누르지 않게 한다. */
 export const setRow = (draft: GridDraft, processId: number, open: boolean): GridDraft =>
   draft.map((row) => {
     if (row.processId !== processId) return row;
@@ -58,7 +61,8 @@ export const setRow = (draft: GridDraft, processId: number, open: boolean): Grid
 export const isRowOpen = (row: ProcessRowView): boolean => FLAG_KEYS.every((key) => row[key]);
 
 /** 아무 기능도 켜지 않은 줄 — 그 공정에서 할 수 있는 일이 없어 서버가 받지 않는다. */
-export const hasNoFlag = (row: ProcessRowView): boolean => FLAG_KEYS.every((key) => !row[key]);
+export const hasNoFlag = (row: ProcessRowView): boolean =>
+  FLAG_KEYS.every((key) => OPEN_BY_DEFAULT.includes(key) || !row[key]);
 
 const ROW_FIELD = /^items\[(\d+)\]$/;
 

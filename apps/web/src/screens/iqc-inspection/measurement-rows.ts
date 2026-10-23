@@ -23,10 +23,8 @@ export type InspectionMeasurementResponse = components['schemas']['InspectionMea
 /**
  * 규격 한 줄이 보이는 값. **없는 것을 지어내지 않는다.**
  *
- * ⛔ **단위(`uomId`)를 싣지 않는다.** 계약이 식별자만 주고 이름을 주지 않아, 그대로 그리면
- * 「목표 10 · 20」 같은 숫자가 붙어 노이즈가 된다. 단위 코드 조회(`uom-lookup.ts`)는 검사
- * 수량 표시에만 쓰고 측정치 규격에는 붙이지 않는다(`queries.ts` 머리). 쓰지 않을 값을 모아 두면
- * 다음 사람이 「왜 안 그리지」를 되짚으므로 **아예 담지 않는다.**
+ * 단위는 식별자(`uomId`)를 단위 코드 조회(`uom-lookup.ts`)로 바꿔 `unit` 에 싣는다(#133 · 담당자 지시).
+ * 코드를 모르면 숫자만 보인다 — 식별자 숫자를 그대로 붙이지 않는다.
  */
 export interface SpecRange {
   target: number | null;
@@ -48,6 +46,8 @@ export interface MeasurementRow {
   sampleCount: number;
   required: boolean;
   spec: SpecRange;
+  /** 규격·측정치에 붙일 단위 코드. 없거나 모르면 `null` */
+  unit: string | null;
   /** 저장된 측정치. 아직 재지 않았으면 `null` */
   measured: MeasuredValue | null;
 }
@@ -97,6 +97,7 @@ const bySequence = (left: InspectionItemSpecResponse, right: InspectionItemSpecR
 export const toMeasurementRows = (
   specs: InspectionItemSpecResponse[],
   measurements: InspectionMeasurementResponse[],
+  unitOf: (uomId: number | undefined) => string | null = () => null,
 ): MeasurementRow[] => {
   const index = indexOf(measurements);
 
@@ -116,6 +117,7 @@ export const toMeasurementRows = (
         sampleNo,
         sampleCount,
         required: spec.requiredFlag,
+        unit: unitOf(spec.uomId ?? undefined),
         spec: {
           target: spec.targetValue ?? null,
           lower: spec.lowerLimit ?? null,

@@ -1,10 +1,10 @@
-import { Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Button, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
-import { CODE_GROUPS, toCodeOptions } from './code-options';
+import { CODE_GROUPS, labelOfCode, toCodeOptions } from './code-options';
 import {
   EMPTY_FILTERS,
   readFilters,
@@ -20,7 +20,9 @@ import { QueueLoadErrorBanner } from './load-error-banner';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
+import { expectedJudgmentOf, needsJudgmentChangeReason } from './judgment-change';
 import {
+  useAcceptanceNumber,
   useCodeValues,
   useInspectionQueue,
   useInspectionRequestDetail,
@@ -32,6 +34,17 @@ import { QueueTable } from './queue-table';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
+import { SerialJudgments } from './serial-judgments';
+import { SerialOpenByScan } from './serial-open-by-scan';
+import { SerialRecords } from './serial-records';
+import {
+  checkScannedSerial,
+  serialBlockedReason,
+  toSerialInputs,
+  toSerialRow,
+  type SerialRow,
+} from './serials';
+import { SkipPane } from './skip-pane';
 import { InspectionHistoryPanel } from '../inspection-history/panel';
 import { latestRound } from './types';
 import { targetSignatureOf, type WriteTargetSignature } from './write-target';
@@ -105,8 +118,34 @@ export const OqcInspectionScreen = () => {
    */
   const judgmentValues = useCodeValues(CODE_GROUPS.overallJudgment);
   const judgmentOptions = toCodeOptions(judgmentValues.data ?? []);
+  /* 판정 코드가 하나도 없으면 저장할 길이 없다 — 입력 칸도 잠근다(#135). 읽는 중에는 잠그지 않는다. */
+  const isInputLocked = judgmentValues.isSuccess && judgmentOptions.length === 0;
 
   const [judgment, setJudgment] = useState('');
+
+  /*
+   * 판정 변경 사유(omf-all-around#126) — 확정 저장에만 싣는다. 의뢰·회차가 바뀌거나 재검사를 열고 닫으면 비운다.
+   */
+  const [changeReason, setChangeReason] = useState('');
+
+  /*
+   * 검사한 시리얼(omf-all-around#68) — 그 의뢰에 매인다. 다른 의뢰를 고르면 보이지 않고, 시리얼로 연 의뢰는 그 시리얼을 첫 줄로 받는다.
+   * 저장에 성공하거나 재검사를 열고 닫으면 비운다.
+   */
+  const [serialDraft, setSerialDraft] = useState<{
+    inspectionRequestId: number | null;
+    rows: SerialRow[];
+  }>({
+    inspectionRequestId: null,
+    rows: [],
+  });
+  const serialRows = serialDraft.inspectionRequestId === selectedId ? serialDraft.rows : [];
+  const setSerialRows = (rows: SerialRow[]): void =>
+    setSerialDraft({ inspectionRequestId: selectedId, rows });
+
+  /** 의뢰에 고정된 검사기준 버전의 합격판정개수 — 있으면 수량으로 종합 판정을 채운다(#126). */
+  const acceptance = useAcceptanceNumber(detail.data?.inspectionPlanVersionId ?? null);
+  const acceptanceNumber = acceptance.data ?? null;
 
   /**
    * ⭐ **R3 — 「이 누름이 겨눈 대상」을 누를 때 적어 두고 돌아와 대조한다.**
@@ -133,6 +172,7 @@ export const OqcInspectionScreen = () => {
 
     writeTargetRef.current = null;
     setIsJustSaved(true);
+    setSerialDraft({ inspectionRequestId: null, rows: [] });
   });
 
   const roundId = round?.inspectionResultId ?? null;
@@ -177,6 +217,7 @@ export const OqcInspectionScreen = () => {
      */
     setIsReinspecting(false);
     setJudgment(storedJudgment);
+    setChangeReason('');
     setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
@@ -209,6 +250,17 @@ export const OqcInspectionScreen = () => {
     setSearchParams(toPageParams(searchParams, next));
   };
 
+  /** 시리얼로 연 의뢰 — 그 시리얼이 이 의뢰에 맞으면 첫 줄로 받는다(맞지 않으면 판정 구획에서 다시 스캔할 때 이유가 보인다). */
+  const openBySerial: Parameters<typeof SerialOpenByScan>[0]['onOpen'] = (
+    inspectionRequestId,
+    scan,
+  ) => {
+    const fits =
+      checkScannedSerial(scan, { inspectionRequestId, itemId: scan.itemId, rows: [] }) === null;
+    setSerialDraft({ inspectionRequestId, rows: fits ? [toSerialRow(scan)] : [] });
+    select(inspectionRequestId);
+  };
+
   const select = (inspectionRequestId: number): void => {
     const next = new URLSearchParams(searchParams);
     next.set(URL_KEYS.selected, String(inspectionRequestId));
@@ -236,7 +288,13 @@ export const OqcInspectionScreen = () => {
       </Button>
     </p>
   ) : (
-    <p className="field-note">{t.queue.empty}</p>
+    <EmptyState
+      size="sm"
+      live
+      icon={<Icon name="search_off" size={40} />}
+      title={t.queue.empty}
+      description={t.queue.emptyHint}
+    />
   );
 
   /**
@@ -250,6 +308,20 @@ export const OqcInspectionScreen = () => {
   const inspectedQty = isReinspectingNow
     ? (detail.data?.targetQty ?? 0)
     : (round?.inspectedQty ?? detail.data?.targetQty ?? 0);
+
+  /*
+   * 합격판정개수 기준 자동 판정(omf-all-around#126 · IQC #125 와 같다) — 기준에 합격판정개수가 있고 열린 회차일 때만.
+   * 수량을 고치면 판정을 채우고(사용자가 다시 바꿀 수 있다), 다르게 고르면 변경 사유를 받아야 저장된다.
+   * 이 화면은 회차가 있으면 잠그므로 「열린 회차」는 재검사 중이거나 회차가 아직 없을 때다.
+   */
+  const isOpenRound = isReinspectingNow || round === null;
+  const expectedJudgment = isOpenRound ? expectedJudgmentOf(draft, acceptanceNumber) : null;
+  const needsChangeReason = needsJudgmentChangeReason(judgment, expectedJudgment);
+  const changeDraftAndJudge = (next: QuantityDraft): void => {
+    setDraft(next);
+    const expected = isOpenRound ? expectedJudgmentOf(next, acceptanceNumber) : null;
+    if (expected !== null) setJudgment(expected);
+  };
 
   /**
    * 저장이 보낼 값을 만든다.
@@ -289,6 +361,9 @@ export const OqcInspectionScreen = () => {
        * ⛔ 빠뜨리면 같은 의뢰에 회차 1이 두 번 만들어지려 해 `UNIQUE(의뢰, 회차)` 에 걸린다.
        */
       previousResultId,
+      /* 자동 판정과 다르게 저장할 때만 싣는다(#126 · 서버 P-70). */
+      ...(needsChangeReason ? { judgmentChangeReason: changeReason.trim() } : {}),
+      serials: toSerialInputs(serialRows),
     });
   };
 
@@ -311,6 +386,16 @@ export const OqcInspectionScreen = () => {
     ) : (
       <>
         <RequestDetailPane detail={detail.data} />
+
+        {/* OQC 생략(#119) — 출하작업지시 대상이고 판정이 아직 없을 때만. 확정 회차가 있으면 생략으로 덮지 않는다. */}
+        {detail.data.targetTypeCode === 'SHIPMENT_REQUEST' &&
+          rounds.data !== undefined &&
+          rounds.data.every((row) => row.statusCode !== 'CONFIRMED') && (
+            <SkipPane
+              shipmentRequestId={detail.data.targetId}
+              requestStatusCode={detail.data.statusCode}
+            />
+          )}
 
         {rounds.isError ? (
           /* 회차를 모르는 채로 저장을 열지 않는다 — 몇 회차인지 모르면 재검사인지도 모른다. */
@@ -338,10 +423,34 @@ export const OqcInspectionScreen = () => {
             inspectedQty={inspectedQty}
             hasLot={detail.data.lotId !== null}
             draft={draft}
-            onChange={setDraft}
+            onChange={changeDraftAndJudge}
             judgmentOptions={judgmentOptions}
             judgment={judgment}
             onJudgmentChange={setJudgment}
+            acceptanceNumber={acceptanceNumber}
+            expectedJudgmentLabel={
+              expectedJudgment === null
+                ? null
+                : (judgmentOptions.find((option) => option.value === expectedJudgment)?.label ??
+                  expectedJudgment)
+            }
+            needsChangeReason={needsChangeReason}
+            serialSection={
+              detail.data.targetTypeCode === 'SHIPMENT_REQUEST' ? (
+                <SerialJudgments
+                  inspectionRequestId={selectedId}
+                  itemId={detail.data.itemId}
+                  rows={serialRows}
+                  onChange={setSerialRows}
+                  serverError={save.fieldErrors.serials}
+                  disabled={save.isSaving || isInputLocked}
+                />
+              ) : undefined
+            }
+            serialBlockedReason={serialBlockedReason(serialRows, inspectedQty, draft.rejected)}
+            isInputLocked={isInputLocked}
+            changeReason={changeReason}
+            onChangeReasonChange={setChangeReason}
             onSave={(inspectedAt) => {
               saveResult(selectedId, detail.data.uomId, inspectedAt);
             }}
@@ -356,6 +465,8 @@ export const OqcInspectionScreen = () => {
               setIsJustSaved(false);
               setDraft(EMPTY_QUANTITY_DRAFT);
               setJudgment('');
+              setChangeReason('');
+              /* 시리얼로 연 완료 의뢰면 그 시리얼이 첫 줄로 남는다 — 재검사하려고 찍은 것이다. */
               setIsReinspecting(true);
             }}
             onCancelReinspection={() => {
@@ -367,6 +478,8 @@ export const OqcInspectionScreen = () => {
                */
               setDraft(draftOf(round));
               setJudgment(storedJudgment);
+              setChangeReason('');
+              setSerialDraft({ inspectionRequestId: null, rows: [] });
             }}
           />
         )}
@@ -376,12 +489,19 @@ export const OqcInspectionScreen = () => {
           rounds={rounds.data ?? []}
           currentResultId={isReinspectingNow ? null : roundId}
           isReinspecting={isReinspectingNow}
+          judgmentOptions={judgmentOptions}
         />
+
+        {/* 시리얼 출하검사(#68) — 출하작업지시 의뢰만. 저장하면 새로 부른다. */}
+        {detail.data.targetTypeCode === 'SHIPMENT_REQUEST' && (
+          <SerialRecords inspectionRequestId={selectedId} />
+        )}
 
         {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
         <InspectionHistoryPanel
           key={`${String(selectedId)}-${String(rounds.data?.length ?? 0)}`}
           inspectionRequestId={selectedId}
+          judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
           revision={`${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`}
         />
       </>
@@ -401,6 +521,8 @@ export const OqcInspectionScreen = () => {
 
       <div className="two-pane">
         <section className="pane" aria-label={t.queue.heading}>
+          <SerialOpenByScan onOpen={openBySerial} />
+
           <QueueFilterBar
             appliedFilters={filters}
             onSearch={applyFilters}

@@ -48,6 +48,14 @@ const DIRECTION_TEXT = {
   unknown: t.warning.directionUnknown,
 } as const;
 
+/** 대상 LOT 이 없는 의뢰 = 출하작업지시 OQC — 서버가 집은(피킹) LOT 에 판정을 남긴다(omf-all-around#119 · 서버 P-83). */
+const PICKED_DIRECTION_TEXT = {
+  release: t.warning.pickedDirectionRelease,
+  hold: t.warning.pickedDirectionHold,
+  pending: t.warning.pickedDirectionPending,
+  unknown: t.warning.directionUnknown,
+} as const;
+
 /** 판정 단추의 색 — 뜻이 정해진 코드만 색을 갖는다. 모르는 코드는 무채색이다. */
 const toneOf = (code: string): 'accepted' | 'rejected' | 'held' | 'neutral' =>
   code === 'ACCEPTED'
@@ -72,6 +80,8 @@ export interface PopJudgmentInput {
   isSaving: boolean;
   isJustSaved: boolean;
   workerNo: string | null;
+  /** 시리얼이 수량과 모순되면 그 이유(omf-all-around#68 · W-04-03 과 같은 규칙). */
+  serialBlockedReason?: string | null;
 }
 
 export interface PopJudgmentState {
@@ -91,7 +101,7 @@ export interface PopJudgmentState {
 
 export const usePopJudgment = (input: PopJudgmentInput): PopJudgmentState => {
   const { active, idleReason, resetKey, round, inspectedQty, draft } = input;
-  const { judgmentOptions, judgment, isJustSaved, workerNo } = input;
+  const { judgmentOptions, judgment, isJustSaved, workerNo, serialBlockedReason = null } = input;
 
   /* 회차가 있다는 사실이 잠그는 근거다(W-04-03 과 같다 — 이 화면은 어떤 회차도 고치지 않는다). */
   const isLocked = round !== null;
@@ -126,7 +136,7 @@ export const usePopJudgment = (input: PopJudgmentInput): PopJudgmentState => {
             ? t.bar.blocked.judgmentOptions
             : judgment === ''
               ? t.bar.blocked.judgment
-              : null;
+              : serialBlockedReason;
 
   return {
     isLocked,
@@ -162,8 +172,10 @@ export interface PopJudgmentFormProps {
   onJudgmentChange: (code: string) => void;
   isSaving: boolean;
   fieldErrors: Record<string, string>;
-  /** 의뢰에 대상 LOT 이 있는가. 없으면 서버가 LOT 상태를 옮기지 않는다(확정만 한다). */
+  /** 의뢰에 대상 LOT 이 있는가. 없으면 출하작업지시 OQC 다 — 서버가 그 지시가 집은 LOT 에 판정을 남긴다(#119). */
   hasLot: boolean;
+  /** 「검사한 시리얼」 단계(omf-all-around#68) — 출하작업지시 의뢰의 열린 회차에서만 부모가 넘긴다. */
+  serialStep?: ReactNode;
   /** 회차 이력 등 입력 구획 아래에 붙는 것. */
   children?: ReactNode;
 }
@@ -182,6 +194,7 @@ export const PopJudgmentForm = ({
   isSaving,
   fieldErrors,
   hasLot,
+  serialStep,
   children,
 }: PopJudgmentFormProps) => {
   const { isLocked, isConfirmed, errors, totals, preview, showErrors } = state;
@@ -352,6 +365,8 @@ export const PopJudgmentForm = ({
         )}
       </section>
 
+      {!isLocked && serialStep}
+
       {/*
        * 저장 전에 LOT 이 어떻게 되는지 한 줄로 보인다 — 조건은 W-04-03 의 전이 경고와 같다(잠기지 않았고
        * 셀 수 있을 때). 피킹·처분 같은 나머지 고지는 확인 창이 맡는다(같은 말을 두 번 하지 않는다).
@@ -360,7 +375,7 @@ export const PopJudgmentForm = ({
         <section className="pop-oqc-effect" aria-label={t.warning.title}>
           <p className="pop-oqc-effect__lead">
             <Icon name="warning" size={20} aria-hidden />
-            <span>{hasLot ? DIRECTION_TEXT[preview.direction] : t.warning.noLot}</span>
+            <span>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</span>
           </p>
           <p className="pop-oqc-effect__sub">{t.warning.noAmendment}</p>
         </section>
@@ -551,9 +566,9 @@ export const PopConfirmDialog = ({
         <h4>{t.confirm.effects}</h4>
         <ul>
           <li>
-            <strong>{hasLot ? DIRECTION_TEXT[preview.direction] : t.warning.noLot}</strong>
+            <strong>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</strong>
           </li>
-          {hasLot && <li>{t.warning.picking}</li>}
+          <li>{t.warning.picking}</li>
         </ul>
       </section>
     )}

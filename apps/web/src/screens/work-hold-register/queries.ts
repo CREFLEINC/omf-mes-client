@@ -33,6 +33,31 @@ export const workHoldKeys = {
   openSession: (workOrderId: number) =>
     ['work-hold-register', 'open-session', workOrderId] as const,
   events: (workSessionId: number) => ['work-hold-register', 'events', workSessionId] as const,
+  workOrderNo: (workOrderId: number) =>
+    ['work-hold-register', 'work-order-no', workOrderId] as const,
+};
+
+/** 머리에 보일 W/O 번호. 내부 id 는 작업자가 읽을 수 있는 값이 아니다. 모르면 null. */
+export const useWorkOrderNo = (workOrderId: number | null): string | null => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: workHoldKeys.workOrderNo(workOrderId ?? 0),
+    enabled: workOrderId !== null,
+    queryFn: async () => {
+      if (workOrderId === null) throw new Error('작업지시가 없으면 번호를 조회하지 않습니다.');
+
+      const data = await runRequest(() =>
+        client.GET('/production/work-orders/{workOrderId}', {
+          params: { path: { workOrderId } },
+        }),
+      );
+
+      return data.workOrderNo;
+    },
+  });
+
+  return query.data ?? null;
 };
 
 const fetchOpenSession = async (

@@ -58,6 +58,8 @@ interface ScreenOptions {
   saveGate?: { opened: Promise<void> };
   /** 상세 응답을 붙잡아 둘 문 */
   detailGate?: { opened: Promise<void> };
+  /** 의뢰 기준 버전의 합격판정개수(omf-all-around#126). 기본은 없음 — 자동 판정이 없다 */
+  acceptanceNumber?: number | null;
 }
 
 interface SaveBody {
@@ -121,6 +123,16 @@ const renderScreen = (options: ScreenOptions = {}) => {
       return found === undefined
         ? jsonResponse({ message: '없는 의뢰' }, { status: 404 })
         : jsonResponse(found);
+    }
+
+    if (path.startsWith('/quality/inspection-plan-versions/')) {
+      return jsonResponse({
+        inspectionPlanVersion: {
+          inspectionPlanVersionId: Number(path.split('/').at(-1)),
+          samplingMethodCode: 'SAMPLE_BY_LOT',
+          acceptanceNumber: options.acceptanceNumber ?? null,
+        },
+      });
     }
 
     if (path === '/mdm/code-values') {
@@ -581,5 +593,70 @@ describe('OqcInspectionScreen — 우측 네 갈래', () => {
 
     expect(detailPane().getByText(waitingRequest.inspectionRequestNo)).toBeInTheDocument();
     expect(detailPane().getByText(waitingRequest.targetTypeCode)).toBeInTheDocument();
+  });
+});
+
+/*
+ * omf-all-around#126 — 기준에 합격판정개수가 있으면 수량으로 판정을 채우고, 다르게 고르면 변경 사유를 받아야 저장된다.
+ * IQC(#125)와 같은 규칙이다. fillJudgment 는 합격 480 · 불합격 15 · 보류 5 를 치고 「합격」을 고른다.
+ */
+describe('OqcInspectionScreen — 합격판정개수 기준 자동 판정(#126)', () => {
+  const change = t.result.judgmentChange;
+
+  it('합격판정개수 5 · 불합격 15 인데 합격을 고르면 사유 칸이 서고, 사유를 넣어야 저장되며 사유가 실린다', async () => {
+    const user = userEvent.setup();
+    const { saves } = renderScreen({
+      route: `/?ir=${String(waitingRequest.inspectionRequestId)}`,
+      acceptanceNumber: 5,
+    });
+
+    await screen.findByLabelText(t.result.fields.accepted);
+    await fillJudgment(user);
+
+    const reason = await screen.findByLabelText(new RegExp(change.reason));
+    expect(screen.getByText(change.required)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+
+    await user.type(reason, '  고객 승인 — 출하 허용 ');
+    await user.click(screen.getByRole('button', { name: t.result.save }));
+    await pressSaveInDialog(user);
+
+    await waitFor(() => expect(saves).toHaveLength(1));
+    const body = (await (saves[0] as Request).json()) as Record<string, unknown>;
+    expect(body.overallJudgmentCode).toBe('ACCEPTED');
+    expect(body.judgmentChangeReason).toBe('고객 승인 — 출하 허용');
+  });
+
+  it('수량을 치면 판정을 자동으로 채운다 — 불합격 15 > 5 는 불합격이고 사유 칸이 없다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      route: `/?ir=${String(waitingRequest.inspectionRequestId)}`,
+      acceptanceNumber: 5,
+    });
+
+    await screen.findByLabelText(t.result.fields.accepted);
+    await user.type(acceptedField(), '480');
+    await user.type(screen.getByLabelText(t.result.fields.rejected), '15');
+    await user.type(screen.getByLabelText(t.result.fields.held), '5');
+
+    expect(await screen.findByText(new RegExp(change.expected('불합격')))).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: t.result.judgment })).toHaveTextContent('불합격');
+    expect(screen.queryByLabelText(new RegExp(change.reason))).toBeNull();
+  });
+
+  it('합격판정개수가 없는 기준이면 자동 판정·사유 칸이 없고, 사유 없이 저장된다(종전 그대로)', async () => {
+    const user = userEvent.setup();
+    const { saves } = renderScreen({ route: `/?ir=${String(waitingRequest.inspectionRequestId)}` });
+
+    await screen.findByLabelText(t.result.fields.accepted);
+    await fillJudgment(user);
+
+    expect(screen.queryByLabelText(new RegExp(change.reason))).toBeNull();
+    await user.click(screen.getByRole('button', { name: t.result.save }));
+    await pressSaveInDialog(user);
+
+    await waitFor(() => expect(saves).toHaveLength(1));
+    const body = (await (saves[0] as Request).json()) as Record<string, unknown>;
+    expect(body).not.toHaveProperty('judgmentChangeReason');
   });
 });

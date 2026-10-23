@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { PopIdentityProvider } from '../../patterns/pop-identity';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { ReworkResultRegisterScreen } from './screen';
+import { popGateDeniedText } from '../../patterns/pop-process-gate';
 
 const t = messages.reworkResultRegister;
 
@@ -811,5 +812,203 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     });
 
     expect(Number(uomQuery?.get('size'))).toBeGreaterThanOrEqual(100);
+  });
+});
+
+describe('ReworkResultRegisterScreen — 공정이 여럿인 단말', () => {
+  const OTHER_PROCESS_ID = PROCESS_ID + 1;
+  const renderMulti = (canInputResult: boolean) => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: TERMINAL_ID,
+          processes: [{ processId: OTHER_PROCESS_ID }, { processId: PROCESS_ID }],
+          equipment: null,
+          workerNo: '100027',
+        }}
+      >
+        <ReworkResultRegisterScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: async (request) => {
+          const url = new URL(request.url);
+          if (url.pathname === `/mdm/terminals/${String(TERMINAL_ID)}/processes`) {
+            return jsonResponse({
+              items: [
+                {
+                  processId: OTHER_PROCESS_ID,
+                  processName: '합성 조립',
+                  canInputResult: !canInputResult,
+                },
+                { processId: PROCESS_ID, processName: '합성 재작업', canInputResult },
+              ],
+            });
+          }
+          if (url.pathname === '/production/work-orders') {
+            if (url.searchParams.get('statusCode') === 'PLANNED') {
+              return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
+            }
+            return jsonResponse({
+              items: [{ ...WORK_ORDER, processId: PROCESS_ID, processName: '합성 재작업' }],
+              page: { page: 1, size: 20, total: 1 },
+            });
+          }
+          return stubFetch(request);
+        },
+        route: '/pop/rework-results',
+      },
+    );
+    return user;
+  };
+
+  it('고르기 전에는 막는 문구를 내지 않는다', async () => {
+    renderMulti(false);
+
+    await screen.findByText(WORK_ORDER.workOrderNo);
+    expect(screen.queryByText(t.gateUnidentified)).toBeNull();
+    expect(
+      screen.queryByText(popGateDeniedText({ processName: '합성 재작업' }, 'canInputResult')),
+    ).toBeNull();
+  });
+
+  it('고른 W/O 의 공정으로 판정해 저장이 열린다', async () => {
+    const user = renderMulti(true);
+    await pickWorkOrder(user);
+
+    await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.save })).toBeEnabled();
+    });
+    expect(screen.queryByText(t.gateUnidentified)).toBeNull();
+  });
+
+  it('고른 W/O 공정의 실적 입력이 꺼져 있으면 공정 이름과 켜는 곳을 말하며 막는다', async () => {
+    const user = renderMulti(false);
+    await pickWorkOrder(user);
+
+    expect(
+      await screen.findByText(popGateDeniedText({ processName: '합성 재작업' }, 'canInputResult')),
+    ).toBeInTheDocument();
+    await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+  });
+});
+
+describe('ReworkResultRegisterScreen — 서버 거부', () => {
+  afterEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  it('단말 권한으로 서버가 거부하면(401) 서버 문구를 그대로 보인다', async () => {
+    const message =
+      '이 단말에는 이 W/O 공정의 실적 입력 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「실적 입력」을 켜세요.';
+    const user = userEvent.setup();
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: TERMINAL_ID,
+          processes: [{ processId: PROCESS_ID }],
+          equipment: null,
+          workerNo: '100027',
+        }}
+      >
+        <ReworkResultRegisterScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: async (request) => {
+          if (
+            request.method === 'POST' &&
+            new URL(request.url).pathname === '/production/production-results'
+          ) {
+            return jsonResponse(
+              { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message }] },
+              { status: 401 },
+            );
+          }
+          return stubFetch(request);
+        },
+        route: '/pop/rework-results',
+      },
+    );
+    await pickWorkOrder(user);
+    await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+    await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: t.save }));
+
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(screen.getByText(t.rejected)).toBeInTheDocument();
+  });
+
+  it('서버가 이유 없이 거부하면(404) 일반 문구 대신 할 일을 말한다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: TERMINAL_ID,
+          processes: [{ processId: PROCESS_ID }],
+          equipment: null,
+          workerNo: '100027',
+        }}
+      >
+        <ReworkResultRegisterScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: async (request) => {
+          if (
+            request.method === 'POST' &&
+            new URL(request.url).pathname === '/production/production-results'
+          ) {
+            return jsonResponse({ message: 'Not Found' }, { status: 404 });
+          }
+          return stubFetch(request);
+        },
+        route: '/pop/rework-results',
+      },
+    );
+    await pickWorkOrder(user);
+    await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+    await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: t.save }));
+
+    expect(await screen.findByText(t.rejectedHint)).toBeInTheDocument();
+    expect(screen.queryByText(/Not Found/)).toBeNull();
+    expect(screen.getByText(t.rejected)).toBeInTheDocument();
+  });
+
+  it('목록 조회가 단말 권한(401)으로 거부되면 「불러오지 못했다」와 서버 문구를 함께 보인다', async () => {
+    const message = '단말 인증 범위 밖입니다.';
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: TERMINAL_ID,
+          processes: [{ processId: PROCESS_ID }],
+          equipment: null,
+          workerNo: '100027',
+        }}
+      >
+        <ReworkResultRegisterScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: async (request) => {
+          const url = new URL(request.url);
+          if (
+            url.pathname === '/production/work-orders' &&
+            url.searchParams.get('statusCode') === 'PLANNED'
+          ) {
+            return jsonResponse(
+              { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message }] },
+              { status: 401 },
+            );
+          }
+          return stubFetch(request);
+        },
+        route: '/pop/rework-results',
+      },
+    );
+
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(screen.getByText(t.loadError)).toBeInTheDocument();
   });
 });

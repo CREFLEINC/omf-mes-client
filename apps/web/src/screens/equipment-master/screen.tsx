@@ -89,6 +89,7 @@ import {
   useInspectionItemDetail,
   useInspectionItemList,
   useInspectionItemMaster,
+  useDepartmentOptions,
   useLookupOptions,
   useUomOptions,
 } from './queries';
@@ -218,6 +219,7 @@ export const EquipmentMasterScreen = () => {
   const groupList = useGroupList(filters);
   const groupItems = useMemo(() => groupList.data?.items ?? [], [groupList.data]);
   const lookups = useLookupOptions();
+  const departments = useDepartmentOptions();
   const detail = useGroupDetail(selectedGroupId);
   /*
    * ⭐ **이 그룹의 값 전부가 「설비 계열」의 정의다**(설계 확정 `omf-mes#224`) — 목록 조건이
@@ -1160,6 +1162,17 @@ export const EquipmentMasterScreen = () => {
         defaultScrapLocationId: locationOptions('defaultScrapLocationId'),
       }}
       locationNote={locationNote}
+      departmentOptions={[
+        { value: '', label: t.form.departmentNone },
+        ...selectableOptions(departments, formValues.departmentId),
+      ]}
+      departmentNote={
+        departments.isError
+          ? t.optionsLoadFailed
+          : departments.truncated
+            ? t.optionsTruncated
+            : t.form.departmentHelp
+      }
       isActive={options.isActive}
       isDirty={isDirty}
       isSaving={groupWrite.isSaving}

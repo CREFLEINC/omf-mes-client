@@ -17,22 +17,22 @@ export const workOrder = {
       failed: '선택 목록을 불러오지 못했습니다.',
       truncated: '선택 목록의 첫 페이지만 표시합니다.',
       noPlant: 'P/O에 공장이 없어 선택 목록을 불러올 수 없습니다.',
-      workerTruncated: '작업자 일부만 표시합니다. 사번·성명으로 검색하세요.',
+      workerTruncated: '작업자 일부만 표시합니다. 사번이나 성명으로 검색하세요.',
     },
   },
   screen: {
     view: {
-      title: '4M 자원배정·유효성 점검',
+      title: '4M 배정',
       breadcrumbRoot: '생산',
       selectPlan: '생산계획을 먼저 선택하세요.',
-      selectPlanLink: 'W/O 전개·편성으로 이동',
-      openAssignment: '4M 자원배정·유효성 점검으로 이동',
+      selectPlanLink: '생산계획으로 이동',
+      openAssignment: '4M 배정으로 이동',
       contextPane: '선택 생산계획',
       editorPane: '작업지시 배정 편집',
       /** 두 구획 위에서 한 번만 쓰는 제목 — 카드마다 W/O 번호를 반복하지 않는다 */
-      selectedHeading: (workOrderNo: string): string => `선택한 W/O — ${workOrderNo}`,
+      selectedHeading: (workOrderNo: string): string => `선택한 W/O ${workOrderNo}`,
       context: (productionOrderNo: string, total: number): string =>
-        `P/O ${productionOrderNo} · W/O ${String(total)}건`,
+        `P/O ${productionOrderNo}, W/O ${String(total)}건`,
       selectWorkOrder: '배정할 작업지시를 선택하세요.',
       selectDescription: '목록에서 W/O 번호를 선택하면 자원 배정과 검증 결과를 확인할 수 있습니다.',
       failed: '작업지시 배정 화면을 불러오지 못했습니다.',
@@ -101,11 +101,11 @@ export const workOrder = {
   validationPane: {
     /* 검증 결과 표시 문구 — W-02-03·W-02-04 가 같이 쓴다(사용자 지시 2026-09-20). */
     /** 통과 칩과 겹치지 않게 숫자만 남긴다(사용자 지시 2026-09-20). */
-    clean: '차단 0건 · 경고 0건',
+    clean: '차단 0건, 경고 0건',
     checksTitle: '확인 항목',
     resultTitle: '결과',
     /** 배정이 없어 돌지 않은 검사가 있을 때만 한 번 보인다 */
-    skippedNote: '배정되지 않은 설비·금형·작업자 관련 항목은 검증 대상에서 제외됩니다.',
+    skippedNote: '배정되지 않은 설비, 금형, 작업자 관련 항목은 검증 대상에서 제외됩니다.',
     /** 서버 작업지시 검증이 도는 검사들. 배정이 없는 자원은 그 검사를 돌지 않는다. */
     checks: {
       equipmentStatus: '설비 사용 가능 상태',
@@ -153,7 +153,7 @@ export const workOrder = {
       /* 지금 칸의 값과 같은 후보. 색만으로 알리지 않는다. */
       assigned: '배정됨',
     },
-    cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Location' },
+    cards: { machine: '설비', man: '작업자', tool: '금형', material: '위치' },
     fields: {
       productionLine: '생산 라인',
       equipment: '설비',
@@ -166,7 +166,7 @@ export const workOrder = {
     },
     /** 담당 작업자는 창에서 찾아 고른다 — 품목·공급사 선택 창과 같은 방식(사용자 지시 2026-09-20). */
     workerPicker: {
-      open: '코드·이름으로 검색',
+      open: '코드나 이름으로 검색',
       clear: '담당 작업자 지우기',
       title: '담당 작업자 선택',
       keywordLabel: '검색어',
@@ -187,7 +187,7 @@ export const workOrder = {
       pick: '선택',
     },
     materialInfo:
-      '생산 라인을 고르면 그 라인의 기본 위치로 채워집니다. 라인 기본 위치는 설비·설비그룹 마스터에서 정합니다.',
+      '생산 라인을 고르면 그 라인의 기본 위치로 채워집니다. 라인 기본 위치는 설비와 설비그룹 마스터에서 정합니다.',
     empty: {
       notSelectedTitle: '자원을 배정할 작업지시를 선택하세요.',
       notSelectedDescription: '목록에서 작업지시를 선택하면 자원 배정 내용을 확인할 수 있습니다.',
@@ -202,14 +202,14 @@ export const workOrder = {
       priorityNo: '우선순위',
     },
     warning:
-      '계획 시작·종료는 공장 시각입니다. 계획일과 계획 교대로 채워지고(교대가 없으면 근무일 하루), 여러 날에 걸친 작업은 직접 고칠 수 있습니다.',
+      '계획 시작과 종료는 공장 시각입니다. 계획일과 계획 교대로 채워지고(교대가 없으면 근무일 하루), 여러 날에 걸친 작업은 직접 고칠 수 있습니다.',
     empty: {
       notSelectedTitle: '계획을 확인할 작업지시를 선택하세요.',
       notSelectedDescription: '목록에서 작업지시를 선택하면 계획 정보를 확인할 수 있습니다.',
     },
   },
   assignmentActions: {
-    actions: { validate: 'Validation 다시 실행', reset: '변경 취소', save: '저장' },
+    actions: { validate: '점검 다시 실행', reset: '변경 취소', save: '저장' },
     reasons: {
       saving: '저장 중에는 작업을 실행할 수 없습니다.',
       noChanges: '변경된 내용이 없습니다.',

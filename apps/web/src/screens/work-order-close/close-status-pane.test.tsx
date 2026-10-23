@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 
 import { WorkOrderCloseStatusPane, type WorkOrderCloseStatusPaneState } from './close-status-pane';
 
@@ -11,16 +12,18 @@ const renderPane = (state: WorkOrderCloseStatusPaneState) =>
 
 describe('WorkOrderCloseStatusPane', () => {
   it('uses the exact localized vocabulary', () => {
-    expect(t).toEqual({
-      pane: '작업지시 마감 입력 상태',
-      heading: '현재 입력 상태',
-      loading: '현재 입력 조건을 확인하는 중입니다.',
-      complete: '현재 입력 조건이 모두 갖춰졌습니다.',
-      blockers: {
-        OPEN_SESSION: '열린 작업 세션을 마감하세요.',
-        REMAINDER_DISPOSITION_REQUIRED: '잔량 처리 방법을 선택하세요.',
-        VARIANCE_REASON_REQUIRED: '변동 사유를 선택하세요.',
-      },
+    expect(t.pane).toBe('작업지시 마감 입력 상태');
+    expect(t.heading).toBe('현재 입력 상태');
+    expect(t.loading).toBe('현재 입력 조건을 확인하는 중입니다.');
+    expect(t.complete).toBe('현재 입력 조건이 모두 갖춰졌습니다.');
+    expect(t.blockers).toEqual({
+      STATUS_NOT_CLOSABLE:
+        '이 작업지시는 지금 상태에서 마감할 수 없습니다. 진행, 중단, 완료 상태인 작업지시만 마감할 수 있으니, 목록의 상태를 확인하세요.',
+      OPEN_SESSION: '열린 작업 세션(중단 포함)이 있어 마감할 수 없습니다.',
+      REMAINDER_DISPOSITION_REQUIRED:
+        '미달이라 잔량 처리를 골라야 마감할 수 있습니다. 위 「잔량 처리」에서 이월 또는 소멸을 고르세요.',
+      VARIANCE_REASON_REQUIRED:
+        '미달이나 초과라 변동 사유를 골라야 마감할 수 있습니다. 위 「변동 사유」에서 고르세요.',
     });
   });
 
@@ -88,5 +91,73 @@ describe('WorkOrderCloseStatusPane', () => {
     renderPane(state);
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('열린 세션이 막으면 단말, 작업자, 시작, 상태를 한 칸에 하나씩 보이고 끝낼 곳과 다시 확인을 준다', async () => {
+    const onRecheckSessions = vi.fn();
+    render(
+      <WorkOrderCloseStatusPane
+        state={{ kind: 'RESOLVED', blockers: ['OPEN_SESSION'] }}
+        openSessions={[
+          {
+            workSessionId: 1,
+            terminalCode: 'POP-SYN-1',
+            workerName: '합성 작업자',
+            workerNo: '900028',
+            startedAt: '2026-08-23T09:00:00+07:00',
+            statusCode: 'STOPPED',
+          },
+          {
+            workSessionId: 2,
+            terminalCode: null,
+            workerName: null,
+            workerNo: null,
+            startedAt: '2026-08-23T10:00:00+07:00',
+            statusCode: 'RUNNING',
+          },
+        ]}
+        onRecheckSessions={onRecheckSessions}
+      />,
+    );
+
+    const rows = within(screen.getByRole('table', { name: t.sessions.label }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) =>
+        within(row)
+          .getAllByRole('cell')
+          .map((cell) => cell.textContent),
+      );
+    expect(rows[0]).toEqual(['POP-SYN-1', '합성 작업자(900028)', '2026-08-23 09:00', '중단']);
+    expect(rows[1]).toEqual([t.sessions.unknown, t.sessions.unknown, '2026-08-23 10:00', '진행']);
+    expect(
+      screen.getByText(t.sessions.action(messages.workHoldRegister.title)),
+    ).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: t.sessions.recheck }));
+    expect(onRecheckSessions).toHaveBeenCalledTimes(1);
+  });
+
+  it('강제 종료를 주면 줄마다 단말 이름이 붙은 단추를 두고 그 세션을 넘긴다', async () => {
+    const onForceEnd = vi.fn();
+    const session = {
+      workSessionId: 7,
+      terminalCode: 'POP-SYN-7',
+      workerName: null,
+      workerNo: null,
+      startedAt: '2026-08-23T09:00:00+07:00',
+      statusCode: 'RUNNING',
+    };
+    render(
+      <WorkOrderCloseStatusPane
+        state={{ kind: 'RESOLVED', blockers: ['OPEN_SESSION'] }}
+        openSessions={[session]}
+        onForceEnd={onForceEnd}
+      />,
+    );
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: t.sessions.forceEndFor('POP-SYN-7') }));
+    expect(onForceEnd).toHaveBeenCalledWith(session);
   });
 });

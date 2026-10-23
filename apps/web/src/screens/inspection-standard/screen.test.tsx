@@ -169,7 +169,7 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     expect(screen.queryByText('등록된 검사기준이 없습니다')).not.toBeInTheDocument();
     // 서버가 빈 message를 줘도 무엇을 하라는 안내가 남아야 한다.
     expect(
-      screen.getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+      screen.getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
     ).toBeInTheDocument();
   });
 
@@ -651,6 +651,8 @@ describe('InspectionStandardScreen — 기준 저장', () => {
       itemId: 5001,
       processId: null,
       routingId: null,
+      // PQC 생략 허용(#119) — PQC 가 아닌 기준은 끈 채로 보낸다.
+      pqcSkipAllowed: false,
     });
     expect('approvedBy' in body).toBe(false);
     expect('approvedAt' in body).toBe(false);
@@ -772,6 +774,8 @@ describe('InspectionStandardScreen — 기준 등록', () => {
       itemId: null,
       processId: null,
       routingId: null,
+      // PQC 생략 허용(#119) — PQC 가 아닌 기준은 끈 채로 보낸다.
+      pqcSkipAllowed: false,
     });
   });
 

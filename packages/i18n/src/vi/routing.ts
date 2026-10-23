@@ -39,8 +39,15 @@ export const routing: Translated<typeof ko.routing> = {
     removeOperation: (displayNo: number): string => `Xóa công đoạn số ${displayNo}`,
   },
   actionReasons: {
-    dependenciesUnavailable:
-      'Việc thiết lập trước sau hiện chưa thể thực hiện. Khi cách định quan hệ trước sau giữa các công đoạn được ấn định thì có thể dùng nút này.',
+    dependenciesBlockedByUnsaved:
+      'Không thể thiết lập trước sau khi còn dòng công đoạn chưa lưu. Hãy lưu hoặc hủy công đoạn trước.',
+    dependenciesNeedOperations: 'Cần lưu ít nhất 2 công đoạn mới thiết lập được trước sau.',
+    removeBlockedWhileCheckingDependencies:
+      'Đang kiểm tra quan hệ trước sau. Hãy thử lại sau giây lát.',
+    removeBlockedByDependencyLoadError:
+      'Không tải được quan hệ trước sau nên không xác nhận được có xóa được hay không. Hãy tải lại trang rồi thử lại.',
+    removeBlockedByDependencies: (relations: string): string =>
+      `Công đoạn này đang có quan hệ trước sau (${relations}). Hãy xóa quan hệ đó ở [Thiết lập trước sau] trước rồi mới xóa công đoạn.`,
     compareRevisionsUnavailable:
       'Việc so sánh Rev hiện chưa thể thực hiện. Khi chức năng so sánh sẵn sàng thì có thể dùng nút này.',
     changeHistoryUnavailable:
@@ -73,6 +80,14 @@ export const routing: Translated<typeof ko.routing> = {
       'Việc lưu công đoạn không thực hiện được khi thông tin Routing còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',
     operationsSaveBlockedByInvalid:
       'Việc lưu công đoạn không thực hiện được khi còn công đoạn chưa nhập xong. Hãy sửa công đoạn đó trong bảng.',
+  },
+  discard: {
+    title: 'Có thay đổi chưa lưu',
+    body: 'Nếu chuyển đi bây giờ, thông tin Routing và công đoạn đã sửa ở Rev này sẽ mất vì chưa lưu. Muốn giữ lại, hãy bấm «Tiếp tục sửa» rồi lưu.',
+    bodyCreating:
+      'Nếu chuyển đi bây giờ, nội dung đăng ký Rev đầu tiên đã nhập sẽ mất vì chưa lưu. Muốn giữ lại, hãy bấm «Tiếp tục sửa» rồi đăng ký.',
+    stay: 'Tiếp tục sửa',
+    confirm: 'Chuyển mà không lưu',
   },
   /** 확정·폐기 Rev의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
   stateLock: {
@@ -203,5 +218,40 @@ export const routing: Translated<typeof ko.routing> = {
       `Có ${String(count)} nơi đang tham chiếu công đoạn này.`,
     activateProcessTitle: 'Dùng lại công đoạn này?',
     activateProcessDescription: 'Từ nay có thể chọn lại công đoạn này ở dòng công đoạn mới.',
+  },
+  dependencies: {
+    title: (subject: string): string => `Thiết lập trước sau — ${subject}`,
+    predecessor: 'Công đoạn trước',
+    successor: 'Công đoạn sau',
+    type: 'Quan hệ',
+    remove: (rowNo: number): string => `Xóa quan hệ thứ ${String(rowNo)}`,
+    rowField: (rowNo: number, field: string): string => `${field} dòng ${String(rowNo)}`,
+    add: 'Thêm quan hệ',
+    operationOption: (displayNo: number, name: string): string => `${String(displayNo)}. ${name}`,
+    unknownOperation: 'Công đoạn không xác định',
+    loading: 'Đang tải quan hệ trước sau',
+    noneTitle: 'Chưa có quan hệ trước sau',
+    noneDescription: 'Dùng «Thêm quan hệ» để định thứ tự giữa các công đoạn.',
+    typesLoadFailed:
+      'Không tải được danh sách loại quan hệ. Hãy thử lại. Chưa tải xong thì chưa lưu được.',
+    saveBlockedWhileLoadingTypes: 'Đang tải danh sách loại quan hệ. Hãy lưu sau giây lát.',
+    saveBlockedByInvalid:
+      'Hãy sửa các vấn đề được đánh dấu trong bảng rồi mới lưu quan hệ trước sau.',
+    stateLocked:
+      'Rev này đã được xác nhận nên không thể đổi quan hệ trước sau. Đã tải lại danh sách — muốn đổi thì hãy phát hành Rev mới.',
+    validation: {
+      required: 'Hãy chọn cả công đoạn trước và công đoạn sau.',
+      self: 'Không thể chọn cùng một công đoạn cho trước và sau. Hãy chọn công đoạn khác.',
+      duplicate: (from: string, to: string): string =>
+        `Quan hệ này đã có (${from} → ${to}). Hãy xóa một dòng.`,
+      cycle: (path: string): string =>
+        `Quan hệ trước sau bị vòng lặp (${path}). Hãy xóa một dòng trong đó hoặc đổi chiều.`,
+    },
+    discard: {
+      title: 'Có quan hệ trước sau chưa lưu',
+      body: 'Nếu đóng, các thay đổi quan hệ trước sau trong cửa sổ này sẽ mất.',
+      stay: 'Tiếp tục sửa',
+      confirm: 'Đóng không lưu',
+    },
   },
 };

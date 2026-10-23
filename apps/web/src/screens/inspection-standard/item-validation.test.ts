@@ -31,10 +31,7 @@ describe('validateItemDraft — 필수', () => {
   });
 
   it('항목코드·항목명이 비면 필수 오류를 낸다', () => {
-    const errors = validateItemDraft(
-      draft({ inspectionItemCode: '', inspectionItemName: '' }),
-      [],
-    );
+    const errors = validateItemDraft(draft({ inspectionItemCode: '', inspectionItemName: '' }), []);
 
     expect(errors.inspectionItemCode).toBe('필수 입력 항목입니다.');
     expect(errors.inspectionItemName).toBe('필수 입력 항목입니다.');
@@ -96,7 +93,9 @@ describe('validateItemDraft — 측정 횟수', () => {
       '측정 횟수는 1 이상의 정수여야 합니다.',
     );
     expect(validateItemDraft(draft({ measurementCount: '-1' }), []).measurementCount).toBeDefined();
-    expect(validateItemDraft(draft({ measurementCount: '1.5' }), []).measurementCount).toBeDefined();
+    expect(
+      validateItemDraft(draft({ measurementCount: '1.5' }), []).measurementCount,
+    ).toBeDefined();
     expect(validateItemDraft(draft({ measurementCount: '한' }), []).measurementCount).toBeDefined();
   });
 
@@ -107,7 +106,9 @@ describe('validateItemDraft — 측정 횟수', () => {
   });
 
   it('1 이상의 정수를 통과시킨다', () => {
-    expect(validateItemDraft(draft({ measurementCount: '5' }), []).measurementCount).toBeUndefined();
+    expect(
+      validateItemDraft(draft({ measurementCount: '5' }), []).measurementCount,
+    ).toBeUndefined();
   });
 });
 

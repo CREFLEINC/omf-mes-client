@@ -48,6 +48,17 @@ describe('toScannedMaterial', () => {
   it('보류 표시가 있으면 그대로 옮긴다', () => {
     expect(toScannedMaterial(lot({ held: true })).isHeld).toBe(true);
   });
+
+  /* omf-all-around#63 — IQC 에서 적은 4M 변경품은 투입 목록에 알린다. 없으면 변경품이 아니다. */
+  it('4M 변경품 기록을 옮기고, 없으면 null 이다', () => {
+    expect(toScannedMaterial(lot()).fourMChange).toBeNull();
+    expect(
+      toScannedMaterial({
+        ...lot(),
+        fourMChange: { changeTypeCode: 'MATERIAL', remarks: '공급처 변경' },
+      }).fourMChange,
+    ).toEqual({ changeTypeCode: 'MATERIAL', remarks: '공급처 변경' });
+  });
 });
 
 describe('toScannedMold', () => {

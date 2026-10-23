@@ -24,11 +24,13 @@ import {
   useSaveInspectionResult,
 } from '../oqc-inspection/queries';
 import { RoundHistory } from '../oqc-inspection/round-history';
+import { serialBlockedReason, toSerialInputs, type SerialRow } from '../oqc-inspection/serials';
 import { latestRound } from '../oqc-inspection/types';
 import { targetSignatureOf, type WriteTargetSignature } from '../oqc-inspection/write-target';
 import { PopConfirmDialog, PopJudgmentBar, PopJudgmentForm, usePopJudgment } from './judgment';
 import { PopQueueList } from './queue-list';
 import { PopRequestSummary } from './request-summary';
+import { PopSerialStep } from './serial-step';
 
 const t = messages.popOqcInspection;
 
@@ -75,6 +77,8 @@ export const PopOqcInspectionScreen = () => {
   const judgmentValues = useCodeValues(CODE_GROUPS.overallJudgment);
   const judgmentOptions = toCodeOptions(judgmentValues.data ?? []);
   const [judgment, setJudgment] = useState('');
+  /* 검사한 시리얼(omf-all-around#68) — 의뢰를 바꾸거나 저장에 성공하거나 재검사를 열고 닫으면 비운다. */
+  const [serialRows, setSerialRows] = useState<SerialRow[]>([]);
 
   /* R3 — 누를 때 겨눈 대상을 적어 두고 돌아와 대조한다. */
   const writeTargetRef = useRef<WriteTargetSignature | null>(null);
@@ -87,6 +91,7 @@ export const PopOqcInspectionScreen = () => {
 
       writeTargetRef.current = null;
       setIsJustSaved(true);
+      setSerialRows([]);
     },
     workerNo ?? undefined,
   );
@@ -121,6 +126,7 @@ export const PopOqcInspectionScreen = () => {
   useEffect(() => {
     writeTargetRef.current = null;
     setIsJustSaved(false);
+    setSerialRows([]);
   }, [selectedId]);
 
   const rows = queue.data?.rows ?? [];
@@ -154,6 +160,7 @@ export const PopOqcInspectionScreen = () => {
       overallJudgmentCode: judgment,
       inspectedAt,
       previousResultId,
+      serials: toSerialInputs(serialRows),
     });
   };
 
@@ -174,12 +181,14 @@ export const PopOqcInspectionScreen = () => {
     isSaving: save.isSaving,
     isJustSaved,
     workerNo,
+    serialBlockedReason: serialBlockedReason(serialRows, inspectedQty, draft.rejected),
   });
 
   const startReinspection = (): void => {
     setIsJustSaved(false);
     setDraft(EMPTY_QUANTITY_DRAFT);
     setJudgment('');
+    setSerialRows([]);
     setIsReinspecting(true);
   };
 
@@ -225,11 +234,24 @@ export const PopOqcInspectionScreen = () => {
             isSaving={save.isSaving}
             fieldErrors={save.fieldErrors}
             hasLot={detail.data.lotId !== null}
+            serialStep={
+              detail.data.targetTypeCode === 'SHIPMENT_REQUEST' ? (
+                <PopSerialStep
+                  inspectionRequestId={selectedId}
+                  itemId={detail.data.itemId}
+                  rows={serialRows}
+                  onChange={setSerialRows}
+                  serverError={save.fieldErrors.serials}
+                  disabled={save.isSaving}
+                />
+              ) : undefined
+            }
           >
             <RoundHistory
               rounds={rounds.data ?? []}
               currentResultId={isReinspectingNow ? null : roundId}
               isReinspecting={isReinspectingNow}
+              judgmentOptions={judgmentOptions}
             />
           </PopJudgmentForm>
         )}
@@ -302,6 +324,7 @@ export const PopOqcInspectionScreen = () => {
           setIsReinspecting(false);
           setDraft(draftOf(round));
           setJudgment(storedJudgment);
+          setSerialRows([]);
         }}
       />
 

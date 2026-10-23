@@ -11,7 +11,11 @@ export interface WorkOrderCloseCandidateRow {
   workOrderId: number;
   workOrderNo: string;
   itemLabel: string | null;
+  statusLabel: string;
   quantityLabel: string;
+  goodQtyLabel: string;
+  achievementLabel: string;
+  judgmentLabel: string;
 }
 
 export interface WorkOrderCloseCandidateListPaneProps {
@@ -58,7 +62,11 @@ export const WorkOrderCloseCandidateListPane = ({
       ),
     },
     { key: 'item', header: t.fields.item, render: (row) => itemLabel(row.itemLabel) },
+    { key: 'statusLabel', header: t.fields.status },
     { key: 'quantityLabel', header: t.fields.quantity, align: 'end' },
+    { key: 'goodQtyLabel', header: t.fields.goodQty, align: 'end' },
+    { key: 'achievementLabel', header: t.fields.achievementRate, align: 'end' },
+    { key: 'judgmentLabel', header: t.fields.judgment },
   ];
 
   if (loadError !== null && loadError !== undefined) {

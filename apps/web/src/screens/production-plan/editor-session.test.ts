@@ -17,6 +17,7 @@ const productionPlan = (productionPlanId: number, productionOrderId = 701, plann
   statusCode: 'DRAFT',
   confirmedAt: null,
   remarks: null,
+  versionNo: 1,
 });
 
 const defaults = {

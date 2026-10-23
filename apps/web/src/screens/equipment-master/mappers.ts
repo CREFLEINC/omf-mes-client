@@ -41,6 +41,7 @@ export const groupToFormValues = (group: EquipmentGroup): GroupFormValues => ({
   defaultWipLocationId: optionalIdToText((group as LineDefaultLocations).defaultWipLocationId),
   defaultFgLocationId: optionalIdToText((group as LineDefaultLocations).defaultFgLocationId),
   defaultScrapLocationId: optionalIdToText((group as LineDefaultLocations).defaultScrapLocationId),
+  departmentId: optionalIdToText(group.departmentId),
 });
 
 /**
@@ -60,6 +61,7 @@ export const emptyGroupFormValues = (): GroupFormValues => ({
   defaultWipLocationId: '',
   defaultFgLocationId: '',
   defaultScrapLocationId: '',
+  departmentId: '',
 });
 
 /**
@@ -85,6 +87,7 @@ export const toGroupUpdate = (
   defaultWipLocationId: textToOptionalId(values.defaultWipLocationId),
   defaultFgLocationId: textToOptionalId(values.defaultFgLocationId),
   defaultScrapLocationId: textToOptionalId(values.defaultScrapLocationId),
+  departmentId: textToOptionalId(values.departmentId),
 });
 
 /**
@@ -106,7 +109,8 @@ export const isSameGroupValues = (a: GroupFormValues, b: GroupFormValues): boole
   a.parentGroupId === b.parentGroupId &&
   a.defaultWipLocationId === b.defaultWipLocationId &&
   a.defaultFgLocationId === b.defaultFgLocationId &&
-  a.defaultScrapLocationId === b.defaultScrapLocationId;
+  a.defaultScrapLocationId === b.defaultScrapLocationId &&
+  a.departmentId === b.departmentId;
 
 /* ── 설비 ─────────────────────────────────────────────────────────── */
 

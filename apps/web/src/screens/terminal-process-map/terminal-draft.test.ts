@@ -23,7 +23,9 @@ describe('단말 운영 상태', () => {
 
   it('수정에서는 운영 상태를 반드시 입력하고 그대로 보낸다', () => {
     expect(validateTerminal(filled, false).statusCode).toBeDefined();
-    expect(validateTerminal({ ...filled, statusCode: 'STOPPED' }, false).statusCode).toBeUndefined();
+    expect(
+      validateTerminal({ ...filled, statusCode: 'STOPPED' }, false).statusCode,
+    ).toBeUndefined();
     expect(toUpdateBody({ ...filled, statusCode: 'STOPPED' }).statusCode).toBe('STOPPED');
   });
 });

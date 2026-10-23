@@ -11,7 +11,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite } from '../../patterns/master';
@@ -86,6 +86,8 @@ const describeLoadError = (error: ApiError): string => {
   }
 };
 
+/** OQC 생략 결재 유형 — 서버 선행 값(omf-all-around#119 · P-83). 생성 타입의 enum 에 아직 없다. */
+const OQC_SKIP = 'OQC_SKIP';
 export interface QualityApprovalScreenProps {
   approvalTypeCodes?: readonly string[];
   statusCodes?: readonly string[];
@@ -108,8 +110,10 @@ export const QualityApprovalScreen = ({
   const query = toRequestListQuery(filters, pendingOnly, page);
   const list = useApprovalRequests(query);
   const detail = useApprovalRequestDetail(selectedId);
+  /* OQC 생략(#119)은 특채가 아니다 — 연결 조건(특채)을 묻지도, 요구하지도 않는다. */
+  const isOqcSkip = String(detail.data?.request.approvalTypeCode) === OQC_SKIP;
   const conditionCandidates = useConcessionCandidates(
-    detail.data?.request.approvalRequestId ?? null,
+    isOqcSkip ? null : (detail.data?.request.approvalRequestId ?? null),
   );
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
@@ -130,10 +134,11 @@ export const QualityApprovalScreen = ({
   );
   const actionLockReasonId = useId();
   const hasSafeCondition =
-    selectedId !== null &&
-    conditionCandidates.data !== undefined &&
-    !conditionCandidates.isError &&
-    toConcessionCardinality(selectedId, conditionCandidates.data).kind === 'one';
+    isOqcSkip ||
+    (selectedId !== null &&
+      conditionCandidates.data !== undefined &&
+      !conditionCandidates.isError &&
+      toConcessionCardinality(selectedId, conditionCandidates.data).kind === 'one');
 
   const decisionWrite = useMasterWrite<DecisionVariables, ApprovalRequestDetail>({
     request: (variables, headers) => {
@@ -300,7 +305,14 @@ export const QualityApprovalScreen = ({
     return detail.data === undefined ? null : (
       <>
         <DetailPane view={toRequestDetailView(detail.data.request)} />
-        <ConditionPane approvalRequestId={detail.data.request.approvalRequestId} />
+        {/* OQC 생략(#119)은 연결 조건이 없다 — 승인 뒤 실행할 화면을 알린다(공유계약 J-8). */}
+        {isOqcSkip ? (
+          <AlertBanner variant="info" title={t.detail.oqcSkipNote}>
+            <Link to="/shipment/oqc-inspection">{t.detail.openOqcInspection}</Link>
+          </AlertBanner>
+        ) : (
+          <ConditionPane approvalRequestId={detail.data.request.approvalRequestId} />
+        )}
       </>
     );
   };

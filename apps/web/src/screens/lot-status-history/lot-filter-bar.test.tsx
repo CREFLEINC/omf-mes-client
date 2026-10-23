@@ -139,7 +139,7 @@ describe('LOT 현재 조회 조건', () => {
     // 품목은 검색 창에서 고른다 — 중지 품목까지 찾고 가용 재고는 부르지 않는다.
     itemSearchQueries.length = 0;
     await user.click(screen.getByLabelText('품목'));
-    const picker = await screen.findByRole('dialog', { name: '품목 선택' });
+    const picker = await screen.findByRole('dialog', { name: '품목 검색' });
     await user.click(await within(picker).findByRole('checkbox', { name: 'SAMPLE-ITEM-01' }));
     expect(within(picker).getByText(/합성 품목 · 미사용/)).toBeInTheDocument();
     expect(within(picker).queryByRole('columnheader', { name: '가용' })).not.toBeInTheDocument();

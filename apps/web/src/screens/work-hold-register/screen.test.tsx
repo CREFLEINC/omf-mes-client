@@ -76,6 +76,21 @@ const renderScreen = (routes: StubRoute[], route = ROUTE) =>
   );
 
 describe('P-02-10 작업 중단 등록', () => {
+  it('머리에 내부 id 대신 W/O 번호를 보인다', async () => {
+    renderScreen([
+      {
+        match: (request) => isGet(request, `/production/work-orders/${String(WORK_ORDER_ID)}`),
+        respond: () =>
+          jsonResponse({ workOrderId: Number(WORK_ORDER_ID), workOrderNo: 'WO-SYN-29' }),
+      },
+      sessionsRoute([workSession()]),
+      eventsRoute([]),
+    ]);
+
+    expect(await screen.findByText(`${t.entry.workOrderLabel} WO-SYN-29`)).toBeInTheDocument();
+    expect(screen.queryByText(/W\/O #/)).toBeNull();
+  });
+
   it('열린 세션의 번호·시작 시각을 세운다', async () => {
     renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
 
@@ -353,6 +368,44 @@ describe('P-02-10 작업 중단 등록', () => {
       expect(eventBody).toMatchObject({ eventTypeCode: 'STOP', reasonCode: 'MOLD_CHANGE' });
       /* 발생 시각은 단말이 보낸다(계약) — 서버 수신 시각과 다른 값이다. */
       expect(eventBody).toHaveProperty('occurredAt', expect.any(String));
+    });
+
+    it('거부된 뒤 고쳐서 다시 등록하면 새 건이 나간다 — 거부로 멈춘 큐가 풀린다', async () => {
+      const user = userEvent.setup();
+      const sent: Request[] = [];
+      let attempt = 0;
+
+      renderScreen([
+        sessionsRoute([workSession()]),
+        eventsRoute([]),
+        {
+          match: (request) => request.method === 'POST',
+          respond: (request) => {
+            sent.push(request);
+            attempt += 1;
+            return attempt === 1
+              ? jsonResponse(
+                  {
+                    errors: [
+                      { scope: 'screen', code: 'INVALID', message: '합성 거부 사유입니다.' },
+                    ],
+                  },
+                  { status: 400 },
+                )
+              : jsonResponse({}, { status: 201 });
+          },
+        },
+      ]);
+
+      await user.click(await screen.findByRole('radio', { name: MOLD_CHANGE_NAME }));
+      await user.click(screen.getByRole('button', { name: t.form.stopAction }));
+      expect(await screen.findByText('합성 거부 사유입니다.')).toBeVisible();
+
+      await user.click(screen.getByRole('radio', { name: MOLD_CHANGE_NAME }));
+      await user.click(screen.getByRole('button', { name: t.form.stopAction }));
+
+      await waitFor(() => expect(paths(sent)).toEqual([HOLD_PATH, HOLD_PATH, EVENTS_PATH]));
+      expect(screen.queryByText(t.outbox.stalled)).toBeNull();
     });
 
     /*
@@ -654,6 +707,112 @@ describe('P-02-10 작업 중단 등록', () => {
 
         return jsonResponse({}, { status: 201 });
       },
+    });
+
+    it('끝낸 뒤 세션이 없으면 「먼저 시작하세요」 대신 끝냈다는 사실과 다음 할 일을 말한다', async () => {
+      const user = userEvent.setup();
+      const sent: Request[] = [];
+      let ended = false;
+
+      renderScreen([
+        {
+          match: (request) => isGet(request, SESSIONS_PATH),
+          respond: () => {
+            const items = ended ? [] : [workSession()];
+            return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
+          },
+        },
+        eventsRoute([]),
+        {
+          match: (request) => request.method === 'POST',
+          respond: (request) => {
+            sent.push(request);
+            ended = true;
+            return jsonResponse({}, { status: 201 });
+          },
+        },
+      ]);
+
+      await user.click(await screen.findByRole('button', { name: t.end.action }));
+      await user.click(await screen.findByRole('button', { name: t.end.confirmAction }));
+
+      expect(await screen.findByText(t.session.ended(messages.workStart.title))).toBeVisible();
+      expect(screen.queryByText(t.session.none)).toBeNull();
+    });
+
+    it('관리웹에서 이미 끝낸 세션이라 거부되면 서버 문구와 작업 시작으로 가는 길을 주고 다시 보내기를 권하지 않는다', async () => {
+      const user = userEvent.setup();
+      const message =
+        '이미 종료된 작업 세션입니다(관리웹에서 종료됐을 수 있습니다). 작업을 계속하려면 작업 시작을 다시 하세요.';
+      let sessionReads = 0;
+      const { router } = renderWithProviders(
+        <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>
+          <WorkHoldRegisterScreen />
+        </PopIdentityProvider>,
+        {
+          fetch: createStubFetch([
+            {
+              match: (request) => isGet(request, SESSIONS_PATH),
+              respond: () => {
+                sessionReads += 1;
+                const items = sessionReads === 1 ? [workSession()] : [];
+                return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
+              },
+            },
+            eventsRoute([]),
+            {
+              match: (request) => request.method === 'POST',
+              respond: () =>
+                jsonResponse(
+                  { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
+                  { status: 400 },
+                ),
+            },
+            reasonsRoute,
+          ]),
+          route: ROUTE,
+          dataRouter: true,
+        },
+      );
+
+      await user.click(await screen.findByRole('button', { name: t.end.action }));
+      await user.click(await screen.findByRole('button', { name: t.end.confirmAction }));
+
+      expect(await screen.findByText(t.outbox.locked)).toBeVisible();
+      expect(screen.getByText(message)).toBeVisible();
+      expect(screen.queryByRole('button', { name: t.outbox.retryNow })).toBeNull();
+      expect(screen.queryByRole('button', { name: messages.common.retry })).toBeNull();
+      expect(screen.queryByText(t.outbox.stalled)).toBeNull();
+      /* 끝난 세션이라 세션을 다시 읽어 「세션 없음」으로 맞춘다. */
+      await waitFor(() => expect(sessionReads).toBeGreaterThan(1));
+      expect(await screen.findByText(t.session.none)).toBeVisible();
+
+      await user.click(
+        screen.getByRole('button', { name: t.outbox.toWorkStart(messages.workStart.title) }),
+      );
+      await waitFor(() => expect(router?.state.location.pathname).toBe('/pop/work-start'));
+    });
+
+    it('그 밖의 거부는 서버 문구를 그대로 보인다', async () => {
+      const user = userEvent.setup();
+      renderScreen([
+        sessionsRoute([workSession()]),
+        eventsRoute([]),
+        {
+          match: (request) => request.method === 'POST',
+          respond: () =>
+            jsonResponse(
+              { errors: [{ scope: 'screen', code: 'INVALID', message: '합성 거부 사유입니다.' }] },
+              { status: 400 },
+            ),
+        },
+      ]);
+
+      await user.click(await screen.findByRole('button', { name: t.end.action }));
+      await user.click(await screen.findByRole('button', { name: t.end.confirmAction }));
+
+      expect(await screen.findByText('합성 거부 사유입니다.')).toBeVisible();
+      expect(screen.getByText(t.outbox.rejected)).toBeVisible();
     });
 
     /* ⛔ 확인 없이 닫지 않는다 — 닫은 세션은 다시 열 수 없다. */

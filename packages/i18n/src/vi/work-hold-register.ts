@@ -21,6 +21,8 @@ export const workHoldRegister: Translated<typeof ko.workHoldRegister> = {
     loading: 'Đang kiểm tra phiên.',
     loadFailed: 'Không tải được phiên hiện tại.',
     none: 'Không có phiên làm việc đang chạy nên không đăng ký tạm dừng được. Hãy bắt đầu công việc trước.',
+    ended: (startScreen: string): string =>
+      `Đã kết thúc phiên làm việc. Muốn làm tiếp, hãy bắt đầu lại ở màn hình «${startScreen}».`,
     unknownValue: 'Không xác nhận được',
   },
   history: {
@@ -63,6 +65,8 @@ export const workHoldRegister: Translated<typeof ko.workHoldRegister> = {
     offline: 'Đang ngoại tuyến. Khi có kết nối sẽ tự động gửi.',
     pending: (count: number) => `Chờ gửi ${String(count)} mục`,
     rejected: 'Máy chủ không nhận.',
+    locked: 'Công việc này đã kết thúc nên không ghi thêm được.',
+    toWorkStart: (screen: string): string => `Đến «${screen}»`,
     stalled: 'Máy chủ vẫn không nhận. Nội dung đã đăng ký vẫn còn nguyên.',
     retryNow: 'Gửi lại',
   },

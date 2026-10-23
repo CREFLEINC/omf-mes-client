@@ -10,6 +10,7 @@ const values = (overrides: Partial<PlanFormValues> = {}): PlanFormValues => ({
   itemId: '',
   processId: '',
   routingId: '',
+  pqcSkipAllowed: false,
   ...overrides,
 });
 

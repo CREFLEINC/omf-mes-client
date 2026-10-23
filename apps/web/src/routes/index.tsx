@@ -5,6 +5,8 @@ import { GuestOnly, RequireSession } from '../patterns/session';
 import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { AlarmRecipientSettingsScreen } from '../screens/alarm-recipient-settings/screen';
+import { ZaloConnectionScreen } from '../screens/zalo-connection/screen';
+import { DispatchHistoryScreen } from '../screens/dispatch-history/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
 import { CommonCodeScreen } from '../screens/common-code/screen';
 import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
@@ -17,10 +19,11 @@ import { WorkOrderCloseScreen } from '../screens/work-order-close/screen';
 import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen';
 import { MaterialIssueRequestScreen } from '../screens/material-issue-request/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
-import { WorkOrderReleaseScreen } from '../screens/work-order-release/screen';
-import { WorkOrderAssignmentScreen } from '../screens/work-order/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
+import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-redirect';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
+import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
+import { InspectionSheetTemplateScreen } from '../screens/inspection-sheet-template/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { ErpBomScreen } from '../screens/erp-bom/screen';
@@ -57,15 +60,20 @@ import { NotificationCenterScreen } from '../screens/notification-center/screen'
 import { DispositionRequestScreen } from '../screens/disposition-request/screen';
 import { ReturnReceiptScreen } from '../screens/return-receipt/screen';
 import { OqcInspectionScreen } from '../screens/oqc-inspection/screen';
-import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
 import { PoChangeReviewScreen } from '../screens/po-change-review/screen';
 import { ProductionOrderScreen } from '../screens/production-order/screen';
-import { ProductionPlanScreen } from '../screens/production-plan/screen';
+import {
+  LegacyAssignmentRedirect,
+  LegacyPlanRedirect,
+  LegacyReleaseRedirect,
+} from '../screens/production-order/process/legacy-redirects';
+import { ProductionOrderProcessScreen } from '../screens/production-order/process/process-screen';
 import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
 import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
 import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/screen';
+import { InspectionLevelScreen } from '../screens/inspection-level/screen';
 import { ProductStockStatusScreen } from '../screens/product-stock-status/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
@@ -128,6 +136,8 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/putaway-rule', element: <PutawayRuleScreen /> },
       { path: 'master-data/routing', element: <RoutingScreen /> },
       { path: 'master-data/inspection-standard', element: <InspectionStandardScreen /> },
+      /* W-06-24 — 검사표 기준(omf-all-around#89 · 설계보다 앞선 화면). OA 제품 검사표의 모델별 단계·항목. */
+      { path: 'master-data/inspection-sheet-template', element: <InspectionSheetTemplateScreen /> },
       { path: 'master-data/defect-cause-code', element: <DefectCauseCodeScreen /> },
       { path: 'master-data/common-code', element: <CommonCodeScreen /> },
       /* W-06-04 — 전용 자원이 아니라 공통코드의 코드값 편집기를 한 그룹으로 고정해 여는 진입점이다. */
@@ -177,11 +187,10 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'logistics/inbound-schedule', element: <InboundScheduleScreen /> },
       /*
-       * W-01-03 — 도메인 01의 **첫 쓰기 화면**이다. 앞머리는 같은 규칙(사이드바 섹션)을 따르고,
-       * 차례는 업무 순서를 따른다 — 도착 예정을 보고(입하 예정) 도착을 처리한 뒤(초과 입하 분리)
-       * 그 결과를 재고에서 확인한다.
+       * W-01-03 「입하 등록」 — **화면이 아니라 입하 예정 조회의 창이다**(사용자 지시 2026-10-21 — 입하·입고 일을
+       * 그 화면으로 모은다). 옛 「초과 입하 분리」 주소는 즐겨찾기가 죽지 않게 그 창으로 옮겨 준다.
        */
-      { path: 'logistics/over-receipt-split', element: <OverReceiptSplitScreen /> },
+      { path: 'logistics/over-receipt-split', element: <OverReceiptSplitRedirect /> },
       /*
        * W-01-11 — **이 저장소에서 처음으로 사이드바에 두지 않는 화면이다.**
        *
@@ -194,19 +203,18 @@ export const appRouter = createBrowserRouter([
        * 않는 것을 전제로 설계해야 하므로 진입 자체를 줄이는 편이 싸다(배너는 화면에 그대로
        * 두었다). **항상 비활성인 메뉴 항목**은 죽은 항목을 남긴다.
        *
-       * 그래서 **라우트만 연다.** 진입은 초과 입하 분리(W-01-03)의 등록 결과 구획에서
-       * **초과분이 실린 갈래의 전표마다** 서는 링크로만 하고, 그 링크가 이 주소를 가리키는지는
-       * `index.test.tsx`가 잇는다.
+       * 그래서 **라우트만 연다.** 입하 등록(W-01-03)의 결과는 더 이상 이리로 오지 않는다(서버 장부 P-100 —
+       * 초과분은 입하 예정 조회의 초과분 연결로 간다). 맥락(`receipt`)을 실은 주소로만 화면이 선다.
        *
        * 주소 앞머리는 다른 자재창고 화면과 같은 규칙(사이드바 섹션)을 따른다 — 메뉴에 서지
        * 않아도 이 화면이 속한 업무 묶음은 자재창고이고, 주소가 그 사실을 말해야 한다.
-       * **차례는 진입 경로를 따른다** — 초과 입하 분리 바로 뒤다. 메뉴가 없어 아래 화면들의
-       * 업무 순서 사슬(예정 → 초과 분리 → 입고 → 재고 → 실사 → 반품 → 폐기)에 들지 않으므로,
+       * **차례는 옛 진입 경로를 따른다** — 옛 초과 입하 분리 주소 바로 뒤다. 메뉴가 없어 아래 화면들의
+       * 업무 순서 사슬(예정 · 입하 등록 → 입고 → 재고 → 실사 → 반품 → 폐기)에 들지 않으므로,
        * 이 화면을 여는 화면 옆이 읽히는 자리다.
        */
       { path: 'logistics/po-register', element: <PoRegisterScreen /> },
       /*
-       * W-01-01 — **차례가 업무 순서다.** 도착을 처리한 뒤(초과 입하 분리) **받아들여도
+       * W-01-01 — **차례가 업무 순서다.** 도착을 처리한 뒤(입하 등록) **받아들여도
        * 되는지를 먼저 판정하고**(IQC 수입검사·판정) 그 다음 창고로 받아들인다.
        *
        * 합격이 곧 Release 이고 그 LOT 이 정상품 입하 처리로 넘어간다(스펙 §5-1) — 두 화면이
@@ -219,7 +227,7 @@ export const appRouter = createBrowserRouter([
       { path: 'logistics/iqc-inspection', element: <IqcInspectionScreen /> },
       /*
        * W-01-10 — 같은 규칙(사이드바 섹션)을 따르고 차례도 업무 순서다: 도착을 처리한 뒤
-       * (초과 입하 분리) 창고로 받아들이고(정상품 입하 처리) 그 결과를 재고에서 확인한다.
+       * (입하 등록) 창고로 받아들이고(정상품 입하 처리) 그 결과를 재고에서 확인한다.
        */
       { path: 'logistics/goods-receipt', element: <GoodsReceiptScreen /> },
       /*
@@ -314,17 +322,22 @@ export const appRouter = createBrowserRouter([
       { path: 'logistics/document-progress', element: <DocumentProgressScreen /> },
       /* W-02-01 — 생산의 첫 화면이며 주소는 API 리소스가 아니라 화면을 가리킨다. */
       { path: 'production/production-orders', element: <ProductionOrderScreen /> },
+      /* W-02-01 처리 화면 — 주소에 업무 번호(ERP W/O 번호)를 쓴다. W-02-02~04 를 단계로 합쳤다. */
+      {
+        path: 'production/production-orders/:productionOrderNo',
+        element: <ProductionOrderProcessScreen />,
+      },
       /*
        * W-02-06 — P/O 수신·조회 바로 뒤다. 받은 P/O 가 «바뀌었을 때» 판정하는 자리라
        * 그 화면이 만든 목록 위에서 이어진다.
        */
       { path: 'production/po-change-review', element: <PoChangeReviewScreen /> },
       /* W-02-02 — P/O를 고른 뒤 계획을 편성하므로 생산의 둘째 공개 화면이다. */
-      { path: 'production/production-plans', element: <ProductionPlanScreen /> },
+      { path: 'production/production-plans', element: <LegacyPlanRedirect /> },
       /* W-02-03 — 생산계획의 W/O에 4M 자원을 배정하고 유효성을 점검한다. */
-      { path: 'production/work-order-assignments', element: <WorkOrderAssignmentScreen /> },
+      { path: 'production/work-order-assignments', element: <LegacyAssignmentRedirect /> },
       /* W-02-04 — 4M 배정을 마친 W/O를 확정·배포하고 생산LOT을 선발행한다. */
-      { path: 'production/work-order-release', element: <WorkOrderReleaseScreen /> },
+      { path: 'production/work-order-release', element: <LegacyReleaseRedirect /> },
       /* W-02-05 — 같은 생산 섹션의 마감·모니터링 화면이다. */
       { path: 'production/work-order-close', element: <WorkOrderCloseScreen /> },
       /*
@@ -372,6 +385,10 @@ export const appRouter = createBrowserRouter([
        * 같은 판정을 관리웹에서 등록하고 지난 의뢰를 본다.
        */
       { path: 'quality/pqc-inspections', element: <PqcInspectionRegisterScreen /> },
+      /* W-03-12 — 검사 수준 관리(omf-all-around#64 · 설계보다 앞선 화면). 품목별 IQC 검사 수준과 전환 이력. */
+      { path: 'quality/inspection-levels', element: <InspectionLevelScreen /> },
+      /* W-03-13 — 제품 검사표 조회(omf-all-around#89 · 설계보다 앞선 화면). 시리얼별 OA 제품 검사표 조회·서명·승인. */
+      { path: 'quality/inspection-sheets', element: <InspectionSheetScreen /> },
       /* W-04-11 — 품질에서 정상 판정된 반품 LOT을 출하 가능 재고로 되돌린다. */
       { path: 'shipment/stock-reinstatements', element: <StockReinstatementScreen /> },
       /*
@@ -548,6 +565,10 @@ export const appRouter = createBrowserRouter([
       { path: 'notification/center', element: <NotificationCenterScreen /> },
       /* W-CO-11 — 알림 이벤트별 수신 규칙을 관리한다. 이벤트 목록 자체는 계약이 소유한다. */
       { path: 'notification/recipient-settings', element: <AlarmRecipientSettingsScreen /> },
+      /* W-CO-12 — Zalo 연결 정보(001). */
+      { path: 'notification/zalo-connection', element: <ZaloConnectionScreen /> },
+      /* W-CO-13 — 이벤트 처리 결과와 Zalo 발송 이력(001). */
+      { path: 'notification/dispatch-history', element: <DispatchHistoryScreen /> },
       /* W-CO-04 — 알림 묶음이다. 알림센터가 받는 자리이고 이쪽이 보내는 자리다. */
       { path: 'notification/notices', element: <NoticeScreen /> },
       /*

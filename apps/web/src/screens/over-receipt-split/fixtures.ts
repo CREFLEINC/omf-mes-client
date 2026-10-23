@@ -31,7 +31,7 @@ export const purchaseOrder = (overrides: Partial<PoView> = {}): PoView => ({
 });
 
 /**
- * 화면 수준 테스트가 목록 응답으로 쓰는 세 건. 화면이 다뤄야 하는 까다로운 입력을 일부러 담는다.
+ * 「입하 등록」 창 시험이 발주 상세로 쓰는 세 건. 창이 다뤄야 하는 까다로운 입력을 일부러 담는다.
  *
  * - 9001 — 값이 전부 채워져 있다. 라인 픽스처가 이 발주의 것이다
  * - 9002 — **공급사 번호가 참조 목록에 없고** 입고 예정일이 `null`이다
@@ -72,13 +72,14 @@ export const purchaseOrderLine = (overrides: Partial<PoLineView> = {}): PoLineVi
 });
 
 /**
- * 9001의 라인 세 줄. **정량/초과 가르기의 까다로운 자리를 셋이 나눠 갖는다.**
+ * 9001의 라인 세 줄. **P/O 몫·초과 몫 가르기의 까다로운 자리를 셋이 나눠 갖는다.**
  *
- * - 9401 — 잔량 60 · 허용 5 → **정량 한도 65.** 65는 전부 정량분, 66은 1만 초과분이다
- * - 9402 — 꼭 맞게 받았고 **초과 허용치가 0**이다 → 한도 0. 도착한 전부가 초과분이다.
+ * - 9401 — 잔량 60 · 허용 5 → **정량 한도 65.** 65는 전부 P/O 몫, 66은 1만 초과 몫이다
+ * - 9402 — 꼭 맞게 받았고 **초과 허용치가 0**이다 → 한도 0. 이 줄에 넣은 수량은 받을 수 없다
+ *   (초과 몫만으로 된 줄은 서버가 막는다 — `qtyNoRoom`).
  *   품목이 9401·9403과 **다르다** — 품목을 번호마다 묻는지(같은 품목이면 한 번)를 드러낸다
- * - 9403 — **누적 입하가 발주를 넘겼다**(45 > 30). 잔량을 음수로 쓰면 한도가 0이 되어
- *   허용치 안쪽 도착까지 초과분으로 갈린다
+ * - 9403 — **누적 입하가 발주를 넘겼다**(32 > 30). 한도는 서버 식(`발주 + 허용 − 누적`)으로 3 이다 —
+ *   잔량(0)에 허용치(5)를 통째로 더하면 서버가 막을 수량까지 P/O 몫으로 잡는다
  */
 export const purchaseOrderLineFixtures: PoLineView[] = [
   purchaseOrderLine(),
@@ -94,10 +95,19 @@ export const purchaseOrderLineFixtures: PoLineView[] = [
     purchaseOrderLineId: 9403,
     lineNo: 3,
     orderedQty: 30,
-    receivedQty: 45,
+    receivedQty: 32,
     toleranceOverQty: 5,
   }),
 ];
+
+/**
+ * 발주 상세 응답(`GET /logistics/purchase-orders/{id}`) — 「입하 등록」 창이 머리와 라인을 이 하나로 받는다.
+ * 창이 읽는 필드만 담는다(계약 `PurchaseOrderDetailResponse` 의 나머지는 창이 그리지도 보내지도 않는다).
+ */
+export const purchaseOrderDetailBody = (
+  order: PoView = purchaseOrder(),
+  lines: PoLineView[] = purchaseOrderLineFixtures,
+): { purchaseOrder: PoView; lines: PoLineView[] } => ({ purchaseOrder: order, lines });
 
 /**
  * 참조 응답의 본문. **화면이 읽는 필드만 담는다** — 스텁 응답은 JSON이라
@@ -126,10 +136,46 @@ export const plantFixtures = [
 ];
 
 export const itemFixtures = [
-  { itemId: 9301, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목 가', isActive: true },
-  { itemId: 9302, itemCode: 'SAMPLE-ITEM-02', itemName: '합성 품목 나', isActive: true },
+  {
+    itemId: 9301,
+    itemCode: 'SAMPLE-ITEM-01',
+    itemName: '합성 품목 가',
+    isActive: true,
+    inspectionRequired: true,
+  },
+  {
+    itemId: 9302,
+    itemCode: 'SAMPLE-ITEM-02',
+    itemName: '합성 품목 나',
+    isActive: true,
+    inspectionRequired: false,
+  },
 ];
 
 export const uomFixtures = [
   { uomId: 9501, uomCode: 'SAMPLE-EA', uomName: '합성 단위 개', isActive: true },
 ];
+
+/** 코드 사전 — 서버 시드 그대로(2026-09-03 등재). 이름은 합성이다. */
+export const lotReasonFixtures = [
+  {
+    codeValueId: 9801,
+    codeGroupId: 98,
+    code: 'NO_LABEL',
+    codeName: '라벨 없음',
+    isActive: true,
+    displayOrder: 10,
+  },
+  {
+    codeValueId: 9802,
+    codeGroupId: 98,
+    code: 'OTHER',
+    codeName: '기타',
+    isActive: true,
+    displayOrder: 90,
+  },
+];
+
+/** 9301(SAMPLE-ITEM-01)의 사전부착 라벨 — 수량 66 · 공급사 SAMPLE-SUP-01. */
+export const LABEL_9301 = 'SAMPLE-ITEM-01|66|260806|SAMPLE-SUP-01|0001';
+export const LABEL_9301_SECOND = 'SAMPLE-ITEM-01|10|260806|SAMPLE-SUP-01|0002';
