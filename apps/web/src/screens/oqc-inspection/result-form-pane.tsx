@@ -27,7 +27,7 @@ import {
   type QuantityDraft,
 } from './quantity-draft';
 import { toTransitionPreview } from './transition-preview';
-import { TransitionWarning } from './transition-warning';
+import { JudgmentGuide } from './transition-warning';
 import type { InspectionResultRound } from './types';
 import { withUom } from './uom-lookup';
 
@@ -427,7 +427,14 @@ export const ResultFormPane = ({
            * ⛔ **되돌릴 수 없는 쓰기가 무엇을 하는지 누르기 «전»에 보인다.** 확인 창에도 같은 본문이
            * 다시 서지만, 창을 열기 전에 이미 보고 판단할 수 있어야 한다.
            */}
-          {!isLocked && <TransitionWarning preview={preview} hasLot={hasLot} />}
+          {!isLocked && (
+            <JudgmentGuide
+              preview={preview}
+              hasLot={hasLot}
+              judgment={judgment}
+              judgmentLabel={labelOfCode(judgmentOptions, judgment)}
+            />
+          )}
         </section>
 
         {/* ── 검사한 시리얼(omf-all-around#68) — 출하작업지시 의뢰의 열린 회차에서만 ── */}

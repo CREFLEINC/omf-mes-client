@@ -166,6 +166,17 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     noAmendment: 'Đánh giá không sửa được — muốn lật lại thì phải kiểm tra lại.',
     dispositionPath:
       'Quyết định xử lý phần không đạt (làm lại, hủy) không được định ở màn hình này — khi màn hình yêu cầu quyết định xử lý mở thì sẽ làm ở đó.',
+    guide: {
+      title: 'Hướng dẫn chốt đánh giá',
+      quantities: 'Số lượng đánh giá',
+      accepted: (qty: string): string => `Đạt ${qty}`,
+      rejected: (qty: string): string => `Không đạt ${qty}`,
+      held: (qty: string): string => `Tạm giữ ${qty}`,
+      selected: 'Đánh giá đã chọn',
+      notSelected: 'Chưa chọn',
+      irreversible: 'Sau khi chốt thì không sửa được đánh giá.',
+      irreversibleHint: 'Nếu cần thay đổi, hãy tiến hành kiểm tra lại.',
+    },
   },
 
   confirm: {

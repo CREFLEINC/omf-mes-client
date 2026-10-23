@@ -15611,6 +15611,115 @@ button.app-button-neutral {
   letter-spacing: var(--type-label-lg-tracking);
 }
 
+/* 판정 확정 안내(#136) — 수량 칩 · 고른 판정 · 되돌릴 수 없음(경고색) · LOT 영향. */
+.oqc-inspection-guide {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.oqc-inspection-guide-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.oqc-inspection-guide-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+}
+
+.oqc-inspection-guide-divided {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.oqc-inspection-guide-divided > :last-child {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+.oqc-inspection-guide-divided > [data-judgment='ACCEPTED'] {
+  color: var(--semantic-success-text);
+}
+
+.oqc-inspection-guide-divided > [data-judgment='REJECTED'] {
+  color: var(--semantic-error-text);
+}
+
+.oqc-inspection-guide-divided > [data-judgment='HELD'] {
+  color: var(--semantic-warning);
+}
+
+.oqc-inspection-guide-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.oqc-inspection-guide-chips > span {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.oqc-inspection-guide-chips > [data-tone='accepted'] {
+  background: var(--semantic-success-container);
+  color: var(--semantic-success-text);
+}
+
+.oqc-inspection-guide-chips > [data-tone='rejected'] {
+  background: var(--semantic-error-container);
+  color: var(--semantic-error-text);
+}
+
+.oqc-inspection-guide-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+}
+
+.oqc-inspection-guide-line > :first-child {
+  flex: none;
+  margin-top: 2px;
+}
+
+.oqc-inspection-guide-line[data-tone='warning'] {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+.oqc-inspection-guide-line[data-tone='warning'] > :first-child {
+  color: var(--semantic-warning);
+}
+
+.oqc-inspection-guide-sub {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
 /* 출하검사 생략 요청 — 단계 · 결과 안내 상자, 사유(필수 · 글자 수), 단추는 입력칸 오른쪽 아래(#136). */
 .oqc-inspection-skip-guide {
   display: grid;

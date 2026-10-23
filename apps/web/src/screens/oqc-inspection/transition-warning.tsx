@@ -1,4 +1,4 @@
-import { AlertBanner } from '@crefle/web-ui';
+import { Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import type { TransitionPreview } from './transition-preview';
@@ -70,14 +70,59 @@ export const TransitionWarningBody = ({ preview, hasLot = true }: TransitionWarn
   );
 };
 
-export const TransitionWarning = ({ preview, hasLot = true }: TransitionWarningProps) => {
+export interface JudgmentGuideProps extends TransitionWarningProps {
+  /** 고른 종합 판정 코드와 그 이름. 안 골랐으면 코드가 빈 문자열이다. */
+  judgment: string;
+  judgmentLabel: string;
+}
+
+/**
+ * 판정 구획의 「판정 확정 안내」(#136) — 확정 전에 수량 · 고른 판정 · 되돌릴 수 없음 · LOT 영향을 한 상자에.
+ * 규칙은 위 경고와 같다(셀 수 없으면 그리지 않는다 · 모르는 코드에 방향을 지어내지 않는다). 확인 창은 종전 본문을 그대로 쓴다.
+ */
+export const JudgmentGuide = ({
+  preview,
+  hasLot = true,
+  judgment,
+  judgmentLabel,
+}: JudgmentGuideProps) => {
   if (preview === null) return null;
+  const g = t.guide;
 
   return (
-    <div className="banner-slot">
-      <AlertBanner variant="warning" title={t.title}>
-        <TransitionWarningBody preview={preview} hasLot={hasLot} />
-      </AlertBanner>
-    </div>
+    <section className="oqc-inspection-guide" aria-label={g.title}>
+      <h4 className="oqc-inspection-guide-title">
+        <Icon name="info" size={20} aria-hidden="true" />
+        {g.title}
+      </h4>
+      <div className="oqc-inspection-guide-row">
+        <span>{g.quantities}</span>
+        <span className="oqc-inspection-guide-chips">
+          <span data-tone="accepted">{g.accepted(preview.accepted)}</span>
+          <span data-tone="rejected">{g.rejected(preview.rejected)}</span>
+          <span data-tone="held">{g.held(preview.held)}</span>
+        </span>
+      </div>
+      <div className="oqc-inspection-guide-row oqc-inspection-guide-divided">
+        <span>{g.selected}</span>
+        <span data-judgment={judgment === '' ? undefined : judgment}>
+          {judgment === '' ? g.notSelected : judgmentLabel}
+        </span>
+      </div>
+      <p className="oqc-inspection-guide-line" data-tone="warning">
+        <Icon name="warning" size={18} aria-hidden="true" />
+        <span>
+          {g.irreversible}
+          <span className="oqc-inspection-guide-sub">{g.irreversibleHint}</span>
+        </span>
+      </p>
+      <p className="oqc-inspection-guide-line">
+        <Icon name="info" size={18} aria-hidden="true" />
+        <span>
+          <span>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</span>{' '}
+          <span>{t.pickingImpact}</span>
+        </span>
+      </p>
+    </section>
   );
 };

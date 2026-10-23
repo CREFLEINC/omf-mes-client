@@ -203,25 +203,31 @@ describe('ResultFormPane — 서버가 되돌린 것', () => {
 });
 
 describe('ResultFormPane — 전이 경고', () => {
-  it('네 규칙을 담고, 아는 판정에는 방향을 덧붙인다', () => {
+  it('판정 확정 안내 — 수량 · 고른 판정 · 되돌릴 수 없음 · 아는 판정의 방향(#136)', () => {
     renderPane({ draft: MATCHING, judgment: 'ACCEPTED' });
 
-    const banner = screen.getByRole('alert');
+    const guide = screen.getByRole('region', { name: transition.guide.title });
 
-    expect(within(banner).getByText(transition.quantities('480', '15', '5'))).toBeInTheDocument();
-    expect(within(banner).getByText(transition.directionRelease)).toBeInTheDocument();
-    expect(within(banner).getByText(transition.pickingImpact)).toBeInTheDocument();
-    expect(within(banner).getByText(transition.pickedNotReturned)).toBeInTheDocument();
-    expect(within(banner).getByText(transition.noAmendment)).toBeInTheDocument();
-    expect(within(banner).getByText(transition.dispositionPath)).toBeInTheDocument();
+    expect(within(guide).getByText(transition.guide.accepted('480'))).toBeInTheDocument();
+    expect(within(guide).getByText(transition.guide.rejected('15'))).toBeInTheDocument();
+    expect(within(guide).getByText(transition.guide.held('5'))).toBeInTheDocument();
+    expect(within(guide).queryByText(transition.guide.notSelected)).not.toBeInTheDocument();
+    expect(within(guide).getByText(transition.guide.irreversible)).toBeInTheDocument();
+    expect(within(guide).getByText(transition.directionRelease)).toBeInTheDocument();
+    expect(within(guide).getByText(transition.pickingImpact)).toBeInTheDocument();
+  });
+
+  it('판정을 안 골랐으면 「미선택」(#136)', () => {
+    renderPane({ draft: MATCHING, judgment: '' });
+
+    expect(screen.getByText(transition.guide.notSelected)).toBeInTheDocument();
   });
 
   it('대상 LOT 이 없는 의뢰(출하작업지시 OQC)는 집은 LOT 의 방향을 말한다 — 경고와 확인 창 모두(omf-all-around#119)', async () => {
     const user = userEvent.setup();
     renderPane({ draft: MATCHING, judgment: 'REJECTED', hasLot: false });
 
-    const banner = screen.getByRole('alert');
-    expect(within(banner).getByText(transition.title)).toBeInTheDocument();
+    const banner = screen.getByRole('region', { name: transition.guide.title });
     expect(within(banner).getByText(transition.pickedDirectionHold)).toBeInTheDocument();
     expect(within(banner).queryByText(transition.directionHold)).not.toBeInTheDocument();
     expect(within(banner).getByText(transition.pickingImpact)).toBeInTheDocument();
@@ -242,7 +248,7 @@ describe('ResultFormPane — 전이 경고', () => {
   it('셀 수 없으면 경고 자체를 그리지 않는다 — 숫자가 거짓이 되는 동안 권하지 않는다', () => {
     renderPane({ draft: { accepted: 'abc', rejected: '15', held: '5' }, judgment: 'ACCEPTED' });
 
-    expect(screen.queryByText(transition.title)).not.toBeInTheDocument();
+    expect(screen.queryByText(transition.guide.title)).not.toBeInTheDocument();
   });
 });
 

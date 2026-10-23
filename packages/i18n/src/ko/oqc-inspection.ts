@@ -190,7 +190,7 @@ export const oqcInspection = {
 
     /** 종합 판정. ⛔ 값 목록을 화면에 고정하지 않는다 — 공통코드 조회로 채운다. */
     judgment: '종합 판정',
-    judgmentPlaceholder: '판정을 고르세요',
+    judgmentPlaceholder: '판정을 선택하세요',
     /**
      * 코드값 시드가 아직 안 들어가 목록이 빌 수 있다. ⛔ **감추지 않고 사유를 밝힌다** —
      * 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
@@ -299,6 +299,18 @@ export const oqcInspection = {
      */
     dispositionPath:
       '불합격분의 처분(재작업·폐기)은 이 화면에서 정하지 않습니다 — 처분 의뢰 화면이 열리면 그곳에서 합니다.',
+    /** 판정 구획의 「판정 확정 안내」 상자(#136) — 수량 · 고른 판정 · 되돌릴 수 없음 · LOT 영향. */
+    guide: {
+      title: '판정 확정 안내',
+      quantities: '판정 수량',
+      accepted: (qty: string): string => `합격 ${qty}`,
+      rejected: (qty: string): string => `불합격 ${qty}`,
+      held: (qty: string): string => `보류 ${qty}`,
+      selected: '선택한 판정',
+      notSelected: '미선택',
+      irreversible: '확정 후에는 판정을 수정할 수 없습니다.',
+      irreversibleHint: '변경이 필요한 경우 재검사를 진행해야 합니다.',
+    },
   },
 
   /** 확인 창 — **쓰기는 이 창의 버튼에서만 나간다.** */
