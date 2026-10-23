@@ -644,6 +644,20 @@ describe('QualityApprovalScreen detail', () => {
       ),
     ).toBeInTheDocument();
   });
+  it('상세에서도 유형 탭이 서고, 탭을 누르면 고른 요청을 비우고 그 유형 목록으로 돌아간다', async () => {
+    const { user } = renderScreen(
+      approvalFetch([listRoute(), detailRoute()]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    await screen.findByRole('region', { name: '요청 상세' });
+    const tabs = screen.getByRole('tablist', { name: t.fields.approvalTypeCode });
+    await user.click(within(tabs).getByRole('tab', { name: t.typeLabels.CONCESSION }));
+
+    expect(await screen.findByRole('region', { name: t.panes.list })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '요청 상세' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?ty=CONCESSION');
+  });
 });
 
 describe('QualityApprovalScreen conditions', () => {

@@ -398,13 +398,17 @@ export const QualityApprovalScreen = ({
        * 목록과 상세를 한 화면에 나란히 두지 않고 갈아 끼운다(#144, IQC #133 과 같은 방식) — 요청을 고르면
        * (`?approvalRequestId=`) 요청 상세 · 결재 진행만, 목록으로 돌아오면 목록만 선다. 조건 · 쪽은 주소에 남는다.
        */}
+      {/*
+       * 유형 탭은 목록·상세 어디서나 선다(#144) — 상세에서 탭을 누르면 고른 요청을 비우고(`apply`)
+       * 그 유형의 목록으로 돌아간다.
+       */}
+      <TypeTabs
+        options={toTypeOptions(approvalTypeCodes)}
+        value={filters.approvalTypeCode}
+        onChange={(code) => apply({ ...filters, approvalTypeCode: code }, pendingOnly)}
+      />
       {selectedId === null ? (
         <>
-          <TypeTabs
-            options={toTypeOptions(approvalTypeCodes)}
-            value={filters.approvalTypeCode}
-            onChange={(code) => apply({ ...filters, approvalTypeCode: code }, pendingOnly)}
-          />
           <section
             className="pane quality-approval-pane quality-approval-list-pane"
             aria-label={t.panes.list}
