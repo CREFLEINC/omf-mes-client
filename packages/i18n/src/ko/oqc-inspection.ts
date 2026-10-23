@@ -425,7 +425,6 @@ export const oqcInspection = {
       },
       emptyTitle: '등록된 검사 시리얼이 없습니다.',
       emptyDescription: '위에서 시리얼 번호를 스캔하거나 입력하세요.',
-      lotOnlyNote: 'LOT 단위로 판정하는 경우 사용하지 않습니다.',
     },
     scanLabel: '시리얼 스캔',
     scanPlaceholder: '시리얼 번호를 스캔하거나 입력 후 Enter',

@@ -258,7 +258,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       },
       emptyTitle: 'Chưa có serial kiểm tra nào.',
       emptyDescription: 'Hãy quét hoặc nhập số serial ở phía trên.',
-      lotOnlyNote: 'Không dùng khi đánh giá theo LOT.',
     },
     scanLabel: 'Quét serial',
     scanPlaceholder: 'Quét hoặc nhập số serial rồi nhấn Enter',
