@@ -124,6 +124,8 @@ export interface StubOptions {
   workersFailFirst?: boolean;
   /** 세션 열기 응답 상태. 기본 201. */
   startStatus?: number;
+  /** 세션 열기를 «시작할 수 없는 상태»(400 STATE_LOCKED)로 거절하며 싣는 서버 문구. */
+  startLockedMessage?: string;
   /** 세션 열기를 «열린 세션이 이미 있다»(409 OPEN_SESSION_EXISTS)로 거절하며 싣는 서버 문구. */
   startOpenSessionMessage?: string;
 
@@ -288,6 +290,16 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
     if (url.pathname === '/production/work-sessions' && request.method === 'POST') {
       if (options.startStatus !== undefined) {
         return jsonResponse({ message: '실패' }, { status: options.startStatus });
+      }
+      if (options.startLockedMessage !== undefined) {
+        return jsonResponse(
+          {
+            errors: [
+              { scope: 'screen', code: 'STATE_LOCKED', message: options.startLockedMessage },
+            ],
+          },
+          { status: 400 },
+        );
       }
       if (options.startOpenSessionMessage !== undefined) {
         return jsonResponse(

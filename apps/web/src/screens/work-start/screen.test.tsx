@@ -724,6 +724,24 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     expect(await screen.findByText(t.result.startFailed)).toBeInTheDocument();
   });
 
+  it('시작할 수 없는 상태로 거부되면 서버가 적은 까닭과 조치를 함께 보인다', async () => {
+    const message =
+      '작업을 시작할 수 없는 W/O 입니다 — 배포 전입니다. 관리웹에서 W/O 를 배포한 뒤 시작하세요.';
+    const rendered = renderScreen({ startLockedMessage: message });
+
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    await rendered.user.click(startButton());
+
+    expect(await screen.findByText(`${t.result.startFailed} ${message}`)).toBeInTheDocument();
+  });
+
   /** ⛔ 409 를 「진행 중」으로 읽지 않는다 — 계약이 그 응답을 「충돌」로만 적었다. */
   it('충돌(409)은 상태가 바뀌었다고만 말한다', async () => {
     const rendered = renderScreen({ startStatus: 409 });
@@ -969,7 +987,7 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
 
     it('그사이 다른 곳에서 세션이 열려 거절되면 서버 문구를 보이고 열린 세션을 다시 묻는다', async () => {
       const message =
-        '이 W/O 에 열린 작업 세션이 이미 있습니다. 목록을 새로 고친 뒤 [재개]로 이어 하세요.';
+        '이 MES W/O 에 이미 열린 작업 세션이 있습니다. 목록을 새로 고친 뒤 그 세션을 이어서 하기로 재개하세요 — 다른 단말의 세션이면 그 단말에서 재개·종료하거나 관리웹에서 강제 종료하세요.';
       const rendered = renderScreen({ workOrders: [HELD], startOpenSessionMessage: message });
 
       await selectWorkOrder(rendered);

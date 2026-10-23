@@ -893,9 +893,13 @@ export const WorkStartScreen = () => {
                 isRestart
                 ? (serverReasonOf(writeError) ?? t.result.conflict)
                 : t.result.conflict
-              : isResume
-                ? t.result.resumeFailed
-                : t.result.startFailed}
+              : /* 시작할 수 없는 상태의 거부는 까닭과 조치를 서버가 적어 보낸다. */
+                [
+                  isResume ? t.result.resumeFailed : t.result.startFailed,
+                  serverReasonOf(writeError),
+                ]
+                  .filter((line) => line !== null)
+                  .join(' ')}
           </AlertBanner>
         </div>
       )}
