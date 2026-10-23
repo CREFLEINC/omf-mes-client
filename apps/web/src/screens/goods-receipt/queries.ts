@@ -62,8 +62,8 @@ export const irKeys = {
   list: (query: IrListQuery) => [...IR_LIST_KEY, query] as const,
   lines: (inboundReceiptId: number | null) =>
     ['inbound-receipts', 'lines', inboundReceiptId] as const,
-  /** 창고는 화면당 한 번, 위치는 **창고마다** 갈린다 — 창고를 되돌려도 다시 부르지 않는다. */
-  warehouses: ['goods-receipt-warehouses'] as const,
+  /** 창고는 **공장마다**, 위치는 **창고마다** 갈린다 — 창고를 되돌려도 다시 부르지 않는다. */
+  warehouses: (plantId: number | null) => ['goods-receipt-warehouses', plantId] as const,
   locations: (warehouseId: number | null) => ['goods-receipt-locations', warehouseId] as const,
   /** 입고 처리 뒤 다시 읽는 자재 LOT. 번호마다 갈린다. */
   lot: (lotId: number | null) => ['goods-receipt-lot', lotId] as const,
@@ -177,24 +177,34 @@ const EMPTY_LOCATIONS: LocationView[] = [];
 /**
  * 입고 창고 목록.
  *
- * **임의 필터를 걸지 않는다**(이슈 §6). 품목 유형으로 창고를 제한하는 규칙이 데이터에 없고,
- * 계약의 창고 목록에는 공장 조건 파라미터가 아예 없다(실측 — `q`·`warehouseTypeCode`·
- * `includeInactive`·`page`·`size`뿐). 클라이언트에서 걸러 내지도 않는다.
+ * **고른 입하 전표의 공장 창고만 받는다**(`plantId` — 서버 선행 P-109 · omf-mes-server#809).
+ * 입고의 공장은 전표의 값이라(`gr-request.ts`) 창고를 고르기 전에 이미 정해져 있다. 그 밖의
+ * 필터는 걸지 않는다(이슈 §6) — 품목 유형으로 창고를 제한하는 규칙이 데이터에 없다.
+ *
+ * ⚠ P-109 전 서버는 `plantId` 를 무시하고 모든 공장의 창고를 낸다. 클라이언트에서 다시 거르지
+ * 않는다 — 그때는 지금처럼 다른 공장 창고를 고르면 칸 아래 안내(`isPlantMismatch`)가 알린다.
  *
  * **`includeInactive`를 켜지 않는다.** 참조 풀이와 다른 자리다 — 지금 물건을 넣을 창고를
  * 고르는 칸이라 쓰지 않는 창고가 선택지에 있으면 고를 수 있는 잘못된 자리가 생긴다.
  *
- * **전표를 고르기 전에는 부르지 않는다**(`enabled`). 이 목록을 쓰는 것은 확정 입력뿐이고
+ * **전표를 고르기 전에는 부르지 않는다**(`plantId` 가 null). 이 목록을 쓰는 것은 확정 입력뿐이고
  * 그 구획은 줄을 고른 뒤에야 열린다 — 전표를 고르는 시점에 부르면 라인 표가 그려지는 동안
  * 도착할 여유가 있으면서 첫 진입의 요청 수는 늘지 않는다(품목·단위와 같은 시점이다).
  */
-export const useWarehouseOptions = (enabled: boolean): OptionListResult<WarehouseView> => {
+export const useWarehouseOptions = (plantId: number | null): OptionListResult<WarehouseView> => {
   const { client } = useApiClient();
+  const enabled = plantId !== null;
 
   const query = useQuery({
-    queryKey: irKeys.warehouses,
+    queryKey: irKeys.warehouses(plantId),
     enabled,
-    queryFn: () => runRequest(() => client.GET('/mdm/warehouses', { params: { query: {} } })),
+    queryFn: () => {
+      if (plantId === null) {
+        throw new Error('입하 전표를 고르기 전에는 입고 창고를 조회하지 않습니다.');
+      }
+
+      return runRequest(() => client.GET('/mdm/warehouses', { params: { query: { plantId } } }));
+    },
   });
 
   const data = query.data;

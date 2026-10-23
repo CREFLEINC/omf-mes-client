@@ -191,6 +191,7 @@ export const WarehouseLocationScreen = () => {
   const filters = useMemo<WarehouseFilters>(
     () => ({
       q: searchParams.get('q') ?? '',
+      plantId: searchParams.get('plant') ?? '',
       warehouseTypeCode: searchParams.get('type') ?? '',
       includeInactive: searchParams.get('inactive') === '1',
     }),
@@ -572,6 +573,7 @@ export const WarehouseLocationScreen = () => {
   const handleApplyFilters = (next: WarehouseFilters) => {
     updateParams({
       q: next.q === '' ? null : next.q,
+      plant: next.plantId === '' ? null : next.plantId,
       type: next.warehouseTypeCode === '' ? null : next.warehouseTypeCode,
       inactive: next.includeInactive ? '1' : null,
     });
@@ -1105,6 +1107,8 @@ export const WarehouseLocationScreen = () => {
             lookups.sources.warehouseTypes,
             filters.warehouseTypeCode,
           )}
+          plantOptions={selectableOptions(lookups.sources.plants, filters.plantId)}
+          plants={lookups.sources.plants}
         />
         {renderDetailPane()}
       </div>
