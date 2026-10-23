@@ -229,7 +229,7 @@ export const iqcInspection = {
      * 비활성 사유 — 무엇이 막혔는지와 어떻게 푸는지를 함께 말한다(공유계약 G-23).
      * 단추 바로 아래에 붙으므로 단추 이름을 되풀이하지 않는다.
      */
-    confirmBlockedByTotals: '입력 수량이 총 검사 수량과 같아야 확정 가능합니다.',
+    confirmBlockedByTotals: '수량 합계가 검사 수량과 일치해야 합니다.',
     workerNotLinked:
       '이 계정에 연결된 작업자가 없어 판정을 저장할 수 없습니다. 사용자 관리에서 작업자를 연결해 주세요.',
     followUp: {
@@ -280,7 +280,7 @@ export const iqcInspection = {
       required: '자동 판정과 다른 판정은 변경 사유를 입력해야 확정할 수 있습니다.',
       reasonMissing: '판정 변경 사유를 입력하세요.',
     },
-    confirmBlockedByJudgment: '최종 판정을 선택해야 확정할 수 있습니다.',
+    confirmBlockedByJudgment: '최종 판정을 선택해주세요.',
     confirmBlockedByConfirmed: '이미 확정된 회차입니다.',
     /*
      * ⛔ 회차가 아직 없다. 확정은 회차 하나를 지목하는 쓰기라 지목할 것이 없으면 보낼 수
