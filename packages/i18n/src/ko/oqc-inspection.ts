@@ -27,6 +27,7 @@ export const oqcInspection = {
     },
     /** OQC 목록의 「의뢰 일시」 열(#136). 종전 표(PQC 도 쓴다)의 `columns` 와 따로 둔다. */
     requestedAtColumn: '의뢰 일시',
+    serialColumn: '시리얼 번호',
     /** 대상 유형 코드의 이름(omf-all-around#136) — POP OQC 와 같은 말. 모르는 코드는 코드 그대로다. */
     targetTypes: {
       SHIPMENT_REQUEST: '출하요청',
@@ -370,9 +371,10 @@ export const oqcInspection = {
    * 시리얼 판정은 시리얼당 한 줄로 남는다. 재검 회차는 1차를 그대로 두고 최종만 바꾼다.
    */
   serials: {
-    openByScan: '시리얼로 의뢰 열기',
+    openByScan: '시리얼 번호 스캔',
     openByScanHelp:
       '시리얼을 스캔하면 그 LOT 을 피킹한 OQC 의뢰를 엽니다. 대기 또는 진행 중인 의뢰가 없으면 완료된 의뢰를 열어 재검사 회차를 더할 수 있습니다.',
+    openByScanPlaceholder: '시리얼 번호 스캔 또는 번호를 입력하세요',
     scanLabel: '시리얼 스캔',
     scanPlaceholder: '시리얼 번호를 스캔하거나 입력 후 Enter',
     scanning: '시리얼을 확인하는 중…',

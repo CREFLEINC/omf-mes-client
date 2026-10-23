@@ -15,6 +15,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       statusCode: 'Trạng thái',
     },
     requestedAtColumn: 'Thời điểm yêu cầu',
+    serialColumn: 'Số serial',
     targetTypes: {
       SHIPMENT_REQUEST: 'Yêu cầu xuất hàng',
     } as Readonly<Record<string, string>>,
@@ -215,9 +216,10 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     loadFailed: 'Không tải được trạng thái phê duyệt bỏ qua.',
   },
   serials: {
-    openByScan: 'Mở yêu cầu bằng số serial',
+    openByScan: 'Quét số serial',
     openByScanHelp:
       'Quét số serial để mở yêu cầu OQC đã lấy hàng LOT đó. Nếu không có yêu cầu đang chờ/đang làm, sẽ mở yêu cầu đã hoàn thành để thêm lượt kiểm tra lại.',
+    openByScanPlaceholder: 'Quét hoặc nhập số serial',
     scanLabel: 'Quét serial',
     scanPlaceholder: 'Quét hoặc nhập số serial rồi nhấn Enter',
     scanning: 'Đang kiểm tra serial…',

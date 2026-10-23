@@ -41,7 +41,8 @@ export const SerialOpenByScan = ({
     <div>
       <SerialScanField
         label={t.openByScan}
-        helperText={t.openByScanHelp}
+        labelHint={t.openByScanHelp}
+        placeholder={t.openByScanPlaceholder}
         error={error}
         onScan={scan}
       />

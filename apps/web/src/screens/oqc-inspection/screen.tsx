@@ -133,6 +133,11 @@ export const OqcInspectionScreen = () => {
    * 검사한 시리얼(omf-all-around#68) — 그 의뢰에 매인다. 다른 의뢰를 고르면 보이지 않고, 시리얼로 연 의뢰는 그 시리얼을 첫 줄로 받는다.
    * 저장에 성공하거나 재검사를 열고 닫으면 비운다.
    */
+  /** 목록에서 마지막으로 스캔한 시리얼과 그 LOT 을 피킹한 의뢰들 — 목록의 시리얼 번호 칸(#136). */
+  const [scannedSerial, setScannedSerial] = useState<{
+    serialNo: string;
+    inspectionRequestIds: number[];
+  } | null>(null);
   const [serialDraft, setSerialDraft] = useState<{
     inspectionRequestId: number | null;
     rows: SerialRow[];
@@ -259,6 +264,10 @@ export const OqcInspectionScreen = () => {
     const fits =
       checkScannedSerial(scan, { inspectionRequestId, itemId: scan.itemId, rows: [] }) === null;
     setSerialDraft({ inspectionRequestId, rows: fits ? [toSerialRow(scan)] : [] });
+    setScannedSerial({
+      serialNo: scan.serialNo,
+      inspectionRequestIds: scan.pickedRequests.map((request) => request.inspectionRequestId),
+    });
     select(inspectionRequestId);
   };
 
@@ -622,6 +631,11 @@ export const OqcInspectionScreen = () => {
             rows={rows}
             itemNames={itemNames}
             uomCodeOf={(row) => uoms.codeOf(row.uomId)}
+            serialOf={(row) =>
+              scannedSerial?.inspectionRequestIds.includes(row.inspectionRequestId) === true
+                ? scannedSerial.serialNo
+                : null
+            }
             selectedId={selectedId}
             onSelect={select}
             empty={emptyContent}

@@ -15392,17 +15392,17 @@ button.app-button-neutral {
   width: 100%;
 }
 
-.oqc-inspection-queue-rows th:nth-child(-n + 2),
-.oqc-inspection-queue-rows td:nth-child(-n + 2) {
+.oqc-inspection-queue-rows th:nth-child(-n + 3),
+.oqc-inspection-queue-rows td:nth-child(-n + 3) {
   text-align: left;
 }
 
-.oqc-inspection-queue-rows th:nth-child(n + 3),
-.oqc-inspection-queue-rows td:nth-child(n + 3) {
+.oqc-inspection-queue-rows th:nth-child(n + 4),
+.oqc-inspection-queue-rows td:nth-child(n + 4) {
   text-align: center;
 }
 
-.oqc-inspection-queue-rows th:nth-child(5) > button {
+.oqc-inspection-queue-rows th:nth-child(6) > button {
   margin-inline: auto;
 }
 
