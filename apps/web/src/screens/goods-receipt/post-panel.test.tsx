@@ -207,6 +207,25 @@ describe('GoodsReceiptPostPanel — 입고 처리 오른쪽 창', () => {
     expect(screen.getByText(t.panel.guide.hint.done)).toBeInTheDocument();
   });
 
+  it('창고 선택지는 입하 전표의 공장 창고로 부른다', async () => {
+    const warehouseQueries: string[] = [];
+    const warehousesRoute: StubRoute = {
+      match: (request) => isGet(request, '/mdm/warehouses'),
+      respond: (request) => {
+        warehouseQueries.push(new URL(request.url).searchParams.get('plantId') ?? '');
+
+        return jsonResponse(listBody(warehouseFixtures));
+      },
+    };
+    renderPanel([warehousesRoute, ...baseRoutes()]);
+
+    await screen.findByText('IR-2026-900001');
+    await waitFor(() => {
+      expect(warehouseQueries.length).toBeGreaterThan(0);
+    });
+    expect(warehouseQueries.every((plantId) => plantId === '9201')).toBe(true);
+  });
+
   it('IQC 판정 전 LOT 은 칸이 잠기고 막힌 이유가 보이되 검사 화면 링크는 없다', async () => {
     renderPanel(baseRoutes('INSPECTION_PENDING'));
 

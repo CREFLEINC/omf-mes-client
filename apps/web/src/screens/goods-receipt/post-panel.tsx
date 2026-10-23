@@ -149,7 +149,8 @@ export const GoodsReceiptPostPanel = ({
     }),
   );
 
-  const warehouses = useWarehouseOptions(true);
+  /* 입고의 공장은 입하 전표의 값이다 — 창고 선택지도 그 공장 창고로 좁힌다(P-109). 전표를 받기 전에는 부르지 않는다. */
+  const warehouses = useWarehouseOptions(inboundReceipt?.plantId ?? null);
   const selectedWarehouseId = draft.warehouse === '' ? null : Number(draft.warehouse);
   const locations = useLocationOptions(selectedWarehouseId);
   const plants = usePlantOptions();
