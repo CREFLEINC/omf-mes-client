@@ -42,7 +42,11 @@ export interface InspectionQueueRow {
   itemId: number;
   /** 검사 수량. 합계 제약의 오른쪽 변이 될 값이다 */
   targetQty: number;
+  /** 검사 수량의 단위 — PQC 목록(#135)이 수량 옆에 단위 코드를 붙인다. */
+  uomId: number;
   statusCode: string;
+  /** 의뢰가 만들어진 시각 — PQC 목록(#135)의 「의뢰 일시」 열이 쓴다. */
+  requestedAt: string;
 }
 
 export interface InspectionQueueResult {
@@ -56,7 +60,9 @@ export const toInspectionQueueRow = (item: InspectionRequestResponse): Inspectio
   targetId: item.targetId,
   itemId: item.itemId,
   targetQty: item.targetQty,
+  uomId: item.uomId,
   statusCode: item.statusCode,
+  requestedAt: item.requestedAt,
 });
 
 export const toInspectionQueueResult = (response: {

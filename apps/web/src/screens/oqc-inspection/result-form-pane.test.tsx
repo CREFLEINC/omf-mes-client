@@ -102,6 +102,13 @@ describe('ResultFormPane — 막힌 사유 네 갈래', () => {
     expect(screen.queryByText(t.blockedByJudgment)).not.toBeInTheDocument();
   });
 
+  it('입력으로 풀 수 없는 막힘이면 수량 칸도 잠근다(#135)', () => {
+    renderPane({ draft: MATCHING, judgmentOptions: [], isInputLocked: true });
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.rejected)).toBeDisabled();
+  });
+
   it('확정된 회차는 칸이 잠기고 재검사만 열린다', () => {
     renderPane({ round: toInspectionResultRound(confirmedRound), draft: MATCHING });
 
