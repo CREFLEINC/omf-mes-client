@@ -221,7 +221,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     result:
       'Sau khi được duyệt và thực hiện bỏ qua, các yêu cầu OQC còn lại sẽ được bỏ qua và kiểm tra xuất hàng được xử lý là đạt.',
     reason: 'Lý do bỏ qua',
-    reasonPlaceholder: 'Nhập lý do bỏ qua kiểm tra xuất hàng',
+    reasonPlaceholder: 'Nhập lý do bỏ qua',
     openApproval: 'Đến phê duyệt yêu cầu này',
     currentStep: 'Bước hiện tại',
     reasonCount: (count: number): string => `${String(count)} ký tự`,

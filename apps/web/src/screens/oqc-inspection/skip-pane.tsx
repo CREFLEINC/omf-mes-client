@@ -227,6 +227,7 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
       <Dialog
         open={isDialogOpen}
         onClose={closeDialog}
+        showCloseButton={false}
         title={t.heading}
         footer={
           <>
@@ -245,10 +246,7 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
         }
       >
         <div className="oqc-inspection-skip-dialog">
-          <p className="oqc-inspection-skip-result">
-            <Icon name="info" size={18} aria-hidden="true" />
-            {t.result}
-          </p>
+          <p className="oqc-inspection-skip-result">{t.result}</p>
           <FieldLabel htmlFor={reasonId} label={t.reason} required />
           <TextArea
             id={reasonId}
