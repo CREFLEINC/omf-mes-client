@@ -58,6 +58,8 @@ interface RenderOptions {
   roundsFail?: boolean;
   /** 저장 응답을 손으로 풀 때까지 붙든다. */
   holdSave?: boolean;
+  /** 목록 응답 줄. 없으면 의뢰 하나. */
+  queueItems?: object[];
 }
 
 const renderScreen = (options: RenderOptions = {}) => {
@@ -71,7 +73,8 @@ const renderScreen = (options: RenderOptions = {}) => {
 
     if (path === '/quality/inspection-requests') {
       queueQueries.push(url.searchParams);
-      return jsonResponse({ items: [REQUEST], page: { page: 1, size: 50, total: 1 } });
+      const items = options.queueItems ?? [REQUEST];
+      return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
     }
     if (path === '/quality/inspection-requests/7101') return jsonResponse(REQUEST);
     if (path === '/production/work-orders/701') {
@@ -186,6 +189,30 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     expect(await screen.findByText('합성 품목')).toBeInTheDocument();
     expect(screen.getByText('F534F50200')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: t.columns.requestedAt })).toBeInTheDocument();
+  });
+
+  it('의뢰 일시 머리를 누르면 그 쪽 안에서 정렬하고, 정렬한 줄을 누르면 그 의뢰가 열린다(#135)', async () => {
+    const user = userEvent.setup();
+    const LATER = {
+      ...REQUEST,
+      inspectionRequestId: 7102,
+      inspectionRequestNo: 'IR-PQC-7102',
+      requestedAt: '2026-10-17T09:00:00+09:00',
+    };
+    renderScreen({ queueItems: [LATER, REQUEST] });
+
+    const firstNo = async (): Promise<string | null> =>
+      (await screen.findAllByRole('row'))[1]?.querySelector('td')?.textContent ?? null;
+    await screen.findByText(LATER.inspectionRequestNo);
+    expect(await firstNo()).toBe(LATER.inspectionRequestNo);
+
+    await user.click(screen.getByRole('button', { name: t.columns.requestedAt }));
+    await waitFor(async () => expect(await firstNo()).toBe(REQUEST.inspectionRequestNo));
+
+    const [, firstRow] = screen.getAllByRole('row');
+    await user.click(within(firstRow as HTMLElement).getByText('합성 품목'));
+    const summary = await screen.findByRole('region', { name: web.summary.heading });
+    await waitFor(() => expect(summary).toHaveTextContent(REQUEST.inspectionRequestNo));
   });
 
   it('상세의 검사 기본 정보는 작업지시 번호·품목 이름·코드를 보이고, LOT 이 없으면 「—」(#135)', async () => {

@@ -1,5 +1,6 @@
-import { Chip, Table, type Column } from '@crefle/web-ui';
+import { Chip, Table, type Column, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { toStatusBadge } from '../oqc-inspection/status-badge';
@@ -41,6 +42,19 @@ export interface PqcQueueTableProps {
  */
 /* 번호 · 일시 칸은 한 줄 값이 다 보이는 고정 폭, 품목이 나머지를 쓴다. */
 export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueTableProps) => {
+  /*
+   * 의뢰 일시 정렬(#133 과 같다 · 받은 쪽 안에서). ⭐ 정렬을 이 표가 쥔다 — 줄을 누르면 줄 차례로 의뢰를 찾으므로,
+   * 화면에 그린 차례와 찾는 배열의 차례가 같아야 한다. 정렬은 원문(RFC3339)으로 한다.
+   */
+  const [sort, setSort] = useState<SortState | null>(null);
+  const shown =
+    sort === null
+      ? rows
+      : [...rows].sort((a, b) =>
+          sort.direction === 'ascending'
+            ? a.requestedAt.localeCompare(b.requestedAt)
+            : b.requestedAt.localeCompare(a.requestedAt),
+        );
   const columns: Column<InspectionQueueRow>[] = [
     {
       key: 'no',
@@ -79,10 +93,10 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
       },
     },
     {
-      /* ⛔ 정렬 단추를 두지 않는다 — 줄을 누르면 줄 차례로 의뢰를 찾는다(아래). */
       key: 'requestedAt',
       header: t.columns.requestedAt,
       width: '10rem',
+      sortable: true,
       render: (row) => formatPlantDateTime(row.requestedAt) ?? row.requestedAt,
     },
   ];
@@ -95,7 +109,7 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
         const row = (event.target as Element).closest('tbody tr');
         if (row === null || row.parentElement === null) return;
         const index = Array.from(row.parentElement.children).indexOf(row);
-        const picked = rows[index];
+        const picked = shown[index];
         if (picked !== undefined) onSelect(picked.inspectionRequestId);
       }}
     >
@@ -103,7 +117,9 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
         caption={<span className="visually-hidden">{t.queue.caption}</span>}
         density="compact"
         columns={columns}
-        rows={rows}
+        rows={shown}
+        sort={sort}
+        onSortChange={setSort}
         getRowId={(row) => String(row.inspectionRequestId)}
         empty={emptyContent}
       />

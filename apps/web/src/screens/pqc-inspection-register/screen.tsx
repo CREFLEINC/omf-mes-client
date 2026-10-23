@@ -6,7 +6,8 @@ import { useSearchParams } from 'react-router';
 import { toApiError } from '../../patterns/request';
 import { PAGE_SIZE } from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from '../oqc-inspection/load-error-banner';
-import { PageNav } from '../oqc-inspection/page-nav';
+/* 쪽 넘김 단추는 IQC 판정 화면(#133)의 것 — 같은 크기로 선다. */
+import { PageNav } from '../iqc-inspection/page-nav';
 import { toPageView } from '../oqc-inspection/pagination';
 import { useInspectionQueue } from '../oqc-inspection/queries';
 import { useDirectSubmitter } from '../pqc-panel/direct-submitter';
