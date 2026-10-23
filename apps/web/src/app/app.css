@@ -19401,17 +19401,38 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 /* 판정 — 최종 판정(20rem) · 불합격 처분. 고른 판정을 왼쪽 강조선 색으로. */
+/* 판정 — 최종 판정 · 불합격 처리 두 칸을 반씩(처리 칸이 없어도 판정은 반 폭). 좁으면 한 칸씩 아래로. */
 .pqc-web-judgment {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--space-4) var(--space-7);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-4) var(--space-6);
 }
 
 .pqc-web-judgment-field {
   align-items: stretch;
-  width: 100%;
-  max-width: 20rem;
+}
+
+@media (max-width: 47.99rem) {
+  .pqc-web-judgment {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 제목 옆 안내 — 한 줄로 길게 읽힌다(.field-note 의 폭 제한을 푼다). */
+.pqc-web-judgment-head .field-note {
+  max-width: none;
+  margin-top: 0;
+}
+
+.pqc-web-disposition-field {
+  gap: var(--space-2);
+}
+
+.pqc-web-disposition-note {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
 }
 
 .pqc-web-judgment-field[data-judgment='ACCEPTED'] button[role='combobox'] {
@@ -19426,15 +19447,9 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   box-shadow: inset 3px 0 0 var(--semantic-warning);
 }
 
-.pqc-web-label-hint {
-  margin-left: var(--space-2);
-  color: var(--on-surface-muted);
-  font: var(--type-label-sm);
-  font-weight: 400;
-}
-
 .pqc-web-disposition {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-5);
 }

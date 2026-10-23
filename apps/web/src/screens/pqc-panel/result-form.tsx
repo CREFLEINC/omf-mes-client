@@ -215,8 +215,11 @@ export const ResultForm = ({
 
       {/* ── 판정 — 최종 판정과 불합격 처분 ── */}
       <section className="pqc-web-section" aria-label={t.judgment.heading}>
-        <h3>{t.judgment.heading}</h3>
-        {judgmentNote}
+        {/* 제목 줄 — 제목 오른쪽에 안내 한 줄(검사기준이 없을 때). */}
+        <div className="pqc-web-section-head pqc-web-judgment-head">
+          <h3>{t.judgment.heading}</h3>
+          {judgmentNote}
+        </div>
 
         <div className="pqc-web-judgment">
           <div className="field-cell pqc-web-judgment-field" data-judgment={judgment || undefined}>
@@ -247,11 +250,11 @@ export const ResultForm = ({
 
           {/* 불합격 처분은 판정이 「불합격」일 때만 보인다. 고를 수 있는 조건(불합격 수량)은 그대로다. */}
           {judgment === REJECTED_JUDGMENT && (
-            <div className="field-cell">
+            <div className="field-cell pqc-web-disposition-field">
               <span className="field-label" id={dispositionLabelId}>
                 {tDisposition.heading}
-                <span className="pqc-web-label-hint">{tDisposition.note}</span>
               </span>
+              <span className="pqc-web-disposition-note">{tDisposition.note}</span>
               <RadioGroup
                 className="pqc-web-disposition"
                 name={dispositionName}

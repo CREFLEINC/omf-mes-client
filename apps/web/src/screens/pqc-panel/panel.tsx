@@ -473,6 +473,7 @@ export const PqcPanel = ({
               <TextField
                 fullWidth
                 label={tNoStandard.remarks}
+                placeholder={tNoStandard.remarksPlaceholder}
                 value={remarks}
                 disabled={isConfirmed}
                 onChange={(event) => edited(setRemarks)(event.target.value)}

@@ -192,6 +192,7 @@ export const pqcInspection = {
      */
     note: '이 의뢰에는 검사기준이 등록되어 있지 않습니다. 판정과 내용을 직접 적어 주세요.',
     remarks: '검사 내용',
+    remarksPlaceholder: '검사 내용을 입력하세요.',
   },
 
   measurements: {
