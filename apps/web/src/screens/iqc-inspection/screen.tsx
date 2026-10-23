@@ -1,4 +1,4 @@
-import { Breadcrumb, Button, Dialog, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -455,7 +455,13 @@ export const IqcInspectionScreen = () => {
       </Button>
     </p>
   ) : (
-    <p className="field-note">{t.queue.empty}</p>
+    <EmptyState
+      size="sm"
+      live
+      icon={<Icon name="search_off" size={40} />}
+      title={t.queue.empty}
+      description={t.queue.emptyHint}
+    />
   );
 
   /*

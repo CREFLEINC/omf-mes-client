@@ -12,7 +12,9 @@ export const pqcInspectionRegister = {
     heading: '검사 의뢰',
     caption: 'PQC 검사 의뢰 목록',
     pendingOnly: '대기·진행만 보기',
-    empty: '조건에 맞는 PQC 검사 의뢰가 없습니다.',
+    empty: '조회된 검사 의뢰가 없습니다.',
+    /** 빈 목록 아래 안내 — 제목과 함께 `EmptyState` 로 보인다(omf-all-around#171). */
+    emptyHint: '검색 조건을 변경하거나 필터를 초기화해 보세요.',
     unavailable: '목록을 표시할 수 없습니다.',
     loading: 'PQC 검사 의뢰를 불러오는 중입니다.',
   },
