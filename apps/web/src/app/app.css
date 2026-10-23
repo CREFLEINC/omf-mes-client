@@ -19274,8 +19274,11 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   border-radius: var(--radius-md);
 }
 
-.pqc-web-table-box th,
-.pqc-web-table-box td {
+/* 머리칸도 가운데 — DS 표의 머리 정렬(th[data-align])보다 앞서게 IQC(#133)와 같은 선택자로 쓴다. */
+.pqc-web-table-box thead th,
+.pqc-web-table-box thead th[data-align],
+.pqc-web-table-box td,
+.pqc-web-table-box td[data-align] {
   text-align: center;
   vertical-align: middle;
 }
