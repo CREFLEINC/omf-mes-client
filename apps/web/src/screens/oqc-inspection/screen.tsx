@@ -654,7 +654,17 @@ export const OqcInspectionScreen = () => {
         >
           {/* 검색 묶음 — 시리얼 스캔과 조회 조건이 같은 격자·높이로 선다(#136). */}
           <div className="oqc-inspection-search">
-            <SerialOpenByScan onOpen={openBySerial} />
+            <SerialOpenByScan
+              onOpen={openBySerial}
+              onFound={(scan) =>
+                setScannedSerial({
+                  serialNo: scan.serialNo,
+                  inspectionRequestIds: scan.pickedRequests.map(
+                    (request) => request.inspectionRequestId,
+                  ),
+                })
+              }
+            />
 
             <QueueFilterBar
               appliedFilters={filters}
