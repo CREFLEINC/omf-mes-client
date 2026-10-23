@@ -19459,10 +19459,15 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 @media (min-height: 800px) {
+  /*
+   * ⚠ 본문 스크롤 상자(앱 셸 main)에 아래 여백(--space-6)이 있어 `bottom: 0` 이면 줄이 창 바닥보다 그만큼 위에 멈추고,
+   * 그 틈으로 아래 입력 칸이 비친다(#135 실검증). 여백만큼 내려 창 바닥에 붙이고, 위 경계선으로 본문과 가른다.
+   */
   .pqc-web-detail .pqc-web-actions {
     position: sticky;
-    bottom: 0;
+    bottom: calc(-1 * var(--space-6));
     z-index: 1;
+    border-top: 1px solid var(--outline-variant);
   }
 }
 

@@ -83,10 +83,40 @@ const renderScreen = (options: RenderOptions = {}) => {
     }
     if (path === '/quality/inspection-requests/7101') return jsonResponse(REQUEST);
     if (path === '/trace/lots') {
+      const lotNo = url.searchParams.get('lotNo');
+      const workOrderId = url.searchParams.get('workOrderId');
       const lots = [
-        { lotId: 801, lotNo: 'M-LOT-0701', sourceTypeCode: 'WORK_ORDER', sourceId: 701 },
-        { lotId: 802, lotNo: 'M-LOT-0799', sourceTypeCode: 'WORK_ORDER', sourceId: 799 },
-      ].filter((lot) => lot.lotNo === url.searchParams.get('lotNo'));
+        {
+          lotId: 801,
+          lotNo: 'M-LOT-0701',
+          sourceTypeCode: 'WORK_ORDER',
+          sourceId: 701,
+          lifecycleStatusCode: 'WAITING',
+        },
+        {
+          lotId: 803,
+          lotNo: 'M-LOT-0701B',
+          sourceTypeCode: 'WORK_ORDER',
+          sourceId: 701,
+          lifecycleStatusCode: 'ACTIVE',
+        },
+        {
+          lotId: 804,
+          lotNo: 'M-LOT-0701X',
+          sourceTypeCode: 'WORK_ORDER',
+          sourceId: 701,
+          lifecycleStatusCode: 'VOIDED',
+        },
+        {
+          lotId: 802,
+          lotNo: 'M-LOT-0799',
+          sourceTypeCode: 'WORK_ORDER',
+          sourceId: 799,
+          lifecycleStatusCode: 'WAITING',
+        },
+      ].filter((lot) =>
+        lotNo !== null ? lot.lotNo === lotNo : String(lot.sourceId) === workOrderId,
+      );
       return jsonResponse({ items: lots, page: { page: 1, size: 5, total: lots.length } });
     }
     if (path === '/production/work-orders') {
@@ -278,7 +308,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await waitFor(() => expect(summary).toHaveTextContent(REQUEST.inspectionRequestNo));
   });
 
-  it('상세의 검사 기본 정보는 작업지시 번호·품목 이름·코드를 보이고, LOT 이 없으면 「—」(#135)', async () => {
+  it('상세의 검사 기본 정보는 작업지시 번호·품목 이름·코드와 작업지시의 생산 LOT 을 보이고, 머리 제목은 「검사 기본 정보」(#135)', async () => {
     const user = userEvent.setup();
     renderScreen();
     await openRequest(user);
@@ -288,7 +318,15 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     expect(summary).toHaveTextContent('합성 품목');
     expect(summary).toHaveTextContent('F534F50200');
     expect(summary).toHaveTextContent(web.summary.inspectionTypeName);
-    expect(summary).toHaveTextContent(`${web.summary.lot}${pqc.emptyValue}`);
+    /* 대상 LOT 은 작업지시의 생산 LOT — 폐번은 빼고, 여럿이면 첫 번호 「외 N건」(#135). */
+    await waitFor(() =>
+      expect(summary).toHaveTextContent(
+        `${web.summary.lot}${web.summary.lotMore('M-LOT-0701', 1)}`,
+      ),
+    );
+    expect(
+      screen.getByRole('heading', { level: 1, name: t.detail.sectionTitle }),
+    ).toBeInTheDocument();
   });
 
   it('목록으로 돌아갈 때 저장하지 않은 입력이 있으면 한 번 묻는다(#135)', async () => {

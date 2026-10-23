@@ -62,6 +62,7 @@ export const pqcInspectionRegister = {
       noPlan: 'Chưa chỉ định',
       planLabel: (code: string, version: number): string => `${code} v${String(version)}`,
       lot: 'LOT đối tượng',
+      lotMore: (first: string, rest: number): string => `${first} và ${String(rest)} LOT khác`,
       requestedAt: 'Thời gian yêu cầu',
     },
     items: {

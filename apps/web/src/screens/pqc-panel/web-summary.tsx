@@ -5,10 +5,12 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
 import type { PlanVersionView } from '../pqc-inspection/queries';
 import type { InspectionRequestDetail } from '../pqc-inspection/types';
 import { useItem, useLotDetail } from '../production-result/flow-queries';
-import { useWorkOrder } from '../production-result/queries';
+import { useTargetLots, useWorkOrder } from '../production-result/queries';
 
 const t = messages.pqcInspectionRegister.web.summary;
 const empty = messages.pqcInspection.emptyValue;
+/** 폐번된 LOT 의 수명 상태 — 서버 W/O 취소·마감이 남긴다. */
+const VOIDED_LIFECYCLE = 'VOIDED';
 
 export interface WebSummaryProps {
   detail: InspectionRequestDetail;
@@ -32,6 +34,25 @@ export const WebSummary = ({ detail, planVersion, uomCode }: WebSummaryProps) =>
   const workOrder = useWorkOrder(detail.workOrderId);
   const item = useItem(detail.itemId);
   const lot = useLotDetail(detail.lotId);
+  /*
+   * PQC 의뢰는 작업지시 단위라 의뢰의 LOT 칸이 비어 있다 — 대상 LOT 은 그 작업지시의 생산 LOT(배포 때 선발행)이다.
+   * 폐번된 LOT 은 대상이 아니다. 여럿이면 첫 번호 「외 N건」, 전체 번호는 title 로 본다(#135).
+   */
+  const workOrderLots = useTargetLots(detail.lotId === null ? detail.workOrderId : null);
+  const lotNos = (workOrderLots.data ?? [])
+    .filter((row) => row.lifecycleStatusCode !== VOIDED_LIFECYCLE)
+    .map((row) => row.lotNo);
+  const [firstLotNo, ...restLotNos] = lotNos;
+  const lotValue: ReactNode =
+    detail.lotId !== null ? (
+      (lot.data?.lot.lotNo ?? empty)
+    ) : firstLotNo === undefined ? (
+      empty
+    ) : (
+      <span title={lotNos.join('\n')}>
+        {restLotNos.length === 0 ? firstLotNo : t.lotMore(firstLotNo, restLotNos.length)}
+      </span>
+    );
 
   const itemName = item.data?.itemName;
   const itemCode = item.data?.itemCode ?? workOrder.data?.itemCode;
@@ -77,7 +98,7 @@ export const WebSummary = ({ detail, planVersion, uomCode }: WebSummaryProps) =>
             ? empty
             : t.planLabel(planVersion.planCode, planVersion.planVersion),
     },
-    { key: 'lot', label: t.lot, value: lot.data?.lot.lotNo ?? empty },
+    { key: 'lot', label: t.lot, value: lotValue },
     {
       key: 'at',
       label: t.requestedAt,

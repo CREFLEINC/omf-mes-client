@@ -72,6 +72,7 @@ export const pqcInspectionRegister = {
       noPlan: '미지정',
       planLabel: (code: string, version: number): string => `${code} v${String(version)}`,
       lot: '대상 LOT',
+      lotMore: (first: string, rest: number): string => `${first} 외 ${String(rest)}건`,
       requestedAt: '의뢰 일시',
     },
     items: {

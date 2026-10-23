@@ -87,7 +87,8 @@ export const PqcInspectionRegisterScreen = () => {
   return (
     <>
       <PageHeader
-        title={t.title}
+        /* 상세를 열면 머리 제목도 지금 자리(「검사 기본 정보」)를 말한다 — 경로의 마지막 마디와 같다(#135). */
+        title={selectedId === null ? t.title : t.detail.sectionTitle}
         breadcrumb={
           <Breadcrumb
             items={[
