@@ -31,7 +31,9 @@ describe('readFilters', () => {
   it('주소의 조건을 그대로 읽는다', () => {
     expect(
       readFilters(
-        new URLSearchParams('supplier=8101&plant=8201&item=8301&q=SAMPLE-PO&open=0&overdue=1'),
+        new URLSearchParams(
+          'supplier=8101&plant=8201&item=8301&q=SAMPLE-PO&open=0&overdue=1&stage=RECEIPT',
+        ),
       ),
     ).toEqual({
       supplier: '8101',
@@ -40,8 +42,17 @@ describe('readFilters', () => {
       q: 'SAMPLE-PO',
       openOnly: false,
       overdueOnly: true,
+      stage: 'RECEIPT',
     });
   });
+
+  /* 단계 묶음 이름이 아니면 조건이 아니다 — 모르는 값을 서버에 보내지 않는다(계약 대기 조건). */
+  it.each(['RECEIPT_READY', 'receipt', 'x'])(
+    '묶음 이름이 아닌 단계 %j 는 조건으로 받지 않는다',
+    (raw) => {
+      expect(readFilters(new URLSearchParams({ stage: raw })).stage).toBe('');
+    },
+  );
 
   /* 그대로 `Number()`에 넘기면 `NaN`이 요청에 실려 조회 전체가 400이 된다. */
   it.each(['abc', '1.5', '-3', '0', ''])('정수가 아닌 번호 %j 는 조건으로 받지 않는다', (raw) => {
@@ -127,6 +138,7 @@ describe('toFilterQuery', () => {
   /* 서버 기본(미완료만 켬 · 지연만 끔)과 같으면 싣지 않는다. */
   it('기본 조건이면 질의가 비어 있다', () => {
     expect(toFilterQuery(DEFAULT_FILTERS)).toEqual({});
+    expect(toFilterQuery(filters({ stage: 'HELD' }))).toEqual({ inboundStage: 'HELD' });
   });
 
   it('번호 셋은 숫자로, 검색어는 다듬어 싣는다', () => {

@@ -71,15 +71,15 @@ export const ScheduleFilterBar = ({
    * 참조로 판정하면 그때마다 사용자가 치던 값이 사라진다(#43).
    */
   const { from: appliedFrom, to: appliedTo } = appliedPeriod;
-  const { supplier, plant, item, q, openOnly, overdueOnly } = appliedFilters;
+  const { supplier, plant, item, q, openOnly, overdueOnly, stage } = appliedFilters;
 
   useEffect(() => {
     setPeriod({ from: appliedFrom, to: appliedTo });
   }, [appliedFrom, appliedTo]);
 
   useEffect(() => {
-    setFilters({ supplier, plant, item, q, openOnly, overdueOnly });
-  }, [supplier, plant, item, q, openOnly, overdueOnly]);
+    setFilters({ supplier, plant, item, q, openOnly, overdueOnly, stage });
+  }, [supplier, plant, item, q, openOnly, overdueOnly, stage]);
 
   /** 보내면 반드시 400이 되는 기간만 막는다. 비어 있는 것은 잘못이 아니다. */
   const searchReason = filters.overdueOnly ? null : validatePeriod(period);

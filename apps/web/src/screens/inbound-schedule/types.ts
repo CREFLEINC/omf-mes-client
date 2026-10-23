@@ -91,6 +91,8 @@ export interface InboundScheduleQuery {
   q?: string;
   openOnly?: boolean;
   overdueOnly?: boolean;
+  /** 이 단계 묶음의 LOT 이 있는 발주만(⚠ 계약 대기 — `PurchaseOrderSummaryQuery` 와 같은 조건). */
+  inboundStage?: InboundStageGroup;
   /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
   page?: number;
   /** 서버 상한 200. */
@@ -138,6 +140,121 @@ export interface PurchaseOrderSummary {
   remainingQtyTotal: number | null;
   /** 서버 판정 — 라인과 같은 어휘 */
   receiptStatusCode: ReceiptStatusCode;
+  /**
+   * 이 발주 LOT 들의 단계 묶음별 수(⚠ 계약 대기 — omf-mes-server#805). 앞선 서버는 싣지 않아
+   * `undefined` 다 — 그때 「진행」 열을 세우지 않는다.
+   */
+  inboundStageCounts?: InboundStageCounts;
+}
+
+/**
+ * 입고 단계 — **서버가 LOT 마다 판정한다**(규범 C-17 — 화면이 검사 결과·입고 전표·적치 작업을 따로 조회해 조합하지 않는다).
+ * ⚠ 계약 대기(omf-mes-server#805). 모르는 값은 번역하지 않고 중립 색으로 그대로 낸다.
+ *
+ * | 값 | 뜻(다음 할 일) | 근거 |
+ * | --- | --- | --- |
+ * | `INSPECTION_REQUIRED` | 검사 의뢰 전 — 「IQC 의뢰 요청」 | 검사 대상인데 열린 검사 의뢰가 없다 |
+ * | `INSPECTION_REQUESTED` · `INSPECTION_IN_PROGRESS` | 검사 대기 · 검사 중 — 품질팀 | 검사 의뢰 REQUESTED · IN_PROGRESS |
+ * | `INSPECTION_HELD` | 보류 — 품질팀 | 판정 HELD 또는 LOT 보류 |
+ * | `RECEIPT_READY` | 입고 대기 — 「입고 처리」(이 화면의 오른쪽 창) | LOT NORMAL·DEFECTIVE·검사 생략, 입고 전표 없음 |
+ * | `PUTAWAY_PENDING` · `PUTAWAY_TEMPORARY` | 적치 대기 · 임시 적치 — PDA | 적치 작업 PENDING · COMPLETED_TEMPORARY |
+ * | `COMPLETED` | 완료 | 적치 작업 COMPLETED |
+ * | `CANCELLED` | 취소 | 입하 전표 취소 |
+ */
+export type InboundStageCode =
+  | 'INSPECTION_REQUIRED'
+  | 'INSPECTION_REQUESTED'
+  | 'INSPECTION_IN_PROGRESS'
+  | 'INSPECTION_HELD'
+  | 'RECEIPT_READY'
+  | 'PUTAWAY_PENDING'
+  | 'PUTAWAY_TEMPORARY'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+/**
+ * 단계 **묶음** — 탭 줄의 건수 칩 · 왼쪽 표의 「진행」 열 · 목록 조건(`inboundStage`)이 쓰는 굵은 단위다.
+ * 끝난 것(완료·취소)은 묶음이 아니다 — 세지도 거르지도 않는다.
+ */
+export type InboundStageGroup = 'INSPECTION' | 'HELD' | 'RECEIPT' | 'PUTAWAY';
+
+export type InboundStageCounts = Partial<Record<InboundStageGroup, number>>;
+
+/** LOT 줄의 다음 할 일 — 서버가 정한다. `REQUEST_IQC` 만 이 화면이 직접 보내고, `PUTAWAY` 는 PDA 의 일이라 글자로만 낸다. */
+export type InboundNextActionCode = 'REQUEST_IQC' | 'POST_RECEIPT' | 'PUTAWAY';
+
+/**
+ * 한 발주의 LOT 하나 — 입하 라인에서 나온 자재 LOT 과, 그 뒤 단계(검사·입고·적치)의 근거(⚠ 계약 대기).
+ * `GET /logistics/purchase-orders/{purchaseOrderId}/inbound-progress` 의 `items[]`.
+ */
+export interface InboundLotProgress {
+  purchaseOrderLineId: number;
+  inboundReceiptId: number;
+  inboundReceiptNo: string;
+  inboundReceiptLineId: number;
+  /** 입하 일시 — 줄의 「입하 YYYY.MM.DD」. */
+  receiptDatetime: string;
+  lotId: number;
+  /** 저장된 번호 그대로 — 끊거나 줄이지 않는다(규범 C-16 예외). */
+  lotNo: string;
+  receivedQty: number;
+  /** 입고 가능 수량(서버 선행 P-56). 없으면 `null`. */
+  receivableQty: number | null;
+  uomCode: string;
+  /** LOT_STATUS */
+  lotStatusCode: string;
+  stageCode: InboundStageCode | string;
+  nextActionCode: InboundNextActionCode | null;
+  /** 다음 단계를 막는 사유 — 이름까지 서버가 싣는다(C-17 사유 칩). 없으면 빈 배열. */
+  blockedReasons: { code: string; name: string }[];
+  inspection: {
+    inspectionRequestId: number;
+    inspectionRequestNo: string;
+    /** INSPECTION_REQUEST_STATUS */
+    statusCode: string;
+    requestedAt: string;
+    judgmentCode: 'ACCEPTED' | 'REJECTED' | 'HELD' | null;
+    judgedAt: string | null;
+  } | null;
+  goodsReceipt: {
+    goodsReceiptId: number;
+    goodsReceiptNo: string;
+    receiptDatetime: string;
+    statusCode: string;
+  } | null;
+  putaway: {
+    putawayTaskId: number;
+    putawayTaskNo: string;
+    /** PUTAWAY_TASK_STATUS */
+    statusCode: string;
+    locationCode: string | null;
+    locationName: string | null;
+    completedAt: string | null;
+  } | null;
+}
+
+export interface InboundProgressResult {
+  items: InboundLotProgress[];
+}
+
+/** `GET /logistics/purchase-orders:inbound-stage-counts` — 목록과 같은 조건(쪽 제외)으로 센 묶음별 LOT 수. */
+export interface InboundStageCountsResult {
+  counts: InboundStageCounts;
+}
+
+/** `POST /quality/inspection-requests` — LOT 하나의 수입검사 의뢰(⚠ 계약 대기). */
+export interface InspectionRequestCreate {
+  inspectionTypeCode: 'IQC';
+  targetTypeCode: 'LOT';
+  targetId: number;
+  businessDate: string;
+  occurredAt: string;
+}
+
+export interface InspectionRequestCreated {
+  inspectionRequestId: number;
+  inspectionRequestNo: string;
+  statusCode: string;
 }
 
 export interface PurchaseOrderSummaryListResult {
@@ -155,6 +272,8 @@ export interface PurchaseOrderSummaryQuery {
   q?: string;
   openOnly?: boolean;
   overdueOnly?: boolean;
+  /** 이 단계 묶음의 LOT 이 있는 발주만(⚠ 계약 대기). 앞선 서버는 모르는 조건을 무시한다. */
+  inboundStage?: InboundStageGroup;
   page?: number;
   size?: number;
 }

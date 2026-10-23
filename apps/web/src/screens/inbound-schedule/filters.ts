@@ -1,7 +1,8 @@
 import { messages } from '@omf-mes/i18n';
 
 import type { PeriodInput } from './period';
-import type { InboundScheduleQuery } from './types';
+import { isStageGroup } from './stage';
+import type { InboundScheduleQuery, InboundStageGroup } from './types';
 
 /**
  * 조회 조건 — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를 내게 하려면
@@ -31,6 +32,8 @@ export interface ScheduleFilters {
   openOnly: boolean;
   /** 납기가 공장 현지 오늘보다 앞선 미완료 라인만 본다. 켜면 서버가 미완료 조건을 함께 건다. */
   overdueOnly: boolean;
+  /** 입고 단계 묶음(탭 줄의 단계 칩). 비면 거르지 않는다. 계약 대기 — 앞선 서버는 이 조건을 무시한다. */
+  stage: InboundStageGroup | '';
 }
 
 /**
@@ -44,6 +47,7 @@ export const DEFAULT_FILTERS: ScheduleFilters = {
   q: '',
   openOnly: true,
   overdueOnly: false,
+  stage: '',
 };
 
 /** 주소 키는 짧게 쓰고 계약 이름과 분리한다 — 주소는 사람이 읽고 고치는 자리다. */
@@ -54,6 +58,7 @@ const URL_KEYS = {
   q: 'q',
   openOnly: 'open',
   overdueOnly: 'overdue',
+  stage: 'stage',
   page: 'page',
 } as const;
 
@@ -86,6 +91,10 @@ export const readFilters = (params: URLSearchParams): ScheduleFilters => ({
    */
   openOnly: params.get(URL_KEYS.openOnly) !== OPEN_ONLY_OFF,
   overdueOnly: params.get(URL_KEYS.overdueOnly) === OVERDUE_ONLY_ON,
+  /* 묶음 이름이 아니면 빈 조건이다 — 모르는 값을 서버에 보내지 않는다. */
+  stage: isStageGroup(params.get(URL_KEYS.stage) ?? '')
+    ? (params.get(URL_KEYS.stage) as InboundStageGroup)
+    : '',
 });
 
 /** 주소가 가리키는 쪽. 이상한 값은 첫 쪽으로 본다 — 주소는 손으로 고쳐지는 자리다. */
@@ -126,6 +135,7 @@ export const toSearchParams = (
 
   if (!filters.openOnly) next.set(URL_KEYS.openOnly, OPEN_ONLY_OFF);
   if (filters.overdueOnly) next.set(URL_KEYS.overdueOnly, OVERDUE_ONLY_ON);
+  if (filters.stage !== '') next.set(URL_KEYS.stage, filters.stage);
   if (page > 1) next.set(URL_KEYS.page, String(page));
 
   return next;
@@ -157,6 +167,7 @@ export const toFilterQuery = (filters: ScheduleFilters): ScheduleFilterQuery => 
     ...(query === '' ? {} : { q: query }),
     ...(filters.openOnly ? {} : { openOnly: false }),
     ...(filters.overdueOnly ? { overdueOnly: true } : {}),
+    ...(filters.stage === '' ? {} : { inboundStage: filters.stage }),
   };
 };
 

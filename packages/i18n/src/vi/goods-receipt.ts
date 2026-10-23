@@ -246,4 +246,35 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     erpUnknown:
       'Không xác định được đã đưa vào hàng đợi gửi ERP hay chưa. Phản hồi không kèm giá trị đó.',
   },
+  panel: {
+    title: 'Xử lý nhập kho',
+    guide: {
+      label: 'Các bước',
+      steps: {
+        lot: 'Chọn LOT',
+        info: 'Thông tin nhập kho',
+        post: 'Xử lý nhập kho',
+      },
+      hint: {
+        loading: 'Đang tải phiếu nhập hàng.',
+        info: 'Hãy chọn kho nhập và vị trí xếp kho.',
+        ready: 'Kiểm tra nội dung rồi nhấn 「Xử lý nhập kho」.',
+        gated: 'LOT này hiện chưa thể nhập kho.',
+        done: 'Đã tạo phiếu nhập kho. Đóng cửa sổ để dòng LOT chuyển sang bước tiếp theo.',
+      },
+    },
+    head: {
+      lot: 'LOT',
+      purchaseOrderNo: 'Số đơn đặt hàng',
+      supplier: 'Nhà cung cấp',
+      item: 'Mặt hàng',
+      qty: 'Số lượng',
+      inboundReceiptNo: 'Số nhập hàng',
+      inspection: 'Kiểm tra',
+    },
+    summary: (lot: string, qty: string, destination: string): string =>
+      `${lot} · ${qty} → ${destination}`,
+    loading: 'Đang tải phiếu nhập hàng',
+    lineMissing: 'Không tìm thấy dòng nhập hàng của LOT này. Hãy đóng cửa sổ và tra cứu lại.',
+  },
 };
