@@ -124,7 +124,9 @@ export const PqcInspectionRegisterScreen = () => {
                 setPage(1);
               }}
               onReset={() => {
+                /* 처음 연 상태로 — 「대기·진행만 보기」도 켠다(OQC 화면과 같다). */
                 setFilters(EMPTY_PQC_FILTERS);
+                setPendingOnly(true);
                 setPage(1);
               }}
             />

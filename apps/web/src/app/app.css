@@ -19573,8 +19573,11 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 
 /* 「대기·진행만 보기」는 검색 칸 바로 옆, 같은 줄에 선다 — 글 폭만큼만 차지한다. */
 .pqc-web-filter-bar > .pqc-web-filter-check {
+  display: flex;
   flex: 0 0 auto;
-  align-self: center;
+  align-items: center;
+  /* 입력 칸 높이에 맞춰 세운다 — 옆 칸 아래에 오류 글이 붙어 줄이 높아져도 따라 내려가지 않는다. */
+  min-height: var(--control-height-md);
 }
 
 .pqc-web-filter-bar > .pqc-web-filter-actions {

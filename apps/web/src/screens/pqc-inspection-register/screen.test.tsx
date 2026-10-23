@@ -217,8 +217,14 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await user.click(screen.getByRole('button', { name: t.filters.apply }));
     await waitFor(() => expect(queueQueries.at(-1)?.get('q')).toBe('IR-PQC'));
 
+    await user.click(screen.getByRole('checkbox', { name: t.queue.pendingOnly }));
+    await waitFor(() => expect(queueQueries.at(-1)?.get('pendingOnly')).not.toBe('true'));
+
     await user.click(screen.getByRole('button', { name: t.filters.reset }));
     await waitFor(() => expect(queueQueries.at(-1)?.get('q')).toBeNull());
+    /* 초기화는 처음 연 상태로 — 「대기·진행만 보기」도 다시 켠다(OQC 와 같다). */
+    expect(queueQueries.at(-1)?.get('pendingOnly')).toBe('true');
+    expect(screen.getByRole('checkbox', { name: t.queue.pendingOnly })).toBeChecked();
   });
 
   it('LOT 스캔은 생산 LOT 의 작업지시로 대기 의뢰를 찾아 열고, 없으면 공정검사 문구를 낸다(#135)', async () => {
