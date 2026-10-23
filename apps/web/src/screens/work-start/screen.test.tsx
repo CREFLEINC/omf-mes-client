@@ -593,6 +593,10 @@ describe('P-02-01 작업 시작 — 사번은 단말이 들고 있는 자리를 
     const dialog = await screen.findByRole('dialog', { name: t.worker.dialogTitle });
     expect(within(dialog).getByRole('button', { name: t.worker.confirm })).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: '1' })).toBeInTheDocument();
+    /* 키 높이는 P-CO-01 사번 키패드와 같은 규칙(`.worker-no-keypad`)을 쓴다(사용자 결정 2026-10-23). */
+    expect(within(dialog).getByRole('button', { name: '1' }).parentElement).toHaveClass(
+      'worker-no-keypad',
+    );
     await user.click(within(dialog).getByRole('button', { name: t.worker.cancel }));
     /* 묶음 제목은 「작업자」이고 칸 라벨 「사번」을 되풀이하지 않는다(사용자 결정 2026-10-23). */
     const group = screen.getByRole('group', { name: t.coWorkers.title });

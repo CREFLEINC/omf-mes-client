@@ -89,39 +89,44 @@ export const WorkerNoDialog = ({
         </>
       }
     >
-      <TextField
-        label={keypad.fieldLabel}
-        value={draft}
-        size="xl"
-        ref={fieldRef}
-        inputMode="none"
-        autoComplete="off"
-        onChange={(event) => {
-          change(event.target.value);
-        }}
-        onKeyDown={(event) => {
-          if (event.key !== 'Enter') return;
+      {/* 칸, 키패드, 사유 사이는 같은 간격 토큰 하나로 띄운다(C-19). */}
+      <div className="work-start-worker-no">
+        <TextField
+          label={keypad.fieldLabel}
+          value={draft}
+          size="xl"
+          ref={fieldRef}
+          inputMode="none"
+          autoComplete="off"
+          onChange={(event) => {
+            change(event.target.value);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return;
 
-          event.preventDefault();
-          submit();
-        }}
-      />
-      <NumericKeypad
-        value={draft}
-        onChange={change}
-        label={keypad.keypadLabel}
-        backspaceLabel={keypad.backspace}
-        clearLabel={keypad.clear}
-        disabled={isChecking}
-        keySize={POP_TOUCH_SIZE}
-      />
-      {error !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="error" action={errorAction}>
-            {error}
-          </AlertBanner>
-        </div>
-      )}
+            event.preventDefault();
+            submit();
+          }}
+        />
+        <NumericKeypad
+          value={draft}
+          onChange={change}
+          label={keypad.keypadLabel}
+          backspaceLabel={keypad.backspace}
+          clearLabel={keypad.clear}
+          disabled={isChecking}
+          keySize={POP_TOUCH_SIZE}
+          /* 키 높이는 P-CO-01 사번 키패드와 같은 규칙(`.worker-no-keypad > button`, 72px)을 쓴다. */
+          className="worker-no-keypad"
+        />
+        {error !== null && (
+          <div className="banner-slot">
+            <AlertBanner variant="error" action={errorAction}>
+              {error}
+            </AlertBanner>
+          </div>
+        )}
+      </div>
     </Dialog>
   );
 };

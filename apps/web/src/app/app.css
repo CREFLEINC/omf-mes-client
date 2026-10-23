@@ -12609,8 +12609,10 @@ button.app-button-neutral {
   gap: var(--space-2);
 }
 
-.work-start-worker-confirmed {
-  margin: 0;
+/* 사번 입력 창. 칸, 키패드, 사유 사이를 DS 창의 블록 간격(--space-4)과 같은 값으로 띄운다. */
+.work-start-worker-no {
+  display: grid;
+  gap: var(--space-4);
 }
 
 /*
