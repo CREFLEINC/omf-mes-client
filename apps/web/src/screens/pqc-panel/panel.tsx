@@ -1,7 +1,7 @@
 import { AlertBanner, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
@@ -150,6 +150,7 @@ export const PqcPanel = ({
   const [judgment, setJudgment] = useState('');
   const [padField, setPadField] = useState<PadField | null>(null);
   const [remarks, setRemarks] = useState('');
+  const remarksId = useId();
   const lastTargetId = useRef<number | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -465,19 +466,23 @@ export const PqcPanel = ({
           onDispositionChange={edited(setDisposition)}
           onPadFieldChange={() => undefined}
           isLocked={isConfirmed}
-          judgmentNote={
-            planVersionId === null ? <p className="field-note">{tNoStandard.note}</p> : undefined
-          }
           judgmentBelow={
             planVersionId === null ? (
-              <TextField
-                fullWidth
-                label={tNoStandard.remarks}
-                placeholder={tNoStandard.remarksPlaceholder}
-                value={remarks}
-                disabled={isConfirmed}
-                onChange={(event) => edited(setRemarks)(event.target.value)}
-              />
+              /* 검사기준이 없다는 안내는 「검사 내용」 이름 옆에 둔다 — 직접 적을 칸이 바로 이 칸이다. */
+              <div className="field-cell pqc-web-remarks-field">
+                <span className="field-label">
+                  <label htmlFor={remarksId}>{tNoStandard.remarks}</label>
+                  <span className="pqc-web-label-hint">{tNoStandard.note}</span>
+                </span>
+                <TextField
+                  id={remarksId}
+                  fullWidth
+                  placeholder={tNoStandard.remarksPlaceholder}
+                  value={remarks}
+                  disabled={isConfirmed}
+                  onChange={(event) => edited(setRemarks)(event.target.value)}
+                />
+              </div>
             ) : undefined
           }
         />
