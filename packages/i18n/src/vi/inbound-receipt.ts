@@ -29,6 +29,10 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     reasonPlaceholder: 'Hãy chọn lý do',
     reasonLoadFailed: 'Không tải được lý do dùng LOT thay thế',
     back: 'Quay lại quét',
+    prompt: 'Nhấn nút máy quét',
+    hint: 'Mã SP | Số lượng | Ngày | NCC | Số',
+    standby: 'Nhãn khác: quét lại',
+    noLabel: 'Không có nhãn?',
   },
   label: {
     otherItem: 'Mã sản phẩm trên nhãn vừa quét khác mặt hàng của phiếu này',
@@ -124,6 +128,9 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     packageCount: 'Số kiện',
     previousField: 'Ô trước',
     nextField: 'Ô sau',
+    pad: 'Mở bàn phím số',
+    extras: 'Số kiện · Ngày SX · Hạn dùng',
+    extrasShort: 'Thêm',
     manufactured: 'Ngày sản xuất',
     expiry: 'Hạn dùng',
     empty: 'Hãy ghi số lượng thực nhận',
@@ -247,5 +254,6 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
       `Đã chọn ${purchaseOrderNo} · dòng ${lineNo}`,
   },
   plannedQty: 'Đã điền sẵn số lượng còn lại. Nếu khác, hãy bấm số.',
-  nextScan: 'Quét nhãn tiếp theo để bắt đầu ngay lần nhập hàng mới',
+  nextScanPrompt: 'Hãy quét nhãn tiếp theo',
+  nextScanHint: 'Lần nhập hàng tiếp theo sẽ bắt đầu ngay',
 };

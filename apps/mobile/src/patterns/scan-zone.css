@@ -1,0 +1,165 @@
+.scan-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.scan-zone__box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 80px;
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-3);
+  border: 2px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--elevation-1);
+  cursor: text;
+}
+
+/*
+ * 칸이 잡혀 있다 - 지금 쏘면 들어간다. 굵은 차콜 테두리가 천천히 숨 쉰다. 빨강을 쓰지 않는다:
+ * 늘 서 있는 표시라 빨강이면 화면이 늘 경고 중이다.
+ */
+.scan-zone__box:focus-within {
+  border-color: var(--on-surface);
+  animation: scan-zone-armed 1.8s var(--ease-standard) infinite;
+}
+
+@keyframes scan-zone-armed {
+  0%,
+  100% {
+    box-shadow:
+      var(--elevation-1),
+      0 0 0 0 var(--state-disabled-fill);
+  }
+
+  50% {
+    box-shadow:
+      var(--elevation-1),
+      0 0 0 6px var(--state-disabled-fill);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-zone__box:focus-within {
+    animation: none;
+  }
+}
+
+.scan-zone__tile {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+.scan-zone__text {
+  /* 너비를 글자에 묻지 않는다 - 줄 접기가 켜져 있어, 칸이 제 폭을 주장하면 단추가 아래로 밀린다. */
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* 오른쪽 끝에 다 들지 않는 단추들은 구역 안 아래 한 줄로 내려 선다. */
+.scan-zone__actions {
+  flex: 1 0 100%;
+  padding-bottom: var(--space-1);
+}
+
+/* 이름은 낭독기에만. 지시가 이름을 대신한다. */
+.scan-zone__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * 칸 자체는 테두리 없이 구역에 녹는다. 비어 있는 동안 자리표시가 굵은 지시로 선다 - 흐린
+ * 자리표시는 «여기 적으세요»로 읽혀 스캔하라는 말로 안 읽혔다.
+ */
+.scan-zone__input {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 600;
+}
+
+.scan-zone__input::placeholder {
+  color: var(--on-surface);
+  opacity: 1;
+}
+
+.scan-zone__hint {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  font-weight: 400;
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 받은 뒤의 대기 줄. 스캐너는 여전히 이 칸으로 들어오지만 다음 단계가 주인공이라, 낮고 흐린
+ * 한 줄로 접는다.
+ */
+.scan-zone--standby .scan-zone__box {
+  min-height: 48px;
+  padding-block: 2px;
+  border-width: 1px;
+  background: var(--surface-container);
+  box-shadow: none;
+}
+
+.scan-zone--standby .scan-zone__box:focus-within {
+  border-color: var(--outline);
+  animation: none;
+}
+
+.scan-zone--standby .scan-zone__tile {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--on-surface-variant);
+}
+
+.scan-zone--standby .scan-zone__input,
+.scan-zone--standby .scan-zone__input::placeholder {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+/* 받을 수 없는 값. 구역 테두리와 아래 한 줄이 함께 바뀐다 - 색만 바꾸지 않는다. */
+.scan-zone--error .scan-zone__box,
+.scan-zone--error .scan-zone__box:focus-within {
+  border-color: var(--semantic-error);
+}
+
+.scan-zone__error {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--semantic-error-text);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  font-weight: 600;
+}

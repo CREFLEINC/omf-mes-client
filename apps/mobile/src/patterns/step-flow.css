@@ -12,9 +12,9 @@
   row-gap: var(--space-3);
   /*
    * 작업 헤더가 위에 붙어 있다. 머리를 화면에 들일 때 그 밑에 깔리지 않게 비운다. 헤더는
-   * 계기판 띠와 카드(제목 · 값 한 줄 · LOT 한 줄)라 실기 기준 150px 남짓이다.
+   * 계기판 띠와 카드(제목 · 이름 · 값 한 줄 · LOT 한 줄)라 목 서버 촬영에서 184px 이었다.
    */
-  scroll-margin-block-start: 168px;
+  scroll-margin-block-start: 200px;
 }
 
 .step-section > * {

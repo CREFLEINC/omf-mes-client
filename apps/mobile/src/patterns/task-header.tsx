@@ -29,6 +29,11 @@ export interface TaskHeaderProps {
   step?: { index: number; total: number };
   /** 「자세히」로 펼치는 나머지. 없으면 단추를 두지 않는다. */
   details?: ReactNode;
+  /**
+   * 카드 머리의 아이콘 단추 하나. 처리 중인 것을 바꾸는 길(다른 라인으로)이라 그것을 보여 주는
+   * 카드에 붙인다 - 본문 끝에 단추로 두면 그만큼 화면이 길어진다.
+   */
+  action?: { icon: string; label: string; onClick: () => void };
 }
 
 /** 늘 보이는 값의 한도. 넘친 값은 그리지 않는다 - 「자세히」로 보낸다. */
@@ -60,7 +65,7 @@ const kindOf = (field: TaskHeaderField, index: number, fields: TaskHeaderField[]
  * 나머지 값은 「자세히」로 연다. 세로 720dp 에서 앱바·이 헤더·하단 확정 바를 빼면 본문이
  * 그리 넓지 않다.
  */
-export const TaskHeader = ({ fields, progress, step, details }: TaskHeaderProps) => {
+export const TaskHeader = ({ fields, progress, step, details, action }: TaskHeaderProps) => {
   const [open, setOpen] = useState(false);
   const detailsId = useId();
   const shown = fields.slice(0, MAX_FIELDS);
@@ -105,6 +110,15 @@ export const TaskHeader = ({ fields, progress, step, details }: TaskHeaderProps)
           </dl>
           {progress === undefined ? null : (
             <p className="task-header__progress">{t.progress(progress.done, progress.total)}</p>
+          )}
+          {action === undefined ? null : (
+            <IconButton
+              className="task-header__toggle"
+              icon={action.icon}
+              size="md"
+              aria-label={action.label}
+              onClick={action.onClick}
+            />
           )}
           {details === undefined ? null : (
             <IconButton

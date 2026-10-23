@@ -10,7 +10,7 @@
   z-index: 5;
   margin-top: auto;
   margin-inline: calc(-1 * var(--space-4, 16px));
-  padding: var(--space-3, 12px) var(--space-4, 16px);
+  padding: var(--space-2) var(--space-4) var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-2, 8px);
@@ -20,6 +20,24 @@
 
 .bottom-action-bar__button {
   width: 100%;
+}
+
+/*
+ * 바의 단추는 한 줄을 통째로 가진다. 글자가 길면(베트남어) 높이를 지킨 채 두 줄로 접는다 -
+ * 셸의 「단추 글자는 접지 않는다」는 칸 옆 단추를 위한 것이다.
+ */
+.bottom-action-bar__button.pda-button {
+  height: auto;
+  white-space: normal;
+  text-align: center;
+}
+
+.bottom-action-bar__button.pda-button--2xl {
+  min-height: var(--control-height-2xl);
+}
+
+.bottom-action-bar__button.pda-button--xl {
+  min-height: var(--control-height-xl);
 }
 
 /* 잠긴 이유. 단추 바로 위에 두어 단추를 보는 눈에 함께 걸린다. */
@@ -60,4 +78,21 @@
  */
 .with-bottom-action-bar.with-bottom-action-bar {
   padding-bottom: 0;
+}
+
+/* 단추 위의 물음. 단추를 보는 눈에 함께 걸리도록 바 안 맨 위에 둔다. */
+.bottom-action-bar__prompt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.bottom-action-bar__alternatives {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.bottom-action-bar__button.pda-button--lg {
+  min-height: var(--control-height-lg);
 }
