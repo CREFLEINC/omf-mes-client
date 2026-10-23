@@ -91,7 +91,14 @@ import { poRegister } from './po-register';
 import { popLocationLabel } from './pop-location-label';
 import { inspectionDocuments } from './inspection-documents';
 import { inspectionHistory } from './inspection-history';
+import { fourMInputs } from './four-m-inputs';
+import { lotGenealogy } from './lot-genealogy';
 import { pqcInspectionRegister } from './pqc-inspection-register';
+import { inspectionLevel } from './inspection-level';
+import { inspectionSheet } from './inspection-sheet';
+import { inspectionSheetPrint } from './inspection-sheet-print';
+import { inspectionSheetTemplate } from './inspection-sheet-template';
+import { popInspectionSheet } from './pop-inspection-sheet';
 import { materialDefect } from './material-defect';
 import { popOqcInspection } from './pop-oqc-inspection';
 import { popMaterialLotLabel } from './pop-material-lot-label';
@@ -159,6 +166,8 @@ import { workOrderRelease } from './work-order-release';
 import { workPrecheckGate } from './work-precheck-gate';
 import { workStart } from './work-start';
 import { workerAssignment } from './worker-assignment';
+import { zaloConnection } from './zalo-connection';
+import { dispatchHistory } from './dispatch-history';
 
 export const vi: Translated<Messages> = {
   ...ko,
@@ -236,7 +245,14 @@ export const vi: Translated<Messages> = {
   popLocationLabel,
   inspectionDocuments,
   inspectionHistory,
+  fourMInputs,
+  lotGenealogy,
   pqcInspectionRegister,
+  inspectionLevel,
+  inspectionSheet,
+  inspectionSheetPrint,
+  inspectionSheetTemplate,
+  popInspectionSheet,
   materialDefect,
   popOqcInspection,
   popMaterialLotLabel,
@@ -305,4 +321,6 @@ export const vi: Translated<Messages> = {
   workOrderRelease,
   workPrecheckGate,
   workStart,
+  zaloConnection,
+  dispatchHistory,
 };

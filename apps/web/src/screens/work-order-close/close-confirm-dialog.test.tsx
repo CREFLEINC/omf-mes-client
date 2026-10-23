@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { WorkOrderCloseConfirmDialog } from './close-confirm-dialog';
+import { erpResultMenuPath, WorkOrderCloseConfirmDialog } from './close-confirm-dialog';
 
 const t = messages.workOrderClose.confirm;
 
@@ -12,6 +12,8 @@ const renderDialog = (
 ) => {
   const props = {
     workOrderNo: 'SYN-WO-ALPHA',
+    details: [],
+    warnings: [],
     banner: null,
     isSubmitting: false,
     onClose: vi.fn(),
@@ -31,20 +33,24 @@ describe('WorkOrderCloseConfirmDialog', () => {
     expect(t.irreversible).toBe(
       '작업지시 마감은 되돌릴 수 없습니다. 정정이 필요하면 생산실적을 상계 처리하세요.',
     );
-    expect(t.erp).toBe('ERP 송신은 별도로 진행되며, 이 확인은 ERP 송신 완료를 의미하지 않습니다.');
+    expect(t.erp(erpResultMenuPath())).toBe(
+      `ERP 실적 송신은 마감과 함께 대기열에 올라갑니다. 송신 결과는 ${messages.integrationSync.menuPath}에서 확인하세요.`,
+    );
     expect(t.cancel).toBe('취소');
     expect(t.confirm).toBe('작업지시 마감');
     expect(screen.getByRole('dialog')).toHaveAttribute('open');
     expect(screen.getByRole('dialog')).toHaveTextContent(t.title('SYN-WO-ALPHA'));
     expect(screen.getByRole('dialog')).toHaveTextContent(t.target('SYN-WO-ALPHA'));
     expect(screen.getByRole('dialog')).toHaveTextContent(t.irreversible);
-    expect(screen.getByRole('dialog')).toHaveTextContent(t.erp);
+    expect(screen.getByRole('dialog')).toHaveTextContent(t.erp(erpResultMenuPath()));
     expect(screen.queryByRole('button', { name: /닫기/ })).not.toBeInTheDocument();
   });
 
   it('retains a supplied banner and omits it when null', () => {
     const props = {
       workOrderNo: 'SYN-WO-BANNER',
+      details: [],
+      warnings: [],
       isSubmitting: false,
       onClose: vi.fn(),
       onConfirm: vi.fn(),
@@ -99,5 +105,25 @@ describe('WorkOrderCloseConfirmDialog', () => {
     fireEvent(dialog, new Event('cancel', { bubbles: false, cancelable: true }));
     expect(props.onClose).toHaveBeenCalledTimes(1);
     expect(screen.queryByText(/ERP 송신(이|은) (성공|완료)되었습니다/)).not.toBeInTheDocument();
+  });
+
+  it('고른 내용을 한 줄에 한 값씩, 그 아래 마감과 함께 일어나는 일을 보인다', () => {
+    renderDialog({
+      details: [
+        { label: t.fields.judgment, value: '미달' },
+        { label: t.fields.reason, value: '자재 부족' },
+      ],
+      warnings: [t.voidedSlots(2), t.openLots(1, 'LOT-SYN-1')],
+    });
+    const dialog = screen.getByRole('dialog');
+
+    expect(within(dialog).getByText(t.fields.judgment).nextElementSibling).toHaveTextContent(
+      '미달',
+    );
+    expect(within(dialog).getByText(t.fields.reason).nextElementSibling).toHaveTextContent(
+      '자재 부족',
+    );
+    expect(dialog).toHaveTextContent('실적이 없는 선발행 LOT 2건은 마감과 함께 폐번됩니다.');
+    expect(dialog).toHaveTextContent('마감되지 않은 LOT 1건(LOT-SYN-1)은 그 상태로 남습니다.');
   });
 });

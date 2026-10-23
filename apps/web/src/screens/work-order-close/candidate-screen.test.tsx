@@ -12,6 +12,7 @@ import {
   toWorkOrderCloseSelectedDraft,
   WorkOrderCloseCandidateScreen,
 } from './candidate-screen';
+import { erpResultMenuPath } from './close-confirm-dialog';
 import { toWorkOrderCloseDetailFact } from './queries';
 
 const t = messages.workOrderClose;
@@ -22,16 +23,21 @@ const paths = {
   detail: (workOrderId: number) => `/production/work-orders/${String(workOrderId)}`,
   close: (workOrderId: number) => `/production/work-orders/${String(workOrderId)}:close`,
   sessions: '/production/work-sessions',
+  lots: '/trace/lots',
   outbound: '/integration/outbound-item-settings',
   uoms: '/mdm/uoms',
 };
+const closeSuccessText = messages.workOrderClose.closeSuccess(
+  'SYN-WO-DETAIL-701',
+  erpResultMenuPath(),
+);
 type LookupMode = 'ready' | 'pending' | 'pending-error' | 'error' | 'truncated';
 type ReasonMode = LookupMode | 'empty' | 'changed';
 type Judgment = 'UNDER' | 'NORMAL' | 'OVER' | null;
 type OutboundMode =
   'ready' | 'pending-ready' | 'pending-error' | 'error' | 'empty' | 'changed' | 'reappeared';
 type CloseMode = 'success' | 'pending' | 'pending-error' | CloseErrorMode;
-type CloseErrorMode = 'network' | '403' | '500' | 'conflict' | 'validation';
+type CloseErrorMode = 'network' | '403' | '500' | 'conflict' | 'validation' | 'open-session';
 type CloseRecord = { path: string; etag: string | null; key: string | null; body: unknown };
 const closeFields = ['remainderDispositionCode', 'reasonCode', 'remarks'] as const;
 const fieldMessage = (field: string) => `Synthetic ${field} error`;
@@ -43,7 +49,7 @@ const outboundQueryKey = ['work-order-close', 'outbound-item-settings'] as const
 const emptyDraft = { remainderDisposition: null, varianceReasonCode: '', remarks: '' };
 const page = (total = 1, current = 1) => ({ page: current, size: 20, total });
 const statusBody = (total = 1) => ({
-  items: [{ code: 'COMPLETED', codeName: '마감 완료', displayOrder: 1, isActive: true }],
+  items: [{ code: 'IN_PROGRESS', codeName: '진행', displayOrder: 1, isActive: true }],
   page: { page: 1, size: 200, total },
 });
 const orderBody = (total = 1) => ({
@@ -61,9 +67,13 @@ const workOrder = (id: number, itemId = 910001) => ({
   workOrderTypeCode: 'NORMAL',
   processId: 901,
   priorityNo: 1,
-  statusCode: 'COMPLETED',
+  statusCode: 'IN_PROGRESS',
 });
-const detailBody = (workOrderId: number, judgment: Judgment = 'OVER') => ({
+const detailBody = (
+  workOrderId: number,
+  judgment: Judgment = 'OVER',
+  extra: Record<string, unknown> = {},
+) => ({
   ...workOrder(workOrderId),
   workOrderNo: `SYN-WO-DETAIL-${String(workOrderId)}`,
   orderQty: 99,
@@ -75,9 +85,14 @@ const detailBody = (workOrderId: number, judgment: Judgment = 'OVER') => ({
           ...{ varianceQty: -432, completionJudgmentCode: judgment },
         },
   preIssuedLots: { slotCount: 9, withResultCount: 6, withoutResultCount: 0 },
+  ...extra,
 });
-const detailResponse = (workOrderId: number, judgment: Judgment, etag = detailEtag) =>
-  jsonResponse(detailBody(workOrderId, judgment), { headers: { ETag: etag } });
+const detailResponse = (
+  workOrderId: number,
+  judgment: Judgment,
+  etag = detailEtag,
+  extra: Record<string, unknown> = {},
+) => jsonResponse(detailBody(workOrderId, judgment, extra), { headers: { ETag: etag } });
 const errorResponse = (status: number, body: unknown = { message: 'Synthetic HTTP failure' }) =>
   jsonResponse(body, { status });
 const reasonValue = (code: string, codeName: string, displayOrder: number, isActive = true) => ({
@@ -176,6 +191,8 @@ const makeApi = (
   let detailMode: 'ready' | 'pending-ready' | 'pending-error' | 'error' = 'ready';
   let releaseDetail: (() => void) | undefined;
   let detailJudgment: Judgment = 'OVER';
+  let detailExtra: Record<string, unknown> = {};
+  let openLotsBody: unknown = { items: [], page: { page: 1, size: 100, total: 0 } };
   let currentDetailEtag = detailEtag;
   let sessionMode: 'ready' | 'pending-ready' | 'pending-error' | 'error' = 'ready';
   let releaseSession: (() => void) | undefined;
@@ -243,6 +260,12 @@ const makeApi = (
           (release) => (releaseClose = release),
         );
       if (closeMode === 'network') throw new TypeError('Synthetic offline');
+      if (closeMode === 'open-session')
+        return errorResponse(409, {
+          code: 'OPEN_SESSION_EXISTS',
+          message: '열린 작업 세션이 있어 마감할 수 없습니다(단말 POP-SYN-1).',
+          openSessions: [],
+        });
       if (closeMode === 'conflict')
         return errorResponse(409, { conflictCause: 'user', message: 'Synthetic conflict' });
       if (closeMode === 'validation') return errorResponse(400, { errors: closeFields.map(issue) });
@@ -254,12 +277,12 @@ const makeApi = (
       if (detailMode.startsWith('pending'))
         return gate(
           detailMode === 'pending-ready'
-            ? detailResponse(workOrderId, detailJudgment, currentDetailEtag)
+            ? detailResponse(workOrderId, detailJudgment, currentDetailEtag, detailExtra)
             : jsonResponse({ message: 'failure' }, { status: 500 }),
           (release) => (releaseDetail = release),
         );
       if (detailMode === 'error') return jsonResponse({ message: 'failure' }, { status: 500 });
-      return detailResponse(workOrderId, detailJudgment, currentDetailEtag);
+      return detailResponse(workOrderId, detailJudgment, currentDetailEtag, detailExtra);
     }
     if (url.pathname === paths.sessions) {
       const response = sessionMode.endsWith('error')
@@ -269,6 +292,10 @@ const makeApi = (
         ? gate(response, (release) => (releaseSession = release))
         : response;
     }
+    if (url.pathname === paths.lots)
+      return openLotsBody === 'pending'
+        ? new Promise<Response>(() => undefined)
+        : jsonResponse(openLotsBody);
     if (url.pathname.startsWith('/mdm/items/'))
       return jsonResponse(itemBody(Number(url.pathname.split('/').at(-1))));
     if (url.pathname === paths.outbound) {
@@ -280,6 +307,10 @@ const makeApi = (
         : response;
     }
     if (url.pathname === paths.uoms) return jsonResponse(uoms);
+    if (request.method === 'POST' && url.pathname.endsWith(':force-end')) {
+      hasOpenSession = false;
+      return jsonResponse({ workSessionId: 930001, statusCode: 'ENDED' });
+    }
     throw new Error(`Unexpected request: ${url.pathname}`);
   };
   return {
@@ -298,6 +329,8 @@ const makeApi = (
     setDetailMode: (mode: typeof detailMode) => (detailMode = mode),
     setDetailEtag: (etag: string) => ((detailMode = 'pending-ready'), (currentDetailEtag = etag)),
     setJudgment: (judgment: Judgment) => (detailJudgment = judgment),
+    setDetailExtra: (extra: Record<string, unknown>) => (detailExtra = extra),
+    setOpenLots: (body: unknown) => (openLotsBody = body),
     setSessionMode: (mode: typeof sessionMode) => (sessionMode = mode),
     setHasOpenSession: (value: boolean) => (hasOpenSession = value),
     setReasonMode: (mode: ReasonMode) => (reasonMode = mode),
@@ -493,7 +526,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     await waitFor(() => expect(api.closeRequests).toHaveLength(1));
     const key = expect.stringMatching(/^[0-9a-f-]{36}$/i);
     expect(api.closeRequests[0]).toEqual({ path: paths.close(701), body, etag: detailEtag, key });
-    expect(await screen.findByText(t.closeSuccess)).toBeVisible();
+    expect(await screen.findByText(closeSuccessText)).toBeVisible();
     expect(screen.getByText(t.detailSummary.selection.title)).toBeVisible();
     expect(document.body).not.toHaveTextContent(/ERP 반영 완료|outbox 적재 완료/);
   });
@@ -513,7 +546,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     api.setOutboundMode('ready');
     api.releaseOutbound();
     api.releaseClose();
-    expect(await screen.findByText(t.closeSuccess)).toBeVisible();
+    expect(await screen.findByText(closeSuccessText)).toBeVisible();
     await user.click(await selectCloseTarget(user));
     api.setOutboundMode('pending-ready');
     void queryClient.invalidateQueries({ queryKey: outboundQueryKey });
@@ -563,6 +596,17 @@ describe('WorkOrderCloseCandidateScreen', () => {
       ...api.closeRequests[0],
       etag: '"synthetic-close-version-8"',
     });
+  });
+  it('그사이 세션이 열려 거부되면 서버 문구를 보이고 열린 세션을 다시 읽는다', async () => {
+    const { user, api, action } = await prepareClose('NORMAL', 'open-session');
+    await user.click(action);
+    const before = sessionUrls(api.urls).length;
+    const dialog = await confirmClose(user);
+
+    expect(
+      await within(dialog).findByText(/열린 작업 세션이 있어 마감할 수 없습니다\(단말 POP-SYN-1\)/),
+    ).toBeVisible();
+    await waitFor(() => expect(sessionUrls(api.urls).length).toBe(before + 1));
   });
   it('shows all fields and reloads candidate plus exact detail only on 409', async () => {
     const { user, api, action } = await prepareClose('NORMAL', 'validation');
@@ -621,7 +665,8 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(await within(pane).findByText('SYN-WO-DETAIL-701')).toBeVisible();
     expect(pane).toHaveTextContent('99');
     expect(pane).toHaveTextContent('987');
-    expect(pane).toHaveTextContent('-432');
+    expect(pane).toHaveTextContent(t.detailSummary.fields.overageQty);
+    expect(pane).not.toHaveTextContent('-432');
     expect(pane).toHaveTextContent(t.detailSummary.judgments.OVER);
     expect(pane).toHaveTextContent('9');
     expect(pane).toHaveTextContent('6');
@@ -677,7 +722,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
     expect(screen.getByRole('status', { name: t.status.loading })).toBeVisible();
     expect(screen.queryByRole('region', { name: t.input.pane })).not.toBeInTheDocument();
-    expect(sessionUrls(api.urls)[0]!.search).toBe('?open=true&workOrderId=701&page=1&size=1');
+    expect(sessionUrls(api.urls)[0]!.search).toBe('?open=true&workOrderId=701&page=1&size=20');
     api.releaseSession();
     expect(await screen.findByText(t.input.exactNote)).toBeVisible();
     expect(screen.getByRole('status')).toHaveTextContent(t.status.complete);
@@ -701,6 +746,115 @@ describe('WorkOrderCloseCandidateScreen', () => {
     await user.click(within(status).getByRole('button', { name: messages.common.retry }));
     await waitFor(() => expect(detailUrls(api.urls)).toHaveLength(3));
     expect(api.urls.slice(progressBefore).map((url) => url.pathname)).toEqual([paths.detail(701)]);
+  });
+
+  it('확인 창이 고른 내용과 폐번되는 LOT, 남는 LOT 을 되풀이하고, 화면에도 미리 알린다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setJudgment('UNDER');
+    api.setDetailExtra({
+      preIssuedLots: { slotCount: 9, withResultCount: 6, withoutResultCount: 3 },
+    });
+    api.setOpenLots({
+      items: [
+        { lotId: 1, lotNo: 'LOT-SYN-ACTIVE', lifecycleStatusCode: 'ACTIVE' },
+        { lotId: 2, lotNo: 'LOT-SYN-WAITING', lifecycleStatusCode: 'WAITING' },
+      ],
+      page: { page: 1, size: 100, total: 2 },
+    });
+    renderWithProviders(<View />, { fetch: api.fetch });
+    const action = await selectCloseTarget(user);
+    const input = await screen.findByRole('region', { name: t.input.pane });
+    await user.click(dispositionField(input));
+    await user.click(reasonField(input));
+    await user.click(screen.getByRole('option', { name: 'Synthetic second reason' }));
+
+    const voided = t.confirm.voidedSlots(3);
+    const remaining = t.confirm.openLots(1, 'LOT-SYN-ACTIVE');
+    expect(await screen.findByText(remaining)).toBeVisible();
+    expect(screen.getByText(voided)).toBeVisible();
+
+    await waitFor(() => expect(action).toBeEnabled());
+    await user.click(action);
+    const dialog = screen.getByRole('dialog');
+    const valueOf = (label: string) => within(dialog).getByText(label).nextElementSibling;
+    expect(valueOf(t.confirm.fields.judgment)).toHaveTextContent(t.detailSummary.judgments.UNDER);
+    expect(valueOf(t.detailSummary.fields.overageQty)).toHaveTextContent('432');
+    expect(valueOf(t.confirm.fields.remainder)).toHaveTextContent(t.input.remainder.WRITE_OFF);
+    expect(valueOf(t.confirm.fields.reason)).toHaveTextContent('Synthetic second reason');
+    expect(dialog).toHaveTextContent(voided);
+    expect(dialog).toHaveTextContent(remaining);
+    expect(dialog).not.toHaveTextContent('LOT-SYN-WAITING');
+  });
+
+  it('진행 중인 LOT 을 확인하는 동안에는 마감을 열지 않고 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setJudgment('NORMAL');
+    api.setOpenLots('pending');
+    renderWithProviders(<View />, { fetch: api.fetch });
+    const action = await selectCloseTarget(user);
+
+    expect(await screen.findByText(t.confirm.openLotsChecking)).toBeVisible();
+    expect(action).toBeDisabled();
+  });
+
+  it('열린 세션을 강제 종료하면 마감 조건을 다시 읽어 막힘이 풀린다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setJudgment('NORMAL');
+    api.setHasOpenSession(true);
+    renderWithProviders(<View />, { fetch: api.fetch });
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+    const status = await screen.findByRole('region', { name: t.status.pane });
+    expect(await within(status).findByText(t.status.blockers.OPEN_SESSION)).toBeVisible();
+
+    await user.click(
+      within(status).getByRole('button', {
+        name: t.status.sessions.forceEndFor(t.status.sessions.unknown),
+      }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: t.forceEnd.title });
+    await user.type(within(dialog).getByLabelText(t.forceEnd.reason), '단말 고장');
+    await user.click(within(dialog).getByRole('button', { name: t.forceEnd.confirm }));
+
+    await waitFor(() =>
+      expect(within(status).queryByText(t.status.blockers.OPEN_SESSION)).toBeNull(),
+    );
+    expect(await within(status).findByText(t.status.complete)).toBeVisible();
+  });
+
+  it('W/O 에 실린 사유를 미리 골라 두고 어디서 온 값인지 적는다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setJudgment('UNDER');
+    api.setDetailExtra({ completionVarianceReasonCode: 'SYN-SECOND' });
+    renderWithProviders(<WorkOrderCloseCandidateScreen />, { fetch: api.fetch });
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+
+    const input = await screen.findByRole('region', { name: t.input.pane });
+    expect(reasonField(input)).toHaveTextContent('Synthetic second reason');
+    expect(within(input).getByText(t.input.reason.prefilled)).toBeVisible();
+    const status = screen.getByRole('region', { name: t.status.pane });
+    expect(blocks(status)).toEqual([t.status.blockers.REMAINDER_DISPOSITION_REQUIRED]);
+
+    await user.click(reasonField(input));
+    await user.click(screen.getByRole('option', { name: 'Synthetic first reason' }));
+    expect(reasonField(input)).toHaveTextContent('Synthetic first reason');
+    expect(within(input).queryByText(t.input.reason.prefilled)).toBeNull();
+  });
+
+  it('목록에 없는 사유가 실려 있으면 미리 고르지 않는다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setJudgment('UNDER');
+    api.setDetailExtra({ completionVarianceReasonCode: 'SYN-INACTIVE' });
+    renderWithProviders(<WorkOrderCloseCandidateScreen />, { fetch: api.fetch });
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+
+    const input = await screen.findByRole('region', { name: t.input.pane });
+    expect(within(input).queryByText(t.input.reason.prefilled)).toBeNull();
+    expect(reasonField(input)).not.toHaveTextContent('Synthetic');
   });
 
   it('uses named reasons and preserves UNDER blocker order without raw session facts', async () => {
@@ -806,7 +960,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(screen.queryByText(t.status.complete)).not.toBeInTheDocument();
   });
 
-  it('holds candidates until exact COMPLETED is ready and resolves only current-page references', async () => {
+  it('holds candidates until exact IN_PROGRESS is ready and resolves only current-page references', async () => {
     const api = makeApi('pending');
     renderWithProviders(<WorkOrderCloseCandidateScreen />, { fetch: api.fetch });
     const status = screen.getByRole('combobox', { name: t.filter.status });
@@ -817,7 +971,8 @@ describe('WorkOrderCloseCandidateScreen', () => {
     api.releaseStatus();
     expect(await screen.findByRole('button', { name: 'SYN-WO-701 선택' })).toBeVisible();
     const first = candidateUrls(api.urls)[0]!;
-    expect(first.searchParams.get('statusCode')).toBe('COMPLETED');
+    expect(first.searchParams.get('statusCode')).toBe('IN_PROGRESS,SUSPENDED');
+    expect(first.searchParams.has('completionJudgmentCode')).toBe(false);
     expect(first.searchParams.get('page')).toBe('1');
     expect(api.urls.filter((url) => url.pathname === '/mdm/items/910001')).toHaveLength(1);
     expect(
@@ -851,7 +1006,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     } else {
       expect(await screen.findByRole('button', { name: 'SYN-WO-701 선택' })).toBeVisible();
       const request = candidateUrls(api.urls)[0]!;
-      expect(request.searchParams.get('statusCode')).toBe('COMPLETED');
+      expect(request.searchParams.get('statusCode')).toBe('IN_PROGRESS,SUSPENDED');
     }
   });
 

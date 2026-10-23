@@ -3,7 +3,7 @@ import type { Translated } from './translated';
 
 /** W-04-03 OQC 출하검사 판정. 저장은 한 번이고 되돌릴 수 없다 — 번복은 재검사 회차다. */
 export const oqcInspection: Translated<typeof ko.oqcInspection> = {
-  title: 'Đánh giá kiểm tra xuất hàng OQC',
+  title: 'OQC (kiểm tra xuất hàng) tra cứu · đánh giá',
   breadcrumbRoot: 'Quản lý chất lượng',
 
   queue: {
@@ -18,7 +18,8 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     emptyValue: '—',
     openRow: (inspectionRequestNo: string): string => `Mở yêu cầu kiểm tra ${inspectionRequestNo}`,
     caption: 'Danh sách đối tượng kiểm tra xuất hàng',
-    empty: 'Không có yêu cầu kiểm tra nào khớp điều kiện. Hãy nới rộng điều kiện.',
+    empty: 'Không tìm thấy yêu cầu kiểm tra nào.',
+    emptyHint: 'Hãy thay đổi điều kiện tìm kiếm hoặc đặt lại bộ lọc.',
     unavailable: 'Không hiển thị được danh sách.',
     loading: 'Đang tải các yêu cầu kiểm tra.',
   },
@@ -100,11 +101,20 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     blockedByConfirmed: 'Lưu đánh giá — đây là lượt đã chốt. Hãy thêm lượt mới bằng kiểm tra lại.',
     blockedByDraftElsewhere:
       'Lưu đánh giá — đây là lượt đang được soạn ở nơi khác. Hãy thêm lượt mới bằng kiểm tra lại.',
-    blockedByTotals:
-      'Lưu đánh giá — tổng các số lượng phải khớp với số lượng kiểm tra thì mới lưu được.',
+    blockedByTotals: 'Tổng số lượng phải khớp với số lượng kiểm tra.',
     blockedByJudgmentOptions:
       'Lưu đánh giá — danh sách giá trị đánh giá chưa sẵn sàng nên không lưu được. Hãy hỏi người phụ trách.',
-    blockedByJudgment: 'Lưu đánh giá — phải chọn đánh giá tổng hợp thì mới lưu được.',
+    blockedByJudgment: 'Vui lòng chọn đánh giá cuối cùng.',
+    judgmentChange: {
+      basis: (acceptanceNumber: number): string =>
+        `Tự động đánh giá theo số chấp nhận ${String(acceptanceNumber)}`,
+      expected: (judgment: string): string => `Đánh giá tự động: ${judgment}`,
+      reason: 'Lý do thay đổi đánh giá',
+      reasonPlaceholder: 'Hãy nhập lý do lưu khác với đánh giá tự động.',
+      required:
+        'Lưu đánh giá — đánh giá khác với đánh giá tự động phải nhập lý do thay đổi thì mới lưu được.',
+      reasonMissing: 'Hãy nhập lý do thay đổi đánh giá.',
+    },
 
     reinspect: 'Thêm lượt kiểm tra lại',
     reinspectCancel: 'Thôi không kiểm tra lại',
@@ -120,14 +130,17 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
 
   transition: {
     title: 'Chốt xong thì trạng thái LOT sẽ đổi',
-    noLotTitle: 'Hãy kiểm tra trước khi chốt',
-    noLot: 'Không có LOT đối tượng nên trạng thái LOT không thay đổi.',
     quantities: (accepted: string, rejected: string, held: string): string =>
       `Đạt ${accepted} · Không đạt ${rejected} · Tạm giữ ${held}`,
     directionRelease:
       "Chốt xong thì LOT này chuyển sang trạng thái 'Bình thường' (khi không còn tạm giữ khác).",
     directionHold: "Chốt xong thì LOT này chuyển sang trạng thái 'Lỗi'.",
     directionPending: "Chốt xong thì LOT này chuyển sang trạng thái 'Chờ kiểm tra'.",
+    pickedDirectionRelease: 'Chốt xong thì LOT này được gỡ sang trạng thái xuất hàng được.',
+    pickedDirectionHold:
+      'Chốt xong thì các LOT mà lệnh xuất hàng này đã lấy (picking) sẽ chuyển sang trạng thái lỗi.',
+    pickedDirectionPending:
+      'Tạm giữ không thay đổi trạng thái LOT. Lệnh xuất hàng này không xuất được cho đến khi đánh giá xong.',
     directionUnknown: 'Chốt xong thì trạng thái LOT sẽ đổi.',
     pickingImpact: 'Các lượt lấy hàng đang làm dở dùng LOT này cũng bị chặn theo.',
     pickedNotReturned: 'Phần đã lấy hàng rồi thì không được thu hồi lại bằng lần chuyển này.',
@@ -167,5 +180,72 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
   save: {
     duplicateRound: 'Cùng lượt đó đã được lưu rồi. Hãy tải nội dung mới nhất rồi kiểm tra.',
     invalidState: 'Đánh giá không sửa được — hãy tiến hành bằng kiểm tra lại.',
+  },
+
+  skip: {
+    heading: 'Bỏ qua OQC',
+    help: 'Để xuất hàng mà không kiểm tra, hãy yêu cầu bỏ qua. Sau khi phê duyệt ở «Xử lý phê duyệt đặc cách · hạn mức», thực hiện tại đây. Khi thực hiện, mọi yêu cầu OQC đang mở của lệnh xuất hàng này sẽ được bỏ qua và kiểm tra xuất hàng chuyển sang đạt.',
+    reason: 'Lý do bỏ qua',
+    reasonRequired: 'Hãy nhập lý do bỏ qua.',
+    request: 'Yêu cầu bỏ qua OQC',
+    requesting: 'Đang yêu cầu…',
+    execute: 'Thực hiện bỏ qua OQC',
+    executing: 'Đang thực hiện…',
+    requested: 'Đã yêu cầu bỏ qua OQC. Khi phê duyệt xong, hãy thực hiện tại đây.',
+    pending: 'Phê duyệt vẫn đang tiến hành.',
+    approved:
+      'Việc bỏ qua đã được phê duyệt. Khi thực hiện, OQC của lệnh xuất hàng này sẽ được bỏ qua.',
+    rejected: 'Yêu cầu bỏ qua trước đó đã bị từ chối. Có thể yêu cầu lại.',
+    executed: 'Đã bỏ qua OQC. Kiểm tra xuất hàng đã chuyển sang đạt.',
+    skipped: 'Yêu cầu này đã đóng do bỏ qua OQC.',
+    loading: 'Đang tải trạng thái phê duyệt bỏ qua.',
+    loadFailed: 'Không tải được trạng thái phê duyệt bỏ qua.',
+  },
+  serials: {
+    openByScan: 'Mở yêu cầu bằng số serial',
+    openByScanHelp:
+      'Quét số serial để mở yêu cầu OQC đã lấy hàng LOT đó. Nếu không có yêu cầu đang chờ/đang làm, sẽ mở yêu cầu đã hoàn thành để thêm lượt kiểm tra lại.',
+    scanLabel: 'Quét serial',
+    scanPlaceholder: 'Quét hoặc nhập số serial rồi nhấn Enter',
+    scanning: 'Đang kiểm tra serial…',
+    heading: 'Serial đã kiểm tra',
+    help: 'Quét serial đã kiểm tra và chọn OK/NG. Lưu cùng với đánh giá và ghi thành hồ sơ kiểm tra xuất hàng theo từng serial.',
+    notFound: (serialNo: string): string => `Không có số serial: ${serialNo}`,
+    noPickedRequest: (serialNo: string): string =>
+      `Không có yêu cầu OQC đã lấy hàng LOT của serial ${serialNo}.`,
+    completedRequest: (requestNo: string): string => `${requestNo} (đã hoàn thành, kiểm tra lại)`,
+    pickRequest: 'Có nhiều yêu cầu OQC đã lấy hàng LOT của serial này. Hãy chọn yêu cầu cần mở.',
+    duplicate: (serialNo: string): string => `Serial đã có trong danh sách: ${serialNo}`,
+    otherItem: (serialNo: string): string =>
+      `Serial ${serialNo} không thuộc mã hàng của yêu cầu này.`,
+    notPicked: (serialNo: string): string =>
+      `LOT của serial ${serialNo} không phải LOT mà lệnh xuất hàng này đã lấy hàng.`,
+    lookupFailed: 'Không kiểm tra được serial. Hãy quét lại.',
+    columns: { serialNo: 'Serial', lotNo: 'LOT', previous: 'Ghi trước', judgment: 'Đánh giá' },
+    previous: (first: string, final: string): string => `Lần 1 ${first} → Cuối ${final}`,
+    firstOkLocked: 'Lần 1 OK — không đổi sang NG được',
+    remove: 'Bỏ',
+    ok: 'OK',
+    ng: 'NG',
+    empty: 'Chưa quét serial nào. Cũng có thể chỉ lưu đánh giá LOT mà không có serial.',
+    tooMany: 'Số serial đã kiểm tra nhiều hơn số lượng kiểm tra.',
+    tooManyNg: 'Số serial NG nhiều hơn số lượng không đạt. Hãy kiểm tra số lượng không đạt.',
+    count: (total: number, ng: number): string => `${total} serial, NG ${ng}`,
+    recordHeading: 'Kiểm tra xuất hàng theo serial',
+    recordHelp:
+      'Với mỗi serial, đánh giá lần 1 giữ nguyên như lần ghi đầu; lượt kiểm tra lại chỉ đổi đánh giá cuối.',
+    recordEmpty: 'Chưa có serial nào được ghi.',
+    recordLoading: 'Đang tải kiểm tra xuất hàng theo serial.',
+    recordFailed: 'Không tải được kiểm tra xuất hàng theo serial.',
+    recordColumns: {
+      serialNo: 'Serial',
+      lotNo: 'LOT',
+      first: 'Lần 1',
+      final: 'Cuối',
+      round: 'Lượt cuối',
+      inspector: 'Người kiểm tra',
+      inspectedAt: 'Thời điểm kiểm tra',
+    },
+    round: (round: number): string => `Lượt ${round}`,
   },
 };

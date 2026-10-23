@@ -66,10 +66,7 @@ export interface LookupResult extends ReferenceSource {
  * **어느 갈래에도 번호를 담지 않는다**(#44). 담을 자리가 없으면 화면으로 샐 경로도 없다.
  */
 export type ReferenceState =
-  | { kind: 'named'; label: string }
-  | { kind: 'unknown' }
-  | { kind: 'loading' }
-  | { kind: 'failed' };
+  { kind: 'named'; label: string } | { kind: 'unknown' } | { kind: 'loading' } | { kind: 'failed' };
 
 /**
  * 참조 하나를 표기 상태로 옮긴다.
@@ -229,32 +226,42 @@ const isNotFound = (error: unknown): boolean => {
  * 계약에 `itemIds` 같은 복수 번호 필터가 없어 한 번에 묶어 묻는 길이 없다.
  * 생기면 이 자리를 한 번의 요청으로 되돌린다.
  */
+/** 품목 상세 중 이 화면이 쓰는 값. 라벨의 품목코드 대조와 수입검사 표식이 쓴다. */
+export interface ItemDetail {
+  itemCode: string;
+  itemName: string;
+  inspectionRequired: boolean;
+}
+
 export interface ItemNameLookup {
-  /**
-   * 한 라인의 품목 표기 상태.
-   *
-   * **네 갈래가 그대로 산다.** 「목록에 없음」은 이제 *그 번호의 품목이 없다*(404)는 뜻이다 —
-   * 못 받은 것(실패)과 가른다. 둘을 뭉개면 지워진 품목 한 건이 라인 구획 전체에
-   * 「다시 시도」를 세우고, 눌러도 영영 풀리지 않는다.
-   * 라인의 `itemId`는 계약상 필수라 빈 값 갈래만 서지 않는다.
-   */
   of: (itemId: number) => ReferenceState;
-  /** 하나라도 실패했는가. 라인 구획의 실패 안내와 「다시 시도」가 이것을 본다. */
+  /** 상세가 왔으면 그 값, 아직이면(또는 실패·없음) `null`. */
+  detail: (itemId: number) => ItemDetail | null;
   isError: boolean;
   refetch: () => void;
 }
 
 type Client = ReturnType<typeof useApiClient>['client'];
 
-const fetchItemName = async (client: Client, itemId: number): Promise<string> => {
+interface ItemNameResult extends ItemDetail {
+  label: string;
+}
+
+const fetchItemName = async (client: Client, itemId: number): Promise<ItemNameResult> => {
   const data = await runRequest(() =>
     client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
   );
 
   /* 상세는 봉투로 온다 — 편집 가능 여부(`editability`)는 이 화면이 쓰지 않는다. */
   const item = data.item;
+  const itemName = masterName(item, item.itemName);
 
-  return `${item.itemCode} · ${masterName(item, item.itemName)}`;
+  return {
+    label: `${item.itemCode} · ${itemName}`,
+    itemCode: item.itemCode,
+    itemName,
+    inspectionRequired: item.inspectionRequired,
+  };
 };
 
 export const useItemNames = (itemIds: readonly number[]): ItemNameLookup => {
@@ -277,11 +284,24 @@ export const useItemNames = (itemIds: readonly number[]): ItemNameLookup => {
 
       if (result === undefined) return { kind: 'loading' };
       /* 없는 품목은 실패가 아니다 — 다시 불러도 같은 답이 온다. */
-      if (result.isError) return isNotFound(result.error) ? { kind: 'unknown' } : { kind: 'failed' };
+      if (result.isError)
+        return isNotFound(result.error) ? { kind: 'unknown' } : { kind: 'failed' };
 
       return result.data === undefined
         ? { kind: 'loading' }
-        : { kind: 'named', label: result.data };
+        : { kind: 'named', label: result.data.label };
+    },
+    detail: (itemId) => {
+      const index = uniqueIds.indexOf(itemId);
+      const data = index === -1 ? undefined : results[index]?.data;
+
+      return data === undefined
+        ? null
+        : {
+            itemCode: data.itemCode,
+            itemName: data.itemName,
+            inspectionRequired: data.inspectionRequired,
+          };
     },
     isError: results.some((result) => result.isError && !isNotFound(result.error)),
     refetch: () => {

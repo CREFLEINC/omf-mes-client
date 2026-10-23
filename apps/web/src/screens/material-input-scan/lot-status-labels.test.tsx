@@ -12,8 +12,10 @@ import {
 } from '../../test/api-harness';
 import { lot, receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
+import { popGateUnidentifiedText } from '../../patterns/pop-process-gate';
 
 const t = messages.materialInputScan;
+const UNIDENTIFIED_TEXT = popGateUnidentifiedText(t.confirm.reasons.unidentified, null);
 
 const ROUTE = `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}`;
 const RECEIPTS_PATH = '/logistics/shopfloor-receipts';
@@ -161,6 +163,6 @@ describe('자재 상태 표시명', () => {
     await scanOnce(user);
 
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
-    expect(screen.getByText(t.confirm.reasons.unidentified)).toBeTruthy();
+    expect(screen.getByText(UNIDENTIFIED_TEXT)).toBeTruthy();
   });
 });

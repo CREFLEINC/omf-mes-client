@@ -34,6 +34,8 @@ export interface GroupFormValues {
   defaultWipLocationId: string;
   defaultFgLocationId: string;
   defaultScrapLocationId: string;
+  /** 담당 부서 — 이 라인의 W/O·설비에서 생기는 알림이 이 부서의 알림 설정으로 간다. 비면 해제. */
+  departmentId: string;
 }
 
 /** 설비 목록의 조회 조건. */

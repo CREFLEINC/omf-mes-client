@@ -19,6 +19,7 @@ const renderPane = ({
   draft = { remainderDisposition: null, varianceReasonCode: '', remarks: '' },
   reasonOptions: options = reasonOptions,
   reasonUnavailableReason = null,
+  isReasonPrefilled = false,
   onRemainderDispositionChange = vi.fn(),
   onVarianceReasonCodeChange = vi.fn(),
   onRemarksChange = vi.fn(),
@@ -29,6 +30,7 @@ const renderPane = ({
       draft={draft}
       reasonOptions={options}
       reasonUnavailableReason={reasonUnavailableReason}
+      isReasonPrefilled={isReasonPrefilled}
       onRemainderDispositionChange={onRemainderDispositionChange}
       onVarianceReasonCodeChange={onVarianceReasonCodeChange}
       onRemarksChange={onRemarksChange}
@@ -138,6 +140,7 @@ describe('WorkOrderCloseInputPane', () => {
       draft: { remainderDisposition: null, varianceReasonCode: '', remarks: '' },
       reasonOptions,
       reasonUnavailableReason: null,
+      isReasonPrefilled: false,
       onVarianceReasonCodeChange: vi.fn(),
       onRemarksChange: vi.fn(),
     };
@@ -254,4 +257,24 @@ describe('WorkOrderCloseInputPane — 소멸 비고', () => {
       expect(screen.queryByLabelText(t.remarks.label)).not.toBeInTheDocument();
     },
   );
+
+  it('미달이면 이월 옆에 이월 W/O 가 자동으로 만들어지지 않는다는 것과 어디서 편성할지 적는다', () => {
+    renderPane();
+
+    const note = t.remainder.carryOverNote(messages.productionOrder.menuPath);
+    expect(screen.getByText(note)).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: t.remainder.CARRY_OVER })).toHaveAccessibleDescription(
+      note,
+    );
+  });
+
+  it('사유가 미리 골라져 있으면 어디서 온 값인지 적고 바꿀 수 있게 둔다', () => {
+    renderPane({
+      draft: { remainderDisposition: null, varianceReasonCode: 'reason-first', remarks: '' },
+      isReasonPrefilled: true,
+    });
+
+    expect(screen.getByText(t.reason.prefilled)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: t.reason.label })).toBeEnabled();
+  });
 });

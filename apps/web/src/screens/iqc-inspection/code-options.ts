@@ -32,6 +32,8 @@ export const CODE_GROUPS = {
   overallJudgment: 'INSPECTION_RESULT_OVERALL_JUDGMENT',
   measurementJudgment: 'INSPECTION_MEASUREMENT_JUDGMENT',
   itemDataType: 'INSPECTION_ITEM_SPEC_DATA_TYPE',
+  /** 4M 변경품의 변경 종류(omf-all-around#63) — 기준정보에서 더하고 고친다. */
+  fourMChangeType: 'FOUR_M_CHANGE_TYPE',
 } as const;
 
 export interface CodeOption {

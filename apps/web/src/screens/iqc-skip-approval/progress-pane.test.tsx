@@ -179,7 +179,7 @@ describe('ProgressPane — 단계', () => {
     expect(pane.textContent).not.toContain('9501');
   });
 
-  it('결재 결과 코드를 그대로 낸다 — 화면 낱말로 바꾸지 않는다', () => {
+  it('결재 결과를 사용자 용어로 낸다 — 승인·반려 낱말(#134)', () => {
     const pane = renderPane([
       step({
         decisionCode: SAMPLE_DECISION_CODE_A,
@@ -188,7 +188,8 @@ describe('ProgressPane — 단계', () => {
       }),
     ]);
 
-    expect(within(pane).getByText(SAMPLE_DECISION_CODE_A)).toBeVisible();
+    expect(within(pane).getByText(t.labels.status.APPROVED)).toBeVisible();
+    expect(within(pane).queryByText(SAMPLE_DECISION_CODE_A)).toBeNull();
     expect(within(pane).getByText('2026-08-06 13:02')).toBeVisible();
     expect(within(pane).getByText('합성 결재 의견')).toBeVisible();
   });
@@ -215,12 +216,15 @@ describe('ProgressPane — 단계', () => {
     /* 이름 칸은 승인자 이름만 맡는다 — 결과가 여기로 흘러들면 단계 이름이 문장이 된다. */
     expect(label?.textContent).toContain('합성 승인자1');
     for (const shown of [
-      SAMPLE_DECISION_CODE_A,
+      t.labels.status.APPROVED,
       '2026-08-06 13:02',
       '합성 결재 의견',
       t.progress.mine,
     ]) {
       expect(description?.textContent).toContain(shown);
+    }
+    /* 「승인」은 승인자 이름(「합성 승인자1」)에도 들어 있어 이름 칸 단언에서 뺀다. */
+    for (const shown of ['2026-08-06 13:02', '합성 결재 의견', t.progress.mine]) {
       expect(label?.textContent).not.toContain(shown);
     }
   });
@@ -304,6 +308,6 @@ describe('ProgressPane — 반려 자리표시', () => {
 
     expect(items.map((item) => item.getAttribute('data-status'))).toEqual(['rejected', 'complete']);
     /* 결과는 여전히 글자가 말한다 — 상태가 색에만 실리지 않는다. */
-    expect(within(pane).getByText(SAMPLE_DECISION_CODE_B)).toBeVisible();
+    expect(within(pane).getByText(t.labels.status.REJECTED)).toBeVisible();
   });
 });

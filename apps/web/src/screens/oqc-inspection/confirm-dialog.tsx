@@ -30,7 +30,7 @@ export interface ConfirmDialogProps {
   judgmentLabel: string;
   /** 전이 경고 본문에 실을 값. `null` 이면 경고 문장을 빼고 나머지만 낸다 */
   preview: TransitionPreview | null;
-  /** 의뢰에 대상 LOT 이 있는가 — 없으면 LOT 이 바뀌지 않는다고 말한다(`TransitionWarningProps`). */
+  /** 의뢰에 대상 LOT 이 있는가 — 없으면 집은 LOT 의 방향을 말한다(`TransitionWarningProps`). */
   hasLot?: boolean;
   /** 저장 실패 배너 — 창 안에 낸다. 밖에 내면 창에 가려 보이지 않는다 */
   banner: ReactNode;

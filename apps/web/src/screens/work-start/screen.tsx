@@ -3,20 +3,31 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
+import { useApiClient } from '../../patterns/api-context';
+
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { PrecheckGate } from '../work-precheck-gate/gate';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 import { ActionBar } from './action-bar';
+import { CrewPanel, type CrewMember } from './crew-panel';
 import { useIsOnline } from './connection';
 import { useStartGate } from './gating';
-import { useResumeWork, useStartWork, toResumeBody } from './mutations';
+import {
+  useJoinSession,
+  useLeaveSession,
+  useResumeWork,
+  useStartWork,
+  toResumeBody,
+} from './mutations';
 import { PopHeader } from './pop-header';
 import { isOrderQtyFulfilled } from './quantity-fulfilled';
 import { SelectionCard } from './selection-card';
 import {
+  fetchWorkersByNo,
   useOpenSession,
   usePendingPqcRequests,
+  useSessionWorkers,
   useTerminal,
   useUomCodes,
   useWorkOrders,
@@ -25,7 +36,7 @@ import {
 import { SessionEntryActions } from './session-entry-actions';
 import { toSessionRequest } from './session-request';
 import { assignedAtText, terminalNow } from './terminal-clock';
-import type { ControlOverride, WorkOrder } from './types';
+import type { ControlOverride, WorkOrder, Worker } from './types';
 import { WorkOrderList } from './work-order-list';
 import { isHeld } from './work-order-status';
 import { WorkerPanel } from './worker-panel';
@@ -70,8 +81,8 @@ export const WorkStartScreen = () => {
   const equipmentCode = terminal.data?.equipmentCode ?? null;
   const equipmentName = terminal.data?.equipmentName ?? null;
   /*
-   * ⭐ **설비가 매핑되지 않은 단말**(사용자 지시 2026-09-13). 조회가 실패해 «모르는» 것과
-   *    가른다 — 서버가 답했고 그 답이 「설비 없음」이다. 서버는 이 단말의 목록 조회를 거부한다.
+   * ⭐ **설비가 매핑되지 않은 단말.** 조회가 실패해 «모르는» 것과 가른다 — 서버가 답했고 그 답이
+   *    「설비 없음」이다. 이 단말은 설비 축 없이 목록을 받는다(서버가 단말의 공정으로 거른다).
    */
   const isEquipmentMissing = terminal.isSuccess && equipmentId === null;
 
@@ -149,7 +160,7 @@ export const WorkStartScreen = () => {
    * ⚠ 설비를 모르는 채로 기본 목록을 열지 않는다 — 축 없이 물으면 「이 설비 배포분」이라고
    *    그린 화면에 다른 설비의 지시가 실린다. 그 상태는 목록 구획이 사유와 함께 말한다.
    */
-  const isListAsked = isShowingAll || equipmentId !== null;
+  const isListAsked = isShowingAll || equipmentId !== null || isEquipmentMissing;
   /* 쪽 번호. 축(설비·전체 보기)이 바뀌면 첫 쪽으로 되돌린다 — 아래 전환 자리에서 함께 맞춘다. */
   const [listPage, setListPage] = useState(1);
   const list = useWorkOrders(listEquipmentId, isListAsked, listPage);
@@ -188,6 +199,125 @@ export const WorkStartScreen = () => {
     selected?.workOrderId ?? null,
     selected !== null && openSession.data != null,
   );
+
+  /*
+   * 함께 일하는 작업자. 열린 세션을 고른 동안은 그 세션의 지금 참여자를 넣고 빼고(즉시 반영),
+   * 그 밖에서는 시작할 때 함께 보낼 부 작업자를 모은다.
+   */
+  const { client } = useApiClient();
+  const crewSessionId = selected === null ? null : (openSession.data?.workSessionId ?? null);
+  const sessionCrew = useSessionWorkers(crewSessionId);
+  const [pendingCrew, setPendingCrew] = useState<Worker[]>([]);
+  const joinCrew = useJoinSession({
+    workSessionId: crewSessionId,
+    workerNo: confirmedNo ?? '',
+    onSuccess: () => undefined,
+  });
+  const leaveCrew = useLeaveSession({
+    workSessionId: crewSessionId,
+    workerNo: confirmedNo ?? '',
+    onSuccess: () => undefined,
+  });
+  const mainWorker = verified?.kind === 'ok' ? verified.worker : (workerSession?.worker ?? null);
+  const mainWorkerName = mainWorker?.workerName ?? null;
+  const mainWorkerId = mainWorker?.workerId ?? 0;
+  const crew: CrewMember[] =
+    crewSessionId === null
+      ? [
+          ...(confirmedNo === null
+            ? []
+            : [
+                {
+                  key: 'main',
+                  workerId: mainWorkerId,
+                  workerNo: confirmedNo,
+                  workerName: mainWorkerName,
+                  role: 'MAIN' as const,
+                  workSessionWorkerId: null,
+                },
+              ]),
+          ...pendingCrew.map((worker) => ({
+            key: `pending-${String(worker.workerId)}`,
+            workerId: worker.workerId,
+            workerNo: worker.workerNo,
+            workerName: worker.workerName,
+            role: 'SUB' as const,
+            workSessionWorkerId: null,
+          })),
+        ]
+      : (sessionCrew.data ?? []).map((member) => ({
+          key: `session-${String(member.workSessionWorkerId)}`,
+          workerId: member.workerId,
+          workerNo: member.workerNo ?? null,
+          workerName: member.workerName ?? null,
+          /* 옛 행의 `OPERATOR` 는 부다 — 정은 `MAIN` 하나뿐이다. */
+          role: member.workerRoleCode === 'MAIN' ? ('MAIN' as const) : ('SUB' as const),
+          workSessionWorkerId: member.workSessionWorkerId,
+        }));
+  const crewWriteError = joinCrew.error ?? leaveCrew.error;
+
+  /* 다른 세션으로 옮기면 앞 세션의 실패를 남기지 않는다. */
+  useEffect(() => {
+    joinCrew.reset();
+    leaveCrew.reset();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 쓰기 객체는 렌더마다 새로 생긴다. */
+  }, [crewSessionId]);
+
+  /* 실패하면 지금 참여자를 다시 받는다 — 남이 먼저 바꿨을 수 있다. */
+  useEffect(() => {
+    if (crewWriteError !== null) void sessionCrew.refetch();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 조회 객체는 렌더마다 새로 생긴다. */
+  }, [crewWriteError]);
+  const crewError =
+    crewSessionId !== null && sessionCrew.isError
+      ? t.coWorkers.loadFailed
+      : crewWriteError === null
+        ? null
+        : crewWriteError.kind === 'validation' || crewWriteError.kind === 'stateLocked'
+          ? (crewWriteError.errors[0]?.message ?? t.coWorkers.failed)
+          : t.coWorkers.failed;
+
+  const addCrew = async (workerNo: string): Promise<string | null> => {
+    if (crew.some((member) => member.workerNo === workerNo)) return t.coWorkers.duplicate;
+
+    let found: Worker[];
+    try {
+      found = await fetchWorkersByNo(client, workerNo);
+    } catch {
+      return t.worker.lookupFailed;
+    }
+
+    const result = verifyWorker(found, workerNo, homePlantId);
+    if (result.kind === 'unknown') return t.worker.unknown;
+    if (result.kind === 'inactive') return t.worker.inactive;
+    /* 서버가 단말 공장의 작업자만 받는다 — 보내기 전에 막는다. */
+    if (result.isOtherPlant) return t.coWorkers.otherPlant;
+    if (crew.some((member) => member.workerId === result.worker.workerId)) {
+      return t.coWorkers.duplicate;
+    }
+
+    if (crewSessionId === null) {
+      setPendingCrew((current) => [...current, result.worker]);
+    } else {
+      leaveCrew.reset();
+      joinCrew.write({ workerId: result.worker.workerId, joinedAt: terminalNow(new Date()) });
+    }
+
+    return null;
+  };
+
+  const removeCrew = (member: CrewMember) => {
+    if (member.workSessionWorkerId === null) {
+      setPendingCrew((current) => current.filter((worker) => worker.workerId !== member.workerId));
+      return;
+    }
+
+    joinCrew.reset();
+    leaveCrew.write({
+      workSessionWorkerId: member.workSessionWorkerId,
+      leftAt: terminalNow(new Date()),
+    });
+  };
 
   /**
    * 이 시도가 언제 일어났는가. **한 번 정하면 성공할 때까지 붙든다.**
@@ -279,6 +409,7 @@ export const WorkStartScreen = () => {
     workerNo: confirmedNo ?? '',
     onSuccess: () => {
       submitAtRef.current = null;
+      setPendingCrew([]);
       setOutcome(t.result.started(selected?.workOrderNo ?? ''));
       setSelectedId(null);
 
@@ -326,7 +457,6 @@ export const WorkStartScreen = () => {
     const other = (text: string) => ({ code: 'other' as const, text });
 
     /* ⭐ 사유별로 가른다(사용자 지시 2026-09-13) — 매핑이 비어 있는 것은 등록 실패가 아니다. */
-    if (isEquipmentMissing) return other(t.blocked.equipmentMissing);
     if (gate.verdict === 'unidentified') {
       if (identity.terminalId === null || identity.processes === null) {
         return other(t.blocked.unidentified);
@@ -437,6 +567,25 @@ export const WorkStartScreen = () => {
     /* eslint-disable-next-line react-hooks/exhaustive-deps -- 조회 객체는 렌더마다 새로 생긴다. */
   }, [writeError]);
 
+  /**
+   * 이 시작이 쓰는 설비. 설비가 없는 단말은 고른 W/O 의 계획 설비를 쓴다 — 점검한 설비와 실적이
+   * 남는 설비가 같아야 해서 점검 판정 기록과 세션 본문이 같은 값을 싣는다.
+   */
+  const workEquipmentIdOf = (workOrder: WorkOrder): number | null =>
+    equipmentId ?? workOrder.plannedEquipmentId ?? null;
+
+  const writeSession = (target: WorkOrder, at: string, override: ControlOverride | null) => {
+    startWork.write(
+      toSessionRequest({
+        workOrder: target,
+        equipmentId: workEquipmentIdOf(target),
+        startedAt: at,
+        controlOverride: override,
+        coWorkerIds: pendingCrew.map((worker) => worker.workerId),
+      }),
+    );
+  };
+
   const submit = () => {
     if (selected === null || confirmedNo === null) return;
 
@@ -449,6 +598,13 @@ export const WorkStartScreen = () => {
 
     if (isResume) {
       resumeWork.write(toResumeBody(at));
+
+      return;
+    }
+
+    /* 단말에도 W/O 에도 설비가 없으면 점검할 설비가 없다 — 게이트 없이 바로 연다. */
+    if (workEquipmentIdOf(selected) === null) {
+      writeSession(selected, at, null);
 
       return;
     }
@@ -482,14 +638,7 @@ export const WorkStartScreen = () => {
       return;
     }
 
-    startWork.write(
-      toSessionRequest({
-        workOrder: target,
-        equipmentId,
-        startedAt: attempt?.at ?? submitAtRef.current ?? terminalNow(new Date()),
-        controlOverride: override,
-      }),
-    );
+    writeSession(target, attempt?.at ?? submitAtRef.current ?? terminalNow(new Date()), override);
   };
 
   /**
@@ -638,7 +787,7 @@ export const WorkStartScreen = () => {
        *
        * 작업자를 바꾸는 길은 머리줄의 **로그아웃**이다 — 사번을 놓고 진입 화면으로 돌아간다.
        */}
-      {confirmedNo === null && (
+      {confirmedNo === null ? (
         <WorkerPanel
           draft={draft}
           confirmed={confirmedNo}
@@ -660,6 +809,14 @@ export const WorkStartScreen = () => {
           }}
           isChecking={submittedNo !== null && confirmedNo === null && lookup.isFetching}
           error={workerError}
+        />
+      ) : (
+        <CrewPanel
+          members={crew}
+          disabled={!isOnline || joinCrew.isSaving || leaveCrew.isSaving}
+          error={crewError}
+          onAdd={addCrew}
+          onRemove={removeCrew}
         />
       )}
 
@@ -698,7 +855,15 @@ export const WorkStartScreen = () => {
       <SelectionCard
         workOrder={selected}
         equipmentId={equipmentId}
-        equipmentCode={equipmentCode}
+        /* 설비 없는 단말은 이 시작이 쓸 W/O 의 설비를 보인다 — 그것도 없으면 「설비 미지정」. */
+        equipmentCode={
+          isEquipmentMissing && selected !== null
+            ? (selected.plannedEquipmentCode ?? null)
+            : equipmentCode
+        }
+        isEquipmentUnassigned={
+          isEquipmentMissing && selected !== null && selected.plannedEquipmentId == null
+        }
         uomCodeOf={uomCodeOf}
       />
 
@@ -746,9 +911,14 @@ export const WorkStartScreen = () => {
           workOrderId={attempt.workOrder.workOrderId}
           workOrderNo={attempt.workOrder.workOrderNo}
           workOrderTypeCode={attempt.workOrder.workOrderTypeCode}
-          equipmentId={equipmentId}
-          equipmentCode={equipmentCode}
-          equipmentName={equipmentName}
+          equipmentId={workEquipmentIdOf(attempt.workOrder)}
+          /* 단말에 설비가 없으면 W/O 의 설비로 점검한다 — 머리글·이력도 그 설비로 보인다. */
+          equipmentCode={
+            equipmentId === null ? (attempt.workOrder.plannedEquipmentCode ?? null) : equipmentCode
+          }
+          equipmentName={
+            equipmentId === null ? (attempt.workOrder.plannedEquipmentName ?? null) : equipmentName
+          }
           plantId={terminal.data?.plantId ?? null}
           processId={attempt.workOrder.processId ?? soleProcessIdOf(identity.processes)}
           workerNo={confirmedNo}

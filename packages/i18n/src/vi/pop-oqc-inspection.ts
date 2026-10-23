@@ -85,7 +85,11 @@ export const popOqcInspection = {
     directionHold: "Khi lưu, trạng thái LOT chuyển thành 'Lỗi'.",
     directionPending: "Khi lưu, trạng thái LOT chuyển thành 'Chờ kiểm tra'.",
     directionUnknown: 'Khi lưu, trạng thái LOT sẽ thay đổi.',
-    noLot: 'Không có LOT đối tượng nên trạng thái LOT không thay đổi.',
+    pickedDirectionRelease: 'Khi lưu, LOT này được gỡ sang trạng thái xuất hàng được.',
+    pickedDirectionHold:
+      'Khi lưu, các LOT mà lệnh xuất hàng này đã lấy (picking) sẽ chuyển sang trạng thái lỗi.',
+    pickedDirectionPending:
+      'Tạm giữ không thay đổi trạng thái LOT. Lệnh xuất hàng này không xuất được cho đến khi đánh giá xong.',
     picking:
       'Các lần lấy hàng đang thực hiện dùng LOT này sẽ bị chặn, số lượng đã lấy sẽ không được hoàn lại.',
     noAmendment: 'Sau khi lưu không thể sửa. Muốn thay đổi thì kiểm tra lại.',

@@ -14,6 +14,9 @@ import {
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import { lot, receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
+import { popGateDeniedText } from '../../patterns/pop-process-gate';
+
+const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial');
 
 const t = messages.materialInputScan;
 
@@ -789,6 +792,49 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
    * ⛔ **전체 롤백 금지**(C-2). 서버가 거부하면 그 건만 되돌린다 — 40건 중 1건 때문에 39건을
    * 버리면 현장이 마비된다.
    */
+  it('단말 권한으로 서버가 거부하면(401) 서버 문구를 그대로 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], {
+      match: (request) => isPost(request, CONSUMPTIONS_PATH),
+      respond: () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: 'PERMISSION_DENIED',
+                message:
+                  '이 단말에는 이 W/O 공정의 자재 투입 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「자재 투입」을 켜세요.',
+              },
+            ],
+          },
+          { status: 401 },
+        ),
+    });
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+
+    expect(
+      await screen.findByText(
+        '이 단말에는 이 W/O 공정의 자재 투입 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「자재 투입」을 켜세요.',
+        { exact: false },
+      ),
+    ).toBeTruthy();
+  });
+
+  it('401 이 아닌 거부(404)의 서버 몸체는 보이지 않고 일반 문구를 쓴다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], {
+      match: (request) => isPost(request, CONSUMPTIONS_PATH),
+      respond: () => jsonResponse({ message: 'Not Found' }, { status: 404 }),
+    });
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+
+    expect(await screen.findByText(messages.httpError.description, { exact: false })).toBeTruthy();
+    expect(screen.queryByText(/Not Found/)).toBeNull();
+  });
+
   it('서버가 거부하면 그 건만 목록에서 내린다', async () => {
     const user = userEvent.setup();
 
@@ -864,7 +910,7 @@ describe('MaterialInputScanScreen — 게이트와 쓰기', () => {
       { fetch, route: ROUTE },
     );
 
-    await screen.findByText(t.confirm.reasons.denied);
+    await screen.findByText(DENIED_TEXT);
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
 
     /* 「기록」이 잠겨 있고, 눌러도 원장에 닿지 않는다 — 잠금과 보내는 자리가 각각 막는다. */
@@ -891,7 +937,7 @@ describe('MaterialInputScanScreen — 게이트와 쓰기', () => {
       { fetch: stub, route: ROUTE },
     );
 
-    await screen.findByText(t.confirm.reasons.denied);
+    await screen.findByText(DENIED_TEXT);
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '');
 
     await user.click(screen.getByRole('button', { name: '7' }));

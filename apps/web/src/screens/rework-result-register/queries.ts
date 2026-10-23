@@ -9,8 +9,6 @@ export const reworkResultKeys = {
   source: (id: number) => ['rework-result-register', 'source', id] as const,
   dispositions: (id: number) => ['rework-result-register', 'dispositions', id] as const,
   sourceLot: (id: number) => ['rework-result-register', 'source-lot', id] as const,
-  gate: (terminalId: number, processId: number) =>
-    ['rework-result-register', 'gate', terminalId, processId] as const,
   defectCodes: ['rework-result-register', 'defect-codes'] as const,
 };
 
@@ -129,28 +127,4 @@ export const useDispositionDecisions = (nonconformanceId: number | null) => {
       );
     },
   });
-};
-
-export const useResultGate = (terminalId: number | null, processId: number | null) => {
-  const { client } = useApiClient();
-  const identified = terminalId !== null && processId !== null;
-  const query = useQuery({
-    queryKey: reworkResultKeys.gate(terminalId ?? 0, processId ?? 0),
-    enabled: identified,
-    queryFn: async () => {
-      if (terminalId === null || processId === null) return false;
-      const data = await runRequest(() =>
-        client.GET('/mdm/terminals/{terminalId}/processes', {
-          params: { path: { terminalId } },
-        }),
-      );
-      return data.items.find((row) => row.processId === processId)?.canInputResult ?? false;
-    },
-  });
-  return {
-    allowed: identified && query.isSuccess && query.data === true,
-    checking: identified && query.isPending,
-    unavailable: query.isError,
-    unidentified: !identified,
-  };
 };

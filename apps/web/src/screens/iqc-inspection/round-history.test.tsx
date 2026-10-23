@@ -33,6 +33,30 @@ describe('RoundHistory', () => {
    * ⛔ **정정하는 자리가 아니다.** 누를 것이 하나라도 있으면 「여기서 고칠 수 있다」로 읽힌다 —
    * 앞 회차는 고치지 않고 새 회차를 쌓는다(§5-3).
    */
+  it('판정을 선택지의 표시명으로 보이고, 선택지에 없으면 코드 그대로 둔다', () => {
+    const code = confirmedRound.overallJudgmentCode ?? '';
+    const { rerender } = render(
+      <RoundHistory
+        rounds={[toInspectionResultRound(confirmedRound)]}
+        uomCode={null}
+        judgmentOptions={[{ value: code, label: '합격 판정' }]}
+      />,
+    );
+
+    expect(screen.getByText('합격 판정')).toBeInTheDocument();
+    expect(screen.queryByText(code)).not.toBeInTheDocument();
+
+    rerender(
+      <RoundHistory
+        rounds={[toInspectionResultRound(confirmedRound)]}
+        uomCode={null}
+        judgmentOptions={[{ value: 'OTHER', label: '다른 판정' }]}
+      />,
+    );
+
+    expect(screen.getByText(code)).toBeInTheDocument();
+  });
+
   it('누를 것을 두지 않는다 — 읽기 전용이다', () => {
     render(<RoundHistory rounds={[toInspectionResultRound(confirmedRound)]} uomCode={null} />);
 

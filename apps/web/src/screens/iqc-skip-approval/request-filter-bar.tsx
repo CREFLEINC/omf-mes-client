@@ -124,7 +124,7 @@ export const RequestFilterBar = ({
 
   return (
     <>
-      <div className="filter-bar">
+      <div className="filter-bar iqc-skip-approval-filter">
         <SelectField
           label={t.fields.status}
           options={optionsOf(statusOptions)}
@@ -193,7 +193,10 @@ export const RequestFilterBar = ({
          */}
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
-            <Button onClick={search}>{messages.common.search}</Button>
+            {/* 조회는 위험 동작이 아니다 — 빨간 주 색(filled)은 승인·생략 실행에만 쓴다. */}
+            <Button variant="tonal" onClick={search}>
+              {messages.common.search}
+            </Button>
             <Button variant="outlined" onClick={reset}>
               {messages.common.reset}
             </Button>

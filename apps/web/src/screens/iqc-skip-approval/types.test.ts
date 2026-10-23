@@ -104,6 +104,7 @@ describe('toRequestRow', () => {
       'reasonFirstLine',
       'requestedAtText',
       'requesterName',
+      'statusCode',
       'targetName',
     ]);
     /* 상신자·대상의 내부 번호는 응답에 실려 오지만 행이 나르지 않는다. */

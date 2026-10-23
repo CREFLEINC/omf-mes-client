@@ -30,6 +30,9 @@ export const workHoldRegister = {
     loadFailed: '현재 세션을 불러오지 못했습니다.',
     /** ⛔ 진입 차단 — 세션이 없으면 중단을 기록할 수 없다(스펙 §6). */
     none: '진행 중인 작업 세션이 없어 중단을 등록할 수 없습니다. 작업을 먼저 시작하세요.',
+    /* 방금 이 화면에서 끝낸 세션 — 「먼저 시작하세요」만 남으면 끝낸 일이 실패한 것처럼 읽힌다. */
+    ended: (startScreen: string): string =>
+      `작업 세션을 끝냈습니다. 이어서 작업하려면 「${startScreen}」 화면에서 작업을 다시 시작하세요.`,
     unknownValue: '확인할 수 없음',
   },
 
@@ -91,6 +94,9 @@ export const workHoldRegister = {
     offline: '오프라인입니다. 연결되면 자동으로 보냅니다.',
     pending: (count: number) => `미전송 ${String(count)}건`,
     rejected: '서버가 받지 않았습니다.',
+    /** 끝난 세션, 더 바꿀 수 없는 작업지시 — 다시 보내도 같은 답이 온다. */
+    locked: '이 작업은 이미 끝나 더 기록할 수 없습니다.',
+    toWorkStart: (screen: string): string => `「${screen}」으로 가기`,
     stalled: '서버가 계속 받지 않습니다. 등록한 내용은 그대로 남아 있습니다.',
     retryNow: '다시 보내기',
   },

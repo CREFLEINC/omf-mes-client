@@ -134,6 +134,17 @@ describe('QueueTable', () => {
     expect(onSelect).toHaveBeenCalledWith(1002);
   });
 
+  /* omf-all-around#133 — 줄의 다른 칸(LOT·상태·일시)을 눌러도 그 줄을 고른다. */
+  it('줄의 다른 칸을 눌러도 그 의뢰를 고른다', async () => {
+    const onSelect = renderTable();
+    const row = openButton('IR-2026-0002').closest('tr') as HTMLElement;
+
+    await userEvent.click(within(row).getAllByRole('cell')[1] as HTMLElement);
+
+    expect(onSelect).toHaveBeenCalledWith(1002);
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
   it('고른 줄만 현재로 표시한다', () => {
     renderTable({ selectedId: 1002 });
 
@@ -190,7 +201,10 @@ describe('QueueTable — 자재 LOT 표기', () => {
     expect(LOT_IDS.length).toBeGreaterThan(0);
 
     for (const lotId of LOT_IDS) {
-      expect(within(table).getAllByText(LOT_NO(lotId)).length).toBeGreaterThan(0);
+      /* 번호는 앞 마디 · 끝 마디 두 조각으로 그려진다(#133) — 칸 전체 글자와 title 로 잰다. */
+      const cells = within(table).getAllByTitle(LOT_NO(lotId));
+      expect(cells.length).toBeGreaterThan(0);
+      expect(cells[0]).toHaveTextContent(LOT_NO(lotId));
       /* 짝 방향 — 번호가 글자로도 남지 않는다. */
       expect(table.textContent ?? '').not.toContain(String(lotId));
     }

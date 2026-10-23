@@ -37,6 +37,8 @@ export interface SplitResultFormProps {
   onDispositionChange: (choice: DispositionState) => void;
   onPadFieldChange: (target: PadTarget | null) => void;
   isLocked: boolean;
+  /** 관리웹 폼과 같은 꼴을 맞추려 받는다 — POP 분할 화면은 쓰지 않는다. */
+  targetQty?: number;
 }
 
 const FIELD_OF: Record<string, keyof QuantityDraft> = {

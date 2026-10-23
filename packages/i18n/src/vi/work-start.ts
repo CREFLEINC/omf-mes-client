@@ -39,10 +39,28 @@ export const workStart: Translated<typeof ko.workStart> = {
     change: 'Nhập lại',
     checking: 'Đang kiểm tra',
 
-    unknown: 'Mã nhân viên chưa được đăng ký.',
+    unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này.',
     inactive: 'Mã nhân viên này không còn làm việc.',
     lookupFailed: 'Không xác nhận được mã nhân viên. Hãy thử lại.',
     retry: 'Thử lại',
+  },
+
+  coWorkers: {
+    title: 'Người làm',
+    count: (count: number, max: number): string => `${String(count)}/${String(max)}`,
+    main: 'Chính',
+    sub: 'Phụ',
+    name: (workerName: string, workerNo: string): string => `${workerName} (${workerNo})`,
+    add: '+ Người phụ',
+    remove: (name: string): string => `Bỏ ${name}`,
+    dialogTitle: 'Thêm người phụ',
+    cancel: 'Hủy',
+    confirm: 'Thêm',
+    duplicate: 'Người này đã có trong danh sách.',
+    otherPlant: 'Không thể thêm người của nhà máy khác.',
+    failed: 'Không xử lý được. Hãy thử lại.',
+    loadFailed: 'Không tải được danh sách người làm.',
+    unknown: 'Không rõ',
   },
 
   list: {
@@ -53,7 +71,7 @@ export const workStart: Translated<typeof ko.workStart> = {
     showEquipmentOnly: 'Chỉ xem thiết bị này',
 
     scopeNoteEquipment:
-      'Chỉ hiện lệnh sản xuất đã phát hành cho thiết bị này. Muốn xem lệnh của thiết bị khác, hãy bấm «Xem tất cả».',
+      'Hiện lệnh sản xuất của thiết bị này và lệnh chưa gán thiết bị. Muốn xem lệnh của thiết bị khác, hãy bấm «Xem tất cả».',
     scopeNoteAll:
       'Đang hiện cả lệnh sản xuất đã phát hành cho thiết bị khác. Có thể quay lại bằng «Chỉ xem thiết bị này».',
 
@@ -62,6 +80,7 @@ export const workStart: Translated<typeof ko.workStart> = {
 
     emergencyBadge: 'Khẩn',
     heldBadge: 'Đang tạm dừng',
+    unassignedEquipmentBadge: 'Chưa gán thiết bị',
 
     columns: {
       plannedStart: 'Kế hoạch',
@@ -80,7 +99,6 @@ export const workStart: Translated<typeof ko.workStart> = {
 
     pageNav: 'Chuyển trang danh sách lệnh sản xuất',
 
-    equipmentMissing: 'Khi máy trạm này được gán thiết bị, lệnh sản xuất sẽ hiện ở đây.',
     equipmentUnknown:
       'Không xác nhận được máy trạm này gắn với thiết bị nào. Có thể tiếp tục bằng «Xem tất cả».',
   },
@@ -110,8 +128,6 @@ export const workStart: Translated<typeof ko.workStart> = {
      * ⭐ **사유별로 가른다**(사용자 지시 2026-09-13). 등록은 끝났는데 관리웹 매핑이 비어 있는
      * 것을 「단말을 확인하지 못했다」로 말하면 설치 담당자가 토큰부터 다시 의심한다.
      */
-    equipmentMissing:
-      'Máy trạm này chưa được ánh xạ thiết bị. Hãy gán thiết bị tại Web quản trị > Ánh xạ máy quét - công đoạn.',
     processNone:
       'Máy trạm này chưa được ánh xạ công đoạn. Hãy gán công đoạn tại Web quản trị > Ánh xạ máy quét - công đoạn.',
     processMultiple:

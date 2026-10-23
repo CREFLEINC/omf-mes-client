@@ -1,8 +1,8 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import type { ApiClient, ApiError } from '@omf-mes/api-client';
 import { createIdempotencyKey } from '@omf-mes/api-client';
 
 import { isRejected } from '../../patterns/outbox-policy';
-import { runRequest } from '../../patterns/request';
+import { runRequest, toApiError } from '../../patterns/request';
 import type { ProductionResult, ProductionResultCreate } from './types';
 
 type Client = ApiClient['client'];
@@ -17,6 +17,8 @@ const STORAGE_KEY = 'omf-mes.rework-result-register.outbox';
 export interface DrainResult {
   accepted: number;
   rejected: number;
+  /** 마지막으로 거부된 까닭. 화면이 서버 문구를 그대로 보인다 */
+  lastRejection: ApiError | null;
 }
 
 let drainInFlight: Promise<DrainResult> | null = null;
@@ -92,6 +94,7 @@ export const drainReworkResults = (client: Client): Promise<DrainResult> => {
     const entries = readEntries();
     let accepted = 0;
     let rejected = 0;
+    let lastRejection: ApiError | null = null;
     for (const entry of entries) {
       try {
         await postReworkResult(client, entry);
@@ -104,11 +107,12 @@ export const drainReworkResults = (client: Client): Promise<DrainResult> => {
          */
         if (!isRejected(error)) throw error;
         rejected += 1;
+        lastRejection = toApiError(error);
       }
       /* 전송 중 새로 담긴 항목까지 snapshot으로 덮어 지우지 않는다. */
       removeEntry(entry.idempotencyKey);
     }
-    return { accepted, rejected };
+    return { accepted, rejected, lastRejection };
   })().finally(() => {
     drainInFlight = null;
   });

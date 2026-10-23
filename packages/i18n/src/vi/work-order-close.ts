@@ -15,6 +15,9 @@ import type { Translated } from './translated';
 export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   title: 'Đóng W/O · gửi kết quả sang ERP',
   breadcrumbRoot: 'Quản lý sản xuất',
+  menuPath: 'Quản lý sản xuất › Đóng W/O · gửi kết quả sang ERP',
+  description:
+    'Đóng lệnh sản xuất đã xong việc và gửi kết quả sản xuất sang ERP. Đã đóng thì không hoàn tác được.',
   detailSummary: {
     pane: 'Tóm tắt chi tiết đóng lệnh sản xuất',
     heading: 'Chi tiết đóng lệnh sản xuất',
@@ -38,6 +41,8 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       reworkQty: 'Số lượng làm lại',
       achievementRate: 'Tỷ lệ đạt',
       varianceQty: 'Số lượng chênh lệch',
+      shortfallQty: 'Số lượng thiếu',
+      overageQty: 'Số lượng vượt',
       judgment: 'Đánh giá khi đóng',
       slotCount: 'Tất cả LOT phát trước',
       withResultCount: 'Có kết quả',
@@ -55,9 +60,17 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   },
   candidateList: {
     pane: 'Danh sách lệnh sản xuất ứng viên đóng',
-    fields: { workOrderNo: 'Số W/O', item: 'Mặt hàng', quantity: 'Số lượng lệnh' },
+    fields: {
+      workOrderNo: 'Số W/O',
+      item: 'Mặt hàng',
+      status: 'Trạng thái',
+      quantity: 'Số lượng lệnh',
+      goodQty: 'Đạt',
+      achievementRate: 'Tỷ lệ đạt',
+      judgment: 'Đánh giá',
+    },
     actions: { select: (workOrderNo: string) => `Chọn ${workOrderNo}` },
-    values: { missingItem: 'Không có tên hiển thị mặt hàng' },
+    values: { missingItem: 'Không có tên hiển thị mặt hàng', unknown: '—' },
     loading: 'Đang tải danh sách lệnh sản xuất ứng viên đóng.',
     empty: {
       title: 'Không có lệnh sản xuất ứng viên đóng.',
@@ -95,6 +108,10 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     plannedStartFrom: 'Ngày bắt đầu kế hoạch (từ)',
     plannedStartTo: 'Ngày bắt đầu kế hoạch (đến)',
     status: 'Trạng thái đóng',
+    judgment: 'Đánh giá',
+    judgmentUnavailable:
+      'Khi tra cứu có trạng thái đã đóng hoặc đã hủy thì không lọc theo đánh giá. Muốn lọc theo đánh giá, hãy chọn trạng thái đang làm, tạm dừng hoặc hoàn thành.',
+    closableStatuses: 'Đang làm hoặc tạm dừng',
     all: 'Tất cả',
     search: 'Tra cứu',
     reset: 'Đặt lại',
@@ -106,34 +123,76 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     statusLookupEmpty: 'Không có trạng thái đóng nào dùng được.',
     statusLookupTruncated:
       'Chỉ tải được một phần danh sách trạng thái đóng nên chưa bắt đầu tra cứu lần đầu được.',
-    completedStatusMissing:
-      'Không xác nhận được trạng thái đã đóng nên chưa bắt đầu tra cứu lần đầu được.',
+    inProgressStatusMissing:
+      'Không xác nhận được trạng thái đang thực hiện nên chưa bắt đầu tra cứu lần đầu được. Nếu tải lại trang vẫn vậy, hãy báo quản trị hệ thống.',
   },
   confirm: {
     title: (workOrderNo: string) => `Đóng lệnh sản xuất — ${workOrderNo}`,
     target: (workOrderNo: string) => `Lệnh sản xuất đích: ${workOrderNo}`,
     irreversible:
       'Đóng lệnh sản xuất không hoàn tác được. Nếu cần sửa thì hãy xử lý bù trừ kết quả sản xuất.',
-    erp: 'Việc gửi sang ERP được tiến hành riêng, và xác nhận này không có nghĩa là đã gửi xong sang ERP.',
+    erp: (menuPath: string): string =>
+      `Kết quả sản xuất sẽ vào hàng đợi gửi sang ERP cùng lúc đóng. Hãy xem kết quả gửi ở ${menuPath}.`,
+    fields: {
+      judgment: 'Đánh giá',
+      remainder: 'Xử lý lượng còn lại',
+      reason: 'Lý do chênh lệch',
+      remarks: 'Lý do xóa bỏ (ghi chú)',
+    },
+    voidedSlots: (count: number): string =>
+      `${String(count)} LOT phát trước chưa có kết quả sẽ bị hủy số cùng lúc đóng.`,
+    openLots: (count: number, lotNos: string): string =>
+      `${String(count)} LOT chưa đóng (${lotNos}) sẽ giữ nguyên trạng thái.`,
+    openLotsChecking: 'Đang kiểm tra LOT đang thực hiện. Kiểm tra xong mới đóng được.',
+    openLotsUnknown:
+      'Chưa kiểm tra được LOT đang thực hiện. Dù đóng, LOT đang thực hiện vẫn giữ nguyên trạng thái.',
+    uncheckedLots: (count: number): string =>
+      `Còn ${String(count)} LOT chưa hoàn thành chưa kiểm tra được. Dù đóng, các LOT đó vẫn giữ nguyên trạng thái.`,
     cancel: 'Hủy',
     confirm: 'Đóng lệnh sản xuất',
   },
-  closeSuccess: 'Đã đóng lệnh sản xuất. Việc gửi sang ERP được tiến hành riêng.',
+  closeSuccess: (workOrderNo: string, menuPath: string): string =>
+    `Đã đóng ${workOrderNo}. Hãy xem kết quả gửi sang ERP ở ${menuPath}.`,
   readState: {
-    progressUnavailable: 'Không xác nhận được đánh giá kết quả sản xuất.',
-    openSessionFailed: 'Không xác nhận được có phiên làm việc đang mở hay không.',
-    reasonFailed: 'Không tải được lý do chênh lệch.',
-    reasonTruncated: 'Chỉ tải được một phần danh sách lý do chênh lệch nên chưa bắt đầu nhập được.',
+    progressUnavailable:
+      'Không tải được đánh giá kết quả sản xuất nên chưa đóng được. Hãy bấm thử lại, nếu vẫn vậy hãy báo quản trị hệ thống.',
+    openSessionFailed:
+      'Chưa kiểm tra được có phiên làm việc đang mở hay không nên chưa đóng được. Hãy bấm thử lại, nếu vẫn vậy hãy báo quản trị hệ thống.',
+    reasonFailed:
+      'Không tải được danh sách lý do chênh lệch nên chưa đóng được. Hãy bấm thử lại, nếu vẫn vậy hãy báo quản trị hệ thống.',
+    reasonTruncated:
+      'Chỉ tải được một phần danh sách lý do chênh lệch nên chưa chọn được. Hãy nhờ quản trị hệ thống kiểm tra danh sách lý do.',
   },
   status: {
     pane: 'Trạng thái nhập khi đóng lệnh sản xuất',
+    sessions: {
+      label: 'Phiên làm việc đang chặn việc đóng',
+      terminal: 'Máy',
+      worker: 'Công nhân',
+      startedAt: 'Bắt đầu',
+      state: 'Trạng thái',
+      RUNNING: 'Đang làm',
+      STOPPED: 'Tạm dừng',
+      unknown: 'Không xác định được',
+      workerValue: (name: string, workerNo: string): string => `${name} (${workerNo})`,
+      action: (holdScreen: string): string =>
+        `Hãy kết thúc phiên ở «${holdScreen}» trên POP của máy ở trên, rồi bấm [Kiểm tra lại]. Nếu không kết thúc được ở máy đó, hãy bấm [Buộc kết thúc].`,
+      actions: 'Xử lý',
+      forceEnd: 'Buộc kết thúc',
+      forceEndFor: (terminal: string): string => `Buộc kết thúc phiên của ${terminal}`,
+      recheck: 'Kiểm tra lại',
+    },
     heading: 'Trạng thái nhập hiện tại',
     loading: 'Đang xác nhận điều kiện nhập hiện tại.',
     complete: 'Các điều kiện nhập hiện tại đã đủ.',
     blockers: {
-      OPEN_SESSION: 'Hãy đóng phiên làm việc đang mở.',
-      REMAINDER_DISPOSITION_REQUIRED: 'Hãy chọn cách xử lý lượng còn lại.',
-      VARIANCE_REASON_REQUIRED: 'Hãy chọn lý do chênh lệch.',
+      STATUS_NOT_CLOSABLE:
+        'Không thể đóng lệnh sản xuất này ở trạng thái hiện tại. Chỉ đóng được lệnh đang thực hiện, tạm dừng hoặc đã hoàn thành, hãy kiểm tra trạng thái trong danh sách.',
+      OPEN_SESSION: 'Có phiên làm việc đang mở (kể cả đang tạm dừng) nên chưa đóng được.',
+      REMAINDER_DISPOSITION_REQUIRED:
+        'Vì thiếu so với chỉ thị nên phải chọn cách xử lý lượng còn lại mới đóng được. Hãy chọn «Chuyển sang kỳ sau» hoặc «Xóa bỏ» ở mục «Xử lý lượng còn lại» phía trên.',
+      VARIANCE_REASON_REQUIRED:
+        'Vì thiếu hoặc vượt so với chỉ thị nên phải chọn lý do chênh lệch mới đóng được. Hãy chọn ở mục «Lý do chênh lệch» phía trên.',
     },
   },
   input: {
@@ -150,11 +209,15 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       legend: 'Xử lý lượng còn lại',
       CARRY_OVER: 'Chuyển sang kỳ sau',
       WRITE_OFF: 'Xóa bỏ',
+      carryOverNote: (menuPath: string): string =>
+        `W/O chuyển sang kỳ sau không được tạo tự động — hãy lập mới ở ${menuPath}.`,
     },
     reason: {
       label: 'Lý do chênh lệch',
       placeholder: 'Hãy chọn lý do.',
-      empty: 'Không có lý do nào để chọn.',
+      empty:
+        'Không có lý do chênh lệch nào để chọn nên chưa đóng được. Hãy nhờ quản trị hệ thống đăng ký lý do.',
+      prefilled: 'Đây là lý do đã chọn khi đóng LOT. Có thể đổi.',
     },
     /** 소멸은 다른 전표를 만들지 않아 이유가 이 비고에만 남는다 — 그 사실을 그대로 옮긴다. */
     remarks: {
@@ -182,6 +245,43 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     },
     lockedFallback: 'Mục gửi này không thay đổi được.',
     sendTiming: (note: string) => `Thời điểm gửi: ${note}`,
+  },
+  forceEnd: {
+    title: 'Buộc kết thúc phiên làm việc?',
+    effect:
+      'Khi buộc kết thúc, phiên làm việc của máy đó kết thúc ngay. Nếu bấm tạm dừng, tiếp tục, kết thúc ở máy đó sẽ bị từ chối là «phiên đã kết thúc», và muốn làm tiếp phải bắt đầu công việc lại. Kết quả và việc đưa vật tư đã nhập hoặc chưa gửi vẫn được lưu như cũ.',
+    notify: 'Hãy báo cho công nhân ở máy đó trước khi buộc kết thúc.',
+    reason: 'Lý do buộc kết thúc',
+    reasonHelp: 'Ai đã đóng phiên và vì sao sẽ được ghi lại.',
+    reasonRequired: 'Hãy nhập lý do buộc kết thúc.',
+    reasonTooLong: (max: number): string =>
+      `Hãy rút gọn lý do buộc kết thúc còn ${String(max)} ký tự trở xuống.`,
+    cancel: 'Hủy',
+    confirm: 'Buộc kết thúc',
+    done: (terminal: string): string => `Đã buộc kết thúc phiên làm việc của ${terminal}.`,
+    alreadyEnded: (terminal: string): string =>
+      `Phiên làm việc của ${terminal} đã kết thúc từ trước. Đã kiểm tra lại điều kiện đóng.`,
+  },
+  closeResult: {
+    pane: 'Kết quả đóng',
+    loading: 'Đang tải kết quả đóng.',
+    loadFailed: 'Không tải được kết quả đóng. Hãy bấm thử lại.',
+    fields: {
+      closedAt: 'Thời điểm đóng',
+      closedBy: 'Người đóng',
+      closedByNo: 'Mã nhân viên',
+      closedVia: 'Nơi đóng',
+      judgment: 'Đánh giá',
+      disposition: 'Xử lý lượng còn lại',
+      reason: 'Lý do chênh lệch',
+      voidedLots: 'LOT bị hủy số',
+    },
+    values: {
+      none: 'Không có',
+      unknown: 'Không xác định được',
+      pop: 'POP',
+      web: 'Web quản lý',
+    },
   },
   correction: {
     pane: 'Sửa kết quả sản xuất',

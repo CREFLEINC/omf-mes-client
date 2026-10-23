@@ -15,6 +15,7 @@ const valid: GroupFormValues = {
   defaultWipLocationId: '',
   defaultFgLocationId: '',
   defaultScrapLocationId: '',
+  departmentId: '',
 };
 
 const NONE: ReadonlySet<number> = new Set();

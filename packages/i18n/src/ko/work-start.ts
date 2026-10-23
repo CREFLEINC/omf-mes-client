@@ -60,7 +60,7 @@ export const workStart = {
     checking: '확인 중',
 
     /** ⛔ 미등록과 퇴사를 가른다 — 사용자가 할 일이 다르다. */
-    unknown: '등록되지 않은 사번입니다.',
+    unknown: '이 공장에 등록되지 않은 사번입니다.',
     inactive: '재직 중이 아닌 사번입니다.',
     lookupFailed: '사번을 확인하지 못했습니다. 다시 시도해 주세요.',
     /**
@@ -69,6 +69,25 @@ export const workStart = {
      * 조회가 다시 일어나지 않는다 — 버튼이 없으면 단말을 새로 켜야 풀린다.
      */
     retry: '다시 시도',
+  },
+
+  /** 함께 일하는 작업자 — 사번을 확인한 사람이 정, 더한 사람은 부다. */
+  coWorkers: {
+    title: '작업자',
+    count: (count: number, max: number): string => `${String(count)}/${String(max)}`,
+    main: '정',
+    sub: '부',
+    name: (workerName: string, workerNo: string): string => `${workerName} (${workerNo})`,
+    add: '+ 부 작업자',
+    remove: (name: string): string => `${name} 빼기`,
+    dialogTitle: '부 작업자 추가',
+    cancel: '취소',
+    confirm: '추가',
+    duplicate: '이미 들어간 작업자입니다.',
+    otherPlant: '다른 공장 작업자는 넣을 수 없습니다.',
+    failed: '처리하지 못했습니다. 다시 시도해 주세요.',
+    loadFailed: '작업자를 불러오지 못했습니다.',
+    unknown: '알 수 없음',
   },
 
   /** ② 작업지시 목록 구획. */
@@ -86,7 +105,7 @@ export const workStart = {
      * 적는다 — 목록의 범위는 이 화면에서 **작업자가 유일하게 바꾸는 조회 조건**이다.
      */
     scopeNoteEquipment:
-      '이 설비에 배포된 작업지시만 보입니다. 다른 설비의 지시까지 보려면 「전체 보기」를 누르세요.',
+      '이 설비와 설비 미지정 작업지시가 보입니다. 다른 설비의 지시까지 보려면 「전체 보기」를 누르세요.',
     scopeNoteAll:
       '다른 설비에 배포된 작업지시까지 보입니다. 「이 설비만 보기」로 되돌릴 수 있습니다.',
 
@@ -95,6 +114,7 @@ export const workStart = {
 
     emergencyBadge: '긴급',
     heldBadge: '중단 중',
+    unassignedEquipmentBadge: '설비 미지정',
 
     columns: {
       plannedStart: '계획',
@@ -120,11 +140,6 @@ export const workStart = {
     /* 쪽 넘김 랜드마크 이름. 무엇의 쪽인지는 화면이 정한다(#1005). */
     pageNav: '작업지시 목록 페이지 이동',
 
-    /**
-     * 단말에 설비가 매핑되지 않은 상태. 서버가 설비 없는 POP 단말의 목록 조회를 거부하므로
-     * 「전체 보기」로도 풀리지 않는다 — 위 막힘 띠가 푸는 곳을 말한다.
-     */
-    equipmentMissing: '이 단말에 설비가 지정되면 작업지시가 여기에 보입니다.',
     /** 설비를 몰라 기본 목록을 세우지 못한 상태. 빈 목록과 다른 사실이다. */
     equipmentUnknown:
       '이 단말이 어느 설비에 붙어 있는지 확인하지 못했습니다. 「전체 보기」로 진행할 수 있습니다.',
@@ -169,8 +184,6 @@ export const workStart = {
      * ⭐ **사유별로 가른다**(사용자 지시 2026-09-13). 등록은 끝났는데 관리웹 매핑이 비어 있는
      * 것을 「단말을 확인하지 못했다」로 말하면 설치 담당자가 토큰부터 다시 의심한다.
      */
-    equipmentMissing:
-      '이 단말에 매핑된 설비가 없습니다. 관리웹 단말·공정 매핑에서 설비를 지정해 주세요.',
     processNone:
       '이 단말에 매핑된 공정이 없습니다. 관리웹 단말·공정 매핑에서 공정을 지정해 주세요.',
     processMultiple: '이 단말에 공정이 여러 개 매핑되어 있어 작업 시작 권한을 확인할 수 없습니다.',

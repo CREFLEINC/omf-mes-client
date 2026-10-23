@@ -52,8 +52,7 @@ export const validateItemDraft = (
     errors.inspectionItemCode = t.required;
   } else if (
     siblings.some(
-      (sibling) =>
-        sibling.draftId !== draft.draftId && sibling.inspectionItemCode.trim() === code,
+      (sibling) => sibling.draftId !== draft.draftId && sibling.inspectionItemCode.trim() === code,
     )
   ) {
     errors.inspectionItemCode = t.itemCodeDuplicated;

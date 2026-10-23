@@ -874,7 +874,7 @@ describe('UsersRolesScreen 조회 실패', () => {
       expect(requestsTo(requests, USERS_PATH).length).toBeGreaterThan(0);
     });
 
-    expect(await screen.findByText(/잠시 뒤 다시 시도하세요/)).toBeInTheDocument();
+    expect(await screen.findByText(/잠시 뒤 재시도하세요/)).toBeInTheDocument();
   });
 
   /**
@@ -1022,7 +1022,7 @@ describe('UsersRolesScreen 상세 열기', () => {
 
     await waitForUserList(requests);
 
-    expect(await screen.findByText(/잠시 뒤 다시 시도하세요/)).toBeInTheDocument();
+    expect(await screen.findByText(/잠시 뒤 재시도하세요/)).toBeInTheDocument();
     expect(within(userFormPane()).queryByRole('textbox')).not.toBeInTheDocument();
   });
 });
@@ -2399,7 +2399,7 @@ describe('UsersRolesScreen 역할 부여', () => {
     const pane = await screen.findByRole('region', { name: '역할 부여' });
 
     await waitFor(() => {
-      expect(within(pane).getByText(/잠시 뒤 다시 시도하세요/)).toBeInTheDocument();
+      expect(within(pane).getByText(/잠시 뒤 재시도하세요/)).toBeInTheDocument();
     });
 
     expect(

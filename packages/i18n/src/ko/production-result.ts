@@ -1,7 +1,7 @@
 /**
  * P-02-04 작업실적 등록(LOT·제품 선택).
  *
- * 이 화면의 말은 「실적」이고 받는 수량은 **양품 하나**다 — 불량·손실은 이 화면에 오지 않는다.
+ * 이 화면의 말은 「실적」이고 받는 수량은 양품과 불량 유형별 수량이다(불량은 기록만 — 재고를 움직이지 않는다).
  */
 export const productionResult = {
   /* 화면 이름은 「생산 작업」이다(사용자 지시 2026-10-19 · omf-all-around#107). 실적은 그 안의 한 구획이다. */
@@ -29,21 +29,47 @@ export const productionResult = {
       pageDown: '페이지 아래',
       pagePosition: (page: number, totalPages: number) =>
         `${String(totalPages)}쪽 중 ${String(page)}쪽`,
-      none: '생산할 LOT이 없습니다. 관리웹에서 W/O 마감을 진행하세요.',
-      loadFailed: '현재 LOT을 불러오지 못했습니다.',
       /*
-       * ⛔ **다시 시도해서 풀리는 일이 아니다**(#1095). 미마감 LOT 이 둘 이상인데 서버가
-       *    「현재 것」을 가려 주지 않는 상태라, 화면이 첫 줄을 집으면 **다른 LOT 에 실적이
-       *    붙는다.** 무엇을 해야 하는지까지 적는다 — 관리웹에서 LOT 을 마감하면 하나로 준다.
+       * 무엇이 문제 · 어디서 확인 · 어떤 조치. 0건은 다 마감했을 때만이 아니다(미발행·폐번) — 원인을
+       * 단정하지 않는다. 배포된 W/O 에 LOT 을 더 발행하는 화면은 없어 할 수 있는 조치만 적는다.
        */
-      ambiguous:
-        '이 작업지시에 진행 중인 LOT이 둘 이상이라 현재 LOT을 가릴 수 없습니다. 관리웹에서 LOT 마감을 먼저 진행하세요.',
+      none: (closeButton: string): string =>
+        `이 W/O에 생산할 LOT이 없습니다. 생산을 마쳤으면 아래 [${closeButton}]을 누르고, 더 만들어야 하면 관리자에게 알리세요.`,
+      /** 서버가 현재 LOT 을 한 건으로 정하지 못했다(옛 서버) — 엉뚱한 LOT 에 실적이 붙지 않게 막는다. */
+      unreliable: (lotNos: string): string =>
+        `서버가 현재 LOT을 하나로 정하지 못했습니다(LOT ${lotNos}). 다른 LOT에 실적이 붙지 않도록 입력을 막았습니다. 관리자에게 서버가 최신 판인지 확인을 요청하세요.`,
+      loadFailed: '현재 LOT을 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 누르세요.',
     },
     quantity: {
       title: '생산 수량',
       target: '생산 목표수량',
-      actual: '실제 생산수량',
+      actual: '양품 수량',
       invalid: '0보다 큰 수량을 입력하세요.',
+    },
+    defects: {
+      title: '불량',
+      add: '+ 불량',
+      row: (index: number): string => `불량 ${String(index)}`,
+      type: '불량 유형',
+      choose: '유형 선택',
+      qty: '불량 수량',
+      remove: (label: string): string => `${label} 빼기`,
+      duplicate: '이미 있는 불량 유형입니다.',
+      typeMissing: '유형을 고르세요',
+      qtyMissing: '수량을 넣으세요',
+      noProcess: '공정이 없는 W/O라 불량 유형을 고를 수 없습니다.',
+      /* 키패드 이름 — 지금 어느 칸에 치는지 말한다. 칸 이름과 겹치지 않게 「키패드」를 붙인다. */
+      keypadGood: '양품 수량 키패드',
+      keypadFor: (target: string): string => `불량 수량 — ${target} 키패드`,
+      pickerTitle: '불량 유형',
+      back: '← 대분류',
+      cancel: '취소',
+      loading: '불량 유형을 불러오는 중입니다.',
+      loadFailed: '불량 유형을 불러오지 못했습니다.',
+      empty: '이 공정에 정해진 불량 유형이 없습니다.',
+      saveOnly: '불량 저장',
+      saved: '불량을 기록했습니다.',
+      queued: '불량을 저장했습니다 · 연결되면 보냅니다.',
     },
     tag: {
       title: '인식표',
@@ -110,6 +136,102 @@ export const productionResult = {
       completed: 'LOT 마감 완료 · 다음 LOT으로 전환합니다.',
       failed: 'LOT을 마감하지 못했습니다. 같은 라벨을 다시 스캔하세요.',
       alreadyCompleted: '이미 마감된 LOT입니다. 현재 LOT 상태를 다시 불러옵니다.',
+      noAllocation: '이 LOT에 저장된 실적이 없어 마감할 수 없습니다. 실적을 먼저 저장하세요.',
+      /* 마감된 작업지시는 다시 열 수 없다(서버에 재오픈이 없다) — 해제를 요청하라고 하면 갈 곳이 없다. */
+      workOrderClosed: (menuPath: string, correction: string): string =>
+        `이 작업지시는 이미 마감돼 LOT 을 미달로 마감할 수 없습니다. 마감된 작업지시는 다시 열 수 없으니, 수량을 고쳐야 하면 관리자에게 관리웹 ${menuPath}의 「${correction}」을 요청하세요.`,
+    },
+    /** 작업지시 마감 — 관리웹 W/O 마감과 같은 판정·입력을 현장에서 한다. 온라인에서만 된다. */
+    woClose: {
+      button: '작업지시 마감',
+      title: (workOrderNo: string): string => `작업지시 마감 — ${workOrderNo}`,
+      loading: '마감할 작업지시를 확인하는 중입니다.',
+      loadFailed: '작업지시를 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 누르세요.',
+      fields: {
+        orderQty: '지시 수량',
+        goodQty: '양품 누계',
+        judgment: '판정',
+        shortfallQty: '미달 수량',
+        overageQty: '초과 수량',
+        remainder: '잔량 처리',
+        reason: '사유',
+        remarks: '소멸 사유(비고, 선택)',
+      },
+      judgments: { UNDER: '미달', NORMAL: '정상', OVER: '초과' },
+      remainder: { CARRY_OVER: '이월', WRITE_OFF: '소멸' },
+      carryOverNote: (menuPath: string): string =>
+        `이월 W/O 는 자동으로 만들어지지 않습니다 — 관리웹 ${menuPath}에서 새로 편성합니다.`,
+      prefilled: 'LOT 마감 때 고른 사유입니다. 바꿀 수 있습니다.',
+      reasonsLoading: '사유를 불러오는 중입니다.',
+      reasonsFailed: '사유를 불러오지 못했습니다. 연결을 확인하고 창을 다시 여세요.',
+      reasonsEmpty: '고를 수 있는 사유가 없습니다. 관리자에게 사유 등록을 요청하세요.',
+      voidedSlots: (count: number): string =>
+        `실적이 없는 LOT ${String(count)}건은 마감과 함께 폐번됩니다.`,
+      openLots: (count: number, lotNos: string): string =>
+        `마감되지 않은 LOT ${String(count)}건(${lotNos})은 그 상태로 남습니다.`,
+      irreversible: '마감하면 되돌릴 수 없습니다. ERP 실적 송신은 마감과 함께 대기열에 올라갑니다.',
+      needRemainder: '미달이라 잔량 처리(이월 또는 소멸)를 골라야 마감할 수 있습니다.',
+      needReason: '미달이나 초과라 사유를 골라야 마감할 수 있습니다.',
+      judgmentMissing:
+        '판정을 불러오지 못해 마감할 수 없습니다. 연결을 확인하고 「다시 시도」를 누르세요.',
+      openLotsChecking: '진행 중인 LOT 을 확인하는 중입니다. 확인이 끝나면 마감할 수 있습니다.',
+      openLotsUnknown:
+        '진행 중인 LOT 을 확인하지 못했습니다. 마감해도 진행 중인 LOT 은 그 상태로 남습니다.',
+      uncheckedLots: (count: number): string =>
+        `확인하지 못한 미완료 LOT ${String(count)}건이 더 있습니다. 마감해도 그 LOT 은 그 상태로 남습니다.`,
+      sessions: {
+        checking: '이 작업지시의 작업 세션을 확인하는 중입니다.',
+        loadFailed: '작업 세션을 확인하지 못했습니다. 연결을 확인하고 「다시 시도」를 누르세요.',
+        blocked:
+          '아래 작업 세션이 열려 있어 마감할 수 없습니다. 끝낼 곳에서 세션을 끝낸 뒤 다시 누르세요.',
+        listLabel: '열린 작업 세션',
+        terminal: '단말',
+        worker: '작업자',
+        state: '상태',
+        where: '끝낼 곳',
+        RUNNING: '진행',
+        STOPPED: '중단',
+        unknown: '확인할 수 없음',
+        workerValue: (name: string, workerNo: string): string => `${name}(${workerNo})`,
+        here: (holdScreen: string): string => `이 단말의 「${holdScreen}」 화면`,
+        other: (webMenu: string): string => `그 단말, 또는 관리웹 ${webMenu}의 강제 종료`,
+      },
+      endForbidden:
+        '이 단말의 작업 세션을 끝낼 권한이 없어 마감하지 않았습니다. 관리자에게 관리웹에서 세션을 강제 종료해 달라고 요청하세요.',
+      endNotFound:
+        '이 단말의 작업 세션을 찾지 못해 마감하지 않았습니다. 이미 끝났을 수 있으니 창을 닫고 다시 여세요.',
+      endedButNotClosed:
+        '이 단말의 작업 세션은 끝났지만 작업지시는 마감되지 않았습니다. 아래 까닭을 확인한 뒤 다시 누르세요.',
+      cancel: '취소',
+      confirm: '마감',
+      done: (workOrderNo: string): string =>
+        `${workOrderNo}를 마감했습니다. 작업 시작 화면으로 돌아갑니다.`,
+      blocked: {
+        denied: (webMenu: string, terminalMenu: string): string =>
+          `이 단말은 작업지시 마감이 허용되지 않았습니다. 관리웹 ${webMenu}에서 마감하거나, 관리자에게 ${terminalMenu}에서 「작업지시 마감」을 켜 달라고 요청하세요.`,
+        checking: '이 단말의 마감 권한을 확인하는 중입니다.',
+        unavailable:
+          '이 단말의 마감 권한을 확인하지 못했습니다. 연결을 확인하고 화면을 다시 여세요.',
+        offline: '연결이 끊겨 마감할 수 없습니다. 연결을 확인한 뒤 다시 누르세요.',
+        pending: (count: number): string =>
+          `아직 보내지 못한 실적 ${String(count)}건이 있습니다. 실적이 모두 보내진 뒤 마감하세요.`,
+        status:
+          '이 작업지시는 아직 작업이 시작되지 않아 마감할 수 없습니다. 작업을 시작한 작업지시만 마감할 수 있습니다.',
+        unidentified:
+          '이 단말이나 공정을 확인하지 못해 마감할 수 없습니다. 관리자에게 단말 등록과 공정 매핑을 확인해 달라고 요청하세요.',
+        cancelled: '취소된 작업지시는 마감할 수 없습니다.',
+      },
+      endFailed:
+        '이 단말의 작업 세션을 끝내지 못해 마감하지 않았습니다. 연결을 확인하고 다시 누르세요.',
+    },
+    /** 목표에 못 미친 LOT 을 마감할 때 — 서버가 사유를 필수로 받는다. */
+    underReason: {
+      title: '미달 사유',
+      summary: (target: string, actual: string): string => `목표 ${target} · 실적 ${actual}`,
+      cancel: '취소',
+      loading: '미달 사유를 불러오는 중입니다.',
+      loadFailed: '미달 사유를 불러오지 못했습니다.',
+      empty: '고를 수 있는 미달 사유가 없습니다.',
     },
     /**
      * 작업 세션 자동 종료 — 마지막 LOT 을 마감해 더 생산할 것이 남지 않았을 때 닫는다.
@@ -188,6 +310,8 @@ export const productionResult = {
     splitNote: '검사 수량 · 판정 · 결과 확정',
     /** 검사 off(그 W/O 에 PQC 의뢰 없음)일 때 「생산 실적」 머리 오른쪽 칩. */
     notInspected: 'PQC 미검사',
+    /** 검사기준이 「PQC 생략 허용」이라 PQC 를 생략한 W/O(omf-all-around#119). */
+    skipped: 'PQC 생략',
     /** 검사 on/off 를 묻는 조회가 실패했다(리뷰 m6) — 조용히 실적만 보이지 않게 알린다. */
     loadFailed: 'PQC 정보를 불러오지 못했습니다. 다시 시도하세요.',
   },
@@ -264,6 +388,9 @@ export const productionResult = {
       `초과 달성 — 잔여 ${remaining} 보다 ${over} 많습니다.`,
     /** 잔여가 0 인 지시 — 「잔여 0 보다 …」는 뺄셈처럼 읽힌다. 숫자를 빼고 사실만 적는다. */
     noticeNoRemaining: '초과 달성 — 이 작업지시에 남은 수량이 없습니다.',
+    /** 양품 누계가 지시 수량에 이르렀다 — 서버의 완료 판정(정상·초과)이 근거다. */
+    achieved: '계획 수량 달성',
+    achievedOver: (over: string): string => `계획 수량 달성 · +${over} 초과`,
   },
 
   actions: {
