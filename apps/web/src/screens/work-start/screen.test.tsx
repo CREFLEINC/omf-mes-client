@@ -421,38 +421,58 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
 });
 
 describe('P-02-01 작업 시작 — 사번', () => {
-  it('확인 전에는 고를 수 없고 푸는 방법을 말한다', async () => {
+  /*
+   * 사번 없이 카드를 누르면 고르고, 사번 입력 창을 바로 연다(사용자 결정 2026-10-23, PG-27).
+   * 누른 것을 무시하면 고장 난 것처럼 보인다.
+   */
+  it('사번 없이 카드를 누르면 고르고 사번 입력 창을 연다', async () => {
     const { user } = renderScreen();
 
     const card = await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    // 사유는 하단 바 「남은 일」이 말한다(C-4).
+    expect(card).not.toHaveAttribute('aria-disabled', 'true');
     expect(await screen.findByText(t.remaining.worker)).toBeInTheDocument();
-    expect(
-      screen.queryByText('작업지시 선택: 먼저 사번을 입력하고 확인하세요.'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('작업 시작: 먼저 사번을 입력하고 확인하세요.'),
-    ).not.toBeInTheDocument();
 
     await user.click(card);
 
-    /* 잠긴 카드라 고르지 않는다. 고른 것이 없으면 선택 묶음을 세우지 않는다(C-4, 사유는 하단 바 한 곳). */
-    expect(screen.queryByRole('group', { name: t.selection.title })).not.toBeInTheDocument();
+    expect(card).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('group', { name: t.selection.title })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: t.worker.dialogTitle })).toBeInTheDocument();
   });
 
-  /**
-   * ⛔ **못 누르는 것이 컨트롤 «자신»에도 적혀 있어야 한다.** 사유 배너는 눈으로 보는
-   * 사람에게만 닿는다 — 키보드·스크린리더로 이 줄에 닿은 사람은 「눌리는 버튼」으로
-   * 읽고 눌러 본 뒤에야 아무 일도 없다는 것을 안다.
-   */
-  it('확인 전 목록 카드는 잠긴 상태로 읽힌다', async () => {
-    renderScreen();
+  it('창에서 사번을 확인하면 창이 닫히고 고른 W/O 그대로 시작이 열린다', async () => {
+    const { user } = renderScreen();
 
-    const card = await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    await user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+    await enterWorkerNo(user, WORKER.workerNo);
 
-    /* ⚠ 디자인 시스템의 카드는 `div[role=button]` 이라 `toBeDisabled` 가 서지 않는다 — 속성으로 잰다. */
-    expect(card).toHaveAttribute('aria-disabled', 'true');
-    expect(card).toHaveAttribute('tabindex', '-1');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.worker.dialogTitle })).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+  });
+
+  it('창을 취소하면 고른 것은 남고 사번을 입력하라고 말하며 시작은 잠긴다', async () => {
+    const { user } = renderScreen();
+
+    await user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: t.worker.dialogTitle });
+    await user.click(within(dialog).getByRole('button', { name: t.worker.cancel }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.worker.dialogTitle })).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('group', { name: t.selection.title })).toBeInTheDocument();
+    expect(await screen.findByText(t.remaining.worker)).toBeInTheDocument();
+    expect(startButton()).toBeDisabled();
   });
 
   it('미등록과 퇴사를 다른 문구로 가른다', async () => {

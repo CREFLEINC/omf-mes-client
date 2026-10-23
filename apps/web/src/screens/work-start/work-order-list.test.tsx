@@ -26,7 +26,6 @@ const base = {
   isShowingAll: false,
   equipmentName: '합성 프레스 1호기',
   isEquipmentUnknown: false,
-  canSelect: true,
   selectedId: null,
   onSelect: () => undefined,
   onToggleScope: () => undefined,

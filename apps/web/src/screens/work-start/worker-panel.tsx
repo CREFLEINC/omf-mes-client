@@ -1,12 +1,14 @@
 import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
 
 import { WorkerNoDialog } from './worker-no-dialog';
 
 const t = messages.workStart.worker;
 
 export interface WorkerPanelProps {
+  /** 사번 입력 창이 열려 있는가. 화면이 W/O 를 고를 때도 열므로 화면이 갖는다. */
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   /** 사번을 받아 확인을 청한다. 확인되면 화면이 이 묶음 대신 작업자 묶음을 세우므로 창도 닫힌다. */
   onSubmit: (workerNo: string) => void;
   /** 입력을 고치거나 창을 닫으면 지난 확인 결과(사유)를 버린다. */
@@ -29,14 +31,14 @@ export interface WorkerPanelProps {
  * 인증이 아니라 귀속이다. 확인 전에는 목록을 고를 수 없다(§5-5).
  */
 export const WorkerPanel = ({
+  isOpen,
+  onOpenChange,
   onSubmit,
   onDiscard,
   onRetry,
   isChecking,
   error,
 }: WorkerPanelProps) => {
-  const [isOpen, setOpen] = useState(false);
-
   return (
     /* 오른쪽 「작업 확인」 구획 안의 묶음이다. 제목은 사번 확인 뒤와 같은 「작업자」다. */
     <div className="work-start-group work-start-worker" role="group" aria-label={t.title}>
@@ -47,7 +49,7 @@ export const WorkerPanel = ({
         variant="outlined"
         size="lg"
         onClick={() => {
-          setOpen(true);
+          onOpenChange(true);
         }}
       >
         {t.open}
@@ -69,7 +71,7 @@ export const WorkerPanel = ({
           ) : undefined
         }
         onCancel={() => {
-          setOpen(false);
+          onOpenChange(false);
           onDiscard();
         }}
         onDraftChange={onDiscard}

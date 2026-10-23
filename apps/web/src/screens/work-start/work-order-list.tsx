@@ -44,8 +44,6 @@ export interface WorkOrderListProps {
   isEquipmentMissing?: boolean;
   /** 설비를 몰라 기본 목록을 세우지 못했는가. */
   isEquipmentUnknown: boolean;
-  /** 사번 확인 전에는 고를 수 없다. */
-  canSelect: boolean;
   selectedId: number | null;
   onSelect: (workOrder: WorkOrder) => void;
   onToggleScope: () => void;
@@ -74,7 +72,6 @@ export const WorkOrderList = ({
   equipmentName,
   isEquipmentMissing = false,
   isEquipmentUnknown,
-  canSelect,
   selectedId,
   onSelect,
   onToggleScope,
@@ -160,13 +157,10 @@ export const WorkOrderList = ({
                   aria-label={t.select(row.workOrderNo)}
                   aria-pressed={isSelected}
                   /*
-                   * `aria-disabled`로 두지 않는다. DS `Card`는 `interactive`일 때 자기 값을 나중에
-                   * 얹어 밖에서 넘긴 값을 지운다. `disabled`를 넘겨야 잠긴 카드로 읽힌다.
+                   * 사번이 없어도 고른다. 누른 것을 무시하지 않고, 화면이 사번 입력 창을 함께 연다
+                   * (사용자 결정 2026-10-23, PG-27).
                    */
-                  disabled={!canSelect}
                   onClick={() => {
-                    if (!canSelect) return;
-
                     onSelect(row);
                   }}
                 >

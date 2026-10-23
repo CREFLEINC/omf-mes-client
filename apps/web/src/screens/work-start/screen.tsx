@@ -109,6 +109,13 @@ export const WorkStartScreen = () => {
   /** 눌렀을 때만 조회한다 — 치는 동안 매 글자마다 물으면 아직 다 치지도 않은 사번으로 「없다」가 뜬다. */
   const [submittedNo, setSubmittedNo] = useState<string | null>(null);
   const lookup = useWorkerLookup(submittedNo);
+  /** 사번 입력 창. [사번 입력]을 누르거나, 사번 없이 W/O 를 고르면 열린다. */
+  const [isWorkerDialogOpen, setWorkerDialogOpen] = useState(false);
+
+  /* 사번이 정해지면 창을 닫힌 상태로 돌린다. 작업자 묶음이 사번 입력 묶음을 대신한다. */
+  useEffect(() => {
+    if (confirmedNo !== null) setWorkerDialogOpen(false);
+  }, [confirmedNo]);
 
   /** 다른 공장 사번인지 견줄 기준. 단말이 선 공장이다 — 못 받았으면 견주지 않는다. */
   const homePlantId = terminal.data?.plantId ?? null;
@@ -661,6 +668,12 @@ export const WorkStartScreen = () => {
     setChainError(null);
     setOutcome(null);
     setSelectedId(workOrder.workOrderId);
+
+    /*
+     * 사번이 없으면 고른 채로 사번 입력 창을 바로 연다(사용자 결정 2026-10-23, PG-27). 누른 것을
+     * 무시하면 고장 난 것처럼 보인다. 확인하면 고른 W/O 그대로 주 동작이 열린다.
+     */
+    if (confirmedNo === null) setWorkerDialogOpen(true);
   };
 
   /**
@@ -727,7 +740,6 @@ export const WorkStartScreen = () => {
           equipmentName={equipmentName?.trim() || equipmentCode?.trim() || null}
           isEquipmentMissing={isEquipmentMissing}
           isEquipmentUnknown={equipmentId === null && !isEquipmentMissing}
-          canSelect={confirmedNo !== null}
           selectedId={selectedId}
           onSelect={selectWorkOrder}
           onToggleScope={() => {
@@ -776,6 +788,8 @@ export const WorkStartScreen = () => {
            */}
           {confirmedNo === null ? (
             <WorkerPanel
+              isOpen={isWorkerDialogOpen}
+              onOpenChange={setWorkerDialogOpen}
               onSubmit={setSubmittedNo}
               onDiscard={() => {
                 setSubmittedNo(null);
