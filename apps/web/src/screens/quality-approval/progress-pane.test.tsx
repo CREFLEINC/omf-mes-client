@@ -39,13 +39,13 @@ const view = (overrides: Partial<ApprovalProgressView> = {}): ApprovalProgressVi
 });
 
 describe('ProgressPane', () => {
-  it('서버 단계 번호와 보이는 상태를 vertical/sm Stepper로 표시한다', () => {
+  it('서버 단계 번호와 보이는 상태를 가로(horizontal)/sm Stepper로 표시한다', () => {
     render(<ProgressPane view={view()} />);
     const pane = screen.getByRole('group', { name: t.panes.progress });
     const list = within(pane).getByRole('list', { name: t.progress.steps });
     const items = [...list.querySelectorAll<HTMLElement>('li[data-status]')];
 
-    expect(list).toHaveAttribute('data-orientation', 'vertical');
+    expect(list).toHaveAttribute('data-orientation', 'horizontal');
     expect(list).toHaveAttribute('data-size', 'sm');
     expect(items.map((item) => item.dataset.status)).toEqual(['complete', 'current']);
     expect(

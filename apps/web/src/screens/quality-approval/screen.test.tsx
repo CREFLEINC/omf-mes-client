@@ -1150,7 +1150,8 @@ describe('QualityApprovalScreen decision action', () => {
     );
     const locked = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
     const input = await screen.findByRole('textbox', { name: '결재 사유' });
-    expect(input).toHaveAccessibleDescription(/승인 또는 반려 판단 근거를 입력하세요/);
+    /* 판단 근거 안내는 칸 안 흐린 글자로 보인다(#144). */
+    expect(input).toHaveAttribute('placeholder', '승인 또는 반려 판단 근거를 입력하세요.');
     expect(input).toBeDisabled();
     expect(input).toHaveAccessibleDescription(/지금은 내 결재 차례가 아닙니다/);
     expect(screen.getByRole('button', { name: '승인' })).toBeDisabled();

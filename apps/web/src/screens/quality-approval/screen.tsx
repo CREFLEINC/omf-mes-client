@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Breadcrumb,
   Button,
+  Chip,
   EmptyState,
   PageHeader,
   SkeletonText,
@@ -22,6 +23,7 @@ import {
   QUALITY_APPROVAL_STATUS_CODES,
   QUALITY_APPROVAL_TYPE_CODES,
   approvalScopeWarning,
+  statusBadgeOf,
   toCodeOptions,
   toTypeOptions,
 } from './code-options';
@@ -325,6 +327,14 @@ export const QualityApprovalScreen = ({
 
     if (detail.data === undefined) return null;
 
+    return <ProgressPane view={toApprovalProgressView(detail.data)} />;
+  };
+
+  /* 승인 처리 — 결재 진행과 갈라 요청 상세 옆 칸에 선다(#144). 상세가 서야 선다. */
+  const actionSlot = (): ReactNode => {
+    if (selectedId === null || detail.isPending || detailError !== null) return null;
+    if (detail.data === undefined) return null;
+
     const openDecisionDialog = (action: DecisionAction): void => {
       const trimmed = comment.trim();
       if (trimmed === '') {
@@ -340,7 +350,6 @@ export const QualityApprovalScreen = ({
     };
     return (
       <>
-        <ProgressPane view={toApprovalProgressView(detail.data)} />
         <ApprovalActionPane
           comment={comment}
           commentError={localCommentError ?? serverCommentError}
@@ -460,15 +469,34 @@ export const QualityApprovalScreen = ({
               {t.detail.backToList}
             </Button>
           </div>
+          {/*
+           * 상세는 위에서 아래로 읽는다(#144) — 결재 진행(가로 단계)을 맨 위에 두고, 그 아래 요청 상세 | 승인 처리
+           * 두 칸이 나란히 선다. 무엇을 결재하는지 보고 바로 옆에서 결재한다.
+           */}
+          <section
+            className="pane quality-approval-pane quality-approval-progress-pane"
+            aria-label={t.panes.progress}
+          >
+            {progressSlot()}
+          </section>
           <div className="quality-approval-workspace">
             <section className="pane quality-approval-pane" aria-label={t.panes.detail}>
-              <h2 className="pane-title">{t.panes.detail}</h2>
+              <div className="pane-heading-row quality-approval-detail-heading">
+                <h2 className="pane-title">{t.panes.detail}</h2>
+                {/* 상태는 제목 줄 오른쪽 배지로(#144) — 대기 주황 · 승인 초록 · 반려 빨강. */}
+                {detail.data !== undefined && !detail.isError && (
+                  <Chip size="sm" status={statusBadgeOf(detail.data.request.statusCode).tone}>
+                    {statusBadgeOf(detail.data.request.statusCode).label}
+                  </Chip>
+                )}
+              </div>
               {detailSlot()}
             </section>
-            <section className="pane quality-approval-pane" aria-label={t.panes.progress}>
-              <h2 className="pane-title">{t.panes.progress}</h2>
-              {progressSlot()}
-            </section>
+            {actionSlot() !== null && (
+              <section className="pane quality-approval-pane" aria-label={t.approval.title}>
+                {actionSlot()}
+              </section>
+            )}
           </div>
         </>
       )}

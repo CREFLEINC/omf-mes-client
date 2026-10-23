@@ -3997,12 +3997,54 @@ main > * + * {
   gap: var(--space-4);
 }
 
-.quality-approval-detail-facts,
 .quality-approval-condition-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
   margin: 0;
+}
+
+/*
+ * 요청 상세는 「이름 | 값」 줄로 읽는다(#144) — 사유·대상도 같은 줄 모양이다.
+ * 이름 열 폭을 맞춰 값이 한 세로선에서 시작한다.
+ */
+.quality-approval-detail-facts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.quality-approval-detail-facts > .field-cell,
+.quality-approval-detail > .quality-approval-content-card {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+.quality-approval-detail-facts .field-label,
+.quality-approval-detail > .quality-approval-content-card > .field-label {
+  margin: 0;
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+  color: var(--on-surface-variant);
+}
+
+.quality-approval-detail > .quality-approval-content-card {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.quality-approval-detail-heading {
+  align-items: center;
+  margin-bottom: 0;
+}
+
+/* 결재 진행 — 가로 단계 아래 안내 줄(#144). 상세 두 칸과 사이를 띄운다. */
+.quality-approval-progress-pane {
+  margin-bottom: var(--space-5);
 }
 
 .quality-approval-detail-facts > .field-cell,
@@ -4019,8 +4061,7 @@ main > * + * {
 
 .quality-approval-content-card,
 .quality-approval-progress-summary,
-.quality-approval-condition,
-.quality-approval-action {
+.quality-approval-condition {
   padding: var(--space-4);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
@@ -4054,13 +4095,27 @@ main > * + * {
 }
 
 .quality-approval-progress-summary {
-  display: grid;
-  gap: var(--space-1);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  color: var(--on-surface);
 }
 
-.quality-approval-progress-summary > p:first-child {
+.quality-approval-progress-summary > .material-symbols-outlined,
+.quality-approval-progress-summary > [class*='icon'] {
+  color: var(--primary);
+}
+
+.quality-approval-progress-summary > p:first-of-type {
   font: var(--type-title-sm);
   letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 결재 사유는 필수다 — DS 글 칸은 별표를 그리지 않아 라벨 뒤에 같은 색 별표를 붙인다(#144). */
+.quality-approval-comment label::after {
+  content: ' *';
+  color: var(--semantic-error-text);
 }
 
 .quality-approval-action > .form-actions {

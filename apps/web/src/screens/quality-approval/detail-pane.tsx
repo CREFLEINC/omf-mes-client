@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { Fragment } from 'react';
 
-import { approvalTypeLabelOf, statusBadgeOf } from './code-options';
+import { approvalTypeLabelOf } from './code-options';
 import type { RequestDetailView } from './types';
 
 export interface DetailPaneProps {
@@ -19,7 +19,6 @@ export const DetailPane = ({ view }: DetailPaneProps) => {
           [t.fields.approvalTypeCode, approvalTypeLabelOf(view.approvalTypeCode)],
           [t.fields.requestedByName, view.requesterName],
           [t.fields.requestedAt, view.requestedAtText],
-          [t.fields.statusCode, statusBadgeOf(view.statusCode).label],
         ].map(([label, value]) => (
           <div className="field-cell" key={label}>
             <dt className="field-label">{label}</dt>
