@@ -124,6 +124,8 @@ export interface StubOptions {
   workersFailFirst?: boolean;
   /** 세션 열기 응답 상태. 기본 201. */
   startStatus?: number;
+  /** 세션 열기를 «열린 세션이 이미 있다»(409 OPEN_SESSION_EXISTS)로 거절하며 싣는 서버 문구. */
+  startOpenSessionMessage?: string;
 
   /*
    * 작업 전 점검 통제 게이트(`P-02-02`)가 부르는 것들. **기본은 통과**다 — 게이트를 재는
@@ -286,6 +288,16 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
     if (url.pathname === '/production/work-sessions' && request.method === 'POST') {
       if (options.startStatus !== undefined) {
         return jsonResponse({ message: '실패' }, { status: options.startStatus });
+      }
+      if (options.startOpenSessionMessage !== undefined) {
+        return jsonResponse(
+          {
+            conflictCause: 'user',
+            code: 'OPEN_SESSION_EXISTS',
+            message: options.startOpenSessionMessage,
+          },
+          { status: 409 },
+        );
       }
 
       return jsonResponse(

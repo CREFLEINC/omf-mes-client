@@ -173,6 +173,7 @@ export const workStart = {
   actions: {
     start: '작업 시작',
     resume: '재개',
+    restart: '작업 다시 시작',
     starting: '시작 중',
   },
 
@@ -292,10 +293,20 @@ export const workStart = {
     checking: '작업 세션을 확인하는 중입니다.',
   },
 
+  /**
+   * 중단됐지만 열린 세션이 없는 W/O — 이어 붙일 세션이 없어 새 세션으로 다시 시작한다.
+   * 서버가 W/O 재개와 세션 열기를 함께 한다.
+   */
+  restart: {
+    status:
+      '중단된 W/O 이고 열린 작업 세션이 없습니다. [작업 다시 시작]을 누르면 새 작업 세션으로 다시 시작합니다.',
+  },
+
   /** 결과. */
   result: {
     started: (workOrderNo: string): string => `${workOrderNo} 작업을 시작했습니다.`,
     resumed: (workOrderNo: string): string => `${workOrderNo} 작업을 재개했습니다.`,
+    restarted: (workOrderNo: string): string => `${workOrderNo} 작업을 다시 시작했습니다.`,
     /**
      * 서버가 충돌(409)로 거절했다. ⛔ **뜻을 지어내지 않는다** — 계약이 이 응답을 「충돌」로만
      * 적었다. 화면이 아는 것은 「지금 보고 있는 것이 서버의 사실과 다르다」까지이므로, 그

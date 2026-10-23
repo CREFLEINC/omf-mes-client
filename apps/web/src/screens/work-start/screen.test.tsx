@@ -929,6 +929,66 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
     ).not.toBeInTheDocument();
   });
 
+  describe('중단됐지만 열린 세션이 없는 지시', () => {
+    const HELD = { ...WORK_ORDER, statusCode: 'SUSPENDED' };
+    const restartButton = () => screen.getByRole('button', { name: t.actions.restart });
+
+    it('[작업 다시 시작]과 지금 상태를 보인다', async () => {
+      const rendered = renderScreen({ workOrders: [HELD] });
+
+      await selectWorkOrder(rendered);
+
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      expect(screen.getByText(t.restart.status)).toBeInTheDocument();
+      expect(screen.queryByText(t.resume.sessionNotFound)).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: t.actions.resume })).not.toBeInTheDocument();
+    });
+
+    it('작업 시작과 같이 점검 판정을 남긴 뒤 새 세션을 열고 다시 시작했다고 알린다', async () => {
+      const rendered = renderScreen({ workOrders: [HELD] });
+
+      await selectWorkOrder(rendered);
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      await rendered.user.click(restartButton());
+
+      expect(
+        await screen.findByText(t.result.restarted(WORK_ORDER.workOrderNo)),
+      ).toBeInTheDocument();
+      const urls = rendered.recorded.bodies.map((sent) => sent.url);
+      expect(urls.indexOf('/production/precheck-decisions')).toBeGreaterThanOrEqual(0);
+      expect(urls.indexOf('/production/precheck-decisions')).toBeLessThan(
+        urls.indexOf('/production/work-sessions'),
+      );
+      expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(1);
+      expect(urls.some((url) => url.includes('/events') || url.includes(':resume'))).toBe(false);
+    });
+
+    it('그사이 다른 곳에서 세션이 열려 거절되면 서버 문구를 보이고 열린 세션을 다시 묻는다', async () => {
+      const message =
+        '이 W/O 에 열린 작업 세션이 이미 있습니다. 목록을 새로 고친 뒤 [재개]로 이어 하세요.';
+      const rendered = renderScreen({ workOrders: [HELD], startOpenSessionMessage: message });
+
+      await selectWorkOrder(rendered);
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      const asked = (): number =>
+        rendered.recorded.urls.filter((url) => url.includes('/production/work-sessions?')).length;
+      const askedBefore = asked();
+      await rendered.user.click(restartButton());
+
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(screen.queryByText(t.result.conflict)).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(asked()).toBeGreaterThan(askedBefore);
+      });
+    });
+  });
+
   /**
    * ⛔ **판정 기록이 오가는 동안 화면이 비어 있지 않다.** 통과 판정이면 게이트가 아무것도
    *    그리지 않으므로, 이 사이에 표시가 없으면 작업자는 버튼이 안 먹었다고 본다.

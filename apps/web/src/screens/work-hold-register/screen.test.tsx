@@ -793,6 +793,57 @@ describe('P-02-10 작업 중단 등록', () => {
       await waitFor(() => expect(router?.state.location.pathname).toBe('/pop/work-start'));
     });
 
+    it('중단을 보내는 사이 세션이 닫혀 서버가 중단을 거부하면 서버 문구와 작업 시작으로 가는 길을 준다', async () => {
+      const user = userEvent.setup();
+      const message =
+        '작업 중인 세션이 없어 W/O 를 중단할 수 없습니다. 작업을 시작한 뒤에 중단하세요.';
+      const sent: string[] = [];
+      let sessionReads = 0;
+      const { router } = renderWithProviders(
+        <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>
+          <WorkHoldRegisterScreen />
+        </PopIdentityProvider>,
+        {
+          fetch: createStubFetch([
+            {
+              match: (request) => isGet(request, SESSIONS_PATH),
+              respond: () => {
+                sessionReads += 1;
+                const items = sessionReads === 1 ? [workSession()] : [];
+                return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
+              },
+            },
+            eventsRoute([]),
+            {
+              match: (request) => request.method === 'POST',
+              respond: (request) => {
+                sent.push(new URL(request.url).pathname);
+                return jsonResponse(
+                  { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
+                  { status: 400 },
+                );
+              },
+            },
+            reasonsRoute,
+          ]),
+          route: ROUTE,
+          dataRouter: true,
+        },
+      );
+
+      await user.click(await screen.findByRole('radio', { name: MOLD_CHANGE_NAME }));
+      await user.click(screen.getByRole('button', { name: t.form.stopAction }));
+
+      expect(await screen.findByText(message)).toBeVisible();
+      expect(sent).toEqual([HOLD_PATH]);
+      expect(screen.queryByRole('button', { name: t.outbox.retryNow })).toBeNull();
+
+      await user.click(
+        screen.getByRole('button', { name: t.outbox.toWorkStart(messages.workStart.title) }),
+      );
+      await waitFor(() => expect(router?.state.location.pathname).toBe('/pop/work-start'));
+    });
+
     it('그 밖의 거부는 서버 문구를 그대로 보인다', async () => {
       const user = userEvent.setup();
       renderScreen([

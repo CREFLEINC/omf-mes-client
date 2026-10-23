@@ -7,6 +7,7 @@ import { useApiClient } from '../../patterns/api-context';
 
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
+import { serverReasonOf } from '../../patterns/server-reason';
 import { PrecheckGate } from '../work-precheck-gate/gate';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 import { ActionBar } from './action-bar';
@@ -171,7 +172,7 @@ export const WorkStartScreen = () => {
    * 세션을 열게 된다.
    */
   const selected = (rows ?? []).find((row) => row.workOrderId === selectedId) ?? null;
-  const isResume = selected !== null && isHeld(selected);
+  const isHeldSelected = selected !== null && isHeld(selected);
 
   /*
    * ⭐ 시작할 수 있는지는 «고른 W/O 의 공정»으로 판정한다 — 단말에 공정이 여럿이어도 W/O 가 어느
@@ -187,6 +188,14 @@ export const WorkStartScreen = () => {
    *    「충돌」로만 적어 두어, 409 를 「진행 중」으로 읽으면 뜻을 지어내는 것이 된다.
    */
   const openSession = useOpenSession(selected?.workOrderId ?? null, selected !== null);
+
+  /*
+   * ⭐ 중단 W/O 라도 열린 세션이 없으면 이어 붙일 세션이 없다 — 작업 시작과 같은 길(점검 게이트를
+   *    지나 새 세션)로 다시 시작하고, W/O 재개는 서버가 같은 요청 안에서 한다.
+   * ⚠ 조회가 끝나기 전(`undefined`)에는 다시 시작으로 읽지 않는다 — 열린 세션이 있을 수 있다.
+   */
+  const isRestart = isHeldSelected && openSession.data === null;
+  const isResume = isHeldSelected && !isRestart;
 
   /*
    * 고른 지시의 **끝나지 않은 PQC 검사 의뢰**(omf-all-around#42). 그 화면으로 가는 단추가
@@ -410,7 +419,7 @@ export const WorkStartScreen = () => {
     onSuccess: () => {
       submitAtRef.current = null;
       setPendingCrew([]);
-      setOutcome(t.result.started(selected?.workOrderNo ?? ''));
+      setOutcome((isRestart ? t.result.restarted : t.result.started)(selected?.workOrderNo ?? ''));
       setSelectedId(null);
 
       /*
@@ -486,10 +495,7 @@ export const WorkStartScreen = () => {
     if (openSession.isError) return other(t.resume.sessionLookupFailed);
     if (openSession.isPending) return other(t.resume.checking);
 
-    if (isResume) {
-      /* ⛔ 열린 세션이 없으면 재개하지 않는다 — 새로 열면 중단 구간이 사라진다. */
-      if (openSession.data === null) return other(t.resume.sessionNotFound);
-    } else if (openSession.data !== null) {
+    if (!isHeldSelected && openSession.data !== null) {
       /*
        * ⛔ 세션이 이미 열려 있으면 새로 열지 않는다(§6). ⭐ **다만 이어갈 길은 준다** —
        *    같은 줄이 「그 세션으로 이동」이라고 적었고, 안내만 두고 길을 주지 않으면 작업자가
@@ -528,7 +534,7 @@ export const WorkStartScreen = () => {
    * ⛔ **「아직 안 골랐다」·「사번이 없다」는 여기 내지 않는다**(아래 주석 · 사용자 지시).
    */
   const bannerText = ((): string | null => {
-    if (block === null) return closeNotice;
+    if (block === null) return isRestart ? t.restart.status : closeNotice;
     if (block.code === 'alreadyOpen') return closeNotice ?? block.text;
     if (block.code === 'notSelected' || block.code === 'workerMissing') return null;
 
@@ -883,7 +889,10 @@ export const WorkStartScreen = () => {
         <div className="banner-slot">
           <AlertBanner variant="error">
             {isConflict(writeError)
-              ? t.result.conflict
+              ? /* 다시 시작이 충돌하는 까닭(이미 열린 세션)과 조치는 서버가 안다. */
+                isRestart
+                ? (serverReasonOf(writeError) ?? t.result.conflict)
+                : t.result.conflict
               : isResume
                 ? t.result.resumeFailed
                 : t.result.startFailed}
@@ -892,7 +901,7 @@ export const WorkStartScreen = () => {
       )}
 
       <ActionBar
-        mode={isResume ? 'resume' : 'start'}
+        mode={isResume ? 'resume' : isRestart ? 'restart' : 'start'}
         isBlocked={block !== null}
         /*
          * ⭐ **판정을 기록하는 동안도 「시작 중」이다**(#1148). 통과 판정이면 게이트가 아무것도
