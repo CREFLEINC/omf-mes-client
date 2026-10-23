@@ -1,12 +1,13 @@
-import { AlertBanner, Button, TextArea } from '@crefle/web-ui';
+import { AlertBanner, Button, Icon, TextArea } from '@crefle/web-ui';
 import type { components, paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
+import { FieldLabel } from './field-label';
 import { oqcInspectionKeys } from './queries';
 
 type ApprovalQuery = NonNullable<paths['/app/approval-requests']['get']['parameters']['query']>;
@@ -40,6 +41,7 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
   const [reason, setReason] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+  const reasonId = useId();
 
   useEffect(() => {
     setReason('');
@@ -129,12 +131,21 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
   return (
     <section className="oqc-inspection-section oqc-inspection-skip" aria-label={t.heading}>
       <h3>{t.heading}</h3>
-      {/* 요청 → 결재 → 실행과 그 결과를 순서대로 — 긴 한 문단 대신(#136). */}
-      <ol className="oqc-inspection-skip-steps">
-        {t.steps.map((step) => (
-          <li key={step}>{step}</li>
-        ))}
-      </ol>
+      {/* 요청 → 승인 → 실행 단계와 실행 결과(#136). */}
+      <div className="oqc-inspection-skip-guide">
+        <ol className="oqc-inspection-skip-steps">
+          {t.steps.map((step, index) => (
+            <Fragment key={step}>
+              {index > 0 && <Icon name="arrow_forward" size={16} aria-hidden="true" />}
+              <li>{step}</li>
+            </Fragment>
+          ))}
+        </ol>
+        <p className="oqc-inspection-skip-result">
+          <Icon name="info" size={18} aria-hidden="true" />
+          {t.result}
+        </p>
+      </div>
 
       {approval.isPending ? (
         <p className="field-note">{t.loading}</p>
@@ -164,11 +175,13 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
       {!approval.isPending && !approval.isError && canRequest && (
         <>
           {status === 'REJECTED' && <p className="field-note">{t.rejected}</p>}
+          <FieldLabel htmlFor={reasonId} label={t.reason} required />
           <TextArea
-            label={t.reason}
+            id={reasonId}
             placeholder={t.reasonPlaceholder}
             rows={3}
             fullWidth
+            showCount
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             error={reasonError ?? requestWrite.fieldErrors.reason}

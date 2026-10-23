@@ -15611,17 +15611,54 @@ button.app-button-neutral {
   letter-spacing: var(--type-label-lg-tracking);
 }
 
-/* OQC 검사 생략 — 안내 · 순서 · 사유 · 요청 단추를 위에서 아래로, 단추는 입력칸 오른쪽 아래(#136). */
-.oqc-inspection-skip-steps {
+/* 출하검사 생략 요청 — 단계 · 결과 안내 상자, 사유(필수 · 글자 수), 단추는 입력칸 오른쪽 아래(#136). */
+.oqc-inspection-skip-guide {
   display: grid;
-  gap: var(--space-1);
-  margin: 0;
-  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-8);
+  gap: var(--space-3);
+  padding: var(--space-4);
   border-radius: var(--radius-md);
   background: var(--surface-container);
+}
+
+.oqc-inspection-skip-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  padding: 0 0 var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+  list-style: none;
+  color: var(--on-surface-muted);
+}
+
+.oqc-inspection-skip-steps > li {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.oqc-inspection-skip-result {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
   color: var(--on-surface-variant);
   font: var(--type-body-md);
   letter-spacing: var(--type-body-md-tracking);
+}
+
+.oqc-inspection-skip-result > :first-child {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* 사유 라벨과 입력칸 사이는 다른 칸처럼 붙인다(구획 간격 대신). */
+.oqc-inspection-skip > .field-label {
+  margin-bottom: calc(-1 * var(--space-2));
 }
 
 .oqc-inspection-skip-actions {
