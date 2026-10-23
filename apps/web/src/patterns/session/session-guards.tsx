@@ -58,11 +58,17 @@ const UnknownNotice = ({ onRetry }: { onRetry: () => void }) => (
  * 떨어지면, 자기가 어디로 가려 했는지 기억해 다시 찾아 들어가야 한다.
  */
 export const RequireSession = ({ children }: { children: ReactNode }) => {
-  const { status, retryRestore } = useSession();
+  const { status, endedBySignOut, retryRestore } = useSession();
   const location = useLocation();
 
   if (status === 'restoring') return <RestoringNotice />;
   if (status === 'unknown') return <UnknownNotice onRetry={retryRestore} />;
+
+  /*
+   * ⛔ **스스로 로그아웃했으면 마지막 화면을 들려 보내지 않는다**(omf-all-around#175). 다음에
+   * 로그인하는 사람은 다른 사람일 수 있다 — 같은 사람이라도 나갔다 들어오면 첫 화면에서 시작한다.
+   */
+  if (status === 'anonymous' && endedBySignOut) return <Navigate to={LOGIN_PATH} replace />;
 
   if (status === 'anonymous') {
     const state: SessionRedirectState = { from: `${location.pathname}${location.search}` };
