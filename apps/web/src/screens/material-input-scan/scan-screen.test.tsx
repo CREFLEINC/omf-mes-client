@@ -1055,6 +1055,41 @@ describe('MaterialInputScanScreen — 공정이 여럿인 단말', () => {
     }
   });
 
+  it('작업지시를 일시적으로 읽지 못하면(500) 「확인할 수 없다」와 다시 시도를 주고, 다시 읽으면 풀린다', async () => {
+    const user = userEvent.setup();
+    let reads = 0;
+    renderScreen(
+      [
+        lotsRoute([lot()]),
+        {
+          match: (request) => isGet(request, `/production/work-orders/${String(WORK_ORDER_ID)}`),
+          respond: () => {
+            reads += 1;
+            return reads === 1
+              ? jsonResponse({ message: 'Internal server error' }, { status: 500 })
+              : jsonResponse({
+                  workOrderId: WORK_ORDER_ID,
+                  workOrderNo: 'SAMPLE-WO',
+                  processId: PROCESS_ID,
+                  processName: '합성 사출',
+                });
+          },
+        },
+        mappingRoute(false),
+      ],
+      MULTI,
+    );
+
+    expect(await screen.findByText(t.confirm.reasons.unavailable)).toBeTruthy();
+    expect(screen.queryByText(/Internal server error/)).toBeNull();
+    await user.click(screen.getByRole('button', { name: t.confirm.retry }));
+
+    expect(
+      await screen.findByText(popGateDeniedText({ processName: '합성 사출' }, 'canInputMaterial')),
+    ).toBeTruthy();
+    expect(reads).toBe(2);
+  });
+
   it('작업지시를 읽지 못하면(401) 원인·조치와 매핑 확인 곳 아래에 서버 이유를 덧붙인다', async () => {
     const reason = '단말 인증 범위 밖입니다.';
     renderScreen(

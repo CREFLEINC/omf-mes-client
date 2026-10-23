@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import type { SplitError } from '../../patterns/master';
+import { serverReasonOf } from '../../patterns/server-reason';
 import { masterName } from '../../patterns/master-name';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
@@ -200,22 +201,10 @@ const lotTargetsOf = (
     }),
   }));
 
-/**
- * 서버가 준 거부 사유. 단말 권한(401)이든 검증이든 서버 문구가 무엇을 해야 하는지 말한다 — 제목만
- * 두면 작업자는 왜 막혔는지 모른다.
- */
+/** 저장 거부의 서버 이유 — 칸 오류와 서버 문구(`serverReasonOf`)를 함께 잇는다. */
 const rejectionText = (rejection: SplitError): string | null => {
-  const lines = Object.values(rejection.fieldErrors);
-  const error = rejection.error;
-  if (error?.kind === 'validation' || error?.kind === 'stateLocked') {
-    lines.push(...error.errors.map((item) => item.message));
-  } else if (
-    (error?.kind === 'http' || error?.kind === 'conflict') &&
-    error.message !== undefined
-  ) {
-    lines.push(error.message);
-  }
-  const text = lines
+  const reason = rejection.error === null ? null : serverReasonOf(rejection.error);
+  const text = [...Object.values(rejection.fieldErrors), ...(reason === null ? [] : [reason])]
     .map((line) => line.trim())
     .filter((line) => line !== '')
     .join(' ');

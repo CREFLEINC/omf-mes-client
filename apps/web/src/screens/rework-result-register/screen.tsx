@@ -19,6 +19,7 @@ import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { toApiError } from '../../patterns/request';
+import { serverReasonOf } from '../../patterns/server-reason';
 import { drainReworkResults, enqueueReworkResult, pendingReworkResultCount } from './outbox';
 import {
   useDispositionDecisions,
@@ -91,14 +92,11 @@ export const ReworkResultRegisterScreen = () => {
    * 고른 W/O 의 공정으로 「실적 입력」을 판정한다 — 단말에 공정이 여럿이어도 그 W/O 가 어느 공정의
    * 일인지 안다. 고르기 전에는 판정할 공정이 없으므로 막지도 말하지도 않는다.
    */
+  const selectedWorkOrder: WorkOrderForward | null = selected;
   const gate = usePopProcessGate({
     terminalId: identity.terminalId,
-    processId: popGateProcessId(
-      selected === null ? null : (selected as WorkOrderForward).processId,
-      identity.processes,
-    ),
-    fallbackProcessName:
-      selected === null ? null : ((selected as WorkOrderForward).processName ?? null),
+    processId: popGateProcessId(selectedWorkOrder?.processId, identity.processes),
+    workOrder: { processName: selectedWorkOrder?.processName ?? null },
     flag: 'canInputResult',
   });
   const uom = useUomLookup();
@@ -269,7 +267,7 @@ export const ReworkResultRegisterScreen = () => {
           <h2 className="pane-title">{t.workOrders}</h2>
           {(releasedOrders.isError || plannedOrders.isError) && (
             <AlertBanner variant="error" title={t.loadError}>
-              {rejectionText(toApiError(releasedOrders.error ?? plannedOrders.error))}
+              {serverReasonOf(toApiError(releasedOrders.error ?? plannedOrders.error))}
             </AlertBanner>
           )}
           {releasedOrders.isSuccess && plannedOrders.isSuccess && rows.length === 0 && (
@@ -385,7 +383,7 @@ export const ReworkResultRegisterScreen = () => {
               <h2 className="pane-title">{t.target}</h2>
               {(source.isError || dispositions.isError) && (
                 <AlertBanner variant="error" title={t.loadError}>
-                  {rejectionText(toApiError(source.error ?? dispositions.error))}
+                  {serverReasonOf(toApiError(source.error ?? dispositions.error))}
                 </AlertBanner>
               )}
               <dl className="pop-figures">
@@ -723,7 +721,7 @@ export const ReworkResultRegisterScreen = () => {
           {queueError && <AlertBanner variant="error">{t.queueError}</AlertBanner>}
           {rejection !== null && (
             <AlertBanner variant="error" title={t.rejected}>
-              {rejectionText(rejection)}
+              {serverReasonOf(rejection) ?? t.rejectedHint}
             </AlertBanner>
           )}
           {gateReason && <p>{gateReason}</p>}
@@ -737,22 +735,4 @@ export const ReworkResultRegisterScreen = () => {
       </div>
     </main>
   );
-}; /**
- * 서버가 준 사유 — 단말 권한(401)이든 검증이든 서버 문구가 무엇을 해야 하는지 말한다. 저장
- * 거부와 조회 실패가 함께 쓴다. 거부의 모양이 아니라 실린 문구를 본다.
- */
-const rejectionText = (rejection: ApiError): string | null => {
-  const lines =
-    rejection.kind === 'validation' || rejection.kind === 'stateLocked'
-      ? rejection.errors.map((item) => item.message)
-      : (rejection.kind === 'http' || rejection.kind === 'conflict') &&
-          rejection.message !== undefined
-        ? [rejection.message]
-        : [];
-  const text = lines
-    .map((line) => line.trim())
-    .filter((line) => line !== '')
-    .join(' ');
-
-  return text === '' ? null : text;
 };

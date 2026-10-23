@@ -1,4 +1,4 @@
-import type { ApiError, TerminalProcessForward, WorkOrderForward } from '@omf-mes/api-client';
+import type { TerminalProcessForward, WorkOrderForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 
@@ -6,6 +6,7 @@ import { useApiClient } from './api-context';
 import { soleProcessIdOf } from './pop-identity';
 import type { TerminalProcessRow } from './pop-registration';
 import { runRequest, toApiError } from './request';
+import { serverReasonOf } from './server-reason';
 
 /**
  * POP 단말 기능 판정 — **이 단말이 «이 작업지시의 공정»에서 이 기능을 할 수 있는가.**
@@ -58,18 +59,18 @@ export const popProcessGateKeys = {
 export interface PopProcessGateInput {
   terminalId: number | null;
   processId: number | null;
-  /** 공정을 정할 작업지시를 아직 읽는 중인가 — 그동안 「모른다」 대신 「확인 중」이다 */
-  isProcessPending?: boolean;
-  /** 매핑 행에 이름이 없을 때 쓸 이름(W/O 의 공정명) */
-  fallbackProcessName?: string | null;
+  /**
+   * 공정을 정한 작업지시 조회. 읽는 중이면 「모른다」 대신 확인 중이고, 일시적으로 읽지 못했으면
+   * 다시 시도할 수 있는 「확인할 수 없음」이다. 이름은 매핑 행에 없을 때 쓴다.
+   */
+  workOrder?: Partial<PopWorkOrderProcess>;
   flag: PopGateFlag;
 }
 
 export const usePopProcessGate = ({
   terminalId,
   processId,
-  isProcessPending = false,
-  fallbackProcessName = null,
+  workOrder,
   flag,
 }: PopProcessGateInput): PopProcessGate => {
   const { client } = useApiClient();
@@ -77,6 +78,12 @@ export const usePopProcessGate = ({
   const query = useQuery({
     queryKey: popProcessGateKeys.terminal(terminalId ?? 0),
     enabled: terminalId !== null,
+    /*
+     * 화면에 들어올 때마다 다시 읽는다 — 관리자가 매핑을 켠 직후 단말이 앞서 받은 값으로 계속
+     * 막혀 보이지 않게.
+     */
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async () => {
       if (terminalId === null) throw new Error('단말을 모르면 기능 구성을 조회하지 않습니다.');
 
@@ -95,7 +102,15 @@ export const usePopProcessGate = ({
 
   const verdict = ((): PopGateVerdict => {
     if (terminalId === null) return 'unidentified';
-    if (processId === null) return isProcessPending ? 'checking' : 'unidentified';
+    if (processId === null) {
+      if (workOrder?.isPending === true) return 'checking';
+      /* 단말 권한(401) 거부는 기다려도 풀리지 않는다 — 원인·조치를 말하는 쪽(unidentified)이다. */
+      if (workOrder?.isError === true && (workOrder.failureReason ?? null) === null) {
+        return 'unavailable';
+      }
+
+      return 'unidentified';
+    }
     if (query.isError) return 'unavailable';
     /* 조회 중에는 막는다 — 답이 오기 전에 눌린 버튼이 판정을 지나친다. */
     if (query.isPending) return 'checking';
@@ -105,9 +120,10 @@ export const usePopProcessGate = ({
 
   return {
     verdict,
-    processName: row?.processName ?? fallbackProcessName,
+    processName: row?.processName ?? workOrder?.processName ?? null,
     retry: () => {
       void query.refetch();
+      workOrder?.refetch?.();
     },
   };
 };
@@ -123,55 +139,63 @@ export const popGateDeniedText = (gate: Pick<PopProcessGate, 'processName'>, fla
     : t.denied(gate.processName, feature, menuPath);
 };
 
+export const popWorkOrderKeys = {
+  detail: (workOrderId: number) => ['pop-work-order', workOrderId] as const,
+};
+
+/**
+ * POP 화면이 판정에 쓰는 작업지시 상세. 한 화면 안에서 같은 W/O 를 두 번 읽지 않게 키를 함께
+ * 쓴다 — 유형 표시 등 다른 몫도 이것을 읽는다.
+ */
+export const usePopWorkOrder = (workOrderId: number | null) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: popWorkOrderKeys.detail(workOrderId ?? 0),
+    enabled: workOrderId !== null,
+    queryFn: async (): Promise<WorkOrderForward> => {
+      if (workOrderId === null) throw new Error('작업지시가 없으면 상세를 조회하지 않습니다.');
+
+      return runRequest(() =>
+        client.GET('/production/work-orders/{workOrderId}', {
+          params: { path: { workOrderId } },
+        }),
+      );
+    },
+  });
+};
+
 export interface PopWorkOrderProcess {
   processId: number | null;
   processName: string | null;
-  /** 작업지시를 읽지 못했을 때 서버가 준 이유. 막힘 문구 아래에 덧붙인다 */
-  failureReason: string | null;
   /** 아직 답을 기다리는가. 작업지시가 없으면(묻지 않으면) false */
   isPending: boolean;
+  /** 작업지시를 읽지 못했다 */
+  isError: boolean;
+  /**
+   * 읽지 못한 까닭이 단말 권한(401)이면 서버가 준 이유. 기다려서 풀리지 않으므로 「다시 시도」
+   * 대신 원인·조치 문구 아래에 덧붙인다. 그 밖의 실패는 null — 다시 시도할 수 있다.
+   */
+  failureReason: string | null;
+  refetch: () => void;
 }
 
 /** 판정에 쓸 작업지시의 공정. 공정을 싣지 않는 옛 서버면 null 이고, 판정은 단말의 유일한 공정으로 간다. */
 export const usePopWorkOrderProcess = (workOrderId: number | null): PopWorkOrderProcess => {
-  const { client } = useApiClient();
-
-  const query = useQuery({
-    queryKey: ['pop-work-order-process', workOrderId ?? 0] as const,
-    enabled: workOrderId !== null,
-    queryFn: async () => {
-      if (workOrderId === null) throw new Error('작업지시가 없으면 공정을 조회하지 않습니다.');
-
-      return (await runRequest(() =>
-        client.GET('/production/work-orders/{workOrderId}', {
-          params: { path: { workOrderId } },
-        }),
-      )) as WorkOrderForward;
-    },
-  });
+  const query = usePopWorkOrder(workOrderId);
+  const error = query.isError ? toApiError(query.error) : null;
+  const isUnauthorized = error?.kind === 'http' && error.status === 401;
 
   return {
     processId: query.data?.processId ?? null,
     processName: query.data?.processName ?? null,
     isPending: workOrderId !== null && query.isPending,
-    failureReason: query.isError ? serverReasonOf(toApiError(query.error)) : null,
+    isError: query.isError,
+    failureReason: error !== null && isUnauthorized ? (serverReasonOf(error) ?? '') : null,
+    refetch: () => {
+      void query.refetch();
+    },
   };
-};
-
-/** 서버가 실어 준 문구. 없으면 null — 일반 문구로 지어내지 않는다. */
-const serverReasonOf = (error: ApiError): string | null => {
-  const lines =
-    error.kind === 'validation' || error.kind === 'stateLocked'
-      ? error.errors.map((item) => item.message)
-      : (error.kind === 'http' || error.kind === 'conflict') && error.message !== undefined
-        ? [error.message]
-        : [];
-  const text = lines
-    .map((line) => line.trim())
-    .filter((line) => line !== '')
-    .join(' ');
-
-  return text === '' ? null : text;
 };
 
 /**
@@ -181,7 +205,7 @@ const serverReasonOf = (error: ApiError): string | null => {
 export const popGateUnidentifiedText = (screenText: string, failureReason: string | null) => {
   const t = messages.popChrome.processGate;
   const parts = [screenText, t.checkMapping(messages.terminalProcessMap.menuPath)];
-  if (failureReason !== null) parts.push(t.serverReason(failureReason));
+  if (failureReason !== null && failureReason !== '') parts.push(t.serverReason(failureReason));
 
   return parts.join(' ');
 };

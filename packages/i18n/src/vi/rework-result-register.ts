@@ -85,6 +85,8 @@ export const reworkResultRegister: Translated<typeof ko.reworkResultRegister> = 
   queued: 'Đã lưu kết quả.',
   queueError: 'Không lưu được kết quả vào máy trạm. Hãy thử lại.',
   rejected: 'Máy chủ không nhận kết quả.',
+  rejectedHint:
+    'Hãy kiểm tra số lượng đã nhập và lệnh sản xuất đã chọn rồi lưu lại. Nếu lặp lại, hãy báo quản trị viên.',
   gateUnidentified:
     'Chưa xác nhận được máy hoặc công đoạn của lệnh sản xuất đã chọn nên không lưu được. Hãy mở lại màn hình rồi chọn lại lệnh sản xuất.',
   gateChecking: 'Đang kiểm tra chức năng máy trạm.',

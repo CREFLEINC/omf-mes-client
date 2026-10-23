@@ -67,7 +67,7 @@ describe('usePopProcessGate', () => {
       {
         terminalId: TERMINAL_ID,
         processId: null,
-        isProcessPending: true,
+        workOrder: { isPending: true },
         flag: 'canInputMaterial',
       },
       mapping,
@@ -97,7 +97,7 @@ describe('usePopProcessGate', () => {
       {
         terminalId: TERMINAL_ID,
         processId: 3,
-        fallbackProcessName: '합성 포장',
+        workOrder: { processName: '합성 포장' },
         flag: 'canInputMaterial',
       },
       () => jsonResponse({ items: [{ processId: 3, canInputMaterial: false }] }),
@@ -123,5 +123,29 @@ describe('popGateDeniedText', () => {
     expect(popGateUnidentifiedText('화면 문구.', '단말 인증 범위 밖입니다.')).toBe(
       `화면 문구. ${t.checkMapping(messages.terminalProcessMap.menuPath)} ${t.serverReason('단말 인증 범위 밖입니다.')}`,
     );
+  });
+
+  it('작업지시를 일시적으로 읽지 못하면 unavailable, 권한(401)으로 거부되면 unidentified 다', () => {
+    const transient = renderGate(
+      {
+        terminalId: TERMINAL_ID,
+        processId: null,
+        workOrder: { isError: true, failureReason: null },
+        flag: 'canInputMaterial',
+      },
+      mapping,
+    );
+    expect(transient.result.current.verdict).toBe('unavailable');
+
+    const denied = renderGate(
+      {
+        terminalId: TERMINAL_ID,
+        processId: null,
+        workOrder: { isError: true, failureReason: '단말 인증 범위 밖입니다.' },
+        flag: 'canInputMaterial',
+      },
+      mapping,
+    );
+    expect(denied.result.current.verdict).toBe('unidentified');
   });
 });

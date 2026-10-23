@@ -822,6 +822,19 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
     ).toBeTruthy();
   });
 
+  it('401 이 아닌 거부(404)의 서버 몸체는 보이지 않고 일반 문구를 쓴다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], {
+      match: (request) => isPost(request, CONSUMPTIONS_PATH),
+      respond: () => jsonResponse({ message: 'Not Found' }, { status: 404 }),
+    });
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+
+    expect(await screen.findByText(messages.httpError.description, { exact: false })).toBeTruthy();
+    expect(screen.queryByText(/Not Found/)).toBeNull();
+  });
+
   it('서버가 거부하면 그 건만 목록에서 내린다', async () => {
     const user = userEvent.setup();
 

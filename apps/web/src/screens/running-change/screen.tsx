@@ -100,8 +100,7 @@ export const RunningChangeScreen = () => {
   const gate = usePopProcessGate({
     terminalId,
     processId: popGateProcessId(workOrderProcess.processId, processes),
-    isProcessPending: workOrderProcess.isPending,
-    fallbackProcessName: workOrderProcess.processName,
+    workOrder: workOrderProcess,
     flag: 'canInputMaterial',
   });
 

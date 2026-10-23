@@ -941,6 +941,42 @@ describe('ReworkResultRegisterScreen — 서버 거부', () => {
     expect(screen.getByText(t.rejected)).toBeInTheDocument();
   });
 
+  it('서버가 이유 없이 거부하면(404) 일반 문구 대신 할 일을 말한다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: TERMINAL_ID,
+          processes: [{ processId: PROCESS_ID }],
+          equipment: null,
+          workerNo: '100027',
+        }}
+      >
+        <ReworkResultRegisterScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: async (request) => {
+          if (
+            request.method === 'POST' &&
+            new URL(request.url).pathname === '/production/production-results'
+          ) {
+            return jsonResponse({ message: 'Not Found' }, { status: 404 });
+          }
+          return stubFetch(request);
+        },
+        route: '/pop/rework-results',
+      },
+    );
+    await pickWorkOrder(user);
+    await user.type(await screen.findByLabelText(t.quantities.goodQty), '3');
+    await waitFor(() => expect(screen.getByRole('button', { name: t.save })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: t.save }));
+
+    expect(await screen.findByText(t.rejectedHint)).toBeInTheDocument();
+    expect(screen.queryByText(/Not Found/)).toBeNull();
+    expect(screen.getByText(t.rejected)).toBeInTheDocument();
+  });
+
   it('목록 조회가 단말 권한(401)으로 거부되면 「불러오지 못했다」와 서버 문구를 함께 보인다', async () => {
     const message = '단말 인증 범위 밖입니다.';
     renderWithProviders(

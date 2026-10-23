@@ -2,6 +2,7 @@ import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { toApiError } from '../../patterns/request';
+import { serverReasonOf } from '../../patterns/server-reason';
 
 import type { PopProcessGate } from '../../patterns/pop-process-gate';
 
@@ -158,10 +159,8 @@ const describeConfirmError = (error: unknown): string => {
       return messages.httpError.offline;
     case 'http':
       if (apiError.status === 403) return messages.httpError.forbidden;
-      /* 단말 권한(401) 거부는 서버 문구가 켜는 곳을 말한다 — 일반 문구로 덮지 않는다. */
-      return apiError.message === undefined || apiError.message.trim() === ''
-        ? messages.httpError.description
-        : apiError.message;
+      /* 단말 권한(401) 거부는 서버 문구가 켜는 곳을 말한다. 그 밖의 몸체는 보일 말이 아니다. */
+      return serverReasonOf(apiError) ?? messages.httpError.description;
     case 'conflict':
       return apiError.message === '' ? messages.httpError.description : apiError.message;
     case 'stateLocked':
