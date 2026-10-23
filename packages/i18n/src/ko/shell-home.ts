@@ -21,6 +21,31 @@ export const shellHome = {
     count: (count: number) => `작업 ${String(count)}개`,
     open: (label: string) => `${label} 작업 보기`,
   },
+  /**
+   * 업무 화면의 작업마다 무엇을 하는 화면인지 한 줄. 이름이 비슷한 작업(입하 · 입고 · 적치)을
+   * 이름만으로 고르면 끝까지 읽어야 갈린다.
+   */
+  screens: {
+    inboundReceipt: '공급사 도착을 기록 · 라벨 스캔으로 시작',
+    materialLotScan: '도착 때 못 스캔한 LOT 을 나중에 등록',
+    inboundVariance: '예정과 다른 입하를 남김 · 등록 뒤 수정 불가',
+    recycleEntry: '재생재를 자재 묶음으로 등록',
+    iqcSkipRequest: '요청만 올림 · 승인은 관리웹',
+    putaway: '입하한 자재를 적치 위치에 넣고 입고 완료',
+    temporaryPutaway: '적치 위치에 못 넣을 때 임시 위치에 먼저 둠',
+    stockTransfer: '위치 사이 재고 옮기기 · 반출 뒤 도착 스캔',
+    materialPicking: '출고 지시대로 자재를 꺼냄',
+    physicalCount: '위치의 실물을 세어 기록',
+    materialLocation: 'LOT · 품목이 어느 위치에 있는지 조회',
+    shopfloorReceipt: '생산창고로 들어온 자재 받기',
+    wipHandover: '공정 사이 재공품 넘기기',
+    repairRoundtrip: '수리 보낸 것과 돌아온 것 스캔',
+    equipmentInspection: '설비 점검 항목 기록',
+    equipmentFailure: '고장 증상과 사진 보고',
+    productReceipt: '완성 제품을 창고에 입고 · 적치',
+    productPicking: '출하 지시대로 제품 꺼내기',
+    packingRepack: '포장을 나누거나 합치기',
+  },
   /** 이 사번이 많이 들어간 작업. 사번마다 따로 센다. */
   frequent: '자주 쓰는 작업',
   /** 적다가 나간 작업. 홈 맨 위에 서서 그 자리로 바로 돌아간다. */

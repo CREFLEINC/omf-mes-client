@@ -1,4 +1,4 @@
-import { AppShell, Chip, IconButton, Topbar } from '@crefle/web-ui';
+import { AppShell, Icon, IconButton, Topbar } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
@@ -51,10 +51,15 @@ const ShellTopbar = () => {
       className={
         compact ? 'mobile-shell__topbar mobile-shell__topbar--compact' : 'mobile-shell__topbar'
       }
+      /*
+       * 앱바는 어두운 계기판이다(사용자 결정 2026-10-21, 개편 제안 v2 ①). 지금 무엇을 처리 중인가
+       * 와 입력 칸이 같은 밝은 평면에 놓이면 어디까지가 맥락이고 어디부터가 할 일인지 갈리지 않는다.
+       * 디자인 시스템의 다크 토큰을 이 상자에만 건다 - 본문은 밝은 그대로다.
+       */
+      data-theme="dark"
       brand={
         /*
-         * ⭐ 연결·전송 상태는 제목과 «같은 줄»에 둔다(사용자 지시 2026-09-21). 화면 이름과 지금
-         * 보낼 수 있는지는 함께 읽는 값이고, 사번은 「누구로 기록되는가」라 성격이 다르다.
+         * 첫 줄은 화면 이름과 지금 서버에 닿는가. 둘은 함께 읽는 값이다(사용자 지시 2026-09-21).
          */
         <div className="mobile-shell__titlebar">
           {showHome ? (
@@ -73,40 +78,74 @@ const ShellTopbar = () => {
           ) : (
             <h1 className="mobile-shell__title">{title}</h1>
           )}
-          <span className="mobile-shell__status">
-            <Chip status={online ? 'success' : 'warning'}>{online ? t.online : t.offline}</Chip>
-            {/* 건수만으로는 무엇이 묶여 있는지 모른다. 눌러서 목록과 「지금 보내기」로 간다. */}
-            {pending === 0 ? null : (
-              <Link to="/outbox">
-                <Chip status="warning">{t.unsent(pending)}</Chip>
-              </Link>
-            )}
-            {/*
-             * 되돌아온 건은 화면을 떠난 뒤에 생긴다. 셸이 이고 다니지 않으면 그것을 적은 사람은
-             * 되돌아왔다는 사실 자체를 만날 자리가 없다.
-             */}
-            {rejected.length === 0 ? null : (
-              <Link to="/rejections">
-                <Chip status="error">{t.returned(rejected.length)}</Chip>
-              </Link>
-            )}
+          {/* 글자만으로는 멀리서 안 읽힌다. 점의 색이 먼저, 글자가 확인이다. */}
+          <span
+            className={
+              online ? 'mobile-shell__net' : 'mobile-shell__net mobile-shell__net--offline'
+            }
+          >
+            <span className="mobile-shell__net-dot" aria-hidden="true" />
+            {online ? t.online : t.offline}
           </span>
+          {/* 한 줄 앱바에는 아래 줄이 없다. 보내지 못한 건수는 제목 줄 끝에 붙인다. */}
+          {compact ? <QueueLinks pending={pending} rejected={rejected.length} /> : null}
         </div>
       }
       actions={
         /*
-         * ⭐ 사번은 «아래 줄»에 혼자 선다(사용자 지시 2026-09-21).
+         * ⭐ 앱바는 두 줄이다(사용자 지시 2026-09-14 · 2026-09-21). 아래 줄은 「누구로, 무엇이
+         * 아직 안 갔나」 - 사번과 보내지 못한 건수다(사용자 결정 2026-10-21, 개편 제안 v2 ③).
+         * 둘 다 이 단말에 쌓이는 기록의 귀속과 도달이라 한 줄에서 함께 읽는다.
          *
-         * ⭐ 사번 확인 화면은 사번 칩을 싣지 않는다 - 확인한 사번은 본문의 확인 박스가 보여
-         * 준다(사용자 지시 2026-09-14). 그 화면을 떠나면 다시 싣는다.
+         * ⭐ 사번 확인 화면은 사번을 싣지 않는다 - 확인한 사번은 본문이 보여 준다(사용자 지시
+         * 2026-09-14). 그 화면을 떠나면 다시 싣는다.
          */
-        worker === null || compact ? null : (
-          <Chip>{`${worker.workerName} · ${worker.workerNo}`}</Chip>
+        compact || (worker === null && pending === 0 && rejected.length === 0) ? null : (
+          <div className="mobile-shell__statusbar">
+            {worker === null ? (
+              <span />
+            ) : (
+              <span className="mobile-shell__worker">
+                <Icon name="person" size={16} />
+                <b>{worker.workerName}</b>
+                {` · ${worker.workerNo}`}
+              </span>
+            )}
+            <QueueLinks pending={pending} rejected={rejected.length} />
+          </div>
         )
       }
     />
   );
 };
+
+/**
+ * 보내지 못한 건수. 0 이면 감춘다.
+ *
+ * 건수만으로는 무엇이 묶여 있는지 모른다. 눌러서 목록과 「지금 보내기」로 간다. 되돌아온 건은
+ * 화면을 떠난 뒤에 생긴다 - 셸이 이고 다니지 않으면 그것을 적은 사람은 되돌아왔다는 사실 자체를
+ * 만날 자리가 없다.
+ */
+const QueueLinks = ({ pending, rejected }: { pending: number; rejected: number }) =>
+  pending === 0 && rejected === 0 ? null : (
+    <span className="mobile-shell__queue">
+      {pending === 0 ? null : (
+        <Link to="/outbox" className="mobile-shell__queue-link">
+          <Icon name="cloud_upload" size={16} />
+          <span>{t.unsent(pending)}</span>
+        </Link>
+      )}
+      {rejected === 0 ? null : (
+        <Link
+          to="/rejections"
+          className="mobile-shell__queue-link mobile-shell__queue-link--failed"
+        >
+          <Icon name="error" size={16} />
+          <span>{t.returned(rejected)}</span>
+        </Link>
+      )}
+    </span>
+  );
 
 export const AppLayout = ({ children }: AppLayoutProps) => {
   /* 단말의 뒤로가기를 화면 안 단계가 먼저 받는다. 없으면 이력으로 넘어간다. */

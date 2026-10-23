@@ -1,6 +1,5 @@
 import {
   AlertBanner,
-  Button,
   Checkbox,
   Radio,
   RadioGroup,
@@ -12,6 +11,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { Button } from '../../patterns/button';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';

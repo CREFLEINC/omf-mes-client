@@ -1,9 +1,11 @@
 import { useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { AlertBanner, Button, Card, Chip, TextField } from '@crefle/web-ui';
+import { AlertBanner, Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
 
 import { useBackStep } from '../../patterns/back-step';
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { LOT_HOLD_REASON, useCodeValues, type CodeValue } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';

@@ -1,7 +1,9 @@
-import { AlertBanner, Button, Card, SearchInput } from '@crefle/web-ui';
+import { AlertBanner, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 
+import { Button } from './button';
+import { Card } from './card';
 import { useItemSearch, type ItemOption } from './masters';
 
 const t = messages.inboundReceipt.itemPicker;

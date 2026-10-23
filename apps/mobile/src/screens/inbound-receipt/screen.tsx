@@ -1,9 +1,11 @@
-import { AlertBanner, Button, Card, Chip, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Fragment, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { BottomActionBar } from '../../patterns/bottom-action-bar';
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { displayNameOf } from '../../patterns/code-values';
@@ -24,6 +26,7 @@ import {
   remainingQtyOf,
   type PurchaseOrder,
   type PurchaseOrderLine,
+  type ReceiptStep,
 } from './receipt';
 import { useReceiptFlow } from './use-receipt-flow';
 import { ItemPicker } from '../../patterns/item-picker';
@@ -50,6 +53,9 @@ const SHOW_DELIVERY_NOTE = false;
 
 /** 단계 번호. 발주 없이 받기는 라인 고르기 자리를 대신한다. */
 const STEP_COUNT = 3;
+
+/** 단계마다 몇 번째인가. 발주 없이 받기는 라인 고르기 자리에 선다. */
+const STEP_INDEX: Record<ReceiptStep, number> = { scan: 1, line: 2, unordered: 2, qty: 3 };
 
 /** 발주 후보를 카드로 늘어놓는 한도. 넘으면 선택칸으로 둔다 — 카드가 라인을 화면 밖으로 민다. */
 const ORDER_CARDS_MAX = 4;
@@ -309,7 +315,9 @@ export const InboundReceiptScreen = () => {
         (draft.supplierLotMissing ? t.recorded.lotMissing : draft.supplierLotNo),
       strong: true,
     },
-    ...(item.data === undefined ? [] : [{ label: t.header.itemName, value: item.data.itemName }]),
+    ...(item.data === undefined
+      ? []
+      : [{ label: t.header.itemName, value: item.data.itemName, caption: true }]),
     ...(draft.purchaseOrder === null
       ? []
       : [
@@ -321,7 +329,9 @@ export const InboundReceiptScreen = () => {
                 : t.header.lineOf(draft.purchaseOrder.purchaseOrderNo, String(line.lineNo)),
           },
         ]),
-    ...(draft.supplierLotNo === '' ? [] : [{ label: t.header.lot, value: draft.supplierLotNo }]),
+    ...(draft.supplierLotNo === ''
+      ? []
+      : [{ label: t.header.lot, value: draft.supplierLotNo, code: true }]),
   ];
 
   /*
@@ -1003,7 +1013,13 @@ export const InboundReceiptScreen = () => {
           : 'receipt with-bottom-action-bar docked-pad-open'
       }
     >
-      {started ? <TaskHeader fields={headerFields} details={headerDetails} /> : null}
+      {started ? (
+        <TaskHeader
+          fields={headerFields}
+          step={{ index: STEP_INDEX[step], total: STEP_COUNT }}
+          details={headerDetails}
+        />
+      ) : null}
 
       {/*
        * 1단계 — 스캔. 라벨을 받은 뒤에도 칸은 남는다: 단말 스캐너의 입력을 이 칸이 받아,

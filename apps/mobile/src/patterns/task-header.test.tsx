@@ -56,6 +56,29 @@ describe('작업 헤더', () => {
     expect(screen.getByText('누적 입하 200')).not.toBeVisible();
   });
 
+  /* 라벨의 긴 코드는 한 자씩 대조한다 - 이름표 줄에 섞이지 않고 따로 선다. */
+  it('코드 값은 낭독기 이름과 함께 따로 한 줄로 선다', () => {
+    render(
+      <TaskHeader
+        fields={[...FIELDS, { label: 'LOT', value: 'ABC-123|500|260731|SUP-001|0107', code: true }]}
+      />,
+    );
+
+    const lot = screen.getByText('ABC-123|500|260731|SUP-001|0107');
+
+    expect(lot.closest('.task-header__lot')).not.toBeNull();
+    expect(lot.closest('.task-header__values')).toBeNull();
+    expect(screen.getByText('LOT')).toBeInTheDocument();
+  });
+
+  it('단계를 넘기면 지나온 칸 · 지금 칸 · 남은 칸으로 그린다', () => {
+    const { container } = render(<TaskHeader fields={FIELDS} step={{ index: 2, total: 3 }} />);
+
+    expect(container.querySelectorAll('.task-header__step')).toHaveLength(3);
+    expect(container.querySelectorAll('.task-header__step--done')).toHaveLength(1);
+    expect(container.querySelectorAll('.task-header__step--current')).toHaveLength(1);
+  });
+
   it('펼칠 것이 없으면 「자세히」 단추를 두지 않는다', () => {
     render(<TaskHeader fields={FIELDS} />);
 

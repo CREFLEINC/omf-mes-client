@@ -1,17 +1,11 @@
-import {
-  AlertBanner,
-  Button,
-  Card,
-  Icon,
-  Progress,
-  Select,
-  TextField,
-} from '@crefle/web-ui';
+import { AlertBanner, Icon, Progress, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useBackStep } from '../../patterns/back-step';
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { ItemPicker } from '../../patterns/item-picker';
 import { useOnlineStatus } from '../../patterns/online-status';
@@ -233,8 +227,7 @@ export const PhysicalCountScreen = () => {
    * 라벨과 글자가 달라진다 - 한 위치에 같은 품목이 아홉 줄까지 서므로, 눈으로 줄을 찾는 그
    * 대조가 실사 일의 전부다.
    */
-  const nameOf = (line: DraftLine): string =>
-    t.lines.name(line.itemCode, line.lotNo ?? '');
+  const nameOf = (line: DraftLine): string => t.lines.name(line.itemCode, line.lotNo ?? '');
 
   /*
    * 고를 때 보는 값들. 번호와 날짜만으로는 갈리지 않아 창고와 유형을 함께 세운다.
@@ -263,7 +256,6 @@ export const PhysicalCountScreen = () => {
    */
   const keypadAt = lines.findIndex((line) => line.key === keypadFor);
   const keypad = keypadAt === -1 ? null : { at: keypadAt, line: lines[keypadAt] as DraftLine };
-
 
   /*
    * 입력칸 위에 함께 서는 값들. 서로를 밀어내지 않는다.
@@ -421,9 +413,7 @@ export const PhysicalCountScreen = () => {
   }
 
   return (
-    <div
-      className={keypad === null ? 'physical-count' : 'physical-count docked-pad-open'}
-    >
+    <div className={keypad === null ? 'physical-count' : 'physical-count docked-pad-open'}>
       <section className="physical-count__section">
         <h2>{t.plan.legend}</h2>
         {counts.isPending ? <p role="status">{t.plan.loading}</p> : null}

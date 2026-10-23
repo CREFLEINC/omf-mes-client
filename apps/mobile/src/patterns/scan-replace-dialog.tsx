@@ -1,6 +1,7 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { Button } from './button';
 import type { ScanField } from './use-scan-field';
 
 const t = messages.common.rescan;

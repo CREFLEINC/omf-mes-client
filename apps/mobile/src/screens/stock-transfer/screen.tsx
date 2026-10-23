@@ -1,8 +1,10 @@
-import { AlertBanner, Button, Card, Radio, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Radio, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { useLocationByCode } from '../../patterns/locations';
 import { useScannedLot } from '../../patterns/lots';
 import { uomLabelOf, useItemLabels, useUomCodes } from '../../patterns/masters';
