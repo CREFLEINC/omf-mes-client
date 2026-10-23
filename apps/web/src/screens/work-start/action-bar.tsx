@@ -6,8 +6,11 @@ import { POP_TOUCH_SIZE } from './touch-spec';
 const t = messages.workStart.actions;
 
 export interface ActionBarProps {
-  /** 재개인가 시작인가. 두 버튼은 **다른 경로**다 — 이름도 갈린다. */
-  mode: 'start' | 'resume';
+  /**
+   * 어느 쓰기인가. 재개는 열린 세션에 사건을 붙이고, 시작과 다시 시작은 새 세션을 연다 —
+   * 경로가 다르니 이름도 갈린다. `checking` 은 중단 W/O 의 열린 세션을 아직 모르는 동안이다.
+   */
+  mode: 'start' | 'resume' | 'restart' | 'checking';
   /**
    * 막혀 있는가. **사유는 여기서 그리지 않는다** — 머리줄 바로 아래 배너가 「왜 못 하는지와
    * 무엇을 하면 되는지」를 말한다(G-3 · §9-2). 이 바는 그 사실을 버튼 잠금으로만 받는다.
@@ -42,7 +45,7 @@ export const ActionBar = ({ mode, isBlocked, isSaving, onSubmit }: ActionBarProp
         disabled={isBlocked || isSaving}
         onClick={onSubmit}
       >
-        {isSaving ? t.starting : mode === 'resume' ? t.resume : t.start}
+        {isSaving ? t.starting : t[mode]}
       </Button>
     </div>
   </div>
