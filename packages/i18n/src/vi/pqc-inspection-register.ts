@@ -51,6 +51,7 @@ export const pqcInspectionRegister = {
   },
 
   web: {
+    noProductionResult: 'Không thể đánh giá vì chưa có kết quả sản xuất.',
     summary: {
       heading: 'Thông tin kiểm tra',
       inspectionRequestNo: 'Số yêu cầu',

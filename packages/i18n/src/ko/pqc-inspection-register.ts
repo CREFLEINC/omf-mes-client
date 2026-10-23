@@ -61,6 +61,8 @@ export const pqcInspectionRegister = {
 
   /** 관리웹 상세(#135) — IQC 판정 화면(#133)과 같은 짜임·말. POP 의 말(`pqcInspection`)은 그대로 둔다. */
   web: {
+    /** 생산 실적이 없어 판정을 막을 때(#135) — 관리웹 말. POP 의 말(`pqcInspection.result.noProductionResult`)은 그대로 둔다. */
+    noProductionResult: '생산 실적이 없으므로 판정할 수 없습니다.',
     summary: {
       heading: '검사 기본 정보',
       inspectionRequestNo: '의뢰번호',

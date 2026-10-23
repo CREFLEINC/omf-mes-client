@@ -75,7 +75,7 @@ export const pqcInspection: Translated<typeof ko.pqcInspection> = {
     confirmBlockedByTerminal:
       'Máy trạm này không có quyền nhập kiểm tra ở công đoạn này. Hãy cấp quyền trong cài đặt máy trạm.',
     confirmSucceeded: 'Đã xác nhận kiểm tra.',
-    noProductionResult: 'Không thể đánh giá vì chưa có kết quả sản xuất.',
+    noProductionResult: 'Lệnh sản xuất này chưa có kết quả sản xuất. Hãy đăng ký kết quả trước.',
   },
   panel: {
     noItems: 'Chưa có hạng mục kiểm tra. Hãy hỏi quản lý.',

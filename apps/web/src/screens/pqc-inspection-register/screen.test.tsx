@@ -473,7 +473,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     renderScreen({ noProduction: true });
     const pane = await openRequest(user);
 
-    expect(await pane.findByText(pqc.result.noProductionResult)).toBeInTheDocument();
+    expect(await pane.findByText(web.noProductionResult)).toBeInTheDocument();
     for (const box of pane.getAllByRole('textbox')) expect(box).toBeDisabled();
     expect(pane.getByRole('combobox', { name: web.judgment.label })).toBeDisabled();
     expect(pane.getByRole('button', { name: pqc.result.save })).toBeDisabled();
