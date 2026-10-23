@@ -13,6 +13,8 @@ export interface LotlessFilter {
   basis: LotlessPeriodBasis;
   /** 'YYYY-MM-DD' 두 끝(포함). 없으면 전체 기간이다. */
   period: [from: string, to: string] | null;
+  /** 입하가 끝난 자재 P/O 만 본다(사용자 지시 2026-10-22). 끝난 것은 서버에서 따로 받는다. */
+  doneOnly: boolean;
 }
 
 /** 라벨 미부착 일괄 입하의 결과. 품목 표 위에 남겨 무엇을 넣었는지 보인다. */
@@ -25,11 +27,39 @@ export const emptyLotlessFilter: LotlessFilter = {
   supplierName: '',
   basis: 'expected',
   period: null,
+  doneOnly: false,
 };
 
-/** 켜져 있는 조건 수. 접힌 「필터」 단추에 붙인다 - 접혀 있어도 걸러진 줄 안다. */
+/** 기본 기간의 반폭(일). 오늘 앞뒤로 이만큼 - 전체 기간을 매번 받으면 무겁다(사용자 지시 2026-10-22). */
+export const DEFAULT_PERIOD_DAYS = 14;
+
+const isoDate = (date: Date): string =>
+  `${String(date.getFullYear())}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate(),
+  ).padStart(2, '0')}`;
+
+/** 오늘에서 days 일 떨어진 날의 'YYYY-MM-DD'(단말 시간대). */
+export const shiftDate = (today: Date, days: number): string => {
+  const date = new Date(today);
+  date.setDate(date.getDate() + days);
+  return isoDate(date);
+};
+
+/** 'YYYY-MM-DD' 에서 days 일 떨어진 날. */
+export const shiftIso = (date: string, days: number): string =>
+  shiftDate(new Date(`${date}T00:00:00`), days);
+
+/** 처음 여는 2-1 의 조건 - 납기예정일 오늘 ±2주. */
+export const initialLotlessFilter = (today: Date = new Date()): LotlessFilter => ({
+  ...emptyLotlessFilter,
+  period: [shiftDate(today, -DEFAULT_PERIOD_DAYS), shiftDate(today, DEFAULT_PERIOD_DAYS)],
+});
+
+/**
+ * 접힌 「필터」 안의 켜진 조건 수 - 공급사명뿐이다. 기간 · 입하 완료는 늘 보여 세지 않는다.
+ */
 export const activeFilterCount = (filter: LotlessFilter): number =>
-  Number(filter.supplierName.trim() !== '') + Number(filter.period !== null);
+  Number(filter.supplierName.trim() !== '');
 
 /** 기간을 대는 날짜. 예정일 기준인데 예정일이 없으면 없다 - 기간을 걸면 빠진다. */
 export const basisDateOf = (order: PurchaseOrder, basis: LotlessPeriodBasis): string | null =>

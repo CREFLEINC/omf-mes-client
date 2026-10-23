@@ -12,7 +12,7 @@ import { useCodeValues } from '../../patterns/code-values';
 import { useToast } from '@crefle/web-ui';
 
 import { useBackStep } from '../../patterns/back-step';
-import { emptyLotlessFilter, type LotlessDone, type LotlessFilter } from './lotless';
+import { initialLotlessFilter, type LotlessDone, type LotlessFilter } from './lotless';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useScannedLot } from '../../patterns/lots';
 import { signal } from '../../patterns/scan-feedback';
@@ -52,9 +52,16 @@ import {
   type ReceiptDraft,
   type RecordedReceipt,
   type SplitMode,
+  partialReasonLockOf,
 } from './receipt';
 
 const t = messages.inboundReceipt;
+
+/**
+ * 초과분 나눠 등록(장부 P-100 · 사용자 결정 2026-10-22) - 분리 요청(:split) 대신 한 건으로 보내고
+ * 초과분은 서버의 초과분 목록에 남긴다.
+ */
+export const KEEP_EXCESS = 'KEEP_EXCESS';
 
 /** 홈의 「이어서 하기」에 적을 한 줄. 라벨 품목과 고른 발주 — 실물과 대조할 값이다. */
 const summaryOf = (draft: ReceiptDraft): string | null => {
@@ -93,6 +100,8 @@ const emptyDraft: ReceiptDraft = {
   packageCount: '',
   manufacturedDate: '',
   expiryDate: '',
+  partialReasonCode: '',
+  partialReason: '',
 };
 
 /**
@@ -145,16 +154,17 @@ export const useReceiptFlow = () => {
   const [recorded, setRecorded] = useState<RecordedReceipt | null>(null);
   /* 부족한데도 그대로 등록하겠다는 사람의 답. 화면은 더 올 것인지 알지 못한다. */
   const [continueUnder, setContinueUnder] = useState(false);
-  /*
-   * 부족을 오류로 적기로 했는가. 등록하지 않고 떠나면 스캔한 것이 사라지고, 오류를 붙일
-   * 입하 라인도 생기지 않는다 - 설계가 정한 것은 받아는 두되 쓰지는 못한다이고 받아 두는
-   * 것이 먼저다.
-   */
-  const [varianceNext, setVarianceNext] = useState(false);
-  const [splitExceptionType, setSplitExceptionType] = useState('');
-  const [splitExceptionReason, setSplitExceptionReason] = useState('');
   const [saveFailed, setSaveFailed] = useState(false);
   const [keypadFor, setKeypadFor] = useState<'received' | 'package' | null>(null);
+  /*
+   * 라벨 없이 한 품목을 부분 입하한 것 - 결과 화면 대신 부분 입하 화면에 남아 알린다(사용자 지시
+   * 2026-10-22). 그 라인을 보고 있는 동안만 보인다.
+   */
+  const [partialDone, setPartialDone] = useState<{
+    lineId: number;
+    qty: number;
+    outcome: 'sent' | 'queued';
+  } | null>(null);
   /* 담당자가 후보 밖에서 고르겠다고 한 상태. 한 번 넓히면 되돌리지 않는다. */
   const [showAllOrders, setShowAllOrders] = useState(false);
   /*
@@ -162,7 +172,7 @@ export const useReceiptFlow = () => {
    * 라인을 바꾸러 돌아와도 남아 있어, 같은 자재 P/O 의 다른 품목을 바로 고르고 다시 거르지 않는다.
    */
   const [lotlessOrderId, setLotlessOrderIdState] = useState<number | null>(null);
-  const [lotlessFilter, setLotlessFilter] = useState<LotlessFilter>(emptyLotlessFilter);
+  const [lotlessFilter, setLotlessFilter] = useState<LotlessFilter>(() => initialLotlessFilter());
   /*
    * 라벨 없이 한꺼번에 받으려고 체크한 라인과 방금 한꺼번에 등록한 결과. 자재 P/O 를 바꾸면 둘 다
    * 거둔다 - 다른 자재 P/O 의 체크가 남으면 보이지 않는 라인이 함께 등록된다.
@@ -190,8 +200,6 @@ export const useReceiptFlow = () => {
      */
     if ('receivedQty' in next || 'purchaseOrderLine' in next) {
       setContinueUnder(false);
-      setSplitExceptionType('');
-      setSplitExceptionReason('');
     }
 
     setDraft((current) => ({ ...current, ...next }));
@@ -209,6 +217,7 @@ export const useReceiptFlow = () => {
    */
   const pickLine = (line: PurchaseOrderLine) => {
     setChangingLine(false);
+    setPartialDone(null);
 
     if (draft.purchaseOrderLine?.purchaseOrderLineId === line.purchaseOrderLineId) {
       return;
@@ -228,6 +237,7 @@ export const useReceiptFlow = () => {
 
   /** 실입하 수량을 고친다. 미리 채운 값 위의 첫 숫자는 새로 치기 시작한 것이다. */
   const editReceivedQty = (next: string) => {
+    setPartialDone(null);
     if (plannedQty !== null && draft.receivedQty === plannedQty) {
       setPlannedQty(null);
       patch({ receivedQty: typedOverPlanned(plannedQty, next) });
@@ -272,12 +282,9 @@ export const useReceiptFlow = () => {
      */
     if (outcome !== null || code !== draft.supplierLotNo) {
       setContinueUnder(false);
-      setVarianceNext(false);
-      setSplitExceptionType('');
-      setSplitExceptionReason('');
       setShowAllOrders(false);
       setLotlessOrderId(null);
-      setLotlessFilter(emptyLotlessFilter);
+      setLotlessFilter(initialLotlessFilter());
       setKeypadFor(null);
       setChangingLine(false);
       setPlannedQty(null);
@@ -337,6 +344,13 @@ export const useReceiptFlow = () => {
 
   /* 지금 단계. 단계가 바뀌면 화면이 그 단계의 지시 하나만 세운다. */
   const step = stepOf(draft, changingLine);
+
+  /* 부분 입하 알림은 그 화면에서만 - 목록으로 돌아갔다 오면 남아 있지 않는다(사용자 확인 2026-10-22). */
+  useEffect(() => {
+    if (step !== 'qty') {
+      setPartialDone(null);
+    }
+  }, [step]);
 
   /*
    * 스캔한 번호가 양식대로 읽혀 제품코드가 나오면 그 품목이 있는 미마감 자재 P/O 만 후보로 낸다
@@ -404,9 +418,6 @@ export const useReceiptFlow = () => {
     playErrorTone();
     setRegisteredLotNo(registeredLot);
     setContinueUnder(false);
-    setVarianceNext(false);
-    setSplitExceptionType('');
-    setSplitExceptionReason('');
     setShowAllOrders(false);
     setKeypadFor(null);
     setPickingItem(false);
@@ -438,6 +449,23 @@ export const useReceiptFlow = () => {
   }, [narrowedEmptyUnlabelled]);
 
   const lines = usePurchaseOrderLines(draft.purchaseOrder?.purchaseOrderId ?? null);
+  /*
+   * 고른 라인은 고를 때의 값을 초안에 들고 있다. 서버에서 받은 수가 늘었으면 새 라인으로 갈아
+   * 끼운다 - 아니면 부분 입하를 해도 기입하 수량도 판정도 고르던 때의 수에 머문다(사용자 확인
+   * 2026-10-22). 늘었을 때만 바꾼다 - 낡은 캐시가 방금 더한 수를 되돌리지 않게.
+   */
+  useEffect(() => {
+    const current = draft.purchaseOrderLine;
+    const fresh =
+      current === null
+        ? undefined
+        : lines.data?.find((each) => each.purchaseOrderLineId === current.purchaseOrderLineId);
+
+    if (current !== null && fresh !== undefined && fresh.receivedQty > current.receivedQty) {
+      setDraft((each) => ({ ...each, purchaseOrderLine: fresh }));
+    }
+    /* setDraft 는 그릴 때마다 새로 만들어진다. 라인 값이 바뀔 때만 본다. */
+  }, [lines.data, draft.purchaseOrderLine]);
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
   const exceptionTypes = useCodeValues(INBOUND_RECEIPT_EXCEPTION_TYPE);
 
@@ -529,19 +557,20 @@ export const useReceiptFlow = () => {
   });
   const ready = lock === null && verdict !== OVER;
   /*
-   * 부족일 때 「분할 납품으로 등록」 단추의 잠금. 그 단추를 누르는 것이 곧 「더 온다」는 답이라,
-   * 답을 받은 것으로 놓고 나머지 조건을 같은 한 곳(`submitLockOf`)에서 본다.
+   * 부족일 때 「부분 입하 등록」 단추의 잠금. 그 단추를 누르는 것이 곧 「더 온다」는 답이라,
+   * 답을 받은 것으로 놓고 나머지 조건을 같은 한 곳(`submitLockOf`)에서 본다. 그 위에 부분 입하
+   * 사유가 있어야 한다(사용자 지시 2026-10-22) - 사유 칸이 화면 맨 아래라 마지막에 본다.
    */
   const underLock =
     verdict === UNDER
-      ? submitLockOf(draft, {
+      ? (submitLockOf(draft, {
           loaded,
           hasWorker: worker !== null,
           plantId,
           label: labelMismatch !== null ? 'mismatch' : labelChecking ? 'checking' : 'ok',
           verdict,
           continueUnder: true,
-        })
+        }) ?? partialReasonLockOf(draft))
       : null;
   const splitReady =
     loaded &&
@@ -549,12 +578,6 @@ export const useReceiptFlow = () => {
     canSubmit(draft, worker !== null) &&
     labelOk &&
     splitQuantities !== null;
-  /*
-   * 오류로 적는 길도 같은 조건을 지난다. 부족 물음에 답한 것이 continueUnder 를 대신할 뿐,
-   * 큐를 읽었는지와 필수 입력이 찼는지는 그대로 본다 - 이 길만 열어 두면 확정 단추가 막힌
-   * 상태에서 저장이 여기로 새어 나간다.
-   */
-  const varianceReady = loaded && plantId !== null && canSubmit(draft, worker !== null) && labelOk;
   /*
    * 단위는 따로 조회한다. 못 찾았을 때 빈 글자를 끼우면 수량 뒤가 그냥 비어, 무엇을 세는
    * 단위인지 없는 것인지 화면만 보고는 가릴 수 없다.
@@ -593,13 +616,10 @@ export const useReceiptFlow = () => {
     setRecorded(null);
     setFinishedItem(null);
     setContinueUnder(false);
-    setVarianceNext(false);
-    setSplitExceptionType('');
-    setSplitExceptionReason('');
     setSaveFailed(false);
     setShowAllOrders(false);
     setLotlessOrderId(null);
-    setLotlessFilter(emptyLotlessFilter);
+    setLotlessFilter(initialLotlessFilter());
     setChangingLine(false);
     setPlannedQty(null);
   };
@@ -719,18 +739,19 @@ export const useReceiptFlow = () => {
     outcome,
   ]);
 
-  const submit = async (splitMode?: SplitMode) => {
+  const submit = async (splitMode?: SplitMode | typeof KEEP_EXCESS) => {
     if (worker === null || source === null || plantId === null || inFlight.current) {
       return;
     }
 
     inFlight.current = true;
     setSaveFailed(false);
+    setPartialDone(null);
 
     try {
       const now = new Date();
       const entry =
-        splitMode === undefined
+        splitMode === KEEP_EXCESS
           ? toOutboxDraft(
               draft,
               source.itemId,
@@ -739,20 +760,38 @@ export const useReceiptFlow = () => {
               source.supplierId,
               now,
               worker.workerNo,
+              draft.purchaseOrderLine === null
+                ? 0
+                : splitQuantitiesOf(
+                    draft.purchaseOrderLine,
+                    Number(draft.receivedQty.trim()),
+                    queuedQty,
+                  ).excess,
             )
-          : toSplitOutboxDraft(
-              draft,
-              source.itemId,
-              source.uomId,
-              plantId,
-              source.supplierId,
-              now,
-              worker.workerNo,
-              splitMode,
-              splitExceptionType,
-              splitExceptionReason,
-              queuedQty,
-            );
+          : splitMode === undefined
+            ? toOutboxDraft(
+                /* 부분 입하 사유는 부족일 때만 싣는다 - 적고 나서 수량을 고쳐 부족이 아니게 되면 버린다. */
+                verdict === UNDER ? draft : { ...draft, partialReasonCode: '', partialReason: '' },
+                source.itemId,
+                source.uomId,
+                plantId,
+                source.supplierId,
+                now,
+                worker.workerNo,
+              )
+            : toSplitOutboxDraft(
+                draft,
+                source.itemId,
+                source.uomId,
+                plantId,
+                source.supplierId,
+                now,
+                worker.workerNo,
+                splitMode,
+                '',
+                '',
+                queuedQty,
+              );
 
       /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 등록된 줄 안다. */
       try {
@@ -811,6 +850,43 @@ export const useReceiptFlow = () => {
         if (purchaseOrderId !== null) {
           void queryClient.invalidateQueries({ queryKey: receiptKeys.detail(purchaseOrderId) });
         }
+      }
+
+      /*
+       * 라벨 없이 한 품목을 부분 입하했으면 결과 화면으로 가지 않는다(사용자 지시 2026-10-22). 같은
+       * 품목의 남은 것을 이어 받을 수 있게 수량 칸만 비우고 그 화면에서 알린다. 되돌아온 것은 위에서
+       * 결과 화면으로 갔다 - 그것은 사람이 꼭 봐야 한다.
+       */
+      if (
+        splitMode === undefined &&
+        draft.supplierLotMissing &&
+        verdict === UNDER &&
+        draft.purchaseOrderLine !== null
+      ) {
+        signal('confirm');
+        setPartialDone({
+          lineId: draft.purchaseOrderLine.purchaseOrderLineId,
+          qty: Number(draft.receivedQty.trim()),
+          outcome: queued ? 'queued' : 'sent',
+        });
+        setRecorded(null);
+        setFinishedItem(null);
+        setContinueUnder(false);
+        setKeypadFor(null);
+        setPlannedQty(null);
+        patch({
+          ...LINE_SCOPED_BLANK,
+          ...(queued
+            ? {}
+            : {
+                purchaseOrderLine: {
+                  ...draft.purchaseOrderLine,
+                  receivedQty:
+                    draft.purchaseOrderLine.receivedQty + Number(draft.receivedQty.trim()),
+                },
+              }),
+        });
+        return;
       }
 
       signal('confirm');
@@ -957,12 +1033,6 @@ export const useReceiptFlow = () => {
     recorded,
     continueUnder,
     setContinueUnder,
-    varianceNext,
-    setVarianceNext,
-    splitExceptionType,
-    setSplitExceptionType,
-    splitExceptionReason,
-    setSplitExceptionReason,
     saveFailed,
     keypadFor,
     setKeypadFor,
@@ -977,6 +1047,7 @@ export const useReceiptFlow = () => {
       setLotlessDone(null);
     },
     lotlessDone,
+    partialDone,
     lotlessBusy,
     lotlessLock,
     lotlessPickCount: lotlessPicks.length,
@@ -1014,7 +1085,6 @@ export const useReceiptFlow = () => {
     lock,
     ready,
     splitReady,
-    varianceReady,
     uomOf,
     uom,
     itemPartsOf,

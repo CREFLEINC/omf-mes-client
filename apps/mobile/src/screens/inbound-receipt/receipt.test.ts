@@ -28,6 +28,7 @@ import {
   type PurchaseOrderLine,
   type ReceiptDraft,
   type SubmitGate,
+  partialReasonLockOf,
 } from './receipt';
 
 const SCANNED = '7770001118880002229901015554447777';
@@ -76,6 +77,8 @@ const draft = (overrides: Partial<ReceiptDraft> = {}): ReceiptDraft => ({
   packageCount: '10',
   manufacturedDate: '2026-07-20',
   expiryDate: '2027-07-19',
+  partialReasonCode: '',
+  partialReason: '',
   ...overrides,
 });
 
@@ -327,8 +330,10 @@ describe('등록한 내용 요약', () => {
  * 남겨 두면 앞 자재에 적은 수량이 다음 자재에 붙은 채 판정까지 다시 선다.
  */
 describe('자재가 바뀔 때 비우는 칸', () => {
-  it('수량·포장 수·제조일·유효기한 넷만 비운다', () => {
+  it('수량·포장 수·제조일·유효기한·부분 입하 사유만 비운다', () => {
     expect(LINE_SCOPED_BLANK).toEqual({
+      partialReasonCode: '',
+      partialReason: '',
       receivedQty: '',
       packageCount: '',
       manufacturedDate: '',
@@ -583,6 +588,49 @@ describe('등록 본문', () => {
     expect(body.lines[0]?.packageCount).toBeNull();
     expect(body.lines[0]?.manufacturedDate).toBeNull();
     expect(body.lines[0]?.expiryDate).toBeNull();
+  });
+
+  /*
+   * 부분 입하 사유는 헤더 비고로 싣는다 - 고른 이름, 기타면 적은 글. 고르지 않았으면 칸째 싣지
+   * 않는다(사용자 지시 2026-10-22).
+   */
+  it('부분 입하 사유는 고른 이름이나 적은 기타 사유를 헤더 비고로 싣는다', () => {
+    const remarksOf = (overrides: Partial<ReceiptDraft>) =>
+      (toOutboxDraft(draft(overrides), 31, 9, 1, 2, NOW, '900028').body as Record<string, unknown>)
+        .remarks;
+
+    expect(remarksOf({ partialReasonCode: 'SPLIT_SHIPMENT' })).toBe('공급사 분할 납품');
+    expect(remarksOf({ partialReasonCode: 'OTHER', partialReason: ' 트럭 늦음 ' })).toBe(
+      '트럭 늦음',
+    );
+    expect(remarksOf({ partialReasonCode: 'OTHER', partialReason: ' ' })).toBeUndefined();
+    expect(remarksOf({})).toBeUndefined();
+  });
+
+  it('부분 입하 사유는 고르고, 기타면 적어야 찬다', () => {
+    expect(partialReasonLockOf(draft())).toBe('noPartialReason');
+    expect(partialReasonLockOf(draft({ partialReasonCode: 'OTHER' }))).toBe('noPartialReasonText');
+    expect(
+      partialReasonLockOf(draft({ partialReasonCode: 'OTHER', partialReason: '트럭 늦음' })),
+    ).toBeNull();
+    expect(partialReasonLockOf(draft({ partialReasonCode: 'IN_TRANSIT' }))).toBeNull();
+  });
+
+  /* 초과분 나눠 등록(장부 P-100) - 줄 하나에 받은 수 전체와 초과분을 함께 싣는다. */
+  it('초과분이 있으면 줄에 excessQty 로 싣고 되읽을 때 정량분 · 초과분으로 나눈다', () => {
+    const entry = toOutboxDraft(draft({ receivedQty: '511' }), 31, 9, 1, 2, NOW, '900028', 1);
+    const body = entry.body as { lines: Record<string, unknown>[] };
+
+    expect(body.lines[0]).toMatchObject({ receivedQty: 511, excessQty: 1 });
+    expect(recordedPartsOf(entry.path, entry.body)).toEqual([
+      { part: 'normal', receivedQty: 510, packageCount: 10 },
+      { part: 'excess', receivedQty: 1, packageCount: null },
+    ]);
+
+    const plain = toOutboxDraft(draft(), 31, 9, 1, 2, NOW, '900028').body as {
+      lines: Record<string, unknown>[];
+    };
+    expect('excessQty' in (plain.lines[0] ?? {})).toBe(false);
   });
 
   it('담을 때의 사번을 들고 있고 담긴 것을 확정으로 보지 않는다', () => {

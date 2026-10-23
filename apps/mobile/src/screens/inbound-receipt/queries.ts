@@ -51,6 +51,46 @@ export const useOpenPurchaseOrders = (itemId: number | null): UseQueryResult<Pur
 };
 
 /**
+ * 입하가 끝난 자재 P/O(사용자 지시 2026-10-22).
+ *
+ * 「끝났는가」를 묻는 축은 openOnly 하나라, 끝나지 않은 것도 함께 받아 미마감 목록에 없는 것만
+ * 남긴다. 서버는 발주일로만 기간을 거른다 - 납기예정일은 발주일보다 앞서지 않으므로 끝은 그대로,
+ * 시작은 리드타임만큼 당겨 받고 납기예정일 기간은 화면이 다시 거른다.
+ */
+export const RECEIVED_LEAD_DAYS = 90;
+
+export const useReceivedPurchaseOrders = (
+  orderDateFrom: string | null,
+  orderDateTo: string | null,
+  openIds: readonly number[] | undefined,
+  enabled: boolean,
+): UseQueryResult<PurchaseOrder[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: [ORDERS_KEY, 'received', orderDateFrom, orderDateTo] as const,
+    enabled: enabled && openIds !== undefined,
+    refetchOnMount: 'always',
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/logistics/purchase-orders', {
+          params: {
+            query: {
+              ...(orderDateFrom === null ? {} : { orderDateFrom }),
+              ...(orderDateTo === null ? {} : { orderDateTo }),
+              size: 100,
+            },
+          },
+        }),
+      );
+
+      return data.items;
+    },
+    select: (items) => items.filter((each) => !(openIds ?? []).includes(each.purchaseOrderId)),
+  });
+};
+
+/**
  * 스캔한 번호가 가리키는 품목.
  *
  * 번호 앞 아홉 자리가 제품코드다. 그것으로 품목을 찾으면 미마감 자재 P/O 를 그 품목이 있는
@@ -81,6 +121,7 @@ export const useScannedItem = (lotNo: string): UseQueryResult<number | null> => 
 export interface OrderLines {
   /** 하나라도 아직 오는 중인가. */
   pending: boolean;
+  fetching: boolean;
   /** 하나라도 받지 못했는가. 받은 것은 그대로 보인다. */
   failed: boolean;
   /** 받은 발주의 라인. 발주와 짝으로 둔다 - 고르면 둘을 함께 싣는다. */
@@ -92,12 +133,20 @@ export interface OrderLines {
  *
  * 한 발주를 고를 때(`usePurchaseOrderLines`)와 같은 열쇠를 써, 그 품목을 고르면 다시 부르지 않는다.
  */
-export const usePurchaseOrdersLines = (orders: readonly PurchaseOrder[]): OrderLines => {
+export const usePurchaseOrdersLines = (
+  orders: readonly PurchaseOrder[],
+  /**
+   * 들어올 때마다 새로 받는다 - 받아 둔 것이 있어도. 발주 상세 목록은 들어오면 받는 동안 로딩을
+   * 보이고 지금 수량으로 선다(사용자 지시 2026-10-22).
+   */
+  { fresh = false }: { fresh?: boolean } = {},
+): OrderLines => {
   const { client } = useApiClient();
 
   return useQueries({
     queries: orders.map((order) => ({
       queryKey: receiptKeys.detail(order.purchaseOrderId),
+      ...(fresh ? { refetchOnMount: 'always' as const } : {}),
       queryFn: async () => {
         const data = await runRequest(() =>
           client.GET('/logistics/purchase-orders/{purchaseOrderId}', {
@@ -110,6 +159,8 @@ export const usePurchaseOrdersLines = (orders: readonly PurchaseOrder[]): OrderL
     })),
     combine: (results) => ({
       pending: results.some((result) => result.isPending),
+      /* 받아 둔 것을 다시 받는 중. 그 사이 보이는 행은 조금 전 것이라 목록을 내리고 기다린다. */
+      fetching: results.some((result) => result.isFetching),
       failed: results.some((result) => result.isError),
       lines: results.flatMap((result, index) => {
         const order = orders[index];

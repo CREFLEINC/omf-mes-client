@@ -1,5 +1,6 @@
 import { Keyboard } from '@capacitor/keyboard';
 import { IconButton, NumberPad } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef } from 'react';
 
 import './docked-number-pad.css';
@@ -28,7 +29,7 @@ export interface DockedNumberPadProps {
   fieldId?: string;
   value: string;
   onChange: (value: string) => void;
-  /** 숫자판을 닫는다. 소수점 키 옆 빈 칸이 이 자리다 — 닫는 단추를 따로 세우지 않는다. */
+  /** 숫자판을 닫는다. 확인 키와 머리줄 오른쪽 닫기 단추가 함께 부른다. */
   onClose: () => void;
   /** 적을 칸이 여럿일 때만 넘긴다. 갈 곳이 없는데 단추를 세우면 눌러 보고 나서야 안다. */
   move?: DockedNumberPadMove;
@@ -139,7 +140,14 @@ export const DockedNumberPad = ({
 
   return (
     <div className="docked-pad" ref={padRef}>
-      <p className="docked-pad__head">{head}</p>
+      {/*
+       * 닫기는 머리줄 오른쪽 위에도 둔다(사용자 지시 2026-10-22) - 확인 키만으로는 닫는 자리인 줄
+       * 모르는 사람이 많다.
+       */}
+      <div className="docked-pad__top">
+        <p className="docked-pad__head">{head}</p>
+        <IconButton icon="close" size="lg" aria-label={messages.common.close} onClick={onClose} />
+      </div>
       <div className="docked-pad__row">
         {move === undefined ? null : (
           <IconButton

@@ -26,9 +26,19 @@
   border-top: 1px solid var(--outline-variant, #d7d7dd);
 }
 
+/* 머리줄 - 왼쪽에 무엇을 적는 중인지, 오른쪽 끝에 닫기. */
+.docked-pad__top {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+}
+
 /* 목록 밖에 서므로 무엇을 적는 중인지 스스로 말한다. */
 .docked-pad__head {
-  align-self: stretch;
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font: var(--type-title-sm);
   letter-spacing: var(--type-title-sm-tracking);

@@ -63,31 +63,36 @@ export const inboundReceipt = {
     /** 표의 컬럼 머리. */
     columns: {
       supplier: '공급사',
-      order: '자재 P/O',
-      orderDate: '발주일',
-      orderDateShort: '발주일',
-      /** 표 칸이 좁아 줄여 적는다. 온 이름은 낭독기와 기간 기준 단추에 쓴다. */
-      expectedDate: '예정일',
-      expectedDateFull: '입고예정일',
-      itemName: '품목명',
-      itemCode: '품목코드',
+      /** 입고 예정 표의 첫 칸(사용자 지시 2026-10-22). */
+      order: 'P/O No.',
+      /** 입고예정일을 「납기예정일」로 부른다(사용자 지시 2026-10-22). 발주일 칸은 뺐다. */
+      expectedDate: '납기예정일',
+      expectedDateFull: '납기예정일',
+      /** 품목 표의 품목 칸 - 품목명 아래 품목코드를 함께 적는다(사용자 지시 2026-10-22). */
+      item: '품목',
+      /** 품목 표의 행 번호 칸. */
+      no: 'No.',
       qty: '수량',
       /** 품목 표의 수량 칸 - 이미 받은 수량/발주 수량. */
       receivedOfOrdered: '입고/발주 수량',
+      /** 칸 경계 손잡이의 접근명 - 끌어서 그 칸 폭을 바꾼다. */
+      resize: (column: string) => `${column} 칸 폭`,
     },
-    orderCount: (count: number) => `입고 예정 ${String(count)}건`,
+    orderCount: (count: number) => `입하 예정 ${String(count)}건`,
     /** 입고 예정 행의 접근명. 화면은 칸으로 나눠 보이지만 낭독기는 한 번에 읽는다. */
-    orderRow: (supplier: string, orderNo: string, ordered: string, expected: string) =>
-      `${supplier} · ${orderNo} · 발주일 ${ordered} · 입고예정일 ${expected}`,
+    orderRow: (orderNo: string, supplier: string, expected: string) =>
+      `${orderNo} · ${supplier} · 납기예정일 ${expected}`,
     filter: {
       open: '필터',
       /** 접혀 있어도 걸러진 줄 안다. */
       openActive: (count: number) => `필터 ${String(count)}`,
       supplierName: '공급사명',
-      supplierNamePlaceholder: '공급사명 일부',
+      supplierNamePlaceholder: '공급사명 입력',
+      /** 입하가 끝난 자재 P/O 만 보는 켜고 끄기. */
+      doneOnly: '입하 완료 건만',
       period: '기간',
       basis: '기간 기준',
-      basisExpected: '입고예정일',
+      basisExpected: '납기예정일',
       basisOrdered: '발주일',
       periodAll: '전체 기간',
       clear: '필터 지우기',
@@ -106,14 +111,26 @@ export const inboundReceipt = {
     /** 다 받은 라인을 거르는 단추. */
     openOnly: '받을 것만',
     /**
+     * 일부만 받고 남은 라인(사용자 지시 2026-10-22) - 「필터」 안에서 이것만 보고, 「모두 선택」은
+     * 이것을 빼고 고른다. 남은 수량을 그대로 넣으면 부분 입하가 무색해진다.
+     */
+    partialOnly: '부분 입하만',
+    partialTag: '부분 입하',
+    noPartial: '부분 입하된 품목이 없습니다',
+    /** 다 받은 행. 초록 바탕이라 눈으로는 보이고, 낭독기에는 이 말로 알린다. */
+    closed: '입하 완료',
+    /**
      * 체크해 한꺼번에 등록하기. 거의 다 문제없이 들어오므로 이상 없는 품목은 남은 수량 그대로
      * 한 번에 등록하고, 문제가 있는 품목만 따로 처리한다(사용자 지시 2026-10-21).
      */
     bulk: {
       selectAll: '모두 선택',
       selectRow: (name: string) => `${name} 선택`,
-      submit: (count: number) =>
-        count === 0 ? '체크한 품목 입하 등록' : `체크한 ${String(count)}건 입하 등록`,
+      /** 고정 글자 - 체크한 수는 표 위 checkedCount 가 말한다(사용자 지시 2026-10-22). */
+      submit: '체크한 품목 입하 등록',
+      checkedCount: (count: number) => `(선택 ${String(count)}건)`,
+      /** 「모두 선택」이 뺀 부분 입하 품목. 하나씩 체크하면 넣을 수 있다. */
+      partialSkipped: (count: number) => `부분 입하 ${String(count)}건은 빼고 선택했습니다`,
       prompt: '체크한 품목은 남은 수량 그대로 등록합니다',
       noneChecked: '등록할 품목을 체크하세요',
       done: {
@@ -127,7 +144,10 @@ export const inboundReceipt = {
     searchLabel: '품목 찾기',
     searchPlaceholder: '품목명 또는 품목코드',
     noMatch: (query: string) => `「${query}」에 맞는 품목이 없습니다`,
-    none: '이 자재 P/O에서 받을 품목이 없습니다',
+    /** 품목이 다 받은 것뿐일 때(「받을 것만」으로 거르면 표가 빈다). */
+    none: '입하 처리가 모두 완료된 건입니다',
+    /** 자재 P/O 에 품목 라인이 아예 없을 때. */
+    empty: '이 자재 P/O에 품목이 없습니다',
   },
   po: {
     legend: '자재 P/O 선택',
@@ -273,16 +293,16 @@ export const inboundReceipt = {
       remaining: '잔여 수량',
       normal: '정량분',
       excess: '초과분',
-      exceptionType: '초과 예외 유형',
-      exceptionTypePlaceholder: '예외 유형을 고르세요',
-      exceptionTypeLoadFailed: '초과 예외 유형을 불러오지 못했습니다',
-      exceptionReason: '초과 사유',
-      both: '정량+초과 분리 등록',
+      /**
+       * 초과분 나눠 등록(장부 P-100 · 사용자 결정 2026-10-22). 입하 한 건 · LOT 한 개로 받고,
+       * 초과분만 자재 P/O 에 넣지 않고 초과분 목록에 남긴다 - ERP 가 추가 P/O 를 만들면 그 라인에
+       * 잇는다. 예외 유형 · 사유는 받지 않는다.
+       */
+      keepExcess: '초과분 나눠 등록',
       normalOnly: '정량분만 등록',
-      excessOnly: '초과분만 등록',
-      /* 초과분을 보내는 두 모드는 예외 유형과 사유를 함께 싣는다. 없으면 서버가 받지 않는다. */
-      excessLocked: '초과분을 등록하려면 예외 유형과 사유를 먼저 채우세요.',
-      atomic: '정량분과 초과분은 한 번에 저장되며 일부만 성공하지 않습니다.',
+      /** 정량분이 0 이면(받을 것이 남지 않은 라인) 나눌 것이 없다. */
+      noRoom: '이 라인은 받을 수량이 남지 않았습니다. 자재 P/O 없이 등록하세요.',
+      kept: '초과분은 자재 P/O에 넣지 않고 초과분 목록에 남깁니다.',
     },
     under: (remaining: string, arrived: string) =>
       `수량 부족 — 잔여 수량 ${remaining}, 이번 도착 ${arrived}`,
@@ -297,16 +317,41 @@ export const inboundReceipt = {
       /* 판정이 견주는 잔여 수량이 아니라 이번 것까지 받고도 남는 몫이다. */
       remaining: '남은',
     },
-    underAsk: '더 들어올 물량이 있습니까?',
+    /**
+     * 부족일 때 바닥 바 위의 두 수(이번 도착 · 남은)를 묶는 이름. 수량 부족(더 오지 않음)은 입하
+     * 오류 등록 메뉴에서 따로 처리한다(사용자 지시 2026-10-22) - 이 화면은 부분 입하 한 길이다.
+     */
+    underCounts: '부분 입하 수량',
     /**
      * 임시 입고가 아니다. 평범한 입하 등록이고 발주는 열린 채 남는다. 누르면 곧바로 등록한다 —
      * 「계속」만으로는 누른 뒤 무엇이 되는지 알 수 없었다.
      */
-    underContinue: '분할 납품으로 등록',
-    underContinueNote: '분할 납품이면 그대로 등록합니다. 자재 P/O는 열린 채 남습니다.',
-    underVariance: '보류로 받고 오류 등록',
-    /** 받아 두는 것이 먼저다. 등록하지 않고 떠나면 오류를 붙일 입하 라인이 없다. */
-    underVarianceNote: '먼저 보류로 받아 둔 뒤에 오류 내용을 적습니다.',
+    underContinue: '부분 입하 등록',
+    underContinueNote: '부분 입하로 그대로 등록합니다. 자재 P/O는 열린 채 남습니다.',
+    /**
+     * 부족을 부분 입하로 받을 때 고르는 사유(사용자 지시 2026-10-22). 자주 나는 셋과 기타 - 기타만
+     * 직접 적는다. 고른 이름(기타면 적은 글)이 헤더 비고(remarks)로 간다.
+     */
+    partialReasonLabel: '부분 입하 사유',
+    partialReasonPlaceholder: '사유를 고르세요',
+    partialReasons: {
+      SPLIT_SHIPMENT: '공급사 분할 납품',
+      SUPPLIER_SHORTAGE: '공급사 재고 부족',
+      IN_TRANSIT: '운송 중 일부 미도착',
+      OTHER: '기타 (직접 입력)',
+    },
+    partialReasonOther: '기타 사유',
+    /**
+     * 라벨 없이 한 품목을 부분 입하한 뒤 - 결과 화면으로 가지 않고 부분 입하 화면에 남아 알린다
+     * (사용자 지시 2026-10-22). 남은 것을 이어 받거나 앱바로 발주 상세 목록에 돌아간다.
+     */
+    partialDone: {
+      sent: (qty: string) => `부분 입하 ${qty}를 등록했습니다`,
+      queued: (qty: string) => `부분 입하 ${qty}를 담았습니다. 연결되면 보냅니다`,
+    },
+    /** 부분 입하 화면에서 이미 받은 수 - 따로 눈에 띄게(사용자 지시 2026-10-22). */
+    receivedSoFar: '기입하 수량',
+    partialReasonOtherPlaceholder: '기타 사유 입력',
   },
   /** 검사 대상 여부는 서버가 라인마다 정한다. 화면이 보내지 않는다. */
   inspectionNote: '검사 대상 여부는 등록한 뒤에 라인마다 정해집니다',
@@ -338,6 +383,8 @@ export const inboundReceipt = {
     labelMismatch: '라벨의 품목과 맞는 자재 P/O를 고르세요',
     underUnanswered: '더 들어올 물량이 있는지 먼저 고르세요',
     noSubstituteReason: '대체 LOT 사유를 먼저 고르세요',
+    noPartialReason: '부분 입하 사유를 먼저 고르세요',
+    noPartialReasonText: '기타 사유를 먼저 적으세요',
   },
   /**
    * 방금 등록한 한 건을 되짚는 자리 — 「등록했습니다」 아래에 선다(현장 요청 2026-09-21).
@@ -364,14 +411,10 @@ export const inboundReceipt = {
   sent: {
     title: '입하를 등록했습니다',
     description: '사전부착 라인의 자재 LOT도 함께 만들어졌습니다. 모두 보류 상태입니다.',
-    /** 오류는 입하 라인에 달린다. 받아 둔 뒤에야 붙일 자리가 생긴다. */
-    toVariance: '입하 오류 등록으로',
   },
   queued: {
     title: '입하를 전송 대기에 넣었습니다',
     description: '연결되면 보냅니다. 아직 보내지 않았습니다.',
-    /** 보내기 전에는 입하 라인이 서버에 없어 오류를 붙일 자리가 없다. */
-    varianceLater: '오류 등록은 이 입하가 전송된 뒤에 할 수 있습니다.',
   },
   rejected: {
     title: '입하를 전송하지 못했습니다',
@@ -391,13 +434,15 @@ export const inboundReceipt = {
     line: '자재 P/O 라인을 고르세요',
     /** 라벨이 없을 때(LOT 번호 없음) 같은 단계의 두 화면 - 입고 예정 목록과 그 자재 P/O 의 품목 목록. */
     lotlessOrder: '구매 발주 목록',
-    lotlessItem: '입고 품목 목록',
+    lotlessItem: '발주 상세 목록',
     /** 라벨 없이 고르는 두 화면의 번호 - 단계 2 안의 첫째 · 둘째. */
     lotlessOrderBadge: '2-1',
     lotlessItemBadge: '2-2',
     unordered: '발주 없이 받을 품목과 수량을 적으세요',
     /* 칸 이름(「실입하 수량」)과 겹치지 않게 짧게 쓴다 — 겹치면 낭독기가 두 자리를 같은 이름으로 읽는다. */
     qty: '수량 확인',
+    /** 라벨 없이 2-2 에서 품목을 눌러 오는 셋째 화면 - 남은 수량을 다 받는 것은 2-2 의 체크가 한다. */
+    lotlessQty: '부분 입하 등록',
   },
   /** 작업 헤더 — 처리 중인 값. 이름은 낭독기에만 준다. */
   header: {

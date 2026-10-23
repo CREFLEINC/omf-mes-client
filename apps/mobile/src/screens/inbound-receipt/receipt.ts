@@ -180,7 +180,48 @@ export interface ReceiptDraft {
   packageCount: string;
   manufacturedDate: string;
   expiryDate: string;
+  /** 부족을 부분 입하로 받는 사유(사용자 지시 2026-10-22). `PARTIAL_REASONS` 중 하나, 안 골랐으면 ''. */
+  partialReasonCode: string;
+  /** 사유가 기타일 때 적은 글. 부족일 때만 헤더 비고로 보낸다. */
+  partialReason: string;
 }
+
+/** 부분 입하 사유 - 자주 나는 셋과 직접 적는 기타(사용자 지시 2026-10-22). 서버 코드 사전에는 없다. */
+export const PARTIAL_REASONS = [
+  'SPLIT_SHIPMENT',
+  'SUPPLIER_SHORTAGE',
+  'IN_TRANSIT',
+  'OTHER',
+] as const;
+export const OTHER_PARTIAL_REASON = 'OTHER';
+
+const isPartialReason = (code: string): code is (typeof PARTIAL_REASONS)[number] =>
+  (PARTIAL_REASONS as readonly string[]).includes(code);
+
+/** 비고에 실을 부분 입하 사유 - 고른 이름, 기타면 적은 글. 없으면 `null`. */
+export const partialRemarksOf = (draft: ReceiptDraft): string | null => {
+  if (!isPartialReason(draft.partialReasonCode)) {
+    return null;
+  }
+
+  if (draft.partialReasonCode === OTHER_PARTIAL_REASON) {
+    const typed = draft.partialReason.trim();
+
+    return typed === '' ? null : typed;
+  }
+
+  return messages.inboundReceipt.verdict.partialReasons[draft.partialReasonCode];
+};
+
+/** 부분 입하 단추를 잠그는 사유 칸의 빈자리. */
+export const partialReasonLockOf = (
+  draft: ReceiptDraft,
+): 'noPartialReason' | 'noPartialReasonText' | null =>
+  !isPartialReason(draft.partialReasonCode)
+    ? 'noPartialReason'
+    : partialRemarksOf(draft) === null
+      ? 'noPartialReasonText'
+      : null;
 
 /**
  * 방금 등록한 한 건을 화면에 다시 보이기 위한 요약.
@@ -210,11 +251,21 @@ export interface RecordedReceipt {
   manufacturedDate: string | null;
   expiryDate: string | null;
   parts: RecordedPart[];
+  /**
+   * 이 입하로 자재 LOT 이 만들어졌는가. 서버는 공급사 라벨이 붙었다고 보낸 줄에만 만든다 - 라벨
+   * 미부착이면 만들지 않는다(사용자 확인 2026-10-22, 결과 화면이 만들었다고 잘못 말했다).
+   */
+  lotCreated: boolean;
 }
 
-const partOf = (raw: unknown, part: RecordedPart['part']): RecordedPart | null => {
+const firstLineOf = (raw: unknown): ReceiptLineBody | undefined => {
   const line = (raw as { lines?: unknown } | null)?.lines;
-  const first = Array.isArray(line) ? (line[0] as InboundReceiptLineUpsert | undefined) : undefined;
+
+  return Array.isArray(line) ? (line[0] as ReceiptLineBody | undefined) : undefined;
+};
+
+const partOf = (raw: unknown, part: RecordedPart['part']): RecordedPart | null => {
+  const first = firstLineOf(raw);
 
   return first === undefined
     ? null
@@ -229,6 +280,21 @@ const partOf = (raw: unknown, part: RecordedPart['part']): RecordedPart | null =
  */
 export const recordedPartsOf = (path: string, body: unknown): RecordedPart[] => {
   if (path === RECEIPT_PATH) {
+    const first = firstLineOf(body);
+    const excess = first?.excessQty ?? 0;
+
+    /* 초과분을 나눠 받은 한 건 - 정량분과 초과분으로 나눠 되읽는다(장부 P-100). */
+    if (first !== undefined && excess > 0) {
+      return [
+        {
+          part: 'normal',
+          receivedQty: exact((to) => to(first.receivedQty) - to(excess)),
+          packageCount: first.packageCount ?? null,
+        },
+        { part: 'excess', receivedQty: excess, packageCount: null },
+      ];
+    }
+
     const only = partOf(body, null);
 
     return only === null ? [] : [only];
@@ -262,6 +328,8 @@ export const recordedOf = (
   manufacturedDate: draft.manufacturedDate.trim() === '' ? null : draft.manufacturedDate.trim(),
   expiryDate: draft.expiryDate.trim() === '' ? null : draft.expiryDate.trim(),
   parts: recordedPartsOf(path, body),
+  /* 본문의 줄과 같은 판단(`toLine`) - 미부착이면 부착으로 보내지 않는다. */
+  lotCreated: !draft.supplierLotMissing && draft.supplierLotLabelAttached,
 });
 
 /**
@@ -277,12 +345,20 @@ export const recordedOf = (
  */
 export const LINE_SCOPED_BLANK: Pick<
   ReceiptDraft,
-  'receivedQty' | 'packageCount' | 'manufacturedDate' | 'expiryDate'
+  | 'receivedQty'
+  | 'packageCount'
+  | 'manufacturedDate'
+  | 'expiryDate'
+  | 'partialReasonCode'
+  | 'partialReason'
 > = {
   receivedQty: '',
   packageCount: '',
   manufacturedDate: '',
   expiryDate: '',
+  /* 부분 입하 사유도 그 자재의 수량에 붙는다. */
+  partialReasonCode: '',
+  partialReason: '',
 };
 
 /**
@@ -316,7 +392,9 @@ export type SubmitLock =
   | 'labelChecking'
   | 'labelMismatch'
   | 'underUnanswered'
-  | 'noSubstituteReason';
+  | 'noSubstituteReason'
+  | 'noPartialReason'
+  | 'noPartialReasonText';
 
 /** 화면만 아는 것들. 초안에 없어 따로 받는다. */
 export interface SubmitGate {
@@ -487,6 +565,9 @@ export const sourceOf = (draft: ReceiptDraft): ReceiptSource | null => {
     : { itemId: line.itemId, uomId: line.uomId, supplierId: draft.purchaseOrder.supplierId };
 };
 
+/** 등록 본문의 줄 - 계약의 줄에 초과분(장부 P-100, 계약 밖)을 더한 것. */
+type ReceiptLineBody = InboundReceiptLineUpsert & { excessQty?: number };
+
 const optional = (value: string): string | null => (value.trim() === '' ? null : value.trim());
 
 const toLine = (
@@ -517,14 +598,36 @@ export const toOutboxDraft = (
   supplierId: number,
   now: Date,
   workerNo: string,
+  /**
+   * 받은 수량 중 자재 P/O 에 넣지 않는 몫(장부 P-100 · 사용자 결정 2026-10-22). 0 이면 싣지 않는다.
+   * LOT 은 줄 전체 수량 그대로 하나이고, 이 몫은 서버의 초과분 목록에 남아 추가 P/O 에 잇는다.
+   */
+  excessQty = 0,
 ): OutboxDraft => {
   const occurredAt = now.toISOString();
-  const body: InboundReceiptCreate = {
+  const remarks = partialRemarksOf(draft);
+  /*
+   * 부분 입하 사유는 헤더 비고(remarks)에 싣는다. 서버는 등록 때 이 칸을 저장하지만 계약의
+   * InboundReceiptCreate 에는 아직 없어(InboundReceipt · Update 에는 있다) 타입을 넓혀 싣는다.
+   * 줄의 초과분(excessQty)도 계약 밖이라 같다.
+   */
+  const line = toLine(
+    draft,
+    itemId,
+    uomId,
+    Number(draft.receivedQty.trim()),
+    draft.purchaseOrderLine?.purchaseOrderLineId ?? null,
+  );
+  const body: Omit<InboundReceiptCreate, 'lines'> & {
+    remarks?: string;
+    lines: ReceiptLineBody[];
+  } = {
     supplierId,
     plantId,
     receiptDatetime: occurredAt,
     deliveryNoteNo: optional(draft.deliveryNoteNo),
     vehicleNo: optional(draft.vehicleNo),
+    ...(remarks === null ? {} : { remarks }),
     ...(draft.unordered
       ? {
           exceptionTypeCode: draft.exceptionTypeCode.trim(),
@@ -534,15 +637,7 @@ export const toOutboxDraft = (
     /* 업무 기준일은 단말이 정한다. 서버가 수신 시각으로 잡으면 날짜 경계에서 이중 계상이 난다. */
     businessDate: businessDateOf(now),
     occurredAt,
-    lines: [
-      toLine(
-        draft,
-        itemId,
-        uomId,
-        Number(draft.receivedQty.trim()),
-        draft.purchaseOrderLine?.purchaseOrderLineId ?? null,
-      ),
-    ],
+    lines: [excessQty > 0 ? { ...line, excessQty } : line],
   };
 
   return {

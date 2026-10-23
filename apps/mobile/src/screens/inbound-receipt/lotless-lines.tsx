@@ -1,11 +1,13 @@
-import { AlertBanner, DatePicker, Icon, TextField } from '@crefle/web-ui';
+import { AlertBanner, DatePicker, Icon, TextField, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 
+import { useColumnResize } from '../../patterns/column-resize';
+import { fillAboveBarRef, fillHeightRef } from '../../patterns/fill-height';
+import { ListLoading } from '../../patterns/list-loading';
 import { useItemLabels, type SupplierSummary } from '../../patterns/masters';
 import {
   activeFilterCount,
-  emptyLotlessFilter,
   matchesLotlessFilter,
   shortDate,
   type LotlessDone,
@@ -17,14 +19,21 @@ import './lotless-lines.css';
 
 const t = messages.inboundReceipt;
 
+/** 고정폭 글꼴 한 자의 폭(em). P/O No. 칸을 번호 길이에 맞출 때 쓴다 - 한 자만큼 여유를 둔 값이다. */
+const MONO_CH = 0.68;
+
 /**
  * 보고 있는 구매 발주(와 품목) - 이름표와 값을 한 줄씩. 2-2 품목 목록과 3 수량 확인이 같은 모양으로
  * 쓴다(사용자 지시 2026-10-21).
  */
-export const LotlessOrderInfo = ({ rows }: { rows: { label: string; value: string }[] }) => (
+export const LotlessOrderInfo = ({
+  rows,
+}: {
+  rows: { label: string; value: string; strong?: boolean }[];
+}) => (
   <dl className="lotless__order-info">
     {rows.map((row) => (
-      <div key={row.label}>
+      <div key={row.label} className={row.strong ? 'lotless__order-info-strong' : undefined}>
         <dt>{row.label}</dt>
         <dd>{row.value}</dd>
       </div>
@@ -35,6 +44,10 @@ export const LotlessOrderInfo = ({ rows }: { rows: { label: string; value: strin
 export interface LotlessLinesProps {
   /** 미마감 자재 P/O 전부. 라벨이 없어 품목으로 좁히지 못한 목록이다. */
   orders: readonly PurchaseOrder[];
+  /** 입고 예정을 (다시) 받는 중. 그동안은 받아 둔 목록 대신 로딩을 보인다. */
+  ordersLoading: boolean;
+  /** 구매 발주 목록에 들어올 때마다 부른다 - 목록을 새로 받는다(사용자 지시 2026-10-22). */
+  onEnterOrders: () => void;
   /** 공급사 이름. 못 받았으면 번호로 보인다. */
   suppliers: readonly SupplierSummary[] | undefined;
   /** 품목을 보고 있는 자재 P/O. 없으면 입고 예정 목록이다. 수량에서 돌아와도 남게 흐름이 붙든다. */
@@ -90,11 +103,12 @@ const SelectAll = ({
 /**
  * 라벨이 없을 때 받을 품목을 고른다 — 입고 예정(자재 P/O) 목록 → 누른 자재 P/O 의 품목 목록.
  *
- * 라벨이 있으면 제품코드로 자재 P/O 를 좁히지만, 없으면 그럴 수 없다. 입고 예정을 공급사 · 자재
- * P/O · 발주일 · 입고예정일 칸의 표로 보이고 공급사명 · 기간으로 거른다. 행을 누르면 그 자재 P/O 의
- * 품목 표로 간다(사용자 지시 2026-10-21).
+ * 라벨이 있으면 제품코드로 자재 P/O 를 좁히지만, 없으면 그럴 수 없다. 입고 예정을 P/O No. · 공급사
+ * · 납기예정일 칸의 표로 보이고 공급사명 · 기간으로 거른다. 행을 누르면 그 자재 P/O 의 품목 표로
+ * 간다(사용자 지시 2026-10-21, 칸 2026-10-22).
  *
- * 두 표 모두 컬럼 머리가 있고 행은 한 줄이다. 표 안에서 스크롤해도 머리는 위에 붙어 있다.
+ * 두 표 모두 컬럼 머리가 있고 행은 한 줄이다. 표 안에서 스크롤해도 머리는 위에 붙어 있다. 머리
+ * 경계를 끌어 칸 폭을 바꾼다(사용자 지시 2026-10-22).
  * 품목 행에는 자재 P/O 번호도 라인 번호도 적지 않는다 - 고른 자재 P/O 는 표 위에 한 번 적는다.
  *
  * 품목 행마다 체크 칸이 있다. 거의 다 문제없이 들어오므로 이상 없는 행은 체크해(「모두 선택」)
@@ -103,6 +117,8 @@ const SelectAll = ({
  */
 export const LotlessLines = ({
   orders,
+  ordersLoading,
+  onEnterOrders,
   suppliers,
   orderId,
   onOrder,
@@ -117,51 +133,134 @@ export const LotlessLines = ({
   done,
 }: LotlessLinesProps) => {
   const [query, setQuery] = useState('');
-  /* 다 받은 라인은 고를 일이 드물다. 기본으로 거르고, 끄면 흐리게 함께 보인다. */
-  const [openOnly, setOpenOnly] = useState(true);
+  /*
+   * 다 받은 라인도 기본으로 함께 보인다 - 초록 바탕으로 무엇이 끝났는지 보여야 한다(사용자 지시
+   * 2026-10-21). 「받을 것만」을 켜면 거른다.
+   */
+  const [openOnly, setOpenOnly] = useState(false);
+  /* 일부만 받고 남은 품목만 보기(사용자 지시 2026-10-22). 「필터」 안에 둔다. */
+  const [partialOnly, setPartialOnly] = useState(false);
+  const toast = useToast();
   /* 거르기 칸은 접어 둔다 - 펼쳐 두면 표가 화면 아래로 밀린다. 걸린 조건 수는 단추가 말한다. */
   const [filterOpen, setFilterOpen] = useState(false);
   const [itemFilterOpen, setItemFilterOpen] = useState(false);
   const order = orderId === null ? undefined : orders.find((o) => o.purchaseOrderId === orderId);
-  const loaded = usePurchaseOrdersLines(order === undefined ? [] : [order]);
+  const loaded = usePurchaseOrdersLines(order === undefined ? [] : [order], { fresh: true });
+  /*
+   * 입고 예정 목록에서는 자재 P/O 마다 라인을 읽어 입하가 다 끝났는지 본다 - 목록 응답에는 라인
+   * 수량이 없다. 같은 조회라 행을 눌러 품목 표로 가도 다시 묻지 않는다.
+   */
+  const everyLine = usePurchaseOrdersLines(order === undefined ? orders : []);
   const labels = useItemLabels(loaded.lines.map((each) => each.line.itemId));
+  /*
+   * 남는 폭은 입고 예정 표에서는 공급사, 품목 표에서는 품목이 가진다. 칸 구성이 바뀌면 키를
+   * 바꾼다 - 남긴 폭이 다른 칸에 걸린다.
+   */
+  const orderColumns = useColumnResize('lotless-order-columns-v2', 1);
+  /* 체크 | No. | 품목 | 수량 - 품목이 남는 폭을 가진다. */
+  const itemColumns = useColumnResize('lotless-item-columns-v3', 2);
+  const inOrders = order === undefined;
+  const enterOrders = useRef(onEnterOrders);
+  enterOrders.current = onEnterOrders;
+  useEffect(() => {
+    if (inOrders) enterOrders.current();
+  }, [inOrders]);
   const nameOf = (id: number) =>
     suppliers?.find((each) => each.partnerId === id)?.partnerName ?? t.lotless.supplierUnknown(id);
 
   if (order === undefined) {
     const active = activeFilterCount(filter);
-    /* 입고 예정일이 가까운 것부터. 예정일이 없으면 뒤로, 그다음은 공급사명 차례. */
+    /*
+     * 입하가 다 끝난 자재 P/O - 라인을 다 읽었고 라인마다 받을 것이 남지 않았다(담긴 채 아직 못 간
+     * 것도 받은 것으로 센다). 초록 바탕으로 가른다(사용자 지시 2026-10-21). 라인을 못 읽었으면
+     * 끝났다고 단정하지 않는다.
+     */
+    const isDone = (purchaseOrderId: number) => {
+      const lines = everyLine.lines.filter(
+        (each) => each.order.purchaseOrderId === purchaseOrderId,
+      );
+
+      return (
+        lines.length > 0 &&
+        lines.every(
+          (each) => remainingQtyOf(each.line, queuedFor(each.line.purchaseOrderLineId)) <= 0,
+        )
+      );
+    };
+    /*
+     * 받을 것이 남은 자재 P/O 를 앞에(2-2 와 같은 차례). 그 안에서는 입고 예정일이 가까운 것부터,
+     * 예정일이 없으면 뒤로, 그다음은 공급사명 차례.
+     */
     const rows = orders
       .filter((each) => matchesLotlessFilter(each, nameOf(each.supplierId), filter))
       .sort(
         (a, b) =>
+          Number(isDone(a.purchaseOrderId)) - Number(isDone(b.purchaseOrderId)) ||
           (a.expectedReceiptDate ?? '9999').localeCompare(b.expectedReceiptDate ?? '9999') ||
           nameOf(a.supplierId).localeCompare(nameOf(b.supplierId)),
       );
+
+    /* 머리 「P/O No.」 보다 좁게는 잡지 않는다. */
+    const poChars = Math.max(7, ...rows.map((each) => each.purchaseOrderNo.length));
 
     return (
       <>
         <div className="lotless__head">
           <span className="lotless__count">{t.lotless.orderCount(rows.length)}</span>
-          <button
-            type="button"
-            className="lotless__toggle"
-            aria-expanded={filterOpen}
-            aria-controls="lotless-filter"
-            onClick={() => {
-              setFilterOpen((current) => !current);
+          <span className="lotless__head-actions">
+            {/* 입하 완료 건만 - 접지 않고 「필터」 왼쪽에 늘 둔다(사용자 지시 2026-10-22). */}
+            <button
+              type="button"
+              className="lotless__toggle"
+              aria-pressed={filter.doneOnly}
+              onClick={() => {
+                onFilter({ ...filter, doneOnly: !filter.doneOnly });
+              }}
+            >
+              <Icon name={filter.doneOnly ? 'toggle_on' : 'toggle_off'} size={24} />
+              {t.lotless.filter.doneOnly}
+            </button>
+            <button
+              type="button"
+              className="lotless__toggle"
+              aria-expanded={filterOpen}
+              aria-controls="lotless-filter"
+              onClick={() => {
+                setFilterOpen((current) => !current);
+              }}
+            >
+              <Icon name="filter_list" size={20} />
+              {active === 0 ? t.lotless.filter.open : t.lotless.filter.openActive(active)}
+            </button>
+          </span>
+        </div>
+
+        {/*
+         * 기간은 접지 않고 늘 보인다(사용자 지시 2026-10-22) - 기준 단추와 기간 칸을 한 줄에 낮게 둔다.
+         * 공급사명 찾기만 「필터」 안에 접힌다.
+         */}
+        <div className="lotless__period-row">
+          {/* 기간은 납기예정일에만 댄다 - 발주일 기준은 뺐다(사용자 지시 2026-10-22). */}
+          <span className="lotless__period-label">{t.lotless.filter.basisExpected}</span>
+          <DatePicker
+            mode="range"
+            clearable
+            size="sm"
+            className="lotless__period"
+            aria-label={t.lotless.filter.period}
+            placeholder={t.lotless.filter.periodAll}
+            value={filter.period}
+            onChange={(period) => {
+              onFilter({ ...filter, period });
             }}
-          >
-            <Icon name="filter_list" size={20} />
-            {active === 0 ? t.lotless.filter.open : t.lotless.filter.openActive(active)}
-          </button>
+          />
         </div>
 
         <div id="lotless-filter" className="lotless__filters" hidden={!filterOpen}>
           <TextField
-            label={t.lotless.filter.supplierName}
+            aria-label={t.lotless.filter.supplierName}
             placeholder={t.lotless.filter.supplierNamePlaceholder}
-            size="lg"
+            size="md"
             fullWidth
             type="search"
             leadingIcon={<Icon name="search" size={20} />}
@@ -170,46 +269,12 @@ export const LotlessLines = ({
               onFilter({ ...filter, supplierName: event.target.value });
             }}
           />
-          <div className="lotless__field">
-            <div className="lotless__period-head">
-              <span id="lotless-period-label">{t.lotless.filter.period}</span>
-              {/* 기간을 무엇에 대는가. 둘 중 하나라 나란히 선 단추다. */}
-              <div className="lotless__basis" role="group" aria-label={t.lotless.filter.basis}>
-                {(['expected', 'ordered'] as const).map((basis) => (
-                  <button
-                    key={basis}
-                    type="button"
-                    aria-pressed={filter.basis === basis}
-                    onClick={() => {
-                      onFilter({ ...filter, basis });
-                    }}
-                  >
-                    {basis === 'expected'
-                      ? t.lotless.filter.basisExpected
-                      : t.lotless.filter.basisOrdered}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <DatePicker
-              mode="range"
-              clearable
-              size="lg"
-              className="lotless__period"
-              aria-labelledby="lotless-period-label"
-              placeholder={t.lotless.filter.periodAll}
-              value={filter.period}
-              onChange={(period) => {
-                onFilter({ ...filter, period });
-              }}
-            />
-          </div>
           {active === 0 ? null : (
             <button
               type="button"
               className="lotless__clear"
               onClick={() => {
-                onFilter(emptyLotlessFilter);
+                onFilter({ ...filter, supplierName: '' });
               }}
             >
               <Icon name="close" size={20} />
@@ -218,27 +283,39 @@ export const LotlessLines = ({
           )}
         </div>
 
-        {rows.length === 0 ? (
-          <p className="receipt__note">{orders.length === 0 ? t.po.none : t.lotless.filter.none}</p>
+        {ordersLoading ? (
+          <ListLoading label={t.po.loading} />
+        ) : rows.length === 0 ? (
+          <p className="receipt__note">
+            {orders.length === 0 && !filter.doneOnly ? t.po.none : t.lotless.filter.none}
+          </p>
         ) : (
-          <div className="lotless__table-wrap">
+          /* 표는 화면 바닥까지 - 넘치지 않고 밑에 빈자리도 남기지 않는다(사용자 지시 2026-10-22). */
+          <div className="lotless__table-wrap" ref={fillHeightRef}>
             <table className="lotless__table lotless__table--orders">
               <caption className="lotless__hidden">{t.lotless.orders}</caption>
               <thead>
                 <tr>
-                  <th scope="col">{t.lotless.columns.supplier}</th>
-                  <th scope="col">{t.lotless.columns.order}</th>
+                  {/*
+                   * P/O No. 칸은 지금 보이는 가장 긴 번호에 맞춘다 - 번호는 잘리면 안 되고, 남는 폭은
+                   * 공급사명이 가져 덜 잘린다(사용자 지시 2026-10-22). 끌어 정한 폭이 있으면 그것이 이긴다.
+                   */}
                   <th
                     scope="col"
-                    className="lotless__date"
-                    aria-label={t.lotless.columns.orderDate}
+                    style={orderColumns.styleOf(0) ?? { width: `${String(poChars * MONO_CH)}em` }}
                   >
-                    {t.lotless.columns.orderDateShort}
+                    {t.lotless.columns.order}
+                    {orderColumns.handle(0, t.lotless.columns.resize(t.lotless.columns.order))}
                   </th>
-                  {/* 칸이 좁아 머리는 줄여 적고, 낭독기에는 온 이름을 준다. */}
+                  <th scope="col" style={orderColumns.styleOf(1)}>
+                    {t.lotless.columns.supplier}
+                    {orderColumns.handle(1, t.lotless.columns.resize(t.lotless.columns.supplier))}
+                  </th>
+                  {/* 칸이 좁아 머리는 줄여 적을 수 있고, 낭독기에는 온 이름을 준다. */}
                   <th
                     scope="col"
                     className="lotless__date"
+                    style={orderColumns.styleOf(2)}
                     aria-label={t.lotless.columns.expectedDateFull}
                   >
                     {t.lotless.columns.expectedDate}
@@ -248,30 +325,36 @@ export const LotlessLines = ({
               <tbody>
                 {rows.map((each) => {
                   const supplier = nameOf(each.supplierId);
+                  const done = isDone(each.purchaseOrderId);
+                  const rowLabel = t.lotless.orderRow(
+                    each.purchaseOrderNo,
+                    supplier,
+                    each.expectedReceiptDate ?? '—',
+                  );
 
                   return (
-                    <tr key={each.purchaseOrderId}>
-                      <td>
-                        {/* 행 전체가 누르는 자리다. 단추가 행을 덮는다. */}
+                    <tr
+                      key={each.purchaseOrderId}
+                      className={done ? 'lotless__row--closed' : undefined}
+                    >
+                      <td className="lotless__code">
+                        {/*
+                         * 행 전체가 누르는 자리다. 단추가 행을 덮는다. 입하가 끝난 자재 P/O 도 눌러
+                         * 무엇을 받았는지 품목 표로 본다 - 품목 행은 그 안에서 막힌다.
+                         */}
                         <button
                           type="button"
                           className="lotless__pick"
-                          aria-label={t.lotless.orderRow(
-                            supplier,
-                            each.purchaseOrderNo,
-                            each.orderDate,
-                            each.expectedReceiptDate ?? '—',
-                          )}
+                          aria-label={done ? `${rowLabel} · ${t.lotless.closed}` : rowLabel}
                           onClick={() => {
                             setQuery('');
                             onOrder(each.purchaseOrderId);
                           }}
                         >
-                          {supplier}
+                          {each.purchaseOrderNo}
                         </button>
                       </td>
-                      <td className="lotless__code">{each.purchaseOrderNo}</td>
-                      <td className="lotless__date">{shortDate(each.orderDate)}</td>
+                      <td>{supplier}</td>
                       <td className="lotless__date">{shortDate(each.expectedReceiptDate)}</td>
                     </tr>
                   );
@@ -286,12 +369,19 @@ export const LotlessLines = ({
 
   const needle = query.trim().toLocaleLowerCase();
   const rows = loaded.lines
-    .map((each) => ({
-      ...each,
-      item: labels.get(each.line.itemId),
-      remaining: remainingQtyOf(each.line, queuedFor(each.line.purchaseOrderLineId)),
-    }))
+    .map((each) => {
+      const remaining = remainingQtyOf(each.line, queuedFor(each.line.purchaseOrderLineId));
+
+      return {
+        ...each,
+        item: labels.get(each.line.itemId),
+        remaining,
+        /* 일부를 받았고 아직 남은 것 - 담긴 채 못 간 것도 받은 것으로 센다. */
+        partial: remaining > 0 && remaining < each.line.orderedQty,
+      };
+    })
     .filter((each) => !openOnly || each.remaining > 0)
+    .filter((each) => !partialOnly || each.partial)
     .filter(
       (each) =>
         needle === '' ||
@@ -309,9 +399,23 @@ export const LotlessLines = ({
   const checkable = rows
     .filter((each) => each.remaining > 0)
     .map((each) => each.line.purchaseOrderLineId);
-  const checkedHere = checkable.filter((id) => checked.includes(id));
+  /*
+   * 「모두 선택」이 고르는 행 - 부분 입하한 것은 뺀다(사용자 지시 2026-10-22). 남은 수량을 그대로
+   * 넣으면 부분 입하가 무색해진다. 하나씩 체크하면 넣을 수 있다.
+   */
+  const partialIds = rows
+    .filter((each) => each.partial)
+    .map((each) => each.line.purchaseOrderLineId);
+  const forAll = checkable.filter((id) => !partialIds.includes(id));
+  const checkedHere = forAll.filter((id) => checked.includes(id));
+  /* 처음 받을 때도, 받아 둔 것을 다시 받을 때도 - 조금 전 행을 보이지 않는다. */
+  const linesLoading = loaded.pending || loaded.fetching;
+  const checkedInOrder = loaded.lines.filter((each) =>
+    checked.includes(each.line.purchaseOrderLineId),
+  ).length;
   const allState: 'none' | 'some' | 'all' =
-    checkedHere.length === 0 ? 'none' : checkedHere.length === checkable.length ? 'all' : 'some';
+    checkedHere.length === 0 ? 'none' : checkedHere.length === forAll.length ? 'all' : 'some';
+  const filterCount = Number(needle !== '') + Number(partialOnly);
 
   return (
     <>
@@ -328,7 +432,14 @@ export const LotlessLines = ({
 
       {/* 몇 건이 걸렸는가와 「받을 것만」 · 「필터」. 거르기를 바꾸면 이 수가 먼저 바뀐다. */}
       <div className="lotless__head">
-        <span className="lotless__count">{t.lotless.count(rows.length)}</span>
+        <span className="lotless__count">
+          {/* 받는 동안은 조금 전 건수를 적지 않는다. */}
+          {linesLoading ? t.lotless.items : t.lotless.count(rows.length)}
+          {/* 체크한 수는 여기서 말한다 - 등록 단추 글자는 고정이다(사용자 지시 2026-10-22). */}
+          {checkedInOrder === 0 ? null : (
+            <span className="lotless__checked">{` ${t.lotless.bulk.checkedCount(checkedInOrder)}`}</span>
+          )}
+        </span>
         <span className="lotless__head-actions">
           <button
             type="button"
@@ -353,12 +464,25 @@ export const LotlessLines = ({
             }}
           >
             <Icon name="filter_list" size={20} />
-            {needle === '' ? t.lotless.itemFilter.open : t.lotless.itemFilter.openActive(1)}
+            {filterCount === 0
+              ? t.lotless.itemFilter.open
+              : t.lotless.itemFilter.openActive(filterCount)}
           </button>
         </span>
       </div>
 
       <div id="lotless-item-filter" className="lotless__filters" hidden={!itemFilterOpen}>
+        <button
+          type="button"
+          className="lotless__toggle lotless__filter-toggle"
+          aria-pressed={partialOnly}
+          onClick={() => {
+            setPartialOnly((current) => !current);
+          }}
+        >
+          <Icon name={partialOnly ? 'toggle_on' : 'toggle_off'} size={24} />
+          {t.lotless.partialOnly}
+        </button>
         <TextField
           label={t.lotless.searchLabel}
           placeholder={t.lotless.searchPlaceholder}
@@ -374,8 +498,8 @@ export const LotlessLines = ({
       </div>
 
       {/*
-       * 방금 한꺼번에 등록한 것. 무엇을 얼마나 넣었는지 다시 보인다(현장 요청 2026-09-21). 등록된 행은
-       * 받을 것이 없어져 표에서 빠진다 - 남은 행이 문제를 따로 처리할 것들이다.
+       * 방금 한꺼번에 등록한 것 - 몇 건인지만 말한다. 품목과 수량을 늘어놓던 것은 뺐다(사용자 지시
+       * 2026-10-22) - 등록된 수는 표의 입고/발주 수량이 보인다.
        */}
       {done === null ? null : (
         <AlertBanner
@@ -383,21 +507,26 @@ export const LotlessLines = ({
             done.outcome === 'sent' ? 'success' : done.outcome === 'queued' ? 'warning' : 'error'
           }
           title={t.lotless.bulk.done[done.outcome](done.items.length)}
-        >
-          {done.items.map((each) => `${each.name} ${each.qty}`).join(' · ')}
-        </AlertBanner>
+        />
       )}
 
-      {loaded.pending ? <p role="status">{t.po.linesLoading}</p> : null}
+      {linesLoading ? <ListLoading label={t.po.linesLoading} /> : null}
       {loaded.failed ? <AlertBanner variant="error" title={t.po.linesLoadFailed} /> : null}
-      {!loaded.pending && rows.length === 0 ? (
+      {!linesLoading && rows.length === 0 ? (
         <p className="receipt__note">
-          {needle === '' ? t.lotless.none : t.lotless.noMatch(query.trim())}
+          {needle !== ''
+            ? t.lotless.noMatch(query.trim())
+            : partialOnly
+              ? t.lotless.noPartial
+              : loaded.lines.length === 0
+                ? t.lotless.empty
+                : t.lotless.none}
         </p>
       ) : null}
 
-      {rows.length === 0 ? null : (
-        <div className="lotless__table-wrap">
+      {linesLoading || rows.length === 0 ? null : (
+        /* 표는 바닥 바 바로 위까지 - 겹치지 않고 띄우지도 않는다(사용자 지시 2026-10-22). */
+        <div className="lotless__table-wrap" ref={fillAboveBarRef}>
           <table className="lotless__table lotless__table--items">
             <caption className="lotless__hidden">{t.lotless.items}</caption>
             <thead>
@@ -407,23 +536,39 @@ export const LotlessLines = ({
                     state={allState}
                     label={t.lotless.bulk.selectAll}
                     onChange={(next) => {
-                      onChecked(
-                        next
-                          ? [...new Set([...checked, ...checkable])]
-                          : checked.filter((id) => !checkable.includes(id)),
-                      );
+                      if (!next) {
+                        onChecked(checked.filter((id) => !checkable.includes(id)));
+                        return;
+                      }
+
+                      onChecked([...new Set([...checked, ...forAll])]);
+                      /* 뺀 것이 있으면 말한다 - 말없이 빼면 다 고른 줄 안다. */
+                      const skipped = partialIds.filter((id) => !checked.includes(id)).length;
+
+                      if (skipped > 0) {
+                        toast.show({
+                          variant: 'warning',
+                          description: t.lotless.bulk.partialSkipped(skipped),
+                          duration: 3000,
+                        });
+                      }
                     }}
                   />
                 </th>
-                <th scope="col">{t.lotless.columns.itemName}</th>
-                <th scope="col">{t.lotless.columns.itemCode}</th>
-                <th scope="col" className="lotless__num">
+                <th scope="col" className="lotless__no" style={itemColumns.styleOf(1)}>
+                  {t.lotless.columns.no}
+                </th>
+                <th scope="col" style={itemColumns.styleOf(2)}>
+                  {t.lotless.columns.item}
+                  {itemColumns.handle(2, t.lotless.columns.resize(t.lotless.columns.item))}
+                </th>
+                <th scope="col" className="lotless__num" style={itemColumns.styleOf(3)}>
                   {t.lotless.columns.receivedOfOrdered}
                 </th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ line, item, remaining }) => {
+              {rows.map(({ line, item, remaining, partial }, index) => {
                 const name = item === undefined ? t.po.itemUnknown : item.itemName;
                 const code = item === undefined ? '—' : item.itemCode;
                 /*
@@ -468,23 +613,45 @@ export const LotlessLines = ({
                         }}
                       />
                     </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="lotless__pick"
-                        aria-label={t.lotless.itemRow(name, code, qty)}
-                        aria-pressed={picked}
-                        onClick={() => {
-                          onPick(order, line);
-                        }}
-                      >
-                        {name}
-                      </button>
+                    {/* 행 번호 - 지금 보이는 차례(사용자 지시 2026-10-22). */}
+                    <td className="lotless__no">{index + 1}</td>
+                    {/* 품목명 아래 품목코드 - 한 칸에 두 줄, 행 높이는 그대로(사용자 지시 2026-10-22). */}
+                    <td className="lotless__item">
+                      {/*
+                       * 다 받은 행은 수량 확인으로 들어가지 않는다(사용자 지시 2026-10-21). 잘못 적은
+                       * 것을 고치는 길은 나중 일이다 - 지금은 누를 곳을 두지 않는다.
+                       */}
+                      {remaining <= 0 ? (
+                        <span className="lotless__name">
+                          {name}
+                          <span className="lotless__hidden">{` · ${t.lotless.closed}`}</span>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="lotless__pick"
+                          aria-label={t.lotless.itemRow(name, code, qty)}
+                          aria-pressed={picked}
+                          onClick={() => {
+                            onPick(order, line);
+                          }}
+                        >
+                          {name}
+                        </button>
+                      )}
+                      <span className="lotless__item-code">{code}</span>
                     </td>
-                    <td>{code}</td>
                     <td className="lotless__num">
-                      <span className={filled ? 'lotless__filled' : undefined}>
+                      {/* 부분 입하한 행은 받은 수에 옅은 노랑 바탕 - 「모두 선택」이 빼는 행이다. */}
+                      <span
+                        className={
+                          filled ? 'lotless__filled' : partial ? 'lotless__partial' : undefined
+                        }
+                      >
                         {String(shownReceived)}
+                        {partial ? (
+                          <span className="lotless__hidden">{` · ${t.lotless.partialTag}`}</span>
+                        ) : null}
                       </span>
                       {`/${String(line.orderedQty)} ${uomOf(line.uomId)}`}
                     </td>

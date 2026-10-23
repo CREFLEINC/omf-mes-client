@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { activeFilterCount, emptyLotlessFilter, matchesLotlessFilter, shortDate } from './lotless';
+import {
+  activeFilterCount,
+  emptyLotlessFilter,
+  initialLotlessFilter,
+  matchesLotlessFilter,
+  shortDate,
+} from './lotless';
 import { queuedQtyOf, toLotlessOutboxDraft, type PurchaseOrder } from './receipt';
 
 const order = (overrides: Partial<PurchaseOrder> = {}): PurchaseOrder => ({
@@ -50,7 +56,17 @@ describe('라벨 미부착 입고 예정 거르기', () => {
         period: ['2026-08-01', '2026-08-20'],
       }),
     ).toBe(true);
-    expect(activeFilterCount(expected)).toBe(1);
+    /* 기간은 접지 않고 늘 보여 「필터」 단추의 수에 넣지 않는다(사용자 지시 2026-10-22). */
+    expect(activeFilterCount(expected)).toBe(0);
+    expect(activeFilterCount({ ...expected, doneOnly: true })).toBe(0);
+  });
+
+  /* 처음 여는 2-1 은 납기예정일 오늘 ±2주 - 전체 기간을 매번 받지 않는다(사용자 지시 2026-10-22). */
+  it('처음 조건은 납기예정일 오늘 앞뒤 2주다', () => {
+    expect(initialLotlessFilter(new Date(2026, 9, 22))).toEqual({
+      ...emptyLotlessFilter,
+      period: ['2026-10-08', '2026-11-05'],
+    });
   });
 
   /* 예정일이 없는 발주를 기간 안이라고 말할 수 없다. */

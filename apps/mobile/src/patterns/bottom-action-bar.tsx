@@ -34,6 +34,11 @@ export interface BottomActionBarProps {
    * 눈높이에 둔다 - 본문에 두면 그 물음 하나 때문에 화면이 한 화면을 넘었다.
    */
   prompt?: ReactNode;
+  /**
+   * 주 단추를 한 단계 낮게(72 → 60px). 목록이 화면을 거의 다 쓰는 자리(발주 상세 목록)에서 목록을
+   * 한 줄이라도 더 보이려고 쓴다(사용자 지시 2026-10-22).
+   */
+  compact?: boolean;
 }
 
 /**
@@ -53,6 +58,7 @@ export const BottomActionBar = ({
   secondary,
   alternatives,
   prompt,
+  compact = false,
 }: BottomActionBarProps) => {
   const reasonId = useId();
   const locked = primary.disabled === true && primary.lockReason !== undefined;
@@ -88,7 +94,10 @@ export const BottomActionBar = ({
   }, []);
 
   return (
-    <div ref={barRef} className="bottom-action-bar">
+    <div
+      ref={barRef}
+      className={compact ? 'bottom-action-bar bottom-action-bar--compact' : 'bottom-action-bar'}
+    >
       {prompt === undefined ? null : <div className="bottom-action-bar__prompt">{prompt}</div>}
       {locked ? (
         <p id={reasonId} className="bottom-action-bar__reason">

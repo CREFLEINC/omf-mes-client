@@ -1,16 +1,7 @@
-import {
-  AlertBanner,
-  Chip,
-  Icon,
-  IconButton,
-  Radio,
-  RadioGroup,
-  Select,
-  TextField,
-} from '@crefle/web-ui';
+import { AlertBanner, Chip, Icon, IconButton, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Fragment, useState, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 
 import { ScreenNotice } from '../../patterns/screen-notice';
 import { BottomActionBar } from '../../patterns/bottom-action-bar';
@@ -41,9 +32,13 @@ import {
   type PurchaseOrder,
   type PurchaseOrderLine,
   type ReceiptStep,
+  OTHER_PARTIAL_REASON,
+  PARTIAL_REASONS,
 } from './receipt';
 import { LotlessLines, LotlessOrderInfo } from './lotless-lines';
-import { useReceiptFlow } from './use-receipt-flow';
+import { shiftIso } from './lotless';
+import { RECEIVED_LEAD_DAYS, useReceivedPurchaseOrders } from './queries';
+import { KEEP_EXCESS, useReceiptFlow } from './use-receipt-flow';
 import { ItemPicker } from '../../patterns/item-picker';
 import './screen.css';
 
@@ -68,9 +63,6 @@ const SHOW_DELIVERY_NOTE = false;
 /** 단계 번호. 발주 없이 받기는 라인 고르기 자리를 대신한다. */
 const STEP_COUNT = 3;
 
-/** 초과 예외 유형을 선택 단추로 세우는 한도. 넘으면 두 칸씩 세 줄을 넘어 선택칸이 더 짧다. */
-const EXCEPTION_TILES_MAX = 6;
-
 /** 단계마다 몇 번째인가. 발주 없이 받기는 라인 고르기 자리에 선다. */
 const STEP_INDEX: Record<ReceiptStep, number> = { scan: 1, line: 2, unordered: 2, qty: 3 };
 
@@ -91,7 +83,6 @@ export const InboundReceiptScreen = () => {
   useScreenTitle(t.title);
   const failureText = useLoadFailure();
 
-  const navigate = useNavigate();
   const {
     step,
     setChangingLine,
@@ -113,12 +104,6 @@ export const InboundReceiptScreen = () => {
     setExternalLotError,
     outcome,
     recorded,
-    varianceNext,
-    setVarianceNext,
-    splitExceptionType,
-    setSplitExceptionType,
-    splitExceptionReason,
-    setSplitExceptionReason,
     saveFailed,
     keypadFor,
     setKeypadFor,
@@ -130,6 +115,7 @@ export const InboundReceiptScreen = () => {
     lotlessChecked,
     setLotlessChecked,
     lotlessDone,
+    partialDone,
     lotlessBusy,
     lotlessLock,
     lotlessPickCount,
@@ -167,7 +153,6 @@ export const InboundReceiptScreen = () => {
     lock,
     ready,
     splitReady,
-    varianceReady,
     uomOf,
     uom,
     itemPartsOf,
@@ -175,6 +160,18 @@ export const InboundReceiptScreen = () => {
     restart,
     submit,
   } = useReceiptFlow();
+
+  /*
+   * 입하 완료 건만(사용자 지시 2026-10-22) - 납기예정일 기간의 끝까지, 시작은 리드타임만큼 당겨 발주일로
+   * 받는다. 미마감 목록에 없는 것이 끝난 것이다.
+   */
+  const receivedPeriod = lotlessFilter.period;
+  const receivedOrders = useReceivedPurchaseOrders(
+    receivedPeriod === null ? null : shiftIso(receivedPeriod[0], -RECEIVED_LEAD_DAYS),
+    receivedPeriod === null ? null : receivedPeriod[1],
+    candidates?.data?.map((each) => each.purchaseOrderId),
+    lotlessFilter.doneOnly,
+  );
 
   /* 접어 둔 선택 입력(포장 수 · 날짜)을 손으로 펼쳤는가. 화면의 겉 상태라 흐름에 두지 않는다. */
   const [extrasShown, setExtrasShown] = useState(false);
@@ -236,6 +233,18 @@ export const InboundReceiptScreen = () => {
     />
   );
 
+  /*
+   * 공급사 LOT 이 없을 때의 글 - 「라벨 미부착」 뒤에 대체 사유 이름. 사유가 바로 그 말(라벨 미부착)
+   * 이면 한 번만 적는다 - 「라벨 미부착 · 라벨 미부착」으로 겹쳤다(사용자 지시 2026-10-22).
+   */
+  const lotMissingText = (code: string | null): string => {
+    const reason = displayNameOf(reasons.data ?? [], code ?? '');
+
+    return reason === '' || reason === t.recorded.lotMissing
+      ? t.recorded.lotMissing
+      : `${t.recorded.lotMissing} · ${reason}`;
+  };
+
   if (outcome !== null) {
     return (
       <div className="receipt with-bottom-action-bar">
@@ -244,14 +253,15 @@ export const InboundReceiptScreen = () => {
          * 표시와 제목이 먼저 읽히고, 적은 값이 그 아래 선다.
          */}
         {outcome === 'sent' ? (
-          <ResultHead tone="success" title={t.sent.title} description={t.sent.description} />
+          <ResultHead
+            tone="success"
+            title={t.sent.title}
+            /* LOT 이 만들어졌을 때만 말한다 - 라벨 미부착이면 만들어지지 않는다. */
+            description={recorded?.lotCreated ? t.sent.description : undefined}
+          />
         ) : null}
         {outcome === 'queued' ? (
-          <ResultHead
-            tone="pending"
-            title={t.queued.title}
-            description={`${t.queued.description}${varianceNext ? ` ${t.queued.varianceLater}` : ''}`}
-          />
+          <ResultHead tone="pending" title={t.queued.title} description={t.queued.description} />
         ) : null}
         {outcome === 'rejected' ? (
           <AlertBanner variant="error" title={t.rejected.title}>
@@ -308,10 +318,7 @@ export const InboundReceiptScreen = () => {
               <dt>{t.recorded.lotNo}</dt>
               <dd>
                 {recorded.supplierLotMissing
-                  ? `${t.recorded.lotMissing} · ${displayNameOf(
-                      reasons.data ?? [],
-                      recorded.substituteLotReasonCode ?? '',
-                    )}`
+                  ? lotMissingText(recorded.substituteLotReasonCode)
                   : (recorded.supplierLotNo ?? t.recorded.none)}
               </dd>
               {recorded.manufacturedDate === null ? null : (
@@ -333,17 +340,7 @@ export const InboundReceiptScreen = () => {
         {/* 다음 라벨을 읽으면 「다음 입하」를 누르지 않아도 그 자리에서 다음 입하가 선다. */}
         <section className="receipt__section">{scanZone({ prompt: t.nextScanPrompt })}</section>
 
-        {/* 오류는 입하 라인에 달린다. 받아 둔 뒤에야 붙일 자리가 생긴다. */}
-        <BottomActionBar
-          primary={
-            varianceNext && outcome === 'sent'
-              ? { label: t.sent.toVariance, onClick: () => void navigate('/inbound-variance') }
-              : { label: t.another, onClick: restart }
-          }
-          secondary={
-            varianceNext && outcome === 'sent' ? { label: t.another, onClick: restart } : undefined
-          }
-        />
+        <BottomActionBar primary={{ label: t.another, onClick: restart }} />
       </div>
     );
   }
@@ -476,7 +473,15 @@ export const InboundReceiptScreen = () => {
   const lotlessLines =
     candidates?.data === undefined ? null : (
       <LotlessLines
-        orders={candidates.data}
+        orders={lotlessFilter.doneOnly ? (receivedOrders.data ?? []) : candidates.data}
+        ordersLoading={
+          lotlessFilter.doneOnly
+            ? receivedOrders.isPending || receivedOrders.isFetching
+            : candidates.isFetching
+        }
+        onEnterOrders={() => {
+          void candidates.refetch();
+        }}
         suppliers={suppliers.data}
         orderId={lotlessOrderId}
         onOrder={setLotlessOrderId}
@@ -821,84 +826,24 @@ export const InboundReceiptScreen = () => {
               <dt>{t.verdict.split.excess}</dt>
               <dd>{`${String(splitQuantities.excess)} ${uom}`}</dd>
             </dl>
-
-            {/*
-             * 유형이 몇 개뿐이면 선택칸 대신 두 칸씩 서는 선택 단추다 - 열고 고르는 두 번이 한 번이 되고,
-             * 펼친 목록이 화면을 덮지 않는다. 많으면(서버 코드값이 늘면) 선택칸으로 돌아간다.
-             */}
-            {(exceptionTypes.data ?? []).length > 0 &&
-            (exceptionTypes.data ?? []).length <= EXCEPTION_TILES_MAX ? (
-              <div className="receipt__field receipt__choices">
-                <span id="receipt-split-exception-type-label">
-                  {required(t.verdict.split.exceptionType)}
-                </span>
-                <RadioGroup
-                  name="receipt-split-exception-type"
-                  aria-labelledby="receipt-split-exception-type-label"
-                  value={splitExceptionType}
-                  onChange={(value) => {
-                    setSplitExceptionType(value);
-                  }}
-                >
-                  {(exceptionTypes.data ?? []).map((each) => (
-                    <Radio key={each.code} value={each.code}>
-                      {each.name}
-                    </Radio>
-                  ))}
-                </RadioGroup>
-              </div>
-            ) : (
-              <div className="receipt__field">
-                <label htmlFor="receipt-split-exception-type">
-                  {required(t.verdict.split.exceptionType)}
-                </label>
-                <Select
-                  id="receipt-split-exception-type"
-                  placeholder={t.verdict.split.exceptionTypePlaceholder}
-                  size="lg"
-                  value={splitExceptionType === '' ? null : splitExceptionType}
-                  onChange={(value) => {
-                    setSplitExceptionType(String(value));
-                  }}
-                  options={(exceptionTypes.data ?? []).map((each) => ({
-                    value: each.code,
-                    label: each.name,
-                  }))}
-                />
-              </div>
-            )}
-            {exceptionTypes.isError ? (
-              <p className="receipt__note">{t.verdict.split.exceptionTypeLoadFailed}</p>
-            ) : null}
-
-            <TextField
-              label={required(t.verdict.split.exceptionReason)}
-              size="lg"
-              fullWidth
-              value={splitExceptionReason}
-              onChange={(event) => {
-                setSplitExceptionReason(event.target.value);
-              }}
-            />
           </section>
         )}
       </>
     ) : (
-      /* 부족은 물음과 두 길이 확정 바에 선다(`underAsk`). 본문에는 판정 문장만 낭독기에 남긴다. */
+      /* 부족은 두 수와 부분 입하 단추가 확정 바에 선다(`underCounts`). 본문에는 판정 문장만 낭독기에 남긴다. */
       <p className="receipt__hidden">
         {t.verdict.under(String(remainingQtyOf(line, queuedQty)), String(received))}
       </p>
     );
 
   /*
-   * 부족 — 물음 하나와 하단의 두 단추. 전에는 띠 하나에 네 수·물음·단추 둘·설명 둘이 들어
-   * 있었고, 고른 뒤에도 등록 단추를 한 번 더 눌러야 했다. 이제 고르는 단추가 곧 등록이다.
-   * 물음과 남는 몫은 단추 바로 위(확정 바)에 둔다. 발주·누적은 위의 「자세히」에 있다.
+   * 부족 — 이번 도착과 남는 몫을 부분 입하 단추 바로 위(확정 바)에 둔다. 발주·누적은 위의
+   * 「자세히」에 있다. 더 오지 않는 수량 부족은 입하 오류 등록 메뉴에서 따로 처리한다(사용자 지시
+   * 2026-10-22) - 전에 있던 「보류로 받고 오류 등록」 단추는 아무것도 보류하지 않아 뺐다.
    */
-  const underAsk =
+  const underCounts =
     verdict !== UNDER || line === null ? undefined : (
-      <div className="receipt__under" role="group" aria-label={t.verdict.underAsk}>
-        <p className="receipt__under-ask">{t.verdict.underAsk}</p>
+      <div className="receipt__under" role="group" aria-label={t.verdict.underCounts}>
         <dl className="receipt__counts receipt__tiles">
           <dt>{t.verdict.counts.arrived}</dt>
           <dd>{`${String(received)} ${uom}`}</dd>
@@ -965,8 +910,7 @@ export const InboundReceiptScreen = () => {
   const headerNotes = (
     [
       verdict === UNDER ? t.verdict.underContinueNote : null,
-      verdict === UNDER ? t.verdict.underVarianceNote : null,
-      verdict === OVER && splitQuantities !== null ? t.verdict.split.atomic : null,
+      verdict === OVER && splitQuantities !== null ? t.verdict.split.kept : null,
       showQtyNow ? t.inspectionNote : null,
     ] as (string | null)[]
   ).filter((note): note is string => note !== null);
@@ -1134,8 +1078,11 @@ export const InboundReceiptScreen = () => {
           {t.saveFailed.description}
         </ScreenNotice>
       ) : null}
-      {draft.supplierLotMissing ? (
-        /* 수량 판과 같은 카드 - 작은 회색 이름표와 고르는 칸(사용자 지시 2026-10-21). */
+      {draft.supplierLotMissing && draft.substituteLotReasonCode === '' && !reasons.isPending ? (
+        /*
+         * 대체 LOT 사유는 필수지만 기본값(라벨 미부착)이 저절로 들어가 이 화면에서는 숨긴다(사용자
+         * 지시 2026-10-22). 기본값을 찾지 못해 비어 있을 때만 고르게 한다.
+         */
         <div className="receipt__field receipt__panel">
           <label htmlFor="receipt-reason" className="receipt__panel-label">
             {required(t.scan.reasonLabel)}
@@ -1163,9 +1110,8 @@ export const InboundReceiptScreen = () => {
    * 화면 바닥의 확정 단추(공통 골격 S3). 숫자판이 열린 동안은 숨는다 - 전에 이 화면이 단추를
    * 바닥에 붙이지 않았던 까닭(숫자판 아랫줄을 덮는다)이 그렇게 풀린다.
    * - 초과: 분리 구획이 자기 단추를 가진다. 바를 세우지 않는다.
-   * - 부족: 「분할 납품으로 등록」 · 「보류로 받고 오류 등록」 두 길.
+   * - 부족: 「부분 입하 등록」 한 길. 수량 부족은 입하 오류 등록 메뉴에서 따로.
    */
-  const splitLocked = splitExceptionType === '' || splitExceptionReason.trim() === '';
   /*
    * 라벨 미부착 품목 표 - 체크한 품목을 남은 수량 그대로 한꺼번에 등록한다. 문제가 있는 품목은
    * 품목명을 눌러 수량 단계에서 따로 등록한다.
@@ -1173,6 +1119,7 @@ export const InboundReceiptScreen = () => {
   const lotlessBar =
     step === 'line' && draft.supplierLotMissing && lotlessOrderId !== null ? (
       <BottomActionBar
+        compact
         /* 잠겨 있으면 잠긴 이유가 그 자리를 쓴다 - 두 줄이 함께 서면 바가 화면을 덮는다. */
         prompt={
           lotlessLock === null ? (
@@ -1180,7 +1127,8 @@ export const InboundReceiptScreen = () => {
           ) : undefined
         }
         primary={{
-          label: t.lotless.bulk.submit(lotlessPickCount),
+          /* 체크한 수는 표 위 「(M건 체크 됨)」 이 말한다 - 단추 글자는 고정이다(사용자 지시 2026-10-22). */
+          label: t.lotless.bulk.submit,
           onClick: () => void submitLotless(),
           disabled: lotlessLock !== null,
           busy: lotlessBusy,
@@ -1199,56 +1147,32 @@ export const InboundReceiptScreen = () => {
   ) : verdict === OVER ? (
     splitQuantities === null ? null : (
       /*
-       * 초과 — 세 길은 대등하지 않다. 정량·초과를 함께 받는 것이 기본이라 그것만 채워 세우고, 나머지
-       * 둘은 그 아래 한 줄에 낮게 나란히. 바에 두면 분리 구획을 다 채운 손이 단추를 찾아 내려가지
-       * 않는다.
+       * 초과 — 초과분을 나눠 한 건으로 받는 것이 기본이다(장부 P-100 · 사용자 결정 2026-10-22).
+       * 정량분은 자재 P/O 에, 초과분은 초과분 목록에 남는다. 초과분을 받지 않을 때만 정량분만.
        */
       <BottomActionBar
         primary={{
-          label: t.verdict.split.both,
-          onClick: () => void submit('BOTH'),
-          disabled:
-            !splitReady ||
-            splitQuantities.normal <= 0 ||
-            splitQuantities.excess <= 0 ||
-            splitLocked,
+          label: t.verdict.split.keepExcess,
+          onClick: () => void submit(KEEP_EXCESS),
+          disabled: !splitReady || splitQuantities.normal <= 0 || splitQuantities.excess <= 0,
           /* 비활성은 사유를 함께 보인다(공유계약 G-1). 왜 못 누르는지 알아야 한다. */
-          lockReason: splitLocked ? t.verdict.split.excessLocked : undefined,
+          lockReason: splitQuantities.normal <= 0 ? t.verdict.split.noRoom : undefined,
         }}
-        alternatives={[
-          {
-            label: t.verdict.split.normalOnly,
-            disabled: !splitReady || splitQuantities.normal <= 0,
-            onClick: () => void submit('NORMAL_ONLY'),
-          },
-          {
-            label: t.verdict.split.excessOnly,
-            disabled: !splitReady || splitQuantities.excess <= 0 || splitLocked,
-            onClick: () => void submit('EXCESS_ONLY'),
-          },
-        ]}
+        secondary={{
+          label: t.verdict.split.normalOnly,
+          disabled: !splitReady || splitQuantities.normal <= 0,
+          onClick: () => void submit('NORMAL_ONLY'),
+        }}
       />
     )
   ) : verdict === UNDER ? (
     <BottomActionBar
-      prompt={underAsk}
+      prompt={underCounts}
       primary={{
         label: t.verdict.underContinue,
         onClick: submitContinueUnder,
         disabled: underLock !== null,
         lockReason: underLock === null ? undefined : t.locked[underLock],
-      }}
-      secondary={{
-        label: t.verdict.underVariance,
-        disabled: !varianceReady,
-        onClick: () => {
-          if (!varianceReady) {
-            return;
-          }
-
-          setVarianceNext(true);
-          void submit();
-        },
       }}
     />
   ) : (
@@ -1393,14 +1317,38 @@ export const InboundReceiptScreen = () => {
       ) : null}
 
       {step === 'qty' ? (
-        <StepSection title={t.steps.qty} index={3} total={STEP_COUNT}>
+        /* 라벨 없이 2-2 에서 품목을 눌러 오면 부분 입하 등록이다(사용자 지시 2026-10-22). */
+        <StepSection
+          title={draft.supplierLotMissing ? t.steps.lotlessQty : t.steps.qty}
+          index={3}
+          total={STEP_COUNT}
+        >
           {/*
            * 라벨이 없으면 작업 카드 대신 2-2 와 같은 정보 칸 - 공급사 · 발주번호 · 품목(사용자 지시
            * 2026-10-21). 라인 번호는 적지 않는다.
            */}
+          {partialDone !== null &&
+          partialDone.lineId === draft.purchaseOrderLine?.purchaseOrderLineId ? (
+            <AlertBanner
+              variant={partialDone.outcome === 'sent' ? 'success' : 'warning'}
+              title={t.verdict.partialDone[partialDone.outcome](
+                `${String(partialDone.qty)} ${uom}`,
+              )}
+            />
+          ) : null}
           {draft.supplierLotMissing && draft.purchaseOrder !== null ? (
             <LotlessOrderInfo
               rows={[
+                /* 이미 받은 수 - 맨 위에 따로 눈에 띄게(사용자 지시 2026-10-22). */
+                ...(line === null || lineRemaining === null
+                  ? []
+                  : [
+                      {
+                        label: t.verdict.receivedSoFar,
+                        value: `${String(before)} / ${String(line.orderedQty)} ${uom}`,
+                        strong: true,
+                      },
+                    ]),
                 {
                   label: t.lotless.info.supplier,
                   value:
@@ -1419,6 +1367,42 @@ export const InboundReceiptScreen = () => {
           ) : null}
           {qtyFields}
           {verdictView}
+          {verdict === UNDER ? (
+            /*
+             * 부분 입하 사유 - 자주 나는 셋에서 고르고 기타만 적는다(사용자 지시 2026-10-22). 대체 LOT
+             * 사유와 같은 카드.
+             */
+            <div className="receipt__field receipt__panel">
+              <label htmlFor="receipt-partial-reason" className="receipt__panel-label">
+                {required(t.verdict.partialReasonLabel)}
+              </label>
+              <Select
+                id="receipt-partial-reason"
+                placeholder={t.verdict.partialReasonPlaceholder}
+                size="lg"
+                value={draft.partialReasonCode === '' ? null : draft.partialReasonCode}
+                onChange={(value) => {
+                  patch({ partialReasonCode: String(value) });
+                }}
+                options={PARTIAL_REASONS.map((code) => ({
+                  value: code,
+                  label: t.verdict.partialReasons[code],
+                }))}
+              />
+              {draft.partialReasonCode === OTHER_PARTIAL_REASON ? (
+                <TextField
+                  aria-label={t.verdict.partialReasonOther}
+                  placeholder={t.verdict.partialReasonOtherPlaceholder}
+                  size="lg"
+                  fullWidth
+                  value={draft.partialReason}
+                  onChange={(event) => {
+                    patch({ partialReason: event.target.value });
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : null}
         </StepSection>
       ) : null}
 

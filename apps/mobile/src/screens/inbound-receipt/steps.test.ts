@@ -29,6 +29,8 @@ const draft = (overrides: Partial<ReceiptDraft> = {}): ReceiptDraft => ({
   packageCount: '',
   manufacturedDate: '',
   expiryDate: '',
+  partialReasonCode: '',
+  partialReason: '',
   ...overrides,
 });
 
