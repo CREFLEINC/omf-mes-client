@@ -8,6 +8,8 @@
 export const terminalProcessMap = {
   title: '단말기-공정 매핑 설정',
   breadcrumbRoot: '시스템 관리',
+  /** 메뉴에서 이 화면까지의 경로 — 다른 화면이 「어디로 가라」고 안내할 때 쓴다. 메뉴 라벨과 같아야 한다(app/nav-menu-path.test.ts). */
+  menuPath: '시스템 관리 › 단말기-공정 매핑',
 
   panes: {
     list: '단말 목록',
@@ -132,7 +134,7 @@ export const terminalProcessMap = {
     /** 저장하지 않은 변경을 버리고 마지막으로 불러온(저장된) 구성으로 돌아간다. */
     reset: '변경 취소',
     duplicate: '이미 추가된 공정입니다.',
-    noFlag: '기능을 하나 이상 켜세요',
+    noFlag: '작업지시 마감 말고 기능을 하나 이상 켜세요',
     selectTerminalTitle: '단말을 선택해 주세요',
     selectTerminal: '왼쪽 목록에서 단말을 선택하면 상세 정보와 공정별 기능을 확인할 수 있습니다.',
     unselectedNote: '단말을 선택하면 공정별 기능을 설정할 수 있습니다.',
@@ -149,6 +151,7 @@ export const terminalProcessMap = {
   flags: {
     canStartWork: '작업 시작',
     canCompleteWork: '작업 완료',
+    canCloseWorkOrder: '작업지시 마감',
     canInputMaterial: '자재 투입',
     canInputResult: '실적 입력',
     canInputInspection: '검사 입력',

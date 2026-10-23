@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, WorkOrderForward, WorkSessionForward } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -22,6 +22,14 @@ export interface WorkOrderCloseFact extends WorkOrderFact {
   completedAt: string | null;
   completionVarianceReasonCode: string | null;
   closedAt: string | null;
+  closeDispositionCode: 'CARRY_OVER' | 'WRITE_OFF' | null;
+  /** POP 마감일 때만 있다 */
+  closedWorkerNo: string | null;
+  closedWorkerName: string | null;
+  /** 관리웹 마감일 때만 있다 */
+  closedByUserName: string | null;
+  closeJudgmentCode: 'UNDER' | 'NORMAL' | 'OVER' | null;
+  voidedLotCount: number | null;
 }
 
 export interface WorkOrderCloseDetailFact extends WorkOrderCloseFact {
@@ -31,20 +39,39 @@ export interface WorkOrderCloseDetailFact extends WorkOrderCloseFact {
 
 export interface WorkOrderCloseFilters {
   statusCode: string | null;
+  completionJudgmentCode: string | null;
   productionOrderId: number | null;
   plannedStartFrom: string | null;
   plannedStartTo: string | null;
   page: number;
 }
 
+/** 목록 줄도 진척을 싣는다 — 미달 건을 열어 보지 않고 찾게 한다. */
+export interface WorkOrderCloseCandidateFact extends WorkOrderCloseFact {
+  progress: WorkOrderProgress | null;
+}
+
 export interface WorkOrderCloseCandidatesResponse {
-  items: WorkOrderCloseFact[];
+  items: WorkOrderCloseCandidateFact[];
   page: PageMeta;
+}
+
+/** 마감을 막는 열린 세션 한 건 — 어느 단말에서 끝낼지 알리는 데 쓴다. */
+export interface WorkOrderCloseOpenSessionView {
+  workSessionId: number;
+  terminalCode: string | null;
+  workerName: string | null;
+  workerNo: string | null;
+  startedAt: string;
+  statusCode: string;
 }
 
 export interface WorkOrderCloseOpenSessionState {
   hasOpenSession: boolean;
+  sessions: WorkOrderCloseOpenSessionView[];
 }
+
+const OPEN_SESSION_PAGE_SIZE = 20;
 
 export interface WorkOrderCloseOutboundItemSetting {
   outboundItemCode: OutboundItemSetting['outboundItemCode'];
@@ -87,6 +114,7 @@ export const workOrderCloseKeys = {
       'work-order-close',
       'candidates',
       filters.statusCode,
+      filters.completionJudgmentCode,
       filters.productionOrderId,
       filters.plannedStartFrom,
       filters.plannedStartTo,
@@ -95,6 +123,7 @@ export const workOrderCloseKeys = {
   detail: (workOrderId: number | null) => ['work-order-close', 'detail', workOrderId] as const,
   openSession: (workOrderId: number | null) =>
     ['work-order-close', 'open-session', workOrderId] as const,
+  openLots: (workOrderId: number | null) => ['work-order-close', 'open-lots', workOrderId] as const,
   outboundItemSettings: () => ['work-order-close', 'outbound-item-settings'] as const,
   productionOrders: () => ['work-order-close', 'lookups', 'production-orders'] as const,
   codeValues: (codeGroupCode: string) =>
@@ -107,11 +136,17 @@ export const workOrderCloseKeys = {
 export const workOrderCloseDetailPath = (workOrderId: number): string =>
   `/production/work-orders/${workOrderId}`;
 
-export const toWorkOrderCloseFact = (workOrder: WorkOrder): WorkOrderCloseFact => ({
+export const toWorkOrderCloseFact = (workOrder: WorkOrderForward): WorkOrderCloseFact => ({
   ...toWorkOrderFact(workOrder),
   completedAt: workOrder.completedAt ?? null,
   completionVarianceReasonCode: workOrder.completionVarianceReasonCode ?? null,
   closedAt: workOrder.closedAt ?? null,
+  closeDispositionCode: workOrder.closeDispositionCode ?? null,
+  closedWorkerNo: workOrder.closedWorkerNo ?? null,
+  closedWorkerName: workOrder.closedWorkerName ?? null,
+  closedByUserName: workOrder.closedByUserName ?? null,
+  closeJudgmentCode: workOrder.closeJudgmentCode ?? null,
+  voidedLotCount: workOrder.voidedLotCount ?? null,
 });
 
 export const toWorkOrderCloseDetailFact = (workOrder: WorkOrder): WorkOrderCloseDetailFact => ({
@@ -139,6 +174,12 @@ export const useWorkOrderCloseCandidates = (
           params: {
             query: {
               statusCode,
+              ...(filters.completionJudgmentCode === null
+                ? {}
+                : {
+                    completionJudgmentCode: filters.completionJudgmentCode as
+                      'UNDER' | 'NORMAL' | 'OVER',
+                  }),
               ...(filters.productionOrderId === null
                 ? {}
                 : { productionOrderId: filters.productionOrderId }),
@@ -154,7 +195,13 @@ export const useWorkOrderCloseCandidates = (
         }),
       );
 
-      return { items: data.items.map(toWorkOrderCloseFact), page: data.page };
+      return {
+        items: data.items.map((item) => ({
+          ...toWorkOrderCloseFact(item),
+          progress: item.progress === undefined ? null : { ...item.progress },
+        })),
+        page: data.page,
+      };
     },
   });
 };
@@ -201,11 +248,66 @@ export const useWorkOrderCloseOpenSession = (
 
       const data = await runRequest(() =>
         client.GET('/production/work-sessions', {
-          params: { query: { open: true, workOrderId, page: 1, size: 1 } },
+          params: { query: { open: true, workOrderId, page: 1, size: OPEN_SESSION_PAGE_SIZE } },
+        }),
+      );
+      const items = data.items as WorkSessionForward[];
+
+      return {
+        hasOpenSession: items.length > 0,
+        sessions: items.map((session) => ({
+          workSessionId: session.workSessionId,
+          terminalCode: session.terminalCode ?? null,
+          workerName: session.workerName ?? null,
+          workerNo: session.workerNo ?? null,
+          startedAt: session.startedAt,
+          statusCode: session.statusCode,
+        })),
+      };
+    },
+  });
+};
+
+/** 진행 중(실적이 붙었고 아직 완료되지 않은) LOT. 쪽을 넘긴 나머지는 건수로만 안다. */
+export interface WorkOrderCloseOpenLots {
+  lotNos: string[];
+  /** 받은 쪽 밖에 더 있을 수 있는 미완료 LOT 수. 진행 중인지는 모른다 */
+  uncheckedCount: number;
+}
+
+const OPEN_LOT_PAGE_SIZE = 100;
+
+/*
+ * 마감은 진행 중 LOT 을 막지 않는다(서버도 보지 않는다) — 그 LOT 이 그대로 남는다는 사실을
+ * 확인 창에서 알리려고 읽는다. 실적 없는 대기 슬롯은 마감 때 폐번되므로 여기서 뺀다.
+ */
+export const useWorkOrderCloseOpenLots = (
+  workOrderId: number | null,
+): UseQueryResult<WorkOrderCloseOpenLots> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderCloseKeys.openLots(workOrderId),
+    enabled: workOrderId !== null,
+    queryFn: async () => {
+      if (workOrderId === null) {
+        throw new Error('A work order is required to load its open LOTs.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/trace/lots', {
+          params: {
+            query: { workOrderId, completed: false, page: 1, size: OPEN_LOT_PAGE_SIZE },
+          },
         }),
       );
 
-      return { hasOpenSession: data.items.length > 0 };
+      return {
+        lotNos: data.items
+          .filter((lot) => lot.lifecycleStatusCode === 'ACTIVE')
+          .map((lot) => lot.lotNo),
+        uncheckedCount: Math.max(0, data.page.total - data.items.length),
+      };
     },
   });
 };

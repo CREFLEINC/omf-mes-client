@@ -151,8 +151,7 @@ export const toItemsPayload = (
   }));
 
 const isSameItemDraft = (a: ItemDraft, b: ItemDraft | undefined): boolean =>
-  b !== undefined &&
-  (Object.keys(a) as (keyof ItemDraft)[]).every((key) => a[key] === b[key]);
+  b !== undefined && (Object.keys(a) as (keyof ItemDraft)[]).every((key) => a[key] === b[key]);
 
 /**
  * 「고친 것이 있는가」의 판정 근거. **순서만 달라도 다른 것으로 본다** —

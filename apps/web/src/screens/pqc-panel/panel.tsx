@@ -1,7 +1,7 @@
-import { AlertBanner } from '@crefle/web-ui';
+import { AlertBanner, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
@@ -50,6 +50,9 @@ import { pqcPanelKeys, useLatestRound, useRoundMeasurements } from './queries';
 import { ResultForm } from './result-form';
 import { SplitResultForm } from './split-result-form';
 import { PanelTargetHeader } from './target-header';
+import { WebActions } from './web-actions';
+import { WebItemTable } from './web-item-table';
+import { WebSummary } from './web-summary';
 
 const t = messages.pqcInspection;
 
@@ -90,6 +93,11 @@ export interface PqcPanelProps {
    * W-03-11 이다(웹 UI/UX 는 하지 않기로 했다 · 사용자 결정 2026-10-19). 판정·저장 규칙은 같다.
    */
   variant: 'split' | 'web';
+  /**
+   * 저장하지 않은 입력이 있는가를 알린다(관리웹 · omf-all-around#135) — 목록으로 떠날 때 한 번 묻는 데 쓴다.
+   * 입력을 고치면 참, 서버가 저장·확정을 받았으면 거짓이다.
+   */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 /**
@@ -108,6 +116,7 @@ export const PqcPanel = ({
   requiresWorker,
   withKeypad,
   variant,
+  onDirtyChange,
 }: PqcPanelProps) => {
   const detail = useInspectionRequestDetail(inspectionRequestId);
   const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
@@ -141,10 +150,16 @@ export const PqcPanel = ({
   const [judgment, setJudgment] = useState('');
   const [padField, setPadField] = useState<PadField | null>(null);
   const [remarks, setRemarks] = useState('');
+  const remarksId = useId();
   const lastTargetId = useRef<number | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isJustConfirmed, setIsJustConfirmed] = useState(false);
+  /* 저장하지 않은 입력 — 고치면 참, 서버가 받았거나 대상이 바뀌면 거짓(#135). */
+  const [dirty, setDirty] = useState(false);
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   const { clearRejection, rejection, rejectedStatusCode, sentCount } = submitter;
 
@@ -168,6 +183,7 @@ export const PqcPanel = ({
     void queryClient.invalidateQueries({ queryKey: pqcInspectionKeys.detail(inspectionRequestId) });
     void queryClient.invalidateQueries({ queryKey: pqcPanelKeys.rounds(inspectionRequestId) });
     void queryClient.invalidateQueries({ queryKey: pqcPanelKeys.allMeasurements });
+    setDirty(false);
     if (awaitingRef.current === RESULT_STATUS.draft) setIsSaved(true);
     if (awaitingRef.current === RESULT_STATUS.confirmed) setIsJustConfirmed(true);
     awaitingRef.current = null;
@@ -192,6 +208,7 @@ export const PqcPanel = ({
   useEffect(() => {
     setIsSaved(false);
     setIsJustConfirmed(false);
+    setDirty(false);
     setShowErrors(false);
     setJudgment('');
     setDraft(EMPTY_QUANTITY_DRAFT);
@@ -247,15 +264,18 @@ export const PqcPanel = ({
   }, [measurementsKey]);
 
   const changeInspected = (raw: string): void => {
+    setDirty(true);
     setIsSaved(false);
     setInspectedDraft(raw);
   };
   const changeDraft = (next: QuantityDraft): void => {
+    setDirty(true);
     setIsSaved(false);
     setDraft(next);
     setDisposition((current) => settleDisposition(current, toMicro(next.rejected)));
   };
   const changeMeasurementValue = (key: string, value: string): void => {
+    setDirty(true);
     setIsSaved(false);
     setDrafts((current) => ({
       ...current,
@@ -267,6 +287,7 @@ export const PqcPanel = ({
     }));
   };
   const changeMeasurementJudgment = (key: string, next: string): void => {
+    setDirty(true);
     setIsSaved(false);
     setDrafts((current) => ({
       ...current,
@@ -298,6 +319,11 @@ export const PqcPanel = ({
    * 저장된 회차를 다 읽기 전에는 잠근다(리뷰 M1) — 덜 읽은 칸으로 저장하면 서버가 그 회차를 덮어 저장된 값이 사라진다.
    * 실적 수는 모르면(조회 전·실패) 막지 않는다 — 서버가 같은 규칙으로 막는다.
    */
+  /*
+   * 실적이 없으면 서버가 저장·확정을 받지 않는다 — 관리웹은 입력 칸도 다 잠가 헛입력을 막는다(#135).
+   * ⚠ POP(split)은 이번 범위가 아니다 — 종전대로 둔다.
+   */
+  const isInputLocked = isConfirmed || (variant === 'web' && producedQty === 0);
   const roundLoadFailed =
     latestRoundQuery.isError || (savedRound !== null && savedMeasurements.isError);
   const roundLoading =
@@ -310,7 +336,9 @@ export const PqcPanel = ({
       : roundLoading
         ? t.panel.roundLoading
         : producedQty === 0
-          ? t.result.noProductionResult
+          ? variant === 'web'
+            ? messages.pqcInspectionRegister.web.noProductionResult
+            : t.result.noProductionResult
           : null;
 
   const confirmBlockedReason = toConfirmBlockedReason({
@@ -380,6 +408,110 @@ export const PqcPanel = ({
   const pickPad = withKeypad ? setPadField : () => undefined;
   const FormOf = variant === 'split' ? SplitResultForm : ResultForm;
 
+  if (variant === 'web') {
+    /* 관리웹(W-03-11 · omf-all-around#135) — IQC 판정 화면(#133)과 같은 짜임. 상태·저장 규칙은 위 그대로다. */
+    function edited<T>(set: (value: T) => void): (value: T) => void {
+      return (value) => {
+        setDirty(true);
+        setIsSaved(false);
+        set(value);
+      };
+    }
+    const tNoStandard = t.noStandard;
+
+    return (
+      <div className="pqc-web">
+        <WebSummary
+          detail={target}
+          planVersion={planVersion.data ?? null}
+          uomCode={uomCodeOf(target.uomId)}
+        />
+
+        {roundLoadFailed && (
+          <QueueLoadErrorBanner
+            error={toApiError(latestRoundQuery.error ?? savedMeasurements.error)}
+            onRetry={() => {
+              void latestRoundQuery.refetch();
+              if (savedRound !== null) void savedMeasurements.refetch();
+            }}
+          />
+        )}
+
+        {planVersionId !== null && (
+          <WebItemTable
+            rows={rows}
+            drafts={drafts}
+            onValueChange={changeMeasurementValue}
+            onJudgmentChange={changeMeasurementJudgment}
+            judgmentOptions={itemJudgmentOptions}
+            uomCodeOf={uomCodeOf}
+            isLoading={itemSpecs.isLoading}
+            isLocked={isInputLocked}
+          />
+        )}
+
+        {/*
+         * 검사기준이 없으면 따로 「검사 판정」 구획을 두지 않고 「판정」 안에 합친다(#135 · 담당자 지시) —
+         * 왜 항목표가 없는지는 판정 제목 아래, 「검사 내용」은 판정 칸 아래에 선다.
+         */}
+        <ResultForm
+          inspectedDraft={inspectedDraft}
+          onInspectedChange={changeInspected}
+          inspectedQty={inspectedQty}
+          targetQty={storedInspectedQty}
+          inspectionRound={savedRound?.inspectionRound ?? null}
+          uomCode={uomCodeOf(target.uomId)}
+          draft={draft}
+          onChange={changeDraft}
+          fieldErrors={rejection?.fieldErrors ?? EMPTY_FIELD_ERRORS}
+          errorBanner={<SaveErrorBanner error={rejection?.error ?? null} />}
+          showErrors={showErrors}
+          judgmentOptions={overallOptions}
+          judgment={judgment}
+          onJudgmentChange={edited(setJudgment)}
+          disposition={disposition}
+          onDispositionChange={edited(setDisposition)}
+          onPadFieldChange={() => undefined}
+          isLocked={isInputLocked}
+          judgmentBelow={
+            planVersionId === null ? (
+              /* 검사기준이 없다는 안내는 「검사 내용」 이름 옆에 둔다 — 직접 적을 칸이 바로 이 칸이다. */
+              <div className="field-cell pqc-web-remarks-field">
+                <span className="field-label">
+                  <label htmlFor={remarksId}>{tNoStandard.remarks}</label>
+                  <span className="pqc-web-label-hint">
+                    {messages.pqcInspectionRegister.web.noStandardNote}
+                  </span>
+                </span>
+                <TextField
+                  id={remarksId}
+                  fullWidth
+                  placeholder={messages.pqcInspectionRegister.web.remarksPlaceholder}
+                  value={remarks}
+                  disabled={isInputLocked}
+                  onChange={(event) => edited(setRemarks)(event.target.value)}
+                />
+              </div>
+            ) : undefined
+          }
+        />
+
+        <WebActions
+          isConfirmed={isConfirmed}
+          isJustConfirmed={isJustConfirmed}
+          isSaved={isSaved}
+          lockedReason={lockedReason}
+          showLockedNote={!roundLoadFailed}
+          confirmBlockedReason={confirmBlockedReason}
+          saveBlockedReason={saveBlockedReason}
+          isSending={awaiting !== null}
+          onSave={() => saveResult(target.uomId, RESULT_STATUS.draft)}
+          onConfirm={() => saveResult(target.uomId, RESULT_STATUS.confirmed)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="pqc-panel">
       <PanelTargetHeader detail={target} />
@@ -428,6 +560,7 @@ export const PqcPanel = ({
         inspectedDraft={inspectedDraft}
         onInspectedChange={changeInspected}
         inspectedQty={inspectedQty}
+        targetQty={storedInspectedQty}
         uomCode={uomCodeOf(target.uomId)}
         draft={draft}
         onChange={changeDraft}
@@ -466,7 +599,7 @@ export const PqcPanel = ({
       <PanelActions
         isConfirmed={isConfirmed}
         lockedReason={lockedReason}
-        showLockedNote={variant === 'web' && !roundLoadFailed}
+        showLockedNote={false}
         isSending={awaiting !== null}
         confirmBlockedReason={confirmBlockedReason}
         workerMissing={workerMissing}

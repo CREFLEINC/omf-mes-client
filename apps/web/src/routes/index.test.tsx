@@ -44,7 +44,6 @@ import {
   notificationFixtures,
   notificationListBody,
 } from '../screens/notification-center/fixtures';
-import { poRegisterEntryPath } from '../screens/over-receipt-split/created-receipts-pane';
 import {
   businessUnitFixtures,
   inboundReceiptDetailBody,
@@ -255,8 +254,8 @@ const lookupRoute = (pathname: string, items: unknown[]): StubRoute => ({
 
 const productionOrderRoutes = (): StubRoute[] => [
   lookupRoute('/planning/production-orders', []),
-  lookupRoute('/mdm/business-units', []),
-  lookupRoute('/mdm/plants', []),
+  lookupRoute('/production/work-orders', []),
+  lookupRoute('/mdm/code-values', []),
   lookupRoute('/mdm/uoms', []),
 ];
 
@@ -297,42 +296,14 @@ const notificationCenterRoutes = (): StubRoute[] => [
   },
 ];
 
-/** W-CO-11 첫 진입 — 이벤트·전체 설정·선택 이벤트 상세와 세 참조 목록. */
+/** W-CO-11 첫 진입 — 부서를 고르기 전이라 이벤트 카탈로그와 부서 목록만 부른다(001 재설계). */
 const alarmRecipientRoutes = (): StubRoute[] => [
   {
     match: (request) => isGet(request, '/app/notification-events'),
     respond: () =>
-      jsonResponse({ items: [{ eventCode: 'SYN-EVENT-A', eventName: '합성 알림 가' }] }),
+      jsonResponse({ items: [{ eventCode: 'WORK_SESSION_STARTED', eventName: '생산 실행' }] }),
   },
-  {
-    match: (request) => {
-      const url = new URL(request.url);
-      return (
-        request.method === 'GET' &&
-        url.pathname === '/app/notification-subscriptions' &&
-        !url.searchParams.has('eventCode')
-      );
-    },
-    respond: () => jsonResponse({ items: [{ eventCode: 'SYN-EVENT-A', recipients: [] }] }),
-  },
-  {
-    match: (request) => {
-      const url = new URL(request.url);
-      return (
-        request.method === 'GET' &&
-        url.pathname === '/app/notification-subscriptions' &&
-        url.searchParams.get('eventCode') === 'SYN-EVENT-A'
-      );
-    },
-    respond: () =>
-      jsonResponse(
-        { items: [{ eventCode: 'SYN-EVENT-A', recipients: [] }] },
-        { headers: { ETag: '"subscription-1"' } },
-      ),
-  },
-  lookupRoute('/mdm/business-units', []),
-  lookupRoute('/app/roles', []),
-  lookupRoute('/app/users', []),
+  lookupRoute('/mdm/departments', []),
 ];
 
 /** W-01-01이 첫 진입에 부르는 것 — 검사 대기 큐 하나다. 고른 의뢰가 없으면 그것뿐이다. */
@@ -537,7 +508,7 @@ const workOrderCloseRoutes = (): StubRoute[] => [
       const isStatus =
         new URL(request.url).searchParams.get('codeGroupCode') === 'WORK_ORDER_STATUS';
       const items = isStatus
-        ? [{ code: 'COMPLETED', codeName: '마감 완료', displayOrder: 1, isActive: true }]
+        ? [{ code: 'IN_PROGRESS', codeName: '진행', displayOrder: 1, isActive: true }]
         : [];
       return jsonResponse({ items, page: { page: 1, size: 200, total: items.length } });
     },
@@ -558,7 +529,7 @@ const workOrderCloseRoutes = (): StubRoute[] => [
             uomId: 9901,
             workOrderTypeCode: 'NORMAL',
             priorityNo: 1,
-            statusCode: 'COMPLETED',
+            statusCode: 'IN_PROGRESS',
           },
         ],
         page: { page: 1, size: 20, total: 1 },
@@ -591,14 +562,6 @@ const workOrderCloseRoutes = (): StubRoute[] => [
     match: (request) => isGet(request, '/integration/outbound-item-settings'),
     respond: () => jsonResponse({ items: [] }),
   },
-];
-
-const workOrderReleaseRoutes = (): StubRoute[] => [
-  lookupRoute('/mdm/code-values', [
-    { code: 'READY', codeName: '배포 대기', displayOrder: 1, isActive: true },
-  ]),
-  lookupRoute('/mdm/production-lines', []),
-  lookupRoute('/mdm/uoms', []),
 ];
 
 /** W-01-11이 첫 진입에 부르는 것들 — 대상 초과분 상세와 이름 풀이 다섯. */
@@ -649,10 +612,10 @@ describe('appRouter', () => {
   });
 
   /*
-   * W-01-03은 계약 경로도 `/logistics/**`라 둘이 우연히 같다. 그래도 근거는 섹션이다 —
-   * 계약 경로를 근거로 삼으면 W-01-07에서 앞머리가 갈렸을 것이다.
+   * W-01-03 은 화면이 아니라 입하 예정 조회의 「입하 등록」 창이다(사용자 지시 2026-10-21). 옛 주소는
+   * 즐겨찾기가 죽지 않게 라우트에 남아 그 창으로 옮겨 준다(`register-redirect.tsx` 가 옮기는 모양을 잰다).
    */
-  it('초과 입하 분리가 자재창고 앞머리로 등록돼 있다', () => {
+  it('옛 초과 입하 분리 주소가 자재창고 앞머리로 남아 있다', () => {
     expect(routedPaths()).toContain('/logistics/over-receipt-split');
   });
 
@@ -1022,9 +985,13 @@ describe('appRouter — 재고조정의 진입 경로', () => {
  * **W-01-11은 이 저장소에서 처음으로 메뉴에 서지 않는 화면이다**(착수 이슈 §6 ① · 스펙 §5-2).
  *
  * 메뉴에 「신규 P/O 등록」이 서면 맥락 없는 진입이 기본 경로가 되고, 그때 사용자가 하는 일이
- * 곧 일반 구매 발주 등록이다. 그래서 **진입은 초과 입하 분리의 등록 결과 링크 하나뿐**이고,
- * 이 describe가 그 한 갈래를 양쪽에서 잰다 — 메뉴에는 없고, 링크가 가리키는 주소는 실재한다.
+ * 곧 일반 구매 발주 등록이다. 그래서 메뉴에는 없고, 맥락(`receipt`)을 실은 주소로만 화면이 선다.
+ *
+ * 입하 등록의 결과는 더 이상 이 화면으로 가지 않는다(서버 장부 P-100) — 초과분은 줄의 `excessQty` 로
+ * 실리고 「입하 예정 조회」의 초과분 연결 창으로 간다.
  */
+const PO_REGISTER_ENTRY = '/logistics/po-register?receipt=9101';
+
 describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
   /*
    * **C33** — 메뉴에 항목이 없다. 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가
@@ -1033,8 +1000,8 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
   it('사이드바에도 입고 관리 탭 막대에도 이 화면 항목이 없다', async () => {
     const tabs = await hubTabLinks('입고 관리');
 
-    /* 짝 양성 — 탭 막대는 실제로 그려졌고 앞 화면(초과 입하 분리)은 거기 있다. */
-    expect(tabs).toContainEqual({ name: '초과 입하 분리', href: '/logistics/over-receipt-split' });
+    /* 짝 양성 — 탭 막대는 실제로 그려졌고 첫 화면(입하 예정 조회)은 거기 있다. */
+    expect(tabs).toContainEqual({ name: '입하 예정 조회', href: '/logistics/inbound-schedule' });
     expect(tabs.map((tab) => tab.href)).not.toContain('/logistics/po-register');
     expect(tabs.map((tab) => tab.name)).not.toContain('신규 P/O 등록');
 
@@ -1050,27 +1017,14 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
   });
 
   /*
-   * **사이드바 대조와 같은 형태의 이음매다.** 등록 결과의 링크와 라우트 표는 서로 다른 파일에
-   * 있고 서로를 참조하지 않는다 — 한쪽만 고치면 죽은 링크가 남는데, 그 슬라이스의 시험은
-   * `href` 글자만 보고 화면 시험은 라우트를 거치지 않아 **어느 쪽도 그 어긋남을 잡지 못한다.**
-   */
-  it('등록 결과 링크가 가리키는 주소가 라우트 표에 있다', () => {
-    const [pathname] = poRegisterEntryPath(9101).split('?');
-
-    expect(routedPaths()).toContain(pathname);
-  });
-
-  /*
-   * **C32·C37** — 그 링크의 주소로 들어가면 화면이 **그 맥락으로** 선다.
-   *
-   * 주소를 손으로 적지 않고 **링크가 만드는 값을 그대로 태운다** — 질의 열쇠(`receipt`)가
-   * 받는 쪽이 읽는 이름과 어긋나면 여기서 맥락 없는 화면이 서고 이 시험이 운다.
+   * **C32·C37** — 맥락(`receipt`)을 실은 주소로 들어가면 화면이 **그 맥락으로** 선다.
+   * 질의 열쇠(`receipt`)가 받는 쪽이 읽는 이름과 어긋나면 여기서 맥락 없는 화면이 서고 이 시험이 운다.
    */
   it('그 주소로 들어가면 대상 초과분이 실린 화면이 선다', async () => {
     renderWithProviders(<RoutedApp />, {
       session: SYNTHETIC_SESSION,
       fetch: createStubFetch(poRegisterRoutes()),
-      route: poRegisterEntryPath(9101),
+      route: PO_REGISTER_ENTRY,
     });
 
     expect(await screen.findByText('SAMPLE-IR-9101')).toBeInTheDocument();
@@ -1083,7 +1037,7 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
    * 실제로 다른 화면을 세우는 것을 함께 잰다. 질의 열쇠가 어긋나면 위 시험이 이쪽 모습을 본다.
    */
   it('맥락 없이 그 주소로 들어가면 넘어온 초과분이 없다고 말한다', async () => {
-    const [pathname] = poRegisterEntryPath(9101).split('?');
+    const [pathname] = PO_REGISTER_ENTRY.split('?');
 
     renderWithProviders(<RoutedApp />, {
       session: SYNTHETIC_SESSION,
@@ -1558,12 +1512,11 @@ describe('appRouter — W/O 마감·ERP 실적 송신의 진입 경로', () => {
   });
 });
 
-describe('appRouter — P/O 수신·조회의 진입 경로', () => {
+describe('appRouter — ERP W/O 처리 작업함의 진입 경로', () => {
   /*
-   * 생산 관리의 「ERP W/O」 묶음 줄은 첫 탭(ERP W/O 조회)을 건다 — 줄을 키보드로 열면 그 화면이
-   * 선다. 메뉴 이름은 「ERP W/O」이고 화면 제목은 그대로다.
+   * 생산 관리의 「ERP W/O」 묶음 줄은 첫 탭(ERP W/O 처리)을 건다. W-02-01은 처리형 작업함이다(화면 구성 규범 T-W-C).
    */
-  it('생산 관리 메뉴(ERP W/O)를 키보드로 열면 실제 P/O 조회 화면의 첫 상태가 선다', async () => {
+  it('생산 관리 메뉴(ERP W/O)를 키보드로 열면 작업함이 「확인 필요」 조건으로 선다', async () => {
     const user = userEvent.setup();
     renderRoutedApp('/quality/lot-status', [...productionOrderRoutes(), ...lotStatusRoutes()]);
 
@@ -1575,112 +1528,49 @@ describe('appRouter — P/O 수신·조회의 진입 경로', () => {
 
     await waitFor(() => expect(currentLocation()).toBe('/production/production-orders'));
     expect(
-      screen.getAllByRole('heading', { level: 1, name: messages.productionOrder.title }),
+      screen.getAllByRole('heading', { level: 1, name: messages.erpWorkOrderFlow.title }),
     ).toHaveLength(1);
-    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
-    const breadcrumbItems = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
-    expect(breadcrumbItems).toHaveLength(2);
+    expect(hubTab('ERP W/O', 'ERP W/O 처리')).toHaveAttribute('aria-current', 'page');
     expect(
-      within(breadcrumbItems[0]!).getByText(messages.productionOrder.breadcrumbRoot),
+      await screen.findByText(messages.erpWorkOrderFlow.list.emptyNeedsReviewTitle),
     ).toBeVisible();
-    /* 들어온 자리는 묶음의 첫 탭이다 — 탭 막대가 서고 그 탭이 지금 자리로 표시된다. */
-    expect(hubTab('ERP W/O', 'ERP W/O 조회')).toHaveAttribute('aria-current', 'page');
-    expect(within(breadcrumbItems[1]!).getByText(messages.productionOrder.title)).toBeVisible();
-    expect(await screen.findByText(messages.productionOrder.empty.title)).toBeVisible();
   });
 
-  it('화면 주소는 API 리소스가 아니라 정확한 공개 route다', () => {
+  it('작업함과 처리 화면 주소는 API 리소스가 아니라 화면 route다', () => {
     expect(routedPaths()).toContain('/production/production-orders');
+    expect(routedPaths()).toContain('/production/production-orders/:productionOrderNo');
     expect(routedPaths()).not.toContain('/planning/production-orders');
   });
 });
 
 /*
- * omf-all-around#41 — 두 화면은 주소에 대상이 실려야 그린다. 그래서 «메뉴에 두지 않고» 앞
- * 화면의 이동 버튼으로만 들어간다. 여기서 재는 것은 ① 메뉴에 없다 ② 주소는 살아 있다 둘이다.
+ * W-02-02(전개, 편성), W-02-03(4M 자원배정)은 처리 화면의 단계로, W-02-04(확정, 배포)는 작업함의 일괄 배포와
+ * 처리 화면 마지막 단계로 합쳤다. 옛 주소는 살려 두고 ERP W/O 처리로 넘긴다.
  */
-describe('appRouter — W/O 전개·편성의 진입 경로', () => {
-  it('사이드 메뉴에 없고, 대상 없이 주소로 열면 P/O 선택 안내가 선다', () => {
-    renderRoutedApp('/production/production-plans', lotStatusRoutes());
-
+describe('appRouter — 합친 옛 주소', () => {
+  it('대상 없는 전개, 편성 주소는 작업함으로 넘어간다', async () => {
+    renderRoutedApp('/production/production-plans', productionOrderRoutes());
+    await waitFor(() => expect(currentLocation()).toBe('/production/production-orders'));
     expect(screen.queryByRole('link', { name: 'W/O 전개·편성' })).toBeNull();
-    /* 제목 옆에 안내 한마디가 붙어 이름이 길어졌다(사용자 지시 2026-09-20) — 제목만 짚는다. */
-    expect(screen.getByRole('heading', { level: 1, name: /^W\/O 전개·편성/ })).toBeVisible();
-    expect(screen.getByText('ERP W/O를 먼저 선택하세요.')).toBeVisible();
   });
 
-  it('화면 주소는 계획 API 컬렉션과 구분한 exact 공개 route다', () => {
-    expect(routedPaths()).toContain('/production/production-plans');
-    expect(routedPaths()).not.toContain('/planning/production-plans');
-  });
-});
-
-describe('appRouter — 4M 자원배정·유효성 점검의 진입 경로', () => {
-  it('사이드 메뉴에 없고, 대상 없이 주소로 열면 생산계획 선택 안내가 선다', () => {
-    renderRoutedApp('/production/work-order-assignments', lotStatusRoutes());
-
-    expect(screen.queryByRole('link', { name: messages.workOrder.screen.view.title })).toBeNull();
-    expect(
-      screen.getByRole('heading', { level: 1, name: messages.workOrder.screen.view.title }),
-    ).toBeVisible();
-    expect(screen.getByText(messages.workOrder.screen.view.selectPlan)).toBeVisible();
+  it('대상 없는 4M 배정 주소는 작업함으로 넘어간다', async () => {
+    renderRoutedApp('/production/work-order-assignments', productionOrderRoutes());
+    await waitFor(() => expect(currentLocation()).toBe('/production/production-orders'));
   });
 
-  it('화면 주소는 W/O API 컬렉션과 구분한 exact 공개 route다', () => {
-    expect(routedPaths()).toContain('/production/work-order-assignments');
-    expect(routedPaths()).not.toContain('/production/work-orders');
-  });
-});
-
-describe('appRouter — W/O 확정·배포·생산LOT 선발행의 진입 경로', () => {
-  it('공개 주소에서 생산 breadcrumb와 fail-closed 첫 필터가 선다', async () => {
-    const requests: Request[] = [];
-    const stubFetch = createStubFetch(workOrderReleaseRoutes());
-
-    renderWithProviders(
-      <>
-        <RoutedApp />
-        <LocationProbe />
-        <BackProbe />
-      </>,
-      {
-        route: '/production/work-order-release',
-        session: SYNTHETIC_SESSION,
-        fetch: (request) => {
-          requests.push(request);
-
-          return stubFetch(request);
-        },
-      },
-    );
-
-    expect(
-      screen.getByRole('heading', { level: 1, name: messages.workOrderRelease.title }),
-    ).toBeVisible();
-    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
-    expect(within(breadcrumb).getByText(messages.workOrderRelease.breadcrumbRoot)).toBeVisible();
-    expect(within(breadcrumb).getByText(messages.workOrderRelease.title)).toBeVisible();
-    expect(
-      await screen.findByRole('combobox', { name: messages.workOrderRelease.filter.status }),
-    ).toHaveValue('');
-    expect(
-      screen.getByRole('button', { name: messages.workOrderRelease.filter.search }),
-    ).toBeDisabled();
+  it('확정, 배포 주소는 작업함의 「자동 계획 완료」 조건으로 넘어간다', async () => {
+    renderRoutedApp('/production/work-order-release', productionOrderRoutes());
     await waitFor(() =>
-      expect(requests.map((request) => new URL(request.url).pathname)).toEqual(
-        expect.arrayContaining(['/mdm/code-values', '/mdm/production-lines', '/mdm/uoms']),
-      ),
+      expect(currentLocation()).toBe('/production/production-orders?autoPlan=DONE'),
     );
-    expect(
-      requests.filter((request) =>
-        new URL(request.url).pathname.startsWith('/production/work-orders'),
-      ),
-    ).toHaveLength(0);
+    expect(screen.queryByRole('link', { name: 'W/O 확정·배포·생산LOT 선발행' })).toBeNull();
   });
 
-  it('화면 주소는 release API action과 구분한 exact 공개 route다', () => {
+  it('옛 주소는 그대로 route에 남는다', () => {
+    expect(routedPaths()).toContain('/production/production-plans');
+    expect(routedPaths()).toContain('/production/work-order-assignments');
     expect(routedPaths()).toContain('/production/work-order-release');
-    expect(routedPaths()).not.toContain('/production/work-orders/:workOrderId:release');
   });
 });
 
@@ -1743,9 +1633,11 @@ describe('appRouter — 알람 수신자 설정의 진입 경로', () => {
         name: messages.alarmRecipientSettings.title,
       }),
     ).toBeInTheDocument();
-    await waitFor(() =>
-      expect(currentLocation()).toBe('/notification/recipient-settings?event=SYN-EVENT-A'),
-    );
+    /* 부서를 고르기 전에는 주소에 아무것도 적지 않는다 — 어느 부서의 설정인지가 먼저다. */
+    expect(
+      await screen.findByText(messages.alarmRecipientSettings.state.selectDepartment),
+    ).toBeInTheDocument();
+    expect(currentLocation()).toBe('/notification/recipient-settings');
   });
 });
 
@@ -1821,7 +1713,19 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(docProgress.empty.noDocumentTypeTitle)).toBeInTheDocument();
 
-    expect(requests).toHaveLength(0);
+    /*
+     * 셸의 OA 공장 판단(메뉴의 OA 전용 화면 감춤 · omf-all-around#89)이 공장·공통코드를 한 번 읽는다 — 화면의 조회가
+     * 아니라 빼고 센다.
+     */
+    const isOaLookup = (request: Request) => {
+      const url = new URL(request.url);
+      return (
+        url.pathname.endsWith('/mdm/plants') ||
+        (url.pathname.endsWith('/mdm/code-values') &&
+          url.searchParams.get('codeGroupCode') === 'INSPECTION_SHEET_PLANT')
+      );
+    };
+    expect(requests.filter((request) => !isOaLookup(request))).toHaveLength(0);
   });
 
   /*

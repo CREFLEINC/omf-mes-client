@@ -1,9 +1,11 @@
 import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
+import { ApiRequestError } from '../../patterns/request';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 
 import { resolveActions } from './actions';
@@ -12,11 +14,12 @@ import { useWorkHoldEntry } from './entry-context';
 import { EventHistoryPanel } from './event-history-panel';
 import { EMPTY_HOLD_DRAFT, validateHoldDraft, type HoldDraft } from './hold-draft';
 import { HoldForm } from './hold-form';
-import { LoadErrorBanner } from './load-error-banner';
+import { describeError, LoadErrorBanner } from './load-error-banner';
 import { EndConfirmDialog } from './end-confirm-dialog';
 import { toEndGroup, toResumeGroup, toStopGroup, type HoldTarget } from './event-request';
 import { useWorkHoldOutbox, type OutboxDraft } from './outbox';
-import { useOpenSession, useSessionEvents, workHoldKeys } from './queries';
+import { DIRECTION_END } from './codes';
+import { useOpenSession, useSessionEvents, useWorkOrderNo, workHoldKeys } from './queries';
 import { useHoldReasons } from './reason-options';
 import { SessionPanel } from './session-panel';
 import { isRunningSession, isStoppedSession } from './types';
@@ -61,10 +64,20 @@ export const WorkHoldRegisterScreen = () => {
   const [isEndConfirmOpen, setEndConfirmOpen] = useState(false);
 
   const session = useOpenSession(workOrderId);
+  const workOrderNo = useWorkOrderNo(workOrderId);
   const events = useSessionEvents(session.session?.workSessionId ?? null);
   const reasons = useHoldReasons();
   const outbox = useWorkHoldOutbox();
+  /* 종료가 서버에 닿은 뒤에만 「끝냈다」고 말한다 — 큐에 담기만 한 동안은 세션이 아직 열려 있다. */
+  const endedHere = outbox.lastSentType === DIRECTION_END;
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const isLockedRejection = outbox.rejection?.kind === 'stateLocked';
+
+  /* 끝난 세션이라 거부됐으면 화면의 세션을 다시 읽어 「세션 없음」으로 맞춘다. */
+  useEffect(() => {
+    if (isLockedRejection) void queryClient.invalidateQueries({ queryKey: workHoldKeys.all });
+  }, [isLockedRejection, queryClient]);
 
   /**
    * 세션 값을 마지막으로 받은 시각.
@@ -186,7 +199,9 @@ export const WorkHoldRegisterScreen = () => {
           {t.title}
         </h1>
         {workOrderId !== null && (
-          <p className="pop-context">{`${t.entry.workOrderLabel} #${String(workOrderId)}`}</p>
+          <p className="pop-context">
+            {`${t.entry.workOrderLabel} ${workOrderNo ?? t.session.unknownValue}`}
+          </p>
         )}
 
         <p className="pop-context pop-context-right">
@@ -235,7 +250,8 @@ export const WorkHoldRegisterScreen = () => {
         </div>
       )}
 
-      {outbox.isStalled && (
+      {/* 보낼 것이 남아 있을 때만 다시 보내기를 권한다 — 0건에 [다시 보내기]는 할 일이 아니다. */}
+      {outbox.isStalled && outbox.pendingCount > 0 && !isLockedRejection && (
         <div className="banner-slot">
           <AlertBanner
             variant="warning"
@@ -251,13 +267,37 @@ export const WorkHoldRegisterScreen = () => {
         </div>
       )}
 
-      {outbox.rejection !== null && (
-        <LoadErrorBanner
-          error={outbox.rejection}
-          title={t.outbox.rejected}
-          onRetry={outbox.clearRejection}
-        />
-      )}
+      {outbox.rejection !== null &&
+        (isLockedRejection ? (
+          /*
+           * 이미 끝난 세션(관리웹 강제 종료 등)이나 더 바꿀 수 없는 작업지시다 — 다시 보내도 같은
+           * 답이 온다. 다시 시도를 권하지 않고 작업을 새로 시작할 곳으로 보낸다.
+           */
+          <div className="banner-slot">
+            <AlertBanner
+              variant="error"
+              title={t.outbox.locked}
+              action={
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  onClick={() => void navigate('/pop/work-start')}
+                >
+                  {t.outbox.toWorkStart(messages.workStart.title)}
+                </Button>
+              }
+            >
+              {describeError(outbox.rejection)}
+            </AlertBanner>
+          </div>
+        ) : (
+          /* 큐가 들고 있는 것은 이미 정규화된 오류다 — 다시 정규화하면 서버 문구가 사라진다. */
+          <LoadErrorBanner
+            error={new ApiRequestError(outbox.rejection)}
+            title={t.outbox.rejected}
+            onRetry={outbox.clearRejection}
+          />
+        ))}
 
       {/*
        * ⭐ **「현재 세션 없음」은 다른 안내 띠와 같이 본문 맨 위 전체 폭에 선다**(사용자 지시
@@ -272,7 +312,7 @@ export const WorkHoldRegisterScreen = () => {
         session.session === null && (
           <div className="banner-slot">
             <AlertBanner variant="warning" title={t.session.sectionLabel}>
-              {t.session.none}
+              {endedHere ? t.session.ended(messages.workStart.title) : t.session.none}
             </AlertBanner>
           </div>
         )}

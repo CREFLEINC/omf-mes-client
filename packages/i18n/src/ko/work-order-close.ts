@@ -1,6 +1,10 @@
 export const workOrderClose = {
   title: 'W/O 마감·ERP 실적 송신',
   breadcrumbRoot: '생산 관리',
+  /** 메뉴에서 이 화면까지의 경로 — 다른 화면이 「어디로 가라」고 안내할 때 쓴다. 메뉴 라벨과 같아야 한다(app/nav-menu-path.test.ts). */
+  menuPath: '생산 관리 › W/O 마감·ERP 실적 송신',
+  description:
+    '작업이 끝난 작업지시를 마감하고 생산 실적을 ERP 로 보냅니다. 마감하면 되돌릴 수 없습니다.',
   detailSummary: {
     pane: '작업지시 마감 상세 요약',
     heading: '작업지시 마감 상세',
@@ -24,6 +28,8 @@ export const workOrderClose = {
       reworkQty: '재작업 수량',
       achievementRate: '달성률',
       varianceQty: '차이 수량',
+      shortfallQty: '미달 수량',
+      overageQty: '초과 수량',
       judgment: '마감 판정',
       slotCount: '선발행 LOT 전체',
       withResultCount: '실적 있음',
@@ -41,9 +47,17 @@ export const workOrderClose = {
   },
   candidateList: {
     pane: '마감 후보 작업지시 목록',
-    fields: { workOrderNo: 'W/O 번호', item: '품목', quantity: '지시 수량' },
+    fields: {
+      workOrderNo: 'W/O 번호',
+      item: '품목',
+      status: '상태',
+      quantity: '지시 수량',
+      goodQty: '양품',
+      achievementRate: '달성률',
+      judgment: '판정',
+    },
     actions: { select: (workOrderNo: string): string => `${workOrderNo} 선택` },
-    values: { missingItem: '품목 표시명 없음' },
+    values: { missingItem: '품목 표시명 없음', unknown: '—' },
     loading: '마감 후보 작업지시 목록을 불러오는 중입니다.',
     empty: {
       title: '마감 후보 작업지시가 없습니다.',
@@ -81,6 +95,11 @@ export const workOrderClose = {
     plannedStartFrom: '계획 시작일(부터)',
     plannedStartTo: '계획 시작일(까지)',
     status: '마감 상태',
+    judgment: '판정',
+    judgmentUnavailable:
+      '마감 또는 취소 상태가 들어간 조회는 판정으로 거르지 않습니다. 판정으로 거르려면 진행, 중단, 완료 중에서 상태를 고르세요.',
+    /** 처음 조회하는 진행·중단을 한 선택지로 — 마감할 수 있는 작업지시가 머무는 상태다. */
+    closableStatuses: '진행 또는 중단',
     all: '전체',
     search: '조회',
     reset: '초기화',
@@ -91,32 +110,78 @@ export const workOrderClose = {
     statusLookupFailed: '마감 상태 목록을 불러오지 못했습니다.',
     statusLookupEmpty: '사용 가능한 마감 상태가 없습니다.',
     statusLookupTruncated: '마감 상태 목록 일부만 불러와 최초 조회를 시작할 수 없습니다.',
-    completedStatusMissing: '마감 완료 상태를 확인할 수 없어 최초 조회를 시작할 수 없습니다.',
+    inProgressStatusMissing:
+      '진행 상태를 확인할 수 없어 처음 조회를 시작할 수 없습니다. 새로고침한 뒤에도 같으면 시스템 관리자에게 알리세요.',
   },
   confirm: {
     title: (workOrderNo: string): string => `작업지시 마감 — ${workOrderNo}`,
     target: (workOrderNo: string): string => `대상 작업지시: ${workOrderNo}`,
     irreversible: '작업지시 마감은 되돌릴 수 없습니다. 정정이 필요하면 생산실적을 상계 처리하세요.',
-    erp: 'ERP 송신은 별도로 진행되며, 이 확인은 ERP 송신 완료를 의미하지 않습니다.',
+    /* 마감과 함께 송신 대기열에 오를 뿐 보낸 결과는 이 화면에 없다 — 어디서 보는지 함께 말한다. */
+    erp: (menuPath: string): string =>
+      `ERP 실적 송신은 마감과 함께 대기열에 올라갑니다. 송신 결과는 ${menuPath}에서 확인하세요.`,
+    fields: {
+      judgment: '판정',
+      remainder: '잔량 처리',
+      reason: '변동 사유',
+      remarks: '소멸 사유(비고)',
+    },
+    voidedSlots: (count: number): string =>
+      `실적이 없는 선발행 LOT ${String(count)}건은 마감과 함께 폐번됩니다.`,
+    openLots: (count: number, lotNos: string): string =>
+      `마감되지 않은 LOT ${String(count)}건(${lotNos})은 그 상태로 남습니다.`,
+    openLotsChecking: '진행 중인 LOT 을 확인하는 중입니다. 확인이 끝나면 마감할 수 있습니다.',
+    openLotsUnknown:
+      '진행 중인 LOT 을 확인하지 못했습니다. 마감해도 진행 중인 LOT 은 그 상태로 남습니다.',
+    /* 한 쪽만 읽어 진행 여부를 모르는 LOT 이 남았을 때 — 없다고 단정하지 않는다. */
+    uncheckedLots: (count: number): string =>
+      `확인하지 못한 미완료 LOT ${String(count)}건이 더 있습니다. 마감해도 그 LOT 은 그 상태로 남습니다.`,
     cancel: '취소',
     confirm: '작업지시 마감',
   },
-  closeSuccess: '작업지시가 마감되었습니다. ERP 송신은 별도로 진행됩니다.',
+  closeSuccess: (workOrderNo: string, menuPath: string): string =>
+    `${workOrderNo} 마감을 마쳤습니다. ERP 송신 결과는 ${menuPath}에서 확인하세요.`,
   readState: {
-    progressUnavailable: '생산 실적 판정을 확인할 수 없습니다.',
-    openSessionFailed: '열린 작업 세션 여부를 확인할 수 없습니다.',
-    reasonFailed: '변동 사유를 불러오지 못했습니다.',
-    reasonTruncated: '변동 사유 목록 일부만 불러와 입력을 시작할 수 없습니다.',
+    progressUnavailable:
+      '생산 실적 판정을 불러오지 못해 마감할 수 없습니다. 다시 시도를 누르고, 계속되면 시스템 관리자에게 알리세요.',
+    openSessionFailed:
+      '열린 작업 세션이 있는지 확인하지 못해 마감할 수 없습니다. 다시 시도를 누르고, 계속되면 시스템 관리자에게 알리세요.',
+    reasonFailed:
+      '변동 사유 목록을 불러오지 못해 마감할 수 없습니다. 다시 시도를 누르고, 계속되면 시스템 관리자에게 알리세요.',
+    reasonTruncated:
+      '변동 사유 목록을 일부만 불러와 고를 수 없습니다. 시스템 관리자에게 사유 목록 확인을 요청하세요.',
   },
   status: {
     pane: '작업지시 마감 입력 상태',
+    /** 마감을 막는 세션 표 — 어느 단말에서 끝낼지 알리려고 단말·작업자를 보인다. */
+    sessions: {
+      label: '마감을 막는 작업 세션',
+      terminal: '단말',
+      worker: '작업자',
+      startedAt: '시작',
+      state: '상태',
+      RUNNING: '진행',
+      STOPPED: '중단',
+      unknown: '확인할 수 없음',
+      workerValue: (name: string, workerNo: string): string => `${name}(${workerNo})`,
+      action: (holdScreen: string): string =>
+        `위 단말의 POP 「${holdScreen}」에서 세션을 끝낸 뒤 [다시 확인]을 누르세요. 그 단말에서 끝낼 수 없으면 [강제 종료]를 누르세요.`,
+      actions: '조치',
+      forceEnd: '강제 종료',
+      forceEndFor: (terminal: string): string => `${terminal} 세션 강제 종료`,
+      recheck: '다시 확인',
+    },
     heading: '현재 입력 상태',
     loading: '현재 입력 조건을 확인하는 중입니다.',
     complete: '현재 입력 조건이 모두 갖춰졌습니다.',
     blockers: {
-      OPEN_SESSION: '열린 작업 세션을 마감하세요.',
-      REMAINDER_DISPOSITION_REQUIRED: '잔량 처리 방법을 선택하세요.',
-      VARIANCE_REASON_REQUIRED: '변동 사유를 선택하세요.',
+      STATUS_NOT_CLOSABLE:
+        '이 작업지시는 지금 상태에서 마감할 수 없습니다. 진행, 중단, 완료 상태인 작업지시만 마감할 수 있으니, 목록의 상태를 확인하세요.',
+      OPEN_SESSION: '열린 작업 세션(중단 포함)이 있어 마감할 수 없습니다.',
+      REMAINDER_DISPOSITION_REQUIRED:
+        '미달이라 잔량 처리를 골라야 마감할 수 있습니다. 위 「잔량 처리」에서 이월 또는 소멸을 고르세요.',
+      VARIANCE_REASON_REQUIRED:
+        '미달이나 초과라 변동 사유를 골라야 마감할 수 있습니다. 위 「변동 사유」에서 고르세요.',
     },
   },
   input: {
@@ -133,11 +198,16 @@ export const workOrderClose = {
       legend: '잔량 처리',
       CARRY_OVER: '이월',
       WRITE_OFF: '소멸',
+      /* 서버가 이월 W/O 를 만들지 않는다 — 고르기만 하면 잔량이 다시 편성될 것으로 오해한다. */
+      carryOverNote: (menuPath: string): string =>
+        `이월 W/O 는 자동으로 만들어지지 않습니다 — ${menuPath}에서 새로 편성하세요.`,
     },
     reason: {
       label: '변동 사유',
       placeholder: '사유를 선택하세요.',
-      empty: '선택할 사유가 없습니다.',
+      empty:
+        '고를 수 있는 변동 사유가 없어 마감할 수 없습니다. 시스템 관리자에게 사유 등록을 요청하세요.',
+      prefilled: 'LOT 마감 때 고른 사유입니다. 바꿀 수 있습니다.',
     },
     /** 소멸을 골랐을 때만 — 소멸은 아무 자원도 만들지 않아 이유가 여기와 처분 코드에만 남는다. */
     remarks: {
@@ -166,6 +236,45 @@ export const workOrderClose = {
     },
     lockedFallback: '이 송신 항목은 변경할 수 없습니다.',
     sendTiming: (note: string): string => `송신 시점: ${note}`,
+  },
+  /** 관리웹에서 열린 세션을 닫는 주의 창 — 그 단말에 무엇이 일어나는지 누르기 전에 알린다. */
+  forceEnd: {
+    title: '작업 세션을 강제로 끝낼까요?',
+    effect:
+      '강제 종료하면 그 단말의 작업 세션이 바로 끝납니다. 그 단말에서 중단, 재개, 종료를 누르면 「이미 종료된 작업 세션」으로 거부되고, 작업을 이어 가려면 작업 시작을 다시 해야 합니다. 이미 입력했거나 아직 보내지 못한 실적과 자재 투입은 그대로 저장됩니다.',
+    notify: '강제 종료하기 전에 그 단말의 작업자에게 알리세요.',
+    reason: '강제 종료 사유',
+    reasonHelp: '누가 왜 세션을 닫았는지 기록으로 남습니다.',
+    reasonRequired: '강제 종료 사유를 입력하세요.',
+    reasonTooLong: (max: number): string => `강제 종료 사유를 ${String(max)}자 이하로 줄이세요.`,
+    cancel: '취소',
+    confirm: '강제 종료',
+    done: (terminal: string): string => `${terminal} 의 작업 세션을 강제 종료했습니다.`,
+    /* 그사이 그 단말이나 다른 사람이 먼저 끝냈다 — 실패가 아니라 이미 이루어진 일이다. */
+    alreadyEnded: (terminal: string): string =>
+      `${terminal} 의 작업 세션은 이미 끝나 있었습니다. 마감 조건을 다시 확인했습니다.`,
+  },
+  /** 마감된 W/O 의 마감 결과 — 무엇을 어떻게 닫았는지 정정 전에 본다. */
+  closeResult: {
+    pane: '마감 결과',
+    loading: '마감 결과를 불러오는 중입니다.',
+    loadFailed: '마감 결과를 불러오지 못했습니다. 다시 시도를 누르세요.',
+    fields: {
+      closedAt: '마감 일시',
+      closedBy: '마감자',
+      closedByNo: '사번',
+      closedVia: '마감 경로',
+      judgment: '판정',
+      disposition: '잔량 처리',
+      reason: '변동 사유',
+      voidedLots: '폐번된 LOT',
+    },
+    values: {
+      none: '없음',
+      unknown: '확인할 수 없음',
+      pop: 'POP',
+      web: '관리웹',
+    },
   },
   correction: {
     pane: '생산실적 정정',

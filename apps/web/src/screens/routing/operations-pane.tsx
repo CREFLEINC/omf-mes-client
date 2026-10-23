@@ -1,6 +1,6 @@
 import { Button, type Column, EmptyState, IconButton, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
 import { DisabledAction } from './disabled-action';
 import { OPERATION_FLAG_KEYS } from './operation-order';
@@ -25,6 +25,10 @@ export interface OperationsPaneProps {
   isSaving: boolean;
   /** 잠금 말고 저장만 막는 이유(헤더 미저장·입력 미완성). 없으면 null */
   saveBlockedReason: string | null;
+  /** 이 줄을 지울 수 없는 이유(선후행이 걸려 있다 등). 지울 수 있으면 null */
+  removeBlockedReason: (draft: OperationDraft) => string | null;
+  /** 선후행 창을 열 수 없는 이유. 잠긴 Rev 는 읽기 전용으로 열리므로 잠금은 이유가 아니다 */
+  dependenciesBlockedReason: string | null;
   /** 저장 실패 배너 슬롯 */
   banner: ReactNode;
   onAdd: () => void;
@@ -34,6 +38,7 @@ export interface OperationsPaneProps {
   onReorder: (from: number, to: number) => void;
   onSave: () => void;
   onCancel: () => void;
+  onOpenDependencies: () => void;
 }
 
 /**
@@ -77,6 +82,8 @@ export const OperationsPane = ({
   isDirty,
   isSaving,
   saveBlockedReason,
+  dependenciesBlockedReason,
+  removeBlockedReason,
   banner,
   onAdd,
   onEdit,
@@ -84,7 +91,9 @@ export const OperationsPane = ({
   onReorder,
   onSave,
   onCancel,
+  onOpenDependencies,
 }: OperationsPaneProps) => {
+  const lockNoteId = useId();
   const columns: Column<OperationDraft>[] = [
     {
       key: 'displayNo',
@@ -128,24 +137,45 @@ export const OperationsPane = ({
       key: 'rowActions',
       header: t.fields.rowActions,
       width: '96px',
-      render: (row, rowIndex) => (
-        <>
-          <IconButton
-            icon="edit"
-            size="sm"
-            aria-label={t.actions.editOperation(rowIndex + 1)}
-            disabled={!isEditable}
-            onClick={() => onEdit(row.draftId)}
-          />
-          <IconButton
-            icon="delete"
-            size="sm"
-            aria-label={t.actions.removeOperation(rowIndex + 1)}
-            disabled={!isEditable}
-            onClick={() => onRemove(row.draftId)}
-          />
-        </>
-      ),
+      /*
+       * 잠긴 Rev 에서는 아이콘마다 까닭을 붙인다 — 화면 위 안내만 두면 아이콘을 누르려던 사람은 왜
+       * 안 눌리는지 모른다. 비활성 단추는 마우스 올림을 받지 못해 감싼 칸이 툴팁을 진다.
+       */
+      render: (row, rowIndex) => {
+        /* 서버가 선후행이 걸린 공정의 삭제를 저장 전체와 함께 거부한다 — 지우기 전에 막고 풀 길을 말한다. */
+        const removeReason = isEditable ? removeBlockedReason(row) : null;
+        const removeNoteId = `${lockNoteId}-${row.draftId}`;
+
+        return (
+          <span className="routing-row-actions" title={isEditable ? undefined : lockReason}>
+            <IconButton
+              icon="edit"
+              size="sm"
+              aria-label={t.actions.editOperation(rowIndex + 1)}
+              aria-describedby={isEditable ? undefined : lockNoteId}
+              disabled={!isEditable}
+              onClick={() => onEdit(row.draftId)}
+            />
+            <span title={removeReason ?? undefined}>
+              <IconButton
+                icon="delete"
+                size="sm"
+                aria-label={t.actions.removeOperation(rowIndex + 1)}
+                aria-describedby={
+                  isEditable ? (removeReason === null ? undefined : removeNoteId) : lockNoteId
+                }
+                disabled={!isEditable || removeReason !== null}
+                onClick={() => onRemove(row.draftId)}
+              />
+            </span>
+            {removeReason !== null && (
+              <span id={removeNoteId} className="routing-visually-hidden">
+                {removeReason}
+              </span>
+            )}
+          </span>
+        );
+      },
     },
   ];
 
@@ -172,6 +202,11 @@ export const OperationsPane = ({
      */
     return (
       <div className="wide-table">
+        {!isEditable && (
+          <span id={lockNoteId} className="routing-visually-hidden">
+            {lockReason}
+          </span>
+        )}
         <Table
           density="compact"
           columns={columns}
@@ -218,10 +253,15 @@ export const OperationsPane = ({
             <DisabledAction label={t.actions.addOperation} reason={lockReason} />
           )}
 
-          <DisabledAction
-            label={t.actions.dependencies}
-            reason={t.actionReasons.dependenciesUnavailable}
-          />
+          {dependenciesBlockedReason === null ? (
+            <div className="field-cell">
+              <Button variant="outlined" onClick={onOpenDependencies}>
+                {t.actions.dependencies}
+              </Button>
+            </div>
+          ) : (
+            <DisabledAction label={t.actions.dependencies} reason={dependenciesBlockedReason} />
+          )}
         </div>
       )}
 

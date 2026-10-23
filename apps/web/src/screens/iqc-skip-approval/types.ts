@@ -1,6 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { approvalTypeLabelOf, targetLabelOf } from './labels';
 
 /**
  * W-01-02 화면 슬라이스의 계약 타입과 화면 타입.
@@ -56,8 +57,7 @@ export interface RequestFilters {
 }
 
 /**
- * 목록 한 행이 **보이는 값 전부**. 여섯이며 계획이 확정한 열 구성 그대로다 —
- * 화면이 열을 더하거나 다른 값으로 바꾸지 않는다.
+ * 목록 한 행이 **보이는 값 전부**. 일곱이다 — 계획의 여섯 열에 상태를 더했다(아래).
  *
  * **내부 번호를 담지 않는다**(`requestedBy`·`targetId`·`targetTypeCode`). 계약이 표시용 이름을
  * 함께 내려 주므로 화면이 번호를 낼 이유가 없고, 이 타입이 번호를 나르지 않으면 어느 칸에서도
@@ -69,18 +69,21 @@ export interface RequestFilters {
  * 나르면 어느 칸에서든 그것으로 갈리는 코드를 쓸 수 있게 되고, 그것이 계약이 금지한 매핑표의
  * 첫걸음이 된다.
  *
- * **상태 코드를 담지 않는다.** 확정된 여섯 열에 상태가 없다 — 조건 줄에는 상태 칸이 있지만
- * 그것은 좁히는 축이고, 열은 「무엇을 보이는가」다. 열을 늘리는 것보다 줄이는 것이 먼저다.
+ * **상태 코드를 담는다**(omf-all-around#134). 「결재 대기만 보기」를 끄면 대기·승인·반려가
+ * 한 목록에 섞이는데 상태 열이 없으면 고르기 전에는 구분할 길이 없었다. 응답에 이미 있는 값을
+ * 보이기만 하며 조건·동작은 그대로다.
  */
 export interface RequestRow {
   approvalRequestId: number;
   approvalRequestNo: string;
-  /** 코드 문자열 그대로. 값 목록이 확정되면 사람이 읽는 이름이 이 자리에 온다(`omf-mes#64`). */
+  /** 사용자 용어로 읽은 유형(`labels.ts`). 표에 없는 코드는 그대로다. */
   approvalTypeCode: string;
-  /** 대상 표시명. **서버가 만든 이름**이라 화면이 짓지 않는다. */
+  /** 대상 표시명. 서버 이름에서 앞머리 유형 코드만 사용자 용어로 바꾼다(`labels.ts`). */
   targetName: string;
   reasonFirstLine: string;
   requesterName: string;
+  /** 요청 상태 코드 — 배지로 그린다(`statusBadgeOf`). */
+  statusCode: string;
   /** `2026-08-06 14:20`. **시각까지 담는다** — 계약이 이 값을 `date-time`으로 둔다. */
   requestedAtText: string;
 }
@@ -115,6 +118,12 @@ export const firstLineOf = (reason: string): string =>
  */
 export const readableName = (value: string, whenMissing: string): string =>
   value.trim() === '' ? whenMissing : value;
+
+/** 대상 표시명 — 비면 그 사실을 적고, 있으면 앞머리 유형 코드를 사용자 용어로 읽는다. */
+export const targetNameOf = (target: ApprovalTarget): string =>
+  target.displayName.trim() === ''
+    ? t.values.unknownTarget
+    : targetLabelOf(target.displayName, target.targetTypeCode);
 
 /**
  * 사유 **전문**을 줄 단위로 나눈다. 상세 구획이 쓰는 자리다 — 목록은 첫 줄만 낸다.
@@ -159,9 +168,8 @@ export const formatDateTime = (value: string): string => {
  * 두었으나 빈 문자열은 스키마상 통과하며, 그 자리에서 번호를 꺼내는 것이 이 저장소가 이미
  * 두 번 재생산한 결함이다.
  *
- * **응답의 다른 필드를 여기서 끌어오지 않는다.** 결재 진행·`isMyTurn`·대상 유형은 목록의
- * 값이 아니다 — 옮겨 담는 순간 어느 칸에든 그릴 수 있게 되고, 그것이 확정 열 구성을 넘는
- * 첫걸음이 된다.
+ * **응답의 다른 필드를 여기서 끌어오지 않는다.** 결재 진행·`isMyTurn`은 목록의 값이 아니다 —
+ * 옮겨 담는 순간 어느 칸에든 그릴 수 있게 된다. 대상 유형은 표시명을 읽는 데만 쓰고 나르지 않는다.
  */
 export const toRequestRow = (request: ApprovalRequest): RequestRow => {
   const reasonFirstLine = firstLineOf(request.reason);
@@ -169,10 +177,11 @@ export const toRequestRow = (request: ApprovalRequest): RequestRow => {
   return {
     approvalRequestId: request.approvalRequestId,
     approvalRequestNo: request.approvalRequestNo,
-    approvalTypeCode: request.approvalTypeCode,
-    targetName: readableName(request.target.displayName, t.values.unknownTarget),
+    approvalTypeCode: approvalTypeLabelOf(request.approvalTypeCode),
+    targetName: targetNameOf(request.target),
     reasonFirstLine: reasonFirstLine === '' ? t.values.emptyReason : reasonFirstLine,
     requesterName: readableName(request.requestedByName, t.values.unknownRequester),
+    statusCode: request.statusCode,
     requestedAtText: formatDateTime(request.requestedAt),
   };
 };
@@ -187,12 +196,11 @@ export const toRequestRow = (request: ApprovalRequest): RequestRow => {
  * **대상·결재 진행을 담지 않는다.** 같은 응답에서 오지만 각자 자기 구획이 있고, 여기에
  * 옮겨 담는 순간 이 구획이 그것을 그릴 수 있게 된다 — 구획의 경계는 타입에서 선다.
  *
- * **상태 코드가 여기에는 있다.** 목록 여섯 열에는 상태가 없지만(열을 늘리는 것보다 줄이는
- * 것이 먼저다) 상세는 「이 요청이 지금 어떤 상태인가」를 말해야 하는 자리다.
+ * **상태 코드가 여기에도 있다.** 목록 열과 같은 배지로 그린다(`statusBadgeOf`).
  */
 export interface RequestDetailView {
   approvalRequestNo: string;
-  /** 코드 문자열 그대로. 값 목록이 확정되면 사람이 읽는 이름이 이 자리에 온다(`omf-mes#64`). */
+  /** 사용자 용어로 읽은 유형(`labels.ts`). */
   approvalTypeCode: string;
   requesterName: string;
   requestedAtText: string;
@@ -204,7 +212,7 @@ export interface RequestDetailView {
 /** 상세 응답의 요청 몸통을 정보 구획이 그릴 값으로 옮긴다. */
 export const toRequestDetailView = (request: ApprovalRequest): RequestDetailView => ({
   approvalRequestNo: request.approvalRequestNo,
-  approvalTypeCode: request.approvalTypeCode,
+  approvalTypeCode: approvalTypeLabelOf(request.approvalTypeCode),
   requesterName: readableName(request.requestedByName, t.values.unknownRequester),
   requestedAtText: formatDateTime(request.requestedAt),
   statusCode: request.statusCode,
@@ -226,9 +234,9 @@ export const toRequestDetailView = (request: ApprovalRequest): RequestDetailView
  */
 export interface DecisionSubject {
   approvalRequestNo: string;
-  /** 고정 계약 코드 문자열 그대로. */
+  /** 사용자 용어로 읽은 유형 — 목록·상세와 같은 낱말이다. */
   approvalTypeCode: string;
-  /** 대상 표시명. **서버가 만든 이름**이라 화면이 짓지 않는다. */
+  /** 대상 표시명 — 목록·상세와 같은 낱말이다. */
   targetName: string;
   requesterName: string;
   /** 사유의 **첫 줄**. 창은 읽는 자리가 아니라 확인하는 자리라 전문이 오면 다른 값이 묻힌다. */
@@ -241,8 +249,8 @@ export const toDecisionSubject = (request: ApprovalRequest): DecisionSubject => 
 
   return {
     approvalRequestNo: request.approvalRequestNo,
-    approvalTypeCode: request.approvalTypeCode,
-    targetName: readableName(request.target.displayName, t.values.unknownTarget),
+    approvalTypeCode: approvalTypeLabelOf(request.approvalTypeCode),
+    targetName: targetNameOf(request.target),
     requesterName: readableName(request.requestedByName, t.values.unknownRequester),
     reasonFirstLine: reasonFirstLine === '' ? t.values.emptyReason : reasonFirstLine,
   };

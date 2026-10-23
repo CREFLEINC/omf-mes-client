@@ -57,8 +57,8 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     finished: (total: number): string => `Đã kết thúc phê duyệt · tổng ${String(total)} bước`,
     myTurn: 'Bây giờ đến lượt bạn phê duyệt yêu cầu này',
     notMyTurn: 'Bây giờ chưa đến lượt bạn phê duyệt yêu cầu này',
-    waitingCurrent: 'Bước đang chờ phê duyệt',
-    waitingPending: 'Bước chưa phê duyệt',
+    waitingCurrent: 'Chờ duyệt',
+    waitingPending: 'Chưa duyệt',
     mine: 'Bước của tôi',
     noSteps: 'Không nhận được bước phê duyệt nào',
     limitRangeNote:
@@ -66,6 +66,7 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
   },
   filters: {
     all: 'Tất cả',
+    statusPendingNote: 'Chưa chốt danh sách trạng thái',
     chipStatus: (value: string): string => `Trạng thái: ${value}`,
     chipPeriod: (from: string, to: string): string => `Ngày trình: ${from} ~ ${to}`,
     chipPeriodFrom: (from: string): string => `Ngày trình: từ ${from}`,
@@ -97,17 +98,16 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
   decision: {
     outcome: {
       statusOnly:
-        'Phê duyệt chỉ đổi yêu cầu này sang trạng thái đã duyệt. Việc bỏ qua kiểm tra không được thực hiện bằng lần duyệt này.',
+        'Phê duyệt chỉ đổi yêu cầu sang trạng thái đã duyệt. Bỏ qua IQC được thực hiện riêng sau khi duyệt.',
       noErpDocument:
-        'Dù có duyệt thì phiếu nhập kho và việc gửi ERP cũng không xảy ra. Việc đó làm ở màn hình 「Xử lý nhập hàng đạt」 và chỉ với hàng đạt.',
+        'Không phát sinh phiếu nhập kho và gửi ERP. Nhập kho làm ở màn hình 「Xử lý nhập hàng đạt」, chỉ với hàng đạt.',
       inspectionPending:
-        'Kiểm tra vẫn ở trạng thái chưa xong. Chuyển Lot Status và xử lý nhập kho làm riêng ở màn hình 「Xử lý nhập hàng đạt」.',
+        'Kiểm tra vẫn chưa xong. Đổi trạng thái LOT và nhập kho làm riêng ở màn hình 「Xử lý nhập hàng đạt」.',
     },
     commentLabel: 'Ý kiến phê duyệt',
     commentHelp: 'Phê duyệt thì không cần ghi ý kiến, còn trả lại thì phải có ý kiến mới gửi được.',
     commentRejectGuide:
       'Nếu trả lại, hãy ghi rõ phải sửa gì mới trình lại được. Phê duyệt không hoàn tác được và việc lật lại là một yêu cầu mới.',
-    commentDisabledReason: 'Ý kiến phê duyệt: bây giờ chưa đến lượt bạn phê duyệt yêu cầu này',
     commentSendingReason: 'Ý kiến phê duyệt: đang gửi phê duyệt',
     commentRequired: 'Hãy ghi ý kiến trả lại',
     approve: 'Phê duyệt',
@@ -135,7 +135,7 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
       'Yêu cầu kiểm tra đầu vào sẽ được bỏ qua và LOT trở về bình thường để có thể nhập kho. Nếu còn lệnh giữ khác thì không thực hiện được — hãy gỡ lệnh giữ đó trước.',
     irreversible: 'Không thể hoàn tác sau khi thực hiện.',
     done: 'Đã thực hiện bỏ qua IQC',
-    executed: 'Đã thực hiện — LOT đang bình thường.',
+    executed: 'Đã bỏ qua IQC — LOT đã bình thường và có thể nhập kho.',
     notPending: (status: string) =>
       `LOT không ở trạng thái chờ kiểm tra đầu vào (trạng thái ${status}) nên không thể thực hiện bỏ qua.`,
     checking: 'Đang kiểm tra trạng thái LOT.',
@@ -143,6 +143,11 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
   toast: {
     approved: 'Đã phê duyệt',
     rejected: 'Đã trả lại',
+  },
+  labels: {
+    approvalType: { IQC_SKIP: 'Bỏ qua IQC' },
+    targetType: { INBOUND_LOT: 'LOT nhập hàng' },
+    status: { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Trả lại' },
   },
   values: {
     unknownRequester: 'Không xác nhận được người trình',

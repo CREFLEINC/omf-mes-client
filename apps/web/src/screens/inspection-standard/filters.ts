@@ -75,9 +75,7 @@ export interface PlanListQuery {
  */
 export const toListQuery = (filters: PlanFilters, page: number): PlanListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
-  ...(filters.inspectionTypeCode === ''
-    ? {}
-    : { inspectionTypeCode: filters.inspectionTypeCode }),
+  ...(filters.inspectionTypeCode === '' ? {} : { inspectionTypeCode: filters.inspectionTypeCode }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
 });

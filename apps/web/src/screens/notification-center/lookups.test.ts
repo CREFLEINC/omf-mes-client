@@ -14,8 +14,8 @@ import { describeEvent, useNotificationEventOptions, withCurrentEvent } from './
 const EVENTS_PATH = '/app/notification-events';
 
 const ENTRIES = [
-  { value: 'SYN-EVENT-01', label: '합성 이벤트 가' },
-  { value: 'SYN-EVENT-02', label: '합성 이벤트 나' },
+  { value: 'WORK_SESSION_STARTED', label: '생산 실행' },
+  { value: 'WORK_ORDER_CLOSED', label: '생산 마감' },
 ];
 
 const eventsRoute = (respond: () => Response): StubRoute => ({
@@ -39,7 +39,7 @@ const recordingFetch = (routes: StubRoute[]): { fetch: StubFetch; urls: URL[] } 
 
 describe('describeEvent', () => {
   it('목록에 있는 코드는 이름으로 푼다', () => {
-    expect(describeEvent('SYN-EVENT-01', ENTRIES)).toBe('합성 이벤트 가');
+    expect(describeEvent('WORK_SESSION_STARTED', ENTRIES)).toBe('생산 실행');
   });
 
   /**
@@ -54,13 +54,15 @@ describe('describeEvent', () => {
   });
 
   it('목록이 비어 있어도 원문으로 낙하한다 — 미도착·실패가 같은 결과로 수렴한다', () => {
-    expect(describeEvent('SYN-EVENT-01', [])).toBe('SYN-EVENT-01');
+    expect(describeEvent('WORK_SESSION_STARTED', [])).toBe('WORK_SESSION_STARTED');
   });
 
   it('이름이 비었거나 공백뿐이면 코드로 낙하한다 — 빈 제목을 그리지 않는다', () => {
-    expect(describeEvent('SYN-EVENT-04', [{ value: 'SYN-EVENT-04', label: '   ' }])).toBe(
-      'SYN-EVENT-04',
-    );
+    expect(
+      describeEvent('APPROVAL_ACTION_REQUIRED', [
+        { value: 'APPROVAL_ACTION_REQUIRED', label: '   ' },
+      ]),
+    ).toBe('APPROVAL_ACTION_REQUIRED');
     expect(describeEvent('SYN-EVENT-05', [{ value: 'SYN-EVENT-05', label: '' }])).toBe(
       'SYN-EVENT-05',
     );
@@ -69,7 +71,7 @@ describe('describeEvent', () => {
 
 describe('withCurrentEvent', () => {
   it('고른 값이 목록에 있으면 그대로 둔다', () => {
-    expect(withCurrentEvent(ENTRIES, 'SYN-EVENT-01')).toEqual(ENTRIES);
+    expect(withCurrentEvent(ENTRIES, 'WORK_SESSION_STARTED')).toEqual(ENTRIES);
   });
 
   it('「전체」면 아무것도 더하지 않는다', () => {
@@ -124,8 +126,8 @@ describe('useNotificationEventOptions', () => {
     });
 
     expect(result.current.entries[0]).toEqual({
-      value: 'SYN-EVENT-01',
-      label: '합성 이벤트 가',
+      value: 'WORK_SESSION_STARTED',
+      label: '생산 실행',
     });
   });
 

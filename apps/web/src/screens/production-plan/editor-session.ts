@@ -111,6 +111,14 @@ export const useProductionPlanEditorSession = (productionOrderId: number | null)
     (key: string) => updateRows((rows) => removeProductionPlanRow(rows, key)),
     [updateRows],
   );
+  /* 고친 줄을 버리고 서버의 최신 계획으로 다시 채운다(저장 충돌 뒤 「최신 불러오기」). */
+  const { refetch } = plans;
+  const discard = useCallback(() => {
+    setSession((current) =>
+      current.ownerId === productionOrderId ? { ...current, isHydrated: false, rows: [] } : current,
+    );
+    void refetch();
+  }, [productionOrderId, refetch]);
 
   return {
     plans,
@@ -122,5 +130,6 @@ export const useProductionPlanEditorSession = (productionOrderId: number | null)
     setErrors,
     settle,
     remove,
+    discard,
   };
 };

@@ -67,7 +67,15 @@ export const CurrentInputs = ({
                   <span className="pop-rc-input-qty-uom">{labels.describeUom(row.uomId)}</span>
                 </span>
               </span>
-              <span className="pop-rc-input-lot">{labels.describeLot(row.lotId)}</span>
+              <span className="pop-rc-input-lot">
+                {labels.describeLot(row.lotId)}
+                {/* IQC 에서 적은 4M 변경품 — 교체를 막지 않고 알린다(omf-all-around#63 2단계). */}
+                {row.isFourMChange && (
+                  <Chip variant="status" size="sm" status="warning">
+                    {t.current.fourMChangeMark}
+                  </Chip>
+                )}
+              </span>
             </li>
           ))}
         </ul>

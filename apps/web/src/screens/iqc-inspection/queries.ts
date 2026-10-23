@@ -1,6 +1,7 @@
 import type {
   ApiClient,
   components,
+  FourMChangeForward,
   InspectionDefectInput,
   InspectionResultConfirmForward,
   InspectionResultCreateForward,
@@ -263,6 +264,10 @@ export interface SaveDraftVariables {
    * `undefined` 면 키를 싣지 않는다 — 서버가 기존 기록에 손대지 않는다(아직 되살리지 못한 회차).
    */
   defects: InspectionDefectInput[] | undefined;
+  /**
+   * 4M 변경품(omf-all-around#63 · 서버 선행 P-86) — `undefined` 면 키를 싣지 않는다(LOT 없는 의뢰). `null` 이면 변경품 아님.
+   */
+  fourMChange: FourMChangeForward | null | undefined;
 }
 
 /** 계약이 못박은 두 값 중 임시 저장이 쓰는 쪽. 확정은 다음 회차가 다룬다. */
@@ -344,6 +349,11 @@ const judgmentOf = (code: string): { overallJudgmentCode?: string } =>
 const previousOf = (previousResultId: number | null): { previousResultId?: number } =>
   previousResultId === null ? {} : { previousResultId };
 
+const fourMOf = (
+  value: FourMChangeForward | null | undefined,
+): { fourMChange?: FourMChangeForward | null } =>
+  value === undefined ? {} : { fourMChange: value };
+
 const toCreateBody = (v: SaveDraftVariables): InspectionResultCreateForward => ({
   inspectionRequestId: v.inspectionRequestId,
   inspectedQty: v.inspectedQty,
@@ -357,6 +367,7 @@ const toCreateBody = (v: SaveDraftVariables): InspectionResultCreateForward => (
   ...previousOf(v.previousResultId),
   /* 새 회차에 빈 배열은 실을 까닭이 없다 — 지울 기록이 없다. */
   ...(v.defects === undefined || v.defects.length === 0 ? {} : { defects: v.defects }),
+  ...fourMOf(v.fourMChange),
 });
 
 const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdateForward => ({
@@ -367,6 +378,7 @@ const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdateForward => (
   ...judgmentOf(v.overallJudgmentCode),
   /* ⭐ 빈 배열도 싣는다 — 불합격을 풀고 저장하면 앞서 임시 저장한 사유를 지워야 한다. `undefined` 는 키를 뺀다. */
   ...(v.defects === undefined ? {} : { defects: v.defects }),
+  ...fourMOf(v.fourMChange),
 });
 
 const fetchItemSpecs = (
@@ -487,6 +499,8 @@ export interface ConfirmVariables {
   defects?: InspectionDefectInput[];
   /** 자동 판정(합격판정개수 기준)과 다르게 확정할 때의 변경 사유(omf-all-around#125 · 서버 P-70). */
   judgmentChangeReason?: string;
+  /** 4M 변경품(omf-all-around#63 · 서버 P-86) — 확정과 한 트랜잭션에서 그 LOT 의 기록을 갈아 끼운다. */
+  fourMChange?: FourMChangeForward | null;
 }
 
 /**
@@ -525,6 +539,7 @@ export const useConfirmResult = (
           ...(variables.judgmentChangeReason === undefined
             ? {}
             : { judgmentChangeReason: variables.judgmentChangeReason }),
+          ...fourMOf(variables.fourMChange),
         } satisfies InspectionResultConfirmForward,
       }),
     etagPath: inspectionResultId === null ? null : roundPath(inspectionResultId),

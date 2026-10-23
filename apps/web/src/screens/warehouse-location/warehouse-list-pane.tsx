@@ -12,8 +12,9 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
+import { type LookupSource, lookupDisplayLabel } from '../../patterns/lookup-display';
 import { codeLabel, defaultWarehouseFilters } from './code-options';
-import type { Warehouse, WarehouseFilters } from './types';
+import type { LookupEntry, Warehouse, WarehouseFilters } from './types';
 
 export interface WarehouseListPaneProps {
   items: Warehouse[];
@@ -32,12 +33,19 @@ export interface WarehouseListPaneProps {
    */
   loadError: ReactNode;
   warehouseTypeOptions: { value: string; label: string }[];
+  /** 공장 선택지. 미사용 공장은 지금 고른 값일 때만 남는다 */
+  plantOptions: { value: string; label: string }[];
+  /** 공장 이름 풀이용 원본 — 공장 열과 조건 칩은 선택지가 아니라 전체에서 이름을 찾는다 */
+  plants: LookupSource<LookupEntry>;
 }
 
 const t = messages.warehouseLocation;
 
 const hasAnyFilter = (filters: WarehouseFilters): boolean =>
-  filters.q !== '' || filters.warehouseTypeCode !== '' || filters.includeInactive;
+  filters.q !== '' ||
+  filters.plantId !== '' ||
+  filters.warehouseTypeCode !== '' ||
+  filters.includeInactive;
 
 export const WarehouseListPane = ({
   items,
@@ -49,16 +57,19 @@ export const WarehouseListPane = ({
   onAddWarehouse,
   loadError,
   warehouseTypeOptions,
+  plantOptions,
+  plants,
 }: WarehouseListPaneProps) => {
+  const plantSelectId = useId();
   const typeSelectId = useId();
 
   /*
-   * 트리거 모델: **검색어만** 모아서 적용([조회]·Enter), 창고 유형·미사용 포함은 바꾸는 즉시 적용.
+   * 트리거 모델: **검색어만** 모아서 적용([조회]·Enter), 공장·창고 유형·미사용 포함은 바꾸는 즉시 적용.
    *
-   * ⛔ 유형을 draft 에 두면 안 된다(omf-all-around#17 · 실화면 재현 2026-09-18). 유형을 고르기만
+   * ⛔ 유형(공장도 같다)을 draft 에 두면 안 된다(omf-all-around#17 · 실화면 재현 2026-09-18). 유형을 고르기만
    *    하면 요청이 나가지 않아 「필터가 안 먹는다」로 보였고, [조회] 전에 「미사용 포함」을 누르면
    *    draft 가 적용값으로 덮여 고른 유형이 지워진 채 조회됐다.
-   * ⛔ 입력 중인 검색어는 적용된 검색어가 바뀔 때만 맞춘다 — 즉시 적용 축(유형·미사용)을 바꿀
+   * ⛔ 입력 중인 검색어는 적용된 검색어가 바뀔 때만 맞춘다 — 즉시 적용 축(공장·유형·미사용)을 바꿀
    *    때 입력하던 검색어가 지워지지 않게 한다. 조건 칩에는 미러하지 않는다.
    */
   const [draftQ, setDraftQ] = useState(appliedFilters.q);
@@ -89,6 +100,13 @@ export const WarehouseListPane = ({
     },
     /* 「명칭」이 무엇의 이름인지 머리에서 바로 읽히게 한다(omf-all-around#17). */
     { key: 'warehouseName', header: t.fields.warehouseName },
+    {
+      key: 'plantId',
+      /* 사업부가 아니라 공장이다 — 같은 사업부 안에서 창고가 공장으로 갈린다(P-109). */
+      header: t.fields.plant,
+      align: 'center',
+      render: (row) => lookupDisplayLabel(plants, row.plantId),
+    },
     {
       key: 'warehouseTypeCode',
       header: t.fields.warehouseType,
@@ -166,6 +184,17 @@ export const WarehouseListPane = ({
           clearLabel={messages.common.clear}
         />
         <div className="field-cell">
+          <label className="field-label" htmlFor={plantSelectId}>
+            {t.fields.plant}
+          </label>
+          <Select
+            id={plantSelectId}
+            options={[{ value: '', label: t.filters.plantAll }, ...plantOptions]}
+            value={appliedFilters.plantId}
+            onChange={(value) => onApplyFilters({ ...appliedFilters, plantId: value })}
+          />
+        </div>
+        <div className="field-cell">
           <label className="field-label" htmlFor={typeSelectId}>
             {t.fields.warehouseType}
           </label>
@@ -176,7 +205,7 @@ export const WarehouseListPane = ({
             onChange={(value) => onApplyFilters({ ...appliedFilters, warehouseTypeCode: value })}
           />
         </div>
-        {/* 해제 축이라 변경 즉시 적용한다(유형과 같다). */}
+        {/* 해제 축이라 변경 즉시 적용한다(공장·유형과 같다). */}
         <div className="field-cell field-cell-unlabeled">
           <Checkbox
             checked={appliedFilters.includeInactive}
@@ -209,6 +238,15 @@ export const WarehouseListPane = ({
               onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
             >
               {t.filters.chipKeyword(appliedFilters.q)}
+            </Chip>
+          )}
+          {appliedFilters.plantId !== '' && (
+            <Chip
+              variant="status"
+              removeLabel={t.filters.chipRemovePlant}
+              onRemove={() => onApplyFilters({ ...appliedFilters, plantId: '' })}
+            >
+              {t.filters.chipPlant(lookupDisplayLabel(plants, appliedFilters.plantId))}
             </Chip>
           )}
           {appliedFilters.warehouseTypeCode !== '' && (

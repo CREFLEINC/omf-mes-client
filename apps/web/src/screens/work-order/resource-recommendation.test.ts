@@ -34,7 +34,7 @@ describe('toRecommendationChips', () => {
       {
         value: '9',
         code: 'M9',
-        label: 'M9 · 금형',
+        label: '금형 (M9)',
         source: 'DEFAULT',
         productionLineId: null,
         warning: null,
@@ -77,7 +77,7 @@ describe('toRecommendationChips', () => {
       {
         value: '1',
         code: '주간',
-        label: 'D · 주간 (08:00 ~ 20:00)',
+        label: '주간 (D) 08:00 ~ 20:00',
         source: null,
         productionLineId: null,
         warning: null,
@@ -87,10 +87,10 @@ describe('toRecommendationChips', () => {
     expect(
       chips.responsibleWorkerId.map((chip) => [chip.code, chip.label, chip.source, chip.warning]),
     ).toEqual([
-      ['작업자0', 'W-0 · 작업자0', 'RECENT', null],
-      ['작업자1', 'W-1 · 작업자1', 'RECENT', null],
-      ['작업자2', 'W-2 · 작업자2', 'RECENT', null],
-      ['작업자3', 'W-3 · 작업자3', 'QUALIFIED', 'workerBusy'],
+      ['작업자0', '작업자0 (W-0)', 'RECENT', null],
+      ['작업자1', '작업자1 (W-1)', 'RECENT', null],
+      ['작업자2', '작업자2 (W-2)', 'RECENT', null],
+      ['작업자3', '작업자3 (W-3)', 'QUALIFIED', 'workerBusy'],
     ]);
   });
 

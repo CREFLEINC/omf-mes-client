@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   codeValuesResponse,
+  departmentsResponse,
   equipmentTypeCodeValues,
   makeCodeValue,
   statusCodeValues,
@@ -211,6 +212,10 @@ const renderScreen = (options: RenderOptions = {}) => {
       {
         match: (request) => isPath(request, '/mdm/processes'),
         respond: () => (options.respondProcesses ?? (() => jsonResponse(processesResponse())))(),
+      },
+      {
+        match: (request) => isPath(request, '/mdm/departments'),
+        respond: () => jsonResponse(departmentsResponse()),
       },
     ]),
   });
@@ -665,6 +670,49 @@ describe('EquipmentMasterScreen — 그룹 등록·수정', () => {
     expect(request.headers.get('If-Match')).toBe('7');
     expect(request.headers.get('Idempotency-Key')).not.toBeNull();
     await expect(lastWriteBody(writes)).resolves.toMatchObject({ groupName: '프레스 구역' });
+  });
+
+  /* 001 W-05-12 — 사용 중인 부서만 고를 수 있고, 고른 부서가 본문에 숫자로 실린다. */
+  it('담당 부서를 고르면 수정 본문에 departmentId 가 실린다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen();
+
+    await openGroup(user);
+    await user.click(form().getByRole('combobox', { name: t.fields.department }));
+    const option = await screen.findByRole('option', { name: 'D-PRD1 · 생산1팀' });
+    expect(screen.queryByRole('option', { name: /D-OLD/ })).toBeNull();
+    await user.click(option);
+    await user.click(form().getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+    await expect(lastWriteBody(writes)).resolves.toMatchObject({ departmentId: 7 });
+  });
+
+  it('담당 부서를 지정 없음으로 바꾸면 해제(null)를 싣는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen({
+      respondDetail: (request) =>
+        jsonResponse(
+          groupDetail({
+            ...(groupById(idOf(request)) as EquipmentGroup),
+            departmentId: 7,
+            departmentName: '생산1팀',
+          } as EquipmentGroup),
+          { headers: { ETag: '7' } },
+        ),
+    });
+
+    await openGroup(user);
+    await user.click(form().getByRole('combobox', { name: t.fields.department }));
+    await user.click(await screen.findByRole('option', { name: t.form.departmentNone }));
+    await user.click(form().getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+    await expect(lastWriteBody(writes)).resolves.toMatchObject({ departmentId: null });
   });
 
   /*

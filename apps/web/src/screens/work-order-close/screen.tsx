@@ -9,6 +9,7 @@ export const WorkOrderCloseScreen = () => (
   <>
     <PageHeader
       title={t.title}
+      description={t.description}
       breadcrumb={
         <Breadcrumb
           items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
