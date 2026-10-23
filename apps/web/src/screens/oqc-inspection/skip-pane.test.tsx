@@ -86,6 +86,7 @@ describe('OQC 생략 구획', () => {
   it('결재 중이면 진행 중이라고만 말하고 요청·실행 단추를 두지 않는다', async () => {
     renderPane('PENDING');
     expect(await screen.findByText(t.pending)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.openApproval })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.request })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.execute })).not.toBeInTheDocument();
   });

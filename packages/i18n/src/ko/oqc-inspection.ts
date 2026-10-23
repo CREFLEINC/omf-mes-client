@@ -363,8 +363,8 @@ export const oqcInspection = {
     result: '승인 후 생략을 실행하면 남은 OQC 의뢰가 생략되고, 출하검사가 통과로 처리됩니다.',
     reason: '생략 사유',
     reasonPlaceholder: '출하검사 생략 사유를 입력하세요',
-    /** 결재하는 화면으로(#136) — 「특채·한도승인 승인 처리」. */
-    openApproval: '승인 처리 화면으로 이동',
+    /** 요청한 그 건의 결재 화면으로(#136) — 「특채·한도승인 승인 처리」. 요청이 결재 대기일 때만 선다. */
+    openApproval: '요청 건 승인 처리로 이동',
     currentStep: '현재 단계',
     /** 입력한 글자 수 — 상한은 없다(계약은 비우지만 않으면 된다 · #136). */
     reasonCount: (count: number): string => `${String(count)}자`,

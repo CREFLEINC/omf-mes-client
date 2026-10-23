@@ -152,21 +152,6 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
               </Fragment>
             ))}
           </ol>
-          {/* 결재는 「특채·한도승인 승인 처리」에서 한다 — 요청이 있으면 그 요청을 골라 연다(#136). */}
-          <Button
-            type="button"
-            variant="outlined"
-            size="sm"
-            onClick={() =>
-              void navigate(
-                latest === null
-                  ? '/quality/approvals'
-                  : `/quality/approvals?approvalRequestId=${String(latest.approvalRequestId)}`,
-              )
-            }
-          >
-            {t.openApproval}
-          </Button>
         </div>
         <p className="oqc-inspection-skip-result">
           <Icon name="info" size={18} aria-hidden="true" />
@@ -178,8 +163,25 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
         <p className="field-note">{t.loading}</p>
       ) : approval.isError ? (
         <AlertBanner variant="error" title={t.loadFailed} />
-      ) : status === 'PENDING' ? (
-        <AlertBanner variant="info" title={t.pending} />
+      ) : status === 'PENDING' && latest !== null ? (
+        <>
+          <AlertBanner variant="info" title={t.pending} />
+          {/* 요청한 그 건을 골라 결재 화면을 연다 — 「특채·한도승인 승인 처리」(#136). */}
+          <div className="oqc-inspection-skip-actions">
+            <Button
+              type="button"
+              variant="outlined"
+              size="md"
+              onClick={() =>
+                void navigate(
+                  `/quality/approvals?approvalRequestId=${String(latest.approvalRequestId)}`,
+                )
+              }
+            >
+              {t.openApproval}
+            </Button>
+          </div>
+        </>
       ) : status === 'APPROVED' ? (
         <>
           <AlertBanner variant="info" title={t.approved} />
