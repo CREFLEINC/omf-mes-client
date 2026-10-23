@@ -12,7 +12,7 @@ import {
 } from './candidate-screen-model';
 import type { WorkOrderCloseFilterValues } from './filter-bar';
 import type { WorkOrderCloseFilterInitialization } from './filter-initialization';
-import type { WorkOrderCloseFact } from './queries';
+import type { WorkOrderCloseCandidateFact } from './queries';
 
 const t = messages.workOrderClose.candidateReferences;
 const emptyFilters: WorkOrderCloseFilterValues = {
@@ -20,12 +20,14 @@ const emptyFilters: WorkOrderCloseFilterValues = {
   plannedStartFrom: '',
   plannedStartTo: '',
   statusCode: '',
+  judgmentCode: '',
 };
 const searchedFilters: WorkOrderCloseFilterValues = {
   productionOrderId: '501',
   plannedStartFrom: '2026-08-23',
   plannedStartTo: '2026-08-24',
   statusCode: 'IN_PROGRESS',
+  judgmentCode: '',
 };
 const initialization = (
   kind: WorkOrderCloseFilterInitialization['kind'],
@@ -33,7 +35,7 @@ const initialization = (
   kind === 'READY'
     ? {
         kind,
-        initialFilters: { ...emptyFilters, statusCode: 'COMPLETED' },
+        initialFilters: { ...emptyFilters, statusCode: 'IN_PROGRESS,SUSPENDED' },
         canLoadCandidates: true,
         statusUnavailableReason: null,
       }
@@ -70,7 +72,11 @@ const clearMissing = (
     type: 'CLEAR_MISSING_SELECTION',
     snapshot,
   });
-const fact = (workOrderId: number, itemId = 910001, uomId = 920001): WorkOrderCloseFact => ({
+const fact = (
+  workOrderId: number,
+  itemId = 910001,
+  uomId = 920001,
+): WorkOrderCloseCandidateFact => ({
   workOrderId,
   workOrderNo: `SYN-WO-${String(workOrderId)}`,
   productionPlanId: 501,
@@ -80,7 +86,7 @@ const fact = (workOrderId: number, itemId = 910001, uomId = 920001): WorkOrderCl
   uomId,
   workOrderTypeCode: 'SYN-NORMAL',
   priorityNo: 2,
-  statusCode: 'COMPLETED',
+  statusCode: 'IN_PROGRESS',
   productionLineId: null,
   responsibleWorkerId: null,
   plannedStartAt: null,
@@ -92,6 +98,13 @@ const fact = (workOrderId: number, itemId = 910001, uomId = 920001): WorkOrderCl
   completedAt: null,
   completionVarianceReasonCode: null,
   closedAt: null,
+  closeDispositionCode: null,
+  closedWorkerNo: null,
+  closedWorkerName: null,
+  closedByUserName: null,
+  closeJudgmentCode: null,
+  voidedLotCount: null,
+  progress: null,
   defaultWipLocationId: null,
   defaultFgLocationId: null,
   defaultScrapLocationId: null,
@@ -115,7 +128,9 @@ describe('work-order close candidate screen state', () => {
     state = synchronize(state, 'UNAVAILABLE');
     expect(state).toEqual(expectedState('UNAVAILABLE'));
     state = synchronize(state, 'READY');
-    expect(state).toEqual(expectedState('READY', { ...emptyFilters, statusCode: 'COMPLETED' }));
+    expect(state).toEqual(
+      expectedState('READY', { ...emptyFilters, statusCode: 'IN_PROGRESS,SUSPENDED' }),
+    );
     expect(checking).toEqual(checkingSnapshot);
   });
   it('owns SEARCH RESET CHANGE_PAGE and SELECT lifetimes without mutating filters', () => {
@@ -177,6 +192,7 @@ describe('work-order close candidate projections', () => {
     const snapshot = structuredClone(state);
     expect(toWorkOrderCloseCandidateFilters(state)).toEqual({
       statusCode: 'IN_PROGRESS',
+      completionJudgmentCode: null,
       productionOrderId: 501,
       plannedStartFrom: '2026-08-23',
       plannedStartTo: '2026-08-24',
@@ -185,7 +201,7 @@ describe('work-order close candidate projections', () => {
     expect(
       toWorkOrderCloseCandidateFilters({
         ...state,
-        appliedFilters: { ...emptyFilters, statusCode: 'COMPLETED' },
+        appliedFilters: { ...emptyFilters, statusCode: 'IN_PROGRESS,SUSPENDED' },
       }),
     ).toMatchObject({ productionOrderId: null, plannedStartFrom: null, plannedStartTo: null });
     expect(state).toEqual(snapshot);
@@ -223,13 +239,21 @@ describe('work-order close candidate projections', () => {
         workOrderId: 702,
         workOrderNo: 'SYN-WO-702',
         itemLabel: 'SYN-ITEM-2 · Synthetic Item 2',
+        statusLabel: 'IN_PROGRESS',
         quantityLabel: '12.5 SYN-KG · Synthetic Kilogram',
+        goodQtyLabel: '—',
+        achievementLabel: '—',
+        judgmentLabel: '—',
       },
       {
         workOrderId: 701,
         workOrderNo: 'SYN-WO-701',
         itemLabel: 'SYN-ITEM · Synthetic Item',
+        statusLabel: 'IN_PROGRESS',
         quantityLabel: '12.5 SYN-EA · Synthetic Each',
+        goodQtyLabel: '—',
+        achievementLabel: '—',
+        judgmentLabel: '—',
       },
     ]);
     expect({ candidates, namedReferences, source }).toEqual(snapshot);
@@ -258,10 +282,52 @@ describe('work-order close candidate projections', () => {
           workOrderId: 701,
           workOrderNo: 'SYN-WO-701',
           itemLabel,
+          statusLabel: 'IN_PROGRESS',
           quantityLabel: `12.5 ${uomLabel}`,
+          goodQtyLabel: '—',
+          achievementLabel: '—',
+          judgmentLabel: '—',
         },
       ]);
       expect(JSON.stringify(rows)).not.toMatch(/910001|920001/);
     },
   );
+
+  it('목록 줄에 상태 이름, 양품, 달성률, 판정을 한 칸에 하나씩 싣는다', () => {
+    const rows = toWorkOrderCloseCandidateRows(
+      [
+        {
+          ...fact(701),
+          progress: { goodQty: 4, achievementRate: 0.4, completionJudgmentCode: 'UNDER' },
+        },
+      ],
+      [{ itemId: 910001, status: 'named', label: 'SYN-ITEM' }],
+      {
+        entries: [{ uomId: 920001, label: 'EA' }],
+        isLoading: false,
+        isError: false,
+        truncated: false,
+      },
+      (code) => (code === 'IN_PROGRESS' ? '진행' : code),
+    );
+
+    expect(rows[0]).toMatchObject({
+      statusLabel: '진행',
+      goodQtyLabel: '4 EA',
+      achievementLabel: '40%',
+      judgmentLabel: '미달',
+    });
+  });
+
+  it('판정은 끝나지 않은 상태로 볼 때만 서버로 보낸다 — 마감이나 취소가 섞이면 서버가 거부한다', () => {
+    const state = (statusCode: string) => ({
+      ...readyState(),
+      appliedFilters: { ...searchedFilters, statusCode, judgmentCode: 'UNDER' },
+    });
+
+    expect(
+      toWorkOrderCloseCandidateFilters(state('IN_PROGRESS,SUSPENDED')).completionJudgmentCode,
+    ).toBe('UNDER');
+    expect(toWorkOrderCloseCandidateFilters(state('CLOSED')).completionJudgmentCode).toBeNull();
+  });
 });

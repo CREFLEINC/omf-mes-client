@@ -52,7 +52,9 @@ describe('RequestFilterBar — 자리표시 선택칸', () => {
   it('값 목록이 비면 왜 비었는지 밝힌다', () => {
     renderBar();
 
-    expect(screen.getByText(messages.pendingCode.note)).toBeInTheDocument();
+    expect(
+      screen.getByText(messages.iqcSkipApproval.filters.statusPendingNote),
+    ).toBeInTheDocument();
     expect(screen.getByText(messages.pendingCode.placeholder)).toBeInTheDocument();
   });
 
@@ -66,7 +68,9 @@ describe('RequestFilterBar — 자리표시 선택칸', () => {
   it('값이 오면 선택칸이 살아난다 — 자리표시가 죽은 가지가 아니다', () => {
     renderBar({ statusOptions: toCodeOptions(['SAMPLE-STATUS-OPEN']) });
 
-    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(messages.iqcSkipApproval.filters.statusPendingNote),
+    ).not.toBeInTheDocument();
     /* 「전체」가 붙는다 — 한 번 고른 뒤 해제할 방법이 칸 안에 생긴다. */
     expect(screen.getByLabelText(t.fields.status)).toHaveTextContent(t.filters.all);
   });

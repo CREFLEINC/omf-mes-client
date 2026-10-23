@@ -47,6 +47,9 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     loading: 'Đang tải chi tiết yêu cầu phê duyệt',
     notFound: 'Không tìm thấy yêu cầu',
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn yêu cầu khác.',
+    oqcSkipNote:
+      'Chỉ phê duyệt thì chưa bỏ qua. Việc bỏ qua thực tế được thực hiện ở màn hình đánh giá kiểm tra xuất hàng OQC.',
+    openOqcInspection: 'Mở đánh giá kiểm tra xuất hàng OQC',
   },
   condition: {
     title: 'Điều kiện liên kết',

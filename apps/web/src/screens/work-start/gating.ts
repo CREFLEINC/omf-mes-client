@@ -1,8 +1,4 @@
-import type { ApiClient } from '@omf-mes/api-client';
-import { useQuery } from '@tanstack/react-query';
-
-import { useApiClient } from '../../patterns/api-context';
-import { runRequest } from '../../patterns/request';
+import { usePopProcessGate } from '../../patterns/pop-process-gate';
 
 /**
  * 단말 게이팅 — **이 단말이 이 공정의 작업을 시작할 수 있는가.**
@@ -24,12 +20,8 @@ import { runRequest } from '../../patterns/request';
  * ⭐ **보안 경계가 아니다.** 없는 장비의 버튼을 감춰 오조작을 줄이는 장치이고, 최종 차단은
  * 서버가 한다(F-1 · F-5). 그래서 화면이 열어 준다고 통과하는 것이 아니다.
  *
- * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch` 가 경로를 리터럴 타입으로 요구한다.
- *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
-
-type Client = ApiClient['client'];
 
 /**
  * 게이팅 판정.
@@ -49,72 +41,9 @@ export interface StartGate {
   retry: () => void;
 }
 
-export const startGatingKeys = {
-  /*
-   * ⛔ **공정까지 키에 넣는다.** 이 조회의 결과는 「이 단말의 구성」이 아니라 「이 단말이 이
-   * 공정에서 시작할 수 있는가」라는 **불리언 하나**다. 단말만 키로 잡으면 공정이 바뀌었을 때
-   * 앞 공정의 판정이 그대로 돌아온다 — 닫힌 공정이 열린 것으로 보인다.
-   */
-  processes: (terminalId: number, processId: number) =>
-    ['work-start', 'terminal-processes', terminalId, processId] as const,
-};
-
-/**
- * 이 단말의 공정별 기능 구성을 읽어 작업 시작 플래그만 꺼낸다.
- *
- * ⚠ **설계 문서는 `can_start_work` 로 적지만 계약·응답은 `canStartWork` 다** — 코드는 계약을
- * 따른다(착수 이슈 정정 2026-08-31).
- */
-const fetchCanStartWork = async (
-  client: Client,
-  terminalId: number,
-  processId: number,
-): Promise<boolean> => {
-  const data = await runRequest(() =>
-    client.GET('/mdm/terminals/{terminalId}/processes', {
-      params: { path: { terminalId } },
-    }),
-  );
-
-  const row = data.items.find((item) => item.processId === processId);
-
-  /* ⛔ `=== true` 다. 행이 없어도, 필드가 없어도 닫힘이다. */
-  return row?.canStartWork === true;
-};
-
+/** 작업지시를 다루는 POP 화면이 함께 쓰는 판정(`patterns/pop-process-gate`)의 「작업 시작」 몫이다. */
 export const useStartGate = (terminalId: number | null, processId: number | null): StartGate => {
-  const { client } = useApiClient();
+  const gate = usePopProcessGate({ terminalId, processId, flag: 'canStartWork' });
 
-  const isIdentified = terminalId !== null && processId !== null;
-
-  const query = useQuery({
-    queryKey: startGatingKeys.processes(terminalId ?? 0, processId ?? 0),
-    enabled: isIdentified,
-    queryFn: () => {
-      if (terminalId === null || processId === null) {
-        throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');
-      }
-
-      return fetchCanStartWork(client, terminalId, processId);
-    },
-  });
-
-  const verdict = ((): StartGateVerdict => {
-    if (!isIdentified) return 'unidentified';
-    if (query.isError) return 'unavailable';
-    /*
-     * 조회 중에는 **막는다.** 여는 쪽으로 두면 답이 오기 전 찰나에 눌린 시작이 게이팅을
-     * 지나친다 — 지시를 고른 작업자는 그 버튼을 바로 누른다.
-     */
-    if (query.isPending) return 'checking';
-
-    return query.data === true ? 'allowed' : 'denied';
-  })();
-
-  return {
-    verdict,
-    retry: () => {
-      void query.refetch();
-    },
-  };
+  return { verdict: gate.verdict, retry: gate.retry };
 };

@@ -1,5 +1,7 @@
+import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { statusBadgeOf } from './labels';
 import type { RequestDetailView } from './types';
 
 const t = messages.iqcSkipApproval;
@@ -53,55 +55,64 @@ export interface RequestDetailPaneProps {
  * (수량·금액 컬럼이 물리 모델에 0건이다) 결재 판단의 근거가 거기에만 있다 — 대상 이름보다
  * 먼저 읽혀야 한다. 목록이 첫 줄만 낸 그 값의 **전문**이 여기서 처음 보인다.
  *
- * **오결재 방어 ②가 여기에도 선다** — 목록을 `IQC_SKIP`으로 좁혀도 승인 유형 코드를 그대로
- * 보여 요청 조건과 응답이 어긋나지 않았는지 확인할 수 있게 한다.
+ * **오결재 방어 ②가 여기에도 선다** — 목록을 `IQC_SKIP`으로 좁혀도 승인 유형을 보여 요청
+ * 조건과 응답이 어긋나지 않았는지 확인할 수 있게 한다. 유형·상태는 사용자 용어로 읽는다
+ * (`labels.ts` — 표에 없는 코드는 그대로라 어긋남이 가려지지 않는다).
  *
  * **내부 번호를 그리지 않는다.** 그럴 수도 없다 — `RequestDetailView`가 번호를 아예 나르지
  * 않아 이 파일에는 꺼낼 값 자체가 없다.
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const RequestDetailPane = ({ view }: RequestDetailPaneProps) => (
-  <div role="group" aria-label={t.panes.request}>
-    <dl className="filter-bar">
-      <div className="field-cell">
-        <dt className="field-label">{t.fields.approvalRequestNo}</dt>
-        <dd>{view.approvalRequestNo}</dd>
-      </div>
-      <div className="field-cell">
-        <dt className="field-label">{t.fields.approvalTypeCode}</dt>
-        {/* 고정 계약 코드 문자열을 그대로 보여 별도 이름을 발명하지 않는다. */}
-        <dd>{view.approvalTypeCode}</dd>
-      </div>
-      <div className="field-cell">
-        <dt className="field-label">{t.fields.requestedByName}</dt>
-        <dd>{view.requesterName}</dd>
-      </div>
-      <div className="field-cell">
-        <dt className="field-label">{t.fields.requestedAt}</dt>
-        <dd>{view.requestedAtText}</dd>
-      </div>
-      <div className="field-cell">
-        <dt className="field-label">{t.fields.status}</dt>
-        <dd>{view.statusCode}</dd>
-      </div>
-    </dl>
+export const RequestDetailPane = ({ view }: RequestDetailPaneProps) => {
+  const status = statusBadgeOf(view.statusCode);
 
-    <div className="field-cell">
-      <span className="field-label">{t.fields.reason}</span>
-      {/*
-       * **줄마다 한 칸이다.** 줄바꿈을 살리는 스타일을 새로 만들지 않고 구조로 낸다 —
-       * 배치는 기존 클래스만 쓰고 `app.css`를 고치지 않는다는 규율이 이 슬라이스에 걸려 있다.
-       * 들여쓰기와 빈 줄이 표기 층에서 사라지지 않게 하는 것은 `toVisibleLine`이 맡는다.
-       *
-       * React key에 차례를 쓴다. **여기서는 차례가 곧 그 줄의 정체다** — 사유는 통째로
-       * 갈리는 한 덩어리라 줄이 재배열되거나 사이에 끼어들지 않는다.
-       */}
-      <div role="group" aria-label={t.panes.reason}>
-        {view.reasonLines.map((line, index) => (
-          <p key={`${String(index)}:${line}`}>{toVisibleLine(line)}</p>
-        ))}
+  return (
+    <div role="group" aria-label={t.panes.request} className="iqc-skip-approval-section">
+      <h3 className="iqc-skip-approval-heading">{t.panes.request}</h3>
+      {/* 라벨(작게) 위·값 아래로 칸을 맞춘 요약 격자 — 값이 라벨보다 들여 서지 않는다. */}
+      <dl className="iqc-skip-approval-summary">
+        <div className="field-cell">
+          <dt className="field-label">{t.fields.approvalRequestNo}</dt>
+          <dd>{view.approvalRequestNo}</dd>
+        </div>
+        <div className="field-cell">
+          <dt className="field-label">{t.fields.approvalTypeCode}</dt>
+          <dd>{view.approvalTypeCode}</dd>
+        </div>
+        <div className="field-cell">
+          <dt className="field-label">{t.fields.requestedByName}</dt>
+          <dd>{view.requesterName}</dd>
+        </div>
+        <div className="field-cell">
+          <dt className="field-label">{t.fields.requestedAt}</dt>
+          <dd>{view.requestedAtText}</dd>
+        </div>
+        <div className="field-cell">
+          <dt className="field-label">{t.fields.status}</dt>
+          <dd>
+            <Chip variant="status" size="sm" status={status.tone}>
+              {status.label}
+            </Chip>
+          </dd>
+        </div>
+      </dl>
+
+      <div className="iqc-skip-approval-reason">
+        <span className="field-label">{t.fields.reason}</span>
+        {/*
+         * **줄마다 한 칸이다.** 줄바꿈을 살리는 스타일을 새로 만들지 않고 구조로 낸다.
+         * 들여쓰기와 빈 줄이 표기 층에서 사라지지 않게 하는 것은 `toVisibleLine`이 맡는다.
+         *
+         * React key에 차례를 쓴다. **여기서는 차례가 곧 그 줄의 정체다** — 사유는 통째로
+         * 갈리는 한 덩어리라 줄이 재배열되거나 사이에 끼어들지 않는다.
+         */}
+        <div role="group" aria-label={t.panes.reason}>
+          {view.reasonLines.map((line, index) => (
+            <p key={`${String(index)}:${line}`}>{toVisibleLine(line)}</p>
+          ))}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};

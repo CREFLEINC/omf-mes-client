@@ -1,3 +1,5 @@
+import { messages } from '@omf-mes/i18n';
+
 import type { WorkOrderCloseCandidateRow } from './candidate-list-pane';
 import {
   describeWorkOrderCloseItemReference,
@@ -7,8 +9,12 @@ import {
   type WorkOrderCloseUomReferenceSource,
 } from './candidate-references';
 import type { WorkOrderCloseFilterValues } from './filter-bar';
-import type { WorkOrderCloseFilterInitialization } from './filter-initialization';
-import type { WorkOrderCloseFact, WorkOrderCloseFilters } from './queries';
+import {
+  canFilterByJudgment,
+  DEFAULT_STATUS_FILTER,
+  type WorkOrderCloseFilterInitialization,
+} from './filter-initialization';
+import type { WorkOrderCloseCandidateFact, WorkOrderCloseFilters } from './queries';
 
 export interface WorkOrderCloseCandidateScreenState {
   initializationKind: WorkOrderCloseFilterInitialization['kind'];
@@ -40,6 +46,7 @@ const initialFilters = (statusCode = ''): WorkOrderCloseFilterValues => ({
   plannedStartFrom: '',
   plannedStartTo: '',
   statusCode,
+  judgmentCode: '',
 });
 
 const stateForInitialization = (
@@ -76,7 +83,9 @@ export const reduceWorkOrderCloseCandidateScreen = (
     case 'RESET':
       return {
         ...state,
-        appliedFilters: initialFilters(state.initializationKind === 'READY' ? 'COMPLETED' : ''),
+        appliedFilters: initialFilters(
+          state.initializationKind === 'READY' ? DEFAULT_STATUS_FILTER : '',
+        ),
         page: 1,
         selectedWorkOrderId: null,
       };
@@ -121,6 +130,9 @@ export const toWorkOrderCloseCandidateFilters = (
 
   return {
     statusCode: canLoadCandidates ? state.appliedFilters.statusCode : null,
+    completionJudgmentCode: canFilterByJudgment(state.appliedFilters.statusCode)
+      ? optionalFilter(state.appliedFilters.judgmentCode)
+      : null,
     productionOrderId: canLoadCandidates ? productionOrderId : null,
     plannedStartFrom: optionalFilter(state.appliedFilters.plannedStartFrom),
     plannedStartTo: optionalFilter(state.appliedFilters.plannedStartTo),
@@ -128,10 +140,15 @@ export const toWorkOrderCloseCandidateFilters = (
   };
 };
 
+const listText = messages.workOrderClose.candidateList;
+
+const achievementLabel = (rate: number): string => `${String(Math.round(rate * 100))}%`;
+
 export const toWorkOrderCloseCandidateRows = (
-  candidates: readonly WorkOrderCloseFact[],
+  candidates: readonly WorkOrderCloseCandidateFact[],
   itemReferences: readonly WorkOrderCloseItemReference[],
   uomSource: WorkOrderCloseUomReferenceSource,
+  statusLabel: (statusCode: string) => string = (statusCode) => statusCode,
 ): WorkOrderCloseCandidateRow[] =>
   candidates.map((candidate) => {
     const itemReference = itemReferences.find((reference) => reference.itemId === candidate.itemId);
@@ -144,6 +161,21 @@ export const toWorkOrderCloseCandidateRows = (
       workOrderId: candidate.workOrderId,
       workOrderNo: candidate.workOrderNo,
       itemLabel,
+      statusLabel: statusLabel(candidate.statusCode),
       quantityLabel: toWorkOrderCloseQuantityLabel(candidate.orderQty, uom),
+      goodQtyLabel:
+        candidate.progress === null
+          ? listText.values.unknown
+          : toWorkOrderCloseQuantityLabel(candidate.progress.goodQty, uom),
+      achievementLabel:
+        candidate.progress === null
+          ? listText.values.unknown
+          : achievementLabel(candidate.progress.achievementRate),
+      judgmentLabel:
+        candidate.progress === null
+          ? listText.values.unknown
+          : messages.workOrderClose.detailSummary.judgments[
+              candidate.progress.completionJudgmentCode
+            ],
     };
   });

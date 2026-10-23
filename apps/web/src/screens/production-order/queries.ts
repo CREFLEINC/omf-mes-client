@@ -3,19 +3,12 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import {
-  toFilterQuery,
-  type ProductionOrderFilterQuery,
-  type ProductionOrderFilters,
-} from './filters';
-import type { ProductionOrderFact, ProductionOrderListResponse } from './types';
+import type { ProductionOrderFact } from './types';
 
 type ProductionOrder = ProductionOrderForward;
 
 export const productionOrderKeys = {
   all: ['production-orders'] as const,
-  list: (filters: ProductionOrderFilters, page: number) =>
-    ['production-orders', 'list', toFilterQuery(filters, page)] as const,
   detail: (productionOrderId: number | null) =>
     ['production-orders', 'detail', productionOrderId] as const,
 };
@@ -38,31 +31,6 @@ export const toProductionOrderFact = (order: ProductionOrder): ProductionOrderFa
   plannedWorkOrderCount: order.plannedWorkOrderCount ?? null,
   autoPlan: order.autoPlan ?? null,
 });
-
-const toListResponse = (response: {
-  items: ProductionOrder[];
-  page: ProductionOrderListResponse['page'];
-}): ProductionOrderListResponse => ({
-  items: response.items.map(toProductionOrderFact),
-  page: response.page,
-});
-
-/** 실제 P/O 목록. 빈 조건도 계약의 목록 조회이며 서버가 정한 순서를 다시 정렬하지 않는다. */
-export const useProductionOrderList = (
-  filters: ProductionOrderFilters,
-  page: number,
-): UseQueryResult<ProductionOrderListResponse> => {
-  const { client } = useApiClient();
-  const query: ProductionOrderFilterQuery = toFilterQuery(filters, page);
-
-  return useQuery({
-    queryKey: productionOrderKeys.list(filters, page),
-    queryFn: () =>
-      runRequest(() => client.GET('/planning/production-orders', { params: { query } })).then(
-        toListResponse,
-      ),
-  });
-};
 
 /** 선택한 P/O만 정확한 계약 경로에서 읽고 목록과 같은 사실 형태로 쓴다. */
 export const useProductionOrderDetail = (

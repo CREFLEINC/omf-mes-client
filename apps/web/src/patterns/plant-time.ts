@@ -74,3 +74,10 @@ export const formatPlantDateTime = (value: string | null | undefined): string | 
 /** 공장 달력의 오늘(`YYYY-MM-DD`). 업무일자 기본값은 브라우저가 아니라 공장 날짜여야 한다. */
 export const plantToday = (now: Date = new Date()): string =>
   toPlantDateTimeParts(now.toISOString())?.date ?? now.toISOString().slice(0, 10);
+
+/** 공장 현지의 지금(`YYYY-MM-DDTHH:mm`) — `datetime-local` 칸의 기본값. 브라우저 시간대가 아니라 공장 시각이다. */
+export const plantNowLocal = (now: Date = new Date()): string => {
+  const parts = toPlantDateTimeParts(now.toISOString());
+
+  return parts === null ? now.toISOString().slice(0, 16) : `${parts.date}T${parts.time}`;
+};

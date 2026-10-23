@@ -2,15 +2,16 @@ import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { toApiError } from '../../patterns/request';
+import { serverReasonOf } from '../../patterns/server-reason';
 
-import type { TerminalGate } from './terminal-gating';
+import type { PopProcessGate } from '../../patterns/pop-process-gate';
 
 const t = messages.materialInputScan;
 
 export interface ConfirmPanelProps {
   /** 기록된 자재가 하나라도 있는가. 닫을 것이 있어야 닫는다. */
   hasRecorded: boolean;
-  gate: TerminalGate;
+  gate: PopProcessGate;
   /**
    * 확정이 잠긴 사유 한 문장. 잠겼지만 말할 것이 없으면 `undefined`.
    *
@@ -157,9 +158,9 @@ const describeConfirmError = (error: unknown): string => {
     case 'network':
       return messages.httpError.offline;
     case 'http':
-      return apiError.status === 403
-        ? messages.httpError.forbidden
-        : messages.httpError.description;
+      if (apiError.status === 403) return messages.httpError.forbidden;
+      /* 단말 권한(401) 거부는 서버 문구가 켜는 곳을 말한다. 그 밖의 몸체는 보일 말이 아니다. */
+      return serverReasonOf(apiError) ?? messages.httpError.description;
     case 'conflict':
       return apiError.message === '' ? messages.httpError.description : apiError.message;
     case 'stateLocked':

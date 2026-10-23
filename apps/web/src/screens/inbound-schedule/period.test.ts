@@ -1,7 +1,14 @@
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
-import { readPeriod, toPeriodQuery, validatePeriod } from './period';
+import {
+  addDays,
+  defaultPeriod,
+  formatDate,
+  readPeriod,
+  toPeriodQuery,
+  validatePeriod,
+} from './period';
 
 const t = messages.inboundSchedule;
 
@@ -90,16 +97,31 @@ describe('toPeriodQuery', () => {
   });
 });
 
+const FALLBACK = { from: '2026-09-23', to: '2026-11-18' };
+
+describe('defaultPeriod · addDays · formatDate', () => {
+  it('오늘 앞뒤로 4주다 — 달·해를 넘어도 맞다', () => {
+    expect(defaultPeriod('2026-10-21')).toEqual(FALLBACK);
+    expect(defaultPeriod('2026-12-25')).toEqual({ from: '2026-11-27', to: '2027-01-22' });
+    expect(addDays('2028-02-28', 1)).toBe('2028-02-29');
+  });
+
+  it('납기는 YYYY.MM.DD 로 쓴다', () => {
+    expect(formatDate('2026-10-21')).toBe('2026.10.21');
+  });
+});
+
 describe('readPeriod', () => {
   it('주소의 두 키를 그대로 읽는다', () => {
-    expect(readPeriod(new URLSearchParams('from=2026-08-01&to=2026-08-31'))).toEqual({
+    expect(readPeriod(new URLSearchParams('from=2026-08-01&to=2026-08-31'), FALLBACK)).toEqual({
       from: '2026-08-01',
       to: '2026-08-31',
     });
   });
 
-  it('키가 없으면 빈 값이다', () => {
-    expect(readPeriod(new URLSearchParams(''))).toEqual({ from: '', to: '' });
+  it('키가 없으면 기본 기간, 비운 키는 빈 값이다', () => {
+    expect(readPeriod(new URLSearchParams(''), FALLBACK)).toEqual(FALLBACK);
+    expect(readPeriod(new URLSearchParams('from=&to='), FALLBACK)).toEqual({ from: '', to: '' });
   });
 
   /*
@@ -107,7 +129,7 @@ describe('readPeriod', () => {
    * 요청을 막는 것은 `validatePeriod`의 몫이다.
    */
   it('형식이 깨진 값도 읽어 온다 — 조건 줄이 고칠 수 있어야 한다', () => {
-    expect(readPeriod(new URLSearchParams('from=2026-02-31'))).toEqual({
+    expect(readPeriod(new URLSearchParams('from=2026-02-31&to='), FALLBACK)).toEqual({
       from: '2026-02-31',
       to: '',
     });

@@ -89,10 +89,16 @@ describe('WorkOrderCloseInputDraft', () => {
   ] as const)(
     'derives readiness input for %s from the draft and the open session fact',
     (completionJudgment: WorkOrderCloseCompletionJudgment, source, hasOpenSession, blockers) => {
-      const input = workOrderCloseReadinessInputFrom(source, completionJudgment, hasOpenSession);
+      const input = workOrderCloseReadinessInputFrom(
+        source,
+        completionJudgment,
+        hasOpenSession,
+        true,
+      );
 
       expect(input).toEqual({
         completionJudgment,
+        isClosableStatus: true,
         hasOpenSession,
         hasRemainderDisposition: source.remainderDisposition !== null,
         hasVarianceReason: source.varianceReasonCode.trim() !== '',

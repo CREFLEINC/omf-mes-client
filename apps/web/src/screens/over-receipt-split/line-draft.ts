@@ -3,43 +3,48 @@ import { messages } from '@omf-mes/i18n';
 import type { PoLineView } from './types';
 
 /**
- * 라인 초안 — **아직 보내지 않은 입력**이다.
+ * 라인별 입력 초안 — **문자열 그대로 든다.**
  *
- * 이 화면에서 사용자가 라인에 넣는 것은 「이번 도착 수량」 하나뿐이다(계획 결정 5).
- * 품목·단위·발주 라인 번호는 발주 라인에서 오며 사용자가 고르지 않는다.
+ * 사용자가 치는 도중의 값(「6」·「6.」·「abc」)을 수량으로 강제하면 지우는 중간에 값이 튄다.
+ * 수량으로 읽는 것은 `parseQty`가 **읽는 자리에서** 한 번 한다.
  *
- * **친 글자를 그대로 들고 있는다.** 숫자로 강제해 들고 있으면 지우는 도중(`1` → `` → `2`)에
- * 값이 튀고, 「0.」처럼 아직 완성되지 않은 입력이 사라진다.
- *
- * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
+ * **발주 라인 하나에 전표 줄 하나 · LOT 하나다**(서버 장부 P-100). 발주보다 많이 와도 줄을 가르지 않는다 —
+ * LOT 은 IQC 검사 단위라 한 라벨을 둘로 나누지 않고, 그 줄의 초과 몫(`excessQty`)만 P/O 에 넣지 않는다.
  */
 
 const t = messages.overReceiptSplit;
 
-/**
- * 라인 초안 한 벌. **발주 라인 번호가 키다** — 초안이 어느 라인에 묶여 있는지를 자료 구조가 밝힌다.
- *
- * 대상 발주가 바뀌면 키 집합이 통째로 바뀐다. 그것이 「대상이 바뀌면 수량이 뜻을 잃는다」의 구현이다.
- */
-export type LineDrafts = Readonly<Record<number, string>>;
+/** 한 전표 줄의 공급사 LOT 입력. */
+export interface LotDraft {
+  /** 스캔하거나 받아 적은 번호. */
+  lotNo: string;
+  /**
+   * 라벨이 실물에 없다. 번호를 함께 넣었으면 「번호는 알지만 라벨은 안 붙었다」
+   * (`supplierLotLabelAttached=false`), 번호도 없으면 「LOT 없음」(`supplierLotMissing=true`)이다.
+   */
+  labelMissing: boolean;
+  /** LOT 없음일 때의 대체 사유(`SUBSTITUTE_LOT_REASON`). */
+  reasonCode: string;
+}
 
-/**
- * 친 글자의 해석 결과. **세 갈래를 타입으로 가른다** —
- * 미입력 · 형식 오류 · 수량. 미입력을 오류와 뭉개면 「받지 않는 줄」이 전부 오류가 된다.
- */
+export const EMPTY_LOT_DRAFT: LotDraft = { lotNo: '', labelMissing: false, reasonCode: '' };
+
+export interface LineDraft {
+  qtyText: string;
+  lot: LotDraft;
+}
+
+export const EMPTY_LINE_DRAFT: LineDraft = { qtyText: '', lot: EMPTY_LOT_DRAFT };
+
+/** 발주 라인 번호 → 초안. 없는 번호는 빈 초안으로 읽는다. */
+export type LineDrafts = Readonly<Record<number, LineDraft>>;
+
 export type QtyParse =
-  | { kind: 'empty' }
-  | { kind: 'invalid'; message: string }
-  | { kind: 'qty'; value: number };
+  { kind: 'empty' } | { kind: 'invalid'; message: string } | { kind: 'qty'; value: number };
 
 /**
- * 친 글자를 수량으로 읽는다.
- *
- * **빈 칸은 오류가 아니다** — 「이 라인은 이번에 받지 않는다」는 뜻이다.
- * 0과 음수는 계약이 `exclusiveMinimum: 0`으로 막으므로 화면도 막고, **사유를 갈라** 낸다.
- *
- * `Number()`는 빈 문자열과 공백을 `0`으로 읽고 `Infinity`를 숫자로 읽는다 —
- * 둘 다 여기서 걸러 낸다. 걸러 내지 않으면 요청 본문에 `null`이나 `0`이 실린다.
+ * 친 글자를 수량으로 읽는다. **빈 칸은 오류가 아니다** — 이번에 받지 않는 줄이다.
+ * 0 과 음수는 계약이 막는다(`exclusiveMinimum: 0`).
  */
 export const parseQty = (raw: string): QtyParse => {
   const text = raw.trim();
@@ -54,37 +59,42 @@ export const parseQty = (raw: string): QtyParse => {
   return { kind: 'qty', value };
 };
 
-/**
- * 라인 응답으로 초안을 새로 만든다. **줄마다 빈 칸 하나씩**이다.
- *
- * 앞 발주에서 친 수량이 남지 않는 것이 요점이다 — 초안은 특정 발주의 라인에 묶여 있어
- * 대상이 바뀌면 그 수량은 뜻을 잃는다.
- */
+/** 라인 응답으로 초안을 새로 만든다 — 앞서 친 값은 남지 않는다(수명 표 4행). */
 export const createDrafts = (lines: readonly PoLineView[]): LineDrafts =>
-  Object.fromEntries(lines.map((line) => [line.purchaseOrderLineId, '']));
+  Object.fromEntries(lines.map((line) => [line.purchaseOrderLineId, EMPTY_LINE_DRAFT]));
 
-/** 한 줄의 수량을 바꾼다. 앞 초안을 고치지 않는다 — 같은 참조를 고치면 화면이 다시 그려지지 않는다. */
+export const readDraft = (drafts: LineDrafts, purchaseOrderLineId: number): LineDraft =>
+  drafts[purchaseOrderLineId] ?? EMPTY_LINE_DRAFT;
+
+export const readDraftQty = (drafts: LineDrafts, purchaseOrderLineId: number): string =>
+  readDraft(drafts, purchaseOrderLineId).qtyText;
+
 export const setDraftQty = (
   drafts: LineDrafts,
   purchaseOrderLineId: number,
   text: string,
-): LineDrafts => ({ ...drafts, [purchaseOrderLineId]: text });
+): LineDrafts => ({
+  ...drafts,
+  [purchaseOrderLineId]: { ...readDraft(drafts, purchaseOrderLineId), qtyText: text },
+});
 
-/**
- * 한 줄에 친 글자.
- *
- * **초안에 없는 줄은 빈 칸으로 읽는다.** 라인 응답이 도착한 렌더와 초안을 새로 만드는 effect
- * 사이에 그 줄이 초안에 없는 순간이 실제로 있고, 그때 `undefined`가 입력칸의 `value`로 들어가면
- * 제어 입력칸이 비제어로 바뀐다.
- */
-export const readDraftQty = (drafts: LineDrafts, purchaseOrderLineId: number): string =>
-  drafts[purchaseOrderLineId] ?? '';
+export const setDraftLot = (
+  drafts: LineDrafts,
+  purchaseOrderLineId: number,
+  patch: Partial<LotDraft>,
+): LineDrafts => {
+  const draft = readDraft(drafts, purchaseOrderLineId);
 
-/**
- * 버릴 것이 있는가. 대상을 바꾸거나 취소할 때 확인을 받을지 정한다(계획 결정 10 · PR ②).
- *
- * **잘못 친 값도 채운 것으로 본다** — 사용자가 친 값이라는 사실은 같다.
- * 공백만 친 칸은 버릴 값이 아니다.
- */
+  return { ...drafts, [purchaseOrderLineId]: { ...draft, lot: { ...draft.lot, ...patch } } };
+};
+
+/** 수량을 하나라도 넣었는가. */
 export const hasAnyQty = (drafts: LineDrafts): boolean =>
-  Object.values(drafts).some((text) => text.trim() !== '');
+  Object.values(drafts).some((draft) => draft.qtyText.trim() !== '');
+
+const hasLotInput = (lot: LotDraft): boolean =>
+  lot.lotNo.trim() !== '' || lot.labelMissing || lot.reasonCode !== '';
+
+/** 버릴 것이 있는가 — 수량이든 LOT 이든 한 칸이라도 손댔으면 참이다. */
+export const hasAnyLineInput = (drafts: LineDrafts): boolean =>
+  Object.values(drafts).some((draft) => draft.qtyText.trim() !== '' || hasLotInput(draft.lot));

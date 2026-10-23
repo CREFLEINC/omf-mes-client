@@ -9,9 +9,9 @@
  * 말하는 문구가 `confirmDialog` 다.
  */
 export const productionPlan = {
-  title: 'W/O 전개·편성',
+  title: '생산계획',
   breadcrumbRoot: '생산',
-  breadcrumbGroup: '계획·지시',
+  breadcrumbGroup: '계획과 지시',
 
   /** 고른 ERP W/O 를 되짚어 주는 머리말. 어느 ERP W/O 를 편성하는 중인지 화면을 떠나지 않고 확인한다. */
   order: {
@@ -121,7 +121,7 @@ export const productionPlan = {
     over: (): string => '계획 수량이 초과되었습니다.',
     /** 숫자 둘을 나란히 보여 어디가 어긋났는지 바로 읽힌다(사용자 지시 2026-09-20) */
     overFacts: (ordered: string, planned: string, uomLabel: string): string =>
-      `W/O 수량 ${ordered} ${uomLabel} · 계획 합계 ${planned} ${uomLabel}`,
+      `W/O 수량 ${ordered} ${uomLabel}, 계획 합계 ${planned} ${uomLabel}`,
     under: (amount: string, uomLabel: string): string =>
       `ERP W/O 수량보다 ${amount} ${uomLabel} 부족합니다.`,
     underDescription: '나눠 계획하는 중이면 계속 편집하세요.',
@@ -186,13 +186,13 @@ export const productionPlan = {
   /** 화면 전체가 서지 못하는 자리. ERP W/O 없이는 편성할 것이 없다. */
   screen: {
     unselected: 'ERP W/O를 먼저 선택하세요.',
-    openProductionOrders: 'ERP W/O 수신·조회로 이동',
+    openProductionOrders: 'ERP W/O 처리로 이동',
     loading: 'ERP W/O를 불러오는 중',
     ownerMismatch: '요청한 ERP W/O와 다른 상세가 반환되었습니다.',
     loadFailed: 'ERP W/O를 불러오지 못했습니다.',
     stale: '최신 ERP W/O를 확인하지 못했습니다.',
     retry: '다시 시도',
     keepsEdits: '현재 편집 내용은 유지됩니다.',
-    lotNotice: '생산 LOT 크기와 선발행 정보는 W/O 확정·배포 단계에서 입력합니다.',
+    lotNotice: '생산 LOT 크기와 선발행 정보는 W/O 배포 단계에서 입력합니다.',
   },
 } as const;

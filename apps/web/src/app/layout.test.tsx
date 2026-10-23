@@ -343,30 +343,30 @@ describe('AppLayout', () => {
   });
 
   /*
-   * 입고 관리 — 도착 예정(ASN)을 보고 → 도착한 것 중 초과분을 떼어 내고(W-01-03 · 이 도메인의 첫
-   * 쓰기 화면) → 창고로 받아들인다(W-01-10). 같은 입고 건을 따라가는 한 흐름이라 한 줄로 묶었고,
-   * 탭 이름은 사이드바에 서지 않는다.
+   * 입고 관리 — 들어올 것을 보고(W-01-09) → 창고로 받아들인다(W-01-10). 같은 입고 건을 따라가는 한 흐름이라
+   * 한 줄로 묶었고, 탭 이름은 사이드바에 서지 않는다. 도착 등록(W-01-03 입하 등록)은 탭이 아니라 입하 예정
+   * 조회의 창이다(사용자 지시 2026-10-21) — 옛 「초과 입하 분리」 탭이 다시 서지 않는다.
    *
    * ⚠ 옛 이름 「정상품 입하 처리」는 입고 화면을 입하라 불렀다 — 입하는 «도착»이고 입고는
    * «창고로 받아들임»이다(`nav-tree.ts`).
    */
-  it('입고 관리 탭 막대가 입하 예정 조회 → 초과 입하 분리 → 자재 입고 처리 차례다', () => {
-    renderLayout('본문 내용', { route: '/logistics/over-receipt-split' });
+  it('입고 관리 탭 막대가 입하 예정 조회 → 자재 입고 처리 차례이고 초과 입하 분리 탭이 없다', () => {
+    renderLayout('본문 내용', { route: '/logistics/inbound-schedule' });
 
     const sidebar = navSidebar();
     const tabs = screen.getByRole('navigation', { name: '입고 관리' });
 
-    expect(within(tabs).getByRole('link', { name: '초과 입하 분리' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '입하 예정 조회' })).toHaveAttribute(
       'href',
-      '/logistics/over-receipt-split',
+      '/logistics/inbound-schedule',
     );
     expect(within(tabs).getByRole('link', { name: '자재 입고 처리' })).toHaveAttribute(
       'href',
       '/logistics/goods-receipt',
     );
+    expect(within(tabs).queryByRole('link', { name: '초과 입하 분리' })).toBeNull();
     expect(hubTabHrefs('입고 관리')).toEqual([
       '/logistics/inbound-schedule',
-      '/logistics/over-receipt-split',
       '/logistics/goods-receipt',
     ]);
     expect(within(sidebar).queryByRole('link', { name: '입하 예정 조회' })).toBeNull();
@@ -536,15 +536,15 @@ describe('AppLayout', () => {
     const links = sidebarHrefs();
 
     expect(within(sidebar).getByText('품질 관리')).toBeInTheDocument();
-    expect(within(sidebar).getByRole('link', { name: 'IQC 수입검사·판정' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: 'IQC (수입검사) 조회·판정' })).toHaveAttribute(
       'href',
       '/logistics/iqc-inspection',
     );
-    expect(within(sidebar).getByRole('link', { name: 'PQC 검사 등록·조회' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: 'PQC (공정검사) 조회·판정' })).toHaveAttribute(
       'href',
       '/quality/pqc-inspections',
     );
-    expect(within(sidebar).getByRole('link', { name: 'OQC 출하검사 판정' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: 'OQC (출하검사) 조회·판정' })).toHaveAttribute(
       'href',
       '/shipment/oqc-inspection',
     );
@@ -575,15 +575,21 @@ describe('AppLayout', () => {
       '/quality/pqc-inspections',
       '/shipment/oqc-inspection',
       '/master-data/inspection-standard',
+      /* W-06-24 — OA 제품 검사표 기준(설계보다 앞선 화면). */
+      '/master-data/inspection-sheet-template',
       /* 「품질 코드」 묶음 — 불량·원인코드 → 판정유형 코드. */
       '/master-data/defect-cause-code',
       '/quality/inspection-results',
+      /* W-03-13 — OA 제품 검사표 조회·서명(설계보다 앞선 화면). */
+      '/quality/inspection-sheets',
       /* 「LOT 상태」 묶음 — 조회 → 판정(W-03-02 는 조회에서 찾은 LOT 을 판정·전이한다). */
       '/quality/lot-status',
       '/quality/suspicious-material-hold',
       '/quality/approvals',
       /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
       '/quality/dispositions',
+      /* W-03-12 — 품목별 IQC 검사 수준(설계보다 앞선 화면). */
+      '/quality/inspection-levels',
     ];
     const start = links.indexOf(qualityOrder[0] ?? '');
 
@@ -749,9 +755,8 @@ describe('AppLayout', () => {
      */
     expect(links).not.toContain('/production/production-plans');
     expect(links).not.toContain('/production/work-order-assignments');
-    expect(
-      within(sidebar).getByRole('link', { name: 'W/O 확정·배포·생산LOT 선발행' }),
-    ).toHaveAttribute('href', '/production/work-order-release');
+    /* W-02-04(확정, 배포)는 「ERP W/O 처리」 작업함의 일괄 배포와 처리 화면 마지막 단계로 합쳐 메뉴에 «없다». */
+    expect(links).not.toContain('/production/work-order-release');
     expect(within(sidebar).getByRole('link', { name: 'W/O 마감·ERP 실적 송신' })).toHaveAttribute(
       'href',
       '/production/work-order-close',
@@ -764,16 +769,13 @@ describe('AppLayout', () => {
       'href',
       '/production/work-order-progress',
     );
-    /* 품질 관리의 끝(처분 판정) 바로 뒤가 섹션의 시작이다. */
+    /* 품질 관리의 끝(검사 수준 관리) 바로 뒤가 섹션의 시작이다. */
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/quality/dispositions') + 1,
+      links.indexOf('/quality/inspection-levels') + 1,
     );
-    expect(links.indexOf('/production/work-order-release')).toBe(
-      links.indexOf('/production/production-orders') + 1,
-    );
-    /* W-02-07 — 계획을 거치지 않는 갈래라 정규 흐름(배포) 뒤다. */
+    /* W-02-07 — 계획을 거치지 않는 갈래라 정규 흐름(ERP W/O 처리) 뒤다. */
     expect(links.indexOf('/production/emergency-work-orders')).toBe(
-      links.indexOf('/production/work-order-release') + 1,
+      links.indexOf('/production/production-orders') + 1,
     );
     /*
      * W-02-10 자재 불출 요청은 「구매 / 자재 관리 > 출고 관리」로 옮겼다 — 긴급 발행 바로 뒤가
@@ -796,12 +798,12 @@ describe('AppLayout', () => {
    * 변경 판정은 조회 바로 뒤 탭이다 — 그 화면이 만든 목록 위에서 이어진다(W-02-06).
    * 옛 「P/O 변경 관리자 확인」 — 「P/O」는 구매오더만 뜻하게 되어 「ERP W/O」로 바꿨다.
    */
-  it('ERP W/O 탭 막대가 ERP W/O 조회 → ERP W/O 변경 확인 차례다', () => {
+  it('ERP W/O 탭 막대가 ERP W/O 처리 → ERP W/O 변경 확인 차례다', () => {
     renderLayout('본문 내용', { route: '/production/po-change-review' });
 
     const tabs = screen.getByRole('navigation', { name: 'ERP W/O' });
 
-    expect(within(tabs).getByRole('link', { name: 'ERP W/O 조회' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: 'ERP W/O 처리' })).toHaveAttribute(
       'href',
       '/production/production-orders',
     );
@@ -904,8 +906,15 @@ describe('AppLayout', () => {
       links.indexOf('/system/approval-route') + 1,
     );
     /* 시스템 공통 설정 — 결재·알림 설정 뒤에 공통코드·조직, 그리고 단말 매핑이 선다. */
-    expect(links.indexOf('/master-data/common-code')).toBe(
+    /* W-CO-12 — 받을 사람 다음에 «어디로» 나가는지(001). */
+    expect(links.indexOf('/notification/zalo-connection')).toBe(
       links.indexOf('/notification/recipient-settings') + 1,
+    );
+    expect(links.indexOf('/notification/dispatch-history')).toBe(
+      links.indexOf('/notification/zalo-connection') + 1,
+    );
+    expect(links.indexOf('/master-data/common-code')).toBe(
+      links.indexOf('/notification/dispatch-history') + 1,
     );
     expect(links.indexOf('/system/terminal-process-map')).toBe(
       links.indexOf('/master-data/common-code') + 1,
@@ -992,15 +1001,17 @@ describe('AppLayout', () => {
       '/quality/pqc-inspections',
       '/shipment/oqc-inspection',
       '/master-data/inspection-standard',
+      '/master-data/inspection-sheet-template',
       '/master-data/defect-cause-code' /* ← 품질 코드 */,
       '/quality/inspection-results',
+      '/quality/inspection-sheets',
       '/quality/lot-status' /* ← LOT 상태 */,
       '/quality/suspicious-material-hold',
       '/quality/approvals',
       '/quality/dispositions',
-      /* 생산 관리 — ERP W/O(조회·변경 확인) → 배포 → (긴급) → 진행 → 마감. */
+      '/quality/inspection-levels',
+      /* 생산 관리 — ERP W/O(처리, 변경 확인) → (긴급) → 진행 → 마감. */
       '/production/production-orders' /* ← ERP W/O */,
-      '/production/work-order-release',
       '/production/emergency-work-orders',
       '/production/work-order-progress',
       '/production/work-order-close',
@@ -1031,6 +1042,8 @@ describe('AppLayout', () => {
       '/system/users-roles',
       '/system/approval-route',
       '/notification/recipient-settings',
+      '/notification/zalo-connection',
+      '/notification/dispatch-history',
       '/master-data/common-code',
       '/system/terminal-process-map',
     ]);
@@ -1053,11 +1066,7 @@ describe('AppLayout', () => {
         '/master-data/putaway-rule',
         '/master-data/warehouse-layout',
       ],
-      '입고 관리': [
-        '/logistics/inbound-schedule',
-        '/logistics/over-receipt-split',
-        '/logistics/goods-receipt',
-      ],
+      '입고 관리': ['/logistics/inbound-schedule', '/logistics/goods-receipt'],
       '재고 관리': ['/logistics/stock-status', '/logistics/stocktaking', '/logistics/stock-adjust'],
       '출고 관리': [
         '/production/material-issue-requests',
@@ -1582,7 +1591,7 @@ describe('AppLayout — 화면 검색', () => {
     await user.type(searchBox(), 'iqc');
 
     expect(
-      within(navSidebar()).getByRole('link', { name: 'IQC 수입검사·판정' }),
+      within(navSidebar()).getByRole('link', { name: 'IQC (수입검사) 조회·판정' }),
     ).toBeInTheDocument();
   });
 });
@@ -1652,7 +1661,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(49);
   });
 
   /*
@@ -1702,7 +1711,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(49);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

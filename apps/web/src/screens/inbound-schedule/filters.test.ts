@@ -31,7 +31,9 @@ describe('readFilters', () => {
   it('주소의 조건을 그대로 읽는다', () => {
     expect(
       readFilters(
-        new URLSearchParams('supplier=8101&plant=8201&item=8301&q=SAMPLE-PO&open=0&overdue=1'),
+        new URLSearchParams(
+          'supplier=8101&plant=8201&item=8301&q=SAMPLE-PO&open=0&overdue=1&stage=RECEIPT',
+        ),
       ),
     ).toEqual({
       supplier: '8101',
@@ -40,8 +42,17 @@ describe('readFilters', () => {
       q: 'SAMPLE-PO',
       openOnly: false,
       overdueOnly: true,
+      stage: 'RECEIPT',
     });
   });
+
+  /* 단계 묶음 이름이 아니면 조건이 아니다 — 모르는 값을 서버에 보내지 않는다(계약 대기 조건). */
+  it.each(['RECEIPT_READY', 'receipt', 'x'])(
+    '묶음 이름이 아닌 단계 %j 는 조건으로 받지 않는다',
+    (raw) => {
+      expect(readFilters(new URLSearchParams({ stage: raw })).stage).toBe('');
+    },
+  );
 
   /* 그대로 `Number()`에 넘기면 `NaN`이 요청에 실려 조회 전체가 400이 된다. */
   it.each(['abc', '1.5', '-3', '0', ''])('정수가 아닌 번호 %j 는 조건으로 받지 않는다', (raw) => {
@@ -70,11 +81,16 @@ describe('readPage', () => {
 describe('toSearchParams', () => {
   /* 기본값을 주소에 적으면 같은 화면의 주소가 두 가지가 된다. */
   it('기본 조건·첫 쪽이면 주소가 비어 있다', () => {
-    expect(toSearchParams(NO_PERIOD, DEFAULT_FILTERS, 1).toString()).toBe('');
+    expect(toSearchParams(NO_PERIOD, DEFAULT_FILTERS, 1, NO_PERIOD).toString()).toBe('');
   });
 
   it('미완료만 끔과 납기 지난 것만 켬만 적는다', () => {
-    const params = toSearchParams(NO_PERIOD, filters({ openOnly: false, overdueOnly: true }), 1);
+    const params = toSearchParams(
+      NO_PERIOD,
+      filters({ openOnly: false, overdueOnly: true }),
+      1,
+      NO_PERIOD,
+    );
 
     expect(params.get('open')).toBe('0');
     expect(params.get('overdue')).toBe('1');
@@ -85,6 +101,7 @@ describe('toSearchParams', () => {
       { from: '2026-10-01', to: '' },
       filters({ supplier: '8101', plant: '8201', item: '8301', q: '  SAMPLE-PO  ' }),
       3,
+      NO_PERIOD,
     );
 
     expect(params.toString()).toBe(
@@ -92,16 +109,28 @@ describe('toSearchParams', () => {
     );
   });
 
+  /* 기본 기간과 같은 쪽은 적지 않고, 지운 쪽은 빈 값으로 적는다 — 다시 읽어도 지운 채다. */
+  it('기간은 기본과 다를 때만 적고, 지운 기간은 빈 값으로 적는다', () => {
+    const fallback = { from: '2026-10-07', to: '2026-11-04' };
+
+    expect(toSearchParams(fallback, DEFAULT_FILTERS, 1, fallback).toString()).toBe('');
+    expect(
+      toSearchParams({ from: '', to: '2026-11-04' }, DEFAULT_FILTERS, 1, fallback).toString(),
+    ).toBe('from=');
+  });
+
   /* 주소를 손으로 고쳐 넣은 번호가 다시 주소에 남지 않게 한다. */
   it('정수가 아닌 번호는 주소에 적지 않는다', () => {
-    expect(toSearchParams(NO_PERIOD, filters({ supplier: 'x' }), 1).has('supplier')).toBe(false);
+    expect(
+      toSearchParams(NO_PERIOD, filters({ supplier: 'x' }), 1, NO_PERIOD).has('supplier'),
+    ).toBe(false);
   });
 
   /* 조건을 실어 갈아 끼운 뒤 다시 읽으면 같은 조건이다 — 새로고침·공유가 같은 결과를 낸다. */
   it('주소로 옮겼다가 다시 읽으면 같은 조건이다', () => {
     const given = filters({ supplier: '8101', q: 'SAMPLE', openOnly: false, overdueOnly: true });
 
-    expect(readFilters(toSearchParams(NO_PERIOD, given, 1))).toEqual(given);
+    expect(readFilters(toSearchParams(NO_PERIOD, given, 1, NO_PERIOD))).toEqual(given);
   });
 });
 
@@ -109,6 +138,7 @@ describe('toFilterQuery', () => {
   /* 서버 기본(미완료만 켬 · 지연만 끔)과 같으면 싣지 않는다. */
   it('기본 조건이면 질의가 비어 있다', () => {
     expect(toFilterQuery(DEFAULT_FILTERS)).toEqual({});
+    expect(toFilterQuery(filters({ stage: 'HELD' }))).toEqual({ inboundStage: 'HELD' });
   });
 
   it('번호 셋은 숫자로, 검색어는 다듬어 싣는다', () => {

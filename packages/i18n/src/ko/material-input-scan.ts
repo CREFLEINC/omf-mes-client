@@ -228,6 +228,8 @@ export const materialInputScan = {
     statusLabel: '상태',
     /** 품질 판정과 **다른 축**이다. 나란히 두면 모순처럼 읽혀 줄을 나눈다. */
     heldMark: '보류 중',
+    /* IQC 에서 적은 4M 변경품(omf-all-around#63) — 투입을 막지 않고 알린다. */
+    fourMChangeMark: '4M 변경품',
     /** 표시명을 못 받았을 때. 원문 코드를 그대로 보이므로 담당자에게 전할 단서는 남는다. */
     statusLabelUnavailable: '상태 이름을 불러오지 못해 코드로 표시합니다.',
     shotCount: (current: number, guaranteed: number): string =>
@@ -257,9 +259,9 @@ export const materialInputScan = {
        * 가야 하고 뒤는 다시 시도하면 풀린다. 합치면 열려 있는 단말에서 작업자가 관리자를
        * 찾아가고, 막힌 단말에서 되읽기를 반복한다.
        */
-      denied: '이 단말은 이 공정의 자재 투입 권한이 없습니다. 관리자에게 문의하세요.',
       unavailable: '투입 권한을 확인할 수 없습니다. 다시 시도해 주세요.',
-      unidentified: '단말이 확인되지 않았습니다. 작업지시를 고른 뒤 다시 들어오세요.',
+      unidentified:
+        '단말이나 이 작업지시의 공정을 확인하지 못했습니다. 작업 시작 화면에서 작업지시를 다시 고른 뒤 들어오세요.',
       checking: '투입 권한을 확인하는 중입니다.',
       /* 건별 저장이라 「아직 기록되지 않은 줄」이 남아 있다는 뜻이다 — 닫으면 그 줄이 버려진다. */
       qtyMissing: '아직 기록되지 않은 자재가 있습니다. 수량을 입력해 기록하거나 빼세요.',

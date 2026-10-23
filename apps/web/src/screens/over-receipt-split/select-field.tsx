@@ -23,6 +23,8 @@ export interface SelectFieldProps {
    * 조회 조건 칸은 잠그지 않는다 — 잠그면 지금 걸린 조건을 해제할 방법이 사라진다.
    */
   disabled?: boolean;
+  /** 오류 상태 — 테두리로 알린다. 사유는 `note` 로 함께 낸다. */
+  invalid?: boolean;
 }
 
 /**
@@ -48,6 +50,7 @@ export const SelectField = ({
   placeholder,
   wide = false,
   disabled = false,
+  invalid = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -67,6 +70,7 @@ export const SelectField = ({
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
+        invalid={invalid}
         aria-describedby={note === undefined ? undefined : noteId}
       />
       {note !== undefined && (

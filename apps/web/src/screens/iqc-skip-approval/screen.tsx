@@ -914,7 +914,7 @@ export const IqcSkipApprovalScreen = () => {
         }
       />
 
-      <section className="pane" aria-label={t.panes.list}>
+      <section className="pane iqc-skip-approval-list" aria-label={t.panes.list}>
         {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
         <RequestFilterBar
           appliedFilters={filters}
@@ -974,7 +974,7 @@ export const IqcSkipApprovalScreen = () => {
        * 밖·404·403·불러오는 중·200) 구획이 통째로 사라지면 무엇을 골랐는지도, 왜 아무것도
        * 없는지도 화면이 말하지 않는다.
        */}
-      <section className="pane" aria-label={t.panes.detail}>
+      <section className="pane iqc-skip-approval-detail" aria-label={t.panes.detail}>
         {detailSlot()}
       </section>
 

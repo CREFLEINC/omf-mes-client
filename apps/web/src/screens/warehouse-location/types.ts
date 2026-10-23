@@ -12,6 +12,8 @@ export type Location = components['schemas']['Location'];
 
 export interface WarehouseFilters {
   q: string;
+  /** 공장 번호를 문자열로 — DS Select 값과 같은 모양이다. 빈 문자열이면 공장으로 거르지 않는다. */
+  plantId: string;
   warehouseTypeCode: string;
   includeInactive: boolean;
 }

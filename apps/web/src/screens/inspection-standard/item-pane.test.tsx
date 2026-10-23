@@ -42,7 +42,9 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemPane>[0]> = {}) => 
 };
 
 const itemRows = (): HTMLElement[] =>
-  within(screen.getByRole('region', { name: '검사 항목' })).getAllByRole('row').slice(1);
+  within(screen.getByRole('region', { name: '검사 항목' }))
+    .getAllByRole('row')
+    .slice(1);
 
 describe('ItemPane — 표', () => {
   /* 마지막 「순서 변경」 열은 디자인 시스템이 렌더한다 — 화면이 정하는 것은 앞의 일곱이다. */

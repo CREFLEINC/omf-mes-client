@@ -10,6 +10,7 @@ import type { Translated } from './translated';
 export const integrationSync: Translated<typeof ko.integrationSync> = {
   title: 'Tình hình đồng bộ liên kết',
   breadcrumbRoot: 'Quản trị hệ thống',
+  menuPath: 'Quản trị hệ thống › Tình trạng · lịch sử liên kết ERP › Tình trạng · lịch sử liên kết',
   fields: {
     periodFrom: 'Bắt đầu kỳ',
     periodTo: 'Kết thúc kỳ',
@@ -143,6 +144,46 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     noPeriodDescription: 'Bản ghi liên kết chỉ tra cứu được khi đã định kỳ.',
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy chuyển về trang đầu.',
+  },
+  /** ERP 받기 표별 상태와 「지금 읽기」. 받기는 `nhận`, 지금 읽기는 `Đọc ngay` 로 한 벌로 맞춘다. */
+  syncTables: {
+    title: 'Trạng thái nhận dữ liệu ERP',
+    description:
+      'Dữ liệu chuẩn được đọc từ ERP mỗi 12 giờ, chứng từ mỗi 15 phút. 「Đọc ngay」 lấy ngay các dòng chưa đọc mà không chờ chu kỳ tiếp theo. Với bảng tham chiếu bảng khác (BOM tham chiếu mặt hàng…), hãy đọc lần lượt từ trên xuống.',
+    disabledReason: 'Không thể dùng Đọc ngay vì liên kết ERP đang tắt trên máy chủ này.',
+    table: {
+      name: 'Bảng',
+      state: 'Trạng thái',
+      lastFinishedAt: 'Đọc lần cuối',
+      read: 'Đã đọc',
+      applied: 'Đã áp dụng',
+      failed: 'Lỗi',
+      held: 'Tạm giữ',
+      nextRunAt: 'Lần kế tiếp',
+      action: 'Đọc ngay',
+    },
+    actions: {
+      runNow: 'Đọc ngay',
+      runNowRow: (name: string): string => `Đọc ngay ${name}`,
+    },
+    state: {
+      running: 'Đang đọc',
+      requested: 'Đang chờ',
+      never: 'Chưa có bản ghi',
+      succeeded: 'Thành công',
+      failed: 'Thất bại',
+    },
+    requestedAt: (time: string): string => `Yêu cầu lúc ${time}`,
+    runErrorTitle: 'Không gửi được yêu cầu đọc',
+    finished: {
+      succeeded: (name: string, applied: number): string =>
+        `Đã đọc xong ${name}. Đã áp dụng ${String(applied)} mục.`,
+      withFailures: (name: string, applied: number, failed: number): string =>
+        `Đã đọc xong ${name}. Đã áp dụng ${String(applied)} mục, ${String(failed)} mục không áp dụng được.`,
+      failed: (name: string): string => `Đọc ${name} thất bại. Hãy xem lý do ở cột trạng thái.`,
+    },
+    loading: 'Đang tải trạng thái nhận dữ liệu ERP',
+    empty: 'Không có bảng nhận dữ liệu',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */

@@ -44,7 +44,9 @@ describe('readFilters — 유형', () => {
   });
 
   it('고른 코드를 그대로 읽는다', () => {
-    expect(readFilters(new URLSearchParams('ev=SYN-EVENT-01')).eventCode).toBe('SYN-EVENT-01');
+    expect(readFilters(new URLSearchParams('ev=WORK_SESSION_STARTED')).eventCode).toBe(
+      'WORK_SESSION_STARTED',
+    );
   });
 
   it('공백만 친 값은 조건이 아니다', () => {
@@ -113,9 +115,13 @@ describe('toSearchParams', () => {
   });
 
   it('고른 유형과 옮긴 쪽을 주소에 적는다', () => {
-    const params = toSearchParams(PERIOD, { unreadOnly: true, eventCode: 'SYN-EVENT-01' }, 3);
+    const params = toSearchParams(
+      PERIOD,
+      { unreadOnly: true, eventCode: 'WORK_SESSION_STARTED' },
+      3,
+    );
 
-    expect(params.get(URL_KEYS.eventCode)).toBe('SYN-EVENT-01');
+    expect(params.get(URL_KEYS.eventCode)).toBe('WORK_SESSION_STARTED');
     expect(params.get(URL_KEYS.page)).toBe('3');
   });
 
@@ -126,9 +132,9 @@ describe('toSearchParams', () => {
   });
 
   it('읽고 다시 쓰면 같은 조건이 된다', () => {
-    const params = toSearchParams(PERIOD, { unreadOnly: false, eventCode: 'SYN-EVENT-02' }, 4);
+    const params = toSearchParams(PERIOD, { unreadOnly: false, eventCode: 'WORK_ORDER_CLOSED' }, 4);
 
-    expect(readFilters(params)).toEqual({ unreadOnly: false, eventCode: 'SYN-EVENT-02' });
+    expect(readFilters(params)).toEqual({ unreadOnly: false, eventCode: 'WORK_ORDER_CLOSED' });
     expect(readPage(params)).toBe(4);
   });
 });
@@ -144,8 +150,8 @@ describe('toFilterQuery', () => {
   });
 
   it('고른 유형을 싣는다', () => {
-    expect(toFilterQuery({ unreadOnly: false, eventCode: 'SYN-EVENT-01' })).toEqual({
-      eventCode: 'SYN-EVENT-01',
+    expect(toFilterQuery({ unreadOnly: false, eventCode: 'WORK_SESSION_STARTED' })).toEqual({
+      eventCode: 'WORK_SESSION_STARTED',
     });
   });
 
@@ -154,9 +160,9 @@ describe('toFilterQuery', () => {
   });
 
   it('쪽 크기를 만들지 않는다 — 서버 기본값을 쓴다', () => {
-    expect(toFilterQuery({ unreadOnly: true, eventCode: 'SYN-EVENT-01' })).not.toHaveProperty(
-      'size',
-    );
+    expect(
+      toFilterQuery({ unreadOnly: true, eventCode: 'WORK_SESSION_STARTED' }),
+    ).not.toHaveProperty('size');
   });
 });
 
@@ -179,10 +185,10 @@ describe('withPeriod', () => {
      * ⭐ 새 `URLSearchParams`를 만들어 넣는 형태(전례 `integration-sync/screen.tsx`)를 그대로
      * 베끼면 이 단언이 깨진다. 조건이 늘어난 이 회차부터 손실이 실제로 커진다.
      */
-    const next = withPeriod(new URLSearchParams('unread=0&ev=SYN-EVENT-01&page=3'), PERIOD);
+    const next = withPeriod(new URLSearchParams('unread=0&ev=WORK_SESSION_STARTED&page=3'), PERIOD);
 
     expect(next.get('unread')).toBe('0');
-    expect(next.get('ev')).toBe('SYN-EVENT-01');
+    expect(next.get('ev')).toBe('WORK_SESSION_STARTED');
     expect(next.get('page')).toBe('3');
   });
 

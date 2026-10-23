@@ -4,6 +4,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { IN_SERVICE_STATUS_CODE, type CodeValue } from './code-options';
 import { runRequest } from '../../patterns/request';
+import type { LookupSource } from '../../patterns/lookup-display';
 import type {
   EquipmentFilters,
   InspectionItemDetail,
@@ -386,6 +387,39 @@ export const useLookupOptions = (): LookupResult => {
     truncated: isListTruncated(plants.data) || isListTruncated(processes.data),
     isError: plants.isError || processes.isError,
     isLoading: plants.isPending || processes.isPending,
+  };
+};
+
+/** 담당 부서 선택 목록의 결과. 잘림·실패는 그 선택칸 한 자리에서만 밝힌다. */
+export interface DepartmentOptionsResult extends LookupSource<LookupEntry> {
+  truncated: boolean;
+}
+
+/**
+ * 담당 부서 — 그룹 폼의 부서 선택지(001 W-05-12). users-roles/lookups.ts 와 같은 구현이며
+ * 라벨은 `code · name` 이다. 미사용 부서를 참조하는 라인을 열어도 이름이 풀리도록 전부 받는다.
+ */
+export const useDepartmentOptions = (): DepartmentOptionsResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.list('departments'),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/departments', { params: { query: { includeInactive: true } } }),
+      ),
+  });
+
+  return {
+    entries:
+      query.data?.items.map((item) => ({
+        value: String(item.departmentId),
+        label: `${item.departmentCode} · ${item.departmentName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: isListTruncated(query.data),
+    isError: query.isError,
+    isLoading: query.isPending,
   };
 };
 

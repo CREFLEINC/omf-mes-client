@@ -26,6 +26,7 @@ const DETAIL_PATH = '/production/work-orders/702';
 
 const filters = (overrides: Partial<WorkOrderCloseFilters> = {}): WorkOrderCloseFilters => ({
   statusCode: 'SYN-CALLER-STATUS',
+  completionJudgmentCode: null,
   productionOrderId: 501,
   plannedStartFrom: '2026-08-23T09:00:00+09:00',
   plannedStartTo: '2026-08-23T17:00:00+09:00',
@@ -62,6 +63,12 @@ const closeFact = (workOrderId: number) => ({
   completedAt: null,
   completionVarianceReasonCode: null,
   closedAt: null,
+  closeDispositionCode: null,
+  closedWorkerNo: null,
+  closedWorkerName: null,
+  closedByUserName: null,
+  closeJudgmentCode: null,
+  voidedLotCount: null,
 });
 
 const recordingFetch = (routes: StubRoute[]): { fetch: StubFetch; requests: URL[] } => {
@@ -92,6 +99,7 @@ describe('workOrderCloseKeys', () => {
       'work-order-close',
       'candidates',
       'SYN-CALLER-STATUS',
+      null,
       501,
       '2026-08-23T09:00:00+09:00',
       '2026-08-23T17:00:00+09:00',
@@ -99,6 +107,7 @@ describe('workOrderCloseKeys', () => {
     ]);
     [
       filters({ statusCode: 'SYN-OTHER-STATUS' }),
+      filters({ completionJudgmentCode: 'UNDER' }),
       filters({ productionOrderId: 502 }),
       filters({ plannedStartFrom: '2026-08-24T09:00:00+09:00' }),
       filters({ plannedStartTo: '2026-08-24T17:00:00+09:00' }),
@@ -150,7 +159,7 @@ describe('work-order close reads', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it('gets candidates with exact filters, preserves server order and page, and exposes only three close facts', async () => {
+  it('gets candidates with exact filters, preserves server order and page, and keeps list progress', async () => {
     const { fetch, requests } = recordingFetch([
       getRoute(LIST_PATH, {
         items: [
@@ -196,15 +205,15 @@ describe('work-order close reads', () => {
           completedAt: '2026-08-23T10:00:00+09:00',
           completionVarianceReasonCode: 'SYN-VARIANCE',
           closedAt: '2026-08-23T11:00:00+09:00',
+          progress: { achievementRate: 1, completionJudgmentCode: 'NORMAL', goodQty: 12.5 },
         },
-        closeFact(701),
+        { ...closeFact(701), progress: null },
       ],
       page: { page: 3, size: 20, total: 22 },
     });
     expect(result.current.data?.items[0]).not.toHaveProperty('versionNo');
     expect(result.current.data?.items[0]).not.toHaveProperty('releasedAt');
     expect(result.current.data?.items[0]).not.toHaveProperty('operationSettingsSnapshot');
-    expect(result.current.data?.items[0]).not.toHaveProperty('progress');
     expect(result.current.data?.items[0]).not.toHaveProperty('preIssuedLots');
   });
 
@@ -327,49 +336,83 @@ describe('work-order close readiness reads', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it.each([
-    [[], false],
-    [
-      [
+  it('열린 세션이 없으면 없다고, 있으면 어느 단말과 작업자의 세션인지 읽는다', async () => {
+    const session = {
+      workSessionId: 1001,
+      workOrderId: 702,
+      sessionNo: 1,
+      shiftId: 401,
+      terminalId: 501,
+      terminalCode: 'POP-SYN-1',
+      workerId: 77,
+      workerNo: '900028',
+      workerName: '합성 작업자',
+      startedAt: '2026-08-23T09:00:00+09:00',
+      statusCode: 'STOPPED',
+      versionNo: 9,
+    };
+    const { fetch, requests } = recordingFetch([
+      getRoute('/production/work-sessions', {
+        items: [session],
+        page: { page: 1, size: 20, total: 1 },
+      }),
+    ]);
+    const { result } = renderHookWithProviders(() => useWorkOrderCloseOpenSession(702), {
+      fetch,
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(Array.from(requests[0]?.searchParams.entries() ?? [])).toEqual([
+      ['open', 'true'],
+      ['workOrderId', '702'],
+      ['page', '1'],
+      ['size', '20'],
+    ]);
+    expect(result.current.data).toEqual({
+      hasOpenSession: true,
+      sessions: [
         {
           workSessionId: 1001,
-          workOrderId: 702,
-          sessionNo: 1,
-          shiftId: 401,
-          terminalId: 501,
+          terminalCode: 'POP-SYN-1',
+          workerName: '합성 작업자',
+          workerNo: '900028',
           startedAt: '2026-08-23T09:00:00+09:00',
-          statusCode: 'SYN-NOT-INTERPRETED',
-          versionNo: 9,
+          statusCode: 'STOPPED',
         },
       ],
-      true,
-    ],
-  ] as const)(
-    'reads open-session presence as %s without exposing session facts',
-    async (items, hasOpenSession) => {
-      const { fetch, requests } = recordingFetch([
-        getRoute('/production/work-sessions', {
-          items,
-          page: { page: 1, size: 1, total: items.length },
-        }),
-      ]);
-      const { result } = renderHookWithProviders(() => useWorkOrderCloseOpenSession(702), {
-        fetch,
-      });
+    });
+  });
 
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  it('서버가 단말과 작업자를 싣지 않으면 모르는 값으로 둔다', async () => {
+    const { fetch } = recordingFetch([
+      getRoute('/production/work-sessions', {
+        items: [
+          {
+            workSessionId: 1002,
+            workOrderId: 702,
+            sessionNo: 1,
+            shiftId: 401,
+            terminalId: 501,
+            startedAt: '2026-08-23T09:00:00+09:00',
+            statusCode: 'RUNNING',
+            versionNo: 1,
+          },
+        ],
+        page: { page: 1, size: 20, total: 1 },
+      }),
+    ]);
+    const { result } = renderHookWithProviders(() => useWorkOrderCloseOpenSession(702), {
+      fetch,
+    });
 
-      expect(Array.from(requests[0]?.searchParams.entries() ?? [])).toEqual([
-        ['open', 'true'],
-        ['workOrderId', '702'],
-        ['page', '1'],
-        ['size', '1'],
-      ]);
-      expect(result.current.data).toEqual({ hasOpenSession });
-      expect(result.current.data).not.toHaveProperty('items');
-      expect(result.current.data).not.toHaveProperty('statusCode');
-    },
-  );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.sessions[0]).toMatchObject({
+      terminalCode: null,
+      workerName: null,
+      workerNo: null,
+    });
+  });
 
   it('gets outbound settings in server order with null normalization and no raw fields', async () => {
     const { fetch, requests } = recordingFetch([

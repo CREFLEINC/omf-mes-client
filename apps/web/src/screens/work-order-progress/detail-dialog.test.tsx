@@ -1,8 +1,9 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { DetailDialog, type DetailDialogProps } from './detail-dialog';
 import type { WorkOrder } from './types';
 
@@ -23,10 +24,21 @@ const workOrder = (overrides: Partial<WorkOrder> = {}): WorkOrder => ({
   ...overrides,
 });
 
+/* 4M 변경 자재 투입 구획(omf-all-around#63)이 부르는 조회 — 이 시험들은 투입이 없는 W/O 를 본다. */
+const EMPTY_PAGE = { items: [], page: { page: 1, size: 200, total: 0 } };
+const stubFetch = createStubFetch([
+  {
+    match: (request) =>
+      request.url.includes('/production/material-consumptions') ||
+      request.url.includes('/mdm/code-values'),
+    respond: () => jsonResponse(EMPTY_PAGE),
+  },
+]);
+
 const renderDialog = (overrides: Partial<DetailDialogProps> = {}) => {
   const onClose = vi.fn();
 
-  render(
+  renderWithProviders(
     <DetailDialog
       workOrder={workOrder()}
       isLoading={false}
@@ -34,9 +46,21 @@ const renderDialog = (overrides: Partial<DetailDialogProps> = {}) => {
       isOpen
       itemLabel={(id) => `품목 ${id}`}
       statusLabel={(code) => `상태 ${code}`}
+      crew={{
+        data: {
+          sessions: [],
+          workerResults: [],
+          defectTypes: [],
+          sessionsTruncated: false,
+          resultsTruncated: false,
+        },
+        isLoading: false,
+        isError: false,
+      }}
       onClose={onClose}
       {...overrides}
     />,
+    { fetch: stubFetch, session: null },
   );
 
   return { onClose, user: userEvent.setup() };
@@ -91,7 +115,7 @@ describe('DetailDialog', () => {
    * ⛔ 없다는 사실을 적지 않으면 「이 W/O 는 실적이 없구나」로 읽힌다 — 실제로는 아직
    * 받아 오지 않은 것이다(A-11).
    */
-  it('⛔ 실적 이력·생산LOT·세션이 아직 없다는 것을 적는다', () => {
+  it('⛔ 실적 이력·생산LOT이 아직 없다는 것을 적는다', () => {
     renderDialog();
 
     expect(within(dialog()).getByText(t.historyUnavailable)).toBeInTheDocument();

@@ -1,8 +1,10 @@
 import {
   Button,
+  Checkbox,
   Chip,
   type Column,
   EmptyState,
+  Select,
   SkeletonText,
   Table,
   TextField,
@@ -10,6 +12,9 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useColumnWidths } from '../../patterns/column-resize';
+import { formatDotDate, OneLine } from '../../patterns/po-board';
+import type { LotDraft } from './line-draft';
 import {
   describeReference,
   toReference,
@@ -17,116 +22,289 @@ import {
   type ReferenceSource,
 } from './lookups';
 import type { SplitLineView } from './split-calc';
-import type { PoView } from './types';
+import type { PoView, SelectOption } from './types';
 
 const t = messages.overReceiptSplit;
 
-/** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
-const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty;
+export const formatQty = (value: number): string => value.toLocaleString();
+
+/**
+ * 표의 한 줄 — 발주 라인이거나, 그 아래 붙는 LOT 줄이다.
+ *
+ * **LOT 줄은 수량을 넣은 뒤에만 선다** — 줄 하나에 LOT 하나다(서버 장부 P-100). 발주보다 많이 와도
+ * LOT 은 하나이고, 초과 몫은 같은 줄의 「초과분」 칸이 말한다. 받지 않는 줄은 한 줄로 남아 표가 길어지지 않는다.
+ * 표 부품에 하위 줄이 없어 같은 열에 평평하게 편다.
+ */
+export type LineTableRow =
+  { kind: 'line'; view: SplitLineView } | { kind: 'lot'; view: SplitLineView };
+
+export const toLineTableRows = (rows: readonly SplitLineView[]): LineTableRow[] =>
+  rows.flatMap((view): LineTableRow[] =>
+    view.split === null
+      ? [{ kind: 'line', view }]
+      : [
+          { kind: 'line', view },
+          { kind: 'lot', view },
+        ],
+  );
+
+/** React key — 화면에 나오지 않는다. */
+export const lineTableRowId = (row: LineTableRow): string =>
+  row.kind === 'line'
+    ? String(row.view.line.purchaseOrderLineId)
+    : `${String(row.view.line.purchaseOrderLineId)}:lot`;
 
 export interface SplitLineColumnsInput {
-  /** 품목은 번호마다 하나씩 푼다 — 목록 참조가 아니라 풀이 함수를 받는다. */
   itemNames: ItemNameLookup;
   uomLookup: ReferenceSource;
+  /** 대체 LOT 사유 선택지(`SUBSTITUTE_LOT_REASON`). */
+  lotReasonOptions: SelectOption[];
+  /** 보내는 중 — 수량·LOT 입력을 잠근다. */
+  isLocked: boolean;
+  /**
+   * LOT 사유를 칸에 붙일지. **등록을 누른 뒤에만** 붙인다 — 수량을 치는 순간 LOT 칸이 붉어지면
+   * 아직 넣지도 않은 칸이 잘못된 것처럼 보인다(머리 입력과 같은 규칙). 기본은 붙인다.
+   */
+  showLotErrors?: boolean;
   onChangeQty: (purchaseOrderLineId: number, text: string) => void;
+  onChangeLot: (purchaseOrderLineId: number, patch: Partial<LotDraft>) => void;
+}
+
+interface LotEditorProps {
+  lineNo: number;
+  lot: LotDraft;
+  error: string | null;
+  reasonOptions: SelectOption[];
+  isLocked: boolean;
+  onChange: (patch: Partial<LotDraft>) => void;
 }
 
 /**
- * 라인 표의 열 구성.
- *
- * **수량 넷을 네 열에 담는다.** 발주·기입하·잔량·허용을 각각 열로 펴면 지정 폭 합이
- * 1,000px을 넘어 표 하한(`58rem`)을 처음으로 넘긴다. 짝지어 한 칸에 넣으면 그 안에 들어간다 —
- * 「열을 줄이는 것이 먼저다」를 여덟 번째로 적용한 자리다(`docs/layout-conventions.md`).
- *
- * **단위 열을 따로 두지 않는다.** 단위는 수량을 치는 자리에 붙는다 — 열로 만들면 폭이
- * 132px 더 들고, 정작 필요한 순간(수량을 칠 때)에는 눈이 표를 가로질러야 한다.
+ * 한 전표 줄의 LOT 입력 — 번호 칸 · 「라벨 없음」 · (번호가 없을 때만) 대체 사유.
+ * 세 상태의 뜻은 `lot-format.ts` 의 표에 있다.
+ */
+const LotEditor = ({ lineNo, lot, error, reasonOptions, isLocked, onChange }: LotEditorProps) => (
+  <div className="ors-lot-editor">
+    <TextField
+      size="sm"
+      aria-label={t.lineTable.lotNoLabel(lineNo)}
+      placeholder={t.lineTable.lotNoPlaceholder}
+      value={lot.lotNo}
+      error={error ?? undefined}
+      disabled={isLocked}
+      autoComplete="off"
+      onChange={(event) => {
+        onChange({ lotNo: event.target.value });
+      }}
+    />
+    <Checkbox
+      checked={lot.labelMissing}
+      disabled={isLocked}
+      aria-label={t.lineTable.lotMissingLabel(lineNo)}
+      onChange={(event) => {
+        onChange({
+          labelMissing: event.target.checked,
+          ...(event.target.checked ? {} : { reasonCode: '' }),
+        });
+      }}
+    >
+      {t.lineTable.lotMissing}
+    </Checkbox>
+    {lot.labelMissing && lot.lotNo.trim() === '' && (
+      <Select
+        size="sm"
+        aria-label={t.lineTable.lotReasonLabel(lineNo)}
+        options={reasonOptions}
+        value={lot.reasonCode === '' ? null : lot.reasonCode}
+        placeholder={t.lineTable.lotReasonPlaceholder}
+        disabled={isLocked}
+        onChange={(value) => {
+          onChange({ reasonCode: value });
+        }}
+      />
+    )}
+  </div>
+);
+
+/**
+ * 열 — 수량은 열마다 따로 선다(천 단위 구분이 있는 두 수를 한 칸에 두지 않는다).
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
- * | 줄번호 | 64px | 두 자리 수 + 우측정렬 여백 |
- * | **품목** | **미지정** | 「코드 · 이름」을 담고 남는 폭을 흡수한다 |
- * | 발주 · 기입하 | 168px | 두 수를 한 칸에(「발주 100 · 기입하 40」) |
- * | 잔량 · 허용 | 160px | 「잔량 60 (+5)」 |
- * | **이번 도착 수량** | 160px | 입력칸 + 단위 표기 + 인라인 오류가 들어가는 폭 |
- * | 정량 · 초과 | 160px | 화면이 만든 두 값을 한 칸에 |
- * | **지정 폭 합** | **712px** | |
- * | 흡수 열 예산 | 200px | 「코드 · 이름」이 접히지 않고 읽히는 하한 |
- * | **합** | **912px** | `58rem`(928px) 안에 들어간다 — 16px 여유 |
- *
- * 흡수 열이 실제로 받는 폭은 216px(928 − 712)로 예산 200px보다 넓다.
+ * | No. | 48px | 세 자리 + 여백 |
+ * | 품목코드 | 120px | 13자 ASCII + 여백. LOT 줄에서는 「공급사 LOT」 머리다 |
+ * | **품목명** | **미지정** | 남는 폭을 흡수한다. LOT 줄에서는 LOT 입력이 이 칸에서 시작해 빈 수량 칸 위로 이어진다 |
+ * | 발주 · 기입하 | 88px × 2 | 천 단위 7자 + 여백 |
+ * | 잔량 (+허용) | 104px | 「5,000 (+0)」 |
+ * | 이번 도착 | 112px | 입력칸 + 인라인 사유 |
+ * | 단위 | 88px | 「EA · 개」 + 여백 |
+ * | P/O 반영 · 초과분 | 88px × 2 | 천 단위 7자 + 여백. 둘의 합이 이번 도착이다 |
+ * | 합 | 824px + 흡수 ≥ 160px | `.ors-lines` 최소 폭 `62rem`(992px) |
  */
 export const buildSplitLineColumns = ({
   itemNames,
   uomLookup,
+  lotReasonOptions,
+  isLocked,
+  showLotErrors = true,
   onChangeQty,
-}: SplitLineColumnsInput): Column<SplitLineView>[] => [
+  onChangeLot,
+}: SplitLineColumnsInput): Column<LineTableRow>[] => [
   {
     key: 'lineNo',
     header: t.lineTable.lineNo,
     align: 'end',
-    width: '64px',
-    render: (row) => row.line.lineNo,
+    width: '48px',
+    render: (row) => (row.kind === 'line' ? row.view.line.lineNo : ''),
   },
   {
-    key: 'item',
-    header: t.lineTable.item,
-    render: (row) => describeReference(itemNames.of(row.line.itemId)),
+    key: 'itemCode',
+    header: t.lineTable.itemCode,
+    width: '120px',
+    render: (row) => {
+      if (row.kind === 'lot') return <span className="ors-lot-part">{t.lineTable.lotHead}</span>;
+      const detail = itemNames.detail(row.view.line.itemId);
+
+      /* 상세가 아직이면 그 사정(불러오는 중 · 실패 · 없음)을 코드 자리에 낸다 — 번호는 내지 않는다. */
+      return detail === null
+        ? describeReference(itemNames.of(row.view.line.itemId))
+        : detail.itemCode;
+    },
+  },
+  {
+    key: 'itemName',
+    header: t.lineTable.itemName,
+    render: (row) => {
+      if (row.kind === 'lot') {
+        return (
+          <LotEditor
+            lineNo={row.view.line.lineNo}
+            lot={row.view.lot}
+            error={showLotErrors ? row.view.lotError : null}
+            reasonOptions={lotReasonOptions}
+            isLocked={isLocked}
+            onChange={(patch) => {
+              onChangeLot(row.view.line.purchaseOrderLineId, patch);
+            }}
+          />
+        );
+      }
+      const detail = itemNames.detail(row.view.line.itemId);
+
+      return (
+        <span className="ors-item-name">
+          <OneLine text={detail?.itemName ?? ''} />
+          {/* 수입검사 대상 — 서버가 품목 기준정보로 정한다. 보내는 값이 아니라 사실의 표식이다. */}
+          {detail?.inspectionRequired === true && (
+            <Chip variant="status" status="info" size="sm" title={t.lineTable.iqcTitle}>
+              {t.lineTable.iqc}
+            </Chip>
+          )}
+        </span>
+      );
+    },
   },
   {
     key: 'ordered',
     header: t.lineTable.ordered,
     align: 'end',
-    width: '168px',
-    render: (row) => t.lineTable.orderedPair(row.line.orderedQty, row.line.receivedQty),
+    width: '88px',
+    render: (row) => (row.kind === 'line' ? formatQty(row.view.line.orderedQty) : ''),
+  },
+  {
+    key: 'received',
+    header: t.lineTable.received,
+    align: 'end',
+    width: '88px',
+    render: (row) => (row.kind === 'line' ? formatQty(row.view.line.receivedQty) : ''),
   },
   {
     key: 'remaining',
     header: t.lineTable.remaining,
     align: 'end',
-    width: '160px',
-    /* 잔량은 **화면이 만든 값이다** — 계약이 내려주는 것은 발주 수량과 누적 입하뿐이다. */
-    render: (row) => t.lineTable.remainingPair(row.remainingQty, row.line.toleranceOverQty),
+    width: '104px',
+    /*
+     * 잔량은 **화면이 만든 값이다** — 계약이 내려주는 것은 발주 수량과 누적 입하뿐이다. 괄호 안은 **아직 쓸 수 있는
+     * 허용치**다(한도 − 잔량) — 허용치 안에서 이미 더 받은 줄에 처음 허용치를 그대로 보이면 받을 수 없는 수량이
+     * 받을 수 있는 것처럼 읽힌다.
+     */
+    render: (row) =>
+      row.kind === 'line'
+        ? t.lineTable.remainingPair(
+            formatQty(row.view.remainingQty),
+            formatQty(Math.max(row.view.normalLimit - row.view.remainingQty, 0)),
+          )
+        : '',
   },
   {
     key: 'arrivedQty',
     header: t.lineTable.arrivedQty,
-    width: '160px',
+    width: '112px',
     /*
-     * **표 안의 입력칸** — 이 저장소의 첫 사례다. 보이는 라벨을 둘 자리가 없어
-     * `aria-label`로 준다(배치 규범 3의 이탈 조건이 이 형태를 이미 정했다).
-     *
-     * 단위는 `helperText`로 붙인다. 오류가 있으면 디자인 시스템이 오류 문구로 대체하는데,
-     * 그 순간에는 단위보다 「무엇이 잘못됐는지」가 먼저 읽혀야 하므로 그 규칙을 그대로 쓴다.
-     */
-    render: (row) => (
-      <TextField
-        type="number"
-        size="sm"
-        fullWidth
-        inputMode="decimal"
-        aria-label={t.lineTable.arrivedQtyLabel(row.line.lineNo)}
-        value={row.qtyText}
-        error={row.qtyError ?? undefined}
-        helperText={t.lineTable.uomNote(describeReference(toReference(uomLookup, row.line.uomId)))}
-        onChange={(event) => {
-          onChangeQty(row.line.purchaseOrderLineId, event.target.value);
-        }}
-      />
-    ),
-  },
-  {
-    key: 'split',
-    header: t.lineTable.split,
-    align: 'end',
-    width: '160px',
-    /*
-     * **이 칸의 값을 여기서 계산하지 않는다.** 잔량·한도·가르기는 `split-calc.ts`가 한 번만 하고
-     * 표는 받은 결과를 그린다 — 두 곳에서 계산하면 보이는 값과 보내는 값이 갈린다.
+     * **표 안의 입력칸.** 보이는 라벨을 둘 자리가 없어 `aria-label`로 준다. 자릿수 경고는
+     * 막지 않는 안내라 helper 로 붙인다 — 오류가 있으면 디자인 시스템이 오류 문구로 바꾼다.
      */
     render: (row) =>
-      row.split === null
-        ? t.values.notSplit
-        : t.lineTable.splitPair(row.split.normalQty, row.split.excessQty),
+      row.kind === 'line' ? (
+        <TextField
+          type="number"
+          size="sm"
+          fullWidth
+          inputMode="decimal"
+          aria-label={t.lineTable.arrivedQtyLabel(row.view.line.lineNo)}
+          value={row.view.qtyText}
+          error={row.view.qtyError ?? undefined}
+          helperText={row.view.qtyWarning ?? undefined}
+          disabled={isLocked}
+          onChange={(event) => {
+            onChangeQty(row.view.line.purchaseOrderLineId, event.target.value);
+          }}
+        />
+      ) : (
+        ''
+      ),
+  },
+  {
+    key: 'uom',
+    header: t.lineTable.uom,
+    width: '88px',
+    render: (row) =>
+      row.kind === 'line' ? (
+        <OneLine text={describeReference(toReference(uomLookup, row.view.line.uomId))} />
+      ) : (
+        ''
+      ),
+  },
+  {
+    key: 'normal',
+    header: t.lineTable.normal,
+    align: 'end',
+    width: '88px',
+    /* **이 칸의 값을 여기서 계산하지 않는다.** `split-calc.ts`가 가른 결과를 그린다. */
+    render: (row) => {
+      if (row.kind === 'lot') return '';
+
+      return row.view.split === null ? t.values.notSplit : formatQty(row.view.split.normalQty);
+    },
+  },
+  {
+    key: 'excess',
+    header: t.lineTable.excess,
+    align: 'end',
+    width: '88px',
+    render: (row) => {
+      if (row.kind === 'lot') return '';
+      if (row.view.split === null) return t.values.notSplit;
+
+      /* 초과 몫이 있는 줄은 눈에 띄어야 한다 — 이 몫은 P/O 에 넣지 않고 추가 P/O 를 기다린다. */
+      return row.view.split.excessQty > 0 ? (
+        <Chip variant="status" status="warning" size="sm" data-excess="true">
+          {formatQty(row.view.split.excessQty)}
+        </Chip>
+      ) : (
+        formatQty(0)
+      );
+    },
   },
 ];
 
@@ -137,121 +315,123 @@ interface SummaryItem {
 }
 
 export interface SplitLineTableProps extends SplitLineColumnsInput {
-  /** 고른 발주. 제목줄의 자료는 목록 응답의 행에 이미 있어 상세 경로를 부르지 않는다. */
+  /** 받을 발주 — 머리줄의 값. */
   purchaseOrder: PoView;
-  /**
-   * 공급사는 **위 구획이 실패 안내와 복구를 소유**하므로 이름만 받는다.
-   * 이 부품에 번호를 문자열로 만드는 자리는 어느 쪽에도 없다.
-   */
+  /** 공급사 이름. 실패했으면 그 사실(`supplierFailed`)을 함께 받아 아래 안내와 복구 수단에 넣는다. */
   supplierName: string;
-  rows: SplitLineView[];
+  supplierFailed?: boolean;
+  rows: readonly SplitLineView[];
   isLoading: boolean;
-  /**
-   * 공장 — **이름이 이 구획의 제목줄에서만 보인다.** 그래서 실패 안내와 다시 시도도
-   * 여기가 소유하고, 그러려면 이름이 아니라 참조 자체를 받아 실패 여부를 알아야 한다.
-   */
+  /** 공장 — 이름이 이 구획의 제목줄에서만 보여 실패 안내와 다시 시도도 여기가 소유한다. */
   plantLookup: ReferenceSource;
+  /** 표 위의 도구 — 라벨 스캔 칸과 「잔량으로 채우기」. 화면이 들고 있는 상태를 쓴다. */
+  toolbar?: ReactNode;
   onRetryReferences: () => void;
 }
 
 /**
- * 고른 발주의 라인 표와 그 제목줄. **이 화면이 파생값을 그리는 자리다.**
- *
- * 지금까지의 조회 화면은 서버가 준 값을 그대로 그렸다. 이 표의 「잔량 · 허용」과
- * 「정량 · 초과」는 화면이 만든 값이라, 그 사실을 표 아래 안내가 밝힌다 —
- * 서버가 정한 값으로 읽히면 사용자가 수량을 다시 보지 않는다.
+ * 고른 발주의 머리와 라인 표. **이 화면이 파생값을 그리는 자리다** — 잔량·정량·초과는 화면이 만든 값이다.
  *
  * **상세 경로를 부르지 않는다.** 제목줄에 필요한 값은 전부 목록 응답의 행에 들어 있다.
  */
 export const SplitLineTable = ({
   purchaseOrder,
   supplierName,
+  supplierFailed = false,
   rows,
   isLoading,
   plantLookup,
   itemNames,
   uomLookup,
+  lotReasonOptions,
+  isLocked,
+  showLotErrors,
+  toolbar,
   onChangeQty,
+  onChangeLot,
   onRetryReferences,
 }: SplitLineTableProps) => {
-  const columns = buildSplitLineColumns({ itemNames, uomLookup, onChangeQty });
+  const columns = buildSplitLineColumns({
+    itemNames,
+    uomLookup,
+    lotReasonOptions,
+    isLocked,
+    showLotErrors,
+    onChangeQty,
+    onChangeLot,
+  });
+  const resizable = useColumnWidths('omf-mes:inbound-schedule:columns:register', columns);
 
   const summary: SummaryItem[] = [
-    {
-      key: 'purchaseOrderNo',
-      label: t.summary.purchaseOrderNo,
-      value: purchaseOrder.purchaseOrderNo,
-    },
     { key: 'supplier', label: t.summary.supplier, value: supplierName },
     {
       key: 'plant',
       label: t.summary.plant,
       value: describeReference(toReference(plantLookup, purchaseOrder.plantId)),
     },
-    { key: 'orderDate', label: t.summary.orderDate, value: purchaseOrder.orderDate },
+    { key: 'orderDate', label: t.summary.orderDate, value: formatDotDate(purchaseOrder.orderDate) },
     {
       key: 'expectedReceiptDate',
       label: t.summary.expectedReceiptDate,
-      value: orEmptyMark(purchaseOrder.expectedReceiptDate),
-    },
-    {
-      key: 'status',
-      label: t.summary.status,
-      value: (
-        <Chip variant="status" size="sm">
-          {purchaseOrder.statusCode}
-        </Chip>
-      ),
+      value:
+        purchaseOrder.expectedReceiptDate === null
+          ? t.values.empty
+          : formatDotDate(purchaseOrder.expectedReceiptDate),
     },
   ];
 
-  /* 이 구획이 이름을 내는 참조 셋 중 **하나라도** 실패하면 안내와 복구 수단을 낸다. */
-  const hasReferenceError = itemNames.isError || uomLookup.isError || plantLookup.isError;
+  /* 이 구획이 이름을 내는 참조 넷 중 **하나라도** 실패하면 안내와 복구 수단을 낸다. */
+  const hasReferenceError =
+    supplierFailed || itemNames.isError || uomLookup.isError || plantLookup.isError;
 
   return (
     <>
       {/*
-       * 값 표기다 — 폼 컨트롤을 잠그지 않는다(배치 규범 3). `role="group"`을 명시해
-       * 제목줄 전체가 하나의 이름을 갖게 한다.
+       * 발주 머리 — 입하 예정 조회의 상세 카드와 같은 모양. 값 표기다 — 폼 컨트롤을 잠그지 않는다
+       * (배치 규범 3). `role="group"`으로 머리 전체가 하나의 이름을 갖게 한다.
        */}
-      <div role="group" aria-label={t.summary.label}>
-        <dl className="filter-bar">
+      <header className="po-board-order-head" role="group" aria-label={t.summary.label}>
+        <div className="po-board-order-title">
+          <span className="po-board-order-eyebrow">{t.summary.purchaseOrderNo}</span>
+          <span className="po-board-order-no">{purchaseOrder.purchaseOrderNo}</span>
+        </div>
+        <dl className="po-board-order-facts">
           {summary.map((item) => (
-            <div className="field-cell" key={item.key}>
-              <dt className="field-label">{item.label}</dt>
+            <div key={item.key}>
+              <dt>{item.label}</dt>
               <dd>{item.value}</dd>
             </div>
           ))}
         </dl>
+      </header>
+
+      <div className="ors-section-head">
+        <h3 className="ors-section-title">{t.form.linesTitle}</h3>
       </div>
+
+      {toolbar}
 
       {isLoading ? (
         <div role="status" aria-label={t.loading.lines}>
           <SkeletonText lines={2} />
         </div>
       ) : (
-        <>
-          <div className="wide-table">
-            <Table
-              density="compact"
-              columns={columns}
-              rows={rows}
-              getRowId={(row) => String(row.line.purchaseOrderLineId)}
-              empty={
-                <EmptyState
-                  size="sm"
-                  live
-                  title={t.empty.noLinesTitle}
-                  description={t.empty.noLinesDescription}
-                />
-              }
-            />
-          </div>
-
-          {/* 파생값이라는 사실과 빈 칸이 오류가 아니라는 사실은 화면에서 읽혀야 한다. */}
-          <p className="field-note">{t.notes.splitDerived}</p>
-          <p className="field-note">{t.notes.arrivedQtyOptional}</p>
-        </>
+        <div className="wide-table po-board-table ors-lines" style={resizable.style}>
+          <Table
+            density="compact"
+            columns={resizable.columns}
+            rows={toLineTableRows(rows)}
+            getRowId={lineTableRowId}
+            empty={
+              <EmptyState
+                size="sm"
+                live
+                title={t.empty.noLinesTitle}
+                description={t.empty.noLinesDescription}
+              />
+            }
+          />
+        </div>
       )}
 
       {hasReferenceError && (

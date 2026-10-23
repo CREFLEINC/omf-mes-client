@@ -14,7 +14,7 @@ import {
 } from '../../test/session-harness';
 
 import { readReturnPath } from './return-path';
-import { SessionProvider } from './session-context';
+import { SessionProvider, useSession } from './session-context';
 import { GuestOnly, RequireSession } from './session-guards';
 
 const t = messages.session;
@@ -37,6 +37,17 @@ const LocationProbe = () => {
   );
 };
 
+/** 화면 안에서 스스로 로그아웃한다 — 서버 왕복은 `use-sign-out.test.tsx`가 잰다. */
+const SignOutButton = () => {
+  const { signOut } = useSession();
+
+  return (
+    <button type="button" onClick={signOut}>
+      {t.actions.signOut}
+    </button>
+  );
+};
+
 const currentPath = (): string => screen.getByTestId('location').textContent ?? '';
 const carriedFrom = (): string => screen.getByTestId('from').textContent ?? '';
 
@@ -54,6 +65,7 @@ const renderGuardedApp = (
           element={
             <RequireSession>
               <h1>창고·Location</h1>
+              <SignOutButton />
             </RequireSession>
           }
         />
@@ -111,6 +123,23 @@ describe('RequireSession — 로그인한 사람만 지나간다', () => {
       expect(currentPath()).toBe(LOGIN_ROUTE);
     });
     expect(carriedFrom()).toBe(PROTECTED_ROUTE);
+  });
+
+  /**
+   * ⛔ **스스로 나간 사람의 마지막 화면은 들려 보내지 않는다**(omf-all-around#175). 들려 보내면
+   * 다음에 로그인한 사람이 앞사람의 화면으로 들어가고, 권한이 다르면 오류만 남는다.
+   */
+  it('스스로 로그아웃하면 로그인 화면으로 가되 마지막 화면을 들려 보내지 않는다', async () => {
+    const user = userEvent.setup();
+
+    renderGuardedApp(PROTECTED_ROUTE, withSessionStub(signedInRoute()));
+
+    await user.click(await screen.findByRole('button', { name: t.actions.signOut }));
+
+    await waitFor(() => {
+      expect(currentPath()).toBe(LOGIN_ROUTE);
+    });
+    expect(carriedFrom()).toBe('없음');
   });
 
   /**

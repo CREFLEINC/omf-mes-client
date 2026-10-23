@@ -2,9 +2,14 @@ import type { components } from '@omf-mes/api-client';
 
 import { defaultInitialPassword } from './initial-password';
 import type { AppUser, UserFormValues } from './types';
+import { formatPhone, normalizePhone } from './user-validation';
 
 type AppUserCreate = components['schemas']['AppUserCreate'];
 type AppUserUpdate = components['schemas']['AppUserUpdate'];
+
+/** 비면 널(삭제), 아니면 표준형. 형식이 틀린 값은 검증이 먼저 막으므로 친 값을 그대로 둔다. */
+const phoneToBody = (value: string): string | null =>
+  value.trim() === '' ? null : (normalizePhone(value) ?? value.trim());
 
 /**
  * 계약 표현과 폼 표현 사이의 변환.
@@ -32,6 +37,8 @@ export const appUserToFormValues = (appUser: AppUser): UserFormValues => ({
       ? ''
       : String(appUser.departmentId),
   email: appUser.email ?? '',
+  /* 서버는 표준형(`84…`)을 주고 화면은 국내 표기(`0912 345 678`)로 보인다. */
+  phoneNumber: formatPhone(appUser.phoneNumber),
   /* 공통코드 선택값. 목록에 없는 기존 값도 초안에서 지우지 않는다. */
   statusCode: appUser.statusCode,
 });
@@ -49,6 +56,7 @@ export const emptyUserFormValues = (): UserFormValues => ({
   userName: '',
   departmentId: '',
   email: '',
+  phoneNumber: '',
   statusCode: '',
 });
 
@@ -61,7 +69,7 @@ export const emptyUserFormValues = (): UserFormValues => ({
  * **번호(`appUserId`)와 사용 여부(`isActive`)도 싣지 않는다** —
  * 번호는 경로에 있고 사용 여부는 `:deactivate`로만 바뀐다.
  *
- * **부서·전자우편은 비어도 키를 빼지 않고 널을 명시한다.** 키를 빼면 서버가 이전 값을
+ * **부서·전자우편·휴대폰 번호는 비어도 키를 빼지 않고 널을 명시한다.** 키를 빼면 서버가 이전 값을
  * 남길 수 있어 한 번 넣은 값을 지울 방법이 사라진다.
  *
  * ⛔⛔ **`statusCode` 가 2026-09-11 전달본에서 선택 → 필수로 바뀌었다** — 예전엔 비우면 키를
@@ -75,6 +83,7 @@ export const toAppUserUpdate = (values: UserFormValues): AppUserUpdate => ({
   userName: values.userName.trim(),
   departmentId: values.departmentId === '' ? null : Number(values.departmentId),
   email: values.email.trim() === '' ? null : values.email.trim(),
+  phoneNumber: phoneToBody(values.phoneNumber),
   statusCode: values.statusCode,
 });
 
@@ -110,6 +119,7 @@ export const toAppUserCreate = (values: UserFormValues): AppUserCreate => ({
   userName: values.userName.trim(),
   departmentId: values.departmentId === '' ? null : Number(values.departmentId),
   email: values.email.trim() === '' ? null : values.email.trim(),
+  phoneNumber: phoneToBody(values.phoneNumber),
   ...(values.statusCode === '' ? {} : { statusCode: values.statusCode }),
 });
 
@@ -126,4 +136,5 @@ export const isSameUserValues = (a: UserFormValues, b: UserFormValues): boolean 
   a.userName === b.userName &&
   a.departmentId === b.departmentId &&
   a.email === b.email &&
+  a.phoneNumber === b.phoneNumber &&
   a.statusCode === b.statusCode;

@@ -30,6 +30,7 @@ const plan = (
   statusCode: 'DRAFT',
   confirmedAt: null,
   remarks: '기준 비고',
+  versionNo: 1,
   ...overrides,
 });
 
@@ -73,6 +74,20 @@ describe('production plan editor state', () => {
       isDirty: false,
       draft: { plannedQty: '90' },
     });
+  });
+
+  it('고친 줄은 다시 조회해도 불러온 시점의 판을 지키고, 고치지 않은 줄은 새 판을 받는다', () => {
+    const dirty = changeProductionPlanRow(
+      [existingRow(plan(101, { versionNo: 3 })), existingRow(plan(102, { versionNo: 3 }))],
+      'plan-101',
+      'plannedQty',
+      '75',
+    );
+    const refetched = reconcileProductionPlanRows(dirty, [
+      plan(101, { versionNo: 5 }),
+      plan(102, { versionNo: 5 }),
+    ]);
+    expect(refetched.map((row) => row.versionNo)).toEqual([3, 5]);
   });
 
   it('clears the edited field error and marks only the target row dirty or pending', () => {

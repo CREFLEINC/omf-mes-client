@@ -130,7 +130,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 번호(`W-01-01`)는 IQC 수입검사이고, 예정 조회는 나중에 도출돼 09 를 받았다(IA §3-2).
    */
   { path: '/logistics/inbound-schedule', code: 'W-01-09', name: '입하 예정 조회' },
-  { path: '/logistics/over-receipt-split', code: 'W-01-03', name: '초과 입하 분리' },
+  /* W-01-03 은 화면이 아니라 입하 예정 조회의 「입하 등록」 창이다 — 옛 주소는 그 창으로 옮겨 준다. */
+  { path: '/logistics/over-receipt-split', code: 'W-01-03', name: '입하 등록' },
   { path: '/logistics/iqc-inspection', code: 'W-01-01', name: 'IQC 수입검사·판정' },
   {
     path: '/logistics/goods-receipt',
@@ -176,22 +177,22 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/shipment/product-disposal-request', code: 'W-04-10', name: '제품 폐기 요청' },
 
   /* ── 생산 ─────────────────────────────────────────────────────────────── */
-  { path: '/production/production-orders', code: 'W-02-01', name: 'ERP W/O 수신·조회' },
+  { path: '/production/production-orders', code: 'W-02-01', name: 'ERP W/O 처리' },
   { path: '/production/po-change-review', code: 'W-02-06', name: 'ERP W/O 변경 관리자 확인' },
   /*
-   * ⛔ 아래 둘은 **사이드바에 없다**(omf-all-around#41) — 주소에 대상이 실려야 그리는 화면이라
-   * 맨 주소로 열면 안내만 선다. 앞 화면의 이동 버튼으로 들어간다. 머리말의 예외 둘이 이것이다.
+   * 아래 셋은 사이드바에 없는 옛 주소다. 화면은 「ERP W/O 처리」로 합쳤고, 주소는 대상을 찾아 처리 화면이나
+   * 작업함으로 넘긴다(`production-order/process/legacy-redirects.tsx`, omf-all-around#129).
    */
-  { path: '/production/production-plans', code: 'W-02-02', name: 'W/O 전개·편성' },
+  { path: '/production/production-plans', code: 'W-02-02', name: 'ERP W/O 처리 생산계획' },
   {
     path: '/production/work-order-assignments',
     code: 'W-02-03',
-    name: '4M 자원배정·유효성 점검',
+    name: 'ERP W/O 처리 4M 배정',
   },
   {
     path: '/production/work-order-release',
     code: 'W-02-04',
-    name: 'W/O 확정·배포·생산LOT 선발행',
+    name: 'ERP W/O 처리 일괄 배포',
   },
   { path: '/production/work-order-close', code: 'W-02-05', name: 'W/O 마감·ERP 실적 송신' },
   /*
@@ -231,6 +232,12 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/quality/dispositions', code: 'W-03-10', name: '처분 판정 처리(재작업/폐기/정상)' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#107) — 화면 코드는 사용자 결정으로 부여했다. */
   { path: '/quality/pqc-inspections', code: 'W-03-11', name: 'PQC 검사 등록·조회' },
+  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#64 · 서버 장부 P-87) — 다음 빈 번호로 받았다. */
+  { path: '/quality/inspection-levels', code: 'W-03-12', name: '검사 수준 관리' },
+  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). */
+  { path: '/master-data/inspection-sheet-template', code: 'W-06-24', name: '검사표 기준' },
+  /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). 서명·승인은 같은 화면의 권한 W-03-14 로 가른다. */
+  { path: '/quality/inspection-sheets', code: 'W-03-13', name: '제품 검사표 조회' },
 
   /* ── 설비/툴 ──────────────────────────────────────────────────────────── */
   /*
@@ -265,7 +272,10 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * ⚠ **알림센터(`W-CO-03`)와 다른 화면이다** — IA §3-2 가 그 구분을 따로 적었다. 알림센터는
    * 「내 알림을 보는 곳」이고 이것은 관리자가 「누가 받을지」를 정하는 곳이다. v1.5 신설(DR-003).
    */
-  { path: '/notification/recipient-settings', code: 'W-CO-11', name: '알람 수신자 설정' },
+  { path: '/notification/recipient-settings', code: 'W-CO-11', name: '알림 수신자 설정' },
+  /* 001(omf-all-around#160) — Zalo 연결 정보. 알림센터가 정본이고 Zalo 는 부가 전달이다. */
+  { path: '/notification/zalo-connection', code: 'W-CO-12', name: '알림 연결 설정' },
+  { path: '/notification/dispatch-history', code: 'W-CO-13', name: '알림 발송 이력' },
   { path: '/notification/notices', code: 'W-CO-04', name: '공지·전달 게시/조회' },
 
   /* ── 시스템 관리 ──────────────────────────────────────────────────────── */

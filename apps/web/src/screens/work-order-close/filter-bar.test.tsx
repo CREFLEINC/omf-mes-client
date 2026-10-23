@@ -11,6 +11,7 @@ const applied: WorkOrderCloseFilterValues = {
   plannedStartFrom: '',
   plannedStartTo: '',
   statusCode: 'READY',
+  judgmentCode: '',
 };
 const productionOrderOptions: SelectItems = [
   { value: 'plan-b', label: 'Synthetic plan B' },
@@ -48,6 +49,10 @@ describe('WorkOrderCloseFilterBar', () => {
       plannedStartFrom: '계획 시작일(부터)',
       plannedStartTo: '계획 시작일(까지)',
       status: '마감 상태',
+      judgment: '판정',
+      judgmentUnavailable:
+        '마감 또는 취소 상태가 들어간 조회는 판정으로 거르지 않습니다. 판정으로 거르려면 진행, 중단, 완료 중에서 상태를 고르세요.',
+      closableStatuses: '진행 또는 중단',
       all: '전체',
       search: '조회',
       reset: '초기화',
@@ -58,7 +63,8 @@ describe('WorkOrderCloseFilterBar', () => {
       statusLookupFailed: '마감 상태 목록을 불러오지 못했습니다.',
       statusLookupEmpty: '사용 가능한 마감 상태가 없습니다.',
       statusLookupTruncated: '마감 상태 목록 일부만 불러와 최초 조회를 시작할 수 없습니다.',
-      completedStatusMissing: '마감 완료 상태를 확인할 수 없어 최초 조회를 시작할 수 없습니다.',
+      inProgressStatusMissing:
+        '진행 상태를 확인할 수 없어 처음 조회를 시작할 수 없습니다. 새로고침한 뒤에도 같으면 시스템 관리자에게 알리세요.',
     });
   });
 
@@ -100,6 +106,7 @@ describe('WorkOrderCloseFilterBar', () => {
       plannedStartFrom: '2026-08-10',
       plannedStartTo: '2026-08-11',
       statusCode: 'READY',
+      judgmentCode: '',
     };
     const props = propsOf({ appliedFilters: initial });
     const { rerender } = render(<WorkOrderCloseFilterBar {...props} />);
@@ -204,5 +211,27 @@ describe('WorkOrderCloseFilterBar', () => {
     expect(onReset).toHaveBeenCalledTimes(1);
     expect(input).toHaveValue('2026-08-01');
     expect(screen.getAllByRole('button')).toHaveLength(2);
+  });
+
+  it('판정을 골라 조회에 싣고, 마감 상태를 고르면 판정 칸을 막고 까닭을 말한다', async () => {
+    const user = userEvent.setup();
+    const { onSearch } = renderBar({
+      statusOptions: [...statusOptions, { value: 'CLOSED', label: 'Closed' }],
+    });
+
+    await user.click(screen.getByRole('combobox', { name: t.judgment }));
+    await user.click(screen.getByRole('option', { name: '미달' }));
+    await user.click(screen.getByRole('button', { name: t.search }));
+    expect(onSearch).toHaveBeenLastCalledWith(expect.objectContaining({ judgmentCode: 'UNDER' }));
+
+    await user.click(screen.getByRole('combobox', { name: t.status }));
+    await user.click(screen.getByRole('option', { name: 'Closed' }));
+    const judgment = screen.getByRole('combobox', { name: t.judgment });
+    expect(judgment).toBeDisabled();
+    expect(judgment).toHaveAccessibleDescription(t.judgmentUnavailable);
+    await user.click(screen.getByRole('button', { name: t.search }));
+    expect(onSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ statusCode: 'CLOSED', judgmentCode: '' }),
+    );
   });
 });

@@ -19,8 +19,12 @@ import {
 } from '../../patterns/pop-identity';
 import { lot, mold, receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
+import { popGateDeniedText, popGateUnidentifiedText } from '../../patterns/pop-process-gate';
+
+const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial');
 
 const t = messages.materialInputScan;
+const UNIDENTIFIED_TEXT = popGateUnidentifiedText(t.confirm.reasons.unidentified, null);
 
 /**
  * 담은 자재 목록. 화면에 목록이 여럿이라 이름으로 집는다.
@@ -612,7 +616,7 @@ describe('MaterialInputScanScreen — 금형 타발수', () => {
      * 경고는 떴는데 「투입 확정」이 그 때문에 잠기지는 않는다 — 잠긴 사유 문구가 하나도
      * 뜨지 않은 채, 아직 기록된 것이 없어서 잠겨 있어야 한다.
      */
-    expect(screen.queryByText(t.confirm.reasons.denied)).toBeNull();
+    expect(screen.queryByText(DENIED_TEXT)).toBeNull();
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
   });
 
@@ -642,7 +646,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     renderScreen([lotsRoute([lot()])]);
 
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
-    expect(screen.getByText(t.confirm.reasons.unidentified)).toBeTruthy();
+    expect(screen.getByText(UNIDENTIFIED_TEXT)).toBeTruthy();
   });
 
   it('사번이 없으면 막고 맨 위 공용 띠로만 말한다', async () => {
@@ -658,14 +662,14 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     const user = userEvent.setup();
     renderScreen([lotsRoute([lot()]), gateRoute(false)], GATED);
 
-    expect(await screen.findByText(t.confirm.reasons.denied)).toBeTruthy();
+    expect(await screen.findByText(DENIED_TEXT)).toBeTruthy();
 
     /* 담아도 사유가 바뀌지 않는다 — 담는 것으로 풀리는 문제가 아니다. */
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
 
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
-    expect(screen.getByText(t.confirm.reasons.denied)).toBeTruthy();
+    expect(screen.getByText(DENIED_TEXT)).toBeTruthy();
   });
 
   /*
@@ -686,7 +690,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
 
     expect(await screen.findByText(t.confirm.reasons.unavailable)).toBeTruthy();
     expect(screen.getByRole('button', { name: t.confirm.retry })).toBeTruthy();
-    expect(screen.queryByText(t.confirm.reasons.denied)).toBeNull();
+    expect(screen.queryByText(DENIED_TEXT)).toBeNull();
   });
 
   /*
@@ -708,7 +712,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
       GATED,
     );
 
-    expect(await screen.findByText(t.confirm.reasons.denied)).toBeTruthy();
+    expect(await screen.findByText(DENIED_TEXT)).toBeTruthy();
   });
 
   /*
@@ -730,7 +734,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
       GATED,
     );
 
-    expect(await screen.findByText(t.confirm.reasons.denied)).toBeTruthy();
+    expect(await screen.findByText(DENIED_TEXT)).toBeTruthy();
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
   });
 
@@ -738,7 +742,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
   it('권한이 닫힌 것에는 다시 시도를 붙이지 않는다', async () => {
     renderScreen([lotsRoute([lot()]), gateRoute(false)], GATED);
 
-    await screen.findByText(t.confirm.reasons.denied);
+    await screen.findByText(DENIED_TEXT);
     expect(screen.queryByRole('button', { name: t.confirm.retry })).toBeNull();
   });
 
@@ -812,7 +816,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
   it('단말을 모르면 게이팅을 조회하지 않는다', async () => {
     const { requests } = renderScreen([lotsRoute([lot()])]);
 
-    await screen.findByText(t.confirm.reasons.unidentified);
+    await screen.findByText(UNIDENTIFIED_TEXT);
     expect(requests.some((request) => request.url.pathname.includes('/processes'))).toBe(false);
   });
 });
@@ -997,6 +1001,125 @@ describe('MaterialInputScanScreen — 게이팅 캐시', () => {
     await screen.findByRole('button', { name: t.confirm.action });
     await user.click(screen.getByRole('button', { name: '공정 바꾸기' }));
 
-    expect(await screen.findByText(t.confirm.reasons.denied)).toBeTruthy();
+    expect(await screen.findByText(DENIED_TEXT)).toBeTruthy();
+  });
+});
+
+describe('MaterialInputScanScreen — 공정이 여럿인 단말', () => {
+  const OTHER_PROCESS_ID = 7903;
+  const MULTI: PopIdentity = {
+    ...GATED,
+    processes: [{ processId: OTHER_PROCESS_ID }, { processId: PROCESS_ID }],
+  };
+  const workOrderRoute: StubRoute = {
+    match: (request) => isGet(request, `/production/work-orders/${String(WORK_ORDER_ID)}`),
+    respond: () =>
+      jsonResponse({
+        workOrderId: WORK_ORDER_ID,
+        workOrderNo: 'SAMPLE-WO',
+        processId: PROCESS_ID,
+        processName: '합성 사출',
+      }),
+  };
+  const mappingRoute = (canInputMaterial: boolean): StubRoute => ({
+    match: (request) => isGet(request, TERMINAL_PROCESSES_PATH),
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            processId: OTHER_PROCESS_ID,
+            processName: '합성 조립',
+            canInputMaterial: !canInputMaterial,
+          },
+          { processId: PROCESS_ID, processName: '합성 사출', canInputMaterial },
+        ],
+      }),
+  });
+
+  it('W/O 의 공정으로 판정해 「단말 미확인」 없이 연다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot()]), workOrderRoute, mappingRoute(true)], MULTI);
+
+    await scanCode(user, 'SAMPLE-LOT-0001');
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+
+    /* 판정의 네 갈래 문구가 하나도 서지 않으면 열린 것이다. */
+    await waitFor(() => expect(screen.queryByText(t.confirm.reasons.checking)).toBeNull());
+    for (const blocked of [
+      UNIDENTIFIED_TEXT,
+      t.confirm.reasons.unavailable,
+      DENIED_TEXT,
+      popGateDeniedText({ processName: '합성 사출' }, 'canInputMaterial'),
+    ]) {
+      expect(screen.queryByText(blocked)).toBeNull();
+    }
+  });
+
+  it('작업지시를 일시적으로 읽지 못하면(500) 「확인할 수 없다」와 다시 시도를 주고, 다시 읽으면 풀린다', async () => {
+    const user = userEvent.setup();
+    let reads = 0;
+    renderScreen(
+      [
+        lotsRoute([lot()]),
+        {
+          match: (request) => isGet(request, `/production/work-orders/${String(WORK_ORDER_ID)}`),
+          respond: () => {
+            reads += 1;
+            return reads === 1
+              ? jsonResponse({ message: 'Internal server error' }, { status: 500 })
+              : jsonResponse({
+                  workOrderId: WORK_ORDER_ID,
+                  workOrderNo: 'SAMPLE-WO',
+                  processId: PROCESS_ID,
+                  processName: '합성 사출',
+                });
+          },
+        },
+        mappingRoute(false),
+      ],
+      MULTI,
+    );
+
+    expect(await screen.findByText(t.confirm.reasons.unavailable)).toBeTruthy();
+    expect(screen.queryByText(/Internal server error/)).toBeNull();
+    await user.click(screen.getByRole('button', { name: t.confirm.retry }));
+
+    expect(
+      await screen.findByText(popGateDeniedText({ processName: '합성 사출' }, 'canInputMaterial')),
+    ).toBeTruthy();
+    expect(reads).toBe(2);
+  });
+
+  it('작업지시를 읽지 못하면(401) 원인·조치와 매핑 확인 곳 아래에 서버 이유를 덧붙인다', async () => {
+    const reason = '단말 인증 범위 밖입니다.';
+    renderScreen(
+      [
+        lotsRoute([lot()]),
+        {
+          match: (request) => isGet(request, `/production/work-orders/${String(WORK_ORDER_ID)}`),
+          respond: () =>
+            jsonResponse(
+              { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: reason }] },
+              { status: 401 },
+            ),
+        },
+        mappingRoute(true),
+      ],
+      MULTI,
+    );
+
+    expect(
+      await screen.findByText(popGateUnidentifiedText(t.confirm.reasons.unidentified, reason)),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+  });
+
+  it('W/O 공정의 자재 투입이 꺼져 있으면 공정 이름과 켜는 곳을 말하며 막는다', async () => {
+    renderScreen([lotsRoute([lot()]), workOrderRoute, mappingRoute(false)], MULTI);
+
+    expect(
+      await screen.findByText(popGateDeniedText({ processName: '합성 사출' }, 'canInputMaterial')),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
   });
 });

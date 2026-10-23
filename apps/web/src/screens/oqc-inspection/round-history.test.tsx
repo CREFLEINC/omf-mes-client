@@ -3,7 +3,13 @@ import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderWithProviders } from '../../test/api-harness';
-import { confirmedRound, draftRound, reinspectionRound } from './fixtures';
+import { toCodeOptions } from './code-options';
+import {
+  confirmedRound,
+  draftRound,
+  overallJudgmentCodeValues,
+  reinspectionRound,
+} from './fixtures';
 import { RoundHistory } from './round-history';
 import { toInspectionResultRound } from './types';
 
@@ -19,7 +25,27 @@ describe('RoundHistory', () => {
     expect(screen.queryByText(t.heading)).not.toBeInTheDocument();
   });
 
-  it('회차를 오름차순으로 세우고 판정 코드를 그대로 보인다', () => {
+  it('⭐ 판정을 종합 판정 선택지의 이름으로 보인다 — 선택지에 없는 코드는 코드 그대로다', () => {
+    const options = toCodeOptions(overallJudgmentCodeValues).filter(
+      (option) => option.value !== 'REJECTED',
+    );
+    renderWithProviders(
+      <RoundHistory
+        rounds={[reinspectionRound, confirmedRound].map(toInspectionResultRound)}
+        currentResultId={null}
+        judgmentOptions={options}
+      />,
+    );
+
+    const steps = within(screen.getByRole('list')).getAllByRole('listitem');
+    const accepted = options.find((option) => option.value === 'ACCEPTED')?.label ?? '';
+
+    expect(accepted).not.toBe('ACCEPTED');
+    expect(steps[0]).toHaveTextContent(accepted);
+    expect(steps[1]).toHaveTextContent('REJECTED');
+  });
+
+  it('회차를 오름차순으로 세우고, 선택지가 없으면 판정 코드를 그대로 보인다', () => {
     renderWithProviders(
       <RoundHistory
         rounds={[reinspectionRound, confirmedRound].map(toInspectionResultRound)}
@@ -30,7 +56,7 @@ describe('RoundHistory', () => {
     const steps = within(screen.getByRole('list')).getAllByRole('listitem');
 
     expect(steps).toHaveLength(2);
-    /* ⛔ 표시명으로 옮기지 않는다 — 코드 그대로가 오히려 정확하다. */
+    /* 선택지를 주지 않았다 — 지어내지 않고 코드 그대로다. */
     expect(steps[0]).toHaveTextContent(confirmedRound.overallJudgmentCode ?? '');
     expect(steps[1]).toHaveTextContent(reinspectionRound.overallJudgmentCode ?? '');
     expect(steps[0]).toHaveTextContent('합격 480 · 불합격 15 · 보류 5');
