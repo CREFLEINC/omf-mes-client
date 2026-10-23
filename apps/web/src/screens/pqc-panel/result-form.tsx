@@ -41,6 +41,10 @@ export interface ResultFormProps {
   /** POP 분할 화면과 같은 꼴을 맞추려 받는다 — 관리웹에는 화면 키패드가 없어 쓰지 않는다. */
   onPadFieldChange: (target: PadTarget | null) => void;
   isLocked: boolean;
+  /** 「판정」 제목 아래 안내 한 줄 — 검사기준이 없을 때 왜 항목표가 없는지 밝힌다(#135). */
+  judgmentNote?: ReactNode;
+  /** 판정 칸 아래 자리 — 검사기준이 없을 때의 「검사 내용」 입력(#135). */
+  judgmentBelow?: ReactNode;
 }
 
 const FIELD_OF: Record<string, keyof QuantityDraft> = {
@@ -81,6 +85,8 @@ export const ResultForm = ({
   disposition,
   onDispositionChange,
   isLocked,
+  judgmentNote,
+  judgmentBelow,
 }: ResultFormProps) => {
   const judgmentId = useId();
   const dispositionName = useId();
@@ -210,6 +216,7 @@ export const ResultForm = ({
       {/* ── 판정 — 최종 판정과 불합격 처분 ── */}
       <section className="pqc-web-section" aria-label={t.judgment.heading}>
         <h3>{t.judgment.heading}</h3>
+        {judgmentNote}
 
         <div className="pqc-web-judgment">
           <div className="field-cell pqc-web-judgment-field" data-judgment={judgment || undefined}>
@@ -261,6 +268,7 @@ export const ResultForm = ({
             </div>
           )}
         </div>
+        {judgmentBelow}
       </section>
     </>
   );

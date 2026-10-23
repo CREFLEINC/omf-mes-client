@@ -429,20 +429,7 @@ export const PqcPanel = ({
           />
         )}
 
-        {planVersionId === null ? (
-          <section className="pqc-web-section" aria-label={tNoStandard.heading}>
-            <h3>{tNoStandard.heading}</h3>
-            {/* 왜 항목표가 없는지 밝힌다 — 없는 값과 못 불러온 값은 다른 모양이어야 한다(G-9). */}
-            <p className="field-note">{tNoStandard.note}</p>
-            <TextField
-              fullWidth
-              label={tNoStandard.remarks}
-              value={remarks}
-              disabled={isConfirmed}
-              onChange={(event) => edited(setRemarks)(event.target.value)}
-            />
-          </section>
-        ) : (
+        {planVersionId !== null && (
           <WebItemTable
             rows={rows}
             drafts={drafts}
@@ -455,6 +442,10 @@ export const PqcPanel = ({
           />
         )}
 
+        {/*
+         * 검사기준이 없으면 따로 「검사 판정」 구획을 두지 않고 「판정」 안에 합친다(#135 · 담당자 지시) —
+         * 왜 항목표가 없는지는 판정 제목 아래, 「검사 내용」은 판정 칸 아래에 선다.
+         */}
         <ResultForm
           inspectedDraft={inspectedDraft}
           onInspectedChange={changeInspected}
@@ -474,6 +465,20 @@ export const PqcPanel = ({
           onDispositionChange={edited(setDisposition)}
           onPadFieldChange={() => undefined}
           isLocked={isConfirmed}
+          judgmentNote={
+            planVersionId === null ? <p className="field-note">{tNoStandard.note}</p> : undefined
+          }
+          judgmentBelow={
+            planVersionId === null ? (
+              <TextField
+                fullWidth
+                label={tNoStandard.remarks}
+                value={remarks}
+                disabled={isConfirmed}
+                onChange={(event) => edited(setRemarks)(event.target.value)}
+              />
+            ) : undefined
+          }
         />
 
         <WebActions
