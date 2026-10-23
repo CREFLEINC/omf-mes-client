@@ -96,6 +96,7 @@ export const WorkerNoDialog = ({
           value={draft}
           size="xl"
           ref={fieldRef}
+          containerClassName="work-start-worker-no-field"
           inputMode="none"
           autoComplete="off"
           onChange={(event) => {

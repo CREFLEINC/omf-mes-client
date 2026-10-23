@@ -12616,6 +12616,14 @@ button.app-button-neutral {
 }
 
 /*
+ * 사번 칸의 라벨과 입력 칸 사이(사용자 결정 2026-10-23). DS 칸 기본 간격(--space-1, 4px)이 장갑 낀
+ * 손으로 보는 창에서 붙어 보여 이 창만 --space-2로 띄운다. DS 요청 후보(PG-19).
+ */
+.work-start-worker-no .work-start-worker-no-field {
+  gap: var(--space-2);
+}
+
+/*
  * P-02-09 포장 라벨 재출력 — 좌단 《포장 단위》의 포장 번호.
  *
  * ⚠ 클래스 이름에 화면을 넣는다(`pop-reprint-`). `.pop-` 일반명은 POP 화면 전부가 함께 쓰는
