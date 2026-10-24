@@ -1,7 +1,8 @@
-import { Button, Chip, Table, EmptyState, type Column } from '@crefle/web-ui';
+import { Chip, EmptyState, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { SelectableTable } from '../../patterns/selectable-table';
 import type { Dispatch } from './types';
 
 const t = messages.dispatchHistory;
@@ -22,22 +23,13 @@ export const resultLabel = (row: Dispatch): string => {
   );
 };
 
-/** 이벤트 처리 결과 표. 발생 시각을 누르면 그 건의 Zalo 상세가 열린다. */
+/** 이벤트 처리 결과 표. 행을 누르면 그 건의 Zalo 상세 드로어가 열린다(C-1·T-W-A). */
 export const DispatchTable = ({ rows, selectedId, eventName, onSelect }: DispatchTableProps) => {
   const columns: Column<Dispatch>[] = [
     {
       key: 'occurredAt',
       header: t.columns.occurredAt,
-      render: (row) => (
-        <Button
-          variant={row.notificationEventId === selectedId ? 'filled' : 'text'}
-          size="sm"
-          aria-current={row.notificationEventId === selectedId ? 'true' : undefined}
-          onClick={() => onSelect(row.notificationEventId)}
-        >
-          {formatPlantDateTime(row.occurredAt) ?? row.occurredAt}
-        </Button>
-      ),
+      render: (row) => formatPlantDateTime(row.occurredAt) ?? row.occurredAt,
     },
     { key: 'event', header: t.columns.event, render: (row) => eventName(row.eventCode) },
     { key: 'department', header: t.columns.department, render: (row) => row.departmentName ?? '—' },
@@ -66,11 +58,12 @@ export const DispatchTable = ({ rows, selectedId, eventName, onSelect }: Dispatc
   ];
 
   return (
-    <Table
+    <SelectableTable
       columns={columns}
       rows={rows}
       getRowId={(row) => String(row.notificationEventId)}
-      density="compact"
+      activeId={selectedId === null ? null : String(selectedId)}
+      onActivate={(row) => onSelect(row.notificationEventId)}
       caption={t.panes.dispatches}
       empty={<EmptyState size="sm" title={t.state.empty} />}
     />

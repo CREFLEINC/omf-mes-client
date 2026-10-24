@@ -54,7 +54,6 @@ export const dispatchHistory = {
   state: {
     empty: '조건에 맞는 알림이 없습니다',
     deliveriesEmpty: 'Zalo 발송 건이 없습니다',
-    selectHint: '행을 고르면 그 이벤트의 Zalo 발송 상세가 보입니다.',
     pageOf: (page: number, totalPages: number): string => `${String(page)} / ${String(totalPages)}`,
   },
   errors: {
