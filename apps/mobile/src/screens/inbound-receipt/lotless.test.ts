@@ -99,7 +99,7 @@ describe('라벨 미부착 일괄 입하 본문', () => {
     toleranceUnderQty: 0,
   });
 
-  it('체크한 라인을 입하 한 건의 라인으로 담고 라인마다 LOT 번호 없음과 사유를 싣는다', () => {
+  it('체크한 라인을 품목마다 입하 한 건(:per-line)으로 담고 라인마다 LOT 번호 없음과 사유를 싣는다', () => {
     const entry = toLotlessOutboxDraft(
       order({ plantId: 3 }),
       [
@@ -116,6 +116,8 @@ describe('라벨 미부착 일괄 입하 본문', () => {
       lines: Record<string, unknown>[];
     };
 
+    /* 입하번호는 품목마다 하나 — 본문은 입하 등록과 같고 보내는 곳만 다르다(장부 P-117). */
+    expect(entry.path).toBe('/logistics/inbound-receipts:per-line');
     expect(body.supplierId).toBe(2);
     expect(body.plantId).toBe(3);
     expect(body.lines).toHaveLength(2);
