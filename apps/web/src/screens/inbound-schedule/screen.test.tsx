@@ -1627,7 +1627,87 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     expect(order()[0]).toBe('SAMPLE-ITEM-01');
   });
 
-  it('왼쪽 표에 「진행」 열이 서고 가장 뒤처진 단계와 「외 N」을 낸다 — LOT 없는 미착수는 「입하 전」, 끝난 것은 「—」', async () => {
+  it('라인 표의 「상태」도 정렬된다 — 입하 흐름 순서(미착수 → 부분 입하 → 입하 완료 → 취소)', async () => {
+    const { user } = renderScreen(
+      [
+        linesRoute([
+          scheduleLine({ expectedReceiptDate: TODAY, receiptStatusCode: 'COMPLETED' }),
+          scheduleLine({
+            expectedReceiptDate: TODAY,
+            purchaseOrderLineId: 7302,
+            lineNo: 2,
+            itemCode: 'SAMPLE-ITEM-02',
+            receiptStatusCode: 'NOT_STARTED',
+          }),
+        ]),
+        progressRoute([]),
+        stageCountsRoute(),
+        listRoute(ROWS_WITH_STAGES),
+        ...lookupRoutes(),
+      ],
+      '?po=7101',
+    );
+
+    await screen.findByText('SAMPLE-ITEM-02');
+    const pane = linesPane();
+    const header = (): HTMLElement =>
+      within(pane).getByRole('columnheader', { name: new RegExp(t.table.receiptStatus) });
+    const codes = (): string[] =>
+      within(pane)
+        .getAllByRole('row')
+        .flatMap((row) => /SAMPLE-ITEM-0\d/.exec(row.textContent ?? '')?.[0] ?? []);
+
+    expect(codes()).toEqual(['SAMPLE-ITEM-01', 'SAMPLE-ITEM-02']);
+
+    await user.click(within(header()).getByRole('button'));
+    expect(header()).toHaveAttribute('aria-sort', 'ascending');
+    expect(codes()).toEqual(['SAMPLE-ITEM-02', 'SAMPLE-ITEM-01']);
+  });
+
+  it('LOT 줄은 No. ~ 발주 수량 네 칸을 한 칸으로 합쳐 LOT 번호와 근거를 낸다', async () => {
+    renderScreen(progressRoutes(), '?po=7101');
+
+    await screen.findByText('SAMPLE|LOT|0001');
+
+    const cells = Array.from(lotRow('SAMPLE|LOT|0001').querySelectorAll('td'));
+    const merged = cells.find((cell) => cell.colSpan === 4);
+
+    expect(merged).toHaveTextContent('SAMPLE|LOT|0001');
+    expect(merged).toHaveTextContent('의뢰 SAMPLE-IQ-0001 · 2026.10.20');
+    expect(cells.filter((cell) => cell.hidden)).toHaveLength(3);
+    /* 라인 줄은 합치지 않는다. */
+    const lineRow = within(linesPane()).getByText('SAMPLE-ITEM-01').closest('tr');
+    expect(
+      Array.from(lineRow?.querySelectorAll('td') ?? []).every((cell) => cell.colSpan === 1),
+    ).toBe(true);
+  });
+
+  it('막대의 단추로 발주 목록을 왼쪽으로 완전히 접고 펴며, 접힘은 브라우저에 남는다', async () => {
+    const { user } = renderScreen(progressRoutes(), '?po=7101');
+
+    await screen.findByText('SAMPLE|LOT|0001');
+    const split = (): Element | null => document.querySelector('.po-board-split');
+
+    await user.click(screen.getByRole('button', { name: t.listCollapse }));
+    expect(split()).toHaveAttribute('data-left-collapsed', 'true');
+    expect(screen.getByRole('button', { name: t.listExpand })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    /* 접은 동안은 끌 것이 없다 — 끌기 막대가 서지 않는다. */
+    expect(screen.queryByRole('separator', { name: t.splitter })).toBeNull();
+    expect(
+      Object.entries(window.localStorage).some(
+        ([key, value]) => key.endsWith(':collapsed') && value === '1',
+      ),
+    ).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: t.listExpand }));
+    expect(split()).not.toHaveAttribute('data-left-collapsed');
+    expect(screen.getByRole('separator', { name: t.splitter })).toBeInTheDocument();
+  });
+
+  it('왼쪽 표에 「진행」 열이 서고 가장 뒤처진 단계 이름만 낸다(수 · 외 N 없음) — LOT 없는 미착수는 「입하 전」, 끝난 것은 「—」', async () => {
     renderScreen(progressRoutes(), '');
 
     await screen.findByText('SAMPLE-PO-0001');
@@ -1635,10 +1715,11 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     expect(
       within(listTable()).getByRole('columnheader', { name: t.table.progress }),
     ).toBeInTheDocument();
-    expect(rowOf('SAMPLE-PO-0001')).toHaveTextContent(
+    expect(rowOf('SAMPLE-PO-0001')).toHaveTextContent(t.stage.group.INSPECTION);
+    expect(rowOf('SAMPLE-PO-0001')).not.toHaveTextContent(
       t.stage.groupCount(t.stage.group.INSPECTION, 2),
     );
-    expect(rowOf('SAMPLE-PO-0001')).toHaveTextContent(t.stage.others(1));
+    expect(rowOf('SAMPLE-PO-0001')).not.toHaveTextContent('외 1');
     expect(rowOf('SAMPLE-PO-0001')).not.toHaveTextContent(t.stage.group.RECEIPT);
     expect(rowOf('SAMPLE-PO-0005')).toHaveTextContent(t.stage.beforeReceipt);
     expect(rowOf('SAMPLE-PO-0002')).not.toHaveTextContent(t.stage.beforeReceipt);

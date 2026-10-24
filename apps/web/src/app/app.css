@@ -6465,7 +6465,7 @@ dl.filter-bar.approval-inbox-detail-facts {
     grid-template-columns: minmax(0, var(--split-left, 1fr)) minmax(0, var(--split-right, 2fr));
   }
 
-  .po-board-split:has(> .po-board-splitter) {
+  .po-board-split:has(> .po-board-gutter) {
     grid-template-columns:
       minmax(0, var(--split-left, 1fr)) var(--space-5)
       minmax(0, var(--split-right, 2fr));
@@ -6476,17 +6476,71 @@ dl.filter-bar.approval-inbox-detail-facts {
    * 끌기 막대 — **늘 보인다**(사용자 지시 2026-10-21). 가는 세로선 가운데에 잡는 손잡이(점 세 개)를 둬
    * 끌어서 폭을 바꿀 수 있다는 것이 마우스를 올리기 전에도 읽힌다. 올리거나 초점이 오면 진해진다.
    */
-  .po-board-split > .po-board-splitter {
+  /*
+   * 막대 자리 — 끌기 막대와 접기 단추가 겹쳐 선다(po-board.tsx `PaneSplitter`). 쌓일 때 감추는 기본 규칙(`.po-board-gutter`)이
+   * 아래에 있어 자식 결합자로 우선순위를 올린다.
+   */
+  .po-board-split > .po-board-gutter {
     position: relative;
     display: block;
     align-self: stretch;
-    margin: 0 auto;
+  }
+
+  .po-board-gutter > .po-board-splitter {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    display: block;
     width: var(--space-4);
+    transform: translateX(-50%);
     cursor: col-resize;
     touch-action: none;
   }
 
-  .po-board-split > .po-board-splitter::before {
+  /*
+   * 왼쪽 표 접기 단추(사용자 지시 2026-10-24) — 막대 위쪽 끝의 작은 원. 가운데의 끄는 손잡이와 겹치지 않는다.
+   * 접으면 왼쪽 구획이 사라지고 막대 자리만 남아 오른쪽 구획이 폭을 다 쓴다.
+   */
+  .po-board-collapse {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    transform: translateX(-50%);
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--on-surface-variant);
+    cursor: pointer;
+  }
+
+  .po-board-collapse:hover {
+    border-color: var(--semantic-info);
+    color: var(--on-surface);
+  }
+
+  .po-board-collapse:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+
+  .po-board-split[data-left-collapsed] {
+    grid-template-columns: var(--space-6) minmax(0, 1fr);
+    column-gap: 0;
+  }
+
+  .po-board-split[data-left-collapsed] > .po-board-pane:first-child {
+    display: none;
+  }
+
+  .po-board-gutter > .po-board-splitter::before {
     content: '';
     position: absolute;
     top: var(--space-2);
@@ -6498,7 +6552,7 @@ dl.filter-bar.approval-inbox-detail-facts {
     background: var(--outline-variant);
   }
 
-  .po-board-split > .po-board-splitter::after {
+  .po-board-gutter > .po-board-splitter::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -6515,26 +6569,26 @@ dl.filter-bar.approval-inbox-detail-facts {
     box-shadow: var(--elevation-1);
   }
 
-  .po-board-split > .po-board-splitter:hover::before,
-  .po-board-split > .po-board-splitter:focus-visible::before {
+  .po-board-gutter > .po-board-splitter:hover::before,
+  .po-board-gutter > .po-board-splitter:focus-visible::before {
     width: 4px;
     background: var(--semantic-info);
   }
 
-  .po-board-split > .po-board-splitter:hover::after,
-  .po-board-split > .po-board-splitter:focus-visible::after {
+  .po-board-gutter > .po-board-splitter:hover::after,
+  .po-board-gutter > .po-board-splitter:focus-visible::after {
     border-color: var(--semantic-info);
   }
 
-  .po-board-split > .po-board-splitter:focus-visible {
+  .po-board-gutter > .po-board-splitter:focus-visible {
     outline: none;
   }
 
-  .po-board-split > .po-board-splitter:focus-visible::after {
+  .po-board-gutter > .po-board-splitter:focus-visible::after {
     box-shadow: var(--focus-ring);
   }
 
-  .po-board-split > .po-board-splitter:focus-visible {
+  .po-board-gutter > .po-board-splitter:focus-visible {
     box-shadow: var(--focus-ring);
     outline: none;
   }
@@ -6632,7 +6686,8 @@ dl.filter-bar.approval-inbox-detail-facts {
   background: var(--surface-container);
 }
 
-/* 끌기 막대는 두 표가 나란히 설 때만 — 위아래로 쌓이면 감춘다. */
+/* 끌기 막대 · 접기 단추는 두 표가 나란히 설 때만 — 위아래로 쌓이면 감춘다(접힘도 그때는 뜻이 없다). */
+.po-board-gutter,
 .po-board-splitter {
   display: none;
 }
@@ -7049,13 +7104,6 @@ th:last-child > .col-resizer::after {
   transform: rotate(-90deg);
 }
 
-/* 머리칸의 손잡이는 「상태」 글자 앞에 선다 — 줄의 손잡이와 같은 세로줄이다. */
-.po-board-tree-head {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
 /* LOT 줄 — 발주 라인 아래 한 단 낮은 면(입하 등록 창의 LOT 줄과 같다). 위 경계선을 지워 그 줄에 딸린 것으로 읽힌다. */
 .po-board-lines tbody tr:has([data-lot-row]) > td {
   background: var(--surface-container-low);
@@ -7078,19 +7126,21 @@ th:last-child > .col-resizer::after {
   pointer-events: none;
 }
 
-/* 가지 — 줄 가운데에서 칩 쪽으로 짧게. */
+/* 가지 — 줄 가운데에서 다음 칸(단계 칩) 쪽으로 칸 끝까지. 계층 열이 상태 열과 나뉜 뒤(2026-10-24)의 모양이다. */
 .po-board-lines tbody tr:has([data-lot-row]) > td:first-child::after {
   content: '';
   position: absolute;
   top: 50%;
   left: calc(var(--space-3) + 12px);
-  width: 10px;
+  right: 0;
   border-top: 1px solid var(--outline-variant);
   pointer-events: none;
 }
 
-/* 마지막 LOT 줄 — 세로선이 가운데에서 갈고리로 꺾여 끝난다. 가지는 갈고리에 녹는다. */
+/* 마지막 LOT 줄 — 세로선이 가운데에서 갈고리로 꺾여 끝난다. 가지는 갈고리에 녹는다(갈고리도 칸 끝까지). */
 .po-board-lines tbody tr:has([data-lot-row][data-last]) > td:first-child::before {
+  right: 0;
+  width: auto;
   bottom: 50%;
   border-bottom: 1px solid var(--outline-variant);
   border-bottom-left-radius: var(--radius-sm);
@@ -7105,6 +7155,20 @@ th:last-child > .col-resizer::after {
   flex: none;
   width: 24px;
   height: 24px;
+}
+
+/*
+ * LOT 줄의 합친 칸 — No. ~ 발주 수량 네 칸이 한 칸이다(line-table.tsx `useMergedLotCells`). 첫 칸이 오른쪽 맞춤(No.)이라
+ * 글자 상자를 칸 폭으로 펴서 왼쪽부터 선다. 감춘 세 칸은 표 격자에서 자리를 차지하지 않는다.
+ */
+.po-board-lines tbody td[colspan] > .po-board-lot-main {
+  display: flex;
+  width: 100%;
+  text-align: start;
+}
+
+.po-board-lines tbody td[hidden] {
+  display: none;
 }
 
 /* LOT 줄의 글자 — 번호는 저장된 그대로(C-16 예외) 고정폭, 근거는 보조색 한 줄(넘치면 말줄임). */
@@ -7147,18 +7211,12 @@ th:last-child > .col-resizer::after {
   color: var(--semantic-on-success-container, var(--on-surface));
 }
 
-/* 왼쪽 「진행」 칸 — 가장 뒤처진 단계 칩과 「외 N」. */
+/* 발주 머리의 「진행」 — 묶음별 칩을 나란히(왼쪽 표 「진행」 칸은 칩 하나라 이 상자를 쓰지 않는다). */
 .po-board-progress {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   min-width: 0;
-}
-
-.po-board-progress-others {
-  font: var(--type-label-md);
-  color: var(--on-surface-variant);
-  white-space: nowrap;
 }
 
 /* 탭 줄의 단계 칩 묶음 — 「검사 대기 4 · 입고 대기 5 …」. 누르면 그 묶음의 발주만 남는다(aria-pressed). */

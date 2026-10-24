@@ -1,3 +1,4 @@
+import { Icon } from '@crefle/web-ui';
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 
 /**
@@ -114,59 +115,111 @@ export const usePaneSplit = (storageKey: string, initial = 1 / 3) => {
     '--split-right': `${String(1 - ratio)}fr`,
   } as CSSProperties;
 
-  return { ratio, commit, style };
+  /*
+   * 왼쪽 표를 **완전히 접는다**(사용자 지시 2026-10-24). 접으면 오른쪽 구획이 폭을 다 쓴다. 비율과 같이 브라우저에 남긴다.
+   * 접힘은 나란히 설 때만 뜻이 있다 — 위아래로 쌓이면 CSS 가 무시한다(펼칠 단추가 막대에 있어서다).
+   */
+  const collapseKey = `${storageKey}:collapsed`;
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem(collapseKey) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleCollapsed = (): void => {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      window.localStorage.setItem(collapseKey, next ? '1' : '0');
+    } catch {
+      /* 저장하지 못해도 이번 화면에서는 그대로 쓴다. */
+    }
+  };
+
+  return { ratio, commit, style, collapsed, toggleCollapsed };
 };
 
 /**
- * 끌기 막대 — 두 구획 사이의 세로 막대. 마우스·터치로 끌고, 초점을 두고 ←·→ 로도 옮긴다.
- * 창이 좁아 위아래로 쌓일 때는 CSS 가 감춘다.
+ * 두 구획 사이의 **막대 자리** — 끌기 막대와, 왼쪽 표를 접고 펴는 단추(사용자 지시 2026-10-24).
+ *
+ * 끌기 막대는 마우스·터치로 끌고, 초점을 두고 ←·→ 로도 옮긴다. 접은 동안은 끌 것이 없어 막대를 두지 않고 펼치는 단추만
+ * 선다. 단추는 막대 위쪽 끝에 — 끄는 손잡이(가운데)와 겹치지 않게. 창이 좁아 위아래로 쌓일 때는 CSS 가 통째로 감춘다.
  */
 export const PaneSplitter = ({
   label,
   ratio,
   onChange,
+  collapse,
 }: {
   label: string;
   ratio: number;
   onChange: (ratio: number) => void;
+  /** 있으면 접기 단추가 선다. 이름은 단추가 할 일(접기 · 펼치기)이다. */
+  collapse?: {
+    collapsed: boolean;
+    onToggle: () => void;
+    collapseLabel: string;
+    expandLabel: string;
+  };
 }) => (
   <div
-    className="po-board-splitter"
-    role="separator"
-    aria-orientation="vertical"
-    aria-label={label}
-    /* 마우스를 올리면 무엇을 하는 막대인지 글로도 읽힌다. */
-    title={label}
-    aria-valuemin={Math.round(SPLIT_MIN * 100)}
-    aria-valuemax={Math.round(SPLIT_MAX * 100)}
-    aria-valuenow={Math.round(ratio * 100)}
-    tabIndex={0}
-    onPointerDown={(event) => {
-      const container = event.currentTarget.parentElement;
-      if (container === null) return;
-      event.preventDefault();
-      const rect = container.getBoundingClientRect();
-      const move = (moveEvent: PointerEvent): void => {
-        onChange((moveEvent.clientX - rect.left) / rect.width);
-      };
-      const up = (): void => {
-        window.removeEventListener('pointermove', move);
-        window.removeEventListener('pointerup', up);
-        document.body.classList.remove('po-board-resizing');
-      };
-      document.body.classList.add('po-board-resizing');
-      window.addEventListener('pointermove', move);
-      window.addEventListener('pointerup', up);
-    }}
-    onKeyDown={(event) => {
-      if (event.key === 'ArrowLeft') {
-        event.preventDefault();
-        onChange(ratio - SPLIT_STEP);
-      }
-      if (event.key === 'ArrowRight') {
-        event.preventDefault();
-        onChange(ratio + SPLIT_STEP);
-      }
-    }}
-  />
+    className="po-board-gutter"
+    data-collapsed={collapse?.collapsed === true ? 'true' : undefined}
+  >
+    {collapse !== undefined && (
+      <button
+        type="button"
+        className="po-board-collapse"
+        aria-label={collapse.collapsed ? collapse.expandLabel : collapse.collapseLabel}
+        aria-expanded={!collapse.collapsed}
+        title={collapse.collapsed ? collapse.expandLabel : collapse.collapseLabel}
+        onClick={collapse.onToggle}
+      >
+        <Icon name={collapse.collapsed ? 'chevron_right' : 'chevron_left'} size={18} />
+      </button>
+    )}
+    {collapse?.collapsed !== true && (
+      <div
+        className="po-board-splitter"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={label}
+        /* 마우스를 올리면 무엇을 하는 막대인지 글로도 읽힌다. */
+        title={label}
+        aria-valuemin={Math.round(SPLIT_MIN * 100)}
+        aria-valuemax={Math.round(SPLIT_MAX * 100)}
+        aria-valuenow={Math.round(ratio * 100)}
+        tabIndex={0}
+        onPointerDown={(event) => {
+          /* 막대 자리(gutter)의 부모가 두 구획을 담은 상자다. */
+          const container = event.currentTarget.parentElement?.parentElement;
+          if (container == null) return;
+          event.preventDefault();
+          const rect = container.getBoundingClientRect();
+          const move = (moveEvent: PointerEvent): void => {
+            onChange((moveEvent.clientX - rect.left) / rect.width);
+          };
+          const up = (): void => {
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
+            document.body.classList.remove('po-board-resizing');
+          };
+          document.body.classList.add('po-board-resizing');
+          window.addEventListener('pointermove', move);
+          window.addEventListener('pointerup', up);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            onChange(ratio - SPLIT_STEP);
+          }
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            onChange(ratio + SPLIT_STEP);
+          }
+        }}
+      />
+    )}
+  </div>
 );

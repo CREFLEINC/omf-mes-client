@@ -475,7 +475,13 @@ export const InboundScheduleScreen = () => {
         />
       </section>
 
-      <div ref={splitRef} className="po-board-split" style={split.style}>
+      {/* 왼쪽 표를 접으면(사용자 지시 2026-10-24) 오른쪽 구획이 폭을 다 쓴다 — 나란히 설 때만(app.css). */}
+      <div
+        ref={splitRef}
+        className="po-board-split"
+        style={split.style}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
+      >
         <section className="pane po-board-pane" aria-label={t.panes.orders}>
           {!list.isError && (
             <>
@@ -519,7 +525,17 @@ export const InboundScheduleScreen = () => {
           )}
         </section>
 
-        <PaneSplitter label={t.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={t.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={{
+            collapsed: split.collapsed,
+            onToggle: split.toggleCollapsed,
+            collapseLabel: t.listCollapse,
+            expandLabel: t.listExpand,
+          }}
+        />
 
         <section className="pane po-board-pane" aria-label={t.panes.lines}>
           {lines.isError ? (

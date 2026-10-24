@@ -7,7 +7,14 @@ import {
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 
 import { useColumnWidths } from '../../patterns/column-resize';
 import type { ExcessEntry } from './excess-entry';
@@ -77,14 +84,54 @@ export interface LineTableProps {
 const NO_LINE_EXCESSES: ReadonlyMap<number, LineExcesses> = new Map();
 
 /**
+ * LOT 줄의 No. ~ 발주 수량 네 칸을 **한 칸으로 합친다**(사용자 지시 2026-10-24 — LOT 번호와 근거가 품목명 칸에서 잘렸다).
+ * 표 부품은 본문 칸 병합을 모른다 — 그린 뒤에 LOT 줄 첫 칸에 `colSpan` 을 걸고 나머지 셋을 감춘다(감춘 칸은 표 격자에서
+ * 자리를 차지하지 않는다). 줄 열쇠가 라인과 LOT 로 갈려 한 줄 요소가 다른 종류로 바뀌지 않는다. 접기 · 정렬로 줄이 새로
+ * 생기므로 그릴 때마다 다시 건다(줄 200개 안팎 — 가볍다).
+ */
+const useMergedLotCells = (
+  boxRef: RefObject<HTMLDivElement | null>,
+  first: number,
+  last: number,
+): void => {
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+
+    if (box === null || first < 0 || last <= first) return;
+
+    for (const row of box.querySelectorAll<HTMLTableRowElement>('tbody tr')) {
+      const isLot = row.querySelector('[data-lot-row]') !== null;
+      const head = row.cells.item(first);
+
+      if (head === null) continue;
+
+      head.colSpan = isLot ? last - first + 1 : 1;
+
+      for (let index = first + 1; index <= last; index += 1) {
+        const cell = row.cells.item(index);
+
+        if (cell !== null) cell.hidden = isLot;
+      }
+    }
+  });
+};
+
+/** 「상태」 열의 정렬 순서 — 입하 흐름 순서(미착수 → 부분 입하 → 입하 완료 → 취소). 모르는 코드는 맨 뒤. */
+const RECEIPT_STATUS_ORDER: Readonly<Record<string, number>> = {
+  NOT_STARTED: 0,
+  PARTIAL: 1,
+  COMPLETED: 2,
+  CANCELLED: 3,
+};
+
+/**
  * 정렬할 수 있는 열과 그 비교 값 — **발주 라인으로 정렬한다**(LOT 줄은 제 라인을 따라가고, 한 라인 안은 입하 순 그대로).
- * 「상태」 열은 정렬하지 않는다 — 머리칸에 「LOT 모두 접기」 손잡이가 서 있어 머리칸 전체를 정렬 단추로 만들 수 없다.
- * 상태 순서가 필요하면 「남은 수량」으로 정렬하면 같은 무리(입하 완료 = 0)가 모인다. 「초과분」 열도 정렬하지 않는다 —
- * 단추 칸이다.
+ * 계층 열(접기 손잡이)과 「초과분」 열(단추 칸)은 정렬하지 않는다.
  */
 const lineSortAccessors = (
   storageLocationNameOf: (code: string | null) => string,
 ): SortAccessors<InboundScheduleLine> => ({
+  receiptStatusCode: (line) => RECEIPT_STATUS_ORDER[line.receiptStatusCode] ?? null,
   lineNo: (line) => line.lineNo,
   itemCode: (line) => line.itemCode,
   itemName: (line) => line.itemName,
@@ -204,14 +251,15 @@ const OrderProgress = ({ order }: { order: PurchaseOrderSummary }) => {
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
- * | 상태 | 84px · 진행 자료가 있으면 116px | 칩 「부분 입하」 64px + 여백. 진행 자료가 있으면 접기 손잡이(24px) + 틈이 앞에 선다. 지연 칩은 두지 않는다(아래 상태 열 주석) |
- * | 라인 | 48px | 세 자리 + 여백 |
- * | 품목코드 | 120px | 10자 ASCII + 여백. LOT 줄은 비운다 |
- * | **품목명** | **미지정** | 남는 폭을 흡수한다. 넘치면 말줄임. LOT 줄은 LOT 번호(그대로) + 근거(입하일 · 검사 · 입고 · 적치) |
+ * | 계층 | 48px · 진행 자료가 있을 때만 | 접기 손잡이 24px + 여백. LOT 줄은 안내선. 머리칸은 「LOT 모두 접기」 |
+ * | 상태 | 84px | 칩 「부분 입하」 64px + 여백. LOT 줄은 단계 칩. 지연 칩은 두지 않는다(아래 상태 열 주석) |
+ * | 라인 | 48px | 세 자리 + 여백. **LOT 줄은 여기부터 발주 수량까지 네 칸을 합쳐** LOT 번호(그대로) + 근거(입하일 · 검사 · 입고 · 적치)를 낸다 |
+ * | 품목코드 | 120px | 10자 ASCII + 여백 |
+ * | **품목명** | **미지정** | 남는 폭을 흡수한다. 넘치면 말줄임 |
  * | 발주·입하·남은 수량 | 88px × 3 | 천 단위 7자 + 여백. LOT 줄은 입하 수량만 |
  * | 단위 | 56px | 코드 3자 + 여백 |
  * | 창고 | 184px | 「VICT 자재창고_…」 같은 긴 이름 + 여백. 넘치면 말줄임(전체는 마우스를 올리면). **LOT 줄은 적치된 위치, 아직 없으면 다음 할 일**(「입고 처리」·「IQC 의뢰 요청」 단추 · 「PDA에서 적치」) — 열을 하나 더 세우면 1920 폭에서 품목명 칸이 사라진다 |
- * | 합 | 756px + 흡수 (진행 자료가 있으면 788px) | `.po-board-lines` 최소 폭은 `max(48rem + 늘린 폭, 고정 폭 합)` |
+ * | 합 | 756px + 흡수 (진행 자료가 있으면 804px) | `.po-board-lines` 최소 폭은 `max(48rem + 늘린 폭, 고정 폭 합)` |
  */
 export const LineTable = ({
   order,
@@ -266,36 +314,28 @@ export const LineTable = ({
   const tableRows = toLineTableRows(sortedLines, lots, collapsed);
 
   const columns: Column<LineTableRow>[] = [
-    {
-      key: 'receiptStatusCode',
-      header:
-        isTree && withLots.length > 0 ? (
-          <span className="po-board-tree-head">
-            <TreeToggle
-              isExpanded={!isAllCollapsed}
-              label={isAllCollapsed ? t.actions.expandAll : t.actions.collapseAll}
-              onToggle={toggleAll}
-            />
-            {t.table.receiptStatus}
-          </span>
-        ) : (
-          t.table.receiptStatus
-        ),
-      width: isTree ? '116px' : '84px',
-      /*
-       * **지연 칩을 두지 않는다.** 납기는 발주 헤더의 값이라 한 발주의 라인은 모두 같이 늦다 — 줄마다
-       * 되풀이하면 뜻 없이 칸만 먹는다. 지연은 왼쪽 표의 발주 줄이 말한다.
-       */
-      render: (row) =>
-        row.kind === 'lot' ? (
-          <span className="po-board-tree-cell">
-            <TreeGuide isLast={row.isLast} />
-            <StageChip code={row.lot.stageCode} />
-          </span>
-        ) : (
-          <span className="po-board-tree-cell">
-            {isTree &&
-              (row.lots.length > 0 ? (
+    /*
+     * 계층 열 — 라인의 접기 손잡이와 LOT 줄의 안내선(사이드바 묶음과 같은 모양). 머리칸에는 「LOT 모두 접기」 손잡이가 선다.
+     * 상태 열과 나눴다 — 머리칸이 정렬 단추가 되면 그 안에 손잡이(단추)를 둘 수 없다(사용자 지시 2026-10-24 상태 열 정렬).
+     * 진행 자료가 없으면(앞선 서버) 이 열이 없다.
+     */
+    ...(isTree
+      ? [
+          {
+            key: 'tree',
+            header:
+              withLots.length > 0 ? (
+                <TreeToggle
+                  isExpanded={!isAllCollapsed}
+                  label={isAllCollapsed ? t.actions.expandAll : t.actions.collapseAll}
+                  onToggle={toggleAll}
+                />
+              ) : null,
+            width: '48px',
+            render: (row: LineTableRow) =>
+              row.kind === 'lot' ? (
+                <TreeGuide isLast={row.isLast} />
+              ) : row.lots.length > 0 ? (
                 <TreeToggle
                   isExpanded={row.isExpanded}
                   label={
@@ -309,7 +349,24 @@ export const LineTable = ({
                 />
               ) : (
                 <span className="po-board-tree-spacer" aria-hidden="true" />
-              ))}
+              ),
+          } satisfies Column<LineTableRow>,
+        ]
+      : []),
+    {
+      key: 'receiptStatusCode',
+      sortable: true,
+      header: t.table.receiptStatus,
+      width: '84px',
+      /*
+       * **지연 칩을 두지 않는다.** 납기는 발주 헤더의 값이라 한 발주의 라인은 모두 같이 늦다 — 줄마다
+       * 되풀이하면 뜻 없이 칸만 먹는다. 지연은 왼쪽 표의 발주 줄이 말한다.
+       */
+      render: (row) =>
+        row.kind === 'lot' ? (
+          <StageChip code={row.lot.stageCode} />
+        ) : (
+          <span className="po-board-tree-cell">
             <ReceiptStatusCell code={row.line.receiptStatusCode} overdue={false} />
             {/* 품목으로 찾은 라인 표식 — 줄 배경이 따라간다(app.css `tr:has([data-matched])`). */}
             {matchedItemId === row.line.itemId && (
@@ -326,7 +383,8 @@ export const LineTable = ({
       header: t.table.lineNo,
       width: '48px',
       align: 'end',
-      render: (row) => (row.kind === 'line' ? row.line.lineNo : ''),
+      /* LOT 줄은 이 칸에서 발주 수량 칸까지 합쳐(`useMergedLotCells`) LOT 번호와 근거를 낸다. */
+      render: (row) => (row.kind === 'line' ? row.line.lineNo : <LotMainCell lot={row.lot} />),
     },
     {
       key: 'itemCode',
@@ -339,12 +397,7 @@ export const LineTable = ({
       key: 'itemName',
       sortable: true,
       header: t.table.itemName,
-      render: (row) =>
-        row.kind === 'line' ? (
-          <OneLine text={orEmpty(row.line.itemName)} />
-        ) : (
-          <LotMainCell lot={row.lot} />
-        ),
+      render: (row) => (row.kind === 'line' ? <OneLine text={orEmpty(row.line.itemName)} /> : ''),
     },
     {
       key: 'orderedQty',
@@ -423,6 +476,13 @@ export const LineTable = ({
     },
   ];
   const resizable = useColumnWidths('omf-mes:inbound-schedule:columns:lines', columns);
+  const tableBoxRef = useRef<HTMLDivElement>(null);
+
+  useMergedLotCells(
+    tableBoxRef,
+    columns.findIndex((column) => column.key === 'lineNo'),
+    columns.findIndex((column) => column.key === 'orderedQty'),
+  );
 
   if (order === null) {
     return (
@@ -500,7 +560,11 @@ export const LineTable = ({
               {t.lot.loadFailed}
             </p>
           )}
-          <div className="wide-table po-board-table po-board-lines" style={resizable.style}>
+          <div
+            ref={tableBoxRef}
+            className="wide-table po-board-table po-board-lines"
+            style={resizable.style}
+          >
             <Table
               density="compact"
               caption={<span className="erp-data-table-caption">{t.panes.lines}</span>}

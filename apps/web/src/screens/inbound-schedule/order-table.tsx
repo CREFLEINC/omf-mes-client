@@ -50,7 +50,8 @@ export interface OrderTableProps {
 }
 
 /**
- * 「진행」 칸 — 그 발주 LOT 들의 **가장 뒤처진** 단계 묶음과 수, 나머지 묶음은 「외 N」(C-17 「첫 사유와 외 N」).
+ * 「진행」 칸 — 그 발주 LOT 들의 **가장 뒤처진** 단계 묶음 이름만(사용자 지시 2026-10-24 「카운트 하지 말고 상태만」).
+ * 수와 「외 N」은 두지 않는다 — 좁은 칸에서 잘렸고, 묶음별 수는 오른쪽 발주 머리의 「진행」이 낸다.
  * LOT 이 하나도 없으면 미착수는 「입하 전」, 그 밖(모두 끝남)은 「—」. 묶음 수를 싣지 않은 줄도 「—」.
  */
 const ProgressCell = ({ row }: { row: PurchaseOrderSummary }) => {
@@ -68,14 +69,7 @@ const ProgressCell = ({ row }: { row: PurchaseOrderSummary }) => {
     );
   }
 
-  return (
-    <span className="po-board-progress">
-      <StageGroupChip group={lead.group} count={lead.count} />
-      {lead.others > 0 && (
-        <span className="po-board-progress-others">{t.stage.others(lead.others)}</span>
-      )}
-    </span>
-  );
+  return <StageGroupChip group={lead.group} />;
 };
 
 /**
@@ -96,7 +90,7 @@ const ProgressCell = ({ row }: { row: PurchaseOrderSummary }) => {
  * | 상태 | 64px | 칩 「지연」·「정상」 36px + 여백(끝난 발주는 「—」) |
  * | 납기 | 104px | `YYYY.MM.DD` 75px + 여백 |
  * | 발주번호 | 120px | 10자 ASCII 80px + 여백. 이 칸이 고르는 단추다 |
- * | 진행 | 132px · 서버가 묶음 수를 실을 때만 | 칩 「검사 대기 4」 + 「외 2」. 가장 뒤처진 단계 하나만 — 칸 하나에 칩 둘 이상이면 줄이 넘친다(C-17) |
+ * | 진행 | 132px · 서버가 묶음 수를 실을 때만 | 칩 「라벨 발행 대기」(가장 긴 이름) + 여백. 가장 뒤처진 단계 이름 하나만 — 수는 오른쪽 머리가 낸다 |
  * | **공급사명** | **미지정** | 남는 폭을 흡수한다. 넘치면 말줄임 |
  * | 미입고 품목 | 96px | 「99 / 99」 + 여백 |
  * | 발주일 | 104px | `YYYY.MM.DD` + 여백 |

@@ -18,6 +18,9 @@ export const inboundSchedule = {
   breadcrumbHub: '입고 관리',
   /** 두 표 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
   splitter: '끌어서 목록·상세 폭 조절',
+  /** 막대 위쪽 끝의 단추 — 발주 목록을 왼쪽으로 완전히 접고 편다(사용자 지시 2026-10-24). */
+  listCollapse: '발주 목록 접기',
+  listExpand: '발주 목록 펼치기',
   panes: {
     filter: '조회 조건',
     list: '입하 예정 목록',
@@ -318,8 +321,6 @@ export const inboundSchedule = {
     },
     /** 왼쪽 「진행」 칸 — 아직 LOT 이 하나도 없는 발주. */
     beforeReceipt: '입하 전',
-    /** 가장 뒤처진 단계 뒤의 나머지 묶음 수(C-17 「외 N」). */
-    others: (count: number): string => `외 ${String(count)}`,
     /** 발주 머리의 「진행」 — 묶음마다 「검사 대기 1」을 「·」로 잇는다. */
     summarySeparator: ' · ',
   },
