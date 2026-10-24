@@ -61,7 +61,6 @@ export const dispatchHistory: Translated<typeof ko.dispatchHistory> = {
   state: {
     empty: 'Không có thông báo khớp điều kiện',
     deliveriesEmpty: 'Không có lượt gửi Zalo',
-    selectHint: 'Chọn một dòng để xem chi tiết gửi Zalo của sự kiện đó.',
     pageOf: (page: number, totalPages: number): string => `${String(page)} / ${String(totalPages)}`,
   },
   errors: {

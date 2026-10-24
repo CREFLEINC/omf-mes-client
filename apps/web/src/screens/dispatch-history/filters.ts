@@ -30,9 +30,9 @@ export const readPage = (params: URLSearchParams): number => {
   return POSITIVE.test(raw) ? Number(raw) : 1;
 };
 
-/** 고른 이벤트 처리 건 — 상세 표가 이 번호로 Zalo 발송을 부른다. */
+/** 고른 이벤트 처리 건 — 상세 드로어가 이 번호로 Zalo 발송을 부른다(T-W-A `?selected=`). */
 export const readSelected = (params: URLSearchParams): number | null => {
-  const raw = params.get('sel') ?? '';
+  const raw = params.get('selected') ?? '';
   return POSITIVE.test(raw) ? Number(raw) : null;
 };
 
@@ -47,7 +47,7 @@ export const toSearchParams = (
   if (filters.department !== '') next.set('dept', filters.department);
   if (filters.result !== '') next.set('result', filters.result);
   if (page > 1) next.set('page', String(page));
-  if (selected !== null) next.set('sel', String(selected));
+  if (selected !== null) next.set('selected', String(selected));
   return next;
 };
 
