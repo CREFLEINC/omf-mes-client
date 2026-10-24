@@ -93,7 +93,7 @@ export interface InboundScheduleQuery {
   overdueOnly?: boolean;
   /** 이 단계 묶음의 LOT 이 있는 발주만(⚠ 계약 대기 — `PurchaseOrderSummaryQuery` 와 같은 조건). */
   inboundStage?: InboundStageGroup;
-  /** 왼쪽 표의 열 정렬 `열,방향`(⚠ 계약 대기 — `OrderSortParam`). 정렬하지 않으면 싣지 않는다. */
+  /** 왼쪽 표의 열 정렬 `열,방향`(`OrderSortParam`). 정렬하지 않으면 싣지 않는다. */
   sort?: OrderSortParam;
   /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
   page?: number;
@@ -288,14 +288,14 @@ export interface PurchaseOrderSummaryQuery {
   overdueOnly?: boolean;
   /** 이 단계 묶음의 LOT 이 있는 발주만(⚠ 계약 대기). 앞선 서버는 모르는 조건을 무시한다. */
   inboundStage?: InboundStageGroup;
-  /** 열 정렬 `열,방향`(⚠ 계약 대기). 없으면 서버 기본 순서(발주일 최신순). 앞선 서버는 모르는 조건을 무시한다. */
+  /** 열 정렬 `열,방향`. 없으면 서버 기본 순서(발주일 최신순). 모르는 열·방향은 400 이다. */
   sort?: OrderSortParam;
   page?: number;
   size?: number;
 }
 
 /**
- * 왼쪽 발주 목록의 **정렬 열** — 서버가 정렬한다(⚠ 계약 대기 · omf-mes-server PR #824 · 장부 P-116). 목록이 쪽(20건)
+ * 왼쪽 발주 목록의 **정렬 열** — 서버가 정렬한다(omf-mes-server #824 · 장부 P-116 · 2026-10-24 실서버 확인). 목록이 쪽(20건)
  * 단위라 화면이 정렬하면 보이는 쪽 안에서만 섞여 쪽을 넘는 순서가 틀린다.
  *
  * 질의는 **한 칸 `sort=열,방향`** 이다(W/O 목록과 같은 모양 · 방향 생략은 asc). 모르는 열·방향은 400 이다.

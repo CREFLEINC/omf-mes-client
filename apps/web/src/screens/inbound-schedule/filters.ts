@@ -36,7 +36,7 @@ export interface ScheduleFilters {
   stage: InboundStageGroup | '';
   /**
    * 왼쪽 표의 열 정렬. 없으면 서버 기본 순서다. 조건은 아니지만 **쪽을 넘는 순서**라 조건과 함께 주소가 들고 서버가
-   * 정렬한다(계약 대기 — 앞선 서버는 무시한다). 초기화하면 함께 풀린다.
+   * 정렬한다(omf-mes-server #824). 초기화하면 함께 풀린다.
    */
   sort: OrderSort | null;
 }
