@@ -91,9 +91,12 @@ export const overReceiptSplit = {
     remaining: '잔량 (+허용)',
     arrivedQty: '이번 도착',
     uom: '단위',
-    /** 이번 도착 중 P/O 라인에 넣는 몫. */
-    normal: 'P/O 반영',
-    /** P/O 에 넣지 않고 추가 P/O 를 기다리는 몫(`excessQty`). */
+    /** 이번 도착 중 발주 라인에 넣는 몫 — 서버 낱말로는 이 줄의 P/O 라인 배정(장부 P-115). */
+    normal: '발주 반영',
+    /**
+     * 발주에 넣지 않고 추가 발주를 기다리는 몫(`excessQty`) — 서버 낱말로는 미배정. 화면은 업무 낱말 「초과분」을 쓴다
+     * (사용자 결정 2026-10-24 · 낱말 짝은 `inbound-schedule.ts` 의 `excess`).
+     */
     excess: '초과분',
     /** 「60 (+5)」 */
     remainingPair: (remainingQty: string, toleranceOverQty: string): string =>
@@ -238,9 +241,9 @@ export const overReceiptSplit = {
     registerIrreversible: '등록한 전표는 이 화면에서 되돌릴 수 없습니다. 취소는 승인을 거칩니다.',
     registerEffects:
       '발주 라인의 누적 입하가 늘고, 수입검사 대상 품목은 검사 의뢰가 함께 만들어집니다.',
-    /** 「P/O 반영 4,500 · 초과분 500」 */
+    /** 「발주 반영 4,500 · 초과분 500」 */
     excessOf: (normalQty: string, excessQty: string): string =>
-      `P/O 반영 ${normalQty} · 초과분 ${excessQty}`,
+      `발주 반영 ${normalQty} · 초과분 ${excessQty}`,
     lotOf: (lotNo: string): string => `LOT ${lotNo}`,
     lotMissingOf: (reason: string): string => `라벨 없음 (${reason})`,
   },

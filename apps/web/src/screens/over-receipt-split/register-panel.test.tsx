@@ -640,7 +640,7 @@ describe('ReceiptRegisterPanel — 참조 표기 네 갈래', () => {
 });
 
 describe('ReceiptRegisterPanel — 도착 수량과 가르기', () => {
-  /** 그 줄번호의 발주 라인 줄에서 P/O 반영·초과분 칸(마지막 둘)을 읽는다. */
+  /** 그 줄번호의 발주 라인 줄에서 발주 반영·초과분 칸(마지막 둘)을 읽는다. */
   const splitCellsOf = (lineNo: number): string[] => {
     const row = within(lineTable())
       .getAllByRole('row')
@@ -654,8 +654,8 @@ describe('ReceiptRegisterPanel — 도착 수량과 가르기', () => {
       .map((cell) => cell.textContent ?? '');
   };
 
-  /* 한도(잔량 60 + 허용 5)와 꼭 같은 도착은 전부 P/O 반영이다. */
-  it('한도와 같은 수량은 전부 P/O 반영으로 갈린다', async () => {
+  /* 한도(잔량 60 + 허용 5)와 꼭 같은 도착은 전부 발주 반영이다. */
+  it('한도와 같은 수량은 전부 발주 반영으로 갈린다', async () => {
     const { user } = renderPanel(allRoutes());
 
     await waitLines();
@@ -712,7 +712,7 @@ describe('ReceiptRegisterPanel — 도착 수량과 가르기', () => {
     expect(within(lineTable()).queryByText(t.values.notSplit)).not.toBeInTheDocument();
   });
 
-  /* **M17의 창 몫** — 잘못 친 값이 계산에 들어가면 P/O 반영·초과분이 둘 다 `NaN`이 된다. */
+  /* **M17의 창 몫** — 잘못 친 값이 계산에 들어가면 발주 반영·초과분이 둘 다 `NaN`이 된다. */
   it('0을 치면 사유가 붙고 그 줄은 갈리지 않는다', async () => {
     const { user } = renderPanel(allRoutes());
 
@@ -720,7 +720,7 @@ describe('ReceiptRegisterPanel — 도착 수량과 가르기', () => {
     await user.type(qtyInput(1), '0');
 
     expect(await screen.findByText(t.errors.qtyNotPositive)).toBeInTheDocument();
-    /* 세 줄 × P/O 반영·초과분 두 칸 — 어느 줄도 갈리지 않았다. */
+    /* 세 줄 × 발주 반영·초과분 두 칸 — 어느 줄도 갈리지 않았다. */
     expect(within(lineTable()).getAllByText(t.values.notSplit)).toHaveLength(6);
   });
 
@@ -1296,7 +1296,7 @@ describe('ReceiptRegisterPanel — 등록 성공', () => {
 
   /*
    * **M39** — 등록 뒤 같은 발주의 누적 입하가 늘었다. 다시 부르지 않으면
-   * 창이 **등록 전 숫자**를 그대로 보이면서 「P/O 반영 · 초과분」을 그 값으로 계산한다.
+   * 창이 **등록 전 숫자**를 그대로 보이면서 「발주 반영 · 초과분」을 그 값으로 계산한다.
    */
   it('성공하면 발주 상세를 다시 부른다', async () => {
     const { requests, user } = renderSuccess();

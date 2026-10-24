@@ -280,10 +280,10 @@ describe('SplitLineTable — 표 안의 도착 수량 입력칸', () => {
   });
 });
 
-describe('SplitLineTable — P/O 반영과 초과분', () => {
+describe('SplitLineTable — 발주 반영과 초과분', () => {
   const splitCells = (row: HTMLElement): string[] => cellsOf(row).slice(8, 10);
 
-  it('두 몫의 머리글이 「P/O 반영」·「초과분」이다', () => {
+  it('두 몫의 머리글이 「발주 반영」·「초과분」이다', () => {
     renderTable();
 
     const headers = within(table())
@@ -294,7 +294,7 @@ describe('SplitLineTable — P/O 반영과 초과분', () => {
   });
 
   /* 한도(잔량 60 + 허용 5)와 꼭 같은 도착은 전부 P/O 에 넣는다. */
-  it('한도와 같은 수량은 전부 P/O 반영으로 보인다', () => {
+  it('한도와 같은 수량은 전부 발주 반영으로 보인다', () => {
     renderTable({ rows: rowsWith({ 9401: '65' }) });
 
     expect(splitCells(bodyRows()[0] as HTMLElement)).toEqual(['65', '0']);
