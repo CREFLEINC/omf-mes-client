@@ -18,6 +18,8 @@ export interface ReceiptView {
   /** LOT 등록 본문이 요구한다 — 입하 건이 어느 공장으로 들어왔는가가 그대로 LOT 의 공장이다. */
   plantId: number;
   receiptDatetime: string;
+  /** 취소된 입하에는 라벨을 내지 않는다 — 발행 대기에서 뺀다(`pending-source`). */
+  statusCode: string;
 }
 
 /** 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
@@ -27,31 +29,8 @@ export const toReceiptView = (data: InboundReceiptResponse): ReceiptView => ({
   supplierId: data.supplierId,
   plantId: data.plantId,
   receiptDatetime: data.receiptDatetime,
+  statusCode: data.statusCode,
 });
-
-/** 목록 조회 결과. `page`는 쪽 이동과 위치 표시의 정본이다. */
-export interface ReceiptListResult {
-  items: ReceiptView[];
-  page: PageMeta;
-}
-
-/** 계약의 date-time 문자열에서 월·일 조각을 뽑는다. */
-const RFC3339_DATE_PATTERN = /^\d{4}-(\d{2}-\d{2})T/u;
-
-/**
- * 입하일 표기 — **월·일까지만 보인다**(`08-04`).
- *
- * 스펙 §3 도면이 이 자리를 `08-04` 로 적었다. 1024×768 에 좌우 2단이라 가로 여유가 없고,
- * 이 화면이 다루는 것은 **아직 라벨을 붙이지 않은 입하**라 늘 최근 날짜다 — 연도가 자리를
- * 쓰는 만큼의 값을 하지 않는다. 시각도 넣지 않는다(같은 날 여러 건이면 입하번호로 갈린다).
- *
- * **형식이 아니면 원문을 그대로 낸다.** 서버가 보낸 값을 화면이 삼키지 않는다 — 「—」로
- * 바꾸면 값이 없는 것과 못 알아본 것이 구분되지 않는다(공유계약 G-9).
- *
- * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 함수를 참조하지 않는다.
- */
-export const formatReceiptDate = (value: string): string =>
-  RFC3339_DATE_PATTERN.exec(value)?.[1] ?? value;
 
 type InboundReceiptLineResponse = components['schemas']['InboundReceiptLine'];
 
@@ -136,6 +115,8 @@ export const toHeadPrinter = (printers: PrinterView[]): PrinterView | null =>
  */
 export interface TargetRow {
   inboundReceiptLineId: number;
+  /** 같은 입하 건 안의 차례 — 같은 시각에 들어온 줄을 늘 같은 차례로 세운다. */
+  lineNo: number;
   inboundReceiptId: number;
   inboundReceiptNo: string;
   supplierId: number;
@@ -148,7 +129,57 @@ export interface TargetRow {
   lotId: number | null;
   /** IQC 대상이면 자재 라벨 뒤에 IQC 라벨을 한 장 더 찍는다(omf-all-around#110). */
   inspectionRequired: boolean;
+  /**
+   * LOT 번호·품질 상태·마지막 발행 — 줄 목록 경로(장부 P-118)가 함께 싣는다. 입하 건 → 줄 모으기로
+   * 받았으면 모두 `null` 이고, 다시 인쇄 표가 LOT 상세로 따로 묻는다(`useLotDetails`).
+   */
+  lotNo: string | null;
+  lotStatusCode: string | null;
+  lastIssue: { issueSeq: number; issuedAt: string } | null;
 }
+
+/**
+ * 줄 목록 경로(`GET /logistics/inbound-receipt-lines` · 장부 P-118)의 한 줄 — **계약 대기**다.
+ *
+ * ⚠ 생성 타입에 아직 없어 서버 PR(omf-mes-server#826)의 모양을 손으로 옮겼다. 계약 사본에 실리면 지운다.
+ */
+export interface LabelLineResponse {
+  inboundReceiptLineId: number;
+  inboundReceiptId: number;
+  inboundReceiptNo: string;
+  receiptDatetime: string;
+  lineNo: number;
+  supplierId: number;
+  plantId: number;
+  itemId: number;
+  receivedQty: number;
+  uomId: number;
+  inspectionRequired: boolean;
+  supplierLotLabelAttached: boolean;
+  lotId?: number | null;
+  lotNo?: string | null;
+  lotStatusCode?: string | null;
+  lastLabelIssue?: { issueSeq: number; issuedAt: string } | null;
+}
+
+/** 줄 목록 응답 한 줄을 화면 줄로 옮기는 **유일한 지점**이다. */
+export const toTargetRow = (line: LabelLineResponse): TargetRow => ({
+  inboundReceiptLineId: line.inboundReceiptLineId,
+  lineNo: line.lineNo,
+  inboundReceiptId: line.inboundReceiptId,
+  inboundReceiptNo: line.inboundReceiptNo,
+  supplierId: line.supplierId,
+  plantId: line.plantId,
+  receiptDatetime: line.receiptDatetime,
+  itemId: line.itemId,
+  receivedQty: line.receivedQty,
+  uomId: line.uomId,
+  lotId: line.lotId ?? null,
+  inspectionRequired: line.inspectionRequired,
+  lotNo: line.lotNo ?? null,
+  lotStatusCode: line.lotStatusCode ?? null,
+  lastIssue: line.lastLabelIssue ?? null,
+});
 
 /**
  * 등록·인쇄가 어디까지 갔는가 — **변경 통지 #534 §3 의 세 상태다.**
@@ -182,6 +213,7 @@ export const toIssueStage = (row: TargetRow): IssueStage =>
 export const toTargetRows = (receipt: ReceiptView, lines: LineView[]): TargetRow[] =>
   lines.map((line) => ({
     inboundReceiptLineId: line.inboundReceiptLineId,
+    lineNo: line.lineNo,
     inboundReceiptId: receipt.inboundReceiptId,
     inboundReceiptNo: receipt.inboundReceiptNo,
     supplierId: receipt.supplierId,
@@ -192,6 +224,9 @@ export const toTargetRows = (receipt: ReceiptView, lines: LineView[]): TargetRow
     uomId: line.uomId,
     lotId: line.lotId,
     inspectionRequired: line.inspectionRequired,
+    lotNo: null,
+    lotStatusCode: null,
+    lastIssue: null,
   }));
 
 type DocumentIssueResponse = components['schemas']['DocumentIssue'];

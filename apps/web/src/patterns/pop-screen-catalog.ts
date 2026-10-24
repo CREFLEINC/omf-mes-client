@@ -50,7 +50,7 @@ export interface PopScreen {
  * 진입 화면으로 되돌아가, 작업자에게는 「눌리지 않는 버튼」으로 보인다.
  */
 export const POP_SCREENS: readonly PopScreen[] = [
-  { path: '/pop/material-lot-label', code: 'P-01-01', name: '자재LOT 등록·라벨 발행' },
+  { path: '/pop/material-lot-label', code: 'P-01-01', name: '자재 LOT 라벨 발행' },
   { path: '/pop/goods-issue-qr', code: 'P-01-02', name: '자재 출고 QR 발행' },
   { path: '/pop/work-start', code: 'P-02-01', name: '작업 시작' },
   { path: '/pop/material-input', code: 'P-02-03', name: '자재 투입', acceptsWorkOrderId: true },
