@@ -251,6 +251,45 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     beforeReceipt: 'Chưa nhận hàng',
     summarySeparator: ' · ',
   },
+  receive: {
+    selectAll: 'Chọn tất cả',
+    selectRow: (lineNo: number): string => `Chọn dòng ${String(lineNo)}`,
+    partialSkipped: (count: number): string => `Đã bỏ qua ${String(count)} mặt hàng nhận một phần.`,
+    submit: 'Đăng ký nhập hàng các mặt hàng đã chọn',
+    checkedCount: (count: number): string => `Đã chọn ${String(count)}`,
+    editRow: (itemCode: string): string => `Nhập số lượng nhận cho ${itemCode}`,
+    qtyLabel: (lineNo: number): string => `Số lượng nhận lần này dòng ${String(lineNo)}`,
+    excessTag: (qty: string): string => `Vượt ${qty}`,
+    submitRow: 'Đăng ký nhập hàng',
+    cancelRow: 'Hủy',
+    errors: {
+      qtyEmpty: 'Hãy nhập số lượng nhận lần này.',
+      qtyNotNumber: 'Số lượng nhận lần này phải là số.',
+      qtyNotPositive: 'Số lượng nhận lần này phải lớn hơn 0.',
+    },
+    noReason: 'Không tải được mã lý do không dán nhãn nên không thể đăng ký nhập hàng.',
+    confirm: {
+      title: 'Đăng ký nhập hàng',
+      lead: (count: number): string =>
+        count === 1
+          ? 'Đăng ký 1 mục.'
+          : `Đăng ký ${String(count)} mục. Mỗi mặt hàng có số nhập hàng riêng.`,
+      labelNote:
+        'Đăng ký ở trạng thái không dán nhãn. Nhãn được phát hành tại POP «Đăng ký LOT vật tư · Phát hành nhãn».',
+      irreversible: 'Không thể hoàn tác phiếu nhập hàng tại màn hình này. Việc hủy cần phê duyệt.',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
+      qty: 'Số lượng nhận',
+      excess: (qty: string): string => `Phần vượt ${qty}`,
+      back: 'Quay lại',
+      register: 'Đăng ký',
+    },
+    done: (count: number, firstNo: string): string =>
+      count === 1
+        ? `Đã đăng ký nhập hàng: ${firstNo}`
+        : `Đã đăng ký ${String(count)} phiếu nhập hàng: ${firstNo} và ${String(count - 1)} phiếu khác`,
+    goExcess: 'Liên kết phần vượt',
+  },
   lot: {
     receivedOn: (date: string): string => `Nhận ${date}`,
     putawayOnPda: 'Xếp kho trên PDA',

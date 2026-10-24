@@ -8,7 +8,6 @@ import { plantToday } from '../../patterns/plant-time';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
 import { GoodsReceiptPostPanel } from '../goods-receipt/post-panel';
-import { ReceiptRegisterPanel } from '../over-receipt-split/register-panel';
 import {
   readExcessEntry,
   withExcessEntry,
@@ -66,7 +65,10 @@ import {
 import { LineTable } from './line-table';
 import { OrderTable } from './order-table';
 import { scheduleKeys, usePurchaseOrderLines, usePurchaseOrderSummaries } from './queries';
-import { readRegisterEntry, withoutRegisterEntry, withRegisterEntry } from './register-entry';
+import { ReceiveConfirmDialog } from './receive-confirm-dialog';
+import { defaultReasonOf, splitReceiveQty, toReceiveBody, type ReceivePick } from './receive-entry';
+import { useReceivePerLine, useSubstituteLotReasons } from './receive-queries';
+import { useReceiveDraft } from './use-receive-draft';
 import { hasLot, progressByLine } from './stage';
 import { StageChips } from './stage-chips';
 import type {
@@ -269,18 +271,75 @@ export const InboundScheduleScreen = () => {
   /* 창은 한 번에 하나다 — 하나를 열면 다른 하나의 키를 걷는다. */
   const excessEntry = readExcessEntry(searchParams);
   const openExcess = (entry: Partial<ExcessEntry> = {}): void => {
-    setSearchParams(withExcessEntry(withoutRegisterEntry(withoutPostEntry(searchParams)), entry));
+    setSearchParams(withExcessEntry(withoutPostEntry(searchParams), entry));
   };
   const closeExcess = (): void => {
     setSearchParams(withoutExcessEntry(searchParams));
   };
 
-  const registerPoId = canRegister ? readRegisterEntry(searchParams) : null;
-  const openRegister = (purchaseOrderId: number): void => {
-    setSearchParams(withRegisterEntry(withoutPostEntry(searchParams), purchaseOrderId));
+  /*
+   * 입하 등록 — **라인 표에서 바로 받는다**(사용자 지시 2026-10-24 · 옛 「입하 등록」 창을 걷었다). 체크한 품목은 남은 수량
+   * 그대로 한꺼번에, 행을 누르면 그 품목만 수량을 정해 받는다. 라벨 미부착으로만 받고 입하번호는 품목마다 하나다(`:per-line`).
+   * 되돌릴 수 없는 쓰기라 확인 창을 한 번 거친다. 결과는 표 위 한 줄 — 만든 입하번호와, 초과분이 있으면 연결 창으로 가는 길.
+   */
+  const receiveDraft = useReceiveDraft(lineRows, selectedOrder?.purchaseOrderId ?? null);
+  const lotReasons = useSubstituteLotReasons(canRegister);
+  const lotReason = defaultReasonOf(lotReasons.data ?? []);
+  const [confirmPicks, setConfirmPicks] = useState<ReceivePick[] | null>(null);
+  const [receiveNote, setReceiveNote] = useState<{
+    text: string;
+    excessReceiptNo: string | null;
+  } | null>(null);
+  const [receiveProblem, setReceiveProblem] = useState<string | null>(null);
+  /* 되먹임은 제출한 렌더의 닫힘을 들고 있다 — 보낸 줄은 ref 에 적는다(IQC 의뢰와 같은 길). */
+  const sentPicksRef = useRef<ReceivePick[]>([]);
+  const receiveWrite = useReceivePerLine({
+    refreshKeys: REGISTER_REFRESH_KEYS,
+    onSuccess: (data) => {
+      const sent = sentPicksRef.current;
+      const first = data.created[0]?.inboundReceiptNo ?? '';
+      /* 초과분은 한 품목만 받을 때만 생긴다(체크는 남은 수량 그대로) — 그 줄의 입하번호로 연결 창을 연다. */
+      const excessIndex = sent.findIndex(
+        ({ line, qty }) => splitReceiveQty(line, qty).excessQty > 0,
+      );
+      setReceiveNote({
+        text: t.receive.done(data.created.length, first),
+        excessReceiptNo:
+          excessIndex < 0 ? null : (data.created[excessIndex]?.inboundReceiptNo ?? null),
+      });
+      setConfirmPicks(null);
+      receiveDraft.reset();
+    },
+  });
+  const askConfirm = (picks: ReceivePick[]): void => {
+    if (picks.length === 0) return;
+    if (lotReason === null) {
+      setReceiveProblem(t.receive.noReason);
+
+      return;
+    }
+    setReceiveProblem(null);
+    setReceiveNote(null);
+    receiveWrite.reset();
+    setConfirmPicks(picks);
   };
-  const closeRegister = (): void => {
-    setSearchParams(withoutRegisterEntry(searchParams));
+  const submitChecked = (): void => {
+    askConfirm(receiveDraft.checkedPicks());
+  };
+  const submitEdit = (): void => {
+    const result = receiveDraft.editPick();
+    if (result === null) return;
+    if ('error' in result) {
+      setReceiveProblem(result.error);
+
+      return;
+    }
+    askConfirm([result.pick]);
+  };
+  const confirmReceive = (): void => {
+    if (confirmPicks === null || lotReason === null) return;
+    sentPicksRef.current = confirmPicks;
+    receiveWrite.write(toReceiveBody(confirmPicks, lotReason, today, new Date()));
   };
 
   /*
@@ -299,9 +358,7 @@ export const InboundScheduleScreen = () => {
       ? null
       : (lineRows.find((line) => line.purchaseOrderLineId === postLot.purchaseOrderLineId) ?? null);
   const openPost = (lot: IssuedLotProgress): void => {
-    setSearchParams(
-      withPostEntry(withoutExcessEntry(withoutRegisterEntry(searchParams)), lot.lotId),
-    );
+    setSearchParams(withPostEntry(withoutExcessEntry(searchParams), lot.lotId));
   };
   const closePost = (): void => {
     setSearchParams(withoutPostEntry(searchParams));
@@ -338,12 +395,36 @@ export const InboundScheduleScreen = () => {
   };
   const requestingLotId = requestIqc.isSaving ? (pendingIqcLot?.lotId ?? null) : null;
   const linesNotice =
-    requestIqc.error !== null || iqcNote !== null ? (
+    requestIqc.error !== null ||
+    iqcNote !== null ||
+    receiveNote !== null ||
+    receiveProblem !== null ? (
       <>
         <SaveErrorBanner error={requestIqc.error} />
         {iqcNote !== null && (
           <p className="po-board-lines-status" role="status">
             {iqcNote}
+          </p>
+        )}
+        {receiveProblem !== null && (
+          <p className="field-error" role="alert">
+            {receiveProblem}
+          </p>
+        )}
+        {receiveNote !== null && (
+          <p className="po-board-lines-status" role="status">
+            {receiveNote.text}
+            {receiveNote.excessReceiptNo !== null && excessAvailable && (
+              <Button
+                variant="text"
+                size="sm"
+                onClick={() => {
+                  openExcess({ receiptNo: receiveNote.excessReceiptNo });
+                }}
+              >
+                {t.receive.goExcess}
+              </Button>
+            )}
           </p>
         )}
       </>
@@ -404,6 +485,8 @@ export const InboundScheduleScreen = () => {
     setSearchParams(next);
     setIqcNote(null);
     requestIqc.reset();
+    setReceiveNote(null);
+    setReceiveProblem(null);
   };
 
   return (
@@ -554,7 +637,16 @@ export const InboundScheduleScreen = () => {
               matchedItemId={appliedItemId}
               lineExcesses={lineExcesses}
               onOpenExcess={openExcess}
-              onRegister={canRegister ? openRegister : undefined}
+              {...(canRegister
+                ? {
+                    receive: {
+                      draft: receiveDraft,
+                      isSaving: receiveWrite.isSaving,
+                      onSubmitChecked: submitChecked,
+                      onSubmitEdit: submitEdit,
+                    },
+                  }
+                : {})}
               {...(progressUnavailable || lotsByLine === undefined ? {} : { lots: lotsByLine })}
               progressFailed={progress.isError && !progressUnavailable}
               {...(linesNotice === undefined ? {} : { notice: linesNotice })}
@@ -589,16 +681,18 @@ export const InboundScheduleScreen = () => {
         />
       )}
 
-      {registerPoId !== null && (
-        <ReceiptRegisterPanel
-          /* 다른 발주를 열면 창을 새로 세운다 — 앞 발주의 초안이 남지 않는다. */
-          key={registerPoId}
-          purchaseOrderId={registerPoId}
-          refreshKeys={REGISTER_REFRESH_KEYS}
-          onOpenExcess={(receiptNo) => {
-            openExcess({ receiptNo });
+      {confirmPicks !== null && selectedOrder !== null && (
+        <ReceiveConfirmDialog
+          purchaseOrderNo={selectedOrder.purchaseOrderNo}
+          supplierName={selectedOrder.supplierName}
+          picks={confirmPicks}
+          isSaving={receiveWrite.isSaving}
+          error={receiveWrite.error}
+          onConfirm={confirmReceive}
+          onClose={() => {
+            setConfirmPicks(null);
+            receiveWrite.reset();
           }}
-          onClose={closeRegister}
         />
       )}
 

@@ -324,6 +324,56 @@ export const inboundSchedule = {
     /** 발주 머리의 「진행」 — 묶음마다 「검사 대기 1」을 「·」로 잇는다. */
     summarySeparator: ' · ',
   },
+  /**
+   * 라인 표에서 바로 입하 등록(사용자 지시 2026-10-24 · PDA 「라벨 미부착 일괄 입하」와 같은 길). 체크한 품목은 남은 수량
+   * 그대로 한꺼번에, 행을 누르면 그 품목만 수량을 정해 받는다. 라벨 미부착으로만 받고, 입하번호는 품목마다 하나다.
+   */
+  receive: {
+    selectAll: '모두 선택',
+    selectRow: (lineNo: number): string => `${String(lineNo)}번 줄 선택`,
+    /** 「모두 선택」이 뺀 부분 입하 품목. 하나씩 체크하면 넣을 수 있다. */
+    partialSkipped: (count: number): string => `부분 입하 ${String(count)}건은 빼고 선택했습니다.`,
+    /** 고른 발주 머리의 단추 — 체크한 수는 옆 글자가 말한다. */
+    submit: '체크한 품목 입하 등록',
+    checkedCount: (count: number): string => `선택 ${String(count)}건`,
+    /** 품목코드 칸의 단추 — 그 품목만 수량을 정해 받는다. 행 어디를 눌러도 같다. */
+    editRow: (itemCode: string): string => `${itemCode} 입하 수량 입력`,
+    qtyLabel: (lineNo: number): string => `${String(lineNo)}번 줄 이번 입하 수량`,
+    /** 남은 수량 칸 — 이번 수량이 정량 한도를 넘으면 넘는 몫. */
+    excessTag: (qty: string): string => `초과 ${qty}`,
+    submitRow: '입하 등록',
+    cancelRow: '취소',
+    errors: {
+      qtyEmpty: '이번 입하 수량을 넣으세요.',
+      qtyNotNumber: '이번 입하 수량은 숫자로 넣으세요.',
+      qtyNotPositive: '이번 입하 수량은 0보다 커야 합니다.',
+    },
+    /** 사유 코드를 못 받으면 라벨 미부착으로 보낼 수 없다 — 서버가 사유 없는 미부착 줄을 받지 않는다. */
+    noReason: '라벨 미부착 사유 코드를 불러오지 못해 입하를 등록할 수 없습니다.',
+    confirm: {
+      title: '입하를 등록합니다',
+      lead: (count: number): string =>
+        count === 1
+          ? '1건을 등록합니다.'
+          : `${String(count)}건을 등록합니다. 품목마다 입하번호가 따로 만들어집니다.`,
+      labelNote:
+        '라벨 미부착으로 등록합니다. 라벨은 POP 「자재LOT 등록·라벨 발행」에서 발행합니다.',
+      irreversible: '등록한 입하는 이 화면에서 되돌릴 수 없습니다. 취소는 승인을 거칩니다.',
+      itemCode: '품목코드',
+      itemName: '품목명',
+      qty: '입하 수량',
+      excess: (qty: string): string => `초과분 ${qty}`,
+      back: '돌아가기',
+      register: '등록',
+    },
+    /** 표 위 한 줄 — 만든 입하번호. 여럿이면 첫 번호와 나머지 수. */
+    done: (count: number, firstNo: string): string =>
+      count === 1
+        ? `입하를 등록했습니다: ${firstNo}`
+        : `입하 ${String(count)}건을 등록했습니다: ${firstNo} 외 ${String(count - 1)}건`,
+    /** 초과분이 있으면 그 자리에서 연결 창으로. */
+    goExcess: '초과분 연결',
+  },
   /** 라인 아래 LOT 줄 — 번호 · 입하일 · 수량과, 그 단계의 근거(서버가 준 값만 적는다). */
   lot: {
     receivedOn: (date: string): string => `입하 ${date}`,

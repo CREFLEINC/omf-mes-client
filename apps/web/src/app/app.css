@@ -6595,15 +6595,17 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 발주번호는 다른 칸과 같은 글자로 보인다(사용자 지시 2026-10-21) — 줄 전체가 고르는 자리라 링크처럼
- * 꾸밀 까닭이 없다. 단추는 키보드로 고르는 자리로만 남는다(초점 테두리는 `.link-cell` 것을 그대로 쓴다).
+ * 발주번호(발주 목록) · 품목코드(라인 표 — 그 품목을 받는 단추)는 다른 칸과 같은 글자로 보인다(사용자 지시 2026-10-21) —
+ * 줄 전체가 누르는 자리라 링크처럼 꾸밀 까닭이 없다. 단추는 키보드로 고르는 자리로만 남는다(초점 테두리는 `.link-cell` 것을 그대로 쓴다).
  */
-.po-board-orders .link-cell {
+.po-board-orders .link-cell,
+.po-board-lines .link-cell {
   color: inherit;
   text-decoration: none;
 }
 
-.po-board-orders .link-cell:hover {
+.po-board-orders .link-cell:hover,
+.po-board-lines .link-cell:hover {
   background: none;
 }
 
@@ -7104,18 +7106,21 @@ th:last-child > .col-resizer::after {
   transform: rotate(-90deg);
 }
 
-/* LOT 줄 — 발주 라인 아래 한 단 낮은 면(입하 등록 창의 LOT 줄과 같다). 위 경계선을 지워 그 줄에 딸린 것으로 읽힌다. */
+/*
+ * 계층선은 **안내선이 든 칸**(계층 열)에 긋는다 — 체크 열이 앞에 서도(2026-10-24) 따라간다.
+ * LOT 줄 — 발주 라인 아래 한 단 낮은 면(입하 등록 창의 LOT 줄과 같다). 위 경계선을 지워 그 줄에 딸린 것으로 읽힌다.
+ */
 .po-board-lines tbody tr:has([data-lot-row]) > td {
   background: var(--surface-container-low);
   border-top: 0;
 }
 
-.po-board-lines tbody tr:has([data-lot-row]) > td:first-child {
+.po-board-lines tbody tr:has([data-lot-row]) > td:has(> [data-lot-row]) {
   position: relative;
 }
 
 /* 세로 안내선 — 손잡이 가운데. 칸 안쪽 여백(--space-3)에 손잡이 반폭(12px)을 더한 자리다. */
-.po-board-lines tbody tr:has([data-lot-row]) > td:first-child::before {
+.po-board-lines tbody tr:has([data-lot-row]) > td:has(> [data-lot-row])::before {
   content: '';
   position: absolute;
   top: 0;
@@ -7127,7 +7132,7 @@ th:last-child > .col-resizer::after {
 }
 
 /* 가지 — 줄 가운데에서 다음 칸(단계 칩) 쪽으로 칸 끝까지. 계층 열이 상태 열과 나뉜 뒤(2026-10-24)의 모양이다. */
-.po-board-lines tbody tr:has([data-lot-row]) > td:first-child::after {
+.po-board-lines tbody tr:has([data-lot-row]) > td:has(> [data-lot-row])::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -7138,7 +7143,7 @@ th:last-child > .col-resizer::after {
 }
 
 /* 마지막 LOT 줄 — 세로선이 가운데에서 갈고리로 꺾여 끝난다. 가지는 갈고리에 녹는다(갈고리도 칸 끝까지). */
-.po-board-lines tbody tr:has([data-lot-row][data-last]) > td:first-child::before {
+.po-board-lines tbody tr:has([data-lot-row][data-last]) > td:has(> [data-lot-row])::before {
   right: 0;
   width: auto;
   bottom: 50%;
@@ -7146,7 +7151,7 @@ th:last-child > .col-resizer::after {
   border-bottom-left-radius: var(--radius-sm);
 }
 
-.po-board-lines tbody tr:has([data-lot-row][data-last]) > td:first-child::after {
+.po-board-lines tbody tr:has([data-lot-row][data-last]) > td:has(> [data-lot-row])::after {
   display: none;
 }
 
@@ -7155,6 +7160,72 @@ th:last-child > .col-resizer::after {
   flex: none;
   width: 24px;
   height: 24px;
+}
+
+/* 라인 표에서 바로 받는 입하(2026-10-24) — 체크 · 파란 미리 보기(PDA 와 같은 색) · 편집 중인 줄. */
+.po-board-check {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--semantic-info);
+  cursor: pointer;
+}
+
+.po-board-check:disabled {
+  cursor: not-allowed;
+}
+
+.po-board-filled {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--semantic-info);
+  font-weight: 600;
+}
+
+.po-board-excess-tag {
+  font: var(--type-label-sm);
+  color: var(--semantic-info);
+  white-space: nowrap;
+}
+
+.po-board-receive-qty {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--semantic-info);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: inherit;
+  text-align: end;
+}
+
+.po-board-receive-qty[aria-invalid='true'] {
+  border-color: var(--semantic-error-text);
+}
+
+.po-board-receive-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.po-board-lines tbody tr:has([data-receive-editing]) > td {
+  background: var(--semantic-info-container);
+}
+
+.po-board-checked-count {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.po-board-order-actions {
+  align-items: center;
+  gap: var(--space-2);
 }
 
 /*
