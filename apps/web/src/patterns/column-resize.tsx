@@ -114,6 +114,13 @@ const ColumnResizer = ({
       window.addEventListener('pointerup', up);
     }}
     onDoubleClick={onReset}
+    /*
+     * 정렬하는 열이면 머리칸 전체가 정렬 단추다 — 손잡이를 끌거나 두 번 누른 것이 단추의 누름으로 올라가 정렬이
+     * 바뀌지 않게 여기서 멈춘다.
+     */
+    onClick={(event) => {
+      event.stopPropagation();
+    }}
   />
 );
 

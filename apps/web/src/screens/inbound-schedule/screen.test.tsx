@@ -1586,6 +1586,47 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     expect(within(pane).getByText('SAMPLE|LOT|0005')).toBeInTheDocument();
   });
 
+  it('라인 표의 머리칸을 누르면 오름 → 내림 → 해제로 정렬되고, LOT 줄은 제 라인을 따라간다', async () => {
+    const { user } = renderScreen(progressRoutes(), '?po=7101');
+
+    await screen.findByText('SAMPLE|LOT|0001');
+    const pane = linesPane();
+    const order = (): string[] =>
+      within(pane)
+        .getAllByRole('row')
+        .map((row) => row.textContent ?? '')
+        .flatMap((text) => {
+          const hit = /SAMPLE-ITEM-0\d|SAMPLE\|LOT\|000\d/.exec(text);
+
+          return hit === null ? [] : [hit[0]];
+        });
+    const header = (): HTMLElement =>
+      within(pane).getByRole('columnheader', { name: new RegExp(t.table.itemCode) });
+
+    expect(order()[0]).toBe('SAMPLE-ITEM-01');
+
+    await user.click(within(header()).getByRole('button'));
+    expect(header()).toHaveAttribute('aria-sort', 'ascending');
+    expect(order()[0]).toBe('SAMPLE-ITEM-01');
+
+    await user.click(within(header()).getByRole('button'));
+    expect(header()).toHaveAttribute('aria-sort', 'descending');
+    /* 라인 2 와 그 LOT 하나가 먼저, 그 뒤 라인 1 과 그 LOT 넷(입하 순 그대로). */
+    expect(order()).toEqual([
+      'SAMPLE-ITEM-02',
+      'SAMPLE|LOT|0005',
+      'SAMPLE-ITEM-01',
+      'SAMPLE|LOT|0004',
+      'SAMPLE|LOT|0001',
+      'SAMPLE|LOT|0002',
+      'SAMPLE|LOT|0003',
+    ]);
+
+    await user.click(within(header()).getByRole('button'));
+    expect(header()).not.toHaveAttribute('aria-sort', 'descending');
+    expect(order()[0]).toBe('SAMPLE-ITEM-01');
+  });
+
   it('왼쪽 표에 「진행」 열이 서고 가장 뒤처진 단계와 「외 N」을 낸다 — LOT 없는 미착수는 「입하 전」, 끝난 것은 「—」', async () => {
     renderScreen(progressRoutes(), '');
 

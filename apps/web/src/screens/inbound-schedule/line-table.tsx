@@ -1,4 +1,11 @@
-import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import {
+  Button,
+  type Column,
+  EmptyState,
+  SkeletonText,
+  type SortState,
+  Table,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 
@@ -23,6 +30,7 @@ import {
   toLineTableRows,
   type LineTableRow,
 } from './stage';
+import { sortRows, type SortAccessors } from './table-sort';
 import type {
   InboundLotProgress,
   InboundScheduleLine,
@@ -67,6 +75,28 @@ export interface LineTableProps {
 }
 
 const NO_LINE_EXCESSES: ReadonlyMap<number, LineExcesses> = new Map();
+
+/**
+ * 정렬할 수 있는 열과 그 비교 값 — **발주 라인으로 정렬한다**(LOT 줄은 제 라인을 따라가고, 한 라인 안은 입하 순 그대로).
+ * 「상태」 열은 정렬하지 않는다 — 머리칸에 「LOT 모두 접기」 손잡이가 서 있어 머리칸 전체를 정렬 단추로 만들 수 없다.
+ * 상태 순서가 필요하면 「남은 수량」으로 정렬하면 같은 무리(입하 완료 = 0)가 모인다. 「초과분」 열도 정렬하지 않는다 —
+ * 단추 칸이다.
+ */
+const lineSortAccessors = (
+  storageLocationNameOf: (code: string | null) => string,
+): SortAccessors<InboundScheduleLine> => ({
+  lineNo: (line) => line.lineNo,
+  itemCode: (line) => line.itemCode,
+  itemName: (line) => line.itemName,
+  orderedQty: (line) => line.orderedQty,
+  receivedQty: (line) => line.receivedQty,
+  remainingQty: (line) => line.remainingQty,
+  uomCode: (line) => line.uomCode,
+  erpStorageLocationCode: (line) =>
+    line.erpStorageLocationCode === null
+      ? null
+      : storageLocationNameOf(line.erpStorageLocationCode),
+});
 const NO_COLLAPSED: ReadonlySet<number> = new Set();
 
 const te = messages.inboundSchedule.excess;
@@ -201,6 +231,12 @@ export const LineTable = ({
 }: LineTableProps) => {
   const isTree = lots !== undefined;
 
+  /**
+   * 열 정렬 — 머리칸을 누를 때마다 오름 → 내림 → 해제. 이 부품의 상태다(주소에 싣지 않는다 — 누를 때마다 뒤로가기
+   * 기록이 늘어서는 안 된다). 발주를 바꿔도 남는다 — 같은 기준으로 여러 발주를 훑어보는 일이 많다.
+   */
+  const [sort, setSort] = useState<SortState | null>(null);
+
   /** 접은 라인(라인 번호). 발주가 바뀌면 비운다 — 앞 발주의 접힘이 다음 발주에 남지 않는다. */
   const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(NO_COLLAPSED);
   const orderId = order?.purchaseOrderId ?? null;
@@ -226,7 +262,8 @@ export const LineTable = ({
     });
   };
 
-  const tableRows = toLineTableRows(rows, lots, collapsed);
+  const sortedLines = sortRows(rows, sort, lineSortAccessors(storageLocationNameOf));
+  const tableRows = toLineTableRows(sortedLines, lots, collapsed);
 
   const columns: Column<LineTableRow>[] = [
     {
@@ -285,6 +322,7 @@ export const LineTable = ({
     },
     {
       key: 'lineNo',
+      sortable: true,
       header: t.table.lineNo,
       width: '48px',
       align: 'end',
@@ -292,12 +330,14 @@ export const LineTable = ({
     },
     {
       key: 'itemCode',
+      sortable: true,
       header: t.table.itemCode,
       width: '120px',
       render: (row) => (row.kind === 'line' ? orEmpty(row.line.itemCode) : ''),
     },
     {
       key: 'itemName',
+      sortable: true,
       header: t.table.itemName,
       render: (row) =>
         row.kind === 'line' ? (
@@ -308,6 +348,7 @@ export const LineTable = ({
     },
     {
       key: 'orderedQty',
+      sortable: true,
       header: t.table.orderedQty,
       width: '88px',
       align: 'end',
@@ -315,6 +356,7 @@ export const LineTable = ({
     },
     {
       key: 'receivedQty',
+      sortable: true,
       header: t.table.receivedQty,
       width: '88px',
       align: 'end',
@@ -323,6 +365,7 @@ export const LineTable = ({
     },
     {
       key: 'remainingQty',
+      sortable: true,
       header: t.table.remainingQty,
       width: '88px',
       align: 'end',
@@ -348,12 +391,14 @@ export const LineTable = ({
       : []),
     {
       key: 'uomCode',
+      sortable: true,
       header: t.table.uom,
       width: '56px',
       render: (row) => (row.kind === 'line' ? orEmpty(row.line.uomCode) : row.lot.uomCode),
     },
     {
       key: 'erpStorageLocationCode',
+      sortable: true,
       header: t.table.storageLocation,
       width: '184px',
       /* LOT 줄 — 이미 자리가 있으면(적치·임시 적치) 그 위치, 아직 없으면 다음 할 일(서버가 정한 것만 · C-17). */
@@ -462,6 +507,9 @@ export const LineTable = ({
               columns={resizable.columns}
               rows={tableRows}
               getRowId={lineTableRowId}
+              /* 제어 정렬 — 부품은 받은 순서대로 그린다. 정렬은 위에서 라인 단위로 마쳤다(LOT 줄이 제 라인을 따라간다). */
+              sort={sort}
+              onSortChange={setSort}
               empty={<EmptyState size="sm" title={t.empty.noLinesTitle} />}
             />
           </div>
