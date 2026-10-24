@@ -66,14 +66,26 @@ export const ScheduleFilterBar = ({
    */
   const { from: appliedFrom, to: appliedTo } = appliedPeriod;
   const { supplier, plant, item, q, openOnly, overdueOnly, stage } = appliedFilters;
+  /* 정렬은 표가 정하고 조건 줄은 그대로 실어 보낸다 — 「조회」를 눌러도 걸린 정렬이 풀리지 않게. 값으로 판정한다. */
+  const sortKey = appliedFilters.sort?.key ?? null;
+  const sortDirection = appliedFilters.sort?.direction ?? 'ascending';
 
   useEffect(() => {
     setPeriod({ from: appliedFrom, to: appliedTo });
   }, [appliedFrom, appliedTo]);
 
   useEffect(() => {
-    setFilters({ supplier, plant, item, q, openOnly, overdueOnly, stage });
-  }, [supplier, plant, item, q, openOnly, overdueOnly, stage]);
+    setFilters({
+      supplier,
+      plant,
+      item,
+      q,
+      openOnly,
+      overdueOnly,
+      stage,
+      sort: sortKey === null ? null : { key: sortKey, direction: sortDirection },
+    });
+  }, [supplier, plant, item, q, openOnly, overdueOnly, stage, sortKey, sortDirection]);
 
   /** 보내면 반드시 400이 되는 기간만 막는다. 비어 있는 것은 잘못이 아니다. */
   const searchReason = filters.overdueOnly ? null : validatePeriod(period);

@@ -1681,6 +1681,51 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     });
   });
 
+  it('발주 표의 머리칸을 누르면 정렬이 주소와 목록 요청에 실리고(건수 요청에는 안 실린다) 첫 쪽부터 다시 받는다', async () => {
+    const { requests, user } = renderScreen(progressRoutes(), '?page=2&po=7101');
+
+    /* 발주번호가 왼쪽 표와 오른쪽 머리에 둘 다 선다. */
+    await screen.findAllByText('SAMPLE-PO-0001');
+    const header = (): HTMLElement =>
+      within(listTable()).getByRole('columnheader', {
+        name: new RegExp(t.table.expectedReceiptDate),
+      });
+    const lastListQuery = (): URLSearchParams | undefined =>
+      requestsTo(requests, LIST_PATH).at(-1)?.url.searchParams;
+
+    await user.click(within(header()).getByRole('button'));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('sort=expectedReceiptDate');
+    });
+    expect(currentLocation()).toContain('dir=asc');
+    expect(currentLocation()).not.toContain('page=');
+    /* 고른 발주는 남는다 — 정렬은 결과를 바꾸지 않는다. */
+    expect(currentLocation()).toContain('po=7101');
+    await waitFor(() => {
+      expect(lastListQuery()?.get('sort')).toBe('expectedReceiptDate,asc');
+    });
+    expect(lastListQuery()?.has('sortDirection')).toBe(false);
+    expect(header()).toHaveAttribute('aria-sort', 'ascending');
+
+    await user.click(within(header()).getByRole('button'));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('dir=desc');
+    });
+    await waitFor(() => {
+      expect(lastListQuery()?.get('sort')).toBe('expectedReceiptDate,desc');
+    });
+
+    await user.click(within(header()).getByRole('button'));
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('sort=');
+    });
+    expect(
+      requestsTo(requests, STAGE_COUNTS_PATH).every(
+        (request) => !request.url.searchParams.has('sort'),
+      ),
+    ).toBe(true);
+  });
+
   it('「IQC 의뢰 요청」을 누르면 그 LOT 하나의 수입검사 의뢰를 보내고 결과를 표 위에 알린다', async () => {
     const bodies: unknown[] = [];
     const { user } = renderScreen(progressRoutes(ROWS_WITH_STAGES, bodies), '?po=7101');

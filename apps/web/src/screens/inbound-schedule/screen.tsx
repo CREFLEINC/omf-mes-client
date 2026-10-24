@@ -191,7 +191,7 @@ export const InboundScheduleScreen = () => {
     periodReason === null
       ? {
           ...(filters.overdueOnly ? {} : toPeriodQuery(period)),
-          ...toFilterQuery({ ...filters, stage: '' }),
+          ...toFilterQuery({ ...filters, stage: '', sort: null }),
         }
       : null,
   );
@@ -489,6 +489,22 @@ export const InboundScheduleScreen = () => {
                 onSelect={selectOrder}
                 onFirstPage={() => {
                   applyQuery(period, filters);
+                }}
+                sort={filters.sort}
+                onSortChange={(next) => {
+                  /*
+                   * 순서가 바뀌면 쪽의 뜻도 바뀐다 — 첫 쪽부터 다시 받는다. 고른 발주는 남긴다 — 정렬은 결과를 바꾸지 않는다
+                   * (첫 쪽에 없으면 오른쪽은 「발주를 고르세요」다 — 조건을 바꿀 때와 같다).
+                   */
+                  const nextParams = toSearchParams(
+                    period,
+                    { ...filters, sort: next },
+                    1,
+                    fallbackPeriod,
+                  );
+                  const po = searchParams.get('po');
+                  if (po !== null) nextParams.set('po', po);
+                  setSearchParams(nextParams);
                 }}
               />
               {listQuery !== null && !list.isPending && (

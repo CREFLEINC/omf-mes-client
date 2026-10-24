@@ -93,6 +93,8 @@ export interface InboundScheduleQuery {
   overdueOnly?: boolean;
   /** 이 단계 묶음의 LOT 이 있는 발주만(⚠ 계약 대기 — `PurchaseOrderSummaryQuery` 와 같은 조건). */
   inboundStage?: InboundStageGroup;
+  /** 왼쪽 표의 열 정렬 `열,방향`(⚠ 계약 대기 — `OrderSortParam`). 정렬하지 않으면 싣지 않는다. */
+  sort?: OrderSortParam;
   /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
   page?: number;
   /** 서버 상한 200. */
@@ -286,9 +288,45 @@ export interface PurchaseOrderSummaryQuery {
   overdueOnly?: boolean;
   /** 이 단계 묶음의 LOT 이 있는 발주만(⚠ 계약 대기). 앞선 서버는 모르는 조건을 무시한다. */
   inboundStage?: InboundStageGroup;
+  /** 열 정렬 `열,방향`(⚠ 계약 대기). 없으면 서버 기본 순서(발주일 최신순). 앞선 서버는 모르는 조건을 무시한다. */
+  sort?: OrderSortParam;
   page?: number;
   size?: number;
 }
+
+/**
+ * 왼쪽 발주 목록의 **정렬 열** — 서버가 정렬한다(⚠ 계약 대기 · omf-mes-server PR #824 · 장부 P-116). 목록이 쪽(20건)
+ * 단위라 화면이 정렬하면 보이는 쪽 안에서만 섞여 쪽을 넘는 순서가 틀린다.
+ *
+ * 질의는 **한 칸 `sort=열,방향`** 이다(W/O 목록과 같은 모양 · 방향 생략은 asc). 모르는 열·방향은 400 이다.
+ * 같은 값끼리는 서버가 `purchase_order_id` 내림으로 가르고, 정렬이 없으면 지금 순서(발주일 최신순)다.
+ *
+ * | 값 | 열 | 서버 순서(asc) |
+ * | --- | --- | --- |
+ * | `overdue` | 상태 | 지연 → 정상 → 끝남(지연 = 「지연」 조건과 같은 기준 · 납기 없는 남은 발주는 정상) |
+ * | `expectedReceiptDate` | 납기 | 납기 없는 발주는 방향과 상관없이 맨 뒤 |
+ * | `purchaseOrderNo` | 발주번호 | MES 번호 |
+ * | `inboundStage` | 진행 | 가장 뒤처진 묶음(라벨 발행 → 검사 → 보류 → 입고 → 적치) → 그 수. 묶음 없는 발주는 늘 맨 뒤 |
+ * | `supplierName` | 공급사명 | |
+ * | `openLineCount` | 미입고 품목 | |
+ * | `orderDate` | 발주일 | |
+ */
+export type OrderSortKey =
+  | 'overdue'
+  | 'expectedReceiptDate'
+  | 'purchaseOrderNo'
+  | 'inboundStage'
+  | 'supplierName'
+  | 'openLineCount'
+  | 'orderDate';
+
+export interface OrderSort {
+  key: OrderSortKey;
+  direction: 'ascending' | 'descending';
+}
+
+/** 서버 질의 값 — `expectedReceiptDate,desc`. */
+export type OrderSortParam = `${OrderSortKey},${'asc' | 'desc'}`;
 
 /**
  * 선택 목록의 원본 항목.

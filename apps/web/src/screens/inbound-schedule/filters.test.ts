@@ -43,6 +43,7 @@ describe('readFilters', () => {
       openOnly: false,
       overdueOnly: true,
       stage: 'RECEIPT',
+      sort: null,
     });
   });
 
@@ -187,5 +188,34 @@ describe('toFilterChips', () => {
     );
 
     expect(new Set(chips.map((chip) => chip.removeLabel)).size).toBe(4);
+  });
+});
+
+describe('왼쪽 표 열 정렬 — 주소와 질의', () => {
+  it('정렬은 sort · dir 로 주소에 실리고 다시 읽으면 같다', () => {
+    const sorted = filters({ sort: { key: 'expectedReceiptDate', direction: 'descending' } });
+    const params = toSearchParams(NO_PERIOD, sorted, 1, NO_PERIOD);
+
+    expect(params.get('sort')).toBe('expectedReceiptDate');
+    expect(params.get('dir')).toBe('desc');
+    expect(readFilters(params)).toEqual(sorted);
+  });
+
+  it('모르는 열이면 정렬하지 않고, 방향은 desc 가 아니면 오름차순이다', () => {
+    expect(readFilters(new URLSearchParams('sort=unknown&dir=desc')).sort).toBeNull();
+    expect(readFilters(new URLSearchParams('sort=orderDate&dir=sideways')).sort).toEqual({
+      key: 'orderDate',
+      direction: 'ascending',
+    });
+  });
+
+  it('질의에는 한 칸 sort=열,방향 으로 싣고, 정렬이 없으면 싣지 않는다', () => {
+    expect(
+      toFilterQuery(filters({ sort: { key: 'supplierName', direction: 'ascending' } })),
+    ).toEqual({ sort: 'supplierName,asc' });
+    expect(
+      toFilterQuery(filters({ sort: { key: 'inboundStage', direction: 'descending' } })),
+    ).toEqual({ sort: 'inboundStage,desc' });
+    expect(toFilterQuery(filters())).not.toHaveProperty('sort');
   });
 });

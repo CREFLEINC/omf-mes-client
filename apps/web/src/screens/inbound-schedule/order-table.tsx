@@ -1,4 +1,11 @@
-import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import {
+  Button,
+  type Column,
+  EmptyState,
+  SkeletonText,
+  type SortState,
+  Table,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -8,9 +15,23 @@ import { isOrderOverdue } from './overdue';
 import { formatDate } from './period';
 import { OneLine, orEmpty, OrderStateCell } from './receipt-status';
 import { hasStageCounts, stageLead } from './stage';
-import type { PurchaseOrderSummary } from './types';
+import type { OrderSort, OrderSortKey, PurchaseOrderSummary } from './types';
 
 const t = messages.inboundSchedule;
+
+/** 열 키 → 서버 정렬 값. 열 키는 표 부품이 쓰고, 서버에는 정렬 값이 간다(`types.ts` `OrderSortKey`). */
+const SORT_KEY_OF_COLUMN: Readonly<Record<string, OrderSortKey>> = {
+  receiptStatusCode: 'overdue',
+  expectedReceiptDate: 'expectedReceiptDate',
+  purchaseOrderNo: 'purchaseOrderNo',
+  inboundStage: 'inboundStage',
+  supplierName: 'supplierName',
+  openLineCount: 'openLineCount',
+  orderDate: 'orderDate',
+};
+
+const columnOfSortKey = (key: OrderSortKey): string =>
+  Object.entries(SORT_KEY_OF_COLUMN).find(([, value]) => value === key)?.[0] ?? key;
 
 export interface OrderTableProps {
   rows: PurchaseOrderSummary[];
@@ -22,6 +43,10 @@ export interface OrderTableProps {
   selectedId: number | null;
   onSelect: (purchaseOrderId: number) => void;
   onFirstPage: () => void;
+  /** 걸린 열 정렬(주소의 `sort` · `dir`). 없으면 서버 기본 순서. */
+  sort: OrderSort | null;
+  /** 머리칸을 누르면 — 오름 → 내림 → 해제. 화면이 주소에 싣고 첫 쪽부터 다시 조회한다. */
+  onSortChange: (next: OrderSort | null) => void;
 }
 
 /**
@@ -55,7 +80,12 @@ const ProgressCell = ({ row }: { row: PurchaseOrderSummary }) => {
 
 /**
  * 왼쪽 표 — **P/O 묶음 한 줄**(server #762). 발주·공급사처럼 묶음 단위로 말할 수 있는 것만 둔다.
- * 품목·수량의 낱낱은 오른쪽 표가 낸다. 정렬은 서버 순서 그대로다 — 쪽을 넘는 정렬은 화면이 할 수 없다.
+ * 품목·수량의 낱낱은 오른쪽 표가 낸다.
+ *
+ * **열 정렬은 서버가 한다**(사용자 지시 2026-10-24 · ⚠ 계약 대기). 목록이 쪽(20건) 단위라 화면이 정렬하면 보이는 쪽
+ * 안에서만 섞인다 — 머리칸을 누르면 정렬이 주소(`sort` · `dir`)에 실리고 서버 질의 `sort=열,방향` 으로 첫 쪽부터 다시
+ * 받는다(omf-mes-server #824 · 장부 P-116). 표 부품은
+ * 제어 정렬이라 받은 순서대로 그린다. 앞선 서버는 정렬 질의를 무시한다(머리칸 표시만 바뀌고 순서는 그대로).
  *
  * 공급사 코드·남은 수량은 두지 않는다 — 오른쪽 발주 상세가 낸다(사용자 지시 2026-10-21).
  *
@@ -81,10 +111,13 @@ export const OrderTable = ({
   selectedId,
   onSelect,
   onFirstPage,
+  sort,
+  onSortChange,
 }: OrderTableProps) => {
   const columns: Column<PurchaseOrderSummary>[] = [
     {
       key: 'receiptStatusCode',
+      sortable: true,
       header: t.table.receiptStatus,
       width: '64px',
       render: (row) => (
@@ -93,6 +126,7 @@ export const OrderTable = ({
     },
     {
       key: 'expectedReceiptDate',
+      sortable: true,
       header: t.table.expectedReceiptDate,
       width: '104px',
       render: (row) =>
@@ -100,6 +134,7 @@ export const OrderTable = ({
     },
     {
       key: 'purchaseOrderNo',
+      sortable: true,
       header: t.table.purchaseOrderNo,
       width: '120px',
       /* 고르는 단추. 고른 줄은 `aria-current` 로 알리고 줄 배경이 따라간다(app.css). */
@@ -120,6 +155,7 @@ export const OrderTable = ({
       ? [
           {
             key: 'inboundStage',
+            sortable: true,
             header: t.table.progress,
             width: '132px',
             render: (row: PurchaseOrderSummary) => <ProgressCell row={row} />,
@@ -128,11 +164,13 @@ export const OrderTable = ({
       : []),
     {
       key: 'supplierName',
+      sortable: true,
       header: t.table.supplierName,
       render: (row) => <OneLine text={orEmpty(row.supplierName)} />,
     },
     {
       key: 'openLineCount',
+      sortable: true,
       header: t.table.openLines,
       width: '96px',
       align: 'end',
@@ -143,6 +181,7 @@ export const OrderTable = ({
     },
     {
       key: 'orderDate',
+      sortable: true,
       header: t.table.orderDate,
       width: '104px',
       render: (row) => formatDate(row.orderDate),
@@ -218,6 +257,14 @@ export const OrderTable = ({
         columns={resizable.columns}
         rows={rows}
         getRowId={(row) => String(row.purchaseOrderId)}
+        sort={sort === null ? null : { key: columnOfSortKey(sort.key), direction: sort.direction }}
+        onSortChange={(next: SortState | null) => {
+          const key = next === null ? undefined : SORT_KEY_OF_COLUMN[next.key];
+
+          onSortChange(
+            next === null || key === undefined ? null : { key, direction: next.direction },
+          );
+        }}
         empty={emptySlot()}
       />
     </div>
