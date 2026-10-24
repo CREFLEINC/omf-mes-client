@@ -2,12 +2,13 @@ import { act, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { useLabelIssue } from './mutations';
+import { useBatchIssue, type IssueCommand } from './mutations';
 import type { TargetRow } from './types';
 
 /** 합성값이다 — 계약의 예시값도 실 운영 값도 쓰지 않는다(공개 저장소 경계). */
 const row: TargetRow = {
   inboundReceiptLineId: 8501,
+  lineNo: 1,
   inboundReceiptId: 8101,
   inboundReceiptNo: 'SYN-IB-0001',
   supplierId: 8201,
@@ -18,9 +19,21 @@ const row: TargetRow = {
   uomId: 8401,
   lotId: null,
   inspectionRequired: false,
+  lotNo: null,
+  lotStatusCode: null,
+  lastIssue: null,
 };
 
-describe('useLabelIssue — 사번을 모를 때', () => {
+const command: IssueCommand = {
+  row,
+  printerName: null,
+  reissueReasonCode: null,
+  uomCode: null,
+  lotStatusCode: null,
+  supplierText: null,
+};
+
+describe('useBatchIssue — 사번을 모를 때', () => {
   /**
    * 지금은 단추도 함께 막혀 있어 화면으로는 여기 닿지 않는다. 그런데 이 훅을 부르는 경로가
    * 하나 더 생기면 그때 새고, 그 실수는 **서버 거절로만** 드러난다 — 나가는 자리에서 막는다.
@@ -28,7 +41,7 @@ describe('useLabelIssue — 사번을 모를 때', () => {
   it('⛔ 요청을 한 건도 내보내지 않는다 — 빈 사번을 대신 싣지 않는다', () => {
     let calls = 0;
 
-    const { result } = renderHookWithProviders(() => useLabelIssue({ workerNo: null }), {
+    const { result } = renderHookWithProviders(() => useBatchIssue({ workerNo: null }), {
       fetch: async () => {
         calls += 1;
 
@@ -37,13 +50,7 @@ describe('useLabelIssue — 사번을 모를 때', () => {
     });
 
     act(() => {
-      result.current.run({
-        row,
-        printerName: null,
-        reissueReasonCode: null,
-        uomCode: null,
-        lotStatusCode: null,
-      });
+      result.current.run([command]);
     });
 
     expect(calls).toBe(0);
@@ -51,7 +58,7 @@ describe('useLabelIssue — 사번을 모를 때', () => {
   });
 });
 
-describe('useLabelIssue — 두 번 눌렸을 때', () => {
+describe('useBatchIssue — 두 번 눌렸을 때', () => {
   /**
    * 장갑 낀 손은 한 번 누를 것을 두 번 누른다. **단추의 비활성만으로는 못 막는다** —
    * 그 값은 다음 렌더에서야 반영되므로, 두 번째 누름이 «같은 렌더에서» 들어온다.
@@ -61,7 +68,7 @@ describe('useLabelIssue — 두 번 눌렸을 때', () => {
   it('⛔ 같은 렌더에서 두 번 들어와도 등록은 한 번만 나간다', async () => {
     const posts: string[] = [];
 
-    const { result } = renderHookWithProviders(() => useLabelIssue({ workerNo: '900028' }), {
+    const { result } = renderHookWithProviders(() => useBatchIssue({ workerNo: '900028' }), {
       fetch: async (request: Request) => {
         const { pathname } = new URL(request.url);
 
@@ -74,20 +81,8 @@ describe('useLabelIssue — 두 번 눌렸을 때', () => {
 
     // 렌더 사이를 두지 않고 잇달아 부른다 — 두 번 누름과 같은 모양이다.
     act(() => {
-      result.current.run({
-        row,
-        printerName: null,
-        reissueReasonCode: null,
-        uomCode: null,
-        lotStatusCode: null,
-      });
-      result.current.run({
-        row,
-        printerName: null,
-        reissueReasonCode: null,
-        uomCode: null,
-        lotStatusCode: null,
-      });
+      result.current.run([command]);
+      result.current.run([command]);
     });
 
     await waitFor(() => {

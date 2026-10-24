@@ -65,3 +65,13 @@ export const DOCUMENT_TARGET_TYPE_CODE = 'LOT';
  * ⛔ 채번 식별자(`codeGroupId`)를 쓰지 않는다 — 환경마다 다르다(계약 명시). 코드로 받는다.
  */
 export const REISSUE_REASON_CODE_GROUP = 'REISSUE_REASON';
+
+/**
+ * 인쇄 실패로 다시 찍을 때 싣는 재발행 사유 — 코드 사전 `REISSUE_REASON` 의 초기 시드 값이다.
+ *
+ * ⭐ 일괄 발행에서 한 장이 안 나오면 발행 기록(1회차)은 이미 남아, 다시 찍는 것은 2회차라 사유가
+ *    필수다. 그 까닭은 화면이 이미 안다 — 「인쇄 실패」. 작업자에게 사유를 다시 고르게 하지 않는다.
+ * ⚠ **고객이 사유 목록을 바꿀 수 있다**(공유계약 G-31). 받은 목록에 이 값이 없으면 화면은 스스로
+ *   싣지 않고 「다시 인쇄」에서 사유를 고르게 한다(`screen`).
+ */
+export const PRINT_FAILURE_REASON_CODE = 'PRINT_FAILURE';

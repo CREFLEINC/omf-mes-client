@@ -1,35 +1,37 @@
 import type { ApiClient } from '@omf-mes/api-client';
-import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type QueryClient, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages, type PageMeta } from '../../patterns/fetch-all-pages';
+import { plantToday } from '../../patterns/plant-time';
 import { shellSelectsPrinter, terminalPrinters } from '../../patterns/pop-terminal-printers';
-import { runRequest } from '../../patterns/request';
+import { ApiRequestError, runRequest, type ApiCallResult } from '../../patterns/request';
 import { REISSUE_REASON_CODE_GROUP } from './codes';
 import {
   toLineView,
   toPrinterView,
   toReceiptView,
+  toTargetRow,
   toTargetRows,
+  type LabelLineResponse,
   type LineView,
   type PrinterView,
-  type ReceiptListResult,
   type ReceiptView,
   type TargetRow,
 } from './types';
 
 /**
- * 이 화면의 요청 — 이 슬라이스에서는 **읽기 하나뿐**이다.
+ * 이 화면의 읽기.
  *
  * | 언제 | 무엇 |
  * | --- | --- |
- * | 첫 진입 | 라벨 미발행 입하 라인 목록 |
- * | 발행 완료 보기 | 라벨을 발행한 입하 라인 목록(#1241) |
+ * | 발행 대기 | 라벨 미부착·미발행 입하 줄 전부 — 공급사로 묶는다(`pending`) |
+ * | 다시 인쇄 | 최근 2주 안에 발행한 입하 줄 |
  *
- * **미부착·발행 조건을 서버가 거른다.** 스펙 §3-6 과 변경 통지 #534 가 목록 원천을
- * `?supplierLotLabelAttached=false&labelIssued=false` 로 정했고 그 질의가 계약에 있다(건 목록의 발행
- * 조건은 #1241 에서 보기별로 바꿨다 — `receiptIssuedQuery`). 화면이 받아서
- * 거르던 우회는 걷었다 — 거르는 쪽이 서버이므로 **한 쪽에 보이는 줄 수가 쪽 크기와 어긋나지
- * 않는다.**
+ * ⭐ **줄 목록 경로를 먼저 부른다**(`GET /logistics/inbound-receipt-lines` · 장부 P-118 · omf-mes-server#826,
+ *    omf-all-around#184 에서 요청). 입하 건을 가로질러 줄을 주고 LOT 번호·상태·마지막 발행을 함께 싣는다.
+ * ⚠ **계약 대기다.** 서버가 그 경로를 모르면(404)·권한이 없으면(403) 예전 길 — 입하 «건» 목록을 끝까지
+ *   받고 건마다 줄을 불러 화면이 모은다 — 로 돌아간다(`useLabelRows`). 계약에 실리면 이 되돌이를 걷는다.
  *
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
  * 문자열 변수로 넘기면 타입 검사가 풀린다.
@@ -37,17 +39,8 @@ import {
 
 type Client = ApiClient['client'];
 
-/** 목록 조회의 쿼리 전체. **채운 조건만 키가 실린다** — 요청 URL이 조건을 그대로 드러낸다. */
-export interface ReceiptListQuery {
-  /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
-  page?: number;
-}
-
 /**
- * 목록이 무엇을 담는가 — **미발행 / 발행 완료** 둘 중 하나다.
- *
- * ⭐ 발행 완료 목록은 사용자 지시(2026-09-15 · #1241)다. 스펙은 발행한 라인을 목록에서 빼도록
- *    적었지만, 그러면 인쇄를 마친 자재를 고를 길이 없어 재인쇄 단추가 쓰일 자리가 없었다.
+ * 목록이 무엇을 담는가 — 미발행(발행 대기) / 발행한 줄(다시 인쇄).
  *
  * ⛔ **「전체」를 두지 않는다.** 라인 응답에 발행 여부 칸이 없어 한 목록에 섞으면 줄마다
  *    무엇인지 말할 수 없다 — 질의 조건으로만 갈린다.
@@ -55,109 +48,157 @@ export interface ReceiptListQuery {
 export type IssuedView = 'unissued' | 'issued';
 
 /**
- * 목록 주기 갱신 간격.
- *
- * ## 왜 주기 갱신을 두는가
+ * 입하 건 목록 주기 갱신 간격.
  *
  * ⭐ **이 목록의 자료를 만드는 것은 이 화면이 아니다.** 작업자는 PDA 로 입하를 등록하고 POP 앞으로
- *    걸어와 라벨을 찍는다. 그런데 화면이 떠 있는 동안 목록을 다시 부르는 장치가 없어, **앱을 껐다
- *    켜야** 방금 등록한 입하가 보였다(omf-all-around#29). 다른 기기가 만든 자료라 화면이 스스로
- *    캐시를 무효화할 길도 없다.
+ *    걸어와 라벨을 찍는다 — 화면이 스스로 다시 받지 않으면 앱을 껐다 켜야 보였다(omf-all-around#29).
  *
- * ⛔ **조회 화면에 자동 갱신을 두지 않는다는 관례의 예외다**(공유계약 L-6 · `screens/dashboard` ·
- *    `screens/work-order-progress`). 그 관례의 근거는 「사용자 수만큼 부하가 곱해진다」인데, POP
- *    단말은 **공장당 몇 대뿐**이라 사정이 다르다. 관리웹 조회 화면에는 그대로 두지 않는다.
- *
- * ⚠ 걸어오는 동안 떠 있으면 되므로 초 단위로 조일 이유가 없다. 20초면 화면 앞에 서기 전에 한 번은
- *   돈다.
+ * ⛔ **조회 화면에 자동 갱신을 두지 않는다는 관례의 예외다**(공유계약 L-6). 그 관례의 근거는 「사용자
+ *    수만큼 부하가 곱해진다」인데, POP 단말은 **공장당 몇 대뿐**이다.
  */
 export const LIST_REFRESH_MS = 20_000;
 
 /**
- * 주기 갱신을 걸 것인가 — **실행 중에는 걸지 않는다.**
+ * 건마다의 줄 갱신 간격 — 건 목록보다 느리다.
  *
- * ⛔ 등록·인쇄가 도는 사이에 목록이 바뀌면 고른 줄이 목록에서 빠질 수 있고, 그때 발번 대상 카드가
- *    빈 상태로 돌아가 **인쇄 중인데 아무것도 고르지 않은 화면**이 된다. 끝난 뒤의 무효화가 어차피
- *    목록을 새로 받으므로, 그 사이에는 멈춰 두는 편이 맞다(#1241 이 세운 규율과 같은 자리).
+ * ⭐ 새 입하는 건 목록이 20초마다 데려오고, 새 건의 줄은 처음 보일 때 한 번 받는다. 이미 받은 줄이
+ *    바뀌는 것은 이 단말이 찍었을 때(끝나면 그 건만 다시 받는다)나 다른 단말이 찍었을 때뿐이라 자주
+ *    물을 까닭이 없다 — 대기 건이 백 건이면 20초마다 백 번 묻게 된다. 다른 단말이 먼저 찍은 줄은
+ *    발행 직전에 다시 확인한다(`fetchFreshLines`).
  */
-export const listRefetchInterval = (isIssuing: boolean): number | false =>
-  isIssuing ? false : LIST_REFRESH_MS;
+export const LINES_REFRESH_MS = 60_000;
+
+/**
+ * 발행 대기에 함께 받을 최근 입하 일수.
+ *
+ * ⚠ 건 목록의 `labelIssued=false` 는 「발행된 줄이 **하나도 없는** 건」이라, 줄 여럿 중 일부만 찍은
+ *   건은 남은 줄까지 빠진다(#1241). 그런 건은 2026-10-24 전에 만든 다중 줄 입하뿐이라(장부 P-117 뒤로는
+ *   건 하나에 줄 하나), 최근 며칠은 발행 조건 없이 받아 그 줄을 놓치지 않는다. 서버가 줄 목록을 열면 걷는다.
+ */
+export const PENDING_RECENT_DAYS = 3;
+
+/** 다시 인쇄에서 보이는 기간(입하일 기준). 그보다 오래된 라벨은 스캔해도 찾지 못한다고 말한다. */
+export const REPRINT_DAYS = 14;
+
+/** 주기 갱신을 걸 것인가 — **발행 중에는 걸지 않는다**(도는 사이 목록이 바뀌면 결과가 줄을 잃는다). */
+export const listRefetchInterval = (
+  isIssuing: boolean,
+  interval = LIST_REFRESH_MS,
+): number | false => (isIssuing ? false : interval);
 
 const RECEIPT_LIST_KEY = ['pop-material-lot-label', 'receipts'] as const;
 
+/** 줄 목록 경로(P-118)의 캐시 — 보기마다 하나. */
+export const rowKeys = {
+  all: ['pop-material-lot-label', 'rows'] as const,
+  view: (view: IssuedView) => ['pop-material-lot-label', 'rows', view] as const,
+};
+
 export const receiptKeys = {
   lists: RECEIPT_LIST_KEY,
-  /** 모든 건·모든 보기의 라인 캐시. 인쇄가 끝나면 줄이 보기를 옮겨 가므로 통째로 다시 읽는다. */
+  pending: [...RECEIPT_LIST_KEY, 'pending'] as const,
+  issued: [...RECEIPT_LIST_KEY, 'issued'] as const,
+  /** 모든 건·모든 보기의 줄 캐시. */
   allLines: ['pop-material-lot-label', 'receipt-lines'] as const,
-  list: (view: IssuedView, query: ReceiptListQuery) => [...RECEIPT_LIST_KEY, view, query] as const,
-  /**
-   * 라인 캐시는 **고른 건마다 갈린다.** 목록 키와 앞머리를 갈라 두어, 목록만 다시 불러도
-   * 라인까지 함께 무효화되지 않게 한다.
-   *
-   * 보기를 빼고 부르면 그 건의 두 보기를 함께 가리킨다 — 등록 뒤 무효화가 그렇게 쓴다.
-   */
-  lines: (inboundReceiptId: number | null, view?: IssuedView) =>
+  /** 보기를 빼고 부르면 그 건의 두 보기를 함께 가리킨다 — 발행 뒤 무효화가 그렇게 쓴다. */
+  lines: (inboundReceiptId: number, view?: IssuedView) =>
     view === undefined
       ? (['pop-material-lot-label', 'receipt-lines', inboundReceiptId] as const)
       : (['pop-material-lot-label', 'receipt-lines', inboundReceiptId, view] as const),
 };
 
-/**
- * 입하 «건» 목록의 발행 조건.
- *
- * ⛔ **미발행 보기에서 건을 `labelIssued=false` 로 거르지 않는다**(#1241). 건 목록의 그 조건은
- *    「발행된 라인이 **하나도 없는** 건」이라, 한 건의 자재 일부만 인쇄하면 **남은 자재까지**
- *    목록에서 사라졌다. 미발행 라인은 라인 질의가 거른다.
- *
- * 발행 완료 보기의 `true` 는 「발행된 라인을 하나 이상 가진 건」이라 그대로 맞다.
- */
-const receiptIssuedQuery = (view: IssuedView): { labelIssued?: boolean } =>
-  view === 'issued' ? { labelIssued: true } : {};
+/** `YYYY-MM-DD` 에서 날수를 더하고 뺀다(공장 달력의 날짜 문자열 그대로). */
+export const shiftDate = (date: string, days: number): string => {
+  const at = new Date(`${date}T00:00:00Z`);
 
-const fetchReceipts = async (
-  client: Client,
-  view: IssuedView,
-  query: ReceiptListQuery,
-): Promise<ReceiptListResult> => {
-  const data = await runRequest(() =>
-    client.GET('/logistics/inbound-receipts', {
-      /*
-       * 실물 라벨이 미부착인 건만 받는다. 발행 조건은 보기가 정한다(`receiptIssuedQuery`).
-       * ⛔ 화면이 받아서 거르지 않는다 — 목록이 쪽 단위라 거른 뒤 개수가 쪽 크기와 어긋난다.
-       */
-      params: {
-        query: { ...query, supplierLotLabelAttached: false, ...receiptIssuedQuery(view) },
-      },
-    }),
-  );
+  at.setUTCDate(at.getUTCDate() + days);
 
-  return { items: data.items.map(toReceiptView), page: data.page };
+  return at.toISOString().slice(0, 10);
 };
 
+const fetchAllReceipts = async (
+  client: Client,
+  query: {
+    labelIssued?: boolean;
+    receiptDateFrom?: string;
+  },
+): Promise<ReceiptView[]> => {
+  const all = await fetchAllPages((page, size) =>
+    runRequest(() =>
+      client.GET('/logistics/inbound-receipts', {
+        /* 실물 라벨이 미부착인 건만 받는다(사전부착은 PDA 가 처리한다 · 스펙 §3-6). */
+        params: { query: { ...query, supplierLotLabelAttached: false, page, size } },
+      }),
+    ),
+  );
+
+  return all.items.map(toReceiptView);
+};
+
+/** 같은 건이 두 목록에 함께 오면 하나로 — 먼저 온 쪽을 남긴다. */
+const uniqueReceipts = (lists: readonly ReceiptView[][]): ReceiptView[] => {
+  const byId = new Map<number, ReceiptView>();
+
+  for (const receipt of lists.flat()) {
+    if (!byId.has(receipt.inboundReceiptId)) byId.set(receipt.inboundReceiptId, receipt);
+  }
+
+  return [...byId.values()];
+};
+
+/** 취소된 입하 — 라벨을 낼 까닭이 없다. */
+const CANCELLED_RECEIPT = 'CANCELLED';
+
 /**
- * 발행 대상 입하 건 목록.
- *
- * **조건 없이 곧바로 조회한다.** 화면에 들어오면 무엇을 고를 수 있는지 바로 보여야 한다 —
- * 빈 화면으로 시작하면 조건을 먼저 정해야 하는 줄 안다. 터치 단말에는 조건을 치는 자리가 없다.
+ * 발행 대기 입하 건 — 발행된 줄이 없는 건 전부 + 최근 며칠의 건(`PENDING_RECENT_DAYS` 머리말).
  */
-export const useReceipts = (
-  view: IssuedView,
-  query: ReceiptListQuery,
+export const usePendingReceipts = (
+  enabled: boolean,
   isIssuing: boolean,
-): UseQueryResult<ReceiptListResult> => {
+): UseQueryResult<ReceiptView[]> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: receiptKeys.list(view, query),
-    queryFn: () => fetchReceipts(client, view, query),
+    queryKey: receiptKeys.pending,
+    enabled,
+    queryFn: async () => {
+      const [untouched, recent] = await Promise.all([
+        fetchAllReceipts(client, { labelIssued: false }),
+        fetchAllReceipts(client, {
+          receiptDateFrom: shiftDate(plantToday(), -PENDING_RECENT_DAYS),
+        }),
+      ]);
+
+      return uniqueReceipts([untouched, recent]).filter(
+        (receipt) => receipt.statusCode !== CANCELLED_RECEIPT,
+      );
+    },
     /* PDA 가 만든 입하가 스스로 떠야 한다 — 까닭은 `LIST_REFRESH_MS` 머리말에 있다. */
-    refetchInterval: listRefetchInterval(isIssuing),
+    refetchInterval: enabled ? listRefetchInterval(isIssuing) : false,
+  });
+};
+
+/** 다시 인쇄 — 최근 2주 안에 입하돼 라벨을 낸 줄이 하나라도 있는 건. */
+export const useIssuedReceipts = (
+  enabled: boolean,
+  isIssuing: boolean,
+): UseQueryResult<ReceiptView[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: receiptKeys.issued,
+    enabled,
+    queryFn: () =>
+      fetchAllReceipts(client, {
+        labelIssued: true,
+        receiptDateFrom: shiftDate(plantToday(), -REPRINT_DAYS),
+      }),
+    refetchInterval: enabled ? listRefetchInterval(isIssuing) : false,
   });
 };
 
 /*
- * 라인도 미부착·발행 두 조건으로 서버가 거른다 — 발번 단위가 「건」이 아니라 「라인」이므로
- * (스펙 §3-6) 목록 줄과 발번 개수를 맞추려면 거르는 자리가 서버여야 한다.
+ * 줄도 미부착·발행 두 조건으로 서버가 거른다 — 발번 단위가 「건」이 아니라 「줄」이다(스펙 §3-6).
  */
 const fetchReceiptLines = async (
   client: Client,
@@ -174,6 +215,198 @@ const fetchReceiptLines = async (
   );
 
   return data.items.map(toLineView);
+};
+
+export interface TargetRowsResult {
+  rows: TargetRow[];
+  isPending: boolean;
+  isError: boolean;
+  refetch: () => void;
+}
+
+/**
+ * 건마다 줄을 받아 한 목록으로 편다.
+ *
+ * ⚠ **요청이 건 수만큼이다.** 줄 갱신을 건 목록보다 느리게 두어 감당한다(`LINES_REFRESH_MS`).
+ */
+export const useLineRows = (
+  receipts: readonly ReceiptView[],
+  view: IssuedView,
+  isIssuing: boolean,
+): TargetRowsResult => {
+  const { client } = useApiClient();
+
+  const results = useQueries({
+    queries: receipts.map((receipt) => ({
+      queryKey: receiptKeys.lines(receipt.inboundReceiptId, view),
+      queryFn: () => fetchReceiptLines(client, receipt.inboundReceiptId, view),
+      staleTime: LINES_REFRESH_MS,
+      refetchInterval: listRefetchInterval(isIssuing, LINES_REFRESH_MS),
+    })),
+  });
+
+  return {
+    rows: results.flatMap((result, index) => {
+      const receipt = receipts[index];
+
+      return receipt === undefined || result.data === undefined
+        ? []
+        : toTargetRows(receipt, result.data);
+    }),
+    isPending: results.some((result) => result.isPending),
+    // 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다.
+    isError: results.some((result) => result.isError),
+    refetch: () => {
+      for (const result of results) void result.refetch();
+    },
+  };
+};
+
+/**
+ * 줄 목록 경로만 받는 모양으로 클라이언트를 좁혀 본다 — 생성 타입에 아직 없다(입고 관리
+ * `progress-queries` 와 같은 길). 실행은 같은 클라이언트가 한다. 계약에 실리면 이 좁힘을 지운다.
+ */
+interface LabelLinesClient {
+  GET(
+    path: '/logistics/inbound-receipt-lines',
+    init: {
+      params: {
+        query: {
+          labelIssued: boolean;
+          supplierLotLabelAttached: boolean;
+          receiptDateFrom?: string;
+          page: number;
+          size: number;
+        };
+      };
+    },
+  ): Promise<ApiCallResult<{ items: LabelLineResponse[]; page: PageMeta }>>;
+}
+
+/** 서버가 줄 목록 경로를 모르거나(404) 권한이 없다(403) — 예전 길로 돌아갈 신호다. 다른 실패는 실패다. */
+export const isLineListUnavailable = (error: unknown): boolean =>
+  error instanceof ApiRequestError && (error.httpStatus === 404 || error.httpStatus === 403);
+
+const fetchLabelLines = async (client: Client, view: IssuedView): Promise<TargetRow[]> => {
+  const linesClient = client as unknown as LabelLinesClient;
+  const all = await fetchAllPages((page, size) =>
+    runRequest(() =>
+      linesClient.GET('/logistics/inbound-receipt-lines', {
+        params: {
+          query: {
+            labelIssued: view === 'issued',
+            supplierLotLabelAttached: false,
+            /* 다시 인쇄는 최근 2주만 — 발행한 줄은 끝없이 쌓인다(`REPRINT_DAYS`). */
+            ...(view === 'issued'
+              ? { receiptDateFrom: shiftDate(plantToday(), -REPRINT_DAYS) }
+              : {}),
+            page,
+            size,
+          },
+        },
+      }),
+    ),
+  );
+
+  return all.items.map(toTargetRow);
+};
+
+export interface LabelRowsResult extends TargetRowsResult {
+  /** 줄 목록 경로가 없어 입하 건 → 줄 모으기로 받았는가. 그때 줄에 LOT 번호·상태·마지막 발행이 없다. */
+  isFallback: boolean;
+}
+
+/**
+ * 한 보기의 줄 전부 — 줄 목록 경로(P-118)를 먼저 부르고, 없으면 예전 길로 모은다.
+ *
+ * ⚠ 404·403 이 한 번 오면 그 경로는 다시 묻지 않는다(`retry: false` · 주기 갱신도 멈춤) — 앞선 서버에서
+ *   20초마다 없는 경로를 부르지 않는다. 서버를 올리면 화면을 다시 열 때 새 경로로 돌아온다.
+ */
+export const useLabelRows = (
+  view: IssuedView,
+  enabled: boolean,
+  isIssuing: boolean,
+): LabelRowsResult => {
+  const { client } = useApiClient();
+
+  const direct = useQuery({
+    queryKey: rowKeys.view(view),
+    enabled,
+    retry: false,
+    queryFn: () => fetchLabelLines(client, view),
+    refetchInterval: (query) =>
+      !enabled || isLineListUnavailable(query.state.error) ? false : listRefetchInterval(isIssuing),
+  });
+  const isFallback = enabled && direct.isError && isLineListUnavailable(direct.error);
+
+  const pendingReceipts = usePendingReceipts(isFallback && view === 'unissued', isIssuing);
+  const issuedReceipts = useIssuedReceipts(isFallback && view === 'issued', isIssuing);
+  const receiptQuery = view === 'unissued' ? pendingReceipts : issuedReceipts;
+  const gathered = useLineRows(isFallback ? (receiptQuery.data ?? []) : [], view, isIssuing);
+
+  if (!isFallback) {
+    return {
+      rows: direct.data ?? [],
+      isPending: enabled && direct.isPending,
+      isError: direct.isError,
+      refetch: () => {
+        void direct.refetch();
+      },
+      isFallback: false,
+    };
+  }
+
+  return {
+    rows: gathered.rows,
+    isPending: receiptQuery.isPending || gathered.isPending,
+    isError: receiptQuery.isError || gathered.isError,
+    refetch: () => {
+      void receiptQuery.refetch();
+      gathered.refetch();
+    },
+    isFallback: true,
+  };
+};
+
+/**
+ * 발행 직전에 고른 줄의 건을 **지금** 다시 받는다.
+ *
+ * ⛔ 줄은 1분마다만 다시 받으므로, 그 사이 다른 단말이 먼저 찍었을 수 있다. 낡은 `lotId` 로 등록을
+ *    부르면 같은 자재에 LOT 이 하나 더 생길 수 있어, 보내기 전에 서버가 아는 지금 모양으로 맞춘다.
+ */
+export const fetchFreshLines = async (
+  queryClient: QueryClient,
+  client: Client,
+  receiptIds: readonly number[],
+  view: IssuedView,
+): Promise<Map<number, LineView>> => {
+  const lists = await Promise.all(
+    [...new Set(receiptIds)].map((receiptId) =>
+      queryClient.fetchQuery({
+        queryKey: receiptKeys.lines(receiptId, view),
+        queryFn: () => fetchReceiptLines(client, receiptId, view),
+        staleTime: 0,
+      }),
+    ),
+  );
+
+  return new Map(lists.flat().map((line) => [line.inboundReceiptLineId, line]));
+};
+
+/**
+ * 스캔한 LOT 번호로 LOT 을 찾는다 — **정확 일치**(`lotNo`). 부분 검색(`q`)은 여러 건이 와서 한 장을
+ * 집지 못한다(계약 명시). 없으면 `null`.
+ */
+export const findLotByNo = async (
+  client: Client,
+  lotNo: string,
+): Promise<{ lotId: number } | null> => {
+  const data = await runRequest(() =>
+    client.GET('/trace/lots', { params: { query: { lotNo, size: 1 } } }),
+  );
+  const lot = data.items[0];
+
+  return lot === undefined ? null : { lotId: lot.lotId };
 };
 
 /**
@@ -216,55 +449,6 @@ export const useShellSelectsPrinter = (): UseQueryResult<boolean> =>
     queryFn: shellSelectsPrinter,
   });
 
-export interface TargetRowsResult {
-  rows: TargetRow[];
-  isPending: boolean;
-  isError: boolean;
-  refetch: () => void;
-}
-
-/**
- * 목록에 놓일 발번 대상 줄 — **입하 건마다 라인을 받아 한 목록으로 편다.**
- *
- * 스펙 §3 은 품목·수량이 목록에 바로 보이는 한 단계다. 계약이 입하 건 목록에 품목을 싣지
- * 않아 건마다 라인을 따로 부르고, 그 결과를 화면이 합친다.
- *
- * ⚠ **요청이 쪽마다 1 + N 이다.** 쪽 크기를 작게 두어(POP 목록은 한 화면에 몇 줄뿐이다)
- * 감당한다. 계약이 라인을 함께 내려 주면 1 회로 줄어든다(변경 통지 #534).
- */
-export const useTargetRows = (
-  receipts: ReceiptView[],
-  view: IssuedView,
-  isIssuing: boolean,
-): TargetRowsResult => {
-  const { client } = useApiClient();
-
-  const results = useQueries({
-    queries: receipts.map((receipt) => ({
-      queryKey: receiptKeys.lines(receipt.inboundReceiptId, view),
-      queryFn: () => fetchReceiptLines(client, receipt.inboundReceiptId, view),
-      /* 건 목록만 새로 받고 라인을 묵혀 두면 줄이 옛 자료로 남는다 — 같은 주기로 돈다. */
-      refetchInterval: listRefetchInterval(isIssuing),
-    })),
-  });
-
-  return {
-    rows: results.flatMap((result, index) => {
-      const receipt = receipts[index];
-
-      return receipt === undefined || result.data === undefined
-        ? []
-        : toTargetRows(receipt, result.data);
-    }),
-    isPending: results.some((result) => result.isPending),
-    // 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다.
-    isError: results.some((result) => result.isError),
-    refetch: () => {
-      for (const result of results) void result.refetch();
-    },
-  };
-};
-
 /** 이미 등록된 라인의 LOT — 번호와 품질 상태(라벨을 낼 수 있는 상태인지 단추가 본다). */
 export interface RegisteredLot {
   lotNo: string;
@@ -272,30 +456,37 @@ export interface RegisteredLot {
 }
 
 /**
- * 이미 등록된 라인의 **LOT 번호.**
+ * 다시 인쇄 표에 선 줄의 **LOT 번호와 상태.**
  *
- * 목록 응답은 라인에 `lotId` 만 싣고 번호는 싣지 않는다. 화면이 번호를 보여야 하는 이유는
- * 하나다 — **라벨에 인쇄된 번호와 눈으로 대조**하는 자리이기 때문이다.
- *
- * **등록 전에는 부르지 않는다**(`enabled`). 번호는 등록 시점에 서버가 매기므로 그 전에는
- * 조회할 대상이 없다.
+ * 줄 응답은 `lotId` 만 싣는다. 번호는 라벨에 찍힌 것과 눈으로 대조하는 값이고, 상태는 라벨을 낼 수
+ * 있는지(불량·폐기는 못 낸다)와 IQC 라벨을 함께 찍을지를 가른다. **보이는 줄의 것만** 묻는다.
  */
-export const useLotNo = (lotId: number | null): UseQueryResult<RegisteredLot> => {
+export const useLotDetails = (
+  lotIds: readonly number[],
+): ReadonlyMap<number, UseQueryResult<RegisteredLot>> => {
   const { client } = useApiClient();
+  const uniqueIds = [...new Set(lotIds)];
 
-  return useQuery({
-    queryKey: ['pop-material-lot-label', 'lot', lotId],
-    enabled: lotId !== null,
-    queryFn: async () => {
-      if (lotId === null) throw new Error('등록 전에는 LOT 번호를 조회하지 않습니다.');
+  const results = useQueries({
+    queries: uniqueIds.map((lotId) => ({
+      queryKey: ['pop-material-lot-label', 'lot', lotId],
+      queryFn: async (): Promise<RegisteredLot> => {
+        const data = await runRequest(() =>
+          client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
+        );
 
-      const data = await runRequest(() =>
-        client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
-      );
-
-      return { lotNo: data.lot.lotNo, statusCode: data.lot.statusCode };
-    },
+        return { lotNo: data.lot.lotNo, statusCode: data.lot.statusCode };
+      },
+    })),
   });
+
+  return new Map(
+    uniqueIds.flatMap((lotId, index) => {
+      const result = results[index];
+
+      return result === undefined ? [] : [[lotId, result] as const];
+    }),
+  );
 };
 
 /** 재발행 사유 한 가지. 표시 문구는 **서버가 준 이름을 그대로** 쓴다. */

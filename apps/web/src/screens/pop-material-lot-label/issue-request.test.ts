@@ -6,6 +6,7 @@ import type { TargetRow } from './types';
 /** 합성값이다 — 계약의 예시값을 쓰지 않는다(공개 저장소 경계). */
 const row: TargetRow = {
   inboundReceiptLineId: 8501,
+  lineNo: 1,
   inboundReceiptId: 8101,
   inboundReceiptNo: 'SYN-IB-0001',
   supplierId: 8201,
@@ -16,6 +17,9 @@ const row: TargetRow = {
   uomId: 8401,
   lotId: null,
   inspectionRequired: false,
+  lotNo: null,
+  lotStatusCode: null,
+  lastIssue: null,
 };
 
 describe('toLotCreateBody — 원천 짝', () => {
