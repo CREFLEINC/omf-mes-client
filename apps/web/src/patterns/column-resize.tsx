@@ -85,12 +85,27 @@ export const layoutColumns = (
  * 끌기 손잡이 — 머리칸 오른쪽 끝의 세로 막대. 마우스·터치로 끈다. 읽기 도구에는 감춘다 — 머리칸 이름에
  * 섞이지 않게.
  */
+/**
+ * 그 열의 내용이 다 보이는 폭 — 표를 잠깐 내용 폭 배치로 바꿔 머리칸 폭을 잰다(그리기 전에 되돌려 눈에 보이지 않는다).
+ * 지금 그려진 줄(이 쪽)의 가장 긴 값 · 머리 이름 기준이다.
+ */
+const contentWidthOf = (cell: HTMLTableCellElement): number | null => {
+  const table = cell.closest('table');
+  if (table === null) return null;
+  table.classList.add('col-measuring');
+  const width = cell.getBoundingClientRect().width;
+  table.classList.remove('col-measuring');
+  return Number.isFinite(width) && width > 0 ? Math.ceil(width) : null;
+};
+
 const ColumnResizer = ({
   onResize,
   onReset,
+  fitContent,
 }: {
   onResize: (width: number) => void;
   onReset: () => void;
+  fitContent: boolean;
 }) => (
   <span
     className="col-resizer"
@@ -101,8 +116,11 @@ const ColumnResizer = ({
       event.preventDefault();
       const startX = event.clientX;
       const startWidth = cell.getBoundingClientRect().width;
+      /* 내용 폭까지만 넓힌다(옵트인 · 사용자 지시 2026-10-26) — 이미 그보다 넓으면 지금 폭까지다. */
+      const limit = fitContent ? contentWidthOf(cell) : null;
+      const max = limit === null ? Infinity : Math.max(limit, startWidth);
       const move = (moveEvent: PointerEvent): void => {
-        onResize(startWidth + moveEvent.clientX - startX);
+        onResize(Math.min(max, startWidth + moveEvent.clientX - startX));
       };
       const up = (): void => {
         window.removeEventListener('pointermove', move);
@@ -121,7 +139,12 @@ const ColumnResizer = ({
  * 열마다 끌기 손잡이를 단 열과, 표를 감싼 상자에 줄 `style` 을 낸다.
  * `storageKey` 는 표마다 다르게 — 같은 열 이름이 다른 표에서 다른 폭이어도 섞이지 않게.
  */
-export const useColumnWidths = <T,>(storageKey: string, columns: Column<T>[]) => {
+export const useColumnWidths = <T,>(
+  storageKey: string,
+  columns: Column<T>[],
+  /** 끌어 넓힐 때 그 열 내용의 가장 긴 폭에서 멈춘다. 기본은 제한 없음(종전 표). */
+  { fitContent = false }: { fitContent?: boolean } = {},
+) => {
   const [overrides, setOverrides] = useState<ColumnWidths>(() => readWidths(storageKey));
 
   /* 끄는 동안 다른 열은 바뀌지 않는다 — 끌기 시작할 때의 값에 그 열만 얹어도 된다. */
@@ -144,6 +167,7 @@ export const useColumnWidths = <T,>(storageKey: string, columns: Column<T>[]) =>
         <>
           {column.header}
           <ColumnResizer
+            fitContent={fitContent}
             onResize={(value) => {
               commit({ ...overrides, [column.key]: clampWidth(value) });
             }}

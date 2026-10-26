@@ -20868,25 +20868,28 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
  * 끄는 동안 잡은 칸은 흐려지고 칸 이름이 반투명하게 커서를 따라오며, 놓일 경계선이 파랗게 선다.
  */
 .col-head {
-  display: block;
-  position: static;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
   min-width: 0;
-  padding-right: var(--space-4);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
 .col-head-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 손잡이는 머리칸 오른쪽 끝(열 폭 손잡이 바로 안쪽)에 떠 있다 — 이름 정렬(왼쪽 · 가운데)에 끼어들지 않는다. */
+/*
+ * 손잡이는 머리 이름 바로 오른쪽(사용자 지시 2026-10-26) — 칸 오른쪽 끝의 폭 손잡이와 떨어져 있어 폭을 바꿀 때
+ * 잘못 잡히지 않는다. 마우스를 올리기 전에는 자리만 차지하고 보이지 않는다.
+ */
 .col-grip {
-  position: absolute;
-  top: 50%;
-  right: var(--space-2);
   display: inline-flex;
-  transform: translateY(-50%);
+  flex: 0 0 auto;
   color: var(--on-surface-muted);
   cursor: grab;
   opacity: 0;
@@ -21078,7 +21081,7 @@ body.col-reordering * {
 }
 
 /*
- * 가운데 열의 머리 이름도 칸 가운데에 선다(사용자 지시 2026-10-26) — 손잡이 자리 여백을 걷고, 정렬 단추는
+ * 가운데 열의 머리 이름도 칸 가운데에 선다(사용자 지시 2026-10-26) — 이름 옆 손잡이만큼 왼쪽을 띄우고, 정렬 단추는
  * 오른쪽 화살표(16px + 사이 4px)만큼 왼쪽에도 띄워 이름이 칸 가운데에 온다. 단추 안의 떠 있는 손잡이 ·
  * 폭 손잡이는 단추가 아니라 머리칸을 기준으로 선다.
  */
@@ -21086,8 +21089,9 @@ body.col-reordering * {
   position: static;
 }
 
+/* 이름 오른쪽 손잡이(16px + 사이 4px)만큼 왼쪽도 띄워 이름이 칸 가운데에 온다. */
 .inspection-queue-table thead th[data-align='center'] .col-head {
-  padding-right: 0;
+  padding-left: 20px;
 }
 
 .inspection-queue-table thead th[data-align='center'] > button {
@@ -21130,4 +21134,21 @@ body.col-reordering * {
   .oqc-inspection-search > .oqc-inspection-scan {
     flex-basis: 20rem;
   }
+}
+
+/* 열 폭 손잡이가 내용 폭을 잴 때 잠깐 붙는 배치(`patterns/column-resize.tsx`) — 그리기 전에 떼어 눈에 보이지 않는다. */
+table.col-measuring {
+  table-layout: auto !important;
+  width: max-content !important;
+  min-width: 0 !important;
+}
+
+table.col-measuring col {
+  width: auto !important;
+}
+
+table.col-measuring th,
+table.col-measuring td {
+  width: auto !important;
+  max-width: none !important;
 }

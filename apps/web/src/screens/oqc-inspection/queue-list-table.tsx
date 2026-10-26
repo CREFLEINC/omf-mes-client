@@ -166,7 +166,9 @@ export const QueueListTable = ({
     'omf-mes:oqc-inspection:columns:queue:order',
     columnsOf(selectedId, onSelect, itemNames, uomCodeOf, serialOf),
   );
-  const resizable = useColumnWidths('omf-mes:oqc-inspection:columns:queue', ordered);
+  const resizable = useColumnWidths('omf-mes:oqc-inspection:columns:queue', ordered, {
+    fitContent: true,
+  });
 
   return (
     /*
