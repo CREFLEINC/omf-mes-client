@@ -7,7 +7,6 @@ export const qualityApproval = {
     approvalTypeCode: '승인 유형',
     statusCode: '상태',
     /** 조회 조건 칸 이름(#144) — 목록·상세의 「상태」와 갈라 쓴다. */
-    statusSearch: '상태 검색',
     periodFrom: '상신 시작일 검색',
     periodTo: '상신 종료일 검색',
     q: '요청번호 검색',
@@ -21,7 +20,6 @@ export const qualityApproval = {
     targetLot: '대상 LOT',
     myTurn: '결재 차례',
   },
-  codePlaceholder: '기준값 준비 중',
   /** 탭 줄 오른쪽 상태 칩(#186) — 「결재 대기 3」. 누르면 그 상태만 남고, 다시 누르면 풀린다. */
   statusChips: {
     label: '결재 상태',
@@ -42,8 +40,8 @@ export const qualityApproval = {
   statusLabels: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' },
   /** 목록 | 상세 사이 끌기 막대(#186) — 입하 예정 조회와 같은 말. */
   splitter: '끌어서 목록·상세 폭 조절',
-  /** 목록 · 상세 배치 바꾸기 단추(#186) — 글은 눌렀을 때 될 배치다. */
-  layout: { toStack: '상하로 보기', toSide: '좌우로 보기' },
+  /** 목록 · 상세 배치 고르기(#186) — 「좌우 배치 | 상하 배치」 두 단추. */
+  layout: { group: '목록·상세 배치', side: '좌우 배치', stack: '상하 배치' },
   panes: {
     filter: '조회 조건',
     list: '승인 요청 목록',
@@ -59,8 +57,8 @@ export const qualityApproval = {
     goFirstPage: '첫 쪽으로',
   },
   detail: {
-    noSelectionTitle: '요청을 고르세요',
-    noSelectionDescription: '목록에서 요청을 누르면 결재 진행과 상세가 보입니다.',
+    noSelectionTitle: '요청을 선택하세요',
+    noSelectionDescription: '요청을 선택하면 상세 내용을 확인할 수 있습니다.',
     loading: '승인 요청 상세 불러오는 중',
     notFound: '요청을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 요청을 선택하세요.',

@@ -2767,6 +2767,78 @@ export const createSeed = (now = new Date()) => {
         },
       ],
     },
+    /*
+     * 결재가 끝난 요청 둘(#186 상태 칩 확인용) — 승인 하나 · 반려 하나. 「결재 대기만」 조회나 위 LOT(8003)
+     * 조회에는 걸리지 않는다. 값은 전부 지어낸 것이다.
+     */
+    {
+      approvalRequestId: 15002,
+      approvalRequestNo: 'AP-2026-000028',
+      approvalTypeCode: 'CONCESSION',
+      targetTypeCode: 'INBOUND_LOT',
+      targetId: 8901,
+      target: {
+        targetTypeCode: 'INBOUND_LOT',
+        targetId: 8901,
+        displayName: 'ABC-123|120|260715|SUP-001|0004',
+        openable: false,
+      },
+      requestedBy: 1001,
+      requestedByName: '홍길동',
+      requestedByWorkerNo: '100027',
+      requestedAt: iso(-4, 10),
+      reason: '외관 경미 — 특채 사용',
+      statusCode: 'APPROVED',
+      currentStepNo: 1,
+      totalStepNo: 1,
+      isMyTurn: false,
+      steps: [
+        {
+          stepNo: 1,
+          approverId: 1001,
+          approverName: '김품질',
+          decisionCode: 'APPROVED',
+          decisionAt: iso(-3, 9),
+          decisionComment: '사용 승인',
+          isMine: true,
+          isCurrent: false,
+        },
+      ],
+    },
+    {
+      approvalRequestId: 15003,
+      approvalRequestNo: 'AP-2026-000025',
+      approvalTypeCode: 'OQC_SKIP',
+      targetTypeCode: 'INBOUND_LOT',
+      targetId: 8902,
+      target: {
+        targetTypeCode: 'INBOUND_LOT',
+        targetId: 8902,
+        displayName: 'FG-1001|200|260712|SUP-002|0002',
+        openable: false,
+      },
+      requestedBy: 1001,
+      requestedByName: '홍길동',
+      requestedByWorkerNo: '100027',
+      requestedAt: iso(-6, 15),
+      reason: '납기 임박 — 출하검사 생략 요청',
+      statusCode: 'REJECTED',
+      currentStepNo: 1,
+      totalStepNo: 1,
+      isMyTurn: false,
+      steps: [
+        {
+          stepNo: 1,
+          approverId: 1001,
+          approverName: '김품질',
+          decisionCode: 'REJECTED',
+          decisionAt: iso(-5, 11),
+          decisionComment: '검사 생략 근거 부족',
+          isMine: true,
+          isCurrent: false,
+        },
+      ],
+    },
   ];
 
   /*

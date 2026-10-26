@@ -79,8 +79,6 @@ export const iqcSkipApproval = {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-    /** 목록을 다시 부른다. 회차가 늘면 그때 늘어난 조회도 **함께** 부른다. */
-    reload: '다시 조회',
     /*
      * 요청번호 하나로 이름이 선다 — 계약이 그 값을 UNIQUE로 두었다.
      * 보이는 글자를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 하고,
@@ -154,12 +152,10 @@ export const iqcSkipApproval = {
     all: '전체',
     /** 상태 선택지가 빈 이유 — 칸 아래 한 줄이라 짧게 쓴다(자리표시가 이미 「준비 중」을 말한다). */
     statusPendingNote: '상태 목록 확정 전',
-    chipStatus: (value: string): string => `상태: ${value}`,
     chipPeriod: (from: string, to: string): string => `상신일: ${from} ~ ${to}`,
     chipPeriodFrom: (from: string): string => `상신일: ${from}부터`,
     chipPeriodTo: (to: string): string => `상신일: ${to}까지`,
     chipKeyword: (value: string): string => `요청번호: ${value}`,
-    chipRemoveStatus: '상태 조건 제거',
     chipRemovePeriod: '상신일 조건 제거',
     chipRemoveKeyword: '요청번호 조건 제거',
   },
@@ -178,8 +174,8 @@ export const iqcSkipApproval = {
     noResultDescription: '조건을 줄이거나 「결재 대기만 보기」를 꺼 보세요.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
-    noSelectionTitle: '요청을 고르면 자세한 내용이 보입니다',
-    noSelectionDescription: '목록에서 요청번호를 누르세요.',
+    noSelectionTitle: '요청을 선택하세요',
+    noSelectionDescription: '요청을 선택하면 상세 내용을 확인할 수 있습니다.',
     /**
      * 상세가 **404**. 「없는 것」이라 주소에서 고른 번호를 정리한다 —
      * 남겨 두면 새로고침·공유가 같은 빈자리로 되돌아온다.

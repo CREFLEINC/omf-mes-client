@@ -1,50 +1,16 @@
-import { Button, DatePicker, Select, TextField } from '@crefle/web-ui';
+import { Button, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import type { CodeOption } from './code-options';
 import { EMPTY_FILTERS, type RequestFilters } from './filters';
-
-interface CodeFieldProps {
-  label: string;
-  options: CodeOption[];
-  value: string;
-  onChange: (value: string) => void;
-}
-
-const CodeField = ({ label, options, value, onChange }: CodeFieldProps) => {
-  const id = useId();
-  const choices =
-    options.length === 0 ? [] : [{ value: '', label: messages.qualityApproval.all }, ...options];
-
-  return (
-    <div className="field-cell">
-      <label className="field-label" htmlFor={id}>
-        {label}
-      </label>
-      <Select
-        id={id}
-        options={choices}
-        value={value === '' && choices.length === 0 ? null : value}
-        placeholder={
-          options.length === 0
-            ? messages.qualityApproval.codePlaceholder
-            : messages.qualityApproval.all
-        }
-        onChange={onChange}
-      />
-    </div>
-  );
-};
 
 export interface FilterBarProps {
   applied: RequestFilters;
-  statusOptions: CodeOption[];
   onApply: (filters: RequestFilters) => void;
   onReset: () => void;
 }
 
-export const FilterBar = ({ applied, statusOptions, onApply, onReset }: FilterBarProps) => {
+export const FilterBar = ({ applied, onApply, onReset }: FilterBarProps) => {
   const t = messages.qualityApproval;
   const fromId = useId();
   const toId = useId();
@@ -62,12 +28,7 @@ export const FilterBar = ({ applied, statusOptions, onApply, onReset }: FilterBa
 
   return (
     <div className="filter-bar quality-approval-filter">
-      <CodeField
-        label={messages.qualityApproval.fields.statusSearch}
-        options={statusOptions}
-        value={draft.statusCode}
-        onChange={(value) => setDraft((current) => ({ ...current, statusCode: value }))}
-      />
+      {/* 상태는 탭 줄 오른쪽 상태 칩으로 거른다(#186) — 조건 칸에는 두지 않는다. 고른 상태는 조회해도 그대로다. */}
       {/*
        * 상신일은 시작일·종료일 두 칸으로 나눠 고른다(#144) — 한 칸 범위 달력보다 어느 쪽을 정했는지가 바로 보인다.
        * 각각 따로 지울 수 있다. 보내는 값(`from`·`to`)은 그대로다.

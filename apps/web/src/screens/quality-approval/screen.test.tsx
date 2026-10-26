@@ -306,13 +306,9 @@ describe('QualityApprovalScreen query and disclosure', () => {
     const sent = recorded.urls
       .filter((url) => url.pathname === PATH)
       .map((url) => Object.fromEntries(url.searchParams));
+    /* 기본은 전체 조회라(#186) 목록에는 「결재 대기만」이 실리지 않는다. 결재 대기 칩의 수는 따로 센다. */
     expect(sent).toHaveLength(2);
-    expect(sent).toContainEqual({
-      assignedToMe: 'true',
-      pendingOnly: 'true',
-      q: 'SYNTH',
-      page: '2',
-    });
+    expect(sent).toContainEqual({ assignedToMe: 'true', q: 'SYNTH', page: '2' });
     expect(sent).toContainEqual({ assignedToMe: 'true', pendingOnly: 'true', q: 'SYNTH' });
     /* 승인·반려 칩의 수 — 같은 조건에서 상태만 바꾼 첫 쪽(미확정 상태 `st=UNKNOWN` 은 싣지 않는다). */
     expect(recorded.statusCounts.map((url) => Object.fromEntries(url.searchParams))).toEqual(
@@ -331,7 +327,6 @@ describe('QualityApprovalScreen query and disclosure', () => {
     expect(screen.queryByText(t.scopeWarning)).not.toBeInTheDocument();
     expect(Object.fromEntries(recorded.urls[0]?.searchParams ?? [])).toEqual({
       assignedToMe: 'true',
-      pendingOnly: 'true',
       approvalTypeCode: 'IQC_SKIP',
     });
   });
@@ -388,18 +383,18 @@ describe('QualityApprovalScreen query and disclosure', () => {
 
     await findRequest();
     await user.click(
-      screen.getByRole('button', { name: t.statusChips.filterOff(t.statusLabels.PENDING) }),
+      screen.getByRole('button', { name: t.statusChips.filterOn(t.statusLabels.PENDING) }),
     );
-    await waitFor(() => expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=0'));
+    await waitFor(() => expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=1'));
 
     /* 목록과 상세가 나란히 서므로(#186) 고른 채 쪽을 넘긴다 — 쪽 이동도 선택을 비운다. */
     await user.click(await findRequest());
     await waitFor(() =>
-      expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=0&approvalRequestId=31'),
+      expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=1&approvalRequestId=31'),
     );
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
     await waitFor(() =>
-      expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=0&page=2'),
+      expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=1&page=2'),
     );
   });
 
@@ -486,12 +481,20 @@ describe('QualityApprovalScreen result states', () => {
     let attempts = 0;
     const { user } = renderScreen(
       approvalFetch([
-        listRoute(() => {
-          attempts += 1;
-          return attempts === 1
-            ? jsonResponse({ message: '' }, { status: 500 })
-            : jsonResponse(listBody());
-        }),
+        /* 목록 조회만 센다 — 결재 대기 칩의 수(`pendingOnly`)는 같은 경로로 따로 나간다(#186). */
+        {
+          match: (request) => {
+            const url = new URL(request.url);
+            return url.pathname === PATH && !url.searchParams.has('pendingOnly');
+          },
+          respond: () => {
+            attempts += 1;
+            return attempts === 1
+              ? jsonResponse({ message: '' }, { status: 500 })
+              : jsonResponse(listBody());
+          },
+        },
+        listRoute(),
       ]),
     );
 
@@ -525,7 +528,8 @@ describe('QualityApprovalScreen detail', () => {
     expect(screen.queryByRole('region', { name: t.panes.progress })).toBeNull();
     expect(screen.getByText(t.detail.noSelectionTitle)).toBeInTheDocument();
     expect(screen.getByText(t.detail.noSelectionDescription)).toBeInTheDocument();
-    expect(recorded.urls.map((url) => url.pathname)).toEqual([PATH]);
+    /* 목록과 결재 대기 칩의 수(#186)만 나간다 — 상세는 부르지 않는다. */
+    expect(new Set(recorded.urls.map((url) => url.pathname))).toEqual(new Set([PATH]));
   });
 
   it('상세 정확 경로의 ETag를 잡고 사유 전문·대상만 표시한다', async () => {

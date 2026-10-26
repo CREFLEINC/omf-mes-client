@@ -1,4 +1,4 @@
-import { Button, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
+import { EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -32,12 +32,7 @@ import {
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { ApproveDialog } from './approve-dialog';
-import {
-  IQC_SKIP_APPROVAL_TYPE_CODE,
-  PLACEHOLDER_REQUEST_STATUS_CODES,
-  toCodeOptions,
-  typePendingNote,
-} from './code-options';
+import { IQC_SKIP_APPROVAL_TYPE_CODE, typePendingNote } from './code-options';
 import {
   DECISION_COMMENT_FIELD,
   DECISION_KNOWN_FIELDS,
@@ -626,26 +621,6 @@ export const IqcSkipApprovalScreen = () => {
   };
 
   /**
-   * 다시 조회(수명 표 10행) — **화면이 보고 있는 조회를 전부 다시 한다.**
-   *
-   * 목록만 다시 부르면 갱신된 목록과 낡은 상세가 한 화면에 섞인다 — 방금 결재된 건이 빠진
-   * 목록 옆에서 아래 구획이 결재 전 진행을 보인다(W-01-07이 남긴 결함의 형태).
-   *
-   * **고르지 않았으면 상세는 부를 대상이 없다** — 읽는 자리에서 판정한다.
-   * 조건·범위·쪽·선택은 하나도 바꾸지 않는다. 대상 처리 현황이 붙는 회차에는 그것도 여기서
-   * 함께 부른다.
-   *
-   * **전송 중에도 막지 않는다.** 이것은 대상을 바꾸는 조작이 아니라 같은 것을 다시 읽는
-   * 조작이다 — `applyUserNavigation`의 잠금이 여기 걸리면 결재가 나가는 동안 사용자가
-   * 진행을 확인할 길이 사라진다.
-   */
-  const handleReload = (): void => {
-    void list.refetch();
-
-    if (selectedRequestId !== null) void detail.refetch();
-  };
-
-  /**
    * 409 뒤의 길 — **상세를 다시 부른다.**
    *
    * 「최신 불러오기」가 목록만 부르면 토큰이 그대로라 다음 시도가 또 409다.
@@ -981,37 +956,21 @@ export const IqcSkipApprovalScreen = () => {
         }}
         trailing={
           /* 수명 표 3행 — 조건은 그대로 두고 쪽과 선택만 되돌린다. */
-          <>
-            <StatusChips
-              active={activeStatusChip(pendingOnly, filters.statusCode)}
-              counts={statusCounts}
-              onChange={(next) => {
-                const choice = statusChipChoice(next);
-                apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
-              }}
-            />
-            <PaneLayoutToggle
-              layout={paneLayout.layout}
-              onToggle={paneLayout.toggle}
-              labels={messages.qualityApproval.layout}
-            />
-          </>
+          <StatusChips
+            active={activeStatusChip(pendingOnly, filters.statusCode)}
+            counts={statusCounts}
+            onChange={(next) => {
+              const choice = statusChipChoice(next);
+              apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
+            }}
+          />
         }
       />
 
       {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-      <section
-        ref={aboveRef}
-        className="pane po-board-filter iqc-skip-approval-filter-pane"
-        aria-label={t.panes.filter}
-      >
+      <section ref={aboveRef} className="pane po-board-filter" aria-label={t.panes.filter}>
         <RequestFilterBar
           appliedFilters={filters}
-          /*
-           * 자리표시 상수를 **화면이 읽어 넘긴다.** 부품이 직접 읽으면 「값이 확정되면 배열만
-           * 채운다」는 전환을 화면 수준에서 잴 수 없다.
-           */
-          statusOptions={toCodeOptions(PLACEHOLDER_REQUEST_STATUS_CODES)}
           onSearch={(nextFilters) => {
             apply(nextFilters, pendingOnly);
           }}
@@ -1027,14 +986,15 @@ export const IqcSkipApprovalScreen = () => {
             apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT);
           }}
         />
-        {/* 화면 머리를 걷으면서 [다시 조회]는 조건 구획 끝으로 옮겼다(#186). */}
-        <div className="iqc-skip-approval-tools">
-          <Button variant="outlined" size="sm" onClick={handleReload}>
-            {t.actions.reload}
-          </Button>
-        </div>
       </section>
 
+      <div className="po-board-layout-bar">
+        <PaneLayoutToggle
+          layout={paneLayout.layout}
+          onChange={paneLayout.change}
+          labels={messages.qualityApproval.layout}
+        />
+      </div>
       <div ref={splitRef} className={paneLayout.className} style={split.style}>
         <section
           className="pane po-board-pane po-board-scroll iqc-skip-approval-list"

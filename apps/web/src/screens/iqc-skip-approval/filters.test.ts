@@ -98,24 +98,25 @@ describe('상태 코드 위생 — 주소는 손으로 고쳐지는 자리다', 
     expect(kept.statusCode).toBe('SAMPLE-STATUS-OPEN');
     expect(toRequestListQuery(kept, true, 1, null).statusCode).toBe('SAMPLE-STATUS-OPEN');
     expect(toSearchParams(kept, true, 1).get('st')).toBe('SAMPLE-STATUS-OPEN');
-    expect(toFilterChips(kept)[0]?.key).toBe('statusCode');
+    /* 상태는 조건 칩으로 세우지 않는다 — 탭 줄 상태 칩이 보인다(#186). */
+    expect(toFilterChips(kept)).toEqual([]);
   });
 });
 
-describe('readPendingOnly — 기본이 켜짐이다', () => {
-  it('주소에 아무것도 없으면 켜져 있다', () => {
-    expect(readPendingOnly(params(''))).toBe(true);
-    expect(PENDING_ONLY_DEFAULT).toBe(true);
+describe('readPendingOnly — 기본이 꺼짐(전체 조회)이다(#186)', () => {
+  it('주소에 아무것도 없으면 꺼져 있다', () => {
+    expect(readPendingOnly(params(''))).toBe(false);
+    expect(PENDING_ONLY_DEFAULT).toBe(false);
   });
 
-  it('`pd=0`이면 꺼진다 — 끈 것만 주소에 적힌다', () => {
-    expect(readPendingOnly(params('pd=0'))).toBe(false);
-  });
-
-  it('모르는 값은 기본값으로 본다 — 주소는 손으로 고쳐지는 자리다', () => {
-    expect(readPendingOnly(params('pd=엉뚱한값'))).toBe(true);
-    expect(readPendingOnly(params('pd='))).toBe(true);
+  it('`pd=1`이면 켜진다 — 켠 것만 주소에 적힌다', () => {
     expect(readPendingOnly(params('pd=1'))).toBe(true);
+  });
+
+  it('모르는 값과 옛 주소(`pd=0`)는 기본값으로 본다 — 주소는 손으로 고쳐지는 자리다', () => {
+    expect(readPendingOnly(params('pd=엉뚱한값'))).toBe(false);
+    expect(readPendingOnly(params('pd='))).toBe(false);
+    expect(readPendingOnly(params('pd=0'))).toBe(false);
   });
 });
 
@@ -140,17 +141,17 @@ describe('readPage · readSelectedRequestId', () => {
 
 describe('toSearchParams', () => {
   it('걸린 조건만 적는다 — 빈 조건은 키 자체를 두지 않는다', () => {
-    const next = toSearchParams(filtersOf({ q: 'SYNTH' }), true, 1);
+    const next = toSearchParams(filtersOf({ q: 'SYNTH' }), false, 1);
 
     expect(next.toString()).toBe('q=SYNTH');
   });
 
-  it('기본값은 적지 않는다 — 켜진 확인칸과 첫 쪽', () => {
-    expect(toSearchParams(EMPTY_FILTERS, true, 1).toString()).toBe('');
+  it('기본값은 적지 않는다 — 꺼진 「결재 대기만」과 첫 쪽', () => {
+    expect(toSearchParams(EMPTY_FILTERS, false, 1).toString()).toBe('');
   });
 
-  it('확인칸을 끄면 그때만 적는다', () => {
-    expect(toSearchParams(EMPTY_FILTERS, false, 1).get('pd')).toBe('0');
+  it('「결재 대기만」을 켜면 그때만 적는다', () => {
+    expect(toSearchParams(EMPTY_FILTERS, true, 1).get('pd')).toBe('1');
   });
 
   it('둘째 쪽부터 적는다', () => {
@@ -181,16 +182,16 @@ describe('toSearchParams', () => {
 
 describe('toSelectionSearchParams', () => {
   it('조건·확인칸·쪽을 그대로 두고 선택만 얹는다', () => {
-    const next = toSelectionSearchParams(filtersOf({ q: 'SYNTH' }), false, 2, 9001);
+    const next = toSelectionSearchParams(filtersOf({ q: 'SYNTH' }), true, 2, 9001);
 
     expect(next.get('q')).toBe('SYNTH');
-    expect(next.get('pd')).toBe('0');
+    expect(next.get('pd')).toBe('1');
     expect(next.get('page')).toBe('2');
     expect(next.get('rq')).toBe('9001');
   });
 
   it('해제하면 선택 자리를 두지 않는다', () => {
-    expect(toSelectionSearchParams(EMPTY_FILTERS, true, 1, null).toString()).toBe('');
+    expect(toSelectionSearchParams(EMPTY_FILTERS, false, 1, null).toString()).toBe('');
   });
 });
 
@@ -287,7 +288,7 @@ describe('toRequestListQuery — 고정 축과 조건', () => {
 });
 
 describe('toFilterChips', () => {
-  it('걸린 조건마다 칩 하나가 선다', () => {
+  it('걸린 조건마다 칩 하나가 선다 — 상태는 탭 줄 상태 칩이 보여 세우지 않는다(#186)', () => {
     const chips = toFilterChips(
       filtersOf({
         statusCode: 'SAMPLE-STATUS-OPEN',
@@ -297,10 +298,9 @@ describe('toFilterChips', () => {
       }),
     );
 
-    expect(chips.map((chip) => chip.key)).toEqual(['statusCode', 'period', 'q']);
-    expect(chips[0]?.label).toBe(t.filters.chipStatus('SAMPLE-STATUS-OPEN'));
-    expect(chips[1]?.label).toBe(t.filters.chipPeriod('2026-08-01', '2026-08-31'));
-    expect(chips[2]?.label).toBe(t.filters.chipKeyword('SYNTH'));
+    expect(chips.map((chip) => chip.key)).toEqual(['period', 'q']);
+    expect(chips[0]?.label).toBe(t.filters.chipPeriod('2026-08-01', '2026-08-31'));
+    expect(chips[1]?.label).toBe(t.filters.chipKeyword('SYNTH'));
   });
 
   it('걸린 조건이 없으면 칩도 없다', () => {

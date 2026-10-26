@@ -15,7 +15,6 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
   fields: {
     approvalTypeCode: 'Loại phê duyệt',
     statusCode: 'Trạng thái',
-    statusSearch: 'Tìm theo trạng thái',
     periodFrom: 'Tìm theo ngày trình bắt đầu',
     periodTo: 'Tìm theo ngày trình kết thúc',
     q: 'Tìm theo số yêu cầu',
@@ -28,7 +27,6 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     targetLot: 'LOT đối tượng',
     myTurn: 'Lượt phê duyệt',
   },
-  codePlaceholder: 'Đang chuẩn bị giá trị gốc',
   /** 탭 줄 오른쪽 상태 칩(#186) — 「결재 대기 3」. 누르면 그 상태만 남고, 다시 누르면 풀린다. */
   statusChips: {
     label: 'Trạng thái phê duyệt',
@@ -46,8 +44,12 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
   },
   statusLabels: { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Trả lại' },
   splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
-  /** 목록 · 상세 배치 바꾸기 단추(#186) — 글은 눌렀을 때 될 배치다. */
-  layout: { toStack: 'Xem trên dưới', toSide: 'Xem trái phải' },
+  /** 목록 · 상세 배치 고르기(#186) — 「좌우 배치 | 상하 배치」 두 단추. */
+  layout: {
+    group: 'Bố cục danh sách·chi tiết',
+    side: 'Bố cục trái phải',
+    stack: 'Bố cục trên dưới',
+  },
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách yêu cầu phê duyệt',
@@ -64,7 +66,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
   },
   detail: {
     noSelectionTitle: 'Hãy chọn một yêu cầu',
-    noSelectionDescription: 'Bấm vào một yêu cầu trong danh sách để xem tiến trình và chi tiết.',
+    noSelectionDescription: 'Chọn một yêu cầu để xem nội dung chi tiết.',
     loading: 'Đang tải chi tiết yêu cầu phê duyệt',
     notFound: 'Không tìm thấy yêu cầu',
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn yêu cầu khác.',

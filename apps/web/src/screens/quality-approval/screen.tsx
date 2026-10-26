@@ -19,13 +19,7 @@ import { toWebAccess } from '../../patterns/web-access';
 import { toApiError } from '../../patterns/request';
 import { ApprovalActionPane } from './approval-action-pane';
 import { ApproveDialog } from './approve-dialog';
-import {
-  QUALITY_APPROVAL_STATUS_CODES,
-  QUALITY_APPROVAL_TYPE_CODES,
-  approvalScopeWarning,
-  statusBadgeOf,
-  toCodeOptions,
-} from './code-options';
+import { QUALITY_APPROVAL_TYPE_CODES, approvalScopeWarning, statusBadgeOf } from './code-options';
 import { ConditionPane } from './condition-pane';
 import { toConcessionCardinality } from './conditions';
 import { DetailPane } from './detail-pane';
@@ -102,12 +96,10 @@ const describeLoadError = (error: ApiError): string => {
 const OQC_SKIP = 'OQC_SKIP';
 export interface QualityApprovalScreenProps {
   approvalTypeCodes?: readonly string[];
-  statusCodes?: readonly string[];
 }
 
 export const QualityApprovalScreen = ({
   approvalTypeCodes = QUALITY_APPROVAL_TYPE_CODES,
-  statusCodes = QUALITY_APPROVAL_STATUS_CODES,
 }: QualityApprovalScreenProps = {}) => {
   const t = messages.qualityApproval;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -120,9 +112,9 @@ export const QualityApprovalScreen = ({
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다(`inlineTabs`). */
   const canOpenIqcSkip = toWebAccess(session?.permissions).allows(IQC_SKIP_APPROVAL_PATH);
   const filters = useMemo(
-    /* 승인·반려 칩(#186)이 거는 상태 조건도 주소에서 읽는다 — 조회 조건 칸의 선택지와 따로다. */
-    () => readFilters(searchParams, approvalTypeCodes, [...statusCodes, ...STATUS_CHIP_CODES]),
-    [approvalTypeCodes, searchParams, statusCodes],
+    /* 상태 조건은 탭 줄 상태 칩(#186)이 건다 — 그 세 값만 주소에서 읽는다. */
+    () => readFilters(searchParams, approvalTypeCodes, STATUS_CHIP_CODES),
+    [approvalTypeCodes, searchParams],
   );
   const pendingOnly = readPendingOnly(searchParams);
   const page = readPage(searchParams);
@@ -434,31 +426,30 @@ export const QualityApprovalScreen = ({
           else apply({ ...filters, approvalTypeCode: code }, pendingOnly);
         }}
         trailing={
-          <>
-            <StatusChips
-              active={activeStatusChip(pendingOnly, filters.statusCode)}
-              counts={statusCounts}
-              onChange={(next) => {
-                const choice = statusChipChoice(next);
-                apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
-              }}
-            />
-            <PaneLayoutToggle
-              layout={paneLayout.layout}
-              onToggle={paneLayout.toggle}
-              labels={messages.qualityApproval.layout}
-            />
-          </>
+          <StatusChips
+            active={activeStatusChip(pendingOnly, filters.statusCode)}
+            counts={statusCounts}
+            onChange={(next) => {
+              const choice = statusChipChoice(next);
+              apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
+            }}
+          />
         }
       />
       <section ref={aboveRef} className="pane po-board-filter" aria-label={t.panes.filter}>
         <FilterBar
           applied={filters}
-          statusOptions={toCodeOptions(statusCodes)}
           onApply={(next) => apply(next, pendingOnly)}
           onReset={() => apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT)}
         />
       </section>
+      <div className="po-board-layout-bar">
+        <PaneLayoutToggle
+          layout={paneLayout.layout}
+          onChange={paneLayout.change}
+          labels={messages.qualityApproval.layout}
+        />
+      </div>
       <div ref={splitRef} className={paneLayout.className} style={split.style}>
         <section
           className="pane po-board-pane po-board-scroll quality-approval-pane quality-approval-list-pane"

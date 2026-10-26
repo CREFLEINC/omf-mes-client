@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { pickRange } from '../../test/date-picker';
-import { toCodeOptions } from './code-options';
 import { EMPTY_FILTERS } from './filters';
 import { RequestFilterBar, type RequestFilterBarProps } from './request-filter-bar';
 
@@ -12,7 +11,6 @@ const t = messages.iqcSkipApproval;
 
 const baseProps = (): RequestFilterBarProps => ({
   appliedFilters: EMPTY_FILTERS,
-  statusOptions: [],
   onSearch: vi.fn(),
   onRemoveFilter: vi.fn(),
   onReset: vi.fn(),
@@ -26,61 +24,31 @@ const renderBar = (overrides: Partial<RequestFilterBarProps> = {}) => {
 };
 
 describe('RequestFilterBar — 좁히는 축', () => {
-  it('승인 유형 칸을 두지 않는다 — 그것은 조건이 아니라 이 화면의 정체다', () => {
+  it('조건 칸이 둘이다 — 상신일·요청번호(상태는 탭 줄 칩 · 승인 유형은 이 화면의 정체 · #186)', () => {
     renderBar();
 
-    /* 선행 단언 — 조건 칸이 실제로 그려져야 「유형 칸이 없다」가 뜻을 갖는다. */
-    expect(screen.getByLabelText(t.fields.status)).toBeInTheDocument();
-    expect(screen.queryByLabelText(t.fields.approvalTypeCode)).not.toBeInTheDocument();
-  });
-
-  it('조건 칸이 셋이다 — 상태·상신일·요청번호(「결재 대기만 보기」는 탭 줄 칩으로 옮겼다 · #186)', () => {
-    renderBar();
-
-    expect(screen.getByLabelText(t.fields.status)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.period)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.q)).toBeInTheDocument();
+    expect(screen.queryByLabelText(t.fields.status)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(t.fields.approvalTypeCode)).not.toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
-});
 
-describe('RequestFilterBar — 자리표시 선택칸', () => {
-  it('값 목록이 비면 왜 비었는지 밝힌다', () => {
-    renderBar();
-
-    expect(
-      screen.getByText(messages.iqcSkipApproval.filters.statusPendingNote),
-    ).toBeInTheDocument();
-    expect(screen.getByText(messages.pendingCode.placeholder)).toBeInTheDocument();
-  });
-
-  it('값 목록이 비어도 조회와 초기화는 열려 있다', () => {
+  it('조건 없이도 조회와 초기화는 열려 있다', () => {
     renderBar();
 
     expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
     expect(screen.getByRole('button', { name: messages.common.reset })).toBeEnabled();
   });
 
-  it('값이 오면 선택칸이 살아난다 — 자리표시가 죽은 가지가 아니다', () => {
-    renderBar({ statusOptions: toCodeOptions(['SAMPLE-STATUS-OPEN']) });
-
-    expect(
-      screen.queryByText(messages.iqcSkipApproval.filters.statusPendingNote),
-    ).not.toBeInTheDocument();
-    /* 「전체」가 붙는다 — 한 번 고른 뒤 해제할 방법이 칸 안에 생긴다. */
-    expect(screen.getByLabelText(t.fields.status)).toHaveTextContent(t.filters.all);
-  });
-
-  it('값이 오면 그 값을 고를 수 있다', async () => {
+  it('칩이 건 상태는 조회해도 그대로 실린다', async () => {
     const { onSearch, user } = renderBar({
-      statusOptions: toCodeOptions(['SAMPLE-STATUS-OPEN', 'SAMPLE-STATUS-DONE']),
+      appliedFilters: { ...EMPTY_FILTERS, statusCode: 'APPROVED' },
     });
 
-    await user.click(screen.getByLabelText(t.fields.status));
-    await user.click(screen.getByRole('option', { name: 'SAMPLE-STATUS-DONE' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
-    expect(onSearch).toHaveBeenCalledWith({ ...EMPTY_FILTERS, statusCode: 'SAMPLE-STATUS-DONE' });
+    expect(onSearch).toHaveBeenCalledWith({ ...EMPTY_FILTERS, statusCode: 'APPROVED' });
   });
 });
 

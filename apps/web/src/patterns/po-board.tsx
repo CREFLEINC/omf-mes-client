@@ -1,4 +1,3 @@
-import { Button } from '@crefle/web-ui';
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 
 /**
@@ -189,8 +188,7 @@ export const usePaneLayout = (storageKey: string) => {
     }
   });
 
-  const toggle = (): void => {
-    const next: PaneLayout = layout === 'side' ? 'stack' : 'side';
+  const change = (next: PaneLayout): void => {
     setLayout(next);
     try {
       window.localStorage.setItem(storageKey, next);
@@ -202,23 +200,35 @@ export const usePaneLayout = (storageKey: string) => {
   /** 두 구획을 감싼 상자(`.po-board-split`)에 덧붙일 이름. */
   const className = layout === 'stack' ? 'po-board-split is-stacked' : 'po-board-split';
 
-  return { layout, toggle, className };
+  return { layout, change, className };
 };
 
 /**
- * 배치 바꾸기 단추 — 누르면 나란히 ↔ 위아래가 바뀐다. 단추 글은 «눌렀을 때 될 배치»다.
- * 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다 — 눌러도 바뀌는 것이 없다.
+ * 배치 고르기 — 「좌우 배치 | 상하 배치」 두 단추 중 지금 배치가 채워져 보인다(사용자 지시 2026-10-26). 목록 위
+ * 오른쪽에 선다. 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다 — 눌러도 바뀌는 것이 없다.
  */
 export const PaneLayoutToggle = ({
   layout,
-  onToggle,
+  onChange,
   labels,
 }: {
   layout: PaneLayout;
-  onToggle: () => void;
-  labels: { toStack: string; toSide: string };
+  onChange: (next: PaneLayout) => void;
+  labels: { group: string; side: string; stack: string };
 }) => (
-  <Button variant="text" size="sm" className="po-board-layout-toggle" onClick={onToggle}>
-    {layout === 'side' ? labels.toStack : labels.toSide}
-  </Button>
+  <div className="po-board-layout-toggle" role="group" aria-label={labels.group}>
+    {(['side', 'stack'] as const).map((value) => (
+      <button
+        key={value}
+        type="button"
+        className="po-board-layout-option"
+        aria-pressed={layout === value}
+        onClick={() => {
+          if (layout !== value) onChange(value);
+        }}
+      >
+        {labels[value]}
+      </button>
+    ))}
+  </div>
 );

@@ -3980,22 +3980,6 @@ main:has(.iqc-skip-approval-detail) {
   white-space: nowrap;
 }
 
-/* IQC 생략 탭 — 조회 조건 줄 끝의 [다시 조회](#186, 화면 머리에서 옮김). */
-.iqc-skip-approval-filter-pane {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
-
-.iqc-skip-approval-filter-pane > :first-child {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.iqc-skip-approval-tools {
-  flex: 0 0 auto;
-}
-
 .quality-approval-pane,
 .quality-approval-list,
 .quality-approval-detail,
@@ -6882,9 +6866,48 @@ dl.filter-bar.approval-inbox-detail-facts {
   }
 }
 
-/* 창이 좁으면 늘 위아래로 쌓인다 — 배치 단추는 눌러도 바뀌는 것이 없어 감춘다. */
+/* 배치 고르기 줄 — 목록 위 오른쪽. 「좌우 배치 | 상하 배치」 중 지금 배치가 채워진 알약으로 보인다. */
+.po-board-layout-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+}
+
+.po-board-layout-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.po-board-layout-option {
+  padding: var(--space-1) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  cursor: pointer;
+}
+
+.po-board-layout-option:hover {
+  background: var(--state-hover-neutral);
+}
+
+.po-board-layout-option:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.po-board-layout-option[aria-pressed='true'] {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  cursor: default;
+}
+
+/* 창이 좁으면 늘 위아래로 쌓인다 — 배치 고르기는 눌러도 바뀌는 것이 없어 줄째 감춘다. */
 @media (max-width: 1439px) {
-  .po-board-layout-toggle {
+  .po-board-layout-bar {
     display: none;
   }
 }
@@ -7184,11 +7207,18 @@ body.po-board-resizing {
  */
 /* 붉은 계열(primary)은 쓰지 않는다 — 문제가 있다는 뜻으로 읽힌다(사용자 지시 2026-10-21). 정보 파랑이다. */
 .po-board-orders tbody tr:has([aria-current='true']) > td,
-.po-board-orders tbody tr:has([aria-current='true']):hover > td {
+.po-board-orders tbody tr:has([aria-current='true']):hover > td,
+.quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
+.quality-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td,
+.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
+.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td {
   background: var(--semantic-info-container);
 }
 
-.po-board-orders tbody tr:has([aria-current='true']) > td:first-child {
+/* 품질 승인 처리 목록(#186)도 같은 표시다 — 고른 요청이 입하 예정 조회의 고른 발주처럼 보인다. */
+.po-board-orders tbody tr:has([aria-current='true']) > td:first-child,
+.quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child,
+.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
@@ -18625,19 +18655,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   background: var(--state-hover-neutral);
 }
 
-.iqc-skip-approval-list
-  tbody
-  tr:nth-child(n):has(.iqc-skip-approval-request-no[aria-current='true']) {
-  background: var(--surface-container-high);
-}
-
-/* 표 줄(tr)에는 그림자가 안 그려진다 — 강조선은 첫 칸에 긋는다. */
-.iqc-skip-approval-list
-  tbody
-  tr:has(.iqc-skip-approval-request-no[aria-current='true'])
-  > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
-}
+/* 고른 줄은 입하 예정 조회와 같은 파랑이다(#186 · `.po-board-orders` 규칙 곁에 함께 적었다). */
 
 /* 요청번호 — 한 줄, 본문색·굵게. 줄 전체가 누르는 자리라(#186) 요청번호만 따로 누를 곳처럼 보이지 않게 한다. */
 .iqc-skip-approval-list .iqc-skip-approval-request-no {

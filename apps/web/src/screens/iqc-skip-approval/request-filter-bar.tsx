@@ -2,21 +2,14 @@ import { Button, Chip, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import { codeNote, codePlaceholder } from './code-options';
 import { EMPTY_FILTERS, toFilterChips, type FilterChipKey } from './filters';
-import { SelectField } from './select-field';
-import type { RequestFilters, SelectOption } from './types';
+import type { RequestFilters } from './types';
 
 const t = messages.iqcSkipApproval;
 
 export interface RequestFilterBarProps {
   /** 주소에 반영된(= 조회에 쓰인) 조건. 편집 중인 값은 이 부품 안에만 있다. */
   appliedFilters: RequestFilters;
-  /**
-   * 요청 상태 선택지. **화면이 넘긴다** — 자리표시 상수를 부품이 직접 읽으면
-   * 「값이 확정되면 배열만 채운다」는 전환을 화면 수준에서 잴 수 없다.
-   */
-  statusOptions: SelectOption[];
   onSearch: (filters: RequestFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: FilterChipKey) => void;
@@ -30,7 +23,7 @@ export interface RequestFilterBarProps {
  *
  * | 컨트롤 | 언제 반영되나 | 왜 |
  * | --- | --- | --- |
- * | 상태 · 상신일 · 요청번호 | **조회를 누를 때** | 고치는 동안 조회가 나가면 반쯤 지운 검색어로 요청이 나간다 |
+ * | 상신일 · 요청번호 | **조회를 누를 때** | 고치는 동안 조회가 나가면 반쯤 지운 검색어로 요청이 나간다 |
  * | 조건 칩의 × | 즉시 | 해제는 「푼다」는 뜻이라 확인을 받을 것이 없다 |
  * | **「결재 대기만 보기」** | **즉시** | 조건이 아니라 **조회 범위**다 — 앞선 화면에서 탭이 하던 일이며, 탭도 누르는 순간 옮겨졌다 |
  *
@@ -52,7 +45,6 @@ export interface RequestFilterBarProps {
  */
 export const RequestFilterBar = ({
   appliedFilters,
-  statusOptions,
   onSearch,
   onRemoveFilter,
   onReset,
@@ -98,37 +90,12 @@ export const RequestFilterBar = ({
     onReset();
   };
 
-  /* 「전체」를 값이 빈 선택지로 둔다 — 두지 않으면 한 번 고른 뒤에 해제할 방법이 칸 안에 없어진다. */
-  const withAll = (options: SelectOption[]): SelectOption[] => [
-    { value: '', label: t.filters.all },
-    ...options,
-  ];
-
-  /**
-   * 값 목록이 비어 있는 코드 칸은 **「전체」도 붙이지 않는다.** 고를 것이 하나도 없는데
-   * 「전체」만 있으면 목록이 준비된 것처럼 보인다 — 왜 비었는지는 안내가 말한다.
-   */
-  const optionsOf = (options: SelectOption[]): SelectOption[] =>
-    options.length === 0 ? [] : withAll(options);
-
-  const placeholderOf = (options: SelectOption[]): string =>
-    options.length === 0 ? codePlaceholder() : t.filters.all;
-
   const chips = toFilterChips(appliedFilters);
 
   return (
     <>
       <div className="filter-bar iqc-skip-approval-filter">
-        <SelectField
-          label={t.fields.status}
-          options={optionsOf(statusOptions)}
-          value={filters.statusCode}
-          note={codeNote(statusOptions)}
-          placeholder={placeholderOf(statusOptions)}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, statusCode: value }));
-          }}
-        />
+        {/* 상태는 탭 줄 오른쪽 상태 칩으로 거른다(#186) — 조건 칸에는 두지 않는다. 고른 상태는 조회해도 그대로다. */}
 
         {/*
          * 상신일은 **한 컨트롤**이다 — 시작·종료 두 칸이 아니라 `mode="range"` 하나다.
