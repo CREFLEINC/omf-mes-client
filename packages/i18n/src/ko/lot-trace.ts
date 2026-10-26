@@ -129,6 +129,7 @@ export const lotTrace = {
     loadFailed: '추적 정보를 불러오지 못했습니다',
     listCaption: 'LOT 목록',
     openRow: (lotNo: string): string => `${lotNo} 추적 열기`,
+    estimated: '추정 포함',
     fileName: (tab: string, date: string): string => `${tab}_${date}.csv`,
     exportColumns: {
       itemCode: '품목 코드',

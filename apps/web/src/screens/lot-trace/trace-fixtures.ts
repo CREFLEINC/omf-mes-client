@@ -51,7 +51,11 @@ export const forwardRow = (
   ...overrides,
 });
 
-export const backwardRow = (lotId: number, lotNo: string): BackwardListRow => ({
+export const backwardRow = (
+  lotId: number,
+  lotNo: string,
+  overrides: Partial<BackwardListRow> = {},
+): BackwardListRow => ({
   ...head(lotId, lotNo, 'PRODUCTION'),
   workOrder: { workOrderId: 70, workOrderNo: 'WO-SYN-0001', statusCode: 'COMPLETED' },
   producedQty: 120,
@@ -65,6 +69,7 @@ export const backwardRow = (lotId: number, lotNo: string): BackwardListRow => ({
     shipped: { shipmentCount: 0, qty: 0, lastShippedAt: null, customers: [], customerCount: 0 },
   },
   currentStageCode: 'PRODUCTION_RECEIVED',
+  ...overrides,
 });
 
 export const productionLot = (
@@ -91,7 +96,8 @@ export const forwardChain = (
   lotTypeCode = 'MATERIAL',
 ): ForwardChain => ({
   lot: head(lotId, lotNo, lotTypeCode),
-  basis: 'LOT_GENEALOGY_ESTIMATE',
+  /* 서버 규칙: 이어진 생산 LOT이 없으면(투입 없음, 투입만) null. */
+  basis: workOrders.some((wo) => wo.productionLots.length > 0) ? 'LOT_GENEALOGY_ESTIMATE' : null,
   inbound: {
     inboundReceiptId: 1,
     inboundReceiptNo: 'IR-SYN-0001',
@@ -138,7 +144,8 @@ export const backwardChain = (
 ): BackwardChain => ({
   lot: head(lotId, lotNo, 'PRODUCTION'),
   goodQty: 120,
-  basis: 'LOT_GENEALOGY_ESTIMATE',
+  /* 서버 규칙: 이어진 투입 자재가 없으면 null. */
+  basis: inputs.length > 0 ? 'LOT_GENEALOGY_ESTIMATE' : null,
   productionReceipts: [],
   packages: [],
   shipments: [],

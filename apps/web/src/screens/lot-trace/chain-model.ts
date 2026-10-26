@@ -130,13 +130,6 @@ export const backwardImpact = (chain: BackwardChain): { lots: number; suppliers:
   ).size,
 });
 
-/** 추정 연결이 섞였는가 — 생산 LOT과 투입 자재의 이음은 모두 근거(추정)가 붙는다. 문서 이음(입고, 포장, 출하)은 아니다. */
-export const forwardHasEstimate = (chain: ForwardChain): boolean =>
-  chain.workOrders.some((wo) => wo.productionLots.length > 0);
-
-export const backwardHasEstimate = (chain: BackwardChain): boolean =>
-  chain.inputMaterials.length > 0;
-
 /* ── 사슬 내보내기(펼친 단계까지) ─────────────────────────────────────── */
 
 export type ChainNodeKind =

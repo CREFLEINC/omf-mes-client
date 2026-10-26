@@ -1,4 +1,4 @@
-import { Chip, type Column } from '@crefle/web-ui';
+import { Chip, Tooltip, type Column } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -6,7 +6,7 @@ import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { SelectableTable } from '../../patterns/selectable-table';
 import { formatQty } from './rows';
 import type { TraceDirection } from './trace-filters';
-import type { BackwardListRow, ForwardListRow, ForwardStage } from './trace-types';
+import type { BackwardListRow, FlowBasis, ForwardListRow, ForwardStage } from './trace-types';
 
 const t = messages.lotTrace;
 
@@ -24,6 +24,29 @@ export const StageChip = ({ stage }: { stage: ForwardStage }) => (
   <Chip variant="status" size="sm" status="idle">
     {t.stages[stage]}
   </Chip>
+);
+
+/**
+ * 진행 칸: 진행 칩과, 추정 이음이 섞인 LOT이면 「추정 포함」 칩(서버 `basis`가 null이 아닐 때).
+ * 칩에 마우스를 올리거나 초점을 두면 드로어의 추정 칩과 같은 근거 한 문장이 보인다.
+ */
+const StageCell = ({ stage, basis }: { stage: ForwardStage; basis: FlowBasis | null }) => (
+  <span className="lot-trace-stage-cell">
+    <StageChip stage={stage} />
+    {basis !== null && (
+      <Tooltip content={t.chain.estimateTip[basis]}>
+        <span
+          className="lot-trace-chip-anchor"
+          tabIndex={0}
+          aria-label={`${t.trace.estimated}. ${t.chain.estimateTip[basis]}`}
+        >
+          <Chip variant="status" size="sm" status="info">
+            {t.trace.estimated}
+          </Chip>
+        </span>
+      </Tooltip>
+    )}
+  </span>
 );
 
 interface TraceTableProps<Row> {
@@ -78,7 +101,7 @@ export const ForwardTable = ({
     {
       key: 'stage',
       header: t.trace.columns.stage,
-      render: (row) => <StageChip stage={row.currentStageCode} />,
+      render: (row) => <StageCell stage={row.currentStageCode} basis={row.basis} />,
     },
   ];
   return (
@@ -128,7 +151,7 @@ export const BackwardTable = ({
     {
       key: 'stage',
       header: t.trace.columns.stage,
-      render: (row) => <StageChip stage={row.currentStageCode} />,
+      render: (row) => <StageCell stage={row.currentStageCode} basis={row.basis} />,
     },
   ];
   return (

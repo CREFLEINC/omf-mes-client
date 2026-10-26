@@ -5,13 +5,11 @@ import { useNavigate } from 'react-router';
 
 import { DetailDrawer } from '../../patterns/detail-drawer';
 import {
-  backwardHasEstimate,
   backwardImpact,
   backwardStages,
   currentStage,
   flattenBackward,
   flattenForward,
-  forwardHasEstimate,
   forwardImpact,
   forwardStages,
   groupShipments,
@@ -677,7 +675,7 @@ const ForwardBody = ({ lotId, ...props }: ChainDrawerProps) => {
       canOpenLotStatus={props.canOpenLotStatus}
       impact={c.impactForward(impact.lots, impact.shipments, impact.customers)}
       cells={forwardStages(chain)}
-      hasEstimate={forwardHasEstimate(chain)}
+      hasEstimate={chain.basis !== null}
       lines={() => flattenForward(chain, ctx.chains)}
       onOpenLot={props.onOpenLot}
     >
@@ -731,7 +729,7 @@ const BackwardBody = ({ lotId, ...props }: ChainDrawerProps) => {
       canOpenLotStatus={props.canOpenLotStatus}
       impact={c.impactBackward(impact.lots, impact.suppliers)}
       cells={backwardStages(chain)}
-      hasEstimate={backwardHasEstimate(chain)}
+      hasEstimate={chain.basis !== null}
       lines={() => flattenBackward(chain, ctx.chains)}
       onOpenLot={props.onOpenLot}
     >

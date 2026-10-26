@@ -46,6 +46,18 @@ const setup = (route: string, data: TraceStubData, permissions?: string[]) => {
 
 const lists = (calls: URL[], path: string) => calls.filter((url) => url.pathname === path);
 
+const NOTICE = '일부 연결은 추정입니다. 칩에 마우스를 올리면 근거가 보입니다';
+const TIP_LOT = '투입 시각과 생산 LOT의 작업 시간을 맞춰 이은 연결입니다';
+const TIP_WO =
+  '같은 W/O의 투입과 생산을 이은 연결입니다. 어느 생산 LOT에 들어갔는지는 알 수 없습니다';
+
+/** 목록 줄의 「추정 포함」 칩 — 초점을 두는 칩 자리의 aria-label에 근거 한 문장이 실린다. */
+const estimatedChip = (lotNo: string): HTMLElement | null => {
+  const row = screen.getByText(lotNo).closest('tr');
+  if (row === null) throw new Error(`${lotNo} 줄이 없습니다`);
+  return within(row).queryByLabelText(/^추정 포함\. /);
+};
+
 describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
   it('처음 열면 정방향 탭이고, 기본 기간 30일을 채우고 진입점이 없으면 부르지 않고 [조회]를 사유와 함께 잠근다', async () => {
     const { calls } = setup('/production/lot-trace', {});
@@ -95,6 +107,23 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
         lists(calls, '/trace/material-lot-flows').at(-1)?.searchParams.get('currentStageCode'),
       ).toBe('CONSUMED'),
     );
+  });
+
+  it('목록: 서버 basis가 있으면 진행 칩 옆에 「추정 포함」 칩과 근거 한 문장, null이면 칩이 없다', async () => {
+    const wo = 'ITEM-A|500|261023|SUP-A|0002';
+    const none = 'ITEM-A|500|261023|SUP-A|0003';
+    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
+      forwardRows: [
+        forwardRow(101, MAT),
+        forwardRow(102, wo, { basis: 'WORK_ORDER_ESTIMATE' }),
+        forwardRow(103, none, { basis: null, currentStageCode: 'RECEIVED', consumedQty: 0 }),
+      ],
+    });
+
+    expect(await screen.findByText(MAT)).toBeInTheDocument();
+    expect(estimatedChip(MAT)).toHaveAccessibleName(`추정 포함. ${TIP_LOT}`);
+    expect(estimatedChip(wo)).toHaveAccessibleName(`추정 포함. ${TIP_WO}`);
+    expect(estimatedChip(none)).toBeNull();
   });
 
   it('서버가 진입점 칸 오류(400)를 돌려주면 LOT 번호 칸 아래에 화면 문구로 보인다', async () => {
@@ -177,9 +206,7 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
     /* 포장은 확정(PACKED)만 센다. */
     expect(within(stages).getByRole('button', { name: /포장\s*1건/ })).toBeInTheDocument();
     expect(within(stages).getByRole('listitem', { current: 'step' })).toHaveTextContent('출하');
-    expect(
-      within(drawer).getByText('일부 연결은 추정입니다. 칩에 마우스를 올리면 근거가 보입니다'),
-    ).toBeInTheDocument();
+    expect(within(drawer).getByText(NOTICE)).toBeInTheDocument();
   });
 
   it('아직 투입되지 않은 LOT은 「아직 투입된 기록이 없습니다」', async () => {
@@ -190,6 +217,21 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
 
     const drawer = await screen.findByRole('dialog', { name: MAT });
     expect(await within(drawer).findByText('아직 투입된 기록이 없습니다')).toBeInTheDocument();
+    /* 이어진 생산 LOT이 없으면 서버 basis가 null이고 추정 안내를 두지 않는다. */
+    expect(within(drawer).queryByText(NOTICE)).not.toBeInTheDocument();
+  });
+
+  it('드로어의 추정 안내는 서버 최상위 basis로만 정한다(null이면 생산 LOT이 있어도 두지 않는다)', async () => {
+    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+      forwardRows: [forwardRow(101, MAT)],
+      forwardChains: {
+        101: { ...forwardChain(101, MAT, [workOrder(3, [productionLot(201, PROD)])]), basis: null },
+      },
+    });
+
+    const drawer = await screen.findByRole('dialog', { name: MAT });
+    expect(await within(drawer).findByText(PROD)).toBeInTheDocument();
+    expect(within(drawer).queryByText(NOTICE)).not.toBeInTheDocument();
   });
 
   it('반제품은 한 단씩 펼치고, 지나온 LOT으로 돌아오면 다시 펼치지 않는다', async () => {
@@ -278,6 +320,17 @@ describe('W-02-09 LOT 추적: 역방향 추적 탭', () => {
     expect(list?.searchParams.has('dateFrom')).toBe(false);
   });
 
+  it('목록: 서버 basis가 있으면 「추정 포함」 칩, null이면 칩이 없다', async () => {
+    const none = 'P-SYN-0002';
+    setup('/production/lot-trace?tab=backward&wo=WO-SYN-0001', {
+      backwardRows: [backwardRow(201, PROD), backwardRow(202, none, { basis: null })],
+    });
+
+    expect(await screen.findByText(PROD)).toBeInTheDocument();
+    expect(estimatedChip(PROD)).toHaveAccessibleName(`추정 포함. ${TIP_LOT}`);
+    expect(estimatedChip(none)).toBeNull();
+  });
+
   it('투입 자재가 없으면 「투입 자재가 없습니다」, 출하가 없으면 「아직 출하되지 않았습니다」', async () => {
     setup(`/production/lot-trace?tab=backward&lot=${PROD}&selected=201`, {
       backwardRows: [backwardRow(201, PROD)],
@@ -288,6 +341,7 @@ describe('W-02-09 LOT 추적: 역방향 추적 탭', () => {
     expect(await within(drawer).findByText('투입 자재가 없습니다')).toBeInTheDocument();
     expect(within(drawer).getByText('아직 출하되지 않았습니다')).toBeInTheDocument();
     expect(within(drawer).getByText('투입 자재 LOT 0, 공급사 0곳')).toBeInTheDocument();
+    expect(within(drawer).queryByText(NOTICE)).not.toBeInTheDocument();
   });
 
   it('반제품 투입 LOT은 [이 LOT 기준으로]로 같은 방향의 기준을 바꾸고 경로에 남긴다', async () => {
@@ -307,6 +361,7 @@ describe('W-02-09 LOT 추적: 역방향 추적 탭', () => {
     const drawer = await screen.findByRole('dialog', { name: PROD });
     expect(await within(drawer).findByText('투입 자재 LOT 2, 공급사 1곳')).toBeInTheDocument();
     expect(within(drawer).getAllByText('SL-0001')).toHaveLength(2);
+    expect(within(drawer).getByText(NOTICE)).toBeInTheDocument();
     await user.click(within(drawer).getByRole('button', { name: 'SF-SYN-0001 이 LOT 기준으로' }));
 
     const next = await screen.findByRole('dialog', { name: 'SF-SYN-0001' });
