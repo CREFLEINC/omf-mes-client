@@ -37,7 +37,8 @@ const requests: ApprovalRequest[] = [
   {
     approvalRequestId: 31,
     approvalRequestNo: 'SYNTH-REQ-031',
-    approvalTypeCode: 'IQC_SKIP',
+    /* 특채 — 연결 조건(특채 조건)을 찾는 갈래를 잰다. IQC·OQC 생략은 조건이 없어 시험마다 따로 세운다(#186). */
+    approvalTypeCode: 'CONCESSION',
     requestedBy: 7,
     requestedByName: '합성 사용자',
     requestedAt: '2026-08-22T09:30:00+09:00',
@@ -854,6 +855,62 @@ describe('QualityApprovalScreen conditions', () => {
     expect(screen.queryByRole('group', { name: t.condition.title })).not.toBeInTheDocument();
   });
 
+  /* 「전체」 탭에서도 IQC 생략을 처리한다(#186) — 특채 조건을 찾지 않고, 승인되면 생략 실행 구획이 선다. */
+  it('IQC 생략 결재는 특채 조건을 찾지 않고 승인을 막지 않는다', async () => {
+    const iqcSkip = { ...requests[0]!, approvalTypeCode: 'IQC_SKIP' } as unknown as ApprovalRequest;
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(iqcSkip))),
+    );
+    renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
+
+    expect(await screen.findByRole('region', { name: t.panes.detail })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: t.condition.title })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.approval.conditionRequired)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.condition.unsafe)).not.toBeInTheDocument();
+    /* 결재 대기에서는 실행 구획이 서지 않는다 — 승인된 뒤의 일이다. */
+    expect(
+      screen.queryByRole('region', { name: messages.iqcSkipApproval.skipExecute.heading }),
+    ).not.toBeInTheDocument();
+    expect(recorded.urls.some((url) => url.pathname === CONCESSIONS_PATH)).toBe(false);
+  });
+
+  it('승인된 IQC 생략은 대상 LOT 이 검사 대기면 확인 뒤 생략 실행을 한 번 보낸다', async () => {
+    const approved = {
+      ...requests[0]!,
+      approvalTypeCode: 'IQC_SKIP',
+      statusCode: 'APPROVED',
+      isMyTurn: false,
+      currentStepNo: null,
+    } as unknown as ApprovalRequest;
+    const skipPath = '/trace/lots/91:skip-iqc';
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(approved))),
+      {
+        match: (request) => new URL(request.url).pathname === '/trace/lots/91',
+        respond: () => jsonResponse({ lot: { lotId: 91, statusCode: 'INSPECTION_PENDING' } }),
+      },
+      {
+        match: (request) => new URL(request.url).pathname === skipPath,
+        respond: () => jsonResponse({}),
+      },
+    );
+    const { user } = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
+    const s = messages.iqcSkipApproval.skipExecute;
+
+    const pane = await screen.findByRole('region', { name: s.heading });
+    await user.click(await within(pane).findByRole('button', { name: s.action }));
+    const dialog = await screen.findByRole('dialog', { name: s.dialogTitle });
+    expect(recorded.urls.some((url) => url.pathname === skipPath)).toBe(false);
+
+    await user.click(within(dialog).getByRole('button', { name: s.action }));
+
+    await waitFor(() => {
+      expect(recorded.urls.filter((url) => url.pathname === skipPath)).toHaveLength(1);
+    });
+  });
+
   it('⭐ 특채면 「부적합 열기」가 처분 판정 화면의 진입 주소를 가리킨다', async () => {
     renderScreen(
       approvalFetch([
@@ -1275,7 +1332,7 @@ describe('QualityApprovalScreen decision action', () => {
 
     const dialog = await openConfirm(user, '  합성 반려 사유  ', '반려');
     expect(within(dialog).getByText('요청번호: SYNTH-REQ-031')).toBeInTheDocument();
-    expect(within(dialog).getByText('승인 유형: IQC (수입검사) 생략')).toBeInTheDocument();
+    expect(within(dialog).getByText(`승인 유형: ${t.typeLabels.CONCESSION}`)).toBeInTheDocument();
     expect(within(dialog).getByText('대상: 합성 대상')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 반려 사유')).toBeInTheDocument();
     expect(within(dialog).getByText('반려는 상태만 변경합니다')).toBeInTheDocument();
@@ -1342,7 +1399,7 @@ describe('QualityApprovalScreen decision action', () => {
 
     const dialog = await openConfirm(user, '  합성 승인 사유  ');
     expect(within(dialog).getByText('요청번호: SYNTH-REQ-031')).toBeInTheDocument();
-    expect(within(dialog).getByText('승인 유형: IQC (수입검사) 생략')).toBeInTheDocument();
+    expect(within(dialog).getByText(`승인 유형: ${t.typeLabels.CONCESSION}`)).toBeInTheDocument();
     expect(within(dialog).getByText('대상: 합성 대상')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 승인 사유')).toBeInTheDocument();
     expect(within(dialog).getByText('승인은 되돌릴 수 없습니다')).toBeInTheDocument();

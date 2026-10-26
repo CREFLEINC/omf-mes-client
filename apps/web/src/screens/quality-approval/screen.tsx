@@ -6,7 +6,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'rea
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
-import { useMasterWrite } from '../../patterns/master';
+import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import {
   PaneLayoutToggle,
   PaneSplitter,
@@ -17,6 +17,9 @@ import {
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { toApiError } from '../../patterns/request';
+import { iqcSkipApprovalKeys, useSkipTargetLot } from '../iqc-skip-approval/queries';
+import { SkipExecutePane } from '../iqc-skip-approval/skip-execute-pane';
+import { judgeSkipExecute, skipExecuteLotIdOf } from '../iqc-skip-approval/target';
 import { ApprovalActionPane } from './approval-action-pane';
 import { ApproveDialog } from './approve-dialog';
 import { QUALITY_APPROVAL_TYPE_CODES, approvalScopeWarning, statusBadgeOf } from './code-options';
@@ -139,9 +142,17 @@ export const QualityApprovalScreen = ({
   const detail = useApprovalRequestDetail(selectedId);
   /* OQC 생략(#119)은 특채가 아니다 — 연결 조건(특채)을 묻지도, 요구하지도 않는다. */
   const isOqcSkip = String(detail.data?.request.approvalTypeCode) === OQC_SKIP;
+  /*
+   * IQC 생략도 특채가 아니다(#186) — 「전체」 탭에서 고르면 여기서 결재하고, 승인된 뒤에는 IQC 생략 탭과 같은
+   * 「생략 실행」 구획이 선다(부품·판정·쓰기를 그 탭의 것 그대로 쓴다). 실행 권한은 서버가 W-01-02 로 거른다.
+   */
+  const isIqcSkip = String(detail.data?.request.approvalTypeCode) === IQC_SKIP_TYPE_CODE;
   const conditionCandidates = useConcessionCandidates(
-    isOqcSkip ? null : (detail.data?.request.approvalRequestId ?? null),
+    isOqcSkip || isIqcSkip ? null : (detail.data?.request.approvalRequestId ?? null),
   );
+  const skipLotId =
+    detail.data === undefined ? null : skipExecuteLotIdOf(detail.data.request, IQC_SKIP_TYPE_CODE);
+  const skipLot = useSkipTargetLot(skipLotId);
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
   const listContextKey = withSelectedRequest(searchParams, null).toString();
@@ -162,10 +173,25 @@ export const QualityApprovalScreen = ({
   const actionLockReasonId = useId();
   const hasSafeCondition =
     isOqcSkip ||
+    isIqcSkip ||
     (selectedId !== null &&
       conditionCandidates.data !== undefined &&
       !conditionCandidates.isError &&
       toConcessionCardinality(selectedId, conditionCandidates.data).kind === 'one');
+
+  /* 승인된 IQC 생략의 실행(#186) — IQC 생략 탭(`iqc-skip-approval/screen.tsx`)의 쓰기와 같다. */
+  const skipExecuteWrite = useMasterWrite<number, unknown>({
+    request: (lotId, headers) =>
+      client.POST('/trace/lots/{lotId}:skip-iqc', {
+        params: { path: { lotId }, header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+      }),
+    etagPath: null,
+    invalidateKeys: [qualityApprovalKeys.all, iqcSkipApprovalKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      toast.show({ variant: 'success', description: messages.iqcSkipApproval.skipExecute.done });
+    },
+  });
 
   const decisionWrite = useMasterWrite<DecisionVariables, ApprovalRequestDetail>({
     request: (variables, headers) => {
@@ -326,6 +352,18 @@ export const QualityApprovalScreen = ({
           <AlertBanner variant="info" title={t.detail.oqcSkipNote}>
             <Link to="/shipment/oqc-inspection">{t.detail.openOqcInspection}</Link>
           </AlertBanner>
+        ) : isIqcSkip ? (
+          /* IQC 생략(#186)은 연결 조건이 없다 — 승인된 뒤에만 생략 실행 구획이 선다. */
+          skipLotId !== null && (
+            <SkipExecutePane
+              state={judgeSkipExecute(skipLot)}
+              isSaving={skipExecuteWrite.isSaving}
+              onExecute={() => {
+                skipExecuteWrite.write(skipLotId);
+              }}
+              banner={<SaveErrorBanner error={skipExecuteWrite.error} />}
+            />
+          )
         ) : (
           <ConditionPane approvalRequestId={detail.data.request.approvalRequestId} />
         )}

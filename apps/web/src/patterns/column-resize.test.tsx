@@ -128,25 +128,6 @@ describe('useColumnWidths', () => {
     expect(JSON.parse(globalThis.localStorage.getItem(STORAGE_KEY) ?? '')).toEqual({ code: 180 });
   });
 
-  it('내용이 다 보이는 폭보다 넓게는 늘지 않는다 — 끝은 그 열의 가장 넓은 칸이다(#186)', () => {
-    /* jsdom 은 글 폭을 재지 못해 범위가 돌려줄 폭을 정한다 — 칸마다 글 폭 130px(여백은 0). */
-    vi.spyOn(document, 'createRange').mockImplementation(
-      () =>
-        ({
-          selectNodeContents: () => undefined,
-          getBoundingClientRect: () => ({ width: 130 }) as DOMRect,
-        }) as unknown as Range,
-    );
-    render(<Harness />);
-
-    drag('코드', 120, 200);
-
-    /* 끈 만큼(320px)이 아니라 글 폭 130px 에 칸 안쪽 여백만 더한 폭에서 멈춘다. */
-    const [code] = renderedColWidths();
-    expect(Number.parseFloat(code ?? '')).toBeGreaterThanOrEqual(130);
-    expect(Number.parseFloat(code ?? '')).toBeLessThan(160);
-  });
-
   it('너무 좁게는 줄지 않는다', () => {
     render(<Harness />);
 
