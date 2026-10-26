@@ -21587,3 +21587,39 @@ table.col-measuring td {
 .iqc-inspection-docs-help {
   justify-self: start;
 }
+
+/*
+ * 검사 이력 위 「전달 문서」(표 모양 · #185) — 상세 기본 정보와 같은 상자: 테두리 · 둥근 모서리 · 이름(위 · 작게) 값(아래 · 크게),
+ * 칸이 둘 이상이면 사이 세로선. 내용 폭만큼만 선다.
+ */
+.inspection-history-source.filter-bar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-self: start;
+  gap: var(--space-3) 0;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+}
+
+.inspection-history-source > .field-cell {
+  display: grid;
+  gap: var(--space-1);
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.inspection-history-source > .field-cell:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.inspection-history-source dd {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  font-weight: 600;
+}

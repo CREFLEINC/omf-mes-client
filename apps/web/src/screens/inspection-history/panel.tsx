@@ -193,7 +193,9 @@ export const InspectionHistoryPanel = ({
         <p className="field-note">{t.loading}</p>
       ) : (
         <>
-          <dl className="filter-bar">
+          <dl
+            className={layout === 'table' ? 'filter-bar inspection-history-source' : 'filter-bar'}
+          >
             <div className="field-cell">
               <dt className="field-label">{t.source}</dt>
               <dd>{history.data.source.documentNo ?? t.empty}</dd>
