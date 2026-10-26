@@ -1240,7 +1240,7 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
   /**
    * 메뉴 IA 개편으로 검사는 **「품질 관리」 한 곳에 모였다** — IQC(입하) → PQC(공정) → OQC(출하)
    * 흐름 차례의 첫 자리다. 그래서 「구매 / 자재 관리」의 끝(물류 전표 조회·취소) 바로 뒤에 선다.
-   * IQC 생략 판정(W-01-02)은 「품질 승인 처리」의 탭이라 PQC 가 바로 뒤따른다(#144).
+   * IQC 생략 판정(W-01-02)은 「품질 승인 처리」의 탭이라 검사기준이 바로 뒤따른다(#144).
    */
   it('품질 관리 섹션의 첫 항목으로 구매 / 자재 관리 바로 뒤에 선다', () => {
     const hrefs = sidebarHrefs();
@@ -1248,7 +1248,7 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
     expect(hrefs.indexOf('/logistics/iqc-inspection')).toBe(
       hrefs.indexOf('/logistics/document-progress') + 1,
     );
-    expect(hrefs.indexOf('/quality/pqc-inspections')).toBe(
+    expect(hrefs.indexOf('/master-data/inspection-standard')).toBe(
       hrefs.indexOf('/logistics/iqc-inspection') + 1,
     );
   });
