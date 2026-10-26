@@ -21284,3 +21284,17 @@ table.col-measuring td {
   width: auto !important;
   max-width: none !important;
 }
+
+/*
+ * IQC 검색 줄 칸 폭(사용자 지시 2026-10-26) — 칸 안내 글(placeholder)이 잘리지 않는 폭. LOT 스캔 칸은 안내 글이 길어
+ * 넓히고([검색] 포함 22rem), 품목 · 공급사 · 의뢰번호 칸은 안내 글에 맞게 줄인다(12rem). 한 줄은 그대로다.
+ */
+@media (min-width: 1280px) {
+  .iqc-inspection-search > form.form-actions {
+    flex-basis: 22rem;
+  }
+
+  .iqc-inspection-search > .filter-bar > :not(.field-cell-unlabeled) {
+    flex: 0 1 12rem;
+  }
+}
