@@ -39,6 +39,16 @@ const enterWorkerNo = async (user: ReturnType<typeof renderScreen>['user'], work
 
 const startButton = () => screen.getByRole('button', { name: t.actions.start });
 
+/** 목록 제목 줄의 설비 칸(PopSelect). 닫힌 칸의 글자가 지금 설비다. */
+const equipmentSelect = () => screen.getByRole('combobox', { name: t.list.equipmentLabel });
+
+/** 설비 팝업을 열어 한 줄을 고른다. */
+const chooseEquipment = async (user: ReturnType<typeof renderScreen>['user'], label: string) => {
+  await user.click(equipmentSelect());
+  const dialog = await screen.findByRole('dialog');
+  await user.click(await within(dialog).findByRole('option', { name: label }));
+};
+
 /**
  * 세션을 여는 쓰기만 골라 낸다.
  *
@@ -112,7 +122,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     expect(first).not.toContain('plannedEquipmentId');
     expect(first).not.toContain('includeUnplannedEquipment');
     /* 좁힐 설비가 없으니 [전체 설비 보기]와 설비 안내가 없다. */
-    expect(screen.queryByRole('button', { name: t.list.showAll })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: t.list.equipmentLabel })).not.toBeInTheDocument();
     expect(screen.queryByText(t.list.equipmentUnknown)).not.toBeInTheDocument();
 
     await enterWorkerNo(rendered.user, WORKER.workerNo);
@@ -323,34 +333,144 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
   });
 
   /**
-   * 기본 목록은 단말 설비뿐이다. 제목은 늘 왼쪽, 전환 버튼 하나는 늘 같은 자리다. 제목과 버튼 이름은
-   * 단말 설비의 실제 이름을 쓴다(사용자 결정 2026-10-26, PG-32). 범위 라디오와 화살표 버튼은 없다.
+   * 설비 칸(PopSelect 팝업, C-12). 기본은 단말 설비이고, 「전체 설비」나 다른 설비를 고르면 목록 조회가
+   * 바뀐다. 기본이 아니면 [기본 설비로]가 제목과 설비 칸 사이에 선다(사용자 결정 2026-10-26, PG-37).
    */
-  it('같은 자리의 전환 버튼 하나로 「설비 작업지시」와 「전체 설비 작업지시」를 오간다', async () => {
-    const { user } = renderScreen();
-    const equipmentTitle = t.list.equipmentTitle(TERMINAL.equipmentName);
-    const onlyEquipment = t.list.showEquipment(TERMINAL.equipmentName);
+  describe('설비 칸', () => {
+    const OTHER_EQUIPMENT = {
+      equipmentId: EQUIPMENT_ID + 1,
+      equipmentCode: 'SYN-PRS-02',
+      equipmentName: '합성 프레스 2호기',
+    };
+    const EQUIPMENTS = [
+      {
+        equipmentId: EQUIPMENT_ID,
+        equipmentCode: 'SYN-PRS-01',
+        equipmentName: '합성 프레스 1호기',
+      },
+      OTHER_EQUIPMENT,
+    ];
+    const OTHER_WO = {
+      ...WORK_ORDER,
+      workOrderId: 8201,
+      workOrderNo: 'SYN-WO-0201',
+      plannedEquipmentId: OTHER_EQUIPMENT.equipmentId,
+    };
+    const resetButton = () => screen.queryByRole('button', { name: t.list.resetToDefault });
 
-    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    expect(screen.getByRole('heading', { level: 2, name: equipmentTitle })).toBeInTheDocument();
-    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: onlyEquipment })).toBeNull();
+    it('처음에는 단말 설비이고 [기본 설비로]가 없다', async () => {
+      const { recorded } = renderScreen();
 
-    const toggle = screen.getByRole('button', { name: t.list.showAll });
-    await user.click(toggle);
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+      expect(screen.getByRole('heading', { level: 2, name: t.list.title })).toBeInTheDocument();
+      expect(equipmentSelect()).toHaveTextContent(TERMINAL.equipmentName);
+      expect(resetButton()).toBeNull();
+      expect(screen.queryByRole('radio')).toBeNull();
+      const [first] = listUrls(recorded.urls);
+      expect(first).toContain(`plannedEquipmentId=${String(EQUIPMENT_ID)}`);
+      expect(first).toContain('includeUnplannedEquipment=true');
+      /* 다른 설비 목록은 팝업을 열 때 처음 묻는다. */
+      expect(recorded.urls.some((url) => url.startsWith('/mdm/equipments'))).toBe(false);
+    });
 
-    expect(screen.getByRole('heading', { level: 2, name: t.list.allTitle })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { level: 2, name: equipmentTitle })).toBeNull();
-    /* 같은 버튼이 이름만 바꾼다. 화살표 버튼이 따로 서지 않는다. */
-    expect(screen.getByRole('button', { name: onlyEquipment })).toBe(toggle);
-    expect(screen.queryByRole('button', { name: t.list.showAll })).toBeNull();
-    const listHead = toggle.parentElement as HTMLElement;
-    expect(within(listHead).getAllByRole('button')).toEqual([toggle]);
+    it('팝업은 기본 설비, 전체 설비, 다른 설비 순서이고 줄은 「이름 (코드)」다', async () => {
+      const { user, recorded } = renderScreen({ equipments: EQUIPMENTS });
 
-    await user.click(toggle);
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+      await user.click(equipmentSelect());
+      const dialog = await screen.findByRole('dialog');
+      await within(dialog).findByRole('option', { name: '합성 프레스 2호기 (SYN-PRS-02)' });
 
-    expect(screen.getByRole('heading', { level: 2, name: equipmentTitle })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.list.showAll })).toBe(toggle);
+      expect(
+        within(dialog)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual([
+        t.list.defaultOption('합성 프레스 1호기 (SYN-PRS-01)'),
+        t.list.allOption,
+        '합성 프레스 2호기 (SYN-PRS-02)',
+      ]);
+      expect(within(dialog).getAllByRole('option')[0]).toHaveAttribute('aria-selected', 'true');
+      const equipmentUrl = recorded.urls.find((url) => url.startsWith('/mdm/equipments')) ?? '';
+      expect(equipmentUrl).toContain(`plantId=${String(TERMINAL.plantId)}`);
+      expect(equipmentUrl).toContain('statusCode=IN_SERVICE');
+    });
+
+    it('다른 설비를 고르면 그 설비로만 묻고, [기본 설비로]가 서고 누르면 돌아온다', async () => {
+      const { user, recorded } = renderScreen({
+        equipments: EQUIPMENTS,
+        workOrdersByEquipment: { [OTHER_EQUIPMENT.equipmentId]: [OTHER_WO] },
+      });
+
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+      await chooseEquipment(user, '합성 프레스 2호기 (SYN-PRS-02)');
+
+      await screen.findByRole('button', { name: selectName(OTHER_WO.workOrderNo) });
+      expect(screen.queryByRole('button', { name: selectName(WORK_ORDER.workOrderNo) })).toBeNull();
+      const last = listUrls(recorded.urls).at(-1) ?? '';
+      expect(last).toContain(`plannedEquipmentId=${String(OTHER_EQUIPMENT.equipmentId)}`);
+      /* 설비를 정하지 않은 지시는 단말 설비 목록에만 함께 온다(PG-38). */
+      expect(last).not.toContain('includeUnplannedEquipment');
+      expect(equipmentSelect()).toHaveTextContent('합성 프레스 2호기');
+      expect(screen.getByRole('heading', { level: 2, name: t.list.title })).toBeInTheDocument();
+
+      const reset = resetButton();
+      expect(reset).not.toBeNull();
+      await user.click(reset as HTMLElement);
+
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+      expect(resetButton()).toBeNull();
+      expect(equipmentSelect()).toHaveTextContent(TERMINAL.equipmentName);
+      expect(listUrls(recorded.urls).at(-1)).toContain('includeUnplannedEquipment=true');
+    });
+
+    it('「전체 설비」는 설비 축 없이 묻고 [기본 설비로]가 선다', async () => {
+      const { user, recorded } = renderScreen();
+
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+      await chooseEquipment(user, t.list.allOption);
+
+      await waitFor(() => {
+        expect(listUrls(recorded.urls).at(-1)).not.toContain('plannedEquipmentId');
+      });
+      expect(equipmentSelect()).toHaveTextContent(t.list.allOption);
+      expect(resetButton()).not.toBeNull();
+    });
+
+    /** 제목은 왼쪽, 설비 칸은 오른쪽 끝, [기본 설비로]는 그 사이에만 선다(C-19). */
+    it('[기본 설비로]는 제목과 설비 칸 사이에 끼고 두 자리는 바뀌지 않는다', async () => {
+      const { user } = renderScreen();
+
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+      const head = screen.getByRole('heading', { level: 2, name: t.list.title })
+        .parentElement as HTMLElement;
+      const field = equipmentSelect().closest('.work-start-equipment-field') as HTMLElement;
+      const order = () => [...head.querySelectorAll('h2, button, .work-start-equipment-field')];
+
+      expect(head.firstElementChild).toHaveTextContent(t.list.title);
+      expect(field.parentElement?.lastElementChild).toBe(field);
+
+      await chooseEquipment(user, t.list.allOption);
+      const reset = await screen.findByRole('button', { name: t.list.resetToDefault });
+
+      expect(head.firstElementChild).toHaveTextContent(t.list.title);
+      expect(field.parentElement?.lastElementChild).toBe(field);
+      const items = order();
+      expect(items.indexOf(reset)).toBeGreaterThan(0);
+      expect(items.indexOf(reset)).toBeLessThan(items.indexOf(field));
+    });
+
+    it('공장 설비를 받지 못하면 팝업은 기본 설비와 전체 설비만 보인다', async () => {
+      const { user } = renderScreen({ equipmentsStatus: 401 });
+
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+      await user.click(equipmentSelect());
+      const dialog = await screen.findByRole('dialog');
+
+      await waitFor(() => {
+        expect(within(dialog).getAllByRole('option')).toHaveLength(2);
+      });
+    });
   });
 
   it('머리줄 화면 이름은 「작업 지시 목록」이고 주 동작은 [작업 시작] 그대로다', async () => {
@@ -408,16 +528,14 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
       );
       expect(selectionNo()).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: t.list.showAll }));
+      await chooseEquipment(user, t.list.allOption);
       await screen.findByRole('button', { name: selectName(OTHER.workOrderNo) });
       expect(
         screen.getByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
       ).toHaveAttribute('aria-pressed', 'true');
       expect(selectionNo()).toBeInTheDocument();
 
-      await user.click(
-        screen.getByRole('button', { name: t.list.showEquipment(TERMINAL.equipmentName) }),
-      );
+      await user.click(screen.getByRole('button', { name: t.list.resetToDefault }));
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: selectName(OTHER.workOrderNo) })).toBeNull();
       });
@@ -430,20 +548,18 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
 
       await enterWorkerNo(user, WORKER.workerNo);
       await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-      await user.click(screen.getByRole('button', { name: t.list.showAll }));
+      await chooseEquipment(user, t.list.allOption);
       await user.click(await screen.findByRole('button', { name: selectName(OTHER.workOrderNo) }));
       expect(screen.getByRole('group', { name: t.selection.title })).toHaveTextContent(
         OTHER.workOrderNo,
       );
 
-      await user.click(
-        screen.getByRole('button', { name: t.list.showEquipment(TERMINAL.equipmentName) }),
-      );
+      await user.click(screen.getByRole('button', { name: t.list.resetToDefault }));
 
       expect(await screen.findByText(t.remaining.select)).toBeInTheDocument();
       expect(screen.queryByRole('group', { name: t.selection.title })).toBeNull();
       /* 다시 전체 설비 목록에 들어가도 저절로 다시 고르지 않는다. */
-      await user.click(screen.getByRole('button', { name: t.list.showAll }));
+      await chooseEquipment(user, t.list.allOption);
       expect(
         await screen.findByRole('button', { name: selectName(OTHER.workOrderNo) }),
       ).toHaveAttribute('aria-pressed', 'false');
@@ -454,7 +570,7 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     const { user, recorded } = renderScreen();
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    await user.click(screen.getByRole('button', { name: t.list.showAll }));
+    await chooseEquipment(user, t.list.allOption);
 
     await waitFor(() => {
       expect(listUrls(recorded.urls).length).toBeGreaterThan(1);
@@ -492,7 +608,7 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
       within(card(WORK_ORDER.workOrderNo)).queryByText(t.list.unassignedEquipmentBadge),
     ).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: t.list.showAll }));
+    await chooseEquipment(user, t.list.allOption);
 
     await waitFor(() => {
       expect(card(WORK_ORDER.workOrderNo)).toHaveTextContent(equipmentPair);

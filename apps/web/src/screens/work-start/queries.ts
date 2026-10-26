@@ -2,6 +2,7 @@ import type { ApiClient } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
 import type {
   InspectionRequest,
@@ -46,8 +47,10 @@ export const workStartKeys = {
    * 목록. **설비 축까지 키에 넣는다** — 「이 설비」와 「전체」는 다른 목록이고, 한 키로 묶으면
    * 「전체 보기」를 껐을 때 다른 설비의 지시가 그대로 남는다.
    */
-  workOrders: (equipmentId: number | null, page: number) =>
-    [...ALL_KEY, 'work-orders', equipmentId, page] as const,
+  workOrders: (equipmentId: number | null, includeUnplanned: boolean, page: number) =>
+    [...ALL_KEY, 'work-orders', equipmentId, includeUnplanned, page] as const,
+  /** 설비 고르기 팝업의 공장 설비 목록. */
+  equipments: (plantId: number) => [...ALL_KEY, 'equipments', plantId] as const,
   openSession: (workOrderId: number) => [...ALL_KEY, 'open-session', workOrderId] as const,
   worker: (workerNo: string) => [...ALL_KEY, 'worker', workerNo] as const,
   /** 고른 지시의 끝나지 않은 PQC 의뢰. 지시마다 다른 목록이라 키에 지시를 넣는다. */
@@ -89,6 +92,7 @@ export const useTerminal = (terminalId: number | null): UseQueryResult<Terminal>
 const fetchWorkOrders = (
   client: Client,
   equipmentId: number | null,
+  includeUnplanned: boolean,
   page: number,
 ): Promise<WorkOrderListResponse> =>
   runRequest(() =>
@@ -113,12 +117,16 @@ const fetchWorkOrders = (
            */
           withProgress: true,
           /*
-           * 「전체 보기」는 이 축만 뺀다 — 다른 조건은 그대로다(§5-5). 「이 설비」는 설비를 아직
-           * 정하지 않은 지시도 함께 받는다 — 그 지시를 시작할 단말이 따로 없다.
+           * 「전체 설비」는 이 축만 뺀다 — 다른 조건은 그대로다(§5-5). 단말 설비(기본)는 설비를 아직
+           * 정하지 않은 지시도 함께 받는다 — 그 지시를 시작할 단말이 따로 없다. 다른 설비를 골랐을
+           * 때는 그 설비의 지시만 받는다(PG-38).
            */
           ...(equipmentId === null
             ? {}
-            : { plannedEquipmentId: equipmentId, includeUnplannedEquipment: true }),
+            : {
+                plannedEquipmentId: equipmentId,
+                ...(includeUnplanned ? { includeUnplannedEquipment: true } : {}),
+              }),
           page,
           size: LIST_SIZE,
         },
@@ -137,13 +145,54 @@ export const useWorkOrders = (
   equipmentId: number | null,
   enabled: boolean,
   page = 1,
+  includeUnplanned = equipmentId !== null,
 ): UseQueryResult<WorkOrderListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: workStartKeys.workOrders(equipmentId, page),
+    queryKey: workStartKeys.workOrders(equipmentId, includeUnplanned, page),
     enabled,
-    queryFn: () => fetchWorkOrders(client, equipmentId, page),
+    queryFn: () => fetchWorkOrders(client, equipmentId, includeUnplanned, page),
+  });
+};
+
+export interface EquipmentChoice {
+  equipmentId: number;
+  equipmentCode: string;
+  equipmentName: string;
+}
+
+/**
+ * 설비 고르기 팝업의 공장 설비(운용 중). 팝업을 처음 열 때만 묻는다(`enabled`).
+ *
+ * ⚠ 2026-10-26 서버는 이 조회를 POP 단말에 열지 않는다(`terminal-read-policy` 의
+ *    `GET /mdm/equipments` 가 MOBILE 만). 못 받으면 팝업은 기본 설비와 「전체 설비」만 보인다(PG-38).
+ */
+export const useEquipmentChoices = (
+  plantId: number | null,
+  enabled: boolean,
+): UseQueryResult<EquipmentChoice[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workStartKeys.equipments(plantId ?? 0),
+    enabled: enabled && plantId !== null,
+    retry: false,
+    queryFn: async () => {
+      const data = await fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/equipments', {
+            params: { query: { plantId: plantId ?? 0, statusCode: 'IN_SERVICE', page, size } },
+          }),
+        ),
+      );
+
+      return data.items.map((item) => ({
+        equipmentId: item.equipmentId,
+        equipmentCode: item.equipmentCode,
+        equipmentName: item.equipmentName,
+      }));
+    },
   });
 };
 

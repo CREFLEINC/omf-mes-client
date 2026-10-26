@@ -12692,8 +12692,8 @@ button.app-button-neutral {
 }
 
 /*
- * 목록 제목 줄: 제목은 늘 왼쪽, 전환 버튼은 늘 오른쪽 끝(PG-32). 첫 카드와는 `--space-4` 로 띄운다.
- * 두 목록에서 같은 높이와 같은 간격이다.
+ * 목록 제목 줄: 제목은 늘 왼쪽, 설비 칸은 늘 오른쪽 끝(C-19, PG-37). 첫 카드와는 `--space-4` 로
+ * 띄운다. 설비 범위가 바뀌어도 같은 높이와 같은 간격이다.
  */
 .work-start-list-head {
   display: flex;
@@ -12739,24 +12739,28 @@ button.app-button-neutral {
 }
 
 /*
- * 전환 버튼의 두 이름을 한 칸에 겹쳐 두고 지금 이름만 보인다. 버튼 폭이 긴 이름에 맞춰 늘 같다.
+ * 제목 줄 오른쪽 묶음: 상태에 따라 서는 [기본 설비로], 오른쪽 끝에 고정한 설비 칸(C-19). 칸 폭은
+ * 최소 폭을 두어 짧은 이름으로 바뀌어도 왼쪽 끝이 덜 흔들린다.
  */
-.work-start-scope-toggle {
-  flex: 0 0 auto;
+.work-start-list-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-inline-start: auto;
 }
 
-.work-start-scope-toggle-labels {
-  display: inline-grid;
+.work-start-equipment-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-.work-start-scope-toggle-label {
-  grid-area: 1 / 1;
-  text-align: center;
-  white-space: nowrap;
+.work-start-equipment-label {
+  color: var(--on-surface-variant);
 }
 
-.work-start-scope-toggle-spacer {
-  visibility: hidden;
+.work-start-equipment-trigger {
+  min-width: 8rem;
 }
 
 /* 오른쪽 구획 안의 묶음. 상자를 겹치지 않고 소제목과 간격으로 나눈다(C-19). */

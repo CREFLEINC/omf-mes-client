@@ -45,10 +45,10 @@ export const workStart: Translated<typeof ko.workStart> = {
 
   list: {
     title: 'Lệnh sản xuất',
-    equipmentTitle: (equipment: string): string => `Lệnh sản xuất của ${equipment}`,
-    allTitle: 'Lệnh sản xuất của tất cả thiết bị',
-    showAll: 'Xem tất cả thiết bị',
-    showEquipment: (equipment: string): string => `Chỉ xem ${equipment}`,
+    equipmentLabel: 'Thiết bị',
+    defaultOption: (equipment: string): string => `Thiết bị mặc định: ${equipment}`,
+    allOption: 'Tất cả thiết bị',
+    resetToDefault: 'Về thiết bị mặc định',
     scopeEquipmentUnknown: 'Thiết bị của máy trạm',
 
     select: (workOrderNo: string): string => `Chọn ${workOrderNo}`,
@@ -69,7 +69,9 @@ export const workStart: Translated<typeof ko.workStart> = {
     equipment: 'Thiết bị',
 
     empty: (equipment: string): string =>
-      `Không có lệnh sản xuất nào phát hành cho ${equipment}. Bấm 「Xem tất cả thiết bị」 để xem lệnh của thiết bị khác.`,
+      `Không có lệnh sản xuất nào phát hành cho ${equipment}. Chọn 「Tất cả thiết bị」 ở mục Thiết bị để xem lệnh của thiết bị khác.`,
+    emptyOther: (equipment: string): string =>
+      `Không có lệnh sản xuất nào phát hành cho ${equipment}.`,
     emptyAll: 'Không có lệnh sản xuất nào có thể thực hiện.',
     loading: 'Đang tải lệnh sản xuất.',
     loadError: 'Không tải được lệnh sản xuất. Hãy thử lại.',
@@ -82,7 +84,7 @@ export const workStart: Translated<typeof ko.workStart> = {
     pageNav: 'Chuyển trang danh sách lệnh sản xuất',
 
     equipmentUnknown:
-      'Không xác nhận được thiết bị của máy trạm này. Bấm 「Xem tất cả thiết bị」 để tiếp tục.',
+      'Không xác nhận được thiết bị của máy trạm này. Chọn 「Tất cả thiết bị」 ở mục Thiết bị để tiếp tục.',
   },
 
   side: {

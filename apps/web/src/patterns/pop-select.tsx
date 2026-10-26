@@ -66,6 +66,12 @@ export interface PopSelectProps extends SelectProps {
    * ⚠ **기본은 꺼짐이다** — 이 부품은 POP 화면 열여덟 곳이 함께 쓴다.
    */
   scannable?: boolean;
+  /**
+   * 닫힌 상태의 값 글자를 따로 세우지 않는다. 버튼 문구(`actionLabel`)가 지금 값을 말할 때 쓴다
+   * (예: 목록 제목 줄의 설비 고르기 [사출기 1호기]). 좁은 제목 줄에서 값과 [선택]을 둘 다 세우면
+   * 넘친다(P-02-01, 2026-10-26). 기본은 꺼짐이다.
+   */
+  hideValue?: boolean;
 }
 
 /**
@@ -99,6 +105,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
     leadingIcon,
     actionLabel = messages.popChrome.select,
     scannable = false,
+    hideValue = false,
     size: _legacySize,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
@@ -225,12 +232,14 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
 
   return (
     <div className="pop-select">
-      <span className="pop-select__value" aria-hidden="true">
-        {leadingIcon}
-        <span className={selected === null ? 'pop-select__placeholder' : undefined}>
-          {selected?.label ?? placeholder}
+      {!hideValue && (
+        <span className="pop-select__value" aria-hidden="true">
+          {leadingIcon}
+          <span className={selected === null ? 'pop-select__placeholder' : undefined}>
+            {selected?.label ?? placeholder}
+          </span>
         </span>
-      </span>
+      )}
       <Button
         {...buttonProps}
         ref={ref}

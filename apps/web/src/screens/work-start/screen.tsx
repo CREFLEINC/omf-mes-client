@@ -30,6 +30,7 @@ import {
   useSessionWorkers,
   useTerminal,
   useUomCodes,
+  useEquipmentChoices,
   useWorkOrders,
   useWorkerLookup,
 } from './queries';
@@ -38,7 +39,7 @@ import { POP_TOUCH_SIZE } from './touch-spec';
 import { toSessionRequest } from './session-request';
 import { assignedAtText, terminalNow } from './terminal-clock';
 import type { ControlOverride, WorkOrder, Worker } from './types';
-import { WorkOrderList } from './work-order-list';
+import { WorkOrderList, type ListScope } from './work-order-list';
 import { isHeld } from './work-order-status';
 import { WorkerPanel } from './worker-panel';
 import { verifyWorker } from './worker-verify';
@@ -166,19 +167,27 @@ export const WorkStartScreen = () => {
     });
   }, [verified, submittedNo, appliedNo]);
 
-  const [isShowingAll, setShowingAll] = useState(false);
+  /* 목록의 설비 범위. 화면을 열면 단말 설비(기본)다(PG-37). */
+  const [scope, setScope] = useState<ListScope>('default');
+  /* 설비 팝업을 한 번이라도 열었는가. 다른 설비 목록은 그때 처음 묻는다. */
+  const [isPickerOpened, setPickerOpened] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [outcome, setOutcome] = useState<string | null>(null);
 
-  const listEquipmentId = isShowingAll ? null : equipmentId;
+  const listEquipmentId = scope === 'default' ? equipmentId : scope === 'all' ? null : scope;
   /*
    * ⚠ 설비를 모르는 채로 기본 목록을 열지 않는다 — 축 없이 물으면 「이 설비 배포분」이라고
    *    그린 화면에 다른 설비의 지시가 실린다. 그 상태는 목록 구획이 사유와 함께 말한다.
    */
-  const isListAsked = isShowingAll || equipmentId !== null || isEquipmentMissing;
+  const isListAsked = scope !== 'default' || equipmentId !== null || isEquipmentMissing;
   /* 쪽 번호. 축(설비·전체 보기)이 바뀌면 첫 쪽으로 되돌린다 — 아래 전환 자리에서 함께 맞춘다. */
   const [listPage, setListPage] = useState(1);
-  const list = useWorkOrders(listEquipmentId, isListAsked, listPage);
+  /* 설비를 정하지 않은 지시는 단말 설비 목록에만 함께 받는다(PG-38). */
+  const list = useWorkOrders(listEquipmentId, isListAsked, listPage, scope === 'default');
+  const equipments = useEquipmentChoices(terminal.data?.plantId ?? null, isPickerOpened);
+  const otherEquipments = (equipments.data ?? []).filter(
+    (equipment) => equipment.equipmentId !== equipmentId,
+  );
 
   const rows = list.data?.items;
   /*
@@ -347,7 +356,7 @@ export const WorkStartScreen = () => {
   const submitAtRef = useRef<string | null>(null);
 
   /*
-   * 목록을 바꾼 뒤([전체 설비 보기], [〈설비 이름〉만 보기]) 새 목록이 오면, 고른 W/O 가 그 목록에 있을 때만
+   * 설비 범위를 바꾼 뒤(설비 칸, [기본 설비로]) 새 목록이 오면, 고른 W/O 가 그 목록에 있을 때만
    * 고른 채로 둔다. 없으면 놓는다. 화면에 없는 카드가 오른쪽에 남아 있지 않게 하고, 하단 바가
    * 「작업지시를 고르세요」로 돌아간다(사용자 결정 2026-10-26, PG-30).
    */
@@ -753,18 +762,28 @@ export const WorkStartScreen = () => {
             submitAtRef.current = null;
             setListPage(page);
           }}
-          isShowingAll={isShowingAll}
+          scope={scope}
           equipmentName={equipmentName?.trim() || equipmentCode?.trim() || null}
+          equipmentText={
+            equipmentCode === null || equipmentCode.trim() === ''
+              ? null
+              : named(equipmentName, equipmentCode)
+          }
+          otherEquipments={otherEquipments}
+          onEquipmentPickerOpen={() => {
+            setPickerOpened(true);
+          }}
           isEquipmentMissing={isEquipmentMissing}
           isEquipmentUnknown={equipmentId === null && !isEquipmentMissing}
           selectedId={selectedId}
           onSelect={selectWorkOrder}
-          onToggleScope={() => {
+          onScopeChange={(next) => {
+            if (next === scope) return;
             /* 고른 것은 새 목록에 있으면 남긴다. 새 목록이 오면 위 확인이 정한다(PG-30). */
             scopeCheckRef.current = true;
-            /* 축이 바뀌면 첫 쪽으로. 3쪽을 보던 중 전체 보기로 옮기면 빈 쪽이 뜬다. */
+            /* 축이 바뀌면 첫 쪽으로. 3쪽을 보던 중 전체 설비로 옮기면 빈 쪽이 뜬다. */
             setListPage(1);
-            setShowingAll((previous) => !previous);
+            setScope(next);
           }}
           onRetry={() => {
             void list.refetch();

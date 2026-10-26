@@ -59,17 +59,20 @@ export const workStart = {
 
   /** 왼쪽 작업지시 구획. */
   list: {
-    /** 설비가 매핑되지 않은 단말의 구획 제목. 좁힐 설비가 없어 전환 버튼도 없다. */
+    /**
+     * 구획 제목. 어느 설비의 목록인지는 제목 줄 오른쪽 끝 설비 칸이 말하므로 제목은 바뀌지 않는다
+     * (사용자 결정 2026-10-26, PG-39).
+     */
     title: '작업지시',
     /**
-     * 기본 목록은 단말 설비뿐이다. 제목 줄의 같은 자리에 전환 버튼 하나를 두고, 제목과 버튼 이름이
-     * 목록에 따라 바뀐다(사용자 결정 2026-10-26). 「이 설비」가 아니라 단말 설비의 실제 이름을 쓰고,
-     * 이름을 아직 모를 때만 `scopeEquipmentUnknown`을 쓴다.
+     * 설비 고르기(PopSelect 팝업). 단말 설비가 맨 위 기본값이고 「기본 설비:」를 앞에 붙여 표시한다.
+     * 그다음 「전체 설비」, 나머지 설비 순서다. 줄은 「이름 (코드)」(C-10). 닫힌 칸은 이름만 보인다.
+     * 이름을 아직 모를 때만 `scopeEquipmentUnknown`을 쓴다(PG-37).
      */
-    equipmentTitle: (equipment: string): string => `${equipment} 작업지시`,
-    allTitle: '전체 설비 작업지시',
-    showAll: '전체 설비 보기',
-    showEquipment: (equipment: string): string => `${equipment}만 보기`,
+    equipmentLabel: '설비',
+    defaultOption: (equipment: string): string => `기본 설비: ${equipment}`,
+    allOption: '전체 설비',
+    resetToDefault: '기본 설비로',
     scopeEquipmentUnknown: '단말 설비',
 
     select: (workOrderNo: string): string => `${workOrderNo} 선택`,
@@ -94,7 +97,9 @@ export const workStart = {
 
     /** 빈 목록은 오류가 아니다. 다음에 할 일까지 적는다. */
     empty: (equipment: string): string =>
-      `${equipment}에 배포된 작업지시가 없습니다. 「전체 설비 보기」를 누르면 다른 설비의 작업지시가 보입니다.`,
+      `${equipment}에 배포된 작업지시가 없습니다. 설비에서 「전체 설비」를 고르면 다른 설비의 작업지시가 보입니다.`,
+    /** 다른 설비를 골랐을 때의 빈 목록. */
+    emptyOther: (equipment: string): string => `${equipment}에 배포된 작업지시가 없습니다.`,
     emptyAll: '진행할 수 있는 작업지시가 없습니다.',
     /** 받는 중을 무표시로 두지 않는다. 「없다」와 구분되지 않는다. */
     loading: '작업지시를 불러오는 중입니다.',
@@ -110,7 +115,7 @@ export const workStart = {
 
     /** 설비를 몰라 기본 목록을 세우지 못한 상태. 빈 목록과 다른 사실이다. */
     equipmentUnknown:
-      '이 단말의 설비를 확인하지 못했습니다. 「전체 설비 보기」를 누르면 진행할 수 있습니다.',
+      '이 단말의 설비를 확인하지 못했습니다. 설비에서 「전체 설비」를 고르면 진행할 수 있습니다.',
   },
 
   /** 오른쪽 작업 확인 구획. */

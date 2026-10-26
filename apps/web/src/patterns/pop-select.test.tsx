@@ -21,6 +21,22 @@ describe('PopSelect — G-34 선택 팝업', () => {
     expect(screen.getByRole('combobox', { name: '사유' })).toHaveTextContent('선택');
   });
 
+  it('hideValue 이면 값 글자를 따로 세우지 않고 버튼 문구가 값을 말한다', () => {
+    renderWithProviders(
+      <PopSelect
+        aria-label="설비"
+        options={OPTIONS}
+        value="value-2"
+        actionLabel="짧은 값"
+        hideValue
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText('항목 2')).toBeNull();
+    expect(screen.getByRole('combobox', { name: '설비' })).toHaveTextContent('짧은 값');
+  });
+
   it('이미 받은 목록을 검색하고 고른 값을 반영한다', async () => {
     const user = userEvent.setup();
 
