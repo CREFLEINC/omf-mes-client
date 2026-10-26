@@ -318,23 +318,14 @@ const goToRequest = async (no: string): Promise<void> => {
   if (leave !== null) await userEvent.click(leave);
 };
 
-/* 불합격 사유 글은 저장 줄 [사유 입력] 창에서 받는다(#185) — 열어 치고 [저장], 읽을 때는 열어 보고 [취소]. */
-const reasonButton = () =>
-  screen.findByRole('button', { name: t.result.rejection.descriptionAction });
+/* 불합격 사유 글은 판정 줄 끝 입력칸이다(#185). */
 const typeReason = async (text: string, { replace = false } = {}): Promise<void> => {
-  await userEvent.click(await reasonButton());
   const box = await screen.findByLabelText(t.result.rejection.description);
   if (replace) await userEvent.clear(box);
   await userEvent.type(box, text);
-  await userEvent.click(screen.getByRole('button', { name: t.result.rejection.descriptionApply }));
 };
-const reasonValue = async (): Promise<string> => {
-  await userEvent.click(await reasonButton());
-  const box = await screen.findByLabelText(t.result.rejection.description);
-  const value = (box as HTMLTextAreaElement).value;
-  await userEvent.click(screen.getByRole('button', { name: t.result.rejection.descriptionCancel }));
-  return value;
-};
+const reasonValue = async (): Promise<string> =>
+  ((await screen.findByLabelText(t.result.rejection.description)) as HTMLInputElement).value;
 
 /** [임시 저장]은 마지막 저장 상태와 달라진 것이 있을 때만 켜진다 — 누르기 전에 한 칸을 바꾼다. */
 const editQuantity = async (): Promise<void> => {
@@ -922,7 +913,9 @@ describe('IqcInspectionScreen', () => {
     await userEvent.clear(rejected);
     await userEvent.type(rejected, '25');
     /* 불합격 25 > 20 — 자동으로 불합격이 되고 불합격 사유 칸이 선다. */
-    expect(await screen.findByRole('group', { name: t.result.rejection.heading })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('group', { name: t.result.rejection.heading }),
+    ).toBeInTheDocument();
     expect(screen.queryByLabelText(new RegExp(t.result.judgmentChange.reason))).toBeNull();
     expect(writes).toHaveLength(0);
   });

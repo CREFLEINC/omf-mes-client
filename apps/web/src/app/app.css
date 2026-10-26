@@ -21524,15 +21524,6 @@ table.col-measuring td {
   }
 }
 
-/* [사유 입력] — 사유가 적혀 있으면 아이콘을 주 색으로(적힌 것이 있다는 표시). */
-.iqc-inspection-reason-button[data-filled] [class*='icon'] {
-  color: var(--primary);
-}
-
-.iqc-inspection-reason-button {
-  gap: var(--space-1);
-}
-
 /*
  * 입력 현황 줄(사용자 지시 2026-10-26 · #185) — [✓ 입력 완료](라벨) · 「10 / 10 EA」(굵게) · 「미입력 0 EA」(작고 흐리게)가
  * 한 줄로, 오른쪽 끝에 붙는다. 라벨은 다 채우면 초록, 넘치면 빨강, 그 밖에는 보조색.
@@ -21663,4 +21654,19 @@ table.col-measuring td {
 
 .iqc-inspection-action-note[data-tone='info']:nth-child(n) {
   border: 1px solid color-mix(in srgb, var(--semantic-info) 35%, transparent);
+}
+
+/*
+ * 최종 판정 칸 — 값이 합격 · 불합격 · 보류 셋뿐이라 그 길이만큼(8rem · 사용자 지시 2026-10-26). 판정 변경 사유가 서면
+ * 첫 칸이 그 칸 폭만큼 넓어진다.
+ */
+@container (min-width: 48rem) {
+  .iqc-inspection-judgment-section .iqc-inspection-collapsible-body:nth-child(n):nth-child(n) {
+    /* 최종 판정 · 불량 대분류 · 불량 상세 · 추정 원인 · 사유(남는 폭 · 사용자 지시 2026-10-26). */
+    grid-template-columns: max-content repeat(3, minmax(9rem, 14rem)) minmax(12rem, 1fr);
+  }
+}
+
+.iqc-inspection-judgment-section .iqc-inspection-judgment-field {
+  width: 8rem;
 }

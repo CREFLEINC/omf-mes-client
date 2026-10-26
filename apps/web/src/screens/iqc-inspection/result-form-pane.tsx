@@ -111,8 +111,6 @@ export interface ResultFormPaneProps {
   judgmentDetail?: ReactNode;
   /** 최종 판정 칸 바로 아래 — 판정 변경 사유(#133). 없으면 두지 않는다 */
   judgmentBelow?: ReactNode;
-  /** 저장 줄 단추 앞에 서는 [사유 입력](불합격일 때 · #185). */
-  reasonAction?: ReactNode;
   /** 최종 판정 라벨 옆 보조 글 — 자동 판정 기준(#133). 없으면 두지 않는다 */
   judgmentHint?: string;
   /** 4M 변경 정보 — 판정과 다른 업무라 판정 아래 소제목을 두고 따로 선다(#133). 없으면 구획을 두지 않는다 */
@@ -162,7 +160,6 @@ export const ResultFormPane = ({
   fourMSlot = null,
   judgmentHint,
   judgmentBelow = null,
-  reasonAction = null,
   confirmOnlyBlockedReason = null,
   reinspectReplacement = null,
 }: ResultFormPaneProps) => {
@@ -378,6 +375,8 @@ export const ResultFormPane = ({
                     options={judgmentOptions}
                     value={judgment}
                     placeholder={t.judgmentPlaceholder}
+                    /* 필수 칸이 비어 있으면 빨간 테두리(사용자 지시 2026-10-26) — 고칠 수 없는 회차는 제외. */
+                    invalid={judgment === '' && !isConfirmed && !isInputLocked}
                     disabled={isConfirmed || isInputLocked || judgmentOptions.length === 0}
                     onChange={onJudgmentChange}
                   />
@@ -436,7 +435,6 @@ export const ResultFormPane = ({
         ) : isConfirmed ? (
           <div className="iqc-inspection-action-row">
             <div className="iqc-inspection-action-buttons">
-              {reasonAction}
               <Button type="button" variant="outlined" size="md" onClick={onStartReinspection}>
                 {t.reinspect}
               </Button>
@@ -488,7 +486,6 @@ export const ResultFormPane = ({
             </div>
 
             <div className="iqc-inspection-action-buttons">
-              {reasonAction}
               {/* 그만두는 길을 함께 둔다 — 열고 나서 되돌아갈 데가 없으면 갇힌다. */}
               {isReinspecting && (
                 <Button

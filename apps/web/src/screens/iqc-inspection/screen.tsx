@@ -67,7 +67,6 @@ import { expectedJudgmentOf, JudgmentChange, needsJudgmentChangeReason } from '.
 import { RejectedLotGuide } from './rejected-lot-guide';
 import {
   EMPTY_REJECTION,
-  RejectionDescriptionButton,
   RejectionReason,
   rejectionDraftOf,
   resolveDefectCode,
@@ -810,18 +809,6 @@ export const IqcInspectionScreen = () => {
                 />
               )}
             </>
-          }
-          reasonAction={
-            isRejected ? (
-              <RejectionDescriptionButton
-                description={rejection.description}
-                onChange={(description) => {
-                  setIsSaved(false);
-                  setRejection({ ...rejection, description });
-                }}
-                disabled={!isOpenRound || confirm.isSaving || workerMissing}
-              />
-            ) : null
           }
           judgmentBelow={
             acceptanceNumber !== null && isOpenRound ? (

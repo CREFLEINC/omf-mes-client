@@ -25,8 +25,8 @@ describe('RejectionReason 배치', () => {
     expect(screen.getByLabelText(t.major)).toHaveAccessibleDescription(t.majorMissing);
     expect(screen.getByLabelText(t.minor)).toBeDisabled();
     expect(screen.queryByText(t.minorMissing)).not.toBeInTheDocument();
-    /* 사유 글은 칸이 아니라 저장 줄 [사유 입력] 창이 받는다(#185). */
-    expect(screen.queryByLabelText(t.description)).not.toBeInTheDocument();
+    /* 사유 글은 판정 줄 끝 입력칸이다 — 선택 입력이라 비어도 오류 표시가 없다(#185). */
+    expect(screen.getByLabelText(t.description)).toHaveValue('');
     /* 추정 원인(#130)은 선택 입력 — 필수 표시도 누락 안내도 없다. */
     expect(screen.getByLabelText(t.cause)).toHaveTextContent(t.causeNone);
     expect(screen.getByLabelText(t.cause)).not.toHaveAccessibleDescription();
