@@ -200,8 +200,19 @@ const processRoute = (
   respond,
 });
 
+/** 탭 줄 승인·반려 칩의 건수 조회(#186) — 목록 조회와 갈라 센다. 결재 대기 건수는 목록과 같은 조회라 따로 나가지 않는다. */
+const isStatusCount = (url: URL): boolean =>
+  url.pathname === PATH &&
+  ['APPROVED', 'REJECTED'].includes(url.searchParams.get('statusCode') ?? '');
+
+const statusCountRoute = (): StubRoute => ({
+  match: (request) => isStatusCount(new URL(request.url)),
+  respond: () => jsonResponse(listBody([], 0)),
+});
+
 const approvalFetch = (routes: StubRoute[]): StubFetch =>
   createStubFetch([
+    statusCountRoute(),
     ...routes,
     detailRoute(),
     candidateRoute(),
@@ -211,14 +222,19 @@ const approvalFetch = (routes: StubRoute[]): StubFetch =>
     processRoute(),
   ]);
 
-const recordingFetch = (...routes: StubRoute[]): { fetch: StubFetch; urls: URL[] } => {
+const recordingFetch = (
+  ...routes: StubRoute[]
+): { fetch: StubFetch; urls: URL[]; statusCounts: URL[] } => {
   const urls: URL[] = [];
+  const statusCounts: URL[] = [];
   const stub = approvalFetch(routes);
 
   return {
     urls,
+    statusCounts,
     fetch: async (request) => {
-      urls.push(new URL(request.url));
+      const url = new URL(request.url);
+      (isStatusCount(url) ? statusCounts : urls).push(url);
       return stub(request);
     },
   };
@@ -298,6 +314,13 @@ describe('QualityApprovalScreen query and disclosure', () => {
       page: '2',
     });
     expect(sent).toContainEqual({ assignedToMe: 'true', pendingOnly: 'true', q: 'SYNTH' });
+    /* 승인·반려 칩의 수 — 같은 조건에서 상태만 바꾼 첫 쪽(미확정 상태 `st=UNKNOWN` 은 싣지 않는다). */
+    expect(recorded.statusCounts.map((url) => Object.fromEntries(url.searchParams))).toEqual(
+      expect.arrayContaining([
+        { assignedToMe: 'true', statusCode: 'APPROVED', q: 'SYNTH' },
+        { assignedToMe: 'true', statusCode: 'REJECTED', q: 'SYNTH' },
+      ]),
+    );
   });
 
   it('승인 유형 기준값이 준비되면 넓은 조회 경고를 거두고 해당 유형을 보낸다', async () => {
@@ -364,7 +387,9 @@ describe('QualityApprovalScreen query and disclosure', () => {
     );
 
     await findRequest();
-    await user.click(screen.getByRole('button', { name: t.pendingChip.filterOff }));
+    await user.click(
+      screen.getByRole('button', { name: t.statusChips.filterOff(t.statusLabels.PENDING) }),
+    );
     await waitFor(() => expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=0'));
 
     /* 목록과 상세가 나란히 서므로(#186) 고른 채 쪽을 넘긴다 — 쪽 이동도 선택을 비운다. */

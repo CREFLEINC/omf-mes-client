@@ -2,7 +2,7 @@ import { Chip, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { toTypeOptions, type CodeOption } from './code-options';
+import { statusBadgeOf, toTypeOptions, type CodeOption } from './code-options';
 
 /** 품질 승인 처리 목록 주소 — IQC 생략 화면의 다른 유형 탭이 이리로 돌아온다. */
 export const QUALITY_APPROVALS_PATH = '/quality/approvals';
@@ -64,32 +64,63 @@ export const TypeTabs = ({ options, value, onChange, trailing }: TypeTabsProps) 
   );
 };
 
-export interface PendingChipProps {
-  /** 지금 「결재 대기만 보기」가 걸렸는가. */
-  selected: boolean;
-  /** 지금 조건의 결재 대기 건수. 아직 모르면(조회 중·실패) 이름만 보인다. */
-  count: number | undefined;
-  onChange: (selected: boolean) => void;
+/**
+ * 탭 줄 상태 칩의 값·차례(#186) — 서버 상태 전이(`app.approval_request.status_code`: 결재 대기 → 승인 | 반려)의
+ * 세 값이다. 조회 조건 칸의 상태 선택지(공통코드 소관)와는 따로 둔다.
+ */
+export const STATUS_CHIP_CODES = ['PENDING', 'APPROVED', 'REJECTED'] as const;
+export type StatusChipCode = (typeof STATUS_CHIP_CODES)[number];
+
+/** 지금 켜진 칩 — 결재 대기는 「결재 대기만 보기」, 승인·반려는 상태 조건이다. 한 번에 하나만 켜진다. */
+export const activeStatusChip = (pendingOnly: boolean, statusCode: string): StatusChipCode | '' => {
+  if (pendingOnly) return 'PENDING';
+  return STATUS_CHIP_CODES.find((code) => code !== 'PENDING' && code === statusCode) ?? '';
+};
+
+/** 칩을 눌렀을 때의 조건 — 다른 칩의 조건은 함께 풀린다(둘이 겹치면 늘 0건이다). 끄면 전체다. */
+export const statusChipChoice = (
+  next: StatusChipCode | '',
+): { pendingOnly: boolean; statusCode: string } =>
+  next === 'PENDING'
+    ? { pendingOnly: true, statusCode: '' }
+    : { pendingOnly: false, statusCode: next };
+
+export interface StatusChipsProps {
+  active: StatusChipCode | '';
+  /** 지금 조건의 상태별 건수. 아직 모르면(조회 중·실패) 이름만 보인다. */
+  counts: Partial<Record<StatusChipCode, number>>;
+  onChange: (next: StatusChipCode | '') => void;
 }
 
 /**
- * 「결재 대기 3」 칩(#186) — 조회 조건 칸의 「결재 대기만 보기」 체크를 탭 줄 오른쪽으로 옮긴 것이다(입하 예정
- * 조회의 단계 칩과 같은 모양). 누르면 결재 대기만 남고, 다시 누르면 풀린다. 상태 기준값이 확정되지 않아
- * 승인·반려 칩은 세우지 않는다.
+ * 「결재 대기 3 · 승인 0 · 반려 0」 칩(#186) — 입하 예정 조회의 단계 칩과 같은 짜임이다. 누르면 그 상태만 남고,
+ * 다시 누르면 풀린다. 켜진 칩은 목록의 상태 배지와 같은 색이다(대기 노랑 · 승인 초록 · 반려 빨강).
  */
-export const PendingChip = ({ selected, count, onChange }: PendingChipProps) => {
+export const StatusChips = ({ active, counts, onChange }: StatusChipsProps) => {
   const t = messages.qualityApproval;
 
   return (
-    <Chip
-      variant="filter"
-      size="sm"
-      selected={selected}
-      aria-pressed={selected}
-      aria-label={selected ? t.pendingChip.filterOff : t.fields.pendingOnly}
-      onSelectedChange={onChange}
-    >
-      {count === undefined ? t.pendingChip.label : t.pendingChip.count(count)}
-    </Chip>
+    <div className="quality-approval-status-chips" role="group" aria-label={t.statusChips.label}>
+      {STATUS_CHIP_CODES.map((code) => {
+        const { label, tone } = statusBadgeOf(code);
+        const count = counts[code];
+        const isActive = active === code;
+
+        return (
+          <Chip
+            key={code}
+            variant="filter"
+            size="sm"
+            className={`quality-approval-status-chip is-${tone}`}
+            selected={isActive}
+            aria-pressed={isActive}
+            aria-label={isActive ? t.statusChips.filterOff(label) : t.statusChips.filterOn(label)}
+            onSelectedChange={(selected) => onChange(selected ? code : '')}
+          >
+            {count === undefined ? label : t.statusChips.count(label, count)}
+          </Chip>
+        );
+      })}
+    </div>
   );
 };

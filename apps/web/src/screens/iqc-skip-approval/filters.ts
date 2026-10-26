@@ -1,6 +1,7 @@
 import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { statusBadgeOf } from '../quality-approval/code-options';
 import type { RequestFilters } from './types';
 
 /**
@@ -302,7 +303,8 @@ export const toFilterChips = (filters: RequestFilters): RequestFilterChip[] => {
   if (filters.statusCode !== '') {
     chips.push({
       key: 'statusCode',
-      label: t.filters.chipStatus(filters.statusCode),
+      /* 탭 줄 상태 칩(#186)이 거는 값은 그 칩과 같은 이름으로 읽힌다. 모르는 값은 코드 그대로다. */
+      label: t.filters.chipStatus(statusBadgeOf(filters.statusCode).label),
       removeLabel: t.filters.chipRemoveStatus,
     });
   }

@@ -19,7 +19,6 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     periodFrom: 'Tìm theo ngày trình bắt đầu',
     periodTo: 'Tìm theo ngày trình kết thúc',
     q: 'Tìm theo số yêu cầu',
-    pendingOnly: 'Chỉ xem mục chờ phê duyệt',
     approvalRequestNo: 'Số yêu cầu',
     requestedByName: 'Người trình',
     requestedAt: 'Thời điểm trình',
@@ -30,11 +29,12 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     myTurn: 'Lượt phê duyệt',
   },
   codePlaceholder: 'Đang chuẩn bị giá trị gốc',
-  /** 탭 줄 오른쪽 칩(#186) — 「결재 대기 3」. 누르면 결재 대기만 남고, 다시 누르면 풀린다. */
-  pendingChip: {
-    label: 'Chờ phê duyệt',
-    count: (count: number): string => `Chờ phê duyệt ${String(count)}`,
-    filterOff: 'Bỏ lọc chờ phê duyệt',
+  /** 탭 줄 오른쪽 상태 칩(#186) — 「결재 대기 3」. 누르면 그 상태만 남고, 다시 누르면 풀린다. */
+  statusChips: {
+    label: 'Trạng thái phê duyệt',
+    count: (label: string, count: number): string => `${label} ${String(count)}`,
+    filterOn: (label: string): string => `Chỉ xem ${label}`,
+    filterOff: (label: string): string => `Bỏ lọc ${label}`,
   },
   all: 'Tất cả',
   datePlaceholder: 'Hãy chọn ngày',

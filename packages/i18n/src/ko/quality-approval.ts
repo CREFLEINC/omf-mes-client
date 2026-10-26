@@ -11,7 +11,6 @@ export const qualityApproval = {
     periodFrom: '상신 시작일 검색',
     periodTo: '상신 종료일 검색',
     q: '요청번호 검색',
-    pendingOnly: '결재 대기만 보기',
     approvalRequestNo: '요청번호',
     requestedByName: '상신자',
     requestedAt: '상신 일시',
@@ -23,11 +22,12 @@ export const qualityApproval = {
     myTurn: '결재 차례',
   },
   codePlaceholder: '기준값 준비 중',
-  /** 탭 줄 오른쪽 칩(#186) — 「결재 대기 3」. 누르면 결재 대기만 남고, 다시 누르면 풀린다. */
-  pendingChip: {
-    label: '결재 대기',
-    count: (count: number): string => `결재 대기 ${String(count)}`,
-    filterOff: '결재 대기 조건 해제',
+  /** 탭 줄 오른쪽 상태 칩(#186) — 「결재 대기 3」. 누르면 그 상태만 남고, 다시 누르면 풀린다. */
+  statusChips: {
+    label: '결재 상태',
+    count: (label: string, count: number): string => `${label} ${String(count)}`,
+    filterOn: (label: string): string => `${label}만 보기`,
+    filterOff: (label: string): string => `${label} 조건 해제`,
   },
   all: '전체',
   datePlaceholder: '날짜를 선택하세요',

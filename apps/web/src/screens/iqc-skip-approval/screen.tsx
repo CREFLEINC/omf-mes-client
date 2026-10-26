@@ -11,9 +11,11 @@ import { toWebAccess } from '../../patterns/web-access';
 import {
   IQC_SKIP_TYPE_CODE,
   QUALITY_APPROVALS_PATH,
-  PendingChip,
+  StatusChips,
   TypeTabs,
   toTypeTabOptions,
+  activeStatusChip,
+  statusChipChoice,
 } from '../quality-approval/type-tabs';
 import { QUALITY_APPROVAL_TYPE_CODES } from '../quality-approval/code-options';
 import {
@@ -245,10 +247,31 @@ export const IqcSkipApprovalScreen = () => {
    */
   const listQuery = toRequestListQuery(filters, pendingOnly, page, IQC_SKIP_APPROVAL_TYPE_CODE);
   const list = useRequestList(listQuery);
-  /* 탭 줄 「결재 대기 N」 칩의 수 — 지금 조건의 결재 대기 첫 쪽(대기만 보는 중이면 위 목록과 같은 조회다). */
-  const pendingCount = useRequestList(
-    toRequestListQuery(filters, true, 1, IQC_SKIP_APPROVAL_TYPE_CODE),
-  );
+  /*
+   * 탭 줄 상태 칩의 수 — 지금 조건(상태 조건은 빼고)의 상태별 첫 쪽 건수. 켜진 칩의 조회는 위 목록과 같은 조회라
+   * 다시 나가지 않는다(첫 쪽일 때).
+   */
+  const unfiltered = { ...filters, statusCode: '' };
+  const statusCounts = {
+    PENDING: useRequestList(toRequestListQuery(unfiltered, true, 1, IQC_SKIP_APPROVAL_TYPE_CODE))
+      .data?.page.total,
+    APPROVED: useRequestList(
+      toRequestListQuery(
+        { ...unfiltered, statusCode: 'APPROVED' },
+        false,
+        1,
+        IQC_SKIP_APPROVAL_TYPE_CODE,
+      ),
+    ).data?.page.total,
+    REJECTED: useRequestList(
+      toRequestListQuery(
+        { ...unfiltered, statusCode: 'REJECTED' },
+        false,
+        1,
+        IQC_SKIP_APPROVAL_TYPE_CODE,
+      ),
+    ).data?.page.total,
+  };
   const items = list.data?.items ?? EMPTY_ITEMS;
   const rows = useMemo(() => items.map(toRequestRow), [items]);
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, items.length);
@@ -951,11 +974,12 @@ export const IqcSkipApprovalScreen = () => {
         }}
         trailing={
           /* 수명 표 3행 — 조건은 그대로 두고 쪽과 선택만 되돌린다. */
-          <PendingChip
-            selected={pendingOnly}
-            count={pendingCount.data?.page.total}
+          <StatusChips
+            active={activeStatusChip(pendingOnly, filters.statusCode)}
+            counts={statusCounts}
             onChange={(next) => {
-              apply(filters, next);
+              const choice = statusChipChoice(next);
+              apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
             }}
           />
         }

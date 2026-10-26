@@ -110,11 +110,20 @@ const isApprovePath = (pathname: string): boolean =>
 const isRejectPath = (pathname: string): boolean =>
   /^\/app\/approval-requests\/[^/]+:reject$/.test(pathname);
 
+/** 탭 줄 승인·반려 칩의 건수 조회(#186) — 같은 경로라 목록 조회와 갈라 센다. */
+const isStatusCount = (request: RecordedRequest): boolean =>
+  request.url.pathname === REQUESTS_PATH &&
+  ['APPROVED', 'REJECTED'].includes(request.url.searchParams.get('statusCode') ?? '');
+
+const statusCountRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(isStatusCount);
+
 /**
  * 목록으로 나간 요청. **경로 전체로 센다** — 조건이 무엇이든, 잘못된 경로로 나갔든 잡힌다.
+ * 승인·반려 칩의 건수 조회는 뺀다(`statusCountRequests`).
  */
 const listRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
-  requests.filter((request) => request.url.pathname === REQUESTS_PATH);
+  requests.filter((request) => request.url.pathname === REQUESTS_PATH && !isStatusCount(request));
 
 const detailRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => isDetailPath(request.url.pathname));
@@ -351,7 +360,7 @@ const requestTable = (): HTMLElement => screen.getByRole('table');
 const pendingChip = (): HTMLElement =>
   screen.getByRole('button', {
     name: new RegExp(
-      `^(${messages.qualityApproval.fields.pendingOnly}|${messages.qualityApproval.pendingChip.filterOff})$`,
+      `^(${messages.qualityApproval.statusChips.filterOn(messages.qualityApproval.statusLabels.PENDING)}|${messages.qualityApproval.statusChips.filterOff(messages.qualityApproval.statusLabels.PENDING)})$`,
     ),
   });
 
@@ -413,6 +422,24 @@ describe('첫 진입', () => {
     await waitForList();
 
     expect(listRequests(requests)).toHaveLength(1);
+  });
+
+  it('탭 줄 승인·반려 칩의 수는 같은 조건에서 상태만 바꿔 센다(#186)', async () => {
+    const { requests } = renderScreen([listRoute()]);
+
+    await waitForList();
+
+    await waitFor(() => {
+      expect(
+        statusCountRequests(requests)
+          .map((request) => request.url.searchParams.get('statusCode'))
+          .sort(),
+      ).toEqual(['APPROVED', 'REJECTED']);
+    });
+    for (const request of statusCountRequests(requests)) {
+      expect(request.url.searchParams.get('pendingOnly')).toBeNull();
+      expect(request.url.searchParams.get('approvalTypeCode')).toBe(IQC_SKIP_APPROVAL_TYPE_CODE);
+    }
   });
 
   /** 이 화면은 **판정하는 자리**다 — 내가 승인자인 것만 대상이며 사용자가 풀 수 없다. */
@@ -680,7 +707,10 @@ describe('조회 조건', () => {
 
     await waitForList();
 
-    const query = lastListQuery(requests);
+    /* 목록 조회 — 결재 대기 칩의 수(#186)는 상태 조건을 빼고 세므로 상태 조건이 실린 쪽을 고른다. */
+    const query = listRequests(requests).find((request) =>
+      request.url.searchParams.has('statusCode'),
+    )?.url.searchParams;
 
     expect(query?.get('statusCode')).toBe('SAMPLE-STATUS-OPEN');
     expect(query?.get('q')).toBe('SYNTH');

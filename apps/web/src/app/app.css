@@ -3907,6 +3907,29 @@ main > * + * {
   margin-left: auto;
 }
 
+/* 상태 칩 묶음 — 입하 예정 조회의 단계 칩(`.po-board-stage-chips`)과 같은 간격. */
+.quality-approval-status-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* 켜진 칩은 목록의 상태 배지와 같은 색이다(대기 노랑 · 승인 초록 · 반려 빨강 — `statusBadgeOf`). */
+.quality-approval-status-chip.is-warning[aria-pressed='true'] {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.quality-approval-status-chip.is-success[aria-pressed='true'] {
+  background: var(--semantic-success-container);
+  color: var(--on-semantic-success-container);
+}
+
+.quality-approval-status-chip.is-error[aria-pressed='true'] {
+  background: var(--semantic-error-container);
+  color: var(--on-semantic-error-container);
+}
+
 .quality-approval-side {
   display: flex;
   flex-direction: column;
@@ -4001,7 +4024,7 @@ main:has(.iqc-skip-approval-detail) {
   display: grid;
   grid-template-columns:
     minmax(8rem, 10.5rem) repeat(2, minmax(9rem, 12rem)) minmax(8rem, 11.5rem)
-    minmax(max-content, 1fr);
+    max-content;
   gap: var(--space-3);
   margin-bottom: 0;
 }
@@ -4027,10 +4050,11 @@ main:has(.iqc-skip-approval-detail) {
   gap: var(--space-3);
 }
 
+/* 단추는 마지막 칸 바로 뒤에 붙는다(입하 예정 조회와 같다) — 남는 폭은 줄 오른쪽에 비워 둔다(#186). */
 .quality-approval-filter-footer .filter-actions {
   flex-wrap: nowrap;
-  justify-content: flex-end;
-  margin: 0 0 0 auto;
+  justify-content: flex-start;
+  margin: 0;
 }
 
 .quality-approval-list-pane > .banner-slot {
@@ -4233,9 +4257,13 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 @media (max-width: 1100px) {
-  .quality-approval-workspace,
-  .filter-bar.quality-approval-filter {
+  .quality-approval-workspace {
     grid-template-columns: 1fr;
+  }
+
+  /* 좁은 창에서도 칸을 창 폭만큼 늘리지 않는다 — 세 칸씩 줄바꿈하고 단추는 다음 칸에 선다(#186). */
+  .filter-bar.quality-approval-filter {
+    grid-template-columns: repeat(3, minmax(9rem, 12rem));
   }
 }
 
@@ -18433,7 +18461,8 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 /* 검색 줄 — 격자로 칸 윗선·높이를 맞춘다. 좁으면 두 줄, 단추 짝은 오른쪽. */
 .filter-bar.iqc-skip-approval-filter {
   display: grid;
-  grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1.2fr) minmax(12rem, 1.4fr) auto auto;
+  /* 칸마다 상한을 둔다 — 넓은 창에서 칸이 늘어나지 않고, 단추가 마지막 칸 바로 뒤에 붙는다(#186). */
+  grid-template-columns: minmax(10rem, 12rem) minmax(12rem, 16rem) minmax(12rem, 16rem) auto;
   align-items: start;
   gap: var(--space-3);
 }
@@ -18455,17 +18484,12 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 .iqc-skip-approval-filter .filter-actions {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 @media (max-width: 1280px) {
   .filter-bar.iqc-skip-approval-filter {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .iqc-skip-approval-filter > .field-cell-unlabeled:has(.check-group) {
-    grid-column: 1 / 3;
-    margin-top: 0;
   }
 
   .iqc-skip-approval-filter > .field-cell-unlabeled:has(.filter-actions) {

@@ -51,8 +51,11 @@ import { RequestList } from './request-list';
 import {
   IQC_SKIP_APPROVAL_PATH,
   IQC_SKIP_TYPE_CODE,
-  PendingChip,
+  STATUS_CHIP_CODES,
+  StatusChips,
   TypeTabs,
+  activeStatusChip,
+  statusChipChoice,
   toTypeTabOptions,
 } from './type-tabs';
 import {
@@ -110,7 +113,8 @@ export const QualityApprovalScreen = ({
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다(`inlineTabs`). */
   const canOpenIqcSkip = toWebAccess(session?.permissions).allows(IQC_SKIP_APPROVAL_PATH);
   const filters = useMemo(
-    () => readFilters(searchParams, approvalTypeCodes, statusCodes),
+    /* 승인·반려 칩(#186)이 거는 상태 조건도 주소에서 읽는다 — 조회 조건 칸의 선택지와 따로다. */
+    () => readFilters(searchParams, approvalTypeCodes, [...statusCodes, ...STATUS_CHIP_CODES]),
     [approvalTypeCodes, searchParams, statusCodes],
   );
   const pendingOnly = readPendingOnly(searchParams);
@@ -119,8 +123,20 @@ export const QualityApprovalScreen = ({
   const scopeWarning = approvalScopeWarning(approvalTypeCodes);
   const query = toRequestListQuery(filters, pendingOnly, page);
   const list = useApprovalRequests(query);
-  /* 탭 줄 「결재 대기 N」 칩의 수 — 지금 조건의 결재 대기 첫 쪽(대기만 보는 중이면 위 목록과 같은 조회다). */
-  const pendingCount = useApprovalRequests(toRequestListQuery(filters, true, 1));
+  /*
+   * 탭 줄 상태 칩의 수 — 지금 조건(상태 조건은 빼고)의 상태별 첫 쪽 건수. 켜진 칩의 조회는 위 목록과 같은 조회라
+   * 다시 나가지 않는다(첫 쪽일 때).
+   */
+  const unfiltered = { ...filters, statusCode: '' };
+  const statusCounts = {
+    PENDING: useApprovalRequests(toRequestListQuery(unfiltered, true, 1)).data?.page.total,
+    APPROVED: useApprovalRequests(
+      toRequestListQuery({ ...unfiltered, statusCode: 'APPROVED' }, false, 1),
+    ).data?.page.total,
+    REJECTED: useApprovalRequests(
+      toRequestListQuery({ ...unfiltered, statusCode: 'REJECTED' }, false, 1),
+    ).data?.page.total,
+  };
   const detail = useApprovalRequestDetail(selectedId);
   /* OQC 생략(#119)은 특채가 아니다 — 연결 조건(특채)을 묻지도, 요구하지도 않는다. */
   const isOqcSkip = String(detail.data?.request.approvalTypeCode) === OQC_SKIP;
@@ -411,10 +427,13 @@ export const QualityApprovalScreen = ({
           else apply({ ...filters, approvalTypeCode: code }, pendingOnly);
         }}
         trailing={
-          <PendingChip
-            selected={pendingOnly}
-            count={pendingCount.data?.page.total}
-            onChange={(next) => apply(filters, next)}
+          <StatusChips
+            active={activeStatusChip(pendingOnly, filters.statusCode)}
+            counts={statusCounts}
+            onChange={(next) => {
+              const choice = statusChipChoice(next);
+              apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
+            }}
           />
         }
       />
