@@ -1,3 +1,4 @@
+import { Button } from '@crefle/web-ui';
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 
 /**
@@ -169,4 +170,55 @@ export const PaneSplitter = ({
       }
     }}
   />
+);
+
+/** 두 구획을 나란히(`side`) 둘지 위아래(`stack`)로 둘지. */
+export type PaneLayout = 'side' | 'stack';
+
+/**
+ * 목록 · 상세 배치 바꾸기(사용자 지시 2026-10-26 · omf-all-around#186). 고른 배치는 화면마다 브라우저에 남긴다 —
+ * 다시 들어와도 같은 배치다. 저장소가 막혀 있으면 나란히 둔다. 창이 1440px 보다 좁으면 CSS 가 늘 위아래로 쌓으므로
+ * 이 값은 넓은 창에서만 뜻이 있다(`.po-board-split.is-stacked`).
+ */
+export const usePaneLayout = (storageKey: string) => {
+  const [layout, setLayout] = useState<PaneLayout>(() => {
+    try {
+      return window.localStorage.getItem(storageKey) === 'stack' ? 'stack' : 'side';
+    } catch {
+      return 'side';
+    }
+  });
+
+  const toggle = (): void => {
+    const next: PaneLayout = layout === 'side' ? 'stack' : 'side';
+    setLayout(next);
+    try {
+      window.localStorage.setItem(storageKey, next);
+    } catch {
+      /* 저장하지 못해도 이번 화면에서는 그대로 쓴다. */
+    }
+  };
+
+  /** 두 구획을 감싼 상자(`.po-board-split`)에 덧붙일 이름. */
+  const className = layout === 'stack' ? 'po-board-split is-stacked' : 'po-board-split';
+
+  return { layout, toggle, className };
+};
+
+/**
+ * 배치 바꾸기 단추 — 누르면 나란히 ↔ 위아래가 바뀐다. 단추 글은 «눌렀을 때 될 배치»다.
+ * 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다 — 눌러도 바뀌는 것이 없다.
+ */
+export const PaneLayoutToggle = ({
+  layout,
+  onToggle,
+  labels,
+}: {
+  layout: PaneLayout;
+  onToggle: () => void;
+  labels: { toStack: string; toSide: string };
+}) => (
+  <Button variant="text" size="sm" className="po-board-layout-toggle" onClick={onToggle}>
+    {layout === 'side' ? labels.toStack : labels.toSide}
+  </Button>
 );

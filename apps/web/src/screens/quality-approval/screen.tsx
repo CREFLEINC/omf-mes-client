@@ -7,7 +7,13 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite } from '../../patterns/master';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneLayoutToggle,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneLayout,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { toApiError } from '../../patterns/request';
@@ -109,6 +115,7 @@ export const QualityApprovalScreen = ({
   /* 두 구획이 창 바닥에서 멈추고, 가운데 막대로 고른 폭은 다음에 들어와도 남는다(입하 예정 조회와 같다). */
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:quality-approvals:split', 0.4);
+  const paneLayout = usePaneLayout('omf-mes:quality-approvals:layout');
   const { session } = useSession();
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다(`inlineTabs`). */
   const canOpenIqcSkip = toWebAccess(session?.permissions).allows(IQC_SKIP_APPROVAL_PATH);
@@ -427,14 +434,21 @@ export const QualityApprovalScreen = ({
           else apply({ ...filters, approvalTypeCode: code }, pendingOnly);
         }}
         trailing={
-          <StatusChips
-            active={activeStatusChip(pendingOnly, filters.statusCode)}
-            counts={statusCounts}
-            onChange={(next) => {
-              const choice = statusChipChoice(next);
-              apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
-            }}
-          />
+          <>
+            <StatusChips
+              active={activeStatusChip(pendingOnly, filters.statusCode)}
+              counts={statusCounts}
+              onChange={(next) => {
+                const choice = statusChipChoice(next);
+                apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
+              }}
+            />
+            <PaneLayoutToggle
+              layout={paneLayout.layout}
+              onToggle={paneLayout.toggle}
+              labels={messages.qualityApproval.layout}
+            />
+          </>
         }
       />
       <section ref={aboveRef} className="pane po-board-filter" aria-label={t.panes.filter}>
@@ -445,7 +459,7 @@ export const QualityApprovalScreen = ({
           onReset={() => apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT)}
         />
       </section>
-      <div ref={splitRef} className="po-board-split" style={split.style}>
+      <div ref={splitRef} className={paneLayout.className} style={split.style}>
         <section
           className="pane po-board-pane po-board-scroll quality-approval-pane quality-approval-list-pane"
           aria-label={t.panes.list}

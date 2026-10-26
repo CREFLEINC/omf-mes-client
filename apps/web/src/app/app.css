@@ -6865,6 +6865,30 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: none;
 }
 
+/*
+ * 목록 · 상세 위아래 배치(#186, patterns/po-board.tsx `usePaneLayout`) — 넓은 창에서도 위아래로 쌓는다. 창 바닥에
+ * 맞춘 높이는 그대로 두고 목록 2 : 상세 3 으로 나눈다. 넘치는 줄은 각 구획 안에서 스크롤한다. 폭 끌기 막대는 감춘다.
+ */
+@media (min-width: 1440px) {
+  .po-board-split.is-stacked,
+  .po-board-split.is-stacked:has(> .po-board-splitter) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 2fr) minmax(0, 3fr);
+    row-gap: var(--space-4);
+  }
+
+  .po-board-split.is-stacked > .po-board-splitter {
+    display: none;
+  }
+}
+
+/* 창이 좁으면 늘 위아래로 쌓인다 — 배치 단추는 눌러도 바뀌는 것이 없어 감춘다. */
+@media (max-width: 1439px) {
+  .po-board-layout-toggle {
+    display: none;
+  }
+}
+
 /* 끄는 동안 글자가 선택되거나 커서가 바뀌지 않게. */
 body.po-board-resizing {
   cursor: col-resize;

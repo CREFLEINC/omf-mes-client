@@ -5,7 +5,13 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneLayoutToggle,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneLayout,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import {
@@ -150,6 +156,7 @@ export const IqcSkipApprovalScreen = () => {
   /* 두 구획이 창 바닥에서 멈추고, 가운데 막대로 고른 폭은 다음에 들어와도 남는다(입하 예정 조회와 같다). */
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:iqc-skip-approval:split', 0.4);
+  const paneLayout = usePaneLayout('omf-mes:iqc-skip-approval:layout');
   const { session } = useSession();
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다 — 품질 승인 처리를 못 보면 탭을 세우지 않는다. */
   const canOpenQualityApprovals = toWebAccess(session?.permissions).allows(QUALITY_APPROVALS_PATH);
@@ -974,14 +981,21 @@ export const IqcSkipApprovalScreen = () => {
         }}
         trailing={
           /* 수명 표 3행 — 조건은 그대로 두고 쪽과 선택만 되돌린다. */
-          <StatusChips
-            active={activeStatusChip(pendingOnly, filters.statusCode)}
-            counts={statusCounts}
-            onChange={(next) => {
-              const choice = statusChipChoice(next);
-              apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
-            }}
-          />
+          <>
+            <StatusChips
+              active={activeStatusChip(pendingOnly, filters.statusCode)}
+              counts={statusCounts}
+              onChange={(next) => {
+                const choice = statusChipChoice(next);
+                apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
+              }}
+            />
+            <PaneLayoutToggle
+              layout={paneLayout.layout}
+              onToggle={paneLayout.toggle}
+              labels={messages.qualityApproval.layout}
+            />
+          </>
         }
       />
 
@@ -1021,7 +1035,7 @@ export const IqcSkipApprovalScreen = () => {
         </div>
       </section>
 
-      <div ref={splitRef} className="po-board-split" style={split.style}>
+      <div ref={splitRef} className={paneLayout.className} style={split.style}>
         <section
           className="pane po-board-pane po-board-scroll iqc-skip-approval-list"
           aria-label={t.panes.list}

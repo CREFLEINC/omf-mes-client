@@ -42,6 +42,8 @@ export const qualityApproval = {
   statusLabels: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' },
   /** 목록 | 상세 사이 끌기 막대(#186) — 입하 예정 조회와 같은 말. */
   splitter: '끌어서 목록·상세 폭 조절',
+  /** 목록 · 상세 배치 바꾸기 단추(#186) — 글은 눌렀을 때 될 배치다. */
+  layout: { toStack: '상하로 보기', toSide: '좌우로 보기' },
   panes: {
     filter: '조회 조건',
     list: '승인 요청 목록',

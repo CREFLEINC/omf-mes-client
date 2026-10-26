@@ -46,6 +46,8 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
   },
   statusLabels: { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Trả lại' },
   splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
+  /** 목록 · 상세 배치 바꾸기 단추(#186) — 글은 눌렀을 때 될 배치다. */
+  layout: { toStack: 'Xem trên dưới', toSide: 'Xem trái phải' },
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách yêu cầu phê duyệt',
