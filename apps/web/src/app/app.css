@@ -12455,17 +12455,26 @@ button.app-button-neutral {
  * POP 목록 줄 공용 틀(`patterns/pop-list-row`, C-21). 제목 줄은 이름 왼쪽, 칩 오른쪽 끝이다. 정보
  * 영역과의 간격은 줄을 감싸는 쪽이 준다. 자재 투입과 작업 지시 목록이 같은 규칙을 쓴다.
  */
+/*
+ * 제목과 정보는 글자 단계로도 가른다(C-21): 제목 `--type-title-sm` 굵게, 라벨 `--type-label-sm` 약한
+ * 색, 값 `--type-body-sm`. 제목 줄 아래에는 구분선을 둔다.
+ */
 .pop-row-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2) var(--space-3);
   flex-wrap: wrap;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 /* 제목은 줄에서 가장 먼저 읽힌다. */
 .pop-row-title {
+  color: var(--on-surface);
+  font: var(--type-title-sm);
   font-weight: 600;
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 .pop-row-chips {
@@ -12486,10 +12495,15 @@ button.app-button-neutral {
 
 .pop-row-info-label {
   color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
 }
 
 .pop-row-info-value {
   min-width: 0;
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
   overflow-wrap: anywhere;
 }
 
@@ -12719,11 +12733,9 @@ button.app-button-neutral {
   justify-self: stretch;
 }
 
-/* W/O 번호는 지시서와 대조하는 값이다. 고정폭, 줄에서 가장 먼저 읽히는 크기(POP 값 글자). */
+/* W/O 번호는 지시서와 대조하는 값이다. 고정폭이고 크기는 제목 단계(`pop-row-title`)를 따른다. */
 .work-start-wo-no {
   font-family: var(--font-mono);
-  font-size: var(--pop-value);
-  line-height: 28px;
 }
 
 /*
