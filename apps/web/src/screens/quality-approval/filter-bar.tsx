@@ -1,4 +1,4 @@
-import { Button, Checkbox, DatePicker, Select, TextField } from '@crefle/web-ui';
+import { Button, DatePicker, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -40,20 +40,11 @@ const CodeField = ({ label, options, value, onChange }: CodeFieldProps) => {
 export interface FilterBarProps {
   applied: RequestFilters;
   statusOptions: CodeOption[];
-  pendingOnly: boolean;
   onApply: (filters: RequestFilters) => void;
-  onTogglePendingOnly: (value: boolean) => void;
   onReset: () => void;
 }
 
-export const FilterBar = ({
-  applied,
-  statusOptions,
-  pendingOnly,
-  onApply,
-  onTogglePendingOnly,
-  onReset,
-}: FilterBarProps) => {
+export const FilterBar = ({ applied, statusOptions, onApply, onReset }: FilterBarProps) => {
   const t = messages.qualityApproval;
   const fromId = useId();
   const toId = useId();
@@ -118,13 +109,8 @@ export const FilterBar = ({
           if (event.key === 'Enter' && !event.nativeEvent.isComposing) onApply(draft);
         }}
       />
+      {/* 「결재 대기만 보기」는 탭 줄 오른쪽 칩으로 옮겼다(#186 · `PendingChip`). */}
       <div className="quality-approval-filter-footer">
-        <Checkbox
-          checked={pendingOnly}
-          onChange={(event) => onTogglePendingOnly(event.target.checked)}
-        >
-          {messages.qualityApproval.fields.pendingOnly}
-        </Checkbox>
         <div className="filter-actions">
           <Button onClick={() => onApply(draft)}>{messages.common.search}</Button>
           <Button variant="outlined" onClick={reset}>

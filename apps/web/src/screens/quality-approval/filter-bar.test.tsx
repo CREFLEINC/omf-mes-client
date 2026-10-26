@@ -12,9 +12,7 @@ const t = messages.qualityApproval;
 const makeProps = (overrides: Partial<FilterBarProps> = {}): FilterBarProps => ({
   applied: EMPTY_FILTERS,
   statusOptions: [],
-  pendingOnly: true,
   onApply: vi.fn(),
-  onTogglePendingOnly: vi.fn(),
   onReset: vi.fn(),
   ...overrides,
 });
@@ -77,17 +75,6 @@ describe('FilterBar draft lifetime', () => {
     expect(props.onReset).toHaveBeenCalledOnce();
   });
 
-  it('pendingOnly는 즉시 알리고 검색어 draft는 보존한다', async () => {
-    const { props, user } = renderBar();
-
-    await user.type(requestSearch(), 'SYNTH-DRAFT');
-    await user.click(screen.getByRole('checkbox', { name: t.fields.pendingOnly }));
-
-    expect(props.onTogglePendingOnly).toHaveBeenCalledWith(false);
-    expect(props.onApply).not.toHaveBeenCalled();
-    expect(requestSearch()).toHaveValue('SYNTH-DRAFT');
-  });
-
   it('적용된 primitive가 바뀌면 draft를 동기화한다', () => {
     const props = makeProps({ applied: { ...EMPTY_FILTERS, q: 'SYNTH-OLD' } });
     const { rerender } = render(<FilterBar {...props} />);
@@ -102,7 +89,7 @@ describe('FilterBar draft lifetime', () => {
     const { rerender } = render(<FilterBar {...props} />);
 
     await userEvent.setup().type(requestSearch(), 'SYNTH-DRAFT');
-    rerender(<FilterBar {...props} applied={{ ...EMPTY_FILTERS }} pendingOnly={false} />);
+    rerender(<FilterBar {...props} applied={{ ...EMPTY_FILTERS }} />);
 
     expect(requestSearch()).toHaveValue('SYNTH-DRAFT');
   });

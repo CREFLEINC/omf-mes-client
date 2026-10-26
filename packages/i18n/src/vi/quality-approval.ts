@@ -30,6 +30,12 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     myTurn: 'Lượt phê duyệt',
   },
   codePlaceholder: 'Đang chuẩn bị giá trị gốc',
+  /** 탭 줄 오른쪽 칩(#186) — 「결재 대기 3」. 누르면 결재 대기만 남고, 다시 누르면 풀린다. */
+  pendingChip: {
+    label: 'Chờ phê duyệt',
+    count: (count: number): string => `Chờ phê duyệt ${String(count)}`,
+    filterOff: 'Bỏ lọc chờ phê duyệt',
+  },
   all: 'Tất cả',
   datePlaceholder: 'Hãy chọn ngày',
   qPlaceholder: 'Hãy nhập số yêu cầu',

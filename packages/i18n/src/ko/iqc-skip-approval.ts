@@ -74,11 +74,6 @@ export const iqcSkipApproval = {
     /** 조건 줄의 기간 라벨. 위 주석의 뒤쪽 근거가 이 자리다. */
     period: '상신일',
     q: '요청번호 검색',
-    /**
-     * 계약 파라미터(`pendingOnly`)를 그대로 드러낸 확인칸이다. **기본이 켜짐**이라
-     * 이 화면에 들어오면 결재 대기부터 보이고, 끄면 끝난 건까지 함께 보인다.
-     */
-    pendingOnly: '결재 대기만 보기',
   },
   actions: {
     prevPage: '이전',

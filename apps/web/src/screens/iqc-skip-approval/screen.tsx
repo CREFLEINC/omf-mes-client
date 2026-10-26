@@ -11,6 +11,7 @@ import { toWebAccess } from '../../patterns/web-access';
 import {
   IQC_SKIP_TYPE_CODE,
   QUALITY_APPROVALS_PATH,
+  PendingChip,
   TypeTabs,
   toTypeTabOptions,
 } from '../quality-approval/type-tabs';
@@ -244,6 +245,10 @@ export const IqcSkipApprovalScreen = () => {
    */
   const listQuery = toRequestListQuery(filters, pendingOnly, page, IQC_SKIP_APPROVAL_TYPE_CODE);
   const list = useRequestList(listQuery);
+  /* 탭 줄 「결재 대기 N」 칩의 수 — 지금 조건의 결재 대기 첫 쪽(대기만 보는 중이면 위 목록과 같은 조회다). */
+  const pendingCount = useRequestList(
+    toRequestListQuery(filters, true, 1, IQC_SKIP_APPROVAL_TYPE_CODE),
+  );
   const items = list.data?.items ?? EMPTY_ITEMS;
   const rows = useMemo(() => items.map(toRequestRow), [items]);
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, items.length);
@@ -924,26 +929,37 @@ export const IqcSkipApprovalScreen = () => {
        * 입하 예정 조회와 같은 짜임(#186) — 제목·경로 없이 유형 탭이 맨 위, 조회 조건은 따로 한 구획,
        * 그 아래 왼쪽 목록 | 오른쪽 상세가 나란히 서고 가운데 막대로 폭을 나눈다(창이 좁으면 위아래로 쌓인다).
        */}
-      {/* 다른 유형 탭은 품질 승인 처리 목록으로 돌아가 그 유형을 연다. */}
-      {canOpenQualityApprovals && (
-        <TypeTabs
-          options={toTypeTabOptions(QUALITY_APPROVAL_TYPE_CODES)}
-          value={IQC_SKIP_TYPE_CODE}
-          onChange={(code) => {
-            /* 결재 전송 중에는 대상을 바꾸지 않는다 — 목록 행·쪽과 같은 잠금이다. */
-            if (code === IQC_SKIP_TYPE_CODE || isLocked) return;
-            const search = toAppliedSearchParams(
-              new URLSearchParams(),
-              { ...QUALITY_APPROVAL_EMPTY_FILTERS, approvalTypeCode: code },
-              QUALITY_APPROVAL_PENDING_ONLY_DEFAULT,
-              1,
-            ).toString();
-            void navigate(
-              search === '' ? QUALITY_APPROVALS_PATH : `${QUALITY_APPROVALS_PATH}?${search}`,
-            );
-          }}
-        />
-      )}
+      {/*
+       * 다른 유형 탭은 품질 승인 처리 목록으로 돌아가 그 유형을 연다(그 화면 권한이 없으면 탭은 서지 않는다).
+       * 「결재 대기 N」 칩은 권한과 상관없이 탭 줄 오른쪽에 선다 — 이 화면의 조회 조건이다.
+       */}
+      <TypeTabs
+        options={canOpenQualityApprovals ? toTypeTabOptions(QUALITY_APPROVAL_TYPE_CODES) : []}
+        value={IQC_SKIP_TYPE_CODE}
+        onChange={(code) => {
+          /* 결재 전송 중에는 대상을 바꾸지 않는다 — 목록 행·쪽과 같은 잠금이다. */
+          if (code === IQC_SKIP_TYPE_CODE || isLocked) return;
+          const search = toAppliedSearchParams(
+            new URLSearchParams(),
+            { ...QUALITY_APPROVAL_EMPTY_FILTERS, approvalTypeCode: code },
+            QUALITY_APPROVAL_PENDING_ONLY_DEFAULT,
+            1,
+          ).toString();
+          void navigate(
+            search === '' ? QUALITY_APPROVALS_PATH : `${QUALITY_APPROVALS_PATH}?${search}`,
+          );
+        }}
+        trailing={
+          /* 수명 표 3행 — 조건은 그대로 두고 쪽과 선택만 되돌린다. */
+          <PendingChip
+            selected={pendingOnly}
+            count={pendingCount.data?.page.total}
+            onChange={(next) => {
+              apply(filters, next);
+            }}
+          />
+        }
+      />
 
       {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
       <section
@@ -958,13 +974,8 @@ export const IqcSkipApprovalScreen = () => {
            * 채운다」는 전환을 화면 수준에서 잴 수 없다.
            */
           statusOptions={toCodeOptions(PLACEHOLDER_REQUEST_STATUS_CODES)}
-          pendingOnly={pendingOnly}
           onSearch={(nextFilters) => {
             apply(nextFilters, pendingOnly);
-          }}
-          /* 수명 표 3행 — 조건은 그대로 두고 쪽과 선택만 되돌린다. */
-          onTogglePendingOnly={(nextPendingOnly) => {
-            apply(filters, nextPendingOnly);
           }}
           onRemoveFilter={(key: FilterChipKey) => {
             apply(clearFilter(filters, key), pendingOnly);

@@ -286,13 +286,18 @@ describe('QualityApprovalScreen query and disclosure', () => {
 
     expect(await findRequest()).toBeInTheDocument();
     expect(screen.getByText(t.scopeWarning)).toBeInTheDocument();
-    expect(recorded.urls.filter((url) => url.pathname === PATH)).toHaveLength(1);
-    expect(Object.fromEntries(recorded.urls[0]?.searchParams ?? [])).toEqual({
+    /* 목록 하나 + 탭 줄 「결재 대기 N」 칩의 수(같은 조건의 결재 대기 첫 쪽 · #186). */
+    const sent = recorded.urls
+      .filter((url) => url.pathname === PATH)
+      .map((url) => Object.fromEntries(url.searchParams));
+    expect(sent).toHaveLength(2);
+    expect(sent).toContainEqual({
       assignedToMe: 'true',
       pendingOnly: 'true',
       q: 'SYNTH',
       page: '2',
     });
+    expect(sent).toContainEqual({ assignedToMe: 'true', pendingOnly: 'true', q: 'SYNTH' });
   });
 
   it('승인 유형 기준값이 준비되면 넓은 조회 경고를 거두고 해당 유형을 보낸다', async () => {
@@ -359,7 +364,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
     );
 
     await findRequest();
-    await user.click(screen.getByRole('checkbox', { name: t.fields.pendingOnly }));
+    await user.click(screen.getByRole('button', { name: t.pendingChip.filterOff }));
     await waitFor(() => expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=0'));
 
     /* 목록과 상세가 나란히 서므로(#186) 고른 채 쪽을 넘긴다 — 쪽 이동도 선택을 비운다. */

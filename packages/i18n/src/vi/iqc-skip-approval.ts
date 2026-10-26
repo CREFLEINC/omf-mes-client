@@ -32,7 +32,6 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     status: 'Trạng thái',
     period: 'Ngày trình',
     q: 'Tìm số yêu cầu',
-    pendingOnly: 'Chỉ xem phiếu chờ phê duyệt',
   },
   actions: {
     prevPage: 'Trước',

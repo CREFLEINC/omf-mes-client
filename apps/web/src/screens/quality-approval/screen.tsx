@@ -51,6 +51,7 @@ import { RequestList } from './request-list';
 import {
   IQC_SKIP_APPROVAL_PATH,
   IQC_SKIP_TYPE_CODE,
+  PendingChip,
   TypeTabs,
   toTypeTabOptions,
 } from './type-tabs';
@@ -118,6 +119,8 @@ export const QualityApprovalScreen = ({
   const scopeWarning = approvalScopeWarning(approvalTypeCodes);
   const query = toRequestListQuery(filters, pendingOnly, page);
   const list = useApprovalRequests(query);
+  /* 탭 줄 「결재 대기 N」 칩의 수 — 지금 조건의 결재 대기 첫 쪽(대기만 보는 중이면 위 목록과 같은 조회다). */
+  const pendingCount = useApprovalRequests(toRequestListQuery(filters, true, 1));
   const detail = useApprovalRequestDetail(selectedId);
   /* OQC 생략(#119)은 특채가 아니다 — 연결 조건(특채)을 묻지도, 요구하지도 않는다. */
   const isOqcSkip = String(detail.data?.request.approvalTypeCode) === OQC_SKIP;
@@ -407,14 +410,19 @@ export const QualityApprovalScreen = ({
           if (code === IQC_SKIP_TYPE_CODE) void navigate(IQC_SKIP_APPROVAL_PATH);
           else apply({ ...filters, approvalTypeCode: code }, pendingOnly);
         }}
+        trailing={
+          <PendingChip
+            selected={pendingOnly}
+            count={pendingCount.data?.page.total}
+            onChange={(next) => apply(filters, next)}
+          />
+        }
       />
       <section ref={aboveRef} className="pane po-board-filter" aria-label={t.panes.filter}>
         <FilterBar
           applied={filters}
           statusOptions={toCodeOptions(statusCodes)}
-          pendingOnly={pendingOnly}
           onApply={(next) => apply(next, pendingOnly)}
-          onTogglePendingOnly={(next) => apply(filters, next)}
           onReset={() => apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT)}
         />
       </section>

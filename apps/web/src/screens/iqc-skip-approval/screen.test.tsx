@@ -347,8 +347,13 @@ const watchRenderedText = (): { stop: () => string[] } => {
 
 const requestTable = (): HTMLElement => screen.getByRole('table');
 
-const pendingCheckbox = (): HTMLElement =>
-  screen.getByRole('checkbox', { name: t.fields.pendingOnly });
+/** 「결재 대기 N」 칩(#186) — 탭 줄 오른쪽. 켜져 있으면 「조건 해제」, 꺼져 있으면 「결재 대기만 보기」로 읽힌다. */
+const pendingChip = (): HTMLElement =>
+  screen.getByRole('button', {
+    name: new RegExp(
+      `^(${messages.qualityApproval.fields.pendingOnly}|${messages.qualityApproval.pendingChip.filterOff})$`,
+    ),
+  });
 
 /**
  * 목록이 도착할 때까지 기다린다.
@@ -420,7 +425,7 @@ describe('첫 진입', () => {
 
     expect(query?.get('assignedToMe')).toBe('true');
     expect(query?.get('pendingOnly')).toBe('true');
-    expect(pendingCheckbox()).toBeChecked();
+    expect(pendingChip()).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('이 화면에 없는 축을 싣지 않는다 — 상신하지 않고 대기 건수도 세지 않는다', async () => {
@@ -540,7 +545,7 @@ describe('G1 — 승인 유형 코드 자리표시', () => {
 
     expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
     expect(screen.getByRole('button', { name: messages.common.reset })).toBeEnabled();
-    expect(pendingCheckbox()).toBeEnabled();
+    expect(pendingChip()).toBeEnabled();
     expect(screen.getByRole('button', { name: /SYNTH-REQ-001/ })).toBeEnabled();
   });
 
@@ -564,7 +569,7 @@ describe('「결재 대기만 보기」', () => {
     const { requests, user } = renderScreen([listRoute()]);
 
     await waitForList();
-    await user.click(pendingCheckbox());
+    await user.click(pendingChip());
 
     await waitFor(() => {
       expect(listRequests(requests).length).toBeGreaterThan(1);
@@ -580,13 +585,13 @@ describe('「결재 대기만 보기」', () => {
     const { user } = renderScreen([listRoute()]);
 
     await waitForList();
-    await user.click(pendingCheckbox());
+    await user.click(pendingChip());
 
     await waitFor(() => {
       expect(currentLocation()).toBe(`${ROUTE}?pd=0`);
     });
 
-    await user.click(pendingCheckbox());
+    await user.click(pendingChip());
 
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
@@ -598,8 +603,13 @@ describe('「결재 대기만 보기」', () => {
 
     await waitForList();
 
-    expect(lastListQuery(requests)?.get('pendingOnly')).toBeNull();
-    expect(pendingCheckbox()).not.toBeChecked();
+    /* 목록은 그 조건 없이 간다 — 대기만 거른 조회는 탭 줄 칩의 수를 세는 것이다(#186). */
+    expect(
+      listRequests(requests).some(
+        (request) => request.url.searchParams.get('pendingOnly') === null,
+      ),
+    ).toBe(true);
+    expect(pendingChip()).toHaveAttribute('aria-pressed', 'false');
   });
 
   /* 수명 표 3행 — 조건은 유지하고 쪽과 선택만 되돌린다. */
@@ -607,7 +617,7 @@ describe('「결재 대기만 보기」', () => {
     const { requests, user } = renderScreen(defaultRoutes(), '?q=SYNTH&page=3&rq=9001');
 
     await waitForList();
-    await user.click(pendingCheckbox());
+    await user.click(pendingChip());
 
     await waitFor(() => {
       expect(currentLocation()).toContain('pd=0');
@@ -623,7 +633,7 @@ describe('「결재 대기만 보기」', () => {
     const { user } = renderScreen([listRoute()], '?page=3');
 
     await waitForList();
-    await user.click(pendingCheckbox());
+    await user.click(pendingChip());
 
     await waitFor(() => {
       expect(currentLocation()).toContain('pd=0');
@@ -724,8 +734,14 @@ describe('조회 조건', () => {
     });
 
     expect(currentLocation()).toContain('pd=0');
-    expect(lastListQuery(requests)?.get('pendingOnly')).toBeNull();
-    expect(pendingCheckbox()).not.toBeChecked();
+    /* 새 조건의 목록도 그 조건 없이 간다 — 대기만 거른 조회는 탭 줄 칩의 수를 세는 것이다(#186). */
+    expect(
+      listRequests(requests).some(
+        ({ url }) =>
+          url.searchParams.get('q') === 'SYNTH' && url.searchParams.get('pendingOnly') === null,
+      ),
+    ).toBe(true);
+    expect(pendingChip()).toHaveAttribute('aria-pressed', 'false');
   });
 
   /* 수명 표 2행 — 「처음 상태」에는 켜진 확인칸도 든다. */
@@ -739,7 +755,7 @@ describe('조회 조건', () => {
       expect(currentLocation()).toBe(ROUTE);
     });
 
-    expect(pendingCheckbox()).toBeChecked();
+    expect(pendingChip()).toHaveAttribute('aria-pressed', 'true');
     await waitFor(() => {
       expect(lastListQuery(requests)?.get('pendingOnly')).toBe('true');
     });
@@ -920,7 +936,7 @@ describe('조회 실패', () => {
     await screen.findByText(messages.httpError.loadTitle);
 
     expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
-    expect(pendingCheckbox()).toBeEnabled();
+    expect(pendingChip()).toBeEnabled();
   });
 
   it('다시 시도를 누르면 그 경로의 요청 수가 는다', async () => {
@@ -1567,7 +1583,7 @@ describe('조회만 하는 조작', () => {
 
     await waitForList();
 
-    await user.click(pendingCheckbox());
+    await user.click(pendingChip());
     await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
     await user.click(screen.getByRole('button', { name: t.actions.reload }));
 
@@ -2565,7 +2581,7 @@ describe('결재 — 전송 중', () => {
 
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
-    await user.click(pendingCheckbox());
+    await user.click(pendingChip());
 
     expect(currentLocation()).toContain('rq=9001');
     expect(currentLocation()).not.toContain('page=2');

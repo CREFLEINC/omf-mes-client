@@ -1,4 +1,4 @@
-import { Button, Checkbox, Chip, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, Chip, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -17,11 +17,7 @@ export interface RequestFilterBarProps {
    * 「값이 확정되면 배열만 채운다」는 전환을 화면 수준에서 잴 수 없다.
    */
   statusOptions: SelectOption[];
-  /** 「결재 대기만 보기」의 **적용된** 값. 이 칸만 편집 상태를 갖지 않는다(아래 주석). */
-  pendingOnly: boolean;
   onSearch: (filters: RequestFilters) => void;
-  /** 확인칸은 **즉시** 반영된다. 조회 버튼을 거치지 않는다. */
-  onTogglePendingOnly: (pendingOnly: boolean) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: FilterChipKey) => void;
   onReset: () => void;
@@ -57,9 +53,7 @@ export interface RequestFilterBarProps {
 export const RequestFilterBar = ({
   appliedFilters,
   statusOptions,
-  pendingOnly,
   onSearch,
-  onTogglePendingOnly,
   onRemoveFilter,
   onReset,
 }: RequestFilterBarProps) => {
@@ -173,19 +167,7 @@ export const RequestFilterBar = ({
           clearLabel={messages.common.clear}
         />
 
-        {/* 확인칸은 라벨 층이 없다 — 규범 2의 `.field-cell-unlabeled`가 줄을 맞춘다. */}
-        <div className="field-cell field-cell-unlabeled">
-          <div className="check-group">
-            <Checkbox
-              checked={pendingOnly}
-              onChange={(event) => {
-                onTogglePendingOnly(event.target.checked);
-              }}
-            >
-              {t.fields.pendingOnly}
-            </Checkbox>
-          </div>
-        </div>
+        {/* 「결재 대기만 보기」는 탭 줄 오른쪽 칩으로 옮겼다(#186 · `PendingChip`). */}
 
         {/*
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).

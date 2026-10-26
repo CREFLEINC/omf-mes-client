@@ -23,6 +23,12 @@ export const qualityApproval = {
     myTurn: '결재 차례',
   },
   codePlaceholder: '기준값 준비 중',
+  /** 탭 줄 오른쪽 칩(#186) — 「결재 대기 3」. 누르면 결재 대기만 남고, 다시 누르면 풀린다. */
+  pendingChip: {
+    label: '결재 대기',
+    count: (count: number): string => `결재 대기 ${String(count)}`,
+    filterOff: '결재 대기 조건 해제',
+  },
   all: '전체',
   datePlaceholder: '날짜를 선택하세요',
   qPlaceholder: '요청번호를 입력하세요',
