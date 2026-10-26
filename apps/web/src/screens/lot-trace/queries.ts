@@ -127,12 +127,11 @@ export interface CodeOption {
   label: string;
 }
 
-/** 상태 이름과 선택지. 사용 중지된 코드로 만든 기록도 있어 사용 중지까지 받는다. 이름을 못 찾으면 코드를 그대로 보인다. */
-export const useStatusCodes = (
-  kind: MovementKind,
+/** 코드 이름과 선택지. 사용 중지된 코드로 만든 기록도 있어 사용 중지까지 받는다. 이름을 못 찾으면 코드를 그대로 보인다. */
+export const useCodeNames = (
+  group: string,
 ): { options: CodeOption[]; nameOf: (code: string) => string } => {
   const { client } = useApiClient();
-  const group = statusGroupOf(kind);
   const query = useQuery({
     queryKey: lotTraceKeys.codes(group),
     queryFn: async () => {
@@ -153,6 +152,8 @@ export const useStatusCodes = (
     return { options, nameOf: (code) => names.get(code) ?? code };
   }, [query.data]);
 };
+
+export const useStatusCodes = (kind: MovementKind) => useCodeNames(statusGroupOf(kind));
 
 /* ── 참조 선택(C-12) ───────────────────────────────────────────────────── */
 

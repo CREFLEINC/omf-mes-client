@@ -1,7 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
 import type { LotTraceFilters, MovementKind } from './filters';
-import type { MovementPage } from './queries';
 import type { MovementRow } from './rows';
 
 /**
@@ -21,24 +20,28 @@ export interface ExportProgress {
   received: number;
 }
 
+/** 한 쪽 — 줄과 쪽 정보. 입출고 현황과 두 추적 목록이 같은 모양으로 넘긴다. */
+export interface RowPage<Row> {
+  rows: Row[];
+  page: { total: number };
+}
+
 /**
  * 끝까지 받는다. `signal`이 끊기면 그 자리에서 멈춘다(받던 요청도 끊는다).
  * 서버가 잘못된 총계를 주더라도 빈 쪽이 오면 멈춘다.
  */
-export const fetchAllMovements = async (
-  fetchPage: (page: number, size: number, signal: AbortSignal) => Promise<MovementPage>,
+export const fetchAllRows = async <Row>(
+  fetchPage: (page: number, size: number, signal: AbortSignal) => Promise<RowPage<Row>>,
   signal: AbortSignal,
   onProgress: (progress: ExportProgress) => void,
-): Promise<MovementRow[]> => {
-  const rows: MovementRow[] = [];
-  let total = 0;
+): Promise<Row[]> => {
+  const rows: Row[] = [];
   for (let page = 1; ; page += 1) {
     signal.throwIfAborted();
     const data = await fetchPage(page, EXPORT_PAGE_SIZE, signal);
-    total = data.page.total;
     rows.push(...data.rows);
-    onProgress({ total, received: rows.length });
-    if (data.rows.length === 0 || rows.length >= total) return rows;
+    onProgress({ total: data.page.total, received: rows.length });
+    if (data.rows.length === 0 || rows.length >= data.page.total) return rows;
   }
 };
 
@@ -46,10 +49,17 @@ export const fetchAllMovements = async (
 export const escapeCsvField = (value: string): string =>
   /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 
-interface CsvColumn {
+export interface CsvColumn<Row> {
   header: string;
-  value: (row: MovementRow) => string;
+  value: (row: Row) => string;
 }
+
+/** 줄 끝은 `\r\n`이다 — 표 계산 프로그램이 기대하는 형식이다. */
+export const toCsvText = <Row>(columns: readonly CsvColumn<Row>[], rows: readonly Row[]): string =>
+  [
+    columns.map((column) => escapeCsvField(column.header)).join(','),
+    ...rows.map((row) => columns.map((column) => escapeCsvField(column.value(row))).join(',')),
+  ].join('\r\n');
 
 const partnerHeaders = (kind: MovementKind): { code: string; name: string } | null =>
   kind === 'MATERIAL'
@@ -59,7 +69,10 @@ const partnerHeaders = (kind: MovementKind): { code: string; name: string } | nu
       : null;
 
 /** 화면 열에 코드 열(창고, 공급사 또는 고객)과 일시, 줄 번호, LOT 수를 더한다. 수량과 단위는 칸을 나눈다. */
-const columnsFor = (kind: MovementKind, statusName: (code: string) => string): CsvColumn[] => {
+const columnsFor = (
+  kind: MovementKind,
+  statusName: (code: string) => string,
+): CsvColumn<MovementRow>[] => {
   const c = t.list.columns;
   const partner = partnerHeaders(kind);
   return [
@@ -85,18 +98,11 @@ const columnsFor = (kind: MovementKind, statusName: (code: string) => string): C
   ];
 };
 
-/** 줄 끝은 `\r\n`이다 — 표 계산 프로그램이 기대하는 형식이다. */
 export const toCsv = (
   kind: MovementKind,
   rows: readonly MovementRow[],
   statusName: (code: string) => string,
-): string => {
-  const columns = columnsFor(kind, statusName);
-  return [
-    columns.map((column) => escapeCsvField(column.header)).join(','),
-    ...rows.map((row) => columns.map((column) => escapeCsvField(column.value(row))).join(',')),
-  ].join('\r\n');
-};
+): string => toCsvText(columnsFor(kind, statusName), rows);
 
 export const exportFileName = (filters: LotTraceFilters): string =>
   t.export.fileName(t.kinds[filters.kind], filters.from, filters.to);

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { EXPORT_PAGE_SIZE, escapeCsvField, fetchAllMovements, toCsv } from './export';
-import type { MovementPage } from './queries';
+import { EXPORT_PAGE_SIZE, escapeCsvField, fetchAllRows, toCsv } from './export';
 import type { MovementRow } from './rows';
 
 const row = (id: number, overrides: Partial<MovementRow> = {}): MovementRow => ({
@@ -23,10 +22,9 @@ const row = (id: number, overrides: Partial<MovementRow> = {}): MovementRow => (
   ...overrides,
 });
 
-const pageOf = (rows: MovementRow[], page: number, total: number): MovementPage => ({
+const pageOf = (rows: MovementRow[], page: number, total: number) => ({
   rows,
   page: { page, size: EXPORT_PAGE_SIZE, total },
-  totals: { lineCount: total, qtyByUom: [] },
 });
 
 describe('엑셀 내보내기 파일(CSV)', () => {
@@ -61,10 +59,12 @@ describe('엑셀 내보내기 파일(CSV)', () => {
 describe('현재 조건 전체 받기', () => {
   it('쪽 크기 200으로 총계까지 받고 진행을 알린다', async () => {
     const pages = [pageOf([row(1), row(2)], 1, 3), pageOf([row(3)], 2, 3)];
-    const fetchPage = vi.fn(async (page: number) => pages[page - 1] as MovementPage);
+    const fetchPage = vi.fn(
+      async (page: number, _size: number) => pages[page - 1] as ReturnType<typeof pageOf>,
+    );
     const progress: number[] = [];
 
-    const rows = await fetchAllMovements(fetchPage, new AbortController().signal, (p) =>
+    const rows = await fetchAllRows(fetchPage, new AbortController().signal, (p) =>
       progress.push(p.received),
     );
 
@@ -80,7 +80,7 @@ describe('현재 조건 전체 받기', () => {
     const fetchPage = vi.fn(async (page: number) =>
       page === 1 ? pageOf([row(1)], 1, 10) : pageOf([], page, 10),
     );
-    const rows = await fetchAllMovements(fetchPage, new AbortController().signal, () => {});
+    const rows = await fetchAllRows(fetchPage, new AbortController().signal, () => {});
     expect(rows).toHaveLength(1);
     expect(fetchPage).toHaveBeenCalledTimes(2);
   });
@@ -91,7 +91,7 @@ describe('현재 조건 전체 받기', () => {
       if (page === 1) abort.abort();
       return pageOf([row(page)], page, 5);
     });
-    await expect(fetchAllMovements(fetchPage, abort.signal, () => {})).rejects.toThrow();
+    await expect(fetchAllRows(fetchPage, abort.signal, () => {})).rejects.toThrow();
     expect(fetchPage).toHaveBeenCalledTimes(1);
   });
 });

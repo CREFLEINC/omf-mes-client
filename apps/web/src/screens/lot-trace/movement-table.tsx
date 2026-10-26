@@ -11,7 +11,6 @@ const t = messages.lotTrace.list;
 export interface MovementTableProps {
   kind: MovementKind;
   rows: MovementRow[];
-  activeId: number | null;
   onOpen: (row: MovementRow) => void;
   empty: ReactNode;
 }
@@ -29,7 +28,7 @@ const partnerHeader = (kind: MovementKind): string =>
  * 문서번호와 LOT 번호는 대조에 쓰여 고정폭, 말줄임 없음(C-10). 출하 줄의 LOT은 첫 LOT과 「외 N」.
  * 1280×800 가로 넘침(C-16)으로 구분, 품목 코드, 창고, 상태는 드로어와 내려받은 파일로 옮겼다(구성안 4, 빈틈 TG-04).
  */
-export const MovementTable = ({ kind, rows, activeId, onOpen, empty }: MovementTableProps) => {
+export const MovementTable = ({ kind, rows, onOpen, empty }: MovementTableProps) => {
   const columns: Column<MovementRow>[] = [
     {
       key: 'date',
@@ -94,8 +93,8 @@ export const MovementTable = ({ kind, rows, activeId, onOpen, empty }: MovementT
       columns={columns}
       rows={rows}
       getRowId={(row) => String(row.id)}
-      activeId={activeId === null ? null : String(activeId)}
-      rowLabel={(row) => t.openRow(row.documentNo, row.lineNo)}
+      rowRole="link"
+      rowLabel={(row) => t.openRow(row.documentNo, row.lots[0]?.lotNo ?? '')}
       onActivate={onOpen}
       empty={empty}
     />

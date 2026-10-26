@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   readFilters,
-  readSelected,
   receiptCountQuery,
   receiptQuery,
   shipmentQuery,
@@ -22,7 +21,7 @@ describe('입출고 현황 주소 조건', () => {
 
   it('읽고 쓰면 같은 주소가 된다', () => {
     const query =
-      'kind=SHIPMENT&from=2026-10-20&to=2026-10-26&item=7&wh=3&partner=9&status=CONFIRMED&page=2&size=100';
+      'tab=movements&kind=SHIPMENT&from=2026-10-20&to=2026-10-26&item=7&wh=3&partner=9&status=CONFIRMED&page=2&size=100';
     expect(toSearchParams(readFilters(params(query))).toString()).toBe(query);
   });
 
@@ -34,11 +33,6 @@ describe('입출고 현황 주소 조건', () => {
     const filters = readFilters(params('from=2026-10-20&item=7&partner=9&status=POSTED&page=3'));
     const next = withKind(filters, 'SHIPMENT');
     expect(next).toMatchObject({ kind: 'SHIPMENT', item: '7', partner: '', status: '', page: 1 });
-  });
-
-  it('고른 줄은 양의 정수만 받는다', () => {
-    expect(readSelected(params('selected=12'))).toBe(12);
-    expect(readSelected(params('selected=x'))).toBeNull();
   });
 });
 

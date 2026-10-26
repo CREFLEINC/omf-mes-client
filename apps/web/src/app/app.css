@@ -21038,31 +21038,210 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   --dialog-max-lg: 48rem;
 }
 
-.lot-trace-facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-4);
-  margin: 0 0 var(--space-6);
+/* 탭 머리 줄: 왼쪽 탭 설명과 조건 칩, 오른쪽 엑셀 내보내기 */
+.lot-trace-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: var(--space-3) 0;
 }
 
-.lot-trace-fact > dt {
+.lot-trace-toolbar-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.lot-trace-lead {
+  margin: 0;
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.lot-trace-list-pane {
+  margin-top: var(--space-4);
+}
+
+/* 진입점이 없을 때 [조회] 아래 사유 한 줄(C-4) */
+.lot-trace-actions-cell {
+  align-items: flex-end;
+}
+
+.lot-trace-entry-reason {
+  margin-top: var(--space-1);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.lot-trace-filter-more {
+  flex-wrap: wrap;
+}
+
+.lot-trace-axis {
+  min-height: var(--control-height-md);
+  align-items: center;
+}
+
+/* 사슬 드로어 */
+.lot-trace-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font: var(--type-body-sm);
+}
+
+.lot-trace-path-label {
+  color: var(--on-surface-variant);
+}
+
+.lot-trace-path-step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lot-trace-path-current {
+  font-family: var(--font-mono);
+}
+
+.lot-trace-chain-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font: var(--type-body-sm);
+}
+
+.lot-trace-chain-actions {
+  display: inline-flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.lot-trace-impact {
+  margin: var(--space-2) 0 var(--space-3);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.lot-trace-stages {
+  display: flex;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.lot-trace-stage {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.lot-trace-stage > button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2) var(--space-1);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  cursor: pointer;
+}
+
+.lot-trace-stage > button:disabled {
+  cursor: default;
+}
+
+.lot-trace-stage.is-empty > button {
+  color: var(--on-surface-muted);
+  background: var(--surface-container-low);
+}
+
+.lot-trace-stage.is-current > button {
+  border-width: 2px;
+  border-color: var(--on-surface);
+  font-weight: 700;
+}
+
+.lot-trace-stage-name {
+  font: var(--type-label-sm);
+  white-space: nowrap;
+}
+
+.lot-trace-stage-count {
+  white-space: nowrap;
+}
+
+.lot-trace-chain {
+  margin-top: var(--space-3);
+}
+
+/* 들여쓴 나무(세로). 줄마다 한 줄, 넘치면 그 줄 안에서 접힌다 — 표가 아니라 C-16 대상이 아니다. */
+.lot-trace-tree {
+  margin: 0;
+  padding-left: var(--space-6);
+  list-style: none;
+}
+
+.lot-trace-tree-root {
+  padding-left: 0;
+}
+
+.lot-trace-node {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-1) 0;
+  border-top: 1px solid var(--outline-variant);
+  font: var(--type-body-sm);
+}
+
+.lot-trace-node > .lot-trace-tree {
+  flex-basis: 100%;
+}
+
+.lot-trace-node-kind {
   font: var(--type-label-sm);
   color: var(--on-surface-variant);
+  white-space: nowrap;
 }
 
-.lot-trace-fact > dd {
-  margin: 0;
-  font: var(--type-body-sm);
-  color: var(--on-surface);
+.lot-trace-node-name {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.lot-trace-lots {
-  display: grid;
-  gap: var(--space-3);
+.lot-trace-node-actions {
+  display: inline-flex;
+  gap: var(--space-2);
+  margin-left: auto;
 }
 
-.lot-trace-lots-note {
-  margin: 0;
-  font: var(--type-body-sm);
+.lot-trace-note {
   color: var(--on-surface-variant);
+}
+
+.lot-trace-toggle {
+  min-width: var(--control-height-sm);
+  min-height: var(--control-height-sm);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-surface);
+  cursor: pointer;
+}
+
+.lot-trace-chip-anchor {
+  display: inline-flex;
 }

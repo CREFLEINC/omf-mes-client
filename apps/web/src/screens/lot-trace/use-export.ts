@@ -1,47 +1,46 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useApiClient } from '../../patterns/api-context';
-import { exportFileName, fetchAllMovements, saveCsv, toCsv, type ExportProgress } from './export';
-import type { LotTraceFilters } from './filters';
-import { fetchMovementPage } from './queries';
+import { fetchAllRows, saveCsv, type ExportProgress, type RowPage } from './export';
 
 export type ExportState =
   { phase: 'idle' } | { phase: 'running'; progress: ExportProgress } | { phase: 'failed' };
 
+export interface ExportJob<Row> {
+  total: number;
+  fetchPage: (page: number, size: number, signal: AbortSignal) => Promise<RowPage<Row>>;
+  /** 받은 줄 전부로 파일 이름과 내용을 만든다. */
+  build: (rows: Row[]) => { fileName: string; content: string };
+}
+
 /**
- * 엑셀 내보내기 실행. 받는 동안 진행(「N건 중 M건」)을 알리고 [취소]로 멈춘다.
+ * 엑셀 내보내기 실행(현재 조건 전체). 받는 동안 진행(「N건 중 M건」)을 알리고 [취소]로 멈춘다.
  * 취소는 실패가 아니다 — 아무 표시 없이 처음 상태로 돌아간다. 화면을 떠나면 받던 요청을 끊는다.
  */
-export const useMovementExport = (statusName: (code: string) => string) => {
-  const { client } = useApiClient();
+export const useAllPagesExport = () => {
   const [state, setState] = useState<ExportState>({ phase: 'idle' });
   const controller = useRef<AbortController | null>(null);
 
   useEffect(() => () => controller.current?.abort(), []);
 
-  const start = useCallback(
-    async (filters: LotTraceFilters, total: number) => {
-      controller.current?.abort();
-      const abort = new AbortController();
-      controller.current = abort;
-      setState({ phase: 'running', progress: { total, received: 0 } });
-      try {
-        const rows = await fetchAllMovements(
-          (page, size, signal) => fetchMovementPage(client, filters, page, size, signal),
-          abort.signal,
-          (progress) => setState({ phase: 'running', progress }),
-        );
-        saveCsv(exportFileName(filters), toCsv(filters.kind, rows, statusName));
-        setState({ phase: 'idle' });
-      } catch {
-        if (abort.signal.aborted) return;
-        setState({ phase: 'failed' });
-      } finally {
-        if (controller.current === abort) controller.current = null;
-      }
-    },
-    [client, statusName],
-  );
+  const start = useCallback(async <Row>(job: ExportJob<Row>) => {
+    controller.current?.abort();
+    const abort = new AbortController();
+    controller.current = abort;
+    setState({ phase: 'running', progress: { total: job.total, received: 0 } });
+    try {
+      const rows = await fetchAllRows(job.fetchPage, abort.signal, (progress) =>
+        setState({ phase: 'running', progress }),
+      );
+      const file = job.build(rows);
+      saveCsv(file.fileName, file.content);
+      setState({ phase: 'idle' });
+    } catch {
+      if (abort.signal.aborted) return;
+      setState({ phase: 'failed' });
+    } finally {
+      if (controller.current === abort) controller.current = null;
+    }
+  }, []);
 
   const cancel = useCallback(() => {
     controller.current?.abort();

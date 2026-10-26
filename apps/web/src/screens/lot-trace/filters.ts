@@ -45,17 +45,8 @@ export const readFilters = (params: URLSearchParams): LotTraceFilters => {
   };
 };
 
-/** 고른 줄(T-W-A `?selected=`). 입고 줄 ID 또는 출하 줄 ID다. */
-export const readSelected = (params: URLSearchParams): number | null => {
-  const raw = params.get('selected');
-  return raw !== null && POSITIVE.test(raw) ? Number(raw) : null;
-};
-
-export const toSearchParams = (
-  filters: LotTraceFilters,
-  selected: number | null = null,
-): URLSearchParams => {
-  const next = new URLSearchParams();
+export const toSearchParams = (filters: LotTraceFilters): URLSearchParams => {
+  const next = new URLSearchParams({ tab: 'movements' });
   if (filters.kind !== 'MATERIAL') next.set('kind', filters.kind);
   next.set('from', filters.from);
   if (filters.to !== '') next.set('to', filters.to);
@@ -66,7 +57,6 @@ export const toSearchParams = (
   if (filters.status !== '') next.set('status', filters.status);
   if (filters.page > 1) next.set('page', String(filters.page));
   if (filters.size !== DEFAULT_SIZE) next.set('size', String(filters.size));
-  if (selected !== null) next.set('selected', String(selected));
   return next;
 };
 
