@@ -900,12 +900,9 @@ export const IqcInspectionScreen = () => {
        * 상세만, 목록으로 돌아오면 목록만 선다. 검색 조건 · 쪽은 주소에 남아 돌아와도 그대로다.
        */}
       {selectedId === null ? (
-        <section
-          className="pane iqc-inspection-panes iqc-inspection-queue-pane"
-          aria-label={t.queue.heading}
-        >
-          {/* 검색 묶음 — LOT 스캔과 조회 조건이 같은 격자·높이로 선다. */}
-          <div className="iqc-inspection-search">
+        <>
+          {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). LOT 스캔과 조회 조건이 한 줄에 선다. */}
+          <div className="pane iqc-inspection-panes iqc-inspection-search">
             {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
             <LotScan inspectionTypeCode="IQC" onFound={select} />
             <QueueFilterBar
@@ -915,28 +912,33 @@ export const IqcInspectionScreen = () => {
             />
           </div>
 
-          {queue.isError && (
-            <QueueLoadErrorBanner
-              error={toApiError(queue.error)}
-              onRetry={() => void queue.refetch()}
+          <section
+            className="pane iqc-inspection-panes iqc-inspection-queue-pane"
+            aria-label={t.queue.heading}
+          >
+            {queue.isError && (
+              <QueueLoadErrorBanner
+                error={toApiError(queue.error)}
+                onRetry={() => void queue.refetch()}
+              />
+            )}
+
+            <QueueTable
+              rows={rows}
+              itemNames={itemNames}
+              lotNumbers={lotNumbers}
+              selectedId={selectedId}
+              onSelect={select}
+              empty={emptyContent}
             />
-          )}
 
-          <QueueTable
-            rows={rows}
-            itemNames={itemNames}
-            lotNumbers={lotNumbers}
-            selectedId={selectedId}
-            onSelect={select}
-            empty={emptyContent}
-          />
-
-          {/*
-           * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
-           * 모르는데, 그리면 대신 넘긴 0이 「전체 0건」이라는 **사실 주장**이 되어 화면에 선다.
-           */}
-          {queue.data !== undefined && <PageNav view={pageView} onChange={goToPage} />}
-        </section>
+            {/*
+             * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
+             * 모르는데, 그리면 대신 넘긴 0이 「전체 0건」이라는 **사실 주장**이 되어 화면에 선다.
+             */}
+            {queue.data !== undefined && <PageNav view={pageView} onChange={goToPage} />}
+          </section>
+        </>
       ) : (
         <section
           className="pane iqc-inspection-panes iqc-inspection-detail"

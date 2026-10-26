@@ -709,12 +709,9 @@ export const OqcInspectionScreen = () => {
       )}
 
       {selectedId === null ? (
-        <section
-          className="pane oqc-inspection-panes oqc-inspection-queue-pane"
-          aria-label={t.queue.heading}
-        >
-          {/* 검색 묶음 — 시리얼 스캔과 조회 조건이 같은 격자·높이로 선다(#136). */}
-          <div className="oqc-inspection-search">
+        <>
+          {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). 시리얼 스캔과 조회 조건이 한 줄에 선다. */}
+          <div className="pane oqc-inspection-panes oqc-inspection-search">
             <SerialOpenByScan
               onOpen={openBySerial}
               onFound={(scan) =>
@@ -734,39 +731,44 @@ export const OqcInspectionScreen = () => {
             />
           </div>
 
-          {queue.isError && (
-            <QueueLoadErrorBanner
-              error={toApiError(queue.error)}
-              onRetry={() => void queue.refetch()}
+          <section
+            className="pane oqc-inspection-panes oqc-inspection-queue-pane"
+            aria-label={t.queue.heading}
+          >
+            {queue.isError && (
+              <QueueLoadErrorBanner
+                error={toApiError(queue.error)}
+                onRetry={() => void queue.refetch()}
+              />
+            )}
+
+            <QueueListTable
+              rows={rows}
+              itemNames={itemNames}
+              uomCodeOf={(row) => uoms.codeOf(row.uomId)}
+              serialOf={(row) =>
+                scannedSerial?.inspectionRequestIds.includes(row.inspectionRequestId) === true
+                  ? scannedSerial.serialNo
+                  : null
+              }
+              selectedId={selectedId}
+              onSelect={select}
+              empty={emptyContent}
             />
-          )}
 
-          <QueueListTable
-            rows={rows}
-            itemNames={itemNames}
-            uomCodeOf={(row) => uoms.codeOf(row.uomId)}
-            serialOf={(row) =>
-              scannedSerial?.inspectionRequestIds.includes(row.inspectionRequestId) === true
-                ? scannedSerial.serialNo
-                : null
-            }
-            selectedId={selectedId}
-            onSelect={select}
-            empty={emptyContent}
-          />
-
-          {/*
-           * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
-           * 모르는데, 그리면 대신 넘긴 0이 「전체 0건」이라는 **사실 주장**이 되어 화면에 선다.
-           */}
-          {queue.data !== undefined && (
-            /*
-             * 저장이 나가 있는 동안 쪽을 잠근다 — 쪽이 바뀌면 목록이 통째로 갈리는데, 그 사이
-             * 돌아온 성공이 다른 목록 위에 서면 무엇에 대한 성공인지 읽을 수 없다.
-             */
-            <PageNav view={pageView} disabled={save.isSaving} onChange={goToPage} />
-          )}
-        </section>
+            {/*
+             * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
+             * 모르는데, 그리면 대신 넘긴 0이 「전체 0건」이라는 **사실 주장**이 되어 화면에 선다.
+             */}
+            {queue.data !== undefined && (
+              /*
+               * 저장이 나가 있는 동안 쪽을 잠근다 — 쪽이 바뀌면 목록이 통째로 갈리는데, 그 사이
+               * 돌아온 성공이 다른 목록 위에 서면 무엇에 대한 성공인지 읽을 수 없다.
+               */
+              <PageNav view={pageView} disabled={save.isSaving} onChange={goToPage} />
+            )}
+          </section>
+        </>
       ) : (
         <section
           className="pane oqc-inspection-panes oqc-inspection-detail"

@@ -20765,15 +20765,54 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 .inspection-hub-counts {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
+/* DS 칩(작은 크기 · 거르기 모양)과 같은 값 — 누르지 않는 칩이라 DS 칩 대신 글 상자에 입힌다. */
 .inspection-hub-count {
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--outline);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-full);
-  color: var(--on-surface);
-  font: var(--type-label-md);
-  letter-spacing: var(--type-label-md-tracking);
+  box-shadow: inset 0 0 0 1px var(--outline);
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
   white-space: nowrap;
+}
+
+/*
+ * 검색 묶음은 표와 다른 카드다(입하 예정 조회와 같다 · #185) — 카드 안에서 표와 가르던 아래 선·여백을 걷는다.
+ * 목록 카드는 검색 카드가 따로 선 만큼 낮춘다.
+ */
+.pane.iqc-inspection-search,
+.pane.pqc-web-search,
+.pane.oqc-inspection-search {
+  padding-bottom: var(--space-4);
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.iqc-inspection-queue-pane,
+.oqc-inspection-queue-pane,
+.pqc-web-list.pane {
+  height: calc(100dvh - 20rem);
+}
+
+/* 머리칸 사이의 가는 세로선 — 입하 예정 조회의 표와 같은 모양(그쪽은 열 폭 손잡이가 그린다 · 여기는 선만). */
+.iqc-inspection-queue-rows thead th:not(:last-child)::after,
+.pqc-web-queue thead th:not(:last-child)::after,
+.oqc-inspection-queue-rows thead th:not(:last-child)::after {
+  position: absolute;
+  top: var(--space-2);
+  right: 0;
+  bottom: var(--space-2);
+  width: 1px;
+  background: var(--outline-variant);
+  content: '';
+}
+
+/* OQC 목록 머리줄 글자도 IQC · PQC · 입하 예정 조회의 표와 같은 크기·색(#185). */
+.oqc-inspection-queue-rows thead th {
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
 }

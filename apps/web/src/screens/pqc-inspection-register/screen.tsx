@@ -111,9 +111,9 @@ export const PqcInspectionRegisterScreen = () => {
       )}
 
       {selectedId === null ? (
-        <section className="pane pqc-web-list" aria-label={t.queue.heading}>
-          {/* 검색 묶음 — LOT 스캔과 조회 조건(IQC 판정 화면 #133 과 같은 자리). 생산 LOT 의 작업지시로 대기 의뢰를 바로 연다. */}
-          <div className="pqc-web-search">
+        <>
+          {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). 생산 LOT 의 작업지시로 대기 의뢰를 바로 연다. */}
+          <div className="pane pqc-web-search">
             <LotScan
               inspectionTypeCode={PQC}
               matchBy="workOrder"
@@ -141,17 +141,19 @@ export const PqcInspectionRegisterScreen = () => {
             />
           </div>
 
-          {queue.isError && (
-            <QueueLoadErrorBanner
-              error={toApiError(queue.error)}
-              onRetry={() => void queue.refetch()}
-            />
-          )}
+          <section className="pane pqc-web-list" aria-label={t.queue.heading}>
+            {queue.isError && (
+              <QueueLoadErrorBanner
+                error={toApiError(queue.error)}
+                onRetry={() => void queue.refetch()}
+              />
+            )}
 
-          <PqcQueueTable rows={rows} onSelect={select} empty={emptyContent} />
+            <PqcQueueTable rows={rows} onSelect={select} empty={emptyContent} />
 
-          {queue.data !== undefined && <PageNav view={pageView} onChange={setPage} />}
-        </section>
+            {queue.data !== undefined && <PageNav view={pageView} onChange={setPage} />}
+          </section>
+        </>
       ) : (
         <section className="pane pqc-web-detail" aria-label={t.detail.paneLabel}>
           {/* 목록으로 — 저장하지 않은 입력이 있으면 바로 떠나지 않고 한 번 묻는다(#133 과 같다). */}
