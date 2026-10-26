@@ -272,6 +272,22 @@ const makeApi = (
       if (closeMode === '403' || closeMode === '500') return errorResponse(Number(closeMode));
       return jsonResponse(detailBody(701, 'NORMAL'));
     }
+    if (url.pathname.endsWith('/daily-results'))
+      return jsonResponse({
+        uomId: 1,
+        uomCode: 'EA',
+        orderQty: 100,
+        items: [],
+        totals: {
+          goodQty: 0,
+          defectQty: 0,
+          holdQty: 0,
+          scrapQty: 0,
+          reworkQty: 0,
+          resultCount: 0,
+          correctedCount: 0,
+        },
+      });
     if (url.pathname.startsWith(`${paths.candidates}/`)) {
       const workOrderId = Number(url.pathname.split('/').at(-1));
       if (detailMode.startsWith('pending'))

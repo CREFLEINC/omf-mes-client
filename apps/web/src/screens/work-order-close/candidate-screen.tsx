@@ -52,12 +52,14 @@ import {
   type WorkOrderCloseDetailSummaryState,
 } from './detail-summary-pane';
 import { WorkOrderCloseOutboundItemsPane } from './outbound-items-pane';
+import { WorkOrderCloseDailyResultsPane } from './daily-results-pane';
 import { WorkOrderCloseResultPane } from './close-result-pane';
 import { SessionForceEndDialog } from './session-force-end-dialog';
 import { WorkOrderResultCorrectionWorkspace } from './result-correction-workspace';
 import {
   useWorkOrderCloseCandidates,
   useWorkOrderCloseCodeValues,
+  useWorkOrderCloseDailyResults,
   useWorkOrderCloseDetail,
   useWorkOrderCloseOpenLots,
   useWorkOrderCloseOpenSession,
@@ -304,6 +306,7 @@ export const WorkOrderCloseCandidateScreen = () => {
   const itemNames = useWorkOrderCloseItemNames(candidates.map((item) => item.itemId));
   const uoms = useWorkOrderCloseUomLookup();
   const detail = useWorkOrderCloseDetail(state.selectedWorkOrderId);
+  const dailyResults = useWorkOrderCloseDailyResults(state.selectedWorkOrderId);
   const openSession = useWorkOrderCloseOpenSession(closeSelectedWorkOrderId);
   const openLots = useWorkOrderCloseOpenLots(closeSelectedWorkOrderId);
   const [forceEndTarget, setForceEndTarget] = useState<WorkOrderCloseOpenSessionView | null>(null);
@@ -508,6 +511,20 @@ export const WorkOrderCloseCandidateScreen = () => {
     detailState,
     openLots: openLots.isError ? 'UNKNOWN' : openLots.isPending ? 'CHECKING' : openLots.data,
   });
+  /* 일자별 실적 — 마감 판단과 무관한 읽기 구획이라 고른 W/O 마다 따로 둔다(펼침 상태도 함께 초기화). */
+  const dailyResultsPane =
+    state.selectedWorkOrderId === null ? null : (
+      <WorkOrderCloseDailyResultsPane
+        key={state.selectedWorkOrderId}
+        state={
+          dailyResults.isPending
+            ? { kind: 'CHECKING' }
+            : dailyResults.isError
+              ? { kind: 'UNAVAILABLE', onRetry: () => void dailyResults.refetch() }
+              : { kind: 'RESOLVED', data: dailyResults.data }
+        }
+      />
+    );
   const updateDraft = (
     update: (current: WorkOrderCloseInputDraft) => WorkOrderCloseInputDraft,
   ): void =>
@@ -566,6 +583,7 @@ export const WorkOrderCloseCandidateScreen = () => {
                 }
               />
             )}
+            {dailyResultsPane}
             <WorkOrderResultCorrectionWorkspace
               workOrderId={state.selectedWorkOrderId}
               workOrderNo={
@@ -577,6 +595,7 @@ export const WorkOrderCloseCandidateScreen = () => {
         ) : (
           <div className="work-order-close-detail">
             <WorkOrderCloseDetailSummaryPane state={detailPaneState} />
+            {dailyResultsPane}
             {judgment === null ? null : (
               <WorkOrderCloseInputPane
                 completionJudgment={judgment}

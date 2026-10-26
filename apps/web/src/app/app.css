@@ -1991,7 +1991,8 @@ main > * + * {
 .work-order-close-summary-pane,
 .work-order-close-status-pane,
 .work-order-close-input-pane,
-.work-order-close-outbound-pane {
+.work-order-close-outbound-pane,
+.work-order-close-daily-pane {
   display: grid;
   align-content: start;
   gap: var(--space-4);
@@ -2030,7 +2031,8 @@ main > * + * {
 .work-order-close-summary-pane > .pane-title,
 .work-order-close-status-pane > .pane-title,
 .work-order-close-input-pane > .pane-title,
-.work-order-close-outbound-pane > .pane-title {
+.work-order-close-outbound-pane > .pane-title,
+.work-order-close-daily-head > .pane-title {
   margin: 0;
   color: var(--on-surface);
   font: var(--type-title-lg);
@@ -2116,6 +2118,35 @@ main > * + * {
 
 .work-order-close-confirm-details dd {
   margin: 0;
+}
+
+/* 일자별 실적 — 제목 왼쪽, 수량 단위는 제목 줄 오른쪽에 한 번. 교대 줄은 날짜 줄 아래 한 단 낮은 면이다. */
+.work-order-close-daily-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.work-order-close-daily-unit {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  white-space: nowrap;
+}
+
+.work-order-close-daily-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.work-order-close-daily-table tbody td {
+  white-space: nowrap;
+}
+
+.work-order-close-daily-table tbody tr:has([data-shift-row]) > td {
+  background: var(--surface-container-low);
+  border-top: 0;
 }
 
 @media (max-width: 1280px) {

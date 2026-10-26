@@ -262,6 +262,31 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     alreadyEnded: (terminal: string): string =>
       `Phiên làm việc của ${terminal} đã kết thúc từ trước. Đã kiểm tra lại điều kiện đóng.`,
   },
+  dailyResults: {
+    pane: 'Kết quả theo ngày',
+    loading: 'Đang tải kết quả theo ngày.',
+    unit: (uomCode: string) => `Đơn vị ${uomCode}`,
+    fields: {
+      workDate: 'Ngày làm việc',
+      goodQty: 'Đạt',
+      defectQty: 'Lỗi',
+      holdQty: 'Tạm giữ',
+      scrapQty: 'Phế liệu',
+      reworkQty: 'Làm lại',
+      resultCount: 'Số kết quả',
+      corrected: 'Đã sửa',
+    },
+    values: {
+      total: 'Tổng',
+      orderQty: 'Số lượng lệnh',
+      corrected: (count: number) => `${String(count)} lần`,
+    },
+    actions: {
+      expand: (workDate: string) => `Mở theo ca ngày ${workDate}`,
+      collapse: (workDate: string) => `Thu gọn theo ca ngày ${workDate}`,
+    },
+    empty: 'Chưa có kết quả sản xuất nào.',
+  },
   closeResult: {
     pane: 'Kết quả đóng',
     loading: 'Đang tải kết quả đóng.',

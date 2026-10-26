@@ -254,6 +254,32 @@ export const workOrderClose = {
     alreadyEnded: (terminal: string): string =>
       `${terminal} 의 작업 세션은 이미 끝나 있었습니다. 마감 조건을 다시 확인했습니다.`,
   },
+  /** 일자별 실적 표. 수량은 서버가 정정을 반영해 준 값이고, 작업일은 교대가 시작한 공장 날짜다. */
+  dailyResults: {
+    pane: '일자별 실적',
+    loading: '일자별 실적을 불러오는 중입니다.',
+    unit: (uomCode: string): string => `단위 ${uomCode}`,
+    fields: {
+      workDate: '작업일',
+      goodQty: '양품',
+      defectQty: '불량',
+      holdQty: '보류',
+      scrapQty: '스크랩',
+      reworkQty: '재작업',
+      resultCount: '실적 건수',
+      corrected: '정정 반영',
+    },
+    values: {
+      total: '합계',
+      orderQty: '지시 수량',
+      corrected: (count: number): string => `${String(count)}건`,
+    },
+    actions: {
+      expand: (workDate: string): string => `${workDate} 교대별 펼치기`,
+      collapse: (workDate: string): string => `${workDate} 교대별 접기`,
+    },
+    empty: '등록된 생산 실적이 없습니다.',
+  },
   /** 마감된 W/O 의 마감 결과 — 무엇을 어떻게 닫았는지 정정 전에 본다. */
   closeResult: {
     pane: '마감 결과',
