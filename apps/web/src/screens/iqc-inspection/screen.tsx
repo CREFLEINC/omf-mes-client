@@ -67,6 +67,7 @@ import { expectedJudgmentOf, JudgmentChange, needsJudgmentChangeReason } from '.
 import { RejectedLotGuide } from './rejected-lot-guide';
 import {
   EMPTY_REJECTION,
+  RejectionDescriptionButton,
   RejectionReason,
   rejectionDraftOf,
   resolveDefectCode,
@@ -671,26 +672,8 @@ export const IqcInspectionScreen = () => {
    * ⛔ 실패를 「고르지 않음」으로 접지 않는다. 접으면 고른 것이 사라진 것처럼 보여
    * 사용자가 다시 고르는데, 다시 골라도 같은 실패가 온다.
    */
-  /*
-   * 상세 머리줄(사용자 지시 2026-10-26 · #185) — 오른쪽 [닫기]만(제목 글은 두지 않는다). 닫기는 저장하지 않은 입력이 있으면
-   * 한 번 묻는다(`moveTo`). 기본 정보 카드는 부르는 중 · 실패에도 서서 언제든 닫을 수 있다.
-   */
-  const basicInfoHead = (
-    <div className="inspection-detail-head">
-      <button
-        type="button"
-        className="inspection-detail-close"
-        aria-label={hubText.closeDetail}
-        onClick={() => moveTo(null)}
-      >
-        {hubText.close}
-      </button>
-    </div>
-  );
-
   const detailContent = detail.isError ? (
     <div className="inspection-basic-card">
-      {basicInfoHead}
       <QueueLoadErrorBanner
         error={toApiError(detail.error)}
         onRetry={() => void detail.refetch()}
@@ -698,13 +681,11 @@ export const IqcInspectionScreen = () => {
     </div>
   ) : detail.data === undefined ? (
     <div className="inspection-basic-card">
-      {basicInfoHead}
       <p className="field-note">{t.detail.loading}</p>
     </div>
   ) : (
     <>
       <div className="inspection-basic-card">
-        {basicInfoHead}
         <RequestDetailPane
           detail={detail.data}
           itemNames={itemNames}
@@ -829,6 +810,18 @@ export const IqcInspectionScreen = () => {
                 />
               )}
             </>
+          }
+          reasonAction={
+            isRejected ? (
+              <RejectionDescriptionButton
+                description={rejection.description}
+                onChange={(description) => {
+                  setIsSaved(false);
+                  setRejection({ ...rejection, description });
+                }}
+                disabled={!isOpenRound || confirm.isSaving || workerMissing}
+              />
+            ) : null
           }
           judgmentBelow={
             acceptanceNumber !== null && isOpenRound ? (

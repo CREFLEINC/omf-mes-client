@@ -1,7 +1,7 @@
-import { Select, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Icon, Select, TextArea } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
 import { FieldLabel } from './field-label';
 
@@ -140,7 +140,6 @@ export const RejectionReason = ({
   const majorId = useId();
   const minorId = useId();
   const causeId = useId();
-  const descriptionId = useId();
   const majors = majorsOf(codes);
   const minors = minorsOf(codes, draft.majorId);
   const hasMinors = minors.length > 0;
@@ -148,10 +147,11 @@ export const RejectionReason = ({
   const minorMissing = hasMinors && draft.minorId === '';
 
   return (
-    <div className="iqc-inspection-rejection" role="group" aria-labelledby={`${majorId}-heading`}>
-      <h4 id={`${majorId}-heading`} className="iqc-inspection-rejection-title">
-        {t.heading}
-      </h4>
+    /*
+     * 최종 판정과 한 줄에 선다(사용자 지시 2026-10-26 · #185) — 「불합격 사유」 상자 · 제목 없이 칸만. 묶음 이름은 화면 읽기로만 남긴다.
+     * 사유(글)는 칸 대신 저장 줄의 [사유 입력](`RejectionDescriptionButton`)이 받는다.
+     */
+    <div className="iqc-inspection-rejection" role="group" aria-label={t.heading}>
       {majors.length === 0 && <p className="field-note">{t.noCodes}</p>}
       <div className="form-grid iqc-inspection-rejection-codes">
         <div className="field-cell">
@@ -209,18 +209,80 @@ export const RejectionReason = ({
           />
         </div>
       </div>
-      <div className="field-cell iqc-inspection-rejection-description">
-        <FieldLabel htmlFor={descriptionId} label={t.description} />
-        <TextField
-          id={descriptionId}
-          fullWidth
-          value={draft.description}
-          disabled={disabled}
-          onChange={(event) => {
-            onChange({ ...draft, description: event.target.value });
-          }}
-        />
-      </div>
     </div>
+  );
+};
+
+/**
+ * [사유 입력] — 불합격 사유 글을 창에서 받는다(사용자 지시 2026-10-26 · #185). 저장 줄에 선다. 창에서 고친 글은
+ * [저장]을 눌러야 판정에 실린다 — [취소]·Esc 면 그대로다. 잠긴 회차에서는 읽기만 한다(저장 꺼짐).
+ */
+export const RejectionDescriptionButton = ({
+  description,
+  onChange,
+  disabled,
+}: {
+  description: string;
+  onChange: (description: string) => void;
+  disabled: boolean;
+}) => {
+  const [editing, setEditing] = useState<string | null>(null);
+  const fieldId = useId();
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="outlined"
+        size="md"
+        className="iqc-inspection-reason-button"
+        data-filled={description.trim() === '' ? undefined : ''}
+        onClick={() => setEditing(description)}
+      >
+        <Icon name="chat" size={18} aria-hidden />
+        {t.descriptionAction}
+      </Button>
+      {editing !== null && (
+        <Dialog
+          open
+          onClose={() => setEditing(null)}
+          showCloseButton={false}
+          title={t.descriptionAction}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                className="app-button-neutral"
+                onClick={() => setEditing(null)}
+              >
+                {t.descriptionCancel}
+              </Button>
+              {/* 잠긴 회차에서는 고쳐 담을 곳이 없다 — 단추는 자리만 지키고 꺼 둔다. */}
+              <Button
+                variant="filled"
+                disabled={disabled}
+                onClick={() => {
+                  onChange(editing);
+                  setEditing(null);
+                }}
+              >
+                {t.descriptionApply}
+              </Button>
+            </>
+          }
+        >
+          {/* 칸 위 이름표는 두지 않는다 — 창 제목이 말한다. 화면 읽기에는 이름을 남긴다. */}
+          <TextArea
+            id={fieldId}
+            aria-label={t.description}
+            fullWidth
+            rows={4}
+            value={editing}
+            readOnly={disabled}
+            onChange={(event) => setEditing(event.target.value)}
+          />
+        </Dialog>
+      )}
+    </>
   );
 };

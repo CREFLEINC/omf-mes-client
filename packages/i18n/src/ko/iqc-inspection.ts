@@ -152,7 +152,7 @@ export const iqcInspection = {
      */
     noPlanVersion: '기준 없음',
     planVersion: (version: number): string => `버전 ${String(version)}`,
-    openPlan: '기준 보기',
+    openPlan: '기준 조회',
   },
 
   /** 우측 창 — 수량 판정. 합계 제약이 이 구획을 지배한다. */
@@ -247,11 +247,14 @@ export const iqcInspection = {
       major: '불량 대분류',
       minor: '불량 상세',
       description: '사유',
+      descriptionAction: '사유 입력',
+      descriptionApply: '저장',
+      descriptionCancel: '취소',
       required: '불합격이면 불량 코드를 골라야 확정할 수 있습니다.',
       minorRequired: '이 대분류에는 상세 코드가 있습니다. 상세 코드를 고르세요.',
       noCodes: '등록된 불량 코드가 없습니다. 기준정보 > 불량·원인 코드에서 먼저 등록하세요.',
-      majorPlaceholder: '불량 대분류를 선택하세요',
-      minorPlaceholder: '불량 상세를 선택하세요',
+      majorPlaceholder: '선택하세요',
+      minorPlaceholder: '선택하세요',
       /** 칸 아래 필수 누락 표시 — 확정이 막힌 이유(required·minorRequired)는 확정 단추 곁에 그대로 둔다. */
       majorMissing: '불량 대분류를 선택하세요.',
       minorMissing: '불량 상세를 선택하세요.',

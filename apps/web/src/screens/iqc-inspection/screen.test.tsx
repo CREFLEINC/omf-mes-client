@@ -29,7 +29,6 @@ import { IqcInspectionScreen } from './screen';
 import type { InspectionResultResponse } from './types';
 
 const t = messages.iqcInspection;
-const closeDetail = messages.common.inspectionHub.closeDetail;
 
 /** 요청이 실제로 무엇을 실어 갔는지 본다 — 주소가 조건을 몰았음을 그것으로 증명한다. */
 const renderScreen = (
@@ -310,14 +309,31 @@ const findOpenButton = (no: string) =>
   screen.findByRole('button', { name: (accessibleName: string) => accessibleName.includes(no) });
 
 /*
- * #185 — 목록과 상세가 나란히 선다. 이 도우미는 상세를 닫고 다른 의뢰를 고른다(#133 의 「← 목록」 자리).
- * 저장 안 한 입력이 있으면 한 번 묻는데, 이 도우미는 「버리고 목록으로」를 고른다.
+ * #185 — 목록과 상세가 나란히 선다. 이 도우미는 목록에서 다른 의뢰를 바로 고른다(상세를 닫는 단추는 없다).
+ * 저장 안 한 입력이 있으면 한 번 묻는데, 이 도우미는 「저장하지 않고 이동」을 고른다.
  */
 const goToRequest = async (no: string): Promise<void> => {
-  await userEvent.click(screen.getByRole('button', { name: closeDetail }));
+  await userEvent.click(await findOpenButton(no));
   const leave = screen.queryByRole('button', { name: t.detail.leaveAnyway });
   if (leave !== null) await userEvent.click(leave);
-  await userEvent.click(await findOpenButton(no));
+};
+
+/* 불합격 사유 글은 저장 줄 [사유 입력] 창에서 받는다(#185) — 열어 치고 [저장], 읽을 때는 열어 보고 [취소]. */
+const reasonButton = () =>
+  screen.findByRole('button', { name: t.result.rejection.descriptionAction });
+const typeReason = async (text: string, { replace = false } = {}): Promise<void> => {
+  await userEvent.click(await reasonButton());
+  const box = await screen.findByLabelText(t.result.rejection.description);
+  if (replace) await userEvent.clear(box);
+  await userEvent.type(box, text);
+  await userEvent.click(screen.getByRole('button', { name: t.result.rejection.descriptionApply }));
+};
+const reasonValue = async (): Promise<string> => {
+  await userEvent.click(await reasonButton());
+  const box = await screen.findByLabelText(t.result.rejection.description);
+  const value = (box as HTMLTextAreaElement).value;
+  await userEvent.click(screen.getByRole('button', { name: t.result.rejection.descriptionCancel }));
+  return value;
 };
 
 /** [임시 저장]은 마지막 저장 상태와 달라진 것이 있을 때만 켜진다 — 누르기 전에 한 칸을 바꾼다. */
@@ -401,7 +417,7 @@ describe('IqcInspectionScreen', () => {
     await findOpenButton('IR-2026-0002');
     await userEvent.click(openButton('IR-2026-0002'));
 
-    expect(await screen.findByRole('button', { name: closeDetail })).toBeInTheDocument();
+    expect(await screen.findByText(t.detail.fields.inspectionRequestNo)).toBeInTheDocument();
     /* 「검사 기본 정보」는 상자 제목이 아니라 경로의 한 단계로만 선다(#133). */
     expect(screen.queryByRole('heading', { name: t.detail.sectionTitle })).not.toBeInTheDocument();
     expect(
@@ -409,12 +425,11 @@ describe('IqcInspectionScreen', () => {
         t.detail.sectionTitle,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: closeDetail })).toBeInTheDocument();
     /* 목록은 그대로 남는다 — 다른 줄을 바로 고를 수 있다. */
     expect(screen.getByRole('button', { name: t.pageNav.next })).toBeInTheDocument();
   });
 
-  it('쪽을 옮겨도 조건은 그대로이고, 상세에서 목록으로 돌아와도 조건이 남는다', async () => {
+  it('쪽을 옮겨도 조건은 그대로이고, 상세를 열어도 조건이 남는다', async () => {
     const { sent } = renderScreen('/?it=1001', () =>
       jsonResponse(queueResponse(queueItems, pageOf(120, 1, 50))),
     );
@@ -426,7 +441,6 @@ describe('IqcInspectionScreen', () => {
     expect(lastQuery(sent)?.get('itemId')).toBe('1001');
 
     await userEvent.click(await findOpenButton('IR-2026-0002'));
-    await userEvent.click(await screen.findByRole('button', { name: closeDetail }));
 
     await findOpenButton('IR-2026-0002');
     expect(lastQuery(sent)?.get('itemId')).toBe('1001');
@@ -491,12 +505,12 @@ describe('IqcInspectionScreen', () => {
     expect(screen.queryByText(t.detail.sectionTitle)).not.toBeInTheDocument();
   });
 
-  it('저장 안 한 입력이 있으면 목록으로 가기 전에 한 번 묻는다', async () => {
+  it('저장 안 한 입력이 있으면 다른 의뢰로 옮기기 전에 한 번 묻는다', async () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
     await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '1');
-    await userEvent.click(screen.getByRole('button', { name: closeDetail }));
+    await userEvent.click(await findOpenButton('IR-2026-0002'));
 
     expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: t.detail.keepEditing }));
@@ -853,7 +867,7 @@ describe('IqcInspectionScreen', () => {
     await findRound(1);
     const reason = await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason));
     await userEvent.type(reason, '재확인');
-    await userEvent.click(screen.getByRole('button', { name: closeDetail }));
+    await userEvent.click(await findOpenButton('IR-2026-0002'));
 
     expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
   });
@@ -878,7 +892,7 @@ describe('IqcInspectionScreen', () => {
       expect(screen.queryByRole('button', { name: t.result.confirm })).not.toBeInTheDocument(),
     );
 
-    await userEvent.click(screen.getByRole('button', { name: closeDetail }));
+    await userEvent.click(await findOpenButton('IR-2026-0002'));
     expect(screen.queryByText(t.detail.leaveUnsaved)).not.toBeInTheDocument();
   });
 
@@ -908,7 +922,7 @@ describe('IqcInspectionScreen', () => {
     await userEvent.clear(rejected);
     await userEvent.type(rejected, '25');
     /* 불합격 25 > 20 — 자동으로 불합격이 되고 불합격 사유 칸이 선다. */
-    expect(await screen.findByText(t.result.rejection.heading)).toBeInTheDocument();
+    expect(await screen.findByRole('group', { name: t.result.rejection.heading })).toBeInTheDocument();
     expect(screen.queryByLabelText(new RegExp(t.result.judgmentChange.reason))).toBeNull();
     expect(writes).toHaveLength(0);
   });
@@ -1008,8 +1022,7 @@ describe('IqcInspectionScreen', () => {
     renderScreen('/?ir=9999');
 
     expect(await screen.findByRole('button', { name: messages.common.retry })).toBeInTheDocument();
-    /* 실패해도 목록으로 접지 않고 상세 자리에 머문다 — 돌아가는 길은 「← 목록」이다. */
-    expect(screen.getByRole('button', { name: closeDetail })).toBeInTheDocument();
+    /* 실패해도 상세 자리에 머문다 — 다른 의뢰는 옆 목록에서 고른다. */
   });
 
   it('조건에 맞는 것이 없으면 조건을 넓히라고 말한다', async () => {
@@ -1193,7 +1206,7 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     expect(screen.getByText(t.result.rejection.minorRequired)).toBeInTheDocument();
     await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
     await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
-    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '표면 긁힘');
+    await typeReason('표면 긁힘');
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -1222,12 +1235,11 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
     await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
     await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
-    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '처음');
+    await typeReason('처음');
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
     await waitFor(() => expect(writes).toHaveLength(1));
 
-    await userEvent.clear(screen.getByLabelText(t.result.rejection.description));
-    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '고친 사유');
+    await typeReason('고친 사유', { replace: true });
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
     await waitFor(() => expect(writes).toHaveLength(2));
 
@@ -1263,7 +1275,7 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
     await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
     await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
-    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '표면 긁힘');
+    await typeReason('표면 긁힘');
 
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -1274,7 +1286,7 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
 
     expect(screen.getByLabelText(t.result.rejection.major)).toHaveTextContent('APP · 외관');
     expect(screen.getByLabelText(t.result.rejection.minor)).toHaveTextContent('APP-SCR · 스크래치');
-    expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘');
+    expect(await reasonValue()).toBe('표면 긁힘');
 
     const savedCount = writes.length;
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
@@ -1305,9 +1317,7 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
       rejectedDraft,
     ]);
 
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
-    );
+    await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
     expect(screen.getByLabelText(t.result.rejection.major)).toHaveTextContent('APP · 외관');
     expect(screen.getByLabelText(t.result.rejection.minor)).toHaveTextContent('APP-SCR · 스크래치');
     const lookup = sent.find((url) => url.pathname === '/quality/defect-records');
@@ -1325,12 +1335,9 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       rejectedDraft,
     ]);
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
-    );
+    await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
 
-    await userEvent.clear(screen.getByLabelText(t.result.rejection.description));
-    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '찍힘');
+    await typeReason('찍힘', { replace: true });
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
 
@@ -1349,9 +1356,7 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       rejectedDraft,
     ]);
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
-    );
+    await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
     expect(screen.getByLabelText(t.result.rejection.cause)).toHaveTextContent(
       t.result.rejection.causeNone,
     );
@@ -1420,9 +1425,7 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       rejectedDraft,
     ]);
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('옛 코드 사유'),
-    );
+    await waitFor(async () => expect(await reasonValue()).toBe('옛 코드 사유'));
     await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -1449,7 +1452,7 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
     await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
     await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
-    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '내 사유');
+    await typeReason('내 사유');
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
     expect((writes[0] as Request).method).toBe('POST');
@@ -1458,7 +1461,7 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: t.result.confirm })).toBeEnabled(),
     );
-    expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('내 사유');
+    expect(await reasonValue()).toBe('내 사유');
     expect(screen.getByLabelText(t.result.rejection.minor)).toHaveTextContent('APP-SCR · 스크래치');
   });
 
@@ -1467,16 +1470,14 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
       { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
     ];
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedDraft]);
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
-    );
+    await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
 
     await userEvent.click(screen.getByLabelText(t.result.judgment));
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));
     await userEvent.click(screen.getByLabelText(t.result.judgment));
     await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
 
-    expect(await screen.findByLabelText(t.result.rejection.description)).toHaveValue('');
+    expect(await reasonValue()).toBe('');
     expect(screen.getByLabelText(t.result.rejection.major)).not.toHaveTextContent('APP · 외관');
     expect(screen.getByText(t.result.rejection.required)).toBeInTheDocument();
   });
@@ -1488,9 +1489,7 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       rejectedDraft,
     ]);
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
-    );
+    await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
 
     await userEvent.click(screen.getByLabelText(t.result.judgment));
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));

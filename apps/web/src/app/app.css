@@ -21488,3 +21488,45 @@ table.col-measuring td {
   padding-left: 0;
   border-left: 0;
 }
+
+/*
+ * IQC 판정 한 줄(사용자 지시 2026-10-26 · #185) — 최종 판정 · 불량 대분류 · 불량 상세 · 추정 원인이 같은 폭 네 칸.
+ * 「불합격 사유」 상자는 두지 않는다(칸 묶음은 배치에서 사라지고 칸만 줄에 선다). 사유 글은 저장 줄 [사유 입력].
+ * 불합격이 아니면 최종 판정 한 칸만 첫 자리에 선다. 좁으면(48rem 미만) 칸이 위아래로 쌓인다.
+ */
+.iqc-inspection-judgment-section .iqc-inspection-rejection {
+  padding: 0;
+  background: none;
+}
+
+@container (min-width: 48rem) {
+  .iqc-inspection-judgment-section .iqc-inspection-collapsible-body {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: var(--space-4);
+  }
+
+  .iqc-inspection-judgment-section
+    .iqc-inspection-collapsible-body:nth-child(n)
+    > .iqc-inspection-judgment-main {
+    grid-column: 1;
+  }
+
+  .iqc-inspection-judgment-section .iqc-inspection-judgment-detail,
+  .iqc-inspection-judgment-section .iqc-inspection-rejection,
+  .iqc-inspection-judgment-section .iqc-inspection-rejection-codes {
+    display: contents;
+  }
+
+  .iqc-inspection-judgment-section .iqc-inspection-rejection > .field-note {
+    grid-column: 1 / -1;
+  }
+}
+
+/* [사유 입력] — 사유가 적혀 있으면 아이콘을 주 색으로(적힌 것이 있다는 표시). */
+.iqc-inspection-reason-button[data-filled] [class*='icon'] {
+  color: var(--primary);
+}
+
+.iqc-inspection-reason-button {
+  gap: var(--space-1);
+}

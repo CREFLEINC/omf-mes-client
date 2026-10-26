@@ -111,6 +111,8 @@ export interface ResultFormPaneProps {
   judgmentDetail?: ReactNode;
   /** 최종 판정 칸 바로 아래 — 판정 변경 사유(#133). 없으면 두지 않는다 */
   judgmentBelow?: ReactNode;
+  /** 저장 줄 단추 앞에 서는 [사유 입력](불합격일 때 · #185). */
+  reasonAction?: ReactNode;
   /** 최종 판정 라벨 옆 보조 글 — 자동 판정 기준(#133). 없으면 두지 않는다 */
   judgmentHint?: string;
   /** 4M 변경 정보 — 판정과 다른 업무라 판정 아래 소제목을 두고 따로 선다(#133). 없으면 구획을 두지 않는다 */
@@ -160,6 +162,7 @@ export const ResultFormPane = ({
   fourMSlot = null,
   judgmentHint,
   judgmentBelow = null,
+  reasonAction = null,
   confirmOnlyBlockedReason = null,
   reinspectReplacement = null,
 }: ResultFormPaneProps) => {
@@ -291,9 +294,8 @@ export const ResultFormPane = ({
       <div className="iqc-inspection-work">
         {/* ── 검사 결과 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}
         <section className="iqc-inspection-section">
-          {/* 접었다 펴는 구획(사용자 지시 2026-10-26 · #185) — 제목 줄을 누르면 접힌다. 처음에는 펼쳐져 있다. */}
-          <details className="iqc-inspection-collapsible" open>
-            <summary className="iqc-inspection-section-head">
+          <div className="iqc-inspection-static">
+            <div className="iqc-inspection-section-head">
               <h3>{t.sectionTitle}</h3>
               {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 판정 단추 아래가 말한다). */}
               {isReinspecting ? (
@@ -308,7 +310,7 @@ export const ResultFormPane = ({
                 <dt className="iqc-inspection-progress-label">{t.fields.inspectedQty}</dt>
                 <dd>{inspectedText}</dd>
               </dl>
-            </summary>
+            </div>
             <div className="iqc-inspection-collapsible-body iqc-inspection-qty-body">
               {/*
                * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사
@@ -355,15 +357,15 @@ export const ResultFormPane = ({
                 {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
               </div>
             </div>
-          </details>
+          </div>
         </section>
 
         {/* ── 판정 — 종합 판정을 고르고, 임시 저장 뒤 확정한다 ── */}
         <section className="iqc-inspection-section iqc-inspection-judgment-section">
-          <details className="iqc-inspection-collapsible" open>
-            <summary className="iqc-inspection-section-head">
+          <div className="iqc-inspection-static">
+            <div className="iqc-inspection-section-head">
               <h3>{t.judgmentSectionTitle}</h3>
-            </summary>
+            </div>
             <div className="iqc-inspection-collapsible-body">
               {/*
                * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고,
@@ -415,7 +417,7 @@ export const ResultFormPane = ({
                */}
               {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
             </div>
-          </details>
+          </div>
         </section>
 
         {/* ── 4M 변경 정보 — 판정과 다른 업무라 판정 아래 따로 선다(#133) ── */}
@@ -445,6 +447,7 @@ export const ResultFormPane = ({
         ) : isConfirmed ? (
           <div className="iqc-inspection-action-row">
             <div className="iqc-inspection-action-buttons">
+              {reasonAction}
               <Button type="button" variant="outlined" size="md" onClick={onStartReinspection}>
                 {t.reinspect}
               </Button>
@@ -496,6 +499,7 @@ export const ResultFormPane = ({
             </div>
 
             <div className="iqc-inspection-action-buttons">
+              {reasonAction}
               {/* 그만두는 길을 함께 둔다 — 열고 나서 되돌아갈 데가 없으면 갇힌다. */}
               {isReinspecting && (
                 <Button
