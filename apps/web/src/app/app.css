@@ -21670,3 +21670,31 @@ table.col-measuring td {
 .iqc-inspection-judgment-section .iqc-inspection-judgment-field {
   width: 8rem;
 }
+
+/*
+ * 4M 변경품 — 체크칸과 비고 칸을 한 줄로(사용자 지시 2026-10-26). 체크칸은 비고 입력칸 높이의 가운데에 맞춘다
+ * (이름표 높이만큼 내려 선다 — 칸 옆 단위와 같은 방식). 비고 칸은 남는 폭을 쓰되 너무 길지 않게.
+ */
+.iqc-inspection-four-m-block .iqc-inspection-four-m {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2) var(--space-5);
+}
+
+.iqc-inspection-four-m-block .iqc-inspection-four-m > :first-child {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height-md);
+}
+
+/* 비고 칸이 섰을 때만 이름표 높이만큼 내린다 — 체크 전에는 위 빈자리가 생기지 않게. */
+.iqc-inspection-four-m-block .iqc-inspection-four-m:has(> .field-cell) > :first-child {
+  margin-top: var(--field-label-layer);
+}
+
+.iqc-inspection-four-m-block .iqc-inspection-four-m > .field-cell {
+  flex: 1 1 20rem;
+  max-width: 40rem;
+  min-width: 0;
+}
