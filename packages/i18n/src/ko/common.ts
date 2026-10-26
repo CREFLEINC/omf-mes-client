@@ -88,6 +88,7 @@ export const common = {
     pickRequestHint: '검사 의뢰를 선택하면 상세 내용을 확인할 수 있습니다.',
     closeDetail: '상세 닫기',
     splitter: '목록과 상세 폭 나누기',
+    heightSplitter: '목록과 상세 높이 나누기',
     layoutLabel: '목록·상세 배치',
     layoutSideBySide: '좌우 배치',
     layoutStacked: '상하 배치',

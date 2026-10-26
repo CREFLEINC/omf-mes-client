@@ -172,9 +172,7 @@ export const QueueTable = ({
     'omf-mes:iqc-inspection:columns:queue:order',
     columnsOf(selectedId, onSelect, itemNames, lotNumbers),
   );
-  const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:queue', ordered, {
-    fitContent: true,
-  });
+  const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:queue', ordered);
 
   return (
     /*

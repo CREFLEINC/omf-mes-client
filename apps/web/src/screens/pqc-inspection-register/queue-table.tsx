@@ -160,9 +160,7 @@ export const PqcQueueTable = ({
   ];
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
   const ordered = useColumnOrder('omf-mes:pqc-inspection-register:columns:queue:order', columns);
-  const resizable = useColumnWidths('omf-mes:pqc-inspection-register:columns:queue', ordered, {
-    fitContent: true,
-  });
+  const resizable = useColumnWidths('omf-mes:pqc-inspection-register:columns:queue', ordered);
 
   return (
     /* 줄 아무 곳이나 눌러 연다(#135) — 의뢰번호를 따로 누르는 길은 두지 않는다. */

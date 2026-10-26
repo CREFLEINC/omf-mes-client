@@ -21060,6 +21060,7 @@ body.col-reordering * {
 .po-board-split.inspection-split.is-stacked {
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
+  row-gap: 0;
   height: auto;
   min-height: 0;
 }
@@ -21071,9 +21072,11 @@ body.col-reordering * {
 .po-board-split.inspection-split.is-stacked > .iqc-inspection-queue-pane,
 .po-board-split.inspection-split.is-stacked > .oqc-inspection-queue-pane,
 .po-board-split.inspection-split.is-stacked > .pqc-web-list.pane {
-  height: auto;
+  /* 가운데 막대로 높이를 정했으면 그 높이, 아니면 줄 수만큼(넘치면 상자 안에서 구른다). */
+  box-sizing: border-box;
+  height: var(--stacked-list-height, auto);
   min-height: 0;
-  max-height: min(28rem, 50dvh);
+  max-height: var(--stacked-list-height, min(28rem, 50dvh));
 }
 
 .po-board-split.inspection-split.is-stacked > .iqc-inspection-detail,
@@ -21138,36 +21141,11 @@ body.col-reordering * {
   }
 }
 
-/* 열 폭 손잡이가 내용 폭을 잴 때 잠깐 붙는 배치(`patterns/column-resize.tsx`) — 그리기 전에 떼어 눈에 보이지 않는다. */
-table.col-measuring {
-  table-layout: auto !important;
-  width: max-content !important;
-  min-width: 0 !important;
-}
-
-table.col-measuring col {
-  width: auto !important;
-}
-
-table.col-measuring th,
-table.col-measuring td {
-  width: auto !important;
-  max-width: none !important;
-}
-
 /*
- * 위아래로 쌓일 때(상하 배치 · 좁은 창) — 목록 상자는 줄 수만큼만 크고(넘치면 상자 안에서 구른다), 고른 의뢰가
- * 없으면 상세 상자를 세우지 않는다(사용자 지시 2026-10-26). 좌우 배치에서는 오른쪽 자리를 안내가 지킨다.
+ * 위아래로 쌓일 때(상하 배치 · 좁은 창) — 목록 상자는 줄 수만큼만 크고 넘치면 상자 안에서 구른다(사용자 지시 2026-10-26).
+ * 고른 의뢰가 없어도 상세 자리에는 「검사 의뢰를 선택하세요」 안내가 선다(좌우 배치와 같다).
  */
-.po-board-split.inspection-split.is-stacked > .is-empty {
-  display: none;
-}
-
 @media (max-width: 1439px) {
-  .po-board-split.inspection-split > .is-empty {
-    display: none;
-  }
-
   .po-board-split.inspection-split > .iqc-inspection-queue-pane,
   .po-board-split.inspection-split > .oqc-inspection-queue-pane,
   .po-board-split.inspection-split > .pqc-web-list.pane {
@@ -21225,4 +21203,65 @@ table.col-measuring td {
 
 .split-orientation-option[aria-pressed='true'] > :first-child {
   color: var(--primary);
+}
+
+/*
+ * 상하 배치의 가운데 가로 막대 — 끌어 목록 높이를 바꾼다(사용자 지시 2026-10-26). 좌우 배치의 세로 막대와 같은 모양
+ * (가는 선 + 가운데 점 손잡이)을 눕혔다. 올리거나 초점이 오면 파랗다.
+ */
+.inspection-height-splitter {
+  position: relative;
+  height: var(--space-5);
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.inspection-height-splitter::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: var(--space-2);
+  right: var(--space-2);
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: var(--radius-full);
+  background: var(--outline-variant);
+}
+
+.inspection-height-splitter::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background:
+    radial-gradient(circle, var(--on-surface-variant) 1.5px, transparent 2px) center / 8px 4px
+      repeat-x,
+    var(--surface);
+  box-shadow: var(--elevation-1);
+}
+
+.inspection-height-splitter:hover::before,
+.inspection-height-splitter:focus-visible::before {
+  height: 4px;
+  background: var(--semantic-info);
+}
+
+.inspection-height-splitter:hover::after,
+.inspection-height-splitter:focus-visible::after {
+  border-color: var(--semantic-info);
+}
+
+.inspection-height-splitter:focus-visible {
+  outline: none;
+}
+
+body.row-resizing,
+body.row-resizing * {
+  cursor: row-resize !important;
+  user-select: none;
 }

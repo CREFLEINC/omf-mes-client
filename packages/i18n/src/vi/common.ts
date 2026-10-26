@@ -71,6 +71,7 @@ export const common: Translated<typeof ko.common> = {
     pickRequestHint: 'Chọn một yêu cầu kiểm tra để xem nội dung chi tiết.',
     closeDetail: 'Đóng chi tiết',
     splitter: 'Chia độ rộng danh sách và chi tiết',
+    heightSplitter: 'Chia chiều cao danh sách và chi tiết',
     layoutLabel: 'Bố cục danh sách · chi tiết',
     layoutSideBySide: 'Trái phải',
     layoutStacked: 'Trên dưới',

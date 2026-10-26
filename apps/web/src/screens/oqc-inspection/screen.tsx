@@ -11,7 +11,11 @@ import {
   type InspectionHubStatus,
 } from '../../patterns/inspection-hub-counts';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
-import { SplitOrientationToggle, useSplitOrientation } from '../../patterns/split-orientation';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { CODE_GROUPS, labelOfCode, toCodeOptions } from './code-options';
 import {
   EMPTY_FILTERS,
@@ -792,7 +796,7 @@ export const OqcInspectionScreen = () => {
       <div
         ref={splitRef}
         className={`po-board-split inspection-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
-        style={split.style}
+        style={{ ...split.style, ...layout.style }}
       >
         <section
           className="pane oqc-inspection-panes oqc-inspection-queue-pane"
@@ -833,9 +837,16 @@ export const OqcInspectionScreen = () => {
         </section>
 
         <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
 
         <section
-          className={`pane oqc-inspection-panes oqc-inspection-detail${selectedId === null ? ' is-empty' : ''}`}
+          className="pane oqc-inspection-panes oqc-inspection-detail"
           aria-label={t.detail.paneLabel}
         >
           {selectedId === null ? (
