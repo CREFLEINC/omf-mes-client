@@ -21059,7 +21059,9 @@ body.col-reordering * {
  */
 .po-board-split.inspection-split.is-stacked {
   grid-template-columns: minmax(0, 1fr);
+  align-items: start;
   height: auto;
+  min-height: 0;
 }
 
 .po-board-split.inspection-split.is-stacked > .po-board-splitter {
@@ -21069,9 +21071,9 @@ body.col-reordering * {
 .po-board-split.inspection-split.is-stacked > .iqc-inspection-queue-pane,
 .po-board-split.inspection-split.is-stacked > .oqc-inspection-queue-pane,
 .po-board-split.inspection-split.is-stacked > .pqc-web-list.pane {
-  height: min(24rem, 45dvh);
-  min-height: 14rem;
-  max-height: none;
+  height: auto;
+  min-height: 0;
+  max-height: min(28rem, 50dvh);
 }
 
 .po-board-split.inspection-split.is-stacked > .iqc-inspection-detail,
@@ -21151,4 +21153,32 @@ table.col-measuring th,
 table.col-measuring td {
   width: auto !important;
   max-width: none !important;
+}
+
+/*
+ * 위아래로 쌓일 때(상하 배치 · 좁은 창) — 목록 상자는 줄 수만큼만 크고(넘치면 상자 안에서 구른다), 고른 의뢰가
+ * 없으면 상세 상자를 세우지 않는다(사용자 지시 2026-10-26). 좌우 배치에서는 오른쪽 자리를 안내가 지킨다.
+ */
+.po-board-split.inspection-split.is-stacked > .is-empty {
+  display: none;
+}
+
+@media (max-width: 1439px) {
+  .po-board-split.inspection-split > .is-empty {
+    display: none;
+  }
+
+  .po-board-split.inspection-split > .iqc-inspection-queue-pane,
+  .po-board-split.inspection-split > .oqc-inspection-queue-pane,
+  .po-board-split.inspection-split > .pqc-web-list.pane {
+    height: auto;
+    min-height: 0;
+    max-height: min(28rem, 50dvh);
+  }
+}
+
+/* 첫 칸 왼쪽 여백은 다른 칸과 같다 — 화면마다 첫 칸(종전 첫 열)에 둔 넓은 여백이 열을 옮긴 뒤 다른 열에 남지 않게. */
+.inspection-queue-table table th:first-child:nth-child(n):nth-child(n),
+.inspection-queue-table table td:first-child:nth-child(n):nth-child(n) {
+  padding-inline-start: var(--space-3);
 }

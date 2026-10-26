@@ -996,7 +996,7 @@ export const IqcInspectionScreen = () => {
         <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
 
         <section
-          className="pane iqc-inspection-panes iqc-inspection-detail"
+          className={`pane iqc-inspection-panes iqc-inspection-detail${selectedId === null ? ' is-empty' : ''}`}
           aria-label={t.detail.heading}
         >
           {selectedId === null ? (
