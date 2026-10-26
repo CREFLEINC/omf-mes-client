@@ -4007,7 +4007,7 @@ main:has(.iqc-skip-approval-detail) {
 .filter-bar.quality-approval-filter {
   display: grid;
   grid-template-columns:
-    minmax(8rem, 10.5rem) repeat(2, minmax(9rem, 12rem)) minmax(8rem, 11.5rem)
+    repeat(2, minmax(9rem, 12rem)) minmax(8rem, 11.5rem)
     max-content;
   gap: var(--space-3);
   margin-bottom: 0;
@@ -7282,14 +7282,43 @@ th:last-child > .col-resizer::after {
 }
 
 /*
- * 열 순서 바꾸기(#186, patterns/column-order.tsx) — 머리칸 글자를 잡아 끈다. 놓을 자리는 놓을 머리칸의 앞(왼쪽)이나
- * 뒤(오른쪽)에 폭 손잡이와 같은 색 선으로 보인다.
+ * 열 순서 바꾸기(#186, patterns/column-order.tsx). ① 평소엔 머리칸 글자뿐 ② 머리줄에 마우스를 올리면 이름 오른쪽에 끌기
+ * 손잡이(점 여섯 개)가 보인다 ③ 끄는 동안 잡은 머리칸은 파란 테두리로 반투명하게, 놓일 자리는 표 높이만큼의 파란
+ * 세로선으로 보인다 ④ 놓으면 원래 모양이다.
  */
 .col-drag {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-2));
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+}
+
+.col-drag-label {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: grab;
+}
+
+.col-drag-handle {
+  flex: none;
+  fill: currentColor;
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+thead:hover .col-drag-handle,
+.col-drag:focus-visible .col-drag-handle,
+.col-drag.is-dragging .col-drag-handle {
+  opacity: 0.7;
+}
+
+th:hover > .col-drag {
+  background: var(--state-hover-neutral);
 }
 
 .col-drag:active {
@@ -7297,15 +7326,19 @@ th:last-child > .col-resizer::after {
 }
 
 .col-drag.is-dragging {
-  opacity: 0.5;
+  background: var(--semantic-info-container);
+  box-shadow: inset 0 0 0 1px var(--semantic-info);
+  opacity: 0.6;
 }
 
-.col-drag.is-drop-before {
-  box-shadow: inset 3px 0 0 var(--semantic-info);
-}
-
-.col-drag.is-drop-after {
-  box-shadow: inset -3px 0 0 var(--semantic-info);
+.col-drop-line {
+  position: fixed;
+  z-index: 1000;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: var(--radius-full);
+  background: var(--semantic-info);
+  pointer-events: none;
 }
 
 /*

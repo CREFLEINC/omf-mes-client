@@ -1,5 +1,6 @@
 import type { Column } from '@crefle/web-ui';
-import { useState } from 'react';
+import { useState, type DragEvent } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * 표 열 순서 바꾸기(사용자 지시 2026-10-26 · omf-all-around#186). 머리칸을 잡아 다른 머리칸 위에 놓으면 그 자리로
@@ -47,6 +48,37 @@ export const moveColumn = (keys: ColumnOrder, from: string, to: string): string[
   return next;
 };
 
+/** 놓일 자리의 세로선 — 화면 좌표(px). 표 머리부터 마지막 줄까지 긋는다. */
+interface DropLine {
+  left: number;
+  top: number;
+  height: number;
+}
+
+/** 놓을 머리칸의 앞(왼쪽) 또는 뒤(오른쪽) 경계에 표 높이만큼의 세로선을 잰다. */
+const dropLineOf = (event: DragEvent<HTMLElement>, after: boolean): DropLine | null => {
+  const cell = event.currentTarget.closest('th');
+  const table = cell?.closest('table');
+  if (!cell || !table) return null;
+  const cellRect = cell.getBoundingClientRect();
+  const tableRect = table.getBoundingClientRect();
+
+  return {
+    left: after ? cellRect.right : cellRect.left,
+    top: tableRect.top,
+    height: tableRect.height,
+  };
+};
+
+/** 끌기 손잡이 — 점 여섯 개. 머리칸에 마우스를 올렸을 때만 보인다(app.css `.col-drag-handle`). */
+const DragHandle = () => (
+  <svg className="col-drag-handle" viewBox="0 0 8 14" width="8" height="14" aria-hidden="true">
+    {[2, 7, 12].flatMap((cy) =>
+      [2, 6].map((cx) => <circle key={`${String(cx)}-${String(cy)}`} cx={cx} cy={cy} r="1.3" />),
+    )}
+  </svg>
+);
+
 /**
  * 머리칸마다 끌기 자리를 단 열을 낸다. `storageKey` 는 표마다 다르게 — 같은 열 이름이 다른 표에 있어도 섞이지 않게.
  * 마우스 끌기 전용이다 — 키보드·화면 낭독기 사용자는 기본 순서로 읽는다(순서는 보기 편의라 일을 막지 않는다).
@@ -55,6 +87,7 @@ export const useColumnOrder = <T,>(storageKey: string, columns: Column<T>[]): Co
   const [order, setOrder] = useState<ColumnOrder>(() => readOrder(storageKey));
   const [dragKey, setDragKey] = useState<string | null>(null);
   const [overKey, setOverKey] = useState<string | null>(null);
+  const [dropLine, setDropLine] = useState<DropLine | null>(null);
 
   const ordered = orderColumns(columns, order);
   const keys = ordered.map(({ key }) => key);
@@ -70,21 +103,18 @@ export const useColumnOrder = <T,>(storageKey: string, columns: Column<T>[]): Co
   const finish = (): void => {
     setDragKey(null);
     setOverKey(null);
+    setDropLine(null);
   };
 
   return ordered.map((column): Column<T> => {
-    const dropSide =
-      dragKey !== null && overKey === column.key && dragKey !== column.key
-        ? keys.indexOf(dragKey) < keys.indexOf(column.key)
-          ? ' is-drop-after'
-          : ' is-drop-before'
-        : '';
+    const isDropTarget = dragKey !== null && overKey === column.key && dragKey !== column.key;
+    const after = dragKey !== null && keys.indexOf(dragKey) < keys.indexOf(column.key);
 
     return {
       ...column,
       header: (
         <span
-          className={`col-drag${dragKey === column.key ? ' is-dragging' : ''}${dropSide}`}
+          className={`col-drag${dragKey === column.key ? ' is-dragging' : ''}`}
           draggable
           onDragStart={(event) => {
             event.dataTransfer.effectAllowed = 'move';
@@ -96,10 +126,14 @@ export const useColumnOrder = <T,>(storageKey: string, columns: Column<T>[]): Co
             if (dragKey === null) return;
             event.preventDefault();
             event.dataTransfer.dropEffect = 'move';
-            if (overKey !== column.key) setOverKey(column.key);
-          }}
-          onDragLeave={() => {
-            setOverKey((current) => (current === column.key ? null : current));
+            if (overKey !== column.key) {
+              setOverKey(column.key);
+              setDropLine(
+                dragKey === column.key
+                  ? null
+                  : dropLineOf(event, keys.indexOf(dragKey) < keys.indexOf(column.key)),
+              );
+            }
           }}
           onDrop={(event) => {
             event.preventDefault();
@@ -108,7 +142,19 @@ export const useColumnOrder = <T,>(storageKey: string, columns: Column<T>[]): Co
           }}
           onDragEnd={finish}
         >
-          {column.header}
+          <span className="col-drag-label">{column.header}</span>
+          <DragHandle />
+          {/* 놓일 자리 — 칸이 글을 자르므로(overflow) 표 밖 맨 위 층에 긋는다. 끄는 동안만 선다. */}
+          {isDropTarget &&
+            dropLine !== null &&
+            createPortal(
+              <div
+                className={`col-drop-line${after ? ' is-after' : ''}`}
+                style={{ left: dropLine.left, top: dropLine.top, height: dropLine.height }}
+                aria-hidden="true"
+              />,
+              document.body,
+            )}
         </span>
       ),
     };
