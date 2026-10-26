@@ -21533,10 +21533,11 @@ table.col-measuring td {
 
 /*
  * 입력 현황 줄(사용자 지시 2026-10-26 · #185) — [✓ 입력 완료](라벨) · 「10 / 10 EA」(굵게) · 「미입력 0 EA」(작고 흐리게)가
- * 왼쪽부터 한 줄로. 라벨은 다 채우면 초록, 넘치면 빨강, 그 밖에는 보조색.
+ * 한 줄로, 오른쪽 끝에 붙는다. 라벨은 다 채우면 초록, 넘치면 빨강, 그 밖에는 보조색.
  */
 .iqc-inspection-progress-row:nth-child(n) {
-  justify-content: flex-start;
+  /* 줄 오른쪽 끝에 붙인다(사용자 지시 2026-10-26). */
+  justify-content: flex-end;
   align-items: center;
   gap: var(--space-2) var(--space-3);
 }
