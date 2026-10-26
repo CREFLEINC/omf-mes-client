@@ -21501,7 +21501,9 @@ table.col-measuring td {
 
 @container (min-width: 48rem) {
   .iqc-inspection-judgment-section .iqc-inspection-collapsible-body {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    /* 선택칸은 값 길이에 맞는 폭까지만(사용자 지시 2026-10-26) — 구획 폭을 다 나눠 갖지 않는다. */
+    grid-template-columns: repeat(4, minmax(9rem, 14rem));
+    justify-content: start;
     column-gap: var(--space-4);
   }
 
