@@ -21305,7 +21305,7 @@ table.col-measuring td {
 }
 
 /*
- * IQC 상세 「기본 정보」 카드(사용자 지시 2026-10-26 · #185) — 머리줄: 왼쪽 강조선 + 제목, 오른쪽 [닫기 ×](붉은 톤 알약).
+ * IQC 상세 「기본 정보」 카드(사용자 지시 2026-10-26 · #185) — 머리줄: 왼쪽 강조선 + 제목, 오른쪽 [닫기 ×](빨간 단추).
  */
 .inspection-basic-card {
   display: grid;
@@ -21327,11 +21327,7 @@ table.col-measuring td {
   border: 1px solid var(--outline-variant);
   border-left: 3px solid var(--primary);
   border-radius: var(--radius-md);
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--primary) 14%, transparent),
-    transparent 40%
-  );
+  background: var(--surface-container);
 }
 
 .inspection-detail-head > h2 {
@@ -21344,19 +21340,20 @@ table.col-measuring td {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  height: 28px;
-  padding: 0 var(--space-3);
-  border: 1px solid color-mix(in srgb, var(--primary) 60%, transparent);
+  height: var(--control-height-md);
+  padding: 0 var(--space-4);
+  border: 0;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--primary) 18%, transparent);
-  color: var(--on-surface);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
+  /* 빨간 단추(사용자 지시 2026-10-26) — 조회 단추와 같은 주 색. */
+  background: var(--primary);
+  color: var(--on-primary);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
   cursor: pointer;
 }
 
 .inspection-detail-close:hover {
-  background: color-mix(in srgb, var(--primary) 28%, transparent);
+  background: color-mix(in srgb, var(--primary) 88%, var(--on-primary));
 }
 
 .inspection-detail-close:focus-visible {
