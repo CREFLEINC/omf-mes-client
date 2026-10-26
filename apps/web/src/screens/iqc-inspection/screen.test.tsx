@@ -29,6 +29,7 @@ import { IqcInspectionScreen } from './screen';
 import type { InspectionResultResponse } from './types';
 
 const t = messages.iqcInspection;
+const closeDetail = messages.common.inspectionHub.closeDetail;
 
 /** 요청이 실제로 무엇을 실어 갔는지 본다 — 주소가 조건을 몰았음을 그것으로 증명한다. */
 const renderScreen = (
@@ -309,11 +310,11 @@ const findOpenButton = (no: string) =>
   screen.findByRole('button', { name: (accessibleName: string) => accessibleName.includes(no) });
 
 /*
- * #133 — 목록과 상세가 갈아 끼워진다. 상세에서 다른 의뢰로 가려면 「← 목록」으로 돌아가 고른다.
+ * #185 — 목록과 상세가 나란히 선다. 이 도우미는 상세를 닫고 다른 의뢰를 고른다(#133 의 「← 목록」 자리).
  * 저장 안 한 입력이 있으면 한 번 묻는데, 이 도우미는 「버리고 목록으로」를 고른다.
  */
 const goToRequest = async (no: string): Promise<void> => {
-  await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+  await userEvent.click(screen.getByRole('button', { name: closeDetail }));
   const leave = screen.queryByRole('button', { name: t.detail.leaveAnyway });
   if (leave !== null) await userEvent.click(leave);
   await userEvent.click(await findOpenButton(no));
@@ -394,13 +395,13 @@ describe('IqcInspectionScreen', () => {
     expect(lastQuery(sent)?.get('pendingOnly')).toBe('true');
   });
 
-  it('의뢰를 고르면 목록 대신 그 의뢰의 상세가 선다(#133)', async () => {
+  it('의뢰를 고르면 목록 옆에 그 의뢰의 상세가 선다(#185)', async () => {
     renderScreen();
 
     await findOpenButton('IR-2026-0002');
     await userEvent.click(openButton('IR-2026-0002'));
 
-    expect(await screen.findByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: closeDetail })).toBeInTheDocument();
     /* 「검사 기본 정보」는 상자 제목이 아니라 경로의 한 단계로만 선다(#133). */
     expect(screen.queryByRole('heading', { name: t.detail.sectionTitle })).not.toBeInTheDocument();
     expect(
@@ -408,8 +409,9 @@ describe('IqcInspectionScreen', () => {
         t.detail.sectionTitle,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.pageNav.next })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: closeDetail })).toBeInTheDocument();
+    /* 목록은 그대로 남는다 — 다른 줄을 바로 고를 수 있다. */
+    expect(screen.getByRole('button', { name: t.pageNav.next })).toBeInTheDocument();
   });
 
   it('쪽을 옮겨도 조건은 그대로이고, 상세에서 목록으로 돌아와도 조건이 남는다', async () => {
@@ -424,7 +426,7 @@ describe('IqcInspectionScreen', () => {
     expect(lastQuery(sent)?.get('itemId')).toBe('1001');
 
     await userEvent.click(await findOpenButton('IR-2026-0002'));
-    await userEvent.click(await screen.findByRole('button', { name: t.detail.backToList }));
+    await userEvent.click(await screen.findByRole('button', { name: closeDetail }));
 
     await findOpenButton('IR-2026-0002');
     expect(lastQuery(sent)?.get('itemId')).toBe('1001');
@@ -494,11 +496,27 @@ describe('IqcInspectionScreen', () => {
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
     await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '1');
-    await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+    await userEvent.click(screen.getByRole('button', { name: closeDetail }));
 
     expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: t.detail.keepEditing }));
     expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('1');
+  });
+
+  it('저장 안 한 입력이 있으면 목록에서 다른 의뢰를 눌러도 바로 옮기지 않고 묻는다(#185)', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '1');
+    await userEvent.click(await findOpenButton('IR-2026-0002'));
+
+    expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: t.detail.keepEditing }));
+    expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('1');
+
+    await userEvent.click(openButton('IR-2026-0002'));
+    await userEvent.click(screen.getByRole('button', { name: t.detail.leaveAnyway }));
+    await waitFor(() => expect(screen.queryByText(t.detail.leaveUnsaved)).not.toBeInTheDocument());
   });
 
   it('의뢰를 고르면 그 의뢰의 상세가 선다 — 목록과 상세가 같은 건을 가리킨다', async () => {
@@ -835,7 +853,7 @@ describe('IqcInspectionScreen', () => {
     await findRound(1);
     const reason = await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason));
     await userEvent.type(reason, '재확인');
-    await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+    await userEvent.click(screen.getByRole('button', { name: closeDetail }));
 
     expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
   });
@@ -860,7 +878,7 @@ describe('IqcInspectionScreen', () => {
       expect(screen.queryByRole('button', { name: t.result.confirm })).not.toBeInTheDocument(),
     );
 
-    await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+    await userEvent.click(screen.getByRole('button', { name: closeDetail }));
     expect(screen.queryByText(t.detail.leaveUnsaved)).not.toBeInTheDocument();
   });
 
@@ -991,7 +1009,7 @@ describe('IqcInspectionScreen', () => {
 
     expect(await screen.findByRole('button', { name: messages.common.retry })).toBeInTheDocument();
     /* 실패해도 목록으로 접지 않고 상세 자리에 머문다 — 돌아가는 길은 「← 목록」이다. */
-    expect(screen.getByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: closeDetail })).toBeInTheDocument();
   });
 
   it('조건에 맞는 것이 없으면 조건을 넓히라고 말한다', async () => {

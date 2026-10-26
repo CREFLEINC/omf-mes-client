@@ -11,6 +11,7 @@ import {
   InspectionHubCounts,
   type InspectionHubStatus,
 } from '../../patterns/inspection-hub-counts';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import {
   EMPTY_FILTERS,
   QUEUE_STATUSES,
@@ -104,6 +105,7 @@ const REQUEST_COMPLETED = 'COMPLETED';
  */
 
 const t = messages.iqcInspection;
+const hubText = messages.common.inspectionHub;
 /** 종합 판정 불합격(시드 `INSPECTION_RESULT_OVERALL_JUDGMENT`) — 이 값일 때만 불합격 사유를 받는다. */
 const REJECTED_JUDGMENT = 'REJECTED';
 
@@ -419,7 +421,10 @@ export const IqcInspectionScreen = () => {
     ) {
       void queue.refetch();
     }
-    setSearchParams(toSearchParams(next));
+    /* 상세가 목록 옆에 열려 있으면 그대로 둔다(#185) — 조회 한 번에 쓰던 판정 입력이 사라지지 않게. */
+    const params = toSearchParams(next);
+    if (selectedId !== null) params.set(URL_KEYS.selected, String(selectedId));
+    setSearchParams(params);
   };
 
   /**
@@ -437,22 +442,36 @@ export const IqcInspectionScreen = () => {
     setSearchParams(toPageParams(searchParams, next));
   };
 
-  const select = (inspectionRequestId: number): void => {
+  /* 고른 의뢰를 주소에 싣거나(`null` 이면) 뺀다 — 검색 조건 · 쪽은 그대로. */
+  const openRequest = (inspectionRequestId: number | null): void => {
     const next = new URLSearchParams(searchParams);
-    next.set(URL_KEYS.selected, String(inspectionRequestId));
+    if (inspectionRequestId === null) next.delete(URL_KEYS.selected);
+    else next.set(URL_KEYS.selected, String(inspectionRequestId));
     setSearchParams(next);
   };
 
-  /* 상세에서 목록으로 — 고른 의뢰만 주소에서 뺀다(검색 조건 · 쪽은 그대로). */
-  const [confirmingLeave, setConfirmingLeave] = useState(false);
+  /*
+   * 목록과 상세가 한 화면에 나란히 선다(#185) — 상세를 쓰는 중에 다른 줄을 누르거나 상세를 닫으면,
+   * 저장하지 않은 입력이 있을 때 바로 옮기지 않고 한 번 묻는다(#133 의 「목록으로」와 같은 팝업).
+   * `to` 가 `null` 이면 상세 닫기다.
+   */
+  const [leaveTo, setLeaveTo] = useState<{ to: number | null } | null>(null);
   useEffect(() => {
-    setConfirmingLeave(false);
+    setLeaveTo(null);
   }, [selectedId]);
-  const backToList = (): void => {
-    const next = new URLSearchParams(searchParams);
-    next.delete(URL_KEYS.selected);
-    setSearchParams(next);
+  const moveTo = (to: number | null): void => {
+    if (to === selectedId) return;
+    if (selectedId !== null && hasUnsavedInput) {
+      setLeaveTo({ to });
+      return;
+    }
+    openRequest(to);
   };
+  const select = (inspectionRequestId: number): void => moveTo(inspectionRequestId);
+
+  /* 목록 · 상세 배치 — 입하 예정 조회와 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:iqc-inspection:split', 0.45);
 
   /**
    * 표 자리에 그릴 것. **네 갈래를 가른다** — 실패 · 부르는 중 · 이 쪽에 없음 · 조건에 맞는 것 없음.
@@ -916,101 +935,108 @@ export const IqcInspectionScreen = () => {
       )}
 
       {/*
-       * 목록과 상세(판정)를 한 화면에 나란히 두지 않고 갈아 끼운다(omf-all-around#133) — 의뢰를 고르면(`?ir=`)
-       * 상세만, 목록으로 돌아오면 목록만 선다. 검색 조건 · 쪽은 주소에 남아 돌아와도 그대로다.
+       * 목록과 상세(판정)를 한 화면에 나란히 둔다(#185 · 입하 예정 조회와 같다) — 종전(#133)처럼 상세가 목록을
+       * 갈아 끼우지 않는다. 의뢰를 고르면(`?ir=`) 오른쪽에 상세가 서고, 검색 조건 · 쪽은 주소에 남는다.
        */}
-      {selectedId === null ? (
-        <>
-          {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). LOT 스캔과 조회 조건이 한 줄에 선다. */}
-          <div className="pane iqc-inspection-panes iqc-inspection-search">
-            {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
-            <LotScan inspectionTypeCode="IQC" onFound={select} />
-            <QueueFilterBar
-              appliedFilters={filters}
-              /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
-              onSearch={(next) => applyFilters({ ...next, statusCode: filters.statusCode })}
-              onReset={() => applyFilters(EMPTY_FILTERS)}
+      {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). LOT 스캔과 조회 조건이 한 줄에 선다. */}
+      <section ref={aboveRef} className="pane iqc-inspection-panes iqc-inspection-search">
+        {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
+        <LotScan inspectionTypeCode="IQC" onFound={select} />
+        <QueueFilterBar
+          appliedFilters={filters}
+          /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
+          onSearch={(next) => applyFilters({ ...next, statusCode: filters.statusCode })}
+          onReset={() => applyFilters(EMPTY_FILTERS)}
+        />
+      </section>
+
+      <div ref={splitRef} className="po-board-split inspection-split" style={split.style}>
+        <section
+          className="pane iqc-inspection-panes iqc-inspection-queue-pane"
+          aria-label={t.queue.heading}
+        >
+          {queue.isError && (
+            <QueueLoadErrorBanner
+              error={toApiError(queue.error)}
+              onRetry={() => void queue.refetch()}
             />
-          </div>
+          )}
 
-          <section
-            className="pane iqc-inspection-panes iqc-inspection-queue-pane"
-            aria-label={t.queue.heading}
-          >
-            {queue.isError && (
-              <QueueLoadErrorBanner
-                error={toApiError(queue.error)}
-                onRetry={() => void queue.refetch()}
-              />
-            )}
+          <QueueTable
+            rows={rows}
+            itemNames={itemNames}
+            lotNumbers={lotNumbers}
+            selectedId={selectedId}
+            onSelect={select}
+            empty={emptyContent}
+          />
 
-            <QueueTable
-              rows={rows}
-              itemNames={itemNames}
-              lotNumbers={lotNumbers}
-              selectedId={selectedId}
-              onSelect={select}
-              empty={emptyContent}
-            />
+          {/*
+           * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
+           * 모르는데, 그리면 대신 넘긴 0이 「전체 0건」이라는 **사실 주장**이 되어 화면에 선다.
+           */}
+          {queue.data !== undefined && <PageNav view={pageView} onChange={goToPage} />}
+        </section>
 
-            {/*
-             * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
-             * 모르는데, 그리면 대신 넘긴 0이 「전체 0건」이라는 **사실 주장**이 되어 화면에 선다.
-             */}
-            {queue.data !== undefined && <PageNav view={pageView} onChange={goToPage} />}
-          </section>
-        </>
-      ) : (
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+
         <section
           className="pane iqc-inspection-panes iqc-inspection-detail"
           aria-label={t.detail.heading}
         >
-          {/*
-           * 목록으로 — 저장하지 않은 입력이 있으면 바로 떠나지 않고 한 번 묻는다. 떠나면 그 입력은 버려진다
-           * (의뢰가 바뀌면 초안을 비우는 종전 규칙 그대로).
-           */}
-          <div className="iqc-inspection-back">
-            <Button
-              variant="text"
-              size="md"
-              className="iqc-inspection-back-button"
-              onClick={() => (hasUnsavedInput ? setConfirmingLeave(true) : backToList())}
-            >
-              {t.detail.backToList}
-            </Button>
-            {/*
-             * 저장하지 않고 떠날지 묻는 팝업(#133) — 한 줄 설명, [계속 작성](테두리) [저장하지 않고 이동](채움).
-             * × 는 두지 않는다. Esc·바깥 누름은 «계속 작성»과 같다 — 입력은 그대로 남는다.
-             */}
-            {confirmingLeave && (
-              <Dialog
-                open
-                onClose={() => setConfirmingLeave(false)}
-                showCloseButton={false}
-                title={t.detail.leaveUnsaved}
-                footer={
-                  <>
-                    <Button
-                      variant="outlined"
-                      className="app-button-neutral"
-                      onClick={() => setConfirmingLeave(false)}
-                    >
-                      {t.detail.keepEditing}
-                    </Button>
-                    <Button variant="filled" onClick={backToList}>
-                      {t.detail.leaveAnyway}
-                    </Button>
-                  </>
-                }
-              >
-                <p>{t.detail.leaveUnsavedNote}</p>
-              </Dialog>
-            )}
-          </div>
-          {detailContent}
+          {selectedId === null ? (
+            <EmptyState
+              size="sm"
+              title={hubText.pickRequest}
+              description={hubText.pickRequestHint}
+            />
+          ) : (
+            <>
+              <div className="iqc-inspection-back">
+                <Button
+                  variant="text"
+                  size="md"
+                  className="iqc-inspection-back-button"
+                  onClick={() => moveTo(null)}
+                >
+                  {hubText.closeDetail}
+                </Button>
+              </div>
+              {detailContent}
+              {auxContent}
+            </>
+          )}
         </section>
+      </div>
+
+      {/*
+       * 저장하지 않고 떠날지 묻는 팝업(#133) — 한 줄 설명, [계속 작성](테두리) [저장하지 않고 이동](채움).
+       * × 는 두지 않는다. Esc·바깥 누름은 «계속 작성»과 같다 — 입력은 그대로 남는다.
+       */}
+      {leaveTo !== null && (
+        <Dialog
+          open
+          onClose={() => setLeaveTo(null)}
+          showCloseButton={false}
+          title={t.detail.leaveUnsaved}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                className="app-button-neutral"
+                onClick={() => setLeaveTo(null)}
+              >
+                {t.detail.keepEditing}
+              </Button>
+              <Button variant="filled" onClick={() => openRequest(leaveTo.to)}>
+                {t.detail.leaveAnyway}
+              </Button>
+            </>
+          }
+        >
+          <p>{t.detail.leaveUnsavedNote}</p>
+        </Dialog>
       )}
-      {selectedId !== null && auxContent}
     </>
   );
 };
