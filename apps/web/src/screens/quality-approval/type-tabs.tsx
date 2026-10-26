@@ -1,7 +1,23 @@
 import { Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import type { CodeOption } from './code-options';
+import { toTypeOptions, type CodeOption } from './code-options';
+
+/** 품질 승인 처리 목록 주소 — IQC 생략 화면의 다른 유형 탭이 이리로 돌아온다. */
+export const QUALITY_APPROVALS_PATH = '/quality/approvals';
+/** 긴급 IQC 생략 한도승인 화면(W-01-02) — 「IQC (수입검사) 생략」 탭이 이 화면이다(#144). */
+export const IQC_SKIP_APPROVAL_PATH = '/logistics/iqc-skip-approval';
+export const IQC_SKIP_TYPE_CODE = 'IQC_SKIP';
+
+/** 유형 탭 선택지 — 이 화면의 유형에 IQC 생략 탭을 OQC 생략 앞에 끼운다(IQC → OQC 흐름 차례). */
+export const toTypeTabOptions = (codes: readonly string[]): CodeOption[] => {
+  const at = codes.indexOf('OQC_SKIP');
+  const ordered =
+    at === -1
+      ? [...codes, IQC_SKIP_TYPE_CODE]
+      : [...codes.slice(0, at), IQC_SKIP_TYPE_CODE, ...codes.slice(at)];
+  return toTypeOptions(ordered);
+};
 
 export interface TypeTabsProps {
   options: CodeOption[];

@@ -501,27 +501,20 @@ describe('AppLayout', () => {
   });
 
   /*
-   * W-01-02 — IQC 를 «생략할 것인가»를 판정하는 자리라 **IQC 수입검사 바로 뒤**다. IQC 가
-   * 「품질 관리」로 옮겨 가면서 이 화면도 그 옆을 따라갔다.
-   *
-   * ⛔ 「승인」 섹션이 아니다 — 결재함은 올라온 결재를 두루 처리하는 자리라 축이 다르다.
+   * W-01-02 — 긴급 IQC 생략 한도승인은 「품질 승인 처리」의 유형 탭 하나다(#144). 사이드바에 따로 서지
+   * 않고, 그 화면을 보는 동안 「품질 승인 처리」 줄이 켜진다. 탭은 화면이 그리므로 셸 탭 막대는 서지 않는다.
    */
-  it('사이드바 품질 관리 섹션에 긴급 IQC 생략 한도승인 메뉴가 IQC 수입검사·판정 바로 뒤에 있다', () => {
-    renderLayout('본문 내용');
+  it('긴급 IQC 생략 한도승인은 사이드바에 따로 서지 않고 품질 승인 처리 줄을 켠다', () => {
+    renderLayout('본문 내용', { route: '/logistics/iqc-skip-approval' });
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const links = sidebarHrefs();
 
-    expect(within(sidebar).getByRole('link', { name: '긴급 IQC 생략 한도승인' })).toHaveAttribute(
-      'href',
-      '/logistics/iqc-skip-approval',
+    expect(sidebarHrefs()).not.toContain('/logistics/iqc-skip-approval');
+    expect(within(sidebar).getByRole('link', { name: '품질 승인 처리' })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
-    expect(links.indexOf('/logistics/iqc-skip-approval')).toBe(
-      links.indexOf('/logistics/iqc-inspection') + 1,
-    );
-    expect(links.indexOf('/logistics/iqc-skip-approval')).toBeLessThan(
-      links.indexOf('/approval/inbox'),
-    );
+    expect(document.querySelector('.hub-tabs')).toBeNull();
   });
 
   /*
@@ -564,7 +557,6 @@ describe('AppLayout', () => {
 
     const qualityOrder = [
       '/logistics/iqc-inspection',
-      '/logistics/iqc-skip-approval',
       '/master-data/inspection-standard',
       /* W-06-24 — OA 제품 검사표 기준(설계보다 앞선 화면). */
       '/master-data/inspection-sheet-template',
@@ -988,7 +980,6 @@ describe('AppLayout', () => {
       '/logistics/document-progress',
       /* 품질 관리 — 검사 조회·판정(IQC · PQC · OQC 탭) → 기준·코드 → 이력 → LOT 판정 갈래. */
       '/logistics/iqc-inspection' /* ← 검사 조회·판정 */,
-      '/logistics/iqc-skip-approval',
       '/master-data/inspection-standard',
       '/master-data/inspection-sheet-template',
       '/master-data/defect-cause-code' /* ← 품질 코드 */,
@@ -1650,7 +1641,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(47);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
   });
 
   /*
@@ -1700,7 +1691,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(47);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

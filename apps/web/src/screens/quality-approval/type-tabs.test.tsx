@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { TypeTabs } from './type-tabs';
+import { TypeTabs, toTypeTabOptions } from './type-tabs';
 
 const t = messages.qualityApproval;
 const OPTIONS = [
@@ -34,6 +34,18 @@ describe('TypeTabs', () => {
     await user.click(screen.getByRole('tab', { name: t.all }));
 
     expect(onChange.mock.calls).toEqual([['CONCESSION'], ['']]);
+  });
+
+  it('IQC 생략 탭을 OQC 생략 앞에 끼운다(#144) — OQC 생략이 없으면 끝에 둔다', () => {
+    expect(toTypeTabOptions(['CONCESSION', 'OQC_SKIP']).map((option) => option.label)).toEqual([
+      t.typeLabels.CONCESSION,
+      t.typeLabels.IQC_SKIP,
+      t.typeLabels.OQC_SKIP,
+    ]);
+    expect(toTypeTabOptions(['CONCESSION']).map((option) => option.value)).toEqual([
+      'CONCESSION',
+      'IQC_SKIP',
+    ]);
   });
 
   it('고를 유형이 없으면 탭을 세우지 않는다', () => {

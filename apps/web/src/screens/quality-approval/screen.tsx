@@ -12,7 +12,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite } from '../../patterns/master';
@@ -25,7 +25,6 @@ import {
   approvalScopeWarning,
   statusBadgeOf,
   toCodeOptions,
-  toTypeOptions,
 } from './code-options';
 import { ConditionPane } from './condition-pane';
 import { toConcessionCardinality } from './conditions';
@@ -55,7 +54,12 @@ import {
   useConcessionCandidates,
 } from './queries';
 import { RequestList } from './request-list';
-import { TypeTabs } from './type-tabs';
+import {
+  IQC_SKIP_APPROVAL_PATH,
+  IQC_SKIP_TYPE_CODE,
+  TypeTabs,
+  toTypeTabOptions,
+} from './type-tabs';
 import {
   toRequestDetailView,
   toRequestRow,
@@ -103,6 +107,7 @@ export const QualityApprovalScreen = ({
 }: QualityApprovalScreenProps = {}) => {
   const t = messages.qualityApproval;
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const filters = useMemo(
     () => readFilters(searchParams, approvalTypeCodes, statusCodes),
     [approvalTypeCodes, searchParams, statusCodes],
@@ -412,9 +417,13 @@ export const QualityApprovalScreen = ({
        * 그 유형의 목록으로 돌아간다.
        */}
       <TypeTabs
-        options={toTypeOptions(approvalTypeCodes)}
+        options={toTypeTabOptions(approvalTypeCodes)}
         value={filters.approvalTypeCode}
-        onChange={(code) => apply({ ...filters, approvalTypeCode: code }, pendingOnly)}
+        onChange={(code) => {
+          /* 「IQC (수입검사) 생략」 탭은 긴급 IQC 생략 한도승인 화면이다 — 그 화면으로 옮긴다. */
+          if (code === IQC_SKIP_TYPE_CODE) void navigate(IQC_SKIP_APPROVAL_PATH);
+          else apply({ ...filters, approvalTypeCode: code }, pendingOnly);
+        }}
       />
       {selectedId === null ? (
         <>

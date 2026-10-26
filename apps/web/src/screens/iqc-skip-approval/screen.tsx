@@ -5,6 +5,18 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import {
+  IQC_SKIP_TYPE_CODE,
+  QUALITY_APPROVALS_PATH,
+  TypeTabs,
+  toTypeTabOptions,
+} from '../quality-approval/type-tabs';
+import { QUALITY_APPROVAL_TYPE_CODES } from '../quality-approval/code-options';
+import {
+  EMPTY_FILTERS as QUALITY_APPROVAL_EMPTY_FILTERS,
+  PENDING_ONLY_DEFAULT as QUALITY_APPROVAL_PENDING_ONLY_DEFAULT,
+  toAppliedSearchParams,
+} from '../quality-approval/filters';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { ApproveDialog } from './approve-dialog';
@@ -899,11 +911,16 @@ export const IqcSkipApprovalScreen = () => {
 
   return (
     <>
+      {/* 품질 승인 처리의 한 탭이다(#144) — 제목·경로도 그 화면을 따른다. */}
       <PageHeader
-        title={t.title}
+        title={messages.qualityApproval.title}
         breadcrumb={
           <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            items={[
+              { label: t.breadcrumbRoot },
+              { label: messages.qualityApproval.title },
+              { label: messages.qualityApproval.typeLabels.IQC_SKIP },
+            ]}
             aria-label={messages.common.shell.breadcrumb}
           />
         }
@@ -912,6 +929,24 @@ export const IqcSkipApprovalScreen = () => {
             {t.actions.reload}
           </Button>
         }
+      />
+
+      {/* 다른 유형 탭은 품질 승인 처리 목록으로 돌아가 그 유형을 연다. */}
+      <TypeTabs
+        options={toTypeTabOptions(QUALITY_APPROVAL_TYPE_CODES)}
+        value={IQC_SKIP_TYPE_CODE}
+        onChange={(code) => {
+          if (code === IQC_SKIP_TYPE_CODE) return;
+          const search = toAppliedSearchParams(
+            new URLSearchParams(),
+            { ...QUALITY_APPROVAL_EMPTY_FILTERS, approvalTypeCode: code },
+            QUALITY_APPROVAL_PENDING_ONLY_DEFAULT,
+            1,
+          ).toString();
+          void navigate(
+            search === '' ? QUALITY_APPROVALS_PATH : `${QUALITY_APPROVALS_PATH}?${search}`,
+          );
+        }}
       />
 
       <section className="pane iqc-skip-approval-list" aria-label={t.panes.list}>
