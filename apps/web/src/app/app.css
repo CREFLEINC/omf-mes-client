@@ -3961,6 +3961,11 @@ main > * + * {
   min-width: 0;
 }
 
+/* 좌우 배치(목록 | 상세)에서는 오른쪽 구획이 좁아 요청 상세 · 승인 처리를 위아래로 쌓는다(#186). 상하 배치는 위 그대로다. */
+.po-board-split:not(.is-stacked) .quality-approval-workspace {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /*
  * 본문을 끝까지 내린 뒤 더 굴리면 스크롤이 문서로 번져(macOS 탄성 스크롤) 앱 아래 빈 바닥이 드러난다 —
  * 품질 승인 처리(IQC 생략 탭 포함)에서는 번지지도 튕기지도 않게 한다(#186, OQC #136 과 같은 처리).
