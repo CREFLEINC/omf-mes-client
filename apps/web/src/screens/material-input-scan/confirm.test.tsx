@@ -57,6 +57,38 @@ const TERMINAL_PROCESSES_PATH = `/mdm/terminals/${String(TERMINAL_ID)}/processes
 const WORK_SESSIONS_PATH = '/production/work-sessions';
 const WORK_SESSION_ID = 7601;
 
+const PENDING_KEY = 'omf-mes.material-input-scan.pending';
+const OUTBOX_KEY = 'omf-mes.material-input-scan.outbox';
+
+/** 단말 저장소의 「보낼 예정」. */
+const storedPending = (): { material: { lotId: number } }[] =>
+  JSON.parse(globalThis.localStorage.getItem(PENDING_KEY) ?? '[]') as {
+    material: { lotId: number };
+  }[];
+
+/** outbox 의 저장된 큐(화면을 떠날 때 옮긴 것). */
+const storedOutbox = (): { body: unknown }[] =>
+  JSON.parse(globalThis.localStorage.getItem(OUTBOX_KEY) ?? '[]') as { body: unknown }[];
+
+/** 다시 불러오기 전에 남아 있던 「보낼 예정」 한 건(SAMPLE-LOT-0001, 7 EA). */
+const pendingItem = (workOrderId: number) => ({
+  id: 'sample-pending-1',
+  workOrderId,
+  workerNo: WORKER_NO,
+  workSessionId: null,
+  material: {
+    lotId: 7301,
+    lotNo: 'SAMPLE-LOT-0001',
+    itemId: 7201,
+    uomId: 7401,
+    statusCode: 'NORMAL',
+    isHeld: false,
+    fourMChange: null,
+  },
+  qty: '7',
+  scannedAt: '2026-10-26T09:00:00.000Z',
+});
+
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
 
@@ -702,7 +734,7 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
 
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0099{Enter}');
     expect(await within(editor()).findByText(t.scanned.manualReasons.unknown)).toBeTruthy();
-    expect(screen.queryByText(t.scanned.autoCountdown(10))).toBeNull();
+    expect(screen.queryByText(t.scanned.pendingHint)).toBeNull();
     expect(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0099'))).toHaveProperty(
       'value',
       '',
@@ -739,8 +771,8 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     expect(field).toHaveProperty('value', '70');
     /* 편집 영역에 투입 누계와 남은 수량이 선다. */
     expect(within(editor()).getByText(t.pairs.recordedQty)).toBeTruthy();
-    expect(within(editor()).getByText('30 EA')).toBeTruthy();
-    expect(within(editor()).getByText('70 EA')).toBeTruthy();
+    expect(within(editor()).getByText(qtyPart(`${t.pairs.recordedQty} 30 EA`))).toBeTruthy();
+    expect(within(editor()).getByText(qtyPart(`${t.pairs.remainingQty} 70 EA`))).toBeTruthy();
   });
 
   it('기록 목록을 못 받으면 수령 수량을 미리 채운다', async () => {
@@ -778,8 +810,8 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     expect(await screen.findByText(t.scan.outcomes.again('예시 자재 A'))).toBeTruthy();
     const field = screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
     expect(field).toHaveProperty('value', '88');
-    expect(within(editor()).getByText('12 EA')).toBeTruthy();
-    expect(within(editor()).getByText('88 EA')).toBeTruthy();
+    expect(within(editor()).getByText(qtyPart(`${t.pairs.recordedQty} 12 EA`))).toBeTruthy();
+    expect(within(editor()).getByText(qtyPart(`${t.pairs.remainingQty} 88 EA`))).toBeTruthy();
     /* 다시 스캔하면 같은 규칙으로 남은 수량을 곧 보낸다(PI-26). */
     expect(screen.getByText(t.remaining.sending('예시 자재 A', '88 EA'))).toBeTruthy();
 
@@ -834,7 +866,7 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
     const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
     expect(field).toHaveProperty('value', '100');
-    expect(within(editor()).getByText(t.scanned.autoCountdown(10))).toBeTruthy();
+    expect(within(editor()).getByText(t.scanned.pendingHint)).toBeTruthy();
     expect(
       within(editor()).getByRole('button', { name: t.scanned.undoMaterial('SAMPLE-LOT-0001') }),
     ).toBeTruthy();
@@ -884,6 +916,109 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
       ) as unknown[];
       expect(stored.length + sent.length).toBe(1);
     });
+  });
+
+  /* 「보낼 예정」은 단말 저장소에 남는다(PI-26). 다음 스캔에서 보내고 저장소에서 지운다. */
+  it('스캔하면 「보낼 예정」으로 저장하고, 다음 스캔에서 보내며 지운다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen(
+      [lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002', itemId: 7202 })],
+      okRoute([consumption(7301)]),
+      [recordedRoute([])],
+    );
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(storedPending()).toHaveLength(1);
+    /* 투입 내역에 「보낼 예정」 한 줄이 선다. */
+    expect(within(editor()).getByText(t.scanned.pendingState)).toBeTruthy();
+    expect(sent).toHaveLength(0);
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0002{Enter}');
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    /* 둘째 LOT이 「보낼 예정」이고 첫째는 보냈다. 두 번 보내지 않는다. */
+    expect(storedPending()).toHaveLength(1);
+    expect(storedPending()[0]?.material.lotId).toBe(7302);
+  });
+
+  /* 다시 불러와도(같은 W/O, 같은 작업자) 「보낼 예정」이 남아 고치거나 되돌릴 수 있다(PI-31). */
+  it('다시 불러온 「보낼 예정」은 그대로 남고 [되돌리기]로 버릴 수 있다', async () => {
+    const user = userEvent.setup();
+    globalThis.localStorage.setItem(PENDING_KEY, JSON.stringify([pendingItem(WORK_ORDER_ID)]));
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(field).toHaveProperty('value', '7');
+    expect(await screen.findByText(t.remaining.sending('예시 자재 A', '7 EA'))).toBeTruthy();
+
+    await user.click(
+      screen.getByRole('button', { name: t.scanned.undoMaterial('SAMPLE-LOT-0001') }),
+    );
+    expect(storedPending()).toHaveLength(0);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('다시 불러온 「보낼 예정」은 다음 동작([생산 작업으로])에서 보낸다', async () => {
+    const user = userEvent.setup();
+    globalThis.localStorage.setItem(PENDING_KEY, JSON.stringify([pendingItem(WORK_ORDER_ID)]));
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    await user.click(screen.getByRole('button', { name: t.confirm.goToProductionResult }));
+
+    await waitFor(() => {
+      expect(storedPending()).toHaveLength(0);
+    });
+    await waitFor(() => {
+      expect(sent.length + storedOutbox().length).toBe(1);
+    });
+    const body = (sent[0]?.body ?? storedOutbox()[0]?.body) as { inputQty: number; lotId: number };
+    expect(body.inputQty).toBe(7);
+  });
+
+  /* 다른 W/O에서 남은 「보낼 예정」은 화면이 열릴 때 보내고 한 번 알린다(PI-31). */
+  it('다른 W/O에서 남은 「보낼 예정」은 열 때 보내고 한 번 알린다', async () => {
+    globalThis.localStorage.setItem(PENDING_KEY, JSON.stringify([pendingItem(WORK_ORDER_ID + 1)]));
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    expect(await screen.findByText(t.scan.outcomes.leftoversSent(1))).toBeTruthy();
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect((sent[0]?.body as { workOrderId: number }).workOrderId).toBe(WORK_ORDER_ID + 1);
+    expect(storedPending()).toHaveLength(0);
+  });
+
+  /* 다 투입한 LOT(남은 0)은 정보만 보이고 다음 작업을 막지 않는다(PI-28 다시). */
+  it('다 투입한 LOT을 스캔하면 정보만 보이고, [추가 투입 입력]을 눌러야 입력이 열리며 그때 막는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [
+      recordedRoute([consumption(7301, { inputQty: 100 })]),
+    ]);
+
+    await screen.findByText(qtyPart(`${t.pairs.recordedQty} 100 EA`));
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+
+    expect(await screen.findByText(t.scan.outcomes.allInput('예시 자재 A'))).toBeTruthy();
+    expect(within(editor()).getByText(t.scanned.allInput)).toBeTruthy();
+    expect(screen.queryByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toBeNull();
+    const next = screen.getByRole('button', { name: t.confirm.goToProductionResult });
+    expect(next).toHaveProperty('disabled', false);
+    expect(storedPending()).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: t.scanned.extraInput }));
+    const field = screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(next).toHaveProperty('disabled', true);
+    expect(screen.getByText(t.remaining.record('예시 자재 A'))).toBeTruthy();
+
+    await user.type(field, '3');
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(next).toHaveProperty('disabled', false);
   });
 
   /* 서버가 받아 준 기록이 늘면 투입 합을 다시 읽는다. */

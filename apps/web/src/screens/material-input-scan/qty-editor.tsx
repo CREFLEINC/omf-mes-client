@@ -24,6 +24,31 @@ const qtyError = (draft: string): string | undefined => {
   return t.scanned.qtyProblems[problem];
 };
 
+/** 편집 영역의 투입 기록 한 줄(PI-30). */
+export interface InputRecordView {
+  key: string;
+  qty: number;
+  uomId: number;
+  occurredAt: string;
+  /** 「보낼 예정」(단말에 있음) 또는 「보냄」. */
+  state: 'pending' | 'sent';
+}
+
+const pad2 = (value: number): string => String(value).padStart(2, '0');
+
+/** 투입 기록 줄의 시각. 오늘이면 「HH:mm」, 아니면 「MM-DD HH:mm」. */
+const timeOf = (iso: string, now: Date = new Date()): string => {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '';
+  const time = `${pad2(at.getHours())}:${pad2(at.getMinutes())}`;
+  const isToday =
+    at.getFullYear() === now.getFullYear() &&
+    at.getMonth() === now.getMonth() &&
+    at.getDate() === now.getDate();
+
+  return isToday ? time : `${pad2(at.getMonth() + 1)}-${pad2(at.getDate())} ${time}`;
+};
+
 export interface QtyEditorProps {
   /** 편집 영역에 연 줄. 없으면 `null`. */
   row: MaterialRow | null;
@@ -49,8 +74,17 @@ export interface QtyEditorProps {
   onQtyChange: (lotId: number, value: string) => void;
   onRecord: (lotId: number) => void;
   onRemove: (lotId: number) => void;
-  /** 이 LOT의 자동 투입 창이 열려 있으면 남은 초. 아니면 `null`(PI-26). */
-  autoSecondsLeft: number | null;
+  /** 이 LOT이 「보낼 예정」인가(PI-26). 그때 [되돌리기]와 보내는 때 안내를 둔다. */
+  isAutoPending: boolean;
+  /** 이 W/O의 이 LOT 투입 기록(서버, 보냄, 보낼 예정). */
+  records: readonly InputRecordView[];
+  /** [추가 투입 입력]: 다 투입한 LOT에 직접 입력을 연다(PI-28). */
+  onExtraInput: (lotId: number) => void;
+  /**
+   * 투입 기록 한 줄을 취소한다. **취소 자리**다 — omf-mes-server#828 의 취소 기록 API가 생기면
+   * 화면이 넘기고, 그때 줄마다 [취소]가 선다(PI-30). 넘기지 않으면 아무것도 그리지 않는다(C-4).
+   */
+  onCancelRecord?: (record: InputRecordView) => void;
   /** 자동으로 보내지 않고 직접 입력으로 돌린 까닭. 없으면 `null`(PI-28). */
   manualReason: 'unknown' | 'none' | 'unit' | null;
   /** [되돌리기]: 창의 투입을 버린다. */
@@ -86,7 +120,10 @@ export const QtyEditor = ({
   onQtyChange,
   onRecord,
   onRemove,
-  autoSecondsLeft,
+  isAutoPending,
+  records,
+  onExtraInput,
+  onCancelRecord,
   manualReason,
   onUndo,
 }: QtyEditorProps) => {
@@ -125,7 +162,7 @@ export const QtyEditor = ({
     <section className="pane material-input-qty" aria-label={t.panes.noSelection}>
       <div className="material-input-qty-head">
         <h2 className="pane-title">{named(receipt?.itemName, itemCode)}</h2>
-        {material !== undefined && isPending && autoSecondsLeft === null && (
+        {material !== undefined && isPending && !isAutoPending && (
           <Button
             type="button"
             variant="outlined"
@@ -182,7 +219,22 @@ export const QtyEditor = ({
         />
       </p>
 
-      {material === undefined || !isPending ? (
+      {material !== undefined && !isPending && manualReason === 'none' ? (
+        /* 다 투입한 LOT: 정보만. 더 넣을 때만 직접 입력을 연다(PI-28 다시). */
+        <div className="material-input-auto">
+          <p className="material-input-auto-hint">{t.scanned.allInput}</p>
+          <Button
+            type="button"
+            variant="outlined"
+            size={POP_TOUCH_SIZE}
+            onClick={() => {
+              onExtraInput(row.lotId);
+            }}
+          >
+            {t.scanned.extraInput}
+          </Button>
+        </div>
+      ) : material === undefined || !isPending ? (
         /*
          * 입력은 스캔에서만 시작한다(PI-29). 담기는 스캔으로만 한다 — 라벨을 읽어야 실물 LOT과
          * 상태를 확인할 수 있다. 보낸 투입은 고치지 않는다(서버 취소 미구현, omf-mes-server#828).
@@ -195,17 +247,17 @@ export const QtyEditor = ({
       ) : (
         <>
           <h3 className="material-input-subtitle">{t.pairs.thisInput}</h3>
-          {manualReason !== null && autoSecondsLeft === null && (
+          {manualReason !== null && !isAutoPending && (
             <p className="field-note">{t.scanned.manualReasons[manualReason]}</p>
           )}
-          {autoSecondsLeft !== null && (
+          {isAutoPending && (
             /*
-             * 자동 투입 창(PI-26): 남은 초와 [되돌리기]. 칸을 고치면 고친 양을 보내고, [투입 기록]은
-             * 기다리지 않고 지금 보낸다.
+             * 「보낼 예정」(PI-26): 보내는 때 안내와 [되돌리기]. 칸을 고치면 고친 양을 보내고, [투입 기록]은
+             * 다음 동작을 기다리지 않고 지금 보낸다.
              */
             <div className="material-input-auto">
               <p className="material-input-auto-hint" role="status">
-                {t.scanned.autoCountdown(Math.max(autoSecondsLeft, 0))}
+                {t.scanned.pendingHint}
               </p>
               <Button
                 type="button"
@@ -265,6 +317,45 @@ export const QtyEditor = ({
             keySize={POP_TOUCH_SIZE}
             className="material-input-keypad"
           />
+        </>
+      )}
+      {/* 투입 내역은 입력 아래에 둔다. 이번 투입이 먼저 보이고 내역은 구획 안에서 스크롤된다. */}
+      {records.length > 0 && (
+        <>
+          <h3 className="material-input-subtitle">{t.scanned.recordsTitle}</h3>
+          <ul className="material-input-records" aria-label={t.scanned.recordsTitle}>
+            {records.map((record) => (
+              <li key={record.key} className="material-input-record">
+                <span className="material-input-qty-value">
+                  {(() => {
+                    const unit = describeUom(record.uomId);
+
+                    return unit === '' ? String(record.qty) : `${String(record.qty)} ${unit}`;
+                  })()}
+                </span>
+                <span className="material-input-qty-name">{timeOf(record.occurredAt)}</span>
+                <Chip
+                  variant="status"
+                  size="md"
+                  status={record.state === 'pending' ? 'info' : 'success'}
+                >
+                  {record.state === 'pending' ? t.scanned.pendingState : t.scanned.sentState}
+                </Chip>
+                {onCancelRecord !== undefined && (
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    size="sm"
+                    onClick={() => {
+                      onCancelRecord(record);
+                    }}
+                  >
+                    {t.scanned.cancelRecord}
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </section>

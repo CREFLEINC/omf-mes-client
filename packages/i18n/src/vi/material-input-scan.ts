@@ -50,6 +50,9 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
       offline: 'Mất kết nối nên không tra cứu được vật tư. Hãy quét lại khi có kết nối.',
       recorded: (item: string, qty: string): string => `Đưa vào ${item} ${qty}`,
       undone: (item: string): string => `Đã hoàn tác việc đưa vào ${item}.`,
+      allInput: (item: string): string => `${item} đã đưa vào hết số đã nhận.`,
+      leftoversSent: (count: number): string =>
+        `Đã gửi ${String(count)} lượt đưa vào quét trước đó.`,
     },
   },
   scanned: {
@@ -57,7 +60,13 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     remove: 'Hủy quét',
     removeMaterial: (lotNo: string): string => `Hủy quét ${lotNo}`,
     removed: (item: string): string => `Đã hủy quét ${item}.`,
-    autoCountdown: (seconds: number): string => `Gửi sau ${String(seconds)} giây`,
+    pendingHint: 'Sẽ gửi khi quét tiếp hoặc chuyển sang công việc sản xuất.',
+    recordsTitle: 'Lịch sử đưa vào',
+    pendingState: 'Sẽ gửi',
+    sentState: 'Đã gửi',
+    cancelRecord: 'Hủy',
+    allInput: 'Đã đưa vào hết số đã nhận.',
+    extraInput: 'Nhập thêm',
     undo: 'Hoàn tác',
     undoMaterial: (lotNo: string): string => `Hoàn tác đưa vào ${lotNo}`,
     manualReasons: {
@@ -95,7 +104,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     record: (item: string): string => `Hãy ghi việc đưa vào ${item}`,
     recordMany: (count: number): string => `Hãy ghi việc đưa vào ${String(count)} vật tư đã quét`,
     done: 'Có thể chuyển sang công việc sản xuất',
-    sending: (item: string, qty: string): string => `Sắp gửi đưa vào ${item} ${qty}`,
+    sending: (item: string, qty: string): string => `Sẽ gửi đưa vào ${item} ${qty}`,
   },
   confirm: {
     reasons: {

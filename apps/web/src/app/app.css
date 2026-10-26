@@ -12532,7 +12532,7 @@ button.app-button-neutral {
   gap: var(--space-3);
 }
 
-/* 자동 투입 창: 남은 초와 [되돌리기]를 한 줄에(PI-26). */
+/* 「보낼 예정」 안내와 [되돌리기], 다 투입한 LOT의 안내와 [추가 투입 입력]을 한 줄에(PI-26, PI-28). */
 .material-input-auto {
   display: flex;
   flex: 0 0 auto;
@@ -12544,6 +12544,22 @@ button.app-button-neutral {
 .material-input-auto-hint {
   margin: 0;
   color: var(--on-surface-variant);
+}
+
+/* 편집 영역의 투입 내역(PI-30). 한 줄에 수량, 시각, 상태 칩. */
+.material-input-records {
+  display: grid;
+  flex: 0 0 auto;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.material-input-record {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .material-input-keypad {

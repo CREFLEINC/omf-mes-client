@@ -83,6 +83,10 @@ export const materialInputScan = {
       recorded: (item: string, qty: string): string => `${item} ${qty} 투입`,
       /** [되돌리기] 뒤. 아무것도 보내지 않았다. */
       undone: (item: string): string => `${item} 투입을 되돌렸습니다.`,
+      /** 다 투입한 LOT을 스캔했을 때. 정보만이다(PI-28). */
+      allInput: (item: string): string => `${item} 받은 수량을 모두 투입했습니다.`,
+      /** 화면을 다시 열 때 앞서 남은 「보낼 예정」을 보냈다(PI-31). 한 번만 보인다. */
+      leftoversSent: (count: number): string => `앞서 스캔한 투입 ${String(count)}건을 보냈습니다.`,
     },
   },
 
@@ -94,10 +98,19 @@ export const materialInputScan = {
     removeMaterial: (lotNo: string): string => `${lotNo} 스캔 취소`,
     removed: (item: string): string => `${item} 스캔을 취소했습니다.`,
     /**
-     * 자동 투입 창(PI-26). 스캔하면 남은 수량으로 투입을 잡고 잠시 뒤 보낸다. 그 사이 수량을 고치거나
-     * [되돌리기]로 버린다.
+     * 「보낼 예정」(PI-26). 스캔하면 남은 수량으로 투입을 잡고 다음 동작에서 보낸다. 그 사이 수량을
+     * 고치거나 [되돌리기]로 버린다.
      */
-    autoCountdown: (seconds: number): string => `${String(seconds)}초 뒤 보냅니다`,
+    pendingHint: '다음 스캔이나 생산 작업으로 넘어갈 때 보냅니다.',
+    /** 편집 영역의 투입 기록 목록(PI-30). */
+    recordsTitle: '투입 내역',
+    pendingState: '보낼 예정',
+    sentState: '보냄',
+    /** 취소 기록 API(omf-mes-server#828)가 생기면 쓴다. 그 전에는 그리지 않는다. */
+    cancelRecord: '취소',
+    /** 다 투입한 LOT(PI-28). */
+    allInput: '받은 수량을 모두 투입했습니다.',
+    extraInput: '추가 투입 입력',
     undo: '되돌리기',
     undoMaterial: (lotNo: string): string => `${lotNo} 투입 되돌리기`,
     /** 자동으로 보내지 않고 직접 입력으로 돌리는 까닭 한 줄(PI-28). */
@@ -150,7 +163,7 @@ export const materialInputScan = {
     recordMany: (count: number): string => `스캔한 자재 ${String(count)}건의 투입을 기록하세요`,
     done: '생산 작업으로 진행할 수 있습니다',
     /** 자동 투입 창이 열려 있을 때. 막힘이 아니라 곧 일어날 일이다. */
-    sending: (item: string, qty: string): string => `${item} ${qty} 투입을 곧 보냅니다`,
+    sending: (item: string, qty: string): string => `${item} ${qty} 투입을 보낼 예정입니다`,
   },
 
   /**
