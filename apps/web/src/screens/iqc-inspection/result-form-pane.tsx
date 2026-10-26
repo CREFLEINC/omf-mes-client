@@ -286,7 +286,12 @@ export const ResultFormPane = ({
                 <p className="field-note">{t.round(round.inspectionRound)}</p>
               ) : null}
               {/* 잠근 이유는 세 칸마다 되풀이하지 않고 회차 옆 라벨로 한 번만 밝힌다(사용자 지시 2026-10-26). */}
-              {isConfirmed && <span className="iqc-inspection-head-badge">{t.confirmed}</span>}
+              {isConfirmed && (
+                <span className="iqc-inspection-head-badge iqc-inspection-locked-badge">
+                  <Icon name="lock" size={14} aria-hidden />
+                  {t.confirmed}
+                </span>
+              )}
               {/* 기준값(검사수량)은 제목 줄 오른쪽 끝에 — 세 칸은 이 값을 나눈 결과다. 따로 한 줄을 쓰지 않는다(#133). */}
               <dl className="iqc-inspection-qty-base">
                 <dt className="iqc-inspection-progress-label">{t.fields.inspectedQty}</dt>

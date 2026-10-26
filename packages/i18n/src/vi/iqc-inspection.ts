@@ -94,8 +94,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     judgmentSectionTitle: 'Đánh giá',
     round: (round: number): string => `Lượt ${round}`,
     loading: 'Đang tải kết quả kiểm tra.',
-    confirmed:
-      'Lượt này đã xác nhận nên không sửa được. Muốn kiểm tra lại thì thêm một lượt kiểm tra lại.',
+    confirmed: 'Lần này đã xác nhận. Để kiểm tra lại, hãy thêm lần mới.',
     closed: {
       title: 'Đã kiểm tra xong',
       note: 'Yêu cầu này đã kiểm tra xong. Đây là kết quả xác nhận của lượt mới nhất.',

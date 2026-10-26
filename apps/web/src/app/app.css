@@ -21623,3 +21623,16 @@ table.col-measuring td {
   font: var(--type-body-lg);
   font-weight: 600;
 }
+
+/* 확정된 회차 라벨(사용자 지시 2026-10-26) — 자물쇠 아이콘 + 한 줄 안내, 진한 파랑 알약. */
+.iqc-inspection-locked-badge {
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--semantic-info) 35%, transparent);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.iqc-inspection-locked-badge > :first-child {
+  color: var(--on-surface-variant);
+}
