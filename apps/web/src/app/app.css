@@ -20760,3 +20760,20 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 .pqc-web-search > .pqc-web-filter-bar > :not(.pqc-web-filter-check, .pqc-web-filter-actions) {
   flex: 1 1 13rem;
 }
+
+/* 검사 조회·판정 탭 줄 오른쪽 건수 칩(`patterns/inspection-hub-counts.tsx` · #185) — 입하 예정 조회의 단계 칩과 같은 모양(표시 전용). */
+.inspection-hub-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.inspection-hub-count {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  color: var(--on-surface);
+  font: var(--type-label-md);
+  letter-spacing: var(--type-label-md-tracking);
+  white-space: nowrap;
+}

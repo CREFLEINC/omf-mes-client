@@ -73,6 +73,12 @@ export const common = {
     stalledBody: '전송 대기 중인 기록은 그대로 있습니다. 잠시 뒤 다시 보내기를 누르세요.',
     stalledRetry: '다시 보내기',
   },
+  /** 검사 조회·판정(IQC · PQC · OQC) 탭 줄 오른쪽 건수 칩(omf-all-around#185). */
+  inspectionHub: {
+    label: '검사 의뢰 상태',
+    requested: (count: number): string => `대기 ${String(count)}`,
+    inProgress: (count: number): string => `진행 ${String(count)}`,
+  },
   reference: {
     empty: '—',
     /*

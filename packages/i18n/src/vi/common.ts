@@ -57,6 +57,11 @@ export const common: Translated<typeof ko.common> = {
     failedOffline: 'Sẽ hiển thị khi có kết nối',
     inactiveSuffix: ' (ngừng dùng)',
   },
+  inspectionHub: {
+    label: 'Trạng thái yêu cầu kiểm tra',
+    requested: (count: number): string => `Chờ ${String(count)}`,
+    inProgress: (count: number): string => `Đang làm ${String(count)}`,
+  },
   selectDate: 'Chọn ngày',
   popWorker: {
     label: 'Mã nhân viên',

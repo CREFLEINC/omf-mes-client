@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
 import { usePageHub } from '../../patterns/page-hub';
+import { InspectionHubCounts } from '../../patterns/inspection-hub-counts';
 import { LotScan } from '../inspection-documents/lot-scan';
 import { PAGE_SIZE } from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from '../oqc-inspection/load-error-banner';
@@ -89,6 +90,8 @@ export const PqcInspectionRegisterScreen = () => {
 
   return (
     <>
+      {/* 탭 줄 오른쪽 건수 칩(#185) — 탭 묶음 안에서만 선다. */}
+      <InspectionHubCounts inspectionTypeCode="PQC" />
       {/* 탭 묶음(검사 조회·판정) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(입하 예정 조회와 같다). */}
       {hub === null && (
         <PageHeader
