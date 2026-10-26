@@ -17,5 +17,16 @@ export const inspectionHistory = {
     `합격 ${String(accepted)} · 불합격 ${String(rejected)} · 보류 ${String(held)}`,
   judgment: (code: string): string => `판정 ${code}`,
   lotStatus: (lotNo: string, from: string, to: string): string => `${lotNo} ${from} → ${to}`,
-  by: (name: string): string => `처리 ${name}`,
+  by: (name: string): string => `처리자 ${name}`,
+  /** 표 모양(IQC 상세 · #185) — 회차 · 검사 일시 · 검사자 · 판정 · 구분(무슨 일) · 비고(수량 · LOT 상태). */
+  columns: {
+    round: '회차',
+    at: '검사 일시',
+    actor: '검사자',
+    judgment: '판정',
+    event: '구분',
+    note: '비고',
+  },
+  emptyTitle: '등록된 검사 이력이 없습니다.',
+  emptyHint: '검사가 완료되면 이력이 여기에 표시됩니다.',
 };

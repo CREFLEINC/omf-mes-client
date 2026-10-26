@@ -1,4 +1,4 @@
-import { Button, IconButton, Table, type Column } from '@crefle/web-ui';
+import { Button, EmptyState, Icon, IconButton, Table, type Column } from '@crefle/web-ui';
 import {
   createIdempotencyKey,
   type AttachmentTargetType,
@@ -9,6 +9,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type ChangeEvent } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 
@@ -40,6 +43,12 @@ const formatAt = (iso: string): string => {
   const at = new Date(iso);
   const pad = (n: number): string => String(n).padStart(2, '0');
   return `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
+};
+
+/** 파일 유형 — 확장자를 대문자로(PDF · XLSX …). 확장자가 없으면 서버가 준 형식(image/png 등)이다. */
+const fileTypeOf = (row: Attachment): string => {
+  const dot = row.fileName.lastIndexOf('.');
+  return dot < 0 ? row.contentType : row.fileName.slice(dot + 1).toUpperCase();
 };
 
 export const attachmentKeys = {
@@ -171,12 +180,28 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
     }
   };
 
-  const columns: Column<Attachment>[] = [
+  /*
+   * 등록자 이름 — 첨부는 등록자 번호만 준다. 사용자 목록으로 이름을 풀고, 못 풀면(권한 · 실패) 「—」다.
+   * 첨부가 하나라도 있을 때만 부른다.
+   */
+  const hasUploader = (list.data ?? []).some((row) => row.uploadedBy != null);
+  const users = useQuery({
+    queryKey: ['inspection-documents', 'users'],
+    queryFn: () => runRequest(() => client.GET('/app/users', { params: { query: {} } })),
+    enabled: hasUploader,
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+  const userNameOf = (id: number | null | undefined): string =>
+    (id == null ? undefined : users.data?.items.find((user) => user.appUserId === id)?.userName) ??
+    t.emptyValue;
+
+  /* 목록 표와 같은 열 구성 규칙(사용자 지시 2026-10-26 · #185) — 파일명만 왼쪽, 나머지는 가운데. */
+  const baseColumns: Column<Attachment>[] = [
     {
       key: 'fileName',
       header: t.columns.fileName,
-      width: '60%',
-      /* 긴 이름은 말줄임 — 전체 이름은 마우스를 올리면 보인다(#133). */
+      width: '280px',
       render: (row) => (
         <Button
           variant="text"
@@ -189,9 +214,54 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
         </Button>
       ),
     },
-    { key: 'size', header: t.columns.size, align: 'end', render: (row) => sizeText(row.byteSize) },
-    { key: 'uploadedAt', header: t.columns.uploadedAt, render: (row) => formatAt(row.uploadedAt) },
+    {
+      key: 'fileType',
+      header: t.columns.fileType,
+      width: '96px',
+      align: 'center',
+      render: fileTypeOf,
+    },
+    {
+      key: 'size',
+      header: t.columns.size,
+      width: '96px',
+      align: 'center',
+      render: (row) => sizeText(row.byteSize),
+    },
+    {
+      key: 'uploadedBy',
+      header: t.columns.uploadedBy,
+      width: '120px',
+      align: 'center',
+      render: (row) => userNameOf(row.uploadedBy),
+    },
+    {
+      key: 'uploadedAt',
+      header: t.columns.uploadedAt,
+      width: '150px',
+      align: 'center',
+      render: (row) => formatAt(row.uploadedAt),
+    },
+    {
+      key: 'manage',
+      header: t.columns.manage,
+      width: '80px',
+      align: 'center',
+      render: (row) => (
+        <IconButton
+          icon="download"
+          size="sm"
+          aria-label={t.download(row.fileName)}
+          title={t.download(row.fileName)}
+          onClick={() => void open(row)}
+        />
+      ),
+    },
   ];
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다 — 상자 폭에 맞춘다. */
+  const ordered = useColumnOrder('omf-mes:inspection-documents:columns:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:inspection-documents:columns', ordered);
+  const fit = useFitColumns(resizable.columns);
 
   return (
     /* 제목과 허용 형식 안내는 이 구획을 접는 줄(부르는 화면)이 맡는다(#133). */
@@ -200,14 +270,27 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
         <p className="field-note">{t.loadFailed}</p>
       ) : (
         /* 올린 파일이 없어도 표 모양은 그대로 두고 줄 안에 없다고 적는다(#133). */
-        <Table
-          caption={t.caption}
-          density="compact"
-          columns={columns}
-          rows={list.data ?? []}
-          getRowId={(row) => String(row.attachmentId)}
-          empty={<p className="field-note">{list.isPending ? t.loading : t.none}</p>}
-        />
+        <div ref={fit.ref} className="inspection-queue-table" style={resizable.style}>
+          <Table
+            caption={t.caption}
+            density="compact"
+            columns={fit.columns}
+            rows={list.data ?? []}
+            getRowId={(row) => String(row.attachmentId)}
+            empty={
+              list.isPending ? (
+                <p className="field-note">{t.loading}</p>
+              ) : (
+                <EmptyState
+                  size="sm"
+                  icon={<Icon name="contract_delete" size={32} />}
+                  title={t.emptyTitle}
+                  description={t.emptyHint}
+                />
+              )
+            }
+          />
+        </div>
       )}
       <SaveErrorBanner error={upload.error} />
       {upload.fieldErrors.file !== undefined && (

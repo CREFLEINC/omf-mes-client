@@ -21582,3 +21582,8 @@ table.col-measuring td {
   gap: var(--space-3);
   padding-top: var(--space-4);
 }
+
+/* 첨부 탭의 형식 · 크기 안내 라벨 — 칸 폭으로 늘어나지 않고 글 길이만큼. */
+.iqc-inspection-docs-help {
+  justify-self: start;
+}

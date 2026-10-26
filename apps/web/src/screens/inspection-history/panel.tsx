@@ -1,8 +1,12 @@
+import { EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
 import type { InspectionHistory, InspectionHistoryEvent } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { runRequest } from '../../patterns/request';
 
 const t = messages.inspectionHistory;
@@ -73,7 +77,96 @@ export interface InspectionHistoryPanelProps {
   judgmentLabelOf?: (code: string) => string;
   /** 대상 LOT 을 감춘다 — 위에 같은 LOT 이 이미 보이는 자리(IQC 상세 · #133). */
   hideSourceLot?: boolean;
+  /** 표 모양(회차 · 검사 일시 · 검사자 · 판정 · 구분 · 비고 · #185). 기본은 시간순 목록이다(OQC 상세). */
+  layout?: 'list' | 'table';
 }
+
+/** 비고 칸 — 수량(결과 저장 · 확정) 또는 LOT 상태 변경. 회차 · 판정 · 처리자는 제 칸이 있어 넣지 않는다. */
+const noteOf = (event: InspectionHistoryEvent): string => {
+  if (event.eventTypeCode === 'LOT_STATUS_CHANGED' && event.newStatusCode !== undefined)
+    return t.lotStatus(event.lotNo ?? '', event.previousStatusCode ?? t.empty, event.newStatusCode);
+  if (event.acceptedQty !== undefined)
+    return t.quantities(event.acceptedQty, event.rejectedQty ?? 0, event.heldQty ?? 0);
+  return t.empty;
+};
+
+/**
+ * 검사 이력 표 — 목록 표처럼 열 순서 · 폭을 바꾸고 브라우저에 남긴다(사용자 지시 2026-10-26 · #185). 상자 폭에 맞춘다.
+ * 회차 · 검사 일시 · 검사자 · 판정 · 구분은 가운데, 비고는 왼쪽.
+ */
+const HistoryTable = ({
+  events,
+  judgmentLabelOf,
+}: {
+  events: readonly InspectionHistoryEvent[];
+  judgmentLabelOf: (code: string) => string;
+}) => {
+  const columns: Column<InspectionHistoryEvent & { key: string }>[] = [
+    {
+      key: 'round',
+      header: t.columns.round,
+      width: '80px',
+      align: 'center',
+      render: (row) => (row.inspectionRound === undefined ? t.empty : t.round(row.inspectionRound)),
+    },
+    {
+      key: 'at',
+      header: t.columns.at,
+      width: '150px',
+      align: 'center',
+      render: (row) => formatAt(row.occurredAt),
+    },
+    {
+      key: 'actor',
+      header: t.columns.actor,
+      width: '110px',
+      align: 'center',
+      render: (row) => row.actorName ?? t.empty,
+    },
+    {
+      key: 'judgment',
+      header: t.columns.judgment,
+      width: '90px',
+      align: 'center',
+      render: (row) =>
+        row.overallJudgmentCode === undefined ? t.empty : judgmentLabelOf(row.overallJudgmentCode),
+    },
+    {
+      key: 'event',
+      header: t.columns.event,
+      width: '130px',
+      align: 'center',
+      render: (row) => t.events[row.eventTypeCode],
+    },
+    { key: 'note', header: t.columns.note, width: '240px', render: noteOf },
+  ];
+  const ordered = useColumnOrder('omf-mes:inspection-history:columns:order', columns);
+  const resizable = useColumnWidths('omf-mes:inspection-history:columns', ordered);
+  const fit = useFitColumns(resizable.columns);
+
+  return (
+    <div ref={fit.ref} className="inspection-queue-table" style={resizable.style}>
+      <Table
+        caption={<span className="iqc-inspection-table-caption">{t.heading}</span>}
+        density="compact"
+        columns={fit.columns}
+        rows={events.map((event, index) => ({
+          ...event,
+          key: `${event.eventTypeCode}-${event.occurredAt}-${String(index)}`,
+        }))}
+        getRowId={(row) => row.key}
+        empty={
+          <EmptyState
+            size="sm"
+            icon={<Icon name="history_toggle_off" size={32} />}
+            title={t.emptyTitle}
+            description={t.emptyHint}
+          />
+        }
+      />
+    </div>
+  );
+};
 
 /**
  * 검사 대상 이력(omf-all-around#61 · 서버 선행 P-55) — IQC(W-01-01)·PQC(W-03-11)·OQC(W-04-03) 상세가 함께 쓴다.
@@ -86,6 +179,7 @@ export const InspectionHistoryPanel = ({
   revision = '',
   judgmentLabelOf,
   hideSourceLot = false,
+  layout = 'list',
 }: InspectionHistoryPanelProps) => {
   const detailOf = (event: InspectionHistoryEvent): string[] => detailLines(event, judgmentLabelOf);
   const history = useInspectionHistory(inspectionRequestId, revision);
@@ -111,21 +205,28 @@ export const InspectionHistoryPanel = ({
               </div>
             )}
           </dl>
-          <ol className="inspection-history-events">
-            {history.data.events.map((event, index) => (
-              <li
-                key={`${event.eventTypeCode}-${event.occurredAt}-${String(index)}`}
-                data-event={event.eventTypeCode}
-              >
-                {/* 일시 · 작업 · 처리 결과를 각각 한 칸에 — 줄끼리 세로로 맞춰 읽힌다(app.css). */}
-                <span className="inspection-history-at">{formatAt(event.occurredAt)}</span>
-                <span className="field-label">{t.events[event.eventTypeCode]}</span>
-                {detailOf(event).length > 0 && (
-                  <span className="field-note">{detailOf(event).join(' · ')}</span>
-                )}
-              </li>
-            ))}
-          </ol>
+          {layout === 'table' ? (
+            <HistoryTable
+              events={history.data.events}
+              judgmentLabelOf={judgmentLabelOf ?? ((code) => code)}
+            />
+          ) : (
+            <ol className="inspection-history-events">
+              {history.data.events.map((event, index) => (
+                <li
+                  key={`${event.eventTypeCode}-${event.occurredAt}-${String(index)}`}
+                  data-event={event.eventTypeCode}
+                >
+                  {/* 일시 · 작업 · 처리 결과를 각각 한 칸에 — 줄끼리 세로로 맞춰 읽힌다(app.css). */}
+                  <span className="inspection-history-at">{formatAt(event.occurredAt)}</span>
+                  <span className="field-label">{t.events[event.eventTypeCode]}</span>
+                  {detailOf(event).length > 0 && (
+                    <span className="field-note">{detailOf(event).join(' · ')}</span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
         </>
       )}
     </section>

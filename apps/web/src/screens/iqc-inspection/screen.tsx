@@ -958,7 +958,10 @@ export const IqcInspectionScreen = () => {
                     label: messages.inspectionDocuments.heading,
                     content: (
                       <div className="iqc-inspection-tab-body iqc-inspection-fold">
-                        <p className="field-note">{messages.inspectionDocuments.help}</p>
+                        {/* 올릴 수 있는 형식 · 크기 — 라벨로(사용자 지시 2026-10-26). */}
+                        <span className="iqc-inspection-head-badge iqc-inspection-docs-help">
+                          {messages.inspectionDocuments.help}
+                        </span>
                         <AttachmentPanel
                           key={detail.data.lotId}
                           targetTypeCode="LOT"
@@ -982,6 +985,7 @@ export const IqcInspectionScreen = () => {
                       <div className="iqc-inspection-tab-body iqc-inspection-fold">
                         <InspectionHistoryPanel
                           hideSourceLot
+                          layout="table"
                           key={`${String(selectedId)}-${String(historyRounds.length)}`}
                           inspectionRequestId={selectedId}
                           judgmentLabelOf={(code) =>

@@ -20,7 +20,18 @@ export const inspectionDocuments = {
   unsupported:
     '올릴 수 없는 형식입니다. PDF·이미지·엑셀/워드/파워포인트·CSV·TXT 만 올릴 수 있습니다.',
   caption: '첨부 파일 목록',
-  columns: { fileName: '파일', uploadedAt: '올린 시각', size: '크기' },
+  columns: {
+    fileName: '파일명',
+    fileType: '파일 유형',
+    size: '파일 크기',
+    uploadedBy: '등록자',
+    uploadedAt: '등록일',
+    manage: '관리',
+  },
+  emptyValue: '—',
+  emptyTitle: '등록된 첨부 파일이 없습니다.',
+  emptyHint: '필요한 경우 파일을 첨부해 주세요.',
+  download: (fileName: string): string => `${fileName} 내려받기`,
   scan: {
     label: 'LOT 스캔',
     placeholder: 'LOT 바코드 스캔 또는 번호를 입력하세요',

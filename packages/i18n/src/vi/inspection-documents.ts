@@ -19,7 +19,18 @@ export const inspectionDocuments = {
   unsupported:
     'Định dạng không được hỗ trợ. Chỉ tải được PDF · hình ảnh · Excel/Word/PowerPoint · CSV · TXT.',
   caption: 'Danh sách tệp đính kèm',
-  columns: { fileName: 'File', uploadedAt: 'Thời điểm tải lên', size: 'Dung lượng' },
+  columns: {
+    fileName: 'Tên tệp',
+    fileType: 'Loại tệp',
+    size: 'Dung lượng',
+    uploadedBy: 'Người đăng',
+    uploadedAt: 'Ngày đăng',
+    manage: 'Quản lý',
+  },
+  emptyValue: '—',
+  emptyTitle: 'Chưa có tệp đính kèm nào.',
+  emptyHint: 'Hãy đính kèm tệp khi cần.',
+  download: (fileName: string): string => `Tải ${fileName}`,
   scan: {
     label: 'Quét LOT',
     placeholder: 'Quét mã vạch LOT hoặc nhập số',

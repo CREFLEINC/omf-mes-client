@@ -18,4 +18,14 @@ export const inspectionHistory = {
   judgment: (code: string): string => `Phán định ${code}`,
   lotStatus: (lotNo: string, from: string, to: string): string => `${lotNo} ${from} → ${to}`,
   by: (name: string): string => `Người xử lý ${name}`,
+  columns: {
+    round: 'Lần',
+    at: 'Thời gian kiểm tra',
+    actor: 'Người kiểm tra',
+    judgment: 'Phán định',
+    event: 'Phân loại',
+    note: 'Ghi chú',
+  },
+  emptyTitle: 'Chưa có lịch sử kiểm tra nào.',
+  emptyHint: 'Lịch sử sẽ hiển thị ở đây khi kiểm tra hoàn tất.',
 };
