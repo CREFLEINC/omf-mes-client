@@ -198,7 +198,7 @@ export const usePaneLayout = (storageKey: string) => {
   };
 
   /** 두 구획을 감싼 상자(`.po-board-split`)에 덧붙일 이름. */
-  const className = layout === 'stack' ? 'po-board-split is-stacked' : 'po-board-split';
+  const className = layout === 'stack' ? 'po-board-split is-stacked' : 'po-board-split is-side';
 
   return { layout, change, className };
 };

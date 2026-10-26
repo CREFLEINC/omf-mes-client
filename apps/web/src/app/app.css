@@ -4061,11 +4061,12 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /*
- * 고정 배치로 열 폭을 지킨다(#186) — 열을 넓히면 남는 폭을 맡는 열이 줄고 표 폭은 그대로다(`--col-floor` 만 따른다,
- * patterns/column-resize.tsx). 39rem 은 정한 열 폭의 합에 흡수하는 대상 LOT 열 10rem 을 더한 값이다.
+ * 고정 배치로 열 폭을 지킨다(#186) — 좌우 배치에서는 열을 넓힌 만큼 최소 폭이 따라가 칸 안에서 옆으로 넘긴다
+ * (`--col-grow` · `--col-floor`, patterns/column-resize.tsx). 39rem 은 정한 열 폭의 합에 흡수하는 대상 LOT 열 10rem 을
+ * 더한 값이다. 상하 배치는 아래 `.is-stacked` 규칙 — 표 폭이 늘지 않는다.
  */
 .quality-approval-table table {
-  min-width: max(39rem, var(--col-floor, 0px));
+  min-width: max(39rem + var(--col-grow, 0px), var(--col-floor, 0px));
   table-layout: fixed;
 }
 
@@ -6636,14 +6637,14 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 /*
  * 두 표(server #762) — 열별 폭의 도출 표는 order-table.tsx · line-table.tsx 에 있다.
- * 열을 넓히면 남는 폭을 맡는 열이 줄고 표 폭은 그대로다 — 최소 폭은 `--col-floor` 만 따른다(#186, patterns/column-resize.tsx).
+ * 열 폭을 끌어 바꾸면 최소 폭이 그만큼 따라간다(`--col-grow` · `--col-floor`, patterns/column-resize.tsx).
  */
 .wide-table.po-board-orders table {
-  min-width: max(38rem, var(--col-floor, 0px));
+  min-width: max(38rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
 
 .wide-table.po-board-lines table {
-  min-width: max(48rem, var(--col-floor, 0px));
+  min-width: max(48rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
 
 /*
@@ -6973,7 +6974,7 @@ body.po-board-resizing {
  * 열별 폭의 도출 표는 split-line-table.tsx 에 있다.
  */
 .wide-table.ors-lines table {
-  min-width: max(62rem, var(--col-floor, 0px));
+  min-width: max(62rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
 
 .ors-lines td {
@@ -18684,8 +18685,40 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 
 /* 목록 표 — 1024 폭 창에서도 가로로 넘치지 않게 칸 폭을 고정하고 긴 값은 말줄임. */
 .iqc-skip-approval-table table {
-  min-width: max(686px, var(--col-floor, 0px));
+  min-width: max(686px + var(--col-grow, 0px), var(--col-floor, 0px));
   table-layout: fixed;
+}
+
+/*
+ * 상하 배치(#186)에서는 열을 넓혀도 표 폭이 늘지 않는다 — 넓힌 만큼 남는 폭을 맡는 열이 줄어든다(끝은
+ * patterns/column-resize.tsx 가 정한다). 최소 폭이 `--col-grow` 를 따르지 않는다.
+ */
+.po-board-split.is-stacked .quality-approval-table table {
+  min-width: max(39rem, var(--col-floor, 0px));
+}
+
+.po-board-split.is-stacked .iqc-skip-approval-table table {
+  min-width: max(686px, var(--col-floor, 0px));
+}
+
+/*
+ * 좌우 배치에서 칸보다 넓은 표는 칸 안에서 옆으로 넘긴다(#186) — 가로 스크롤 막대를 늘 보인다(macOS 는 기본으로 감춰
+ * 잘린 것처럼 보인다). 막대는 표 부품의 스크롤 상자(표의 바로 위 상자)에 단다.
+ */
+.quality-approval-table > div::-webkit-scrollbar,
+.iqc-skip-approval-table > div::-webkit-scrollbar {
+  height: 8px;
+}
+
+.quality-approval-table > div::-webkit-scrollbar-thumb,
+.iqc-skip-approval-table > div::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-full);
+  background: var(--outline-variant);
+}
+
+.quality-approval-table > div::-webkit-scrollbar-track,
+.iqc-skip-approval-table > div::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* 좁힌 머리칸 글자는 이웃 칸을 덮지 않고 말줄임한다(#186 열 폭 조절). */
@@ -19028,7 +19061,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 
 /* 열 폭을 끌어 바꾸면 최소 폭이 따라간다(patterns/column-resize.tsx). 기본은 `.wide-table` 의 58rem 이다. */
 .wide-table.excess-table table {
-  min-width: max(58rem, var(--col-floor, 0px));
+  min-width: max(58rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
 
 .excess-table tbody tr {

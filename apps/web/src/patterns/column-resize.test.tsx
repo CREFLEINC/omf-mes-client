@@ -19,10 +19,17 @@ const COLUMNS: Column<Row>[] = [
 
 const STORAGE_KEY = 'test:columns';
 
-const Harness = ({ columns = COLUMNS }: { columns?: Column<Row>[] }) => {
+/** `split` — 배치 고르기가 있는 화면의 두 구획 상자 이름(`po-board.tsx` `usePaneLayout`). 없으면 그 밖의 화면이다. */
+const Harness = ({
+  columns = COLUMNS,
+  split,
+}: {
+  columns?: Column<Row>[];
+  split?: 'is-side' | 'is-stacked';
+}) => {
   const resizable = useColumnWidths(STORAGE_KEY, columns);
 
-  return (
+  const box = (
     <div data-testid="box" style={resizable.style}>
       <Table
         columns={resizable.columns}
@@ -31,6 +38,8 @@ const Harness = ({ columns = COLUMNS }: { columns?: Column<Row>[] }) => {
       />
     </div>
   );
+
+  return split === undefined ? box : <div className={`po-board-split ${split}`}>{box}</div>;
 };
 
 const renderedColWidths = (): (string | undefined)[] =>
@@ -128,8 +137,8 @@ describe('useColumnWidths', () => {
     expect(JSON.parse(globalThis.localStorage.getItem(STORAGE_KEY) ?? '')).toEqual({ code: 180 });
   });
 
-  it('넓혀도 표 폭은 그대로다 — 남는 폭을 맡는 열이 줄고 80px 은 남긴다(#186)', () => {
-    render(<Harness />);
+  it('상하 배치에서는 넓혀도 표 폭은 그대로다 — 남는 폭을 맡는 열이 줄고 80px 은 남긴다(#186)', () => {
+    render(<Harness split="is-stacked" />);
     const table = screen.getByRole('table');
     /* jsdom 은 폭을 재지 못한다 — 상자 400px, 표 500px(이미 옆으로 넘기는 좁은 칸), 수량 열 88px 로 둔다. */
     Object.defineProperty(table.parentElement, 'clientWidth', { configurable: true, value: 400 });
@@ -143,6 +152,14 @@ describe('useColumnWidths', () => {
 
     /* 500 − 이름(남는 폭 · 80) − 수량(88) = 332. 끈 만큼(420px)이 아니다. */
     expect(renderedColWidths()).toEqual(['332px', undefined, '88px']);
+  });
+
+  it('좌우 배치에서는 한 열이 480px 까지 넓어진다 — 표는 칸 안에서 옆으로 넘긴다(#186)', () => {
+    render(<Harness split="is-side" />);
+
+    drag('코드', 120, 1000);
+
+    expect(renderedColWidths()).toEqual(['480px', undefined, '88px']);
   });
 
   it('너무 좁게는 줄지 않는다', () => {

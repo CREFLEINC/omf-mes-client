@@ -84,8 +84,11 @@ export const layoutColumns = (
 /** 남는 폭을 맡는 열이 다른 열에 밀려도 남기는 폭 — 그 열의 글이 아예 사라지지 않게. */
 const ABSORBER_KEEP = 80;
 
+/** 좌우 배치(목록 | 상세)에서 한 열이 넓어질 수 있는 끝 — 칸 안에서 옆으로 넘겨 보므로 한없이 넓히지 않는다(#186). */
+const SIDE_COLUMN_MAX = 480;
+
 /**
- * 이 열을 넓힐 수 있는 끝(px) — **표 폭을 넓히지 않는 데까지**다(사용자 지시 2026-10-26 · #186 「표가 넘어가는 버그」·
+ * 상하 배치에서 이 열을 넓힐 수 있는 끝(px) — **표 폭을 넓히지 않는 데까지**다(사용자 지시 2026-10-26 · #186 「표가 넘어가는 버그」·
  * 「좌우·상하 배치 동작은 같아야」). 넓힌 만큼 남는 폭을 맡는 열이 줄어들고, 그 열마다 `ABSORBER_KEEP` 은 남긴다.
  * 표 폭은 상자 폭과 지금 표 폭 가운데 큰 쪽이다 — 좁은 칸에서 이미 옆으로 넘기는 표도 더 넓어지지 않는다.
  * 잴 수 없으면(시험 환경) 끝이 없다.
@@ -126,8 +129,16 @@ const ColumnResizer = ({
       event.preventDefault();
       const startX = event.clientX;
       const startWidth = cell.getBoundingClientRect().width;
-      /* 표 폭을 넓히지 않는다. 이미 끝을 넘어 있으면 지금 폭이 끝이다 — 갑자기 줄어들지 않게. */
-      const widest = Math.max(widestOf(cell), startWidth);
+      /*
+       * 배치 고르기(`po-board.tsx` `usePaneLayout`)가 있는 화면만 끝을 둔다(#186 사용자 지시). 상하 배치는 표가 칸을
+       * 넘지 않는 데까지, 좌우 배치는 한 열 480px 까지(표는 칸 안에서 옆으로 넘긴다). 그 밖의 화면은 종전 그대로다.
+       */
+      const split = cell.closest('.po-board-split');
+      const widest = split?.classList.contains('is-stacked')
+        ? Math.max(widestOf(cell), startWidth)
+        : split?.classList.contains('is-side')
+          ? Math.max(SIDE_COLUMN_MAX, startWidth)
+          : Infinity;
       const move = (moveEvent: PointerEvent): void => {
         onResize(Math.min(widest, startWidth + moveEvent.clientX - startX));
       };
