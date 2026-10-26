@@ -54,7 +54,8 @@ const columnsOf = (
     key: 'itemId',
     align: 'start',
     header: t.columns.itemId,
-    /* 남는 폭을 흡수한다(#185). */
+    /* 다른 열처럼 폭을 끌어 바꾼다(#185). */
+    width: '280px',
     /* 「이름 / 코드」 두 줄 — 못 푼 갈래는 줄이 하나뿐이라 풀이가 사유를 그 자리에 낸다(IQC 와 같은 모양). */
     render: (row) => {
       const parts = itemNames.partsOf(row.itemId);

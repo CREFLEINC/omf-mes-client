@@ -11,7 +11,7 @@ const pxOf = (width: string | undefined): number | null =>
 
 /**
  * 표가 감싼 상자 폭을 넘지 않게 한다(사용자 지시 2026-10-26 · omf-all-around#185 — 반응형).
- * 정해 둔 열 폭(끌어 넓힌 폭 포함)의 합이 상자보다 크면 그 열들을 같은 비율로 줄여 상자 안에 맞춘다 —
+ * 정해 둔 열 폭(끌어 바꾼 폭 포함)의 비율대로 상자 폭을 나눈다 — 합이 상자보다 크면 줄이고, 작으면 늘린다.
  * 저장된 폭은 그대로라 창이 다시 넓어지면 원래 폭으로 돌아간다. 창 · 구획 크기가 바뀔 때마다 다시 잰다.
  */
 export const useFitColumns = <T,>(columns: Column<T>[]) => {
@@ -36,10 +36,18 @@ export const useFitColumns = <T,>(columns: Column<T>[]) => {
   const fixed = columns.map((column) => pxOf(column.width));
   const fixedSum = fixed.reduce<number>((sum, width) => sum + (width ?? 0), 0);
   const flexNeed = fixed.filter((width) => width === null).length * FLEX_MIN;
+  /*
+   * 모든 열이 폭을 가지면(남는 폭을 흡수하는 열이 없으면) 상자 폭에 맞춰 늘리고 줄인다 — 끈 열은 그만큼 몫이 커진다.
+   * 흡수하는 열이 있으면 넘칠 때만 줄인다(남는 폭은 그 열이 가진다).
+   */
   const scale =
-    available === null || available <= 0 || fixedSum === 0 || fixedSum + flexNeed <= available
+    available === null || available <= 0 || fixedSum === 0
       ? 1
-      : Math.max(0, (available - flexNeed) / fixedSum);
+      : flexNeed === 0
+        ? available / fixedSum
+        : fixedSum + flexNeed <= available
+          ? 1
+          : Math.max(0, (available - flexNeed) / fixedSum);
 
   return {
     ref,

@@ -103,6 +103,7 @@ export const PqcQueueTable = ({
       key: 'item',
       align: 'start',
       header: t.columns.item,
+      width: '240px',
       render: (row) => <ItemCell itemId={row.itemId} />,
     },
     {

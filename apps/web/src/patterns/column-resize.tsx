@@ -86,9 +86,12 @@ export const layoutColumns = (
  * 섞이지 않게.
  */
 const ColumnResizer = ({
+  baseWidth,
   onResize,
   onReset,
 }: {
+  /** 저장 단위의 지금 폭(px). 표가 상자에 맞춰 늘거나 줄어 보이면 그린 폭과 다르다 — 없으면 그린 폭이다. */
+  baseWidth: number | null;
   onResize: (width: number) => void;
   onReset: () => void;
 }) => (
@@ -100,9 +103,12 @@ const ColumnResizer = ({
       if (cell === null || event.button !== 0) return;
       event.preventDefault();
       const startX = event.clientX;
-      const startWidth = cell.getBoundingClientRect().width;
+      const drawn = cell.getBoundingClientRect().width;
+      const startWidth = baseWidth ?? drawn;
+      /* 그린 폭과 저장 폭의 비 — 커서가 움직인 만큼 화면의 칸 끝이 따라오게 저장 단위로 옮긴다. */
+      const ratio = drawn > 0 ? startWidth / drawn : 1;
       const move = (moveEvent: PointerEvent): void => {
-        onResize(startWidth + moveEvent.clientX - startX);
+        onResize(startWidth + (moveEvent.clientX - startX) * ratio);
       };
       const up = (): void => {
         window.removeEventListener('pointermove', move);
@@ -144,6 +150,7 @@ export const useColumnWidths = <T,>(storageKey: string, columns: Column<T>[]) =>
         <>
           {column.header}
           <ColumnResizer
+            baseWidth={pxOf(layout.widths[column.key])}
             onResize={(value) => {
               commit({ ...overrides, [column.key]: clampWidth(value) });
             }}
