@@ -50,6 +50,8 @@ export interface NavEntry extends LocalizedLabel {
    * (`patterns/page-hub.tsx`). 그 화면들이 `usePageHub` 로 자리를 받아야 한다.
    */
   readonly tabsInPage?: boolean;
+  /** 탭 묶음의 탭을 **화면이 직접 그린다** — 셸 탭 막대를 세우지 않는다(사이드바 선택·권한은 묶음 그대로). */
+  readonly inlineTabs?: true;
 }
 
 /**
@@ -263,16 +265,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
-      /*
-       * W-01-02 — IQC 를 «생략할 것인가»를 판정하는 자리라 IQC 바로 뒤다. ⛔ IQC 와 탭으로 묶지
-       * 않는다 — 검사하는 사람과 승인하는 사람이 다르다.
-       */
-      {
-        to: '/logistics/iqc-skip-approval',
-        icon: 'approval',
-        label: '긴급 IQC 생략 한도승인',
-        labelVi: 'Phê duyệt hạn mức bỏ qua IQC khẩn',
-      },
       {
         to: '/master-data/inspection-standard',
         icon: 'rule_settings',
@@ -339,11 +331,28 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: '의심자재 등록',
         labelVi: 'Đăng ký vật tư nghi ngờ',
       },
+      /*
+       * 품질 승인 처리 — 긴급 IQC 생략 한도승인(W-01-02)을 유형 탭 하나로 품는다(#144). 탭은 화면이 유형 탭
+       * 줄에 직접 그린다(`inlineTabs`) — 셸 탭 막대까지 서면 탭 줄이 둘이 된다.
+       */
       {
         to: '/quality/approvals',
         icon: 'approval',
-        label: '특채·한도승인 승인 처리',
-        labelVi: 'Xử lý phê duyệt đặc cách · hạn mức',
+        label: '품질 승인 처리',
+        labelVi: 'Xử lý phê duyệt chất lượng',
+        inlineTabs: true,
+        tabs: [
+          {
+            to: '/quality/approvals',
+            label: '품질 승인 처리',
+            labelVi: 'Xử lý phê duyệt chất lượng',
+          },
+          {
+            to: '/logistics/iqc-skip-approval',
+            label: 'IQC (수입검사) 생략',
+            labelVi: 'Bỏ qua IQC (kiểm tra đầu vào)',
+          },
+        ],
       },
       /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
       {

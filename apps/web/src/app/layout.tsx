@@ -341,7 +341,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
    */
   const activeHub = findActiveHub(allowedGroups, pathname);
   const hubBar =
-    activeHub !== null && activeHub.hub.tabs.length > 1 ? (
+    activeHub !== null && activeHub.hub.tabs.length > 1 && activeHub.hub.inlineTabs !== true ? (
       <HubTabs hub={activeHub.hub} activePath={activeHub.activePath} />
     ) : null;
   /* 제목 아래에 세우는 묶음은 화면에 넘긴다(`patterns/page-hub.tsx`) — 본문 맨 위에는 세우지 않는다. */

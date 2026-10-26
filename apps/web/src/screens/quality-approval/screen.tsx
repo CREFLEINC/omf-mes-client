@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Breadcrumb,
   Button,
+  Chip,
   EmptyState,
   PageHeader,
   SkeletonText,
@@ -11,10 +12,12 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite } from '../../patterns/master';
+import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
 import { toApiError } from '../../patterns/request';
 import { ApprovalActionPane } from './approval-action-pane';
 import { ApproveDialog } from './approve-dialog';
@@ -22,6 +25,7 @@ import {
   QUALITY_APPROVAL_STATUS_CODES,
   QUALITY_APPROVAL_TYPE_CODES,
   approvalScopeWarning,
+  statusBadgeOf,
   toCodeOptions,
 } from './code-options';
 import { ConditionPane } from './condition-pane';
@@ -52,6 +56,12 @@ import {
   useConcessionCandidates,
 } from './queries';
 import { RequestList } from './request-list';
+import {
+  IQC_SKIP_APPROVAL_PATH,
+  IQC_SKIP_TYPE_CODE,
+  TypeTabs,
+  toTypeTabOptions,
+} from './type-tabs';
 import {
   toRequestDetailView,
   toRequestRow,
@@ -99,6 +109,10 @@ export const QualityApprovalScreen = ({
 }: QualityApprovalScreenProps = {}) => {
   const t = messages.qualityApproval;
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { session } = useSession();
+  /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다(`inlineTabs`). */
+  const canOpenIqcSkip = toWebAccess(session?.permissions).allows(IQC_SKIP_APPROVAL_PATH);
   const filters = useMemo(
     () => readFilters(searchParams, approvalTypeCodes, statusCodes),
     [approvalTypeCodes, searchParams, statusCodes],
@@ -249,17 +263,6 @@ export const QualityApprovalScreen = ({
   }
 
   const detailSlot = (): ReactNode => {
-    if (selectedId === null) {
-      return (
-        <EmptyState
-          size="sm"
-          live={isDetailMissing}
-          title={isDetailMissing ? t.detail.notFound : t.detail.select}
-          description={isDetailMissing ? t.detail.notFoundDescription : undefined}
-        />
-      );
-    }
-
     if (detail.isPending) {
       return (
         <div role="status" aria-label={t.detail.loading}>
@@ -318,7 +321,7 @@ export const QualityApprovalScreen = ({
   };
 
   const progressSlot = (): ReactNode => {
-    if (selectedId === null) return <EmptyState size="sm" title={t.detail.progressPending} />;
+    if (selectedId === null) return null;
 
     if (detail.isPending) {
       return (
@@ -332,6 +335,14 @@ export const QualityApprovalScreen = ({
       return <EmptyState size="sm" title={t.progress.unavailable} />;
     }
 
+    if (detail.data === undefined) return null;
+
+    return <ProgressPane view={toApprovalProgressView(detail.data)} />;
+  };
+
+  /* 승인 처리 — 결재 진행과 갈라 요청 상세 옆 칸에 선다(#144). 상세가 서야 선다. */
+  const actionSlot = (): ReactNode => {
+    if (selectedId === null || detail.isPending || detailError !== null) return null;
     if (detail.data === undefined) return null;
 
     const openDecisionDialog = (action: DecisionAction): void => {
@@ -349,7 +360,6 @@ export const QualityApprovalScreen = ({
     };
     return (
       <>
-        <ProgressPane view={toApprovalProgressView(detail.data)} />
         <ApprovalActionPane
           comment={comment}
           commentError={localCommentError ?? serverCommentError}
@@ -393,57 +403,117 @@ export const QualityApprovalScreen = ({
         title={t.title}
         breadcrumb={
           <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            items={[
+              { label: t.breadcrumbRoot },
+              { label: t.title },
+              /* 상세를 열면 지금 자리를 한 단계 더 보인다(#144). */
+              ...(selectedId === null ? [] : [{ label: t.panes.detail }]),
+            ]}
             aria-label={messages.common.shell.breadcrumb}
           />
         }
       />
-      <div className="quality-approval-workspace">
-        <section
-          className="pane quality-approval-pane quality-approval-list-pane"
-          aria-label={t.panes.list}
-        >
-          <h2 className="pane-title">{t.panes.list}</h2>
-          <FilterBar
-            applied={filters}
-            typeOptions={toCodeOptions(approvalTypeCodes)}
-            statusOptions={toCodeOptions(statusCodes)}
-            pendingOnly={pendingOnly}
-            onApply={(next) => apply(next, pendingOnly)}
-            onTogglePendingOnly={(next) => apply(filters, next)}
-            onReset={() => apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT)}
-          />
-          {scopeWarning !== undefined && (
-            <div className="banner-slot">
-              <AlertBanner variant="info">{scopeWarning}</AlertBanner>
-            </div>
-          )}
-          <RequestList
-            rows={rows}
-            isLoading={list.isPending}
-            error={error}
-            page={pageView}
-            selectedId={selectedId}
-            onSelect={(id) => {
-              setMissingContextKey(null);
-              setSearchParams((current) =>
-                withSelectedRequest(current, selectedId === id ? null : id),
-              );
-            }}
-            onChangePage={(nextPage) => apply(filters, pendingOnly, nextPage)}
-          />
-        </section>
-        <div className="pane-stack quality-approval-side">
-          <section className="pane quality-approval-pane" aria-label={t.panes.detail}>
-            <h2 className="pane-title">{t.panes.detail}</h2>
-            {detailSlot()}
+      {/*
+       * 목록과 상세를 한 화면에 나란히 두지 않고 갈아 끼운다(#144, IQC #133 과 같은 방식) — 요청을 고르면
+       * (`?approvalRequestId=`) 요청 상세 · 결재 진행만, 목록으로 돌아오면 목록만 선다. 조건 · 쪽은 주소에 남는다.
+       */}
+      {/*
+       * 유형 탭은 목록·상세 어디서나 선다(#144) — 상세에서 탭을 누르면 고른 요청을 비우고(`apply`)
+       * 그 유형의 목록으로 돌아간다.
+       */}
+      <TypeTabs
+        options={toTypeTabOptions(approvalTypeCodes, canOpenIqcSkip)}
+        value={filters.approvalTypeCode}
+        onChange={(code) => {
+          /* 「IQC (수입검사) 생략」 탭은 긴급 IQC 생략 한도승인 화면이다 — 그 화면으로 옮긴다. */
+          if (code === IQC_SKIP_TYPE_CODE) void navigate(IQC_SKIP_APPROVAL_PATH);
+          else apply({ ...filters, approvalTypeCode: code }, pendingOnly);
+        }}
+      />
+      {selectedId === null ? (
+        <>
+          <section
+            className="pane quality-approval-pane quality-approval-list-pane"
+            aria-label={t.panes.list}
+          >
+            <h2 className="pane-title">{t.panes.list}</h2>
+            <FilterBar
+              applied={filters}
+              statusOptions={toCodeOptions(statusCodes)}
+              pendingOnly={pendingOnly}
+              onApply={(next) => apply(next, pendingOnly)}
+              onTogglePendingOnly={(next) => apply(filters, next)}
+              onReset={() => apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT)}
+            />
+            {scopeWarning !== undefined && (
+              <div className="banner-slot">
+                <AlertBanner variant="info">{scopeWarning}</AlertBanner>
+              </div>
+            )}
+            {/* 열려던 요청이 없어 목록으로 돌아왔다 — 왜 돌아왔는지 목록 위에서 알린다. */}
+            {isDetailMissing && (
+              <div className="banner-slot">
+                <AlertBanner variant="info" title={t.detail.notFound}>
+                  {t.detail.notFoundDescription}
+                </AlertBanner>
+              </div>
+            )}
+            <RequestList
+              rows={rows}
+              isLoading={list.isPending}
+              error={error}
+              page={pageView}
+              selectedId={selectedId}
+              onSelect={(id) => {
+                setMissingContextKey(null);
+                setSearchParams((current) => withSelectedRequest(current, id));
+              }}
+              onChangePage={(nextPage) => apply(filters, pendingOnly, nextPage)}
+            />
           </section>
-          <section className="pane quality-approval-pane" aria-label={t.panes.progress}>
-            <h2 className="pane-title">{t.panes.progress}</h2>
+        </>
+      ) : (
+        <>
+          <div className="quality-approval-back">
+            <Button
+              variant="text"
+              size="md"
+              onClick={() => setSearchParams((current) => withSelectedRequest(current, null))}
+            >
+              {t.detail.backToList}
+            </Button>
+          </div>
+          {/*
+           * 상세는 위에서 아래로 읽는다(#144) — 결재 진행(가로 단계)을 맨 위에 두고, 그 아래 요청 상세 | 승인 처리
+           * 두 칸이 나란히 선다. 무엇을 결재하는지 보고 바로 옆에서 결재한다.
+           */}
+          <section
+            className="pane quality-approval-pane quality-approval-progress-pane"
+            aria-label={t.panes.progress}
+          >
             {progressSlot()}
           </section>
-        </div>
-      </div>
+          <div className="quality-approval-workspace">
+            <section className="pane quality-approval-pane" aria-label={t.panes.detail}>
+              <div className="pane-heading-row quality-approval-detail-heading">
+                <h2 className="pane-title">{t.panes.detail}</h2>
+                {/* 상태는 제목 줄 오른쪽 배지로(#144) — 대기 주황 · 승인 초록 · 반려 빨강. */}
+                {detail.data !== undefined && !detail.isError && (
+                  <Chip size="sm" status={statusBadgeOf(detail.data.request.statusCode).tone}>
+                    {statusBadgeOf(detail.data.request.statusCode).label}
+                  </Chip>
+                )}
+              </div>
+              {detailSlot()}
+            </section>
+            {actionSlot() !== null && (
+              <section className="pane quality-approval-pane" aria-label={t.approval.title}>
+                {actionSlot()}
+              </section>
+            )}
+          </div>
+        </>
+      )}
       {dialogDraft !== null &&
         selectedId === dialogDraft.approvalRequestId &&
         !detail.isError &&

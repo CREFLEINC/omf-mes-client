@@ -5,13 +5,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { FilterBar, type FilterBarProps } from './filter-bar';
 import { EMPTY_FILTERS } from './filters';
-import { pickRange } from '../../test/date-picker';
+import { pickDate } from '../../test/date-picker';
 
 const t = messages.qualityApproval;
 
 const makeProps = (overrides: Partial<FilterBarProps> = {}): FilterBarProps => ({
   applied: EMPTY_FILTERS,
-  typeOptions: [],
   statusOptions: [],
   pendingOnly: true,
   onApply: vi.fn(),
@@ -28,42 +27,40 @@ const renderBar = (overrides: Partial<FilterBarProps> = {}) => {
 const requestSearch = (): HTMLElement => screen.getByLabelText(t.fields.q);
 
 describe('FilterBar draft lifetime', () => {
-  it('빈 코드 선택칸은 placeholder와 연결된 준비 설명을 제공한다', () => {
+  it('빈 코드 선택칸은 placeholder만 보이고 준비 설명 문구는 두지 않는다', () => {
     renderBar();
-    const type = screen.getByLabelText(t.fields.approvalTypeCode);
-    const status = screen.getByLabelText(t.fields.statusCode);
+    const status = screen.getByLabelText(t.fields.statusSearch);
 
-    expect(type).toHaveTextContent(t.codePlaceholder);
+    /* 승인 유형은 조건 막대가 아니라 목록 위 탭으로 옮겼다(#144). */
+    expect(screen.queryByLabelText(t.fields.approvalTypeCode)).not.toBeInTheDocument();
     expect(status).toHaveTextContent(t.codePlaceholder);
-    expect(type).toHaveAccessibleDescription(t.codePending);
-    expect(status).toHaveAccessibleDescription(t.codePending);
+    expect(screen.queryByText('선택할 기준값이 아직 준비되지 않았습니다')).not.toBeInTheDocument();
   });
 
   it('선택·기간·검색어 draft를 Enter로 함께 적용한다', async () => {
+    /* 적용된 승인 유형(탭)은 조건 막대의 적용·조회에도 그대로 실려 간다. */
     const { props, user } = renderBar({
-      typeOptions: [{ value: 'IQC_SKIP', label: '합성 유형' }],
+      applied: { ...EMPTY_FILTERS, approvalTypeCode: 'CONCESSION' },
       statusOptions: [{ value: 'SYNTH-OPEN', label: '합성 상태' }],
     });
 
-    await user.click(screen.getByLabelText(t.fields.approvalTypeCode));
-    await user.click(screen.getByRole('option', { name: '합성 유형' }));
-    await user.click(screen.getByLabelText(t.fields.statusCode));
+    await user.click(screen.getByLabelText(t.fields.statusSearch));
     await user.click(screen.getByRole('option', { name: '합성 상태' }));
-    await pickRange(user, screen.getByLabelText(t.fields.period), '2026-08-01', '2026-08-22');
+    /* 상신일은 시작일·종료일 두 칸으로 따로 고른다(#144). */
+    await pickDate(user, screen.getByLabelText(t.fields.periodFrom), '2026-08-01');
+    await pickDate(user, screen.getByLabelText(t.fields.periodTo), '2026-08-22');
     await user.type(requestSearch(), 'SYNTH-REQ{Enter}');
     expect(props.onApply).toHaveBeenCalledWith({
-      approvalTypeCode: 'IQC_SKIP',
+      approvalTypeCode: 'CONCESSION',
       statusCode: 'SYNTH-OPEN',
       from: '2026-08-01',
       to: '2026-08-22',
       q: 'SYNTH-REQ',
     });
 
-    await user.click(screen.getByLabelText(t.fields.approvalTypeCode));
-    await user.click(screen.getByRole('option', { name: t.all }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
     expect(props.onApply).toHaveBeenLastCalledWith({
-      approvalTypeCode: '',
+      approvalTypeCode: 'CONCESSION',
       statusCode: 'SYNTH-OPEN',
       from: '2026-08-01',
       to: '2026-08-22',
