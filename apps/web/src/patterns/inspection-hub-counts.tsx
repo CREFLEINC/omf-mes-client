@@ -13,7 +13,7 @@ const STATUSES = [
   { code: 'IN_PROGRESS', label: t.inProgress },
 ] as const;
 
-const useStatusCount = (inspectionTypeCode: string, statusCode: string) => {
+const useStatusCount = (inspectionTypeCode: string, statusCode: string, enabled: boolean) => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -26,6 +26,7 @@ const useStatusCount = (inspectionTypeCode: string, statusCode: string) => {
         }),
       ).then((response) => response.page.total),
     staleTime: 30_000,
+    enabled,
   });
 };
 
@@ -36,8 +37,9 @@ const useStatusCount = (inspectionTypeCode: string, statusCode: string) => {
  */
 export const InspectionHubCounts = ({ inspectionTypeCode }: { inspectionTypeCode: string }) => {
   const target = useHubActionsTarget();
-  const requested = useStatusCount(inspectionTypeCode, STATUSES[0].code);
-  const inProgress = useStatusCount(inspectionTypeCode, STATUSES[1].code);
+  /* 칩을 세울 자리(탭 막대)가 없으면 세지도 않는다 — 쓰지 않을 조회를 내지 않는다. */
+  const requested = useStatusCount(inspectionTypeCode, STATUSES[0].code, target !== null);
+  const inProgress = useStatusCount(inspectionTypeCode, STATUSES[1].code, target !== null);
   const counts = [
     { key: STATUSES[0].code, label: STATUSES[0].label, count: requested.data },
     { key: STATUSES[1].code, label: STATUSES[1].label, count: inProgress.data },
