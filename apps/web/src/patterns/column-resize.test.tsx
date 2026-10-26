@@ -128,17 +128,21 @@ describe('useColumnWidths', () => {
     expect(JSON.parse(globalThis.localStorage.getItem(STORAGE_KEY) ?? '')).toEqual({ code: 180 });
   });
 
-  it('표가 담긴 상자 폭을 넘겨 넓히지 않는다 — 끝은 상자 폭과 표 최소 폭의 차이다(#186)', () => {
+  it('넓혀도 표 폭은 그대로다 — 남는 폭을 맡는 열이 줄고 80px 은 남긴다(#186)', () => {
     render(<Harness />);
     const table = screen.getByRole('table');
-    /* jsdom 은 폭을 재지 못한다 — 상자 400px, 표 최소 폭 300px 로 둔다. */
+    /* jsdom 은 폭을 재지 못한다 — 상자 400px, 표 500px(이미 옆으로 넘기는 좁은 칸), 수량 열 88px 로 둔다. */
     Object.defineProperty(table.parentElement, 'clientWidth', { configurable: true, value: 400 });
-    table.style.minWidth = '300px';
+    vi.spyOn(table, 'getBoundingClientRect').mockReturnValue({ width: 500 } as DOMRect);
+    vi.spyOn(
+      screen.getByRole('columnheader', { name: '수량' }),
+      'getBoundingClientRect',
+    ).mockReturnValue({ width: 88 } as DOMRect);
 
     drag('코드', 120, 300);
 
-    /* 120 + (400 − 300) = 220. 끈 만큼(420px)이 아니다. */
-    expect(renderedColWidths()).toEqual(['220px', undefined, '88px']);
+    /* 500 − 이름(남는 폭 · 80) − 수량(88) = 332. 끈 만큼(420px)이 아니다. */
+    expect(renderedColWidths()).toEqual(['332px', undefined, '88px']);
   });
 
   it('너무 좁게는 줄지 않는다', () => {

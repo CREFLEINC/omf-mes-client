@@ -81,18 +81,29 @@ export const layoutColumns = (
   return { widths, grow, floor };
 };
 
+/** 남는 폭을 맡는 열이 다른 열에 밀려도 남기는 폭 — 그 열의 글이 아예 사라지지 않게. */
+const ABSORBER_KEEP = 80;
+
 /**
- * 이 열이 더 넓어질 수 있는 폭(px) — 표가 담긴 상자를 넘지 않는 데까지다(사용자 지시 2026-10-26 · #186 「화면 최대
- * 너비를 벗어나면 안 된다」). 표는 최소 폭(app.css · `--col-grow`)보다 좁아지지 않고, 열을 넓힌 만큼 최소 폭이 따라
- * 늘어난다 — 그래서 상자 폭과 지금 최소 폭의 차이가 넓힐 수 있는 끝이다. 잴 수 없으면(시험 환경) 끝이 없다.
+ * 이 열을 넓힐 수 있는 끝(px) — **표 폭을 넓히지 않는 데까지**다(사용자 지시 2026-10-26 · #186 「표가 넘어가는 버그」·
+ * 「좌우·상하 배치 동작은 같아야」). 넓힌 만큼 남는 폭을 맡는 열이 줄어들고, 그 열마다 `ABSORBER_KEEP` 은 남긴다.
+ * 표 폭은 상자 폭과 지금 표 폭 가운데 큰 쪽이다 — 좁은 칸에서 이미 옆으로 넘기는 표도 더 넓어지지 않는다.
+ * 잴 수 없으면(시험 환경) 끝이 없다.
  */
-const roomOf = (cell: HTMLTableCellElement): number => {
+const widestOf = (cell: HTMLTableCellElement): number => {
   const table = cell.closest('table');
   const box = table?.parentElement;
   if (!table || !box || box.clientWidth === 0) return Infinity;
-  const minWidth = Number.parseFloat(getComputedStyle(table).minWidth);
 
-  return Number.isFinite(minWidth) ? box.clientWidth - minWidth : Infinity;
+  const heads = Array.from(cell.parentElement?.children ?? []);
+  let others = 0;
+  Array.from(table.querySelectorAll('col')).forEach((col, index) => {
+    if (index === cell.cellIndex) return;
+    others +=
+      col.style.width === '' ? ABSORBER_KEEP : (heads[index]?.getBoundingClientRect().width ?? 0);
+  });
+
+  return Math.max(box.clientWidth, table.getBoundingClientRect().width) - others;
 };
 
 /**
@@ -115,8 +126,8 @@ const ColumnResizer = ({
       event.preventDefault();
       const startX = event.clientX;
       const startWidth = cell.getBoundingClientRect().width;
-      /* 상자를 넘겨 넓히지 않는다. 이미 넘쳐 있으면(좁은 창) 지금 폭이 끝이다 — 갑자기 줄어들지 않게. */
-      const widest = startWidth + Math.max(0, roomOf(cell));
+      /* 표 폭을 넓히지 않는다. 이미 끝을 넘어 있으면 지금 폭이 끝이다 — 갑자기 줄어들지 않게. */
+      const widest = Math.max(widestOf(cell), startWidth);
       const move = (moveEvent: PointerEvent): void => {
         onResize(Math.min(widest, startWidth + moveEvent.clientX - startX));
       };

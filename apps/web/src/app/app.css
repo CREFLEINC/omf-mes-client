@@ -4061,11 +4061,11 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /*
- * 고정 배치로 열 폭을 지킨다(#186) — 열 폭을 끌어 바꾸면 최소 폭이 그만큼 따라간다(`--col-grow` · `--col-floor`,
+ * 고정 배치로 열 폭을 지킨다(#186) — 열을 넓히면 남는 폭을 맡는 열이 줄고 표 폭은 그대로다(`--col-floor` 만 따른다,
  * patterns/column-resize.tsx). 39rem 은 정한 열 폭의 합에 흡수하는 대상 LOT 열 10rem 을 더한 값이다.
  */
 .quality-approval-table table {
-  min-width: max(39rem + var(--col-grow, 0px), var(--col-floor, 0px));
+  min-width: max(39rem, var(--col-floor, 0px));
   table-layout: fixed;
 }
 
@@ -6636,14 +6636,14 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 /*
  * 두 표(server #762) — 열별 폭의 도출 표는 order-table.tsx · line-table.tsx 에 있다.
- * 열 폭을 끌어 바꾸면 최소 폭이 그만큼 따라간다(`--col-grow` · `--col-floor`, patterns/column-resize.tsx).
+ * 열을 넓히면 남는 폭을 맡는 열이 줄고 표 폭은 그대로다 — 최소 폭은 `--col-floor` 만 따른다(#186, patterns/column-resize.tsx).
  */
 .wide-table.po-board-orders table {
-  min-width: max(38rem + var(--col-grow, 0px), var(--col-floor, 0px));
+  min-width: max(38rem, var(--col-floor, 0px));
 }
 
 .wide-table.po-board-lines table {
-  min-width: max(48rem + var(--col-grow, 0px), var(--col-floor, 0px));
+  min-width: max(48rem, var(--col-floor, 0px));
 }
 
 /*
@@ -6897,21 +6897,21 @@ dl.filter-bar.approval-inbox-detail-facts {
 .po-board-layout-option {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-4);
-  border: 1px solid var(--outline-variant);
+  gap: 5px;
+  min-height: 25px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 70%, var(--surface-container));
   border-radius: var(--radius-full);
-  background: var(--surface-container-high);
-  color: var(--on-surface-variant);
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
   white-space: nowrap;
   cursor: pointer;
 }
 
 .po-board-layout-option:hover {
-  background: var(--state-hover-neutral);
+  background: color-mix(in srgb, var(--on-surface) 8%, var(--surface-container));
 }
 
 .po-board-layout-option:focus-visible {
@@ -6919,18 +6919,22 @@ dl.filter-bar.approval-inbox-detail-facts {
   box-shadow: var(--focus-ring);
 }
 
+/* 지금 배치 — 글자는 그대로 밝고, 바탕·테두리·그림만 주 색이다. */
 .po-board-layout-option[aria-pressed='true'] {
-  border-color: var(--primary);
-  background: var(--primary-container);
-  color: var(--primary-text);
+  border-color: color-mix(in srgb, var(--primary) 70%, var(--surface));
+  background: color-mix(in srgb, var(--primary) 20%, var(--surface));
   cursor: default;
 }
 
 .po-board-layout-icon {
   flex: none;
   fill: none;
-  stroke: currentColor;
+  stroke: var(--on-surface-variant);
   stroke-width: 1.5;
+}
+
+.po-board-layout-option[aria-pressed='true'] .po-board-layout-icon {
+  stroke: var(--primary);
 }
 
 /* 상태 칩과 배치 고르기 사이 세로선. */
@@ -6969,7 +6973,7 @@ body.po-board-resizing {
  * 열별 폭의 도출 표는 split-line-table.tsx 에 있다.
  */
 .wide-table.ors-lines table {
-  min-width: max(62rem + var(--col-grow, 0px), var(--col-floor, 0px));
+  min-width: max(62rem, var(--col-floor, 0px));
 }
 
 .ors-lines td {
@@ -18680,7 +18684,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 
 /* 목록 표 — 1024 폭 창에서도 가로로 넘치지 않게 칸 폭을 고정하고 긴 값은 말줄임. */
 .iqc-skip-approval-table table {
-  min-width: max(686px + var(--col-grow, 0px), var(--col-floor, 0px));
+  min-width: max(686px, var(--col-floor, 0px));
   table-layout: fixed;
 }
 
@@ -19024,7 +19028,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 
 /* 열 폭을 끌어 바꾸면 최소 폭이 따라간다(patterns/column-resize.tsx). 기본은 `.wide-table` 의 58rem 이다. */
 .wide-table.excess-table table {
-  min-width: max(58rem + var(--col-grow, 0px), var(--col-floor, 0px));
+  min-width: max(58rem, var(--col-floor, 0px));
 }
 
 .excess-table tbody tr {
