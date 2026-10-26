@@ -4,6 +4,7 @@ export const inspectionHistory = {
   loading: '검사 이력을 불러오는 중입니다.',
   loadFailed: '검사 이력을 불러오지 못했습니다.',
   source: '전달 문서',
+  copySource: '전달 문서 번호 복사',
   sourceLot: '대상 LOT',
   empty: '—',
   events: {

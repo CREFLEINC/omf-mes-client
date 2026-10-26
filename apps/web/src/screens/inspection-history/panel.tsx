@@ -1,4 +1,4 @@
-import { EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
+import { Chip, EmptyState, Icon, IconButton, Table, type Column } from '@crefle/web-ui';
 import type { InspectionHistory, InspectionHistoryEvent } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
@@ -81,6 +81,12 @@ export interface InspectionHistoryPanelProps {
   layout?: 'list' | 'table';
 }
 
+const JUDGMENT_TONE: Record<string, 'success' | 'error' | 'warning'> = {
+  ACCEPTED: 'success',
+  REJECTED: 'error',
+  HELD: 'warning',
+};
+
 /** 비고 칸 — 수량(결과 저장 · 확정) 또는 LOT 상태 변경. 회차 · 판정 · 처리자는 제 칸이 있어 넣지 않는다. */
 const noteOf = (event: InspectionHistoryEvent): string => {
   if (event.eventTypeCode === 'LOT_STATUS_CHANGED' && event.newStatusCode !== undefined)
@@ -128,8 +134,19 @@ const HistoryTable = ({
       header: t.columns.judgment,
       width: '90px',
       align: 'center',
+      /* 판정은 상태 칩(합격 초록 · 불합격 빨강 · 보류 노랑 · 사용자 지시 2026-10-26). */
       render: (row) =>
-        row.overallJudgmentCode === undefined ? t.empty : judgmentLabelOf(row.overallJudgmentCode),
+        row.overallJudgmentCode === undefined ? (
+          t.empty
+        ) : (
+          <Chip
+            variant="status"
+            size="sm"
+            status={JUDGMENT_TONE[row.overallJudgmentCode] ?? 'idle'}
+          >
+            {judgmentLabelOf(row.overallJudgmentCode)}
+          </Chip>
+        ),
     },
     {
       key: 'event',
@@ -193,20 +210,42 @@ export const InspectionHistoryPanel = ({
         <p className="field-note">{t.loading}</p>
       ) : (
         <>
-          <dl
-            className={layout === 'table' ? 'filter-bar inspection-history-source' : 'filter-bar'}
-          >
-            <div className="field-cell">
-              <dt className="field-label">{t.source}</dt>
-              <dd>{history.data.source.documentNo ?? t.empty}</dd>
+          {layout === 'table' ? (
+            /*
+             * 전달 문서 줄(사용자 지시 2026-10-26 · #185) — 문서 아이콘 · 이름 · 번호 · 복사 단추를 한 줄 상자로.
+             */
+            <div className="inspection-history-source-bar">
+              <Icon name="description" size={20} aria-hidden />
+              <span className="inspection-history-source-label">{t.source}</span>
+              <span className="inspection-history-source-value">
+                {history.data.source.documentNo ?? t.empty}
+              </span>
+              {history.data.source.documentNo != null && (
+                <IconButton
+                  icon="content_copy"
+                  size="sm"
+                  aria-label={t.copySource}
+                  title={t.copySource}
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(history.data.source.documentNo ?? '');
+                  }}
+                />
+              )}
             </div>
-            {!hideSourceLot && (
+          ) : (
+            <dl className="filter-bar">
               <div className="field-cell">
-                <dt className="field-label">{t.sourceLot}</dt>
-                <dd>{history.data.source.lotNo ?? t.empty}</dd>
+                <dt className="field-label">{t.source}</dt>
+                <dd>{history.data.source.documentNo ?? t.empty}</dd>
               </div>
-            )}
-          </dl>
+              {!hideSourceLot && (
+                <div className="field-cell">
+                  <dt className="field-label">{t.sourceLot}</dt>
+                  <dd>{history.data.source.lotNo ?? t.empty}</dd>
+                </div>
+              )}
+            </dl>
+          )}
           {layout === 'table' ? (
             <HistoryTable
               events={history.data.events}

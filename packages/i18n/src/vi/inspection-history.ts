@@ -4,6 +4,7 @@ export const inspectionHistory = {
   loading: 'Đang tải lịch sử kiểm tra.',
   loadFailed: 'Không tải được lịch sử kiểm tra.',
   source: 'Chứng từ chuyển đến',
+  copySource: 'Sao chép số chứng từ',
   sourceLot: 'LOT đối tượng',
   empty: '—',
   events: {
