@@ -425,6 +425,16 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: 'W/O 진행현황 조회',
         labelVi: 'Tra cứu tiến độ W/O',
       },
+      /*
+       * W-02-09 — 「W/O 진행현황 조회」 바로 아래(사용자 결정 2026-10-26, omf-all-around#73). 정방향과 역방향 모두
+       * 「투입 → W/O → 생산 LOT」을 지나 생산이 가진 자료다. 1단계는 입출고 현황 하나라 탭 묶음이 아니다(탭은 둘 이상).
+       */
+      {
+        to: '/production/lot-trace',
+        icon: 'timeline',
+        label: 'LOT 추적',
+        labelVi: 'Truy xuất LOT',
+      },
       /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
       {
         to: '/production/work-order-close',

@@ -92,6 +92,7 @@ import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { workStart } from './work-start';
 import { workPrecheckGate } from './work-precheck-gate';
 import { workOrderProgress } from './work-order-progress';
+import { lotTrace } from './lot-trace';
 import { materialLocation } from './material-location';
 import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
@@ -246,6 +247,7 @@ export const ko = {
   emergencyWorkOrder,
   emergencyWorkOrderField,
   workOrderProgress,
+  lotTrace,
   materialLocation,
   materialLotScan,
   materialPicking,

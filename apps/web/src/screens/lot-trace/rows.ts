@@ -1,0 +1,85 @@
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
+import type { MovementKind } from './filters';
+import type { QtyByUom, ReceiptLine, ShipmentLine } from './types';
+
+export interface Ref {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface MovementLot {
+  lotId: number;
+  lotNo: string;
+  qty: number;
+}
+
+/** 입고 줄과 출하 줄을 한 모양으로 — 표, 드로어, 내려받기가 같은 값을 읽는다. */
+export interface MovementRow {
+  id: number;
+  kind: MovementKind;
+  documentNo: string;
+  lineNo: number;
+  /** 공장 날짜(`YYYY-MM-DD`). */
+  date: string;
+  /** 공장 시각(`HH:mm`). */
+  time: string;
+  item: Ref;
+  qty: number;
+  uomCode: string;
+  warehouse: Ref;
+  /** 자재 입고의 공급사 또는 제품 출고의 고객. */
+  partner: Ref | null;
+  workOrderNo: string | null;
+  statusCode: string;
+  /** 출하 줄은 LOT 번호순 앞 5개다. */
+  lots: MovementLot[];
+  lotCount: number;
+}
+
+const plantParts = (value: string): { date: string; time: string } =>
+  toPlantDateTimeParts(value) ?? { date: value.slice(0, 10), time: '' };
+
+export const fromReceiptLine = (line: ReceiptLine): MovementRow => ({
+  id: line.goodsReceiptLineId,
+  kind: line.receiptTypeCode === 'PRODUCT' ? 'PRODUCT' : 'MATERIAL',
+  documentNo: line.goodsReceiptNo,
+  lineNo: line.lineNo,
+  ...plantParts(line.receiptDatetime),
+  item: line.item,
+  qty: line.receiptQty,
+  uomCode: line.uomCode,
+  warehouse: line.warehouse,
+  partner: line.supplier,
+  workOrderNo: line.workOrder?.workOrderNo ?? null,
+  statusCode: line.statusCode,
+  lots: [{ lotId: line.lotId, lotNo: line.lotNo, qty: line.receiptQty }],
+  lotCount: 1,
+});
+
+export const fromShipmentLine = (line: ShipmentLine): MovementRow => ({
+  id: line.shipmentLineId,
+  kind: 'SHIPMENT',
+  documentNo: line.shipmentNo,
+  lineNo: line.lineNo,
+  ...plantParts(line.shippedAt),
+  item: line.item,
+  qty: line.shippedQty,
+  uomCode: line.uomCode,
+  warehouse: line.warehouse,
+  partner: line.customer,
+  workOrderNo: null,
+  statusCode: line.statusCode,
+  lots: line.lots,
+  lotCount: line.lotCount,
+});
+
+export const formatQty = (value: number): string =>
+  new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
+
+/** 단위가 섞이면 더할 수 없어 단위마다 적는다(계약 `qtyByUom`). */
+export const formatQtyByUom = (totals: readonly QtyByUom[]): string =>
+  totals.map((entry) => `${formatQty(entry.qty)} ${entry.uomCode}`).join(', ');
+
+/** 표와 드로어의 수량 글자. 파일에는 숫자 그대로 쓴다. */
+export const qtyLabel = (row: MovementRow): string => `${formatQty(row.qty)} ${row.uomCode}`;

@@ -19,6 +19,7 @@ import { WorkOrderCloseScreen } from '../screens/work-order-close/screen';
 import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen';
 import { MaterialIssueRequestScreen } from '../screens/material-issue-request/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
+import { LotTraceScreen } from '../screens/lot-trace/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-redirect';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
@@ -355,6 +356,11 @@ export const appRouter = createBrowserRouter([
        * 저장 액션이 없는 읽기 전용 화면이다.
        */
       { path: 'production/work-order-progress', element: <WorkOrderProgressScreen /> },
+      /*
+       * W-02-09 — 진행을 본 뒤 그 LOT이 어디서 와서 어디로 갔는지 본다(omf-all-around#73). 조회 자리라 진행현황 바로 뒤다.
+       * 1단계는 입출고 현황이고, 정방향과 역방향 추적은 화면 안 탭으로 더한다.
+       */
+      { path: 'production/lot-trace', element: <LotTraceScreen /> },
       /*
        * W-03-01 — Lot Status 계열의 첫 화면이므로 품질관리 섹션을 연다.
        * 계약의 /quality/**와 주소 앞머리가 같지만 근거는 사이드바 업무 섹션이다.

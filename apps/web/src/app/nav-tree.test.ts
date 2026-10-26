@@ -236,6 +236,7 @@ describe('주 메뉴 트리', () => {
       '/production/po-change-review → account_tree',
       '/production/emergency-work-orders → bolt',
       '/production/work-order-progress → monitoring',
+      '/production/lot-trace → timeline',
       '/production/work-order-close → archive',
       '/shipment/shipment-request-create → assignment',
       '/shipment/shipment-schedule → event_note',

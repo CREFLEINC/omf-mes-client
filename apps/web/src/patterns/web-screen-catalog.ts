@@ -210,6 +210,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     code: 'W-02-08',
     name: 'W/O 진행현황 조회(생산 실적 집계 포함)',
   },
+  /* omf-all-around#73 — 서버 권한 키 W-02-09 「LOT 추적」(임시 W-01-14 「입하~출고 추적」을 대체, 서버 PR #829). */
+  { path: '/production/lot-trace', code: 'W-02-09', name: 'LOT 추적' },
 
   /* ── 품질관리 ─────────────────────────────────────────────────────────── */
   {
