@@ -16,6 +16,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite } from '../../patterns/master';
+import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
 import { toApiError } from '../../patterns/request';
 import { ApprovalActionPane } from './approval-action-pane';
 import { ApproveDialog } from './approve-dialog';
@@ -108,6 +110,9 @@ export const QualityApprovalScreen = ({
   const t = messages.qualityApproval;
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { session } = useSession();
+  /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다(`inlineTabs`). */
+  const canOpenIqcSkip = toWebAccess(session?.permissions).allows(IQC_SKIP_APPROVAL_PATH);
   const filters = useMemo(
     () => readFilters(searchParams, approvalTypeCodes, statusCodes),
     [approvalTypeCodes, searchParams, statusCodes],
@@ -417,7 +422,7 @@ export const QualityApprovalScreen = ({
        * 그 유형의 목록으로 돌아간다.
        */}
       <TypeTabs
-        options={toTypeTabOptions(approvalTypeCodes)}
+        options={toTypeTabOptions(approvalTypeCodes, canOpenIqcSkip)}
         value={filters.approvalTypeCode}
         onChange={(code) => {
           /* 「IQC (수입검사) 생략」 탭은 긴급 IQC 생략 한도승인 화면이다 — 그 화면으로 옮긴다. */

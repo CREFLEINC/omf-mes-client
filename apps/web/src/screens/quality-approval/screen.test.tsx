@@ -11,6 +11,8 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { SessionProvider, type Session } from '../../patterns/session';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { dispositionEntryPath } from '../disposition-decision/filters';
 import { QualityApprovalScreen } from './screen';
 import {
@@ -230,6 +232,7 @@ const Controls = () => {
 
   return (
     <>
+      <output aria-label="현재 경로">{location.pathname}</output>
       <output aria-label="현재 주소">{location.search}</output>
       <output aria-label="주소 변경 방식">{navigationType}</output>
       <button
@@ -255,13 +258,14 @@ const renderScreen = (
   fetch: StubFetch,
   route = '/quality/approvals',
   approvalTypeCodes?: readonly string[],
+  session: Session = SYNTHETIC_SESSION,
 ) => {
   const result = renderWithProviders(
-    <>
+    <SessionProvider>
       <Controls />
       <QualityApprovalScreen approvalTypeCodes={approvalTypeCodes} />
-    </>,
-    { fetch, route },
+    </SessionProvider>,
+    { fetch, route, session },
   );
 
   return { ...result, user: userEvent.setup() };
@@ -657,6 +661,31 @@ describe('QualityApprovalScreen detail', () => {
     expect(await screen.findByRole('region', { name: t.panes.list })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '요청 상세' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?ty=CONCESSION');
+  });
+
+  it('「IQC (수입검사) 생략」 탭은 OQC 생략 앞에 서고, 누르면 긴급 IQC 생략 한도승인 화면으로 간다', async () => {
+    const { user } = renderScreen(approvalFetch([listRoute()]));
+
+    const tabs = await screen.findByRole('tablist', { name: t.fields.approvalTypeCode });
+    expect(
+      within(tabs)
+        .getAllByRole('tab')
+        .map((tab) => tab.textContent),
+    ).toEqual([t.all, t.typeLabels.CONCESSION, t.typeLabels.IQC_SKIP, t.typeLabels.OQC_SKIP]);
+    await user.click(within(tabs).getByRole('tab', { name: t.typeLabels.IQC_SKIP }));
+
+    expect(screen.getByLabelText('현재 경로')).toHaveTextContent('/logistics/iqc-skip-approval');
+  });
+
+  it('긴급 IQC 생략 한도승인을 볼 권한이 없으면 그 탭을 세우지 않는다', async () => {
+    renderScreen(approvalFetch([listRoute()]), '/quality/approvals', undefined, {
+      ...SYNTHETIC_SESSION,
+      permissions: ['W-03-09'],
+    });
+
+    const tabs = await screen.findByRole('tablist', { name: t.fields.approvalTypeCode });
+    expect(within(tabs).queryByRole('tab', { name: t.typeLabels.IQC_SKIP })).toBeNull();
+    expect(within(tabs).getByRole('tab', { name: t.typeLabels.OQC_SKIP })).toBeInTheDocument();
   });
 });
 

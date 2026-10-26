@@ -85,10 +85,12 @@ export const FilterBar = ({
         <label className="field-label" htmlFor={fromId}>
           {t.fields.periodFrom}
         </label>
+        {/* 시작일은 종료일보다 늦을 수 없다 — 범위 달력 하나일 때 저절로 지켜지던 순서다. */}
         <DatePicker
           id={fromId}
           placeholder={t.datePlaceholder}
           clearable
+          max={draft.to === '' ? undefined : draft.to}
           value={draft.from === '' ? null : draft.from}
           onChange={(value) => setDraft((current) => ({ ...current, from: value ?? '' }))}
         />
@@ -101,6 +103,7 @@ export const FilterBar = ({
           id={toId}
           placeholder={t.datePlaceholder}
           clearable
+          min={draft.from === '' ? undefined : draft.from}
           value={draft.to === '' ? null : draft.to}
           onChange={(value) => setDraft((current) => ({ ...current, to: value ?? '' }))}
         />

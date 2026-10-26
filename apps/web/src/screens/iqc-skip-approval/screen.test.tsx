@@ -11,7 +11,9 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { SessionProvider, type Session } from '../../patterns/session';
 import { pickRange } from '../../test/date-picker';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { IQC_SKIP_APPROVAL_TYPE_CODE } from './code-options';
 import {
   DECIDED_STATUS_CODE,
@@ -286,6 +288,7 @@ const renderScreen = (
   search = '',
   hold?: (request: Request) => boolean,
   navigateTo = '',
+  session: Session = SYNTHETIC_SESSION,
 ): {
   requests: RecordedRequest[];
   release: () => void;
@@ -294,13 +297,13 @@ const renderScreen = (
   const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
   renderWithProviders(
-    <>
+    <SessionProvider>
       <IqcSkipApprovalScreen />
       <LocationProbe />
       <BackProbe />
       <SearchProbe to={navigateTo} />
-    </>,
-    { fetch, route: `${ROUTE}${search}` },
+    </SessionProvider>,
+    { fetch, route: `${ROUTE}${search}`, session },
   );
 
   return { requests, release, user: userEvent.setup() };
@@ -388,6 +391,45 @@ const backToList = async (user: ReturnType<typeof userEvent.setup>): Promise<voi
   await user.click(await screen.findByRole('button', { name: backButtonName }));
   await waitForList();
 };
+
+describe('품질 승인 처리의 유형 탭(#144)', () => {
+  it('「IQC (수입검사) 생략」 탭이 골라진 채 서고, 다른 탭은 품질 승인 처리 목록을 그 유형으로 연다', async () => {
+    const { user } = renderScreen([listRoute()]);
+    const qa = messages.qualityApproval;
+
+    await waitForList();
+    const tabs = screen.getByRole('tablist', { name: qa.fields.approvalTypeCode });
+    expect(within(tabs).getByRole('tab', { name: qa.typeLabels.IQC_SKIP })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    await user.click(within(tabs).getByRole('tab', { name: qa.typeLabels.CONCESSION }));
+
+    expect(currentLocation()).toBe('/quality/approvals?ty=CONCESSION');
+  });
+
+  it('「전체」 탭은 조건 없이 품질 승인 처리 목록으로 간다', async () => {
+    const { user } = renderScreen([listRoute()]);
+    const qa = messages.qualityApproval;
+
+    await waitForList();
+    await user.click(screen.getByRole('tab', { name: qa.all }));
+
+    expect(currentLocation()).toBe('/quality/approvals');
+  });
+
+  it('품질 승인 처리를 볼 권한이 없으면 유형 탭을 세우지 않는다', async () => {
+    renderScreen([listRoute()], '', undefined, '', {
+      ...SYNTHETIC_SESSION,
+      permissions: ['W-01-02'],
+    });
+
+    await waitForList();
+
+    expect(screen.queryByRole('tablist')).toBeNull();
+  });
+});
 
 describe('첫 진입', () => {
   it('목록을 한 번만 부른다', async () => {
