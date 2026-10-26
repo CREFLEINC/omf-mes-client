@@ -4071,12 +4071,25 @@ main:has(.iqc-skip-approval-detail) {
   overflow-x: auto;
 }
 
+/*
+ * 고정 배치로 열 폭을 지킨다(#186) — 열 폭을 끌어 바꾸면 최소 폭이 그만큼 따라간다(`--col-grow` · `--col-floor`,
+ * patterns/column-resize.tsx). 39rem 은 정한 열 폭의 합에 흡수하는 대상 LOT 열 10rem 을 더한 값이다.
+ */
 .quality-approval-table table {
-  min-width: 34rem;
+  min-width: max(39rem + var(--col-grow, 0px), var(--col-floor, 0px));
+  table-layout: fixed;
 }
 
-/* 줄 아무 곳이나 눌러 고른다(request-list.tsx). */
-.quality-approval-table tbody tr {
+/* 좁힌 칸의 글자는 이웃 칸을 덮지 않고 말줄임한다. */
+.quality-approval-table th,
+.quality-approval-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 줄 아무 곳이나 눌러 고른다(request-list.tsx) — 줄 위 어디서든 누르는 손 모양이다. */
+.quality-approval-table tbody tr,
+.quality-approval-table tbody tr .link-cell {
   cursor: pointer;
 }
 
@@ -4087,6 +4100,10 @@ main:has(.iqc-skip-approval-detail) {
 .quality-approval-table .link-cell {
   color: var(--on-surface);
   text-decoration: none;
+}
+
+.quality-approval-table .link-cell:hover {
+  background: none;
 }
 
 .quality-approval-table-caption {
@@ -7208,6 +7225,33 @@ th:last-child > .col-resizer::after {
 .col-resizer:active::after {
   width: 3px;
   background: var(--semantic-info);
+}
+
+/*
+ * 열 순서 바꾸기(#186, patterns/column-order.tsx) — 머리칸 글자를 잡아 끈다. 놓을 자리는 놓을 머리칸의 앞(왼쪽)이나
+ * 뒤(오른쪽)에 폭 손잡이와 같은 색 선으로 보인다.
+ */
+.col-drag {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: grab;
+}
+
+.col-drag:active {
+  cursor: grabbing;
+}
+
+.col-drag.is-dragging {
+  opacity: 0.5;
+}
+
+.col-drag.is-drop-before {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+
+.col-drag.is-drop-after {
+  box-shadow: inset -3px 0 0 var(--semantic-info);
 }
 
 /*
@@ -18500,8 +18544,19 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 
 /* 목록 표 — 1024 폭 창에서도 가로로 넘치지 않게 칸 폭을 고정하고 긴 값은 말줄임. */
 .iqc-skip-approval-table table {
-  min-width: 686px;
+  min-width: max(686px + var(--col-grow, 0px), var(--col-floor, 0px));
   table-layout: fixed;
+}
+
+/* 좁힌 머리칸 글자는 이웃 칸을 덮지 않고 말줄임한다(#186 열 폭 조절). */
+.iqc-skip-approval-table th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 줄 아무 곳이나 눌러 고른다(request-list-pane.tsx · #186) — 줄 위 어디서든 누르는 손 모양이다. */
+.iqc-skip-approval-table tbody tr {
+  cursor: pointer;
 }
 
 /* 칸 좌우 여백 8px — 일곱 열이 1024 폭 창(표 686px)에 들어가는 값이다. */
@@ -18560,7 +18615,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   box-shadow: inset 3px 0 0 var(--primary);
 }
 
-/* 요청번호 — 한 줄, 본문색·굵게. 누를 수 있다는 것은 커서와 마우스 올림 밑줄로 보인다. */
+/* 요청번호 — 한 줄, 본문색·굵게. 줄 전체가 누르는 자리라(#186) 요청번호만 따로 누를 곳처럼 보이지 않게 한다. */
 .iqc-skip-approval-list .iqc-skip-approval-request-no {
   color: var(--on-surface);
   font-weight: 600;
@@ -18571,8 +18626,6 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 
 .iqc-skip-approval-list .iqc-skip-approval-request-no:hover {
   background: none;
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 /*
