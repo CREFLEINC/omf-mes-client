@@ -5397,6 +5397,10 @@ on('GET', '/app/approval-requests', (_p, query, _b, headers) => {
     keep(state.approvalRequests, [
       byText(query, 'targetTypeCode', 'targetTypeCode'),
       byNum(query, 'targetId', 'targetId'),
+      /* 실제 서버처럼 상태·승인 유형·요청번호로도 거른다(#186 — 거르지 않으면 상태 칩이 늘 같은 줄을 보인다). */
+      byText(query, 'statusCode', 'statusCode'),
+      byText(query, 'approvalTypeCode', 'approvalTypeCode'),
+      contains(query, 'q', 'approvalRequestNo'),
       (row) => bool(query, 'pendingOnly') !== true || row.statusCode === 'PENDING',
       /* 이 셸에는 계정 로그인이 없어 서버가 상신자를 푸는 근거가 사번 헤더뿐이다. */
       (row) => requestedByMe !== true || workerNo === null || row.requestedByWorkerNo === workerNo,

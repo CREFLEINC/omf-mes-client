@@ -10,6 +10,9 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useColumnOrder } from '../../patterns/column-order';
+import { useColumnWidths } from '../../patterns/column-resize';
+
 import { statusBadgeOf } from './labels';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -174,6 +177,9 @@ export const RequestListPane = ({
       render: (row) => row.requestedAtText,
     },
   ];
+  /* 머리칸을 끌어 순서를 바꾸고, 오른쪽 끝을 끌어 폭을 바꾼다(#186) — 둘 다 이 브라우저에 남는다. */
+  const ordered = useColumnOrder('omf-mes:iqc-skip-approval:column-order', columns);
+  const resizable = useColumnWidths('omf-mes:iqc-skip-approval:columns', ordered);
 
   /**
    * 빈 상태는 두 갈래다 — 사용자가 할 조치가 다르다.
@@ -228,10 +234,25 @@ export const RequestListPane = ({
          * 표가 `TABLE_MIN_WIDTH_PX`보다 좁아질 때만 가로로 넘긴다. 넘침이 곧 가로 스크롤이 되는
          * 상자는 디자인 시스템 `Table`이 이미 갖고 있다 — 우리가 만들지 않는다.
          */}
-        <div className="wide-table iqc-skip-approval-table">
+        {/*
+         * 줄 아무 곳이나 눌러도 고른다(#186, 품질 승인 처리와 같은 방식) — DS 표에 줄 클릭이 없어 눌린 줄의 요청 단추로
+         * 넘긴다. 키보드·화면 낭독기는 종전처럼 그 단추 하나로 고른다.
+         */}
+        <div
+          className="wide-table iqc-skip-approval-table"
+          style={resizable.style}
+          onClick={(event) => {
+            const target = event.target as Element;
+            if (target.closest('button, a, input, select, textarea') !== null) return;
+            target
+              .closest('tbody tr')
+              ?.querySelector<HTMLButtonElement>('.iqc-skip-approval-request-no')
+              ?.click();
+          }}
+        >
           <Table
             density="compact"
-            columns={columns}
+            columns={resizable.columns}
             rows={rows}
             getRowId={(row) => String(row.approvalRequestId)}
             /* 0건을 바깥에서 가르지 않는다 — 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */

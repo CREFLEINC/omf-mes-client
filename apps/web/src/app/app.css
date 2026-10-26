@@ -3855,23 +3855,134 @@ main > * + * {
 }
 
 /*
- * 품질 승인 처리 — 목록과 상세를 갈아 끼운다(#144). 목록은 화면 전체 폭, 요청을 고르면
- * 요청 상세 | 결재 진행 두 칸이 나란히 선다.
+ * 품질 승인 처리 — 입하 예정 조회와 같은 짜임(#186): 유형 탭 → 조회 조건 구획 → 왼쪽 목록 | 오른쪽 상세.
+ * 두 구획의 배치·끌기 막대는 `.po-board-*` 가 정한다. 오른쪽은 결재 진행 아래에 요청 상세 | 승인 처리가
+ * 서고, 폭이 모자라면 위아래로 쌓인다.
  */
-.quality-approval-type-tabs {
+/*
+ * 유형 탭 줄 — 왼쪽 탭, 오른쪽 「결재 대기 N」 칩. 입하 예정 조회의 탭 막대(`.hub-bar`·`.hub-tab`)와 같은 모양으로
+ * 맞춘다: 밑줄은 줄 전체에 옅은 선(`--outline-variant`) 하나, 켜진 탭은 탭 폭 전체에 `--primary-text` 굵은 선.
+ */
+.quality-approval-type-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   margin-bottom: var(--space-4);
+  box-shadow: inset 0 -1px 0 var(--outline-variant);
 }
 
-.quality-approval-back {
-  margin-bottom: var(--space-3);
+/* 패널 내용이 없는 탭이라 탭 목록과 패널 사이 간격을 걷는다 — 남기면 밑줄이 두 줄로 갈린다. */
+.quality-approval-type-bar > .quality-approval-type-tabs {
+  flex: 1;
+  gap: 0;
+  min-width: 0;
+}
+
+/* 탭 목록이 따로 긋는 선은 걷는다 — 줄 전체의 선 하나만 남긴다. */
+.quality-approval-type-tabs [role='tablist'] {
+  gap: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.quality-approval-type-tabs [role='tab'] {
+  height: auto;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.quality-approval-type-tabs [role='tab']::after {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 0;
+  background: var(--primary-text);
+}
+
+.quality-approval-type-bar-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* 상태 칩 묶음 — 입하 예정 조회의 단계 칩(`.po-board-stage-chips`)과 같은 간격. */
+.quality-approval-status-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* 켜진 칩은 목록의 상태 배지와 같은 색이다(대기 노랑 · 승인 초록 · 반려 빨강 — `statusBadgeOf`). */
+.quality-approval-status-chip.is-warning[aria-pressed='true'] {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.quality-approval-status-chip.is-success[aria-pressed='true'] {
+  background: var(--semantic-success-container);
+  color: var(--on-semantic-success-container);
+}
+
+.quality-approval-status-chip.is-error[aria-pressed='true'] {
+  background: var(--semantic-error-container);
+  color: var(--on-semantic-error-container);
+}
+
+.quality-approval-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.quality-approval-block {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.quality-approval-block > .pane-title,
+.quality-approval-block .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 .quality-approval-workspace {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-5);
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--space-4);
   align-items: start;
   min-width: 0;
+}
+
+/* 좌우 배치(목록 | 상세)에서는 오른쪽 구획이 좁아 요청 상세 · 승인 처리를 위아래로 쌓는다(#186). 상하 배치는 위 그대로다. */
+.po-board-split:not(.is-stacked) .quality-approval-workspace {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/*
+ * 본문을 끝까지 내린 뒤 더 굴리면 스크롤이 문서로 번져(macOS 탄성 스크롤) 앱 아래 빈 바닥이 드러난다 —
+ * 품질 승인 처리(IQC 생략 탭 포함)에서는 번지지도 튕기지도 않게 한다(#186, OQC #136 과 같은 처리).
+ */
+html:has(.quality-approval-side),
+html:has(.quality-approval-side) body,
+main:has(.quality-approval-side),
+html:has(.iqc-skip-approval-detail),
+html:has(.iqc-skip-approval-detail) body,
+main:has(.iqc-skip-approval-detail) {
+  overscroll-behavior-y: none;
+}
+
+/* 왼쪽 목록이 좁아도 칸 글이 여러 줄로 꺾이지 않는다 — 넘치면 구획 안에서 옆으로 민다(#186). */
+.quality-approval-list-pane .quality-approval-table th,
+.quality-approval-list-pane .quality-approval-table td {
+  white-space: nowrap;
 }
 
 .quality-approval-pane,
@@ -3901,8 +4012,8 @@ main > * + * {
 .filter-bar.quality-approval-filter {
   display: grid;
   grid-template-columns:
-    minmax(8rem, 10.5rem) repeat(2, minmax(9rem, 12rem)) minmax(8rem, 11.5rem)
-    minmax(max-content, 1fr);
+    repeat(2, minmax(9rem, 12rem)) minmax(8rem, 11.5rem)
+    max-content;
   gap: var(--space-3);
   margin-bottom: 0;
 }
@@ -3928,10 +4039,11 @@ main > * + * {
   gap: var(--space-3);
 }
 
+/* 단추는 마지막 칸 바로 뒤에 붙는다(입하 예정 조회와 같다) — 남는 폭은 줄 오른쪽에 비워 둔다(#186). */
 .quality-approval-filter-footer .filter-actions {
   flex-wrap: nowrap;
-  justify-content: flex-end;
-  margin: 0 0 0 auto;
+  justify-content: flex-start;
+  margin: 0;
 }
 
 .quality-approval-list-pane > .banner-slot {
@@ -3948,12 +4060,26 @@ main > * + * {
   overflow-x: auto;
 }
 
+/*
+ * 고정 배치로 열 폭을 지킨다(#186) — 좌우 배치에서는 열을 넓힌 만큼 최소 폭이 따라가 칸 안에서 옆으로 넘긴다
+ * (`--col-grow` · `--col-floor`, patterns/column-resize.tsx). 39rem 은 정한 열 폭의 합에 흡수하는 대상 LOT 열 10rem 을
+ * 더한 값이다. 상하 배치는 아래 `.is-stacked` 규칙 — 표 폭이 늘지 않는다.
+ */
 .quality-approval-table table {
-  min-width: 34rem;
+  min-width: max(39rem + var(--col-grow, 0px), var(--col-floor, 0px));
+  table-layout: fixed;
 }
 
-/* 줄 아무 곳이나 눌러 고른다(request-list.tsx). */
-.quality-approval-table tbody tr {
+/* 좁힌 칸의 글자는 이웃 칸을 덮지 않고 말줄임한다. */
+.quality-approval-table th,
+.quality-approval-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 줄 아무 곳이나 눌러 고른다(request-list.tsx) — 줄 위 어디서든 누르는 손 모양이다. */
+.quality-approval-table tbody tr,
+.quality-approval-table tbody tr .link-cell {
   cursor: pointer;
 }
 
@@ -3964,6 +4090,10 @@ main > * + * {
 .quality-approval-table .link-cell {
   color: var(--on-surface);
   text-decoration: none;
+}
+
+.quality-approval-table .link-cell:hover {
+  background: none;
 }
 
 .quality-approval-table-caption {
@@ -4026,8 +4156,8 @@ main > * + * {
 .quality-approval-detail-facts .field-label,
 .quality-approval-detail > .quality-approval-content-card > .field-label {
   margin: 0;
-  font: var(--type-body-md);
-  letter-spacing: var(--type-body-md-tracking);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface-variant);
 }
 
@@ -4037,25 +4167,34 @@ main > * + * {
   background: none;
 }
 
+/* 사유·대상 값도 위 이름 | 값 줄과 같은 크기다(#186). */
+.quality-approval-detail > .quality-approval-content-card > :not(.field-label) {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
 .quality-approval-detail-heading {
   align-items: center;
   margin-bottom: 0;
 }
 
-/* 결재 단계의 결재자 이름·상태 글은 한 단계 크게 — 작은 보조 글이면 멀리서 읽히지 않는다(#144). */
+/*
+ * 결재 단계의 결재자 이름은 굵게, 상태 글은 본문 크기로 — 다른 화면 상세와 같은 크기다(#186 「상세가 비정상적으로
+ * 크다」 사용자 지시로 #144 의 한 단계 큰 글을 되돌렸다).
+ */
 .quality-approval-step-name {
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
 }
 
 .quality-approval-progress .field-note {
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
 }
 
 /* 결재 진행 — 가로 단계 아래 안내 줄(#144). 상세 두 칸과 사이를 띄운다. */
 .quality-approval-progress-pane {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-4);
 }
 
 .quality-approval-detail-facts > .field-cell,
@@ -4068,6 +4207,8 @@ main > * + * {
   margin: 0;
   overflow-wrap: anywhere;
   color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
 }
 
 .quality-approval-content-card,
@@ -4089,8 +4230,8 @@ main > * + * {
 .quality-approval-action > h3 {
   margin: 0;
   color: var(--on-surface);
-  font: var(--type-title-md);
-  letter-spacing: var(--type-title-md-tracking);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 .quality-approval-condition-link {
@@ -4111,6 +4252,8 @@ main > * + * {
   align-items: center;
   gap: var(--space-2) var(--space-3);
   color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
 }
 
 .quality-approval-progress-summary > .material-symbols-outlined,
@@ -4119,8 +4262,8 @@ main > * + * {
 }
 
 .quality-approval-progress-summary > p:first-of-type {
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
 }
 
 /* 결재 사유는 필수다 — DS 글 칸은 별표를 그리지 않아 라벨 뒤에 같은 색 별표를 붙인다(#144). */
@@ -4134,9 +4277,13 @@ main > * + * {
 }
 
 @media (max-width: 1100px) {
-  .quality-approval-workspace,
-  .filter-bar.quality-approval-filter {
+  .quality-approval-workspace {
     grid-template-columns: 1fr;
+  }
+
+  /* 좁은 창에서도 칸을 창 폭만큼 늘리지 않는다 — 세 칸씩 줄바꿈하고 단추는 다음 칸에 선다(#186). */
+  .filter-bar.quality-approval-filter {
+    grid-template-columns: repeat(3, minmax(9rem, 12rem));
   }
 }
 
@@ -6721,6 +6868,92 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: none;
 }
 
+/*
+ * 목록 · 상세 위아래 배치(#186, patterns/po-board.tsx `usePaneLayout`) — 넓은 창에서도 위아래로 쌓는다. 창 바닥에
+ * 맞춘 높이는 그대로 두고 목록 2 : 상세 3 으로 나눈다. 넘치는 줄은 각 구획 안에서 스크롤한다. 폭 끌기 막대는 감춘다.
+ */
+@media (min-width: 1440px) {
+  .po-board-split.is-stacked,
+  .po-board-split.is-stacked:has(> .po-board-splitter) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 2fr) minmax(0, 3fr);
+    row-gap: var(--space-4);
+  }
+
+  .po-board-split.is-stacked > .po-board-splitter {
+    display: none;
+  }
+}
+
+/*
+ * 배치 고르기(#186) — 탭 줄 오른쪽, 상태 칩 뒤 세로 구분선 다음. 그림 + 글의 알약 단추 둘이고, 지금 배치는 주 색
+ * 테두리·옅은 주 색 바탕으로 강조된다.
+ */
+.po-board-layout-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.po-board-layout-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 25px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 70%, var(--surface-container));
+  border-radius: var(--radius-full);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.po-board-layout-option:hover {
+  background: color-mix(in srgb, var(--on-surface) 8%, var(--surface-container));
+}
+
+.po-board-layout-option:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* 지금 배치 — 글자는 그대로 밝고, 바탕·테두리·그림만 주 색이다. */
+.po-board-layout-option[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--primary) 70%, var(--surface));
+  background: color-mix(in srgb, var(--primary) 20%, var(--surface));
+  cursor: default;
+}
+
+.po-board-layout-icon {
+  flex: none;
+  fill: none;
+  stroke: var(--on-surface-variant);
+  stroke-width: 1.5;
+}
+
+.po-board-layout-option[aria-pressed='true'] .po-board-layout-icon {
+  stroke: var(--primary);
+}
+
+/* 상태 칩과 배치 고르기 사이 세로선. */
+.quality-approval-type-bar-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: var(--space-1) var(--space-1);
+  background: var(--outline-variant);
+}
+
+/* 창이 좁으면 늘 위아래로 쌓인다 — 배치 고르기와 그 앞 구분선은 눌러도 바뀌는 것이 없어 감춘다. */
+@media (max-width: 1439px) {
+  .po-board-layout-toggle,
+  .quality-approval-type-bar-divider {
+    display: none;
+  }
+}
+
 /* 끄는 동안 글자가 선택되거나 커서가 바뀌지 않게. */
 body.po-board-resizing {
   cursor: col-resize;
@@ -7016,11 +7249,18 @@ body.po-board-resizing {
  */
 /* 붉은 계열(primary)은 쓰지 않는다 — 문제가 있다는 뜻으로 읽힌다(사용자 지시 2026-10-21). 정보 파랑이다. */
 .po-board-orders tbody tr:has([aria-current='true']) > td,
-.po-board-orders tbody tr:has([aria-current='true']):hover > td {
+.po-board-orders tbody tr:has([aria-current='true']):hover > td,
+.quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
+.quality-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td,
+.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
+.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td {
   background: var(--semantic-info-container);
 }
 
-.po-board-orders tbody tr:has([aria-current='true']) > td:first-child {
+/* 품질 승인 처리 목록(#186)도 같은 표시다 — 고른 요청이 입하 예정 조회의 고른 발주처럼 보인다. */
+.po-board-orders tbody tr:has([aria-current='true']) > td:first-child,
+.quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child,
+.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
@@ -7081,6 +7321,78 @@ th:last-child > .col-resizer::after {
 .col-resizer:active::after {
   width: 3px;
   background: var(--semantic-info);
+}
+
+/*
+ * 열 순서 바꾸기(#186, patterns/column-order.tsx). ① 평소엔 머리칸 글자뿐 ② 머리줄에 마우스를 올리면 이름 오른쪽에 끌기
+ * 손잡이(점 여섯 개)가 보인다 ③ 끄는 동안 잡은 머리칸은 파란 테두리로 반투명하게, 놓일 자리는 표 높이만큼의 파란
+ * 세로선으로 보인다 ④ 놓으면 원래 모양이다.
+ */
+.col-drag {
+  display: block;
+  min-width: 0;
+  margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-2));
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+}
+
+/*
+ * 머리글과 손잡이 묶음 — 머리칸 정렬(왼쪽·가운데·오른쪽)을 그대로 따른다. 손잡이는 글자 바로 오른쪽에 띄워
+ * 글자 자리를 차지하지 않는다(차지하면 가운데 정렬 머리글이 칸 내용과 어긋난다). 손잡이 자리만큼 비워 둔다.
+ */
+.col-drag-anchor {
+  position: relative;
+  display: inline-block;
+  max-width: calc(100% - 16px);
+  vertical-align: middle;
+}
+
+.col-drag-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.col-drag-handle {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-1));
+  transform: translateY(-50%);
+  fill: currentColor;
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+thead:hover .col-drag-handle,
+.col-drag:focus-visible .col-drag-handle,
+.col-drag.is-dragging .col-drag-handle {
+  opacity: 0.7;
+}
+
+th:hover > .col-drag {
+  background: var(--state-hover-neutral);
+}
+
+.col-drag:active {
+  cursor: grabbing;
+}
+
+.col-drag.is-dragging {
+  background: var(--semantic-info-container);
+  box-shadow: inset 0 0 0 1px var(--semantic-info);
+  opacity: 0.6;
+}
+
+.col-drop-line {
+  position: fixed;
+  z-index: 1000;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: var(--radius-full);
+  background: var(--semantic-info);
+  pointer-events: none;
 }
 
 /*
@@ -18334,7 +18646,8 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 /* 검색 줄 — 격자로 칸 윗선·높이를 맞춘다. 좁으면 두 줄, 단추 짝은 오른쪽. */
 .filter-bar.iqc-skip-approval-filter {
   display: grid;
-  grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1.2fr) minmax(12rem, 1.4fr) auto auto;
+  /* 칸마다 상한을 둔다 — 넓은 창에서 칸이 늘어나지 않고, 단추가 마지막 칸 바로 뒤에 붙는다(#186). */
+  grid-template-columns: minmax(10rem, 12rem) minmax(12rem, 16rem) minmax(12rem, 16rem) auto;
   align-items: start;
   gap: var(--space-3);
 }
@@ -18356,17 +18669,12 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 .iqc-skip-approval-filter .filter-actions {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 @media (max-width: 1280px) {
   .filter-bar.iqc-skip-approval-filter {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .iqc-skip-approval-filter > .field-cell-unlabeled:has(.check-group) {
-    grid-column: 1 / 3;
-    margin-top: 0;
   }
 
   .iqc-skip-approval-filter > .field-cell-unlabeled:has(.filter-actions) {
@@ -18377,8 +18685,51 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 
 /* 목록 표 — 1024 폭 창에서도 가로로 넘치지 않게 칸 폭을 고정하고 긴 값은 말줄임. */
 .iqc-skip-approval-table table {
-  min-width: 686px;
+  min-width: max(686px + var(--col-grow, 0px), var(--col-floor, 0px));
   table-layout: fixed;
+}
+
+/*
+ * 상하 배치(#186)에서는 열을 넓혀도 표 폭이 늘지 않는다 — 넓힌 만큼 남는 폭을 맡는 열이 줄어든다(끝은
+ * patterns/column-resize.tsx 가 정한다). 최소 폭이 `--col-grow` 를 따르지 않는다.
+ */
+.po-board-split.is-stacked .quality-approval-table table {
+  min-width: max(39rem, var(--col-floor, 0px));
+}
+
+.po-board-split.is-stacked .iqc-skip-approval-table table {
+  min-width: max(686px, var(--col-floor, 0px));
+}
+
+/*
+ * 좌우 배치에서 칸보다 넓은 표는 칸 안에서 옆으로 넘긴다(#186) — 가로 스크롤 막대를 늘 보인다(macOS 는 기본으로 감춰
+ * 잘린 것처럼 보인다). 막대는 표 부품의 스크롤 상자(표의 바로 위 상자)에 단다.
+ */
+.quality-approval-table > div::-webkit-scrollbar,
+.iqc-skip-approval-table > div::-webkit-scrollbar {
+  height: 8px;
+}
+
+.quality-approval-table > div::-webkit-scrollbar-thumb,
+.iqc-skip-approval-table > div::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-full);
+  background: var(--outline-variant);
+}
+
+.quality-approval-table > div::-webkit-scrollbar-track,
+.iqc-skip-approval-table > div::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 좁힌 머리칸 글자는 이웃 칸을 덮지 않고 말줄임한다(#186 열 폭 조절). */
+.iqc-skip-approval-table th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 줄 아무 곳이나 눌러 고른다(request-list-pane.tsx · #186) — 줄 위 어디서든 누르는 손 모양이다. */
+.iqc-skip-approval-table tbody tr {
+  cursor: pointer;
 }
 
 /* 칸 좌우 여백 8px — 일곱 열이 1024 폭 창(표 686px)에 들어가는 값이다. */
@@ -18423,21 +18774,9 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   background: var(--state-hover-neutral);
 }
 
-.iqc-skip-approval-list
-  tbody
-  tr:nth-child(n):has(.iqc-skip-approval-request-no[aria-current='true']) {
-  background: var(--surface-container-high);
-}
+/* 고른 줄은 입하 예정 조회와 같은 파랑이다(#186 · `.po-board-orders` 규칙 곁에 함께 적었다). */
 
-/* 표 줄(tr)에는 그림자가 안 그려진다 — 강조선은 첫 칸에 긋는다. */
-.iqc-skip-approval-list
-  tbody
-  tr:has(.iqc-skip-approval-request-no[aria-current='true'])
-  > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
-}
-
-/* 요청번호 — 한 줄, 본문색·굵게. 누를 수 있다는 것은 커서와 마우스 올림 밑줄로 보인다. */
+/* 요청번호 — 한 줄, 본문색·굵게. 줄 전체가 누르는 자리라(#186) 요청번호만 따로 누를 곳처럼 보이지 않게 한다. */
 .iqc-skip-approval-list .iqc-skip-approval-request-no {
   color: var(--on-surface);
   font-weight: 600;
@@ -18448,8 +18787,6 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 
 .iqc-skip-approval-list .iqc-skip-approval-request-no:hover {
   background: none;
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 /*

@@ -1407,7 +1407,8 @@ describe('appRouter — 검사실적·검사결과 조회의 진입 경로', () 
 });
 
 describe('appRouter — 품질 승인 처리의 진입 경로', () => {
-  it('품질관리 메뉴를 키보드로 열면 정식 주소와 화면 제목·탐색 경로가 선다', async () => {
+  /* 제목·탐색 경로 없이 유형 탭이 맨 위에 선다(#186, 입하 예정 조회와 같은 짜임). */
+  it('품질관리 메뉴를 키보드로 열면 정식 주소와 유형 탭·목록 구획이 선다', async () => {
     const user = userEvent.setup();
     renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...qualityApprovalRoutes()]);
 
@@ -1416,12 +1417,14 @@ describe('appRouter — 품질 승인 처리의 진입 경로', () => {
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(currentLocation()).toBe('/quality/approvals'));
-    expect(screen.getAllByRole('heading', { level: 1, name: '품질 승인 처리' })).toHaveLength(1);
-    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
-    const items = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
-    expect(items).toHaveLength(2);
-    expect(within(items[0]!).getByText(messages.qualityApproval.breadcrumbRoot)).toBeVisible();
-    expect(within(items[1]!).getByText('품질 승인 처리')).toBeVisible();
+    expect(
+      await screen.findByRole('tablist', {
+        name: messages.qualityApproval.fields.approvalTypeCode,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: messages.qualityApproval.panes.list }),
+    ).toBeInTheDocument();
   });
 
   it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {

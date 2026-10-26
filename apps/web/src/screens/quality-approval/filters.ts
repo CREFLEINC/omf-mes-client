@@ -33,7 +33,11 @@ const KEYS = {
   selected: 'approvalRequestId',
 } as const;
 
-export const PENDING_ONLY_DEFAULT = true;
+/**
+ * 「결재 대기만 보기」의 기본값 — 꺼짐(전체 조회 · 사용자 지시 2026-10-26 · #186). 주소에는 켠 것만 `pd=1` 로
+ * 적는다 — 기본이 켜짐이던 때의 `pd=0` 이 담긴 옛 주소는 기본(전체)과 같게 읽힌다.
+ */
+export const PENDING_ONLY_DEFAULT = false;
 const POSITIVE_INTEGER = /^\d+$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -82,7 +86,7 @@ export const readFilters = (
 });
 
 export const readPendingOnly = (params: URLSearchParams): boolean =>
-  params.get(KEYS.pendingOnly) === '0' ? false : PENDING_ONLY_DEFAULT;
+  params.get(KEYS.pendingOnly) === '1' ? true : PENDING_ONLY_DEFAULT;
 
 export const readPage = (params: URLSearchParams): number => {
   const raw = params.get(KEYS.page) ?? '';
@@ -112,7 +116,7 @@ export const toAppliedSearchParams = (
   replace(next, KEYS.from, dateOf(filters.from));
   replace(next, KEYS.to, dateOf(filters.to));
   replace(next, KEYS.q, filters.q.trim());
-  replace(next, KEYS.pendingOnly, pendingOnly === PENDING_ONLY_DEFAULT ? '' : '0');
+  replace(next, KEYS.pendingOnly, pendingOnly === PENDING_ONLY_DEFAULT ? '' : '1');
   replace(next, KEYS.page, page > 1 ? String(page) : '');
   next.delete(KEYS.selected);
 

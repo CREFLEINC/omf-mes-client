@@ -12,10 +12,6 @@ export interface CodeOption {
  * ⭐ OQC 생략(`OQC_SKIP`)은 서버가 정한 값이다(omf-all-around#119 · 서버 장부 P-83) — OQC 출하검사 판정(W-04-03)이 요청한다.
  */
 export const QUALITY_APPROVAL_TYPE_CODES: readonly string[] = ['CONCESSION', 'OQC_SKIP'];
-export const QUALITY_APPROVAL_STATUS_CODES: readonly string[] = [];
-
-export const toCodeOptions = (codes: readonly string[]): CodeOption[] =>
-  codes.map((code) => ({ value: code, label: code }));
 
 /** 승인 유형 코드 → 사용자 용어(`CONCESSION` → 「특채」). 모르는 코드는 원문 그대로 둔다. */
 export const approvalTypeLabelOf = (code: string): string =>

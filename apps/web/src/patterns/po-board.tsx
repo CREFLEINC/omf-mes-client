@@ -170,3 +170,89 @@ export const PaneSplitter = ({
     }}
   />
 );
+
+/** 두 구획을 나란히(`side`) 둘지 위아래(`stack`)로 둘지. */
+export type PaneLayout = 'side' | 'stack';
+
+/**
+ * 목록 · 상세 배치 바꾸기(사용자 지시 2026-10-26 · omf-all-around#186). 고른 배치는 화면마다 브라우저에 남긴다 —
+ * 다시 들어와도 같은 배치다. 저장소가 막혀 있으면 나란히 둔다. 창이 1440px 보다 좁으면 CSS 가 늘 위아래로 쌓으므로
+ * 이 값은 넓은 창에서만 뜻이 있다(`.po-board-split.is-stacked`).
+ */
+export const usePaneLayout = (storageKey: string) => {
+  const [layout, setLayout] = useState<PaneLayout>(() => {
+    try {
+      return window.localStorage.getItem(storageKey) === 'stack' ? 'stack' : 'side';
+    } catch {
+      return 'side';
+    }
+  });
+
+  const change = (next: PaneLayout): void => {
+    setLayout(next);
+    try {
+      window.localStorage.setItem(storageKey, next);
+    } catch {
+      /* 저장하지 못해도 이번 화면에서는 그대로 쓴다. */
+    }
+  };
+
+  /** 두 구획을 감싼 상자(`.po-board-split`)에 덧붙일 이름. */
+  const className = layout === 'stack' ? 'po-board-split is-stacked' : 'po-board-split is-side';
+
+  return { layout, change, className };
+};
+
+/** 배치 그림 — 좌우는 세로 칸 둘, 상하는 가로 칸 둘. 글이 이름을 말하므로 읽기 도구에는 감춘다. */
+const LayoutIcon = ({ layout }: { layout: PaneLayout }) => (
+  <svg
+    className="po-board-layout-icon"
+    viewBox="0 0 16 16"
+    width="12"
+    height="12"
+    aria-hidden="true"
+  >
+    {layout === 'side' ? (
+      <>
+        <rect x="1.5" y="2" width="5" height="12" rx="1.5" />
+        <rect x="9.5" y="2" width="5" height="12" rx="1.5" />
+      </>
+    ) : (
+      <>
+        <rect x="1.5" y="2" width="13" height="5" rx="1.5" />
+        <rect x="1.5" y="9" width="13" height="5" rx="1.5" />
+      </>
+    )}
+  </svg>
+);
+
+/**
+ * 배치 고르기 — 「좌우 배치 | 상하 배치」 두 단추 중 지금 배치가 강조돼 보인다(사용자 지시 2026-10-26). 탭 줄
+ * 오른쪽, 상태 칩 뒤 구분선 다음에 선다. 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다 — 눌러도 바뀌는 것이 없다.
+ */
+export const PaneLayoutToggle = ({
+  layout,
+  onChange,
+  labels,
+}: {
+  layout: PaneLayout;
+  onChange: (next: PaneLayout) => void;
+  labels: { group: string; side: string; stack: string };
+}) => (
+  <div className="po-board-layout-toggle" role="group" aria-label={labels.group}>
+    {(['side', 'stack'] as const).map((value) => (
+      <button
+        key={value}
+        type="button"
+        className="po-board-layout-option"
+        aria-pressed={layout === value}
+        onClick={() => {
+          if (layout !== value) onChange(value);
+        }}
+      >
+        <LayoutIcon layout={value} />
+        {labels[value]}
+      </button>
+    ))}
+  </div>
+);

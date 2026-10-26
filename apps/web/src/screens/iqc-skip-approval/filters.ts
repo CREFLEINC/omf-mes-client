@@ -1,6 +1,7 @@
 import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { STATUS_FILTER_CODES } from '../quality-approval/type-tabs';
 import type { RequestFilters } from './types';
 
 /**
@@ -36,23 +37,18 @@ const URL_KEYS = {
 } as const;
 
 /**
- * 「결재 대기만 보기」의 기본값 — **켜짐**이다.
- *
- * 이 화면에 들어오는 이유가 「지금 내가 판정할 것」이라, 첫 화면이 끝난 건까지 함께 보이면
- * 사용자가 매번 좁혀야 한다. 기본값이라 **켜져 있을 때는 주소에 적지 않는다.**
+ * 「결재 대기만 보기」의 기본값 — **꺼짐**이다(사용자 지시 2026-10-26 · #186 「기본은 무조건 모두 조회」).
+ * 결재 대기만 볼 때는 탭 줄의 「결재 대기」 칩을 켠다.
  *
  * **이 값을 읽는 자리가 셋이다** — 주소 읽기(`readPendingOnly`) · 주소 쓰기(`toSearchParams`) ·
- * 「초기화」(`screen.tsx`). 셋 다 이 상수를 지나야 기본값이 뒤집히는 날 한 자리만 고쳐져
- * 「초기화했더니 조회 범위가 딴판」이 되는 일이 없다.
+ * 「초기화」(`screen.tsx`). 셋 다 이 상수를 지나야 「초기화했더니 조회 범위가 딴판」이 되는 일이 없다.
  *
- * **다만 주소 키의 뜻 자체가 기본값의 표현이다** — 「기본과 다른 상태만 적는다」라서 지금은
- * `pd=0`(꺼짐)만 적힌다. 기본값을 뒤집으려면 이 상수와 함께 **키 규약도 다시 정해야 한다**
- * (그때 `pd=0`이 「켜짐」을 뜻하게 두면 주소를 읽는 사람이 속는다).
+ * **주소에는 켠 것만 `pd=1` 로 적는다.** 기본이 켜짐이던 때의 `pd=0`(꺼짐)이 담긴 옛 주소는 기본(꺼짐)과 같게 읽힌다.
  */
-export const PENDING_ONLY_DEFAULT = true;
+export const PENDING_ONLY_DEFAULT = false;
 
-/** 기본과 **다른** 상태만 주소에 적는다. 지금 그것은 「꺼짐」이다(위 주석의 단서를 함께 읽는다). */
-const PENDING_ONLY_OFF = '0';
+/** 기본과 **다른** 상태만 주소에 적는다. 지금 그것은 「켜짐」이다. */
+const PENDING_ONLY_ON = '1';
 
 const POSITIVE_INTEGER = /^\d+$/;
 
@@ -115,7 +111,10 @@ export const EMPTY_FILTERS: RequestFilters = {
  * 서 있는」 어긋남이 생긴다.
  */
 export const readFilters = (params: URLSearchParams): RequestFilters => ({
-  statusCode: codeOf(params.get(URL_KEYS.statusCode)),
+  /* 상태 조건은 탭 줄 승인·반려 칩(#186)만 건다 — 그 밖의 값은 화면에 보이지 않는 조건이 되므로 걷는다. */
+  statusCode: STATUS_FILTER_CODES.includes(codeOf(params.get(URL_KEYS.statusCode)))
+    ? codeOf(params.get(URL_KEYS.statusCode))
+    : '',
   from: dateOf(params.get(URL_KEYS.from) ?? ''),
   to: dateOf(params.get(URL_KEYS.to) ?? ''),
   q: params.get(URL_KEYS.q) ?? '',
@@ -124,12 +123,11 @@ export const readFilters = (params: URLSearchParams): RequestFilters => ({
 /**
  * 주소가 가리키는 「결재 대기만 보기」.
  *
- * **끈 것만 주소에 적히므로 판정도 그 한 값으로 한다** — 모르는 값(`pd=엉뚱한값`)은 기본값으로
- * 본다. 주소는 손으로 고쳐지는 자리이고, 알 수 없는 값을 「꺼진 것」으로 읽으면 사용자가
- * 끈 적 없는데 끝난 건까지 보이게 된다.
+ * **켠 것만 주소에 적히므로 판정도 그 한 값으로 한다** — 모르는 값(`pd=엉뚱한값`)은 기본값(전체)으로
+ * 본다. 주소는 손으로 고쳐지는 자리라, 알 수 없는 값으로 목록을 좁히면 사용자가 건 적 없는 조건이 된다.
  */
 export const readPendingOnly = (params: URLSearchParams): boolean =>
-  params.get(URL_KEYS.pendingOnly) === PENDING_ONLY_OFF
+  params.get(URL_KEYS.pendingOnly) === PENDING_ONLY_ON
     ? !PENDING_ONLY_DEFAULT
     : PENDING_ONLY_DEFAULT;
 
@@ -171,7 +169,7 @@ export const toSearchParams = (
   if (to !== '') next.set(URL_KEYS.to, to);
   if (keyword !== '') next.set(URL_KEYS.q, keyword);
   /* 기본과 다른 상태만 적는다 — 기본값을 아는 자리는 상수 하나뿐이다. */
-  if (pendingOnly !== PENDING_ONLY_DEFAULT) next.set(URL_KEYS.pendingOnly, PENDING_ONLY_OFF);
+  if (pendingOnly !== PENDING_ONLY_DEFAULT) next.set(URL_KEYS.pendingOnly, PENDING_ONLY_ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
 
   return next;
@@ -299,13 +297,7 @@ export const toFilterChips = (filters: RequestFilters): RequestFilterChip[] => {
   const from = dateOf(filters.from);
   const to = dateOf(filters.to);
 
-  if (filters.statusCode !== '') {
-    chips.push({
-      key: 'statusCode',
-      label: t.filters.chipStatus(filters.statusCode),
-      removeLabel: t.filters.chipRemoveStatus,
-    });
-  }
+  /* 상태는 조건 칩으로 세우지 않는다 — 탭 줄 상태 칩(#186)이 켜진 상태를 보이고, 다시 누르면 푼다. */
 
   /*
    * 한쪽만 있는 구간을 **양쪽 있는 것처럼 적지 않는다.** 주소를 손으로 고치면 실제로 생기는

@@ -11,10 +11,7 @@ const t = messages.qualityApproval;
 
 const makeProps = (overrides: Partial<FilterBarProps> = {}): FilterBarProps => ({
   applied: EMPTY_FILTERS,
-  statusOptions: [],
-  pendingOnly: true,
   onApply: vi.fn(),
-  onTogglePendingOnly: vi.fn(),
   onReset: vi.fn(),
   ...overrides,
 });
@@ -27,32 +24,27 @@ const renderBar = (overrides: Partial<FilterBarProps> = {}) => {
 const requestSearch = (): HTMLElement => screen.getByLabelText(t.fields.q);
 
 describe('FilterBar draft lifetime', () => {
-  it('빈 코드 선택칸은 placeholder만 보이고 준비 설명 문구는 두지 않는다', () => {
+  it('승인 유형·상태 칸을 두지 않는다 — 유형은 목록 위 탭(#144), 상태는 탭 줄 칩(#186)으로 고른다', () => {
     renderBar();
-    const status = screen.getByLabelText(t.fields.statusSearch);
 
-    /* 승인 유형은 조건 막대가 아니라 목록 위 탭으로 옮겼다(#144). */
+    expect(screen.getByLabelText(t.fields.q)).toBeInTheDocument();
     expect(screen.queryByLabelText(t.fields.approvalTypeCode)).not.toBeInTheDocument();
-    expect(status).toHaveTextContent(t.codePlaceholder);
-    expect(screen.queryByText('선택할 기준값이 아직 준비되지 않았습니다')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
-  it('선택·기간·검색어 draft를 Enter로 함께 적용한다', async () => {
-    /* 적용된 승인 유형(탭)은 조건 막대의 적용·조회에도 그대로 실려 간다. */
+  it('기간·검색어 draft를 Enter로 함께 적용한다', async () => {
+    /* 적용된 승인 유형(탭)·상태(칩)는 조건 막대의 적용·조회에도 그대로 실려 간다. */
     const { props, user } = renderBar({
-      applied: { ...EMPTY_FILTERS, approvalTypeCode: 'CONCESSION' },
-      statusOptions: [{ value: 'SYNTH-OPEN', label: '합성 상태' }],
+      applied: { ...EMPTY_FILTERS, approvalTypeCode: 'CONCESSION', statusCode: 'APPROVED' },
     });
 
-    await user.click(screen.getByLabelText(t.fields.statusSearch));
-    await user.click(screen.getByRole('option', { name: '합성 상태' }));
     /* 상신일은 시작일·종료일 두 칸으로 따로 고른다(#144). */
     await pickDate(user, screen.getByLabelText(t.fields.periodFrom), '2026-08-01');
     await pickDate(user, screen.getByLabelText(t.fields.periodTo), '2026-08-22');
     await user.type(requestSearch(), 'SYNTH-REQ{Enter}');
     expect(props.onApply).toHaveBeenCalledWith({
       approvalTypeCode: 'CONCESSION',
-      statusCode: 'SYNTH-OPEN',
+      statusCode: 'APPROVED',
       from: '2026-08-01',
       to: '2026-08-22',
       q: 'SYNTH-REQ',
@@ -61,7 +53,7 @@ describe('FilterBar draft lifetime', () => {
     await user.click(screen.getByRole('button', { name: messages.common.search }));
     expect(props.onApply).toHaveBeenLastCalledWith({
       approvalTypeCode: 'CONCESSION',
-      statusCode: 'SYNTH-OPEN',
+      statusCode: 'APPROVED',
       from: '2026-08-01',
       to: '2026-08-22',
       q: 'SYNTH-REQ',
@@ -75,17 +67,6 @@ describe('FilterBar draft lifetime', () => {
 
     expect(requestSearch()).toHaveValue('');
     expect(props.onReset).toHaveBeenCalledOnce();
-  });
-
-  it('pendingOnly는 즉시 알리고 검색어 draft는 보존한다', async () => {
-    const { props, user } = renderBar();
-
-    await user.type(requestSearch(), 'SYNTH-DRAFT');
-    await user.click(screen.getByRole('checkbox', { name: t.fields.pendingOnly }));
-
-    expect(props.onTogglePendingOnly).toHaveBeenCalledWith(false);
-    expect(props.onApply).not.toHaveBeenCalled();
-    expect(requestSearch()).toHaveValue('SYNTH-DRAFT');
   });
 
   it('적용된 primitive가 바뀌면 draft를 동기화한다', () => {
@@ -102,7 +83,7 @@ describe('FilterBar draft lifetime', () => {
     const { rerender } = render(<FilterBar {...props} />);
 
     await userEvent.setup().type(requestSearch(), 'SYNTH-DRAFT');
-    rerender(<FilterBar {...props} applied={{ ...EMPTY_FILTERS }} pendingOnly={false} />);
+    rerender(<FilterBar {...props} applied={{ ...EMPTY_FILTERS }} />);
 
     expect(requestSearch()).toHaveValue('SYNTH-DRAFT');
   });
