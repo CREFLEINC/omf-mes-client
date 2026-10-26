@@ -21298,3 +21298,8 @@ table.col-measuring td {
     flex: 0 1 12rem;
   }
 }
+
+/* IQC 조회 · 초기화는 검색 줄 오른쪽 끝(사용자 지시 2026-10-26). */
+.iqc-inspection-search .iqc-inspection-filter-actions:nth-child(n) {
+  margin-left: auto;
+}
