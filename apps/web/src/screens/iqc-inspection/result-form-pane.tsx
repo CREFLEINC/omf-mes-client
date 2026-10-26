@@ -301,13 +301,15 @@ export const ResultFormPane = ({
               ) : round !== null ? (
                 <p className="field-note">{t.round(round.inspectionRound)}</p>
               ) : null}
+              {/* 잠근 이유는 세 칸마다 되풀이하지 않고 회차 옆 라벨로 한 번만 밝힌다(사용자 지시 2026-10-26). */}
+              {isConfirmed && <span className="iqc-inspection-head-badge">{t.confirmed}</span>}
               {/* 기준값(검사수량)은 제목 줄 오른쪽 끝에 — 세 칸은 이 값을 나눈 결과다. 따로 한 줄을 쓰지 않는다(#133). */}
               <dl className="iqc-inspection-qty-base">
                 <dt className="iqc-inspection-progress-label">{t.fields.inspectedQty}</dt>
                 <dd>{inspectedText}</dd>
               </dl>
             </summary>
-            <div className="iqc-inspection-collapsible-body">
+            <div className="iqc-inspection-collapsible-body iqc-inspection-qty-body">
               {/*
                * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사
                * 시작으로 삼은 규율과 같다(omf-mes 확정 2026-08-21 §1.2) — 열어 두고 떠난 사람이
@@ -328,9 +330,6 @@ export const ResultFormPane = ({
                 {field('rejected', t.fields.rejected, errors.rejected)}
                 {field('held', t.fields.held, errors.held)}
               </div>
-
-              {/* 잠근 이유는 세 칸마다 되풀이하지 않고 수량 줄 아래 한 번만 밝힌다. */}
-              {isConfirmed && <p className="field-note">{t.confirmed}</p>}
 
               {/* 입력 현황 — 「합계 / 검사수량」 · 잔여 · 막대 · 한 줄 안내. 계산은 그대로다. */}
               <div

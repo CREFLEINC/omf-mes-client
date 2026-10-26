@@ -21416,3 +21416,41 @@ table.col-measuring td {
     grid-column: 1 / -1;
   }
 }
+
+/* 회차 옆 라벨 — 「이 회차는 확정되어 고칠 수 없습니다…」(사용자 지시 2026-10-26). 제목 줄 안의 작은 알약. */
+.iqc-inspection-head-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--semantic-info-container);
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+/*
+ * 검사 수량 입력 — 합격 · 불합격 · 보류 칸은 좁게, 오른쪽에 같은 줄로 입력 완료 막대(사용자 지시 2026-10-26).
+ * 구획이 좁으면(48rem 미만) 종전처럼 세 칸이 폭을 나누고 막대는 아래 줄이다. 안내 글은 두 칸을 다 쓴다.
+ */
+@container (min-width: 48rem) {
+  .iqc-inspection-qty-body {
+    grid-template-columns: auto minmax(14rem, 1fr);
+    grid-auto-flow: row dense;
+    column-gap: var(--space-6);
+    align-items: end;
+  }
+
+  .iqc-inspection-qty-body > * {
+    grid-column: 1 / -1;
+  }
+
+  .iqc-inspection-qty-body > .iqc-inspection-qty {
+    grid-column: 1;
+    grid-template-columns: repeat(3, minmax(6rem, 9rem));
+  }
+
+  .iqc-inspection-qty-body > .iqc-inspection-progress {
+    grid-column: 2;
+  }
+}
