@@ -5,8 +5,6 @@ import { useLayoutEffect, useRef, useState } from 'react';
 const FLEX_MIN = 120;
 /** 줄여도 이보다 좁아지지 않는다(`column-resize.tsx` 의 최소 폭과 같다). */
 const COLUMN_MIN = 40;
-/** 좌우 배치(가로 스크롤)에서 한 열의 최대 폭 — 한 열이 구획을 다 차지하지 않게(사용자 지시 2026-10-26). */
-export const ROW_LAYOUT_COLUMN_MAX = 480;
 
 const pxOf = (width: string | undefined): number | null =>
   width?.endsWith('px') === true ? Number.parseFloat(width) : null;

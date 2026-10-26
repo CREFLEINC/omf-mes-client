@@ -21267,3 +21267,20 @@ body.row-resizing * {
   cursor: row-resize !important;
   user-select: none;
 }
+
+/* 열 폭 손잡이가 데이터 폭을 잴 때 잠깐 붙는 배치(`patterns/column-resize.tsx`) — 그리기 전에 떼어 눈에 보이지 않는다. */
+table.col-measuring {
+  table-layout: auto !important;
+  width: max-content !important;
+  min-width: 0 !important;
+}
+
+table.col-measuring col {
+  width: auto !important;
+}
+
+table.col-measuring th,
+table.col-measuring td {
+  width: auto !important;
+  max-width: none !important;
+}

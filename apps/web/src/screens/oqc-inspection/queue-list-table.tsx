@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-order';
-import { ROW_LAYOUT_COLUMN_MAX, useFitColumns } from '../../patterns/column-fit';
+import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import type { ItemNameLookup } from './reference-lookup';
 import { toStatusBadge } from './status-badge';
@@ -172,8 +172,8 @@ export const QueueListTable = ({
     columnsOf(selectedId, onSelect, itemNames, uomCodeOf, serialOf),
   );
   const resizable = useColumnWidths('omf-mes:oqc-inspection:columns:queue', ordered, {
-    /* 좌우 배치(가로 스크롤)에서는 한 열이 이보다 넓어지지 않는다(사용자 지시 2026-10-26). */
-    ...(scrollX ? { maxWidth: ROW_LAYOUT_COLUMN_MAX } : {}),
+    /* 좌우 배치(가로 스크롤)에서는 열이 그 데이터의 가장 긴 폭까지만 넓어진다(사용자 지시 2026-10-26). */
+    fitContent: scrollX,
   });
   /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다(#185 · 반응형). */
   const fit = useFitColumns(resizable.columns, { scrollX });

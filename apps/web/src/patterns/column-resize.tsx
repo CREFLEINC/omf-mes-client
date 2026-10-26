@@ -85,11 +85,27 @@ export const layoutColumns = (
  * 끌기 손잡이 — 머리칸 오른쪽 끝의 세로 막대. 마우스·터치로 끈다. 읽기 도구에는 감춘다 — 머리칸 이름에
  * 섞이지 않게.
  */
+/**
+ * 그 열의 내용이 다 보이는 폭 — 표를 잠깐 내용 폭 배치로 바꿔 머리칸 폭을 잰다(그리기 전에 되돌려 눈에 보이지 않는다).
+ * 지금 그려진 줄(이 쪽)의 가장 긴 값 · 머리 이름 기준이다.
+ */
+const contentWidthOf = (cell: HTMLTableCellElement): number | null => {
+  const table = cell.closest('table');
+  if (table === null) return null;
+  table.classList.add('col-measuring');
+  const width = cell.getBoundingClientRect().width;
+  table.classList.remove('col-measuring');
+  return Number.isFinite(width) && width > 0 ? Math.ceil(width) : null;
+};
+
 const ColumnResizer = ({
+  fitContent,
   baseWidth,
   onResize,
   onReset,
 }: {
+  /** 끌어 넓힐 때 그 열 데이터의 가장 긴 폭에서 멈춘다. */
+  fitContent: boolean;
   /** 저장 단위의 지금 폭(px). 표가 상자에 맞춰 늘거나 줄어 보이면 그린 폭과 다르다 — 없으면 그린 폭이다. */
   baseWidth: number | null;
   onResize: (width: number) => void;
@@ -107,8 +123,11 @@ const ColumnResizer = ({
       const startWidth = baseWidth ?? drawn;
       /* 그린 폭과 저장 폭의 비 — 커서가 움직인 만큼 화면의 칸 끝이 따라오게 저장 단위로 옮긴다. */
       const ratio = drawn > 0 ? startWidth / drawn : 1;
+      /* 데이터의 가장 긴 폭까지만(옵트인 · 사용자 지시 2026-10-26) — 앞서 더 넓혀 둔 열도 잡으면 그 폭을 넘지 못한다. */
+      const limit = fitContent ? contentWidthOf(cell) : null;
+      const max = limit === null ? Infinity : limit * ratio;
       const move = (moveEvent: PointerEvent): void => {
-        onResize(startWidth + (moveEvent.clientX - startX) * ratio);
+        onResize(Math.min(max, startWidth + (moveEvent.clientX - startX) * ratio));
       };
       const up = (): void => {
         window.removeEventListener('pointermove', move);
@@ -130,10 +149,9 @@ const ColumnResizer = ({
 export const useColumnWidths = <T,>(
   storageKey: string,
   columns: Column<T>[],
-  /** 한 열이 넓어질 수 있는 최대 폭(px). 기본은 종전 한계(960). 저장된 폭도 이 값을 넘으면 이 값으로 그린다. */
-  { maxWidth = COLUMN_MAX }: { maxWidth?: number } = {},
+  /** 끌어 넓힐 때 그 열 데이터의 가장 긴 폭에서 멈춘다. 기본은 제한 없음(종전 표). */
+  { fitContent = false }: { fitContent?: boolean } = {},
 ) => {
-  const cap = (value: number): number => Math.min(maxWidth, clampWidth(value));
   const [overrides, setOverrides] = useState<ColumnWidths>(() => readWidths(storageKey));
 
   /* 끄는 동안 다른 열은 바뀌지 않는다 — 끌기 시작할 때의 값에 그 열만 얹어도 된다. */
@@ -146,10 +164,7 @@ export const useColumnWidths = <T,>(
     }
   };
 
-  const layout = layoutColumns(
-    columns,
-    Object.fromEntries(Object.entries(overrides).map(([key, value]) => [key, cap(value)])),
-  );
+  const layout = layoutColumns(columns, overrides);
 
   return {
     columns: columns.map((column): Column<T> => ({
@@ -159,9 +174,10 @@ export const useColumnWidths = <T,>(
         <>
           {column.header}
           <ColumnResizer
+            fitContent={fitContent}
             baseWidth={pxOf(layout.widths[column.key])}
             onResize={(value) => {
-              commit({ ...overrides, [column.key]: cap(value) });
+              commit({ ...overrides, [column.key]: clampWidth(value) });
             }}
             onReset={() => {
               commit(
