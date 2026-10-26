@@ -20809,17 +20809,79 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   height: calc(100dvh - 20rem);
 }
 
-/* 머리칸 사이의 가는 세로선 — 입하 예정 조회의 표와 같은 모양(그쪽은 열 폭 손잡이가 그린다 · 여기는 선만). */
-.iqc-inspection-queue-rows thead th:not(:last-child)::after,
-.pqc-web-queue thead th:not(:last-child)::after,
-.oqc-inspection-queue-rows thead th:not(:last-child)::after {
-  position: absolute;
-  top: var(--space-2);
-  right: 0;
-  bottom: var(--space-2);
-  width: 1px;
-  background: var(--outline-variant);
-  content: '';
+/*
+ * 검사 조회·판정 목록 표(#185) — 입하 예정 조회의 표와 같은 모양: **행은 한 줄**, 열 폭 고정 배치, 넘치면 말줄임.
+ * 열 폭(`patterns/column-resize.tsx`)·순서(`patterns/column-order.tsx`)는 사용자가 바꾸고 브라우저에 남는다.
+ * 머리칸 사이 세로선은 열 폭 손잡이(`.col-resizer`)가 그린다.
+ */
+.inspection-queue-table table {
+  table-layout: fixed;
+  min-width: max(100%, var(--col-floor, 0px));
+}
+
+.inspection-queue-table thead th,
+.inspection-queue-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 품목 「이름 코드」 · 의뢰번호 「번호 대상」을 한 줄로 — 이름은 굵게 두지 않고, 보조 글은 흐리게 뒤에 붙인다. */
+.inspection-queue-table .iqc-inspection-queue-item,
+.inspection-queue-table .oqc-inspection-queue-item,
+.inspection-queue-table .pqc-web-queue-item,
+.inspection-queue-table .stacked-cell {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--space-2);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  line-height: inherit;
+}
+
+.inspection-queue-table .iqc-inspection-queue-item-name,
+.inspection-queue-table .oqc-inspection-queue-item-name,
+.inspection-queue-table .pqc-web-queue-item-name {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: inherit;
+}
+
+.inspection-queue-table .iqc-inspection-queue-item-code,
+.inspection-queue-table .oqc-inspection-queue-sub,
+.inspection-queue-table .pqc-web-queue-item-code {
+  flex: 0 10 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 열 순서 바꾸기 손잡이 — 머리칸 이름. 잡으면 손 모양, 놓을 자리는 바탕이 바뀐다. */
+.col-grip {
+  cursor: grab;
+  user-select: none;
+}
+
+th.col-dragging {
+  opacity: 0.5;
+}
+
+th.col-drop-target {
+  box-shadow: inset 0 -2px 0 var(--semantic-info);
+  background: var(--surface-container-high);
+}
+
+body.col-reordering,
+body.col-reordering * {
+  cursor: grabbing !important;
+  user-select: none;
 }
 
 /* OQC 목록 머리줄 글자도 IQC · PQC · 입하 예정 조회의 표와 같은 크기·색(#185). */

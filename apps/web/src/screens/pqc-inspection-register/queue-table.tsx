@@ -2,6 +2,8 @@ import { Chip, Table, type Column, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { useColumnOrder } from '../../patterns/column-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { toStatusBadge } from '../oqc-inspection/status-badge';
 import type { InspectionQueueRow } from '../oqc-inspection/types';
@@ -85,7 +87,7 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
       key: 'lot',
       header: t.columns.lot,
       /* 번호가 길다(30자 남짓) — 넓은 창에서는 다 보이고, 1440 창에서는 끝을 말줄임하고 전체는 title 로 본다. */
-      width: '28%',
+      width: '240px',
       render: (row) => <LotCell workOrderId={row.targetId} />,
     },
     {
@@ -96,19 +98,19 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
     {
       key: 'workOrder',
       header: t.columns.workOrder,
-      width: '10rem',
+      width: '160px',
       render: (row) => <WorkOrderCell workOrderId={row.targetId} />,
     },
     {
       key: 'no',
       header: messages.pqcInspection.detail.fields.inspectionRequestNo,
-      width: '10rem',
+      width: '160px',
       render: (row) => <span title={row.inspectionRequestNo}>{row.inspectionRequestNo}</span>,
     },
     {
       key: 'qty',
       header: t.columns.targetQty,
-      width: '6rem',
+      width: '96px',
       render: (row) => {
         const uomCode = uomCodeOf(row.uomId);
         return uomCode === undefined ? String(row.targetQty) : `${row.targetQty} ${uomCode}`;
@@ -117,7 +119,7 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
     {
       key: 'status',
       header: t.columns.status,
-      width: '5.5rem',
+      width: '88px',
       render: (row) => {
         const badge = toStatusBadge(row.statusCode);
         return (
@@ -130,16 +132,20 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
     {
       key: 'requestedAt',
       header: t.columns.requestedAt,
-      width: '9.5rem',
+      width: '160px',
       sortable: true,
       render: (row) => formatPlantDateTime(row.requestedAt) ?? row.requestedAt,
     },
   ];
+  /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
+  const ordered = useColumnOrder('omf-mes:pqc-inspection-register:columns:queue:order', columns);
+  const resizable = useColumnWidths('omf-mes:pqc-inspection-register:columns:queue', ordered);
 
   return (
     /* 줄 아무 곳이나 눌러 연다(#135) — 의뢰번호를 따로 누르는 길은 두지 않는다. */
     <div
-      className="pqc-web-queue"
+      className="pqc-web-queue inspection-queue-table"
+      style={resizable.style}
       onClick={(event) => {
         const row = (event.target as Element).closest('tbody tr');
         if (row === null || row.parentElement === null) return;
@@ -151,7 +157,7 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
       <Table
         caption={<span className="visually-hidden">{t.queue.caption}</span>}
         density="compact"
-        columns={columns}
+        columns={resizable.columns}
         rows={shown}
         sort={sort}
         onSortChange={setSort}
