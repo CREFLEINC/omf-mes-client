@@ -3860,15 +3860,15 @@ main > * + * {
  * 서고, 폭이 모자라면 위아래로 쌓인다.
  */
 /*
- * 유형 탭 줄 — 왼쪽 탭, 오른쪽 「결재 대기 N」 칩(입하 예정 조회의 탭 줄과 같은 짜임). 밑줄은 줄 전체에 긋는다 —
- * 탭 목록이 긋는 선(`--outline`)과 같은 선이라 칩 아래까지 한 줄로 이어진다.
+ * 유형 탭 줄 — 왼쪽 탭, 오른쪽 「결재 대기 N」 칩. 입하 예정 조회의 탭 막대(`.hub-bar`·`.hub-tab`)와 같은 모양으로
+ * 맞춘다: 밑줄은 줄 전체에 옅은 선(`--outline-variant`) 하나, 켜진 탭은 탭 폭 전체에 `--primary-text` 굵은 선.
  */
 .quality-approval-type-bar {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   margin-bottom: var(--space-4);
-  box-shadow: inset 0 -1px 0 0 var(--outline);
+  box-shadow: inset 0 -1px 0 var(--outline-variant);
 }
 
 /* 패널 내용이 없는 탭이라 탭 목록과 패널 사이 간격을 걷는다 — 남기면 밑줄이 두 줄로 갈린다. */
@@ -3876,6 +3876,27 @@ main > * + * {
   flex: 1;
   gap: 0;
   min-width: 0;
+}
+
+/* 탭 목록이 따로 긋는 선은 걷는다 — 줄 전체의 선 하나만 남긴다. */
+.quality-approval-type-tabs [role='tablist'] {
+  gap: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.quality-approval-type-tabs [role='tab'] {
+  height: auto;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.quality-approval-type-tabs [role='tab']::after {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 0;
+  background: var(--primary-text);
 }
 
 .quality-approval-type-bar-tools {
