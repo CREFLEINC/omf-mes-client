@@ -21673,7 +21673,7 @@ table.col-measuring td {
 
 /*
  * 4M 변경품 — 체크칸과 비고 칸을 한 줄로(사용자 지시 2026-10-26). 체크칸은 비고 입력칸 높이의 가운데에 맞춘다
- * (이름표 높이만큼 내려 선다 — 칸 옆 단위와 같은 방식). 비고 칸은 남는 폭을 쓰되 너무 길지 않게.
+ * (이름표 높이만큼 내려 선다 — 칸 옆 단위와 같은 방식). 비고 칸은 남는 폭을 다 쓴다.
  */
 .iqc-inspection-four-m-block .iqc-inspection-four-m {
   display: flex;
@@ -21694,7 +21694,7 @@ table.col-measuring td {
 }
 
 .iqc-inspection-four-m-block .iqc-inspection-four-m > .field-cell {
+  /* 남는 폭을 다 쓴다(창 폭 따라 늘고 준다 · 사용자 지시 2026-10-26). */
   flex: 1 1 20rem;
-  max-width: 40rem;
   min-width: 0;
 }
