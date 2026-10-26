@@ -662,7 +662,7 @@ export const IqcInspectionScreen = () => {
    * 사용자가 다시 고르는데, 다시 골라도 같은 실패가 온다.
    */
   /*
-   * 「기본 정보」 머리줄(사용자 지시 2026-10-26 · #185) — 왼쪽 제목, 오른쪽 [닫기 ×]. 닫기는 저장하지 않은 입력이 있으면
+   * 「기본 정보」 머리줄(사용자 지시 2026-10-26 · #185) — 왼쪽 제목, 오른쪽 [닫기]. 닫기는 저장하지 않은 입력이 있으면
    * 한 번 묻는다(`moveTo`). 기본 정보 카드는 부르는 중 · 실패에도 서서 언제든 닫을 수 있다.
    */
   const basicInfoHead = (
@@ -675,7 +675,6 @@ export const IqcInspectionScreen = () => {
         onClick={() => moveTo(null)}
       >
         {hubText.close}
-        <Icon name="close" size={18} />
       </button>
     </div>
   );
