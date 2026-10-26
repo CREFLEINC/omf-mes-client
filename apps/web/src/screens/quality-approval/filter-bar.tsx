@@ -15,11 +15,14 @@ export const FilterBar = ({ applied, onApply, onReset }: FilterBarProps) => {
   const fromId = useId();
   const toId = useId();
   const [draft, setDraft] = useState<RequestFilters>(applied);
-  const { approvalTypeCode, statusCode, from, to, q } = applied;
+  const { approvalTypeCode, from, to, q } = applied;
+  /* 상태는 탭 줄 칩이 바꾼다 — 칩을 눌러도 치던 날짜·검색어가 지워지지 않게 되돌림에서 뺀다(#186 리뷰). */
+  const apply = (next: RequestFilters): void =>
+    onApply({ ...next, statusCode: applied.statusCode });
 
   useEffect(() => {
-    setDraft({ approvalTypeCode, statusCode, from, to, q });
-  }, [approvalTypeCode, statusCode, from, to, q]);
+    setDraft((current) => ({ ...current, approvalTypeCode, from, to, q }));
+  }, [approvalTypeCode, from, to, q]);
 
   const reset = (): void => {
     setDraft(EMPTY_FILTERS);
@@ -67,13 +70,12 @@ export const FilterBar = ({ applied, onApply, onReset }: FilterBarProps) => {
         value={draft.q}
         onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
         onKeyDown={(event) => {
-          if (event.key === 'Enter' && !event.nativeEvent.isComposing) onApply(draft);
+          if (event.key === 'Enter' && !event.nativeEvent.isComposing) apply(draft);
         }}
       />
-      {/* 「결재 대기만 보기」는 탭 줄 오른쪽 칩으로 옮겼다(#186 · `PendingChip`). */}
       <div className="quality-approval-filter-footer">
         <div className="filter-actions">
-          <Button onClick={() => onApply(draft)}>{messages.common.search}</Button>
+          <Button onClick={() => apply(draft)}>{messages.common.search}</Button>
           <Button variant="outlined" onClick={reset}>
             {messages.common.reset}
           </Button>

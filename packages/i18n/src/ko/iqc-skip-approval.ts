@@ -151,9 +151,6 @@ export const iqcSkipApproval = {
       '한도 구간은 아직 화면에 표시되지 않습니다. 결재선 단계로 승인 범위를 확인하세요.',
   },
   filters: {
-    all: '전체',
-    /** 상태 선택지가 빈 이유 — 칸 아래 한 줄이라 짧게 쓴다(자리표시가 이미 「준비 중」을 말한다). */
-    statusPendingNote: '상태 목록 확정 전',
     chipPeriod: (from: string, to: string): string => `상신일: ${from} ~ ${to}`,
     chipPeriodFrom: (from: string): string => `상신일: ${from}부터`,
     chipPeriodTo: (to: string): string => `상신일: ${to}까지`,
@@ -173,7 +170,7 @@ export const iqcSkipApproval = {
   empty: {
     noResultTitle: '조건에 맞는 승인 요청이 없습니다',
     /** **이 화면에는 탭이 없다** — 넓히는 수단이 확인칸 하나라 그것을 가리킨다. */
-    noResultDescription: '조건을 줄이거나 「결재 대기만 보기」를 꺼 보세요.',
+    noResultDescription: '조건을 줄이거나 켜 둔 상태 칩을 풀어 보세요.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
     noSelectionTitle: '요청을 선택하세요',

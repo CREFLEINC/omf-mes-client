@@ -71,6 +71,9 @@ export const TypeTabs = ({ options, value, onChange, trailing }: TypeTabsProps) 
 export const STATUS_CHIP_CODES = ['PENDING', 'APPROVED', 'REJECTED'] as const;
 export type StatusChipCode = (typeof STATUS_CHIP_CODES)[number];
 
+/** 주소의 상태 조건(`st`)으로 받는 값 — 결재 대기는 `pd=1`(「결재 대기만」)이 맡아 여기 없다(#186 리뷰). */
+export const STATUS_FILTER_CODES: readonly string[] = ['APPROVED', 'REJECTED'];
+
 /** 지금 켜진 칩 — 결재 대기는 「결재 대기만 보기」, 승인·반려는 상태 조건이다. 한 번에 하나만 켜진다. */
 export const activeStatusChip = (pendingOnly: boolean, statusCode: string): StatusChipCode | '' => {
   if (pendingOnly) return 'PENDING';

@@ -54,7 +54,7 @@ import { RequestList } from './request-list';
 import {
   IQC_SKIP_APPROVAL_PATH,
   IQC_SKIP_TYPE_CODE,
-  STATUS_CHIP_CODES,
+  STATUS_FILTER_CODES,
   StatusChips,
   TypeTabs,
   activeStatusChip,
@@ -115,8 +115,8 @@ export const QualityApprovalScreen = ({
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다(`inlineTabs`). */
   const canOpenIqcSkip = toWebAccess(session?.permissions).allows(IQC_SKIP_APPROVAL_PATH);
   const filters = useMemo(
-    /* 상태 조건은 탭 줄 상태 칩(#186)이 건다 — 그 세 값만 주소에서 읽는다. */
-    () => readFilters(searchParams, approvalTypeCodes, STATUS_CHIP_CODES),
+    /* 상태 조건은 탭 줄 승인·반려 칩(#186)이 건다 — 그 두 값만 주소에서 읽는다(결재 대기는 `pd=1`). */
+    () => readFilters(searchParams, approvalTypeCodes, STATUS_FILTER_CODES),
     [approvalTypeCodes, searchParams],
   );
   const pendingOnly = readPendingOnly(searchParams);
@@ -150,8 +150,10 @@ export const QualityApprovalScreen = ({
   const conditionCandidates = useConcessionCandidates(
     isOqcSkip || isIqcSkip ? null : (detail.data?.request.approvalRequestId ?? null),
   );
-  const skipLotId =
+  const approvedIqcSkipLotId =
     detail.data === undefined ? null : skipExecuteLotIdOf(detail.data.request, IQC_SKIP_TYPE_CODE);
+  /* 생략 실행은 IQC 생략 화면 권한(W-01-02)이 있어야 한다 — 없으면 LOT 도 읽지 않고 안내만 선다(#186 리뷰). */
+  const skipLotId = canOpenIqcSkip ? approvedIqcSkipLotId : null;
   const skipLot = useSkipTargetLot(skipLotId);
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
@@ -180,6 +182,8 @@ export const QualityApprovalScreen = ({
       toConcessionCardinality(selectedId, conditionCandidates.data).kind === 'one');
 
   /* 승인된 IQC 생략의 실행(#186) — IQC 생략 탭(`iqc-skip-approval/screen.tsx`)의 쓰기와 같다. */
+  /* 마지막으로 실행을 보낸 LOT — 진행·실패 표시는 그 LOT 을 보고 있을 때만 보인다(다른 요청에 남지 않게 · #186 리뷰). */
+  const [skipSentLotId, setSkipSentLotId] = useState<number | null>(null);
   const skipExecuteWrite = useMasterWrite<number, unknown>({
     request: (lotId, headers) =>
       client.POST('/trace/lots/{lotId}:skip-iqc', {
@@ -214,7 +218,8 @@ export const QualityApprovalScreen = ({
           });
     },
     etagPath: selectedId === null ? null : requestDetailPath(selectedId),
-    invalidateKeys: [qualityApprovalKeys.all],
+    /* IQC 생략 탭도 같은 요청을 들고 있다(#186) — 이 탭에서 결재하면 그 탭의 목록·상세도 다시 읽게 한다. */
+    invalidateKeys: [qualityApprovalKeys.all, iqcSkipApprovalKeys.all],
     knownFields: ['comment'],
     keyLifetime: 'until-applied',
     onSuccess: (saved) => {
@@ -354,16 +359,24 @@ export const QualityApprovalScreen = ({
           </AlertBanner>
         ) : isIqcSkip ? (
           /* IQC 생략(#186)은 연결 조건이 없다 — 승인된 뒤에만 생략 실행 구획이 선다. */
-          skipLotId !== null && (
+          approvedIqcSkipLotId !== null &&
+          (skipLotId === null ? (
+            <p className="field-note">{t.detail.iqcSkipNoPermission}</p>
+          ) : (
             <SkipExecutePane
               state={judgeSkipExecute(skipLot)}
-              isSaving={skipExecuteWrite.isSaving}
+              isSaving={skipSentLotId === skipLotId && skipExecuteWrite.isSaving}
               onExecute={() => {
+                setSkipSentLotId(skipLotId);
                 skipExecuteWrite.write(skipLotId);
               }}
-              banner={<SaveErrorBanner error={skipExecuteWrite.error} />}
+              banner={
+                <SaveErrorBanner
+                  error={skipSentLotId === skipLotId ? skipExecuteWrite.error : null}
+                />
+              }
             />
-          )
+          ))
         ) : (
           <ConditionPane approvalRequestId={detail.data.request.approvalRequestId} />
         )}

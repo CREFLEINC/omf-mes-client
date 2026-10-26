@@ -25,13 +25,6 @@ export type ApprovalDecision = components['schemas']['ApprovalDecision'];
 /** 반려 본문. **몸통이 필수**이고 의견도 필수다 — 두 스키마가 갈린 이유가 그것이다. */
 export type ApprovalRejection = components['schemas']['ApprovalRejection'];
 
-export interface SelectOption {
-  value: string;
-  label: string;
-  /** 디자인 시스템 `Select`가 옵션별 잠금을 지원한다. 고를 수 없는 선택지를 감추지 않고 잠근다. */
-  disabled?: boolean;
-}
-
 /**
  * 조회 조건 **넷**. **주소가 소유하며 화면 상태로 복제하지 않는다.**
  *

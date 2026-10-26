@@ -65,8 +65,6 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
       'Khoảng hạn mức chưa được hiển thị trên màn hình. Hãy xem phạm vi phê duyệt theo các bước của luồng phê duyệt.',
   },
   filters: {
-    all: 'Tất cả',
-    statusPendingNote: 'Chưa chốt danh sách trạng thái',
     chipPeriod: (from: string, to: string): string => `Ngày trình: ${from} ~ ${to}`,
     chipPeriodFrom: (from: string): string => `Ngày trình: từ ${from}`,
     chipPeriodTo: (to: string): string => `Ngày trình: đến ${to}`,
@@ -82,7 +80,7 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
   },
   empty: {
     noResultTitle: 'Không có yêu cầu phê duyệt nào khớp điều kiện',
-    noResultDescription: 'Hãy bớt điều kiện hoặc thử tắt 「Chỉ xem phiếu chờ phê duyệt」.',
+    noResultDescription: 'Hãy bớt điều kiện hoặc bỏ chọn chip trạng thái đang bật.',
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy về trang đầu.',
     noSelectionTitle: 'Hãy chọn một yêu cầu',

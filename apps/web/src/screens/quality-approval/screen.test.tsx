@@ -875,6 +875,30 @@ describe('QualityApprovalScreen conditions', () => {
     expect(recorded.urls.some((url) => url.pathname === CONCESSIONS_PATH)).toBe(false);
   });
 
+  it('IQC 생략 화면 권한이 없으면 승인된 IQC 생략에 실행 단추 대신 안내만 세우고 LOT 도 읽지 않는다(#186 리뷰)', async () => {
+    const approved = {
+      ...requests[0]!,
+      approvalTypeCode: 'IQC_SKIP',
+      statusCode: 'APPROVED',
+      isMyTurn: false,
+      currentStepNo: null,
+    } as unknown as ApprovalRequest;
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(approved))),
+    );
+    renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31', undefined, {
+      ...SYNTHETIC_SESSION,
+      permissions: ['W-03-09'],
+    });
+
+    expect(await screen.findByText(t.detail.iqcSkipNoPermission)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: messages.iqcSkipApproval.skipExecute.heading }),
+    ).not.toBeInTheDocument();
+    expect(recorded.urls.some((url) => url.pathname === '/trace/lots/91')).toBe(false);
+  });
+
   it('승인된 IQC 생략은 대상 LOT 이 검사 대기면 확인 뒤 생략 실행을 한 번 보낸다', async () => {
     const approved = {
       ...requests[0]!,
@@ -1259,6 +1283,31 @@ describe('QualityApprovalScreen decision action', () => {
       expect(recorded.urls.some((url) => url.pathname === APPROVE_PATH)).toBe(true),
     );
     expect(recorded.urls.some((url) => url.pathname === CONCESSIONS_PATH)).toBe(false);
+  });
+
+  it('「전체」 탭에서 IQC 생략을 승인하면 IQC 생략 탭의 저장된 조회도 다시 읽게 한다(#186 리뷰)', async () => {
+    const iqcSkip = { ...requests[0]!, approvalTypeCode: 'IQC_SKIP' } as unknown as ApprovalRequest;
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(actionDetail(iqcSkip), { headers: { ETag: '"9"' } })),
+      {
+        match: (request) => new URL(request.url).pathname === APPROVE_PATH,
+        respond: () => jsonResponse(actionDetail({ ...iqcSkip, statusCode: 'APPROVED' })),
+      },
+    );
+    const { queryClient, user } = renderScreen(
+      recorded.fetch,
+      '/quality/approvals?approvalRequestId=31',
+    );
+    /* IQC 생략 탭이 앞서 읽어 둔 목록 — 승인 뒤 낡은 것으로 표시돼야 탭을 옮겼을 때 다시 읽는다. */
+    queryClient.setQueryData(['iqc-skip-approval', 'list', {}], { items: [], page: {} });
+
+    await confirmApproval(user, 'IQC 생략 승인');
+    await waitFor(() =>
+      expect(queryClient.getQueryState(['iqc-skip-approval', 'list', {}])?.isInvalidated).toBe(
+        true,
+      ),
+    );
   });
 
   it('선택 없음·내 차례 아님·안전한 연결 조건 없음·공백 사유에서는 보내지 않는다', async () => {

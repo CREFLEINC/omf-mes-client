@@ -25,11 +25,7 @@ export interface RequestFilterBarProps {
  * | --- | --- | --- |
  * | 상신일 · 요청번호 | **조회를 누를 때** | 고치는 동안 조회가 나가면 반쯤 지운 검색어로 요청이 나간다 |
  * | 조건 칩의 × | 즉시 | 해제는 「푼다」는 뜻이라 확인을 받을 것이 없다 |
- * | **「결재 대기만 보기」** | **즉시** | 조건이 아니라 **조회 범위**다 — 앞선 화면에서 탭이 하던 일이며, 탭도 누르는 순간 옮겨졌다 |
- *
- * 확인칸이 **편집 상태를 갖지 않는 것**이 그 모델의 실현이다. 적용된 값을 그대로 보이고
- * 누르면 곧바로 알린다 — 편집 상태를 두면 「눌렀는데 목록이 그대로인」 칸이 되고,
- * 그때 사용자는 조회를 한 번 더 눌러야 한다는 것을 화면 어디에서도 알 수 없다.
+ * | 탭 줄 상태 칩(#186) | 즉시 | 조건이 아니라 **조회 범위**다 — 이 부품 밖(화면)이 걸고, 조회할 때 그대로 실린다 |
  *
  * **조회를 조건으로 잠그지 않는다.** 계약이 어느 조건도 필수로 두지 않았고, 이 화면은
  * 들어오자마자 내가 판정할 것을 보여야 하는 자리다 — 고정 축이 이미 범위를 좁히고 있다.
@@ -59,24 +55,18 @@ export const RequestFilterBar = ({
    * 내용이 같아도 참조가 달라질 수 있고(조회 응답이 도착해 다시 그려질 때가 그렇다),
    * 참조로 판정하면 그때마다 사용자가 치던 값이 사라진다(#43).
    */
-  const {
-    statusCode: appliedStatus,
-    from: appliedFrom,
-    to: appliedTo,
-    q: appliedQ,
-  } = appliedFilters;
+  const { from: appliedFrom, to: appliedTo, q: appliedQ } = appliedFilters;
 
+  /* 상태는 탭 줄 칩이 바꾼다 — 칩을 눌러도 치던 날짜·검색어가 지워지지 않게 되돌림에서 뺀다(#186 리뷰). */
   useEffect(() => {
-    setFilters({
-      statusCode: appliedStatus,
-      from: appliedFrom,
-      to: appliedTo,
-      q: appliedQ,
-    });
-  }, [appliedStatus, appliedFrom, appliedTo, appliedQ]);
+    setFilters((current) => ({ ...current, from: appliedFrom, to: appliedTo, q: appliedQ }));
+  }, [appliedFrom, appliedTo, appliedQ]);
 
+  const searchWith = (next: RequestFilters): void => {
+    onSearch({ ...next, statusCode: appliedFilters.statusCode });
+  };
   const search = (): void => {
-    onSearch(filters);
+    searchWith(filters);
   };
 
   /**
@@ -129,12 +119,10 @@ export const RequestFilterBar = ({
           }}
           /* 엔터로도 조회된다 — 검색칸에서 엔터가 아무 일도 하지 않으면 멈춘 것으로 읽힌다. */
           onSearch={(value) => {
-            onSearch({ ...filters, q: value });
+            searchWith({ ...filters, q: value });
           }}
           clearLabel={messages.common.clear}
         />
-
-        {/* 「결재 대기만 보기」는 탭 줄 오른쪽 칩으로 옮겼다(#186 · `PendingChip`). */}
 
         {/*
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
@@ -143,9 +131,7 @@ export const RequestFilterBar = ({
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
             {/* 품질 승인 처리의 다른 탭과 같은 조회 단추다(#186 — 탭을 옮겨도 조건 줄이 같아 보인다). */}
-            <Button onClick={search}>
-              {messages.common.search}
-            </Button>
+            <Button onClick={search}>{messages.common.search}</Button>
             <Button variant="outlined" onClick={reset}>
               {messages.common.reset}
             </Button>

@@ -66,6 +66,8 @@ export const qualityApproval = {
     oqcSkipNote:
       '승인만으로는 생략되지 않습니다. 실제 생략은 OQC 출하검사 판정 화면에서 실행합니다.',
     openOqcInspection: 'OQC 출하검사 판정 열기',
+    /** 「전체」 탭의 승인된 IQC 생략 — 실행 권한이 없을 때(#186). */
+    iqcSkipNoPermission: 'IQC 생략 실행은 「긴급 IQC 생략 한도승인」 화면 권한이 있어야 합니다.',
   },
   condition: {
     title: '연결 조건',
@@ -147,7 +149,7 @@ export const qualityApproval = {
   loading: '승인 요청 목록 불러오는 중',
   empty: {
     title: '조건에 맞는 승인 요청이 없습니다',
-    description: '조건을 줄이거나 결재 대기만 보기를 꺼 보세요.',
+    description: '조건을 줄이거나 켜 둔 상태 칩을 풀어 보세요.',
     beyondTitle: '이 쪽에 표시할 요청이 없습니다',
     beyondDescription: '첫 쪽으로 돌아가 요청을 확인하세요.',
   },

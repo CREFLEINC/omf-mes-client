@@ -1,10 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { SelectOption } from './types';
-
 /**
- * 긴급 IQC 생략은 고정 OpenAPI의 `IQC_SKIP` 승인 유형만 조회한다. 요청 상태는 운영 공통코드
- * 조회 대상이라 값 목록을 발명하지 않고 비워 둔다.
+ * 긴급 IQC 생략은 고정 OpenAPI의 `IQC_SKIP` 승인 유형만 조회한다. 요청 상태는 탭 줄 상태 칩(#186)이 고른다.
  */
 
 /**
@@ -14,9 +11,6 @@ import type { SelectOption } from './types';
  * 코드가 닿을 수 없는 가지로 보이고, 그러면 전환을 재는 시험이 성립하지 않는다.
  */
 export const IQC_SKIP_APPROVAL_TYPE_CODE: string | null = 'IQC_SKIP';
-
-/** 요청 상태 값 목록 — 같은 사정이다. 계약이 「값 목록은 공통코드 소관」이라고 적었다. */
-export const PLACEHOLDER_REQUEST_STATUS_CODES: readonly string[] = [];
 
 /**
  * 승인 유형 코드가 **없는 동안** 목록 위에 서는 안내.
@@ -31,24 +25,3 @@ export const typePendingNote = (approvalTypeCode: string | null): string | undef
   approvalTypeCode === null || approvalTypeCode.trim() === ''
     ? messages.iqcSkipApproval.typePendingNote
     : undefined;
-
-/**
- * 값 목록을 선택지로 옮긴다.
- *
- * **라벨을 지어내지 않는다** — 코드값을 그대로 라벨로 쓴다. 사람이 읽을 이름을 주는 곳이
- * 아직 없는데 화면이 이름을 붙이면 그 뜻도 화면이 지어낸 것이 된다.
- *
- * **차례를 바꾸지 않는다.** 값 목록이 어떤 차례로 오는지가 뜻일 수 있다(자주 쓰는 것부터 등).
- */
-export const toCodeOptions = (values: readonly string[]): SelectOption[] =>
-  values.map((code) => ({ value: code, label: code }));
-
-/**
- * 선택지가 왜 비어 있는지 밝히는 안내. **차면 거둔다** — 남으면 화면이 거짓말을 한다.
- * 칸 아래 한 줄이라 공용 문구보다 짧은 이 화면 문구를 쓴다(omf-all-around#134).
- */
-export const codeNote = (options: readonly SelectOption[]): string | undefined =>
-  options.length === 0 ? messages.iqcSkipApproval.filters.statusPendingNote : undefined;
-
-/** 선택칸 트리거에 보이는 자리표시 문구. */
-export const codePlaceholder = (): string => messages.pendingCode.placeholder;

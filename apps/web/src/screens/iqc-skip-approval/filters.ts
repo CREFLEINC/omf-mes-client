@@ -1,6 +1,7 @@
 import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { STATUS_FILTER_CODES } from '../quality-approval/type-tabs';
 import type { RequestFilters } from './types';
 
 /**
@@ -110,7 +111,10 @@ export const EMPTY_FILTERS: RequestFilters = {
  * 서 있는」 어긋남이 생긴다.
  */
 export const readFilters = (params: URLSearchParams): RequestFilters => ({
-  statusCode: codeOf(params.get(URL_KEYS.statusCode)),
+  /* 상태 조건은 탭 줄 승인·반려 칩(#186)만 건다 — 그 밖의 값은 화면에 보이지 않는 조건이 되므로 걷는다. */
+  statusCode: STATUS_FILTER_CODES.includes(codeOf(params.get(URL_KEYS.statusCode)))
+    ? codeOf(params.get(URL_KEYS.statusCode))
+    : '',
   from: dateOf(params.get(URL_KEYS.from) ?? ''),
   to: dateOf(params.get(URL_KEYS.to) ?? ''),
   q: params.get(URL_KEYS.q) ?? '',

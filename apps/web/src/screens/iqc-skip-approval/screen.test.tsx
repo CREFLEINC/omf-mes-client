@@ -723,17 +723,19 @@ describe('조회 조건', () => {
   it('주소로 들어오면 같은 조건으로 조회한다', async () => {
     const { requests } = renderScreen(
       [listRoute()],
-      '?st=SAMPLE-STATUS-OPEN&q=SYNTH&from=2026-08-01&to=2026-08-31',
+      '?st=APPROVED&q=SYNTH&from=2026-08-01&to=2026-08-31',
     );
 
     await waitForList();
 
-    /* 목록 조회 — 결재 대기 칩의 수(#186)는 상태 조건을 빼고 세므로 상태 조건이 실린 쪽을 고른다. */
-    const query = listRequests(requests).find((request) =>
-      request.url.searchParams.has('statusCode'),
+    /* 목록 조회 — 승인 칩이 켜져 있어 그 칩의 수와 같은 조회 하나다(#186). 상태 조건이 실린 쪽을 고른다. */
+    const query = requests.find(
+      (request) =>
+        request.url.pathname === REQUESTS_PATH &&
+        request.url.searchParams.get('statusCode') === 'APPROVED',
     )?.url.searchParams;
 
-    expect(query?.get('statusCode')).toBe('SAMPLE-STATUS-OPEN');
+    expect(query?.get('statusCode')).toBe('APPROVED');
     expect(query?.get('q')).toBe('SYNTH');
     expect(query?.get('requestedAtFrom')).toBe('2026-08-01');
     expect(query?.get('requestedAtTo')).toBe('2026-08-31');

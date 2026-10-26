@@ -73,6 +73,8 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     oqcSkipNote:
       'Chỉ phê duyệt thì chưa bỏ qua. Việc bỏ qua thực tế được thực hiện ở màn hình đánh giá kiểm tra xuất hàng OQC.',
     openOqcInspection: 'Mở đánh giá kiểm tra xuất hàng OQC',
+    iqcSkipNoPermission:
+      'Cần quyền màn hình 「Phê duyệt bỏ qua IQC khẩn cấp」 để thực hiện bỏ qua IQC.',
   },
   condition: {
     title: 'Điều kiện liên kết',
@@ -149,7 +151,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
   loading: 'Đang tải danh sách yêu cầu phê duyệt',
   empty: {
     title: 'Không có yêu cầu phê duyệt nào khớp điều kiện',
-    description: 'Hãy bớt điều kiện hoặc tắt mục Chỉ xem mục chờ phê duyệt.',
+    description: 'Hãy bớt điều kiện hoặc bỏ chọn chip trạng thái đang bật.',
     beyondTitle: 'Không có yêu cầu nào để hiển thị ở trang này',
     beyondDescription: 'Hãy quay về trang đầu để xem yêu cầu.',
   },

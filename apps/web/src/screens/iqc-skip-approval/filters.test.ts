@@ -28,10 +28,8 @@ const filtersOf = (partial: Partial<RequestFilters> = {}): RequestFilters => ({
 
 describe('readFilters', () => {
   it('주소가 담은 조건을 그대로 읽는다', () => {
-    expect(
-      readFilters(params('st=SAMPLE-STATUS-OPEN&from=2026-08-01&to=2026-08-31&q=SYNTH')),
-    ).toEqual({
-      statusCode: 'SAMPLE-STATUS-OPEN',
+    expect(readFilters(params('st=APPROVED&from=2026-08-01&to=2026-08-31&q=SYNTH'))).toEqual({
+      statusCode: 'APPROVED',
       from: '2026-08-01',
       to: '2026-08-31',
       q: 'SYNTH',
@@ -92,14 +90,20 @@ describe('상태 코드 위생 — 주소는 손으로 고쳐지는 자리다', 
   });
 
   /** 짝 양성 — 값이 있는 코드는 그대로 지나야 「걸러진다」가 뜻을 갖는다. */
-  it('값이 있는 상태 코드는 앞뒤 공백만 걷고 그대로 지난다', () => {
-    const kept = readFilters(params('st=%20SAMPLE-STATUS-OPEN%20'));
+  it('승인·반려 상태 코드는 앞뒤 공백만 걷고 그대로 지난다', () => {
+    const kept = readFilters(params('st=%20REJECTED%20'));
 
-    expect(kept.statusCode).toBe('SAMPLE-STATUS-OPEN');
-    expect(toRequestListQuery(kept, true, 1, null).statusCode).toBe('SAMPLE-STATUS-OPEN');
-    expect(toSearchParams(kept, true, 1).get('st')).toBe('SAMPLE-STATUS-OPEN');
+    expect(kept.statusCode).toBe('REJECTED');
+    expect(toRequestListQuery(kept, true, 1, null).statusCode).toBe('REJECTED');
+    expect(toSearchParams(kept, true, 1).get('st')).toBe('REJECTED');
     /* 상태는 조건 칩으로 세우지 않는다 — 탭 줄 상태 칩이 보인다(#186). */
     expect(toFilterChips(kept)).toEqual([]);
+  });
+
+  /* 탭 줄 칩으로 고를 수 없는 값은 화면에 보이지 않는 조건이 되므로 걷는다(#186 리뷰) — 결재 대기는 `pd=1` 이 맡는다. */
+  it('승인·반려가 아닌 상태 코드는 조건이 되지 않는다', () => {
+    expect(readFilters(params('st=PENDING')).statusCode).toBe('');
+    expect(readFilters(params('st=SAMPLE-STATUS-OPEN')).statusCode).toBe('');
   });
 });
 
