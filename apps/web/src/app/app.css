@@ -21580,12 +21580,25 @@ table.col-measuring td {
 .iqc-inspection-tab-body {
   display: grid;
   gap: var(--space-3);
-  padding-top: var(--space-4);
+  /* 탭 줄과 본문 사이는 탭 부품의 간격(16px)만 — 따로 띄우지 않는다(사용자 지시 2026-10-26). */
+  padding-top: 0;
 }
 
-/* 첨부 탭의 형식 · 크기 안내 라벨 — 칸 폭으로 늘어나지 않고 글 길이만큼. */
+/* 첨부 탭의 형식 · 크기 안내 라벨 — 칸 폭으로 늘어나지 않고 글 길이만큼. 클립 아이콘 + 글, 크기 한도는 주 색. */
 .iqc-inspection-docs-help {
   justify-self: start;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--semantic-info) 35%, transparent);
+}
+
+.iqc-inspection-docs-help > :first-child {
+  color: var(--on-surface-variant);
+}
+
+.iqc-inspection-docs-limit {
+  color: var(--primary);
+  font-weight: 600;
 }
 
 /*
