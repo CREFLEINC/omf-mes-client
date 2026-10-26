@@ -36,10 +36,10 @@ export const ProgressPane = ({ view }: ProgressPaneProps) => {
       {steps.length === 0 ? (
         <p className="field-note">{t.progress.noSteps}</p>
       ) : (
-        <Stepper aria-label={t.progress.steps} orientation="horizontal" size="md" steps={steps} />
+        <Stepper aria-label={t.progress.steps} orientation="horizontal" size="sm" steps={steps} />
       )}
       <div className="quality-approval-progress-summary">
-        <Icon name="info" size={20} />
+        <Icon name="info" size={18} />
         <p>
           {view.currentStepNo === null
             ? t.progress.finished(view.totalStepNo)

@@ -3933,9 +3933,9 @@ main > * + * {
 .quality-approval-side {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-4);
   min-width: 0;
-  padding: var(--space-5);
+  padding: var(--space-4);
 }
 
 .quality-approval-block {
@@ -3949,14 +3949,14 @@ main > * + * {
 .quality-approval-block .pane-title {
   margin: 0;
   color: var(--on-surface);
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 .quality-approval-workspace {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: var(--space-5);
+  gap: var(--space-4);
   align-items: start;
   min-width: 0;
 }
@@ -4155,8 +4155,8 @@ main:has(.iqc-skip-approval-detail) {
 .quality-approval-detail-facts .field-label,
 .quality-approval-detail > .quality-approval-content-card > .field-label {
   margin: 0;
-  font: var(--type-body-md);
-  letter-spacing: var(--type-body-md-tracking);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface-variant);
 }
 
@@ -4166,25 +4166,34 @@ main:has(.iqc-skip-approval-detail) {
   background: none;
 }
 
+/* 사유·대상 값도 위 이름 | 값 줄과 같은 크기다(#186). */
+.quality-approval-detail > .quality-approval-content-card > :not(.field-label) {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
 .quality-approval-detail-heading {
   align-items: center;
   margin-bottom: 0;
 }
 
-/* 결재 단계의 결재자 이름·상태 글은 한 단계 크게 — 작은 보조 글이면 멀리서 읽히지 않는다(#144). */
+/*
+ * 결재 단계의 결재자 이름은 굵게, 상태 글은 본문 크기로 — 다른 화면 상세와 같은 크기다(#186 「상세가 비정상적으로
+ * 크다」 사용자 지시로 #144 의 한 단계 큰 글을 되돌렸다).
+ */
 .quality-approval-step-name {
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
 }
 
 .quality-approval-progress .field-note {
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
 }
 
 /* 결재 진행 — 가로 단계 아래 안내 줄(#144). 상세 두 칸과 사이를 띄운다. */
 .quality-approval-progress-pane {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-4);
 }
 
 .quality-approval-detail-facts > .field-cell,
@@ -4197,6 +4206,8 @@ main:has(.iqc-skip-approval-detail) {
   margin: 0;
   overflow-wrap: anywhere;
   color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
 }
 
 .quality-approval-content-card,
@@ -4218,8 +4229,8 @@ main:has(.iqc-skip-approval-detail) {
 .quality-approval-action > h3 {
   margin: 0;
   color: var(--on-surface);
-  font: var(--type-title-md);
-  letter-spacing: var(--type-title-md-tracking);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 .quality-approval-condition-link {
@@ -4240,6 +4251,8 @@ main:has(.iqc-skip-approval-detail) {
   align-items: center;
   gap: var(--space-2) var(--space-3);
   color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
 }
 
 .quality-approval-progress-summary > .material-symbols-outlined,
@@ -4248,8 +4261,8 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 .quality-approval-progress-summary > p:first-of-type {
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
 }
 
 /* 결재 사유는 필수다 — DS 글 칸은 별표를 그리지 않아 라벨 뒤에 같은 색 별표를 붙인다(#144). */
@@ -7292,9 +7305,7 @@ th:last-child > .col-resizer::after {
  * 세로선으로 보인다 ④ 놓으면 원래 모양이다.
  */
 .col-drag {
-  position: relative;
-  display: flex;
-  align-items: center;
+  display: block;
   min-width: 0;
   margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-2));
   padding: var(--space-1) var(--space-2);
@@ -7302,18 +7313,28 @@ th:last-child > .col-resizer::after {
   cursor: grab;
 }
 
-.col-drag-label {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/*
+ * 머리글과 손잡이 묶음 — 머리칸 정렬(왼쪽·가운데·오른쪽)을 그대로 따른다. 손잡이는 글자 바로 오른쪽에 띄워
+ * 글자 자리를 차지하지 않는다(차지하면 가운데 정렬 머리글이 칸 내용과 어긋난다). 손잡이 자리만큼 비워 둔다.
+ */
+.col-drag-anchor {
+  position: relative;
+  display: inline-block;
+  max-width: calc(100% - 16px);
+  vertical-align: middle;
 }
 
-/* 손잡이는 글자 자리를 차지하지 않는다 — 차지하면 가운데·오른쪽 정렬 머리글이 칸 내용과 어긋난다. */
+.col-drag-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .col-drag-handle {
   position: absolute;
   top: 50%;
-  right: var(--space-1);
+  left: calc(100% + var(--space-1));
   transform: translateY(-50%);
   fill: currentColor;
   opacity: 0;

@@ -81,6 +81,36 @@ export const layoutColumns = (
   return { widths, grow, floor };
 };
 
+/** 머리글 옆 순서 손잡이(`column-order.tsx`)가 차지하는 폭 — 머리글이 다 보이는 폭에 더한다. */
+const HEADER_HANDLE_ROOM = 20;
+
+/**
+ * 이 열의 칸들이 줄임 없이 다 보이는 폭(px) — 끌어서 넓힐 수 있는 끝이다(사용자 지시 2026-10-26 · #186 「무제한이 아니라
+ * 데이터의 최대 너비」). 칸마다 글의 실제 폭에 안쪽 여백을 더해 가장 넓은 값을 쓴다. 잴 수 없으면(시험 환경) 끝이 없다.
+ */
+const contentWidthOf = (cell: HTMLTableCellElement): number => {
+  const table = cell.closest('table');
+  if (table === null || typeof document.createRange !== 'function') return Infinity;
+
+  let widest = 0;
+  for (const row of Array.from(table.rows)) {
+    const target = row.cells[cell.cellIndex];
+    /* 빈 목록 안내처럼 여러 칸을 덮는 줄은 이 열의 내용이 아니다. */
+    if (target === undefined || target.colSpan > 1) continue;
+    const label = target.tagName === 'TH' ? target.querySelector('.col-drag-label') : null;
+    const range = document.createRange();
+    /* 시험 환경(jsdom)의 범위에는 잴 수단이 없다 — 그때는 끝을 두지 않는다. */
+    if (typeof range.getBoundingClientRect !== 'function') return Infinity;
+    range.selectNodeContents(label ?? target);
+    const rect = range.getBoundingClientRect();
+    const style = getComputedStyle(target);
+    const padding = Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight);
+    widest = Math.max(widest, rect.width + padding + (label === null ? 0 : HEADER_HANDLE_ROOM));
+  }
+
+  return widest > 0 ? Math.ceil(widest) : Infinity;
+};
+
 /**
  * 끌기 손잡이 — 머리칸 오른쪽 끝의 세로 막대. 마우스·터치로 끈다. 읽기 도구에는 감춘다 — 머리칸 이름에
  * 섞이지 않게.
@@ -101,8 +131,10 @@ const ColumnResizer = ({
       event.preventDefault();
       const startX = event.clientX;
       const startWidth = cell.getBoundingClientRect().width;
+      /* 내용보다 넓게는 늘리지 않는다. 이미 그보다 넓으면(남는 폭을 흡수한 열) 지금 폭이 끝이다. */
+      const widest = Math.max(contentWidthOf(cell), startWidth);
       const move = (moveEvent: PointerEvent): void => {
-        onResize(startWidth + moveEvent.clientX - startX);
+        onResize(Math.min(widest, startWidth + moveEvent.clientX - startX));
       };
       const up = (): void => {
         window.removeEventListener('pointermove', move);

@@ -142,8 +142,11 @@ export const useColumnOrder = <T,>(storageKey: string, columns: Column<T>[]): Co
           }}
           onDragEnd={finish}
         >
-          <span className="col-drag-label">{column.header}</span>
-          <DragHandle />
+          {/* 손잡이는 머리글 바로 옆에 붙는다 — 오른쪽 끝의 폭 손잡이와 떨어져 있어야 폭을 끌기 편하다. */}
+          <span className="col-drag-anchor">
+            <span className="col-drag-label">{column.header}</span>
+            <DragHandle />
+          </span>
           {/* 놓일 자리 — 칸이 글을 자르므로(overflow) 표 밖 맨 위 층에 긋는다. 끄는 동안만 선다. */}
           {isDropTarget &&
             dropLine !== null &&
