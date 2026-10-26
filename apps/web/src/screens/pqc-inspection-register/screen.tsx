@@ -9,6 +9,7 @@ import {
   InspectionHubCounts,
   type InspectionHubStatus,
 } from '../../patterns/inspection-hub-counts';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { LotScan } from '../inspection-documents/lot-scan';
 import { PAGE_SIZE, QUEUE_STATUSES } from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from '../oqc-inspection/load-error-banner';
@@ -22,6 +23,7 @@ import { EMPTY_PQC_FILTERS, PqcFilterBar, type PqcFilters } from './filter-bar';
 import { PqcQueueTable } from './queue-table';
 
 const t = messages.pqcInspectionRegister;
+const hubText = messages.common.inspectionHub;
 
 /** 이 화면이 무엇인지의 정의 — 조건이 아니다. */
 const PQC = 'PQC';
@@ -52,7 +54,8 @@ export const PqcInspectionRegisterScreen = () => {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<PqcFilters>(EMPTY_PQC_FILTERS);
   const [dirty, setDirty] = useState(false);
-  const [confirmingLeave, setConfirmingLeave] = useState(false);
+  /* 저장하지 않은 입력을 두고 옮기려 할 때 묻는 자리(#133 · #185). `to` 가 `null` 이면 상세 닫기다. */
+  const [leaveTo, setLeaveTo] = useState<{ to: number | null } | null>(null);
   const submitter = useDirectSubmitter();
 
   const queue = useInspectionQueue({
@@ -68,9 +71,9 @@ export const PqcInspectionRegisterScreen = () => {
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
 
-  const select = (inspectionRequestId: number | null): void => {
+  const openRequest = (inspectionRequestId: number | null): void => {
     setDirty(false);
-    setConfirmingLeave(false);
+    setLeaveTo(null);
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       if (inspectionRequestId === null) next.delete(SELECTED_KEY);
@@ -79,6 +82,24 @@ export const PqcInspectionRegisterScreen = () => {
     });
   };
   const onDirtyChange = useCallback((next: boolean) => setDirty(next), []);
+
+  /*
+   * 목록과 상세가 한 화면에 나란히 선다(#185) — 상세를 쓰는 중에 다른 줄을 누르거나 상세를 닫으면,
+   * 저장하지 않은 입력이 있을 때 바로 옮기지 않고 한 번 묻는다.
+   */
+  const moveTo = (to: number | null): void => {
+    if (to === selectedId) return;
+    if (selectedId !== null && dirty) {
+      setLeaveTo({ to });
+      return;
+    }
+    openRequest(to);
+  };
+  const select = (inspectionRequestId: number): void => moveTo(inspectionRequestId);
+
+  /* 목록 · 상세 배치 — 입하 예정 조회와 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:pqc-inspection-register:split', 0.45);
 
   const emptyContent = queue.isError ? (
     <p className="field-note">{t.queue.unavailable}</p>
@@ -126,103 +147,113 @@ export const PqcInspectionRegisterScreen = () => {
         />
       )}
 
-      {selectedId === null ? (
-        <>
-          {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). 생산 LOT 의 작업지시로 대기 의뢰를 바로 연다. */}
-          <div className="pane pqc-web-search">
-            <LotScan
-              inspectionTypeCode={PQC}
-              matchBy="workOrder"
-              noRequestMessage={t.filters.lotNoRequest}
-              onFound={select}
+      {/* 목록과 상세(판정)를 한 화면에 나란히 둔다(#185 · 입하 예정 조회와 같다) — 의뢰를 고르면 오른쪽에 상세가 선다. */}
+      {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). 생산 LOT 의 작업지시로 대기 의뢰를 바로 연다. */}
+      <section ref={aboveRef} className="pane pqc-web-search">
+        <LotScan
+          inspectionTypeCode={PQC}
+          matchBy="workOrder"
+          noRequestMessage={t.filters.lotNoRequest}
+          onFound={select}
+        />
+        <PqcFilterBar
+          applied={filters}
+          pendingOnly={pendingOnly}
+          onTogglePendingOnly={(next) => {
+            /* 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. */
+            setPendingOnly(next);
+            /* 다시 켜면 「완료」 칩은 푼다(같은 AND 이유). */
+            if (next && statusCode === 'COMPLETED') setStatusCode(null);
+            setPage(1);
+          }}
+          onSearch={(next) => {
+            setFilters(next);
+            setPage(1);
+          }}
+          onReset={() => {
+            /* 처음 연 상태로 — 「대기·진행만 보기」도 켠다(OQC 화면과 같다). */
+            setFilters(EMPTY_PQC_FILTERS);
+            setPendingOnly(true);
+            setStatusCode(null);
+            setPage(1);
+          }}
+        />
+      </section>
+
+      <div ref={splitRef} className="po-board-split inspection-split" style={split.style}>
+        <section className="pane pqc-web-list" aria-label={t.queue.heading}>
+          {queue.isError && (
+            <QueueLoadErrorBanner
+              error={toApiError(queue.error)}
+              onRetry={() => void queue.refetch()}
             />
-            <PqcFilterBar
-              applied={filters}
-              pendingOnly={pendingOnly}
-              onTogglePendingOnly={(next) => {
-                /* 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. */
-                setPendingOnly(next);
-                /* 다시 켜면 「완료」 칩은 푼다(같은 AND 이유). */
-                if (next && statusCode === 'COMPLETED') setStatusCode(null);
-                setPage(1);
-              }}
-              onSearch={(next) => {
-                setFilters(next);
-                setPage(1);
-              }}
-              onReset={() => {
-                /* 처음 연 상태로 — 「대기·진행만 보기」도 켠다(OQC 화면과 같다). */
-                setFilters(EMPTY_PQC_FILTERS);
-                setPendingOnly(true);
-                setStatusCode(null);
-                setPage(1);
-              }}
-            />
-          </div>
+          )}
 
-          <section className="pane pqc-web-list" aria-label={t.queue.heading}>
-            {queue.isError && (
-              <QueueLoadErrorBanner
-                error={toApiError(queue.error)}
-                onRetry={() => void queue.refetch()}
-              />
-            )}
+          <PqcQueueTable rows={rows} onSelect={select} empty={emptyContent} />
 
-            <PqcQueueTable rows={rows} onSelect={select} empty={emptyContent} />
-
-            {queue.data !== undefined && <PageNav view={pageView} onChange={setPage} />}
-          </section>
-        </>
-      ) : (
-        <section className="pane pqc-web-detail" aria-label={t.detail.paneLabel}>
-          {/* 목록으로 — 저장하지 않은 입력이 있으면 바로 떠나지 않고 한 번 묻는다(#133 과 같다). */}
-          <div className="pqc-web-back">
-            <Button
-              variant="text"
-              size="md"
-              className="pqc-web-back-button"
-              onClick={() => (dirty ? setConfirmingLeave(true) : select(null))}
-            >
-              {t.detail.backToList}
-            </Button>
-            {confirmingLeave && (
-              <Dialog
-                open
-                onClose={() => setConfirmingLeave(false)}
-                showCloseButton={false}
-                title={t.detail.leaveUnsaved}
-                footer={
-                  <>
-                    <Button
-                      variant="outlined"
-                      className="app-button-neutral"
-                      onClick={() => setConfirmingLeave(false)}
-                    >
-                      {t.detail.keepEditing}
-                    </Button>
-                    <Button variant="filled" onClick={() => select(null)}>
-                      {t.detail.leaveAnyway}
-                    </Button>
-                  </>
-                }
-              >
-                <p>{t.detail.leaveUnsavedNote}</p>
-              </Dialog>
-            )}
-          </div>
-
-          <PqcPanel
-            /* 의뢰마다 새로 세운다 — 앞 의뢰의 입력이 다음 의뢰에 남지 않게. */
-            key={selectedId}
-            inspectionRequestId={selectedId}
-            submitter={submitter}
-            workerNo={null}
-            requiresWorker={false}
-            withKeypad={false}
-            variant="web"
-            onDirtyChange={onDirtyChange}
-          />
+          {queue.data !== undefined && <PageNav view={pageView} onChange={setPage} />}
         </section>
+
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+
+        <section className="pane pqc-web-detail" aria-label={t.detail.paneLabel}>
+          {selectedId === null ? (
+            <EmptyState
+              size="sm"
+              title={hubText.pickRequest}
+              description={hubText.pickRequestHint}
+            />
+          ) : (
+            <>
+              <div className="pqc-web-back">
+                <Button
+                  variant="text"
+                  size="md"
+                  className="pqc-web-back-button"
+                  onClick={() => moveTo(null)}
+                >
+                  {hubText.closeDetail}
+                </Button>
+              </div>
+              <PqcPanel
+                /* 의뢰마다 새로 세운다 — 앞 의뢰의 입력이 다음 의뢰에 남지 않게. */
+                key={selectedId}
+                inspectionRequestId={selectedId}
+                submitter={submitter}
+                workerNo={null}
+                requiresWorker={false}
+                withKeypad={false}
+                variant="web"
+                onDirtyChange={onDirtyChange}
+              />
+            </>
+          )}
+        </section>
+      </div>
+
+      {leaveTo !== null && (
+        <Dialog
+          open
+          onClose={() => setLeaveTo(null)}
+          showCloseButton={false}
+          title={t.detail.leaveUnsaved}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                className="app-button-neutral"
+                onClick={() => setLeaveTo(null)}
+              >
+                {t.detail.keepEditing}
+              </Button>
+              <Button variant="filled" onClick={() => openRequest(leaveTo.to)}>
+                {t.detail.leaveAnyway}
+              </Button>
+            </>
+          }
+        >
+          <p>{t.detail.leaveUnsavedNote}</p>
+        </Dialog>
       )}
     </>
   );
