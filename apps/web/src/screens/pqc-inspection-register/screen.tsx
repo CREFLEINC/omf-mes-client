@@ -5,9 +5,12 @@ import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
 import { usePageHub } from '../../patterns/page-hub';
-import { InspectionHubCounts } from '../../patterns/inspection-hub-counts';
+import {
+  InspectionHubCounts,
+  type InspectionHubStatus,
+} from '../../patterns/inspection-hub-counts';
 import { LotScan } from '../inspection-documents/lot-scan';
-import { PAGE_SIZE } from '../oqc-inspection/filters';
+import { PAGE_SIZE, QUEUE_STATUSES } from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from '../oqc-inspection/load-error-banner';
 /* 쪽 넘김 단추는 IQC 판정 화면(#133)의 것 — 같은 크기로 선다. */
 import { PageNav } from '../iqc-inspection/page-nav';
@@ -44,6 +47,8 @@ export const PqcInspectionRegisterScreen = () => {
   const hub = usePageHub();
   const selectedId = toSelectedId(searchParams.get(SELECTED_KEY));
   const [pendingOnly, setPendingOnly] = useState(true);
+  /* 탭 줄 상태 칩(#185) — 비면 거르지 않는다. */
+  const [statusCode, setStatusCode] = useState<InspectionHubStatus | null>(null);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<PqcFilters>(EMPTY_PQC_FILTERS);
   const [dirty, setDirty] = useState(false);
@@ -53,6 +58,7 @@ export const PqcInspectionRegisterScreen = () => {
   const queue = useInspectionQueue({
     inspectionTypeCode: PQC,
     pendingOnly,
+    ...(statusCode === null ? {} : { statusCode }),
     ...(filters.itemId === null ? {} : { itemId: filters.itemId }),
     ...(filters.workOrderId === null ? {} : { workOrderId: filters.workOrderId }),
     ...(filters.keyword === '' ? {} : { q: filters.keyword }),
@@ -91,7 +97,17 @@ export const PqcInspectionRegisterScreen = () => {
   return (
     <>
       {/* 탭 줄 오른쪽 건수 칩(#185) — 탭 묶음 안에서만 선다. */}
-      <InspectionHubCounts inspectionTypeCode="PQC" />
+      <InspectionHubCounts
+        inspectionTypeCode="PQC"
+        statuses={QUEUE_STATUSES}
+        active={statusCode}
+        onChange={(next) => {
+          /* 「완료」는 「대기·진행만 보기」를 함께 끈다 — 서버가 두 조건을 AND 로 묶어 그대로 두면 늘 빈 목록이다. */
+          if (next === 'COMPLETED') setPendingOnly(false);
+          setStatusCode(next);
+          setPage(1);
+        }}
+      />
       {/* 탭 묶음(검사 조회·판정) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(입하 예정 조회와 같다). */}
       {hub === null && (
         <PageHeader
@@ -126,6 +142,8 @@ export const PqcInspectionRegisterScreen = () => {
               onTogglePendingOnly={(next) => {
                 /* 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. */
                 setPendingOnly(next);
+                /* 다시 켜면 「완료」 칩은 푼다(같은 AND 이유). */
+                if (next && statusCode === 'COMPLETED') setStatusCode(null);
                 setPage(1);
               }}
               onSearch={(next) => {
@@ -136,6 +154,7 @@ export const PqcInspectionRegisterScreen = () => {
                 /* 처음 연 상태로 — 「대기·진행만 보기」도 켠다(OQC 화면과 같다). */
                 setFilters(EMPTY_PQC_FILTERS);
                 setPendingOnly(true);
+                setStatusCode(null);
                 setPage(1);
               }}
             />

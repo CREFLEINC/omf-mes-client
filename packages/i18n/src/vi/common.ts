@@ -59,8 +59,12 @@ export const common: Translated<typeof ko.common> = {
   },
   inspectionHub: {
     label: 'Trạng thái yêu cầu kiểm tra',
-    requested: (count: number): string => `Chờ ${String(count)}`,
-    inProgress: (count: number): string => `Đang làm ${String(count)}`,
+    requested: 'Chờ',
+    inProgress: 'Đang làm',
+    completed: 'Hoàn thành',
+    count: (label: string, count: number): string => `${label} ${String(count)}`,
+    filterOn: (label: string): string => `Chỉ xem yêu cầu ${label}`,
+    filterOff: (label: string): string => `Bỏ lọc ${label}`,
   },
   selectDate: 'Chọn ngày',
   popWorker: {

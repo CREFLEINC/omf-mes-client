@@ -76,8 +76,12 @@ export const common = {
   /** 검사 조회·판정(IQC · PQC · OQC) 탭 줄 오른쪽 건수 칩(omf-all-around#185). */
   inspectionHub: {
     label: '검사 의뢰 상태',
-    requested: (count: number): string => `대기 ${String(count)}`,
-    inProgress: (count: number): string => `진행 ${String(count)}`,
+    requested: '대기',
+    inProgress: '진행',
+    completed: '완료',
+    count: (label: string, count: number): string => `${label} ${String(count)}`,
+    filterOn: (label: string): string => `${label} 의뢰만 보기`,
+    filterOff: (label: string): string => `${label} 거르기 해제`,
   },
   reference: {
     empty: '—',

@@ -30,7 +30,8 @@ describe('validateDraft', () => {
 
 describe('toFilters', () => {
   it('빈 초안은 아무것도 좁히지 않는다', () => {
-    expect(toFilters(EMPTY_DRAFT)).toEqual(EMPTY_FILTERS);
+    const { statusCode: _status, ...draftFilters } = EMPTY_FILTERS;
+    expect(toFilters(EMPTY_DRAFT)).toEqual(draftFilters);
   });
 
   it('번호를 정수로 옮긴다', () => {

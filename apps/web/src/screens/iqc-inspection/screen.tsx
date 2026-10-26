@@ -7,9 +7,13 @@ import { useSearchParams } from 'react-router';
 import { toApiError } from '../../patterns/request';
 import { sessionKeys, useSession } from '../../patterns/session';
 import { usePageHub } from '../../patterns/page-hub';
-import { InspectionHubCounts } from '../../patterns/inspection-hub-counts';
+import {
+  InspectionHubCounts,
+  type InspectionHubStatus,
+} from '../../patterns/inspection-hub-counts';
 import {
   EMPTY_FILTERS,
+  QUEUE_STATUSES,
   readFilters,
   readPage,
   readSelectedId,
@@ -410,11 +414,22 @@ export const IqcInspectionScreen = () => {
       page === 1 &&
       next.itemId === filters.itemId &&
       next.supplierId === filters.supplierId &&
-      next.keyword === filters.keyword
+      next.keyword === filters.keyword &&
+      next.statusCode === filters.statusCode
     ) {
       void queue.refetch();
     }
     setSearchParams(toSearchParams(next));
+  };
+
+  /**
+   * 탭 줄 상태 칩(#185). 첫 쪽으로 가지만 **고른 의뢰는 그대로 둔다** — 상세에서 눌러도 쓰던 판정 입력을
+   * 잃지 않고, 목록으로 돌아가면 거른 결과가 선다.
+   */
+  const applyStatus = (statusCode: InspectionHubStatus | null): void => {
+    const next = toSearchParams({ ...filters, statusCode });
+    if (selectedId !== null) next.set(URL_KEYS.selected, String(selectedId));
+    setSearchParams(next);
   };
 
   /** 쪽만 옮긴다 — 조건과 고른 의뢰는 그대로다. */
@@ -876,7 +891,12 @@ export const IqcInspectionScreen = () => {
   return (
     <>
       {/* 탭 줄 오른쪽 건수 칩(#185) — 탭 묶음 안에서만 선다. */}
-      <InspectionHubCounts inspectionTypeCode="IQC" />
+      <InspectionHubCounts
+        inspectionTypeCode="IQC"
+        statuses={QUEUE_STATUSES}
+        active={filters.statusCode}
+        onChange={applyStatus}
+      />
       {/* 탭 묶음(검사 조회·판정) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(입하 예정 조회와 같다). */}
       {hub === null && (
         <PageHeader
@@ -907,7 +927,8 @@ export const IqcInspectionScreen = () => {
             <LotScan inspectionTypeCode="IQC" onFound={select} />
             <QueueFilterBar
               appliedFilters={filters}
-              onSearch={applyFilters}
+              /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
+              onSearch={(next) => applyFilters({ ...next, statusCode: filters.statusCode })}
               onReset={() => applyFilters(EMPTY_FILTERS)}
             />
           </div>

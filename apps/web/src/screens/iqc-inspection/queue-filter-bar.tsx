@@ -8,6 +8,7 @@ import {
   EMPTY_DRAFT,
   hasError,
   toDraft,
+  type DraftFilters,
   toFilters,
   validateDraft,
   type QueueDraft,
@@ -36,7 +37,7 @@ const t = messages.iqcInspection.filters;
 export interface QueueFilterBarProps {
   /** 주소가 담은 조건. **정본이다** — 편집 중이던 값도 이것이 바뀌면 따라 되돌아간다 */
   appliedFilters: QueueFilters;
-  onSearch: (filters: QueueFilters) => void;
+  onSearch: (filters: DraftFilters) => void;
   onReset: () => void;
 }
 

@@ -35,11 +35,17 @@
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
+import {
+  type InspectionHubStatus,
+  toInspectionHubStatus,
+} from '../../patterns/inspection-hub-counts';
+
 /** 주소 키는 짧게 쓰고 계약 이름과 분리한다 — 주소는 사람이 읽고 고치는 자리다. */
 export const URL_KEYS = {
   itemId: 'it',
   supplierId: 'sp',
   keyword: 'q',
+  status: 'st',
   page: 'page',
   selected: 'ir',
 } as const;
@@ -87,18 +93,25 @@ export interface QueueFilters {
   itemId: number | null;
   supplierId: number | null;
   keyword: string;
+  /** 탭 줄 상태 칩(#185) — 대기 큐 안에서 「대기」·「진행」 하나만 남긴다. */
+  statusCode: InspectionHubStatus | null;
 }
+
+/** 칩으로 거르는 상태 — 대기 큐(`pendingOnly`)의 두 값이다. 완료는 검사실적 조회(W-03-05)가 맡는다. */
+export const QUEUE_STATUSES: readonly InspectionHubStatus[] = ['REQUESTED', 'IN_PROGRESS'];
 
 export const EMPTY_FILTERS: QueueFilters = {
   itemId: null,
   supplierId: null,
   keyword: '',
+  statusCode: null,
 };
 
 export const readFilters = (params: URLSearchParams): QueueFilters => ({
   itemId: readIdentifier(params.get(URL_KEYS.itemId)),
   supplierId: readIdentifier(params.get(URL_KEYS.supplierId)),
   keyword: params.get(URL_KEYS.keyword) ?? '',
+  statusCode: toInspectionHubStatus(params.get(URL_KEYS.status), QUEUE_STATUSES),
 });
 
 /** 서버로 보내는 질의. **비어 있는 조건은 키 자체를 싣지 않는다** — 빈 문자열은 조건이 아니다. */
@@ -108,6 +121,7 @@ export interface QueueListQuery {
   itemId?: number;
   supplierId?: number;
   q?: string;
+  statusCode?: string;
   page: number;
   size: number;
 }
@@ -123,6 +137,7 @@ export const toListQuery = (filters: QueueFilters, page: number): QueueListQuery
   if (filters.itemId !== null) query.itemId = filters.itemId;
   if (filters.supplierId !== null) query.supplierId = filters.supplierId;
   if (filters.keyword !== '') query.q = filters.keyword;
+  if (filters.statusCode !== null) query.statusCode = filters.statusCode;
 
   return query;
 };
@@ -145,6 +160,7 @@ export const toSearchParams = (
   if (filters.itemId !== null) params.set(URL_KEYS.itemId, String(filters.itemId));
   if (filters.supplierId !== null) params.set(URL_KEYS.supplierId, String(filters.supplierId));
   if (filters.keyword !== '') params.set(URL_KEYS.keyword, filters.keyword);
+  if (filters.statusCode !== null) params.set(URL_KEYS.status, filters.statusCode);
   if (page !== FIRST_PAGE) params.set(URL_KEYS.page, String(page));
 
   return params;

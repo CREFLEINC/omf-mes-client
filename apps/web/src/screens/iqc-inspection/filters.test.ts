@@ -51,6 +51,7 @@ describe('readFilters', () => {
       itemId: 1001,
       supplierId: 2002,
       keyword: 'IR-2026',
+      statusCode: null,
     });
   });
 
@@ -91,7 +92,7 @@ describe('toListQuery', () => {
   });
 
   it('채운 조건만 싣는다', () => {
-    expect(toListQuery({ itemId: 7, supplierId: null, keyword: '' }, 2)).toEqual({
+    expect(toListQuery({ itemId: 7, supplierId: null, keyword: '', statusCode: null }, 2)).toEqual({
       inspectionTypeCode: 'IQC',
       pendingOnly: true,
       itemId: 7,
@@ -125,13 +126,13 @@ describe('toSearchParams', () => {
   });
 
   it('채운 조건을 적는다', () => {
-    const params = toSearchParams({ itemId: 12, supplierId: 34, keyword: 'IR' });
+    const params = toSearchParams({ itemId: 12, supplierId: 34, keyword: 'IR', statusCode: null });
 
     expect(Object.fromEntries(params)).toEqual({ it: '12', sp: '34', q: 'IR' });
   });
 
   it('고정 축을 주소에 적지 않는다 — 지울 수 없는 것을 조건처럼 보이면 안 된다', () => {
-    const params = toSearchParams({ itemId: 12, supplierId: null, keyword: '' });
+    const params = toSearchParams({ itemId: 12, supplierId: null, keyword: '', statusCode: null });
 
     expect(params.has('ty')).toBe(false);
     expect(params.has('pd')).toBe(false);
@@ -150,5 +151,18 @@ describe('toPageParams', () => {
 
     expect(next.has('page')).toBe(false);
     expect(next.get('it')).toBe('7');
+  });
+});
+
+describe('상태 칩(#185)', () => {
+  it('대기·진행만 조건이 된다 — 모르는 값은 거르지 않는다', () => {
+    expect(readFilters(paramsOf('st=IN_PROGRESS')).statusCode).toBe('IN_PROGRESS');
+    expect(readFilters(paramsOf('st=COMPLETED')).statusCode).toBeNull();
+  });
+
+  it('질의와 주소에 싣는다 — 고정 축(대기 큐)은 그대로다', () => {
+    const filters = { ...EMPTY_FILTERS, statusCode: 'REQUESTED' as const };
+    expect(toListQuery(filters, 1)).toMatchObject({ pendingOnly: true, statusCode: 'REQUESTED' });
+    expect(toSearchParams(filters).get('st')).toBe('REQUESTED');
   });
 });
