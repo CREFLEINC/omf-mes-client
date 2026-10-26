@@ -6885,7 +6885,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 배치 고르기(#186) — 탭 줄 오른쪽, 상태 칩 뒤 세로 구분선 다음. 그림 + 글의 테두리 단추 둘이고, 지금 배치는 주 색
+ * 배치 고르기(#186) — 탭 줄 오른쪽, 상태 칩 뒤 세로 구분선 다음. 그림 + 글의 알약 단추 둘이고, 지금 배치는 주 색
  * 테두리·옅은 주 색 바탕으로 강조된다.
  */
 .po-board-layout-toggle {
@@ -6898,11 +6898,12 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--outline);
-  border-radius: var(--radius-md);
-  background: var(--surface-container);
-  color: var(--on-surface);
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
   white-space: nowrap;
