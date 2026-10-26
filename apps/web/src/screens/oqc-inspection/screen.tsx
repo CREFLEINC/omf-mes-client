@@ -778,6 +778,9 @@ export const OqcInspectionScreen = () => {
           appliedFilters={filters}
           /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
           onSearch={(next) => applyFilters(withDraft(filters, next))}
+          onTogglePendingOnly={(next) =>
+            applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
+          }
           onReset={() => applyFilters(EMPTY_FILTERS)}
         />
       </section>

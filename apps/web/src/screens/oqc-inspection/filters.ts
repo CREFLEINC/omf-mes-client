@@ -108,6 +108,12 @@ export const QUEUE_STATUSES: readonly InspectionHubStatus[] = [
 
 const COMPLETED = 'COMPLETED';
 
+/** 상태 칩과 「대기·진행만 보기」를 함께 가진 조건 — IQC · OQC 가 같은 규칙을 쓴다(#185). */
+export interface StatusFilters {
+  pendingOnly: boolean;
+  statusCode: InspectionHubStatus | null;
+}
+
 export const EMPTY_FILTERS: QueueFilters = {
   itemId: null,
   keyword: '',
@@ -119,10 +125,10 @@ export const EMPTY_FILTERS: QueueFilters = {
  * 칩을 건다. **「완료」는 「대기·진행만 보기」를 함께 끈다** — 서버가 두 조건을 AND 로 묶어 그대로 두면
  * 늘 빈 목록이 된다. 끈 것이 조건 줄의 체크칸에 그대로 보인다.
  */
-export const withStatus = (
-  filters: QueueFilters,
+export const withStatus = <F extends StatusFilters>(
+  filters: F,
   statusCode: InspectionHubStatus | null,
-): QueueFilters => ({
+): F => ({
   ...filters,
   statusCode,
   pendingOnly: statusCode === COMPLETED ? false : filters.pendingOnly,
@@ -131,13 +137,14 @@ export const withStatus = (
 /**
  * 조건 줄의 조회 — 칩은 그대로 둔다. 단 「대기·진행만 보기」를 다시 켜면 「완료」 칩은 푼다(같은 AND 이유).
  */
-export const withDraft = (
-  filters: QueueFilters,
-  next: Omit<QueueFilters, 'statusCode'>,
-): QueueFilters => ({
-  ...next,
-  statusCode: next.pendingOnly && filters.statusCode === COMPLETED ? null : filters.statusCode,
-});
+export const withDraft = <F extends StatusFilters>(
+  filters: F,
+  next: Omit<F, 'statusCode'>,
+): F =>
+  ({
+    ...next,
+    statusCode: next.pendingOnly && filters.statusCode === COMPLETED ? null : filters.statusCode,
+  }) as F;
 
 /**
  * 주소에서 조건을 읽는다.

@@ -36,16 +36,20 @@ export interface QueueFilterBarProps {
   /** 주소가 담은 조건. **정본이다** — 편집 중이던 값도 이것이 바뀌면 따라 되돌아간다 */
   appliedFilters: QueueFilters;
   onSearch: (filters: DraftFilters) => void;
+  /** 「대기·진행만 보기」를 켜고 끄면 **바로 조회한다**(#185 · PQC 와 같다) — 조회를 누르지 않는다. */
+  onTogglePendingOnly: (pendingOnly: boolean) => void;
   onReset: () => void;
 }
 
-export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilterBarProps) => {
+export const QueueFilterBar = ({
+  appliedFilters,
+  onSearch,
+  onTogglePendingOnly,
+  onReset,
+}: QueueFilterBarProps) => {
   const [draft, setDraft] = useState<QueueDraft>(() => toDraft(appliedFilters));
-  /**
-   * 「대기·진행만 보기」는 초안 타입 밖에 둔다 — boolean 이라 「치는 중」도 「틀린 값」도 없다.
-   * 조회를 누를 때 `toFilters` 가 인자로 받아 조건에 합류한다.
-   */
-  const [pendingOnly, setPendingOnly] = useState(appliedFilters.pendingOnly);
+  /* 「대기·진행만 보기」는 누르는 즉시 조회되므로(#185) 편집 상태가 없다 — 주소의 값을 그대로 보인다. */
+  const { pendingOnly } = appliedFilters;
 
   /*
    * 주소가 정본이다 — 뒤로가기·초기화로 주소가 **바뀌면** 편집 중인 값도 그 값으로 되돌아간다.
@@ -54,15 +58,13 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
    * 내용이 같아도 참조가 달라질 수 있고(조회 응답이 도착해 다시 그려질 때가 그렇다), 참조로
    * 판정하면 그때마다 사용자가 치던 값이 사라진다.
    *
-   * ⭐ **`pendingOnly` 를 의존성에 반드시 넣는다.** 빠뜨리면 뒤로가기로 토글만 달라진 주소로
-   * 돌아왔을 때 체크박스가 앞 상태 그대로 서고, 화면은 **목록과 다른 조건을 보이게 된다.**
+   * 체크칸은 주소 값을 바로 보이므로 여기서 되돌리지 않는다 — 체크를 바꿨다고 치던 값이 지워지지 않게.
    */
-  const { itemId, keyword, pendingOnly: appliedPendingOnly } = appliedFilters;
+  const { itemId, keyword } = appliedFilters;
 
   useEffect(() => {
-    setDraft(toDraft({ itemId, keyword, pendingOnly: appliedPendingOnly }));
-    setPendingOnly(appliedPendingOnly);
-  }, [itemId, keyword, appliedPendingOnly]);
+    setDraft(toDraft({ itemId, keyword, pendingOnly: EMPTY_FILTERS.pendingOnly }));
+  }, [itemId, keyword]);
 
   const errors = validateDraft(draft);
 
@@ -83,12 +85,6 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
    */
   const reset = (): void => {
     setDraft(EMPTY_DRAFT);
-    /*
-     * ⛔ **기본값을 여기 다시 적지 않는다.** 정본은 `filters.ts` 이고 부모의 `onReset` 도 그쪽을
-     * 쓴다. 손으로 적어 두면 기본값이 뒤집히는 날, **이미 기본 상태인 화면에서 초기화를 누를 때**
-     * 주소가 안 바뀌어 되돌림 effect 도 안 깨어나고 체크박스만 어긋난 채 남는다.
-     */
-    setPendingOnly(EMPTY_FILTERS.pendingOnly);
     onReset();
   };
 
@@ -108,7 +104,10 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
         onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
       />
       <div className="field-cell field-cell-unlabeled oqc-inspection-pending-only">
-        <Checkbox checked={pendingOnly} onChange={(event) => setPendingOnly(event.target.checked)}>
+        <Checkbox
+          checked={pendingOnly}
+          onChange={(event) => onTogglePendingOnly(event.target.checked)}
+        >
           {t.pendingOnly}
         </Checkbox>
       </div>
