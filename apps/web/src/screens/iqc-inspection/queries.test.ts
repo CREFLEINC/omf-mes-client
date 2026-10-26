@@ -73,7 +73,10 @@ describe('useInspectionQueue', () => {
     const { result } = renderHookWithProviders(
       () =>
         useInspectionQueue(
-          toListQuery({ itemId: 2001, supplierId: 3003, keyword: 'IR', statusCode: null }, 2),
+          toListQuery(
+            { itemId: 2001, supplierId: 3003, keyword: 'IR', pendingOnly: true, statusCode: null },
+            2,
+          ),
         ),
       {
         fetch: createStubFetch([

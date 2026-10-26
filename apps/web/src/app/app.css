@@ -20970,3 +20970,36 @@ body.col-reordering * {
     overflow: auto;
   }
 }
+
+/*
+ * 검색 줄은 한 줄이다(사용자 지시 2026-10-26 · #185) — 넓은 화면에서는 줄을 바꾸지 않고 칸이 줄어든다.
+ * 스캔 칸은 조금 좁히고, 체크칸 · 조회/초기화는 줄지 않는다. 좁은 화면(1280px 미만)은 종전처럼 다음 줄로 넘긴다.
+ */
+@media (min-width: 1280px) {
+  .iqc-inspection-search,
+  .pqc-web-search,
+  .oqc-inspection-search,
+  .iqc-inspection-search > .filter-bar,
+  .pqc-web-search > .filter-bar,
+  .oqc-inspection-search > .filter-bar {
+    flex-wrap: nowrap;
+  }
+
+  .iqc-inspection-search > form.form-actions,
+  .pqc-web-search > form.form-actions {
+    flex-basis: 20rem;
+  }
+
+  .oqc-inspection-search > :first-child {
+    flex-basis: 24rem;
+  }
+
+  .iqc-inspection-search > .filter-bar > .field-cell-unlabeled,
+  .pqc-web-search > .filter-bar > .field-cell-unlabeled,
+  .oqc-inspection-search > .filter-bar > .field-cell-unlabeled,
+  .pqc-web-search .pqc-web-filter-check,
+  .pqc-web-search .pqc-web-filter-actions {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}

@@ -66,6 +66,7 @@ export const common: Translated<typeof ko.common> = {
     count: (label: string, count: number): string => `${label} ${String(count)}`,
     filterOn: (label: string): string => `Chỉ xem yêu cầu ${label}`,
     filterOff: (label: string): string => `Bỏ lọc ${label}`,
+    pendingOnly: 'Chỉ xem chờ · đang làm',
     pickRequest: 'Chọn yêu cầu kiểm tra',
     pickRequestHint: 'Nhấn vào một yêu cầu ở danh sách bên trái để xem chi tiết.',
     closeDetail: 'Đóng chi tiết',

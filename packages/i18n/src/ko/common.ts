@@ -83,6 +83,7 @@ export const common = {
     count: (label: string, count: number): string => `${label} ${String(count)}`,
     filterOn: (label: string): string => `${label} 의뢰만 보기`,
     filterOff: (label: string): string => `${label} 거르기 해제`,
+    pendingOnly: '대기·진행만 보기',
     pickRequest: '검사 의뢰를 고르세요',
     pickRequestHint: '왼쪽 목록에서 의뢰를 누르면 상세가 보입니다.',
     closeDetail: '상세 닫기',

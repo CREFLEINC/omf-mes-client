@@ -4,7 +4,8 @@ import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-order';
 import { useColumnWidths } from '../../patterns/column-resize';
-import { toStatusBadge } from './status-badge';
+/* 대기·진행 밖의 상태(완료·생략·취소)도 실린다(#185) — 다섯 값을 다 아는 OQC 표식을 쓴다(PQC 와 같다). */
+import { toStatusBadge } from '../oqc-inspection/status-badge';
 import { formatDateTime, type InspectionQueueRow } from './types';
 import type { ItemNameLookup, NameLookup } from './reference-lookup';
 

@@ -30,7 +30,7 @@ describe('validateDraft', () => {
 
 describe('toFilters', () => {
   it('빈 초안은 아무것도 좁히지 않는다', () => {
-    const { statusCode: _status, ...draftFilters } = EMPTY_FILTERS;
+    const { statusCode: _status, pendingOnly: _pending, ...draftFilters } = EMPTY_FILTERS;
     expect(toFilters(EMPTY_DRAFT)).toEqual(draftFilters);
   });
 

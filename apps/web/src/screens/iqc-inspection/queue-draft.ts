@@ -1,7 +1,7 @@
 import type { QueueFilters } from './filters';
 
 /** 조건 줄이 맡는 조건 — 상태는 탭 줄 칩이 맡는다(#185). */
-export type DraftFilters = Omit<QueueFilters, 'statusCode'>;
+export type DraftFilters = Omit<QueueFilters, 'statusCode' | 'pendingOnly'>;
 
 /**
  * 조건 줄이 편집 중인 값. **전부 문자열이다** — 사용자가 치는 동안에는 아직 번호가 아니다.

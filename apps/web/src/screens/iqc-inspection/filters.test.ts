@@ -51,6 +51,7 @@ describe('readFilters', () => {
       itemId: 1001,
       supplierId: 2002,
       keyword: 'IR-2026',
+      pendingOnly: true,
       statusCode: null,
     });
   });
@@ -92,7 +93,12 @@ describe('toListQuery', () => {
   });
 
   it('채운 조건만 싣는다', () => {
-    expect(toListQuery({ itemId: 7, supplierId: null, keyword: '', statusCode: null }, 2)).toEqual({
+    expect(
+      toListQuery(
+        { itemId: 7, supplierId: null, keyword: '', pendingOnly: true, statusCode: null },
+        2,
+      ),
+    ).toEqual({
       inspectionTypeCode: 'IQC',
       pendingOnly: true,
       itemId: 7,
@@ -126,13 +132,25 @@ describe('toSearchParams', () => {
   });
 
   it('채운 조건을 적는다', () => {
-    const params = toSearchParams({ itemId: 12, supplierId: 34, keyword: 'IR', statusCode: null });
+    const params = toSearchParams({
+      itemId: 12,
+      supplierId: 34,
+      keyword: 'IR',
+      pendingOnly: true,
+      statusCode: null,
+    });
 
     expect(Object.fromEntries(params)).toEqual({ it: '12', sp: '34', q: 'IR' });
   });
 
   it('고정 축을 주소에 적지 않는다 — 지울 수 없는 것을 조건처럼 보이면 안 된다', () => {
-    const params = toSearchParams({ itemId: 12, supplierId: null, keyword: '', statusCode: null });
+    const params = toSearchParams({
+      itemId: 12,
+      supplierId: null,
+      keyword: '',
+      pendingOnly: true,
+      statusCode: null,
+    });
 
     expect(params.has('ty')).toBe(false);
     expect(params.has('pd')).toBe(false);
@@ -155,14 +173,23 @@ describe('toPageParams', () => {
 });
 
 describe('상태 칩(#185)', () => {
-  it('대기·진행만 조건이 된다 — 모르는 값은 거르지 않는다', () => {
+  it('대기·진행·완료가 조건이 된다 — 모르는 값은 거르지 않는다', () => {
     expect(readFilters(paramsOf('st=IN_PROGRESS')).statusCode).toBe('IN_PROGRESS');
-    expect(readFilters(paramsOf('st=COMPLETED')).statusCode).toBeNull();
+    expect(readFilters(paramsOf('st=COMPLETED')).statusCode).toBe('COMPLETED');
+    expect(readFilters(paramsOf('st=SKIPPED')).statusCode).toBeNull();
   });
 
   it('질의와 주소에 싣는다 — 고정 축(대기 큐)은 그대로다', () => {
     const filters = { ...EMPTY_FILTERS, statusCode: 'REQUESTED' as const };
     expect(toListQuery(filters, 1)).toMatchObject({ pendingOnly: true, statusCode: 'REQUESTED' });
     expect(toSearchParams(filters).get('st')).toBe('REQUESTED');
+  });
+
+  it('「대기·진행만 보기」를 끄면 주소에 pd=0 · 질의에 pendingOnly=false 가 실린다', () => {
+    const filters = { ...EMPTY_FILTERS, pendingOnly: false };
+    expect(toSearchParams(filters).get('pd')).toBe('0');
+    expect(toListQuery(filters, 1).pendingOnly).toBe(false);
+    expect(readFilters(paramsOf('pd=0')).pendingOnly).toBe(false);
+    expect(readFilters(paramsOf('')).pendingOnly).toBe(true);
   });
 });

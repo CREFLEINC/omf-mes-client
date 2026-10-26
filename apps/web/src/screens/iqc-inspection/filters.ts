@@ -46,6 +46,7 @@ export const URL_KEYS = {
   supplierId: 'sp',
   keyword: 'q',
   status: 'st',
+  pendingOnly: 'pd',
   page: 'page',
   selected: 'ir',
 } as const;
@@ -93,17 +94,26 @@ export interface QueueFilters {
   itemId: number | null;
   supplierId: number | null;
   keyword: string;
-  /** 탭 줄 상태 칩(#185) — 대기 큐 안에서 「대기」·「진행」 하나만 남긴다. */
+  /** 「대기·진행만 보기」(#185 · OQC 와 같다). **기본이 켜짐이라 꺼졌을 때만 주소에 적는다** */
+  pendingOnly: boolean;
+  /** 탭 줄 상태 칩(#185) — 한 상태만 남긴다. 비면 거르지 않는다. */
   statusCode: InspectionHubStatus | null;
 }
 
-/** 칩으로 거르는 상태 — 대기 큐(`pendingOnly`)의 두 값이다. 완료는 검사실적 조회(W-03-05)가 맡는다. */
-export const QUEUE_STATUSES: readonly InspectionHubStatus[] = ['REQUESTED', 'IN_PROGRESS'];
+/** 칩으로 거르는 상태 — 대기·진행·완료(OQC · PQC 와 같다). */
+export const QUEUE_STATUSES: readonly InspectionHubStatus[] = [
+  'REQUESTED',
+  'IN_PROGRESS',
+  'COMPLETED',
+];
+
+const PENDING_ONLY_OFF = '0';
 
 export const EMPTY_FILTERS: QueueFilters = {
   itemId: null,
   supplierId: null,
   keyword: '',
+  pendingOnly: FIXED_AXES.pendingOnly,
   statusCode: null,
 };
 
@@ -111,6 +121,7 @@ export const readFilters = (params: URLSearchParams): QueueFilters => ({
   itemId: readIdentifier(params.get(URL_KEYS.itemId)),
   supplierId: readIdentifier(params.get(URL_KEYS.supplierId)),
   keyword: params.get(URL_KEYS.keyword) ?? '',
+  pendingOnly: params.get(URL_KEYS.pendingOnly) !== PENDING_ONLY_OFF,
   statusCode: toInspectionHubStatus(params.get(URL_KEYS.status), QUEUE_STATUSES),
 });
 
@@ -129,7 +140,7 @@ export interface QueueListQuery {
 export const toListQuery = (filters: QueueFilters, page: number): QueueListQuery => {
   const query: QueueListQuery = {
     inspectionTypeCode: FIXED_AXES.inspectionTypeCode,
-    pendingOnly: FIXED_AXES.pendingOnly,
+    pendingOnly: filters.pendingOnly,
     page,
     size: PAGE_SIZE,
   };
@@ -160,6 +171,8 @@ export const toSearchParams = (
   if (filters.itemId !== null) params.set(URL_KEYS.itemId, String(filters.itemId));
   if (filters.supplierId !== null) params.set(URL_KEYS.supplierId, String(filters.supplierId));
   if (filters.keyword !== '') params.set(URL_KEYS.keyword, filters.keyword);
+  /* 기본값(켜짐)은 적지 않는다 — 적으면 주소가 길어지고 「끈 사람」과 구분되지 않는다. */
+  if (!filters.pendingOnly) params.set(URL_KEYS.pendingOnly, PENDING_ONLY_OFF);
   if (filters.statusCode !== null) params.set(URL_KEYS.status, filters.statusCode);
   if (page !== FIRST_PAGE) params.set(URL_KEYS.page, String(page));
 

@@ -24,6 +24,7 @@ import {
   URL_KEYS,
   type QueueFilters,
 } from './filters';
+import { withDraft, withStatus } from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from './load-error-banner';
 import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
 import { PageNav } from './page-nav';
@@ -417,6 +418,7 @@ export const IqcInspectionScreen = () => {
       next.itemId === filters.itemId &&
       next.supplierId === filters.supplierId &&
       next.keyword === filters.keyword &&
+      next.pendingOnly === filters.pendingOnly &&
       next.statusCode === filters.statusCode
     ) {
       void queue.refetch();
@@ -432,7 +434,7 @@ export const IqcInspectionScreen = () => {
    * 잃지 않고, 목록으로 돌아가면 거른 결과가 선다.
    */
   const applyStatus = (statusCode: InspectionHubStatus | null): void => {
-    const next = toSearchParams({ ...filters, statusCode });
+    const next = toSearchParams(withStatus(filters, statusCode));
     if (selectedId !== null) next.set(URL_KEYS.selected, String(selectedId));
     setSearchParams(next);
   };
@@ -945,7 +947,12 @@ export const IqcInspectionScreen = () => {
         <QueueFilterBar
           appliedFilters={filters}
           /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
-          onSearch={(next) => applyFilters({ ...next, statusCode: filters.statusCode })}
+          onSearch={(next) =>
+            applyFilters(withDraft(filters, { ...next, pendingOnly: filters.pendingOnly }))
+          }
+          onTogglePendingOnly={(next) =>
+            applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
+          }
           onReset={() => applyFilters(EMPTY_FILTERS)}
         />
       </section>
