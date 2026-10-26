@@ -20747,9 +20747,19 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   flex: 0 0 auto;
 }
 
+/* 조회·초기화는 입하 예정 조회처럼 마지막 칸 바로 뒤에 선다(줄 끝으로 밀지 않는다). */
 .iqc-inspection-search .iqc-inspection-filter-actions,
-.oqc-inspection-search .oqc-inspection-filter-actions {
-  margin-left: auto;
+.oqc-inspection-search .oqc-inspection-filter-actions,
+.pqc-web-search .pqc-web-filter-actions {
+  margin-left: 0;
+}
+
+/* 칸 글자는 입하 예정 조회의 조건 줄(`.po-board-filter`)과 같은 한 단계 작은 본문 글자. */
+.iqc-inspection-search,
+.pqc-web-search,
+.oqc-inspection-search {
+  --type-body-lg: var(--type-body-sm);
+  --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
 }
 
 /* PQC 는 검색 칸이 하나 더 많다(작업지시) — 칸 폭을 한 단계 줄여 같은 줄에 세운다. */
@@ -20758,7 +20768,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 .pqc-web-search > .pqc-web-filter-bar > :not(.pqc-web-filter-check, .pqc-web-filter-actions) {
-  flex: 1 1 13rem;
+  flex: 0 1 13rem;
 }
 
 /* 검사 조회·판정 탭 줄 오른쪽 건수 칩(`patterns/inspection-hub-counts.tsx` · #185) — 입하 예정 조회의 단계 칩과 같은 모양(표시 전용). */
