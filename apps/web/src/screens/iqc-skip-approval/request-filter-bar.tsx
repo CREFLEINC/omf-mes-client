@@ -142,8 +142,8 @@ export const RequestFilterBar = ({
          */}
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
-            {/* 조회는 위험 동작이 아니다 — 빨간 주 색(filled)은 승인·생략 실행에만 쓴다. */}
-            <Button variant="tonal" onClick={search}>
+            {/* 품질 승인 처리의 다른 탭과 같은 조회 단추다(#186 — 탭을 옮겨도 조건 줄이 같아 보인다). */}
+            <Button onClick={search}>
               {messages.common.search}
             </Button>
             <Button variant="outlined" onClick={reset}>

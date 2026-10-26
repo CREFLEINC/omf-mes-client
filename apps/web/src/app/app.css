@@ -7287,9 +7287,9 @@ th:last-child > .col-resizer::after {
  * 세로선으로 보인다 ④ 놓으면 원래 모양이다.
  */
 .col-drag {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
   min-width: 0;
   margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-2));
   padding: var(--space-1) var(--space-2);
@@ -7304,8 +7304,12 @@ th:last-child > .col-resizer::after {
   text-overflow: ellipsis;
 }
 
+/* 손잡이는 글자 자리를 차지하지 않는다 — 차지하면 가운데·오른쪽 정렬 머리글이 칸 내용과 어긋난다. */
 .col-drag-handle {
-  flex: none;
+  position: absolute;
+  top: 50%;
+  right: var(--space-1);
+  transform: translateY(-50%);
   fill: currentColor;
   opacity: 0;
   transition: opacity var(--motion-fast) var(--ease-standard);
