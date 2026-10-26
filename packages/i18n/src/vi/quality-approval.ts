@@ -39,7 +39,9 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     OQC_SKIP: 'Bỏ qua OQC (kiểm tra xuất hàng)',
   },
   statusLabels: { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Trả lại' },
+  splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
   panes: {
+    filter: 'Điều kiện tra cứu',
     list: 'Danh sách yêu cầu phê duyệt',
     detail: 'Chi tiết yêu cầu',
     progress: 'Tiến trình phê duyệt',
@@ -53,7 +55,8 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     goFirstPage: 'Về trang đầu',
   },
   detail: {
-    backToList: '← Danh sách',
+    noSelectionTitle: 'Hãy chọn một yêu cầu',
+    noSelectionDescription: 'Bấm vào một yêu cầu trong danh sách để xem tiến trình và chi tiết.',
     loading: 'Đang tải chi tiết yêu cầu phê duyệt',
     notFound: 'Không tìm thấy yêu cầu',
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn yêu cầu khác.',

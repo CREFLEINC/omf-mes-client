@@ -1,18 +1,11 @@
-import {
-  AlertBanner,
-  Breadcrumb,
-  Button,
-  EmptyState,
-  PageHeader,
-  SkeletonText,
-  useToast,
-} from '@crefle/web-ui';
+import { Button, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import {
@@ -151,6 +144,9 @@ const EMPTY_ITEMS: ApprovalRequest[] = [];
 export const IqcSkipApprovalScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  /* 두 구획이 창 바닥에서 멈추고, 가운데 막대로 고른 폭은 다음에 들어와도 남는다(입하 예정 조회와 같다). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:iqc-skip-approval:split', 0.4);
   const { session } = useSession();
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다 — 품질 승인 처리를 못 보면 탭을 세우지 않는다. */
   const canOpenQualityApprovals = toWebAccess(session?.permissions).allows(QUALITY_APPROVALS_PATH);
@@ -924,37 +920,17 @@ export const IqcSkipApprovalScreen = () => {
 
   return (
     <>
-      {/* 품질 승인 처리의 한 탭이다(#144) — 제목·경로도 그 화면을 따른다. */}
-      <PageHeader
-        title={messages.qualityApproval.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[
-              { label: t.breadcrumbRoot },
-              { label: messages.qualityApproval.title },
-              { label: messages.qualityApproval.typeLabels.IQC_SKIP },
-              /* 상세를 열면 지금 자리를 한 단계 더 보인다 — 품질 승인 처리의 다른 탭과 같다. */
-              ...(selectedRequestId === null
-                ? []
-                : [{ label: messages.qualityApproval.panes.detail }]),
-            ]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        actions={
-          <Button variant="outlined" size="sm" onClick={handleReload}>
-            {t.actions.reload}
-          </Button>
-        }
-      />
-
+      {/*
+       * 입하 예정 조회와 같은 짜임(#186) — 제목·경로 없이 유형 탭이 맨 위, 조회 조건은 따로 한 구획,
+       * 그 아래 왼쪽 목록 | 오른쪽 상세가 나란히 서고 가운데 막대로 폭을 나눈다(창이 좁으면 위아래로 쌓인다).
+       */}
       {/* 다른 유형 탭은 품질 승인 처리 목록으로 돌아가 그 유형을 연다. */}
       {canOpenQualityApprovals && (
         <TypeTabs
           options={toTypeTabOptions(QUALITY_APPROVAL_TYPE_CODES)}
           value={IQC_SKIP_TYPE_CODE}
           onChange={(code) => {
-            /* 결재 전송 중에는 대상을 바꾸지 않는다 — 「← 목록」과 같은 잠금이다. */
+            /* 결재 전송 중에는 대상을 바꾸지 않는다 — 목록 행·쪽과 같은 잠금이다. */
             if (code === IQC_SKIP_TYPE_CODE || isLocked) return;
             const search = toAppliedSearchParams(
               new URLSearchParams(),
@@ -969,50 +945,52 @@ export const IqcSkipApprovalScreen = () => {
         />
       )}
 
-      {/*
-       * 목록과 상세를 갈아 끼운다(#144, 품질 승인 처리의 다른 탭과 같은 방식) — 요청을 고르면 상세만,
-       * 목록으로 돌아오면 목록만 선다. 조건·쪽은 주소에 남는다.
-       */}
-      {selectedRequestId === null ? (
-        <section className="pane iqc-skip-approval-list" aria-label={t.panes.list}>
-          {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-          <RequestFilterBar
-            appliedFilters={filters}
-            /*
-             * 자리표시 상수를 **화면이 읽어 넘긴다.** 부품이 직접 읽으면 「값이 확정되면 배열만
-             * 채운다」는 전환을 화면 수준에서 잴 수 없다.
-             */
-            statusOptions={toCodeOptions(PLACEHOLDER_REQUEST_STATUS_CODES)}
-            pendingOnly={pendingOnly}
-            onSearch={(nextFilters) => {
-              apply(nextFilters, pendingOnly);
-            }}
-            /* 수명 표 3행 — 조건은 그대로 두고 쪽과 선택만 되돌린다. */
-            onTogglePendingOnly={(nextPendingOnly) => {
-              apply(filters, nextPendingOnly);
-            }}
-            onRemoveFilter={(key: FilterChipKey) => {
-              apply(clearFilter(filters, key), pendingOnly);
-            }}
-            /*
-             * 수명 표 2행 — 「처음 상태」에는 켜진 확인칸도 든다.
-             * **리터럴을 쓰지 않는다**: 기본값이 뒤집히는 날 이 자리만 남으면
-             * 「초기화했더니 조회 범위가 딴판」이 된다.
-             */
-            onReset={() => {
-              apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT);
-            }}
-          />
+      {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+      <section
+        ref={aboveRef}
+        className="pane po-board-filter iqc-skip-approval-filter-pane"
+        aria-label={t.panes.filter}
+      >
+        <RequestFilterBar
+          appliedFilters={filters}
+          /*
+           * 자리표시 상수를 **화면이 읽어 넘긴다.** 부품이 직접 읽으면 「값이 확정되면 배열만
+           * 채운다」는 전환을 화면 수준에서 잴 수 없다.
+           */
+          statusOptions={toCodeOptions(PLACEHOLDER_REQUEST_STATUS_CODES)}
+          pendingOnly={pendingOnly}
+          onSearch={(nextFilters) => {
+            apply(nextFilters, pendingOnly);
+          }}
+          /* 수명 표 3행 — 조건은 그대로 두고 쪽과 선택만 되돌린다. */
+          onTogglePendingOnly={(nextPendingOnly) => {
+            apply(filters, nextPendingOnly);
+          }}
+          onRemoveFilter={(key: FilterChipKey) => {
+            apply(clearFilter(filters, key), pendingOnly);
+          }}
+          /*
+           * 수명 표 2행 — 「처음 상태」에는 켜진 확인칸도 든다.
+           * **리터럴을 쓰지 않는다**: 기본값이 뒤집히는 날 이 자리만 남으면
+           * 「초기화했더니 조회 범위가 딴판」이 된다.
+           */
+          onReset={() => {
+            apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT);
+          }}
+        />
+        {/* 화면 머리를 걷으면서 [다시 조회]는 조건 구획 끝으로 옮겼다(#186). */}
+        <div className="iqc-skip-approval-tools">
+          <Button variant="outlined" size="sm" onClick={handleReload}>
+            {t.actions.reload}
+          </Button>
+        </div>
+      </section>
 
-          {/* 열려던 요청이 없어 목록으로 돌아왔다 — 왜 돌아왔는지 목록 위에서 알린다. */}
-          {isRequestMissing && (
-            <div className="banner-slot">
-              <AlertBanner variant="info" title={t.empty.notFoundTitle}>
-                {t.empty.notFoundDescription}
-              </AlertBanner>
-            </div>
-          )}
-
+      <div ref={splitRef} className="po-board-split" style={split.style}>
+        <section
+          className="pane po-board-pane po-board-scroll iqc-skip-approval-list"
+          aria-label={t.panes.list}
+        >
           <RequestListPane
             rows={rows}
             isLoading={list.isPending}
@@ -1035,29 +1013,24 @@ export const IqcSkipApprovalScreen = () => {
             }
           />
         </section>
-      ) : (
-        <>
-          <div className="quality-approval-back">
-            <Button
-              variant="text"
-              size="md"
-              onClick={() => {
-                applyUserNavigation(toSelectionSearchParams(filters, pendingOnly, page, null));
-              }}
-            >
-              {messages.qualityApproval.detail.backToList}
-            </Button>
-          </div>
 
-          {/*
-           * 상세 구획 — 요청을 고른 동안 선다. 안에 무엇이 오는지는 `detailSlot` 이 가른다
-           * (404·403·불러오는 중·200). 목록 밖으로 정리된 경우는 목록 위 안내가 말한다.
-           */}
-          <section className="pane iqc-skip-approval-detail" aria-label={t.panes.detail}>
-            {detailSlot()}
-          </section>
-        </>
-      )}
+        <PaneSplitter
+          label={messages.qualityApproval.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+        />
+
+        {/*
+         * 상세 구획 — **늘 선다.** 안에 무엇이 오는지만 갈린다(`detailSlot`): 고르기 전·목록 밖·404·403·
+         * 불러오는 중·200. 구획이 통째로 사라지면 무엇을 골랐는지도, 왜 아무것도 없는지도 화면이 말하지 않는다.
+         */}
+        <section
+          className="pane po-board-pane po-board-scroll iqc-skip-approval-detail"
+          aria-label={t.panes.detail}
+        >
+          {detailSlot()}
+        </section>
+      </div>
 
       {decisionDialog()}
     </>

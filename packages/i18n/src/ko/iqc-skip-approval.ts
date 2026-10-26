@@ -18,6 +18,7 @@ export const iqcSkipApproval = {
   /** 머리는 관리웹 사이드바 묶음을 따른다 — 이 화면은 품질 관리 묶음에 선다. */
   breadcrumbRoot: '품질 관리',
   panes: {
+    filter: '조회 조건',
     list: '승인 요청 목록',
     detail: '고른 요청',
     /**
@@ -183,7 +184,7 @@ export const iqcSkipApproval = {
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
     noSelectionTitle: '요청을 고르면 자세한 내용이 보입니다',
-    noSelectionDescription: '위 목록에서 요청번호를 누르세요.',
+    noSelectionDescription: '목록에서 요청번호를 누르세요.',
     /**
      * 상세가 **404**. 「없는 것」이라 주소에서 고른 번호를 정리한다 —
      * 남겨 두면 새로고침·공유가 같은 빈자리로 되돌아온다.

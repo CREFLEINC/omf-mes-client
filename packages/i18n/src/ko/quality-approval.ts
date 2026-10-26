@@ -34,7 +34,10 @@ export const qualityApproval = {
   },
   /** 요청 상태 코드 → 사용자 용어(IQC 생략 화면과 같은 낱말). 색: 대기 주황 · 승인 초록 · 반려 빨강. */
   statusLabels: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' },
+  /** 목록 | 상세 사이 끌기 막대(#186) — 입하 예정 조회와 같은 말. */
+  splitter: '끌어서 목록·상세 폭 조절',
   panes: {
+    filter: '조회 조건',
     list: '승인 요청 목록',
     detail: '요청 상세',
     progress: '결재 진행',
@@ -48,7 +51,8 @@ export const qualityApproval = {
     goFirstPage: '첫 쪽으로',
   },
   detail: {
-    backToList: '← 목록',
+    noSelectionTitle: '요청을 고르세요',
+    noSelectionDescription: '목록에서 요청을 누르면 결재 진행과 상세가 보입니다.',
     loading: '승인 요청 상세 불러오는 중',
     notFound: '요청을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 요청을 선택하세요.',

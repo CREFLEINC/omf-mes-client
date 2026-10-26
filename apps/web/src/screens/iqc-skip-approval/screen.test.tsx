@@ -362,36 +362,6 @@ const waitForList = async (): Promise<void> => {
   });
 };
 
-/**
- * 고른 채 들어온 회차의 목록 조회를 기다린다.
- *
- * **요청을 고른 동안에는 목록이 그려지지 않는다**(#144 — 목록과 상세를 갈아 끼운다). 그래도
- * 목록 조회는 나간다 — 「← 목록」으로 돌아왔을 때 바로 서야 하기 때문이다. 그래서 표가 아니라
- * **나간 요청**으로 기다린다.
- */
-const waitForListRequest = async (requests: RecordedRequest[]): Promise<void> => {
-  await waitFor(() => {
-    expect(listRequests(requests).length).toBeGreaterThan(0);
-  });
-};
-
-const listRegion = (): HTMLElement | null => screen.queryByRole('region', { name: t.panes.list });
-const detailRegion = (): HTMLElement | null =>
-  screen.queryByRole('region', { name: t.panes.detail });
-
-const backButtonName = messages.qualityApproval.detail.backToList;
-
-/**
- * 「← 목록」을 눌러 목록으로 돌아간다. **조건·쪽은 그대로 두고 고른 요청만 푼다.**
- *
- * 고른 채 조건·쪽·확인칸을 고치는 길은 이제 없다 — 그 컨트롤들이 목록 구획에만 서기 때문이다.
- * 그래서 그런 시험은 먼저 이 길로 목록에 돌아온다.
- */
-const backToList = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await user.click(await screen.findByRole('button', { name: backButtonName }));
-  await waitForList();
-};
-
 describe('품질 승인 처리의 유형 탭(#144)', () => {
   it('「IQC (수입검사) 생략」 탭이 골라진 채 서고, 다른 탭은 품질 승인 처리 목록을 그 유형으로 연다', async () => {
     const { user } = renderScreen([listRoute()]);
@@ -632,14 +602,11 @@ describe('「결재 대기만 보기」', () => {
     expect(pendingCheckbox()).not.toBeChecked();
   });
 
-  /*
-   * 수명 표 3행 — 조건은 유지하고 쪽과 선택만 되돌린다.
-   * 고른 채로는 확인칸이 서지 않으므로 「← 목록」으로 돌아온 뒤 전환한다.
-   */
-  it('목록으로 돌아와 전환하면 조건을 남기고 쪽을 비운다', async () => {
+  /* 수명 표 3행 — 조건은 유지하고 쪽과 선택만 되돌린다. */
+  it('전환이 조건을 남기고 쪽과 고른 요청을 비운다', async () => {
     const { requests, user } = renderScreen(defaultRoutes(), '?q=SYNTH&page=3&rq=9001');
 
-    await backToList(user);
+    await waitForList();
     await user.click(pendingCheckbox());
 
     await waitFor(() => {
@@ -711,11 +678,10 @@ describe('조회 조건', () => {
     expect(query?.get('requestedAtTo')).toBe('2026-08-31');
   });
 
-  /* 고른 채로는 조건 줄이 서지 않으므로 「← 목록」으로 돌아온 뒤 고친다. */
-  it('목록으로 돌아와 조건을 바꾸면 첫 쪽으로 되돌린다', async () => {
+  it('조건 변경이 첫 쪽으로 되돌리고 고른 요청을 비운다', async () => {
     const { user } = renderScreen(defaultRoutes(), '?page=2&rq=9001');
 
-    await backToList(user);
+    await waitForList();
 
     await user.type(screen.getByLabelText(t.fields.q), 'SYNTH');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
@@ -766,7 +732,7 @@ describe('조회 조건', () => {
   it('초기화가 조건을 비우고 확인칸을 되켠다', async () => {
     const { requests, user } = renderScreen(defaultRoutes(), '?q=SYNTH&pd=0&page=2&rq=9001');
 
-    await backToList(user);
+    await waitForList();
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
     await waitFor(() => {
@@ -780,14 +746,13 @@ describe('조회 조건', () => {
   });
 
   /** 칩의 ×도 조건 변경이다 — 수명 표 1행을 그대로 지난다(범위 유지 · 첫 쪽 · 선택 비움). */
-  it('조건 칩의 ×가 그 조건만 풀고 범위는 남긴 채 쪽을 비운다', async () => {
+  it('조건 칩의 ×가 그 조건만 풀고 범위는 남긴 채 쪽과 선택을 비운다', async () => {
     const { user } = renderScreen(
-      defaultRoutes(),
+      [listRoute()],
       '?q=SYNTH&from=2026-08-01&to=2026-08-31&pd=0&page=2&rq=9001',
     );
 
-    /* 고른 채로는 칩이 서지 않으므로 「← 목록」으로 돌아온 뒤 푼다. */
-    await backToList(user);
+    await waitForList();
     await user.click(screen.getByRole('button', { name: t.filters.chipRemovePeriod }));
 
     await waitFor(() => {
@@ -834,7 +799,7 @@ describe('보내기 전에 거르는 값', () => {
   it('고른 요청은 목록 조건이 되지 않는다', async () => {
     const { requests } = renderScreen(defaultRoutes(), '?rq=9001');
 
-    await waitForListRequest(requests);
+    await waitForList();
 
     const query = lastListQuery(requests);
 
@@ -844,8 +809,7 @@ describe('보내기 전에 거르는 값', () => {
 });
 
 describe('쪽 이동', () => {
-  /* 고른 채로는 쪽 이동이 서지 않으므로 「← 목록」으로 돌아온 뒤 옮긴다. */
-  it('목록으로 돌아와 쪽을 옮기면 조건·범위는 그대로다', async () => {
+  it('쪽만 옮기고 고른 요청을 비운다', async () => {
     const { requests, user } = renderScreen(
       [listRoute(requestFixtures, { page: 1, size: 2, total: 8 }), detailRoute()],
       /*
@@ -855,7 +819,7 @@ describe('쪽 이동', () => {
       '?q=SYNTH&pd=0&rq=9001',
     );
 
-    await backToList(user);
+    await waitForList();
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
 
     await waitFor(() => {
@@ -894,19 +858,22 @@ describe('빈 상태 세 갈래', () => {
     });
   });
 
-  /**
-   * 고르기 전에는 **목록만 선다**(#144). 상세 구획도 「← 목록」도 없다 — 「고르세요」 안내를
-   * 세울 자리 자체가 없어졌다.
-   */
-  it('고르기 전에는 목록만 서고 상세 구획은 없다', async () => {
+  it('고르기 전에는 아래 구획이 「고르세요」를 낸다', async () => {
     renderScreen([listRoute()]);
 
     await waitForList();
 
-    expect(listRegion()).toBeInTheDocument();
-    expect(detailRegion()).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: backButtonName })).not.toBeInTheDocument();
-    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
+    const pane = within(screen.getByRole('region', { name: t.panes.detail }));
+
+    expect(pane.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+    /*
+     * **짝 방향 — 이것은 라이브 리전이 아니다.** 들어오자마자 늘 서 있는 안내라 읽어 줄 변화가
+     * 없다. 이 단언이 없으면 「전부 라이브 리전」도 통과하고, 그러면 404·403 쪽 구분이 무의미해진다.
+     *
+     * **구획 안에서 본다** — 목록 위 유형 코드 안내도 라이브 리전이라(그쪽은 조회 결과에 따라
+     * 서고 사라진다) 화면 전체에서 세면 무엇을 잰 것인지 흐려진다.
+     */
+    expect(pane.queryByRole('status')).not.toBeInTheDocument();
   });
 });
 
@@ -992,26 +959,15 @@ describe('고르기', () => {
     });
   });
 
-  /**
-   * 고른 동안에는 목록이 서지 않아 「같은 요청을 다시 눌러 해제」하는 길이 없다 — 해제는
-   * 「← 목록」이 맡는다. **조건·범위·쪽은 그대로 두고 고른 요청만 푼다.**
-   */
-  it('「← 목록」을 누르면 선택이 풀리고 목록으로 돌아간다', async () => {
-    const { user } = renderScreen(
-      [listRoute(requestFixtures, { page: 2, size: 2, total: 8 }), detailRoute()],
-      '?q=SYNTH&pd=0&page=2&rq=9001',
-    );
+  it('같은 요청을 다시 누르면 해제된다', async () => {
+    const { user } = renderScreen(defaultRoutes(), '?rq=9001');
 
-    await backToList(user);
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
 
     await waitFor(() => {
-      expect(currentLocation()).not.toContain('rq=');
+      expect(currentLocation()).toBe(ROUTE);
     });
-    expect(currentLocation()).toContain('q=SYNTH');
-    expect(currentLocation()).toContain('pd=0');
-    expect(currentLocation()).toContain('page=2');
-    expect(listRegion()).toBeInTheDocument();
-    expect(detailRegion()).not.toBeInTheDocument();
   });
 
   /* 수명 표 5행 — 고르는 것은 보이는 행을 바꾸지 않는다. */
@@ -1039,32 +995,62 @@ describe('고르기', () => {
   });
 
   /**
-   * **목록과 상세를 갈아 끼운다**(#144). 고르면 목록이 물러나고 「← 목록」과 상세가 선다 —
-   * 지금 자리가 상세라는 것을 경로 표시도 한 단계 더 보인다.
+   * **구획은 사라지지 않고 안이 바뀐다.** 「고르세요」가 물러나고 그 자리에 고른 요청이 온다 —
+   * 구획 자체가 사라지면 무엇을 골랐는지도 화면이 말하지 않는다.
    */
-  it('고르면 목록이 물러나고 「← 목록」과 상세가 선다', async () => {
+  it('고른 뒤에는 「고르세요」 안내가 물러나고 그 자리에 요청 정보가 선다', async () => {
     renderScreen(defaultRoutes(), '?rq=9001');
+
+    await waitForList();
 
     const pane = within(await screen.findByRole('region', { name: t.panes.detail }));
 
     expect(await pane.findByRole('group', { name: t.panes.request })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: backButtonName })).toBeVisible();
-    expect(listRegion()).not.toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **목록과 상세가 나란히 선다**(#186, 입하 예정 조회와 같은 짜임). 고른 뒤에도 목록·조건은
+   * 물러나지 않는다 — 다른 요청을 바로 옆에서 고를 수 있어야 한다.
+   */
+  it('고르면 목록·조건은 그대로 두고 옆에 상세가 함께 선다', async () => {
+    const { user } = renderScreen(defaultRoutes());
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+
+    const pane = within(await screen.findByRole('region', { name: t.panes.detail }));
+
+    expect(await pane.findByRole('group', { name: t.panes.request })).toBeInTheDocument();
+    const list = within(screen.getByRole('region', { name: t.panes.list }));
+    expect(list.getByRole('table')).toBeInTheDocument();
+    expect(list.getByRole('button', { name: /SYNTH-REQ-002/ })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: t.panes.filter })).toBeInTheDocument();
     expect(
-      within(screen.getByRole('navigation', { name: messages.common.shell.breadcrumb })).getByText(
-        messages.qualityApproval.panes.detail,
-      ),
+      screen.getByRole('separator', { name: messages.qualityApproval.splitter }),
     ).toBeInTheDocument();
   });
 });
 
 describe('다시 조회', () => {
+  /* 화면 머리를 걷으면서 [다시 조회]는 조회 조건 구획 안으로 옮겼다(#186). */
+  it('[다시 조회]는 조회 조건 구획 안에 선다', async () => {
+    renderScreen(defaultRoutes());
+
+    await waitForList();
+
+    expect(
+      within(screen.getByRole('region', { name: t.panes.filter })).getByRole('button', {
+        name: t.actions.reload,
+      }),
+    ).toBeInTheDocument();
+  });
+
   /* 수명 표 10행 — 새로고침은 같은 조회를 다시 하는 것이다. */
   it('보고 있는 조회를 다시 부르고 주소는 하나도 바꾸지 않는다', async () => {
     const { requests, user } = renderScreen(defaultRoutes(), '?q=SYNTH&pd=0&page=2&rq=9001');
 
-    await waitForListRequest(requests);
+    await waitForList();
 
     const before = listRequests(requests).length;
 
@@ -1084,7 +1070,7 @@ describe('다시 조회', () => {
   it('목록과 상세를 함께 부른다', async () => {
     const { requests, user } = renderScreen(defaultRoutes(), '?rq=9001');
 
-    await waitForListRequest(requests);
+    await waitForList();
     await waitFor(() => {
       expect(detailRequests(requests)).toHaveLength(1);
     });
@@ -1152,7 +1138,7 @@ describe('상세 조회', () => {
   it('주소에 고른 요청이 있으면 들어오자마자 상세를 부른다', async () => {
     const { requests } = renderScreen(defaultRoutes(), '?rq=9002');
 
-    await waitForListRequest(requests);
+    await waitForList();
 
     await waitFor(() => {
       expect(detailRequests(requests)).toHaveLength(1);
@@ -1167,19 +1153,18 @@ describe('상세 조회', () => {
 
     expect(listRequests(requests)).toHaveLength(1);
     expect(detailRequests(requests)).toHaveLength(0);
-    /* 고른 것이 없는 것과 같다 — 목록만 선다. */
-    expect(detailRegion()).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeVisible();
   });
 
   it('고르기를 풀면 상세를 다시 부르지 않는다', async () => {
     const { requests, user } = renderScreen(defaultRoutes(), '?rq=9001');
 
-    await waitForListRequest(requests);
+    await waitForList();
     await waitFor(() => {
       expect(detailRequests(requests)).toHaveLength(1);
     });
 
-    await backToList(user);
+    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
 
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
@@ -1187,16 +1172,14 @@ describe('상세 조회', () => {
     expect(detailRequests(requests)).toHaveLength(1);
   });
 
-  /* 고른 동안에는 목록이 없으므로 「← 목록」으로 돌아와 다른 요청을 고른다. */
   it('다른 요청을 고르면 그 요청의 상세를 부른다', async () => {
     const { requests, user } = renderScreen(defaultRoutes(), '?rq=9001');
 
-    await waitForListRequest(requests);
+    await waitForList();
     await waitFor(() => {
       expect(detailRequests(requests)).toHaveLength(1);
     });
 
-    await backToList(user);
     await user.click(screen.getByRole('button', { name: /SYNTH-REQ-002/ }));
 
     await waitFor(() => {
@@ -1230,16 +1213,13 @@ describe('상세를 읽을 수 없을 때', () => {
   it('404면 찾을 수 없다는 안내가 서고 고른 번호가 주소에서 정리된다', async () => {
     renderScreen(defaultRoutes(), '?q=SYNTH&rq=9999');
 
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeVisible();
+
     await waitFor(() => {
       expect(currentLocation()).not.toContain('rq=');
     });
     /* 조건은 그대로다 — 정리되는 것은 고른 번호 하나뿐이다(수명 표 6행). */
     expect(currentLocation()).toContain('q=SYNTH');
-    /*
-     * 정리가 끝나면 상세 구획이 물러나고 안내는 목록 위에 선다(#144) — 가라앉은 뒤에 본다.
-     * 정리 전 한 프레임의 안내를 집으면 곧 떨어져 나간 요소를 재게 된다.
-     */
-    expect(await screen.findByText(t.empty.notFoundTitle)).toBeVisible();
   });
 
   /**
@@ -1255,22 +1235,14 @@ describe('상세를 읽을 수 없을 때', () => {
   it('404 안내가 라이브 리전으로 선다', async () => {
     renderScreen(defaultRoutes(), '?rq=9999');
 
+    const pane = within(await screen.findByRole('region', { name: t.panes.detail }));
+
     /*
-     * 정리가 끝나면 상세 구획이 물러나고 안내는 **목록 위**에 선다(#144) — 그 자리가 가라앉은
-     * 뒤에 본다. 정리 전 한 프레임의 상세 구획을 집으면 곧 떨어져 나간 요소를 재게 된다.
-     *
      * **안내가 선 뒤에 그 자리의 역할을 본다.** 불러오는 중의 뼈대도 라이브 리전이라
      * (그것도 나타나는 것이라 옳다) 역할만 먼저 찾으면 뼈대를 집는다.
      */
-    await waitFor(() => {
-      expect(currentLocation()).toBe(ROUTE);
-    });
-    await waitForList();
-
-    const list = within(screen.getByRole('region', { name: t.panes.list }));
-
-    expect(list.getByText(t.empty.notFoundTitle)).toBeVisible();
-    expect(list.getByRole('status')).toHaveTextContent(t.empty.notFoundTitle);
+    expect(await pane.findByText(t.empty.notFoundTitle)).toBeVisible();
+    expect(pane.getByRole('status')).toHaveTextContent(t.empty.notFoundTitle);
   });
 
   it('403 안내도 라이브 리전으로 선다', async () => {
@@ -1350,11 +1322,10 @@ describe('상세를 읽을 수 없을 때', () => {
     await waitForList();
     await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
 
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeVisible();
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
     });
-    /* 정리가 끝나면 상세 구획이 물러나고 안내는 목록 위에 선다 — 가라앉은 뒤에 본다. */
-    expect(await screen.findByText(t.empty.notFoundTitle)).toBeVisible();
 
     /* 선행 단언 — 그 요청은 실제로 한 번 나갔다. */
     const before = detailRequests(requests).length;
@@ -1373,12 +1344,7 @@ describe('상세를 읽을 수 없을 때', () => {
   it('404 안내는 조건을 바꾸면 사라진다', async () => {
     const { user } = renderScreen(defaultRoutes(), '?rq=9999');
 
-    /* 정리가 끝나 목록으로 돌아온 뒤에야 조건 줄이 선다. */
-    await waitFor(() => {
-      expect(currentLocation()).toBe(ROUTE);
-    });
-    await waitForList();
-    expect(screen.getByText(t.empty.notFoundTitle)).toBeVisible();
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeVisible();
 
     await user.type(screen.getByLabelText(t.fields.q), 'SYNTH');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
@@ -1386,8 +1352,7 @@ describe('상세를 읽을 수 없을 때', () => {
     await waitFor(() => {
       expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
     });
-    /* 짝 양성 — 안내만 물러났고 목록은 그대로 선다. */
-    expect(requestTable()).toBeInTheDocument();
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeVisible();
   });
 
   it('403이면 권한 안내가 서고 고른 번호가 남으며 다시 시도가 없다', async () => {
@@ -1412,10 +1377,13 @@ describe('상세를 읽을 수 없을 때', () => {
   it('그 밖의 실패는 배너이고 다시 시도가 그 경로를 다시 부른다', async () => {
     const { requests, user } = renderScreen([listRoute(), failingDetailRoute(500)], '?rq=9001');
 
+    await waitForList();
+
     const retry = await screen.findByRole('button', { name: messages.common.retry });
     const before = detailRequests(requests).length;
 
-    /* 실패는 빈 상태가 아니다 — 「찾을 수 없습니다」가 함께 서지 않는다. */
+    /* 실패는 빈 상태가 아니다 — 「고르세요」·「찾을 수 없습니다」가 함께 서지 않는다. */
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
     expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
 
     await user.click(retry);
@@ -1425,17 +1393,13 @@ describe('상세를 읽을 수 없을 때', () => {
     });
   });
 
-  /**
-   * 상세가 무너져도 목록은 그대로 쓸 수 있어야 한다 — 조건을 고칠 수단이 사라지지 않는다.
-   * 고른 동안에는 목록이 서지 않으므로 그 길은 「← 목록」이다.
-   */
-  it('상세가 실패해도 「← 목록」으로 돌아가 목록과 조건 줄을 쓴다', async () => {
-    const { user } = renderScreen([listRoute(), failingDetailRoute(500)], '?rq=9001');
+  /** 상세가 무너져도 목록은 그대로 쓸 수 있어야 한다 — 조건을 고칠 수단이 사라지지 않는다. */
+  it('상세가 실패해도 목록과 조건 줄은 그대로 산다', async () => {
+    renderScreen([listRoute(), failingDetailRoute(500)], '?rq=9001');
+
+    await waitForList();
 
     expect(await screen.findByRole('button', { name: messages.common.retry })).toBeVisible();
-
-    await backToList(user);
-
     expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
     expect(within(requestTable()).getByText('SYNTH-REQ-002')).toBeInTheDocument();
   });
@@ -1478,15 +1442,13 @@ describe('고른 요청의 아래 구획', () => {
   });
 
   it('사유 전문이 보인다 — 목록의 첫 줄 규칙이 상세에는 걸리지 않는다', async () => {
-    const { user } = renderScreen(defaultRoutes(), '?rq=9001');
+    renderScreen(defaultRoutes(), '?rq=9001');
 
     const pane = await detailPane();
 
     expect(await pane.findByText(FIRST_LINE_OF_MULTILINE_REASON)).toBeVisible();
     expect(pane.getByText(SECOND_LINE_OF_MULTILINE_REASON)).toBeVisible();
-
     /* 목록에는 여전히 첫 줄뿐이다 — 두 자리의 규칙이 서로 옮겨붙지 않는다. */
-    await backToList(user);
     expect(
       within(requestTable()).queryByText(SECOND_LINE_OF_MULTILINE_REASON),
     ).not.toBeInTheDocument();
@@ -2325,15 +2287,11 @@ describe('결재 — 실패 배너가 매인 대상', () => {
 
     await sendFailingApprove(user);
 
-    /* 고른 동안에는 목록이 없으므로 「← 목록」으로 돌아와 다른 요청을 고른다. */
-    await backToList(user);
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
 
     await waitFor(() => {
-      expect(currentLocation()).toContain('rq=9002');
+      expect(screen.queryByText(messages.conflict.user)).toBeNull();
     });
-    await screen.findByRole('group', { name: t.panes.request });
-    expect(screen.queryByText(messages.conflict.user)).toBeNull();
   });
 
   /**
@@ -2422,14 +2380,11 @@ describe('결재 — 의견 초안이 매인 대상', () => {
     const { user } = await renderDecision();
 
     await user.type(commentBox(), '9001에만 해당하는 합성 반려 사유');
-    /* 고른 동안에는 목록이 없으므로 「← 목록」으로 돌아와 다른 요청을 고른다. */
-    await backToList(user);
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
 
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9002');
     });
-    await screen.findByLabelText(t.decision.commentLabel);
     expect(commentBox()).toHaveValue('');
   });
 
@@ -2592,15 +2547,43 @@ describe('결재 — 전송 중', () => {
   });
 
   /**
-   * **둘째 겹** — 「← 목록」은 잠금을 받지 않는다(결재와 무관한 컨트롤이다). 그 길로 대상이
-   * 바뀌면 나가는 중인 결재의 결과가 **다른 요청의 맥락에** 나타난다.
-   *
-   * 고른 동안에는 목록 행·쪽·확인칸·조건 칩이 서지 않는다(#144) — 대상을 바꾸는 화면 안의
-   * 길은 이 단추 하나다.
+   * **둘째 겹** — 조건 칩·목록 행·쪽·확인칸은 잠금을 받지 않는다. 그 길로 대상이 바뀌면
+   * 나가는 중인 결재의 결과가 **다른 요청의 맥락에** 나타난다.
    */
-  it('전송 중에는 「← 목록」으로도 대상이 바뀌지 않는다', async () => {
+  it('목록 행·쪽·「결재 대기만 보기」로도 대상이 바뀌지 않는다', async () => {
+    const { requests, release, user } = await renderDecision(
+      [listRoute(requestFixtures, { total: 120 }), detailRoute(), approveRoute()],
+      '?rq=9001',
+      holdApprove,
+    );
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+    await waitFor(() => {
+      expect(approveRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
+    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await user.click(pendingCheckbox());
+
+    expect(currentLocation()).toContain('rq=9001');
+    expect(currentLocation()).not.toContain('page=2');
+    expect(currentLocation()).not.toContain('pd=0');
+
+    release();
+    await screen.findByText(t.toast.approved);
+  });
+
+  /**
+   * **조건 칩도 같은 문을 지난다.** 위 시험과 갈라 두는 이유: 한 시험에 여러 길을 몰아넣으면
+   * 먼저 오는 단언이 먼저 터져 **칩 하나만 문 밖에 있어도 드러나지 않는다.**
+   * 칩은 고른 요청을 건드리지 않고 조건만 푸는 길이라 잣대도 조건 쪽에 둔다.
+   */
+  it('전송 중 조건 칩으로도 조건이 풀리지 않는다', async () => {
     const { requests, release, user } = await renderDecision(
       decisionRoutes(),
+      /* 조건 하나를 걸어 둔다 — 칩이 서 있어야 그 길을 잴 수 있다. */
       '?rq=9001&q=SYNTH',
       holdApprove,
     );
@@ -2611,19 +2594,19 @@ describe('결재 — 전송 중', () => {
       expect(approveRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(screen.getByRole('button', { name: backButtonName }));
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveKeyword }));
 
-    expect(currentLocation()).toContain('rq=9001');
-    expect(detailRegion()).toBeInTheDocument();
+    expect(currentLocation()).toContain('q=SYNTH');
 
     release();
     await screen.findByText(t.toast.approved);
 
-    /* 짝 방향 — 잠금이 풀리면 같은 단추가 실제로 목록으로 돌려보낸다(늘 남는 것이 아니다). */
-    await backToList(user);
+    /* 짝 방향 — 잠금이 풀리면 같은 칩이 그 조건을 실제로 푼다(늘 남는 것이 아니다). */
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveKeyword }));
 
-    expect(currentLocation()).not.toContain('rq=');
-    expect(currentLocation()).toContain('q=SYNTH');
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('q=SYNTH');
+    });
   });
 
   /**

@@ -3855,23 +3855,78 @@ main > * + * {
 }
 
 /*
- * 품질 승인 처리 — 목록과 상세를 갈아 끼운다(#144). 목록은 화면 전체 폭, 요청을 고르면
- * 요청 상세 | 결재 진행 두 칸이 나란히 선다.
+ * 품질 승인 처리 — 입하 예정 조회와 같은 짜임(#186): 유형 탭 → 조회 조건 구획 → 왼쪽 목록 | 오른쪽 상세.
+ * 두 구획의 배치·끌기 막대는 `.po-board-*` 가 정한다. 오른쪽은 결재 진행 아래에 요청 상세 | 승인 처리가
+ * 서고, 폭이 모자라면 위아래로 쌓인다.
  */
 .quality-approval-type-tabs {
   margin-bottom: var(--space-4);
 }
 
-.quality-approval-back {
-  margin-bottom: var(--space-3);
+.quality-approval-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+  padding: var(--space-5);
+}
+
+.quality-approval-block {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.quality-approval-block > .pane-title,
+.quality-approval-block .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
 }
 
 .quality-approval-workspace {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
   gap: var(--space-5);
   align-items: start;
   min-width: 0;
+}
+
+/*
+ * 본문을 끝까지 내린 뒤 더 굴리면 스크롤이 문서로 번져(macOS 탄성 스크롤) 앱 아래 빈 바닥이 드러난다 —
+ * 품질 승인 처리(IQC 생략 탭 포함)에서는 번지지도 튕기지도 않게 한다(#186, OQC #136 과 같은 처리).
+ */
+html:has(.quality-approval-side),
+html:has(.quality-approval-side) body,
+main:has(.quality-approval-side),
+html:has(.iqc-skip-approval-detail),
+html:has(.iqc-skip-approval-detail) body,
+main:has(.iqc-skip-approval-detail) {
+  overscroll-behavior-y: none;
+}
+
+/* 왼쪽 목록이 좁아도 칸 글이 여러 줄로 꺾이지 않는다 — 넘치면 구획 안에서 옆으로 민다(#186). */
+.quality-approval-list-pane .quality-approval-table th,
+.quality-approval-list-pane .quality-approval-table td {
+  white-space: nowrap;
+}
+
+/* IQC 생략 탭 — 조회 조건 줄 끝의 [다시 조회](#186, 화면 머리에서 옮김). */
+.iqc-skip-approval-filter-pane {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.iqc-skip-approval-filter-pane > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.iqc-skip-approval-tools {
+  flex: 0 0 auto;
 }
 
 .quality-approval-pane,
