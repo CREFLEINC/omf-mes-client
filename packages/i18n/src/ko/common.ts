@@ -74,6 +74,7 @@ export const common = {
     stalledRetry: '다시 보내기',
   },
   /** 검사 조회·판정(IQC · PQC · OQC) 탭 줄 오른쪽 건수 칩(omf-all-around#185). */
+  columnOrderHandle: '끌어서 열 순서 바꾸기',
   inspectionHub: {
     label: '검사 의뢰 상태',
     requested: '대기',

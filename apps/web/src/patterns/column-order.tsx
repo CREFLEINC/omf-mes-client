@@ -1,4 +1,5 @@
-import type { Column } from '@crefle/web-ui';
+import { Icon, type Column } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 /**
@@ -48,79 +49,111 @@ export const moveKey = (keys: readonly string[], from: string, to: string): stri
   return next;
 };
 
-const headerAt = (x: number, y: number, table: Element): HTMLElement | null => {
-  const cell = document.elementFromPoint(x, y)?.closest<HTMLElement>('th[data-col-key]');
+const headerAt = (x: number, y: number, table: Element): HTMLTableCellElement | null => {
+  const cell = document.elementFromPoint(x, y)?.closest<HTMLTableCellElement>('th[data-col-key]');
   return cell !== null && cell !== undefined && table.contains(cell) ? cell : null;
 };
 
-/** 끌기 손잡이 — 머리칸 이름 전체. 칸 이름을 보이는 그대로 감싼다. */
+/**
+ * 머리칸 이름과 그 오른쪽 끌기 손잡이(⠿). 손잡이는 마우스를 올린 머리칸에만 보이고(app.css `.col-grip`),
+ * 손잡이를 잡아 끌면 칸 이름이 반투명하게 따라오고 놓일 자리의 경계선이 파랗게 선다(사용자 지시 2026-10-26).
+ * 손잡이를 그냥 누르는 것은 아무 일도 하지 않는다 — 정렬 단추 안에 있어도 정렬이 바뀌지 않는다.
+ */
 const ColumnGrip = ({
   columnKey,
+  label,
   onMove,
   children,
 }: {
   columnKey: string;
+  label: string;
   onMove: (from: string, to: string) => void;
   children: React.ReactNode;
 }) => (
-  <span
-    className="col-grip"
-    data-col-grip={columnKey}
-    onPointerDown={(event) => {
-      const source = event.currentTarget.closest('th');
-      const table = source?.closest('table');
-      if (source === null || source === undefined || table === null || table === undefined) return;
-      if (event.button !== 0) return;
-      source.dataset.colKey = columnKey;
-      const startX = event.clientX;
-      const startY = event.clientY;
-      let dragging = false;
-      let target: HTMLElement | null = null;
+  <span className="col-head" data-col-grip={columnKey}>
+    <span className="col-head-label">{children}</span>
+    <span
+      className="col-grip"
+      aria-hidden="true"
+      title={label}
+      onClick={(event) => {
+        /* 정렬 단추 안이어도 손잡이 누름은 정렬로 번지지 않는다. */
+        event.stopPropagation();
+        event.preventDefault();
+      }}
+      onPointerDown={(event) => {
+        const source = event.currentTarget.closest('th');
+        const table = source?.closest('table');
+        if (source === null || source === undefined || table === null || table === undefined)
+          return;
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const startX = event.clientX;
+        const startY = event.clientY;
+        let ghost: HTMLElement | null = null;
+        let target: HTMLTableCellElement | null = null;
 
-      const mark = (next: HTMLElement | null): void => {
-        target?.classList.remove('col-drop-target');
-        target = next !== source ? next : null;
-        target?.classList.add('col-drop-target');
-      };
-      const move = (moveEvent: PointerEvent): void => {
-        if (!dragging) {
-          if (Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) < DRAG_THRESHOLD)
-            return;
-          dragging = true;
-          /* 모든 머리칸에 열 이름을 달아 둔다 — 놓은 자리가 어느 열인지 안다. */
-          table.querySelectorAll<HTMLElement>('[data-col-grip]').forEach((grip) => {
-            const cell = grip.closest('th');
-            if (cell !== null) cell.dataset.colKey = grip.dataset.colGrip;
-          });
-          source.classList.add('col-dragging');
-          document.body.classList.add('col-reordering');
-        }
-        mark(headerAt(moveEvent.clientX, moveEvent.clientY, table));
-      };
-      const up = (): void => {
-        window.removeEventListener('pointermove', move);
-        window.removeEventListener('pointerup', up);
-        window.removeEventListener('pointercancel', up);
-        if (!dragging) return;
-        const to = target?.dataset.colKey;
-        mark(null);
-        source.classList.remove('col-dragging');
-        document.body.classList.remove('col-reordering');
-        /* 끈 뒤 따라오는 누름 한 번(정렬 단추)을 삼킨다. */
-        const swallow = (clickEvent: MouseEvent): void => {
-          clickEvent.stopPropagation();
-          clickEvent.preventDefault();
+        /* 놓일 자리 — 오른쪽으로 끌면 놓은 칸의 뒤(오른쪽 경계), 왼쪽이면 앞(왼쪽 경계). `moveKey` 와 같은 규칙. */
+        const mark = (next: HTMLTableCellElement | null): void => {
+          target?.classList.remove('col-drop-before', 'col-drop-after');
+          target = next !== source ? next : null;
+          if (target === null) return;
+          target.classList.add(
+            source.cellIndex < target.cellIndex ? 'col-drop-after' : 'col-drop-before',
+          );
         };
-        window.addEventListener('click', swallow, { capture: true, once: true });
-        window.setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 0);
-        if (to !== undefined) onMove(columnKey, to);
-      };
-      window.addEventListener('pointermove', move);
-      window.addEventListener('pointerup', up);
-      window.addEventListener('pointercancel', up);
-    }}
-  >
-    {children}
+        const move = (moveEvent: PointerEvent): void => {
+          if (ghost === null) {
+            if (Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) < DRAG_THRESHOLD)
+              return;
+            /* 모든 머리칸에 열 이름을 달아 둔다 — 놓은 자리가 어느 열인지 안다. */
+            table.querySelectorAll<HTMLElement>('[data-col-grip]').forEach((grip) => {
+              const cell = grip.closest('th');
+              if (cell !== null) cell.dataset.colKey = grip.dataset.colGrip;
+            });
+            const rect = source.getBoundingClientRect();
+            ghost = document.createElement('div');
+            ghost.className = 'col-drag-ghost';
+            ghost.textContent = source.querySelector('.col-head-label')?.textContent ?? '';
+            ghost.style.width = `${String(rect.width)}px`;
+            ghost.style.height = `${String(rect.height)}px`;
+            document.body.append(ghost);
+            source.classList.add('col-dragging');
+            document.body.classList.add('col-reordering');
+          }
+          ghost.style.transform = `translate(${String(moveEvent.clientX - 16)}px, ${String(moveEvent.clientY - 16)}px)`;
+          mark(headerAt(moveEvent.clientX, moveEvent.clientY, table));
+        };
+        const up = (): void => {
+          window.removeEventListener('pointermove', move);
+          window.removeEventListener('pointerup', up);
+          window.removeEventListener('pointercancel', up);
+          if (ghost === null) return;
+          const to = target?.dataset.colKey;
+          mark(null);
+          ghost.remove();
+          source.classList.remove('col-dragging');
+          document.body.classList.remove('col-reordering');
+          /* 끈 뒤 따라오는 누름 한 번(정렬 단추)을 삼킨다. */
+          const swallow = (clickEvent: MouseEvent): void => {
+            clickEvent.stopPropagation();
+            clickEvent.preventDefault();
+          };
+          window.addEventListener('click', swallow, { capture: true, once: true });
+          window.setTimeout(
+            () => window.removeEventListener('click', swallow, { capture: true }),
+            0,
+          );
+          if (to !== undefined) onMove(columnKey, to);
+        };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);
+        window.addEventListener('pointercancel', up);
+      }}
+    >
+      <Icon name="drag_indicator" size={16} />
+    </span>
   </span>
 );
 
@@ -149,7 +182,7 @@ export const useColumnOrder = <T,>(storageKey: string, columns: Column<T>[]): Co
   return ordered.map((column): Column<T> => ({
     ...column,
     header: (
-      <ColumnGrip columnKey={column.key} onMove={commit}>
+      <ColumnGrip columnKey={column.key} label={messages.common.columnOrderHandle} onMove={commit}>
         {column.header}
       </ColumnGrip>
     ),

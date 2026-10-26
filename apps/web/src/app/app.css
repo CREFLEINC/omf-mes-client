@@ -20863,19 +20863,71 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   white-space: nowrap;
 }
 
-/* 열 순서 바꾸기 손잡이 — 머리칸 이름. 잡으면 손 모양, 놓을 자리는 바탕이 바뀐다. */
+/*
+ * 열 순서 바꾸기(`patterns/column-order.tsx`) — 머리칸에 마우스를 올리면 이름 오른쪽에 끌기 손잡이(⠿)가 보인다.
+ * 끄는 동안 잡은 칸은 흐려지고 칸 이름이 반투명하게 커서를 따라오며, 놓일 경계선이 파랗게 선다.
+ */
+.col-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.col-head-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .col-grip {
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--on-surface-muted);
   cursor: grab;
-  user-select: none;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+th:hover .col-grip,
+.col-grip:focus-visible {
+  opacity: 1;
+}
+
+.col-grip:hover {
+  color: var(--on-surface);
 }
 
 th.col-dragging {
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
-th.col-drop-target {
-  box-shadow: inset 0 -2px 0 var(--semantic-info);
-  background: var(--surface-container-high);
+th.col-drop-before {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+
+th.col-drop-after {
+  box-shadow: inset -3px 0 0 var(--semantic-info);
+}
+
+.col-drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--semantic-info);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-container-high) 85%, transparent);
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  box-shadow: var(--elevation-2);
+  opacity: 0.9;
+  pointer-events: none;
 }
 
 body.col-reordering,

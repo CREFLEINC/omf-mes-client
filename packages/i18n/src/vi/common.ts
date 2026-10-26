@@ -57,6 +57,7 @@ export const common: Translated<typeof ko.common> = {
     failedOffline: 'Sẽ hiển thị khi có kết nối',
     inactiveSuffix: ' (ngừng dùng)',
   },
+  columnOrderHandle: 'Kéo để đổi thứ tự cột',
   inspectionHub: {
     label: 'Trạng thái yêu cầu kiểm tra',
     requested: 'Chờ',
