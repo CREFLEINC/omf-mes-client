@@ -116,9 +116,12 @@ const ColumnResizer = ({
       event.preventDefault();
       const startX = event.clientX;
       const startWidth = cell.getBoundingClientRect().width;
-      /* 내용 폭까지만 넓힌다(옵트인 · 사용자 지시 2026-10-26) — 이미 그보다 넓으면 지금 폭까지다. */
+      /*
+       * 내용 폭까지만 넓힌다(옵트인 · 사용자 지시 2026-10-26). 앞서 그보다 넓혀 둔 열도 손잡이를 잡으면 내용 폭을
+       * 넘지 못한다 — 남는 빈 자리는 끌면 바로 줄어든다.
+       */
       const limit = fitContent ? contentWidthOf(cell) : null;
-      const max = limit === null ? Infinity : Math.max(limit, startWidth);
+      const max = limit ?? Infinity;
       const move = (moveEvent: PointerEvent): void => {
         onResize(Math.min(max, startWidth + moveEvent.clientX - startX));
       };
