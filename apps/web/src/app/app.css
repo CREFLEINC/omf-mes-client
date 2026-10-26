@@ -14001,6 +14001,11 @@ button.app-button-neutral {
   box-shadow: inset 0 -2px 0 var(--primary-text);
 }
 
+/* 제목 아래 탭 묶음(`patterns/page-hub.tsx`) — 머리와 본문 사이, 아래 카드와는 한 단계 띄운다. */
+.page-hub-tabs {
+  margin-bottom: var(--space-4);
+}
+
 /*
  * 섹션 밖에 홀로 선 메뉴 항목 — **목록이 넘쳐도 줄어들지 않는다**(#1077).
  *

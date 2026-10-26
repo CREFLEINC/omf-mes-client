@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 
 import { useOaAccess } from '../../patterns/oa-access';
 import { toApiError } from '../../patterns/request';
+import { usePageHub } from '../../patterns/page-hub';
 import { CODE_GROUPS, labelOfCode, toCodeOptions } from './code-options';
 import {
   EMPTY_FILTERS,
@@ -78,6 +79,8 @@ const referenceT = messages.common.reference;
 
 export const OqcInspectionScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  /* 검사 조회·판정 묶음(사이드바 한 줄 · 제목 아래 탭) 안이면 셸이 준다 — 셸 밖이면 `null`. */
+  const hub = usePageHub();
 
   const filters = readFilters(searchParams);
   const page = readPage(searchParams);
@@ -682,12 +685,12 @@ export const OqcInspectionScreen = () => {
   return (
     <>
       <PageHeader
-        title={selectedId === null ? t.title : t.detail.sectionTitle}
+        title={selectedId === null ? (hub?.title ?? t.title) : t.detail.sectionTitle}
         breadcrumb={
           <Breadcrumb
             items={[
               { label: t.breadcrumbRoot },
-              { label: t.title },
+              { label: hub?.title ?? t.title },
               /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#136). */
               ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
             ]}
@@ -695,6 +698,8 @@ export const OqcInspectionScreen = () => {
           />
         }
       />
+      {/* 검사 조회·판정 묶음의 탭 — 제목 바로 아래(셸이 채운다 · `patterns/page-hub.tsx`). */}
+      {hub !== null && <div className="page-hub-tabs">{hub.tabs}</div>}
 
       {selectedId === null ? (
         <section

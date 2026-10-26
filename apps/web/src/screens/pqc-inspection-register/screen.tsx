@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
+import { usePageHub } from '../../patterns/page-hub';
 import { LotScan } from '../inspection-documents/lot-scan';
 import { PAGE_SIZE } from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from '../oqc-inspection/load-error-banner';
@@ -38,6 +39,8 @@ const toSelectedId = (raw: string | null): number | null => {
  */
 export const PqcInspectionRegisterScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  /* 검사 조회·판정 묶음(사이드바 한 줄 · 제목 아래 탭) 안이면 셸이 준다 — 셸 밖이면 `null`. */
+  const hub = usePageHub();
   const selectedId = toSelectedId(searchParams.get(SELECTED_KEY));
   const [pendingOnly, setPendingOnly] = useState(true);
   const [page, setPage] = useState(1);
@@ -88,18 +91,20 @@ export const PqcInspectionRegisterScreen = () => {
     <>
       <PageHeader
         /* 상세를 열면 머리 제목도 지금 자리(「검사 기본 정보」)를 말한다 — 경로의 마지막 마디와 같다(#135). */
-        title={selectedId === null ? t.title : t.detail.sectionTitle}
+        title={selectedId === null ? (hub?.title ?? t.title) : t.detail.sectionTitle}
         breadcrumb={
           <Breadcrumb
             items={[
               { label: t.breadcrumbRoot },
-              { label: t.title },
+              { label: hub?.title ?? t.title },
               ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
             ]}
             aria-label={messages.common.shell.breadcrumb}
           />
         }
       />
+      {/* 검사 조회·판정 묶음의 탭 — 제목 바로 아래(셸이 채운다 · `patterns/page-hub.tsx`). */}
+      {hub !== null && <div className="page-hub-tabs">{hub.tabs}</div>}
 
       {selectedId === null ? (
         <section className="pane pqc-web-list" aria-label={t.queue.heading}>
