@@ -56,6 +56,8 @@ const ItemCell = ({ itemId }: { itemId: number }) => {
 export interface PqcQueueTableProps {
   rows: InspectionQueueRow[];
   onSelect: (inspectionRequestId: number) => void;
+  /** 고른 의뢰 — 그 줄을 파랗게 표시한다(#185 · 입하 예정 조회와 같다). */
+  selectedId: number | null;
   empty: React.ReactNode;
 }
 
@@ -64,7 +66,12 @@ export interface PqcQueueTableProps {
  * ⚠ OQC 화면의 목록 표는 그대로 둔다 — 이 표는 PQC 화면만 쓴다.
  */
 /* 번호 · 일시 칸은 한 줄 값이 다 보이는 고정 폭, 품목이 나머지를 쓴다. */
-export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueTableProps) => {
+export const PqcQueueTable = ({
+  rows,
+  onSelect,
+  selectedId,
+  empty: emptyContent,
+}: PqcQueueTableProps) => {
   /*
    * 의뢰 일시 정렬(#133 과 같다 · 받은 쪽 안에서). ⭐ 정렬을 이 표가 쥔다 — 줄을 누르면 줄 차례로 의뢰를 찾으므로,
    * 화면에 그린 차례와 찾는 배열의 차례가 같아야 한다. 정렬은 원문(RFC3339)으로 한다.
@@ -85,6 +92,7 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
   const columns: Column<InspectionQueueRow>[] = [
     {
       key: 'lot',
+      align: 'start',
       header: t.columns.lot,
       /* 번호가 길다(30자 남짓) — 넓은 창에서는 다 보이고, 1440 창에서는 끝을 말줄임하고 전체는 title 로 본다. */
       width: '240px',
@@ -92,23 +100,34 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
     },
     {
       key: 'item',
+      align: 'start',
       header: t.columns.item,
       render: (row) => <ItemCell itemId={row.itemId} />,
     },
     {
       key: 'workOrder',
+      align: 'center',
       header: t.columns.workOrder,
       width: '160px',
       render: (row) => <WorkOrderCell workOrderId={row.targetId} />,
     },
     {
       key: 'no',
+      align: 'start',
       header: messages.pqcInspection.detail.fields.inspectionRequestNo,
       width: '160px',
-      render: (row) => <span title={row.inspectionRequestNo}>{row.inspectionRequestNo}</span>,
+      render: (row) => (
+        <span
+          title={row.inspectionRequestNo}
+          aria-current={row.inspectionRequestId === selectedId ? 'true' : undefined}
+        >
+          {row.inspectionRequestNo}
+        </span>
+      ),
     },
     {
       key: 'qty',
+      align: 'center',
       header: t.columns.targetQty,
       width: '96px',
       render: (row) => {
@@ -118,6 +137,7 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
     },
     {
       key: 'status',
+      align: 'center',
       header: t.columns.status,
       width: '88px',
       render: (row) => {
@@ -131,6 +151,7 @@ export const PqcQueueTable = ({ rows, onSelect, empty: emptyContent }: PqcQueueT
     },
     {
       key: 'requestedAt',
+      align: 'center',
       header: t.columns.requestedAt,
       width: '160px',
       sortable: true,

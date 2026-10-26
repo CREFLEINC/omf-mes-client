@@ -40,6 +40,7 @@ const columnsOf = (
 ): Column<InspectionQueueRow>[] => [
   {
     key: 'serialNo',
+    align: 'start',
     header: t.serialColumn,
     /* 열 폭은 시리얼 15 · 품목 28 · 의뢰 22 · 수량 11 · 상태 9 · 일시 15(%)로 고정한다 — 값 길이로 폭이 흔들리지 않는다(#136). */
     width: '140px',
@@ -50,6 +51,7 @@ const columnsOf = (
   },
   {
     key: 'itemId',
+    align: 'start',
     header: t.columns.itemId,
     /* 남는 폭을 흡수한다(#185). */
     /* 「이름 / 코드」 두 줄 — 못 푼 갈래는 줄이 하나뿐이라 풀이가 사유를 그 자리에 낸다(IQC 와 같은 모양). */
@@ -69,6 +71,7 @@ const columnsOf = (
   },
   {
     key: 'inspectionRequestNo',
+    align: 'start',
     header: t.columns.inspectionRequestNo,
     width: '220px',
     /*
@@ -94,6 +97,7 @@ const columnsOf = (
   },
   {
     key: 'targetQty',
+    align: 'center',
     header: t.targetQtyColumn,
     width: '100px',
     render: (row) => {
@@ -108,6 +112,7 @@ const columnsOf = (
   },
   {
     key: 'statusCode',
+    align: 'center',
     header: t.columns.statusCode,
     width: '88px',
     render: (row) => {
@@ -122,6 +127,7 @@ const columnsOf = (
   },
   {
     key: 'requestedAt',
+    align: 'center',
     header: t.requestedAtColumn,
     width: '160px',
     sortable: true,

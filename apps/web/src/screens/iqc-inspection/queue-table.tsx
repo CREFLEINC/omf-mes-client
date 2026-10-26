@@ -48,6 +48,7 @@ const columnsOf = (
   {
     /* 첫 칸은 자재 LOT — 검사자가 손에 든 LOT 으로 줄을 찾는다(#133 · 담당자 지시). */
     key: 'lotId',
+    align: 'start',
     header: t.columns.lotId,
     width: '260px',
     /*
@@ -89,6 +90,7 @@ const columnsOf = (
   },
   {
     key: 'item',
+    align: 'start',
     header: t.columns.item,
     /* 「이름 코드」 한 줄 — 넘치면 말줄임, 전체 값은 마우스를 올리면 보인다(#185 · 입하 예정 조회와 같은 한 줄 행). 남는 폭을 흡수한다. */
     /*
@@ -129,6 +131,7 @@ const columnsOf = (
   },
   {
     key: 'statusCode',
+    align: 'center',
     header: t.columns.statusCode,
     width: '88px',
     render: (row) => {
@@ -143,6 +146,7 @@ const columnsOf = (
   },
   {
     key: 'requestedAt',
+    align: 'center',
     header: t.columns.requestedAt,
     width: '160px',
     sortable: true,

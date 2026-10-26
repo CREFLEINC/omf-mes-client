@@ -20868,22 +20868,25 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
  * 끄는 동안 잡은 칸은 흐려지고 칸 이름이 반투명하게 커서를 따라오며, 놓일 경계선이 파랗게 선다.
  */
 .col-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
+  display: block;
+  position: static;
   min-width: 0;
-}
-
-.col-head-label {
-  min-width: 0;
+  padding-right: var(--space-4);
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.col-head-label {
+  white-space: nowrap;
+}
+
+/* 손잡이는 머리칸 오른쪽 끝(열 폭 손잡이 바로 안쪽)에 떠 있다 — 이름 정렬(왼쪽 · 가운데)에 끼어들지 않는다. */
 .col-grip {
+  position: absolute;
+  top: 50%;
+  right: var(--space-2);
   display: inline-flex;
-  flex: 0 0 auto;
-  margin-left: auto;
+  transform: translateY(-50%);
   color: var(--on-surface-muted);
   cursor: grab;
   opacity: 0;
@@ -21002,4 +21005,38 @@ body.col-reordering * {
     flex: 0 0 auto;
     white-space: nowrap;
   }
+}
+
+/*
+ * 고른 의뢰 줄 — 입하 예정 조회와 같은 정보 파랑 바탕 + 첫 칸 왼쪽 파란 선(사용자 지시 2026-10-26 · #185).
+ * 칸(td)에 칠한다(표 부품이 칸 배경을 따로 칠한다). 마우스를 올렸다 떼도 남는다.
+ */
+.inspection-queue-table tbody tr:nth-child(n):has([aria-current='true']) > td,
+.inspection-queue-table tbody tr:nth-child(n):has([aria-current='true']):hover > td {
+  background: var(--semantic-info-container);
+}
+
+.inspection-queue-table tbody tr:nth-child(n):has([aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+
+.inspection-queue-table tbody tr:nth-child(n):has([aria-current='true']) {
+  background: none;
+}
+
+/*
+ * 목록 표 정렬(사용자 지시 2026-10-26) — 자재 LOT · 품목 · 의뢰번호 · 시리얼 번호(PQC 대상 LOT)는 왼쪽, 나머지는 가운데.
+ * 열마다 정한 `align`(DS `data-align`)을 따른다 — 칸 위치(nth-child)가 아니라 열을 따르므로 순서를 바꿔도 맞다.
+ * 화면마다 앞서 둔 위치 기준 정렬(IQC 전부 가운데 · PQC 다섯째부터 가운데)보다 앞선다.
+ */
+/* 위치 기준 규칙(`:nth-child`)보다 앞서도록 `:nth-child(n)` 을 겹쳐 무게를 올린다 — 고르는 칸은 같다. */
+.inspection-queue-table table th[data-align='center']:nth-child(n):nth-child(n),
+.inspection-queue-table table td[data-align='center']:nth-child(n):nth-child(n) {
+  text-align: center;
+}
+
+/* DS 는 기본(왼쪽) 열에 `data-align` 을 달지 않는다 — 표시가 없는 칸이 왼쪽이다. */
+.inspection-queue-table table th:not([data-align]):nth-child(n):nth-child(n),
+.inspection-queue-table table td:not([data-align]):nth-child(n):nth-child(n) {
+  text-align: left;
 }

@@ -189,7 +189,12 @@ export const PqcInspectionRegisterScreen = () => {
             />
           )}
 
-          <PqcQueueTable rows={rows} onSelect={select} empty={emptyContent} />
+          <PqcQueueTable
+            rows={rows}
+            onSelect={select}
+            selectedId={selectedId}
+            empty={emptyContent}
+          />
 
           {queue.data !== undefined && <PageNav view={pageView} onChange={setPage} />}
         </section>
