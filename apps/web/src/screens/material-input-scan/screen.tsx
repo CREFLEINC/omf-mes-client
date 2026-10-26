@@ -25,7 +25,7 @@ import { POP_TOUCH_SIZE } from '../work-start/touch-spec';
 
 import { confirmBlockReason, remainingText } from './block-reason';
 import { useFourMChangeTypeLabels, useLotStatusLabels } from './lot-status-labels';
-import { MaterialList, toMaterialRows } from './material-list';
+import { MaterialList, progressStateOf, toMaterialRows, type MaterialRow } from './material-list';
 import { materialInputScanKeys, useReceiptLines, useRecordedConsumptions } from './queries';
 import { QtyEditor, type InputRecordView } from './qty-editor';
 import { describeRecordError } from './record-error';
@@ -133,12 +133,12 @@ const describeOutcome = (
  *       C-5 단계 표시를 두지 않는다(LOT마다 스캔, 수량, 기록을 반복한다, PI-03).
  *
  * 작업 순서: 자재 목록에서 받은 자재 확인 → LOT 라벨(필요하면 금형 코드) 스캔 → 담긴 LOT의 투입 수량과
- * [투입 기록](저장은 이것 하나) → 하단 바 [생산 작업으로].
+ * [투입 등록](저장은 이것 하나) → 하단 바 [생산 작업으로].
  *
  * ⛔ **판정을 화면이 대신하지 않는다.** 오투입(BOM 정합), 자재 상태(Hold, 불량), 단말 게이팅은
  * 서버 몫이다. 화면은 읽은 것을 보이고 서버가 거절하면 그 말을 옮긴다.
  *
- * ⭐ **단말 게이팅은 미리 판정한다**(스펙 §5-1). 진입 시 `canInputMaterial`을 읽어 [투입 기록]과
+ * ⭐ **단말 게이팅은 미리 판정한다**(스펙 §5-1). 진입 시 `canInputMaterial`을 읽어 [투입 등록]과
  * 하단 바 [생산 작업으로]를 잠근다. 다만 그 잠금은 오조작을 줄이는 장치이지 집행이 아니다 — 집행은 서버의 403이고,
  * 오프라인 큐로 들어온 투입은 이 화면을 지나지 않는다.
  */
@@ -248,7 +248,7 @@ export const MaterialInputScanScreen = () => {
    */
   const [localRecords, setLocalRecords] = useState<readonly LocalRecord[]>([]);
   /*
-   * 기록 전인 LOT(PI-18, 사용자 확인 2026-10-23). 스캔하거나 다시 스캔하면 기록 전이고, [투입 기록]이나
+   * 기록 전인 LOT(PI-18, 사용자 확인 2026-10-23). 스캔하거나 다시 스캔하면 기록 전이고, [투입 등록]이나
    * [스캔 취소]로 풀린다. 기록된 LOT의 줄만 눌러 연 경우는 수량을 고쳐도 기록 전이 아니다.
    */
   const [armedLotIds, setArmedLotIds] = useState<readonly number[]>([]);
@@ -286,13 +286,16 @@ export const MaterialInputScanScreen = () => {
   };
 
   /*
-   * 「보낼 예정」 투입(사용자 결정 2026-10-26, PI-26). 스캔한 LOT의 남은 수량을 곧바로 투입으로 잡아
-   * 단말 저장소에 두고, 다음 동작(다음 스캔, 다른 줄 선택, [생산 작업으로], 화면 떠남, [투입 기록])에서
+   * 「미전송」 투입(사용자 결정 2026-10-26, PI-26). 스캔한 LOT의 잔량을 곧바로 투입으로 잡아
+   * 단말 저장소에 두고, 다음 동작(다음 스캔, 다른 줄 선택, [생산 작업으로], 화면 떠남, [투입 등록])에서
    * 기존 기록 호출로 보낸다. 시간으로는 보내지 않는다. 언제 보내는지는 `send-timing` 한 곳이 정한다.
    */
   const [pendingInput, setPendingInput] = useState<PendingInput | null>(null);
+  /* 목록 순서(줄 key)와 다시 정렬 요청(PI-32). */
+  const [rowOrder, setRowOrder] = useState<readonly string[]>([]);
+  const [resortTick, setResortTick] = useState(0);
   const autoLotId = pendingInput?.material.lotId ?? null;
-  /* 자동으로 보내지 못하는 LOT의 까닭(남은 수량 모름, 0 이하, 단위 다름). 직접 입력으로 돌린다. */
+  /* 자동으로 보내지 못하는 LOT의 까닭(잔량 모름, 0 이하, 단위 다름). 직접 입력으로 돌린다. */
   const [manualReasons, setManualReasons] = useState<Readonly<Record<number, ManualReason>>>({});
   /* [생산 작업으로]: 창의 투입을 큐에 넣은 뒤(다음 커밋) 옮긴다. */
   const [isLeavingToProduction, setLeavingToProduction] = useState(false);
@@ -316,7 +319,7 @@ export const MaterialInputScanScreen = () => {
   };
 
   const handleScan = (code: string): void => {
-    /* 다음 스캔은 앞 LOT의 되돌리기 창을 닫는다 — 앞 LOT을 먼저 보낸다. */
+    /* 다음 스캔은 앞 LOT의 미전송을 닫는다 — 앞 LOT을 먼저 보낸다. */
     flushAuto();
     setActionNotice(null);
     /*
@@ -331,6 +334,10 @@ export const MaterialInputScanScreen = () => {
           setActionNotice(null);
         },
         onSuccess: (outcome) => {
+          /* 다음 LOT을 스캔하면 목록을 다시 정렬한다(C-21, PI-32). 금형이나 못 찾은 코드는 아니다. */
+          if (outcome.kind === 'material' || outcome.kind === 'duplicate') {
+            setResortTick((prev) => prev + 1);
+          }
           setActionNotice(null);
           /*
            * 함수형 갱신으로 담는다 — 연달아 읽힌 스캔 둘이 같은 `draft`를 각자 읽고 덮으면
@@ -386,9 +393,9 @@ export const MaterialInputScanScreen = () => {
   const canRecordNow = gate.verdict === 'allowed' && workerNo !== null && workOrderId !== null;
 
   /*
-   * 스캔한 LOT의 투입을 시작한다(PI-26, PI-28). 남은 수량을 알고 0보다 크고 단위가 같으며 단말이
-   * 기록할 수 있으면 그 양으로 「보낼 예정」 투입을 만든다. 남은 수량이 0 이하면 보이기만 한다
-   * ([추가 투입 입력]을 눌러야 입력이 열린다). 그 밖에는 직접 입력(칸과 [투입 기록])으로 돌리고
+   * 스캔한 LOT의 투입을 시작한다(PI-26, PI-28). 잔량을 알고 0보다 크고 단위가 같으며 단말이
+   * 기록할 수 있으면 그 양으로 「미전송」 투입을 만든다. 잔량이 0 이하면 보이기만 한다
+   * ([추가 투입]을 눌러야 입력이 열린다). 그 밖에는 직접 입력(칸과 [투입 등록])으로 돌리고
    * 까닭을 한 줄로 보인다. 돌려준 값은 까닭이다(`null`이면 자동 투입).
    */
   const beginInput = (material: ScannedMaterial): ManualReason | null => {
@@ -445,11 +452,11 @@ export const MaterialInputScanScreen = () => {
   };
 
   /**
-   * 「보낼 예정」 한 건을 보낸다(기존 기록 호출, outbox). 저장소에서 먼저 지워 두 번 보내지 않는다.
+   * 「미전송」 한 건을 보낸다(기존 기록 호출, outbox). 저장소에서 먼저 지워 두 번 보내지 않는다.
    * 수량이 쓸 수 없는 값이거나 지금 기록할 수 없으면 보내지 않고 그 LOT은 직접 입력(기록 전)으로 남는다.
    */
   const sendPending = (item: PendingInput): void => {
-    /* 지금 기록할 수 없으면(단말 판정) 「보낼 예정」으로 둔다. 하단 바가 사유를 말한다. */
+    /* 지금 기록할 수 없으면(단말 판정) 「미전송」으로 둔다. 하단 바가 사유를 말한다. */
     if (gate.verdict !== 'allowed') return;
 
     const lotId = item.material.lotId;
@@ -475,18 +482,18 @@ export const MaterialInputScanScreen = () => {
     );
   };
 
-  /* 스캔 결과는 늦게 온다. 그때의 최신 값(받은 수량, 투입한 수량, 기록 전 LOT)으로 판단한다. */
+  /* 스캔 결과는 늦게 온다. 그때의 최신 값(불출량, 투입량, 기록 전 LOT)으로 판단한다. */
   const live = useRef({ beginInput, armedLotIds, itemNameOf });
   live.current = { beginInput, armedLotIds, itemNameOf };
 
-  /** 「보낼 예정」을 지금 보낸다(다음 동작). 없으면 아무것도 하지 않는다. 고친 수량으로 보낸다. */
+  /** 「미전송」을 지금 보낸다(다음 동작). 없으면 아무것도 하지 않는다. 고친 수량으로 보낸다. */
   const flushAuto = (): void => {
     if (pendingInput === null) return;
 
     sendPending({ ...pendingInput, qty: readQty(qtyDrafts, pendingInput.material.lotId) });
   };
 
-  /** [되돌리기]: 「보낼 예정」을 보내지 않고 버린다(저장소에서 지움). 그 LOT의 스캔도 거둔다. */
+  /** [취소]: 「미전송」을 보내지 않고 버린다(저장소에서 지움). 그 LOT의 스캔도 거둔다. */
   const undoAuto = (): void => {
     if (pendingInput === null) return;
 
@@ -497,7 +504,7 @@ export const MaterialInputScanScreen = () => {
     setActionNotice(t.scan.outcomes.undone(itemNameOf(lotId, itemId)));
   };
 
-  /** [추가 투입 입력]: 다 투입한 LOT에 더 넣는다. 직접 입력(기록 전)으로 연다(PI-28 다시). */
+  /** [추가 투입]: 다 투입한 LOT에 더 넣는다. 직접 입력(기록 전)으로 연다(PI-28 다시). */
   const startExtraInput = (lotId: number): void => {
     setQtyDrafts((prev) => writeQty(prev, lotId, ''));
     arm(lotId);
@@ -524,7 +531,7 @@ export const MaterialInputScanScreen = () => {
 
   const changeQty = (lotId: number, value: string): void => {
     setQtyDrafts((prev) => writeQty(prev, lotId, value));
-    /* 「보낼 예정」의 수량을 고치면 저장소에도 남긴다(다시 불러와도 고친 양). */
+    /* 「미전송」의 수량을 고치면 저장소에도 남긴다(다시 불러와도 고친 양). */
     if (pendingInput !== null && pendingInput.material.lotId === lotId) {
       const next = { ...pendingInput, qty: value };
       savePendingInput(next);
@@ -566,8 +573,8 @@ export const MaterialInputScanScreen = () => {
       { lotId, qty: body.inputQty, uomId: body.uomId, occurredAt: body.occurredAt },
     ]);
     /*
-     * 기록하면 칸을 비운다. 같은 칸으로 [투입 기록]을 한 번 더 누르면 같은 양이 또 기록되기 때문이다.
-     * 더 넣으려면 다시 스캔하거나 줄을 눌러 남은 수량을 다시 채운다(PI-18).
+     * 기록하면 칸을 비운다. 같은 칸으로 [투입 등록]을 한 번 더 누르면 같은 양이 또 기록되기 때문이다.
+     * 더 넣으려면 다시 스캔하거나 줄을 눌러 잔량을 다시 채운다(PI-18).
      */
     setQtyDrafts((prev) => dropQty(prev, lotId));
     disarm(lotId);
@@ -642,7 +649,7 @@ export const MaterialInputScanScreen = () => {
   }, [isLeavingToProduction, navigate, workOrderId]);
 
   /*
-   * 화면을 떠날 때(머리줄 [화면 이동], [사용자 전환] 등) 「보낼 예정」을 보낸다. 화면의 상태 갱신은 더는
+   * 화면을 떠날 때(머리줄 [화면 이동], [사용자 전환] 등) 「미전송」을 보낸다. 화면의 상태 갱신은 더는
    * 돌지 않으므로 저장소에서 꺼내 outbox의 저장된 큐로 옮긴다(PI-27). 다음에 이 화면이 뜰 때 보낸다.
    *
    * ⚠ 개발용 StrictMode는 마운트 직후 정리와 재마운트를 한 번 흉내 낸다. 그때 보내지 않게 정리를 한 틱
@@ -666,8 +673,8 @@ export const MaterialInputScanScreen = () => {
   }, []);
 
   /*
-   * 화면을 다시 열면(다시 불러옴, 단말 재시작) 남은 「보낼 예정」을 정리한다(PI-31). 같은 W/O와 같은
-   * 작업자의 마지막 한 건은 「보낼 예정」으로 되살려 고치거나 되돌릴 수 있게 하고, 나머지는 기존 길로
+   * 화면을 다시 열면(다시 불러옴, 단말 재시작) 남은 「미전송」을 정리한다(PI-31). 같은 W/O와 같은
+   * 작업자의 마지막 한 건은 「미전송」으로 되살려 고치거나 되돌릴 수 있게 하고, 나머지는 기존 길로
    * 보내며 한 번 알린다.
    */
   const leftoversHandled = useRef(false);
@@ -732,7 +739,7 @@ export const MaterialInputScanScreen = () => {
     hasPending: pendingMaterials.length > 0,
   });
   /*
-   * LOT별 이 W/O에 기록된 투입 누계. 서버 기록 합에, 이 화면에서 큐에 담았지만 아직 그 합에 들지
+   * LOT별 이 W/O에 기록된 투입량. 서버 기록 합에, 이 화면에서 큐에 담았지만 아직 그 합에 들지
    * 않은 건(미전송, 다시 읽기 전)을 더한다. 서버가 받아 준 건은 다시 읽은 합에 그 기록 번호가 들어
    * 있으면 빼고(두 번 세지 않는다), 거부된 건은 더하지 않는다. 표시와 기본값에만 쓴다.
    */
@@ -765,7 +772,7 @@ export const MaterialInputScanScreen = () => {
 
   /*
    * LOT별 이 W/O의 투입 기록 목록(편집 영역). 서버 기록, 이 화면이 보냈지만 아직 다시 읽지 않은 것,
-   * 「보낼 예정」 순이다. 취소(omf-mes-server#828)가 생기면 이 목록의 줄에 [취소]가 선다(PI-30).
+   * 「미전송」 순이다. 취소(omf-mes-server#828)가 생기면 이 목록의 줄에 [취소]가 선다(PI-30).
    */
   const recordsOf = (lotId: number): InputRecordView[] => {
     const server = recorded.byLot.get(lotId);
@@ -808,7 +815,7 @@ export const MaterialInputScanScreen = () => {
       });
     }
 
-    /* 「보낼 예정」은 늘 끝에, 나머지는 시각 순. */
+    /* 「미전송」은 늘 끝에, 나머지는 시각 순. */
     return list.sort((x, y) =>
       x.state !== y.state
         ? x.state === 'pending'
@@ -818,7 +825,7 @@ export const MaterialInputScanScreen = () => {
     );
   };
 
-  /* 남은 수량 = 수령 − 투입 누계. 수령 줄이 없거나 단위가 다르면 모른다(`null`). */
+  /* 잔량 = 수령 − 투입량. 수령 줄이 없거나 단위가 다르면 모른다(`null`). */
   function remainingQtyOf(lotId: number, uomId: number): number | null {
     const line = receipt.lines.find((candidate) => candidate.lotId === lotId);
     if (line === undefined || line.uomId !== uomId) return null;
@@ -828,6 +835,41 @@ export const MaterialInputScanScreen = () => {
 
     return line.receivedQty - (done?.qty ?? 0);
   }
+
+  /*
+   * 목록 순서(C-21, PI-32): 할 일이 남은 줄이 위, 끝난 줄이 아래. 투입 중 → 미투입과 진행 중 → 과투입 →
+   * 투입 완료, 같은 묶음 안은 원래 순서. 다시 정렬은 화면을 열 때(받은 자재와 투입 기록을 다 받은 뒤)와
+   * 스캔할 때만 한다. 방금 끝낸 줄은 그 자리에 둔다.
+   */
+  const rankOf = (row: MaterialRow): number => {
+    if (row.material !== undefined && armedLotIds.includes(row.lotId)) return 0;
+    const state = progressStateOf(
+      row.receipt?.receivedQty ?? null,
+      recordedQtyOf(row.lotId)?.qty ?? 0,
+    ).kind;
+
+    return state === 'over' ? 2 : state === 'done' ? 3 : 1;
+  };
+  const isListReady = !receipt.isPending && !recorded.isPending;
+  useEffect(() => {
+    if (!isListReady) return;
+    setRowOrder(
+      rows
+        .map((row, index) => ({ key: row.key, rank: rankOf(row), index }))
+        .sort((a, b) => a.rank - b.rank || a.index - b.index)
+        .map((one) => one.key),
+    );
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 화면을 열 때와 스캔할 때만 다시 정렬한다. */
+  }, [isListReady, resortTick]);
+  const orderedRows = [...rows].sort((a, b) => {
+    const ai = rowOrder.indexOf(a.key);
+    const bi = rowOrder.indexOf(b.key);
+
+    return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+  });
+  /* 목록 위 한 줄: 투입할 자재와 투입 완료(과투입 포함)의 건수. 지금 상태로 센다. */
+  const doneCount = rows.filter((row) => rankOf(row) >= 2).length;
+  const todoCount = rows.length - doneCount;
 
   const hasRecorded =
     isAutoSendable ||
@@ -949,12 +991,19 @@ export const MaterialInputScanScreen = () => {
             onLockedPress={openWorkerDialog}
           />
 
+          {rows.length > 0 && (
+            <p className="material-input-summary">{t.scanned.summary(todoCount, doneCount)}</p>
+          )}
+
           <MaterialList
-            rows={receipt.isError ? rows.filter((row) => row.material !== undefined) : rows}
+            rows={
+              receipt.isError
+                ? orderedRows.filter((row) => row.material !== undefined)
+                : orderedRows
+            }
             isLoading={receipt.isPending && workOrderId !== null}
             hasWorkOrder={workOrderId !== null}
             isError={receipt.isError}
-            remainingQtyOf={remainingQtyOf}
             describeItem={labels.describeItem}
             describeUom={labels.describeUom}
             notes={notes}
@@ -971,7 +1020,7 @@ export const MaterialInputScanScreen = () => {
 
                 return;
               }
-              /* 다른 줄을 고르면 되돌리기 창을 닫는다 — 창의 투입을 먼저 보낸다(PI-26). */
+              /* 다른 줄을 고르면 미전송을 닫는다 — 창의 투입을 먼저 보낸다(PI-26). */
               if (lotId !== autoLotId) flushAuto();
               setSelectedLotId(lotId);
               /*

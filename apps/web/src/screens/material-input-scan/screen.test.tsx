@@ -18,7 +18,7 @@ import { MaterialInputScanScreen } from './screen';
 const t = messages.materialInputScan;
 
 /*
- * 화면을 떠날 때 되돌리기 창의 투입은 저장된 큐에 남는다(PI-27). 앞 시험이 남긴 큐가 다음 시험에서
+ * 화면을 떠날 때 미전송 투입은 저장된 큐에 남는다(PI-27). 앞 시험이 남긴 큐가 다음 시험에서
  * 나가지 않게, 시험마다 비우고 시작한다.
  */
 beforeEach(() => {
@@ -162,7 +162,7 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
     expect(within(rows[2] as HTMLElement).getByText(t.receiptStatus.none)).toBeTruthy();
 
     await user.click(within(rows[0] as HTMLElement).getByRole('button'));
-    expect(within(editor()).getByText(t.pairs.receivedQty)).toBeTruthy();
+    expect(within(editor()).getByText(t.pairs.progressLabel)).toBeTruthy();
     /* 정상(받음)과 다른 담당의 값(출고, 차이)은 두지 않는다(C-21). */
     expect(within(editor()).queryByText(t.receiptStatus.matched)).toBeNull();
     expect(within(editor()).queryByText(/출고|차이/)).toBeNull();

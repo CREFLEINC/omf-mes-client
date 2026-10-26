@@ -27,7 +27,7 @@ const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial')
 const t = messages.materialInputScan;
 
 /*
- * 화면을 떠날 때 되돌리기 창의 투입은 저장된 큐에 남는다(PI-27). 앞 시험이 남긴 큐가 다음 시험에서
+ * 화면을 떠날 때 미전송 투입은 저장된 큐에 남는다(PI-27). 앞 시험이 남긴 큐가 다음 시험에서
  * 나가지 않게, 시험마다 비우고 시작한다.
  */
 beforeEach(() => {
@@ -44,8 +44,8 @@ const UNIDENTIFIED_TEXT = popGateUnidentifiedText(t.confirm.reasons.unidentified
 const scannedList = (): HTMLElement => screen.getByRole('list', { name: t.scanned.materialsLabel });
 
 /**
- * 그 LOT이 스캔으로 담겨 있는가. 자재 목록에는 수령한 LOT도 「스캔 전」으로 서 있으므로, 줄이
- * 있는지가 아니라 그 줄이 「스캔 전」이 아닌지를 본다.
+ * 그 LOT이 스캔으로 담겨 있는가(기록 전, 「투입 중」 칩). 자재 목록에는 불출된 LOT도 서 있으므로 줄이
+ * 있는지가 아니라 그 줄의 진행 칩을 본다.
  */
 const scannedHas = (lotNo: string): boolean => {
   const list = screen.queryByRole('list', { name: t.scanned.materialsLabel });
@@ -55,7 +55,7 @@ const scannedHas = (lotNo: string): boolean => {
     .queryAllByRole('listitem')
     .find((item) => within(item).queryByText(lotNo) !== null);
 
-  return row !== undefined && within(row).queryByText(t.scanned.notScannedMark) === null;
+  return row !== undefined && within(row).queryByText(t.scanned.pendingMark) !== null;
 };
 
 /** 투입 수량 편집 영역(고른 LOT의 상세). */
@@ -806,7 +806,12 @@ describe('MaterialInputScanScreen — 금형', () => {
 
     expect(await screen.findByText(t.scan.outcomes.mold('합성 금형 가를'))).toBeTruthy();
     expect(screen.queryByText(t.scanned.shotCountExceeded('합성 금형 가'))).toBeNull();
-    expect(screen.queryByRole('progressbar')).toBeNull();
+    /* 타발 진행 막대는 두지 않는다. 막대는 자재 줄의 투입량 막대뿐이다. */
+    expect(
+      screen
+        .queryAllByRole('progressbar')
+        .every((bar) => bar.getAttribute('aria-label') === t.pairs.progressLabel),
+    ).toBe(true);
   });
 });
 
@@ -994,7 +999,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 
-    /* 남은 수량으로 투입이 잡혔다(PI-26). 누르면 먼저 보내고 옮긴다. */
+    /* 잔량으로 투입이 잡혔다(PI-26). 누르면 먼저 보내고 옮긴다. */
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
         'disabled',

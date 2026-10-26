@@ -26,7 +26,7 @@ const ITEM: PendingInput = {
   scannedAt: '2026-10-26T09:00:00.000Z',
 };
 
-describe('「보낼 예정」 저장소(PI-26)', () => {
+describe('「미전송」 저장소(PI-26)', () => {
   beforeEach(() => {
     globalThis.localStorage.clear();
   });

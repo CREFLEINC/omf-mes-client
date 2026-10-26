@@ -5,7 +5,7 @@ import { NumericKeypad } from '@omf-mes/ui';
 import { POP_TOUCH_SIZE } from '../work-start/touch-spec';
 import { readQty, validateQty, type QtyDrafts } from './input-qty';
 import {
-  QtyRelation,
+  QtyProgress,
   RECEIPT_STATUS_LABEL,
   RECEIPT_STATUS_TONE,
   type MaterialRow,
@@ -30,7 +30,7 @@ export interface InputRecordView {
   qty: number;
   uomId: number;
   occurredAt: string;
-  /** 「보낼 예정」(단말에 있음) 또는 「보냄」. */
+  /** 「미전송」(단말에 있음) 또는 「전송 완료」. */
   state: 'pending' | 'sent';
 }
 
@@ -52,11 +52,11 @@ const timeOf = (iso: string, now: Date = new Date()): string => {
 export interface QtyEditorProps {
   /** 편집 영역에 연 줄. 없으면 `null`. */
   row: MaterialRow | null;
-  /** 이번 투입 입력 중인가(스캔하거나 다시 스캔하고 아직 기록하지 않음). 그때만 [스캔 취소]를 둔다. */
+  /** 투입 중인가(스캔하거나 다시 스캔하고 아직 기록하지 않음). 그때만 [스캔 취소]를 둔다. */
   isPending: boolean;
-  /** 이 W/O에 투입한 수량(LOT별 합). 없으면 `null`. */
+  /** 이 W/O에 투입량(LOT별 합). 없으면 `null`. */
   recordedQty: { qty: number; uomId: number } | null;
-  /** 남은 수량(받은 수량 − 투입한 수량). 모르면 `null`. */
+  /** 잔량(불출량 − 투입량). 모르면 `null`. */
   remainingQty: number | null;
   qtyDrafts: QtyDrafts;
   describeItem: (itemId: number) => string;
@@ -69,16 +69,16 @@ export interface QtyEditorProps {
    * 닫혔으면 여기서 막는다. 잠긴 이유는 하단 바 「남은 일」이 말한다.
    */
   canRecord: boolean;
-  /** 「남은 일」 문단 id. 잠긴 [투입 기록]이 `aria-describedby`로 잇는다(C-4). */
+  /** 「남은 일」 문단 id. 잠긴 [투입 등록]이 `aria-describedby`로 잇는다(C-4). */
   remainingId: string;
   onQtyChange: (lotId: number, value: string) => void;
   onRecord: (lotId: number) => void;
   onRemove: (lotId: number) => void;
-  /** 이 LOT이 「보낼 예정」인가(PI-26). 그때 [되돌리기]와 보내는 때 안내를 둔다. */
+  /** 이 LOT이 「미전송」인가(PI-26). 그때 [취소]와 보내는 때 안내를 둔다. */
   isAutoPending: boolean;
-  /** 이 W/O의 이 LOT 투입 기록(서버, 보냄, 보낼 예정). */
+  /** 이 W/O의 이 LOT 투입 기록(서버, 전송 완료, 미전송). */
   records: readonly InputRecordView[];
-  /** [추가 투입 입력]: 다 투입한 LOT에 직접 입력을 연다(PI-28). */
+  /** [추가 투입]: 다 투입한 LOT에 직접 입력을 연다(PI-28). */
   onExtraInput: (lotId: number) => void;
   /**
    * 투입 기록 한 줄을 취소한다. **취소 자리**다 — omf-mes-server#828 의 취소 기록 API가 생기면
@@ -87,22 +87,23 @@ export interface QtyEditorProps {
   onCancelRecord?: (record: InputRecordView) => void;
   /** 자동으로 보내지 않고 직접 입력으로 돌린 까닭. 없으면 `null`(PI-28). */
   manualReason: 'unknown' | 'none' | 'unit' | null;
-  /** [되돌리기]: 창의 투입을 버린다. */
+  /** [취소]: 창의 투입을 버린다. */
   onUndo: () => void;
 }
 
 /**
  * 편집 영역: 고른 자재 하나(C-21).
  *
- * - 제목은 고른 품목 「이름 (코드)」다(C-21 영역 제목). LOT 번호는 목록 줄에만 있다(번호 반복 금지,
- *   PI-19). 오른쪽에 [스캔 취소](작게, 테두리, 이번 투입 입력 중일 때만).
+ * - 제목 줄은 고른 품목 「이름 (코드)」와 오른쪽 끝의 예외 칩, [스캔 취소](작게, 테두리, 투입 중이고
+ *   미전송이 아닐 때만)다(C-21 영역 제목, 목록 줄과 같은 나눔). LOT 번호는 목록 줄에만 있다(PI-19).
  * - 예외 칩(덜 받음, 못 받음, 단위 다름, 보류 확인 필요, 4M 변경품, 출고 미귀속)만 보인다. 정상 값
  *   (수령 완료, LOT 상태 정상)과 다른 담당의 값(출고, 차이)은 두지 않는다(C-21).
- * - 수량 한 줄: 받은 수량 → 투입한 수량 → 남은 수량(목록 줄과 같은 이름, `QtyRelation`).
- * - 소제목 「이번 투입」 아래 칸과 [투입 기록], 키패드(C-19 소제목 위, 상자 안 상자 없음).
+ * - 정보 영역은 「투입량 30 / 100 KG」과 막대(목록 줄과 같은 부품 `QtyProgress`). 잔량은 이번 투입
+ *   곁에만 「잔량 70 KG」, 불출량을 넘으면 음수 대신 「불출량보다 5 KG 더 투입했습니다.」(C-21).
+ * - 소제목 「이번 투입」 아래 칸과 [투입 등록], 키패드(C-19 소제목 위, 상자 안 상자 없음).
  *
- * 지난 기록은 고치지 않는다(B-3). 더 넣으면 새 기록이 덧붙는다(PI-18). 스캔하면 이번 투입 칸에 남은
- * 수량이 미리 채워진다(PI-05). [투입 기록]은 이 영역의 채움 버튼 하나다(C-3 영역마다 하나, PI-14).
+ * 지난 기록은 고치지 않는다(B-3). 더 넣으면 새 기록이 덧붙는다(PI-18). 스캔하면 이번 투입 칸에 잔량이
+ * 미리 채워진다(PI-05). [투입 등록]은 이 영역의 채움 버튼 하나다(C-3 영역마다 하나, PI-14).
  * 수량은 작업 내내 반복해 넣는 값이라 키패드를 창이 아니라 화면에 둔다(C-12).
  */
 export const QtyEditor = ({
@@ -142,6 +143,13 @@ export const QtyEditor = ({
   const itemCode = receipt?.itemCode ?? describeItem(row.itemId);
   const qty = readQty(qtyDrafts, row.lotId);
   const canSubmit = canRecord && validateQty(qty) === null;
+  const withUnit = (value: number): string =>
+    uom === '' ? String(value) : `${String(value)} ${uom}`;
+  const received = receipt?.receivedQty ?? null;
+  const overQty =
+    received !== null && recordedQty !== null && recordedQty.qty > received
+      ? recordedQty.qty - received
+      : null;
   const isUnitMismatch =
     material !== undefined && receipt !== undefined && material.uomId !== receipt.uomId;
   const fourM = material?.fourMChange ?? null;
@@ -160,8 +168,38 @@ export const QtyEditor = ({
 
   return (
     <section className="pane material-input-qty" aria-label={t.panes.noSelection}>
+      {/* 제목 줄(C-21): 품목 「이름 (코드)」, 오른쪽 끝에 예외 칩과 [스캔 취소]. 정보 영역과 간격으로 나눈다. */}
       <div className="material-input-qty-head">
         <h2 className="pane-title">{named(receipt?.itemName, itemCode)}</h2>
+        {hasException && (
+          <span className="material-input-lot-chips">
+            {receipt !== undefined && receipt.status !== 'matched' && (
+              <Chip variant="status" size="md" status={RECEIPT_STATUS_TONE[receipt.status]}>
+                {RECEIPT_STATUS_LABEL[receipt.status]}
+              </Chip>
+            )}
+            {isUnitMismatch && (
+              <Chip variant="status" size="md" status="warning">
+                {t.scanned.unitMismatch}
+              </Chip>
+            )}
+            {material?.isHeld === true && (
+              <Chip variant="status" size="md" status="warning">
+                {t.scanned.heldMark}
+              </Chip>
+            )}
+            {fourM !== null && (
+              <Chip variant="status" size="md" status="warning">
+                {t.scanned.fourMChangeMark}
+              </Chip>
+            )}
+            {isUnlinked && (
+              <Chip variant="status" size="md" status="info">
+                {t.scanned.unlinkedIssue}
+              </Chip>
+            )}
+          </span>
+        )}
         {material !== undefined && isPending && !isAutoPending && (
           <Button
             type="button"
@@ -176,53 +214,27 @@ export const QtyEditor = ({
           </Button>
         )}
       </div>
-
-      {hasException && (
-        <div className="material-input-exceptions">
-          {receipt !== undefined && receipt.status !== 'matched' && (
-            <Chip variant="status" size="md" status={RECEIPT_STATUS_TONE[receipt.status]}>
-              {RECEIPT_STATUS_LABEL[receipt.status]}
-            </Chip>
-          )}
-          {isUnitMismatch && (
-            <Chip variant="status" size="md" status="warning">
-              {t.scanned.unitMismatch}
-            </Chip>
-          )}
-          {material?.isHeld === true && (
-            <Chip variant="status" size="md" status="warning">
-              {t.scanned.heldMark}
-            </Chip>
-          )}
-          {fourM !== null && (
-            <Chip variant="status" size="md" status="warning">
-              {t.scanned.fourMChangeMark}
-            </Chip>
-          )}
-          {isUnlinked && (
-            <Chip variant="status" size="md" status="info">
-              {t.scanned.unlinkedIssue}
-            </Chip>
-          )}
-        </div>
-      )}
       {fourMText !== null && fourMText !== '' && (
         <p className="field-note">{t.scanned.fourMChangeLine(fourMText)}</p>
       )}
 
-      <p className="material-input-qty-line">
-        <QtyRelation
+      {/* 정보 영역(C-21): 목록 줄과 같은 「투입량」 쌍과 막대. */}
+      <span className="material-input-info material-input-qty-line">
+        <span className="material-input-info-label">{t.pairs.progressLabel}</span>
+        <QtyProgress
           received={receipt?.receivedQty ?? null}
-          recorded={recordedQty?.qty ?? null}
-          remaining={remainingQty}
+          recorded={recordedQty?.qty ?? 0}
           uom={uom}
         />
-      </p>
+      </span>
+      {/* 불출량을 넘으면 음수 대신 한 줄로 말한다(C-21). */}
+      {overQty !== null && <p className="field-note">{t.pairs.over(withUnit(overQty))}</p>}
 
       {material !== undefined && !isPending && manualReason === 'none' ? (
         /* 다 투입한 LOT: 정보만. 더 넣을 때만 직접 입력을 연다(PI-28 다시). */
         <div className="material-input-auto">
-          <p className="material-input-auto-hint">{t.scanned.allInput}</p>
+          {/* 과투입이면 위 한 줄이 이미 말한다. */}
+          {overQty === null && <p className="material-input-auto-hint">{t.scanned.allInput}</p>}
           <Button
             type="button"
             variant="outlined"
@@ -246,13 +258,21 @@ export const QtyEditor = ({
         </p>
       ) : (
         <>
-          <h3 className="material-input-subtitle">{t.pairs.thisInput}</h3>
+          {/* 남은 양은 지금 넣을 칸 곁에만 둔다(C-21). 0 이하는 두지 않는다. */}
+          <div className="material-input-qty-head">
+            <h3 className="material-input-subtitle">{t.pairs.thisInput}</h3>
+            {remainingQty !== null && remainingQty > 0 && (
+              <span className="material-input-remaining">
+                {t.pairs.remaining(withUnit(remainingQty))}
+              </span>
+            )}
+          </div>
           {manualReason !== null && !isAutoPending && (
             <p className="field-note">{t.scanned.manualReasons[manualReason]}</p>
           )}
           {isAutoPending && (
             /*
-             * 「보낼 예정」(PI-26): 보내는 때 안내와 [되돌리기]. 칸을 고치면 고친 양을 보내고, [투입 기록]은
+             * 「미전송」(PI-26): 보내는 때 안내와 [취소]. 칸을 고치면 고친 양을 보내고, [투입 등록]은
              * 다음 동작을 기다리지 않고 지금 보낸다.
              */
             <div className="material-input-auto">
@@ -287,7 +307,7 @@ export const QtyEditor = ({
               }}
             />
             {/*
-             * [투입 기록]이 이 화면의 유일한 저장이다(§5-8 건별 저장, 사용자 화면 확인 결정
+             * [투입 등록]이 이 화면의 유일한 저장이다(§5-8 건별 저장, 사용자 화면 확인 결정
              * 2026-10-23). 수량이 없거나 단말이 막혔으면 누르지 못하고, 사유는 하단 바 「남은 일」이다.
              */}
             <Button
@@ -326,14 +346,14 @@ export const QtyEditor = ({
           <ul className="material-input-records" aria-label={t.scanned.recordsTitle}>
             {records.map((record) => (
               <li key={record.key} className="material-input-record">
-                <span className="material-input-qty-value">
+                <span className="material-input-record-qty">
                   {(() => {
                     const unit = describeUom(record.uomId);
 
                     return unit === '' ? String(record.qty) : `${String(record.qty)} ${unit}`;
                   })()}
                 </span>
-                <span className="material-input-qty-name">{timeOf(record.occurredAt)}</span>
+                <span className="material-input-record-time">{timeOf(record.occurredAt)}</span>
                 <Chip
                   variant="status"
                   size="md"

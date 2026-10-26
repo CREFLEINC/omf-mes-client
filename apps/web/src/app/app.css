@@ -12359,7 +12359,8 @@ button.app-button-neutral {
  * 스크롤한다. 하단 바의 주 동작은 LOT을 몇 건 담아도 화면 안에 있다(C-14).
  *
  * 현장 화면의 정보와 이름(C-21): 목록 줄과 편집 영역의 첫 줄은 품목 이름, LOT 번호는 목록 줄에만,
- * 수량은 받은 → 투입한 → 남은 한 줄, 정상 값은 두지 않고 예외만 칩.
+ * 줄은 제목 줄과 정보 영역(「LOT」, 「투입량 30 / 100 KG」과 막대)으로 나누고, 정상 값은 두지 않고
+ * 예외만 칩. 잔량은 편집 영역에만, 음수는 없다(과투입은 칩).
  *
  * 클래스 이름을 `material-input-` 로 시작한다. 이름에 `action` 을 넣지 않는다. POP 바닥 띠
  * 규칙(`[class*='action']`)이 걸린다.
@@ -12395,6 +12396,13 @@ button.app-button-neutral {
   gap: var(--space-2);
 }
 
+/* 목록 위 한 줄: 투입할 자재와 투입 완료 건수(C-21). */
+.material-input-summary {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
 /* 자재 목록. 남는 높이를 쓰고 이 목록만 스크롤한다. */
 .material-input-lots {
   display: grid;
@@ -12423,7 +12431,7 @@ button.app-button-neutral {
 
 .pop-ui .material-input-lot-select {
   display: grid;
-  gap: var(--space-1);
+  gap: var(--space-2);
   width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 0;
@@ -12440,43 +12448,68 @@ button.app-button-neutral {
   font-weight: 600;
 }
 
-/* LOT 번호는 라벨과 대조하는 값이다. 저장값 그대로 고정폭 한 줄, 이름보다 한 단 낮게(C-10, C-21). */
+/* LOT 번호는 라벨과 대조하는 값이다. 저장값 그대로 고정폭 한 줄(C-10, C-21). */
 .material-input-lot-no {
-  color: var(--on-surface-variant);
+  color: var(--on-surface);
   font-family: var(--font-mono);
   font-size: var(--pop-label);
   white-space: nowrap;
 }
 
-.material-input-lot-facts,
-.material-input-exceptions {
+/* 목록 줄의 제목 줄(C-21): 이름 왼쪽, 칩 오른쪽 끝. 정보 영역과 간격으로 나눈다. */
+.material-input-lot-head {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-1) var(--space-3);
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  flex-wrap: wrap;
 }
 
-/* 수량 한 줄: 받은 → 투입한 → 남은(C-21). 이름은 흐린 색, 값은 본문 색. */
-.material-input-qty-relation {
+.material-input-lot-chips {
   display: inline-flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  justify-content: flex-end;
   gap: var(--space-1) var(--space-2);
+  margin-inline-start: auto;
 }
 
-.material-input-qty-part {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-1);
-  white-space: nowrap;
+/* 정보 영역: 「라벨 값」 쌍을 같은 열에 맞춘다. */
+.material-input-info {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
 }
 
-.material-input-qty-name,
-.material-input-qty-arrow {
+.material-input-info-label {
   color: var(--on-surface-variant);
 }
 
-.material-input-qty-value {
+/* 투입량 「30 / 100 KG」과 진행 막대(C-21). 막대는 글자 옆에서 남는 폭을 쓴다. */
+.material-input-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.material-input-progress-text {
+  color: var(--on-surface);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.material-input-progress-bar {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 끝난 줄(투입 완료, 과투입): 진행 중인 줄과 한눈에 갈리게 면을 한 단 낮춘다. 자리는 바꾸지 않는다. */
+.material-input-lot-done:not(.material-input-lot-selected) {
+  background: var(--surface-container);
+}
+
+.material-input-remaining {
   color: var(--on-surface);
   font-weight: 600;
 }
@@ -12486,13 +12519,17 @@ button.app-button-neutral {
   margin: 0;
 }
 
-/* 편집 영역. 머리 줄(고른 품목 이름과 [스캔 취소]), 예외 칩, 수량 한 줄, 소제목 「이번 투입」 아래 입력. */
+/*
+ * 편집 영역. 제목 줄(고른 품목 이름, 오른쪽 끝에 예외 칩과 [스캔 취소]), 정보 영역(투입량), 소제목
+ * 「이번 투입」(곁에 잔량) 아래 입력.
+ */
 .material-input-qty-head {
   display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
 }
 
 .material-input-qty-head > .pane-title {
@@ -12532,7 +12569,7 @@ button.app-button-neutral {
   gap: var(--space-3);
 }
 
-/* 「보낼 예정」 안내와 [되돌리기], 다 투입한 LOT의 안내와 [추가 투입 입력]을 한 줄에(PI-26, PI-28). */
+/* 미전송 안내와 [취소], 다 투입한 LOT의 안내와 [추가 투입]을 한 줄에(PI-26, PI-28). */
 .material-input-auto {
   display: flex;
   flex: 0 0 auto;
@@ -12560,6 +12597,15 @@ button.app-button-neutral {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+.material-input-record-qty {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+.material-input-record-time {
+  color: var(--on-surface-variant);
 }
 
 .material-input-keypad {

@@ -9,9 +9,12 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     noSelection: 'Vật tư đã chọn',
   },
   pairs: {
-    receivedQty: 'Đã nhận',
-    recordedQty: 'Đã đưa vào',
-    remainingQty: 'Còn lại',
+    lotLabel: 'LOT',
+    progressLabel: 'Lượng đưa vào',
+    progress: (recorded: string, issued: string | null, uom: string): string =>
+      `${recorded}${issued === null ? '' : ` / ${issued}`}${uom === '' ? '' : ` ${uom}`}`,
+    remaining: (qty: string): string => `Còn lại ${qty}`,
+    over: (qty: string): string => `Đã đưa vào nhiều hơn lượng cấp phát ${qty}.`,
     thisInput: 'Lần này',
   },
   receiptStatus: {
@@ -20,15 +23,14 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     none: 'Chưa nhận',
   },
   loading: {
-    receipt: 'Đang tải vật tư đã nhận',
+    receipt: 'Đang tải vật tư cấp phát',
   },
   empty: {
-    receiptTitle: 'Không có vật tư đã nhận. Quét LOT vật tư để thêm vào danh sách.',
+    receiptTitle: 'Không có vật tư cấp phát. Quét LOT vật tư để thêm vào danh sách.',
     notQueriedTitle: 'Chưa chỉ định lệnh sản xuất.',
   },
   notes: {
-    shortAllowed:
-      'Dù có vật tư nhận thiếu hoặc chưa nhận, vẫn có thể đưa vào theo số lượng đã nhận.',
+    shortAllowed: 'Dù có vật tư nhận thiếu hoặc chưa nhận, vẫn có thể đưa vào theo lượng cấp phát.',
   },
   scan: {
     label: 'Quét',
@@ -49,10 +51,10 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
       failed: 'Không tra cứu được. Hãy quét lại.',
       offline: 'Mất kết nối nên không tra cứu được vật tư. Hãy quét lại khi có kết nối.',
       recorded: (item: string, qty: string): string => `Đưa vào ${item} ${qty}`,
-      undone: (item: string): string => `Đã hoàn tác việc đưa vào ${item}.`,
-      allInput: (item: string): string => `${item} đã đưa vào hết số đã nhận.`,
+      undone: (item: string): string => `Đã hủy lượt đưa vào chưa gửi của ${item}.`,
+      allInput: (item: string): string => `${item} đã đưa vào hết lượng cấp phát.`,
       leftoversSent: (count: number): string =>
-        `Đã gửi ${String(count)} lượt đưa vào quét trước đó.`,
+        `Đã gửi ${String(count)} lượt đưa vào chưa gửi đã quét trước đó.`,
     },
   },
   scanned: {
@@ -62,17 +64,17 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     removed: (item: string): string => `Đã hủy quét ${item}.`,
     pendingHint: 'Sẽ gửi khi quét tiếp hoặc chuyển sang công việc sản xuất.',
     recordsTitle: 'Lịch sử đưa vào',
-    pendingState: 'Sẽ gửi',
+    pendingState: 'Chưa gửi',
     sentState: 'Đã gửi',
-    cancelRecord: 'Hủy',
-    allInput: 'Đã đưa vào hết số đã nhận.',
-    extraInput: 'Nhập thêm',
-    undo: 'Hoàn tác',
-    undoMaterial: (lotNo: string): string => `Hoàn tác đưa vào ${lotNo}`,
+    cancelRecord: 'Hủy đưa vào',
+    allInput: 'Đã đưa vào hết lượng cấp phát.',
+    extraInput: 'Đưa thêm',
+    undo: 'Hủy',
+    undoMaterial: (lotNo: string): string => `Hủy đưa vào chưa gửi ${lotNo}`,
     manualReasons: {
-      unknown: 'Không biết số lượng đã nhận nên hãy nhập lần này.',
-      none: 'Đã đưa vào hết số đã nhận. Muốn đưa thêm hãy nhập lần này.',
-      unit: 'Khác đơn vị nên hãy nhập lần này.',
+      unknown: 'Không biết lượng cấp phát nên hãy tự nhập lượng đưa vào.',
+      none: 'Đã đưa vào hết lượng cấp phát. Muốn đưa thêm hãy tự nhập lượng đưa vào.',
+      unit: 'Khác đơn vị nên hãy tự nhập lượng đưa vào.',
     },
     sentReadOnly: 'Việc đưa vào đã gửi chưa sửa được. Muốn đưa thêm hãy quét lại nhãn LOT.',
     qtyLabel: (lotNo: string): string => `${lotNo} lần này`,
@@ -83,11 +85,14 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     },
     unlinkedIssue: 'Xuất kho chưa gán',
     keypadLabel: (lotNo: string): string => `Bàn phím số lượng ${lotNo}`,
-    keypadSubmit: 'Ghi đưa vào',
+    keypadSubmit: 'Đăng ký đưa vào',
     keypadClear: 'Xóa hết',
     keypadBackspace: 'Xóa một ký tự',
-    pendingMark: 'Đang nhập lần này',
-    notScannedMark: 'Chưa đưa vào',
+    summary: (todo: number, done: number): string =>
+      `Cần đưa vào ${String(todo)}, đã xong ${String(done)}`,
+    completeMark: 'Đã đưa vào xong',
+    overMark: (qty: string): string => `Đưa vào quá ${qty}`,
+    pendingMark: 'Đang đưa vào',
     noSelection: 'Hãy chọn vật tư trong danh sách hoặc quét nhãn LOT.',
     scanToInput: 'Quét nhãn LOT để nhập số lượng lần này.',
     heldMark: 'Cần kiểm tra tạm giữ',
@@ -101,10 +106,10 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     workOrderMissing:
       'Chưa chỉ định lệnh sản xuất. Hãy chọn lệnh sản xuất ở màn hình bắt đầu công việc',
     scan: 'Hãy quét LOT vật tư',
-    record: (item: string): string => `Hãy ghi việc đưa vào ${item}`,
-    recordMany: (count: number): string => `Hãy ghi việc đưa vào ${String(count)} vật tư đã quét`,
+    record: (item: string): string => `Hãy đăng ký đưa vào ${item}`,
+    recordMany: (count: number): string => `Hãy đăng ký đưa vào ${String(count)} vật tư đã quét`,
     done: 'Có thể chuyển sang công việc sản xuất',
-    sending: (item: string, qty: string): string => `Sẽ gửi đưa vào ${item} ${qty}`,
+    sending: (item: string, qty: string): string => `Sẽ gửi đưa vào ${item} ${qty} khi quét tiếp`,
   },
   confirm: {
     reasons: {
@@ -112,11 +117,11 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
       unidentified:
         'Chưa xác nhận được máy hoặc công đoạn của lệnh sản xuất. Hãy chọn lại lệnh sản xuất ở màn hình bắt đầu công việc rồi vào lại.',
       checking: 'Đang kiểm tra quyền đưa vào',
-      qtyMissing: 'Còn vật tư chưa ghi. Hãy nhập số lượng rồi ghi, hoặc bỏ vật tư đó',
+      qtyMissing: 'Còn vật tư chưa đăng ký. Hãy nhập lượng đưa vào rồi đăng ký, hoặc hủy quét',
       workerMissing: 'Hãy nhập mã nhân viên',
     },
     retry: 'Kiểm tra lại quyền đưa vào',
     goToProductionResult: 'Sang công việc sản xuất',
-    failed: 'Không ghi được việc đưa vào.',
+    failed: 'Không đăng ký được việc đưa vào.',
   },
 };

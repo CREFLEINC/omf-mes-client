@@ -6,10 +6,10 @@ import type { ScannedMaterial } from './scan';
 type MaterialConsumptionCreate = components['schemas']['MaterialConsumptionCreate'];
 
 /**
- * 스캔했지만 아직 보내지 않은 투입 「보낼 예정」(PI-26, `send-timing`의 `next-action`).
+ * 스캔했지만 아직 보내지 않은 투입 「미전송」(PI-26, `send-timing`의 `next-action`).
  *
  * 단말 저장소에 둔다 — 다시 불러오거나 단말이 꺼져도 남는다. 보내는 길은 outbox 하나이고, 보내는
- * 순간 이 저장소에서 지운다(두 번 보내지 않는다). [되돌리기]는 여기서 지울 뿐 아무것도 보내지 않는다.
+ * 순간 이 저장소에서 지운다(두 번 보내지 않는다). [취소]는 여기서 지울 뿐 아무것도 보내지 않는다.
  *
  * 저장소에는 기록 본문을 다시 만들 수 있는 것(W/O, 사번, 세션, 스캔한 LOT, 수량, 스캔 시각)을 둔다.
  */
@@ -48,7 +48,7 @@ const isPendingInput = (value: unknown): value is PendingInput => {
   );
 };
 
-/** 저장된 「보낼 예정」. 못 읽거나 모양이 깨진 항목은 버린다(화면을 세우지 못하게 하지 않는다). */
+/** 저장된 「미전송」. 못 읽거나 모양이 깨진 항목은 버린다(화면을 세우지 못하게 하지 않는다). */
 export const readPendingInputs = (): PendingInput[] => {
   try {
     const raw = globalThis.localStorage.getItem(PENDING_KEY);
@@ -65,7 +65,7 @@ const writePendingInputs = (items: readonly PendingInput[]): void => {
   try {
     globalThis.localStorage.setItem(PENDING_KEY, JSON.stringify(items));
   } catch {
-    /* 저장에 실패해도 화면은 메모리의 「보낼 예정」으로 계속 간다. */
+    /* 저장에 실패해도 화면은 메모리의 「미전송」으로 계속 간다. */
   }
 };
 
@@ -78,7 +78,7 @@ export const removePendingInput = (id: string): void => {
   writePendingInputs(readPendingInputs().filter((one) => one.id !== id));
 };
 
-/** 「보낼 예정」 한 건의 기록 본문. 수량이 쓸 수 없는 값이면 `null`(보내지 않는다). */
+/** 「미전송」 한 건의 기록 본문. 수량이 쓸 수 없는 값이면 `null`(보내지 않는다). */
 export const toPendingBody = (item: PendingInput): MaterialConsumptionCreate | null =>
   toMaterialConsumption(
     item.workOrderId,
@@ -90,7 +90,7 @@ export const toPendingBody = (item: PendingInput): MaterialConsumptionCreate | n
 
 let counter = 0;
 
-/** 「보낼 예정」 식별자. 저장소 안에서만 쓴다. */
+/** 「미전송」 식별자. 저장소 안에서만 쓴다. */
 export const newPendingId = (): string => {
   counter += 1;
 
