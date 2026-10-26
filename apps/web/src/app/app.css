@@ -21047,7 +21047,7 @@ body.col-reordering * {
 /* 목록 · 상세 배치 단추(`patterns/split-orientation.tsx`) — 상태 칩 옆, 칩과 한 칸 띄운다. */
 .split-orientation-toggle {
   display: flex;
-  gap: 2px;
+  gap: var(--space-2);
   margin-left: var(--space-2);
   padding-left: var(--space-2);
   border-left: 1px solid var(--outline-variant);
@@ -21181,4 +21181,48 @@ table.col-measuring td {
 .inspection-queue-table table th:first-child:nth-child(n):nth-child(n),
 .inspection-queue-table table td:first-child:nth-child(n):nth-child(n) {
   padding-inline-start: var(--space-3);
+}
+
+/* 배치 단추(사용자 지시 2026-10-26) — 아이콘 + 글, 둥근 네모. 고른 배치는 주 색(붉은 톤) 바탕 · 테두리 · 아이콘. */
+.split-orientation-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  /* 옆 상태 칩과 같은 작은 글자(사용자 지시 2026-10-26). */
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+.split-orientation-option:hover {
+  border-color: var(--outline);
+  background: var(--surface-container-high);
+}
+
+.split-orientation-option:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.split-orientation-option > :first-child {
+  color: var(--on-surface-variant);
+}
+
+.split-orientation-option[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--primary) 60%, transparent);
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.split-orientation-option[aria-pressed='true'] > :first-child {
+  color: var(--primary);
 }

@@ -72,8 +72,8 @@ export const common: Translated<typeof ko.common> = {
     closeDetail: 'Đóng chi tiết',
     splitter: 'Chia độ rộng danh sách và chi tiết',
     layoutLabel: 'Bố cục danh sách · chi tiết',
-    layoutSideBySide: 'Xem trái phải',
-    layoutStacked: 'Xem trên dưới',
+    layoutSideBySide: 'Trái phải',
+    layoutStacked: 'Trên dưới',
   },
   selectDate: 'Chọn ngày',
   popWorker: {

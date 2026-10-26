@@ -1,4 +1,4 @@
-import { IconButton } from '@crefle/web-ui';
+import { Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -8,6 +8,11 @@ const t = messages.common.inspectionHub;
 
 /** 목록 · 상세 배치 — 좌우(`row`) 또는 상하(`column`). */
 export type SplitOrientation = 'row' | 'column';
+
+const OPTIONS: readonly { value: SplitOrientation; icon: string; label: string }[] = [
+  { value: 'row', icon: 'view_column_2', label: t.layoutSideBySide },
+  { value: 'column', icon: 'view_agenda', label: t.layoutStacked },
+];
 
 /**
  * 목록 · 상세 배치를 고르고 브라우저에 남긴다(사용자 지시 2026-10-26 · omf-all-around#185).
@@ -35,7 +40,7 @@ export const useSplitOrientation = (storageKey: string) => {
 };
 
 /**
- * 탭 줄 오른쪽(상태 칩 옆)의 배치 단추 둘 — 「좌우로 보기」 · 「상하로 보기」. 지금 배치가 눌린 상태로 보인다.
+ * 탭 줄 오른쪽(상태 칩 옆)의 배치 단추 둘 — 아이콘 + 「좌우 배치」 · 「상하 배치」. 고른 배치는 붉은 톤으로 눌린 상태다.
  * 탭 묶음 밖(탭 막대가 없는 계정 · 화면만 그린 시험)에서는 자리가 없어 그리지 않는다 — 배치는 좌우다.
  */
 export const SplitOrientationToggle = ({
@@ -51,24 +56,18 @@ export const SplitOrientationToggle = ({
   return (
     <HubActions target={target}>
       <div className="split-orientation-toggle" role="group" aria-label={t.layoutLabel}>
-        <IconButton
-          icon="view_column_2"
-          size="sm"
-          toggle
-          pressed={orientation === 'row'}
-          aria-label={t.layoutSideBySide}
-          title={t.layoutSideBySide}
-          onPressedChange={() => onChange('row')}
-        />
-        <IconButton
-          icon="view_agenda"
-          size="sm"
-          toggle
-          pressed={orientation === 'column'}
-          aria-label={t.layoutStacked}
-          title={t.layoutStacked}
-          onPressedChange={() => onChange('column')}
-        />
+        {OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            className="split-orientation-option"
+            aria-pressed={orientation === option.value}
+            onClick={() => onChange(option.value)}
+          >
+            <Icon name={option.icon} size={16} />
+            {option.label}
+          </button>
+        ))}
       </div>
     </HubActions>
   );

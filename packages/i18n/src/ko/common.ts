@@ -89,8 +89,8 @@ export const common = {
     closeDetail: '상세 닫기',
     splitter: '목록과 상세 폭 나누기',
     layoutLabel: '목록·상세 배치',
-    layoutSideBySide: '좌우로 보기',
-    layoutStacked: '상하로 보기',
+    layoutSideBySide: '좌우 배치',
+    layoutStacked: '상하 배치',
   },
   reference: {
     empty: '—',
