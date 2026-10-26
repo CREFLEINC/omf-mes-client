@@ -68,9 +68,12 @@ export const common: Translated<typeof ko.common> = {
     filterOff: (label: string): string => `Bỏ lọc ${label}`,
     pendingOnly: 'Chỉ xem chờ · đang làm',
     pickRequest: 'Chọn yêu cầu kiểm tra',
-    pickRequestHint: 'Nhấn vào một yêu cầu ở danh sách bên trái để xem chi tiết.',
+    pickRequestHint: 'Chọn một yêu cầu kiểm tra để xem nội dung chi tiết.',
     closeDetail: 'Đóng chi tiết',
     splitter: 'Chia độ rộng danh sách và chi tiết',
+    layoutLabel: 'Bố cục danh sách · chi tiết',
+    layoutSideBySide: 'Xem trái phải',
+    layoutStacked: 'Xem trên dưới',
   },
   selectDate: 'Chọn ngày',
   popWorker: {

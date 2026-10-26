@@ -12,6 +12,7 @@ import {
   type InspectionHubStatus,
 } from '../../patterns/inspection-hub-counts';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import { SplitOrientationToggle, useSplitOrientation } from '../../patterns/split-orientation';
 import {
   EMPTY_FILTERS,
   QUEUE_STATUSES,
@@ -474,6 +475,8 @@ export const IqcInspectionScreen = () => {
   /* 목록 · 상세 배치 — 입하 예정 조회와 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:iqc-inspection:split', 0.45);
+  /* 좌우 · 상하 배치(사용자 지시 2026-10-26) — 세 탭이 같은 고름을 쓴다. */
+  const layout = useSplitOrientation('omf-mes:inspection-hub:split-orientation');
 
   /**
    * 표 자리에 그릴 것. **네 갈래를 가른다** — 실패 · 부르는 중 · 이 쪽에 없음 · 조건에 맞는 것 없음.
@@ -918,6 +921,7 @@ export const IqcInspectionScreen = () => {
         active={filters.statusCode}
         onChange={applyStatus}
       />
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       {/* 탭 묶음(검사 조회·판정) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(입하 예정 조회와 같다). */}
       {hub === null && (
         <PageHeader
@@ -957,7 +961,11 @@ export const IqcInspectionScreen = () => {
         />
       </section>
 
-      <div ref={splitRef} className="po-board-split inspection-split" style={split.style}>
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={split.style}
+      >
         <section
           className="pane iqc-inspection-panes iqc-inspection-queue-pane"
           aria-label={t.queue.heading}

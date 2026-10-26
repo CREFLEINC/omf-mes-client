@@ -21040,3 +21040,39 @@ body.col-reordering * {
 .inspection-queue-table table td:not([data-align]):nth-child(n):nth-child(n) {
   text-align: left;
 }
+
+/* 목록 · 상세 배치 단추(`patterns/split-orientation.tsx`) — 상태 칩 옆, 칩과 한 칸 띄운다. */
+.split-orientation-toggle {
+  display: flex;
+  gap: 2px;
+  margin-left: var(--space-2);
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--outline-variant);
+}
+
+/*
+ * 상하 배치 — 목록이 위, 상세가 아래. 가운데 폭 막대는 감춘다. 목록은 정해진 높이 안에서 구르고(머리줄 고정),
+ * 상세는 내용 높이로 아래로 이어진다(쪽 전체가 구른다).
+ */
+.po-board-split.inspection-split.is-stacked {
+  grid-template-columns: minmax(0, 1fr);
+  height: auto;
+}
+
+.po-board-split.inspection-split.is-stacked > .po-board-splitter {
+  display: none;
+}
+
+.po-board-split.inspection-split.is-stacked > .iqc-inspection-queue-pane,
+.po-board-split.inspection-split.is-stacked > .oqc-inspection-queue-pane,
+.po-board-split.inspection-split.is-stacked > .pqc-web-list.pane {
+  height: min(24rem, 45dvh);
+  min-height: 14rem;
+  max-height: none;
+}
+
+.po-board-split.inspection-split.is-stacked > .iqc-inspection-detail,
+.po-board-split.inspection-split.is-stacked > .oqc-inspection-detail,
+.po-board-split.inspection-split.is-stacked > .pqc-web-detail {
+  overflow: visible;
+}
