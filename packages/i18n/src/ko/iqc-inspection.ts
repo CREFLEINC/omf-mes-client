@@ -359,7 +359,8 @@ export const iqcInspection = {
     caption: '검사 항목별 결과',
     loading: '점검 항목을 불러오는 중입니다.',
     /** 기준 버전에 항목이 하나도 없다. 화면이 고칠 수 있는 것이 아니다. */
-    noItems: '이 검사 기준 버전에는 점검 항목이 없습니다. 기준정보 담당자에게 문의하세요.',
+    noItems: '등록된 검사 항목이 없습니다.',
+    noItemsHint: '검사 기준 정보를 확인해 주세요.',
     columns: {
       item: '검사 항목',
       spec: '규격',

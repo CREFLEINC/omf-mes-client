@@ -212,8 +212,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     heading: 'Hạng mục kiểm tra',
     caption: 'Kết quả theo hạng mục kiểm tra',
     loading: 'Đang tải các hạng mục kiểm tra.',
-    noItems:
-      'Phiên bản tiêu chuẩn kiểm tra này không có hạng mục nào. Hãy hỏi người phụ trách dữ liệu gốc.',
+    noItems: 'Chưa có hạng mục kiểm tra nào.',
+    noItemsHint: 'Hãy kiểm tra thông tin tiêu chuẩn kiểm tra.',
     columns: {
       item: 'Hạng mục kiểm tra',
       spec: 'Quy cách',
