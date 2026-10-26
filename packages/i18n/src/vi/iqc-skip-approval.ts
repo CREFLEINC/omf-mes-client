@@ -26,6 +26,7 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     approvalRequestNo: 'Số yêu cầu',
     approvalTypeCode: 'Loại phê duyệt',
     target: 'Đối tượng',
+    targetLot: 'LOT đối tượng',
     reason: 'Lý do',
     requestedByName: 'Người trình',
     requestedAt: 'Thời điểm trình',

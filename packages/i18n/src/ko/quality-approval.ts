@@ -16,7 +16,7 @@ export const qualityApproval = {
     reason: '사유',
     request: '요청번호',
     target: '대상',
-    /** 목록 표의 대상 열 머리(#144). 상세·확인 창은 「대상」 그대로다. */
+    /** 목록 표의 대상 열 머리(#144)·상세의 대상 칸 이름(#186). 확인 창은 「대상」 그대로다. */
     targetLot: '대상 LOT',
     myTurn: '결재 차례',
   },

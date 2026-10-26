@@ -35,7 +35,7 @@ export const TargetPane = ({ name, openState, onOpen }: TargetPaneProps) => (
   <div role="group" aria-label={t.panes.target} className="iqc-skip-approval-section">
     <dl className="iqc-skip-approval-summary">
       <div className="field-cell">
-        <dt className="field-label">{t.fields.target}</dt>
+        <dt className="field-label">{t.fields.targetLot}</dt>
         <dd>{name}</dd>
       </div>
     </dl>

@@ -62,6 +62,8 @@ export const iqcSkipApproval = {
     approvalTypeCode: '승인 유형',
     /** 대상 문서의 **표시명**. 서버가 만든 이름이라 화면이 짓지 않는다. */
     target: '대상',
+    /** 상세의 대상 칸 이름(#186) — 이 화면의 대상은 LOT 이다. 목록 머리글은 「대상」 그대로다. */
+    targetLot: '대상 LOT',
     reason: '사유',
     requestedByName: '상신자',
     /**
