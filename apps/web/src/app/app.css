@@ -20734,6 +20734,8 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   align-items: flex-end;
   gap: var(--space-3);
   min-width: 0;
+  /* 공용 조건 줄의 아래 여백을 걷는다 — 남으면 스캔 칸과 높이가 어긋난다. */
+  margin: 0;
 }
 
 .iqc-inspection-search > .filter-bar > *,
