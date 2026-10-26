@@ -8723,7 +8723,7 @@ button.app-button-neutral {
   }
 }
 
-/* W-CO-13 알림 발송 이력(001) — 처리 결과 표 아래에 Zalo 발송 상세. */
+/* W-CO-13 알림 발송 이력(001) — 처리 결과 표. Zalo 발송 상세는 오른쪽 드로어(#183). */
 .dispatch-pane {
   display: grid;
   align-content: start;
@@ -8741,6 +8741,27 @@ button.app-button-neutral {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
+}
+
+/* T-W-A 상세 드로어(patterns/detail-drawer). 머리 아래 한 줄 요약. */
+.detail-drawer-summary {
+  margin: 0 0 var(--space-4);
+  color: var(--on-surface-variant);
+}
+
+/* 수신자 표 7열이 한 줄에 들어가는 폭(C-16). 1280 폭에서도 목록 왼쪽이 남는다. */
+.dispatch-detail-drawer {
+  --dialog-max-lg: 56rem;
+}
+
+.dispatch-detail-drawer section {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* 상태 선택 칸은 조건 줄과 같은 폭 — 드로어 폭으로 늘이지 않는다. */
+.dispatch-detail-drawer .field-cell {
+  max-width: 16rem;
 }
 
 /* 규범 2 — 컨트롤 상자의 윗선에 맞춘다. 버튼에는 라벨 층이 없어 그만큼 내려 준다. */
