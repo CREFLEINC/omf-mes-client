@@ -661,25 +661,56 @@ export const IqcInspectionScreen = () => {
    * ⛔ 실패를 「고르지 않음」으로 접지 않는다. 접으면 고른 것이 사라진 것처럼 보여
    * 사용자가 다시 고르는데, 다시 골라도 같은 실패가 온다.
    */
+  /*
+   * 「기본 정보」 머리줄(사용자 지시 2026-10-26 · #185) — 왼쪽 제목, 오른쪽 [닫기 ×]. 닫기는 저장하지 않은 입력이 있으면
+   * 한 번 묻는다(`moveTo`). 기본 정보 카드는 부르는 중 · 실패에도 서서 언제든 닫을 수 있다.
+   */
+  const basicInfoHead = (
+    <div className="inspection-detail-head">
+      <h2>{hubText.basicInfo}</h2>
+      <button
+        type="button"
+        className="inspection-detail-close"
+        aria-label={hubText.closeDetail}
+        onClick={() => moveTo(null)}
+      >
+        {hubText.close}
+        <Icon name="close" size={16} />
+      </button>
+    </div>
+  );
+
   const detailContent = detail.isError ? (
-    <QueueLoadErrorBanner error={toApiError(detail.error)} onRetry={() => void detail.refetch()} />
+    <div className="inspection-basic-card">
+      {basicInfoHead}
+      <QueueLoadErrorBanner
+        error={toApiError(detail.error)}
+        onRetry={() => void detail.refetch()}
+      />
+    </div>
   ) : detail.data === undefined ? (
-    <p className="field-note">{t.detail.loading}</p>
+    <div className="inspection-basic-card">
+      {basicInfoHead}
+      <p className="field-note">{t.detail.loading}</p>
+    </div>
   ) : (
     <>
-      <RequestDetailPane
-        detail={detail.data}
-        uomCode={uomCode}
-        itemNames={itemNames}
-        lotNumbers={lotNumbers}
-        levelSlot={
-          <ItemLevel
-            key={detail.data.itemId}
-            itemId={detail.data.itemId}
-            item={toLevelItem(itemNames.partsOf(detail.data.itemId))}
-          />
-        }
-      />
+      <div className="inspection-basic-card">
+        {basicInfoHead}
+        <RequestDetailPane
+          detail={detail.data}
+          uomCode={uomCode}
+          itemNames={itemNames}
+          lotNumbers={lotNumbers}
+          levelSlot={
+            <ItemLevel
+              key={detail.data.itemId}
+              itemId={detail.data.itemId}
+              item={toLevelItem(itemNames.partsOf(detail.data.itemId))}
+            />
+          }
+        />
+      </div>
       {rounds.isPending ? (
         <p className="field-note">{t.result.loading}</p>
       ) : isClosed && round !== null ? (
@@ -1019,16 +1050,6 @@ export const IqcInspectionScreen = () => {
             />
           ) : (
             <>
-              <div className="iqc-inspection-back">
-                <Button
-                  variant="text"
-                  size="md"
-                  className="iqc-inspection-back-button"
-                  onClick={() => moveTo(null)}
-                >
-                  {hubText.closeDetail}
-                </Button>
-              </div>
               {detailContent}
               {auxContent}
             </>

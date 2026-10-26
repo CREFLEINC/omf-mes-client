@@ -291,128 +291,146 @@ export const ResultFormPane = ({
       <div className="iqc-inspection-work">
         {/* ── 검사 결과 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}
         <section className="iqc-inspection-section">
-          <div className="iqc-inspection-section-head">
-            <h3>{t.sectionTitle}</h3>
-            {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 판정 단추 아래가 말한다). */}
-            {isReinspecting ? (
-              <p className="field-note">{t.reinspectRound}</p>
-            ) : round !== null ? (
-              <p className="field-note">{t.round(round.inspectionRound)}</p>
-            ) : null}
-            {/* 기준값(검사수량)은 제목 줄 오른쪽 끝에 — 세 칸은 이 값을 나눈 결과다. 따로 한 줄을 쓰지 않는다(#133). */}
-            <dl className="iqc-inspection-qty-base">
-              <dt className="iqc-inspection-progress-label">{t.fields.inspectedQty}</dt>
-              <dd>{inspectedText}</dd>
-            </dl>
-          </div>
+          {/* 접었다 펴는 구획(사용자 지시 2026-10-26 · #185) — 제목 줄을 누르면 접힌다. 처음에는 펼쳐져 있다. */}
+          <details className="iqc-inspection-collapsible" open>
+            <summary className="iqc-inspection-section-head">
+              <h3>{t.sectionTitle}</h3>
+              {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 판정 단추 아래가 말한다). */}
+              {isReinspecting ? (
+                <p className="field-note">{t.reinspectRound}</p>
+              ) : round !== null ? (
+                <p className="field-note">{t.round(round.inspectionRound)}</p>
+              ) : null}
+              {/* 기준값(검사수량)은 제목 줄 오른쪽 끝에 — 세 칸은 이 값을 나눈 결과다. 따로 한 줄을 쓰지 않는다(#133). */}
+              <dl className="iqc-inspection-qty-base">
+                <dt className="iqc-inspection-progress-label">{t.fields.inspectedQty}</dt>
+                <dd>{inspectedText}</dd>
+              </dl>
+            </summary>
+            <div className="iqc-inspection-collapsible-body">
+              {/*
+               * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사
+               * 시작으로 삼은 규율과 같다(omf-mes 확정 2026-08-21 §1.2) — 열어 두고 떠난 사람이
+               * 빈 회차를 남기지 않는다.
+               *
+               * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 고를 값
+               * 목록이 정해지지 않았다. 감추지 않고 왜 없는지 밝힌다(omf-mes#179).
+               */}
+              {isReinspecting && (
+                <>
+                  <p className="field-note">{t.reinspectNote}</p>
+                  <p className="field-note">{t.reinspectReasonPending}</p>
+                </>
+              )}
 
-          {/*
-           * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사
-           * 시작으로 삼은 규율과 같다(omf-mes 확정 2026-08-21 §1.2) — 열어 두고 떠난 사람이
-           * 빈 회차를 남기지 않는다.
-           *
-           * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 고를 값
-           * 목록이 정해지지 않았다. 감추지 않고 왜 없는지 밝힌다(omf-mes#179).
-           */}
-          {isReinspecting && (
-            <>
-              <p className="field-note">{t.reinspectNote}</p>
-              <p className="field-note">{t.reinspectReasonPending}</p>
-            </>
-          )}
+              <div className="iqc-inspection-qty" data-over={isOver ? '' : undefined}>
+                {field('accepted', t.fields.accepted, errors.accepted)}
+                {field('rejected', t.fields.rejected, errors.rejected)}
+                {field('held', t.fields.held, errors.held)}
+              </div>
 
-          <div className="iqc-inspection-qty" data-over={isOver ? '' : undefined}>
-            {field('accepted', t.fields.accepted, errors.accepted)}
-            {field('rejected', t.fields.rejected, errors.rejected)}
-            {field('held', t.fields.held, errors.held)}
-          </div>
+              {/* 잠근 이유는 세 칸마다 되풀이하지 않고 수량 줄 아래 한 번만 밝힌다. */}
+              {isConfirmed && <p className="field-note">{t.confirmed}</p>}
 
-          {/* 잠근 이유는 세 칸마다 되풀이하지 않고 수량 줄 아래 한 번만 밝힌다. */}
-          {isConfirmed && <p className="field-note">{t.confirmed}</p>}
-
-          {/* 입력 현황 — 「합계 / 검사수량」 · 잔여 · 막대 · 한 줄 안내. 계산은 그대로다. */}
-          <div
-            className="iqc-inspection-progress"
-            data-state={
-              isOver ? 'over' : totals.kind === 'counted' && totals.matches ? 'done' : undefined
-            }
-          >
-            <div className="iqc-inspection-progress-row">
-              <span className="iqc-inspection-progress-sum">
-                {/* 「입력 완료 15 / 20 EA」 — 숫자 앞 이름표(#133 용어 정정 5). */}
-                <span className="iqc-inspection-progress-label">{t.sum} </span>
-                {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
-              </span>
-              <span className="iqc-inspection-progress-status">{statusText}</span>
+              {/* 입력 현황 — 「합계 / 검사수량」 · 잔여 · 막대 · 한 줄 안내. 계산은 그대로다. */}
+              <div
+                className="iqc-inspection-progress"
+                data-state={
+                  isOver ? 'over' : totals.kind === 'counted' && totals.matches ? 'done' : undefined
+                }
+              >
+                <div className="iqc-inspection-progress-row">
+                  <span className="iqc-inspection-progress-sum">
+                    {/* 「입력 완료 15 / 20 EA」 — 숫자 앞 이름표(#133 용어 정정 5). */}
+                    <span className="iqc-inspection-progress-label">{t.sum} </span>
+                    {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
+                  </span>
+                  <span className="iqc-inspection-progress-status">{statusText}</span>
+                </div>
+                <Progress
+                  value={progress.value}
+                  tone={progress.tone}
+                  label={t.progressLabel}
+                  valueText={`${sumText} / ${inspectedText}`}
+                />
+                {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
+              </div>
             </div>
-            <Progress
-              value={progress.value}
-              tone={progress.tone}
-              label={t.progressLabel}
-              valueText={`${sumText} / ${inspectedText}`}
-            />
-            {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
-          </div>
+          </details>
         </section>
 
         {/* ── 판정 — 종합 판정을 고르고, 임시 저장 뒤 확정한다 ── */}
         <section className="iqc-inspection-section iqc-inspection-judgment-section">
-          <h3>{t.judgmentSectionTitle}</h3>
-
-          {/*
-           * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고,
-           * 목록이 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2). 시드가 아직 안 들어가
-           * 빌 수 있는데, 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
-           */}
-          {/* 고른 판정을 테두리 색으로 바로 알아보게 한다(합격·불합격·보류 — app.css `[data-judgment]`). */}
-          <div className="iqc-inspection-judgment-main">
-            <div
-              className="field-cell iqc-inspection-judgment-field"
-              data-judgment={judgment === '' ? undefined : judgment}
-            >
-              <FieldLabel htmlFor={judgmentId} label={t.judgment} required hint={judgmentHint} />
-              <Select
-                id={judgmentId}
-                options={judgmentOptions}
-                value={judgment}
-                placeholder={t.judgmentPlaceholder}
-                disabled={isConfirmed || isInputLocked || judgmentOptions.length === 0}
-                onChange={onJudgmentChange}
-              />
-              {judgmentOptions.length === 0 && (
-                <p className="field-note">{t.judgmentUnavailable}</p>
-              )}
+          <details className="iqc-inspection-collapsible" open>
+            <summary className="iqc-inspection-section-head">
+              <h3>{t.judgmentSectionTitle}</h3>
+            </summary>
+            <div className="iqc-inspection-collapsible-body">
               {/*
-               * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
-               * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
+               * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고,
+               * 목록이 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2). 시드가 아직 안 들어가
+               * 빌 수 있는데, 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
                */}
-              {!isKnownCode(judgmentOptions, judgment) && (
-                <p className="field-note">{t.judgmentUnknown(judgment)}</p>
-              )}
+              {/* 고른 판정을 테두리 색으로 바로 알아보게 한다(합격·불합격·보류 — app.css `[data-judgment]`). */}
+              <div className="iqc-inspection-judgment-main">
+                <div
+                  className="field-cell iqc-inspection-judgment-field"
+                  data-judgment={judgment === '' ? undefined : judgment}
+                >
+                  <FieldLabel
+                    htmlFor={judgmentId}
+                    label={t.judgment}
+                    required
+                    hint={judgmentHint}
+                  />
+                  <Select
+                    id={judgmentId}
+                    options={judgmentOptions}
+                    value={judgment}
+                    placeholder={t.judgmentPlaceholder}
+                    disabled={isConfirmed || isInputLocked || judgmentOptions.length === 0}
+                    onChange={onJudgmentChange}
+                  />
+                  {judgmentOptions.length === 0 && (
+                    <p className="field-note">{t.judgmentUnavailable}</p>
+                  )}
+                  {/*
+                   * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
+                   * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
+                   */}
+                  {!isKnownCode(judgmentOptions, judgment) && (
+                    <p className="field-note">{t.judgmentUnknown(judgment)}</p>
+                  )}
+                </div>
+                {/* 판정 변경 사유는 최종 판정 바로 아래 — 무엇을 왜 바꿨는지 한 자리에서 읽힌다(#133). */}
+                {judgmentBelow}
+              </div>
+              {/* 판정에 따라 열리는 칸(불합격 사유) — 구르지 않고 제 높이대로 선다(#133). */}
+              <div className="iqc-inspection-judgment-detail">{judgmentDetail}</div>
+
+              <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
+
+              {/*
+               * ⛔ **되돌릴 수 없는 쓰기가 끝난 것을 말한다.** 확정 여부와 무관하게 쓰기가 성공한
+               * «그 순간» 낸다 — 확정 상태는 회차를 다시 부른 «뒤에» 참이 된다.
+               */}
+              {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
             </div>
-            {/* 판정 변경 사유는 최종 판정 바로 아래 — 무엇을 왜 바꿨는지 한 자리에서 읽힌다(#133). */}
-            {judgmentBelow}
-          </div>
-          {/* 판정에 따라 열리는 칸(불합격 사유) — 구르지 않고 제 높이대로 선다(#133). */}
-          <div className="iqc-inspection-judgment-detail">{judgmentDetail}</div>
-
-          <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
-
-          {/*
-           * ⛔ **되돌릴 수 없는 쓰기가 끝난 것을 말한다.** 확정 여부와 무관하게 쓰기가 성공한
-           * «그 순간» 낸다 — 확정 상태는 회차를 다시 부른 «뒤에» 참이 된다.
-           */}
-          {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
+          </details>
         </section>
 
         {/* ── 4M 변경 정보 — 판정과 다른 업무라 판정 아래 따로 선다(#133) ── */}
         {fourMSlot !== null && (
           <section className="iqc-inspection-section iqc-inspection-four-m-block">
-            <h3>
-              {t.fourMChange.sectionTitle}
-              <span className="iqc-inspection-label-hint">{t.fourMChange.hint}</span>
-            </h3>
-            {fourMSlot}
+            <details className="iqc-inspection-collapsible" open>
+              <summary className="iqc-inspection-section-head">
+                <h3>
+                  {t.fourMChange.sectionTitle}
+                  <span className="iqc-inspection-label-hint">{t.fourMChange.hint}</span>
+                </h3>
+              </summary>
+              <div className="iqc-inspection-collapsible-body">{fourMSlot}</div>
+            </details>
           </section>
         )}
       </div>

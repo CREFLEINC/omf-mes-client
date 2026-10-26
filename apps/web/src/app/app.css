@@ -21303,3 +21303,123 @@ table.col-measuring td {
 .iqc-inspection-search .iqc-inspection-filter-actions:nth-child(n) {
   margin-left: auto;
 }
+
+/*
+ * IQC 상세 「기본 정보」 카드(사용자 지시 2026-10-26 · #185) — 머리줄: 왼쪽 강조선 + 제목, 오른쪽 [닫기 ×](붉은 톤 알약).
+ */
+.inspection-basic-card {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.inspection-basic-card .iqc-inspection-section {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.inspection-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--primary) 14%, transparent),
+    transparent 40%
+  );
+}
+
+.inspection-detail-head > h2 {
+  margin: 0;
+  font: var(--type-title-sm);
+  color: var(--on-surface);
+}
+
+.inspection-detail-close {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 28px;
+  padding: 0 var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--primary) 60%, transparent);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  cursor: pointer;
+}
+
+.inspection-detail-close:hover {
+  background: color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+.inspection-detail-close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/*
+ * 접었다 펴는 구획(검사 수량 입력 · 판정 · 4M 변경 정보 · #185) — 제목 줄을 누르면 접힌다. 제목 앞 삼각형이 열림을 말한다
+ * (아래 참고 정보 접기 상자와 같은 표시).
+ */
+.iqc-inspection-collapsible > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.iqc-inspection-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.iqc-inspection-collapsible > summary::before {
+  content: '';
+  align-self: center;
+  width: 0;
+  height: 0;
+  border-block: 5px solid transparent;
+  border-left: 7px solid currentColor;
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+
+.iqc-inspection-collapsible[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.iqc-inspection-collapsible-body {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+/* 판정 구획의 두 칸 배치(#133)는 접기 상자 안 본문이 맡는다 — 종전 구획 직계 규칙과 같은 값. */
+@container (min-width: 48rem) {
+  .iqc-inspection-judgment-section .iqc-inspection-collapsible-body {
+    grid-template-columns: minmax(14rem, 20rem) minmax(0, 1fr);
+    column-gap: var(--space-5);
+    align-items: start;
+  }
+
+  .iqc-inspection-judgment-section .iqc-inspection-collapsible-body > * {
+    grid-column: 1 / -1;
+  }
+
+  .iqc-inspection-judgment-section .iqc-inspection-collapsible-body > .iqc-inspection-judgment-main {
+    grid-column: 1;
+  }
+
+  .iqc-inspection-judgment-section .iqc-inspection-collapsible-body > .iqc-inspection-judgment-detail {
+    grid-column: 2;
+  }
+
+  .iqc-inspection-judgment-section
+    .iqc-inspection-collapsible-body:has(> .iqc-inspection-judgment-detail:empty)
+    > .iqc-inspection-judgment-main {
+    grid-column: 1 / -1;
+  }
+}
