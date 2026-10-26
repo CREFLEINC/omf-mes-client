@@ -2,7 +2,7 @@ import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader } from '@crefl
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
 import { sessionKeys, useSession } from '../../patterns/session';
@@ -462,7 +462,7 @@ export const IqcInspectionScreen = () => {
    * 저장하지 않은 입력이 있을 때 바로 옮기지 않고 한 번 묻는다(#133 의 「목록으로」와 같은 팝업).
    * `to` 가 `null` 이면 상세 닫기다.
    */
-  const [leaveTo, setLeaveTo] = useState<{ to: number | null } | null>(null);
+  const [leaveTo, setLeaveTo] = useState<{ to: number | null; href?: string } | null>(null);
   useEffect(() => {
     setLeaveTo(null);
   }, [selectedId]);
@@ -475,6 +475,16 @@ export const IqcInspectionScreen = () => {
     openRequest(to);
   };
   const select = (inspectionRequestId: number): void => moveTo(inspectionRequestId);
+
+  /* 다른 화면으로 이동(기본 정보 [기준 보기] · #185) — 같은 탭에서 옮긴다. 저장하지 않은 입력이 있으면 먼저 묻는다. */
+  const navigate = useNavigate();
+  const leaveFor = (href: string): void => {
+    if (selectedId !== null && hasUnsavedInput) {
+      setLeaveTo({ to: selectedId, href });
+      return;
+    }
+    void navigate(href);
+  };
 
   /* 목록 · 상세 배치 — 입하 예정 조회와 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
   const { splitRef, aboveRef } = useFitToViewport();
@@ -662,12 +672,11 @@ export const IqcInspectionScreen = () => {
    * 사용자가 다시 고르는데, 다시 골라도 같은 실패가 온다.
    */
   /*
-   * 「기본 정보」 머리줄(사용자 지시 2026-10-26 · #185) — 왼쪽 제목, 오른쪽 [닫기]. 닫기는 저장하지 않은 입력이 있으면
+   * 상세 머리줄(사용자 지시 2026-10-26 · #185) — 오른쪽 [닫기]만(제목 글은 두지 않는다). 닫기는 저장하지 않은 입력이 있으면
    * 한 번 묻는다(`moveTo`). 기본 정보 카드는 부르는 중 · 실패에도 서서 언제든 닫을 수 있다.
    */
   const basicInfoHead = (
     <div className="inspection-detail-head">
-      <h2>{hubText.basicInfo}</h2>
       <button
         type="button"
         className="inspection-detail-close"
@@ -698,9 +707,32 @@ export const IqcInspectionScreen = () => {
         {basicInfoHead}
         <RequestDetailPane
           detail={detail.data}
-          uomCode={uomCode}
           itemNames={itemNames}
           lotNumbers={lotNumbers}
+          planSlot={
+            samplingRule.data === undefined ||
+            detail.data.inspectionPlanVersionId === null ? undefined : (
+              /*
+               * 적용 검사 기준 — 버전 + [기준 보기](#185). 같은 탭에서 검사기준 화면으로 옮긴다(저장 안 한 입력이 있으면 먼저 묻는다).
+               * 검사기준 화면은 주소의 `plan`·`ver` 로 그 기준 · 버전을 바로 연다.
+               */
+              <span className="iqc-inspection-plan-cell">
+                <span>{t.detail.planVersion(samplingRule.data.planVersion)}</span>
+                {/* 옆 「검사 수준 · 지정」과 같은 단추(테두리 · md) — 사용자 지시 2026-10-26. */}
+                <Button
+                  size="md"
+                  variant="outlined"
+                  onClick={() =>
+                    leaveFor(
+                      `/master-data/inspection-standard?plan=${String(samplingRule.data?.inspectionPlanId)}&ver=${String(detail.data?.inspectionPlanVersionId)}`,
+                    )
+                  }
+                >
+                  {t.detail.openPlan}
+                </Button>
+              </span>
+            )
+          }
           levelSlot={
             <ItemLevel
               key={detail.data.itemId}
@@ -1075,7 +1107,12 @@ export const IqcInspectionScreen = () => {
               >
                 {t.detail.keepEditing}
               </Button>
-              <Button variant="filled" onClick={() => openRequest(leaveTo.to)}>
+              <Button
+                variant="filled"
+                onClick={() =>
+                  leaveTo.href === undefined ? openRequest(leaveTo.to) : void navigate(leaveTo.href)
+                }
+              >
                 {t.detail.leaveAnyway}
               </Button>
             </>

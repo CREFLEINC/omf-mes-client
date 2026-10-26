@@ -69,7 +69,6 @@ export const common: Translated<typeof ko.common> = {
     pendingOnly: 'Chỉ xem chờ · đang làm',
     pickRequest: 'Chọn yêu cầu kiểm tra',
     pickRequestHint: 'Chọn một yêu cầu kiểm tra để xem nội dung chi tiết.',
-    basicInfo: 'Thông tin cơ bản',
     close: 'Đóng',
     closeDetail: 'Đóng chi tiết',
     splitter: 'Chia độ rộng danh sách và chi tiết',

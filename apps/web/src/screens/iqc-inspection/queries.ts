@@ -412,6 +412,8 @@ export const useSamplingRule = (
         samplingMethodCode: inspectionPlanVersion.samplingMethodCode,
         samplingRatio: inspectionPlanVersion.samplingRatio ?? null,
         acceptanceNumber: inspectionPlanVersion.acceptanceNumber ?? null,
+        inspectionPlanId: inspectionPlanVersion.inspectionPlanId,
+        planVersion: inspectionPlanVersion.planVersion,
       })),
     enabled: inspectionPlanVersionId !== null,
   });

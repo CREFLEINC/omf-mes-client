@@ -21321,7 +21321,7 @@ table.col-measuring td {
 .inspection-detail-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--space-3);
   /* 상자로 감싸지 않는다(사용자 지시 2026-10-26) — 제목과 [닫기 ×] 한 줄뿐이다. */
 }
@@ -21453,4 +21453,38 @@ table.col-measuring td {
   .iqc-inspection-qty-body > .iqc-inspection-progress {
     grid-column: 2;
   }
+}
+
+/* 기본 정보 「적용 검사 기준」 — 버전 + [기준 보기](검사기준 화면으로 이동 · #185). */
+.iqc-inspection-plan-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
+ * IQC 기본 정보 — 입하 예정 조회의 발주 요약처럼 한 줄(사용자 지시 2026-10-26 · #185): 테두리 상자 안에 칸이 나란히,
+ * 칸 사이 세로 구분선. 폭이 모자라면 다음 줄로 넘긴다(반응형). 품목 · 대상 LOT 은 값이 길어 더 넓게 쓴다.
+ */
+.inspection-basic-card .iqc-inspection-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-3) 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+}
+
+.inspection-basic-card .iqc-inspection-fact {
+  flex: 1 1 auto;
+  align-content: center;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.inspection-basic-card .iqc-inspection-fact:first-child {
+  padding-left: 0;
+  border-left: 0;
 }

@@ -86,7 +86,6 @@ export const common = {
     pendingOnly: '대기·진행만 보기',
     pickRequest: '검사 의뢰를 선택하세요',
     pickRequestHint: '검사 의뢰를 선택하면 상세 내용을 확인할 수 있습니다.',
-    basicInfo: '기본 정보',
     close: '닫기',
     closeDetail: '상세 닫기',
     splitter: '목록과 상세 폭 나누기',

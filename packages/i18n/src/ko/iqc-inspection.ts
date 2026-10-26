@@ -151,6 +151,8 @@ export const iqcInspection = {
      * 표시(`emptyValue`)와 다른 전용 문구를 쓴다.
      */
     noPlanVersion: '기준 없음',
+    planVersion: (version: number): string => `버전 ${String(version)}`,
+    openPlan: '기준 보기',
   },
 
   /** 우측 창 — 수량 판정. 합계 제약이 이 구획을 지배한다. */
