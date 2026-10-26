@@ -1,12 +1,14 @@
-import { AlertBanner, Button, TextArea } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon, TextArea } from '@crefle/web-ui';
 import type { components, paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useId, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
+import { FieldLabel } from './field-label';
 import { oqcInspectionKeys } from './queries';
 
 type ApprovalQuery = NonNullable<paths['/app/approval-requests']['get']['parameters']['query']>;
@@ -40,11 +42,15 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
   const [reason, setReason] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const reasonId = useId();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setReason('');
     setNotice(null);
     setTouched(false);
+    setIsDialogOpen(false);
   }, [shipmentRequestId]);
 
   const approval = useQuery({
@@ -82,6 +88,7 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
     onSuccess: () => {
       setReason('');
       setTouched(false);
+      setIsDialogOpen(false);
       setNotice(t.requested);
     },
   });
@@ -106,7 +113,7 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
   if (!OPEN_OR_SKIPPED.includes(requestStatusCode)) return null;
   if (requestStatusCode === 'SKIPPED') {
     return (
-      <section aria-label={t.heading}>
+      <section className="oqc-inspection-section oqc-inspection-skip" aria-label={t.heading}>
         <h3>{t.heading}</h3>
         <AlertBanner variant="info" title={notice ?? t.skipped} />
       </section>
@@ -118,6 +125,17 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
   const canRequest = status === null || status === 'REJECTED';
   const isSaving = requestWrite.isSaving || executeWrite.isSaving;
   const reasonError = touched && reason.trim() === '' ? t.reasonRequired : undefined;
+  /** 지금 단계(0 요청 · 1 승인 · 2 실행). 결재 상태를 아직 모르면 어느 것도 가리키지 않는다(#136). */
+  const currentStep =
+    approval.isPending || approval.isError ? null : canRequest ? 0 : status === 'PENDING' ? 1 : 2;
+
+  /* 창을 닫으면 쓰던 사유는 남긴다 — 다시 열면 이어 쓴다. 필수 표시만 거둔다. */
+  const closeDialog = (): void => {
+    /* 요청이 나가 있는 동안에는 닫지 않는다 — 실패하면 그 사유가 창 안에 선다. */
+    if (requestWrite.isSaving) return;
+    setIsDialogOpen(false);
+    setTouched(false);
+  };
 
   const submit = (): void => {
     setTouched(true);
@@ -127,51 +145,134 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
   };
 
   return (
-    <section aria-label={t.heading}>
+    <section className="oqc-inspection-section oqc-inspection-skip" aria-label={t.heading}>
       <h3>{t.heading}</h3>
-      <p className="field-note">{t.help}</p>
+      {/* 요청 → 승인 → 실행 단계와 실행 결과(#136). */}
+      <div className="oqc-inspection-skip-guide">
+        <div className="oqc-inspection-skip-steps-row">
+          <ol className="oqc-inspection-skip-steps">
+            {t.steps.map((step, index) => (
+              <Fragment key={step}>
+                {index > 0 && <Icon name="arrow_forward" size={16} aria-hidden="true" />}
+                <li
+                  aria-current={index === currentStep ? 'step' : undefined}
+                  title={index === currentStep ? t.currentStep : undefined}
+                >
+                  {step}
+                </li>
+              </Fragment>
+            ))}
+          </ol>
+          {!approval.isPending && !approval.isError && canRequest && (
+            <Button
+              type="button"
+              variant="outlined"
+              size="md"
+              onClick={() => {
+                setNotice(null);
+                setIsDialogOpen(true);
+              }}
+            >
+              {t.openRequest}
+            </Button>
+          )}
+        </div>
+      </div>
 
       {approval.isPending ? (
         <p className="field-note">{t.loading}</p>
       ) : approval.isError ? (
         <AlertBanner variant="error" title={t.loadFailed} />
-      ) : status === 'PENDING' ? (
-        <AlertBanner variant="info" title={t.pending} />
+      ) : status === 'PENDING' && latest !== null ? (
+        <>
+          <AlertBanner variant="info" title={t.pending} />
+          {/* 요청한 그 건을 골라 결재 화면을 연다 — 「특채·한도승인 승인 처리」(#136). */}
+          <div className="oqc-inspection-skip-actions">
+            <Button
+              type="button"
+              variant="outlined"
+              size="md"
+              onClick={() =>
+                void navigate(
+                  `/quality/approvals?approvalRequestId=${String(latest.approvalRequestId)}`,
+                )
+              }
+            >
+              {t.openApproval}
+            </Button>
+          </div>
+        </>
       ) : status === 'APPROVED' ? (
         <>
           <AlertBanner variant="info" title={t.approved} />
-          <Button
-            variant="filled"
-            disabled={isSaving}
-            onClick={() => {
-              setNotice(null);
-              executeWrite.write({});
-            }}
-          >
-            {executeWrite.isSaving ? t.executing : t.execute}
-          </Button>
+          <div className="oqc-inspection-skip-actions">
+            <Button
+              variant="filled"
+              size="md"
+              disabled={isSaving}
+              onClick={() => {
+                setNotice(null);
+                executeWrite.write({});
+              }}
+            >
+              {executeWrite.isSaving ? t.executing : t.execute}
+            </Button>
+          </div>
         </>
       ) : null}
 
-      {!approval.isPending && !approval.isError && canRequest && (
-        <>
-          {status === 'REJECTED' && <p className="field-note">{t.rejected}</p>}
+      {!approval.isPending && !approval.isError && status === 'REJECTED' && (
+        <p className="field-note">{t.rejected}</p>
+      )}
+
+      {/* 사유 입력과 요청은 창에서(#136) — 구획에는 단계와 「생략 요청」 단추만 둔다. */}
+      <Dialog
+        open={isDialogOpen}
+        onClose={closeDialog}
+        showCloseButton={false}
+        title={t.heading}
+        footer={
+          <>
+            <Button
+              variant="outlined"
+              className="app-button-neutral"
+              disabled={requestWrite.isSaving}
+              onClick={closeDialog}
+            >
+              {t.cancel}
+            </Button>
+            <Button variant="filled" disabled={isSaving} onClick={submit}>
+              {requestWrite.isSaving ? t.requesting : t.request}
+            </Button>
+          </>
+        }
+      >
+        <div className="oqc-inspection-skip-dialog">
+          <p className="oqc-inspection-skip-result">{t.result}</p>
+          <FieldLabel htmlFor={reasonId} label={t.reason} required />
           <TextArea
-            label={t.reason}
-            rows={2}
+            id={reasonId}
+            containerClassName={
+              reason.trim() === ''
+                ? 'oqc-inspection-skip-reason is-required-empty'
+                : 'oqc-inspection-skip-reason'
+            }
+            placeholder={t.reasonPlaceholder}
+            rows={4}
+            fullWidth
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             error={reasonError ?? requestWrite.fieldErrors.reason}
             disabled={isSaving}
           />
-          <Button variant="outlined" disabled={isSaving} onClick={submit}>
-            {requestWrite.isSaving ? t.requesting : t.request}
-          </Button>
-        </>
-      )}
+          {/* 글자 수 — DS 기본 표시는 숫자뿐이라 「N자」로 직접 둔다. 상한은 없다(계약 · #136). */}
+          <p className="oqc-inspection-skip-count">{t.reasonCount(reason.length)}</p>
+          <SaveErrorBanner error={requestWrite.error} />
+        </div>
+      </Dialog>
 
       {notice !== null && <AlertBanner variant="success" title={notice} />}
-      <SaveErrorBanner error={requestWrite.error ?? executeWrite.error} />
+      <SaveErrorBanner error={executeWrite.error} />
     </section>
   );
 };

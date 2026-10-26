@@ -1,4 +1,4 @@
-import { AlertBanner } from '@crefle/web-ui';
+import { Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import type { TransitionPreview } from './transition-preview';
@@ -70,14 +70,37 @@ export const TransitionWarningBody = ({ preview, hasLot = true }: TransitionWarn
   );
 };
 
-export const TransitionWarning = ({ preview, hasLot = true }: TransitionWarningProps) => {
+export type JudgmentGuideProps = TransitionWarningProps;
+
+/**
+ * 판정 구획의 「판정 확정 안내」(#136) — 확정 전에 되돌릴 수 없음 · LOT 영향을 한 상자에. 수량과 고른 판정은
+ * 바로 위 칸들이 이미 보이므로 되풀이하지 않는다.
+ * 규칙은 위 경고와 같다(셀 수 없으면 그리지 않는다 · 모르는 코드에 방향을 지어내지 않는다). 확인 창은 종전 본문을 그대로 쓴다.
+ */
+export const JudgmentGuide = ({ preview, hasLot = true }: JudgmentGuideProps) => {
   if (preview === null) return null;
+  const g = t.guide;
 
   return (
-    <div className="banner-slot">
-      <AlertBanner variant="warning" title={t.title}>
-        <TransitionWarningBody preview={preview} hasLot={hasLot} />
-      </AlertBanner>
-    </div>
+    <section className="oqc-inspection-guide" aria-label={g.title}>
+      <h4 className="oqc-inspection-guide-title">
+        <Icon name="info" size={20} aria-hidden="true" />
+        {g.title}
+      </h4>
+      <p className="oqc-inspection-guide-line" data-tone="warning">
+        <Icon name="warning" size={18} aria-hidden="true" />
+        <span>
+          {g.irreversible}
+          <span className="oqc-inspection-guide-sub">{g.irreversibleHint}</span>
+        </span>
+      </p>
+      <p className="oqc-inspection-guide-line">
+        <Icon name="info" size={18} aria-hidden="true" />
+        <span>
+          <span>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</span>{' '}
+          <span>{t.pickingImpact}</span>
+        </span>
+      </p>
+    </section>
   );
 };

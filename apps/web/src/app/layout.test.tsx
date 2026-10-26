@@ -536,17 +536,10 @@ describe('AppLayout', () => {
     const links = sidebarHrefs();
 
     expect(within(sidebar).getByText('품질 관리')).toBeInTheDocument();
-    expect(within(sidebar).getByRole('link', { name: 'IQC (수입검사) 조회·판정' })).toHaveAttribute(
+    /* IQC · PQC · OQC 는 「검사 조회·판정」 한 줄 — 첫 탭(IQC)으로 건다(사용자 2026-10-26). */
+    expect(within(sidebar).getByRole('link', { name: '검사 조회·판정' })).toHaveAttribute(
       'href',
       '/logistics/iqc-inspection',
-    );
-    expect(within(sidebar).getByRole('link', { name: 'PQC (공정검사) 조회·판정' })).toHaveAttribute(
-      'href',
-      '/quality/pqc-inspections',
-    );
-    expect(within(sidebar).getByRole('link', { name: 'OQC (출하검사) 조회·판정' })).toHaveAttribute(
-      'href',
-      '/shipment/oqc-inspection',
     );
     expect(within(sidebar).getByRole('link', { name: 'LOT 상태' })).toHaveAttribute(
       'href',
@@ -572,8 +565,6 @@ describe('AppLayout', () => {
     const qualityOrder = [
       '/logistics/iqc-inspection',
       '/logistics/iqc-skip-approval',
-      '/quality/pqc-inspections',
-      '/shipment/oqc-inspection',
       '/master-data/inspection-standard',
       /* W-06-24 — OA 제품 검사표 기준(설계보다 앞선 화면). */
       '/master-data/inspection-sheet-template',
@@ -995,11 +986,9 @@ describe('AppLayout', () => {
       '/logistics/stock-status' /* ← 재고 관리 */,
       '/production/material-issue-requests' /* ← 출고 관리 */,
       '/logistics/document-progress',
-      /* 품질 관리 — IQC → PQC → OQC → 기준·코드 → 이력 → LOT 판정 갈래. */
-      '/logistics/iqc-inspection',
+      /* 품질 관리 — 검사 조회·판정(IQC · PQC · OQC 탭) → 기준·코드 → 이력 → LOT 판정 갈래. */
+      '/logistics/iqc-inspection' /* ← 검사 조회·판정 */,
       '/logistics/iqc-skip-approval',
-      '/quality/pqc-inspections',
-      '/shipment/oqc-inspection',
       '/master-data/inspection-standard',
       '/master-data/inspection-sheet-template',
       '/master-data/defect-cause-code' /* ← 품질 코드 */,
@@ -1591,7 +1580,7 @@ describe('AppLayout — 화면 검색', () => {
     await user.type(searchBox(), 'iqc');
 
     expect(
-      within(navSidebar()).getByRole('link', { name: 'IQC (수입검사) 조회·판정' }),
+      within(navSidebar()).getByRole('link', { name: '검사 조회·판정 › IQC (수입검사)' }),
     ).toBeInTheDocument();
   });
 });
@@ -1661,7 +1650,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(49);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(47);
   });
 
   /*
@@ -1711,7 +1700,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(49);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(47);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

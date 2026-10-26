@@ -16,32 +16,50 @@ const t = messages.oqcInspection.serials;
  */
 export const SerialOpenByScan = ({
   onOpen,
+  onFound,
 }: {
   onOpen: (inspectionRequestId: number, scan: OqcSerialScan) => void;
+  /** 찾은 시리얼과 열 수 있는 의뢰들 — 고르기 전에도 목록의 시리얼 번호 칸이 그 줄을 가리킨다(#136). */
+  onFound?: (scan: OqcSerialScan) => void;
 }) => {
   const lookup = useSerialLookup();
   const [error, setError] = useState<string | null>(null);
   const [choices, setChoices] = useState<OqcSerialScan | null>(null);
 
-  const scan = async (serialNo: string): Promise<void> => {
+  /** `false` 면 찾지 못했다 — 칸이 친 번호를 남긴다. */
+  const scan = async (serialNo: string): Promise<boolean> => {
     setChoices(null);
     const found = await lookup(serialNo);
-    if (found.kind === 'notFound') return setError(t.notFound(serialNo));
-    if (found.kind === 'failed') return setError(t.lookupFailed);
+    if (found.kind === 'notFound') {
+      setError(t.openByScanNotFound);
+      return false;
+    }
+    if (found.kind === 'failed') {
+      setError(t.lookupFailed);
+      return true;
+    }
     const requests = requestsToOpen(found.scan.pickedRequests);
-    if (requests.length === 0) return setError(t.noPickedRequest(found.scan.serialNo));
+    if (requests.length === 0) {
+      setError(t.noPickedRequest(found.scan.serialNo));
+      return true;
+    }
     setError(null);
+    onFound?.({ ...found.scan, pickedRequests: requests });
     const [only] = requests;
-    if (requests.length === 1 && only !== undefined)
-      return onOpen(only.inspectionRequestId, found.scan);
+    if (requests.length === 1 && only !== undefined) {
+      onOpen(only.inspectionRequestId, found.scan);
+      return true;
+    }
     setChoices({ ...found.scan, pickedRequests: requests });
+    return true;
   };
 
   return (
     <div>
       <SerialScanField
         label={t.openByScan}
-        helperText={t.openByScanHelp}
+        labelHint={t.openByScanHelp}
+        placeholder={t.openByScanPlaceholder}
         error={error}
         onScan={scan}
       />
