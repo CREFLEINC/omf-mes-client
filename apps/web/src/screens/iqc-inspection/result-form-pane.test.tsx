@@ -60,8 +60,17 @@ const saveButton = () => screen.getByRole('button', { name: t.save });
 const savedRound = toInspectionResultRound(draftRound);
 
 /** 입력 현황의 「합계 / 검사수량」 — 「합계」는 화면에서 감추고 읽기용으로만 둔다. */
-const sumText = (): string | null | undefined =>
-  document.querySelector('.iqc-inspection-progress-sum')?.textContent;
+/* 「입력 완료」 라벨(체크 아이콘 글자는 빼고)과 합계를 한 줄로 읽는다(#185 — 라벨 · 숫자가 따로 선다). */
+const sumText = (): string | null | undefined => {
+  const badge = document.querySelector('.iqc-inspection-progress-badge');
+  const sum = document.querySelector('.iqc-inspection-progress-sum')?.textContent;
+  if (badge === null || sum === undefined) return undefined;
+  const label = [...badge.childNodes]
+    .filter((node) => node.nodeType === Node.TEXT_NODE)
+    .map((node) => node.textContent)
+    .join('');
+  return `${label} ${sum ?? ''}`;
+};
 /** 오른쪽 상태 「미입력 N」 — 이름표와 숫자가 다른 요소라 글자를 이어 읽는다(#133). */
 const statusText = (): string | null | undefined =>
   document.querySelector('.iqc-inspection-progress-status')?.textContent;

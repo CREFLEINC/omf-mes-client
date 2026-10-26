@@ -341,9 +341,17 @@ export const ResultFormPane = ({
                 }
               >
                 <div className="iqc-inspection-progress-row">
+                  {/*
+                   * 「[✓ 입력 완료] 10 / 10 EA 미입력 0 EA」(사용자 지시 2026-10-26 · #185) — 이름표는 라벨, 다 채우면 초록에 체크.
+                   * 숫자는 굵게, 남은 양은 바로 뒤에 작고 흐리게.
+                   */}
+                  <span className="iqc-inspection-progress-badge">
+                    {totals.kind === 'counted' && totals.matches && !isOver && (
+                      <Icon name="check" size={16} aria-hidden />
+                    )}
+                    {t.sum}
+                  </span>
                   <span className="iqc-inspection-progress-sum">
-                    {/* 「입력 완료 15 / 20 EA」 — 숫자 앞 이름표(#133 용어 정정 5). */}
-                    <span className="iqc-inspection-progress-label">{t.sum} </span>
                     {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
                   </span>
                   <span className="iqc-inspection-progress-status">{statusText}</span>
