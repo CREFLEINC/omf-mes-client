@@ -59,15 +59,17 @@ export const workStart = {
 
   /** 왼쪽 작업지시 구획. */
   list: {
-    /** 기본 목록(단말 설비)의 구획 제목. */
+    /** 설비가 매핑되지 않은 단말의 구획 제목. 좁힐 설비가 없어 전환 버튼도 없다. */
     title: '작업지시',
     /**
-     * 전체 설비 보기. 기본 목록은 단말 설비만이고, [전체 설비 보기]로 다른 목록에 들어가듯 넘어간다.
-     * 돌아오는 버튼은 「이 설비」가 아니라 단말 설비의 실제 이름이다(사용자 결정 2026-10-26).
+     * 기본 목록은 단말 설비뿐이다. 제목 줄의 같은 자리에 전환 버튼 하나를 두고, 제목과 버튼 이름이
+     * 목록에 따라 바뀐다(사용자 결정 2026-10-26). 「이 설비」가 아니라 단말 설비의 실제 이름을 쓰고,
      * 이름을 아직 모를 때만 `scopeEquipmentUnknown`을 쓴다.
      */
-    showAll: '전체 설비 보기',
+    equipmentTitle: (equipment: string): string => `${equipment} 작업지시`,
     allTitle: '전체 설비 작업지시',
+    showAll: '전체 설비 보기',
+    showEquipment: (equipment: string): string => `${equipment}만 보기`,
     scopeEquipmentUnknown: '단말 설비',
 
     select: (workOrderNo: string): string => `${workOrderNo} 선택`,

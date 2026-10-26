@@ -171,9 +171,15 @@ describe('P-02-01 작업지시 카드 — T-P-W 카드 정보', () => {
       messages.workStart.selection.item,
       messages.workStart.selection.process,
       t.equipment,
-      t.goodLabel,
       messages.workStart.selection.plannedStart,
+      t.goodLabel,
     ]);
+    /* 두 열: 품목과 공정은 한 줄, 설비, 계획 시작, 실적은 한 줄을 다 쓴다(PG-31). */
+    expect(info).toHaveClass('pop-row-info-two');
+    const wide = [...info.querySelectorAll('.pop-row-info-label.pop-row-info-wide')].map(
+      (el) => el.textContent,
+    );
+    expect(wide).toEqual([t.equipment, messages.workStart.selection.plannedStart, t.goodLabel]);
     expect(info).toHaveTextContent(`${t.equipment} 합성 프레스 1호기 (SYN-PRS-01)`);
     /* 수량은 「실적 / 지시」 한 쌍과 막대다. 가운뎃점이나 「지시」 글자를 잇지 않는다. */
     expect(within(info).getByText(t.progress('120', '500', 'EA'))).toBeInTheDocument();

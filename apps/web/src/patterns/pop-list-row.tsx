@@ -21,28 +21,52 @@ export const PopRowHead = ({ title, chips }: { title: ReactNode; chips?: ReactNo
   </span>
 );
 
-/** 정보 영역. 안의 `PopRowPair` 들이 라벨 열과 값 열에 맞춰 선다. */
+/**
+ * 정보 영역. 안의 `PopRowPair` 들이 라벨 열과 값 열에 맞춰 선다.
+ *
+ * `columns={2}`이면 한 줄에 쌍 둘을 둔다(라벨 값 라벨 값). 반 칸에 다 들어가지 않는 값은 그 쌍에
+ * `wide`를 주어 한 줄을 다 쓰게 한다. 값은 말줄임하지 않는다(반 칸의 값은 넘치면 줄을 바꾼다).
+ */
 export const PopRowInfo = ({
   children,
   className,
+  columns = 1,
 }: {
   children: ReactNode;
   className?: string;
+  columns?: 1 | 2;
 }) => (
-  <span className={['pop-row-info', className ?? ''].filter((name) => name !== '').join(' ')}>
+  <span
+    className={['pop-row-info', columns === 2 ? 'pop-row-info-two' : '', className ?? '']
+      .filter((name) => name !== '')
+      .join(' ')}
+  >
     {children}
   </span>
 );
 
 /**
  * 「라벨 값」 한 쌍. 값이 없으면 그 줄을 숨긴다(C-10). 라벨과 값 사이의 빈칸은 격자에서 그려지지 않고,
- * 화면 읽기 프로그램과 글자 복사에서 「설비 사출기 1호기」처럼 띄어 읽히게 한다.
+ * 화면 읽기 프로그램과 글자 복사에서 「설비 사출기 1호기」처럼 띄어 읽히게 한다. `wide`는 두 열
+ * 정보 영역에서 한 줄을 다 쓰는 쌍이다(라벨은 첫 라벨 열에 맞춘다).
  */
-export const PopRowPair = ({ label, children }: { label: string; children: ReactNode }) =>
+export const PopRowPair = ({
+  label,
+  wide = false,
+  children,
+}: {
+  label: string;
+  wide?: boolean;
+  children: ReactNode;
+}) =>
   children === null || children === undefined || children === '' ? null : (
     <>
-      <span className="pop-row-info-label">{label}</span>{' '}
-      <span className="pop-row-info-value">{children}</span>
+      <span className={wide ? 'pop-row-info-label pop-row-info-wide' : 'pop-row-info-label'}>
+        {label}
+      </span>{' '}
+      <span className={wide ? 'pop-row-info-value pop-row-info-wide' : 'pop-row-info-value'}>
+        {children}
+      </span>
     </>
   );
 

@@ -323,30 +323,34 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
   });
 
   /**
-   * 기본 목록은 단말 설비뿐이다. [전체 설비 보기]는 다른 목록에 들어가듯 제목을 바꾸고, 돌아오는
-   * 버튼은 단말 설비의 실제 이름이다(사용자 결정 2026-10-26). 범위 라디오는 없다.
+   * 기본 목록은 단말 설비뿐이다. 제목은 늘 왼쪽, 전환 버튼 하나는 늘 같은 자리다. 제목과 버튼 이름은
+   * 단말 설비의 실제 이름을 쓴다(사용자 결정 2026-10-26, PG-32). 범위 라디오와 화살표 버튼은 없다.
    */
-  it('[전체 설비 보기]로 「전체 설비 작업지시」에 들어가고 [← 설비 이름]으로 돌아온다', async () => {
+  it('같은 자리의 전환 버튼 하나로 「설비 작업지시」와 「전체 설비 작업지시」를 오간다', async () => {
     const { user } = renderScreen();
+    const equipmentTitle = t.list.equipmentTitle(TERMINAL.equipmentName);
+    const onlyEquipment = t.list.showEquipment(TERMINAL.equipmentName);
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    expect(screen.getByRole('heading', { level: 2, name: t.list.title })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: equipmentTitle })).toBeInTheDocument();
     expect(screen.queryByRole('radio')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: TERMINAL.equipmentName })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: onlyEquipment })).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: t.list.showAll }));
+    const toggle = screen.getByRole('button', { name: t.list.showAll });
+    await user.click(toggle);
 
     expect(screen.getByRole('heading', { level: 2, name: t.list.allTitle })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { level: 2, name: t.list.title })).toBeNull();
+    expect(screen.queryByRole('heading', { level: 2, name: equipmentTitle })).toBeNull();
+    /* 같은 버튼이 이름만 바꾼다. 화살표 버튼이 따로 서지 않는다. */
+    expect(screen.getByRole('button', { name: onlyEquipment })).toBe(toggle);
     expect(screen.queryByRole('button', { name: t.list.showAll })).toBeNull();
-    /* 「이 설비」가 아니라 단말 설비의 실제 이름이다. 화살표는 읽지 않는다. */
-    const back = screen.getByRole('button', { name: TERMINAL.equipmentName });
-    expect(back).toHaveTextContent(`← ${TERMINAL.equipmentName}`);
+    const listHead = toggle.parentElement as HTMLElement;
+    expect(within(listHead).getAllByRole('button')).toEqual([toggle]);
 
-    await user.click(back);
+    await user.click(toggle);
 
-    expect(screen.getByRole('heading', { level: 2, name: t.list.title })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.list.showAll })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: equipmentTitle })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.list.showAll })).toBe(toggle);
   });
 
   it('머리줄 화면 이름은 「작업 지시 목록」이고 주 동작은 [작업 시작] 그대로다', async () => {
@@ -411,7 +415,9 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
       ).toHaveAttribute('aria-pressed', 'true');
       expect(selectionNo()).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: TERMINAL.equipmentName }));
+      await user.click(
+        screen.getByRole('button', { name: t.list.showEquipment(TERMINAL.equipmentName) }),
+      );
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: selectName(OTHER.workOrderNo) })).toBeNull();
       });
@@ -430,7 +436,9 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
         OTHER.workOrderNo,
       );
 
-      await user.click(screen.getByRole('button', { name: TERMINAL.equipmentName }));
+      await user.click(
+        screen.getByRole('button', { name: t.list.showEquipment(TERMINAL.equipmentName) }),
+      );
 
       expect(await screen.findByText(t.remaining.select)).toBeInTheDocument();
       expect(screen.queryByRole('group', { name: t.selection.title })).toBeNull();

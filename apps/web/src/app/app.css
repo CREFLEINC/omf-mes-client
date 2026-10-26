@@ -12490,6 +12490,23 @@ button.app-button-neutral {
 
 .pop-row-info-value {
   min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 두 열 정보 영역: 라벨 값 라벨 값. 왼쪽 값 열은 값 길이만큼(반을 넘지 않게), 오른쪽 값 열이 남는 폭을
+ * 쓴다. 한 줄을 다 쓰는 쌍은 첫 라벨 열에서 시작해 끝까지 간다.
+ */
+.pop-row-info-two {
+  grid-template-columns: max-content fit-content(50%) max-content minmax(0, 1fr);
+}
+
+.pop-row-info-two > .pop-row-info-label.pop-row-info-wide {
+  grid-column: 1;
+}
+
+.pop-row-info-two > .pop-row-info-value.pop-row-info-wide {
+  grid-column: 2 / -1;
 }
 
 /* 「진행 / 기준」 값과 진행 막대(C-21). 막대는 글자 옆에서 남는 폭을 쓴다. */
@@ -12660,12 +12677,17 @@ button.app-button-neutral {
   margin: 0;
 }
 
-/* 목록 제목 줄: [← 설비 이름], 제목, 오른쪽 끝 [전체 설비 보기]. */
+/*
+ * 목록 제목 줄: 제목은 늘 왼쪽, 전환 버튼은 늘 오른쪽 끝(PG-32). 첫 카드와는 `--space-4` 로 띄운다.
+ * 두 목록에서 같은 높이와 같은 간격이다.
+ */
 .work-start-list-head {
   display: flex;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 /* 목록만 스크롤한다. 구획이 준 높이를 그대로 쓴다(픽셀 상한을 두지 않는다). */
@@ -12704,9 +12726,25 @@ button.app-button-neutral {
   line-height: 28px;
 }
 
-/* [전체 설비 보기]는 목록 제목 줄 오른쪽 끝에 둔다. */
-.work-start-show-all {
-  margin-inline-start: auto;
+/*
+ * 전환 버튼의 두 이름을 한 칸에 겹쳐 두고 지금 이름만 보인다. 버튼 폭이 긴 이름에 맞춰 늘 같다.
+ */
+.work-start-scope-toggle {
+  flex: 0 0 auto;
+}
+
+.work-start-scope-toggle-labels {
+  display: inline-grid;
+}
+
+.work-start-scope-toggle-label {
+  grid-area: 1 / 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.work-start-scope-toggle-spacer {
+  visibility: hidden;
 }
 
 /* 오른쪽 구획 안의 묶음. 상자를 겹치지 않고 소제목과 간격으로 나눈다(C-19). */

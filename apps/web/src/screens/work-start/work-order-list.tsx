@@ -67,7 +67,7 @@ export interface WorkOrderListProps {
   /** 전체 설비 보기인가. */
   isShowingAll: boolean;
   /**
-   * 단말 설비의 이름(없으면 코드). 돌아가는 버튼과 빈 목록 문구가 「이 설비」 대신 이 이름을
+   * 단말 설비의 이름(없으면 코드). 제목, 전환 버튼, 빈 목록 문구가 「이 설비」 대신 이 이름을
    * 쓴다(사용자 결정 2026-10-23). 모르면 `null`.
    */
   equipmentName: string | null;
@@ -77,7 +77,7 @@ export interface WorkOrderListProps {
   isEquipmentUnknown: boolean;
   selectedId: number | null;
   onSelect: (workOrder: WorkOrder) => void;
-  /** [전체 설비 보기]와 [← 설비 이름]. 기본 목록과 전체 설비 목록을 오간다. */
+  /** [전체 설비 보기]와 [〈설비 이름〉만 보기]. 기본 목록과 전체 설비 목록을 오간다. */
   onToggleScope: () => void;
   onRetry: () => void;
   /** 단위 번호를 코드로 옮긴다. 못 옮기면 `null`. 수량만 낸다. */
@@ -87,8 +87,9 @@ export interface WorkOrderListProps {
 /**
  * 왼쪽 작업지시 구획(T-P-S 왼쪽 대상 목록). 이 화면에서 스크롤하는 자리는 이 구획의 목록 하나다.
  *
- * - 기본 목록은 단말 설비의 작업지시다. [전체 설비 보기]를 누르면 다른 목록에 들어가듯 제목이
- *   「전체 설비 작업지시」로 바뀌고, 제목 왼쪽 [← 설비 이름]으로 돌아온다(사용자 결정 2026-10-26).
+ * - 기본 목록은 단말 설비의 작업지시다(제목 「사출기 1호기 작업지시」). 제목 줄 오른쪽 끝 버튼
+ *   [전체 설비 보기]를 누르면 제목이 「전체 설비 작업지시」, 같은 자리 버튼이 [사출기 1호기만 보기]가
+ *   된다(사용자 결정 2026-10-26, PG-32).
  * - 카드는 행 전체 터치로 고른다(C-1). 카드는 제목 줄(W/O 번호, 오른쪽 끝 상태 칩)과 정보 영역
  *   (「라벨 값」 쌍)으로 나뉜다(C-21). 두 목록에서 카드 항목은 같다(C-10, PG-14).
  * - 진행 중인 W/O를 위에 둔다. 받은 쪽 안에서만 정렬한다(서버 정렬은 계약 대기).
@@ -114,29 +115,46 @@ export const WorkOrderList = ({
 }: WorkOrderListProps) => {
   const rows = sortForPick(workOrders ?? []);
   const scopeEquipment = equipmentName ?? t.scopeEquipmentUnknown;
-  const title = isShowingAll ? t.allTitle : t.title;
+  const title = isEquipmentMissing
+    ? t.title
+    : isShowingAll
+      ? t.allTitle
+      : t.equipmentTitle(scopeEquipment);
+  const toggleLabels = [t.showAll, t.showEquipment(scopeEquipment)] as const;
+  const toggleLabel = isShowingAll ? toggleLabels[1] : toggleLabels[0];
 
   return (
     <section className="pane work-start-list" aria-label={title}>
+      {/*
+       * 제목 줄은 흔들리지 않는다(사용자 결정 2026-10-26, PG-32). 제목은 늘 왼쪽, 전환 버튼 하나는
+       * 늘 오른쪽 끝 같은 자리다. 버튼 폭은 두 이름 중 긴 쪽에 맞춰 목록을 바꿔도 같다.
+       */}
       <div className="work-start-list-head">
-        {/* 전체 설비 목록에서는 제목 왼쪽에 돌아가는 버튼을 둔다. 이름은 단말 설비의 실제 이름이다(C-13). */}
-        {isShowingAll && !isEquipmentMissing && (
-          <Button type="button" variant="outlined" size="lg" onClick={onToggleScope}>
-            <span aria-hidden="true">← </span>
-            {scopeEquipment}
-          </Button>
-        )}
         <h2 className="pane-title">{title}</h2>
         {/* 좁힐 설비가 없는 단말은 처음부터 전체 목록이라 버튼을 두지 않는다. */}
-        {!isShowingAll && !isEquipmentMissing && (
+        {!isEquipmentMissing && (
           <Button
             type="button"
             variant="outlined"
             size="lg"
-            className="work-start-show-all"
+            className="work-start-scope-toggle"
             onClick={onToggleScope}
           >
-            {t.showAll}
+            <span className="work-start-scope-toggle-labels">
+              {toggleLabels.map((label) => (
+                <span
+                  key={label}
+                  aria-hidden={label === toggleLabel ? undefined : true}
+                  className={
+                    label === toggleLabel
+                      ? 'work-start-scope-toggle-label'
+                      : 'work-start-scope-toggle-label work-start-scope-toggle-spacer'
+                  }
+                >
+                  {label}
+                </span>
+              ))}
+            </span>
           </Button>
         )}
       </div>

@@ -45,8 +45,10 @@ export const workStart: Translated<typeof ko.workStart> = {
 
   list: {
     title: 'Lệnh sản xuất',
-    showAll: 'Xem tất cả thiết bị',
+    equipmentTitle: (equipment: string): string => `Lệnh sản xuất của ${equipment}`,
     allTitle: 'Lệnh sản xuất của tất cả thiết bị',
+    showAll: 'Xem tất cả thiết bị',
+    showEquipment: (equipment: string): string => `Chỉ xem ${equipment}`,
     scopeEquipmentUnknown: 'Thiết bị của máy trạm',
 
     select: (workOrderNo: string): string => `Chọn ${workOrderNo}`,

@@ -20,8 +20,9 @@ export interface WorkOrderInfoProps {
 }
 
 /**
- * W/O 정보 영역(C-21). 「라벨 값」 쌍을 같은 열에 맞춘다: 품목, 공정, 설비, 실적, 계획 시작.
- * 목록 카드와 「선택한 작업지시」가 같은 순서와 같은 말을 쓴다.
+ * W/O 정보 영역(C-21). 「라벨 값」 쌍을 같은 열에 맞춘다. 두 열로 두어 카드 높이를 줄인다(사용자 결정
+ * 2026-10-26, PG-31): 「품목 | 공정」 한 줄, 설비, 계획 시작, 실적은 각각 한 줄. 목록 카드와 「선택한
+ * 작업지시」가 같은 배치, 같은 순서, 같은 말을 쓴다.
  *
  * 수량은 「실적 0 / 200 EA」(실적 / 지시) 한 쌍과 진행 막대다(C-21 「진행 / 기준」). 실적을 못
  * 받았으면 지시만 「지시 200 EA」로 보이고 막대를 두지 않는다(못 받은 값을 0으로 지어내지 않는다).
@@ -39,12 +40,18 @@ export const WorkOrderInfo = ({
   const orderText = qtyNumber(order);
 
   return (
-    <PopRowInfo>
+    <PopRowInfo columns={2}>
       <PopRowPair label={labels.item}>{itemText(workOrder)}</PopRowPair>
       <PopRowPair label={labels.process}>{(workOrder.processName ?? '').trim()}</PopRowPair>
-      <PopRowPair label={t.equipment}>{equipmentText}</PopRowPair>
+      {/* 「설비 이름 (코드)」는 반 칸에 다 들어가지 않는다(1024×768 실측, PG-31). 한 줄을 다 쓴다. */}
+      <PopRowPair label={t.equipment} wide>
+        {equipmentText}
+      </PopRowPair>
+      <PopRowPair label={labels.plannedStart} wide>
+        {dateTimeText(workOrder.plannedStartAt)}
+      </PopRowPair>
       {good !== undefined && goodText !== null && orderText !== null ? (
-        <PopRowPair label={t.goodLabel}>
+        <PopRowPair label={t.goodLabel} wide>
           <PopQtyProgress
             current={good}
             target={order}
@@ -53,9 +60,10 @@ export const WorkOrderInfo = ({
           />
         </PopRowPair>
       ) : (
-        <PopRowPair label={t.orderLabel}>{qtyText(order, uom)}</PopRowPair>
+        <PopRowPair label={t.orderLabel} wide>
+          {qtyText(order, uom)}
+        </PopRowPair>
       )}
-      <PopRowPair label={labels.plannedStart}>{dateTimeText(workOrder.plannedStartAt)}</PopRowPair>
     </PopRowInfo>
   );
 };
