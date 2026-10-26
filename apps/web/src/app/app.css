@@ -21642,3 +21642,23 @@ table.col-measuring td {
 .iqc-inspection-locked-badge > :first-child {
   color: var(--on-surface-variant);
 }
+
+/*
+ * 저장 줄 안내(확정 경고 · 막힌 까닭) — 확정 회차 라벨과 같은 알약 모양(사용자 지시 2026-10-26): 둥근 모서리, 옅은 테두리,
+ * 작은 글자 · 작은 표식. 색은 종전대로(경고 노랑 · 정보 파랑).
+ */
+.iqc-inspection-action-note:nth-child(n) {
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.iqc-inspection-action-note[data-tone='warning']:nth-child(n) {
+  border: 1px solid color-mix(in srgb, var(--semantic-warning) 35%, transparent);
+}
+
+.iqc-inspection-action-note[data-tone='info']:nth-child(n) {
+  border: 1px solid color-mix(in srgb, var(--semantic-info) 35%, transparent);
+}

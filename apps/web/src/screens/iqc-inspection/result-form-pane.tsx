@@ -471,7 +471,7 @@ export const ResultFormPane = ({
               {/* 막혔으면 «무엇이» 막혔는지 단추 바로 왼쪽 한 줄로 밝힌다(공유계약 G-23 · 띠 대신 글줄 #133). */}
               {confirmBlockedReason !== null && (
                 <p className="iqc-inspection-action-note" data-tone="info">
-                  <Icon name="info" size={18} aria-hidden />
+                  <Icon name="info" size={14} aria-hidden />
                   {confirmBlockedReason}
                 </p>
               )}
@@ -481,7 +481,7 @@ export const ResultFormPane = ({
                */}
               {confirmBlockedReason === null && (
                 <p className="iqc-inspection-action-note" data-tone="warning">
-                  <Icon name="warning" size={18} aria-hidden />
+                  <Icon name="warning" size={14} aria-hidden />
                   {t.confirmNote}
                 </p>
               )}
