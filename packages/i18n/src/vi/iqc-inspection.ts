@@ -82,6 +82,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       change: 'Đổi',
       set: 'Chỉ định',
     },
+    auxTabs: 'Thông tin tham khảo kiểm tra',
     noPlanVersion: 'Không có tiêu chuẩn',
     planVersion: (version: number): string => `Phiên bản ${String(version)}`,
     openPlan: 'Xem tiêu chuẩn',

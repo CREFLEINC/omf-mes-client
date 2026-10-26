@@ -1,4 +1,4 @@
-import { Button, Icon, Progress, Select, TextField } from '@crefle/web-ui';
+import { Button, Icon, Select, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent, type ReactElement, type ReactNode } from 'react';
@@ -237,24 +237,6 @@ export const ResultFormPane = ({
           : /* 모자랄 때는 오른쪽 「미입력 N」이 이미 말한다 — 문장을 두지 않는다(#133). */
             null;
 
-  /**
-   * 진행 막대 — **보이기 위한 값일 뿐이다**(합계·잔여 계산은 위 `toTotals` 그대로).
-   * 셀 수 없으면 비우고, 넘기면 가득 채워 경고색, 맞으면 성공색, 모자라면 기본색이다.
-   */
-  const inspectedMicro = fromServerQty(inspectedQty);
-  const progress =
-    totals.kind === 'uncountable'
-      ? { value: 0, tone: 'idle' as const }
-      : totals.matches
-        ? { value: 100, tone: 'success' as const }
-        : /* 넘기면 가득 채우되 오류색 — 정상 완료(성공색)와 헷갈리지 않게(#133). */
-          totals.remaining < 0n
-          ? { value: 100, tone: 'error' as const }
-          : {
-              value: inspectedMicro > 0n ? Number((totals.sum * 10000n) / inspectedMicro) / 100 : 0,
-              /* 미입력이 남았으면 주의색(노랑) — 완료(초록) · 초과(빨강)와 갈린다(#133). */
-              tone: 'warning' as const,
-            };
   const sumText = totals.kind === 'counted' ? formatMicro(totals.sum) : unknownValue;
   const inspectedText = withUom(String(inspectedQty), uomCode);
   /* 오른쪽 상태 — 「미입력 N」(이름표는 왼쪽 「입력 완료」와 같은 보조색) · 넘치면 「N 초과」. 음수는 보이지 않는다(#133). */
@@ -356,12 +338,6 @@ export const ResultFormPane = ({
                   </span>
                   <span className="iqc-inspection-progress-status">{statusText}</span>
                 </div>
-                <Progress
-                  value={progress.value}
-                  tone={progress.tone}
-                  label={t.progressLabel}
-                  valueText={`${sumText} / ${inspectedText}`}
-                />
                 {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
               </div>
             </div>

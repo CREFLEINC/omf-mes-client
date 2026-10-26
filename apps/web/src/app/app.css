@@ -21574,3 +21574,10 @@ table.col-measuring td {
   font: var(--type-body-sm);
   font-weight: 400;
 }
+
+/* IQC 참고 정보 탭(#185) — 탭 아래 본문 여백(OQC 상세 탭과 같은 값). 본문은 접기 상자(`.iqc-inspection-fold`)의 안쪽 규칙(중복 제목 숨김 · 빈 표 안내)을 그대로 쓴다. */
+.iqc-inspection-tab-body {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+}

@@ -105,12 +105,11 @@ describe('ResultFormPane', () => {
     expect(screen.queryByText('검사수량과 일치합니다.')).not.toBeInTheDocument();
   });
 
-  it('모자라면 「입력 완료 N / M」·미입력·막대로 보이고 따로 문장은 없다(#133)', () => {
+  it('모자라면 「입력 완료 N / M」·미입력으로 보이고 따로 문장은 없다(#133 · 막대는 #185 에서 뺐다)', () => {
     renderPane({ accepted: '400', rejected: '0', held: '0' });
 
     expect(sumText()).toBe(`${t.sum} 400 / 500`);
     expect(statusText()).toBe(`${t.remaining} 100`);
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '80');
     expect(screen.queryByText(/남았습니다/)).not.toBeInTheDocument();
     expect(screen.queryByText(t.over('100'))).not.toBeInTheDocument();
   });
@@ -161,7 +160,6 @@ describe('ResultFormPane', () => {
     const empty = messages.iqcInspection.queue.emptyValue;
     expect(sumText()).toBe(`${t.sum} ${empty}`);
     expect(statusText()).toBe(`${t.remaining} ${empty}`);
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
   });
 
   it('확정된 회차는 고칠 수 있는 것처럼 보이지 않는다 — 이전 회차는 정정하지 않는다', () => {
@@ -452,5 +450,13 @@ describe('ResultFormPane — 미결과 결과 문면', () => {
     });
 
     expect(saveButton()).toBeDisabled();
+  });
+});
+
+describe('ResultFormPane — 입력 현황(#185)', () => {
+  it('진행 막대는 두지 않는다 — 라벨 · 수량 · 미입력 글만 선다', () => {
+    renderPane({ accepted: '400', rejected: '0', held: '0' });
+
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 });

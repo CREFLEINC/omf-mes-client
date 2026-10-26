@@ -150,6 +150,7 @@ export const iqcInspection = {
      * **없는 값과 모르는 값은 다른 모양이어야 한다**(공유계약 G-9) — 그래서 일반 빈 값
      * 표시(`emptyValue`)와 다른 전용 문구를 쓴다.
      */
+    auxTabs: '검사 참고 정보',
     noPlanVersion: '기준 없음',
     planVersion: (version: number): string => `버전 ${String(version)}`,
     openPlan: '기준 조회',

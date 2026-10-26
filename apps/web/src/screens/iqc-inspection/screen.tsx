@@ -1,4 +1,4 @@
-import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -905,70 +905,98 @@ export const IqcInspectionScreen = () => {
 
   const auxContent =
     detail.isError || detail.data === undefined ? null : (
-      <div className="iqc-inspection-panes iqc-inspection-aux">
-        <details className="pane iqc-inspection-fold" open>
-          <summary>{messages.iqcInspection.measurements.caption}</summary>
-          {/*
-           * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
-           * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
-           * 그리드가 영영 「불러오는 중」이 된다. `isLoading`(= pending && fetching)만
-           * 실제로 부르는 중을 잡는다.
-           */}
-          <MeasurementGrid
-            rows={measurementRows}
-            isLoading={itemSpecs.isLoading || measurements.isLoading}
-          />
-        </details>
-        {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). 회차가 둘 이상일 때만 선다. */}
-        {historyRounds.length > 0 && (
-          <details className="pane iqc-inspection-fold">
-            <summary>{messages.iqcInspection.history.heading}</summary>
-            <RoundHistory
-              rounds={historyRounds}
-              uomCode={uomCode}
-              judgmentOptions={judgmentOptions}
-            />
-          </details>
-        )}
-
-        {/* LOT 별 시험성적서 등 검사 문서(#58) — 대상 LOT 이 있을 때만. */}
-        {detail.data.lotId !== null && (
-          <details className="pane iqc-inspection-fold">
-            <summary>
-              {messages.inspectionDocuments.heading}
-              <span className="iqc-inspection-label-hint">{messages.inspectionDocuments.help}</span>
-            </summary>
-            <AttachmentPanel
-              key={detail.data.lotId}
-              targetTypeCode="LOT"
-              targetId={detail.data.lotId}
-            />
-          </details>
-        )}
-
-        {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
-        {selectedId !== null && (
-          <details className="pane iqc-inspection-fold">
-            <summary>
-              {messages.inspectionHistory.heading}
-              {historyCount !== undefined && (
-                <span className="iqc-inspection-fold-count">
-                  {messages.iqcInspection.detail.historyCount(historyCount)}
-                </span>
-              )}
-            </summary>
-            <InspectionHistoryPanel
-              hideSourceLot
-              key={`${String(selectedId)}-${String(historyRounds.length)}`}
-              inspectionRequestId={selectedId}
-              judgmentLabelOf={(code) =>
-                judgmentOptions.find((option) => option.value === code)?.label ?? code
-              }
-              revision={historyRevision}
-            />
-          </details>
-        )}
-      </div>
+      /*
+       * 검사 항목별 결과 · (이전 회차) · 첨부 파일 · 검사 이력을 탭 하나로(사용자 지시 2026-10-26 · #185 — OQC 상세와 같은 짜임).
+       * 의뢰를 바꾸면 첫 탭에서 다시 시작한다. 이전 회차는 회차가 둘 이상일 때만, 첨부는 대상 LOT 이 있을 때만 선다.
+       */
+      <section className="pane iqc-inspection-panes iqc-inspection-aux iqc-inspection-aux-tabs">
+        <Tabs
+          key={selectedId}
+          aria-label={messages.iqcInspection.detail.auxTabs}
+          items={[
+            {
+              value: 'measurements',
+              label: messages.iqcInspection.measurements.caption,
+              content: (
+                <div className="iqc-inspection-tab-body iqc-inspection-fold">
+                  {/*
+                   * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
+                   * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
+                   * 그리드가 영영 「불러오는 중」이 된다. `isLoading`(= pending && fetching)만
+                   * 실제로 부르는 중을 잡는다.
+                   */}
+                  <MeasurementGrid
+                    rows={measurementRows}
+                    isLoading={itemSpecs.isLoading || measurements.isLoading}
+                  />
+                </div>
+              ),
+            },
+            /* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */
+            ...(historyRounds.length > 0
+              ? [
+                  {
+                    value: 'rounds',
+                    label: messages.iqcInspection.history.heading,
+                    content: (
+                      <div className="iqc-inspection-tab-body iqc-inspection-fold">
+                        <RoundHistory
+                          rounds={historyRounds}
+                          uomCode={uomCode}
+                          judgmentOptions={judgmentOptions}
+                        />
+                      </div>
+                    ),
+                  },
+                ]
+              : []),
+            /* LOT 별 시험성적서 등 검사 문서(#58). */
+            ...(detail.data.lotId !== null
+              ? [
+                  {
+                    value: 'documents',
+                    label: messages.inspectionDocuments.heading,
+                    content: (
+                      <div className="iqc-inspection-tab-body iqc-inspection-fold">
+                        <p className="field-note">{messages.inspectionDocuments.help}</p>
+                        <AttachmentPanel
+                          key={detail.data.lotId}
+                          targetTypeCode="LOT"
+                          targetId={detail.data.lotId}
+                        />
+                      </div>
+                    ),
+                  },
+                ]
+              : []),
+            /* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. 탭 이름에 건수를 붙인다. */
+            ...(selectedId !== null
+              ? [
+                  {
+                    value: 'history',
+                    label:
+                      historyCount === undefined
+                        ? messages.inspectionHistory.heading
+                        : `${messages.inspectionHistory.heading} ${messages.iqcInspection.detail.historyCount(historyCount)}`,
+                    content: (
+                      <div className="iqc-inspection-tab-body iqc-inspection-fold">
+                        <InspectionHistoryPanel
+                          hideSourceLot
+                          key={`${String(selectedId)}-${String(historyRounds.length)}`}
+                          inspectionRequestId={selectedId}
+                          judgmentLabelOf={(code) =>
+                            judgmentOptions.find((option) => option.value === code)?.label ?? code
+                          }
+                          revision={historyRevision}
+                        />
+                      </div>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
+      </section>
     );
 
   return (
