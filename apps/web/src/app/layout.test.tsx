@@ -217,26 +217,15 @@ describe('AppLayout', () => {
     );
   });
 
-  it('사이드바에 검사기준 메뉴가 보인다', () => {
+  /* 검사기준은 「검사 기준」 묶음의 첫 탭이다 — 사이드바의 묶음 줄이 그 주소를 건다. */
+  it('사이드바에 검사 기준 묶음이 검사기준 주소로 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '검사기준' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '검사 기준' })).toHaveAttribute(
       'href',
       '/master-data/inspection-standard',
-    );
-  });
-
-  /* 불량·원인코드는 「품질 코드」 묶음의 첫 탭이다 — 사이드바의 묶음 줄이 그 주소를 건다. */
-  it('사이드바에 품질 코드 묶음이 불량·원인코드 주소로 보인다', () => {
-    renderLayout('본문 내용');
-
-    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-
-    expect(within(sidebar).getByRole('link', { name: '품질 코드' })).toHaveAttribute(
-      'href',
-      '/master-data/defect-cause-code',
     );
   });
 
@@ -251,17 +240,19 @@ describe('AppLayout', () => {
     );
   });
 
-  /* 판정유형 코드는 「품질 코드」 묶음의 둘째 탭이다 — 탭 막대에서 불량·원인코드 바로 뒤에 선다. */
-  it('품질 코드 탭 막대에 판정유형 코드가 불량·원인코드 뒤에 보인다', () => {
+  /* 판정유형 코드는 「검사 기준」 묶음의 끝 탭이다 — 탭 막대에서 불량·원인코드 바로 뒤에 선다. */
+  it('검사 기준 탭 막대에 판정유형 코드가 불량·원인코드 뒤에 보인다', () => {
     renderLayout('본문 내용', { route: '/master-data/judgment-code' });
 
-    const tabs = screen.getByRole('navigation', { name: '품질 코드' });
+    const tabs = screen.getByRole('navigation', { name: '검사 기준' });
 
     expect(within(tabs).getByRole('link', { name: '판정유형 코드' })).toHaveAttribute(
       'href',
       '/master-data/judgment-code',
     );
-    expect(hubTabHrefs('품질 코드')).toEqual([
+    expect(hubTabHrefs('검사 기준')).toEqual([
+      '/master-data/inspection-standard',
+      '/master-data/inspection-sheet-template',
       '/master-data/defect-cause-code',
       '/master-data/judgment-code',
     ]);
@@ -512,7 +503,7 @@ describe('AppLayout', () => {
   /*
    * 품질 관리 — **독립 영역이다.** 검사를 IQC(입하) → PQC(공정) → OQC(출하) 흐름 차례로 세우고,
    * 검사기준·코드, 검사 이력, 그리고 LOT 상태 → 보류 → 승인 → 처분의 판정 갈래가 뒤따른다.
-   * 불량·원인코드와 판정유형 코드는 「품질 코드」, LOT 조회와 판정은 「LOT 상태」 묶음 한 줄이다.
+   * 검사기준 · 검사표 기준 · 불량·원인코드 · 판정유형 코드는 「검사 기준」, LOT 조회와 판정은 「LOT 상태」 묶음 한 줄이다.
    */
   it('품질 관리 섹션이 IQC → PQC → OQC → 검사기준·코드 → 검사실적 → LOT 상태·보류·승인·처분 순서다', () => {
     renderLayout('본문 내용');
@@ -549,11 +540,8 @@ describe('AppLayout', () => {
 
     const qualityOrder = [
       '/logistics/iqc-inspection',
+      /* 「검사 기준」 묶음 — 검사기준 → 검사표 기준(W-06-24) → 불량·원인코드 → 판정유형 코드. */
       '/master-data/inspection-standard',
-      /* W-06-24 — OA 제품 검사표 기준(설계보다 앞선 화면). */
-      '/master-data/inspection-sheet-template',
-      /* 「품질 코드」 묶음 — 불량·원인코드 → 판정유형 코드. */
-      '/master-data/defect-cause-code',
       '/quality/inspection-results',
       /* W-03-13 — OA 제품 검사표 조회·서명(설계보다 앞선 화면). */
       '/quality/inspection-sheets',
@@ -972,9 +960,7 @@ describe('AppLayout', () => {
       '/logistics/document-progress',
       /* 품질 관리 — 검사 조회·판정(IQC · PQC · OQC 탭) → 기준·코드 → 이력 → LOT 판정 갈래. */
       '/logistics/iqc-inspection' /* ← 검사 조회·판정 */,
-      '/master-data/inspection-standard',
-      '/master-data/inspection-sheet-template',
-      '/master-data/defect-cause-code' /* ← 품질 코드 */,
+      '/master-data/inspection-standard' /* ← 검사 기준 */,
       '/quality/inspection-results',
       '/quality/inspection-sheets',
       '/quality/lot-status' /* ← LOT 상태 */,
@@ -1044,7 +1030,12 @@ describe('AppLayout', () => {
         '/logistics/supplier-return',
         '/logistics/disposal-issue',
       ],
-      '품질 코드': ['/master-data/defect-cause-code', '/master-data/judgment-code'],
+      '검사 기준': [
+        '/master-data/inspection-standard',
+        '/master-data/inspection-sheet-template',
+        '/master-data/defect-cause-code',
+        '/master-data/judgment-code',
+      ],
       'LOT 상태': ['/quality/lot-status', '/quality/lot-status-transition'],
       'ERP W/O': ['/production/production-orders', '/production/po-change-review'],
       '설비 보전': [
@@ -1632,7 +1623,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
   });
 
   /*
@@ -1682,7 +1673,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */
