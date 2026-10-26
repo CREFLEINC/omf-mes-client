@@ -82,6 +82,20 @@ export const layoutColumns = (
 };
 
 /**
+ * 이 열이 더 넓어질 수 있는 폭(px) — 표가 담긴 상자를 넘지 않는 데까지다(사용자 지시 2026-10-26 · #186 「화면 최대
+ * 너비를 벗어나면 안 된다」). 표는 최소 폭(app.css · `--col-grow`)보다 좁아지지 않고, 열을 넓힌 만큼 최소 폭이 따라
+ * 늘어난다 — 그래서 상자 폭과 지금 최소 폭의 차이가 넓힐 수 있는 끝이다. 잴 수 없으면(시험 환경) 끝이 없다.
+ */
+const roomOf = (cell: HTMLTableCellElement): number => {
+  const table = cell.closest('table');
+  const box = table?.parentElement;
+  if (!table || !box || box.clientWidth === 0) return Infinity;
+  const minWidth = Number.parseFloat(getComputedStyle(table).minWidth);
+
+  return Number.isFinite(minWidth) ? box.clientWidth - minWidth : Infinity;
+};
+
+/**
  * 끌기 손잡이 — 머리칸 오른쪽 끝의 세로 막대. 마우스·터치로 끈다. 읽기 도구에는 감춘다 — 머리칸 이름에
  * 섞이지 않게.
  */
@@ -101,8 +115,10 @@ const ColumnResizer = ({
       event.preventDefault();
       const startX = event.clientX;
       const startWidth = cell.getBoundingClientRect().width;
+      /* 상자를 넘겨 넓히지 않는다. 이미 넘쳐 있으면(좁은 창) 지금 폭이 끝이다 — 갑자기 줄어들지 않게. */
+      const widest = startWidth + Math.max(0, roomOf(cell));
       const move = (moveEvent: PointerEvent): void => {
-        onResize(startWidth + moveEvent.clientX - startX);
+        onResize(Math.min(widest, startWidth + moveEvent.clientX - startX));
       };
       const up = (): void => {
         window.removeEventListener('pointermove', move);

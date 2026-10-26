@@ -6884,27 +6884,28 @@ dl.filter-bar.approval-inbox-detail-facts {
   }
 }
 
-/* 배치 고르기 줄 — 목록 위 오른쪽. 「좌우 배치 | 상하 배치」 중 지금 배치가 채워진 알약으로 보인다. */
-.po-board-layout-bar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: var(--space-3);
-}
-
+/*
+ * 배치 고르기(#186) — 탭 줄 오른쪽, 상태 칩 뒤 세로 구분선 다음. 그림 + 글의 테두리 단추 둘이고, 지금 배치는 주 색
+ * 테두리·옅은 주 색 바탕으로 강조된다.
+ */
 .po-board-layout-toggle {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .po-board-layout-option {
-  padding: var(--space-1) var(--space-4);
-  border: 0;
-  border-radius: var(--radius-full);
-  background: transparent;
-  color: var(--on-surface-variant);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface);
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -6918,14 +6919,31 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 .po-board-layout-option[aria-pressed='true'] {
-  background: var(--surface-container-high);
-  color: var(--on-surface);
+  border-color: var(--primary);
+  background: var(--primary-container);
+  color: var(--primary-text);
   cursor: default;
 }
 
-/* 창이 좁으면 늘 위아래로 쌓인다 — 배치 고르기는 눌러도 바뀌는 것이 없어 줄째 감춘다. */
+.po-board-layout-icon {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+/* 상태 칩과 배치 고르기 사이 세로선. */
+.quality-approval-type-bar-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: var(--space-1) var(--space-1);
+  background: var(--outline-variant);
+}
+
+/* 창이 좁으면 늘 위아래로 쌓인다 — 배치 고르기와 그 앞 구분선은 눌러도 바뀌는 것이 없어 감춘다. */
 @media (max-width: 1439px) {
-  .po-board-layout-bar {
+  .po-board-layout-toggle,
+  .quality-approval-type-bar-divider {
     display: none;
   }
 }

@@ -464,14 +464,23 @@ export const QualityApprovalScreen = ({
           else apply({ ...filters, approvalTypeCode: code }, pendingOnly);
         }}
         trailing={
-          <StatusChips
-            active={activeStatusChip(pendingOnly, filters.statusCode)}
-            counts={statusCounts}
-            onChange={(next) => {
-              const choice = statusChipChoice(next);
-              apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
-            }}
-          />
+          <>
+            <StatusChips
+              active={activeStatusChip(pendingOnly, filters.statusCode)}
+              counts={statusCounts}
+              onChange={(next) => {
+                const choice = statusChipChoice(next);
+                apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
+              }}
+            />
+            {/* 배치 고르기 — 상태 칩 뒤 구분선 다음(#186). 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다. */}
+            <span className="quality-approval-type-bar-divider" aria-hidden="true" />
+            <PaneLayoutToggle
+              layout={paneLayout.layout}
+              onChange={paneLayout.change}
+              labels={messages.qualityApproval.layout}
+            />
+          </>
         }
       />
       <section ref={aboveRef} className="pane po-board-filter" aria-label={t.panes.filter}>
@@ -481,13 +490,6 @@ export const QualityApprovalScreen = ({
           onReset={() => apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT)}
         />
       </section>
-      <div className="po-board-layout-bar">
-        <PaneLayoutToggle
-          layout={paneLayout.layout}
-          onChange={paneLayout.change}
-          labels={messages.qualityApproval.layout}
-        />
-      </div>
       <div ref={splitRef} className={paneLayout.className} style={split.style}>
         <section
           className="pane po-board-pane po-board-scroll quality-approval-pane quality-approval-list-pane"

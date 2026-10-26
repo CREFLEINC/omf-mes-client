@@ -203,9 +203,32 @@ export const usePaneLayout = (storageKey: string) => {
   return { layout, change, className };
 };
 
+/** 배치 그림 — 좌우는 세로 칸 둘, 상하는 가로 칸 둘. 글이 이름을 말하므로 읽기 도구에는 감춘다. */
+const LayoutIcon = ({ layout }: { layout: PaneLayout }) => (
+  <svg
+    className="po-board-layout-icon"
+    viewBox="0 0 16 16"
+    width="16"
+    height="16"
+    aria-hidden="true"
+  >
+    {layout === 'side' ? (
+      <>
+        <rect x="1.5" y="2" width="5" height="12" rx="1.5" />
+        <rect x="9.5" y="2" width="5" height="12" rx="1.5" />
+      </>
+    ) : (
+      <>
+        <rect x="1.5" y="2" width="13" height="5" rx="1.5" />
+        <rect x="1.5" y="9" width="13" height="5" rx="1.5" />
+      </>
+    )}
+  </svg>
+);
+
 /**
- * 배치 고르기 — 「좌우 배치 | 상하 배치」 두 단추 중 지금 배치가 채워져 보인다(사용자 지시 2026-10-26). 목록 위
- * 오른쪽에 선다. 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다 — 눌러도 바뀌는 것이 없다.
+ * 배치 고르기 — 「좌우 배치 | 상하 배치」 두 단추 중 지금 배치가 강조돼 보인다(사용자 지시 2026-10-26). 탭 줄
+ * 오른쪽, 상태 칩 뒤 구분선 다음에 선다. 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다 — 눌러도 바뀌는 것이 없다.
  */
 export const PaneLayoutToggle = ({
   layout,
@@ -227,6 +250,7 @@ export const PaneLayoutToggle = ({
           if (layout !== value) onChange(value);
         }}
       >
+        <LayoutIcon layout={value} />
         {labels[value]}
       </button>
     ))}
