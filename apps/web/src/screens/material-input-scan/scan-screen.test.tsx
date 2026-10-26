@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { setWorkerSession } from '../../patterns/worker-session';
 
@@ -25,6 +25,14 @@ import { popGateDeniedText, popGateUnidentifiedText } from '../../patterns/pop-p
 const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial');
 
 const t = messages.materialInputScan;
+
+/*
+ * 화면을 떠날 때 되돌리기 창의 투입은 저장된 큐에 남는다(PI-27). 앞 시험이 남긴 큐가 다음 시험에서
+ * 나가지 않게, 시험마다 비우고 시작한다.
+ */
+beforeEach(() => {
+  globalThis.localStorage.clear();
+});
 const UNIDENTIFIED_TEXT = popGateUnidentifiedText(t.confirm.reasons.unidentified, null);
 
 /**
@@ -975,7 +983,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
    * ⭐ 다음 작업 [생산 작업으로]는 기록된 것이 있어야 열린다(사용자 화면 확인 결정 2026-10-23). 담기만 하거나
    * 수량만 친 상태로 닫으면 그 줄은 아무 데도 남지 않고 사라진다 — 기록은 「기록」이 한다.
    */
-  it('기록된 것이 있어야 다음 작업이 열린다', async () => {
+  it('스캔하기 전에는 다음 작업이 잠기고, 스캔하면 곧 보낼 투입이 생겨 열린다', async () => {
     const user = userEvent.setup();
     renderScreen([lotsRoute([lot()]), gateRoute(true)], GATED);
 
@@ -986,20 +994,13 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 
-    /* 담기만 해서는 열리지 않는다 — 아직 기록되지 않았다(맨 위 띠는 세우지 않는다 · 2026-09-19). */
-    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
-      'disabled',
-      true,
-    );
-    expect(screen.queryByText(t.confirm.reasons.qtyMissing)).toBeNull();
-
-    /* 수량을 쳐도 아직이다 — 「기록」을 눌러야 원장에 남는다. */
-    await user.clear(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001')));
-    await user.type(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001')), '12');
-    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
-      'disabled',
-      true,
-    );
+    /* 남은 수량으로 투입이 잡혔다(PI-26). 누르면 먼저 보내고 옮긴다. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+        'disabled',
+        false,
+      );
+    });
   });
 
   /* 단말을 모르면 조회를 보내지 않는다 — 서버가 거절할 요청을 화면이 한 번 더 만들지 않는다. */

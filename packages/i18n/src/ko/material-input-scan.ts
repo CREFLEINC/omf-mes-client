@@ -64,7 +64,7 @@ export const materialInputScan = {
       material: (itemWithObject: string): string => `${itemWithObject} 담았습니다.`,
       /* 「물렸습니다」를 쓰지 않는다. 화면이 한 일은 이 투입에 딸린 금형으로 정한 것뿐이다. */
       mold: (moldWithObject: string): string => `금형 ${moldWithObject} 지정했습니다.`,
-      again: (item: string): string => `${item} 추가 투입을 입력할 수 있습니다.`,
+      again: (item: string): string => `${item} 추가 투입을 담았습니다.`,
       duplicate: (itemWithTopic: string): string => `${itemWithTopic} 이미 담겨 있습니다.`,
       /* 상태 «이름»은 코드값 조회로 받은 것을 그대로 넣는다(스펙 §5-2). */
       blockedStatus: (itemWithTopic: string, statusName: string): string =>
@@ -79,8 +79,10 @@ export const materialInputScan = {
       failed: '조회하지 못했습니다. 다시 스캔하세요.',
       /** 끊긴 상태에서 「다시 스캔하세요」만 쓰면 될 것처럼 읽힌다. 연결이 먼저다. */
       offline: '연결이 끊겨 자재를 조회할 수 없습니다. 연결된 뒤 다시 스캔하세요.',
-      /** [투입 기록] 뒤 결과 한 줄. */
-      recorded: (item: string, qty: string): string => `${item} ${qty} 투입을 기록했습니다.`,
+      /** 투입을 보낸 뒤 결과 한 줄(자동이든 [투입 기록]이든). */
+      recorded: (item: string, qty: string): string => `${item} ${qty} 투입`,
+      /** [되돌리기] 뒤. 아무것도 보내지 않았다. */
+      undone: (item: string): string => `${item} 투입을 되돌렸습니다.`,
     },
   },
 
@@ -91,6 +93,21 @@ export const materialInputScan = {
     remove: '스캔 취소',
     removeMaterial: (lotNo: string): string => `${lotNo} 스캔 취소`,
     removed: (item: string): string => `${item} 스캔을 취소했습니다.`,
+    /**
+     * 자동 투입 창(PI-26). 스캔하면 남은 수량으로 투입을 잡고 잠시 뒤 보낸다. 그 사이 수량을 고치거나
+     * [되돌리기]로 버린다.
+     */
+    autoCountdown: (seconds: number): string => `${String(seconds)}초 뒤 보냅니다`,
+    undo: '되돌리기',
+    undoMaterial: (lotNo: string): string => `${lotNo} 투입 되돌리기`,
+    /** 자동으로 보내지 않고 직접 입력으로 돌리는 까닭 한 줄(PI-28). */
+    manualReasons: {
+      unknown: '받은 수량을 몰라 이번 투입을 직접 입력합니다.',
+      none: '받은 수량을 다 투입했습니다. 더 넣으려면 이번 투입을 직접 입력하세요.',
+      unit: '단위가 달라 이번 투입을 직접 입력합니다.',
+    },
+    /** 보낸 투입을 고르면. 고치거나 거두는 기능은 아직 없다(omf-mes-server#828). */
+    sentReadOnly: '보낸 투입은 지금 고칠 수 없습니다. 더 넣으려면 LOT 라벨을 다시 스캔하세요.',
     /** 이번 투입 칸. 보이는 이름은 소제목 「이번 투입」이고 접근 이름에 LOT 번호를 붙인다. */
     qtyLabel: (lotNo: string): string => `${lotNo} 이번 투입`,
     qtyProblems: {
@@ -132,6 +149,8 @@ export const materialInputScan = {
     record: (item: string): string => `${item}의 투입을 기록하세요`,
     recordMany: (count: number): string => `스캔한 자재 ${String(count)}건의 투입을 기록하세요`,
     done: '생산 작업으로 진행할 수 있습니다',
+    /** 자동 투입 창이 열려 있을 때. 막힘이 아니라 곧 일어날 일이다. */
+    sending: (item: string, qty: string): string => `${item} ${qty} 투입을 곧 보냅니다`,
   },
 
   /**

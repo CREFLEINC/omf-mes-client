@@ -17,6 +17,14 @@ import { MaterialInputScanScreen } from './screen';
 
 const t = messages.materialInputScan;
 
+/*
+ * 화면을 떠날 때 되돌리기 창의 투입은 저장된 큐에 남는다(PI-27). 앞 시험이 남긴 큐가 다음 시험에서
+ * 나가지 않게, 시험마다 비우고 시작한다.
+ */
+beforeEach(() => {
+  globalThis.localStorage.clear();
+});
+
 const ROUTE = `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}`;
 const LIST_PATH = '/logistics/shopfloor-receipts';
 const detailPath = (receiptId: number): string => `${LIST_PATH}/${String(receiptId)}`;

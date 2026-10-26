@@ -1,7 +1,7 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { ActionBar } from '../../patterns/action-bar';
@@ -43,14 +43,14 @@ import {
   dropQty,
   EMPTY_QTY_DRAFTS,
   readQty,
-  toInputQty,
+  validateQty,
   writeQty,
   type QtyDrafts,
 } from './input-qty';
 import { toRecordedNote, type RecordedNote } from './mutations';
 import { toMaterialConsumption } from './post-request';
 import { readWorkOrderId } from './screen-params';
-import { useOutbox } from './outbox';
+import { appendToStoredOutbox, useOutbox } from './outbox';
 import { useOpenWorkSession } from './session';
 import { isEmergencyTypeCode } from './work-order-type';
 
@@ -132,6 +132,15 @@ const describeOutcome = (
  * 하단 바 [생산 작업으로]를 잠근다. 다만 그 잠금은 오조작을 줄이는 장치이지 집행이 아니다 — 집행은 서버의 403이고,
  * 오프라인 큐로 들어온 투입은 이 화면을 지나지 않는다.
  */
+/**
+ * 스캔한 LOT을 자동으로 보내기 전에 기다리는 시간(초, PI-26). 이 사이에 [되돌리기]로 버리거나
+ * 수량을 고칠 수 있다. 서버에 취소가 생기기 전(omf-mes-server#828)의 화면 쪽 되돌리기 창이다.
+ */
+export const AUTO_SEND_SECONDS = 10;
+
+/** 자동 투입을 하지 않고 직접 입력으로 돌리는 까닭(PI-28). */
+type ManualReason = 'unknown' | 'none' | 'unit';
+
 /** 이 화면에서 큐에 담은 투입 한 건. `occurredAt`은 본문 그대로라 서버 응답, 거부와 맞출 수 있다. */
 interface LocalRecord {
   lotId: number;
@@ -272,6 +281,17 @@ export const MaterialInputScanScreen = () => {
     setWorkerDialogOpen(true);
   };
 
+  /*
+   * 자동 투입 창(사용자 결정 2026-10-26, PI-26). 스캔한 LOT의 남은 수량을 곧바로 투입으로 잡고,
+   * 창이 닫히면(다음 스캔, 다른 줄 선택, [생산 작업으로], 화면 떠남, 시간 끝) 기존 기록 호출로 보낸다.
+   */
+  const [autoLotId, setAutoLotId] = useState<number | null>(null);
+  const [autoSecondsLeft, setAutoSecondsLeft] = useState(0);
+  /* 자동으로 보내지 못하는 LOT의 까닭(남은 수량 모름, 0 이하, 단위 다름). 직접 입력으로 돌린다. */
+  const [manualReasons, setManualReasons] = useState<Readonly<Record<number, ManualReason>>>({});
+  /* [생산 작업으로]: 창의 투입을 큐에 넣은 뒤(다음 커밋) 옮긴다. */
+  const [isLeavingToProduction, setLeavingToProduction] = useState(false);
+
   /* 스캔 칸 아래 결과 줄을 스캔 결과 대신 쓰는 안내(스캔 취소). 다음 스캔에서 지운다. */
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
@@ -291,6 +311,8 @@ export const MaterialInputScanScreen = () => {
   };
 
   const handleScan = (code: string): void => {
+    /* 다음 스캔은 앞 LOT의 되돌리기 창을 닫는다 — 앞 LOT을 먼저 보낸다. */
+    flushAuto();
     setActionNotice(null);
     /*
      * **후보 목록을 그 순간의 값으로 넘긴다.** 중복 판정이 조회 쪽에서 일어나는데, 훅이
@@ -313,8 +335,7 @@ export const MaterialInputScanScreen = () => {
           /* 새로 담은 LOT을 편집 영역에 연다(현재 LOT, PG-25). 이미 담긴 LOT을 다시 읽으면 그 LOT으로 옮긴다. */
           if (outcome.kind === 'material') {
             setSelectedLotId(outcome.material.lotId);
-            prefillQty(outcome.material.lotId, outcome.material.uomId);
-            arm(outcome.material.lotId);
+            live.current.beginInput(outcome.material.lotId, outcome.material.uomId);
           }
           /*
            * 이미 담긴 LOT을 다시 읽으면 그 LOT으로 옮긴다. 기록된 LOT이면 추가 투입이다(PI-18) — 남은
@@ -324,9 +345,9 @@ export const MaterialInputScanScreen = () => {
             const scanned = draft.materials.find((material) => material.lotNo === outcome.lotNo);
             if (scanned !== undefined) {
               setSelectedLotId(scanned.lotId);
-              if (!armedLotIds.includes(scanned.lotId)) {
-                prefillQty(scanned.lotId, scanned.uomId);
-                arm(scanned.lotId);
+              if (!live.current.armedLotIds.includes(scanned.lotId)) {
+                live.current.beginInput(scanned.lotId, scanned.uomId);
+                /* 기록된 LOT을 다시 읽으면 추가 투입이다(PI-18). 「이미 담겨 있다」가 아니다. */
                 setActionNotice(t.scan.outcomes.again(itemNameOf(scanned.lotId, scanned.itemId)));
               }
             }
@@ -350,9 +371,73 @@ export const MaterialInputScanScreen = () => {
     disarm(lotId);
   };
 
-  /* 스캔했지만 기록하지 않은 LOT. [생산 작업으로]를 막는다. */
-  const pendingMaterials = draft.materials.filter((material) =>
-    armedLotIds.includes(material.lotId),
+  /* 단말과 사번과 W/O가 갖춰져 지금 기록할 수 있는가. 아니면 자동 투입을 하지 않는다. */
+  const canRecordNow = gate.verdict === 'allowed' && workerNo !== null && workOrderId !== null;
+
+  /*
+   * 스캔한 LOT의 투입을 시작한다(PI-26, PI-28). 남은 수량을 알고 0보다 크고 단위가 같으며 단말이
+   * 기록할 수 있으면 그 양으로 자동 투입 창을 연다. 아니면 직접 입력(칸과 [투입 기록])으로 돌리고
+   * 까닭을 한 줄로 보인다.
+   */
+  const beginInput = (lotId: number, uomId: number): void => {
+    prefillQty(lotId, uomId);
+    arm(lotId);
+
+    const line = receipt.lines.find((candidate) => candidate.lotId === lotId);
+    const left = remainingQtyOf(lotId, uomId);
+    const reason: ManualReason | null =
+      line === undefined
+        ? 'unknown'
+        : line.uomId !== uomId
+          ? 'unit'
+          : left === null
+            ? 'unknown'
+            : left <= 0
+              ? 'none'
+              : null;
+
+    setManualReasons((prev) => {
+      const { [lotId]: _old, ...rest } = prev;
+
+      return reason === null ? rest : { ...rest, [lotId]: reason };
+    });
+    if (reason === null && canRecordNow) {
+      setAutoLotId(lotId);
+      setAutoSecondsLeft(AUTO_SEND_SECONDS);
+    }
+  };
+
+  /* 스캔 결과는 늦게 온다. 그때의 최신 값(받은 수량, 투입한 수량, 기록 전 LOT)으로 판단한다. */
+  const live = useRef({ beginInput, armedLotIds });
+  live.current = { beginInput, armedLotIds };
+
+  /** 되돌리기 창을 닫고 지금 보낸다. 창이 없으면 아무것도 하지 않는다. */
+  const flushAuto = (): void => {
+    if (autoLotId === null) return;
+
+    const lotId = autoLotId;
+    setAutoLotId(null);
+    recordMaterial(lotId);
+  };
+
+  /** [되돌리기]: 창의 투입을 보내지 않고 버린다. 그 LOT의 스캔도 거둔다. */
+  const undoAuto = (): void => {
+    if (autoLotId === null) return;
+
+    const lotId = autoLotId;
+    const material = draft.materials.find((candidate) => candidate.lotId === lotId);
+    setAutoLotId(null);
+    removeMaterial(lotId);
+    if (material !== undefined) {
+      setActionNotice(t.scan.outcomes.undone(itemNameOf(lotId, material.itemId)));
+    }
+  };
+
+  /* 스캔했지만 기록하지 않은 LOT 중 직접 입력 중인 것. 자동 투입 창의 LOT은 막지 않는다(곧 보낸다). */
+  const isAutoSendable = autoLotId !== null && validateQty(readQty(qtyDrafts, autoLotId)) === null;
+  const pendingMaterials = draft.materials.filter(
+    (material) =>
+      armedLotIds.includes(material.lotId) && !(material.lotId === autoLotId && isAutoSendable),
   );
 
   /* 수령한 LOT과 담은 LOT을 한 목록으로 맞춘다(표시만). */
@@ -410,6 +495,7 @@ export const MaterialInputScanScreen = () => {
      */
     setQtyDrafts((prev) => dropQty(prev, lotId));
     disarm(lotId);
+    if (autoLotId === lotId) setAutoLotId(null);
     /* 결과 한 줄은 방금 한 일(C-21). 앞 스캔 결과를 대신한다. */
     scan.reset();
     const unit = labels.describeUom(body.uomId);
@@ -469,8 +555,54 @@ export const MaterialInputScanScreen = () => {
   const goToProductionResult = (): void => {
     if (workOrderId === null) return;
 
-    void navigate(`/pop/production-result?workOrderId=${String(workOrderId)}`);
+    /* 창의 투입을 먼저 큐에 넣고, 그 갱신이 반영된 뒤에 옮긴다(PI-26). */
+    flushAuto();
+    setLeavingToProduction(true);
   };
+
+  useEffect(() => {
+    if (!isLeavingToProduction || workOrderId === null) return;
+
+    void navigate(`/pop/production-result?workOrderId=${String(workOrderId)}`);
+  }, [isLeavingToProduction, navigate, workOrderId]);
+
+  /* 되돌리기 창의 초 세기. 0이 되면 보낸다. */
+  useEffect(() => {
+    if (autoLotId === null) return;
+
+    const timer = globalThis.setInterval(() => {
+      setAutoSecondsLeft((prev) => prev - 1);
+    }, 1000);
+
+    return () => {
+      globalThis.clearInterval(timer);
+    };
+  }, [autoLotId]);
+
+  useEffect(() => {
+    if (autoLotId !== null && autoSecondsLeft <= 0) flushAuto();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 남은 초가 0이 된 순간에만 보낸다. */
+  }, [autoSecondsLeft]);
+
+  /*
+   * 화면을 떠날 때(머리줄 [화면 이동], [사용자 전환] 등) 창의 투입을 버리지 않는다. 훅의 상태 갱신은
+   * 더 돌지 않으므로 저장된 큐에 직접 붙이고, 다음에 이 화면이 뜰 때 보낸다(PI-27).
+   */
+  const leaveFlush = useRef<() => void>(() => undefined);
+  leaveFlush.current = () => {
+    if (autoLotId === null || workOrderId === null || workerNo === null) return;
+    if (gate.verdict !== 'allowed') return;
+    const material = draft.materials.find((candidate) => candidate.lotId === autoLotId);
+    if (material === undefined) return;
+    const body = toMaterialConsumption(workOrderId, material, qtyDrafts, new Date(), workSessionId);
+    if (body !== null) appendToStoredOutbox(workerNo, body);
+  };
+  useEffect(
+    () => () => {
+      leaveFlush.current();
+    },
+    [],
+  );
 
   const outcome = scan.data;
 
@@ -541,6 +673,7 @@ export const MaterialInputScanScreen = () => {
   }
 
   const hasRecorded =
+    isAutoSendable ||
     recorded.byLot.size > 0 ||
     draft.materials.some((material) => recordedQtyOf(material.lotId) !== null);
   function itemOfLotNo(lotNo: string): string {
@@ -565,6 +698,18 @@ export const MaterialInputScanScreen = () => {
       .sort((a, b) => Number(b.lotId === editingRow?.lotId) - Number(a.lotId === editingRow?.lotId))
       .map((material) => itemNameOf(material.lotId, material.itemId)),
     hasRecorded,
+    autoSending: ((): { item: string; qty: string } | null => {
+      if (!isAutoSendable) return null;
+      const material = draft.materials.find((candidate) => candidate.lotId === autoLotId);
+      if (material === undefined) return null;
+      const unit = labels.describeUom(material.uomId);
+      const qty = readQty(qtyDrafts, material.lotId);
+
+      return {
+        item: itemNameOf(material.lotId, material.itemId),
+        qty: unit === '' ? qty : `${qty} ${unit}`,
+      };
+    })(),
   });
   /* 기록한 LOT이 있고 기록하지 않은 LOT이 없어야 다음 작업으로 간다(C-4, 사유는 「남은 일」). */
   const isNextBlocked = workOrderId === null || blockReason !== undefined || !hasRecorded;
@@ -669,15 +814,13 @@ export const MaterialInputScanScreen = () => {
 
                 return;
               }
+              /* 다른 줄을 고르면 되돌리기 창을 닫는다 — 창의 투입을 먼저 보낸다(PI-26). */
+              if (lotId !== autoLotId) flushAuto();
               setSelectedLotId(lotId);
               /*
-               * 담은 LOT의 줄을 누르면 추가 투입을 받을 수 있게 남은 수량을 채운다. 입력 중(기록 전)인
-               * LOT은 친 값을 그대로 둔다. 줄만 누른 것은 기록 전으로 치지 않는다(PI-18).
+               * 줄만 누르면 보이기만 한다. 더 넣으려면 LOT 라벨을 다시 스캔한다(PI-29, 입력은 스캔에서만
+               * 시작한다).
                */
-              const picked = draft.materials.find((material) => material.lotId === lotId);
-              if (picked !== undefined && !armedLotIds.includes(lotId)) {
-                prefillQty(lotId, picked.uomId);
-              }
               /* 줄을 눌러도 다음 스캔은 스캔 칸으로 들어가야 한다(PG-21). */
               setScanFocusRequest((prev) => prev + 1);
             }}
@@ -726,6 +869,11 @@ export const MaterialInputScanScreen = () => {
             onQtyChange={changeQty}
             onRecord={recordMaterial}
             onRemove={removeMaterial}
+            autoSecondsLeft={
+              editingRow !== null && editingRow.lotId === autoLotId ? autoSecondsLeft : null
+            }
+            manualReason={editingRow === null ? null : (manualReasons[editingRow.lotId] ?? null)}
+            onUndo={undoAuto}
           />
         )}
       </div>

@@ -12532,6 +12532,20 @@ button.app-button-neutral {
   gap: var(--space-3);
 }
 
+/* 자동 투입 창: 남은 초와 [되돌리기]를 한 줄에(PI-26). */
+.material-input-auto {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.material-input-auto-hint {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
 .material-input-keypad {
   flex: 0 0 auto;
 }

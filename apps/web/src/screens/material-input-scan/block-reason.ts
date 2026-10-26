@@ -75,6 +75,8 @@ export interface RemainingInput {
   pendingItems: readonly string[];
   /** 이 W/O에 기록된 투입이 있는가(서버 기록이나 이 화면에서 방금 기록한 것). */
   hasRecorded: boolean;
+  /** 자동 투입 창이 열려 있으면 그 품목 이름과 수량(단위 포함). */
+  autoSending?: { item: string; qty: string } | null;
 }
 
 /**
@@ -89,6 +91,7 @@ export const remainingText = ({
   hasWorkOrder,
   pendingItems,
   hasRecorded,
+  autoSending = null,
 }: RemainingInput): string => {
   if (!hasWorkOrder) return t.remaining.workOrderMissing;
 
@@ -99,6 +102,7 @@ export const remainingText = ({
       : t.remaining.recordMany(pendingItems.length);
   }
   if (blockReason !== undefined) return blockReason;
+  if (autoSending !== null) return t.remaining.sending(autoSending.item, autoSending.qty);
 
   return hasRecorded ? t.remaining.done : t.remaining.scan;
 };

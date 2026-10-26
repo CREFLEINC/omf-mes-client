@@ -36,7 +36,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     outcomes: {
       material: (itemWithObject: string): string => `Đã thêm ${itemWithObject}.`,
       mold: (moldWithObject: string): string => `Đã chỉ định khuôn ${moldWithObject}.`,
-      again: (item: string): string => `Có thể nhập thêm việc đưa vào ${item}.`,
+      again: (item: string): string => `Đã thêm lượt đưa vào bổ sung cho ${item}.`,
       duplicate: (itemWithTopic: string): string => `${itemWithTopic} đã được thêm rồi.`,
       blockedStatus: (itemWithTopic: string, statusName: string): string =>
         `${itemWithTopic} đang ở trạng thái 「${statusName}」 nên không thêm được.`,
@@ -48,7 +48,8 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
         `Không có LOT vật tư hoặc khuôn ứng với ${code}. Hãy kiểm tra mã.`,
       failed: 'Không tra cứu được. Hãy quét lại.',
       offline: 'Mất kết nối nên không tra cứu được vật tư. Hãy quét lại khi có kết nối.',
-      recorded: (item: string, qty: string): string => `Đã ghi đưa vào ${item} ${qty}.`,
+      recorded: (item: string, qty: string): string => `Đưa vào ${item} ${qty}`,
+      undone: (item: string): string => `Đã hoàn tác việc đưa vào ${item}.`,
     },
   },
   scanned: {
@@ -56,6 +57,15 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     remove: 'Hủy quét',
     removeMaterial: (lotNo: string): string => `Hủy quét ${lotNo}`,
     removed: (item: string): string => `Đã hủy quét ${item}.`,
+    autoCountdown: (seconds: number): string => `Gửi sau ${String(seconds)} giây`,
+    undo: 'Hoàn tác',
+    undoMaterial: (lotNo: string): string => `Hoàn tác đưa vào ${lotNo}`,
+    manualReasons: {
+      unknown: 'Không biết số lượng đã nhận nên hãy nhập lần này.',
+      none: 'Đã đưa vào hết số đã nhận. Muốn đưa thêm hãy nhập lần này.',
+      unit: 'Khác đơn vị nên hãy nhập lần này.',
+    },
+    sentReadOnly: 'Việc đưa vào đã gửi chưa sửa được. Muốn đưa thêm hãy quét lại nhãn LOT.',
     qtyLabel: (lotNo: string): string => `${lotNo} lần này`,
     qtyProblems: {
       empty: 'Hãy nhập số lượng đưa vào lần này.',
@@ -85,6 +95,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     record: (item: string): string => `Hãy ghi việc đưa vào ${item}`,
     recordMany: (count: number): string => `Hãy ghi việc đưa vào ${String(count)} vật tư đã quét`,
     done: 'Có thể chuyển sang công việc sản xuất',
+    sending: (item: string, qty: string): string => `Sắp gửi đưa vào ${item} ${qty}`,
   },
   confirm: {
     reasons: {

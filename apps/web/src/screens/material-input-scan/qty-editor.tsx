@@ -49,6 +49,12 @@ export interface QtyEditorProps {
   onQtyChange: (lotId: number, value: string) => void;
   onRecord: (lotId: number) => void;
   onRemove: (lotId: number) => void;
+  /** 이 LOT의 자동 투입 창이 열려 있으면 남은 초. 아니면 `null`(PI-26). */
+  autoSecondsLeft: number | null;
+  /** 자동으로 보내지 않고 직접 입력으로 돌린 까닭. 없으면 `null`(PI-28). */
+  manualReason: 'unknown' | 'none' | 'unit' | null;
+  /** [되돌리기]: 창의 투입을 버린다. */
+  onUndo: () => void;
 }
 
 /**
@@ -80,6 +86,9 @@ export const QtyEditor = ({
   onQtyChange,
   onRecord,
   onRemove,
+  autoSecondsLeft,
+  manualReason,
+  onUndo,
 }: QtyEditorProps) => {
   if (row === null) {
     return (
@@ -116,7 +125,7 @@ export const QtyEditor = ({
     <section className="pane material-input-qty" aria-label={t.panes.noSelection}>
       <div className="material-input-qty-head">
         <h2 className="pane-title">{named(receipt?.itemName, itemCode)}</h2>
-        {material !== undefined && isPending && (
+        {material !== undefined && isPending && autoSecondsLeft === null && (
           <Button
             type="button"
             variant="outlined"
@@ -173,12 +182,42 @@ export const QtyEditor = ({
         />
       </p>
 
-      {material === undefined ? (
-        /* 담기는 스캔으로만 한다. 라벨을 읽어야 실물 LOT과 상태를 확인할 수 있다. */
-        <p className="field-note">{t.scanned.scanToInput}</p>
+      {material === undefined || !isPending ? (
+        /*
+         * 입력은 스캔에서만 시작한다(PI-29). 담기는 스캔으로만 한다 — 라벨을 읽어야 실물 LOT과
+         * 상태를 확인할 수 있다. 보낸 투입은 고치지 않는다(서버 취소 미구현, omf-mes-server#828).
+         */
+        <p className="field-note">
+          {material !== undefined && recordedQty !== null
+            ? t.scanned.sentReadOnly
+            : t.scanned.scanToInput}
+        </p>
       ) : (
         <>
           <h3 className="material-input-subtitle">{t.pairs.thisInput}</h3>
+          {manualReason !== null && autoSecondsLeft === null && (
+            <p className="field-note">{t.scanned.manualReasons[manualReason]}</p>
+          )}
+          {autoSecondsLeft !== null && (
+            /*
+             * 자동 투입 창(PI-26): 남은 초와 [되돌리기]. 칸을 고치면 고친 양을 보내고, [투입 기록]은
+             * 기다리지 않고 지금 보낸다.
+             */
+            <div className="material-input-auto">
+              <p className="material-input-auto-hint" role="status">
+                {t.scanned.autoCountdown(Math.max(autoSecondsLeft, 0))}
+              </p>
+              <Button
+                type="button"
+                variant="outlined"
+                size={POP_TOUCH_SIZE}
+                aria-label={t.scanned.undoMaterial(row.lotNo)}
+                onClick={onUndo}
+              >
+                {t.scanned.undo}
+              </Button>
+            </div>
+          )}
           <div className="material-input-qty-row">
             <TextField
               size="xl"
