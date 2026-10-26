@@ -21305,7 +21305,7 @@ table.col-measuring td {
 }
 
 /*
- * IQC 상세 「기본 정보」 카드(사용자 지시 2026-10-26 · #185) — 머리줄: 왼쪽 강조선 + 제목, 오른쪽 [닫기 ×](빨간 단추).
+ * IQC 상세 「기본 정보」 카드(사용자 지시 2026-10-26 · #185) — 머리줄: 왼쪽 제목, 오른쪽 [닫기 ×](빨간 단추).
  */
 .inspection-basic-card {
   display: grid;
@@ -21323,11 +21323,7 @@ table.col-measuring td {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--outline-variant);
-  border-left: 3px solid var(--primary);
-  border-radius: var(--radius-md);
-  background: var(--surface-container);
+  /* 상자로 감싸지 않는다(사용자 지시 2026-10-26) — 제목과 [닫기 ×] 한 줄뿐이다. */
 }
 
 .inspection-detail-head > h2 {
