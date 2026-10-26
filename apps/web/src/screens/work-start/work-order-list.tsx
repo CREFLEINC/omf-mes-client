@@ -1,15 +1,15 @@
-import { AlertBanner, Button, Card, Chip, Radio, RadioGroup } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { dateTimeText, itemText, plannedEquipmentText, qtyNumber, qtyText } from './row-view';
+import { WorkOrderInfo } from './work-order-info';
 import type { WorkOrder } from './types';
 import { sortForPick, statusKeyOf, type WorkOrderStatusKey } from './work-order-status';
 import { isEmergency } from './work-order-type';
 
+import { PopRowHead } from '../../patterns/pop-list-row';
 import { PopPageNav, pageBoundaryOf, type PageMetaLike } from '../../patterns/pop-page-nav';
 
 const t = messages.workStart.list;
-const labels = messages.workStart.selection;
 
 /** 상태 하나에 색 하나(C-19). */
 export const STATUS_CHIP: Readonly<Record<WorkOrderStatusKey, 'info' | 'warning' | 'idle'>> = {
@@ -18,8 +18,39 @@ export const STATUS_CHIP: Readonly<Record<WorkOrderStatusKey, 'info' | 'warning'
   released: 'idle',
 };
 
-const SCOPE_EQUIPMENT = 'equipment';
-const SCOPE_ALL = 'all';
+/**
+ * W/O 제목 줄의 칩(C-21). 예외 칩(긴급, 설비 미지정)을 먼저, 맨 끝에 상태 칩 하나를 둔다.
+ * 목록 카드와 「선택한 작업지시」가 같은 칩을 쓴다.
+ */
+export const WorkOrderChips = ({
+  workOrder,
+  isEquipmentUnassigned,
+}: {
+  workOrder: WorkOrder;
+  isEquipmentUnassigned: boolean;
+}) => {
+  const statusKey = statusKeyOf(workOrder);
+
+  return (
+    <>
+      {isEmergency(workOrder) && (
+        <Chip status="error" size="md">
+          {t.emergencyBadge}
+        </Chip>
+      )}
+      {isEquipmentUnassigned && (
+        <Chip status="info" size="md">
+          {t.unassignedEquipmentBadge}
+        </Chip>
+      )}
+      {statusKey !== null && (
+        <Chip status={STATUS_CHIP[statusKey]} size="md">
+          {t.status[statusKey]}
+        </Chip>
+      )}
+    </>
+  );
+};
 
 export interface WorkOrderListProps {
   /** 못 받았으면 `undefined`. 빈 배열과 다른 사실이다. */
@@ -33,19 +64,20 @@ export interface WorkOrderListProps {
   /** 받은 쪽 정보. 쪽 넘김이 이 값으로 선다(#1005). */
   pageMeta: PageMetaLike | undefined;
   onPageChange: (page: number) => void;
-  /** 전체 설비 범위인가. */
+  /** 전체 설비 보기인가. */
   isShowingAll: boolean;
   /**
-   * 단말 설비의 이름(없으면 코드). 범위 첫 선택지와 빈 목록 문구가 「이 설비」 대신 이 이름을
+   * 단말 설비의 이름(없으면 코드). 돌아가는 버튼과 빈 목록 문구가 「이 설비」 대신 이 이름을
    * 쓴다(사용자 결정 2026-10-23). 모르면 `null`.
    */
   equipmentName: string | null;
-  /** 단말에 설비가 매핑되지 않았는가. 좁힐 설비가 없어 범위 선택을 두지 않는다. */
+  /** 단말에 설비가 매핑되지 않았는가. 좁힐 설비가 없어 [전체 설비 보기]를 두지 않는다. */
   isEquipmentMissing?: boolean;
   /** 설비를 몰라 기본 목록을 세우지 못했는가. */
   isEquipmentUnknown: boolean;
   selectedId: number | null;
   onSelect: (workOrder: WorkOrder) => void;
+  /** [전체 설비 보기]와 [← 설비 이름]. 기본 목록과 전체 설비 목록을 오간다. */
   onToggleScope: () => void;
   onRetry: () => void;
   /** 단위 번호를 코드로 옮긴다. 못 옮기면 `null`. 수량만 낸다. */
@@ -55,8 +87,10 @@ export interface WorkOrderListProps {
 /**
  * 왼쪽 작업지시 구획(T-P-S 왼쪽 대상 목록). 이 화면에서 스크롤하는 자리는 이 구획의 목록 하나다.
  *
- * - 범위는 두 개 중 하나라 라디오 세그먼트다(C-12). 버튼 이름을 상태에 따라 바꾸지 않는다(C-3).
- * - 카드는 행 전체 터치로 고른다(C-1). 카드 정보는 T-P-W의 W/O 카드 기준(번호, 상태, 품목, 지시와 실적)이다.
+ * - 기본 목록은 단말 설비의 작업지시다. [전체 설비 보기]를 누르면 다른 목록에 들어가듯 제목이
+ *   「전체 설비 작업지시」로 바뀌고, 제목 왼쪽 [← 설비 이름]으로 돌아온다(사용자 결정 2026-10-26).
+ * - 카드는 행 전체 터치로 고른다(C-1). 카드는 제목 줄(W/O 번호, 오른쪽 끝 상태 칩)과 정보 영역
+ *   (「라벨 값」 쌍)으로 나뉜다(C-21). 두 목록에서 카드 항목은 같다(C-10, PG-14).
  * - 진행 중인 W/O를 위에 둔다. 받은 쪽 안에서만 정렬한다(서버 정렬은 계약 대기).
  * - 빈 목록은 오류가 아니다. 「받는 중」, 「없다」, 「실패」를 다른 문장으로 말한다.
  */
@@ -80,28 +114,30 @@ export const WorkOrderList = ({
 }: WorkOrderListProps) => {
   const rows = sortForPick(workOrders ?? []);
   const scopeEquipment = equipmentName ?? t.scopeEquipmentUnknown;
+  const title = isShowingAll ? t.allTitle : t.title;
 
   return (
-    <section className="pane work-start-list" aria-label={t.title}>
+    <section className="pane work-start-list" aria-label={title}>
       <div className="work-start-list-head">
-        <h2 className="pane-title">{t.title}</h2>
-
-        {/* 범위는 조회 축 하나(설비)를 뺄 뿐이다. 다른 조건은 그대로다(§5-5). */}
-        {!isEquipmentMissing && (
-          <RadioGroup
-            name="work-start-scope"
-            orientation="horizontal"
-            className="work-start-scope"
-            aria-label={t.scopeLabel}
-            value={isShowingAll ? SCOPE_ALL : SCOPE_EQUIPMENT}
-            onChange={(value) => {
-              if ((value === SCOPE_ALL) !== isShowingAll) onToggleScope();
-            }}
+        {/* 전체 설비 목록에서는 제목 왼쪽에 돌아가는 버튼을 둔다. 이름은 단말 설비의 실제 이름이다(C-13). */}
+        {isShowingAll && !isEquipmentMissing && (
+          <Button type="button" variant="outlined" size="lg" onClick={onToggleScope}>
+            <span aria-hidden="true">← </span>
+            {scopeEquipment}
+          </Button>
+        )}
+        <h2 className="pane-title">{title}</h2>
+        {/* 좁힐 설비가 없는 단말은 처음부터 전체 목록이라 버튼을 두지 않는다. */}
+        {!isShowingAll && !isEquipmentMissing && (
+          <Button
+            type="button"
+            variant="outlined"
+            size="lg"
+            className="work-start-show-all"
+            onClick={onToggleScope}
           >
-            {/* 전체 설비를 왼쪽, 단말 설비를 오른쪽에 둔다(사용자 결정 2026-10-23). 기본값은 단말 설비다. */}
-            <Radio value={SCOPE_ALL}>{t.scopeAll}</Radio>
-            <Radio value={SCOPE_EQUIPMENT}>{scopeEquipment}</Radio>
-          </RadioGroup>
+            {t.showAll}
+          </Button>
         )}
       </div>
 
@@ -134,18 +170,7 @@ export const WorkOrderList = ({
       ) : (
         <ul className="pop-card-list" aria-label={t.caption}>
           {rows.map((row) => {
-            const statusKey = statusKeyOf(row);
-            const item = itemText(row);
-            const process = (row.processName ?? '').trim();
-            const order = qtyText(row.orderQty, uomCodeOf(row.uomId));
-            const good = qtyNumber(row.progress?.goodQty);
-            const plannedStart = dateTimeText(row.plannedStartAt);
             const isSelected = selectedId === row.workOrderId;
-            /*
-             * 계획 설비는 두 범위 모두 「설비 이름 (코드)」 라벨 값 쌍으로 보인다(C-10, 사용자 결정
-             * 2026-10-23). 설비가 정해지지 않은 W/O 는 「설비 미지정」 칩이 말한다.
-             */
-            const equipment = plannedEquipmentText(row);
 
             return (
               <li key={String(row.workOrderId)}>
@@ -164,48 +189,22 @@ export const WorkOrderList = ({
                     onSelect(row);
                   }}
                 >
-                  <Card.Body>
-                    <p className="work-start-card-head">
-                      <span className="work-start-wo-no">{row.workOrderNo}</span>
-                      {statusKey !== null && (
-                        <Chip status={STATUS_CHIP[statusKey]} size="md">
-                          {t.status[statusKey]}
-                        </Chip>
-                      )}
-                      {isEmergency(row) && (
-                        <Chip status="error" size="md">
-                          {t.emergencyBadge}
-                        </Chip>
-                      )}
-                      {row.plannedEquipmentId == null && (
-                        <Chip status="info" size="md">
-                          {t.unassignedEquipmentBadge}
-                        </Chip>
-                      )}
-                    </p>
-                    {(item !== null || process !== '' || equipment !== null) && (
-                      <p className="work-start-card-line">
-                        {item !== null && (
-                          <span>
-                            <span className="work-start-label">{labels.item}</span> {item}
-                          </span>
-                        )}
-                        {process !== '' && (
-                          <span>
-                            <span className="work-start-label">{labels.process}</span> {process}
-                          </span>
-                        )}
-                        {equipment !== null && (
-                          <span>
-                            <span className="work-start-label">{t.equipment}</span> {equipment}
-                          </span>
-                        )}
-                      </p>
-                    )}
-                    <p className="work-start-card-line">
-                      {order !== null && <span>{good === null ? order : t.qty(good, order)}</span>}
-                      {plannedStart !== null && <span>{t.plannedStart(plannedStart)}</span>}
-                    </p>
+                  <Card.Body className="work-start-card-body">
+                    {/* 제목 줄(C-21): W/O 번호(굵게, 고정폭)와 오른쪽 끝 칩. */}
+                    <PopRowHead
+                      title={<span className="work-start-wo-no">{row.workOrderNo}</span>}
+                      chips={
+                        <WorkOrderChips
+                          workOrder={row}
+                          isEquipmentUnassigned={row.plannedEquipmentId == null}
+                        />
+                      }
+                    />
+                    {/*
+                     * 정보 영역(C-21). 계획 설비는 두 목록 모두 「설비 이름 (코드)」 쌍으로 보인다(C-10,
+                     * PG-14). 설비가 정해지지 않은 W/O 는 「설비 미지정」 칩이 말한다.
+                     */}
+                    <WorkOrderInfo workOrder={row} uomCodeOf={uomCodeOf} />
                   </Card.Body>
                 </Card>
               </li>

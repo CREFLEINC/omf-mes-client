@@ -2,9 +2,9 @@ import type { ko } from '../ko';
 import { named } from '../named';
 import type { Translated } from './translated';
 
-/** P-02-01 작업 시작(작업지시 선택). */
+/** P-02-01 작업 지시 목록. */
 export const workStart: Translated<typeof ko.workStart> = {
-  title: 'Bắt đầu sản xuất',
+  title: 'Danh sách lệnh sản xuất',
 
   worker: {
     title: 'Người làm',
@@ -45,9 +45,9 @@ export const workStart: Translated<typeof ko.workStart> = {
 
   list: {
     title: 'Lệnh sản xuất',
-    scopeLabel: 'Phạm vi lệnh sản xuất',
+    showAll: 'Xem tất cả thiết bị',
+    allTitle: 'Lệnh sản xuất của tất cả thiết bị',
     scopeEquipmentUnknown: 'Thiết bị của máy trạm',
-    scopeAll: 'Tất cả thiết bị',
 
     select: (workOrderNo: string): string => `Chọn ${workOrderNo}`,
     caption: 'Lệnh sản xuất có thể thực hiện',
@@ -60,12 +60,14 @@ export const workStart: Translated<typeof ko.workStart> = {
     emergencyBadge: 'Khẩn',
     unassignedEquipmentBadge: 'Chưa gán thiết bị',
 
-    qty: (good: string, order: string): string => `Thực tế ${good} / Lệnh ${order}`,
+    goodLabel: 'Thực tế',
+    orderLabel: 'Lệnh',
+    progress: (good: string, order: string, uom: string | null): string =>
+      `${good} / ${order}${uom === null ? '' : ` ${uom}`}`,
     equipment: 'Thiết bị',
-    plannedStart: (at: string): string => `Bắt đầu theo kế hoạch ${at}`,
 
     empty: (equipment: string): string =>
-      `Không có lệnh sản xuất nào phát hành cho ${equipment}. Đổi phạm vi sang tất cả thiết bị để xem lệnh của thiết bị khác.`,
+      `Không có lệnh sản xuất nào phát hành cho ${equipment}. Bấm 「Xem tất cả thiết bị」 để xem lệnh của thiết bị khác.`,
     emptyAll: 'Không có lệnh sản xuất nào có thể thực hiện.',
     loading: 'Đang tải lệnh sản xuất.',
     loadError: 'Không tải được lệnh sản xuất. Hãy thử lại.',
@@ -78,7 +80,7 @@ export const workStart: Translated<typeof ko.workStart> = {
     pageNav: 'Chuyển trang danh sách lệnh sản xuất',
 
     equipmentUnknown:
-      'Không xác nhận được thiết bị của máy trạm này. Đổi phạm vi sang tất cả thiết bị để tiếp tục.',
+      'Không xác nhận được thiết bị của máy trạm này. Bấm 「Xem tất cả thiết bị」 để tiếp tục.',
   },
 
   side: {
@@ -87,11 +89,8 @@ export const workStart: Translated<typeof ko.workStart> = {
 
   selection: {
     title: 'Lệnh sản xuất đã chọn',
-    workOrderNo: 'Số W/O',
-    status: 'Trạng thái',
     item: 'Mặt hàng',
     process: 'Công đoạn',
-    qty: 'Số lượng',
     plannedStart: 'Bắt đầu theo kế hoạch',
     equipment: 'Thiết bị',
 

@@ -1,5 +1,5 @@
 /**
- * P-02-01 작업 시작(작업지시 선택).
+ * P-02-01 작업 지시 목록(작업지시를 골라 작업을 시작하는 화면).
  *
  * 화면 구성 규범 C-5, C-13을 따른다. 하단 바 「남은 일」 자리의 문장은 머리말 없이 그대로 보인다
  * (사용자 결정 2026-10-23). 안내와 오류는 상황과 할 일을 한두 문장으로 쓴다.
@@ -9,7 +9,8 @@
 import { named } from '../named';
 
 export const workStart = {
-  title: '작업 시작',
+  /** 화면 이름. 하단 주 동작 [작업 시작]과 다른 말이다(사용자 결정 2026-10-26). */
+  title: '작업 지시 목록',
 
   /** 머리줄. 설비와 작업자는 「이름 (코드)」로 보인다(C-10). */
 
@@ -58,14 +59,16 @@ export const workStart = {
 
   /** 왼쪽 작업지시 구획. */
   list: {
+    /** 기본 목록(단말 설비)의 구획 제목. */
     title: '작업지시',
     /**
-     * 범위 선택(두 개 중 하나, C-12). 첫 선택지는 「이 설비」가 아니라 단말 설비의 실제 이름이다
-     * (사용자 결정 2026-10-23). 이름을 아직 모를 때만 `scopeEquipmentUnknown`을 쓴다.
+     * 전체 설비 보기. 기본 목록은 단말 설비만이고, [전체 설비 보기]로 다른 목록에 들어가듯 넘어간다.
+     * 돌아오는 버튼은 「이 설비」가 아니라 단말 설비의 실제 이름이다(사용자 결정 2026-10-26).
+     * 이름을 아직 모를 때만 `scopeEquipmentUnknown`을 쓴다.
      */
-    scopeLabel: '작업지시 범위',
+    showAll: '전체 설비 보기',
+    allTitle: '전체 설비 작업지시',
     scopeEquipmentUnknown: '단말 설비',
-    scopeAll: '전체 설비',
 
     select: (workOrderNo: string): string => `${workOrderNo} 선택`,
     caption: '진행할 수 있는 작업지시',
@@ -79,14 +82,17 @@ export const workStart = {
     emergencyBadge: '긴급',
     unassignedEquipmentBadge: '설비 미지정',
 
-    qty: (good: string, order: string): string => `실적 ${good} / 지시 ${order}`,
+    /** 수량 쌍(C-21). 라벨 「실적」, 값은 「실적 / 지시」 한 쌍이다. 실적을 못 받으면 라벨 「지시」. */
+    goodLabel: '실적',
+    orderLabel: '지시',
+    progress: (good: string, order: string, uom: string | null): string =>
+      `${good} / ${order}${uom === null ? '' : ` ${uom}`}`,
     /** 카드의 계획 설비. 「이름 (코드)」 한 줄이고 라벨 「설비」를 붙인다(C-10). */
     equipment: '설비',
-    plannedStart: (at: string): string => `계획 시작 ${at}`,
 
     /** 빈 목록은 오류가 아니다. 다음에 할 일까지 적는다. */
     empty: (equipment: string): string =>
-      `${equipment}에 배포된 작업지시가 없습니다. 범위를 전체 설비로 바꾸면 다른 설비의 작업지시가 보입니다.`,
+      `${equipment}에 배포된 작업지시가 없습니다. 「전체 설비 보기」를 누르면 다른 설비의 작업지시가 보입니다.`,
     emptyAll: '진행할 수 있는 작업지시가 없습니다.',
     /** 받는 중을 무표시로 두지 않는다. 「없다」와 구분되지 않는다. */
     loading: '작업지시를 불러오는 중입니다.',
@@ -102,7 +108,7 @@ export const workStart = {
 
     /** 설비를 몰라 기본 목록을 세우지 못한 상태. 빈 목록과 다른 사실이다. */
     equipmentUnknown:
-      '이 단말의 설비를 확인하지 못했습니다. 범위를 전체 설비로 바꾸면 진행할 수 있습니다.',
+      '이 단말의 설비를 확인하지 못했습니다. 「전체 설비 보기」를 누르면 진행할 수 있습니다.',
   },
 
   /** 오른쪽 작업 확인 구획. */
@@ -110,14 +116,14 @@ export const workStart = {
     title: '작업 확인',
   },
 
-  /** 선택한 작업지시 묶음. 값은 「라벨 값」 쌍으로 보인다. */
+  /**
+   * 선택한 작업지시 묶음과 W/O 카드의 정보 영역. 제목 줄(W/O 번호와 상태 칩) 아래에 「라벨 값」 쌍으로
+   * 보인다(C-21).
+   */
   selection: {
     title: '선택한 작업지시',
-    workOrderNo: 'W/O 번호',
-    status: '상태',
     item: '품목',
     process: '공정',
-    qty: '수량',
     plannedStart: '계획 시작',
     equipment: '설비',
 

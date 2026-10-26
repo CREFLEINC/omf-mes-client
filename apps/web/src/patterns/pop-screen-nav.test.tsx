@@ -76,7 +76,7 @@ describe('PopScreenNavButton — G-34 화면 이동', () => {
     });
     await user.click(trigger);
 
-    expect(screen.queryByRole('option', { name: '작업 시작' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: '작업 지시 목록' })).not.toBeInTheDocument();
   });
 
   it('권한 목록을 못 받으면 비활성으로 두고 사유를 보인다', async () => {
@@ -116,9 +116,7 @@ describe('PopScreenNavButton — G-34 화면 이동', () => {
     await user.click(trigger);
     await user.click(screen.getByRole('option', { name: '생산 작업' }));
 
-    expect(
-      screen.getByText('지금: /pop/production-result?workOrderId=7801'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('지금: /pop/production-result?workOrderId=7801')).toBeInTheDocument();
   });
 
   /*

@@ -10,6 +10,7 @@ import {
   RECEIPT_STATUS_TONE,
   type MaterialRow,
 } from './material-list';
+import { PopRowInfo, PopRowPair } from '../../patterns/pop-list-row';
 
 const t = messages.materialInputScan;
 
@@ -172,7 +173,7 @@ export const QtyEditor = ({
       <div className="material-input-qty-head">
         <h2 className="pane-title">{named(receipt?.itemName, itemCode)}</h2>
         {hasException && (
-          <span className="material-input-lot-chips">
+          <span className="pop-row-chips">
             {receipt !== undefined && receipt.status !== 'matched' && (
               <Chip variant="status" size="md" status={RECEIPT_STATUS_TONE[receipt.status]}>
                 {RECEIPT_STATUS_LABEL[receipt.status]}
@@ -219,14 +220,15 @@ export const QtyEditor = ({
       )}
 
       {/* 정보 영역(C-21): 목록 줄과 같은 「투입량」 쌍과 막대. */}
-      <span className="material-input-info material-input-qty-line">
-        <span className="material-input-info-label">{t.pairs.progressLabel}</span>
-        <QtyProgress
-          received={receipt?.receivedQty ?? null}
-          recorded={recordedQty?.qty ?? 0}
-          uom={uom}
-        />
-      </span>
+      <PopRowInfo className="material-input-qty-line">
+        <PopRowPair label={t.pairs.progressLabel}>
+          <QtyProgress
+            received={receipt?.receivedQty ?? null}
+            recorded={recordedQty?.qty ?? 0}
+            uom={uom}
+          />
+        </PopRowPair>
+      </PopRowInfo>
       {/* 불출량을 넘으면 음수 대신 한 줄로 말한다(C-21). */}
       {overQty !== null && <p className="field-note">{t.pairs.over(withUnit(overQty))}</p>}
 

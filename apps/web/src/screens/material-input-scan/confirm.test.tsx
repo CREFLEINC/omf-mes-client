@@ -33,8 +33,7 @@ const unsent = messages.popChrome.header.unsent;
 const qtyPart =
   (text: string) =>
   (_content: string, element: Element | null): boolean =>
-    element?.classList.contains('material-input-progress-text') === true &&
-    element.textContent === text;
+    element?.classList.contains('pop-qty-progress-text') === true && element.textContent === text;
 
 /** 투입량이 0보다 큰 줄의 값(「12 / 100 EA」). 투입한 것이 있다는 표시다. */
 const RECORDED = /^[1-9]\d* \/ /;
@@ -1176,8 +1175,8 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
 
     await screen.findByText(qtyPart('100 / 100 EA'));
     const row = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li') as HTMLElement;
-    const head = row.querySelector('.material-input-lot-head') as HTMLElement;
-    const info = row.querySelector('.material-input-info') as HTMLElement;
+    const head = row.querySelector('.pop-row-head') as HTMLElement;
+    const info = row.querySelector('.pop-row-info') as HTMLElement;
     expect(within(head).getByText(/^예시 자재 A/)).toBeTruthy();
     expect(within(head).getByText(t.scanned.completeMark)).toBeTruthy();
     expect(within(head).queryByText('SAMPLE-LOT-0001')).toBeNull();
@@ -1190,7 +1189,7 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     await user.click(within(row).getByRole('button'));
     const editHead = editor().querySelector('.material-input-qty-head') as HTMLElement;
     expect(within(editHead).getByRole('heading', { name: /^예시 자재 A/ })).toBeTruthy();
-    const editInfo = editor().querySelector('.material-input-info') as HTMLElement;
+    const editInfo = editor().querySelector('.pop-row-info') as HTMLElement;
     expect(within(editInfo).getByText(t.pairs.progressLabel)).toBeTruthy();
     expect(within(editInfo).getByText(qtyPart('100 / 100 EA'))).toBeTruthy();
     expect(within(editor()).queryByText('SAMPLE-LOT-0001')).toBeNull();

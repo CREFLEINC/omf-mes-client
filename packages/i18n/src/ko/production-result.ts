@@ -205,7 +205,7 @@ export const productionResult = {
       cancel: '취소',
       confirm: '마감',
       done: (workOrderNo: string): string =>
-        `${workOrderNo}를 마감했습니다. 작업 시작 화면으로 돌아갑니다.`,
+        `${workOrderNo}를 마감했습니다. 작업 지시 목록으로 돌아갑니다.`,
       blocked: {
         denied: (webMenu: string, terminalMenu: string): string =>
           `이 단말은 작업지시 마감이 허용되지 않았습니다. 관리웹 ${webMenu}에서 마감하거나, 관리자에게 ${terminalMenu}에서 「작업지시 마감」을 켜 달라고 요청하세요.`,
@@ -281,7 +281,7 @@ export const productionResult = {
      *   보인다. 문장은 포장 화면들(`packing-work`·`work-hold-register`)과 같은 꼴로 맞춘다.
      */
     missingWorkOrder:
-      '작업지시를 받지 못해 실적을 등록할 수 없습니다. 작업 시작 화면에서 작업지시를 고른 뒤 들어오세요.',
+      '작업지시를 받지 못해 실적을 등록할 수 없습니다. 작업 지시 목록에서 작업지시를 고른 뒤 들어오세요.',
     missingWorker: '사번이 확인되지 않아 저장할 수 없습니다. 사번 인증을 먼저 하세요.',
     loadFailed: '작업지시를 불러오지 못했습니다.',
   },

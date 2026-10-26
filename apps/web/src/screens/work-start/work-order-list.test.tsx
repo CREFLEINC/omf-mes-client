@@ -5,7 +5,7 @@
  * 서버 스텁 위에서는 재현이 들쭉날쭉하다 — 상태를 직접 넣어야 네 갈래가 다 잡힌다.
  */
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -136,7 +136,58 @@ describe('P-02-01 작업지시 카드 — T-P-W 카드 정보', () => {
     expect(screen.queryByText('IN_PROGRESS')).not.toBeInTheDocument();
     expect(screen.getByText('SYN-ITEM-01')).toBeInTheDocument();
     expect(screen.getByText('합성 사출')).toBeInTheDocument();
-    expect(screen.getByText(t.qty('120', '500'))).toBeInTheDocument();
+    expect(screen.getByText(t.progress('120', '500', null))).toBeInTheDocument();
+  });
+
+  /** 제목 줄과 정보 영역을 나눈다(C-21, 사용자 결정 2026-10-26). */
+  it('제목 줄은 W/O 번호와 오른쪽 끝 상태 칩, 정보 영역은 「라벨 값」 쌍이다', () => {
+    render(
+      <WorkOrderList
+        {...base}
+        uomCodeOf={() => 'EA'}
+        workOrders={[
+          {
+            ...row(1, 'IN_PROGRESS'),
+            plannedEquipmentCode: 'SYN-PRS-01',
+            plannedEquipmentName: '합성 프레스 1호기',
+            plannedStartAt: '2026-09-02T08:00:00+09:00',
+          },
+        ]}
+      />,
+    );
+
+    const card = screen.getByRole('button', { name: t.select('SYN-WO-1') });
+    const head = card.querySelector('.pop-row-head') as HTMLElement;
+    const info = card.querySelector('.pop-row-info') as HTMLElement;
+
+    expect(within(head).getByText('SYN-WO-1')).toHaveClass('work-start-wo-no');
+    /* 상태 칩은 제목 줄 오른쪽 끝 칩 자리의 마지막이다. */
+    const chips = head.querySelector('.pop-row-chips') as HTMLElement;
+    expect(chips.lastElementChild).toHaveTextContent(t.status.inProgress);
+    expect(within(head).queryByText('SYN-ITEM-01')).toBeNull();
+
+    const labels = [...info.querySelectorAll('.pop-row-info-label')].map((el) => el.textContent);
+    expect(labels).toEqual([
+      messages.workStart.selection.item,
+      messages.workStart.selection.process,
+      t.equipment,
+      t.goodLabel,
+      messages.workStart.selection.plannedStart,
+    ]);
+    expect(info).toHaveTextContent(`${t.equipment} 합성 프레스 1호기 (SYN-PRS-01)`);
+    /* 수량은 「실적 / 지시」 한 쌍과 막대다. 가운뎃점이나 「지시」 글자를 잇지 않는다. */
+    expect(within(info).getByText(t.progress('120', '500', 'EA'))).toBeInTheDocument();
+    expect(within(info).getByRole('progressbar')).toBeInTheDocument();
+  });
+
+  it('실적을 못 받으면 지시 수량만 보이고 막대를 두지 않는다', () => {
+    const { progress: _ignored, ...withoutProgress } = row(1, 'RELEASED');
+
+    render(<WorkOrderList {...base} uomCodeOf={() => 'EA'} workOrders={[withoutProgress]} />);
+
+    const card = screen.getByRole('button', { name: t.select('SYN-WO-1') });
+    expect(card).toHaveTextContent(`${t.orderLabel} 500 EA`);
+    expect(within(card).queryByRole('progressbar')).toBeNull();
   });
 
   it('진행 중인 W/O 를 위에 둔다', () => {

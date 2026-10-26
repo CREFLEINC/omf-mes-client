@@ -12443,11 +12443,6 @@ button.app-button-neutral {
   cursor: pointer;
 }
 
-/* 첫 줄은 품목 이름(C-21). 줄에서 가장 먼저 읽힌다. */
-.material-input-lot-name {
-  font-weight: 600;
-}
-
 /* LOT 번호는 라벨과 대조하는 값이다. 저장값 그대로 고정폭 한 줄(C-10, C-21). */
 .material-input-lot-no {
   color: var(--on-surface);
@@ -12456,8 +12451,11 @@ button.app-button-neutral {
   white-space: nowrap;
 }
 
-/* 목록 줄의 제목 줄(C-21): 이름 왼쪽, 칩 오른쪽 끝. 정보 영역과 간격으로 나눈다. */
-.material-input-lot-head {
+/*
+ * POP 목록 줄 공용 틀(`patterns/pop-list-row`, C-21). 제목 줄은 이름 왼쪽, 칩 오른쪽 끝이다. 정보
+ * 영역과의 간격은 줄을 감싸는 쪽이 준다. 자재 투입과 작업 지시 목록이 같은 규칙을 쓴다.
+ */
+.pop-row-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -12465,7 +12463,12 @@ button.app-button-neutral {
   flex-wrap: wrap;
 }
 
-.material-input-lot-chips {
+/* 제목은 줄에서 가장 먼저 읽힌다. */
+.pop-row-title {
+  font-weight: 600;
+}
+
+.pop-row-chips {
   display: inline-flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -12474,32 +12477,36 @@ button.app-button-neutral {
 }
 
 /* 정보 영역: 「라벨 값」 쌍을 같은 열에 맞춘다. */
-.material-input-info {
+.pop-row-info {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   gap: var(--space-1) var(--space-4);
 }
 
-.material-input-info-label {
+.pop-row-info-label {
   color: var(--on-surface-variant);
 }
 
-/* 투입량 「30 / 100 KG」과 진행 막대(C-21). 막대는 글자 옆에서 남는 폭을 쓴다. */
-.material-input-progress {
+.pop-row-info-value {
+  min-width: 0;
+}
+
+/* 「진행 / 기준」 값과 진행 막대(C-21). 막대는 글자 옆에서 남는 폭을 쓴다. */
+.pop-qty-progress {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
 }
 
-.material-input-progress-text {
+.pop-qty-progress-text {
   color: var(--on-surface);
   font-weight: 600;
   white-space: nowrap;
 }
 
-.material-input-progress-bar {
+.pop-qty-progress-bar {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -12617,7 +12624,7 @@ button.app-button-neutral {
 }
 
 /* ------------------------------------------------------------------------ *
- * P-02-01 작업 시작(작업지시 선택)
+ * P-02-01 작업 지시 목록(작업지시를 골라 작업 시작)
  *
  * 화면 구성 규범 T-P-S 틀이다. 머리줄, 본문 좌우 2단(왼쪽 작업지시 목록, 오른쪽 작업 확인), 하단
  * 동작 바(공용 `action-bar`). 스크롤은 왼쪽 목록과 오른쪽 구획이 각자 안에서 한다. 선택한 결과가
@@ -12653,11 +12660,11 @@ button.app-button-neutral {
   margin: 0;
 }
 
+/* 목록 제목 줄: [← 설비 이름], 제목, 오른쪽 끝 [전체 설비 보기]. */
 .work-start-list-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
 }
 
@@ -12676,28 +12683,30 @@ button.app-button-neutral {
   gap: var(--space-3);
 }
 
-/* W/O 카드. 첫 줄은 번호와 상태, 다음 줄은 「라벨 값」 쌍을 간격으로 나눈다(가운뎃점 금지, C-10). */
-.work-start-card-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+/*
+ * W/O 카드와 「선택한 작업지시」(C-21). 제목 줄(W/O 번호, 오른쪽 끝 칩)과 정보 영역(공용 `pop-row-*`)을
+ * `--space-2` 간격으로 나눈다.
+ */
+.work-start-card-body,
+.work-start-selection {
+  display: grid;
   gap: var(--space-2);
 }
 
-.work-start-card-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-4);
-  margin-top: var(--space-1);
-  color: var(--on-surface-variant);
+.work-start-selection {
+  justify-self: stretch;
 }
 
+/* W/O 번호는 지시서와 대조하는 값이다. 고정폭, 줄에서 가장 먼저 읽히는 크기(POP 값 글자). */
 .work-start-wo-no {
   font-family: var(--font-mono);
+  font-size: var(--pop-value);
+  line-height: 28px;
 }
 
-.work-start-label {
-  color: var(--on-surface-variant);
+/* [전체 설비 보기]는 목록 제목 줄 오른쪽 끝에 둔다. */
+.work-start-show-all {
+  margin-inline-start: auto;
 }
 
 /* 오른쪽 구획 안의 묶음. 상자를 겹치지 않고 소제목과 간격으로 나눈다(C-19). */
@@ -12715,25 +12724,6 @@ button.app-button-neutral {
 
 .work-start-group > .banner-slot {
   justify-self: stretch;
-}
-
-.work-start-pairs {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--space-1) var(--space-4);
-  margin: 0;
-}
-
-.work-start-pair {
-  display: contents;
-}
-
-.work-start-pair > dt {
-  color: var(--on-surface-variant);
-}
-
-.work-start-pair > dd {
-  margin: 0;
 }
 
 .work-start-other-work {

@@ -104,7 +104,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
   },
   remaining: {
     workOrderMissing:
-      'Chưa chỉ định lệnh sản xuất. Hãy chọn lệnh sản xuất ở màn hình bắt đầu công việc',
+      'Chưa chỉ định lệnh sản xuất. Hãy chọn lệnh sản xuất ở màn hình danh sách lệnh sản xuất',
     scan: 'Hãy quét LOT vật tư',
     record: (item: string): string => `Hãy đăng ký đưa vào ${item}`,
     recordMany: (count: number): string => `Hãy đăng ký đưa vào ${String(count)} vật tư đã quét`,
@@ -115,7 +115,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     reasons: {
       unavailable: 'Không xác nhận được quyền đưa vào. Hãy nhấn kiểm tra lại quyền đưa vào',
       unidentified:
-        'Chưa xác nhận được máy hoặc công đoạn của lệnh sản xuất. Hãy chọn lại lệnh sản xuất ở màn hình bắt đầu công việc rồi vào lại.',
+        'Chưa xác nhận được máy hoặc công đoạn của lệnh sản xuất. Hãy chọn lại lệnh sản xuất ở màn hình danh sách lệnh sản xuất rồi vào lại.',
       checking: 'Đang kiểm tra quyền đưa vào',
       qtyMissing: 'Còn vật tư chưa đăng ký. Hãy nhập lượng đưa vào rồi đăng ký, hoặc hủy quét',
       workerMissing: 'Hãy nhập mã nhân viên',

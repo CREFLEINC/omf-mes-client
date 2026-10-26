@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { popRoutes } from './pop';
@@ -44,5 +45,13 @@ describe('POP 화면 이름표', () => {
 
     expect(new Set(codes).size).toBe(codes.length);
     for (const code of codes) expect(code).not.toBe('');
+  });
+
+  /* 목록에서 누른 이름과 열린 화면의 머리줄 이름이 같아야 한다(사용자 결정 2026-10-26 이름 변경). */
+  it('작업 지시 목록(P-02-01)의 이름이 그 화면 머리줄 제목과 같다', () => {
+    const workStart = POP_SCREENS.find((screen) => screen.code === 'P-02-01');
+
+    expect(workStart?.name).toBe(messages.workStart.title);
+    expect(workStart?.name).toBe('작업 지시 목록');
   });
 });

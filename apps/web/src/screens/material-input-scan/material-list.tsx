@@ -1,10 +1,12 @@
-import { Chip, type ChipStatus, EmptyState, Progress, SkeletonText } from '@crefle/web-ui';
+import { Chip, type ChipStatus, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useRef } from 'react';
 
 import type { RecordedNote } from './mutations';
 import type { ScannedMaterial } from './scan';
 import type { ReceiptLineStatus, ReceiptLineView } from './types';
+
+import { PopQtyProgress, PopRowHead, PopRowInfo, PopRowPair } from '../../patterns/pop-list-row';
 
 const t = messages.materialInputScan;
 
@@ -41,31 +43,17 @@ export interface QtyProgressProps {
 
 /**
  * 투입량의 값 「30 / 100 KG」(투입량 / 불출량)과 진행 막대(C-21). 라벨 「투입량」은 정보 영역이 붙인다.
- * 목록 줄과 편집 영역이 같은 부품이다. 잔량과 음수는 여기서 보이지 않는다. 불출량을 넘으면 막대가
- * 가득 찬 채 경고 색(불출량 0이어도 가득), 닿으면 완료 색이다(DS `Progress` 의 tone).
+ * 목록 줄과 편집 영역이 같은 부품이다. 잔량과 음수는 여기서 보이지 않는다. 막대의 색은 공용
+ * `PopQtyProgress` 가 정한다.
  */
-export const QtyProgress = ({ received, recorded, uom }: QtyProgressProps) => {
-  const text = t.pairs.progress(String(recorded), received === null ? null : String(received), uom);
-  const isOver = received !== null && recorded > received;
-  const isDone = received !== null && received > 0 && recorded >= received;
-
-  return (
-    <span className="material-input-progress">
-      <span className="material-input-progress-text">{text}</span>
-      {received !== null && (
-        <Progress
-          className="material-input-progress-bar"
-          size="sm"
-          value={isOver ? (received > 0 ? received : 1) : Math.min(recorded, received)}
-          max={received > 0 ? received : 1}
-          tone={isOver ? 'warning' : isDone ? 'success' : 'primary'}
-          label={t.pairs.progressLabel}
-          valueText={text}
-        />
-      )}
-    </span>
-  );
-};
+export const QtyProgress = ({ received, recorded, uom }: QtyProgressProps) => (
+  <PopQtyProgress
+    current={recorded}
+    target={received}
+    text={t.pairs.progress(String(recorded), received === null ? null : String(received), uom)}
+    label={t.pairs.progressLabel}
+  />
+);
 
 /** 불출량에 대한 진행 상태(C-21 끝난 항목). 음수를 만들지 않는다. */
 export const progressStateOf = (
@@ -238,73 +226,75 @@ export const MaterialList = ({
                   {/*
                    * 제목 줄(C-21): 품목 「이름 (코드)」(굵게)와 오른쪽 끝 칩(예외 칩, 맨 끝에 진행 칩 하나).
                    */}
-                  <span className="material-input-lot-head">
-                    <span className="material-input-lot-name">
-                      {named(receipt?.itemName, itemCode)}
-                    </span>
-                    <span className="material-input-lot-chips">
-                      {/* 예외만 칩으로 보인다(C-21 정상은 숨김). */}
-                      {receipt !== undefined && receipt.status !== 'matched' && (
-                        <Chip
-                          variant="status"
-                          size="md"
-                          status={RECEIPT_STATUS_TONE[receipt.status]}
-                        >
-                          {RECEIPT_STATUS_LABEL[receipt.status]}
-                        </Chip>
-                      )}
-                      {isUnitMismatch && (
-                        <Chip variant="status" size="md" status="warning">
-                          {t.scanned.unitMismatch}
-                        </Chip>
-                      )}
-                      {material?.isHeld === true && (
-                        <Chip variant="status" size="md" status="warning">
-                          {t.scanned.heldMark}
-                        </Chip>
-                      )}
-                      {/* IQC 에서 적은 4M 변경품 — 투입은 막지 않고 알린다(omf-all-around#63). */}
-                      {material !== undefined && material.fourMChange !== null && (
-                        <Chip variant="status" size="md" status="warning">
-                          {t.scanned.fourMChangeMark}
-                        </Chip>
-                      )}
-                      {/* 서버가 통과시키되 기록만 한 것(스펙 §5-3). 보내기 전에는 없다. */}
-                      {isUnlinked && (
-                        <Chip variant="status" size="md" status="info">
-                          {t.scanned.unlinkedIssue}
-                        </Chip>
-                      )}
-                      {/*
-                       * 진행 칩은 하나(C-21): 투입 중, 투입 완료, 과투입 N. 진행 중이거나 아직 넣지 않은 줄은
-                       * 칩 없이 투입량과 막대가 말한다.
-                       */}
-                      {isPending ? (
-                        <Chip variant="status" size="md" status="info">
-                          {t.scanned.pendingMark}
-                        </Chip>
-                      ) : progress.kind === 'over' ? (
-                        <Chip variant="status" size="md" status="warning">
-                          {t.scanned.overMark(withUnit(progress.over, uom))}
-                        </Chip>
-                      ) : progress.kind === 'done' ? (
-                        <Chip variant="status" size="md" status="success">
-                          {t.scanned.completeMark}
-                        </Chip>
-                      ) : null}
-                    </span>
-                  </span>
+                  <PopRowHead
+                    title={named(receipt?.itemName, itemCode)}
+                    chips={
+                      <>
+                        {/* 예외만 칩으로 보인다(C-21 정상은 숨김). */}
+                        {receipt !== undefined && receipt.status !== 'matched' && (
+                          <Chip
+                            variant="status"
+                            size="md"
+                            status={RECEIPT_STATUS_TONE[receipt.status]}
+                          >
+                            {RECEIPT_STATUS_LABEL[receipt.status]}
+                          </Chip>
+                        )}
+                        {isUnitMismatch && (
+                          <Chip variant="status" size="md" status="warning">
+                            {t.scanned.unitMismatch}
+                          </Chip>
+                        )}
+                        {material?.isHeld === true && (
+                          <Chip variant="status" size="md" status="warning">
+                            {t.scanned.heldMark}
+                          </Chip>
+                        )}
+                        {/* IQC 에서 적은 4M 변경품 — 투입은 막지 않고 알린다(omf-all-around#63). */}
+                        {material !== undefined && material.fourMChange !== null && (
+                          <Chip variant="status" size="md" status="warning">
+                            {t.scanned.fourMChangeMark}
+                          </Chip>
+                        )}
+                        {/* 서버가 통과시키되 기록만 한 것(스펙 §5-3). 보내기 전에는 없다. */}
+                        {isUnlinked && (
+                          <Chip variant="status" size="md" status="info">
+                            {t.scanned.unlinkedIssue}
+                          </Chip>
+                        )}
+                        {/*
+                         * 진행 칩은 하나(C-21): 투입 중, 투입 완료, 과투입 N. 진행 중이거나 아직 넣지 않은 줄은
+                         * 칩 없이 투입량과 막대가 말한다.
+                         */}
+                        {isPending ? (
+                          <Chip variant="status" size="md" status="info">
+                            {t.scanned.pendingMark}
+                          </Chip>
+                        ) : progress.kind === 'over' ? (
+                          <Chip variant="status" size="md" status="warning">
+                            {t.scanned.overMark(withUnit(progress.over, uom))}
+                          </Chip>
+                        ) : progress.kind === 'done' ? (
+                          <Chip variant="status" size="md" status="success">
+                            {t.scanned.completeMark}
+                          </Chip>
+                        ) : null}
+                      </>
+                    }
+                  />
                   {/* 정보 영역(C-21): 「라벨 값」 쌍을 같은 열에 맞춘다. LOT 번호는 라벨 대조용이다(C-10). */}
-                  <span className="material-input-info">
-                    <span className="material-input-info-label">{t.pairs.lotLabel}</span>
-                    <span className="material-input-lot-no">{row.lotNo}</span>
-                    <span className="material-input-info-label">{t.pairs.progressLabel}</span>
-                    <QtyProgress
-                      received={receipt?.receivedQty ?? null}
-                      recorded={done?.qty ?? 0}
-                      uom={uom}
-                    />
-                  </span>
+                  <PopRowInfo>
+                    <PopRowPair label={t.pairs.lotLabel}>
+                      <span className="material-input-lot-no">{row.lotNo}</span>
+                    </PopRowPair>
+                    <PopRowPair label={t.pairs.progressLabel}>
+                      <QtyProgress
+                        received={receipt?.receivedQty ?? null}
+                        recorded={done?.qty ?? 0}
+                        uom={uom}
+                      />
+                    </PopRowPair>
+                  </PopRowInfo>
                 </button>
               </li>
             );

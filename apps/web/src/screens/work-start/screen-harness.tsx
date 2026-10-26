@@ -112,6 +112,11 @@ export interface StubOptions {
   /** 단말 상세 응답을 덮어쓴다 — 설비가 매핑되지 않은 단말을 재려면 필요하다. */
   terminal?: Record<string, unknown>;
   workOrders?: Record<string, unknown>[];
+  /**
+   * 설비 축 없이(전체 설비) 물었을 때의 줄들. 없으면 `workOrders`와 같다. 기본 목록과 전체 설비
+   * 목록이 다를 때 고른 것이 남는지 재려면 필요하다(PG-30).
+   */
+  allWorkOrders?: Record<string, unknown>[];
   listStatus?: number;
   /** 고른 작업지시의 열린 세션. 기본은 없음. */
   openSessions?: Record<string, unknown>[];
@@ -213,7 +218,9 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
       const items =
         listCalls > 1 && options.workOrdersAfter !== undefined
           ? options.workOrdersAfter
-          : (options.workOrders ?? [WORK_ORDER]);
+          : options.allWorkOrders !== undefined && !url.searchParams.has('plannedEquipmentId')
+            ? options.allWorkOrders
+            : (options.workOrders ?? [WORK_ORDER]);
 
       return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
     }

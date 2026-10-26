@@ -13,7 +13,7 @@ export const workHoldRegister = {
     workerLabel: '사번',
     workerUnknown: '사번 미확인',
     /** 작업지시 없이 들어온 자리. 목록을 스스로 열지 않는 화면이라 되돌아갈 곳을 말한다. */
-    missingWorkOrder: '작업지시를 받지 못했습니다. 작업 시작 화면에서 지시를 고른 뒤 들어오세요.',
+    missingWorkOrder: '작업지시를 받지 못했습니다. 작업 지시 목록에서 지시를 고른 뒤 들어오세요.',
   },
 
   /**

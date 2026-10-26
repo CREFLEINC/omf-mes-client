@@ -111,8 +111,8 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     expect(first).toContain('open=true');
     expect(first).not.toContain('plannedEquipmentId');
     expect(first).not.toContain('includeUnplannedEquipment');
-    /* 좁힐 설비가 없으니 범위를 바꾸는 단추와 범위 안내가 없다. */
-    expect(screen.queryByRole('radio', { name: t.list.scopeAll })).not.toBeInTheDocument();
+    /* 좁힐 설비가 없으니 [전체 설비 보기]와 설비 안내가 없다. */
+    expect(screen.queryByRole('button', { name: t.list.showAll })).not.toBeInTheDocument();
     expect(screen.queryByText(t.list.equipmentUnknown)).not.toBeInTheDocument();
 
     await enterWorkerNo(rendered.user, WORKER.workerNo);
@@ -174,11 +174,11 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     );
     await waitFor(() => expect(startButton()).toBeEnabled());
 
-    /* 선택 묶음의 설비는 비워 두지 않고 미지정이라고 말한다. */
+    /* 선택 묶음의 설비는 비워 두지 않고 미지정이라고 말한다. 목록 카드처럼 제목 줄 칩이다(C-21). */
     const selection = screen.getByRole('group', { name: t.selection.title });
-    expect(within(selection).getByText(t.selection.equipment).nextSibling).toHaveTextContent(
-      t.list.unassignedEquipmentBadge,
-    );
+    const head = selection.querySelector('.pop-row-head') as HTMLElement;
+    expect(within(head).getByText(t.list.unassignedEquipmentBadge)).toBeInTheDocument();
+    expect(within(selection).queryByText(t.selection.equipment)).toBeNull();
     await rendered.user.click(startButton());
 
     await waitFor(() => expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(1));
@@ -322,32 +322,131 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     expect(listUrls(recorded.urls)[0]).toContain('withProgress=true');
   });
 
-  /** 범위는 두 개 중 하나라 라디오다(C-12). 지금 범위가 선택 상태로 읽힌다. 버튼 이름이 바뀌지 않는다(C-3). */
-  it('지금 목록이 어느 범위인지 선택 상태로 말하고, 범위를 바꾸면 선택도 바뀐다', async () => {
+  /**
+   * 기본 목록은 단말 설비뿐이다. [전체 설비 보기]는 다른 목록에 들어가듯 제목을 바꾸고, 돌아오는
+   * 버튼은 단말 설비의 실제 이름이다(사용자 결정 2026-10-26). 범위 라디오는 없다.
+   */
+  it('[전체 설비 보기]로 「전체 설비 작업지시」에 들어가고 [← 설비 이름]으로 돌아온다', async () => {
     const { user } = renderScreen();
 
-    /* 전체 설비가 왼쪽, 단말 설비가 오른쪽이다(사용자 결정 2026-10-23). */
-    await screen.findByRole('radio', { name: TERMINAL.equipmentName });
-    expect(screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))).toEqual([
-      'all',
-      'equipment',
-    ]);
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    expect(screen.getByRole('heading', { level: 2, name: t.list.title })).toBeInTheDocument();
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: TERMINAL.equipmentName })).not.toBeInTheDocument();
 
-    /* 첫 선택지는 「이 설비」가 아니라 단말 설비의 실제 이름이다(사용자 결정 2026-10-23). */
-    expect(await screen.findByRole('radio', { name: TERMINAL.equipmentName })).toBeChecked();
-    expect(screen.queryByRole('radio', { name: '이 설비' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.list.showAll }));
 
-    await user.click(screen.getByRole('radio', { name: t.list.scopeAll }));
+    expect(screen.getByRole('heading', { level: 2, name: t.list.allTitle })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 2, name: t.list.title })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.list.showAll })).toBeNull();
+    /* 「이 설비」가 아니라 단말 설비의 실제 이름이다. 화살표는 읽지 않는다. */
+    const back = screen.getByRole('button', { name: TERMINAL.equipmentName });
+    expect(back).toHaveTextContent(`← ${TERMINAL.equipmentName}`);
 
-    expect(screen.getByRole('radio', { name: t.list.scopeAll })).toBeChecked();
-    expect(screen.getByRole('radio', { name: TERMINAL.equipmentName })).not.toBeChecked();
+    await user.click(back);
+
+    expect(screen.getByRole('heading', { level: 2, name: t.list.title })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.list.showAll })).toBeInTheDocument();
+  });
+
+  it('머리줄 화면 이름은 「작업 지시 목록」이고 주 동작은 [작업 시작] 그대로다', async () => {
+    renderScreen();
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: '작업 지시 목록' }),
+    ).toBeInTheDocument();
+    expect(startButton()).toBeInTheDocument();
+  });
+
+  it('「선택한 작업지시」도 제목 줄(W/O 번호, 상태 칩)과 정보 영역(「라벨 값」 쌍)으로 나눈다', async () => {
+    const { user } = renderScreen({ workOrders: [{ ...WORK_ORDER, statusCode: 'RELEASED' }] });
+
+    await enterWorkerNo(user, WORKER.workerNo);
+    await user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+
+    const selection = screen.getByRole('group', { name: t.selection.title });
+    const head = selection.querySelector('.pop-row-head') as HTMLElement;
+    const info = selection.querySelector('.pop-row-info') as HTMLElement;
+    expect(within(head).getByText(WORK_ORDER.workOrderNo)).toBeInTheDocument();
+    expect(within(head).getByText(t.list.status.released)).toBeInTheDocument();
+    expect(within(info).getByText(t.selection.item)).toBeInTheDocument();
+    expect(within(info).queryByText(WORK_ORDER.workOrderNo)).toBeNull();
+    expect(info).toHaveTextContent(
+      `${t.selection.equipment} ${TERMINAL.equipmentName} (SYN-PRS-01)`,
+    );
+  });
+
+  /**
+   * 목록을 바꾸면 고른 W/O 는 새 목록에 있을 때만 남는다. 없으면 놓고 하단 바가 다시 고르라고
+   * 말한다(사용자 결정 2026-10-26, PG-30).
+   */
+  describe('목록을 바꿀 때 고른 것', () => {
+    const OTHER = {
+      ...WORK_ORDER,
+      workOrderId: 8199,
+      workOrderNo: 'SYN-WO-0199',
+      plannedEquipmentId: EQUIPMENT_ID + 1,
+      plannedEquipmentCode: 'SYN-PRS-02',
+    };
+    const selectionNo = () =>
+      within(screen.getByRole('group', { name: t.selection.title })).getByText(
+        WORK_ORDER.workOrderNo,
+      );
+
+    it('두 목록에 다 있는 W/O 는 오가도 고른 채로 남는다', async () => {
+      const { user } = renderScreen({ allWorkOrders: [WORK_ORDER, OTHER] });
+
+      await enterWorkerNo(user, WORKER.workerNo);
+      await user.click(
+        await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+      );
+      expect(selectionNo()).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: t.list.showAll }));
+      await screen.findByRole('button', { name: selectName(OTHER.workOrderNo) });
+      expect(
+        screen.getByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+      ).toHaveAttribute('aria-pressed', 'true');
+      expect(selectionNo()).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: TERMINAL.equipmentName }));
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: selectName(OTHER.workOrderNo) })).toBeNull();
+      });
+      expect(selectionNo()).toBeInTheDocument();
+      expect(screen.queryByText(t.remaining.select)).toBeNull();
+    });
+
+    it('돌아온 목록에 없는 W/O 는 놓고 하단 바가 「작업지시를 고르세요」로 돌아간다', async () => {
+      const { user } = renderScreen({ allWorkOrders: [WORK_ORDER, OTHER] });
+
+      await enterWorkerNo(user, WORKER.workerNo);
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+      await user.click(screen.getByRole('button', { name: t.list.showAll }));
+      await user.click(await screen.findByRole('button', { name: selectName(OTHER.workOrderNo) }));
+      expect(screen.getByRole('group', { name: t.selection.title })).toHaveTextContent(
+        OTHER.workOrderNo,
+      );
+
+      await user.click(screen.getByRole('button', { name: TERMINAL.equipmentName }));
+
+      expect(await screen.findByText(t.remaining.select)).toBeInTheDocument();
+      expect(screen.queryByRole('group', { name: t.selection.title })).toBeNull();
+      /* 다시 전체 설비 목록에 들어가도 저절로 다시 고르지 않는다. */
+      await user.click(screen.getByRole('button', { name: t.list.showAll }));
+      expect(
+        await screen.findByRole('button', { name: selectName(OTHER.workOrderNo) }),
+      ).toHaveAttribute('aria-pressed', 'false');
+    });
   });
 
   it('「전체 보기」는 설비 축만 뺀다', async () => {
     const { user, recorded } = renderScreen();
 
     await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
-    await user.click(screen.getByRole('radio', { name: t.list.scopeAll }));
+    await user.click(screen.getByRole('button', { name: t.list.showAll }));
 
     await waitFor(() => {
       expect(listUrls(recorded.urls).length).toBeGreaterThan(1);
@@ -360,7 +459,7 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
   });
 
   /** 카드의 계획 설비는 코드만 든 칩이 아니라 「설비 이름 (코드)」 라벨 값 쌍이다(C-10). */
-  it('두 범위 모두 계획 설비를 「설비 이름 (코드)」로 달고, 설비가 없으면 설비 미지정 칩을 단다', async () => {
+  it('두 목록 모두 계획 설비를 「설비 이름 (코드)」로 달고, 설비가 없으면 설비 미지정 칩을 단다', async () => {
     const { plannedEquipmentId: _ignored, ...withoutEquipment } = WORK_ORDER;
     const { user } = renderScreen({
       workOrders: [
@@ -385,7 +484,7 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
       within(card(WORK_ORDER.workOrderNo)).queryByText(t.list.unassignedEquipmentBadge),
     ).toBeNull();
 
-    await user.click(screen.getByRole('radio', { name: t.list.scopeAll }));
+    await user.click(screen.getByRole('button', { name: t.list.showAll }));
 
     await waitFor(() => {
       expect(card(WORK_ORDER.workOrderNo)).toHaveTextContent(equipmentPair);

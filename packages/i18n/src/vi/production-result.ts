@@ -196,7 +196,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       cancel: 'Hủy',
       confirm: 'Đóng',
       done: (workOrderNo: string): string =>
-        `Đã đóng ${workOrderNo}. Quay lại màn hình bắt đầu công việc.`,
+        `Đã đóng ${workOrderNo}. Quay lại màn hình danh sách lệnh sản xuất.`,
       blocked: {
         denied: (webMenu: string, terminalMenu: string): string =>
           `Máy này không được phép đóng lệnh sản xuất. Hãy đóng ở ${webMenu} trên web quản lý, hoặc nhờ quản trị viên bật «Đóng lệnh sản xuất» ở ${terminalMenu}.`,
@@ -246,7 +246,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     itemLabel: 'Mặt hàng',
     workerLabel: 'Mã nhân viên',
     missingWorkOrder:
-      'Chưa nhận được lệnh sản xuất nên không đăng ký được kết quả. Hãy chọn lệnh sản xuất ở màn hình bắt đầu công việc rồi vào lại.',
+      'Chưa nhận được lệnh sản xuất nên không đăng ký được kết quả. Hãy chọn lệnh sản xuất ở màn hình danh sách lệnh sản xuất rồi vào lại.',
     missingWorker:
       'Chưa xác nhận được mã nhân viên nên không lưu được. Hãy xác nhận mã nhân viên trước.',
     loadFailed: 'Không tải được lệnh sản xuất.',

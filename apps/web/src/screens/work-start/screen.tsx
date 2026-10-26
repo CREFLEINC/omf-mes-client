@@ -346,6 +346,22 @@ export const WorkStartScreen = () => {
    */
   const submitAtRef = useRef<string | null>(null);
 
+  /*
+   * 목록을 바꾼 뒤([전체 설비 보기], [← 설비 이름]) 새 목록이 오면, 고른 W/O 가 그 목록에 있을 때만
+   * 고른 채로 둔다. 없으면 놓는다. 화면에 없는 카드가 오른쪽에 남아 있지 않게 하고, 하단 바가
+   * 「작업지시를 고르세요」로 돌아간다(사용자 결정 2026-10-26, PG-30).
+   */
+  const scopeCheckRef = useRef(false);
+  useEffect(() => {
+    if (!scopeCheckRef.current || rows === undefined) return;
+
+    scopeCheckRef.current = false;
+    if (selectedId !== null && !rows.some((row) => row.workOrderId === selectedId)) {
+      submitAtRef.current = null;
+      setSelectedId(null);
+    }
+  }, [rows, selectedId]);
+
   /**
    * 지금 시작을 시도하고 있는 것 — **누른 순간의 작업지시와 시각을 통째로 붙든다.**
    *
@@ -744,8 +760,8 @@ export const WorkStartScreen = () => {
           selectedId={selectedId}
           onSelect={selectWorkOrder}
           onToggleScope={() => {
-            submitAtRef.current = null;
-            setSelectedId(null);
+            /* 고른 것은 새 목록에 있으면 남긴다. 새 목록이 오면 위 확인이 정한다(PG-30). */
+            scopeCheckRef.current = true;
             /* 축이 바뀌면 첫 쪽으로. 3쪽을 보던 중 전체 보기로 옮기면 빈 쪽이 뜬다. */
             setListPage(1);
             setShowingAll((previous) => !previous);
