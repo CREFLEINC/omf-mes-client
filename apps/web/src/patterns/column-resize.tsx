@@ -127,7 +127,13 @@ const ColumnResizer = ({
  * 열마다 끌기 손잡이를 단 열과, 표를 감싼 상자에 줄 `style` 을 낸다.
  * `storageKey` 는 표마다 다르게 — 같은 열 이름이 다른 표에서 다른 폭이어도 섞이지 않게.
  */
-export const useColumnWidths = <T,>(storageKey: string, columns: Column<T>[]) => {
+export const useColumnWidths = <T,>(
+  storageKey: string,
+  columns: Column<T>[],
+  /** 한 열이 넓어질 수 있는 최대 폭(px). 기본은 종전 한계(960). 저장된 폭도 이 값을 넘으면 이 값으로 그린다. */
+  { maxWidth = COLUMN_MAX }: { maxWidth?: number } = {},
+) => {
+  const cap = (value: number): number => Math.min(maxWidth, clampWidth(value));
   const [overrides, setOverrides] = useState<ColumnWidths>(() => readWidths(storageKey));
 
   /* 끄는 동안 다른 열은 바뀌지 않는다 — 끌기 시작할 때의 값에 그 열만 얹어도 된다. */
@@ -140,7 +146,10 @@ export const useColumnWidths = <T,>(storageKey: string, columns: Column<T>[]) =>
     }
   };
 
-  const layout = layoutColumns(columns, overrides);
+  const layout = layoutColumns(
+    columns,
+    Object.fromEntries(Object.entries(overrides).map(([key, value]) => [key, cap(value)])),
+  );
 
   return {
     columns: columns.map((column): Column<T> => ({
@@ -152,7 +161,7 @@ export const useColumnWidths = <T,>(storageKey: string, columns: Column<T>[]) =>
           <ColumnResizer
             baseWidth={pxOf(layout.widths[column.key])}
             onResize={(value) => {
-              commit({ ...overrides, [column.key]: clampWidth(value) });
+              commit({ ...overrides, [column.key]: cap(value) });
             }}
             onReset={() => {
               commit(
