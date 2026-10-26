@@ -131,6 +131,8 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
 
   /* 창을 닫으면 쓰던 사유는 남긴다 — 다시 열면 이어 쓴다. 필수 표시만 거둔다. */
   const closeDialog = (): void => {
+    /* 요청이 나가 있는 동안에는 닫지 않는다 — 실패하면 그 사유가 창 안에 선다. */
+    if (requestWrite.isSaving) return;
     setIsDialogOpen(false);
     setTouched(false);
   };

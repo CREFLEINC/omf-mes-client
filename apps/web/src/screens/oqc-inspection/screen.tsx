@@ -370,7 +370,7 @@ export const OqcInspectionScreen = () => {
       draft.held !== '' ||
       judgment !== '' ||
       changeReason.trim() !== '' ||
-      rejectionReason.trim() !== '' ||
+      /* 불합격 사유는 불합격 판정과 함께만 실린다 — 판정이 있으면 위에서 이미 묻는다(판정을 지워 남은 글은 셈하지 않는다). */
       serialRows.length > 0);
 
   /*
@@ -386,13 +386,15 @@ export const OqcInspectionScreen = () => {
    * 검사 기본 정보의 셋째 칸(#136) — OA 사업부 계정은 시리얼로 검사하므로 시리얼 번호를, 그 밖은 대상 LOT 을 본다.
    * 출하요청 대상 의뢰에는 LOT 이 없어(편성 때 정해지지 않는다) 그 지시의 피킹 기록에서 읽는다. 둘 다 표시 전용이다.
    */
-  const isOa = useOaAccess() === 'oa';
+  const oaAccess = useOaAccess();
+  const isOa = oaAccess === 'oa';
   const isShipmentTarget = detail.data?.targetTypeCode === 'SHIPMENT_REQUEST';
   const unitRecords = useOqcSerialRecords(selectedId, isOa && isShipmentTarget);
   /* 「시리얼별 출하검사 이력」 접는 줄의 건수 — 구획 안 표와 같은 조회다(#136). */
   const serialRecordCount = useOqcSerialRecords(selectedId, isShipmentTarget).data?.length;
   const pickedLots = usePickedLotNumbers(
-    !isOa && isShipmentTarget && detail.data?.lotId == null
+    /* OA 여부를 아직 판단 중이면 부르지 않는다 — OA 계정에 쓰지 않을 조회가 한 번 나가지 않게. */
+    oaAccess !== 'checking' && !isOa && isShipmentTarget && detail.data?.lotId == null
       ? (detail.data?.targetId ?? null)
       : null,
     detail.data?.itemId ?? 0,
@@ -403,7 +405,8 @@ export const OqcInspectionScreen = () => {
     return values.length === 1 ? first : t.detail.more(first, values.length - 1);
   };
   const unitFact = ((): { kind: 'serial' | 'lot'; value: string } | undefined => {
-    if (isOa) {
+    /* 시리얼은 출하작업지시 의뢰에만 있다 — LOT 대상 의뢰는 OA 계정이어도 대상 LOT 을 그대로 보인다. */
+    if (isOa && isShipmentTarget) {
       const scanned =
         selectedId !== null && scannedSerial?.inspectionRequestIds.includes(selectedId) === true
           ? [scannedSerial.serialNo]
