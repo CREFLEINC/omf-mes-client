@@ -202,6 +202,7 @@ export const PqcInspectionRegisterScreen = () => {
           )}
 
           <PqcQueueTable
+            scrollX={layout.orientation === 'row'}
             rows={rows}
             onSelect={select}
             selectedId={selectedId}

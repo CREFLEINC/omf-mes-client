@@ -810,6 +810,7 @@ export const OqcInspectionScreen = () => {
           )}
 
           <QueueListTable
+            scrollX={layout.orientation === 'row'}
             rows={rows}
             itemNames={itemNames}
             uomCodeOf={(row) => uoms.codeOf(row.uomId)}

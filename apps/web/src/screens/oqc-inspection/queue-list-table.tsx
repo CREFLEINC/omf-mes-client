@@ -140,6 +140,8 @@ const columnsOf = (
 ];
 
 export interface QueueListTableProps {
+  /** 넘치면 줄이지 않고 가로로 구른다 — 좌우 배치(#185). 기본은 상자 폭에 맞춘다. */
+  scrollX?: boolean;
   rows: InspectionQueueRow[];
   /** 품목 풀이 — 번호가 아니라 이름(위)·코드(아래)를 보인다(omf-all-around#40·#136). */
   itemNames: ItemNameLookup;
@@ -162,6 +164,7 @@ export const QueueListTable = ({
   selectedId,
   onSelect,
   empty,
+  scrollX = false,
 }: QueueListTableProps) => {
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
   const ordered = useColumnOrder(
@@ -170,7 +173,7 @@ export const QueueListTable = ({
   );
   const resizable = useColumnWidths('omf-mes:oqc-inspection:columns:queue', ordered);
   /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다(#185 · 반응형). */
-  const fit = useFitColumns(resizable.columns);
+  const fit = useFitColumns(resizable.columns, { scrollX });
 
   return (
     /*

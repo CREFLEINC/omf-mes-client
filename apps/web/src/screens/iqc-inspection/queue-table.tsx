@@ -28,6 +28,8 @@ import type { ItemNameLookup, NameLookup } from './reference-lookup';
 const t = messages.iqcInspection.queue;
 
 export interface QueueTableProps {
+  /** 넘치면 줄이지 않고 가로로 구른다 — 좌우 배치(#185). 기본은 상자 폭에 맞춘다. */
+  scrollX?: boolean;
   rows: InspectionQueueRow[];
   /** 품목 풀이. 첫 칸이 **이름과 코드를 두 줄로** 세운다(사용자 지시 2026-09-21). */
   itemNames: ItemNameLookup;
@@ -168,6 +170,7 @@ export const QueueTable = ({
   selectedId,
   onSelect,
   empty,
+  scrollX = false,
 }: QueueTableProps) => {
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
   const ordered = useColumnOrder(
@@ -176,7 +179,7 @@ export const QueueTable = ({
   );
   const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:queue', ordered);
   /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다(#185 · 반응형). */
-  const fit = useFitColumns(resizable.columns);
+  const fit = useFitColumns(resizable.columns, { scrollX });
 
   return (
     /*

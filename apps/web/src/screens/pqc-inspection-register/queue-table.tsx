@@ -55,6 +55,8 @@ const ItemCell = ({ itemId }: { itemId: number }) => {
 };
 
 export interface PqcQueueTableProps {
+  /** 넘치면 줄이지 않고 가로로 구른다 — 좌우 배치(#185). 기본은 상자 폭에 맞춘다. */
+  scrollX?: boolean;
   rows: InspectionQueueRow[];
   onSelect: (inspectionRequestId: number) => void;
   /** 고른 의뢰 — 그 줄을 파랗게 표시한다(#185 · 입하 예정 조회와 같다). */
@@ -72,6 +74,7 @@ export const PqcQueueTable = ({
   onSelect,
   selectedId,
   empty: emptyContent,
+  scrollX = false,
 }: PqcQueueTableProps) => {
   /*
    * 의뢰 일시 정렬(#133 과 같다 · 받은 쪽 안에서). ⭐ 정렬을 이 표가 쥔다 — 줄을 누르면 줄 차례로 의뢰를 찾으므로,
@@ -164,7 +167,7 @@ export const PqcQueueTable = ({
   const ordered = useColumnOrder('omf-mes:pqc-inspection-register:columns:queue:order', columns);
   const resizable = useColumnWidths('omf-mes:pqc-inspection-register:columns:queue', ordered);
   /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다(#185 · 반응형). */
-  const fit = useFitColumns(resizable.columns);
+  const fit = useFitColumns(resizable.columns, { scrollX });
 
   return (
     /* 줄 아무 곳이나 눌러 연다(#135) — 의뢰번호를 따로 누르는 길은 두지 않는다. */

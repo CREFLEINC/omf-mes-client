@@ -982,6 +982,7 @@ export const IqcInspectionScreen = () => {
           )}
 
           <QueueTable
+            scrollX={layout.orientation === 'row'}
             rows={rows}
             itemNames={itemNames}
             lotNumbers={lotNumbers}

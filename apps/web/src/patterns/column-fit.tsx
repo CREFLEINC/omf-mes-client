@@ -14,7 +14,11 @@ const pxOf = (width: string | undefined): number | null =>
  * 정해 둔 열 폭(끌어 바꾼 폭 포함)의 비율대로 상자 폭을 나눈다 — 합이 상자보다 크면 줄이고, 작으면 늘린다.
  * 저장된 폭은 그대로라 창이 다시 넓어지면 원래 폭으로 돌아간다. 창 · 구획 크기가 바뀔 때마다 다시 잰다.
  */
-export const useFitColumns = <T,>(columns: Column<T>[]) => {
+export const useFitColumns = <T,>(
+  columns: Column<T>[],
+  /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-26). 모자랄 때 늘리는 것은 같다. */
+  { scrollX = false }: { scrollX?: boolean } = {},
+) => {
   const ref = useRef<HTMLDivElement>(null);
   const [available, setAvailable] = useState<number | null>(null);
 
@@ -40,7 +44,7 @@ export const useFitColumns = <T,>(columns: Column<T>[]) => {
    * 모든 열이 폭을 가지면(남는 폭을 흡수하는 열이 없으면) 상자 폭에 맞춰 늘리고 줄인다 — 끈 열은 그만큼 몫이 커진다.
    * 흡수하는 열이 있으면 넘칠 때만 줄인다(남는 폭은 그 열이 가진다).
    */
-  const scale =
+  const fitted =
     available === null || available <= 0 || fixedSum === 0
       ? 1
       : flexNeed === 0
@@ -48,6 +52,7 @@ export const useFitColumns = <T,>(columns: Column<T>[]) => {
         : fixedSum + flexNeed <= available
           ? 1
           : Math.max(0, (available - flexNeed) / fixedSum);
+  const scale = scrollX ? Math.max(1, fitted) : fitted;
 
   return {
     ref,
