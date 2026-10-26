@@ -687,22 +687,23 @@ export const OqcInspectionScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={selectedId === null ? (hub?.title ?? t.title) : t.detail.sectionTitle}
-        breadcrumb={
-          <Breadcrumb
-            items={[
-              { label: t.breadcrumbRoot },
-              { label: hub?.title ?? t.title },
-              /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#136). */
-              ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
-            ]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-      {/* 검사 조회·판정 묶음의 탭 — 제목 바로 아래(셸이 채운다 · `patterns/page-hub.tsx`). */}
-      {hub !== null && <div className="page-hub-tabs">{hub.tabs}</div>}
+      {/* 탭 묶음(검사 조회·판정) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(입하 예정 조회와 같다). */}
+      {hub === null && (
+        <PageHeader
+          title={selectedId === null ? t.title : t.detail.sectionTitle}
+          breadcrumb={
+            <Breadcrumb
+              items={[
+                { label: t.breadcrumbRoot },
+                { label: t.title },
+                /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#136). */
+                ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
+              ]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
 
       {selectedId === null ? (
         <section

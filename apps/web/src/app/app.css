@@ -14110,11 +14110,6 @@ button.app-button-neutral {
   box-shadow: inset 0 -2px 0 var(--primary-text);
 }
 
-/* 제목 아래 탭 묶음(`patterns/page-hub.tsx`) — 머리와 본문 사이, 아래 카드와는 한 단계 띄운다. */
-.page-hub-tabs {
-  margin-bottom: var(--space-4);
-}
-
 /*
  * 섹션 밖에 홀로 선 메뉴 항목 — **목록이 넘쳐도 줄어들지 않는다**(#1077).
  *
@@ -20703,4 +20698,65 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 .pqc-web-filter-bar > .pqc-web-filter-actions {
   flex: 0 0 auto;
   margin-left: auto;
+}
+
+/*
+ * 검사 조회·판정(IQC · PQC · OQC) 검색 줄 — 입하 예정 조회처럼 칸마다 필요한 폭만 쓰고 한 줄에 세운다(omf-all-around#185).
+ * 스캔 칸이 화면 폭을 다 먹지 않게 폭을 정하고, 조회·초기화는 줄 오른쪽 끝. 좁으면 다음 줄로 넘긴다.
+ */
+.iqc-inspection-search,
+.pqc-web-search,
+.oqc-inspection-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.iqc-inspection-search > form.form-actions,
+.pqc-web-search > form.form-actions {
+  flex: 0 1 26rem;
+  min-width: 0;
+}
+
+/* OQC 시리얼 스캔은 제목 옆 안내가 붙어 한 단계 넓다. */
+.oqc-inspection-search > :first-child {
+  flex: 0 1 32rem;
+  min-width: 0;
+}
+
+.iqc-inspection-search > .filter-bar,
+.pqc-web-search > .filter-bar,
+.oqc-inspection-search > .filter-bar {
+  display: flex;
+  flex: 1 1 36rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.iqc-inspection-search > .filter-bar > *,
+.oqc-inspection-search > .filter-bar > * {
+  flex: 0 1 14rem;
+  min-width: 0;
+}
+
+.iqc-inspection-search > .filter-bar > .field-cell-unlabeled,
+.oqc-inspection-search > .filter-bar > .field-cell-unlabeled {
+  flex: 0 0 auto;
+}
+
+.iqc-inspection-search .iqc-inspection-filter-actions,
+.oqc-inspection-search .oqc-inspection-filter-actions {
+  margin-left: auto;
+}
+
+/* PQC 는 검색 칸이 하나 더 많다(작업지시) — 칸 폭을 한 단계 줄여 같은 줄에 세운다. */
+.pqc-web-search > form.form-actions {
+  flex-basis: 21rem;
+}
+
+.pqc-web-search > .pqc-web-filter-bar > :not(.pqc-web-filter-check, .pqc-web-filter-actions) {
+  flex: 1 1 13rem;
 }

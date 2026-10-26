@@ -874,23 +874,23 @@ export const IqcInspectionScreen = () => {
 
   return (
     <>
-      <PageHeader
-        /* 묶음(검사 조회·판정) 안이면 묶음 이름이 제목이다. 「검사 기본 정보」는 경로에만 선다(#133). */
-        title={hub?.title ?? t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[
-              { label: t.breadcrumbRoot },
-              { label: hub?.title ?? t.title },
-              /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#133). */
-              ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
-            ]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-      {/* 검사 조회·판정 묶음의 탭 — 제목 바로 아래(셸이 채운다 · `patterns/page-hub.tsx`). */}
-      {hub !== null && <div className="page-hub-tabs">{hub.tabs}</div>}
+      {/* 탭 묶음(검사 조회·판정) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(입하 예정 조회와 같다). */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[
+                { label: t.breadcrumbRoot },
+                { label: t.title },
+                /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#133). */
+                ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
+              ]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
 
       {/*
        * 목록과 상세(판정)를 한 화면에 나란히 두지 않고 갈아 끼운다(omf-all-around#133) — 의뢰를 고르면(`?ir=`)

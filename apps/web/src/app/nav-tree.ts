@@ -45,11 +45,6 @@ export interface NavEntry extends LocalizedLabel {
    * 그대로다. 탭은 둘 이상이다 — 하나뿐이면 묶음이 아니다.
    */
   readonly tabs?: readonly NavTab[];
-  /**
-   * 탭 막대를 본문 맨 위가 아니라 **화면 제목 아래**에 세운다 — 화면 머리가 묶음 이름을 제목으로 쓴다
-   * (`patterns/page-hub.tsx`). 그 화면들이 `usePageHub` 로 자리를 받아야 한다.
-   */
-  readonly tabsInPage?: boolean;
   /** 탭 묶음의 탭을 **화면이 직접 그린다** — 셸 탭 막대를 세우지 않는다(사이드바 선택·권한은 묶음 그대로). */
   readonly inlineTabs?: true;
 }
@@ -237,7 +232,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     icon: 'verified',
     items: [
       /*
-       * 검사 조회·판정 — IQC · PQC · OQC 판정 화면을 사이드바 한 줄 · 본문 위 탭으로 묶는다(사용자 2026-10-26).
+       * 검사 조회·판정 — IQC · PQC · OQC 판정 화면을 사이드바 한 줄 · 본문 맨 위 탭으로 묶는다(사용자 2026-10-26 · 입하 예정 조회와 같은 모양).
        * 탭 하나가 기존 화면 하나라 주소·권한·다른 화면에서 거는 연결은 그대로다.
        */
       {
@@ -245,8 +240,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'troubleshoot',
         label: '검사 조회·판정',
         labelVi: 'Tra cứu · đánh giá kiểm tra',
-        /* 제목(묶음 이름) 아래 탭 — 참고 화면 「품질 승인 처리」와 같은 모양(사용자 2026-10-26). */
-        tabsInPage: true,
         tabs: [
           {
             to: '/logistics/iqc-inspection',
