@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-order';
+import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 /* 대기·진행 밖의 상태(완료·생략·취소)도 실린다(#185) — 다섯 값을 다 아는 OQC 표식을 쓴다(PQC 와 같다). */
 import { toStatusBadge } from '../oqc-inspection/status-badge';
@@ -173,6 +174,8 @@ export const QueueTable = ({
     columnsOf(selectedId, onSelect, itemNames, lotNumbers),
   );
   const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:queue', ordered);
+  /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다(#185 · 반응형). */
+  const fit = useFitColumns(resizable.columns);
 
   return (
     /*
@@ -180,6 +183,7 @@ export const QueueTable = ({
      * 키보드·화면 낭독기는 종전처럼 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
      */
     <div
+      ref={fit.ref}
       className="iqc-inspection-queue-rows inspection-queue-table"
       style={resizable.style}
       onClick={(event) => {
@@ -195,7 +199,7 @@ export const QueueTable = ({
         /* 제목은 화면에서 감추고 표의 접근 이름으로만 남긴다. */
         caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
         density="compact"
-        columns={resizable.columns}
+        columns={fit.columns}
         rows={rows}
         getRowId={(row) => String(row.inspectionRequestId)}
         empty={empty}

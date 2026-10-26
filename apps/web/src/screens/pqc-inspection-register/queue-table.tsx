@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-order';
+import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { toStatusBadge } from '../oqc-inspection/status-badge';
@@ -161,10 +162,13 @@ export const PqcQueueTable = ({
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
   const ordered = useColumnOrder('omf-mes:pqc-inspection-register:columns:queue:order', columns);
   const resizable = useColumnWidths('omf-mes:pqc-inspection-register:columns:queue', ordered);
+  /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다(#185 · 반응형). */
+  const fit = useFitColumns(resizable.columns);
 
   return (
     /* 줄 아무 곳이나 눌러 연다(#135) — 의뢰번호를 따로 누르는 길은 두지 않는다. */
     <div
+      ref={fit.ref}
       className="pqc-web-queue inspection-queue-table"
       style={resizable.style}
       onClick={(event) => {
@@ -178,7 +182,7 @@ export const PqcQueueTable = ({
       <Table
         caption={<span className="visually-hidden">{t.queue.caption}</span>}
         density="compact"
-        columns={resizable.columns}
+        columns={fit.columns}
         rows={shown}
         sort={sort}
         onSortChange={setSort}

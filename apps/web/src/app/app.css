@@ -20816,7 +20816,9 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
  */
 .inspection-queue-table table {
   table-layout: fixed;
-  min-width: max(100%, var(--col-floor, 0px));
+  /* 상자 폭을 넘지 않는다 — 넘칠 만큼 넓힌 열은 `patterns/column-fit.tsx` 가 비율대로 줄여 맞춘다(#185 · 반응형). */
+  width: 100%;
+  min-width: 0;
 }
 
 .inspection-queue-table thead th,

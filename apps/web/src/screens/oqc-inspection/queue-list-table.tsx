@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-order';
+import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import type { ItemNameLookup } from './reference-lookup';
 import { toStatusBadge } from './status-badge';
@@ -167,6 +168,8 @@ export const QueueListTable = ({
     columnsOf(selectedId, onSelect, itemNames, uomCodeOf, serialOf),
   );
   const resizable = useColumnWidths('omf-mes:oqc-inspection:columns:queue', ordered);
+  /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다(#185 · 반응형). */
+  const fit = useFitColumns(resizable.columns);
 
   return (
     /*
@@ -174,6 +177,7 @@ export const QueueListTable = ({
      * 키보드·화면 낭독기는 종전처럼 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
      */
     <div
+      ref={fit.ref}
       className="oqc-inspection-queue-rows inspection-queue-table"
       style={resizable.style}
       onClick={(event) => {
@@ -188,7 +192,7 @@ export const QueueListTable = ({
       <Table
         caption={<span className="oqc-inspection-visually-hidden">{t.caption}</span>}
         density="compact"
-        columns={resizable.columns}
+        columns={fit.columns}
         rows={rows}
         getRowId={(row) => String(row.inspectionRequestId)}
         empty={empty}
