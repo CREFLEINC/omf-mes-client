@@ -767,7 +767,8 @@ describe('QualityApprovalScreen conditions', () => {
     expect(within(pane).getByText('2026-08-22 ~ 2026-09-30')).toBeInTheDocument();
     expect(within(pane).getByText('합성 조건 비고')).toBeInTheDocument();
     const usage = within(pane).getByRole('region', { name: t.condition.usageTitle });
-    expect(await within(usage).findByText('SYNTH-WO-1201')).toBeInTheDocument();
+    /* 허용 작업지시는 적용 제한 칸과 비고 옆 칸 두 곳에 선다(#193). */
+    expect(await within(usage).findAllByText('SYNTH-WO-1201')).toHaveLength(2);
     expect(within(pane).getByText('합성 고객')).toBeInTheDocument();
     /* 다른 화면에서 여는 줄(#193) — LOT 은 LOT 상태, 허용 작업지시는 W/O 진행현황의 진입 주소다. */
     expect(within(pane).getByRole('link', { name: t.condition.openLot })).toHaveAttribute(
@@ -843,7 +844,7 @@ describe('QualityApprovalScreen conditions', () => {
 
     await screen.findByRole('group', { name: t.condition.title });
     const group = screen.getByRole('region', { name: t.condition.usageTitle });
-    expect(within(group).getAllByText(t.condition.reference.loading)).toHaveLength(4);
+    expect(within(group).getAllByText(t.condition.reference.loading)).toHaveLength(5);
     expect(within(group).queryByText('SYNTH-WO-1201')).toBeNull();
   });
 
@@ -1203,16 +1204,16 @@ describe('QualityApprovalScreen conditions', () => {
 
     const usage = await screen.findByRole('region', { name: t.condition.usageTitle });
     await waitFor(() =>
-      /* 두 칸(사용 조건 안) + 실패 배너 제목 하나(구획 밖) — 「작업지시 열기」 줄의 이름은 세지 않는다. */
-      expect(within(usage).getAllByText(t.condition.reference.failed)).toHaveLength(2),
+      /* 세 칸(사용 조건 안 — 작업지시는 적용 제한과 비고 옆 두 곳) + 실패 배너 제목 하나(구획 밖). */
+      expect(within(usage).getAllByText(t.condition.reference.failed)).toHaveLength(3),
     );
     expect(screen.getByRole('alert')).toHaveTextContent(t.condition.reference.failed);
     await user.click(screen.getByRole('button', { name: messages.common.retry }));
     expect(
-      await within(screen.getByRole('region', { name: t.condition.usageTitle })).findByText(
+      await within(screen.getByRole('region', { name: t.condition.usageTitle })).findAllByText(
         'SYNTH-WO-1201',
       ),
-    ).toBeInTheDocument();
+    ).toHaveLength(2);
     expect(screen.getByText('합성 고객')).toBeInTheDocument();
     expect([workOrderAttempts, customerAttempts]).toEqual([2, 2]);
   });
@@ -1323,7 +1324,7 @@ describe('QualityApprovalScreen conditions', () => {
     await screen.findByRole('group', { name: t.condition.title });
     const group = screen.getByRole('region', { name: t.condition.usageTitle });
     await waitFor(() =>
-      expect(within(group).getAllByText(t.condition.reference.unknown)).toHaveLength(4),
+      expect(within(group).getAllByText(t.condition.reference.unknown)).toHaveLength(5),
     );
     expect(within(group).queryByText('1201')).toBeNull();
     expect(within(group).queryByText('1401')).toBeNull();

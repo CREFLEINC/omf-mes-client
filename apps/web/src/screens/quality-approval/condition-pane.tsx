@@ -1,4 +1,4 @@
-import { AlertBanner, Button, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState, type ReactNode } from 'react';
 
@@ -31,8 +31,7 @@ import {
   useConcessionDetail,
   qualityApprovalKeys,
 } from './queries';
-import type { DetailPaneProps } from './detail-pane';
-import { RelatedLink } from './related-link';
+import { linkedValue, type DetailPaneProps } from './detail-pane';
 
 export interface ConditionPaneProps {
   approvalRequestId: number | null;
@@ -214,7 +213,7 @@ export const ConditionPane = ({
     uoms.isError ||
     (hasProcessReference && processes.isError);
 
-  const facts = (rows: ReadonlyArray<readonly [string, string]>, className: string) => (
+  const facts = (rows: ReadonlyArray<readonly [string, ReactNode]>, className: string) => (
     <dl className={className}>
       {rows.map(([label, value]) => (
         <div className="field-cell" key={label}>
@@ -270,7 +269,23 @@ export const ConditionPane = ({
           [
             [t.concessionNo, view.concessionNo],
             [t.validity, view.validity],
-            [t.usableLabel, view.usable],
+            /* 사용 가능 여부는 배지로 강조한다 — 가능 초록 · 불가 빨강 · 모름 회색(#193 · 사용자 지시 2026-10-27). */
+            [
+              t.usableLabel,
+              <Chip
+                variant="status"
+                size="md"
+                status={
+                  detail.data.usable === true
+                    ? 'success'
+                    : detail.data.usable === false
+                      ? 'error'
+                      : 'idle'
+                }
+              >
+                {view.usable}
+              </Chip>,
+            ],
             [t.uom, view.uom],
           ],
           'quality-approval-concession-grid',
@@ -298,7 +313,32 @@ export const ConditionPane = ({
             )}
           </div>
         )}
-        {facts([[t.remarks, view.remarks]], 'quality-approval-concession-grid')}
+        {/*
+         * 비고 옆에 허용 작업지시 — 값이 있을 때만(특채 필수 값이 아니다) 번호와 「작업지시 열기」 단추를 둔다(#193 ·
+         * 사용자 지시 2026-10-27). W/O 진행현황 권한이 없으면 번호만 둔다.
+         */}
+        {facts(
+          [
+            [t.remarks, view.remarks],
+            ...(detail.data.allowedWorkOrderId == null
+              ? []
+              : [
+                  [
+                    t.workOrderHeading,
+                    linkedValue(
+                      view.workOrder,
+                      access.allows(WORK_ORDER_PROGRESS_SCREEN_PATH)
+                        ? {
+                            to: workOrderProgressEntryPath(detail.data.allowedWorkOrderId),
+                            label: t.openWorkOrder,
+                          }
+                        : undefined,
+                    ),
+                  ] as const,
+                ]),
+          ],
+          'quality-approval-concession-grid',
+        )}
       </section>
       {requestStatusCode === 'APPROVED' &&
         (detail.data.statusCode === CONCESSION_PENDING ||
@@ -323,18 +363,6 @@ export const ConditionPane = ({
             }
           />
         )}
-      {/*
-       * 허용 작업지시를 W/O 진행현황에서 여는 줄(#193). 그 화면을 볼 권한이 없으면 줄을 세우지 않는다 — 누르는 순간
-       * 막힌 화면이 선다. 대상 LOT · 연관 부적합의 여는 단추는 요청 정보 칸 옆에 선다.
-       */}
-      {detail.data.allowedWorkOrderId != null && access.allows(WORK_ORDER_PROGRESS_SCREEN_PATH) && (
-        <RelatedLink
-          heading={t.workOrderHeading}
-          value={view.workOrder}
-          to={workOrderProgressEntryPath(detail.data.allowedWorkOrderId)}
-          label={t.openWorkOrder}
-        />
-      )}
       {hasReferenceError ? (
         <AlertBanner
           variant="error"

@@ -25,8 +25,11 @@ export interface DetailPaneProps {
   nonconformance?: { name: string; link?: { to: string; label: string } };
 }
 
-/** 값 + 옆 단추. 단추가 없으면 값만 둔다. */
-const linkedValue = (name: string, link: { to: string; label: string } | undefined): ReactNode =>
+/** 값 + 옆 단추. 단추가 없으면 값만 둔다. 특채 사용 조건의 허용 작업지시도 같은 모양을 쓴다. */
+export const linkedValue = (
+  name: string,
+  link: { to: string; label: string } | undefined,
+): ReactNode =>
   link === undefined ? (
     name
   ) : (
