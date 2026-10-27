@@ -4687,6 +4687,20 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
+/* OQC 생략의 피킹 LOT(#193) — 요청 상세 아래 작은 표. 제목은 다른 카드의 소제목 크기다. */
+.quality-approval-oqc-lots {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.quality-approval-oqc-lots > h3 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
 /* 안내 모양(#193) — 아이콘 제목(반려 붉은 느낌표 · 완료 초록 체크), 할 일 한 줄, 단추 아래 덧붙임 안내. */
 .quality-approval-concession-nc.is-alert h3 {
   display: inline-flex;

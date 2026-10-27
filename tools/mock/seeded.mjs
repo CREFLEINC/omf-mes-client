@@ -4842,9 +4842,10 @@ on('POST', '/logistics/shipment-requests/{shipmentRequestId}:skip-oqc', (params)
     };
   }
   oqcSkipExecuted.add(id);
-  return (
-    state.shipmentRequests?.find((row) => row.shipmentRequestId === id) ?? { shipmentRequestId: id }
-  );
+  const shipmentRequest = state.shipmentRequests?.find((row) => row.shipmentRequestId === id);
+  /* 실제 서버처럼 의뢰가 SKIPPED 로 닫혀 출하검사 롤업이 합격이 된다 — 품질 승인 처리가 이 값으로 「실행 완료」를 안다. */
+  if (shipmentRequest !== undefined) shipmentRequest.shippingInspectionStatusCode = 'PASSED';
+  return shipmentRequest ?? { shipmentRequestId: id };
 });
 
 /*

@@ -19,7 +19,11 @@ import { toWebAccess } from '../../patterns/web-access';
 import { toApiError } from '../../patterns/request';
 import { iqcSkipApprovalKeys, useSkipTargetLot } from '../iqc-skip-approval/queries';
 import { SkipExecutePane } from '../iqc-skip-approval/skip-execute-pane';
-import { judgeSkipExecute, skipExecuteLotIdOf } from '../iqc-skip-approval/target';
+import {
+  judgeSkipExecute,
+  skipExecuteLotIdOf,
+  type SkipExecuteState,
+} from '../iqc-skip-approval/target';
 import { DISPOSITION_SCREEN_PATH, dispositionEntryPath } from '../disposition-decision/filters';
 import { LOT_STATUS_SCREEN_PATH, lotStatusEntryPath } from '../lot-status-history/filters';
 import { oqcInspectionKeys } from '../oqc-inspection/queries';
@@ -43,6 +47,7 @@ import {
   type RequestFilters,
 } from './filters';
 import { toPageView } from './pagination';
+import { OqcShipmentPane } from './oqc-shipment-pane';
 import { ProgressPane } from './progress-pane';
 import { toApprovalProgressView } from './progress';
 import { RejectDialog } from './reject-dialog';
@@ -53,6 +58,8 @@ import {
   useApprovalRequestDetail,
   useApprovalRequests,
   useConcessionCandidates,
+  useConditionUoms,
+  useOqcSkipShipment,
 } from './queries';
 import { RequestList } from './request-list';
 import {
@@ -171,6 +178,11 @@ export const QualityApprovalScreen = ({
   /* 생략 실행은 IQC 생략 화면 권한(W-01-02)이 있어야 한다 — 없으면 LOT 도 읽지 않고 안내만 선다(#186 리뷰). */
   const skipLotId = canOpenIqcSkip ? approvedIqcSkipLotId : null;
   const skipLot = useSkipTargetLot(skipLotId);
+  /* OQC 생략의 대상 출하작업지시(#193) — 번호 · 출하 예정일 · 피킹 LOT 과 실행 여부(출하검사 상태)를 읽는다. */
+  const oqcShipment = useOqcSkipShipment(
+    isOqcSkip ? (detail.data?.request.target.targetId ?? null) : null,
+  );
+  const oqcUoms = useConditionUoms(isOqcSkip);
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
   const listContextKey = withSelectedRequest(searchParams, null).toString();
@@ -223,6 +235,21 @@ export const QualityApprovalScreen = ({
   /* 성공 콜백이 「어느 출하작업지시였나」를 읽는 자리 — 상태는 콜백이 만들어진 순간의 값이라 쓰지 않는다. */
   const oqcSkipSentRef = useRef<number | null>(null);
   const [oqcSkipDoneIds, setOqcSkipDoneIds] = useState<ReadonlySet<number>>(() => new Set());
+  /*
+   * OQC 생략 실행 여부(#193) — 출하작업지시의 출하검사 상태로 안다. 생략을 실행하면 서버가 열린 OQC 의뢰를 SKIPPED 로
+   * 닫아 PASSED 가 된다(정상 검사로 합격해도 PASSED — 어느 쪽이든 더 실행할 것이 없다). 못 읽었으면 단추를 두고
+   * 서버가 거른다(IQC 생략과 같다).
+   */
+  const oqcSkipState = (shipmentRequestId: number): SkipExecuteState => {
+    if (oqcSkipDoneIds.has(shipmentRequestId)) return { kind: 'executed' };
+    if (oqcShipment.isError) return { kind: 'executable' };
+    const code = oqcShipment.data?.shippingInspectionStatusCode;
+    if (code === undefined) return { kind: 'checking' };
+    if (code === 'PENDING') return { kind: 'executable' };
+    if (code === 'PASSED') return { kind: 'executed' };
+
+    return { kind: 'notPending', statusCode: t.oqcShipment.inspectionStatus[code] ?? code };
+  };
   const oqcSkipWrite = useMasterWrite<number, unknown>({
     request: (shipmentRequestId, headers) =>
       client.POST('/logistics/shipment-requests/{shipmentRequestId}:skip-oqc', {
@@ -418,6 +445,15 @@ export const QualityApprovalScreen = ({
         {/* IQC 생략의 대상은 입하 LOT 이다 — LOT 상태에서 그 LOT 을 여는 단추를 대상 LOT 값 옆에 둔다(#193). */}
         <DetailPane
           view={toRequestDetailView(detail.data.request)}
+          target={
+            isOqcSkip && oqcShipment.data !== undefined
+              ? {
+                  label: t.oqcShipment.shipmentRequest,
+                  name: oqcShipment.data.shipmentRequestNo,
+                  extra: [[t.oqcShipment.shipDate, oqcShipment.data.requestedShipDate]],
+                }
+              : undefined
+          }
           targetLot={
             isIqcSkip && canOpenLotStatus
               ? {
@@ -427,17 +463,25 @@ export const QualityApprovalScreen = ({
               : undefined
           }
         />
+        {/* OQC 생략은 지시서 단위라 피킹한 LOT 이 여럿일 수 있다 — 실행하면 이 LOT 들에 생략 이력이 남는다(#193). */}
+        {isOqcSkip && (
+          <OqcShipmentPane
+            shipment={oqcShipment.data}
+            isLoading={oqcShipment.isPending}
+            isError={oqcShipment.isError}
+            uomNameOf={(uomId) =>
+              oqcUoms.data?.items.find((uom) => uom.uomId === uomId)?.uomName.trim() ?? ''
+            }
+            canOpenLot={canOpenLotStatus}
+          />
+        )}
         {/* OQC 생략(#119)은 연결 조건이 없다 — IQC 생략처럼 승인된 뒤에만 생략 실행 구획이 선다(#193). */}
         {isOqcSkip
           ? detail.data.request.statusCode === 'APPROVED' && (
               <SkipExecutePane
                 texts={t.oqcSkipExecute}
                 compact={t.oqcSkipExecute.compact}
-                state={
-                  oqcSkipDoneIds.has(detail.data.request.target.targetId)
-                    ? { kind: 'executed' }
-                    : { kind: 'executable' }
-                }
+                state={oqcSkipState(detail.data.request.target.targetId)}
                 isSaving={
                   oqcSkipSentId === detail.data.request.target.targetId && oqcSkipWrite.isSaving
                 }
@@ -535,7 +579,9 @@ export const QualityApprovalScreen = ({
                   screen: GOODS_RECEIPT_PATH,
                   alert: { title: n.iqcDoneTitle, tone: 'success' },
                 }
-              : isOqcSkip && oqcSkipDoneIds.has(request.target.targetId)
+              : isOqcSkip &&
+                  request.statusCode === 'APPROVED' &&
+                  oqcSkipState(request.target.targetId).kind === 'executed'
                 ? {
                     value: n.oqcDone,
                     to: SHIPMENT_PROCESSING_PATH,

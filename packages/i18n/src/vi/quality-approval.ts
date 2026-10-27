@@ -97,6 +97,21 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     notPending: (status: string) =>
       `Trạng thái này không thể thực hiện bỏ qua (trạng thái ${status}).`,
   },
+  oqcShipment: {
+    shipmentRequest: 'Lệnh xuất hàng',
+    shipDate: 'Ngày xuất dự kiến',
+    pickedLots: 'LOT đã lấy',
+    lotNo: 'Số LOT',
+    pickedQty: 'Số lượng đã lấy',
+    noPicks: 'Chưa lấy LOT nào.',
+    loading: 'Đang tải lệnh xuất hàng.',
+    failed: 'Không tải được lệnh xuất hàng.',
+    inspectionStatus: {
+      NOT_REQUIRED: 'Không cần kiểm tra xuất hàng',
+      REJECTED: 'Kiểm tra xuất hàng không đạt',
+      HELD: 'Kiểm tra xuất hàng tạm giữ',
+    } as Record<string, string>,
+  },
   next: {
     heading: 'Việc tiếp theo',
     concessionRejected: 'Đặc cách bị từ chối — hãy quyết định xử lý lại hoặc yêu cầu đặc cách lại',

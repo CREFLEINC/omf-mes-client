@@ -92,7 +92,7 @@ export const qualityApproval = {
       action: '실행',
       done: '실행 완료',
     },
-    /* 아래 둘은 OQC 에 쓰이지 않는다 — 실행 여부를 읽을 서버 값이 없어 늘 실행 가능으로 선다(#193). */
+    /* 실행 여부는 출하작업지시의 출하검사 상태로 안다 — 읽는 중 · 실행할 수 없는 상태(#193). */
     checking: '상태를 확인하는 중입니다.',
     notPending: (status: string) => `생략을 실행할 수 없는 상태입니다(상태 ${status}).`,
   },
@@ -104,6 +104,26 @@ export const qualityApproval = {
    * 「다음 할 일」(#193) — 결재 결과 카드 끝에서 이어서 일할 화면으로 보낸다. 반려면 다시 요청하거나 정상 검사로,
    * 실행·적용을 마쳤으면 그다음 업무 화면으로 간다.
    */
+  /**
+   * OQC 생략의 대상 출하작업지시(#193) — IQC 생략의 대상 LOT 처럼 무엇을 생략하는지 보인다. 생략은 지시서 단위라
+   * 피킹한 LOT 이 여럿일 수 있다.
+   */
+  oqcShipment: {
+    shipmentRequest: '출하작업지시',
+    shipDate: '출하 예정일',
+    pickedLots: '피킹 LOT',
+    lotNo: 'LOT 번호',
+    pickedQty: '피킹 수량',
+    noPicks: '아직 피킹한 LOT 이 없습니다.',
+    loading: '출하작업지시를 불러오는 중입니다.',
+    failed: '출하작업지시를 불러오지 못했습니다.',
+    /** 출하검사 상태 — 생략을 실행할 수 없는 사정을 사람 말로(검사 대기 · 합격은 실행 · 완료로 따로 보인다). */
+    inspectionStatus: {
+      NOT_REQUIRED: '출하검사 대상 아님',
+      REJECTED: '출하검사 불합격',
+      HELD: '출하검사 보류',
+    } as Record<string, string>,
+  },
   next: {
     heading: '다음 할 일',
     concessionRejected: '특채가 반려됐습니다 — 처분을 다시 정하거나 특채를 다시 요청하세요',

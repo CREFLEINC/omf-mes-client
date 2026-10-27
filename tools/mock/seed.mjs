@@ -1978,6 +1978,25 @@ export const createSeed = (now = new Date()) => {
       shipmentProgressCode: 'SHIPPED',
       minimumShelfLifeDays: 90,
     },
+    /*
+     * 품질 승인 처리의 OQC 생략 확인용(#193) — 피킹을 마치고 출하검사를 기다리는 지시서 둘. 9603 은 생략이 승인됐고
+     * (AP-2026-000027), 9604 는 한 번 반려된 뒤 다시 상신됐다(AP-2026-000025 반려 · AP-2026-000033 대기).
+     * `shippingInspectionStatusCode`(계약 필수)는 생략을 실행하면 PASSED 가 된다(서버 롤업). 값은 전부 지어낸 것이다.
+     */
+    ...[
+      { shipmentRequestId: 9603, shipmentRequestNo: 'SR-2026-1027-0131', customerId: 4003 },
+      { shipmentRequestId: 9604, shipmentRequestNo: 'SR-2026-1027-0132', customerId: 4002 },
+    ].map((row) => ({
+      ...row,
+      salesOrderId: null,
+      plantId: PLANT_ID,
+      shipDate: dayOf(shift(now, 1)),
+      requestedShipDate: dayOf(shift(now, 1)),
+      statusCode: 'RELEASED',
+      shipmentProgressCode: 'PICKED',
+      shippingInspectionStatusCode: 'PENDING',
+      minimumShelfLifeDays: 90,
+    })),
   ];
 
   const shipmentRequestLines = [
@@ -2016,6 +2035,40 @@ export const createSeed = (now = new Date()) => {
       shippedQty: 0,
       uomId: 1001,
       fifoPolicyCode: 'FEFO',
+    },
+    /* OQC 생략 확인용 지시서(9603 · 9604)의 줄 — 집은 LOT(`picks`)이 품질 승인 처리의 「피킹 LOT」으로 선다(#193). */
+    {
+      shipmentRequestLineId: 9803,
+      shipmentRequestId: 9603,
+      lineNo: 1,
+      itemId: 2003,
+      requestedQty: 150,
+      allocatedQty: 150,
+      pickedQty: 150,
+      shippedQty: 0,
+      uomId: 1001,
+      fifoPolicyCode: 'FEFO',
+      shippingInspectionRequired: true,
+      picks: [
+        { lotId: 8203, lotNo: 'FLOT-2026-0299', pickedQty: 100, uomId: 1001, pickedAt: iso(0, 9) },
+        { lotId: 8204, lotNo: 'FLOT-2026-0288', pickedQty: 50, uomId: 1001, pickedAt: iso(0, 9) },
+      ],
+    },
+    {
+      shipmentRequestLineId: 9804,
+      shipmentRequestId: 9604,
+      lineNo: 1,
+      itemId: 2003,
+      requestedQty: 80,
+      allocatedQty: 80,
+      pickedQty: 80,
+      shippedQty: 0,
+      uomId: 1001,
+      fifoPolicyCode: 'FEFO',
+      shippingInspectionRequired: true,
+      picks: [
+        { lotId: 8203, lotNo: 'FLOT-2026-0299', pickedQty: 80, uomId: 1001, pickedAt: iso(0, 10) },
+      ],
     },
   ];
 
@@ -2825,12 +2878,12 @@ export const createSeed = (now = new Date()) => {
       approvalRequestId: 15003,
       approvalRequestNo: 'AP-2026-000025',
       approvalTypeCode: 'OQC_SKIP',
-      targetTypeCode: 'INBOUND_LOT',
-      targetId: 8902,
+      targetTypeCode: 'SHIPMENT_REQUEST',
+      targetId: 9604,
       target: {
-        targetTypeCode: 'INBOUND_LOT',
-        targetId: 8902,
-        displayName: 'FG-1001|200|260712|SUP-002|0002',
+        targetTypeCode: 'SHIPMENT_REQUEST',
+        targetId: 9604,
+        displayName: '출하작업지시 #9604',
         openable: false,
       },
       requestedBy: 1001,
@@ -2856,7 +2909,7 @@ export const createSeed = (now = new Date()) => {
       ],
     },
     /*
-     * 승인된 OQC 생략(#193) — 품질 승인 처리에서 「OQC 생략 실행」 구획을 보려고 둔다. 대상은 출하작업지시 9602 다
+     * 승인된 OQC 생략(#193) — 품질 승인 처리에서 「OQC 생략 실행」 구획을 보려고 둔다. 대상은 출하작업지시 9603 이다
      * (실제 서버처럼 SHIPMENT_REQUEST). 값은 전부 지어낸 것이다.
      */
     {
@@ -2864,11 +2917,11 @@ export const createSeed = (now = new Date()) => {
       approvalRequestNo: 'AP-2026-000027',
       approvalTypeCode: 'OQC_SKIP',
       targetTypeCode: 'SHIPMENT_REQUEST',
-      targetId: 9602,
+      targetId: 9603,
       target: {
         targetTypeCode: 'SHIPMENT_REQUEST',
-        targetId: 9602,
-        displayName: '출하작업지시 #9602',
+        targetId: 9603,
+        displayName: '출하작업지시 #9603',
         openable: false,
       },
       requestedBy: 1001,
@@ -3008,11 +3061,11 @@ export const createSeed = (now = new Date()) => {
       approvalRequestNo: 'AP-2026-000033',
       approvalTypeCode: 'OQC_SKIP',
       targetTypeCode: 'SHIPMENT_REQUEST',
-      targetId: 9601,
+      targetId: 9604,
       target: {
         targetTypeCode: 'SHIPMENT_REQUEST',
-        targetId: 9601,
-        displayName: '출하작업지시 #9601',
+        targetId: 9604,
+        displayName: '출하작업지시 #9604',
         openable: false,
       },
       requestedBy: 1001,

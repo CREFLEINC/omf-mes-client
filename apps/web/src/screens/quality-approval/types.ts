@@ -11,6 +11,7 @@ export type Partner = components['schemas']['Partner'];
 export type Uom = components['schemas']['Uom'];
 export type Process = components['schemas']['Process'];
 export type PageMeta = components['schemas']['PageMeta'];
+export type ShipmentRequest = components['schemas']['ShipmentRequest'];
 
 export interface ConcessionListResponse {
   items: Concession[];
