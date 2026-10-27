@@ -280,6 +280,17 @@ export const ResultFormPane = ({
       : isOver
         ? t.overDelta(withUom(formatMicro(-totals.remaining), uomCode))
         : t.shortDelta(withUom(formatMicro(totals.remaining), uomCode));
+  /*
+   * 카드 아래 한 줄 「검사 수량이 9 EA 부족합니다.」 · 「검사 수량보다 3 EA 많습니다.」(사용자 지시 2026-10-27 · #185).
+   * 아무것도 넣지 않은 처음에는 내지 않는다 — 열자마자 오류처럼 보이지 않게.
+   */
+  const hasInput = draft.accepted !== '' || draft.rejected !== '' || draft.held !== '';
+  const deltaNote =
+    deltaText === null || !hasInput || totals.kind !== 'counted'
+      ? null
+      : isOver
+        ? t.overNote(withUom(formatMicro(-totals.remaining), uomCode))
+        : t.shortNote(withUom(formatMicro(totals.remaining), uomCode));
 
   const inspectedText = withUom(String(inspectedQty), uomCode);
   const qtyDone = totals.kind === 'counted' && totals.matches && !isOver;
@@ -490,6 +501,8 @@ export const ResultFormPane = ({
           className={inlineJudgment ? 'iqc-inspection-qty-judgment-row' : 'iqc-inspection-qty-only'}
           /* 확정된 회차 — 판정 상자는 제 높이만(단추 자리를 잡지 않는다 · 사용자 지시 2026-10-27 · #185). */
           data-locked={isConfirmed ? '' : undefined}
+          /* 재검사 중 — 안내 한 줄, 수량 카드 넷을 한 줄로(사용자 지시 2026-10-27 · #185). */
+          data-reinspect={isReinspecting ? '' : undefined}
         >
           {/* ── 검사 결과 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}
           <section className="iqc-inspection-section">
@@ -513,19 +526,15 @@ export const ResultFormPane = ({
                  * 시작으로 삼은 규율과 같다(omf-mes 확정 2026-08-21 §1.2) — 열어 두고 떠난 사람이
                  * 빈 회차를 남기지 않는다.
                  *
-                 * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 고를 값
-                 * 목록이 정해지지 않았다. 감추지 않고 왜 없는지 밝힌다(omf-mes#179).
+                 * 재검사 사유 칸은 두지 않는다 — 계약이 선택으로 받지만 고를 값 목록이 정해지지 않았다(omf-mes#179).
+                 * 「추후 제공」 안내 줄은 사용자 지시(2026-10-27 · #185)로 뺐다.
                  */}
-                {/* 재검사 안내 — 본문 한 줄, 정보 한 줄, 작은 보조 한 줄(사용자 지시 2026-10-27 · #185). */}
+                {/* 재검사 안내 — 정보 아이콘이 붙은 라벨(사용자 지시 2026-10-27 · #185). */}
                 {isReinspecting && (
-                  <div className="iqc-inspection-reinspect-notes">
-                    <p>{t.reinspectNote}</p>
-                    <p className="iqc-inspection-reinspect-keep">
-                      <Icon name="info" size={16} aria-hidden />
-                      {t.reinspectKeep}
-                    </p>
-                    <p className="iqc-inspection-reinspect-pending">{t.reinspectReasonPending}</p>
-                  </div>
+                  <p className="iqc-inspection-reinspect-note">
+                    <Icon name="info" size={14} aria-hidden />
+                    {t.reinspectNote}
+                  </p>
                 )}
 
                 {/*
@@ -546,6 +555,12 @@ export const ResultFormPane = ({
                     </dd>
                   </dl>
                 </div>
+                {deltaNote !== null && (
+                  <p className="iqc-inspection-qty-delta-note" role="status">
+                    <Icon name="error" size={16} aria-hidden />
+                    {deltaNote}
+                  </p>
+                )}
                 {actionInQty && <div className="iqc-inspection-qty-actions">{actionArea}</div>}
               </div>
             </div>

@@ -197,6 +197,9 @@ export const iqcInspection = {
     overDelta: (over: string): string => `+${over}`,
     /** 총 검사 수량 옆 모자란 양 — 「-1 EA」. */
     shortDelta: (short: string): string => `-${short}`,
+    /** 수량 카드 아래 한 줄(#185). */
+    shortNote: (short: string): string => `검사 수량이 ${short} 부족합니다.`,
+    overNote: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
     quantityInvalid: '0 이상의 숫자로 입력해 주세요. 소수점은 여섯 자리까지 됩니다.',
     /**
      * 임시 저장. ⭐ **합계가 맞지 않아도 눌린다** — 판정을 확정하는 것이 아니라 하던 일을
@@ -336,13 +339,7 @@ export const iqcInspection = {
      * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 버튼을 두지 않고 첫 임시 저장을 검사 시작
      * 으로 삼은 것과 같은 규율이다 — 누르기만 하고 떠나면 빈 회차가 남지 않는다.
      */
-    reinspectNote: '검사 수량을 입력하고 임시 저장하면 새로운 검사 회차가 추가됩니다.',
-    reinspectKeep: '기존 검사 결과는 유지됩니다.',
-    /**
-     * ⛔ **사유를 지어내지 않는다.** 계약은 재검사 사유를 선택으로 받지만 고를 값 목록이
-     * 아직 정해지지 않았다. 칸을 감추지 않고 왜 없는지 밝힌다(공유계약 G-2).
-     */
-    reinspectReasonPending: '재검사 사유 선택 기능은 추후 제공될 예정입니다.',
+    reinspectNote: '임시 저장 시 새 검사 회차가 추가되며, 기존 결과는 유지됩니다.',
   },
 
   /**

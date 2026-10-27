@@ -22168,41 +22168,109 @@ table.col-measuring td {
   min-height: calc(var(--field-label-layer) + var(--control-height-md));
 }
 
+/*
+ * 확정된 회차 · 재검사 중(넓은 폭) — 수량 카드 넷을 한 줄로 좁혀 판정 상자와 같은 줄에 세운다(사용자 지시 2026-10-27 · #185).
+ * 확정된 회차는 카드 높이를 판정 상자와 같게(라벨 층 + 입력 칸).
+ */
+@container (min-width: 44.0625rem) {
+  .iqc-inspection-qty-judgment-row:is([data-locked], [data-reinspect])
+    .iqc-inspection-qty-body:nth-child(n)
+    > .iqc-inspection-qty:nth-child(n):nth-child(n):nth-child(n) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .iqc-inspection-qty-judgment-row[data-locked]
+    .iqc-inspection-qty-field:nth-child(n):nth-child(n) {
+    min-height: calc(var(--field-label-layer) + var(--control-height-md));
+  }
+}
+
+/* 재검사 중 카드는 좁아 라벨 위 · 수량 아래로 쌓는다(사용자 지시 2026-10-27 · #185). */
+.iqc-inspection-qty-judgment-row[data-reinspect]
+  .iqc-inspection-qty-field:nth-child(n):nth-child(n) {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: start;
+}
+
+.iqc-inspection-qty-judgment-row[data-reinspect]
+  .iqc-inspection-qty-field:nth-child(n)
+  > div
+  > :has(> input):nth-child(n):nth-child(n) {
+  grid-row: 2;
+  grid-column: 1;
+  justify-content: flex-start;
+}
+
+.iqc-inspection-qty-judgment-row[data-reinspect]
+  .iqc-inspection-qty-field
+  input:nth-child(n):nth-child(n) {
+  flex: none;
+  width: auto;
+  text-align: left;
+}
+
+.iqc-inspection-qty-judgment-row[data-reinspect]
+  .iqc-inspection-qty-unit:nth-child(n):nth-child(n) {
+  grid-row: 2;
+  grid-column: 2;
+}
+
+.iqc-inspection-qty-judgment-row[data-reinspect]
+  .iqc-inspection-qty-field
+  > div
+  > :first-child:nth-child(n),
+.iqc-inspection-qty-judgment-row[data-reinspect] .iqc-inspection-qty-field > dt:nth-child(n) {
+  grid-column: 1 / -1;
+}
+
+.iqc-inspection-qty-judgment-row[data-reinspect] .iqc-inspection-qty-field > dd:nth-child(n) {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  justify-content: space-between;
+}
+
+/* 재검사 안내 — 확정 회차 안내와 같은 라벨(알약) 모양, 정보 아이콘(사용자 지시 2026-10-27 · #185). */
+.iqc-inspection-reinspect-note {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--semantic-info-container);
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+/* 수량 카드 아래 「검사 수량이 9 EA 부족합니다.」 — 오류색 · 아이콘(사용자 지시 2026-10-27 · #185). */
+.iqc-inspection-qty-delta-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  color: var(--semantic-error-text);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+/* 최종 판정 라벨 줄 — 자동 판정 기준 라벨은 오른쪽 끝(사용자 지시 2026-10-27 · #185). */
+.iqc-inspection-judgment-field .field-label:has(> .iqc-inspection-label-hint) {
+  display: flex;
+  align-items: center;
+}
+
+.iqc-inspection-judgment-field .field-label > .iqc-inspection-label-hint {
+  margin-left: auto;
+}
+
 /* 총 검사 수량 옆 넘친 · 모자란 양 「+3 EA」 · 「-1 EA」 — 오류색 · 작은 글(사용자 지시 2026-10-27 · #185). */
 .iqc-inspection-qty-over {
   margin-left: var(--space-1);
   color: var(--semantic-error-text);
   font: var(--type-body-sm);
   font-weight: 600;
-}
-
-/* 재검사 안내 — 본문 한 줄 · 정보 아이콘 한 줄 · 작은 보조 한 줄(사용자 지시 2026-10-27 · #185). */
-.iqc-inspection-reinspect-notes {
-  display: grid;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
-
-.iqc-inspection-reinspect-notes > p {
-  margin: 0;
-  color: var(--on-surface);
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
-}
-
-.iqc-inspection-reinspect-notes > .iqc-inspection-reinspect-keep {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  color: var(--on-surface-muted);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-}
-
-.iqc-inspection-reinspect-notes > .iqc-inspection-reinspect-pending {
-  color: var(--on-surface-muted);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
 }
 
 /*
