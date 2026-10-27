@@ -49,7 +49,11 @@ export const ApprovalActionPane = ({
         value={comment}
         required
         fullWidth
-        containerClassName="quality-approval-comment"
+        containerClassName={
+          !isLocked && comment.trim() === ''
+            ? 'quality-approval-comment is-required-empty'
+            : 'quality-approval-comment'
+        }
         rows={4}
         disabled={isLocked}
         aria-describedby={isLocked ? lockReasonId : undefined}

@@ -126,7 +126,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
   approval: {
     title: 'Xử lý phê duyệt',
     commentLabel: 'Lý do phê duyệt',
-    commentHelp: 'Hãy nhập căn cứ của quyết định duyệt hoặc từ chối.',
+    commentHelp: 'Hãy nhập lý do từ chối hoặc phê duyệt',
     commentRequired: 'Hãy nhập lý do duyệt',
     commentHeading: 'Lý do duyệt',
     rejectCommentRequired: 'Hãy nhập lý do từ chối',

@@ -124,7 +124,7 @@ export const qualityApproval = {
   approval: {
     title: '승인 처리',
     commentLabel: '결재 사유',
-    commentHelp: '승인 또는 반려 판단 근거를 입력하세요.',
+    commentHelp: '반려 또는 승인 사유를 입력하세요',
     commentRequired: '승인 사유를 입력하세요',
     commentHeading: '승인 사유',
     rejectCommentRequired: '반려 사유를 입력하세요',

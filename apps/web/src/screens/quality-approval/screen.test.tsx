@@ -1326,7 +1326,7 @@ describe('QualityApprovalScreen decision action', () => {
     const locked = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
     const input = await screen.findByRole('textbox', { name: '결재 사유' });
     /* 판단 근거 안내는 칸 안 흐린 글자로 보인다(#144). */
-    expect(input).toHaveAttribute('placeholder', '승인 또는 반려 판단 근거를 입력하세요.');
+    expect(input).toHaveAttribute('placeholder', '반려 또는 승인 사유를 입력하세요');
     expect(input).toBeDisabled();
     expect(input).toHaveAccessibleDescription(/지금은 내 결재 차례가 아닙니다/);
     expect(screen.getByRole('button', { name: '승인' })).toBeDisabled();
@@ -1358,6 +1358,39 @@ describe('QualityApprovalScreen decision action', () => {
     expect(screen.getByText('반려 사유를 입력하세요')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(blank.urls.some((url) => url.pathname.endsWith(':approve'))).toBe(false);
+  });
+
+  /* 필수 결재 사유는 비어 있는 동안만 빨간 테두리를 두고, 잠긴 칸에는 두지 않는다(#193). */
+  it('결재 사유가 비어 있으면 빨간 테두리를 두고 입력하면 걷는다', async () => {
+    const editable = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(actionDetail(), { headers: { ETag: '"9"' } })),
+      ...safeConditionRoutes(),
+    );
+    const { user, unmount } = renderScreen(
+      editable.fetch,
+      '/quality/approvals?approvalRequestId=31',
+    );
+    const input = await screen.findByRole('textbox', { name: '결재 사유' });
+    const field = input.closest('.quality-approval-comment');
+    expect(field).toHaveClass('is-required-empty');
+    await user.type(input, '   ');
+    expect(field).toHaveClass('is-required-empty');
+    await user.type(input, '확인');
+    expect(field).not.toHaveClass('is-required-empty');
+    unmount();
+
+    const locked = recordingFetch(
+      listRoute(),
+      detailRoute(31, () =>
+        jsonResponse(actionDetail({ ...requests[0]!, isMyTurn: false }), {
+          headers: { ETag: '"9"' },
+        }),
+      ),
+    );
+    renderScreen(locked.fetch, '/quality/approvals?approvalRequestId=31');
+    const lockedInput = await screen.findByRole('textbox', { name: '결재 사유' });
+    expect(lockedInput.closest('.quality-approval-comment')).not.toHaveClass('is-required-empty');
   });
 
   it('반려 확인 뒤 trim 본문·UUID·상세 ETag로 한 번 보내고 응답을 반영한다', async () => {
