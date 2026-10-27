@@ -11,6 +11,14 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   title: 'Tình hình đồng bộ liên kết',
   breadcrumbRoot: 'Quản trị hệ thống',
   menuPath: 'Quản trị hệ thống › Tình trạng · lịch sử liên kết ERP › Tình trạng · lịch sử liên kết',
+  panes: {
+    filter: 'Điều kiện tra cứu',
+    list: 'Danh sách bản tin liên kết',
+    detail: 'Chi tiết bản tin liên kết',
+  },
+  splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
+  listCollapse: 'Thu gọn danh sách',
+  listExpand: 'Mở danh sách',
   fields: {
     periodFrom: 'Bắt đầu kỳ',
     periodTo: 'Kết thúc kỳ',
@@ -89,6 +97,7 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   /** 상세. 전송 내용은 구획만 두고 값을 그리지 않는다 — 열람 범위가 정해지지 않았다. */
   detail: {
     title: 'Chi tiết bản tin liên kết',
+    pick: 'Hãy chọn một bản tin trong danh sách',
     openAction: (messageKey: string): string => `Mở chi tiết ${messageKey}`,
     direction: 'Hướng',
     target: 'Đối tượng',
@@ -183,6 +192,10 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
       failed: (name: string): string => `Đọc ${name} thất bại. Hãy xem lý do ở cột trạng thái.`,
     },
     loading: 'Đang tải trạng thái nhận dữ liệu ERP',
+    summary: (count: number, failed: number, lastAt: string): string =>
+      `${String(count)} bảng · lỗi ${String(failed)} · đọc lần cuối ${lastAt}`,
+    expand: 'Mở',
+    collapse: 'Thu gọn',
     empty: 'Không có bảng nhận dữ liệu',
   },
   values: {

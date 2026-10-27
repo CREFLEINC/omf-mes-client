@@ -1,4 +1,4 @@
-import { Button, Chip, Dialog, SkeletonText } from '@crefle/web-ui';
+import { Button, Chip, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
@@ -7,9 +7,7 @@ import type { MessageDetailView } from './types';
 
 const t = messages.integrationSync;
 
-export interface MessageDetailDialogProps {
-  open: boolean;
-  onClose: () => void;
+export interface MessageDetailPaneProps {
   /** 아직 받지 못했으면 undefined. 받지 못한 상태에서 빈 값을 자료로 보이면 안 된다. */
   view: MessageDetailView | undefined;
   isLoading: boolean;
@@ -64,22 +62,15 @@ const toItems = (view: MessageDetailView, now: Date): DetailItem[] => {
 };
 
 /**
- * 상세 — 목록에 없는 항목을 보이는 자리.
+ * 상세 — 목록에 없는 항목을 보이는 자리. 목록 오른쪽 구획이다(입고 관리와 같은 짜임 · 사용자 지시 2026-10-27).
+ * 옛 판은 창(Dialog)으로 떠 목록을 가렸다.
  *
  * **전송 내용(전문)은 구획만 두고 값을 그리지 않는다.** 서버는 전문을 언제나 실어 보내지만
  * 거래처·수량 등이 들어 있어 누구에게까지 보일지가 정해지지 않았다. 화면은 응답에서
  * 그 값을 꺼내지도 않는다 — 꺼내 두면 언젠가 그려진다.
  *
- * 바깥 어둠 클릭으로 닫힌다. 읽기만 하는 창이라 잘못 닫혀도 잃을 것이 없다.
  */
-export const MessageDetailDialog = ({
-  open,
-  onClose,
-  view,
-  isLoading,
-  loadError,
-  now,
-}: MessageDetailDialogProps) => {
+export const MessageDetailPane = ({ view, isLoading, loadError, now }: MessageDetailPaneProps) => {
   const payloadReasonId = useId();
 
   const body = (): ReactNode => {
@@ -122,8 +113,9 @@ export const MessageDetailDialog = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} title={t.detail.title} size="lg">
+    <>
+      <h2 className="pane-title">{t.detail.title}</h2>
       {body()}
-    </Dialog>
+    </>
   );
 };

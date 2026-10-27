@@ -7624,6 +7624,47 @@ th:hover > .col-drag {
   gap: var(--space-1);
 }
 
+/* 연동 현황·이력 — 위 상자(받기 상태 · 조회 조건)는 구획 사이 간격만 둔다. */
+.integration-sync-above {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+/* ERP 받기 상태 머리 줄 — 제목 · 요약 · 펼치기가 한 줄이다(접힌 상태가 기본). */
+.sync-tables-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.sync-tables-head > .pane-title {
+  margin: 0;
+}
+
+.sync-tables-head > button {
+  margin-left: auto;
+}
+
+/*
+ * ERP 송신 상태 칩(erp-outbound/send-chips.tsx) — 단계 칩과 같은 간격. 연동 현황·이력에서는 묶음이 ERP 송신 탭으로 가는
+ * 링크라 밑줄 없이 칩 모양 그대로 둔다.
+ */
+.erp-send-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: inherit;
+  text-decoration: none;
+}
+
+a.erp-send-chips:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+}
+
 /* 「입고 처리」 창 — 입고 정보 칸이 두 줄에 들어오는 폭. 입하 등록 창(88rem)보다 좁다. */
 .post-dialog {
   --dialog-max-lg: 72rem;

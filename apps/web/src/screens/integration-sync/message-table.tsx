@@ -1,7 +1,8 @@
-import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { BoardTable } from '../../patterns/board-table';
 import { formatDateTime, toStatusView } from './message-status';
 import type { IntegrationMessageRow } from './types';
 
@@ -16,6 +17,8 @@ export interface MessageTableProps {
   isBeyondLast: boolean;
   onFirstPage: () => void;
   onOpenDetail: (id: number) => void;
+  /** 오른쪽에 상세가 열린 메시지 — 그 줄을 칠한다(입고 관리의 고른 발주와 같다). */
+  openedId?: number | null;
   onRetry: (row: IntegrationMessageRow) => void;
   /** 지금 재처리를 보내고 있는 건. 그 행의 버튼만 진행 중으로 보인다. */
   retryingId: number | null;
@@ -49,6 +52,7 @@ export const MessageTable = ({
   isBeyondLast,
   onFirstPage,
   onOpenDetail,
+  openedId = null,
   onRetry,
   retryingId,
   selectedIds,
@@ -59,20 +63,10 @@ export const MessageTable = ({
     {
       key: 'messageKey',
       header: t.table.messageKey,
-      width: '176px',
-      render: (row) => (
-        // 접근 이름에 메시지 키를 넣는다 — 「상세 열기」가 행마다 되풀이되면 어느 건인지 알 수 없다.
-        <button
-          type="button"
-          className="link-cell"
-          aria-label={t.detail.openAction(row.messageKey)}
-          onClick={() => {
-            onOpenDetail(row.integrationMessageId);
-          }}
-        >
-          {row.messageKey}
-        </button>
-      ),
+      /* 송신 키(`IF-GR-SEND:GR-…`)가 받기 키보다 길다 — 잘리지 않는 폭. */
+      width: '232px',
+      /* 상세를 여는 단추 자리(`BoardTable` 의 `pick`) — 줄 어디를 눌러도 연다(체크 · 재처리 단추는 그쪽이 받는다). */
+      render: (row) => row.messageKey,
     },
     { key: 'interfaceCode', header: t.table.interfaceCode, width: '128px' },
     {
@@ -181,31 +175,37 @@ export const MessageTable = ({
     );
   };
 
-  /*
-   * `.wide-table`이 표에 최소 폭을 준다 — 폭이 모자라면 짓누르는 대신 가로로 넘긴다.
-   * 스크롤 상자는 디자인 시스템 `Table`이 이미 갖고 있어 우리가 만들지 않는다.
-   */
+  /* 입고 관리와 같은 표 — 열 폭 끌기 · 줄 어디를 눌러도 상세 · 연 줄 칠하기(`patterns/board-table.tsx`). */
   return (
-    <div className="wide-table">
-      <Table
-        density="compact"
-        columns={columns}
-        rows={rows}
-        /*
-         * 반드시 준다. 미지정이면 인덱스가 식별자가 되어 쪽이 바뀔 때
-         * 엉뚱한 건이 선택된 것처럼 보인다.
-         */
-        getRowId={(row) => String(row.integrationMessageId)}
-        /*
-         * 화면이 선택을 거르지 않는다. 「재처리 가능한 것만 남기게」 걸러 보면
-         * 머리글 체크박스가 절대 완전히 체크되지 않아 토글이 먹지 않는 것처럼 보이고,
-         * 무엇이 재처리 가능한지는 화면이 판정할 수도 없다. 서버가 건별로 판정한다.
-         */
-        selectable
-        selectedIds={selectedIds}
-        onSelectionChange={onSelectionChange}
-        empty={emptySlot()}
-      />
-    </div>
+    <BoardTable
+      label={t.panes.list}
+      widthKey="omf-mes:integration-sync:columns:messages"
+      minWidth="58rem"
+      columns={columns}
+      rows={rows}
+      /*
+       * 반드시 준다. 미지정이면 인덱스가 식별자가 되어 쪽이 바뀔 때
+       * 엉뚱한 건이 선택된 것처럼 보인다.
+       */
+      getRowId={(row) => String(row.integrationMessageId)}
+      pick={{
+        columnKey: 'messageKey',
+        // 접근 이름에 메시지 키를 넣는다 — 「상세 열기」가 행마다 되풀이되면 어느 건인지 알 수 없다.
+        label: (row) => t.detail.openAction(row.messageKey),
+        currentId: openedId === null ? null : String(openedId),
+        onPick: (row) => {
+          onOpenDetail(row.integrationMessageId);
+        },
+      }}
+      /*
+       * 화면이 선택을 거르지 않는다. 「재처리 가능한 것만 남기게」 걸러 보면
+       * 머리글 체크박스가 절대 완전히 체크되지 않아 토글이 먹지 않는 것처럼 보이고,
+       * 무엇이 재처리 가능한지는 화면이 판정할 수도 없다. 서버가 건별로 판정한다.
+       */
+      selectable
+      selectedIds={selectedIds}
+      onSelectionChange={onSelectionChange}
+      empty={emptySlot()}
+    />
   );
 };

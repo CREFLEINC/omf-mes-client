@@ -768,6 +768,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: '연동 현황·이력',
             labelVi: 'Tình trạng · lịch sử liên kết',
           },
+          /* 송신 항목과 그 송신 예정 목록(W-06-12) — 받기(아래 ERP 데이터 탭)와 갈라 연동 현황 바로 뒤. */
+          { to: '/master-data/erp-outbound', label: 'ERP 송신', labelVi: 'Gửi ERP' },
           { to: '/system/erp-data/common-codes', label: '공통코드', labelVi: 'Mã chung' },
           { to: '/system/erp-data/employees', label: '사원', labelVi: 'Nhân viên' },
           { to: '/system/erp-data/items', label: '품목', labelVi: 'Mặt hàng' },

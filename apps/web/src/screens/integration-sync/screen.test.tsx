@@ -128,7 +128,9 @@ const plainRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, LIST_PATH).filter((request) => !isNarrowed(request));
 
 /** 연계 메시지 목록 구획. 위의 ERP 받기 상태도 표라서 표·행·글자는 이 안에서 찾는다. */
-const messageList = () => within(screen.getByRole('region', { name: '연계 동기화 현황' }));
+const messageList = () => within(screen.getByRole('region', { name: '연계 메시지 목록' }));
+/** 오른쪽 상세 구획 — 늘 선다. 고르기 전에는 고르라는 안내만 있다. */
+const detailPane = () => within(screen.getByRole('region', { name: '연계 메시지 상세' }));
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
@@ -587,14 +589,26 @@ describe('IntegrationSyncScreen — 상세', () => {
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
   });
 
-  it('메시지 키를 누르면 상세를 조회하고 주소에 남긴다', async () => {
+  it('고르기 전에는 오른쪽 상세 구획이 메시지를 고르라고만 말한다', async () => {
+    renderScreen([listRoute(), detailRoute()], PERIOD);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    expect(detailPane().getByText('목록에서 메시지를 고르세요')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('메시지 키를 누르면 오른쪽 구획에 상세가 서고, 그 줄이 칠해지며 주소에 남는다', async () => {
     const { requests, user } = renderScreen([listRoute(), detailRoute()], PERIOD);
     await openFirstDetail(user);
 
-    // 디자인 시스템 Dialog는 닫혀 있어도 내용을 DOM에 둔다. 열림 여부는 role로만 판정된다.
     expect(
-      within(await screen.findByRole('dialog')).getByText('연계 메시지 상세'),
+      await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 상세 열기' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(1);
     expect(currentLocation()).toContain('sel=9001');
   });
@@ -603,25 +617,29 @@ describe('IntegrationSyncScreen — 상세', () => {
     const { requests } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
 
     expect(
-      within(await screen.findByRole('dialog')).getByText('연계 메시지 상세'),
+      await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
     ).toBeInTheDocument();
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(1);
   });
 
-  it('닫으면 주소에서 상세가 지워진다', async () => {
-    const { user } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
-    await screen.findByRole('dialog');
+  /* ERP 송신 탭의 메시지 키는 `?sel=` 만 싣고 온다 — 기본 기간을 채워도 고른 메시지가 남아야 한다. */
+  it('기간 없이 상세만 실려 오면 기본 기간을 채우면서 상세는 그대로 연다', async () => {
+    const { requests } = renderScreen([listRoute(), detailRoute()], '?sel=9001');
 
-    await user.click(screen.getByRole('button', { name: '닫기' }));
-
-    expect(currentLocation()).not.toContain('sel=');
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(currentLocation()).toMatch(/from=.*to=/);
+    });
+    expect(currentLocation()).toContain('sel=9001');
+    expect(requestsTo(requests, DETAIL_PATH).length).toBeGreaterThan(0);
   });
 
   it('전문이 실려 와도 화면 어디에도 나오지 않는다', async () => {
     const { user } = renderScreen([listRoute(), detailRoute()], PERIOD);
     await openFirstDetail(user);
-    await screen.findByRole('dialog');
+    await detailPane().findByRole('heading', { name: '연계 메시지 상세' });
 
     expect(screen.queryByText(PAYLOAD_MARKER)).not.toBeInTheDocument();
     expect(document.body.textContent).not.toContain(PAYLOAD_MARKER);
@@ -662,12 +680,12 @@ describe('IntegrationSyncScreen — 상세', () => {
 
   it('조건을 바꾸면 열려 있던 상세도 닫힌다 — 그 건이 새 결과에 없을 수 있다', async () => {
     const { user } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
-    await screen.findByRole('dialog');
+    await detailPane().findByRole('heading', { name: '연계 메시지 상세' });
 
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(currentLocation()).not.toContain('sel=');
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(detailPane().getByText('목록에서 메시지를 고르세요')).toBeInTheDocument();
   });
 });
 
@@ -1123,7 +1141,7 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
     };
   };
 
-  it('상세를 열고 닫아도 선택이 그대로다 — 보이는 행이 달라지지 않았다', async () => {
+  it('상세를 열어도 선택이 그대로다 — 보이는 행이 달라지지 않았다', async () => {
     /*
      * 고른 행(9001)과 상세를 여는 행(9002)을 일부러 다르게 둔다 — 선택과 상세가
      * 서로 다른 축임을 드러낸다. 스텁 경로는 **여는 행에 맞춘다.**
@@ -1145,14 +1163,10 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
     await user.click(screen.getByRole('button', { name: 'SAMPLE-KEY-0002 상세 열기' }));
 
     // 정상 경로로 열렸는지 확인한다 — 실패 배너가 아니라 상세 항목이 보여야 한다.
-    const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText('연계 메시지 상세')).toBeInTheDocument();
-    expect(within(dialog).queryByText('목록을 불러오지 못했습니다')).not.toBeInTheDocument();
-    expect(screen.getByText('선택 1건')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: '닫기' }));
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
+    ).toBeInTheDocument();
+    expect(detailPane().queryByText('목록을 불러오지 못했습니다')).not.toBeInTheDocument();
     expect(screen.getByText('선택 1건')).toBeInTheDocument();
   });
 

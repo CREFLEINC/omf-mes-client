@@ -26,6 +26,7 @@ import { pendingCode } from './pending-code';
 import { warehouseLocation } from './warehouse-location';
 import { routing } from './routing';
 import { defectCauseCode } from './defect-cause-code';
+import { erpOutbound } from './erp-outbound';
 import { integrationSync } from './integration-sync';
 import { erpBom } from './erp-bom';
 import { erpEmployee } from './erp-employee';
@@ -181,6 +182,7 @@ export const ko = {
   warehouseLocation,
   routing,
   defectCauseCode,
+  erpOutbound,
   integrationSync,
   erpBom,
   erpEmployee,

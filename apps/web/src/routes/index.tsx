@@ -24,6 +24,7 @@ import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
 import { InspectionSheetTemplateScreen } from '../screens/inspection-sheet-template/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
+import { ErpOutboundScreen } from '../screens/erp-outbound/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { ErpBomScreen } from '../screens/erp-bom/screen';
 import { ErpCommonCodeScreen } from '../screens/erp-common-code/screen';
@@ -142,6 +143,8 @@ export const appRouter = createBrowserRouter([
       /* W-06-04 — 전용 자원이 아니라 공통코드의 코드값 편집기를 한 그룹으로 고정해 여는 진입점이다. */
       { path: 'master-data/judgment-code', element: <JudgmentCodeScreen /> },
       { path: 'master-data/integration-sync', element: <IntegrationSyncScreen /> },
+      /* W-06-12 — 「ERP 연동 현황·이력」 묶음의 「ERP 송신」 탭. 송신 항목과 고른 항목의 송신 예정 목록이다. */
+      { path: 'master-data/erp-outbound', element: <ErpOutboundScreen /> },
       /*
        * ERP 에서 받은 데이터 조회(W-06-16~23) — 「ERP 연동 현황·이력」 묶음의 탭이다
        * (`app/nav-tree.ts`). 앞머리는 그 묶음이 선 「시스템 관리」를 따른다.

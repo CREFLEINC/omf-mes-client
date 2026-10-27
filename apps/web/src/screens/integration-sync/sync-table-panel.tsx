@@ -5,12 +5,12 @@ import {
   type Column,
   EmptyState,
   SkeletonText,
-  Table,
   useToast,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
+import { BoardTable } from '../../patterns/board-table';
 import { toApiError } from '../../patterns/request';
 import { describeLoadError, LoadErrorBanner } from './load-error-banner';
 import { formatDateTime } from './message-status';
@@ -38,18 +38,59 @@ interface PendingRun {
   seenRequest: boolean;
 }
 
+/** 펼침을 브라우저에 남기는 열쇠 — 다시 들어와도 접은 채로 둔 사람은 접힌 채로 본다. */
+export const EXPANDED_KEY = 'omf-mes:integration-sync:sync-tables-expanded';
+
+const readExpanded = (): boolean => {
+  try {
+    return window.localStorage.getItem(EXPANDED_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+/** 접은 줄의 요약 — 표 수 · 마지막 회차가 실패한 표 수 · 가장 늦은 마지막 읽음. */
+export const summaryOf = (items: readonly SyncTableStatus[]): string => {
+  const failed = items.filter((item) => item.lastStatusCode === SYNC_RESULT.failed).length;
+  const latest = items
+    .map((item) => item.lastFinishedAt)
+    .filter((value): value is string => value !== null)
+    .sort()
+    .at(-1);
+
+  return t.summary(
+    items.length,
+    failed,
+    formatDateTime(latest) ?? messages.integrationSync.values.empty,
+  );
+};
+
 /**
  * ERP 받기 표 여덟의 상태와 「지금 읽기」(omf-mes-server#757 · 장부 P-81).
  *
  * 연계 메시지 목록 **위에** 둔다 — 「지금 읽었는가」가 먼저 읽히고, 읽은 결과의 실패 건은 아래 목록에서
  * 다시 보낸다. 조회 조건(기간·상태)과 무관한 현재 상태라 주소에 아무것도 두지 않는다.
  *
+ * **기본은 접힌 한 줄이다**(사용자 지시 2026-10-27 — 입고 관리처럼 목록 · 상세가 창 높이를 쓴다). 접혀도 요약
+ * (표 수 · 실패 · 마지막 읽음)과 실패 배너는 보인다. 펼치면 표와 「지금 읽기」가 선다.
+ *
  * 끝을 아는 법은 서버가 정했다 — 요청 시각이 비고 마지막 끝난 시각이 바뀌면 다 읽은 것이다.
  * 그때 결과를 알림으로 한 번 알린다(창을 열어 둔 채 다른 일을 하는 사람이 표를 다시 보지 않아도 되게).
  */
 export const SyncTablePanel = () => {
   const titleId = useId();
+  const bodyId = useId();
   const disabledReasonId = useId();
+  const [expanded, setExpanded] = useState<boolean>(readExpanded);
+  const toggleExpanded = (): void => {
+    const next = !expanded;
+    setExpanded(next);
+    try {
+      window.localStorage.setItem(EXPANDED_KEY, next ? '1' : '0');
+    } catch {
+      /* 저장하지 못해도 이번 화면에서는 그대로 쓴다. */
+    }
+  };
   const toast = useToast();
   const status = useSyncTables();
   const run = useRequestSyncRun();
@@ -200,11 +241,23 @@ export const SyncTablePanel = () => {
   ];
 
   return (
-    <section className="pane" aria-labelledby={titleId}>
-      <h2 id={titleId} className="pane-title">
-        {t.title}
-      </h2>
-      <p className="field-note">{t.description}</p>
+    <section className="pane sync-tables-pane" aria-labelledby={titleId}>
+      <div className="sync-tables-head">
+        <h2 id={titleId} className="pane-title">
+          {t.title}
+        </h2>
+        {status.data !== undefined && <span className="field-note">{summaryOf(items)}</span>}
+        <Button
+          variant="text"
+          size="sm"
+          aria-expanded={expanded}
+          aria-controls={bodyId}
+          onClick={toggleExpanded}
+        >
+          {expanded ? t.collapse : t.expand}
+        </Button>
+      </div>
+      {expanded && <p className="field-note">{t.description}</p>}
 
       {status.isError && (
         <LoadErrorBanner error={status.error} onRetry={() => void status.refetch()} />
@@ -219,23 +272,24 @@ export const SyncTablePanel = () => {
       )}
 
       {/* 배치 규범 4 — 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 낸다. */}
-      {status.data !== undefined && !enabled && (
+      {expanded && status.data !== undefined && !enabled && (
         <p id={disabledReasonId} className="field-note">
           {t.disabledReason}
         </p>
       )}
 
-      {status.isPending ? (
+      {!expanded ? null : status.isPending ? (
         <div role="status" aria-label={t.loading}>
           <SkeletonText lines={3} />
         </div>
       ) : (
         !status.isError && (
-          <div className="wide-table">
-            <Table
-              density="compact"
-              // 제목이 바로 위 h2 에 보이므로 표 이름은 읽는 이에게만 준다.
-              caption={<span className="erp-data-table-caption">{t.title}</span>}
+          <div id={bodyId}>
+            {/* 입고 관리와 같은 표(열 폭 끌기 · 한 줄). 제목이 바로 위 h2 에 보이므로 표 이름은 읽는 이에게만 준다. */}
+            <BoardTable
+              label={t.title}
+              widthKey="omf-mes:integration-sync:columns:sync-tables"
+              minWidth="58rem"
               columns={columns}
               rows={items}
               getRowId={(item) => item.interfaceCode}

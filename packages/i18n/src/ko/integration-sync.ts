@@ -11,6 +11,16 @@ export const integrationSync = {
   breadcrumbRoot: '시스템 관리',
   /** 메뉴에서 이 화면까지의 경로 — 다른 화면이 「어디로 가라」고 안내할 때 쓴다. 메뉴 라벨과 같아야 한다(app/nav-menu-path.test.ts). */
   menuPath: '시스템 관리 › ERP 연동 현황·이력 › 연동 현황·이력',
+  /** 구획 이름 — 조회 조건 · 왼쪽 목록 · 오른쪽 상세(입고 관리와 같은 짜임). */
+  panes: {
+    filter: '조회 조건',
+    list: '연계 메시지 목록',
+    detail: '연계 메시지 상세',
+  },
+  /** 두 구획 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
+  splitter: '끌어서 목록·상세 폭 조절',
+  listCollapse: '목록 접기',
+  listExpand: '목록 펼치기',
   fields: {
     periodFrom: '기간 시작',
     periodTo: '기간 종료',
@@ -101,6 +111,8 @@ export const integrationSync = {
    */
   detail: {
     title: '연계 메시지 상세',
+    /** 오른쪽 구획 — 아직 고르지 않았을 때. */
+    pick: '목록에서 메시지를 고르세요',
     openAction: (messageKey: string): string => `${messageKey} 상세 열기`,
     direction: '방향',
     target: '대상',
@@ -212,6 +224,11 @@ export const integrationSync = {
     },
     loading: 'ERP 받기 상태를 불러오는 중',
     empty: '받는 표가 없습니다',
+    /** 접은 줄 — 표 수 · 실패 표 수 · 가장 늦은 마지막 읽음. 펼치면 표가 선다. */
+    summary: (count: number, failed: number, lastAt: string): string =>
+      `표 ${String(count)}개 · 실패 ${String(failed)} · 마지막 읽음 ${lastAt}`,
+    expand: '펼치기',
+    collapse: '접기',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */

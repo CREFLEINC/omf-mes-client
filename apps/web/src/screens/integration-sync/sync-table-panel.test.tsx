@@ -1,10 +1,10 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { syncTable } from './sync-table-fixtures';
-import { SyncTablePanel } from './sync-table-panel';
+import { EXPANDED_KEY, SyncTablePanel } from './sync-table-panel';
 import { SYNC_POLL_MS, type SyncTableStatus, type SyncTablesResult } from './sync-tables';
 
 const STATUS_PATH = '/integration/erp-sync/tables';
@@ -68,8 +68,31 @@ const result = (items: SyncTableStatus[], enabled = true): SyncTablesResult => (
 
 const panel = () => within(screen.getByRole('region', { name: 'ERP 받기 상태' }));
 
+/* 기본은 접힌 한 줄이다 — 표 · 지금 읽기를 재는 시험은 펼친 채로 시작한다(접힘은 아래 따로 잰다). */
+beforeEach(() => {
+  window.localStorage.setItem(EXPANDED_KEY, '1');
+});
+
 afterEach(() => {
   vi.useRealTimers();
+  window.localStorage.removeItem(EXPANDED_KEY);
+});
+
+describe('SyncTablePanel — 접힌 한 줄', () => {
+  it('처음에는 접혀 요약(표 수 · 실패 · 마지막 읽음)만 보이고, 펼치면 표가 서며 그 상태를 기억한다', async () => {
+    window.localStorage.removeItem(EXPANDED_KEY);
+    const { fetch } = createServer([result([ITEM, BOM])]);
+    renderWithProviders(<SyncTablePanel />, { fetch });
+
+    expect(await panel().findByText(/^표 2개 · 실패 1 · 마지막 읽음 /)).toBeInTheDocument();
+    expect(panel().queryByRole('table')).toBeNull();
+
+    await userEvent.click(panel().getByRole('button', { name: '펼치기' }));
+
+    expect(await panel().findByText('품목')).toBeInTheDocument();
+    expect(panel().getByRole('button', { name: '접기' })).toHaveAttribute('aria-expanded', 'true');
+    expect(window.localStorage.getItem(EXPANDED_KEY)).toBe('1');
+  });
 });
 
 describe('SyncTablePanel — 표시', () => {
