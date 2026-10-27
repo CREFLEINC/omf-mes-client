@@ -17,7 +17,8 @@ import type { ReceiveBody } from './receive-entry';
  * 실행은 같은 클라이언트가 한다. 계약에 실리면 이 타입과 넓힘을 지운다.
  */
 type CodeValue = components['schemas']['CodeValue'];
-type CreatedReceipt = components['schemas']['InboundReceipt'];
+/** 입하 등록 응답과 같은 한 벌 — 머리(`inboundReceipt`)와 줄(`lines`). */
+type CreatedReceipt = components['schemas']['InboundReceiptDetailResponse'];
 
 export interface ReceivePerLineResult {
   /** 요청 줄 순서. 건마다 줄 하나. */

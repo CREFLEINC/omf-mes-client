@@ -639,9 +639,12 @@ const perLineRoute = (bodies: unknown[]): StubRoute => ({
     return jsonResponse(
       {
         created: body.lines.map((_, index) => ({
-          inboundReceiptId: 7590 + index,
-          inboundReceiptNo: `SAMPLE-IR-009${String(index)}`,
-          statusCode: 'REGISTERED',
+          inboundReceipt: {
+            inboundReceiptId: 7590 + index,
+            inboundReceiptNo: `SAMPLE-IR-009${String(index)}`,
+            statusCode: 'REGISTERED',
+          },
+          lines: [{ inboundReceiptLineId: 9490 + index, lineNo: 1 }],
         })),
       },
       { status: 201 },
@@ -797,6 +800,10 @@ describe('InboundScheduleScreen — 입하 등록(라인 표)', () => {
     expect(
       await within(linesPane()).findByText(t.receive.done(1, 'SAMPLE-IR-0090'), { exact: false }),
     ).toBeInTheDocument();
+
+    await user.click(within(linesPane()).getByRole('button', { name: t.receive.goExcess }));
+    expect(currentLocation()).toContain('excessReceipt=SAMPLE-IR-0090');
+    expect(currentLocation()).toContain('excessReceiptLine=9490');
   });
 
   it('다 받은 줄도 행을 눌러 받으면 전부 초과분이다', async () => {

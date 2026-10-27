@@ -283,7 +283,7 @@ export const InboundScheduleScreen = () => {
   const [confirmPicks, setConfirmPicks] = useState<ReceivePick[] | null>(null);
   const [receiveNote, setReceiveNote] = useState<{
     text: string;
-    excessReceiptNo: string | null;
+    excess: { receiptNo: string; inboundReceiptLineId: number | null } | null;
   } | null>(null);
   const [receiveProblem, setReceiveProblem] = useState<string | null>(null);
   /* 되먹임은 제출한 렌더의 닫힘을 들고 있다 — 보낸 줄은 ref 에 적는다(IQC 의뢰와 같은 길). */
@@ -292,15 +292,21 @@ export const InboundScheduleScreen = () => {
     refreshKeys: REGISTER_REFRESH_KEYS,
     onSuccess: (data) => {
       const sent = sentPicksRef.current;
-      const first = data.created[0]?.inboundReceiptNo ?? '';
-      /* 초과분은 한 품목만 받을 때만 생긴다(체크는 남은 수량 그대로) — 그 줄의 입하번호로 연결 창을 연다. */
+      const first = data.created[0]?.inboundReceipt.inboundReceiptNo ?? '';
+      /* 초과분은 한 품목만 받을 때만 생긴다(체크는 남은 수량 그대로) — 그 입하 줄을 고른 채로 연결 창을 연다. */
       const excessIndex = sent.findIndex(
         ({ line, qty }) => splitReceiveQty(line, qty).excessQty > 0,
       );
+      const excessReceipt = excessIndex < 0 ? undefined : data.created[excessIndex];
       setReceiveNote({
         text: t.receive.done(data.created.length, first),
-        excessReceiptNo:
-          excessIndex < 0 ? null : (data.created[excessIndex]?.inboundReceiptNo ?? null),
+        excess:
+          excessReceipt === undefined
+            ? null
+            : {
+                receiptNo: excessReceipt.inboundReceipt.inboundReceiptNo,
+                inboundReceiptLineId: excessReceipt.lines[0]?.inboundReceiptLineId ?? null,
+              },
       });
       setConfirmPicks(null);
       receiveDraft.reset();
@@ -409,12 +415,12 @@ export const InboundScheduleScreen = () => {
         {receiveNote !== null && (
           <p className="po-board-lines-status" role="status">
             {receiveNote.text}
-            {receiveNote.excessReceiptNo !== null && excessAvailable && (
+            {receiveNote.excess !== null && excessAvailable && (
               <Button
                 variant="text"
                 size="sm"
                 onClick={() => {
-                  openExcess({ receiptNo: receiveNote.excessReceiptNo });
+                  if (receiveNote.excess !== null) openExcess(receiveNote.excess);
                 }}
               >
                 {t.receive.goExcess}
