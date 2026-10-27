@@ -5025,6 +5025,7 @@
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
+  container: mlot-table / inline-size;
 }
 
 /* 열 머리는 한 번만 둔다 — 옛 목록은 값마다 이름표를 붙여 한 쪽에 40개였다. */
@@ -5036,19 +5037,53 @@
   padding: 0 var(--space-5) 0 0;
 }
 
+/* 마지막 열(56)은 IQC 다 — 세 보기 모두 같은 자리 · 같은 폭이다. */
 .pop-ui .pop-mlot-table[data-mode='pending'] .pop-mlot-table-head,
 .pop-ui .pop-mlot-table[data-mode='pending'] .pop-mlot-row {
-  grid-template-columns: 64px minmax(120px, 160px) minmax(0, 1fr) minmax(110px, 150px) 110px;
+  grid-template-columns: 64px minmax(120px, 160px) minmax(0, 1fr) minmax(110px, 150px) 110px 56px;
 }
 
 .pop-ui .pop-mlot-table[data-mode='result'] .pop-mlot-table-head,
 .pop-ui .pop-mlot-table[data-mode='result'] .pop-mlot-row {
-  grid-template-columns: 64px minmax(120px, 160px) minmax(0, 1fr) minmax(110px, 150px) 200px;
+  grid-template-columns: 64px minmax(120px, 160px) minmax(0, 1fr) minmax(110px, 150px) 200px 56px;
 }
 
 .pop-ui .pop-mlot-table[data-mode='reprint'] .pop-mlot-table-head,
 .pop-ui .pop-mlot-table[data-mode='reprint'] .pop-mlot-row {
-  grid-template-columns: 64px minmax(270px, 340px) minmax(0, 1fr) minmax(100px, 140px) 120px;
+  grid-template-columns: 64px minmax(270px, 340px) minmax(0, 1fr) minmax(100px, 140px) 120px 56px;
+}
+
+/*
+ * ⚠ 표가 좁으면(1024×768 에서 692) 틈과 고정 열을 줄여 품목명 칸을 지킨다 — 위 값 그대로면 IQC 열까지
+ *   여섯 칸이 품목명을 72(발행 대기) · 0(다시 인쇄)으로 밀었다(실측 2026-10-26). 현장 1920 은 위 값 그대로다.
+ *   LOT 번호는 자르지 않는다(규범 C-10) — 글자를 한 단계 줄여 칸에 넣는다.
+ */
+@container mlot-table (max-width: 760px) {
+  .pop-ui .pop-mlot-table-head,
+  .pop-ui .pop-mlot-row {
+    column-gap: var(--space-2);
+  }
+
+  .pop-ui .pop-mlot-table[data-mode='pending'] .pop-mlot-table-head,
+  .pop-ui .pop-mlot-table[data-mode='pending'] .pop-mlot-row {
+    grid-template-columns: 52px 120px minmax(0, 1fr) 100px 100px 48px;
+  }
+
+  .pop-ui .pop-mlot-table[data-mode='result'] .pop-mlot-table-head,
+  .pop-ui .pop-mlot-table[data-mode='result'] .pop-mlot-row {
+    grid-template-columns: 52px 120px minmax(0, 1fr) 100px 180px 48px;
+  }
+
+  /* LOT 264 — 13px 고정폭으로 다섯 칸 번호(33자, 실측 258)가 든다. 머리와 줄이 따로 그리드라 글자 길이로 세우지 않는다. */
+  .pop-ui .pop-mlot-table[data-mode='reprint'] .pop-mlot-table-head,
+  .pop-ui .pop-mlot-table[data-mode='reprint'] .pop-mlot-row {
+    grid-template-columns: 52px 264px minmax(0, 1fr) 84px 112px 48px;
+  }
+
+  /* 아래 기본 규칙보다 앞에 있으므로 한 단계 좁혀 이긴다. */
+  .pop-ui .pop-mlot-row .pop-mlot-cell-lot {
+    font-size: 13px;
+  }
 }
 
 .pop-ui .pop-mlot-table-head {
@@ -5067,6 +5102,10 @@
 
 .pop-ui .pop-mlot-table[data-mode='result'] .pop-mlot-table-head > :nth-child(5) {
   text-align: start;
+}
+
+.pop-ui .pop-mlot-table-head > :nth-child(6) {
+  text-align: center;
 }
 
 /* 줄 칸 — 화면이 높이를 재서 쪽 크기를 정한다(`row-fit`). 넘치는 줄은 다음 쪽이다. */
@@ -5139,8 +5178,12 @@
   white-space: nowrap;
 }
 
+.pop-ui .pop-mlot-cell-iqc {
+  display: grid;
+  place-items: center;
+}
+
 .pop-ui .pop-mlot-iqc {
-  flex: none;
   padding: 0 var(--space-2);
   border: 1px solid var(--on-surface);
   border-radius: var(--radius-sm);

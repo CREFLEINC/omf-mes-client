@@ -218,6 +218,27 @@ describe('일괄 발행 — 멈추는 자리', () => {
     });
   });
 
+  it('발행 기록이 남아 대기에서 빠진 줄도 결과에 품목코드 · 품목명을 그대로 적는다', async () => {
+    const user = userEvent.setup();
+    installShell(
+      vi.fn(async () => {
+        throw new Error('프린터 응답 없음');
+      }),
+    );
+    renderLabelScreen({ lineList: 'served' });
+
+    await issueAll(user, 1);
+
+    await waitFor(() => expect(screen.getByText(t.bar.failed(1))).toBeInTheDocument());
+    /* 끝난 뒤 다시 받은 대기 목록에 이 줄이 없다 — 공급사 타일이 사라진다. */
+    await waitFor(() =>
+      expect(screen.queryAllByRole('button', { name: /합성 공급사 가/u })).toHaveLength(0),
+    );
+    expect(screen.getByText('SYN-ITEM-01')).toBeInTheDocument();
+    expect(screen.getByText('합성 품목 가')).toBeInTheDocument();
+    expect(screen.queryByText(messages.common.reference.loading)).toBeNull();
+  });
+
   it('셸 인쇄 통로가 없는 단말(브라우저)에서는 첫 장에서 멈춘다', async () => {
     const user = userEvent.setup();
     const { sent } = renderLabelScreen(THREE);

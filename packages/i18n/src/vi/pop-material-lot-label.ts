@@ -33,9 +33,10 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       result: 'Kết quả',
       lotNo: 'Số LOT',
       issued: 'Phát hành',
+      iqc: 'IQC',
     },
     selectAll: 'Chọn tất cả',
-    iqc: 'IQC',
+    iqcRequired: 'Bắt buộc',
     rowName: (itemCode: string, itemName: string, qty: string, receivedAt: string) =>
       `${itemCode} ${itemName} ${qty} nhập ${receivedAt}`,
     range: (from: number, to: number, total: number) => `${from}–${to} / ${total} dòng`,

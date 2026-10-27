@@ -44,10 +44,12 @@ export const popMaterialLotLabel = {
       result: '결과',
       lotNo: 'LOT 번호',
       issued: '발행',
+      /** 마지막 열 — 수입검사 대상인가(사용자 지시 2026-10-26). */
+      iqc: 'IQC',
     },
     selectAll: '전체 선택',
-    /** 검사 대상 품목 표시 — IQC 라벨이 한 장 더 나간다(omf-all-around#110). */
-    iqc: 'IQC',
+    /** IQC 열의 값 — 검사 대상 줄에만 적는다. 그 줄은 IQC 라벨이 한 장 더 나간다(omf-all-around#110). */
+    iqcRequired: '필수',
     /** 줄 전체가 체크 칸이다 — 읽어 주는 도구가 줄을 가를 수 있게 품목·수량·입하 시각을 이름에 싣는다. */
     rowName: (itemCode: string, itemName: string, qty: string, receivedAt: string) =>
       `${itemCode} ${itemName} ${qty} ${receivedAt} 입하`,

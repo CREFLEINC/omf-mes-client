@@ -94,10 +94,23 @@ describe('PopMaterialLotLabelScreen — 공급사로 묶는다', () => {
     await waitFor(() => expect(rows()[0]).toHaveTextContent('51,000EA'));
   });
 
-  it('검사 대상 품목에는 IQC 표시가 붙는다', async () => {
-    renderLabelScreen({ lines: [line(8501, 8101, 8601, 500, { inspectionRequired: true })] });
+  it('마지막 열이 IQC 다 — 검사 대상 줄에만 「필수」를 적는다', async () => {
+    renderLabelScreen({
+      receipts: [receipt(8101, 8201, '2026-08-27T09:00:00Z')],
+      lines: [
+        line(8501, 8101, 8601, 500, { inspectionRequired: true }),
+        line(8502, 8101, 8602, 700),
+      ],
+    });
 
-    await waitFor(() => expect(rows()[0]).toHaveTextContent(t.table.iqc));
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    const head = screen.getByText(t.table.columns.itemCode).parentElement as HTMLElement;
+
+    expect(head.lastElementChild).toHaveTextContent(t.table.columns.iqc);
+    expect(rows()[0]?.lastElementChild).toHaveTextContent(t.table.iqcRequired);
+    expect(rows()[1]?.lastElementChild).toBeEmptyDOMElement();
+    /* 품목명 옆의 옛 「IQC」 표식은 열로 옮겼다 — 한 줄에 한 번만. */
+    expect(rows()[0]).not.toHaveTextContent(t.table.columns.iqc);
   });
 });
 
@@ -295,6 +308,45 @@ describe('PopMaterialLotLabelScreen — 어디서 받는가', () => {
     await waitFor(() =>
       expect(sentTo(sent, '/logistics/inbound-receipt-lines').length).toBeGreaterThan(before),
     );
+  });
+
+  it.each(['served', 'missing'] as const)(
+    '새로 고침을 누르면 그 사이 웹 · PDA 로 입하한 줄이 바로 선다(줄 목록 경로 %s)',
+    async (lineList) => {
+      const user = userEvent.setup();
+      const receipts = [receipt(8101, 8201, '2026-08-27T09:00:00Z')];
+      const lines = [line(8501, 8101, 8601, 500)];
+      renderLabelScreen({ receipts, lines, lineList });
+
+      expect(await supplierTiles()).toHaveLength(1);
+      /* 화면이 연 뒤 다른 공급사의 입하가 들어왔다. */
+      receipts.push(receipt(8102, 8202, '2026-08-27T09:30:00Z'));
+      lines.push(line(8502, 8102, 8602, 700));
+
+      await user.click(screen.getByRole('button', { name: t.table.refresh }));
+
+      await waitFor(async () => expect(await supplierTiles()).toHaveLength(2));
+    },
+  );
+
+  it('다시 인쇄를 보는 동안 새로 고침을 눌러도 발행 대기 장수가 바로 맞는다', async () => {
+    const user = userEvent.setup();
+    const receipts = [
+      receipt(8101, 8201, '2026-08-27T09:00:00Z'),
+      receipt(8102, 8201, '2026-08-27T09:10:00Z'),
+    ];
+    const lines = [line(8501, 8101, 8601, 500), line(8502, 8102, 8602, 700, { issued: true })];
+    renderLabelScreen({ receipts, lines, lineList: 'served' });
+
+    const count = (n: number) => new RegExp(`^${t.tabs.pending}\\s*${String(n)}$`, 'u');
+    const pendingTab = await screen.findByRole('button', { name: count(1) });
+    await user.click(screen.getByRole('button', { name: t.tabs.reprint }));
+    receipts.push(receipt(8103, 8202, '2026-08-27T09:30:00Z'));
+    lines.push(line(8503, 8103, 8602, 900));
+
+    await user.click(screen.getByRole('button', { name: t.table.refresh }));
+
+    await waitFor(() => expect(pendingTab).toHaveAccessibleName(count(2)));
   });
 
   it('입하 목록을 받지 못하면 사유와 다시 불러오기를 함께 보인다', async () => {

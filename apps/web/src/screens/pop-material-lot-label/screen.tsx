@@ -110,8 +110,12 @@ export const PopMaterialLotLabelScreen = () => {
   /*
    * ⭐ **품목 이름은 받은 줄의 것만 푼다**(omf-all-around#27) — 마스터 목록 조회는 한 쪽만 돌려준다.
    *    찾기 칸이 품목코드로 거르므로 보이는 쪽이 아니라 받은 줄 전부의 품목을 푼다.
+   * ⛔ 결과 표의 줄도 함께 푼다 — 발행 기록이 남은 줄은 끝난 뒤 다시 받은 대기 목록에서 빠지므로,
+   *    받은 줄만 풀면 그 줄의 품목코드 · 품목명이 「이름 불러오는 중」에 머문다.
    */
-  const itemNames = useItemNameSources(source.rows.map((row) => row.itemId));
+  const itemNames = useItemNameSources(
+    [...source.rows, ...(snapshot?.rows ?? [])].map((row) => row.itemId),
+  );
   const reasons = useReissueReasons(true);
 
   const printers = usePrinters();
@@ -196,6 +200,15 @@ export const PopMaterialLotLabelScreen = () => {
   const lotStatusOf = (row: TargetRow): string | null =>
     row.lotStatusCode ??
     (row.lotId === null ? null : (lots.get(row.lotId)?.data?.statusCode ?? null));
+
+  /*
+   * 새로 고침 — 보고 있는 보기만이 아니라 **발행 대기를 언제나** 다시 받는다. 다시 인쇄를 보는 동안
+   * 웹 · PDA 로 들어온 입하가 발행 대기 장수에 바로 서야 한다. 다시 인쇄 목록은 그 보기를 볼 때만 받는다.
+   */
+  const refresh = (): void => {
+    pending.refetch();
+    if (tab === 'reprint') issued.refetch();
+  };
 
   const clearSelection = (): void => {
     setChecked(new Set());
@@ -618,7 +631,7 @@ export const PopMaterialLotLabelScreen = () => {
               type="button"
               className="pop-mlot-foot-button"
               disabled={isLocked}
-              onClick={source.refetch}
+              onClick={refresh}
             >
               {t.table.refresh}
             </button>

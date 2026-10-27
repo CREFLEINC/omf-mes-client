@@ -16,9 +16,11 @@ const tStatus = messages.popMaterialLotLabel.status;
 /**
  * 표가 무엇을 보이는가.
  *
- * - `pending` 발행 대기 — 체크 · 품목코드 · 품목명 · 수량 · 입하 시각
- * - `result` 발행 결과 — 결과 표식 · 품목코드 · 품목명 · 수량 · 결과(체크 대신 결과가 제자리에 붙는다)
- * - `reprint` 다시 인쇄 — 체크 · LOT 번호 · 품목명 · 수량 · 마지막 발행
+ * - `pending` 발행 대기 — 체크 · 품목코드 · 품목명 · 수량 · 입하 시각 · IQC
+ * - `result` 발행 결과 — 결과 표식 · 품목코드 · 품목명 · 수량 · 결과 · IQC(체크 대신 결과가 제자리에 붙는다)
+ * - `reprint` 다시 인쇄 — 체크 · LOT 번호 · 품목명 · 수량 · 마지막 발행 · IQC
+ *
+ * IQC 는 어느 보기에서나 마지막 열이다(사용자 지시 2026-10-26) — 발행 대기에서 결과로 바뀌어도 자리가 같다.
  */
 export type LabelTableMode = 'pending' | 'result' | 'reprint';
 
@@ -112,12 +114,13 @@ export const LabelTable = ({
 }: LabelTableProps) => {
   const columns =
     mode === 'reprint'
-      ? [t.columns.lotNo, t.columns.itemName, t.columns.qty, t.columns.issued]
+      ? [t.columns.lotNo, t.columns.itemName, t.columns.qty, t.columns.issued, t.columns.iqc]
       : [
           t.columns.itemCode,
           t.columns.itemName,
           t.columns.qty,
           mode === 'result' ? t.columns.result : t.columns.receivedAt,
+          t.columns.iqc,
         ];
 
   return (
@@ -144,7 +147,14 @@ export const LabelTable = ({
           const name = (
             <span className="pop-mlot-cell-name">
               <span className="pop-mlot-name-text">{itemName}</span>
-              {row.inspectionRequired ? <span className="pop-mlot-iqc">{t.iqc}</span> : null}
+            </span>
+          );
+          /* 마지막 열 — 검사 대상 줄에만 적는다. 아니면 빈칸이라 「필수」만 눈에 걸린다. */
+          const iqc = (
+            <span className="pop-mlot-cell-iqc">
+              {row.inspectionRequired ? (
+                <span className="pop-mlot-iqc">{t.iqcRequired}</span>
+              ) : null}
             </span>
           );
 
@@ -170,6 +180,7 @@ export const LabelTable = ({
                 <span className="pop-mlot-cell-result" data-status={tone}>
                   {statusText(status)}
                 </span>
+                {iqc}
               </div>
             );
           }
@@ -218,6 +229,7 @@ export const LabelTable = ({
               ) : (
                 <span className="pop-mlot-cell-when">{received}</span>
               )}
+              {iqc}
             </button>
           );
         })}
