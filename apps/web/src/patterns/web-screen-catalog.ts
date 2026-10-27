@@ -130,7 +130,7 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 번호(`W-01-01`)는 IQC 수입검사이고, 예정 조회는 나중에 도출돼 09 를 받았다(IA §3-2).
    */
   { path: '/logistics/inbound-schedule', code: 'W-01-09', name: '입하 예정 조회' },
-  /* W-01-03 은 화면이 아니라 입하 예정 조회의 「입하 등록」 창이다 — 옛 주소는 그 창으로 옮겨 준다. */
+  /* W-01-03 은 화면이 아니라 입고 관리 라인 표의 「입하 등록」이다 — 옛 주소는 입고 관리로 옮겨 준다. */
   { path: '/logistics/over-receipt-split', code: 'W-01-03', name: '입하 등록' },
   { path: '/logistics/iqc-inspection', code: 'W-01-01', name: 'IQC 수입검사·판정' },
   {

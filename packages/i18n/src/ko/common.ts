@@ -73,6 +73,27 @@ export const common = {
     stalledBody: '전송 대기 중인 기록은 그대로 있습니다. 잠시 뒤 다시 보내기를 누르세요.',
     stalledRetry: '다시 보내기',
   },
+  /** 검사 조회·판정(IQC · PQC · OQC) 탭 줄 오른쪽 건수 칩(omf-all-around#185). */
+  columnOrderHandle: '끌어서 열 순서 바꾸기',
+  inspectionHub: {
+    label: '검사 의뢰 상태',
+    requested: '대기',
+    inProgress: '진행',
+    completed: '완료',
+    count: (label: string, count: number): string => `${label} ${String(count)}`,
+    filterOn: (label: string): string => `${label} 의뢰만 보기`,
+    filterOff: (label: string): string => `${label} 거르기 해제`,
+    pendingOnly: '대기·진행만 보기', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)
+    pickRequest: '검사 의뢰를 선택하세요',
+    pickRequestHint: '검사 의뢰를 선택하면 상세 내용을 확인할 수 있습니다.',
+    close: '닫기',
+    closeDetail: '상세 닫기',
+    splitter: '목록과 상세 폭 나누기',
+    heightSplitter: '목록과 상세 높이 나누기',
+    layoutLabel: '목록·상세 배치', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)
+    layoutSideBySide: '좌우 배치',
+    layoutStacked: '상하 배치',
+  },
   reference: {
     empty: '—',
     /*

@@ -1,17 +1,15 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext } from 'react';
 
 /**
- * 탭 묶음을 «제목 아래»에 세우는 자리 — 셸(`app/layout.tsx`)이 `tabsInPage` 묶음일 때 채운다.
+ * 지금 화면이 탭 묶음 안에 있는가 — 셸(`app/layout.tsx`)이 본문 맨 위에 탭 막대를 세웠을 때 채운다.
  *
- * 보통 탭 묶음은 셸이 본문 맨 위(제목 위)에 탭 막대를 세운다. 이 자리를 쓰는 묶음은 화면 머리가 묶음 이름을 제목으로
- * 쓰고 그 바로 아래에 탭을 둔다(검사 조회·판정 · 사용자 2026-10-26). 셸 밖(화면만 그린 시험)에서는 `null` 이다 —
- * 그때 화면은 자기 제목을 쓰고 탭을 그리지 않는다.
+ * 탭 막대가 화면 이름을 말하므로, 이 값을 읽는 화면은 묶음 안에서 경로·제목(PageHeader)을 세우지 않는다
+ * (입하 예정 조회와 같은 모양 · 사용자 2026-10-26). 셸 밖(화면만 그린 시험)이나 볼 수 있는 탭이 하나뿐이면 `null` 이다 —
+ * 그때 화면은 자기 머리를 그대로 세운다.
  */
 export interface PageHub {
-  /** 묶음 이름 — 화면 머리의 제목 · 경로 마디. */
+  /** 묶음 이름. */
   title: string;
-  /** 권한으로 걸러진 탭 막대. */
-  tabs: ReactNode;
 }
 
 export const PageHubContext = createContext<PageHub | null>(null);

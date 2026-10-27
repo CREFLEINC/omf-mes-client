@@ -1,5 +1,8 @@
 import type { QueueFilters } from './filters';
 
+/** 조건 줄이 맡는 조건 — 상태는 탭 줄 칩이 맡는다(#185). */
+export type DraftFilters = Omit<QueueFilters, 'statusCode'>;
+
 /**
  * 조건 줄이 편집 중인 값. **전부 문자열이다** — 사용자가 치는 동안에는 아직 번호가 아니다.
  *
@@ -53,14 +56,14 @@ const toIdentifier = (raw: string): number | null => {
  * 초안을 조건으로 옮긴다. **번호가 아닌 값이 없다는 전제**이며, 부르는 쪽이 `validateDraft`
  * 로 먼저 막는다 — 여기서 다시 판정하면 두 자리가 갈린다.
  */
-export const toFilters = (draft: QueueDraft, pendingOnly: boolean): QueueFilters => ({
+export const toFilters = (draft: QueueDraft, pendingOnly: boolean): DraftFilters => ({
   itemId: toIdentifier(draft.item),
   keyword: draft.keyword.trim(),
   pendingOnly,
 });
 
 /** 주소가 담은 조건을 편집 초안으로 되돌린다 — 뒤로가기·초기화로 주소가 바뀌면 초안도 따라간다. */
-export const toDraft = (filters: QueueFilters): QueueDraft => ({
+export const toDraft = (filters: DraftFilters): QueueDraft => ({
   item: filters.itemId === null ? '' : String(filters.itemId),
   keyword: filters.keyword,
 });

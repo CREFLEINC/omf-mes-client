@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { lotProgress, orderSummary, progressFixtures, scheduleLine } from './fixtures';
 import {
+  labelPendingProgress,
+  lotProgress,
+  orderSummary,
+  progressFixtures,
+  scheduleLine,
+} from './fixtures';
+import {
+  countedGroups,
+  hasLot,
   hasStageCounts,
   isStageGroup,
   lineTableRowId,
@@ -16,6 +24,7 @@ import {
 
 describe('단계 코드 → 묶음 · 색', () => {
   it('검사 셋은 검사 대기 묶음, 보류는 보류, 입고 대기는 입고, 적치 둘은 적치 — 끝난 것과 모르는 코드는 묶음이 없다', () => {
+    expect(stageGroupOf('LABEL_PENDING')).toBe('LABEL');
     expect(stageGroupOf('INSPECTION_REQUIRED')).toBe('INSPECTION');
     expect(stageGroupOf('INSPECTION_REQUESTED')).toBe('INSPECTION');
     expect(stageGroupOf('INSPECTION_IN_PROGRESS')).toBe('INSPECTION');
@@ -34,10 +43,13 @@ describe('단계 코드 → 묶음 · 색', () => {
     expect(stageTone('INSPECTION_REQUESTED')).toBe('warning');
     expect(stageTone('INSPECTION_HELD')).toBe('error');
     expect(stageTone('COMPLETED')).toBe('success');
+    /* 라벨 발행(POP)은 적치(PDA)와 같은 「다른 곳의 할 일」. */
+    expect(stageTone('LABEL_PENDING')).toBe('idle');
     expect(stageTone('SOMETHING_NEW')).toBe('idle');
   });
 
-  it('주소의 stage 값은 네 묶음 이름만 받는다', () => {
+  it('주소의 stage 값은 다섯 묶음 이름만 받는다', () => {
+    expect(isStageGroup('LABEL')).toBe(true);
     expect(isStageGroup('RECEIPT')).toBe(true);
     expect(isStageGroup('RECEIPT_READY')).toBe(false);
     expect(isStageGroup('')).toBe(false);
@@ -56,6 +68,30 @@ describe('발주의 진행 — 가장 뒤처진 묶음과 외 N', () => {
       count: 4,
       others: 2,
     });
+  });
+
+  it('라벨 발행 대기가 흐름 맨 앞이다 — LOT 이 있어야 검사도 입고도 한다', () => {
+    expect(stageLead({ LABEL: 2, INSPECTION: 4, RECEIPT: 1 })).toEqual({
+      group: 'LABEL',
+      count: 2,
+      others: 2,
+    });
+  });
+
+  it('칩 줄은 서버가 센 묶음만 0 까지 세운다 — 앞선 서버(라벨 발행 대기 키 없음)는 그 칩만 빠진다', () => {
+    expect(countedGroups({ INSPECTION: 0, HELD: 0, RECEIPT: 0, PUTAWAY: 0 })).toEqual([
+      'INSPECTION',
+      'HELD',
+      'RECEIPT',
+      'PUTAWAY',
+    ]);
+    expect(countedGroups({ PUTAWAY: 1, LABEL: 0, INSPECTION: 0, HELD: 0, RECEIPT: 0 })).toEqual([
+      'LABEL',
+      'INSPECTION',
+      'HELD',
+      'RECEIPT',
+      'PUTAWAY',
+    ]);
   });
 
   it('묶음이 하나뿐이면 외 0, 하나도 없으면 null', () => {
@@ -135,6 +171,37 @@ describe('라인 아래 LOT 줄', () => {
 
     expect(first !== undefined && lineTableRowId(first)).toBe('7301');
     expect(second !== undefined && lineTableRowId(second)).toBe('7301:lot:7777');
+  });
+
+  it('라벨 미부착 줄(LOT 없음)도 라인 아래에 서고, 입하 일시 순으로 끼며 키는 입하 라인으로 가린다', () => {
+    const pending = [
+      labelPendingProgress({
+        inboundReceiptLineId: 7607,
+        receiptDatetime: '2026-10-22T08:00:00+09:00',
+      }),
+      labelPendingProgress({
+        inboundReceiptLineId: 7606,
+        receiptDatetime: '2026-10-22T08:00:00+09:00',
+      }),
+    ];
+    const byLine = progressByLine([...pending, lotProgress()]);
+
+    expect(byLine.get(7301)?.map((lot) => lot.lotNo ?? lot.inboundReceiptLineId)).toEqual([
+      'SAMPLE|LOT|0001',
+      7606,
+      7607,
+    ]);
+
+    const rows = toLineTableRows([scheduleLine()], byLine, new Set());
+
+    expect(rows.map((row) => lineTableRowId(row))).toEqual([
+      '7301',
+      '7301:lot:7701',
+      '7301:receipt-line:7606',
+      '7301:receipt-line:7607',
+    ]);
+    expect(hasLot(lotProgress())).toBe(true);
+    expect(hasLot(labelPendingProgress())).toBe(false);
   });
 
   it('「모두 접기」의 대상은 LOT 이 딸린 라인만이다', () => {

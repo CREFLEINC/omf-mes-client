@@ -93,13 +93,13 @@ describe('QueueTable', () => {
   });
 
   /** 열에서 뺐다 — 화면에 남으면 그 자리를 도로 차지한다. */
-  it('의뢰번호를 열로 두지 않는다', () => {
+  it('의뢰번호를 열로 보인다(사용자 지시 2026-10-27 · #185)', () => {
     renderTable();
 
     const table = screen.getByRole('table');
 
-    expect(within(table).queryByText('IR-2026-0001')).not.toBeInTheDocument();
-    expect(within(table).queryByText(t.columns.item)).toBeInTheDocument();
+    expect(within(table).getByText('IR-2026-0001')).toBeInTheDocument();
+    expect(within(table).getByText(t.columns.inspectionRequestNo)).toBeInTheDocument();
   });
 
   /**

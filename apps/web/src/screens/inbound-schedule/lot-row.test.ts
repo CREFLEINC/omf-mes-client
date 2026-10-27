@@ -35,3 +35,20 @@ describe('lotEvidence — LOT 줄 근거의 날짜는 공장 달력이다', () =
     expect(lotEvidence(lot)).toContain(t.lot.evidence.accepted('2026.10.22'));
   });
 });
+
+describe('lotEvidence — 줄의 일부만 이 발주로 온 LOT 줄(초과분 연결)', () => {
+  it('이 발주 몫이 줄 전체와 다르면 줄 전체 수량을 덧붙인다', () => {
+    const lot = lotProgress({ receivedQty: 1425, allocatedQty: 100, uomCode: 'KG' });
+
+    expect(lotEvidence(lot)).toContain(t.lot.evidence.wholeQty('1,425', 'KG'));
+  });
+
+  it.each([
+    ['줄 전체가 이 발주 몫이면', { receivedQty: 60, allocatedQty: 60 }],
+    ['앞선 서버가 몫을 주지 않으면', { receivedQty: 60 }],
+  ])('%s 덧붙이지 않는다', (_, overrides) => {
+    expect(lotEvidence(lotProgress(overrides))).not.toContain(
+      t.lot.evidence.wholeQty('60', 'SAMPLE-EA'),
+    );
+  });
+});

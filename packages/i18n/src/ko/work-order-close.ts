@@ -254,6 +254,43 @@ export const workOrderClose = {
     alreadyEnded: (terminal: string): string =>
       `${terminal} 의 작업 세션은 이미 끝나 있었습니다. 마감 조건을 다시 확인했습니다.`,
   },
+  /** 일자별 실적 표. 수량은 서버가 정정을 반영해 준 값이고, 작업일은 교대가 시작한 공장 날짜다. */
+  dailyResults: {
+    pane: '일자별 실적',
+    loading: '일자별 실적을 불러오는 중입니다.',
+    lead: '이 W/O 실적을 작업일과 교대별로 모았습니다. 작업일은 교대가 시작한 공장 날짜(야간은 전날)이고, 수량은 정정을 반영한 값입니다.',
+    loadFailedTitle: '일자별 실적을 불러오지 못했습니다',
+    loadFailed: '마감 입력은 그대로 쓸 수 있습니다. 다시 시도를 누르세요.',
+    refetchFailed:
+      '일자별 실적을 새로 불러오지 못해 이전에 불러온 표를 보이고 있습니다. 다시 시도를 누르세요.',
+    workDateHint: '교대가 시작한 날 기준입니다. 자정을 넘긴 교대의 새벽 실적은 전날로 묶입니다.',
+    workDateHintLabel: '작업일 기준 안내',
+    fields: {
+      workDate: '작업일',
+      shift: '교대',
+      goodQty: '양품',
+      defectQty: '불량',
+      holdQty: '보류',
+      scrapQty: '스크랩',
+      reworkQty: '재작업',
+      resultCount: '건수',
+      corrected: '정정',
+    },
+    values: {
+      total: '합계',
+      orderQty: '지시 수량',
+      unit: '단위',
+      shiftCount: (count: number): string => `교대 ${String(count)}개`,
+      /** 칩에는 「N건」만 보이고, 무엇을 센 것인지는 머리 「정정」과 보조기기용 앞말이 말한다(좁은 폭에서 가로 넘침 방지). */
+      corrected: (count: number): string => `${String(count)}건`,
+      correctedPrefix: '정정된 실적',
+    },
+    actions: {
+      expand: (workDate: string): string => `${workDate} 교대별 펼치기`,
+      collapse: (workDate: string): string => `${workDate} 교대별 접기`,
+    },
+    empty: '등록된 생산 실적이 없습니다.',
+  },
   /** 마감된 W/O 의 마감 결과 — 무엇을 어떻게 닫았는지 정정 전에 본다. */
   closeResult: {
     pane: '마감 결과',

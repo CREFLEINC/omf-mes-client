@@ -2,6 +2,9 @@ import { Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
 import type { ItemNameLookup } from './reference-lookup';
 import { toStatusBadge } from './status-badge';
 import { formatDateTime, type InspectionQueueRow } from './types';
@@ -38,9 +41,10 @@ const columnsOf = (
 ): Column<InspectionQueueRow>[] => [
   {
     key: 'serialNo',
+    align: 'start',
     header: t.serialColumn,
     /* 열 폭은 시리얼 15 · 품목 28 · 의뢰 22 · 수량 11 · 상태 9 · 일시 15(%)로 고정한다 — 값 길이로 폭이 흔들리지 않는다(#136). */
-    width: '15%',
+    width: '140px',
     render: (row) =>
       serialOf(row) ?? (
         <span className="oqc-inspection-queue-unregistered">{t.serialUnregistered}</span>
@@ -48,8 +52,10 @@ const columnsOf = (
   },
   {
     key: 'itemId',
+    align: 'start',
     header: t.columns.itemId,
-    width: '28%',
+    /* 다른 열처럼 폭을 끌어 바꾼다(#185). */
+    width: '280px',
     /* 「이름 / 코드」 두 줄 — 못 푼 갈래는 줄이 하나뿐이라 풀이가 사유를 그 자리에 낸다(IQC 와 같은 모양). */
     render: (row) => {
       const parts = itemNames.partsOf(row.itemId);
@@ -67,8 +73,9 @@ const columnsOf = (
   },
   {
     key: 'inspectionRequestNo',
+    align: 'start',
     header: t.columns.inspectionRequestNo,
-    width: '22%',
+    width: '220px',
     /*
      * ⛔ **두 행을 인라인으로 붙이지 않는다.** 붙으면 「IR-OQC-0001출하요청 #6101」로 읽힌다 —
      * 번호 칸이라 이어진 글자가 한 값처럼 보인다. `.stacked-cell` 이 그 갈라짐을 만든다.
@@ -92,8 +99,9 @@ const columnsOf = (
   },
   {
     key: 'targetQty',
+    align: 'center',
     header: t.targetQtyColumn,
-    width: '11%',
+    width: '100px',
     render: (row) => {
       const code = uomCodeOf(row);
 
@@ -106,8 +114,9 @@ const columnsOf = (
   },
   {
     key: 'statusCode',
+    align: 'center',
     header: t.columns.statusCode,
-    width: '9%',
+    width: '88px',
     render: (row) => {
       const badge = toStatusBadge(row.statusCode);
 
@@ -120,8 +129,9 @@ const columnsOf = (
   },
   {
     key: 'requestedAt',
+    align: 'center',
     header: t.requestedAtColumn,
-    width: '15%',
+    width: '160px',
     sortable: true,
     /* 정렬은 원문(RFC3339)으로 한다 — 표기용 문자열로 정렬하면 형식이 아닌 값이 섞일 때 어긋난다. */
     sortAccessor: (row) => row.requestedAt,
@@ -130,6 +140,8 @@ const columnsOf = (
 ];
 
 export interface QueueListTableProps {
+  /** 넘치면 줄이지 않고 가로로 구른다 — 좌우 배치(#185). 기본은 상자 폭에 맞춘다. */
+  scrollX?: boolean;
   rows: InspectionQueueRow[];
   /** 품목 풀이 — 번호가 아니라 이름(위)·코드(아래)를 보인다(omf-all-around#40·#136). */
   itemNames: ItemNameLookup;
@@ -152,29 +164,46 @@ export const QueueListTable = ({
   selectedId,
   onSelect,
   empty,
-}: QueueListTableProps) => (
-  /*
-   * 줄 아무 곳이나 눌러도 고른다(#136 · IQC #133 과 같다) — DS 표에 줄 클릭이 없어 눌린 줄의 의뢰번호 단추로 넘긴다.
-   * 키보드·화면 낭독기는 종전처럼 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
-   */
-  <div
-    className="oqc-inspection-queue-rows"
-    onClick={(event) => {
-      const target = event.target as Element;
-      if (target.closest('button, a, input, select, textarea') !== null) return;
-      target
-        .closest('tbody tr')
-        ?.querySelector<HTMLButtonElement>('.oqc-inspection-queue-open')
-        ?.click();
-    }}
-  >
-    <Table
-      caption={<span className="oqc-inspection-visually-hidden">{t.caption}</span>}
-      density="compact"
-      columns={columnsOf(selectedId, onSelect, itemNames, uomCodeOf, serialOf)}
-      rows={rows}
-      getRowId={(row) => String(row.inspectionRequestId)}
-      empty={empty}
-    />
-  </div>
-);
+  scrollX = false,
+}: QueueListTableProps) => {
+  /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
+  const ordered = useColumnOrder(
+    'omf-mes:oqc-inspection:columns:queue:order',
+    columnsOf(selectedId, onSelect, itemNames, uomCodeOf, serialOf),
+  );
+  const resizable = useColumnWidths('omf-mes:oqc-inspection:columns:queue', ordered, {
+    /* 좌우 배치(가로 스크롤)에서는 열이 그 데이터의 가장 긴 폭까지만 넓어진다(사용자 지시 2026-10-26). */
+    fitContent: scrollX,
+  });
+  /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다(#185 · 반응형). */
+  const fit = useFitColumns(resizable.columns, { scrollX });
+
+  return (
+    /*
+     * 줄 아무 곳이나 눌러도 고른다(#136 · IQC #133 과 같다) — DS 표에 줄 클릭이 없어 눌린 줄의 의뢰번호 단추로 넘긴다.
+     * 키보드·화면 낭독기는 종전처럼 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
+     */
+    <div
+      ref={fit.ref}
+      className="oqc-inspection-queue-rows inspection-queue-table"
+      style={resizable.style}
+      onClick={(event) => {
+        const target = event.target as Element;
+        if (target.closest('button, a, input, select, textarea') !== null) return;
+        target
+          .closest('tbody tr')
+          ?.querySelector<HTMLButtonElement>('.oqc-inspection-queue-open')
+          ?.click();
+      }}
+    >
+      <Table
+        caption={<span className="oqc-inspection-visually-hidden">{t.caption}</span>}
+        density="compact"
+        columns={fit.columns}
+        rows={rows}
+        getRowId={(row) => String(row.inspectionRequestId)}
+        empty={empty}
+      />
+    </div>
+  );
+};

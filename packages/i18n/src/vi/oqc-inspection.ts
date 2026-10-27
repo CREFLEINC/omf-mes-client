@@ -237,9 +237,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     loadFailed: 'Không tải được trạng thái phê duyệt bỏ qua.',
   },
   serials: {
-    openByScan: 'Quét số serial',
-    openByScanHelp: 'Nhập số serial để tra cứu yêu cầu kiểm tra OQC tương ứng.',
-    openByScanPlaceholder: 'Quét hoặc nhập số serial',
     openByScanNotFound: 'Số serial chưa được đăng ký.',
     judge: {
       heading: 'Kết quả kiểm tra theo serial',

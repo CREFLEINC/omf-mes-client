@@ -16,11 +16,13 @@ export interface PageNavMeta {
   total: number;
 }
 
-export interface PageNavProps {
+export interface PageNavProps<S extends number = PageSize> {
   meta: PageNavMeta;
   onChangePage: (page: number) => void;
   /** 주지 않으면 페이지 크기 선택을 그리지 않는다. */
-  onChangeSize?: (size: PageSize) => void;
+  onChangeSize?: (size: S) => void;
+  /** 고를 페이지 크기. 기본은 `PAGE_SIZES`(20 · 50 · 100). */
+  sizes?: readonly S[];
 }
 
 export const totalPagesOf = (meta: PageNavMeta): number => {
@@ -29,7 +31,12 @@ export const totalPagesOf = (meta: PageNavMeta): number => {
   return Math.max(1, Math.ceil(total / size));
 };
 
-export const PageNav = ({ meta, onChangePage, onChangeSize }: PageNavProps) => {
+export const PageNav = <S extends number = PageSize>({
+  meta,
+  onChangePage,
+  onChangeSize,
+  sizes = PAGE_SIZES as unknown as readonly S[],
+}: PageNavProps<S>) => {
   const totalPages = totalPagesOf(meta);
   const page = Math.min(Math.max(1, meta.page), totalPages);
 
@@ -43,11 +50,14 @@ export const PageNav = ({ meta, onChangePage, onChangeSize }: PageNavProps) => {
             size="sm"
             className="page-nav-size"
             value={String(meta.size)}
-            options={PAGE_SIZES.map((size) => ({
+            options={sizes.map((size) => ({
               value: String(size),
               label: t.pageSizeOption(size),
             }))}
-            onChange={(value) => onChangeSize(Number(value) as PageSize)}
+            onChange={(value) => {
+              const size = sizes.find((option) => String(option) === value);
+              if (size !== undefined) onChangeSize(size);
+            }}
           />
         )}
       </div>

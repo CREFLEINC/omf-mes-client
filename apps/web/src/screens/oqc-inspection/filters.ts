@@ -1,3 +1,8 @@
+import {
+  type InspectionHubStatus,
+  toInspectionHubStatus,
+} from '../../patterns/inspection-hub-counts';
+
 /**
  * 좌측 검사 대상 목록의 조회 조건 — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를
  * 내려면 화면 상태가 아니라 주소가 조건을 들고 있어야 한다.
@@ -36,6 +41,7 @@ export const URL_KEYS = {
   itemId: 'it',
   keyword: 'q',
   pendingOnly: 'pd',
+  status: 'st',
   page: 'page',
   selected: 'ir',
 } as const;
@@ -89,13 +95,53 @@ export interface QueueFilters {
   keyword: string;
   /** 「대기·진행만 보기」. **기본이 켜짐이라 꺼졌을 때만 주소에 적는다** */
   pendingOnly: boolean;
+  /** 탭 줄 상태 칩(#185) — 한 상태만 남긴다. 비면 거르지 않는다. */
+  statusCode: InspectionHubStatus | null;
+}
+
+/** 칩으로 거르는 상태 — 대기·진행·완료. */
+export const QUEUE_STATUSES: readonly InspectionHubStatus[] = [
+  'REQUESTED',
+  'IN_PROGRESS',
+  'COMPLETED',
+];
+
+const COMPLETED = 'COMPLETED';
+
+/** 상태 칩과 「대기·진행만 보기」를 함께 가진 조건 — IQC · OQC 가 같은 규칙을 쓴다(#185). */
+export interface StatusFilters {
+  pendingOnly: boolean;
+  statusCode: InspectionHubStatus | null;
 }
 
 export const EMPTY_FILTERS: QueueFilters = {
   itemId: null,
   keyword: '',
   pendingOnly: PENDING_ONLY_DEFAULT,
+  statusCode: null,
 };
+
+/**
+ * 칩을 건다. **「완료」는 「대기·진행만 보기」를 함께 끈다** — 서버가 두 조건을 AND 로 묶어 그대로 두면
+ * 늘 빈 목록이 된다. 끈 것이 조건 줄의 체크칸에 그대로 보인다.
+ */
+export const withStatus = <F extends StatusFilters>(
+  filters: F,
+  statusCode: InspectionHubStatus | null,
+): F => ({
+  ...filters,
+  statusCode,
+  pendingOnly: statusCode === COMPLETED ? false : filters.pendingOnly,
+});
+
+/**
+ * 조건 줄의 조회 — 칩은 그대로 둔다. 단 「대기·진행만 보기」를 다시 켜면 「완료」 칩은 푼다(같은 AND 이유).
+ */
+export const withDraft = <F extends StatusFilters>(filters: F, next: Omit<F, 'statusCode'>): F =>
+  ({
+    ...next,
+    statusCode: next.pendingOnly && filters.statusCode === COMPLETED ? null : filters.statusCode,
+  }) as F;
 
 /**
  * 주소에서 조건을 읽는다.
@@ -107,6 +153,7 @@ export const readFilters = (params: URLSearchParams): QueueFilters => ({
   itemId: readIdentifier(params.get(URL_KEYS.itemId)),
   keyword: params.get(URL_KEYS.keyword) ?? '',
   pendingOnly: params.get(URL_KEYS.pendingOnly) !== PENDING_ONLY_OFF,
+  statusCode: toInspectionHubStatus(params.get(URL_KEYS.status), QUEUE_STATUSES),
 });
 
 /** 서버로 보내는 질의. **비어 있는 조건은 키 자체를 싣지 않는다** — 빈 문자열은 조건이 아니다. */
@@ -117,6 +164,8 @@ export interface QueueListQuery {
   /** PQC 목록(#135)의 작업지시 검색이 싣는다. OQC 화면은 쓰지 않는다. */
   workOrderId?: number;
   q?: string;
+  /** 탭 줄 상태 칩(#185). */
+  statusCode?: string;
   page: number;
   size: number;
 }
@@ -137,6 +186,7 @@ export const toListQuery = (filters: QueueFilters, page: number): QueueListQuery
 
   if (filters.itemId !== null) query.itemId = filters.itemId;
   if (filters.keyword !== '') query.q = filters.keyword;
+  if (filters.statusCode !== null) query.statusCode = filters.statusCode;
 
   return query;
 };
@@ -160,6 +210,7 @@ export const toSearchParams = (
   if (filters.keyword !== '') params.set(URL_KEYS.keyword, filters.keyword);
   /* 기본값(켜짐)은 적지 않는다 — 적으면 주소가 길어지고 「끈 사람」과 구분되지 않는다. */
   if (!filters.pendingOnly) params.set(URL_KEYS.pendingOnly, PENDING_ONLY_OFF);
+  if (filters.statusCode !== null) params.set(URL_KEYS.status, filters.statusCode);
   if (page !== FIRST_PAGE) params.set(URL_KEYS.page, String(page));
 
   return params;

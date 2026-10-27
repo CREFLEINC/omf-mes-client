@@ -19,8 +19,8 @@ export type NotificationRowProps = NotificationCardProps;
  * ⭐ **링크다 — 버튼이 아니다.** 이 수단이 하는 일은 **다른 화면으로 가는 것**이고, 링크로
  * 두면 새 창으로 열기·주소 복사가 되고 보조 기술이 「어디로 가는가」를 읽는다. 저장소의
  * 화면 간 이동에는 두 꼴이 다 있다 — 명령형 이동(`useNavigate`)과 **라우터 `<Link>`**이며,
- * 후자의 전례가 둘이다(`stocktaking/result-pane.tsx` · `over-receipt-split/created-receipts-pane.tsx`).
- * **뒤엣것이 이 화면과 구조가 같다**(목록의 각 줄이 자기 대상으로 가는 링크를 든다).
+ * 후자의 전례가 둘이었다(`stocktaking/result-pane.tsx` · 옛 `over-receipt-split/created-receipts-pane.tsx` —
+ * 뒤엣것은 2026-10 화면과 함께 지웠다). **뒤엣것이 이 화면과 구조가 같았다**(목록의 각 줄이 자기 대상으로 가는 링크를 든다).
  * 디자인 시스템 `Button`에는 주소를 실을 자리가 없어(실측 — `ButtonHTMLAttributes`뿐) 그것을
  * 링크로 쓸 수 없고, 전례 둘도 **DS를 쓰지 않고 맨 `<Link>`**를 세운다.
  *

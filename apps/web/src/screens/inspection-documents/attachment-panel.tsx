@@ -1,4 +1,13 @@
-import { Button, IconButton, Table, type Column } from '@crefle/web-ui';
+import {
+  Button,
+  Dialog,
+  EmptyState,
+  Icon,
+  IconButton,
+  SearchInput,
+  Table,
+  type Column,
+} from '@crefle/web-ui';
 import {
   createIdempotencyKey,
   type AttachmentTargetType,
@@ -6,11 +15,19 @@ import {
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useClientPage } from '../../patterns/client-page';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { FilterChips } from '../../patterns/filter-chips';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { PageNav } from '../../patterns/page-nav';
 import { runRequest } from '../../patterns/request';
+
+import { uniqueNames, zipStore } from './zip-store';
 
 type Attachment = components['schemas']['Attachment'];
 type AttachmentUpload = NonNullable<
@@ -42,15 +59,68 @@ const formatAt = (iso: string): string => {
   return `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
 };
 
+/** 파일 유형 — 확장자를 대문자로(PDF · XLSX …). 확장자가 없으면 서버가 준 형식(image/png 등)이다. */
+const fileTypeOf = (row: Attachment): string => {
+  const dot = row.fileName.lastIndexOf('.');
+  return dot < 0 ? row.contentType : row.fileName.slice(dot + 1).toUpperCase();
+};
+
+/** 표 부품(`Table selectable`)이 첫 열에 그리는 선택 체크칸의 폭(px). */
+const SELECT_COLUMN_WIDTH = 48;
+
+/** 파일 유형 묶음 — 거르기 칩이 쓴다(#185). */
+const FILE_KINDS = ['image', 'pdf', 'excel', 'word', 'other'] as const;
+type FileKind = (typeof FILE_KINDS)[number];
+const KIND_EXTENSIONS: Record<Exclude<FileKind, 'other'>, readonly string[]> = {
+  image: ['PNG', 'JPG', 'JPEG', 'WEBP'],
+  pdf: ['PDF'],
+  excel: ['XLSX', 'XLS', 'CSV'],
+  word: ['DOCX', 'DOC'],
+};
+const kindOf = (row: Attachment): FileKind => {
+  const type = fileTypeOf(row);
+  return (
+    FILE_KINDS.find((kind) => kind !== 'other' && KIND_EXTENSIONS[kind].includes(type)) ?? 'other'
+  );
+};
+
 export const attachmentKeys = {
   list: (targetTypeCode: AttachmentTargetType, targetId: number) =>
     ['inspection-documents', targetTypeCode, targetId] as const,
+};
+
+/** 대상의 첨부 목록 — 탭 이름의 건수(#185)도 같은 조회(같은 캐시)를 쓴다. */
+export const useAttachments = (
+  targetTypeCode: AttachmentTargetType,
+  targetId: number,
+  enabled = true,
+) => {
+  const { client } = useApiClient();
+  return useQuery({
+    enabled,
+    queryKey: attachmentKeys.list(targetTypeCode, targetId),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/attachments', { params: { query: { targetTypeCode, targetId } } }),
+      ).then((response) => response.items),
+  });
 };
 
 export interface AttachmentPanelProps {
   /** 붙일 대상 — 검사 문서는 LOT 또는 검사 결과(서버 선행 P-57). */
   targetTypeCode: 'LOT' | 'INSPECTION_RESULT';
   targetId: number;
+  /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-27 · #185). */
+  scrollX?: boolean;
+  /** 10 · 20 · 50건씩 쪽으로 나눈다(IQC 상세 탭 · 사용자 지시 2026-10-27 · #185). */
+  paged?: boolean;
+  /** 왼쪽 체크란으로 골라 zip 하나로 내려받는다(IQC 상세 탭 · 사용자 지시 2026-10-27 · #185). */
+  bulkDownload?: boolean;
+  /**
+   * 주면 위 한 줄에 이것(형식 안내 등)과 [파일 선택] [업로드]를 오른쪽 끝에 세우고, 그 아래 파일명 찾기 · 유형 칩 ·
+   * [선택 파일 내려받기]를 둔다(IQC 상세 탭 · 사용자 지시 2026-10-27 · #185). 없으면 종전처럼 단추가 표 아래다.
+   */
+  toolbarStart?: ReactNode;
 }
 
 /**
@@ -66,21 +136,34 @@ export interface AttachmentPanelProps {
  * 여러 파일을 한 번에 고르고 올린다(omf-all-around#133) — 서버는 요청 하나에 한 파일이라 고른 순서대로 하나씩
  * 보낸다. 올라간 파일은 목록에서 바로 빠지므로, 중간에 실패하면 남은 파일만 다시 올리면 된다(중복 없음).
  */
-export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelProps) => {
+export const AttachmentPanel = ({
+  targetTypeCode,
+  targetId,
+  scrollX = false,
+  paged = false,
+  bulkDownload = false,
+  toolbarStart,
+}: AttachmentPanelProps) => {
   const { client } = useApiClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<File[]>([]);
+  const [checkedIds, setCheckedIds] = useState<string[]>([]);
+  /* 묶는 중인 내려받기 — 선택 파일(`checked`) · 전체 파일(`all`) · 없음. */
+  const [zipping, setZipping] = useState<'checked' | 'all' | null>(null);
+  const [search, setSearch] = useState('');
+  const [kind, setKind] = useState<FileKind | null>(null);
+  /* 미리보기(#185) — 이미지 · PDF · 글(TXT · CSV)은 창 안에서 보이고, 그 밖은 내려받기만 권한다. */
+  const [preview, setPreview] = useState<{
+    row: Attachment;
+    blob: Blob | null;
+    url: string | null;
+    text: string | null;
+  } | null>(null);
   const queryClient = useQueryClient();
   const listKey = attachmentKeys.list(targetTypeCode, targetId);
 
-  const list = useQuery({
-    queryKey: attachmentKeys.list(targetTypeCode, targetId),
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/app/attachments', { params: { query: { targetTypeCode, targetId } } }),
-      ).then((response) => response.items),
-  });
+  const list = useAttachments(targetTypeCode, targetId);
 
   /* 파일마다 따로 보내고 따로 멱등 키를 쓴다 — 한 키로 여러 파일을 보내면 서버가 뒤 파일을 앞의 중복으로 본다. */
   const send = (file: File) => {
@@ -145,75 +228,285 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
 
   const hasSelectError = selected.some((file) => precheck(file) !== null);
 
+  const contentOf = async (row: Attachment): Promise<Blob> =>
+    (await runRequest(() =>
+      client.GET('/app/attachments/{attachmentId}/content', {
+        params: { path: { attachmentId: row.attachmentId } },
+        parseAs: 'blob',
+      }),
+    )) as Blob;
+
+  const save = (blob: Blob, fileName: string): void => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   /** PDF 는 새 탭에서 바로 열고, 그 밖은 내려받는다. 받지 못하면 그 사실을 알린다. */
   const open = async (row: Attachment): Promise<void> => {
     setNotice(null);
     try {
-      const blob = (await runRequest(() =>
-        client.GET('/app/attachments/{attachmentId}/content', {
-          params: { path: { attachmentId: row.attachmentId } },
-          parseAs: 'blob',
-        }),
-      )) as Blob;
-      const url = URL.createObjectURL(blob);
-      if (blob.type === 'application/pdf' && window.open(url, '_blank') !== null) {
-        // 새 탭이 다 읽기 전에 주소를 풀면 빈 화면이 된다 — 넉넉히 기다렸다 푼다.
-        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-        return;
+      const blob = await contentOf(row);
+      if (blob.type === 'application/pdf') {
+        const url = URL.createObjectURL(blob);
+        if (window.open(url, '_blank') !== null) {
+          // 새 탭이 다 읽기 전에 주소를 풀면 빈 화면이 된다 — 넉넉히 기다렸다 푼다.
+          window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+          return;
+        }
+        URL.revokeObjectURL(url);
       }
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = row.fileName;
-      link.click();
-      URL.revokeObjectURL(url);
+      save(blob, row.fileName);
     } catch {
       setNotice(t.openFailed);
     }
   };
 
-  const columns: Column<Attachment>[] = [
+  /*
+   * 미리보기 요청 차례 — 불러오는 중에 창을 닫거나 다른 파일을 열면 앞 요청의 늦은 결과를 버린다(닫은 창이 다시 뜨지
+   * 않고, 만든 임시 주소도 남기지 않는다).
+   */
+  const previewTurn = useRef(0);
+
+  const openPreview = async (row: Attachment): Promise<void> => {
+    const turn = ++previewTurn.current;
+    setNotice(null);
+    setPreview({ row, blob: null, url: null, text: null });
+    try {
+      const blob = await contentOf(row);
+      const isText = blob.type.startsWith('text/') || /\.(txt|csv)$/i.test(row.fileName);
+      const text = isText ? await blob.text() : null;
+      if (turn !== previewTurn.current) return;
+      setPreview({ row, blob, url: isText ? null : URL.createObjectURL(blob), text });
+    } catch {
+      if (turn !== previewTurn.current) return;
+      setPreview(null);
+      setNotice(t.openFailed);
+    }
+  };
+
+  const closePreview = (): void => {
+    previewTurn.current += 1;
+    if (preview?.url != null) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+  };
+
+  const previewLoadingId = useId();
+  const previewBody = (): ReactNode => {
+    if (preview === null || preview.blob === null) {
+      return (
+        <p id={previewLoadingId} className="field-note">
+          {t.previewLoading}
+        </p>
+      );
+    }
+    if (preview.text !== null) {
+      return <pre className="inspection-documents-preview-text">{preview.text}</pre>;
+    }
+    if (preview.url !== null && preview.blob.type.startsWith('image/')) {
+      return (
+        <img
+          className="inspection-documents-preview-image"
+          src={preview.url}
+          alt={preview.row.fileName}
+        />
+      );
+    }
+    if (preview.url !== null && preview.blob.type === 'application/pdf') {
+      return (
+        <iframe
+          className="inspection-documents-preview-frame"
+          src={preview.url}
+          title={t.preview(preview.row.fileName)}
+        />
+      );
+    }
+    return <p className="field-note">{t.previewUnsupported}</p>;
+  };
+
+  /* 체크한 파일을 차례로 받아 zip 하나로 묶어 내려받는다(#185). 지금 목록에 없는 체크는 버린다. */
+  const checkedRows = (list.data ?? []).filter((row) =>
+    checkedIds.includes(String(row.attachmentId)),
+  );
+  /* 전체 파일 내려받기는 거르기와 관계없이 이 LOT 의 첨부 전부다(사용자 지시 2026-10-27 · #185). */
+  const downloadZip = async (scope: 'checked' | 'all'): Promise<void> => {
+    const rows = scope === 'checked' ? checkedRows : (list.data ?? []);
+    setNotice(null);
+    setZipping(scope);
+    try {
+      const names = uniqueNames(rows.map((row) => row.fileName));
+      const files = [];
+      for (const [index, row] of rows.entries()) {
+        files.push({
+          name: names[index] as string,
+          data: new Uint8Array(await (await contentOf(row)).arrayBuffer()),
+        });
+      }
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-');
+      save(zipStore(files), `${t.zipName}-${stamp}.zip`);
+    } catch {
+      setNotice(t.zipFailed);
+    } finally {
+      setZipping(null);
+    }
+  };
+
+  /*
+   * 등록자 이름 — 첨부는 등록자 번호만 준다. 사용자 목록으로 이름을 풀고, 못 풀면(권한 · 실패) 「—」다.
+   * 첨부가 하나라도 있을 때만 부른다.
+   */
+  const hasUploader = (list.data ?? []).some((row) => row.uploadedBy != null);
+  const users = useQuery({
+    queryKey: ['inspection-documents', 'users'],
+    queryFn: () => runRequest(() => client.GET('/app/users', { params: { query: {} } })),
+    enabled: hasUploader,
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+  const userNameOf = (id: number | null | undefined): string =>
+    (id == null ? undefined : users.data?.items.find((user) => user.appUserId === id)?.userName) ??
+    t.emptyValue;
+
+  /* 목록 표와 같은 열 구성 규칙(사용자 지시 2026-10-26 · #185) — 파일명만 왼쪽, 나머지는 가운데. */
+  const baseColumns: Column<Attachment>[] = [
     {
       key: 'fileName',
       header: t.columns.fileName,
-      width: '60%',
-      /* 긴 이름은 말줄임 — 전체 이름은 마우스를 올리면 보인다(#133). */
+      width: '280px',
+      /*
+       * 파일명 바로 옆에 내려받기 단추 — 따로 「관리」 열을 두지 않는다. 이름을 누르면 미리보기다 —
+       * 내려받기는 단추로만 한다(사용자 지시 2026-10-27 · #185).
+       */
       render: (row) => (
-        <Button
-          variant="text"
-          size="sm"
-          className="inspection-documents-file-name"
-          title={row.fileName}
-          onClick={() => void open(row)}
-        >
-          {row.fileName}
-        </Button>
+        <span className="inspection-documents-file-cell">
+          <Button
+            variant="text"
+            size="sm"
+            className="inspection-documents-file-name"
+            title={row.fileName}
+            aria-label={t.preview(row.fileName)}
+            onClick={() => void openPreview(row)}
+          >
+            {row.fileName}
+          </Button>
+          <IconButton
+            icon="download"
+            size="sm"
+            aria-label={t.download(row.fileName)}
+            title={t.download(row.fileName)}
+            onClick={() => void open(row)}
+          />
+        </span>
       ),
     },
-    { key: 'size', header: t.columns.size, align: 'end', render: (row) => sizeText(row.byteSize) },
-    { key: 'uploadedAt', header: t.columns.uploadedAt, render: (row) => formatAt(row.uploadedAt) },
+    {
+      key: 'fileType',
+      header: t.columns.fileType,
+      width: '96px',
+      align: 'center',
+      render: fileTypeOf,
+    },
+    {
+      key: 'size',
+      header: t.columns.size,
+      width: '96px',
+      align: 'center',
+      render: (row) => sizeText(row.byteSize),
+    },
+    {
+      key: 'uploadedBy',
+      header: t.columns.uploadedBy,
+      width: '120px',
+      align: 'center',
+      render: (row) => userNameOf(row.uploadedBy),
+    },
+    {
+      key: 'uploadedAt',
+      header: t.columns.uploadedAt,
+      width: '150px',
+      align: 'center',
+      /* 오름 · 내림차순(사용자 지시 2026-10-27 · #185). */
+      sortable: true,
+      sortAccessor: (row) => row.uploadedAt,
+      render: (row) => formatAt(row.uploadedAt),
+    },
   ];
+  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다 — 상자 폭에 맞춘다. */
+  const ordered = useColumnOrder('omf-mes:inspection-documents:columns:order', baseColumns);
+  const resizable = useColumnWidths('omf-mes:inspection-documents:columns', ordered, {
+    fitContent: scrollX,
+  });
+  /* 선택 체크칸(표 부품이 그리는 48px)은 열 목록 밖이라 상자 폭에서 빼고 맞춘다 — 빼지 않으면 마지막 열이 넘쳐 가린다. */
+  const fit = useFitColumns(resizable.columns, {
+    scrollX,
+    reserve: bulkDownload ? SELECT_COLUMN_WIDTH : 0,
+  });
+  /* 파일명 찾기 · 유형 칩으로 거른 뒤 정렬 · 쪽 나누기(#185). 칩의 건수는 거르기 전 전체에서 센다. */
+  const all = list.data ?? [];
+  const keyword = search.trim().toLowerCase();
+  const filtered = all.filter(
+    (row) =>
+      (kind === null || kindOf(row) === kind) &&
+      (keyword === '' || row.fileName.toLowerCase().includes(keyword)),
+  );
+  const paging = useClientPage(filtered, { uploadedAt: (row) => row.uploadedAt });
+  const hasToolbar = toolbarStart !== undefined;
 
-  return (
-    /* 제목과 허용 형식 안내는 이 구획을 접는 줄(부르는 화면)이 맡는다(#133). */
-    <section aria-label={t.heading} className="inspection-documents">
-      {list.isError ? (
-        <p className="field-note">{t.loadFailed}</p>
-      ) : (
-        /* 올린 파일이 없어도 표 모양은 그대로 두고 줄 안에 없다고 적는다(#133). */
-        <Table
-          caption={t.caption}
-          density="compact"
-          columns={columns}
-          rows={list.data ?? []}
-          getRowId={(row) => String(row.attachmentId)}
-          empty={<p className="field-note">{list.isPending ? t.loading : t.none}</p>}
-        />
-      )}
-      <SaveErrorBanner error={upload.error} />
-      {upload.fieldErrors.file !== undefined && (
-        <p className="field-note">{upload.fieldErrors.file}</p>
-      )}
-      {notice !== null && <p className="field-note">{notice}</p>}
+  /* 위 도구줄의 단추는 작게(사용자 지시 2026-10-27 · #185). 종전 배치는 그대로다. */
+  const buttonSize = toolbarStart === undefined ? 'md' : 'sm';
+  const uploadButtons = (
+    <>
+      <Button
+        variant="outlined"
+        size={buttonSize}
+        disabled={upload.isSaving}
+        onClick={() => inputRef.current?.click()}
+      >
+        {t.upload}
+      </Button>
+      <Button
+        size={buttonSize}
+        loading={upload.isSaving}
+        disabled={selected.length === 0 || hasSelectError || upload.isSaving}
+        onClick={() => upload.write({ files: selected })}
+      >
+        {upload.isSaving
+          ? t.uploading
+          : selected.length > 1
+            ? t.submitCount(selected.length)
+            : t.submit}
+      </Button>
+    </>
+  );
+  const downloadCheckedButton = (
+    <div className="inspection-documents-bulk">
+      <Button
+        variant="outlined"
+        size={buttonSize}
+        leadingIcon={<Icon name="download" size={16} aria-hidden />}
+        loading={zipping === 'checked'}
+        disabled={checkedRows.length === 0 || zipping !== null}
+        onClick={() => void downloadZip('checked')}
+      >
+        {zipping === 'checked' ? t.downloading : t.downloadSelected(checkedRows.length)}
+      </Button>
+      <Button
+        variant="outlined"
+        size={buttonSize}
+        leadingIcon={<Icon name="download" size={16} aria-hidden />}
+        loading={zipping === 'all'}
+        disabled={(list.data ?? []).length === 0 || zipping !== null}
+        onClick={() => void downloadZip('all')}
+      >
+        {zipping === 'all' ? t.downloading : t.downloadAll((list.data ?? []).length)}
+      </Button>
+    </div>
+  );
+  const pendingList = (
+    <>
       {selected.length > 0 && (
         /* 업로드 대기 — 이미 올린 문서(위 표)와 다른 상자로 떼어 «아직 올라가지 않았음»을 보인다(#133). */
         <div className="inspection-documents-selected-list" aria-label={t.selected} role="group">
@@ -244,6 +537,92 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
           })}
         </div>
       )}
+    </>
+  );
+
+  return (
+    /* 제목과 허용 형식 안내는 이 구획을 접는 줄(부르는 화면)이 맡는다(#133). */
+    <section aria-label={t.heading} className="inspection-documents">
+      {hasToolbar && (
+        <>
+          <div className="inspection-documents-toolbar">
+            {toolbarStart}
+            <div className="inspection-documents-toolbar-actions">{uploadButtons}</div>
+          </div>
+          {pendingList}
+          {/* 등록된 첨부가 없으면 찾기 · 유형 칩 · 내려받기를 두지 않는다 — 표만(사용자 지시 2026-10-27 · #185). */}
+          {all.length > 0 && (
+            <>
+              <div className="inspection-documents-filters">
+                <SearchInput
+                  size="sm"
+                  aria-label={t.search}
+                  placeholder={t.searchPlaceholder}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  onClear={() => setSearch('')}
+                  clearLabel={messages.common.clear}
+                />
+                {bulkDownload && downloadCheckedButton}
+              </div>
+              {/* 유형 칩은 찾기 칸 아래 줄(사용자 지시 2026-10-27 · #185). */}
+              <FilterChips
+                label={t.kindLabel}
+                options={[null, ...FILE_KINDS].map((option) => ({
+                  value: option,
+                  label: t.kinds[option ?? 'all'],
+                }))}
+                value={kind}
+                countOf={(option) =>
+                  option === null ? all.length : all.filter((row) => kindOf(row) === option).length
+                }
+                onChange={(next) => setKind(next as FileKind | null)}
+              />
+            </>
+          )}
+        </>
+      )}
+      {list.isError ? (
+        <p className="field-note">{t.loadFailed}</p>
+      ) : (
+        /* 올린 파일이 없어도 표 모양은 그대로 두고 줄 안에 없다고 적는다(#133). */
+        <div ref={fit.ref} className="inspection-queue-table" style={resizable.style}>
+          <Table
+            caption={t.caption}
+            density="compact"
+            columns={fit.columns}
+            rows={paged ? paging.rows : all}
+            {...(paged ? { sort: paging.sort, onSortChange: paging.onSortChange } : {})}
+            {...(bulkDownload
+              ? {
+                  selectable: true,
+                  selectedIds: checkedRows.map((row) => String(row.attachmentId)),
+                  onSelectionChange: setCheckedIds,
+                }
+              : {})}
+            getRowId={(row) => String(row.attachmentId)}
+            empty={
+              list.isPending ? (
+                <p className="field-note">{t.loading}</p>
+              ) : (
+                <EmptyState
+                  size="sm"
+                  icon={<Icon name="contract_delete" size={32} />}
+                  title={t.emptyTitle}
+                  description={t.emptyHint}
+                />
+              )
+            }
+          />
+        </div>
+      )}
+      {paged && paging.nav !== null && <PageNav {...paging.nav} />}
+      <SaveErrorBanner error={upload.error} />
+      {upload.fieldErrors.file !== undefined && (
+        <p className="field-note">{upload.fieldErrors.file}</p>
+      )}
+      {notice !== null && <p className="field-note">{notice}</p>}
+      {!hasToolbar && pendingList}
       <input
         ref={inputRef}
         type="file"
@@ -253,28 +632,40 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
         aria-label={t.upload}
         onChange={pick}
       />
-      <div className="form-actions">
-        <Button
-          variant="outlined"
-          size="md"
-          disabled={upload.isSaving}
-          onClick={() => inputRef.current?.click()}
-        >
-          {t.upload}
-        </Button>
-        <Button
-          size="md"
-          loading={upload.isSaving}
-          disabled={selected.length === 0 || hasSelectError || upload.isSaving}
-          onClick={() => upload.write({ files: selected })}
-        >
-          {upload.isSaving
-            ? t.uploading
-            : selected.length > 1
-              ? t.submitCount(selected.length)
-              : t.submit}
-        </Button>
-      </div>
+      {!hasToolbar && (
+        <div className="form-actions">
+          {bulkDownload && downloadCheckedButton}
+          {uploadButtons}
+        </div>
+      )}
+      <Dialog
+        open={preview !== null}
+        onClose={closePreview}
+        size="lg"
+        title={preview?.row.fileName}
+        /* 닫기는 아래 [닫기] 단추로(사용자 지시 2026-10-27 · #185). Esc · 바깥 누르기도 닫는다. */
+        showCloseButton={false}
+        footer={
+          <>
+            <Button variant="text" size="md" onClick={closePreview}>
+              {t.previewClose}
+            </Button>
+            <Button
+              size="md"
+              disabled={preview?.blob == null}
+              /* 꺼진 동안은 불러오는 중이라는 안내와 잇는다(C-4). */
+              aria-describedby={preview?.blob == null ? previewLoadingId : undefined}
+              onClick={() => {
+                if (preview?.blob != null) save(preview.blob, preview.row.fileName);
+              }}
+            >
+              {t.previewDownload}
+            </Button>
+          </>
+        }
+      >
+        <div className="inspection-documents-preview">{previewBody()}</div>
+      </Dialog>
     </section>
   );
 };
