@@ -25,27 +25,28 @@ const lotNumbers: NameLookup = {
 };
 
 describe('RequestDetailPane', () => {
-  it('스펙이 정한 여섯 항목과 검사 수준(#133)을 보인다', () => {
+  it('필요한 항목과 검사 수준(#133)을 보인다 — 검사 유형 · 총 검사 수량은 다른 자리에 있어 뺀다(#185)', () => {
     renderWithProviders(
       <RequestDetailPane
         detail={toInspectionRequestDetail(waitingRequest)}
-        uomCode={null}
         itemNames={itemNames}
         lotNumbers={lotNumbers}
         levelSlot={<span>보통</span>}
       />,
     );
 
-    for (const label of Object.values(t.fields)) {
+    const { inspectionTypeCode, targetQty, ...shown } = t.fields;
+    for (const label of Object.values(shown)) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
+    expect(screen.queryByText(inspectionTypeCode)).not.toBeInTheDocument();
+    expect(screen.queryByText(targetQty)).not.toBeInTheDocument();
   });
 
   it('검사기준 버전을 감추지 않는다 — 검사 시점에 고정되는 값이다', () => {
     renderWithProviders(
       <RequestDetailPane
         detail={toInspectionRequestDetail(waitingRequest)}
-        uomCode={null}
         itemNames={itemNames}
         lotNumbers={lotNumbers}
       />,
@@ -59,7 +60,6 @@ describe('RequestDetailPane', () => {
     renderWithProviders(
       <RequestDetailPane
         detail={toInspectionRequestDetail(waitingRequest)}
-        uomCode={null}
         itemNames={itemNames}
         lotNumbers={lotNumbers}
       />,
@@ -73,7 +73,6 @@ describe('RequestDetailPane', () => {
     renderWithProviders(
       <RequestDetailPane
         detail={toInspectionRequestDetail(requestWithoutLot)}
-        uomCode={null}
         itemNames={itemNames}
         lotNumbers={lotNumbers}
       />,
@@ -90,7 +89,6 @@ describe('RequestDetailPane', () => {
     renderWithProviders(
       <RequestDetailPane
         detail={toInspectionRequestDetail(requestWithoutPlanVersion)}
-        uomCode={null}
         itemNames={itemNames}
         lotNumbers={lotNumbers}
       />,
@@ -100,40 +98,10 @@ describe('RequestDetailPane', () => {
     expect(screen.queryByText(messages.iqcInspection.queue.emptyValue)).not.toBeInTheDocument();
   });
 
-  it('검사수량 옆에 단위 코드를 붙이고, 모르면 숫자만 둔다', () => {
-    const { unmount } = renderWithProviders(
-      <RequestDetailPane
-        detail={toInspectionRequestDetail(waitingRequest)}
-        uomCode="EA"
-        itemNames={itemNames}
-        lotNumbers={lotNumbers}
-      />,
-    );
-
-    expect(screen.getByText(`${String(waitingRequest.targetQty)} EA`)).toBeInTheDocument();
-    unmount();
-
-    renderWithProviders(
-      <RequestDetailPane
-        detail={toInspectionRequestDetail(waitingRequest)}
-        uomCode={null}
-        itemNames={itemNames}
-        lotNumbers={lotNumbers}
-      />,
-    );
-    expect(screen.getByText(String(waitingRequest.targetQty))).toBeInTheDocument();
-  });
-
-  /**
-   * ⛔ **내부 번호를 화면에 내지 않는다**(`omf-mes#44`). 이 두 칸은 종전에 `itemId`·`lotId` 를
-   * 그대로 찍어 「품목 12588」·「대상 LOT 45」가 나왔다 — 검사자가 **무엇을 검사하는지**
-   * 화면에서 알 수 없었다(omf-all-around#40).
-   */
   it('품목과 대상 LOT 을 사람이 읽는 말로 내고 내부 번호는 어디에도 없다', () => {
     const { container } = renderWithProviders(
       <RequestDetailPane
         detail={toInspectionRequestDetail(waitingRequest)}
-        uomCode={null}
         itemNames={itemNames}
         lotNumbers={lotNumbers}
       />,
@@ -154,7 +122,6 @@ describe('RequestDetailPane', () => {
     renderWithProviders(
       <RequestDetailPane
         detail={toInspectionRequestDetail(requestWithoutLot)}
-        uomCode={null}
         itemNames={itemNames}
         lotNumbers={lotNumbers}
       />,
@@ -171,7 +138,6 @@ describe('RequestDetailPane', () => {
     renderWithProviders(
       <RequestDetailPane
         detail={toInspectionRequestDetail(waitingRequest)}
-        uomCode={null}
         itemNames={resolved}
         lotNumbers={lotNumbers}
       />,

@@ -12,12 +12,18 @@ const t = messages.oqcInspection.filters;
 const renderBar = (appliedFilters = EMPTY_FILTERS) => {
   const onSearch = vi.fn();
   const onReset = vi.fn();
+  const onTogglePendingOnly = vi.fn();
 
   renderWithProviders(
-    <QueueFilterBar appliedFilters={appliedFilters} onSearch={onSearch} onReset={onReset} />,
+    <QueueFilterBar
+      appliedFilters={appliedFilters}
+      onSearch={onSearch}
+      onTogglePendingOnly={onTogglePendingOnly}
+      onReset={onReset}
+    />,
   );
 
-  return { onSearch, onReset };
+  return { onSearch, onReset, onTogglePendingOnly };
 };
 
 describe('QueueFilterBar', () => {
@@ -30,13 +36,13 @@ describe('QueueFilterBar', () => {
     expect(screen.queryByLabelText(/기간/)).not.toBeInTheDocument();
   });
 
-  it('토글을 끄고 조회하면 그 값이 조건으로 나간다', async () => {
-    const { onSearch } = renderBar();
+  it('토글을 끄면 조회를 누르지 않아도 바로 조건으로 나간다(#185)', async () => {
+    const { onSearch, onTogglePendingOnly } = renderBar();
 
     await userEvent.click(screen.getByRole('checkbox', { name: t.pendingOnly }));
-    await userEvent.click(screen.getByRole('button', { name: t.apply }));
 
-    expect(onSearch).toHaveBeenCalledWith({ itemId: null, keyword: '', pendingOnly: false });
+    expect(onTogglePendingOnly).toHaveBeenCalledWith(false);
+    expect(onSearch).not.toHaveBeenCalled();
   });
 
   it('품목은 번호를 치지 않고 검색 창에서 고른다 — 칸에 글자를 넣을 수 없다(#136)', async () => {

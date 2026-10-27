@@ -342,21 +342,26 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     ).toBeInTheDocument();
   });
 
-  it('목록으로 돌아갈 때 저장하지 않은 입력이 있으면 한 번 묻는다(#135)', async () => {
+  it('상세를 닫을 때 저장하지 않은 입력이 있으면 한 번 묻는다(#135 · #185)', async () => {
     const user = userEvent.setup();
     renderScreen();
     const pane = await openRequest(user);
 
     await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '1');
-    await user.click(screen.getByRole('button', { name: t.detail.backToList }));
+    await user.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.closeDetail }),
+    );
     expect(await screen.findByText(t.detail.leaveUnsaved)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.detail.keepEditing }));
     expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('1');
 
-    await user.click(screen.getByRole('button', { name: t.detail.backToList }));
+    await user.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.closeDetail }),
+    );
     await user.click(await screen.findByRole('button', { name: t.detail.leaveAnyway }));
-    expect(await screen.findByText(REQUEST.inspectionRequestNo)).toBeInTheDocument();
+    /* 상세가 닫히고 고르기 안내가 선다 — 목록은 옆에 그대로다(#185). */
+    expect(await screen.findByText(messages.common.inspectionHub.pickRequest)).toBeInTheDocument();
   });
 
   it('검사 수량 입력 제목 줄에 총 검사 수량을 보인다(#135)', async () => {

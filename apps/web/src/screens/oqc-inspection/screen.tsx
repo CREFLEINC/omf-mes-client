@@ -6,9 +6,22 @@ import { useSearchParams } from 'react-router';
 import { useOaAccess } from '../../patterns/oa-access';
 import { toApiError } from '../../patterns/request';
 import { usePageHub } from '../../patterns/page-hub';
+import {
+  InspectionHubCounts,
+  type InspectionHubStatus,
+} from '../../patterns/inspection-hub-counts';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { CODE_GROUPS, labelOfCode, toCodeOptions } from './code-options';
 import {
   EMPTY_FILTERS,
+  QUEUE_STATUSES,
+  withDraft,
+  withStatus,
   readFilters,
   readPage,
   readSelectedId,
@@ -73,6 +86,7 @@ import { targetSignatureOf, type WriteTargetSignature } from './write-target';
  */
 
 const t = messages.oqcInspection;
+const hubText = messages.common.inspectionHub;
 /** 불합격 판정 코드 — 불합격 사유(선택) 칸을 세우고 비고로 싣는 기준(#136 · `judgment-direction.ts` 와 같은 값). */
 const REJECTED = 'REJECTED';
 const referenceT = messages.common.reference;
@@ -262,7 +276,20 @@ export const OqcInspectionScreen = () => {
    * 수 있다. 두 일을 `toSearchParams` 가 한 자리에서 한다.
    */
   const applyFilters = (next: QueueFilters): void => {
-    setSearchParams(toSearchParams(next));
+    /* 상세가 목록 옆에 열려 있으면 그대로 둔다(#185) — 조회 한 번에 쓰던 판정 입력이 사라지지 않게. */
+    const params = toSearchParams(next);
+    if (selectedId !== null) params.set(URL_KEYS.selected, String(selectedId));
+    setSearchParams(params);
+  };
+
+  /**
+   * 탭 줄 상태 칩(#185). 첫 쪽으로 가지만 **고른 의뢰는 그대로 둔다** — 상세에서 눌러도 쓰던 판정 입력을
+   * 잃지 않고, 목록으로 돌아가면 거른 결과가 선다.
+   */
+  const applyStatus = (statusCode: InspectionHubStatus | null): void => {
+    const next = toSearchParams(withStatus(filters, statusCode));
+    if (selectedId !== null) next.set(URL_KEYS.selected, String(selectedId));
+    setSearchParams(next);
   };
 
   /** 쪽만 옮긴다 — 조건과 고른 의뢰는 그대로다. */
@@ -277,30 +304,54 @@ export const OqcInspectionScreen = () => {
   ) => {
     const fits =
       checkScannedSerial(scan, { inspectionRequestId, itemId: scan.itemId, rows: [] }) === null;
-    setSerialDraft({ inspectionRequestId, rows: fits ? [toSerialRow(scan)] : [] });
+    /* 시리얼 초안은 옮겨 갈 때 싣는다 — 「계속 작성」을 고르면 지금 의뢰의 초안이 그대로 남아야 한다. */
+    moveTo(inspectionRequestId, () => {
+      setSerialDraft({ inspectionRequestId, rows: fits ? [toSerialRow(scan)] : [] });
+    });
     setScannedSerial({
       serialNo: scan.serialNo,
       inspectionRequestIds: scan.pickedRequests.map((request) => request.inspectionRequestId),
     });
-    select(inspectionRequestId);
   };
 
-  const select = (inspectionRequestId: number): void => {
+  /* 고른 의뢰를 주소에 싣거나(`null` 이면) 뺀다 — 검색 조건 · 쪽은 그대로. */
+  const openRequest = (inspectionRequestId: number | null): void => {
     const next = new URLSearchParams(searchParams);
-    next.set(URL_KEYS.selected, String(inspectionRequestId));
+    if (inspectionRequestId === null) next.delete(URL_KEYS.selected);
+    else next.set(URL_KEYS.selected, String(inspectionRequestId));
     setSearchParams(next);
   };
 
-  /* 상세에서 목록으로 — 고른 의뢰만 주소에서 뺀다(검색 조건 · 쪽은 그대로 · #136). */
-  const [confirmingLeave, setConfirmingLeave] = useState(false);
+  /*
+   * 목록과 상세가 한 화면에 나란히 선다(#185) — 상세를 쓰는 중에 다른 줄을 누르거나(시리얼 스캔 포함) 상세를 닫으면,
+   * 저장하지 않은 입력이 있을 때 바로 옮기지 않고 한 번 묻는다(#136 의 「목록으로」와 같은 팝업). `to` 가 `null` 이면 닫기다.
+   */
+  const [leaveTo, setLeaveTo] = useState<{ to: number | null; apply?: () => void } | null>(null);
   useEffect(() => {
-    setConfirmingLeave(false);
+    setLeaveTo(null);
   }, [selectedId]);
-  const backToList = (): void => {
-    const next = new URLSearchParams(searchParams);
-    next.delete(URL_KEYS.selected);
-    setSearchParams(next);
+  const go = (to: number | null, apply?: () => void): void => {
+    apply?.();
+    openRequest(to);
   };
+  const moveTo = (to: number | null, apply?: () => void): void => {
+    if (to === selectedId) {
+      apply?.();
+      return;
+    }
+    if (selectedId !== null && hasUnsavedInput) {
+      setLeaveTo(apply === undefined ? { to } : { to, apply });
+      return;
+    }
+    go(to, apply);
+  };
+  const select = (inspectionRequestId: number): void => moveTo(inspectionRequestId);
+
+  /* 목록 · 상세 배치 — 입하 예정 조회와 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:oqc-inspection:split', 0.45);
+  /* 좌우 · 상하 배치(사용자 지시 2026-10-26) — 세 탭이 같은 고름을 쓴다. */
+  const layout = useSplitOrientation('omf-mes:inspection-hub:split-orientation');
 
   /**
    * 표 자리에 그릴 것. **네 갈래를 가른다** — 실패 · 부르는 중 · 이 쪽에 없음 · 조건에 맞는 것 없음.
@@ -687,49 +738,70 @@ export const OqcInspectionScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={selectedId === null ? (hub?.title ?? t.title) : t.detail.sectionTitle}
-        breadcrumb={
-          <Breadcrumb
-            items={[
-              { label: t.breadcrumbRoot },
-              { label: hub?.title ?? t.title },
-              /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#136). */
-              ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
-            ]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
+      {/* 탭 줄 오른쪽 건수 칩(#185) — 탭 묶음 안에서만 선다. */}
+      <InspectionHubCounts
+        inspectionTypeCode="OQC"
+        statuses={QUEUE_STATUSES}
+        active={filters.statusCode}
+        onChange={applyStatus}
       />
-      {/* 검사 조회·판정 묶음의 탭 — 제목 바로 아래(셸이 채운다 · `patterns/page-hub.tsx`). */}
-      {hub !== null && <div className="page-hub-tabs">{hub.tabs}</div>}
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+      {/* 탭 묶음(검사 조회·판정) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(입하 예정 조회와 같다). */}
+      {hub === null && (
+        <PageHeader
+          title={selectedId === null ? t.title : t.detail.sectionTitle}
+          breadcrumb={
+            <Breadcrumb
+              items={[
+                { label: t.breadcrumbRoot },
+                { label: t.title },
+                /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#136). */
+                ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
+              ]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
 
-      {selectedId === null ? (
+      {/*
+       * 목록과 상세(판정)를 한 화면에 나란히 둔다(#185 · 입하 예정 조회와 같다) — 종전(#136)처럼 상세가 목록을
+       * 갈아 끼우지 않는다. 의뢰를 고르면(`?ir=`) 오른쪽에 상세가 서고, 검색 조건 · 쪽은 주소에 남는다.
+       */}
+      {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). 시리얼 스캔과 조회 조건이 한 줄에 선다. */}
+      <section ref={aboveRef} className="pane oqc-inspection-panes oqc-inspection-search">
+        <SerialOpenByScan
+          onOpen={openBySerial}
+          onFound={(scan) =>
+            setScannedSerial({
+              serialNo: scan.serialNo,
+              inspectionRequestIds: scan.pickedRequests.map(
+                (request) => request.inspectionRequestId,
+              ),
+            })
+          }
+        />
+
+        <QueueFilterBar
+          appliedFilters={filters}
+          /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
+          onSearch={(next) => applyFilters(withDraft(filters, next))}
+          onTogglePendingOnly={(next) =>
+            applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
+          }
+          onReset={() => applyFilters(EMPTY_FILTERS)}
+        />
+      </section>
+
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
         <section
           className="pane oqc-inspection-panes oqc-inspection-queue-pane"
           aria-label={t.queue.heading}
         >
-          {/* 검색 묶음 — 시리얼 스캔과 조회 조건이 같은 격자·높이로 선다(#136). */}
-          <div className="oqc-inspection-search">
-            <SerialOpenByScan
-              onOpen={openBySerial}
-              onFound={(scan) =>
-                setScannedSerial({
-                  serialNo: scan.serialNo,
-                  inspectionRequestIds: scan.pickedRequests.map(
-                    (request) => request.inspectionRequestId,
-                  ),
-                })
-              }
-            />
-
-            <QueueFilterBar
-              appliedFilters={filters}
-              onSearch={applyFilters}
-              onReset={() => applyFilters(EMPTY_FILTERS)}
-            />
-          </div>
-
           {queue.isError && (
             <QueueLoadErrorBanner
               error={toApiError(queue.error)}
@@ -738,6 +810,7 @@ export const OqcInspectionScreen = () => {
           )}
 
           <QueueListTable
+            scrollX={layout.orientation === 'row'}
             rows={rows}
             itemNames={itemNames}
             uomCodeOf={(row) => uoms.codeOf(row.uomId)}
@@ -763,57 +836,73 @@ export const OqcInspectionScreen = () => {
             <PageNav view={pageView} disabled={save.isSaving} onChange={goToPage} />
           )}
         </section>
-      ) : (
+
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+
         <section
           className="pane oqc-inspection-panes oqc-inspection-detail"
           aria-label={t.detail.paneLabel}
         >
-          {/*
-           * 목록으로 — 저장하지 않은 입력이 있으면 바로 떠나지 않고 한 번 묻는다. 떠나면 그 입력은 버려진다
-           * (의뢰가 바뀌면 초안을 비우는 종전 규칙 그대로).
-           */}
-          <div className="oqc-inspection-back">
-            <Button
-              variant="text"
-              size="md"
-              className="oqc-inspection-back-button"
-              onClick={() => (hasUnsavedInput ? setConfirmingLeave(true) : backToList())}
-            >
-              {t.detail.backToList}
-            </Button>
-            {/*
-             * 저장하지 않고 떠날지 묻는 팝업 — 한 줄 설명, [계속 작성](테두리) [저장하지 않고 이동](채움).
-             * × 는 두지 않는다. Esc·바깥 누름은 «계속 작성»과 같다 — 입력은 그대로 남는다(IQC #133 과 같다).
-             */}
-            {confirmingLeave && (
-              <Dialog
-                open
-                onClose={() => setConfirmingLeave(false)}
-                showCloseButton={false}
-                title={t.detail.leaveUnsaved}
-                footer={
-                  <>
-                    <Button
-                      variant="outlined"
-                      className="app-button-neutral"
-                      onClick={() => setConfirmingLeave(false)}
-                    >
-                      {t.detail.keepEditing}
-                    </Button>
-                    <Button variant="filled" onClick={backToList}>
-                      {t.detail.leaveAnyway}
-                    </Button>
-                  </>
-                }
-              >
-                <p>{t.detail.leaveUnsavedNote}</p>
-              </Dialog>
-            )}
-          </div>
-          {detailContent}
+          {selectedId === null ? (
+            <EmptyState
+              size="sm"
+              title={hubText.pickRequest}
+              description={hubText.pickRequestHint}
+            />
+          ) : (
+            <>
+              <div className="oqc-inspection-back">
+                <Button
+                  variant="text"
+                  size="md"
+                  className="oqc-inspection-back-button"
+                  onClick={() => moveTo(null)}
+                >
+                  {hubText.closeDetail}
+                </Button>
+              </div>
+              {detailContent}
+              {auxContent}
+            </>
+          )}
         </section>
+      </div>
+
+      {/*
+       * 저장하지 않고 떠날지 묻는 팝업 — 한 줄 설명, [계속 작성](테두리) [저장하지 않고 이동](채움).
+       * × 는 두지 않는다. Esc·바깥 누름은 «계속 작성»과 같다 — 입력은 그대로 남는다(IQC #133 과 같다).
+       */}
+      {leaveTo !== null && (
+        <Dialog
+          open
+          onClose={() => setLeaveTo(null)}
+          showCloseButton={false}
+          title={t.detail.leaveUnsaved}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                className="app-button-neutral"
+                onClick={() => setLeaveTo(null)}
+              >
+                {t.detail.keepEditing}
+              </Button>
+              <Button variant="filled" onClick={() => go(leaveTo.to, leaveTo.apply)}>
+                {t.detail.leaveAnyway}
+              </Button>
+            </>
+          }
+        >
+          <p>{t.detail.leaveUnsavedNote}</p>
+        </Dialog>
       )}
-      {auxContent}
     </>
   );
 };

@@ -1,14 +1,25 @@
-import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
 import { sessionKeys, useSession } from '../../patterns/session';
 import { usePageHub } from '../../patterns/page-hub';
 import {
+  InspectionHubCounts,
+  type InspectionHubStatus,
+} from '../../patterns/inspection-hub-counts';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
+import {
   EMPTY_FILTERS,
+  QUEUE_STATUSES,
   readFilters,
   readPage,
   readSelectedId,
@@ -18,6 +29,7 @@ import {
   URL_KEYS,
   type QueueFilters,
 } from './filters';
+import { withDraft, withStatus } from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from './load-error-banner';
 import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
 import { PageNav } from './page-nav';
@@ -67,7 +79,7 @@ import { ItemLevel } from './item-level';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
-import { AttachmentPanel } from '../inspection-documents/attachment-panel';
+import { AttachmentPanel, useAttachments } from '../inspection-documents/attachment-panel';
 import { LotScan } from '../inspection-documents/lot-scan';
 import { InspectionHistoryPanel, useInspectionHistory } from '../inspection-history/panel';
 import { latestRound, previousRounds } from './types';
@@ -99,6 +111,7 @@ const REQUEST_COMPLETED = 'COMPLETED';
  */
 
 const t = messages.iqcInspection;
+const hubText = messages.common.inspectionHub;
 /** 종합 판정 불합격(시드 `INSPECTION_RESULT_OVERALL_JUDGMENT`) — 이 값일 때만 불합격 사유를 받는다. */
 const REJECTED_JUDGMENT = 'REJECTED';
 
@@ -224,6 +237,8 @@ export const IqcInspectionScreen = () => {
   const [rejection, setRejection] = useState<RejectionDraft>(EMPTY_REJECTION);
   /* 판정 변경 사유(omf-all-around#125) — 확정 요청에만 싣는다. 임시 저장은 받지 않으므로 의뢰가 바뀔 때 비운다. */
   const [changeReason, setChangeReason] = useState('');
+  /* 판정 상세 창을 열 때의 값 — [취소]하면 이 값으로 되돌린다(사용자 지시 2026-10-27 · #185). */
+  const detailSnapshot = useRef<{ rejection: RejectionDraft; changeReason: string } | null>(null);
   /*
    * 4M 변경품(omf-all-around#63) — LOT 의 성질이라 회차가 아니라 의뢰 LOT 에 붙는다. 서버 기록이 바뀌면(의뢰를
    * 바꾸거나 저장 뒤 재조회) 그 값으로 되돌린다. 자재 LOT 이 없는 의뢰는 칸을 두지 않고 요청에도 싣지 않는다.
@@ -247,10 +262,13 @@ export const IqcInspectionScreen = () => {
   /* 추정 원인(omf-all-around#130) — 선택 입력. 불합격일 때만 부른다. */
   const causeCodes = useCauseCodes(isRejected);
   const resolvedDefect = resolveDefectCode(defectCodes.data ?? [], rejection);
-  /* 확정된 불합격 회차면 LOT 이 불량인지 보고 처분·반품으로 잇는다(omf-all-around#106 후속 (나)). */
+  /*
+   * 확정된 불합격 회차면 LOT 이 불량인지 보고 처분·반품으로 잇는다(omf-all-around#106 후속 (나)).
+   * 확정된 회차는 판정과 관계없이 LOT 상태를 읽는다 — 검사 대기가 아니면 재검사 단추를 세우지 않는다(#185).
+   */
   const followUp = useRejectedLotFollowUp(
     detail.data?.lotId ?? null,
-    round?.statusCode === 'CONFIRMED' && round.overallJudgmentCode === REJECTED_JUDGMENT,
+    round?.statusCode === 'CONFIRMED',
   );
 
   /**
@@ -409,11 +427,26 @@ export const IqcInspectionScreen = () => {
       page === 1 &&
       next.itemId === filters.itemId &&
       next.supplierId === filters.supplierId &&
-      next.keyword === filters.keyword
+      next.keyword === filters.keyword &&
+      next.pendingOnly === filters.pendingOnly &&
+      next.statusCode === filters.statusCode
     ) {
       void queue.refetch();
     }
-    setSearchParams(toSearchParams(next));
+    /* 상세가 목록 옆에 열려 있으면 그대로 둔다(#185) — 조회 한 번에 쓰던 판정 입력이 사라지지 않게. */
+    const params = toSearchParams(next);
+    if (selectedId !== null) params.set(URL_KEYS.selected, String(selectedId));
+    setSearchParams(params);
+  };
+
+  /**
+   * 탭 줄 상태 칩(#185). 첫 쪽으로 가지만 **고른 의뢰는 그대로 둔다** — 상세에서 눌러도 쓰던 판정 입력을
+   * 잃지 않고, 목록으로 돌아가면 거른 결과가 선다.
+   */
+  const applyStatus = (statusCode: InspectionHubStatus | null): void => {
+    const next = toSearchParams(withStatus(filters, statusCode));
+    if (selectedId !== null) next.set(URL_KEYS.selected, String(selectedId));
+    setSearchParams(next);
   };
 
   /** 쪽만 옮긴다 — 조건과 고른 의뢰는 그대로다. */
@@ -421,22 +454,48 @@ export const IqcInspectionScreen = () => {
     setSearchParams(toPageParams(searchParams, next));
   };
 
-  const select = (inspectionRequestId: number): void => {
+  /* 고른 의뢰를 주소에 싣거나(`null` 이면) 뺀다 — 검색 조건 · 쪽은 그대로. */
+  const openRequest = (inspectionRequestId: number | null): void => {
     const next = new URLSearchParams(searchParams);
-    next.set(URL_KEYS.selected, String(inspectionRequestId));
+    if (inspectionRequestId === null) next.delete(URL_KEYS.selected);
+    else next.set(URL_KEYS.selected, String(inspectionRequestId));
     setSearchParams(next);
   };
 
-  /* 상세에서 목록으로 — 고른 의뢰만 주소에서 뺀다(검색 조건 · 쪽은 그대로). */
-  const [confirmingLeave, setConfirmingLeave] = useState(false);
+  /*
+   * 목록과 상세가 한 화면에 나란히 선다(#185) — 상세를 쓰는 중에 다른 줄을 누르거나 상세를 닫으면,
+   * 저장하지 않은 입력이 있을 때 바로 옮기지 않고 한 번 묻는다(#133 의 「목록으로」와 같은 팝업).
+   * `to` 가 `null` 이면 상세 닫기다.
+   */
+  const [leaveTo, setLeaveTo] = useState<{ to: number | null; href?: string } | null>(null);
   useEffect(() => {
-    setConfirmingLeave(false);
+    setLeaveTo(null);
   }, [selectedId]);
-  const backToList = (): void => {
-    const next = new URLSearchParams(searchParams);
-    next.delete(URL_KEYS.selected);
-    setSearchParams(next);
+  const moveTo = (to: number | null): void => {
+    if (to === selectedId) return;
+    if (selectedId !== null && hasUnsavedInput) {
+      setLeaveTo({ to });
+      return;
+    }
+    openRequest(to);
   };
+  const select = (inspectionRequestId: number): void => moveTo(inspectionRequestId);
+
+  /* 다른 화면으로 이동(기본 정보 [기준 보기] · #185) — 같은 탭에서 옮긴다. 저장하지 않은 입력이 있으면 먼저 묻는다. */
+  const navigate = useNavigate();
+  const leaveFor = (href: string): void => {
+    if (selectedId !== null && hasUnsavedInput) {
+      setLeaveTo({ to: selectedId, href });
+      return;
+    }
+    void navigate(href);
+  };
+
+  /* 목록 · 상세 배치 — 입하 예정 조회와 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:iqc-inspection:split', 0.45);
+  /* 좌우 · 상하 배치(사용자 지시 2026-10-26) — 세 탭이 같은 고름을 쓴다. */
+  const layout = useSplitOrientation('omf-mes:inspection-hub:split-orientation');
 
   /**
    * 표 자리에 그릴 것. **네 갈래를 가른다** — 실패 · 부르는 중 · 이 쪽에 없음 · 조건에 맞는 것 없음.
@@ -618,24 +677,56 @@ export const IqcInspectionScreen = () => {
    * 사용자가 다시 고르는데, 다시 골라도 같은 실패가 온다.
    */
   const detailContent = detail.isError ? (
-    <QueueLoadErrorBanner error={toApiError(detail.error)} onRetry={() => void detail.refetch()} />
+    <div className="inspection-basic-card">
+      <QueueLoadErrorBanner
+        error={toApiError(detail.error)}
+        onRetry={() => void detail.refetch()}
+      />
+    </div>
   ) : detail.data === undefined ? (
-    <p className="field-note">{t.detail.loading}</p>
+    <div className="inspection-basic-card">
+      <p className="field-note">{t.detail.loading}</p>
+    </div>
   ) : (
     <>
-      <RequestDetailPane
-        detail={detail.data}
-        uomCode={uomCode}
-        itemNames={itemNames}
-        lotNumbers={lotNumbers}
-        levelSlot={
-          <ItemLevel
-            key={detail.data.itemId}
-            itemId={detail.data.itemId}
-            item={toLevelItem(itemNames.partsOf(detail.data.itemId))}
-          />
-        }
-      />
+      <div className="inspection-basic-card">
+        <RequestDetailPane
+          detail={detail.data}
+          itemNames={itemNames}
+          lotNumbers={lotNumbers}
+          planSlot={
+            samplingRule.data === undefined ||
+            detail.data.inspectionPlanVersionId === null ? undefined : (
+              /*
+               * 적용 검사 기준 — 버전 + [기준 보기](#185). 같은 탭에서 검사기준 화면으로 옮긴다(저장 안 한 입력이 있으면 먼저 묻는다).
+               * 검사기준 화면은 주소의 `plan`·`ver` 로 그 기준 · 버전을 바로 연다.
+               */
+              <span className="iqc-inspection-plan-cell">
+                <span>{t.detail.planVersion(samplingRule.data.planVersion)}</span>
+                {/* 옆 「검사 수준 · 지정」과 같은 단추(테두리 · md) — 사용자 지시 2026-10-26. */}
+                <Button
+                  size="md"
+                  variant="outlined"
+                  onClick={() =>
+                    leaveFor(
+                      `/master-data/inspection-standard?plan=${String(samplingRule.data?.inspectionPlanId)}&ver=${String(detail.data?.inspectionPlanVersionId)}`,
+                    )
+                  }
+                >
+                  {t.detail.openPlan}
+                </Button>
+              </span>
+            )
+          }
+          levelSlot={
+            <ItemLevel
+              key={detail.data.itemId}
+              itemId={detail.data.itemId}
+              item={toLevelItem(itemNames.partsOf(detail.data.itemId))}
+            />
+          }
+        />
+      </div>
       {rounds.isPending ? (
         <p className="field-note">{t.result.loading}</p>
       ) : isClosed && round !== null ? (
@@ -769,6 +860,26 @@ export const IqcInspectionScreen = () => {
                   ? t.result.fourMChange.blocked
                   : null
           }
+          /* 좌우 · 상하 배치 모두 수량 · 판정을 한 줄로(좁으면 위아래 · 사용자 지시 2026-10-27 · #185). */
+          inlineJudgment
+          hasJudgmentDetail={isRejected || needsChangeReason}
+          judgmentDone={
+            judgment !== '' &&
+            !(isRejected && 'blocked' in resolvedDefect) &&
+            !(needsChangeReason && changeReason.trim() === '')
+          }
+          fourMDone={fourM.checked && !isFourMIncomplete(fourM)}
+          onJudgmentDetailOpen={() => {
+            detailSnapshot.current = { rejection, changeReason };
+          }}
+          onJudgmentDetailCancel={() => {
+            if (detailSnapshot.current === null) return;
+            setRejection(detailSnapshot.current.rejection);
+            setChangeReason(detailSnapshot.current.changeReason);
+          }}
+          reinspectBlockedReason={
+            followUp.data?.isInspectionPending === false ? t.result.reinspectLotNotPending : null
+          }
           isJustConfirmed={isJustConfirmed}
           isReinspecting={isReinspectingNow}
           onStartReinspection={() => {
@@ -803,115 +914,196 @@ export const IqcInspectionScreen = () => {
   /* 회차가 바뀐 표식 — 저장·확정·재검사 뒤 이력을 새로 부른다. 접는 줄의 건수도 같은 조회를 쓴다(#133). */
   const historyRevision = `${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`;
   const historyCount = useInspectionHistory(selectedId, historyRevision).data?.events.length;
+  /* 첨부 탭 건수 — 첨부 구획과 같은 조회(캐시)다. LOT 이 없는 의뢰는 0 번 대상이라 부르지 않는다. */
+  const attachments = useAttachments('LOT', detail.data?.lotId ?? 0, detail.data?.lotId != null);
 
   const auxContent =
     detail.isError || detail.data === undefined ? null : (
-      <div className="iqc-inspection-panes iqc-inspection-aux">
-        <details className="pane iqc-inspection-fold" open>
-          <summary>{messages.iqcInspection.measurements.caption}</summary>
-          {/*
-           * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
-           * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
-           * 그리드가 영영 「불러오는 중」이 된다. `isLoading`(= pending && fetching)만
-           * 실제로 부르는 중을 잡는다.
-           */}
-          <MeasurementGrid
-            rows={measurementRows}
-            isLoading={itemSpecs.isLoading || measurements.isLoading}
-          />
-        </details>
-        {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). 회차가 둘 이상일 때만 선다. */}
-        {historyRounds.length > 0 && (
-          <details className="pane iqc-inspection-fold">
-            <summary>{messages.iqcInspection.history.heading}</summary>
-            <RoundHistory
-              rounds={historyRounds}
-              uomCode={uomCode}
-              judgmentOptions={judgmentOptions}
-            />
-          </details>
-        )}
-
-        {/* LOT 별 시험성적서 등 검사 문서(#58) — 대상 LOT 이 있을 때만. */}
-        {detail.data.lotId !== null && (
-          <details className="pane iqc-inspection-fold">
-            <summary>
-              {messages.inspectionDocuments.heading}
-              <span className="iqc-inspection-label-hint">{messages.inspectionDocuments.help}</span>
-            </summary>
-            <AttachmentPanel
-              key={detail.data.lotId}
-              targetTypeCode="LOT"
-              targetId={detail.data.lotId}
-            />
-          </details>
-        )}
-
-        {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
-        {selectedId !== null && (
-          <details className="pane iqc-inspection-fold">
-            <summary>
-              {messages.inspectionHistory.heading}
-              {historyCount !== undefined && (
-                <span className="iqc-inspection-fold-count">
-                  {messages.iqcInspection.detail.historyCount(historyCount)}
-                </span>
-              )}
-            </summary>
-            <InspectionHistoryPanel
-              hideSourceLot
-              key={`${String(selectedId)}-${String(historyRounds.length)}`}
-              inspectionRequestId={selectedId}
-              judgmentLabelOf={(code) =>
-                judgmentOptions.find((option) => option.value === code)?.label ?? code
-              }
-              revision={historyRevision}
-            />
-          </details>
-        )}
-      </div>
+      /*
+       * 검사 항목별 결과 · (이전 회차) · 첨부 파일 · 검사 이력을 탭 하나로(사용자 지시 2026-10-26 · #185 — OQC 상세와 같은 짜임).
+       * 의뢰를 바꾸면 첫 탭에서 다시 시작한다. 이전 회차는 회차가 둘 이상일 때만, 첨부는 대상 LOT 이 있을 때만 선다.
+       */
+      <section className="pane iqc-inspection-panes iqc-inspection-aux iqc-inspection-aux-tabs">
+        <Tabs
+          key={selectedId}
+          aria-label={messages.iqcInspection.detail.auxTabs}
+          items={[
+            {
+              value: 'measurements',
+              /* 탭마다 건수를 붙인다(사용자 지시 2026-10-27 · #185). */
+              label: `${messages.iqcInspection.measurements.caption} ${messages.iqcInspection.detail.historyCount(measurementRows.length)}`,
+              content: (
+                <div className="iqc-inspection-tab-body iqc-inspection-fold">
+                  {/*
+                   * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
+                   * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
+                   * 그리드가 영영 「불러오는 중」이 된다. `isLoading`(= pending && fetching)만
+                   * 실제로 부르는 중을 잡는다.
+                   */}
+                  <MeasurementGrid
+                    rows={measurementRows}
+                    isLoading={itemSpecs.isLoading || measurements.isLoading}
+                    scrollX
+                  />
+                </div>
+              ),
+            },
+            /* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */
+            ...(historyRounds.length > 0
+              ? [
+                  {
+                    value: 'rounds',
+                    label: `${messages.iqcInspection.history.heading} ${messages.iqcInspection.detail.historyCount(historyRounds.length)}`,
+                    content: (
+                      <div className="iqc-inspection-tab-body iqc-inspection-fold">
+                        <RoundHistory
+                          rounds={historyRounds}
+                          uomCode={uomCode}
+                          judgmentOptions={judgmentOptions}
+                          scrollX
+                        />
+                      </div>
+                    ),
+                  },
+                ]
+              : []),
+            /* LOT 별 시험성적서 등 검사 문서(#58). */
+            ...(detail.data.lotId !== null
+              ? [
+                  {
+                    value: 'documents',
+                    label:
+                      attachments.data === undefined
+                        ? messages.inspectionDocuments.heading
+                        : `${messages.inspectionDocuments.heading} ${messages.iqcInspection.detail.historyCount(attachments.data.length)}`,
+                    content: (
+                      <div className="iqc-inspection-tab-body iqc-inspection-fold">
+                        <AttachmentPanel
+                          key={detail.data.lotId}
+                          targetTypeCode="LOT"
+                          targetId={detail.data.lotId}
+                          scrollX
+                          paged
+                          bulkDownload
+                          /*
+                           * 올릴 수 있는 형식 · 크기 라벨 — 같은 줄 오른쪽 끝에 [파일 선택] [업로드](사용자 지시 2026-10-27 · #185).
+                           * 클립 아이콘 + 안내, 크기 한도(「10MB」)만 주 색으로 강조(사용자 지시 2026-10-26).
+                           */
+                          toolbarStart={
+                            <span className="iqc-inspection-head-badge iqc-inspection-docs-help">
+                              <Icon name="attach_file" size={16} aria-hidden />
+                              <span>
+                                {messages.inspectionDocuments.help
+                                  .split(/(\d+\s*MB)/)
+                                  .map((part, index) =>
+                                    /^\d+\s*MB$/.test(part) ? (
+                                      <strong key={index} className="iqc-inspection-docs-limit">
+                                        {part}
+                                      </strong>
+                                    ) : (
+                                      part
+                                    ),
+                                  )}
+                              </span>
+                            </span>
+                          }
+                        />
+                      </div>
+                    ),
+                  },
+                ]
+              : []),
+            /* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. 탭 이름에 건수를 붙인다. */
+            ...(selectedId !== null
+              ? [
+                  {
+                    value: 'history',
+                    label:
+                      historyCount === undefined
+                        ? messages.inspectionHistory.heading
+                        : `${messages.inspectionHistory.heading} ${messages.iqcInspection.detail.historyCount(historyCount)}`,
+                    content: (
+                      <div className="iqc-inspection-tab-body iqc-inspection-fold">
+                        <InspectionHistoryPanel
+                          hideSourceLot
+                          layout="table"
+                          scrollX
+                          paged
+                          key={`${String(selectedId)}-${String(historyRounds.length)}`}
+                          inspectionRequestId={selectedId}
+                          judgmentLabelOf={(code) =>
+                            judgmentOptions.find((option) => option.value === code)?.label ?? code
+                          }
+                          revision={historyRevision}
+                        />
+                      </div>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
+      </section>
     );
 
   return (
     <>
-      <PageHeader
-        /* 묶음(검사 조회·판정) 안이면 묶음 이름이 제목이다. 「검사 기본 정보」는 경로에만 선다(#133). */
-        title={hub?.title ?? t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[
-              { label: t.breadcrumbRoot },
-              { label: hub?.title ?? t.title },
-              /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#133). */
-              ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
-            ]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
+      {/* 탭 줄 오른쪽 건수 칩(#185) — 탭 묶음 안에서만 선다. */}
+      <InspectionHubCounts
+        inspectionTypeCode="IQC"
+        statuses={QUEUE_STATUSES}
+        active={filters.statusCode}
+        onChange={applyStatus}
       />
-      {/* 검사 조회·판정 묶음의 탭 — 제목 바로 아래(셸이 채운다 · `patterns/page-hub.tsx`). */}
-      {hub !== null && <div className="page-hub-tabs">{hub.tabs}</div>}
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+      {/* 탭 묶음(검사 조회·판정) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(입하 예정 조회와 같다). */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[
+                { label: t.breadcrumbRoot },
+                { label: t.title },
+                /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#133). */
+                ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
+              ]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
 
       {/*
-       * 목록과 상세(판정)를 한 화면에 나란히 두지 않고 갈아 끼운다(omf-all-around#133) — 의뢰를 고르면(`?ir=`)
-       * 상세만, 목록으로 돌아오면 목록만 선다. 검색 조건 · 쪽은 주소에 남아 돌아와도 그대로다.
+       * 목록과 상세(판정)를 한 화면에 나란히 둔다(#185 · 입하 예정 조회와 같다) — 종전(#133)처럼 상세가 목록을
+       * 갈아 끼우지 않는다. 의뢰를 고르면(`?ir=`) 오른쪽에 상세가 서고, 검색 조건 · 쪽은 주소에 남는다.
        */}
-      {selectedId === null ? (
+      {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). LOT 스캔과 조회 조건이 한 줄에 선다. */}
+      <section ref={aboveRef} className="pane iqc-inspection-panes iqc-inspection-search">
+        {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
+        <LotScan inspectionTypeCode="IQC" onFound={select} />
+        <QueueFilterBar
+          appliedFilters={filters}
+          /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
+          onSearch={(next) =>
+            applyFilters(withDraft(filters, { ...next, pendingOnly: filters.pendingOnly }))
+          }
+          onTogglePendingOnly={(next) =>
+            applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
+          }
+          onReset={() => applyFilters(EMPTY_FILTERS)}
+        />
+      </section>
+
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
         <section
           className="pane iqc-inspection-panes iqc-inspection-queue-pane"
           aria-label={t.queue.heading}
         >
-          {/* 검색 묶음 — LOT 스캔과 조회 조건이 같은 격자·높이로 선다. */}
-          <div className="iqc-inspection-search">
-            {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
-            <LotScan inspectionTypeCode="IQC" onFound={select} />
-            <QueueFilterBar
-              appliedFilters={filters}
-              onSearch={applyFilters}
-              onReset={() => applyFilters(EMPTY_FILTERS)}
-            />
-          </div>
-
           {queue.isError && (
             <QueueLoadErrorBanner
               error={toApiError(queue.error)}
@@ -920,6 +1112,8 @@ export const IqcInspectionScreen = () => {
           )}
 
           <QueueTable
+            /* 좌우 · 상하 배치 모두 열 폭을 끌어 넓히면 줄이지 않고 표 안에서 가로로 구른다(사용자 지시 2026-10-27 · #185). */
+            scrollX
             rows={rows}
             itemNames={itemNames}
             lotNumbers={lotNumbers}
@@ -934,57 +1128,68 @@ export const IqcInspectionScreen = () => {
            */}
           {queue.data !== undefined && <PageNav view={pageView} onChange={goToPage} />}
         </section>
-      ) : (
+
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+
         <section
           className="pane iqc-inspection-panes iqc-inspection-detail"
           aria-label={t.detail.heading}
         >
-          {/*
-           * 목록으로 — 저장하지 않은 입력이 있으면 바로 떠나지 않고 한 번 묻는다. 떠나면 그 입력은 버려진다
-           * (의뢰가 바뀌면 초안을 비우는 종전 규칙 그대로).
-           */}
-          <div className="iqc-inspection-back">
-            <Button
-              variant="text"
-              size="md"
-              className="iqc-inspection-back-button"
-              onClick={() => (hasUnsavedInput ? setConfirmingLeave(true) : backToList())}
-            >
-              {t.detail.backToList}
-            </Button>
-            {/*
-             * 저장하지 않고 떠날지 묻는 팝업(#133) — 한 줄 설명, [계속 작성](테두리) [저장하지 않고 이동](채움).
-             * × 는 두지 않는다. Esc·바깥 누름은 «계속 작성»과 같다 — 입력은 그대로 남는다.
-             */}
-            {confirmingLeave && (
-              <Dialog
-                open
-                onClose={() => setConfirmingLeave(false)}
-                showCloseButton={false}
-                title={t.detail.leaveUnsaved}
-                footer={
-                  <>
-                    <Button
-                      variant="outlined"
-                      className="app-button-neutral"
-                      onClick={() => setConfirmingLeave(false)}
-                    >
-                      {t.detail.keepEditing}
-                    </Button>
-                    <Button variant="filled" onClick={backToList}>
-                      {t.detail.leaveAnyway}
-                    </Button>
-                  </>
+          {selectedId === null ? (
+            <EmptyState
+              size="sm"
+              title={hubText.pickRequest}
+              description={hubText.pickRequestHint}
+            />
+          ) : (
+            <>
+              {detailContent}
+              {auxContent}
+            </>
+          )}
+        </section>
+      </div>
+
+      {/*
+       * 저장하지 않고 떠날지 묻는 팝업(#133) — 한 줄 설명, [계속 작성](테두리) [저장하지 않고 이동](채움).
+       * × 는 두지 않는다. Esc·바깥 누름은 «계속 작성»과 같다 — 입력은 그대로 남는다.
+       */}
+      {leaveTo !== null && (
+        <Dialog
+          open
+          onClose={() => setLeaveTo(null)}
+          showCloseButton={false}
+          title={t.detail.leaveUnsaved}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                className="app-button-neutral"
+                onClick={() => setLeaveTo(null)}
+              >
+                {t.detail.keepEditing}
+              </Button>
+              <Button
+                variant="filled"
+                onClick={() =>
+                  leaveTo.href === undefined ? openRequest(leaveTo.to) : void navigate(leaveTo.href)
                 }
               >
-                <p>{t.detail.leaveUnsavedNote}</p>
-              </Dialog>
-            )}
-          </div>
-          {detailContent}
-        </section>
+                {t.detail.leaveAnyway}
+              </Button>
+            </>
+          }
+        >
+          <p>{t.detail.leaveUnsavedNote}</p>
+        </Dialog>
       )}
-      {selectedId !== null && auxContent}
     </>
   );
 };

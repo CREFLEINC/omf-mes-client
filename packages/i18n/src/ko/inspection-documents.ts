@@ -20,7 +20,34 @@ export const inspectionDocuments = {
   unsupported:
     '올릴 수 없는 형식입니다. PDF·이미지·엑셀/워드/파워포인트·CSV·TXT 만 올릴 수 있습니다.',
   caption: '첨부 파일 목록',
-  columns: { fileName: '파일', uploadedAt: '올린 시각', size: '크기' },
+  columns: {
+    fileName: '파일명',
+    fileType: '유형',
+    size: '크기',
+    uploadedBy: '등록자',
+    uploadedAt: '등록일',
+  },
+  emptyValue: '—',
+  emptyTitle: '등록된 첨부 파일이 없습니다.',
+  emptyHint: '필요한 경우 파일을 첨부해 주세요.',
+  download: (fileName: string): string => `${fileName} 내려받기`,
+  /* 일괄 내려받기(zip · #185). */
+  downloadSelected: (count: number): string => `선택 파일 내려받기 (${String(count)})`,
+  downloadAll: (count: number): string => `전체 파일 내려받기 (${String(count)})`,
+  downloading: '묶는 중…',
+  zipName: '첨부파일',
+  zipFailed: '선택한 파일을 내려받지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
+  /* 찾기 · 유형 거르기(#185). */
+  search: '파일명 검색',
+  searchPlaceholder: '파일명을 입력하세요',
+  kindLabel: '파일 유형',
+  kinds: { all: '전체', image: '이미지', pdf: 'PDF', excel: '엑셀', word: '워드', other: '기타' },
+  /* 미리보기(#185). */
+  preview: (fileName: string): string => `${fileName} 미리보기`,
+  previewLoading: '파일을 불러오는 중입니다.',
+  previewUnsupported: '이 형식은 미리 볼 수 없습니다. 내려받아 확인하세요.',
+  previewDownload: '내려받기',
+  previewClose: '닫기',
   scan: {
     label: 'LOT 스캔',
     placeholder: 'LOT 바코드 스캔 또는 번호를 입력하세요',

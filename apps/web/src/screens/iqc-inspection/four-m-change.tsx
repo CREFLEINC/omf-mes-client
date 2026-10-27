@@ -1,7 +1,7 @@
-import { Checkbox, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Dialog, TextField } from '@crefle/web-ui';
 import type { FourMChangeForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
 import { FieldLabel } from './field-label';
 
@@ -50,14 +50,18 @@ export interface FourMChangeProps {
 }
 
 /**
- * 종합 판정 아래 — 4M 변경품 체크와, 체크하면 변경 내용(필수)(omf-all-around#63 · #133).
+ * 판정 오른쪽 — 4M 변경품 체크와 그 아래 전체 폭 [비고 입력](omf-all-around#63 · #133). 비고(필수)는 창에서 적는다 — 판정 줄에
+ * 빈 공간이 생기지 않게(사용자 지시 2026-10-27 · #185). 단추는 체크했을 때만 선다.
  * 판정과 함께 임시 저장·확정에 실린다. 투입을 막지 않고 POP 투입 때 알리기만 한다.
  */
 export const FourMChange = ({ draft, missing, onChange, disabled }: FourMChangeProps) => {
   const remarksId = useId();
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="iqc-inspection-four-m" role="group" aria-label={t.label}>
+      {/* 체크 위 소제목 — 판정 상자의 「최종 판정」 라벨과 같은 층(사용자 지시 2026-10-27 · #185). */}
+      <span className="field-label">{t.changedLabel}</span>
       <Checkbox
         checked={draft.checked}
         disabled={disabled}
@@ -68,6 +72,29 @@ export const FourMChange = ({ draft, missing, onChange, disabled }: FourMChangeP
         <span className="iqc-inspection-four-m-label">{t.label}</span>
       </Checkbox>
       {draft.checked && (
+        <Button
+          type="button"
+          variant="outlined"
+          size="md"
+          disabled={disabled}
+          onClick={() => setIsOpen(true)}
+        >
+          {t.remarksOpen}
+        </Button>
+      )}
+      {/* 닫아도 적은 값은 남는다 — 판정 상세 입력 창과 같은 모양(X 없이 [완료]). */}
+      <Dialog
+        open={isOpen && draft.checked}
+        onClose={() => setIsOpen(false)}
+        size="md"
+        title={t.remarksTitle}
+        showCloseButton={false}
+        footer={
+          <Button type="button" size="md" onClick={() => setIsOpen(false)}>
+            {t.remarksDone}
+          </Button>
+        }
+      >
         <div className="field-cell">
           <FieldLabel htmlFor={remarksId} label={t.remarks} required />
           <TextField
@@ -84,7 +111,7 @@ export const FourMChange = ({ draft, missing, onChange, disabled }: FourMChangeP
             }}
           />
         </div>
-      )}
+      </Dialog>
     </div>
   );
 };
