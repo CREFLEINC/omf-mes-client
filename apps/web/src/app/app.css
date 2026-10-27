@@ -22156,6 +22156,18 @@ table.col-measuring td {
   white-space: nowrap;
 }
 
+/*
+ * 확정된 회차 — 판정 · 4M 상자는 수량 쪽([재검사 회차 추가] 줄 포함)만큼 늘지 않고 제 내용 높이만, 단추가 나타날 일이 없어
+ * 단추 자리도 잡지 않는다(사용자 지시 2026-10-27 · #185).
+ */
+.iqc-inspection-qty-judgment-row[data-locked] > .iqc-inspection-section:not(:first-child) {
+  align-self: start;
+}
+
+.iqc-inspection-qty-judgment-row[data-locked] .iqc-inspection-step-box:nth-child(n):nth-child(n) {
+  min-height: calc(var(--field-label-layer) + var(--control-height-md));
+}
+
 /* 총 검사 수량 옆 넘친 · 모자란 양 「+3 EA」 · 「-1 EA」 — 오류색 · 작은 글(사용자 지시 2026-10-27 · #185). */
 .iqc-inspection-qty-over {
   margin-left: var(--space-1);

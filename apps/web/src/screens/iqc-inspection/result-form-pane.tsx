@@ -381,7 +381,13 @@ export const ResultFormPane = ({
                * 상하 배치에서는 수량 구획이 이 문구 길이만큼 넓어지지 않게 회차 옆(제목 줄)으로 간다.
                */}
               {!actionInQty && lockedBadge}
-              <Button type="button" variant="outlined" size="md" onClick={onStartReinspection}>
+              <Button
+                type="button"
+                variant="outlined"
+                size="md"
+                leadingIcon={<Icon name="add" size={18} aria-hidden />}
+                onClick={onStartReinspection}
+              >
                 {t.reinspect}
               </Button>
             </div>
@@ -482,6 +488,8 @@ export const ResultFormPane = ({
          */}
         <div
           className={inlineJudgment ? 'iqc-inspection-qty-judgment-row' : 'iqc-inspection-qty-only'}
+          /* 확정된 회차 — 판정 상자는 제 높이만(단추 자리를 잡지 않는다 · 사용자 지시 2026-10-27 · #185). */
+          data-locked={isConfirmed ? '' : undefined}
         >
           {/* ── 검사 결과 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}
           <section className="iqc-inspection-section">
