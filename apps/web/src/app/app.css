@@ -4033,7 +4033,7 @@ main:has(.iqc-skip-approval-detail) {
 
 /*
  * [조회]·[초기화]는 줄 오른쪽 끝에 붙는다 — 남는 폭은 조건 칸과 단추 사이에 둔다(#193).
- * 「내 차례만 보기」 체크 칸은 조건 칸 바로 뒤(왼쪽)에 선다.
+ * 「내 차례」 체크 칸은 조건 칸 바로 뒤(왼쪽)에 선다.
  */
 .quality-approval-filter-footer .filter-actions {
   flex-wrap: nowrap;

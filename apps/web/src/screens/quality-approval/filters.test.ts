@@ -104,7 +104,7 @@ describe('quality approval request query', () => {
   });
 });
 
-/* 「내 차례만 보기」(#193) — 켠 것만 주소 `mt=1` 로 적고, 서버에는 계약의 `myTurnOnly` 로 싣는다. */
+/* 「내 차례」(#193) — 켠 것만 주소 `mt=1` 로 적고, 서버에는 계약의 `myTurnOnly` 로 싣는다. */
 describe('quality approval my-turn filter', () => {
   it('켠 것만 주소와 요청에 싣고, 끄면 둘 다에서 빠진다', () => {
     const on = { ...EMPTY_FILTERS, myTurnOnly: true };

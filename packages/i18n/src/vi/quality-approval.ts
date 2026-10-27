@@ -19,7 +19,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     periodTo: 'Tìm theo ngày trình kết thúc',
     q: 'Tìm theo số yêu cầu',
     /** 조회 조건 체크 칸(#193) — 지금 내가 결재할 차례인 요청만. */
-    myTurnOnly: 'Chỉ lượt của tôi',
+    myTurnOnly: 'Lượt của tôi',
     approvalRequestNo: 'Số yêu cầu',
     requestedByName: 'Người trình',
     requestedAt: 'Thời điểm trình',

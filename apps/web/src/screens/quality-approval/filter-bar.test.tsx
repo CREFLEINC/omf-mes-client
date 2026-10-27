@@ -32,8 +32,8 @@ describe('FilterBar draft lifetime', () => {
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
-  /* 「내 차례만 보기」(#193) — 체크만으로는 조회하지 않고, 다른 조건처럼 [조회]로 적용한다. */
-  it('내 차례만 보기는 체크한 뒤 조회로 적용한다', async () => {
+  /* 「내 차례」(#193) — 체크만으로는 조회하지 않고, 다른 조건처럼 [조회]로 적용한다. */
+  it('내 차례는 체크한 뒤 조회로 적용한다', async () => {
     const { props, user } = renderBar();
 
     await user.click(screen.getByRole('checkbox', { name: t.fields.myTurnOnly }));
