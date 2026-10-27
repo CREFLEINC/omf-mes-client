@@ -22138,6 +22138,24 @@ table.col-measuring td {
   font-weight: 700;
 }
 
+/*
+ * 최종 판정 라벨 옆 자동 판정 기준(「자동 판정: 불합격 수량 5개 이하 → 합격」)을 라벨(알약) 모양으로(사용자 지시 2026-10-27 · #185).
+ * 라벨 줄 높이(16px) 안에 들어가 칸 위치가 움직이지 않는다.
+ */
+.iqc-inspection-judgment-field .iqc-inspection-label-hint {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
 /* 총 검사 수량 옆 넘친 양 「+3 EA」 — 오류색 · 작은 글(사용자 지시 2026-10-27 · #185). */
 .iqc-inspection-qty-over {
   margin-left: var(--space-1);
