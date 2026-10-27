@@ -102,6 +102,7 @@ export const ItemFormDialog = ({
 
         <SelectField
           label={t.fields.dataType}
+          required
           options={dataTypeOptions}
           value={values.dataTypeCode}
           onChange={(dataTypeCode) => onChange({ dataTypeCode })}

@@ -2146,6 +2146,8 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
       ),
     ).toBeInTheDocument();
 
+    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
     expect(await screen.findByText('SYN-ITEM-CODE-09 · 합성 항목 Z')).toBeInTheDocument();
@@ -2162,6 +2164,8 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-01');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
+    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
     expect(
@@ -2259,6 +2263,8 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
+    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
     await user.click(within(itemPane()).getByRole('button', { name: '저장' }));
@@ -2454,6 +2460,8 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
+    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
     expect(await screen.findByText('SYN-ITEM-CODE-09 · 합성 항목 Z')).toBeInTheDocument();
