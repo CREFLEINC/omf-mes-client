@@ -53,7 +53,7 @@ export const DetailPane = ({ view }: DetailPaneProps) => {
         role="group"
         aria-label={t.panes.target}
       >
-        <span className="field-label">{t.fields.target}</span>
+        <span className="field-label">{t.fields.targetLot}</span>
         <span>{view.targetName}</span>
       </div>
     </div>

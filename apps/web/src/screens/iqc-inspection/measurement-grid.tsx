@@ -2,7 +2,7 @@ import { AlertBanner, Chip, EmptyState, Icon, Table, type Column } from '@crefle
 import { messages } from '@omf-mes/i18n';
 import { useState, type ReactNode } from 'react';
 
-import { useColumnOrder } from '../../patterns/column-order';
+import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useClientPage } from '../../patterns/client-page';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';

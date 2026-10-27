@@ -1,107 +1,126 @@
 import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
+import { useApiClient } from '../../patterns/api-context';
 import { toLookupDisplayState } from '../../patterns/lookup-display';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
+import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { popTouchClass } from '../../patterns/pop-touch';
-import { toIssueFailure } from './failure';
-import { IssueOutcome } from './issue-outcome';
+import { retryCommands, summarize } from './batch-view';
+import { PRINT_FAILURE_REASON_CODE } from './codes';
+import { IssueBar, type BarState } from './issue-bar';
+import { LabelTable } from './label-table';
 import { useItemNameSources, useSupplierLookup, useUomLookup } from './lookups';
-import { useLabelIssue } from './mutations';
-import { PageNav } from './page-nav';
-import { toLinePageView } from './pagination';
-import { choosePrinter, rememberPrinterName, storedPrinterName } from './printer-choice';
-import { PrinterSelect } from './printer-select';
-import { PrinterStatusIndicator } from './printer-status';
+import { useBatchIssue, type IssueCommand } from './mutations';
 import {
-  useLotNo,
+  groupBySupplier,
+  matchesQuery,
+  normalizeQuery,
+  pageOf,
+  type SupplierGroup,
+} from './pending';
+import { PrinterChip } from './printer-chip';
+import { choosePrinter, rememberPrinterName, storedPrinterName } from './printer-choice';
+import {
+  findLotByNo,
+  useLabelRows,
+  useLotDetails,
   usePrinters,
-  useReceipts,
   useReissueReasons,
   useShellSelectsPrinter,
-  useTargetRows,
-  type IssuedView,
 } from './queries';
-import { ReceiptList } from './receipt-list';
-import { ReissueDialog } from './reissue-dialog';
-import { TargetCard } from './target-card';
+import { ReasonPicker } from './reason-picker';
+import { useRowsThatFit } from './row-fit';
+import { SupplierList, supplierLabelOf, supplierNameOf } from './supplier-list';
+import type { TargetRow } from './types';
 
 const t = messages.popMaterialLotLabel;
-const tDevice = messages.popMaterialLotLabel.device;
+
+type Tab = 'pending' | 'reprint';
+
+const TABS: readonly Tab[] = ['pending', 'reprint'];
+
+/** 라벨을 낼 수 없는 LOT 상태 — 서버 `qualifyDocumentIssueTarget`(MATERIAL_LOT_LABEL)이 검사 대기·정상만 받는다. */
+const LABEL_LOCKED_LOT_STATUS: readonly string[] = ['DEFECTIVE', 'SCRAPPED'];
 
 /**
- * 빈 목록의 안내를 고른다 — **왜 비었는지가 셋으로 갈린다.**
- *
- * 사전부착 자재를 걸러 내므로 **입하 건은 있는데 보일 자재가 없는** 상태가 정상적으로 생긴다.
- * 그때 「발행할 자재가 없습니다」만 내면 「전체 N건」과 나란히 서서 서로 어긋나 보인다.
+ * 다시 인쇄는 **최근 발행이 위**다 — 상한 라벨은 대개 방금 찍은 것이다. 발행 대기와 차례가 반대다.
  */
-const emptyMessage = (
-  isBeyondLast: boolean,
-  receiptCount: number,
-  view: IssuedView,
-  hasNextPage: boolean,
-): string => {
-  if (isBeyondLast) return t.receipts.beyondLast;
+const newestFirst = (groups: SupplierGroup[]): SupplierGroup[] =>
+  groups
+    .map((group) => ({ ...group, rows: [...group.rows].reverse() }))
+    .sort((left, right) =>
+      (right.rows[0]?.receiptDatetime ?? '').localeCompare(left.rows[0]?.receiptDatetime ?? ''),
+    );
 
-  if (view === 'issued') {
-    return receiptCount > 0 ? t.receipts.issuedEmptyOnThisPage : t.receipts.issuedEmpty;
-  }
-
-  if (receiptCount === 0) return t.receipts.empty;
-
-  /*
-   * ⚠ 미발행 보기는 입하 건을 발행 여부로 거르지 않아(#1241) 다 발행한 건도 쪽을 차지한다. 뒤쪽에
-   *   미발행 자재가 남아 있을 수 있으니 「발행 완료를 보라」는 마지막 쪽에서만 말한다.
-   */
-  return hasNextPage ? t.receipts.emptyOnThisPageMore : t.receipts.emptyOnThisPage;
-};
-
-const ISSUED_VIEWS: readonly IssuedView[] = ['unissued', 'issued'];
+/** 발행 결과를 그리는 동안 붙잡아 둔 표 — 찍은 줄이 대기에서 빠져도 「확인」 전까지 결과와 함께 남는다. */
+interface ResultSnapshot {
+  supplierId: number;
+  rows: TargetRow[];
+}
 
 /**
- * `P-01-01` 자재LOT 등록·라벨 발행 (POP).
+ * `P-01-01` 자재 LOT 라벨 발행 (POP) — **공급사로 묶고 여러 장을 한 번에**(개편안 승인 2026-10-24 ·
+ * omf-all-around#184).
  *
- * 스펙 §3 배치를 따른다 — **좌: 입하 목록(미부착) / 우: 발번 대상.** 세로로 쌓지 않는다.
- * 1024×768에서 세로 여유가 119px뿐이라 구획을 쌓으면 아래가 잘린다.
+ * ```
+ * ┌ 머리줄: 화면 이름 · 사번 · 프린터(누르면 바꾼다) · 단말 ─────────────────────────────┐
+ * │ [발행 대기 | 다시 인쇄] │ 공급사 이름 코드                         [전체 선택] │
+ * │ [찾기 칸 — 스캐너 입력] │ ☐ 품목코드 품목명 수량 입하            (열 머리 한 번) │
+ * │ ▣ 공급사 · 남은 장수    │ ☑ …                                                │
+ * │ ▢ 공급사 · 남은 장수    │ (한 쪽 줄 수 = 칸 높이에 들어가는 만큼)          │
+ * │                         │ 새로 고침   1–13 / 29줄          [◀ 이전][다음 ▶] │
+ * ├ 동작 바: 지금 상태 한 줄                       [선택 해제] [라벨 N장 발행] ┤
+ * ```
  *
- * 목록은 스펙대로 **한 단계**다 — 입하번호·품목·수량·공급사·입하일이 한 줄에 함께 온다.
- * 계약이 그것을 두 경로로 나눠 주므로 화면이 합친다(`useTargetRows`).
+ * ⭐ **왜 바꿨는가**(고객 평가 최하 · 실측 2026-10-24) — 모든 공급사가 섞인 목록에서 한 줄씩 골라 찍어
+ *    29장이면 58번 누르고 29번 기다렸다. 한 쪽 8줄 고정이라 넓은 화면은 비고 좁은 화면은 줄이 가려졌다.
+ *    결과는 오른쪽 창 아래 글 한 줄이었고, 실패하면 다른 탭에서 그 줄을 다시 찾아야 했다.
+ * ⚠ **E-3(POP 관리웹 기본 밀도)과 다르게 정한 곳** — 줄 56px, 단추 48px, 주 동작 56px. 손으로 누르는
+ *   화면이라 개편안에서 키웠고 사용자가 승인했다. 이 화면의 클래스(`pop-mlot-*`)에만 둔다.
  */
 export const PopMaterialLotLabelScreen = () => {
-  const [page, setPage] = useState(1);
-  /**
-   * 줄 쪽 — **화면이 줄을 다시 쪽으로 자른 것**이다(`pagination`). 서버 쪽은 「건」 단위라 건이
-   * 한 쪽에 다 들어가면 늘 1쪽이고, 그러면 줄이 아무리 많아도 이전·다음이 꺼져 있었다(#32).
-   *
-   * ⚠ **큰 수는 「마지막 줄 쪽」을 뜻한다.** 앞 건 쪽으로 돌아갈 때 그 쪽의 줄 수를 아직 모르므로
-   *   범위를 넘겨 두고 `toLinePageView` 가 잡아 준다.
-   */
-  const [linePage, setLinePage] = useState(1);
-  const [issuedView, setIssuedView] = useState<IssuedView>('unissued');
-  const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
-  const [isReissueOpen, setReissueOpen] = useState(false);
-
+  const { client } = useApiClient();
   /*
-   * 귀속 사번은 **셸이 아는 값**이다(진입점 화면 소관 · 이 저장소 #157). 쓰기가 헤더로
-   * 요구하므로 없으면 부를 수 없고, 그 사실을 감추지 않고 사유로 보인다(공유계약 F-1·F-6).
+   * 귀속 사번은 **셸이 아는 값**이다(진입점 화면 소관). 쓰기가 헤더로 요구하므로 없으면 부를 수 없고,
+   * 그 사실을 감추지 않고 맨 위 띠로 말한다(공유계약 F-1·F-6 · 사용자 지시 2026-09-17).
    */
   const { workerNo, terminalId } = usePopIdentity();
+  const batch = useBatchIssue({ workerNo });
+  const isIssuing = batch.isRunning;
 
-  const issue = useLabelIssue({ workerNo });
+  const [tab, setTab] = useState<Tab>('pending');
+  const [query, setQuery] = useState('');
+  const [scanNote, setScanNote] = useState<string | null>(null);
+  const [supplierId, setSupplierId] = useState<number | null>(null);
+  const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
+  const [page, setPage] = useState(1);
+  const [focusLineId, setFocusLineId] = useState<number | null>(null);
+  const [reasonCode, setReasonCode] = useState<string | null>(null);
+  const [snapshot, setSnapshot] = useState<ResultSnapshot | null>(null);
+
+  const pending = useLabelRows('unissued', true, isIssuing);
+  const issued = useLabelRows('issued', tab === 'reprint', isIssuing);
+  const source = tab === 'pending' ? pending : issued;
+
+  const supplierLookup = useSupplierLookup();
+  const uomLookup = useUomLookup(true);
   /*
-   * ⛔ **실행 중에는 목록을 주기 갱신하지 않는다.** 도는 사이에 고른 줄이 목록에서 빠지면 발번
-   *    대상 카드가 빈 상태로 돌아가 「인쇄 중인데 아무것도 고르지 않은 화면」이 된다(#1241).
+   * ⭐ **품목 이름은 받은 줄의 것만 푼다**(omf-all-around#27) — 마스터 목록 조회는 한 쪽만 돌려준다.
+   *    찾기 칸이 품목코드로 거르므로 보이는 쪽이 아니라 받은 줄 전부의 품목을 푼다.
+   * ⛔ 결과 표의 줄도 함께 푼다 — 발행 기록이 남은 줄은 끝난 뒤 다시 받은 대기 목록에서 빠지므로,
+   *    받은 줄만 풀면 그 줄의 품목코드 · 품목명이 「이름 불러오는 중」에 머문다.
    */
-  const isIssuing = issue.step !== null;
+  const itemNames = useItemNameSources(
+    [...source.rows, ...(snapshot?.rows ?? [])].map((row) => row.itemId),
+  );
+  const reasons = useReissueReasons(true);
 
-  // 첫 쪽이면 조건을 싣지 않는다 — 서버 기본값이 1이라 URL에 없는 편이 조건을 정직하게 드러낸다.
-  const receipts = useReceipts(issuedView, page === 1 ? {} : { page }, isIssuing);
-  const targets = useTargetRows(receipts.data?.items ?? [], issuedView, isIssuing);
   const printers = usePrinters();
   /*
-   * 프린터 선택(2단계 검증 2026-10-16 · 이 화면 전용) — 고른 것 → 단말에 기억해 둔 것 → 셸의 출력 대상.
+   * 프린터 선택(2단계 검증 2026-10-16) — 고른 것 → 단말에 기억해 둔 것 → 셸의 출력 대상.
    * ⛔ 셸이 고른 프린터를 받지 못하면(브라우저·옛 설치본) 기억해 둔 값을 쓰지 않는다 — 머리줄이 실제로
    *    나가지 않을 프린터를 가리키게 된다.
    */
@@ -114,123 +133,284 @@ export const PopMaterialLotLabelScreen = () => {
     pickedPrinter,
     isPrinterSelectable ? rememberedPrinter : null,
   );
-
-  /*
-   * ⭐ **품목 이름은 「보이는 줄」의 것만 푼다**(omf-all-around#27). 마스터 목록 조회는 한 쪽만
-   *    돌려줘, 품목이 9천여 건인 현장에서 첫 쪽 밖 품목이 통째로 「알 수 없음」으로 섰다.
-   *    공급사는 단건 조회가 단말 토큰에 열려 있지 않아 목록을 끝까지 받는다 — `lookups` 머리말.
-   */
-  const itemNames = useItemNameSources(targets.rows.map((row) => row.itemId));
-  const supplierLookup = useSupplierLookup();
-  const uomLookup = useUomLookup(true);
-
-  const result = receipts.data;
-  /*
-   * ⚠ **세는 단위가 둘이다.** 서버 쪽 나눔은 입하 «건» 단위이고 목록 줄은 «자재»다. 그래서 줄
-   * 쪽은 화면이 따로 셈하고(`toLinePageView`), 줄 쪽을 다 넘기면 다음 건 쪽으로 이어 넘어간다.
-   */
-  const pageView =
-    result === undefined ? null : toLinePageView(result.page, targets.rows.length, linePage);
-  /**
-   * 이 쪽에 세울 줄 — **잘릴 줄은 다음 쪽으로 넘긴다**(사용자 지시 2026-09-19). 목록에 스크롤을
-   * 두지 않으므로, 잘라 보이면 그 줄에는 닿을 방법이 없다.
-   */
-  const visibleRows = pageView === null ? [] : targets.rows.slice(pageView.start, pageView.end);
-  const selectedRow =
-    visibleRows.find((row) => row.inboundReceiptLineId === selectedLineId) ?? null;
-
-  const lot = useLotNo(selectedRow?.lotId ?? null);
-  const reissueReasons = useReissueReasons(isReissueOpen);
   const headPrinter = printerChoice.printer;
 
-  /*
-   * ⛔ **결과는 그 결과를 만든 줄의 것이다.** 다른 자재를 고르면 앞 자재의 실패가 따라오지
-   * 않는다 — 그 판정을 여기 한 곳에서 하고, 알림과 단추가 같은 값을 본다.
-   *
-   * ⛔ **고른 줄이 목록에서 빠져도 결과는 남긴다**(#1241). 발행 기록이 생긴 줄은 미발행 목록에서
-   *    곧바로 빠지므로, 줄 대신 **고른 id** 로 가른다 — 줄로 가르면 「라벨이 나오지 않았습니다」가
-   *    소리 없이 사라진다.
-   */
-  const isResultOfSelected = issue.result.lineId !== null && issue.result.lineId === selectedLineId;
-  /*
-   * 출력 권한이 없는 단말(403)에서는 **재시도 수단을 주지 않는다**(스펙 §5-2). 단말 전체를
-   * 미리 막지는 않는다 — 게이트는 서버가 갖고, 화면은 받은 답에만 반응한다(§5-5).
-   */
-  const isPrintForbidden = isResultOfSelected && toIssueFailure(issue.result) === 'issueForbidden';
+  const normalized = normalizeQuery(query);
 
-  /**
-   * 등록·인쇄 한 번을 시작한다.
-   *
-   * ⛔ **사번이 없으면 부르지 않는다** — 서버가 거부한다. 단추도 함께 막혀 있지만, 판정을
-   * 부르는 자리에도 두어 다른 경로로 새는 것을 막는다.
-   */
-  /** 라벨에 적을 단위 코드. 이름을 못 풀었으면 적지 않는다 — 「불러오는 중」이 라벨에 찍히면 안 된다. */
+  const groups = useMemo(() => {
+    const matched = source.rows.filter(
+      (row) =>
+        matchesQuery(row, normalized, itemNames.get(row.itemId)?.item?.code ?? null) ||
+        (row.lotNo !== null && row.lotNo.toLocaleLowerCase('en-US').includes(normalized)),
+    );
+    const grouped = groupBySupplier(matched);
+
+    return tab === 'reprint' ? newestFirst(grouped) : grouped;
+  }, [source.rows, normalized, itemNames, tab]);
+
+  /* 결과를 그리는 동안은 그 공급사에 머문다 — 결과가 다른 공급사 표 밑에 서면 남의 결과로 읽힌다. */
+  const activeSupplierId = snapshot?.supplierId ?? supplierId;
+  const current =
+    groups.find((group) => group.supplierId === activeSupplierId) ??
+    (snapshot === null ? groups[0] : undefined) ??
+    null;
+  const tableRows = snapshot?.rows ?? current?.rows ?? [];
+
+  const rowsRef = useRef<HTMLDivElement | null>(null);
+  const rowsPerPage = useRowsThatFit(rowsRef);
+  const pageView = pageOf(tableRows, page, rowsPerPage);
+
+  /* 스캔으로 고른 줄이 있는 쪽으로 옮긴다 — 고른 줄이 다른 쪽에 숨어 있으면 고른 것이 보이지 않는다. */
+  useEffect(() => {
+    if (focusLineId === null) return;
+
+    const index = tableRows.findIndex((row) => row.inboundReceiptLineId === focusLineId);
+
+    if (index >= 0) {
+      setPage(Math.floor(index / rowsPerPage) + 1);
+      setFocusLineId(null);
+    }
+  }, [focusLineId, tableRows, rowsPerPage]);
+
+  const visibleLotIds =
+    tab === 'reprint'
+      ? pageView.items.flatMap((row) =>
+          row.lotNo === null && row.lotId !== null ? [row.lotId] : [],
+        )
+      : [];
+  const lots = useLotDetails(visibleLotIds);
+
   const uomCodeOf = (uomId: number): string | null => {
     const state = toLookupDisplayState(uomLookup, uomId);
 
     return state.kind === 'named' ? state.label : null;
   };
+  /** 줄마다 라벨에 실을 말 — 단위 코드와 「공급사 (코드)」. 못 풀었으면 그 칸을 비운다. */
+  const describe = (row: TargetRow): Pick<IssueCommand, 'uomCode' | 'supplierText'> => ({
+    uomCode: uomCodeOf(row.uomId),
+    supplierText: supplierLabelOf(supplierLookup, row.supplierId),
+  });
+  const base = {
+    // 프린터 배정이 정해지기 전에는 한 대 전제다 — 고른 것이 없으면 서버 기본값에 맡긴다.
+    printerName: headPrinter?.printerName ?? null,
+    // 셸이 고른 프린터를 받을 때만 싣는다 — 아니면 셸이 기동 시 지정값 → OS 기본으로 보낸다.
+    shellPrinterName: isPrinterSelectable ? (headPrinter?.printerName ?? null) : null,
+  };
 
-  const startIssue = (reissueReasonCode: string | null): void => {
-    if (selectedRow === null || workerNo === null) return;
-    /*
-     * ⛔ **막힌 단말에서는 나가지 않는다.** 단추도 함께 막혀 있지만, 판정을 나가는 자리에도 두어
-     * 다른 경로(대화상자·스캐너)가 생겨도 새지 않게 한다 — `mutations` 의 사번 판정과 같은 규율.
-     */
-    if (isPrintForbidden) return;
+  const lotStatusOf = (row: TargetRow): string | null =>
+    row.lotStatusCode ??
+    (row.lotId === null ? null : (lots.get(row.lotId)?.data?.statusCode ?? null));
 
-    issue.run({
-      row: selectedRow,
-      // 프린터 배정이 정해지기 전에는 한 대 전제다 — 고른 것이 없으면 서버 기본값에 맡긴다.
-      printerName: headPrinter?.printerName ?? null,
-      // 셸이 고른 프린터를 받을 때만 싣는다 — 아니면 지금처럼 셸이 기동 시 지정값 → OS 기본으로 보낸다.
-      shellPrinterName: isPrinterSelectable ? (headPrinter?.printerName ?? null) : null,
-      reissueReasonCode,
-      uomCode: uomCodeOf(selectedRow.uomId),
-      lotStatusCode: lot.data?.statusCode ?? null,
+  /*
+   * 새로 고침 — 보고 있는 보기만이 아니라 **발행 대기를 언제나** 다시 받는다. 다시 인쇄를 보는 동안
+   * 웹 · PDA 로 들어온 입하가 발행 대기 장수에 바로 서야 한다. 다시 인쇄 목록은 그 보기를 볼 때만 받는다.
+   */
+  const refresh = (): void => {
+    pending.refetch();
+    if (tab === 'reprint') issued.refetch();
+  };
+
+  const clearSelection = (): void => {
+    setChecked(new Set());
+  };
+
+  const chooseSupplier = (id: number): void => {
+    if (id === activeSupplierId) return;
+    setSupplierId(id);
+    setPage(1);
+    clearSelection();
+  };
+
+  const chooseTab = (next: Tab): void => {
+    if (next === tab) return;
+    setTab(next);
+    setSupplierId(null);
+    setQuery('');
+    setScanNote(null);
+    setPage(1);
+    clearSelection();
+  };
+
+  const toggle = (lineId: number): void => {
+    setChecked((previous) => {
+      const next = new Set(previous);
+
+      if (next.has(lineId)) next.delete(lineId);
+      else next.add(lineId);
+
+      return next;
     });
   };
 
-  /** 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다. */
-  const isListError = receipts.isError || targets.isError;
+  const currentRows = current?.rows ?? [];
+  const allChecked =
+    currentRows.length > 0 && currentRows.every((row) => checked.has(row.inboundReceiptLineId));
+  const someChecked = currentRows.some((row) => checked.has(row.inboundReceiptLineId));
+  const toggleAll = (): void => {
+    setChecked(
+      allChecked ? new Set() : new Set(currentRows.map((row) => row.inboundReceiptLineId)),
+    );
+  };
+
+  const selectedRows = currentRows.filter((row) => checked.has(row.inboundReceiptLineId));
+  const blockedRow =
+    tab === 'reprint'
+      ? selectedRows.find((row) => {
+          const status = lotStatusOf(row);
+
+          return status !== null && LABEL_LOCKED_LOT_STATUS.includes(status);
+        })
+      : undefined;
+  const blockedStatus = blockedRow === undefined ? null : lotStatusOf(blockedRow);
+
+  const startIssue = (): void => {
+    if (current === null || selectedRows.length === 0 || workerNo === null) return;
+
+    const commands: IssueCommand[] = selectedRows.map((row) =>
+      tab === 'pending'
+        ? {
+            ...base,
+            ...describe(row),
+            row,
+            reissueReasonCode: null,
+            lotStatusCode: row.lotStatusCode,
+            /* 보내기 직전에 다른 단말이 먼저 찍지 않았는지 본다(`verifyCommands`). */
+            verify: 'unissued',
+          }
+        : {
+            ...base,
+            ...describe(row),
+            row,
+            reissueReasonCode: reasonCode,
+            lotStatusCode: lotStatusOf(row),
+          },
+    );
+
+    if (tab === 'reprint' && (reasonCode === null || blockedRow !== undefined)) return;
+
+    setSnapshot({ supplierId: current.supplierId, rows: current.rows });
+    batch.reset();
+    batch.run(commands);
+    clearSelection();
+  };
+
+  /** 사유 목록에 「인쇄 실패」가 있으면 실패한 장을 그 사유로 다시 보낸다(`PRINT_FAILURE_REASON_CODE`). */
+  const printFailureCode =
+    reasons.data?.some((reason) => reason.code === PRINT_FAILURE_REASON_CODE) === true
+      ? PRINT_FAILURE_REASON_CODE
+      : null;
+  const summary = summarize(batch);
+  const snapshotRows = new Map(
+    (snapshot?.rows ?? []).map((row) => [row.inboundReceiptLineId, row] as const),
+  );
+  const retry = retryCommands(
+    summary.retryable,
+    snapshotRows,
+    batch.results,
+    base,
+    describe,
+    printFailureCode,
+  );
+
+  const confirmResults = (): void => {
+    batch.reset();
+    setSnapshot(null);
+    setPage(1);
+  };
+
+  const supplierName = current === null ? null : supplierNameOf(supplierLookup, current.supplierId);
+  const reasonName =
+    reasonCode === null
+      ? null
+      : (reasons.data?.find((reason) => reason.code === reasonCode)?.name ?? null);
+
+  const barState: BarState = isIssuing
+    ? {
+        kind: 'running',
+        supplierName,
+        done: batch.results.size + batch.skipped.size,
+        total: batch.order.length,
+        isStopping: batch.isStopping,
+      }
+    : snapshot !== null
+      ? {
+          kind: 'done',
+          printed: summary.printed,
+          unfinished: summary.unfinished.length,
+          headline: summary.headline,
+          retryCount: retry.commands.length,
+          needsReasonCount: retry.needsReason.length,
+        }
+      : tab === 'pending'
+        ? {
+            kind: 'pending',
+            supplierName,
+            count: selectedRows.length,
+            isBlocked: workerNo === null,
+          }
+        : {
+            kind: 'reprint',
+            count: selectedRows.length,
+            reasonName,
+            blockedReason:
+              blockedStatus === null
+                ? null
+                : t.reprint.lotBlocked(t.reprint.lotStatus[blockedStatus] ?? blockedStatus),
+            isBlocked: workerNo === null,
+          };
 
   /**
-   * 쪽 이동 — **줄 쪽을 먼저 넘기고, 다 넘기면 건 쪽으로 넘어간다.**
-   *
-   * ⛔ 쪽을 옮기면 고른 줄이 화면에서 사라진다 — 남겨 두면 보이지 않는 것을 가리킨다.
+   * 찾기 칸에서 Enter — 다시 인쇄에서는 **라벨 스캔**이다. LOT 번호가 받은 줄에 있으면 그 줄을 고르고,
+   * 없으면 정확 일치로 LOT 을 찾아 그 줄을 찾는다. 발행 대기에서는 칸이 거르기만 하므로 할 일이 없다.
    */
-  const goPrev = (): void => {
-    setSelectedLineId(null);
+  const submitSearch = async (event: FormEvent): Promise<void> => {
+    event.preventDefault();
 
-    if (pageView !== null && pageView.page > 1) {
-      setLinePage(pageView.page - 1);
+    if (tab !== 'reprint') return;
+
+    const value = query.trim();
+
+    if (value === '') return;
+
+    let found = issued.rows.find((row) => row.lotNo === value);
+
+    if (found === undefined) {
+      try {
+        const lot = await findLotByNo(client, value);
+
+        found = lot === null ? undefined : issued.rows.find((row) => row.lotId === lot.lotId);
+      } catch {
+        setScanNote(t.reprint.lookupFailed);
+
+        return;
+      }
+    }
+
+    if (found === undefined) {
+      setScanNote(t.reprint.notFound);
 
       return;
     }
 
-    setPage((current) => Math.max(1, current - 1));
-    /* 앞 건 쪽의 «마지막» 줄 쪽으로 간다 — 줄 수를 모르므로 범위를 넘겨 두고 잡히게 한다. */
-    setLinePage(Number.MAX_SAFE_INTEGER);
+    setScanNote(null);
+    setQuery('');
+    setSupplierId(found.supplierId);
+    setChecked(new Set([found.inboundReceiptLineId]));
+    setFocusLineId(found.inboundReceiptLineId);
   };
 
-  const goNext = (): void => {
-    setSelectedLineId(null);
-
-    if (pageView !== null && pageView.page < pageView.totalPages) {
-      setLinePage(pageView.page + 1);
-
-      return;
-    }
-
-    setPage((current) => current + 1);
-    setLinePage(1);
-  };
-
-  /** 목록을 지금 다시 받는다. 오류 배너의 「다시 불러오기」와 **같은 동작**이다. */
-  const reloadList = (): void => {
-    void receipts.refetch();
-    targets.refetch();
-  };
+  const isLocked = isIssuing;
+  const isShowingResults = snapshot !== null;
+  const tableMode = isShowingResults ? 'result' : tab === 'reprint' ? 'reprint' : 'pending';
+  const emptyText = source.isPending
+    ? ''
+    : groups.length === 0
+      ? normalized === ''
+        ? tab === 'pending'
+          ? t.suppliers.pendingEmpty
+          : t.suppliers.reprintEmpty
+        : t.table.noMatch
+      : t.table.pickSupplier;
 
   return (
     /*
@@ -238,27 +418,29 @@ export const PopMaterialLotLabelScreen = () => {
      * `main`을 세워 주는 바깥이 없다 — 먼저 선 POP 화면들과 같은 형태다.
      */
     <main className="pop-lot-screen pop-ui" aria-label={t.title}>
-      {/* 머리줄 어휘를 다른 POP 화면과 맞춘다 — 이름이 달라도 보이는 자리는 같아야 한다. */}
       <header className="pop-header">
-        {/*
-         * 표제는 **다른 POP 화면과 같은 어휘로 쓴다**(`pop-title`). DS `PageHeader` 로 세우면
-         * 규격이 겨냥하는 자리(머리줄의 첫 자식)가 그 부품의 래퍼가 되어 표제 크기가 이
-         * 화면에만 24px 로 남는다(실측 — 다른 화면은 26px).
-         */}
         <h1 className="pop-title">{t.title}</h1>
         <div className="pop-context-right">
-          <PrinterStatusIndicator
-            printer={headPrinter}
+          <PopWorkerTag workerNo={workerNo} />
+          <PrinterChip
+            printers={printers.data}
+            selected={headPrinter}
             isLoading={printers.isPending}
             isError={printers.isError}
+            isSelectable={isPrinterSelectable}
+            isLocked={isLocked}
             onRetry={() => {
               void printers.refetch();
             }}
+            onSelect={(name) => {
+              setPickedPrinter(name);
+              rememberPrinterName(name);
+            }}
           />
-          {/* 단말도 상시 보인다(스펙 §3 머리줄 `단말 POP-L1 ●`) — 다른 POP 화면과 같은 자리·순서다. */}
+          {/* 단말도 상시 보인다(스펙 §3 머리줄) — 다른 POP 화면과 같은 자리·순서다. */}
           <Chip status={terminalId === null ? 'warning' : 'info'}>
-            {`${tDevice.terminalLabel} ${
-              terminalId === null ? tDevice.terminalUnknown : String(terminalId)
+            {`${t.device.terminalLabel} ${
+              terminalId === null ? t.device.terminalUnknown : String(terminalId)
             }`}
           </Chip>
         </div>
@@ -275,183 +457,225 @@ export const PopMaterialLotLabelScreen = () => {
         </div>
       )}
 
-      <div className="pop-lot-panes">
-        <section className="pane pop-lot-pane" aria-label={t.receipts.paneLabel}>
-          {/*
-           * ⭐ **좌우 구획의 제목이 같은 자리·같은 급으로 선다** — 스펙 §3 도면이 둘을 나란히
-           *    그렸다(`《입하 라인》 (미부착)` · `《채번 대상》`). 한쪽만 표의 캡션으로 서
-           *    가운데에 있으면 같은 급으로 읽히지 않고, 안내 배너 «아래»에 놓여 차례도
-           *    뒤집힌다(사용자 지적).
-           *
-           * ⛔ 오류일 때도 감추지 않는다 — 구획의 이름은 내용의 성패와 무관하다.
-           */}
-          <h2 className="pop-lot-pane-title">{t.receipts.title}</h2>
-          {/*
-           * ⭐ 발행 여부로 목록을 가른다(사용자 지시 2026-09-15 · #1241). 발행 완료 쪽이 없으면
-           *    인쇄를 마친 자재가 목록에서 빠져 재인쇄할 길이 없었다.
-           *
-           * 바꾸면 쪽과 고른 줄을 푼다 — 남겨 두면 보이지 않는 줄을 가리킨다. 실행 중에는
-           * 잠근다 — 쪽 이동과 같은 까닭이다.
-           */}
-          {/*
-           * ⭐ 제목 아래·목록 바로 위에 목록 폭 2분할 탭으로 둔다(사용자 지시 2026-09-15) — 제목
-           *    옆 작은 묶음 단추는 실행 단추로 읽혔다. 모양은 DS 탭(굵은 글자 + 강조색 밑줄)을
-           *    따르되, DS `Tabs` 는 탭마다 내용 영역을 요구해 이 화면 전용 CSS 로 둔다(`pop.css`).
-           */}
-          <div
-            className="pop-material-lot-filter"
-            role="group"
-            aria-label={t.receipts.filter.label}
-          >
-            {ISSUED_VIEWS.map((view) => (
+      <div className="pop-mlot-body">
+        <aside className="pop-mlot-side">
+          <div className="pop-mlot-tabs" role="group" aria-label={t.tabs.label}>
+            {TABS.map((each) => (
               <button
-                key={view}
+                key={each}
                 type="button"
-                className={`pop-material-lot-filter-item ${popTouchClass('normal')}`}
-                aria-pressed={issuedView === view}
-                disabled={isIssuing}
+                className="pop-mlot-tab"
+                aria-pressed={tab === each}
+                /* 결과를 「확인」하기 전에는 보기를 바꾸지 않는다 — 결과가 어느 보기의 것인지 흐려진다. */
+                disabled={isLocked || isShowingResults}
                 onClick={() => {
-                  if (issuedView === view) return;
-                  setSelectedLineId(null);
-                  setPage(1);
-                  setLinePage(1);
-                  setIssuedView(view);
+                  chooseTab(each);
                 }}
               >
-                {t.receipts.filter[view]}
+                {t.tabs[each]}
+                {each === 'pending' && !pending.isPending ? (
+                  <span className="pop-mlot-tab-count">{pending.rows.length}</span>
+                ) : null}
               </button>
             ))}
           </div>
 
-          {isListError ? (
-            <AlertBanner
-              variant="error"
-              title={t.receipts.loadFailed}
-              action={
-                <Button
-                  className={popTouchClass('normal')}
-                  variant="outlined"
-                  size="xl"
-                  onClick={reloadList}
-                >
-                  {t.receipts.retry}
-                </Button>
+          <form
+            className="pop-mlot-search"
+            role="search"
+            onSubmit={(event) => {
+              void submitSearch(event);
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M4 6v12M7 6v12M10.5 6v12M14 6v12M16.5 6v12M20 6v12" />
+            </svg>
+            <input
+              id="pop-mlot-search"
+              className="pop-mlot-search-input"
+              type="search"
+              aria-label={t.search.label}
+              placeholder={
+                tab === 'pending' ? t.search.pendingPlaceholder : t.search.reprintPlaceholder
               }
-            />
-          ) : (
-            <>
-              {/*
-               * ⛔ **「무엇이 걸러졌는가」를 문장으로 두지 않는다.** 위의 발행 여부 탭이 그 일을
-               *    한다. 세로 여유가 119px 뿐인 화면이라 배너 한 줄이 목록에서 그만큼을 가져간다.
-               */}
-              <ReceiptList
-                rows={visibleRows}
-                supplierLookup={supplierLookup}
-                itemNames={itemNames}
-                uomLookup={uomLookup}
-                selectedId={selectedLineId}
-                // 실행 중에 줄을 바꾸면 그 실행의 결과가 어디에도 서지 않는다.
-                isLocked={isIssuing}
-                onToggleSelect={(lineId) => {
-                  // 같은 줄을 다시 누르면 해제한다 — 고른 것을 무를 수단이 없으면 갇힌다.
-                  setSelectedLineId((current) => (current === lineId ? null : lineId));
-                }}
-                empty={emptyMessage(
-                  pageView?.isBeyondLast === true,
-                  result?.items.length ?? 0,
-                  issuedView,
-                  pageView?.canNext === true,
-                )}
-              />
-              {/*
-               * ⭐ **「갱신」은 쪽 이동 줄에 둔다**(omf-all-around#29). 이 줄은 이미 단추 높이를
-               *    쓰고 있어 **세로를 더 먹지 않는다** — 세로 여유가 119px 뿐인 화면이다(스펙 §4).
-               *    제목 줄에 얹으면 목록이 그만큼 짧아진다.
-               */}
-              <div className="pop-lot-list-foot">
-                <Button
-                  className={popTouchClass('normal')}
-                  variant="outlined"
-                  size="xl"
-                  /* 실행 중에는 잠근다 — 쪽 이동·줄 선택과 같은 까닭이다. */
-                  disabled={isIssuing}
-                  onClick={reloadList}
-                >
-                  {t.receipts.refresh}
-                </Button>
-                {/*
-                 * ⛔ 쪽을 옮기면 고른 줄이 풀린다 — 실행 중에 풀리면 그 실행의 결과가 어느 줄에도
-                 * 서지 않는다. 목록 줄을 잠그면서 이 자리를 열어 두면 같은 구멍이 남는다.
-                 */}
-                {pageView === null ? null : (
-                  <PageNav view={pageView} isLocked={isIssuing} onPrev={goPrev} onNext={goNext} />
-                )}
-              </div>
-            </>
-          )}
-        </section>
-
-        <section className="pane pop-lot-pane" aria-label={t.target.paneLabel}>
-          <h2 className="pop-lot-pane-title">{t.target.title}</h2>
-          {/*
-           * 프린터는 머리줄이 아니라 이 구획에서 고른다(담당자 지시 2026-10-16) — 인쇄할 곳을 고르는 일이
-           * 등록·인쇄와 같은 자리에 있어야 한다. 머리줄은 지금 상태만 보인다. 목록을 받기 전·조회 실패는
-           * 머리줄이 말하므로 여기서는 받은 뒤에만 그린다(「없다」와 「모른다」를 같은 모양으로 그리지 않는다).
-           */}
-          {printers.data === undefined ? null : (
-            <PrinterSelect
-              printers={printers.data}
-              selected={headPrinter}
-              isSelectable={isPrinterSelectable}
-              disabled={isIssuing}
-              onSelect={(name) => {
-                setPickedPrinter(name);
-                rememberPrinterName(name);
+              value={query}
+              disabled={isLocked || isShowingResults}
+              autoComplete="off"
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setScanNote(null);
+                setPage(1);
               }}
             />
+            {query === '' ? null : (
+              <button
+                type="button"
+                className="pop-mlot-search-clear"
+                aria-label={t.search.clear}
+                onClick={() => {
+                  setQuery('');
+                  setScanNote(null);
+                }}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M7 7l10 10M17 7L7 17" />
+                </svg>
+              </button>
+            )}
+          </form>
+          {scanNote === null ? null : (
+            <p className="pop-mlot-scan-note" role="status">
+              {scanNote}
+            </p>
           )}
-          <TargetCard
-            row={selectedRow}
+
+          <SupplierList
+            groups={groups}
+            selectedId={current?.supplierId ?? null}
+            supplierLookup={supplierLookup}
+            mode={tab}
+            isLocked={isLocked || isShowingResults}
+            onSelect={chooseSupplier}
+          />
+        </aside>
+
+        <section
+          className="pop-mlot-work"
+          data-reprint={tab === 'reprint' && !isShowingResults}
+          aria-label={supplierName ?? t.title}
+        >
+          <div className="pop-mlot-work-head">
+            <div className="pop-mlot-work-title">
+              <h2>{supplierName ?? ''}</h2>
+              {current === null ? null : (
+                <span className="pop-mlot-work-code">
+                  {supplierLookup.byId.get(current.supplierId)?.code ?? ''}
+                </span>
+              )}
+            </div>
+            {isShowingResults ? (
+              <span className="pop-mlot-work-sum">
+                {t.table.resultSummary(summary.printed, summary.unfinished.length)}
+              </span>
+            ) : currentRows.length === 0 ? null : (
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={allChecked ? true : someChecked ? 'mixed' : false}
+                className="pop-mlot-select-all"
+                disabled={isLocked}
+                onClick={toggleAll}
+              >
+                <span className="pop-mlot-checkbox" data-checked={allChecked || someChecked}>
+                  {allChecked ? (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M5 12.5l4.5 4.5L19 7.5" />
+                    </svg>
+                  ) : someChecked ? (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M6 12h12" />
+                    </svg>
+                  ) : null}
+                </span>
+                {t.table.selectAll}
+              </button>
+            )}
+          </div>
+
+          {source.isError ? (
+            <div className="banner-slot">
+              <AlertBanner
+                variant="error"
+                title={t.table.loadFailed}
+                action={
+                  <Button
+                    className={popTouchClass('normal')}
+                    variant="outlined"
+                    size="xl"
+                    onClick={source.refetch}
+                  >
+                    {t.table.retry}
+                  </Button>
+                }
+              />
+            </div>
+          ) : null}
+
+          <LabelTable
+            mode={tableMode}
+            rows={pageView.items}
+            checked={checked}
+            onToggle={toggle}
+            isLocked={isLocked}
             itemNames={itemNames}
             uomLookup={uomLookup}
-            supplierLookup={supplierLookup}
-            lotNo={lot.data?.lotNo ?? null}
-            lotStatusCode={lot.data?.statusCode ?? null}
-            isLotNoLoading={lot.isPending && selectedRow?.lotId !== null}
-            isLotNoError={lot.isError}
-            hasWorkerNo={workerNo !== null}
-            runningStep={issue.step}
-            isPrintForbidden={isPrintForbidden}
-            isIssued={issuedView === 'issued'}
-            onIssue={() => {
-              startIssue(null);
-            }}
-            onReissue={() => {
-              setReissueOpen(true);
-            }}
+            batch={batch}
+            lots={lots}
+            rowsRef={rowsRef}
+            empty={emptyText}
           />
-          {/*
-           * ⛔ **결과는 그 결과를 만든 줄 밑에만 선다.** 끝난 뒤 다른 자재를 고르면 「인쇄
-           * 했습니다」가 아직 찍지 않은 자재 밑에 서게 되고, 사람은 그것을 자기 것으로 읽는다.
-           */}
-          {isResultOfSelected ? <IssueOutcome result={issue.result} /> : null}
+
+          {tab === 'reprint' && !isShowingResults ? (
+            <ReasonPicker
+              reasons={reasons.data ?? []}
+              isLoading={reasons.isPending}
+              isError={reasons.isError}
+              selected={reasonCode}
+              isLocked={isLocked}
+              onSelect={setReasonCode}
+            />
+          ) : null}
+
+          <div className="pop-mlot-work-foot">
+            <button
+              type="button"
+              className="pop-mlot-foot-button"
+              disabled={isLocked}
+              onClick={refresh}
+            >
+              {t.table.refresh}
+            </button>
+            <span className="pop-mlot-range">
+              {pageView.total === 0
+                ? ''
+                : t.table.range(pageView.from, pageView.to, pageView.total)}
+            </span>
+            <nav className="pop-mlot-pager" aria-label={t.table.pageNav}>
+              <button
+                type="button"
+                className="pop-mlot-foot-button"
+                disabled={pageView.page <= 1}
+                onClick={() => {
+                  setPage(pageView.page - 1);
+                }}
+              >
+                {t.table.prev}
+              </button>
+              <button
+                type="button"
+                className="pop-mlot-foot-button"
+                disabled={pageView.page >= pageView.totalPages}
+                onClick={() => {
+                  setPage(pageView.page + 1);
+                }}
+              >
+                {t.table.next}
+              </button>
+            </nav>
+          </div>
         </section>
       </div>
 
-      {isReissueOpen ? (
-        <ReissueDialog
-          reasons={reissueReasons.data ?? []}
-          isLoading={reissueReasons.isPending}
-          isError={reissueReasons.isError}
-          onCancel={() => {
-            setReissueOpen(false);
-          }}
-          onConfirm={(reissueReasonCode) => {
-            setReissueOpen(false);
-            startIssue(reissueReasonCode);
-          }}
-        />
-      ) : null}
+      <IssueBar
+        state={barState}
+        onIssue={startIssue}
+        onClear={clearSelection}
+        onStop={batch.stop}
+        onConfirm={confirmResults}
+        onRetry={() => {
+          batch.run(retry.commands);
+        }}
+      />
     </main>
   );
 };

@@ -3,7 +3,13 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { TypeTabs, toTypeTabOptions } from './type-tabs';
+import {
+  StatusChips,
+  TypeTabs,
+  activeStatusChip,
+  statusChipChoice,
+  toTypeTabOptions,
+} from './type-tabs';
 
 const t = messages.qualityApproval;
 const OPTIONS = [
@@ -52,5 +58,73 @@ describe('TypeTabs', () => {
     const { container } = render(<TypeTabs options={[]} value="" onChange={vi.fn()} />);
 
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe('StatusChips(#186)', () => {
+  const pending = t.statusLabels.PENDING;
+  const approved = t.statusLabels.APPROVED;
+
+  it('세 상태를 건수와 함께 세우고, 켜진 칩은 누르면 끈다', async () => {
+    const onChange = vi.fn();
+    render(
+      <StatusChips
+        active="PENDING"
+        counts={{ PENDING: 3, APPROVED: 0, REJECTED: 1 }}
+        onChange={onChange}
+      />,
+    );
+    const chip = screen.getByRole('button', { name: t.statusChips.filterOff(pending) });
+
+    expect(chip).toHaveTextContent(t.statusChips.count(pending, 3));
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      screen.getByRole('button', { name: t.statusChips.filterOn(approved) }),
+    ).toHaveTextContent(t.statusChips.count(approved, 0));
+    expect(
+      screen.getByRole('button', { name: t.statusChips.filterOn(t.statusLabels.REJECTED) }),
+    ).toHaveTextContent(t.statusChips.count(t.statusLabels.REJECTED, 1));
+
+    await userEvent.setup().click(chip);
+
+    expect(onChange).toHaveBeenCalledWith('');
+  });
+
+  it('꺼진 칩을 누르면 그 상태를 켠다 — 건수를 아직 모르면 이름만 보인다', async () => {
+    const onChange = vi.fn();
+    render(<StatusChips active="" counts={{}} onChange={onChange} />);
+    const chip = screen.getByRole('button', { name: t.statusChips.filterOn(approved) });
+
+    expect(chip).toHaveTextContent(new RegExp(`^${approved}$`));
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+
+    await userEvent.setup().click(chip);
+
+    expect(onChange).toHaveBeenCalledWith('APPROVED');
+  });
+
+  it('결재 대기는 「대기만 보기」, 승인·반려는 상태 조건이다 — 한 번에 하나만 켜진다', () => {
+    expect(activeStatusChip(true, '')).toBe('PENDING');
+    expect(activeStatusChip(false, 'APPROVED')).toBe('APPROVED');
+    expect(activeStatusChip(false, '')).toBe('');
+    expect(statusChipChoice('PENDING')).toEqual({ pendingOnly: true, statusCode: '' });
+    expect(statusChipChoice('REJECTED')).toEqual({ pendingOnly: false, statusCode: 'REJECTED' });
+    expect(statusChipChoice('')).toEqual({ pendingOnly: false, statusCode: '' });
+  });
+
+  it('유형 탭이 없어도 탭 줄 오른쪽 칩은 선다', () => {
+    render(
+      <TypeTabs
+        options={[]}
+        value=""
+        onChange={vi.fn()}
+        trailing={<StatusChips active="PENDING" counts={{}} onChange={vi.fn()} />}
+      />,
+    );
+
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.statusChips.filterOff(pending) }),
+    ).toBeInTheDocument();
   });
 });

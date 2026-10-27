@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { useClientPage } from '../../patterns/client-page';
 import { useFitColumns } from '../../patterns/column-fit';
-import { useColumnOrder } from '../../patterns/column-order';
+import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { FilterChips } from '../../patterns/filter-chips';
 import { PageNav } from '../../patterns/page-nav';

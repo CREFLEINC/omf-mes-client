@@ -2,6 +2,8 @@ import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@cre
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useColumnOrder } from '../../patterns/column-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { approvalTypeLabelOf, statusBadgeOf } from './code-options';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -31,6 +33,7 @@ export const RequestList = ({
     {
       key: 'request',
       header: t.fields.request,
+      width: '140px',
       render: (row) => (
         <button
           type="button"
@@ -43,11 +46,13 @@ export const RequestList = ({
         </button>
       ),
     },
+    /* 대상 LOT 은 폭을 정하지 않는다 — 남는 폭을 흡수한다(`patterns/column-resize.tsx`). */
     { key: 'target', header: t.fields.targetLot, render: (row) => row.targetName },
     /* 상태는 코드 대신 사용자 용어 배지로(#144) — 대기 주황 · 승인 초록 · 반려 빨강. */
     {
       key: 'status',
       header: t.fields.statusCode,
+      width: '96px',
       align: 'center',
       render: (row) => (
         <Chip size="sm" status={statusBadgeOf(row.statusCode).tone}>
@@ -59,17 +64,16 @@ export const RequestList = ({
     {
       key: 'type',
       header: t.fields.approvalTypeCode,
+      width: '160px',
       align: 'center',
       render: (row) => <Chip size="sm">{approvalTypeLabelOf(row.approvalTypeCode)}</Chip>,
     },
-    /*
-     * 내 차례는 줄 맨 오른쪽 꼬리표로(#144). 오른쪽 끝에 붙여 표 양 끝의 빈 자리를 같게 한다 —
-     * 왼쪽 요청번호도 칸 안쪽 여백만큼만 떨어져 있다.
-     */
+    /* 내 차례 꼬리표(#144) — 칸 가운데에 둔다(#186 사용자 지시). */
     {
       key: 'myTurn',
       header: t.fields.myTurn,
-      align: 'end',
+      width: '96px',
+      align: 'center',
       render: (row) =>
         row.isMyTurn ? (
           <Chip size="sm" status="info">
@@ -78,6 +82,9 @@ export const RequestList = ({
         ) : null,
     },
   ];
+  /* 머리칸을 끌어 순서를 바꾸고, 오른쪽 끝을 끌어 폭을 바꾼다(#186) — 둘 다 이 브라우저에 남는다. */
+  const ordered = useColumnOrder('omf-mes:quality-approvals:column-order', columns);
+  const resizable = useColumnWidths('omf-mes:quality-approvals:columns', ordered);
 
   if (error !== null && error !== undefined) return error;
   if (isLoading) {
@@ -112,6 +119,7 @@ export const RequestList = ({
        */}
       <div
         className="quality-approval-table"
+        style={resizable.style}
         onClick={(event) => {
           const target = event.target as Element;
           if (target.closest('button, a, input, select, textarea') !== null) return;
@@ -121,7 +129,7 @@ export const RequestList = ({
         <Table
           density="compact"
           caption={<span className="quality-approval-table-caption">{t.panes.list}</span>}
-          columns={columns}
+          columns={resizable.columns}
           rows={rows}
           getRowId={(row) => String(row.approvalRequestId)}
           empty={empty}

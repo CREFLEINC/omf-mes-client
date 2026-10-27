@@ -2,7 +2,7 @@ import { Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { useColumnOrder } from '../../patterns/column-order';
+import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import type { ItemNameLookup } from './reference-lookup';

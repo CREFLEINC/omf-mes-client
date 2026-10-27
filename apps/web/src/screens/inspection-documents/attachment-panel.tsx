@@ -20,7 +20,7 @@ import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useClientPage } from '../../patterns/client-page';
-import { useColumnOrder } from '../../patterns/column-order';
+import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { FilterChips } from '../../patterns/filter-chips';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';

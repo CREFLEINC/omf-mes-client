@@ -6,11 +6,13 @@ import type { Translated } from './translated';
  * 참조 이름의 세 갈래(미도착·목록에 없음·실패)를 가른다.
  */
 export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
-  title: 'Tra cứu kế hoạch nhập hàng',
+  title: 'Quản lý nhập kho',
   breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   breadcrumbHub: 'Quản lý nhập kho',
   /** 두 표 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
   splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
+  listCollapse: 'Thu gọn danh sách đơn đặt hàng',
+  listExpand: 'Mở danh sách đơn đặt hàng',
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách kế hoạch nhập hàng',
@@ -153,11 +155,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
       line: 'Chọn dòng P/O',
       link: 'Liên kết',
     },
-    tabs: {
-      label: 'Phân loại phần vượt',
-      unlinked: 'Chưa liên kết',
-      linked: 'Đã liên kết',
-    },
+    listTitle: 'Phần vượt chưa liên kết',
     table: {
       receiptNo: 'Số nhập hàng',
       receiptDate: 'Ngày nhập hàng',
@@ -166,8 +164,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
       lot: 'LOT',
       excessQty: 'Số lượng vượt',
       sourceOrder: 'P/O gốc',
-      linkedOrder: 'P/O liên kết',
-      linkedAt: 'Ngày liên kết',
     },
     candidates: {
       title: 'Dòng P/O để liên kết',
@@ -192,25 +188,16 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     justRegistered: 'Vừa đăng ký',
     actions: {
       link: 'Liên kết',
-      unlink: 'Hủy liên kết',
     },
     confirmLink: (qty: string, order: string): string => `Phần vượt ${qty} → ${order}`,
-    confirmUnlink: (qty: string, order: string): string =>
-      `Hủy liên kết phần vượt ${qty} khỏi ${order}`,
     blocked: {
       noExcess: 'Hãy chọn phần vượt cần liên kết.',
       noLine: 'Hãy chọn dòng P/O cần liên kết.',
-      noLinked: 'Hãy chọn phần vượt cần hủy liên kết.',
     },
     done: {
       linked: (qty: string, order: string): string => `Đã liên kết: phần vượt ${qty} → ${order}`,
-      unlinked: (qty: string, order: string): string =>
-        `Đã hủy liên kết: phần vượt ${qty} khỏi ${order}`,
     },
-    empty: {
-      unlinkedTitle: 'Không có phần vượt chưa liên kết',
-      linkedTitle: 'Không có phần vượt đã liên kết',
-    },
+    emptyTitle: 'Không có phần vượt chưa liên kết',
     truncated: (shown: number, total: number): string =>
       `Chỉ hiển thị ${String(shown)} mục (tổng ${String(total)} mục).`,
     loading: 'Đang tải phần vượt',
@@ -218,13 +205,11 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     lineLinkable: (qty: string): string => `Liên kết ${qty}`,
     lineLinkableLabel: (lineNo: number, qty: string): string =>
       `Liên kết phần vượt ${qty} vào dòng ${String(lineNo)}`,
-    lineLinked: (qty: string): string => `Đã liên kết ${qty}`,
-    lineLinkedLabel: (lineNo: number, qty: string): string =>
-      `Xem phần vượt ${qty} đã liên kết vào dòng ${String(lineNo)}`,
   },
   stage: {
     label: 'Giai đoạn nhập kho',
     group: {
+      LABEL: 'Chờ phát hành nhãn',
       INSPECTION: 'Chờ kiểm tra',
       HELD: 'Tạm giữ',
       RECEIPT: 'Chờ nhập kho',
@@ -234,6 +219,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     filterOn: (label: string): string => `Chỉ xem đơn ${label}`,
     filterOff: (label: string): string => `Bỏ điều kiện ${label}`,
     code: {
+      LABEL_PENDING: 'Chờ phát hành nhãn',
       INSPECTION_REQUIRED: 'Chưa yêu cầu kiểm tra',
       INSPECTION_REQUESTED: 'Chờ kiểm tra',
       INSPECTION_IN_PROGRESS: 'Đang kiểm tra',
@@ -245,13 +231,55 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
       CANCELLED: 'Đã hủy',
     },
     beforeReceipt: 'Chưa nhận hàng',
-    others: (count: number): string => `và ${String(count)} khác`,
     summarySeparator: ' · ',
+  },
+  receive: {
+    selectAll: 'Chọn tất cả',
+    selectRow: (lineNo: number): string => `Chọn dòng ${String(lineNo)}`,
+    partialSkipped: (count: number): string => `Đã bỏ qua ${String(count)} mặt hàng nhận một phần.`,
+    submit: 'Đăng ký nhập hàng các mặt hàng đã chọn',
+    checkedCount: (count: number): string => `Đã chọn ${String(count)}`,
+    editRow: (itemCode: string): string => `Nhập số lượng nhận cho ${itemCode}`,
+    qtyLabel: (lineNo: number): string => `Số lượng nhận lần này dòng ${String(lineNo)}`,
+    excessTag: (qty: string): string => `Vượt ${qty}`,
+    submitRow: 'Đăng ký nhập hàng',
+    cancelRow: 'Hủy',
+    errors: {
+      qtyEmpty: 'Hãy nhập số lượng nhận lần này.',
+      qtyNotNumber: 'Số lượng nhận lần này phải là số.',
+      qtyNotPositive: 'Số lượng nhận lần này phải lớn hơn 0.',
+    },
+    noReason: 'Không tải được mã lý do không dán nhãn nên không thể đăng ký nhập hàng.',
+    confirm: {
+      title: 'Đăng ký nhập hàng',
+      lead: (count: number): string =>
+        count === 1
+          ? 'Đăng ký 1 mục.'
+          : `Đăng ký ${String(count)} mục. Mỗi mặt hàng có số nhập hàng riêng.`,
+      labelNote:
+        'Đăng ký ở trạng thái không dán nhãn. Nhãn được phát hành tại POP «Đăng ký LOT vật tư · Phát hành nhãn».',
+      irreversible: 'Không thể hoàn tác phiếu nhập hàng tại màn hình này. Việc hủy cần phê duyệt.',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
+      qty: 'Số lượng nhận',
+      excess: (qty: string): string => `Phần vượt ${qty}`,
+      back: 'Quay lại',
+      register: 'Đăng ký',
+    },
+    done: (count: number, firstNo: string): string =>
+      count === 1
+        ? `Đã đăng ký nhập hàng: ${firstNo}`
+        : `Đã đăng ký ${String(count)} phiếu nhập hàng: ${firstNo} và ${String(count - 1)} phiếu khác`,
+    goExcess: 'Liên kết phần vượt',
   },
   lot: {
     receivedOn: (date: string): string => `Nhận ${date}`,
     putawayOnPda: 'Xếp kho trên PDA',
+    issueLabelOnPop: 'Phát hành nhãn trên POP',
+    labelMissing: 'Không dán nhãn',
     evidence: {
+      receiptNo: (inboundReceiptNo: string): string => `Số nhập hàng ${inboundReceiptNo}`,
+      wholeQty: (qty: string, uom: string): string => `Tổng ${qty} ${uom}`,
       requested: (requestNo: string, date: string): string => `Yêu cầu ${requestNo} · ${date}`,
       accepted: (date: string): string => `Kiểm tra đạt ${date}`,
       rejected: 'Kiểm tra không đạt · chỉ kho hàng lỗi',

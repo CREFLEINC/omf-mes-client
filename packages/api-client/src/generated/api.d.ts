@@ -20,6 +20,8 @@ export interface paths {
         query?: {
           /** @description 코드·명칭 검색 */
           q?: string;
+          /** @description 공장으로 거른다 — 창고 목록의 공장 필터와 다른 화면의 창고 선택 목록이 그 공장 창고만 보인다. 현장 단말(POP·MOBILE)은 원래 자기 공장 창고만 받으므로 다른 공장을 보내면 빈 목록이다. 장부 P-109 */
+          plantId?: number;
           /** @description 값 = `MATERIAL`·`PRODUCT`·`SPARE_PART`·`GENERAL`. 값 목록은 `GET /mdm/code-values?codeGroupCode=WAREHOUSE_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
           warehouseTypeCode?: string;
           /** @description 불량창고만 거른다 — W-01-06 §3의 창고 선택(「불량창고」)이 이 조건으로 건다. 근거: DR-012 확정 3-C · omf-mes#147 */
@@ -14251,6 +14253,331 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/quality/inspection-sheet-templates': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 검사표 기준 목록
+     * @description 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    get: {
+      parameters: {
+        query?: {
+          itemId?: number;
+          statusCode?: 'DRAFT' | 'CONFIRMED' | 'OBSOLETE';
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['InspectionSheetTemplate'][];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /**
+     * 검사표 기준 등록
+     * @description 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['InspectionSheetTemplateCreate'];
+        };
+      };
+      responses: {
+        /** @description 등록됨 */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheetTemplate'];
+          };
+        };
+        /** @description 검증 실패 · 작성중이 아닌 기준을 고치면 STATE_LOCKED */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(W-06-24) · 로그인 계정의 데이터 범위에 OA 공장(공통코드 INSPECTION_SHEET_PLANT)이 없음 — 「이 화면은 OA 사업부 전용입니다」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        inspectionSheetTemplateId: number;
+      };
+      cookie?: never;
+    };
+    /**
+     * 검사표 기준 상세 — 단계·항목·LOT 칸 품목 포함
+     * @description 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          inspectionSheetTemplateId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 상세 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheetTemplate'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    /**
+     * 검사표 기준 수정(작성중만)
+     * @description 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          inspectionSheetTemplateId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['InspectionSheetTemplateUpdate'];
+        };
+      };
+      responses: {
+        /** @description 수정됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheetTemplate'];
+          };
+        };
+        /** @description 검증 실패 · 작성중이 아닌 기준을 고치면 STATE_LOCKED */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(W-06-24) · 로그인 계정의 데이터 범위에 OA 공장(공통코드 INSPECTION_SHEET_PLANT)이 없음 — 「이 화면은 OA 사업부 전용입니다」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 낙관적 잠금 충돌 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ConflictResponse'];
+          };
+        };
+      };
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}:confirm': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        inspectionSheetTemplateId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 검사표 기준 확정
+     * @description 작성중 판을 확정한다. 단계가 하나 이상이어야 한다(400 steps·REQUIRED). 같은 모델의 앞 확정본은 OBSOLETE 로 내린다. 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          inspectionSheetTemplateId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 확정됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheetTemplate'];
+          };
+        };
+        /** @description 검증 실패 · 작성중이 아닌 기준을 고치면 STATE_LOCKED */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(W-06-24) · 로그인 계정의 데이터 범위에 OA 공장(공통코드 INSPECTION_SHEET_PLANT)이 없음 — 「이 화면은 OA 사업부 전용입니다」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 낙관적 잠금 충돌 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/inventory/adjustments': {
     parameters: {
       query?: never;
@@ -16794,6 +17121,156 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/logistics/goods-receipt-lines': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 입고 줄 목록(자재입고·생산입고 현황)
+     * @description 입고 건을 가로지르는 줄 목록. 입고 목록은 머리글 단위라 품목·수량이 없다. 기간은 공장 현지 날짜(양 끝 포함)이고 시작이 필수, 최대 366일이다 — 입고 목록의 receiptDateFrom/To(UTC 날짜)와 다르다. 상태를 고르지 않으면 취소 완료(CANCELLED) 입고만 뺀다 — 취소요청 중인 입고는 재고가 그대로라 보인다. 정렬: 입고 일시 내림차순 → 입고 → 줄 번호. 근거: 서버 선행 · 장부 P-119
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description 입고 유형(공통코드 RECEIPT_TYPE) — 자재입고 MATERIAL · 생산입고 PRODUCT */
+          receiptTypeCode?: string;
+          /** @description 입고일 시작(공장 현지 날짜) · 필수 */
+          receiptDateFrom?: string;
+          /** @description 입고일 종료(공장 현지 날짜, 포함) */
+          receiptDateTo?: string;
+          plantId?: number;
+          warehouseId?: number;
+          itemId?: number;
+          /** @description 입하 줄에서 온 입고(자재입고)의 공급사 */
+          supplierId?: number;
+          /** @description 물류 전표 상태(LOGISTICS_DOCUMENT_STATUS). 주면 취소도 그 값으로 고른다 */
+          statusCode?: string;
+          /** @description 입고 번호·LOT 번호 부분 검색 */
+          q?: string;
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: {
+                /** Format: int64 */
+                goodsReceiptLineId: number;
+                /** Format: int64 */
+                goodsReceiptId: number;
+                goodsReceiptNo: string;
+                lineNo: number;
+                receiptTypeCode: string;
+                /** Format: date-time */
+                receiptDatetime: string;
+                statusCode: string;
+                /** Format: int64 */
+                plantId: number;
+                /** @description 입고 창고 */
+                warehouse: {
+                  /** Format: int64 */
+                  id: number;
+                  code: string;
+                  name: string;
+                };
+                /** @description 품목 */
+                item: {
+                  /** Format: int64 */
+                  id: number;
+                  code: string;
+                  name: string;
+                };
+                /** Format: int64 */
+                lotId: number;
+                lotNo: string;
+                receiptQty: number;
+                /** Format: int64 */
+                uomId: number;
+                uomCode: string;
+                /** @description 입하 줄에서 온 입고(자재입고)만 — 그 입하의 공급사. 아니면 null */
+                supplier: {
+                  /** Format: int64 */
+                  id: number;
+                  code: string;
+                  name: string;
+                } | null;
+                /** @description LOT 원천이 W/O 인 입고(생산입고)만. 아니면 null */
+                workOrder: {
+                  /** Format: int64 */
+                  workOrderId: number;
+                  workOrderNo: string;
+                } | null;
+              }[];
+              page: components['schemas']['PageMeta'];
+              /** @description 필터 전체(쪽과 무관)의 합계. 단위가 섞이면 더할 수 없어 단위마다 둔다. */
+              totals: {
+                /** @description 줄 수 — page.total 과 같다 */
+                lineCount: number;
+                qtyByUom: {
+                  /** Format: int64 */
+                  uomId: number;
+                  uomCode: string;
+                  qty: number;
+                }[];
+                /** @description 입고 유형(receiptTypeCode)별 줄 수 — 유형 칩의 건수. 유형 필터를 주면 그 유형 하나뿐이다 */
+                lineCountByType: {
+                  receiptTypeCode: string;
+                  lineCount: number;
+                }[];
+              };
+            };
+          };
+        };
+        /** @description 검증 실패 — 기간 시작 없음·종료가 시작보다 앞섬·366일 초과. 고쳐야 풀린다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — LOT 추적 화면 권한 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/logistics/goods-receipts': {
     parameters: {
       query?: never;
@@ -18234,6 +18711,80 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/logistics/purchase-orders:inbound-stage-counts': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 입고 단계 칩의 수
+     * @description 입고 관리 허브(W-01-09) 탭 줄의 「라벨 대기 N · 검사 대기 N · 보류 N · 입고 대기 N · 적치 대기 N」 — 발주 목록(GET /logistics/purchase-orders)과 같은 조건에 맞는 발주 «전체»의 LOT 줄(라벨 대기 입하 라인 포함)을 묶음별로 센다. 쪽(page·size)과 inboundStage 는 보지 않는다 — 칩으로 좁힌 뒤에도 다른 칩의 수가 남는다. 목록의 계약 밖 조건(expectedReceiptDateFrom·expectedReceiptDateTo·overdueOnly·supplierQ · 장부 P-85)도 목록과 같이 받는다. 묶음(흐름 순서): LABEL = LABEL_PENDING · INSPECTION = INSPECTION_REQUIRED·INSPECTION_REQUESTED·INSPECTION_IN_PROGRESS · HELD = INSPECTION_HELD · RECEIPT = RECEIPT_READY · PUTAWAY = PUTAWAY_PENDING·PUTAWAY_TEMPORARY. 완료·취소는 세지 않는다. 판정은 GET …/{purchaseOrderId}/inbound-progress 의 stageCode 와 같다. 장부 P-110
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description 공급사 */
+          supplierId?: number;
+          /** @description 공장 */
+          plantId?: number;
+          /** @description 물류 전표의 진행 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+          statusCode?: string;
+          /** @description 이 품목이 라인에 있는 P/O 만 */
+          itemId?: number;
+          /** @description 발주일 시작 */
+          orderDateFrom?: string;
+          /** @description 발주일 종료 */
+          orderDateTo?: string;
+          /** @description 아직 입하가 끝나지 않은 건만 */
+          openOnly?: boolean;
+          /** @description 발주번호 검색 */
+          q?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 묶음별 LOT 수 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InboundStageCountResponse'];
+          };
+        };
+        /** @description 검증 실패 — 계약 밖 조건의 형식 포함 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/logistics/purchase-orders/{purchaseOrderId}': {
     parameters: {
       query?: never;
@@ -18488,6 +19039,67 @@ export interface paths {
         };
       };
     };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/purchase-orders/{purchaseOrderId}/inbound-progress': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        purchaseOrderId: number;
+      };
+      cookie?: never;
+    };
+    /**
+     * 발주 하나의 입고 진행(LOT 단계)
+     * @description 입고 관리 허브(W-01-09)가 발주를 고르면 부른다 — 그 발주 라인에 연결된 입하 라인의 자재 LOT 마다 한 줄. 선별(P-53)로 떼어 낸 자식 LOT 도 한 줄이고 조상의 입하 라인을 따른다. LOT 을 아직 발행하지 않은 입하 라인(라벨 미부착 입하)은 라인마다 LABEL_PENDING 한 줄이고 LOT 칸(lotId·lotNo·lotStatusCode·receivableQty)이 null 이다 — 줄은 inboundReceiptLineId 로 가린다. 단계(stageCode)와 다음 할 일(nextActionCode)은 서버가 정한다(C-17) — 화면은 규칙을 베끼지 않는다. 정렬은 화면이 한다. 권한은 형제 경로(발주 목록·상세)처럼 묻지 않는다. 장부 P-110
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          purchaseOrderId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description LOT 진행 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InboundLotProgressListResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 P/O */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
     post?: never;
     delete?: never;
     options?: never;
@@ -19598,6 +20210,473 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/trace/material-lot-flows': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * LOT 추적 정방향 목록(자재 LOT)
+     * @description 자재입고가 있는 LOT 과 단계 진행. 진입점(itemId·lotNo·inboundReceiptNo·q) 중 하나가 필요하다. 기간 축은 첫 자재입고 일시(취소 완료 제외 · 공장 현지 날짜, 양 끝 포함, 최대 366일) — lotNo·inboundReceiptNo 로 집으면 기간은 선택. 정렬: 첫 자재입고 일시 내림차순. 근거: 서버 선행 · 장부 P-119
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description 자재 품목 */
+          itemId?: number;
+          /** @description 자재 LOT 번호 정확 일치 */
+          lotNo?: string;
+          /** @description LOT 번호 부분 일치 */
+          q?: string;
+          /** @description 입하 번호 정확 일치 */
+          inboundReceiptNo?: string;
+          /** @description 첫 자재입고일 시작(공장 현지 날짜) */
+          receiptDateFrom?: string;
+          /** @description 첫 자재입고일 종료(포함) */
+          receiptDateTo?: string;
+          plantId?: number;
+          supplierId?: number;
+          /** @description 자재입고 창고 — 그 창고로 들어온 자재입고만으로 첫 자재입고를 본다 */
+          warehouseId?: number;
+          /** @description 현재 단계(하위 사슬에서 가장 멀리 간 단계)로 거른다 — 여럿을 쉼표로 */
+          currentStageCode?: (
+            'RECEIVED' | 'CONSUMED' | 'PRODUCED' | 'PRODUCTION_RECEIVED' | 'PACKED' | 'SHIPPED'
+          )[];
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: (components['schemas']['LotFlowLotHead'] &
+                components['schemas']['LotFlowMaterialSide'] & {
+                  /** Format: date-time */
+                  firstReceivedAt: string;
+                  /** @description 투입량 — 원 투입에서 정정된 것을 빼고 정정 투입을 넣는다(투입 기록 기준) */
+                  consumedQty: number;
+                  /** @description 단계마다 닿은 수 — 생산 LOT 기준 */
+                  stages: {
+                    received: {
+                      count: number;
+                    };
+                    consumed: {
+                      workOrderCount: number;
+                    };
+                    produced: {
+                      lotCount: number;
+                    };
+                    productionReceived: {
+                      lotCount: number;
+                    };
+                    /** @description 포장 확정(PACKED) 취급 단위만 */
+                    packed: {
+                      lotCount: number;
+                      handlingUnitCount: number;
+                    };
+                    shipped: {
+                      lotCount: number;
+                      shipmentCount: number;
+                      /** Format: date-time */
+                      lastShippedAt: string | null;
+                    };
+                  };
+                  /** @enum {string} */
+                  currentStageCode:
+                    | 'RECEIVED'
+                    | 'CONSUMED'
+                    | 'PRODUCED'
+                    | 'PRODUCTION_RECEIVED'
+                    | 'PACKED'
+                    | 'SHIPPED';
+                  /** @description 추정 이음이 있을 때만 값 — 이어진 생산 LOT 이 하나라도 W/O 단위 추정이면 WORK_ORDER_ESTIMATE, 아니면 LOT_GENEALOGY_ESTIMATE. 이어진 생산 LOT 이 없으면(투입 없음·투입만) null. 장부 P-119 */
+                  basis: components['schemas']['LotFlowBasis'] | null;
+                })[];
+              page: components['schemas']['PageMeta'];
+              /** @description 단계별 LOT 수 — 필터 전체를 세되 currentStageCode 조건만 빼고 센다(조건 칩 건수) */
+              stageCounts: {
+                RECEIVED: number;
+                CONSUMED: number;
+                PRODUCED: number;
+                PRODUCTION_RECEIVED: number;
+                PACKED: number;
+                SHIPPED: number;
+              };
+            };
+          };
+        };
+        /** @description 검증 실패 — 진입점 없음 · 기간 시작 없음 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류). 고쳐야 풀린다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — LOT 추적 화면 권한 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/product-lot-flows': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * LOT 추적 역방향 목록(생산 LOT)
+     * @description 실적 배분이 있는 생산 LOT 과 단계 진행(빈 선발행 슬롯 제외). 진입점(itemId·lotNo·shipmentNo·workOrderNo·q) 중 하나가 필요하다. 기간 축은 dateAxis — PRODUCED(기본, 첫 실적 시각) 또는 SHIPPED(그 LOT 이 실린 출하의 출하 일시). 공장 현지 날짜, 양 끝 포함, 최대 366일 — lotNo·shipmentNo·workOrderNo 로 집으면 기간은 선택. 정렬: 첫 실적 시각 내림차순. 근거: 서버 선행 · 장부 P-119
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description 제품 품목 */
+          itemId?: number;
+          /** @description 생산 LOT 번호 정확 일치 */
+          lotNo?: string;
+          /** @description 생산 LOT 번호 부분 일치 */
+          q?: string;
+          /** @description 출하 번호 정확 일치 */
+          shipmentNo?: string;
+          /** @description W/O 번호 정확 일치 — 그 W/O 가 만든 생산 LOT */
+          workOrderNo?: string;
+          /** @description 기간 기준 */
+          dateAxis?: 'PRODUCED' | 'SHIPPED';
+          /** @description 기간 시작(공장 현지 날짜) */
+          dateFrom?: string;
+          /** @description 기간 종료(포함) */
+          dateTo?: string;
+          plantId?: number;
+          /** @description 그 고객사로 출하된 LOT */
+          customerId?: number;
+          /** @description 현재 단계(하위 사슬에서 가장 멀리 간 단계)로 거른다 — 여럿을 쉼표로 */
+          currentStageCode?: ('PRODUCED' | 'PRODUCTION_RECEIVED' | 'PACKED' | 'SHIPPED')[];
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: (components['schemas']['LotFlowLotHead'] & {
+                workOrder: {
+                  /** Format: int64 */
+                  workOrderId: number;
+                  workOrderNo: string;
+                  statusCode: string;
+                };
+                producedQty: number;
+                /** Format: date-time */
+                firstProducedAt: string;
+                /** Format: date-time */
+                lastProducedAt: string;
+                inputMaterialLotCount: number;
+                /** @description 추정 이음이 있을 때만 값 — 투입 자재로 이었으면 그 근거. 이어진 투입 자재가 없으면 null. 장부 P-119 */
+                basis: components['schemas']['LotFlowBasis'] | null;
+                stages: {
+                  productionReceived: {
+                    count: number;
+                    qty: number;
+                  };
+                  packed: {
+                    handlingUnitCount: number;
+                    qty: number;
+                  };
+                  shipped: {
+                    shipmentCount: number;
+                    qty: number;
+                    /** Format: date-time */
+                    lastShippedAt: string | null;
+                    /** @description 이름순 앞 3개 */
+                    customers: components['schemas']['LotFlowNamed'][];
+                    customerCount: number;
+                  };
+                };
+                /** @enum {string} */
+                currentStageCode: 'PRODUCED' | 'PRODUCTION_RECEIVED' | 'PACKED' | 'SHIPPED';
+              })[];
+              page: components['schemas']['PageMeta'];
+              /** @description 단계별 LOT 수 — 필터 전체를 세되 currentStageCode 조건만 빼고 센다(조건 칩 건수) */
+              stageCounts: {
+                PRODUCED: number;
+                PRODUCTION_RECEIVED: number;
+                PACKED: number;
+                SHIPPED: number;
+              };
+            };
+          };
+        };
+        /** @description 검증 실패 — 진입점 없음 · 기간 시작 없음 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류). 고쳐야 풀린다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — LOT 추적 화면 권한 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/lots/{lotId}/forward-flow': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        lotId: number;
+      };
+      cookie?: never;
+    };
+    /**
+     * LOT 하나의 하위 사슬(정방향)
+     * @description 입하·자재입고 → 투입 W/O → 생산 LOT → 생산입고·포장(출하 단위)·출하. 반제품은 한 번에 한 단만 푼다 — consumedFurther 가 0 보다 큰 생산 LOT 으로 다시 부른다. 실적 배분이 없는 생산 LOT 은 잇지 않는다. 근거: 서버 선행 · 장부 P-119
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          lotId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description LOT 하나의 사슬 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['LotFlowMaterialSide'] & {
+              lot: components['schemas']['LotFlowLotHead'];
+              /** @description 추정 이음이 있을 때만 값 — 이음이 하나라도 W/O 단위 추정이면 WORK_ORDER_ESTIMATE, 아니면 LOT_GENEALOGY_ESTIMATE. 이어진 생산 LOT 이 없으면(투입 없음·투입만) null. 장부 P-119 */
+              basis: components['schemas']['LotFlowBasis'] | null;
+              /** @description 이 LOT 이 투입된 W/O · 첫 투입순 */
+              workOrders: {
+                /** Format: int64 */
+                workOrderId: number;
+                workOrderNo: string;
+                item: components['schemas']['LotFlowNamed'];
+                statusCode: string;
+                consumedQty: number;
+                /** Format: date-time */
+                firstConsumedAt: string;
+                /** Format: date-time */
+                lastConsumedAt: string;
+                /** @description W/O 에 실적이 아예 없으면 null(투입만). 실적은 있는데 이 LOT 의 투입 구간과 겹치는 실적이 없으면 LOT_GENEALOGY_ESTIMATE 에 productionLots 가 빈 목록이다 */
+                linkBasis: components['schemas']['LotFlowBasis'] | null;
+                productionLots: components['schemas']['LotFlowProductionLot'][];
+              }[];
+              /** @description 생산 LOT 이 500개를 넘어 앞 500개만 실었다 */
+              truncated: boolean;
+              totalProductionLotCount: number;
+            };
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — LOT 추적 화면 권한 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 LOT */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/lots/{lotId}/backward-flow': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        lotId: number;
+      };
+      cookie?: never;
+    };
+    /**
+     * LOT 하나의 상위 사슬(역방향)
+     * @description 출하·포장·생산입고 ← 생산 LOT ← W/O·실적 ← 투입 자재 LOT ← 자재입고·입하(공급사·입하 번호·공급사 LOT 번호). 반제품은 한 번에 한 단만 푼다 — producedBy 가 있는 투입 자재 LOT 으로 다시 부른다. 투입 자재 집합과 근거는 input-materials 와 같다. 근거: 서버 선행 · 장부 P-119
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          lotId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description LOT 하나의 사슬 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['LotFlowProductSide'] & {
+              lot: components['schemas']['LotFlowLotHead'];
+              goodQty: number;
+              /** @description 추정 이음이 있을 때만 값 — 투입 자재로 이었으면 그 근거. 원천이 W/O 가 아니거나 실적 배분·투입이 없어 투입 자재가 비면 null. 장부 P-119 */
+              basis: components['schemas']['LotFlowBasis'] | null;
+              /** @description 원천이 W/O 가 아닌 LOT 이면 null(투입 자재도 비어 있다) */
+              workOrder: {
+                /** Format: int64 */
+                workOrderId: number;
+                workOrderNo: string;
+                item: components['schemas']['LotFlowNamed'];
+                statusCode: string;
+                /** @description 그 W/O 의 실적(정정된 원 실적 제외) */
+                results: {
+                  count: number;
+                  goodQty: number;
+                  defectQty: number;
+                  /** Format: date-time */
+                  firstAt: string | null;
+                  /** Format: date-time */
+                  lastAt: string | null;
+                };
+              } | null;
+              /** @description 투입 자재 LOT — 첫 투입 시각 → LOT 번호순. 실적 배분이 없는 생산 LOT 은 비운다(정방향이 그 LOT 을 잇지 않는 것과 같다) */
+              inputMaterials: components['schemas']['LotFlowInputMaterial'][];
+            };
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — LOT 추적 화면 권한 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 LOT */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/trace/lots': {
     parameters: {
       query?: never;
@@ -19638,6 +20717,8 @@ export interface paths {
           awaitingReceiptOnly?: boolean;
           /** @description 완료 처리됐는가로 거른다 — false 면 completedAt 이 비어 있는 것만, true 면 값이 있는 것만 낸다. LOT 라벨 출력(P-02-07 §4-B)의 완료 LOT 목록과 긴급 직행 출하(W-04-05 §3)의 생산 완료분 선택이 이 축으로 선다. ⭐ 상태 코드 문자열을 몰라도 판정된다. ⛔ statusCode(품질 판정 축)로는 완료를 고를 수 없다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위다(공유계약 L-11). 근거: P-02-07 §4-B·§5-4 · omf-mes#269 */
           completed?: boolean;
+          /** @description true 면 그 W/O 의 «현재» 생산 LOT 한 건만 낸다(items 0~1건 · 받은 page·size 는 무시하고 page 메타는 page 1·size 1) — 완료되지 않고 폐번되지 않은(생명주기 ACTIVE·WAITING) 생산 LOT 중 진행 중(ACTIVE)이 먼저, 그 안에서 선발행 회차(W/O 안 LOT 순번)가 가장 앞선 것. 진행 중이 둘 이상이어도 막지 않는다. 다른 질의(completed·lotTypeCode 등)는 이 조건과 함께(AND) 걸려 후보를 넓히지 못한다. workOrderId 가 필수 — 없으면 400 REQUIRED. POP 실적·완료가 다음 LOT 으로 넘어가는 축이다. 장부 P-103 */
+          currentOnly?: boolean;
           /** @description 아직 입고 전표에 실리지 않은 LOT 만. ⭐ W-04-05 긴급 직행 출하가 「창고에 아직 안 들어온 생산 완료분」을 고르는 축이다(W-04-05 §5-7). 이미 입고된 LOT 은 정상 출하 흐름으로 가야 한다. ⭐ M-04-04 제품입고·적치가 오프라인 진입 전 「인수 대기 제품 LOT 목록」을 미리 받는 축이기도 하다(공유계약 C-11) */
           unreceivedOnly?: boolean;
         };
@@ -20088,8 +21169,8 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * 자재 LOT 영향 생산 LOT(작업지시 기준 추정)
-     * @description 자재 LOT 이 투입된 작업지시의 생산 LOT 전부를 낸다. ⚠ 추정이다 — 자재 투입이 LOT 계보를 만들지 않아(I-10 §3-9 · 문의 052) 실제로 들어간 생산 LOT 보다 넓다. basis=WORK_ORDER_ESTIMATE 가 그 사실을 말하고 화면은 「작업지시 기준 추정」으로 밝힌다. 근거: omf-all-around#108 (서버 선행 · 장부 P-52)
+     * 자재 LOT 영향 생산 LOT(계보 기준 추정)
+     * @description 자재 LOT 이 이어진 생산 LOT 을 낸다. 계보(trace.lot_relation)가 있는 W/O 는 그 자재 LOT 이 이어진 생산 LOT 만, 계보가 없는 W/O(#166 배포 전 실적)는 그 W/O 의 생산 LOT 전부다. 투입 시각 기준이라 어느 쪽이든 «추정»이다 — basis 가 그 사실을 말한다. 근거: omf-all-around#108 (장부 P-52) · #166 (장부 P-107)
      */
     get: {
       parameters: {
@@ -20109,6 +21190,131 @@ export interface paths {
           };
           content: {
             'application/json': components['schemas']['AffectedProductionLots'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 LOT */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/lots/{lotId}/input-materials': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        lotId: number;
+      };
+      cookie?: never;
+    };
+    /**
+     * 생산 LOT 투입 자재(계보 기준 추정)
+     * @description 생산 LOT 에 들어간 자재 LOT 을 4M 변경품 표시와 함께 낸다. 생산 실적이 남긴 계보(trace.lot_relation · relation_type CONSUMED · 투입 시각 기준 · 정확도 ESTIMATED)를 읽는다. 계보가 없는 W/O(#166 배포 전)는 그 W/O 투입 전부(basis=WORK_ORDER_ESTIMATE). 생산 LOT 이 아니면 빈 목록. 근거: omf-all-around#166 (서버 선행 · 장부 P-107)
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          lotId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 투입 자재 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InputMaterials'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 LOT */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/lots/{lotId}/used-serials': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        lotId: number;
+      };
+      cookie?: never;
+    };
+    /**
+     * 자재 LOT 이 들어간 시리얼(계보 기준 추정)
+     * @description 자재 LOT 을 투입한 W/O 의 시리얼 중 생산 시각(없으면 발번 시각)이 그 LOT 의 투입 구간(그 LOT 투입 ~ 같은 자재 다른 LOT 투입)에 든 것. 계보가 없는 W/O(#166 배포 전)는 그 W/O 시리얼 전부(basis=WORK_ORDER_ESTIMATE). 근거: omf-all-around#166 (서버 선행 · 장부 P-107)
+     */
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path: {
+          lotId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 시리얼 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['UsedSerials'];
           };
         };
         /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
@@ -26765,6 +27971,8 @@ export interface paths {
             | 'achievementRate'
             | 'achievementRate,asc'
             | 'achievementRate,desc';
+          /** @description 마감 3분류 판정으로 거른다 — progress.completionJudgmentCode 와 같은 식(정정된 원본을 뺀 양품 합 vs 지시 수량)이다. 저장 칸이 없는 계산값이지만 서버가 걸러 쪽·총계가 맞다. ⚠ 대상을 묶어야 한다 — 끝나지 않은 상태(마감·취소 제외)만 골랐거나 계획 시작 기간(plannedStartFrom~To)이 92일 이하일 때만 받고, 아니면 400 INVALID. 마감 대상 목록(statusCode=IN_PROGRESS,SUSPENDED + 판정)은 기간 없이 된다. ⭐ statusCode 는 쉼표로 여러 값을 받는다(예: IN_PROGRESS,SUSPENDED) — 값 하나면 지금과 같은 일치, 비면 400. 장부 P-108 */
+          completionJudgmentCode?: 'UNDER' | 'NORMAL' | 'OVER';
           /** @description 실적 누계를 함께 받는다 */
           withProgress?: boolean;
           page?: number;
@@ -27322,6 +28530,83 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/production/work-orders/{workOrderId}/daily-results': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * W/O 일자별 실적
+     * @description W/O 마감 상세의 일자별 표. 수량은 W/O 누계(WorkOrderProgress)와 같은 규칙으로 센다 — 정정된 원본은 빼고 정정본(잎)만 센다. 실적에는 취소 상태가 없고 0 수량 정정이 그 자리다 — 수량 0 정정도 resultCount·correctedCount 에 실적 하나로 센다. 일자(workDate)는 공장 현지 날짜이되, 자정을 넘는 교대의 새벽 실적은 그 교대가 시작한 날로 묶는다 — 교대는 실적의 교대(정정본은 원본 것), 없으면 실적 시각을 그 공장의 지금 교대 정의로 판정한다(작업 세션의 교대는 쓰지 않는다). 공장은 실적 단말의 공장, 없으면 W/O 의 공장(ERP W/O → 라인). 교대가 없으면 공장 현지 날짜, 공장을 찾지 못하면 Asia/Ho_Chi_Minh. 영업일 오름차순. 근거: 서버 선행 · 장부 P-122
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          workOrderId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 일자별 실적 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WorkOrderDailyResults'];
+          };
+        };
+        /** @description 경로의 workOrderId 형식이 틀렸다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 단말·권한 게이팅에 막혔다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 W/O — 문구가 W/O 목록을 새로 고쳐 다시 고르라고 안내한다 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/production/work-orders/{workOrderId}:cancel': {
     parameters: {
       query?: never;
@@ -27451,6 +28736,8 @@ export interface paths {
       parameters: {
         query?: never;
         header: {
+          /** @description 현장 단말(POP)이 단말 토큰으로 마감할 때 필수 — 그 단말 공장의 재직 작업자 사번이고, 마감 작업자(closedWorkerId)로 남는다. 관리웹은 보내지 않는다(계정이 남는다). ⭐ POP 마감도 If-Match 가 필수라 온라인에서만 된다. 단말은 그 W/O 공정 매핑의 작업지시 마감 권한(canCloseWorkOrder)이 있어야 한다 — 없으면 401 PERMISSION_DENIED. 장부 P-108 */
+          'X-Worker-No'?: string;
           /** @description 전 쓰기 API 필수. */
           'Idempotency-Key': components['parameters']['IdempotencyKey'];
           /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
@@ -28388,6 +29675,99 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/production/work-sessions/{workSessionId}:force-end': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 작업 세션 강제 종료(관리웹)
+     * @description 관리웹이 열린 작업 세션(진행·중단)을 닫는다 — 다른 단말에 열린 세션이 W/O 마감(:close 409 OPEN_SESSION_EXISTS)을 막을 때 쓴다. 단말 :end 와 다른 점: 어느 단말의 세션이든 닫는다 · 종료 시각은 서버 수신 시각이다(본문에 시각이 없다) · 사유가 필수다 · 세션 사건 FORCE_END 에 계정(performedBy)·시각(occurredAt)·사유(remarks)가 남는다. 남은 참여자를 종료 시각으로 닫고 세션 종료 알림을 내는 것은 :end 와 같다. 세션만 닫는다 — 중단(SUSPENDED)된 W/O 의 상태는 바뀌지 않는다. 온라인 전용이라 If-Match 를 받지 않는다(세션을 잠그고 상태로 판정). 이미 종료된 세션은 400 STATE_LOCKED. 그 뒤 그 단말의 :end·중단·재개는 400 STATE_LOCKED 「이미 종료된 작업 세션입니다 …」를 받고, 그 세션 id 를 실은 실적·투입은 그대로 받는다(오프라인 실적 유실 방지). 권한 W-02-05. 장부 P-108
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          workSessionId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['WorkSessionForceEnd'];
+        };
+      };
+      responses: {
+        /** @description 닫힘 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['WorkSession'];
+          };
+        };
+        /** @description 검증 실패 · 이미 종료된 세션 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한(W-02-05)이 없다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 작업 세션 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 충돌 — 같은 Idempotency-Key 로 다른 본문이 왔다 등 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ProductionConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/production/work-sessions/{workSessionId}:end': {
     parameters: {
       query?: never;
@@ -28616,6 +29996,87 @@ export interface paths {
         };
       };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/serial-numbers/{serialNo}/input-materials': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        serialNo: string;
+      };
+      cookie?: never;
+    };
+    /**
+     * 시리얼 투입 자재(계보 기준 추정)
+     * @description 시리얼에 들어간 자재 LOT 을 4M 변경품 표시와 함께 낸다 — 같은 W/O·같은 자재에서 다음 LOT 투입 전까지를 그 LOT 의 구간으로 보고, 시리얼의 생산 시각(없으면 발번 시각)이 든 구간의 LOT 이다. 정확히 교체 시각이면 둘 다. 근거: omf-all-around#166 (서버 선행 · 장부 P-107)
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          serialNo: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 투입 자재 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /**
+               * @description LOT_GENEALOGY_ESTIMATE = 시리얼의 생산 시각(없으면 발번 시각)에 쓰던 자재 LOT(투입 시각 기준 · 추정) · WORK_ORDER_ESTIMATE = 계보가 없는 W/O(#166 배포 전)라 그 W/O 투입 전부
+               * @enum {string}
+               */
+              basis: 'LOT_GENEALOGY_ESTIMATE' | 'WORK_ORDER_ESTIMATE';
+              items: {
+                /** Format: int64 */
+                lotId: number;
+                lotNo: string;
+                /** Format: int64 */
+                itemId: number;
+                itemCode: string;
+                itemName: string;
+                /** @description 4M 변경품이면 싣는다(장부 P-86 · #63). */
+                fourMChange?: {
+                  changeTypeCode: string;
+                  remarks?: string;
+                };
+              }[];
+            };
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 시리얼 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -31060,7 +32521,7 @@ export interface paths {
     get?: never;
     /**
      * 품목 검사 수준 수동 변경
-     * @description 수준이 바뀌는데 사유가 없으면 400 reason REQUIRED. 근거: 서버 선행 · 장부 P-87 · omf-all-around#64 · W-03-12 검사 수준 관리
+     * @description 사유는 선택이다(장부 P-105 · omf-all-around#133 — 예전에는 수준이 바뀌는데 사유가 없으면 400 reason REQUIRED). 근거: 서버 선행 · 장부 P-87 · omf-all-around#64 · W-03-12 검사 수준 관리
      */
     put: {
       parameters: {
@@ -31210,6 +32671,968 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/quality/oqc-serials/{serialNo}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        serialNo: string;
+      };
+      cookie?: never;
+    };
+    /**
+     * 시리얼 OQC 스캔 조회
+     * @description 스캔한 시리얼의 품목·LOT, 지금의 OQC 기록, 그 LOT 을 피킹한 열린 OQC 의뢰를 한 번에 낸다. POP 은 단말 공장의 시리얼만. 서버 선행(omf-all-around#68 · 장부 P-101).
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          serialNo: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 스캔 결과 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['OqcSerialScan'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(W-04-03 · P-04-06) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 시리얼 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-requests/{inspectionRequestId}/oqc-serials': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        inspectionRequestId: number;
+      };
+      cookie?: never;
+    };
+    /**
+     * 검사 의뢰의 시리얼 판정
+     * @description 이 의뢰의 회차들이 쓴 시리얼 출하검사 줄 — 시리얼 번호순. ⚠ 한계: 시리얼당 한 줄이다 — 재검 회차가 같은 줄을 고치므로 회차별 이력은 남지 않는다. 1차 판정은 처음 기록한 값 그대로이고, 최종 판정과 마지막으로 쓴 회차만 바뀐다. 서버 선행(omf-all-around#68 · 장부 P-101).
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          inspectionRequestId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['OqcSerialRecord'][];
+            };
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(W-04-03 · P-04-06) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-sheets:open-by-serial': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 시리얼로 제품 검사표 열기 — 없으면 만든다
+     * @description 머리 값은 만들 때 자동으로 채운다(Model = 품목 코드, 사양 = ERP SPEC, LOT 칸 = W/O 투입 LOT 이 하나일 때, 고정 문구 = 기준). 기준 판은 W/O 단위로 고정 — 같은 W/O 에 이미 만든 검사표가 있으면 그 판(폐기됐어도)을 쓰고 첫 검사표만 그때의 확정판을 쓴다. 쓸 판이 없으면 400 serialNo·STATE_LOCKED. POP 은 단말 공장의 시리얼만. 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description POP 은 필수 — 단말 공장의 재직 작업자가 작성자·검사자다 */
+          'X-Worker-No'?: string;
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            serialNo: string;
+          };
+        };
+      };
+      responses: {
+        /** @description 검사표 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 검사표의 version_no. 머리·단계·NG 쓰기가 모두 이 값으로 잠근다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheet'];
+          };
+        };
+        /** @description 없는 시리얼(INVALID) · 확정 기준 없음(STATE_LOCKED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(P-02-15 · W-03-13) · OA 공장 범위 밖(계정 범위·단말 공장 · 공통코드 INSPECTION_SHEET_PLANT) — 「이 화면은 OA 사업부 전용입니다」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-sheets/{inspectionSheetId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        inspectionSheetId: number;
+      };
+      cookie?: never;
+    };
+    /**
+     * 제품 검사표 상세
+     * @description 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: {
+          /** @description POP 은 필수 — 단말 공장의 재직 작업자가 작성자·검사자다 */
+          'X-Worker-No'?: string;
+        };
+        path: {
+          inspectionSheetId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 상세 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 검사표의 version_no. 머리·단계·NG 쓰기가 모두 이 값으로 잠근다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheet'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-sheets/{inspectionSheetId}/header': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        inspectionSheetId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * 제품 검사표 머리 값 수정
+     * @description 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+          /** @description POP 은 필수 — 단말 공장의 재직 작업자가 작성자·검사자다 */
+          'X-Worker-No'?: string;
+        };
+        path: {
+          inspectionSheetId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['InspectionSheetHeaderUpdate'];
+        };
+      };
+      responses: {
+        /** @description 수정됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 검사표의 version_no. 머리·단계·NG 쓰기가 모두 이 값으로 잠근다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheet'];
+          };
+        };
+        /** @description 검증 실패 · 완료된 검사표면 STATE_LOCKED */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(P-02-15 · W-03-13) · OA 공장 범위 밖(계정 범위·단말 공장 · 공통코드 INSPECTION_SHEET_PLANT) — 「이 화면은 OA 사업부 전용입니다」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 낙관적 잠금 충돌 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['QualityConflictResponse'];
+          };
+        };
+      };
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-sheets/{inspectionSheetId}/steps/{stepCode}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        inspectionSheetId: number;
+        stepCode: string;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * 제품 검사표 한 단계 판정·항목 판정 기록
+     * @description 같은 단계를 다시 쓰면 고친다 — 서명돼 있던 단계는 서명이 풀린다. 시리얼 OQC 가 쓴 단계는 400 STATE_LOCKED. 기준에 없는 단계·그 단계의 항목이 아님·1차 OK 인데 최종 NG 는 400 INVALID. 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+          /** @description POP 은 필수 — 단말 공장의 재직 작업자가 작성자·검사자다 */
+          'X-Worker-No'?: string;
+        };
+        path: {
+          inspectionSheetId: number;
+          stepCode: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['InspectionSheetStepWrite'];
+        };
+      };
+      responses: {
+        /** @description 기록됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 검사표의 version_no. 머리·단계·NG 쓰기가 모두 이 값으로 잠근다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheet'];
+          };
+        };
+        /** @description 검증 실패 · 완료된 검사표면 STATE_LOCKED */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(P-02-15 · W-03-13) · OA 공장 범위 밖(계정 범위·단말 공장 · 공통코드 INSPECTION_SHEET_PLANT) — 「이 화면은 OA 사업부 전용입니다」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 낙관적 잠금 충돌 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['QualityConflictResponse'];
+          };
+        };
+      };
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-sheets/{inspectionSheetId}/ngs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        inspectionSheetId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * 제품 검사표 NG 블록 갈아 끼우기
+     * @description 배열 순서가 순번이다. 불량 기록(defect_record)은 만들지 않는다. 작업자는 사번으로 받는다(없으면 400 INVALID). 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+          /** @description POP 은 필수 — 단말 공장의 재직 작업자가 작성자·검사자다 */
+          'X-Worker-No'?: string;
+        };
+        path: {
+          inspectionSheetId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            ngs: components['schemas']['InspectionSheetNgWrite'][];
+          };
+        };
+      };
+      responses: {
+        /** @description 기록됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 검사표의 version_no. 머리·단계·NG 쓰기가 모두 이 값으로 잠근다 */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheet'];
+          };
+        };
+        /** @description 검증 실패 · 완료된 검사표면 STATE_LOCKED */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(P-02-15 · W-03-13) · OA 공장 범위 밖(계정 범위·단말 공장 · 공통코드 INSPECTION_SHEET_PLANT) — 「이 화면은 OA 사업부 전용입니다」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 낙관적 잠금 충돌 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['QualityConflictResponse'];
+          };
+        };
+      };
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-sheets': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 제품 검사표 목록 — LOT·시리얼·W/O 로 찾기
+     * @description 시리얼·LOT 번호는 부분 일치. 기간은 작성 시각(UTC · createdFrom 이상 createdTo 미만). 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    get: {
+      parameters: {
+        query?: {
+          serialNo?: string;
+          lotNo?: string;
+          workOrderId?: number;
+          itemId?: number;
+          statusCode?: 'IN_PROGRESS' | 'COMPLETED';
+          createdFrom?: string;
+          createdTo?: string;
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['InspectionSheetSummary'][];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-sheets/{inspectionSheetId}/steps/{stepCode}:sign': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        inspectionSheetId: number;
+        stepCode: string;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 제품 검사표 단계 서명
+     * @description 로그인한 관리자의 이름·시각을 서명으로 남긴다(이력 SIGN_STEP). 판정이 기록되지 않은 단계는 400 stepCode·STATE_LOCKED. 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          inspectionSheetId: number;
+          stepCode: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 처리됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 검사표의 version_no */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheet'];
+          };
+        };
+        /** @description 조건 미충족 · 완료된 검사표 — STATE_LOCKED */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(W-03-14) · OA 공장 범위 밖 — 「이 화면은 OA 사업부 전용입니다」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 낙관적 잠금 충돌 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['QualityConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-sheets/{inspectionSheetId}:approve': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        inspectionSheetId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 제품 검사표 승인
+     * @description 양식의 「승인」. 서명이 필요한 단계가 모두 서명되고 기록된 단계의 최종 판정이 모두 OK 여야 한다(아니면 400 STATE_LOCKED). 확인까지 되면 COMPLETED. 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          inspectionSheetId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 처리됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 검사표의 version_no */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheet'];
+          };
+        };
+        /** @description 조건 미충족 · 완료된 검사표 — STATE_LOCKED */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(W-03-14) · OA 공장 범위 밖 — 「이 화면은 OA 사업부 전용입니다」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 낙관적 잠금 충돌 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['QualityConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-sheets/{inspectionSheetId}:check': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        inspectionSheetId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 제품 검사표 확인
+     * @description 양식의 「확인」. 조건은 승인과 같다. 승인까지 되면 COMPLETED. 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          inspectionSheetId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 처리됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 검사표의 version_no */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheet'];
+          };
+        };
+        /** @description 조건 미충족 · 완료된 검사표 — STATE_LOCKED */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(W-03-14) · OA 공장 범위 밖 — 「이 화면은 OA 사업부 전용입니다」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 낙관적 잠금 충돌 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['QualityConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-sheets/{inspectionSheetId}:reopen': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        inspectionSheetId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 제품 검사표 승인 취소
+     * @description 승인·확인을 비우고 IN_PROGRESS 로 돌린다. 사유 필수(400 reason·REQUIRED) · 이력 REOPEN. 승인·확인된 적이 없으면 400 STATE_LOCKED. 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+          /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+          'If-Match': components['parameters']['IfMatchVersion'];
+        };
+        path: {
+          inspectionSheetId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            reason: string;
+          };
+        };
+      };
+      responses: {
+        /** @description 처리됨 */
+        200: {
+          headers: {
+            /** @description 낙관적 잠금 토큰 — 검사표의 version_no */
+            ETag?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionSheet'];
+          };
+        };
+        /** @description 조건 미충족 · 완료된 검사표 — STATE_LOCKED */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(W-03-14) · OA 공장 범위 밖 — 「이 화면은 OA 사업부 전용입니다」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 낙관적 잠금 충돌 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['QualityConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/logistics/sales-orders': {
     parameters: {
       query?: never;
@@ -31327,6 +33750,147 @@ export interface paths {
         };
         /** @description 없다 */
         404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/shipment-lines': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 출하 줄 목록(제품출고 현황)
+     * @description 출하 건을 가로지르는 줄 목록. 출하 목록은 머리글 단위라 품목 필터·수량이 없다. 기간 축은 출하 일시(shipped_at)이고 출하 창고 공장의 현지 날짜(양 끝 포함)다 — 시작이 필수, 최대 366일. 상태를 고르지 않으면 취소된 출하는 뺀다. 정렬: 출하 일시 내림차순 → 출하 → 줄 번호. 근거: 서버 선행 · 장부 P-119
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description 출하일 시작(공장 현지 날짜) · 필수 */
+          shipDateFrom?: string;
+          /** @description 출하일 종료(공장 현지 날짜, 포함) */
+          shipDateTo?: string;
+          /** @description 출하 창고의 공장 */
+          plantId?: number;
+          warehouseId?: number;
+          itemId?: number;
+          customerId?: number;
+          /** @description 출하 상태(SHIPMENT_STATUS). 주면 취소도 그 값으로 고른다 */
+          statusCode?: string;
+          /** @description 출하 번호·LOT 번호 부분 검색 */
+          q?: string;
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: {
+                /** Format: int64 */
+                shipmentLineId: number;
+                /** Format: int64 */
+                shipmentId: number;
+                shipmentNo: string;
+                lineNo: number;
+                /** Format: date-time */
+                shippedAt: string;
+                statusCode: string;
+                /** Format: int64 */
+                plantId: number;
+                /** @description 출하 창고 */
+                warehouse: {
+                  /** Format: int64 */
+                  id: number;
+                  code: string;
+                  name: string;
+                };
+                /** @description 고객사(출하작업지시의 고객) */
+                customer: {
+                  /** Format: int64 */
+                  id: number;
+                  code: string;
+                  name: string;
+                };
+                /** @description 품목 */
+                item: {
+                  /** Format: int64 */
+                  id: number;
+                  code: string;
+                  name: string;
+                };
+                shippedQty: number;
+                /** Format: int64 */
+                uomId: number;
+                uomCode: string;
+                /** @description LOT 번호순 앞 5개 — 전부는 lotCount 와 출하 LOT 배분 목록으로 본다 */
+                lots: {
+                  /** Format: int64 */
+                  lotId: number;
+                  lotNo: string;
+                  qty: number;
+                }[];
+                lotCount: number;
+              }[];
+              page: components['schemas']['PageMeta'];
+              /** @description 필터 전체(쪽과 무관)의 합계. 단위가 섞이면 더할 수 없어 단위마다 둔다. */
+              totals: {
+                /** @description 줄 수 — page.total 과 같다 */
+                lineCount: number;
+                qtyByUom: {
+                  /** Format: int64 */
+                  uomId: number;
+                  uomCode: string;
+                  qty: number;
+                }[];
+              };
+            };
+          };
+        };
+        /** @description 검증 실패 — 기간 시작 없음·종료가 시작보다 앞섬·366일 초과. 고쳐야 풀린다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — LOT 추적 화면 권한 */
+        403: {
           headers: {
             [name: string]: unknown;
           };
@@ -39740,6 +42304,11 @@ export interface components {
        */
       canCancelInput?: boolean;
       /**
+       * @description 작업지시 마감(POST /production/work-orders/{workOrderId}:close)을 이 단말에서 할 수 있나. ⭐ 다른 권한과 달리 기본은 «열림»이다(사용자 결정 2026-10-22). 장부 P-108
+       * @example true
+       */
+      canCloseWorkOrder?: boolean;
+      /**
        * @description 자재 반납을 이 단말에서 할 수 있나. 기본은 닫힘이다
        * @example false
        */
@@ -39769,6 +42338,11 @@ export interface components {
       canPrintLabel?: boolean;
       /** @example false */
       canCancelInput?: boolean;
+      /**
+       * @description 작업지시 마감 권한. ⭐ 생략하면 true(열림)다 — 다른 권한은 생략하면 닫힘이다. 끄려면 false 를 보낸다. 이 권한만 켠 줄은 「기능을 하나 이상 켜야 합니다」 검사를 통과하지 못한다. 장부 P-108
+       * @example true
+       */
+      canCloseWorkOrder?: boolean;
       /** @example false */
       canReturnMaterial?: boolean;
     };
@@ -41254,6 +43828,146 @@ export interface components {
       /** @description 비고 */
       remarks?: string | null;
     };
+    /** @description OA 제품 검사표 기준 — 모델마다 확정본 하나. 확정본은 고치지 않는다. 목록은 lotSources·steps 를 싣지 않는다. 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다. */
+    InspectionSheetTemplate: {
+      /** Format: int64 */
+      inspectionSheetTemplateId: number;
+      /** Format: int64 */
+      itemId: number;
+      itemCode: string;
+      itemName: string;
+      templateVersion: number;
+      /** Format: int64 */
+      businessUnitId: number;
+      /** @enum {string} */
+      formLayoutCode: 'OP' | 'PP';
+      /** @enum {string} */
+      statusCode: 'DRAFT' | 'CONFIRMED' | 'OBSOLETE';
+      /** @description 머리 「재료」 문구 */
+      materialText: string | null;
+      /** @description 머리 「구조·중량」 문구 */
+      structureText: string | null;
+      rohsFlag: boolean;
+      /** @description PP 양식만 — 제품명 */
+      productNameText: string | null;
+      /** @description PP 양식만 — 전압·주파수 */
+      powerText: string | null;
+      /** @description PP 양식만 — 전동기 수량 */
+      motorText: string | null;
+      remarks: string | null;
+      /** Format: int64 */
+      confirmedBy: number | null;
+      /** Format: date-time */
+      confirmedAt: string | null;
+      lotSources?: {
+        /** @enum {string} */
+        slotCode: 'PCB' | 'SD' | 'STAPLE';
+        /** Format: int64 */
+        itemId: number;
+        itemCode: string;
+        itemName: string;
+      }[];
+      steps?: components['schemas']['InspectionSheetTemplateStep'][];
+    };
+    InspectionSheetTemplateStep: {
+      /** @description 값 목록은 `GET /mdm/code-values?codeGroupCode=INSPECTION_SHEET_STEP` */
+      stepCode: string;
+      sequenceNo: number;
+      nameKo: string;
+      nameVi: string | null;
+      /** @description 관리자 서명이 필요한 단계 */
+      signRequired: boolean;
+      items: components['schemas']['InspectionSheetTemplateItem'][];
+    };
+    InspectionSheetTemplateItem: {
+      /** Format: int64 */
+      inspectionSheetTemplateItemId: number;
+      sequenceNo: number;
+      /** @description 양식의 「항목 번호」(예: S 403) */
+      checkItemCode: string;
+      nameKo: string;
+      nameVi: string | null;
+      /**
+       * @description FULL 전수 · SAMPLE 발취(샘플)
+       * @enum {string}
+       */
+      methodCode: 'FULL' | 'SAMPLE';
+    };
+    /** @description 검사표 기준 등록 — 같은 모델의 다음 판(최댓값 + 1)을 작성중으로 세운다. 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다. */
+    InspectionSheetTemplateCreate: {
+      /**
+       * Format: int64
+       * @description 모델(완제품 품목)
+       */
+      itemId: number;
+      /**
+       * Format: int64
+       * @description 기준을 관리하는 사업부 — 로그인 계정의 데이터 범위 안이어야 한다
+       */
+      businessUnitId: number;
+      /**
+       * @description 출력 양식 — OP향·PP향 제품검사표(B-05-101)
+       * @enum {string}
+       */
+      formLayoutCode: 'OP' | 'PP';
+      /** @description 머리 「재료」 문구 */
+      materialText?: string | null;
+      /** @description 머리 「구조·중량」 문구 */
+      structureText?: string | null;
+      rohsFlag: boolean;
+      /** @description PP 양식만 — 제품명 */
+      productNameText?: string | null;
+      /** @description PP 양식만 — 전압·주파수 */
+      powerText?: string | null;
+      /** @description PP 양식만 — 전동기 수량 */
+      motorText?: string | null;
+      remarks?: string | null;
+      lotSources: components['schemas']['InspectionSheetTemplateLotSourceWrite'][];
+      /** @description 배열 순서가 단계 순서다 */
+      steps: components['schemas']['InspectionSheetTemplateStepWrite'][];
+    };
+    /** @description 검사표 기준 수정 — 작성중(DRAFT) 판만. 단계·항목·LOT 칸은 통째로 갈아 끼운다. 단계는 양식(OP·PP)이 칸을 가진 것만 받는다. 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다. */
+    InspectionSheetTemplateUpdate: {
+      /** @description 머리 「재료」 문구 */
+      materialText?: string | null;
+      /** @description 머리 「구조·중량」 문구 */
+      structureText?: string | null;
+      rohsFlag: boolean;
+      /** @description PP 양식만 — 제품명 */
+      productNameText?: string | null;
+      /** @description PP 양식만 — 전압·주파수 */
+      powerText?: string | null;
+      /** @description PP 양식만 — 전동기 수량 */
+      motorText?: string | null;
+      remarks?: string | null;
+      lotSources: components['schemas']['InspectionSheetTemplateLotSourceWrite'][];
+      /** @description 배열 순서가 단계 순서다 */
+      steps: components['schemas']['InspectionSheetTemplateStepWrite'][];
+    };
+    InspectionSheetTemplateStepWrite: {
+      /** @description 값 목록은 `GET /mdm/code-values?codeGroupCode=INSPECTION_SHEET_STEP` */
+      stepCode: string;
+      nameKo: string;
+      nameVi?: string | null;
+      signRequired: boolean;
+      /** @description 배열 순서가 출력 순서다 */
+      items: {
+        checkItemCode: string;
+        nameKo: string;
+        nameVi?: string | null;
+        /** @enum {string} */
+        methodCode: 'FULL' | 'SAMPLE';
+      }[];
+    };
+    InspectionSheetTemplateLotSourceWrite: {
+      /** @enum {string} */
+      slotCode: 'PCB' | 'SD' | 'STAPLE';
+      /**
+       * Format: int64
+       * @description 이 칸의 후보 LOT 을 찾을 자재 품목
+       */
+      itemId: number;
+    };
     /** @description 사용자 등록 응답. temporaryPassword는 요청에 password를 담지 «않았을» 때만 실린다 — 담았다면 그 칸 자체가 없다. */
     AppUserCreated: components['schemas']['AppUser'] & {
       /** @description 서버가 만든 임시 비밀번호. 이 응답에서 한 번만 보이고 서버는 해시만 저장한다(:reset-password와 같은 규약). 같은 Idempotency-Key로 재전송하면 저장된 앞 응답을 그대로 돌려주므로 값이 바뀌지 않는다. 이 값으로 로그인하면 Session.mustChangePassword가 true다. */
@@ -41559,6 +44273,128 @@ export interface components {
        */
       screenId?: string | null;
     };
+    /** @description LOT 추적 노드가 짚는 마스터 — 코드·이름을 함께 싣는다(장부 P-119) */
+    LotFlowNamed: {
+      /** Format: int64 */
+      id: number;
+      code: string;
+      name: string;
+    };
+    /**
+     * @description 이음 근거 — LOT_GENEALOGY_ESTIMATE = 투입 시각 기준 계보(추정) · WORK_ORDER_ESTIMATE = 실적은 있는데 계보가 없는 W/O 라 그 W/O 의 투입 자재 전부 × 실적 배분이 있는 생산 LOT 전부로 이었다. 입고·포장·출하는 문서로 이어져 근거 칸이 없다
+     * @enum {string}
+     */
+    LotFlowBasis: 'LOT_GENEALOGY_ESTIMATE' | 'WORK_ORDER_ESTIMATE';
+    /** @description LOT 추적 노드의 LOT 머리 */
+    LotFlowLotHead: {
+      /** Format: int64 */
+      lotId: number;
+      lotNo: string;
+      /** Format: int64 */
+      plantId: number;
+      item: components['schemas']['LotFlowNamed'];
+      lotTypeCode: string;
+      statusCode: string;
+      /** Format: int64 */
+      uomId: number;
+      uomCode: string;
+      /** Format: date-time */
+      completedAt: string | null;
+    };
+    /** @description 입고 한 건(취소 완료 제외 — 취소 요청 중은 남는다) */
+    LotFlowReceipt: {
+      /** Format: int64 */
+      goodsReceiptId: number;
+      goodsReceiptNo: string;
+      /** Format: date-time */
+      receiptDatetime: string;
+      warehouse: components['schemas']['LotFlowNamed'];
+      qty: number;
+    };
+    /** @description 이 LOT 을 등록한 입하 줄(입하 번호·입하일·공급사·공급사 LOT 번호) */
+    LotFlowInbound: {
+      /** Format: int64 */
+      inboundReceiptId: number;
+      inboundReceiptNo: string;
+      /** Format: date-time */
+      receiptDatetime: string;
+      supplier: components['schemas']['LotFlowNamed'];
+      supplierLotNo: string | null;
+    };
+    /** @description 자재 쪽 문서 */
+    LotFlowMaterialSide: {
+      /** @description 재생재·분할 LOT 처럼 입하에서 오지 않았으면 null */
+      inbound: components['schemas']['LotFlowInbound'] | null;
+      /** @description 자재입고 · 입고 일시순 */
+      receipts: components['schemas']['LotFlowReceipt'][];
+      receivedQty: number;
+    };
+    /** @description 포장(취급 단위) — 포장 중(OPEN)인 상자도 싣는다 */
+    LotFlowPackage: {
+      /** Format: int64 */
+      handlingUnitId: number;
+      handlingUnitNo: string;
+      handlingUnitTypeCode: string;
+      /** @description 취급 단위 상태 — PACKED = 포장 확정, OPEN = 포장 중. 포장 단계·포장 수는 PACKED 만 센다 */
+      statusCode: string;
+      qty: number;
+      /** @description 출하 단위에 담겼으면 그 단위 */
+      shippingUnit: components['schemas']['LotFlowShippingUnit'] | null;
+    };
+    LotFlowShippingUnit: {
+      /** Format: int64 */
+      shippingUnitId: number;
+      shippingUnitNo: string;
+    };
+    /** @description 출하(취소 제외) — 출하·취급 단위마다 한 줄. 포장 없이 LOT 을 직접 배분했으면 handlingUnitNo 가 null */
+    LotFlowShipment: {
+      /** Format: int64 */
+      shipmentId: number;
+      shipmentNo: string;
+      /** Format: date-time */
+      shippedAt: string | null;
+      statusCode: string;
+      customer: components['schemas']['LotFlowNamed'];
+      qty: number;
+      handlingUnitNo: string | null;
+    };
+    /** @description 제품 쪽 문서 */
+    LotFlowProductSide: {
+      /** @description 생산입고 · 입고 일시순 */
+      productionReceipts: components['schemas']['LotFlowReceipt'][];
+      packages: components['schemas']['LotFlowPackage'][];
+      /** @description 출하 일시순 */
+      shipments: components['schemas']['LotFlowShipment'][];
+    };
+    /** @description 정방향 사슬의 생산 LOT */
+    LotFlowProductionLot: components['schemas']['LotFlowLotHead'] &
+      components['schemas']['LotFlowProductSide'] & {
+        goodQty: number;
+        linkBasis: components['schemas']['LotFlowBasis'];
+        serialCount: number;
+        /** @description 이 LOT 이 다시 투입된 W/O 수 — 반제품이면 0 보다 크다. 화면이 이 LOT 으로 정방향을 다시 부른다(한 번에 한 단) */
+        consumedFurther: number;
+        /** @description 조회한 LOT 자신으로 되돌아왔다(경로 대조는 화면이 한다) */
+        cyclic: boolean;
+      };
+    /** @description 역방향 사슬의 투입 자재 LOT */
+    LotFlowInputMaterial: components['schemas']['LotFlowLotHead'] &
+      components['schemas']['LotFlowMaterialSide'] & {
+        consumedQty: number;
+        /** Format: date-time */
+        firstConsumedAt: string;
+        /** Format: date-time */
+        lastConsumedAt: string;
+        linkBasis: components['schemas']['LotFlowBasis'];
+        /** @description 이 자재 LOT 이 생산 LOT(반제품)이면 그 W/O — 화면이 이 LOT 으로 역방향을 다시 부른다(한 번에 한 단) */
+        producedBy: {
+          /** Format: int64 */
+          workOrderId: number;
+          workOrderNo: string;
+        } | null;
+        /** @description 조회한 LOT 자신으로 되돌아왔다(경로 대조는 화면이 한다) */
+        cyclic: boolean;
+      };
     /** @description 출고 전표. 일반 출고·공급사 반품·기타 출고가 경로를 나누지 않고 issueTypeCode 로 갈린다 — 경로를 나누면 같은 전표가 세 벌로 갈라지고 조회가 세 곳을 봐야 한다. 근거: M-01-08 · W-01-05 · W-01-06 */
     GoodsIssue: {
       /**
@@ -43650,13 +46486,13 @@ export interface components {
        */
       readonly receiptDispositionCode?:
         'IQC_PASSED' | 'SAMPLING_NOT_REQUIRED' | 'URGENT_IQC_WAIVED' | null;
-      /** @description ⭐ 4M 변경품 — IQC 판정 때 이 LOT 에 적은 변경 종류·비고. 변경품이 아니면 칸이 없다. 목록(GET /trace/lots)·단건(GET /trace/lots/{lotId}) 이 싣는다 — POP 자재 투입 스캔·러닝 체인지·LOT 상태 상세가 알린다. ⚠ 내부 「4M 자원배정」과 다른 말이다. 서버 선행 · 장부 P-86 · omf-all-around#63 */
+      /** @description ⭐ 4M 변경품 — IQC 판정 때 이 LOT 에 적은 변경 종류·비고. 변경품이 아니면 칸이 없다. 목록(GET /trace/lots)·단건(GET /trace/lots/{lotId}) 이 싣는다 — POP 자재 투입 스캔·러닝 체인지·LOT 상태 상세가 알린다. ⚠ 내부 「4M 자원배정」과 다른 말이다. 서버 선행 · 장부 P-86 · omf-all-around#63 · 변경 종류 선택(#133 · 장부 P-105) */
       fourMChange?: {
         /**
          * @description 공통코드 FOUR_M_CHANGE_TYPE
          * @example MATERIAL
          */
-        changeTypeCode: string;
+        changeTypeCode?: string;
         /** @example 원자재 공급처 변경(10/15부) */
         remarks?: string;
       };
@@ -45267,13 +48103,13 @@ export interface components {
        */
       handlingUnitId?: number | null;
     };
-    /** @description 자재 LOT 영향 범위(서버 선행 · 장부 P-52 · omf-all-around#108). */
+    /** @description 자재 LOT 영향 범위(서버 선행 · 장부 P-52 · omf-all-around#108 · 계보 기준 #166 P-107). */
     AffectedProductionLots: {
       /**
-       * @description 어떻게 셌는가 — 지금은 작업지시 기준 추정 하나다.
+       * @description 어떻게 셌는가 — LOT_GENEALOGY_ESTIMATE = 투입 시각 기준 계보(같은 W/O·같은 자재에서 다음 LOT 투입 전까지 · 추정) · WORK_ORDER_ESTIMATE = 계보가 없는 W/O(#166 배포 전 실적)가 섞여 그 W/O 의 생산 LOT 전부를 냈다. 근거: omf-all-around#166 (서버 선행 · 장부 P-107)
        * @enum {string}
        */
-      basis: 'WORK_ORDER_ESTIMATE';
+      basis: 'LOT_GENEALOGY_ESTIMATE' | 'WORK_ORDER_ESTIMATE';
       workOrders: {
         /** Format: int64 */
         workOrderId: number;
@@ -45291,6 +48127,216 @@ export interface components {
         workOrderId: number;
         workOrderNo: string;
       }[];
+    };
+    /** @description 투입 자재 LOT 한 줄(서버 선행 · 장부 P-107 · omf-all-around#166). */
+    InputMaterial: {
+      /** Format: int64 */
+      lotId: number;
+      lotNo: string;
+      /** Format: int64 */
+      itemId: number;
+      itemCode: string;
+      itemName: string;
+      /** @description 4M 변경품이면 싣는다(장부 P-86 · #63). 아니면 칸이 없다. 변경 종류는 선택 — 없으면 키가 없다(#133 · 장부 P-105). */
+      fourMChange?: {
+        /** @description 값 목록은 GET /mdm/code-values?codeGroupCode=FOUR_M_CHANGE_TYPE */
+        changeTypeCode?: string;
+        remarks?: string;
+      };
+    };
+    /** @description 생산 LOT·시리얼의 투입 자재(서버 선행 · 장부 P-107 · omf-all-around#166). */
+    InputMaterials: {
+      /**
+       * @description 어떻게 셌는가 — LOT_GENEALOGY_ESTIMATE = 투입 시각 기준 계보(같은 W/O·같은 자재에서 다음 LOT 투입 전까지 · 추정) · WORK_ORDER_ESTIMATE = 계보가 없는 W/O(#166 배포 전 실적)가 섞여 그 W/O 의 생산 LOT 전부를 냈다. 근거: omf-all-around#166 (서버 선행 · 장부 P-107)
+       * @enum {string}
+       */
+      basis: 'LOT_GENEALOGY_ESTIMATE' | 'WORK_ORDER_ESTIMATE';
+      items: components['schemas']['InputMaterial'][];
+    };
+    /** @description 자재 LOT 이 들어간 시리얼(서버 선행 · 장부 P-107 · omf-all-around#166). */
+    UsedSerials: {
+      /**
+       * @description 어떻게 셌는가 — LOT_GENEALOGY_ESTIMATE = 투입 시각 기준 계보(같은 W/O·같은 자재에서 다음 LOT 투입 전까지 · 추정) · WORK_ORDER_ESTIMATE = 계보가 없는 W/O(#166 배포 전 실적)가 섞여 그 W/O 의 생산 LOT 전부를 냈다. 근거: omf-all-around#166 (서버 선행 · 장부 P-107)
+       * @enum {string}
+       */
+      basis: 'LOT_GENEALOGY_ESTIMATE' | 'WORK_ORDER_ESTIMATE';
+      items: {
+        /** Format: int64 */
+        serialNumberId: number;
+        serialNo: string;
+        /** Format: int64 */
+        lotId: number;
+        /** @description 시리얼의 생산 LOT 번호 */
+        lotNo: string;
+        /** Format: date-time */
+        producedAt?: string;
+      }[];
+      page: components['schemas']['PageMeta'];
+    };
+    /** @description 입고 관리 허브의 LOT 한 줄 — 입하·검사·입고·적치를 한 줄로 모은다. 장부 P-110 */
+    InboundLotProgress: {
+      /**
+       * Format: int64
+       * @description GET /logistics/purchase-order-lines 의 purchaseOrderLineId 와 같다 — 화면이 그 라인 아래에 묶는다
+       * @example 1001
+       */
+      purchaseOrderLineId: number;
+      /**
+       * Format: int64
+       * @description GET /logistics/inbound-receipts/{inboundReceiptId} 로 입고 처리 창을 연다
+       * @example 1001
+       */
+      inboundReceiptId: number;
+      /** @example IR-20261022-0001 */
+      inboundReceiptNo: string;
+      /**
+       * Format: int64
+       * @description 선별 자식은 조상 LOT 의 입하 라인
+       * @example 1001
+       */
+      inboundReceiptLineId: number;
+      /**
+       * Format: date-time
+       * @description 입하 일시
+       */
+      receiptDatetime: string;
+      /**
+       * Format: int64
+       * @description 라벨 대기(LABEL_PENDING)면 null
+       * @example 1001
+       */
+      lotId: number | null;
+      /**
+       * @description 저장된 번호 그대로 · 라벨 대기면 null
+       * @example AD9001-00041|50|261016|100001|0001
+       */
+      lotNo: string | null;
+      /**
+       * @description 이 LOT 의 입하 수량 — 선별 자식은 떼어 낸 수량 · 라벨 대기면 입하 라인의 수량
+       * @example 50
+       */
+      receivedQty: number;
+      /**
+       * @description 입고 가능 수량(P-56) — 입고 처리 창의 상한. 입고 검사와 같은 계산 · 라벨 대기면 null
+       * @example 35
+       */
+      receivableQty: number | null;
+      /** @example EA */
+      uomCode: string;
+      /**
+       * @description LOT_STATUS · 라벨 대기면 null
+       * @example INSPECTION_PENDING
+       */
+      lotStatusCode: string | null;
+      /**
+       * @description 위에서부터 처음 맞는 줄 — 입하 취소(취소 요청 포함)는 CANCELLED · LOT 이 없는 입하 라인은 LABEL_PENDING · 입고할 수량이 남았으면: 폐기 LOT 은 CANCELLED, 검사 대기 LOT 은 검사 대상이면 의뢰 상태대로(없음 INSPECTION_REQUIRED · REQUESTED · IN_PROGRESS) 그 밖(판정 보류·합격 뒤 남은 보류·무검사 품목에 건 보류)은 INSPECTION_HELD, 합격·무검사·불량(불량창고로만)은 RECEIPT_READY · 다 입고했으면 살아 있는 입고의 적치 작업이 대기면 PUTAWAY_PENDING, 임시 적치면 PUTAWAY_TEMPORARY, 아니면 COMPLETED. 일부만 입고한 LOT 은 RECEIPT_READY 다(가장 뒤처진 단계 하나)
+       * @enum {string}
+       */
+      stageCode:
+        | 'LABEL_PENDING'
+        | 'INSPECTION_REQUIRED'
+        | 'INSPECTION_REQUESTED'
+        | 'INSPECTION_IN_PROGRESS'
+        | 'INSPECTION_HELD'
+        | 'RECEIPT_READY'
+        | 'PUTAWAY_PENDING'
+        | 'PUTAWAY_TEMPORARY'
+        | 'COMPLETED'
+        | 'CANCELLED';
+      /**
+       * @description 서버가 정한 다음 할 일. ISSUE_LABEL 은 POP 「자재LOT 등록·라벨 발행」(POST /trace/lots · INBOUND_RECEIPT_LINE)의 일이다. ⚠ REQUEST_IQC 는 지금 주지 않는다 — 의뢰 생성 경로를 미뤘다(사용자 결정 2026-10-23)
+       * @enum {string|null}
+       */
+      nextActionCode: 'ISSUE_LABEL' | 'REQUEST_IQC' | 'POST_RECEIPT' | 'PUTAWAY' | null;
+      /** @description INSPECTION_HELD 를 만든 열린 보류의 사유(공통코드 LOT_HOLD_REASON 이름까지). 그 밖은 빈 배열 */
+      blockedReasons: {
+        /** @example INCOMING_INSPECTION_WAIT */
+        code: string;
+        /** @example 수입검사 대기 */
+        name: string;
+      }[];
+      /** @description 가장 최근 IQC 의뢰 — 선별 자식은 자기 의뢰가 없으면 조상의 것. 무검사 품목은 null */
+      inspection: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        inspectionRequestId: number;
+        inspectionRequestNo: string;
+        /** @description INSPECTION_REQUEST_STATUS */
+        statusCode: string;
+        /** Format: date-time */
+        requestedAt: string;
+        /**
+         * @description 의뢰가 끝났을(COMPLETED) 때만 — 재검사 중에는 null
+         * @enum {string|null}
+         */
+        judgmentCode: 'ACCEPTED' | 'REJECTED' | 'HELD' | null;
+        /**
+         * Format: date-time
+         * @description 판정 확정 시각
+         */
+        judgedAt: string | null;
+      } | null;
+      /** @description 가장 최근 입고(취소 완료 제외 — 취소 요청 중은 보인다) */
+      goodsReceipt: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        goodsReceiptId: number;
+        goodsReceiptNo: string;
+        /** Format: date-time */
+        receiptDatetime: string;
+        statusCode: string;
+      } | null;
+      /** @description 살아 있는(POSTED) 입고의 적치 작업 중 가장 뒤처진 것(대기 → 임시 → 완료) */
+      putaway: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        putawayTaskId: number;
+        putawayTaskNo: string;
+        statusCode: string;
+        /** @description 적치한 위치 — 대기면 null */
+        locationCode: string | null;
+        locationName: string | null;
+        /** Format: date-time */
+        completedAt: string | null;
+      } | null;
+    };
+    InboundLotProgressListResponse: {
+      items: components['schemas']['InboundLotProgress'][];
+    };
+    InboundStageCountResponse: {
+      counts: {
+        /**
+         * @description 라벨 발행 대기
+         * @example 4
+         */
+        LABEL: number;
+        /**
+         * @description 검사 대기
+         * @example 3
+         */
+        INSPECTION: number;
+        /**
+         * @description 보류
+         * @example 1
+         */
+        HELD: number;
+        /**
+         * @description 입고 대기
+         * @example 5
+         */
+        RECEIPT: number;
+        /**
+         * @description 적치 대기
+         * @example 2
+         */
+        PUTAWAY: number;
+      };
     };
     /**
      * @description 결재선 정의. 승인 유형과 사업부로 고른다.
@@ -46900,13 +49946,13 @@ export interface components {
       note?: string;
     };
     MaterialConsumption: {
-      /** @description ⭐ 투입 LOT 의 4M 변경품 — IQC 판정 때 그 LOT 에 적은 변경 종류·비고. 변경품이 아니면 칸이 없다. 작업지시의 「4M 변경 자재 투입」 표시가 읽는다. 서버 선행 · 장부 P-86 · omf-all-around#63 */
+      /** @description ⭐ 투입 LOT 의 4M 변경품 — IQC 판정 때 그 LOT 에 적은 변경 종류·비고. 변경품이 아니면 칸이 없다. 작업지시의 「4M 변경 자재 투입」 표시가 읽는다. 서버 선행 · 장부 P-86 · omf-all-around#63 · 변경 종류 선택(#133 · 장부 P-105) */
       fourMChange?: {
         /**
          * @description 공통코드 FOUR_M_CHANGE_TYPE
          * @example MATERIAL
          */
-        changeTypeCode: string;
+        changeTypeCode?: string;
         /** @example 원자재 공급처 변경(10/15부) */
         remarks?: string;
       };
@@ -48544,6 +51590,41 @@ export interface components {
        */
       closedAt?: string;
       /**
+       * @description 마감에서 고른 잔량 처분 — 미달 마감일 때만 있다. ⛔ 이월이어도 잔량 W/O 는 만들어지지 않는다(기록만). 장부 P-108
+       * @example WRITE_OFF
+       * @enum {string}
+       */
+      closeDispositionCode?: 'CARRY_OVER' | 'WRITE_OFF';
+      /**
+       * Format: int64
+       * @description POP 에서 마감한 작업자(X-Worker-No) — 관리웹 마감이면 없다. 장부 P-108
+       * @example 1001
+       */
+      closedWorkerId?: number;
+      /** @example 900028 */
+      closedWorkerNo?: string;
+      /** @example 값 */
+      closedWorkerName?: string;
+      /**
+       * @description 마감으로 폐번된 선발행 LOT 수 — 상세의 마감된 W/O 에만 있다. 마감은 실적이 없는 대기(WAITING) LOT 만 폐번한다. ⭐ 진행 중(ACTIVE, 실적 일부) LOT 이 있어도 마감되고, 그 LOT 은 생명주기 ACTIVE·completedAt 빈 채로 남는다 — 마감은 LOT 을 완료하지 않는다. 장부 P-108
+       * @example 1
+       */
+      voidedLotCount?: number;
+      /**
+       * @description 마감 시점 판정 — 마감할 때 서버가 낸 미달·정상·초과. ⭐ progress.completionJudgmentCode 는 «지금» 판정이라 마감 뒤 지연 실적으로 바뀔 수 있다 — 마감 결과로는 이 칸을 본다. 기능 이전에 마감된 W/O 는 ERP 실적 메시지의 판정으로 채웠고 없으면 없다. 장부 P-108
+       * @example UNDER
+       * @enum {string}
+       */
+      closeJudgmentCode?: 'UNDER' | 'NORMAL' | 'OVER';
+      /**
+       * Format: int64
+       * @description 관리웹에서 마감한 계정 — POP 마감(closedWorker*)이면 없다. 장부 P-108
+       * @example 1001
+       */
+      closedByUserId?: number;
+      /** @example 값 */
+      closedByUserName?: string;
+      /**
        * @description ERP 생산 실적 송신 메시지가 대기열에 적재됐는지. 적재이지 전송이 아니다 — 직후에 기간계에서 조회하면 아직 없을 수 있다. 마감 전에는 비어 있다
        * @example true
        */
@@ -48928,6 +52009,21 @@ export interface components {
        */
       terminalId: number;
       /**
+       * @description 세션을 연 단말의 코드 — 조회(목록·단건)에만 있다. 단말 이름 칸은 없다. 장부 P-108
+       * @example POP-01
+       */
+      terminalCode?: string;
+      /**
+       * Format: int64
+       * @description 그 세션의 주작업자 — 조회에만 있고, 역할이 없던 옛 세션은 없다. 장부 P-108
+       * @example 1001
+       */
+      workerId?: number;
+      /** @example 900028 */
+      workerNo?: string;
+      /** @example 값 */
+      workerName?: string;
+      /**
        * Format: date-time
        * @example 2026-08-11T09:12:00+09:00
        */
@@ -48985,6 +52081,13 @@ export interface components {
       workerIds?: number[];
       controlOverride?: components['schemas']['ControlOverride'];
     };
+    WorkSessionForceEnd: {
+      /**
+       * @description 강제 종료 사유 — 자유 텍스트, 필수. 세션 사건 FORCE_END 의 remarks 로 남는다. 장부 P-108
+       * @example 단말 고장으로 종료하지 못한 세션
+       */
+      reason: string;
+    };
     WorkSessionEnd: {
       /**
        * Format: date-time
@@ -49033,6 +52136,11 @@ export interface components {
        * @example 1001
        */
       performedBy?: number;
+      /**
+       * @description 강제 종료(FORCE_END) 사유 — 그 사건에만 있다. 장부 P-108
+       * @example 단말 고장으로 종료하지 못한 세션
+       */
+      remarks?: string;
       /**
        * Format: int64
        * @example 1001
@@ -49125,6 +52233,40 @@ export interface components {
        */
       leftAt: string;
     };
+    /** @description 마감을 막은 열린 작업 세션 한 건. 작업자는 그 세션의 주작업자이고 역할이 없던 옛 세션은 비운다. 장부 P-108 */
+    OpenWorkSession: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      workSessionId: number;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      terminalId: number;
+      /** @example POP-01 */
+      terminalCode: string;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      workerId?: number;
+      /** @example 900028 */
+      workerNo?: string;
+      /** @example 값 */
+      workerName?: string;
+      /**
+       * Format: date-time
+       * @example 2026-08-11T09:12:00+09:00
+       */
+      startedAt: string;
+      /**
+       * @description RUNNING(진행) · STOPPED(중단)
+       * @example RUNNING
+       */
+      statusCode: string;
+    };
     ProductionConflictResponse: {
       /**
        * @description OPEN_SESSION_EXISTS 는 열린 구간이 이미 있다는 뜻이다. BATCH_DEPENDENCY_FAILED 는 선행 요청이 아직 없다는 뜻이며 큐가 묶음을 멈춰야 한다. 근거: 공유계약 C-2 · C-10
@@ -49149,12 +52291,148 @@ export interface components {
        * @example 값
        */
       currentVersion?: string;
+      /** @description OPEN_SESSION_EXISTS 일 때 그 W/O 의 열린 작업 세션들(중단 포함, 시작 순) — 화면이 「어느 단말에서 끝낼지」를 안내한다. 그 단말에서 작업을 종료하거나 관리웹에서 강제 종료한 뒤 다시 마감한다. 장부 P-108 */
+      openSessions?: components['schemas']['OpenWorkSession'][];
       /**
        * @description 충돌 원인. 근거: 공유계약 B-1 확장 — user=다른 사용자, erpSync=ERP 재동기화 배치, workerLease=워커가 처리 중. 구분 없이 내려주면 화면이 「다른 사용자가 먼저 수정했습니다」라는 사실과 다른 안내를 하게 된다 — code=VERSION_CONFLICT 일 때 함께 내린다
        * @example user
        * @enum {string}
        */
       conflictCause?: 'user' | 'erpSync' | 'workerLease';
+    };
+    /** @description W/O 일자별 실적. 근거: 장부 P-122 */
+    WorkOrderDailyResults: {
+      /**
+       * Format: int64
+       * @description W/O 단위
+       */
+      uomId: number;
+      uomCode: string;
+      /**
+       * Format: double
+       * @description 지시 수량
+       */
+      orderQty: number;
+      items: components['schemas']['WorkOrderDailyResult'][];
+      totals: components['schemas']['WorkOrderDailyResultTotals'];
+    };
+    WorkOrderDailyResult: {
+      /**
+       * Format: date
+       * @description 교대 시작일 기준 조회용 날짜(자정을 넘는 교대는 시작한 날). 재고 원장 business_date 와 다른 축이며 저장·쓰기에 쓰지 않는다
+       */
+      workDate: string;
+      /**
+       * Format: double
+       * @description 양품 합계
+       */
+      goodQty: number;
+      /**
+       * Format: double
+       * @description 불량 합계
+       */
+      defectQty: number;
+      /**
+       * Format: double
+       * @description 보류 합계
+       */
+      holdQty: number;
+      /**
+       * Format: double
+       * @description 스크랩 합계
+       */
+      scrapQty: number;
+      /**
+       * Format: double
+       * @description 재작업 합계
+       */
+      reworkQty: number;
+      /** @description 센 실적 수(정정본 포함, 정정된 원본 제외) — 수량 0 정정(취소)도 하나로 센다 */
+      resultCount: number;
+      /** @description 그중 정정이 반영된 실적(정정본) 수 — 수량 0 정정(취소) 포함 */
+      correctedCount: number;
+      /**
+       * Format: date-time
+       * @description 그날 첫 실적 발생 시각
+       */
+      firstAt: string;
+      /**
+       * Format: date-time
+       * @description 그날 마지막 실적 발생 시각
+       */
+      lastAt: string;
+      /** @description 교대별 — 교대 시작 시각 순, 교대가 정해지지 않은 실적은 shiftId null · shiftName 「교대 없음」 한 줄로 맨 뒤 */
+      byShift: components['schemas']['WorkOrderDailyShiftResult'][];
+    };
+    WorkOrderDailyShiftResult: {
+      /**
+       * Format: int64
+       * @description 교대가 정해지지 않은 실적을 모은 줄은 null
+       */
+      shiftId: number | null;
+      /** @description 교대 이름. 교대가 정해지지 않은 줄은 「교대 없음」 */
+      shiftName: string;
+      /**
+       * Format: double
+       * @description 양품 합계
+       */
+      goodQty: number;
+      /**
+       * Format: double
+       * @description 불량 합계
+       */
+      defectQty: number;
+      /**
+       * Format: double
+       * @description 보류 합계
+       */
+      holdQty: number;
+      /**
+       * Format: double
+       * @description 스크랩 합계
+       */
+      scrapQty: number;
+      /**
+       * Format: double
+       * @description 재작업 합계
+       */
+      reworkQty: number;
+      /** @description 센 실적 수(정정본 포함, 정정된 원본 제외) — 수량 0 정정(취소)도 하나로 센다 */
+      resultCount: number;
+      /** @description 그중 정정이 반영된 실적(정정본) 수 — 수량 0 정정(취소) 포함 */
+      correctedCount: number;
+    };
+    /** @description 전체 합 — W/O 누계(WorkOrderProgress)의 다섯 수량과 같다 */
+    WorkOrderDailyResultTotals: {
+      /**
+       * Format: double
+       * @description 양품 합계
+       */
+      goodQty: number;
+      /**
+       * Format: double
+       * @description 불량 합계
+       */
+      defectQty: number;
+      /**
+       * Format: double
+       * @description 보류 합계
+       */
+      holdQty: number;
+      /**
+       * Format: double
+       * @description 스크랩 합계
+       */
+      scrapQty: number;
+      /**
+       * Format: double
+       * @description 재작업 합계
+       */
+      reworkQty: number;
+      /** @description 센 실적 수(정정본 포함, 정정된 원본 제외) — 수량 0 정정(취소)도 하나로 센다 */
+      resultCount: number;
+      /** @description 그중 정정이 반영된 실적(정정본) 수 — 수량 0 정정(취소) 포함 */
+      correctedCount: number;
     };
     /** @description 실적 누계 — 이 W/O 의 생산 실적 «전체» 합계다. 쪽(page)과 무관하며 정정(상쇄) 실적이 반영된 값이다. withProgress=true 일 때만 채워진다. 근거: W-02-05 §4-B · W-02-08 §4-A */
     WorkOrderProgress: {
@@ -50056,18 +53334,18 @@ export interface components {
        * @example 육안 재확인 결과 경미한 외관 불량으로 사용 가능
        */
       judgmentChangeReason?: string;
-      /** @description ⭐ 4M 변경품 — 생략하면 손대지 않는다. null 이면 변경품이 아니다(그 LOT 의 기록을 지운다). 값이면 의뢰 LOT 의 한 줄을 이 값으로 갈아 끼운다(결과와 한 트랜잭션). 자재 LOT 이 있는 IQC 의뢰가 아니면 400 field=fourMChange, code=INVALID. 서버 선행 · 장부 P-86 · omf-all-around#63 */
+      /** @description ⭐ 4M 변경품 — 생략하면 손대지 않는다. null 이면 변경품이 아니다(그 LOT 의 기록을 지운다). 값이면 의뢰 LOT 의 한 줄을 이 값으로 갈아 끼운다(결과와 한 트랜잭션). 자재 LOT 이 있는 IQC 의뢰가 아니면 400 field=fourMChange, code=INVALID. 서버 선행 · 장부 P-86·P-105 · omf-all-around#63·#133 */
       fourMChange?: {
         /**
-         * @description 변경 종류 — 공통코드 그룹 FOUR_M_CHANGE_TYPE(기본 MAN·MACHINE·MATERIAL·METHOD). ⛔ enum 으로 못박지 않는다 — 기준정보에서 더하고 고친다. 없거나 사용 중지된 값이면 400
+         * @description 변경 종류(선택 · #133) — 공통코드 그룹 FOUR_M_CHANGE_TYPE(기본 MAN·MACHINE·MATERIAL·METHOD). ⛔ enum 으로 못박지 않는다 — 기준정보에서 더하고 고친다. 없거나 사용 중지된 값이면 400
          * @example MATERIAL
          */
-        changeTypeCode: string;
+        changeTypeCode?: string;
         /**
-         * @description 변경 내용·특이사항. 비우면 없음
+         * @description 변경 내용·특이사항 — 필수. 앞뒤 공백을 뺀 값이 비면 400 field=fourMChange.remarks, code=REQUIRED(#133)
          * @example 원자재 공급처 변경(10/15부)
          */
-        remarks?: string;
+        remarks: string;
       } | null;
     };
     /** @description ⛔ statusCode=확정 이면 acceptedQty + rejectedQty + heldQty = inspectedQty 를 강제한다 (ck_inspection_result_qty · 공유계약 A-3). 작성중은 통과시킨다. ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). */
@@ -50142,19 +53420,21 @@ export interface components {
        * @example 육안 재확인 결과 경미한 외관 불량으로 사용 가능
        */
       judgmentChangeReason?: string;
-      /** @description ⭐ 4M 변경품 — 생략하면 손대지 않는다. null 이면 변경품이 아니다(그 LOT 의 기록을 지운다). 값이면 의뢰 LOT 의 한 줄을 이 값으로 갈아 끼운다(결과와 한 트랜잭션). 자재 LOT 이 있는 IQC 의뢰가 아니면 400 field=fourMChange, code=INVALID. 서버 선행 · 장부 P-86 · omf-all-around#63 */
+      /** @description ⭐ 4M 변경품 — 생략하면 손대지 않는다. null 이면 변경품이 아니다(그 LOT 의 기록을 지운다). 값이면 의뢰 LOT 의 한 줄을 이 값으로 갈아 끼운다(결과와 한 트랜잭션). 자재 LOT 이 있는 IQC 의뢰가 아니면 400 field=fourMChange, code=INVALID. 서버 선행 · 장부 P-86·P-105 · omf-all-around#63·#133 */
       fourMChange?: {
         /**
-         * @description 변경 종류 — 공통코드 그룹 FOUR_M_CHANGE_TYPE(기본 MAN·MACHINE·MATERIAL·METHOD). ⛔ enum 으로 못박지 않는다 — 기준정보에서 더하고 고친다. 없거나 사용 중지된 값이면 400
+         * @description 변경 종류(선택 · #133) — 공통코드 그룹 FOUR_M_CHANGE_TYPE(기본 MAN·MACHINE·MATERIAL·METHOD). ⛔ enum 으로 못박지 않는다 — 기준정보에서 더하고 고친다. 없거나 사용 중지된 값이면 400
          * @example MATERIAL
          */
-        changeTypeCode: string;
+        changeTypeCode?: string;
         /**
-         * @description 변경 내용·특이사항. 비우면 없음
+         * @description 변경 내용·특이사항 — 필수. 앞뒤 공백을 뺀 값이 비면 400 field=fourMChange.remarks, code=REQUIRED(#133)
          * @example 원자재 공급처 변경(10/15부)
          */
-        remarks?: string;
+        remarks: string;
       } | null;
+      /** @description 시리얼 OQC — 출하작업지시 OQC 를 statusCode=CONFIRMED 로 저장할 때만 싣는다(다른 유형·작성중이면 400 serials·INVALID). 시리얼마다 결과와 같은 트랜잭션으로 한 줄씩 남는다. 막는 것(모두 400 serials·INVALID): 없는 시리얼 · 다른 품목 · 이 출하작업지시가 피킹하지 않은 LOT · 같은 시리얼 두 번 · 시리얼 수 > 검사 수량 · NG 수 > 불합격 수량. 이미 기록된 시리얼이면 1차는 그대로 두고 최종만 바꾼다 — 1차 OK 를 NG 로는 못 바꾼다(400 serials·INVALID). 하나라도 막히면 결과째 저장되지 않는다. ⚠ 한계: 시리얼당 한 줄이다 — 재검 회차가 같은 줄을 고치므로 회차별 이력은 남지 않는다. 1차 판정은 처음 기록한 값 그대로이고, 최종 판정과 마지막으로 쓴 회차만 바뀐다. 서버 선행(omf-all-around#68 · 장부 P-101). */
+      serials?: components['schemas']['InspectionSerialJudgmentInput'][];
     };
     /** @description 작성중인 결과만 고칠 수 있다. 확정된 것은 409 INVALID_STATE — 고치는 것이 아니라 재검이다(B-10) ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). */
     InspectionResultUpdate: {
@@ -50193,18 +53473,18 @@ export interface components {
       remarks?: string;
       /** @description ⭐ IQC 불합격 사유의 임시 저장. 실으면 그 회차의 IQC 불량 기록을 이 값으로 갈아 끼우고(빈 배열이면 지운다), 생략하면 손대지 않는다. 1줄 이상은 IQC 결과이면서 판정(본문, 없으면 저장값)이 REJECTED 일 때만 — 아니면 400 INVALID. 갈아 끼울 기록에 수리 이력(수리 결과·수리 실행)이 붙어 있으면 지우지 않고 400 STATE_LOCKED. 작성중 회차의 기록은 불량 집계·기간 목록에 잡히지 않는다(확정이 갈아 끼우거나 지운다). 서버 선행 · 장부 P-48 · omf-all-around#122 */
       defects?: components['schemas']['InspectionDefectInput'][];
-      /** @description ⭐ 4M 변경품 — 생략하면 손대지 않는다. null 이면 변경품이 아니다(그 LOT 의 기록을 지운다). 값이면 의뢰 LOT 의 한 줄을 이 값으로 갈아 끼운다(결과와 한 트랜잭션). 자재 LOT 이 있는 IQC 의뢰가 아니면 400 field=fourMChange, code=INVALID. 서버 선행 · 장부 P-86 · omf-all-around#63 */
+      /** @description ⭐ 4M 변경품 — 생략하면 손대지 않는다. null 이면 변경품이 아니다(그 LOT 의 기록을 지운다). 값이면 의뢰 LOT 의 한 줄을 이 값으로 갈아 끼운다(결과와 한 트랜잭션). 자재 LOT 이 있는 IQC 의뢰가 아니면 400 field=fourMChange, code=INVALID. 서버 선행 · 장부 P-86·P-105 · omf-all-around#63·#133 */
       fourMChange?: {
         /**
-         * @description 변경 종류 — 공통코드 그룹 FOUR_M_CHANGE_TYPE(기본 MAN·MACHINE·MATERIAL·METHOD). ⛔ enum 으로 못박지 않는다 — 기준정보에서 더하고 고친다. 없거나 사용 중지된 값이면 400
+         * @description 변경 종류(선택 · #133) — 공통코드 그룹 FOUR_M_CHANGE_TYPE(기본 MAN·MACHINE·MATERIAL·METHOD). ⛔ enum 으로 못박지 않는다 — 기준정보에서 더하고 고친다. 없거나 사용 중지된 값이면 400
          * @example MATERIAL
          */
-        changeTypeCode: string;
+        changeTypeCode?: string;
         /**
-         * @description 변경 내용·특이사항. 비우면 없음
+         * @description 변경 내용·특이사항 — 필수. 앞뒤 공백을 뺀 값이 비면 400 field=fourMChange.remarks, code=REQUIRED(#133)
          * @example 원자재 공급처 변경(10/15부)
          */
-        remarks?: string;
+        remarks: string;
       } | null;
     };
     /** @description L-1 — 요약은 필터 전체 기준이고 목록은 페이지다. 파생은 서버가 계산한다(L-2) */
@@ -50763,10 +54043,10 @@ export interface components {
       /** Format: int64 */
       suspectedCauseCodeId?: number | null;
     };
-    /** @description 4M 변경품 기록(읽기). 서버 선행 · 장부 P-86 */
+    /** @description 4M 변경품 기록(읽기). 서버 선행 · 장부 P-86 · 변경 종류 선택(#133 · 장부 P-105) */
     FourMChangeView: {
       /** @example MATERIAL */
-      changeTypeCode: string;
+      changeTypeCode?: string;
       /** @example 원자재 공급처 변경(10/15부) */
       remarks?: string;
     };
@@ -50792,9 +54072,9 @@ export interface components {
        * @enum {string}
        */
       inspectionLevelCode: 'NONE' | 'REDUCED' | 'NORMAL' | 'TIGHTENED';
-      /** @description 자동 전환 사용 — IQC 첫 확정 판정으로 센다. 합격 연속 15 → 수월(보통에서), 불합격 → 엄격, 엄격에서 합격 연속 5 → 보통. 무검사는 자동 전환 대상이 아니다 */
+      /** @description 자동 전환 사용 — IQC 첫 확정 판정으로 센다. 합격 연속 15 → 수월(보통에서), 불합격 → 엄격, 엄격에서 합격 연속 5 → 보통. 무검사는 자동 전환 대상이 아니다 ⛔ omf-all-around#133 이후 자동 전환 없음 — 이 값은 저장만 되고 무시된다(장부 P-105). */
       autoSwitchEnabled: boolean;
-      /** @description 지금 수준에서의 연속 합격 LOT 수. 전환·수동 변경·불합격이면 0 */
+      /** @description 지금 수준에서의 연속 합격 LOT 수. 전환·수동 변경·불합격이면 0 ⛔ #133 이후 세지 않는다 — 수동 변경이면 0, 그 밖에는 그대로(장부 P-105) */
       consecutiveAcceptCount: number;
       /** Format: date-time */
       updatedAt: string;
@@ -50815,14 +54095,14 @@ export interface components {
        */
       inspectionLevelCode: 'NONE' | 'REDUCED' | 'NORMAL' | 'TIGHTENED';
       /**
-       * @description 자동 전환 사용
-       * @default true
+       * @description 자동 전환 사용 ⛔ omf-all-around#133 이후 자동 전환 없음 — 이 값은 저장만 되고 무시된다(장부 P-105).
+       * @default false
        */
       autoSwitchEnabled?: boolean;
       /** @description 지정 사유(선택) — 비우면 이력의 사유가 null */
       reason?: string;
     };
-    /** @description 수동 변경. 생략 = 유지. 수준이 바뀌면 사유가 필수이고 이력 1건이 남으며 연속 합격 수가 0 이 된다. 품목은 바꾸지 않는다. 근거: 서버 선행 · 장부 P-87 · omf-all-around#64 · W-03-12 검사 수준 관리 */
+    /** @description 수동 변경. 생략 = 유지. 수준이 바뀌면 이력 1건이 남으며(사유는 선택 · P-105) 연속 합격 수가 0 이 된다. 품목은 바꾸지 않는다. 근거: 서버 선행 · 장부 P-87 · omf-all-around#64 · W-03-12 검사 수준 관리 */
     ItemInspectionLevelUpdate: {
       /**
        * @description 새 수준
@@ -50830,9 +54110,9 @@ export interface components {
        * @enum {string}
        */
       inspectionLevelCode?: 'NONE' | 'REDUCED' | 'NORMAL' | 'TIGHTENED';
-      /** @description 자동 전환 사용 */
+      /** @description 자동 전환 사용 ⛔ omf-all-around#133 이후 자동 전환 없음 — 이 값은 저장만 되고 무시된다(장부 P-105). */
       autoSwitchEnabled?: boolean;
-      /** @description 변경 사유 — 수준이 바뀔 때 필수 */
+      /** @description 변경 사유 — 선택(비우면 이력 사유 없음 · P-105) */
       reason?: string;
     };
     /** @description 검사 수준 전환 이력. 자동(AUTO)은 연속 합격 수(consecutiveAcceptCount) 또는 불합격 의뢰(inspectionRequestNo)를, 수동(MANUAL)은 입력 사유(reason)를 싣는다. 최초 지정은 fromLevelCode 가 null 이고 사유가 비어 있을 수 있다. 근거: 서버 선행 · 장부 P-87 · omf-all-around#64 · W-03-12 검사 수준 관리 */
@@ -50878,6 +54158,321 @@ export interface components {
       changedAt: string;
       /** @description 처리자 — 계정 이름 또는 단말 작업자 이름 */
       changedByName: string | null;
+    };
+    /** @description 시리얼 한 대의 출하검사 판정(서버 선행 · 장부 P-101). */
+    InspectionSerialJudgmentInput: {
+      /** Format: int64 */
+      serialNumberId: number;
+      /** @enum {string} */
+      judgmentCode: 'OK' | 'NG';
+    };
+    /** @description 시리얼의 OQC 기록. ⚠ 한계: 시리얼당 한 줄이다 — 재검 회차가 같은 줄을 고치므로 회차별 이력은 남지 않는다. 1차 판정은 처음 기록한 값 그대로이고, 최종 판정과 마지막으로 쓴 회차만 바뀐다. */
+    OqcSerialStep: {
+      /** @enum {string} */
+      firstJudgmentCode: 'OK' | 'NG';
+      /** @enum {string} */
+      finalJudgmentCode: 'OK' | 'NG';
+      /** Format: date-time */
+      inspectedAt: string;
+      inspectorName?: string;
+      /**
+       * Format: int64
+       * @description 마지막으로 쓴 OQC 회차
+       */
+      inspectionResultId?: number;
+      inspectionRound?: number;
+    };
+    /** @description 시리얼 OQC 스캔 한 번의 답(서버 선행 · 장부 P-101). */
+    OqcSerialScan: {
+      /** Format: int64 */
+      serialNumberId: number;
+      serialNo: string;
+      /** Format: int64 */
+      itemId: number;
+      itemCode: string;
+      itemName: string;
+      /** Format: int64 */
+      lotId: number;
+      lotNo: string;
+      /** Format: date-time */
+      producedAt?: string;
+      /**
+       * Format: int64
+       * @description 생산 LOT 이면 그 MES W/O
+       */
+      workOrderId?: number;
+      shipmentStep?: components['schemas']['OqcSerialStep'];
+      /** @description 이 시리얼의 LOT 을 피킹한 검사 대상 라인의 OQC 의뢰 — 대기·진행·완료(생략은 뺀다). 완료된 의뢰도 담는다: 재검 회차에서 같은 시리얼을 다시 찍는다. 시리얼로 의뢰를 열 때는 화면이 대기·진행만 고른다. POP 은 단말 공장 것만. */
+      pickedRequests: {
+        /** Format: int64 */
+        inspectionRequestId: number;
+        inspectionRequestNo: string;
+        /** Format: int64 */
+        shipmentRequestId: number;
+        /** @description REQUESTED · IN_PROGRESS · COMPLETED */
+        statusCode: string;
+      }[];
+    };
+    /** @description 의뢰 하나의 시리얼 판정 한 줄. ⚠ 한계: 시리얼당 한 줄이다 — 재검 회차가 같은 줄을 고치므로 회차별 이력은 남지 않는다. 1차 판정은 처음 기록한 값 그대로이고, 최종 판정과 마지막으로 쓴 회차만 바뀐다. */
+    OqcSerialRecord: {
+      /** Format: int64 */
+      serialNumberId: number;
+      serialNo: string;
+      /** Format: int64 */
+      lotId: number;
+      lotNo: string;
+      /** @enum {string} */
+      firstJudgmentCode: 'OK' | 'NG';
+      /** @enum {string} */
+      finalJudgmentCode: 'OK' | 'NG';
+      /** Format: date-time */
+      inspectedAt: string;
+      inspectorName?: string;
+      /**
+       * Format: int64
+       * @description 마지막으로 쓴 OQC 회차
+       */
+      inspectionResultId?: number;
+      inspectionRound?: number;
+    };
+    /** @description OA 제품 검사표 — 시리얼 1대에 1장. steps 는 기준의 단계 전부이고, 아직 안 쓴 단계는 result 가 null 이다. 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다. */
+    InspectionSheet: {
+      /** Format: int64 */
+      inspectionSheetId: number;
+      /** Format: int64 */
+      serialNumberId: number;
+      serialNo: string;
+      /** Format: int64 */
+      itemId: number;
+      itemCode: string;
+      itemName: string;
+      /** Format: int64 */
+      lotId: number;
+      lotNo: string;
+      /** Format: int64 */
+      workOrderId: number | null;
+      workOrderNo: string | null;
+      /** Format: int64 */
+      inspectionSheetTemplateId: number;
+      templateVersion: number;
+      /** @enum {string} */
+      formLayoutCode: 'OP' | 'PP';
+      /** @enum {string} */
+      statusCode: 'IN_PROGRESS' | 'COMPLETED';
+      modelText: string | null;
+      specText: string | null;
+      destinationText: string | null;
+      pcbLotNo: string | null;
+      sdLotNo: string | null;
+      stapleLotNo: string | null;
+      fwProductionVersion: string | null;
+      fwQualityVersion: string | null;
+      materialText: string | null;
+      structureText: string | null;
+      rohsFlag: boolean;
+      productNameText: string | null;
+      powerText: string | null;
+      motorText: string | null;
+      /** @description 가포장(오포장) 상황 기록 */
+      tempPackNote: string | null;
+      /**
+       * @description 제품 검사 결과
+       * @enum {string|null}
+       */
+      overallResultCode: 'OK' | 'NG' | null;
+      /** @description W/O 투입 기록에서 찾은 칸별 자재 LOT 번호(W/O 단위 — 시리얼별 투입 기록은 없다) */
+      lotCandidates: {
+        pcb: string[];
+        sd: string[];
+        staple: string[];
+      };
+      /** @description 변경품 투입 — 이 검사표의 W/O 에 투입된 자재 LOT 중 4M 변경품(omf-all-around#63 기록). 시리얼별 투입 기록이 없어 W/O 단위다(설계 문의 052). 같은 LOT 은 한 줄. 서버 선행(omf-all-around#89 S4 · 장부 P-102) */
+      fourMChanges: {
+        lotNo: string;
+        itemCode: string;
+        itemName: string;
+        changeTypeCode?: string;
+        remarks: string | null;
+      }[];
+      writtenWorkerNo: string | null;
+      writtenWorkerName: string | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: int64 */
+      approvedBy: number | null;
+      approvedByName: string | null;
+      /** Format: date-time */
+      approvedAt: string | null;
+      /** Format: int64 */
+      checkedBy: number | null;
+      checkedByName: string | null;
+      /** Format: date-time */
+      checkedAt: string | null;
+      steps: components['schemas']['InspectionSheetStep'][];
+      ngs: components['schemas']['InspectionSheetNg'][];
+      /** @description 서명·승인·확인·승인 취소 이력 */
+      events: {
+        /**
+         * @description APPROVAL_CLEARED = 승인·확인 중 하나만 된 검사표를 고쳐 그 승인·확인이 비워졌다(고친 사람이 POP 작업자면 actedBy 가 null 이고 actedByName 이 작업자 이름)
+         * @enum {string}
+         */
+        eventCode: 'SIGN_STEP' | 'APPROVE' | 'CHECK' | 'REOPEN' | 'APPROVAL_CLEARED';
+        stepCode: string | null;
+        reason: string | null;
+        /** Format: int64 */
+        actedBy: number | null;
+        actedByName: string | null;
+        /** Format: date-time */
+        actedAt: string;
+      }[];
+    };
+    InspectionSheetStep: {
+      stepCode: string;
+      sequenceNo: number;
+      nameKo: string;
+      nameVi: string | null;
+      signRequired: boolean;
+      result: {
+        /** @enum {string} */
+        firstJudgmentCode: 'OK' | 'NG';
+        /**
+         * @description NG → 수리 → 재검 OK 면 OK
+         * @enum {string}
+         */
+        finalJudgmentCode: 'OK' | 'NG';
+        /**
+         * @description OQC = 시리얼 OQC(#68)가 쓴 출하검사 줄
+         * @enum {string}
+         */
+        sourceCode: 'SHEET' | 'OQC';
+        inspectedWorkerNo: string | null;
+        inspectedWorkerName: string | null;
+        /** Format: date-time */
+        inspectedAt: string;
+        /** Format: int64 */
+        signedBy: number | null;
+        signedByName: string | null;
+        /** Format: date-time */
+        signedAt: string | null;
+      } | null;
+      items: {
+        /** Format: int64 */
+        inspectionSheetTemplateItemId: number;
+        sequenceNo: number;
+        checkItemCode: string;
+        nameKo: string;
+        nameVi: string | null;
+        /** @enum {string} */
+        methodCode: 'FULL' | 'SAMPLE';
+        /** @enum {string|null} */
+        judgmentCode: 'OK' | 'NG' | null;
+      }[];
+    };
+    InspectionSheetNg: {
+      sequenceNo: number;
+      /** @enum {string|null} */
+      foundDepartmentCode: 'PRODUCTION' | 'QUALITY' | null;
+      /** @description 발견 공정 — 검사표 단계 코드 */
+      foundStepCode: string | null;
+      occurrenceProcessText: string | null;
+      standardNo: string | null;
+      checkItemCode: string | null;
+      ngContent: string;
+      investigationText: string | null;
+      /** @enum {string|null} */
+      ngTypeCode: 'WORK' | 'PART' | null;
+      /** @enum {string|null} */
+      repairDepartmentCode: 'PRODUCTION' | 'TECH' | null;
+      repairWorkerNo: string | null;
+      /** Format: date-time */
+      repairedAt: string | null;
+      /** @enum {string|null} */
+      recheckResultCode: 'OK' | 'NG' | null;
+      recheckWorkerNo: string | null;
+      /** Format: date-time */
+      recheckedAt: string | null;
+      repairWorkerName: string | null;
+      recheckWorkerName: string | null;
+    };
+    /** @description 제품 검사표 머리 값 — 보낸 값으로 통째로 바꾼다(생략 = 비움). 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다. */
+    InspectionSheetHeaderUpdate: {
+      modelText?: string | null;
+      specText?: string | null;
+      destinationText?: string | null;
+      pcbLotNo?: string | null;
+      sdLotNo?: string | null;
+      stapleLotNo?: string | null;
+      fwProductionVersion?: string | null;
+      fwQualityVersion?: string | null;
+      materialText?: string | null;
+      structureText?: string | null;
+      rohsFlag: boolean;
+      productNameText?: string | null;
+      powerText?: string | null;
+      motorText?: string | null;
+      /** @description 가포장(오포장) 상황 기록 */
+      tempPackNote?: string | null;
+      /**
+       * @description 제품 검사 결과
+       * @enum {string|null}
+       */
+      overallResultCode?: 'OK' | 'NG' | null;
+    };
+    /** @description 1차·최종 판정은 함께 보내거나 함께 뺀다. 함께 빼면 항목 판정만 임시 저장한다(단계 판정 없음 · 판정이 기록된 단계는 400 stepCode STATE_LOCKED · 항목 없으면 400 items REQUIRED). 하나만 보내면 400 INVALID. — 서버 선행(장부 P-102) */
+    InspectionSheetStepWrite: {
+      /** @enum {string} */
+      firstJudgmentCode?: 'OK' | 'NG';
+      /** @enum {string} */
+      finalJudgmentCode?: 'OK' | 'NG';
+      items: {
+        /** Format: int64 */
+        inspectionSheetTemplateItemId: number;
+        /** @enum {string} */
+        judgmentCode: 'OK' | 'NG';
+      }[];
+    };
+    InspectionSheetNgWrite: {
+      /** @enum {string|null} */
+      foundDepartmentCode?: 'PRODUCTION' | 'QUALITY' | null;
+      /** @description 발견 공정 — 검사표 단계 코드 */
+      foundStepCode?: string | null;
+      occurrenceProcessText?: string | null;
+      standardNo?: string | null;
+      checkItemCode?: string | null;
+      ngContent: string;
+      investigationText?: string | null;
+      /** @enum {string|null} */
+      ngTypeCode?: 'WORK' | 'PART' | null;
+      /** @enum {string|null} */
+      repairDepartmentCode?: 'PRODUCTION' | 'TECH' | null;
+      repairWorkerNo?: string | null;
+      /** Format: date-time */
+      repairedAt?: string | null;
+      /** @enum {string|null} */
+      recheckResultCode?: 'OK' | 'NG' | null;
+      recheckWorkerNo?: string | null;
+      /** Format: date-time */
+      recheckedAt?: string | null;
+    };
+    /** @description 제품 검사표 목록 한 줄. ngStepCount 는 1차 판정이 NG 였던 단계 수. 서버 선행(omf-all-around#89 · 장부 P-102) — 설계 사본에 «우리가» 먼저 적었다. */
+    InspectionSheetSummary: {
+      /** Format: int64 */
+      inspectionSheetId: number;
+      serialNo: string;
+      itemCode: string;
+      itemName: string;
+      lotNo: string;
+      workOrderNo: string | null;
+      /** @enum {string} */
+      statusCode: 'IN_PROGRESS' | 'COMPLETED';
+      recordedStepCount: number;
+      stepCount: number;
+      ngStepCount: number;
+      writtenWorkerName: string | null;
+      approvedByName: string | null;
+      checkedByName: string | null;
+      /** Format: date-time */
+      createdAt: string;
     };
     /** @description 판정 의뢰. ⭐ 이 화면은 판정하지 않는다 — 재작업/폐기 판정은 전 도메인에서 03 품질 소관으로 통일돼 있다(F04 정합 확정 2026-07-07 · W-04-07 §5-1). 받는 화면은 W-03-10 이고 처분 결정 자원은 품질 계약이 소유한다(DR-008 확정 3-A) */
     DispositionRequest: {

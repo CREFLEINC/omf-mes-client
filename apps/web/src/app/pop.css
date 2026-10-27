@@ -2854,20 +2854,6 @@
   min-height: 72px;
 }
 
-/*
- * ⛔ **두 번째 단추만 조용히 둔다.** 앞 판은 `:last-child` 라, #1241 로 보기마다 단추가 하나가
- *    된 뒤에는 **그 하나가 늘 흰 단추로 눌러앉았다**(사용자 지적 2026-09-21 · omf-all-around#35 —
- *    「재인쇄가 안 바뀐다」). 단추가 둘일 때만 무게를 가른다.
- *
- * 자재LOT 의 「인쇄만」과 「재인쇄」가 나란히 설 때는 채운 쪽이 이번 회차의 인쇄이고, 재인쇄는
- * 사유를 실어 보내는 되짚는 조작이라 조용히 둔다.
- */
-.pop-ui .pop-target-actions > button:not(:first-child) {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--outline-variant);
-  color: var(--on-surface-variant);
-}
-
 /* ── PQC 수량 판정 ────────────────────────────────────────────────────── */
 
 /*
@@ -3105,27 +3091,14 @@
 /*
  * ⚠ **한 줄짜리는 칸 폭을 그대로 써야 한다** — 위 규칙의 예외다.
  *
- * `align-items: center` 로 두면 자식이 **내용 폭으로 오그라들어** `.pop-lot-no` 의 말줄임이
- * 걸릴 자리가 없다 — 34자리 번호가 칸을 밀고 나간다(실측). 폭은 펴 두고 **가운데 맞춤은
+ * `align-items: center` 로 두면 자식이 **내용 폭으로 오그라들어** 긴 LOT 번호의 말줄임이
+ * 걸릴 자리가 없다 — 번호가 칸을 밀고 나간다(실측). 폭은 펴 두고 **가운데 맞춤은
  * 위 규칙의 `text-align` 이** 한다.
  *
  * ⛔ 이 블록이 위 `.pop-row-select` 보다 «뒤»에 있어야 한다 — 같은 힘이라 순서가 이긴다.
  */
 .pop-ui .pop-lot-row {
   align-items: stretch;
-}
-
-/*
- * ⚠ **목록 안의 LOT 번호는 본문 크기로 내린다.**
- *
- * `app.css` 의 `.pop-lot-no` 는 «대상 카드»의 큰 번호(20px)를 겨냥해 쓰였는데 목록 셀에도
- * 같은 이름이 걸려 있다. 1024 에서 좌단 구획 안쪽은 410px 뿐이라 20px 모노로 14자를 그리면
- * 번호가 잘렸다(실측 「PLOT-202…」). 목록은 «고르는» 자리이지 «대조하는» 자리가 아니라,
- * 온전히 보이는 것이 크게 보이는 것보다 앞선다 — 고른 뒤 오른쪽 상세가 큰 글씨로 다시 보인다.
- */
-.pop-ui .pop-lot-row > .pop-lot-no {
-  min-inline-size: 0;
-  font-size: var(--pop-text);
 }
 
 /*
@@ -3851,27 +3824,6 @@
   margin: 0;
   color: var(--on-surface-muted);
   font-size: var(--pop-label);
-}
-
-/*
- * 재인쇄 사유 창의 바닥 단추 둘 — **크기를 맞춘다**(사용자 결정 2026-09-08).
- *
- * ⭐ 글자 수가 달라 「취소」와 「재인쇄」의 폭이 갈리면, 장갑 낀 손에는 **큰 쪽이 옳은 쪽**으로
- *    읽힌다. 여기서 고르는 것은 옳고 그름이 아니라 되돌릴지 말지다 — 어느 쪽도 크지 않아야 한다.
- */
-.pop-ui .pop-reissue-action {
-  flex: 1 1 0;
-  min-inline-size: 0;
-  /*
-   * ⚠ **높이도 맞춘다.** 폭만 맞췄더니 「취소」 60 · 「재인쇄」 72 로 아랫변이 어긋났다
-   *   (실측 — 터치 등급이 갈려 최소 높이가 다르다). 등급은 「틀렸을 때 무엇이 일어나는가」로
-   *   갈리는 것이라 손대지 않고, **줄에 맞춰 늘리는 쪽**으로 맞춘다.
-   *
-   * ⛔ `align-self` 만으로는 안 된다 — DS 의 `xl` 이 높이를 60px 로 «박아» 두어 늘어남을
-   *    이긴다. 높이를 자동으로 되돌려야 줄 높이를 받는다.
-   */
-  align-self: stretch;
-  block-size: auto;
 }
 
 /*
@@ -4763,193 +4715,879 @@
 }
 
 /*
- * 자재LOT 등록·라벨 발행 — 입하 라인 «카드형» 목록(스펙 §3 도면).
+ * 자재 LOT 라벨 발행 — **공급사로 묶고 여러 장을 한 번에**(개편안 승인 2026-10-24 · omf-all-around#184).
  *
- * 한 줄이 두 행이다. 첫 행에 입하번호·품목·수량, 둘째 행에 공급사·입하일이 서고, 둘째 행의
- * 날짜가 첫 행의 품목 자리에 맞춰 선다. 그래서 두 행이 «같은 세 칸»을 쓰는 격자다.
+ * 왼쪽 공급사 목록 · 오른쪽 그 공급사의 대기 표 · 바닥 동작 바. 이 화면만 쓰는 이름(`pop-mlot-*`)이다.
  *
- * ⛔ 열 머리글 줄을 두지 않는다 — 스펙 도면에 없다. 그 한 줄이 세로 예산(119px · §3)을 먹는다.
+ * ⚠ **E-3(POP 관리웹 기본 밀도 · 40px)과 다르게 정한 곳이다.** 줄 56 · 단추 48 · 주 동작 56. 손으로
+ *   누르는 화면이라 개편안에서 키웠고 사용자가 승인했다. 공용 `.pop-touch` 규칙은 건드리지 않는다.
+ * ⭐ 빨강은 주 동작과 진짜 오류에만 쓴다. 고른 것은 차콜이다(개편안 2026-10-24).
  */
-/*
- * ⚠ **목록이 한 덩어리의 상자다** — 스펙 §3 도면이 목록을 `┌─┐ … ├─┤ … └─┘` 로 그린다.
- *   테두리와 구분선이 없으면 **어디를 눌러야 하는지, 어디까지가 한 건인지** 알 수 없다
- *   (사용자 지적 2026-09-10 D-1). 행이 곧 터치 대상이라 경계가 곧 조작의 크기다.
- */
-.pop-material-lot-lines {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md, 8px);
-  list-style: none;
+.pop-ui > .pop-mlot-body {
+  display: grid;
+  grid-template-columns: clamp(280px, 26%, 420px) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.pop-ui > .pop-mlot-body > * {
   overflow: hidden;
 }
 
-/* 줄과 줄은 구분선으로 가른다. 마지막 줄 밑에는 긋지 않는다 — 바깥 테두리와 겹친다. */
-.pop-material-lot-lines > li + li {
-  border-top: 1px solid var(--outline-variant);
+/* ── 왼쪽: 보기 · 찾기 · 공급사 ───────────────────────────────────────── */
+
+.pop-ui .pop-mlot-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
 }
 
-/*
- * ⛔ **가운데로 두지 않는다**(사용자 지시 2026-09-10 D-2 — 2026-09-07 의 가운데 정렬 결정을
- *   무른다). 스펙 §3 도면이 좌측 정렬이고, 여러 건이 쌓이면 가운데 정렬은 글자 길이마다 열이
- *   어긋나 훑어볼 수 없다.
- *
- * 밀도는 DS `Table` 의 `comfortable`(칸 여백 `--space-3 --space-4`)에 맞춘다 — 장갑 낀 손으로
- * 1024×768 화면에서 누르는 전제다(D-4).
- */
-.pop-material-lot-line {
+.pop-ui .pop-mlot-tabs {
   display: grid;
-  width: 100%;
-  /*
-   * **두 줄이다** — 입하일·공급사·수량 / 품목명·품목코드(사용자 지시 2026-09-19).
-   *
-   * ⚠ 첫 줄만 셋으로 갈린다. **가운데 칸(공급사)만 남는 폭을 갖는다** — 날짜·수량은 길이가
-   *   정해져 있고, 넘칠 수 있는 것은 거래처명뿐이라 그쪽이 줄어야 한다.
-   * ⚠ 행을 «명시»해 둔다 — 암시 행만 있으면 품목의 `1 / -1` 이 첫 행에서 끝난다.
-   */
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
-  gap: var(--space-1) var(--space-4);
-  align-items: baseline;
-  padding: var(--space-3) var(--space-4);
+  flex: 0 0 auto;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high);
+}
+
+.pop-ui .pop-mlot-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--space-9);
   border: 0;
-  border-inline-start: 4px solid transparent;
-  background: none;
-  color: inherit;
-  font: inherit;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: 500 var(--pop-text) / 24px var(--font-sans);
+  cursor: pointer;
+}
+
+.pop-ui .pop-mlot-tab[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--on-surface);
+  font-weight: 700;
+  box-shadow: var(--elevation-1);
+}
+
+.pop-ui .pop-mlot-tab:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.pop-ui .pop-mlot-tab-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-ui .pop-mlot-search {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: calc(var(--space-9) + var(--space-2));
+  padding: 0 var(--space-2) 0 var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.pop-ui .pop-mlot-search > svg {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: var(--on-surface-variant);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.pop-ui .pop-mlot-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--space-9);
+  border: 0;
+  background: transparent;
+  color: var(--on-surface);
+  font: 400 var(--pop-text) / 24px var(--font-sans);
+  outline: none;
+}
+
+.pop-ui .pop-mlot-search:focus-within {
+  border-color: var(--on-surface);
+}
+
+.pop-ui .pop-mlot-search-clear {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--control-height-md);
+  height: var(--control-height-md);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-container);
+  cursor: pointer;
+}
+
+.pop-ui .pop-mlot-search-clear > svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--on-surface-variant);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+.pop-ui .pop-mlot-scan-note {
+  margin: 0;
+  color: var(--semantic-error-text);
+  font: var(--type-body-sm);
+}
+
+.pop-ui .pop-mlot-suppliers {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  margin: 0;
+  padding: 0 0 var(--space-1);
+  overflow-y: auto;
+  list-style: none;
+}
+
+/* 타일 전체가 누르는 자리다(규범 C-1). 큰 숫자가 남은 장수다. */
+.pop-ui .pop-mlot-supplier {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  width: 100%;
+  min-height: 76px;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--elevation-1);
+  color: var(--on-surface);
   text-align: start;
   cursor: pointer;
 }
 
-.pop-material-lot-line:disabled {
+.pop-ui .pop-mlot-supplier[aria-pressed='true'] {
+  background: var(--brand-charcoal);
+  box-shadow: none;
+  color: var(--on-primary);
+}
+
+.pop-ui .pop-mlot-supplier:disabled {
   cursor: default;
 }
 
-/*
- * 고른 줄 — 색만으로 말하지 않도록 왼쪽에 표식을 함께 세운다.
- *
- * ⚠ 표식 자리는 고르지 않은 줄도 «투명하게» 잡아 둔다(위). 고를 때 자리가 생기면 글자가
- *   4px 씩 밀려 줄이 흔들린다.
- */
-.pop-material-lot-line-on {
-  border-inline-start-color: var(--color-danger, rgb(220 80 70));
-  background: rgb(220 80 70 / 18%);
-}
-
-/* 첫 줄 — 입하일 · 공급사 · 수량. 값은 굵게, 칸 이름은 옅게(아래). */
-.pop-material-lot-line-date,
-.pop-material-lot-line-supplier,
-.pop-material-lot-line-qty,
-.pop-material-lot-line-item-code {
-  font-weight: 700;
+.pop-ui .pop-mlot-supplier-name {
+  overflow: hidden;
+  font: 700 17px / 24px var(--font-sans);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.pop-material-lot-line-date {
+.pop-ui .pop-mlot-supplier-sub {
   grid-column: 1;
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
 }
 
-/*
- * 가운데 칸만 줄어든다 — 긴 거래처명은 여기서 말줄임된다.
- * ⚠ `min-width` 를 풀지 않으면 flex·grid 항목이 내용보다 작아지지 않아 줄이 옆으로 밀린다.
- */
-.pop-material-lot-line-supplier {
+.pop-ui .pop-mlot-supplier-count {
   grid-column: 2;
+  grid-row: 1 / span 2;
+  font: var(--type-headline-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-ui .pop-mlot-supplier-unit {
+  margin-inline-start: 2px;
+  color: var(--on-surface-muted);
+  font: var(--type-label-lg);
+}
+
+.pop-ui .pop-mlot-supplier[aria-pressed='true'] .pop-mlot-supplier-sub,
+.pop-ui .pop-mlot-supplier[aria-pressed='true'] .pop-mlot-supplier-unit {
+  color: var(--surface-container-high);
+}
+
+/* ── 오른쪽: 공급사의 대기 줄 ─────────────────────────────────────────── */
+
+.pop-ui .pop-mlot-work {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--elevation-1);
+}
+
+.pop-ui .pop-mlot-work-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 60px;
+  padding: 0 var(--space-3) 0 var(--space-5);
+}
+
+.pop-ui .pop-mlot-work-title {
   display: flex;
   align-items: baseline;
+  gap: var(--space-3);
   min-width: 0;
 }
 
-.pop-material-lot-line-supplier-value {
-  min-width: 0;
+.pop-ui .pop-mlot-work-title > h2 {
+  margin: 0;
   overflow: hidden;
-  white-space: nowrap;
+  font: 700 20px / 28px var(--font-sans);
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* ⚠ 수량은 접히지 않는다 — 「150」과 「EA」가 갈리면 두 값처럼 읽힌다(사용자 지적 2026-09-10). */
-.pop-material-lot-line-qty {
-  grid-column: 3;
-  justify-self: end;
+.pop-ui .pop-mlot-work-code {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
 }
 
-/*
- * 품목명은 **둘째 줄의 남는 폭을 전부 쓴다**(사용자 지시 2026-09-19). 앞선 판에서 이 값이 첫 줄
- * 146px 칸에 갇혀 네 줄로 접혔다 — `screens/pop-material-lot-label/receipt-list` 머리말에 실측이
- * 있다. 길이가 정해진 품목코드는 옆에 두고, 늘어날 수 있는 이름이 남는 자리를 갖는다.
- */
-.pop-material-lot-line-item {
-  grid-column: 1 / 3;
+.pop-ui .pop-mlot-work-sum {
+  color: var(--on-surface-variant);
+  font: 500 var(--pop-text) / 24px var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-ui .pop-mlot-work > .banner-slot {
+  flex: 0 0 auto;
+  margin: 0 var(--space-4) var(--space-3);
+}
+
+.pop-ui .pop-mlot-select-all,
+.pop-ui .pop-mlot-foot-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--space-9);
+  padding: 0 var(--space-5);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 500 var(--pop-text) / 24px var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-ui .pop-mlot-select-all:disabled,
+.pop-ui .pop-mlot-foot-button:disabled {
+  color: var(--on-surface-muted);
+  cursor: default;
+}
+
+/* 체크 칸 — 줄 전체가 누르는 자리이고, 칸은 «고른 것»을 보이는 표식이다. */
+.pop-ui .pop-mlot-checkbox {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 2px var(--outline);
+  background: var(--surface);
+}
+
+.pop-ui .pop-mlot-checkbox[data-checked='true'] {
+  background: var(--brand-charcoal);
+  box-shadow: none;
+}
+
+.pop-ui .pop-mlot-checkbox > svg,
+.pop-ui .pop-mlot-mark > svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--on-primary);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pop-ui .pop-mlot-table {
   display: flex;
-  align-items: baseline;
-  min-width: 0;
-}
-
-/* 품목코드는 수량과 같은 오른쪽 줄기에 선다 — 길이가 고른 값이라 세로로 맞는다. */
-.pop-material-lot-line-item-code {
-  grid-column: 3;
-  justify-self: end;
-}
-
-/*
- * ⚠ **값만 줄어들 수 있게 둔다.** `min-width` 를 풀지 않으면 flex 항목이 내용보다 작아지지
- *   않아 말줄임도 걸리지 않고 줄이 옆으로 밀린다.
- */
-.pop-material-lot-line-item-value {
   flex: 1 1 auto;
-  min-width: 0;
+  flex-direction: column;
+  min-height: 0;
+  container: mlot-table / inline-size;
+}
+
+/* 열 머리는 한 번만 둔다 — 옛 목록은 값마다 이름표를 붙여 한 쪽에 40개였다. */
+.pop-ui .pop-mlot-table-head,
+.pop-ui .pop-mlot-row {
+  display: grid;
+  align-items: center;
+  column-gap: var(--space-3);
+  padding: 0 var(--space-5) 0 0;
+}
+
+/* 마지막 열(56)은 IQC 다 — 세 보기 모두 같은 자리 · 같은 폭이다. */
+.pop-ui .pop-mlot-table[data-mode='pending'] .pop-mlot-table-head,
+.pop-ui .pop-mlot-table[data-mode='pending'] .pop-mlot-row {
+  grid-template-columns: 64px minmax(120px, 160px) minmax(0, 1fr) minmax(110px, 150px) 110px 56px;
+}
+
+.pop-ui .pop-mlot-table[data-mode='result'] .pop-mlot-table-head,
+.pop-ui .pop-mlot-table[data-mode='result'] .pop-mlot-row {
+  grid-template-columns: 64px minmax(120px, 160px) minmax(0, 1fr) minmax(110px, 150px) 200px 56px;
+}
+
+.pop-ui .pop-mlot-table[data-mode='reprint'] .pop-mlot-table-head,
+.pop-ui .pop-mlot-table[data-mode='reprint'] .pop-mlot-row {
+  grid-template-columns: 64px minmax(270px, 340px) minmax(0, 1fr) minmax(100px, 140px) 120px 56px;
+}
+
+/*
+ * ⚠ 표가 좁으면(1024×768 에서 692) 틈과 고정 열을 줄여 품목명 칸을 지킨다 — 위 값 그대로면 IQC 열까지
+ *   여섯 칸이 품목명을 72(발행 대기) · 0(다시 인쇄)으로 밀었다(실측 2026-10-26). 현장 1920 은 위 값 그대로다.
+ *   LOT 번호는 자르지 않는다(규범 C-10) — 글자를 한 단계 줄여 칸에 넣는다.
+ */
+@container mlot-table (max-width: 760px) {
+  .pop-ui .pop-mlot-table-head,
+  .pop-ui .pop-mlot-row {
+    column-gap: var(--space-2);
+  }
+
+  .pop-ui .pop-mlot-table[data-mode='pending'] .pop-mlot-table-head,
+  .pop-ui .pop-mlot-table[data-mode='pending'] .pop-mlot-row {
+    grid-template-columns: 52px 120px minmax(0, 1fr) 100px 100px 48px;
+  }
+
+  .pop-ui .pop-mlot-table[data-mode='result'] .pop-mlot-table-head,
+  .pop-ui .pop-mlot-table[data-mode='result'] .pop-mlot-row {
+    grid-template-columns: 52px 120px minmax(0, 1fr) 100px 180px 48px;
+  }
+
+  /* LOT 264 — 13px 고정폭으로 다섯 칸 번호(33자, 실측 258)가 든다. 머리와 줄이 따로 그리드라 글자 길이로 세우지 않는다. */
+  .pop-ui .pop-mlot-table[data-mode='reprint'] .pop-mlot-table-head,
+  .pop-ui .pop-mlot-table[data-mode='reprint'] .pop-mlot-row {
+    grid-template-columns: 52px 264px minmax(0, 1fr) 84px 112px 48px;
+  }
+
+  /* 아래 기본 규칙보다 앞에 있으므로 한 단계 좁혀 이긴다. */
+  .pop-ui .pop-mlot-row .pop-mlot-cell-lot {
+    font-size: 13px;
+  }
+}
+
+.pop-ui .pop-mlot-table-head {
+  flex: 0 0 auto;
+  min-height: 36px;
+  background: var(--surface-container-low);
+  color: var(--on-surface-muted);
+  font: var(--type-label-lg);
+}
+
+/* 수량 · 입하 · 발행 머리는 값과 같이 오른쪽에 붙는다. */
+.pop-ui .pop-mlot-table-head > :nth-child(4),
+.pop-ui .pop-mlot-table-head > :nth-child(5) {
+  text-align: end;
+}
+
+.pop-ui .pop-mlot-table[data-mode='result'] .pop-mlot-table-head > :nth-child(5) {
+  text-align: start;
+}
+
+.pop-ui .pop-mlot-table-head > :nth-child(6) {
+  text-align: center;
+}
+
+/* 줄 칸 — 화면이 높이를 재서 쪽 크기를 정한다(`row-fit`). 넘치는 줄은 다음 쪽이다. */
+.pop-ui .pop-mlot-rows {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
+}
+
+/* ⚠ 높이 56 은 `row-fit.ts` 의 `ROW_HEIGHT` 와 같은 값이다 — 고치면 함께 고친다. */
+.pop-ui .pop-mlot-row {
+  box-sizing: border-box;
+  width: 100%;
+  height: 56px;
+  border: 0;
+  border-block-end: 1px solid var(--surface-container-high);
+  background: transparent;
+  color: var(--on-surface);
+  font: 400 17px / 24px var(--font-sans);
+  text-align: start;
+  cursor: pointer;
+}
+
+.pop-ui .pop-mlot-row[aria-checked='true'] {
+  background: var(--surface-container);
+}
+
+.pop-ui .pop-mlot-row:disabled {
+  cursor: default;
+}
+
+.pop-ui div.pop-mlot-row {
+  cursor: default;
+}
+
+.pop-ui .pop-mlot-row[data-status='error'] {
+  background: var(--semantic-error-container);
+}
+
+.pop-ui .pop-mlot-row[data-selected='false'] {
+  color: var(--on-surface-muted);
+}
+
+.pop-ui .pop-mlot-cell-mark {
+  display: grid;
+  place-items: center;
+}
+
+.pop-ui .pop-mlot-cell-code {
+  font: 500 var(--pop-text) / 24px var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+/* LOT 번호는 저장된 그대로, 고정폭으로, 자르지 않는다(규범 C-10). */
+.pop-ui .pop-mlot-cell-lot {
+  font: 500 14px / 20px var(--font-mono);
   white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
-/*
- * 값에 붙는 이름 — **값보다 한 급 작고 옅다.** 이름이 값과 같은 무게로 서면 훑는 눈이 이름을
- * 먼저 읽는다. 크기는 고정이다 — 품목이 줄어들 때 이름까지 함께 작아지면 무엇을 보고 있는지
- * 부터 흐려진다.
- */
-.pop-material-lot-line-label {
-  margin-inline-end: var(--space-2);
-  color: var(--on-surface-variant, #5d6873);
-  font-size: var(--pop-label);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
-
-/*
- * 목록 아래 줄 — 「갱신」과 쪽 이동이 **한 줄을 함께 쓴다**(omf-all-around#29).
- *
- * ⭐ 쪽 이동 줄은 이미 단추 높이를 쓰고 있어, 갱신을 여기 세우면 **세로를 더 먹지 않는다** —
- *    세로 여유가 119px 뿐인 화면이다(스펙 §4). 제목 줄에 얹으면 목록이 그만큼 짧아진다.
- *
- * ⚠ 쪽 이동이 남는 폭을 갖는다 — 그 안에서 위치 표시가 왼쪽, 이동 단추가 오른쪽으로 갈린다.
- */
-.pop-lot-list-foot {
+.pop-ui .pop-mlot-cell-name {
   display: flex;
   align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pop-ui .pop-mlot-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-ui .pop-mlot-cell-iqc {
+  display: grid;
+  place-items: center;
+}
+
+.pop-ui .pop-mlot-iqc {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--on-surface);
+  border-radius: var(--radius-sm);
+  font: 700 12px / 20px var(--font-sans);
+}
+
+.pop-ui .pop-mlot-cell-qty {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.pop-ui .pop-mlot-uom {
+  margin-inline-start: var(--space-1);
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+}
+
+.pop-ui .pop-mlot-cell-when {
+  color: var(--on-surface-muted);
+  font: 400 15px / 22px var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.pop-ui .pop-mlot-cell-result {
+  overflow: hidden;
+  font: 500 15px / 22px var(--font-sans);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-ui .pop-mlot-cell-result[data-status='ok'] {
+  color: var(--semantic-success-text);
+}
+
+.pop-ui .pop-mlot-cell-result[data-status='error'] {
+  color: var(--on-semantic-error-container);
+  font-weight: 700;
+}
+
+.pop-ui .pop-mlot-cell-result[data-status='warning'] {
+  color: var(--on-semantic-warning-container);
+}
+
+.pop-ui .pop-mlot-cell-result[data-status='idle'],
+.pop-ui .pop-mlot-cell-result[data-status='running'] {
+  color: var(--on-surface-muted);
+}
+
+.pop-ui .pop-mlot-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--outline-variant);
+}
+
+.pop-ui .pop-mlot-mark[data-status='ok'] {
+  background: var(--semantic-success);
+  box-shadow: none;
+}
+
+.pop-ui .pop-mlot-mark[data-status='error'] {
+  background: var(--semantic-error);
+  box-shadow: none;
+}
+
+.pop-ui .pop-mlot-mark[data-status='warning'] {
+  background: var(--semantic-warning);
+  box-shadow: none;
+}
+
+.pop-ui .pop-mlot-mark[data-status='running'] {
+  box-shadow: inset 0 0 0 3px var(--brand-charcoal);
+}
+
+.pop-ui .pop-mlot-empty {
+  margin: 0;
+  padding: var(--space-7) var(--space-5);
+  color: var(--on-surface-muted);
+  text-align: center;
+}
+
+/* 다시 인쇄 사유 — 큰 단추로 한 번에 고른다. */
+.pop-ui .pop-mlot-reasons {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  border-block-start: 1px solid var(--surface-container-high);
+}
+
+.pop-ui .pop-mlot-reasons-label {
+  color: var(--on-surface-muted);
+  font: var(--type-label-lg);
+}
+
+.pop-ui .pop-mlot-reason-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-2);
+}
+
+.pop-ui .pop-mlot-reason {
+  min-height: calc(var(--space-9) + var(--space-2));
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 500 var(--pop-text) / 24px var(--font-sans);
+  cursor: pointer;
+}
+
+.pop-ui .pop-mlot-reason[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--brand-charcoal);
+  color: var(--on-primary);
+  font-weight: 700;
+}
+
+.pop-ui .pop-mlot-work-foot {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 64px;
+  padding: 0 var(--space-2) 0 var(--space-4);
+  border-block-start: 1px solid var(--surface-container-high);
+}
+
+.pop-ui .pop-mlot-range {
+  flex: 1 1 auto;
+  color: var(--on-surface-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-ui .pop-mlot-pager {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.pop-ui .pop-mlot-pager > .pop-mlot-foot-button {
+  min-width: 120px;
+}
+
+/* ── 머리줄: 프린터 ───────────────────────────────────────────────────── */
+
+.pop-ui .pop-mlot-printer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 칩을 누르면 프린터를 바꾼다 — 칩 모양 그대로, 눌리는 자리만 넓힌다. */
+.pop-ui .pop-mlot-printer-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-md);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.pop-ui .pop-mlot-printer-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .pop-mlot-printer-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 64px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  cursor: pointer;
+}
+
+.pop-ui .pop-mlot-printer-option[aria-pressed='true'] {
+  border-color: var(--brand-charcoal);
+  box-shadow: inset 0 0 0 1px var(--brand-charcoal);
+}
+
+.pop-ui .pop-mlot-printer-name {
+  font: 700 17px / 24px var(--font-sans);
+}
+
+.pop-ui .pop-mlot-printer-dialog {
+  max-width: 560px;
+}
+
+/* ── 바닥 동작 바 ─────────────────────────────────────────────────────── */
+
+/*
+ * 「액션바는 화면 바닥에 붙는 띠다」 규칙(`[class*='action']`)을 그대로 받고, 이 화면에서는 바탕을 희게
+ * 두고 주 동작 56 이 들어가게 위아래를 조금 넓힌다.
+ */
+.pop-ui > .pop-mlot-action-bar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+  background: var(--surface);
+}
+
+.pop-ui .pop-mlot-bar-text {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-3);
+  min-width: 0;
+}
+
+.pop-ui .pop-mlot-bar-text > :not(.pop-mlot-bar-icon) {
+  grid-column: 2;
+}
+
+.pop-ui .pop-mlot-bar-text > .pop-mlot-bar-icon {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+.pop-ui .pop-mlot-bar-note {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+.pop-ui .pop-mlot-bar-strong {
+  font: var(--type-headline-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pop-ui .pop-mlot-bar-text[data-tone='error'] .pop-mlot-bar-strong,
+.pop-ui .pop-mlot-bar-text[data-tone='error'] .pop-mlot-bar-note {
+  color: var(--on-semantic-error-container);
+}
+
+.pop-ui .pop-mlot-bar-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--semantic-error);
+}
+
+.pop-ui .pop-mlot-bar-icon > svg {
+  width: 20px;
+  height: 20px;
+  stroke: var(--on-primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.pop-ui .pop-mlot-bar-actions {
+  display: flex;
+  flex: none;
   gap: var(--space-3);
 }
 
-.pop-lot-list-foot > .pop-page-nav {
+.pop-ui .pop-mlot-bar-button,
+.pop-ui .pop-mlot-bar-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: calc(var(--space-9) + var(--space-2));
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-md);
+  font: 700 18px / 24px var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-ui .pop-mlot-bar-button {
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+  color: var(--on-surface);
+}
+
+/* 화면의 주 동작은 이것 하나다 — 빨강 채움. */
+.pop-ui .pop-mlot-bar-primary {
+  min-width: 240px;
+  border: 0;
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.pop-ui .pop-mlot-bar-primary:disabled,
+.pop-ui .pop-mlot-bar-button:disabled {
+  background: var(--surface-container-high);
+  color: var(--on-surface-muted);
+  cursor: default;
+}
+
+.pop-ui .pop-mlot-bar-primary > svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.pop-ui .pop-mlot-progress {
+  display: grid;
   flex: 1 1 auto;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 760px;
+}
+
+.pop-ui .pop-mlot-progress-track {
+  display: block;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--surface-container-high);
+}
+
+.pop-ui .pop-mlot-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--brand-charcoal);
+  transition: width 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop-ui .pop-mlot-progress-fill {
+    transition: none;
+  }
 }
 
 /*
- * 자재LOT 등록·라벨 발행 — 결과 띠는 «제목 + 아래 줄»이다(2단계 검증 2026-10-16). 표식은 제목 줄에 맞춘다.
+ * 잠긴 조작(발행 중 · 결과 확인 전) — 공용 `.pop-ui button:disabled` 는 바탕을 걷고 테두리만 남긴다.
+ * 이 화면의 타일 · 줄 · 사유는 «무엇을 골랐는가»를 바탕으로 말하므로 잠겨도 바탕을 지킨다.
  *
- * ⛔ 가운데 정렬(`align-items: center`)로 두지 않는다 — 줄이 둘 이상이면 표식이 줄 «사이»에 떴다(실측).
- *    위에서부터 세우고 표식 여백은 공용 규칙(app.css 「안내 띠 첫 줄」 — 제목 24px · 표식 20px → 2px)을 따른다.
- * ⚠ 두 이름을 겹쳐 적는다 — DS 의 띠 규칙과 같은 무게로는 파일 순서에 따라 지는 자리다.
+ * ⚠ 공용 규칙이 `(0,2,1)` 이라 여기는 `:disabled` 를 붙여 `(0,3,0)` 으로 이긴다.
  */
-.pop-ui .pop-material-lot-outcome {
-  align-items: flex-start;
+.pop-ui .pop-mlot-supplier:disabled {
+  background: var(--surface);
+  box-shadow: var(--elevation-1);
+  color: var(--on-surface);
 }
 
-/* 아래 줄(다음에 할 일 · IQC 라벨 결과) 사이는 촘촘히 — 문단 기본 여백이면 줄마다 한 줄씩 비었다. */
-.pop-ui .pop-material-lot-outcome p {
-  margin: var(--space-1) 0 0;
+.pop-ui .pop-mlot-supplier[aria-pressed='true']:disabled {
+  background: var(--brand-charcoal);
+  box-shadow: none;
+  color: var(--on-primary);
+}
+
+.pop-ui .pop-mlot-row:disabled {
+  background: transparent;
+  box-shadow: none;
+  color: var(--on-surface);
+}
+
+.pop-ui .pop-mlot-row[aria-checked='true']:disabled {
+  background: var(--surface-container);
+}
+
+.pop-ui .pop-mlot-tab:disabled {
+  background: transparent;
+  box-shadow: none;
+}
+
+.pop-ui .pop-mlot-tab[aria-pressed='true']:disabled {
+  background: var(--surface);
+}
+
+.pop-ui .pop-mlot-reason:disabled {
+  background: var(--surface);
+  box-shadow: none;
+  color: var(--on-surface-muted);
+}
+
+.pop-ui .pop-mlot-reason[aria-pressed='true']:disabled {
+  background: var(--brand-charcoal);
+  color: var(--on-primary);
+}
+
+/* 열 머리의 첫 칸(체크)은 체크 칸과 같이 가운데에 선다. */
+.pop-ui .pop-mlot-table-head > :first-child {
+  text-align: center;
 }
 
 /*
@@ -5873,44 +6511,6 @@
 .pop-material-lot-filter-item:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: -2px;
-}
-
-/*
- * 재인쇄 사유 창 — 크게 연다(사용자 지시 2026-09-15 · #1241). 사유 칸·[선택]·바닥 단추를
- * P-02-09 재출력 사유(`.pop-reprint-reason`)와 같은 72 로 세우고 [선택]을 넓힌다.
- */
-.pop-ui .pop-reissue-dialog .pop-select {
-  grid-template-columns: minmax(0, 1fr) 12rem;
-}
-
-.pop-ui .pop-reissue-dialog .pop-select__trigger,
-.pop-ui .pop-reissue-dialog .pop-select__value {
-  min-block-size: 72px;
-}
-
-.pop-ui .pop-reissue-dialog .pop-reissue-action {
-  min-block-size: 72px;
-}
-
-/*
- * 사유 목록 창도 같은 폭·줄 높이로 연다. 공용 부품(`pop-select`)은 그대로 두고, 이 창 안에
- * 열린 목록만 겨냥한다(목록 창이 재인쇄 창 안에 그려진다).
- */
-.pop-ui .pop-reissue-dialog .pop-select-dialog {
-  max-width: var(--dialog-max-lg);
-}
-
-/*
- * DS 단추가 높이를 `height` 로 박아 두어 최소 높이로는 안 커진다 — 높이를 준다.
- * ⚠ POP 은 `--control-height-*` 를 관리웹 밀도로 다시 잡아 토큰으로는 40 에 머문다 — 값으로 적는다.
- */
-.pop-ui .pop-reissue-dialog .pop-select-dialog__option {
-  height: 60px;
-}
-
-/* 줄이 60 이 되었으니 한 쪽 높이도 60 × 5 로 다시 잰다 — 두지 않으면 넷째 줄부터 잘린다. */
-.pop-ui .pop-reissue-dialog .pop-select-dialog__list {
-  --pop-select-rows: calc(60px * 5 + var(--space-1) * 4);
 }
 
 /*

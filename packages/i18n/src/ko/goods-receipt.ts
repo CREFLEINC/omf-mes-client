@@ -9,8 +9,6 @@
  * 적재됐다」이지 「상대 시스템으로 보냈다」가 아니다 — 뭉개면 승인자가 반영된 줄로 오해한다.
  */
 export const goodsReceipt = {
-  title: '정상품 입하 처리',
-  breadcrumbRoot: '구매 / 자재 관리',
   panes: {
     list: '대상 입하 전표 목록',
     lines: '고른 전표의 라인',
@@ -123,19 +121,6 @@ export const goodsReceipt = {
     lineNoLot: '자재 LOT이 생성되지 않았습니다.',
     lineQtyNotPositive: '입하 수량이 0보다 커야 선택할 수 있습니다.',
   },
-  loading: {
-    inboundReceipts: '대상 입하 전표 목록을 불러오는 중',
-    lines: '입하 라인을 불러오는 중',
-  },
-  /** 목록 표의 머리글. 열 구성과 폭의 근거는 screens/goods-receipt/ir-table.tsx에 있다. */
-  table: {
-    inboundReceiptNo: '입하번호',
-    supplier: '공급사',
-    receiptDatetime: '입하일시',
-    deliveryNoteNo: '거래명세서번호',
-    status: '상태',
-    select: '선택',
-  },
   /** 라인 표의 머리글과 칸 문구. 폭의 근거는 screens/goods-receipt/ir-line-table.tsx에 있다. */
   /** 입고 처리 입력 구획의 제목. */
   postTitle: '입고 정보',
@@ -209,32 +194,6 @@ export const goodsReceipt = {
     chipRemovePeriod: '입하일 조건 제거',
     chipRemoveStatus: '상태 조건 제거',
     chipRemoveQ: '검색어 조건 제거',
-  },
-  /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/goods-receipt/page-nav.tsx에 있다. */
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
-  },
-  /** 빈 상태는 **네 갈래**다. 사용자가 할 조치가 서로 다르다(완료 조건 C07). */
-  empty: {
-    noResultTitle: '조건에 맞는 입하 전표가 없습니다',
-    noResultDescription: '조건을 줄이거나 입하일 범위를 넓힌 뒤 다시 조회하세요.',
-    beyondLastTitle: '이 쪽에는 결과가 없습니다',
-    beyondLastDescription: '첫 쪽으로 이동하세요.',
-    noSelectionTitle: '입하 전표를 선택해 주세요',
-    noSelectionDescription: '목록에서 입하할 전표의 「선택」을 눌러 주세요.',
-    noLinesTitle: '입고할 라인이 없습니다',
-    noLinesDescription: '이 전표에는 입고할 수 있는 품목 라인이 없습니다.',
-    /*
-     * 주소에 고른 전표가 있는데 **목록 조회가 실패한** 자리. 골격(「불러오는 중」)을 내면
-     * 기다리라고 말하는데 기다려서 풀리지 않는다. 라인 값을 받아도 구획을 열 수 없다 —
-     * **제목줄이 쓰는 전표의 값이 목록 응답에만 있다**(W-01-03이 세운 형태).
-     */
-    listFailedTitle: '대상 입하 전표를 불러오지 못해 이 전표를 열 수 없습니다',
-    listFailedDescription: '위의 「다시 시도」로 목록을 불러온 뒤 다시 고르세요.',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */

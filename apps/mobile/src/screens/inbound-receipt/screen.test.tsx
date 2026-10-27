@@ -1160,20 +1160,30 @@ describe('입하 등록 화면 — 자재를 바꿀 때', () => {
   });
 
   /*
-   * 거의 다 문제없이 들어온다. 이상 없는 품목은 체크해 남은 수량 그대로 한 건(라인 여럿)으로
-   * 등록하고, 문제가 있는 품목만 따로 처리한다(사용자 지시 2026-10-21).
+   * 거의 다 문제없이 들어온다. 이상 없는 품목은 체크해 남은 수량 그대로 요청 하나로 등록하고(서버가 품목마다 입하 한 건을
+   * 세운다 — `:per-line` · 장부 P-117), 문제가 있는 품목만 따로 처리한다(사용자 지시 2026-10-21 · 2026-10-24).
    */
-  it('LOT 번호 없음의 품목 표에서 체크한 품목을 남은 수량 그대로 한꺼번에 등록한다', async () => {
+  it('LOT 번호 없음의 품목 표에서 체크한 품목을 남은 수량 그대로 한꺼번에(품목마다 입하 한 건) 등록한다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount(
       [
         {
           match: (req) =>
-            new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
+            new URL(req.url).pathname === '/logistics/inbound-receipts:per-line' &&
+            req.method === 'POST',
           respond: (req) => {
             seen.push(req.clone());
-            return jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 });
+            return jsonResponse(
+              {
+                /* 서버 모양 — 건마다 입하 등록 응답과 같은 한 벌(머리 + 줄). */
+                created: [1, 2].map((index) => ({
+                  inboundReceipt: { inboundReceiptNo: `SAMPLE-IR-${String(index)}` },
+                  lines: [{ inboundReceiptLineId: 9500 + index, lineNo: 1 }],
+                })),
+              },
+              { status: 201 },
+            );
           },
         },
       ],

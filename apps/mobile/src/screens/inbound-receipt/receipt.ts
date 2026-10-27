@@ -83,6 +83,12 @@ export interface QueuedReceipt {
 
 export const RECEIPT_PATH = '/logistics/inbound-receipts';
 export const SPLIT_RECEIPT_PATH = '/logistics/inbound-receipts:split';
+/**
+ * 품목마다 입하 한 건(server #825 · 장부 P-117 · 사용자 결정 2026-10-24 「입하번호는 품목마다 하나」). 본문은 입하 등록과
+ * 같고, 줄마다 입하번호가 따로 선다. 모든 건이 한 트랜잭션이라 한 줄이라도 막히면 아무것도 서지 않는다. 라벨 미부착
+ * 일괄 입하가 쓴다 — 한 품목씩 받는 입하는 `RECEIPT_PATH` 그대로다.
+ */
+export const PER_LINE_RECEIPT_PATH = '/logistics/inbound-receipts:per-line';
 
 /**
  * 담긴 채 아직 못 간 입하 수량.
@@ -95,7 +101,8 @@ export const queuedQtyOf = (entries: QueuedReceipt[], purchaseOrderLineId: numbe
     .flatMap((entry) => {
       const body = entry.body as { lines?: unknown; normal?: { lines?: unknown } } | null;
 
-      if (entry.path === RECEIPT_PATH) {
+      /* 품목마다 입하(`:per-line`)도 본문 모양이 입하 등록과 같다 — 줄마다 셈에 넣는다. */
+      if (entry.path === RECEIPT_PATH || entry.path === PER_LINE_RECEIPT_PATH) {
         return Array.isArray(body?.lines) ? body.lines : [];
       }
 
@@ -659,11 +666,12 @@ export interface LotlessPick {
 }
 
 /**
- * 라벨 미부착 일괄 입하 — 한 자재 P/O 에서 체크한 라인들을 입하 한 건(라인 여럿)으로 담는다.
+ * 라벨 미부착 일괄 입하 — 한 자재 P/O 에서 체크한 라인들을 **품목마다 입하 한 건**으로 담는다(`:per-line` · 장부 P-117 ·
+ * 사용자 결정 2026-10-24 「입하번호는 품목마다 하나」 — 한 품목씩 받을 때와 기준이 같다).
  *
  * 대부분은 문제없이 들어온다(사용자 판단 2026-10-21). 수량 · 상태에 이상이 없는 라인은 체크해
- * 남은 수량 그대로 한 번에 등록하고, 문제가 있는 라인만 한 건씩 수량 단계로 간다. 한 건에 모아
- * 담아 함께 들어가거나 함께 되돌아온다 - 일부만 등록되면 무엇이 남았는지 다시 가려야 한다.
+ * 남은 수량 그대로 한 번에 등록하고, 문제가 있는 라인만 한 건씩 수량 단계로 간다. 요청 하나에 모아
+ * 담아 함께 들어가거나 함께 되돌아온다(서버가 한 트랜잭션으로 받는다) - 일부만 등록되면 무엇이 남았는지 다시 가려야 한다.
  *
  * 라인마다 LOT 번호 없음 · 라벨 미부착 · 대체 사유를 싣는다. 포장 수 · 날짜는 비운다.
  */
@@ -703,7 +711,7 @@ export const toLotlessOutboxDraft = (
     workerNo,
     idempotencyKey: createIdempotencyKey(),
     method: 'POST',
-    path: RECEIPT_PATH,
+    path: PER_LINE_RECEIPT_PATH,
     body,
     occurredAt,
     confirmation: 'pending',

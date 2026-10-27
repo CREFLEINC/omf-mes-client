@@ -262,6 +262,42 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     alreadyEnded: (terminal: string): string =>
       `Phiên làm việc của ${terminal} đã kết thúc từ trước. Đã kiểm tra lại điều kiện đóng.`,
   },
+  dailyResults: {
+    pane: 'Kết quả theo ngày',
+    loading: 'Đang tải kết quả theo ngày.',
+    lead: 'Kết quả của W/O này được gom theo ngày làm việc và ca. Ngày làm việc là ngày nhà máy khi ca bắt đầu (ca đêm tính vào ngày trước), số lượng đã phản ánh các lần sửa.',
+    loadFailedTitle: 'Không tải được kết quả theo ngày',
+    loadFailed: 'Vẫn có thể dùng phần nhập đóng lệnh. Hãy bấm thử lại.',
+    refetchFailed:
+      'Không tải lại được kết quả theo ngày nên đang hiển thị bảng đã tải trước đó. Hãy bấm thử lại.',
+    workDateHint:
+      'Tính theo ngày bắt đầu ca. Kết quả rạng sáng của ca qua nửa đêm được tính vào ngày hôm trước.',
+    workDateHintLabel: 'Giải thích ngày làm việc',
+    fields: {
+      workDate: 'Ngày làm việc',
+      shift: 'Ca',
+      goodQty: 'Đạt',
+      defectQty: 'Lỗi',
+      holdQty: 'Tạm giữ',
+      scrapQty: 'Phế liệu',
+      reworkQty: 'Làm lại',
+      resultCount: 'Số bản ghi',
+      corrected: 'Đã sửa',
+    },
+    values: {
+      total: 'Tổng',
+      orderQty: 'Số lượng lệnh',
+      unit: 'Đơn vị',
+      shiftCount: (count: number) => `${String(count)} ca`,
+      corrected: (count: number) => `${String(count)} bản ghi`,
+      correctedPrefix: 'Kết quả đã sửa',
+    },
+    actions: {
+      expand: (workDate: string) => `Mở theo ca ngày ${workDate}`,
+      collapse: (workDate: string) => `Thu gọn theo ca ngày ${workDate}`,
+    },
+    empty: 'Chưa có kết quả sản xuất nào.',
+  },
   closeResult: {
     pane: 'Kết quả đóng',
     loading: 'Đang tải kết quả đóng.',

@@ -25,13 +25,13 @@ const landAt = async (entry: string): Promise<string> => {
 };
 
 /*
- * 옛 「초과 입하 분리」 주소 — 그 화면은 입하 예정 조회의 「입하 등록」 창이 됐다(사용자 지시 2026-10-21).
- * 즐겨찾기·공유한 주소가 죽지 않고, 발주를 고른 주소면 그 발주로 창이 열린 채 선다.
+ * 옛 「초과 입하 분리」 주소 — 입하 등록은 입고 관리의 라인 표에서 바로 한다(사용자 지시 2026-10-24).
+ * 즐겨찾기·공유한 주소가 죽지 않고, 발주를 고른 주소면 그 발주를 고른 채 선다.
  */
-describe('OverReceiptSplitRedirect — 옛 주소를 입하 등록 창으로 옮긴다', () => {
-  it('발주를 고른 주소면 그 발주로 입하 등록 창을 연 채로 간다', async () => {
+describe('OverReceiptSplitRedirect — 옛 주소를 입고 관리로 옮긴다', () => {
+  it('발주를 고른 주소면 그 발주를 고른 채로 간다', async () => {
     expect(await landAt('/logistics/over-receipt-split?q=SAMPLE-PO-0001&open=0&po=7101')).toBe(
-      '/logistics/inbound-schedule?po=7101&register=1',
+      '/logistics/inbound-schedule?po=7101',
     );
   });
 
