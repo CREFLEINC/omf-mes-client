@@ -3176,6 +3176,31 @@ export const createSeed = (now = new Date()) => {
       },
     ],
     approvalRequests,
+    /*
+     * 특채 — 결재 요청 AP-2026-000028(15002 · 승인)의 짝(#193). 없으면 품질 승인 처리가 「이 결재에 붙은 특채」를
+     * 물었을 때 계약 예시(결재 1001)가 답해 「연결 조건을 안전하게 특정할 수 없습니다」가 선다.
+     * 부적합은 씨앗의 7001 을 빌린다. 값은 전부 지어낸 것이다.
+     */
+    concessions: [
+      {
+        concessionId: 7301,
+        concessionNo: 'CN-2026-1023-0001',
+        nonconformanceId: 7001,
+        nonconformanceNo: 'NC-2026-0903-0001',
+        lotId: 8901,
+        lotNo: 'ABC-123|120|260715|SUP-001|0004',
+        approvedQty: 120,
+        consumedQty: 0,
+        uomId: 1001,
+        validFrom: iso(-4, 10).slice(0, 10),
+        validTo: iso(26, 10).slice(0, 10),
+        approvalRequestId: 15002,
+        statusCode: 'APPROVED',
+        usable: true,
+        remarks: '외관 경미 — 특채 사용',
+        versionNo: 1,
+      },
+    ],
     goodsReceipts: [],
     productionResults: [],
     dispositionCandidates,

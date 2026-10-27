@@ -4819,6 +4819,26 @@ on('GET', '/quality/nonconformances', (_p, query) =>
   ),
 );
 
+/* 특채 — 품질 승인 처리가 결재 번호로 짝 특채를 찾고(`approvalRequestId`), 처분 판정이 부적합으로 찾는다(#193). */
+on('GET', '/quality/concessions', (_p, query) =>
+  page(
+    keep(state.concessions, [
+      byNum(query, 'approvalRequestId', 'approvalRequestId'),
+      byNum(query, 'nonconformanceId', 'nonconformanceId'),
+      byNum(query, 'lotId', 'lotId'),
+      byText(query, 'statusCode', 'statusCode'),
+    ]),
+    query,
+  ),
+);
+
+on('GET', '/quality/concessions/{concessionId}', (params) => {
+  const concession = state.concessions.find(
+    (row) => row.concessionId === Number(params.concessionId),
+  );
+  return concession ?? notFound('특채를 찾을 수 없습니다.');
+});
+
 on('POST', '/quality/nonconformances', (_p, _q, body) => {
   const firstLot = body?.lots?.[0];
   const candidate = state.dispositionCandidates.find((row) => row.lotId === firstLot?.lotId);
