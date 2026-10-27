@@ -133,8 +133,9 @@ export const inspectionStandard = {
     discarded: '작성중 버전을 취소했습니다.',
   },
   filters: {
-    searchLabel: '검사기준 검색',
-    searchPlaceholder: '기준코드 또는 기준명',
+    searchLabel: '검사 기준 검색',
+    searchPlaceholder: '기준 코드 또는 기준명을 입력하세요',
+    searchClear: '검사 기준 검색 지우기',
     inspectionType: '검사 유형',
     typeAll: '전체 유형',
     chipKeyword: (value: string): string => `검색어: ${value}`,
@@ -142,6 +143,42 @@ export const inspectionStandard = {
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveInspectionType: '검사 유형 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+  },
+  /*
+   * 상세 칸 맨 위의 버전 고르기 줄 — 선택칸으로 바로 고르고, 「버전 목록」 창에서 표로 고르거나
+   * 신규 버전을 발행한다(omf-all-around#196).
+   */
+  /* 기준 정보 구획 머리(omf-all-around#196) — 제목과 승인 · 사용 상태 칩. */
+  detail: {
+    title: '검사 기준 상세',
+    createTitle: '검사 기준 등록',
+    chipNotApproved: '미승인',
+    chipActive: '사용 중',
+    chipInactive: '미사용',
+  },
+  versionBar: {
+    label: '버전',
+    placeholder: '버전을 고르세요',
+    openList: '버전 목록',
+    close: '닫기',
+  },
+  /* 검사 기준 검색 창 — 검사 조회·판정의 품목 선택 창과 같은 모양(omf-all-around#196). */
+  picker: {
+    title: '검사 기준 검색',
+    keywordLabel: '검색어',
+    keywordPlaceholder: '기준 코드 또는 기준명을 입력하세요',
+    search: '찾기',
+    cancel: '취소',
+    pick: '선택',
+    searching: '찾는 중입니다.',
+    noResult: '찾는 검사 기준이 없습니다.',
+    searchFailed: '검사 기준을 찾지 못했습니다. 다시 시도하세요.',
+    columns: {
+      select: '선택',
+      code: '기준 코드',
+      name: '기준명',
+      type: '검사 유형',
+    },
   },
   loading: {
     plans: '검사기준 목록을 불러오는 중',
@@ -163,10 +200,10 @@ export const inspectionStandard = {
      */
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
-    planNotSelected: '좌측에서 검사기준을 먼저 고르세요',
+    planNotSelected: '목록에서 검사 기준을 먼저 고르세요',
     versionNoneTitle: '등록된 버전이 없습니다',
     versionNoneDescription: '「버전 등록」으로 첫 버전을 만드세요.',
-    versionNotSelected: '가운데에서 버전을 먼저 고르세요',
+    versionNotSelected: '검사 기준 상세에서 버전을 먼저 고르세요',
     itemNoneTitle: '등록된 검사 항목이 없습니다',
     itemNoneDescription: '「항목 추가」로 첫 항목을 등록하세요.',
   },

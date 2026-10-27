@@ -5,6 +5,7 @@ import { useEffect, useId, useState } from 'react';
 import { DEFAULT_PLAN_FILTERS, INSPECTION_TYPE_OPTIONS } from './code-options';
 import { FieldLabel } from './field-label';
 import { clearFilter, toFilterChips } from './filters';
+import { PlanPickerDialog } from './plan-picker-dialog';
 import type { PlanFilters } from './types';
 
 const t = messages.inspectionStandard;
@@ -22,6 +23,8 @@ export interface PlanFilterBarProps {
  */
 export const PlanFilterBar = ({ appliedFilters, onApplyFilters }: PlanFilterBarProps) => {
   const typeSelectId = useId();
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const openPicker = (): void => setIsPickerOpen(true);
 
   /*
    * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -47,13 +50,23 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters }: PlanFilterBarP
   return (
     <>
       <div className="filter-bar">
+        {/*
+         * 검사 기준은 **창에서 검색해서 고른다** — 검사 조회·판정의 품목 조건과 같은 모양(omf-all-around#196).
+         * 읽기 전용 칸을 누르거나 엔터를 치면 창이 열리고, 고른 기준의 코드가 검색어로 들어간다.
+         * 지우기는 값이 있을 때만 칸 안의 × 다. 조회를 눌러야 목록에 걸린다(다른 조건과 같은 트리거).
+         */}
         <SearchInput
           label={t.filters.searchLabel}
           placeholder={t.filters.searchPlaceholder}
           value={draft.q}
-          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
-          clearLabel={messages.common.clear}
+          readOnly
+          title={draft.q === '' ? undefined : draft.q}
+          aria-haspopup="dialog"
+          clearLabel={t.filters.searchClear}
+          onClick={openPicker}
+          onSearch={openPicker}
+          onChange={() => undefined}
+          onClear={() => setDraft((prev) => ({ ...prev, q: '' }))}
         />
 
         {/*
@@ -109,6 +122,17 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters }: PlanFilterBarP
             </Chip>
           ))}
         </div>
+      )}
+
+      {isPickerOpen && (
+        <PlanPickerDialog
+          includeInactive={appliedFilters.includeInactive}
+          onClose={() => setIsPickerOpen(false)}
+          onConfirm={(plan) => {
+            setDraft((prev) => ({ ...prev, q: plan.inspectionPlanCode }));
+            setIsPickerOpen(false);
+          }}
+        />
       )}
     </>
   );

@@ -38,7 +38,10 @@ describe('PlanListPane — 목록 표시', () => {
   it('기준코드·기준명·유형 세 열만 낸다', () => {
     renderPane();
 
-    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
+    /* 머리칸에는 열 순서를 옮기는 손잡이 아이콘 글자(drag_indicator)가 함께 있다 — 이름만 견준다. */
+    const headers = screen
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
     expect(headers).toEqual(['기준코드', '기준명', '검사 유형']);
   });
 
@@ -58,6 +61,23 @@ describe('PlanListPane — 목록 표시', () => {
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-03' }));
 
     expect(onSelect).toHaveBeenCalledWith(3003);
+  });
+
+  /* 줄 아무 곳이나 눌러도 고른다 — 검사 조회·판정 목록과 같다(omf-all-around#196). */
+  it('기준명 칸을 눌러도 그 줄의 기준을 고른다', async () => {
+    const { onSelect, user } = renderPane();
+
+    await user.click(screen.getByText(inspectionPlanFixtures[1]?.inspectionPlanName ?? ''));
+
+    expect(onSelect).toHaveBeenCalledWith(inspectionPlanFixtures[1]?.inspectionPlanId);
+  });
+
+  it('기준 추가 · 엑셀 올리기 단추는 표보다 위에 선다', () => {
+    renderPane();
+
+    const add = screen.getByRole('button', { name: '기준 추가' });
+    const table = screen.getByRole('table');
+    expect(add.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   /* 실패를 「등록된 검사기준이 없습니다」로 보이면 사실과 다른 안내가 된다. */

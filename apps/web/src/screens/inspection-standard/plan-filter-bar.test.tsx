@@ -16,16 +16,33 @@ const renderBar = (appliedFilters: PlanFilters = DEFAULT_PLAN_FILTERS) => {
 
 describe('PlanFilterBar — 조건', () => {
   it('조회를 누르면 편집 중이던 조건이 한꺼번에 적용된다', async () => {
-    const { onApplyFilters, user } = renderBar();
-
-    await user.type(screen.getByLabelText('검사기준 검색'), 'SYN');
-    await user.click(screen.getByRole('button', { name: '조회' }));
-
-    expect(onApplyFilters).toHaveBeenCalledWith({
+    const { onApplyFilters, user } = renderBar({
       q: 'SYN',
       inspectionTypeCode: '',
       includeInactive: false,
     });
+
+    await user.click(screen.getByRole('combobox', { name: '검사 유형' }));
+    await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
+    expect(onApplyFilters).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith({
+      q: 'SYN',
+      inspectionTypeCode: 'PQC',
+      includeInactive: false,
+    });
+  });
+
+  /* 검사 기준은 창에서 골라 넣는다 — 칸에 직접 치지 않는다(검사 조회·판정의 품목 조건과 같다). */
+  it('검사 기준 검색 칸은 읽기 전용이고 안내 문구가 선다', () => {
+    renderBar();
+
+    const field = screen.getByLabelText('검사 기준 검색');
+    expect(field).toHaveAttribute('readonly');
+    expect(field).toHaveAttribute('placeholder', '기준 코드 또는 기준명을 입력하세요');
+    expect(field).toHaveAttribute('aria-haspopup', 'dialog');
   });
 
   /* 해제 축이라 변경 즉시 적용한다 — 조회를 한 번 더 누르게 하면 켜 놓고 잊는다. */

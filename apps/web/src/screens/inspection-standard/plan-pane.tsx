@@ -1,4 +1,4 @@
-import { Button, Checkbox, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
@@ -41,6 +41,8 @@ export interface PlanPaneProps {
   onCancel: () => void;
   /** 승인·사용 중지 액션 슬롯. 이 구획 밖의 사실이 조건에 들어가 화면이 판정한다 */
   transitionActions?: ReactNode;
+  /** 버전 고르기 줄 — 기준 상세에 합쳐 둔다(omf-all-around#196). 등록 폼에는 없다 */
+  versionSlot?: ReactNode;
 }
 
 /**
@@ -70,16 +72,35 @@ export const PlanPane = ({
   onSave,
   onCancel,
   transitionActions,
+  versionSlot,
 }: PlanPaneProps) => {
   const codeId = useId();
   const nameId = useId();
-  const approvalLabelId = useId();
-  const activeLabelId = useId();
 
   const approvedAt = formatApprovedAt(plan?.approvedAt);
+  /* 바꿀 수 없는 칸에는 필수 표시를 두지 않는다 — 고칠 수 없는 칸에 「꼭 채우라」는 뜻이 없다(사용자 지시 · #196). */
+  const isCodeLocked = codeLockReason !== null;
 
   return (
-    <section className="pane" aria-label={t.panes.planForm}>
+    <section className="pane inspection-standard-plan-pane" aria-label={t.panes.planForm}>
+      {/*
+       * 머리 — 제목과 승인 · 사용 상태 칩(omf-all-around#196). 둘 다 전용 액션으로만 바뀌어 값 표기로만 낸다.
+       * 등록 전에는 서버가 채우는 값이 없어 칩을 지어내지 않는다.
+       */}
+      <div className="inspection-standard-plan-head">
+        <h2 className="pane-title">{mode === 'create' ? t.detail.createTitle : t.detail.title}</h2>
+        {mode === 'edit' && plan !== null && (
+          <div className="inspection-standard-plan-chips">
+            <Chip variant="status" status={approvedAt === null ? 'warning' : 'success'}>
+              {approvedAt === null ? t.detail.chipNotApproved : t.values.approvedAt(approvedAt)}
+            </Chip>
+            <Chip variant="status" status={plan.isActive ? 'success' : 'idle'}>
+              {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
+            </Chip>
+          </div>
+        )}
+      </div>
+
       {optionsNotice}
       {banner}
 
@@ -89,15 +110,19 @@ export const PlanPane = ({
          * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={codeId} label={t.fields.inspectionPlanCode} required />
+          <FieldLabel
+            htmlFor={codeId}
+            label={t.fields.inspectionPlanCode}
+            required={!isCodeLocked}
+          />
           <TextField
             id={codeId}
             value={values.inspectionPlanCode}
             onChange={(event) => onChange({ inspectionPlanCode: event.target.value })}
-            disabled={codeLockReason !== null}
+            disabled={isCodeLocked}
             disabledReason={codeLockReason}
             error={fieldErrors.inspectionPlanCode}
-            aria-required
+            aria-required={!isCodeLocked}
           />
         </div>
 
@@ -161,36 +186,13 @@ export const PlanPane = ({
             <p className="field-note">{t.values.pqcSkipAllowedNote}</p>
           </div>
         )}
-
-        {/*
-         * 등록 전에는 승인·사용 여부가 없다 — 서버가 채우는 값을 미리 지어내 보이지 않는다.
-         * 값을 보여 주기만 하는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다.
-         */}
-        {mode === 'edit' && plan !== null && (
-          <>
-            <div>
-              <span className="field-label" id={approvalLabelId}>
-                {t.fields.approval}
-              </span>
-              <p aria-labelledby={approvalLabelId}>
-                {approvedAt === null ? t.values.notApproved : t.values.approvedAt(approvedAt)}
-              </p>
-            </div>
-
-            <div>
-              <span className="field-label" id={activeLabelId}>
-                {t.fields.active}
-              </span>
-              <p aria-labelledby={activeLabelId}>
-                {plan.isActive ? t.values.active : t.values.inactive}
-              </p>
-            </div>
-          </>
-        )}
       </div>
 
-      <div className="form-actions">
-        {transitionActions}
+      {versionSlot}
+
+      {/* 아래 단추 줄 — 구분선 아래, 왼쪽 승인 · 사용 중지, 오른쪽 취소 · 저장(#196). */}
+      <div className="form-actions inspection-standard-plan-footer">
+        <div className="inspection-standard-plan-footer-start">{transitionActions}</div>
 
         <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
           {messages.common.cancel}

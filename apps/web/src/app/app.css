@@ -318,6 +318,84 @@ main > * + * {
   margin-left: auto;
 }
 
+/*
+ * 검사 기준 검색 칸 — 흐린 안내(「기준 코드 또는 기준명을 입력하세요」)가 잘리지 않는 폭을 기본으로 하고,
+ * 창이 좁으면 그만큼 줄어든다(사용자 지시 2026-10-27 · #196).
+ */
+.inspection-standard-search .filter-bar > :first-child {
+  flex: 0 1 22em;
+  min-width: 12rem;
+}
+
+/*
+ * 검사 기준 상세(#196) — 머리(제목 · 상태 칩) / 칸 / 버전 고르기 / 구분선 아래 단추 줄(왼쪽 승인 · 사용 중지, 오른쪽 취소 · 저장).
+ */
+.inspection-standard-plan-pane {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.inspection-standard-plan-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.inspection-standard-plan-head > .pane-title {
+  margin: 0;
+}
+
+.inspection-standard-plan-chips {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.inspection-standard-version-bar {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.inspection-standard-plan-footer {
+  align-items: center;
+  margin-top: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.inspection-standard-plan-footer-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-right: auto;
+}
+
+.inspection-standard-plan-footer-start > .form-actions-secondary {
+  margin-right: 0;
+}
+
+/* 상세 칸 맨 위 버전 고르기 줄 — 선택칸과 「버전 목록」 단추를 한 줄에(#196). */
+.inspection-standard-version-bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.inspection-standard-version-bar-row > .field-cell {
+  flex: 0 1 18rem;
+  min-width: 12rem;
+}
+
+/* 버전 목록 창 안의 구획은 창이 테두리를 맡는다 — 상자를 겹쳐 그리지 않는다. */
+.inspection-standard-version-dialog > .pane {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
 .inspection-standard-detail {
   display: grid;
   gap: var(--space-5);
@@ -328,20 +406,102 @@ main > * + * {
 .inspection-split > .inspection-standard-list-pane {
   display: flex;
   flex-direction: column;
+  /* 단추 줄 · 표 · 쪽 이동 줄 사이를 띄운다(사용자 지시 2026-10-27 · #196). */
+  gap: var(--space-3);
   height: auto;
   max-height: calc(100dvh - 20rem);
   overflow: hidden;
 }
 
-/* 표만 상자 안에서 구르고, 쪽 이동 · 기준 추가 줄은 상자 바닥에 남는다. */
-.inspection-standard-list-pane > :first-child {
+/* 표만 상자 안에서 구르고(머리줄 고정), 위 단추 줄 · 아래 쪽 이동 줄은 상자에 남는다. */
+.inspection-standard-list-pane > * {
+  flex: 0 0 auto;
+}
+
+.inspection-standard-list-pane > .inspection-standard-plan-rows {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* DS 표가 자기 감싸개(가로 넘침용)를 두므로, 세로로 구르는 상자도 그 감싸개가 맡아야 머리줄이 붙는다. */
+.inspection-standard-plan-rows > div {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
 }
 
-.inspection-standard-list-pane > :not(:first-child) {
-  flex: 0 0 auto;
+.inspection-standard-plan-rows thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/* 기준 추가 · 엑셀 올리기 — 표 위 오른쪽(omf-all-around#196). */
+.inspection-standard-list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 엑셀 올리기 사유는 줄 높이를 늘리지 않게 글로는 감추고(마우스를 올리면 보인다) 화면 낭독기 설명으로만 남긴다. */
+.inspection-standard-tooltip-reason > .field-note {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 줄 — 검사 조회·판정 목록과 같다: 아무 곳이나 눌러 고르고, 올리면 옅게, 고른 줄은 바탕 + 왼쪽 강조선. */
+.inspection-standard-plan-rows tbody tr,
+.inspection-standard-plan-rows tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.inspection-standard-plan-rows tbody tr {
+  transition: background-color 0.12s ease;
+  cursor: pointer;
+}
+
+.inspection-standard-plan-rows tbody tr:nth-child(n):hover {
+  background: var(--state-hover-neutral);
+}
+
+.inspection-standard-plan-rows
+  tbody
+  tr:nth-child(n):has(.inspection-standard-plan-open[aria-current='true']) {
+  background: var(--surface-container-high);
+}
+
+.inspection-standard-plan-rows
+  tbody
+  tr:has(.inspection-standard-plan-open[aria-current='true'])
+  > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+/* 기준 코드 — 링크 모양 없이 본문 글자. 누를 수 있다는 것은 커서와 줄 바탕으로 보인다. */
+.inspection-standard-plan-open {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-surface);
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 @media (min-width: 1440px) {

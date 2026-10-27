@@ -2,6 +2,10 @@ import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/we
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
+
 import { DEFAULT_PLAN_FILTERS, inspectionTypeLabel } from './code-options';
 import { DisabledAction } from './disabled-action';
 import { hasAnyFilter } from './filters';
@@ -58,25 +62,48 @@ export const PlanListPane = ({
   const columns: Column<InspectionPlan>[] = [
     {
       key: 'inspectionPlanCode',
+      align: 'start',
       header: t.fields.inspectionPlanCode,
+      width: '240px',
+      /*
+       * 기준 코드는 링크 모양을 걷고 본문 글자로 둔다(omf-all-around#196) — 줄 아무 곳이나 눌러 고른다.
+       * 단추는 남긴다: 키보드·화면 낭독기가 줄을 고르는 길이고, 고른 줄 표시(`aria-current`)가 여기 실린다.
+       */
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className="inspection-standard-plan-open"
           aria-current={row.inspectionPlanId === selectedPlanId ? 'true' : undefined}
+          title={row.inspectionPlanCode}
           onClick={() => onSelect(row.inspectionPlanId)}
         >
           {row.inspectionPlanCode}
         </button>
       ),
     },
-    { key: 'inspectionPlanName', header: t.fields.inspectionPlanName },
+    {
+      key: 'inspectionPlanName',
+      align: 'start',
+      header: t.fields.inspectionPlanName,
+      width: '280px',
+      render: (row) => <span title={row.inspectionPlanName}>{row.inspectionPlanName}</span>,
+    },
     {
       key: 'inspectionTypeCode',
+      align: 'center',
       header: t.fields.inspectionType,
+      width: '136px',
       render: (row) => inspectionTypeLabel(row.inspectionTypeCode),
     },
   ];
+
+  /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다 — 검사 조회·판정 목록과 같다(omf-all-around#196). */
+  const ordered = useColumnOrder('omf-mes:inspection-standard:columns:plans:order', columns);
+  const resizable = useColumnWidths('omf-mes:inspection-standard:columns:plans', ordered, {
+    fitContent: true,
+  });
+  /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다. 더 넓히면 표 안에서 가로로 구른다. */
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   /**
    * 빈 상태는 세 갈래다 — **셋을 뭉치면 사실과 다른 안내가 된다.**
@@ -144,39 +171,61 @@ export const PlanListPane = ({
     }
 
     return (
-      <>
+      /*
+       * 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 기준 코드 단추로 넘긴다(검사 조회·판정과 같다).
+       * 키보드·화면 낭독기는 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
+       */
+      <div
+        ref={fit.ref}
+        className="inspection-queue-table inspection-standard-plan-rows"
+        style={resizable.style}
+        onClick={(event) => {
+          const target = event.target as Element;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('tbody tr')
+            ?.querySelector<HTMLButtonElement>('.inspection-standard-plan-open')
+            ?.click();
+        }}
+      >
         <Table
           density="compact"
-          columns={columns}
+          columns={fit.columns}
           rows={plans}
           getRowId={(row) => String(row.inspectionPlanId)}
           empty={emptySlot}
         />
-        <PageNav view={pageView} onChange={onChangePage} />
-      </>
+      </div>
     );
   };
 
   return (
     <section className="pane inspection-standard-list-pane" aria-label={t.panes.plan}>
-      {listSlot()}
-
-      <div className="filter-bar">
-        <div className="field-cell">
-          <Button variant="outlined" disabled={isCreating} onClick={onAddPlan}>
-            {t.actions.addPlan}
-          </Button>
-        </div>
+      {/* 기준 추가 · 엑셀 올리기는 표 위 오른쪽에 선다(omf-all-around#196). */}
+      <div className="inspection-standard-list-toolbar">
+        <Button variant="outlined" disabled={isCreating} onClick={onAddPlan}>
+          {t.actions.addPlan}
+        </Button>
 
         {/*
          * 계약에 올리기 경로가 없고 양식도 정해지지 않았다. 감추면 사용자가
          * 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다 — 사유와 함께 비활성으로 둔다.
+         * 사유는 단추 줄 높이를 늘리지 않게 마우스를 올리면 보인다(화면 낭독기는 설명으로 읽는다).
          */}
-        <DisabledAction
-          label={t.actions.excelUpload}
-          reason={t.actionReasons.excelUploadUnavailable}
-        />
+        <span title={t.actionReasons.excelUploadUnavailable}>
+          <DisabledAction
+            label={t.actions.excelUpload}
+            reason={t.actionReasons.excelUploadUnavailable}
+            className="inspection-standard-tooltip-reason"
+          />
+        </span>
       </div>
+
+      {listSlot()}
+
+      {(loadError === null || loadError === undefined) && !isLoading && (
+        <PageNav view={pageView} onChange={onChangePage} />
+      )}
     </section>
   );
 };

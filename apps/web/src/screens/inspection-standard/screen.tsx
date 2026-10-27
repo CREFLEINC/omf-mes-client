@@ -95,7 +95,7 @@ import {
   toVersionUpdate,
   versionToFormValues,
 } from './version-mappers';
-import { VersionPane } from './version-pane';
+import { VersionBar } from './version-bar';
 import { VersionTransitionDialog, type VersionTransitionKind } from './version-transition-dialog';
 import { VERSION_FORM_FIELDS, validateVersionForm } from './version-validation';
 
@@ -1050,6 +1050,39 @@ export const InspectionStandardScreen = () => {
     </>
   );
 
+  /** 버전 고르기 줄 — 기준 상세 구획에 합친다(선택칸 + 「버전 목록」 창 · omf-all-around#196). */
+  const renderVersionBar = (): ReactNode => (
+    <VersionBar
+      versions={versions}
+      isLoading={versionList.isPending}
+      isPlanSelected={selectedPlanId !== null}
+      selectedVersionId={selectedVersionId}
+      onSelect={handleSelectVersion}
+      loadError={
+        versionList.isError ? (
+          <LoadErrorBanner error={versionList.error} onRetry={() => void versionList.refetch()} />
+        ) : null
+      }
+      newRevisionDisabledReason={newRevisionDisabledReason}
+      isCreating={versionCreateValues !== null}
+      isPublishing={newRevisionWrite.isSaving}
+      onNewRevision={() => {
+        newRevisionWrite.write();
+      }}
+      onCreateVersion={() => {
+        resetVersionEditing();
+        setVersionCreateValues(emptyVersionFormValues());
+      }}
+      /* 등록·발행에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+      banner={
+        <>
+          <PlanActionBanner error={versionCreateWrite.error} />
+          <PlanActionBanner error={newRevisionWrite.error} />
+        </>
+      }
+    />
+  );
+
   const renderPlanActions = (): ReactNode => (
     <>
       {approveDisabledReason === null ? (
@@ -1179,6 +1212,7 @@ export const InspectionStandardScreen = () => {
           setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
         }}
         transitionActions={renderPlanActions()}
+        versionSlot={renderVersionBar()}
       />
     );
   };
@@ -1439,39 +1473,7 @@ export const InspectionStandardScreen = () => {
         )}
 
         <div className="inspection-standard-detail">
-          <VersionPane
-            versions={versions}
-            isLoading={versionList.isPending}
-            isPlanSelected={selectedPlanId !== null}
-            selectedVersionId={selectedVersionId}
-            onSelect={handleSelectVersion}
-            loadError={
-              versionList.isError ? (
-                <LoadErrorBanner
-                  error={versionList.error}
-                  onRetry={() => void versionList.refetch()}
-                />
-              ) : null
-            }
-            newRevisionDisabledReason={newRevisionDisabledReason}
-            isCreating={versionCreateValues !== null}
-            isPublishing={newRevisionWrite.isSaving}
-            onNewRevision={() => {
-              newRevisionWrite.write();
-            }}
-            onCreateVersion={() => {
-              resetVersionEditing();
-              setVersionCreateValues(emptyVersionFormValues());
-            }}
-            /* 등록·발행에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-            banner={
-              <>
-                <PlanActionBanner error={versionCreateWrite.error} />
-                <PlanActionBanner error={newRevisionWrite.error} />
-              </>
-            }
-          />
-
+          {/* 버전 고르기 — 선택칸 + 「버전 목록」 창(신규 버전 발행 · 닫기). 기준을 고른 뒤에만 선다(#196). */}
           <div className="pane-stack">
             {renderPlanPane()}
             {renderVersionFormPane()}

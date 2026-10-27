@@ -57,9 +57,10 @@ export const VersionPane = ({
       key: 'planVersion',
       header: t.fields.planVersion,
       render: (row) => (
+        /* 링크 모양 없이 본문 글자 — 줄 아무 곳이나 눌러 고른다(기준 목록과 같다 · omf-all-around#196). */
         <button
           type="button"
-          className="link-cell"
+          className="inspection-standard-plan-open"
           aria-current={row.inspectionPlanVersionId === selectedVersionId ? 'true' : undefined}
           onClick={() => onSelect(row.inspectionPlanVersionId)}
         >
@@ -101,20 +102,33 @@ export const VersionPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={versions}
-        getRowId={(row) => String(row.inspectionPlanVersionId)}
-        empty={
-          <EmptyState
-            size="sm"
-            live
-            title={t.empty.versionNoneTitle}
-            description={t.empty.versionNoneDescription}
-          />
-        }
-      />
+      /* 줄 아무 곳이나 눌러도 고른다 — 눌린 줄의 버전 단추로 넘긴다(기준 목록과 같다). */
+      <div
+        className="inspection-standard-plan-rows"
+        onClick={(event) => {
+          const target = event.target as Element;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('tbody tr')
+            ?.querySelector<HTMLButtonElement>('.inspection-standard-plan-open')
+            ?.click();
+        }}
+      >
+        <Table
+          density="compact"
+          columns={columns}
+          rows={versions}
+          getRowId={(row) => String(row.inspectionPlanVersionId)}
+          empty={
+            <EmptyState
+              size="sm"
+              live
+              title={t.empty.versionNoneTitle}
+              description={t.empty.versionNoneDescription}
+            />
+          }
+        />
+      </div>
     );
   };
 
