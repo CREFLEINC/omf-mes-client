@@ -4291,12 +4291,60 @@ main:has(.iqc-skip-approval-detail) {
   list-style: none;
 }
 
-/* 결재한 단계 한 줄 — 아이콘 · 결재자 · 결정 · (오른쪽 끝) 일시. 승인 의견은 그 아래 작게. */
+/* 결재한 단계 한 줄 — 아이콘 · 결재자 · 일시. 결재 사유(반려면 붉은 칸)는 그 아래 한 줄을 다 쓴다. */
 .quality-approval-decision {
   display: grid;
-  grid-template-columns: auto auto auto minmax(0, 1fr);
+  grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-1) var(--space-2);
+  gap: var(--space-2);
+}
+
+/* 결재 대기 — 「① 결재자 → ② 결재자」. 단계마다 같은 폭을 나눠 쓰고 사이에 화살표를 둔다. */
+.quality-approval-steps {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quality-approval-step {
+  display: grid;
+  flex: 1 1 0;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.quality-approval-step-head {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.quality-approval-step-no {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 1.5px solid currentColor;
+  border-radius: var(--radius-full);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.quality-approval-step.is-current .quality-approval-step-no {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.quality-approval-step-arrow {
+  display: inline-flex;
+  flex: none;
+  color: var(--on-surface-variant);
 }
 
 .quality-approval-decision.is-complete > .quality-approval-decision-icon {
@@ -4308,14 +4356,14 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 .quality-approval-decision-at {
-  justify-self: end;
+  justify-self: start;
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
 }
 
 .quality-approval-decision-comment {
-  grid-column: 2 / -1;
+  grid-column: 1 / -1;
   max-width: none;
   margin: 0;
   color: var(--on-surface-variant);
@@ -4323,9 +4371,10 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-/* 반려 사유 — 요청 상세 끝 붉은 칸. */
+/* 반려 사유 — 결재 결과 카드의 반려 줄 아래 붉은 칸. */
 .quality-approval-reject-reason {
   display: grid;
+  grid-column: 1 / -1;
   gap: var(--space-1);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);

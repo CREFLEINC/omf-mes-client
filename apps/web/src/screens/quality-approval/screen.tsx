@@ -387,26 +387,6 @@ export const QualityApprovalScreen = ({
     );
   };
 
-  /* 반려된 요청은 반려 사유를 요청 상세 끝 붉은 칸으로 보인다(#193). */
-  const rejectionSlot = (): ReactNode => {
-    if (detail.data === undefined || detailError !== null) return null;
-    const rejected = toApprovalProgressView(detail.data).steps.find(
-      (step) => step.status === 'rejected',
-    );
-    if (rejected?.decisionComment == null) return null;
-
-    return (
-      <div
-        className="quality-approval-reject-reason"
-        role="group"
-        aria-label={t.approval.rejectCommentHeading}
-      >
-        <p className="quality-approval-reject-reason-label">{t.approval.rejectCommentHeading}</p>
-        <p>{rejected.decisionComment}</p>
-      </div>
-    );
-  };
-
   const progressSlot = (): ReactNode => {
     if (selectedId === null) return null;
 
@@ -590,7 +570,7 @@ export const QualityApprovalScreen = ({
             />
           ) : (
             <>
-              {/* 상태 카드 — 「결재 대기 상태 · 승인 상태 · 반려 상태」 제목과 배지, 그 아래 결재 진행(#193 컴팩트형). */}
+              {/* 상태 카드 — 결재 대기면 「결재 진행」, 끝났으면 「결재 결과」 제목과 상태 배지(#193 컴팩트형). */}
               <section
                 className="quality-approval-block quality-approval-card quality-approval-progress-pane"
                 aria-label={t.panes.progress}
@@ -598,7 +578,9 @@ export const QualityApprovalScreen = ({
                 {detail.data !== undefined && !detail.isError && (
                   <div className="pane-heading-row quality-approval-detail-heading">
                     <h2 className="pane-title">
-                      {t.progress.stateTitle(statusBadgeOf(detail.data.request.statusCode).label)}
+                      {FINISHED_STATUS_CODES.includes(detail.data.request.statusCode)
+                        ? t.progress.resultTitle
+                        : t.panes.progress}
                     </h2>
                     {/* 상태는 제목 줄 오른쪽 배지로(#144) — 대기 주황 · 승인 초록 · 반려 빨강. */}
                     <Chip size="sm" status={statusBadgeOf(detail.data.request.statusCode).tone}>
@@ -608,14 +590,13 @@ export const QualityApprovalScreen = ({
                 )}
                 {progressSlot()}
               </section>
-              {/* 요청 상세 카드 — 상세 · 유형별 구획 · 반려 사유, 내 차례면 결재 사유와 단추까지 한 카드다(#193). */}
+              {/* 요청 상세 카드 — 상세 · 유형별 구획, 내 차례면 결재 사유와 단추까지 한 카드다(#193). */}
               <section
                 className="quality-approval-block quality-approval-card"
                 aria-label={t.panes.detail}
               >
                 <h2 className="pane-title">{t.panes.detail}</h2>
                 {detailSlot()}
-                {rejectionSlot()}
                 {actionSlot()}
               </section>
             </>

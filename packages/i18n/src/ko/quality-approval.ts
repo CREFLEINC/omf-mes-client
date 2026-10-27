@@ -114,8 +114,10 @@ export const qualityApproval = {
     myTurn: '요청을 결재할 차례입니다',
     notMyTurn: '지금 이 요청을 결재할 차례가 아닙니다',
     waitingPending: '대기',
-    /** 상태 카드 제목(#193) — 「결재 대기 상태」·「승인 상태」·「반려 상태」. */
-    stateTitle: (label: string): string => `${label} 상태`,
+    /** 끝난 요청의 상태 카드 제목(#193). 결재 대기는 「결재 진행」(panes.progress)이다. */
+    resultTitle: '결재 결과',
+    /** 끝난 단계 아래 결재 의견 줄의 이름 — 「결재 사유: …」. */
+    decisionComment: '결재 사유',
     noSteps: '표시할 결재 단계가 없습니다',
     loading: '결재 진행 불러오는 중',
     unavailable: '결재 진행을 표시할 수 없습니다',

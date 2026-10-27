@@ -39,25 +39,23 @@ const view = (overrides: Partial<ApprovalProgressView> = {}): ApprovalProgressVi
 });
 
 describe('ProgressPane', () => {
-  it('결재 대기 요청은 서버 단계 번호와 상태를 가로(horizontal)/sm Stepper로 표시한다', () => {
+  it('결재 대기 요청은 「① 결재자 → ② 결재자」 줄로 서버 단계 번호와 상태를 보인다', () => {
     render(<ProgressPane view={view()} isFinished={false} />);
     const pane = screen.getByRole('group', { name: t.panes.progress });
     const list = within(pane).getByRole('list', { name: t.progress.steps });
     const items = [...list.querySelectorAll<HTMLElement>('li[data-status]')];
 
-    expect(list).toHaveAttribute('data-orientation', 'horizontal');
-    expect(list).toHaveAttribute('data-size', 'sm');
     expect(items.map((item) => item.dataset.status)).toEqual(['complete', 'current']);
     expect(
-      items.map((item) => item.querySelector<HTMLElement>('span[aria-hidden="true"]')?.textContent),
+      items.map((item) => item.querySelector('.quality-approval-step-no')?.textContent),
     ).toEqual(['5', '9']);
-    /* 모르는 결정 코드는 원문 그대로, 아는 코드는 사람 말로(#193). */
+    /* 모르는 결정 코드는 원문 그대로 — 아는 코드는 사람 말로(#193). */
     expect(within(pane).getByText('SYNTH-UNKNOWN')).toBeVisible();
-    /* 지금 결재할 단계에는 상태 글을 붙이지 않는다 — 번호 원이 말한다(#193). */
-    expect(items[1]).not.toHaveTextContent('결재 대기');
     expect(within(pane).getByText('2026-08-22 15:02')).toBeVisible();
     expect(within(pane).getByText('합성 결재 의견')).toBeVisible();
     expect(items[1]).toHaveAttribute('aria-current', 'step');
+    /* 지금 결재할 단계에는 상태 글을 붙이지 않는다(#193). */
+    expect(items[1]).toHaveTextContent(/^9합성 결재자 둘$/);
   });
 
   it('현재 위치와 내 차례를 서버 값으로 한 줄에 밝힌다', () => {
@@ -67,7 +65,7 @@ describe('ProgressPane', () => {
     expect(screen.getByText(t.progress.myTurn)).toBeVisible();
   });
 
-  it('끝난 요청은 결재한 단계를 한 줄씩(결재자 · 결정 · 일시) 보이고 단계 그림을 세우지 않는다', () => {
+  it('끝난 요청은 결재한 단계마다 결재자 · 일시와 결재 사유를 보이고, 반려 사유는 붉은 칸으로 보인다', () => {
     render(
       <ProgressPane
         isFinished
@@ -90,12 +88,13 @@ describe('ProgressPane', () => {
     const list = screen.getByRole('list', { name: t.progress.steps });
     const rows = within(list).getAllByRole('listitem');
 
-    expect(list).not.toHaveAttribute('data-orientation');
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent('합성 결재자승인2026-08-22 15:02사용 승인');
-    expect(rows[1]).toHaveTextContent('합성 반려자반려2026-08-23 09:11');
-    /* 반려 사유는 요청 상세 끝 붉은 칸이 말한다 — 여기서 겹쳐 보이지 않는다. */
-    expect(rows[1]).not.toHaveTextContent('근거 부족');
+    expect(rows[0]).toHaveTextContent('합성 결재자2026-08-22 15:02결재 사유: 사용 승인');
+    expect(within(rows[0]!).getByLabelText('승인')).toBeInTheDocument();
+    expect(within(rows[1]!).getByRole('group', { name: '반려 사유' })).toHaveTextContent(
+      '근거 부족',
+    );
+    expect(within(rows[1]!).getByLabelText('반려')).toBeInTheDocument();
     expect(screen.queryByText(t.progress.notMyTurn)).toBeNull();
   });
 
