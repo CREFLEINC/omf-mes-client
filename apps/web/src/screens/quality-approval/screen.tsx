@@ -408,6 +408,18 @@ export const QualityApprovalScreen = ({
   const actionSlot = (): ReactNode => {
     if (selectedId === null || detail.isPending || detailError !== null) return null;
     if (detail.data === undefined) return null;
+    /*
+     * 내 결재 차례가 아니면 조회만 한다 — 승인 처리 칸을 세우지 않는다(#193).
+     * 보내는 중이거나 보낸 결과(오류·전달 불명)를 알려야 할 때는 그 안내가 이 칸에 있어 남긴다.
+     */
+    if (
+      detail.data.request.isMyTurn === false &&
+      !decisionWrite.isSaving &&
+      !hasUncertainWrite &&
+      writeError === null
+    ) {
+      return null;
+    }
 
     const openDecisionDialog = (action: DecisionAction): void => {
       const trimmed = comment.trim();

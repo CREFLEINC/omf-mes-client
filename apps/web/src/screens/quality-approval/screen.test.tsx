@@ -1324,13 +1324,12 @@ describe('QualityApprovalScreen decision action', () => {
       ),
     );
     const locked = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
-    const input = await screen.findByRole('textbox', { name: '결재 사유' });
-    /* 판단 근거 안내는 칸 안 흐린 글자로 보인다(#144). */
-    expect(input).toHaveAttribute('placeholder', '반려 또는 승인 사유를 입력하세요');
-    expect(input).toBeDisabled();
-    expect(input).toHaveAccessibleDescription(/지금은 내 결재 차례가 아닙니다/);
-    expect(screen.getByRole('button', { name: '승인' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '반려' })).toBeDisabled();
+    /* 내 차례가 아니면 조회만 한다 — 승인 처리 칸째 서지 않는다(#193). */
+    await screen.findByRole('heading', { name: '요청 상세' });
+    expect(screen.queryByRole('group', { name: '승인 처리' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: '결재 사유' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '승인' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '반려' })).toBeNull();
     expect(recorded.urls.some((url) => url.pathname.endsWith(':approve'))).toBe(false);
     locked.unmount();
 
@@ -1372,6 +1371,8 @@ describe('QualityApprovalScreen decision action', () => {
       '/quality/approvals?approvalRequestId=31',
     );
     const input = await screen.findByRole('textbox', { name: '결재 사유' });
+    /* 판단 근거 안내는 칸 안 흐린 글자로 보인다(#144 · 문구 #193). */
+    expect(input).toHaveAttribute('placeholder', '반려 또는 승인 사유를 입력하세요');
     const field = input.closest('.quality-approval-comment');
     expect(field).toHaveClass('is-required-empty');
     await user.type(input, '   ');
@@ -1380,16 +1381,13 @@ describe('QualityApprovalScreen decision action', () => {
     expect(field).not.toHaveClass('is-required-empty');
     unmount();
 
-    const locked = recordingFetch(
-      listRoute(),
-      detailRoute(31, () =>
-        jsonResponse(actionDetail({ ...requests[0]!, isMyTurn: false }), {
-          headers: { ETag: '"9"' },
-        }),
-      ),
+    /* 내 차례지만 안전한 연결 조건이 없어 잠긴 칸 — 입력할 수 없으니 빨간 테두리도 없다. */
+    renderScreen(
+      approvalFetch([listRoute(), detailRoute()]),
+      '/quality/approvals?approvalRequestId=31',
     );
-    renderScreen(locked.fetch, '/quality/approvals?approvalRequestId=31');
     const lockedInput = await screen.findByRole('textbox', { name: '결재 사유' });
+    expect(lockedInput).toBeDisabled();
     expect(lockedInput.closest('.quality-approval-comment')).not.toHaveClass('is-required-empty');
   });
 

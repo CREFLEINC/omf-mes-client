@@ -840,20 +840,23 @@ export const IqcSkipApprovalScreen = () => {
          * 인라인 오류는 **로컬 판정이 먼저**다: 방금 사용자가 부딪힌 벽이 지난 서버 응답보다
          * 지금 무엇을 해야 하는지를 정확히 말한다.
          */}
-        <DecisionPane
-          isMyTurn={request.isMyTurn}
-          comment={comment}
-          onChangeComment={changeComment}
-          commentError={localCommentError ?? serverCommentError}
-          isLocked={isLocked}
-          onApprove={() => {
-            setDialogKind('approve');
-          }}
-          onReject={() => {
-            setDialogKind('reject');
-          }}
-          banner={decisionBanner}
-        />
+        {/* 내 결재 차례가 아니면 조회만 한다 — 결재 구획을 세우지 않는다(#193). 보내는 중·보낸 결과 안내는 남긴다. */}
+        {(request.isMyTurn || isLocked || decisionError !== null) && (
+          <DecisionPane
+            isMyTurn={request.isMyTurn}
+            comment={comment}
+            onChangeComment={changeComment}
+            commentError={localCommentError ?? serverCommentError}
+            isLocked={isLocked}
+            onApprove={() => {
+              setDialogKind('approve');
+            }}
+            onReject={() => {
+              setDialogKind('reject');
+            }}
+            banner={decisionBanner}
+          />
+        )}
         {/* 승인된 IQC 생략만 실행 구획이 선다 — 판정은 `target.ts` 한 곳이 한다(대상 유형 코드로 가르지 않는다). */}
         {skipLotId !== null && (
           <SkipExecutePane
