@@ -1,4 +1,4 @@
-import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -9,7 +9,7 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { DEFAULT_PLAN_FILTERS, inspectionTypeLabel } from './code-options';
 import { DisabledAction } from './disabled-action';
 import { hasAnyFilter } from './filters';
-import { PageNav } from './page-nav';
+import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
 import type { PageView } from './pagination';
 import type { InspectionPlan, PlanFilters } from './types';
 
@@ -23,6 +23,9 @@ export interface PlanListPaneProps {
   /** 0건 안내의 초기화가 호출한다 */
   onApplyFilters: (next: PlanFilters) => void;
   pageView: PageView;
+  /** 서버가 준 쪽 정보 — 공용 쪽 이동(총 건수 · 쪽 크기 · 처음/이전/다음/마지막)이 읽는다(#196). */
+  pageMeta: PageNavMeta;
+  onChangePageSize: (size: PageSize) => void;
   onChangePage: (page: number) => void;
   selectedPlanId: number | null;
   onSelect: (inspectionPlanId: number) => void;
@@ -34,6 +37,10 @@ export interface PlanListPaneProps {
    * 실패를 「등록된 검사기준이 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /** 품목 번호 → 표시 이름. 품목이 없으면(전 품목 공통) null */
+  itemLabelOf: (itemId: number | null | undefined) => string | null;
+  /** 공정 번호 → 표시 이름. 공정이 없으면 null */
+  processLabelOf: (processId: number | null | undefined) => string | null;
 }
 
 /**
@@ -52,12 +59,16 @@ export const PlanListPane = ({
   appliedFilters,
   onApplyFilters,
   pageView,
+  pageMeta,
+  onChangePageSize,
   onChangePage,
   selectedPlanId,
   onSelect,
   isCreating,
   onAddPlan,
   loadError,
+  itemLabelOf,
+  processLabelOf,
 }: PlanListPaneProps) => {
   const columns: Column<InspectionPlan>[] = [
     {
@@ -94,6 +105,57 @@ export const PlanListPane = ({
       header: t.fields.inspectionType,
       width: '136px',
       render: (row) => inspectionTypeLabel(row.inspectionTypeCode),
+    },
+    /* 목록에서 바로 가를 수 있게 품목 · 공정 · 승인 · 사용 · PQC 생략 허용을 함께 싣는다(사용자 지시 · #196). */
+    {
+      key: 'itemProcess',
+      align: 'start',
+      header: t.listColumns.itemProcess,
+      width: '240px',
+      render: (row) => {
+        const label = [itemLabelOf(row.itemId) ?? t.values.allItems, processLabelOf(row.processId)]
+          .filter((part): part is string => part !== null)
+          .join(' / ');
+        return <span title={label}>{label}</span>;
+      },
+    },
+    {
+      key: 'approvedAt',
+      align: 'center',
+      header: t.listColumns.approval,
+      width: '96px',
+      render: (row) =>
+        row.approvedAt === null || row.approvedAt === undefined ? (
+          <Chip variant="status" size="sm" status="warning">
+            {t.listColumns.notApproved}
+          </Chip>
+        ) : (
+          <Chip variant="status" size="sm" status="success">
+            {t.listColumns.approved}
+          </Chip>
+        ),
+    },
+    {
+      key: 'isActive',
+      align: 'center',
+      header: t.listColumns.active,
+      width: '96px',
+      render: (row) => (
+        <Chip variant="status" size="sm" status={row.isActive ? 'success' : 'idle'}>
+          {row.isActive ? t.detail.chipActive : t.detail.chipInactive}
+        </Chip>
+      ),
+    },
+    {
+      key: 'pqcSkipAllowed',
+      align: 'center',
+      header: t.listColumns.pqcSkip,
+      width: '96px',
+      /* PQC 기준에만 뜻이 있다 — 다른 유형은 빈 표시. */
+      render: (row) =>
+        row.inspectionTypeCode === 'PQC' && row.pqcSkipAllowed === true
+          ? t.listColumns.pqcSkipAllowed
+          : messages.common.reference.empty,
     },
   ];
 
@@ -224,7 +286,7 @@ export const PlanListPane = ({
       {listSlot()}
 
       {(loadError === null || loadError === undefined) && !isLoading && (
-        <PageNav view={pageView} onChange={onChangePage} />
+        <PageNav meta={pageMeta} onChangePage={onChangePage} onChangeSize={onChangePageSize} />
       )}
     </section>
   );

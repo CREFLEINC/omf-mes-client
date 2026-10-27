@@ -2,9 +2,12 @@ import {
   AlertBanner,
   Breadcrumb,
   Button,
+  Dialog,
   EmptyState,
+  Icon,
   PageHeader,
   SkeletonText,
+  Tabs,
   useToast,
 } from '@crefle/web-ui';
 import type { ApiClient, components } from '@omf-mes/api-client';
@@ -30,7 +33,7 @@ import {
   selectableOptions,
 } from './code-options';
 import { DisabledAction } from './disabled-action';
-import { readFilters, readPage, toSearchParams } from './filters';
+import { readFilters, readPage, readSize, toSearchParams } from './filters';
 import { ItemFormDialog } from './item-form-dialog';
 import {
   createItemDraft,
@@ -47,6 +50,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
 import { PlanActionBanner } from './plan-action-banner';
 import { PlanActionDialog, type PlanActionKind } from './plan-action-dialog';
+import { PlanDetailHead } from './plan-detail-head';
 import { PlanFilterBar } from './plan-filter-bar';
 import { PlanListPane } from './plan-list-pane';
 import {
@@ -69,6 +73,7 @@ import {
   useInspectionPlanVersionDetail,
   useInspectionPlanVersionList,
   useCodeValueOptions,
+  useItemNameLabels,
   useEquipmentOptions,
   useItemOptions,
   useProcessOptions,
@@ -96,6 +101,7 @@ import {
   versionToFormValues,
 } from './version-mappers';
 import { VersionBar } from './version-bar';
+import { VersionSummary } from './version-summary';
 import { VersionTransitionDialog, type VersionTransitionKind } from './version-transition-dialog';
 import { VERSION_FORM_FIELDS, validateVersionForm } from './version-validation';
 
@@ -208,15 +214,23 @@ export const InspectionStandardScreen = () => {
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:inspection-standard:split', 0.4);
   const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
+  /* 「기본 정보 수정」 창 · 버전 내용 탭(검사 항목 / 버전 설정 / 이력) — omf-all-around#196. */
+  const [isPlanEditOpen, setIsPlanEditOpen] = useState(false);
+  /* 「버전 목록」 창 — 목록에서 기준을 고르면 바로 열어 버전을 고르게 한다(사용자 지시 · #196). */
+  const [isVersionListOpen, setIsVersionListOpen] = useState(false);
+  /* 「버전 설정 수정」 창 — 작성중 버전의 설정을 고친다(버전 설정 탭을 걷었다 · #196). */
+  const [isVersionEditOpen, setIsVersionEditOpen] = useState(false);
+  const [versionTab, setVersionTab] = useState('items');
   const toast = useToast();
   const { client } = useApiClient();
 
   const filters = useMemo<PlanFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
+  const pageSize = readSize(searchParams);
 
   const selectedPlanId = Number(searchParams.get('plan') ?? '') || null;
 
-  const planList = useInspectionPlanList(filters, page);
+  const planList = useInspectionPlanList(filters, page, pageSize);
   const plans = planList.data?.items ?? [];
 
   const planDetail = useInspectionPlanDetail(selectedPlanId);
@@ -420,9 +434,12 @@ export const InspectionStandardScreen = () => {
       /*
        * 201에는 ETag가 없다 — 새 버전을 고르면 상세를 다시 조회하게 되고 그 조회가 잠금 토큰을 확보한다.
        * 여기서 옮기지 않으면 사용자가 방금 만든 버전을 목록에서 직접 찾아야 한다.
+       *
+       * 버전 목록 창을 닫아 방금 만든 버전(선택칸 · 요약)이 바로 보이게 한다 — 그것이 성공의 표시다.
+       * 오른쪽 아래 「등록했습니다」 알림은 띄우지 않는다(창 안에서 누른 일과 떨어져 어색하다 · 사용자 지시 #196).
        */
       selectVersion(saved.inspectionPlanVersionId);
-      toast.show({ variant: 'success', description: messages.common.created });
+      setIsVersionListOpen(false);
     },
   });
 
@@ -699,12 +716,18 @@ export const InspectionStandardScreen = () => {
    */
   const applyFilters = (next: PlanFilters) => {
     resetPlanEditing();
-    setSearchParams(toSearchParams(next, 1));
+    setSearchParams(toSearchParams(next, 1, pageSize));
   };
 
   const changePage = (nextPage: number) => {
     resetPlanEditing();
-    setSearchParams(toSearchParams(filters, nextPage));
+    setSearchParams(toSearchParams(filters, nextPage, pageSize));
+  };
+
+  /* 쪽 크기를 바꾸면 첫 쪽부터 — 같은 쪽 번호가 다른 행을 가리킨다(#196). */
+  const changePageSize = (nextSize: number) => {
+    resetPlanEditing();
+    setSearchParams(toSearchParams(filters, 1, nextSize));
   };
 
   /** 기준을 바꾸면 버전 선택을 지운다 — 다른 기준의 버전을 가리키면 안 된다. */
@@ -718,6 +741,7 @@ export const InspectionStandardScreen = () => {
   const handleSelectPlan = (inspectionPlanId: number) => {
     resetPlanEditing();
     selectPlan(inspectionPlanId);
+    setIsVersionListOpen(true);
   };
 
   function selectVersion(inspectionPlanVersionId: number): void {
@@ -903,6 +927,11 @@ export const InspectionStandardScreen = () => {
     void planDetail.refetch();
   };
 
+  /* 목록 · 상세 머리의 품목 이름 — 보이는 품목만 상세로 푼다(#196). */
+  const itemLabelOf = useItemNameLabels([
+    ...plans.map((plan) => plan.itemId),
+    planDetail.data?.inspectionPlan.itemId,
+  ]);
   const routingDisabledReason = activeItemId === null ? t.actionReasons.routingNeedsItem : null;
 
   const optionsFor = (lookup: LookupResult, selected: string) =>
@@ -986,7 +1015,9 @@ export const InspectionStandardScreen = () => {
 
   const renderVersionTransitionActions = (): ReactNode => (
     <>
-      {confirmDisabledReason === null ? (
+      {/* 고칠 수 없는 버전(확정 · 폐기)에는 확정을 두지 않는다 — 다시 확정할 일이 없다(사용자 지시 · #196). */}
+      {versionStatus !== null && !versionStatus.isEditable ? null : confirmDisabledReason ===
+        null ? (
         <div className="field-cell">
           <Button
             variant="outlined"
@@ -1037,22 +1068,31 @@ export const InspectionStandardScreen = () => {
         <DisabledAction label={t.actions.discard} reason={discardDisabledReason} />
       )}
 
-      {/* 계약에 경로가 없다. 감추지 않고 사유와 함께 비활성으로 둔다. */}
-      <DisabledAction
-        label={t.actions.compareVersions}
-        reason={t.actionReasons.compareVersionsUnavailable}
-      />
-      <DisabledAction
-        label={t.actions.changeHistory}
-        reason={t.actionReasons.changeHistoryUnavailable}
-        className="form-actions-secondary"
-      />
+      {/* 버전 비교 · 변경 이력은 버전 고르기 줄로 옮겼다(#196). */}
     </>
   );
 
   /** 버전 고르기 줄 — 기준 상세 구획에 합친다(선택칸 + 「버전 목록」 창 · omf-all-around#196). */
   const renderVersionBar = (): ReactNode => (
     <VersionBar
+      isListOpen={isVersionListOpen}
+      onListOpenChange={setIsVersionListOpen}
+      versionActions={
+        selectedVersionId !== null && versionStatus !== null ? (
+          <>
+            {versionStatus.isEditable && (
+              <Button
+                variant="outlined"
+                leadingIcon={<Icon name="edit" size={18} />}
+                onClick={() => setIsVersionEditOpen(true)}
+              >
+                {t.versionSection.editSettings}
+              </Button>
+            )}
+            {renderVersionTransitionActions()}
+          </>
+        ) : undefined
+      }
       versions={versions}
       isLoading={versionList.isPending}
       isPlanSelected={selectedPlanId !== null}
@@ -1187,34 +1227,163 @@ export const InspectionStandardScreen = () => {
       );
     }
 
+    /* 창을 닫으면 고친 값을 버린다 — 보이지 않는 미저장 편집이 남으면 신규 버전 발행이 이유 모르게 막힌다. */
+    const cancelPlanEdit = (): void => {
+      planWrite.reset();
+      setPlanFieldErrors({});
+      setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+    };
+    const itemLabel = itemLabelOf(planDetail.data.inspectionPlan.itemId);
+
+    /*
+     * 검사 기준 상세 카드(omf-all-around#196) — 머리(기준 · 상태 · 기본 정보 수정) / 버전 고르기 / 버전 요약 · 탭.
+     * 기본 정보 폼은 「기본 정보 수정」 창에 그대로 옮겼다(승인 · 사용 중지 · 취소 · 저장 포함).
+     */
     return (
-      <PlanPane
-        mode="edit"
-        plan={planDetail.data.inspectionPlan}
-        values={formState.values}
-        onChange={changePlanValues}
-        // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
-        fieldErrors={{ ...planWrite.fieldErrors, ...planFieldErrors }}
-        banner={<SaveErrorBanner error={planWrite.error} onReload={handleReloadPlanDetail} />}
-        optionsNotice={optionsNotice}
-        itemOptions={optionsFor(itemOptions, formState.values.itemId)}
-        processOptions={optionsFor(processOptions, formState.values.processId)}
-        routingOptions={optionsFor(routingOptions, formState.values.routingId)}
-        routingDisabledReason={routingDisabledReason}
-        // 판정의 주인은 codeEditable이다. reason은 문구 선택에만 쓴다.
-        codeLockReason={codeLockMessage(planDetail.data.editability)}
-        isDirty={isPlanDirty}
-        isSaving={planWrite.isSaving}
-        onSave={handleSavePlan}
-        onCancel={() => {
-          planWrite.reset();
-          setPlanFieldErrors({});
-          setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
-        }}
-        transitionActions={renderPlanActions()}
-        versionSlot={renderVersionBar()}
-      />
+      <section className="pane inspection-standard-detail-card" aria-label={t.detail.title}>
+        <PlanDetailHead
+          plan={planDetail.data.inspectionPlan}
+          itemLabel={itemLabel}
+          processLabel={
+            planDetail.data.inspectionPlan.processId === null ||
+            planDetail.data.inspectionPlan.processId === undefined
+              ? null
+              : lookupDisplayLabel(processOptions, String(planDetail.data.inspectionPlan.processId))
+          }
+          onEdit={() => setIsPlanEditOpen(true)}
+        />
+
+        {renderVersionBar()}
+
+        {renderVersionBody()}
+
+        {isPlanEditOpen && (
+          <Dialog
+            open
+            size="lg"
+            closeOnBackdropClick={false}
+            showCloseButton={false}
+            title={t.detail.editBasic}
+            onClose={() => {
+              cancelPlanEdit();
+              setIsPlanEditOpen(false);
+            }}
+          >
+            <PlanPane
+              embedded
+              mode="edit"
+              plan={planDetail.data.inspectionPlan}
+              values={formState.values}
+              onChange={changePlanValues}
+              // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
+              fieldErrors={{ ...planWrite.fieldErrors, ...planFieldErrors }}
+              banner={<SaveErrorBanner error={planWrite.error} onReload={handleReloadPlanDetail} />}
+              optionsNotice={optionsNotice}
+              itemOptions={optionsFor(itemOptions, formState.values.itemId)}
+              processOptions={optionsFor(processOptions, formState.values.processId)}
+              routingOptions={optionsFor(routingOptions, formState.values.routingId)}
+              routingDisabledReason={routingDisabledReason}
+              // 판정의 주인은 codeEditable이다. reason은 문구 선택에만 쓴다.
+              codeLockReason={codeLockMessage(planDetail.data.editability)}
+              isDirty={isPlanDirty}
+              isSaving={planWrite.isSaving}
+              onSave={handleSavePlan}
+              /* 창의 「취소」는 고친 값을 버리고 창을 닫는다(닫기 단추를 따로 두지 않는다 · 사용자 시안 #196). */
+              onCancel={() => {
+                cancelPlanEdit();
+                setIsPlanEditOpen(false);
+              }}
+              transitionActions={renderPlanActions()}
+            />
+          </Dialog>
+        )}
+      </section>
     );
+  };
+
+  /**
+   * 카드의 버전 아래 내용 — 첫 버전 등록 폼 / 고르기 전 안내 / 고른 버전의 요약과 탭(#196).
+   * 버전 상세를 못 받았거나 받는 중이면 종전 버전 정보 칸이 그 상태를 낸다.
+   */
+  const renderVersionBody = (): ReactNode => {
+    if (versionCreateValues !== null) return renderVersionFormPane();
+
+    if (selectedVersionId === null) {
+      return <EmptyState size="sm" title={t.empty.versionNotSelected} />;
+    }
+
+    if (versionDetail.data === undefined || versionFormState === null || versionStatus === null) {
+      return renderVersionFormPane();
+    }
+
+    return (
+      <>
+        <VersionSummary
+          values={versionFormState.baseline}
+          inspectionFrequencyOptions={optionsFor(
+            inspectionFrequencyOptions,
+            versionFormState.baseline.inspectionFrequencyCode,
+          )}
+          frequencyIntervalUomOptions={optionsFor(
+            frequencyIntervalUomOptions,
+            versionFormState.baseline.frequencyIntervalUomCode,
+          )}
+        />
+        <Tabs
+          aria-label={t.versionSection.tabsLabel}
+          value={versionTab}
+          onChange={setVersionTab}
+          items={[
+            {
+              value: 'items',
+              /* 탭마다 건수를 붙인다 — 검사 조회·판정과 같다(#196). */
+              label: t.versionSection.tabItemsCount(itemDrafts.length),
+              content: renderItemPane(),
+            },
+            {
+              value: 'history',
+              label: t.versionSection.tabHistory,
+              /* 이력 조회 경로가 아직 없다 — 검사 항목 표와 같은 상자 안 빈 안내로 둔다(#196). */
+              content: (
+                <div className="inspection-standard-table-box inspection-standard-history-empty">
+                  <EmptyState
+                    size="sm"
+                    icon={<Icon name="history" size={32} />}
+                    title={t.versionSection.historyPreparing}
+                  />
+                </div>
+              ),
+            },
+          ]}
+        />
+
+        {isVersionEditOpen && versionStatus.isEditable && (
+          <Dialog
+            open
+            size="lg"
+            closeOnBackdropClick={false}
+            showCloseButton={false}
+            title={t.versionSection.editSettings}
+            onClose={() => {
+              cancelVersionEdit();
+              setIsVersionEditOpen(false);
+            }}
+          >
+            {renderVersionFormPane(() => {
+              cancelVersionEdit();
+              setIsVersionEditOpen(false);
+            })}
+          </Dialog>
+        )}
+      </>
+    );
+  };
+
+  /* 창을 닫으면 고친 값을 버린다 — 보이지 않는 미저장 편집이 남으면 항목 저장 · 확정이 이유 모르게 막힌다. */
+  const cancelVersionEdit = (): void => {
+    versionWrite.reset();
+    setVersionFieldErrors({});
+    setVersionFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
   };
 
   /**
@@ -1227,7 +1396,7 @@ export const InspectionStandardScreen = () => {
       ? t.optionsLoadFailed
       : undefined;
 
-  const renderVersionFormPane = (): ReactNode => {
+  const renderVersionFormPane = (onEditCancel?: () => void): ReactNode => {
     if (versionCreateValues !== null) {
       return (
         <VersionFormPane
@@ -1314,14 +1483,9 @@ export const InspectionStandardScreen = () => {
         isDirty={isVersionDirty}
         isSaving={versionWrite.isSaving}
         onSave={handleSaveVersion}
-        onCancel={() => {
-          versionWrite.reset();
-          setVersionFieldErrors({});
-          setVersionFormState((prev) =>
-            prev === null ? prev : { ...prev, values: prev.baseline },
-          );
-        }}
-        transitionActions={renderVersionTransitionActions()}
+        /* 「버전 설정 수정」 창 안이다 — 취소는 고친 값을 버리고 창을 닫는다. 확정 · 폐기는 버전 줄에 있다. */
+        onCancel={onEditCancel ?? cancelVersionEdit}
+        inDialog={onEditCancel !== undefined}
       />
     );
   };
@@ -1443,11 +1607,19 @@ export const InspectionStandardScreen = () => {
         style={{ ...split.style, ...layout.style }}
       >
         <PlanListPane
+          itemLabelOf={itemLabelOf}
+          processLabelOf={(processId) =>
+            processId === null || processId === undefined
+              ? null
+              : lookupDisplayLabel(processOptions, String(processId))
+          }
           plans={plans}
           isLoading={planList.isPending}
           appliedFilters={filters}
           onApplyFilters={applyFilters}
           pageView={pageView}
+          pageMeta={planList.data?.page ?? { page, size: pageSize, total: 0 }}
+          onChangePageSize={changePageSize}
           onChangePage={changePage}
           selectedPlanId={selectedPlanId}
           onSelect={handleSelectPlan}
@@ -1474,11 +1646,8 @@ export const InspectionStandardScreen = () => {
 
         <div className="inspection-standard-detail">
           {/* 버전 고르기 — 선택칸 + 「버전 목록」 창(신규 버전 발행 · 닫기). 기준을 고른 뒤에만 선다(#196). */}
-          <div className="pane-stack">
-            {renderPlanPane()}
-            {renderVersionFormPane()}
-            {renderItemPane()}
-          </div>
+          {renderPlanPane()}
+          {/* 기준 등록 중에는 카드가 없다 — 버전 · 항목은 등록 뒤에 선다. */}
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, Icon, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -7,6 +7,67 @@ import { resolveVersionStatus } from './plan-version-status';
 import type { InspectionPlanVersion } from './types';
 
 const t = messages.inspectionStandard;
+
+export interface VersionPrimaryActionProps {
+  hasVersions: boolean;
+  newRevisionDisabledReason: string | null;
+  isCreating: boolean;
+  isPublishing: boolean;
+  onNewRevision: () => void;
+  onCreateVersion: () => void;
+  /** 버전 목록 창의 제목 줄 — 「+」 아이콘을 단 주 단추로 낸다(사용자 시안 · #196). */
+  emphasized?: boolean;
+}
+
+/**
+ * 버전 구획의 주 액션 — 「버전 등록」 또는 「신규 버전 발행」. 버전 목록 창과 상세 카드의 버전 머리가 같이 쓴다(#196).
+ *
+ * **갈림의 기준은 버전 건수다.** 버전이 하나도 없으면 복사할 원본이 없어 생성 경로를 쓰고,
+ * 하나라도 있으면 개정 경로를 쓴다 — 계약이 두 경로를 그렇게 나눴다.
+ *
+ * 원본 버전의 상태(확정이어야 한다)는 **화면이 판정하지 않는다.** 상태 코드 어휘가
+ * 확정되지 않아 화면이 막으면 잘못 막았을 때 사용자가 풀 길이 없다. 서버가 거부하면 사유를 배너로 낸다.
+ */
+export const VersionPrimaryAction = ({
+  hasVersions,
+  newRevisionDisabledReason,
+  isCreating,
+  isPublishing,
+  onNewRevision,
+  onCreateVersion,
+  emphasized = false,
+}: VersionPrimaryActionProps) => {
+  /* 「+」를 달고 낸다(사용자 시안 · #196). 버전 목록 창 제목 줄에서는 주 단추, 버전 구획 머리에서는 테두리 단추다. */
+  const variant = emphasized ? 'tonal' : 'outlined';
+  const icon = <Icon name="add" size={18} />;
+
+  if (!hasVersions) {
+    return (
+      <div className="field-cell">
+        <Button
+          variant={variant}
+          leadingIcon={icon}
+          disabled={isCreating}
+          onClick={onCreateVersion}
+        >
+          {t.actions.createVersion}
+        </Button>
+      </div>
+    );
+  }
+
+  if (newRevisionDisabledReason !== null) {
+    return <DisabledAction label={t.actions.newRevision} reason={newRevisionDisabledReason} />;
+  }
+
+  return (
+    <div className="field-cell">
+      <Button variant={variant} leadingIcon={icon} disabled={isPublishing} onClick={onNewRevision}>
+        {t.actions.newRevision}
+      </Button>
+    </div>
+  );
+};
 
 export interface VersionPaneProps {
   versions: InspectionPlanVersion[];
@@ -25,6 +86,8 @@ export interface VersionPaneProps {
   onCreateVersion: () => void;
   /** 등록·발행 실패 배너 슬롯 */
   banner: ReactNode;
+  /** 주 액션을 그리지 않는다 — 버전 목록 창은 제목 줄에 따로 둔다(#196). */
+  hideActions?: boolean;
 }
 
 /**
@@ -51,6 +114,7 @@ export const VersionPane = ({
   onNewRevision,
   onCreateVersion,
   banner,
+  hideActions = false,
 }: VersionPaneProps) => {
   const columns: Column<InspectionPlanVersion>[] = [
     {
@@ -132,38 +196,7 @@ export const VersionPane = ({
     );
   };
 
-  /*
-   * **갈림의 기준은 버전 건수다.** 버전이 하나도 없으면 복사할 원본이 없어 생성 경로를 쓰고,
-   * 하나라도 있으면 개정 경로를 쓴다 — 계약이 두 경로를 그렇게 나눴다.
-   *
-   * 원본 버전의 상태(확정이어야 한다)는 **화면이 판정하지 않는다.** 상태 코드 어휘가
-   * 확정되지 않아 화면이 막으면 잘못 막았을 때 사용자가 풀 길이 없다. 서버가 거부하면 사유를 배너로 낸다.
-   */
   const hasVersions = versions.length > 0;
-
-  const actionSlot = (): ReactNode => {
-    if (!hasVersions) {
-      return (
-        <div className="field-cell">
-          <Button variant="outlined" disabled={isCreating} onClick={onCreateVersion}>
-            {t.actions.createVersion}
-          </Button>
-        </div>
-      );
-    }
-
-    if (newRevisionDisabledReason !== null) {
-      return <DisabledAction label={t.actions.newRevision} reason={newRevisionDisabledReason} />;
-    }
-
-    return (
-      <div className="field-cell">
-        <Button variant="outlined" disabled={isPublishing} onClick={onNewRevision}>
-          {t.actions.newRevision}
-        </Button>
-      </div>
-    );
-  };
 
   return (
     <section className="pane" aria-label={t.panes.version}>
@@ -174,8 +207,17 @@ export const VersionPane = ({
        * 불러오는 중의 0건을 「버전이 없다」로 읽으면 개정해야 할 자리에서 생성 경로가 열리고,
        * 그 요청은 유일 제약 위반으로 거부된다.
        */}
-      {isPlanSelected && !isLoading && !hasLoadError && (
-        <div className="filter-bar">{actionSlot()}</div>
+      {!hideActions && isPlanSelected && !isLoading && !hasLoadError && (
+        <div className="filter-bar">
+          <VersionPrimaryAction
+            hasVersions={hasVersions}
+            newRevisionDisabledReason={newRevisionDisabledReason}
+            isCreating={isCreating}
+            isPublishing={isPublishing}
+            onNewRevision={onNewRevision}
+            onCreateVersion={onCreateVersion}
+          />
+        </div>
       )}
 
       {listSlot()}

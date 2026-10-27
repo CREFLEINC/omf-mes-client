@@ -10,8 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
-import { inspectionTypeLabel } from './code-options';
-import { toPageView } from './pagination';
+import { PageNav, type PageSize } from '../../patterns/page-nav';
 import { useInspectionPlanList } from './queries';
 import type { InspectionPlan } from './types';
 
@@ -38,14 +37,15 @@ export const PlanPickerDialog = ({
   /** 실제로 조회에 나간 검색어. 「찾기」를 눌러야 바뀐다. */
   const [submitted, setSubmitted] = useState('');
   const [page, setPage] = useState(1);
+  const [size, setSize] = useState<PageSize>(20);
   const [picked, setPicked] = useState<InspectionPlan | null>(null);
 
   const search = useInspectionPlanList(
     { q: submitted, inspectionTypeCode: '', includeInactive },
     page,
+    size,
   );
   const rows = search.data?.items ?? [];
-  const view = search.data === undefined ? null : toPageView(search.data.page, rows.length);
 
   const submit = (): void => {
     setPage(1);
@@ -74,14 +74,8 @@ export const PlanPickerDialog = ({
       width: '240px',
       render: (row) => row.inspectionPlanCode,
     },
+    /* 검사 유형 열은 두지 않는다 — 기준을 찾는 데 코드 · 이름이면 된다(사용자 지시 · #196). */
     { key: 'inspectionPlanName', header: t.picker.columns.name },
-    {
-      key: 'inspectionTypeCode',
-      header: t.picker.columns.type,
-      align: 'center',
-      width: '136px',
-      render: (row) => inspectionTypeLabel(row.inspectionTypeCode),
-    },
   ];
 
   return (
@@ -112,7 +106,8 @@ export const PlanPickerDialog = ({
     >
       <div className="item-picker-body">
         <div className="item-picker-controls">
-          <div className="field-cell">
+          {/* 안내 문구(「기준 코드 또는 기준명을 입력하세요」)가 잘리지 않는 폭 — 좁으면 줄어든다(#196). */}
+          <div className="field-cell inspection-standard-picker-keyword">
             <label className="field-label" htmlFor={keywordId}>
               {t.picker.keywordLabel}
             </label>
@@ -163,30 +158,15 @@ export const PlanPickerDialog = ({
           />
         </div>
 
-        {/* 쪽 이동 줄은 늘 선다 — 검색할 때마다 표의 아래 경계가 움직이지 않게. */}
-        <div className="item-picker-pager">
-          {view !== null && rows.length > 0 && (
-            <span className="field-note">{view.rangeLabel}</span>
-          )}
-          <Button
-            variant="outlined"
-            disabled={view === null || !view.canPrev}
-            onClick={() => {
-              setPage((prev) => Math.max(1, prev - 1));
-            }}
-          >
-            {t.actions.prevPage}
-          </Button>
-          <Button
-            variant="outlined"
-            disabled={view === null || !view.canNext}
-            onClick={() => {
-              setPage((prev) => prev + 1);
-            }}
-          >
-            {t.actions.nextPage}
-          </Button>
-        </div>
+        {/* 쪽 이동 — 목록 표와 같은 공용 줄(총 건수 · 쪽 크기 · 처음/이전/다음/마지막 · #196). 늘 선다. */}
+        <PageNav
+          meta={search.data?.page ?? { page, size, total: 0 }}
+          onChangePage={setPage}
+          onChangeSize={(next) => {
+            setSize(next);
+            setPage(1);
+          }}
+        />
       </div>
     </Dialog>
   );

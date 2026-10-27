@@ -132,7 +132,7 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
 
     await pickPlanInDialog(user, 'SYN', 'SYN-PLAN-02');
     await user.click(
-      within(screen.getByRole('search')).getByRole('combobox', { name: '검사 유형' }),
+      within(screen.getByRole('search')).getByRole('combobox', { name: '검사 유형 선택' }),
     );
     await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
     await user.click(within(screen.getByRole('search')).getByRole('button', { name: '조회' }));
@@ -295,7 +295,7 @@ describe('InspectionStandardScreen — 쪽 이동', () => {
   it('전체 0건이면 범위를 지어내지 않는다', async () => {
     renderScreen([planListRoute([], { page: 1, size: 50, total: 0 })]);
 
-    expect(await screen.findByText('전체 0건')).toBeInTheDocument();
+    expect(await screen.findByText('총 0건')).toBeInTheDocument();
   });
 
   /*
@@ -556,9 +556,22 @@ const renderSelectedPlan = (extraRoutes: StubRoute[] = [], search = '?plan=3001'
  * 기다리기 전에 구획을 잡아 두면 그 노드는 화면에서 떨어져 나가 아무것도 찾지 못한다.
  */
 const awaitPlanForm = async (): Promise<HTMLElement> => {
+  /* 기본 정보 폼은 「기본 정보 수정」 창 안에 있다(omf-all-around#196) — 닫혀 있으면 연다. */
+  /* 카드가 서야(상세 도착) 단추가 있다 — 불러오는 중 구획도 이름이 「기준 정보」라 단추로 기다린다. */
+  const editButton = await screen.findByRole('button', { name: '기본 정보 수정' });
+  if (screen.queryByRole('region', { name: '기준 정보' }) === null) {
+    fireEvent.click(editButton);
+  }
   await screen.findByLabelText('기준코드');
 
   return planForm();
+};
+
+/** 기본 정보 수정 창을 열고(닫혀 있으면) 그 안의 칸을 찾는다(omf-all-around#196). */
+const findPlanField = async (label: string): Promise<HTMLElement> => {
+  await awaitPlanForm();
+
+  return screen.findByLabelText(label);
 };
 
 describe('InspectionStandardScreen — 기준 상세 조회', () => {
@@ -578,7 +591,7 @@ describe('InspectionStandardScreen — 기준 상세 조회', () => {
 
     await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
 
-    expect(await screen.findByLabelText('기준코드')).toHaveValue('SYN-PLAN-01');
+    expect(await findPlanField('기준코드')).toHaveValue('SYN-PLAN-01');
     expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A');
     expect(requestsTo(requests, PLAN_DETAIL_PATH)).toHaveLength(1);
   });
@@ -618,7 +631,7 @@ describe('InspectionStandardScreen — 기준 상세 조회', () => {
       '?plan=3001',
     );
 
-    expect(await screen.findByLabelText('기준코드')).toBeDisabled();
+    expect(await findPlanField('기준코드')).toBeDisabled();
     expect(screen.getByLabelText('기준명')).toBeEnabled();
     expect(
       screen.getByText('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
@@ -632,7 +645,7 @@ describe('InspectionStandardScreen — 기준 상세 조회', () => {
   it('입력 중에 상세 캐시가 갱신돼도 입력값이 유지된다', async () => {
     const { user, requests, queryClient } = renderSelectedPlan();
 
-    const name = await screen.findByLabelText('기준명');
+    const name = await findPlanField('기준명');
     await user.type(name, '-편집중');
 
     await act(async () => {
@@ -649,13 +662,15 @@ describe('InspectionStandardScreen — 기준 상세 조회', () => {
   it('고친 값은 취소로 기준값으로 되돌아간다', async () => {
     const { user } = renderSelectedPlan();
 
-    const name = await screen.findByLabelText('기준명');
+    const name = await findPlanField('기준명');
     await user.type(name, 'X');
     expect(name).toHaveValue('합성 검사기준 AX');
 
+    /* 창의 「취소」는 고친 값을 버리고 창을 닫는다 — 다시 열면 기준값이다(#196). */
     await user.click(within(planForm()).getByRole('button', { name: '취소' }));
+    expect(screen.queryByLabelText('기준코드')).not.toBeInTheDocument();
 
-    expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A');
+    expect(await findPlanField('기준명')).toHaveValue('합성 검사기준 A');
   });
 });
 
@@ -663,7 +678,7 @@ describe('InspectionStandardScreen — 기준 저장', () => {
   it('로컬 검증에 걸리면 요청이 나가지 않고 값을 고치면 오류가 지워진다', async () => {
     const { requests, user } = renderSelectedPlan([planSaveRoute()]);
 
-    await user.clear(await screen.findByLabelText('기준명'));
+    await user.clear(await findPlanField('기준명'));
     await user.click(within(planForm()).getByRole('button', { name: '저장' }));
 
     expect(await screen.findByText('필수 입력 항목입니다.')).toBeInTheDocument();
@@ -677,7 +692,7 @@ describe('InspectionStandardScreen — 기준 저장', () => {
   it('저장하면 멱등 키와 상세 경로에서 꺼낸 If-Match를 함께 실어 보낸다', async () => {
     const { requests, user } = renderSelectedPlan([planSaveRoute()]);
 
-    await user.type(await screen.findByLabelText('기준명'), 'X');
+    await user.type(await findPlanField('기준명'), 'X');
     await user.click(within(planForm()).getByRole('button', { name: '저장' }));
 
     await screen.findByText('저장했습니다');
@@ -691,7 +706,7 @@ describe('InspectionStandardScreen — 기준 저장', () => {
   it('저장 본문에 승인 정보와 사용 여부를 싣지 않는다', async () => {
     const { requests, user } = renderSelectedPlan([planSaveRoute()]);
 
-    await user.type(await screen.findByLabelText('기준명'), 'X');
+    await user.type(await findPlanField('기준명'), 'X');
     await user.click(within(planForm()).getByRole('button', { name: '저장' }));
 
     await screen.findByText('저장했습니다');
@@ -720,7 +735,7 @@ describe('InspectionStandardScreen — 기준 저장', () => {
       planSaveRoute(() => jsonResponse({ conflictCause: 'erpSync', message: '' }, { status: 409 })),
     ]);
 
-    await user.type(await screen.findByLabelText('기준명'), 'X');
+    await user.type(await findPlanField('기준명'), 'X');
     await user.click(within(planForm()).getByRole('button', { name: '저장' }));
 
     expect(
@@ -736,7 +751,7 @@ describe('InspectionStandardScreen — 기준 저장', () => {
       planSaveRoute(() => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })),
     ]);
 
-    await user.type(await screen.findByLabelText('기준명'), 'X');
+    await user.type(await findPlanField('기준명'), 'X');
     await user.click(within(planForm()).getByRole('button', { name: '저장' }));
     await user.click(await screen.findByRole('button', { name: '최신 불러오기' }));
 
@@ -756,7 +771,7 @@ describe('InspectionStandardScreen — 기준 저장', () => {
       ),
     ]);
 
-    await user.type(await screen.findByLabelText('기준명'), 'X');
+    await user.type(await findPlanField('기준명'), 'X');
     await user.click(within(planForm()).getByRole('button', { name: '저장' }));
 
     expect(await screen.findByText('지금은 저장할 수 없는 상태입니다')).toBeInTheDocument();
@@ -783,7 +798,7 @@ describe('InspectionStandardScreen — 기준 저장', () => {
       ),
     ]);
 
-    await user.type(await screen.findByLabelText('기준명'), 'X');
+    await user.type(await findPlanField('기준명'), 'X');
     await user.click(within(planForm()).getByRole('button', { name: '저장' }));
 
     expect(await screen.findByText('알 수 없는 항목이 거부됐습니다.')).toBeInTheDocument();
@@ -799,7 +814,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     expect(await screen.findByLabelText('기준코드')).toHaveValue('');
     expect(screen.getByLabelText('기준명')).toHaveValue('');
     // 서버가 채우는 값을 미리 지어내 보이지 않는다.
-    expect(screen.queryByText('미승인')).not.toBeInTheDocument();
+    expect(within(planForm()).queryByText('미승인')).not.toBeInTheDocument();
   });
 
   /* 아직 없는 자원이라 잠글 대상이 없다 — 계약이 If-Match를 요구하지 않는다. */
@@ -887,6 +902,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
       '?plan=3003',
     );
 
+    await awaitPlanForm();
     expect(await screen.findByRole('combobox', { name: '라우팅' })).toBeDisabled();
     expect(
       screen.getByText('라우팅은 품목을 고른 뒤에 고를 수 있습니다. 먼저 품목을 고르세요.'),
@@ -900,6 +916,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
       '?plan=3003',
     );
 
+    await awaitPlanForm();
     await user.click(await screen.findByRole('combobox', { name: '품목' }));
     await user.click(screen.getByRole('option', { name: 'SYN-ITEM-01 · 합성 품목 A' }));
 
@@ -918,6 +935,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
       '?plan=3002',
     );
 
+    await awaitPlanForm();
     await waitFor(() => {
       expect(screen.getByRole('combobox', { name: '라우팅' })).toHaveTextContent(
         'SYN-ROUTE-01 · Rev 3',
@@ -945,6 +963,8 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
       '?plan=3001',
     );
 
+    /* 잘림 안내는 기본 정보 폼 위에 선다 — 그 폼은 「기본 정보 수정」 창 안이다(#196). */
+    await awaitPlanForm();
     expect(
       await screen.findByText(
         '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
@@ -965,7 +985,25 @@ const planActionRoute = (
   respond,
 });
 
-const dialog = async (): Promise<HTMLElement> => screen.findByRole('dialog');
+/**
+ * 확인 창 — 「기본 정보 수정」 · 「버전 목록」 창이 함께 열려 있을 수 있어(#196) 그 둘을 뺀 창을 고른다.
+ */
+const confirmDialogs = (): HTMLElement[] =>
+  screen
+    .queryAllByRole('dialog')
+    .filter(
+      (element) =>
+        within(element).queryByRole('region', { name: '기준 정보' }) === null &&
+        within(element).queryByRole('region', { name: '버전 목록' }) === null &&
+        within(element).queryByRole('region', { name: '버전 정보' }) === null,
+    );
+
+const dialog = async (): Promise<HTMLElement> =>
+  waitFor(() => {
+    const [first] = confirmDialogs();
+    if (first === undefined) throw new Error('확인 창이 없다');
+    return first;
+  });
 
 describe('InspectionStandardScreen — 기준 승인', () => {
   it('「승인」을 누르면 확인 창이 열리고 확인 전에는 요청이 나가지 않는다', async () => {
@@ -1057,14 +1095,14 @@ describe('InspectionStandardScreen — 기준 승인', () => {
         '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(confirmDialogs()).toHaveLength(1);
   });
 
   /* 응답에 ETag가 없다 — 재조회로 새 잠금 토큰을 확보해야 그다음 저장이 막히지 않는다. */
   it('성공하면 목록과 상세를 다시 조회하고 창이 닫힌다', async () => {
     const { requests, user } = renderSelectedPlan([planActionRoute('approve')]);
 
-    await screen.findByLabelText('기준코드');
+    await findPlanField('기준코드');
     const before = {
       detail: requestsTo(requests, PLAN_DETAIL_PATH).length,
       list: planRequests(requests).length,
@@ -1078,7 +1116,7 @@ describe('InspectionStandardScreen — 기준 승인', () => {
       expect(requestsTo(requests, PLAN_DETAIL_PATH).length).toBeGreaterThan(before.detail);
     });
     expect(planRequests(requests).length).toBeGreaterThan(before.list);
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(confirmDialogs()).toHaveLength(0);
   });
 
   it('확인 창에서 취소하면 요청이 나가지 않는다', async () => {
@@ -1087,7 +1125,7 @@ describe('InspectionStandardScreen — 기준 승인', () => {
     await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
     await user.click(within(await dialog()).getByRole('button', { name: '취소' }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(confirmDialogs()).toHaveLength(0);
     expect(requestsTo(requests, APPROVE_PATH)).toHaveLength(0);
   });
 
@@ -1207,12 +1245,13 @@ const newRevisionRoute = (
  * 줄을 고르면 창이 닫히므로 다시 볼 때마다 이 함수로 연다.
  */
 const versionPane = async (): Promise<HTMLElement> => {
-  const opened = screen.queryByRole('dialog', { name: '버전 목록' });
-  if (opened === null) {
+  /* 창 이름 계산은 jsdom 에서 겹친 창일 때 재귀가 깊어진다 — 창 안의 구획으로 열림을 가린다. */
+  if (screen.queryByRole('region', { name: '버전 목록' }) === null) {
     fireEvent.click(await screen.findByRole('button', { name: '버전 목록' }));
   }
-  const dialog = await screen.findByRole('dialog', { name: '버전 목록' });
-  return within(dialog).getByRole('region', { name: '버전 목록' });
+  const region = await screen.findByRole('region', { name: '버전 목록' });
+  /* 주 액션(버전 등록 · 신규 버전 발행)과 「닫기」는 구획 밖 창 머리 · 바닥에 있다 — 창 전체를 돌려준다. */
+  return region.closest('dialog') ?? region;
 };
 
 const versionRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
@@ -1395,7 +1434,10 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
       await within(await versionPane()).findByRole('button', { name: '신규 버전 발행' }),
     );
 
-    await screen.findByText('등록했습니다');
+    /* 발행이 성공하면 알림 대신 버전 목록 창이 닫히고 새 버전이 선다(사용자 지시 #196). */
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: '버전 목록' })).not.toBeInTheDocument();
+    });
 
     const posts = requestsTo(requests, `${VERSIONS_PATH}/4002:new-revision`);
     expect(posts).toHaveLength(1);
@@ -1417,7 +1459,10 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     await user.click(
       await within(await versionPane()).findByRole('button', { name: '신규 버전 발행' }),
     );
-    await screen.findByText('등록했습니다');
+    /* 발행이 성공하면 알림 대신 버전 목록 창이 닫히고 새 버전이 선다(사용자 지시 #196). */
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: '버전 목록' })).not.toBeInTheDocument();
+    });
 
     expect(requestsTo(requests, `${VERSIONS_PATH}/4002:new-revision`)).toHaveLength(1);
     expect(requestsTo(requests, `${VERSIONS_PATH}/4001:new-revision`)).toHaveLength(0);
@@ -1429,7 +1474,10 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     await user.click(
       await within(await versionPane()).findByRole('button', { name: '신규 버전 발행' }),
     );
-    await screen.findByText('등록했습니다');
+    /* 발행이 성공하면 알림 대신 버전 목록 창이 닫히고 새 버전이 선다(사용자 지시 #196). */
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: '버전 목록' })).not.toBeInTheDocument();
+    });
 
     expect(requestsTo(requests, `${VERSIONS_PATH}/4001:new-revision`)).toHaveLength(1);
   });
@@ -1442,7 +1490,10 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     const before = versionRequests(requests).filter((request) => request.method === 'GET').length;
 
     await user.click(within(await versionPane()).getByRole('button', { name: '신규 버전 발행' }));
-    await screen.findByText('등록했습니다');
+    /* 발행이 성공하면 알림 대신 버전 목록 창이 닫히고 새 버전이 선다(사용자 지시 #196). */
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: '버전 목록' })).not.toBeInTheDocument();
+    });
 
     await waitFor(() => {
       expect(
@@ -1487,16 +1538,17 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
   it('기준에 저장하지 않은 변경이 있으면 발행이 비활성이고 사유가 보인다', async () => {
     const { user } = renderVersions([newRevisionRoute()]);
 
-    await user.type(await screen.findByLabelText('기준명'), 'X');
+    await user.type(await findPlanField('기준명'), 'X');
 
     expect(
       within(await versionPane()).getByRole('button', { name: '신규 버전 발행' }),
     ).toBeDisabled();
+    /* 사유는 버전 구획 머리와 버전 목록 창 두 곳의 단추에 붙는다. */
     expect(
-      screen.getByText(
+      screen.getAllByText(
         '신규 버전 발행은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
-      ),
-    ).toBeInTheDocument();
+      ).length,
+    ).toBeGreaterThan(0);
   });
 
   it('등록 폼에서 로컬 검증에 걸리면 요청이 나가지 않는다', async () => {
@@ -1576,9 +1628,15 @@ const versionForm = (): HTMLElement => screen.getByRole('region', { name: '버�
 
 /** 버전 상세가 도착해 폼이 그려질 때까지 기다린다 — 불러오는 중 구획과 폼 구획은 다른 컴포넌트다. */
 const awaitVersionForm = async (): Promise<HTMLElement> => {
-  await screen.findByLabelText('샘플 비율(%)');
+  /*
+   * 버전 정보 폼은 「버전 설정 수정」 창 안에 있다(omf-all-around#196) — 고칠 수 있는 버전에만 단추가 선다.
+   * 닫혀 있으면 단추를 눌러 연다.
+   */
+  if (screen.queryByRole('region', { name: '버전 정보' }) === null) {
+    fireEvent.click(await screen.findByRole('button', { name: '버전 설정 수정' }));
+  }
 
-  return versionForm();
+  return screen.findByRole('region', { name: '버전 정보' });
 };
 
 const renderSelectedVersion = (extraRoutes: StubRoute[] = [], search = '?plan=3001&ver=4002') =>
@@ -1611,7 +1669,7 @@ describe('InspectionStandardScreen — 버전 상세와 샘플 비율 표기', (
 
     await user.click(await within(await versionPane()).findByRole('button', { name: '버전 2' }));
 
-    expect(await screen.findByLabelText('샘플 비율(%)')).toHaveValue(30);
+    expect(await within(await awaitVersionForm()).findByLabelText('샘플 비율(%)')).toHaveValue(30);
     expect(requestsTo(requests, VERSION_DETAIL_PATH)).toHaveLength(1);
   });
 
@@ -1640,7 +1698,9 @@ describe('InspectionStandardScreen — 버전 상세와 샘플 비율 표기', (
     renderSelectedVersion();
 
     // 음성 단언은 짝 양성과 같은 시점에 잰다 — 폼이 도착한 뒤에 잰다.
-    expect(await screen.findByLabelText('샘플 비율(%)')).toBeInTheDocument();
+    expect(
+      await within(await awaitVersionForm()).findByLabelText('샘플 비율(%)'),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/비율\(%\)이 아니라/)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/샘플 수량/)).not.toBeInTheDocument();
   });
@@ -1648,7 +1708,7 @@ describe('InspectionStandardScreen — 버전 상세와 샘플 비율 표기', (
   it('0인 합격판정개수가 빈 칸으로 뭉개지지 않는다', async () => {
     renderSelectedVersion();
 
-    expect(await screen.findByLabelText('합격판정개수')).toHaveValue(0);
+    expect(await within(await awaitVersionForm()).findByLabelText('합격판정개수')).toHaveValue(0);
   });
 
   /* 2026-09-03 확정된 공통 상태 코드이므로 이전의 임시 안내를 더는 노출하지 않는다. */
@@ -1837,22 +1897,27 @@ describe('InspectionStandardScreen — 버전 저장', () => {
 });
 
 describe('InspectionStandardScreen — 상태 잠금', () => {
-  it('확정 버전에서는 전 입력이 잠기고 푸는 방법을 안내한다', async () => {
+  /*
+   * 고칠 수 없는 버전의 「버전 설정」 탭은 요약 줄에 이미 있는 유효기간 · 샘플링 방법 · 샘플 비율 · 검사 주기를
+   * 되풀이하지 않는다(#196) — 남은 칸은 잠기고 「읽기 전용」을 붙인다.
+   */
+  it('확정 버전에서는 버전 설정을 고칠 길이 없고 푸는 방법을 안내한다', async () => {
     renderSelectedVersion(
       [versionDetailRoute(inspectionPlanVersionFixtures[1]), itemListRoute(4001)],
       '?plan=3001&ver=4001',
     );
 
-    expect(await screen.findByLabelText('샘플 비율(%)')).toBeDisabled();
-    expect(screen.getByLabelText('유효시작')).toBeDisabled();
-    expect(screen.getByLabelText('합격판정개수')).toBeDisabled();
-    expect(screen.getByRole('combobox', { name: '샘플링 방법' })).toBeDisabled();
-    expect(
-      screen.getByText('확정된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
-    ).toBeInTheDocument();
+    /* 확정 버전에는 「버전 설정 수정」이 서지 않는다 — 요약 줄로만 본다(#196). */
+    expect(await screen.findByText('유효기간')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '폐기' })).toBeEnabled();
+    });
+    expect(screen.queryByRole('button', { name: '버전 설정 수정' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('샘플 비율(%)')).not.toBeInTheDocument();
+    expect(within(itemPane()).getByText('수정하려면 신규 버전을 발행하세요.')).toBeInTheDocument();
   });
 
-  it('폐기 버전에서도 전 입력이 잠긴다', async () => {
+  it('폐기 버전에서도 버전 설정을 고칠 길이 없다', async () => {
     renderSelectedVersion(
       [
         versionDetailRoute({ ...inspectionPlanVersionFixtures[1]!, statusCode: 'OBSOLETE' }),
@@ -1861,10 +1926,9 @@ describe('InspectionStandardScreen — 상태 잠금', () => {
       '?plan=3001&ver=4001',
     );
 
-    expect(await screen.findByLabelText('샘플 비율(%)')).toBeDisabled();
-    expect(
-      screen.getByText('폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('유효기간')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '버전 설정 수정' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('샘플 비율(%)')).not.toBeInTheDocument();
   });
 
   /* 미인식 코드를 잠그면 실서버가 다른 문자열을 쓰는 순간 사용자가 풀 방법이 없다. */
@@ -1873,7 +1937,7 @@ describe('InspectionStandardScreen — 상태 잠금', () => {
       versionDetailRoute({ ...inspectionPlanVersionFixtures[0]!, statusCode: 'IN_REVIEW' }),
     ]);
 
-    expect(await screen.findByLabelText('샘플 비율(%)')).toBeEnabled();
+    expect(await within(await awaitVersionForm()).findByLabelText('샘플 비율(%)')).toBeEnabled();
   });
 });
 
@@ -1882,7 +1946,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     const { requests, user } = renderSelectedVersion([versionTransitionRoute('confirm')]);
 
     const form = await awaitVersionForm();
-    await user.click(within(form).getByRole('button', { name: '확정' }));
+    await user.click(screen.getByRole('button', { name: '확정' }));
 
     expect(await dialog()).toBeInTheDocument();
     expect(requestsTo(requests, `${VERSIONS_PATH}/4002:confirm`)).toHaveLength(0);
@@ -1908,7 +1972,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
       list: versionRequests(requests).filter((request) => request.method === 'GET').length,
     };
 
-    await user.click(within(form).getByRole('button', { name: '확정' }));
+    await user.click(screen.getByRole('button', { name: '확정' }));
     await user.click(within(await dialog()).getByRole('button', { name: '확정' }));
     await screen.findByText(t.result.confirmed);
 
@@ -1932,13 +1996,13 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     ]);
 
     const form = await awaitVersionForm();
-    await user.click(within(form).getByRole('button', { name: '확정' }));
+    await user.click(screen.getByRole('button', { name: '확정' }));
     await user.click(within(await dialog()).getByRole('button', { name: '확정' }));
 
     expect(
       await screen.findByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(confirmDialogs()).toHaveLength(1);
   });
 
   /* 계약이 항목 1건 이상을 요구한다 — 화면이 먼저 막고 사유를 밝힌다. */
@@ -1948,7 +2012,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     const form = await awaitVersionForm();
 
     await waitFor(() => {
-      expect(within(form).getByRole('button', { name: '확정' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: '확정' })).toBeDisabled();
     });
     expect(
       screen.getByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.'),
@@ -1962,7 +2026,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     const form = await awaitVersionForm();
     fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '40' } });
 
-    expect(within(form).getByRole('button', { name: '확정' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '확정' })).toBeDisabled();
     expect(
       within(await versionPane()).getByRole('button', { name: '신규 버전 발행' }),
     ).toBeDisabled();
@@ -1978,7 +2042,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
 
     const form = await awaitVersionForm();
 
-    expect(within(form).getByRole('button', { name: '폐기' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '폐기' })).toBeDisabled();
     expect(
       screen.getByText('폐기는 확정된 버전에만 할 수 있습니다. 먼저 확정하세요.'),
     ).toBeInTheDocument();
@@ -1994,10 +2058,12 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
       '?plan=3001&ver=4001',
     );
 
-    await screen.findByLabelText('샘플 비율(%)');
-    const form = versionForm();
+    /* 확정 버전에는 「버전 설정 수정」이 없다 — 폐기는 버전 줄에서 한다(#196). */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '폐기' })).toBeEnabled();
+    });
 
-    await user.click(within(form).getByRole('button', { name: '폐기' }));
+    await user.click(screen.getByRole('button', { name: '폐기' }));
     await user.click(within(await dialog()).getByRole('button', { name: '폐기' }));
     await screen.findByText(t.result.obsoleted);
 
@@ -2050,8 +2116,8 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
 
     const form = await awaitVersionForm();
 
-    expect(within(form).getByRole('button', { name: '버전 비교' })).toBeDisabled();
-    expect(within(form).getByRole('button', { name: '변경 이력' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '버전 비교' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '변경 이력' })).toBeDisabled();
     expect(
       screen.getByText(
         '버전 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
@@ -2253,7 +2319,7 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     expect(
       await screen.findByText('같은 항목코드가 이 버전에 이미 있습니다. 다른 코드를 입력하세요.'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(confirmDialogs()).toHaveLength(1);
   });
 
   /* 수정할 때 자기 코드가 그대로여도 통과해야 한다. */
@@ -2267,7 +2333,7 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     await user.type(within(dialogNode).getByLabelText('항목명'), '-수정');
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(confirmDialogs()).toHaveLength(0);
     expect(screen.getByText('SYN-ITEM-CODE-01 · 합성 항목 A-수정')).toBeInTheDocument();
   });
 
@@ -2282,7 +2348,7 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
     expect(await screen.findAllByText('상한은 하한과 같거나 그보다 커야 합니다.')).toHaveLength(2);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(confirmDialogs()).toHaveLength(1);
   });
 
   it('측정 횟수가 0이면 확인이 막힌다', async () => {
@@ -2296,7 +2362,7 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
     expect(await screen.findByText('측정 횟수는 1 이상의 정수여야 합니다.')).toBeInTheDocument();
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(confirmDialogs()).toHaveLength(1);
   });
 
   /* 계약 A-9 ⓑ — 경고 등급이다. 화면이 막으면 서버가 허용한 값을 넣을 방법이 없어진다. */
@@ -2315,7 +2381,7 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
 
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(confirmDialogs()).toHaveLength(0);
   });
 
   /* 창을 열 때만 붙인다 — 닫힌 창을 남기면 지난 편집 값이 그대로 살아 있다. */
@@ -2500,7 +2566,8 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
     await user.click(within(itemPane()).getByRole('button', { name: '2번 항목 삭제' }));
 
-    fireEvent.change(within(versionForm()).getByLabelText('샘플 비율(%)'), {
+    /* 버전 정보는 「버전 설정 수정」 창에서 고친다 — 창이 열린 채 항목 저장 단추를 본다(#196). */
+    fireEvent.change(within(await awaitVersionForm()).getByLabelText('샘플 비율(%)'), {
       target: { value: '40' },
     });
 
@@ -2520,16 +2587,18 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
 
-    expect(within(itemPane()).getByRole('button', { name: '항목 추가' })).toBeDisabled();
-    expect(within(itemPane()).getByRole('button', { name: '1번 항목 수정' })).toBeDisabled();
+    /* 잠긴 버전에는 누를 수 없는 추가 · 수정 단추를 두지 않고 「읽기 전용」과 푸는 길을 낸다(#196). */
+    expect(within(itemPane()).queryByRole('button', { name: '항목 추가' })).not.toBeInTheDocument();
+    expect(
+      within(itemPane()).queryByRole('button', { name: '1번 항목 수정' }),
+    ).not.toBeInTheDocument();
     expect(
       within(itemPane()).queryByRole('button', { name: /아래로|위로/ }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getAllByText(
-        '검사 항목은 작성중 버전에서만 편집할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
-      ).length,
-    ).toBeGreaterThan(0);
+    expect(within(itemPane()).getByText('수정하려면 신규 버전을 발행하세요.')).toHaveAttribute(
+      'title',
+      '검사 항목은 작성중 버전에서만 편집할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
+    );
   });
 
   /* 저장하지 않은 초안으로 세면 화면은 1건인데 서버는 0건이라 확정이 400으로 거부된다. */
@@ -2547,7 +2616,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
     expect(await screen.findByText('SYN-ITEM-CODE-09 · 합성 항목 Z')).toBeInTheDocument();
-    expect(within(versionForm()).getByRole('button', { name: '확정' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '확정' })).toBeDisabled();
     /*
      * 사유가 「1건 이상 저장해야」여야 한다 — 초안으로 세면 이 사유가 사라지고
      * 「저장하지 않은 변경」 사유로 바뀐다. 그 차이가 곧 「저장된 건수로 센다」의 증거다.
@@ -2712,7 +2781,7 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
   it('기준 폼을 고친 뒤 같은 기준을 다시 고르면 고친 값이 남지 않는다', async () => {
     const { user } = renderSelectedPlan();
 
-    const name = await screen.findByLabelText('기준명');
+    const name = await findPlanField('기준명');
     await user.type(name, '-편집중');
     expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A-편집중');
 

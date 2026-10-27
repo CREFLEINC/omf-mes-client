@@ -37,6 +37,8 @@ export interface VersionFormPaneProps {
   onCancel: () => void;
   /** 확정·폐기·비교·이력 액션 슬롯. 이 구획 밖의 사실이 조건에 들어가 화면이 판정한다 */
   transitionActions?: ReactNode;
+  /** 「버전 설정 수정」 창 안이다 — 「취소」가 창을 닫는 길이라 늘 누를 수 있다(#196). */
+  inDialog?: boolean;
 }
 
 /**
@@ -64,6 +66,7 @@ export const VersionFormPane = ({
   onSave,
   onCancel,
   transitionActions,
+  inDialog = false,
 }: VersionFormPaneProps) => {
   const versionLabelId = useId();
   const statusLabelId = useId();
@@ -237,7 +240,11 @@ export const VersionFormPane = ({
       <div className="form-actions">
         {transitionActions}
 
-        <Button variant="outlined" disabled={!isDirty || isLocked} onClick={onCancel}>
+        <Button
+          variant="outlined"
+          disabled={!inDialog && (!isDirty || isLocked)}
+          onClick={onCancel}
+        >
           {messages.common.cancel}
         </Button>
 

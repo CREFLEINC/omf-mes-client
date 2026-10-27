@@ -22,7 +22,7 @@ describe('PlanFilterBar — 조건', () => {
       includeInactive: false,
     });
 
-    await user.click(screen.getByRole('combobox', { name: '검사 유형' }));
+    await user.click(screen.getByRole('combobox', { name: '검사 유형 선택' }));
     await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
     expect(onApplyFilters).not.toHaveBeenCalled();
 
@@ -66,9 +66,9 @@ describe('PlanFilterBar — 조건', () => {
   it('검사 유형 선택칸이 선택지 폭을 확보하는 클래스를 갖는다', () => {
     renderBar();
 
-    expect(screen.getByRole('combobox', { name: '검사 유형' }).closest('.field-cell')).toHaveClass(
-      'wide-select',
-    );
+    expect(
+      screen.getByRole('combobox', { name: '검사 유형 선택' }).closest('.field-cell'),
+    ).toHaveClass('wide-select');
   });
 
   it('적용된 조건마다 칩이 하나씩 서고 제거 라벨이 서로 다르다', () => {

@@ -43,6 +43,8 @@ export interface PlanPaneProps {
   transitionActions?: ReactNode;
   /** 버전 고르기 줄 — 기준 상세에 합쳐 둔다(omf-all-around#196). 등록 폼에는 없다 */
   versionSlot?: ReactNode;
+  /** 「기본 정보 수정」 창 안이다 — 창 제목이 머리를 맡아 제목 · 칩을 두지 않는다(#196). */
+  embedded?: boolean;
 }
 
 /**
@@ -73,6 +75,7 @@ export const PlanPane = ({
   onCancel,
   transitionActions,
   versionSlot,
+  embedded = false,
 }: PlanPaneProps) => {
   const codeId = useId();
   const nameId = useId();
@@ -82,24 +85,31 @@ export const PlanPane = ({
   const isCodeLocked = codeLockReason !== null;
 
   return (
-    <section className="pane inspection-standard-plan-pane" aria-label={t.panes.planForm}>
+    <section
+      className={`${embedded ? '' : 'pane '}inspection-standard-plan-pane`}
+      aria-label={t.panes.planForm}
+    >
       {/*
        * 머리 — 제목과 승인 · 사용 상태 칩(omf-all-around#196). 둘 다 전용 액션으로만 바뀌어 값 표기로만 낸다.
        * 등록 전에는 서버가 채우는 값이 없어 칩을 지어내지 않는다.
        */}
-      <div className="inspection-standard-plan-head">
-        <h2 className="pane-title">{mode === 'create' ? t.detail.createTitle : t.detail.title}</h2>
-        {mode === 'edit' && plan !== null && (
-          <div className="inspection-standard-plan-chips">
-            <Chip variant="status" status={approvedAt === null ? 'warning' : 'success'}>
-              {approvedAt === null ? t.detail.chipNotApproved : t.values.approvedAt(approvedAt)}
-            </Chip>
-            <Chip variant="status" status={plan.isActive ? 'success' : 'idle'}>
-              {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
-            </Chip>
-          </div>
-        )}
-      </div>
+      {!embedded && (
+        <div className="inspection-standard-plan-head">
+          <h2 className="pane-title">
+            {mode === 'create' ? t.detail.createTitle : t.detail.title}
+          </h2>
+          {mode === 'edit' && plan !== null && (
+            <div className="inspection-standard-plan-chips">
+              <Chip variant="status" status={approvedAt === null ? 'warning' : 'success'}>
+                {approvedAt === null ? t.detail.chipNotApproved : t.values.approvedAt(approvedAt)}
+              </Chip>
+              <Chip variant="status" status={plan.isActive ? 'success' : 'idle'}>
+                {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
+              </Chip>
+            </div>
+          )}
+        </div>
+      )}
 
       {optionsNotice}
       {banner}
@@ -160,6 +170,7 @@ export const PlanPane = ({
           label={t.fields.process}
           options={[{ value: '', label: t.values.empty }, ...processOptions]}
           value={values.processId}
+          placeholder={t.values.empty}
           onChange={(processId) => onChange({ processId })}
           error={fieldErrors.processId}
         />
@@ -168,6 +179,7 @@ export const PlanPane = ({
           label={t.fields.routing}
           options={[{ value: '', label: t.values.empty }, ...routingOptions]}
           value={values.routingId}
+          placeholder={t.values.empty}
           onChange={(routingId) => onChange({ routingId })}
           disabled={routingDisabledReason !== null}
           disabledReason={routingDisabledReason ?? undefined}
@@ -194,7 +206,8 @@ export const PlanPane = ({
       <div className="form-actions inspection-standard-plan-footer">
         <div className="inspection-standard-plan-footer-start">{transitionActions}</div>
 
-        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
+        {/* 창 안에서는 「취소」가 창을 닫는 길이라 늘 누를 수 있다(고친 값은 버린다 · #196). */}
+        <Button variant="outlined" disabled={!embedded && !isDirty} onClick={onCancel}>
           {messages.common.cancel}
         </Button>
 

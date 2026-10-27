@@ -21,12 +21,20 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
       appliedFilters={DEFAULT_PLAN_FILTERS}
       onApplyFilters={onApplyFilters}
       pageView={toPageView({ page: 1, size: 50, total: 3 }, 3)}
+      pageMeta={{ page: 1, size: 50, total: 3 }}
+      onChangePageSize={vi.fn()}
       onChangePage={onChangePage}
       selectedPlanId={null}
       onSelect={onSelect}
       isCreating={false}
       onAddPlan={onAddPlan}
       loadError={null}
+      itemLabelOf={(itemId) =>
+        itemId === null || itemId === undefined ? null : `품목 ${String(itemId)}`
+      }
+      processLabelOf={(processId) =>
+        processId === null || processId === undefined ? null : `공정 ${String(processId)}`
+      }
       {...overrides}
     />,
   );
@@ -35,14 +43,22 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
 };
 
 describe('PlanListPane — 목록 표시', () => {
-  it('기준코드·기준명·유형 세 열만 낸다', () => {
+  it('기준코드·기준명·유형과 품목/공정·승인·사용·PQC 생략 열을 낸다', () => {
     renderPane();
 
     /* 머리칸에는 열 순서를 옮기는 손잡이 아이콘 글자(drag_indicator)가 함께 있다 — 이름만 견준다. */
     const headers = screen
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent?.replace('drag_indicator', ''));
-    expect(headers).toEqual(['기준코드', '기준명', '검사 유형']);
+    expect(headers).toEqual([
+      '기준코드',
+      '기준명',
+      '검사 유형',
+      '품목 / 공정',
+      '승인 여부',
+      '사용 여부',
+      'PQC 생략',
+    ]);
   });
 
   it('고른 기준의 행에 선택 표식이 붙는다', () => {
@@ -114,6 +130,7 @@ describe('PlanListPane — 쪽 이동', () => {
   it('다음을 누르면 다음 쪽 번호를 알린다', async () => {
     const { onChangePage, user } = renderPane({
       pageView: toPageView({ page: 2, size: 50, total: 240 }, 50),
+      pageMeta: { page: 2, size: 50, total: 240 },
     });
 
     await user.click(screen.getByRole('button', { name: '다음' }));

@@ -18,7 +18,12 @@ const URL_KEYS = {
   inspectionTypeCode: 'type',
   includeInactive: 'inactive',
   page: 'page',
+  size: 'size',
 } as const;
+
+/** 쪽 크기 — 공용 쪽 이동의 20 · 50 · 100. 기본 50 은 서버 기본과 같아 주소 · 요청에 싣지 않는다(#196). */
+export const DEFAULT_PAGE_SIZE = 50;
+const PAGE_SIZE_VALUES = [20, 50, 100];
 
 /** 켜짐을 나타내는 유일한 값. 다른 값은 꺼진 것으로 본다 — 주소를 손으로 고쳐도 뜻이 흔들리지 않는다. */
 const ON = '1';
@@ -45,7 +50,17 @@ export const readPage = (params: URLSearchParams): number => {
  * **선택(`plan`·`ver`)을 담지 않는다.** 조건·쪽이 바뀌면 보이는 행이 달라지므로
  * 이 함수의 결과로 주소를 통째로 갈아 끼우면 선택이 자연히 사라진다.
  */
-export const toSearchParams = (filters: PlanFilters, page: number): URLSearchParams => {
+export const readSize = (params: URLSearchParams): number => {
+  const raw = Number(params.get(URL_KEYS.size) ?? '');
+
+  return PAGE_SIZE_VALUES.includes(raw) ? raw : DEFAULT_PAGE_SIZE;
+};
+
+export const toSearchParams = (
+  filters: PlanFilters,
+  page: number,
+  size: number = DEFAULT_PAGE_SIZE,
+): URLSearchParams => {
   const next = new URLSearchParams();
 
   if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
@@ -54,6 +69,7 @@ export const toSearchParams = (filters: PlanFilters, page: number): URLSearchPar
   }
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
+  if (size !== DEFAULT_PAGE_SIZE) next.set(URL_KEYS.size, String(size));
 
   return next;
 };
@@ -73,11 +89,16 @@ export interface PlanListQuery {
  * 끈 상태를 값으로 실어 보내면 「보내지 않음」과 「false를 보냄」 두 상태가 생겨 캐시 키가 갈린다.
  * 첫 쪽도 같은 이유로 싣지 않는다.
  */
-export const toListQuery = (filters: PlanFilters, page: number): PlanListQuery => ({
+export const toListQuery = (
+  filters: PlanFilters,
+  page: number,
+  size: number = DEFAULT_PAGE_SIZE,
+): PlanListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.inspectionTypeCode === '' ? {} : { inspectionTypeCode: filters.inspectionTypeCode }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
+  ...(size !== DEFAULT_PAGE_SIZE ? { size } : {}),
 });
 
 export interface FilterChip {

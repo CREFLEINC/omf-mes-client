@@ -1,6 +1,19 @@
-import { Button, type Column, EmptyState, IconButton, SkeletonText, Table } from '@crefle/web-ui';
+import {
+  Button,
+  Chip,
+  type Column,
+  EmptyState,
+  Icon,
+  IconButton,
+  SkeletonText,
+  Table,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
+
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
 
 import { DisabledAction } from './disabled-action';
 import type { ItemDraft } from './types';
@@ -56,15 +69,9 @@ const rangeLabel = (draft: ItemDraft, uomLabel: (uomId: string) => string): stri
   return parts.join(' · ');
 };
 
-/** 「필수 · 자동판정」. 꺼진 것은 적지 않는다 — 켜진 것만 이어야 훑을 수 있다. */
-const judgmentLabel = (draft: ItemDraft): string => {
-  const enabled: string[] = [];
-
-  if (draft.requiredFlag) enabled.push(t.fields.requiredFlag);
-  if (draft.automaticJudgment) enabled.push(t.fields.automaticJudgment);
-
-  return enabled.length === 0 ? t.values.none : enabled.join(' · ');
-};
+/** 판정 방식 — 자동판정이면 그 이름, 아니면 「없음」. 필수 여부는 항목 칸 앞 라벨이 말한다(검사 조회·판정 표와 같다 · #196). */
+const judgmentLabel = (draft: ItemDraft): string =>
+  draft.automaticJudgment ? t.fields.automaticJudgment : t.values.none;
 
 /**
  * 우 하단 — 검사 항목.
@@ -107,38 +114,55 @@ export const ItemPane = ({
     {
       key: 'displayNo',
       header: t.fields.sequence,
-      align: 'end',
-      width: '64px',
+      align: 'center',
+      width: '72px',
       render: (_row, rowIndex) => String(rowIndex + 1),
     },
     {
       key: 'inspectionItemCode',
       header: t.fields.itemSpec,
-      width: '200px',
-      render: (row) => t.values.itemLabel(row.inspectionItemCode, row.inspectionItemName),
+      align: 'center',
+      width: '220px',
+      /* 「필수」는 이름 앞 라벨 — 검사 조회·판정의 검사 항목별 결과 표와 같다(#196). */
+      render: (row) => (
+        <span className="inspection-standard-item-cell">
+          {row.requiredFlag && (
+            <Chip variant="status" size="sm" status="idle">
+              {t.fields.requiredFlag}
+            </Chip>
+          )}
+          <span className="inspection-standard-item-name">
+            {t.values.itemLabel(row.inspectionItemCode, row.inspectionItemName)}
+          </span>
+        </span>
+      ),
     },
-    { key: 'dataTypeCode', header: t.fields.dataType, width: '96px' },
+    { key: 'dataTypeCode', header: t.fields.dataType, align: 'center', width: '104px' },
     {
       key: 'targetRange',
       header: t.fields.targetRange,
+      align: 'center',
+      width: '240px',
       render: (row) => rangeLabel(row, uomLabel),
     },
     {
       key: 'measurementCount',
       header: t.fields.measurementCount,
-      align: 'end',
-      width: '88px',
+      align: 'center',
+      width: '104px',
     },
     {
       key: 'judgment',
       header: t.fields.judgment,
-      width: '112px',
+      align: 'center',
+      width: '136px',
       render: (row) => judgmentLabel(row),
     },
     {
       key: 'rowActions',
       header: t.fields.rowActions,
-      width: '96px',
+      align: 'center',
+      width: '104px',
       render: (row, rowIndex) => (
         <>
           <IconButton
@@ -160,6 +184,19 @@ export const ItemPane = ({
     },
   ];
 
+  /*
+   * 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다 — 검사 기준 목록 · 검사 조회·판정 표와 같다(omf-all-around#196).
+   * 고칠 수 없는 버전에는 편집 열을 두지 않는다 — 누를 수 없는 단추만 줄마다 남는다.
+   */
+  const ordered = useColumnOrder(
+    'omf-mes:inspection-standard:columns:items:order',
+    isEditable ? columns : columns.filter((column) => column.key !== 'rowActions'),
+  );
+  const resizable = useColumnWidths('omf-mes:inspection-standard:columns:items', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
+
   /** 선택 전 → 조회 실패 → 로딩 → 표 순서로 하나만 낸다. */
   const listSlot = (): ReactNode => {
     if (!isVersionSelected) {
@@ -177,17 +214,21 @@ export const ItemPane = ({
     }
 
     return (
-      <div className="wide-table">
+      /* 표 전체를 얇은 테두리 상자로 — 0건이어도 머리를 두고 표 안에 아이콘 · 제목 · 안내를 띄운다(검사 조회·판정과 같다 · #196). */
+      <div
+        ref={fit.ref}
+        className="inspection-queue-table inspection-standard-table-box inspection-standard-item-rows"
+        style={resizable.style}
+      >
         <Table
           density="compact"
-          columns={columns}
+          columns={fit.columns}
           rows={drafts}
           getRowId={(row) => row.draftId}
           /*
            * 순서 이동 열은 디자인 시스템이 렌더하고 접근성 처리(포커스 이동·라이브 안내)도 맡는다.
-           * 잠긴 상태에서는 이 열 자체를 내지 않는다 — 디자인 시스템에 「이동만 비활성」 스위치가 없고,
-           * 눌러도 아무 일이 없는 버튼을 남기는 것보다 없는 편이 정직하다.
-           * 무엇이 막혔는지는 액션 줄의 잠금 사유가 한 번 말한다.
+           * 잠긴 상태에서는 이 열 자체를 내지 않는다 — 눌러도 아무 일이 없는 버튼을 남기는 것보다 없는 편이 정직하다.
+           * 무엇이 막혔는지는 머리의 「읽기 전용」과 안내 한 줄이 말한다.
            */
           reorderable={isEditable}
           onRowReorder={onReorder}
@@ -195,8 +236,9 @@ export const ItemPane = ({
             <EmptyState
               size="sm"
               live
+              icon={<Icon name="content_paste_off" size={32} />}
               title={t.empty.itemNoneTitle}
-              description={t.empty.itemNoneDescription}
+              description={isEditable ? t.empty.itemNoneDescription : t.versionSection.lockedHint}
             />
           }
         />
@@ -212,23 +254,30 @@ export const ItemPane = ({
       {optionsNotice}
       {banner}
 
+      {/*
+       * 머리 — 제목은 탭 이름(「검사 항목 N건」)이 말하므로 화면에서는 감추고 접근 이름으로만 남긴다(검사 조회·판정과 같다).
+       * 오른쪽에 고칠 수 있으면 「+ 항목 추가」, 없으면 푸는 길 한 줄(#196).
+       */}
       {isVersionSelected && (
-        <div className="filter-bar">
+        <div className="inspection-standard-section-head inspection-standard-tab-toolbar">
+          <h4 className="inspection-standard-visually-hidden">
+            {t.versionSection.itemsTitle(drafts.length)}
+          </h4>
           {isEditable ? (
-            <div className="field-cell">
-              <Button variant="outlined" onClick={onAdd}>
-                {t.actions.addItem}
-              </Button>
-            </div>
+            <Button variant="outlined" leadingIcon={<Icon name="add" size={18} />} onClick={onAdd}>
+              {t.actions.addItem}
+            </Button>
           ) : (
-            <DisabledAction label={t.actions.addItem} reason={lockReason} />
+            <p className="field-note" title={lockReason}>
+              {t.versionSection.lockedHint}
+            </p>
           )}
         </div>
       )}
 
       {listSlot()}
 
-      {isVersionSelected && (
+      {isVersionSelected && isEditable && (
         <div className="form-actions">
           <Button variant="outlined" disabled={!isEditable || !isDirty} onClick={onCancel}>
             {messages.common.cancel}

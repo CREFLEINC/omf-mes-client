@@ -1,11 +1,11 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
-import { toListQuery } from './filters';
+import { DEFAULT_PAGE_SIZE, toListQuery } from './filters';
 import type {
   InspectionItemSpec,
   InspectionPlan,
@@ -37,8 +37,8 @@ export interface InspectionPlanListResponse {
  */
 export const planKeys = {
   all: ['inspection-plans'] as const,
-  list: (filters: PlanFilters, page: number) =>
-    ['inspection-plans', 'list', filters, page] as const,
+  list: (filters: PlanFilters, page: number, size: number = DEFAULT_PAGE_SIZE) =>
+    ['inspection-plans', 'list', filters, page, size] as const,
   detail: (inspectionPlanId: number) => ['inspection-plans', 'detail', inspectionPlanId] as const,
 };
 
@@ -49,14 +49,17 @@ export const planKeys = {
 export const useInspectionPlanList = (
   filters: PlanFilters,
   page: number,
+  size: number = DEFAULT_PAGE_SIZE,
 ): UseQueryResult<InspectionPlanListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: planKeys.list(filters, page),
+    queryKey: planKeys.list(filters, page, size),
     queryFn: () =>
       runRequest(() =>
-        client.GET('/quality/inspection-plans', { params: { query: toListQuery(filters, page) } }),
+        client.GET('/quality/inspection-plans', {
+          params: { query: toListQuery(filters, page, size) },
+        }),
       ),
   });
 };
@@ -410,5 +413,39 @@ export const useRoutingOptions = (itemId: number | null): LookupResult => {
     truncated: false,
     isError: routings.isError,
     isLoading: itemId !== null && routings.isPending,
+  };
+};
+
+/**
+ * 품목 번호 → 「이름 (코드)」(omf-all-around#196). 목록 · 상세 머리가 보이는 품목만 하나씩 상세로 푼다 —
+ * 품목 선택 목록(`useItemOptions`)은 첫 쪽만 받아 그 밖의 품목이 「알 수 없음」으로 섰다.
+ * 부르는 중 · 못 찾음 · 실패는 공용 표기(`messages.common.reference`)로 가른다.
+ */
+export const useItemNameLabels = (
+  itemIds: readonly (number | null | undefined)[],
+): ((itemId: number | null | undefined) => string | null) => {
+  const { client } = useApiClient();
+  const ids = [...new Set(itemIds.filter((id): id is number => typeof id === 'number'))];
+
+  const results = useQueries({
+    queries: ids.map((itemId) => ({
+      queryKey: ['inspection-standard', 'item-name', itemId] as const,
+      queryFn: async () => {
+        const data = await runRequest(() =>
+          client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
+        );
+        return `${masterName(data.item, data.item.itemName)} (${data.item.itemCode})`;
+      },
+      retry: false,
+      staleTime: Infinity,
+    })),
+  });
+
+  return (itemId) => {
+    if (itemId === null || itemId === undefined) return null;
+    const result = results[ids.indexOf(itemId)];
+    if (result === undefined || result.isPending) return messages.common.reference.loading;
+    if (result.isError) return messages.common.reference.unknown;
+    return result.data ?? messages.common.reference.unknown;
   };
 };
