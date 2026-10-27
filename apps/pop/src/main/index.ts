@@ -41,6 +41,12 @@ import {
 } from './kiosk-lock';
 import { LocalDb, type SqlDatabase } from './local-db';
 import {
+  MOCK_PRINTER_NAME,
+  createMockRawPrinter,
+  isMockPrinterEnabled,
+  mockPrinters,
+} from './mock-printer';
+import {
   type FileWriter,
   PrinterUnavailableError,
   RenditionPrinter,
@@ -112,6 +118,12 @@ const DEV_SERVER_URL = process.env.POP_DEV_SERVER_URL;
  *   축이라 감지기로 잡히지 않는다 — 그 이름을 바꿀 때 이 주석을 함께 본다.
  */
 const IS_DEV = !app.isPackaged;
+
+/**
+ * 가상 라벨 프린터를 켰는가 — **개발본에서 `POP_MOCK_PRINTER` 를 줄 때만**(`mock-printer` 머리말).
+ * 켜면 OS 프린터 목록 대신 가상 프린터 한 대를 보이고, 라벨 바이트는 파일로만 받는다.
+ */
+const MOCK_PRINTER = isMockPrinterEnabled({ isDev: IS_DEV, flag: process.env.POP_MOCK_PRINTER });
 
 /**
  * 렌더러를 `file://`이 아니라 자체 스킴으로 띄운다.
@@ -501,7 +513,14 @@ async function main(): Promise<void> {
   /** 인쇄 진단 기록이 앉는 자리. 사람이 파일로 읽는다. */
   const logDir = join(userData, 'logs');
   const stagingDir = join(app.getPath('temp'), 'omf-pop-print');
-  const rawPrinter = createRawPrinter(process.env.POP_PRINTER_NAME);
+  const mockSpoolDir = join(userData, 'mock-printer');
+  const rawPrinter = MOCK_PRINTER
+    ? createMockRawPrinter({ spoolDir: mockSpoolDir })
+    : createRawPrinter(process.env.POP_PRINTER_NAME);
+
+  if (MOCK_PRINTER) {
+    console.warn(`가상 라벨 프린터 켜짐 — 라벨은 ${mockSpoolDir} 에 파일로만 남는다`);
+  }
   const printer = new RenditionPrinter(
     fileWriter,
     createSilentPrinter({
@@ -561,10 +580,11 @@ async function main(): Promise<void> {
      *   기동 시점의 값을 들고 있으면 사라진 장치로 계속 보낸다.
      */
     return resolveTerminalPrinter({
-      printers: await printHost.webContents.getPrintersAsync(),
+      /* 가상 프린터를 켰으면 OS 목록을 읽지 않는다 — 진짜 장치가 골라질 길을 닫는다. */
+      printers: MOCK_PRINTER ? mockPrinters() : await printHost.webContents.getPrintersAsync(),
       preferred: process.env.POP_PRINTER_NAME,
       requested,
-      defaultName: await readDefaultPrinterName(stagingDir),
+      defaultName: MOCK_PRINTER ? MOCK_PRINTER_NAME : await readDefaultPrinterName(stagingDir),
     });
   };
 
