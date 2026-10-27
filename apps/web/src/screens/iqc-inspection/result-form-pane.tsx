@@ -51,7 +51,6 @@ import { withUom } from './uom-lookup';
  */
 
 const t = messages.iqcInspection.result;
-const unknownValue = messages.iqcInspection.queue.emptyValue;
 
 export interface ResultFormPaneProps {
   /** 편집할 회차. 아직 아무도 손대지 않은 의뢰면 `null` */
@@ -126,6 +125,10 @@ export interface ResultFormPaneProps {
   inlineJudgment?: boolean;
   /** 「판정 상세 입력」에 적을 것이 있는가(불합격 · 판정 변경 사유) — 수량 줄 판정일 때만 본다. */
   hasJudgmentDetail?: boolean;
+  /** 2단계(판정)를 다 채웠다 — 판정을 골랐고 꼭 적을 상세가 비지 않았다. 단계 번호가 강조색이 된다. */
+  judgmentDone?: boolean;
+  /** 3단계(4M)를 다 채웠다 — 4M 변경품이고 비고를 적었다. */
+  fourMDone?: boolean;
   /** 「판정 상세 입력」 창을 열 때 — 부르는 쪽이 지금 값을 담아 둔다. */
   onJudgmentDetailOpen?: () => void;
   /** 「판정 상세 입력」 창의 [취소] — 열 때 값으로 되돌린다. */
@@ -140,6 +143,33 @@ const FIELD_OF: Record<string, keyof QuantityDraft> = {
   rejectedQty: 'rejected',
   heldQty: 'held',
 };
+
+/**
+ * 단계 머리 — 「① 검사 수량 입력 ──── ② 판정 ──── ③ 4M 변경 정보」(사용자 지시 2026-10-27 · #185).
+ * 그 단계를 다 채우면 번호 · 제목 · 이어지는 선이 강조색이다. 마지막 단계는 선이 없다.
+ */
+const StepHead = ({
+  step,
+  title,
+  done,
+  hint,
+  children,
+}: {
+  step: number;
+  title: string;
+  done: boolean;
+  hint?: string;
+  children?: ReactNode;
+}) => (
+  <div className="iqc-inspection-step-head" data-done={done ? '' : undefined}>
+    <span className="iqc-inspection-step-no" aria-hidden>
+      {step}
+    </span>
+    <h3 title={hint}>{title}</h3>
+    {children}
+    <span className="iqc-inspection-step-line" aria-hidden />
+  </div>
+);
 
 export const ResultFormPane = ({
   round,
@@ -177,6 +207,8 @@ export const ResultFormPane = ({
   hasJudgmentDetail = false,
   onJudgmentDetailOpen,
   onJudgmentDetailCancel,
+  judgmentDone = false,
+  fourMDone = false,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const partialNoteId = useId();
@@ -250,17 +282,8 @@ export const ResultFormPane = ({
           : /* 모자랄 때는 오른쪽 「미입력 N」이 이미 말한다 — 문장을 두지 않는다(#133). */
             null;
 
-  const sumText = totals.kind === 'counted' ? formatMicro(totals.sum) : unknownValue;
   const inspectedText = withUom(String(inspectedQty), uomCode);
-  /* 오른쪽 상태 — 「미입력 N」(이름표는 왼쪽 「입력 완료」와 같은 보조색) · 넘치면 「N 초과」. 음수는 보이지 않는다(#133). */
-  const statusText: ReactNode = isOver ? (
-    t.overBy(overText)
-  ) : (
-    <>
-      <span className="iqc-inspection-progress-label">{t.remaining} </span>
-      {totals.kind === 'counted' ? withUom(formatMicro(totals.remaining), uomCode) : unknownValue}
-    </>
-  );
+  const qtyDone = totals.kind === 'counted' && totals.matches && !isOver;
 
   const field = (key: keyof QuantityDraft, label: string, invalid: boolean): ReactElement => (
     /* 단위 코드는 칸 바로 옆 글자로 — 입력값 자체에는 넣지 않는다. 모르면 붙이지 않는다. */
@@ -454,10 +477,8 @@ export const ResultFormPane = ({
           {/* ── 검사 결과 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}
           <section className="iqc-inspection-section">
             <div className="iqc-inspection-static">
-              <div className="iqc-inspection-section-head">
-                <h3>{t.sectionTitle}</h3>
-                {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 판정 단추 아래가 말한다). */}
-                {/* 회차는 제목 옆 라벨로(사용자 지시 2026-10-27 · #185). */}
+              <StepHead step={1} title={t.sectionTitle} done={qtyDone}>
+                {/* 회차는 제목 옆 라벨로(사용자 지시 2026-10-27 · #185). 회차가 아직 없으면 두지 않는다. */}
                 {isReinspecting ? (
                   <span className="iqc-inspection-head-badge iqc-inspection-round-badge">
                     {t.reinspectRound}
@@ -468,12 +489,7 @@ export const ResultFormPane = ({
                   </span>
                 ) : null}
                 {actionInQty && lockedBadge}
-                {/* 기준값(검사수량)은 제목 줄 오른쪽 끝에 — 세 칸은 이 값을 나눈 결과다. 따로 한 줄을 쓰지 않는다(#133). */}
-                <dl className="iqc-inspection-qty-base">
-                  <dt className="iqc-inspection-progress-label">{t.fields.inspectedQty}</dt>
-                  <dd>{inspectedText}</dd>
-                </dl>
-              </div>
+              </StepHead>
               <div className="iqc-inspection-collapsible-body iqc-inspection-qty-body">
                 {/*
                  * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사
@@ -490,41 +506,20 @@ export const ResultFormPane = ({
                   </>
                 )}
 
+                {/*
+                 * 합격 · 불합격 · 보류 · 총 검사 수량을 같은 모양 카드 넷으로(사용자 지시 2026-10-27 · #185). 다 맞으면 1단계
+                 * 번호가 강조색이 된다. 넘치면 얼마나 넘겼는지 카드 아래 한 줄로 말한다.
+                 */}
                 <div className="iqc-inspection-qty" data-over={isOver ? '' : undefined}>
                   {field('accepted', t.fields.accepted, errors.accepted)}
                   {field('rejected', t.fields.rejected, errors.rejected)}
                   {field('held', t.fields.held, errors.held)}
+                  <dl className="iqc-inspection-qty-field iqc-inspection-qty-total">
+                    <dt>{t.fields.inspectedQty}</dt>
+                    <dd>{inspectedText}</dd>
+                  </dl>
                 </div>
-
-                {/* 입력 현황 — 「합계 / 검사수량」 · 잔여 · 막대 · 한 줄 안내. 계산은 그대로다. */}
-                <div
-                  className="iqc-inspection-progress"
-                  data-state={
-                    isOver
-                      ? 'over'
-                      : totals.kind === 'counted' && totals.matches
-                        ? 'done'
-                        : undefined
-                  }
-                >
-                  <div className="iqc-inspection-progress-row">
-                    {/*
-                     * 「[✓ 입력 완료] 10 / 10 EA 미입력 0 EA」(사용자 지시 2026-10-26 · #185) — 이름표는 라벨, 다 채우면 초록에 체크.
-                     * 숫자는 굵게, 남은 양은 바로 뒤에 작고 흐리게.
-                     */}
-                    <span className="iqc-inspection-progress-badge">
-                      {totals.kind === 'counted' && totals.matches && !isOver && (
-                        <Icon name="check" size={14} aria-hidden />
-                      )}
-                      {t.sum}
-                    </span>
-                    <span className="iqc-inspection-progress-sum">
-                      {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
-                    </span>
-                    <span className="iqc-inspection-progress-status">{statusText}</span>
-                  </div>
-                  {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
-                </div>
+                {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
                 {actionInQty && <div className="iqc-inspection-qty-actions">{actionArea}</div>}
               </div>
             </div>
@@ -532,16 +527,13 @@ export const ResultFormPane = ({
           {inlineJudgment && (
             <section className="iqc-inspection-section iqc-inspection-inline-judgment">
               <div className="iqc-inspection-static">
-                <div className="iqc-inspection-section-head">
-                  <h3>{t.judgmentSectionTitle}</h3>
-                </div>
-                <div className="iqc-inspection-collapsible-body">
+                <StepHead step={2} title={t.judgmentSectionTitle} done={judgmentDone} />
+                <div className="iqc-inspection-collapsible-body iqc-inspection-step-box">
                   <div className="iqc-inspection-judgment-inline-row">
                     {judgmentField}
                     {/* 판정 상세(불합격 사유 · 판정 변경 사유)는 [상세 입력] 창에서 적는다 — 적을 것이 있을 때만 선다(#185). */}
                     {hasJudgmentDetail && (
-                      <div className="field-cell iqc-inspection-judgment-detail-cell">
-                        <span className="field-label">{t.judgmentDetailLabel}</span>
+                      <div className="iqc-inspection-judgment-detail-cell">
                         <div className="iqc-inspection-judgment-detail-action">
                           <Button
                             type="button"
@@ -567,10 +559,15 @@ export const ResultFormPane = ({
           {inlineJudgment && fourMSlot !== null && (
             <section className="iqc-inspection-section iqc-inspection-inline-four-m">
               <div className="iqc-inspection-static">
-                <div className="iqc-inspection-section-head">
-                  <h3 title={t.fourMChange.hint}>{t.fourMChange.sectionTitle}</h3>
+                <StepHead
+                  step={3}
+                  title={t.fourMChange.sectionTitle}
+                  hint={t.fourMChange.hint}
+                  done={fourMDone}
+                />
+                <div className="iqc-inspection-collapsible-body iqc-inspection-step-box">
+                  {fourMSlot}
                 </div>
-                <div className="iqc-inspection-collapsible-body">{fourMSlot}</div>
               </div>
             </section>
           )}

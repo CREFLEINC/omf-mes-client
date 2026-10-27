@@ -863,6 +863,12 @@ export const IqcInspectionScreen = () => {
           /* 좌우 · 상하 배치 모두 수량 · 판정을 한 줄로(좁으면 위아래 · 사용자 지시 2026-10-27 · #185). */
           inlineJudgment
           hasJudgmentDetail={isRejected || needsChangeReason}
+          judgmentDone={
+            judgment !== '' &&
+            !(isRejected && 'blocked' in resolvedDefect) &&
+            !(needsChangeReason && changeReason.trim() === '')
+          }
+          fourMDone={fourM.checked && !isFourMIncomplete(fourM)}
           onJudgmentDetailOpen={() => {
             detailSnapshot.current = { rejection, changeReason };
           }}

@@ -545,12 +545,12 @@ describe('IqcInspectionScreen', () => {
     expect(screen.getByLabelText(t.result.fields.held)).toHaveValue('5');
   });
 
-  it('되돌아온 수량이 합계 제약을 만족하면 미입력이 0 이다', async () => {
+  it('되돌아온 수량이 합계 제약을 만족하면 1단계(검사 수량 입력)가 다 채워진 것으로 선다', async () => {
     renderScreen('/?ir=1001');
 
     await waitFor(() =>
-      expect(document.querySelector('.iqc-inspection-progress-status')?.textContent).toBe(
-        `${t.result.remaining} 0`,
+      expect(document.querySelector('.iqc-inspection-step-head')?.hasAttribute('data-done')).toBe(
+        true,
       ),
     );
   });

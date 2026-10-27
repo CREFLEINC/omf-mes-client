@@ -165,7 +165,6 @@ export const iqcInspection = {
     /** 종합 판정·임시 저장·판정 확정 구획의 제목. */
     judgmentSectionTitle: '판정',
     judgmentDetailTitle: '판정 상세 입력',
-    judgmentDetailLabel: '판정 상세',
     judgmentDetailOpen: '상세 입력',
     judgmentDetailCancel: '취소',
     judgmentDetailDone: '완료',
@@ -191,10 +190,6 @@ export const iqcInspection = {
       rejected: '불합격 수량',
       held: '보류 수량',
     },
-    /** 실시간 합계. 어긋난 값을 감추지 않는다. */
-    sum: '입력 완료',
-    remaining: '미입력',
-    overBy: (over: string): string => `${over} 초과`,
     /** 진행 막대의 접근 이름. */
     progressLabel: '검사 수량 대비 입력 합계',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
