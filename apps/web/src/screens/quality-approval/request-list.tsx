@@ -19,6 +19,8 @@ export interface RequestListProps {
   onChangePage: (page: number) => void;
   /** 대상 열 이름 — 탭(승인 유형)에 맞춘다(#193). 주지 않으면 「대상 LOT」. */
   targetHeader?: string;
+  /** 승인 유형 열 — 한 유형 탭(특채 · IQC 생략 · OQC 생략)은 탭이 이미 유형을 말해 두지 않는다(#193). 기본은 보인다. */
+  showType?: boolean;
 }
 
 export const RequestList = ({
@@ -30,6 +32,7 @@ export const RequestList = ({
   onSelect,
   onChangePage,
   targetHeader,
+  showType = true,
 }: RequestListProps) => {
   const t = messages.qualityApproval;
   const columns: Column<RequestRow>[] = [
@@ -63,14 +66,20 @@ export const RequestList = ({
         </Chip>
       ),
     },
-    /* 승인 유형 꼬리표 — 탭으로 거른 목록에서도 어떤 결재인지 한눈에 보인다(#144). */
-    {
-      key: 'type',
-      header: t.fields.approvalTypeCode,
-      width: '160px',
-      align: 'center',
-      render: (row) => <Chip size="sm">{approvalTypeLabelOf(row.approvalTypeCode)}</Chip>,
-    },
+    /* 승인 유형 꼬리표(#144) — 전체 탭에서만 둔다. 한 유형 탭은 탭이 유형을 말한다(사용자 지시 2026-10-27). */
+    ...(showType
+      ? [
+          {
+            key: 'type',
+            header: t.fields.approvalTypeCode,
+            width: '160px',
+            align: 'center',
+            render: (row: RequestRow) => (
+              <Chip size="sm">{approvalTypeLabelOf(row.approvalTypeCode)}</Chip>
+            ),
+          } satisfies Column<RequestRow>,
+        ]
+      : []),
     /* 내 차례 꼬리표(#144) — 칸 가운데에 둔다(#186 사용자 지시). */
     {
       key: 'myTurn',

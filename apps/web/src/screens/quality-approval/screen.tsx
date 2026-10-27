@@ -778,6 +778,7 @@ export const QualityApprovalScreen = ({
             </div>
           )}
           <RequestList
+            showType={typeCode === ''}
             targetHeader={
               typeCode === ''
                 ? t.fields.target
