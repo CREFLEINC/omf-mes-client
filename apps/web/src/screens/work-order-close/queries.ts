@@ -15,6 +15,7 @@ type CodeValue = components['schemas']['CodeValue'];
 type ProductionOrder = components['schemas']['ProductionOrder'];
 type ProductionResult = components['schemas']['ProductionResult'];
 type Worker = components['schemas']['Worker'];
+export type WorkOrderCloseDailyResults = components['schemas']['WorkOrderDailyResults'];
 
 const LOOKUP_PAGE_SIZE = 200;
 
@@ -130,6 +131,9 @@ export const workOrderCloseKeys = {
     ['work-order-close', 'lookups', 'code-values', codeGroupCode] as const,
   results: (workOrderId: number | null) =>
     ['work-order-close', 'production-results', workOrderId] as const,
+  /** 생산실적 키 아래에 둔다 — 정정 저장이 `results`를 무효화하면 일자별 표도 다시 읽는다. */
+  dailyResults: (workOrderId: number | null) =>
+    ['work-order-close', 'production-results', workOrderId, 'daily'] as const,
   workers: () => ['work-order-close', 'lookups', 'workers'] as const,
 };
 
@@ -411,6 +415,27 @@ export const useWorkOrderCloseProductionResults = (
         items: data.items.map((result: ProductionResult) => toProductionResultRow(result)),
         truncated: isTruncated(data.page, data.items.length),
       };
+    },
+  });
+};
+
+/** 일자별 실적. 정정 반영과 교대 기준 작업일은 서버가 정한다 — 화면은 다시 더하지 않는다. */
+export const useWorkOrderCloseDailyResults = (
+  workOrderId: number | null,
+): UseQueryResult<WorkOrderCloseDailyResults> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderCloseKeys.dailyResults(workOrderId),
+    enabled: workOrderId !== null,
+    queryFn: async () => {
+      if (workOrderId === null) throw new Error('A work order is required to load daily results.');
+
+      return runRequest(() =>
+        client.GET('/production/work-orders/{workOrderId}/daily-results', {
+          params: { path: { workOrderId } },
+        }),
+      );
     },
   });
 };
