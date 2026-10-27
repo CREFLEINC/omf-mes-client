@@ -237,7 +237,8 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     noProductionLot: 'Không có LOT sản xuất liên kết',
     noShipment: 'Chưa xuất hàng',
     noInputMaterials: 'Không có vật tư đã đưa vào',
-    truncated: (total: number): string => `Chỉ hiện 500 trong ${num(total)} LOT sản xuất`,
+    truncated: (total: number): string =>
+      `Chỉ hiện 500 trong ${num(total)} LOT sản xuất, tệp xuất chuỗi cũng chỉ có 500 LOT này. Phần còn lại hãy tìm ở truy xuất ngược theo số W/O hoặc số phiếu xuất hàng.`,
     expand: (lotNo: string): string => `Mở bước tiếp theo của ${lotNo}`,
     collapse: (lotNo: string): string => `Thu gọn ${lotNo}`,
     visited: 'LOT đã đi qua',

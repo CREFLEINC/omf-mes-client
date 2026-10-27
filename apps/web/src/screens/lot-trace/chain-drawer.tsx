@@ -380,15 +380,16 @@ const ProductDocuments = ({
   const stages = PRODUCT_STAGES.filter((_, index) => (counts[index] ?? 0) > 0).join(' ');
   return (
     <li className="lot-trace-node" data-stage={anchors && !open ? stages : undefined}>
-      <Button
-        size="sm"
-        variant="text"
+      <button
+        type="button"
+        className="lot-trace-toggle lot-trace-documents-toggle"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
         onClick={() => ctx.toggleDocuments(lot.lotId)}
       >
+        <span aria-hidden="true">{open ? '▾' : '▸'}</span>
         {c.documents(total)}
-      </Button>
+      </button>
       {open && (
         <ul id={listId} className="lot-trace-tree">
           <ProductSideNodes side={lot} uomCode={lot.uomCode} stageAnchors={anchors} />

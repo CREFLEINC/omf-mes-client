@@ -232,7 +232,7 @@ export const lotTrace = {
     noShipment: '아직 출하되지 않았습니다',
     noInputMaterials: '투입 자재가 없습니다',
     truncated: (total: number): string =>
-      `생산 LOT ${total.toLocaleString('ko-KR')}건 중 500건까지 보입니다`,
+      `생산 LOT ${total.toLocaleString('ko-KR')}건 중 500건까지 보이며 사슬 내보내기에도 이 500건만 담깁니다. 나머지는 역방향 추적에서 W/O 번호나 출하번호로 찾으세요.`,
     expand: (lotNo: string): string => `${lotNo} 다음 단계 펼치기`,
     collapse: (lotNo: string): string => `${lotNo} 접기`,
     visited: '지나온 LOT',
