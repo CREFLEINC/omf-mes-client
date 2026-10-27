@@ -129,7 +129,8 @@ export const AttachmentPanel = ({
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<File[]>([]);
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
-  const [isZipping, setIsZipping] = useState(false);
+  /* 묶는 중인 내려받기 — 선택 파일(`checked`) · 전체 파일(`all`) · 없음. */
+  const [zipping, setZipping] = useState<'checked' | 'all' | null>(null);
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<FileKind | null>(null);
   /* 미리보기(#185) — 이미지 · PDF · 글(TXT · CSV)은 창 안에서 보이고, 그 밖은 내려받기만 권한다. */
@@ -305,13 +306,15 @@ export const AttachmentPanel = ({
   const checkedRows = (list.data ?? []).filter((row) =>
     checkedIds.includes(String(row.attachmentId)),
   );
-  const downloadChecked = async (): Promise<void> => {
+  /* 전체 파일 내려받기는 거르기와 관계없이 이 LOT 의 첨부 전부다(사용자 지시 2026-10-27 · #185). */
+  const downloadZip = async (scope: 'checked' | 'all'): Promise<void> => {
+    const rows = scope === 'checked' ? checkedRows : (list.data ?? []);
     setNotice(null);
-    setIsZipping(true);
+    setZipping(scope);
     try {
-      const names = uniqueNames(checkedRows.map((row) => row.fileName));
+      const names = uniqueNames(rows.map((row) => row.fileName));
       const files = [];
-      for (const [index, row] of checkedRows.entries()) {
+      for (const [index, row] of rows.entries()) {
         files.push({
           name: names[index] as string,
           data: new Uint8Array(await (await contentOf(row)).arrayBuffer()),
@@ -322,7 +325,7 @@ export const AttachmentPanel = ({
     } catch {
       setNotice(t.zipFailed);
     } finally {
-      setIsZipping(false);
+      setZipping(null);
     }
   };
 
@@ -450,17 +453,28 @@ export const AttachmentPanel = ({
     </>
   );
   const downloadCheckedButton = (
-    <Button
-      variant="outlined"
-      size={buttonSize}
-      className="inspection-documents-bulk"
-      leadingIcon={<Icon name="download" size={16} aria-hidden />}
-      loading={isZipping}
-      disabled={checkedRows.length === 0 || isZipping}
-      onClick={() => void downloadChecked()}
-    >
-      {isZipping ? t.downloading : t.downloadSelected(checkedRows.length)}
-    </Button>
+    <div className="inspection-documents-bulk">
+      <Button
+        variant="outlined"
+        size={buttonSize}
+        leadingIcon={<Icon name="download" size={16} aria-hidden />}
+        loading={zipping === 'checked'}
+        disabled={checkedRows.length === 0 || zipping !== null}
+        onClick={() => void downloadZip('checked')}
+      >
+        {zipping === 'checked' ? t.downloading : t.downloadSelected(checkedRows.length)}
+      </Button>
+      <Button
+        variant="outlined"
+        size={buttonSize}
+        leadingIcon={<Icon name="download" size={16} aria-hidden />}
+        loading={zipping === 'all'}
+        disabled={(list.data ?? []).length === 0 || zipping !== null}
+        onClick={() => void downloadZip('all')}
+      >
+        {zipping === 'all' ? t.downloading : t.downloadAll((list.data ?? []).length)}
+      </Button>
+    </div>
   );
   const pendingList = (
     <>

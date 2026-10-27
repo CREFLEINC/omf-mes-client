@@ -31,6 +31,7 @@ export const inspectionDocuments = {
   emptyHint: 'Hãy đính kèm tệp khi cần.',
   download: (fileName: string): string => `Tải ${fileName}`,
   downloadSelected: (count: number): string => `Tải các tệp đã chọn (${String(count)})`,
+  downloadAll: (count: number): string => `Tải tất cả tệp (${String(count)})`,
   downloading: 'Đang đóng gói…',
   zipName: 'TepDinhKem',
   zipFailed: 'Không tải được các tệp đã chọn. Hãy kiểm tra kết nối rồi thử lại.',

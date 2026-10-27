@@ -15245,6 +15245,8 @@ button.app-button-neutral {
 }
 
 .inspection-documents-bulk {
+  display: flex;
+  gap: var(--space-2);
   margin-inline-start: auto;
 }
 
@@ -21180,13 +21182,26 @@ body.col-reordering * {
   position: static;
 }
 
-/* 이름 오른쪽 손잡이(16px + 사이 4px)만큼 왼쪽도 띄워 이름이 칸 가운데에 온다. */
-.inspection-queue-table thead th[data-align='center'] .col-head {
-  padding-left: 20px;
+/*
+ * 이름만 흐름에 두고 끌기 손잡이(왼쪽) · 정렬 표식(오른쪽)은 머리칸 가장자리에 띄운다 — 칸이 좁아도 단추가 넘치지 않아
+ * 이름이 늘 칸 가운데에 온다(좁은 칸에서 어긋나던 문제 · 사용자 지시 2026-10-27 · #185).
+ */
+.inspection-queue-table thead th[data-align='center'] .col-grip {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  transform: translateY(-50%);
 }
 
 .inspection-queue-table thead th[data-align='center'] > button {
-  padding-left: calc(6px + 20px);
+  padding-inline: 6px;
+}
+
+.inspection-queue-table thead th[data-align='center'] > button > svg {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
 }
 
 /* 시리얼이 없는 줄의 「미등록」은 칸 가운데(사용자 지시 2026-10-26) — 번호가 있으면 왼쪽 그대로다. */

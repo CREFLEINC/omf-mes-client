@@ -46,8 +46,7 @@ const columnsOf = (
     /* 오름 · 내림차순(사용자 지시 2026-10-27 · #185). */
     sortable: true,
     header: t.columns.round,
-    /* 정렬 단추(이름 · 끌기 손잡이 · 정렬 표식)가 칸 안에 들어가야 가운데에 선다(#185). */
-    width: '140px',
+    width: '96px',
     render: (row) => String(row.inspectionRound),
   },
   {
@@ -87,6 +86,8 @@ const columnsOf = (
   {
     key: 'confirmedAt',
     align: 'center',
+    /* 오름 · 내림차순(사용자 지시 2026-10-27 · #185). 확정되지 않은 회차는 맨 앞(오름) · 맨 뒤(내림)다. */
+    sortable: true,
     header: t.columns.confirmedAt,
     width: '150px',
     /* 확정되지 않은 채 넘어간 회차도 이력에 남는다 — 빈칸으로 두지 않는다. */
@@ -120,7 +121,10 @@ export const RoundHistory = ({
   });
   const fit = useFitColumns(resizable.columns, { scrollX });
   /* 10 · 20 · 50건씩 쪽으로 나눈다(사용자 지시 2026-10-27 · #185). */
-  const paging = useClientPage(rounds, { inspectionRound: (row) => row.inspectionRound });
+  const paging = useClientPage(rounds, {
+    inspectionRound: (row) => row.inspectionRound,
+    confirmedAt: (row) => row.confirmedAt ?? '',
+  });
   if (rounds.length === 0) return null;
 
   return (

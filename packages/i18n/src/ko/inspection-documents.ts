@@ -33,6 +33,7 @@ export const inspectionDocuments = {
   download: (fileName: string): string => `${fileName} 내려받기`,
   /* 일괄 내려받기(zip · #185). */
   downloadSelected: (count: number): string => `선택 파일 내려받기 (${String(count)})`,
+  downloadAll: (count: number): string => `전체 파일 내려받기 (${String(count)})`,
   downloading: '묶는 중…',
   zipName: '첨부파일',
   zipFailed: '선택한 파일을 내려받지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
