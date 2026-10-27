@@ -83,12 +83,15 @@ export const OqcShipmentPane = ({
                     : undefined,
                 ),
             },
-            /* 수량은 가운데 — 칸 폭을 정해 LOT 번호 칸과 양쪽 여백이 고르게 보이게 한다(사용자 지시 2026-10-27). */
+            /*
+             * 수량은 가운데, 칸은 글자 폭만큼 좁게 오른쪽 끝에 붙인다 — 표 왼쪽(LOT 번호 앞)과 오른쪽(수량 뒤) 여백이
+             * 같아진다(사용자 지시 2026-10-27).
+             */
             {
               key: 'pickedQty',
               header: t.pickedQty,
               align: 'center',
-              width: '30%',
+              width: '7rem',
               render: (row) => row.qtyText,
             },
           ]}
