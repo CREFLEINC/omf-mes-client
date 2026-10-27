@@ -7696,56 +7696,16 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 배치 고르기(#186) — 탭 줄 오른쪽, 상태 칩 뒤 세로 구분선 다음. 그림 + 글의 알약 단추 둘이고, 지금 배치는 주 색
- * 테두리·옅은 주 색 바탕으로 강조된다.
+ * 배치 고르기(#186) — 탭 줄 오른쪽, 상태 칩 뒤. 모양은 검사 조회·판정의 배치 단추(`.split-orientation-*`)를 그대로
+ * 쓴다(사용자 지시 2026-10-27 · #193). 여기서는 탭 줄 높이에 맞춰 가운데로 세운다.
  */
 .po-board-layout-toggle {
-  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
 }
 
-.po-board-layout-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 25px;
-  padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--outline-variant) 70%, var(--surface-container));
-  border-radius: var(--radius-full);
-  background: var(--surface-container);
-  color: var(--on-surface);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.po-board-layout-option:hover {
-  background: color-mix(in srgb, var(--on-surface) 8%, var(--surface-container));
-}
-
-.po-board-layout-option:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-/* 지금 배치 — 글자는 그대로 밝고, 바탕·테두리·그림만 주 색이다. */
-.po-board-layout-option[aria-pressed='true'] {
-  border-color: color-mix(in srgb, var(--primary) 70%, var(--surface));
-  background: color-mix(in srgb, var(--primary) 20%, var(--surface));
+/* 지금 배치는 다시 눌러도 바뀌지 않는다 — 이 화면 묶음에만(검사 조회·판정은 그대로). */
+.po-board-layout-toggle > .split-orientation-option[aria-pressed='true'] {
   cursor: default;
-}
-
-.po-board-layout-icon {
-  flex: none;
-  fill: none;
-  stroke: var(--on-surface-variant);
-  stroke-width: 1.5;
-}
-
-.po-board-layout-option[aria-pressed='true'] .po-board-layout-icon {
-  stroke: var(--primary);
 }
 
 /* 상태 칩과 배치 고르기 사이 세로선. */

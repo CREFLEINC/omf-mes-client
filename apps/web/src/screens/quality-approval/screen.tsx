@@ -742,8 +742,7 @@ export const QualityApprovalScreen = ({
                 apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
               }}
             />
-            {/* 배치 고르기 — 상태 칩 뒤 구분선 다음(#186). 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다. */}
-            <span className="quality-approval-type-bar-divider" aria-hidden="true" />
+            {/* 배치 고르기 — 상태 칩 뒤(#186 · 구분선은 단추 묶음이 그린다). 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다. */}
             <PaneLayoutToggle
               layout={paneLayout.layout}
               onChange={paneLayout.change}
