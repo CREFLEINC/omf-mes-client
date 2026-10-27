@@ -816,7 +816,8 @@ main > * + * {
  * 상하 배치에서는 좌우 폭 막대 자리(`PaneSplitter`)가 한 줄을 차지하지 않게 감추고, 줄 높이는 내용대로 둔다 —
  * 공용 상하 배치의 2 : 3 줄 나눔이 남으면 높이 막대가 3 줄을 차지해 목록과 상세 사이가 비어 보인다.
  */
-.po-board-split.inspection-standard-split.is-stacked {
+.po-board-split.inspection-standard-split.is-stacked,
+.po-board-split.inspection-standard-split.is-stacked:has(> .po-board-gutter) {
   grid-template-rows: none;
 }
 
