@@ -186,8 +186,8 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'logistics/inbound-schedule', element: <InboundScheduleScreen /> },
       /*
-       * W-01-03 「입하 등록」 — **화면이 아니라 입하 예정 조회의 창이다**(사용자 지시 2026-10-21 — 입하·입고 일을
-       * 그 화면으로 모은다). 옛 「초과 입하 분리」 주소는 즐겨찾기가 죽지 않게 그 창으로 옮겨 준다.
+       * W-01-03 「입하 등록」 — **화면이 아니라 입고 관리의 라인 표에서 바로 한다**(사용자 지시 2026-10-24 · 옛 창은
+       * 걷었다). 옛 「초과 입하 분리」 주소는 즐겨찾기가 죽지 않게 입고 관리로 옮겨 준다(고른 발주 `po` 는 그대로).
        */
       { path: 'logistics/over-receipt-split', element: <OverReceiptSplitRedirect /> },
       /*

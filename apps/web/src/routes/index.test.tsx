@@ -612,8 +612,8 @@ describe('appRouter', () => {
   });
 
   /*
-   * W-01-03 은 화면이 아니라 입하 예정 조회의 「입하 등록」 창이다(사용자 지시 2026-10-21). 옛 주소는
-   * 즐겨찾기가 죽지 않게 라우트에 남아 그 창으로 옮겨 준다(`register-redirect.tsx` 가 옮기는 모양을 잰다).
+   * W-01-03 「입하 등록」은 화면이 아니라 입고 관리의 라인 표에서 바로 한다(사용자 지시 2026-10-24 · 옛 창은 걷었다).
+   * 옛 주소는 즐겨찾기가 죽지 않게 라우트에 남아 입고 관리로 옮겨 준다(`register-redirect.test` 가 옮기는 모양을 잰다).
    */
   it('옛 초과 입하 분리 주소가 자재창고 앞머리로 남아 있다', () => {
     expect(routedPaths()).toContain('/logistics/over-receipt-split');
@@ -625,6 +625,28 @@ describe('appRouter', () => {
    */
   it('옛 자재 입고 처리 주소가 자재창고 앞머리로 남아 있다', () => {
     expect(routedPaths()).toContain('/logistics/goods-receipt');
+  });
+
+  /* 라우트가 있는 것만으로는 어디로 옮기는지 모른다 — 그 라우트의 요소를 실제로 태워 착지점을 잰다. */
+  it('옛 자재 입고 처리 주소로 들어오면 질의가 붙어도 입고 관리에 조건 없이 착지한다', async () => {
+    const oldRoute = (appRouter.routes[0]?.children ?? []).find(
+      (route) => route.path === 'logistics/goods-receipt',
+    );
+    const OldAddress = () =>
+      useRoutes([
+        { path: '/logistics/goods-receipt', element: oldRoute?.element },
+        { path: '/logistics/inbound-schedule', element: <LocationProbe /> },
+      ]);
+
+    renderWithProviders(<OldAddress />, {
+      fetch: createStubFetch([]),
+      route: '/logistics/goods-receipt?ir=7501&status=RECEIVED',
+      session: SYNTHETIC_SESSION,
+    });
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe('/logistics/inbound-schedule');
+    });
   });
 
   /*
