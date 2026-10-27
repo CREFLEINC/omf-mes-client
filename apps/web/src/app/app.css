@@ -313,6 +313,11 @@ main > * + * {
   margin-bottom: 0;
 }
 
+/* 조회 · 초기화는 줄 오른쪽 끝에 선다(사용자 지시 2026-10-27 · #196). */
+.inspection-standard-search .filter-actions {
+  margin-left: auto;
+}
+
 .inspection-standard-detail {
   display: grid;
   gap: var(--space-5);
