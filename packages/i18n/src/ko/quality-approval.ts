@@ -68,7 +68,6 @@ export const qualityApproval = {
     /** 특채 요청의 요청 상세 카드 제목과 요청 정보 묶음(#193). */
     concessionTitle: '특채 승인 상세',
     requestInfo: '요청 정보',
-    oqcSkipNoPermission: 'OQC 생략 실행은 「OQC 출하검사 판정」 화면 권한이 있어야 합니다.',
     /** 「전체」 탭의 승인된 IQC 생략 — 실행 권한이 없을 때(#186). */
     iqcSkipNoPermission: 'IQC 생략 실행은 「긴급 IQC 생략 한도승인」 화면 권한이 있어야 합니다.',
   },
@@ -127,7 +126,14 @@ export const qualityApproval = {
     limitWorkOrder: '작업지시',
     limitProcess: '공정',
     limitCustomer: '고객',
+    limitsNone: '작업지시 · 공정 · 고객 모두 제한 없음',
     nonconformanceHeading: '연관 부적합',
+    /** 다른 화면으로 여는 줄(#193) — 대상 LOT 은 LOT 상태, 허용 작업지시는 W/O 진행현황에서 연다. */
+    lotHeading: '대상 LOT',
+    lotNoUnknown: 'LOT 번호 미제공',
+    openLot: 'LOT 열기',
+    workOrderHeading: '허용 작업지시',
+    openWorkOrder: '작업지시 열기',
     reference: {
       loading: '참조 이름 불러오는 중',
       failed: '참조 이름 조회 실패',
@@ -139,7 +145,7 @@ export const qualityApproval = {
     steps: '결재 단계',
     position: (current: number, total: number): string =>
       `${String(current)} / ${String(total)} 단계`,
-    myTurn: '요청을 결재할 차례입니다',
+    myTurn: '결재할 차례입니다',
     notMyTurn: '지금 이 요청을 결재할 차례가 아닙니다',
     waitingPending: '대기',
     /** 끝난 요청의 상태 카드 제목(#193). 결재 대기는 「결재 진행」(panes.progress)이다. */

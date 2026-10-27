@@ -95,6 +95,8 @@ export interface ConcessionCardView {
   workOrder: string;
   process: string;
   customer: string;
+  /** 작업지시 · 공정 · 고객 셋 다 제한이 없는가 — 그러면 적용 제한을 한 줄로 줄인다(#193). */
+  isUnrestricted: boolean;
 }
 
 const nonBlank = (value: string, fallback: string): string =>
@@ -142,5 +144,8 @@ export const toConcessionCardView = (
     workOrder: restrictionText(source, 'allowedWorkOrderId', references.workOrder),
     process: restrictionText(source, 'allowedProcessId', references.process),
     customer: restrictionText(source, 'allowedCustomerId', references.customer),
+    isUnrestricted: (
+      ['allowedWorkOrderId', 'allowedProcessId', 'allowedCustomerId'] as const
+    ).every((axis) => source[axis] === undefined || source[axis] === null),
   };
 };

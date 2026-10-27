@@ -123,8 +123,11 @@ export const ProgressPane = ({ view, isFinished }: ProgressPaneProps) => {
         <span className="quality-approval-progress-position">
           {t.progress.position(currentStepNo, view.totalStepNo)}
         </span>
-        <span aria-hidden="true">·</span>
-        <span>{view.isMyTurn ? t.progress.myTurn : t.progress.notMyTurn}</span>
+        {/* 차례는 라벨로 — 내 차례면 주황 시계 라벨, 아니면 회색 라벨(사용자 지시 2026-10-27). */}
+        <span className={`quality-approval-turn-label ${view.isMyTurn ? 'is-mine' : 'is-other'}`}>
+          {view.isMyTurn && <Icon name="schedule" size={16} />}
+          {view.isMyTurn ? t.progress.myTurn : t.progress.notMyTurn}
+        </span>
       </p>
     </div>
   );

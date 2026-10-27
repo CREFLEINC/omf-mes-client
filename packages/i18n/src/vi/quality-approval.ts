@@ -74,8 +74,6 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn yêu cầu khác.',
     concessionTitle: 'Chi tiết phê duyệt đặc cách',
     requestInfo: 'Thông tin yêu cầu',
-    oqcSkipNoPermission:
-      'Cần quyền màn hình 「Đánh giá kiểm tra xuất hàng OQC」 để thực hiện bỏ qua OQC.',
     iqcSkipNoPermission:
       'Cần quyền màn hình 「Phê duyệt bỏ qua IQC khẩn cấp」 để thực hiện bỏ qua IQC.',
   },
@@ -124,7 +122,13 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     limitWorkOrder: 'Lệnh sản xuất',
     limitProcess: 'Công đoạn',
     limitCustomer: 'Khách hàng',
+    limitsNone: 'Không giới hạn lệnh sản xuất · công đoạn · khách hàng',
     nonconformanceHeading: 'Không phù hợp liên quan',
+    lotHeading: 'LOT đối tượng',
+    lotNoUnknown: 'Không có số LOT',
+    openLot: 'Mở LOT',
+    workOrderHeading: 'Lệnh sản xuất được phép',
+    openWorkOrder: 'Mở lệnh sản xuất',
     reference: {
       loading: 'Đang tải tên tham chiếu',
       failed: 'Tra cứu tên tham chiếu thất bại',
@@ -136,7 +140,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     steps: 'Bước phê duyệt',
     position: (current: number, total: number): string =>
       `Bước ${String(current)} / ${String(total)}`,
-    myTurn: 'Đến lượt phê duyệt yêu cầu',
+    myTurn: 'Đến lượt phê duyệt',
     notMyTurn: 'Bây giờ chưa đến lượt phê duyệt yêu cầu này',
     waitingPending: 'Chờ',
     resultTitle: 'Kết quả phê duyệt',

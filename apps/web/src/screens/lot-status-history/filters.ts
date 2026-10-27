@@ -117,6 +117,11 @@ export const readHistoryPage = (params: URLSearchParams): number =>
 export const readSelectedLotId = (params: URLSearchParams): number | null =>
   readPositiveInteger(params.get(URL_KEYS.selectedLot));
 
+/** 이 화면의 진입 주소(LOT 하나를 골라 연다) — 다른 화면이 「LOT 열기」로 건다(품질 승인 처리 #193). */
+export const LOT_STATUS_SCREEN_PATH = '/quality/lot-status';
+export const lotStatusEntryPath = (lotId: number): string =>
+  `${LOT_STATUS_SCREEN_PATH}?${URL_KEYS.selectedLot}=${String(lotId)}`;
+
 const setOrDelete = (params: URLSearchParams, key: string, value: string): void => {
   if (value === '') params.delete(key);
   else params.set(key, value);

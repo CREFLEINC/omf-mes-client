@@ -20,6 +20,7 @@ import { toApiError } from '../../patterns/request';
 import { iqcSkipApprovalKeys, useSkipTargetLot } from '../iqc-skip-approval/queries';
 import { SkipExecutePane } from '../iqc-skip-approval/skip-execute-pane';
 import { judgeSkipExecute, skipExecuteLotIdOf } from '../iqc-skip-approval/target';
+import { LOT_STATUS_SCREEN_PATH, lotStatusEntryPath } from '../lot-status-history/filters';
 import { oqcInspectionKeys } from '../oqc-inspection/queries';
 import { ApprovalActionPane } from './approval-action-pane';
 import { ApproveDialog } from './approve-dialog';
@@ -44,6 +45,7 @@ import { toPageView } from './pagination';
 import { ProgressPane } from './progress-pane';
 import { toApprovalProgressView } from './progress';
 import { RejectDialog } from './reject-dialog';
+import { RelatedLink } from './related-link';
 import {
   qualityApprovalKeys,
   requestDetailPath,
@@ -98,8 +100,6 @@ const describeLoadError = (error: ApiError): string => {
 
 /** OQC 생략 결재 유형 — 서버 선행 값(omf-all-around#119 · P-83). 생성 타입의 enum 에 아직 없다. */
 const OQC_SKIP = 'OQC_SKIP';
-/** OQC 출하검사 판정(W-04-03) — OQC 생략 실행 권한을 이 화면 권한으로 본다(서버 `manual-permissions`). */
-const OQC_INSPECTION_PATH = '/shipment/oqc-inspection';
 export interface QualityApprovalScreenProps {
   approvalTypeCodes?: readonly string[];
 }
@@ -123,8 +123,7 @@ export const QualityApprovalScreen = ({
   const { session } = useSession();
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다(`inlineTabs`). */
   const canOpenIqcSkip = toWebAccess(session?.permissions).allows(IQC_SKIP_APPROVAL_PATH);
-  /* OQC 생략 실행은 서버가 OQC 출하검사 판정(W-04-03) 권한으로 거른다 — 없으면 실행 구획 대신 안내만(#193). */
-  const canExecuteOqcSkip = toWebAccess(session?.permissions).allows(OQC_INSPECTION_PATH);
+  const canOpenLotStatus = toWebAccess(session?.permissions).allows(LOT_STATUS_SCREEN_PATH);
   const filters = useMemo(
     /* 상태 조건은 탭 줄 승인·반려 칩(#186)이 건다 — 그 두 값만 주소에서 읽는다(결재 대기는 `pd=1`). */
     () => readFilters(searchParams, approvalTypeCodes, STATUS_FILTER_CODES),
@@ -209,7 +208,8 @@ export const QualityApprovalScreen = ({
   });
 
   /*
-   * 승인된 OQC 생략의 실행(#193) — IQC 생략과 같이 이 화면에서 실행한다. 서버 경로는 OQC 출하검사 판정의 실행과 같다.
+   * 승인된 OQC 생략의 실행(#193) — IQC 생략과 같이 이 화면에서 실행한다. 서버 경로는 OQC 출하검사 판정의 실행과 같고,
+   * 서버가 이 화면(W-03-09) 권한으로도 실행을 연다(서버 `manual-permissions` · #193) — 권한 안내 문구를 두지 않는다.
    * ⚠ 실행 여부를 읽을 서버 값이 없다 — 이 화면에서 실행을 마친 출하작업지시만 「완료」로 보이고, 이미 실행된 건을
    *   다시 누르면 서버가 400 으로 막아 그 문구가 배너에 선다.
    */
@@ -405,10 +405,18 @@ export const QualityApprovalScreen = ({
     return (
       <>
         <DetailPane view={toRequestDetailView(detail.data.request)} />
+        {/* IQC 생략의 대상은 입하 LOT 이다 — LOT 상태에서 그 LOT 을 연다(#193 · 생략 실행과 같은 전제). */}
+        {isIqcSkip && canOpenLotStatus && (
+          <RelatedLink
+            heading={t.condition.lotHeading}
+            value={detail.data.request.target.displayName}
+            to={lotStatusEntryPath(detail.data.request.target.targetId)}
+            label={t.condition.openLot}
+          />
+        )}
         {/* OQC 생략(#119)은 연결 조건이 없다 — IQC 생략처럼 승인된 뒤에만 생략 실행 구획이 선다(#193). */}
         {isOqcSkip
-          ? detail.data.request.statusCode === 'APPROVED' &&
-            (canExecuteOqcSkip ? (
+          ? detail.data.request.statusCode === 'APPROVED' && (
               <SkipExecutePane
                 texts={t.oqcSkipExecute}
                 state={
@@ -435,9 +443,7 @@ export const QualityApprovalScreen = ({
                   />
                 }
               />
-            ) : (
-              <p className="field-note">{t.detail.oqcSkipNoPermission}</p>
-            ))
+            )
           : isIqcSkip
             ? /* IQC 생략(#186)은 연결 조건이 없다 — 승인된 뒤에만 생략 실행 구획이 선다. */
               approvedIqcSkipLotId !== null &&

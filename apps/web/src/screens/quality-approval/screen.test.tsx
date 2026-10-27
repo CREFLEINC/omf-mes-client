@@ -14,6 +14,8 @@ import {
 import { SessionProvider, type Session } from '../../patterns/session';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { dispositionEntryPath } from '../disposition-decision/filters';
+import { lotStatusEntryPath } from '../lot-status-history/filters';
+import { workOrderProgressEntryPath } from '../work-order-progress/filters';
 import { QualityApprovalScreen } from './screen';
 import {
   concessionDetailPath,
@@ -764,8 +766,18 @@ describe('QualityApprovalScreen conditions', () => {
     expect(within(pane).getByText('2')).toBeInTheDocument();
     expect(within(pane).getByText('2026-08-22 ~ 2026-09-30')).toBeInTheDocument();
     expect(within(pane).getByText('합성 조건 비고')).toBeInTheDocument();
-    expect(await within(pane).findByText('SYNTH-WO-1201')).toBeInTheDocument();
+    const usage = within(pane).getByRole('region', { name: t.condition.usageTitle });
+    expect(await within(usage).findByText('SYNTH-WO-1201')).toBeInTheDocument();
     expect(within(pane).getByText('합성 고객')).toBeInTheDocument();
+    /* 다른 화면에서 여는 줄(#193) — LOT 은 LOT 상태, 허용 작업지시는 W/O 진행현황의 진입 주소다. */
+    expect(within(pane).getByRole('link', { name: t.condition.openLot })).toHaveAttribute(
+      'href',
+      lotStatusEntryPath(concession.lotId),
+    );
+    expect(within(pane).getByRole('link', { name: t.condition.openWorkOrder })).toHaveAttribute(
+      'href',
+      workOrderProgressEntryPath(1201),
+    );
     expect(within(pane).getByText('SYNTH-EA · 합성 낱개')).toBeInTheDocument();
     expect(within(pane).getByText('합성 공정')).toBeInTheDocument();
     for (const internalId of ['901', '1201', '1301', '1401']) {
@@ -829,7 +841,8 @@ describe('QualityApprovalScreen conditions', () => {
         : base(request);
     renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
 
-    const group = await screen.findByRole('group', { name: t.condition.title });
+    await screen.findByRole('group', { name: t.condition.title });
+    const group = screen.getByRole('region', { name: t.condition.usageTitle });
     expect(within(group).getAllByText(t.condition.reference.loading)).toHaveLength(4);
     expect(within(group).queryByText('SYNTH-WO-1201')).toBeNull();
   });
@@ -896,7 +909,7 @@ describe('QualityApprovalScreen conditions', () => {
     expect(screen.queryByRole('button', { name: o.action })).not.toBeInTheDocument();
   });
 
-  it('OQC 출하검사 판정 권한이 없으면 승인된 OQC 생략에 실행 단추 대신 안내만 세운다(#193)', async () => {
+  it('OQC 출하검사 판정 권한이 없어도 승인 화면 권한만으로 승인된 OQC 생략을 실행할 수 있다(#193)', async () => {
     const approved = oqcSkipRequest({
       statusCode: 'APPROVED',
       isMyTurn: false,
@@ -909,10 +922,8 @@ describe('QualityApprovalScreen conditions', () => {
       { ...SYNTHETIC_SESSION, permissions: ['W-03-09'] },
     );
 
-    expect(await screen.findByText(t.detail.oqcSkipNoPermission)).toBeInTheDocument();
-    expect(
-      screen.queryByRole('region', { name: t.oqcSkipExecute.heading }),
-    ).not.toBeInTheDocument();
+    const pane = await screen.findByRole('region', { name: t.oqcSkipExecute.heading });
+    expect(within(pane).getByRole('button', { name: t.oqcSkipExecute.action })).toBeEnabled();
   });
 
   /* 「전체」 탭에서도 IQC 생략을 처리한다(#186) — 특채 조건을 찾지 않고, 승인되면 생략 실행 구획이 선다. */
@@ -1067,9 +1078,18 @@ describe('QualityApprovalScreen conditions', () => {
       '/quality/approvals?approvalRequestId=31',
     );
 
-    await waitFor(() => expect(screen.getAllByText(t.condition.reference.failed)).toHaveLength(3));
+    const usage = await screen.findByRole('region', { name: t.condition.usageTitle });
+    await waitFor(() =>
+      /* 두 칸(사용 조건 안) + 실패 배너 제목 하나(구획 밖) — 「작업지시 열기」 줄의 이름은 세지 않는다. */
+      expect(within(usage).getAllByText(t.condition.reference.failed)).toHaveLength(2),
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(t.condition.reference.failed);
     await user.click(screen.getByRole('button', { name: messages.common.retry }));
-    expect(await screen.findByText('SYNTH-WO-1201')).toBeInTheDocument();
+    expect(
+      await within(screen.getByRole('region', { name: t.condition.usageTitle })).findByText(
+        'SYNTH-WO-1201',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText('합성 고객')).toBeInTheDocument();
     expect([workOrderAttempts, customerAttempts]).toEqual([2, 2]);
   });
@@ -1177,7 +1197,8 @@ describe('QualityApprovalScreen conditions', () => {
       '/quality/approvals?approvalRequestId=31',
     );
 
-    const group = await screen.findByRole('group', { name: t.condition.title });
+    await screen.findByRole('group', { name: t.condition.title });
+    const group = screen.getByRole('region', { name: t.condition.usageTitle });
     await waitFor(() =>
       expect(within(group).getAllByText(t.condition.reference.unknown)).toHaveLength(4),
     );

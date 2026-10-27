@@ -91,6 +91,7 @@ describe('toConcessionCardView', () => {
       workOrder: 'SYNTH-WO-001',
       process: '합성 공정',
       customer: '합성 고객',
+      isUnrestricted: false,
     });
     expect(JSON.stringify(view)).not.toMatch(/\b(99501|99701|99801|99901|99201|99301|99401)\b/);
     expect(source).toEqual(before);

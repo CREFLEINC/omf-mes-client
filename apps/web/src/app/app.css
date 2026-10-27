@@ -4251,6 +4251,27 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
+/* 차례 라벨 — 내 차례는 주황(결재 대기 배지와 같은 색), 아니면 회색. */
+.quality-approval-turn-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-full);
+  font: var(--type-label-md);
+  letter-spacing: var(--type-label-md-tracking);
+}
+
+.quality-approval-turn-label.is-mine {
+  background: var(--semantic-warning-container);
+  color: var(--semantic-warning);
+}
+
+.quality-approval-turn-label.is-other {
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+}
+
 .quality-approval-progress-position {
   color: var(--on-surface);
   font: var(--type-label-lg);
@@ -4519,6 +4540,19 @@ main:has(.iqc-skip-approval-detail) {
   background: var(--surface-container);
 }
 
+.quality-approval-concession-limits.is-none {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.quality-approval-concession-limits.is-none > span {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
 .quality-approval-concession-limits > h4 {
   margin: 0;
   color: var(--on-surface);
@@ -4545,24 +4579,24 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-/* 「부적합 열기」 — 링크지만 테두리 알약 단추 모양이다(새 화면으로 가는 표시를 오른쪽에 둔다). */
+/* 다른 화면 열기 — 링크지만 주 색 알약 단추 모양이다(사용자 지시 2026-10-27). 새 화면으로 가는 표시를 오른쪽에 둔다. */
 .quality-approval-concession-nc-link {
   display: inline-flex;
   flex: none;
   align-items: center;
-  gap: var(--space-1);
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-4);
-  border: 1px solid var(--outline);
+  gap: var(--space-2);
+  min-height: var(--control-height-md);
+  padding: 0 var(--space-5);
   border-radius: var(--radius-full);
-  color: var(--on-surface);
+  background: var(--primary);
+  color: var(--on-primary);
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
   text-decoration: none;
 }
 
 .quality-approval-concession-nc-link:hover {
-  background: var(--surface-container-high);
+  background: color-mix(in srgb, var(--primary) 88%, var(--on-primary));
 }
 
 .quality-approval-concession-nc-link:focus-visible {

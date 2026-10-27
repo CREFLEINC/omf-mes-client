@@ -55,7 +55,7 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     position: (current: number, total: number): string =>
       `Bước ${String(current)} / ${String(total)}`,
     finished: (total: number): string => `Đã kết thúc phê duyệt · tổng ${String(total)} bước`,
-    myTurn: 'Đến lượt bạn phê duyệt yêu cầu',
+    myTurn: 'Đến lượt bạn phê duyệt',
     notMyTurn: 'Bây giờ chưa đến lượt bạn phê duyệt yêu cầu này',
     waitingCurrent: 'Chờ duyệt',
     waitingPending: 'Chưa duyệt',

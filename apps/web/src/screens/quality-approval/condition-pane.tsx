@@ -1,10 +1,16 @@
-import { AlertBanner, Button, EmptyState, Icon, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
-import { Link } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
-import { dispositionEntryPath } from '../disposition-decision/filters';
+import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
+import { DISPOSITION_SCREEN_PATH, dispositionEntryPath } from '../disposition-decision/filters';
+import { LOT_STATUS_SCREEN_PATH, lotStatusEntryPath } from '../lot-status-history/filters';
+import {
+  WORK_ORDER_PROGRESS_SCREEN_PATH,
+  workOrderProgressEntryPath,
+} from '../work-order-progress/filters';
 import {
   toConcessionCardinality,
   toConcessionCardView,
@@ -20,6 +26,7 @@ import {
   useConcessionCandidates,
   useConcessionDetail,
 } from './queries';
+import { RelatedLink } from './related-link';
 
 export interface ConditionPaneProps {
   approvalRequestId: number | null;
@@ -32,6 +39,8 @@ export interface ConditionPaneProps {
 
 export const ConditionPane = ({ approvalRequestId, requestInfo = null }: ConditionPaneProps) => {
   const t = messages.qualityApproval.condition;
+  const { session } = useSession();
+  const access = toWebAccess(session?.permissions);
   const candidates = useConcessionCandidates(approvalRequestId);
   const cardinality =
     approvalRequestId === null || candidates.data === undefined
@@ -206,37 +215,60 @@ export const ConditionPane = ({ approvalRequestId, requestInfo = null }: Conditi
           ],
           'quality-approval-concession-grid',
         )}
-        <div className="quality-approval-concession-limits" role="group" aria-label={t.limits}>
-          <h4>{t.limits}</h4>
-          {facts(
-            [
-              [t.limitWorkOrder, view.workOrder],
-              [t.limitProcess, view.process],
-              [t.limitCustomer, view.customer],
-            ],
-            'quality-approval-concession-grid is-three',
-          )}
-        </div>
+        {view.isUnrestricted ? (
+          /* 셋 다 제한이 없으면 한 줄로 줄인다(사용자 지시 2026-10-27). */
+          <div
+            className="quality-approval-concession-limits is-none"
+            role="group"
+            aria-label={t.limits}
+          >
+            <h4>{t.limits}</h4>
+            <span>{t.limitsNone}</span>
+          </div>
+        ) : (
+          <div className="quality-approval-concession-limits" role="group" aria-label={t.limits}>
+            <h4>{t.limits}</h4>
+            {facts(
+              [
+                [t.limitWorkOrder, view.workOrder],
+                [t.limitProcess, view.process],
+                [t.limitCustomer, view.customer],
+              ],
+              'quality-approval-concession-grid is-three',
+            )}
+          </div>
+        )}
         {facts([[t.remarks, view.remarks]], 'quality-approval-concession-grid')}
       </section>
       {/*
-       * ⭐ **「부적합 열기」 — 특채일 때만 선다**(스펙 §5-1). 지목할 부적합 식별자를 특채가 들고 있다(계약 필수).
-       * **버튼 모양의 링크다** — 이름이 갈 곳을 말하고, 번호는 어느 부적합인지를 말한다(번호를 이름 옆에 둔다).
-       * 주소는 **가는 쪽 화면이 만든다**(진입 규약 omf-mes#194 §3).
+       * 다른 화면에서 이 정보를 여는 줄(#193) — 연관 부적합(처분 판정 처리) · 대상 LOT(LOT 상태) · 허용 작업지시
+       * (W/O 진행현황). 그 화면을 볼 권한이 없으면 줄을 세우지 않는다 — 누르는 순간 막힌 화면이 선다.
+       * ⭐ 부적합은 특채일 때만 성립한다(스펙 §5-1) — 지목할 식별자를 특채가 들고 있다(계약 필수).
        */}
-      <div className="quality-approval-concession-nc" role="group" aria-label={t.nonconformance}>
-        <div>
-          <h3>{t.nonconformanceHeading}</h3>
-          <span>{view.nonconformanceNo}</span>
-        </div>
-        <Link
-          className="quality-approval-concession-nc-link"
+      {access.allows(DISPOSITION_SCREEN_PATH) && (
+        <RelatedLink
+          heading={t.nonconformanceHeading}
+          value={view.nonconformanceNo}
           to={dispositionEntryPath(detail.data.nonconformanceId)}
-        >
-          {t.openNonconformance}
-          <Icon name="open_in_new" size={18} />
-        </Link>
-      </div>
+          label={t.openNonconformance}
+        />
+      )}
+      {access.allows(LOT_STATUS_SCREEN_PATH) && (
+        <RelatedLink
+          heading={t.lotHeading}
+          value={detail.data.lotNo?.trim() || t.lotNoUnknown}
+          to={lotStatusEntryPath(detail.data.lotId)}
+          label={t.openLot}
+        />
+      )}
+      {detail.data.allowedWorkOrderId != null && access.allows(WORK_ORDER_PROGRESS_SCREEN_PATH) && (
+        <RelatedLink
+          heading={t.workOrderHeading}
+          value={view.workOrder}
+          to={workOrderProgressEntryPath(detail.data.allowedWorkOrderId)}
+          label={t.openWorkOrder}
+        />
+      )}
       {hasReferenceError ? (
         <AlertBanner
           variant="error"
