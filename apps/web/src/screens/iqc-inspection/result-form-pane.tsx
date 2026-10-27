@@ -442,7 +442,7 @@ export const ResultFormPane = ({
               {isReinspecting && (
                 <Button
                   type="button"
-                  variant="text"
+                  variant="outlined"
                   size="md"
                   disabled={isSaving || isConfirming}
                   onClick={onCancelReinspection}

@@ -192,7 +192,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     partialReceiptPending: 'Chức năng cho phép nhập kho một phần sẽ được cập nhật.',
 
     reinspect: 'Thêm lượt kiểm tra lại',
-    reinspectCancel: 'Thôi kiểm tra lại',
+    reinspectCancel: 'Hủy kiểm tra lại',
     reinspectLotNotPending: 'LOT không ở trạng thái chờ kiểm tra nên không thể kiểm tra lại.',
     reinspectRound: 'Kiểm tra lại',
     reinspectNote: 'Nhập số lượng kiểm tra rồi lưu tạm thì một lượt kiểm tra mới được thêm.',

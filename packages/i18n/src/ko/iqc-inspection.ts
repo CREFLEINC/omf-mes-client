@@ -328,7 +328,7 @@ export const iqcInspection = {
      * 먼저 말한다. 「수정」으로 읽히면 검사자가 앞 판정이 사라지는 줄 알고 망설인다.
      */
     reinspect: '재검사 회차 추가',
-    reinspectCancel: '재검사 그만두기',
+    reinspectCancel: '재검사 취소',
     reinspectLotNotPending: 'LOT 이 검사 대기 상태가 아니라 재검사할 수 없습니다.',
     /** 아직 만들어지지 않은 회차다 — 번호를 화면이 세지 않으므로 번호 없이 말한다. */
     reinspectRound: '재검사',
