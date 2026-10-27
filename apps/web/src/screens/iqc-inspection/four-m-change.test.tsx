@@ -59,13 +59,26 @@ describe('FourMChange', () => {
       />,
     );
 
-    expect(screen.queryByLabelText(t.remarks, { exact: false })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('checkbox', { name: t.label }));
 
     expect(onChange).toHaveBeenCalledWith({ ...EMPTY_FOUR_M_CHANGE, checked: true });
   });
 
-  it('체크했는데 내용이 비면 오류 문구를 내고, 변경 종류 칸은 없다', () => {
+  it('체크 전에는 [비고 입력]이 없다', () => {
+    renderWithProviders(
+      <FourMChange
+        draft={EMPTY_FOUR_M_CHANGE}
+        missing={false}
+        onChange={vi.fn()}
+        disabled={false}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: t.remarksOpen })).not.toBeInTheDocument();
+  });
+
+  it('체크했는데 내용이 비면 [비고 입력] 창에 오류 문구를 내고, 변경 종류 칸은 없다', async () => {
     renderWithProviders(
       <FourMChange
         draft={{ checked: true, remarks: '' }}
@@ -75,8 +88,11 @@ describe('FourMChange', () => {
       />,
     );
 
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: t.remarksOpen }));
+    expect(await screen.findByRole('dialog', { name: t.remarksTitle })).toBeInTheDocument();
     expect(screen.getByText(t.remarksMissing)).toBeInTheDocument();
-    expect(screen.getByLabelText(t.remarks, { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: t.remarks })).toBeInTheDocument();
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 });

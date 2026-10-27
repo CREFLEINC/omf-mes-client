@@ -21836,21 +21836,24 @@ table.col-measuring td {
 .iqc-inspection-qty-judgment-row {
   display: grid;
   /*
-   * 수량 · 판정 모두 내용 폭만 — 카드 폭을 다 쓰지 않는다(빈 가운데가 생기지 않게 · 사용자 지시 2026-10-27 · #185).
-   * 카드가 좁으면 수량 쪽이 줄어든다.
+   * 카드 폭에 맞춰 나눈다(사용자 지시 2026-10-27 · #185) — 넓으면 수량 · 판정 · 4M 한 줄(2 : 1 : 1), 중간이면 수량 한 줄 ·
+   * 그 아래 판정 | 4M, 좁으면 모두 위아래. 4M 이 없으면(확정 회차) 수량 · 판정 2 : 1.
    */
-  grid-template-columns: minmax(0, max-content) auto;
-  justify-content: start;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   align-items: stretch;
 }
 
+.iqc-inspection-qty-judgment-row:has(> .iqc-inspection-inline-four-m) {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
 /*
- * 수량 쪽은 위 줄 세 칸, 아래 줄 왼쪽 입력 현황(왼쪽 정렬) · 오른쪽 끝 확정 라벨 + [재검사 회차 추가](사용자 지시 2026-10-27 · #185).
- * 한 줄에 다 들어가지 않으면 오른쪽 묶음이 다음 줄로 내려간다.
+ * 수량 쪽은 위 줄 세 칸(구획 폭을 나눠 씀), 아래 줄 왼쪽 입력 현황 · 오른쪽 끝 확정 라벨 + [재검사 회차 추가]
+ * (사용자 지시 2026-10-27 · #185).
  */
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) {
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: var(--space-5);
 }
@@ -21860,8 +21863,8 @@ table.col-measuring td {
 }
 
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) > .iqc-inspection-qty {
-  grid-template-columns: repeat(3, minmax(6rem, 9rem));
-  justify-content: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
 }
 
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) > .iqc-inspection-progress {
@@ -21885,44 +21888,57 @@ table.col-measuring td {
 
 .iqc-inspection-qty-judgment-row > .iqc-inspection-section {
   min-width: 0;
-  /* 가로선 없이 절반을 나누는 세로선만(사용자 지시 2026-10-27 · #185). */
+  /* 한 줄일 때는 가로선 없이 세로선으로만 나눈다(사용자 지시 2026-10-27 · #185). */
   border-top: 0;
 }
 
-.iqc-inspection-qty-judgment-row > .iqc-inspection-section:first-child {
+.iqc-inspection-qty-judgment-row > .iqc-inspection-section:not(:last-child) {
   padding-right: var(--space-5);
 }
 
-.iqc-inspection-qty-judgment-row > .iqc-inspection-inline-judgment {
+.iqc-inspection-qty-judgment-row > .iqc-inspection-inline-judgment,
+.iqc-inspection-qty-judgment-row > .iqc-inspection-inline-four-m {
   padding-left: var(--space-5);
   border-left: 1px solid var(--outline-variant);
 }
 
-/* 오른쪽 절반은 넉넉하다 — 안내 글(「최종 판정을 선택하세요」)이 잘리지 않는 폭. */
-/* 상세 칸이 좁으면(좌우 배치 등) 판정이 수량 아래로 내려간다 — 세로선 대신 가로선. */
-@container (max-width: 44rem) {
-  .iqc-inspection-qty-judgment-row {
-    grid-template-columns: minmax(0, 1fr);
+/* 중간 폭 — 수량은 한 줄 전체, 그 아래 판정 | 4M(위에 가로선, 둘 사이 세로선). */
+@container (max-width: 64rem) {
+  .iqc-inspection-qty-judgment-row:has(> .iqc-inspection-inline-four-m) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .iqc-inspection-qty-judgment-row > .iqc-inspection-section:first-child {
+  .iqc-inspection-qty-judgment-row:has(> .iqc-inspection-inline-four-m)
+    > .iqc-inspection-section:first-child {
+    grid-column: 1 / -1;
     padding-right: 0;
   }
 
-  /* 좁으면 수량 칸이 줄어 구획 오른쪽 끝을 넘지 않는다(사용자 지시 2026-10-27 · #185). */
-  .iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) > .iqc-inspection-qty {
-    grid-template-columns: repeat(3, minmax(0, 9rem));
-    gap: var(--space-3);
-  }
-
-  /* 위아래로 쌓이면 사이에 가로선(사용자 지시 2026-10-27 · #185). */
-  .iqc-inspection-qty-judgment-row > .iqc-inspection-inline-judgment {
+  .iqc-inspection-qty-judgment-row:has(> .iqc-inspection-inline-four-m)
+    > .iqc-inspection-inline-judgment {
     padding-left: 0;
     border-left: 0;
+  }
+
+  .iqc-inspection-qty-judgment-row:has(> .iqc-inspection-inline-four-m)
+    > .iqc-inspection-section:not(:first-child) {
+    border-top: 1px solid var(--outline-variant);
+  }
+}
+
+/* 좁은 폭(좌우 배치 등) — 모두 위아래로, 사이에 가로선(사용자 지시 2026-10-27 · #185). */
+@container (max-width: 44rem) {
+  .iqc-inspection-qty-judgment-row,
+  .iqc-inspection-qty-judgment-row:has(> .iqc-inspection-inline-four-m) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .iqc-inspection-qty-judgment-row > .iqc-inspection-section:nth-child(n) {
+    padding-inline: 0;
+    border-left: 0;
+  }
+
+  .iqc-inspection-qty-judgment-row > .iqc-inspection-section:not(:first-child) {
     border-top: 1px solid var(--outline-variant);
   }
 }
@@ -21944,7 +21960,7 @@ table.col-measuring td {
   padding-block: var(--space-2);
 }
 
-/* 판정 줄 — 최종 판정 · [상세 입력] · 「상세 입력 필요」(사용자 지시 2026-10-27 · #185). */
+/* 판정 줄 — 최종 판정 · [상세 입력](사용자 지시 2026-10-27 · #185). */
 .iqc-inspection-judgment-inline-row {
   display: flex;
   flex-wrap: wrap;
@@ -21958,14 +21974,18 @@ table.col-measuring td {
   gap: var(--space-3);
 }
 
-.iqc-inspection-detail-missing {
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-full);
-  background: var(--semantic-warning-container);
-  color: var(--on-semantic-warning-container);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-  white-space: nowrap;
+/*
+ * 판정 옆 4M — 체크하면 [비고 입력]이 옆에, 자리가 모자라면 아래 줄에 선다(사용자 지시 2026-10-27 · #185).
+ * 칸 라벨 층만큼 내려 최종 판정 칸과 같은 높이에서 시작한다.
+ */
+.iqc-inspection-inline-four-m .iqc-inspection-four-m:nth-child(n) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-height: var(--control-height-md);
+  margin-top: 0;
+  padding-top: var(--field-label-layer);
 }
 
 /* 판정 상세 입력 창 — 판정 변경 사유(있으면) 한 줄, 그 아래 불합격 칸들. */
@@ -21975,7 +21995,10 @@ table.col-measuring td {
 }
 
 .iqc-inspection-inline-judgment .iqc-inspection-judgment-field {
-  width: 14rem;
+  /* 구획 폭을 채우되 [상세 입력]이 옆에 들어가지 않으면 그 단추가 아래 줄로 간다(#185). */
+  flex: 1 1 12rem;
+  width: auto;
+  min-width: 0;
 }
 
 @container (min-width: 48rem) {

@@ -96,7 +96,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     judgmentDetailTitle: 'Nhập chi tiết đánh giá',
     judgmentDetailLabel: 'Chi tiết đánh giá',
     judgmentDetailOpen: 'Nhập chi tiết',
-    judgmentDetailMissing: 'Cần nhập chi tiết',
     judgmentDetailDone: 'Xong',
     round: (round: number): string => `Lượt ${round}`,
     loading: 'Đang tải kết quả kiểm tra.',
@@ -172,6 +171,9 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       remarks: 'Ghi chú',
       remarksPlaceholder: 'Hãy nhập ghi chú',
       remarksMissing: 'Hãy nhập ghi chú.',
+      remarksOpen: 'Nhập ghi chú',
+      remarksTitle: 'Nhập ghi chú thay đổi 4M',
+      remarksDone: 'Xong',
       blocked: 'Hàng thay đổi 4M phải nhập ghi chú mới lưu được.',
     },
     judgmentChange: {

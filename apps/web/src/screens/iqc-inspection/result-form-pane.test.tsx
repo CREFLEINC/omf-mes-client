@@ -462,6 +462,16 @@ describe('ResultFormPane — 입력 현황(#185)', () => {
 });
 
 describe('ResultFormPane — 상하 배치 판정(#185)', () => {
+  it('4M 은 판정 오른쪽에 「4M 변경 정보」 제목으로 따로 선다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, {
+      inlineJudgment: true,
+      fourMSlot: <p>4M 칸</p>,
+    });
+
+    expect(screen.getByText('4M 칸')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.fourMChange.sectionTitle })).toBeInTheDocument();
+  });
+
   it('최종 판정은 수량 구획 오른쪽 「판정」 절반에 서고, 적을 것이 없으면 「판정 상세 입력」 구획을 두지 않는다', () => {
     renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, { inlineJudgment: true });
 
@@ -474,11 +484,9 @@ describe('ResultFormPane — 상하 배치 판정(#185)', () => {
     renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, {
       inlineJudgment: true,
       hasJudgmentDetail: true,
-      judgmentDetailMissing: true,
       judgmentDetail: <p>불합격 칸</p>,
     });
 
-    expect(screen.getByText(t.judgmentDetailMissing)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: t.judgmentDetailOpen }));
     expect(await screen.findByRole('dialog', { name: t.judgmentDetailTitle })).toBeInTheDocument();
     expect(screen.getByText('불합격 칸')).toBeInTheDocument();

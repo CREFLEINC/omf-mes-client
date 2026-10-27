@@ -126,8 +126,6 @@ export interface ResultFormPaneProps {
   inlineJudgment?: boolean;
   /** 「판정 상세 입력」에 적을 것이 있는가(불합격 · 판정 변경 사유) — 수량 줄 판정일 때만 본다. */
   hasJudgmentDetail?: boolean;
-  /** 판정 상세에 꼭 적을 것이 비어 있다(불량 코드 · 판정 변경 사유) — 「상세 입력 필요」 라벨이 선다. */
-  judgmentDetailMissing?: boolean;
   /** 확정만 막는 사유(저장은 막지 않는다) — 불합격인데 불량 코드를 고르지 않았을 때다. */
   confirmOnlyBlockedReason?: string | null;
 }
@@ -173,7 +171,6 @@ export const ResultFormPane = ({
   reinspectBlockedReason = null,
   inlineJudgment = false,
   hasJudgmentDetail = false,
-  judgmentDetailMissing = false,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const partialNoteId = useId();
@@ -535,10 +532,7 @@ export const ResultFormPane = ({
                 <div className="iqc-inspection-collapsible-body">
                   <div className="iqc-inspection-judgment-inline-row">
                     {judgmentField}
-                    {/*
-                     * 판정 상세(불합격 사유 · 판정 변경 사유)는 [상세 입력] 창에서 적는다 — 적을 것이 있을 때만 선다.
-                     * 꼭 적을 것이 비었으면 오른쪽에 「상세 입력 필요」(사용자 지시 2026-10-27 · #185).
-                     */}
+                    {/* 판정 상세(불합격 사유 · 판정 변경 사유)는 [상세 입력] 창에서 적는다 — 적을 것이 있을 때만 선다(#185). */}
                     {hasJudgmentDetail && (
                       <div className="field-cell iqc-inspection-judgment-detail-cell">
                         <span className="field-label">{t.judgmentDetailLabel}</span>
@@ -552,16 +546,22 @@ export const ResultFormPane = ({
                           >
                             {t.judgmentDetailOpen}
                           </Button>
-                          {judgmentDetailMissing && (
-                            <span className="iqc-inspection-detail-missing">
-                              {t.judgmentDetailMissing}
-                            </span>
-                          )}
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
+              </div>
+            </section>
+          )}
+          {/* 4M 변경 정보 — 판정 오른쪽에 제 제목으로 따로 선다. 체크 · [비고 입력](사용자 지시 2026-10-27 · #185). 안내는 마우스를 올리면 보인다. */}
+          {inlineJudgment && fourMSlot !== null && (
+            <section className="iqc-inspection-section iqc-inspection-inline-four-m">
+              <div className="iqc-inspection-static">
+                <div className="iqc-inspection-section-head">
+                  <h3 title={t.fourMChange.hint}>{t.fourMChange.sectionTitle}</h3>
+                </div>
+                <div className="iqc-inspection-collapsible-body">{fourMSlot}</div>
               </div>
             </section>
           )}
@@ -628,8 +628,8 @@ export const ResultFormPane = ({
          */}
         {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
 
-        {/* ── 4M 변경 정보 — 판정과 다른 업무라 판정 아래 따로 선다(#133). 접지 않는다(사용자 지시 2026-10-27 · #185) ── */}
-        {fourMSlot !== null && (
+        {/* ── 4M 변경 정보 — 수량 줄 판정이 아닐 때만 판정 아래 따로 선다(#133). 접지 않는다(사용자 지시 2026-10-27 · #185) ── */}
+        {fourMSlot !== null && !inlineJudgment && (
           <section className="iqc-inspection-section iqc-inspection-four-m-block">
             <div className="iqc-inspection-static">
               <div className="iqc-inspection-section-head">

@@ -167,7 +167,6 @@ export const iqcInspection = {
     judgmentDetailTitle: '판정 상세 입력',
     judgmentDetailLabel: '판정 상세',
     judgmentDetailOpen: '상세 입력',
-    judgmentDetailMissing: '상세 입력 필요',
     judgmentDetailDone: '완료',
     round: (round: number): string => `${round}회차`,
     loading: '검사 결과를 불러오는 중입니다.',
@@ -283,6 +282,9 @@ export const iqcInspection = {
       remarks: '비고',
       remarksPlaceholder: '비고를 입력하세요',
       remarksMissing: '비고를 입력하세요.',
+      remarksOpen: '비고 입력',
+      remarksTitle: '4M 변경 비고 입력',
+      remarksDone: '완료',
       blocked: '4M 변경품은 비고를 입력해야 저장할 수 있습니다.',
     },
     judgmentChange: {
