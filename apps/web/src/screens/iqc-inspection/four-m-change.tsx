@@ -60,6 +60,8 @@ export const FourMChange = ({ draft, missing, onChange, disabled }: FourMChangeP
 
   return (
     <div className="iqc-inspection-four-m" role="group" aria-label={t.label}>
+      {/* 체크 위 소제목 — 판정 상자의 「최종 판정」 라벨과 같은 층(사용자 지시 2026-10-27 · #185). */}
+      <span className="field-label">{t.changedLabel}</span>
       <Checkbox
         checked={draft.checked}
         disabled={disabled}

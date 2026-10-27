@@ -164,6 +164,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     fourMChange: {
       sectionTitle: 'Thông tin thay đổi 4M',
       label: 'Hàng thay đổi 4M',
+      changedLabel: 'Có thay đổi 4M',
       hint: 'Chọn khi có thay đổi về con người, thiết bị, vật liệu hoặc phương pháp',
       remarks: 'Ghi chú',
       remarksPlaceholder: 'Hãy nhập ghi chú',

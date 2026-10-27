@@ -274,6 +274,7 @@ export const iqcInspection = {
     fourMChange: {
       sectionTitle: '4M 변경 정보',
       label: '4M 변경품',
+      changedLabel: '4M 변경 여부',
       hint: '사람·설비·자재·방법 중 변경 사항이 있는 경우 선택',
       remarks: '비고',
       remarksPlaceholder: '비고를 입력하세요',
