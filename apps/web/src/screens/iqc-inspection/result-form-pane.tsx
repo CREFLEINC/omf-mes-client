@@ -380,7 +380,7 @@ export const ResultFormPane = ({
                      */}
                     <span className="iqc-inspection-progress-badge">
                       {totals.kind === 'counted' && totals.matches && !isOver && (
-                        <Icon name="check" size={16} aria-hidden />
+                        <Icon name="check" size={14} aria-hidden />
                       )}
                       {t.sum}
                     </span>

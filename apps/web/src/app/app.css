@@ -15541,6 +15541,7 @@ button.app-button-neutral {
 /* 「총 검사수량 20 EA」 — 아래 「입력 완료 0 / 20 EA」 · 「미입력 20 EA」와 같은 모양: 보조색 이름표 + 굵은 숫자(#133). */
 .iqc-inspection-qty-base > dd {
   margin: 0;
+  font: var(--type-body-md);
   font-weight: 600;
 }
 
@@ -15672,6 +15673,7 @@ button.app-button-neutral {
   height: var(--control-height-md);
   margin-top: var(--field-label-layer);
   color: var(--on-surface);
+  font: var(--type-body-sm);
   font-weight: 600;
 }
 
@@ -21682,13 +21684,14 @@ table.col-measuring td {
 .iqc-inspection-progress-badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: 2px var(--space-3);
+  gap: 2px;
+  /* 회차 · 확정 라벨과 같은 크기(사용자 지시 2026-10-27 · #185). */
+  padding: 2px var(--space-2);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-full);
   color: var(--on-surface-muted);
-  font: var(--type-label-md);
-  letter-spacing: var(--type-label-md-tracking);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
 }
 
 .iqc-inspection-progress[data-state='done'] .iqc-inspection-progress-badge {
@@ -21703,7 +21706,8 @@ table.col-measuring td {
 }
 
 .iqc-inspection-progress-row > .iqc-inspection-progress-sum {
-  font: var(--type-title-md);
+  /* 본문 글자 크기에 굵게만 — 크게 키우지 않는다(사용자 지시 2026-10-27 · #185). */
+  font: var(--type-body-md);
   font-weight: 600;
 }
 
