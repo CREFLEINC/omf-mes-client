@@ -254,7 +254,7 @@ export const iqcInspection = {
       minor: '불량 상세',
       description: '불합격 사유',
       descriptionPlaceholder: '불합격 사유를 입력하세요',
-      required: '불합격이면 불량 코드를 골라야 확정할 수 있습니다.',
+      required: '불합격일 시 판정 상세를 입력해야 합니다.',
       minorRequired: '이 대분류에는 상세 코드가 있습니다. 상세 코드를 고르세요.',
       noCodes: '등록된 불량 코드가 없습니다. 기준정보 > 불량·원인 코드에서 먼저 등록하세요.',
       majorPlaceholder: '선택하세요',

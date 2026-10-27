@@ -151,7 +151,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       minor: 'Mã lỗi chi tiết',
       description: 'Lý do không đạt',
       descriptionPlaceholder: 'Nhập lý do không đạt',
-      required: 'Nếu không đạt, phải chọn mã lỗi mới xác nhận được.',
+      required: 'Nếu không đạt, phải nhập chi tiết đánh giá.',
       minorRequired: 'Nhóm lỗi này có mã chi tiết. Hãy chọn mã chi tiết.',
       noCodes: 'Chưa có mã lỗi nào. Hãy đăng ký trước tại Thông tin cơ sở > Mã lỗi·nguyên nhân.',
       majorPlaceholder: 'Hãy chọn nhóm lỗi chính',
