@@ -27,6 +27,13 @@ import type { ItemNameLookup, NameLookup } from './reference-lookup';
 
 const t = messages.iqcInspection.queue;
 
+/**
+ * 목록에서는 품목 이름의 「【 … 】」 덧붙임(고객 품번 등)을 뺀 이름만 보인다(사용자 지시 2026-10-27 · #185).
+ * 전체 이름은 마우스를 올리면 보이고, 상세는 그대로다.
+ */
+const shortItemName = (name: string): string =>
+  name.replace(/\s*【[^】]*】\s*/g, ' ').trim() || name;
+
 export interface QueueTableProps {
   /** 넘치면 줄이지 않고 가로로 구른다 — 좌우 배치(#185). 기본은 상자 폭에 맞춘다. */
   scrollX?: boolean;
@@ -125,7 +132,7 @@ const columnsOf = (
             <span className="iqc-inspection-queue-item-name">{label}</span>
           ) : (
             <>
-              <span className="iqc-inspection-queue-item-name">{parts.name}</span>
+              <span className="iqc-inspection-queue-item-name">{shortItemName(parts.name)}</span>
               <span className="iqc-inspection-queue-item-code">{parts.code}</span>
             </>
           )}
@@ -147,6 +154,14 @@ const columnsOf = (
         </Chip>
       );
     },
+  },
+  {
+    /* 의뢰번호(사용자 지시 2026-10-27 · #185) — 검색 칸으로 찾은 번호를 줄에서도 맞춰 본다. */
+    key: 'inspectionRequestNo',
+    align: 'center',
+    header: t.columns.inspectionRequestNo,
+    width: '170px',
+    render: (row) => row.inspectionRequestNo,
   },
   {
     key: 'requestedAt',

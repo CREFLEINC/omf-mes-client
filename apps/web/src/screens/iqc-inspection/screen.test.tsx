@@ -408,7 +408,12 @@ describe('IqcInspectionScreen', () => {
     await findOpenButton('IR-2026-0002');
     await userEvent.click(openButton('IR-2026-0002'));
 
-    expect(await screen.findByText(t.detail.fields.inspectionRequestNo)).toBeInTheDocument();
+    /* 목록 머리칸에도 「의뢰번호」가 있다(#185) — 상세의 항목 이름(dt)으로 찾는다. */
+    expect(
+      (await screen.findAllByText(t.detail.fields.inspectionRequestNo)).some(
+        (element) => element.tagName === 'DT',
+      ),
+    ).toBe(true);
     /* 「검사 기본 정보」는 상자 제목이 아니라 경로의 한 단계로만 선다(#133). */
     expect(screen.queryByRole('heading', { name: t.detail.sectionTitle })).not.toBeInTheDocument();
     expect(

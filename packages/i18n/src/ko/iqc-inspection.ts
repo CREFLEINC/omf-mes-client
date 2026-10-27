@@ -26,6 +26,7 @@ export const iqcInspection = {
       lotId: '자재 LOT',
       statusCode: '상태',
       requestedAt: '의뢰 일시',
+      inspectionRequestNo: '의뢰번호',
     },
     /** 값이 없는 칸. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
     emptyValue: '—',

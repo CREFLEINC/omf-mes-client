@@ -13,6 +13,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       lotId: 'LOT vật tư',
       statusCode: 'Trạng thái',
       requestedAt: 'Thời điểm yêu cầu',
+      inspectionRequestNo: 'Số yêu cầu',
     },
     emptyValue: '—',
     fourMBadge: '4M',
