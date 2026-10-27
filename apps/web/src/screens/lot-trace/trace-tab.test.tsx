@@ -218,7 +218,14 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
     const stages = within(drawer).getByRole('list', { name: '단계' });
     /* 포장은 확정(PACKED)만 센다. */
     expect(within(stages).getByRole('button', { name: /포장\s*1건/ })).toBeInTheDocument();
-    expect(within(stages).getByRole('listitem', { current: 'step' })).toHaveTextContent('출하');
+    /* 출하까지 갔으면 흐름이 끝나 진행 중 단계 없이 모두 완료다. */
+    expect(within(stages).queryByRole('listitem', { current: 'step' })).toBeNull();
+    expect(
+      within(stages)
+        .getAllByRole('listitem')
+        .every((item) => item.getAttribute('data-status') === 'complete'),
+    ).toBe(true);
+    expect(within(stages).getByRole('button', { name: /출하\s*1건/ })).toBeEnabled();
     expect(within(drawer).getByText(NOTICE)).toBeInTheDocument();
   });
 

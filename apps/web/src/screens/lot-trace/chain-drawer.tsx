@@ -580,17 +580,19 @@ const InputMaterialNode = ({
 
 /**
  * 단계 줄 — 공정 흐름 순서의 DS Stepper. 가장 멀리 간 단계(건수가 있는 마지막 단계)가 진행 중, 그 앞에서 건수가 있는
- * 단계는 완료, 나머지는 대기다. 단계를 누르면 나무에서 그 단계의 첫 줄로 간다.
+ * 단계는 완료, 나머지는 대기다. 마지막 단계(출하)까지 갔으면 진행 중 없이 모든 단계가 완료다.
+ * 단계를 누르면 나무에서 그 단계의 첫 줄로 간다.
  */
 const StageStrip = ({ cells, onJump }: { cells: StageCell[]; onJump: (stage: string) => void }) => {
   const current = currentStage(cells);
   const currentIndex = cells.findIndex((cell) => cell.stage === current);
-  const statusOf = (cell: StageCell, index: number): StepStatus =>
-    index === currentIndex
-      ? 'current'
-      : index < currentIndex && cell.count > 0
-        ? 'complete'
-        : 'pending';
+  /* 마지막 단계(출하)까지 갔으면 흐름이 끝난 것이라 진행 중 단계 없이 모두 완료다. */
+  const finished = currentIndex === cells.length - 1;
+  const statusOf = (cell: StageCell, index: number): StepStatus => {
+    if (finished) return 'complete';
+    if (index === currentIndex) return 'current';
+    return index < currentIndex && cell.count > 0 ? 'complete' : 'pending';
+  };
   return (
     <Stepper
       className="lot-trace-stages"
