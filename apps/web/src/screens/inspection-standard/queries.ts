@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 import { toListQuery } from './filters';
 import type {
@@ -224,6 +225,8 @@ export const lookupKeys = {
   routings: (itemId: number) => ['inspection-standard-routings', itemId] as const,
   uoms: ['inspection-standard-uoms'] as const,
   equipments: ['inspection-standard-equipments'] as const,
+  codeValues: (codeGroupCode: string) =>
+    ['inspection-standard-code-values', codeGroupCode] as const,
 };
 
 /** 단위 선택 목록. 검사 항목의 수치형 값에 붙는다. */
@@ -275,6 +278,42 @@ export const useEquipmentOptions = (): LookupResult => {
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: equipments.isError,
     isLoading: equipments.isPending,
+  };
+};
+
+/**
+ * 공통코드 선택 목록(공유계약 G-32). 그룹은 코드로 부른다 — 채번 식별자는 환경마다 다르다.
+ * 미사용 값도 받는다 — 지난 버전이 고른 값의 이름이 비어 보이지 않게 하고, 고를 수 있는지는 화면이 정한다.
+ */
+export const useCodeValueOptions = (codeGroupCode: string): LookupResult => {
+  const { client } = useApiClient();
+
+  const codeValues = useQuery({
+    queryKey: lookupKeys.codeValues(codeGroupCode),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode, includeInactive: true, size: 100 } },
+        }),
+      ),
+  });
+
+  const data = codeValues.data;
+
+  return {
+    entries:
+      data === undefined
+        ? EMPTY_ENTRIES
+        : [...data.items]
+            .sort((left, right) => left.displayOrder - right.displayOrder)
+            .map((value) => ({
+              value: value.code,
+              label: masterName(value, value.codeName.trim() || value.code),
+              isActive: value.isActive,
+            })),
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: codeValues.isError,
+    isLoading: codeValues.isPending,
   };
 };
 

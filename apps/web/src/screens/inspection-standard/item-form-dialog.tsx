@@ -2,7 +2,6 @@ import { Button, Checkbox, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
-import { DATA_TYPE_OPTIONS, INSPECTION_METHOD_OPTIONS, ensureOption } from './code-options';
 import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
 import type { ItemDraft, SelectOption } from './types';
@@ -19,6 +18,8 @@ export interface ItemFormDialogProps {
   /** 저장을 막지 않는 경고. 확인은 그대로 눌린다 */
   fieldWarnings: Record<string, string>;
   /** 「사용 중인 것 + 지금 고른 값」만 온다. 목록을 고르는 규칙은 화면이 갖는다. */
+  dataTypeOptions: SelectOption[];
+  inspectionMethodOptions: SelectOption[];
   uomOptions: SelectOption[];
   equipmentOptions: SelectOption[];
   isSubmitting: boolean;
@@ -46,6 +47,8 @@ export const ItemFormDialog = ({
   onChange,
   fieldErrors,
   fieldWarnings,
+  dataTypeOptions,
+  inspectionMethodOptions,
   uomOptions,
   equipmentOptions,
   isSubmitting,
@@ -99,10 +102,9 @@ export const ItemFormDialog = ({
 
         <SelectField
           label={t.fields.dataType}
-          options={ensureOption(DATA_TYPE_OPTIONS, values.dataTypeCode)}
+          options={dataTypeOptions}
           value={values.dataTypeCode}
           onChange={(dataTypeCode) => onChange({ dataTypeCode })}
-          note={messages.pendingCode.note}
           error={fieldErrors.dataTypeCode}
         />
 
@@ -164,10 +166,9 @@ export const ItemFormDialog = ({
 
         <SelectField
           label={t.fields.inspectionMethod}
-          options={ensureOption(INSPECTION_METHOD_OPTIONS, values.inspectionMethodCode)}
+          options={inspectionMethodOptions}
           value={values.inspectionMethodCode}
           onChange={(inspectionMethodCode) => onChange({ inspectionMethodCode })}
-          note={messages.pendingCode.note}
           error={fieldErrors.inspectionMethodCode}
         />
 

@@ -482,10 +482,50 @@ const planCreateRoute = (
   respond,
 });
 
+/** 공통코드 그룹별 값(서버 시드와 같은 코드). 이름은 시험용이다. */
+const CODE_VALUES: Record<string, { code: string; codeName: string }[]> = {
+  INSPECTION_FREQUENCY: [
+    { code: 'WORK_ORDER', codeName: '작업지시' },
+    { code: 'PRODUCTION_LOT', codeName: '생산 LOT' },
+  ],
+  INSPECTION_FREQUENCY_INTERVAL_UOM: [
+    { code: 'HOUR', codeName: '시간' },
+    { code: 'QUANTITY', codeName: '수량' },
+  ],
+  INSPECTION_ITEM_SPEC_DATA_TYPE: [
+    { code: 'NUMERIC', codeName: '수치' },
+    { code: 'TEXT', codeName: '텍스트' },
+    { code: 'BOOLEAN', codeName: '불리언' },
+  ],
+  INSPECTION_ITEM_SPEC_METHOD: [
+    { code: 'VISUAL', codeName: '육안' },
+    { code: 'MEASUREMENT', codeName: '측정' },
+    { code: 'FUNCTIONAL', codeName: '기능' },
+  ],
+};
+
+const codeValuesRoute = (): StubRoute => ({
+  match: (request) => isGet(request, '/mdm/code-values'),
+  respond: (request) => {
+    const group = new URL(request.url).searchParams.get('codeGroupCode') ?? '';
+    const items = (CODE_VALUES[group] ?? []).map((value, index) => ({
+      codeValueId: 9000 + index,
+      codeGroupId: 1,
+      code: value.code,
+      codeName: value.codeName,
+      displayOrder: index + 1,
+      isActive: true,
+    }));
+
+    return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
+  },
+});
+
 const lookupRoutes = (): StubRoute[] => [
   itemOptionsRoute(),
   processOptionsRoute(),
   routingOptionsRoute(),
+  codeValuesRoute(),
 ];
 
 const planForm = (): HTMLElement => screen.getByRole('region', { name: '기준 정보' });
@@ -1295,7 +1335,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     await user.click(screen.getByRole('option', { name: '샘플링(LOT 단위)' }));
     await user.type(within(form).getByLabelText(/샘플 비율/), '10');
     await user.click(within(form).getByRole('combobox', { name: '검사 주기' }));
-    await user.click(screen.getByRole('option', { name: '선택지 준비 중' }));
+    await user.click(screen.getByRole('option', { name: '생산 LOT' }));
     await user.click(within(form).getByRole('button', { name: '버전 등록' }));
 
     await screen.findByText('등록했습니다');
@@ -1310,6 +1350,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     expect(body.effectiveFrom).toBe('2026-08-01');
     expect(body.samplingMethodCode).toBe('SAMPLE_BY_LOT');
     expect(body.samplingRatio).toBe(10);
+    expect(body.inspectionFrequencyCode).toBe('PRODUCTION_LOT');
     expect('planVersion' in body).toBe(false);
     expect('statusCode' in body).toBe(false);
   });
@@ -2241,6 +2282,41 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     expect(body.items[0]?.inspectionItemSpecId).toBe(5101);
     expect('inspectionItemSpecId' in (body.items[2] ?? {})).toBe(false);
     expect(body.items.every((item) => item.inspectionPlanVersionId === 4002)).toBe(true);
+  });
+
+  /* omf-all-around#194 — 자료형·검사 방법은 공통코드에서 받은 값으로 저장된다(자리표시 값이면 서버가 거절한다). */
+  it('자료형·검사 방법은 공통코드 값에서 골라 저장된다', async () => {
+    const { requests, user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+    const dialogNode = await dialog();
+    await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
+    await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
+
+    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    for (const name of ['수치', '텍스트', '불리언']) {
+      expect(screen.getByRole('option', { name })).toBeInTheDocument();
+    }
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+    await user.click(screen.getByRole('option', { name: '수치' }));
+    await user.click(within(dialogNode).getByRole('combobox', { name: '검사 방법' }));
+    await user.click(screen.getByRole('option', { name: '측정' }));
+    await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
+
+    await user.click(within(itemPane()).getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    const put = requests.find(
+      (request) => request.method === 'PUT' && request.url.pathname === ITEMS_PATH,
+    );
+    const body = JSON.parse(put?.body ?? '{}') as {
+      items: { inspectionItemCode: string; dataTypeCode: string; inspectionMethodCode?: string }[];
+    };
+    const added = body.items.find((item) => item.inspectionItemCode === 'SYN-ITEM-CODE-09');
+
+    expect(added?.dataTypeCode).toBe('NUMERIC');
+    expect(added?.inspectionMethodCode).toBe('MEASUREMENT');
   });
 
   /*
