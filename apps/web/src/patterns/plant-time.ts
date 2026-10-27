@@ -75,6 +75,17 @@ export const formatPlantDateTime = (value: string | null | undefined): string | 
 export const plantToday = (now: Date = new Date()): string =>
   toPlantDateTimeParts(now.toISOString())?.date ?? now.toISOString().slice(0, 10);
 
+const clockFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: PLANT_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+});
+
+/** 공장 시각의 `HH:mm:ss` — 「언제 받았나」처럼 같은 분 안의 차이도 보여야 하는 자리. */
+export const formatPlantClock = (at: Date): string => clockFormatter.format(at);
+
 /** 공장 현지의 지금(`YYYY-MM-DDTHH:mm`) — `datetime-local` 칸의 기본값. 브라우저 시간대가 아니라 공장 시각이다. */
 export const plantNowLocal = (now: Date = new Date()): string => {
   const parts = toPlantDateTimeParts(now.toISOString());

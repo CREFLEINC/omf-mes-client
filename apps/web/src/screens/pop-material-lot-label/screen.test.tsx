@@ -1,17 +1,24 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { POP_SCREENS } from '../../patterns/pop-screen-catalog';
 import { PRINTER_STORAGE_KEY } from './printer-choice';
 import { LIST_REFRESH_MS, PENDING_RECENT_DAYS, shiftDate } from './queries';
-import { line, receipt, renderLabelScreen, sentTo } from './screen-harness';
-import { plantToday } from '../../patterns/plant-time';
+import { HARNESS_NOW, line, receipt, renderLabelScreen, sentTo } from './screen-harness';
+import { formatPlantClock, plantToday } from '../../patterns/plant-time';
 
 const t = messages.popMaterialLotLabel;
 
+beforeEach(() => {
+  /* 발판의 입하일(08-27)이 화면의 기본 기간(이번 주)에 들게 날짜만 멈춘다(`HARNESS_NOW`). */
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(HARNESS_NOW);
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   delete window.pop;
   try {
     window.localStorage.removeItem(PRINTER_STORAGE_KEY);
@@ -360,6 +367,107 @@ describe('PopMaterialLotLabelScreen — 어디서 받는가', () => {
     renderLabelScreen({ lines: [] });
 
     expect(await screen.findByText(t.suppliers.pendingEmpty)).toBeInTheDocument();
+  });
+
+  it('새로 고침은 한 자리에만 있고, 옆에 서버에서 마지막으로 받은 시각(공장 시각)을 적는다', async () => {
+    renderLabelScreen({ lineList: 'served' });
+
+    expect(
+      await screen.findByText(t.table.refreshedAt(formatPlantClock(HARNESS_NOW))),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: t.table.refresh })).toHaveLength(1);
+  });
+});
+
+/**
+ * 입하 기간(사용자 지시 2026-10-27) — 지금은 08-28(금)이라 이번 주는 08-24(월)부터다.
+ * 공급사 가(8201)는 이번 주, 나(8202)는 지난 주(08-20 · 08-21)에 들어왔다.
+ */
+const THIS_AND_LAST_WEEK = {
+  receipts: [
+    receipt(8101, 8201, '2026-08-27T02:00:00Z'),
+    receipt(8102, 8202, '2026-08-20T02:00:00Z'),
+    receipt(8103, 8202, '2026-08-21T02:00:00Z'),
+  ],
+  lines: [line(8501, 8101, 8601, 500), line(8502, 8102, 8602, 700), line(8503, 8103, 8601, 900)],
+};
+
+const periodButton = (name: string): HTMLElement =>
+  within(screen.getByRole('group', { name: t.period.label })).getByRole('button', { name });
+
+const tileNames = (tiles: readonly HTMLElement[]): (string | null | undefined)[] =>
+  tiles.map((tile) => tile.querySelector('.pop-mlot-supplier-name')?.textContent);
+
+describe('PopMaterialLotLabelScreen — 입하 기간', () => {
+  it('기본은 이번 주다 — 지난 주 입하분은 목록에서 빼고, 띠로 장수와 날짜를 알린다', async () => {
+    renderLabelScreen(THIS_AND_LAST_WEEK);
+
+    expect(tileNames(await supplierTiles())).toEqual(['합성 공급사 가']);
+    expect(periodButton(t.period.week)).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(t.period.pastTitle(2))).toBeInTheDocument();
+    expect(screen.getByText(t.period.pastRange('08-20', '08-21'))).toBeInTheDocument();
+    /* 탭의 장수는 기간과 상관없이 남은 대기 전부다. */
+    expect(
+      screen.getByRole('button', { name: new RegExp(`^${t.tabs.pending}\\s*3$`, 'u') }),
+    ).toBeInTheDocument();
+  });
+
+  it('「보기」로 지난 줄만 모아 보고, 「이번 주 보기」로 돌아온다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(THIS_AND_LAST_WEEK);
+
+    await supplierTiles();
+    await user.click(screen.getByRole('button', { name: t.period.showPast }));
+
+    await waitFor(async () => expect(tileNames(await supplierTiles())).toEqual(['합성 공급사 나']));
+    expect(rows()).toHaveLength(2);
+    /* 지난 줄을 보는 동안은 어느 기간도 눌리지 않았다. */
+    expect(periodButton(t.period.week)).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(screen.getByRole('button', { name: t.period.backTo(t.period.week) }));
+
+    await waitFor(async () => expect(tileNames(await supplierTiles())).toEqual(['합성 공급사 가']));
+    expect(periodButton(t.period.week)).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('「전체」는 지난 줄까지 다 보이고 띠를 걷는다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(THIS_AND_LAST_WEEK);
+
+    await supplierTiles();
+    await user.click(periodButton(t.period.all));
+
+    await waitFor(async () =>
+      expect(tileNames(await supplierTiles())).toEqual(['합성 공급사 나', '합성 공급사 가']),
+    );
+    expect(screen.queryByText(t.period.pastTitle(2))).toBeNull();
+  });
+
+  it('「오늘」 입하분이 없으면 그렇게 말하고, 어제 들어온 줄은 띠로 센다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen({
+      receipts: [receipt(8101, 8201, '2026-08-27T02:00:00Z')],
+      lines: [line(8501, 8101, 8601, 500)],
+    });
+
+    await supplierTiles();
+    await user.click(periodButton(t.period.today));
+
+    expect(await screen.findByText(t.period.empty(t.period.today))).toBeInTheDocument();
+    expect(screen.getByText(t.period.pastTitle(1))).toBeInTheDocument();
+    expect(screen.getByText(t.period.pastRange('08-27', '08-27'))).toBeInTheDocument();
+  });
+
+  it('찾기 칸은 기간을 보지 않는다 — 지난 주 입하분도 입하번호로 찾고, 찾는 동안 띠를 걷는다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(THIS_AND_LAST_WEEK);
+
+    await supplierTiles();
+    await user.type(screen.getByRole('searchbox', { name: t.search.label }), 'SYN-IB-8102');
+
+    await waitFor(async () => expect(tileNames(await supplierTiles())).toEqual(['합성 공급사 나']));
+    expect(rows()).toHaveLength(1);
+    expect(screen.queryByText(t.period.pastTitle(2))).toBeNull();
   });
 });
 

@@ -17,6 +17,13 @@ import { PopMaterialLotLabelScreen } from './screen';
 export const WORKER_NO = '900028';
 export const ISSUE_LOG_BASE = 44000;
 
+/**
+ * 시험의 「지금」 — 공장 2026-08-28(금) 15:00. 발판의 입하일(08-27)이 화면의 기본 기간(이번 주 ·
+ * 08-24 월요일부터)에 든다. 두 시험 파일이 날짜만 이 값으로 멈춘다(타이머는 그대로 돈다).
+ * ⚠ 입하일과 같은 날로 두지 않는다 — 표의 입하 칸은 오늘 들어온 줄이면 날짜를 빼고 시각만 적는다.
+ */
+export const HARNESS_NOW = new Date('2026-08-28T08:00:00Z');
+
 export interface ReceiptFixture {
   inboundReceiptId: number;
   inboundReceiptNo: string;

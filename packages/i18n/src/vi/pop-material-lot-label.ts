@@ -23,6 +23,20 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     pendingEmpty: 'Không có vật tư cần phát hành.',
     reprintEmpty: 'Không có nhãn nào đã phát hành trong 2 tuần gần đây.',
   },
+  period: {
+    label: 'Thời gian nhập',
+    today: 'Hôm nay',
+    week: 'Tuần này',
+    month: 'Tháng này',
+    all: 'Tất cả',
+    pastTitle: (count: number) => `Hàng nhập trước còn ${count} nhãn chưa phát hành`,
+    pastRange: (from: string, to: string) =>
+      from === to ? `Nhập ${from}` : `Nhập ${from} ~ ${to}`,
+    showPast: 'Xem',
+    backTo: (period: string) => `Xem ${period.toLocaleLowerCase('vi')}`,
+    empty: (period: string) =>
+      `Không có vật tư cần phát hành trong hàng nhập ${period.toLocaleLowerCase('vi')}.`,
+  },
   table: {
     columns: {
       check: 'Chọn',
@@ -44,6 +58,7 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     prev: '◀ Trước',
     next: 'Sau ▶',
     refresh: 'Làm mới',
+    refreshedAt: (time: string) => `Nhận lúc ${time}`,
     loadFailed: 'Không tải được danh sách nhập hàng.',
     retry: 'Tải lại',
     noMatch: 'Không có mặt hàng cần tìm.',

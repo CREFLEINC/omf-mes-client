@@ -1,10 +1,11 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PRINTER_STORAGE_KEY } from './printer-choice';
 import {
+  HARNESS_NOW,
   WORKER_NO,
   line,
   lotIdFor,
@@ -26,7 +27,14 @@ import {
 
 const t = messages.popMaterialLotLabel;
 
+beforeEach(() => {
+  /* 발판의 입하일(08-27)이 화면의 기본 기간(이번 주)에 들게 날짜만 멈춘다(`HARNESS_NOW`). */
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(HARNESS_NOW);
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   delete window.pop;
   try {
     window.localStorage.removeItem(PRINTER_STORAGE_KEY);

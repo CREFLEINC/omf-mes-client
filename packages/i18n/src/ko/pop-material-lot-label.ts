@@ -34,6 +34,24 @@ export const popMaterialLotLabel = {
     pendingEmpty: '발행할 자재가 없습니다.',
     reprintEmpty: '최근 2주 안에 발행한 라벨이 없습니다.',
   },
+  /**
+   * 발행 대기의 입하 기간(사용자 지시 2026-10-27) — 기본은 이번 주, 주는 월요일부터다.
+   * ⭐ 기간보다 먼저 입하됐는데 아직 남은 줄은 띠로 알린다 — 그냥 지나가지 않게. 「보기」로 그 줄만 모아 본다.
+   */
+  period: {
+    label: '입하 기간',
+    today: '오늘',
+    week: '이번 주',
+    month: '이번 달',
+    all: '전체',
+    pastTitle: (count: number) => `지난 입하 미발행 ${count}장`,
+    pastRange: (from: string, to: string) =>
+      from === to ? `${from} 입하` : `${from} ~ ${to} 입하`,
+    showPast: '보기',
+    /** 지난 줄을 보는 중 — 고른 기간으로 돌아가는 단추. */
+    backTo: (period: string) => `${period} 보기`,
+    empty: (period: string) => `${period} 입하분 중 발행할 자재가 없습니다.`,
+  },
   table: {
     columns: {
       check: '선택',
@@ -57,8 +75,13 @@ export const popMaterialLotLabel = {
     pageNav: '쪽 이동',
     prev: '◀ 이전',
     next: '다음 ▶',
-    /** 20초마다 스스로 다시 받지만, 기다리지 않고 바로 볼 수단으로 남긴다(omf-all-around#29). */
+    /**
+     * 20초마다 스스로 다시 받지만, 기다리지 않고 바로 볼 수단으로 남긴다(omf-all-around#29).
+     * 왼쪽 기간 아래에 둔다 — 표 아래 구석에서는 보이지 않았다(사용자 지시 2026-10-27).
+     */
     refresh: '새로 고침',
+    /** 새로 고침 옆 — 서버에서 마지막으로 받은 시각(초까지). 눌렀는데 받았는지 알 수 있게 한다. */
+    refreshedAt: (time: string) => `${time} 받음`,
     loadFailed: '입하 목록을 불러오지 못했습니다.',
     retry: '다시 불러오기',
     noMatch: '찾는 품목이 없습니다.',
