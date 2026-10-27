@@ -128,7 +128,7 @@ export interface RejectionReasonProps {
  * (W-06-03)를 쓴다(2026-10-16 결정). 임시 저장(서버 P-48)·확정(P-47)이 그 회차의 불량 기록으로 남긴다.
  *
  * 배치(3단계 검증 · 담당자 지시): 테두리 상자 대신 옅은 면 하나, 1행 대분류·상세 같은 폭 2열(좁으면 1열), 2행 사유
- * 전체 폭. 라벨은 모두 입력 위, 필수 누락은 그 칸 아래. 상세는 대분류에 상세가 있을 때만 고를 수 있다(없으면 비활성).
+ * 전체 폭. 라벨은 모두 입력 위, 필수 누락은 그 칸 아래. 상세 칸은 대분류에 상세가 있을 때만 선다(#185).
  */
 export const RejectionReason = ({
   codes,
@@ -182,26 +182,29 @@ export const RejectionReason = ({
             </span>
           )}
         </div>
-        <div className="field-cell">
-          <FieldLabel htmlFor={minorId} label={t.minor} required={hasMinors} />
-          <Select
-            id={minorId}
-            options={minors.map(optionOf)}
-            value={draft.minorId}
-            placeholder={t.minorPlaceholder}
-            invalid={minorMissing}
-            aria-describedby={minorMissing ? `${minorId}-error` : undefined}
-            disabled={disabled || !hasMinors}
-            onChange={(value) => {
-              onChange({ ...draft, minorId: value });
-            }}
-          />
-          {minorMissing && (
-            <span id={`${minorId}-error`} className="iqc-inspection-visually-hidden">
-              {t.minorMissing}
-            </span>
-          )}
-        </div>
+        {/* 상세는 고른 대분류에 상세 코드가 있을 때만 선다(사용자 지시 2026-10-27 · #185). */}
+        {hasMinors && (
+          <div className="field-cell">
+            <FieldLabel htmlFor={minorId} label={t.minor} required />
+            <Select
+              id={minorId}
+              options={minors.map(optionOf)}
+              value={draft.minorId}
+              placeholder={t.minorPlaceholder}
+              invalid={minorMissing}
+              aria-describedby={minorMissing ? `${minorId}-error` : undefined}
+              disabled={disabled}
+              onChange={(value) => {
+                onChange({ ...draft, minorId: value });
+              }}
+            />
+            {minorMissing && (
+              <span id={`${minorId}-error`} className="iqc-inspection-visually-hidden">
+                {t.minorMissing}
+              </span>
+            )}
+          </div>
+        )}
         {/* 추정 원인 — 선택 입력(omf-all-around#130). 같은 2열의 다음 줄 왼쪽 칸에 선다. */}
         <div className="field-cell">
           <FieldLabel htmlFor={causeId} label={t.cause} />

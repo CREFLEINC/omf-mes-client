@@ -126,6 +126,10 @@ export interface ResultFormPaneProps {
   inlineJudgment?: boolean;
   /** 「판정 상세 입력」에 적을 것이 있는가(불합격 · 판정 변경 사유) — 수량 줄 판정일 때만 본다. */
   hasJudgmentDetail?: boolean;
+  /** 「판정 상세 입력」 창을 열 때 — 부르는 쪽이 지금 값을 담아 둔다. */
+  onJudgmentDetailOpen?: () => void;
+  /** 「판정 상세 입력」 창의 [취소] — 열 때 값으로 되돌린다. */
+  onJudgmentDetailCancel?: () => void;
   /** 확정만 막는 사유(저장은 막지 않는다) — 불합격인데 불량 코드를 고르지 않았을 때다. */
   confirmOnlyBlockedReason?: string | null;
 }
@@ -171,6 +175,8 @@ export const ResultFormPane = ({
   reinspectBlockedReason = null,
   inlineJudgment = false,
   hasJudgmentDetail = false,
+  onJudgmentDetailOpen,
+  onJudgmentDetailCancel,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const partialNoteId = useId();
@@ -542,7 +548,10 @@ export const ResultFormPane = ({
                             variant="outlined"
                             size="md"
                             leadingIcon={<Icon name="edit_square" size={18} aria-hidden />}
-                            onClick={() => setIsDetailOpen(true)}
+                            onClick={() => {
+                              onJudgmentDetailOpen?.();
+                              setIsDetailOpen(true);
+                            }}
                           >
                             {t.judgmentDetailOpen}
                           </Button>
@@ -571,18 +580,37 @@ export const ResultFormPane = ({
          * ── 판정 — 종합 판정을 고르고, 임시 저장 뒤 확정한다 ──
          * 상하 배치에서는 최종 판정이 수량 줄로 올라가고, 이 구획은 「판정 상세 입력」으로 불합격 · 판정 변경 사유가 있을 때만 선다(#185).
          */}
-        {/* 판정 상세 입력 창 — 수량 줄 판정일 때(#185). 닫아도 적은 값은 남는다. */}
+        {/*
+         * 판정 상세 입력 창 — 수량 줄 판정일 때(#185). [완료]는 적은 값을 남기고, [취소] · Esc 는 열 때 값으로
+         * 되돌린다(사용자 지시 2026-10-27 · #185).
+         */}
         {inlineJudgment && hasJudgmentDetail && (
           <Dialog
             open={isDetailOpen}
-            onClose={() => setIsDetailOpen(false)}
+            onClose={() => {
+              onJudgmentDetailCancel?.();
+              setIsDetailOpen(false);
+            }}
             size="lg"
             title={t.judgmentDetailTitle}
             showCloseButton={false}
             footer={
-              <Button type="button" size="md" onClick={() => setIsDetailOpen(false)}>
-                {t.judgmentDetailDone}
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="md"
+                  onClick={() => {
+                    onJudgmentDetailCancel?.();
+                    setIsDetailOpen(false);
+                  }}
+                >
+                  {t.judgmentDetailCancel}
+                </Button>
+                <Button type="button" size="md" onClick={() => setIsDetailOpen(false)}>
+                  {t.judgmentDetailDone}
+                </Button>
+              </>
             }
           >
             <div className="iqc-inspection-judgment-dialog">

@@ -237,6 +237,8 @@ export const IqcInspectionScreen = () => {
   const [rejection, setRejection] = useState<RejectionDraft>(EMPTY_REJECTION);
   /* 판정 변경 사유(omf-all-around#125) — 확정 요청에만 싣는다. 임시 저장은 받지 않으므로 의뢰가 바뀔 때 비운다. */
   const [changeReason, setChangeReason] = useState('');
+  /* 판정 상세 창을 열 때의 값 — [취소]하면 이 값으로 되돌린다(사용자 지시 2026-10-27 · #185). */
+  const detailSnapshot = useRef<{ rejection: RejectionDraft; changeReason: string } | null>(null);
   /*
    * 4M 변경품(omf-all-around#63) — LOT 의 성질이라 회차가 아니라 의뢰 LOT 에 붙는다. 서버 기록이 바뀌면(의뢰를
    * 바꾸거나 저장 뒤 재조회) 그 값으로 되돌린다. 자재 LOT 이 없는 의뢰는 칸을 두지 않고 요청에도 싣지 않는다.
@@ -861,6 +863,14 @@ export const IqcInspectionScreen = () => {
           /* 좌우 · 상하 배치 모두 수량 · 판정을 한 줄로(좁으면 위아래 · 사용자 지시 2026-10-27 · #185). */
           inlineJudgment
           hasJudgmentDetail={isRejected || needsChangeReason}
+          onJudgmentDetailOpen={() => {
+            detailSnapshot.current = { rejection, changeReason };
+          }}
+          onJudgmentDetailCancel={() => {
+            if (detailSnapshot.current === null) return;
+            setRejection(detailSnapshot.current.rejection);
+            setChangeReason(detailSnapshot.current.changeReason);
+          }}
           reinspectBlockedReason={
             followUp.data?.isInspectionPending === false ? t.result.reinspectLotNotPending : null
           }

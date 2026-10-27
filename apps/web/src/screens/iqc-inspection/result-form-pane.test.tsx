@@ -462,6 +462,23 @@ describe('ResultFormPane — 입력 현황(#185)', () => {
 });
 
 describe('ResultFormPane — 상하 배치 판정(#185)', () => {
+  it('「판정 상세 입력」 창의 [취소]는 열 때 값으로 되돌리게 알린다', async () => {
+    const onJudgmentDetailOpen = vi.fn();
+    const onJudgmentDetailCancel = vi.fn();
+    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, {
+      inlineJudgment: true,
+      hasJudgmentDetail: true,
+      judgmentDetail: <p>불합격 칸</p>,
+      onJudgmentDetailOpen,
+      onJudgmentDetailCancel,
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: t.judgmentDetailOpen }));
+    expect(onJudgmentDetailOpen).toHaveBeenCalledTimes(1);
+    await userEvent.click(await screen.findByRole('button', { name: t.judgmentDetailCancel }));
+    expect(onJudgmentDetailCancel).toHaveBeenCalledTimes(1);
+  });
+
   it('4M 은 판정 오른쪽에 「4M 변경 정보」 제목으로 따로 선다', () => {
     renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, {
       inlineJudgment: true,

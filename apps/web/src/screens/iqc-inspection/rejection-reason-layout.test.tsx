@@ -18,12 +18,12 @@ const renderReason = (draft: RejectionDraft) =>
 
 /* 3단계 검증 — 대분류·상세 2열 + 사유 전체 폭, 라벨은 입력 위, 필수 누락은 그 칸 아래(omf-all-around#106). */
 describe('RejectionReason 배치', () => {
-  it('처음에는 대분류 아래에 누락을 말하고, 상세는 고를 수 없으며 사유 칸에는 안내 글이 없다', () => {
+  it('처음에는 대분류 아래에 누락을 말하고, 상세 칸은 없으며 사유 칸에는 안내 글이 없다', () => {
     renderReason(EMPTY_REJECTION);
 
     expect(screen.getByRole('group', { name: t.heading })).toBeInTheDocument();
     expect(screen.getByLabelText(t.major)).toHaveAccessibleDescription(t.majorMissing);
-    expect(screen.getByLabelText(t.minor)).toBeDisabled();
+    expect(screen.queryByLabelText(t.minor)).not.toBeInTheDocument();
     expect(screen.queryByText(t.minorMissing)).not.toBeInTheDocument();
     /* 사유 글은 판정 줄 끝 입력칸이다 — 선택 입력이라 비어도 오류 표시가 없다(#185). */
     expect(screen.getByLabelText(t.description)).toHaveValue('');
@@ -40,10 +40,10 @@ describe('RejectionReason 배치', () => {
     expect(screen.getByLabelText(t.minor)).toHaveAccessibleDescription(t.minorMissing);
   });
 
-  it('상세가 없는 대분류면 상세는 비활성이고 누락도 말하지 않는다', () => {
+  it('상세가 없는 대분류면 상세 칸이 없고 누락도 말하지 않는다', () => {
     renderReason({ ...EMPTY_REJECTION, majorId: '3' });
 
-    expect(screen.getByLabelText(t.minor)).toBeDisabled();
+    expect(screen.queryByLabelText(t.minor)).not.toBeInTheDocument();
     expect(screen.queryByText(t.minorMissing)).not.toBeInTheDocument();
   });
 });
