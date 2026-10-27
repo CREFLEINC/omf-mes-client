@@ -4486,6 +4486,43 @@ main:has(.iqc-skip-approval-detail) {
   min-width: 0;
 }
 
+/*
+ * 상하 배치(목록 위 · 상세 아래)는 상세가 넓다 — 특채 승인 상세를 두 칸으로 나눈다(#193 · 사용자 지시 2026-10-27).
+ * 왼쪽에 수량 요약 · 요청 정보, 오른쪽에 사용 조건, 특채 적용 · 안내는 그 아래 전체 폭이다. 좌우 배치는 위아래로 쌓는다.
+ */
+.po-board-split.is-stacked .quality-approval-concession {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--space-6);
+}
+
+.po-board-split.is-stacked .quality-approval-concession > * {
+  grid-column: 1 / -1;
+}
+
+.po-board-split.is-stacked .quality-approval-concession > .quality-approval-concession-qty {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.po-board-split.is-stacked
+  .quality-approval-concession
+  > .quality-approval-concession-section.is-request {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+.po-board-split.is-stacked
+  .quality-approval-concession
+  > .quality-approval-concession-section.is-usage {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: start;
+  padding-top: 0;
+  padding-left: var(--space-6);
+  border-top: 0;
+  border-left: 1px solid var(--outline-variant);
+}
+
 .quality-approval-concession-qty {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -4683,11 +4720,21 @@ main:has(.iqc-skip-approval-detail) {
   overflow-wrap: anywhere;
 }
 
+/* 소제목 · 값 옆의 작은 「열기」 단추(#193 · 사용자 지시 2026-10-27 — 크기를 줄인다). */
 .quality-approval-concession-nc-link.is-inline {
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-3);
-  font: var(--type-label-md);
-  letter-spacing: var(--type-label-md-tracking);
+  gap: var(--space-1);
+  min-height: 1.5rem;
+  padding: 0 var(--space-2);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+/* 소제목 + 옆 단추 — 제목 줄에 함께 선다. */
+.quality-approval-label-link {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .quality-approval-concession-nc-link:hover {

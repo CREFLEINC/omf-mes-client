@@ -31,7 +31,7 @@ import {
   useConcessionDetail,
   qualityApprovalKeys,
 } from './queries';
-import { linkedValue, type DetailPaneProps } from './detail-pane';
+import { linkedLabel, type DetailPaneProps } from './detail-pane';
 
 export interface ConditionPaneProps {
   approvalRequestId: number | null;
@@ -213,11 +213,14 @@ export const ConditionPane = ({
     uoms.isError ||
     (hasProcessReference && processes.isError);
 
-  const facts = (rows: ReadonlyArray<readonly [string, ReactNode]>, className: string) => (
+  const facts = (
+    rows: ReadonlyArray<readonly [string, ReactNode, { to: string; label: string }?]>,
+    className: string,
+  ) => (
     <dl className={className}>
-      {rows.map(([label, value]) => (
+      {rows.map(([label, value, link]) => (
         <div className="field-cell" key={label}>
-          <dt className="field-label">{label}</dt>
+          <dt className="field-label">{linkedLabel(label, link)}</dt>
           <dd>{value}</dd>
         </div>
       ))}
@@ -263,7 +266,7 @@ export const ConditionPane = ({
             : undefined,
         },
       })}
-      <section className="quality-approval-concession-section" aria-label={t.usageTitle}>
+      <section className="quality-approval-concession-section is-usage" aria-label={t.usageTitle}>
         <h3>{t.usageTitle}</h3>
         {facts(
           [
@@ -325,15 +328,13 @@ export const ConditionPane = ({
               : [
                   [
                     t.workOrderHeading,
-                    linkedValue(
-                      view.workOrder,
-                      access.allows(WORK_ORDER_PROGRESS_SCREEN_PATH)
-                        ? {
-                            to: workOrderProgressEntryPath(detail.data.allowedWorkOrderId),
-                            label: t.openWorkOrder,
-                          }
-                        : undefined,
-                    ),
+                    view.workOrder,
+                    access.allows(WORK_ORDER_PROGRESS_SCREEN_PATH)
+                      ? {
+                          to: workOrderProgressEntryPath(detail.data.allowedWorkOrderId),
+                          label: t.openWorkOrder,
+                        }
+                      : undefined,
                   ] as const,
                 ]),
           ],
