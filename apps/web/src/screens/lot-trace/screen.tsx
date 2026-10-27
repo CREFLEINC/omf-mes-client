@@ -11,6 +11,7 @@ import { Breadcrumb, PageHeader, Tabs, type TabItem } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useSearchParams } from 'react-router';
 
+import { PermissionMenuContext } from './load-failure';
 import { MovementsTab } from './movements-tab';
 import { readTab, type TraceTab as TabValue } from './trace-filters';
 import { TraceTab } from './trace-tab';
@@ -20,7 +21,12 @@ const t = messages.lotTrace;
 const contentOf = (tab: TabValue) =>
   tab === 'movements' ? <MovementsTab /> : <TraceTab key={tab} direction={tab} />;
 
-export const LotTraceScreen = () => {
+export interface LotTraceScreenProps {
+  /** 권한 안내가 가리킬 메뉴 경로. 라우트가 사이드바 자료로 만든다. */
+  permissionMenuPath: string | null;
+}
+
+export const LotTraceScreen = ({ permissionMenuPath }: LotTraceScreenProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = readTab(searchParams);
   /* DS Tabs는 패널을 모두 그리고 숨기기만 한다 — 보이지 않는 탭에는 내용을 넣지 않는다(같은 이름 조작이 겹치지 않게). */
@@ -31,7 +37,7 @@ export const LotTraceScreen = () => {
   }));
 
   return (
-    <>
+    <PermissionMenuContext value={permissionMenuPath}>
       <PageHeader
         title={t.title}
         breadcrumb={
@@ -52,6 +58,6 @@ export const LotTraceScreen = () => {
           )
         }
       />
-    </>
+    </PermissionMenuContext>
   );
 };

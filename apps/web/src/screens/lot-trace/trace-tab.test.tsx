@@ -27,7 +27,7 @@ const setup = (route: string, data: TraceStubData, permissions?: string[]) => {
   const calls: URL[] = [];
   renderWithProviders(
     <SessionProvider>
-      <LotTraceScreen />
+      <LotTraceScreen permissionMenuPath="합성 묶음 › 합성 메뉴" />
     </SessionProvider>,
     {
       session: { ...SYNTHETIC_SESSION, ...(permissions === undefined ? {} : { permissions }) },
@@ -202,6 +202,8 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
     /* 출하 한 건 아래 취급 단위 둘 — 출하 번호는 한 번만 선다. */
     expect(within(drawer).getAllByText('SH-SYN-0031')).toHaveLength(1);
     expect(within(drawer).getByText('HU-0003')).toBeInTheDocument();
+    /* 출하 아래 줄은 그 출하에 실린 포장이다. 다른 줄처럼 머리 이름을 단다. */
+    expect(within(drawer).getByText('HU-0003').closest('li')).toHaveTextContent(/^출하 포장/);
     const stages = within(drawer).getByRole('list', { name: '단계' });
     /* 포장은 확정(PACKED)만 센다. */
     expect(within(stages).getByRole('button', { name: /포장\s*1건/ })).toBeInTheDocument();
@@ -360,6 +362,10 @@ describe('W-02-09 LOT 추적: 역방향 추적 탭', () => {
 
     const drawer = await screen.findByRole('dialog', { name: PROD });
     expect(await within(drawer).findByText('투입 자재 LOT 2, 공급사 1곳')).toBeInTheDocument();
+    /* W/O 줄의 실적은 이 LOT이 아니라 W/O 전체다. */
+    expect(
+      within(drawer).getByText('W/O 전체: 실적 2건, 양품 120 EA, 불량 5 EA'),
+    ).toBeInTheDocument();
     expect(within(drawer).getAllByText('SL-0001')).toHaveLength(2);
     expect(within(drawer).getByText(NOTICE)).toBeInTheDocument();
     await user.click(within(drawer).getByRole('button', { name: 'SF-SYN-0001 이 LOT 기준으로' }));
@@ -387,7 +393,7 @@ describe('W-02-09 LOT 추적: 권한 없음과 없는 LOT', () => {
     setup('/production/lot-trace?q=ITEM-A&from=2026-10-01', { listStatus: 403, listErrors: body });
 
     expect(await screen.findByText(FORBIDDEN_TITLE)).toBeInTheDocument();
-    expect(screen.getByText(/사용자, 역할, 권한 메뉴/)).toBeInTheDocument();
+    expect(screen.getByText(/「합성 묶음 › 합성 메뉴」 메뉴에서/)).toBeInTheDocument();
     expect(screen.getByText(/관리자에게 권한을 요청하세요/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '다시 조회' })).toBeNull();
     expect(screen.queryByText('추적 정보를 불러오지 못했습니다')).toBeNull();
@@ -451,7 +457,7 @@ describe('W-02-09 LOT 추적: 반제품 펼치기 실패', () => {
     const exportButton = within(drawer).getByRole('button', { name: '사슬 내보내기' });
     expect(exportButton).toBeDisabled();
     expect(exportButton).toHaveAccessibleDescription(
-      '불러오지 못한 단계가 있습니다. 그 단계를 다시 조회하거나 접으세요',
+      '불러오지 못한 단계가 있습니다. 모든 단계를 불러와야 사슬을 내보낼 수 있습니다.',
     );
 
     delete data.chainFailures?.['forward-201'];

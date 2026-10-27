@@ -42,8 +42,9 @@ export const lotTrace = {
   },
   access: {
     forbiddenTitle: 'LOT 추적 권한이 없습니다',
-    forbidden:
-      '관리자가 사용자, 역할, 권한 메뉴에서 역할에 LOT 추적 권한을 줄 수 있습니다. 관리자에게 권한을 요청하세요.',
+    forbidden: (menuPath: string): string =>
+      `관리자가 「${menuPath}」 메뉴에서 역할에 LOT 추적 권한을 줄 수 있습니다. 관리자에게 권한을 요청하세요.`,
+    forbiddenNoMenu: '관리자에게 LOT 추적 권한을 요청하세요.',
     notFoundTitle: 'LOT을 찾을 수 없습니다',
     notFound: '목록에서 LOT을 다시 고르세요.',
   },
@@ -188,7 +189,7 @@ export const lotTrace = {
     lotStatus: 'LOT 상태 보기',
     exportChain: '사슬 내보내기',
     exportPending: '펼친 단계를 불러오는 중입니다',
-    exportFailed: '불러오지 못한 단계가 있습니다. 그 단계를 다시 조회하거나 접으세요',
+    exportFailed: '불러오지 못한 단계가 있습니다. 모든 단계를 불러와야 사슬을 내보낼 수 있습니다.',
     expandFailed: '다음 단계를 불러오지 못했습니다',
     documents: (count: number): string =>
       `생산 입고, 포장, 출하 ${count.toLocaleString('ko-KR')}건`,
@@ -217,6 +218,7 @@ export const lotTrace = {
     packing: '포장',
     packingOpen: '포장 중',
     shipment: '출하',
+    shipmentPackage: '출하 포장',
     workOrder: 'W/O',
     productionLot: '생산 LOT',
     inputMaterials: '투입 자재',
@@ -224,7 +226,7 @@ export const lotTrace = {
     consumed: (qty: string, from: string, to: string): string => `투입 ${qty}, ${from} ~ ${to}`,
     good: (qty: string): string => `양품 ${qty}`,
     results: (count: number, good: string, defect: string): string =>
-      `실적 ${count}건, 양품 ${good}, 불량 ${defect}`,
+      `W/O 전체: 실적 ${count}건, 양품 ${good}, 불량 ${defect}`,
     noInput: '아직 투입된 기록이 없습니다',
     noProductionLot: '연결된 생산 LOT이 없습니다',
     noShipment: '아직 출하되지 않았습니다',

@@ -1,6 +1,7 @@
 import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
+import { navMenuPath } from '../app/nav-tree';
 import { GuestOnly, RequireSession } from '../patterns/session';
 import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
@@ -93,6 +94,11 @@ import { SupplierReturnScreen } from '../screens/supplier-return/screen';
 import { UsersRolesScreen } from '../screens/users-roles/screen';
 import { WarehouseLayoutScreen } from '../screens/warehouse-layout/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
+
+/** LOT 추적의 권한 안내는 사용자와 역할 메뉴를 사이드바의 이름 그대로 가리킨다. 그리는 순간의 언어로 만든다. */
+const LotTraceRoute = () => (
+  <LotTraceScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
+);
 
 export const appRouter = createBrowserRouter([
   {
@@ -360,7 +366,7 @@ export const appRouter = createBrowserRouter([
        * W-02-09 — 진행을 본 뒤 그 LOT이 어디서 와서 어디로 갔는지 본다. 조회 자리라 진행현황 바로 뒤다.
        * 정방향 추적, 역방향 추적, 입출고 현황은 화면 안 탭이다(`?tab=`).
        */
-      { path: 'production/lot-trace', element: <LotTraceScreen /> },
+      { path: 'production/lot-trace', element: <LotTraceRoute /> },
       /*
        * W-03-01 — Lot Status 계열의 첫 화면이므로 품질관리 섹션을 연다.
        * 계약의 /quality/**와 주소 앞머리가 같지만 근거는 사이드바 업무 섹션이다.

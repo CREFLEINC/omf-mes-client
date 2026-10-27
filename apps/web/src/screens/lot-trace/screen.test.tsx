@@ -82,7 +82,7 @@ const setup = (options: SetupOptions = {}) => {
   const shipments = options.shipments ?? [shipmentLine(11, 7)];
   const result = renderWithProviders(
     <SessionProvider>
-      <LotTraceScreen />
+      <LotTraceScreen permissionMenuPath="합성 묶음 › 합성 메뉴" />
     </SessionProvider>,
     {
       session: {

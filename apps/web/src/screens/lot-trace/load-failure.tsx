@@ -1,9 +1,16 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { createContext, use } from 'react';
 
 import { ApiRequestError } from '../../patterns/request';
 
 const t = messages.lotTrace;
+
+/**
+ * 권한 안내가 가리킬 메뉴 경로(「시스템 관리 › 사용자·역할·권한」). 사이드바 자료(`app/nav-tree.ts`)는
+ * 화면이 부를 수 없는 층이라 라우트가 만들어 화면에 넘긴다. 모르면 `null`이고 메뉴 없이 안내한다.
+ */
+export const PermissionMenuContext = createContext<string | null>(null);
 
 export type LoadCause = 'forbidden' | 'notFound' | 'other';
 
@@ -32,10 +39,11 @@ export interface LoadFailureProps {
  */
 export const LoadFailure = ({ error, title, description, onRetry }: LoadFailureProps) => {
   const cause = toLoadCause(error);
+  const menuPath = use(PermissionMenuContext);
   if (cause === 'forbidden') {
     return (
       <AlertBanner variant="error" title={t.access.forbiddenTitle}>
-        {t.access.forbidden}
+        {menuPath === null ? t.access.forbiddenNoMenu : t.access.forbidden(menuPath)}
       </AlertBanner>
     );
   }

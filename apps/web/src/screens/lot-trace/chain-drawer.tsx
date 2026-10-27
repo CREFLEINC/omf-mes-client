@@ -166,6 +166,7 @@ const ProductSideNodes = ({
               <ul className="lot-trace-tree">
                 {group.units.map((unit) => (
                   <li key={unit.handlingUnitNo} className="lot-trace-node">
+                    <span className="lot-trace-node-kind">{c.shipmentPackage}</span>
                     <span className="mono-cell">{unit.handlingUnitNo}</span>
                     <span>{qty(unit.qty, uomCode)}</span>
                   </li>

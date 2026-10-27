@@ -47,8 +47,9 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
   },
   access: {
     forbiddenTitle: 'Không có quyền truy xuất LOT',
-    forbidden:
-      'Quản trị viên có thể cấp quyền truy xuất LOT cho vai trò ở menu Người dùng, vai trò, quyền. Hãy đề nghị quản trị viên cấp quyền.',
+    forbidden: (menuPath: string): string =>
+      `Quản trị viên có thể cấp quyền truy xuất LOT cho vai trò ở menu 「${menuPath}」. Hãy đề nghị quản trị viên cấp quyền.`,
+    forbiddenNoMenu: 'Hãy đề nghị quản trị viên cấp quyền truy xuất LOT.',
     notFoundTitle: 'Không tìm thấy LOT',
     notFound: 'Hãy chọn lại LOT trong danh sách.',
   },
@@ -194,7 +195,7 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     lotStatus: 'Xem trạng thái LOT',
     exportChain: 'Xuất chuỗi',
     exportPending: 'Đang tải các bước đã mở',
-    exportFailed: 'Có bước chưa tải được. Hãy tra cứu lại bước đó hoặc thu gọn',
+    exportFailed: 'Có bước chưa tải được. Cần tải hết các bước mới xuất được chuỗi.',
     expandFailed: 'Không tải được bước tiếp theo',
     documents: (count: number): string =>
       `Nhập kho sản xuất, đóng gói, xuất hàng ${num(count)} mục`,
@@ -223,6 +224,7 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     packing: 'Đóng gói',
     packingOpen: 'Đang đóng gói',
     shipment: 'Xuất hàng',
+    shipmentPackage: 'Gói xuất hàng',
     workOrder: 'W/O',
     productionLot: 'LOT sản xuất',
     inputMaterials: 'Vật tư đã đưa vào',
@@ -230,7 +232,7 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     consumed: (qty: string, from: string, to: string): string => `Đưa vào ${qty}, ${from} ~ ${to}`,
     good: (qty: string): string => `Đạt ${qty}`,
     results: (count: number, good: string, defect: string): string =>
-      `Kết quả ${num(count)} lần, đạt ${good}, lỗi ${defect}`,
+      `Toàn W/O: kết quả ${num(count)} lần, đạt ${good}, lỗi ${defect}`,
     noInput: 'Chưa có ghi chép đưa vào',
     noProductionLot: 'Không có LOT sản xuất liên kết',
     noShipment: 'Chưa xuất hàng',
