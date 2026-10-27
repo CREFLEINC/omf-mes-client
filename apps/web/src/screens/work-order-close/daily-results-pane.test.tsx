@@ -1,8 +1,11 @@
+import { NETWORK_ERROR, normalizeApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ApiRequestError } from '../../patterns/request';
 import {
+  toWorkOrderCloseDailyLoadCause,
   toWorkOrderCloseDailyRows,
   WorkOrderCloseDailyResultsPane,
   type WorkOrderCloseDailyResultsState,
@@ -66,6 +69,8 @@ const resolved = (
   ...overrides,
 });
 
+/** 칩의 글자 — 보조기기용 앞말과 보이는 「N건」. */
+const chip = (count: number) => `${t.values.correctedPrefix} ${t.values.corrected(count)}`;
 const pane = () => screen.getByRole('region', { name: t.pane });
 const bodyRows = () =>
   within(pane())
@@ -100,6 +105,38 @@ describe('toWorkOrderCloseDailyRows', () => {
     const rows = toWorkOrderCloseDailyRows(data.items, new Set(['2026-10-21']));
     expect(rows).toHaveLength(2);
     expect(rows[1]).toMatchObject({ kind: 'day', expandable: false, shiftName: '야간' });
+  });
+});
+
+describe('toWorkOrderCloseDailyLoadCause', () => {
+  const failed = (status: number, body: unknown) =>
+    new ApiRequestError(normalizeApiError(status, body), { httpStatus: status });
+
+  it('오류 봉투에 담긴 403도 권한 없음으로 본다', () => {
+    const enveloped = failed(403, {
+      errors: [
+        { scope: 'screen', code: 'PERMISSION_DENIED', message: '이 기능을 쓸 권한이 없습니다.' },
+      ],
+    });
+    expect(enveloped.apiError.kind).not.toBe('http');
+    expect(toWorkOrderCloseDailyLoadCause(enveloped)).toBe('forbidden');
+  });
+
+  it('본문 없는 403도 권한 없음으로 본다', () => {
+    expect(toWorkOrderCloseDailyLoadCause(failed(403, undefined))).toBe('forbidden');
+  });
+
+  it('응답이 없으면 연결 끊김, 그 밖의 실패는 일반 실패로 본다', () => {
+    expect(toWorkOrderCloseDailyLoadCause(new ApiRequestError(NETWORK_ERROR))).toBe('offline');
+    expect(toWorkOrderCloseDailyLoadCause(failed(500, { message: 'x' }))).toBe('other');
+    expect(
+      toWorkOrderCloseDailyLoadCause(
+        failed(422, {
+          errors: [{ scope: 'field', field: 'x', code: 'INVALID', message: '형식 오류' }],
+        }),
+      ),
+    ).toBe('other');
+    expect(toWorkOrderCloseDailyLoadCause(new Error('render'))).toBe('other');
   });
 });
 
@@ -138,7 +175,7 @@ describe('WorkOrderCloseDailyResultsPane', () => {
       '2',
       '3',
       '5',
-      t.values.corrected(1),
+      chip(1),
     ]);
     /* 교대가 하나뿐인 날(야간만)은 날짜 줄의 교대 칸에 그 이름이 보인다. */
     expect(cellTexts(second!).slice(0, 2)).toEqual(['2026-10-21', '야간']);
@@ -162,7 +199,7 @@ describe('WorkOrderCloseDailyResultsPane', () => {
       '4',
       '6',
       '7',
-      t.values.corrected(1),
+      chip(1),
     ]);
   });
 
@@ -189,7 +226,7 @@ describe('WorkOrderCloseDailyResultsPane', () => {
       '2',
       '3',
       '3',
-      t.values.corrected(1),
+      chip(1),
     ]);
     expect(cellTexts(bodyRows()[3]!)[1]).toBe('교대 없음');
 

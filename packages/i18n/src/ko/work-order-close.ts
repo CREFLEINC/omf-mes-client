@@ -273,7 +273,7 @@ export const workOrderClose = {
       holdQty: '보류',
       scrapQty: '스크랩',
       reworkQty: '재작업',
-      resultCount: '실적 건수',
+      resultCount: '건수',
       corrected: '정정',
     },
     values: {
@@ -281,7 +281,9 @@ export const workOrderClose = {
       orderQty: '지시 수량',
       unit: '단위',
       shiftCount: (count: number): string => `교대 ${String(count)}개`,
-      corrected: (count: number): string => `정정된 실적 ${String(count)}건`,
+      /** 칩에는 「N건」만 보이고, 무엇을 센 것인지는 머리 「정정」과 보조기기용 앞말이 말한다(좁은 폭에서 가로 넘침 방지). */
+      corrected: (count: number): string => `${String(count)}건`,
+      correctedPrefix: '정정된 실적',
     },
     actions: {
       expand: (workDate: string): string => `${workDate} 교대별 펼치기`,

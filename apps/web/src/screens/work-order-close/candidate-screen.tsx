@@ -52,8 +52,10 @@ import {
   type WorkOrderCloseDetailSummaryState,
 } from './detail-summary-pane';
 import { WorkOrderCloseOutboundItemsPane } from './outbound-items-pane';
-import { WorkOrderCloseDailyResultsPane } from './daily-results-pane';
-import { toApiError } from '../../patterns/request';
+import {
+  toWorkOrderCloseDailyLoadCause,
+  WorkOrderCloseDailyResultsPane,
+} from './daily-results-pane';
 import { WorkOrderCloseResultPane } from './close-result-pane';
 import { SessionForceEndDialog } from './session-force-end-dialog';
 import { WorkOrderResultCorrectionWorkspace } from './result-correction-workspace';
@@ -71,12 +73,6 @@ import {
   type WorkOrderCloseOpenSessionView,
   type WorkOrderCloseOutboundItemSetting,
 } from './queries';
-
-const dailyLoadCause = (error: unknown): 'forbidden' | 'offline' | 'other' => {
-  const apiError = toApiError(error);
-  if (apiError.kind === 'network') return 'offline';
-  return apiError.kind === 'http' && apiError.status === 403 ? 'forbidden' : 'other';
-};
 
 const productionOrderReason = (
   query: ReturnType<typeof useWorkOrderCloseProductionOrders>,
@@ -541,7 +537,7 @@ export const WorkOrderCloseCandidateScreen = () => {
             : dailyResults.isError
               ? {
                   kind: 'UNAVAILABLE',
-                  cause: dailyLoadCause(dailyResults.error),
+                  cause: toWorkOrderCloseDailyLoadCause(dailyResults.error),
                   onRetry: dailyRetry,
                 }
               : { kind: 'CHECKING' }

@@ -281,7 +281,7 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       holdQty: 'Tạm giữ',
       scrapQty: 'Phế liệu',
       reworkQty: 'Làm lại',
-      resultCount: 'Số kết quả',
+      resultCount: 'Số bản ghi',
       corrected: 'Đã sửa',
     },
     values: {
@@ -289,7 +289,8 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
       orderQty: 'Số lượng lệnh',
       unit: 'Đơn vị',
       shiftCount: (count: number) => `${String(count)} ca`,
-      corrected: (count: number) => `${String(count)} bản ghi đã sửa`,
+      corrected: (count: number) => `${String(count)} bản ghi`,
+      correctedPrefix: 'Kết quả đã sửa',
     },
     actions: {
       expand: (workDate: string) => `Mở theo ca ngày ${workDate}`,

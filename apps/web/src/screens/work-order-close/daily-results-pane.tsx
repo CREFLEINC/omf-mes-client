@@ -13,6 +13,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useState, type JSX } from 'react';
 
+import { ApiRequestError, toApiError } from '../../patterns/request';
 import type { WorkOrderCloseDailyResults } from './queries';
 
 const t = messages.workOrderClose.dailyResults;
@@ -85,9 +86,22 @@ export const toWorkOrderCloseDailyRows = (
     ];
   });
 
+export type WorkOrderCloseDailyLoadCause = 'forbidden' | 'offline' | 'other';
+
+/**
+ * 불러오기 실패의 원인. 권한 없음은 정규화 전 상태 코드로 본다 — 서버가 403을 오류 봉투(`errors[]`)에
+ * 담아 보내면 정규화가 그것을 검증 오류로 접으며 상태 코드를 버리기 때문이다.
+ * 연결 끊김은 응답이 없는 실패라 정규화 결과(network)로 판정할 수 있다.
+ */
+export const toWorkOrderCloseDailyLoadCause = (error: unknown): WorkOrderCloseDailyLoadCause => {
+  if (error instanceof ApiRequestError && error.httpStatus === 403) return 'forbidden';
+  return toApiError(error).kind === 'network' ? 'offline' : 'other';
+};
+
 const CorrectedChip = ({ count }: { count: number }) =>
   count > 0 ? (
     <Chip variant="status" status="info" size="sm">
+      <span className="work-order-close-table-caption">{`${t.values.correctedPrefix} `}</span>
       {t.values.corrected(count)}
     </Chip>
   ) : null;
@@ -95,7 +109,7 @@ const CorrectedChip = ({ count }: { count: number }) =>
 export type WorkOrderCloseDailyResultsState =
   | { kind: 'CHECKING' }
   /** 처음 불러오기 실패. 권한 없음(403)은 다시 시도해도 같은 답이라 조치를 두지 않는다. */
-  | { kind: 'UNAVAILABLE'; cause: 'forbidden' | 'offline' | 'other'; onRetry: () => void }
+  | { kind: 'UNAVAILABLE'; cause: WorkOrderCloseDailyLoadCause; onRetry: () => void }
   /** 다시 불러오기에 실패해도 이미 받은 표는 그대로 두고 경고만 더한다. */
   | {
       kind: 'RESOLVED';

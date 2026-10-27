@@ -246,7 +246,7 @@ const makeApi = (
   let outboundMode: OutboundMode = 'ready';
   let releaseOutbound: (() => void) | undefined;
   let closeMode: CloseMode = 'success';
-  let dailyMode: 'ready' | '403' = 'ready';
+  let dailyMode: 'ready' | '403' | '403-envelope' = 'ready';
   let withClosed = false;
   let releaseClose: (() => void) | undefined;
   const closeRequests: CloseRecord[] = [];
@@ -323,7 +323,19 @@ const makeApi = (
       return jsonResponse(detailBody(701, 'NORMAL'));
     }
     if (url.pathname.endsWith('/daily-results'))
-      return dailyMode === '403' ? errorResponse(403) : jsonResponse(dailyBody);
+      return dailyMode === '403'
+        ? errorResponse(403)
+        : dailyMode === '403-envelope'
+          ? errorResponse(403, {
+              errors: [
+                {
+                  scope: 'screen',
+                  code: 'PERMISSION_DENIED',
+                  message: '이 기능을 쓸 권한이 없습니다.',
+                },
+              ],
+            })
+          : jsonResponse(dailyBody);
     if (url.pathname === '/production/production-results' || url.pathname === '/mdm/workers')
       return jsonResponse({ items: [], page: page(0) });
     if (url.pathname.startsWith(`${paths.candidates}/`)) {
@@ -698,16 +710,19 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(status.compareDocumentPosition(daily) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('일자별 실적이 403 이면 권한 안내만 보이고 다시 시도를 두지 않는다', async () => {
-    const user = userEvent.setup();
-    const api = makeApi();
-    api.setDailyMode('403');
-    renderWithProviders(<View />, { fetch: api.fetch });
-    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
-    const daily = await screen.findByRole('region', { name: t.dailyResults.pane });
-    expect(await within(daily).findByText(messages.httpError.forbidden)).toBeVisible();
-    expect(within(daily).queryByRole('button', { name: messages.common.retry })).toBeNull();
-  });
+  it.each(['403', '403-envelope'] as const)(
+    '일자별 실적이 %s 이면 권한 안내만 보이고 다시 시도를 두지 않는다',
+    async (mode) => {
+      const user = userEvent.setup();
+      const api = makeApi();
+      api.setDailyMode(mode);
+      renderWithProviders(<View />, { fetch: api.fetch });
+      await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+      const daily = await screen.findByRole('region', { name: t.dailyResults.pane });
+      expect(await within(daily).findByText(messages.httpError.forbidden)).toBeVisible();
+      expect(within(daily).queryByRole('button', { name: messages.common.retry })).toBeNull();
+    },
+  );
 
   it('마감된 W/O 에서도 일자별 실적 표가 서고, 정정 저장이 생산실적을 무효화하면 다시 읽는다', async () => {
     const user = userEvent.setup();
