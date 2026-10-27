@@ -11,6 +11,7 @@ import { runRequest, toApiError } from '../../patterns/request';
 import { DOCUMENT_TYPE_CODE, IQC_DOCUMENT_TYPE_CODE } from './codes';
 import { toIssueFailure } from './failure';
 import { toDocumentIssueBody, toLotCreateBody, toPrintReportBody } from './issue-request';
+import type { IssueUnit } from './issue-unit';
 import { buildMaterialLotLabelBytes } from './label-tspl';
 import { receiptWhen } from './pending';
 import { fetchFreshLines, receiptKeys, rowKeys, type IssuedView } from './queries';
@@ -519,9 +520,17 @@ export interface IssueRunOptions {
 }
 
 export interface BatchIssueHandle {
-  /** 고른 줄을 차례로 보낸다. 이미 돌고 있으면 무시한다. */
-  run: (commands: readonly IssueCommand[]) => void;
-  /** 지금 장까지 끝내고 멈춘다. 남은 장은 `notRun` 으로 남는다. */
+  /**
+   * 고른 줄을 차례로 보낸다. 이미 돌고 있으면 무시한다.
+   * `every` 를 주면 그만큼 보내고 쉰다 — 남은 장은 `resume` 이 다음 단위만큼 이어 보낸다(`issue-unit`).
+   */
+  run: (commands: readonly IssueCommand[], every?: IssueUnit) => void;
+  /** 단위 사이에 쉬는 중이면 다음 단위를 보낸다. 쉬는 중이 아니면 할 일이 없다. */
+  resume: () => void;
+  /**
+   * 지금 장까지 끝내고 멈춘다. 남은 장은 `notRun` 으로 남는다.
+   * 단위 사이에 쉬는 중에 부르면 아직 보내지 않은 장을 `notRun` 으로 돌린다 — 「다시 발행」으로 이어 간다.
+   */
   stop: () => void;
   /** 결과를 걷는다 — 「확인」. 돌고 있으면 무시한다. */
   reset: () => void;
@@ -537,7 +546,19 @@ export interface BatchIssueHandle {
   skipped: ReadonlySet<number>;
   /** 멈춤·프린터 고장으로 보내지 않은 줄. */
   notRun: ReadonlySet<number>;
+  /** 단위로 나눠 보내는 중 아직 보내지 않은 장수. 0 이면 쉬는 중이 아니다. */
+  remaining: number;
+  /** 「다음 N장 발행」의 N — 다음 단위와 남은 장 가운데 작은 것. 쉬는 중이 아니면 0. */
+  nextCount: number;
 }
+
+/** 단위로 나눠 보낼 때 아직 보내지 않은 장과 그 단위. */
+interface LaterQueue {
+  commands: IssueCommand[];
+  every: IssueUnit;
+}
+
+const NO_LATER: LaterQueue = { commands: [], every: null };
 
 const without = <T>(set: ReadonlySet<T>, drop: readonly T[]): Set<T> => {
   const next = new Set(set);
@@ -575,9 +596,32 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
   const [results, setResults] = useState<ReadonlyMap<number, IssueRunResult>>(new Map());
   const [skipped, setSkipped] = useState<ReadonlySet<number>>(new Set());
   const [notRun, setNotRun] = useState<ReadonlySet<number>>(new Set());
+  /*
+   * 단위로 나눠 보낼 때 다음 차례를 기다리는 장. 화면이 다시 그려져도 남아야 하고 `resume` 이 같은
+   * 단위로 꺼낸다 — 그래서 ref 다. 장수는 그리기에 쓰이므로 따로 상태로 둔다.
+   */
+  const later = useRef<LaterQueue>(NO_LATER);
+  const [laterCount, setLaterCount] = useState({ remaining: 0, next: 0 });
+
+  const holdLater = useCallback((queue: LaterQueue) => {
+    later.current = queue;
+    setLaterCount({
+      remaining: queue.commands.length,
+      next: Math.min(queue.every ?? queue.commands.length, queue.commands.length),
+    });
+  }, []);
+
+  /** 기다리던 장을 꺼내 줄 번호로 — 멈추면 그 장들은 「보내지 않음」으로 돌린다. */
+  const dropLater = useCallback((): number[] => {
+    const ids = later.current.commands.map((command) => command.row.inboundReceiptLineId);
+
+    holdLater(NO_LATER);
+
+    return ids;
+  }, [holdLater]);
 
   const run = useCallback(
-    (commands: readonly IssueCommand[]) => {
+    (commands: readonly IssueCommand[], every: IssueUnit = null) => {
       /*
        * ⛔ **사번을 모르면 아무것도 부르지 않는다**(공유계약 D-5 · F-6). 단추도 함께 막혀
        * 있지만 판정을 나가는 자리에 두어, 다른 경로가 생겨도 빈 사번이 새지 않게 한다.
@@ -589,6 +633,10 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
       stopRequested.current = false;
       setIsRunning(true);
       setIsStopping(false);
+
+      /* 이번에 보낼 단위와 기다릴 장 — 기다리는 장도 차례(`order`)에는 지금 넣어 「대기」로 선다. */
+      const now = every === null ? [...commands] : commands.slice(0, every);
+      holdLater({ commands: every === null ? [] : commands.slice(every), every });
 
       const ids = commands.map((command) => command.row.inboundReceiptLineId);
 
@@ -614,15 +662,19 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
         const touchedReceipts = new Set<number>();
 
         try {
-          const queue = await verifyCommands(queryClient, client, commands, (gone) => {
+          const queue = await verifyCommands(queryClient, client, now, (gone) => {
             setSkipped((previous) => new Set([...previous, ...gone]));
           });
+          let halted = false;
 
           for (const [index, command] of queue.entries()) {
             const rest = queue.slice(index).map((left) => left.row.inboundReceiptLineId);
 
             if (stopRequested.current) {
-              setNotRun((previous) => new Set([...previous, ...rest]));
+              const dropped = dropLater();
+
+              setNotRun((previous) => new Set([...previous, ...rest, ...dropped]));
+              halted = true;
               break;
             }
 
@@ -635,10 +687,21 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
               new Map(previous).set(command.row.inboundReceiptLineId, result),
             );
 
+            /* 프린터가 서면 다음 단위도 같은 답이다 — 기다리던 장까지 「보내지 않음」이다. */
             if (stopsBatch(result)) {
-              setNotRun((previous) => new Set([...previous, ...rest.slice(1)]));
+              const dropped = dropLater();
+
+              setNotRun((previous) => new Set([...previous, ...rest.slice(1), ...dropped]));
+              halted = true;
               break;
             }
+          }
+
+          /* 이 단위의 마지막 장을 찍는 사이에 「멈춤」을 눌렀다 — 쉬지 않고 남은 단위를 접는다. */
+          if (!halted && stopRequested.current) {
+            const dropped = dropLater();
+
+            setNotRun((previous) => new Set([...previous, ...dropped]));
           }
         } finally {
           running.current = false;
@@ -658,27 +721,41 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
 
       void execute();
     },
-    [client, queryClient, workerNo],
+    [client, queryClient, workerNo, holdLater, dropLater],
   );
 
-  const stop = useCallback(() => {
-    if (!running.current) return;
+  const resume = useCallback(() => {
+    const { commands, every } = later.current;
 
-    stopRequested.current = true;
-    setIsStopping(true);
-  }, []);
+    run(commands, every);
+  }, [run]);
+
+  const stop = useCallback(() => {
+    if (running.current) {
+      stopRequested.current = true;
+      setIsStopping(true);
+
+      return;
+    }
+
+    const dropped = dropLater();
+
+    if (dropped.length > 0) setNotRun((previous) => new Set([...previous, ...dropped]));
+  }, [dropLater]);
 
   const reset = useCallback(() => {
     if (running.current) return;
 
+    holdLater(NO_LATER);
     setOrder([]);
     setResults(new Map());
     setSkipped(new Set());
     setNotRun(new Set());
-  }, []);
+  }, [holdLater]);
 
   return {
     run,
+    resume,
     stop,
     reset,
     isRunning,
@@ -689,6 +766,8 @@ export const useBatchIssue = ({ workerNo }: IssueRunOptions): BatchIssueHandle =
     results,
     skipped,
     notRun,
+    remaining: laterCount.remaining,
+    nextCount: laterCount.next,
   };
 };
 

@@ -89,10 +89,19 @@ describe('PopMaterialLotLabelScreen — 공급사로 묶는다', () => {
     expect(row).toHaveTextContent('SYN-ITEM-01');
     expect(row).toHaveTextContent('합성 품목 가');
     expect(row).toHaveTextContent('500EA');
-    expect(row).toHaveTextContent('08-27 16:12');
+    expect(row).toHaveTextContent('26.08.27 16:12');
     /* 옛 목록은 값마다 이름표를 붙였다 — 줄에 이름표가 없다. */
     expect(row).not.toHaveTextContent(t.table.columns.itemCode);
     expect(screen.getAllByText(t.table.columns.itemCode)).toHaveLength(1);
+  });
+
+  it('입하 일시는 yy.mm.dd hh:mm 이다 — 오늘 들어온 줄도 날짜를 빼지 않는다', async () => {
+    renderLabelScreen({
+      receipts: [receipt(8101, 8201, '2026-08-28T02:05:00Z')],
+      lines: [line(8501, 8101, 8601, 500)],
+    });
+
+    await waitFor(() => expect(rows()[0]).toHaveTextContent('26.08.28 09:05'));
   });
 
   it('수량은 천 단위 쉼표를 넣는다', async () => {
@@ -468,6 +477,53 @@ describe('PopMaterialLotLabelScreen — 입하 기간', () => {
     await waitFor(async () => expect(tileNames(await supplierTiles())).toEqual(['합성 공급사 나']));
     expect(rows()).toHaveLength(1);
     expect(screen.queryByText(t.period.pastTitle(2))).toBeNull();
+  });
+});
+
+describe('PopMaterialLotLabelScreen — 상세 목록의 품목코드 칸', () => {
+  const itemFilter = (): HTMLElement =>
+    screen.getByRole('searchbox', { name: t.table.itemFilter.label });
+
+  it('고른 공급사의 줄 안에서만 품목코드로 거른다 — 공급사 목록은 그대로다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(TWO_SUPPLIERS);
+
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    await user.type(itemFilter(), 'item-02');
+
+    await waitFor(() => expect(rows()).toHaveLength(1));
+    expect(rows()[0]).toHaveTextContent('SYN-ITEM-02');
+    expect(await supplierTiles()).toHaveLength(2);
+    /* 왼쪽 찾기 칸과 따로다 — 왼쪽은 비어 있다. */
+    expect(screen.getByRole('searchbox', { name: t.search.label })).toHaveValue('');
+  });
+
+  it('전체 선택은 보이는 줄만 고른다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(TWO_SUPPLIERS);
+
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    await user.type(itemFilter(), 'ITEM-01');
+    await waitFor(() => expect(rows()).toHaveLength(1));
+    await user.click(screen.getByRole('checkbox', { name: t.table.selectAll }));
+
+    expect(screen.getByText(t.bar.selected(1))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.bar.issue(1) })).toBeInTheDocument();
+  });
+
+  it('맞는 품목이 없으면 그렇게 말하고, 공급사를 바꾸면 칸을 비운다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen(TWO_SUPPLIERS);
+
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    await user.type(itemFilter(), 'NOPE');
+
+    expect(await screen.findByText(t.table.noMatch)).toBeInTheDocument();
+
+    await user.click((await supplierTiles())[1] as HTMLElement);
+
+    await waitFor(() => expect(rows()).toHaveLength(1));
+    expect(itemFilter()).toHaveValue('');
   });
 });
 

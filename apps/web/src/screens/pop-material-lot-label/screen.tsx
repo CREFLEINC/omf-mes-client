@@ -12,6 +12,7 @@ import { popTouchClass } from '../../patterns/pop-touch';
 import { retryCommands, summarize } from './batch-view';
 import { PRINT_FAILURE_REASON_CODE } from './codes';
 import { IssueBar, type BarState } from './issue-bar';
+import { rememberIssueUnit, storedIssueUnit, type IssueUnit } from './issue-unit';
 import { LabelTable } from './label-table';
 import { useItemNameSources, useSupplierLookup, useUomLookup } from './lookups';
 import { useBatchIssue, type IssueCommand } from './mutations';
@@ -76,15 +77,19 @@ interface ResultSnapshot {
  *
  * ```
  * ┌ 머리줄: 화면 이름 · 사번 · 프린터(누르면 바꾼다) · 단말 ─────────────────────────────┐
- * │ [발행 대기 | 다시 인쇄] │ 공급사 이름 코드                         [전체 선택] │
+ * │ [발행 대기 | 다시 인쇄] │ 공급사 이름 코드    [품목코드 칸]        [전체 선택] │
  * │ [찾기 칸 — 스캐너 입력] │ ☐ 품목코드 품목명 수량 입하 IQC        (열 머리 한 번) │
  * │ [오늘|이번 주|이번 달|전체] │ ☑ …                                            │
  * │ [⟳ 새로 고침] 10:42:05 받음 │ (한 쪽 줄 수 = 칸 높이에 들어가는 만큼)      │
  * │ ⚠ 지난 입하 미발행 N장 [보기] │                                            │
  * │ ▣ 공급사 · 남은 장수    │                                                    │
  * │ ▢ 공급사 · 남은 장수    │ 1–13 / 29줄                      [◀ 이전][다음 ▶] │
- * ├ 동작 바: 지금 상태 한 줄                       [선택 해제] [라벨 N장 발행] ┤
+ * ├ 동작 바: 지금 상태 한 줄   발행 단위 [전체|10장|20장|50장] [선택 해제] [라벨 N장 발행] ┤
  * ```
+ *
+ * ⭐ **찾기 칸이 둘이다**(사용자 지시 2026-10-27) — 왼쪽은 모든 공급사에서 품목코드 · 입하번호로(스캐너),
+ *    오른쪽 머리는 고른 공급사의 상세 목록 안에서만 품목코드로. 한 공급사에 줄이 수백 개일 수 있다.
+ * ⭐ **발행 단위** — N장마다 멈추고 「다음 N장 발행」으로 이어 간다(`issue-unit`).
  *
  * ⭐ **입하 기간**(사용자 지시 2026-10-27) — 발행 대기만 거르고 기본은 이번 주다. 기간보다 먼저 들어와
  *    아직 남은 줄은 띠로 세어 알리고 「보기」로 모아 본다(`period`).
@@ -109,6 +114,9 @@ export const PopMaterialLotLabelScreen = () => {
   const [period, setPeriod] = useState<Period>(DEFAULT_PERIOD);
   const [isPastView, setPastView] = useState(false);
   const [query, setQuery] = useState('');
+  /* 상세 목록 머리의 품목코드 칸 — 고른 공급사의 줄 안에서만 거른다(왼쪽 찾기 칸과 따로). */
+  const [itemQuery, setItemQuery] = useState('');
+  const [unit, setUnit] = useState<IssueUnit>(storedIssueUnit);
   const [scanNote, setScanNote] = useState<string | null>(null);
   const [supplierId, setSupplierId] = useState<number | null>(null);
   const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
@@ -184,7 +192,20 @@ export const PopMaterialLotLabelScreen = () => {
     groups.find((group) => group.supplierId === activeSupplierId) ??
     (snapshot === null ? groups[0] : undefined) ??
     null;
-  const tableRows = snapshot?.rows ?? current?.rows ?? [];
+  /*
+   * 상세 목록 — 고른 공급사의 줄을 품목코드 칸으로 한 번 더 거른다. **고르기 · 전체 선택 · 발행은 보이는
+   * 줄만 대상이다** — 숨은 줄이 함께 찍히면 작업자가 본 것과 나온 라벨이 다르다(왼쪽 찾기 칸과 같은 규칙).
+   * ⚠ 품목코드를 아직 풀지 못한 줄은 맞지 않는 것으로 본다 — 풀리면 다시 그려지며 맞춰진다.
+   */
+  const itemNormalized = normalizeQuery(itemQuery);
+  const currentRows = (current?.rows ?? []).filter(
+    (row) =>
+      itemNormalized === '' ||
+      (itemNames.get(row.itemId)?.item?.code ?? '')
+        .toLocaleLowerCase('en-US')
+        .includes(itemNormalized),
+  );
+  const tableRows = snapshot?.rows ?? currentRows;
 
   const rowsRef = useRef<HTMLDivElement | null>(null);
   const rowsPerPage = useRowsThatFit(rowsRef);
@@ -244,9 +265,11 @@ export const PopMaterialLotLabelScreen = () => {
     setChecked(new Set());
   };
 
+  /* 품목코드 칸은 그 공급사의 목록에 대한 것이다 — 공급사가 바뀌면 비운다. */
   const chooseSupplier = (id: number): void => {
     if (id === activeSupplierId) return;
     setSupplierId(id);
+    setItemQuery('');
     setPage(1);
     clearSelection();
   };
@@ -254,6 +277,7 @@ export const PopMaterialLotLabelScreen = () => {
   /** 기간이나 지난 줄 보기를 바꾸면 첫 공급사 · 첫 쪽에서 다시 고른다 — 고른 줄이 안 보이는 데 남지 않게. */
   const restartList = (): void => {
     setSupplierId(null);
+    setItemQuery('');
     setPage(1);
     clearSelection();
   };
@@ -276,10 +300,18 @@ export const PopMaterialLotLabelScreen = () => {
     setPastView(false);
     setSupplierId(null);
     setQuery('');
+    setItemQuery('');
     setScanNote(null);
     setPage(1);
     clearSelection();
   };
+
+  const chooseUnit = (next: IssueUnit): void => {
+    setUnit(next);
+    rememberIssueUnit(next);
+  };
+  /* 단위는 발행 대기에서만 — 다시 인쇄는 한두 장이라 나누지 않는다(`issue-unit`). 다시 발행도 같은 단위다. */
+  const runUnit = tab === 'pending' ? unit : null;
 
   const toggle = (lineId: number): void => {
     setChecked((previous) => {
@@ -292,7 +324,6 @@ export const PopMaterialLotLabelScreen = () => {
     });
   };
 
-  const currentRows = current?.rows ?? [];
   const allChecked =
     currentRows.length > 0 && currentRows.every((row) => checked.has(row.inboundReceiptLineId));
   const someChecked = currentRows.some((row) => checked.has(row.inboundReceiptLineId));
@@ -338,9 +369,10 @@ export const PopMaterialLotLabelScreen = () => {
 
     if (tab === 'reprint' && (reasonCode === null || blockedRow !== undefined)) return;
 
-    setSnapshot({ supplierId: current.supplierId, rows: current.rows });
+    /* 결과 표는 그때 보이던 줄 그대로다 — 품목코드 칸으로 거른 목록이면 그 줄만. */
+    setSnapshot({ supplierId: current.supplierId, rows: currentRows });
     batch.reset();
-    batch.run(commands);
+    batch.run(commands, runUnit);
     clearSelection();
   };
 
@@ -383,19 +415,28 @@ export const PopMaterialLotLabelScreen = () => {
         isStopping: batch.isStopping,
       }
     : snapshot !== null
-      ? {
-          kind: 'done',
-          printed: summary.printed,
-          unfinished: summary.unfinished.length,
-          headline: summary.headline,
-          retryCount: retry.commands.length,
-          needsReasonCount: retry.needsReason.length,
-        }
+      ? batch.remaining > 0
+        ? {
+            kind: 'paused',
+            done: batch.results.size + batch.skipped.size,
+            total: batch.order.length,
+            remaining: batch.remaining,
+            next: batch.nextCount,
+          }
+        : {
+            kind: 'done',
+            printed: summary.printed,
+            unfinished: summary.unfinished.length,
+            headline: summary.headline,
+            retryCount: retry.commands.length,
+            needsReasonCount: retry.needsReason.length,
+          }
       : tab === 'pending'
         ? {
             kind: 'pending',
             supplierName,
             count: selectedRows.length,
+            unit,
             isBlocked: workerNo === null,
           }
         : {
@@ -444,6 +485,7 @@ export const PopMaterialLotLabelScreen = () => {
 
     setScanNote(null);
     setQuery('');
+    setItemQuery('');
     setSupplierId(found.supplierId);
     setChecked(new Set([found.inboundReceiptLineId]));
     setFocusLineId(found.inboundReceiptLineId);
@@ -462,7 +504,9 @@ export const PopMaterialLotLabelScreen = () => {
             : t.period.empty(t.period[period])
           : t.suppliers.reprintEmpty
         : t.table.noMatch
-      : t.table.pickSupplier;
+      : itemNormalized === ''
+        ? t.table.pickSupplier
+        : t.table.noMatch;
   /* 지난 줄 띠 — 기간으로 거르는 동안만 선다. 찾는 중에는 기간을 보지 않으므로 띠도 걷는다. */
   const isPastShown = tab === 'pending' && normalized === '' && split.past.length > 0;
 
@@ -669,6 +713,41 @@ export const PopMaterialLotLabelScreen = () => {
                 </span>
               )}
             </div>
+            {isShowingResults || current === null ? null : (
+              <div className="pop-mlot-search pop-mlot-item-filter">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5L20 20" />
+                </svg>
+                <input
+                  className="pop-mlot-search-input"
+                  type="search"
+                  aria-label={t.table.itemFilter.label}
+                  placeholder={t.table.itemFilter.placeholder}
+                  value={itemQuery}
+                  disabled={isLocked}
+                  autoComplete="off"
+                  onChange={(event) => {
+                    setItemQuery(event.target.value);
+                    setPage(1);
+                  }}
+                />
+                {itemQuery === '' ? null : (
+                  <button
+                    type="button"
+                    className="pop-mlot-search-clear"
+                    aria-label={t.table.itemFilter.clear}
+                    onClick={() => {
+                      setItemQuery('');
+                      setPage(1);
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M7 7l10 10M17 7L7 17" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            )}
             {isShowingResults ? (
               <span className="pop-mlot-work-sum">
                 {t.table.resultSummary(summary.printed, summary.unfinished.length)}
@@ -779,10 +858,12 @@ export const PopMaterialLotLabelScreen = () => {
         onIssue={startIssue}
         onClear={clearSelection}
         onStop={batch.stop}
+        onResume={batch.resume}
         onConfirm={confirmResults}
         onRetry={() => {
-          batch.run(retry.commands);
+          batch.run(retry.commands, runUnit);
         }}
+        onUnitChange={chooseUnit}
       />
     </main>
   );

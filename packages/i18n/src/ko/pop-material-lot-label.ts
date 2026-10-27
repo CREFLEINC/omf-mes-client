@@ -66,6 +66,15 @@ export const popMaterialLotLabel = {
       iqc: 'IQC',
     },
     selectAll: '전체 선택',
+    /**
+     * 상세 목록 머리의 품목코드 칸 — **고른 공급사의 줄 안에서만** 거른다(사용자 지시 2026-10-27).
+     * 왼쪽 찾기 칸(모든 공급사 · 품목코드 또는 입하번호)과 따로 둔다. 한 공급사에 줄이 수백 개일 수 있다.
+     */
+    itemFilter: {
+      label: '목록에서 품목코드 찾기',
+      placeholder: '품목코드',
+      clear: '품목코드 지우기',
+    },
     /** IQC 열의 값 — 검사 대상 줄에만 적는다. 그 줄은 IQC 라벨이 한 장 더 나간다(omf-all-around#110). */
     iqcRequired: '필수',
     /** 줄 전체가 체크 칸이다 — 읽어 주는 도구가 줄을 가를 수 있게 품목·수량·입하 시각을 이름에 싣는다. */
@@ -130,6 +139,21 @@ export const popMaterialLotLabel = {
     failed: (count: number) => `${count}장이 나오지 않았습니다`,
     stopped: (count: number) => `${count}장이 남았습니다`,
     retry: (count: number) => `${count}장 다시 발행`,
+    /**
+     * 발행 단위 — N장마다 멈추고 이어서(사용자 지시 2026-10-27). 「전체」는 멈추지 않는다.
+     * 작업자가 N장을 붙이고 다음 N장을 찍는다 — 라벨이 프린터 앞에 쌓여 섞이지 않게.
+     */
+    unit: {
+      label: '발행 단위',
+      all: '전체',
+      each: (count: number) => `${count}장`,
+      /** 고른 장수가 단위보다 많을 때 왼쪽 상태 줄에 덧붙인다. */
+      note: (count: number) => `${count}장마다 멈춤`,
+    },
+    /** 한 단위를 다 찍고 쉬는 중. */
+    paused: (done: number, total: number) => `${total}장 중 ${done}장 발행`,
+    pausedNote: (remaining: number) => `라벨을 붙인 뒤 이어서 발행하세요 · 남은 ${remaining}장`,
+    resume: (count: number) => `다음 ${count}장 발행`,
     /** 실패한 까닭마다 할 일. 다시 눌러도 같은 답이 오는 것은 다시 하라고 하지 않는다. */
     next: {
       printFailed: '프린터 연결과 용지를 확인하세요',

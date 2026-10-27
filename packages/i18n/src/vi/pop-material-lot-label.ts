@@ -50,6 +50,11 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
       iqc: 'IQC',
     },
     selectAll: 'Chọn tất cả',
+    itemFilter: {
+      label: 'Tìm mã mặt hàng trong danh sách',
+      placeholder: 'Mã mặt hàng',
+      clear: 'Xóa mã mặt hàng',
+    },
     iqcRequired: 'Bắt buộc',
     rowName: (itemCode: string, itemName: string, qty: string, receivedAt: string) =>
       `${itemCode} ${itemName} ${qty} nhập ${receivedAt}`,
@@ -101,6 +106,15 @@ export const popMaterialLotLabel: Translated<typeof ko.popMaterialLotLabel> = {
     failed: (count: number) => `${count} nhãn chưa in được`,
     stopped: (count: number) => `Còn ${count} nhãn`,
     retry: (count: number) => `Phát hành lại ${count} nhãn`,
+    unit: {
+      label: 'Đơn vị phát hành',
+      all: 'Tất cả',
+      each: (count: number) => `${count} nhãn`,
+      note: (count: number) => `Dừng sau mỗi ${count} nhãn`,
+    },
+    paused: (done: number, total: number) => `Đã phát hành ${done} / ${total} nhãn`,
+    pausedNote: (remaining: number) => `Dán nhãn xong rồi phát hành tiếp · còn ${remaining} nhãn`,
+    resume: (count: number) => `Phát hành ${count} nhãn tiếp theo`,
     next: {
       printFailed: 'Hãy kiểm tra kết nối máy in và giấy',
       reportFailedAfterPrint: 'Nhãn đã ra. Đừng in lại',
