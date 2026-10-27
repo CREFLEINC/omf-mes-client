@@ -32,6 +32,7 @@ it('계약 응답을 안정 ID와 원시 유형 코드를 가진 표시 행으�
     approvalRequestNo: 'SYNTH-REQ-031',
     approvalTypeCode: 'IQC_SKIP',
     targetName: '합성 대상',
+    requestedAt: '2026-08-22T09:30:00+09:00',
     requestedAtText: '2026-08-22 07:30' /* 공장 시각(UTC+7) — omf-all-around#20 */,
     statusCode: 'SYNTH-PENDING',
     isMyTurn: true,

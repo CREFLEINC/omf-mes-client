@@ -60,6 +60,12 @@ export const RequestList = ({
       header: t.fields.requestedAt,
       width: '150px',
       align: 'center',
+      /*
+       * 머리를 눌러 오름 · 내림차순(사용자 지시 2026-10-27) — 검사 조회·판정의 요청 일시와 같은 방식이다. 서버에 정렬
+       * 조건이 없어 지금 받은 쪽 안에서 정렬한다. 원문(RFC3339)으로 정렬한다.
+       */
+      sortable: true,
+      sortAccessor: (row) => row.requestedAt,
       render: (row) => row.requestedAtText,
     },
     /* 상태는 코드 대신 사용자 용어 배지로(#144) — 대기 주황 · 승인 초록 · 반려 빨강. */

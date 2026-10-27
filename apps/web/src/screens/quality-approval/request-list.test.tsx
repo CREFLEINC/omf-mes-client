@@ -14,6 +14,7 @@ const rows: RequestRow[] = [
     approvalRequestNo: 'SYNTH-REQ-031',
     approvalTypeCode: 'IQC_SKIP',
     targetName: '합성 대상 A',
+    requestedAt: '2026-08-22T09:30:00+09:00',
     requestedAtText: '2026-08-22 07:30',
     statusCode: 'SYNTH-PENDING',
     isMyTurn: true,
@@ -23,6 +24,7 @@ const rows: RequestRow[] = [
     approvalRequestNo: 'SYNTH-REQ-032',
     approvalTypeCode: 'SYNTH-LIMIT',
     targetName: '합성 대상 B',
+    requestedAt: '2026-08-21T16:05:00+09:00',
     requestedAtText: '2026-08-21 14:05',
     statusCode: 'SYNTH-DONE',
     isMyTurn: false,
@@ -79,6 +81,30 @@ describe('RequestList compact selection', () => {
     expect(dataRow('SYNTH-REQ-031')).toHaveTextContent('SYNTH-PENDING');
     expect(dataRow('SYNTH-REQ-031')).toHaveTextContent(t.values.myTurn);
     expect(dataRow('SYNTH-REQ-032')).not.toHaveTextContent(t.values.myTurn);
+  });
+
+  it('상신 일시 머리를 누르면 오름 · 내림차순으로 정렬한다(#193)', async () => {
+    const { user } = renderList();
+    const header = () =>
+      screen.getByRole('columnheader', { name: new RegExp(t.fields.requestedAt) });
+    const order = () =>
+      screen.getAllByRole('button', { name: /SYNTH-REQ-03\d/ }).map((button) => button.textContent);
+
+    await user.click(within(header()).getByRole('button'));
+    const first = header().getAttribute('aria-sort');
+    expect(order()).toEqual(
+      first === 'ascending'
+        ? ['SYNTH-REQ-032', 'SYNTH-REQ-031']
+        : ['SYNTH-REQ-031', 'SYNTH-REQ-032'],
+    );
+
+    await user.click(within(header()).getByRole('button'));
+    expect(header().getAttribute('aria-sort')).not.toBe(first);
+    expect(order()).toEqual(
+      first === 'ascending'
+        ? ['SYNTH-REQ-031', 'SYNTH-REQ-032']
+        : ['SYNTH-REQ-032', 'SYNTH-REQ-031'],
+    );
   });
 
   it('안정 ID로 고른 행을 유지하고 키보드 버튼으로 선택한다', async () => {

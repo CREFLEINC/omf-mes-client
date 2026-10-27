@@ -4059,6 +4059,14 @@ main:has(.iqc-skip-approval-detail) {
   overscroll-behavior-y: none;
 }
 
+/*
+ * 정렬 머리칸(상신 일시 · #193) — DS 정렬 단추는 글 폭만큼만 서는데, 그 안 머리글 묶음의 `max-width: 100% - 손잡이`
+ * 가 단추 폭을 다시 기준으로 삼아 글이 「상…」으로 잘린다. 정렬 단추 안에서는 그 상한을 풀어 글 폭대로 선다.
+ */
+.quality-approval-table thead th button .col-drag-anchor {
+  max-width: none;
+}
+
 /* 왼쪽 목록이 좁아도 칸 글이 여러 줄로 꺾이지 않는다 — 넘치면 구획 안에서 옆으로 민다(#186). */
 .quality-approval-list-pane .quality-approval-table th,
 .quality-approval-list-pane .quality-approval-table td {
