@@ -79,7 +79,7 @@ import { ItemLevel } from './item-level';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
-import { AttachmentPanel } from '../inspection-documents/attachment-panel';
+import { AttachmentPanel, useAttachments } from '../inspection-documents/attachment-panel';
 import { LotScan } from '../inspection-documents/lot-scan';
 import { InspectionHistoryPanel, useInspectionHistory } from '../inspection-history/panel';
 import { latestRound, previousRounds } from './types';
@@ -903,6 +903,8 @@ export const IqcInspectionScreen = () => {
   /* 회차가 바뀐 표식 — 저장·확정·재검사 뒤 이력을 새로 부른다. 접는 줄의 건수도 같은 조회를 쓴다(#133). */
   const historyRevision = `${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`;
   const historyCount = useInspectionHistory(selectedId, historyRevision).data?.events.length;
+  /* 첨부 탭 건수 — 첨부 구획과 같은 조회(캐시)다. LOT 이 없는 의뢰는 0 번 대상이라 부르지 않는다. */
+  const attachments = useAttachments('LOT', detail.data?.lotId ?? 0, detail.data?.lotId != null);
 
   const auxContent =
     detail.isError || detail.data === undefined ? null : (
@@ -917,7 +919,8 @@ export const IqcInspectionScreen = () => {
           items={[
             {
               value: 'measurements',
-              label: messages.iqcInspection.measurements.caption,
+              /* 탭마다 건수를 붙인다(사용자 지시 2026-10-27 · #185). */
+              label: `${messages.iqcInspection.measurements.caption} ${messages.iqcInspection.detail.historyCount(measurementRows.length)}`,
               content: (
                 <div className="iqc-inspection-tab-body iqc-inspection-fold">
                   {/*
@@ -939,7 +942,7 @@ export const IqcInspectionScreen = () => {
               ? [
                   {
                     value: 'rounds',
-                    label: messages.iqcInspection.history.heading,
+                    label: `${messages.iqcInspection.history.heading} ${messages.iqcInspection.detail.historyCount(historyRounds.length)}`,
                     content: (
                       <div className="iqc-inspection-tab-body iqc-inspection-fold">
                         <RoundHistory
@@ -958,7 +961,10 @@ export const IqcInspectionScreen = () => {
               ? [
                   {
                     value: 'documents',
-                    label: messages.inspectionDocuments.heading,
+                    label:
+                      attachments.data === undefined
+                        ? messages.inspectionDocuments.heading
+                        : `${messages.inspectionDocuments.heading} ${messages.iqcInspection.detail.historyCount(attachments.data.length)}`,
                     content: (
                       <div className="iqc-inspection-tab-body iqc-inspection-fold">
                         <AttachmentPanel

@@ -89,6 +89,23 @@ export const attachmentKeys = {
     ['inspection-documents', targetTypeCode, targetId] as const,
 };
 
+/** 대상의 첨부 목록 — 탭 이름의 건수(#185)도 같은 조회(같은 캐시)를 쓴다. */
+export const useAttachments = (
+  targetTypeCode: AttachmentTargetType,
+  targetId: number,
+  enabled = true,
+) => {
+  const { client } = useApiClient();
+  return useQuery({
+    enabled,
+    queryKey: attachmentKeys.list(targetTypeCode, targetId),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/attachments', { params: { query: { targetTypeCode, targetId } } }),
+      ).then((response) => response.items),
+  });
+};
+
 export interface AttachmentPanelProps {
   /** 붙일 대상 — 검사 문서는 LOT 또는 검사 결과(서버 선행 P-57). */
   targetTypeCode: 'LOT' | 'INSPECTION_RESULT';
@@ -146,13 +163,7 @@ export const AttachmentPanel = ({
   const queryClient = useQueryClient();
   const listKey = attachmentKeys.list(targetTypeCode, targetId);
 
-  const list = useQuery({
-    queryKey: attachmentKeys.list(targetTypeCode, targetId),
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/app/attachments', { params: { query: { targetTypeCode, targetId } } }),
-      ).then((response) => response.items),
-  });
+  const list = useAttachments(targetTypeCode, targetId);
 
   /* 파일마다 따로 보내고 따로 멱등 키를 쓴다 — 한 키로 여러 파일을 보내면 서버가 뒤 파일을 앞의 중복으로 본다. */
   const send = (file: File) => {
