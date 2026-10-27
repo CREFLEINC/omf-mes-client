@@ -21844,7 +21844,8 @@ table.col-measuring td {
 }
 
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-body > .iqc-inspection-qty {
-  grid-template-columns: repeat(3, minmax(6rem, 12rem));
+  /* 칸은 숫자 몇 자리 폭이면 된다 — 남는 폭으로 늘리지 않는다(사용자 지시 2026-10-27 · #185). */
+  grid-template-columns: repeat(3, minmax(6rem, 9rem));
   justify-content: start;
 }
 
