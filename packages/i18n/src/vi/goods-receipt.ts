@@ -6,8 +6,6 @@ import type { Translated } from './translated';
  * 두 낱말을 가려 쓴다. ERP 는 「대기열 적재」까지만 말하고 「전송 완료」라고 쓰지 않는다.
  */
 export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
-  title: 'Xử lý nhập hàng đạt',
-  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     list: 'Danh sách phiếu nhập hàng',
     lines: 'Các dòng của phiếu đã chọn',
@@ -75,18 +73,6 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     lineNoLot: 'Chưa tạo LOT vật tư.',
     lineQtyNotPositive: 'Số lượng nhập phải lớn hơn 0 mới chọn được.',
   },
-  loading: {
-    inboundReceipts: 'Đang tải danh sách phiếu nhập hàng',
-    lines: 'Đang tải các dòng nhập hàng',
-  },
-  table: {
-    inboundReceiptNo: 'Số nhập hàng',
-    supplier: 'Nhà cung cấp',
-    receiptDatetime: 'Thời điểm nhập hàng',
-    deliveryNoteNo: 'Số phiếu giao hàng',
-    status: 'Trạng thái',
-    select: 'Chọn',
-  },
   postTitle: 'Thông tin nhập kho',
   lineTable: {
     title: 'Dòng nhập hàng',
@@ -138,24 +124,6 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     chipRemovePeriod: 'Bỏ điều kiện ngày nhập hàng',
     chipRemoveStatus: 'Bỏ điều kiện trạng thái',
     chipRemoveQ: 'Bỏ điều kiện từ khóa',
-  },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / Tổng ${String(total)} phiếu`,
-    totalOnly: (total: number): string => `Tổng ${String(total)} phiếu`,
-  },
-  empty: {
-    noResultTitle: 'Không có phiếu nhập hàng nào khớp điều kiện',
-    noResultDescription: 'Hãy bớt điều kiện hoặc nới rộng khoảng ngày nhập hàng rồi tra cứu lại.',
-    beyondLastTitle: 'Trang này không có kết quả',
-    beyondLastDescription: 'Hãy về trang đầu.',
-    noSelectionTitle: 'Hãy chọn phiếu nhập hàng',
-    noSelectionDescription: 'Bấm 「Chọn」 ở phiếu cần nhập trong danh sách.',
-    noLinesTitle: 'Không có dòng để nhập kho',
-    noLinesDescription: 'Phiếu này không có dòng mặt hàng nào có thể nhập kho.',
-    listFailedTitle: 'Không tải được danh sách phiếu nhập hàng nên không mở được phiếu này',
-    listFailedDescription: 'Hãy bấm 「Thử lại」 ở trên để tải danh sách rồi chọn lại.',
   },
   values: {
     empty: '—',

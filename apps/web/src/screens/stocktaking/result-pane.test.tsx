@@ -273,7 +273,7 @@ describe('ResultPane — 마감 갈래', () => {
    * 이 부품에서는 특히 자연스러운 이동이다 — 링크를 감싼 `.field-cell`이 `<dl>` 안 칸과
    * **같은 클래스 이름**이라 옮겨도 겉모습이 달라지지 않는다.
    *
-   * 전례가 같은 자리에 같은 잣대를 세웠다(`over-receipt-split/created-receipts-pane.test.tsx`).
+   * 전례가 같은 자리에 같은 잣대를 세웠다(옛 `over-receipt-split/created-receipts-pane.test.tsx` — 2026-10 지움).
    * 이번 회차가 그 주석 문면을 사본하면서 이 감지기를 빠뜨렸던 자리다(리뷰 R-1).
    */
   it('링크가 이름-값 목록 안에 있지 않다', () => {
