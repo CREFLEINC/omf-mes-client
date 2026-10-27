@@ -15,12 +15,6 @@ const draft = (overrides: Partial<ReceiptDraft> = {}): ReceiptDraft => ({
   supplierLotMissing: false,
   supplierLotLabelAttached: true,
   substituteLotReasonCode: '',
-  unordered: false,
-  supplierId: null,
-  itemId: null,
-  uomId: null,
-  exceptionTypeCode: '',
-  exceptionReason: '',
   purchaseOrder: null,
   purchaseOrderLine: null,
   deliveryNoteNo: '',
@@ -70,10 +64,6 @@ describe('입하 등록 단계', () => {
   /* 라인을 바꾸러 돌아와도 적은 수량은 그대로 둔다. 같은 라인을 다시 고르면 이어서 적는다. */
   it('라인을 바꾸러 돌아오면 고른 라인이 있어도 라인 단계다', () => {
     expect(stepOf(draft({ supplierLotNo: 'L-1', purchaseOrderLine: line() }), true)).toBe('line');
-  });
-
-  it('발주 없이 받으면 그 단계다', () => {
-    expect(stepOf(draft({ supplierLotNo: 'L-1', unordered: true }), false)).toBe('unordered');
   });
 });
 

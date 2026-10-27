@@ -1,0 +1,25 @@
+/*
+ * 디자인 시스템은 768px 이하에서 대화상자를 전체 화면(100vw × 100dvh, 모서리 0)으로 편다. 그
+ * 규칙만 되돌려 넓은 화면의 모양(가운데, 둥근 판, 뒤가 어둡게 비침)으로 띄운다. 셸이 대화상자에
+ * 준 시스템 바 여백도 걷는다 - 가운데 뜨는 창은 바에 닿지 않는다.
+ */
+.mobile-shell dialog.confirm-dialog {
+  --dialog-max-h: calc(100dvh - var(--space-8));
+  width: calc(100vw - var(--space-8));
+  max-width: var(--dialog-max-sm);
+  /* 내용만큼 - auto 로 두면 위아래로 늘어나 판이 위에 붙는다. 그래야 margin: auto 가 가운데에 둔다. */
+  height: fit-content;
+  margin: auto;
+  padding: 0;
+}
+
+/* 판은 대화상자의 첫 자식이다 - 디자인 시스템 클래스는 빌드마다 바뀌는 해시라 자리로 고른다. */
+.mobile-shell dialog.confirm-dialog > div {
+  height: auto;
+  border-radius: var(--radius-lg);
+}
+
+/* 두 단추가 바닥 줄을 반씩 나눈다 - 장갑 낀 손가락이 겨누기 쉽다. */
+.confirm-dialog__action {
+  flex: 1;
+}
