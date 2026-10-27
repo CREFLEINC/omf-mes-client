@@ -192,8 +192,9 @@ export const inboundSchedule = {
    * | --- | --- |
    * | 초과분 · 초과 수량 | 미배정 · `unallocatedQty` |
    * | 연결 · 연결한 발주 | 배정 · `allocations[]` (`POST …/allocations`) |
-   * | 미연결 · 연결됨 | 미배정이 남은 줄 · 배정된 몫 |
-   * | 연결 해제 | 배정 해제 (`DELETE …/allocations/{id}`) |
+   * | 미연결 | 미배정이 남은 줄 (`GET /logistics/inbound-unallocated`) |
+   * | 연결할 발주 라인 | 배정 후보 (`GET …/allocation-candidates`) |
+   * | (연결 해제 — 아직 화면에 없다) | 배정 해제 (`DELETE …/allocations/{id}`) |
    *
    * 「배정」을 화면에 쓰지 않는 까닭: 이 제품에서 「배정」은 이미 **출하할 재고를 잡아 두는 것**이다(PDA 피킹 「배정 · 피킹」 ·
    * 출하 요청 「배정 수량」 · 출하 일정 「요청 / 배정 / 출하」). 입고 쪽에 같은 낱말을 쓰면 뜻이 둘이 된다. 「미배정」은 시스템이
@@ -210,11 +211,8 @@ export const inboundSchedule = {
       line: '발주 라인 선택',
       link: '연결',
     },
-    tabs: {
-      label: '초과분 구분',
-      unlinked: '미연결',
-      linked: '연결됨',
-    },
+    /** 창의 목록 이름 — 연결할 초과분만 보인다(연결한 것은 아직 보이지 않는다 · 사용자 결정 2026-10-27). */
+    listTitle: '미연결 초과분',
     table: {
       receiptNo: '입하번호',
       receiptDate: '입하일',
@@ -222,9 +220,8 @@ export const inboundSchedule = {
       item: '품목',
       lot: 'LOT',
       excessQty: '초과 수량',
+      /** 이 입하 줄이 이미 들어간 발주 라인(들). 다 초과분이면 「—」. */
       sourceOrder: '원 발주',
-      linkedOrder: '연결 발주',
-      linkedAt: '연결일',
     },
     candidates: {
       title: '연결할 발주 라인',
@@ -255,25 +252,17 @@ export const inboundSchedule = {
     justRegistered: '방금 등록',
     actions: {
       link: '연결',
-      unlink: '연결 해제',
     },
     /** 단추 옆에 늘 보이는 요약. 수량 뒤에 조사를 붙이지 않는다(받침이 단위마다 다르다). */
     confirmLink: (qty: string, order: string): string => `초과분 ${qty} → ${order}`,
-    confirmUnlink: (qty: string, order: string): string => `${order}의 초과분 ${qty} 연결 해제`,
     blocked: {
       noExcess: '연결할 초과분을 선택하세요.',
       noLine: '연결할 발주 라인을 선택하세요.',
-      noLinked: '연결을 해제할 초과분을 선택하세요.',
     },
     done: {
       linked: (qty: string, order: string): string => `연결했습니다: 초과분 ${qty} → ${order}`,
-      unlinked: (qty: string, order: string): string =>
-        `연결을 해제했습니다: ${order}의 초과분 ${qty}`,
     },
-    empty: {
-      unlinkedTitle: '미연결 초과분이 없습니다',
-      linkedTitle: '연결된 초과분이 없습니다',
-    },
+    emptyTitle: '미연결 초과분이 없습니다',
     truncated: (shown: number, total: number): string =>
       `${String(shown)}건까지만 표시합니다 (전체 ${String(total)}건).`,
     loading: '초과분을 불러오는 중',
@@ -282,9 +271,6 @@ export const inboundSchedule = {
     lineLinkable: (qty: string): string => `${qty} 연결`,
     lineLinkableLabel: (lineNo: number, qty: string): string =>
       `${String(lineNo)}번 줄에 초과분 ${qty} 연결`,
-    lineLinked: (qty: string): string => `${qty} 연결됨`,
-    lineLinkedLabel: (lineNo: number, qty: string): string =>
-      `${String(lineNo)}번 줄에 연결된 초과분 ${qty} 보기`,
   },
   /**
    * 입고 단계 — **서버가 LOT 마다 판정한다**(규범 C-17 · 계약 대기). 이름은 「다음에 할 일」이다: 검사 대기는 품질팀이,

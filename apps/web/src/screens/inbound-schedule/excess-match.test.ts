@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { canTakeExcess, excessesByLine, lineExcessesOf, roomOf } from './excess-match';
-import { excessFixture, linkedExcessFixture, scheduleLine } from './fixtures';
+import { excessFixture, scheduleLine } from './fixtures';
 
 describe('roomOf — 발주 + 초과 허용치 − 받은 수량', () => {
   it('허용치까지 더해 남은 자리를 잰다', () => {
@@ -32,18 +32,27 @@ describe('canTakeExcess — 서버 후보 규칙을 미리 짐작한다', () => 
     expect(canTakeExcess(line, excessFixture(overrides))).toBe(false);
   });
 
-  it('초과분이 나온 줄 자신에게는 연결하지 않는다', () => {
+  it('초과분이 나온 줄 자신의 라인도 자리가 있으면 연결할 수 있다 — ERP 가 발주 수량을 늘려 준 경우(서버와 같다)', () => {
     const excess = excessFixture({
-      sourceOrderLine: {
-        purchaseOrderLineId: line.purchaseOrderLineId,
-        purchaseOrderId: line.purchaseOrderId,
-        purchaseOrderNo: line.purchaseOrderNo,
-        erpPurchaseOrderNo: null,
-        lineNo: line.lineNo,
-      },
+      allocations: [
+        {
+          inboundReceiptPoAllocationId: 9701,
+          inboundReceiptLineId: 9411,
+          allocatedQty: 100,
+          allocatedAt: '2026-10-20T02:00:00.000Z',
+          orderLine: {
+            purchaseOrderLineId: line.purchaseOrderLineId,
+            purchaseOrderId: line.purchaseOrderId,
+            purchaseOrderNo: line.purchaseOrderNo,
+            erpPurchaseOrderNo: null,
+            lineNo: line.lineNo,
+          },
+        },
+      ],
     });
 
-    expect(canTakeExcess(line, excess)).toBe(false);
+    expect(canTakeExcess(scheduleLine({ orderedQty: 130, receivedQty: 100 }), excess)).toBe(true);
+    expect(canTakeExcess(scheduleLine({ orderedQty: 100, receivedQty: 100 }), excess)).toBe(false);
   });
 
   it('취소된 라인에는 연결하지 않는다', () => {
@@ -57,21 +66,15 @@ describe('canTakeExcess — 서버 후보 규칙을 미리 짐작한다', () => 
 });
 
 describe('excessesByLine', () => {
-  it('연결할 것과 연결된 것을 라인마다 모으고, 둘 다 없는 라인은 담지 않는다', () => {
+  it('연결할 초과분을 라인마다 모으고, 없는 라인은 담지 않는다', () => {
     const lines = [scheduleLine(), scheduleLine({ purchaseOrderLineId: 7309, itemId: 8399 })];
-    const map = excessesByLine(
-      lines,
-      [excessFixture()],
-      [linkedExcessFixture({ inboundReceiptExcessId: 9502 })],
-    );
+    const map = excessesByLine(lines, [
+      excessFixture(),
+      excessFixture({ inboundReceiptLineId: 9412, lineNo: 2 }),
+    ]);
 
     expect(map.size).toBe(1);
-    expect(lineExcessesOf(map, 7301).linkable.map((row) => row.inboundReceiptExcessId)).toEqual([
-      9501,
-    ]);
-    expect(lineExcessesOf(map, 7301).linked.map((row) => row.inboundReceiptExcessId)).toEqual([
-      9502,
-    ]);
-    expect(lineExcessesOf(map, 7309)).toEqual({ linkable: [], linked: [] });
+    expect(lineExcessesOf(map, 7301).map((row) => row.inboundReceiptLineId)).toEqual([9411, 9412]);
+    expect(lineExcessesOf(map, 7309)).toEqual([]);
   });
 });

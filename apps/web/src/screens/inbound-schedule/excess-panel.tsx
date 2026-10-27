@@ -9,7 +9,6 @@ import {
   Stepper,
   type StepperItem,
   Table,
-  Tabs,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { MouseEvent, ReactNode } from 'react';
@@ -19,26 +18,30 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner } from '../../patterns/master';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
-import type { ExcessEntry, ExcessTab } from './excess-entry';
+import type { ExcessEntry } from './excess-entry';
 import {
   EXCESS_PAGE_SIZE,
   useExcessCandidates,
-  useInboundExcesses,
   useLinkExcess,
-  useUnlinkExcess,
+  useUnallocatedLines,
 } from './excess-queries';
-import type { ExcessCandidate, InboundExcess, OrderLineRef } from './excess-types';
+import type {
+  ExcessCandidate,
+  InboundAllocation,
+  OrderLineRef,
+  UnallocatedLine,
+} from './excess-types';
 import { LoadErrorBanner } from './load-error-banner';
 import { formatDate } from './period';
 import { formatQty, OneLine, orEmpty } from './receipt-status';
 
 const t = messages.inboundSchedule.excess;
 
-const NO_EXCESSES: InboundExcess[] = [];
+const NO_EXCESSES: UnallocatedLine[] = [];
 const NO_CANDIDATES: ExcessCandidate[] = [];
 
 /** 입하 시각(오프셋 있음) → 공장 날짜 `yyyy.mm.dd`. */
-const receiptDateOf = (excess: InboundExcess): string => {
+const receiptDateOf = (excess: UnallocatedLine): string => {
   const date = toPlantDateTimeParts(excess.receiptDatetime)?.date;
 
   return date === undefined ? orEmpty(null) : formatDate(date);
@@ -48,6 +51,12 @@ const qtyWithUom = (qty: number, uomCode: string): string => `${formatQty(qty)} 
 
 export const orderLineText = (ref: OrderLineRef | null): string =>
   ref === null ? orEmpty(null) : t.orderLine(ref.purchaseOrderNo, ref.lineNo);
+
+/** 이 줄이 이미 들어간 발주 라인들 — 다 초과분이라 들어간 곳이 없으면 「—」. */
+const allocatedOrdersText = (allocations: readonly InboundAllocation[]): string =>
+  allocations.length === 0
+    ? orEmpty(null)
+    : allocations.map((allocation) => orderLineText(allocation.orderLine)).join(', ');
 
 /**
  * 표 부품에 줄 클릭이 없어 감싼 상자가 받는다 — 누른 줄 안의 고르기 단추(`data-pick`)로 어느 줄인지 안다.
@@ -81,9 +90,9 @@ const PickButton = ({ id, selected, label, children }: PickButtonProps) => (
 
 /** 방금 등록한 전표의 초과분을 앞에 세운다 — 나머지 순서는 서버 순서(오래된 것부터) 그대로다. */
 export const orderExcesses = (
-  rows: readonly InboundExcess[],
+  rows: readonly UnallocatedLine[],
   focusReceiptNo: string | null,
-): InboundExcess[] =>
+): UnallocatedLine[] =>
   focusReceiptNo === null
     ? [...rows]
     : [
@@ -100,39 +109,37 @@ export interface ExcessPanelProps {
 }
 
 /**
- * 초과분 발주 연결 창(서버 장부 P-100) — **오른쪽에서 열리는 넓은 창이다.** 입하 예정의 두 표를 덮지 않고 옆에
- * 세워 「어느 추가 발주에 연결하는가」를 보던 맥락에서 정한다.
+ * 초과분 발주 연결 창(서버 장부 P-115 입하 ↔ P/O 배정) — **오른쪽에서 열리는 넓은 창이다.** 입고 관리의 두 표를
+ * 덮지 않고 옆에 세워 「어느 추가 발주에 연결하는가」를 보던 맥락에서 정한다.
  *
  * 위에 세 단계(초과분 선택 → 발주 라인 선택 → 연결)를 두고, 단추 옆에 무엇이 어디로 가는지 요약을 늘 보인다.
  * 후보는 서버가 정하고(같은 공장·공급사·품목·단위 · 다 받을 수 있는 라인 · 수량 일치가 먼저) 사람이 고른다.
- * 연결한 것은 「연결됨」 탭에서 해제한다 — 잘못 연결한 것을 되돌리는 길이다.
+ * 초과분 한 줄은 늘 **전부** 연결한다(서버는 일부도 받지만 화면은 아직 나누지 않는다).
+ *
+ * 연결 해제는 아직 없다 — 「연결한 초과분」 목록이 서버에 없어 해제할 자리를 정하지 못했다(사용자 결정 2026-10-27).
  */
 export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps) => {
-  const [tab, setTab] = useState<ExcessTab>(entry.tab);
-  const [selectedExcessId, setSelectedExcessId] = useState<number | null>(entry.excessId);
+  /** 고른 초과분 — 입하 줄 번호(`inboundReceiptLineId`)로 가리킨다. */
+  const [selectedExcessId, setSelectedExcessId] = useState<number | null>(
+    entry.inboundReceiptLineId,
+  );
   const [selectedLineId, setSelectedLineId] = useState<number | null>(entry.purchaseOrderLineId);
   const [done, setDone] = useState<string | null>(null);
   const confirmId = useId();
 
-  const unlinked = useInboundExcesses({ linked: false, size: EXCESS_PAGE_SIZE });
-  const linked = useInboundExcesses({ linked: true, size: EXCESS_PAGE_SIZE }, tab === 'linked');
-  const active = tab === 'unlinked' ? unlinked : linked;
-  const rows = orderExcesses(active.data?.items ?? NO_EXCESSES, entry.receiptNo);
+  const unlinked = useUnallocatedLines({ size: EXCESS_PAGE_SIZE });
+  const rows = orderExcesses(unlinked.data?.items ?? NO_EXCESSES, entry.receiptNo);
 
-  const selectedExcess =
-    rows.find((row) => row.inboundReceiptExcessId === selectedExcessId) ?? null;
-  const candidates = useExcessCandidates(
-    tab === 'unlinked' && selectedExcess !== null ? selectedExcess.inboundReceiptExcessId : null,
-  );
+  const selectedExcess = rows.find((row) => row.inboundReceiptLineId === selectedExcessId) ?? null;
+  const candidates = useExcessCandidates(selectedExcess?.inboundReceiptLineId ?? null);
   const candidateRows = candidates.data?.items ?? NO_CANDIDATES;
   /* 고른 줄은 **서버 후보에 있을 때만** 선다 — 화면의 짐작(`excess-match.ts`)이 서버와 다르면 고르지 않는다. */
   const selectedCandidate =
     candidateRows.find((row) => row.purchaseOrderLineId === selectedLineId) ?? null;
 
   const link = useLinkExcess();
-  const unlink = useUnlinkExcess();
-  const isSaving = link.isPending || unlink.isPending;
-  const saveError = link.error ?? unlink.error;
+  const isSaving = link.isPending;
+  const saveError = link.error;
 
   /*
    * 고를 것이 하나뿐이면 저절로 고른다 — 방금 등록한 전표의 초과분 하나, 또는 목록 전체가 하나.
@@ -140,9 +147,9 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
    */
   const unlinkedItems = unlinked.data?.items;
   useEffect(() => {
-    if (tab !== 'unlinked' || unlinkedItems === undefined) return;
+    if (unlinkedItems === undefined) return;
     setSelectedExcessId((current) => {
-      if (current !== null && unlinkedItems.some((row) => row.inboundReceiptExcessId === current)) {
+      if (current !== null && unlinkedItems.some((row) => row.inboundReceiptLineId === current)) {
         return current;
       }
       const focused = unlinkedItems.filter((row) => row.inboundReceiptNo === entry.receiptNo);
@@ -153,9 +160,9 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
             ? unlinkedItems[0]
             : undefined;
 
-      return only?.inboundReceiptExcessId ?? null;
+      return only?.inboundReceiptLineId ?? null;
     });
-  }, [tab, unlinkedItems, entry.receiptNo]);
+  }, [unlinkedItems, entry.receiptNo]);
 
   /* 후보가 하나뿐이면 그 라인을 고른다 — 대개 그 초과분 때문에 만든 추가 P/O 다. */
   const candidateItems = candidates.data?.items;
@@ -173,22 +180,12 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
     });
   }, [candidateItems]);
 
-  const changeTab = (next: string): void => {
-    setTab(next === 'linked' ? 'linked' : 'unlinked');
-    setSelectedExcessId(null);
-    setSelectedLineId(null);
-    setDone(null);
-    link.reset();
-    unlink.reset();
-  };
-
   const pickExcess = (id: number): void => {
     if (isSaving || id === selectedExcessId) return;
     setSelectedExcessId(id);
     setSelectedLineId(null);
     setDone(null);
     link.reset();
-    unlink.reset();
   };
 
   const pickLine = (id: number): void => {
@@ -200,12 +197,13 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
 
   const runLink = (): void => {
     if (selectedExcess === null || selectedCandidate === null) return;
-    const qty = qtyWithUom(selectedExcess.excessQty, selectedExcess.uomCode);
+    const qty = qtyWithUom(selectedExcess.unallocatedQty, selectedExcess.uomCode);
     const order = t.orderLine(selectedCandidate.purchaseOrderNo, selectedCandidate.lineNo);
     link.mutate(
       {
-        inboundReceiptExcessId: selectedExcess.inboundReceiptExcessId,
+        inboundReceiptLineId: selectedExcess.inboundReceiptLineId,
         purchaseOrderLineId: selectedCandidate.purchaseOrderLineId,
+        qty: selectedExcess.unallocatedQty,
       },
       {
         onSuccess: () => {
@@ -215,18 +213,6 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
         },
       },
     );
-  };
-
-  const runUnlink = (): void => {
-    if (selectedExcess === null) return;
-    const qty = qtyWithUom(selectedExcess.excessQty, selectedExcess.uomCode);
-    const order = orderLineText(selectedExcess.linkedOrderLine);
-    unlink.mutate(selectedExcess.inboundReceiptExcessId, {
-      onSuccess: () => {
-        setDone(t.done.unlinked(qty, order));
-        setSelectedExcessId(null);
-      },
-    });
   };
 
   /* ── 단계 안내 ── */
@@ -241,27 +227,18 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
 
   /* ── 단추 옆 문장 — 막힌 사유이거나, 누르면 바뀌는 것 ── */
   const sentence = ((): string => {
-    if (tab === 'linked') {
-      return selectedExcess === null
-        ? t.blocked.noLinked
-        : t.confirmUnlink(
-            qtyWithUom(selectedExcess.excessQty, selectedExcess.uomCode),
-            orderLineText(selectedExcess.linkedOrderLine),
-          );
-    }
     if (selectedExcess === null) return t.blocked.noExcess;
     if (selectedCandidate === null) return t.blocked.noLine;
 
     return t.confirmLink(
-      qtyWithUom(selectedExcess.excessQty, selectedExcess.uomCode),
+      qtyWithUom(selectedExcess.unallocatedQty, selectedExcess.uomCode),
       t.orderLine(selectedCandidate.purchaseOrderNo, selectedCandidate.lineNo),
     );
   })();
-  const canRun =
-    !isSaving && selectedExcess !== null && (tab === 'linked' || selectedCandidate !== null);
+  const canRun = !isSaving && selectedExcess !== null && selectedCandidate !== null;
 
   /* ── 열 ── */
-  const excessHead: Column<InboundExcess>[] = [
+  const excessColumns: Column<UnallocatedLine>[] = [
     {
       key: 'receiptNo',
       header: t.table.receiptNo,
@@ -269,8 +246,8 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
       render: (row) => (
         <span className="excess-receipt-cell">
           <PickButton
-            id={row.inboundReceiptExcessId}
-            selected={row.inboundReceiptExcessId === selectedExcessId}
+            id={row.inboundReceiptLineId}
+            selected={row.inboundReceiptLineId === selectedExcessId}
             label={t.pickExcess(row.inboundReceiptNo, row.lineNo)}
           >
             {row.inboundReceiptNo}
@@ -299,45 +276,21 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
       header: t.table.excessQty,
       width: '104px',
       align: 'end',
-      render: (row) => <strong>{qtyWithUom(row.excessQty, row.uomCode)}</strong>,
+      render: (row) => <strong>{qtyWithUom(row.unallocatedQty, row.uomCode)}</strong>,
+    },
+    {
+      key: 'lot',
+      header: t.table.lot,
+      width: '168px',
+      render: (row) => <OneLine text={orEmpty(row.lotNo)} />,
+    },
+    {
+      key: 'sourceOrder',
+      header: t.table.sourceOrder,
+      width: '168px',
+      render: (row) => <OneLine text={allocatedOrdersText(row.allocations)} />,
     },
   ];
-  const excessColumns: Column<InboundExcess>[] =
-    tab === 'unlinked'
-      ? [
-          ...excessHead,
-          {
-            key: 'lot',
-            header: t.table.lot,
-            width: '168px',
-            render: (row) => <OneLine text={orEmpty(row.lotNo)} />,
-          },
-          {
-            key: 'sourceOrder',
-            header: t.table.sourceOrder,
-            width: '168px',
-            render: (row) => <OneLine text={orderLineText(row.sourceOrderLine)} />,
-          },
-        ]
-      : [
-          ...excessHead,
-          {
-            key: 'linkedOrder',
-            header: t.table.linkedOrder,
-            width: '168px',
-            render: (row) => <OneLine text={orderLineText(row.linkedOrderLine)} />,
-          },
-          {
-            key: 'linkedAt',
-            header: t.table.linkedAt,
-            width: '96px',
-            render: (row) => {
-              const date = toPlantDateTimeParts(row.linkedAt)?.date;
-
-              return date === undefined ? orEmpty(null) : formatDate(date);
-            },
-          },
-        ];
 
   const uomCode = selectedExcess?.uomCode ?? '';
   const candidateColumns: Column<ExcessCandidate>[] = [
@@ -407,26 +360,25 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
     candidateColumns,
   );
 
-  const listBody = (kind: ExcessTab): ReactNode => {
-    if (kind !== tab) return null;
-    if (active.isError) {
+  const listBody = (): ReactNode => {
+    if (unlinked.isError) {
       return (
         <LoadErrorBanner
-          error={active.error}
+          error={unlinked.error}
           onRetry={() => {
-            void active.refetch();
+            void unlinked.refetch();
           }}
         />
       );
     }
-    if (active.isPending) {
+    if (unlinked.isPending) {
       return (
         <div role="status" aria-label={t.loading}>
           <SkeletonText lines={3} />
         </div>
       );
     }
-    const total = active.data.page.total;
+    const total = unlinked.data.page.total;
 
     return (
       <>
@@ -441,16 +393,11 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
         >
           <Table
             density="compact"
-            caption={<span className="erp-data-table-caption">{t.tabs[kind]}</span>}
+            caption={<span className="erp-data-table-caption">{t.listTitle}</span>}
             columns={excessTable.columns}
             rows={rows}
-            getRowId={(row) => String(row.inboundReceiptExcessId)}
-            empty={
-              <EmptyState
-                size="sm"
-                title={kind === 'unlinked' ? t.empty.unlinkedTitle : t.empty.linkedTitle}
-              />
-            }
+            getRowId={(row) => String(row.inboundReceiptLineId)}
+            empty={<EmptyState size="sm" title={t.emptyTitle} />}
           />
         </div>
         {total > rows.length && <p className="field-note">{t.truncated(rows.length, total)}</p>}
@@ -460,7 +407,7 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
 
   const candidatePane = (): ReactNode => {
     /* 초과분을 고르기 전에는 후보 구획을 세우지 않는다 — 무엇을 고를지는 단추 옆 문장이 말한다. */
-    if (tab !== 'unlinked' || selectedExcess === null) return null;
+    if (selectedExcess === null) return null;
 
     const body = ((): ReactNode => {
       if (candidates.isError) {
@@ -515,7 +462,7 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
           {t.candidates.title}
           <span className="excess-section-sub">
             {selectedExcess.itemCode} ·{' '}
-            {qtyWithUom(selectedExcess.excessQty, selectedExcess.uomCode)}
+            {qtyWithUom(selectedExcess.unallocatedQty, selectedExcess.uomCode)}
           </span>
         </h3>
         {body}
@@ -536,23 +483,16 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
           <p id={confirmId} className="excess-confirm" aria-live="polite">
             {sentence}
           </p>
-          <Button
-            disabled={!canRun}
-            aria-describedby={confirmId}
-            onClick={tab === 'linked' ? runUnlink : runLink}
-          >
-            {tab === 'linked' ? t.actions.unlink : t.actions.link}
+          <Button disabled={!canRun} aria-describedby={confirmId} onClick={runLink}>
+            {t.actions.link}
           </Button>
         </div>
       }
     >
       <div className="excess-panel">
-        {/* 단계는 연결하는 길에만 있다 — 「연결됨」 탭은 고르고 해제하는 한 걸음이다. */}
-        {tab === 'unlinked' && (
-          <nav className="excess-guide" aria-label={t.steps.label}>
-            <Stepper size="sm" steps={stepItems} />
-          </nav>
-        )}
+        <nav className="excess-guide" aria-label={t.steps.label}>
+          <Stepper size="sm" steps={stepItems} />
+        </nav>
 
         {done !== null && (
           <div role="status">
@@ -561,22 +501,7 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
         )}
         {saveError !== null && <SaveErrorBanner error={toApiError(saveError)} />}
 
-        <Tabs
-          size="sm"
-          aria-label={t.tabs.label}
-          value={tab}
-          onChange={changeTab}
-          items={[
-            {
-              value: 'unlinked',
-              label: t.tabs.unlinked,
-              /* 0 은 달지 않는다 — 「없다」는 표의 빈 상태가 말한다. */
-              badge: (unlinked.data?.page.total ?? 0) > 0 ? unlinked.data?.page.total : undefined,
-              content: listBody('unlinked'),
-            },
-            { value: 'linked', label: t.tabs.linked, content: listBody('linked') },
-          ]}
-        />
+        {listBody()}
 
         {candidatePane()}
       </div>

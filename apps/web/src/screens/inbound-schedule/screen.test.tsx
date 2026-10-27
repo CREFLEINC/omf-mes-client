@@ -14,13 +14,12 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import type { InboundExcess } from './excess-types';
+import type { UnallocatedLine } from './excess-types';
 import {
   candidateFixture,
   excessFixture,
   itemDetailFixtures,
   labelPendingProgress,
-  linkedExcessFixture,
   partnerFixtures,
   plantFixtures,
   orderFixtures,
@@ -46,8 +45,10 @@ const PARTNERS_PATH = '/mdm/partners';
 const PLANTS_PATH = '/mdm/plants';
 const CODE_VALUES_PATH = '/mdm/code-values';
 const ITEM_PATH_PREFIX = '/mdm/items/';
-/** 초과분 잇기(서버 장부 P-100) — 계약 밖 경로 넷. */
-const EXCESS_PATH = '/logistics/inbound-excesses';
+/** 초과분 발주 연결(서버 장부 P-115 입하 ↔ P/O 배정) — 계약 밖 경로 셋. */
+const EXCESS_PATH = '/logistics/inbound-unallocated';
+const CANDIDATES_PATH = /^\/logistics\/inbound-receipt-lines\/\d+\/allocation-candidates$/;
+const ALLOCATIONS_PATH = /^\/logistics\/inbound-receipt-lines\/(\d+)\/allocations$/;
 /** 입고 진행(계약 대기) — 발주 하나의 LOT 단계 · 묶음별 수 · IQC 의뢰. */
 const PROGRESS_PATH = /^\/logistics\/purchase-orders\/(\d+)\/inbound-progress$/;
 const STAGE_COUNTS_PATH = '/logistics/purchase-orders:inbound-stage-counts';
@@ -159,16 +160,10 @@ const linesRoute = (lines: unknown[] = LINES): StubRoute => ({
   },
 });
 
-/** 초과분 목록 — `linked` 질의로 안 이은 것·이은 것을 가른다. 기본은 둘 다 비어 있다. */
-const excessListRoute = (
-  unlinked: InboundExcess[] = [],
-  linked: InboundExcess[] = [],
-): StubRoute => ({
+/** 초과분이 남은 입하 줄 목록(서버 「미배정」). 기본은 비어 있다. */
+const excessListRoute = (unlinked: UnallocatedLine[] = []): StubRoute => ({
   match: (request) => isGet(request, EXCESS_PATH),
-  respond: (request) =>
-    jsonResponse(
-      listBody(new URL(request.url).searchParams.get('linked') === 'true' ? linked : unlinked),
-    ),
+  respond: () => jsonResponse(listBody(unlinked)),
 });
 
 const failingExcessListRoute = (status: number): StubRoute => ({
@@ -178,19 +173,33 @@ const failingExcessListRoute = (status: number): StubRoute => ({
 
 const candidatesRoute = (items: unknown[]): StubRoute => ({
   match: (request) =>
-    request.method === 'GET' &&
-    /^\/logistics\/inbound-excesses\/\d+\/candidates$/.test(new URL(request.url).pathname),
+    request.method === 'GET' && CANDIDATES_PATH.test(new URL(request.url).pathname),
   respond: () => jsonResponse({ items }),
 });
 
-/** `:link`·`:unlink` — 본문을 모은다. 응답은 주어진 것(기본 200 한 행). */
-const excessWriteRoute = (
-  action: 'link' | 'unlink',
+/** 연결(서버 「배정」) — 본문을 모은다. 응답은 주어진 것(기본 201 배정 한 몫). */
+const allocationWriteRoute = (
   bodies: unknown[],
-  respond: () => Response = () => jsonResponse(linkedExcessFixture()),
+  respond: () => Response = () =>
+    jsonResponse(
+      {
+        inboundReceiptPoAllocationId: 9702,
+        inboundReceiptLineId: 9411,
+        allocatedQty: 30,
+        allocatedAt: '2026-10-21T03:00:00.000Z',
+        orderLine: {
+          purchaseOrderLineId: 7301,
+          purchaseOrderId: 7101,
+          purchaseOrderNo: 'SAMPLE-PO-0001',
+          erpPurchaseOrderNo: 'SAMPLE-ERP-0001',
+          lineNo: 1,
+        },
+      },
+      { status: 201 },
+    ),
 ): StubRoute => ({
   match: (request) =>
-    request.method === 'POST' && new URL(request.url).pathname.endsWith(`:${action}`),
+    request.method === 'POST' && ALLOCATIONS_PATH.test(new URL(request.url).pathname),
   respond: async (request) => {
     const text = await request.clone().text();
     bodies.push(text === '' ? null : JSON.parse(text));
@@ -1364,7 +1373,7 @@ describe('InboundScheduleScreen — 초과분 발주 연결', () => {
           }),
           candidateFixture(),
         ]),
-        excessWriteRoute('link', bodies),
+        allocationWriteRoute(bodies),
         listRoute(),
         ...lookupRoutes(),
       ],
@@ -1384,11 +1393,13 @@ describe('InboundScheduleScreen — 초과분 발주 연결', () => {
     await user.click(within(dialog).getByRole('button', { name: te.actions.link }));
 
     expect(await within(dialog).findByText(te.done.linked(QTY, ORDER_LINE))).toBeInTheDocument();
-    expect(bodies).toEqual([{ purchaseOrderLineId: 7301 }]);
+    /* 그 입하 줄의 초과분 전부를 싣는다. */
+    expect(bodies).toEqual([{ purchaseOrderLineId: 7301, qty: 30 }]);
     expect(
       requests.some(
         (request) =>
-          request.method === 'POST' && request.url.pathname === `${EXCESS_PATH}/9501:link`,
+          request.method === 'POST' &&
+          request.url.pathname === '/logistics/inbound-receipt-lines/9411/allocations',
       ),
     ).toBe(true);
   });
@@ -1398,7 +1409,7 @@ describe('InboundScheduleScreen — 초과분 발주 연결', () => {
       [
         excessListRoute([
           excessFixture(),
-          excessFixture({ inboundReceiptExcessId: 9502, lineNo: 2 }),
+          excessFixture({ inboundReceiptLineId: 9412, lineNo: 2 }),
         ]),
         candidatesRoute([
           candidateFixture(),
@@ -1446,7 +1457,7 @@ describe('InboundScheduleScreen — 초과분 발주 연결', () => {
     renderScreen(
       [
         excessListRoute([
-          excessFixture({ inboundReceiptExcessId: 9500, inboundReceiptNo: 'SAMPLE-IR-0000' }),
+          excessFixture({ inboundReceiptLineId: 9410, inboundReceiptNo: 'SAMPLE-IR-0000' }),
           excessFixture(),
         ]),
         candidatesRoute([candidateFixture()]),
@@ -1466,41 +1477,66 @@ describe('InboundScheduleScreen — 초과분 발주 연결', () => {
     expect(await within(dialog).findByText(te.confirmLink(QTY, ORDER_LINE))).toBeInTheDocument();
   });
 
-  it('연결된 초과분은 「연결됨」으로 보이고, 눌러 연 창에서 해제할 수 있다', async () => {
-    const bodies: unknown[] = [];
-    const { user } = renderScreen(
+  it('창에는 미연결 목록 하나만 있다 — 「연결됨」 탭 · 연결 해제는 없고, 원 발주 칸은 이미 들어간 발주 라인이다', async () => {
+    renderScreen(
       [
-        excessListRoute([], [linkedExcessFixture()]),
-        excessWriteRoute('unlink', bodies, () => jsonResponse(excessFixture())),
+        excessListRoute([
+          excessFixture(),
+          /* 다 초과분이라 들어간 발주가 없는 줄. */
+          excessFixture({
+            inboundReceiptLineId: 9412,
+            inboundReceiptNo: 'SAMPLE-IR-0002',
+            unallocatedQty: 130,
+            allocations: [],
+          }),
+        ]),
         listRoute(),
         ...lookupRoutes(),
       ],
-      '?po=7101',
-    );
-
-    await user.click(
-      await within(linesPane()).findByRole('button', { name: te.lineLinkedLabel(1, QTY) }),
+      '?excess=1',
     );
 
     const dialog = await screen.findByRole('dialog', { name: te.title });
-    expect(await within(dialog).findByText(te.confirmUnlink(QTY, ORDER_LINE))).toBeInTheDocument();
+    const table = (await within(dialog).findAllByRole('table'))[0] as HTMLElement;
+    const rows = await within(table).findAllByRole('row');
 
-    await user.click(within(dialog).getByRole('button', { name: te.actions.unlink }));
-
-    expect(await within(dialog).findByText(te.done.unlinked(QTY, ORDER_LINE))).toBeInTheDocument();
-    expect(bodies).toEqual([null]);
+    expect(
+      within(rows[1] as HTMLElement).getByText(te.orderLine('SAMPLE-PO-0099', 1)),
+    ).toBeInTheDocument();
+    expect(within(rows[2] as HTMLElement).getByText('130 SAMPLE-EA')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('tab')).toBeNull();
+    expect(within(dialog).getAllByRole('button', { name: te.actions.link })).toHaveLength(1);
   });
 
-  it('연결이 막히면(이미 연결됨) 서버 사유를 배너로 내고 창은 열린 채다', async () => {
+  it('고객사급 · 무상샘플 입하 줄은 이을 발주가 없어 서버에 빼 달라고 부른다(초과입하 · 긴급입하는 남긴다)', async () => {
+    const { requests } = renderScreen(
+      [excessListRoute([excessFixture()]), listRoute(), ...lookupRoutes()],
+      '?po=7101',
+    );
+
+    await within(linesPane()).findByText('SAMPLE-ITEM-01');
+
+    const [list] = requestsTo(requests, EXCESS_PATH);
+    expect(list?.url.searchParams.get('excludeExceptionTypeCode')).toBe(
+      'CUSTOMER_SUPPLY,FREE_SAMPLE',
+    );
+  });
+
+  it('연결이 막히면(남은 초과분을 넘음) 서버 사유를 배너로 내고 창은 열린 채다', async () => {
     const { user } = renderScreen(
       [
         excessListRoute([excessFixture()]),
         candidatesRoute([candidateFixture()]),
-        excessWriteRoute('link', [], () =>
+        allocationWriteRoute([], () =>
           jsonResponse(
             {
               errors: [
-                { scope: 'screen', code: 'STATE_LOCKED', message: '이미 연결된 초과분입니다.' },
+                {
+                  scope: 'field',
+                  field: 'qty',
+                  code: 'RANGE',
+                  message: '받은 수량 중 배정하지 않은 몫을 넘습니다.',
+                },
               ],
             },
             { status: 400 },
@@ -1516,7 +1552,9 @@ describe('InboundScheduleScreen — 초과분 발주 연결', () => {
     await within(dialog).findByText(te.confirmLink(QTY, ORDER_LINE));
     await user.click(within(dialog).getByRole('button', { name: te.actions.link }));
 
-    expect(await within(dialog).findByText('이미 연결된 초과분입니다.')).toBeInTheDocument();
+    expect(
+      await within(dialog).findByText('받은 수량 중 배정하지 않은 몫을 넘습니다.'),
+    ).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: te.title })).toBeInTheDocument();
   });
 });

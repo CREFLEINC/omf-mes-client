@@ -1,4 +1,4 @@
-import type { ExcessCandidate, InboundExcess } from './excess-types';
+import type { ExcessCandidate, UnallocatedLine } from './excess-types';
 import type {
   InboundLotProgress,
   InboundScheduleLine,
@@ -218,27 +218,18 @@ export const storageLocationFixtures = [
 ];
 
 /**
- * 미연결 초과분 하나 — 7101 발주의 7301 라인(같은 공장·공급사·품목·단위, 남은 자리 100)에 연결할 수 있다.
- * 처음 P/O 는 목록에 없는 다른 발주(SAMPLE-PO-0099)다. 번호는 모두 합성 값이다.
+ * 초과분이 남은 입하 줄 하나(서버 「미배정」) — 7101 발주의 7301 라인(같은 공장·공급사·품목·단위, 남은 자리 100)에
+ * 연결할 수 있다. 130 을 받아 100 은 목록에 없는 다른 발주(SAMPLE-PO-0099)에 들어갔고 30 이 남았다. 번호는 모두 합성 값이다.
  */
-const BASE_EXCESS: InboundExcess = {
-  inboundReceiptExcessId: 9501,
-  excessQty: 30,
-  linkedAt: null,
-  linkedOrderLine: null,
+const BASE_EXCESS: UnallocatedLine = {
+  inboundReceiptLineId: 9411,
+  lineNo: 1,
   inboundReceiptId: 9401,
   inboundReceiptNo: 'SAMPLE-IR-0001',
   receiptDatetime: '2026-10-20T02:00:00.000Z',
-  inboundReceiptLineId: 9411,
-  lineNo: 1,
+  exceptionTypeCode: null,
   receivedQty: 130,
-  sourceOrderLine: {
-    purchaseOrderLineId: 7399,
-    purchaseOrderId: 7199,
-    purchaseOrderNo: 'SAMPLE-PO-0099',
-    erpPurchaseOrderNo: null,
-    lineNo: 1,
-  },
+  unallocatedQty: 30,
   plantId: 8201,
   supplierId: 8101,
   supplierCode: 'SAMPLE-SUP-01',
@@ -250,26 +241,27 @@ const BASE_EXCESS: InboundExcess = {
   uomCode: 'SAMPLE-EA',
   lotId: 9601,
   lotNo: 'SAMPLE-LOT-0001',
+  allocations: [
+    {
+      inboundReceiptPoAllocationId: 9701,
+      inboundReceiptLineId: 9411,
+      allocatedQty: 100,
+      allocatedAt: '2026-10-20T02:00:00.000Z',
+      orderLine: {
+        purchaseOrderLineId: 7399,
+        purchaseOrderId: 7199,
+        purchaseOrderNo: 'SAMPLE-PO-0099',
+        erpPurchaseOrderNo: null,
+        lineNo: 1,
+      },
+    },
+  ],
 };
 
-export const excessFixture = (overrides: Partial<InboundExcess> = {}): InboundExcess => ({
+export const excessFixture = (overrides: Partial<UnallocatedLine> = {}): UnallocatedLine => ({
   ...BASE_EXCESS,
   ...overrides,
 });
-
-/** 같은 초과분이 7301 에 연결된 모양. */
-export const linkedExcessFixture = (overrides: Partial<InboundExcess> = {}): InboundExcess =>
-  excessFixture({
-    linkedAt: '2026-10-21T03:00:00.000Z',
-    linkedOrderLine: {
-      purchaseOrderLineId: 7301,
-      purchaseOrderId: 7101,
-      purchaseOrderNo: 'SAMPLE-PO-0001',
-      erpPurchaseOrderNo: 'SAMPLE-ERP-0001',
-      lineNo: 1,
-    },
-    ...overrides,
-  });
 
 /** 7101 발주 7301 라인 후보 — 남은 수량이 초과분과 다르다. */
 export const candidateFixture = (overrides: Partial<ExcessCandidate> = {}): ExcessCandidate => ({

@@ -20,9 +20,9 @@ import {
   EXCESS_PAGE_SIZE,
   excessKeys,
   isExcessUnavailable,
-  useInboundExcesses,
+  useUnallocatedLines,
 } from './excess-queries';
-import type { InboundExcess } from './excess-types';
+import type { UnallocatedLine } from './excess-types';
 import { ScheduleFilterBar } from './filter-bar';
 import {
   DEFAULT_FILTERS,
@@ -85,7 +85,7 @@ const t = messages.inboundSchedule;
 const EMPTY_ROWS: PurchaseOrderSummary[] = [];
 const EMPTY_LINES: InboundScheduleLine[] = [];
 const NO_ITEM_IDS: readonly number[] = [];
-const NO_EXCESSES: InboundExcess[] = [];
+const NO_EXCESSES: UnallocatedLine[] = [];
 
 /** 왼쪽 표 한 쪽 20줄(사용자 지시 2026-10-20). 서버 기본(50)보다 작게 실어 보낸다 — 상한은 200. */
 export const LIST_PAGE_SIZE = 20;
@@ -138,7 +138,7 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  *
  * - **입하 등록**(`register=1` · W-01-03) — 고른 발주 머리의 「입하 등록」. 도착 수량·LOT 을 받아 전표를 만든다.
  *   옛 「초과 입하 분리」 탭이 이 창이 됐다.
- * - **초과분 발주 연결**(`excess=1` · 서버 장부 P-100) — 탭 줄 끝의 「초과분 연결」과, 고른 발주의 라인에 맞는
+ * - **초과분 발주 연결**(`excess=1` · 서버 장부 P-115) — 탭 줄 끝의 「초과분 연결」과, 고른 발주의 라인에 맞는
  *   초과분이 있을 때만 서는 「초과분」 칸이 연다. 입하 등록 결과의 「초과분 발주 연결」도 이 창으로 온다.
  *   권한이 없거나(403) 서버가 그 경로를 모르면(404) 두 길 모두 서지 않는다.
  */
@@ -246,25 +246,20 @@ export const InboundScheduleScreen = () => {
   };
 
   /*
-   * 초과분 — 미연결 전부(진입 단추의 수 · 라인 칸)와, 고른 발주 공급사의 연결된 것(라인 칸의 「연결됨」).
-   * 둘 다 연결 창과 같은 캐시 키라 창을 열어도 다시 부르지 않는다.
+   * 초과분 — 미연결 전부(진입 단추의 수 · 라인 칸). 연결 창과 같은 캐시 키라 창을 열어도 다시 부르지 않는다.
+   * 연결한 것은 아직 보이지 않는다 — 「연결한 초과분」 목록이 서버에 없다(사용자 결정 2026-10-27 「해제는 나중에」).
    */
-  const unlinkedExcesses = useInboundExcesses({ linked: false, size: EXCESS_PAGE_SIZE });
+  const unlinkedExcesses = useUnallocatedLines({ size: EXCESS_PAGE_SIZE });
   const excessAvailable =
     unlinkedExcesses.isSuccess && !isExcessUnavailable(unlinkedExcesses.error);
-  const linkedExcesses = useInboundExcesses(
-    { linked: true, supplierId: selectedOrder?.supplierId ?? 0, size: EXCESS_PAGE_SIZE },
-    excessAvailable && selectedOrder !== null,
-  );
   const lineRows = lines.data?.items ?? EMPTY_LINES;
   const lineExcesses = useMemo(
     () =>
       excessesByLine(
         lineRows,
         excessAvailable ? (unlinkedExcesses.data?.items ?? NO_EXCESSES) : NO_EXCESSES,
-        linkedExcesses.data?.items ?? NO_EXCESSES,
       ),
-    [lineRows, excessAvailable, unlinkedExcesses.data, linkedExcesses.data],
+    [lineRows, excessAvailable, unlinkedExcesses.data],
   );
   const unlinkedCount = unlinkedExcesses.data?.page.total ?? 0;
 

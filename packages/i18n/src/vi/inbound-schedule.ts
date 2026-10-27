@@ -155,11 +155,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
       line: 'Chọn dòng P/O',
       link: 'Liên kết',
     },
-    tabs: {
-      label: 'Phân loại phần vượt',
-      unlinked: 'Chưa liên kết',
-      linked: 'Đã liên kết',
-    },
+    listTitle: 'Phần vượt chưa liên kết',
     table: {
       receiptNo: 'Số nhập hàng',
       receiptDate: 'Ngày nhập hàng',
@@ -168,8 +164,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
       lot: 'LOT',
       excessQty: 'Số lượng vượt',
       sourceOrder: 'P/O gốc',
-      linkedOrder: 'P/O liên kết',
-      linkedAt: 'Ngày liên kết',
     },
     candidates: {
       title: 'Dòng P/O để liên kết',
@@ -194,25 +188,16 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     justRegistered: 'Vừa đăng ký',
     actions: {
       link: 'Liên kết',
-      unlink: 'Hủy liên kết',
     },
     confirmLink: (qty: string, order: string): string => `Phần vượt ${qty} → ${order}`,
-    confirmUnlink: (qty: string, order: string): string =>
-      `Hủy liên kết phần vượt ${qty} khỏi ${order}`,
     blocked: {
       noExcess: 'Hãy chọn phần vượt cần liên kết.',
       noLine: 'Hãy chọn dòng P/O cần liên kết.',
-      noLinked: 'Hãy chọn phần vượt cần hủy liên kết.',
     },
     done: {
       linked: (qty: string, order: string): string => `Đã liên kết: phần vượt ${qty} → ${order}`,
-      unlinked: (qty: string, order: string): string =>
-        `Đã hủy liên kết: phần vượt ${qty} khỏi ${order}`,
     },
-    empty: {
-      unlinkedTitle: 'Không có phần vượt chưa liên kết',
-      linkedTitle: 'Không có phần vượt đã liên kết',
-    },
+    emptyTitle: 'Không có phần vượt chưa liên kết',
     truncated: (shown: number, total: number): string =>
       `Chỉ hiển thị ${String(shown)} mục (tổng ${String(total)} mục).`,
     loading: 'Đang tải phần vượt',
@@ -220,9 +205,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     lineLinkable: (qty: string): string => `Liên kết ${qty}`,
     lineLinkableLabel: (lineNo: number, qty: string): string =>
       `Liên kết phần vượt ${qty} vào dòng ${String(lineNo)}`,
-    lineLinked: (qty: string): string => `Đã liên kết ${qty}`,
-    lineLinkedLabel: (lineNo: number, qty: string): string =>
-      `Xem phần vượt ${qty} đã liên kết vào dòng ${String(lineNo)}`,
   },
   stage: {
     label: 'Giai đoạn nhập kho',

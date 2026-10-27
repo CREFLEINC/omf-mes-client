@@ -18,7 +18,8 @@ import {
 
 import { useColumnWidths } from '../../patterns/column-resize';
 import type { ExcessEntry } from './excess-entry';
-import { lineExcessesOf, type LineExcesses } from './excess-match';
+import { lineExcessesOf } from './excess-match';
+import type { UnallocatedLine } from './excess-types';
 import {
   LotActionCell,
   LotMainCell,
@@ -58,10 +59,10 @@ export interface LineTableProps {
   /** 품목 조건으로 찾았으면 그 품목. 그 라인을 강조한다. */
   matchedItemId: number | null;
   /**
-   * 라인마다 연결할 수 있는 · 이미 연결된 초과분(`excess-match.ts`). 비었으면 「초과분」 열을 세우지 않는다 —
+   * 라인마다 연결할 수 있는 초과분(`excess-match.ts`). 비었으면 「초과분」 열을 세우지 않는다 —
    * 드문 일이라 늘 칸을 먹지 않는다(사용자 지시 2026-10-21 「자주 쓰지 않는 일은 눈에 띄지 않게」).
    */
-  lineExcesses?: ReadonlyMap<number, LineExcesses>;
+  lineExcesses?: ReadonlyMap<number, readonly UnallocatedLine[]>;
   /** 초과분 연결 창을 그 초과분·라인을 고른 채로 연다. */
   onOpenExcess?: (entry: Partial<ExcessEntry>) => void;
   /**
@@ -94,7 +95,7 @@ export interface LineTableProps {
   onRequestIqc?: (lot: IssuedLotProgress) => void;
 }
 
-const NO_LINE_EXCESSES: ReadonlyMap<number, LineExcesses> = new Map();
+const NO_LINE_EXCESSES: ReadonlyMap<number, readonly UnallocatedLine[]> = new Map();
 
 /**
  * LOT 줄의 No. ~ 발주 수량 네 칸을 **한 칸으로 합친다**(사용자 지시 2026-10-24 — LOT 번호와 근거가 품목명 칸에서 잘렸다).
@@ -162,7 +163,7 @@ const NO_COLLAPSED: ReadonlySet<number> = new Set();
 const te = messages.inboundSchedule.excess;
 
 /**
- * 「초과분」 칸 — 이 줄에 연결할 수 있는 초과분이 있으면 「500 연결」, 이미 연결했으면 「500 연결됨」.
+ * 「초과분」 칸 — 이 줄에 연결할 수 있는 초과분이 있으면 「500 연결」(여럿이면 「2건 연결」).
  * 누르면 연결 창이 그 초과분과 이 줄을 고른 채로 열린다 — 사람은 「연결」만 누른다.
  */
 const ExcessCell = ({
@@ -171,47 +172,29 @@ const ExcessCell = ({
   onOpen,
 }: {
   row: InboundScheduleLine;
-  excesses: LineExcesses;
+  excesses: readonly UnallocatedLine[];
   onOpen: (entry: Partial<ExcessEntry>) => void;
 }) => {
-  const first = excesses.linkable[0];
-  if (first !== undefined) {
-    const qty =
-      excesses.linkable.length === 1
-        ? `${formatQty(first.excessQty)} ${first.uomCode}`
-        : `${String(excesses.linkable.length)}건`;
-
-    return (
-      <Button
-        variant="outlined"
-        size="sm"
-        aria-label={te.lineLinkableLabel(row.lineNo, qty)}
-        onClick={() => {
-          onOpen({
-            excessId: excesses.linkable.length === 1 ? first.inboundReceiptExcessId : null,
-            purchaseOrderLineId: row.purchaseOrderLineId,
-          });
-        }}
-      >
-        {te.lineLinkable(qty)}
-      </Button>
-    );
-  }
-
-  const linked = excesses.linked[0];
-  if (linked === undefined) return null;
-  const qty = `${formatQty(linked.excessQty)} ${linked.uomCode}`;
+  const first = excesses[0];
+  if (first === undefined) return null;
+  const qty =
+    excesses.length === 1
+      ? `${formatQty(first.unallocatedQty)} ${first.uomCode}`
+      : `${String(excesses.length)}건`;
 
   return (
     <Button
-      variant="text"
+      variant="outlined"
       size="sm"
-      aria-label={te.lineLinkedLabel(row.lineNo, qty)}
+      aria-label={te.lineLinkableLabel(row.lineNo, qty)}
       onClick={() => {
-        onOpen({ tab: 'linked', excessId: linked.inboundReceiptExcessId });
+        onOpen({
+          inboundReceiptLineId: excesses.length === 1 ? first.inboundReceiptLineId : null,
+          purchaseOrderLineId: row.purchaseOrderLineId,
+        });
       }}
     >
-      {te.lineLinked(qty)}
+      {te.lineLinkable(qty)}
     </Button>
   );
 };
