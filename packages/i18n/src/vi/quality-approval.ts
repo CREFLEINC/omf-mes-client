@@ -87,6 +87,12 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     irreversible: 'Sau khi thực hiện thì không thể hoàn tác.',
     done: 'Đã thực hiện bỏ qua OQC',
     executed: 'Đã thực hiện bỏ qua — kiểm tra OQC đã được bỏ qua.',
+    compact: {
+      title: 'Bỏ qua OQC',
+      summary: 'Bỏ qua yêu cầu kiểm tra đang mở · ghi lịch sử LOT',
+      action: 'Thực hiện',
+      done: 'Đã thực hiện',
+    },
     checking: 'Đang kiểm tra trạng thái.',
     notPending: (status: string) =>
       `Trạng thái này không thể thực hiện bỏ qua (trạng thái ${status}).`,

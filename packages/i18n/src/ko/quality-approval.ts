@@ -85,6 +85,13 @@ export const qualityApproval = {
     irreversible: '실행한 뒤에는 되돌릴 수 없습니다.',
     done: 'OQC 생략을 실행했습니다',
     executed: '생략 실행 완료 — OQC 검사가 생략 처리되었습니다.',
+    /** 한 줄 압축형(#193) — 이름 · 한 줄 요약 · 짧은 단추 · 완료 글. */
+    compact: {
+      title: 'OQC 생략',
+      summary: '열린 검사 의뢰 생략 · LOT 이력 기록',
+      action: '실행',
+      done: '실행 완료',
+    },
     /* 아래 둘은 OQC 에 쓰이지 않는다 — 실행 여부를 읽을 서버 값이 없어 늘 실행 가능으로 선다(#193). */
     checking: '상태를 확인하는 중입니다.',
     notPending: (status: string) => `생략을 실행할 수 없는 상태입니다(상태 ${status}).`,

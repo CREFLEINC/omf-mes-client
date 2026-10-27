@@ -27,6 +27,11 @@ export interface SkipExecutePaneProps {
   /** 실패 배너 슬롯. 오류 갈래를 아는 것은 화면이다. */
   banner: ReactNode;
   texts?: SkipExecuteTexts;
+  /**
+   * 한 줄 압축형(#193 — 품질 승인 처리의 OQC 생략) — 왼쪽에 이름 · 한 줄 요약, 오른쪽에 짧은 단추.
+   * 확인 창은 그대로다(되돌릴 수 없는 조작이라 「정말 실행할 것인가」를 한 번 묻는다).
+   */
+  compact?: { title: string; summary: string; action: string; done: string };
 }
 
 /**
@@ -41,8 +46,24 @@ export const SkipExecutePane = ({
   onExecute,
   banner,
   texts: t = IQC_TEXTS,
+  compact,
 }: SkipExecutePaneProps) => {
   const [isConfirming, setIsConfirming] = useState(false);
+
+  if (compact !== undefined && state.kind === 'executed') {
+    return (
+      <section
+        className="iqc-skip-approval-section iqc-skip-approval-execute is-compact"
+        aria-label={t.heading}
+      >
+        <div className="iqc-skip-approval-execute-text">
+          <h3 className="iqc-skip-approval-heading">{compact.title}</h3>
+          <p>{compact.summary}</p>
+        </div>
+        <p className="iqc-skip-approval-done">{compact.done}</p>
+      </section>
+    );
+  }
 
   if (state.kind !== 'executable') {
     return (
@@ -63,20 +84,40 @@ export const SkipExecutePane = ({
     );
   }
 
+  const openButton = (
+    <Button
+      loading={isSaving}
+      disabled={isSaving}
+      onClick={() => {
+        setIsConfirming(true);
+      }}
+    >
+      {compact?.action ?? t.action}
+    </Button>
+  );
+
   return (
-    <section className="iqc-skip-approval-section iqc-skip-approval-execute" aria-label={t.heading}>
-      <h3 className="iqc-skip-approval-heading">{t.heading}</h3>
-      {banner}
-      <p className="field-note">{t.note}</p>
-      <Button
-        loading={isSaving}
-        disabled={isSaving}
-        onClick={() => {
-          setIsConfirming(true);
-        }}
-      >
-        {t.action}
-      </Button>
+    <section
+      className={`iqc-skip-approval-section iqc-skip-approval-execute${compact === undefined ? '' : ' is-compact'}`}
+      aria-label={t.heading}
+    >
+      {compact === undefined ? (
+        <>
+          <h3 className="iqc-skip-approval-heading">{t.heading}</h3>
+          {banner}
+          <p className="field-note">{t.note}</p>
+          {openButton}
+        </>
+      ) : (
+        <>
+          {banner}
+          <div className="iqc-skip-approval-execute-text">
+            <h3 className="iqc-skip-approval-heading">{compact.title}</h3>
+            <p>{compact.summary}</p>
+          </div>
+          {openButton}
+        </>
+      )}
 
       {isConfirming && (
         <Dialog

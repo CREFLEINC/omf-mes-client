@@ -896,7 +896,10 @@ describe('QualityApprovalScreen conditions', () => {
     const o = t.oqcSkipExecute;
 
     const pane = await screen.findByRole('region', { name: o.heading });
-    await user.click(within(pane).getByRole('button', { name: o.action }));
+    /* 한 줄 압축형(#193) — 「OQC 생략 · 열린 검사 의뢰 생략 · LOT 이력 기록」과 짧은 「실행」 단추. */
+    expect(pane).toHaveTextContent(o.compact.title);
+    expect(pane).toHaveTextContent(o.compact.summary);
+    await user.click(within(pane).getByRole('button', { name: o.compact.action }));
     const dialog = await screen.findByRole('dialog', { name: o.dialogTitle });
     expect(recorded.urls.some((url) => url.pathname === OQC_SKIP_EXECUTE_PATH)).toBe(false);
 
@@ -905,8 +908,8 @@ describe('QualityApprovalScreen conditions', () => {
     await waitFor(() => {
       expect(recorded.urls.filter((url) => url.pathname === OQC_SKIP_EXECUTE_PATH)).toHaveLength(1);
     });
-    expect(await screen.findByText(o.executed)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: o.action })).not.toBeInTheDocument();
+    expect(await screen.findByText(o.compact.done)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: o.compact.action })).not.toBeInTheDocument();
   });
 
   it('OQC 출하검사 판정 권한이 없어도 승인 화면 권한만으로 승인된 OQC 생략을 실행할 수 있다(#193)', async () => {
@@ -923,7 +926,9 @@ describe('QualityApprovalScreen conditions', () => {
     );
 
     const pane = await screen.findByRole('region', { name: t.oqcSkipExecute.heading });
-    expect(within(pane).getByRole('button', { name: t.oqcSkipExecute.action })).toBeEnabled();
+    expect(
+      within(pane).getByRole('button', { name: t.oqcSkipExecute.compact.action }),
+    ).toBeEnabled();
   });
 
   /* 「전체」 탭에서도 IQC 생략을 처리한다(#186) — 특채 조건을 찾지 않고, 승인되면 생략 실행 구획이 선다. */

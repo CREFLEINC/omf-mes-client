@@ -419,6 +419,7 @@ export const QualityApprovalScreen = ({
           ? detail.data.request.statusCode === 'APPROVED' && (
               <SkipExecutePane
                 texts={t.oqcSkipExecute}
+                compact={t.oqcSkipExecute.compact}
                 state={
                   oqcSkipDoneIds.has(detail.data.request.target.targetId)
                     ? { kind: 'executed' }
