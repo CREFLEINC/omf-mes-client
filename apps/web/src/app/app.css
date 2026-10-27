@@ -92,18 +92,10 @@
  * POP(1024×768 터치 키오스크) — 관리웹과 폼팩터가 다르다
  * .pop-lot-screen   자재LOT 화면 최상위 — 남은 높이를 그대로 쓴다
  *                  ⚠ 이 화면 전용 이름이다. `.pop-screen`(P-CO-01)과 규칙이 다르다
- * .pop-lot-status 머리 오른쪽의 상태 묶음 — 이름과 표식 사이를 벌린다
- * .pop-lot-panes POP 좌우 2단 — 접힘 기준점이 없다. 구획이 하나면 줄 전체를 쓴다
  * .pop-pane         2단의 각 칸 — 안에서 표가 스크롤한다
  * .pop-empty-note   표가 비었을 때의 안내 — 칸 가운데
  * .pop-row-select(-on) 목록에서 한 줄을 고르는 자리 — 줄 전체가 누르는 곳
  * .pop-row-target 그 표를 감싸 줄 클릭을 버튼으로 넘기는 자리
- * .pop-wide-note    구획 폭을 그대로 쓰는 보조 안내(.field-note 의 20rem 제한 밖)
- * .pop-lot-pane-title   구획 제목
- * .pop-target-fields 발번 대상의 읽기 전용 라벨·값 두 열
- * .pop-lot-no       LOT 번호 — 멀리서 라벨과 대조하며 읽는다
- * .pop-lot-label    LOT 번호 자리의 라벨
- * .pop-target-actions 등록·인쇄와 재인쇄를 나란히 두는 줄
  * .pop-page-nav     쪽 이동 줄 — 위치 표시와 이전·다음
  * .pop-touch(-등급) 업무 중요도 표식 — 크기를 키우지 않는다
  */
@@ -12288,44 +12280,6 @@ button.app-button-neutral {
   margin: var(--space-2) 0;
 }
 
-/*
- * 좌우 2단 — 좌측이 목록, 우측이 대상이다.
- *
- * ⛔ `.two-pane`을 쓰지 않는다. 그쪽은 1280px 아래에서 한 줄로 접히는데, POP은 1024px에
- * 고정된 키오스크라 **접히면 항상 접힌 채로 선다.** 여기는 접힘 기준점을 두지 않는다.
- */
-.pop-lot-panes {
-  display: grid;
-  min-height: 0;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-4);
-  align-items: stretch;
-}
-
-/*
- * 아직 한 구획뿐이면 그 구획이 줄 전체를 쓴다.
- *
- * 두 칸을 미리 갈라 두면 **오른쪽 절반이 빈 채로 남아 화면이 반쪽만 찬 것처럼 보인다**
- * (실기 확인에서 드러났다). 오른쪽 구획이 실제로 들어오면 이 규칙은 저절로 풀린다 —
- * 그때 CSS를 고칠 일이 없다.
- */
-.pop-lot-panes > :only-child {
-  grid-column: 1 / -1;
-}
-
-/*
- * 2단의 각 칸 — **칸 안에서 스크롤한다.**
- * 화면 전체를 스크롤시키면 머리의 프린터 상태가 함께 밀려 올라간다. 그 자리는 인쇄가
- * 안 될 때 가장 먼저 보는 곳이라 항상 보여야 한다.
- */
-.pop-lot-pane {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: var(--space-3);
-  overflow-y: auto;
-}
-
 /* 쪽 이동 줄 — 위치 표시를 왼쪽 끝에 두고 이동 버튼을 오른쪽에 모은다. */
 .pop-page-nav {
   display: flex;
@@ -12336,56 +12290,6 @@ button.app-button-neutral {
 
 .pop-page-nav > .field-note {
   margin-right: auto;
-}
-
-/*
- * 머리 오른쪽의 프린터 상태.
- *
- * **이름 묶음과 상태 표식 사이를 넓게 벌린다.** 붙여 두면 「프린터 이름」과 「상태 문구」가
- * 한 덩어리로 읽혀 어디까지가 이름인지 알 수 없다(실기에서 드러났다).
- */
-.pop-lot-status {
-  display: flex;
-  align-items: center;
-  gap: var(--space-5);
-}
-
-/*
- * 채번 대상 구획 맨 위의 프린터 선택(2단계 검증 2026-10-16) — 대상 카드의 라벨·값 두 열과 같은 모양.
- * 고를 수 없는 환경에서는 칸 아래에 까닭을 한 줄로 적는다.
- */
-.pop-lot-printer-select {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-1) var(--space-4);
-  align-items: center;
-  margin-bottom: var(--space-3);
-}
-
-.pop-lot-printer-select-label {
-  color: var(--on-surface-muted);
-}
-
-.pop-lot-printer-select > .field-note {
-  grid-column: 2;
-  margin: 0;
-}
-
-/* LOT 번호 자리의 라벨 — 값이 아직 없으므로 라벨만 또렷이 둔다. */
-.pop-lot-label {
-  margin: 0;
-  font: var(--type-title-sm);
-  color: var(--on-surface);
-}
-
-/* 등록·인쇄와 재인쇄를 나란히 — 스펙 §3 의 두 단추 자리다. */
-.pop-target-actions {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.pop-target-actions > button {
-  flex: 1;
 }
 
 /*
@@ -12463,17 +12367,6 @@ button.app-button-neutral {
 }
 
 /*
- * 구획 폭을 그대로 쓰는 보조 안내.
- *
- * `.field-note`는 규범 4가 **한 필드에 붙는 사유**용으로 정의한 것이라 `max-width: 20rem`에
- * 갇힌다. 구획 전체에 걸리는 안내를 그대로 실으면 가로 여유가 남는데도 접힌다(실기에서
- * 두 번 드러났다 — 목록 안내와 비활성 사유).
- */
-.pop-wide-note {
-  max-width: none;
-}
-
-/*
  * 표가 비었을 때의 안내 — **칸 가운데에 세운다.**
  *
  * `.field-note`를 그대로 쓰면 왼쪽 끝에 붙어 표 머리 아래 빈 넓이와 어긋나 보인다
@@ -12483,33 +12376,6 @@ button.app-button-neutral {
   max-width: none;
   padding: var(--space-6) var(--space-4);
   text-align: center;
-}
-
-/* 구획 제목 — 어느 칸이 무엇인지 밝힌다. 칸이 둘뿐이라 제목을 크게 두지 않는다. */
-.pop-lot-pane-title {
-  margin: 0;
-  font: var(--type-title-sm);
-  color: var(--on-surface);
-}
-
-/*
- * 발번 대상의 읽기 전용 필드 — 라벨과 값을 두 열로 짝지어 둔다.
- * 입력이 없는 자리라 폼 격자(`.form-grid`)를 쓰지 않는다.
- */
-.pop-target-fields {
-  display: grid;
-  margin: 0;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-2) var(--space-4);
-  align-items: baseline;
-}
-
-.pop-target-fields > dt {
-  color: var(--on-surface-muted);
-}
-
-.pop-target-fields > dd {
-  margin: 0;
 }
 
 /*
@@ -12654,17 +12520,6 @@ button.app-button-neutral {
   display: grid;
   gap: var(--space-3);
   flex: 1;
-}
-
-/*
- * LOT 번호는 34자리다 — 남은 폭을 다 먹고 옆 열을 밀어낸다. 한 줄로 잘라 두고 전체는
- * 툴팁으로 남긴다(뒷자리가 구분자라 고른 뒤 오른쪽 《발행》에서 온전히 다시 읽는다).
- */
-.pop-lot-no {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /*
@@ -12917,21 +12772,6 @@ button.app-button-neutral {
 .downtime-field-error {
   margin: 0;
   color: var(--semantic-error);
-}
-
-/*
- * LOT 번호 — **멀리서, 그리고 라벨과 대조하며 읽는다.**
- *
- * 자재 LOT 번호는 칸 사이에 구분자 `|` 가 있어 줄이 넘치면 그 뒤에서 접힌다. 칸 가운데가
- * 갈라지면 대조가 성립하지 않는다.
- */
-.pop-lot-no {
-  font-family: var(--font-mono, monospace);
-  font-size: var(--type-title-md, 1.25rem);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  word-break: keep-all;
-  margin: var(--space-2) 0 0;
 }
 
 /*
