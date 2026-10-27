@@ -1,6 +1,5 @@
 import { Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { Fragment } from 'react';
 
 import { statusBadgeOf } from './code-options';
 import type { ApprovalProgressView, ApprovalStepView } from './progress';
@@ -26,7 +25,7 @@ export interface ProgressPaneProps {
 /**
  * 결재 진행 — 상태에 따라 모양이 다르다(#193 컴팩트형).
  *
- * - 결재 대기(「결재 진행」 카드): 「① 결재자 → ② 결재자」 줄 + 「n / m 단계 · 차례」 한 줄
+ * - 결재 대기(「결재 진행」 카드): 「① 결재자 ── ② 결재자」 단계 표시 + 「n / m 단계 · 차례」 한 줄
  * - 결재 종료(「결재 결과」 카드): 결재한 단계마다 아이콘 · 결재자 · 일시, 그 아래 결재 사유(반려면 붉은 칸)
  */
 export const ProgressPane = ({ view, isFinished }: ProgressPaneProps) => {
@@ -86,36 +85,41 @@ export const ProgressPane = ({ view, isFinished }: ProgressPaneProps) => {
         <p className="field-note">{t.progress.noSteps}</p>
       ) : (
         <ol className="quality-approval-steps" aria-label={t.progress.steps}>
+          {/*
+           * 단계 표시 — 번호 원 · 결재자 · 상태 알약, 다음 단계까지 이어지는 선(#193 · IQC 수입검사 단계 표시와 같은 모양).
+           * 선은 지나온 단계(승인)와 지금 단계에서 주 색, 남은 단계에서 회색이다.
+           */}
           {view.steps.map((step, index) => (
-            <Fragment key={step.stepNo}>
-              {index > 0 && (
-                <li className="quality-approval-step-arrow" aria-hidden="true">
-                  <Icon name="arrow_forward" size={18} />
-                </li>
-              )}
-              <li
-                className={`quality-approval-step is-${step.status}`}
-                aria-current={step.isCurrent ? 'step' : undefined}
-                data-status={step.status}
-              >
-                <span className="quality-approval-step-head">
-                  <span className="quality-approval-step-no">{step.stepNo}</span>
-                  <span className="quality-approval-step-name">{step.approverName}</span>
-                </span>
+            <li
+              key={step.stepNo}
+              className={`quality-approval-step is-${step.status}`}
+              aria-current={step.isCurrent ? 'step' : undefined}
+              data-status={step.status}
+            >
+              <span className="quality-approval-step-head">
+                <span className="quality-approval-step-no">{step.stepNo}</span>
+                <span className="quality-approval-step-name">{step.approverName}</span>
                 {stepStateLabel(step) !== null && (
                   <span className={`quality-approval-step-state is-${step.status}`}>
                     {stepStateLabel(step)}
                   </span>
                 )}
-                {/* 앞 단계에서 이미 결재했으면 일시·의견도 작게 잇는다 — 결재 대기 중에도 앞 결재의 근거가 보인다. */}
-                {step.decisionAtText !== null && (
-                  <span className="field-note">{step.decisionAtText}</span>
-                )}
-                {step.decisionComment !== null && (
-                  <span className="field-note">{step.decisionComment}</span>
-                )}
-              </li>
-            </Fragment>
+              </span>
+              {index < view.steps.length - 1 && (
+                <span className="quality-approval-step-line" aria-hidden="true" />
+              )}
+              {/* 앞 단계에서 이미 결재했으면 일시·의견도 작게 잇는다 — 결재 대기 중에도 앞 결재의 근거가 보인다. */}
+              {(step.decisionAtText !== null || step.decisionComment !== null) && (
+                <span className="quality-approval-step-notes">
+                  {step.decisionAtText !== null && (
+                    <span className="field-note">{step.decisionAtText}</span>
+                  )}
+                  {step.decisionComment !== null && (
+                    <span className="field-note">{step.decisionComment}</span>
+                  )}
+                </span>
+              )}
+            </li>
           ))}
         </ol>
       )}

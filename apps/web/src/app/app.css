@@ -4323,10 +4323,13 @@ main:has(.iqc-skip-approval-detail) {
   gap: var(--space-2);
 }
 
-/* 결재 대기 — 「① 결재자 → ② 결재자」. 단계마다 같은 폭을 나눠 쓰고 사이에 화살표를 둔다. */
+/*
+ * 결재 대기 — 단계 표시(#193 · IQC 수입검사 단계 표시와 같은 모양). 번호 원 · 결재자 · 상태 알약 뒤로 다음 단계까지
+ * 선이 이어진다. 마지막 단계는 선 없이 제 폭만 쓴다.
+ */
 .quality-approval-steps {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-3);
   margin: 0;
   padding: 0;
@@ -4336,14 +4339,21 @@ main:has(.iqc-skip-approval-detail) {
 .quality-approval-step {
   display: grid;
   flex: 1 1 0;
-  gap: var(--space-1);
+  grid-template-columns: auto minmax(var(--space-6), 1fr);
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
   min-width: 0;
+}
+
+.quality-approval-step:last-child {
+  flex: none;
+  grid-template-columns: auto;
 }
 
 .quality-approval-step-head {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -4351,24 +4361,57 @@ main:has(.iqc-skip-approval-detail) {
   display: inline-grid;
   flex: none;
   place-items: center;
-  width: 1.125rem;
-  height: 1.125rem;
-  border: 1.5px solid currentColor;
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: var(--radius-full);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+  letter-spacing: var(--type-label-md-tracking);
 }
 
-.quality-approval-step.is-current .quality-approval-step-no {
-  border-color: var(--primary);
+.quality-approval-step.is-current .quality-approval-step-no,
+.quality-approval-step.is-complete .quality-approval-step-no {
   background: var(--primary);
   color: var(--on-primary);
 }
 
-.quality-approval-step-arrow {
-  display: inline-flex;
-  flex: none;
+.quality-approval-step.is-rejected .quality-approval-step-no {
+  background: var(--semantic-error);
+  color: var(--on-primary);
+}
+
+/* 남은 단계는 이름도 흐리게 — 지금 단계와 지나온 단계가 먼저 읽힌다. */
+.quality-approval-step.is-pending .quality-approval-step-name {
   color: var(--on-surface-variant);
+}
+
+/* 상태 알약(「승인」 · 「대기」) — 단계 표시의 「1회차」 알약과 같은 모양. */
+.quality-approval-steps .quality-approval-step-state {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.quality-approval-step-line {
+  height: 2px;
+  border-radius: var(--radius-full);
+  background: var(--outline-variant);
+}
+
+.quality-approval-step.is-current > .quality-approval-step-line,
+.quality-approval-step.is-complete > .quality-approval-step-line {
+  background: var(--primary);
+}
+
+/* 앞 단계 결재 일시 · 의견 — 이름 아래, 번호 원 오른쪽에서 시작한다. */
+.quality-approval-step-notes {
+  display: grid;
+  grid-column: 1;
+  gap: var(--space-1);
+  padding-inline-start: calc(1.75rem + var(--space-2));
 }
 
 .quality-approval-decision.is-complete > .quality-approval-decision-icon {
