@@ -52,6 +52,11 @@ export interface NavEntry extends LocalizedLabel {
   readonly tabsInPage?: boolean;
   /** 탭 묶음의 탭을 **화면이 직접 그린다** — 셸 탭 막대를 세우지 않는다(사이드바 선택·권한은 묶음 그대로). */
   readonly inlineTabs?: true;
+  /**
+   * 이 화면이 **품은 옛 화면의 주소**(탭 없는 항목만). 그중 하나라도 볼 수 있으면 항목을 세운다 — 옛 화면 권한만 가진
+   * 사람이 합친 뒤에 메뉴를 잃지 않게. 권한 코드가 아니라 주소다(코드는 `web-screen-catalog` 한 곳이 안다).
+   */
+  readonly alsoFor?: readonly string[];
 }
 
 /**
@@ -146,6 +151,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'local_shipping',
         label: '입고 관리',
         labelVi: 'Quản lý nhập kho',
+        /* 입하 등록(W-01-03) · 입고 처리(W-01-10)만 가진 사람도 이 화면에서 그 일을 한다. */
+        alsoFor: ['/logistics/over-receipt-split', '/logistics/goods-receipt'],
       },
       /*
        * 재고 관리 — **가장 자주 여는 재고 현황이 첫 탭이다**(사이드바 한 번에 그 화면). 실사로 장부와
