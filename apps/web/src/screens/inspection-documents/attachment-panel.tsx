@@ -65,6 +65,9 @@ const fileTypeOf = (row: Attachment): string => {
   return dot < 0 ? row.contentType : row.fileName.slice(dot + 1).toUpperCase();
 };
 
+/** 표 부품(`Table selectable`)이 첫 열에 그리는 선택 체크칸의 폭(px). */
+const SELECT_COLUMN_WIDTH = 48;
+
 /** 파일 유형 묶음 — 거르기 칩이 쓴다(#185). */
 const FILE_KINDS = ['image', 'pdf', 'excel', 'word', 'other'] as const;
 type FileKind = (typeof FILE_KINDS)[number];
@@ -414,7 +417,11 @@ export const AttachmentPanel = ({
   const resizable = useColumnWidths('omf-mes:inspection-documents:columns', ordered, {
     fitContent: scrollX,
   });
-  const fit = useFitColumns(resizable.columns, { scrollX });
+  /* 선택 체크칸(표 부품이 그리는 48px)은 열 목록 밖이라 상자 폭에서 빼고 맞춘다 — 빼지 않으면 마지막 열이 넘쳐 가린다. */
+  const fit = useFitColumns(resizable.columns, {
+    scrollX,
+    reserve: bulkDownload ? SELECT_COLUMN_WIDTH : 0,
+  });
   /* 파일명 찾기 · 유형 칩으로 거른 뒤 정렬 · 쪽 나누기(#185). 칩의 건수는 거르기 전 전체에서 센다. */
   const all = list.data ?? [];
   const keyword = search.trim().toLowerCase();

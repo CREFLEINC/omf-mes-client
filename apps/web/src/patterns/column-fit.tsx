@@ -17,7 +17,14 @@ const pxOf = (width: string | undefined): number | null =>
 export const useFitColumns = <T,>(
   columns: Column<T>[],
   /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-26). 모자랄 때 늘리는 것은 같다. */
-  { scrollX = false }: { scrollX?: boolean } = {},
+  {
+    scrollX = false,
+    reserve = 0,
+  }: {
+    scrollX?: boolean;
+    /** 열 목록 밖에서 표가 따로 쓰는 폭(px) — 선택 체크칸 등. 상자 폭에서 빼고 맞춘다(#185). */
+    reserve?: number;
+  } = {},
 ) => {
   const ref = useRef<HTMLDivElement>(null);
   const [available, setAvailable] = useState<number | null>(null);
@@ -25,7 +32,7 @@ export const useFitColumns = <T,>(
   useLayoutEffect(() => {
     const element = ref.current;
     if (element === null) return;
-    const measure = (): void => setAvailable(element.clientWidth);
+    const measure = (): void => setAvailable(element.clientWidth - reserve);
     measure();
     /* 시험 환경(jsdom)에는 `ResizeObserver` 가 없다 — 없으면 창 크기 변화만 따른다. */
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
@@ -35,7 +42,7 @@ export const useFitColumns = <T,>(
       observer?.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, []);
+  }, [reserve]);
 
   const fixed = columns.map((column) => pxOf(column.width));
   const fixedSum = fixed.reduce<number>((sum, width) => sum + (width ?? 0), 0);
