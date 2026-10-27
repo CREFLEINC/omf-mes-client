@@ -921,6 +921,7 @@ export const IqcInspectionScreen = () => {
                   <MeasurementGrid
                     rows={measurementRows}
                     isLoading={itemSpecs.isLoading || measurements.isLoading}
+                    scrollX={layout.orientation === 'row'}
                   />
                 </div>
               ),
@@ -972,6 +973,7 @@ export const IqcInspectionScreen = () => {
                           key={detail.data.lotId}
                           targetTypeCode="LOT"
                           targetId={detail.data.lotId}
+                          scrollX={layout.orientation === 'row'}
                         />
                       </div>
                     ),
@@ -992,6 +994,7 @@ export const IqcInspectionScreen = () => {
                         <InspectionHistoryPanel
                           hideSourceLot
                           layout="table"
+                          scrollX={layout.orientation === 'row'}
                           key={`${String(selectedId)}-${String(historyRounds.length)}`}
                           inspectionRequestId={selectedId}
                           judgmentLabelOf={(code) =>

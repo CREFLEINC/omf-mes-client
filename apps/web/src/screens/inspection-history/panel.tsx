@@ -79,6 +79,8 @@ export interface InspectionHistoryPanelProps {
   hideSourceLot?: boolean;
   /** 표 모양(회차 · 검사 일시 · 검사자 · 판정 · 구분 · 비고 · #185). 기본은 시간순 목록이다(OQC 상세). */
   layout?: 'list' | 'table';
+  /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-27 · #185). */
+  scrollX?: boolean;
 }
 
 const JUDGMENT_TONE: Record<string, 'success' | 'error' | 'warning'> = {
@@ -103,9 +105,11 @@ const noteOf = (event: InspectionHistoryEvent): string => {
 const HistoryTable = ({
   events,
   judgmentLabelOf,
+  scrollX,
 }: {
   events: readonly InspectionHistoryEvent[];
   judgmentLabelOf: (code: string) => string;
+  scrollX: boolean;
 }) => {
   const columns: Column<InspectionHistoryEvent & { key: string }>[] = [
     {
@@ -158,8 +162,10 @@ const HistoryTable = ({
     { key: 'note', header: t.columns.note, width: '240px', render: noteOf },
   ];
   const ordered = useColumnOrder('omf-mes:inspection-history:columns:order', columns);
-  const resizable = useColumnWidths('omf-mes:inspection-history:columns', ordered);
-  const fit = useFitColumns(resizable.columns);
+  const resizable = useColumnWidths('omf-mes:inspection-history:columns', ordered, {
+    fitContent: scrollX,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX });
 
   return (
     <div ref={fit.ref} className="inspection-queue-table" style={resizable.style}>
@@ -197,6 +203,7 @@ export const InspectionHistoryPanel = ({
   judgmentLabelOf,
   hideSourceLot = false,
   layout = 'list',
+  scrollX = false,
 }: InspectionHistoryPanelProps) => {
   const detailOf = (event: InspectionHistoryEvent): string[] => detailLines(event, judgmentLabelOf);
   const history = useInspectionHistory(inspectionRequestId, revision);
@@ -250,6 +257,7 @@ export const InspectionHistoryPanel = ({
             <HistoryTable
               events={history.data.events}
               judgmentLabelOf={judgmentLabelOf ?? ((code) => code)}
+              scrollX={scrollX}
             />
           ) : (
             <ol className="inspection-history-events">

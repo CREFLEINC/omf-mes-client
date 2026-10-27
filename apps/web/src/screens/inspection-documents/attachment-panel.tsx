@@ -60,6 +60,8 @@ export interface AttachmentPanelProps {
   /** 붙일 대상 — 검사 문서는 LOT 또는 검사 결과(서버 선행 P-57). */
   targetTypeCode: 'LOT' | 'INSPECTION_RESULT';
   targetId: number;
+  /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-27 · #185). */
+  scrollX?: boolean;
 }
 
 /**
@@ -75,7 +77,11 @@ export interface AttachmentPanelProps {
  * 여러 파일을 한 번에 고르고 올린다(omf-all-around#133) — 서버는 요청 하나에 한 파일이라 고른 순서대로 하나씩
  * 보낸다. 올라간 파일은 목록에서 바로 빠지므로, 중간에 실패하면 남은 파일만 다시 올리면 된다(중복 없음).
  */
-export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelProps) => {
+export const AttachmentPanel = ({
+  targetTypeCode,
+  targetId,
+  scrollX = false,
+}: AttachmentPanelProps) => {
   const { client } = useApiClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -260,8 +266,10 @@ export const AttachmentPanel = ({ targetTypeCode, targetId }: AttachmentPanelPro
   ];
   /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다 — 상자 폭에 맞춘다. */
   const ordered = useColumnOrder('omf-mes:inspection-documents:columns:order', baseColumns);
-  const resizable = useColumnWidths('omf-mes:inspection-documents:columns', ordered);
-  const fit = useFitColumns(resizable.columns);
+  const resizable = useColumnWidths('omf-mes:inspection-documents:columns', ordered, {
+    fitContent: scrollX,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX });
 
   return (
     /* 제목과 허용 형식 안내는 이 구획을 접는 줄(부르는 화면)이 맡는다(#133). */

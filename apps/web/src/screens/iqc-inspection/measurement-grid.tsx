@@ -107,6 +107,8 @@ export interface MeasurementGridProps {
   rows: MeasurementRow[];
   /** 항목을 부르는 중. 표 자리에 그릴 것을 부르는 쪽이 정한다 */
   isLoading: boolean;
+  /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-27 · #185). */
+  scrollX?: boolean;
 }
 
 const columns: Column<MeasurementRow>[] = [
@@ -187,13 +189,15 @@ const columns: Column<MeasurementRow>[] = [
   },
 ];
 
-export const MeasurementGrid = ({ rows, isLoading }: MeasurementGridProps) => {
+export const MeasurementGrid = ({ rows, isLoading, scrollX = false }: MeasurementGridProps) => {
   /*
    * 목록 표처럼 동작한다(사용자 지시 2026-10-26 · #185) — 열 순서 끌기 · 폭 조절(브라우저에 기억), 한 줄 행, 상자 폭에 맞춤.
    */
   const ordered = useColumnOrder('omf-mes:iqc-inspection:columns:measurements:order', columns);
-  const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:measurements', ordered);
-  const fit = useFitColumns(resizable.columns);
+  const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:measurements', ordered, {
+    fitContent: scrollX,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX });
 
   return (
     <section className="iqc-inspection-section" aria-label={t.heading}>
