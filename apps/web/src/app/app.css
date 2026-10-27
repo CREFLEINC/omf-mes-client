@@ -4264,7 +4264,8 @@ main:has(.iqc-skip-approval-detail) {
 
 .quality-approval-turn-label.is-mine {
   background: var(--semantic-warning-container);
-  color: var(--semantic-warning);
+  /* 「결재 대기」 배지와 같은 글자색(사용자 지시 2026-10-27). */
+  color: var(--on-semantic-warning-container);
 }
 
 .quality-approval-turn-label.is-other {
@@ -4324,11 +4325,13 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /*
- * 결재 대기 — 단계 표시(#193 · IQC 수입검사 단계 표시와 같은 모양). 번호 원 · 결재자 · 상태 알약 뒤로 다음 단계까지
- * 선이 이어진다. 마지막 단계는 선 없이 제 폭만 쓴다.
+ * 결재 대기 — 단계 표시(#193 · IQC 수입검사 단계 표시와 같은 모양). 번호 원 · 결재자(아래 상태 알약) 뒤로 다음 단계까지
+ * 선이 이어진다. 카드 끝까지 늘이지 않고 가운데에 모은다 — 선은 단계마다 정해진 길이까지만 자라고, 사람이 늘면
+ * 그만큼 길어진다. 좁으면 선이 줄어든다(사용자 지시 2026-10-27).
  */
 .quality-approval-steps {
   display: flex;
+  justify-content: center;
   align-items: flex-start;
   gap: var(--space-3);
   margin: 0;
@@ -4338,8 +4341,8 @@ main:has(.iqc-skip-approval-detail) {
 
 .quality-approval-step {
   display: grid;
-  flex: 1 1 0;
-  grid-template-columns: auto minmax(var(--space-6), 1fr);
+  flex: 0 1 auto;
+  grid-template-columns: auto minmax(var(--space-6), 12rem);
   align-items: center;
   gap: var(--space-1) var(--space-3);
   min-width: 0;
@@ -4354,6 +4357,14 @@ main:has(.iqc-skip-approval-detail) {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
+}
+
+/* 결재자 이름 · 그 아래 상태 알약. */
+.quality-approval-step-text {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -4711,11 +4722,9 @@ main:has(.iqc-skip-approval-detail) {
   text-decoration: none;
 }
 
-/* 대상 LOT 값 줄의 「LOT 열기」(#193) — 값은 왼쪽, 작은 단추는 오른쪽 끝. 좁으면 값 아래로 내려간다. */
+/* 값 + 바로 옆 작은 「열기」 단추(#193) — 좁으면 값 아래로 내려간다. */
 .quality-approval-target-value {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-3);
@@ -4726,27 +4735,29 @@ main:has(.iqc-skip-approval-detail) {
   overflow-wrap: anywhere;
 }
 
-/* 소제목 · 값 옆의 작은 「열기」 단추(#193 · 사용자 지시 2026-10-27 — 크기를 줄인다). */
-.quality-approval-concession-nc-link.is-inline {
+/* 소제목 · 값 옆의 작은 보조 「열기」 단추(#193 · 사용자 지시 2026-10-27) — 테두리 알약, 아이콘 + 글. */
+.quality-approval-open-link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
   gap: var(--space-1);
   min-height: 1.5rem;
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  color: var(--on-surface);
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
+  text-decoration: none;
 }
 
-/* 소제목 + 단추 — 제목 줄에 함께 서고, 단추는 칸 오른쪽 끝에 붙는다(사용자 지시 2026-10-27). */
-.field-cell > dt:has(> .quality-approval-label-link) {
-  justify-self: stretch;
+.quality-approval-open-link:hover {
+  background: color-mix(in srgb, var(--on-surface) 8%, transparent);
 }
 
-.quality-approval-label-link {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
+.quality-approval-open-link:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
 }
 
 .quality-approval-concession-nc-link:hover {

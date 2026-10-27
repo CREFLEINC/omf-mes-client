@@ -169,6 +169,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     lotHeading: 'LOT đối tượng',
     lotNoUnknown: 'Không có số LOT',
     openLot: 'Mở LOT',
+    open: 'Mở',
     workOrderHeading: 'Lệnh sản xuất được phép',
     openWorkOrder: 'Mở lệnh sản xuất',
     reference: {

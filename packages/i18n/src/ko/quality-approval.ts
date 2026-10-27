@@ -186,6 +186,8 @@ export const qualityApproval = {
     lotHeading: '대상 LOT',
     lotNoUnknown: 'LOT 번호 미제공',
     openLot: 'LOT 열기',
+    /** 소제목 옆 작은 보조 단추의 글 — 무엇을 여는지는 소제목이 말하고, 읽기 이름은 「LOT 열기」 등 전체다. */
+    open: '열기',
     workOrderHeading: '허용 작업지시',
     openWorkOrder: '작업지시 열기',
     reference: {

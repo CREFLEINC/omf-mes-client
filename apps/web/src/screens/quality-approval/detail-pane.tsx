@@ -14,12 +14,12 @@ export interface DetailPaneProps {
    */
   variant?: 'default' | 'concession';
   /**
-   * 대상 LOT 을 LOT 상태 화면에서 여는 단추 — 특채 요청 정보는 소제목 옆, 요청 상세(이름 | 값 줄)는 값 옆에 선다(#193). 권한이 없으면 넘기지 않는다.
+   * 대상 LOT 을 LOT 상태 화면에서 여는 단추 — 값 바로 옆에 선다(#193). 권한이 없으면 넘기지 않는다.
    * `name` 을 주면 대상 칸에 그 이름을 쓴다 — 특채는 결재 대상(부적합)이 아니라 특채의 LOT 을 보여야 단추와 맞는다.
    */
   targetLot?: { to: string; label: string; name?: string };
   /**
-   * 특채의 연관 부적합 — 사유 옆 칸에 번호를, 소제목 옆에 「부적합 열기」 단추를 둔다(#193 · 사용자 지시 2026-10-27).
+   * 특채의 연관 부적합 — 사유 옆 칸에 번호와 「열기」 단추를 둔다(#193 · 사용자 지시 2026-10-27).
    * 특채는 늘 부적합을 근거로 만든다(서버 DB 필수). 처분 판정 처리 권한이 없으면 `link` 를 넘기지 않는다.
    */
   nonconformance?: { name: string; link?: { to: string; label: string } };
@@ -27,29 +27,19 @@ export interface DetailPaneProps {
 
 type OpenLink = { to: string; label: string };
 
+/** 작은 보조 단추(테두리 알약 · 아이콘 + 「열기」) — 무엇을 여는지는 소제목이 말하고, 읽기 이름은 전체 이름이다(#193). */
 const openLink = (link: OpenLink): ReactNode => (
-  <Link className="quality-approval-concession-nc-link is-inline" to={link.to}>
-    {link.label}
+  <Link className="quality-approval-open-link" to={link.to} aria-label={link.label}>
     <Icon name="open_in_new" size={14} />
+    {messages.qualityApproval.condition.open}
   </Link>
 );
 
 /**
- * 작은 제목 + 옆 「열기」 단추(#193 · 사용자 지시 2026-10-27 — 단추는 소제목 옆, 작게). 단추가 없으면 제목만 둔다.
+ * 값 + 바로 옆 작은 보조 「열기」 단추(#193 · 사용자 지시 2026-10-27 — 데이터 옆). 단추가 없으면 값만 둔다.
  * 특채 사용 조건의 허용 작업지시도 같은 모양을 쓴다.
  */
-export const linkedLabel = (label: string, link: OpenLink | undefined): ReactNode =>
-  link === undefined ? (
-    label
-  ) : (
-    <span className="quality-approval-label-link">
-      {label}
-      {openLink(link)}
-    </span>
-  );
-
-/** 값 + 옆 단추 — 이름 | 값 한 줄 배치(요청 상세)에서 쓴다. 이름 칸이 좁아 단추를 값 옆에 둔다. */
-const linkedValue = (name: string, link: { to: string; label: string } | undefined): ReactNode =>
+export const linkedValue = (name: ReactNode, link: OpenLink | undefined): ReactNode =>
   link === undefined ? (
     name
   ) : (
@@ -84,8 +74,8 @@ export const DetailPane = ({
         <dl className="quality-approval-concession-grid">
           {concessionRows.map(([label, value, link]) => (
             <div className="field-cell" key={label}>
-              <dt className="field-label">{linkedLabel(label, link)}</dt>
-              <dd>{value}</dd>
+              <dt className="field-label">{label}</dt>
+              <dd>{linkedValue(value, link)}</dd>
             </div>
           ))}
           <div
@@ -105,10 +95,8 @@ export const DetailPane = ({
           </div>
           {nonconformance !== undefined && (
             <div className="field-cell">
-              <dt className="field-label">
-                {linkedLabel(t.condition.nonconformanceHeading, nonconformance.link)}
-              </dt>
-              <dd>{nonconformance.name}</dd>
+              <dt className="field-label">{t.condition.nonconformanceHeading}</dt>
+              <dd>{linkedValue(nonconformance.name, nonconformance.link)}</dd>
             </div>
           )}
         </dl>

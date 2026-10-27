@@ -31,7 +31,7 @@ import {
   useConcessionDetail,
   qualityApprovalKeys,
 } from './queries';
-import { linkedLabel, type DetailPaneProps } from './detail-pane';
+import { linkedValue, type DetailPaneProps } from './detail-pane';
 
 export interface ConditionPaneProps {
   approvalRequestId: number | null;
@@ -220,8 +220,8 @@ export const ConditionPane = ({
     <dl className={className}>
       {rows.map(([label, value, link]) => (
         <div className="field-cell" key={label}>
-          <dt className="field-label">{linkedLabel(label, link)}</dt>
-          <dd>{value}</dd>
+          <dt className="field-label">{label}</dt>
+          <dd>{linkedValue(value, link)}</dd>
         </div>
       ))}
     </dl>

@@ -98,12 +98,15 @@ export const ProgressPane = ({ view, isFinished }: ProgressPaneProps) => {
             >
               <span className="quality-approval-step-head">
                 <span className="quality-approval-step-no">{step.stepNo}</span>
-                <span className="quality-approval-step-name">{step.approverName}</span>
-                {stepStateLabel(step) !== null && (
-                  <span className={`quality-approval-step-state is-${step.status}`}>
-                    {stepStateLabel(step)}
-                  </span>
-                )}
+                {/* 상태 라벨은 결재자 이름 아래에 둔다(사용자 지시 2026-10-27). */}
+                <span className="quality-approval-step-text">
+                  <span className="quality-approval-step-name">{step.approverName}</span>
+                  {stepStateLabel(step) !== null && (
+                    <span className={`quality-approval-step-state is-${step.status}`}>
+                      {stepStateLabel(step)}
+                    </span>
+                  )}
+                </span>
               </span>
               {index < view.steps.length - 1 && (
                 <span className="quality-approval-step-line" aria-hidden="true" />
