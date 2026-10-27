@@ -265,25 +265,31 @@ export const AttachmentPanel = ({
     }
   };
 
+  /*
+   * 미리보기 요청 차례 — 불러오는 중에 창을 닫거나 다른 파일을 열면 앞 요청의 늦은 결과를 버린다(닫은 창이 다시 뜨지
+   * 않고, 만든 임시 주소도 남기지 않는다).
+   */
+  const previewTurn = useRef(0);
+
   const openPreview = async (row: Attachment): Promise<void> => {
+    const turn = ++previewTurn.current;
     setNotice(null);
     setPreview({ row, blob: null, url: null, text: null });
     try {
       const blob = await contentOf(row);
       const isText = blob.type.startsWith('text/') || /\.(txt|csv)$/i.test(row.fileName);
-      setPreview({
-        row,
-        blob,
-        url: isText ? null : URL.createObjectURL(blob),
-        text: isText ? await blob.text() : null,
-      });
+      const text = isText ? await blob.text() : null;
+      if (turn !== previewTurn.current) return;
+      setPreview({ row, blob, url: isText ? null : URL.createObjectURL(blob), text });
     } catch {
+      if (turn !== previewTurn.current) return;
       setPreview(null);
       setNotice(t.openFailed);
     }
   };
 
   const closePreview = (): void => {
+    previewTurn.current += 1;
     if (preview?.url != null) URL.revokeObjectURL(preview.url);
     setPreview(null);
   };
