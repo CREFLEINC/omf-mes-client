@@ -1,7 +1,9 @@
 import {
   AlertBanner,
+  Breadcrumb,
   Button,
   EmptyState,
+  PageHeader,
   SkeletonText,
   useToast,
 } from '@crefle/web-ui';
@@ -13,6 +15,13 @@ import { useSearchParams } from 'react-router';
 import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
+import { usePageHub } from '../../patterns/page-hub';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import {
   DATA_TYPE_CODE_GROUP,
   FREQUENCY_INTERVAL_UOM_CODE_GROUP,
@@ -38,6 +47,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
 import { PlanActionBanner } from './plan-action-banner';
 import { PlanActionDialog, type PlanActionKind } from './plan-action-dialog';
+import { PlanFilterBar } from './plan-filter-bar';
 import { PlanListPane } from './plan-list-pane';
 import {
   emptyPlanFormValues,
@@ -94,6 +104,12 @@ type InspectionPlanVersionDetailResponse =
   components['schemas']['InspectionPlanVersionDetailResponse'];
 
 const t = messages.inspectionStandard;
+const hubText = messages.common.inspectionHub;
+
+/**
+ * 좌우 · 상하 배치 — 품질 기준 정보 탭 묶음이 같은 고름을 쓴다(검사 조회·판정과 같은 방식 · omf-all-around#196).
+ */
+const QUALITY_STANDARD_ORIENTATION_KEY = 'omf-mes:quality-standard-hub:split-orientation';
 
 /** 폼의 현재 값과 그것이 어디서 나왔는지. 「고친 것이 있는가」는 둘의 비교로 판정한다. */
 interface PlanFormState {
@@ -187,6 +203,11 @@ const useVersionTransition = ({
  */
 export const InspectionStandardScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const hub = usePageHub();
+  /* 목록 · 상세 배치 — 검사 조회·판정과 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:inspection-standard:split', 0.4);
+  const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const toast = useToast();
   const { client } = useApiClient();
 
@@ -1363,7 +1384,30 @@ export const InspectionStandardScreen = () => {
 
   return (
     <>
-      <div className="three-pane inspection-standard-layout">
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+      {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다. */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
+
+      {/* 조회 조건 — 검사 조회·판정처럼 목록과 다른 카드에 둔다. */}
+      <section ref={aboveRef} className="pane inspection-standard-search" role="search">
+        <PlanFilterBar appliedFilters={filters} onApplyFilters={applyFilters} />
+      </section>
+
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
         <PlanListPane
           plans={plans}
           isLoading={planList.isPending}
@@ -1385,43 +1429,54 @@ export const InspectionStandardScreen = () => {
           }
         />
 
-        <VersionPane
-          versions={versions}
-          isLoading={versionList.isPending}
-          isPlanSelected={selectedPlanId !== null}
-          selectedVersionId={selectedVersionId}
-          onSelect={handleSelectVersion}
-          loadError={
-            versionList.isError ? (
-              <LoadErrorBanner
-                error={versionList.error}
-                onRetry={() => void versionList.refetch()}
-              />
-            ) : null
-          }
-          newRevisionDisabledReason={newRevisionDisabledReason}
-          isCreating={versionCreateValues !== null}
-          isPublishing={newRevisionWrite.isSaving}
-          onNewRevision={() => {
-            newRevisionWrite.write();
-          }}
-          onCreateVersion={() => {
-            resetVersionEditing();
-            setVersionCreateValues(emptyVersionFormValues());
-          }}
-          /* 등록·발행에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={
-            <>
-              <PlanActionBanner error={versionCreateWrite.error} />
-              <PlanActionBanner error={newRevisionWrite.error} />
-            </>
-          }
-        />
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
 
-        <div className="pane-stack">
-          {renderPlanPane()}
-          {renderVersionFormPane()}
-          {renderItemPane()}
+        <div className="inspection-standard-detail">
+          <VersionPane
+            versions={versions}
+            isLoading={versionList.isPending}
+            isPlanSelected={selectedPlanId !== null}
+            selectedVersionId={selectedVersionId}
+            onSelect={handleSelectVersion}
+            loadError={
+              versionList.isError ? (
+                <LoadErrorBanner
+                  error={versionList.error}
+                  onRetry={() => void versionList.refetch()}
+                />
+              ) : null
+            }
+            newRevisionDisabledReason={newRevisionDisabledReason}
+            isCreating={versionCreateValues !== null}
+            isPublishing={newRevisionWrite.isSaving}
+            onNewRevision={() => {
+              newRevisionWrite.write();
+            }}
+            onCreateVersion={() => {
+              resetVersionEditing();
+              setVersionCreateValues(emptyVersionFormValues());
+            }}
+            /* 등록·발행에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+            banner={
+              <>
+                <PlanActionBanner error={versionCreateWrite.error} />
+                <PlanActionBanner error={newRevisionWrite.error} />
+              </>
+            }
+          />
+
+          <div className="pane-stack">
+            {renderPlanPane()}
+            {renderVersionFormPane()}
+            {renderItemPane()}
+          </div>
         </div>
       </div>
 

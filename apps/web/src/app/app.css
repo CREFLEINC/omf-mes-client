@@ -292,12 +292,86 @@ main > * + * {
 }
 
 /*
- * W-06-02 검사기준 — 3단 배치를 위치 기준으로 삼는다(omf-all-around#103 · 3단계 검증).
+ * W-06-02 검사기준 — 목록 · 상세 분할을 위치 기준으로 삼는다(omf-all-around#103 · 3단계 검증).
  * 항목 표(DS Table 재정렬)의 화면 낭독기용 숨김 요소가 `position: absolute` 라, 위치 지정 조상이 없으면 main 의
  * 스크롤 영역 밖으로 빠져 문서 높이를 늘린다(실측 3197px) — 창이 따로 스크롤되며 앱 틀 아래가 빈 바탕으로 보였다.
  */
-.inspection-standard-layout {
+.inspection-standard-split,
+.inspection-standard-detail {
   position: relative;
+}
+
+/*
+ * 검사기준 목록 · 상세(omf-all-around#196) — 검사 조회·판정과 같은 분할(`.inspection-split`). 상세 칸은 Rev 목록 위,
+ * 기준 정보 · Rev 정보 · 검사 항목이 아래로 쌓인다. 목록은 표 안에서 · 상세는 칸 안에서 구른다.
+ */
+.inspection-standard-search {
+  margin-bottom: var(--space-4);
+}
+
+.inspection-standard-search > .filter-bar:last-child {
+  margin-bottom: 0;
+}
+
+.inspection-standard-detail {
+  display: grid;
+  gap: var(--space-5);
+  align-content: start;
+  min-width: 0;
+}
+
+.inspection-split > .inspection-standard-list-pane {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  max-height: calc(100dvh - 20rem);
+  overflow: hidden;
+}
+
+/* 표만 상자 안에서 구르고, 쪽 이동 · 기준 추가 줄은 상자 바닥에 남는다. */
+.inspection-standard-list-pane > :first-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.inspection-standard-list-pane > :not(:first-child) {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 1440px) {
+  .inspection-split > .inspection-standard-list-pane {
+    max-height: none;
+    min-height: 0;
+  }
+
+  .inspection-split > .inspection-standard-detail {
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
+.po-board-split.inspection-split.is-stacked > .inspection-standard-list-pane {
+  box-sizing: border-box;
+  height: var(--stacked-list-height, auto);
+  min-height: 0;
+  max-height: var(--stacked-list-height, min(28rem, 50dvh));
+}
+
+.po-board-split.inspection-split.is-stacked > .inspection-standard-detail {
+  overflow: visible;
+}
+
+/*
+ * 상하 배치에서는 좌우 폭 막대 자리(`PaneSplitter`)가 한 줄을 차지하지 않게 감추고, 줄 높이는 내용대로 둔다 —
+ * 공용 상하 배치의 2 : 3 줄 나눔이 남으면 높이 막대가 3 줄을 차지해 목록과 상세 사이가 비어 보인다.
+ */
+.po-board-split.inspection-standard-split.is-stacked {
+  grid-template-rows: none;
+}
+
+.po-board-split.inspection-standard-split.is-stacked > .po-board-gutter {
+  display: none;
 }
 
 .pane-stack {

@@ -217,13 +217,13 @@ describe('AppLayout', () => {
     );
   });
 
-  /* 검사기준은 「품질 기준정보」 묶음의 첫 탭이다 — 사이드바의 묶음 줄이 그 주소를 건다. */
-  it('사이드바에 품질 기준정보 묶음이 검사기준 주소로 보인다', () => {
+  /* 검사기준은 「품질 기준 정보」 묶음의 첫 탭이다 — 사이드바의 묶음 줄이 그 주소를 건다. */
+  it('사이드바에 품질 기준 정보 묶음이 검사기준 주소로 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '품질 기준정보' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '품질 기준 정보' })).toHaveAttribute(
       'href',
       '/master-data/inspection-standard',
     );
@@ -240,17 +240,17 @@ describe('AppLayout', () => {
     );
   });
 
-  /* 판정유형 코드는 「품질 기준정보」 묶음의 끝 탭이다 — 탭 막대에서 불량·원인코드 바로 뒤에 선다. */
-  it('품질 기준정보 탭 막대에 판정유형 코드가 불량·원인코드 뒤에 보인다', () => {
+  /* 판정유형 코드는 「품질 기준 정보」 묶음의 끝 탭이다 — 탭 막대에서 불량·원인코드 바로 뒤에 선다. */
+  it('품질 기준 정보 탭 막대에 판정유형 코드가 불량·원인코드 뒤에 보인다', () => {
     renderLayout('본문 내용', { route: '/master-data/judgment-code' });
 
-    const tabs = screen.getByRole('navigation', { name: '품질 기준정보' });
+    const tabs = screen.getByRole('navigation', { name: '품질 기준 정보' });
 
-    expect(within(tabs).getByRole('link', { name: '판정유형 코드' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '판정 유형 코드' })).toHaveAttribute(
       'href',
       '/master-data/judgment-code',
     );
-    expect(hubTabHrefs('품질 기준정보')).toEqual([
+    expect(hubTabHrefs('품질 기준 정보')).toEqual([
       '/master-data/inspection-standard',
       '/master-data/inspection-sheet-template',
       '/quality/inspection-levels',
@@ -504,7 +504,7 @@ describe('AppLayout', () => {
   /*
    * 품질 관리 — **독립 영역이다.** 검사를 IQC(입하) → PQC(공정) → OQC(출하) 흐름 차례로 세우고,
    * 검사기준·코드, 검사 이력, 그리고 LOT 상태 → 보류 → 승인 → 처분의 판정 갈래가 뒤따른다.
-   * 검사기준 · 검사표 기준 · 불량·원인코드 · 판정유형 코드는 「품질 기준정보」, LOT 조회와 판정은 「LOT 상태」 묶음 한 줄이다.
+   * 검사기준 · 검사표 기준 · 불량·원인코드 · 판정유형 코드는 「품질 기준 정보」, LOT 조회와 판정은 「LOT 상태」 묶음 한 줄이다.
    */
   it('품질 관리 섹션이 IQC → PQC → OQC → 검사기준·코드 → 검사실적 → LOT 상태·보류·승인·처분 순서다', () => {
     renderLayout('본문 내용');
@@ -541,7 +541,7 @@ describe('AppLayout', () => {
 
     const qualityOrder = [
       '/logistics/iqc-inspection',
-      /* 「품질 기준정보」 묶음 — 검사기준 → 검사표 기준(W-06-24) → 검사 수준 관리(W-03-12) → 불량·원인코드 → 판정유형 코드. */
+      /* 「품질 기준 정보」 묶음 — 검사기준 → 검사표 기준(W-06-24) → 검사 수준 관리(W-03-12) → 불량·원인코드 → 판정유형 코드. */
       '/master-data/inspection-standard',
       '/quality/inspection-results',
       /* W-03-13 — OA 제품 검사표 조회·서명(설계보다 앞선 화면). */
@@ -959,7 +959,7 @@ describe('AppLayout', () => {
       '/logistics/document-progress',
       /* 품질 관리 — 검사 조회·판정(IQC · PQC · OQC 탭) → 기준·코드 → 이력 → LOT 판정 갈래. */
       '/logistics/iqc-inspection' /* ← 검사 조회·판정 */,
-      '/master-data/inspection-standard' /* ← 품질 기준정보 */,
+      '/master-data/inspection-standard' /* ← 품질 기준 정보 */,
       '/quality/inspection-results',
       '/quality/inspection-sheets',
       '/quality/lot-status' /* ← LOT 상태 */,
@@ -1028,7 +1028,7 @@ describe('AppLayout', () => {
         '/logistics/supplier-return',
         '/logistics/disposal-issue',
       ],
-      '품질 기준정보': [
+      '품질 기준 정보': [
         '/master-data/inspection-standard',
         '/master-data/inspection-sheet-template',
         '/quality/inspection-levels',

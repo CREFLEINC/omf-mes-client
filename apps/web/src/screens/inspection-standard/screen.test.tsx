@@ -117,9 +117,11 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
     await user.type(screen.getByLabelText('검사기준 검색'), 'SYN');
-    await user.click(within(planPane()).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(
+      within(screen.getByRole('search')).getByRole('combobox', { name: '검사 유형' }),
+    );
     await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
-    await user.click(within(planPane()).getByRole('button', { name: '조회' }));
+    await user.click(within(screen.getByRole('search')).getByRole('button', { name: '조회' }));
 
     const last = planRequests(requests).at(-1);
     expect(last?.url.searchParams.get('q')).toBe('SYN');
@@ -294,7 +296,7 @@ describe('InspectionStandardScreen — 쪽 이동', () => {
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
     await user.type(screen.getByLabelText('검사기준 검색'), 'SYN');
-    await user.click(within(planPane()).getByRole('button', { name: '조회' }));
+    await user.click(within(screen.getByRole('search')).getByRole('button', { name: '조회' }));
 
     const last = planRequests(requests).at(-1);
     expect(last?.url.searchParams.get('q')).toBe('SYN');

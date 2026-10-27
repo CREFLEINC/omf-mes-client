@@ -255,19 +255,19 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 품질 기준정보 — 검사기준 · 검사표 기준(W-06-24 · OA 전용) · 검사 수준 관리 · 불량·원인코드 · 판정유형 코드를 사이드바 한 줄 ·
+       * 품질 기준 정보 — 검사기준 · 검사표 기준(W-06-24 · OA 전용) · 검사 수준 관리 · 불량·원인코드 · 판정유형 코드를 사이드바 한 줄 ·
        * 본문 위 탭으로 묶는다(사용자 2026-10-26). 모두 판정이 기대는 기준·코드 마스터다.
        * 검사표 기준 탭은 OA 공장이 없는 계정에서 셸이 거른다(`OA_ONLY_PATHS`).
        */
       {
         to: '/master-data/inspection-standard',
         icon: 'rule_settings',
-        label: '품질 기준정보',
+        label: '품질 기준 정보',
         labelVi: 'Dữ liệu chuẩn chất lượng',
         tabs: [
           {
             to: '/master-data/inspection-standard',
-            label: '검사기준',
+            label: '검사 기준',
             labelVi: 'Tiêu chuẩn kiểm tra',
           },
           {
@@ -288,7 +288,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
           {
             to: '/master-data/judgment-code',
-            label: '판정유형 코드',
+            label: '판정 유형 코드',
             labelVi: 'Mã loại đánh giá',
           },
         ],
