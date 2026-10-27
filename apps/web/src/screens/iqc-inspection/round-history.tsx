@@ -1,4 +1,4 @@
-import { Table, type Column } from '@crefle/web-ui';
+import { Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { useClientPage } from '../../patterns/client-page';
@@ -29,6 +29,12 @@ import { withUom } from './uom-lookup';
 
 const t = messages.iqcInspection.history;
 
+const JUDGMENT_TONE: Record<string, 'success' | 'error' | 'warning'> = {
+  ACCEPTED: 'success',
+  REJECTED: 'error',
+  HELD: 'warning',
+};
+
 /** 수량 칸에는 단위 코드를 붙인다(모르면 숫자만). */
 const columnsOf = (
   uomCode: string | null,
@@ -37,6 +43,8 @@ const columnsOf = (
   {
     key: 'inspectionRound',
     align: 'center',
+    /* 오름 · 내림차순(사용자 지시 2026-10-27 · #185). */
+    sortable: true,
     header: t.columns.round,
     width: '64px',
     render: (row) => String(row.inspectionRound),
@@ -46,9 +54,13 @@ const columnsOf = (
     align: 'center',
     header: t.columns.judgment,
     width: '96px',
-    render: (row) =>
-      judgmentOptions.find((option) => option.value === row.overallJudgmentCode)?.label ??
-      row.overallJudgmentCode,
+    /* 상태 칩(합격 초록 · 불합격 빨강 · 보류 노랑) — 검사 이력 표와 같은 모양(사용자 지시 2026-10-27 · #185). */
+    render: (row) => (
+      <Chip variant="status" size="sm" status={JUDGMENT_TONE[row.overallJudgmentCode] ?? 'idle'}>
+        {judgmentOptions.find((option) => option.value === row.overallJudgmentCode)?.label ??
+          row.overallJudgmentCode}
+      </Chip>
+    ),
   },
   {
     key: 'acceptedQty',
@@ -107,7 +119,7 @@ export const RoundHistory = ({
   });
   const fit = useFitColumns(resizable.columns, { scrollX });
   /* 10 · 20 · 50건씩 쪽으로 나눈다(사용자 지시 2026-10-27 · #185). */
-  const paging = useClientPage(rounds);
+  const paging = useClientPage(rounds, { inspectionRound: (row) => row.inspectionRound });
   if (rounds.length === 0) return null;
 
   return (
@@ -124,6 +136,8 @@ export const RoundHistory = ({
           density="compact"
           columns={fit.columns}
           rows={paging.rows}
+          sort={paging.sort}
+          onSortChange={paging.onSortChange}
           getRowId={(row) => String(row.inspectionResultId)}
         />
       </div>

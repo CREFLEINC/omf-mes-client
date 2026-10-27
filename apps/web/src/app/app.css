@@ -15222,6 +15222,15 @@ button.app-button-neutral {
   border-top: 1px solid var(--outline-variant);
 }
 
+/* 첨부 표 파일명 칸 — 이름(말줄임) 바로 옆에 내려받기 단추(#185). */
+.inspection-documents-file-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  min-width: 0;
+}
+
 /* 긴 파일 이름은 한 줄로 말줄임 — 크기 · 제거 단추가 밀려 잘리지 않게(#133). */
 .inspection-documents-selected-name,
 .inspection-documents-file-name {

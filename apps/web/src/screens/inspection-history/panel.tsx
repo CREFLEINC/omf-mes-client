@@ -130,6 +130,9 @@ const HistoryTable = ({
       header: t.columns.at,
       width: '150px',
       align: 'center',
+      /* 오름 · 내림차순(사용자 지시 2026-10-27 · #185). */
+      sortable: true,
+      sortAccessor: (row) => row.occurredAt,
       render: (row) => formatAt(row.occurredAt),
     },
     {
@@ -176,7 +179,7 @@ const HistoryTable = ({
     ...event,
     key: `${event.eventTypeCode}-${event.occurredAt}-${String(index)}`,
   }));
-  const paging = useClientPage(keyed);
+  const paging = useClientPage(keyed, { at: (row) => row.occurredAt });
 
   return (
     <>
@@ -186,6 +189,7 @@ const HistoryTable = ({
           density="compact"
           columns={fit.columns}
           rows={paged ? paging.rows : keyed}
+          {...(paged ? { sort: paging.sort, onSortChange: paging.onSortChange } : {})}
           getRowId={(row) => row.key}
           empty={
             <EmptyState

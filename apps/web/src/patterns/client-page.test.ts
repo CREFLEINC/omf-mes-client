@@ -35,4 +35,13 @@ describe('useClientPage', () => {
     expect(result.current.nav?.meta.page).toBe(2);
     expect(result.current.rows).toEqual([11, 12, 13, 14, 15]);
   });
+
+  it('정렬은 쪽을 나누기 전에 전체 줄에 건다 — 내림차순이면 첫 쪽에 가장 큰 값', () => {
+    const { result } = renderHook(() => useClientPage(rows(25), { n: (row) => row }));
+    act(() => result.current.nav?.onChangePage(2));
+    act(() => result.current.onSortChange({ key: 'n', direction: 'descending' }));
+
+    expect(result.current.nav?.meta.page).toBe(1);
+    expect(result.current.rows).toEqual([25, 24, 23, 22, 21, 20, 19, 18, 17, 16]);
+  });
 });

@@ -26,7 +26,6 @@ export const inspectionDocuments = {
     size: '파일 크기',
     uploadedBy: '등록자',
     uploadedAt: '등록일',
-    manage: '관리',
   },
   emptyValue: '—',
   emptyTitle: '등록된 첨부 파일이 없습니다.',

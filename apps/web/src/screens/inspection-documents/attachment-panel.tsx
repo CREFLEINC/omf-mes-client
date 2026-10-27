@@ -213,16 +213,26 @@ export const AttachmentPanel = ({
       key: 'fileName',
       header: t.columns.fileName,
       width: '280px',
+      /* 파일명 바로 옆에 내려받기 단추 — 따로 「관리」 열을 두지 않는다(사용자 지시 2026-10-27 · #185). */
       render: (row) => (
-        <Button
-          variant="text"
-          size="sm"
-          className="inspection-documents-file-name"
-          title={row.fileName}
-          onClick={() => void open(row)}
-        >
-          {row.fileName}
-        </Button>
+        <span className="inspection-documents-file-cell">
+          <Button
+            variant="text"
+            size="sm"
+            className="inspection-documents-file-name"
+            title={row.fileName}
+            onClick={() => void open(row)}
+          >
+            {row.fileName}
+          </Button>
+          <IconButton
+            icon="download"
+            size="sm"
+            aria-label={t.download(row.fileName)}
+            title={t.download(row.fileName)}
+            onClick={() => void open(row)}
+          />
+        </span>
       ),
     },
     {
@@ -251,22 +261,10 @@ export const AttachmentPanel = ({
       header: t.columns.uploadedAt,
       width: '150px',
       align: 'center',
+      /* 오름 · 내림차순(사용자 지시 2026-10-27 · #185). */
+      sortable: true,
+      sortAccessor: (row) => row.uploadedAt,
       render: (row) => formatAt(row.uploadedAt),
-    },
-    {
-      key: 'manage',
-      header: t.columns.manage,
-      width: '80px',
-      align: 'center',
-      render: (row) => (
-        <IconButton
-          icon="download"
-          size="sm"
-          aria-label={t.download(row.fileName)}
-          title={t.download(row.fileName)}
-          onClick={() => void open(row)}
-        />
-      ),
     },
   ];
   /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다 — 상자 폭에 맞춘다. */
@@ -275,7 +273,7 @@ export const AttachmentPanel = ({
     fitContent: scrollX,
   });
   const fit = useFitColumns(resizable.columns, { scrollX });
-  const paging = useClientPage(list.data ?? []);
+  const paging = useClientPage(list.data ?? [], { uploadedAt: (row) => row.uploadedAt });
 
   return (
     /* 제목과 허용 형식 안내는 이 구획을 접는 줄(부르는 화면)이 맡는다(#133). */
@@ -290,6 +288,7 @@ export const AttachmentPanel = ({
             density="compact"
             columns={fit.columns}
             rows={paged ? paging.rows : (list.data ?? [])}
+            {...(paged ? { sort: paging.sort, onSortChange: paging.onSortChange } : {})}
             getRowId={(row) => String(row.attachmentId)}
             empty={
               list.isPending ? (

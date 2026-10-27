@@ -25,7 +25,6 @@ export const inspectionDocuments = {
     size: 'Dung lượng',
     uploadedBy: 'Người đăng',
     uploadedAt: 'Ngày đăng',
-    manage: 'Quản lý',
   },
   emptyValue: '—',
   emptyTitle: 'Chưa có tệp đính kèm nào.',
