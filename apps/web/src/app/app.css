@@ -21897,6 +21897,16 @@ table.col-measuring td {
     padding-right: 0;
   }
 
+  /* 좁으면 수량 칸이 줄어 구획 오른쪽 끝을 넘지 않는다(사용자 지시 2026-10-27 · #185). */
+  .iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) > .iqc-inspection-qty {
+    grid-template-columns: repeat(3, minmax(0, 9rem));
+    gap: var(--space-3);
+  }
+
   /* 위아래로 쌓이면 사이에 가로선(사용자 지시 2026-10-27 · #185). */
   .iqc-inspection-qty-judgment-row > .iqc-inspection-inline-judgment {
     padding-left: 0;
