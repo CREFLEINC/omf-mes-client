@@ -137,10 +137,7 @@ export const withStatus = <F extends StatusFilters>(
 /**
  * 조건 줄의 조회 — 칩은 그대로 둔다. 단 「대기·진행만 보기」를 다시 켜면 「완료」 칩은 푼다(같은 AND 이유).
  */
-export const withDraft = <F extends StatusFilters>(
-  filters: F,
-  next: Omit<F, 'statusCode'>,
-): F =>
+export const withDraft = <F extends StatusFilters>(filters: F, next: Omit<F, 'statusCode'>): F =>
   ({
     ...next,
     statusCode: next.pendingOnly && filters.statusCode === COMPLETED ? null : filters.statusCode,

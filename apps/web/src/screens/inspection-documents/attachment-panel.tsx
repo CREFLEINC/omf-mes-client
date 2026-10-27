@@ -15,7 +15,7 @@ import {
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useFitColumns } from '../../patterns/column-fit';
@@ -288,9 +288,14 @@ export const AttachmentPanel = ({
     setPreview(null);
   };
 
+  const previewLoadingId = useId();
   const previewBody = (): ReactNode => {
     if (preview === null || preview.blob === null) {
-      return <p className="field-note">{t.previewLoading}</p>;
+      return (
+        <p id={previewLoadingId} className="field-note">
+          {t.previewLoading}
+        </p>
+      );
     }
     if (preview.text !== null) {
       return <pre className="inspection-documents-preview-text">{preview.text}</pre>;
@@ -550,6 +555,7 @@ export const AttachmentPanel = ({
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   onClear={() => setSearch('')}
+                  clearLabel={messages.common.clear}
                 />
                 {bulkDownload && downloadCheckedButton}
               </div>
@@ -641,6 +647,8 @@ export const AttachmentPanel = ({
             <Button
               size="md"
               disabled={preview?.blob == null}
+              /* 꺼진 동안은 불러오는 중이라는 안내와 잇는다(C-4). */
+              aria-describedby={preview?.blob == null ? previewLoadingId : undefined}
               onClick={() => {
                 if (preview?.blob != null) save(preview.blob, preview.row.fileName);
               }}

@@ -1255,12 +1255,16 @@ describe('appRouter — 계정 로그인의 자리', () => {
  * 실제로 이 화면을 연다.
  */
 describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
+  /* 사이드바는 「검사 조회·판정」 묶음 한 줄이고 그 줄이 IQC 화면을 가리킨다(IQC · PQC · OQC 는 본문 맨 위 탭 · #185). */
   it('사이드바에 이 화면 항목이 있다', () => {
     expect(sidebarHrefs()).toContain('/logistics/iqc-inspection');
 
     const nav = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(nav).getByText(messages.iqcInspection.title)).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: '검사 조회·판정' })).toHaveAttribute(
+      'href',
+      '/logistics/iqc-inspection',
+    );
   });
 
   /**
@@ -1279,12 +1283,15 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
     );
   });
 
-  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  /**
+   * **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. 묶음 안에서는 제목을 세우지
+   * 않으므로(탭 막대가 화면 이름을 말한다 · #185) 검사 대기 목록 구획으로 잰다.
+   */
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes());
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: messages.iqcInspection.title }),
+      await screen.findByRole('region', { name: messages.iqcInspection.queue.heading }),
     ).toBeInTheDocument();
   });
 
@@ -1300,8 +1307,6 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
    */
   it('첫 진입에 검사 대기 큐가 실제로 그려진다', async () => {
     renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes());
-
-    await screen.findByRole('heading', { level: 1, name: messages.iqcInspection.title });
 
     expect(await screen.findByRole('button', { name: /IR-2026-0001/ })).toBeInTheDocument();
   });
