@@ -164,6 +164,7 @@ export const iqcInspection = {
     sectionTitle: '검사 수량 입력',
     /** 종합 판정·임시 저장·판정 확정 구획의 제목. */
     judgmentSectionTitle: '판정',
+    judgmentDetailTitle: '판정 상세 입력',
     round: (round: number): string => `${round}회차`,
     loading: '검사 결과를 불러오는 중입니다.',
     /**

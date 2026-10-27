@@ -460,3 +460,24 @@ describe('ResultFormPane — 입력 현황(#185)', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 });
+
+describe('ResultFormPane — 상하 배치 판정(#185)', () => {
+  it('최종 판정은 수량 줄에 서고, 적을 것이 없으면 「판정 상세 입력」 구획을 두지 않는다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, { inlineJudgment: true });
+
+    expect(screen.getByRole('combobox', { name: t.judgment })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t.judgmentDetailTitle })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t.judgmentSectionTitle })).not.toBeInTheDocument();
+  });
+
+  it('불합격 · 판정 변경 사유가 있으면 「판정 상세 입력」 구획에 그 칸이 선다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, {
+      inlineJudgment: true,
+      hasJudgmentDetail: true,
+      judgmentDetail: <p>불합격 칸</p>,
+    });
+
+    expect(screen.getByRole('heading', { name: t.judgmentDetailTitle })).toBeInTheDocument();
+    expect(screen.getByText('불합격 칸')).toBeInTheDocument();
+  });
+});

@@ -858,6 +858,8 @@ export const IqcInspectionScreen = () => {
                   ? t.result.fourMChange.blocked
                   : null
           }
+          inlineJudgment={layout.orientation === 'column'}
+          hasJudgmentDetail={isRejected || needsChangeReason}
           reinspectBlockedReason={
             followUp.data?.isInspectionPending === false ? t.result.reinspectLotNotPending : null
           }

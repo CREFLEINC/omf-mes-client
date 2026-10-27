@@ -122,6 +122,10 @@ export interface ResultFormPaneProps {
   reinspectReplacement?: ReactNode;
   /** 확정된 회차를 다시 검사할 수 없는 까닭(LOT 이 검사 대기가 아님 · #185). 있으면 재검사 단추 대신 이 글줄이 선다. */
   reinspectBlockedReason?: string | null;
+  /** 최종 판정을 검사 수량 줄에 세운다 — 상하 배치(사용자 지시 2026-10-27 · #185). */
+  inlineJudgment?: boolean;
+  /** 「판정 상세 입력」에 적을 것이 있는가(불합격 · 판정 변경 사유) — 수량 줄 판정일 때만 본다. */
+  hasJudgmentDetail?: boolean;
   /** 확정만 막는 사유(저장은 막지 않는다) — 불합격인데 불량 코드를 고르지 않았을 때다. */
   confirmOnlyBlockedReason?: string | null;
 }
@@ -165,6 +169,8 @@ export const ResultFormPane = ({
   confirmOnlyBlockedReason = null,
   reinspectReplacement = null,
   reinspectBlockedReason = null,
+  inlineJudgment = false,
+  hasJudgmentDetail = false,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const partialNoteId = useId();
@@ -267,6 +273,37 @@ export const ResultFormPane = ({
     </div>
   );
 
+  /*
+   * 최종 판정 칸 — 상하 배치(넓은 상세)에서는 검사 수량 줄의 세 칸 옆에 선다(사용자 지시 2026-10-27 · #185).
+   * 좌우 배치에서는 종전처럼 「판정」 구획 첫 칸이다.
+   */
+  const judgmentField = (
+    <div
+      className="field-cell iqc-inspection-judgment-field"
+      data-judgment={judgment === '' ? undefined : judgment}
+    >
+      <FieldLabel htmlFor={judgmentId} label={t.judgment} required hint={judgmentHint} />
+      <Select
+        id={judgmentId}
+        options={judgmentOptions}
+        value={judgment}
+        placeholder={t.judgmentPlaceholder}
+        /* 필수 칸이 비어 있으면 빨간 테두리(사용자 지시 2026-10-26) — 고칠 수 없는 회차는 제외. */
+        invalid={judgment === '' && !isConfirmed && !isInputLocked}
+        disabled={isConfirmed || isInputLocked || judgmentOptions.length === 0}
+        onChange={onJudgmentChange}
+      />
+      {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
+      {/*
+       * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
+       * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
+       */}
+      {!isKnownCode(judgmentOptions, judgment) && (
+        <p className="field-note">{t.judgmentUnknown(judgment)}</p>
+      )}
+    </div>
+  );
+
   return (
     <form aria-label={t.heading} onSubmit={submit}>
       {/*
@@ -324,6 +361,7 @@ export const ResultFormPane = ({
                 {field('rejected', t.fields.rejected, errors.rejected)}
                 {field('held', t.fields.held, errors.held)}
               </div>
+              {inlineJudgment && <div className="iqc-inspection-qty-judgment">{judgmentField}</div>}
 
               {/* 입력 현황 — 「합계 / 검사수량」 · 잔여 · 막대 · 한 줄 안내. 계산은 그대로다. */}
               <div
@@ -354,67 +392,45 @@ export const ResultFormPane = ({
           </div>
         </section>
 
-        {/* ── 판정 — 종합 판정을 고르고, 임시 저장 뒤 확정한다 ── */}
-        <section className="iqc-inspection-section iqc-inspection-judgment-section">
-          <div className="iqc-inspection-static">
-            <div className="iqc-inspection-section-head">
-              <h3>{t.judgmentSectionTitle}</h3>
-            </div>
-            <div className="iqc-inspection-collapsible-body">
-              {/*
-               * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고,
-               * 목록이 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2). 시드가 아직 안 들어가
-               * 빌 수 있는데, 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
-               */}
-              {/* 고른 판정을 테두리 색으로 바로 알아보게 한다(합격·불합격·보류 — app.css `[data-judgment]`). */}
-              <div className="iqc-inspection-judgment-main">
-                <div
-                  className="field-cell iqc-inspection-judgment-field"
-                  data-judgment={judgment === '' ? undefined : judgment}
-                >
-                  <FieldLabel
-                    htmlFor={judgmentId}
-                    label={t.judgment}
-                    required
-                    hint={judgmentHint}
-                  />
-                  <Select
-                    id={judgmentId}
-                    options={judgmentOptions}
-                    value={judgment}
-                    placeholder={t.judgmentPlaceholder}
-                    /* 필수 칸이 비어 있으면 빨간 테두리(사용자 지시 2026-10-26) — 고칠 수 없는 회차는 제외. */
-                    invalid={judgment === '' && !isConfirmed && !isInputLocked}
-                    disabled={isConfirmed || isInputLocked || judgmentOptions.length === 0}
-                    onChange={onJudgmentChange}
-                  />
-                  {judgmentOptions.length === 0 && (
-                    <p className="field-note">{t.judgmentUnavailable}</p>
-                  )}
-                  {/*
-                   * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
-                   * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
-                   */}
-                  {!isKnownCode(judgmentOptions, judgment) && (
-                    <p className="field-note">{t.judgmentUnknown(judgment)}</p>
-                  )}
-                </div>
-                {/* 판정 변경 사유는 최종 판정 바로 아래 — 무엇을 왜 바꿨는지 한 자리에서 읽힌다(#133). */}
-                {judgmentBelow}
+        {/*
+         * ── 판정 — 종합 판정을 고르고, 임시 저장 뒤 확정한다 ──
+         * 상하 배치에서는 최종 판정이 수량 줄로 올라가고, 이 구획은 「판정 상세 입력」으로 불합격 · 판정 변경 사유가 있을 때만 선다(#185).
+         */}
+        {(!inlineJudgment || hasJudgmentDetail) && (
+          <section
+            className="iqc-inspection-section iqc-inspection-judgment-section"
+            data-inline={inlineJudgment ? '' : undefined}
+          >
+            <div className="iqc-inspection-static">
+              <div className="iqc-inspection-section-head">
+                <h3>{inlineJudgment ? t.judgmentDetailTitle : t.judgmentSectionTitle}</h3>
               </div>
-              {/* 판정에 따라 열리는 칸(불합격 사유) — 구르지 않고 제 높이대로 선다(#133). */}
-              <div className="iqc-inspection-judgment-detail">{judgmentDetail}</div>
-
-              <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
-
-              {/*
-               * ⛔ **되돌릴 수 없는 쓰기가 끝난 것을 말한다.** 확정 여부와 무관하게 쓰기가 성공한
-               * «그 순간» 낸다 — 확정 상태는 회차를 다시 부른 «뒤에» 참이 된다.
-               */}
-              {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
+              <div className="iqc-inspection-collapsible-body">
+                {/*
+                 * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고,
+                 * 목록이 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2). 시드가 아직 안 들어가
+                 * 빌 수 있는데, 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
+                 */}
+                {/* 고른 판정을 테두리 색으로 바로 알아보게 한다(합격·불합격·보류 — app.css `[data-judgment]`). */}
+                <div className="iqc-inspection-judgment-main">
+                  {!inlineJudgment && judgmentField}
+                  {/* 판정 변경 사유는 최종 판정 바로 아래 — 무엇을 왜 바꿨는지 한 자리에서 읽힌다(#133). */}
+                  {judgmentBelow}
+                </div>
+                {/* 판정에 따라 열리는 칸(불합격 사유) — 구르지 않고 제 높이대로 선다(#133). */}
+                <div className="iqc-inspection-judgment-detail">{judgmentDetail}</div>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
+
+        <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
+
+        {/*
+         * ⛔ **되돌릴 수 없는 쓰기가 끝난 것을 말한다.** 확정 여부와 무관하게 쓰기가 성공한
+         * «그 순간» 낸다 — 확정 상태는 회차를 다시 부른 «뒤에» 참이 된다.
+         */}
+        {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
 
         {/* ── 4M 변경 정보 — 판정과 다른 업무라 판정 아래 따로 선다(#133). 접지 않는다(사용자 지시 2026-10-27 · #185) ── */}
         {fourMSlot !== null && (

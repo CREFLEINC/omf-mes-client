@@ -93,6 +93,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     heading: 'Đánh giá số lượng',
     sectionTitle: 'Nhập số lượng kiểm tra',
     judgmentSectionTitle: 'Đánh giá',
+    judgmentDetailTitle: 'Nhập chi tiết đánh giá',
     round: (round: number): string => `Lượt ${round}`,
     loading: 'Đang tải kết quả kiểm tra.',
     confirmed: 'Lần này đã xác nhận. Để kiểm tra lại, hãy thêm lần mới.',
