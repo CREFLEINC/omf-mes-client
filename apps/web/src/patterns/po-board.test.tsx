@@ -1,8 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PaneLayoutToggle, usePaneLayout } from './po-board';
+import { PaneLayoutToggle, PaneSplitter, usePaneLayout } from './po-board';
 
 const STORAGE_KEY = 'test:pane-layout';
 const LABELS = { group: '목록·상세 배치', side: '좌우 배치', stack: '상하 배치' };
@@ -62,5 +62,34 @@ describe('usePaneLayout · PaneLayoutToggle(#186)', () => {
     render(<Harness />);
 
     expect(screen.getByTestId('split')).not.toHaveClass('is-stacked');
+  });
+});
+
+/* 상하 배치의 가로 막대(#193) — 위아래 화살표로 높이를 나누고, 좌우 화살표에는 반응하지 않는다. */
+describe('PaneSplitter — 가로 막대(#193)', () => {
+  it('horizontal 이면 가로 막대로 읽히고 ↑·↓ 로 비율을 옮긴다', () => {
+    const onChange = vi.fn();
+    render(<PaneSplitter label="막대" ratio={0.4} onChange={onChange} orientation="horizontal" />);
+    const bar = screen.getByRole('separator', { name: '막대' });
+
+    expect(bar).toHaveAttribute('aria-orientation', 'horizontal');
+    fireEvent.keyDown(bar, { key: 'ArrowRight' });
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.keyDown(bar, { key: 'ArrowDown' });
+    expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(0.42));
+    fireEvent.keyDown(bar, { key: 'ArrowUp' });
+    expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(0.38));
+  });
+
+  it('기본은 세로 막대이고 ←·→ 로 비율을 옮긴다', () => {
+    const onChange = vi.fn();
+    render(<PaneSplitter label="막대" ratio={0.4} onChange={onChange} />);
+    const bar = screen.getByRole('separator', { name: '막대' });
+
+    expect(bar).toHaveAttribute('aria-orientation', 'vertical');
+    fireEvent.keyDown(bar, { key: 'ArrowDown' });
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.keyDown(bar, { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(0.42));
   });
 });

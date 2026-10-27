@@ -150,8 +150,11 @@ export const IqcSkipApprovalScreen = () => {
   const navigate = useNavigate();
   /* 두 구획이 창 바닥에서 멈추고, 가운데 막대로 고른 폭은 다음에 들어와도 남는다(입하 예정 조회와 같다). */
   const { splitRef, aboveRef } = useFitToViewport();
-  const split = usePaneSplit('omf-mes:iqc-skip-approval:split', 0.4);
   const paneLayout = usePaneLayout('omf-mes:iqc-skip-approval:layout');
+  /* 좌우 배치는 폭, 상하 배치는 높이를 따로 기억한다(품질 승인 처리와 같다 · #193). */
+  const sideSplit = usePaneSplit('omf-mes:iqc-skip-approval:split', 0.4);
+  const stackSplit = usePaneSplit('omf-mes:iqc-skip-approval:stack-split', 0.4);
+  const split = paneLayout.layout === 'stack' ? stackSplit : sideSplit;
   const { session } = useSession();
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다 — 품질 승인 처리를 못 보면 탭을 세우지 않는다. */
   const canOpenQualityApprovals = toWebAccess(session?.permissions).allows(QUALITY_APPROVALS_PATH);
@@ -1032,6 +1035,7 @@ export const IqcSkipApprovalScreen = () => {
           label={messages.qualityApproval.splitter}
           ratio={split.ratio}
           onChange={split.commit}
+          orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
         />
 
         {/*

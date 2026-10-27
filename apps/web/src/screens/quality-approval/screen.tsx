@@ -112,8 +112,11 @@ export const QualityApprovalScreen = ({
   const navigate = useNavigate();
   /* 두 구획이 창 바닥에서 멈추고, 가운데 막대로 고른 폭은 다음에 들어와도 남는다(입하 예정 조회와 같다). */
   const { splitRef, aboveRef } = useFitToViewport();
-  const split = usePaneSplit('omf-mes:quality-approvals:split', 0.4);
   const paneLayout = usePaneLayout('omf-mes:quality-approvals:layout');
+  /* 좌우 배치는 폭, 상하 배치는 높이를 따로 기억한다 — 바꿔도 각자 고른 비율로 돌아온다(#193). */
+  const sideSplit = usePaneSplit('omf-mes:quality-approvals:split', 0.4);
+  const stackSplit = usePaneSplit('omf-mes:quality-approvals:stack-split', 0.4);
+  const split = paneLayout.layout === 'stack' ? stackSplit : sideSplit;
   const { session } = useSession();
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다(`inlineTabs`). */
   const canOpenIqcSkip = toWebAccess(session?.permissions).allows(IQC_SKIP_APPROVAL_PATH);
@@ -555,7 +558,12 @@ export const QualityApprovalScreen = ({
           />
         </section>
 
-        <PaneSplitter label={t.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={t.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
+        />
 
         {/*
          * 오른쪽 — 위에서 아래로 읽는다: 결재 진행(가로 단계) → 요청 상세 | 승인 처리.

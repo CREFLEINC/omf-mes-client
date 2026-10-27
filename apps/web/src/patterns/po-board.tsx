@@ -108,32 +108,37 @@ export const usePaneSplit = (storageKey: string, initial = 1 / 3) => {
     }
   };
 
-  /** 나란히 설 때의 열 비율 — `.po-board-split` 이 읽는다. */
+  /** 나란히 설 때의 열 비율, 위아래로 설 때의 행 비율 — `.po-board-split` 이 읽는다. */
   const style = {
     '--split-left': `${String(ratio)}fr`,
     '--split-right': `${String(1 - ratio)}fr`,
+    '--split-upper': `${String(ratio)}fr`,
+    '--split-lower': `${String(1 - ratio)}fr`,
   } as CSSProperties;
 
   return { ratio, commit, style };
 };
 
 /**
- * 끌기 막대 — 두 구획 사이의 세로 막대. 마우스·터치로 끌고, 초점을 두고 ←·→ 로도 옮긴다.
- * 창이 좁아 위아래로 쌓일 때는 CSS 가 감춘다.
+ * 끌기 막대 — 두 구획 사이의 막대. 마우스·터치로 끌고, 초점을 두고 ←·→ 로도 옮긴다.
+ * `horizontal` 이면 위아래 배치의 가로 막대다 — 위아래로 끌고 ↑·↓ 로 옮긴다(사용자 지시 2026-10-27 · #193).
+ * 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다.
  */
 export const PaneSplitter = ({
   label,
   ratio,
   onChange,
+  orientation = 'vertical',
 }: {
   label: string;
   ratio: number;
   onChange: (ratio: number) => void;
+  orientation?: 'vertical' | 'horizontal';
 }) => (
   <div
     className="po-board-splitter"
     role="separator"
-    aria-orientation="vertical"
+    aria-orientation={orientation}
     aria-label={label}
     /* 마우스를 올리면 무엇을 하는 막대인지 글로도 읽힌다. */
     title={label}
@@ -147,23 +152,30 @@ export const PaneSplitter = ({
       event.preventDefault();
       const rect = container.getBoundingClientRect();
       const move = (moveEvent: PointerEvent): void => {
-        onChange((moveEvent.clientX - rect.left) / rect.width);
+        onChange(
+          orientation === 'horizontal'
+            ? (moveEvent.clientY - rect.top) / rect.height
+            : (moveEvent.clientX - rect.left) / rect.width,
+        );
       };
       const up = (): void => {
         window.removeEventListener('pointermove', move);
         window.removeEventListener('pointerup', up);
-        document.body.classList.remove('po-board-resizing');
+        document.body.classList.remove('po-board-resizing', 'is-row-resize');
       };
       document.body.classList.add('po-board-resizing');
+      if (orientation === 'horizontal') document.body.classList.add('is-row-resize');
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);
     }}
     onKeyDown={(event) => {
-      if (event.key === 'ArrowLeft') {
+      const [less, more] =
+        orientation === 'horizontal' ? ['ArrowUp', 'ArrowDown'] : ['ArrowLeft', 'ArrowRight'];
+      if (event.key === less) {
         event.preventDefault();
         onChange(ratio - SPLIT_STEP);
       }
-      if (event.key === 'ArrowRight') {
+      if (event.key === more) {
         event.preventDefault();
         onChange(ratio + SPLIT_STEP);
       }

@@ -7018,6 +7018,72 @@ dl.filter-bar.approval-inbox-detail-facts {
   .po-board-split.is-stacked > .po-board-splitter {
     display: none;
   }
+
+  /*
+   * 위아래 배치에서도 목록 | 상세 높이를 끌어 나눈다(사용자 지시 2026-10-27 · #193) — 가로 막대(`orientation="horizontal"`)
+   * 를 두는 화면만이다. 비율은 `usePaneSplit` 의 `--split-upper`·`--split-lower`.
+   */
+  .po-board-split.is-stacked:has(> .po-board-splitter[aria-orientation='horizontal']) {
+    grid-template-rows:
+      minmax(0, var(--split-upper, 2fr)) var(--space-5)
+      minmax(0, var(--split-lower, 3fr));
+    row-gap: 0;
+  }
+
+  .po-board-split.is-stacked > .po-board-splitter[aria-orientation='horizontal'] {
+    position: relative;
+    display: block;
+    align-self: stretch;
+    justify-self: stretch;
+    width: auto;
+    height: var(--space-4);
+    margin: auto 0;
+    cursor: row-resize;
+    touch-action: none;
+  }
+
+  .po-board-split.is-stacked > .po-board-splitter[aria-orientation='horizontal']::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: var(--space-2);
+    right: var(--space-2);
+    width: auto;
+    height: 2px;
+    transform: translateY(-50%);
+    border-radius: var(--radius-full);
+    background: var(--outline-variant);
+  }
+
+  .po-board-split.is-stacked > .po-board-splitter[aria-orientation='horizontal']::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 12px;
+    transform: translate(-50%, -50%);
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    background:
+      radial-gradient(circle, var(--on-surface-variant) 1.5px, transparent 2px) center / 8px 4px
+        repeat-x,
+      var(--surface);
+    box-shadow: var(--elevation-1);
+  }
+
+  .po-board-split.is-stacked > .po-board-splitter[aria-orientation='horizontal']:hover::before,
+  .po-board-split.is-stacked
+    > .po-board-splitter[aria-orientation='horizontal']:focus-visible::before {
+    height: 4px;
+    background: var(--semantic-info);
+  }
+
+  .po-board-split.is-stacked > .po-board-splitter[aria-orientation='horizontal']:hover::after,
+  .po-board-split.is-stacked
+    > .po-board-splitter[aria-orientation='horizontal']:focus-visible::after {
+    border-color: var(--semantic-info);
+  }
 }
 
 /*
@@ -7093,6 +7159,10 @@ dl.filter-bar.approval-inbox-detail-facts {
 body.po-board-resizing {
   cursor: col-resize;
   user-select: none;
+}
+
+body.po-board-resizing.is-row-resize {
+  cursor: row-resize;
 }
 
 /* 입하 등록 — 등록 정보·결과는 라인 표 아래에 가는 선으로 나눈다. */
