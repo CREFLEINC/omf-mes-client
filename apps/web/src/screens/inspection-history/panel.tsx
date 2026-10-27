@@ -89,6 +89,9 @@ export interface InspectionHistoryPanelProps {
   paged?: boolean;
 }
 
+/** 판정 거르기의 「기타」 — 판정이 없는 사건(전달 · LOT 상태 변경). 판정 코드와 겹치지 않는 값. */
+const OTHER_FILTER = '__OTHER__';
+
 const JUDGMENT_TONE: Record<string, 'success' | 'error' | 'warning'> = {
   ACCEPTED: 'success',
   REJECTED: 'error',
@@ -183,10 +186,11 @@ const HistoryTable = ({
   }));
   /* 판정으로 거른다(IQC 상세 · 사용자 지시 2026-10-27 · #185) — 판정이 없는 사건(전달 · LOT 상태 변경)은 「전체」에서만 보인다. */
   const [judgmentFilter, setJudgmentFilter] = useState<string | null>(null);
+  /* 판정이 없는(「—」) 사건은 「기타」로 거른다(사용자 지시 2026-10-27 · #185). */
+  const filterKeyOf = (row: InspectionHistoryEvent): string =>
+    row.overallJudgmentCode ?? OTHER_FILTER;
   const paging = useClientPage(
-    judgmentFilter === null
-      ? keyed
-      : keyed.filter((row) => row.overallJudgmentCode === judgmentFilter),
+    judgmentFilter === null ? keyed : keyed.filter((row) => filterKeyOf(row) === judgmentFilter),
     { at: (row) => row.occurredAt },
   );
 
@@ -201,12 +205,11 @@ const HistoryTable = ({
               value: code,
               label: judgmentLabelOf(code),
             })),
+            { value: OTHER_FILTER, label: t.filterOther },
           ]}
           value={judgmentFilter}
           countOf={(code) =>
-            code === null
-              ? keyed.length
-              : keyed.filter((row) => row.overallJudgmentCode === code).length
+            code === null ? keyed.length : keyed.filter((row) => filterKeyOf(row) === code).length
           }
           onChange={setJudgmentFilter}
         />

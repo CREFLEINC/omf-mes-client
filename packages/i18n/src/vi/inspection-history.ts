@@ -3,6 +3,7 @@ export const inspectionHistory = {
   heading: 'Lịch sử kiểm tra',
   filterLabel: 'Lọc theo đánh giá',
   filterAll: 'Tất cả',
+  filterOther: 'Khác',
   loading: 'Đang tải lịch sử kiểm tra.',
   loadFailed: 'Không tải được lịch sử kiểm tra.',
   source: 'Chứng từ chuyển đến',
