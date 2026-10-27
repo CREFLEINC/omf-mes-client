@@ -165,6 +165,10 @@ export const iqcInspection = {
     /** 종합 판정·임시 저장·판정 확정 구획의 제목. */
     judgmentSectionTitle: '판정',
     judgmentDetailTitle: '판정 상세 입력',
+    judgmentDetailLabel: '판정 상세',
+    judgmentDetailOpen: '상세 입력',
+    judgmentDetailMissing: '상세 입력 필요',
+    judgmentDetailDone: '완료',
     round: (round: number): string => `${round}회차`,
     loading: '검사 결과를 불러오는 중입니다.',
     /**
@@ -256,6 +260,9 @@ export const iqcInspection = {
       noCodes: '등록된 불량 코드가 없습니다. 기준정보 > 불량·원인 코드에서 먼저 등록하세요.',
       majorPlaceholder: '선택하세요',
       minorPlaceholder: '선택하세요',
+      /** 대분류에 상세가 있으면 뜨는 상세 선택 창(#185). */
+      minorPickerTitle: (major: string): string => `불량 상세 선택 — ${major}`,
+      minorPickerClose: '닫기',
       /** 칸 아래 필수 누락 표시 — 확정이 막힌 이유(required·minorRequired)는 확정 단추 곁에 그대로 둔다. */
       majorMissing: '불량 대분류를 선택하세요.',
       minorMissing: '불량 상세를 선택하세요.',

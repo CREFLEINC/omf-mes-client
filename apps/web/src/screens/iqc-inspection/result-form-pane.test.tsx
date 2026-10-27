@@ -470,14 +470,17 @@ describe('ResultFormPane — 상하 배치 판정(#185)', () => {
     expect(screen.queryByRole('heading', { name: t.judgmentDetailTitle })).not.toBeInTheDocument();
   });
 
-  it('불합격 · 판정 변경 사유가 있으면 「판정 상세 입력」 구획에 그 칸이 선다', () => {
+  it('불합격 · 판정 변경 사유가 있으면 [상세 입력]이 서고, 누르면 「판정 상세 입력」 창에 그 칸이 선다', async () => {
     renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, {
       inlineJudgment: true,
       hasJudgmentDetail: true,
+      judgmentDetailMissing: true,
       judgmentDetail: <p>불합격 칸</p>,
     });
 
-    expect(screen.getByRole('heading', { name: t.judgmentDetailTitle })).toBeInTheDocument();
+    expect(screen.getByText(t.judgmentDetailMissing)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: t.judgmentDetailOpen }));
+    expect(await screen.findByRole('dialog', { name: t.judgmentDetailTitle })).toBeInTheDocument();
     expect(screen.getByText('불합격 칸')).toBeInTheDocument();
   });
 });

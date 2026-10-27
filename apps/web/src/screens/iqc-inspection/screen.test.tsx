@@ -917,7 +917,8 @@ describe('IqcInspectionScreen', () => {
     const rejected = screen.getByLabelText(t.result.fields.rejected);
     await userEvent.clear(rejected);
     await userEvent.type(rejected, '25');
-    /* 불합격 25 > 20 — 자동으로 불합격이 되고 불합격 사유 칸이 선다. */
+    /* 불합격 25 > 20 — 자동으로 불합격이 되고 불합격 사유 칸이 선다([상세 입력] 창 · #185). */
+    await userEvent.click(await screen.findByRole('button', { name: t.result.judgmentDetailOpen }));
     expect(
       await screen.findByRole('group', { name: t.result.rejection.heading }),
     ).toBeInTheDocument();
@@ -1180,6 +1181,8 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     await findRound(1);
     await userEvent.click(screen.getByLabelText(t.result.judgment));
     await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
+    /* 불합격 칸은 [상세 입력] 창 안에 있다(#185). */
+    await userEvent.click(await screen.findByRole('button', { name: t.result.judgmentDetailOpen }));
   };
 
   it('불합격을 고르면 사유 칸이 서고, 코드를 고르기 전에는 확정이 잠긴다', async () => {
@@ -1359,6 +1362,7 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
       t.result.rejection.causeNone,
     );
 
+    await userEvent.click(await screen.findByRole('button', { name: t.result.judgmentDetailOpen }));
     await userEvent.click(screen.getByLabelText(t.result.rejection.cause));
     await userEvent.click(
       await screen.findByRole('option', { name: 'SUP-PRC · 공급사 공정 (공급사)' }),
@@ -1446,6 +1450,7 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     await editQuantity();
     await userEvent.click(screen.getByLabelText(t.result.judgment));
     await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
+    await userEvent.click(await screen.findByRole('button', { name: t.result.judgmentDetailOpen }));
     await userEvent.click(await screen.findByLabelText(t.result.rejection.major));
     await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
     await userEvent.click(screen.getByLabelText(t.result.rejection.minor));

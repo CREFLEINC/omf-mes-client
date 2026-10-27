@@ -15250,6 +15250,18 @@ button.app-button-neutral {
   margin-inline-start: auto;
 }
 
+/* 불량 상세 선택 창(#185) — 상세 코드를 한 줄씩 단추로. 많으면 창 안에서 구른다. */
+.iqc-inspection-minor-picker {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.iqc-inspection-minor-picker > button {
+  justify-content: flex-start;
+}
+
 /* 첨부 미리보기 창(#185) — 이미지 · PDF · 글을 창 높이 안에서 보인다. */
 .inspection-documents-preview {
   display: grid;
@@ -21913,6 +21925,36 @@ table.col-measuring td {
     border-left: 0;
     border-top: 1px solid var(--outline-variant);
   }
+}
+
+/* 판정 줄 — 최종 판정 · [상세 입력] · 「상세 입력 필요」(사용자 지시 2026-10-27 · #185). */
+.iqc-inspection-judgment-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+}
+
+.iqc-inspection-judgment-detail-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.iqc-inspection-detail-missing {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  white-space: nowrap;
+}
+
+/* 판정 상세 입력 창 — 판정 변경 사유(있으면) 한 줄, 그 아래 불합격 칸들. */
+.iqc-inspection-judgment-dialog {
+  display: grid;
+  gap: var(--space-4);
 }
 
 .iqc-inspection-inline-judgment .iqc-inspection-judgment-field {

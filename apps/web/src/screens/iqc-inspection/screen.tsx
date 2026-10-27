@@ -861,6 +861,11 @@ export const IqcInspectionScreen = () => {
           /* 좌우 · 상하 배치 모두 수량 · 판정을 한 줄로(좁으면 위아래 · 사용자 지시 2026-10-27 · #185). */
           inlineJudgment
           hasJudgmentDetail={isRejected || needsChangeReason}
+          judgmentDetailMissing={
+            isOpenRound &&
+            ((isRejected && 'blocked' in resolvedDefect) ||
+              (needsChangeReason && changeReason.trim() === ''))
+          }
           reinspectBlockedReason={
             followUp.data?.isInspectionPending === false ? t.result.reinspectLotNotPending : null
           }

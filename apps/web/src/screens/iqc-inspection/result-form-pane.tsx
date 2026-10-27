@@ -1,4 +1,4 @@
-import { Button, Icon, Select, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Icon, Select, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent, type ReactElement, type ReactNode } from 'react';
@@ -126,6 +126,8 @@ export interface ResultFormPaneProps {
   inlineJudgment?: boolean;
   /** 「판정 상세 입력」에 적을 것이 있는가(불합격 · 판정 변경 사유) — 수량 줄 판정일 때만 본다. */
   hasJudgmentDetail?: boolean;
+  /** 판정 상세에 꼭 적을 것이 비어 있다(불량 코드 · 판정 변경 사유) — 「상세 입력 필요」 라벨이 선다. */
+  judgmentDetailMissing?: boolean;
   /** 확정만 막는 사유(저장은 막지 않는다) — 불합격인데 불량 코드를 고르지 않았을 때다. */
   confirmOnlyBlockedReason?: string | null;
 }
@@ -171,6 +173,7 @@ export const ResultFormPane = ({
   reinspectBlockedReason = null,
   inlineJudgment = false,
   hasJudgmentDetail = false,
+  judgmentDetailMissing = false,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const partialNoteId = useId();
@@ -178,6 +181,7 @@ export const ResultFormPane = ({
   const errors = validateQuantities(draft);
   const totals = toTotals(draft, inspectedQty);
   const [showErrors, setShowErrors] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   /**
    * 저장. **합계가 맞지 않아도 보낸다** — 막는 것은 보낼 수 없는 값이 남아 있을 때뿐이다.
@@ -528,7 +532,36 @@ export const ResultFormPane = ({
                 <div className="iqc-inspection-section-head">
                   <h3>{t.judgmentSectionTitle}</h3>
                 </div>
-                <div className="iqc-inspection-collapsible-body">{judgmentField}</div>
+                <div className="iqc-inspection-collapsible-body">
+                  <div className="iqc-inspection-judgment-inline-row">
+                    {judgmentField}
+                    {/*
+                     * 판정 상세(불합격 사유 · 판정 변경 사유)는 [상세 입력] 창에서 적는다 — 적을 것이 있을 때만 선다.
+                     * 꼭 적을 것이 비었으면 오른쪽에 「상세 입력 필요」(사용자 지시 2026-10-27 · #185).
+                     */}
+                    {hasJudgmentDetail && (
+                      <div className="field-cell iqc-inspection-judgment-detail-cell">
+                        <span className="field-label">{t.judgmentDetailLabel}</span>
+                        <div className="iqc-inspection-judgment-detail-action">
+                          <Button
+                            type="button"
+                            variant="outlined"
+                            size="md"
+                            leadingIcon={<Icon name="edit_square" size={18} aria-hidden />}
+                            onClick={() => setIsDetailOpen(true)}
+                          >
+                            {t.judgmentDetailOpen}
+                          </Button>
+                          {judgmentDetailMissing && (
+                            <span className="iqc-inspection-detail-missing">
+                              {t.judgmentDetailMissing}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </section>
           )}
@@ -538,7 +571,28 @@ export const ResultFormPane = ({
          * ── 판정 — 종합 판정을 고르고, 임시 저장 뒤 확정한다 ──
          * 상하 배치에서는 최종 판정이 수량 줄로 올라가고, 이 구획은 「판정 상세 입력」으로 불합격 · 판정 변경 사유가 있을 때만 선다(#185).
          */}
-        {(!inlineJudgment || hasJudgmentDetail) && (
+        {/* 판정 상세 입력 창 — 수량 줄 판정일 때(#185). 닫아도 적은 값은 남는다. */}
+        {inlineJudgment && hasJudgmentDetail && (
+          <Dialog
+            open={isDetailOpen}
+            onClose={() => setIsDetailOpen(false)}
+            size="lg"
+            title={t.judgmentDetailTitle}
+            showCloseButton={false}
+            footer={
+              <Button type="button" size="md" onClick={() => setIsDetailOpen(false)}>
+                {t.judgmentDetailDone}
+              </Button>
+            }
+          >
+            <div className="iqc-inspection-judgment-dialog">
+              {judgmentBelow}
+              {judgmentDetail}
+            </div>
+          </Dialog>
+        )}
+
+        {!inlineJudgment && (
           <section
             className="iqc-inspection-section iqc-inspection-judgment-section"
             data-inline={inlineJudgment ? '' : undefined}

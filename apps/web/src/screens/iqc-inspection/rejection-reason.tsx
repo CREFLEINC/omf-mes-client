@@ -1,7 +1,7 @@
-import { Select, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Select, TextField } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
 import { FieldLabel } from './field-label';
 
@@ -146,6 +146,12 @@ export const RejectionReason = ({
   const hasMinors = minors.length > 0;
   const majorMissing = draft.majorId === '';
   const minorMissing = hasMinors && draft.minorId === '';
+  /*
+   * 상세가 있는 대분류를 고르면 상세를 고르는 창을 띄운다(사용자 지시 2026-10-27 · #185) — 상세는 필수라 바로 고르게 한다.
+   * 고른 상세는 「불량 상세」 칸에 보이고, 그 칸에서 다시 바꿀 수 있다.
+   */
+  const [isPickingMinor, setIsPickingMinor] = useState(false);
+  const pickedMajor = majors.find((code) => String(code.defectCodeId) === draft.majorId);
 
   return (
     /*
@@ -167,6 +173,7 @@ export const RejectionReason = ({
             disabled={disabled || majors.length === 0}
             onChange={(value) => {
               onChange({ ...draft, majorId: value, minorId: '' });
+              if (minorsOf(codes, value).length > 0) setIsPickingMinor(true);
             }}
           />
           {majorMissing && (
@@ -223,6 +230,35 @@ export const RejectionReason = ({
           />
         </div>
       </div>
+      <Dialog
+        open={isPickingMinor && hasMinors}
+        onClose={() => setIsPickingMinor(false)}
+        size="sm"
+        title={t.minorPickerTitle(pickedMajor === undefined ? '' : optionOf(pickedMajor).label)}
+        showCloseButton={false}
+        footer={
+          <Button variant="text" size="md" onClick={() => setIsPickingMinor(false)}>
+            {t.minorPickerClose}
+          </Button>
+        }
+      >
+        <div className="iqc-inspection-minor-picker" role="list">
+          {minors.map((code) => (
+            <Button
+              key={code.defectCodeId}
+              role="listitem"
+              variant={String(code.defectCodeId) === draft.minorId ? 'tonal' : 'outlined'}
+              size="md"
+              onClick={() => {
+                onChange({ ...draft, minorId: String(code.defectCodeId) });
+                setIsPickingMinor(false);
+              }}
+            >
+              {optionOf(code).label}
+            </Button>
+          ))}
+        </div>
+      </Dialog>
     </div>
   );
 };
