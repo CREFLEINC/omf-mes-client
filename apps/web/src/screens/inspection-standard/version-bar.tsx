@@ -71,21 +71,6 @@ export const VersionBar = ({
 
   return (
     <div className="inspection-standard-version-bar">
-      {/* 머리 — 「검사 기준 버전」 과 주 액션(버전 등록 · 신규 버전 발행). 목록을 받기 전에는 갈림을 모르니 내지 않는다. */}
-      <div className="inspection-standard-section-head">
-        <h3 className="pane-subtitle">{t.versionSection.title}</h3>
-        {!isLoading && !hasLoadError && (
-          <VersionPrimaryAction
-            hasVersions={versions.length > 0}
-            newRevisionDisabledReason={newRevisionDisabledReason}
-            isCreating={isCreating}
-            isPublishing={isPublishing}
-            onNewRevision={onNewRevision}
-            onCreateVersion={onCreateVersion}
-          />
-        )}
-      </div>
-
       {!isListOpen && banner}
       {/* 버전을 못 받았으면 창을 열기 전에도 알린다 — 잠긴 선택칸만 보이면 왜 못 고르는지 모른다. */}
       {!isListOpen && hasLoadError && loadError}
@@ -128,9 +113,20 @@ export const VersionBar = ({
             className="inspection-standard-tooltip-reason"
           />
         </span>
-        {versionActions !== undefined && (
-          <div className="inspection-standard-version-actions">{versionActions}</div>
-        )}
+        {/* 오른쪽 끝 — 고른 버전의 일(버전 설정 수정 · 확정 · 폐기), 맨 끝에 「+ 신규 버전 발행」(사용자 시안 · #196). */}
+        <div className="inspection-standard-version-actions">
+          {versionActions}
+          {!isLoading && !hasLoadError && (
+            <VersionPrimaryAction
+              hasVersions={versions.length > 0}
+              newRevisionDisabledReason={newRevisionDisabledReason}
+              isCreating={isCreating}
+              isPublishing={isPublishing}
+              onNewRevision={onNewRevision}
+              onCreateVersion={onCreateVersion}
+            />
+          )}
+        </div>
       </div>
 
       {isListOpen && (

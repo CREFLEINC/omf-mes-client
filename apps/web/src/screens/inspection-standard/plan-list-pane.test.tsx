@@ -12,7 +12,6 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
   const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
   const onSelect = vi.fn<(id: number) => void>();
   const onChangePage = vi.fn<(page: number) => void>();
-  const onAddPlan = vi.fn<() => void>();
 
   render(
     <PlanListPane
@@ -26,8 +25,6 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
       onChangePage={onChangePage}
       selectedPlanId={null}
       onSelect={onSelect}
-      isCreating={false}
-      onAddPlan={onAddPlan}
       loadError={null}
       itemLabelOf={(itemId) =>
         itemId === null || itemId === undefined ? null : `품목 ${String(itemId)}`
@@ -39,7 +36,7 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
     />,
   );
 
-  return { onApplyFilters, onSelect, onChangePage, onAddPlan, user: userEvent.setup() };
+  return { onApplyFilters, onSelect, onChangePage, user: userEvent.setup() };
 };
 
 describe('PlanListPane — 목록 표시', () => {
@@ -88,12 +85,13 @@ describe('PlanListPane — 목록 표시', () => {
     expect(onSelect).toHaveBeenCalledWith(inspectionPlanFixtures[1]?.inspectionPlanId);
   });
 
-  it('기준 추가 · 엑셀 올리기 단추는 표보다 위에 선다', () => {
-    renderPane();
+  /* 고른 기준을 표 아래 한 줄로 다시 말한다(사용자 시안 · #196). 기준 추가 · 엑셀 올리기는 조회 카드 머리로 옮겼다. */
+  it('고른 기준이 있으면 표 아래에 그 이름을 낸다', () => {
+    renderPane({ selectedPlanId: inspectionPlanFixtures[1]?.inspectionPlanId ?? null });
 
-    const add = screen.getByRole('button', { name: '기준 추가' });
-    const table = screen.getByRole('table');
-    expect(add.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      screen.getByText(`선택한 검사 기준: ${inspectionPlanFixtures[1]?.inspectionPlanName ?? ''}`),
+    ).toBeInTheDocument();
   });
 
   /* 실패를 「등록된 검사기준이 없습니다」로 보이면 사실과 다른 안내가 된다. */

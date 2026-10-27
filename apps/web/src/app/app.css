@@ -726,6 +726,28 @@ main > * + * {
   min-width: min(22em, 100%);
 }
 
+/* 조회 카드 머리(「검사 기준 관리」 · 단추) — 조건 줄과 띄운다(#196). */
+.inspection-standard-search > .inspection-standard-section-head {
+  margin-bottom: var(--space-4);
+}
+
+.inspection-standard-search > .inspection-standard-section-head > .pane-title {
+  margin: 0;
+}
+
+.inspection-standard-selected-plan {
+  margin: 0;
+}
+
+.inspection-standard-plan-name {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.inspection-standard-plan-chips {
+  align-items: center;
+}
+
 /* 기준 추가 · 엑셀 올리기 — 표 위 오른쪽(omf-all-around#196). */
 .inspection-standard-list-toolbar {
   display: flex;

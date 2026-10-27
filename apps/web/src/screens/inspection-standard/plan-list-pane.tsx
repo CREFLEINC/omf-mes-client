@@ -7,7 +7,6 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 
 import { DEFAULT_PLAN_FILTERS, inspectionTypeLabel } from './code-options';
-import { DisabledAction } from './disabled-action';
 import { hasAnyFilter } from './filters';
 import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
 import type { PageView } from './pagination';
@@ -29,9 +28,6 @@ export interface PlanListPaneProps {
   onChangePage: (page: number) => void;
   selectedPlanId: number | null;
   onSelect: (inspectionPlanId: number) => void;
-  /** 등록 폼이 이미 열려 있으면 참. 같은 폼을 두 번 열지 않는다 */
-  isCreating: boolean;
-  onAddPlan: () => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 검사기준이 없습니다」로 보이면 사실과 다른 안내가 된다.
@@ -64,12 +60,11 @@ export const PlanListPane = ({
   onChangePage,
   selectedPlanId,
   onSelect,
-  isCreating,
-  onAddPlan,
   loadError,
   itemLabelOf,
   processLabelOf,
 }: PlanListPaneProps) => {
+  const selectedPlan = plans.find((plan) => plan.inspectionPlanId === selectedPlanId);
   const columns: Column<InspectionPlan>[] = [
     {
       key: 'inspectionPlanCode',
@@ -263,27 +258,14 @@ export const PlanListPane = ({
 
   return (
     <section className="pane inspection-standard-list-pane" aria-label={t.panes.plan}>
-      {/* 기준 추가 · 엑셀 올리기는 표 위 오른쪽에 선다(omf-all-around#196). */}
-      <div className="inspection-standard-list-toolbar">
-        <Button variant="outlined" disabled={isCreating} onClick={onAddPlan}>
-          {t.actions.addPlan}
-        </Button>
-
-        {/*
-         * 계약에 올리기 경로가 없고 양식도 정해지지 않았다. 감추면 사용자가
-         * 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다 — 사유와 함께 비활성으로 둔다.
-         * 사유는 단추 줄 높이를 늘리지 않게 마우스를 올리면 보인다(화면 낭독기는 설명으로 읽는다).
-         */}
-        <span title={t.actionReasons.excelUploadUnavailable}>
-          <DisabledAction
-            label={t.actions.excelUpload}
-            reason={t.actionReasons.excelUploadUnavailable}
-            className="inspection-standard-tooltip-reason"
-          />
-        </span>
-      </div>
-
       {listSlot()}
+
+      {/* 고른 기준을 표 아래 한 줄로 다시 말한다 — 표가 길어 고른 줄이 가려져도 무엇을 보고 있는지 안다(사용자 시안 · #196). */}
+      {selectedPlan !== undefined && (
+        <p className="field-note inspection-standard-selected-plan">
+          {t.listHead.selected(selectedPlan.inspectionPlanName)}
+        </p>
+      )}
 
       {(loadError === null || loadError === undefined) && !isLoading && (
         <PageNav meta={pageMeta} onChangePage={onChangePage} onChangeSize={onChangePageSize} />

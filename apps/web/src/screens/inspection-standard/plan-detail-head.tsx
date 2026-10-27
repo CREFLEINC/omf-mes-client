@@ -24,12 +24,10 @@ export const PlanDetailHead = ({ plan, itemLabel, processLabel, onEdit }: PlanDe
   const approvedAt = formatApprovedAt(plan.approvedAt);
 
   return (
+    /* 첫 줄 — 기준명 · (오른쪽) 승인/사용 칩 · 기본 정보 수정. 둘째 줄 — 코드 · 유형 · 품목 · 공정(사용자 시안 · #196). */
     <div className="inspection-standard-plan-head-card">
       <div className="inspection-standard-plan-head">
-        <div className="inspection-standard-plan-title">
-          <h2 className="pane-title">{plan.inspectionPlanName}</h2>
-          <p className="inspection-standard-plan-code">{plan.inspectionPlanCode}</p>
-        </div>
+        <h2 className="pane-title inspection-standard-plan-name">{plan.inspectionPlanName}</h2>
         {/* 승인 · 사용은 전용 액션으로만 바뀐다 — 값 표기로만 낸다. */}
         <div className="inspection-standard-plan-chips">
           <Chip variant="status" status={approvedAt === null ? 'warning' : 'success'}>
@@ -38,28 +36,27 @@ export const PlanDetailHead = ({ plan, itemLabel, processLabel, onEdit }: PlanDe
           <Chip variant="status" status={plan.isActive ? 'success' : 'idle'}>
             {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
           </Chip>
+          <Button variant="outlined" leadingIcon={<Icon name="edit" size={18} />} onClick={onEdit}>
+            {t.detail.editBasic}
+          </Button>
         </div>
       </div>
-      <div className="inspection-standard-plan-head">
-        <p className="inspection-standard-plan-meta">
-          {[
-            inspectionTypeLabel(plan.inspectionTypeCode),
-            itemLabel ?? t.detail.itemUnset,
-            processLabel,
-          ]
-            .filter((part): part is string => part !== null)
-            .join(' · ')}
-          {/* PQC 생략 허용(omf-all-around#119) — 켜진 PQC 기준에만 붙인다. 이 기준으로 배포한 W/O 의 PQC 가 생략된다. */}
-          {plan.inspectionTypeCode === 'PQC' && plan.pqcSkipAllowed === true && (
-            <Chip variant="status" size="sm" status="info">
-              {t.fields.pqcSkipAllowed}
-            </Chip>
-          )}
-        </p>
-        <Button variant="outlined" leadingIcon={<Icon name="edit" size={18} />} onClick={onEdit}>
-          {t.detail.editBasic}
-        </Button>
-      </div>
+      <p className="inspection-standard-plan-meta">
+        {[
+          plan.inspectionPlanCode,
+          inspectionTypeLabel(plan.inspectionTypeCode),
+          itemLabel ?? t.detail.itemUnset,
+          processLabel,
+        ]
+          .filter((part): part is string => part !== null)
+          .join(' · ')}
+        {/* PQC 생략 허용(omf-all-around#119) — 켜진 PQC 기준에만 붙인다. 이 기준으로 배포한 W/O 의 PQC 가 생략된다. */}
+        {plan.inspectionTypeCode === 'PQC' && plan.pqcSkipAllowed === true && (
+          <Chip variant="status" size="sm" status="info">
+            {t.fields.pqcSkipAllowed}
+          </Chip>
+        )}
+      </p>
     </div>
   );
 };

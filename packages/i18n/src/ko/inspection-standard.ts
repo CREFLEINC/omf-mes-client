@@ -164,7 +164,7 @@ export const inspectionStandard = {
     title: '검사 기준 버전',
     sampling: '샘플링',
     effectivePeriod: '유효기간',
-    noEnd: '종료일 없음',
+    noEnd: '종료일 미지정',
     itemsTitle: (count: number): string => `검사 항목 (${String(count)})`,
     lockedHint: '수정하려면 신규 버전을 발행하세요.',
     tabsLabel: '버전 내용',
@@ -184,6 +184,11 @@ export const inspectionStandard = {
     approved: '승인',
     notApproved: '미승인',
     pqcSkipAllowed: '허용',
+  },
+  /* 조회 카드 머리 · 목록 아래 선택 표시(사용자 시안 · #196). */
+  listHead: {
+    title: '검사 기준 관리',
+    selected: (name: string): string => `선택한 검사 기준: ${name}`,
   },
   versionBar: {
     label: '버전',

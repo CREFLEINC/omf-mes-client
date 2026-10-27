@@ -153,7 +153,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     title: 'Phiên bản tiêu chuẩn kiểm tra',
     sampling: 'Lấy mẫu',
     effectivePeriod: 'Thời hạn hiệu lực',
-    noEnd: 'Không có ngày kết thúc',
+    noEnd: 'Chưa chỉ định ngày kết thúc',
     itemsTitle: (count: number): string => `Hạng mục kiểm tra (${String(count)})`,
     lockedHint: 'Để sửa, hãy phát hành phiên bản mới.',
     tabsLabel: 'Nội dung phiên bản',
@@ -172,6 +172,10 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     approved: 'Đã duyệt',
     notApproved: 'Chưa duyệt',
     pqcSkipAllowed: 'Cho phép',
+  },
+  listHead: {
+    title: 'Quản lý tiêu chuẩn kiểm tra',
+    selected: (name: string): string => `Tiêu chuẩn đã chọn: ${name}`,
   },
   versionBar: {
     label: 'Phiên bản',
