@@ -10,10 +10,10 @@ export interface RelatedLinkProps {
   to: string;
   label: string;
   /**
-   * 반려 안내 모양(#193 · IQC 생략 반려) — 이름 자리에 붉은 느낌표와 `title`, 번호 자리에 할 일, 그 아래 정보 표시와
+   * 안내 모양(#193 · 반려는 붉은 느낌표, 완료는 초록 체크 `tone: 'success'`) — 이름 자리에 아이콘과 `title`, 번호 자리에 할 일, 그 아래 정보 표시와
    * `note`. 묶음 이름(`aria-label`)은 그대로 `heading` 이다.
    */
-  alert?: { title: string; note: string };
+  alert?: { title: string; note?: string; tone?: 'error' | 'success' };
 }
 
 /**
@@ -34,14 +34,20 @@ export const RelatedLink = ({ heading, value, to, label, alert }: RelatedLinkPro
     ) : (
       <div>
         <h3>
-          <Icon name="error" size={20} className="quality-approval-alert-icon" />
+          <Icon
+            name={alert.tone === 'success' ? 'check_circle' : 'error'}
+            size={20}
+            className={`quality-approval-alert-icon${alert.tone === 'success' ? ' is-success' : ''}`}
+          />
           {alert.title}
         </h3>
         <p className="quality-approval-alert-body">{value}</p>
-        <p className="quality-approval-alert-note">
-          <Icon name="info" size={16} />
-          {alert.note}
-        </p>
+        {alert.note !== undefined && (
+          <p className="quality-approval-alert-note">
+            <Icon name="info" size={16} />
+            {alert.note}
+          </p>
+        )}
       </div>
     )}
     <Link className="quality-approval-concession-nc-link" to={to}>

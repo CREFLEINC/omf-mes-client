@@ -4659,7 +4659,7 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-/* 반려 안내 모양(#193 · IQC 생략 반려) — 붉은 느낌표 제목, 할 일 한 줄, 정보 표시 안내. */
+/* 안내 모양(#193) — 아이콘 제목(반려 붉은 느낌표 · 완료 초록 체크), 할 일 한 줄, 정보 표시 안내. */
 .quality-approval-concession-nc.is-alert h3 {
   display: inline-flex;
   align-items: center;
@@ -4668,6 +4668,10 @@ main:has(.iqc-skip-approval-detail) {
 
 .quality-approval-alert-icon {
   color: var(--semantic-error);
+}
+
+.quality-approval-alert-icon.is-success {
+  color: var(--semantic-success);
 }
 
 .quality-approval-alert-body,

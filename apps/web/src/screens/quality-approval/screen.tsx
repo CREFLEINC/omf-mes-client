@@ -498,7 +498,7 @@ export const QualityApprovalScreen = ({
       to: string;
       label: string;
       screen: string;
-      alert?: { title: string; note: string };
+      alert?: { title: string; note?: string; tone?: 'error' | 'success' };
     } | null =
       isRejected && isOqcSkip
         ? {
@@ -506,6 +506,7 @@ export const QualityApprovalScreen = ({
             to: OQC_INSPECTION_PATH,
             label: n.openOqcInspection,
             screen: OQC_INSPECTION_PATH,
+            alert: { title: n.oqcRejectedTitle },
           }
         : isRejected && isIqcSkip
           ? {
@@ -532,6 +533,7 @@ export const QualityApprovalScreen = ({
                   to: GOODS_RECEIPT_PATH,
                   label: n.openGoodsReceipt,
                   screen: GOODS_RECEIPT_PATH,
+                  alert: { title: n.iqcDoneTitle, tone: 'success' },
                 }
               : isOqcSkip && oqcSkipDoneIds.has(request.target.targetId)
                 ? {

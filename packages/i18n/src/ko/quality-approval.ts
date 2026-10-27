@@ -113,9 +113,13 @@ export const qualityApproval = {
     iqcRejected: '수입검사를 진행해 주세요.',
     iqcRejectedNote: '재요청은 PDA에서 할 수 있습니다.',
     openIqcInspection: 'IQC 수입검사 열기',
-    oqcRejected: '생략이 반려됐습니다 — 출하검사를 진행하거나 생략을 다시 요청하세요',
+    /** OQC 생략 반려 — 붉은 느낌표 제목 · 할 일 두 줄(사용자 지시 2026-10-27). */
+    oqcRejectedTitle: '출하검사 생략 요청이 반려되었습니다.',
+    oqcRejected: '출하검사를 진행하거나 생략을 다시 요청해 주세요.',
     openOqcInspection: 'OQC 출하검사 열기',
-    iqcDone: 'IQC 생략을 실행했습니다 — 자재 입고 처리를 이어서 하세요',
+    /** IQC 생략 실행 완료 — 초록 체크 제목 · 할 일 두 줄(사용자 지시 2026-10-27). */
+    iqcDoneTitle: '수입검사 생략이 완료되었습니다.',
+    iqcDone: '이어서 자재 입고를 진행해 주세요.',
     openGoodsReceipt: '정상품 입하 열기',
     oqcDone: 'OQC 생략을 실행했습니다 — 출하 처리를 이어서 하세요',
     openShipmentProcessing: '출하 처리 열기',

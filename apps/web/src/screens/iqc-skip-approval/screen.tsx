@@ -903,6 +903,7 @@ export const IqcSkipApprovalScreen = () => {
                 value={messages.qualityApproval.next.iqcDone}
                 to={GOODS_RECEIPT_PATH}
                 label={messages.qualityApproval.next.openGoodsReceipt}
+                alert={{ title: messages.qualityApproval.next.iqcDoneTitle, tone: 'success' }}
               />
             )}
       </>
