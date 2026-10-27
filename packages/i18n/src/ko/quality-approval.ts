@@ -113,7 +113,7 @@ export const qualityApproval = {
     oqcRejected: '생략이 반려됐습니다 — 출하검사를 진행하거나 생략을 다시 요청하세요',
     openOqcInspection: 'OQC 출하검사 열기',
     iqcDone: 'IQC 생략을 실행했습니다 — 자재 입고 처리를 이어서 하세요',
-    openGoodsReceipt: '자재 입고 처리 열기',
+    openGoodsReceipt: '정상품 입하 열기',
     oqcDone: 'OQC 생략을 실행했습니다 — 출하 처리를 이어서 하세요',
     openShipmentProcessing: '출하 처리 열기',
   },

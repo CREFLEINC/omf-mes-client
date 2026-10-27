@@ -18,15 +18,20 @@ export interface DetailPaneProps {
    * `name` 을 주면 대상 칸에 그 이름을 쓴다 — 특채는 결재 대상(부적합)이 아니라 특채의 LOT 을 보여야 단추와 맞는다.
    */
   targetLot?: { to: string; label: string; name?: string };
+  /**
+   * 특채의 연관 부적합 — 사유 옆 칸에 번호와 「부적합 열기」 단추를 둔다(#193 · 사용자 지시 2026-10-27).
+   * 특채는 늘 부적합을 근거로 만든다(서버 DB 필수). 처분 판정 처리 권한이 없으면 `link` 를 넘기지 않는다.
+   */
+  nonconformance?: { name: string; link?: { to: string; label: string } };
 }
 
-/** 대상 값 + 옆 단추. 단추가 없으면 값만 둔다. */
-const targetValue = (name: string, link: DetailPaneProps['targetLot']): ReactNode =>
+/** 값 + 옆 단추. 단추가 없으면 값만 둔다. */
+const linkedValue = (name: string, link: { to: string; label: string } | undefined): ReactNode =>
   link === undefined ? (
     name
   ) : (
     <span className="quality-approval-target-value">
-      <span>{link.name ?? name}</span>
+      <span>{name}</span>
       <Link className="quality-approval-concession-nc-link is-inline" to={link.to}>
         {link.label}
         <Icon name="open_in_new" size={16} />
@@ -34,7 +39,12 @@ const targetValue = (name: string, link: DetailPaneProps['targetLot']): ReactNod
     </span>
   );
 
-export const DetailPane = ({ view, variant = 'default', targetLot }: DetailPaneProps) => {
+export const DetailPane = ({
+  view,
+  variant = 'default',
+  targetLot,
+  nonconformance,
+}: DetailPaneProps) => {
   const t = messages.qualityApproval;
 
   if (variant === 'concession') {
@@ -42,7 +52,7 @@ export const DetailPane = ({ view, variant = 'default', targetLot }: DetailPaneP
       [t.fields.approvalTypeCode, approvalTypeLabelOf(view.approvalTypeCode)],
       [t.fields.requestedByName, view.requesterName],
       [t.fields.requestedAt, view.requestedAtText],
-      [t.fields.targetLot, targetValue(view.targetName, targetLot)],
+      [t.fields.targetLot, linkedValue(targetLot?.name ?? view.targetName, targetLot)],
     ];
 
     return (
@@ -55,7 +65,11 @@ export const DetailPane = ({ view, variant = 'default', targetLot }: DetailPaneP
               <dd>{value}</dd>
             </div>
           ))}
-          <div className="field-cell is-wide" role="group" aria-label={t.panes.reason}>
+          <div
+            className={`field-cell${nonconformance === undefined ? ' is-wide' : ''}`}
+            role="group"
+            aria-label={t.panes.reason}
+          >
             <dt className="field-label">{t.fields.reason}</dt>
             <dd>
               {view.reasonLines.map((line) => (
@@ -66,6 +80,12 @@ export const DetailPane = ({ view, variant = 'default', targetLot }: DetailPaneP
               ))}
             </dd>
           </div>
+          {nonconformance !== undefined && (
+            <div className="field-cell">
+              <dt className="field-label">{t.condition.nonconformanceHeading}</dt>
+              <dd>{linkedValue(nonconformance.name, nonconformance.link)}</dd>
+            </div>
+          )}
         </dl>
       </section>
     );
@@ -114,7 +134,7 @@ export const DetailPane = ({ view, variant = 'default', targetLot }: DetailPaneP
         aria-label={t.panes.target}
       >
         <span className="field-label">{t.fields.targetLot}</span>
-        <span>{targetValue(view.targetName, targetLot)}</span>
+        <span>{linkedValue(targetLot?.name ?? view.targetName, targetLot)}</span>
       </div>
     </div>
   );

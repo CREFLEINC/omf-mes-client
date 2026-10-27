@@ -39,9 +39,9 @@ export interface ConditionPaneProps {
   /**
    * 특채 승인 상세 카드의 「요청 정보」(#193) — 수량 요약 바로 아래, 사용 조건 위에 선다. 특채를 아직 못 읽었거나
    * 못 찾았을 때도 요청 정보는 먼저 보인다(그 아래에 상태 안내가 선다).
-   * 특채를 읽었으면 그 LOT 과 「LOT 열기」 단추를 넘긴다 — 대상 LOT 칸 옆에 선다(권한이 없으면 넘기지 않는다).
+   * 특채를 읽었으면 그 LOT · 연관 부적합과 여는 단추를 넘긴다 — 대상 LOT 칸 · 사유 옆 칸에 선다(권한이 없으면 단추는 빼고).
    */
-  requestInfo?: (targetLot?: DetailPaneProps['targetLot']) => ReactNode;
+  requestInfo?: (fields?: Pick<DetailPaneProps, 'targetLot' | 'nonconformance'>) => ReactNode;
   /** 결재 요청의 상태 — 승인(APPROVED)이면 아직 적용 안 한 특채에 적용 구획이 선다(#193). */
   requestStatusCode?: string;
 }
@@ -246,15 +246,24 @@ export const ConditionPane = ({
           </div>
         ))}
       </dl>
-      {requestInfo(
-        access.allows(LOT_STATUS_SCREEN_PATH)
+      {requestInfo({
+        targetLot: access.allows(LOT_STATUS_SCREEN_PATH)
           ? {
               to: lotStatusEntryPath(detail.data.lotId),
               label: t.openLot,
               name: detail.data.lotNo?.trim() || t.lotNoUnknown,
             }
           : undefined,
-      )}
+        nonconformance: {
+          name: view.nonconformanceNo,
+          link: access.allows(DISPOSITION_SCREEN_PATH)
+            ? {
+                to: dispositionEntryPath(detail.data.nonconformanceId),
+                label: t.openNonconformance,
+              }
+            : undefined,
+        },
+      })}
       <section className="quality-approval-concession-section" aria-label={t.usageTitle}>
         <h3>{t.usageTitle}</h3>
         {facts(
@@ -315,18 +324,9 @@ export const ConditionPane = ({
           />
         )}
       {/*
-       * 다른 화면에서 이 정보를 여는 줄(#193) — 연관 부적합(처분 판정 처리) · 허용 작업지시
-       * (W/O 진행현황). 그 화면을 볼 권한이 없으면 줄을 세우지 않는다 — 누르는 순간 막힌 화면이 선다.
-       * ⭐ 부적합은 특채일 때만 성립한다(스펙 §5-1) — 지목할 식별자를 특채가 들고 있다(계약 필수).
+       * 허용 작업지시를 W/O 진행현황에서 여는 줄(#193). 그 화면을 볼 권한이 없으면 줄을 세우지 않는다 — 누르는 순간
+       * 막힌 화면이 선다. 대상 LOT · 연관 부적합의 여는 단추는 요청 정보 칸 옆에 선다.
        */}
-      {access.allows(DISPOSITION_SCREEN_PATH) && (
-        <RelatedLink
-          heading={t.nonconformanceHeading}
-          value={view.nonconformanceNo}
-          to={dispositionEntryPath(detail.data.nonconformanceId)}
-          label={t.openNonconformance}
-        />
-      )}
       {detail.data.allowedWorkOrderId != null && access.allows(WORK_ORDER_PROGRESS_SCREEN_PATH) && (
         <RelatedLink
           heading={t.workOrderHeading}

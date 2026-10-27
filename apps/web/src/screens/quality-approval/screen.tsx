@@ -402,11 +402,11 @@ export const QualityApprovalScreen = ({
         <ConditionPane
           approvalRequestId={detail.data.request.approvalRequestId}
           requestStatusCode={detail.data.request.statusCode}
-          requestInfo={(targetLot) => (
+          requestInfo={(fields) => (
             <DetailPane
               view={toRequestDetailView(detail.data.request)}
               variant="concession"
-              targetLot={targetLot}
+              {...fields}
             />
           )}
         />

@@ -106,7 +106,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     oqcRejected: 'Bỏ qua bị từ chối — hãy tiến hành kiểm tra xuất hàng hoặc yêu cầu bỏ qua lại',
     openOqcInspection: 'Mở kiểm tra xuất hàng OQC',
     iqcDone: 'Đã bỏ qua IQC — hãy tiếp tục nhập kho vật tư',
-    openGoodsReceipt: 'Mở nhập kho vật tư',
+    openGoodsReceipt: 'Mở nhập hàng đạt chuẩn',
     oqcDone: 'Đã bỏ qua OQC — hãy tiếp tục xử lý xuất hàng',
     openShipmentProcessing: 'Mở xử lý xuất hàng',
   },

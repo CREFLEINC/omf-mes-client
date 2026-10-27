@@ -50,11 +50,16 @@ export const SkipExecutePane = ({
 }: SkipExecutePaneProps) => {
   const [isConfirming, setIsConfirming] = useState(false);
 
-  /* 한 줄 압축형에서 실행할 수 없을 때 — 단추 자리에 결과(완료 초록 글)나 사정(확인 중·실행 불가)이 선다. */
+  /*
+   * 한 줄 압축형에서 실행할 수 없을 때 — 단추 자리에 결과(완료 초록 글)나 사정(확인 중·실행 불가)이 선다.
+   * 완료면 상자 전체가 결재 사유 승인 칸과 같은 초록 칸이 된다(#193 · 사용자 지시 2026-10-27).
+   */
   if (compact !== undefined && state.kind !== 'executable') {
     return (
       <section
-        className="iqc-skip-approval-section iqc-skip-approval-execute is-compact"
+        className={`iqc-skip-approval-section iqc-skip-approval-execute is-compact${
+          state.kind === 'executed' ? ' is-done' : ''
+        }`}
         aria-label={t.heading}
       >
         <div className="iqc-skip-approval-execute-text">

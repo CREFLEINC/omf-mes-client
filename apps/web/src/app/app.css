@@ -19237,6 +19237,24 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   border-radius: var(--radius-lg);
 }
 
+/* 실행 완료 — 결재 사유 승인 칸(`.quality-approval-reason.is-complete`)과 같은 초록 칸 · 초록 이름(#193). */
+.iqc-skip-approval-execute.is-compact.is-done {
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--semantic-success-container);
+}
+
+.iqc-skip-approval-execute.is-done .iqc-skip-approval-execute-text > .iqc-skip-approval-heading {
+  color: var(--semantic-success-text);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.iqc-skip-approval-execute.is-done .iqc-skip-approval-execute-text > p {
+  color: var(--on-surface);
+}
+
 .iqc-skip-approval-execute.is-compact
   > :not(.iqc-skip-approval-execute-text, button, .iqc-skip-approval-done) {
   grid-column: 1 / -1;
