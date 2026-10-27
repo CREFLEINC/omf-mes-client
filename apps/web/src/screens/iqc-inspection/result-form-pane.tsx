@@ -280,10 +280,15 @@ export const ResultFormPane = ({
             <div className="iqc-inspection-section-head">
               <h3>{t.sectionTitle}</h3>
               {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 판정 단추 아래가 말한다). */}
+              {/* 회차는 제목 옆 라벨로(사용자 지시 2026-10-27 · #185). */}
               {isReinspecting ? (
-                <p className="field-note">{t.reinspectRound}</p>
+                <span className="iqc-inspection-head-badge iqc-inspection-round-badge">
+                  {t.reinspectRound}
+                </span>
               ) : round !== null ? (
-                <p className="field-note">{t.round(round.inspectionRound)}</p>
+                <span className="iqc-inspection-head-badge iqc-inspection-round-badge">
+                  {t.round(round.inspectionRound)}
+                </span>
               ) : null}
               {/* 잠근 이유는 세 칸마다 되풀이하지 않고 회차 옆 라벨로 한 번만 밝힌다(사용자 지시 2026-10-26). */}
               {isConfirmed && (
@@ -411,18 +416,18 @@ export const ResultFormPane = ({
           </div>
         </section>
 
-        {/* ── 4M 변경 정보 — 판정과 다른 업무라 판정 아래 따로 선다(#133) ── */}
+        {/* ── 4M 변경 정보 — 판정과 다른 업무라 판정 아래 따로 선다(#133). 접지 않는다(사용자 지시 2026-10-27 · #185) ── */}
         {fourMSlot !== null && (
           <section className="iqc-inspection-section iqc-inspection-four-m-block">
-            <details className="iqc-inspection-collapsible" open>
-              <summary className="iqc-inspection-section-head">
+            <div className="iqc-inspection-static">
+              <div className="iqc-inspection-section-head">
                 <h3>
                   {t.fourMChange.sectionTitle}
                   <span className="iqc-inspection-label-hint">{t.fourMChange.hint}</span>
                 </h3>
-              </summary>
+              </div>
               <div className="iqc-inspection-collapsible-body">{fourMSlot}</div>
-            </details>
+            </div>
           </section>
         )}
       </div>
