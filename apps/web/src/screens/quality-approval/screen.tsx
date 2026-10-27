@@ -817,7 +817,8 @@ export const QualityApprovalScreen = ({
                 aria-label={t.panes.detail}
               >
                 {/*
-                 * 특채면 「특채 승인 상세」 — 제목 아래 요청번호, 오른쪽 상태 배지(#193). 다른 유형은 「요청 상세」 그대로다.
+                 * 특채면 「특채 승인 상세」 — 제목 아래 요청번호(#193). 다른 유형은 「요청 상세」 그대로다.
+                 * 상태 배지는 두지 않는다 — 위 결재 진행 · 결과 카드의 배지와 겹친다(사용자 지시 2026-10-27).
                  */}
                 {detail.data !== undefined && !detail.isError && !isOqcSkip && !isIqcSkip ? (
                   <div className="pane-heading-row quality-approval-concession-head">
@@ -827,9 +828,6 @@ export const QualityApprovalScreen = ({
                         {detail.data.request.approvalRequestNo}
                       </p>
                     </div>
-                    <Chip size="sm" status={statusBadgeOf(detail.data.request.statusCode).tone}>
-                      {statusBadgeOf(detail.data.request.statusCode).label}
-                    </Chip>
                   </div>
                 ) : (
                   <h2 className="pane-title">{t.panes.detail}</h2>

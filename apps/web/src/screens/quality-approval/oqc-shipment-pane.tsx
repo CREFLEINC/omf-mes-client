@@ -83,7 +83,14 @@ export const OqcShipmentPane = ({
                     : undefined,
                 ),
             },
-            { key: 'pickedQty', header: t.pickedQty, render: (row) => row.qtyText },
+            /* 수량은 가운데 — 칸 폭을 정해 LOT 번호 칸과 양쪽 여백이 고르게 보이게 한다(사용자 지시 2026-10-27). */
+            {
+              key: 'pickedQty',
+              header: t.pickedQty,
+              align: 'center',
+              width: '30%',
+              render: (row) => row.qtyText,
+            },
           ]}
         />
       )}

@@ -4509,46 +4509,54 @@ main:has(.iqc-skip-approval-detail) {
 /*
  * 상하 배치(목록 위 · 상세 아래)는 상세가 넓다 — 특채 승인 상세를 두 칸으로 나눈다(#193 · 사용자 지시 2026-10-27).
  * 왼쪽에 수량 요약 · 요청 정보, 오른쪽에 사용 조건, 특채 적용 · 안내는 그 아래 전체 폭이다. 좌우 배치는 위아래로 쌓는다.
+ * ⭐ 카드가 넉넉할 때(60rem 이상)만 나눈다 — 창이 좁은데 나누면 긴 LOT 번호가 칸을 넘어 사용 조건과 겹친다
+ *   (사용자 지적 2026-10-27). 카드 폭으로 가르려고 카드를 크기 기준 틀(container)로 둔다.
  */
-.po-board-split.is-stacked .quality-approval-concession {
-  /* 사용 조건 칸을 조금 좁혀 왼쪽 요청 정보(긴 LOT 번호 + 열기 단추)에 폭을 더 준다(사용자 지시 2026-10-27). */
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  column-gap: var(--space-6);
+.quality-approval-card:has(.quality-approval-concession) {
+  container: qa-concession / inline-size;
 }
 
-.po-board-split.is-stacked .quality-approval-concession > * {
-  grid-column: 1 / -1;
-}
+@container qa-concession (min-width: 60rem) {
+  .po-board-split.is-stacked .quality-approval-concession {
+    /* 사용 조건 칸을 조금 좁혀 왼쪽 요청 정보(긴 LOT 번호 + 열기 단추)에 폭을 더 준다(사용자 지시 2026-10-27). */
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    column-gap: var(--space-6);
+  }
 
-.po-board-split.is-stacked .quality-approval-concession > .quality-approval-concession-qty {
-  grid-row: 1;
-  grid-column: 1;
-}
+  .po-board-split.is-stacked .quality-approval-concession > * {
+    grid-column: 1 / -1;
+  }
 
-.po-board-split.is-stacked
-  .quality-approval-concession-section.is-request
-  > .quality-approval-concession-grid {
-  /* 오른쪽 칸(상신자 · 대상 LOT · 연관 부적합)에 긴 번호와 열기 단추가 선다 — 그쪽을 넓게 준다. */
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-}
+  .po-board-split.is-stacked .quality-approval-concession > .quality-approval-concession-qty {
+    grid-row: 1;
+    grid-column: 1;
+  }
 
-.po-board-split.is-stacked
-  .quality-approval-concession
-  > .quality-approval-concession-section.is-request {
-  grid-row: 2;
-  grid-column: 1;
-}
+  .po-board-split.is-stacked
+    .quality-approval-concession-section.is-request
+    > .quality-approval-concession-grid {
+    /* 오른쪽 칸(상신자 · 대상 LOT · 연관 부적합)에 긴 번호와 열기 단추가 선다 — 그쪽을 넓게 준다. */
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  }
 
-.po-board-split.is-stacked
-  .quality-approval-concession
-  > .quality-approval-concession-section.is-usage {
-  grid-row: 1 / span 2;
-  grid-column: 2;
-  align-self: start;
-  padding-top: 0;
-  padding-left: var(--space-6);
-  border-top: 0;
-  border-left: 1px solid var(--outline-variant);
+  .po-board-split.is-stacked
+    .quality-approval-concession
+    > .quality-approval-concession-section.is-request {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  .po-board-split.is-stacked
+    .quality-approval-concession
+    > .quality-approval-concession-section.is-usage {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    align-self: start;
+    padding-top: 0;
+    padding-left: var(--space-6);
+    border-top: 0;
+    border-left: 1px solid var(--outline-variant);
+  }
 }
 
 .quality-approval-concession-qty {
@@ -4763,8 +4771,8 @@ main:has(.iqc-skip-approval-detail) {
 .quality-approval-target-value {
   display: inline-flex;
   /*
-   * 값(LOT 번호 등)은 한 줄로 둔다 — 두 줄로 쪼개지 않는다(사용자 지시 2026-10-27). 단추는 값 옆이고,
-   * 칸이 값 + 단추보다 좁을 때만 단추가 아래로 내려간다.
+   * 값(LOT 번호 등)과 단추가 한 줄에 들어가면 한 줄, 아니면 단추가 먼저 아래로 내려가고, 값만으로도 칸보다 길 때에만
+   * 값이 칸 안에서 줄을 바꾼다 — 칸 밖으로 넘치지 않는다(사용자 지적 2026-10-27).
    */
   flex-wrap: wrap;
   align-items: center;
@@ -4773,7 +4781,8 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 .quality-approval-target-value > span {
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* 소제목 · 값 옆의 작은 보조 「열기」 단추(#193 · 사용자 지시 2026-10-27) — 테두리 알약, 아이콘 + 글. */
@@ -4834,6 +4843,15 @@ main:has(.iqc-skip-approval-detail) {
   /* 좁은 창에서도 칸을 창 폭만큼 늘리지 않는다 — 세 칸씩 줄바꿈하고 단추는 다음 칸에 선다(#186). */
   .filter-bar.quality-approval-filter {
     grid-template-columns: repeat(3, minmax(9rem, 12rem));
+  }
+
+  /*
+   * 내 차례 · 조회 · 초기화 줄은 다음 줄 전체 폭을 쓴다 — 한 칸(12rem)에 두면 줄바꿈을 막아 둔 글이 칸 왼쪽 밖으로
+   * 넘친다(사용자 지적 2026-10-27).
+   */
+  .quality-approval-filter-footer {
+    grid-column: 1 / -1;
+    margin-top: 0;
   }
 }
 
