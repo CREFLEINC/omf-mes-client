@@ -21823,8 +21823,12 @@ table.col-measuring td {
 
 .iqc-inspection-qty-judgment-row {
   display: grid;
-  /* 판정은 최종 판정 하나뿐이라 그 폭만 — 남는 폭은 검사 수량 입력이 쓴다(사용자 지시 2026-10-27 · #185). */
-  grid-template-columns: minmax(0, 1fr) auto;
+  /*
+   * 수량 · 판정 모두 내용 폭만 — 카드 폭을 다 쓰지 않는다(빈 가운데가 생기지 않게 · 사용자 지시 2026-10-27 · #185).
+   * 카드가 좁으면 수량 쪽이 줄어든다.
+   */
+  grid-template-columns: minmax(0, max-content) auto;
+  justify-content: start;
   align-items: stretch;
 }
 
@@ -21833,33 +21837,34 @@ table.col-measuring td {
  * 한 줄에 다 들어가지 않으면 오른쪽 묶음이 다음 줄로 내려간다.
  */
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto auto;
   align-items: center;
-  column-gap: var(--space-4);
+  column-gap: var(--space-5);
 }
 
-.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body > * {
-  flex: 1 1 100%;
+.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) > * {
+  grid-column: 1 / -1;
 }
 
-.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body > .iqc-inspection-qty {
-  /* 칸은 숫자 몇 자리 폭이면 된다 — 남는 폭으로 늘리지 않는다(사용자 지시 2026-10-27 · #185). */
+.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) > .iqc-inspection-qty {
   grid-template-columns: repeat(3, minmax(6rem, 9rem));
   justify-content: start;
 }
 
-.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body > .iqc-inspection-progress {
-  flex: 0 1 auto;
+.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) > .iqc-inspection-progress {
+  grid-column: 1;
 }
 
 .iqc-inspection-qty-judgment-row .iqc-inspection-progress-row:nth-child(n) {
   justify-content: flex-start;
 }
 
-.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body > .iqc-inspection-qty-actions {
-  flex: 0 1 auto;
-  margin-inline-start: auto;
+.iqc-inspection-qty-judgment-row
+  .iqc-inspection-qty-body:nth-child(n)
+  > .iqc-inspection-qty-actions {
+  grid-column: 2;
+  justify-self: end;
 }
 
 .iqc-inspection-qty-actions > .iqc-inspection-action-area {
@@ -21872,9 +21877,7 @@ table.col-measuring td {
   border-top: 0;
 }
 
-/* 수량 쪽만 제 폭으로 배치를 고른다 — 판정 쪽에 걸면 내용 폭이 0으로 잡혀 칸이 사라진다. */
 .iqc-inspection-qty-judgment-row > .iqc-inspection-section:first-child {
-  container-type: inline-size;
   padding-right: var(--space-5);
 }
 

@@ -309,6 +309,12 @@ export const ResultFormPane = ({
    * 둔다(사용자 지시 2026-10-27 · #185). 그 밖은 종전처럼 카드 아래 한 줄이다.
    */
   const actionInQty = inlineJudgment && isConfirmed;
+  const lockedBadge = (
+    <span className="iqc-inspection-head-badge iqc-inspection-locked-badge">
+      <Icon name="lock" size={14} aria-hidden />
+      {t.confirmed}
+    </span>
+  );
   const actionArea = (
     <>
       {/*
@@ -331,11 +337,11 @@ export const ResultFormPane = ({
         ) : isConfirmed ? (
           <div className="iqc-inspection-action-row">
             <div className="iqc-inspection-action-buttons">
-              {/* 잠근 이유는 [재검사 회차 추가] 바로 왼쪽 라벨로 한 번만 밝힌다(사용자 지시 2026-10-27 · #185). */}
-              <span className="iqc-inspection-head-badge iqc-inspection-locked-badge">
-                <Icon name="lock" size={14} aria-hidden />
-                {t.confirmed}
-              </span>
+              {/*
+               * 잠근 이유는 [재검사 회차 추가] 바로 왼쪽 라벨로 한 번만 밝힌다(사용자 지시 2026-10-27 · #185).
+               * 상하 배치에서는 수량 구획이 이 문구 길이만큼 넓어지지 않게 회차 옆(제목 줄)으로 간다.
+               */}
+              {!actionInQty && lockedBadge}
               <Button type="button" variant="outlined" size="md" onClick={onStartReinspection}>
                 {t.reinspect}
               </Button>
@@ -454,6 +460,7 @@ export const ResultFormPane = ({
                     {t.round(round.inspectionRound)}
                   </span>
                 ) : null}
+                {actionInQty && lockedBadge}
                 {/* 기준값(검사수량)은 제목 줄 오른쪽 끝에 — 세 칸은 이 값을 나눈 결과다. 따로 한 줄을 쓰지 않는다(#133). */}
                 <dl className="iqc-inspection-qty-base">
                   <dt className="iqc-inspection-progress-label">{t.fields.inspectedQty}</dt>
