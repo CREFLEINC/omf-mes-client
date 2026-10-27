@@ -4365,17 +4365,8 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-.quality-approval-decision-comment {
-  grid-column: 1 / -1;
-  max-width: none;
-  margin: 0;
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-}
-
-/* 반려 사유 — 결재 결과 카드의 반려 줄 아래 붉은 칸. */
-.quality-approval-reject-reason {
+/* 결재 사유 — 결재 결과 카드의 결재 줄 아래 칸. 반려는 붉은 칸, 승인은 초록 칸이다(#193). */
+.quality-approval-reason {
   display: grid;
   grid-column: 1 / -1;
   gap: var(--space-1);
@@ -4387,15 +4378,23 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-.quality-approval-reject-reason > p {
+.quality-approval-reason.is-complete {
+  background: var(--semantic-success-container);
+}
+
+.quality-approval-reason > p {
   max-width: none;
   margin: 0;
 }
 
-.quality-approval-reject-reason-label {
+.quality-approval-reason-label {
   color: var(--semantic-error-text);
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
+}
+
+.quality-approval-reason.is-complete > .quality-approval-reason-label {
+  color: var(--semantic-success-text);
 }
 
 /* 결재 사유는 필수다 — DS 글 칸은 별표를 그리지 않아 라벨 뒤에 같은 색 별표를 붙인다(#144). */

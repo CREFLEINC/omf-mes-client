@@ -53,23 +53,25 @@ export const ProgressPane = ({ view, isFinished }: ProgressPaneProps) => {
                 {step.decisionAtText !== null && (
                   <span className="quality-approval-decision-at">{step.decisionAtText}</span>
                 )}
-                {step.decisionComment !== null &&
-                  (step.status === 'rejected' ? (
-                    <div
-                      className="quality-approval-reject-reason"
-                      role="group"
-                      aria-label={t.approval.rejectCommentHeading}
-                    >
-                      <p className="quality-approval-reject-reason-label">
-                        {t.approval.rejectCommentHeading}
-                      </p>
-                      <p>{step.decisionComment}</p>
-                    </div>
-                  ) : (
-                    <p className="quality-approval-decision-comment">
-                      {t.progress.decisionComment}: {step.decisionComment}
+                {/* 결재 사유는 결정 색 칸에 담는다 — 반려 붉은 칸 · 승인 초록 칸(#193). */}
+                {step.decisionComment !== null && (
+                  <div
+                    className={`quality-approval-reason is-${step.status}`}
+                    role="group"
+                    aria-label={
+                      step.status === 'rejected'
+                        ? t.approval.rejectCommentHeading
+                        : t.progress.decisionComment
+                    }
+                  >
+                    <p className="quality-approval-reason-label">
+                      {step.status === 'rejected'
+                        ? t.approval.rejectCommentHeading
+                        : t.progress.decisionComment}
                     </p>
-                  ))}
+                    <p>{step.decisionComment}</p>
+                  </div>
+                )}
               </li>
             ))}
           </ol>

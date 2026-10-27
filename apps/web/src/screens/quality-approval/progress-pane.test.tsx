@@ -65,7 +65,7 @@ describe('ProgressPane', () => {
     expect(screen.getByText(t.progress.myTurn)).toBeVisible();
   });
 
-  it('끝난 요청은 결재한 단계마다 결재자 · 일시와 결재 사유를 보이고, 반려 사유는 붉은 칸으로 보인다', () => {
+  it('끝난 요청은 결재한 단계마다 결재자 · 일시와 결재 사유를 초록 칸, 반려 사유를 붉은 칸으로 보인다', () => {
     render(
       <ProgressPane
         isFinished
@@ -89,7 +89,10 @@ describe('ProgressPane', () => {
     const rows = within(list).getAllByRole('listitem');
 
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent('합성 결재자2026-08-22 15:02결재 사유: 사용 승인');
+    expect(rows[0]).toHaveTextContent('합성 결재자2026-08-22 15:02');
+    expect(within(rows[0]!).getByRole('group', { name: '결재 사유' })).toHaveTextContent(
+      '사용 승인',
+    );
     expect(within(rows[0]!).getByLabelText('승인')).toBeInTheDocument();
     expect(within(rows[1]!).getByRole('group', { name: '반려 사유' })).toHaveTextContent(
       '근거 부족',
