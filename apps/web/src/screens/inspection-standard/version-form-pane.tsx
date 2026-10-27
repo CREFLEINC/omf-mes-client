@@ -2,18 +2,12 @@ import { AlertBanner, Button, Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
-import {
-  FREQUENCY_INTERVAL_UOM_OPTIONS,
-  FULL_INSPECTION,
-  INSPECTION_FREQUENCY_OPTIONS,
-  SAMPLING_METHOD_OPTIONS,
-  ensureOption,
-} from './code-options';
+import { FULL_INSPECTION, SAMPLING_METHOD_OPTIONS, ensureOption } from './code-options';
 import { DateField } from './date-field';
 import { FieldLabel } from './field-label';
 import type { VersionStatusView } from './plan-version-status';
 import { SelectField } from './select-field';
-import type { VersionFormValues } from './types';
+import type { SelectOption, VersionFormValues } from './types';
 
 const t = messages.inspectionStandard;
 
@@ -30,6 +24,11 @@ export interface VersionFormPaneProps {
   onChange: (patch: Partial<VersionFormValues>) => void;
   /** 필드별 인라인 오류 — 로컬 검증 결과와 서버 필드 오류를 상위가 병합해 넘긴다. */
   fieldErrors: Record<string, string>;
+  /** 공통코드에서 받은 선택지. 「사용 중인 것 + 지금 고른 값」만 온다. */
+  inspectionFrequencyOptions: SelectOption[];
+  frequencyIntervalUomOptions: SelectOption[];
+  /** 선택지를 받지 못했을 때의 안내. */
+  codeOptionsNote?: string;
   /** 저장·전이 실패 배너 슬롯 */
   banner: ReactNode;
   isDirty: boolean;
@@ -56,6 +55,9 @@ export const VersionFormPane = ({
   values,
   onChange,
   fieldErrors,
+  inspectionFrequencyOptions,
+  frequencyIntervalUomOptions,
+  codeOptionsNote,
   banner,
   isDirty,
   isSaving,
@@ -203,11 +205,11 @@ export const VersionFormPane = ({
         <SelectField
           label={t.fields.inspectionFrequency}
           required
-          options={ensureOption(INSPECTION_FREQUENCY_OPTIONS, values.inspectionFrequencyCode)}
+          options={inspectionFrequencyOptions}
           value={values.inspectionFrequencyCode}
           onChange={(inspectionFrequencyCode) => onChange({ inspectionFrequencyCode })}
           disabled={isLocked}
-          note={messages.pendingCode.note}
+          note={codeOptionsNote}
           error={fieldErrors.inspectionFrequencyCode}
         />
 
@@ -220,17 +222,14 @@ export const VersionFormPane = ({
           error={fieldErrors.frequencyIntervalValue}
         />
 
-        {/*
-         * 계약이 이 코드를 `/mdm/uoms`와 잇지 않았다 — 형태가 같다고 화면이 이으면 지어내는 것이다.
-         * 자리표시로 두고 안내를 붙인다.
-         */}
+        {/* 주기의 단위다 — 품목 기준단위(`/mdm/uoms`)와 다른 축이라 그쪽 목록을 쓰지 않는다. */}
         <SelectField
           label={t.fields.frequencyIntervalUom}
-          options={ensureOption(FREQUENCY_INTERVAL_UOM_OPTIONS, values.frequencyIntervalUomCode)}
+          options={frequencyIntervalUomOptions}
           value={values.frequencyIntervalUomCode}
           onChange={(frequencyIntervalUomCode) => onChange({ frequencyIntervalUomCode })}
           disabled={isLocked}
-          note={messages.pendingCode.note}
+          note={codeOptionsNote}
           error={fieldErrors.frequencyIntervalUomCode}
         />
       </div>

@@ -15,7 +15,13 @@ import { useSearchParams } from 'react-router';
 import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
-import { selectableOptions } from './code-options';
+import {
+  DATA_TYPE_CODE_GROUP,
+  FREQUENCY_INTERVAL_UOM_CODE_GROUP,
+  INSPECTION_FREQUENCY_CODE_GROUP,
+  INSPECTION_METHOD_CODE_GROUP,
+  selectableOptions,
+} from './code-options';
 import { DisabledAction } from './disabled-action';
 import { readFilters, readPage, toSearchParams } from './filters';
 import { ItemFormDialog } from './item-form-dialog';
@@ -54,6 +60,7 @@ import {
   useInspectionPlanList,
   useInspectionPlanVersionDetail,
   useInspectionPlanVersionList,
+  useCodeValueOptions,
   useEquipmentOptions,
   useItemOptions,
   useProcessOptions,
@@ -537,6 +544,10 @@ export const InspectionStandardScreen = () => {
 
   const uomOptions = useUomOptions();
   const equipmentOptions = useEquipmentOptions();
+  const inspectionFrequencyOptions = useCodeValueOptions(INSPECTION_FREQUENCY_CODE_GROUP);
+  const frequencyIntervalUomOptions = useCodeValueOptions(FREQUENCY_INTERVAL_UOM_CODE_GROUP);
+  const dataTypeOptions = useCodeValueOptions(DATA_TYPE_CODE_GROUP);
+  const inspectionMethodOptions = useCodeValueOptions(INSPECTION_METHOD_CODE_GROUP);
 
   /**
    * 다른 버전으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다.
@@ -1094,6 +1105,12 @@ export const InspectionStandardScreen = () => {
    * 우 중단 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
+  /** 버전 폼의 공통코드 선택지를 받지 못했으면 선택칸 아래에 알린다 — 감추면 선택칸이 이유 없이 빈다. */
+  const versionCodeOptionsNote =
+    inspectionFrequencyOptions.isError || frequencyIntervalUomOptions.isError
+      ? t.optionsLoadFailed
+      : undefined;
+
   const renderVersionFormPane = (): ReactNode => {
     if (versionCreateValues !== null) {
       return (
@@ -1105,6 +1122,15 @@ export const InspectionStandardScreen = () => {
           values={versionCreateValues}
           onChange={handleChangeVersionCreateValues}
           fieldErrors={{ ...versionCreateWrite.fieldErrors, ...versionCreateFieldErrors }}
+          inspectionFrequencyOptions={optionsFor(
+            inspectionFrequencyOptions,
+            versionCreateValues.inspectionFrequencyCode,
+          )}
+          frequencyIntervalUomOptions={optionsFor(
+            frequencyIntervalUomOptions,
+            versionCreateValues.frequencyIntervalUomCode,
+          )}
+          codeOptionsNote={versionCodeOptionsNote}
           /* 첫 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
           banner={<PlanActionBanner error={versionCreateWrite.error} />}
           isDirty={!isSameVersionValues(versionCreateValues, emptyVersionFormValues())}
@@ -1157,6 +1183,15 @@ export const InspectionStandardScreen = () => {
         onChange={handleChangeVersionValues}
         // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
         fieldErrors={{ ...versionWrite.fieldErrors, ...versionFieldErrors }}
+        inspectionFrequencyOptions={optionsFor(
+          inspectionFrequencyOptions,
+          versionFormState.values.inspectionFrequencyCode,
+        )}
+        frequencyIntervalUomOptions={optionsFor(
+          frequencyIntervalUomOptions,
+          versionFormState.values.frequencyIntervalUomCode,
+        )}
+        codeOptionsNote={versionCodeOptionsNote}
         banner={
           <PlanActionBanner error={versionWrite.error} onReload={handleReloadVersionDetail} />
         }
@@ -1198,7 +1233,12 @@ export const InspectionStandardScreen = () => {
    * 알리지 않으면 단위 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
    */
   const itemOptionsNotice = (() => {
-    const lookups: LookupResult[] = [uomOptions, equipmentOptions];
+    const lookups: LookupResult[] = [
+      uomOptions,
+      equipmentOptions,
+      dataTypeOptions,
+      inspectionMethodOptions,
+    ];
 
     if (lookups.some((lookup) => lookup.isError)) {
       return (
@@ -1385,6 +1425,11 @@ export const InspectionStandardScreen = () => {
           fieldErrors={itemDialogErrors}
           /* 경고는 확인을 막지 않는다 — 계약이 경고 등급으로 정했다(A-9 ⓑ). */
           fieldWarnings={warnItemDraft(itemDialog.values)}
+          dataTypeOptions={optionsFor(dataTypeOptions, itemDialog.values.dataTypeCode)}
+          inspectionMethodOptions={optionsFor(
+            inspectionMethodOptions,
+            itemDialog.values.inspectionMethodCode,
+          )}
           uomOptions={optionsFor(uomOptions, itemDialog.values.uomId)}
           equipmentOptions={optionsFor(
             equipmentOptions,

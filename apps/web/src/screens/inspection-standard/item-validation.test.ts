@@ -36,6 +36,12 @@ describe('validateItemDraft — 필수', () => {
     expect(errors.inspectionItemCode).toBe('필수 입력 항목입니다.');
     expect(errors.inspectionItemName).toBe('필수 입력 항목입니다.');
   });
+  /* omf-all-around#194 — 서버가 필수로 검사한다. 비우면 저장이 거절된다. */
+  it('자료형이 비면 필수 오류를 낸다', () => {
+    expect(validateItemDraft(draft({ dataTypeCode: '' }), []).dataTypeCode).toBe(
+      '필수 입력 항목입니다.',
+    );
+  });
 });
 
 describe('validateItemDraft — 항목코드 중복', () => {
