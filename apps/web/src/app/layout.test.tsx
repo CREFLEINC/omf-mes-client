@@ -217,13 +217,13 @@ describe('AppLayout', () => {
     );
   });
 
-  /* 검사기준은 「검사 기준」 묶음의 첫 탭이다 — 사이드바의 묶음 줄이 그 주소를 건다. */
-  it('사이드바에 검사 기준 묶음이 검사기준 주소로 보인다', () => {
+  /* 검사기준은 「품질 기준정보」 묶음의 첫 탭이다 — 사이드바의 묶음 줄이 그 주소를 건다. */
+  it('사이드바에 품질 기준정보 묶음이 검사기준 주소로 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '검사 기준' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '품질 기준정보' })).toHaveAttribute(
       'href',
       '/master-data/inspection-standard',
     );
@@ -240,19 +240,20 @@ describe('AppLayout', () => {
     );
   });
 
-  /* 판정유형 코드는 「검사 기준」 묶음의 끝 탭이다 — 탭 막대에서 불량·원인코드 바로 뒤에 선다. */
-  it('검사 기준 탭 막대에 판정유형 코드가 불량·원인코드 뒤에 보인다', () => {
+  /* 판정유형 코드는 「품질 기준정보」 묶음의 끝 탭이다 — 탭 막대에서 불량·원인코드 바로 뒤에 선다. */
+  it('품질 기준정보 탭 막대에 판정유형 코드가 불량·원인코드 뒤에 보인다', () => {
     renderLayout('본문 내용', { route: '/master-data/judgment-code' });
 
-    const tabs = screen.getByRole('navigation', { name: '검사 기준' });
+    const tabs = screen.getByRole('navigation', { name: '품질 기준정보' });
 
     expect(within(tabs).getByRole('link', { name: '판정유형 코드' })).toHaveAttribute(
       'href',
       '/master-data/judgment-code',
     );
-    expect(hubTabHrefs('검사 기준')).toEqual([
+    expect(hubTabHrefs('품질 기준정보')).toEqual([
       '/master-data/inspection-standard',
       '/master-data/inspection-sheet-template',
+      '/quality/inspection-levels',
       '/master-data/defect-cause-code',
       '/master-data/judgment-code',
     ]);
@@ -503,7 +504,7 @@ describe('AppLayout', () => {
   /*
    * 품질 관리 — **독립 영역이다.** 검사를 IQC(입하) → PQC(공정) → OQC(출하) 흐름 차례로 세우고,
    * 검사기준·코드, 검사 이력, 그리고 LOT 상태 → 보류 → 승인 → 처분의 판정 갈래가 뒤따른다.
-   * 검사기준 · 검사표 기준 · 불량·원인코드 · 판정유형 코드는 「검사 기준」, LOT 조회와 판정은 「LOT 상태」 묶음 한 줄이다.
+   * 검사기준 · 검사표 기준 · 불량·원인코드 · 판정유형 코드는 「품질 기준정보」, LOT 조회와 판정은 「LOT 상태」 묶음 한 줄이다.
    */
   it('품질 관리 섹션이 IQC → PQC → OQC → 검사기준·코드 → 검사실적 → LOT 상태·보류·승인·처분 순서다', () => {
     renderLayout('본문 내용');
@@ -540,7 +541,7 @@ describe('AppLayout', () => {
 
     const qualityOrder = [
       '/logistics/iqc-inspection',
-      /* 「검사 기준」 묶음 — 검사기준 → 검사표 기준(W-06-24) → 불량·원인코드 → 판정유형 코드. */
+      /* 「품질 기준정보」 묶음 — 검사기준 → 검사표 기준(W-06-24) → 검사 수준 관리(W-03-12) → 불량·원인코드 → 판정유형 코드. */
       '/master-data/inspection-standard',
       '/quality/inspection-results',
       /* W-03-13 — OA 제품 검사표 조회·서명(설계보다 앞선 화면). */
@@ -551,8 +552,6 @@ describe('AppLayout', () => {
       '/quality/approvals',
       /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
       '/quality/dispositions',
-      /* W-03-12 — 품목별 IQC 검사 수준(설계보다 앞선 화면). */
-      '/quality/inspection-levels',
     ];
     const start = links.indexOf(qualityOrder[0] ?? '');
 
@@ -732,9 +731,9 @@ describe('AppLayout', () => {
       'href',
       '/production/work-order-progress',
     );
-    /* 품질 관리의 끝(검사 수준 관리) 바로 뒤가 섹션의 시작이다. */
+    /* 품질 관리의 끝(처분 판정 처리) 바로 뒤가 섹션의 시작이다. */
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/quality/inspection-levels') + 1,
+      links.indexOf('/quality/dispositions') + 1,
     );
     /* W-02-07 — 계획을 거치지 않는 갈래라 정규 흐름(ERP W/O 처리) 뒤다. */
     expect(links.indexOf('/production/emergency-work-orders')).toBe(
@@ -960,14 +959,13 @@ describe('AppLayout', () => {
       '/logistics/document-progress',
       /* 품질 관리 — 검사 조회·판정(IQC · PQC · OQC 탭) → 기준·코드 → 이력 → LOT 판정 갈래. */
       '/logistics/iqc-inspection' /* ← 검사 조회·판정 */,
-      '/master-data/inspection-standard' /* ← 검사 기준 */,
+      '/master-data/inspection-standard' /* ← 품질 기준정보 */,
       '/quality/inspection-results',
       '/quality/inspection-sheets',
       '/quality/lot-status' /* ← LOT 상태 */,
       '/quality/suspicious-material-hold',
       '/quality/approvals',
       '/quality/dispositions',
-      '/quality/inspection-levels',
       /* 생산 관리 — ERP W/O(처리, 변경 확인) → (긴급) → 진행 → 마감. */
       '/production/production-orders' /* ← ERP W/O */,
       '/production/emergency-work-orders',
@@ -1030,9 +1028,10 @@ describe('AppLayout', () => {
         '/logistics/supplier-return',
         '/logistics/disposal-issue',
       ],
-      '검사 기준': [
+      '품질 기준정보': [
         '/master-data/inspection-standard',
         '/master-data/inspection-sheet-template',
+        '/quality/inspection-levels',
         '/master-data/defect-cause-code',
         '/master-data/judgment-code',
       ],
@@ -1366,7 +1365,7 @@ describe('AppLayout — 셸 치수', () => {
  */
 describe('AppLayout — 묶음 접기', () => {
   /**
-   * 처음 열 때 보이는 것이 **묶음 8줄 + 섹션 밖 1개**다. 항목 44줄(탭을 펴면 화면 75개)이 한꺼번에 펼쳐져 있던 것이
+   * 처음 열 때 보이는 것이 **묶음 8줄 + 섹션 밖 1개**다. 항목 43줄(탭을 펴면 화면 75개)이 한꺼번에 펼쳐져 있던 것이
    * 이 작업의 출발점이다.
    */
   it('처음에는 어느 묶음도 펼쳐져 있지 않다 — 현재 화면이 어느 묶음에도 없을 때', () => {
@@ -1623,7 +1622,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(43);
   });
 
   /*
@@ -1673,7 +1672,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(43);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

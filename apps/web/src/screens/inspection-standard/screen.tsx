@@ -1,9 +1,7 @@
 import {
   AlertBanner,
-  Breadcrumb,
   Button,
   EmptyState,
-  PageHeader,
   SkeletonText,
   useToast,
 } from '@crefle/web-ui';
@@ -1365,16 +1363,6 @@ export const InspectionStandardScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
       <div className="three-pane inspection-standard-layout">
         <PlanListPane
           plans={plans}

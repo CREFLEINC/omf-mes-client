@@ -255,15 +255,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 검사 기준 — 검사기준 · 검사표 기준(W-06-24 · OA 전용) · 불량·원인코드 · 판정유형 코드를 사이드바 한 줄 ·
+       * 품질 기준정보 — 검사기준 · 검사표 기준(W-06-24 · OA 전용) · 검사 수준 관리 · 불량·원인코드 · 판정유형 코드를 사이드바 한 줄 ·
        * 본문 위 탭으로 묶는다(사용자 2026-10-26). 모두 판정이 기대는 기준·코드 마스터다.
        * 검사표 기준 탭은 OA 공장이 없는 계정에서 셸이 거른다(`OA_ONLY_PATHS`).
        */
       {
         to: '/master-data/inspection-standard',
         icon: 'rule_settings',
-        label: '검사 기준',
-        labelVi: 'Tiêu chuẩn kiểm tra',
+        label: '품질 기준정보',
+        labelVi: 'Dữ liệu chuẩn chất lượng',
         tabs: [
           {
             to: '/master-data/inspection-standard',
@@ -274,6 +274,12 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             to: '/master-data/inspection-sheet-template',
             label: '검사표 기준',
             labelVi: 'Tiêu chuẩn phiếu kiểm tra',
+          },
+          /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
+          {
+            to: '/quality/inspection-levels',
+            label: '검사 수준 관리',
+            labelVi: 'Quản lý mức kiểm tra',
           },
           {
             to: '/master-data/defect-cause-code',
@@ -350,13 +356,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'gavel',
         label: '처분 판정 처리',
         labelVi: 'Ra quyết định xử lý',
-      },
-      /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
-      {
-        to: '/quality/inspection-levels',
-        icon: 'tune',
-        label: '검사 수준 관리',
-        labelVi: 'Quản lý mức kiểm tra',
       },
     ],
   },
