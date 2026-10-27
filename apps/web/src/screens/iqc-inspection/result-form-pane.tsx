@@ -270,11 +270,16 @@ export const ResultFormPane = ({
   };
 
   /*
-   * 넘치면 총 검사 수량 카드에 「+3 EA」로 넘친 양을 붙인다(사용자 지시 2026-10-27 · #185). 모자랄 때는 1단계가 덜 채워진
-   * 것으로 남는다. ⛔ 셀 수 없으면(한 칸이라도 수량이 아니면) 넘쳤다고 말하지 않는다 — 그 칸의 오류가 이미 말한다.
+   * 총 검사 수량 카드에 넘치면 「+3 EA」, 모자라면 「-1 EA」를 붙인다(사용자 지시 2026-10-27 · #185).
+   * ⛔ 셀 수 없으면(한 칸이라도 수량이 아니면) 아무 말도 하지 않는다 — 그 칸의 오류가 이미 말한다.
    */
   const isOver = totals.kind === 'counted' && totals.remaining < 0n;
-  const overText = isOver ? withUom(formatMicro(-totals.remaining), uomCode) : '';
+  const deltaText =
+    totals.kind !== 'counted' || totals.remaining === 0n
+      ? null
+      : isOver
+        ? t.overDelta(withUom(formatMicro(-totals.remaining), uomCode))
+        : t.shortDelta(withUom(formatMicro(totals.remaining), uomCode));
 
   const inspectedText = withUom(String(inspectedQty), uomCode);
   const qtyDone = totals.kind === 'counted' && totals.matches && !isOver;
@@ -527,8 +532,8 @@ export const ResultFormPane = ({
                     <dt>{t.fields.inspectedQty}</dt>
                     <dd>
                       {inspectedText}
-                      {isOver && (
-                        <span className="iqc-inspection-qty-over">{t.overDelta(overText)}</span>
+                      {deltaText !== null && (
+                        <span className="iqc-inspection-qty-over">{deltaText}</span>
                       )}
                     </dd>
                   </dl>

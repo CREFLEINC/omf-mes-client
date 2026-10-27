@@ -22156,7 +22156,7 @@ table.col-measuring td {
   white-space: nowrap;
 }
 
-/* 총 검사 수량 옆 넘친 양 「+3 EA」 — 오류색 · 작은 글(사용자 지시 2026-10-27 · #185). */
+/* 총 검사 수량 옆 넘친 · 모자란 양 「+3 EA」 · 「-1 EA」 — 오류색 · 작은 글(사용자 지시 2026-10-27 · #185). */
 .iqc-inspection-qty-over {
   margin-left: var(--space-1);
   color: var(--semantic-error-text);

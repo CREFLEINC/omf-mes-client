@@ -96,6 +96,8 @@ describe('ResultFormPane', () => {
     renderPane({ accepted: '400', rejected: '0', held: '0' });
 
     expect(qtyStepDone()).toBe(false);
+    /* 모자란 양은 총 검사 수량 옆 「-100」으로 말한다(#185). */
+    expect(screen.getByText(t.shortDelta('100'))).toBeInTheDocument();
     expect(screen.queryByText(/남았습니다/)).not.toBeInTheDocument();
     expect(screen.queryByText(t.overDelta('100'))).not.toBeInTheDocument();
   });
