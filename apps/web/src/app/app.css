@@ -4326,12 +4326,12 @@ main:has(.iqc-skip-approval-detail) {
 
 /*
  * 결재 대기 — 단계 표시(#193 · IQC 수입검사 단계 표시와 같은 모양). 번호 원 · 결재자(아래 상태 알약) 뒤로 다음 단계까지
- * 선이 이어진다. 카드 끝까지 늘이지 않고 가운데에 모은다 — 선은 단계마다 정해진 길이까지만 자라고, 사람이 늘면
- * 그만큼 길어진다. 좁으면 선이 줄어든다(사용자 지시 2026-10-27).
+ * 선이 이어진다. 카드 끝까지 늘이지 않는다 — 선은 단계마다 정해진 길이까지만 자라고, 사람이 늘면 그만큼 길어진다.
+ * 좁으면 선이 줄어든다. 가운데가 아니라 아래 「n / m 단계」 줄과 같이 왼쪽에서 시작한다(사용자 지시 2026-10-27).
  */
 .quality-approval-steps {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-start;
   gap: var(--space-3);
   margin: 0;
@@ -4342,8 +4342,9 @@ main:has(.iqc-skip-approval-detail) {
 .quality-approval-step {
   display: grid;
   flex: 0 1 auto;
-  grid-template-columns: auto minmax(var(--space-6), 12rem);
-  align-items: center;
+  grid-template-columns: auto minmax(var(--space-6), 16rem);
+  /* 번호 원끼리 한 줄에 맞춘다 — 이름 아래 상태 라벨이 있는 단계도 원 높이가 같다. */
+  align-items: start;
   gap: var(--space-1) var(--space-3);
   min-width: 0;
 }
@@ -4355,7 +4356,7 @@ main:has(.iqc-skip-approval-detail) {
 
 .quality-approval-step-head {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
   min-width: 0;
 }
@@ -4363,6 +4364,8 @@ main:has(.iqc-skip-approval-detail) {
 /* 결재자 이름 · 그 아래 상태 알약. */
 .quality-approval-step-text {
   display: grid;
+  /* 이름 줄을 번호 원 가운데 높이에 맞춘다(원 1.75rem). */
+  padding-top: 0.25rem;
   justify-items: start;
   gap: 2px;
   min-width: 0;
@@ -4408,6 +4411,8 @@ main:has(.iqc-skip-approval-detail) {
 
 .quality-approval-step-line {
   height: 2px;
+  /* 선을 번호 원 가운데 높이에 둔다. */
+  margin-top: calc(0.875rem - 1px);
   border-radius: var(--radius-full);
   background: var(--outline-variant);
 }
