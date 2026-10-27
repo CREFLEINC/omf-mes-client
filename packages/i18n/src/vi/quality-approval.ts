@@ -27,6 +27,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     request: 'Số yêu cầu',
     target: 'Đối tượng',
     targetLot: 'LOT đối tượng',
+    targetShipmentRequest: 'Lệnh xuất hàng đối tượng',
     myTurn: 'Lượt phê duyệt',
   },
   /** 탭 줄 오른쪽 상태 칩(#186) — 「결재 대기 3」. 누르면 그 상태만 남고, 다시 누르면 풀린다. */

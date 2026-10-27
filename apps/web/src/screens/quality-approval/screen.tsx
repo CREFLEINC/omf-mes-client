@@ -64,6 +64,7 @@ import {
 import { RequestList } from './request-list';
 import {
   IQC_SKIP_APPROVAL_PATH,
+  QUALITY_APPROVALS_PATH,
   IQC_SKIP_TYPE_CODE,
   STATUS_FILTER_CODES,
   StatusChips,
@@ -115,6 +116,11 @@ const GOODS_RECEIPT_PATH = '/logistics/goods-receipt';
 const SHIPMENT_PROCESSING_PATH = '/shipment/shipment-processing';
 export interface QualityApprovalScreenProps {
   approvalTypeCodes?: readonly string[];
+  /**
+   * 이 유형만 보는 탭 화면(#193 · IQC 생략 탭 = W-01-02 주소). 전체 탭과 같은 화면 · 같은 조회 조건을 쓰고 유형만
+   * 고정한다 — 다른 유형 탭을 누르면 품질 승인 처리 주소로 돌아간다.
+   */
+  fixedTypeCode?: string;
 }
 
 /** 끝난 요청의 상태 — 결재한 단계를 한 줄씩 보이는 모양으로 바뀐다(#193). 모르는 값은 결재 대기 모양 그대로다. */
@@ -122,6 +128,7 @@ const FINISHED_STATUS_CODES: readonly string[] = ['APPROVED', 'REJECTED'];
 
 export const QualityApprovalScreen = ({
   approvalTypeCodes = QUALITY_APPROVAL_TYPE_CODES,
+  fixedTypeCode,
 }: QualityApprovalScreenProps = {}) => {
   const t = messages.qualityApproval;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -142,17 +149,21 @@ export const QualityApprovalScreen = ({
     () => readFilters(searchParams, approvalTypeCodes, STATUS_FILTER_CODES),
     [approvalTypeCodes, searchParams],
   );
+  /* 유형 고정 화면(IQC 생략 탭)은 주소와 무관하게 그 유형으로 조회한다 — 주소에는 유형을 적지 않는다(#193). */
+  const typeFilters =
+    fixedTypeCode === undefined ? filters : { ...filters, approvalTypeCode: fixedTypeCode };
+  const typeCode = typeFilters.approvalTypeCode;
   const pendingOnly = readPendingOnly(searchParams);
   const page = readPage(searchParams);
   const selectedId = readSelectedRequestId(searchParams);
   const scopeWarning = approvalScopeWarning(approvalTypeCodes);
-  const query = toRequestListQuery(filters, pendingOnly, page);
+  const query = toRequestListQuery(typeFilters, pendingOnly, page);
   const list = useApprovalRequests(query);
   /*
    * 탭 줄 상태 칩의 수 — 지금 조건(상태 조건은 빼고)의 상태별 첫 쪽 건수. 켜진 칩의 조회는 위 목록과 같은 조회라
    * 다시 나가지 않는다(첫 쪽일 때).
    */
-  const unfiltered = { ...filters, statusCode: '' };
+  const unfiltered = { ...typeFilters, statusCode: '' };
   const statusCounts = {
     PENDING: useApprovalRequests(toRequestListQuery(unfiltered, true, 1)).data?.page.total,
     APPROVED: useApprovalRequests(
@@ -705,11 +716,21 @@ export const QualityApprovalScreen = ({
        */}
       <TypeTabs
         options={toTypeTabOptions(approvalTypeCodes, canOpenIqcSkip)}
-        value={filters.approvalTypeCode}
+        value={typeCode}
         onChange={(code) => {
-          /* 「IQC (수입검사) 생략」 탭은 긴급 IQC 생략 한도승인 화면이다 — 그 화면으로 옮긴다. */
-          if (code === IQC_SKIP_TYPE_CODE) void navigate(IQC_SKIP_APPROVAL_PATH);
-          else apply({ ...filters, approvalTypeCode: code }, pendingOnly);
+          if (code === typeCode) return;
+          /* 「IQC (수입검사) 생략」 탭은 긴급 IQC 생략 한도승인 주소다(W-01-02) — 같은 화면을 그 유형 고정으로 연다. */
+          if (code === IQC_SKIP_TYPE_CODE) {
+            void navigate(IQC_SKIP_APPROVAL_PATH);
+            return;
+          }
+          /* 유형 고정 화면에서 다른 탭 — 품질 승인 처리 주소로 돌아가 그 유형으로 조회한다. */
+          if (fixedTypeCode !== undefined) {
+            const query = code === '' ? '' : `?${new URLSearchParams({ ty: code }).toString()}`;
+            void navigate(`${QUALITY_APPROVALS_PATH}${query}`);
+            return;
+          }
+          apply({ ...filters, approvalTypeCode: code }, pendingOnly);
         }}
         trailing={
           <>
@@ -757,6 +778,13 @@ export const QualityApprovalScreen = ({
             </div>
           )}
           <RequestList
+            targetHeader={
+              typeCode === ''
+                ? t.fields.target
+                : typeCode === OQC_SKIP
+                  ? t.fields.targetShipmentRequest
+                  : t.fields.targetLot
+            }
             rows={rows}
             isLoading={list.isPending}
             error={error}

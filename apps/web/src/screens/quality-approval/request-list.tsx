@@ -17,6 +17,8 @@ export interface RequestListProps {
   selectedId: number | null;
   onSelect: (id: number) => void;
   onChangePage: (page: number) => void;
+  /** 대상 열 이름 — 탭(승인 유형)에 맞춘다(#193). 주지 않으면 「대상 LOT」. */
+  targetHeader?: string;
 }
 
 export const RequestList = ({
@@ -27,6 +29,7 @@ export const RequestList = ({
   selectedId,
   onSelect,
   onChangePage,
+  targetHeader,
 }: RequestListProps) => {
   const t = messages.qualityApproval;
   const columns: Column<RequestRow>[] = [
@@ -47,7 +50,7 @@ export const RequestList = ({
       ),
     },
     /* 대상 LOT 은 폭을 정하지 않는다 — 남는 폭을 흡수한다(`patterns/column-resize.tsx`). */
-    { key: 'target', header: t.fields.targetLot, render: (row) => row.targetName },
+    { key: 'target', header: targetHeader ?? t.fields.targetLot, render: (row) => row.targetName },
     /* 상태는 코드 대신 사용자 용어 배지로(#144) — 대기 주황 · 승인 초록 · 반려 빨강. */
     {
       key: 'status',
