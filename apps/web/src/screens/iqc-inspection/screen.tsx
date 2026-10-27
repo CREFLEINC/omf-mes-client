@@ -953,23 +953,6 @@ export const IqcInspectionScreen = () => {
                     label: messages.inspectionDocuments.heading,
                     content: (
                       <div className="iqc-inspection-tab-body iqc-inspection-fold">
-                        {/* 올릴 수 있는 형식 · 크기 — 라벨로(사용자 지시 2026-10-26). 클립 아이콘 + 안내, 크기 한도(「10MB」)만 주 색으로 강조(사용자 지시 2026-10-26). */}
-                        <span className="iqc-inspection-head-badge iqc-inspection-docs-help">
-                          <Icon name="attach_file" size={16} aria-hidden />
-                          <span>
-                            {messages.inspectionDocuments.help
-                              .split(/(\d+\s*MB)/)
-                              .map((part, index) =>
-                                /^\d+\s*MB$/.test(part) ? (
-                                  <strong key={index} className="iqc-inspection-docs-limit">
-                                    {part}
-                                  </strong>
-                                ) : (
-                                  part
-                                ),
-                              )}
-                          </span>
-                        </span>
                         <AttachmentPanel
                           key={detail.data.lotId}
                           targetTypeCode="LOT"
@@ -977,6 +960,28 @@ export const IqcInspectionScreen = () => {
                           scrollX={layout.orientation === 'row'}
                           paged
                           bulkDownload
+                          /*
+                           * 올릴 수 있는 형식 · 크기 라벨 — 같은 줄 오른쪽 끝에 [파일 선택] [업로드](사용자 지시 2026-10-27 · #185).
+                           * 클립 아이콘 + 안내, 크기 한도(「10MB」)만 주 색으로 강조(사용자 지시 2026-10-26).
+                           */
+                          toolbarStart={
+                            <span className="iqc-inspection-head-badge iqc-inspection-docs-help">
+                              <Icon name="attach_file" size={16} aria-hidden />
+                              <span>
+                                {messages.inspectionDocuments.help
+                                  .split(/(\d+\s*MB)/)
+                                  .map((part, index) =>
+                                    /^\d+\s*MB$/.test(part) ? (
+                                      <strong key={index} className="iqc-inspection-docs-limit">
+                                        {part}
+                                      </strong>
+                                    ) : (
+                                      part
+                                    ),
+                                  )}
+                              </span>
+                            </span>
+                          }
                         />
                       </div>
                     ),

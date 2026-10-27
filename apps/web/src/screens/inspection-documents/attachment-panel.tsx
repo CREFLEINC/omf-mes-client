@@ -1,4 +1,14 @@
-import { Button, Dialog, EmptyState, Icon, IconButton, Table, type Column } from '@crefle/web-ui';
+import {
+  Button,
+  Chip,
+  Dialog,
+  EmptyState,
+  Icon,
+  IconButton,
+  SearchInput,
+  Table,
+  type Column,
+} from '@crefle/web-ui';
 import {
   createIdempotencyKey,
   type AttachmentTargetType,
@@ -55,6 +65,29 @@ const fileTypeOf = (row: Attachment): string => {
   return dot < 0 ? row.contentType : row.fileName.slice(dot + 1).toUpperCase();
 };
 
+/** 파일 유형 묶음 — 거르기 칩과 파일명 앞 표식이 쓴다(#185). */
+const FILE_KINDS = ['image', 'pdf', 'excel', 'word', 'other'] as const;
+type FileKind = (typeof FILE_KINDS)[number];
+const KIND_EXTENSIONS: Record<Exclude<FileKind, 'other'>, readonly string[]> = {
+  image: ['PNG', 'JPG', 'JPEG', 'WEBP'],
+  pdf: ['PDF'],
+  excel: ['XLSX', 'XLS', 'CSV'],
+  word: ['DOCX', 'DOC'],
+};
+const KIND_ICONS: Record<FileKind, string> = {
+  image: 'image',
+  pdf: 'picture_as_pdf',
+  excel: 'table_chart',
+  word: 'description',
+  other: 'draft',
+};
+const kindOf = (row: Attachment): FileKind => {
+  const type = fileTypeOf(row);
+  return (
+    FILE_KINDS.find((kind) => kind !== 'other' && KIND_EXTENSIONS[kind].includes(type)) ?? 'other'
+  );
+};
+
 export const attachmentKeys = {
   list: (targetTypeCode: AttachmentTargetType, targetId: number) =>
     ['inspection-documents', targetTypeCode, targetId] as const,
@@ -70,6 +103,11 @@ export interface AttachmentPanelProps {
   paged?: boolean;
   /** 왼쪽 체크란으로 골라 zip 하나로 내려받는다(IQC 상세 탭 · 사용자 지시 2026-10-27 · #185). */
   bulkDownload?: boolean;
+  /**
+   * 주면 위 한 줄에 이것(형식 안내 등)과 [파일 선택] [업로드]를 오른쪽 끝에 세우고, 그 아래 파일명 찾기 · 유형 칩 ·
+   * [선택 파일 내려받기]를 둔다(IQC 상세 탭 · 사용자 지시 2026-10-27 · #185). 없으면 종전처럼 단추가 표 아래다.
+   */
+  toolbarStart?: ReactNode;
 }
 
 /**
@@ -91,6 +129,7 @@ export const AttachmentPanel = ({
   scrollX = false,
   paged = false,
   bulkDownload = false,
+  toolbarStart,
 }: AttachmentPanelProps) => {
   const { client } = useApiClient();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -98,6 +137,8 @@ export const AttachmentPanel = ({
   const [selected, setSelected] = useState<File[]>([]);
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [isZipping, setIsZipping] = useState(false);
+  const [search, setSearch] = useState('');
+  const [kind, setKind] = useState<FileKind | null>(null);
   /* 미리보기(#185) — 이미지 · PDF · 글(TXT · CSV)은 창 안에서 보이고, 그 밖은 내려받기만 권한다. */
   const [preview, setPreview] = useState<{
     row: Attachment;
@@ -320,6 +361,13 @@ export const AttachmentPanel = ({
        */
       render: (row) => (
         <span className="inspection-documents-file-cell">
+          <Icon
+            name={KIND_ICONS[kindOf(row)]}
+            size={18}
+            className="inspection-documents-kind"
+            data-kind={kindOf(row)}
+            aria-hidden
+          />
           <Button
             variant="text"
             size="sm"
@@ -378,51 +426,56 @@ export const AttachmentPanel = ({
     fitContent: scrollX,
   });
   const fit = useFitColumns(resizable.columns, { scrollX });
-  const paging = useClientPage(list.data ?? [], { uploadedAt: (row) => row.uploadedAt });
+  /* 파일명 찾기 · 유형 칩으로 거른 뒤 정렬 · 쪽 나누기(#185). 칩의 건수는 거르기 전 전체에서 센다. */
+  const all = list.data ?? [];
+  const keyword = search.trim().toLowerCase();
+  const filtered = all.filter(
+    (row) =>
+      (kind === null || kindOf(row) === kind) &&
+      (keyword === '' || row.fileName.toLowerCase().includes(keyword)),
+  );
+  const paging = useClientPage(filtered, { uploadedAt: (row) => row.uploadedAt });
+  const hasToolbar = toolbarStart !== undefined;
 
-  return (
-    /* 제목과 허용 형식 안내는 이 구획을 접는 줄(부르는 화면)이 맡는다(#133). */
-    <section aria-label={t.heading} className="inspection-documents">
-      {list.isError ? (
-        <p className="field-note">{t.loadFailed}</p>
-      ) : (
-        /* 올린 파일이 없어도 표 모양은 그대로 두고 줄 안에 없다고 적는다(#133). */
-        <div ref={fit.ref} className="inspection-queue-table" style={resizable.style}>
-          <Table
-            caption={t.caption}
-            density="compact"
-            columns={fit.columns}
-            rows={paged ? paging.rows : (list.data ?? [])}
-            {...(paged ? { sort: paging.sort, onSortChange: paging.onSortChange } : {})}
-            {...(bulkDownload
-              ? {
-                  selectable: true,
-                  selectedIds: checkedRows.map((row) => String(row.attachmentId)),
-                  onSelectionChange: setCheckedIds,
-                }
-              : {})}
-            getRowId={(row) => String(row.attachmentId)}
-            empty={
-              list.isPending ? (
-                <p className="field-note">{t.loading}</p>
-              ) : (
-                <EmptyState
-                  size="sm"
-                  icon={<Icon name="contract_delete" size={32} />}
-                  title={t.emptyTitle}
-                  description={t.emptyHint}
-                />
-              )
-            }
-          />
-        </div>
-      )}
-      {paged && paging.nav !== null && <PageNav {...paging.nav} />}
-      <SaveErrorBanner error={upload.error} />
-      {upload.fieldErrors.file !== undefined && (
-        <p className="field-note">{upload.fieldErrors.file}</p>
-      )}
-      {notice !== null && <p className="field-note">{notice}</p>}
+  const uploadButtons = (
+    <>
+      <Button
+        variant="outlined"
+        size="md"
+        disabled={upload.isSaving}
+        onClick={() => inputRef.current?.click()}
+      >
+        {t.upload}
+      </Button>
+      <Button
+        size="md"
+        loading={upload.isSaving}
+        disabled={selected.length === 0 || hasSelectError || upload.isSaving}
+        onClick={() => upload.write({ files: selected })}
+      >
+        {upload.isSaving
+          ? t.uploading
+          : selected.length > 1
+            ? t.submitCount(selected.length)
+            : t.submit}
+      </Button>
+    </>
+  );
+  const downloadCheckedButton = (
+    <Button
+      variant="outlined"
+      size="md"
+      className="inspection-documents-bulk"
+      leadingIcon={<Icon name="download" size={18} aria-hidden />}
+      loading={isZipping}
+      disabled={checkedRows.length === 0 || isZipping}
+      onClick={() => void downloadChecked()}
+    >
+      {isZipping ? t.downloading : t.downloadSelected(checkedRows.length)}
+    </Button>
+  );
+  const pendingList = (
+    <>
       {selected.length > 0 && (
         /* 업로드 대기 — 이미 올린 문서(위 표)와 다른 상자로 떼어 «아직 올라가지 않았음»을 보인다(#133). */
         <div className="inspection-documents-selected-list" aria-label={t.selected} role="group">
@@ -453,6 +506,92 @@ export const AttachmentPanel = ({
           })}
         </div>
       )}
+    </>
+  );
+
+  return (
+    /* 제목과 허용 형식 안내는 이 구획을 접는 줄(부르는 화면)이 맡는다(#133). */
+    <section aria-label={t.heading} className="inspection-documents">
+      {hasToolbar && (
+        <>
+          <div className="inspection-documents-toolbar">
+            {toolbarStart}
+            <div className="inspection-documents-toolbar-actions">{uploadButtons}</div>
+          </div>
+          {pendingList}
+          <div className="inspection-documents-filters">
+            <SearchInput
+              size="sm"
+              aria-label={t.search}
+              placeholder={t.search}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onClear={() => setSearch('')}
+            />
+            <div className="inspection-documents-kinds" role="group" aria-label={t.kindLabel}>
+              {([null, ...FILE_KINDS] as const).map((option) => (
+                <Chip
+                  key={option ?? 'all'}
+                  variant="filter"
+                  size="sm"
+                  selected={kind === option}
+                  aria-pressed={kind === option}
+                  onSelectedChange={() => setKind(option)}
+                >
+                  {t.kindCount(
+                    t.kinds[option ?? 'all'],
+                    option === null
+                      ? all.length
+                      : all.filter((row) => kindOf(row) === option).length,
+                  )}
+                </Chip>
+              ))}
+            </div>
+            {bulkDownload && downloadCheckedButton}
+          </div>
+        </>
+      )}
+      {list.isError ? (
+        <p className="field-note">{t.loadFailed}</p>
+      ) : (
+        /* 올린 파일이 없어도 표 모양은 그대로 두고 줄 안에 없다고 적는다(#133). */
+        <div ref={fit.ref} className="inspection-queue-table" style={resizable.style}>
+          <Table
+            caption={t.caption}
+            density="compact"
+            columns={fit.columns}
+            rows={paged ? paging.rows : all}
+            {...(paged ? { sort: paging.sort, onSortChange: paging.onSortChange } : {})}
+            {...(bulkDownload
+              ? {
+                  selectable: true,
+                  selectedIds: checkedRows.map((row) => String(row.attachmentId)),
+                  onSelectionChange: setCheckedIds,
+                }
+              : {})}
+            getRowId={(row) => String(row.attachmentId)}
+            empty={
+              list.isPending ? (
+                <p className="field-note">{t.loading}</p>
+              ) : (
+                <EmptyState
+                  size="sm"
+                  icon={<Icon name="contract_delete" size={32} />}
+                  title={t.emptyTitle}
+                  description={t.emptyHint}
+                />
+              )
+            }
+          />
+        </div>
+      )}
+      {paged && paging.nav !== null && <PageNav {...paging.nav} />}
+      <SaveErrorBanner error={upload.error} />
+      {upload.fieldErrors.file !== undefined && (
+        <p className="field-note">{upload.fieldErrors.file}</p>
+      )}
+      {notice !== null && <p className="field-note">{notice}</p>}
+      {!hasToolbar && pendingList}
       <input
         ref={inputRef}
         type="file"
@@ -462,40 +601,12 @@ export const AttachmentPanel = ({
         aria-label={t.upload}
         onChange={pick}
       />
-      <div className="form-actions">
-        {bulkDownload && (
-          <Button
-            variant="outlined"
-            size="md"
-            className="form-actions-secondary"
-            loading={isZipping}
-            disabled={checkedRows.length === 0 || isZipping}
-            onClick={() => void downloadChecked()}
-          >
-            {isZipping ? t.downloading : t.downloadSelected(checkedRows.length)}
-          </Button>
-        )}
-        <Button
-          variant="outlined"
-          size="md"
-          disabled={upload.isSaving}
-          onClick={() => inputRef.current?.click()}
-        >
-          {t.upload}
-        </Button>
-        <Button
-          size="md"
-          loading={upload.isSaving}
-          disabled={selected.length === 0 || hasSelectError || upload.isSaving}
-          onClick={() => upload.write({ files: selected })}
-        >
-          {upload.isSaving
-            ? t.uploading
-            : selected.length > 1
-              ? t.submitCount(selected.length)
-              : t.submit}
-        </Button>
-      </div>
+      {!hasToolbar && (
+        <div className="form-actions">
+          {bulkDownload && downloadCheckedButton}
+          {uploadButtons}
+        </div>
+      )}
       <Dialog
         open={preview !== null}
         onClose={closePreview}

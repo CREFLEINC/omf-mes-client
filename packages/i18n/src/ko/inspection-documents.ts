@@ -22,8 +22,8 @@ export const inspectionDocuments = {
   caption: '첨부 파일 목록',
   columns: {
     fileName: '파일명',
-    fileType: '파일 유형',
-    size: '파일 크기',
+    fileType: '유형',
+    size: '크기',
     uploadedBy: '등록자',
     uploadedAt: '등록일',
   },
@@ -36,6 +36,11 @@ export const inspectionDocuments = {
   downloading: '묶는 중…',
   zipName: '첨부파일',
   zipFailed: '선택한 파일을 내려받지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
+  /* 찾기 · 유형 거르기(#185). */
+  search: '파일명 검색',
+  kindLabel: '파일 유형',
+  kinds: { all: '전체', image: '이미지', pdf: 'PDF', excel: '엑셀', word: '워드', other: '기타' },
+  kindCount: (label: string, count: number): string => `${label} ${String(count)}`,
   /* 미리보기(#185). */
   preview: (fileName: string): string => `${fileName} 미리보기`,
   previewLoading: '파일을 불러오는 중입니다.',

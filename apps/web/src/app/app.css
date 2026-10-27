@@ -15222,6 +15222,51 @@ button.app-button-neutral {
   border-top: 1px solid var(--outline-variant);
 }
 
+/* 첨부 탭 위 도구줄(#185) — 왼쪽 형식 안내, 오른쪽 끝 [파일 선택] [업로드]. 좁으면 단추가 아래 줄 오른쪽이다. */
+.inspection-documents-toolbar,
+.inspection-documents-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.inspection-documents-toolbar-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+/* 파일명 찾기 · 유형 칩 · [선택 파일 내려받기](오른쪽 끝). */
+.inspection-documents-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.inspection-documents-bulk {
+  margin-inline-start: auto;
+}
+
+/* 파일명 앞 유형 표식 — 이미지 파랑 · PDF 빨강 · 엑셀 초록 · 워드 파랑 · 기타 흐리게. */
+.inspection-documents-kind {
+  flex: none;
+  color: var(--on-surface-muted);
+}
+
+.inspection-documents-kind[data-kind='image'],
+.inspection-documents-kind[data-kind='word'] {
+  color: var(--semantic-info);
+}
+
+.inspection-documents-kind[data-kind='pdf'] {
+  color: var(--semantic-error);
+}
+
+.inspection-documents-kind[data-kind='excel'] {
+  color: var(--semantic-success);
+}
+
 /* 첨부 미리보기 창(#185) — 이미지 · PDF · 글을 창 높이 안에서 보인다. */
 .inspection-documents-preview {
   display: grid;
