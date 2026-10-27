@@ -6,17 +6,24 @@ import type { ApprovalProgressView, ApprovalStepView } from './progress';
 
 const t = messages.qualityApproval;
 
-/** 단계 상태 한 마디 — 결재한 단계는 결정(승인·반려), 아직이면 「결재 대기」·「대기」다(#193). */
-const stepStateLabel = (step: ApprovalStepView): string => {
+/**
+ * 단계 상태 한 마디 — 결재한 단계는 결정(승인·반려), 차례를 기다리는 단계는 「대기」다(#193).
+ * 지금 결재할 단계는 붉은 번호 원이 이미 말해 글을 붙이지 않는다(사용자 지시 2026-10-27).
+ */
+const stepStateLabel = (step: ApprovalStepView): string | null => {
   if (step.decisionCode !== null) return statusBadgeOf(step.decisionCode).label;
 
-  return step.isCurrent ? t.progress.waitingCurrent : t.progress.waitingPending;
+  return step.isCurrent ? null : t.progress.waitingPending;
 };
 
 /* 앞 단계에서 이미 결재했으면 일시·의견도 작게 잇는다 — 결재 대기 중에도 앞 결재의 근거가 보인다. */
 const describeStep = (step: ApprovalStepView) => (
   <>
-    <span className={`quality-approval-step-state is-${step.status}`}>{stepStateLabel(step)}</span>
+    {stepStateLabel(step) !== null && (
+      <span className={`quality-approval-step-state is-${step.status}`}>
+        {stepStateLabel(step)}
+      </span>
+    )}
     {step.decisionAtText !== null && <span className="field-note">{step.decisionAtText}</span>}
     {step.decisionComment !== null && <span className="field-note">{step.decisionComment}</span>}
   </>

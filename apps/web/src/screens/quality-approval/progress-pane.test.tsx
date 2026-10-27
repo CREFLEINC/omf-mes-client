@@ -53,7 +53,8 @@ describe('ProgressPane', () => {
     ).toEqual(['5', '9']);
     /* 모르는 결정 코드는 원문 그대로, 아는 코드는 사람 말로(#193). */
     expect(within(pane).getByText('SYNTH-UNKNOWN')).toBeVisible();
-    expect(within(pane).getByText(t.progress.waitingCurrent)).toBeVisible();
+    /* 지금 결재할 단계에는 상태 글을 붙이지 않는다 — 번호 원이 말한다(#193). */
+    expect(items[1]).not.toHaveTextContent('결재 대기');
     expect(within(pane).getByText('2026-08-22 15:02')).toBeVisible();
     expect(within(pane).getByText('합성 결재 의견')).toBeVisible();
     expect(items[1]).toHaveAttribute('aria-current', 'step');

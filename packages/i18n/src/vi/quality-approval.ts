@@ -113,9 +113,8 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     steps: 'Bước phê duyệt',
     position: (current: number, total: number): string =>
       `Bước ${String(current)} / ${String(total)}`,
-    myTurn: 'Bây giờ đến lượt phê duyệt yêu cầu này',
+    myTurn: 'Đến lượt phê duyệt yêu cầu',
     notMyTurn: 'Bây giờ chưa đến lượt phê duyệt yêu cầu này',
-    waitingCurrent: 'Chờ phê duyệt',
     waitingPending: 'Chờ',
     stateTitle: (label: string): string => `Trạng thái ${label}`,
     noSteps: 'Không có bước phê duyệt nào để hiển thị',
