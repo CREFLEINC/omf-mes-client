@@ -4327,11 +4327,11 @@ main:has(.iqc-skip-approval-detail) {
 /*
  * 결재 대기 — 단계 표시(#193 · IQC 수입검사 단계 표시와 같은 모양). 번호 원 · 결재자(아래 상태 알약) 뒤로 다음 단계까지
  * 선이 이어진다. 카드 끝까지 늘이지 않는다 — 선은 단계마다 정해진 길이까지만 자라고, 사람이 늘면 그만큼 길어진다.
- * 좁으면 선이 줄어든다. 가운데가 아니라 아래 「n / m 단계」 줄과 같이 왼쪽에서 시작한다(사용자 지시 2026-10-27).
+ * 좁으면 선이 줄어든다. 가운데에 모으되 선을 길게 두어 두 명이어도 휑하지 않게 한다(사용자 지시 2026-10-27).
  */
 .quality-approval-steps {
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: flex-start;
   gap: var(--space-3);
   margin: 0;
@@ -4342,7 +4342,7 @@ main:has(.iqc-skip-approval-detail) {
 .quality-approval-step {
   display: grid;
   flex: 0 1 auto;
-  grid-template-columns: auto minmax(var(--space-6), 16rem);
+  grid-template-columns: auto minmax(var(--space-6), 28rem);
   /* 번호 원끼리 한 줄에 맞춘다 — 이름 아래 상태 라벨이 있는 단계도 원 높이가 같다. */
   align-items: start;
   gap: var(--space-1) var(--space-3);
@@ -4422,10 +4422,14 @@ main:has(.iqc-skip-approval-detail) {
   background: var(--primary);
 }
 
-/* 앞 단계 결재 일시 · 의견 — 이름 아래, 번호 원 오른쪽에서 시작한다. */
+/*
+ * 앞 단계 결재 일시 · 의견 — 이름 아래, 번호 원 오른쪽에서 시작한다. 단계 폭 계산에서 빼고(`contain: inline-size`)
+ * 두 칸에 걸쳐 둔다 — 빼지 않으면 긴 의견만큼 이름 칸이 넓어져 선이 오른쪽으로 밀린다. 넘치면 줄을 바꾼다.
+ */
 .quality-approval-step-notes {
   display: grid;
-  grid-column: 1;
+  grid-column: 1 / -1;
+  contain: inline-size;
   gap: var(--space-1);
   padding-inline-start: calc(1.75rem + var(--space-2));
 }
@@ -4507,7 +4511,8 @@ main:has(.iqc-skip-approval-detail) {
  * 왼쪽에 수량 요약 · 요청 정보, 오른쪽에 사용 조건, 특채 적용 · 안내는 그 아래 전체 폭이다. 좌우 배치는 위아래로 쌓는다.
  */
 .po-board-split.is-stacked .quality-approval-concession {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* 사용 조건 칸을 조금 좁혀 왼쪽 요청 정보(긴 LOT 번호 + 열기 단추)에 폭을 더 준다(사용자 지시 2026-10-27). */
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   column-gap: var(--space-6);
 }
 
@@ -4736,13 +4741,14 @@ main:has(.iqc-skip-approval-detail) {
 /* 값 + 바로 옆 작은 「열기」 단추(#193) — 좁으면 값 아래로 내려간다. */
 .quality-approval-target-value {
   display: inline-flex;
-  flex-wrap: wrap;
+  /* 단추는 늘 값 옆에 — 칸이 좁으면 긴 값(LOT 번호)이 칸 안에서 줄을 바꾼다(사용자 지시 2026-10-27). */
   align-items: center;
   gap: var(--space-2) var(--space-3);
   min-width: 0;
 }
 
 .quality-approval-target-value > span {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
