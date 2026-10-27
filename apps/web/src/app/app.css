@@ -15222,6 +15222,34 @@ button.app-button-neutral {
   border-top: 1px solid var(--outline-variant);
 }
 
+/* 첨부 미리보기 창(#185) — 이미지 · PDF · 글을 창 높이 안에서 보인다. */
+.inspection-documents-preview {
+  display: grid;
+  place-items: center;
+  min-height: 12rem;
+}
+
+.inspection-documents-preview-image {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+}
+
+.inspection-documents-preview-frame {
+  width: 100%;
+  height: 70vh;
+  border: 0;
+}
+
+.inspection-documents-preview-text {
+  justify-self: stretch;
+  max-height: 70vh;
+  margin: 0;
+  overflow: auto;
+  font: var(--type-body-sm);
+  white-space: pre-wrap;
+}
+
 /* 첨부 표 파일명 칸 — 이름(말줄임) 바로 옆에 내려받기 단추(#185). */
 .inspection-documents-file-cell {
   display: inline-flex;

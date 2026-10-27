@@ -1,4 +1,4 @@
-import { Button, EmptyState, Icon, IconButton, Table, type Column } from '@crefle/web-ui';
+import { Button, Dialog, EmptyState, Icon, IconButton, Table, type Column } from '@crefle/web-ui';
 import {
   createIdempotencyKey,
   type AttachmentTargetType,
@@ -6,7 +6,7 @@ import {
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useFitColumns } from '../../patterns/column-fit';
@@ -98,6 +98,13 @@ export const AttachmentPanel = ({
   const [selected, setSelected] = useState<File[]>([]);
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [isZipping, setIsZipping] = useState(false);
+  /* 미리보기(#185) — 이미지 · PDF · 글(TXT · CSV)은 창 안에서 보이고, 그 밖은 내려받기만 권한다. */
+  const [preview, setPreview] = useState<{
+    row: Attachment;
+    blob: Blob | null;
+    url: string | null;
+    text: string | null;
+  } | null>(null);
   const queryClient = useQueryClient();
   const listKey = attachmentKeys.list(targetTypeCode, targetId);
 
@@ -209,6 +216,57 @@ export const AttachmentPanel = ({
     }
   };
 
+  const openPreview = async (row: Attachment): Promise<void> => {
+    setNotice(null);
+    setPreview({ row, blob: null, url: null, text: null });
+    try {
+      const blob = await contentOf(row);
+      const isText = blob.type.startsWith('text/') || /\.(txt|csv)$/i.test(row.fileName);
+      setPreview({
+        row,
+        blob,
+        url: isText ? null : URL.createObjectURL(blob),
+        text: isText ? await blob.text() : null,
+      });
+    } catch {
+      setPreview(null);
+      setNotice(t.openFailed);
+    }
+  };
+
+  const closePreview = (): void => {
+    if (preview?.url != null) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+  };
+
+  const previewBody = (): ReactNode => {
+    if (preview === null || preview.blob === null) {
+      return <p className="field-note">{t.previewLoading}</p>;
+    }
+    if (preview.text !== null) {
+      return <pre className="inspection-documents-preview-text">{preview.text}</pre>;
+    }
+    if (preview.url !== null && preview.blob.type.startsWith('image/')) {
+      return (
+        <img
+          className="inspection-documents-preview-image"
+          src={preview.url}
+          alt={preview.row.fileName}
+        />
+      );
+    }
+    if (preview.url !== null && preview.blob.type === 'application/pdf') {
+      return (
+        <iframe
+          className="inspection-documents-preview-frame"
+          src={preview.url}
+          title={t.preview(preview.row.fileName)}
+        />
+      );
+    }
+    return <p className="field-note">{t.previewUnsupported}</p>;
+  };
+
   /* 체크한 파일을 차례로 받아 zip 하나로 묶어 내려받는다(#185). 지금 목록에 없는 체크는 버린다. */
   const checkedRows = (list.data ?? []).filter((row) =>
     checkedIds.includes(String(row.attachmentId)),
@@ -257,14 +315,21 @@ export const AttachmentPanel = ({
       header: t.columns.fileName,
       width: '280px',
       /*
-       * 파일명 바로 옆에 내려받기 단추 — 따로 「관리」 열을 두지 않는다. 이름 자체는 누르는 자리가 아니다 —
+       * 파일명 바로 옆에 내려받기 단추 — 따로 「관리」 열을 두지 않는다. 이름을 누르면 미리보기다 —
        * 내려받기는 단추로만 한다(사용자 지시 2026-10-27 · #185).
        */
       render: (row) => (
         <span className="inspection-documents-file-cell">
-          <span className="inspection-documents-file-name" title={row.fileName}>
+          <Button
+            variant="text"
+            size="sm"
+            className="inspection-documents-file-name"
+            title={row.fileName}
+            aria-label={t.preview(row.fileName)}
+            onClick={() => void openPreview(row)}
+          >
             {row.fileName}
-          </span>
+          </Button>
           <IconButton
             icon="download"
             size="sm"
@@ -431,6 +496,30 @@ export const AttachmentPanel = ({
               : t.submit}
         </Button>
       </div>
+      <Dialog
+        open={preview !== null}
+        onClose={closePreview}
+        size="lg"
+        title={preview?.row.fileName}
+        footer={
+          <>
+            <Button variant="text" size="md" onClick={closePreview}>
+              {t.previewClose}
+            </Button>
+            <Button
+              size="md"
+              disabled={preview?.blob == null}
+              onClick={() => {
+                if (preview?.blob != null) save(preview.blob, preview.row.fileName);
+              }}
+            >
+              {t.previewDownload}
+            </Button>
+          </>
+        }
+      >
+        <div className="inspection-documents-preview">{previewBody()}</div>
+      </Dialog>
     </section>
   );
 };

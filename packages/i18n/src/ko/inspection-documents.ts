@@ -36,6 +36,12 @@ export const inspectionDocuments = {
   downloading: '묶는 중…',
   zipName: '첨부파일',
   zipFailed: '선택한 파일을 내려받지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
+  /* 미리보기(#185). */
+  preview: (fileName: string): string => `${fileName} 미리보기`,
+  previewLoading: '파일을 불러오는 중입니다.',
+  previewUnsupported: '이 형식은 미리 볼 수 없습니다. 내려받아 확인하세요.',
+  previewDownload: '내려받기',
+  previewClose: '닫기',
   scan: {
     label: 'LOT 스캔',
     placeholder: 'LOT 바코드 스캔 또는 번호를 입력하세요',

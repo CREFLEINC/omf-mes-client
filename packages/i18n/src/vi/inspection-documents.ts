@@ -34,6 +34,11 @@ export const inspectionDocuments = {
   downloading: 'Đang đóng gói…',
   zipName: 'TepDinhKem',
   zipFailed: 'Không tải được các tệp đã chọn. Hãy kiểm tra kết nối rồi thử lại.',
+  preview: (fileName: string): string => `Xem trước ${fileName}`,
+  previewLoading: 'Đang tải tệp.',
+  previewUnsupported: 'Không thể xem trước định dạng này. Hãy tải xuống để xem.',
+  previewDownload: 'Tải xuống',
+  previewClose: 'Đóng',
   scan: {
     label: 'Quét LOT',
     placeholder: 'Quét mã vạch LOT hoặc nhập số',
