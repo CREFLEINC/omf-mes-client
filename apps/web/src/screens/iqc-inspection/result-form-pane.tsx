@@ -307,7 +307,8 @@ export const ResultFormPane = ({
 
   const field = (key: keyof QuantityDraft, label: string, invalid: boolean): ReactElement => (
     /* 단위 코드는 칸 바로 옆 글자로 — 입력값 자체에는 넣지 않는다. 모르면 붙이지 않는다. */
-    <div className="iqc-inspection-qty-field">
+    /* 칸 종류 — 숫자 색을 판정 색으로(합격 초록 · 불합격 빨강 · 보류 노랑 · 사용자 지시 2026-10-27 · #185). */
+    <div className="iqc-inspection-qty-field" data-kind={key}>
       <TextField
         label={label}
         inputMode="decimal"

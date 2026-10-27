@@ -22265,6 +22265,25 @@ table.col-measuring td {
   margin-left: auto;
 }
 
+/* 수량 카드 숫자 색 — 합격 초록 · 불합격 빨강 · 보류 노랑, 총 검사 수량은 기본색(사용자 지시 2026-10-27 · #185). */
+.iqc-inspection-qty-judgment-row
+  .iqc-inspection-qty-field[data-kind='accepted']
+  input:nth-child(n):nth-child(n) {
+  color: var(--semantic-success-text);
+}
+
+.iqc-inspection-qty-judgment-row
+  .iqc-inspection-qty-field[data-kind='rejected']
+  input:nth-child(n):nth-child(n) {
+  color: var(--semantic-error-text);
+}
+
+.iqc-inspection-qty-judgment-row
+  .iqc-inspection-qty-field[data-kind='held']
+  input:nth-child(n):nth-child(n) {
+  color: var(--semantic-warning);
+}
+
 /* 총 검사 수량 옆 넘친 · 모자란 양 「+3 EA」 · 「-1 EA」 — 오류색 · 작은 글(사용자 지시 2026-10-27 · #185). */
 .iqc-inspection-qty-over {
   margin-left: var(--space-1);
