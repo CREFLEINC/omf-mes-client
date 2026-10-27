@@ -83,9 +83,9 @@ describe('toConcessionCardView', () => {
       concessionNo: 'SYNTH-CN-501',
       approvedQty: '10',
       consumedQty: '2',
+      remainingQty: '8',
       uom: 'EA',
-      validity: '2026-08-22 – 2026-09-30',
-      statusCode: 'SYNTH-ACTIVE',
+      validity: '2026-08-22 ~ 2026-09-30',
       usable: '사용 불가',
       remarks: '합성 비고',
       workOrder: 'SYNTH-WO-001',
@@ -166,8 +166,9 @@ describe('toConcessionCardView', () => {
     expect(toConcessionCardView(source, references)).toMatchObject({
       concessionNo: '특채번호 미제공',
       approvedQty: '0',
-      validity: '2020-01-01 – 종료일 없음',
-      statusCode: '상태 미제공',
+      /* 사용이 승인을 넘어도 잔여는 음수로 보이지 않는다(#193). */
+      remainingQty: '0',
+      validity: '2020-01-01 ~ 종료일 없음',
       usable: '사용 가능',
       remarks: '등록된 비고가 없습니다',
     });

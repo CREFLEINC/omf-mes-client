@@ -65,6 +65,9 @@ export const qualityApproval = {
     notFound: '요청을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 요청을 선택하세요.',
     /** 「전체」·OQC 생략 탭의 승인된 OQC 생략 — 실행 권한이 없을 때(#193). 서버가 W-04-03 권한으로 거른다. */
+    /** 특채 요청의 요청 상세 카드 제목과 요청 정보 묶음(#193). */
+    concessionTitle: '특채 승인 상세',
+    requestInfo: '요청 정보',
     oqcSkipNoPermission: 'OQC 생략 실행은 「OQC 출하검사 판정」 화면 권한이 있어야 합니다.',
     /** 「전체」 탭의 승인된 IQC 생략 — 실행 권한이 없을 때(#186). */
     iqcSkipNoPermission: 'IQC 생략 실행은 「긴급 IQC 생략 한도승인」 화면 권한이 있어야 합니다.',
@@ -114,10 +117,17 @@ export const qualityApproval = {
     unusable: '사용 불가',
     usableUnknown: '사용 가능 여부 미제공',
     concessionNoUnknown: '특채번호 미제공',
-    statusUnknown: '상태 미제공',
     remarksEmpty: '등록된 비고가 없습니다',
     openEnded: '종료일 없음',
     unrestricted: '제한 없음',
+    /** 특채 승인 상세 카드(#193)의 묶음 이름 — 수량 요약 · 사용 조건 · 적용 제한 · 연관 부적합. */
+    remainingQty: '잔여 수량',
+    usageTitle: '사용 조건',
+    limits: '적용 제한',
+    limitWorkOrder: '작업지시',
+    limitProcess: '공정',
+    limitCustomer: '고객',
+    nonconformanceHeading: '연관 부적합',
     reference: {
       loading: '참조 이름 불러오는 중',
       failed: '참조 이름 조회 실패',

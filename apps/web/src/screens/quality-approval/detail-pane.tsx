@@ -6,10 +6,47 @@ import type { RequestDetailView } from './types';
 
 export interface DetailPaneProps {
   view: RequestDetailView;
+  /**
+   * `concession` 이면 특채 승인 상세 카드의 「요청 정보」 묶음이다(#193) — 요청번호는 카드 머리에 서므로 빼고,
+   * 승인 유형 · 상신자 · 상신 일시 · 대상 LOT 을 두 칸씩, 사유를 한 줄 전부로 둔다.
+   */
+  variant?: 'default' | 'concession';
 }
 
-export const DetailPane = ({ view }: DetailPaneProps) => {
+export const DetailPane = ({ view, variant = 'default' }: DetailPaneProps) => {
   const t = messages.qualityApproval;
+
+  if (variant === 'concession') {
+    return (
+      <section className="quality-approval-concession-section" aria-label={t.detail.requestInfo}>
+        <h3>{t.detail.requestInfo}</h3>
+        <dl className="quality-approval-concession-grid">
+          {[
+            [t.fields.approvalTypeCode, approvalTypeLabelOf(view.approvalTypeCode)],
+            [t.fields.requestedByName, view.requesterName],
+            [t.fields.requestedAt, view.requestedAtText],
+            [t.fields.targetLot, view.targetName],
+          ].map(([label, value]) => (
+            <div className="field-cell" key={label}>
+              <dt className="field-label">{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+          <div className="field-cell is-wide" role="group" aria-label={t.panes.reason}>
+            <dt className="field-label">{t.fields.reason}</dt>
+            <dd>
+              {view.reasonLines.map((line) => (
+                <Fragment key={`reason:${String(line.sourceOffset)}`}>
+                  {line.sourceOffset === 0 ? null : <br />}
+                  {line.text}
+                </Fragment>
+              ))}
+            </dd>
+          </div>
+        </dl>
+      </section>
+    );
+  }
 
   return (
     <div className="quality-approval-detail">

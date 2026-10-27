@@ -389,65 +389,76 @@ export const QualityApprovalScreen = ({
       );
     }
 
-    return detail.data === undefined ? null : (
+    if (detail.data === undefined) return null;
+    /* 특채는 요청 정보와 특채 조건이 한 카드다 — 수량 요약 아래에 요청 정보가 선다(#193 특채 승인 상세). */
+    if (!isOqcSkip && !isIqcSkip) {
+      return (
+        <ConditionPane
+          approvalRequestId={detail.data.request.approvalRequestId}
+          requestInfo={
+            <DetailPane view={toRequestDetailView(detail.data.request)} variant="concession" />
+          }
+        />
+      );
+    }
+
+    return (
       <>
         <DetailPane view={toRequestDetailView(detail.data.request)} />
         {/* OQC 생략(#119)은 연결 조건이 없다 — IQC 생략처럼 승인된 뒤에만 생략 실행 구획이 선다(#193). */}
-        {isOqcSkip ? (
-          detail.data.request.statusCode === 'APPROVED' &&
-          (canExecuteOqcSkip ? (
-            <SkipExecutePane
-              texts={t.oqcSkipExecute}
-              state={
-                oqcSkipDoneIds.has(detail.data.request.target.targetId)
-                  ? { kind: 'executed' }
-                  : { kind: 'executable' }
-              }
-              isSaving={
-                oqcSkipSentId === detail.data.request.target.targetId && oqcSkipWrite.isSaving
-              }
-              onExecute={() => {
-                const shipmentRequestId = detail.data.request.target.targetId;
-                oqcSkipSentRef.current = shipmentRequestId;
-                setOqcSkipSentId(shipmentRequestId);
-                oqcSkipWrite.write(shipmentRequestId);
-              }}
-              banner={
-                <SaveErrorBanner
-                  error={
-                    oqcSkipSentId === detail.data.request.target.targetId
-                      ? oqcSkipWrite.error
-                      : null
+        {isOqcSkip
+          ? detail.data.request.statusCode === 'APPROVED' &&
+            (canExecuteOqcSkip ? (
+              <SkipExecutePane
+                texts={t.oqcSkipExecute}
+                state={
+                  oqcSkipDoneIds.has(detail.data.request.target.targetId)
+                    ? { kind: 'executed' }
+                    : { kind: 'executable' }
+                }
+                isSaving={
+                  oqcSkipSentId === detail.data.request.target.targetId && oqcSkipWrite.isSaving
+                }
+                onExecute={() => {
+                  const shipmentRequestId = detail.data.request.target.targetId;
+                  oqcSkipSentRef.current = shipmentRequestId;
+                  setOqcSkipSentId(shipmentRequestId);
+                  oqcSkipWrite.write(shipmentRequestId);
+                }}
+                banner={
+                  <SaveErrorBanner
+                    error={
+                      oqcSkipSentId === detail.data.request.target.targetId
+                        ? oqcSkipWrite.error
+                        : null
+                    }
+                  />
+                }
+              />
+            ) : (
+              <p className="field-note">{t.detail.oqcSkipNoPermission}</p>
+            ))
+          : isIqcSkip
+            ? /* IQC 생략(#186)은 연결 조건이 없다 — 승인된 뒤에만 생략 실행 구획이 선다. */
+              approvedIqcSkipLotId !== null &&
+              (skipLotId === null ? (
+                <p className="field-note">{t.detail.iqcSkipNoPermission}</p>
+              ) : (
+                <SkipExecutePane
+                  state={judgeSkipExecute(skipLot)}
+                  isSaving={skipSentLotId === skipLotId && skipExecuteWrite.isSaving}
+                  onExecute={() => {
+                    setSkipSentLotId(skipLotId);
+                    skipExecuteWrite.write(skipLotId);
+                  }}
+                  banner={
+                    <SaveErrorBanner
+                      error={skipSentLotId === skipLotId ? skipExecuteWrite.error : null}
+                    />
                   }
                 />
-              }
-            />
-          ) : (
-            <p className="field-note">{t.detail.oqcSkipNoPermission}</p>
-          ))
-        ) : isIqcSkip ? (
-          /* IQC 생략(#186)은 연결 조건이 없다 — 승인된 뒤에만 생략 실행 구획이 선다. */
-          approvedIqcSkipLotId !== null &&
-          (skipLotId === null ? (
-            <p className="field-note">{t.detail.iqcSkipNoPermission}</p>
-          ) : (
-            <SkipExecutePane
-              state={judgeSkipExecute(skipLot)}
-              isSaving={skipSentLotId === skipLotId && skipExecuteWrite.isSaving}
-              onExecute={() => {
-                setSkipSentLotId(skipLotId);
-                skipExecuteWrite.write(skipLotId);
-              }}
-              banner={
-                <SaveErrorBanner
-                  error={skipSentLotId === skipLotId ? skipExecuteWrite.error : null}
-                />
-              }
-            />
-          ))
-        ) : (
-          <ConditionPane approvalRequestId={detail.data.request.approvalRequestId} />
-        )}
+              ))
+            : null}
       </>
     );
   };
@@ -665,7 +676,24 @@ export const QualityApprovalScreen = ({
                 className="quality-approval-block quality-approval-card"
                 aria-label={t.panes.detail}
               >
-                <h2 className="pane-title">{t.panes.detail}</h2>
+                {/*
+                 * 특채면 「특채 승인 상세」 — 제목 아래 요청번호, 오른쪽 상태 배지(#193). 다른 유형은 「요청 상세」 그대로다.
+                 */}
+                {detail.data !== undefined && !detail.isError && !isOqcSkip && !isIqcSkip ? (
+                  <div className="pane-heading-row quality-approval-concession-head">
+                    <div>
+                      <h2 className="pane-title">{t.detail.concessionTitle}</h2>
+                      <p className="quality-approval-concession-no">
+                        {detail.data.request.approvalRequestNo}
+                      </p>
+                    </div>
+                    <Chip size="sm" status={statusBadgeOf(detail.data.request.statusCode).tone}>
+                      {statusBadgeOf(detail.data.request.statusCode).label}
+                    </Chip>
+                  </div>
+                ) : (
+                  <h2 className="pane-title">{t.panes.detail}</h2>
+                )}
                 {detailSlot()}
                 {actionSlot()}
               </section>

@@ -72,6 +72,8 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     loading: 'Đang tải chi tiết yêu cầu phê duyệt',
     notFound: 'Không tìm thấy yêu cầu',
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn yêu cầu khác.',
+    concessionTitle: 'Chi tiết phê duyệt đặc cách',
+    requestInfo: 'Thông tin yêu cầu',
     oqcSkipNoPermission:
       'Cần quyền màn hình 「Đánh giá kiểm tra xuất hàng OQC」 để thực hiện bỏ qua OQC.',
     iqcSkipNoPermission:
@@ -113,10 +115,16 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     unusable: 'Không dùng được',
     usableUnknown: 'Không có thông tin dùng được hay không',
     concessionNoUnknown: 'Không có số đặc cách',
-    statusUnknown: 'Không có trạng thái',
     remarksEmpty: 'Chưa có ghi chú nào được đăng ký',
     openEnded: 'Không có ngày kết thúc',
     unrestricted: 'Không giới hạn',
+    remainingQty: 'Số lượng còn lại',
+    usageTitle: 'Điều kiện sử dụng',
+    limits: 'Giới hạn áp dụng',
+    limitWorkOrder: 'Lệnh sản xuất',
+    limitProcess: 'Công đoạn',
+    limitCustomer: 'Khách hàng',
+    nonconformanceHeading: 'Không phù hợp liên quan',
     reference: {
       loading: 'Đang tải tên tham chiếu',
       failed: 'Tra cứu tên tham chiếu thất bại',

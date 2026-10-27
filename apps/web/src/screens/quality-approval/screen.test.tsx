@@ -756,11 +756,13 @@ describe('QualityApprovalScreen conditions', () => {
     const pane = screen.getByRole('region', { name: t.panes.detail });
 
     expect(await within(pane).findByText('SYNTH-CN-501')).toBeInTheDocument();
-    expect(within(pane).getByText('SYNTH-ACTIVE')).toBeInTheDocument();
+    /* 특채 승인 상세(#193) — 특채 상태 칸은 두지 않는다(요청 상태는 머리 배지가 말한다). 잔여 수량을 더한다. */
+    expect(within(pane).queryByText('SYNTH-ACTIVE')).toBeNull();
+    expect(within(pane).getByText('8')).toBeInTheDocument();
     expect(within(pane).getByText(t.condition.unusable)).toBeInTheDocument();
     expect(within(pane).getByText('10')).toBeInTheDocument();
     expect(within(pane).getByText('2')).toBeInTheDocument();
-    expect(within(pane).getByText('2026-08-22 – 2026-09-30')).toBeInTheDocument();
+    expect(within(pane).getByText('2026-08-22 ~ 2026-09-30')).toBeInTheDocument();
     expect(within(pane).getByText('합성 조건 비고')).toBeInTheDocument();
     expect(await within(pane).findByText('SYNTH-WO-1201')).toBeInTheDocument();
     expect(within(pane).getByText('합성 고객')).toBeInTheDocument();
@@ -1010,7 +1012,7 @@ describe('QualityApprovalScreen conditions', () => {
     expect(link).toHaveAttribute('href', dispositionEntryPath(concession.nonconformanceId));
     expect(link).toHaveAttribute('href', expect.stringContaining('nonconformanceId=701'));
     /* ⭐ 어느 부적합인지 옆에 적는다 — 번호 없이 링크만 세우면 무엇을 여는지 모른다. */
-    expect(within(group).getByText(t.condition.nonconformance)).toBeInTheDocument();
+    expect(within(group).getByText(t.condition.nonconformanceHeading)).toBeInTheDocument();
     expect(within(group).getByText('SYNTH-NC-701')).toBeInTheDocument();
   });
 

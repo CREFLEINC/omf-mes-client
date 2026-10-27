@@ -4397,6 +4397,179 @@ main:has(.iqc-skip-approval-detail) {
   color: var(--semantic-success-text);
 }
 
+/*
+ * 특채 승인 상세(#193) — 머리(제목 · 요청번호 · 배지) → 수량 요약 → 요청 정보 → 사용 조건(적용 제한) → 연관 부적합.
+ * 묶음 사이는 가는 선으로 나눈다.
+ */
+.quality-approval-concession-head {
+  align-items: flex-start;
+  margin-bottom: 0;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.quality-approval-concession-no {
+  max-width: none;
+  margin: var(--space-1) 0 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.quality-approval-concession {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.quality-approval-concession-qty {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+}
+
+.quality-approval-concession-qty dd {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  color: var(--on-surface);
+}
+
+.quality-approval-concession-qty strong {
+  font: var(--type-headline-sm);
+  letter-spacing: var(--type-headline-sm-tracking);
+}
+
+.quality-approval-concession-qty dd > span {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.quality-approval-concession-section {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.quality-approval-concession-section + .quality-approval-concession-section,
+.quality-approval-concession-nc {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.quality-approval-concession-section > h3,
+.quality-approval-concession-nc h3 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.quality-approval-concession-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.quality-approval-concession-grid.is-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.quality-approval-concession-grid > .field-cell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  justify-items: start;
+  gap: var(--space-1);
+  min-width: 0;
+  min-height: 0;
+  text-align: start;
+}
+
+.quality-approval-concession-grid > .field-cell.is-wide {
+  grid-column: 1 / -1;
+}
+
+.quality-approval-concession-grid dt {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.quality-approval-concession-grid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--on-surface);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+}
+
+/* 적용 제한 — 사용 조건 안의 작은 묶음(작업지시 · 공정 · 고객 세 칸). */
+.quality-approval-concession-limits {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.quality-approval-concession-limits > h4 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.quality-approval-concession-nc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.quality-approval-concession-nc > div {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.quality-approval-concession-nc > div > span {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+/* 「부적합 열기」 — 링크지만 테두리 알약 단추 모양이다(새 화면으로 가는 표시를 오른쪽에 둔다). */
+.quality-approval-concession-nc-link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  text-decoration: none;
+}
+
+.quality-approval-concession-nc-link:hover {
+  background: var(--surface-container-high);
+}
+
+.quality-approval-concession-nc-link:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
 /* 결재 사유는 필수다 — DS 글 칸은 별표를 그리지 않아 라벨 뒤에 같은 색 별표를 붙인다(#144). */
 .quality-approval-comment label::after {
   content: ' *';

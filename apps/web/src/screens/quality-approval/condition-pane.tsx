@@ -1,5 +1,6 @@
-import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, Icon, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
@@ -22,9 +23,14 @@ import {
 
 export interface ConditionPaneProps {
   approvalRequestId: number | null;
+  /**
+   * 특채 승인 상세 카드의 「요청 정보」(#193) — 수량 요약 바로 아래, 사용 조건 위에 선다. 특채를 아직 못 읽었거나
+   * 못 찾았을 때도 요청 정보는 먼저 보인다(그 아래에 상태 안내가 선다).
+   */
+  requestInfo?: ReactNode;
 }
 
-export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
+export const ConditionPane = ({ approvalRequestId, requestInfo = null }: ConditionPaneProps) => {
   const t = messages.qualityApproval.condition;
   const candidates = useConcessionCandidates(approvalRequestId);
   const cardinality =
@@ -43,9 +49,12 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
   if (approvalRequestId === null) return null;
   if (candidates.isPending) {
     return (
-      <div role="status" aria-label={t.loading}>
-        <SkeletonText lines={2} />
-      </div>
+      <>
+        {requestInfo}
+        <div role="status" aria-label={t.loading}>
+          <SkeletonText lines={2} />
+        </div>
+      </>
     );
   }
 
@@ -57,32 +66,50 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
         : messages.httpError.description;
     const retry = candidates.error === null ? detail.refetch : candidates.refetch;
     return (
-      <AlertBanner
-        variant="error"
-        title={messages.httpError.loadTitle}
-        action={
-          <Button variant="outlined" size="sm" onClick={() => void retry()}>
-            {messages.common.retry}
-          </Button>
-        }
-      >
-        {description}
-      </AlertBanner>
+      <>
+        {requestInfo}
+        <AlertBanner
+          variant="error"
+          title={messages.httpError.loadTitle}
+          action={
+            <Button variant="outlined" size="sm" onClick={() => void retry()}>
+              {messages.common.retry}
+            </Button>
+          }
+        >
+          {description}
+        </AlertBanner>
+      </>
     );
   }
 
-  if (cardinality?.kind === 'none') return <EmptyState size="sm" live title={t.none} />;
+  if (cardinality?.kind === 'none') {
+    return (
+      <>
+        {requestInfo}
+        <EmptyState size="sm" live title={t.none} />
+      </>
+    );
+  }
   if (cardinality?.kind === 'unsafe') {
-    return <AlertBanner variant="error">{t.unsafe}</AlertBanner>;
+    return (
+      <>
+        {requestInfo}
+        <AlertBanner variant="error">{t.unsafe}</AlertBanner>
+      </>
+    );
   }
   if (detail.isPending) {
     return (
-      <div role="status" aria-label={t.loading}>
-        <SkeletonText lines={2} />
-      </div>
+      <>
+        {requestInfo}
+        <div role="status" aria-label={t.loading}>
+          <SkeletonText lines={2} />
+        </div>
+      </>
     );
   }
-  if (detail.data === undefined) return null;
+  if (detail.data === undefined) return <>{requestInfo}</>;
 
   const view = toConcessionCardView(detail.data, {
     ...UNKNOWN_CONDITION_REFERENCES,
@@ -126,53 +153,89 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
       detail.data.allowedProcessId,
     ),
   });
+  /* 수량 요약의 단위 — 단위 이름(「개」)만 붙인다. 못 읽었으면 비운다(아래 「단위」 칸이 사정을 말한다). */
+  const uomName =
+    uoms.data?.items.find((uom) => uom.uomId === detail.data.uomId)?.uomName.trim() ?? '';
   const hasReferenceError =
     workOrder.isError ||
     customer.isError ||
     uoms.isError ||
     (hasProcessReference && processes.isError);
 
+  const facts = (rows: ReadonlyArray<readonly [string, string]>, className: string) => (
+    <dl className={className}>
+      {rows.map(([label, value]) => (
+        <div className="field-cell" key={label}>
+          <dt className="field-label">{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+
+  /*
+   * 특채 승인 상세(#193) — 수량 요약 → 요청 정보 → 사용 조건(적용 제한) → 연관 부적합 차례다.
+   * 묶음 이름(`aria-label`)은 종전의 「연결 조건」 그대로다 — 이 묶음이 특채 조건을 싣는다는 뜻은 같다.
+   */
   return (
-    <div className="quality-approval-condition" role="group" aria-label={t.title}>
-      <h3>{t.title}</h3>
-      <dl className="quality-approval-condition-facts">
+    <div className="quality-approval-concession" role="group" aria-label={t.title}>
+      <dl className="quality-approval-concession-qty">
         {[
-          [t.concessionNo, view.concessionNo],
           [t.approvedQty, view.approvedQty],
           [t.consumedQty, view.consumedQty],
-          [t.uom, view.uom],
-          [t.validity, view.validity],
-          [messages.qualityApproval.fields.statusCode, view.statusCode],
-          [t.usableLabel, view.usable],
-          [t.remarks, view.remarks],
-          [t.workOrder, view.workOrder],
-          [t.process, view.process],
-          [t.customer, view.customer],
+          [t.remainingQty, view.remainingQty],
         ].map(([label, value]) => (
-          <div className="field-cell" key={label}>
+          <div key={label}>
             <dt className="field-label">{label}</dt>
-            <dd>{value}</dd>
+            <dd>
+              <strong>{value}</strong>
+              {uomName !== '' && <span>{uomName}</span>}
+            </dd>
           </div>
         ))}
       </dl>
+      {requestInfo}
+      <section className="quality-approval-concession-section" aria-label={t.usageTitle}>
+        <h3>{t.usageTitle}</h3>
+        {facts(
+          [
+            [t.concessionNo, view.concessionNo],
+            [t.validity, view.validity],
+            [t.usableLabel, view.usable],
+            [t.uom, view.uom],
+          ],
+          'quality-approval-concession-grid',
+        )}
+        <div className="quality-approval-concession-limits" role="group" aria-label={t.limits}>
+          <h4>{t.limits}</h4>
+          {facts(
+            [
+              [t.limitWorkOrder, view.workOrder],
+              [t.limitProcess, view.process],
+              [t.limitCustomer, view.customer],
+            ],
+            'quality-approval-concession-grid is-three',
+          )}
+        </div>
+        {facts([[t.remarks, view.remarks]], 'quality-approval-concession-grid')}
+      </section>
       {/*
-       * ⭐ **「부적합 열기」 — 특채일 때만 선다**(스펙 §5-1). 지목할 부적합 식별자를 특채가
-       * 들고 있어(계약에서 `nonconformanceId`가 필수다) 이 칸이 그 이동의 자리다. 한도승인처럼
-       * 연결 조건이 없는 결재에서는 이 칸 자체가 그려지지 않으므로 갈 곳 없는 컨트롤이 남지 않는다.
-       *
-       * **버튼이 아니라 링크다.** 자리표시 시절에는 잠긴 버튼이라 사유를 `aria-describedby`로
-       * 이어야 했지만, 링크는 포커스를 받고 그 이름이 갈 곳을 그대로 말한다.
-       *
-       * 주소는 **가는 쪽 화면이 만든다** — 키 이름을 여기서 손으로 적으면 그 화면이 키를 바꿀 때
-       * 조용히 끊어진다(진입 규약 omf-mes#194 §3).
-       *
-       * **번호를 링크 «옆에» 둔다** — 링크 이름은 갈 곳을 말하고, 번호는 어느 부적합인지를 말한다.
-       * 번호 없이 링크만 세우면 승인자가 무엇을 여는지 모른 채 화면을 떠난다.
+       * ⭐ **「부적합 열기」 — 특채일 때만 선다**(스펙 §5-1). 지목할 부적합 식별자를 특채가 들고 있다(계약 필수).
+       * **버튼 모양의 링크다** — 이름이 갈 곳을 말하고, 번호는 어느 부적합인지를 말한다(번호를 이름 옆에 둔다).
+       * 주소는 **가는 쪽 화면이 만든다**(진입 규약 omf-mes#194 §3).
        */}
-      <div className="field-cell quality-approval-condition-link">
-        <span className="field-label">{t.nonconformance}</span>
-        <span>{view.nonconformanceNo}</span>
-        <Link to={dispositionEntryPath(detail.data.nonconformanceId)}>{t.openNonconformance}</Link>
+      <div className="quality-approval-concession-nc" role="group" aria-label={t.nonconformance}>
+        <div>
+          <h3>{t.nonconformanceHeading}</h3>
+          <span>{view.nonconformanceNo}</span>
+        </div>
+        <Link
+          className="quality-approval-concession-nc-link"
+          to={dispositionEntryPath(detail.data.nonconformanceId)}
+        >
+          {t.openNonconformance}
+          <Icon name="open_in_new" size={18} />
+        </Link>
       </div>
       {hasReferenceError ? (
         <AlertBanner

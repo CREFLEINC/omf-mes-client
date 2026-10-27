@@ -86,9 +86,10 @@ export interface ConcessionCardView {
   concessionNo: string;
   approvedQty: string;
   consumedQty: string;
+  /** 승인 수량 − 사용 수량(#193 수량 요약). 계약에 칸이 없어 화면이 뺀다 — 음수면 0 이다. */
+  remainingQty: string;
   uom: string;
   validity: string;
-  statusCode: string;
   usable: string;
   remarks: string;
   workOrder: string;
@@ -130,9 +131,9 @@ export const toConcessionCardView = (
     concessionNo: nonBlank(source.concessionNo, t.concessionNoUnknown),
     approvedQty: String(source.approvedQty),
     consumedQty: String(source.consumedQty),
+    remainingQty: String(Math.max(0, source.approvedQty - source.consumedQty)),
     uom: referenceText(references.uom),
-    validity: `${source.validFrom} – ${source.validTo ?? t.openEnded}`,
-    statusCode: nonBlank(source.statusCode, t.statusUnknown),
+    validity: `${source.validFrom} ~ ${source.validTo ?? t.openEnded}`,
     usable,
     remarks:
       source.remarks === undefined || source.remarks.trim() === ''
