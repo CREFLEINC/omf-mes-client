@@ -21922,7 +21922,8 @@ table.col-measuring td {
 
 /*
  * 단계 머리 — 「① 검사 수량 입력 ──── ② 판정 ──── ③ 4M 변경 정보」(사용자 지시 2026-10-27 · #185). 다 채운 단계는
- * 번호 · 제목 · 이어지는 선이 강조색, 아직이면 흐린 색. 마지막 구획은 선을 두지 않는다.
+ * 번호 · 제목 · 이어지는 선이 강조색, 덜 채운 첫 단계(지금 단계)는 번호 · 제목만 강조색, 그 뒤는 흐린 색. 입력에 따라
+ * 지금 단계가 넘어간다. 마지막 구획은 선을 두지 않는다.
  */
 .iqc-inspection-step-head {
   display: flex;
@@ -21940,7 +21941,8 @@ table.col-measuring td {
   white-space: nowrap;
 }
 
-.iqc-inspection-section .iqc-inspection-step-head[data-done] > h3 {
+.iqc-inspection-section .iqc-inspection-step-head[data-done] > h3,
+.iqc-inspection-section .iqc-inspection-step-head[data-current] > h3 {
   color: var(--on-surface);
 }
 
@@ -21958,7 +21960,8 @@ table.col-measuring td {
   font-weight: 700;
 }
 
-.iqc-inspection-step-head[data-done] > .iqc-inspection-step-no {
+.iqc-inspection-step-head[data-done] > .iqc-inspection-step-no,
+.iqc-inspection-step-head[data-current] > .iqc-inspection-step-no {
   background: var(--primary);
   color: var(--on-primary);
 }
@@ -21991,6 +21994,8 @@ table.col-measuring td {
   flex: 1 1 auto;
   flex-direction: column;
   justify-content: center;
+  /* 혼자 한 줄에 서도(좁은 폭) 수량 카드와 같은 높이 — 내용 높이를 라벨 층 + 입력 칸으로(여백 · 테두리는 따로 붙는다). */
+  min-height: calc(var(--field-label-layer) + var(--control-height-md));
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
@@ -22010,7 +22015,7 @@ table.col-measuring td {
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-field:nth-child(n) {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  align-items: baseline;
+  align-items: center;
   column-gap: var(--space-1);
   row-gap: var(--space-1);
   margin: 0;
@@ -22045,9 +22050,12 @@ table.col-measuring td {
 }
 
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-field > div > :has(> input) {
+  display: flex;
   grid-row: 2;
   grid-column: 1;
-  height: auto;
+  align-items: center;
+  /* 값 줄을 입력 칸 높이(40px)로 — 카드가 옆 판정 · 4M 상자와 같은 높이가 된다(사용자 지시 2026-10-27 · #185). */
+  height: var(--control-height-md);
   min-height: 0;
   padding: 0;
   border: 0;
@@ -22067,9 +22075,11 @@ table.col-measuring td {
 }
 
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-unit:nth-child(n) {
+  display: flex;
   grid-row: 2;
   grid-column: 2;
-  height: auto;
+  align-items: center;
+  height: var(--control-height-md);
   margin: 0;
   color: var(--on-surface);
   font: var(--type-body-sm);
@@ -22077,8 +22087,11 @@ table.col-measuring td {
 }
 
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-field > dd {
+  display: flex;
   grid-row: 2;
   grid-column: 1 / -1;
+  align-items: center;
+  height: var(--control-height-md);
   margin: 0;
   color: var(--on-surface);
   font: var(--type-title-lg);

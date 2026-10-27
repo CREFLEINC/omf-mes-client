@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen } from '@testing-library/react';
+import { cleanup, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -453,6 +453,32 @@ describe('ResultFormPane — 상하 배치 판정(#185)', () => {
     expect(onJudgmentDetailOpen).toHaveBeenCalledTimes(1);
     await userEvent.click(await screen.findByRole('button', { name: t.judgmentDetailCancel }));
     expect(onJudgmentDetailCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('지금 단계는 입력에 따라 넘어간다 — 수량이 맞으면 2단계, 판정까지 채우면 3단계', () => {
+    const current = () =>
+      [...document.querySelectorAll('.iqc-inspection-step-head')].findIndex((head) =>
+        head.hasAttribute('data-current'),
+      ) + 1;
+    const fourMSlot = <p>4M 칸</p>;
+
+    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, { inlineJudgment: true, fourMSlot });
+    expect(current()).toBe(1);
+    cleanup();
+
+    renderPane({ accepted: '500', rejected: '0', held: '0' }, savedRound, 500, {
+      inlineJudgment: true,
+      fourMSlot,
+    });
+    expect(current()).toBe(2);
+    cleanup();
+
+    renderPane({ accepted: '500', rejected: '0', held: '0' }, savedRound, 500, {
+      inlineJudgment: true,
+      fourMSlot,
+      judgmentDone: true,
+    });
+    expect(current()).toBe(3);
   });
 
   it('4M 은 판정 오른쪽에 「4M 변경 정보」 제목으로 따로 선다', () => {

@@ -146,22 +146,30 @@ const FIELD_OF: Record<string, keyof QuantityDraft> = {
 
 /**
  * 단계 머리 — 「① 검사 수량 입력 ──── ② 판정 ──── ③ 4M 변경 정보」(사용자 지시 2026-10-27 · #185).
- * 그 단계를 다 채우면 번호 · 제목 · 이어지는 선이 강조색이다. 마지막 단계는 선이 없다.
+ * 입력에 따라 단계가 넘어간다(사용자 지시 2026-10-27 · #185) — 다 채운 단계는 번호 · 제목 · 이어지는 선이 강조색,
+ * 아직 덜 채운 첫 단계가 「지금 단계」로 번호 · 제목이 강조색, 그 뒤 단계는 흐리다. 마지막 단계는 선이 없다.
  */
 const StepHead = ({
   step,
   title,
   done,
+  current,
   hint,
   children,
 }: {
   step: number;
   title: string;
   done: boolean;
+  current: boolean;
   hint?: string;
   children?: ReactNode;
 }) => (
-  <div className="iqc-inspection-step-head" data-done={done ? '' : undefined}>
+  <div
+    className="iqc-inspection-step-head"
+    data-done={done ? '' : undefined}
+    data-current={current ? '' : undefined}
+    aria-current={current ? 'step' : undefined}
+  >
     <span className="iqc-inspection-step-no" aria-hidden>
       {step}
     </span>
@@ -284,6 +292,16 @@ export const ResultFormPane = ({
 
   const inspectedText = withUom(String(inspectedQty), uomCode);
   const qtyDone = totals.kind === 'counted' && totals.matches && !isOver;
+  /* 지금 단계 — 덜 채운 첫 단계. 확정된 회차는 고칠 것이 없어 두지 않는다. 4M 칸이 없으면 3단계도 없다. */
+  const currentStep = isConfirmed
+    ? null
+    : !qtyDone
+      ? 1
+      : !judgmentDone
+        ? 2
+        : fourMSlot !== null && !fourMDone
+          ? 3
+          : null;
 
   const field = (key: keyof QuantityDraft, label: string, invalid: boolean): ReactElement => (
     /* 단위 코드는 칸 바로 옆 글자로 — 입력값 자체에는 넣지 않는다. 모르면 붙이지 않는다. */
@@ -477,7 +495,7 @@ export const ResultFormPane = ({
           {/* ── 검사 결과 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}
           <section className="iqc-inspection-section">
             <div className="iqc-inspection-static">
-              <StepHead step={1} title={t.sectionTitle} done={qtyDone}>
+              <StepHead step={1} title={t.sectionTitle} done={qtyDone} current={currentStep === 1}>
                 {/* 회차는 제목 옆 라벨로(사용자 지시 2026-10-27 · #185). 회차가 아직 없으면 두지 않는다. */}
                 {isReinspecting ? (
                   <span className="iqc-inspection-head-badge iqc-inspection-round-badge">
@@ -527,7 +545,12 @@ export const ResultFormPane = ({
           {inlineJudgment && (
             <section className="iqc-inspection-section iqc-inspection-inline-judgment">
               <div className="iqc-inspection-static">
-                <StepHead step={2} title={t.judgmentSectionTitle} done={judgmentDone} />
+                <StepHead
+                  step={2}
+                  title={t.judgmentSectionTitle}
+                  done={judgmentDone}
+                  current={currentStep === 2}
+                />
                 <div className="iqc-inspection-collapsible-body iqc-inspection-step-box">
                   <div className="iqc-inspection-judgment-inline-row">
                     {judgmentField}
@@ -564,6 +587,7 @@ export const ResultFormPane = ({
                   title={t.fourMChange.sectionTitle}
                   hint={t.fourMChange.hint}
                   done={fourMDone}
+                  current={currentStep === 3}
                 />
                 <div className="iqc-inspection-collapsible-body iqc-inspection-step-box">
                   {fourMSlot}
