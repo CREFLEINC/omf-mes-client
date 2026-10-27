@@ -23,6 +23,7 @@ import {
   activeStatusChip,
   statusChipChoice,
 } from '../quality-approval/type-tabs';
+import { RelatedLink } from '../quality-approval/related-link';
 import { QUALITY_APPROVAL_TYPE_CODES } from '../quality-approval/code-options';
 import {
   EMPTY_FILTERS as QUALITY_APPROVAL_EMPTY_FILTERS,
@@ -92,6 +93,10 @@ import {
 
 const t = messages.iqcSkipApproval;
 
+/** 「다음 할 일」이 여는 화면(#193) — 반려 뒤 수입검사, 실행 뒤 자재 입고 처리. */
+const IQC_INSPECTION_PATH = '/logistics/iqc-inspection';
+const GOODS_RECEIPT_PATH = '/logistics/goods-receipt';
+
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ITEMS: ApprovalRequest[] = [];
 
@@ -157,7 +162,8 @@ export const IqcSkipApprovalScreen = () => {
   const split = paneLayout.layout === 'stack' ? stackSplit : sideSplit;
   const { session } = useSession();
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다 — 품질 승인 처리를 못 보면 탭을 세우지 않는다. */
-  const canOpenQualityApprovals = toWebAccess(session?.permissions).allows(QUALITY_APPROVALS_PATH);
+  const access = toWebAccess(session?.permissions);
+  const canOpenQualityApprovals = access.allows(QUALITY_APPROVALS_PATH);
 
   /**
    * **주소 키의 수명 — 무엇이 바뀔 때 무엇을 비우는가.**
@@ -863,6 +869,7 @@ export const IqcSkipApprovalScreen = () => {
         {/* 승인된 IQC 생략만 실행 구획이 선다 — 판정은 `target.ts` 한 곳이 한다(대상 유형 코드로 가르지 않는다). */}
         {skipLotId !== null && (
           <SkipExecutePane
+            compact={messages.iqcSkipApproval.skipExecute.compact}
             state={judgeSkipExecute(skipLot)}
             isSaving={skipExecuteWrite.isSaving}
             onExecute={() => {
@@ -871,6 +878,29 @@ export const IqcSkipApprovalScreen = () => {
             banner={<SaveErrorBanner error={skipExecuteWrite.error} />}
           />
         )}
+        {/*
+         * 「다음 할 일」(#193 · 품질 승인 처리와 같다) — 반려면 수입검사로, 생략을 실행했으면 자재 입고 처리로 잇는다.
+         * 생략 재요청은 PDA 몫이라 관리웹에서 잇지 않는다. 그 화면 권한이 없으면 세우지 않는다.
+         */}
+        {request.statusCode === 'REJECTED'
+          ? access.allows(IQC_INSPECTION_PATH) && (
+              <RelatedLink
+                heading={messages.qualityApproval.next.heading}
+                value={messages.qualityApproval.next.iqcRejected}
+                to={IQC_INSPECTION_PATH}
+                label={messages.qualityApproval.next.openIqcInspection}
+              />
+            )
+          : skipLotId !== null &&
+            judgeSkipExecute(skipLot).kind === 'executed' &&
+            access.allows(GOODS_RECEIPT_PATH) && (
+              <RelatedLink
+                heading={messages.qualityApproval.next.heading}
+                value={messages.qualityApproval.next.iqcDone}
+                to={GOODS_RECEIPT_PATH}
+                label={messages.qualityApproval.next.openGoodsReceipt}
+              />
+            )}
       </>
     );
   };

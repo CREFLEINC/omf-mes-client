@@ -96,6 +96,46 @@ export const qualityApproval = {
     checking: '상태를 확인하는 중입니다.',
     notPending: (status: string) => `생략을 실행할 수 없는 상태입니다(상태 ${status}).`,
   },
+  /**
+   * 승인된 특채의 적용 구획(#193) — IQC·OQC 생략 실행과 같은 짜임이다. 승인은 잠금만 풀고(공유계약 J-8), 적용이
+   * 처분 판정(특채)을 남기고 LOT 을 정상으로 바꾸며 수입검사 대기 보류를 푼다(omf-all-around#84 · 서버 P-79).
+   */
+  /**
+   * 「다음 할 일」(#193) — 결재 결과 카드 끝에서 이어서 일할 화면으로 보낸다. 반려면 다시 요청하거나 정상 검사로,
+   * 실행·적용을 마쳤으면 그다음 업무 화면으로 간다.
+   */
+  next: {
+    heading: '다음 할 일',
+    concessionRejected: '특채가 반려됐습니다 — 처분을 다시 정하거나 특채를 다시 요청하세요',
+    openDisposition: '처분 판정 처리 열기',
+    iqcRejected: '생략이 반려됐습니다 — 수입검사를 진행하세요(생략 재요청은 PDA 에서 합니다)',
+    openIqcInspection: 'IQC 수입검사 열기',
+    oqcRejected: '생략이 반려됐습니다 — 출하검사를 진행하거나 생략을 다시 요청하세요',
+    openOqcInspection: 'OQC 출하검사 열기',
+    iqcDone: 'IQC 생략을 실행했습니다 — 자재 입고 처리를 이어서 하세요',
+    openGoodsReceipt: '자재 입고 처리 열기',
+    oqcDone: 'OQC 생략을 실행했습니다 — 출하 처리를 이어서 하세요',
+    openShipmentProcessing: '출하 처리 열기',
+  },
+  concessionApply: {
+    heading: '특채 적용',
+    note: '승인된 특채입니다. 적용하면 처분 판정(특채)을 남기고 LOT 을 정상으로 바꾸며 수입검사 대기 보류를 풉니다.',
+    action: '특채 적용',
+    dialogTitle: '특채를 적용할까요?',
+    dialogBody:
+      '처분 판정(특채)이 남고 LOT 이 정상이 됩니다. 남은 수량을 넘거나 LOT 상태가 맞지 않으면 적용되지 않습니다.',
+    irreversible: '적용한 뒤에는 되돌릴 수 없습니다.',
+    done: '특채를 적용했습니다',
+    executed: '적용 완료 — LOT 이 정상 상태입니다.',
+    checking: '특채 상태를 확인하는 중입니다.',
+    notPending: (status: string) => `적용할 수 없는 특채 상태입니다(상태 ${status}).`,
+    compact: {
+      title: '특채 적용',
+      summary: '처분 판정 기록 · LOT 정상 · 검사 대기 보류 해제',
+      action: '적용',
+      done: '적용 완료',
+    },
+  },
   condition: {
     title: '연결 조건',
     loading: '연결 조건 불러오는 중',

@@ -50,7 +50,8 @@ export const SkipExecutePane = ({
 }: SkipExecutePaneProps) => {
   const [isConfirming, setIsConfirming] = useState(false);
 
-  if (compact !== undefined && state.kind === 'executed') {
+  /* 한 줄 압축형에서 실행할 수 없을 때 — 단추 자리에 결과(완료 초록 글)나 사정(확인 중·실행 불가)이 선다. */
+  if (compact !== undefined && state.kind !== 'executable') {
     return (
       <section
         className="iqc-skip-approval-section iqc-skip-approval-execute is-compact"
@@ -60,7 +61,13 @@ export const SkipExecutePane = ({
           <h3 className="iqc-skip-approval-heading">{compact.title}</h3>
           <p>{compact.summary}</p>
         </div>
-        <p className="iqc-skip-approval-done">{compact.done}</p>
+        {state.kind === 'executed' ? (
+          <p className="iqc-skip-approval-done">{compact.done}</p>
+        ) : (
+          <p className="field-note iqc-skip-approval-execute-note">
+            {state.kind === 'checking' ? t.checking : t.notPending(state.statusCode)}
+          </p>
+        )}
       </section>
     );
   }

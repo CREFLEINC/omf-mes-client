@@ -4860,6 +4860,32 @@ on('GET', '/quality/concessions', (_p, query) =>
   ),
 );
 
+/* 특채 적용(#193) — 실제 서버처럼 결재가 승인이어야 하고, 적용하면 특채가 APPROVED 가 된다(다시 적용하면 400). */
+on('POST', '/quality/concessions/{concessionId}:apply', (params) => {
+  const concession = state.concessions.find(
+    (row) => row.concessionId === Number(params.concessionId),
+  );
+  if (concession === undefined) return notFound('특채를 찾을 수 없습니다.');
+  const approval = state.approvalRequests.find(
+    (row) => row.approvalRequestId === concession.approvalRequestId,
+  );
+  const message =
+    concession.statusCode !== 'PENDING'
+      ? '이미 적용되었거나 반려된 특채입니다.'
+      : approval?.statusCode === 'PENDING'
+        ? '결재가 아직 진행 중입니다.'
+        : null;
+  if (message !== null) {
+    return {
+      status: 400,
+      created: { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
+    };
+  }
+  concession.statusCode = approval?.statusCode === 'APPROVED' ? 'APPROVED' : 'REJECTED';
+  concession.versionNo = (concession.versionNo ?? 1) + 1;
+  return concession;
+});
+
 on('GET', '/quality/concessions/{concessionId}', (params) => {
   const concession = state.concessions.find(
     (row) => row.concessionId === Number(params.concessionId),

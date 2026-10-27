@@ -20,6 +20,7 @@ import { toApiError } from '../../patterns/request';
 import { iqcSkipApprovalKeys, useSkipTargetLot } from '../iqc-skip-approval/queries';
 import { SkipExecutePane } from '../iqc-skip-approval/skip-execute-pane';
 import { judgeSkipExecute, skipExecuteLotIdOf } from '../iqc-skip-approval/target';
+import { DISPOSITION_SCREEN_PATH, dispositionEntryPath } from '../disposition-decision/filters';
 import { LOT_STATUS_SCREEN_PATH, lotStatusEntryPath } from '../lot-status-history/filters';
 import { oqcInspectionKeys } from '../oqc-inspection/queries';
 import { ApprovalActionPane } from './approval-action-pane';
@@ -100,6 +101,11 @@ const describeLoadError = (error: ApiError): string => {
 
 /** OQC 생략 결재 유형 — 서버 선행 값(omf-all-around#119 · P-83). 생성 타입의 enum 에 아직 없다. */
 const OQC_SKIP = 'OQC_SKIP';
+/** 「다음 할 일」이 여는 화면(#193) — 반려 뒤 정상 검사로, 실행 뒤 그다음 업무로. */
+const IQC_INSPECTION_PATH = '/logistics/iqc-inspection';
+const OQC_INSPECTION_PATH = '/shipment/oqc-inspection';
+const GOODS_RECEIPT_PATH = '/logistics/goods-receipt';
+const SHIPMENT_PROCESSING_PATH = '/shipment/shipment-processing';
 export interface QualityApprovalScreenProps {
   approvalTypeCodes?: readonly string[];
 }
@@ -395,6 +401,7 @@ export const QualityApprovalScreen = ({
       return (
         <ConditionPane
           approvalRequestId={detail.data.request.approvalRequestId}
+          requestStatusCode={detail.data.request.statusCode}
           requestInfo={
             <DetailPane view={toRequestDetailView(detail.data.request)} variant="concession" />
           }
@@ -452,6 +459,7 @@ export const QualityApprovalScreen = ({
                 <p className="field-note">{t.detail.iqcSkipNoPermission}</p>
               ) : (
                 <SkipExecutePane
+                  compact={messages.iqcSkipApproval.skipExecute.compact}
                   state={judgeSkipExecute(skipLot)}
                   isSaving={skipSentLotId === skipLotId && skipExecuteWrite.isSaving}
                   onExecute={() => {
@@ -468,6 +476,61 @@ export const QualityApprovalScreen = ({
             : null}
       </>
     );
+  };
+
+  /*
+   * 「다음 할 일」(#193) — 결재 결과 카드 끝. 반려면 다시 요청하거나 정상 검사로 가는 화면, 실행을 마쳤으면 그다음
+   * 업무 화면으로 잇는다. 그 화면 권한이 없으면 세우지 않는다. 특채 적용 뒤는 특채 카드의 「LOT 열기」가 맡는다.
+   */
+  const nextStepSlot = (): ReactNode => {
+    if (detail.data === undefined || detailError !== null) return null;
+    const { request } = detail.data;
+    const n = t.next;
+    const isRejected = request.statusCode === 'REJECTED';
+    const step: { value: string; to: string; label: string; screen: string } | null =
+      isRejected && isOqcSkip
+        ? {
+            value: n.oqcRejected,
+            to: OQC_INSPECTION_PATH,
+            label: n.openOqcInspection,
+            screen: OQC_INSPECTION_PATH,
+          }
+        : isRejected && isIqcSkip
+          ? {
+              value: n.iqcRejected,
+              to: IQC_INSPECTION_PATH,
+              label: n.openIqcInspection,
+              screen: IQC_INSPECTION_PATH,
+            }
+          : isRejected
+            ? {
+                value: n.concessionRejected,
+                /* 특채 결재의 대상은 부적합이다(서버 P-79) — 그 부적합을 골라 연다. 다른 대상이면 화면만 연다. */
+                to:
+                  String(request.target.targetTypeCode) === 'NONCONFORMANCE'
+                    ? dispositionEntryPath(request.target.targetId)
+                    : DISPOSITION_SCREEN_PATH,
+                label: n.openDisposition,
+                screen: DISPOSITION_SCREEN_PATH,
+              }
+            : isIqcSkip && skipLotId !== null && judgeSkipExecute(skipLot).kind === 'executed'
+              ? {
+                  value: n.iqcDone,
+                  to: GOODS_RECEIPT_PATH,
+                  label: n.openGoodsReceipt,
+                  screen: GOODS_RECEIPT_PATH,
+                }
+              : isOqcSkip && oqcSkipDoneIds.has(request.target.targetId)
+                ? {
+                    value: n.oqcDone,
+                    to: SHIPMENT_PROCESSING_PATH,
+                    label: n.openShipmentProcessing,
+                    screen: SHIPMENT_PROCESSING_PATH,
+                  }
+                : null;
+    if (step === null || !toWebAccess(session?.permissions).allows(step.screen)) return null;
+
+    return <RelatedLink heading={n.heading} value={step.value} to={step.to} label={step.label} />;
   };
 
   const progressSlot = (): ReactNode => {
@@ -677,6 +740,7 @@ export const QualityApprovalScreen = ({
                   </div>
                 )}
                 {progressSlot()}
+                {nextStepSlot()}
               </section>
               {/* 요청 상세 카드 — 상세 · 유형별 구획, 내 차례면 결재 사유와 단추까지 한 카드다(#193). */}
               <section

@@ -97,6 +97,38 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     notPending: (status: string) =>
       `Trạng thái này không thể thực hiện bỏ qua (trạng thái ${status}).`,
   },
+  next: {
+    heading: 'Việc tiếp theo',
+    concessionRejected: 'Đặc cách bị từ chối — hãy quyết định xử lý lại hoặc yêu cầu đặc cách lại',
+    openDisposition: 'Mở xử lý quyết định',
+    iqcRejected: 'Bỏ qua bị từ chối — hãy tiến hành kiểm tra đầu vào (yêu cầu bỏ qua lại trên PDA)',
+    openIqcInspection: 'Mở kiểm tra đầu vào IQC',
+    oqcRejected: 'Bỏ qua bị từ chối — hãy tiến hành kiểm tra xuất hàng hoặc yêu cầu bỏ qua lại',
+    openOqcInspection: 'Mở kiểm tra xuất hàng OQC',
+    iqcDone: 'Đã bỏ qua IQC — hãy tiếp tục nhập kho vật tư',
+    openGoodsReceipt: 'Mở nhập kho vật tư',
+    oqcDone: 'Đã bỏ qua OQC — hãy tiếp tục xử lý xuất hàng',
+    openShipmentProcessing: 'Mở xử lý xuất hàng',
+  },
+  concessionApply: {
+    heading: 'Áp dụng đặc cách',
+    note: 'Đặc cách đã được duyệt. Khi áp dụng, quyết định xử lý (đặc cách) được ghi lại, LOT chuyển sang bình thường và lệnh giữ chờ kiểm tra đầu vào được gỡ.',
+    action: 'Áp dụng đặc cách',
+    dialogTitle: 'Áp dụng đặc cách?',
+    dialogBody:
+      'Quyết định xử lý (đặc cách) được ghi lại và LOT trở về bình thường. Nếu vượt số lượng còn lại hoặc trạng thái LOT không phù hợp thì không áp dụng được.',
+    irreversible: 'Sau khi áp dụng thì không thể hoàn tác.',
+    done: 'Đã áp dụng đặc cách',
+    executed: 'Đã áp dụng — LOT ở trạng thái bình thường.',
+    checking: 'Đang kiểm tra trạng thái đặc cách.',
+    notPending: (status: string) => `Trạng thái đặc cách không thể áp dụng (trạng thái ${status}).`,
+    compact: {
+      title: 'Áp dụng đặc cách',
+      summary: 'Ghi quyết định xử lý · LOT bình thường · gỡ giữ chờ kiểm tra',
+      action: 'Áp dụng',
+      done: 'Đã áp dụng',
+    },
+  },
   condition: {
     title: 'Điều kiện liên kết',
     loading: 'Đang tải điều kiện liên kết',

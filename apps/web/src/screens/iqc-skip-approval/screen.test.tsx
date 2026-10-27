@@ -2871,7 +2871,10 @@ describe('IqcSkipApprovalScreen — IQC 생략 실행', () => {
 
     const pane = await screen.findByRole('region', { name: t.skipExecute.heading });
     // LOT 을 읽는 동안은 버튼이 없다(확인 중) — 검사 대기를 받은 뒤에 선다.
-    await user.click(await within(pane).findByRole('button', { name: t.skipExecute.action }));
+    /* 한 줄 압축형(#193) — 여는 단추는 짧은 「실행」, 확인 창의 단추는 종전 이름 그대로다. */
+    await user.click(
+      await within(pane).findByRole('button', { name: t.skipExecute.compact.action }),
+    );
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: t.skipExecute.action }));
 
@@ -2892,8 +2895,8 @@ describe('IqcSkipApprovalScreen — IQC 생략 실행', () => {
     );
 
     const pane = await screen.findByRole('region', { name: t.skipExecute.heading });
-    expect(await within(pane).findByText(t.skipExecute.executed)).toBeInTheDocument();
-    expect(within(pane).queryByRole('button', { name: t.skipExecute.action })).toBeNull();
+    expect(await within(pane).findByText(t.skipExecute.compact.done)).toBeInTheDocument();
+    expect(within(pane).queryByRole('button', { name: t.skipExecute.compact.action })).toBeNull();
   });
 
   it('LOT 이 검사 대기가 아니면(불량 등) 실행할 수 없다고 말한다', async () => {
@@ -2906,7 +2909,7 @@ describe('IqcSkipApprovalScreen — IQC 생략 실행', () => {
     expect(
       await within(pane).findByText(t.skipExecute.notPending('DEFECTIVE')),
     ).toBeInTheDocument();
-    expect(within(pane).queryByRole('button', { name: t.skipExecute.action })).toBeNull();
+    expect(within(pane).queryByRole('button', { name: t.skipExecute.compact.action })).toBeNull();
   });
 
   it('승인 전 요청에는 실행 구획이 없다', async () => {

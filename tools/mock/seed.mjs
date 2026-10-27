@@ -3233,7 +3233,8 @@ export const createSeed = (now = new Date()) => {
         validFrom: iso(-4, 10).slice(0, 10),
         validTo: iso(26, 10).slice(0, 10),
         approvalRequestId: 15002,
-        statusCode: 'APPROVED',
+        /* 결재는 승인됐지만 아직 적용하지 않은 특채 — 품질 승인 처리의 「특채 적용」 구획을 보려고 둔다(#193). */
+        statusCode: 'PENDING',
         usable: true,
         remarks: '외관 경미 — 특채 사용',
         versionNo: 1,

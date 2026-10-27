@@ -1,11 +1,15 @@
-import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
+import { useApiClient } from '../../patterns/api-context';
+import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { DISPOSITION_SCREEN_PATH, dispositionEntryPath } from '../disposition-decision/filters';
+import { dispositionKeys } from '../disposition-decision/queries';
+import { SkipExecutePane } from '../iqc-skip-approval/skip-execute-pane';
 import { LOT_STATUS_SCREEN_PATH, lotStatusEntryPath } from '../lot-status-history/filters';
 import {
   WORK_ORDER_PROGRESS_SCREEN_PATH,
@@ -25,6 +29,7 @@ import {
   useConditionWorkOrder,
   useConcessionCandidates,
   useConcessionDetail,
+  qualityApprovalKeys,
 } from './queries';
 import { RelatedLink } from './related-link';
 
@@ -35,12 +40,48 @@ export interface ConditionPaneProps {
    * 못 찾았을 때도 요청 정보는 먼저 보인다(그 아래에 상태 안내가 선다).
    */
   requestInfo?: ReactNode;
+  /** 결재 요청의 상태 — 승인(APPROVED)이면 아직 적용 안 한 특채에 적용 구획이 선다(#193). */
+  requestStatusCode?: string;
 }
 
-export const ConditionPane = ({ approvalRequestId, requestInfo = null }: ConditionPaneProps) => {
+/** 특채 상태(서버 P-79) — 적용 전은 PENDING, 적용하면 APPROVED, 반려를 닫으면 REJECTED. */
+const CONCESSION_PENDING = 'PENDING';
+const CONCESSION_APPLIED = 'APPROVED';
+
+export const ConditionPane = ({
+  approvalRequestId,
+  requestInfo = null,
+  requestStatusCode,
+}: ConditionPaneProps) => {
   const t = messages.qualityApproval.condition;
   const { session } = useSession();
   const access = toWebAccess(session?.permissions);
+  const { client } = useApiClient();
+  const toast = useToast();
+  /*
+   * 승인된 특채의 적용(#193) — IQC·OQC 생략 실행처럼 이 화면에서 한다. 서버 경로는 처분 판정 처리의 적용과 같고,
+   * 서버가 결재 화면(W-03-09) 권한으로도 연다(서버 `manual-permissions` · #193). 적용 여부는 특채 상태가 말한다.
+   */
+  const [applySentId, setApplySentId] = useState<number | null>(null);
+  const applyWrite = useMasterWrite<number, unknown>({
+    request: (concessionId, headers) =>
+      client.POST('/quality/concessions/{concessionId}:apply', {
+        params: {
+          path: { concessionId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    etagPath: null,
+    /* 적용은 특채·LOT·부적합·판정을 함께 바꾼다 — 이 화면과 처분 판정 처리의 뿌리 키를 다시 부른다. */
+    invalidateKeys: [qualityApprovalKeys.all, dispositionKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      toast.show({
+        variant: 'success',
+        description: messages.qualityApproval.concessionApply.done,
+      });
+    },
+  });
   const candidates = useConcessionCandidates(approvalRequestId);
   const cardinality =
     approvalRequestId === null || candidates.data === undefined
@@ -240,6 +281,29 @@ export const ConditionPane = ({ approvalRequestId, requestInfo = null }: Conditi
         )}
         {facts([[t.remarks, view.remarks]], 'quality-approval-concession-grid')}
       </section>
+      {requestStatusCode === 'APPROVED' &&
+        (detail.data.statusCode === CONCESSION_PENDING ||
+          detail.data.statusCode === CONCESSION_APPLIED) && (
+          <SkipExecutePane
+            texts={messages.qualityApproval.concessionApply}
+            compact={messages.qualityApproval.concessionApply.compact}
+            state={
+              detail.data.statusCode === CONCESSION_APPLIED
+                ? { kind: 'executed' }
+                : { kind: 'executable' }
+            }
+            isSaving={applySentId === detail.data.concessionId && applyWrite.isSaving}
+            onExecute={() => {
+              setApplySentId(detail.data.concessionId);
+              applyWrite.write(detail.data.concessionId);
+            }}
+            banner={
+              <SaveErrorBanner
+                error={applySentId === detail.data.concessionId ? applyWrite.error : null}
+              />
+            }
+          />
+        )}
       {/*
        * 다른 화면에서 이 정보를 여는 줄(#193) — 연관 부적합(처분 판정 처리) · 대상 LOT(LOT 상태) · 허용 작업지시
        * (W/O 진행현황). 그 화면을 볼 권한이 없으면 줄을 세우지 않는다 — 누르는 순간 막힌 화면이 선다.

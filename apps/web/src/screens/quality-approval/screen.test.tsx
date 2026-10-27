@@ -1000,7 +1000,8 @@ describe('QualityApprovalScreen conditions', () => {
     const s = messages.iqcSkipApproval.skipExecute;
 
     const pane = await screen.findByRole('region', { name: s.heading });
-    await user.click(await within(pane).findByRole('button', { name: s.action }));
+    /* 한 줄 압축형(#193) — 여는 단추는 짧은 「실행」, 확인 창의 단추는 종전 이름 그대로다. */
+    await user.click(await within(pane).findByRole('button', { name: s.compact.action }));
     const dialog = await screen.findByRole('dialog', { name: s.dialogTitle });
     expect(recorded.urls.some((url) => url.pathname === skipPath)).toBe(false);
 
@@ -1009,6 +1010,123 @@ describe('QualityApprovalScreen conditions', () => {
     await waitFor(() => {
       expect(recorded.urls.filter((url) => url.pathname === skipPath)).toHaveLength(1);
     });
+  });
+
+  /* 특채 적용(#193) — IQC·OQC 생략 실행처럼 승인된 특채를 이 화면에서 적용한다. 적용 여부는 특채 상태가 말한다. */
+  const approvedConcessionRequest = {
+    ...requests[0]!,
+    statusCode: 'APPROVED',
+    isMyTurn: false,
+    currentStepNo: null,
+  } as unknown as ApprovalRequest;
+  const APPLY_PATH = `${concessionDetailPath(501)}:apply`;
+
+  it('승인됐지만 적용 전인 특채는 확인 뒤 적용을 한 번 보낸다(#193)', async () => {
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(approvedConcessionRequest))),
+      candidateRoute(() => jsonResponse(candidateBody([concession]))),
+      concessionRoute(() => jsonResponse({ ...concession, statusCode: 'PENDING' })),
+      {
+        match: (request) => new URL(request.url).pathname === APPLY_PATH,
+        respond: () => jsonResponse({ ...concession, statusCode: 'APPROVED' }),
+      },
+    );
+    const { user } = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
+    const a = t.concessionApply;
+
+    const pane = await screen.findByRole('region', { name: a.heading });
+    expect(pane).toHaveTextContent(a.compact.summary);
+    await user.click(within(pane).getByRole('button', { name: a.compact.action }));
+    const dialog = await screen.findByRole('dialog', { name: a.dialogTitle });
+    expect(recorded.urls.some((url) => url.pathname === APPLY_PATH)).toBe(false);
+
+    await user.click(within(dialog).getByRole('button', { name: a.action }));
+    await waitFor(() => {
+      expect(recorded.urls.filter((url) => url.pathname === APPLY_PATH)).toHaveLength(1);
+    });
+  });
+
+  it('이미 적용된 특채는 적용 단추 대신 「적용 완료」를 보인다(#193)', async () => {
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        detailRoute(31, () => jsonResponse(detailBody(approvedConcessionRequest))),
+        candidateRoute(() => jsonResponse(candidateBody([concession]))),
+        concessionRoute(() => jsonResponse({ ...concession, statusCode: 'APPROVED' })),
+      ]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    const pane = await screen.findByRole('region', { name: t.concessionApply.heading });
+    expect(within(pane).getByText(t.concessionApply.compact.done)).toBeInTheDocument();
+    expect(within(pane).queryByRole('button')).toBeNull();
+  });
+
+  it('결재 대기 특채에는 적용 구획을 세우지 않는다(#193)', async () => {
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        candidateRoute(() => jsonResponse(candidateBody([concession]))),
+        concessionRoute(() => jsonResponse({ ...concession, statusCode: 'PENDING' })),
+      ]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    await screen.findByRole('group', { name: t.condition.title });
+    expect(screen.queryByRole('region', { name: t.concessionApply.heading })).toBeNull();
+  });
+
+  /* 「다음 할 일」(#193) — 반려면 다시 요청하거나 정상 검사로 가는 화면을 결재 결과 카드 끝에 잇는다. */
+  it('반려된 OQC 생략은 다음 할 일로 OQC 출하검사 판정을 잇는다(#193)', async () => {
+    const rejected = oqcSkipRequest({
+      statusCode: 'REJECTED',
+      isMyTurn: false,
+      currentStepNo: null,
+    } as Partial<ApprovalRequest>);
+    renderScreen(
+      approvalFetch([listRoute(), detailRoute(31, () => jsonResponse(detailBody(rejected)))]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    const next = await screen.findByRole('group', { name: t.next.heading });
+    expect(next).toHaveTextContent(t.next.oqcRejected);
+    expect(within(next).getByRole('link', { name: t.next.openOqcInspection })).toHaveAttribute(
+      'href',
+      '/shipment/oqc-inspection',
+    );
+  });
+
+  it('반려된 특채는 다음 할 일로 그 부적합의 처분 판정 처리를 잇는다(#193)', async () => {
+    const rejected = {
+      ...requests[0]!,
+      statusCode: 'REJECTED',
+      isMyTurn: false,
+      currentStepNo: null,
+      target: {
+        targetTypeCode: 'NONCONFORMANCE',
+        targetId: 701,
+        displayName: '부적합',
+        openable: false,
+      },
+    } as unknown as ApprovalRequest;
+    renderScreen(
+      approvalFetch([listRoute(), detailRoute(31, () => jsonResponse(detailBody(rejected)))]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    const next = await screen.findByRole('group', { name: t.next.heading });
+    expect(within(next).getByRole('link', { name: t.next.openDisposition })).toHaveAttribute(
+      'href',
+      dispositionEntryPath(701),
+    );
+  });
+
+  it('결재 대기 요청에는 다음 할 일을 세우지 않는다(#193)', async () => {
+    renderScreen(approvalFetch([listRoute()]), '/quality/approvals?approvalRequestId=31');
+
+    await screen.findByRole('region', { name: t.panes.detail });
+    expect(screen.queryByRole('group', { name: t.next.heading })).toBeNull();
   });
 
   it('⭐ 특채면 「부적합 열기」가 처분 판정 화면의 진입 주소를 가리킨다', async () => {

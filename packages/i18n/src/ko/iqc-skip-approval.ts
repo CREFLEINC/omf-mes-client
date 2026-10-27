@@ -292,6 +292,13 @@ export const iqcSkipApproval = {
     notPending: (status: string) =>
       `LOT 이 수입검사 대기가 아니라(상태 ${status}) 생략을 실행할 수 없습니다.`,
     checking: 'LOT 상태를 확인하는 중입니다.',
+    /** 한 줄 압축형(#193) — OQC 생략 실행과 같은 짜임이다. */
+    compact: {
+      title: 'IQC 생략',
+      summary: '수입검사 의뢰 생략 · 검사 대기 보류 해제 · LOT 정상',
+      action: '실행',
+      done: '실행 완료',
+    },
   },
   toast: {
     approved: '승인했습니다',
