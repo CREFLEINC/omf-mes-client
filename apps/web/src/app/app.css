@@ -22002,14 +22002,21 @@ table.col-measuring td {
 }
 
 /*
- * 수량 카드 — 라벨 위, 「10 EA」 아래(사용자 지시 2026-10-27 · #185). 입력 상자 테두리를 걷고 카드 자체가 칸이 된다.
- * 누르고 있는 카드는 강조색 테두리, 잘못된 값이면 오류색 테두리.
+ * 수량 카드 — 한 줄에 라벨 왼쪽, 「10 EA」 오른쪽(사용자 지시 2026-10-27 · #185). 입력 상자 테두리를 걷고 카드 자체가 칸이 된다.
+ * 카드 묶음은 구획 높이를 채워 옆 판정 · 4M 상자와 높이가 맞는다. 누르고 있는 카드는 강조색 테두리, 잘못된 값이면 오류색 테두리.
  */
+.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) {
+  flex: 1 1 auto;
+}
+
 .iqc-inspection-qty-judgment-row
   .iqc-inspection-qty-body:nth-child(n)
   > .iqc-inspection-qty:nth-child(n) {
-  /* 넓으면 둘씩 두 줄 — 옆 판정 · 4M 상자와 높이가 맞는다(사용자 지시 2026-10-27 · #185). 중간 폭(수량이 한 줄 전체)은 넷을 한 줄. */
+  /* 넓으면 둘씩 두 줄, 중간 폭(수량이 한 줄 전체)은 넷을 한 줄(사용자 지시 2026-10-27 · #185). */
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  align-self: stretch;
+  align-items: stretch;
   gap: var(--space-2);
 }
 
@@ -22023,12 +22030,12 @@ table.col-measuring td {
 
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-field:nth-child(n) {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-content: center;
   align-items: center;
   column-gap: var(--space-1);
   row-gap: 2px;
   margin: 0;
-  /* 높이를 줄인다 — 여백 8px · 값 줄 32px(사용자 지시 2026-10-27 · #185). */
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
@@ -22054,17 +22061,19 @@ table.col-measuring td {
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-field > div > :first-child,
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-field > dt {
   grid-row: 1;
+  grid-column: 1;
   color: var(--on-surface-muted);
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
+  white-space: nowrap;
 }
 
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-field > div > :has(> input) {
   display: flex;
-  grid-row: 2;
-  grid-column: 1;
+  grid-row: 1;
+  grid-column: 2;
   align-items: center;
-  /* 값 줄 높이 32px — 카드 높이를 줄인다(사용자 지시 2026-10-27 · #185). */
+  justify-content: flex-end;
   height: 32px;
   min-height: 0;
   padding: 0;
@@ -22081,13 +22090,13 @@ table.col-measuring td {
   color: var(--on-surface);
   font: var(--type-title-lg);
   font-weight: 700;
-  text-align: left;
+  text-align: right;
 }
 
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-unit:nth-child(n) {
   display: flex;
-  grid-row: 2;
-  grid-column: 2;
+  grid-row: 1;
+  grid-column: 3;
   align-items: center;
   height: 32px;
   margin: 0;
@@ -22098,9 +22107,10 @@ table.col-measuring td {
 
 .iqc-inspection-qty-judgment-row .iqc-inspection-qty-field > dd {
   display: flex;
-  grid-row: 2;
-  grid-column: 1 / -1;
+  grid-row: 1;
+  grid-column: 2 / -1;
   align-items: center;
+  justify-content: flex-end;
   height: 32px;
   margin: 0;
   color: var(--on-surface);
@@ -22156,6 +22166,13 @@ table.col-measuring td {
   gap: var(--space-2) var(--space-3);
   min-height: var(--control-height-md);
   margin-top: 0;
+}
+
+/* 체크 줄을 최종 판정 칸 높이(40px)로 — 체크 · 최종 판정, [비고 입력] · [판정 상세 입력]이 같은 줄에 선다(#185). */
+.iqc-inspection-inline-four-m .iqc-inspection-four-m > .field-label + * {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height-md);
 }
 
 /* 「4M 변경 여부」 소제목과 체크 사이는 판정 상자의 라벨 · 칸 사이와 같은 4px. */
