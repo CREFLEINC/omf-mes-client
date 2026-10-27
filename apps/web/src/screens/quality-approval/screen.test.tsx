@@ -593,7 +593,8 @@ describe('QualityApprovalScreen detail', () => {
       '둘째 근거',
     );
     expect(screen.getByRole('region', { name: t.panes.progress })).toBeInTheDocument();
-    expect(await screen.findByRole('region', { name: t.approval.title })).toBeInTheDocument();
+    /* 승인 처리는 요청 상세 카드 안에 선다(#193 컴팩트형). */
+    expect(await within(pane).findByRole('group', { name: t.approval.title })).toBeInTheDocument();
     /* 목록은 물러나지 않는다 — 고른 행이 그대로 보이고 다른 요청도 바로 고를 수 있다. */
     const list = screen.getByRole('region', { name: t.panes.list });
     expect(
@@ -1360,6 +1361,47 @@ describe('QualityApprovalScreen decision action', () => {
   });
 
   /* 필수 결재 사유는 비어 있는 동안만 빨간 테두리를 두고, 잠긴 칸에는 두지 않는다(#193). */
+  /* 상태별 컴팩트형(#193) — 반려된 요청은 상태 카드에 반려 줄, 요청 상세 끝에 반려 사유 붉은 칸. */
+  it('반려된 요청은 반려 상태 카드와 반려 사유를 보이고 승인 처리 칸을 세우지 않는다', async () => {
+    const rejected = {
+      ...requests[0]!,
+      statusCode: 'REJECTED',
+      isMyTurn: false,
+      currentStepNo: null,
+    } as unknown as ApprovalRequest;
+    const body: ApprovalRequestDetail = {
+      request: rejected,
+      steps: [
+        {
+          stepNo: 1,
+          approverId: 800_004,
+          approverName: '합성 반려자',
+          isMine: false,
+          isCurrent: false,
+          decisionCode: 'REJECTED',
+          decisionAt: '2026-10-22T00:11:00Z',
+          decisionComment: '검사 생략 근거 부족',
+        },
+      ],
+    };
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        detailRoute(31, () => jsonResponse(body, { headers: { ETag: '"9"' } })),
+      ]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    expect(await screen.findByRole('heading', { name: '반려 상태' })).toBeInTheDocument();
+    const progress = screen.getByRole('region', { name: t.panes.progress });
+    expect(within(progress).getByRole('listitem')).toHaveTextContent('합성 반려자반려');
+    const detail = screen.getByRole('region', { name: t.panes.detail });
+    expect(within(detail).getByRole('group', { name: '반려 사유' })).toHaveTextContent(
+      '검사 생략 근거 부족',
+    );
+    expect(screen.queryByRole('group', { name: t.approval.title })).toBeNull();
+  });
+
   it('결재 사유가 비어 있으면 빨간 테두리를 두고 입력하면 걷는다', async () => {
     const editable = recordingFetch(
       listRoute(),

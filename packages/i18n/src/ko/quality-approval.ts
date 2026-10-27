@@ -111,12 +111,12 @@ export const qualityApproval = {
     steps: '결재 단계',
     position: (current: number, total: number): string =>
       `${String(current)} / ${String(total)} 단계`,
-    finished: (total: number): string => `결재 종료 · 전체 ${String(total)}단계`,
     myTurn: '지금 이 요청을 결재할 차례입니다',
     notMyTurn: '지금 이 요청을 결재할 차례가 아닙니다',
-    waitingCurrent: '현재 결재 대기',
-    waitingPending: '차례 대기',
-    mine: '내 결재 단계',
+    waitingCurrent: '결재 대기',
+    waitingPending: '대기',
+    /** 상태 카드 제목(#193) — 「결재 대기 상태」·「승인 상태」·「반려 상태」. */
+    stateTitle: (label: string): string => `${label} 상태`,
     noSteps: '표시할 결재 단계가 없습니다',
     loading: '결재 진행 불러오는 중',
     unavailable: '결재 진행을 표시할 수 없습니다',

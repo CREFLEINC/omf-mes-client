@@ -4204,7 +4204,6 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 .quality-approval-content-card,
-.quality-approval-progress-summary,
 .quality-approval-condition {
   padding: var(--space-4);
   border: 1px solid var(--outline-variant);
@@ -4212,8 +4211,7 @@ main:has(.iqc-skip-approval-detail) {
   background: var(--surface-container);
 }
 
-.quality-approval-content-card > p,
-.quality-approval-progress-summary > p {
+.quality-approval-content-card > p {
   max-width: none;
   margin: 0;
 }
@@ -4242,18 +4240,108 @@ main:has(.iqc-skip-approval-detail) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2) var(--space-3);
+  gap: var(--space-1) var(--space-2);
+  max-width: none;
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.quality-approval-progress-position {
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/*
+ * 상태별 컴팩트형(#193) — 상태 카드 · 요청 상세 카드 두 장. 단계 상태 글은 상태 색을 따른다
+ * (결재 대기 주황 · 승인 초록 · 반려 빨강 · 아직 대기 회색).
+ */
+.quality-approval-card {
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container-low);
+}
+
+.quality-approval-step-state {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+.quality-approval-step-state.is-current {
+  color: var(--semantic-warning);
+}
+
+.quality-approval-step-state.is-complete {
+  color: var(--semantic-success-text);
+}
+
+.quality-approval-step-state.is-rejected {
+  color: var(--semantic-error-text);
+}
+
+.quality-approval-decisions {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 결재한 단계 한 줄 — 아이콘 · 결재자 · 결정 · (오른쪽 끝) 일시. 승인 의견은 그 아래 작게. */
+.quality-approval-decision {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.quality-approval-decision.is-complete > .quality-approval-decision-icon {
+  color: var(--semantic-success);
+}
+
+.quality-approval-decision.is-rejected > .quality-approval-decision-icon {
+  color: var(--semantic-error);
+}
+
+.quality-approval-decision-at {
+  justify-self: end;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.quality-approval-decision-comment {
+  grid-column: 2 / -1;
+  max-width: none;
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+/* 반려 사유 — 요청 상세 끝 붉은 칸. */
+.quality-approval-reject-reason {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--semantic-error-container);
   color: var(--on-surface);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-.quality-approval-progress-summary > .material-symbols-outlined,
-.quality-approval-progress-summary > [class*='icon'] {
-  color: var(--primary);
+.quality-approval-reject-reason > p {
+  max-width: none;
+  margin: 0;
 }
 
-.quality-approval-progress-summary > p:first-of-type {
+.quality-approval-reject-reason-label {
+  color: var(--semantic-error-text);
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
 }

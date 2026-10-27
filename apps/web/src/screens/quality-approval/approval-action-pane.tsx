@@ -34,7 +34,6 @@ export const ApprovalActionPane = ({
 
   return (
     <div className="quality-approval-action" role="group" aria-label={t.approval.title}>
-      <h2 className="pane-title">{t.approval.title}</h2>
       <SaveErrorBanner error={writeError} onReload={onReload} />
       {writeError?.kind === 'network' && (
         <div className="form-actions">
