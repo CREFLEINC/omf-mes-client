@@ -10,6 +10,8 @@ export const qualityApproval = {
     periodFrom: '상신 시작일 검색',
     periodTo: '상신 종료일 검색',
     q: '요청번호 검색',
+    /** 조회 조건 체크 칸(#193) — 지금 내가 결재할 차례인 요청만. */
+    myTurnOnly: '내 차례만 보기',
     approvalRequestNo: '요청번호',
     requestedByName: '상신자',
     requestedAt: '상신 일시',

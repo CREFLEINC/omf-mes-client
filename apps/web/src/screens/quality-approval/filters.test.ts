@@ -103,3 +103,29 @@ describe('quality approval request query', () => {
     expect(readPendingOnly(new URLSearchParams('pd=maybe'))).toBe(false);
   });
 });
+
+/* 「내 차례만 보기」(#193) — 켠 것만 주소 `mt=1` 로 적고, 서버에는 계약의 `myTurnOnly` 로 싣는다. */
+describe('quality approval my-turn filter', () => {
+  it('켠 것만 주소와 요청에 싣고, 끄면 둘 다에서 빠진다', () => {
+    const on = { ...EMPTY_FILTERS, myTurnOnly: true };
+
+    const params = toAppliedSearchParams(new URLSearchParams(), on, PENDING_ONLY_DEFAULT, 1);
+    expect(params.get('mt')).toBe('1');
+    expect(readFilters(params).myTurnOnly).toBe(true);
+    expect(toRequestListQuery(on, PENDING_ONLY_DEFAULT, 1)).toEqual({
+      assignedToMe: true,
+      myTurnOnly: true,
+    });
+
+    const off = toAppliedSearchParams(params, EMPTY_FILTERS, PENDING_ONLY_DEFAULT, 1);
+    expect(off.has('mt')).toBe(false);
+    expect(readFilters(off).myTurnOnly).toBe(false);
+    expect(toRequestListQuery(EMPTY_FILTERS, PENDING_ONLY_DEFAULT, 1)).not.toHaveProperty(
+      'myTurnOnly',
+    );
+  });
+
+  it('모르는 주소 값은 꺼짐으로 읽는다', () => {
+    expect(readFilters(new URLSearchParams('mt=yes')).myTurnOnly).toBe(false);
+  });
+});
