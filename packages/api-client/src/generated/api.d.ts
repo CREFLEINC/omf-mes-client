@@ -6334,7 +6334,69 @@ export interface paths {
       };
     };
     post?: never;
-    delete?: never;
+    /**
+     * 작성중 버전 취소
+     * @description ⭐ 선행 구현(P-128) — 설계 사본에 서버가 먼저 적은 자리다. 작성중 버전과 그 검사 항목을 지운다 — 잘못 발행한 신규 버전을 되돌리는 길이다. 작성중 버전은 검사 의뢰·측정이 가리키지 않으므로(검사는 확정 버전만 쓴다) 상태를 늘리지 않고 지운다. 상태≠작성중이면 400(code=STATE_LOCKED) — 확정 버전은 :obsolete 를 쓴다. 검사 항목에 수집 채널이 연결돼 있거나 버전을 가리키는 의뢰가 있으면 400(code=STATE_LOCKED). 근거: omf-all-around#198
+     */
+    delete: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          inspectionPlanVersionId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 취소됨(지워짐) */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description 상태가 작성중이 아니거나, 수집 채널·검사 의뢰가 연결됨(code=STATE_LOCKED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 검사기준 버전 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
     options?: never;
     head?: never;
     patch?: never;
