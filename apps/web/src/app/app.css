@@ -15238,7 +15238,7 @@ button.app-button-neutral {
 }
 
 /* 파일명 찾기 · 유형 칩 · [선택 파일 내려받기](오른쪽 끝). */
-.inspection-documents-kinds {
+.filter-chips {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);

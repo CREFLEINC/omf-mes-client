@@ -196,6 +196,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
   history: {
     heading: 'Các lượt trước',
+    filterLabel: 'Lọc theo đánh giá cuối',
+    filterAll: 'Tất cả',
     caption: 'Các lượt kiểm tra trước',
     columns: {
       round: 'Lượt',
@@ -223,6 +225,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     },
     requiredMark: 'Bắt buộc',
     judgmentNames: { ACCEPTED: 'Đạt', REJECTED: 'Không đạt' } as Record<string, string>,
+    filterLabel: 'Lọc theo đánh giá',
+    filterAll: 'Tất cả',
     sampleOf: (sampleNo: number): string => `Lần ${String(sampleNo)}`,
     booleanTrue: 'Tốt',
     booleanFalse: 'Lỗi',

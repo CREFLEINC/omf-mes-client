@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   Dialog,
   EmptyState,
   Icon,
@@ -23,6 +22,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useClientPage } from '../../patterns/client-page';
 import { useColumnOrder } from '../../patterns/column-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { FilterChips } from '../../patterns/filter-chips';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import { runRequest } from '../../patterns/request';
@@ -540,23 +540,18 @@ export const AttachmentPanel = ({
             {bulkDownload && downloadCheckedButton}
           </div>
           {/* 유형 칩은 찾기 칸 아래 줄(사용자 지시 2026-10-27 · #185). */}
-          <div className="inspection-documents-kinds" role="group" aria-label={t.kindLabel}>
-            {([null, ...FILE_KINDS] as const).map((option) => (
-              <Chip
-                key={option ?? 'all'}
-                variant="filter"
-                size="sm"
-                selected={kind === option}
-                aria-pressed={kind === option}
-                onSelectedChange={() => setKind(option)}
-              >
-                {t.kindCount(
-                  t.kinds[option ?? 'all'],
-                  option === null ? all.length : all.filter((row) => kindOf(row) === option).length,
-                )}
-              </Chip>
-            ))}
-          </div>
+          <FilterChips
+            label={t.kindLabel}
+            options={[null, ...FILE_KINDS].map((option) => ({
+              value: option,
+              label: t.kinds[option ?? 'all'],
+            }))}
+            value={kind}
+            countOf={(option) =>
+              option === null ? all.length : all.filter((row) => kindOf(row) === option).length
+            }
+            onChange={(next) => setKind(next as FileKind | null)}
+          />
         </>
       )}
       {list.isError ? (

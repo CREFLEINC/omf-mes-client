@@ -46,7 +46,6 @@ export const inspectionDocuments = {
     word: 'Word',
     other: 'Khác',
   },
-  kindCount: (label: string, count: number): string => `${label} ${String(count)}`,
   preview: (fileName: string): string => `Xem trước ${fileName}`,
   previewLoading: 'Đang tải tệp.',
   previewUnsupported: 'Không thể xem trước định dạng này. Hãy tải xuống để xem.',

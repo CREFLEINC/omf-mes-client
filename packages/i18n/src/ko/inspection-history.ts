@@ -1,6 +1,9 @@
 /** 검사 대상 이력(omf-all-around#61) — IQC·PQC·OQC 상세가 함께 쓰는 공용 구획. */
 export const inspectionHistory = {
   heading: '검사 이력',
+  /** 판정 거르기 칩(#185). */
+  filterLabel: '판정 거르기',
+  filterAll: '전체',
   loading: '검사 이력을 불러오는 중입니다.',
   loadFailed: '검사 이력을 불러오지 못했습니다.',
   source: '전달 문서',

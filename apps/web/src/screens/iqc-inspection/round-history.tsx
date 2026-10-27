@@ -1,10 +1,12 @@
 import { Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
 
 import { useClientPage } from '../../patterns/client-page';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { FilterChips } from '../../patterns/filter-chips';
 import { PageNav } from '../../patterns/page-nav';
 
 import type { CodeOption } from './code-options';
@@ -28,6 +30,9 @@ import { withUom } from './uom-lookup';
  */
 
 const t = messages.iqcInspection.history;
+
+/** 거르기 칩의 순서 — 종합 판정 세 값. */
+const JUDGMENT_ORDER = ['ACCEPTED', 'REJECTED', 'HELD'] as const;
 
 const JUDGMENT_TONE: Record<string, 'success' | 'error' | 'warning'> = {
   ACCEPTED: 'success',
@@ -121,15 +126,37 @@ export const RoundHistory = ({
   });
   const fit = useFitColumns(resizable.columns, { scrollX });
   /* 10 · 20 · 50건씩 쪽으로 나눈다(사용자 지시 2026-10-27 · #185). */
-  const paging = useClientPage(rounds, {
-    inspectionRound: (row) => row.inspectionRound,
-    confirmedAt: (row) => row.confirmedAt ?? '',
-  });
+  /* 최종 판정으로 거른다(사용자 지시 2026-10-27 · #185). 칩 건수는 거르기 전 전체에서 센다. */
+  const [judgmentFilter, setJudgmentFilter] = useState<string | null>(null);
+  const countOf = (code: string | null): number =>
+    code === null ? rounds.length : rounds.filter((row) => row.overallJudgmentCode === code).length;
+  const paging = useClientPage(
+    judgmentFilter === null
+      ? rounds
+      : rounds.filter((row) => row.overallJudgmentCode === judgmentFilter),
+    {
+      inspectionRound: (row) => row.inspectionRound,
+      confirmedAt: (row) => row.confirmedAt ?? '',
+    },
+  );
   if (rounds.length === 0) return null;
 
   return (
     <section className="iqc-inspection-section">
       <h3>{t.heading}</h3>
+      <FilterChips
+        label={t.filterLabel}
+        options={[
+          { value: null, label: t.filterAll },
+          ...JUDGMENT_ORDER.map((code) => ({
+            value: code,
+            label: judgmentOptions.find((option) => option.value === code)?.label ?? code,
+          })),
+        ]}
+        value={judgmentFilter}
+        countOf={countOf}
+        onChange={setJudgmentFilter}
+      />
       <div
         ref={fit.ref}
         className="iqc-inspection-table-box inspection-queue-table"

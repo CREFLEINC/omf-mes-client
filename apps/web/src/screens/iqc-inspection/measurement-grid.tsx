@@ -1,11 +1,12 @@
 import { AlertBanner, Chip, EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-order';
 import { useClientPage } from '../../patterns/client-page';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { FilterChips } from '../../patterns/filter-chips';
 import { PageNav } from '../../patterns/page-nav';
 import { hasCalibrationWarning, type MeasurementRow, type SpecRange } from './measurement-rows';
 
@@ -191,6 +192,9 @@ const columns: Column<MeasurementRow>[] = [
   },
 ];
 
+/** 거르기 칩의 판정 — 측정치 판정(`INSPECTION_MEASUREMENT_JUDGMENT`) 두 값. */
+const JUDGMENT_FILTERS = ['ACCEPTED', 'REJECTED'] as const;
+
 export const MeasurementGrid = ({ rows, isLoading, scrollX = false }: MeasurementGridProps) => {
   /*
    * 목록 표처럼 동작한다(사용자 지시 2026-10-26 · #185) — 열 순서 끌기 · 폭 조절(브라우저에 기억), 한 줄 행, 상자 폭에 맞춤.
@@ -200,8 +204,15 @@ export const MeasurementGrid = ({ rows, isLoading, scrollX = false }: Measuremen
     fitContent: scrollX,
   });
   const fit = useFitColumns(resizable.columns, { scrollX });
-  /* 10 · 20 · 50건씩 쪽으로 나눈다(사용자 지시 2026-10-27 · #185). */
-  const paging = useClientPage(rows);
+  /* 합격 · 불합격으로 거른 뒤 10 · 20 · 50건씩 쪽으로 나눈다(사용자 지시 2026-10-27 · #185). 칩 건수는 거르기 전 전체에서 센다. */
+  const [judgmentFilter, setJudgmentFilter] = useState<string | null>(null);
+  const countOf = (code: string): number =>
+    rows.filter((row) => row.measured?.judgmentCode === code).length;
+  const paging = useClientPage(
+    judgmentFilter === null
+      ? rows
+      : rows.filter((row) => row.measured?.judgmentCode === judgmentFilter),
+  );
 
   return (
     <section className="iqc-inspection-section" aria-label={t.heading}>
@@ -217,6 +228,22 @@ export const MeasurementGrid = ({ rows, isLoading, scrollX = false }: Measuremen
             {t.calibrationWarning}
           </AlertBanner>
         </div>
+      )}
+
+      {rows.length > 0 && (
+        <FilterChips
+          label={t.filterLabel}
+          options={[
+            { value: null, label: t.filterAll },
+            ...JUDGMENT_FILTERS.map((code) => ({
+              value: code,
+              label: t.judgmentNames[code] ?? code,
+            })),
+          ]}
+          value={judgmentFilter}
+          countOf={(code) => (code === null ? rows.length : countOf(code))}
+          onChange={setJudgmentFilter}
+        />
       )}
 
       {/* 표 전체를 얇은 테두리 상자로 감싼다(#133). */}

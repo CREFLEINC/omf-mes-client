@@ -1,6 +1,8 @@
 /** Lịch sử đối tượng kiểm tra (omf-all-around#61). */
 export const inspectionHistory = {
   heading: 'Lịch sử kiểm tra',
+  filterLabel: 'Lọc theo đánh giá',
+  filterAll: 'Tất cả',
   loading: 'Đang tải lịch sử kiểm tra.',
   loadFailed: 'Không tải được lịch sử kiểm tra.',
   source: 'Chứng từ chuyển đến',

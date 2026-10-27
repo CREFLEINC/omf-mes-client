@@ -2,12 +2,14 @@ import { Chip, EmptyState, Icon, IconButton, Table, type Column } from '@crefle/
 import type { InspectionHistory, InspectionHistoryEvent } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useClientPage } from '../../patterns/client-page';
 import { useColumnOrder } from '../../patterns/column-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { FilterChips } from '../../patterns/filter-chips';
 import { PageNav } from '../../patterns/page-nav';
 import { runRequest } from '../../patterns/request';
 
@@ -179,10 +181,36 @@ const HistoryTable = ({
     ...event,
     key: `${event.eventTypeCode}-${event.occurredAt}-${String(index)}`,
   }));
-  const paging = useClientPage(keyed, { at: (row) => row.occurredAt });
+  /* 판정으로 거른다(IQC 상세 · 사용자 지시 2026-10-27 · #185) — 판정이 없는 사건(전달 · LOT 상태 변경)은 「전체」에서만 보인다. */
+  const [judgmentFilter, setJudgmentFilter] = useState<string | null>(null);
+  const paging = useClientPage(
+    judgmentFilter === null
+      ? keyed
+      : keyed.filter((row) => row.overallJudgmentCode === judgmentFilter),
+    { at: (row) => row.occurredAt },
+  );
 
   return (
     <>
+      {paged && (
+        <FilterChips
+          label={t.filterLabel}
+          options={[
+            { value: null, label: t.filterAll },
+            ...Object.keys(JUDGMENT_TONE).map((code) => ({
+              value: code,
+              label: judgmentLabelOf(code),
+            })),
+          ]}
+          value={judgmentFilter}
+          countOf={(code) =>
+            code === null
+              ? keyed.length
+              : keyed.filter((row) => row.overallJudgmentCode === code).length
+          }
+          onChange={setJudgmentFilter}
+        />
+      )}
       <div ref={fit.ref} className="inspection-queue-table" style={resizable.style}>
         <Table
           caption={<span className="iqc-inspection-table-caption">{t.heading}</span>}
