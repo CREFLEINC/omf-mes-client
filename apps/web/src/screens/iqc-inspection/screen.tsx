@@ -976,6 +976,7 @@ export const IqcInspectionScreen = () => {
                           targetId={detail.data.lotId}
                           scrollX={layout.orientation === 'row'}
                           paged
+                          bulkDownload
                         />
                       </div>
                     ),

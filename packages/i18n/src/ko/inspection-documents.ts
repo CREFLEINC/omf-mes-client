@@ -31,6 +31,11 @@ export const inspectionDocuments = {
   emptyTitle: '등록된 첨부 파일이 없습니다.',
   emptyHint: '필요한 경우 파일을 첨부해 주세요.',
   download: (fileName: string): string => `${fileName} 내려받기`,
+  /* 일괄 내려받기(zip · #185). */
+  downloadSelected: (count: number): string => `선택 파일 내려받기 (${String(count)})`,
+  downloading: '묶는 중…',
+  zipName: '첨부파일',
+  zipFailed: '선택한 파일을 내려받지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
   scan: {
     label: 'LOT 스캔',
     placeholder: 'LOT 바코드 스캔 또는 번호를 입력하세요',

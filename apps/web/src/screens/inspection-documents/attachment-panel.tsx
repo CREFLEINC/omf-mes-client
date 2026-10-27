@@ -17,6 +17,8 @@ import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
 import { runRequest } from '../../patterns/request';
 
+import { uniqueNames, zipStore } from './zip-store';
+
 type Attachment = components['schemas']['Attachment'];
 type AttachmentUpload = NonNullable<
   Parameters<ReturnType<typeof useApiClient>['client']['POST']>[1]
@@ -66,6 +68,8 @@ export interface AttachmentPanelProps {
   scrollX?: boolean;
   /** 10 · 20 · 50건씩 쪽으로 나눈다(IQC 상세 탭 · 사용자 지시 2026-10-27 · #185). */
   paged?: boolean;
+  /** 왼쪽 체크란으로 골라 zip 하나로 내려받는다(IQC 상세 탭 · 사용자 지시 2026-10-27 · #185). */
+  bulkDownload?: boolean;
 }
 
 /**
@@ -86,11 +90,14 @@ export const AttachmentPanel = ({
   targetId,
   scrollX = false,
   paged = false,
+  bulkDownload = false,
 }: AttachmentPanelProps) => {
   const { client } = useApiClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<File[]>([]);
+  const [checkedIds, setCheckedIds] = useState<string[]>([]);
+  const [isZipping, setIsZipping] = useState(false);
   const queryClient = useQueryClient();
   const listKey = attachmentKeys.list(targetTypeCode, targetId);
 
@@ -165,29 +172,65 @@ export const AttachmentPanel = ({
 
   const hasSelectError = selected.some((file) => precheck(file) !== null);
 
+  const contentOf = async (row: Attachment): Promise<Blob> =>
+    (await runRequest(() =>
+      client.GET('/app/attachments/{attachmentId}/content', {
+        params: { path: { attachmentId: row.attachmentId } },
+        parseAs: 'blob',
+      }),
+    )) as Blob;
+
+  const save = (blob: Blob, fileName: string): void => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   /** PDF 는 새 탭에서 바로 열고, 그 밖은 내려받는다. 받지 못하면 그 사실을 알린다. */
   const open = async (row: Attachment): Promise<void> => {
     setNotice(null);
     try {
-      const blob = (await runRequest(() =>
-        client.GET('/app/attachments/{attachmentId}/content', {
-          params: { path: { attachmentId: row.attachmentId } },
-          parseAs: 'blob',
-        }),
-      )) as Blob;
-      const url = URL.createObjectURL(blob);
-      if (blob.type === 'application/pdf' && window.open(url, '_blank') !== null) {
-        // 새 탭이 다 읽기 전에 주소를 풀면 빈 화면이 된다 — 넉넉히 기다렸다 푼다.
-        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-        return;
+      const blob = await contentOf(row);
+      if (blob.type === 'application/pdf') {
+        const url = URL.createObjectURL(blob);
+        if (window.open(url, '_blank') !== null) {
+          // 새 탭이 다 읽기 전에 주소를 풀면 빈 화면이 된다 — 넉넉히 기다렸다 푼다.
+          window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+          return;
+        }
+        URL.revokeObjectURL(url);
       }
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = row.fileName;
-      link.click();
-      URL.revokeObjectURL(url);
+      save(blob, row.fileName);
     } catch {
       setNotice(t.openFailed);
+    }
+  };
+
+  /* 체크한 파일을 차례로 받아 zip 하나로 묶어 내려받는다(#185). 지금 목록에 없는 체크는 버린다. */
+  const checkedRows = (list.data ?? []).filter((row) =>
+    checkedIds.includes(String(row.attachmentId)),
+  );
+  const downloadChecked = async (): Promise<void> => {
+    setNotice(null);
+    setIsZipping(true);
+    try {
+      const names = uniqueNames(checkedRows.map((row) => row.fileName));
+      const files = [];
+      for (const [index, row] of checkedRows.entries()) {
+        files.push({
+          name: names[index] as string,
+          data: new Uint8Array(await (await contentOf(row)).arrayBuffer()),
+        });
+      }
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-');
+      save(zipStore(files), `${t.zipName}-${stamp}.zip`);
+    } catch {
+      setNotice(t.zipFailed);
+    } finally {
+      setIsZipping(false);
     }
   };
 
@@ -213,18 +256,15 @@ export const AttachmentPanel = ({
       key: 'fileName',
       header: t.columns.fileName,
       width: '280px',
-      /* 파일명 바로 옆에 내려받기 단추 — 따로 「관리」 열을 두지 않는다(사용자 지시 2026-10-27 · #185). */
+      /*
+       * 파일명 바로 옆에 내려받기 단추 — 따로 「관리」 열을 두지 않는다. 이름 자체는 누르는 자리가 아니다 —
+       * 내려받기는 단추로만 한다(사용자 지시 2026-10-27 · #185).
+       */
       render: (row) => (
         <span className="inspection-documents-file-cell">
-          <Button
-            variant="text"
-            size="sm"
-            className="inspection-documents-file-name"
-            title={row.fileName}
-            onClick={() => void open(row)}
-          >
+          <span className="inspection-documents-file-name" title={row.fileName}>
             {row.fileName}
-          </Button>
+          </span>
           <IconButton
             icon="download"
             size="sm"
@@ -289,6 +329,13 @@ export const AttachmentPanel = ({
             columns={fit.columns}
             rows={paged ? paging.rows : (list.data ?? [])}
             {...(paged ? { sort: paging.sort, onSortChange: paging.onSortChange } : {})}
+            {...(bulkDownload
+              ? {
+                  selectable: true,
+                  selectedIds: checkedRows.map((row) => String(row.attachmentId)),
+                  onSelectionChange: setCheckedIds,
+                }
+              : {})}
             getRowId={(row) => String(row.attachmentId)}
             empty={
               list.isPending ? (
@@ -351,6 +398,18 @@ export const AttachmentPanel = ({
         onChange={pick}
       />
       <div className="form-actions">
+        {bulkDownload && (
+          <Button
+            variant="outlined"
+            size="md"
+            className="form-actions-secondary"
+            loading={isZipping}
+            disabled={checkedRows.length === 0 || isZipping}
+            onClick={() => void downloadChecked()}
+          >
+            {isZipping ? t.downloading : t.downloadSelected(checkedRows.length)}
+          </Button>
+        )}
         <Button
           variant="outlined"
           size="md"
