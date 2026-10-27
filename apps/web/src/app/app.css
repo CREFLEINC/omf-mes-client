@@ -14800,6 +14800,14 @@ button.app-button-neutral {
   margin-inline: calc(-1 * var(--space-4));
   padding: var(--space-3) var(--space-4);
   background: var(--surface-container-low);
+  /*
+   * 단추 줄 위 구분선 — 구획 사이 선처럼 내용 폭만(바탕은 카드 끝까지 깔지만 선은 양옆 여백만큼 안쪽)
+   * (사용자 지시 2026-10-27 · #185).
+   */
+  background-image: linear-gradient(var(--outline-variant), var(--outline-variant));
+  background-position: top center;
+  background-size: calc(100% - 2 * var(--space-4)) 1px;
+  background-repeat: no-repeat;
 }
 
 /*
@@ -15621,6 +15629,7 @@ button.app-button-neutral {
 
 .iqc-inspection-action-buttons {
   display: flex;
+  align-items: center;
   gap: var(--space-2);
   margin-inline-start: auto;
 }
@@ -21595,6 +21604,33 @@ table.col-measuring td {
 .inspection-basic-card .iqc-inspection-fact:first-child {
   padding-left: 0;
   border-left: 0;
+}
+
+/*
+ * 넓으면(60rem 이상) 늘 한 줄 — 칸이 모자라면 다음 줄로 넘기지 않고 긴 값(품목 · 대상 LOT)을 말줄임한다
+ * (전체 값은 마우스를 올리면 · 사용자 지시 2026-10-27 · #185). 좁으면 종전처럼 다음 줄로 넘긴다.
+ */
+@container (min-width: 60rem) {
+  .inspection-basic-card .iqc-inspection-facts {
+    flex-wrap: nowrap;
+  }
+
+  /* 짧은 값(의뢰번호 · 일시 · 기준 · 수준)은 줄이지 않고, 긴 값(품목 · 대상 LOT)만 줄인다. */
+  .inspection-basic-card .iqc-inspection-fact {
+    flex-shrink: 0;
+    overflow-wrap: normal;
+  }
+
+  .inspection-basic-card .iqc-inspection-fact:has(.iqc-inspection-fact-item, .iqc-inspection-lot) {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .inspection-basic-card .iqc-inspection-fact > dd {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 /*
