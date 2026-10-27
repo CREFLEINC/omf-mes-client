@@ -97,13 +97,14 @@ describe('ResultFormPane', () => {
 
     expect(qtyStepDone()).toBe(false);
     expect(screen.queryByText(/남았습니다/)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.over('100'))).not.toBeInTheDocument();
+    expect(screen.queryByText(t.overDelta('100'))).not.toBeInTheDocument();
   });
 
   it('넘기면 얼마나 넘겼는지 말한다 — 0으로 깎아 감추지 않는다', () => {
     renderPane({ accepted: '600', rejected: '0', held: '0' });
 
-    expect(screen.getByText(t.over('100'))).toBeInTheDocument();
+    /* 총 검사 수량 카드에 「+100」으로 넘친 양을 붙인다(#185). */
+    expect(screen.getByText(t.overDelta('100'))).toBeInTheDocument();
     /* 음수 잔여(「잔여 -100」)로 말하지 않는다(#133). 넘친 것은 다 채운 것이 아니다. */
     expect(screen.queryByText(/-100/)).not.toBeInTheDocument();
     expect(qtyStepDone()).toBe(false);
@@ -307,6 +308,7 @@ describe('ResultFormPane — 재검사', () => {
 
     expect(screen.getByText(t.reinspectRound)).toBeInTheDocument();
     expect(screen.getByText(t.reinspectNote)).toBeInTheDocument();
+    expect(screen.getByText(t.reinspectKeep)).toBeInTheDocument();
   });
 
   /* ⛔ 사유 칸을 지어내지 않되 감추지도 않는다 — 왜 없는지 밝힌다(omf-mes#179). */

@@ -115,7 +115,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       held: 'Số lượng tạm giữ',
     },
     progressLabel: 'Tổng đã nhập so với số lượng kiểm tra',
-    over: (over: string): string => `Nhiều hơn số lượng kiểm tra ${over}.`,
+    overDelta: (over: string): string => `+${over}`,
     quantityInvalid: 'Hãy nhập số từ 0 trở lên. Tối đa sáu chữ số thập phân.',
     save: 'Lưu tạm',
     saving: 'Đang lưu',
@@ -193,11 +193,10 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     reinspect: 'Thêm lượt kiểm tra lại',
     reinspectCancel: 'Thôi kiểm tra lại',
     reinspectLotNotPending: 'LOT không ở trạng thái chờ kiểm tra nên không thể kiểm tra lại.',
-    reinspectRound: 'Lượt mới (kiểm tra lại)',
-    reinspectNote:
-      'Nhập số lượng rồi lưu tạm thì một lượt mới được tạo. Lượt trước vẫn giữ nguyên.',
-    reinspectReasonPending:
-      'Lý do kiểm tra lại chưa chọn được. Khi danh sách lý do được chốt thì sẽ thêm vào chỗ này.',
+    reinspectRound: 'Kiểm tra lại',
+    reinspectNote: 'Nhập số lượng kiểm tra rồi lưu tạm thì một lượt kiểm tra mới được thêm.',
+    reinspectKeep: 'Kết quả kiểm tra trước vẫn được giữ nguyên.',
+    reinspectReasonPending: 'Chức năng chọn lý do kiểm tra lại sẽ được cung cấp sau.',
   },
 
   history: {

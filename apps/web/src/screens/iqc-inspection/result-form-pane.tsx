@@ -269,26 +269,12 @@ export const ResultFormPane = ({
     return entry === undefined ? undefined : fieldErrors[entry[0]];
   };
 
-  /**
-   * 입력 현황 줄 아래 한 문장 — 맞으면 일치, 넘기면 넘긴 양을 숫자로 말한다. 모자랄 때는 바로 위
-   * 「잔여」와 막대가 이미 보이므로 문장을 두지 않는다.
-   *
-   * ⛔ **셀 수 없으면 아무 말도 하지 않는다.** 한 칸이라도 수량이 아니면 합계는 알 수 없는
-   * 것이고, 그때 「일치합니다」든 「남아 있습니다」든 내면 **거짓을 말하는 것**이다. 무엇을
-   * 고쳐야 하는지는 그 칸의 오류가 이미 말한다.
+  /*
+   * 넘치면 총 검사 수량 카드에 「+3 EA」로 넘친 양을 붙인다(사용자 지시 2026-10-27 · #185). 모자랄 때는 1단계가 덜 채워진
+   * 것으로 남는다. ⛔ 셀 수 없으면(한 칸이라도 수량이 아니면) 넘쳤다고 말하지 않는다 — 그 칸의 오류가 이미 말한다.
    */
   const isOver = totals.kind === 'counted' && totals.remaining < 0n;
   const overText = isOver ? withUom(formatMicro(-totals.remaining), uomCode) : '';
-  const totalsNote =
-    totals.kind === 'uncountable'
-      ? null
-      : /* 맞으면 문장을 두지 않는다 — 「검사수량과 일치합니다」는 담당자가 지웠다(#133 용어 정정 7). */
-        totals.matches
-        ? null
-        : isOver
-          ? t.over(overText)
-          : /* 모자랄 때는 오른쪽 「미입력 N」이 이미 말한다 — 문장을 두지 않는다(#133). */
-            null;
 
   const inspectedText = withUom(String(inspectedQty), uomCode);
   const qtyDone = totals.kind === 'counted' && totals.matches && !isOver;
@@ -517,16 +503,21 @@ export const ResultFormPane = ({
                  * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 고를 값
                  * 목록이 정해지지 않았다. 감추지 않고 왜 없는지 밝힌다(omf-mes#179).
                  */}
+                {/* 재검사 안내 — 본문 한 줄, 정보 한 줄, 작은 보조 한 줄(사용자 지시 2026-10-27 · #185). */}
                 {isReinspecting && (
-                  <>
-                    <p className="field-note">{t.reinspectNote}</p>
-                    <p className="field-note">{t.reinspectReasonPending}</p>
-                  </>
+                  <div className="iqc-inspection-reinspect-notes">
+                    <p>{t.reinspectNote}</p>
+                    <p className="iqc-inspection-reinspect-keep">
+                      <Icon name="info" size={16} aria-hidden />
+                      {t.reinspectKeep}
+                    </p>
+                    <p className="iqc-inspection-reinspect-pending">{t.reinspectReasonPending}</p>
+                  </div>
                 )}
 
                 {/*
                  * 합격 · 불합격 · 보류 · 총 검사 수량을 같은 모양 카드 넷으로(사용자 지시 2026-10-27 · #185). 다 맞으면 1단계
-                 * 번호가 강조색이 된다. 넘치면 얼마나 넘겼는지 카드 아래 한 줄로 말한다.
+                 * 번호가 강조색이 된다. 넘치면 총 검사 수량 카드에 「+N EA」가 붙는다.
                  */}
                 <div className="iqc-inspection-qty" data-over={isOver ? '' : undefined}>
                   {field('accepted', t.fields.accepted, errors.accepted)}
@@ -534,10 +525,14 @@ export const ResultFormPane = ({
                   {field('held', t.fields.held, errors.held)}
                   <dl className="iqc-inspection-qty-field iqc-inspection-qty-total">
                     <dt>{t.fields.inspectedQty}</dt>
-                    <dd>{inspectedText}</dd>
+                    <dd>
+                      {inspectedText}
+                      {isOver && (
+                        <span className="iqc-inspection-qty-over">{t.overDelta(overText)}</span>
+                      )}
+                    </dd>
                   </dl>
                 </div>
-                {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
                 {actionInQty && <div className="iqc-inspection-qty-actions">{actionArea}</div>}
               </div>
             </div>
