@@ -1176,7 +1176,11 @@ describe('입하 등록 화면 — 자재를 바꿀 때', () => {
             seen.push(req.clone());
             return jsonResponse(
               {
-                created: [{ inboundReceiptNo: 'SAMPLE-IR-1' }, { inboundReceiptNo: 'SAMPLE-IR-2' }],
+                /* 서버 모양 — 건마다 입하 등록 응답과 같은 한 벌(머리 + 줄). */
+                created: [1, 2].map((index) => ({
+                  inboundReceipt: { inboundReceiptNo: `SAMPLE-IR-${String(index)}` },
+                  lines: [{ inboundReceiptLineId: 9500 + index, lineNo: 1 }],
+                })),
               },
               { status: 201 },
             );
