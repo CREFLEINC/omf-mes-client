@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, SkeletonText, Tooltip } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, Icon, SkeletonText, Tooltip } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
@@ -280,7 +280,7 @@ const Toggle = ({
     aria-label={open ? c.collapse(lotNo) : c.expand(lotNo)}
     onClick={onToggle}
   >
-    <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+    <Icon name="expand_more" size={20} />
   </button>
 );
 
@@ -387,7 +387,7 @@ const ProductDocuments = ({
         aria-controls={open ? listId : undefined}
         onClick={() => ctx.toggleDocuments(lot.lotId)}
       >
-        <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+        <Icon name="expand_more" size={20} />
         {c.documents(total)}
       </button>
       {open && (

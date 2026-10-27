@@ -544,14 +544,14 @@ describe('W-02-09 LOT 추적: 사슬 모양', () => {
     ).toBeInTheDocument();
     const documents = within(drawer).getByRole('button', { name: '생산 입고, 포장, 출하 1건' });
     expect(documents).toHaveAttribute('aria-expanded', 'false');
-    /* 펼칠 수 있음을 나무의 다른 펼치기와 같은 표시로 알린다. 표시는 접근명에 들지 않는다. */
-    expect(documents).toHaveTextContent(/^▸/);
+    /* 나무의 다른 펼치기와 같은 아이콘을 앞에 둔다. 아이콘은 접근명에 들지 않는다. */
+    expect(documents.firstElementChild).toHaveAttribute('aria-hidden', 'true');
+    expect(documents.firstElementChild).toHaveTextContent('expand_more');
     expect(within(drawer).queryByText('GR-SYN-0041')).toBeNull();
 
     await user.click(documents);
     expect(within(drawer).getByText('GR-SYN-0041')).toBeInTheDocument();
     expect(documents).toHaveAttribute('aria-expanded', 'true');
-    expect(documents).toHaveTextContent(/^▾/);
   });
 
   it('단계 줄의 칸은 그 단계의 첫 줄로 간다 — 첫 W/O에 생산 LOT이 없어도 다음 W/O의 LOT으로 간다', async () => {

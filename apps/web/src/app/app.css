@@ -21241,21 +21241,38 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 .lot-trace-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: var(--control-height-sm);
   min-height: var(--control-height-sm);
   padding: 0;
   border: 0;
-  background: none;
-  color: var(--on-surface);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface-variant);
   cursor: pointer;
 }
 
-/* 접힌 문서 줄. 나무의 펼치기 단추와 같은 표시(▸, ▾)를 앞에 둔다. */
+.lot-trace-toggle:hover {
+  background: var(--surface-container-high);
+}
+
+.lot-trace-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* W-02-05 일자별 표의 교대 펼치기와 같다. 접힌 동안 아래 화살표를 옆으로 돌린다. */
+.lot-trace-toggle[aria-expanded='false'] > :first-child {
+  transform: rotate(-90deg);
+}
+
+/* 접힌 문서 줄. 나무의 펼치기 단추와 같은 아이콘을 앞에 두고, 줄 전체가 단추다. */
 .lot-trace-documents-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0 var(--space-1);
+  gap: var(--space-1);
+  padding: 0 var(--space-2) 0 0;
+  color: var(--on-surface);
   font: var(--type-body-sm);
 }
 
