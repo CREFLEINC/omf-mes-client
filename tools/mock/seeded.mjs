@@ -4847,6 +4847,35 @@ on('POST', '/logistics/shipment-requests/{shipmentRequestId}:skip-oqc', (params)
   );
 });
 
+/*
+ * 승인된 IQC 생략의 실행(#193) — 실제 서버처럼 승인된 결재와 검사 대기 LOT 이 있어야 하고, 실행하면 LOT 이 정상이 된다.
+ * 의뢰·보류 이력은 옮기지 않는다 — 목은 품질 승인 처리의 실행 구획과 「다음 할 일」을 보려는 것이다.
+ */
+on('POST', '/trace/lots/{lotId}:skip-iqc', (params) => {
+  const id = Number(params.lotId);
+  const lot = state.lots.find((row) => row.lotId === id);
+  if (lot === undefined) return notFound('LOT 을 찾을 수 없습니다.');
+  const approved = state.approvalRequests.some(
+    (row) =>
+      row.approvalTypeCode === 'IQC_SKIP' && row.targetId === id && row.statusCode === 'APPROVED',
+  );
+  const message = !approved
+    ? '승인된 IQC 생략 요청이 없습니다.'
+    : lot.statusCode !== 'INSPECTION_PENDING'
+      ? '검사 대기 LOT 이 아니라 생략을 실행할 수 없습니다.'
+      : null;
+  if (message !== null) {
+    return {
+      status: 400,
+      created: { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
+    };
+  }
+  lot.statusCode = 'NORMAL';
+  lot.held = false;
+  bumpVersion(lotVersions, id);
+  return { lot: withProgress(lot) };
+});
+
 /* 특채 — 품질 승인 처리가 결재 번호로 짝 특채를 찾고(`approvalRequestId`), 처분 판정이 부적합으로 찾는다(#193). */
 on('GET', '/quality/concessions', (_p, query) =>
   page(
