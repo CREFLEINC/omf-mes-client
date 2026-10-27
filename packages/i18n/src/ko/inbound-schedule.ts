@@ -11,12 +11,16 @@
  * 셋을 한 문구로 뭉개면 정상 값이 잠깐 「알 수 없음」으로 보여 뜻이 반대로 읽힌다.
  */
 export const inboundSchedule = {
-  title: '입하 예정 조회',
+  /** 화면 막대의 이름 — 사이드바 줄 이름(`nav-tree.ts` 「입고 관리」)과 같다. 탭을 합치며(2026-10-23) 화면 이름이 됐다. */
+  title: '입고 관리',
   breadcrumbRoot: '구매 / 자재 관리',
-  /** 사이드바의 탭 묶음 이름(`nav-tree.ts` 「입고 관리」). 이 화면은 그 묶음의 첫 탭이다. */
+  /** 사이드바 줄 이름(`nav-tree.ts` 「입고 관리」). */
   breadcrumbHub: '입고 관리',
   /** 두 표 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
   splitter: '끌어서 목록·상세 폭 조절',
+  /** 막대 위쪽 끝의 단추 — 발주 목록을 왼쪽으로 완전히 접고 편다(사용자 지시 2026-10-24). */
+  listCollapse: '발주 목록 접기',
+  listExpand: '발주 목록 펼치기',
   panes: {
     filter: '조회 조건',
     list: '입하 예정 목록',
@@ -179,8 +183,22 @@ export const inboundSchedule = {
     inactiveSuffix: ' (미사용)',
   },
   /**
-   * 초과분 발주 연결(서버 장부 P-100) — 발주보다 많이 받아 P/O 에 넣지 않은 몫을 ERP 가 만든 추가 발주 라인에
+   * 초과분 발주 연결(서버 장부 P-115 · 옛 P-100) — 발주보다 많이 받아 P/O 에 넣지 않은 몫을 ERP 가 만든 추가 발주 라인에
    * 연결한다. 서버가 후보를 제안하고 사람이 확정한다. 입하·입고 일을 이 화면으로 모으는 첫 걸음이다(사용자 지시 2026-10-21).
+   *
+   * **화면 낱말은 업무 낱말이고 서버 낱말과 다르다**(사용자 결정 2026-10-24). 서버 팀과 이야기할 때는 아래 짝으로 옮긴다.
+   *
+   * | 화면 | 서버(장부 P-115 입하 ↔ P/O 배정) |
+   * | --- | --- |
+   * | 초과분 · 초과 수량 | 미배정 · `unallocatedQty` |
+   * | 연결 · 연결한 발주 | 배정 · `allocations[]` (`POST …/allocations`) |
+   * | 미연결 | 미배정이 남은 줄 (`GET /logistics/inbound-unallocated`) |
+   * | 연결할 발주 라인 | 배정 후보 (`GET …/allocation-candidates`) |
+   * | (연결 해제 — 아직 화면에 없다) | 배정 해제 (`DELETE …/allocations/{id}`) |
+   *
+   * 「배정」을 화면에 쓰지 않는 까닭: 이 제품에서 「배정」은 이미 **출하할 재고를 잡아 두는 것**이다(PDA 피킹 「배정 · 피킹」 ·
+   * 출하 요청 「배정 수량」 · 출하 일정 「요청 / 배정 / 출하」). 입고 쪽에 같은 낱말을 쓰면 뜻이 둘이 된다. 「미배정」은 시스템이
+   * 아직 안 한 일을 말할 뿐 현장에서 벌어진 일(발주보다 더 왔다)을 말하지 않는다 — 발주 없는 입하가 없어 미배정은 늘 초과분이다.
    */
   excess: {
     /** 탭 줄 오른쪽의 진입 단추. 미연결 초과분이 있으면 그 수가 붙는다. */
@@ -193,11 +211,8 @@ export const inboundSchedule = {
       line: '발주 라인 선택',
       link: '연결',
     },
-    tabs: {
-      label: '초과분 구분',
-      unlinked: '미연결',
-      linked: '연결됨',
-    },
+    /** 창의 목록 이름 — 연결할 초과분만 보인다(연결한 것은 아직 보이지 않는다 · 사용자 결정 2026-10-27). */
+    listTitle: '미연결 초과분',
     table: {
       receiptNo: '입하번호',
       receiptDate: '입하일',
@@ -205,9 +220,8 @@ export const inboundSchedule = {
       item: '품목',
       lot: 'LOT',
       excessQty: '초과 수량',
+      /** 이 입하 줄이 이미 들어간 발주 라인(들). 다 초과분이면 「—」. */
       sourceOrder: '원 발주',
-      linkedOrder: '연결 발주',
-      linkedAt: '연결일',
     },
     candidates: {
       title: '연결할 발주 라인',
@@ -238,25 +252,17 @@ export const inboundSchedule = {
     justRegistered: '방금 등록',
     actions: {
       link: '연결',
-      unlink: '연결 해제',
     },
     /** 단추 옆에 늘 보이는 요약. 수량 뒤에 조사를 붙이지 않는다(받침이 단위마다 다르다). */
     confirmLink: (qty: string, order: string): string => `초과분 ${qty} → ${order}`,
-    confirmUnlink: (qty: string, order: string): string => `${order}의 초과분 ${qty} 연결 해제`,
     blocked: {
       noExcess: '연결할 초과분을 선택하세요.',
       noLine: '연결할 발주 라인을 선택하세요.',
-      noLinked: '연결을 해제할 초과분을 선택하세요.',
     },
     done: {
       linked: (qty: string, order: string): string => `연결했습니다: 초과분 ${qty} → ${order}`,
-      unlinked: (qty: string, order: string): string =>
-        `연결을 해제했습니다: ${order}의 초과분 ${qty}`,
     },
-    empty: {
-      unlinkedTitle: '미연결 초과분이 없습니다',
-      linkedTitle: '연결된 초과분이 없습니다',
-    },
+    emptyTitle: '미연결 초과분이 없습니다',
     truncated: (shown: number, total: number): string =>
       `${String(shown)}건까지만 표시합니다 (전체 ${String(total)}건).`,
     loading: '초과분을 불러오는 중',
@@ -265,9 +271,6 @@ export const inboundSchedule = {
     lineLinkable: (qty: string): string => `${qty} 연결`,
     lineLinkableLabel: (lineNo: number, qty: string): string =>
       `${String(lineNo)}번 줄에 초과분 ${qty} 연결`,
-    lineLinked: (qty: string): string => `${qty} 연결됨`,
-    lineLinkedLabel: (lineNo: number, qty: string): string =>
-      `${String(lineNo)}번 줄에 연결된 초과분 ${qty} 보기`,
   },
   /**
    * 입고 단계 — **서버가 LOT 마다 판정한다**(규범 C-17 · 계약 대기). 이름은 「다음에 할 일」이다: 검사 대기는 품질팀이,
@@ -277,6 +280,8 @@ export const inboundSchedule = {
     /** 탭 줄 칩 묶음의 접근 이름. */
     label: '입고 단계',
     group: {
+      /** 라벨 미부착 입하 — LOT 이 아직 없다. POP 에서 라벨을 발행해야 검사·입고로 간다. */
+      LABEL: '라벨 발행 대기',
       INSPECTION: '검사 대기',
       HELD: '보류',
       RECEIPT: '입고 대기',
@@ -289,6 +294,7 @@ export const inboundSchedule = {
     filterOff: (label: string): string => `${label} 조건 해제`,
     /** LOT 줄의 칩. 모르는 코드는 번역하지 않고 그대로 낸다. */
     code: {
+      LABEL_PENDING: '라벨 발행 대기',
       INSPECTION_REQUIRED: '검사 의뢰 전',
       INSPECTION_REQUESTED: '검사 대기',
       INSPECTION_IN_PROGRESS: '검사 중',
@@ -301,17 +307,73 @@ export const inboundSchedule = {
     },
     /** 왼쪽 「진행」 칸 — 아직 LOT 이 하나도 없는 발주. */
     beforeReceipt: '입하 전',
-    /** 가장 뒤처진 단계 뒤의 나머지 묶음 수(C-17 「외 N」). */
-    others: (count: number): string => `외 ${String(count)}`,
     /** 발주 머리의 「진행」 — 묶음마다 「검사 대기 1」을 「·」로 잇는다. */
     summarySeparator: ' · ',
+  },
+  /**
+   * 라인 표에서 바로 입하 등록(사용자 지시 2026-10-24 · PDA 「라벨 미부착 일괄 입하」와 같은 길). 체크한 품목은 남은 수량
+   * 그대로 한꺼번에, 행을 누르면 그 품목만 수량을 정해 받는다. 라벨 미부착으로만 받고, 입하번호는 품목마다 하나다.
+   */
+  receive: {
+    selectAll: '모두 선택',
+    selectRow: (lineNo: number): string => `${String(lineNo)}번 줄 선택`,
+    /** 「모두 선택」이 뺀 부분 입하 품목. 하나씩 체크하면 넣을 수 있다. */
+    partialSkipped: (count: number): string => `부분 입하 ${String(count)}건은 빼고 선택했습니다.`,
+    /** 고른 발주 머리의 단추 — 체크한 수는 옆 글자가 말한다. */
+    submit: '체크한 품목 입하 등록',
+    checkedCount: (count: number): string => `선택 ${String(count)}건`,
+    /** 품목코드 칸의 단추 — 그 품목만 수량을 정해 받는다. 행 어디를 눌러도 같다. */
+    editRow: (itemCode: string): string => `${itemCode} 입하 수량 입력`,
+    qtyLabel: (lineNo: number): string => `${String(lineNo)}번 줄 이번 입하 수량`,
+    /** 남은 수량 칸 — 이번 수량이 정량 한도를 넘으면 넘는 몫. */
+    excessTag: (qty: string): string => `초과 ${qty}`,
+    submitRow: '입하 등록',
+    cancelRow: '취소',
+    errors: {
+      qtyEmpty: '이번 입하 수량을 넣으세요.',
+      qtyNotNumber: '이번 입하 수량은 숫자로 넣으세요.',
+      qtyNotPositive: '이번 입하 수량은 0보다 커야 합니다.',
+    },
+    /** 사유 코드를 못 받으면 라벨 미부착으로 보낼 수 없다 — 서버가 사유 없는 미부착 줄을 받지 않는다. */
+    noReason: '라벨 미부착 사유 코드를 불러오지 못해 입하를 등록할 수 없습니다.',
+    confirm: {
+      title: '입하를 등록합니다',
+      lead: (count: number): string =>
+        count === 1
+          ? '1건을 등록합니다.'
+          : `${String(count)}건을 등록합니다. 품목마다 입하번호가 따로 만들어집니다.`,
+      labelNote:
+        '라벨 미부착으로 등록합니다. 라벨은 POP 「자재LOT 등록·라벨 발행」에서 발행합니다.',
+      irreversible: '등록한 입하는 이 화면에서 되돌릴 수 없습니다. 취소는 승인을 거칩니다.',
+      itemCode: '품목코드',
+      itemName: '품목명',
+      qty: '입하 수량',
+      excess: (qty: string): string => `초과분 ${qty}`,
+      back: '돌아가기',
+      register: '등록',
+    },
+    /** 표 위 한 줄 — 만든 입하번호. 여럿이면 첫 번호와 나머지 수. */
+    done: (count: number, firstNo: string): string =>
+      count === 1
+        ? `입하를 등록했습니다: ${firstNo}`
+        : `입하 ${String(count)}건을 등록했습니다: ${firstNo} 외 ${String(count - 1)}건`,
+    /** 초과분이 있으면 그 자리에서 연결 창으로. */
+    goExcess: '초과분 연결',
   },
   /** 라인 아래 LOT 줄 — 번호 · 입하일 · 수량과, 그 단계의 근거(서버가 준 값만 적는다). */
   lot: {
     receivedOn: (date: string): string => `입하 ${date}`,
     /** 적치는 PDA 의 일이다 — 이 화면은 보기만 한다. */
     putawayOnPda: 'PDA에서 적치',
+    /** 라벨 발행(LOT 등록)은 POP 「자재LOT 등록·라벨 발행」의 일이다 — 이 화면은 보기만 한다. */
+    issueLabelOnPop: 'POP에서 라벨 발행',
+    /** LOT 번호 자리 — 라벨 미부착 입하라 LOT 이 아직 없다(PDA 입하 등록과 같은 말). */
+    labelMissing: '라벨 미부착',
     evidence: {
+      /** 라벨 미부착 줄 — POP 의 입하 라인 목록에서 찾는 번호. */
+      receiptNo: (inboundReceiptNo: string): string => `입하번호 ${inboundReceiptNo}`,
+      /** 입하 줄의 일부만 이 발주로 왔을 때(초과분 연결) — 수량 칸은 이 발주 몫이고, 라벨 · 검사는 이 전체에 한다. */
+      wholeQty: (qty: string, uom: string): string => `전체 ${qty} ${uom}`,
       requested: (requestNo: string, date: string): string => `의뢰 ${requestNo} · ${date}`,
       accepted: (date: string): string => `검사 합격 ${date}`,
       rejected: '검사 불합격 · 불량창고만',

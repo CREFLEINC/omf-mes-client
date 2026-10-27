@@ -93,6 +93,8 @@ export interface InboundScheduleQuery {
   overdueOnly?: boolean;
   /** 이 단계 묶음의 LOT 이 있는 발주만(⚠ 계약 대기 — `PurchaseOrderSummaryQuery` 와 같은 조건). */
   inboundStage?: InboundStageGroup;
+  /** 왼쪽 표의 열 정렬 `열,방향`(`OrderSortParam`). 정렬하지 않으면 싣지 않는다. */
+  sort?: OrderSortParam;
   /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
   page?: number;
   /** 서버 상한 200. */
@@ -153,6 +155,7 @@ export interface PurchaseOrderSummary {
  *
  * | 값 | 뜻(다음 할 일) | 근거 |
  * | --- | --- | --- |
+ * | `LABEL_PENDING` | 라벨 발행 대기 — POP 「자재LOT 등록·라벨 발행」 | 라벨 미부착 입하 라인이라 LOT 이 아직 없다 |
  * | `INSPECTION_REQUIRED` | 검사 의뢰 전 — 「IQC 의뢰 요청」 | 검사 대상인데 열린 검사 의뢰가 없다 |
  * | `INSPECTION_REQUESTED` · `INSPECTION_IN_PROGRESS` | 검사 대기 · 검사 중 — 품질팀 | 검사 의뢰 REQUESTED · IN_PROGRESS |
  * | `INSPECTION_HELD` | 보류 — 품질팀 | 판정 HELD 또는 LOT 보류 |
@@ -162,6 +165,7 @@ export interface PurchaseOrderSummary {
  * | `CANCELLED` | 취소 | 입하 전표 취소 |
  */
 export type InboundStageCode =
+  | 'LABEL_PENDING'
   | 'INSPECTION_REQUIRED'
   | 'INSPECTION_REQUESTED'
   | 'INSPECTION_IN_PROGRESS'
@@ -176,16 +180,22 @@ export type InboundStageCode =
  * 단계 **묶음** — 탭 줄의 건수 칩 · 왼쪽 표의 「진행」 열 · 목록 조건(`inboundStage`)이 쓰는 굵은 단위다.
  * 끝난 것(완료·취소)은 묶음이 아니다 — 세지도 거르지도 않는다.
  */
-export type InboundStageGroup = 'INSPECTION' | 'HELD' | 'RECEIPT' | 'PUTAWAY';
+export type InboundStageGroup = 'LABEL' | 'INSPECTION' | 'HELD' | 'RECEIPT' | 'PUTAWAY';
 
 export type InboundStageCounts = Partial<Record<InboundStageGroup, number>>;
 
-/** LOT 줄의 다음 할 일 — 서버가 정한다. `REQUEST_IQC` 만 이 화면이 직접 보내고, `PUTAWAY` 는 PDA 의 일이라 글자로만 낸다. */
-export type InboundNextActionCode = 'REQUEST_IQC' | 'POST_RECEIPT' | 'PUTAWAY';
+/**
+ * LOT 줄의 다음 할 일 — 서버가 정한다. `REQUEST_IQC` · `POST_RECEIPT` 는 이 화면이 하고,
+ * `ISSUE_LABEL`(POP) · `PUTAWAY`(PDA) 는 다른 기기의 일이라 글자로만 낸다.
+ */
+export type InboundNextActionCode = 'ISSUE_LABEL' | 'REQUEST_IQC' | 'POST_RECEIPT' | 'PUTAWAY';
 
 /**
  * 한 발주의 LOT 하나 — 입하 라인에서 나온 자재 LOT 과, 그 뒤 단계(검사·입고·적치)의 근거(⚠ 계약 대기).
  * `GET /logistics/purchase-orders/{purchaseOrderId}/inbound-progress` 의 `items[]`.
+ *
+ * **라벨 미부착 입하 라인도 한 줄이다**(`LABEL_PENDING` · 사용자 지시 2026-10-23 「라벨 미부착도 확인해야 해」). 그 줄은
+ * LOT 이 아직 없어 `lotId` · `lotNo` · `lotStatusCode` 가 `null` 이고, 줄은 입하 라인(`inboundReceiptLineId`)으로 가린다.
  */
 export interface InboundLotProgress {
   purchaseOrderLineId: number;
@@ -194,15 +204,22 @@ export interface InboundLotProgress {
   inboundReceiptLineId: number;
   /** 입하 일시 — 줄의 「입하 YYYY.MM.DD」. */
   receiptDatetime: string;
-  lotId: number;
-  /** 저장된 번호 그대로 — 끊거나 줄이지 않는다(규범 C-16 예외). */
-  lotNo: string;
+  /** 라벨 미부착이라 LOT 이 아직 없으면 `null`. */
+  lotId: number | null;
+  /** 저장된 번호 그대로 — 끊거나 줄이지 않는다(규범 C-16 예외). LOT 이 없으면 `null`. */
+  lotNo: string | null;
+  /** 입하 줄 전체 수량(= LOT 의 처음 수량) — 라벨 · 검사 · 입고는 줄 단위다. */
   receivedQty: number;
+  /**
+   * 이 입하 줄에서 **이** 발주 라인들에 들어간 몫(서버 #843 · 장부 P-110 보강). 초과분을 다른 발주에 연결한 줄은
+   * 두 발주에 다 서는데, 원 발주에는 원래 몫 · 연결한 발주에는 연결한 몫이다. 앞선 서버는 주지 않는다.
+   */
+  allocatedQty?: number;
   /** 입고 가능 수량(서버 선행 P-56). 없으면 `null`. */
   receivableQty: number | null;
   uomCode: string;
-  /** LOT_STATUS */
-  lotStatusCode: string;
+  /** LOT_STATUS. LOT 이 없으면 `null`. */
+  lotStatusCode: string | null;
   stageCode: InboundStageCode | string;
   nextActionCode: InboundNextActionCode | null;
   /** 다음 단계를 막는 사유 — 이름까지 서버가 싣는다(C-17 사유 칩). 없으면 빈 배열. */
@@ -232,6 +249,9 @@ export interface InboundLotProgress {
     completedAt: string | null;
   } | null;
 }
+
+/** LOT 이 붙은 줄 — 「입고 처리」 · 「IQC 의뢰 요청」은 LOT 하나를 대상으로 하므로 이 줄에만 선다. */
+export type IssuedLotProgress = InboundLotProgress & { lotId: number; lotNo: string };
 
 export interface InboundProgressResult {
   items: InboundLotProgress[];
@@ -274,9 +294,45 @@ export interface PurchaseOrderSummaryQuery {
   overdueOnly?: boolean;
   /** 이 단계 묶음의 LOT 이 있는 발주만(⚠ 계약 대기). 앞선 서버는 모르는 조건을 무시한다. */
   inboundStage?: InboundStageGroup;
+  /** 열 정렬 `열,방향`. 없으면 서버 기본 순서(발주일 최신순). 모르는 열·방향은 400 이다. */
+  sort?: OrderSortParam;
   page?: number;
   size?: number;
 }
+
+/**
+ * 왼쪽 발주 목록의 **정렬 열** — 서버가 정렬한다(omf-mes-server #824 · 장부 P-116 · 2026-10-24 실서버 확인). 목록이 쪽(20건)
+ * 단위라 화면이 정렬하면 보이는 쪽 안에서만 섞여 쪽을 넘는 순서가 틀린다.
+ *
+ * 질의는 **한 칸 `sort=열,방향`** 이다(W/O 목록과 같은 모양 · 방향 생략은 asc). 모르는 열·방향은 400 이다.
+ * 같은 값끼리는 서버가 `purchase_order_id` 내림으로 가르고, 정렬이 없으면 지금 순서(발주일 최신순)다.
+ *
+ * | 값 | 열 | 서버 순서(asc) |
+ * | --- | --- | --- |
+ * | `overdue` | 상태 | 지연 → 정상 → 끝남(지연 = 「지연」 조건과 같은 기준 · 납기 없는 남은 발주는 정상) |
+ * | `expectedReceiptDate` | 납기 | 납기 없는 발주는 방향과 상관없이 맨 뒤 |
+ * | `purchaseOrderNo` | 발주번호 | MES 번호 |
+ * | `inboundStage` | 진행 | 가장 뒤처진 묶음(라벨 발행 → 검사 → 보류 → 입고 → 적치) → 그 수. 묶음 없는 발주는 늘 맨 뒤 |
+ * | `supplierName` | 공급사명 | |
+ * | `openLineCount` | 미입고 품목 | |
+ * | `orderDate` | 발주일 | |
+ */
+export type OrderSortKey =
+  | 'overdue'
+  | 'expectedReceiptDate'
+  | 'purchaseOrderNo'
+  | 'inboundStage'
+  | 'supplierName'
+  | 'openLineCount'
+  | 'orderDate';
+
+export interface OrderSort {
+  key: OrderSortKey;
+  direction: 'ascending' | 'descending';
+}
+
+/** 서버 질의 값 — `expectedReceiptDate,desc`. */
+export type OrderSortParam = `${OrderSortKey},${'asc' | 'desc'}`;
 
 /**
  * 선택 목록의 원본 항목.

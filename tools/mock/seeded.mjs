@@ -2654,6 +2654,27 @@ on('POST', '/logistics/inbound-receipts', (_p, _q, body) => {
     : { created: registerInboundReceipt(body), status: 201 };
 });
 
+/*
+ * 줄마다 입하 한 건(서버 장부 P-117) — 본문은 입하 등록과 같고, 줄 하나를 한 입하로 세운다. 웹 입고 관리의 라인 표
+ * 입하와 PDA 라벨 미부착 일괄 입하가 쓴다. 한 줄이라도 틀리면 아무것도 세우지 않는다(서버와 같이 한 트랜잭션).
+ */
+on('POST', '/logistics/inbound-receipts:per-line', (_p, _q, body) => {
+  const lines = Array.isArray(body?.lines) ? body.lines : [];
+  const errors = attachedLotErrors('', body, new Set());
+
+  if (lines.length === 0 || lines.some((line) => !(Number(line.receivedQty) > 0))) {
+    return rejectInvalid([
+      { scope: 'field', field: 'lines', code: 'INVALID', message: '입하 줄을 확인하세요.' },
+    ]);
+  }
+  if (errors.length > 0) return rejectInvalid(errors);
+
+  return {
+    status: 201,
+    created: { created: lines.map((line) => registerInboundReceipt({ ...body, lines: [line] })) },
+  };
+});
+
 on('POST', '/logistics/inbound-receipts:split', (_p, _q, body) => {
   const mode = body?.mode;
   const parts =
