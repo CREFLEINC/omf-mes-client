@@ -528,30 +528,35 @@ export const AttachmentPanel = ({
             <div className="inspection-documents-toolbar-actions">{uploadButtons}</div>
           </div>
           {pendingList}
-          <div className="inspection-documents-filters">
-            <SearchInput
-              size="sm"
-              aria-label={t.search}
-              placeholder={t.searchPlaceholder}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onClear={() => setSearch('')}
-            />
-            {bulkDownload && downloadCheckedButton}
-          </div>
-          {/* 유형 칩은 찾기 칸 아래 줄(사용자 지시 2026-10-27 · #185). */}
-          <FilterChips
-            label={t.kindLabel}
-            options={[null, ...FILE_KINDS].map((option) => ({
-              value: option,
-              label: t.kinds[option ?? 'all'],
-            }))}
-            value={kind}
-            countOf={(option) =>
-              option === null ? all.length : all.filter((row) => kindOf(row) === option).length
-            }
-            onChange={(next) => setKind(next as FileKind | null)}
-          />
+          {/* 등록된 첨부가 없으면 찾기 · 유형 칩 · 내려받기를 두지 않는다 — 표만(사용자 지시 2026-10-27 · #185). */}
+          {all.length > 0 && (
+            <>
+              <div className="inspection-documents-filters">
+                <SearchInput
+                  size="sm"
+                  aria-label={t.search}
+                  placeholder={t.searchPlaceholder}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  onClear={() => setSearch('')}
+                />
+                {bulkDownload && downloadCheckedButton}
+              </div>
+              {/* 유형 칩은 찾기 칸 아래 줄(사용자 지시 2026-10-27 · #185). */}
+              <FilterChips
+                label={t.kindLabel}
+                options={[null, ...FILE_KINDS].map((option) => ({
+                  value: option,
+                  label: t.kinds[option ?? 'all'],
+                }))}
+                value={kind}
+                countOf={(option) =>
+                  option === null ? all.length : all.filter((row) => kindOf(row) === option).length
+                }
+                onChange={(next) => setKind(next as FileKind | null)}
+              />
+            </>
+          )}
         </>
       )}
       {list.isError ? (

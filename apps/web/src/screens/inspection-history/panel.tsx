@@ -196,7 +196,7 @@ const HistoryTable = ({
 
   return (
     <>
-      {paged && (
+      {paged && keyed.length > 0 && (
         <FilterChips
           label={t.filterLabel}
           options={[
