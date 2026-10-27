@@ -1,5 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
+import { roomOf } from './excess-match';
+import { exactQty } from './qty';
 import type { InboundScheduleLine } from './types';
 
 /**
@@ -53,17 +55,22 @@ export const isPartial = (line: InboundScheduleLine): boolean =>
 
 /**
  * 이번 수량 중 P/O 에 넣을 몫과 초과분. 서버 한도(`발주 + 초과 허용치 − 누적 입하`)와 같은 식이다 — 한도까지는 정량,
- * **넘는** 몫이 초과분이다. 한도가 0 이면(다 받은 줄) 전부 초과분이다(P-115 가 받는다).
+ * **넘는** 몫이 초과분이다. 한도가 0 이면(다 받은 줄) 전부 초과분이다(P-115 가 받는다). 셈은 서버 자릿수의 정수로 한다
+ * (`exactQty`) — 소수 라인에서 부동소수 오차가 초과분으로 실리지 않게.
  */
 export const splitReceiveQty = (
   line: InboundScheduleLine,
   qty: number,
 ): { normalQty: number; excessQty: number } => {
-  const limit = Math.max(line.orderedQty + line.toleranceOverQty - line.receivedQty, 0);
+  const limit = Math.max(roomOf(line), 0);
   const normalQty = Math.min(qty, limit);
 
-  return { normalQty, excessQty: qty - normalQty };
+  return { normalQty, excessQty: exactQty((to) => to(qty) - to(normalQty)) };
 };
+
+/** 받을 줄들의 지문 — 같은 줄 · 같은 수량이면 같은 시도다(입하 일시를 붙드는 열쇠). */
+export const picksKeyOf = (picks: readonly ReceivePick[]): string =>
+  picks.map(({ line, qty }) => `${String(line.purchaseOrderLineId)}:${String(qty)}`).join(',');
 
 /** 수량 입력의 판정 — 비었거나 숫자가 아니거나 0 이하면 받지 않는다. */
 export type QtyCheck =

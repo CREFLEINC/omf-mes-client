@@ -1,4 +1,5 @@
 import type { UnallocatedLine } from './excess-types';
+import { exactQty } from './qty';
 import type { InboundScheduleLine } from './types';
 
 /**
@@ -18,7 +19,7 @@ import type { InboundScheduleLine } from './types';
  */
 
 export const roomOf = (line: InboundScheduleLine): number =>
-  line.orderedQty + line.toleranceOverQty - line.receivedQty;
+  exactQty((to) => to(line.orderedQty) + to(line.toleranceOverQty) - to(line.receivedQty));
 
 export const canTakeExcess = (line: InboundScheduleLine, excess: UnallocatedLine): boolean =>
   line.cancelledAt === null &&

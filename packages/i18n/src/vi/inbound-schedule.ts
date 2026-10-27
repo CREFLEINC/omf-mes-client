@@ -10,9 +10,9 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
   breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   breadcrumbHub: 'Quản lý nhập kho',
   /** 두 표 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
+  splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
   listCollapse: 'Thu gọn danh sách đơn đặt hàng',
   listExpand: 'Mở danh sách đơn đặt hàng',
-  splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách kế hoạch nhập hàng',

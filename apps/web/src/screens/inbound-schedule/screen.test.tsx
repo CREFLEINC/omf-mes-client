@@ -653,6 +653,30 @@ const perLineRoute = (bodies: unknown[]): StubRoute => ({
   },
 });
 
+/** 첫 번째는 응답을 잃은 것처럼 실패(503)하고 그다음부터 받는다 — 보낸 멱등 키와 본문을 담는다. */
+const flakyPerLineRoute = (calls: { key: string | null; body: unknown }[]): StubRoute => ({
+  match: (request) => request.method === 'POST' && new URL(request.url).pathname === PER_LINE_PATH,
+  respond: async (request) => {
+    const body = JSON.parse(await request.clone().text()) as { lines: unknown[] };
+    calls.push({ key: request.headers.get('Idempotency-Key'), body });
+    if (calls.length === 1) return jsonResponse({ message: '' }, { status: 503 });
+
+    return jsonResponse(
+      {
+        created: body.lines.map((_, index) => ({
+          inboundReceipt: {
+            inboundReceiptId: 7590 + index,
+            inboundReceiptNo: `SAMPLE-IR-009${String(index)}`,
+            statusCode: 'REGISTERED',
+          },
+          lines: [{ inboundReceiptLineId: 9490 + index, lineNo: 1 }],
+        })),
+      },
+      { status: 201 },
+    );
+  },
+});
+
 /** 발주 7101 의 라인 셋 — 미착수 100 · 부분 입하 50 중 20 · 다 받음 10. */
 const RECEIVE_LINES = [
   scheduleLine({ expectedReceiptDate: TODAY }),
@@ -771,6 +795,48 @@ describe('InboundScheduleScreen — 입하 등록(라인 표)', () => {
       await within(linesPane()).findByText(t.receive.done(2, 'SAMPLE-IR-0090')),
     ).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: t.receive.confirm.title })).toBeNull();
+  });
+
+  it('응답을 잃고 다시 「등록」을 누르면 같은 멱등 키 · 같은 입하 일시로 보낸다(입하가 두 번 서지 않는다)', async () => {
+    const calls: { key: string | null; body: unknown }[] = [];
+    const { user } = renderScreen(
+      [
+        linesRoute(RECEIVE_LINES),
+        lotReasonRoute(),
+        flakyPerLineRoute(calls),
+        listRoute(),
+        ...lookupRoutes(),
+      ],
+      '?po=7101',
+    );
+
+    await within(linesPane()).findByText('SAMPLE-ITEM-01');
+    await user.click(within(linesPane()).getByRole('checkbox', { name: t.receive.selectRow(1) }));
+    await user.click(within(linesPane()).getByRole('button', { name: t.receive.submit }));
+    const dialog = await screen.findByRole('dialog', { name: t.receive.confirm.title });
+
+    await user.click(within(dialog).getByRole('button', { name: t.receive.confirm.register }));
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
+    });
+    await waitFor(() => {
+      expect(
+        within(dialog).getByRole('button', { name: t.receive.confirm.register }),
+      ).toBeEnabled();
+    });
+    await user.click(within(dialog).getByRole('button', { name: t.receive.confirm.register }));
+
+    await waitFor(() => {
+      expect(calls).toHaveLength(2);
+    });
+    const [first, second] = calls;
+    expect(second?.key).toBe(first?.key);
+    expect((second?.body as { receiptDatetime: string }).receiptDatetime).toBe(
+      (first?.body as { receiptDatetime: string }).receiptDatetime,
+    );
+    expect(
+      await within(linesPane()).findByText(t.receive.done(1, 'SAMPLE-IR-0090')),
+    ).toBeInTheDocument();
   });
 
   it('행을 누르면 그 품목만 수량을 정해 받고, 정량 한도를 넘는 몫은 초과분으로 미리 보이고 실린다', async () => {

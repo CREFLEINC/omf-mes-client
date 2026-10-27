@@ -44,7 +44,7 @@ export const useReceiveDraft = (
   lines: readonly InboundScheduleLine[],
   orderId: number | null,
 ): ReceiveDraft => {
-  const [checked, setChecked] = useState<ReadonlySet<number>>(NONE);
+  const [checkedIds, setChecked] = useState<ReadonlySet<number>>(NONE);
   const [editing, setEditing] = useState<ReceiveEditing | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
@@ -54,10 +54,21 @@ export const useReceiveDraft = (
     setNote(null);
   };
 
+  /* 발주가 바뀔 때만 비운다 — `reset` 은 렌더마다 새 함수라 의존성에 두면 매 렌더 비운다. */
   useEffect(() => {
     reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 발주가 바뀔 때만 비운다(위 주석)
   }, [orderId]);
 
+  /*
+   * 체크는 **지금 라인으로 다시 거른다.** 다시 불러온 뒤 체크할 수 없게 된 줄(다른 곳에서 받았거나 초과분을 연결해 남은
+   * 수량이 0)은 체크로 보이지 않는다 — 체크칸은 잠겨 풀 수 없는데 「선택 N건」과 등록 단추만 남는 일이 없게.
+   */
+  const checked: ReadonlySet<number> = new Set(
+    lines
+      .filter((line) => checkedIds.has(line.purchaseOrderLineId) && isCheckable(line))
+      .map((line) => line.purchaseOrderLineId),
+  );
   const selectable = selectAllOf(lines);
   const allChecked = selectable.ids.length > 0 && selectable.ids.every((id) => checked.has(id));
   const lineOf = (id: number): InboundScheduleLine | undefined =>
@@ -122,7 +133,7 @@ export const useReceiveDraft = (
     },
     checkedPicks: () =>
       lines
-        .filter((line) => checked.has(line.purchaseOrderLineId) && isCheckable(line))
+        .filter((line) => checked.has(line.purchaseOrderLineId))
         .map((line) => ({ line, qty: line.remainingQty })),
     editPick: () => {
       if (editing === null) return null;

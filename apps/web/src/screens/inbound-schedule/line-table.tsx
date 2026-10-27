@@ -73,6 +73,8 @@ export interface LineTableProps {
     draft: ReceiveDraft;
     /** 보내는 중 — 단추 · 체크를 잠근다. */
     isSaving: boolean;
+    /** 보내는 것이 어느 단추에서 왔나 — 그 단추만 돈다(체크 일괄 · 편집 줄). */
+    savingFrom: 'checked' | 'edit' | null;
     /** 체크한 줄을 확인 창으로. */
     onSubmitChecked: () => void;
     /** 편집 중인 줄을 확인 창으로. */
@@ -596,7 +598,7 @@ export const LineTable = ({
                 <Button
                   size="sm"
                   disabled={editingQty === null}
-                  loading={receive?.isSaving === true}
+                  loading={receive?.isSaving === true && receive.savingFrom === 'edit'}
                   onClick={() => {
                     receive?.onSubmitEdit();
                   }}
@@ -702,7 +704,7 @@ export const LineTable = ({
             <Button
               size="sm"
               disabled={receive.draft.checked.size === 0}
-              loading={receive.isSaving && editingId === null}
+              loading={receive.isSaving && receive.savingFrom === 'checked'}
               onClick={receive.onSubmitChecked}
             >
               {t.receive.submit}

@@ -1,6 +1,6 @@
 import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
@@ -66,7 +66,13 @@ import { LineTable } from './line-table';
 import { OrderTable } from './order-table';
 import { scheduleKeys, usePurchaseOrderLines, usePurchaseOrderSummaries } from './queries';
 import { ReceiveConfirmDialog } from './receive-confirm-dialog';
-import { defaultReasonOf, splitReceiveQty, toReceiveBody, type ReceivePick } from './receive-entry';
+import {
+  defaultReasonOf,
+  picksKeyOf,
+  splitReceiveQty,
+  toReceiveBody,
+  type ReceivePick,
+} from './receive-entry';
 import { useReceivePerLine, useSubstituteLotReasons } from './receive-queries';
 import { useReceiveDraft } from './use-receive-draft';
 import { hasLot, progressByLine } from './stage';
@@ -91,8 +97,8 @@ const NO_EXCESSES: UnallocatedLine[] = [];
 export const LIST_PAGE_SIZE = 20;
 
 /**
- * 「입하 등록」의 권한 — 화면 코드 W-01-03(옛 「초과 입하 분리」)이다. 서버의 `:split` 경로가 이 코드로 막는다.
- * 세션이 권한 목록을 주지 않았으면(모름) 단추를 세운다 — 막는 것은 서버다(`patterns/web-access.ts` 와 같은 잣대).
+ * 「입하 등록」의 권한 — 화면 코드 W-01-03(옛 「입하 등록」 창)이다. 서버 `:per-line` 이 이 코드나 PDA 의 M-01-01 로
+ * 막는다(서버 #845). 세션이 권한 목록을 주지 않았으면(모름) 단추를 세운다 — 막는 것은 서버다(`patterns/web-access.ts` 와 같은 잣대).
  */
 const REGISTER_PERMISSION = 'W-01-03';
 
@@ -136,10 +142,11 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  *
  * **입하·입고 일을 이 화면으로 모은다**(사용자 지시 2026-10-21). 일마다 오른쪽 창이 열리고, 창은 주소가 연다.
  *
- * - **입하 등록**(`register=1` · W-01-03) — 고른 발주 머리의 「입하 등록」. 도착 수량·LOT 을 받아 전표를 만든다.
- *   옛 「초과 입하 분리」 탭이 이 창이 됐다.
- * - **초과분 발주 연결**(`excess=1` · 서버 장부 P-115) — 탭 줄 끝의 「초과분 연결」과, 고른 발주의 라인에 맞는
- *   초과분이 있을 때만 서는 「초과분」 칸이 연다. 입하 등록 결과의 「초과분 발주 연결」도 이 창으로 온다.
+ * - **입하 등록**(W-01-03) — 창이 아니라 라인 표에서 바로 받는다(체크 일괄 · 행 눌러 한 품목 → 확인 창 →
+ *   `:per-line`). 옛 「입하 등록」 창(`register=1`)은 걷었다 — 그 키는 읽지 않는다. 옛 「초과 입하 분리」 주소는
+ *   `register-redirect.tsx` 가 이 화면으로 옮겨 준다.
+ * - **초과분 발주 연결**(`excess=1` · 서버 장부 P-115) — 막대 끝의 「초과분 연결」과, 고른 발주의 라인에 맞는
+ *   초과분이 있을 때만 서는 「초과분」 칸이 연다. 입하 등록 알림의 「초과분 연결」도 이 창으로 온다.
  *   권한이 없거나(403) 서버가 그 경로를 모르면(404) 두 길 모두 서지 않는다.
  */
 export const InboundScheduleScreen = () => {
@@ -281,6 +288,8 @@ export const InboundScheduleScreen = () => {
   const lotReasons = useSubstituteLotReasons(canRegister);
   const lotReason = defaultReasonOf(lotReasons.data ?? []);
   const [confirmPicks, setConfirmPicks] = useState<ReceivePick[] | null>(null);
+  /* 확인 창을 연 단추 — 보내는 동안 그 단추만 돈다. */
+  const [confirmFrom, setConfirmFrom] = useState<'checked' | 'edit' | null>(null);
   const [receiveNote, setReceiveNote] = useState<{
     text: string;
     excess: { receiptNo: string; inboundReceiptLineId: number | null } | null;
@@ -288,6 +297,12 @@ export const InboundScheduleScreen = () => {
   const [receiveProblem, setReceiveProblem] = useState<string | null>(null);
   /* 되먹임은 제출한 렌더의 닫힘을 들고 있다 — 보낸 줄은 ref 에 적는다(IQC 의뢰와 같은 길). */
   const sentPicksRef = useRef<ReceivePick[]>([]);
+  /*
+   * ⛔ **입하 일시는 처음 누른 순간을 붙든다.** 본문에 실리는 값이라 누를 때마다 바뀌면 본문 지문이 달라져 멱등 키가
+   * 새로 나간다 — 응답을 잃은 뒤 다시 누르면 입하가 두 번 선다. 같은 줄 · 같은 수량이면 그대로 쓰고, 성공했거나 발주가
+   * 바뀌었거나 받을 줄이 바뀌면 버린다(work-start `submitAtRef` 와 같은 길).
+   */
+  const submitAtRef = useRef<{ picks: string; at: Date } | null>(null);
   const receiveWrite = useReceivePerLine({
     refreshKeys: REGISTER_REFRESH_KEYS,
     onSuccess: (data) => {
@@ -308,10 +323,22 @@ export const InboundScheduleScreen = () => {
                 inboundReceiptLineId: excessReceipt.lines[0]?.inboundReceiptLineId ?? null,
               },
       });
+      submitAtRef.current = null;
       setConfirmPicks(null);
       receiveDraft.reset();
     },
   });
+  const selectedOrderId = selectedOrder?.purchaseOrderId ?? null;
+  /*
+   * 발주가 바뀌면(뒤로가기 포함) 열려 있던 확인 창과 그 시도를 버린다 — 새 발주 머리에 앞 발주의 줄이 서지 않게.
+   * `receiveWrite` 는 렌더마다 새 값이라 의존성에 두지 않는다 — 발주가 바뀔 때만 돈다.
+   */
+  useEffect(() => {
+    setConfirmPicks(null);
+    submitAtRef.current = null;
+    receiveWrite.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 발주가 바뀔 때만 버린다(위 주석)
+  }, [selectedOrderId]);
   const askConfirm = (picks: ReceivePick[]): void => {
     if (picks.length === 0) return;
     if (lotReason === null) {
@@ -325,6 +352,7 @@ export const InboundScheduleScreen = () => {
     setConfirmPicks(picks);
   };
   const submitChecked = (): void => {
+    setConfirmFrom('checked');
     askConfirm(receiveDraft.checkedPicks());
   };
   const submitEdit = (): void => {
@@ -335,12 +363,15 @@ export const InboundScheduleScreen = () => {
 
       return;
     }
+    setConfirmFrom('edit');
     askConfirm([result.pick]);
   };
   const confirmReceive = (): void => {
     if (confirmPicks === null || lotReason === null) return;
+    const picks = picksKeyOf(confirmPicks);
+    if (submitAtRef.current?.picks !== picks) submitAtRef.current = { picks, at: new Date() };
     sentPicksRef.current = confirmPicks;
-    receiveWrite.write(toReceiveBody(confirmPicks, lotReason, today, new Date()));
+    receiveWrite.write(toReceiveBody(confirmPicks, lotReason, today, submitAtRef.current.at));
   };
 
   /*
@@ -643,6 +674,7 @@ export const InboundScheduleScreen = () => {
                     receive: {
                       draft: receiveDraft,
                       isSaving: receiveWrite.isSaving,
+                      savingFrom: confirmFrom,
                       onSubmitChecked: submitChecked,
                       onSubmitEdit: submitEdit,
                     },
