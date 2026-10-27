@@ -65,7 +65,7 @@ const fileTypeOf = (row: Attachment): string => {
   return dot < 0 ? row.contentType : row.fileName.slice(dot + 1).toUpperCase();
 };
 
-/** 파일 유형 묶음 — 거르기 칩과 파일명 앞 표식이 쓴다(#185). */
+/** 파일 유형 묶음 — 거르기 칩이 쓴다(#185). */
 const FILE_KINDS = ['image', 'pdf', 'excel', 'word', 'other'] as const;
 type FileKind = (typeof FILE_KINDS)[number];
 const KIND_EXTENSIONS: Record<Exclude<FileKind, 'other'>, readonly string[]> = {
@@ -73,13 +73,6 @@ const KIND_EXTENSIONS: Record<Exclude<FileKind, 'other'>, readonly string[]> = {
   pdf: ['PDF'],
   excel: ['XLSX', 'XLS', 'CSV'],
   word: ['DOCX', 'DOC'],
-};
-const KIND_ICONS: Record<FileKind, string> = {
-  image: 'image',
-  pdf: 'picture_as_pdf',
-  excel: 'table_chart',
-  word: 'description',
-  other: 'draft',
 };
 const kindOf = (row: Attachment): FileKind => {
   const type = fileTypeOf(row);
@@ -361,13 +354,6 @@ export const AttachmentPanel = ({
        */
       render: (row) => (
         <span className="inspection-documents-file-cell">
-          <Icon
-            name={KIND_ICONS[kindOf(row)]}
-            size={18}
-            className="inspection-documents-kind"
-            data-kind={kindOf(row)}
-            aria-hidden
-          />
           <Button
             variant="text"
             size="sm"
@@ -437,18 +423,20 @@ export const AttachmentPanel = ({
   const paging = useClientPage(filtered, { uploadedAt: (row) => row.uploadedAt });
   const hasToolbar = toolbarStart !== undefined;
 
+  /* 위 도구줄의 단추는 작게(사용자 지시 2026-10-27 · #185). 종전 배치는 그대로다. */
+  const buttonSize = toolbarStart === undefined ? 'md' : 'sm';
   const uploadButtons = (
     <>
       <Button
         variant="outlined"
-        size="md"
+        size={buttonSize}
         disabled={upload.isSaving}
         onClick={() => inputRef.current?.click()}
       >
         {t.upload}
       </Button>
       <Button
-        size="md"
+        size={buttonSize}
         loading={upload.isSaving}
         disabled={selected.length === 0 || hasSelectError || upload.isSaving}
         onClick={() => upload.write({ files: selected })}
@@ -464,9 +452,9 @@ export const AttachmentPanel = ({
   const downloadCheckedButton = (
     <Button
       variant="outlined"
-      size="md"
+      size={buttonSize}
       className="inspection-documents-bulk"
-      leadingIcon={<Icon name="download" size={18} aria-hidden />}
+      leadingIcon={<Icon name="download" size={16} aria-hidden />}
       loading={isZipping}
       disabled={checkedRows.length === 0 || isZipping}
       onClick={() => void downloadChecked()}
@@ -523,31 +511,30 @@ export const AttachmentPanel = ({
             <SearchInput
               size="sm"
               aria-label={t.search}
-              placeholder={t.search}
+              placeholder={t.searchPlaceholder}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               onClear={() => setSearch('')}
             />
-            <div className="inspection-documents-kinds" role="group" aria-label={t.kindLabel}>
-              {([null, ...FILE_KINDS] as const).map((option) => (
-                <Chip
-                  key={option ?? 'all'}
-                  variant="filter"
-                  size="sm"
-                  selected={kind === option}
-                  aria-pressed={kind === option}
-                  onSelectedChange={() => setKind(option)}
-                >
-                  {t.kindCount(
-                    t.kinds[option ?? 'all'],
-                    option === null
-                      ? all.length
-                      : all.filter((row) => kindOf(row) === option).length,
-                  )}
-                </Chip>
-              ))}
-            </div>
             {bulkDownload && downloadCheckedButton}
+          </div>
+          {/* 유형 칩은 찾기 칸 아래 줄(사용자 지시 2026-10-27 · #185). */}
+          <div className="inspection-documents-kinds" role="group" aria-label={t.kindLabel}>
+            {([null, ...FILE_KINDS] as const).map((option) => (
+              <Chip
+                key={option ?? 'all'}
+                variant="filter"
+                size="sm"
+                selected={kind === option}
+                aria-pressed={kind === option}
+                onSelectedChange={() => setKind(option)}
+              >
+                {t.kindCount(
+                  t.kinds[option ?? 'all'],
+                  option === null ? all.length : all.filter((row) => kindOf(row) === option).length,
+                )}
+              </Chip>
+            ))}
           </div>
         </>
       )}
@@ -612,6 +599,8 @@ export const AttachmentPanel = ({
         onClose={closePreview}
         size="lg"
         title={preview?.row.fileName}
+        /* 닫기는 아래 [닫기] 단추로(사용자 지시 2026-10-27 · #185). Esc · 바깥 누르기도 닫는다. */
+        showCloseButton={false}
         footer={
           <>
             <Button variant="text" size="md" onClick={closePreview}>

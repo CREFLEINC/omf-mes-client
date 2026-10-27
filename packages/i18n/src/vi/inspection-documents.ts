@@ -35,6 +35,7 @@ export const inspectionDocuments = {
   zipName: 'TepDinhKem',
   zipFailed: 'Không tải được các tệp đã chọn. Hãy kiểm tra kết nối rồi thử lại.',
   search: 'Tìm theo tên tệp',
+  searchPlaceholder: 'Nhập tên tệp',
   kindLabel: 'Loại tệp',
   kinds: {
     all: 'Tất cả',

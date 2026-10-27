@@ -46,7 +46,8 @@ const columnsOf = (
     /* 오름 · 내림차순(사용자 지시 2026-10-27 · #185). */
     sortable: true,
     header: t.columns.round,
-    width: '64px',
+    /* 정렬 단추(이름 · 끌기 손잡이 · 정렬 표식)가 칸 안에 들어가야 가운데에 선다(#185). */
+    width: '140px',
     render: (row) => String(row.inspectionRound),
   },
   {

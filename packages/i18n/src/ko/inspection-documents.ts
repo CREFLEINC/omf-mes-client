@@ -38,6 +38,7 @@ export const inspectionDocuments = {
   zipFailed: '선택한 파일을 내려받지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
   /* 찾기 · 유형 거르기(#185). */
   search: '파일명 검색',
+  searchPlaceholder: '파일명을 입력하세요',
   kindLabel: '파일 유형',
   kinds: { all: '전체', image: '이미지', pdf: 'PDF', excel: '엑셀', word: '워드', other: '기타' },
   kindCount: (label: string, count: number): string => `${label} ${String(count)}`,

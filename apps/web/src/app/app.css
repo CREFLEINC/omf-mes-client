@@ -15248,25 +15248,6 @@ button.app-button-neutral {
   margin-inline-start: auto;
 }
 
-/* 파일명 앞 유형 표식 — 이미지 파랑 · PDF 빨강 · 엑셀 초록 · 워드 파랑 · 기타 흐리게. */
-.inspection-documents-kind {
-  flex: none;
-  color: var(--on-surface-muted);
-}
-
-.inspection-documents-kind[data-kind='image'],
-.inspection-documents-kind[data-kind='word'] {
-  color: var(--semantic-info);
-}
-
-.inspection-documents-kind[data-kind='pdf'] {
-  color: var(--semantic-error);
-}
-
-.inspection-documents-kind[data-kind='excel'] {
-  color: var(--semantic-success);
-}
-
 /* 첨부 미리보기 창(#185) — 이미지 · PDF · 글을 창 높이 안에서 보인다. */
 .inspection-documents-preview {
   display: grid;
