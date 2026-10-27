@@ -6719,6 +6719,17 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 두 표(server #762) — 열별 폭의 도출 표는 order-table.tsx · line-table.tsx 에 있다.
  * 열 폭을 끌어 바꾸면 최소 폭이 그만큼 따라간다(`--col-grow` · `--col-floor`, patterns/column-resize.tsx).
  */
+/*
+ * 입고 관리 짜임의 표(patterns/board-table.tsx) — 최소 폭은 표마다(`--board-table-min`), 열을 넓힌 만큼 따라간다.
+ * 아래 화면별 규칙(발주 목록 · 라인 표)이 뒤에 서서 이긴다.
+ */
+.wide-table.board-table table {
+  min-width: max(
+    var(--board-table-min, 38rem) + var(--col-grow, 0px),
+    var(--col-floor, 0px)
+  );
+}
+
 .wide-table.po-board-orders table {
   min-width: max(38rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
@@ -7200,13 +7211,23 @@ body.po-board-resizing {
   color: var(--semantic-warning);
 }
 
-/* 발주 줄은 어디를 눌러도 고른다(order-table.tsx). */
-.po-board-orders tbody tr {
+/* 줄은 어디를 눌러도 고른다(patterns/board-table.tsx `pick` — 발주 목록 · ERP 송신 항목 · 연계 메시지). */
+.board-table-pickable tbody tr {
   cursor: pointer;
 }
 
-.po-board-orders tbody tr:hover > td {
+.board-table-pickable tbody tr:hover > td {
   background: var(--surface-container);
+}
+
+/* 고르는 단추는 다른 칸과 같은 글자다 — 줄 전체가 누르는 자리라 링크처럼 꾸밀 까닭이 없다(발주 목록과 같다). */
+.board-table .board-table-pick {
+  color: inherit;
+  text-decoration: none;
+}
+
+.board-table .board-table-pick:hover {
+  background: none;
 }
 
 /*
@@ -7215,8 +7236,8 @@ body.po-board-resizing {
  * 올렸다 떼도 남도록 hover 보다 우선한다(사용자 지시 2026-10-21 「선택 행 하이라이트 유지」).
  */
 /* 붉은 계열(primary)은 쓰지 않는다 — 문제가 있다는 뜻으로 읽힌다(사용자 지시 2026-10-21). 정보 파랑이다. */
-.po-board-orders tbody tr:has([aria-current='true']) > td,
-.po-board-orders tbody tr:has([aria-current='true']):hover > td,
+.board-table tbody tr:has(.board-table-pick[aria-current='true']) > td,
+.board-table tbody tr:has(.board-table-pick[aria-current='true']):hover > td,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td,
 .iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
@@ -7225,7 +7246,7 @@ body.po-board-resizing {
 }
 
 /* 품질 승인 처리 목록(#186)도 같은 표시다 — 고른 요청이 입하 예정 조회의 고른 발주처럼 보인다. */
-.po-board-orders tbody tr:has([aria-current='true']) > td:first-child,
+.board-table tbody tr:has(.board-table-pick[aria-current='true']) > td:first-child,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child,
 .iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
@@ -18661,7 +18682,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   background: var(--state-hover-neutral);
 }
 
-/* 고른 줄은 입하 예정 조회와 같은 파랑이다(#186 · `.po-board-orders` 규칙 곁에 함께 적었다). */
+/* 고른 줄은 입하 예정 조회와 같은 파랑이다(#186 · `.board-table` 규칙 곁에 함께 적었다). */
 
 /* 요청번호 — 한 줄, 본문색·굵게. 줄 전체가 누르는 자리라(#186) 요청번호만 따로 누를 곳처럼 보이지 않게 한다. */
 .iqc-skip-approval-list .iqc-skip-approval-request-no {

@@ -1,15 +1,8 @@
-import {
-  Button,
-  type Column,
-  EmptyState,
-  SkeletonText,
-  type SortState,
-  Table,
-} from '@crefle/web-ui';
+import { Button, type Column, EmptyState, SkeletonText, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { useColumnWidths } from '../../patterns/column-resize';
+import { BoardTable } from '../../patterns/board-table';
 import { StageGroupChip } from './lot-row';
 import { isOrderOverdue } from './overdue';
 import { formatDate } from './period';
@@ -130,18 +123,8 @@ export const OrderTable = ({
       sortable: true,
       header: t.table.purchaseOrderNo,
       width: '120px',
-      /* 고르는 단추. 고른 줄은 `aria-current` 로 알리고 줄 배경이 따라간다(app.css). */
-      render: (row) => (
-        <button
-          type="button"
-          className="link-cell"
-          aria-current={selectedId === row.purchaseOrderId ? true : undefined}
-          aria-label={t.actions.selectOrder(row.purchaseOrderNo)}
-          data-po-id={row.purchaseOrderId}
-        >
-          {row.purchaseOrderNo}
-        </button>
-      ),
+      /* 고르는 단추 자리(`BoardTable` 의 `pick`). 고른 줄은 `aria-current` 로 알리고 줄 배경이 따라간다(app.css). */
+      render: (row) => row.purchaseOrderNo,
     },
     /* 「진행」은 발주번호 바로 뒤 — 가로로 넘기지 않아도 보인다. 서버가 묶음 수를 실을 때만 선다(앞선 서버는 열이 없다). */
     ...(hasStageCounts(rows)
@@ -180,7 +163,6 @@ export const OrderTable = ({
       render: (row) => formatDate(row.orderDate),
     },
   ];
-  const resizable = useColumnWidths('omf-mes:inbound-schedule:columns:orders', columns);
 
   if (isLoading) {
     return (
@@ -229,37 +211,31 @@ export const OrderTable = ({
   };
 
   return (
-    /*
-     * **줄 어디를 눌러도 고른다**(사용자 지시 2026-10-21). 표 부품에 줄 클릭이 없어 감싼 상자가 받는다 —
-     * 누른 줄 안의 발주번호 단추(`data-po-id`)로 어느 발주인지 안다. 키보드는 그 단추가 받는다(Enter·Space 가
-     * 단추의 click 을 내어 여기로 올라온다).
-     */
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-    <div
-      className="wide-table po-board-table po-board-orders"
-      style={resizable.style}
-      onClick={(event) => {
-        const row = (event.target as HTMLElement).closest('tbody tr');
-        const id = row?.querySelector<HTMLElement>('[data-po-id]')?.dataset.poId;
-        if (id !== undefined) onSelect(Number(id));
+    /* **줄 어디를 눌러도 고른다**(사용자 지시 2026-10-21) — 발주번호 칸이 고르는 단추다(`BoardTable` 의 `pick`). */
+    <BoardTable
+      label={t.panes.orders}
+      className="po-board-orders"
+      widthKey="omf-mes:inbound-schedule:columns:orders"
+      columns={columns}
+      rows={rows}
+      getRowId={(row) => String(row.purchaseOrderId)}
+      pick={{
+        columnKey: 'purchaseOrderNo',
+        label: (row) => t.actions.selectOrder(row.purchaseOrderNo),
+        currentId: selectedId === null ? null : String(selectedId),
+        onPick: (row) => {
+          onSelect(row.purchaseOrderId);
+        },
       }}
-    >
-      <Table
-        density="compact"
-        caption={<span className="erp-data-table-caption">{t.panes.orders}</span>}
-        columns={resizable.columns}
-        rows={rows}
-        getRowId={(row) => String(row.purchaseOrderId)}
-        sort={sort === null ? null : { key: columnOfSortKey(sort.key), direction: sort.direction }}
-        onSortChange={(next: SortState | null) => {
-          const key = next === null ? undefined : SORT_KEY_OF_COLUMN[next.key];
+      sort={sort === null ? null : { key: columnOfSortKey(sort.key), direction: sort.direction }}
+      onSortChange={(next: SortState | null) => {
+        const key = next === null ? undefined : SORT_KEY_OF_COLUMN[next.key];
 
-          onSortChange(
-            next === null || key === undefined ? null : { key, direction: next.direction },
-          );
-        }}
-        empty={emptySlot()}
-      />
-    </div>
+        onSortChange(
+          next === null || key === undefined ? null : { key, direction: next.direction },
+        );
+      }}
+      empty={emptySlot()}
+    />
   );
 };
