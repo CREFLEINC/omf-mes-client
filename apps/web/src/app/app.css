@@ -21927,6 +21927,23 @@ table.col-measuring td {
   }
 }
 
+/*
+ * 수량 · 판정 · 4M · 저장 줄 사이 빈 공간을 줄인다(사용자 지시 2026-10-27 · #185) — 구획 위아래 여백 20px → 12px,
+ * 4M 체크 줄의 겹친 위 여백 제거, 저장 줄 위아래 8px.
+ */
+.iqc-inspection-work > .iqc-inspection-section,
+.iqc-inspection-work > .iqc-inspection-qty-judgment-row > .iqc-inspection-section {
+  padding-block: var(--space-3);
+}
+
+.iqc-inspection-four-m-block .iqc-inspection-four-m:nth-child(n) {
+  margin-top: 0;
+}
+
+.iqc-inspection-detail form > .iqc-inspection-action-area:nth-child(n) {
+  padding-block: var(--space-2);
+}
+
 /* 판정 줄 — 최종 판정 · [상세 입력] · 「상세 입력 필요」(사용자 지시 2026-10-27 · #185). */
 .iqc-inspection-judgment-inline-row {
   display: flex;
