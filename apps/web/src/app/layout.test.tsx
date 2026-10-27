@@ -767,7 +767,7 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/work-order-progress')).toBe(
       links.indexOf('/production/emergency-work-orders') + 1,
     );
-    /* W-02-09 LOT 추적 — 「W/O 진행현황 조회」 바로 아래(omf-all-around#73). */
+    /* W-02-09 LOT 추적 — 「W/O 진행현황 조회」 바로 아래. */
     expect(within(sidebar).getByRole('link', { name: 'LOT 추적' })).toHaveAttribute(
       'href',
       '/production/lot-trace',

@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Chip, SkeletonText, Tooltip } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
-import { useRef, useState, type ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 
 import { DetailDrawer } from '../../patterns/detail-drawer';
@@ -17,7 +17,8 @@ import {
   type ChainLine,
   type StageCell,
 } from './chain-model';
-import { saveCsv, toCsvText, type CsvColumn } from './export';
+import { saveCsv, toCsvText, type CsvColumn } from '../../patterns/csv';
+import { LoadFailure } from './load-failure';
 import { useCodeNames } from './queries';
 import { formatQty } from './rows';
 import type { PathStep, TraceDirection } from './trace-filters';
@@ -66,7 +67,7 @@ const lotTypeOf = (head: FlowLotHead): PathStep['lotType'] =>
 
 const qty = (value: number, uomCode: string): string => `${formatQty(value)} ${uomCode}`.trim();
 
-/** 추정 칩. 칩에 마우스를 올리거나 초점을 두면 근거 한 문장이 보인다(계획 2-4). */
+/** 추정 칩. 칩에 마우스를 올리거나 초점을 두면 근거 한 문장이 보인다. */
 const EstimateChip = ({ basis }: { basis: FlowBasis | 'inputOnly' }) => (
   <Tooltip content={c.estimateTip[basis]}>
     <span
@@ -99,7 +100,10 @@ const Note = ({ children }: { children: ReactNode }) => (
   <li className="lot-trace-node lot-trace-note">{children}</li>
 );
 
-/** 생산 입고, 포장, 출하 — 문서로 이어진 단계라 근거 칩이 없다. 출하는 출하 번호 아래 취급 단위를 묶는다. */
+/**
+ * 생산 입고, 포장, 출하 — 문서로 이어진 단계라 근거 칩이 없다. 출하는 출하 번호 아래 취급 단위를 묶는다.
+ * `stageAnchors`이면(첫 단의 LOT) 줄마다 단계 이름을 달아 단계 줄의 칸을 누르면 그 단계의 첫 줄로 간다.
+ */
 const ProductSideNodes = ({
   side,
   uomCode,
@@ -112,11 +116,11 @@ const ProductSideNodes = ({
   const groups = groupShipments(side.shipments);
   return (
     <>
-      {side.productionReceipts.map((receipt, index) => (
+      {side.productionReceipts.map((receipt) => (
         <li
           key={`r-${receipt.goodsReceiptId}`}
           className="lot-trace-node"
-          data-stage={stageAnchors && index === 0 ? 'PRODUCTION_RECEIVED' : undefined}
+          data-stage={stageAnchors ? 'PRODUCTION_RECEIVED' : undefined}
         >
           <span className="lot-trace-node-kind">{c.productionReceipt}</span>
           <span className="mono-cell">{receipt.goodsReceiptNo}</span>
@@ -125,11 +129,11 @@ const ProductSideNodes = ({
           <span>{receipt.warehouse.name}</span>
         </li>
       ))}
-      {side.packages.map((entry, index) => (
+      {side.packages.map((entry) => (
         <li
           key={`p-${entry.handlingUnitId}`}
           className="lot-trace-node"
-          data-stage={stageAnchors && index === 0 ? 'PACKED' : undefined}
+          data-stage={stageAnchors ? 'PACKED' : undefined}
         >
           <span className="lot-trace-node-kind">{c.packing}</span>
           <span className="mono-cell">{entry.handlingUnitNo}</span>
@@ -147,11 +151,11 @@ const ProductSideNodes = ({
       {groups.length === 0 ? (
         <Note>{c.noShipment}</Note>
       ) : (
-        groups.map((group, index) => (
+        groups.map((group) => (
           <li
             key={`s-${group.shipmentId}`}
             className="lot-trace-node"
-            data-stage={stageAnchors && index === 0 ? 'SHIPPED' : undefined}
+            data-stage={stageAnchors ? 'SHIPPED' : undefined}
           >
             <span className="lot-trace-node-kind">{c.shipment}</span>
             <span className="mono-cell">{group.shipmentNo}</span>
@@ -179,9 +183,47 @@ interface TreeContext<Chain> {
   expanded: ReadonlySet<number>;
   chains: ReadonlyMap<number, Chain>;
   pending: ReadonlySet<number>;
+  failed: ReadonlySet<number>;
+  retry: (lotId: number) => void;
   toggle: (lotId: number) => void;
   switchTo: (direction: TraceDirection, lot: LotRef) => void;
+  /** 생산 LOT 아래 문서(생산 입고, 포장, 출하)를 접은 채 시작하는가. 생산 LOT이 잘린 큰 사슬에서 참이다. */
+  documentsCollapsed: boolean;
+  documentsOpen: ReadonlySet<number>;
+  toggleDocuments: (lotId: number) => void;
 }
+
+/** 펼친 LOT의 다음 단을 받는 중이면 자리 표시, 실패하면 그 줄에 사유와 [다시 조회]. */
+const ExpandStatus = ({
+  lotId,
+  lotNo,
+  ctx,
+}: {
+  lotId: number;
+  lotNo: string;
+  ctx: TreeContext<unknown>;
+}) => {
+  if (ctx.failed.has(lotId)) {
+    return (
+      <li className="lot-trace-node lot-trace-note lot-trace-expand-failed">
+        <span>{c.expandFailed}</span>
+        <Button
+          size="sm"
+          variant="outlined"
+          aria-label={c.retryFor(lotNo)}
+          onClick={() => ctx.retry(lotId)}
+        >
+          {c.retry}
+        </Button>
+      </li>
+    );
+  }
+  return ctx.pending.has(lotId) ? (
+    <Note>
+      <SkeletonText lines={1} />
+    </Note>
+  ) : null;
+};
 
 const LotActions = ({
   lot,
@@ -256,14 +298,14 @@ const ForwardWorkOrders = ({
 }) => (
   <>
     {chain.workOrders.length === 0 && <Note>{c.noInput}</Note>}
-    {chain.workOrders.map((wo, index) => (
+    {chain.workOrders.map((wo) => (
       <ForwardWorkOrderNode
         key={wo.workOrderId}
         wo={wo}
         uomCode={chain.lot.uomCode}
         seen={seen}
         ctx={ctx}
-        anchors={anchors && index === 0}
+        anchors={anchors}
       />
     ))}
     {chain.truncated && <Note>{c.truncated(chain.totalProductionLotCount)}</Note>}
@@ -300,19 +342,60 @@ const ForwardWorkOrderNode = ({
     {wo.linkBasis !== null && (
       <ul className="lot-trace-tree">
         {wo.productionLots.length === 0 && <Note>{c.noProductionLot}</Note>}
-        {wo.productionLots.map((lot, index) => (
-          <ProductionLotNode
-            key={lot.lotId}
-            lot={lot}
-            seen={seen}
-            ctx={ctx}
-            anchors={anchors && index === 0}
-          />
+        {wo.productionLots.map((lot) => (
+          <ProductionLotNode key={lot.lotId} lot={lot} seen={seen} ctx={ctx} anchors={anchors} />
         ))}
       </ul>
     )}
   </li>
 );
+
+const PRODUCT_STAGES = ['PRODUCTION_RECEIVED', 'PACKED', 'SHIPPED'] as const;
+
+/**
+ * 생산 LOT 아래 문서. 잘린 큰 사슬(`documentsCollapsed`)에서는 접은 채 시작하고 건수 단추로 편다.
+ * 접힌 단추 줄에도 그 안의 단계 이름을 달아 단계 줄이 그 자리로 간다.
+ */
+const ProductDocuments = ({
+  lot,
+  ctx,
+  anchors,
+}: {
+  lot: FlowProductionLot;
+  ctx: TreeContext<ForwardChain>;
+  anchors: boolean;
+}) => {
+  const counts = [
+    lot.productionReceipts.length,
+    lot.packages.length,
+    groupShipments(lot.shipments).length,
+  ];
+  const total = counts.reduce((sum, count) => sum + count, 0);
+  const listId = useId();
+  if (!ctx.documentsCollapsed || total === 0) {
+    return <ProductSideNodes side={lot} uomCode={lot.uomCode} stageAnchors={anchors} />;
+  }
+  const open = ctx.documentsOpen.has(lot.lotId);
+  const stages = PRODUCT_STAGES.filter((_, index) => (counts[index] ?? 0) > 0).join(' ');
+  return (
+    <li className="lot-trace-node" data-stage={anchors && !open ? stages : undefined}>
+      <Button
+        size="sm"
+        variant="text"
+        aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        onClick={() => ctx.toggleDocuments(lot.lotId)}
+      >
+        {c.documents(total)}
+      </Button>
+      {open && (
+        <ul id={listId} className="lot-trace-tree">
+          <ProductSideNodes side={lot} uomCode={lot.uomCode} stageAnchors={anchors} />
+        </ul>
+      )}
+    </li>
+  );
+};
 
 const ProductionLotNode = ({
   lot,
@@ -348,11 +431,9 @@ const ProductionLotNode = ({
         ctx={ctx as TreeContext<unknown>}
       />
       <ul className="lot-trace-tree">
-        <ProductSideNodes side={lot} uomCode={lot.uomCode} stageAnchors={anchors} />
-        {open && next === undefined && ctx.pending.has(lot.lotId) && (
-          <Note>
-            <SkeletonText lines={1} />
-          </Note>
+        <ProductDocuments lot={lot} ctx={ctx} anchors={anchors} />
+        {open && next === undefined && (
+          <ExpandStatus lotId={lot.lotId} lotNo={lot.lotNo} ctx={ctx as TreeContext<unknown>} />
         )}
         {open && next !== undefined && (
           <ForwardWorkOrders
@@ -373,18 +454,20 @@ const BackwardInputs = ({
   chain,
   seen,
   ctx,
+  anchors,
 }: {
   chain: BackwardChain;
   seen: ReadonlySet<number>;
   ctx: TreeContext<BackwardChain>;
+  anchors: boolean;
 }) =>
   chain.workOrder === null || chain.inputMaterials.length === 0 ? (
     <>
-      {chain.workOrder !== null && <BackwardWorkOrderLine chain={chain} />}
+      {chain.workOrder !== null && <BackwardWorkOrderLine chain={chain} anchors={anchors} />}
       <Note>{c.noInputMaterials}</Note>
     </>
   ) : (
-    <li className="lot-trace-node">
+    <li className="lot-trace-node" data-stage={anchors ? 'PRODUCED' : undefined}>
       <span className="lot-trace-node-kind">{c.workOrder}</span>
       <BackwardWorkOrderText chain={chain} />
       <ul className="lot-trace-tree">
@@ -409,8 +492,8 @@ const BackwardWorkOrderText = ({ chain }: { chain: BackwardChain }) =>
     </>
   );
 
-const BackwardWorkOrderLine = ({ chain }: { chain: BackwardChain }) => (
-  <li className="lot-trace-node">
+const BackwardWorkOrderLine = ({ chain, anchors }: { chain: BackwardChain; anchors: boolean }) => (
+  <li className="lot-trace-node" data-stage={anchors ? 'PRODUCED' : undefined}>
     <span className="lot-trace-node-kind">{c.workOrder}</span>
     <BackwardWorkOrderText chain={chain} />
   </li>
@@ -463,11 +546,18 @@ const InputMaterialNode = ({
       {open && (
         <ul className="lot-trace-tree">
           {next === undefined ? (
-            <Note>
-              <SkeletonText lines={1} />
-            </Note>
+            <ExpandStatus
+              lotId={input.lotId}
+              lotNo={input.lotNo}
+              ctx={ctx as TreeContext<unknown>}
+            />
           ) : (
-            <BackwardInputs chain={next} seen={new Set([...seen, input.lotId])} ctx={ctx} />
+            <BackwardInputs
+              chain={next}
+              seen={new Set([...seen, input.lotId])}
+              ctx={ctx}
+              anchors={false}
+            />
           )}
         </ul>
       )}
@@ -543,6 +633,8 @@ interface ChainViewProps {
   impact: string;
   cells: StageCell[];
   hasEstimate: boolean;
+  /** 펼친 단을 받는 중이거나 받지 못했으면 그 사유. [사슬 내보내기]를 잠근다(C-4). */
+  exportBlocked: string | null;
   lines: () => ChainLine[];
   onOpenLot: ChainDrawerProps['onOpenLot'];
   children: ReactNode;
@@ -556,6 +648,7 @@ const ChainView = ({
   impact,
   cells,
   hasEstimate,
+  exportBlocked,
   lines,
   onOpenLot,
   children,
@@ -563,8 +656,10 @@ const ChainView = ({
   const navigate = useNavigate();
   const tree = useRef<HTMLUListElement>(null);
   const lotStatus = useCodeNames('LOT_STATUS');
+  const exportReasonId = useId();
+  /* 단계 이름이 달린 줄 가운데 나무에서 처음 나오는 줄로 간다. 접힌 문서 줄은 단계 이름 여럿을 단다. */
   const jump = (stage: string) => {
-    const target = tree.current?.querySelector<HTMLElement>(`[data-stage="${stage}"]`);
+    const target = tree.current?.querySelector<HTMLElement>(`[data-stage~="${stage}"]`);
     target?.scrollIntoView({ block: 'center' });
   };
   return (
@@ -613,6 +708,8 @@ const ChainView = ({
           <Button
             size="sm"
             variant="outlined"
+            disabled={exportBlocked !== null}
+            aria-describedby={exportBlocked === null ? undefined : exportReasonId}
             onClick={() =>
               saveCsv(c.exportFileName(head.lotNo), toCsvText(exportColumns(), lines()))
             }
@@ -621,6 +718,11 @@ const ChainView = ({
           </Button>
         </span>
       </div>
+      {exportBlocked !== null && (
+        <p id={exportReasonId} className="lot-trace-chain-blocked">
+          {exportBlocked}
+        </p>
+      )}
       <p className="lot-trace-impact">{impact}</p>
       <StageStrip cells={cells} onJump={jump} />
       {hasEstimate && <AlertBanner variant="info">{c.estimateNotice}</AlertBanner>}
@@ -633,22 +735,29 @@ const ChainView = ({
   );
 };
 
+const toggled = (current: number[], lotId: number): number[] =>
+  current.includes(lotId) ? current.filter((id) => id !== lotId) : [...current, lotId];
+
 const useTreeState = <Chain,>(
   direction: TraceDirection,
   rootLot: LotRef | null,
   path: readonly PathStep[],
   onOpenLot: ChainDrawerProps['onOpenLot'],
+  documentsCollapsed: boolean,
 ): TreeContext<Chain> => {
   const [expanded, setExpanded] = useState<number[]>([]);
-  const { chains, pending } = useExpandedChains<Chain>(direction, expanded);
+  const [documentsOpen, setDocumentsOpen] = useState<number[]>([]);
+  const { chains, pending, failed, retry } = useExpandedChains<Chain>(direction, expanded);
   return {
     expanded: new Set(expanded),
     chains,
     pending,
-    toggle: (lotId) =>
-      setExpanded((current) =>
-        current.includes(lotId) ? current.filter((id) => id !== lotId) : [...current, lotId],
-      ),
+    failed,
+    retry,
+    toggle: (lotId) => setExpanded((current) => toggled(current, lotId)),
+    documentsCollapsed,
+    documentsOpen: new Set(documentsOpen),
+    toggleDocuments: (lotId) => setDocumentsOpen((current) => toggled(current, lotId)),
     switchTo: (target, lot) => {
       if (rootLot === null) return;
       onOpenLot(target, lot, [...path, { direction, ...rootLot }]);
@@ -656,13 +765,23 @@ const useTreeState = <Chain,>(
   };
 };
 
+/** 펼친 단이 다 오지 않았으면 내보낸 파일에 그 단이 빠진다. 그동안 [사슬 내보내기]를 잠근다. */
+const exportBlockedBy = (ctx: TreeContext<unknown>): string | null =>
+  ctx.failed.size > 0 ? c.exportFailed : ctx.pending.size > 0 ? c.exportPending : null;
+
 const ForwardBody = ({ lotId, ...props }: ChainDrawerProps) => {
   const query = useForwardChain(lotId);
   const head = query.data?.lot;
   const root: LotRef | null =
     head === undefined ? null : { lotId: head.lotId, lotNo: head.lotNo, lotType: lotTypeOf(head) };
-  const ctx = useTreeState<ForwardChain>('forward', root, props.path, props.onOpenLot);
-  if (query.isError) return <ChainError onRetry={() => void query.refetch()} />;
+  const ctx = useTreeState<ForwardChain>(
+    'forward',
+    root,
+    props.path,
+    props.onOpenLot,
+    query.data?.truncated === true,
+  );
+  if (query.isError) return <ChainError error={query.error} onRetry={() => void query.refetch()} />;
   if (query.data === undefined) return <ChainLoading />;
   const chain = query.data;
   const impact = forwardImpact(chain);
@@ -676,6 +795,7 @@ const ForwardBody = ({ lotId, ...props }: ChainDrawerProps) => {
       impact={c.impactForward(impact.lots, impact.shipments, impact.customers)}
       cells={forwardStages(chain)}
       hasEstimate={chain.basis !== null}
+      exportBlocked={exportBlockedBy(ctx as TreeContext<unknown>)}
       lines={() => flattenForward(chain, ctx.chains)}
       onOpenLot={props.onOpenLot}
     >
@@ -692,12 +812,8 @@ const ForwardBody = ({ lotId, ...props }: ChainDrawerProps) => {
           )}
         </li>
       )}
-      {chain.receipts.map((receipt, index) => (
-        <li
-          key={receipt.goodsReceiptId}
-          className="lot-trace-node"
-          data-stage={index === 0 ? 'RECEIVED' : undefined}
-        >
+      {chain.receipts.map((receipt) => (
+        <li key={receipt.goodsReceiptId} className="lot-trace-node" data-stage="RECEIVED">
           <span className="lot-trace-node-kind">{c.receipt}</span>
           <span className="mono-cell">{receipt.goodsReceiptNo}</span>
           <span>{qty(receipt.qty, chain.lot.uomCode)}</span>
@@ -715,8 +831,8 @@ const BackwardBody = ({ lotId, ...props }: ChainDrawerProps) => {
   const head = query.data?.lot;
   const root: LotRef | null =
     head === undefined ? null : { lotId: head.lotId, lotNo: head.lotNo, lotType: lotTypeOf(head) };
-  const ctx = useTreeState<BackwardChain>('backward', root, props.path, props.onOpenLot);
-  if (query.isError) return <ChainError onRetry={() => void query.refetch()} />;
+  const ctx = useTreeState<BackwardChain>('backward', root, props.path, props.onOpenLot, false);
+  if (query.isError) return <ChainError error={query.error} onRetry={() => void query.refetch()} />;
   if (query.data === undefined) return <ChainLoading />;
   const chain = query.data;
   const impact = backwardImpact(chain);
@@ -730,11 +846,12 @@ const BackwardBody = ({ lotId, ...props }: ChainDrawerProps) => {
       impact={c.impactBackward(impact.lots, impact.suppliers)}
       cells={backwardStages(chain)}
       hasEstimate={chain.basis !== null}
+      exportBlocked={exportBlockedBy(ctx as TreeContext<unknown>)}
       lines={() => flattenBackward(chain, ctx.chains)}
       onOpenLot={props.onOpenLot}
     >
       <ProductSideNodes side={chain} uomCode={chain.lot.uomCode} stageAnchors />
-      <BackwardInputs chain={chain} seen={seen} ctx={ctx} />
+      <BackwardInputs chain={chain} seen={seen} ctx={ctx} anchors />
     </ChainView>
   );
 };
@@ -745,20 +862,12 @@ const ChainLoading = () => (
   </div>
 );
 
-const ChainError = ({ onRetry }: { onRetry: () => void }) => (
-  <AlertBanner
-    variant="error"
-    title={c.loadFailed}
-    action={
-      <Button size="sm" variant="outlined" onClick={onRetry}>
-        {c.retry}
-      </Button>
-    }
-  />
+const ChainError = ({ error, onRetry }: { error: unknown; onRetry: () => void }) => (
+  <LoadFailure error={error} title={c.loadFailed} onRetry={onRetry} />
 );
 
 /**
- * LOT 하나의 사슬(T-W-A 드로어, 계획 2-4). 위에서 아래로: 경로 줄(지나온 LOT이 있을 때), 머리(품목, LOT 상태 칩,
+ * LOT 하나의 사슬(T-W-A 드로어). 위에서 아래로: 경로 줄(지나온 LOT이 있을 때), 머리(품목, LOT 상태 칩,
  * [LOT 상태 보기], [사슬 내보내기]), 영향 요약, 단계 줄, 추정 안내, 들여쓴 나무.
  * 반제품은 한 번에 한 단씩 펼친다. 지나온 경로와 위 단계의 LOT은 다시 펼치지 않는다(서버는 자기 자신만 표시).
  */
@@ -782,11 +891,23 @@ export const ChainDrawer = (props: ChainDrawerProps) => (
   </DetailDrawer>
 );
 
-/** 드로어 머리 = LOT 번호(고정폭). 본문과 같은 조회(같은 캐시)를 읽는다. */
-const ForwardTitle = ({ lotId }: { lotId: number }) => (
-  <span className="mono-cell">{useForwardChain(lotId).data?.lot.lotNo ?? ''}</span>
-);
+/**
+ * 드로어 머리 = LOT 번호(고정폭). 본문과 같은 조회(같은 캐시)를 읽는다. 불러오지 못하면 LOT 번호를 모르므로
+ * 머리가 비지 않게 「LOT 사슬」을 둔다.
+ */
+const ChainTitle = ({ lotNo, failed }: { lotNo: string | undefined; failed: boolean }) =>
+  lotNo !== undefined ? (
+    <span className="mono-cell">{lotNo}</span>
+  ) : (
+    <span>{failed ? c.title : ''}</span>
+  );
 
-const BackwardTitle = ({ lotId }: { lotId: number }) => (
-  <span className="mono-cell">{useBackwardChain(lotId).data?.lot.lotNo ?? ''}</span>
-);
+const ForwardTitle = ({ lotId }: { lotId: number }) => {
+  const query = useForwardChain(lotId);
+  return <ChainTitle lotNo={query.data?.lot.lotNo} failed={query.isError} />;
+};
+
+const BackwardTitle = ({ lotId }: { lotId: number }) => {
+  const query = useBackwardChain(lotId);
+  return <ChainTitle lotNo={query.data?.lot.lotNo} failed={query.isError} />;
+};

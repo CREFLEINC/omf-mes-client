@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { EXPORT_PAGE_SIZE, escapeCsvField, fetchAllRows, toCsv } from './export';
+import { escapeCsvField } from '../../patterns/csv';
+import { EXPORT_PAGE_SIZE, fetchAllRows, toCsv } from './export';
 import type { MovementRow } from './rows';
 
 const row = (id: number, overrides: Partial<MovementRow> = {}): MovementRow => ({
@@ -43,6 +44,24 @@ describe('엑셀 내보내기 파일(CSV)', () => {
     expect(line).toBe(
       '자재 입고,2026-10-23 15:00,GR-SYN-0001,1,ITEM-A,품목 A,ITEM-A|500|261023|SUP-A|1,1,500,KG,WH-A,창고 A,SUP-A,공급사 A,전기완료',
     );
+  });
+
+  it('사람이 적은 이름이 수식으로 시작하면 글자로 남기고, 수량은 숫자 그대로 둔다', () => {
+    const csv = toCsv(
+      'MATERIAL',
+      [
+        row(1, {
+          qty: -5,
+          item: { id: 1, code: 'ITEM-A', name: '=HYPERLINK("x")' },
+          partner: { id: 3, code: 'SUP-A', name: '@공급사' },
+        }),
+      ],
+      (code) => code,
+    );
+    const line = csv.split('\r\n')[1] ?? '';
+    expect(line).toContain(`,"'=HYPERLINK(""x"")",`);
+    expect(line).toContain(",'@공급사,");
+    expect(line).toContain(',-5,KG,');
   });
 
   it('생산 입고는 상대 대신 W/O 번호 열이다', () => {

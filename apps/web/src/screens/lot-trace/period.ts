@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 /**
- * 조회 기간 — 공장 현지 날짜(양 끝 포함), 시작 필수, 최대 366일(계약 P-119).
+ * 조회 기간 — 공장 현지 날짜(양 끝 포함), 시작 필수, 최대 366일(서버 계약).
  * 순수 함수만 둔다. 「오늘」은 부르는 쪽이 공장 날짜로 준다(`plantToday`).
  */
 const t = messages.lotTrace.period;
@@ -26,7 +26,7 @@ const formatUtc = (ms: number): string => new Date(ms).toISOString().slice(0, 10
 export const validatePeriod = ({ from, to }: Period): string | null => {
   if (!DATE_PATTERN.test(from)) return t.required;
   if (to === '') return null;
-  if (!DATE_PATTERN.test(to)) return t.required;
+  if (!DATE_PATTERN.test(to)) return t.invalid;
   if (to < from) return t.reversed;
   return (toUtcMs(to) - toUtcMs(from)) / DAY_MS + 1 > MAX_PERIOD_DAYS ? t.tooLong : null;
 };

@@ -14,16 +14,16 @@ import type {
  * 단계와 수는 응답에 있는 문서만 센다. 포장은 확정(PACKED)만 센다 — 포장 중(OPEN)은 칩으로만 보인다(계약).
  */
 
+/**
+ * 단계 줄 한 칸은 건수만 갖는다. 생산 LOT마다 단위가 다를 수 있어(반제품 KG, 제품 EA) 단계의 수량을
+ * 더하면 뜻 없는 합이 된다. 수량은 나무의 각 줄이 제 단위로 보인다.
+ */
 export interface StageCell {
   stage: ForwardStage;
   count: number;
-  qty: number;
 }
 
 export const PACKED = 'PACKED';
-
-const sum = (values: readonly number[]): number =>
-  values.reduce((total, value) => total + value, 0);
 
 export const packedOnly = (packages: readonly FlowPackage[]): FlowPackage[] =>
   packages.filter((entry) => entry.statusCode === PACKED);
@@ -65,13 +65,9 @@ const productStages = (sides: readonly FlowProductSide[]): StageCell[] => {
   const packed = sides.flatMap((side) => packedOnly(side.packages));
   const shipments = sides.flatMap((side) => side.shipments);
   return [
-    { stage: 'PRODUCTION_RECEIVED', count: receipts.length, qty: sum(receipts.map((r) => r.qty)) },
-    { stage: 'PACKED', count: packed.length, qty: sum(packed.map((p) => p.qty)) },
-    {
-      stage: 'SHIPPED',
-      count: new Set(shipments.map((s) => s.shipmentId)).size,
-      qty: sum(shipments.map((s) => s.qty)),
-    },
+    { stage: 'PRODUCTION_RECEIVED', count: receipts.length },
+    { stage: 'PACKED', count: packed.length },
+    { stage: 'SHIPPED', count: new Set(shipments.map((s) => s.shipmentId)).size },
   ];
 };
 
@@ -79,20 +75,16 @@ const productStages = (sides: readonly FlowProductSide[]): StageCell[] => {
 export const forwardStages = (chain: ForwardChain): StageCell[] => {
   const lots = uniqueProductionLots(chain);
   return [
-    { stage: 'RECEIVED', count: chain.receipts.length, qty: chain.receivedQty },
-    {
-      stage: 'CONSUMED',
-      count: chain.workOrders.length,
-      qty: sum(chain.workOrders.map((wo) => wo.consumedQty)),
-    },
-    { stage: 'PRODUCED', count: lots.length, qty: sum(lots.map((lot) => lot.goodQty)) },
+    { stage: 'RECEIVED', count: chain.receipts.length },
+    { stage: 'CONSUMED', count: chain.workOrders.length },
+    { stage: 'PRODUCED', count: lots.length },
     ...productStages(lots),
   ];
 };
 
 /** 역방향 단계 줄: 생산 → 생산 입고 → 포장 → 출하. */
 export const backwardStages = (chain: BackwardChain): StageCell[] => [
-  { stage: 'PRODUCED', count: chain.workOrder === null ? 0 : 1, qty: chain.goodQty },
+  { stage: 'PRODUCED', count: chain.workOrder === null ? 0 : 1 },
   ...productStages([chain]),
 ];
 
@@ -115,9 +107,10 @@ export interface ForwardImpact {
 }
 
 export const forwardImpact = (chain: ForwardChain): ForwardImpact => {
-  const shipments = uniqueProductionLots(chain).flatMap((lot) => lot.shipments);
+  const lots = uniqueProductionLots(chain);
+  const shipments = lots.flatMap((lot) => lot.shipments);
   return {
-    lots: uniqueProductionLots(chain).length,
+    lots: lots.length,
     shipments: new Set(shipments.map((s) => s.shipmentId)).size,
     customers: new Set(shipments.map((s) => s.customer.id)).size,
   };

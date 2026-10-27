@@ -64,12 +64,23 @@ const draftOf = (filters: TraceFilters): TraceDraft => ({
   warehouse: filters.warehouse,
 });
 
+/**
+ * LOT 번호 칸의 글자를 어느 조건으로 보낼지 정한다. 기간이 비면 정확 일치(`lotNo`, 기간 없이 조회),
+ * 기간이 있으면 일부 일치(`q`, 기간 필수). 일부 일치만 쓰면 오래된 LOT은 기간을 손으로 넓혀야 하고
+ * 366일보다 오래된 LOT은 찾을 수 없다.
+ */
+export const withLotMatch = (draft: TraceDraft): TraceDraft => {
+  const text = draft.lot !== '' ? draft.lot : draft.q;
+  const exact = draft.from === '' && draft.to === '';
+  return { ...draft, lot: exact ? text : '', q: exact ? '' : text };
+};
+
 type Picked = Partial<Record<'item' | 'warehouse' | 'partner', { id: string; label: string }>>;
 
 /**
  * C-6 조회 조건(정방향, 역방향 공용). 기본 줄: LOT 번호(보통), 자재 품목 또는 제품 품목(보통), [조건 더보기], [초기화], [조회].
  * 조건 더보기: 기간(넓음) — 정방향은 입하번호, 공급사, 창고 / 역방향은 기간 기준, 출하번호, W/O 번호, 고객.
- * 진입점(품목, LOT 번호, 입하번호, 출하번호, W/O 번호)이 없으면 [조회]를 잠그고 줄 끝에 그 사유를 보인다(C-4, 계획 2-1).
+ * 진입점(품목, LOT 번호, 입하번호, 출하번호, W/O 번호)이 없으면 [조회]를 잠그고 줄 끝에 그 사유를 보인다(C-4).
  * 1280×800에서 세 칸과 버튼이 한 줄에 들어가지 않아 기간을 조건 더보기로 내렸다. 기간 값이 있으면 처음부터 편다.
  */
 export const TraceFilterBar = ({
@@ -131,10 +142,11 @@ export const TraceFilterBar = ({
   const periodMessage = periodError ?? serverErrors.period ?? null;
   const submit = () => {
     if (entryMissing) return;
-    const reason = tracePeriodReason(draftFilters);
+    const next = withLotMatch(draft);
+    const reason = tracePeriodReason({ ...applied, ...next });
     setPeriodError(reason);
     if (reason !== null) setMoreOpen(true);
-    else onSearch(draft);
+    else onSearch(next);
   };
 
   const textField = (

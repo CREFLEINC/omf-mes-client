@@ -93,6 +93,7 @@ import { inspectionDocuments } from './inspection-documents';
 import { inspectionHistory } from './inspection-history';
 import { fourMInputs } from './four-m-inputs';
 import { lotGenealogy } from './lot-genealogy';
+import { lotTrace } from './lot-trace';
 import { pqcInspectionRegister } from './pqc-inspection-register';
 import { inspectionLevel } from './inspection-level';
 import { inspectionSheet } from './inspection-sheet';
@@ -247,6 +248,7 @@ export const vi: Translated<Messages> = {
   inspectionHistory,
   fourMInputs,
   lotGenealogy,
+  lotTrace,
   pqcInspectionRegister,
   inspectionLevel,
   inspectionSheet,

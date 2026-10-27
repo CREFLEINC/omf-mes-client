@@ -92,6 +92,14 @@ export const useBackwardChain = (lotId: number): UseQueryResult<BackwardChain> =
   });
 };
 
+export interface ExpandedChains<Chain> {
+  chains: Map<number, Chain>;
+  pending: Set<number>;
+  failed: Set<number>;
+  /** 실패한 LOT 하나를 다시 부른다. */
+  retry: (lotId: number) => void;
+}
+
 /**
  * 펼친 반제품 LOT들의 사슬(한 번에 한 단). 펼친 LOT마다 한 번 부르고 결과를 번호로 모은다 —
  * 나무와 [사슬 내보내기]가 같은 모음을 읽는다.
@@ -99,7 +107,7 @@ export const useBackwardChain = (lotId: number): UseQueryResult<BackwardChain> =
 export const useExpandedChains = <Chain>(
   direction: TraceDirection,
   lotIds: readonly number[],
-): { chains: Map<number, Chain>; pending: Set<number>; failed: Set<number> } => {
+): ExpandedChains<Chain> => {
   const { client } = useApiClient();
   const results = useQueries({
     queries: lotIds.map((lotId) => ({
@@ -116,8 +124,12 @@ export const useExpandedChains = <Chain>(
   results.forEach((result, index) => {
     const lotId = lotIds[index] as number;
     if (result.data !== undefined) chains.set(lotId, result.data as Chain);
-    else if (result.isError) failed.add(lotId);
+    else if (result.isError && !result.isFetching) failed.add(lotId);
     else pending.add(lotId);
   });
-  return { chains, pending, failed };
+  const retry = (lotId: number) => {
+    const index = lotIds.indexOf(lotId);
+    if (index >= 0) void results[index]?.refetch();
+  };
+  return { chains, pending, failed, retry };
 };

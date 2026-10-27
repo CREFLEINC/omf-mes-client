@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SessionProvider } from '../../patterns/session';
 import { plantToday } from '../../patterns/plant-time';
@@ -369,5 +369,300 @@ describe('W-02-09 LOT 추적: 역방향 추적 탭', () => {
       `생산 LOT ${PROD}`,
     );
     expect(await within(next).findByText('ITEM-A|20|261023|SUP-A|0002')).toBeInTheDocument();
+  });
+});
+
+const FORBIDDEN_TITLE = 'LOT 추적 권한이 없습니다';
+const PERMISSION_DENIED = {
+  errors: [
+    { scope: 'screen', code: 'PERMISSION_DENIED', message: '이 기능을 쓸 권한이 없습니다.' },
+  ],
+};
+
+describe('W-02-09 LOT 추적: 권한 없음과 없는 LOT', () => {
+  it.each([
+    ['오류 봉투', PERMISSION_DENIED],
+    ['빈 본문', null],
+  ])('목록이 403(%s)이면 권한 안내를 보이고 [다시 조회]를 두지 않는다', async (_label, body) => {
+    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01', { listStatus: 403, listErrors: body });
+
+    expect(await screen.findByText(FORBIDDEN_TITLE)).toBeInTheDocument();
+    expect(screen.getByText(/사용자, 역할, 권한 메뉴/)).toBeInTheDocument();
+    expect(screen.getByText(/관리자에게 권한을 요청하세요/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다시 조회' })).toBeNull();
+    expect(screen.queryByText('추적 정보를 불러오지 못했습니다')).toBeNull();
+  });
+
+  it('사슬이 403이면 드로어에 권한 안내를 보이고 머리는 「LOT 사슬」이다', async () => {
+    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+      forwardRows: [forwardRow(101, MAT)],
+      chainFailures: { 'forward-101': 403 },
+    });
+
+    const drawer = await screen.findByRole('dialog', { name: 'LOT 사슬' });
+    expect(await within(drawer).findByText(FORBIDDEN_TITLE)).toBeInTheDocument();
+    expect(within(drawer).queryByRole('button', { name: '다시 조회' })).toBeNull();
+  });
+
+  it('주소의 LOT이 없으면(404) 「LOT을 찾을 수 없습니다」이고 [다시 조회]를 두지 않는다', async () => {
+    setup('/production/lot-trace?tab=backward&lot=P-SYN-9999&selected=999', {
+      backwardRows: [],
+    });
+
+    const drawer = await screen.findByRole('dialog', { name: 'LOT 사슬' });
+    expect(await within(drawer).findByText('LOT을 찾을 수 없습니다')).toBeInTheDocument();
+    expect(within(drawer).getByText('목록에서 LOT을 다시 고르세요.')).toBeInTheDocument();
+    expect(within(drawer).queryByRole('button', { name: '다시 조회' })).toBeNull();
+  });
+
+  it('그 밖의 실패(500)는 [다시 조회]를 둔다', async () => {
+    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+      forwardRows: [forwardRow(101, MAT)],
+      chainFailures: { 'forward-101': 500 },
+    });
+
+    const drawer = await screen.findByRole('dialog', { name: 'LOT 사슬' });
+    expect(await within(drawer).findByText('추적 정보를 불러오지 못했습니다')).toBeInTheDocument();
+    expect(within(drawer).getByRole('button', { name: '다시 조회' })).toBeInTheDocument();
+  });
+});
+
+describe('W-02-09 LOT 추적: 반제품 펼치기 실패', () => {
+  it('정방향: 펼친 단을 받지 못하면 그 줄에 사유와 [다시 조회], 그동안 [사슬 내보내기]를 잠근다', async () => {
+    const user = userEvent.setup();
+    const data: TraceStubData = {
+      forwardRows: [forwardRow(101, MAT)],
+      forwardChains: {
+        101: forwardChain(101, MAT, [
+          workOrder(3, [productionLot(201, PROD, { consumedFurther: 1 })]),
+        ]),
+        201: forwardChain(201, PROD, [workOrder(4, [])], 'PRODUCTION'),
+      },
+      chainFailures: { 'forward-201': 500 },
+    };
+    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, data);
+
+    const drawer = await screen.findByRole('dialog', { name: MAT });
+    await user.click(
+      await within(drawer).findByRole('button', { name: `${PROD} 다음 단계 펼치기` }),
+    );
+
+    expect(await within(drawer).findByText('다음 단계를 불러오지 못했습니다')).toBeInTheDocument();
+    const exportButton = within(drawer).getByRole('button', { name: '사슬 내보내기' });
+    expect(exportButton).toBeDisabled();
+    expect(exportButton).toHaveAccessibleDescription(
+      '불러오지 못한 단계가 있습니다. 그 단계를 다시 조회하거나 접으세요',
+    );
+
+    delete data.chainFailures?.['forward-201'];
+    await user.click(within(drawer).getByRole('button', { name: `${PROD} 다시 조회` }));
+
+    expect(await within(drawer).findByText('WO-SYN-0004')).toBeInTheDocument();
+    expect(within(drawer).queryByText('다음 단계를 불러오지 못했습니다')).toBeNull();
+    expect(within(drawer).getByRole('button', { name: '사슬 내보내기' })).toBeEnabled();
+  });
+
+  it('역방향: 펼친 단을 받지 못하면 자리 표시가 돌지 않고 사유와 [다시 조회]를 보인다', async () => {
+    const user = userEvent.setup();
+    const semi = inputMaterial(301, 'SF-SYN-0001', {
+      lotTypeCode: 'PRODUCTION',
+      producedBy: { workOrderId: 80, workOrderNo: 'WO-SYN-0080' },
+    });
+    setup(`/production/lot-trace?tab=backward&lot=${PROD}&selected=201`, {
+      backwardRows: [backwardRow(201, PROD)],
+      backwardChains: { 201: backwardChain(201, PROD, [semi]) },
+      chainFailures: { 'backward-301': 500 },
+    });
+
+    const drawer = await screen.findByRole('dialog', { name: PROD });
+    await user.click(
+      await within(drawer).findByRole('button', { name: 'SF-SYN-0001 다음 단계 펼치기' }),
+    );
+
+    expect(await within(drawer).findByText('다음 단계를 불러오지 못했습니다')).toBeInTheDocument();
+    expect(
+      within(drawer).getByRole('button', { name: 'SF-SYN-0001 다시 조회' }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('W-02-09 LOT 추적: 사슬 모양', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('순환(cyclic)으로 표시된 LOT은 「지나온 LOT」 칩을 달고 펼치지 않는다', async () => {
+    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+      forwardRows: [forwardRow(101, MAT)],
+      forwardChains: {
+        101: forwardChain(101, MAT, [
+          workOrder(3, [productionLot(201, PROD, { consumedFurther: 2, cyclic: true })]),
+        ]),
+      },
+    });
+
+    const drawer = await screen.findByRole('dialog', { name: MAT });
+    expect(await within(drawer).findByText('지나온 LOT')).toBeInTheDocument();
+    expect(within(drawer).queryByRole('button', { name: `${PROD} 다음 단계 펼치기` })).toBeNull();
+  });
+
+  it('생산 LOT이 잘린 큰 사슬은 안내를 두고 생산 LOT 아래 문서를 접은 채 시작한다', async () => {
+    const user = userEvent.setup();
+    const lot = productionLot(201, PROD, {
+      productionReceipts: [
+        {
+          goodsReceiptId: 41,
+          goodsReceiptNo: 'GR-SYN-0041',
+          receiptDatetime: '2026-10-23T07:00:00Z',
+          warehouse: { id: 2, code: 'WH-A', name: '창고 A' },
+          qty: 100,
+        },
+      ],
+    });
+    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+      forwardRows: [forwardRow(101, MAT)],
+      forwardChains: {
+        101: {
+          ...forwardChain(101, MAT, [workOrder(3, [lot])]),
+          truncated: true,
+          totalProductionLotCount: 812,
+        },
+      },
+    });
+
+    const drawer = await screen.findByRole('dialog', { name: MAT });
+    expect(
+      await within(drawer).findByText('생산 LOT 812건 중 500건까지 보입니다'),
+    ).toBeInTheDocument();
+    const documents = within(drawer).getByRole('button', { name: '생산 입고, 포장, 출하 1건' });
+    expect(documents).toHaveAttribute('aria-expanded', 'false');
+    expect(within(drawer).queryByText('GR-SYN-0041')).toBeNull();
+
+    await user.click(documents);
+    expect(within(drawer).getByText('GR-SYN-0041')).toBeInTheDocument();
+    expect(documents).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('단계 줄의 칸은 그 단계의 첫 줄로 간다 — 첫 W/O에 생산 LOT이 없어도 다음 W/O의 LOT으로 간다', async () => {
+    const user = userEvent.setup();
+    const scrolled: Element[] = [];
+    Element.prototype.scrollIntoView = function scrollIntoView(this: Element) {
+      scrolled.push(this);
+    };
+    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+      forwardRows: [forwardRow(101, MAT)],
+      forwardChains: {
+        101: forwardChain(101, MAT, [workOrder(2, []), workOrder(3, [productionLot(201, PROD)])]),
+      },
+    });
+
+    const drawer = await screen.findByRole('dialog', { name: MAT });
+    const stages = await within(drawer).findByRole('list', { name: '단계' });
+    await user.click(within(stages).getByRole('button', { name: /생산\s*1건/ }));
+
+    expect(scrolled.at(-1)).toHaveTextContent(PROD);
+  });
+});
+
+describe('W-02-09 LOT 추적: LOT 번호 칸', () => {
+  it('기간이 비어 있으면 LOT 번호 정확 일치(lotNo)로 기간 없이 부른다', async () => {
+    const user = userEvent.setup();
+    const old = 'ITEM-A|500|240101|SUP-A|0009';
+    const { calls } = setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}`, {
+      forwardRows: [forwardRow(101, MAT)],
+    });
+
+    const field = await screen.findByLabelText('LOT 번호');
+    await user.clear(field);
+    await user.type(field, `${old}{Enter}`);
+
+    await waitFor(() =>
+      expect(lists(calls, '/trace/material-lot-flows').at(-1)?.searchParams.get('lotNo')).toBe(old),
+    );
+    const last = lists(calls, '/trace/material-lot-flows').at(-1);
+    expect(last?.searchParams.has('q')).toBe(false);
+    expect(last?.searchParams.has('receiptDateFrom')).toBe(false);
+  });
+
+  it('기간이 있으면 LOT 번호 일부(q)로 부른다', async () => {
+    const user = userEvent.setup();
+    const { calls } = setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
+      forwardRows: [forwardRow(101, MAT)],
+    });
+
+    const field = await screen.findByLabelText('LOT 번호');
+    await user.clear(field);
+    await user.type(field, '261023{Enter}');
+
+    await waitFor(() =>
+      expect(lists(calls, '/trace/material-lot-flows').at(-1)?.searchParams.get('q')).toBe(
+        '261023',
+      ),
+    );
+    expect(lists(calls, '/trace/material-lot-flows').at(-1)?.searchParams.has('lotNo')).toBe(false);
+  });
+
+  it('기간 400은 문구가 아니라 코드로 가른다(RANGE → 366일 안내)', async () => {
+    setup('/production/lot-trace?q=X&from=2025-01-01', {
+      listStatus: 400,
+      listErrors: {
+        errors: [{ scope: 'field', field: 'receiptDateFrom', code: 'RANGE', message: '내부 문구' }],
+      },
+    });
+
+    expect(await screen.findByText('기간은 366일까지 조회할 수 있습니다')).toBeInTheDocument();
+  });
+
+  it('생산 LOT을 정방향으로 열면 목록이 빈 까닭을 말한다', async () => {
+    setup(`/production/lot-trace?lot=${PROD}&selected=201`, {
+      forwardRows: [],
+      forwardChains: { 201: forwardChain(201, PROD, [], 'PRODUCTION') },
+    });
+
+    expect(await screen.findByText('자재 입고가 없는 LOT입니다')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: PROD })).toBeInTheDocument();
+  });
+});
+
+describe('W-02-09 LOT 추적: 목록 내보내기', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('받는 동안 진행과 [취소]를 보이고, 취소하면 파일을 만들지 않고 처음 상태로 돌아간다', async () => {
+    const user = userEvent.setup();
+    const createObjectURL = vi.fn(() => 'blob:synthetic');
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
+    let release = () => {};
+    const exportGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01', {
+      forwardRows: [forwardRow(101, MAT)],
+      exportGate,
+    });
+
+    await user.click(await screen.findByRole('button', { name: '엑셀 내보내기' }));
+    expect(await screen.findByText('1건 중 0건 받는 중')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+    expect(screen.getByRole('button', { name: '엑셀 내보내기' })).toBeEnabled();
+    release();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('끝까지 받으면 파일을 만든다', async () => {
+    const user = userEvent.setup();
+    const createObjectURL = vi.fn(() => 'blob:synthetic');
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
+    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01', {
+      forwardRows: [forwardRow(101, MAT)],
+    });
+
+    await user.click(await screen.findByRole('button', { name: '엑셀 내보내기' }));
+
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: '엑셀 내보내기' })).toBeEnabled();
   });
 });

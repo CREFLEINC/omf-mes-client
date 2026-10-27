@@ -71,6 +71,7 @@ interface SetupOptions {
   shipments?: ShipmentLine[];
   permissions?: string[];
   failList?: boolean;
+  failStatus?: number;
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -113,7 +114,9 @@ const setup = (options: SetupOptions = {}) => {
                 },
               });
             }
-            if (options.failList === true) return jsonResponse({ errors: [] }, { status: 500 });
+            if (options.failList === true) {
+              return jsonResponse({ errors: [] }, { status: options.failStatus ?? 500 });
+            }
             return jsonResponse({
               items: receipts,
               page: { page: 1, size, total: receipts.length },
@@ -273,6 +276,13 @@ describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
 
     expect(await screen.findByText('입출고 현황을 불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다시 조회' })).toBeInTheDocument();
+  });
+
+  it('권한이 없으면(403) 권한 안내를 보이고 [다시 조회]를 두지 않는다', async () => {
+    setup({ failList: true, failStatus: 403 });
+
+    expect(await screen.findByText('LOT 추적 권한이 없습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다시 조회' })).toBeNull();
   });
 
   it('주소의 기간이 366일을 넘으면 부르지 않고 사유를 보인다', async () => {

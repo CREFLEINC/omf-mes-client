@@ -10,8 +10,9 @@ import type { BackwardListRow, FlowBasis, ForwardListRow, ForwardStage } from '.
 
 const t = messages.lotTrace;
 
+/** 공장 날짜. 바꾸지 못한 값은 받은 글자 그대로 보인다(앞 10자는 UTC 날짜라 공장 날짜와 하루 어긋날 수 있다). */
 export const plantDate = (value: string | null): string =>
-  value === null ? '' : (toPlantDateTimeParts(value)?.date ?? value.slice(0, 10));
+  value === null ? '' : (toPlantDateTimeParts(value)?.date ?? value);
 
 export const plantDateTime = (value: string | null): string => {
   if (value === null) return '';
@@ -70,7 +71,7 @@ const qtyCell = (qty: number, uomCode: string) => (
 
 /**
  * 정방향 목록: LOT 번호 | 자재명 | 입고일 | 입고 수량 | 투입량 | 진행(C-1, C-10, C-16).
- * 1280×800에서 자재 LOT 번호(말줄임 없음)가 길어 자재 코드, 공급사, 출하 열은 드로어로 옮겼다(빈틈 TG-17).
+ * 1280×800에서 자재 LOT 번호(말줄임 없음)가 길어 자재 코드, 공급사, 출하 열은 드로어에 둔다.
  */
 export const ForwardTable = ({
   rows,
@@ -121,7 +122,7 @@ export const ForwardTable = ({
 
 /**
  * 역방향 목록: LOT 번호 | 제품명 | W/O 번호 | 생산일 | 양품 수량 | 진행.
- * 투입 자재 LOT 수와 출하(고객)는 드로어의 영향 요약과 나무가 보인다(빈틈 TG-17).
+ * 투입 자재 LOT 수와 출하(고객)는 드로어의 영향 요약과 나무가 보인다.
  */
 export const BackwardTable = ({
   rows,

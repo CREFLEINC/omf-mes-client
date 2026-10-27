@@ -191,14 +191,22 @@ export interface TraceStubData {
   forwardChains?: Record<number, ForwardChain>;
   backwardChains?: Record<number, BackwardChain>;
   listStatus?: number;
+  /** 오류 응답의 본문. `null`이면 본문 없이 보낸다. */
   listErrors?: unknown;
+  /** 사슬 응답을 실패로 돌린다. 키는 `forward-201`처럼 방향과 LOT id. */
+  chainFailures?: Record<string, number>;
+  /** 내보내기(쪽 크기 200) 응답을 이 약속이 풀릴 때까지 붙든다. */
+  exportGate?: Promise<void>;
 }
+
+const errorResponse = (status: number, body: unknown): Response =>
+  body === null ? new Response(null, { status }) : jsonResponse(body, { status });
 
 /** 추적 목록과 사슬 스텁. 부른 주소를 `calls`에 남긴다. */
 export const traceRoutes = (data: TraceStubData, calls: URL[]): StubRoute[] => [
   {
     match: (request) => new URL(request.url).pathname.startsWith('/trace/'),
-    respond: (request) => {
+    respond: async (request) => {
       const url = new URL(request.url);
       calls.push(url);
       const forwardStageCounts = {
@@ -214,7 +222,13 @@ export const traceRoutes = (data: TraceStubData, calls: URL[]): StubRoute[] => [
         url.pathname === '/trace/product-lot-flows'
       ) {
         if (data.listStatus !== undefined) {
-          return jsonResponse(data.listErrors ?? { errors: [] }, { status: data.listStatus });
+          return errorResponse(
+            data.listStatus,
+            data.listErrors === undefined ? { errors: [] } : data.listErrors,
+          );
+        }
+        if (url.searchParams.get('size') === '200' && data.exportGate !== undefined) {
+          await data.exportGate;
         }
         const forward = url.pathname === '/trace/material-lot-flows';
         const items = forward ? (data.forwardRows ?? []) : (data.backwardRows ?? []);
@@ -234,6 +248,8 @@ export const traceRoutes = (data: TraceStubData, calls: URL[]): StubRoute[] => [
       const matched = /^\/trace\/lots\/(\d+)\/(forward|backward)-flow$/.exec(url.pathname);
       if (matched !== null) {
         const id = Number(matched[1]);
+        const failure = data.chainFailures?.[`${matched[2] ?? ''}-${String(id)}`];
+        if (failure !== undefined) return errorResponse(failure, { errors: [] });
         const chain =
           matched[2] === 'forward' ? data.forwardChains?.[id] : data.backwardChains?.[id];
         return chain === undefined

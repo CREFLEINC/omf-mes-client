@@ -1,4 +1,4 @@
-/** W-02-09 LOT 추적 — 정방향 추적, 역방향 추적, 입출고 현황 세 탭(omf-all-around#73). */
+/** W-02-09 LOT 추적 — 정방향 추적, 역방향 추적, 입출고 현황 세 탭. */
 export const lotTrace = {
   title: 'LOT 추적',
   breadcrumbRoot: '생산 관리',
@@ -38,6 +38,14 @@ export const lotTrace = {
     required: '기간 시작일을 고르세요',
     reversed: '기간 종료일이 시작일보다 앞섭니다',
     tooLong: '기간은 366일까지 조회할 수 있습니다',
+    invalid: '기간 날짜 형식이 맞지 않습니다. 달력에서 다시 고르세요',
+  },
+  access: {
+    forbiddenTitle: 'LOT 추적 권한이 없습니다',
+    forbidden:
+      '관리자가 사용자, 역할, 권한 메뉴에서 역할에 LOT 추적 권한을 줄 수 있습니다. 관리자에게 권한을 요청하세요.',
+    notFoundTitle: 'LOT을 찾을 수 없습니다',
+    notFound: '목록에서 LOT을 다시 고르세요.',
   },
   list: {
     pane: '입출고 현황',
@@ -107,7 +115,7 @@ export const lotTrace = {
   },
   trace: {
     lotNo: 'LOT 번호',
-    lotNoPlaceholder: 'LOT 번호 일부',
+    lotNoPlaceholder: 'LOT 번호 전체 또는 일부',
     materialItem: '자재 품목',
     productItem: '제품 품목',
     inboundNo: '입하번호',
@@ -126,6 +134,12 @@ export const lotTrace = {
     startBackward: '품목이나 LOT 번호로 찾으세요. 출하번호, W/O 번호로도 찾을 수 있습니다',
     emptyTitle: '조건에 맞는 LOT이 없습니다',
     emptyDescription: '기간을 넓히거나 다른 품목으로 찾으세요.',
+    emptyPartialHint: '기간을 비우면 LOT 번호 전체로 기간과 관계없이 찾습니다.',
+    emptyExactDescription:
+      'LOT 번호 전체를 넣었는지 확인하세요. 번호 일부로 찾으려면 기간을 함께 넣으세요.',
+    notMaterialTitle: '자재 입고가 없는 LOT입니다',
+    notMaterialDescription:
+      '정방향 목록에는 자재 입고가 있는 LOT만 보입니다. 이 LOT의 정방향 사슬은 열린 상세에서 봅니다.',
     loadFailed: '추적 정보를 불러오지 못했습니다',
     listCaption: 'LOT 목록',
     openRow: (lotNo: string): string => `${lotNo} 추적 열기`,
@@ -166,12 +180,18 @@ export const lotTrace = {
     },
   },
   chain: {
+    title: 'LOT 사슬',
     path: '경로',
     pathMaterial: (lotNo: string): string => `자재 LOT ${lotNo}`,
     pathProduct: (lotNo: string): string => `생산 LOT ${lotNo}`,
     backTo: (lotNo: string): string => `${lotNo} 다시 열기`,
     lotStatus: 'LOT 상태 보기',
     exportChain: '사슬 내보내기',
+    exportPending: '펼친 단계를 불러오는 중입니다',
+    exportFailed: '불러오지 못한 단계가 있습니다. 그 단계를 다시 조회하거나 접으세요',
+    expandFailed: '다음 단계를 불러오지 못했습니다',
+    documents: (count: number): string =>
+      `생산 입고, 포장, 출하 ${count.toLocaleString('ko-KR')}건`,
     impactForward: (lots: number, shipments: number, customers: number): string =>
       `영향 요약: 생산 LOT ${lots}, 출하 ${shipments}건, 고객 ${customers}곳`,
     impactBackward: (lots: number, suppliers: number): string =>
@@ -224,6 +244,7 @@ export const lotTrace = {
     loading: '사슬을 불러오는 중',
     loadFailed: '추적 정보를 불러오지 못했습니다',
     retry: '다시 조회',
+    retryFor: (lotNo: string): string => `${lotNo} 다시 조회`,
     exportColumns: {
       depth: '깊이',
       node: '구분',

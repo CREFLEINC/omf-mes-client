@@ -357,7 +357,7 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'production/work-order-progress', element: <WorkOrderProgressScreen /> },
       /*
-       * W-02-09 — 진행을 본 뒤 그 LOT이 어디서 와서 어디로 갔는지 본다(omf-all-around#73). 조회 자리라 진행현황 바로 뒤다.
+       * W-02-09 — 진행을 본 뒤 그 LOT이 어디서 와서 어디로 갔는지 본다. 조회 자리라 진행현황 바로 뒤다.
        * 정방향 추적, 역방향 추적, 입출고 현황은 화면 안 탭이다(`?tab=`).
        */
       { path: 'production/lot-trace', element: <LotTraceScreen /> },

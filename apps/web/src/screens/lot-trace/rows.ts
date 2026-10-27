@@ -1,3 +1,5 @@
+import { activeLocale } from '@omf-mes/i18n';
+
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import type { MovementKind } from './filters';
 import type { QtyByUom, ReceiptLine, ShipmentLine } from './types';
@@ -37,8 +39,9 @@ export interface MovementRow {
   lotCount: number;
 }
 
+/** 공장 시각으로 바꾸지 못한 값은 받은 글자 그대로 보인다. 앞 10자를 자르면 UTC 날짜가 공장 날짜처럼 보인다. */
 const plantParts = (value: string): { date: string; time: string } =>
-  toPlantDateTimeParts(value) ?? { date: value.slice(0, 10), time: '' };
+  toPlantDateTimeParts(value) ?? { date: value, time: '' };
 
 export const fromReceiptLine = (line: ReceiptLine): MovementRow => ({
   id: line.goodsReceiptLineId,
@@ -74,8 +77,9 @@ export const fromShipmentLine = (line: ShipmentLine): MovementRow => ({
   lotCount: line.lotCount,
 });
 
+/** 화면 언어의 자리 구분을 따른다(베트남어는 `1.234,5`). */
 export const formatQty = (value: number): string =>
-  new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
+  new Intl.NumberFormat(activeLocale(), { maximumFractionDigits: 6 }).format(value);
 
 /** 단위가 섞이면 더할 수 없어 단위마다 적는다(계약 `qtyByUom`). */
 export const formatQtyByUom = (totals: readonly QtyByUom[]): string =>

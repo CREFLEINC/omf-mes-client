@@ -21123,6 +21123,14 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   margin-left: auto;
 }
 
+/* [사슬 내보내기]가 잠긴 사유. 머리 줄을 밀지 않게 그 아래 오른쪽에 둔다(C-4). */
+.lot-trace-chain-blocked {
+  margin: var(--space-1) 0 0;
+  text-align: right;
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
 .lot-trace-impact {
   margin: var(--space-2) 0 var(--space-3);
   font: var(--type-body-sm);

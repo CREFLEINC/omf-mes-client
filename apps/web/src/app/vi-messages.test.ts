@@ -68,6 +68,7 @@ const TRANSLATED = [
   'emergencyWorkOrder',
   'materialIssueRequest',
   'workOrderProgress',
+  'lotTrace',
   /* #1119 — 설비/툴 13화면. */
   'collectionChannel',
   'downtimeSummary',

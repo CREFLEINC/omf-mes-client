@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { fetchAllRows, saveCsv, type ExportProgress, type RowPage } from './export';
+import { saveCsv } from '../../patterns/csv';
+import { fetchAllRows, type ExportProgress, type RowPage } from './export';
 
 export type ExportState =
   { phase: 'idle' } | { phase: 'running'; progress: ExportProgress } | { phase: 'failed' };

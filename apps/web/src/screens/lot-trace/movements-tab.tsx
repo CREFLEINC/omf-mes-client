@@ -1,4 +1,4 @@
-import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
@@ -9,6 +9,7 @@ import { PageNav } from '../../patterns/page-nav';
 import { plantToday } from '../../patterns/plant-time';
 import { exportFileName, toCsv } from './export';
 import { FilterBar } from './filter-bar';
+import { LoadFailure } from './load-failure';
 import {
   DEFAULT_SIZE,
   KINDS,
@@ -37,7 +38,7 @@ import { useAllPagesExport } from './use-export';
 const t = messages.lotTrace;
 
 /**
- * 행을 누르면 그 LOT의 추적으로 간다(계획 2-3). 자재 입고는 정방향, 생산 입고는 역방향,
+ * 행을 누르면 그 LOT의 추적으로 간다. 자재 입고는 정방향, 생산 입고는 역방향,
  * 제품 출고는 그 출하번호로 역방향(LOT이 하나면 그 LOT의 사슬을 연다).
  */
 export const traceParamsOf = (row: MovementRow): URLSearchParams => {
@@ -83,7 +84,7 @@ export const MovementsTab = () => {
 
   const apply = (next: LotTraceFilters) => setSearchParams(toSearchParams(next));
 
-  /* 고른 칩은 목록과 같은 기준(목록 합계), 다른 칩은 공통 조건으로 센 값이다(C-17, 구성안 3). */
+  /* 고른 칩은 목록과 같은 기준(목록 합계), 다른 칩은 공통 조건으로 센 값이다(C-17). */
   const countOf = (kind: (typeof KINDS)[number]): number | undefined =>
     kind === filters.kind && list.data !== undefined && !list.isPlaceholderData
       ? list.data.totals.lineCount
@@ -162,17 +163,12 @@ export const MovementsTab = () => {
         {periodReason !== null ? (
           <AlertBanner variant="warning">{periodReason}</AlertBanner>
         ) : list.isError ? (
-          <AlertBanner
-            variant="error"
+          <LoadFailure
+            error={list.error}
             title={t.list.loadFailed}
-            action={
-              <Button size="sm" variant="outlined" onClick={() => void list.refetch()}>
-                {t.list.retry}
-              </Button>
-            }
-          >
-            {t.list.loadFailedDescription}
-          </AlertBanner>
+            description={t.list.loadFailedDescription}
+            onRetry={() => void list.refetch()}
+          />
         ) : list.data === undefined ? (
           <div role="status" aria-label={t.list.loading}>
             <SkeletonText lines={5} />

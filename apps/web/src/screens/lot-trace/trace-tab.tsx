@@ -1,4 +1,4 @@
-import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -11,7 +11,8 @@ import { toApiError } from '../../patterns/request';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { ChainDrawer, LOT_STATUS_PATH } from './chain-drawer';
-import { toCsvText, type CsvColumn } from './export';
+import { toCsvText, type CsvColumn } from '../../patterns/csv';
+import { LoadFailure, toLoadCause } from './load-failure';
 import { defaultPeriod } from './period';
 import { useItemLabel } from './queries';
 import { formatQty } from './rows';
@@ -48,25 +49,26 @@ const ENTRY_FIELDS = new Set([
 ]);
 const PERIOD_FIELDS = new Set(['receiptDateFrom', 'receiptDateTo', 'dateFrom', 'dateTo']);
 
+/** 서버 기간 오류 코드 → 기간 칸 문구. 시작 없음, 366일 초과, 종료가 시작보다 앞섬. 그 밖은 형식 오류다. */
+const PERIOD_MESSAGES: Record<string, string> = {
+  REQUIRED: t.period.required,
+  RANGE: t.period.tooLong,
+  INVALID: t.period.reversed,
+};
+
 /**
  * 서버 400의 칸 오류를 이 화면의 두 자리(진입점, 기간)로 옮긴다. 서버 문구에는 내부 칸 이름이 들어 있어
  * 화면 문구로 바꿔 보인다(C-13).
  */
 export const toFieldErrors = (error: unknown): TraceFieldErrors => {
+  if (toLoadCause(error) === 'forbidden') return {};
   const apiError = toApiError(error);
   if (apiError.kind !== 'validation') return {};
   const result: TraceFieldErrors = {};
   for (const item of apiError.errors) {
     const field = item.field ?? '';
     if (ENTRY_FIELDS.has(field)) result.entry = t.trace.entryRequired;
-    if (PERIOD_FIELDS.has(field)) {
-      result.period =
-        item.code === 'REQUIRED'
-          ? t.period.required
-          : item.code === 'RANGE' && /366/.test(item.message ?? '')
-            ? t.period.tooLong
-            : t.period.reversed;
-    }
+    if (PERIOD_FIELDS.has(field)) result.period = PERIOD_MESSAGES[item.code] ?? t.period.invalid;
   }
   return result;
 };
@@ -118,7 +120,7 @@ const stageName = (code: string): string => (t.stages as Record<string, string>)
 
 /**
  * 정방향 추적, 역방향 추적 탭(T-W-A 조회형). 목록은 진입점(품목, LOT 번호, 입하번호, 출하번호, W/O 번호)이
- * 있어야 부른다. 행을 누르면 그 LOT의 사슬 드로어(계획 2-4). 조건 칩은 현재 단계와 단계별 LOT 수(C-17).
+ * 있어야 부른다. 행을 누르면 그 LOT의 사슬 드로어. 조건 칩은 현재 단계와 단계별 LOT 수(C-17).
  */
 export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -228,13 +230,27 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
     ...(filters.stage === '' ? [] : [`${t.stages.label} ${stageName(filters.stage)}`]),
   ].join(', ');
 
-  const empty = (
+  /*
+   * 정방향 목록은 자재 입고가 있는 LOT만 싣는다. 생산 LOT을 [이 LOT 기준으로] 정방향으로 열면 목록이 비고
+   * 사슬만 열린다. 빈 까닭을 그대로 말한다.
+   */
+  const notMaterial = direction === 'forward' && filters.lot !== '' && selected !== null;
+  const noPeriod = filters.from === '' && filters.to === '';
+  const empty = notMaterial ? (
+    <EmptyState
+      size="sm"
+      title={t.trace.notMaterialTitle}
+      description={t.trace.notMaterialDescription}
+    />
+  ) : (
     <EmptyState
       size="sm"
       title={t.trace.emptyTitle}
       description={
         <>
-          {t.trace.emptyDescription}
+          {noPeriod && filters.lot !== ''
+            ? t.trace.emptyExactDescription
+            : `${t.trace.emptyDescription}${filters.q === '' ? '' : ` ${t.trace.emptyPartialHint}`}`}
           <br />
           {t.list.narrowedBy(narrowed)}
         </>
@@ -254,14 +270,10 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
     body = <AlertBanner variant="warning">{periodReason}</AlertBanner>;
   } else if (list.isError && !fieldError) {
     body = (
-      <AlertBanner
-        variant="error"
+      <LoadFailure
+        error={list.error}
         title={t.trace.loadFailed}
-        action={
-          <Button size="sm" variant="outlined" onClick={() => void list.refetch()}>
-            {t.list.retry}
-          </Button>
-        }
+        onRetry={() => void list.refetch()}
       />
     );
   } else if (fieldError) {

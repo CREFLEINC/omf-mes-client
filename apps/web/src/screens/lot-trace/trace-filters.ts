@@ -3,7 +3,7 @@ import { DEFAULT_SIZE } from './filters';
 import { validatePeriod, type Period } from './period';
 import type { BackwardListQuery, ForwardListQuery, ForwardStage } from './trace-types';
 
-/** 화면 안 탭. 처음 열면 정방향(계획 2-1). 마지막 탭과 조건은 주소에 남긴다. */
+/** 화면 안 탭. 처음 열면 정방향. 마지막 탭과 조건은 주소에 남긴다. */
 export const TABS = ['forward', 'backward', 'movements'] as const;
 export type TraceTab = (typeof TABS)[number];
 export type TraceDirection = 'forward' | 'backward';
@@ -24,16 +24,16 @@ export const BACKWARD_STAGES = ['PRODUCED', 'PRODUCTION_RECEIVED', 'PACKED', 'SH
 export const stagesOf = (direction: TraceDirection): readonly ForwardStage[] =>
   direction === 'forward' ? FORWARD_STAGES : BACKWARD_STAGES;
 
-/** 기본 기간 — 계획 2-2 「입고 기간(기본 최근 30일)」. 역방향도 같은 길이로 둔다. */
+/** 기본 기간 30일(정방향은 입고 기간). 역방향도 같은 길이로 둔다. */
 export const TRACE_DEFAULT_DAYS = 30;
 
 export type DateAxis = 'PRODUCED' | 'SHIPPED';
 
 /** 정방향, 역방향 조회 조건 — **주소가 정본이다.** 빈 조건은 키를 두지 않는다. */
 export interface TraceFilters extends Period {
-  /** LOT 번호 일부(`q`) */
+  /** LOT 번호 일부(`q`). 조건 칸에서 기간과 함께 찾을 때 */
   q: string;
-  /** LOT 번호 정확 일치(`lotNo`) — 다른 탭이나 방향 바꾸기에서 넘어올 때 */
+  /** LOT 번호 정확 일치(`lotNo`). 조건 칸에서 기간 없이 찾을 때, 다른 탭이나 화면에서 넘어올 때 */
   lot: string;
   item: string;
   /** 정방향: 입하번호 */
@@ -241,3 +241,10 @@ export const openLotParams = (
 /** 출하 한 건의 LOT 전부를 역방향으로 연다(입출고 현황의 제품 출고 줄). */
 export const openShipmentParams = (shipmentNo: string, onlyLotId: number | null): URLSearchParams =>
   toTraceSearchParams('backward', { ...EMPTY_TRACE_FILTERS, shipment: shipmentNo }, onlyLotId);
+
+/** LOT 추적 화면 주소. 다른 화면(W-03-01 LOT 상세)이 한 LOT의 추적을 열 때 쓴다. */
+export const LOT_TRACE_PATH = '/production/lot-trace';
+
+/** 한 LOT의 추적을 여는 주소. 자재 LOT은 정방향, 그 밖의 LOT(생산, 제품)은 역방향이다. */
+export const lotTraceHref = (lot: { lotId: number; lotNo: string; lotTypeCode: string }): string =>
+  `${LOT_TRACE_PATH}?${openLotParams(lot.lotTypeCode === 'MATERIAL' ? 'forward' : 'backward', lot).toString()}`;

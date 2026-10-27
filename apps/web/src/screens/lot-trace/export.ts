@@ -1,14 +1,14 @@
 import { messages } from '@omf-mes/i18n';
 
+import { toCsvText, type CsvColumn } from '../../patterns/csv';
 import type { LotTraceFilters, MovementKind } from './filters';
 import type { MovementRow } from './rows';
 
 /**
- * 엑셀 내보내기 — **현재 조건 전체**를 쪽 크기 200으로 차례로 받아 파일 하나로 만든다(계획 2-6, 서버 회신
- * 2026-10-26 「화면이 쪽을 돌며 받는다」). 서버에 내려받기 경로가 없다.
+ * 엑셀 내보내기 — **현재 조건 전체**를 쪽 크기 200으로 차례로 받아 파일 하나로 만든다. 서버에 내려받기
+ * 경로가 없어 화면이 쪽을 돌며 받는다.
  *
- * 파일은 UTF-8 BOM을 붙인 CSV다. 엑셀이 바로 열고, 저장소에 엑셀 파일 라이브러리가 없다
- * (같은 방식: `screens/downtime-summary/download.ts`). 만드는 일(`toCsv`)은 순수 함수, 내보내는 일(`saveCsv`)은 부수 효과만.
+ * 파일은 UTF-8 BOM을 붙인 CSV다(공용 `patterns/csv`). 엑셀이 바로 열고, 저장소에 엑셀 파일 라이브러리가 없다.
  */
 const t = messages.lotTrace;
 
@@ -39,27 +39,13 @@ export const fetchAllRows = async <Row>(
   for (let page = 1; ; page += 1) {
     signal.throwIfAborted();
     const data = await fetchPage(page, EXPORT_PAGE_SIZE, signal);
+    /* 취소 뒤에 도착한 쪽은 버린다. 받던 요청이 끊기지 않고 끝까지 온 경우다. */
+    signal.throwIfAborted();
     rows.push(...data.rows);
     onProgress({ total: data.page.total, received: rows.length });
     if (data.rows.length === 0 || rows.length >= data.page.total) return rows;
   }
 };
-
-/** 칸 하나를 RFC 4180으로 감싼다. 큰따옴표, 쉼표, 줄바꿈이 든 값은 감싸고 안쪽 큰따옴표는 두 번 적는다. */
-export const escapeCsvField = (value: string): string =>
-  /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-
-export interface CsvColumn<Row> {
-  header: string;
-  value: (row: Row) => string;
-}
-
-/** 줄 끝은 `\r\n`이다 — 표 계산 프로그램이 기대하는 형식이다. */
-export const toCsvText = <Row>(columns: readonly CsvColumn<Row>[], rows: readonly Row[]): string =>
-  [
-    columns.map((column) => escapeCsvField(column.header)).join(','),
-    ...rows.map((row) => columns.map((column) => escapeCsvField(column.value(row))).join(',')),
-  ].join('\r\n');
 
 const partnerHeaders = (kind: MovementKind): { code: string; name: string } | null =>
   kind === 'MATERIAL'
@@ -106,17 +92,3 @@ export const toCsv = (
 
 export const exportFileName = (filters: LotTraceFilters): string =>
   t.export.fileName(t.kinds[filters.kind], filters.from, filters.to);
-
-/** 한글이 깨지지 않게 앞에 붙이는 표식(UTF-8 BOM). */
-const BOM = '﻿';
-
-/** 만든 글자를 파일로 내보낸다. 만든 주소는 돌려준다. */
-export const saveCsv = (fileName: string, content: string): void => {
-  const blob = new Blob([BOM + content], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(url);
-};

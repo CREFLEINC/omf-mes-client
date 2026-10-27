@@ -7,7 +7,7 @@ import type { ExportState } from './use-export';
 const t = messages.lotTrace;
 
 export interface TabToolbarProps {
-  /** 탭 아래 한 줄 — 방향을 풀어 쓴다(계획 2-1). */
+  /** 탭 아래 한 줄 — 방향을 풀어 쓴다. */
   lead: string;
   /** 조건 칩(C-17). 없으면 비운다. */
   chips?: ReactNode;

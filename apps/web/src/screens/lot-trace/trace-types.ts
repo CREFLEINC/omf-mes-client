@@ -1,6 +1,6 @@
 import type { components, paths } from '@omf-mes/api-client';
 
-/** 정방향, 역방향 추적 계약. 정본: 서버 `contracts/logistics-01자재창고.json`(서버 PR #830, 장부 P-119). */
+/** 정방향, 역방향 추적 계약. 정본: 서버 `contracts/logistics-01자재창고.json`. */
 type Schemas = components['schemas'];
 
 export type ForwardListQuery = NonNullable<
