@@ -48,7 +48,6 @@ import { ToolPmResultScreen } from '../screens/tool-pm-result/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
-import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
 import { LotStatusHistoryScreen } from '../screens/lot-status-history/screen';
@@ -75,6 +74,7 @@ import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/
 import { InspectionLevelScreen } from '../screens/inspection-level/screen';
 import { ProductStockStatusScreen } from '../screens/product-stock-status/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
+import { IQC_SKIP_TYPE_CODE } from '../screens/quality-approval/type-tabs';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ExpeditedShipmentScreen } from '../screens/expedited-shipment/screen';
 import { ProductDisposalRequestScreen } from '../screens/product-disposal-request/screen';
@@ -297,7 +297,14 @@ export const appRouter = createBrowserRouter([
        * 결재할 수 없는 판정 화면을 노출하면 승인자가 **판단 근거를 다 보고서도 아무것도
        * 할 수 없다**(정책 §5.2 — 접근 불가능한 경계).
        */
-      { path: 'logistics/iqc-skip-approval', element: <IqcSkipApprovalScreen /> },
+      /*
+       * 긴급 IQC 생략 한도승인(W-01-02) — 품질 승인 처리의 「IQC (수입검사) 생략」 탭이다. 전체 탭과 같은 화면 · 같은
+       * 조회 조건을 쓰고 유형만 고정한다(#193 · 사용자 지시 2026-10-27).
+       */
+      {
+        path: 'logistics/iqc-skip-approval',
+        element: <QualityApprovalScreen fixedTypeCode={IQC_SKIP_TYPE_CODE} />,
+      },
       /*
        * W-01-13 — 앞머리는 같은 규칙(사이드바 섹션)을 따른다. 계약 경로도 `/logistics/**`라 둘이
        * **우연히 같지만** 근거는 여기서도 섹션이다 — 계약을 근거로 삼았다면 W-01-07·W-01-12에서

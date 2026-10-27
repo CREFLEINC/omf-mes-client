@@ -55,7 +55,7 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     position: (current: number, total: number): string =>
       `Bước ${String(current)} / ${String(total)}`,
     finished: (total: number): string => `Đã kết thúc phê duyệt · tổng ${String(total)} bước`,
-    myTurn: 'Bây giờ đến lượt bạn phê duyệt yêu cầu này',
+    myTurn: 'Đến lượt bạn phê duyệt',
     notMyTurn: 'Bây giờ chưa đến lượt bạn phê duyệt yêu cầu này',
     waitingCurrent: 'Chờ duyệt',
     waitingPending: 'Chưa duyệt',
@@ -135,6 +135,12 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     notPending: (status: string) =>
       `LOT không ở trạng thái chờ kiểm tra đầu vào (trạng thái ${status}) nên không thể thực hiện bỏ qua.`,
     checking: 'Đang kiểm tra trạng thái LOT.',
+    compact: {
+      title: 'Bỏ qua IQC',
+      summary: 'Bỏ qua yêu cầu kiểm tra đầu vào · gỡ giữ chờ kiểm tra · LOT bình thường',
+      action: 'Thực hiện',
+      done: 'Đã thực hiện',
+    },
   },
   toast: {
     approved: 'Đã phê duyệt',

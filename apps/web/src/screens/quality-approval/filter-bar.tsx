@@ -1,4 +1,4 @@
-import { Button, DatePicker, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -15,14 +15,14 @@ export const FilterBar = ({ applied, onApply, onReset }: FilterBarProps) => {
   const fromId = useId();
   const toId = useId();
   const [draft, setDraft] = useState<RequestFilters>(applied);
-  const { approvalTypeCode, from, to, q } = applied;
+  const { approvalTypeCode, from, to, q, myTurnOnly = false } = applied;
   /* 상태는 탭 줄 칩이 바꾼다 — 칩을 눌러도 치던 날짜·검색어가 지워지지 않게 되돌림에서 뺀다(#186 리뷰). */
   const apply = (next: RequestFilters): void =>
     onApply({ ...next, statusCode: applied.statusCode });
 
   useEffect(() => {
-    setDraft((current) => ({ ...current, approvalTypeCode, from, to, q }));
-  }, [approvalTypeCode, from, to, q]);
+    setDraft((current) => ({ ...current, approvalTypeCode, from, to, q, myTurnOnly }));
+  }, [approvalTypeCode, from, to, q, myTurnOnly]);
 
   const reset = (): void => {
     setDraft(EMPTY_FILTERS);
@@ -74,6 +74,15 @@ export const FilterBar = ({ applied, onApply, onReset }: FilterBarProps) => {
         }}
       />
       <div className="quality-approval-filter-footer">
+        {/* 내 차례인 요청만 — 다른 조건처럼 [조회]로 적용한다(#193 · 검사실적 조회의 체크 칸과 같다). */}
+        <Checkbox
+          checked={draft.myTurnOnly === true}
+          onChange={(event) =>
+            setDraft((current) => ({ ...current, myTurnOnly: event.target.checked }))
+          }
+        >
+          {t.fields.myTurnOnly}
+        </Checkbox>
         <div className="filter-actions">
           <Button onClick={() => apply(draft)}>{messages.common.search}</Button>
           <Button variant="outlined" onClick={reset}>

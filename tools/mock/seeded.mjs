@@ -4840,6 +4840,110 @@ on('GET', '/quality/nonconformances', (_p, query) =>
   ),
 );
 
+/*
+ * 승인된 OQC 생략의 실행(#193) — 실제 서버처럼 승인된 결재가 있어야 하고, 한 번 실행하면 다시 막는다(400).
+ * 의뢰·LOT 이력은 옮기지 않는다 — 목은 품질 승인 처리의 실행 구획을 보려는 것이다.
+ */
+const oqcSkipExecuted = new Set();
+on('POST', '/logistics/shipment-requests/{shipmentRequestId}:skip-oqc', (params) => {
+  const id = Number(params.shipmentRequestId);
+  const approved = state.approvalRequests.some(
+    (row) =>
+      row.approvalTypeCode === 'OQC_SKIP' && row.targetId === id && row.statusCode === 'APPROVED',
+  );
+  const message = !approved
+    ? '승인된 OQC 생략 요청이 없습니다.'
+    : oqcSkipExecuted.has(id)
+      ? '이 출하작업지시의 OQC 검사가 이미 끝났거나 생략돼 생략을 실행할 수 없습니다.'
+      : null;
+  if (message !== null) {
+    return {
+      status: 400,
+      created: { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
+    };
+  }
+  oqcSkipExecuted.add(id);
+  const shipmentRequest = state.shipmentRequests?.find((row) => row.shipmentRequestId === id);
+  /* 실제 서버처럼 의뢰가 SKIPPED 로 닫혀 출하검사 롤업이 합격이 된다 — 품질 승인 처리가 이 값으로 「실행 완료」를 안다. */
+  if (shipmentRequest !== undefined) shipmentRequest.shippingInspectionStatusCode = 'PASSED';
+  return shipmentRequest ?? { shipmentRequestId: id };
+});
+
+/*
+ * 승인된 IQC 생략의 실행(#193) — 실제 서버처럼 승인된 결재와 검사 대기 LOT 이 있어야 하고, 실행하면 LOT 이 정상이 된다.
+ * 의뢰·보류 이력은 옮기지 않는다 — 목은 품질 승인 처리의 실행 구획과 「다음 할 일」을 보려는 것이다.
+ */
+on('POST', '/trace/lots/{lotId}:skip-iqc', (params) => {
+  const id = Number(params.lotId);
+  const lot = state.lots.find((row) => row.lotId === id);
+  if (lot === undefined) return notFound('LOT 을 찾을 수 없습니다.');
+  const approved = state.approvalRequests.some(
+    (row) =>
+      row.approvalTypeCode === 'IQC_SKIP' && row.targetId === id && row.statusCode === 'APPROVED',
+  );
+  const message = !approved
+    ? '승인된 IQC 생략 요청이 없습니다.'
+    : lot.statusCode !== 'INSPECTION_PENDING'
+      ? '검사 대기 LOT 이 아니라 생략을 실행할 수 없습니다.'
+      : null;
+  if (message !== null) {
+    return {
+      status: 400,
+      created: { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
+    };
+  }
+  lot.statusCode = 'NORMAL';
+  lot.held = false;
+  bumpVersion(lotVersions, id);
+  return { lot: withProgress(lot) };
+});
+
+/* 특채 — 품질 승인 처리가 결재 번호로 짝 특채를 찾고(`approvalRequestId`), 처분 판정이 부적합으로 찾는다(#193). */
+on('GET', '/quality/concessions', (_p, query) =>
+  page(
+    keep(state.concessions, [
+      byNum(query, 'approvalRequestId', 'approvalRequestId'),
+      byNum(query, 'nonconformanceId', 'nonconformanceId'),
+      byNum(query, 'lotId', 'lotId'),
+      byText(query, 'statusCode', 'statusCode'),
+    ]),
+    query,
+  ),
+);
+
+/* 특채 적용(#193) — 실제 서버처럼 결재가 승인이어야 하고, 적용하면 특채가 APPROVED 가 된다(다시 적용하면 400). */
+on('POST', '/quality/concessions/{concessionId}:apply', (params) => {
+  const concession = state.concessions.find(
+    (row) => row.concessionId === Number(params.concessionId),
+  );
+  if (concession === undefined) return notFound('특채를 찾을 수 없습니다.');
+  const approval = state.approvalRequests.find(
+    (row) => row.approvalRequestId === concession.approvalRequestId,
+  );
+  const message =
+    concession.statusCode !== 'PENDING'
+      ? '이미 적용되었거나 반려된 특채입니다.'
+      : approval?.statusCode === 'PENDING'
+        ? '결재가 아직 진행 중입니다.'
+        : null;
+  if (message !== null) {
+    return {
+      status: 400,
+      created: { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
+    };
+  }
+  concession.statusCode = approval?.statusCode === 'APPROVED' ? 'APPROVED' : 'REJECTED';
+  concession.versionNo = (concession.versionNo ?? 1) + 1;
+  return concession;
+});
+
+on('GET', '/quality/concessions/{concessionId}', (params) => {
+  const concession = state.concessions.find(
+    (row) => row.concessionId === Number(params.concessionId),
+  );
+  return concession ?? notFound('특채를 찾을 수 없습니다.');
+});
+
 on('POST', '/quality/nonconformances', (_p, _q, body) => {
   const firstLot = body?.lots?.[0];
   const candidate = state.dispositionCandidates.find((row) => row.lotId === firstLot?.lotId);

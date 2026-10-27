@@ -3,7 +3,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
@@ -19,7 +19,14 @@ import { toWebAccess } from '../../patterns/web-access';
 import { toApiError } from '../../patterns/request';
 import { iqcSkipApprovalKeys, useSkipTargetLot } from '../iqc-skip-approval/queries';
 import { SkipExecutePane } from '../iqc-skip-approval/skip-execute-pane';
-import { judgeSkipExecute, skipExecuteLotIdOf } from '../iqc-skip-approval/target';
+import {
+  judgeSkipExecute,
+  skipExecuteLotIdOf,
+  type SkipExecuteState,
+} from '../iqc-skip-approval/target';
+import { DISPOSITION_SCREEN_PATH, dispositionEntryPath } from '../disposition-decision/filters';
+import { LOT_STATUS_SCREEN_PATH, lotStatusEntryPath } from '../lot-status-history/filters';
+import { oqcInspectionKeys } from '../oqc-inspection/queries';
 import { ApprovalActionPane } from './approval-action-pane';
 import { ApproveDialog } from './approve-dialog';
 import { QUALITY_APPROVAL_TYPE_CODES, approvalScopeWarning, statusBadgeOf } from './code-options';
@@ -40,19 +47,24 @@ import {
   type RequestFilters,
 } from './filters';
 import { toPageView } from './pagination';
+import { OqcShipmentPane } from './oqc-shipment-pane';
 import { ProgressPane } from './progress-pane';
 import { toApprovalProgressView } from './progress';
 import { RejectDialog } from './reject-dialog';
+import { RelatedLink } from './related-link';
 import {
   qualityApprovalKeys,
   requestDetailPath,
   useApprovalRequestDetail,
   useApprovalRequests,
   useConcessionCandidates,
+  useConditionUoms,
+  useOqcSkipShipment,
 } from './queries';
 import { RequestList } from './request-list';
 import {
   IQC_SKIP_APPROVAL_PATH,
+  QUALITY_APPROVALS_PATH,
   IQC_SKIP_TYPE_CODE,
   STATUS_FILTER_CODES,
   StatusChips,
@@ -97,39 +109,61 @@ const describeLoadError = (error: ApiError): string => {
 
 /** OQC 생략 결재 유형 — 서버 선행 값(omf-all-around#119 · P-83). 생성 타입의 enum 에 아직 없다. */
 const OQC_SKIP = 'OQC_SKIP';
+/** 「다음 할 일」이 여는 화면(#193) — 반려 뒤 정상 검사로, 실행 뒤 그다음 업무로. */
+const IQC_INSPECTION_PATH = '/logistics/iqc-inspection';
+const OQC_INSPECTION_PATH = '/shipment/oqc-inspection';
+const GOODS_RECEIPT_PATH = '/logistics/goods-receipt';
+const SHIPMENT_PROCESSING_PATH = '/shipment/shipment-processing';
 export interface QualityApprovalScreenProps {
   approvalTypeCodes?: readonly string[];
+  /**
+   * 이 유형만 보는 탭 화면(#193 · IQC 생략 탭 = W-01-02 주소). 전체 탭과 같은 화면 · 같은 조회 조건을 쓰고 유형만
+   * 고정한다 — 다른 유형 탭을 누르면 품질 승인 처리 주소로 돌아간다.
+   */
+  fixedTypeCode?: string;
 }
+
+/** 끝난 요청의 상태 — 결재한 단계를 한 줄씩 보이는 모양으로 바뀐다(#193). 모르는 값은 결재 대기 모양 그대로다. */
+const FINISHED_STATUS_CODES: readonly string[] = ['APPROVED', 'REJECTED'];
 
 export const QualityApprovalScreen = ({
   approvalTypeCodes = QUALITY_APPROVAL_TYPE_CODES,
+  fixedTypeCode,
 }: QualityApprovalScreenProps = {}) => {
   const t = messages.qualityApproval;
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   /* 두 구획이 창 바닥에서 멈추고, 가운데 막대로 고른 폭은 다음에 들어와도 남는다(입하 예정 조회와 같다). */
   const { splitRef, aboveRef } = useFitToViewport();
-  const split = usePaneSplit('omf-mes:quality-approvals:split', 0.4);
   const paneLayout = usePaneLayout('omf-mes:quality-approvals:layout');
+  /* 좌우 배치는 폭, 상하 배치는 높이를 따로 기억한다 — 바꿔도 각자 고른 비율로 돌아온다(#193). */
+  const sideSplit = usePaneSplit('omf-mes:quality-approvals:split', 0.4);
+  const stackSplit = usePaneSplit('omf-mes:quality-approvals:stack-split', 0.4);
+  const split = paneLayout.layout === 'stack' ? stackSplit : sideSplit;
   const { session } = useSession();
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다(`inlineTabs`). */
   const canOpenIqcSkip = toWebAccess(session?.permissions).allows(IQC_SKIP_APPROVAL_PATH);
+  const canOpenLotStatus = toWebAccess(session?.permissions).allows(LOT_STATUS_SCREEN_PATH);
   const filters = useMemo(
     /* 상태 조건은 탭 줄 승인·반려 칩(#186)이 건다 — 그 두 값만 주소에서 읽는다(결재 대기는 `pd=1`). */
     () => readFilters(searchParams, approvalTypeCodes, STATUS_FILTER_CODES),
     [approvalTypeCodes, searchParams],
   );
+  /* 유형 고정 화면(IQC 생략 탭)은 주소와 무관하게 그 유형으로 조회한다 — 주소에는 유형을 적지 않는다(#193). */
+  const typeFilters =
+    fixedTypeCode === undefined ? filters : { ...filters, approvalTypeCode: fixedTypeCode };
+  const typeCode = typeFilters.approvalTypeCode;
   const pendingOnly = readPendingOnly(searchParams);
   const page = readPage(searchParams);
   const selectedId = readSelectedRequestId(searchParams);
   const scopeWarning = approvalScopeWarning(approvalTypeCodes);
-  const query = toRequestListQuery(filters, pendingOnly, page);
+  const query = toRequestListQuery(typeFilters, pendingOnly, page);
   const list = useApprovalRequests(query);
   /*
    * 탭 줄 상태 칩의 수 — 지금 조건(상태 조건은 빼고)의 상태별 첫 쪽 건수. 켜진 칩의 조회는 위 목록과 같은 조회라
    * 다시 나가지 않는다(첫 쪽일 때).
    */
-  const unfiltered = { ...filters, statusCode: '' };
+  const unfiltered = { ...typeFilters, statusCode: '' };
   const statusCounts = {
     PENDING: useApprovalRequests(toRequestListQuery(unfiltered, true, 1)).data?.page.total,
     APPROVED: useApprovalRequests(
@@ -155,6 +189,11 @@ export const QualityApprovalScreen = ({
   /* 생략 실행은 IQC 생략 화면 권한(W-01-02)이 있어야 한다 — 없으면 LOT 도 읽지 않고 안내만 선다(#186 리뷰). */
   const skipLotId = canOpenIqcSkip ? approvedIqcSkipLotId : null;
   const skipLot = useSkipTargetLot(skipLotId);
+  /* OQC 생략의 대상 출하작업지시(#193) — 번호 · 출하 예정일 · 피킹 LOT 과 실행 여부(출하검사 상태)를 읽는다. */
+  const oqcShipment = useOqcSkipShipment(
+    isOqcSkip ? (detail.data?.request.target.targetId ?? null) : null,
+  );
+  const oqcUoms = useConditionUoms(isOqcSkip);
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
   const listContextKey = withSelectedRequest(searchParams, null).toString();
@@ -194,6 +233,51 @@ export const QualityApprovalScreen = ({
     knownFields: [],
     onSuccess: () => {
       toast.show({ variant: 'success', description: messages.iqcSkipApproval.skipExecute.done });
+    },
+  });
+
+  /*
+   * 승인된 OQC 생략의 실행(#193) — IQC 생략과 같이 이 화면에서 실행한다. 서버 경로는 OQC 출하검사 판정의 실행과 같고,
+   * 서버가 이 화면(W-03-09) 권한으로도 실행을 연다(서버 `manual-permissions` · #193) — 권한 안내 문구를 두지 않는다.
+   * ⚠ 실행 여부를 읽을 서버 값이 없다 — 이 화면에서 실행을 마친 출하작업지시만 「완료」로 보이고, 이미 실행된 건을
+   *   다시 누르면 서버가 400 으로 막아 그 문구가 배너에 선다.
+   */
+  const [oqcSkipSentId, setOqcSkipSentId] = useState<number | null>(null);
+  /* 성공 콜백이 「어느 출하작업지시였나」를 읽는 자리 — 상태는 콜백이 만들어진 순간의 값이라 쓰지 않는다. */
+  const oqcSkipSentRef = useRef<number | null>(null);
+  const [oqcSkipDoneIds, setOqcSkipDoneIds] = useState<ReadonlySet<number>>(() => new Set());
+  /*
+   * OQC 생략 실행 여부(#193) — 출하작업지시의 출하검사 상태로 안다. 생략을 실행하면 서버가 열린 OQC 의뢰를 SKIPPED 로
+   * 닫아 PASSED 가 된다(정상 검사로 합격해도 PASSED — 어느 쪽이든 더 실행할 것이 없다). 못 읽었으면 단추를 두고
+   * 서버가 거른다(IQC 생략과 같다).
+   */
+  const oqcSkipState = (shipmentRequestId: number): SkipExecuteState => {
+    if (oqcSkipDoneIds.has(shipmentRequestId)) return { kind: 'executed' };
+    if (oqcShipment.isError) return { kind: 'executable' };
+    const code = oqcShipment.data?.shippingInspectionStatusCode;
+    if (code === undefined) return { kind: 'checking' };
+    if (code === 'PENDING') return { kind: 'executable' };
+    if (code === 'PASSED') return { kind: 'executed' };
+
+    return { kind: 'notPending', statusCode: t.oqcShipment.inspectionStatus[code] ?? code };
+  };
+  const oqcSkipWrite = useMasterWrite<number, unknown>({
+    request: (shipmentRequestId, headers) =>
+      client.POST('/logistics/shipment-requests/{shipmentRequestId}:skip-oqc', {
+        params: {
+          path: { shipmentRequestId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    etagPath: null,
+    invalidateKeys: [qualityApprovalKeys.all, oqcInspectionKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      const shipmentRequestId = oqcSkipSentRef.current;
+      if (shipmentRequestId !== null) {
+        setOqcSkipDoneIds((current) => new Set(current).add(shipmentRequestId));
+      }
+      toast.show({ variant: 'success', description: t.oqcSkipExecute.done });
     },
   });
 
@@ -349,38 +433,183 @@ export const QualityApprovalScreen = ({
       );
     }
 
-    return detail.data === undefined ? null : (
-      <>
-        <DetailPane view={toRequestDetailView(detail.data.request)} />
-        {/* OQC 생략(#119)은 연결 조건이 없다 — 승인 뒤 실행할 화면을 알린다(공유계약 J-8). */}
-        {isOqcSkip ? (
-          <AlertBanner variant="info" title={t.detail.oqcSkipNote}>
-            <Link to="/shipment/oqc-inspection">{t.detail.openOqcInspection}</Link>
-          </AlertBanner>
-        ) : isIqcSkip ? (
-          /* IQC 생략(#186)은 연결 조건이 없다 — 승인된 뒤에만 생략 실행 구획이 선다. */
-          approvedIqcSkipLotId !== null &&
-          (skipLotId === null ? (
-            <p className="field-note">{t.detail.iqcSkipNoPermission}</p>
-          ) : (
-            <SkipExecutePane
-              state={judgeSkipExecute(skipLot)}
-              isSaving={skipSentLotId === skipLotId && skipExecuteWrite.isSaving}
-              onExecute={() => {
-                setSkipSentLotId(skipLotId);
-                skipExecuteWrite.write(skipLotId);
-              }}
-              banner={
-                <SaveErrorBanner
-                  error={skipSentLotId === skipLotId ? skipExecuteWrite.error : null}
-                />
-              }
+    if (detail.data === undefined) return null;
+    /* 특채는 요청 정보와 특채 조건이 한 카드다 — 수량 요약 아래에 요청 정보가 선다(#193 특채 승인 상세). */
+    if (!isOqcSkip && !isIqcSkip) {
+      return (
+        <ConditionPane
+          approvalRequestId={detail.data.request.approvalRequestId}
+          requestStatusCode={detail.data.request.statusCode}
+          requestInfo={(fields) => (
+            <DetailPane
+              view={toRequestDetailView(detail.data.request)}
+              variant="concession"
+              {...fields}
             />
-          ))
-        ) : (
-          <ConditionPane approvalRequestId={detail.data.request.approvalRequestId} />
+          )}
+        />
+      );
+    }
+
+    return (
+      <>
+        {/* IQC 생략의 대상은 입하 LOT 이다 — LOT 상태에서 그 LOT 을 여는 단추를 대상 LOT 값 옆에 둔다(#193). */}
+        <DetailPane
+          view={toRequestDetailView(detail.data.request)}
+          target={
+            isOqcSkip && oqcShipment.data !== undefined
+              ? {
+                  label: t.oqcShipment.shipmentRequest,
+                  name: oqcShipment.data.shipmentRequestNo,
+                  extra: [[t.oqcShipment.shipDate, oqcShipment.data.requestedShipDate]],
+                }
+              : undefined
+          }
+          targetLot={
+            isIqcSkip && canOpenLotStatus
+              ? {
+                  to: lotStatusEntryPath(detail.data.request.target.targetId),
+                  label: t.condition.openLot,
+                }
+              : undefined
+          }
+        />
+        {/* OQC 생략은 지시서 단위라 피킹한 LOT 이 여럿일 수 있다 — 실행하면 이 LOT 들에 생략 이력이 남는다(#193). */}
+        {isOqcSkip && (
+          <OqcShipmentPane
+            shipment={oqcShipment.data}
+            isLoading={oqcShipment.isPending}
+            isError={oqcShipment.isError}
+            uomNameOf={(uomId) =>
+              oqcUoms.data?.items.find((uom) => uom.uomId === uomId)?.uomName.trim() ?? ''
+            }
+            canOpenLot={canOpenLotStatus}
+          />
         )}
+        {/* OQC 생략(#119)은 연결 조건이 없다 — IQC 생략처럼 승인된 뒤에만 생략 실행 구획이 선다(#193). */}
+        {isOqcSkip
+          ? detail.data.request.statusCode === 'APPROVED' && (
+              <SkipExecutePane
+                texts={t.oqcSkipExecute}
+                compact={t.oqcSkipExecute.compact}
+                state={oqcSkipState(detail.data.request.target.targetId)}
+                isSaving={
+                  oqcSkipSentId === detail.data.request.target.targetId && oqcSkipWrite.isSaving
+                }
+                onExecute={() => {
+                  const shipmentRequestId = detail.data.request.target.targetId;
+                  oqcSkipSentRef.current = shipmentRequestId;
+                  setOqcSkipSentId(shipmentRequestId);
+                  oqcSkipWrite.write(shipmentRequestId);
+                }}
+                banner={
+                  <SaveErrorBanner
+                    error={
+                      oqcSkipSentId === detail.data.request.target.targetId
+                        ? oqcSkipWrite.error
+                        : null
+                    }
+                  />
+                }
+              />
+            )
+          : isIqcSkip
+            ? /* IQC 생략(#186)은 연결 조건이 없다 — 승인된 뒤에만 생략 실행 구획이 선다. */
+              approvedIqcSkipLotId !== null &&
+              (skipLotId === null ? (
+                <p className="field-note">{t.detail.iqcSkipNoPermission}</p>
+              ) : (
+                <SkipExecutePane
+                  compact={messages.iqcSkipApproval.skipExecute.compact}
+                  state={judgeSkipExecute(skipLot)}
+                  isSaving={skipSentLotId === skipLotId && skipExecuteWrite.isSaving}
+                  onExecute={() => {
+                    setSkipSentLotId(skipLotId);
+                    skipExecuteWrite.write(skipLotId);
+                  }}
+                  banner={
+                    <SaveErrorBanner
+                      error={skipSentLotId === skipLotId ? skipExecuteWrite.error : null}
+                    />
+                  }
+                />
+              ))
+            : null}
       </>
+    );
+  };
+
+  /*
+   * 「다음 할 일」(#193) — 결재 결과 카드 끝. 반려면 다시 요청하거나 정상 검사로 가는 화면, 실행을 마쳤으면 그다음
+   * 업무 화면으로 잇는다. 그 화면 권한이 없으면 세우지 않는다. 특채 적용 뒤는 특채 카드의 「LOT 열기」가 맡는다.
+   */
+  const nextStepSlot = (): ReactNode => {
+    if (detail.data === undefined || detailError !== null) return null;
+    const { request } = detail.data;
+    const n = t.next;
+    const isRejected = request.statusCode === 'REJECTED';
+    const step: {
+      value: string;
+      to: string;
+      label: string;
+      screen: string;
+      alert?: { title: string; note?: string; tone?: 'error' | 'success' };
+    } | null =
+      isRejected && isOqcSkip
+        ? {
+            value: n.oqcRejected,
+            to: OQC_INSPECTION_PATH,
+            label: n.openOqcInspection,
+            screen: OQC_INSPECTION_PATH,
+            alert: { title: n.oqcRejectedTitle },
+          }
+        : isRejected && isIqcSkip
+          ? {
+              value: n.iqcRejected,
+              to: IQC_INSPECTION_PATH,
+              label: n.openIqcInspection,
+              screen: IQC_INSPECTION_PATH,
+              alert: { title: n.iqcRejectedTitle, note: n.iqcRejectedNote },
+            }
+          : isRejected
+            ? {
+                value: n.concessionRejected,
+                /* 특채 결재의 대상은 부적합이다(서버 P-79) — 그 부적합을 골라 연다. 다른 대상이면 화면만 연다. */
+                to:
+                  String(request.target.targetTypeCode) === 'NONCONFORMANCE'
+                    ? dispositionEntryPath(request.target.targetId)
+                    : DISPOSITION_SCREEN_PATH,
+                label: n.openDisposition,
+                screen: DISPOSITION_SCREEN_PATH,
+              }
+            : isIqcSkip && skipLotId !== null && judgeSkipExecute(skipLot).kind === 'executed'
+              ? {
+                  value: n.iqcDone,
+                  to: GOODS_RECEIPT_PATH,
+                  label: n.openGoodsReceipt,
+                  screen: GOODS_RECEIPT_PATH,
+                  alert: { title: n.iqcDoneTitle, tone: 'success' },
+                }
+              : isOqcSkip &&
+                  request.statusCode === 'APPROVED' &&
+                  oqcSkipState(request.target.targetId).kind === 'executed'
+                ? {
+                    value: n.oqcDone,
+                    to: SHIPMENT_PROCESSING_PATH,
+                    label: n.openShipmentProcessing,
+                    screen: SHIPMENT_PROCESSING_PATH,
+                  }
+                : null;
+    if (step === null || !toWebAccess(session?.permissions).allows(step.screen)) return null;
+
+    return (
+      <RelatedLink
+        heading={n.heading}
+        value={step.value}
+        to={step.to}
+        label={step.label}
+        alert={step.alert}
+      />
     );
   };
 
@@ -401,13 +630,30 @@ export const QualityApprovalScreen = ({
 
     if (detail.data === undefined) return null;
 
-    return <ProgressPane view={toApprovalProgressView(detail.data)} />;
+    return (
+      <ProgressPane
+        view={toApprovalProgressView(detail.data)}
+        isFinished={FINISHED_STATUS_CODES.includes(detail.data.request.statusCode)}
+      />
+    );
   };
 
   /* 승인 처리 — 결재 진행과 갈라 요청 상세 옆 칸에 선다(#144). 상세가 서야 선다. */
   const actionSlot = (): ReactNode => {
     if (selectedId === null || detail.isPending || detailError !== null) return null;
     if (detail.data === undefined) return null;
+    /*
+     * 내 결재 차례가 아니면 조회만 한다 — 승인 처리 칸을 세우지 않는다(#193).
+     * 보내는 중이거나 보낸 결과(오류·전달 불명)를 알려야 할 때는 그 안내가 이 칸에 있어 남긴다.
+     */
+    if (
+      detail.data.request.isMyTurn === false &&
+      !decisionWrite.isSaving &&
+      !hasUncertainWrite &&
+      writeError === null
+    ) {
+      return null;
+    }
 
     const openDecisionDialog = (action: DecisionAction): void => {
       const trimmed = comment.trim();
@@ -470,11 +716,21 @@ export const QualityApprovalScreen = ({
        */}
       <TypeTabs
         options={toTypeTabOptions(approvalTypeCodes, canOpenIqcSkip)}
-        value={filters.approvalTypeCode}
+        value={typeCode}
         onChange={(code) => {
-          /* 「IQC (수입검사) 생략」 탭은 긴급 IQC 생략 한도승인 화면이다 — 그 화면으로 옮긴다. */
-          if (code === IQC_SKIP_TYPE_CODE) void navigate(IQC_SKIP_APPROVAL_PATH);
-          else apply({ ...filters, approvalTypeCode: code }, pendingOnly);
+          if (code === typeCode) return;
+          /* 「IQC (수입검사) 생략」 탭은 긴급 IQC 생략 한도승인 주소다(W-01-02) — 같은 화면을 그 유형 고정으로 연다. */
+          if (code === IQC_SKIP_TYPE_CODE) {
+            void navigate(IQC_SKIP_APPROVAL_PATH);
+            return;
+          }
+          /* 유형 고정 화면에서 다른 탭 — 품질 승인 처리 주소로 돌아가 그 유형으로 조회한다. */
+          if (fixedTypeCode !== undefined) {
+            const query = code === '' ? '' : `?${new URLSearchParams({ ty: code }).toString()}`;
+            void navigate(`${QUALITY_APPROVALS_PATH}${query}`);
+            return;
+          }
+          apply({ ...filters, approvalTypeCode: code }, pendingOnly);
         }}
         trailing={
           <>
@@ -486,8 +742,7 @@ export const QualityApprovalScreen = ({
                 apply({ ...filters, statusCode: choice.statusCode }, choice.pendingOnly);
               }}
             />
-            {/* 배치 고르기 — 상태 칩 뒤 구분선 다음(#186). 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다. */}
-            <span className="quality-approval-type-bar-divider" aria-hidden="true" />
+            {/* 배치 고르기 — 상태 칩 뒤(#186 · 구분선은 단추 묶음이 그린다). 창이 좁아 늘 위아래로 쌓일 때는 CSS 가 감춘다. */}
             <PaneLayoutToggle
               layout={paneLayout.layout}
               onChange={paneLayout.change}
@@ -522,6 +777,14 @@ export const QualityApprovalScreen = ({
             </div>
           )}
           <RequestList
+            showType={typeCode === ''}
+            targetHeader={
+              typeCode === ''
+                ? t.fields.target
+                : typeCode === OQC_SKIP
+                  ? t.fields.targetShipmentRequest
+                  : t.fields.targetLot
+            }
             rows={rows}
             isLoading={list.isPending}
             error={error}
@@ -535,7 +798,12 @@ export const QualityApprovalScreen = ({
           />
         </section>
 
-        <PaneSplitter label={t.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={t.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
+        />
 
         {/*
          * 오른쪽 — 위에서 아래로 읽는다: 결재 진행(가로 단계) → 요청 상세 | 승인 처리.
@@ -550,31 +818,51 @@ export const QualityApprovalScreen = ({
             />
           ) : (
             <>
+              {/* 상태 카드 — 결재 대기면 「결재 진행」, 끝났으면 「결재 결과」 제목과 상태 배지(#193 컴팩트형). */}
               <section
-                className="quality-approval-block quality-approval-progress-pane"
+                className="quality-approval-block quality-approval-card quality-approval-progress-pane"
                 aria-label={t.panes.progress}
               >
-                {progressSlot()}
-              </section>
-              <div className="quality-approval-workspace">
-                <section className="quality-approval-block" aria-label={t.panes.detail}>
+                {detail.data !== undefined && !detail.isError && (
                   <div className="pane-heading-row quality-approval-detail-heading">
-                    <h2 className="pane-title">{t.panes.detail}</h2>
+                    <h2 className="pane-title">
+                      {FINISHED_STATUS_CODES.includes(detail.data.request.statusCode)
+                        ? t.progress.resultTitle
+                        : t.panes.progress}
+                    </h2>
                     {/* 상태는 제목 줄 오른쪽 배지로(#144) — 대기 주황 · 승인 초록 · 반려 빨강. */}
-                    {detail.data !== undefined && !detail.isError && (
-                      <Chip size="sm" status={statusBadgeOf(detail.data.request.statusCode).tone}>
-                        {statusBadgeOf(detail.data.request.statusCode).label}
-                      </Chip>
-                    )}
+                    <Chip size="sm" status={statusBadgeOf(detail.data.request.statusCode).tone}>
+                      {statusBadgeOf(detail.data.request.statusCode).label}
+                    </Chip>
                   </div>
-                  {detailSlot()}
-                </section>
-                {actionSlot() !== null && (
-                  <section className="quality-approval-block" aria-label={t.approval.title}>
-                    {actionSlot()}
-                  </section>
                 )}
-              </div>
+                {progressSlot()}
+                {nextStepSlot()}
+              </section>
+              {/* 요청 상세 카드 — 상세 · 유형별 구획, 내 차례면 결재 사유와 단추까지 한 카드다(#193). */}
+              <section
+                className="quality-approval-block quality-approval-card"
+                aria-label={t.panes.detail}
+              >
+                {/*
+                 * 특채면 「특채 승인 상세」 — 제목 아래 요청번호(#193). 다른 유형은 「요청 상세」 그대로다.
+                 * 상태 배지는 두지 않는다 — 위 결재 진행 · 결과 카드의 배지와 겹친다(사용자 지시 2026-10-27).
+                 */}
+                {detail.data !== undefined && !detail.isError && !isOqcSkip && !isIqcSkip ? (
+                  <div className="pane-heading-row quality-approval-concession-head">
+                    <div>
+                      <h2 className="pane-title">{t.detail.concessionTitle}</h2>
+                      <p className="quality-approval-concession-no">
+                        {detail.data.request.approvalRequestNo}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <h2 className="pane-title">{t.panes.detail}</h2>
+                )}
+                {detailSlot()}
+                {actionSlot()}
+              </section>
             </>
           )}
         </div>

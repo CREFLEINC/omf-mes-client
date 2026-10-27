@@ -129,7 +129,7 @@ export const iqcSkipApproval = {
      * **왜 아닌지는 말하지 않는다.** 앞 단계가 안 끝난 것인지, 내가 승인자가 아닌 것인지,
      * 이미 끝난 요청인지 화면은 판정할 수 없다 — 아는 것만 말하고 이유를 지어내지 않는다.
      */
-    myTurn: '지금 이 요청을 결재할 차례입니다',
+    myTurn: '결재할 차례입니다',
     notMyTurn: '지금은 이 요청을 결재할 차례가 아닙니다',
     /**
      * 아직 결재되지 않은 단계의 보조 라벨. **디자인 시스템의 상태 낱말이 스크린리더 전용**이라
@@ -292,6 +292,13 @@ export const iqcSkipApproval = {
     notPending: (status: string) =>
       `LOT 이 수입검사 대기가 아니라(상태 ${status}) 생략을 실행할 수 없습니다.`,
     checking: 'LOT 상태를 확인하는 중입니다.',
+    /** 한 줄 압축형(#193) — OQC 생략 실행과 같은 짜임이다. */
+    compact: {
+      title: 'IQC 생략',
+      summary: '수입검사 의뢰 생략 · 검사 대기 보류 해제 · LOT 정상',
+      action: '실행',
+      done: '실행 완료',
+    },
   },
   toast: {
     approved: '승인했습니다',

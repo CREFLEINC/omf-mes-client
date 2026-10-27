@@ -32,6 +32,17 @@ describe('FilterBar draft lifetime', () => {
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
+  /* 「내 차례」(#193) — 체크만으로는 조회하지 않고, 다른 조건처럼 [조회]로 적용한다. */
+  it('내 차례는 체크한 뒤 조회로 적용한다', async () => {
+    const { props, user } = renderBar();
+
+    await user.click(screen.getByRole('checkbox', { name: t.fields.myTurnOnly }));
+    expect(props.onApply).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+    expect(props.onApply).toHaveBeenLastCalledWith(expect.objectContaining({ myTurnOnly: true }));
+  });
+
   it('기간·검색어 draft를 Enter로 함께 적용한다', async () => {
     /* 적용된 승인 유형(탭)·상태(칩)는 조건 막대의 적용·조회에도 그대로 실려 간다. */
     const { props, user } = renderBar({
@@ -48,6 +59,7 @@ describe('FilterBar draft lifetime', () => {
       from: '2026-08-01',
       to: '2026-08-22',
       q: 'SYNTH-REQ',
+      myTurnOnly: false,
     });
 
     await user.click(screen.getByRole('button', { name: messages.common.search }));
@@ -57,6 +69,7 @@ describe('FilterBar draft lifetime', () => {
       from: '2026-08-01',
       to: '2026-08-22',
       q: 'SYNTH-REQ',
+      myTurnOnly: false,
     });
   });
 

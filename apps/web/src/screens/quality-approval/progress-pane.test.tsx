@@ -39,43 +39,71 @@ const view = (overrides: Partial<ApprovalProgressView> = {}): ApprovalProgressVi
 });
 
 describe('ProgressPane', () => {
-  it('서버 단계 번호와 보이는 상태를 가로(horizontal)/sm Stepper로 표시한다', () => {
-    render(<ProgressPane view={view()} />);
+  it('결재 대기 요청은 「① 결재자 → ② 결재자」 줄로 서버 단계 번호와 상태를 보인다', () => {
+    render(<ProgressPane view={view()} isFinished={false} />);
     const pane = screen.getByRole('group', { name: t.panes.progress });
     const list = within(pane).getByRole('list', { name: t.progress.steps });
     const items = [...list.querySelectorAll<HTMLElement>('li[data-status]')];
 
-    expect(list).toHaveAttribute('data-orientation', 'horizontal');
-    expect(list).toHaveAttribute('data-size', 'sm');
     expect(items.map((item) => item.dataset.status)).toEqual(['complete', 'current']);
     expect(
-      items.map((item) => item.querySelector<HTMLElement>('span[aria-hidden="true"]')?.textContent),
+      items.map((item) => item.querySelector('.quality-approval-step-no')?.textContent),
     ).toEqual(['5', '9']);
+    /* 모르는 결정 코드는 원문 그대로 — 아는 코드는 사람 말로(#193). */
     expect(within(pane).getByText('SYNTH-UNKNOWN')).toBeVisible();
-    expect(within(pane).getByText(t.progress.waitingCurrent)).toBeVisible();
-    expect(within(pane).getByText(t.progress.mine)).toBeVisible();
     expect(within(pane).getByText('2026-08-22 15:02')).toBeVisible();
     expect(within(pane).getByText('합성 결재 의견')).toBeVisible();
-    expect(items[0]).toHaveTextContent('완료');
     expect(items[1]).toHaveAttribute('aria-current', 'step');
+    /* 지금 결재할 단계에는 상태 글을 붙이지 않는다(#193). */
+    expect(items[1]).toHaveTextContent(/^9합성 결재자 둘$/);
   });
 
-  it('현재 위치와 내 차례를 서버 값으로 밝힌다', () => {
-    render(<ProgressPane view={view()} />);
+  it('현재 위치와 내 차례를 서버 값으로 한 줄에 밝힌다', () => {
+    render(<ProgressPane view={view()} isFinished={false} />);
 
     expect(screen.getByText(t.progress.position(8, 12))).toBeVisible();
     expect(screen.getByText(t.progress.myTurn)).toBeVisible();
   });
 
-  it('단계가 없는 종료 요청도 종료 위치와 내 차례 아님을 말한다', () => {
+  it('끝난 요청은 결재한 단계마다 결재자 · 일시와 결재 사유를 초록 칸, 반려 사유를 붉은 칸으로 보인다', () => {
     render(
       <ProgressPane
-        view={view({ currentStepNo: null, totalStepNo: 3, isMyTurn: false, steps: [] })}
+        isFinished
+        view={view({
+          isMyTurn: false,
+          steps: [
+            step({ stepNo: 1, decisionCode: 'APPROVED', decisionComment: '사용 승인' }),
+            step({
+              stepNo: 2,
+              status: 'rejected',
+              approverName: '합성 반려자',
+              decisionCode: 'REJECTED',
+              decisionAtText: '2026-08-23 09:11',
+              decisionComment: '근거 부족',
+            }),
+          ],
+        })}
       />,
     );
+    const list = screen.getByRole('list', { name: t.progress.steps });
+    const rows = within(list).getAllByRole('listitem');
 
-    expect(screen.getByText(t.progress.finished(3))).toBeVisible();
-    expect(screen.getByText(t.progress.notMyTurn)).toBeVisible();
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent('합성 결재자2026-08-22 15:02');
+    expect(within(rows[0]!).getByRole('group', { name: '결재 사유' })).toHaveTextContent(
+      '사용 승인',
+    );
+    expect(within(rows[0]!).getByLabelText('승인')).toBeInTheDocument();
+    expect(within(rows[1]!).getByRole('group', { name: '반려 사유' })).toHaveTextContent(
+      '근거 부족',
+    );
+    expect(within(rows[1]!).getByLabelText('반려')).toBeInTheDocument();
+    expect(screen.queryByText(t.progress.notMyTurn)).toBeNull();
+  });
+
+  it('결재한 단계가 없는 종료 요청은 단계 없음 안내만 보인다', () => {
+    render(<ProgressPane isFinished view={view({ isMyTurn: false, steps: [] })} />);
+
     expect(screen.getByText(t.progress.noSteps)).toBeVisible();
     expect(screen.queryByRole('list')).toBeNull();
   });
