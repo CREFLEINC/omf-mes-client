@@ -242,7 +242,8 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
     {
       key: 'receiptNo',
       header: t.table.receiptNo,
-      width: '184px',
+      /* 입하번호(약 125px) + 「방금 등록」 칩까지 한 줄에 — 좁으면 칩이 잘린다. */
+      width: '232px',
       render: (row) => (
         <span className="excess-receipt-cell">
           <PickButton
