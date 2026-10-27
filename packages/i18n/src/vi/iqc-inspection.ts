@@ -94,7 +94,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     sectionTitle: 'Nhập số lượng kiểm tra',
     judgmentSectionTitle: 'Đánh giá',
     judgmentDetailTitle: 'Nhập chi tiết đánh giá',
-    judgmentDetailOpen: 'Nhập chi tiết',
+    judgmentDetailOpen: 'Nhập chi tiết đánh giá',
     judgmentDetailCancel: 'Hủy',
     judgmentDetailDone: 'Xong',
     round: (round: number): string => `Lượt ${round}`,

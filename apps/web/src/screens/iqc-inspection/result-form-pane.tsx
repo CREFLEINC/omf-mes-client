@@ -562,7 +562,6 @@ export const ResultFormPane = ({
                             type="button"
                             variant="outlined"
                             size="md"
-                            leadingIcon={<Icon name="edit_square" size={18} aria-hidden />}
                             onClick={() => {
                               onJudgmentDetailOpen?.();
                               setIsDetailOpen(true);

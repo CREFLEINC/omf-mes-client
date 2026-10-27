@@ -1,4 +1,4 @@
-import { Button, Checkbox, Dialog, Icon, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Dialog, TextField } from '@crefle/web-ui';
 import type { FourMChangeForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
@@ -50,7 +50,7 @@ export interface FourMChangeProps {
 }
 
 /**
- * 판정 줄 오른쪽 — 4M 변경품 체크와 [비고 입력](omf-all-around#63 · #133). 비고(필수)는 창에서 적는다 — 판정 줄에
+ * 판정 오른쪽 — 4M 변경품 체크와 그 아래 전체 폭 [비고 입력](omf-all-around#63 · #133). 비고(필수)는 창에서 적는다 — 판정 줄에
  * 빈 공간이 생기지 않게(사용자 지시 2026-10-27 · #185). 단추는 체크했을 때만 선다.
  * 판정과 함께 임시 저장·확정에 실린다. 투입을 막지 않고 POP 투입 때 알리기만 한다.
  */
@@ -74,7 +74,6 @@ export const FourMChange = ({ draft, missing, onChange, disabled }: FourMChangeP
           type="button"
           variant="outlined"
           size="md"
-          leadingIcon={<Icon name="edit_square" size={18} aria-hidden />}
           disabled={disabled}
           onClick={() => setIsOpen(true)}
         >

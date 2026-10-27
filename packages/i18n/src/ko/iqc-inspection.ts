@@ -165,7 +165,7 @@ export const iqcInspection = {
     /** 종합 판정·임시 저장·판정 확정 구획의 제목. */
     judgmentSectionTitle: '판정',
     judgmentDetailTitle: '판정 상세 입력',
-    judgmentDetailOpen: '상세 입력',
+    judgmentDetailOpen: '판정 상세 입력',
     judgmentDetailCancel: '취소',
     judgmentDetailDone: '완료',
     round: (round: number): string => `${round}회차`,
