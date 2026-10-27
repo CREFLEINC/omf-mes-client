@@ -54,6 +54,14 @@ export const RequestList = ({
     },
     /* 대상 LOT 은 폭을 정하지 않는다 — 남는 폭을 흡수한다(`patterns/column-resize.tsx`). */
     { key: 'target', header: targetHeader ?? t.fields.targetLot, render: (row) => row.targetName },
+    /* 언제 상신됐는지 — 모든 탭 목록에 둔다(사용자 지시 2026-10-27 · #193). */
+    {
+      key: 'requestedAt',
+      header: t.fields.requestedAt,
+      width: '150px',
+      align: 'center',
+      render: (row) => row.requestedAtText,
+    },
     /* 상태는 코드 대신 사용자 용어 배지로(#144) — 대기 주황 · 승인 초록 · 반려 빨강. */
     {
       key: 'status',

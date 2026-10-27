@@ -23,6 +23,8 @@ export interface RequestRow {
   approvalRequestNo: string;
   approvalTypeCode: string;
   targetName: string;
+  /** 상신 일시 — 공장 시각으로 적는다(#193 · 모든 탭 목록 열). */
+  requestedAtText: string;
   statusCode: string;
   isMyTurn: boolean;
 }
@@ -38,6 +40,7 @@ export const toRequestRow = (request: ApprovalRequest): RequestRow => ({
     request.target.displayName,
     messages.qualityApproval.values.unknownTarget,
   ),
+  requestedAtText: formatDateTime(request.requestedAt),
   statusCode: request.statusCode,
   isMyTurn: request.isMyTurn,
 });
