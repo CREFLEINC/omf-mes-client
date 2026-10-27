@@ -1,11 +1,13 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLocation, useNavigationType } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { plantToday } from '../../patterns/plant-time';
 import { SessionProvider } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
+import { pickRange } from '../../test/date-picker';
 import { defaultPeriod } from './period';
 import { LotTraceScreen } from './screen';
 import { traceRoutes } from './trace-fixtures';
@@ -65,6 +67,14 @@ const CODES: Record<string, { code: string; codeName: string }[]> = {
 
 const ROUTE = '/production/lot-trace?tab=movements&from=2026-10-20&to=2026-10-26';
 
+/** 지금 주소와 마지막 이동 방식(PUSH, REPLACE). 바로 반영은 주소를 바꿔 써야 한다. */
+const NavProbe = () => {
+  const location = useLocation();
+  const type = useNavigationType();
+  return <output data-testid="nav">{`${type} ${location.pathname}${location.search}`}</output>;
+};
+const navState = () => screen.getByTestId('nav').textContent ?? '';
+
 interface SetupOptions {
   route?: string;
   receipts?: ReceiptLine[];
@@ -83,6 +93,7 @@ const setup = (options: SetupOptions = {}) => {
   const result = renderWithProviders(
     <SessionProvider>
       <LotTraceScreen permissionMenuPath="합성 묶음 › 합성 메뉴" />
+      <NavProbe />
     </SessionProvider>,
     {
       session: {
@@ -306,5 +317,48 @@ describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
     await user.click(screen.getByRole('button', { name: /생산 입고/ }));
     await waitFor(() => expect(screen.queryByLabelText('공급사')).toBeNull());
     expect(screen.queryByLabelText('고객')).toBeNull();
+  });
+});
+
+describe('W-02-09 LOT 추적: 입출고 현황 조건 바로 반영', () => {
+  it('기간을 고르면 [조회] 없이 반영하고, 쪽을 1로 돌리고, 주소를 바꿔 쓴다', async () => {
+    const user = userEvent.setup();
+    const { receiptQueries } = setup({ route: `${ROUTE}&page=2` });
+    await screen.findByText('GR-SYN-0001');
+
+    await pickRange(user, screen.getByLabelText(/^기간/), '2026-10-21', '2026-10-24');
+
+    await waitFor(() =>
+      expect(listQueries(receiptQueries).at(-1)?.searchParams.get('receiptDateFrom')).toBe(
+        '2026-10-21',
+      ),
+    );
+    expect(listQueries(receiptQueries).at(-1)?.searchParams.get('receiptDateTo')).toBe(
+      '2026-10-24',
+    );
+    expect(navState()).toMatch(/^REPLACE /);
+    expect(navState()).not.toContain('page=');
+  });
+
+  it('구분 칩도 주소를 바꿔 쓴다', async () => {
+    const user = userEvent.setup();
+    setup();
+    await screen.findByText('GR-SYN-0001');
+
+    await user.click(screen.getByRole('button', { name: /제품 출고/ }));
+
+    await waitFor(() => expect(navState()).toContain('kind=SHIPMENT'));
+    expect(navState()).toMatch(/^REPLACE /);
+  });
+
+  it('같은 조건의 [조회]는 다시 조회한다', async () => {
+    const user = userEvent.setup();
+    const { receiptQueries } = setup();
+    await screen.findByText('GR-SYN-0001');
+    const before = listQueries(receiptQueries).length;
+
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    await waitFor(() => expect(listQueries(receiptQueries).length).toBe(before + 1));
   });
 });

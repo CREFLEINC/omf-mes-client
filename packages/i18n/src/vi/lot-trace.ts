@@ -105,9 +105,6 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     forward: 'Truy xuất xuôi',
     backward: 'Truy xuất ngược',
     movements: 'Tình hình nhập xuất',
-    forwardLead: 'Từ LOT vật tư đến W/O đã đưa vào, LOT sản xuất và xuất hàng',
-    backwardLead: 'Từ LOT thành phẩm đến sản xuất, vật tư đã đưa vào và nhập kho',
-    movementsLead: 'Nhập kho vật tư, nhập kho sản xuất, xuất hàng thành phẩm',
   },
   stages: {
     label: 'Tiến độ',

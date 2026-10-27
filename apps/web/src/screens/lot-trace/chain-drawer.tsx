@@ -1,4 +1,13 @@
-import { AlertBanner, Button, Chip, Icon, SkeletonText, Tooltip } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Chip,
+  Icon,
+  SkeletonText,
+  Stepper,
+  Tooltip,
+  type StepStatus,
+} from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
@@ -569,23 +578,39 @@ const InputMaterialNode = ({
 
 /* ── 드로어 ─────────────────────────────────────────────────────────── */
 
+/**
+ * 단계 줄 — 공정 흐름 순서의 DS Stepper. 가장 멀리 간 단계(건수가 있는 마지막 단계)가 진행 중, 그 앞에서 건수가 있는
+ * 단계는 완료, 나머지는 대기다. 단계를 누르면 나무에서 그 단계의 첫 줄로 간다.
+ */
 const StageStrip = ({ cells, onJump }: { cells: StageCell[]; onJump: (stage: string) => void }) => {
   const current = currentStage(cells);
+  const currentIndex = cells.findIndex((cell) => cell.stage === current);
+  const statusOf = (cell: StageCell, index: number): StepStatus =>
+    index === currentIndex
+      ? 'current'
+      : index < currentIndex && cell.count > 0
+        ? 'complete'
+        : 'pending';
   return (
-    <ol className="lot-trace-stages" aria-label={c.stagesLabel}>
-      {cells.map((cell) => (
-        <li
-          key={cell.stage}
-          className={`lot-trace-stage${cell.count === 0 ? ' is-empty' : ''}${cell.stage === current ? ' is-current' : ''}`}
-          aria-current={cell.stage === current ? 'step' : undefined}
-        >
-          <button type="button" disabled={cell.count === 0} onClick={() => onJump(cell.stage)}>
-            <span className="lot-trace-stage-name">{t.stages[cell.stage]}</span>
+    <Stepper
+      className="lot-trace-stages"
+      size="sm"
+      aria-label={c.stagesLabel}
+      steps={cells.map((cell, index) => ({
+        status: statusOf(cell, index),
+        label: (
+          <button
+            type="button"
+            className="lot-trace-stage-jump"
+            disabled={cell.count === 0}
+            onClick={() => onJump(cell.stage)}
+          >
+            <span>{t.stages[cell.stage]}</span>
             <span className="lot-trace-stage-count">{c.stageCount(cell.count)}</span>
           </button>
-        </li>
-      ))}
-    </ol>
+        ),
+      }))}
+    />
   );
 };
 

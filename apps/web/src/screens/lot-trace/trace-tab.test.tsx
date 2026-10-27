@@ -1,11 +1,13 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLocation, useNavigationType } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SessionProvider } from '../../patterns/session';
 import { plantToday } from '../../patterns/plant-time';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
+import { pickRange } from '../../test/date-picker';
 import { defaultPeriod } from './period';
 import { LotTraceScreen } from './screen';
 import {
@@ -20,6 +22,14 @@ import {
   type TraceStubData,
 } from './trace-fixtures';
 
+/** 지금 주소와 마지막 이동 방식(PUSH, REPLACE). 바로 반영은 주소를 바꿔 써야 한다. */
+const NavProbe = () => {
+  const location = useLocation();
+  const type = useNavigationType();
+  return <output data-testid="nav">{`${type} ${location.pathname}${location.search}`}</output>;
+};
+const navState = () => screen.getByTestId('nav').textContent ?? '';
+
 const MAT = 'ITEM-A|500|261023|SUP-A|0001';
 const PROD = 'P-SYN-0001';
 
@@ -28,6 +38,7 @@ const setup = (route: string, data: TraceStubData, permissions?: string[]) => {
   renderWithProviders(
     <SessionProvider>
       <LotTraceScreen permissionMenuPath="합성 묶음 › 합성 메뉴" />
+      <NavProbe />
     </SessionProvider>,
     {
       session: { ...SYNTHETIC_SESSION, ...(permissions === undefined ? {} : { permissions }) },
@@ -675,5 +686,112 @@ describe('W-02-09 LOT 추적: 목록 내보내기', () => {
 
     await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1));
     expect(screen.getByRole('button', { name: '엑셀 내보내기' })).toBeEnabled();
+  });
+});
+
+describe('W-02-09 LOT 추적: 추적 조건 바로 반영', () => {
+  const flows = (calls: URL[]) => lists(calls, '/trace/material-lot-flows');
+
+  it('LOT 번호는 칠 때마다 부르지 않고 칸을 떠날 때 반영한다', async () => {
+    const user = userEvent.setup();
+    const { calls } = setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}`, {
+      forwardRows: [forwardRow(101, MAT)],
+    });
+    const field = await screen.findByLabelText('LOT 번호');
+    await waitFor(() => expect(flows(calls)).toHaveLength(1));
+
+    await user.clear(field);
+    await user.type(field, 'ITEM-B');
+    expect(flows(calls)).toHaveLength(1);
+
+    await user.tab();
+    await waitFor(() => expect(flows(calls).at(-1)?.searchParams.get('lotNo')).toBe('ITEM-B'));
+    expect(flows(calls)).toHaveLength(2);
+    expect(navState()).toMatch(/^REPLACE /);
+  });
+
+  it('LOT 번호를 지우면(×) 바로 반영하고, 진입점이 없으니 부르지 않고 시작 안내를 보인다', async () => {
+    const user = userEvent.setup();
+    const { calls } = setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}`, {
+      forwardRows: [forwardRow(101, MAT)],
+    });
+    await screen.findByText(MAT, { selector: 'td *, td' });
+    const before = flows(calls).length;
+
+    await user.click(screen.getByRole('button', { name: '지우기' }));
+
+    expect(
+      await screen.findByText('품목이나 LOT 번호로 찾으세요. 입하번호로도 찾을 수 있습니다'),
+    ).toBeInTheDocument();
+    expect(navState()).not.toContain('lot=');
+    expect(flows(calls)).toHaveLength(before);
+    expect(screen.getByRole('button', { name: '조회' })).toBeDisabled();
+  });
+
+  it('기간이 366일을 넘으면 반영하지 않고 기간 칸 아래 사유를 보인다', async () => {
+    const user = userEvent.setup();
+    const { calls } = setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
+      forwardRows: [forwardRow(101, MAT)],
+    });
+    await screen.findByText(MAT);
+    const before = flows(calls).length;
+
+    await pickRange(user, screen.getByLabelText('입고 기간'), '2025-01-01', '2026-10-26');
+
+    expect(await screen.findByText('기간은 366일까지 조회할 수 있습니다')).toBeInTheDocument();
+    expect(flows(calls)).toHaveLength(before);
+    expect(navState()).toContain('from=2026-10-01');
+  });
+
+  it('기간을 고르면 바로 반영하고 쪽을 1로 돌린다', async () => {
+    const user = userEvent.setup();
+    const { calls } = setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26&page=2', {
+      forwardRows: [forwardRow(101, MAT)],
+    });
+    await screen.findByText(MAT);
+
+    await pickRange(user, screen.getByLabelText('입고 기간'), '2026-10-05', '2026-10-20');
+
+    await waitFor(() =>
+      expect(flows(calls).at(-1)?.searchParams.get('receiptDateFrom')).toBe('2026-10-05'),
+    );
+    expect(flows(calls).at(-1)?.searchParams.get('page')).toBe('1');
+    expect(navState()).toMatch(/^REPLACE /);
+  });
+
+  it('단계 칩은 바로 반영하고 주소를 바꿔 쓴다', async () => {
+    const user = userEvent.setup();
+    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
+      forwardRows: [forwardRow(101, MAT)],
+    });
+    const chips = await screen.findByRole('group', { name: '진행' });
+
+    await user.click(within(chips).getByRole('button', { name: '투입 1' }));
+
+    await waitFor(() => expect(navState()).toContain('stage=CONSUMED'));
+    expect(navState()).toMatch(/^REPLACE /);
+  });
+});
+
+describe('W-02-09 LOT 추적: 단계 줄', () => {
+  it('공정 순서의 단계 줄: 지난 단계는 완료, 가장 멀리 간 단계는 진행 중, 닿지 않은 단계는 대기다', async () => {
+    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+      forwardRows: [forwardRow(101, MAT)],
+      forwardChains: { 101: forwardChain(101, MAT, [workOrder(3, [productionLot(201, PROD)])]) },
+    });
+
+    const drawer = await screen.findByRole('dialog', { name: MAT });
+    const stages = await within(drawer).findByRole('list', { name: '단계' });
+    const items = within(stages).getAllByRole('listitem');
+    expect(items.map((item) => item.getAttribute('data-status'))).toEqual([
+      'complete',
+      'complete',
+      'current',
+      'pending',
+      'pending',
+      'pending',
+    ]);
+    expect(items[2]).toHaveAttribute('aria-current', 'step');
+    expect(within(stages).getByRole('button', { name: /생산 입고\s*0건/ })).toBeDisabled();
   });
 });

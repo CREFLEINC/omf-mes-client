@@ -17,7 +17,12 @@ import { defaultPeriod } from './period';
 import { useItemLabel } from './queries';
 import { formatQty } from './rows';
 import { TabToolbar } from './tab-toolbar';
-import { TraceFilterBar, type TraceFieldErrors } from './trace-filter-bar';
+import {
+  TraceFilterBar,
+  type SearchMode,
+  type TraceDraft,
+  type TraceFieldErrors,
+} from './trace-filter-bar';
 import {
   EMPTY_TRACE_FILTERS,
   TRACE_DEFAULT_DAYS,
@@ -157,8 +162,22 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
   const serverErrors = list.isError ? toFieldErrors(list.error) : {};
   const fieldError = serverErrors.entry !== undefined || serverErrors.period !== undefined;
 
-  const apply = (next: TraceFilters, nextSelected: number | null = null) =>
-    setSearchParams(toTraceSearchParams(direction, next, nextSelected));
+  /* 조건을 바꿔 바로 반영하는 갈래(칩, 쪽 크기, 조건 칸)는 주소를 바꿔 쓴다. 뒤로 가기가 조건 변경으로 넘치지 않게 한다. */
+  const apply = (next: TraceFilters, nextSelected: number | null = null, replace = false) =>
+    setSearchParams(toTraceSearchParams(direction, next, nextSelected), { replace });
+
+  /** 조건 칸의 반영. 같은 조건의 [조회]는 다시 조회한다(받는 중이면 겹쳐 부르지 않는다). */
+  const search = (draft: TraceDraft, mode: SearchMode) => {
+    const next = { ...filters, ...draft, stage: '', page: 1 };
+    const same =
+      toTraceSearchParams(direction, next).toString() ===
+      toTraceSearchParams(direction, filters).toString();
+    if (same) {
+      if (mode === 'manual' && ready && !list.isFetching) void list.refetch();
+      return;
+    }
+    apply(next, null, mode === 'auto');
+  };
 
   const data = list.data;
   const total = ready && data !== undefined ? data.page.total : 0;
@@ -174,7 +193,7 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
             Object.values(stageCounts).reduce((sum, value) => sum + value, 0),
           )}
           selected={filters.stage === ''}
-          onSelect={() => apply({ ...filters, stage: '', page: 1 })}
+          onSelect={() => apply({ ...filters, stage: '', page: 1 }, null, true)}
         />
         {stagesOf(direction).map((stage) => (
           <CountChip
@@ -182,7 +201,7 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
             tone="idle"
             label={t.kinds.count(t.stages[stage], stageCounts[stage] ?? 0)}
             selected={filters.stage === stage}
-            onSelect={() => apply({ ...filters, stage, page: 1 })}
+            onSelect={() => apply({ ...filters, stage, page: 1 }, null, true)}
           />
         ))}
       </span>
@@ -305,7 +324,7 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
         <PageNav
           meta={data.page}
           onChangePage={(page) => apply({ ...filters, page })}
-          onChangeSize={(size) => apply({ ...filters, size, page: 1 })}
+          onChangeSize={(size) => apply({ ...filters, size, page: 1 }, null, true)}
         />
       </>
     );
@@ -314,7 +333,6 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
   return (
     <>
       <TabToolbar
-        lead={direction === 'forward' ? t.tabs.forwardLead : t.tabs.backwardLead}
         chips={chips}
         exportState={exporter.state}
         total={total}
@@ -327,7 +345,7 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
           direction={direction}
           applied={filters}
           serverErrors={serverErrors}
-          onSearch={(draft) => apply({ ...filters, ...draft, stage: '', page: 1 })}
+          onSearch={search}
           onReset={() =>
             apply({
               ...EMPTY_TRACE_FILTERS,

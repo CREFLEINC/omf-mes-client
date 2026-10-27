@@ -42,11 +42,14 @@ export interface TraceFieldErrors {
   period?: string;
 }
 
+export type SearchMode = 'auto' | 'manual';
+
 export interface TraceFilterBarProps {
   direction: TraceDirection;
   applied: TraceFilters;
   serverErrors: TraceFieldErrors;
-  onSearch: (draft: TraceDraft) => void;
+  /** `auto`는 조건을 바꿔 바로 반영, `manual`은 [조회]나 Enter(같은 조건이면 다시 조회). */
+  onSearch: (draft: TraceDraft, mode: SearchMode) => void;
   onReset: () => void;
 }
 
@@ -82,6 +85,8 @@ type Picked = Partial<Record<'item' | 'warehouse' | 'partner', { id: string; lab
  * 조건 더보기: 기간(넓음) — 정방향은 입하번호, 공급사, 창고 / 역방향은 기간 기준, 출하번호, W/O 번호, 고객.
  * 진입점(품목, LOT 번호, 입하번호, 출하번호, W/O 번호)이 없으면 [조회]를 잠그고 줄 끝에 그 사유를 보인다(C-4).
  * 1280×800에서 세 칸과 버튼이 한 줄에 들어가지 않아 기간을 조건 더보기로 내렸다. 기간 값이 있으면 처음부터 편다.
+ * 고르면 끝나는 조건(품목, 기간, 기간 기준, 공급사, 고객, 창고)은 바로 반영한다. 글자 칸은 Enter나 칸을 떠날 때,
+ * 지우기(×)는 바로 반영한다. [조회]는 같은 조건으로 다시 조회하는 자리로 남는다.
  */
 export const TraceFilterBar = ({
   direction,
@@ -129,12 +134,29 @@ export const TraceFilterBar = ({
     id === '' ? '' : picked[key]?.id === id ? (picked[key]?.label ?? '') : resolved;
 
   const set = (patch: Partial<TraceDraft>) => setDraft((current) => ({ ...current, ...patch }));
+  /**
+   * 바꾼 조건을 바로 반영한다. 진입점이 없으면 주소만 맞추고(목록은 부르지 않고 시작 안내를 보인다),
+   * 기간이 맞지 않으면 반영하지 않고 기간 칸 아래 사유를 보인다.
+   */
+  const commit = (patch: Partial<TraceDraft>) => {
+    const next = withLotMatch({ ...draft, ...patch });
+    setDraft(next);
+    if (hasEntry({ ...applied, ...next })) {
+      const reason = tracePeriodReason({ ...applied, ...next });
+      setPeriodError(reason);
+      if (reason !== null) {
+        setMoreOpen(true);
+        return;
+      }
+    }
+    onSearch(next, 'auto');
+  };
   const pick = (key: keyof Picked, row: { id: number; code: string; name: string }) => {
     setPicked((current) => ({
       ...current,
       [key]: { id: String(row.id), label: named(row.name, row.code) },
     }));
-    set({ [key]: String(row.id) });
+    commit({ [key]: String(row.id) });
   };
 
   const draftFilters = { ...applied, ...draft };
@@ -146,7 +168,15 @@ export const TraceFilterBar = ({
     const reason = tracePeriodReason({ ...applied, ...next });
     setPeriodError(reason);
     if (reason !== null) setMoreOpen(true);
-    else onSearch(next);
+    else onSearch(next, 'manual');
+  };
+  /* 글자 칸은 칠 때마다가 아니라 Enter나 칸을 떠날 때 반영한다. 일부 LOT 번호로 부르면 기간이 필요해진다. */
+  const lotText = (value: Pick<TraceDraft, 'lot' | 'q'>) =>
+    value.lot !== '' ? value.lot : value.q;
+  const leaveText = (key: 'inbound' | 'shipment' | 'workOrder' | 'lot') => {
+    const changed =
+      key === 'lot' ? lotText(draft) !== lotText(applied) : draft[key] !== applied[key];
+    if (changed) commit({});
   };
 
   const textField = (
@@ -163,6 +193,8 @@ export const TraceFilterBar = ({
         clearLabel={messages.common.clear}
         onChange={(event) => set({ [key]: event.target.value.trim() })}
         onSearch={submit}
+        onBlur={() => leaveText(key)}
+        onClear={() => commit({ [key]: '' })}
       />
     </div>
   );
@@ -186,6 +218,8 @@ export const TraceFilterBar = ({
           aria-describedby={serverErrors.entry === undefined ? undefined : entryErrorId}
           onChange={(event) => set({ q: event.target.value.trim(), lot: '' })}
           onSearch={submit}
+          onBlur={() => leaveText('lot')}
+          onClear={() => commit({ q: '', lot: '' })}
         />
         {serverErrors.entry !== undefined && (
           <span id={entryErrorId} className="field-error" role="alert">
@@ -199,7 +233,7 @@ export const TraceFilterBar = ({
           valueLabel={labelOf('item', draft.item, resolvedItem)}
           source={itemSource}
           onPick={(row) => pick('item', row)}
-          onClear={() => set({ item: '' })}
+          onClear={() => commit({ item: '' })}
         />
       </div>
       <div className="field-cell field-cell-unlabeled">
@@ -246,10 +280,9 @@ export const TraceFilterBar = ({
               placeholder={t.filters.periodPlaceholder}
               invalid={periodMessage !== null}
               aria-describedby={periodMessage === null ? undefined : periodErrorId}
-              onChange={(value) => {
-                setPeriodError(null);
-                set({ from: value === null ? '' : value[0], to: value === null ? '' : value[1] });
-              }}
+              onChange={(value) =>
+                commit({ from: value === null ? '' : value[0], to: value === null ? '' : value[1] })
+              }
             />
             {periodMessage !== null && (
               <span id={periodErrorId} className="field-error" role="alert">
@@ -267,7 +300,7 @@ export const TraceFilterBar = ({
                 orientation="horizontal"
                 aria-labelledby={`${periodId}-axis`}
                 value={draft.axis}
-                onChange={(next) => set({ axis: next as DateAxis })}
+                onChange={(next) => commit({ axis: next as DateAxis })}
                 className="lot-trace-axis"
               >
                 <Radio value="PRODUCED">{t.trace.dateAxisProduced}</Radio>
@@ -285,7 +318,7 @@ export const TraceFilterBar = ({
               valueLabel={labelOf('partner', draft.partner, resolvedPartner)}
               source={partnerSource}
               onPick={(row) => pick('partner', row)}
-              onClear={() => set({ partner: '' })}
+              onClear={() => commit({ partner: '' })}
             />
           </div>
           {forward && (
@@ -295,7 +328,7 @@ export const TraceFilterBar = ({
                 valueLabel={labelOf('warehouse', draft.warehouse, resolvedWarehouse)}
                 source={warehouseSource}
                 onPick={(row) => pick('warehouse', row)}
-                onClear={() => set({ warehouse: '' })}
+                onClear={() => commit({ warehouse: '' })}
               />
             </div>
           )}

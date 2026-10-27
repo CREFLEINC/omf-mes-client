@@ -23,9 +23,12 @@ export type FilterDraft = Pick<
   'from' | 'to' | 'item' | 'warehouse' | 'partner' | 'status'
 >;
 
+export type FilterSearchMode = 'auto' | 'manual';
+
 export interface FilterBarProps {
   applied: LotTraceFilters;
-  onSearch: (draft: FilterDraft) => void;
+  /** `auto`는 조건을 바꿔 바로 반영, `manual`은 [조회](같은 조건이면 다시 조회). */
+  onSearch: (draft: FilterDraft, mode: FilterSearchMode) => void;
   onReset: () => void;
 }
 
@@ -44,6 +47,7 @@ type Picked = Partial<Record<'item' | 'warehouse' | 'partner', { id: string; lab
  * C-6 조회 조건. 기본 줄: 기간(넓음, 필수. 「시작일 ~ 종료일」이 보통 폭에서 잘린다), 품목(보통), [조건 더보기], [초기화], [조회].
  * 조건 더보기: 창고(보통), 공급사 또는 고객(보통, 생산 입고에는 없음), 상태(좁음).
  * 구분은 페이지 머리 조건 칩이 맡는다(C-6, C-17). 기간 검증은 실행할 때 한다(C-7).
+ * 조건은 고르면 바로 반영한다. 기간이 맞지 않으면 반영하지 않고 사유를 보인다. [조회]는 다시 조회하는 자리로 남는다.
  */
 export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   const [draft, setDraft] = useState<FilterDraft>(() => draftOf(applied));
@@ -80,7 +84,14 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   const submit = () => {
     const reason = validatePeriod(draft);
     setPeriodError(reason);
-    if (reason === null) onSearch(draft);
+    if (reason === null) onSearch(draft, 'manual');
+  };
+  const commit = (patch: Partial<FilterDraft>) => {
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    const reason = validatePeriod(next);
+    setPeriodError(reason);
+    if (reason === null) onSearch(next, 'auto');
   };
 
   return (
@@ -109,10 +120,9 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           aria-required
           invalid={periodError !== null}
           aria-describedby={periodError === null ? undefined : periodErrorId}
-          onChange={(value) => {
-            setPeriodError(null);
-            set({ from: value === null ? '' : value[0], to: value === null ? '' : value[1] });
-          }}
+          onChange={(value) =>
+            commit({ from: value === null ? '' : value[0], to: value === null ? '' : value[1] })
+          }
         />
         {periodError !== null && (
           <span id={periodErrorId} className="field-error" role="alert">
@@ -130,9 +140,9 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
               ...current,
               item: { id: String(row.id), label: named(row.name, row.code) },
             }));
-            set({ item: String(row.id) });
+            commit({ item: String(row.id) });
           }}
-          onClear={() => set({ item: '' })}
+          onClear={() => commit({ item: '' })}
         />
       </div>
       <div className="field-cell field-cell-unlabeled">
@@ -166,9 +176,9 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
                   ...current,
                   warehouse: { id: String(row.id), label: named(row.name, row.code) },
                 }));
-                set({ warehouse: String(row.id) });
+                commit({ warehouse: String(row.id) });
               }}
-              onClear={() => set({ warehouse: '' })}
+              onClear={() => commit({ warehouse: '' })}
             />
           </div>
           {role !== null && (
@@ -182,9 +192,9 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
                     ...current,
                     partner: { id: String(row.id), label: named(row.name, row.code) },
                   }));
-                  set({ partner: String(row.id) });
+                  commit({ partner: String(row.id) });
                 }}
-                onClear={() => set({ partner: '' })}
+                onClear={() => commit({ partner: '' })}
               />
             </div>
           )}
@@ -197,7 +207,7 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
               value={draft.status}
               placeholder={t.statusAll}
               options={[{ value: '', label: t.statusAll }, ...statusCodes.options]}
-              onChange={(value) => set({ status: value })}
+              onChange={(value) => commit({ status: value })}
             />
           </div>
         </div>

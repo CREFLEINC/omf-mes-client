@@ -8,7 +8,7 @@ import { CountChip } from '../../patterns/count-chip';
 import { PageNav } from '../../patterns/page-nav';
 import { plantToday } from '../../patterns/plant-time';
 import { exportFileName, toCsv } from './export';
-import { FilterBar } from './filter-bar';
+import { FilterBar, type FilterDraft, type FilterSearchMode } from './filter-bar';
 import { LoadFailure } from './load-failure';
 import {
   DEFAULT_SIZE,
@@ -82,7 +82,21 @@ export const MovementsTab = () => {
   const warehouseLabel = useWarehouseLabel(filters.warehouse);
   const partnerLabel = usePartnerLabel(filters.partner, role);
 
-  const apply = (next: LotTraceFilters) => setSearchParams(toSearchParams(next));
+  /* 조건을 바꿔 바로 반영하는 갈래는 주소를 바꿔 쓴다. 뒤로 가기가 조건 변경으로 넘치지 않게 한다. */
+  const apply = (next: LotTraceFilters, replace = false) =>
+    setSearchParams(toSearchParams(next), { replace });
+  /** 같은 조건의 [조회]는 다시 조회한다(받는 중이면 겹쳐 부르지 않는다). */
+  const search = (draft: FilterDraft, mode: FilterSearchMode) => {
+    const next = { ...filters, ...draft, page: 1 };
+    if (toSearchParams(next).toString() === toSearchParams(filters).toString()) {
+      if (mode === 'manual' && ready && !list.isFetching) {
+        void list.refetch();
+        void counts.refetch();
+      }
+      return;
+    }
+    apply(next, mode === 'auto');
+  };
 
   /* 고른 칩은 목록과 같은 기준(목록 합계), 다른 칩은 공통 조건으로 센 값이다(C-17). */
   const countOf = (kind: (typeof KINDS)[number]): number | undefined =>
@@ -113,7 +127,7 @@ export const MovementsTab = () => {
             tone="idle"
             label={count === undefined ? t.kinds[kind] : t.kinds.count(t.kinds[kind], count)}
             selected={filters.kind === kind}
-            onSelect={() => apply(withKind(filters, kind))}
+            onSelect={() => apply(withKind(filters, kind), true)}
           />
         );
       })}
@@ -123,7 +137,6 @@ export const MovementsTab = () => {
   return (
     <>
       <TabToolbar
-        lead={t.tabs.movementsLead}
         chips={chips}
         exportState={exporter.state}
         total={total}
@@ -144,7 +157,7 @@ export const MovementsTab = () => {
       <section className="pane lot-trace-filter-pane" aria-label={t.filters.pane}>
         <FilterBar
           applied={filters}
-          onSearch={(draft) => apply({ ...filters, ...draft, page: 1 })}
+          onSearch={search}
           onReset={() =>
             apply({
               ...filters,
@@ -205,7 +218,7 @@ export const MovementsTab = () => {
             <PageNav
               meta={list.data.page}
               onChangePage={(page) => apply({ ...filters, page })}
-              onChangeSize={(size) => apply({ ...filters, size, page: 1 })}
+              onChangeSize={(size) => apply({ ...filters, size, page: 1 }, true)}
             />
           </>
         )}

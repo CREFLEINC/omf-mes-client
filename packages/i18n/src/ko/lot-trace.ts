@@ -100,9 +100,6 @@ export const lotTrace = {
     forward: '정방향 추적',
     backward: '역방향 추적',
     movements: '입출고 현황',
-    forwardLead: '자재 LOT에서 투입된 W/O, 생산 LOT, 출하까지',
-    backwardLead: '제품 LOT에서 생산, 투입 자재, 입고까지',
-    movementsLead: '자재 입고, 생산 입고, 제품 출고',
   },
   stages: {
     label: '진행',

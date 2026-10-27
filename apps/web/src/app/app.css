@@ -21038,7 +21038,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   --dialog-max-lg: 48rem;
 }
 
-/* 탭 머리 줄: 왼쪽 탭 설명과 조건 칩, 오른쪽 엑셀 내보내기 */
+/* 탭 머리 줄: 왼쪽 조건 칩, 오른쪽 엑셀 내보내기 */
 .lot-trace-toolbar {
   display: flex;
   align-items: center;
@@ -21053,12 +21053,6 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
-}
-
-.lot-trace-lead {
-  margin: 0;
-  font: var(--type-body-sm);
-  color: var(--on-surface-variant);
 }
 
 .lot-trace-list-pane {
@@ -21137,55 +21131,51 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   color: var(--on-surface-variant);
 }
 
+/*
+ * 단계 줄 — DS Stepper(작게). 지난 단계는 완료, 가장 멀리 간 단계는 진행 중, 닿지 않은 단계는 대기 모양이다.
+ * 단계 이름과 건수를 단추 하나로 두어 누르면 나무의 그 단계 첫 줄로 간다.
+ */
 .lot-trace-stages {
-  display: flex;
-  gap: var(--space-1);
   margin: 0 0 var(--space-3);
-  padding: 0;
-  list-style: none;
 }
 
-.lot-trace-stage {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.lot-trace-stage > button {
-  display: flex;
+.lot-trace-stage-jump {
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
-  width: 100%;
-  padding: var(--space-2) var(--space-1);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--on-surface);
-  font: var(--type-body-sm);
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.lot-trace-stage > button:disabled {
+.lot-trace-stage-jump:hover:not(:disabled) {
+  background: var(--surface-container-high);
+}
+
+.lot-trace-stage-jump:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.lot-trace-stage-jump:disabled {
   cursor: default;
 }
 
-.lot-trace-stage.is-empty > button {
-  color: var(--on-surface-muted);
-  background: var(--surface-container-low);
+.lot-trace-stage-count {
+  font: var(--type-body-sm);
 }
 
-.lot-trace-stage.is-current > button {
-  border-width: 2px;
-  border-color: var(--on-surface);
+[aria-current='step'] .lot-trace-stage-jump {
   font-weight: 700;
 }
 
-.lot-trace-stage-name {
-  font: var(--type-label-sm);
-  white-space: nowrap;
-}
-
-.lot-trace-stage-count {
-  white-space: nowrap;
+[data-status='pending'] .lot-trace-stage-jump {
+  color: var(--on-surface-muted);
 }
 
 .lot-trace-chain {
