@@ -4,7 +4,20 @@ import { useState, type ReactNode } from 'react';
 
 import type { SkipExecuteState } from './target';
 
-const t = messages.iqcSkipApproval.skipExecute;
+const IQC_TEXTS = messages.iqcSkipApproval.skipExecute;
+
+/** 실행 구획의 글 — IQC 생략이 기본이고, 품질 승인 처리의 OQC 생략이 같은 구획을 자기 글로 쓴다(#193). */
+export type SkipExecuteTexts = Record<
+  | 'heading'
+  | 'note'
+  | 'action'
+  | 'dialogTitle'
+  | 'dialogBody'
+  | 'irreversible'
+  | 'executed'
+  | 'checking',
+  string
+> & { notPending: (status: string) => string };
 
 export interface SkipExecutePaneProps {
   /** 대상 LOT 상태로 정한 모양 — 버튼은 검사 대기일 때만(`target.ts` `judgeSkipExecute`). */
@@ -13,6 +26,7 @@ export interface SkipExecutePaneProps {
   onExecute: () => void;
   /** 실패 배너 슬롯. 오류 갈래를 아는 것은 화면이다. */
   banner: ReactNode;
+  texts?: SkipExecuteTexts;
 }
 
 /**
@@ -21,7 +35,13 @@ export interface SkipExecutePaneProps {
  * 승인은 요청 상태만 바꾼다(《승인 시 결과》 구획 · 공유계약 J-8). 의뢰·보류·LOT 을 옮기는 것은
  * 이 실행이다 — 그래서 결재 구획과 따로 세우고, 되돌릴 수 없는 조작이라 확인 창을 한 번 거친다.
  */
-export const SkipExecutePane = ({ state, isSaving, onExecute, banner }: SkipExecutePaneProps) => {
+export const SkipExecutePane = ({
+  state,
+  isSaving,
+  onExecute,
+  banner,
+  texts: t = IQC_TEXTS,
+}: SkipExecutePaneProps) => {
   const [isConfirming, setIsConfirming] = useState(false);
 
   if (state.kind !== 'executable') {

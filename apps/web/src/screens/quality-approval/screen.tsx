@@ -3,7 +3,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
@@ -20,6 +20,7 @@ import { toApiError } from '../../patterns/request';
 import { iqcSkipApprovalKeys, useSkipTargetLot } from '../iqc-skip-approval/queries';
 import { SkipExecutePane } from '../iqc-skip-approval/skip-execute-pane';
 import { judgeSkipExecute, skipExecuteLotIdOf } from '../iqc-skip-approval/target';
+import { oqcInspectionKeys } from '../oqc-inspection/queries';
 import { ApprovalActionPane } from './approval-action-pane';
 import { ApproveDialog } from './approve-dialog';
 import { QUALITY_APPROVAL_TYPE_CODES, approvalScopeWarning, statusBadgeOf } from './code-options';
@@ -97,6 +98,8 @@ const describeLoadError = (error: ApiError): string => {
 
 /** OQC 생략 결재 유형 — 서버 선행 값(omf-all-around#119 · P-83). 생성 타입의 enum 에 아직 없다. */
 const OQC_SKIP = 'OQC_SKIP';
+/** OQC 출하검사 판정(W-04-03) — OQC 생략 실행 권한을 이 화면 권한으로 본다(서버 `manual-permissions`). */
+const OQC_INSPECTION_PATH = '/shipment/oqc-inspection';
 export interface QualityApprovalScreenProps {
   approvalTypeCodes?: readonly string[];
 }
@@ -120,6 +123,8 @@ export const QualityApprovalScreen = ({
   const { session } = useSession();
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다(`inlineTabs`). */
   const canOpenIqcSkip = toWebAccess(session?.permissions).allows(IQC_SKIP_APPROVAL_PATH);
+  /* OQC 생략 실행은 서버가 OQC 출하검사 판정(W-04-03) 권한으로 거른다 — 없으면 실행 구획 대신 안내만(#193). */
+  const canExecuteOqcSkip = toWebAccess(session?.permissions).allows(OQC_INSPECTION_PATH);
   const filters = useMemo(
     /* 상태 조건은 탭 줄 승인·반려 칩(#186)이 건다 — 그 두 값만 주소에서 읽는다(결재 대기는 `pd=1`). */
     () => readFilters(searchParams, approvalTypeCodes, STATUS_FILTER_CODES),
@@ -200,6 +205,35 @@ export const QualityApprovalScreen = ({
     knownFields: [],
     onSuccess: () => {
       toast.show({ variant: 'success', description: messages.iqcSkipApproval.skipExecute.done });
+    },
+  });
+
+  /*
+   * 승인된 OQC 생략의 실행(#193) — IQC 생략과 같이 이 화면에서 실행한다. 서버 경로는 OQC 출하검사 판정의 실행과 같다.
+   * ⚠ 실행 여부를 읽을 서버 값이 없다 — 이 화면에서 실행을 마친 출하작업지시만 「완료」로 보이고, 이미 실행된 건을
+   *   다시 누르면 서버가 400 으로 막아 그 문구가 배너에 선다.
+   */
+  const [oqcSkipSentId, setOqcSkipSentId] = useState<number | null>(null);
+  /* 성공 콜백이 「어느 출하작업지시였나」를 읽는 자리 — 상태는 콜백이 만들어진 순간의 값이라 쓰지 않는다. */
+  const oqcSkipSentRef = useRef<number | null>(null);
+  const [oqcSkipDoneIds, setOqcSkipDoneIds] = useState<ReadonlySet<number>>(() => new Set());
+  const oqcSkipWrite = useMasterWrite<number, unknown>({
+    request: (shipmentRequestId, headers) =>
+      client.POST('/logistics/shipment-requests/{shipmentRequestId}:skip-oqc', {
+        params: {
+          path: { shipmentRequestId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    etagPath: null,
+    invalidateKeys: [qualityApprovalKeys.all, oqcInspectionKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      const shipmentRequestId = oqcSkipSentRef.current;
+      if (shipmentRequestId !== null) {
+        setOqcSkipDoneIds((current) => new Set(current).add(shipmentRequestId));
+      }
+      toast.show({ variant: 'success', description: t.oqcSkipExecute.done });
     },
   });
 
@@ -358,11 +392,39 @@ export const QualityApprovalScreen = ({
     return detail.data === undefined ? null : (
       <>
         <DetailPane view={toRequestDetailView(detail.data.request)} />
-        {/* OQC 생략(#119)은 연결 조건이 없다 — 승인 뒤 실행할 화면을 알린다(공유계약 J-8). */}
+        {/* OQC 생략(#119)은 연결 조건이 없다 — IQC 생략처럼 승인된 뒤에만 생략 실행 구획이 선다(#193). */}
         {isOqcSkip ? (
-          <AlertBanner variant="info" title={t.detail.oqcSkipNote}>
-            <Link to="/shipment/oqc-inspection">{t.detail.openOqcInspection}</Link>
-          </AlertBanner>
+          detail.data.request.statusCode === 'APPROVED' &&
+          (canExecuteOqcSkip ? (
+            <SkipExecutePane
+              texts={t.oqcSkipExecute}
+              state={
+                oqcSkipDoneIds.has(detail.data.request.target.targetId)
+                  ? { kind: 'executed' }
+                  : { kind: 'executable' }
+              }
+              isSaving={
+                oqcSkipSentId === detail.data.request.target.targetId && oqcSkipWrite.isSaving
+              }
+              onExecute={() => {
+                const shipmentRequestId = detail.data.request.target.targetId;
+                oqcSkipSentRef.current = shipmentRequestId;
+                setOqcSkipSentId(shipmentRequestId);
+                oqcSkipWrite.write(shipmentRequestId);
+              }}
+              banner={
+                <SaveErrorBanner
+                  error={
+                    oqcSkipSentId === detail.data.request.target.targetId
+                      ? oqcSkipWrite.error
+                      : null
+                  }
+                />
+              }
+            />
+          ) : (
+            <p className="field-note">{t.detail.oqcSkipNoPermission}</p>
+          ))
         ) : isIqcSkip ? (
           /* IQC 생략(#186)은 연결 조건이 없다 — 승인된 뒤에만 생략 실행 구획이 선다. */
           approvedIqcSkipLotId !== null &&

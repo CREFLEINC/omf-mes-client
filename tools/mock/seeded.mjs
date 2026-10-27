@@ -4819,6 +4819,34 @@ on('GET', '/quality/nonconformances', (_p, query) =>
   ),
 );
 
+/*
+ * 승인된 OQC 생략의 실행(#193) — 실제 서버처럼 승인된 결재가 있어야 하고, 한 번 실행하면 다시 막는다(400).
+ * 의뢰·LOT 이력은 옮기지 않는다 — 목은 품질 승인 처리의 실행 구획을 보려는 것이다.
+ */
+const oqcSkipExecuted = new Set();
+on('POST', '/logistics/shipment-requests/{shipmentRequestId}:skip-oqc', (params) => {
+  const id = Number(params.shipmentRequestId);
+  const approved = state.approvalRequests.some(
+    (row) =>
+      row.approvalTypeCode === 'OQC_SKIP' && row.targetId === id && row.statusCode === 'APPROVED',
+  );
+  const message = !approved
+    ? '승인된 OQC 생략 요청이 없습니다.'
+    : oqcSkipExecuted.has(id)
+      ? '이 출하작업지시의 OQC 검사가 이미 끝났거나 생략돼 생략을 실행할 수 없습니다.'
+      : null;
+  if (message !== null) {
+    return {
+      status: 400,
+      created: { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
+    };
+  }
+  oqcSkipExecuted.add(id);
+  return (
+    state.shipmentRequests?.find((row) => row.shipmentRequestId === id) ?? { shipmentRequestId: id }
+  );
+});
+
 /* 특채 — 품질 승인 처리가 결재 번호로 짝 특채를 찾고(`approvalRequestId`), 처분 판정이 부적합으로 찾는다(#193). */
 on('GET', '/quality/concessions', (_p, query) =>
   page(

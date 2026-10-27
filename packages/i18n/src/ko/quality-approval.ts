@@ -64,12 +64,28 @@ export const qualityApproval = {
     loading: '승인 요청 상세 불러오는 중',
     notFound: '요청을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 요청을 선택하세요.',
-    /** OQC 생략 결재(omf-all-around#119) — 승인은 잠금만 푼다. 실행은 대상 화면 몫이다(공유계약 J-8). */
-    oqcSkipNote:
-      '승인만으로는 생략되지 않습니다. 실제 생략은 OQC 출하검사 판정 화면에서 실행합니다.',
-    openOqcInspection: 'OQC 출하검사 판정 열기',
+    /** 「전체」·OQC 생략 탭의 승인된 OQC 생략 — 실행 권한이 없을 때(#193). 서버가 W-04-03 권한으로 거른다. */
+    oqcSkipNoPermission: 'OQC 생략 실행은 「OQC 출하검사 판정」 화면 권한이 있어야 합니다.',
     /** 「전체」 탭의 승인된 IQC 생략 — 실행 권한이 없을 때(#186). */
     iqcSkipNoPermission: 'IQC 생략 실행은 「긴급 IQC 생략 한도승인」 화면 권한이 있어야 합니다.',
+  },
+  /**
+   * 승인된 OQC 생략의 실행 구획(#193) — IQC 생략 실행과 같은 모양이다. 승인은 잠금만 풀고(공유계약 J-8) 실행이
+   * 그 출하작업지시의 열린 OQC 의뢰를 생략으로 닫는다(omf-all-around#119 · 서버 P-83).
+   */
+  oqcSkipExecute: {
+    heading: 'OQC 생략 실행',
+    note: '승인된 요청입니다. 실행하면 이 출하작업지시의 열린 OQC 검사 의뢰를 생략 처리하고, 피킹한 LOT 에 생략 이력을 남깁니다.',
+    action: 'OQC 생략 실행',
+    dialogTitle: 'OQC 생략을 실행할까요?',
+    dialogBody:
+      '열린 OQC 검사 의뢰가 생략 처리되어 출하할 수 있게 됩니다. 피킹이 끝나지 않았으면 실행되지 않습니다 — 피킹을 먼저 마치세요.',
+    irreversible: '실행한 뒤에는 되돌릴 수 없습니다.',
+    done: 'OQC 생략을 실행했습니다',
+    executed: '생략 실행 완료 — OQC 검사가 생략 처리되었습니다.',
+    /* 아래 둘은 OQC 에 쓰이지 않는다 — 실행 여부를 읽을 서버 값이 없어 늘 실행 가능으로 선다(#193). */
+    checking: '상태를 확인하는 중입니다.',
+    notPending: (status: string) => `생략을 실행할 수 없는 상태입니다(상태 ${status}).`,
   },
   condition: {
     title: '연결 조건',

@@ -72,11 +72,24 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     loading: 'Đang tải chi tiết yêu cầu phê duyệt',
     notFound: 'Không tìm thấy yêu cầu',
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn yêu cầu khác.',
-    oqcSkipNote:
-      'Chỉ phê duyệt thì chưa bỏ qua. Việc bỏ qua thực tế được thực hiện ở màn hình đánh giá kiểm tra xuất hàng OQC.',
-    openOqcInspection: 'Mở đánh giá kiểm tra xuất hàng OQC',
+    oqcSkipNoPermission:
+      'Cần quyền màn hình 「Đánh giá kiểm tra xuất hàng OQC」 để thực hiện bỏ qua OQC.',
     iqcSkipNoPermission:
       'Cần quyền màn hình 「Phê duyệt bỏ qua IQC khẩn cấp」 để thực hiện bỏ qua IQC.',
+  },
+  oqcSkipExecute: {
+    heading: 'Thực hiện bỏ qua OQC',
+    note: 'Yêu cầu đã được duyệt. Khi thực hiện, các yêu cầu kiểm tra OQC đang mở của lệnh xuất hàng này sẽ được bỏ qua và lịch sử bỏ qua được ghi cho các LOT đã soạn.',
+    action: 'Thực hiện bỏ qua OQC',
+    dialogTitle: 'Thực hiện bỏ qua OQC?',
+    dialogBody:
+      'Các yêu cầu kiểm tra OQC đang mở sẽ được bỏ qua để có thể xuất hàng. Nếu chưa soạn hàng xong thì không thực hiện được — hãy hoàn tất soạn hàng trước.',
+    irreversible: 'Sau khi thực hiện thì không thể hoàn tác.',
+    done: 'Đã thực hiện bỏ qua OQC',
+    executed: 'Đã thực hiện bỏ qua — kiểm tra OQC đã được bỏ qua.',
+    checking: 'Đang kiểm tra trạng thái.',
+    notPending: (status: string) =>
+      `Trạng thái này không thể thực hiện bỏ qua (trạng thái ${status}).`,
   },
   condition: {
     title: 'Điều kiện liên kết',

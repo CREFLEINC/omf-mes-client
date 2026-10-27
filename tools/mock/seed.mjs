@@ -2839,6 +2839,44 @@ export const createSeed = (now = new Date()) => {
         },
       ],
     },
+    /*
+     * 승인된 OQC 생략(#193) — 품질 승인 처리에서 「OQC 생략 실행」 구획을 보려고 둔다. 대상은 출하작업지시 9602 다
+     * (실제 서버처럼 SHIPMENT_REQUEST). 값은 전부 지어낸 것이다.
+     */
+    {
+      approvalRequestId: 15004,
+      approvalRequestNo: 'AP-2026-000027',
+      approvalTypeCode: 'OQC_SKIP',
+      targetTypeCode: 'SHIPMENT_REQUEST',
+      targetId: 9602,
+      target: {
+        targetTypeCode: 'SHIPMENT_REQUEST',
+        targetId: 9602,
+        displayName: '출하작업지시 #9602',
+        openable: false,
+      },
+      requestedBy: 1001,
+      requestedByName: '홍길동',
+      requestedByWorkerNo: '100027',
+      requestedAt: iso(-2, 9),
+      reason: '긴급 출하 — 출하검사 생략 요청',
+      statusCode: 'APPROVED',
+      currentStepNo: 1,
+      totalStepNo: 1,
+      isMyTurn: false,
+      steps: [
+        {
+          stepNo: 1,
+          approverId: 1001,
+          approverName: '김품질',
+          decisionCode: 'APPROVED',
+          decisionAt: iso(-1, 10),
+          decisionComment: '납기 우선 — 생략 승인',
+          isMine: true,
+          isCurrent: false,
+        },
+      ],
+    },
   ];
 
   /*
