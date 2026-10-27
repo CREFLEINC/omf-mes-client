@@ -26,6 +26,7 @@ export const inspectionStandard = {
     newRevision: '신규 버전 발행',
     confirm: '확정',
     obsolete: '폐기',
+    discard: '작성 취소',
     compareVersions: '버전 비교',
     changeHistory: '변경 이력',
     addItem: '항목 추가',
@@ -63,6 +64,7 @@ export const inspectionStandard = {
     confirmBlockedByUnsaved:
       '확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
     obsoleteNeedsConfirmed: '폐기는 확정된 버전에만 할 수 있습니다. 먼저 확정하세요.',
+    discardNeedsDraft: '작성 취소는 작성중 버전에만 할 수 있습니다. 확정된 버전은 폐기하세요.',
     /** 여러 컨트롤이 공유하는 안내라 무엇에 대한 안내인지로 시작한다. */
     transitionNeedsVersion: '확정·폐기는 버전을 먼저 등록해야 할 수 있습니다.',
     compareVersionsUnavailable:
@@ -111,6 +113,9 @@ export const inspectionStandard = {
       '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
     obsoleteTitle: '이 버전을 폐기할까요?',
     obsoleteDescription: '삭제하지 않습니다. 폐기하면 새 검사에서 이 버전을 쓸 수 없게 됩니다.',
+    discardTitle: '이 작성중 버전을 취소할까요?',
+    discardDescription:
+      '이 버전과 검사 항목이 삭제되며 되돌릴 수 없습니다. 저장하지 않은 변경도 함께 사라집니다.',
     itemCreateTitle: '검사 항목 추가',
     itemEditTitle: '검사 항목 수정',
     /*
@@ -125,6 +130,7 @@ export const inspectionStandard = {
     deactivated: '검사기준 사용을 중지했습니다.',
     confirmed: '버전을 확정했습니다.',
     obsoleted: '버전을 폐기했습니다.',
+    discarded: '작성중 버전을 취소했습니다.',
   },
   filters: {
     searchLabel: '검사기준 검색',
