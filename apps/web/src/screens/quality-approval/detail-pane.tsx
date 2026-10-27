@@ -1,5 +1,7 @@
+import { Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { Fragment } from 'react';
+import { Fragment, type ReactNode } from 'react';
+import { Link } from 'react-router';
 
 import { approvalTypeLabelOf } from './code-options';
 import type { RequestDetailView } from './types';
@@ -11,22 +13,43 @@ export interface DetailPaneProps {
    * 승인 유형 · 상신자 · 상신 일시 · 대상 LOT 을 두 칸씩, 사유를 한 줄 전부로 둔다.
    */
   variant?: 'default' | 'concession';
+  /**
+   * 대상 LOT 을 LOT 상태 화면에서 여는 단추 — 값 바로 옆에 선다(#193 · 사용자 지시 2026-10-27). 권한이 없으면 넘기지 않는다.
+   * `name` 을 주면 대상 칸에 그 이름을 쓴다 — 특채는 결재 대상(부적합)이 아니라 특채의 LOT 을 보여야 단추와 맞는다.
+   */
+  targetLot?: { to: string; label: string; name?: string };
 }
 
-export const DetailPane = ({ view, variant = 'default' }: DetailPaneProps) => {
+/** 대상 값 + 옆 단추. 단추가 없으면 값만 둔다. */
+const targetValue = (name: string, link: DetailPaneProps['targetLot']): ReactNode =>
+  link === undefined ? (
+    name
+  ) : (
+    <span className="quality-approval-target-value">
+      <span>{link.name ?? name}</span>
+      <Link className="quality-approval-concession-nc-link is-inline" to={link.to}>
+        {link.label}
+        <Icon name="open_in_new" size={16} />
+      </Link>
+    </span>
+  );
+
+export const DetailPane = ({ view, variant = 'default', targetLot }: DetailPaneProps) => {
   const t = messages.qualityApproval;
 
   if (variant === 'concession') {
+    const concessionRows: ReadonlyArray<readonly [string, ReactNode]> = [
+      [t.fields.approvalTypeCode, approvalTypeLabelOf(view.approvalTypeCode)],
+      [t.fields.requestedByName, view.requesterName],
+      [t.fields.requestedAt, view.requestedAtText],
+      [t.fields.targetLot, targetValue(view.targetName, targetLot)],
+    ];
+
     return (
       <section className="quality-approval-concession-section" aria-label={t.detail.requestInfo}>
         <h3>{t.detail.requestInfo}</h3>
         <dl className="quality-approval-concession-grid">
-          {[
-            [t.fields.approvalTypeCode, approvalTypeLabelOf(view.approvalTypeCode)],
-            [t.fields.requestedByName, view.requesterName],
-            [t.fields.requestedAt, view.requestedAtText],
-            [t.fields.targetLot, view.targetName],
-          ].map(([label, value]) => (
+          {concessionRows.map(([label, value]) => (
             <div className="field-cell" key={label}>
               <dt className="field-label">{label}</dt>
               <dd>{value}</dd>
@@ -91,7 +114,7 @@ export const DetailPane = ({ view, variant = 'default' }: DetailPaneProps) => {
         aria-label={t.panes.target}
       >
         <span className="field-label">{t.fields.targetLot}</span>
-        <span>{view.targetName}</span>
+        <span>{targetValue(view.targetName, targetLot)}</span>
       </div>
     </div>
   );

@@ -4595,6 +4595,26 @@ main:has(.iqc-skip-approval-detail) {
   text-decoration: none;
 }
 
+/* 대상 LOT 값 옆의 「LOT 열기」(#193) — 값과 한 줄에 서도록 작은 단추로 둔다. 좁으면 값 아래로 내려간다. */
+.quality-approval-target-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.quality-approval-target-value > span {
+  overflow-wrap: anywhere;
+}
+
+.quality-approval-concession-nc-link.is-inline {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  font: var(--type-label-md);
+  letter-spacing: var(--type-label-md-tracking);
+}
+
 .quality-approval-concession-nc-link:hover {
   background: color-mix(in srgb, var(--primary) 88%, var(--on-primary));
 }

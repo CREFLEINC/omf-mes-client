@@ -402,25 +402,31 @@ export const QualityApprovalScreen = ({
         <ConditionPane
           approvalRequestId={detail.data.request.approvalRequestId}
           requestStatusCode={detail.data.request.statusCode}
-          requestInfo={
-            <DetailPane view={toRequestDetailView(detail.data.request)} variant="concession" />
-          }
+          requestInfo={(targetLot) => (
+            <DetailPane
+              view={toRequestDetailView(detail.data.request)}
+              variant="concession"
+              targetLot={targetLot}
+            />
+          )}
         />
       );
     }
 
     return (
       <>
-        <DetailPane view={toRequestDetailView(detail.data.request)} />
-        {/* IQC 생략의 대상은 입하 LOT 이다 — LOT 상태에서 그 LOT 을 연다(#193 · 생략 실행과 같은 전제). */}
-        {isIqcSkip && canOpenLotStatus && (
-          <RelatedLink
-            heading={t.condition.lotHeading}
-            value={detail.data.request.target.displayName}
-            to={lotStatusEntryPath(detail.data.request.target.targetId)}
-            label={t.condition.openLot}
-          />
-        )}
+        {/* IQC 생략의 대상은 입하 LOT 이다 — LOT 상태에서 그 LOT 을 여는 단추를 대상 LOT 값 옆에 둔다(#193). */}
+        <DetailPane
+          view={toRequestDetailView(detail.data.request)}
+          targetLot={
+            isIqcSkip && canOpenLotStatus
+              ? {
+                  to: lotStatusEntryPath(detail.data.request.target.targetId),
+                  label: t.condition.openLot,
+                }
+              : undefined
+          }
+        />
         {/* OQC 생략(#119)은 연결 조건이 없다 — IQC 생략처럼 승인된 뒤에만 생략 실행 구획이 선다(#193). */}
         {isOqcSkip
           ? detail.data.request.statusCode === 'APPROVED' && (

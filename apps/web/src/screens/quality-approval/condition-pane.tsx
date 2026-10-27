@@ -31,6 +31,7 @@ import {
   useConcessionDetail,
   qualityApprovalKeys,
 } from './queries';
+import type { DetailPaneProps } from './detail-pane';
 import { RelatedLink } from './related-link';
 
 export interface ConditionPaneProps {
@@ -38,8 +39,9 @@ export interface ConditionPaneProps {
   /**
    * 특채 승인 상세 카드의 「요청 정보」(#193) — 수량 요약 바로 아래, 사용 조건 위에 선다. 특채를 아직 못 읽었거나
    * 못 찾았을 때도 요청 정보는 먼저 보인다(그 아래에 상태 안내가 선다).
+   * 특채를 읽었으면 그 LOT 과 「LOT 열기」 단추를 넘긴다 — 대상 LOT 칸 옆에 선다(권한이 없으면 넘기지 않는다).
    */
-  requestInfo?: ReactNode;
+  requestInfo?: (targetLot?: DetailPaneProps['targetLot']) => ReactNode;
   /** 결재 요청의 상태 — 승인(APPROVED)이면 아직 적용 안 한 특채에 적용 구획이 선다(#193). */
   requestStatusCode?: string;
 }
@@ -50,7 +52,7 @@ const CONCESSION_APPLIED = 'APPROVED';
 
 export const ConditionPane = ({
   approvalRequestId,
-  requestInfo = null,
+  requestInfo = () => null,
   requestStatusCode,
 }: ConditionPaneProps) => {
   const t = messages.qualityApproval.condition;
@@ -100,7 +102,7 @@ export const ConditionPane = ({
   if (candidates.isPending) {
     return (
       <>
-        {requestInfo}
+        {requestInfo()}
         <div role="status" aria-label={t.loading}>
           <SkeletonText lines={2} />
         </div>
@@ -117,7 +119,7 @@ export const ConditionPane = ({
     const retry = candidates.error === null ? detail.refetch : candidates.refetch;
     return (
       <>
-        {requestInfo}
+        {requestInfo()}
         <AlertBanner
           variant="error"
           title={messages.httpError.loadTitle}
@@ -136,7 +138,7 @@ export const ConditionPane = ({
   if (cardinality?.kind === 'none') {
     return (
       <>
-        {requestInfo}
+        {requestInfo()}
         <EmptyState size="sm" live title={t.none} />
       </>
     );
@@ -144,7 +146,7 @@ export const ConditionPane = ({
   if (cardinality?.kind === 'unsafe') {
     return (
       <>
-        {requestInfo}
+        {requestInfo()}
         <AlertBanner variant="error">{t.unsafe}</AlertBanner>
       </>
     );
@@ -152,14 +154,14 @@ export const ConditionPane = ({
   if (detail.isPending) {
     return (
       <>
-        {requestInfo}
+        {requestInfo()}
         <div role="status" aria-label={t.loading}>
           <SkeletonText lines={2} />
         </div>
       </>
     );
   }
-  if (detail.data === undefined) return <>{requestInfo}</>;
+  if (detail.data === undefined) return <>{requestInfo()}</>;
 
   const view = toConcessionCardView(detail.data, {
     ...UNKNOWN_CONDITION_REFERENCES,
@@ -244,7 +246,15 @@ export const ConditionPane = ({
           </div>
         ))}
       </dl>
-      {requestInfo}
+      {requestInfo(
+        access.allows(LOT_STATUS_SCREEN_PATH)
+          ? {
+              to: lotStatusEntryPath(detail.data.lotId),
+              label: t.openLot,
+              name: detail.data.lotNo?.trim() || t.lotNoUnknown,
+            }
+          : undefined,
+      )}
       <section className="quality-approval-concession-section" aria-label={t.usageTitle}>
         <h3>{t.usageTitle}</h3>
         {facts(
@@ -305,7 +315,7 @@ export const ConditionPane = ({
           />
         )}
       {/*
-       * 다른 화면에서 이 정보를 여는 줄(#193) — 연관 부적합(처분 판정 처리) · 대상 LOT(LOT 상태) · 허용 작업지시
+       * 다른 화면에서 이 정보를 여는 줄(#193) — 연관 부적합(처분 판정 처리) · 허용 작업지시
        * (W/O 진행현황). 그 화면을 볼 권한이 없으면 줄을 세우지 않는다 — 누르는 순간 막힌 화면이 선다.
        * ⭐ 부적합은 특채일 때만 성립한다(스펙 §5-1) — 지목할 식별자를 특채가 들고 있다(계약 필수).
        */}
@@ -315,14 +325,6 @@ export const ConditionPane = ({
           value={view.nonconformanceNo}
           to={dispositionEntryPath(detail.data.nonconformanceId)}
           label={t.openNonconformance}
-        />
-      )}
-      {access.allows(LOT_STATUS_SCREEN_PATH) && (
-        <RelatedLink
-          heading={t.lotHeading}
-          value={detail.data.lotNo?.trim() || t.lotNoUnknown}
-          to={lotStatusEntryPath(detail.data.lotId)}
-          label={t.openLot}
         />
       )}
       {detail.data.allowedWorkOrderId != null && access.allows(WORK_ORDER_PROGRESS_SCREEN_PATH) && (
