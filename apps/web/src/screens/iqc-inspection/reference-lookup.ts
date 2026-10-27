@@ -147,14 +147,7 @@ export const useLotNumbers = (lotIds: readonly (number | null | undefined)[]): N
   const { client } = useApiClient();
   const ids = uniqueOf(lotIds);
 
-  const results = useQueries({
-    queries: ids.map((lotId) => ({
-      queryKey: ['iqc-inspection', 'lot-no', lotId] as const,
-      queryFn: () => fetchLotNo(client, lotId),
-      retry: false,
-      staleTime: Infinity,
-    })),
-  });
+  const results = useQueries({ queries: ids.map((lotId) => lotQuery(client, lotId)) });
 
   return {
     labelOf: (id) => {
@@ -163,17 +156,86 @@ export const useLotNumbers = (lotIds: readonly (number | null | undefined)[]): N
       const index = ids.indexOf(id);
       const result = index === -1 ? undefined : results[index];
 
-      return describe(result, result?.data);
+      return describe(result, result?.data?.lotNo);
     },
   };
 };
 
-const fetchLotNo = async (client: Client, lotId: number): Promise<string> => {
-  const data = await runRequest(() =>
-    client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
-  );
+/* LOT 단건 — LOT 번호와 공급사 풀이(입고 출처)가 같은 조회를 나눠 쓴다. */
+const lotQuery = (client: Client, lotId: number) => ({
+  queryKey: ['iqc-inspection', 'lot', lotId] as const,
+  queryFn: async () => {
+    const data = await runRequest(() =>
+      client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
+    );
+    return data.lot;
+  },
+  retry: false,
+  staleTime: Infinity,
+});
 
-  return data.lot.lotNo;
+/** 공급사 이름을 풀 수 있는 LOT 출처 — 입고(입하)로 생긴 자재 LOT 이다. */
+const INBOUND_RECEIPT = 'INBOUND_RECEIPT';
+
+/**
+ * 자재 LOT 의 공급사(사용자 지시 2026-10-29 · #197) — 검사 의뢰 · LOT 응답에 공급사가 없어, LOT 의 출처(입고) → 입고의
+ * 공급사 → 거래처 이름으로 잇는다. 같은 LOT · 입고 · 거래처는 요청 하나다. 입고로 생기지 않은 LOT 은 「—」다.
+ */
+export const useLotSuppliers = (lotIds: readonly (number | null | undefined)[]): NameLookup => {
+  const { client } = useApiClient();
+  const ids = uniqueOf(lotIds);
+  const lots = useQueries({ queries: ids.map((lotId) => lotQuery(client, lotId)) });
+
+  const receiptOf = (index: number): number | null => {
+    const lot = lots[index]?.data;
+    return lot !== undefined && lot.sourceTypeCode === INBOUND_RECEIPT ? lot.sourceId : null;
+  };
+  const receiptIds = uniqueOf(ids.map((_, index) => receiptOf(index)));
+  const receipts = useQueries({
+    queries: receiptIds.map((inboundReceiptId) => ({
+      queryKey: ['iqc-inspection', 'inbound-receipt', inboundReceiptId] as const,
+      queryFn: async () => {
+        const data = await runRequest(() =>
+          client.GET('/logistics/inbound-receipts/{inboundReceiptId}', {
+            params: { path: { inboundReceiptId } },
+          }),
+        );
+        return data.inboundReceipt.supplierId;
+      },
+      retry: false,
+      staleTime: Infinity,
+    })),
+  });
+
+  const partnerIds = uniqueOf(receipts.map((result) => result.data));
+  const partners = useQueries({
+    queries: partnerIds.map((partnerId) => ({
+      queryKey: ['iqc-inspection', 'partner', partnerId] as const,
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/mdm/partners/{partnerId}', { params: { path: { partnerId } } }),
+        ),
+      retry: false,
+      staleTime: Infinity,
+    })),
+  });
+
+  return {
+    labelOf: (id) => {
+      if (id === null || id === undefined) return t.empty;
+      const lotIndex = ids.indexOf(id);
+      const lot = lotIndex === -1 ? undefined : lots[lotIndex];
+      if (lot === undefined || lot.isPending || lot.isError) return describe(lot, undefined);
+      const receiptId = receiptOf(lotIndex);
+      if (receiptId === null) return t.empty;
+      const receipt = receipts[receiptIds.indexOf(receiptId)];
+      if (receipt === undefined || receipt.isPending || receipt.isError) {
+        return describe(receipt, undefined);
+      }
+      const partner = partners[partnerIds.indexOf(receipt.data)];
+      return describe(partner, partner?.data?.partnerName);
+    },
+  };
 };
 
 export interface SupplierOptions {

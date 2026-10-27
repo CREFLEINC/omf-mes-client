@@ -1,9 +1,19 @@
-import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader, Tabs } from '@crefle/web-ui';
+import {
+  Breadcrumb,
+  Button,
+  Dialog,
+  EmptyState,
+  Icon,
+  PageHeader,
+  Tabs,
+  useToast,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
+import { OaOnlyGate } from '../../patterns/oa-only-gate';
 import { toApiError } from '../../patterns/request';
 import { sessionKeys, useSession } from '../../patterns/session';
 import { usePageHub } from '../../patterns/page-hub';
@@ -15,27 +25,33 @@ import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
+  useSideBySideFits,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 import {
   EMPTY_FILTERS,
+  LIST_PAGE_SIZES,
+  PAGE_SIZE,
   QUEUE_STATUSES,
   readFilters,
   readPage,
+  readPageSize,
   readSelectedId,
   toListQuery,
   toPageParams,
+  toPageSizeParams,
   toSearchParams,
   URL_KEYS,
   type QueueFilters,
 } from './filters';
+import { PageNav } from '../../patterns/page-nav';
 import { withDraft, withStatus } from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from './load-error-banner';
 import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
-import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { ClosedSummary } from './closed-summary';
 import { CODE_GROUPS, toCodeOptions } from './code-options';
+import { PlanViewDialog } from './plan-view-dialog';
 import { MeasurementGrid } from './measurement-grid';
 import { toMeasurementRows } from './measurement-rows';
 import {
@@ -63,14 +79,20 @@ import {
   isSameFourM,
   type FourMChangeDraft,
 } from './four-m-change';
-import { expectedJudgmentOf, JudgmentChange, needsJudgmentChangeReason } from './judgment-change';
-import { RejectedLotGuide } from './rejected-lot-guide';
 import {
-  EMPTY_REJECTION,
-  RejectionReason,
-  rejectionDraftOf,
-  resolveDefectCode,
-  type RejectionDraft,
+  autoJudgmentOf,
+  expectedJudgmentOf,
+  JudgmentChange,
+  needsJudgmentChangeReason,
+} from './judgment-change';
+import { RejectedLotGuide } from './rejected-lot-guide';
+import { DefectRows, defectSumOf } from './defect-rows';
+import {
+  EMPTY_DEFECT,
+  defectDraftOf,
+  resolveDefects,
+  type DefectDraft,
+  type DefectRecordInput,
 } from './rejection-reason';
 import { sampleQtyOf } from './sample-qty';
 import { QueueFilterBar } from './queue-filter-bar';
@@ -78,12 +100,18 @@ import { QueueTable } from './queue-table';
 import { ItemLevel } from './item-level';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
+import { WorkerConnectDialog } from './worker-connect-dialog';
 import { RoundHistory } from './round-history';
 import { AttachmentPanel, useAttachments } from '../inspection-documents/attachment-panel';
 import { LotScan } from '../inspection-documents/lot-scan';
 import { InspectionHistoryPanel, useInspectionHistory } from '../inspection-history/panel';
 import { latestRound, previousRounds } from './types';
-import { type ItemNameParts, useItemNames, useLotNumbers } from './reference-lookup';
+import {
+  type ItemNameParts,
+  useItemNames,
+  useLotNumbers,
+  useLotSuppliers,
+} from './reference-lookup';
 import { useUomLookup } from './uom-lookup';
 
 /** 품목 풀이 → 검사 수준 창의 품목. 못 풀었으면 창을 열지 않는다(#133). */
@@ -115,21 +143,25 @@ const hubText = messages.common.inspectionHub;
 /** 종합 판정 불합격(시드 `INSPECTION_RESULT_OVERALL_JUDGMENT`) — 이 값일 때만 불합격 사유를 받는다. */
 const REJECTED_JUDGMENT = 'REJECTED';
 
-export const IqcInspectionScreen = () => {
+const IqcInspectionScreenBody = () => {
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   /* 검사 조회·판정 묶음(사이드바 한 줄 · 제목 아래 탭) 안이면 셸이 준다 — 셸 밖이면 `null`. */
   const hub = usePageHub();
 
   const filters = readFilters(searchParams);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
 
-  const queue = useInspectionQueue(toListQuery(filters, page));
+  const queue = useInspectionQueue(toListQuery(filters, page, pageSize));
   const detail = useInspectionRequestDetail(selectedId);
   /* 검사자는 계정에 연결된 작업자다(omf-all-around#104) — 연결이 없으면 저장 전에 막는다. */
   const { session } = useSession();
   /* 계정에 작업자가 없으면 서버가 검사자를 못 풀어 저장·확정이 다 막힌다 — 입력 칸도 잠근다(#135). */
   const workerMissing = session?.worker === null;
+  /* 작업자 미연결이면 이 화면에서 바로 사번을 잇는다(사용자 지시 2026-10-28 · #197). */
+  const [isWorkerConnectOpen, setIsWorkerConnectOpen] = useState(false);
   const queryClient = useQueryClient();
 
   /*
@@ -192,23 +224,22 @@ export const IqcInspectionScreen = () => {
    */
   useInspectionRoundLock(editingResultId);
 
-  /** 마지막 저장이 성공했는가. 눌렀는데 아무 일도 없어 보이지 않게 한 줄로 알린다. */
-  const [isSaved, setIsSaved] = useState(false);
-
   /*
    * 마지막으로 서버에 남은 불합격 사유(omf-all-around#122) — 사유만 고쳐도 [임시 저장]이 켜지게 견주는 기준이다.
    * 저장 응답이 오면 그때 보낸 사유가 기준이 된다(`pendingRejection`).
    */
-  const [savedRejection, setSavedRejection] = useState<RejectionDraft>(EMPTY_REJECTION);
-  const pendingRejection = useRef<RejectionDraft>(EMPTY_REJECTION);
+  const [savedDefects, setSavedDefects] = useState<DefectDraft[]>([EMPTY_DEFECT]);
+  const pendingDefects = useRef<DefectDraft[]>([EMPTY_DEFECT]);
 
   /* 지금 나간 저장이 새 회차를 만드는 POST 인가 — 그 회차는 방금 보낸 사유가 곧 서버 값이라 되살리지 않는다(아래). */
   const savingNewRound = useRef(false);
   const skipRestoreOfCreated = useRef(false);
 
   const save = useSaveDraft(selectedId, editingResultId, () => {
-    setIsSaved(true);
-    setSavedRejection(pendingRejection.current);
+    /* 저장 결과는 다른 화면처럼 오른쪽 아래 알림으로 낸다(사용자 지시 2026-10-28 · #197). */
+    toast.show({ variant: 'success', description: t.result.saved });
+    setSavedDefects(pendingDefects.current);
+    setSavedHasDefects(pendingHasDefects.current);
     if (savingNewRound.current) skipRestoreOfCreated.current = true;
   });
 
@@ -225,7 +256,6 @@ export const IqcInspectionScreen = () => {
   const [isJustConfirmed, setIsJustConfirmed] = useState(false);
 
   const confirm = useConfirmResult(selectedId, editingResultId, () => {
-    setIsSaved(false);
     setIsJustConfirmed(true);
   });
 
@@ -234,11 +264,19 @@ export const IqcInspectionScreen = () => {
    * 요청에 함께 싣는다. 서버가 같은 트랜잭션에서 그 회차의 불량 기록을 이 값으로 갈아 끼운다 — 확정이 실패해
    * 다시 눌러도 사유는 그때 입력 1벌이고, 합격·보류로 확정하면 서버가 그 회차의 기록을 지운다.
    */
-  const [rejection, setRejection] = useState<RejectionDraft>(EMPTY_REJECTION);
+  /*
+   * 불량 내역(사용자 지시 2026-10-28 · #197) — 불합격 수량이 있으면 검사 수량 단계에서 불량 유형별로 받는다(여러 줄). 서버는
+   * 최종 판정이 불합격일 때만 받으므로 그때만 싣는다.
+   */
+  const [defects, setDefects] = useState<DefectDraft[]>([EMPTY_DEFECT]);
+  /* 「불합격 존재」 체크(사용자 지시 2026-10-28 · #197) — 켜야 불량 내역을 받고 싣는다. 저장된 불량 기록이 있으면 켠 채로 연다. */
+  const [hasDefects, setHasDefects] = useState(false);
+  const [savedHasDefects, setSavedHasDefects] = useState(false);
+  const pendingHasDefects = useRef(false);
   /* 판정 변경 사유(omf-all-around#125) — 확정 요청에만 싣는다. 임시 저장은 받지 않으므로 의뢰가 바뀔 때 비운다. */
   const [changeReason, setChangeReason] = useState('');
   /* 판정 상세 창을 열 때의 값 — [취소]하면 이 값으로 되돌린다(사용자 지시 2026-10-27 · #185). */
-  const detailSnapshot = useRef<{ rejection: RejectionDraft; changeReason: string } | null>(null);
+  const detailSnapshot = useRef<{ defects: DefectDraft[]; changeReason: string } | null>(null);
   /*
    * 4M 변경품(omf-all-around#63) — LOT 의 성질이라 회차가 아니라 의뢰 LOT 에 붙는다. 서버 기록이 바뀌면(의뢰를
    * 바꾸거나 저장 뒤 재조회) 그 값으로 되돌린다. 자재 LOT 이 없는 의뢰는 칸을 두지 않고 요청에도 싣지 않는다.
@@ -258,10 +296,6 @@ export const IqcInspectionScreen = () => {
   /* 손대지 않은 예전 기록(변경 종류만 있고 내용 없음)은 막지 않는다 — 고칠 때만 내용을 요구한다(#133). */
   const fourMBlocked = fourMChanged && isFourMIncomplete(fourM);
   const isRejected = judgment === REJECTED_JUDGMENT;
-  const defectCodes = useDefectCodes(isRejected);
-  /* 추정 원인(omf-all-around#130) — 선택 입력. 불합격일 때만 부른다. */
-  const causeCodes = useCauseCodes(isRejected);
-  const resolvedDefect = resolveDefectCode(defectCodes.data ?? [], rejection);
   /*
    * 확정된 불합격 회차면 LOT 이 불량인지 보고 처분·반품으로 잇는다(omf-all-around#106 후속 (나)).
    * 확정된 회차는 판정과 관계없이 LOT 상태를 읽는다 — 검사 대기가 아니면 재검사 단추를 세우지 않는다(#185).
@@ -271,15 +305,7 @@ export const IqcInspectionScreen = () => {
     round?.statusCode === 'CONFIRMED',
   );
 
-  /**
-   * 초안이 바뀌면 「저장했습니다」를 지운다.
-   *
-   * ⭐ **표시가 언제 거짓이 되는지**를 값이 바뀌는 자리에서 함께 정한다. 지우지 않으면
-   * 저장한 뒤 수량을 더 고쳐도 화면이 저장됐다고 말하고, 검사자가 그 문구를 보고 자리를
-   * 뜨면 **고친 값이 사라진다.** 이 화면이 남기는 것은 품질 판정 자료다.
-   */
   const changeDraft = (next: QuantityDraft): void => {
-    setIsSaved(false);
     setDraft(next);
   };
 
@@ -298,6 +324,18 @@ export const IqcInspectionScreen = () => {
    * 길이 된다 — 값이 그럴듯해서 아무도 눈치채지 못한다.
    */
   const [draft, setDraft] = useState<QuantityDraft>(EMPTY_QUANTITY_DRAFT);
+
+  /*
+   * 불량 코드 · 원인은 「불량 등록」을 켰거나 고칠 회차가 있을 때 부른다 — 저장된 불량 기록을 되살리려면 코드가 있어야 한다.
+   * 끈 채 불합격이면 불량 내역이 비었다고 막는다.
+   */
+  const needsDefectCodes = hasDefects || editingResultId !== null;
+  const defectCodes = useDefectCodes(needsDefectCodes);
+  /* 추정 원인(omf-all-around#130) — 선택 입력. */
+  const causeCodes = useCauseCodes(needsDefectCodes);
+  const resolvedDefects = hasDefects
+    ? resolveDefects(defectCodes.data ?? [], defects, toSendableNumber(draft.rejected))
+    : resolveDefects([], [], 0);
 
   const roundId = round?.inspectionResultId ?? null;
   const { acceptedQty, rejectedQty, heldQty } = round ?? {
@@ -353,9 +391,10 @@ export const IqcInspectionScreen = () => {
   /* 되살린 기록의 코드가 코드 마스터에 없어 사유 글만 되살렸는가 — 그러면 코드를 새로 고르기 전에는 기록을 건드리지 않는다. */
   const restoredTextOnly = useRef(false);
   useEffect(() => {
-    setIsSaved(false);
-    setRejection(EMPTY_REJECTION);
-    setSavedRejection(EMPTY_REJECTION);
+    setDefects([EMPTY_DEFECT]);
+    setSavedDefects([EMPTY_DEFECT]);
+    setHasDefects(false);
+    setSavedHasDefects(false);
     setChangeReason('');
     restoredFor.current = null;
     restoredTextOnly.current = false;
@@ -378,19 +417,30 @@ export const IqcInspectionScreen = () => {
     }
     const records = draftRejection.data;
     if (records === undefined) return;
-    const first = records[0];
-    if (first === undefined) {
+    if (records.length === 0) {
       restoredFor.current = editingResultId;
+      /* 불량 기록 없이 불합격 수량만 저장된 회차(예전 화면) — 그 수량을 코드 없는 한 줄로 연다(#197). */
+      if (rejectedQty > 0) {
+        const legacy = [{ ...EMPTY_DEFECT, qty: String(rejectedQty) }];
+        setDefects(legacy);
+        setSavedDefects(legacy);
+        setHasDefects(true);
+        setSavedHasDefects(true);
+      }
       return;
     }
     if (defectCodes.data === undefined) return;
+    const known = defectCodes.data;
     restoredFor.current = editingResultId;
-    restoredTextOnly.current = !defectCodes.data.some(
-      (code) => code.defectCodeId === first.defectCodeId,
+    restoredTextOnly.current = records.some(
+      (record) => !known.some((code) => code.defectCodeId === record.defectCodeId),
     );
-    const restored = rejectionDraftOf(defectCodes.data, first);
-    setRejection(restored);
-    setSavedRejection(restored);
+    /* 불량 기록 여럿 → 불량 내역 줄 여럿(#197). */
+    const restored = records.map((record) => defectDraftOf(known, record));
+    setDefects(restored);
+    setSavedDefects(restored);
+    setHasDefects(true);
+    setSavedHasDefects(true);
   }, [editingResultId, draftRejection.data, defectCodes.data]);
 
   /*
@@ -406,10 +456,8 @@ export const IqcInspectionScreen = () => {
     draft.held !== savedDraft.held ||
     judgment !== savedJudgment ||
     (isRejected &&
-      (rejection.majorId !== savedRejection.majorId ||
-        rejection.minorId !== savedRejection.minorId ||
-        rejection.description !== savedRejection.description ||
-        rejection.causeId !== savedRejection.causeId)) ||
+      (hasDefects !== savedHasDefects ||
+        (hasDefects && JSON.stringify(defects) !== JSON.stringify(savedDefects)))) ||
     fourMChanged;
 
   const rows = queue.data?.rows ?? [];
@@ -436,6 +484,8 @@ export const IqcInspectionScreen = () => {
     /* 상세가 목록 옆에 열려 있으면 그대로 둔다(#185) — 조회 한 번에 쓰던 판정 입력이 사라지지 않게. */
     const params = toSearchParams(next);
     if (selectedId !== null) params.set(URL_KEYS.selected, String(selectedId));
+    /* 고른 쪽 크기는 조회해도 그대로다(#197). */
+    if (pageSize !== PAGE_SIZE) params.set(URL_KEYS.size, String(pageSize));
     setSearchParams(params);
   };
 
@@ -446,6 +496,7 @@ export const IqcInspectionScreen = () => {
   const applyStatus = (statusCode: InspectionHubStatus | null): void => {
     const next = toSearchParams(withStatus(filters, statusCode));
     if (selectedId !== null) next.set(URL_KEYS.selected, String(selectedId));
+    if (pageSize !== PAGE_SIZE) next.set(URL_KEYS.size, String(pageSize));
     setSearchParams(next);
   };
 
@@ -479,10 +530,14 @@ export const IqcInspectionScreen = () => {
     }
     openRequest(to);
   };
-  const select = (inspectionRequestId: number): void => moveTo(inspectionRequestId);
+  /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세가 닫힌다(저장 안 한 입력이 있으면 먼저 묻는다 · 사용자 지시 2026-10-28 · #197). */
+  const select = (inspectionRequestId: number): void =>
+    moveTo(inspectionRequestId === selectedId ? null : inspectionRequestId);
 
   /* 다른 화면으로 이동(기본 정보 [기준 보기] · #185) — 같은 탭에서 옮긴다. 저장하지 않은 입력이 있으면 먼저 묻는다. */
   const navigate = useNavigate();
+  /* 「기준 조회」 창(#197). */
+  const [isPlanViewOpen, setIsPlanViewOpen] = useState(false);
   const leaveFor = (href: string): void => {
     if (selectedId !== null && hasUnsavedInput) {
       setLeaveTo({ to: selectedId, href });
@@ -496,6 +551,30 @@ export const IqcInspectionScreen = () => {
   const split = usePaneSplit('omf-mes:iqc-inspection:split', 0.45);
   /* 좌우 · 상하 배치(사용자 지시 2026-10-26) — 세 탭이 같은 고름을 쓴다. */
   const layout = useSplitOrientation('omf-mes:inspection-hub:split-orientation');
+  /*
+   * 위아래로 쌓인 화면에서 의뢰를 고르거나 상세 주소로 들어오면 상세(입력 자리)가 바로 보이게 내린다(사용자 지시 2026-10-29 ·
+   * #197). 나란히 설 때는 상세가 이미 옆에 보여 옮기지 않는다. 위 목록 · 상세 내용이 다 선 뒤에 한 번 옮긴다 — 먼저 옮기면
+   * 늦게 선 목록이 상세를 다시 밀어낸다.
+   */
+  const sideBySideFits = useSideBySideFits();
+  const isStacked = layout.orientation === 'column' || !sideBySideFits;
+  const detailRef = useRef<HTMLElement>(null);
+  const scrolledFor = useRef<number | null>(null);
+  const isLaidOut =
+    queue.data !== undefined && detail.data !== undefined && rounds.data !== undefined;
+  useEffect(() => {
+    if (selectedId === null) {
+      scrolledFor.current = null;
+      return;
+    }
+    if (!isStacked || !isLaidOut || scrolledFor.current === selectedId) return;
+    scrolledFor.current = selectedId;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+    detailRef.current?.scrollIntoView?.({
+      block: 'start',
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
+  }, [selectedId, isStacked, isLaidOut]);
 
   /**
    * 표 자리에 그릴 것. **네 갈래를 가른다** — 실패 · 부르는 중 · 이 쪽에 없음 · 조건에 맞는 것 없음.
@@ -533,12 +612,18 @@ export const IqcInspectionScreen = () => {
    * 규칙을 아직 못 받았으면 의뢰수량 — 종전 동작이다.
    */
   const samplingRule = useSamplingRule(detail.data?.inspectionPlanVersionId ?? null);
+  /* 검사기준 화면 주소 — 그 기준 · 버전을 바로 연다([기준 조회] 창의 [수정] · #197). */
+  const planHref =
+    samplingRule.data === undefined || detail.data?.inspectionPlanVersionId == null
+      ? null
+      : `/master-data/inspection-standard?plan=${String(samplingRule.data.inspectionPlanId)}&ver=${String(detail.data.inspectionPlanVersionId)}`;
   const inspectedQty =
     round?.inspectedQty ?? sampleQtyOf(detail.data?.targetQty ?? 0, samplingRule.data ?? null);
 
   /*
    * 합격판정개수 기준 자동 판정(omf-all-around#125) — 기준에 합격판정개수가 있을 때만. 수량을 고치면 판정을 채우고
    * (사용자가 다시 바꿀 수 있다), 다르게 고르면 변경 사유를 받아야 확정된다. 확정된 회차에는 걸지 않는다.
+   * 합격판정개수가 없어도 검사 수량 전부가 합격이면 「합격」을 채운다 — 이때는 변경 사유를 받지 않는다(#197).
    * ⚠ 자동 채움은 불합격 사유 칸을 비우지 않는다 — 수량을 치는 도중 판정이 잠깐 바뀌어도 친 사유가 남는다.
    */
   const acceptanceNumber = samplingRule.data?.acceptanceNumber ?? null;
@@ -552,9 +637,14 @@ export const IqcInspectionScreen = () => {
    */
   const hasUnsavedInput =
     isOpenRound && (hasChanges || (needsChangeReason && changeReason.trim() !== ''));
+  /* 불량 내역 합계 → 불합격 수량 칸의 글. 0 이면 비운다. */
+  const rejectedTextOf = (rows: readonly DefectDraft[]): string => {
+    const sum = defectSumOf(rows);
+    return sum > 0 ? String(sum) : '';
+  };
   const changeDraftAndJudge = (next: QuantityDraft): void => {
     changeDraft(next);
-    const expected = isOpenRound ? expectedJudgmentOf(next, acceptanceNumber) : null;
+    const expected = isOpenRound ? autoJudgmentOf(next, acceptanceNumber, inspectedQty) : null;
     if (expected !== null) setJudgment(expected);
   };
   /* 수량 옆 단위 코드(표시 전용). 회차는 의뢰의 단위로 저장되므로(저장 요청의 `uomId`) 의뢰 단위 하나를 쓴다. */
@@ -569,6 +659,7 @@ export const IqcInspectionScreen = () => {
    */
   const itemNames = useItemNames([...rows.map((row) => row.itemId), detail.data?.itemId]);
   const lotNumbers = useLotNumbers([...rows.map((row) => row.lotId), detail.data?.lotId]);
+  const lotSuppliers = useLotSuppliers(rows.map((row) => row.lotId));
   const uomCode = uoms.codeOf(detail.data?.uomId);
 
   /*
@@ -609,28 +700,14 @@ export const IqcInspectionScreen = () => {
    * 아니라 렌더 조건에 있어서, 단언으로 메우면 그 조건이 바뀔 때 조용히 어긋난다.
    */
   /**
-   * 요청에 실을 불합격 사유 — 불합격이고 코드를 골랐으면 1줄, 아니면 빈 배열이다.
-   * 불합격 수량이 0 인 불합격(전량 판정)은 검사수량을 불량 수량으로 남긴다 — 0 은 서버가 받지 않는다.
+   * 요청에 실을 불량 기록 — 불합격이고 불량 내역을 다 채웠으면 그 줄들, 아니면 빈 배열이다(#197). 서버는 불합격 판정에만
+   * 불량 기록을 받는다 — 합격 · 보류면 빈 배열이 그 회차의 기록을 지운다.
    */
-  const rejectionRows = (rejectedQty: number, inspected: number) =>
-    !isRejected || !('defectCodeId' in resolvedDefect)
-      ? []
-      : [
-          {
-            defectCodeId: resolvedDefect.defectCodeId,
-            defectQty: rejectedQty > 0 ? rejectedQty : inspected,
-            defectDescription:
-              rejection.description.trim() === '' ? null : rejection.description.trim(),
-            /* 추정 원인(omf-all-around#130) — 골랐을 때만 싣는다. 서버가 회차의 기록을 통째로 갈아 끼우므로 빼면 비워진다. */
-            ...(rejection.causeId === ''
-              ? {}
-              : { suspectedCauseCodeId: Number(rejection.causeId) }),
-          },
-        ];
+  const rejectionRows = (): DefectRecordInput[] =>
+    !isRejected || !('rows' in resolvedDefects) ? [] : resolvedDefects.rows;
 
   const saveDraft = (inspectionRequestId: number, inspected: number, uomId: number): void => {
-    setIsSaved(false);
-    const rows = rejectionRows(toSendableNumber(draft.rejected), inspected);
+    const rows = rejectionRows();
     /*
      * ⛔ 이 회차의 사유를 아직 되살리지 못했으면(조회 중·실패) 사유 키를 싣지 않는다 — 빈 배열을 실으면 서버의 사유가
      * 지워진다(#122 리뷰 M2). 코드 없이 글만 되살린 경우도 코드를 고르기 전에는 같다.
@@ -638,12 +715,13 @@ export const IqcInspectionScreen = () => {
     const unknownOnServer =
       (editingResultId !== null && restoredFor.current !== editingResultId) ||
       (restoredTextOnly.current && rows.length === 0);
-    const defects = unknownOnServer ? undefined : rows;
-    pendingRejection.current = unknownOnServer
-      ? savedRejection
+    const defectsBody = unknownOnServer ? undefined : rows;
+    pendingHasDefects.current = unknownOnServer ? savedHasDefects : rows.length > 0;
+    pendingDefects.current = unknownOnServer
+      ? savedDefects
       : rows.length === 0
-        ? EMPTY_REJECTION
-        : rejection;
+        ? [EMPTY_DEFECT]
+        : defects;
     savingNewRound.current = editingResultId === null;
     save.write({
       inspectionRequestId,
@@ -665,7 +743,7 @@ export const IqcInspectionScreen = () => {
        * ⛔ 빠뜨리면 같은 의뢰에 회차 1이 두 번 만들어지려 해 `UNIQUE(의뢰, 회차)` 에 걸린다.
        */
       previousResultId: reinspectingFrom,
-      defects,
+      defects: defectsBody,
       fourMChange: fourMValue,
     });
   };
@@ -698,23 +776,28 @@ export const IqcInspectionScreen = () => {
             samplingRule.data === undefined ||
             detail.data.inspectionPlanVersionId === null ? undefined : (
               /*
-               * 적용 검사 기준 — 버전 + [기준 보기](#185). 같은 탭에서 검사기준 화면으로 옮긴다(저장 안 한 입력이 있으면 먼저 묻는다).
-               * 검사기준 화면은 주소의 `plan`·`ver` 로 그 기준 · 버전을 바로 연다.
+               * 적용 검사 기준 — 버전 + [기준 조회]. 조회이므로 화면을 옮기지 않고 창으로 보인다(사용자 지시 2026-10-27 · #197).
+               * 창의 [수정]이 같은 탭에서 검사기준 화면으로 옮긴다(저장 안 한 입력이 있으면 먼저 묻는다). 검사기준 화면은
+               * 주소의 `plan`·`ver` 로 그 기준 · 버전을 바로 연다.
                */
               <span className="iqc-inspection-plan-cell">
                 <span>{t.detail.planVersion(samplingRule.data.planVersion)}</span>
                 {/* 옆 「검사 수준 · 지정」과 같은 단추(테두리 · md) — 사용자 지시 2026-10-26. */}
-                <Button
-                  size="md"
-                  variant="outlined"
-                  onClick={() =>
-                    leaveFor(
-                      `/master-data/inspection-standard?plan=${String(samplingRule.data?.inspectionPlanId)}&ver=${String(detail.data?.inspectionPlanVersionId)}`,
-                    )
-                  }
-                >
+                <Button size="md" variant="outlined" onClick={() => setIsPlanViewOpen(true)}>
                   {t.detail.openPlan}
                 </Button>
+                {isPlanViewOpen && (
+                  <PlanViewDialog
+                    rule={samplingRule.data}
+                    rows={measurementRows}
+                    isLoading={itemSpecs.isLoading}
+                    onClose={() => setIsPlanViewOpen(false)}
+                    onEdit={() => {
+                      setIsPlanViewOpen(false);
+                      if (planHref !== null) leaveFor(planHref);
+                    }}
+                  />
+                )}
               </span>
             )
           }
@@ -727,6 +810,12 @@ export const IqcInspectionScreen = () => {
           }
         />
       </div>
+      {isWorkerConnectOpen && session !== null && (
+        <WorkerConnectDialog
+          appUserId={session.userId}
+          onClose={() => setIsWorkerConnectOpen(false)}
+        />
+      )}
       {rounds.isPending ? (
         <p className="field-note">{t.result.loading}</p>
       ) : isClosed && round !== null ? (
@@ -768,6 +857,7 @@ export const IqcInspectionScreen = () => {
                 : null
           }
           isInputLocked={workerMissing}
+          onConnectWorker={workerMissing ? () => setIsWorkerConnectOpen(true) : null}
           uomCode={uomCode}
           hasChanges={hasChanges}
           draft={draft}
@@ -776,44 +866,50 @@ export const IqcInspectionScreen = () => {
             saveDraft(detail.data.inspectionRequestId, inspectedQty, detail.data.uomId);
           }}
           isSaving={save.isSaving || rounds.isFetching}
-          isSaved={isSaved}
           fieldErrors={save.fieldErrors}
           saveError={save.error}
           onReload={() => void rounds.refetch()}
           judgmentOptions={judgmentOptions}
           judgment={judgment}
-          onJudgmentChange={(next) => {
-            /* 불합격이 아닌 판정으로 바꾸면 사유 입력을 비운다 — 다시 불합격을 골라도 이전 사유가 되살아나지 않는다(#122 검증). */
-            if (next !== REJECTED_JUDGMENT) setRejection(EMPTY_REJECTION);
-            setIsSaved(false);
-            setJudgment(next);
-          }}
+          /* 불량 내역은 검사 수량 단계의 것이라 판정을 바꿔도 지우지 않는다(#197) — 불합격이 아니면 싣지 않을 뿐이다. */
+          onJudgmentChange={setJudgment}
           onConfirm={() => {
-            const defects = rejectionRows(round?.rejectedQty ?? 0, inspectedQty);
+            const rows = rejectionRows();
             confirm.write({
               overallJudgmentCode: judgment,
-              ...(defects.length === 0 ? {} : { defects }),
+              ...(rows.length === 0 ? {} : { defects: rows }),
               ...(needsChangeReason ? { judgmentChangeReason: changeReason.trim() } : {}),
               ...(fourMValue === undefined ? {} : { fourMChange: fourMValue }),
             });
           }}
           isConfirming={confirm.isSaving}
           confirmError={confirm.error}
-          judgmentDetail={
-            <>
-              {isRejected && (
-                <RejectionReason
-                  codes={defectCodes.data ?? []}
-                  causes={causeCodes.data ?? []}
-                  draft={rejection}
-                  onChange={(next) => {
-                    setIsSaved(false);
-                    setRejection(next);
-                  }}
-                  disabled={confirm.isSaving || workerMissing}
-                />
-              )}
-            </>
+          renderDefects={
+            isOpenRound
+              ? () => (
+                  <DefectRows
+                    checked={hasDefects}
+                    onCheckedChange={(checked) => {
+                      setHasDefects(checked);
+                      changeDraftAndJudge({
+                        ...draft,
+                        rejected: checked ? rejectedTextOf(defects) : '',
+                      });
+                    }}
+                    codes={defectCodes.data ?? []}
+                    causes={causeCodes.data ?? []}
+                    rows={defects}
+                    onChange={(next) => {
+                      setDefects(next);
+                      /* 불합격 수량은 불량 내역 수량의 합이다(사용자 시안 2026-10-28 · #197). */
+                      changeDraftAndJudge({ ...draft, rejected: rejectedTextOf(next) });
+                    }}
+                    uomCode={uomCode}
+                    disabled={confirm.isSaving || workerMissing}
+                    notSaved={judgment !== '' && !isRejected}
+                  />
+                )
+              : null
           }
           judgmentBelow={
             acceptanceNumber !== null && isOpenRound ? (
@@ -821,7 +917,6 @@ export const IqcInspectionScreen = () => {
                 needsReason={needsChangeReason}
                 reason={changeReason}
                 onReasonChange={(next) => {
-                  setIsSaved(false);
                   setChangeReason(next);
                 }}
                 disabled={confirm.isSaving || workerMissing}
@@ -837,9 +932,7 @@ export const IqcInspectionScreen = () => {
             hasFourMTarget && isOpenRound ? (
               <FourMChange
                 draft={fourM}
-                missing={fourMBlocked}
                 onChange={(next) => {
-                  setIsSaved(false);
                   setFourM(next);
                 }}
                 disabled={confirm.isSaving || workerMissing}
@@ -852,29 +945,43 @@ export const IqcInspectionScreen = () => {
             ) : null
           }
           confirmOnlyBlockedReason={
-            isRejected && 'blocked' in resolvedDefect
-              ? resolvedDefect.blocked
+            isRejected && 'blocked' in resolvedDefects
+              ? resolvedDefects.blocked
               : needsChangeReason && changeReason.trim() === ''
                 ? t.result.judgmentChange.required
                 : fourMBlocked
                   ? t.result.fourMChange.blocked
                   : null
           }
+          /* ① 수량 [확정]으로 판정 단계로 넘어가며 최종 판정을 자동으로 채운다 — 채울 것이 없으면 그대로 둔다(사용자 지시 2026-10-29). */
+          onQtyConfirm={() => {
+            const expected = isOpenRound
+              ? autoJudgmentOf(draft, acceptanceNumber, inspectedQty)
+              : null;
+            if (expected !== null) setJudgment(expected);
+          }}
+          /* 불량 수량에 수량이 아닌 값이 있으면 합계를 셀 수 없다고 보인다(표시 전용 · #197). */
+          rejectedUncountable={
+            hasDefects &&
+            defects.some((row) => {
+              const raw = row.qty.trim();
+              return raw !== '' && !(Number.isFinite(Number(raw)) && Number(raw) >= 0);
+            })
+          }
           /* 좌우 · 상하 배치 모두 수량 · 판정을 한 줄로(좁으면 위아래 · 사용자 지시 2026-10-27 · #185). */
           inlineJudgment
-          hasJudgmentDetail={isRejected || needsChangeReason}
-          judgmentDone={
-            judgment !== '' &&
-            !(isRejected && 'blocked' in resolvedDefect) &&
-            !(needsChangeReason && changeReason.trim() === '')
-          }
+          hasJudgmentDetail={needsChangeReason}
+          judgmentDone={judgment !== '' && !(needsChangeReason && changeReason.trim() === '')}
           fourMDone={fourM.checked && !isFourMIncomplete(fourM)}
+          fourMSummary={
+            fourM.checked ? t.result.stepSummary.fourMChanged : t.result.stepSummary.fourMNone
+          }
           onJudgmentDetailOpen={() => {
-            detailSnapshot.current = { rejection, changeReason };
+            detailSnapshot.current = { defects, changeReason };
           }}
           onJudgmentDetailCancel={() => {
             if (detailSnapshot.current === null) return;
-            setRejection(detailSnapshot.current.rejection);
+            setDefects(detailSnapshot.current.defects);
             setChangeReason(detailSnapshot.current.changeReason);
           }}
           reinspectBlockedReason={
@@ -884,11 +991,12 @@ export const IqcInspectionScreen = () => {
           isReinspecting={isReinspectingNow}
           onStartReinspection={() => {
             /* 새 회차는 빈 칸에서 시작한다 — 앞 회차의 값이 남으면 그대로 저장된다. */
-            setIsSaved(false);
             setDraft(EMPTY_QUANTITY_DRAFT);
             setJudgment('');
-            setRejection(EMPTY_REJECTION);
-            setSavedRejection(EMPTY_REJECTION);
+            setDefects([EMPTY_DEFECT]);
+            setSavedDefects([EMPTY_DEFECT]);
+            setHasDefects(false);
+            setSavedHasDefects(false);
             setChangeReason('');
             setIsReinspecting(true);
           }}
@@ -944,6 +1052,13 @@ export const IqcInspectionScreen = () => {
                     rows={measurementRows}
                     isLoading={itemSpecs.isLoading || measurements.isLoading}
                     scrollX
+                    /* [기준 조회]와 같은 창을 연다(사용자 지시 2026-10-28 · #197). */
+                    onViewPlan={
+                      samplingRule.data === undefined ||
+                      detail.data.inspectionPlanVersionId === null
+                        ? undefined
+                        : () => setIsPlanViewOpen(true)
+                    }
                   />
                 </div>
               ),
@@ -1117,6 +1232,7 @@ export const IqcInspectionScreen = () => {
             rows={rows}
             itemNames={itemNames}
             lotNumbers={lotNumbers}
+            suppliers={lotSuppliers}
             selectedId={selectedId}
             onSelect={select}
             empty={emptyContent}
@@ -1126,7 +1242,17 @@ export const IqcInspectionScreen = () => {
            * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
            * 모르는데, 그리면 대신 넘긴 0이 「전체 0건」이라는 **사실 주장**이 되어 화면에 선다.
            */}
-          {queue.data !== undefined && <PageNav view={pageView} onChange={goToPage} />}
+          {/* 상세 탭 표와 같은 쪽 이동 — 총 건수 · 10 · 20 · 50건 · [처음] [이전] n/N [다음] [마지막](사용자 지시 2026-10-27 · #197). */}
+          {queue.data !== undefined && (
+            <PageNav
+              meta={queue.data.page}
+              sizes={LIST_PAGE_SIZES}
+              /* 목록 단추는 종전 쪽 이동처럼 크게(사용자 지시 2026-10-27 · #197). */
+              controlSize="md"
+              onChangePage={goToPage}
+              onChangeSize={(next) => setSearchParams(toPageSizeParams(searchParams, next))}
+            />
+          )}
         </section>
 
         <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
@@ -1139,6 +1265,7 @@ export const IqcInspectionScreen = () => {
         )}
 
         <section
+          ref={detailRef}
           className="pane iqc-inspection-panes iqc-inspection-detail"
           aria-label={t.detail.heading}
         >
@@ -1193,3 +1320,13 @@ export const IqcInspectionScreen = () => {
     </>
   );
 };
+
+/**
+ * OA 공장 전용(사용자 지시 2026-10-29) — 부품 공장은 수입검사 화면이 달라 따로 만든다. 계정 범위에 OA 공장이 없으면 안내만
+ * 보이고 조회를 보내지 않는다.
+ */
+export const IqcInspectionScreen = () => (
+  <OaOnlyGate title={t.title} breadcrumbRoot={t.breadcrumbRoot}>
+    <IqcInspectionScreenBody />
+  </OaOnlyGate>
+);

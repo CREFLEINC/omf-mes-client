@@ -447,6 +447,7 @@ export const PqcPanel = ({
             uomCodeOf={uomCodeOf}
             isLoading={itemSpecs.isLoading}
             isLocked={isInputLocked}
+            inspectionPlanVersionId={planVersionId}
           />
         )}
 

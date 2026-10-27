@@ -72,12 +72,12 @@ export const common: Translated<typeof ko.common> = {
     pickRequest: 'Chọn yêu cầu kiểm tra',
     pickRequestHint: 'Chọn một yêu cầu kiểm tra để xem nội dung chi tiết.',
     close: 'Đóng',
-    closeDetail: 'Đóng chi tiết',
     splitter: 'Chia độ rộng danh sách và chi tiết',
     heightSplitter: 'Chia chiều cao danh sách và chi tiết',
     layoutLabel: 'Bố cục danh sách · chi tiết',
     layoutSideBySide: 'Trái phải',
     layoutStacked: 'Trên dưới',
+    layoutNarrow: 'Cửa sổ hẹp nên hiển thị trên dưới.',
   },
   selectDate: 'Chọn ngày',
   popWorker: {

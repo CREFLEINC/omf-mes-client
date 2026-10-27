@@ -1,4 +1,4 @@
-import { AlertBanner, Chip, EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState, type ReactNode } from 'react';
 
@@ -45,7 +45,7 @@ const describeLimits = (spec: SpecRange): string | null => {
 };
 
 /** 단위가 있으면 값 뒤에 붙인다(#133). 규격이 없거나(—) 단위를 모르면 그대로다. */
-const withUnit = (text: string, spec: SpecRange | null, unit: string | null): string => {
+export const withUnit = (text: string, spec: SpecRange | null, unit: string | null): string => {
   if (unit === null) return text;
   if (spec !== null && spec.target === null && spec.lower === null && spec.upper === null)
     return text;
@@ -59,7 +59,7 @@ const tidy = (value: number): number => Number(value.toFixed(6));
  * 규격 — 기준값과 상하한이 대칭이면 「100 ± 0.5」, 아니면 범위 뒤에 기준값을 괄호로(#133).
  * 「목표 100 · 99.5 ~ 100.5」보다 한눈에 읽힌다.
  */
-const describeSpec = (spec: SpecRange): string => {
+export const describeSpec = (spec: SpecRange): string => {
   const { target, lower, upper } = spec;
 
   if (target !== null && lower !== null && upper !== null) {
@@ -112,6 +112,8 @@ export interface MeasurementGridProps {
   isLoading: boolean;
   /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-27 · #185). */
   scrollX?: boolean;
+  /** 적용 검사 기준 창을 연다 — [기준 조회]와 같다(창의 [수정]으로 검사기준 화면에 간다 · #197). 없으면 단추를 두지 않는다 */
+  onViewPlan?: () => void;
 }
 
 const columns: Column<MeasurementRow>[] = [
@@ -195,7 +197,12 @@ const columns: Column<MeasurementRow>[] = [
 /** 거르기 칩의 판정 — 측정치 판정(`INSPECTION_MEASUREMENT_JUDGMENT`) 두 값. */
 const JUDGMENT_FILTERS = ['ACCEPTED', 'REJECTED'] as const;
 
-export const MeasurementGrid = ({ rows, isLoading, scrollX = false }: MeasurementGridProps) => {
+export const MeasurementGrid = ({
+  rows,
+  isLoading,
+  scrollX = false,
+  onViewPlan,
+}: MeasurementGridProps) => {
   /*
    * 목록 표처럼 동작한다(사용자 지시 2026-10-26 · #185) — 열 순서 끌기 · 폭 조절(브라우저에 기억), 한 줄 행, 상자 폭에 맞춤.
    */
@@ -230,21 +237,35 @@ export const MeasurementGrid = ({ rows, isLoading, scrollX = false }: Measuremen
         </div>
       )}
 
-      {rows.length > 0 && (
-        <FilterChips
-          label={t.filterLabel}
-          options={[
-            { value: null, label: t.filterAll },
-            ...JUDGMENT_FILTERS.map((code) => ({
-              value: code,
-              label: t.judgmentNames[code] ?? code,
-            })),
-          ]}
-          value={judgmentFilter}
-          countOf={(code) => (code === null ? rows.length : countOf(code))}
-          onChange={setJudgmentFilter}
-        />
-      )}
+      {/* 거르기 칩 줄 오른쪽 끝에 [수정] — 검사 항목은 검사기준에서 정한다(사용자 지시 2026-10-28 · #197). */}
+      <div className="iqc-inspection-measure-toolbar">
+        {rows.length > 0 && (
+          <FilterChips
+            label={t.filterLabel}
+            options={[
+              { value: null, label: t.filterAll },
+              ...JUDGMENT_FILTERS.map((code) => ({
+                value: code,
+                label: t.judgmentNames[code] ?? code,
+              })),
+            ]}
+            value={judgmentFilter}
+            countOf={(code) => (code === null ? rows.length : countOf(code))}
+            onChange={setJudgmentFilter}
+          />
+        )}
+        {onViewPlan !== undefined && (
+          <Button
+            type="button"
+            variant="outlined"
+            size="sm"
+            className="iqc-inspection-measure-edit"
+            onClick={onViewPlan}
+          >
+            {messages.iqcInspection.measurements.viewPlan}
+          </Button>
+        )}
+      </div>
 
       {/* 표 전체를 얇은 테두리 상자로 감싼다(#133). */}
       <div
@@ -273,7 +294,7 @@ export const MeasurementGrid = ({ rows, isLoading, scrollX = false }: Measuremen
           }
         />
       </div>
-      {paging.nav !== null && <PageNav {...paging.nav} />}
+      <PageNav {...paging.nav} />
     </section>
   );
 };

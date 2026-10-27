@@ -232,7 +232,7 @@ const HistoryTable = ({
           }
         />
       </div>
-      {paged && paging.nav !== null && <PageNav {...paging.nav} />}
+      {paged && <PageNav {...paging.nav} />}
     </>
   );
 };

@@ -41,7 +41,8 @@ export const itemPickerKeys = {
     page: number,
     includeInactive = false,
     hasRouting = false,
-  ) => [ROOT, 'search', term, itemTypeCode, page, includeInactive, hasRouting] as const,
+    size = ITEM_PAGE_SIZE,
+  ) => [ROOT, 'search', term, itemTypeCode, page, includeInactive, hasRouting, size] as const,
   availability: (itemId: number) => [ROOT, 'availability', itemId] as const,
 };
 
@@ -115,12 +116,14 @@ export const useItemSearch = (
    * 마스터 전체를 골라야 한다.
    */
   hasRouting = false,
+  /** 한 쪽 줄 수 — 쪽 크기를 고르는 창(검사 조회·판정 · #197)만 바꾼다. */
+  size: number = ITEM_PAGE_SIZE,
 ): UseQueryResult<ItemSearchResult> => {
   const { client } = useApiClient();
   const trimmed = term.trim();
 
   return useQuery({
-    queryKey: itemPickerKeys.search(trimmed, itemTypeCode, page, includeInactive, hasRouting),
+    queryKey: itemPickerKeys.search(trimmed, itemTypeCode, page, includeInactive, hasRouting, size),
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/mdm/items', {
@@ -132,7 +135,7 @@ export const useItemSearch = (
               ...(includeInactive ? { includeInactive: true } : {}),
               ...(hasRouting ? { hasRouting: true } : {}),
               page,
-              size: ITEM_PAGE_SIZE,
+              size,
             },
           },
         }),

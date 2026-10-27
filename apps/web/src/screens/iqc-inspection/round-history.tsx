@@ -173,7 +173,7 @@ export const RoundHistory = ({
           getRowId={(row) => String(row.inspectionResultId)}
         />
       </div>
-      {paging.nav !== null && <PageNav {...paging.nav} />}
+      <PageNav {...paging.nav} />
     </section>
   );
 };
