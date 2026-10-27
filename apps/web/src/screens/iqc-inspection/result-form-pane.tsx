@@ -519,6 +519,13 @@ export const ResultFormPane = ({
                     {t.round(round.inspectionRound)}
                   </span>
                 ) : null}
+                {/* 재검사 안내 — 「재검사」 라벨 옆, 정보 아이콘이 붙은 라벨(사용자 지시 2026-10-27 · #185). */}
+                {isReinspecting && (
+                  <span className="iqc-inspection-head-badge iqc-inspection-locked-badge">
+                    <Icon name="info" size={14} aria-hidden />
+                    {t.reinspectNote}
+                  </span>
+                )}
                 {actionInQty && lockedBadge}
               </StepHead>
               <div className="iqc-inspection-collapsible-body iqc-inspection-qty-body">
@@ -530,13 +537,6 @@ export const ResultFormPane = ({
                  * 재검사 사유 칸은 두지 않는다 — 계약이 선택으로 받지만 고를 값 목록이 정해지지 않았다(omf-mes#179).
                  * 「추후 제공」 안내 줄은 사용자 지시(2026-10-27 · #185)로 뺐다.
                  */}
-                {/* 재검사 안내 — 정보 아이콘이 붙은 라벨(사용자 지시 2026-10-27 · #185). */}
-                {isReinspecting && (
-                  <p className="iqc-inspection-reinspect-note">
-                    <Icon name="info" size={14} aria-hidden />
-                    {t.reinspectNote}
-                  </p>
-                )}
 
                 {/*
                  * 합격 · 불합격 · 보류 · 총 검사 수량을 같은 모양 카드 넷으로(사용자 지시 2026-10-27 · #185). 다 맞으면 1단계
