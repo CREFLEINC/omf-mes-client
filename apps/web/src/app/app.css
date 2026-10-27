@@ -14800,14 +14800,6 @@ button.app-button-neutral {
   margin-inline: calc(-1 * var(--space-4));
   padding: var(--space-3) var(--space-4);
   background: var(--surface-container-low);
-  /*
-   * 단추 줄 위 구분선 — 구획 사이 선처럼 내용 폭만(바탕은 카드 끝까지 깔지만 선은 양옆 여백만큼 안쪽)
-   * (사용자 지시 2026-10-27 · #185).
-   */
-  background-image: linear-gradient(var(--outline-variant), var(--outline-variant));
-  background-position: top center;
-  background-size: calc(100% - 2 * var(--space-4)) 1px;
-  background-repeat: no-repeat;
 }
 
 /*
@@ -21831,16 +21823,57 @@ table.col-measuring td {
 
 .iqc-inspection-qty-judgment-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  /* 판정은 최종 판정 하나뿐이라 그 폭만 — 남는 폭은 검사 수량 입력이 쓴다(사용자 지시 2026-10-27 · #185). */
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
 }
 
-.iqc-inspection-qty-judgment-row > .iqc-inspection-section {
-  container-type: inline-size;
-  min-width: 0;
+/*
+ * 수량 쪽은 위 줄 세 칸, 아래 줄 왼쪽 입력 현황(왼쪽 정렬) · 오른쪽 끝 확정 라벨 + [재검사 회차 추가](사용자 지시 2026-10-27 · #185).
+ * 한 줄에 다 들어가지 않으면 오른쪽 묶음이 다음 줄로 내려간다.
+ */
+.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-4);
 }
 
+.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body > * {
+  flex: 1 1 100%;
+}
+
+.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body > .iqc-inspection-qty {
+  grid-template-columns: repeat(3, minmax(6rem, 12rem));
+  justify-content: start;
+}
+
+.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body > .iqc-inspection-progress {
+  flex: 0 1 auto;
+}
+
+.iqc-inspection-qty-judgment-row .iqc-inspection-progress-row:nth-child(n) {
+  justify-content: flex-start;
+}
+
+.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body > .iqc-inspection-qty-actions {
+  flex: 0 1 auto;
+  margin-inline-start: auto;
+}
+
+.iqc-inspection-qty-actions > .iqc-inspection-action-area {
+  padding-top: 0;
+}
+
+.iqc-inspection-qty-judgment-row > .iqc-inspection-section {
+  min-width: 0;
+  /* 가로선 없이 절반을 나누는 세로선만(사용자 지시 2026-10-27 · #185). */
+  border-top: 0;
+}
+
+/* 수량 쪽만 제 폭으로 배치를 고른다 — 판정 쪽에 걸면 내용 폭이 0으로 잡혀 칸이 사라진다. */
 .iqc-inspection-qty-judgment-row > .iqc-inspection-section:first-child {
+  container-type: inline-size;
   padding-right: var(--space-5);
 }
 
