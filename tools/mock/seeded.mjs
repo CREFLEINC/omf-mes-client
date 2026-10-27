@@ -4933,6 +4933,8 @@ on('POST', '/quality/concessions/{concessionId}:apply', (params) => {
     };
   }
   concession.statusCode = approval?.statusCode === 'APPROVED' ? 'APPROVED' : 'REJECTED';
+  /* 적용된 특채만 쓸 수 있다 — 화면의 「사용 가능 여부」가 이 값을 읽는다. */
+  concession.usable = concession.statusCode === 'APPROVED';
   concession.versionNo = (concession.versionNo ?? 1) + 1;
   return concession;
 });
@@ -5527,6 +5529,8 @@ on('GET', '/app/approval-requests', (_p, query, _b, headers) => {
       byText(query, 'approvalTypeCode', 'approvalTypeCode'),
       contains(query, 'q', 'approvalRequestNo'),
       (row) => bool(query, 'pendingOnly') !== true || row.statusCode === 'PENDING',
+      /* 「내 결재 차례」(#193) — 실제 서버처럼 지금 내가 결재할 차례인 요청만 남긴다. */
+      (row) => bool(query, 'myTurnOnly') !== true || row.isMyTurn === true,
       /* 이 셸에는 계정 로그인이 없어 서버가 상신자를 푸는 근거가 사번 헤더뿐이다. */
       (row) => requestedByMe !== true || workerNo === null || row.requestedByWorkerNo === workerNo,
     ]).map(withoutSteps),

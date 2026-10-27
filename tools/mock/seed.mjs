@@ -950,6 +950,25 @@ export const createSeed = (now = new Date()) => {
       /* 검사 대기로 보류된 자재 — 위치 확인 화면의 보류 경고와 IQC 생략 요청 대상이다. */
       held: true,
     },
+    /*
+     * 특채 대상 자재 LOT(#193) — 품질 승인 처리의 특채(7301~7305)와 결재 AP-2026-000028 이 가리킨다. 없으면 특채
+     * 카드의 「LOT 열기」가 LOT 상태에서 빈 화면이 된다. 불합격으로 묶인 LOT 이다. 값은 전부 지어낸 것이다.
+     */
+    {
+      lotId: 8901,
+      lotNo: 'ABC-123|120|260715|SUP-001|0004',
+      itemId: 2002,
+      lotTypeCode: 'MATERIAL',
+      initialQty: 120,
+      uomId: 1001,
+      manufacturedAt: iso(-12),
+      expiryDate: dayOf(shift(now, 350)),
+      sourceTypeCode: 'INBOUND_RECEIPT',
+      sourceId: 9002,
+      statusCode: 'DEFECTIVE',
+      completedAt: null,
+      held: true,
+    },
     /* 승인된 IQC 생략의 대상 — 아직 실행 전이라 검사 대기다(#193 상황별 화면 확인용). */
     {
       lotId: 8004,
