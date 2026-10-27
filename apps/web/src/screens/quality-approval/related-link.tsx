@@ -10,7 +10,7 @@ export interface RelatedLinkProps {
   to: string;
   label: string;
   /**
-   * 안내 모양(#193 · 반려는 붉은 느낌표, 완료는 초록 체크 `tone: 'success'`) — 이름 자리에 아이콘과 `title`, 번호 자리에 할 일, 그 아래 정보 표시와
+   * 안내 모양(#193 · 반려는 붉은 느낌표, 완료는 초록 체크 `tone: 'success'`) — 이름 자리에 아이콘과 `title`, 번호 자리에 할 일, 단추 아래 오른쪽에
    * `note`. 묶음 이름(`aria-label`)은 그대로 `heading` 이다.
    */
   alert?: { title: string; note?: string; tone?: 'error' | 'success' };
@@ -42,17 +42,15 @@ export const RelatedLink = ({ heading, value, to, label, alert }: RelatedLinkPro
           {alert.title}
         </h3>
         <p className="quality-approval-alert-body">{value}</p>
-        {alert.note !== undefined && (
-          <p className="quality-approval-alert-note">
-            <Icon name="info" size={16} />
-            {alert.note}
-          </p>
-        )}
       </div>
     )}
-    <Link className="quality-approval-concession-nc-link" to={to}>
-      {label}
-      <Icon name="open_in_new" size={18} />
-    </Link>
+    {/* 덧붙임 안내(`alert.note`)는 단추 아래 오른쪽에 작게 둔다(사용자 지시 2026-10-27). */}
+    <div className="quality-approval-nc-action">
+      <Link className="quality-approval-concession-nc-link" to={to}>
+        {label}
+        <Icon name="open_in_new" size={18} />
+      </Link>
+      {alert?.note !== undefined && <p className="quality-approval-alert-note">{alert.note}</p>}
+    </div>
   </div>
 );

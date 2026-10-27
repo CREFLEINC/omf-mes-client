@@ -103,7 +103,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     openDisposition: 'Mở xử lý quyết định',
     iqcRejectedTitle: 'Yêu cầu bỏ qua đã bị từ chối.',
     iqcRejected: 'Vui lòng tiến hành kiểm tra đầu vào.',
-    iqcRejectedNote: 'Có thể yêu cầu lại trên PDA.',
+    iqcRejectedNote: 'Có thể yêu cầu bỏ qua lại trên PDA.',
     openIqcInspection: 'Mở kiểm tra đầu vào IQC',
     oqcRejectedTitle: 'Yêu cầu bỏ qua kiểm tra xuất hàng đã bị từ chối.',
     oqcRejected: 'Vui lòng tiến hành kiểm tra xuất hàng hoặc yêu cầu bỏ qua lại.',

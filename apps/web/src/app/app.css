@@ -4670,7 +4670,7 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-/* 안내 모양(#193) — 아이콘 제목(반려 붉은 느낌표 · 완료 초록 체크), 할 일 한 줄, 정보 표시 안내. */
+/* 안내 모양(#193) — 아이콘 제목(반려 붉은 느낌표 · 완료 초록 체크), 할 일 한 줄, 단추 아래 덧붙임 안내. */
 .quality-approval-concession-nc.is-alert h3 {
   display: inline-flex;
   align-items: center;
@@ -4697,10 +4697,16 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-body-md-tracking);
 }
 
+/* 단추와 그 아래 덧붙임 안내 — 오른쪽 정렬. */
+.quality-approval-nc-action {
+  display: grid;
+  flex: none;
+  justify-items: end;
+  gap: var(--space-2);
+}
+
 .quality-approval-alert-note {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
+  text-align: end;
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);

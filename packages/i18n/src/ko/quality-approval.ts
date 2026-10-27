@@ -111,7 +111,7 @@ export const qualityApproval = {
     /** IQC 생략 반려 — 붉은 느낌표 제목 · 할 일 · 정보 표시 안내 세 줄(사용자 지시 2026-10-27). */
     iqcRejectedTitle: '생략 요청이 반려되었습니다.',
     iqcRejected: '수입검사를 진행해 주세요.',
-    iqcRejectedNote: '재요청은 PDA에서 할 수 있습니다.',
+    iqcRejectedNote: '생략 재요청은 PDA에서 가능합니다.',
     openIqcInspection: 'IQC 수입검사 열기',
     /** OQC 생략 반려 — 붉은 느낌표 제목 · 할 일 두 줄(사용자 지시 2026-10-27). */
     oqcRejectedTitle: '출하검사 생략 요청이 반려되었습니다.',
