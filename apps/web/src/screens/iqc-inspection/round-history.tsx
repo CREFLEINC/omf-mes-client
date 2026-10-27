@@ -1,6 +1,9 @@
 import { Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { useClientPage } from '../../patterns/client-page';
+import { PageNav } from '../../patterns/page-nav';
+
 import type { CodeOption } from './code-options';
 import { formatDateTime, type InspectionResultRound } from './types';
 import { withUom } from './uom-lookup';
@@ -74,6 +77,8 @@ export interface RoundHistoryProps {
 }
 
 export const RoundHistory = ({ rounds, uomCode, judgmentOptions = [] }: RoundHistoryProps) => {
+  /* 10 · 20 · 50건씩 쪽으로 나눈다(사용자 지시 2026-10-27 · #185). */
+  const paging = useClientPage(rounds);
   if (rounds.length === 0) return null;
 
   return (
@@ -84,9 +89,10 @@ export const RoundHistory = ({ rounds, uomCode, judgmentOptions = [] }: RoundHis
         caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
         density="compact"
         columns={columnsOf(uomCode, judgmentOptions)}
-        rows={rounds}
+        rows={paging.rows}
         getRowId={(row) => String(row.inspectionResultId)}
       />
+      {paging.nav !== null && <PageNav {...paging.nav} />}
     </section>
   );
 };

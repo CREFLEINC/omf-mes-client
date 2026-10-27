@@ -10,9 +10,11 @@ import { useRef, useState, type ChangeEvent } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useFitColumns } from '../../patterns/column-fit';
+import { useClientPage } from '../../patterns/client-page';
 import { useColumnOrder } from '../../patterns/column-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { PageNav } from '../../patterns/page-nav';
 import { runRequest } from '../../patterns/request';
 
 type Attachment = components['schemas']['Attachment'];
@@ -62,6 +64,8 @@ export interface AttachmentPanelProps {
   targetId: number;
   /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-27 · #185). */
   scrollX?: boolean;
+  /** 10 · 20 · 50건씩 쪽으로 나눈다(IQC 상세 탭 · 사용자 지시 2026-10-27 · #185). */
+  paged?: boolean;
 }
 
 /**
@@ -81,6 +85,7 @@ export const AttachmentPanel = ({
   targetTypeCode,
   targetId,
   scrollX = false,
+  paged = false,
 }: AttachmentPanelProps) => {
   const { client } = useApiClient();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -270,6 +275,7 @@ export const AttachmentPanel = ({
     fitContent: scrollX,
   });
   const fit = useFitColumns(resizable.columns, { scrollX });
+  const paging = useClientPage(list.data ?? []);
 
   return (
     /* 제목과 허용 형식 안내는 이 구획을 접는 줄(부르는 화면)이 맡는다(#133). */
@@ -283,7 +289,7 @@ export const AttachmentPanel = ({
             caption={t.caption}
             density="compact"
             columns={fit.columns}
-            rows={list.data ?? []}
+            rows={paged ? paging.rows : (list.data ?? [])}
             getRowId={(row) => String(row.attachmentId)}
             empty={
               list.isPending ? (
@@ -300,6 +306,7 @@ export const AttachmentPanel = ({
           />
         </div>
       )}
+      {paged && paging.nav !== null && <PageNav {...paging.nav} />}
       <SaveErrorBanner error={upload.error} />
       {upload.fieldErrors.file !== undefined && (
         <p className="field-note">{upload.fieldErrors.file}</p>

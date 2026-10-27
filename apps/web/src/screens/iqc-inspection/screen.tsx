@@ -974,6 +974,7 @@ export const IqcInspectionScreen = () => {
                           targetTypeCode="LOT"
                           targetId={detail.data.lotId}
                           scrollX={layout.orientation === 'row'}
+                          paged
                         />
                       </div>
                     ),
@@ -995,6 +996,7 @@ export const IqcInspectionScreen = () => {
                           hideSourceLot
                           layout="table"
                           scrollX={layout.orientation === 'row'}
+                          paged
                           key={`${String(selectedId)}-${String(historyRounds.length)}`}
                           inspectionRequestId={selectedId}
                           judgmentLabelOf={(code) =>

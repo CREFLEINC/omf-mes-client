@@ -3,8 +3,10 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-order';
+import { useClientPage } from '../../patterns/client-page';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav } from '../../patterns/page-nav';
 import { hasCalibrationWarning, type MeasurementRow, type SpecRange } from './measurement-rows';
 
 /**
@@ -198,6 +200,8 @@ export const MeasurementGrid = ({ rows, isLoading, scrollX = false }: Measuremen
     fitContent: scrollX,
   });
   const fit = useFitColumns(resizable.columns, { scrollX });
+  /* 10 · 20 · 50건씩 쪽으로 나눈다(사용자 지시 2026-10-27 · #185). */
+  const paging = useClientPage(rows);
 
   return (
     <section className="iqc-inspection-section" aria-label={t.heading}>
@@ -225,7 +229,7 @@ export const MeasurementGrid = ({ rows, isLoading, scrollX = false }: Measuremen
           caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
           density="compact"
           columns={fit.columns}
-          rows={rows}
+          rows={paging.rows}
           getRowId={(row) => row.key}
           empty={
             isLoading ? (
@@ -242,6 +246,7 @@ export const MeasurementGrid = ({ rows, isLoading, scrollX = false }: Measuremen
           }
         />
       </div>
+      {paging.nav !== null && <PageNav {...paging.nav} />}
     </section>
   );
 };

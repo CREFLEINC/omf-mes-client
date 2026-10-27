@@ -5,8 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useFitColumns } from '../../patterns/column-fit';
+import { useClientPage } from '../../patterns/client-page';
 import { useColumnOrder } from '../../patterns/column-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav } from '../../patterns/page-nav';
 import { runRequest } from '../../patterns/request';
 
 const t = messages.inspectionHistory;
@@ -81,6 +83,8 @@ export interface InspectionHistoryPanelProps {
   layout?: 'list' | 'table';
   /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-27 · #185). */
   scrollX?: boolean;
+  /** 10 · 20 · 50건씩 쪽으로 나눈다(IQC 상세 탭 · 사용자 지시 2026-10-27 · #185). */
+  paged?: boolean;
 }
 
 const JUDGMENT_TONE: Record<string, 'success' | 'error' | 'warning'> = {
@@ -106,10 +110,12 @@ const HistoryTable = ({
   events,
   judgmentLabelOf,
   scrollX,
+  paged,
 }: {
   events: readonly InspectionHistoryEvent[];
   judgmentLabelOf: (code: string) => string;
   scrollX: boolean;
+  paged: boolean;
 }) => {
   const columns: Column<InspectionHistoryEvent & { key: string }>[] = [
     {
@@ -166,28 +172,33 @@ const HistoryTable = ({
     fitContent: scrollX,
   });
   const fit = useFitColumns(resizable.columns, { scrollX });
+  const keyed = events.map((event, index) => ({
+    ...event,
+    key: `${event.eventTypeCode}-${event.occurredAt}-${String(index)}`,
+  }));
+  const paging = useClientPage(keyed);
 
   return (
-    <div ref={fit.ref} className="inspection-queue-table" style={resizable.style}>
-      <Table
-        caption={<span className="iqc-inspection-table-caption">{t.heading}</span>}
-        density="compact"
-        columns={fit.columns}
-        rows={events.map((event, index) => ({
-          ...event,
-          key: `${event.eventTypeCode}-${event.occurredAt}-${String(index)}`,
-        }))}
-        getRowId={(row) => row.key}
-        empty={
-          <EmptyState
-            size="sm"
-            icon={<Icon name="history_toggle_off" size={32} />}
-            title={t.emptyTitle}
-            description={t.emptyHint}
-          />
-        }
-      />
-    </div>
+    <>
+      <div ref={fit.ref} className="inspection-queue-table" style={resizable.style}>
+        <Table
+          caption={<span className="iqc-inspection-table-caption">{t.heading}</span>}
+          density="compact"
+          columns={fit.columns}
+          rows={paged ? paging.rows : keyed}
+          getRowId={(row) => row.key}
+          empty={
+            <EmptyState
+              size="sm"
+              icon={<Icon name="history_toggle_off" size={32} />}
+              title={t.emptyTitle}
+              description={t.emptyHint}
+            />
+          }
+        />
+      </div>
+      {paged && paging.nav !== null && <PageNav {...paging.nav} />}
+    </>
   );
 };
 
@@ -204,6 +215,7 @@ export const InspectionHistoryPanel = ({
   hideSourceLot = false,
   layout = 'list',
   scrollX = false,
+  paged = false,
 }: InspectionHistoryPanelProps) => {
   const detailOf = (event: InspectionHistoryEvent): string[] => detailLines(event, judgmentLabelOf);
   const history = useInspectionHistory(inspectionRequestId, revision);
@@ -258,6 +270,7 @@ export const InspectionHistoryPanel = ({
               events={history.data.events}
               judgmentLabelOf={judgmentLabelOf ?? ((code) => code)}
               scrollX={scrollX}
+              paged={paged}
             />
           ) : (
             <ol className="inspection-history-events">
