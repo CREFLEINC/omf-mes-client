@@ -84,7 +84,7 @@ export const lotTrace = {
   },
   export: {
     action: '엑셀 내보내기',
-    noRows: '내보낼 줄이 없습니다',
+    noRows: '조회 결과가 없어 내보낼 수 없습니다',
     progress: (total: number, received: number): string =>
       `${total.toLocaleString('ko-KR')}건 중 ${received.toLocaleString('ko-KR')}건 받는 중`,
     cancel: '취소',

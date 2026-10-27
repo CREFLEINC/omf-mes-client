@@ -89,7 +89,7 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
   },
   export: {
     action: 'Xuất Excel',
-    noRows: 'Không có dòng nào để xuất',
+    noRows: 'Không có kết quả tra cứu nên không thể xuất',
     progress: (total: number, received: number): string =>
       `Đang nhận ${num(received)} / ${num(total)} dòng`,
     cancel: 'Hủy',

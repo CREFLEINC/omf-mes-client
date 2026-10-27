@@ -279,7 +279,7 @@ describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
     expect(screen.getByText(/좁힌 조건: 기간 2026-10-20 ~ 2026-10-26/)).toBeInTheDocument();
     const exportButton = screen.getByRole('button', { name: '엑셀 내보내기' });
     expect(exportButton).toBeDisabled();
-    expect(exportButton).toHaveAccessibleDescription('내보낼 줄이 없습니다');
+    expect(exportButton).toHaveAccessibleDescription('조회 결과가 없어 내보낼 수 없습니다');
   });
 
   it('조회에 실패하면 [다시 조회]를 보인다', async () => {
