@@ -13,7 +13,7 @@ import {
   WorkOrderCloseCandidateScreen,
 } from './candidate-screen';
 import { erpResultMenuPath } from './close-confirm-dialog';
-import { toWorkOrderCloseDetailFact } from './queries';
+import { toWorkOrderCloseDetailFact, workOrderCloseKeys } from './queries';
 
 const t = messages.workOrderClose;
 const paths = {
@@ -48,10 +48,54 @@ const reasonQueryKey = ['work-order-close', 'lookups', 'code-values', reasonGrou
 const outboundQueryKey = ['work-order-close', 'outbound-item-settings'] as const;
 const emptyDraft = { remainderDisposition: null, varianceReasonCode: '', remarks: '' };
 const page = (total = 1, current = 1) => ({ page: current, size: 20, total });
-const statusBody = (total = 1) => ({
-  items: [{ code: 'IN_PROGRESS', codeName: '진행', displayOrder: 1, isActive: true }],
-  page: { page: 1, size: 200, total },
+const statusBody = (total = 1, withClosed = false) => ({
+  items: [
+    { code: 'IN_PROGRESS', codeName: '진행', displayOrder: 1, isActive: true },
+    ...(withClosed ? [{ code: 'CLOSED', codeName: '마감', displayOrder: 2, isActive: true }] : []),
+  ],
+  page: { page: 1, size: 200, total: withClosed ? 2 : total },
 });
+const dailyBody = {
+  uomId: 920001,
+  uomCode: 'SYN-EA',
+  orderQty: 99,
+  items: [
+    {
+      workDate: '2026-10-20',
+      goodQty: 7,
+      defectQty: 1,
+      holdQty: 0,
+      scrapQty: 0,
+      reworkQty: 0,
+      resultCount: 2,
+      correctedCount: 0,
+      firstAt: '2026-10-20T08:00:00+07:00',
+      lastAt: '2026-10-20T09:00:00+07:00',
+      byShift: [
+        {
+          shiftId: 1,
+          shiftName: 'Synthetic shift',
+          goodQty: 7,
+          defectQty: 1,
+          holdQty: 0,
+          scrapQty: 0,
+          reworkQty: 0,
+          resultCount: 2,
+          correctedCount: 0,
+        },
+      ],
+    },
+  ],
+  totals: {
+    goodQty: 7,
+    defectQty: 1,
+    holdQty: 0,
+    scrapQty: 0,
+    reworkQty: 0,
+    resultCount: 2,
+    correctedCount: 0,
+  },
+};
 const orderBody = (total = 1) => ({
   items: [{ productionOrderId: 501, productionOrderNo: 'SYN-PO-501' }],
   page: { page: 1, size: 200, total },
@@ -202,6 +246,8 @@ const makeApi = (
   let outboundMode: OutboundMode = 'ready';
   let releaseOutbound: (() => void) | undefined;
   let closeMode: CloseMode = 'success';
+  let dailyMode: 'ready' | '403' = 'ready';
+  let withClosed = false;
   let releaseClose: (() => void) | undefined;
   const closeRequests: CloseRecord[] = [];
   const gate = (response: Response, assign: (release: () => void) => void) =>
@@ -223,7 +269,11 @@ const makeApi = (
     if (url.pathname === paths.status) {
       const group = url.searchParams.get('codeGroupCode');
       if (group === 'WORK_ORDER_STATUS')
-        return lookup(statusMode, statusBody(), (release) => (releaseStatus = release));
+        return lookup(
+          statusMode,
+          statusBody(1, withClosed),
+          (release) => (releaseStatus = release),
+        );
       if (group === reasonGroup)
         return lookup(
           reasonMode === 'empty' || reasonMode === 'changed' ? 'ready' : reasonMode,
@@ -273,21 +323,9 @@ const makeApi = (
       return jsonResponse(detailBody(701, 'NORMAL'));
     }
     if (url.pathname.endsWith('/daily-results'))
-      return jsonResponse({
-        uomId: 1,
-        uomCode: 'EA',
-        orderQty: 100,
-        items: [],
-        totals: {
-          goodQty: 0,
-          defectQty: 0,
-          holdQty: 0,
-          scrapQty: 0,
-          reworkQty: 0,
-          resultCount: 0,
-          correctedCount: 0,
-        },
-      });
+      return dailyMode === '403' ? errorResponse(403) : jsonResponse(dailyBody);
+    if (url.pathname === '/production/production-results' || url.pathname === '/mdm/workers')
+      return jsonResponse({ items: [], page: page(0) });
     if (url.pathname.startsWith(`${paths.candidates}/`)) {
       const workOrderId = Number(url.pathname.split('/').at(-1));
       if (detailMode.startsWith('pending'))
@@ -352,11 +390,15 @@ const makeApi = (
     setReasonMode: (mode: ReasonMode) => (reasonMode = mode),
     setOutboundMode: (mode: OutboundMode) => (outboundMode = mode),
     setCloseMode: (mode: CloseMode) => (closeMode = mode),
+    setDailyMode: (mode: typeof dailyMode) => (dailyMode = mode),
+    setWithClosed: (value: boolean) => (withClosed = value),
   };
 };
 const candidateUrls = (urls: URL[]) => urls.filter((url) => url.pathname === paths.candidates);
 const detailUrls = (urls: URL[]) =>
   urls.filter((url) => /^\/production\/work-orders\/\d+$/.test(url.pathname));
+const dailyUrls = (urls: URL[]) =>
+  urls.filter((url) => url.pathname === '/production/work-orders/701/daily-results');
 const readCounts = (urls: URL[]) => [candidateUrls(urls).length, detailUrls(urls).length];
 const sessionUrls = (urls: URL[]) => urls.filter((url) => url.pathname === paths.sessions);
 const reasonUrls = (urls: URL[]) =>
@@ -640,6 +682,55 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(screen.getByText(t.detailSummary.selection.title)).toBeVisible();
     await waitFor(() => expect(readCounts(api.urls)).toEqual(before.map((value) => value + 1)));
   });
+  it('마감 대상 W/O 를 고르면 마감 입력 상태 뒤에 일자별 실적 표가 서고, 단위는 요약 구획과 같다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setJudgment('NORMAL');
+    renderWithProviders(<View />, { fetch: api.fetch });
+    expect(screen.queryByRole('region', { name: t.dailyResults.pane })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+    const daily = await screen.findByRole('region', { name: t.dailyResults.pane });
+    expect(await within(daily).findByText('2026-10-20')).toBeVisible();
+    expect(
+      within(daily).getByText(t.dailyResults.values.unit).nextElementSibling,
+    ).toHaveTextContent('SYN-EA · Synthetic Each');
+    const status = await screen.findByRole('region', { name: t.status.pane });
+    expect(status.compareDocumentPosition(daily) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('일자별 실적이 403 이면 권한 안내만 보이고 다시 시도를 두지 않는다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setDailyMode('403');
+    renderWithProviders(<View />, { fetch: api.fetch });
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+    const daily = await screen.findByRole('region', { name: t.dailyResults.pane });
+    expect(await within(daily).findByText(messages.httpError.forbidden)).toBeVisible();
+    expect(within(daily).queryByRole('button', { name: messages.common.retry })).toBeNull();
+  });
+
+  it('마감된 W/O 에서도 일자별 실적 표가 서고, 정정 저장이 생산실적을 무효화하면 다시 읽는다', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setWithClosed(true);
+    const { queryClient } = renderWithProviders(<View />, { fetch: api.fetch });
+    await screen.findByRole('button', { name: 'SYN-WO-701 선택' });
+    await user.click(screen.getByRole('combobox', { name: t.filter.status }));
+    await user.click(await screen.findByRole('option', { name: '마감' }));
+    await user.click(screen.getByRole('button', { name: t.filter.search }));
+    await waitFor(() =>
+      expect(candidateUrls(api.urls).at(-1)?.searchParams.get('statusCode')).toBe('CLOSED'),
+    );
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+    const daily = await screen.findByRole('region', { name: t.dailyResults.pane });
+    expect(await within(daily).findByText('2026-10-20')).toBeVisible();
+    expect(screen.queryByRole('region', { name: t.detailSummary.pane })).not.toBeInTheDocument();
+    const before = dailyUrls(api.urls).length;
+    /* 정정 저장이 무효화하는 키(result-correction-mutations)와 같다. */
+    await queryClient.invalidateQueries({ queryKey: workOrderCloseKeys.results(701) });
+    await waitFor(() => expect(dailyUrls(api.urls).length).toBe(before + 1));
+  });
+
   it('renders a successful empty outbound setting list only after W/O selection', async () => {
     const user = userEvent.setup();
     const api = makeApi();

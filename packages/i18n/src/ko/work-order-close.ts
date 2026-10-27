@@ -258,21 +258,30 @@ export const workOrderClose = {
   dailyResults: {
     pane: '일자별 실적',
     loading: '일자별 실적을 불러오는 중입니다.',
-    unit: (uomCode: string): string => `단위 ${uomCode}`,
+    lead: '이 W/O 실적을 작업일과 교대별로 모았습니다. 작업일은 교대가 시작한 공장 날짜(야간은 전날)이고, 수량은 정정을 반영한 값입니다.',
+    loadFailedTitle: '일자별 실적을 불러오지 못했습니다',
+    loadFailed: '마감 입력은 그대로 쓸 수 있습니다. 다시 시도를 누르세요.',
+    refetchFailed:
+      '일자별 실적을 새로 불러오지 못해 이전에 불러온 표를 보이고 있습니다. 다시 시도를 누르세요.',
+    workDateHint: '교대가 시작한 날 기준입니다. 자정을 넘긴 교대의 새벽 실적은 전날로 묶입니다.',
+    workDateHintLabel: '작업일 기준 안내',
     fields: {
       workDate: '작업일',
+      shift: '교대',
       goodQty: '양품',
       defectQty: '불량',
       holdQty: '보류',
       scrapQty: '스크랩',
       reworkQty: '재작업',
       resultCount: '실적 건수',
-      corrected: '정정 반영',
+      corrected: '정정',
     },
     values: {
       total: '합계',
       orderQty: '지시 수량',
-      corrected: (count: number): string => `${String(count)}건`,
+      unit: '단위',
+      shiftCount: (count: number): string => `교대 ${String(count)}개`,
+      corrected: (count: number): string => `정정된 실적 ${String(count)}건`,
     },
     actions: {
       expand: (workDate: string): string => `${workDate} 교대별 펼치기`,

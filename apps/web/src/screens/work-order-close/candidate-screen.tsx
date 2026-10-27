@@ -53,6 +53,7 @@ import {
 } from './detail-summary-pane';
 import { WorkOrderCloseOutboundItemsPane } from './outbound-items-pane';
 import { WorkOrderCloseDailyResultsPane } from './daily-results-pane';
+import { toApiError } from '../../patterns/request';
 import { WorkOrderCloseResultPane } from './close-result-pane';
 import { SessionForceEndDialog } from './session-force-end-dialog';
 import { WorkOrderResultCorrectionWorkspace } from './result-correction-workspace';
@@ -70,6 +71,12 @@ import {
   type WorkOrderCloseOpenSessionView,
   type WorkOrderCloseOutboundItemSetting,
 } from './queries';
+
+const dailyLoadCause = (error: unknown): 'forbidden' | 'offline' | 'other' => {
+  const apiError = toApiError(error);
+  if (apiError.kind === 'network') return 'offline';
+  return apiError.kind === 'http' && apiError.status === 403 ? 'forbidden' : 'other';
+};
 
 const productionOrderReason = (
   query: ReturnType<typeof useWorkOrderCloseProductionOrders>,
@@ -512,16 +519,32 @@ export const WorkOrderCloseCandidateScreen = () => {
     openLots: openLots.isError ? 'UNKNOWN' : openLots.isPending ? 'CHECKING' : openLots.data,
   });
   /* 일자별 실적 — 마감 판단과 무관한 읽기 구획이라 고른 W/O 마다 따로 둔다(펼침 상태도 함께 초기화). */
+  const dailyUom =
+    dailyResults.data === undefined
+      ? null
+      : resolveWorkOrderCloseUomReference(uoms, dailyResults.data.uomId);
+  const dailyRetry = (): void => void dailyResults.refetch();
   const dailyResultsPane =
     state.selectedWorkOrderId === null ? null : (
       <WorkOrderCloseDailyResultsPane
-        key={state.selectedWorkOrderId}
+        /* 마감 실행 부품도 W/O 번호를 키로 쓴다 — 같은 부모 안에서 키가 겹치지 않게 앞말을 붙인다. */
+        key={`daily-${String(state.selectedWorkOrderId)}`}
+        unitLabel={dailyUom?.kind === 'named' ? dailyUom.label : null}
         state={
-          dailyResults.isPending
-            ? { kind: 'CHECKING' }
+          dailyResults.data !== undefined
+            ? {
+                kind: 'RESOLVED',
+                data: dailyResults.data,
+                refetchFailed: dailyResults.isError,
+                onRetry: dailyRetry,
+              }
             : dailyResults.isError
-              ? { kind: 'UNAVAILABLE', onRetry: () => void dailyResults.refetch() }
-              : { kind: 'RESOLVED', data: dailyResults.data }
+              ? {
+                  kind: 'UNAVAILABLE',
+                  cause: dailyLoadCause(dailyResults.error),
+                  onRetry: dailyRetry,
+                }
+              : { kind: 'CHECKING' }
         }
       />
     );
@@ -595,7 +618,6 @@ export const WorkOrderCloseCandidateScreen = () => {
         ) : (
           <div className="work-order-close-detail">
             <WorkOrderCloseDetailSummaryPane state={detailPaneState} />
-            {dailyResultsPane}
             {judgment === null ? null : (
               <WorkOrderCloseInputPane
                 completionJudgment={judgment}
@@ -622,6 +644,7 @@ export const WorkOrderCloseCandidateScreen = () => {
                 onForceEnd={setForceEndTarget}
               />
             )}
+            {dailyResultsPane}
             {outboundState.kind === 'HIDDEN' ? null : (
               <WorkOrderCloseOutboundItemsPane
                 settings={readyOutboundSettings}

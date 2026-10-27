@@ -2120,7 +2120,7 @@ main > * + * {
   margin: 0;
 }
 
-/* 일자별 실적 — 제목 왼쪽, 수량 단위는 제목 줄 오른쪽에 한 번. 교대 줄은 날짜 줄 아래 한 단 낮은 면이다. */
+/* 일자별 실적 — 제목 왼쪽, 지시 수량과 단위는 제목 줄 오른쪽에 한 번. 교대 줄은 날짜 줄 아래 한 단 낮은 면이다. */
 .work-order-close-daily-head {
   display: flex;
   align-items: baseline;
@@ -2128,10 +2128,27 @@ main > * + * {
   gap: var(--space-4);
 }
 
-.work-order-close-daily-unit {
+.work-order-close-daily-facts {
+  display: flex;
+  gap: var(--space-4);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.work-order-close-daily-facts > div {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.work-order-close-daily-facts dt {
   color: var(--on-surface-variant);
   font: var(--type-label-sm);
-  white-space: nowrap;
+}
+
+.work-order-close-daily-facts dd {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-sm);
 }
 
 .work-order-close-daily-table {
@@ -2140,8 +2157,48 @@ main > * + * {
   overflow-x: auto;
 }
 
-.work-order-close-daily-table tbody td {
+.work-order-close-daily-table th,
+.work-order-close-daily-table td {
   white-space: nowrap;
+}
+
+.work-order-close-daily-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* 펼침 손잡이 — 24px 정사각. 손잡이가 없는 줄은 같은 폭의 빈 자리로 날짜를 맞춘다. */
+.work-order-close-daily-toggle,
+.work-order-close-daily-spacer {
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+
+.work-order-close-daily-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+.work-order-close-daily-toggle:hover {
+  background: var(--surface-container-high);
+}
+
+.work-order-close-daily-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.work-order-close-daily-toggle[aria-expanded='false'] > * {
+  transform: rotate(-90deg);
 }
 
 .work-order-close-daily-table tbody tr:has([data-shift-row]) > td {

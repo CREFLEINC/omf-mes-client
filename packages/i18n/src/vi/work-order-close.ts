@@ -265,9 +265,17 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
   dailyResults: {
     pane: 'Kết quả theo ngày',
     loading: 'Đang tải kết quả theo ngày.',
-    unit: (uomCode: string) => `Đơn vị ${uomCode}`,
+    lead: 'Kết quả của W/O này được gom theo ngày làm việc và ca. Ngày làm việc là ngày nhà máy khi ca bắt đầu (ca đêm tính vào ngày trước), số lượng đã phản ánh các lần sửa.',
+    loadFailedTitle: 'Không tải được kết quả theo ngày',
+    loadFailed: 'Vẫn có thể dùng phần nhập đóng lệnh. Hãy bấm thử lại.',
+    refetchFailed:
+      'Không tải lại được kết quả theo ngày nên đang hiển thị bảng đã tải trước đó. Hãy bấm thử lại.',
+    workDateHint:
+      'Tính theo ngày bắt đầu ca. Kết quả rạng sáng của ca qua nửa đêm được tính vào ngày hôm trước.',
+    workDateHintLabel: 'Giải thích ngày làm việc',
     fields: {
       workDate: 'Ngày làm việc',
+      shift: 'Ca',
       goodQty: 'Đạt',
       defectQty: 'Lỗi',
       holdQty: 'Tạm giữ',
@@ -279,7 +287,9 @@ export const workOrderClose: Translated<typeof ko.workOrderClose> = {
     values: {
       total: 'Tổng',
       orderQty: 'Số lượng lệnh',
-      corrected: (count: number) => `${String(count)} lần`,
+      unit: 'Đơn vị',
+      shiftCount: (count: number) => `${String(count)} ca`,
+      corrected: (count: number) => `${String(count)} bản ghi đã sửa`,
     },
     actions: {
       expand: (workDate: string) => `Mở theo ca ngày ${workDate}`,
