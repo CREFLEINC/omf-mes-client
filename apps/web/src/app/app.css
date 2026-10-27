@@ -21781,26 +21781,40 @@ table.col-measuring td {
 }
 
 /*
- * 상하 배치(#185 · 사용자 지시 2026-10-27) — 최종 판정이 검사 수량 세 칸 오른쪽에 같은 줄로 선다.
+ * 상하 배치(#185 · 사용자 지시 2026-10-27) — 한 줄을 반으로: 왼쪽 검사 수량 입력(입력 완료 · 총 검사 수량 포함),
+ * 오른쪽 「판정」(최종 판정), 가운데 얇은 세로 구분선. 각 절반이 제 폭으로 배치를 고른다(좁으면 입력 현황이 아래 줄).
  * 아래 「판정 상세 입력」은 불량 대분류 · 불량 상세 · 추정 원인 · 불합격 사유 한 줄, 판정 변경 사유는 그 위 한 줄이다.
  */
-.iqc-inspection-qty-judgment .iqc-inspection-judgment-field {
-  width: 8rem;
+.iqc-inspection-qty-only {
+  display: contents;
+}
+
+.iqc-inspection-qty-judgment-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.iqc-inspection-qty-judgment-row > .iqc-inspection-section {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.iqc-inspection-qty-judgment-row > .iqc-inspection-section:first-child {
+  padding-right: var(--space-5);
+}
+
+.iqc-inspection-qty-judgment-row > .iqc-inspection-inline-judgment {
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--outline-variant);
+}
+
+/* 오른쪽 절반은 넉넉하다 — 안내 글(「최종 판정을 선택하세요」)이 잘리지 않는 폭. */
+.iqc-inspection-inline-judgment .iqc-inspection-judgment-field {
+  width: 14rem;
 }
 
 @container (min-width: 48rem) {
-  .iqc-inspection-qty-body:has(> .iqc-inspection-qty-judgment) {
-    grid-template-columns: auto auto minmax(14rem, 1fr);
-  }
-
-  .iqc-inspection-qty-body > .iqc-inspection-qty-judgment {
-    grid-column: 2;
-  }
-
-  .iqc-inspection-qty-body:has(> .iqc-inspection-qty-judgment) > .iqc-inspection-progress {
-    grid-column: 3;
-  }
-
   .iqc-inspection-judgment-section[data-inline]
     .iqc-inspection-collapsible-body:nth-child(n):nth-child(n):nth-child(n) {
     grid-template-columns: repeat(3, minmax(9rem, 14rem)) minmax(12rem, 1fr);
