@@ -98,7 +98,8 @@ export const RequestList = ({
     {
       key: 'myTurn',
       header: t.fields.myTurn,
-      width: '96px',
+      /* 「내 결재 차례」 배지가 한 줄로 들어가는 폭(#193). */
+      width: '120px',
       align: 'center',
       render: (row) =>
         row.isMyTurn ? (
