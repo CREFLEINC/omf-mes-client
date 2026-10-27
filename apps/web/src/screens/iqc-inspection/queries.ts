@@ -619,6 +619,8 @@ export const useDraftRejectionRecords = (inspectionResultId: number | null) => {
 export interface RejectedLotFollowUp {
   isDefective: boolean;
   nonconformanceId: number | null;
+  /** LOT 이 검사 대기인가 — 서버가 IQC 재검사 회차를 검사 대기 LOT 에만 받는다(`assertIqcReinspectable` · #185). */
+  isInspectionPending: boolean;
 }
 
 /**
@@ -639,7 +641,11 @@ export const useRejectedLotFollowUp = (lotId: number | null, enabled: boolean) =
         client.GET('/trace/lots/{lotId}', { params: { path: { lotId: id } } }),
       );
       if (lot.lot.statusCode !== DEFECTIVE_LOT_STATUS)
-        return { isDefective: false, nonconformanceId: null };
+        return {
+          isDefective: false,
+          nonconformanceId: null,
+          isInspectionPending: lot.lot.statusCode === INSPECTION_PENDING_LOT_STATUS,
+        };
       const open = await runRequest(() =>
         client.GET('/quality/nonconformances', {
           /*
@@ -658,12 +664,17 @@ export const useRejectedLotFollowUp = (lotId: number | null, enabled: boolean) =
           },
         }),
       );
-      return { isDefective: true, nonconformanceId: open.items[0]?.nonconformanceId ?? null };
+      return {
+        isDefective: true,
+        nonconformanceId: open.items[0]?.nonconformanceId ?? null,
+        isInspectionPending: false,
+      };
     },
   });
 };
 
 /** 시드 `LOT_STATUS` 의 불량 · 부적합의 처분 대기 상태. */
 const DEFECTIVE_LOT_STATUS = 'DEFECTIVE';
+const INSPECTION_PENDING_LOT_STATUS = 'INSPECTION_PENDING';
 const PENDING_DECISION = 'PENDING_DECISION';
 const OPENED_FROM_ANY = '2000-01-01T00:00:00.000Z';

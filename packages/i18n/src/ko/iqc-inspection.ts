@@ -244,11 +244,11 @@ export const iqcInspection = {
         '처분을 기다리는 부적합을 찾지 못했습니다. 처분 판정 목록에서 이 LOT 을 찾아 주세요.',
     },
     rejection: {
-      heading: '불합격 사유',
+      heading: '불합격 내용',
       major: '불량 대분류',
       minor: '불량 상세',
-      description: '사유',
-      descriptionPlaceholder: '사유를 입력하세요',
+      description: '불합격 사유',
+      descriptionPlaceholder: '불합격 사유를 입력하세요',
       required: '불합격이면 불량 코드를 골라야 확정할 수 있습니다.',
       minorRequired: '이 대분류에는 상세 코드가 있습니다. 상세 코드를 고르세요.',
       noCodes: '등록된 불량 코드가 없습니다. 기준정보 > 불량·원인 코드에서 먼저 등록하세요.',
@@ -318,6 +318,7 @@ export const iqcInspection = {
      */
     reinspect: '재검사 회차 추가',
     reinspectCancel: '재검사 그만두기',
+    reinspectLotNotPending: 'LOT 이 검사 대기 상태가 아니라 재검사할 수 없습니다.',
     /** 아직 만들어지지 않은 회차다 — 번호를 화면이 세지 않으므로 번호 없이 말한다. */
     reinspectRound: '새 회차 (재검사)',
     /**

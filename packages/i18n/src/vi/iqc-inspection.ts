@@ -141,11 +141,11 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
         'Không tìm thấy sự không phù hợp đang chờ xử lý. Hãy tìm LOT này trong danh sách phán định xử lý.',
     },
     rejection: {
-      heading: 'Lý do không đạt',
+      heading: 'Nội dung không đạt',
       major: 'Nhóm lỗi',
       minor: 'Mã lỗi chi tiết',
-      description: 'Lý do',
-      descriptionPlaceholder: 'Nhập lý do',
+      description: 'Lý do không đạt',
+      descriptionPlaceholder: 'Nhập lý do không đạt',
       required: 'Nếu không đạt, phải chọn mã lỗi mới xác nhận được.',
       minorRequired: 'Nhóm lỗi này có mã chi tiết. Hãy chọn mã chi tiết.',
       noCodes: 'Chưa có mã lỗi nào. Hãy đăng ký trước tại Thông tin cơ sở > Mã lỗi·nguyên nhân.',
@@ -184,6 +184,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
     reinspect: 'Thêm lượt kiểm tra lại',
     reinspectCancel: 'Thôi kiểm tra lại',
+    reinspectLotNotPending: 'LOT không ở trạng thái chờ kiểm tra nên không thể kiểm tra lại.',
     reinspectRound: 'Lượt mới (kiểm tra lại)',
     reinspectNote:
       'Nhập số lượng rồi lưu tạm thì một lượt mới được tạo. Lượt trước vẫn giữ nguyên.',

@@ -1527,6 +1527,14 @@ describe('IqcInspectionScreen — 불량 LOT 다음 처리', () => {
     expect(await screen.findByRole('button', { name: t.result.reinspect })).toBeInTheDocument();
     expect(screen.queryByText(t.result.followUp.title)).not.toBeInTheDocument();
   });
+  it('LOT 이 검사 대기가 아니면(합격 처리로 정상) 재검사 단추 대신 까닭 한 줄이 선다(#185)', async () => {
+    lotStatusForTest = 'NORMAL';
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedConfirmed]);
+
+    expect(await screen.findByText(t.result.reinspectLotNotPending)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.result.reinspect })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.result.followUp.title)).not.toBeInTheDocument();
+  });
 });
 
 describe('IqcInspectionScreen — 재검사 저장 뒤', () => {

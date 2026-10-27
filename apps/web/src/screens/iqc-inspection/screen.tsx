@@ -260,10 +260,13 @@ export const IqcInspectionScreen = () => {
   /* 추정 원인(omf-all-around#130) — 선택 입력. 불합격일 때만 부른다. */
   const causeCodes = useCauseCodes(isRejected);
   const resolvedDefect = resolveDefectCode(defectCodes.data ?? [], rejection);
-  /* 확정된 불합격 회차면 LOT 이 불량인지 보고 처분·반품으로 잇는다(omf-all-around#106 후속 (나)). */
+  /*
+   * 확정된 불합격 회차면 LOT 이 불량인지 보고 처분·반품으로 잇는다(omf-all-around#106 후속 (나)).
+   * 확정된 회차는 판정과 관계없이 LOT 상태를 읽는다 — 검사 대기가 아니면 재검사 단추를 세우지 않는다(#185).
+   */
   const followUp = useRejectedLotFollowUp(
     detail.data?.lotId ?? null,
-    round?.statusCode === 'CONFIRMED' && round.overallJudgmentCode === REJECTED_JUDGMENT,
+    round?.statusCode === 'CONFIRMED',
   );
 
   /**
@@ -854,6 +857,9 @@ export const IqcInspectionScreen = () => {
                 : fourMBlocked
                   ? t.result.fourMChange.blocked
                   : null
+          }
+          reinspectBlockedReason={
+            followUp.data?.isInspectionPending === false ? t.result.reinspectLotNotPending : null
           }
           isJustConfirmed={isJustConfirmed}
           isReinspecting={isReinspectingNow}

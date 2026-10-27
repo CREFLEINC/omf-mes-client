@@ -120,6 +120,8 @@ export interface ResultFormPaneProps {
    * 없어 처분·반품으로 잇는다. 없으면 종전대로 「재검사」 단추다.
    */
   reinspectReplacement?: ReactNode;
+  /** 확정된 회차를 다시 검사할 수 없는 까닭(LOT 이 검사 대기가 아님 · #185). 있으면 재검사 단추 대신 이 글줄이 선다. */
+  reinspectBlockedReason?: string | null;
   /** 확정만 막는 사유(저장은 막지 않는다) — 불합격인데 불량 코드를 고르지 않았을 때다. */
   confirmOnlyBlockedReason?: string | null;
 }
@@ -162,6 +164,7 @@ export const ResultFormPane = ({
   judgmentBelow = null,
   confirmOnlyBlockedReason = null,
   reinspectReplacement = null,
+  reinspectBlockedReason = null,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const partialNoteId = useId();
@@ -432,6 +435,15 @@ export const ResultFormPane = ({
       <div className="iqc-inspection-action-area">
         {isConfirmed && reinspectReplacement !== null ? (
           reinspectReplacement
+        ) : isConfirmed && reinspectBlockedReason !== null ? (
+          <div className="iqc-inspection-action-row">
+            <div className="iqc-inspection-action-notes">
+              <p className="iqc-inspection-action-note" data-tone="info">
+                <Icon name="info" size={14} aria-hidden />
+                {reinspectBlockedReason}
+              </p>
+            </div>
+          </div>
         ) : isConfirmed ? (
           <div className="iqc-inspection-action-row">
             <div className="iqc-inspection-action-buttons">
