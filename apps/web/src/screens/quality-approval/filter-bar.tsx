@@ -1,75 +1,28 @@
-import { Button, Checkbox, DatePicker, SearchInput, Select } from '@crefle/web-ui';
+import { Button, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import type { CodeOption } from './code-options';
 import { EMPTY_FILTERS, type RequestFilters } from './filters';
-
-interface CodeFieldProps {
-  label: string;
-  options: CodeOption[];
-  value: string;
-  onChange: (value: string) => void;
-}
-
-const CodeField = ({ label, options, value, onChange }: CodeFieldProps) => {
-  const id = useId();
-  const noteId = `${id}-note`;
-  const choices =
-    options.length === 0 ? [] : [{ value: '', label: messages.qualityApproval.all }, ...options];
-
-  return (
-    <div className="field-cell">
-      <label className="field-label" htmlFor={id}>
-        {label}
-      </label>
-      <Select
-        id={id}
-        options={choices}
-        value={value === '' && choices.length === 0 ? null : value}
-        placeholder={
-          options.length === 0
-            ? messages.qualityApproval.codePlaceholder
-            : messages.qualityApproval.all
-        }
-        aria-describedby={options.length === 0 ? noteId : undefined}
-        onChange={onChange}
-      />
-      {options.length === 0 && (
-        <span id={noteId} className="field-note">
-          {messages.qualityApproval.codePending}
-        </span>
-      )}
-    </div>
-  );
-};
 
 export interface FilterBarProps {
   applied: RequestFilters;
-  typeOptions: CodeOption[];
-  statusOptions: CodeOption[];
-  pendingOnly: boolean;
   onApply: (filters: RequestFilters) => void;
-  onTogglePendingOnly: (value: boolean) => void;
   onReset: () => void;
 }
 
-export const FilterBar = ({
-  applied,
-  typeOptions,
-  statusOptions,
-  pendingOnly,
-  onApply,
-  onTogglePendingOnly,
-  onReset,
-}: FilterBarProps) => {
-  const periodId = useId();
+export const FilterBar = ({ applied, onApply, onReset }: FilterBarProps) => {
+  const t = messages.qualityApproval;
+  const fromId = useId();
+  const toId = useId();
   const [draft, setDraft] = useState<RequestFilters>(applied);
-  const { approvalTypeCode, statusCode, from, to, q } = applied;
+  const { approvalTypeCode, from, to, q } = applied;
+  /* 상태는 탭 줄 칩이 바꾼다 — 칩을 눌러도 치던 날짜·검색어가 지워지지 않게 되돌림에서 뺀다(#186 리뷰). */
+  const apply = (next: RequestFilters): void =>
+    onApply({ ...next, statusCode: applied.statusCode });
 
   useEffect(() => {
-    setDraft({ approvalTypeCode, statusCode, from, to, q });
-  }, [approvalTypeCode, statusCode, from, to, q]);
+    setDraft((current) => ({ ...current, approvalTypeCode, from, to, q }));
+  }, [approvalTypeCode, from, to, q]);
 
   const reset = (): void => {
     setDraft(EMPTY_FILTERS);
@@ -78,48 +31,51 @@ export const FilterBar = ({
 
   return (
     <div className="filter-bar quality-approval-filter">
-      <CodeField
-        label={messages.qualityApproval.fields.approvalTypeCode}
-        options={typeOptions}
-        value={draft.approvalTypeCode}
-        onChange={(value) => setDraft((current) => ({ ...current, approvalTypeCode: value }))}
-      />
-      <CodeField
-        label={messages.qualityApproval.fields.statusCode}
-        options={statusOptions}
-        value={draft.statusCode}
-        onChange={(value) => setDraft((current) => ({ ...current, statusCode: value }))}
-      />
+      {/* 상태는 탭 줄 오른쪽 상태 칩으로 거른다(#186) — 조건 칸에는 두지 않는다. 고른 상태는 조회해도 그대로다. */}
+      {/*
+       * 상신일은 시작일·종료일 두 칸으로 나눠 고른다(#144) — 한 칸 범위 달력보다 어느 쪽을 정했는지가 바로 보인다.
+       * 각각 따로 지울 수 있다. 보내는 값(`from`·`to`)은 그대로다.
+       */}
       <div className="field-cell">
-        <label className="field-label" htmlFor={periodId}>
-          {messages.qualityApproval.fields.period}
+        <label className="field-label" htmlFor={fromId}>
+          {t.fields.periodFrom}
         </label>
+        {/* 시작일은 종료일보다 늦을 수 없다 — 범위 달력 하나일 때 저절로 지켜지던 순서다. */}
         <DatePicker
-          id={periodId}
-          mode="range"
-          value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-          placeholder={messages.common.selectDate}
-          onChange={([nextFrom, nextTo]) =>
-            setDraft((current) => ({ ...current, from: nextFrom, to: nextTo }))
-          }
+          id={fromId}
+          placeholder={t.datePlaceholder}
+          clearable
+          max={draft.to === '' ? undefined : draft.to}
+          value={draft.from === '' ? null : draft.from}
+          onChange={(value) => setDraft((current) => ({ ...current, from: value ?? '' }))}
         />
       </div>
-      <SearchInput
-        label={messages.qualityApproval.fields.q}
+      <div className="field-cell">
+        <label className="field-label" htmlFor={toId}>
+          {t.fields.periodTo}
+        </label>
+        <DatePicker
+          id={toId}
+          placeholder={t.datePlaceholder}
+          clearable
+          min={draft.from === '' ? undefined : draft.from}
+          value={draft.to === '' ? null : draft.to}
+          onChange={(value) => setDraft((current) => ({ ...current, to: value ?? '' }))}
+        />
+      </div>
+      {/* 돋보기 없는 글 칸(#144) — Enter 로 바로 조회하는 것은 종전 그대로다. */}
+      <TextField
+        label={t.fields.q}
+        placeholder={t.qPlaceholder}
         value={draft.q}
         onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
-        onSearch={(value) => onApply({ ...draft, q: value })}
-        clearLabel={messages.common.clear}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.nativeEvent.isComposing) apply(draft);
+        }}
       />
       <div className="quality-approval-filter-footer">
-        <Checkbox
-          checked={pendingOnly}
-          onChange={(event) => onTogglePendingOnly(event.target.checked)}
-        >
-          {messages.qualityApproval.fields.pendingOnly}
-        </Checkbox>
         <div className="filter-actions">
-          <Button onClick={() => onApply(draft)}>{messages.common.search}</Button>
+          <Button onClick={() => apply(draft)}>{messages.common.search}</Button>
           <Button variant="outlined" onClick={reset}>
             {messages.common.reset}
           </Button>

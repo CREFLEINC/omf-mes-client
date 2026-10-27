@@ -8,27 +8,50 @@ import type { Translated } from './translated';
  * 대신 자리를 붙여 가른다 — 결재 단계는 `bước phê duyệt`, 결재 차례는 `lượt phê duyệt`.
  */
 export const qualityApproval: Translated<typeof ko.qualityApproval> = {
-  title: 'Xử lý phê duyệt đặc cách · hạn mức',
+  title: 'Xử lý phê duyệt chất lượng',
   breadcrumbRoot: 'Quản lý chất lượng',
   scopeWarning:
     'Giá trị gốc của loại phê duyệt chưa sẵn sàng nên hiển thị mọi loại yêu cầu được giao cho tôi. Hãy kiểm tra nguyên văn loại phê duyệt.',
   fields: {
     approvalTypeCode: 'Loại phê duyệt',
     statusCode: 'Trạng thái',
-    period: 'Ngày trình',
+    periodFrom: 'Tìm theo ngày trình bắt đầu',
+    periodTo: 'Tìm theo ngày trình kết thúc',
     q: 'Tìm theo số yêu cầu',
-    pendingOnly: 'Chỉ xem mục chờ phê duyệt',
     approvalRequestNo: 'Số yêu cầu',
     requestedByName: 'Người trình',
     requestedAt: 'Thời điểm trình',
     reason: 'Lý do',
-    request: 'Yêu cầu',
+    request: 'Số yêu cầu',
     target: 'Đối tượng',
+    targetLot: 'LOT đối tượng',
+    myTurn: 'Lượt phê duyệt',
   },
-  codePending: 'Giá trị gốc để chọn vẫn chưa sẵn sàng',
-  codePlaceholder: 'Đang chuẩn bị giá trị gốc',
+  /** 탭 줄 오른쪽 상태 칩(#186) — 「결재 대기 3」. 누르면 그 상태만 남고, 다시 누르면 풀린다. */
+  statusChips: {
+    label: 'Trạng thái phê duyệt',
+    count: (label: string, count: number): string => `${label} ${String(count)}`,
+    filterOn: (label: string): string => `Chỉ xem ${label}`,
+    filterOff: (label: string): string => `Bỏ lọc ${label}`,
+  },
   all: 'Tất cả',
+  datePlaceholder: 'Hãy chọn ngày',
+  qPlaceholder: 'Hãy nhập số yêu cầu',
+  typeLabels: {
+    CONCESSION: 'Đặc cách',
+    IQC_SKIP: 'Bỏ qua IQC (kiểm tra đầu vào)',
+    OQC_SKIP: 'Bỏ qua OQC (kiểm tra xuất hàng)',
+  },
+  statusLabels: { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Trả lại' },
+  splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
+  /** 목록 · 상세 배치 고르기(#186) — 「좌우 배치 | 상하 배치」 두 단추. */
+  layout: {
+    group: 'Bố cục danh sách·chi tiết',
+    side: 'Bố cục trái phải',
+    stack: 'Bố cục trên dưới',
+  },
   panes: {
+    filter: 'Điều kiện tra cứu',
     list: 'Danh sách yêu cầu phê duyệt',
     detail: 'Chi tiết yêu cầu',
     progress: 'Tiến trình phê duyệt',
@@ -42,14 +65,16 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     goFirstPage: 'Về trang đầu',
   },
   detail: {
-    select: 'Hãy chọn một yêu cầu phê duyệt',
-    progressPending: 'Chọn yêu cầu thì tiến trình phê duyệt sẽ hiện ra',
+    noSelectionTitle: 'Hãy chọn một yêu cầu',
+    noSelectionDescription: 'Chọn một yêu cầu để xem nội dung chi tiết.',
     loading: 'Đang tải chi tiết yêu cầu phê duyệt',
     notFound: 'Không tìm thấy yêu cầu',
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn yêu cầu khác.',
     oqcSkipNote:
       'Chỉ phê duyệt thì chưa bỏ qua. Việc bỏ qua thực tế được thực hiện ở màn hình đánh giá kiểm tra xuất hàng OQC.',
     openOqcInspection: 'Mở đánh giá kiểm tra xuất hàng OQC',
+    iqcSkipNoPermission:
+      'Cần quyền màn hình 「Phê duyệt bỏ qua IQC khẩn cấp」 để thực hiện bỏ qua IQC.',
   },
   condition: {
     title: 'Điều kiện liên kết',
@@ -126,7 +151,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
   loading: 'Đang tải danh sách yêu cầu phê duyệt',
   empty: {
     title: 'Không có yêu cầu phê duyệt nào khớp điều kiện',
-    description: 'Hãy bớt điều kiện hoặc tắt mục Chỉ xem mục chờ phê duyệt.',
+    description: 'Hãy bớt điều kiện hoặc bỏ chọn chip trạng thái đang bật.',
     beyondTitle: 'Không có yêu cầu nào để hiển thị ở trang này',
     beyondDescription: 'Hãy quay về trang đầu để xem yêu cầu.',
   },

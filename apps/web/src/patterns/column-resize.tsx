@@ -81,6 +81,34 @@ export const layoutColumns = (
   return { widths, grow, floor };
 };
 
+/** 남는 폭을 맡는 열이 다른 열에 밀려도 남기는 폭 — 그 열의 글이 아예 사라지지 않게. */
+const ABSORBER_KEEP = 80;
+
+/** 좌우 배치(목록 | 상세)에서 한 열이 넓어질 수 있는 끝 — 칸 안에서 옆으로 넘겨 보므로 한없이 넓히지 않는다(#186). */
+const SIDE_COLUMN_MAX = 480;
+
+/**
+ * 상하 배치에서 이 열을 넓힐 수 있는 끝(px) — **표 폭을 넓히지 않는 데까지**다(사용자 지시 2026-10-26 · #186 「표가 넘어가는 버그」·
+ * 「좌우·상하 배치 동작은 같아야」). 넓힌 만큼 남는 폭을 맡는 열이 줄어들고, 그 열마다 `ABSORBER_KEEP` 은 남긴다.
+ * 표 폭은 상자 폭과 지금 표 폭 가운데 큰 쪽이다 — 좁은 칸에서 이미 옆으로 넘기는 표도 더 넓어지지 않는다.
+ * 잴 수 없으면(시험 환경) 끝이 없다.
+ */
+const widestOf = (cell: HTMLTableCellElement): number => {
+  const table = cell.closest('table');
+  const box = table?.parentElement;
+  if (!table || !box || box.clientWidth === 0) return Infinity;
+
+  const heads = Array.from(cell.parentElement?.children ?? []);
+  let others = 0;
+  Array.from(table.querySelectorAll('col')).forEach((col, index) => {
+    if (index === cell.cellIndex) return;
+    others +=
+      col.style.width === '' ? ABSORBER_KEEP : (heads[index]?.getBoundingClientRect().width ?? 0);
+  });
+
+  return Math.max(box.clientWidth, table.getBoundingClientRect().width) - others;
+};
+
 /**
  * 끌기 손잡이 — 머리칸 오른쪽 끝의 세로 막대. 마우스·터치로 끈다. 읽기 도구에는 감춘다 — 머리칸 이름에
  * 섞이지 않게.
@@ -101,8 +129,18 @@ const ColumnResizer = ({
       event.preventDefault();
       const startX = event.clientX;
       const startWidth = cell.getBoundingClientRect().width;
+      /*
+       * 배치 고르기(`po-board.tsx` `usePaneLayout`)가 있는 화면만 끝을 둔다(#186 사용자 지시). 상하 배치는 표가 칸을
+       * 넘지 않는 데까지, 좌우 배치는 한 열 480px 까지(표는 칸 안에서 옆으로 넘긴다). 그 밖의 화면은 종전 그대로다.
+       */
+      const split = cell.closest('.po-board-split');
+      const widest = split?.classList.contains('is-stacked')
+        ? Math.max(widestOf(cell), startWidth)
+        : split?.classList.contains('is-side')
+          ? Math.max(SIDE_COLUMN_MAX, startWidth)
+          : Infinity;
       const move = (moveEvent: PointerEvent): void => {
-        onResize(startWidth + moveEvent.clientX - startX);
+        onResize(Math.min(widest, startWidth + moveEvent.clientX - startX));
       };
       const up = (): void => {
         window.removeEventListener('pointermove', move);

@@ -65,7 +65,7 @@ const renderSection = (scans: Record<string, OqcSerialScan>, initial?: SerialRow
 
 const scanInto = async (serialNo: string) => {
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText(t.scanLabel), `${serialNo}{Enter}`);
+  await user.type(screen.getByLabelText(t.judge.scanLabel), `${serialNo}{Enter}`);
   return user;
 };
 
@@ -78,14 +78,15 @@ describe('검사한 시리얼', () => {
     expect(screen.getByRole('button', { name: t.ok })).toHaveAttribute('aria-pressed', 'true');
     await user.click(screen.getByRole('button', { name: t.ng }));
     expect(screen.getByRole('button', { name: t.ng })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText(t.count(1, 1))).toBeInTheDocument();
+    expect(screen.getByText(t.judge.inspected(1))).toBeInTheDocument();
+    expect(screen.getByText(t.judge.rejected(1))).toBeInTheDocument();
   });
 
   it('없는 시리얼은 줄을 붙이지 않고 이유를 보인다', async () => {
     renderSection({});
     await scanInto('SN-0099');
-    expect(await screen.findByText(t.notFound('SN-0099'))).toBeInTheDocument();
-    expect(screen.getByText(t.empty)).toBeInTheDocument();
+    expect(await screen.findByText(t.judge.notFound)).toBeInTheDocument();
+    expect(screen.getByText(t.judge.emptyTitle)).toBeInTheDocument();
   });
 
   it('⭐ 1차가 OK 로 남은 시리얼은 NG 를 고를 수 없다 (재검 Q4)', async () => {

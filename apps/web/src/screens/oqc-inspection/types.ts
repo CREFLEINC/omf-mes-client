@@ -38,14 +38,16 @@ export interface InspectionQueueRow {
   inspectionRequestNo: string;
   /** 다형 참조의 대상. 줄의 둘째 행에 선다 */
   targetId: number;
+  /** 대상 유형 코드 — 대상번호 앞에 「출하요청」처럼 이름을 붙인다(omf-all-around#136). */
+  targetTypeCode: string;
   /** 품목 식별자. **코드 문자열이 아니다** — 계약이 정수만 준다(파일 머리 참조). */
   itemId: number;
   /** 검사 수량. 합계 제약의 오른쪽 변이 될 값이다 */
   targetQty: number;
-  /** 검사 수량의 단위 — PQC 목록(#135)이 수량 옆에 단위 코드를 붙인다. */
+  /** 수량 단위 식별자 — 수량 옆 단위 코드(표시 전용 · #136). */
   uomId: number;
   statusCode: string;
-  /** 의뢰가 만들어진 시각 — PQC 목록(#135)의 「의뢰 일시」 열이 쓴다. */
+  /** 의뢰가 만들어진 시각(RFC3339) — 목록의 「의뢰 일시」 열(IQC 와 같은 열 · omf-all-around#136). */
   requestedAt: string;
 }
 
@@ -58,6 +60,7 @@ export const toInspectionQueueRow = (item: InspectionRequestResponse): Inspectio
   inspectionRequestId: item.inspectionRequestId,
   inspectionRequestNo: item.inspectionRequestNo,
   targetId: item.targetId,
+  targetTypeCode: item.targetTypeCode,
   itemId: item.itemId,
   targetQty: item.targetQty,
   uomId: item.uomId,

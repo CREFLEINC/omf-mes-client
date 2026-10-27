@@ -1243,8 +1243,8 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
 
   /**
    * 메뉴 IA 개편으로 검사는 **「품질 관리」 한 곳에 모였다** — IQC(입하) → PQC(공정) → OQC(출하)
-   * 흐름 차례의 첫 자리다. 그래서 「구매 / 자재 관리」의 끝(물류 전표 조회·취소) 바로 뒤에 서고,
-   * IQC 생략 판정(W-01-02)이 바로 뒤따른다.
+   * 흐름 차례의 첫 자리다. 그래서 「구매 / 자재 관리」의 끝(물류 전표 조회·취소) 바로 뒤에 선다.
+   * IQC 생략 판정(W-01-02)은 「품질 승인 처리」의 탭이라 검사기준이 바로 뒤따른다(#144).
    */
   it('품질 관리 섹션의 첫 항목으로 구매 / 자재 관리 바로 뒤에 선다', () => {
     const hrefs = sidebarHrefs();
@@ -1252,11 +1252,8 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
     expect(hrefs.indexOf('/logistics/iqc-inspection')).toBe(
       hrefs.indexOf('/logistics/document-progress') + 1,
     );
-    expect(hrefs.indexOf('/logistics/iqc-skip-approval')).toBe(
+    expect(hrefs.indexOf('/master-data/inspection-standard')).toBe(
       hrefs.indexOf('/logistics/iqc-inspection') + 1,
-    );
-    expect(hrefs.indexOf('/quality/pqc-inspections')).toBeGreaterThan(
-      hrefs.indexOf('/logistics/iqc-skip-approval'),
     );
   });
 
@@ -1413,24 +1410,25 @@ describe('appRouter — 검사실적·검사결과 조회의 진입 경로', () 
   });
 });
 
-describe('appRouter — 특채·한도승인 승인 처리의 진입 경로', () => {
-  it('품질관리 메뉴를 키보드로 열면 정식 주소와 화면 제목·탐색 경로가 선다', async () => {
+describe('appRouter — 품질 승인 처리의 진입 경로', () => {
+  /* 제목·탐색 경로 없이 유형 탭이 맨 위에 선다(#186, 입하 예정 조회와 같은 짜임). */
+  it('품질관리 메뉴를 키보드로 열면 정식 주소와 유형 탭·목록 구획이 선다', async () => {
     const user = userEvent.setup();
     renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...qualityApprovalRoutes()]);
 
-    const link = screen.getByRole('link', { name: '특채·한도승인 승인 처리' });
+    const link = screen.getByRole('link', { name: '품질 승인 처리' });
     link.focus();
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(currentLocation()).toBe('/quality/approvals'));
     expect(
-      screen.getAllByRole('heading', { level: 1, name: '특채·한도승인 승인 처리' }),
-    ).toHaveLength(1);
-    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
-    const items = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
-    expect(items).toHaveLength(2);
-    expect(within(items[0]!).getByText(messages.qualityApproval.breadcrumbRoot)).toBeVisible();
-    expect(within(items[1]!).getByText('특채·한도승인 승인 처리')).toBeVisible();
+      await screen.findByRole('tablist', {
+        name: messages.qualityApproval.fields.approvalTypeCode,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: messages.qualityApproval.panes.list }),
+    ).toBeInTheDocument();
   });
 
   it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {

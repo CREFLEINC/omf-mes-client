@@ -1,6 +1,8 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { approvalTypeLabelOf } from './code-options';
+
 export interface ApproveDialogProps {
   approvalTypeCode: string;
   comment: string;
@@ -42,7 +44,7 @@ export const ApproveDialog = ({
       }
     >
       <p>{`${t.fields.approvalRequestNo}: ${requestNo}`}</p>
-      <p>{`${t.fields.approvalTypeCode}: ${approvalTypeCode}`}</p>
+      <p>{`${t.fields.approvalTypeCode}: ${approvalTypeLabelOf(approvalTypeCode)}`}</p>
       <p>{`${t.fields.target}: ${targetName}`}</p>
       <p className="field-label">{t.approval.commentHeading}</p>
       <p>{comment}</p>

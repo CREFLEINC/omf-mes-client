@@ -1,27 +1,16 @@
-import { Button, Checkbox, Chip, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, Chip, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import { codeNote, codePlaceholder } from './code-options';
 import { EMPTY_FILTERS, toFilterChips, type FilterChipKey } from './filters';
-import { SelectField } from './select-field';
-import type { RequestFilters, SelectOption } from './types';
+import type { RequestFilters } from './types';
 
 const t = messages.iqcSkipApproval;
 
 export interface RequestFilterBarProps {
   /** 주소에 반영된(= 조회에 쓰인) 조건. 편집 중인 값은 이 부품 안에만 있다. */
   appliedFilters: RequestFilters;
-  /**
-   * 요청 상태 선택지. **화면이 넘긴다** — 자리표시 상수를 부품이 직접 읽으면
-   * 「값이 확정되면 배열만 채운다」는 전환을 화면 수준에서 잴 수 없다.
-   */
-  statusOptions: SelectOption[];
-  /** 「결재 대기만 보기」의 **적용된** 값. 이 칸만 편집 상태를 갖지 않는다(아래 주석). */
-  pendingOnly: boolean;
   onSearch: (filters: RequestFilters) => void;
-  /** 확인칸은 **즉시** 반영된다. 조회 버튼을 거치지 않는다. */
-  onTogglePendingOnly: (pendingOnly: boolean) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: FilterChipKey) => void;
   onReset: () => void;
@@ -34,13 +23,9 @@ export interface RequestFilterBarProps {
  *
  * | 컨트롤 | 언제 반영되나 | 왜 |
  * | --- | --- | --- |
- * | 상태 · 상신일 · 요청번호 | **조회를 누를 때** | 고치는 동안 조회가 나가면 반쯤 지운 검색어로 요청이 나간다 |
+ * | 상신일 · 요청번호 | **조회를 누를 때** | 고치는 동안 조회가 나가면 반쯤 지운 검색어로 요청이 나간다 |
  * | 조건 칩의 × | 즉시 | 해제는 「푼다」는 뜻이라 확인을 받을 것이 없다 |
- * | **「결재 대기만 보기」** | **즉시** | 조건이 아니라 **조회 범위**다 — 앞선 화면에서 탭이 하던 일이며, 탭도 누르는 순간 옮겨졌다 |
- *
- * 확인칸이 **편집 상태를 갖지 않는 것**이 그 모델의 실현이다. 적용된 값을 그대로 보이고
- * 누르면 곧바로 알린다 — 편집 상태를 두면 「눌렀는데 목록이 그대로인」 칸이 되고,
- * 그때 사용자는 조회를 한 번 더 눌러야 한다는 것을 화면 어디에서도 알 수 없다.
+ * | 탭 줄 상태 칩(#186) | 즉시 | 조건이 아니라 **조회 범위**다 — 이 부품 밖(화면)이 걸고, 조회할 때 그대로 실린다 |
  *
  * **조회를 조건으로 잠그지 않는다.** 계약이 어느 조건도 필수로 두지 않았고, 이 화면은
  * 들어오자마자 내가 판정할 것을 보여야 하는 자리다 — 고정 축이 이미 범위를 좁히고 있다.
@@ -56,10 +41,7 @@ export interface RequestFilterBarProps {
  */
 export const RequestFilterBar = ({
   appliedFilters,
-  statusOptions,
-  pendingOnly,
   onSearch,
-  onTogglePendingOnly,
   onRemoveFilter,
   onReset,
 }: RequestFilterBarProps) => {
@@ -73,24 +55,18 @@ export const RequestFilterBar = ({
    * 내용이 같아도 참조가 달라질 수 있고(조회 응답이 도착해 다시 그려질 때가 그렇다),
    * 참조로 판정하면 그때마다 사용자가 치던 값이 사라진다(#43).
    */
-  const {
-    statusCode: appliedStatus,
-    from: appliedFrom,
-    to: appliedTo,
-    q: appliedQ,
-  } = appliedFilters;
+  const { from: appliedFrom, to: appliedTo, q: appliedQ } = appliedFilters;
 
+  /* 상태는 탭 줄 칩이 바꾼다 — 칩을 눌러도 치던 날짜·검색어가 지워지지 않게 되돌림에서 뺀다(#186 리뷰). */
   useEffect(() => {
-    setFilters({
-      statusCode: appliedStatus,
-      from: appliedFrom,
-      to: appliedTo,
-      q: appliedQ,
-    });
-  }, [appliedStatus, appliedFrom, appliedTo, appliedQ]);
+    setFilters((current) => ({ ...current, from: appliedFrom, to: appliedTo, q: appliedQ }));
+  }, [appliedFrom, appliedTo, appliedQ]);
 
+  const searchWith = (next: RequestFilters): void => {
+    onSearch({ ...next, statusCode: appliedFilters.statusCode });
+  };
   const search = (): void => {
-    onSearch(filters);
+    searchWith(filters);
   };
 
   /**
@@ -104,37 +80,12 @@ export const RequestFilterBar = ({
     onReset();
   };
 
-  /* 「전체」를 값이 빈 선택지로 둔다 — 두지 않으면 한 번 고른 뒤에 해제할 방법이 칸 안에 없어진다. */
-  const withAll = (options: SelectOption[]): SelectOption[] => [
-    { value: '', label: t.filters.all },
-    ...options,
-  ];
-
-  /**
-   * 값 목록이 비어 있는 코드 칸은 **「전체」도 붙이지 않는다.** 고를 것이 하나도 없는데
-   * 「전체」만 있으면 목록이 준비된 것처럼 보인다 — 왜 비었는지는 안내가 말한다.
-   */
-  const optionsOf = (options: SelectOption[]): SelectOption[] =>
-    options.length === 0 ? [] : withAll(options);
-
-  const placeholderOf = (options: SelectOption[]): string =>
-    options.length === 0 ? codePlaceholder() : t.filters.all;
-
   const chips = toFilterChips(appliedFilters);
 
   return (
     <>
       <div className="filter-bar iqc-skip-approval-filter">
-        <SelectField
-          label={t.fields.status}
-          options={optionsOf(statusOptions)}
-          value={filters.statusCode}
-          note={codeNote(statusOptions)}
-          placeholder={placeholderOf(statusOptions)}
-          onChange={(value) => {
-            setFilters((prev) => ({ ...prev, statusCode: value }));
-          }}
-        />
+        {/* 상태는 탭 줄 오른쪽 상태 칩으로 거른다(#186) — 조건 칸에는 두지 않는다. 고른 상태는 조회해도 그대로다. */}
 
         {/*
          * 상신일은 **한 컨트롤**이다 — 시작·종료 두 칸이 아니라 `mode="range"` 하나다.
@@ -168,24 +119,10 @@ export const RequestFilterBar = ({
           }}
           /* 엔터로도 조회된다 — 검색칸에서 엔터가 아무 일도 하지 않으면 멈춘 것으로 읽힌다. */
           onSearch={(value) => {
-            onSearch({ ...filters, q: value });
+            searchWith({ ...filters, q: value });
           }}
           clearLabel={messages.common.clear}
         />
-
-        {/* 확인칸은 라벨 층이 없다 — 규범 2의 `.field-cell-unlabeled`가 줄을 맞춘다. */}
-        <div className="field-cell field-cell-unlabeled">
-          <div className="check-group">
-            <Checkbox
-              checked={pendingOnly}
-              onChange={(event) => {
-                onTogglePendingOnly(event.target.checked);
-              }}
-            >
-              {t.fields.pendingOnly}
-            </Checkbox>
-          </div>
-        </div>
 
         {/*
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
@@ -193,10 +130,8 @@ export const RequestFilterBar = ({
          */}
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
-            {/* 조회는 위험 동작이 아니다 — 빨간 주 색(filled)은 승인·생략 실행에만 쓴다. */}
-            <Button variant="tonal" onClick={search}>
-              {messages.common.search}
-            </Button>
+            {/* 품질 승인 처리의 다른 탭과 같은 조회 단추다(#186 — 탭을 옮겨도 조건 줄이 같아 보인다). */}
+            <Button onClick={search}>{messages.common.search}</Button>
             <Button variant="outlined" onClick={reset}>
               {messages.common.reset}
             </Button>

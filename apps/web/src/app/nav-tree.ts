@@ -45,6 +45,13 @@ export interface NavEntry extends LocalizedLabel {
    * 그대로다. 탭은 둘 이상이다 — 하나뿐이면 묶음이 아니다.
    */
   readonly tabs?: readonly NavTab[];
+  /**
+   * 탭 막대를 본문 맨 위가 아니라 **화면 제목 아래**에 세운다 — 화면 머리가 묶음 이름을 제목으로 쓴다
+   * (`patterns/page-hub.tsx`). 그 화면들이 `usePageHub` 로 자리를 받아야 한다.
+   */
+  readonly tabsInPage?: boolean;
+  /** 탭 묶음의 탭을 **화면이 직접 그린다** — 셸 탭 막대를 세우지 않는다(사이드바 선택·권한은 묶음 그대로). */
+  readonly inlineTabs?: true;
 }
 
 /**
@@ -218,33 +225,34 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     labelVi: 'Quản lý chất lượng',
     icon: 'verified',
     items: [
+      /*
+       * 검사 조회·판정 — IQC · PQC · OQC 판정 화면을 사이드바 한 줄 · 본문 위 탭으로 묶는다(사용자 2026-10-26).
+       * 탭 하나가 기존 화면 하나라 주소·권한·다른 화면에서 거는 연결은 그대로다.
+       */
       {
         to: '/logistics/iqc-inspection',
         icon: 'troubleshoot',
-        label: 'IQC (수입검사) 조회·판정',
-        labelVi: 'IQC (kiểm tra đầu vào) tra cứu · đánh giá',
-      },
-      /*
-       * W-01-02 — IQC 를 «생략할 것인가»를 판정하는 자리라 IQC 바로 뒤다. ⛔ IQC 와 탭으로 묶지
-       * 않는다 — 검사하는 사람과 승인하는 사람이 다르다.
-       */
-      {
-        to: '/logistics/iqc-skip-approval',
-        icon: 'approval',
-        label: '긴급 IQC 생략 한도승인',
-        labelVi: 'Phê duyệt hạn mức bỏ qua IQC khẩn',
-      },
-      {
-        to: '/quality/pqc-inspections',
-        icon: 'fact_check',
-        label: 'PQC (공정검사) 조회·판정',
-        labelVi: 'PQC (kiểm tra công đoạn) tra cứu · đánh giá',
-      },
-      {
-        to: '/shipment/oqc-inspection',
-        icon: 'local_shipping',
-        label: 'OQC (출하검사) 조회·판정',
-        labelVi: 'OQC (kiểm tra xuất hàng) tra cứu · đánh giá',
+        label: '검사 조회·판정',
+        labelVi: 'Tra cứu · đánh giá kiểm tra',
+        /* 제목(묶음 이름) 아래 탭 — 참고 화면 「품질 승인 처리」와 같은 모양(사용자 2026-10-26). */
+        tabsInPage: true,
+        tabs: [
+          {
+            to: '/logistics/iqc-inspection',
+            label: 'IQC (수입검사)',
+            labelVi: 'IQC (kiểm tra đầu vào)',
+          },
+          {
+            to: '/quality/pqc-inspections',
+            label: 'PQC (공정검사)',
+            labelVi: 'PQC (kiểm tra công đoạn)',
+          },
+          {
+            to: '/shipment/oqc-inspection',
+            label: 'OQC (출하검사)',
+            labelVi: 'OQC (kiểm tra xuất hàng)',
+          },
+        ],
       },
       {
         to: '/master-data/inspection-standard',
@@ -312,11 +320,28 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: '의심자재 등록',
         labelVi: 'Đăng ký vật tư nghi ngờ',
       },
+      /*
+       * 품질 승인 처리 — 긴급 IQC 생략 한도승인(W-01-02)을 유형 탭 하나로 품는다(#144). 탭은 화면이 유형 탭
+       * 줄에 직접 그린다(`inlineTabs`) — 셸 탭 막대까지 서면 탭 줄이 둘이 된다.
+       */
       {
         to: '/quality/approvals',
         icon: 'approval',
-        label: '특채·한도승인 승인 처리',
-        labelVi: 'Xử lý phê duyệt đặc cách · hạn mức',
+        label: '품질 승인 처리',
+        labelVi: 'Xử lý phê duyệt chất lượng',
+        inlineTabs: true,
+        tabs: [
+          {
+            to: '/quality/approvals',
+            label: '품질 승인 처리',
+            labelVi: 'Xử lý phê duyệt chất lượng',
+          },
+          {
+            to: '/logistics/iqc-skip-approval',
+            label: 'IQC (수입검사) 생략',
+            labelVi: 'Bỏ qua IQC (kiểm tra đầu vào)',
+          },
+        ],
       },
       /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
       {

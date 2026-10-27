@@ -15,6 +15,7 @@ import { LocaleSelect } from '../patterns/locale-select';
 import { localizedLabel } from '../patterns/localized-label';
 import { useSession, useSignOut } from '../patterns/session';
 import { OA_ONLY_PATHS, useOaAccess } from '../patterns/oa-access';
+import { PageHubContext, type PageHub } from '../patterns/page-hub';
 import { toWebAccess } from '../patterns/web-access';
 import { readAppVersion } from './app-version';
 import {
@@ -339,10 +340,16 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
    * 제목 위에 한 줄을 먹는다.
    */
   const activeHub = findActiveHub(allowedGroups, pathname);
-  const hubTabs =
-    activeHub !== null && activeHub.hub.tabs.length > 1 ? (
+  const hubBar =
+    activeHub !== null && activeHub.hub.tabs.length > 1 && activeHub.hub.inlineTabs !== true ? (
       <HubTabs hub={activeHub.hub} activePath={activeHub.activePath} />
     ) : null;
+  /* 제목 아래에 세우는 묶음은 화면에 넘긴다(`patterns/page-hub.tsx`) — 본문 맨 위에는 세우지 않는다. */
+  const pageHub: PageHub | null =
+    hubBar !== null && activeHub?.hub.tabsInPage === true
+      ? { title: localizedLabel(activeHub.hub), tabs: hubBar }
+      : null;
+  const hubTabs = pageHub === null ? hubBar : null;
   const isLeadVisible = isLeadAllowed && matchesNavEntry(NAV_LEAD, activeQuery);
 
   return (
@@ -480,7 +487,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       }
     >
       {hubTabs}
-      {children}
+      <PageHubContext.Provider value={pageHub}>{children}</PageHubContext.Provider>
     </AppShell>
   );
 };

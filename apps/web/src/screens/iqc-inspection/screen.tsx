@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
 import { sessionKeys, useSession } from '../../patterns/session';
+import { usePageHub } from '../../patterns/page-hub';
 import {
   EMPTY_FILTERS,
   readFilters,
@@ -103,6 +104,8 @@ const REJECTED_JUDGMENT = 'REJECTED';
 
 export const IqcInspectionScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  /* 검사 조회·판정 묶음(사이드바 한 줄 · 제목 아래 탭) 안이면 셸이 준다 — 셸 밖이면 `null`. */
+  const hub = usePageHub();
 
   const filters = readFilters(searchParams);
   const page = readPage(searchParams);
@@ -872,12 +875,13 @@ export const IqcInspectionScreen = () => {
   return (
     <>
       <PageHeader
-        title={t.title}
+        /* 묶음(검사 조회·판정) 안이면 묶음 이름이 제목이다. 「검사 기본 정보」는 경로에만 선다(#133). */
+        title={hub?.title ?? t.title}
         breadcrumb={
           <Breadcrumb
             items={[
               { label: t.breadcrumbRoot },
-              { label: t.title },
+              { label: hub?.title ?? t.title },
               /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#133). */
               ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
             ]}
@@ -885,6 +889,8 @@ export const IqcInspectionScreen = () => {
           />
         }
       />
+      {/* 검사 조회·판정 묶음의 탭 — 제목 바로 아래(셸이 채운다 · `patterns/page-hub.tsx`). */}
+      {hub !== null && <div className="page-hub-tabs">{hub.tabs}</div>}
 
       {/*
        * 목록과 상세(판정)를 한 화면에 나란히 두지 않고 갈아 끼운다(omf-all-around#133) — 의뢰를 고르면(`?ir=`)

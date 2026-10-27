@@ -3,6 +3,8 @@ export interface FieldLabelProps {
   htmlFor: string;
   label: string;
   required?: boolean;
+  /** 라벨 오른쪽 같은 줄의 짧은 안내(보조색 · IQC 와 같은 모양 · omf-all-around#136). */
+  hint?: string;
 }
 
 /**
@@ -18,9 +20,14 @@ export interface FieldLabelProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const FieldLabel = ({ htmlFor, label, required = false }: FieldLabelProps) => (
+export const FieldLabel = ({ htmlFor, label, required = false, hint }: FieldLabelProps) => (
   <span className="field-label">
     <label htmlFor={htmlFor}>{label}</label>
-    {required && <span aria-hidden="true"> *</span>}
+    {required && (
+      <span className="required-mark" aria-hidden="true">
+        {' *'}
+      </span>
+    )}
+    {hint !== undefined && <span className="oqc-inspection-label-hint">{hint}</span>}
   </span>
 );
