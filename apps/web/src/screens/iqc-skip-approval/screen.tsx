@@ -889,6 +889,10 @@ export const IqcSkipApprovalScreen = () => {
                 value={messages.qualityApproval.next.iqcRejected}
                 to={IQC_INSPECTION_PATH}
                 label={messages.qualityApproval.next.openIqcInspection}
+                alert={{
+                  title: messages.qualityApproval.next.iqcRejectedTitle,
+                  note: messages.qualityApproval.next.iqcRejectedNote,
+                }}
               />
             )
           : skipLotId !== null &&

@@ -4622,6 +4622,38 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
+/* 반려 안내 모양(#193 · IQC 생략 반려) — 붉은 느낌표 제목, 할 일 한 줄, 정보 표시 안내. */
+.quality-approval-concession-nc.is-alert h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.quality-approval-alert-icon {
+  color: var(--semantic-error);
+}
+
+.quality-approval-alert-body,
+.quality-approval-alert-note {
+  max-width: none;
+  margin: 0;
+}
+
+.quality-approval-alert-body {
+  color: var(--on-surface);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+}
+
+.quality-approval-alert-note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
 /* 다른 화면 열기 — 링크지만 주 색 알약 단추 모양이다(사용자 지시 2026-10-27). 새 화면으로 가는 표시를 오른쪽에 둔다. */
 .quality-approval-concession-nc-link {
   display: inline-flex;

@@ -493,7 +493,13 @@ export const QualityApprovalScreen = ({
     const { request } = detail.data;
     const n = t.next;
     const isRejected = request.statusCode === 'REJECTED';
-    const step: { value: string; to: string; label: string; screen: string } | null =
+    const step: {
+      value: string;
+      to: string;
+      label: string;
+      screen: string;
+      alert?: { title: string; note: string };
+    } | null =
       isRejected && isOqcSkip
         ? {
             value: n.oqcRejected,
@@ -507,6 +513,7 @@ export const QualityApprovalScreen = ({
               to: IQC_INSPECTION_PATH,
               label: n.openIqcInspection,
               screen: IQC_INSPECTION_PATH,
+              alert: { title: n.iqcRejectedTitle, note: n.iqcRejectedNote },
             }
           : isRejected
             ? {
@@ -536,7 +543,15 @@ export const QualityApprovalScreen = ({
                 : null;
     if (step === null || !toWebAccess(session?.permissions).allows(step.screen)) return null;
 
-    return <RelatedLink heading={n.heading} value={step.value} to={step.to} label={step.label} />;
+    return (
+      <RelatedLink
+        heading={n.heading}
+        value={step.value}
+        to={step.to}
+        label={step.label}
+        alert={step.alert}
+      />
+    );
   };
 
   const progressSlot = (): ReactNode => {

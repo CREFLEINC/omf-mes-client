@@ -108,7 +108,10 @@ export const qualityApproval = {
     heading: '다음 할 일',
     concessionRejected: '특채가 반려됐습니다 — 처분을 다시 정하거나 특채를 다시 요청하세요',
     openDisposition: '처분 판정 처리 열기',
-    iqcRejected: '생략이 반려됐습니다 — 수입검사를 진행하세요(생략 재요청은 PDA 에서 합니다)',
+    /** IQC 생략 반려 — 붉은 느낌표 제목 · 할 일 · 정보 표시 안내 세 줄(사용자 지시 2026-10-27). */
+    iqcRejectedTitle: '생략 요청이 반려되었습니다.',
+    iqcRejected: '수입검사를 진행해 주세요.',
+    iqcRejectedNote: '재요청은 PDA에서 할 수 있습니다.',
     openIqcInspection: 'IQC 수입검사 열기',
     oqcRejected: '생략이 반려됐습니다 — 출하검사를 진행하거나 생략을 다시 요청하세요',
     openOqcInspection: 'OQC 출하검사 열기',
