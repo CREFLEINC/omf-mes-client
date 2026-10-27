@@ -21893,15 +21893,12 @@ table.col-measuring td {
   border-top: 0;
 }
 
-/* 중간 폭 — 수량은 한 줄 전체, 그 아래 판정 | 4M. */
+/* 중간 폭(상하 배치 등) — 1 · 2 · 3 단계를 세로로 쌓는다(사용자 지시 2026-10-27 · #185). 수량 카드는 넷을 한 줄. */
 @container (max-width: 64rem) {
+  .iqc-inspection-qty-judgment-row,
   .iqc-inspection-qty-judgment-row:has(> .iqc-inspection-inline-four-m) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-
-  .iqc-inspection-qty-judgment-row:has(> .iqc-inspection-inline-four-m)
-    > .iqc-inspection-section:first-child {
-    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-2);
   }
 }
 
@@ -22229,17 +22226,6 @@ table.col-measuring td {
   justify-content: space-between;
 }
 
-/* 수량 카드 아래 「검사 수량이 9 EA 부족합니다.」 — 오류색 · 아이콘(사용자 지시 2026-10-27 · #185). */
-.iqc-inspection-qty-delta-note {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin: var(--space-2) 0 0;
-  color: var(--semantic-error-text);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-}
-
 /* 최종 판정 라벨 줄 — 자동 판정 기준 라벨은 오른쪽 끝(사용자 지시 2026-10-27 · #185). */
 .iqc-inspection-judgment-field .field-label:has(> .iqc-inspection-label-hint) {
   display: flex;
@@ -22269,9 +22255,31 @@ table.col-measuring td {
   color: var(--semantic-warning);
 }
 
+/*
+ * 총 검사 수량 — 「10 EA」 · 「-10 EA」는 각각 끊지 않는다. 카드가 좁으면 넘친 · 모자란 양만 아래 줄로 내려간다
+ * (사용자 지시 2026-10-27 · #185 — 「10 / EA」로 끊기던 것을 고친다).
+ */
+.iqc-inspection-qty-judgment-row .iqc-inspection-qty-total > dd:nth-child(n):nth-child(n) {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  height: auto;
+  min-height: 32px;
+  column-gap: var(--space-1);
+}
+
+.iqc-inspection-qty-total-value,
+.iqc-inspection-qty-total .iqc-inspection-qty-over {
+  white-space: nowrap;
+}
+
+.iqc-inspection-qty-judgment-row .iqc-inspection-qty-total > dt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 총 검사 수량 옆 넘친 · 모자란 양 「+3 EA」 · 「-1 EA」 — 오류색 · 작은 글(사용자 지시 2026-10-27 · #185). */
 .iqc-inspection-qty-over {
-  margin-left: var(--space-1);
   color: var(--semantic-error-text);
   font: var(--type-body-sm);
   font-weight: 600;

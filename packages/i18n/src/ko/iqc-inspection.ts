@@ -197,9 +197,6 @@ export const iqcInspection = {
     overDelta: (over: string): string => `+${over}`,
     /** 총 검사 수량 옆 모자란 양 — 「-1 EA」. */
     shortDelta: (short: string): string => `-${short}`,
-    /** 수량 카드 아래 한 줄(#185). */
-    shortNote: (short: string): string => `검사 수량이 ${short} 부족합니다.`,
-    overNote: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
     quantityInvalid: '0 이상의 숫자로 입력해 주세요. 소수점은 여섯 자리까지 됩니다.',
     /**
      * 임시 저장. ⭐ **합계가 맞지 않아도 눌린다** — 판정을 확정하는 것이 아니라 하던 일을

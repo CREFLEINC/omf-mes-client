@@ -280,17 +280,6 @@ export const ResultFormPane = ({
       : isOver
         ? t.overDelta(withUom(formatMicro(-totals.remaining), uomCode))
         : t.shortDelta(withUom(formatMicro(totals.remaining), uomCode));
-  /*
-   * 카드 아래 한 줄 「검사 수량이 9 EA 부족합니다.」 · 「검사 수량보다 3 EA 많습니다.」(사용자 지시 2026-10-27 · #185).
-   * 아무것도 넣지 않은 처음에는 내지 않는다 — 열자마자 오류처럼 보이지 않게.
-   */
-  const hasInput = draft.accepted !== '' || draft.rejected !== '' || draft.held !== '';
-  const deltaNote =
-    deltaText === null || !hasInput || totals.kind !== 'counted'
-      ? null
-      : isOver
-        ? t.overNote(withUom(formatMicro(-totals.remaining), uomCode))
-        : t.shortNote(withUom(formatMicro(totals.remaining), uomCode));
 
   const inspectedText = withUom(String(inspectedQty), uomCode);
   const qtyDone = totals.kind === 'counted' && totals.matches && !isOver;
@@ -549,19 +538,13 @@ export const ResultFormPane = ({
                   <dl className="iqc-inspection-qty-field iqc-inspection-qty-total">
                     <dt>{t.fields.inspectedQty}</dt>
                     <dd>
-                      {inspectedText}
+                      <span className="iqc-inspection-qty-total-value">{inspectedText}</span>
                       {deltaText !== null && (
                         <span className="iqc-inspection-qty-over">{deltaText}</span>
                       )}
                     </dd>
                   </dl>
                 </div>
-                {deltaNote !== null && (
-                  <p className="iqc-inspection-qty-delta-note" role="status">
-                    <Icon name="error" size={16} aria-hidden />
-                    {deltaNote}
-                  </p>
-                )}
                 {actionInQty && <div className="iqc-inspection-qty-actions">{actionArea}</div>}
               </div>
             </div>

@@ -117,8 +117,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     progressLabel: 'Tổng đã nhập so với số lượng kiểm tra',
     overDelta: (over: string): string => `+${over}`,
     shortDelta: (short: string): string => `-${short}`,
-    shortNote: (short: string): string => `Thiếu ${short} so với số lượng kiểm tra.`,
-    overNote: (over: string): string => `Nhiều hơn số lượng kiểm tra ${over}.`,
     quantityInvalid: 'Hãy nhập số từ 0 trở lên. Tối đa sáu chữ số thập phân.',
     save: 'Lưu tạm',
     saving: 'Đang lưu',
