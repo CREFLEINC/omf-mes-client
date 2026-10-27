@@ -43,6 +43,15 @@ describe('escapeCsvField', () => {
   it('빈 값은 빈 칸이다', () => {
     expect(escapeCsvField('')).toBe('');
   });
+
+  it('수식으로 시작하는 사유 이름은 작은따옴표를 붙여 글자로 남긴다', () => {
+    expect(escapeCsvField('=1+1')).toBe("'=1+1");
+    expect(escapeCsvField('@합성')).toBe("'@합성");
+  });
+
+  it('숫자 칸은 음수도 그대로 둔다', () => {
+    expect(toCsv([row({ count: -3 })], columns)).toBe('사유,건수\r\n합성 사유 가,-3');
+  });
 });
 
 describe('toCsv', () => {
