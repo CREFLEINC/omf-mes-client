@@ -271,7 +271,7 @@ export const ResultFormPane = ({
     <form aria-label={t.heading} onSubmit={submit}>
       {/*
        * 위에서 아래로 한 줄기 — 검사 수량 → 판정 → 4M 변경 정보, 그 아래 저장·확정(omf-all-around#133).
-       * 판정 칸이 늘어도 수량 칸 옆에 빈 자리가 생기지 않는다. 저장·확정은 창을 내려도 화면 아래에 붙어 있다.
+       * 판정 칸이 늘어도 수량 칸 옆에 빈 자리가 생기지 않는다. 저장·확정은 화면 아래에 붙이지 않는다(#185).
        */}
       <div className="iqc-inspection-work">
         {/* ── 검사 결과 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}

@@ -938,6 +938,7 @@ export const IqcInspectionScreen = () => {
                           rounds={historyRounds}
                           uomCode={uomCode}
                           judgmentOptions={judgmentOptions}
+                          scrollX={layout.orientation === 'row'}
                         />
                       </div>
                     ),

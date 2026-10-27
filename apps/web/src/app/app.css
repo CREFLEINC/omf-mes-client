@@ -14794,22 +14794,12 @@ button.app-button-neutral {
 }
 
 /*
- * 저장 · 확정 — 판정 카드 아래 한 줄로 떼고, 창을 내려도 화면 아래에 붙어 있다(판정 카드가 화면에 있는 동안).
- * 바탕을 카드 색으로 채워 아래 내용이 비치지 않게 한다. 화면 높이가 낮으면(1024×768 등) 붙이지 않는다 —
- * 붙은 줄이 수량 칸을 가린다.
+ * 저장 · 확정 — 판정 카드 아래 한 줄로 뗀다. 화면 아래에 붙이지 않는다 — 붙은 줄이 판정 칸을 가렸다(사용자 지시 2026-10-27 · #185).
  */
 .iqc-inspection-detail form > .iqc-inspection-action-area {
   margin-inline: calc(-1 * var(--space-4));
   padding: var(--space-3) var(--space-4);
   background: var(--surface-container-low);
-}
-
-@media (min-height: 800px) {
-  .iqc-inspection-detail form > .iqc-inspection-action-area {
-    position: sticky;
-    bottom: 0;
-    z-index: 1;
-  }
 }
 
 /*
@@ -18972,6 +18962,15 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   font: var(--type-body-sm);
   color: var(--on-surface-variant);
   white-space: nowrap;
+}
+
+/*
+ * 쪽 크기 선택 — 고른 값의 체크 표시는 항목 오른쪽 끝에(사용자 지시 2026-10-27 · #185).
+ * 펼친 목록은 부품이 문서 끝에 따로 그려 선택 상자 안에서 고를 수 없다 — 이 선택 상자가 펼쳐져 있을 때만 건다.
+ */
+body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option'] > :first-child {
+  order: 1;
+  margin-inline-start: auto;
 }
 
 /* T-W-C ProcessPage. 처리 머리는 제목 줄과 요약 줄 두 줄로 고정한다. */
