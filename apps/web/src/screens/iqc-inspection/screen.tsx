@@ -921,7 +921,7 @@ export const IqcInspectionScreen = () => {
                   <MeasurementGrid
                     rows={measurementRows}
                     isLoading={itemSpecs.isLoading || measurements.isLoading}
-                    scrollX={layout.orientation === 'row'}
+                    scrollX
                   />
                 </div>
               ),
@@ -938,7 +938,7 @@ export const IqcInspectionScreen = () => {
                           rounds={historyRounds}
                           uomCode={uomCode}
                           judgmentOptions={judgmentOptions}
-                          scrollX={layout.orientation === 'row'}
+                          scrollX
                         />
                       </div>
                     ),
@@ -957,7 +957,7 @@ export const IqcInspectionScreen = () => {
                           key={detail.data.lotId}
                           targetTypeCode="LOT"
                           targetId={detail.data.lotId}
-                          scrollX={layout.orientation === 'row'}
+                          scrollX
                           paged
                           bulkDownload
                           /*
@@ -1002,7 +1002,7 @@ export const IqcInspectionScreen = () => {
                         <InspectionHistoryPanel
                           hideSourceLot
                           layout="table"
-                          scrollX={layout.orientation === 'row'}
+                          scrollX
                           paged
                           key={`${String(selectedId)}-${String(historyRounds.length)}`}
                           inspectionRequestId={selectedId}
@@ -1087,7 +1087,8 @@ export const IqcInspectionScreen = () => {
           )}
 
           <QueueTable
-            scrollX={layout.orientation === 'row'}
+            /* 좌우 · 상하 배치 모두 열 폭을 끌어 넓히면 줄이지 않고 표 안에서 가로로 구른다(사용자 지시 2026-10-27 · #185). */
+            scrollX
             rows={rows}
             itemNames={itemNames}
             lotNumbers={lotNumbers}
