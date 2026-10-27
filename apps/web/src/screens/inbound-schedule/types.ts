@@ -208,7 +208,13 @@ export interface InboundLotProgress {
   lotId: number | null;
   /** 저장된 번호 그대로 — 끊거나 줄이지 않는다(규범 C-16 예외). LOT 이 없으면 `null`. */
   lotNo: string | null;
+  /** 입하 줄 전체 수량(= LOT 의 처음 수량) — 라벨 · 검사 · 입고는 줄 단위다. */
   receivedQty: number;
+  /**
+   * 이 입하 줄에서 **이** 발주 라인들에 들어간 몫(서버 #843 · 장부 P-110 보강). 초과분을 다른 발주에 연결한 줄은
+   * 두 발주에 다 서는데, 원 발주에는 원래 몫 · 연결한 발주에는 연결한 몫이다. 앞선 서버는 주지 않는다.
+   */
+  allocatedQty?: number;
   /** 입고 가능 수량(서버 선행 P-56). 없으면 `null`. */
   receivableQty: number | null;
   uomCode: string;

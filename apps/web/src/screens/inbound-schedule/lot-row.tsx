@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { formatDate } from './period';
-import { OneLine } from './receipt-status';
+import { formatQty, OneLine } from './receipt-status';
 import { hasLot, stageGroupTone, stageTone } from './stage';
 import type {
   InboundLotProgress,
@@ -81,7 +81,7 @@ export const TreeGuide = ({ isLast }: { isLast: boolean }) => (
 /**
  * LOT 줄의 근거 — 입하일로 시작하고, 그 뒤는 **서버가 준 값만** 적는다. 단계마다 무엇이 그 단계의 증거인지가 다르다:
  * 라벨 발행 대기는 입하번호(POP 의 입하 라인 목록에서 찾는 번호), 검사 단계는 의뢰번호·요청일, 보류는 사유 이름,
- * 입고 대기는 검사 결과, 적치 이후는 입고 전표·적치일.
+ * 입고 대기는 검사 결과, 적치 이후는 입고 전표·적치일. 줄의 일부만 이 발주로 왔으면(초과분 연결) 줄 전체 수량을 덧붙인다.
  * 문장이 아니라 「·」로 이은 조각이다(C-16 — 셀에 문장을 쓰지 않는다).
  */
 export const lotEvidence = (lot: InboundLotProgress): string => {
@@ -89,6 +89,9 @@ export const lotEvidence = (lot: InboundLotProgress): string => {
   const parts: string[] = [t.lot.receivedOn(dateOf(lot.receiptDatetime))];
 
   if (!hasLot(lot)) parts.push(t.lot.evidence.receiptNo(lot.inboundReceiptNo));
+  if (lot.allocatedQty !== undefined && lot.allocatedQty !== lot.receivedQty) {
+    parts.push(t.lot.evidence.wholeQty(formatQty(lot.receivedQty), lot.uomCode));
+  }
 
   if (inspection !== null) {
     if (inspection.judgmentCode === 'ACCEPTED') {

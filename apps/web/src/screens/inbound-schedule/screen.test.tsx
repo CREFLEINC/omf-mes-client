@@ -20,6 +20,7 @@ import {
   excessFixture,
   itemDetailFixtures,
   labelPendingProgress,
+  lotProgress,
   partnerFixtures,
   plantFixtures,
   orderFixtures,
@@ -1832,6 +1833,27 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     expect(
       Array.from(lineRow?.querySelectorAll('td') ?? []).every((cell) => cell.colSpan === 1),
     ).toBe(true);
+  });
+
+  it('초과분을 다른 발주에 연결한 입하 줄은 입하 수량 칸에 이 발주 몫을, 근거에 줄 전체를 낸다', async () => {
+    const linked = lotProgress({
+      lotNo: 'SAMPLE|LOT|0009',
+      receivedQty: 1425,
+      allocatedQty: 100,
+      receivableQty: 1425,
+    });
+    renderScreen(progressRoutes(ROWS_WITH_STAGES, [], [linked]), '?po=7101');
+
+    await screen.findByText('SAMPLE|LOT|0009');
+
+    const shown = Array.from(lotRow('SAMPLE|LOT|0009').querySelectorAll('td'))
+      .filter((cell) => !cell.hidden)
+      .map((cell) => cell.textContent);
+    expect(shown).toContain('100');
+    expect(shown).not.toContain('1,425');
+    expect(lotRow('SAMPLE|LOT|0009')).toHaveTextContent(
+      t.lot.evidence.wholeQty('1,425', 'SAMPLE-EA'),
+    );
   });
 
   it('막대의 단추로 발주 목록을 왼쪽으로 완전히 접고 펴며, 접힘은 브라우저에 남는다', async () => {

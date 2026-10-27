@@ -279,6 +279,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     labelMissing: 'Không dán nhãn',
     evidence: {
       receiptNo: (inboundReceiptNo: string): string => `Số nhập hàng ${inboundReceiptNo}`,
+      wholeQty: (qty: string, uom: string): string => `Tổng ${qty} ${uom}`,
       requested: (requestNo: string, date: string): string => `Yêu cầu ${requestNo} · ${date}`,
       accepted: (date: string): string => `Kiểm tra đạt ${date}`,
       rejected: 'Kiểm tra không đạt · chỉ kho hàng lỗi',

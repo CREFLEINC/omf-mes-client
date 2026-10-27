@@ -372,6 +372,8 @@ export const inboundSchedule = {
     evidence: {
       /** 라벨 미부착 줄 — POP 의 입하 라인 목록에서 찾는 번호. */
       receiptNo: (inboundReceiptNo: string): string => `입하번호 ${inboundReceiptNo}`,
+      /** 입하 줄의 일부만 이 발주로 왔을 때(초과분 연결) — 수량 칸은 이 발주 몫이고, 라벨 · 검사는 이 전체에 한다. */
+      wholeQty: (qty: string, uom: string): string => `전체 ${qty} ${uom}`,
       requested: (requestNo: string, date: string): string => `의뢰 ${requestNo} · ${date}`,
       accepted: (date: string): string => `검사 합격 ${date}`,
       rejected: '검사 불합격 · 불량창고만',

@@ -490,7 +490,8 @@ export const LineTable = ({
        * 체크한 줄은 **등록하면 될 수**(누적 + 남은 수량)를 파랗게 미리 보인다(PDA 와 같다). 편집 중인 줄은 이번 수량 입력칸이다.
        */
       render: (row) => {
-        if (row.kind === 'lot') return formatQty(row.lot.receivedQty);
+        /* LOT 줄은 이 발주로 온 몫이다 — 라인의 입하 수량과 맞는다. 줄 전체는 근거 칸에 따로 적는다. */
+        if (row.kind === 'lot') return formatQty(row.lot.allocatedQty ?? row.lot.receivedQty);
         if (draft?.editing != null && editingId === row.line.purchaseOrderLineId) {
           const qty = checkQty(draft.editing.qtyText);
 
