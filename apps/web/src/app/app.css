@@ -21887,6 +21887,24 @@ table.col-measuring td {
 }
 
 /* 오른쪽 절반은 넉넉하다 — 안내 글(「최종 판정을 선택하세요」)이 잘리지 않는 폭. */
+/* 상세 칸이 좁으면(좌우 배치 등) 판정이 수량 아래로 내려간다 — 세로선 대신 가로선. */
+@container (max-width: 44rem) {
+  .iqc-inspection-qty-judgment-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .iqc-inspection-qty-judgment-row > .iqc-inspection-section:first-child {
+    padding-right: 0;
+  }
+
+  /* 위아래로 쌓이면 사이에 가로선(사용자 지시 2026-10-27 · #185). */
+  .iqc-inspection-qty-judgment-row > .iqc-inspection-inline-judgment {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--outline-variant);
+  }
+}
+
 .iqc-inspection-inline-judgment .iqc-inspection-judgment-field {
   width: 14rem;
 }
