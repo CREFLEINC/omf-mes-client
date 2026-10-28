@@ -10,9 +10,10 @@ import { plantToday } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
-import { ChainDrawer, LOT_STATUS_PATH } from './chain-drawer';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { toCsvText, type CsvColumn } from '../../patterns/csv';
 import { LoadFailure, toLoadCause } from './load-failure';
+import { LOT_STATUS_PATH, LotDetail, LotDetailEmpty } from './lot-detail';
 import { defaultPeriod } from './period';
 import { useItemLabel } from './queries';
 import { formatQty } from './rows';
@@ -27,7 +28,6 @@ import {
   EMPTY_TRACE_FILTERS,
   TRACE_DEFAULT_DAYS,
   hasEntry,
-  openLotParams,
   readPath,
   readTraceFilters,
   readTraceSelected,
@@ -124,8 +124,9 @@ const backwardCsv = (stageName: (code: string) => string): CsvColumn<BackwardLis
 const stageName = (code: string): string => (t.stages as Record<string, string>)[code] ?? code;
 
 /**
- * 정방향 추적, 역방향 추적 탭(T-W-A 조회형). 목록은 진입점(품목, LOT 번호, 입하번호, 출하번호, W/O 번호)이
- * 있어야 부른다. 행을 누르면 그 LOT의 사슬 드로어. 조건 칩은 현재 단계와 단계별 LOT 수(C-17).
+ * 자재 LOT, 제품 LOT 탭(T-W-A 조회형). 목록은 진입점(품목, LOT 번호, 입하번호, 출하번호, W/O 번호)이
+ * 있어야 부른다. 목록과 상세를 한 화면에 나란히 둔다(검사 조회·판정과 같다). 행을 누르면 오른쪽 상세에 그 LOT의
+ * 추적이 선다. 창이 1440px보다 좁으면 목록 아래에 상세가 선다. 조건 칩은 현재 단계와 단계별 LOT 수(C-17).
  */
 export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -139,6 +140,8 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
   const { session } = useSession();
   const canOpenLotStatus = toWebAccess(session?.permissions).allows(LOT_STATUS_PATH);
   const exporter = useAllPagesExport();
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:lot-trace:split', 0.45);
   const itemLabel = useItemLabel(filters.item);
 
   /* 처음 열면(조건이 하나도 없으면) 기본 기간 30일을 채운다. 다른 탭에서 LOT으로 넘어오면 기간을 두지 않는다. */
@@ -277,6 +280,9 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
     />
   );
 
+  /* 상세에서 [보기]로 다른 LOT을 가운데 두어도 목록은 처음 고른 행을 짚는다. */
+  const listActive = path[0]?.lotId ?? selected;
+
   let body: ReactNode;
   if (!entry) {
     body = (
@@ -309,14 +315,14 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
         {direction === 'forward' ? (
           <ForwardTable
             rows={data.items as ForwardListRow[]}
-            activeId={selected}
+            activeId={listActive}
             onOpen={(row) => apply(filters, row.lotId)}
             empty={empty}
           />
         ) : (
           <BackwardTable
             rows={data.items as BackwardListRow[]}
-            activeId={selected}
+            activeId={listActive}
             onOpen={(row) => apply(filters, row.lotId)}
             empty={empty}
           />
@@ -340,7 +346,7 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
         onCancelExport={exporter.cancel}
         onDismissExport={exporter.dismiss}
       />
-      <section className="pane lot-trace-filter-pane" aria-label={t.filters.pane}>
+      <section ref={aboveRef} className="pane lot-trace-filter-pane" aria-label={t.filters.pane}>
         <TraceFilterBar
           direction={direction}
           applied={filters}
@@ -354,26 +360,30 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
           }
         />
       </section>
-      {body !== null && (
+      <div ref={splitRef} className="po-board-split lot-trace-split" style={split.style}>
         <section
           className="pane lot-trace-list-pane"
           aria-label={direction === 'forward' ? t.tabs.forward : t.tabs.backward}
         >
           {body}
         </section>
-      )}
-      {selected !== null && (
-        <ChainDrawer
-          direction={direction}
-          lotId={selected}
-          path={path}
-          canOpenLotStatus={canOpenLotStatus}
-          onClose={() => apply(filters)}
-          onOpenLot={(nextDirection, lot, nextPath) =>
-            setSearchParams(openLotParams(nextDirection, lot, nextPath))
-          }
-        />
-      )}
+        <PaneSplitter label={t.splitter} ratio={split.ratio} onChange={split.commit} />
+        <section className="pane lot-trace-detail-pane" aria-label={t.chain.pane}>
+          {selected === null ? (
+            <LotDetailEmpty material={direction === 'forward'} />
+          ) : (
+            <LotDetail
+              key={selected}
+              lotId={selected}
+              path={path}
+              canOpenLotStatus={canOpenLotStatus}
+              onCenter={(lot, nextPath) =>
+                setSearchParams(toTraceSearchParams(direction, filters, lot.lotId, nextPath))
+              }
+            />
+          )}
+        </section>
+      </div>
     </>
   );
 };

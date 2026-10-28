@@ -63,18 +63,32 @@ const TIP_WO =
   '같은 W/O의 투입과 생산을 이은 연결입니다. 어느 생산 LOT에 들어갔는지는 알 수 없습니다';
 
 /** 목록 줄의 「추정 포함」 칩 — 초점을 두는 칩 자리의 aria-label에 근거 한 문장이 실린다. */
+/** 목록의 LOT 번호 칸. 칸이 좁으면 앞쪽만 줄이려고 번호를 두 조각으로 그려 글자 찾기를 칸 단위로 한다. */
+const listLot =
+  (lotNo: string) =>
+  (_content: string, element: Element | null): boolean =>
+    element?.classList.contains('lot-trace-lot') === true && element.textContent === lotNo;
+
+/** 오른쪽(좁으면 아래) 상세 창. */
+const detailPane = () => screen.getByRole('region', { name: 'LOT 상세' });
+/** 상세 머리의 LOT 번호. */
+const detailHead = (lotNo: string) => screen.findByRole('heading', { name: lotNo, level: 2 });
+/** 상세 요약 항목 하나(항목명 → 값). */
+const fact = (scope: HTMLElement, label: string) =>
+  within(scope).getAllByText(label, { selector: 'dt' })[0]?.nextElementSibling;
+
 const estimatedChip = (lotNo: string): HTMLElement | null => {
-  const row = screen.getByText(lotNo).closest('tr');
+  const row = screen.getByText(listLot(lotNo)).closest('tr');
   if (row === null) throw new Error(`${lotNo} 줄이 없습니다`);
   return within(row).queryByLabelText(/^추정 포함\. /);
 };
 
-describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
-  it('처음 열면 정방향 탭이고, 기본 기간 30일을 채우고 진입점이 없으면 부르지 않고 [조회]를 사유와 함께 잠근다', async () => {
+describe('W-02-09 LOT 추적: 자재 LOT 탭', () => {
+  it('처음 열면 자재 LOT 탭이고, 기본 기간 30일을 채우고 진입점이 없으면 부르지 않고 [조회]를 사유와 함께 잠근다', async () => {
     const { calls } = setup('/production/lot-trace', {});
 
     expect(
-      await screen.findByRole('tab', { name: '정방향 추적', selected: true }),
+      await screen.findByRole('tab', { name: '자재 LOT', selected: true }),
     ).toBeInTheDocument();
     expect(
       await screen.findByText('품목이나 LOT 번호로 찾으세요. 입하번호로도 찾을 수 있습니다'),
@@ -101,7 +115,7 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
       ],
     });
 
-    expect(await screen.findByText(MAT)).toBeInTheDocument();
+    expect(await screen.findByText(listLot(MAT))).toBeInTheDocument();
     const first = lists(calls, '/trace/material-lot-flows')[0];
     expect(first?.searchParams.get('q')).toBe('ITEM-A');
     expect(first?.searchParams.get('receiptDateFrom')).toBe('2026-10-01');
@@ -131,7 +145,7 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
       ],
     });
 
-    expect(await screen.findByText(MAT)).toBeInTheDocument();
+    expect(await screen.findByText(listLot(MAT))).toBeInTheDocument();
     expect(estimatedChip(MAT)).toHaveAccessibleName(`추정 포함. ${TIP_LOT}`);
     expect(estimatedChip(wo)).toHaveAccessibleName(`추정 포함. ${TIP_WO}`);
     expect(estimatedChip(none)).toBeNull();
@@ -151,8 +165,43 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
     expect(screen.queryByText(/itemId/)).toBeNull();
   });
 
-  it('사슬 드로어: 투입만, 연결된 생산 LOT 없음, 포장 중, 출하별 취급 단위 묶음, 단계 줄과 영향 요약', async () => {
+  it('LOT을 고르기 전에는 상세 자리에 고르라는 안내를 둔다', async () => {
+    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
+      forwardRows: [forwardRow(101, MAT)],
+    });
+    await screen.findByText(listLot(MAT));
+    expect(within(detailPane()).getByText('LOT을 고르세요')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('행을 누르면 목록 옆 상세에 그 LOT이 서고, 고른 행을 표시한다', async () => {
+    const user = userEvent.setup();
+    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
+      forwardRows: [forwardRow(101, MAT)],
+      forwardChains: { 101: forwardChain(101, MAT, []) },
+    });
+    await user.click(await screen.findByText(listLot(MAT)));
+
+    expect(await detailHead(MAT)).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: `${MAT} 추적 열기` })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(navState()).toContain('selected=101');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('자재 LOT 상세: 입하, 자재 입고, 사용처, 생산 LOT마다 생산 입고, 포장, 출하를 이름표 단 표로 보인다', async () => {
     const shipped = productionLot(201, PROD, {
+      productionReceipts: [
+        {
+          goodsReceiptId: 41,
+          goodsReceiptNo: 'GR-SYN-0041',
+          receiptDatetime: '2026-10-23T07:00:00Z',
+          warehouse: { id: 2, code: 'WH-A', name: '창고 A' },
+          qty: 100,
+        },
+      ],
       packages: [
         {
           handlingUnitId: 1,
@@ -203,19 +252,36 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
       },
     });
 
-    const drawer = await screen.findByRole('dialog', { name: MAT });
-    expect(
-      await within(drawer).findByText('영향 요약: 생산 LOT 1, 출하 1건, 고객 1곳'),
-    ).toBeInTheDocument();
-    expect(within(drawer).getByText('투입만')).toBeInTheDocument();
-    expect(within(drawer).getByText('연결된 생산 LOT이 없습니다')).toBeInTheDocument();
-    expect(within(drawer).getByText('포장 중')).toBeInTheDocument();
-    /* 출하 한 건 아래 취급 단위 둘 — 출하 번호는 한 번만 선다. */
-    expect(within(drawer).getAllByText('SH-SYN-0031')).toHaveLength(1);
-    expect(within(drawer).getByText('HU-0003')).toBeInTheDocument();
-    /* 출하 아래 줄은 그 출하에 실린 포장이다. 다른 줄처럼 머리 이름을 단다. */
-    expect(within(drawer).getByText('HU-0003').closest('li')).toHaveTextContent(/^출하 포장/);
-    const stages = within(drawer).getByRole('list', { name: '단계' });
+    await detailHead(MAT);
+    const pane = detailPane();
+    expect(within(pane).getByText('자재 LOT', { selector: '*' })).toBeInTheDocument();
+    expect(fact(pane, '생산 LOT 수')).toHaveTextContent('1');
+    expect(fact(pane, '출하 건수')).toHaveTextContent('1');
+    expect(fact(pane, '고객 수')).toHaveTextContent('1');
+
+    const inbound = within(pane).getByRole('region', { name: '입하' });
+    expect(fact(inbound, '입하번호')).toHaveTextContent('IR-SYN-0001');
+    expect(fact(inbound, '공급사 LOT')).toHaveTextContent('SL-0001');
+    expect(within(inbound).getByRole('table', { name: '자재 입고' })).toHaveTextContent(
+      'GR-SYN-0001',
+    );
+
+    const usage = within(pane).getByRole('region', { name: '사용처' });
+    expect(within(usage).getAllByRole('row')).toHaveLength(4);
+    expect(within(usage).getByText('투입만')).toBeInTheDocument();
+
+    const lots = within(pane).getByRole('region', { name: '생산 LOT' });
+    expect(within(lots).getByText(PROD)).toBeInTheDocument();
+    expect(within(lots).getByText('생산 입고 1건, 포장 2건, 출하 1건')).toBeInTheDocument();
+    expect(within(lots).getByRole('table', { name: '생산 입고' })).toHaveTextContent('GR-SYN-0041');
+    expect(within(lots).getByRole('table', { name: '포장' })).toHaveTextContent('포장 중');
+    /* 출하는 출하번호로 묶는다 — 출하 한 건은 한 줄이고 수량은 합이다. */
+    const shipments = within(lots).getByRole('table', { name: '출하' });
+    expect(within(shipments).getAllByText('SH-SYN-0031')).toHaveLength(1);
+    expect(shipments).toHaveTextContent('50 EA');
+    expect(shipments).toHaveTextContent('고객 A');
+
+    const stages = within(pane).getByRole('list', { name: '단계' });
     /* 포장은 확정(PACKED)만 센다. */
     expect(within(stages).getByRole('button', { name: /포장\s*1건/ })).toBeInTheDocument();
     /* 출하까지 갔으면 흐름이 끝나 진행 중 단계 없이 모두 완료다. */
@@ -225,23 +291,25 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
         .getAllByRole('listitem')
         .every((item) => item.getAttribute('data-status') === 'complete'),
     ).toBe(true);
-    expect(within(stages).getByRole('button', { name: /출하\s*1건/ })).toBeEnabled();
-    expect(within(drawer).getByText(NOTICE)).toBeInTheDocument();
+    expect(within(pane).getByText(NOTICE)).toBeInTheDocument();
+    /* 이름표 없는 한 줄 나열이 없다 — 값은 모두 표나 항목 아래에 있다. */
+    expect(within(pane).queryByRole('list', { name: '사슬' })).toBeNull();
   });
 
-  it('아직 투입되지 않은 LOT은 「아직 투입된 기록이 없습니다」', async () => {
+  it('아직 투입되지 않은 LOT은 사용처에 「아직 투입된 기록이 없습니다」', async () => {
     setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       forwardChains: { 101: forwardChain(101, MAT, []) },
     });
 
-    const drawer = await screen.findByRole('dialog', { name: MAT });
-    expect(await within(drawer).findByText('아직 투입된 기록이 없습니다')).toBeInTheDocument();
+    await detailHead(MAT);
+    const usage = within(detailPane()).getByRole('region', { name: '사용처' });
+    expect(within(usage).getByText('아직 투입된 기록이 없습니다')).toBeInTheDocument();
     /* 이어진 생산 LOT이 없으면 서버 basis가 null이고 추정 안내를 두지 않는다. */
-    expect(within(drawer).queryByText(NOTICE)).not.toBeInTheDocument();
+    expect(within(detailPane()).queryByText(NOTICE)).not.toBeInTheDocument();
   });
 
-  it('드로어의 추정 안내는 서버 최상위 basis로만 정한다(null이면 생산 LOT이 있어도 두지 않는다)', async () => {
+  it('상세의 추정 안내는 서버 최상위 basis로만 정한다(null이면 생산 LOT이 있어도 두지 않는다)', async () => {
     setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       forwardChains: {
@@ -249,59 +317,42 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
       },
     });
 
-    const drawer = await screen.findByRole('dialog', { name: MAT });
-    expect(await within(drawer).findByText(PROD)).toBeInTheDocument();
-    expect(within(drawer).queryByText(NOTICE)).not.toBeInTheDocument();
+    await detailHead(MAT);
+    expect(within(detailPane()).getByText(PROD)).toBeInTheDocument();
+    expect(within(detailPane()).queryByText(NOTICE)).not.toBeInTheDocument();
   });
 
-  it('반제품은 한 단씩 펼치고, 지나온 LOT으로 돌아오면 다시 펼치지 않는다', async () => {
+  it('[보기]는 탭과 목록을 두고 그 LOT을 상세 가운데에 둔다. [이전 LOT]과 경로로 되돌아간다', async () => {
     const user = userEvent.setup();
-    const semi = productionLot(201, PROD, { consumedFurther: 1 });
-    const back = productionLot(101, MAT, { consumedFurther: 1 });
     const { calls } = setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
-      forwardChains: {
-        101: forwardChain(101, MAT, [workOrder(3, [semi])]),
-        201: forwardChain(201, PROD, [workOrder(4, [back])], 'PRODUCTION'),
-      },
-    });
-
-    const drawer = await screen.findByRole('dialog', { name: MAT });
-    await user.click(
-      await within(drawer).findByRole('button', { name: `${PROD} 다음 단계 펼치기` }),
-    );
-
-    expect(await within(drawer).findByText('WO-SYN-0004')).toBeInTheDocument();
-    expect(calls.some((url) => url.pathname === '/trace/lots/201/forward-flow')).toBe(true);
-    expect(within(drawer).getByText('지나온 LOT')).toBeInTheDocument();
-    expect(within(drawer).queryByRole('button', { name: `${MAT} 다음 단계 펼치기` })).toBeNull();
-  });
-
-  it('[역방향 추적]은 역방향 탭으로 바꾸고 경로 줄을 남긴다. 경로를 누르면 돌아간다', async () => {
-    const user = userEvent.setup();
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
-      forwardRows: [forwardRow(101, MAT)],
-      backwardRows: [backwardRow(201, PROD)],
       forwardChains: { 101: forwardChain(101, MAT, [workOrder(3, [productionLot(201, PROD)])]) },
       backwardChains: { 201: backwardChain(201, PROD, [inputMaterial(101, MAT)]) },
     });
 
-    const drawer = await screen.findByRole('dialog', { name: MAT });
-    await user.click(await within(drawer).findByRole('button', { name: `${PROD} 역방향 추적` }));
+    await detailHead(MAT);
+    await user.click(within(detailPane()).getByRole('button', { name: `${PROD} 추적 보기` }));
 
-    expect(
-      await screen.findByRole('tab', { name: '역방향 추적', selected: true }),
-    ).toBeInTheDocument();
-    const next = await screen.findByRole('dialog', { name: PROD });
-    const path = await within(next).findByRole('navigation', { name: '경로' });
+    expect(await detailHead(PROD)).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '자재 LOT', selected: true })).toBeInTheDocument();
+    /* 목록은 그대로이고 처음 고른 행을 짚는다. */
+    expect(screen.getByRole('row', { name: `${MAT} 추적 열기` })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(navState()).toMatch(/^PUSH /);
+    expect(navState()).toContain('selected=201');
+    expect(calls.some((url) => url.pathname === '/trace/lots/201/backward-flow')).toBe(true);
+    const inputs = within(detailPane()).getByRole('region', { name: '투입 자재' });
+    expect(within(inputs).getByText(MAT)).toBeInTheDocument();
+    const path = within(detailPane()).getByRole('navigation', { name: '경로' });
     expect(path).toHaveTextContent(`자재 LOT ${MAT}`);
     expect(path).toHaveTextContent(`생산 LOT ${PROD}`);
 
-    await user.click(within(path).getByRole('button', { name: `${MAT} 다시 열기` }));
-    expect(
-      await screen.findByRole('tab', { name: '정방향 추적', selected: true }),
-    ).toBeInTheDocument();
-    expect(await screen.findByRole('dialog', { name: MAT })).toBeInTheDocument();
+    await user.click(within(path).getByRole('button', { name: '이전 LOT' }));
+    expect(await detailHead(MAT)).toBeInTheDocument();
+    expect(within(detailPane()).queryByRole('navigation', { name: '경로' })).toBeNull();
+    expect(navState()).not.toContain('via=');
   });
 
   it('W-03-01 권한이 있으면 [LOT 상태 보기]를 둔다', async () => {
@@ -310,10 +361,8 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
       { forwardRows: [forwardRow(101, MAT)], forwardChains: { 101: forwardChain(101, MAT, []) } },
       ['W-02-09', 'W-03-01'],
     );
-    const drawer = await screen.findByRole('dialog', { name: MAT });
-    expect(
-      await within(drawer).findByRole('button', { name: 'LOT 상태 보기' }),
-    ).toBeInTheDocument();
+    await detailHead(MAT);
+    expect(within(detailPane()).getByRole('button', { name: 'LOT 상태 보기' })).toBeInTheDocument();
   });
 
   it('W-03-01 권한이 없으면 [LOT 상태 보기]를 두지 않는다', async () => {
@@ -322,19 +371,21 @@ describe('W-02-09 LOT 추적: 정방향 추적 탭', () => {
       { forwardRows: [forwardRow(101, MAT)], forwardChains: { 101: forwardChain(101, MAT, []) } },
       ['W-02-09'],
     );
-    const drawer = await screen.findByRole('dialog', { name: MAT });
-    await within(drawer).findByText('아직 투입된 기록이 없습니다');
-    expect(within(drawer).queryByRole('button', { name: 'LOT 상태 보기' })).toBeNull();
+    await detailHead(MAT);
+    expect(within(detailPane()).queryByRole('button', { name: 'LOT 상태 보기' })).toBeNull();
   });
 });
 
-describe('W-02-09 LOT 추적: 역방향 추적 탭', () => {
+describe('W-02-09 LOT 추적: 제품 LOT 탭', () => {
   it('W/O 번호 진입점으로 부른다(기간 없이)', async () => {
     const { calls } = setup('/production/lot-trace?tab=backward&wo=WO-SYN-0001', {
       backwardRows: [backwardRow(201, PROD)],
     });
 
-    expect(await screen.findByText(PROD)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('tab', { name: '제품 LOT', selected: true }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(listLot(PROD))).toBeInTheDocument();
     const list = lists(calls, '/trace/product-lot-flows')[0];
     expect(list?.searchParams.get('workOrderNo')).toBe('WO-SYN-0001');
     expect(list?.searchParams.has('dateFrom')).toBe(false);
@@ -346,7 +397,7 @@ describe('W-02-09 LOT 추적: 역방향 추적 탭', () => {
       backwardRows: [backwardRow(201, PROD), backwardRow(202, none, { basis: null })],
     });
 
-    expect(await screen.findByText(PROD)).toBeInTheDocument();
+    expect(await screen.findByText(listLot(PROD))).toBeInTheDocument();
     expect(estimatedChip(PROD)).toHaveAccessibleName(`추정 포함. ${TIP_LOT}`);
     expect(estimatedChip(none)).toBeNull();
   });
@@ -357,14 +408,20 @@ describe('W-02-09 LOT 추적: 역방향 추적 탭', () => {
       backwardChains: { 201: backwardChain(201, PROD, [], false) },
     });
 
-    const drawer = await screen.findByRole('dialog', { name: PROD });
-    expect(await within(drawer).findByText('투입 자재가 없습니다')).toBeInTheDocument();
-    expect(within(drawer).getByText('아직 출하되지 않았습니다')).toBeInTheDocument();
-    expect(within(drawer).getByText('투입 자재 LOT 0, 공급사 0곳')).toBeInTheDocument();
-    expect(within(drawer).queryByText(NOTICE)).not.toBeInTheDocument();
+    await detailHead(PROD);
+    const pane = detailPane();
+    expect(within(pane).getByText('투입 자재가 없습니다')).toBeInTheDocument();
+    expect(within(pane).getByText('아직 출하되지 않았습니다')).toBeInTheDocument();
+    expect(within(pane).getByText('W/O 실적으로 만든 LOT이 아닙니다')).toBeInTheDocument();
+    expect(fact(pane, '투입 자재 LOT 수')).toHaveTextContent('0');
+    expect(fact(pane, '공급사 수')).toHaveTextContent('0');
+    expect(within(pane).queryByText(NOTICE)).not.toBeInTheDocument();
+    /* 사용처가 없는 생산 LOT(정방향 404)은 실패로 보이지 않는다. */
+    expect(within(pane).queryByText('사용처를 불러오지 못했습니다')).toBeNull();
+    expect(within(pane).queryByRole('region', { name: '사용처' })).toBeNull();
   });
 
-  it('반제품 투입 LOT은 [이 LOT 기준으로]로 같은 방향의 기준을 바꾸고 경로에 남긴다', async () => {
+  it('제품 LOT 상세: 생산 실적, 투입 자재 표, 반제품 투입 LOT은 [보기]로 가운데 둔다', async () => {
     const user = userEvent.setup();
     const semi = inputMaterial(301, 'SF-SYN-0001', {
       lotTypeCode: 'PRODUCTION',
@@ -378,21 +435,61 @@ describe('W-02-09 LOT 추적: 역방향 추적 탭', () => {
       },
     });
 
-    const drawer = await screen.findByRole('dialog', { name: PROD });
-    expect(await within(drawer).findByText('투입 자재 LOT 2, 공급사 1곳')).toBeInTheDocument();
-    /* W/O 줄의 실적은 이 LOT이 아니라 W/O 전체다. */
-    expect(
-      within(drawer).getByText('W/O 전체: 실적 2건, 양품 120 EA, 불량 5 EA'),
-    ).toBeInTheDocument();
-    expect(within(drawer).getAllByText('SL-0001')).toHaveLength(2);
-    expect(within(drawer).getByText(NOTICE)).toBeInTheDocument();
-    await user.click(within(drawer).getByRole('button', { name: 'SF-SYN-0001 이 LOT 기준으로' }));
+    await detailHead(PROD);
+    const pane = detailPane();
+    expect(fact(pane, '투입 자재 LOT 수')).toHaveTextContent('2');
+    expect(fact(pane, '공급사 수')).toHaveTextContent('1');
+    /* W/O 실적은 이 LOT이 아니라 W/O 전체다. 값마다 항목명을 단다. */
+    const production = within(pane).getByRole('region', { name: '생산 실적' });
+    expect(fact(production, 'W/O 번호')).toHaveTextContent('WO-SYN-0070');
+    expect(fact(production, 'W/O 실적 건수')).toHaveTextContent('2');
+    expect(fact(production, 'W/O 양품 수량')).toHaveTextContent('120 EA');
+    expect(fact(production, 'W/O 불량 수량')).toHaveTextContent('5 EA');
+    const inputs = within(pane).getByRole('table', { name: '투입 자재' });
+    expect(within(inputs).getAllByText('SL-0001')).toHaveLength(2);
+    expect(within(inputs).getAllByText('공급사 A')).toHaveLength(2);
+    expect(within(pane).getByText(NOTICE)).toBeInTheDocument();
+    for (const name of ['생산 입고', '포장', '출하']) {
+      expect(within(pane).getByRole('region', { name })).toBeInTheDocument();
+    }
 
-    const next = await screen.findByRole('dialog', { name: 'SF-SYN-0001' });
-    expect(await within(next).findByRole('navigation', { name: '경로' })).toHaveTextContent(
+    await user.click(within(pane).getByRole('button', { name: 'SF-SYN-0001 추적 보기' }));
+
+    expect(await detailHead('SF-SYN-0001')).toBeInTheDocument();
+    expect(within(detailPane()).getByRole('navigation', { name: '경로' })).toHaveTextContent(
       `생산 LOT ${PROD}`,
     );
-    expect(await within(next).findByText('ITEM-A|20|261023|SUP-A|0002')).toBeInTheDocument();
+    expect(within(detailPane()).getByText('ITEM-A|20|261023|SUP-A|0002')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '제품 LOT', selected: true })).toBeInTheDocument();
+  });
+
+  it('다시 투입된 반제품 LOT은 사용처와 그 생산 LOT도 함께 보인다', async () => {
+    const semi = 'SF-SYN-0001';
+    setup(`/production/lot-trace?tab=backward&lot=${semi}&selected=301`, {
+      backwardRows: [backwardRow(301, semi)],
+      backwardChains: { 301: backwardChain(301, semi, [inputMaterial(101, MAT)]) },
+      forwardChains: {
+        301: forwardChain(301, semi, [workOrder(5, [productionLot(201, PROD)])], 'PRODUCTION'),
+      },
+    });
+
+    await detailHead(semi);
+    const pane = detailPane();
+    expect(within(pane).getByRole('region', { name: '투입 자재' })).toHaveTextContent(MAT);
+    expect(within(pane).getByRole('region', { name: '사용처' })).toHaveTextContent('WO-SYN-0005');
+    expect(within(pane).getByRole('region', { name: '생산 LOT' })).toHaveTextContent(PROD);
+  });
+
+  it('사용처를 불러오지 못하면(500) 그 자리에 사유와 [다시 조회]를 둔다', async () => {
+    setup(`/production/lot-trace?tab=backward&lot=${PROD}&selected=201`, {
+      backwardRows: [backwardRow(201, PROD)],
+      backwardChains: { 201: backwardChain(201, PROD, []) },
+      chainFailures: { 'forward-201': 500 },
+    });
+
+    await detailHead(PROD);
+    expect(within(detailPane()).getByText('사용처를 불러오지 못했습니다')).toBeInTheDocument();
+    expect(within(detailPane()).getByRole('button', { name: '다시 조회' })).toBeInTheDocument();
   });
 });
 
@@ -417,15 +514,14 @@ describe('W-02-09 LOT 추적: 권한 없음과 없는 LOT', () => {
     expect(screen.queryByText('추적 정보를 불러오지 못했습니다')).toBeNull();
   });
 
-  it('사슬이 403이면 드로어에 권한 안내를 보이고 머리는 「LOT 사슬」이다', async () => {
+  it('추적이 403이면 상세에 권한 안내를 보이고 [다시 조회]를 두지 않는다', async () => {
     setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       chainFailures: { 'forward-101': 403 },
     });
 
-    const drawer = await screen.findByRole('dialog', { name: 'LOT 사슬' });
-    expect(await within(drawer).findByText(FORBIDDEN_TITLE)).toBeInTheDocument();
-    expect(within(drawer).queryByRole('button', { name: '다시 조회' })).toBeNull();
+    expect(await within(detailPane()).findByText(FORBIDDEN_TITLE)).toBeInTheDocument();
+    expect(within(detailPane()).queryByRole('button', { name: '다시 조회' })).toBeNull();
   });
 
   it('주소의 LOT이 없으면(404) 「LOT을 찾을 수 없습니다」이고 [다시 조회]를 두지 않는다', async () => {
@@ -433,10 +529,9 @@ describe('W-02-09 LOT 추적: 권한 없음과 없는 LOT', () => {
       backwardRows: [],
     });
 
-    const drawer = await screen.findByRole('dialog', { name: 'LOT 사슬' });
-    expect(await within(drawer).findByText('LOT을 찾을 수 없습니다')).toBeInTheDocument();
-    expect(within(drawer).getByText('목록에서 LOT을 다시 고르세요.')).toBeInTheDocument();
-    expect(within(drawer).queryByRole('button', { name: '다시 조회' })).toBeNull();
+    expect(await within(detailPane()).findByText('LOT을 찾을 수 없습니다')).toBeInTheDocument();
+    expect(within(detailPane()).getByText('목록에서 LOT을 다시 고르세요.')).toBeInTheDocument();
+    expect(within(detailPane()).queryByRole('button', { name: '다시 조회' })).toBeNull();
   });
 
   it('그 밖의 실패(500)는 [다시 조회]를 둔다', async () => {
@@ -445,134 +540,60 @@ describe('W-02-09 LOT 추적: 권한 없음과 없는 LOT', () => {
       chainFailures: { 'forward-101': 500 },
     });
 
-    const drawer = await screen.findByRole('dialog', { name: 'LOT 사슬' });
-    expect(await within(drawer).findByText('추적 정보를 불러오지 못했습니다')).toBeInTheDocument();
-    expect(within(drawer).getByRole('button', { name: '다시 조회' })).toBeInTheDocument();
-  });
-});
-
-describe('W-02-09 LOT 추적: 반제품 펼치기 실패', () => {
-  it('정방향: 펼친 단을 받지 못하면 그 줄에 사유와 [다시 조회], 그동안 [사슬 내보내기]를 잠근다', async () => {
-    const user = userEvent.setup();
-    const data: TraceStubData = {
-      forwardRows: [forwardRow(101, MAT)],
-      forwardChains: {
-        101: forwardChain(101, MAT, [
-          workOrder(3, [productionLot(201, PROD, { consumedFurther: 1 })]),
-        ]),
-        201: forwardChain(201, PROD, [workOrder(4, [])], 'PRODUCTION'),
-      },
-      chainFailures: { 'forward-201': 500 },
-    };
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, data);
-
-    const drawer = await screen.findByRole('dialog', { name: MAT });
-    await user.click(
-      await within(drawer).findByRole('button', { name: `${PROD} 다음 단계 펼치기` }),
-    );
-
-    expect(await within(drawer).findByText('다음 단계를 불러오지 못했습니다')).toBeInTheDocument();
-    const exportButton = within(drawer).getByRole('button', { name: '사슬 내보내기' });
-    expect(exportButton).toBeDisabled();
-    expect(exportButton).toHaveAccessibleDescription(
-      '불러오지 못한 단계가 있습니다. 모든 단계를 불러와야 사슬을 내보낼 수 있습니다.',
-    );
-
-    delete data.chainFailures?.['forward-201'];
-    await user.click(within(drawer).getByRole('button', { name: `${PROD} 다시 조회` }));
-
-    expect(await within(drawer).findByText('WO-SYN-0004')).toBeInTheDocument();
-    expect(within(drawer).queryByText('다음 단계를 불러오지 못했습니다')).toBeNull();
-    expect(within(drawer).getByRole('button', { name: '사슬 내보내기' })).toBeEnabled();
-  });
-
-  it('역방향: 펼친 단을 받지 못하면 자리 표시가 돌지 않고 사유와 [다시 조회]를 보인다', async () => {
-    const user = userEvent.setup();
-    const semi = inputMaterial(301, 'SF-SYN-0001', {
-      lotTypeCode: 'PRODUCTION',
-      producedBy: { workOrderId: 80, workOrderNo: 'WO-SYN-0080' },
-    });
-    setup(`/production/lot-trace?tab=backward&lot=${PROD}&selected=201`, {
-      backwardRows: [backwardRow(201, PROD)],
-      backwardChains: { 201: backwardChain(201, PROD, [semi]) },
-      chainFailures: { 'backward-301': 500 },
-    });
-
-    const drawer = await screen.findByRole('dialog', { name: PROD });
-    await user.click(
-      await within(drawer).findByRole('button', { name: 'SF-SYN-0001 다음 단계 펼치기' }),
-    );
-
-    expect(await within(drawer).findByText('다음 단계를 불러오지 못했습니다')).toBeInTheDocument();
     expect(
-      within(drawer).getByRole('button', { name: 'SF-SYN-0001 다시 조회' }),
+      await within(detailPane()).findByText('추적 정보를 불러오지 못했습니다'),
     ).toBeInTheDocument();
+    expect(within(detailPane()).getByRole('button', { name: '다시 조회' })).toBeInTheDocument();
   });
 });
 
-describe('W-02-09 LOT 추적: 사슬 모양', () => {
+describe('W-02-09 LOT 추적: 큰 사슬과 단계 줄', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('순환(cyclic)으로 표시된 LOT은 「지나온 LOT」 칩을 달고 펼치지 않는다', async () => {
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
-      forwardRows: [forwardRow(101, MAT)],
-      forwardChains: {
-        101: forwardChain(101, MAT, [
-          workOrder(3, [productionLot(201, PROD, { consumedFurther: 2, cyclic: true })]),
-        ]),
-      },
-    });
-
-    const drawer = await screen.findByRole('dialog', { name: MAT });
-    expect(await within(drawer).findByText('지나온 LOT')).toBeInTheDocument();
-    expect(within(drawer).queryByRole('button', { name: `${PROD} 다음 단계 펼치기` })).toBeNull();
-  });
-
-  it('생산 LOT이 잘린 큰 사슬은 안내를 두고 생산 LOT 아래 문서를 접은 채 시작한다', async () => {
+  it('생산 LOT이 잘린 큰 사슬은 안내를 두고, 생산 LOT이 많으면 묶음을 접은 채 시작한다', async () => {
     const user = userEvent.setup();
-    const lot = productionLot(201, PROD, {
-      productionReceipts: [
-        {
-          goodsReceiptId: 41,
-          goodsReceiptNo: 'GR-SYN-0041',
-          receiptDatetime: '2026-10-23T07:00:00Z',
-          warehouse: { id: 2, code: 'WH-A', name: '창고 A' },
-          qty: 100,
-        },
-      ],
-    });
+    const lots = [201, 202, 203, 204].map((id) =>
+      productionLot(id, `P-SYN-0${String(id)}`, {
+        productionReceipts: [
+          {
+            goodsReceiptId: id,
+            goodsReceiptNo: `GR-SYN-0${String(id)}`,
+            receiptDatetime: '2026-10-23T07:00:00Z',
+            warehouse: { id: 2, code: 'WH-A', name: '창고 A' },
+            qty: 100,
+          },
+        ],
+      }),
+    );
     setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       forwardChains: {
         101: {
-          ...forwardChain(101, MAT, [workOrder(3, [lot])]),
+          ...forwardChain(101, MAT, [workOrder(3, lots)]),
           truncated: true,
           totalProductionLotCount: 812,
         },
       },
     });
 
-    const drawer = await screen.findByRole('dialog', { name: MAT });
+    await detailHead(MAT);
+    const pane = detailPane();
     expect(
-      await within(drawer).findByText(
-        '생산 LOT 812건 중 500건까지 보이며 사슬 내보내기에도 이 500건만 담깁니다. 나머지는 역방향 추적에서 W/O 번호나 출하번호로 찾으세요.',
+      within(pane).getByText(
+        '생산 LOT 812건 중 500건까지 보이며 추적 내보내기에도 이 500건만 담깁니다. 나머지는 제품 LOT 탭에서 W/O 번호나 출하번호로 찾으세요.',
       ),
     ).toBeInTheDocument();
-    const documents = within(drawer).getByRole('button', { name: '생산 입고, 포장, 출하 1건' });
-    expect(documents).toHaveAttribute('aria-expanded', 'false');
-    /* 나무의 다른 펼치기와 같은 아이콘을 앞에 둔다. 아이콘은 접근명에 들지 않는다. */
-    expect(documents.firstElementChild).toHaveAttribute('aria-hidden', 'true');
-    expect(documents.firstElementChild).toHaveTextContent('expand_more');
-    expect(within(drawer).queryByText('GR-SYN-0041')).toBeNull();
+    const group = within(pane).getByText('P-SYN-0201').closest('details');
+    expect(group).not.toHaveAttribute('open');
+    expect(within(pane).getByText('GR-SYN-0201')).not.toBeVisible();
 
-    await user.click(documents);
-    expect(within(drawer).getByText('GR-SYN-0041')).toBeInTheDocument();
-    expect(documents).toHaveAttribute('aria-expanded', 'true');
+    await user.click(within(pane).getByText('P-SYN-0201'));
+    expect(group).toHaveAttribute('open');
   });
 
-  it('단계 줄의 칸은 그 단계의 첫 줄로 간다 — 첫 W/O에 생산 LOT이 없어도 다음 W/O의 LOT으로 간다', async () => {
+  it('단계 줄의 칸은 그 단계의 첫 구획으로 간다', async () => {
     const user = userEvent.setup();
     const scrolled: Element[] = [];
     Element.prototype.scrollIntoView = function scrollIntoView(this: Element) {
@@ -585,11 +606,32 @@ describe('W-02-09 LOT 추적: 사슬 모양', () => {
       },
     });
 
-    const drawer = await screen.findByRole('dialog', { name: MAT });
-    const stages = await within(drawer).findByRole('list', { name: '단계' });
+    await detailHead(MAT);
+    const stages = within(detailPane()).getByRole('list', { name: '단계' });
     await user.click(within(stages).getByRole('button', { name: /생산\s*1건/ }));
 
     expect(scrolled.at(-1)).toHaveTextContent(PROD);
+  });
+
+  it('공정 순서의 단계 줄: 지난 단계는 완료, 가장 멀리 간 단계는 진행 중, 닿지 않은 단계는 대기다', async () => {
+    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+      forwardRows: [forwardRow(101, MAT)],
+      forwardChains: { 101: forwardChain(101, MAT, [workOrder(3, [productionLot(201, PROD)])]) },
+    });
+
+    await detailHead(MAT);
+    const stages = within(detailPane()).getByRole('list', { name: '단계' });
+    const items = within(stages).getAllByRole('listitem');
+    expect(items.map((item) => item.getAttribute('data-status'))).toEqual([
+      'complete',
+      'complete',
+      'current',
+      'pending',
+      'pending',
+      'pending',
+    ]);
+    expect(items[2]).toHaveAttribute('aria-current', 'step');
+    expect(within(stages).getByRole('button', { name: /생산 입고\s*0건/ })).toBeDisabled();
   });
 });
 
@@ -642,14 +684,15 @@ describe('W-02-09 LOT 추적: LOT 번호 칸', () => {
     expect(await screen.findByText('기간은 366일까지 조회할 수 있습니다')).toBeInTheDocument();
   });
 
-  it('생산 LOT을 정방향으로 열면 목록이 빈 까닭을 말한다', async () => {
+  it('생산 LOT을 자재 LOT 탭으로 열면 목록이 빈 까닭을 말한다', async () => {
     setup(`/production/lot-trace?lot=${PROD}&selected=201`, {
       forwardRows: [],
       forwardChains: { 201: forwardChain(201, PROD, [], 'PRODUCTION') },
+      backwardChains: { 201: backwardChain(201, PROD, []) },
     });
 
     expect(await screen.findByText('자재 입고가 없는 LOT입니다')).toBeInTheDocument();
-    expect(await screen.findByRole('dialog', { name: PROD })).toBeInTheDocument();
+    expect(await detailHead(PROD)).toBeInTheDocument();
   });
 });
 
@@ -722,7 +765,7 @@ describe('W-02-09 LOT 추적: 추적 조건 바로 반영', () => {
     const { calls } = setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}`, {
       forwardRows: [forwardRow(101, MAT)],
     });
-    await screen.findByText(MAT, { selector: 'td *, td' });
+    await screen.findByText(listLot(MAT));
     const before = flows(calls).length;
 
     await user.click(screen.getByRole('button', { name: '지우기' }));
@@ -740,7 +783,7 @@ describe('W-02-09 LOT 추적: 추적 조건 바로 반영', () => {
     const { calls } = setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
       forwardRows: [forwardRow(101, MAT)],
     });
-    await screen.findByText(MAT);
+    await screen.findByText(listLot(MAT));
     const before = flows(calls).length;
 
     await pickRange(user, screen.getByLabelText('입고 기간'), '2025-01-01', '2026-10-26');
@@ -755,7 +798,7 @@ describe('W-02-09 LOT 추적: 추적 조건 바로 반영', () => {
     const { calls } = setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26&page=2', {
       forwardRows: [forwardRow(101, MAT)],
     });
-    await screen.findByText(MAT);
+    await screen.findByText(listLot(MAT));
 
     await pickRange(user, screen.getByLabelText('입고 기간'), '2026-10-05', '2026-10-20');
 
@@ -777,28 +820,5 @@ describe('W-02-09 LOT 추적: 추적 조건 바로 반영', () => {
 
     await waitFor(() => expect(navState()).toContain('stage=CONSUMED'));
     expect(navState()).toMatch(/^REPLACE /);
-  });
-});
-
-describe('W-02-09 LOT 추적: 단계 줄', () => {
-  it('공정 순서의 단계 줄: 지난 단계는 완료, 가장 멀리 간 단계는 진행 중, 닿지 않은 단계는 대기다', async () => {
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
-      forwardRows: [forwardRow(101, MAT)],
-      forwardChains: { 101: forwardChain(101, MAT, [workOrder(3, [productionLot(201, PROD)])]) },
-    });
-
-    const drawer = await screen.findByRole('dialog', { name: MAT });
-    const stages = await within(drawer).findByRole('list', { name: '단계' });
-    const items = within(stages).getAllByRole('listitem');
-    expect(items.map((item) => item.getAttribute('data-status'))).toEqual([
-      'complete',
-      'complete',
-      'current',
-      'pending',
-      'pending',
-      'pending',
-    ]);
-    expect(items[2]).toHaveAttribute('aria-current', 'step');
-    expect(within(stages).getByRole('button', { name: /생산 입고\s*0건/ })).toBeDisabled();
   });
 });

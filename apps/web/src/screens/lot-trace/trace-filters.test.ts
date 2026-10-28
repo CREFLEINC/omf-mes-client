@@ -15,25 +15,23 @@ import {
 const params = (query: string) => new URLSearchParams(query);
 
 describe('추적 탭 주소 조건', () => {
-  it('탭은 처음 정방향이다', () => {
+  it('탭은 처음 자재 LOT(forward)이다', () => {
     expect(readTab(params(''))).toBe('forward');
     expect(readTab(params('tab=backward'))).toBe('backward');
     expect(readTab(params('tab=movements'))).toBe('movements');
   });
 
-  it('경로는 방향, LOT 종류, 번호, LOT 번호(구분자가 든 번호 포함)를 그대로 되읽는다', () => {
+  it('경로는 LOT 종류, 번호, LOT 번호(구분자가 든 번호 포함)를 그대로 되읽는다', () => {
     const query = openLotParams('backward', { lotId: 201, lotNo: 'P-1' }, [
-      { direction: 'forward', lotType: 'MATERIAL', lotId: 101, lotNo: 'A|500|~|1' },
+      { lotType: 'MATERIAL', lotId: 101, lotNo: 'A|500|~|1' },
     ]);
-    expect(readPath(query)).toEqual([
-      { direction: 'forward', lotType: 'MATERIAL', lotId: 101, lotNo: 'A|500|~|1' },
-    ]);
+    expect(readPath(query)).toEqual([{ lotType: 'MATERIAL', lotId: 101, lotNo: 'A|500|~|1' }]);
     expect(query.get('tab')).toBe('backward');
     expect(query.get('lot')).toBe('P-1');
     expect(query.get('selected')).toBe('201');
   });
 
-  it('읽고 쓰면 같은 주소가 된다(역방향)', () => {
+  it('읽고 쓰면 같은 주소가 된다(제품 LOT 탭)', () => {
     const query =
       'tab=backward&q=P&item=6&sh=SH-1&wo=WO-1&from=2026-10-01&to=2026-10-26&axis=SHIPPED&partner=5&stage=SHIPPED&page=2';
     expect(

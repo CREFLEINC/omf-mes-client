@@ -38,8 +38,8 @@ import { useAllPagesExport } from './use-export';
 const t = messages.lotTrace;
 
 /**
- * 행을 누르면 그 LOT의 추적으로 간다. 자재 입고는 정방향, 생산 입고는 역방향,
- * 제품 출고는 그 출하번호로 역방향(LOT이 하나면 그 LOT의 사슬을 연다).
+ * 행을 누르면 그 LOT의 추적으로 간다. 자재 입고는 자재 LOT 탭, 생산 입고는 제품 LOT 탭,
+ * 제품 출고는 그 출하번호로 제품 LOT 탭(LOT이 하나면 그 LOT의 상세를 연다).
  */
 export const traceParamsOf = (row: MovementRow): URLSearchParams => {
   const first = row.lots[0];

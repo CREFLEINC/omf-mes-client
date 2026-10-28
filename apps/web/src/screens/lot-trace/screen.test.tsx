@@ -234,7 +234,7 @@ describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
     expect(list?.searchParams.has('statusCode')).toBe(false);
   });
 
-  it('자재 입고 줄을 누르면 그 LOT의 정방향 추적을 연다(기간 없이 LOT 번호 정확 일치)', async () => {
+  it('자재 입고 줄을 누르면 그 LOT을 자재 LOT 탭에서 연다(기간 없이 LOT 번호 정확 일치)', async () => {
     const user = userEvent.setup();
     const { traceCalls } = setup();
 
@@ -245,7 +245,7 @@ describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
     );
 
     expect(
-      await screen.findByRole('tab', { name: '정방향 추적', selected: true }),
+      await screen.findByRole('tab', { name: '자재 LOT', selected: true }),
     ).toBeInTheDocument();
     await waitFor(() => {
       const list = traceCalls.find((url) => url.pathname === '/trace/material-lot-flows');
@@ -257,14 +257,14 @@ describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
     );
   });
 
-  it('제품 출고 줄을 누르면 그 출하번호로 역방향 추적을 연다', async () => {
+  it('제품 출고 줄을 누르면 그 출하번호로 제품 LOT 탭을 연다', async () => {
     const user = userEvent.setup();
     const { traceCalls } = setup({ route: `${ROUTE}&kind=SHIPMENT` });
 
     await user.click(await screen.findByRole('link', { name: /SH-SYN-0011/ }));
 
     expect(
-      await screen.findByRole('tab', { name: '역방향 추적', selected: true }),
+      await screen.findByRole('tab', { name: '제품 LOT', selected: true }),
     ).toBeInTheDocument();
     await waitFor(() => {
       const list = traceCalls.find((url) => url.pathname === '/trace/product-lot-flows');

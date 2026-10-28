@@ -11,7 +11,7 @@ import {
   dispositionEntryPath,
 } from '../screens/disposition-decision/filters';
 import { WORK_ORDER_PROGRESS_PATH } from '../screens/work-order-progress/filters';
-import { LOT_STATUS_PATH } from '../screens/lot-trace/chain-drawer';
+import { LOT_STATUS_PATH } from '../screens/lot-trace/lot-detail';
 import { SessionProvider } from '../patterns/session';
 import { expandAllNavGroups } from '../test/nav-groups';
 import {

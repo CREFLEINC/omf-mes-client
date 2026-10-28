@@ -3,7 +3,10 @@ import { DEFAULT_SIZE } from './filters';
 import { validatePeriod, type Period } from './period';
 import type { BackwardListQuery, ForwardListQuery, ForwardStage } from './trace-types';
 
-/** 화면 안 탭. 처음 열면 정방향. 마지막 탭과 조건은 주소에 남긴다. */
+/**
+ * 화면 안 탭. 탭은 무엇으로 찾는지만 고른다(자재 LOT, 제품 LOT, 입출고 현황). 주소 값은 서버 목록 이름을 따라
+ * `forward`(자재 LOT 목록), `backward`(제품 LOT 목록)이다. 처음 열면 자재 LOT. 마지막 탭과 조건은 주소에 남긴다.
+ */
 export const TABS = ['forward', 'backward', 'movements'] as const;
 export type TraceTab = (typeof TABS)[number];
 export type TraceDirection = 'forward' | 'backward';
@@ -52,9 +55,8 @@ export interface TraceFilters extends Period {
   size: PageSize;
 }
 
-/** 지나온 LOT 하나(방향 바꾸기, 기준 바꾸기). 드로어 머리 위 경로 줄이 이것으로 그려진다. */
+/** 지나온 LOT 하나. 상세에서 [보기]로 다른 LOT을 가운데 두면 쌓이고, 상세 머리 위 경로 줄이 이것으로 그려진다. */
 export interface PathStep {
-  direction: TraceDirection;
   lotType: 'MATERIAL' | 'PRODUCTION';
   lotId: number;
   lotNo: string;
@@ -97,13 +99,12 @@ const STEP_SEPARATOR = '~';
 
 export const readPath = (params: URLSearchParams): PathStep[] =>
   params.getAll('via').flatMap((raw) => {
-    const [dir, type, id, ...rest] = raw.split(STEP_SEPARATOR);
+    const [type, id, ...rest] = raw.split(STEP_SEPARATOR);
     const lotNo = rest.join(STEP_SEPARATOR);
-    if ((dir !== 'F' && dir !== 'B') || (type !== 'M' && type !== 'P')) return [];
+    if (type !== 'M' && type !== 'P') return [];
     if (id === undefined || !POSITIVE.test(id) || lotNo === '') return [];
     return [
       {
-        direction: dir === 'F' ? 'forward' : 'backward',
         lotType: type === 'M' ? 'MATERIAL' : 'PRODUCTION',
         lotId: Number(id),
         lotNo,
@@ -112,12 +113,7 @@ export const readPath = (params: URLSearchParams): PathStep[] =>
   });
 
 const writeStep = (step: PathStep): string =>
-  [
-    step.direction === 'forward' ? 'F' : 'B',
-    step.lotType === 'MATERIAL' ? 'M' : 'P',
-    String(step.lotId),
-    step.lotNo,
-  ].join(STEP_SEPARATOR);
+  [step.lotType === 'MATERIAL' ? 'M' : 'P', String(step.lotId), step.lotNo].join(STEP_SEPARATOR);
 
 export const toTraceSearchParams = (
   direction: TraceDirection,
@@ -228,8 +224,8 @@ export const backwardQuery = (
 });
 
 /**
- * 다른 탭이나 방향 바꾸기에서 한 LOT을 여는 주소. 정확 일치(`lot`)로 집고 기간은 비운다(계약상 선택).
- * 지나온 경로(`path`)를 함께 넘기면 드로어 머리 위 경로 줄에 남는다.
+ * 다른 탭이나 화면에서 한 LOT을 여는 주소. 정확 일치(`lot`)로 집고 기간은 비운다(계약상 선택).
+ * 지나온 경로(`path`)를 함께 넘기면 상세 머리 위 경로 줄에 남는다.
  */
 export const openLotParams = (
   direction: TraceDirection,
@@ -238,13 +234,13 @@ export const openLotParams = (
 ): URLSearchParams =>
   toTraceSearchParams(direction, { ...EMPTY_TRACE_FILTERS, lot: lot.lotNo }, lot.lotId, path);
 
-/** 출하 한 건의 LOT 전부를 역방향으로 연다(입출고 현황의 제품 출고 줄). */
+/** 출하 한 건의 LOT 전부를 제품 LOT 탭으로 연다(입출고 현황의 제품 출고 줄). */
 export const openShipmentParams = (shipmentNo: string, onlyLotId: number | null): URLSearchParams =>
   toTraceSearchParams('backward', { ...EMPTY_TRACE_FILTERS, shipment: shipmentNo }, onlyLotId);
 
 /** LOT 추적 화면 주소. 다른 화면(W-03-01 LOT 상세)이 한 LOT의 추적을 열 때 쓴다. */
 export const LOT_TRACE_PATH = '/production/lot-trace';
 
-/** 한 LOT의 추적을 여는 주소. 자재 LOT은 정방향, 그 밖의 LOT(생산, 제품)은 역방향이다. */
+/** 한 LOT의 추적을 여는 주소. 자재 LOT은 자재 LOT 탭, 그 밖의 LOT(생산, 제품)은 제품 LOT 탭이다. */
 export const lotTraceHref = (lot: { lotId: number; lotNo: string; lotTypeCode: string }): string =>
   `${LOT_TRACE_PATH}?${openLotParams(lot.lotTypeCode === 'MATERIAL' ? 'forward' : 'backward', lot).toString()}`;

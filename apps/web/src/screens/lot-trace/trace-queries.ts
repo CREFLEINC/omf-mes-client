@@ -1,4 +1,4 @@
-import { keepPreviousData, useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -90,46 +90,4 @@ export const useBackwardChain = (lotId: number): UseQueryResult<BackwardChain> =
     queryKey: traceKeys.chain('backward', lotId),
     queryFn: () => fetchBackwardChain(client, lotId),
   });
-};
-
-export interface ExpandedChains<Chain> {
-  chains: Map<number, Chain>;
-  pending: Set<number>;
-  failed: Set<number>;
-  /** 실패한 LOT 하나를 다시 부른다. */
-  retry: (lotId: number) => void;
-}
-
-/**
- * 펼친 반제품 LOT들의 사슬(한 번에 한 단). 펼친 LOT마다 한 번 부르고 결과를 번호로 모은다 —
- * 나무와 [사슬 내보내기]가 같은 모음을 읽는다.
- */
-export const useExpandedChains = <Chain>(
-  direction: TraceDirection,
-  lotIds: readonly number[],
-): ExpandedChains<Chain> => {
-  const { client } = useApiClient();
-  const results = useQueries({
-    queries: lotIds.map((lotId) => ({
-      queryKey: traceKeys.chain(direction, lotId),
-      queryFn: () =>
-        direction === 'forward'
-          ? fetchForwardChain(client, lotId)
-          : fetchBackwardChain(client, lotId),
-    })),
-  });
-  const chains = new Map<number, Chain>();
-  const pending = new Set<number>();
-  const failed = new Set<number>();
-  results.forEach((result, index) => {
-    const lotId = lotIds[index] as number;
-    if (result.data !== undefined) chains.set(lotId, result.data as Chain);
-    else if (result.isError && !result.isFetching) failed.add(lotId);
-    else pending.add(lotId);
-  });
-  const retry = (lotId: number) => {
-    const index = lotIds.indexOf(lotId);
-    if (index >= 0) void results[index]?.refetch();
-  };
-  return { chains, pending, failed, retry };
 };
