@@ -6,7 +6,7 @@ import {
   type ItemExtendedAttrsTabId,
   type SubsidiaryTabId,
 } from './tabs';
-import type { ItemFilters } from './types';
+import type { IqcFilter, ItemFilters } from './types';
 
 /**
  * 조회 조건 — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를 내게 하려면
@@ -20,6 +20,7 @@ const URL_KEYS = {
   q: 'q',
   itemType: 'type',
   includeInactive: 'inactive',
+  iqc: 'iqc',
   page: 'page',
 } as const;
 
@@ -45,7 +46,12 @@ export const EMPTY_ITEM_FILTERS: ItemFilters = {
   q: '',
   itemType: DEFAULT_ITEM_TYPE,
   includeInactive: false,
+  iqc: '',
 };
+
+/** 주소의 IQC 대상 값(`y` · `n`). 그 밖의 값은 전체로 본다. */
+const readIqc = (value: string | null): IqcFilter =>
+  value === 'y' ? 'Y' : value === 'n' ? 'N' : '';
 
 export const readItemFilters = (params: URLSearchParams): ItemFilters => {
   const itemType = params.get(URL_KEYS.itemType);
@@ -58,6 +64,7 @@ export const readItemFilters = (params: URLSearchParams): ItemFilters => {
           ? ''
           : itemType,
     includeInactive: params.get(URL_KEYS.includeInactive) === ON,
+    iqc: readIqc(params.get(URL_KEYS.iqc)),
   };
 };
 
@@ -109,6 +116,7 @@ export const toSearchParams = (
     next.set(URL_KEYS.itemType, filters.itemType === '' ? ALL_TYPES : filters.itemType);
   }
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
+  if (filters.iqc !== '') next.set(URL_KEYS.iqc, filters.iqc.toLowerCase());
   if (page > 1) next.set(URL_KEYS.page, String(page));
 
   return next;
@@ -119,6 +127,11 @@ export interface ItemListQuery {
   q?: string;
   itemTypeCode?: string;
   includeInactive?: boolean;
+  /**
+   * IQC 대상만(true) · 비대상만(false). 계약 사본에 아직 없다 — 서버에 요청함(2026-10-28, hasBom 과 같은 모양).
+   * 서버가 받기 전에는 무시돼 전체가 온다.
+   */
+  inspectionRequired?: boolean;
   page?: number;
 }
 
@@ -136,8 +149,12 @@ export const toItemListQuery = (filters: ItemFilters, page: number): ItemListQue
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.itemType === '' ? {} : { itemTypeCode: filters.itemType }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
+  ...(filters.iqc === '' ? {} : { inspectionRequired: filters.iqc === 'Y' }),
   ...(page > 1 ? { page } : {}),
 });
 
 export const hasAnyFilter = (filters: ItemFilters): boolean =>
-  filters.q !== '' || filters.itemType !== DEFAULT_ITEM_TYPE || filters.includeInactive;
+  filters.q !== '' ||
+  filters.itemType !== DEFAULT_ITEM_TYPE ||
+  filters.includeInactive ||
+  filters.iqc !== '';

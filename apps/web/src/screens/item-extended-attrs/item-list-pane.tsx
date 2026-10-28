@@ -43,13 +43,14 @@ export const ItemFilterBar = ({
   itemTypeOptions = NO_ITEM_TYPES,
 }: ItemFilterBarProps) => {
   const itemTypeId = useId();
+  const iqcId = useId();
   const [draft, setDraft] = useState<ItemFilters>(applied);
-  const { q, itemType, includeInactive } = applied;
+  const { q, itemType, includeInactive, iqc } = applied;
 
   // 뒤로가기 등으로 주소가 바뀌면 입력칸도 따라간다.
   useEffect(() => {
-    setDraft({ q, itemType, includeInactive });
-  }, [q, itemType, includeInactive]);
+    setDraft({ q, itemType, includeInactive, iqc });
+  }, [q, itemType, includeInactive, iqc]);
 
   const typeOptions = itemTypeOptions.map((option) => ({
     value: option.code,
@@ -84,6 +85,24 @@ export const ItemFilterBar = ({
           options={[{ value: '', label: t.filters.itemTypeAll }, ...typeOptions]}
           onChange={(value) => {
             setDraft((prev) => ({ ...prev, itemType: value }));
+          }}
+        />
+      </div>
+      {/* IQC 대상 여부 — 품목유형과 같이 「조회」로 건다(사용자 지시 2026-10-28). */}
+      <div className="field-cell">
+        <label className="field-label" htmlFor={iqcId}>
+          {t.filters.iqcLabel}
+        </label>
+        <Select
+          id={iqcId}
+          value={draft.iqc}
+          options={[
+            { value: '', label: t.filters.itemTypeAll },
+            { value: 'Y', label: t.values.yes },
+            { value: 'N', label: t.values.no },
+          ]}
+          onChange={(value) => {
+            setDraft((prev) => ({ ...prev, iqc: value === 'Y' || value === 'N' ? value : '' }));
           }}
         />
       </div>
@@ -167,6 +186,14 @@ export const ItemListPane = ({
       header: t.origin.fields.itemType,
       width: '80px',
       render: (row) => codeValueName(itemTypeOptions, row.itemTypeCode),
+    },
+    /* IQC 대상 여부(사용자 지시 2026-10-28) — Y / N. */
+    {
+      key: 'inspectionRequired',
+      header: t.attrs.fields.inspectionRequired,
+      width: '80px',
+      align: 'center',
+      render: (row) => (row.inspectionRequired ? t.values.yes : t.values.no),
     },
   ];
 

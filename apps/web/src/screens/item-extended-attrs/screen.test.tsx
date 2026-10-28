@@ -772,7 +772,7 @@ const findAttrsPane = async (): Promise<HTMLElement> =>
 
 /** 폼을 한 군데 고쳐 저장을 연다. 어느 필드를 고쳐도 결과는 같다. */
 const editAndSave = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.type(screen.getByLabelText('보관 조건'), 'X');
+  await user.type(screen.getByLabelText('생산 LOT 기본크기'), '1');
   await user.click(screen.getByRole('button', { name: '저장' }));
 };
 
@@ -943,28 +943,6 @@ describe('ItemExtendedAttrsScreen — 유효기한 (M04·M05)', () => {
     ).toBeInTheDocument();
     expect(savedBodies(requests)).toHaveLength(0);
   });
-
-  /* 계약 `exclusiveMinimum: 0` — 유효기한(일)과 하한 규칙이 다르다(M06의 화면 쪽 확인). */
-  it('개봉 후 유효시간에 0을 넣으면 요청이 나가지 않는다', async () => {
-    const { requests, user } = renderScreen([
-      itemListRoute(),
-      itemDetailRoute(),
-      uomsRoute(),
-      itemSaveRoute(),
-    ]);
-
-    await selectFirstItem(user);
-    await findAttrsPane();
-
-    await user.clear(screen.getByLabelText('개봉 후 유효시간(시간)'));
-    await user.type(screen.getByLabelText('개봉 후 유효시간(시간)'), '0');
-    await user.click(screen.getByRole('button', { name: '저장' }));
-
-    expect(
-      await screen.findByText('개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.'),
-    ).toBeInTheDocument();
-    expect(savedBodies(requests)).toHaveLength(0);
-  });
 });
 
 /**
@@ -1066,10 +1044,9 @@ describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => 
      * 지워져(`changeAttrsValues`) 「품목 변경이 인라인 오류를 지운다」가 검사되지 않는다 —
      * 오류가 이미 없는 상태를 「사라졌다」로 읽는 헛도는 단언이 된다.
      */
-    await user.clear(screen.getByLabelText('개봉 후 유효시간(시간)'));
-    await user.type(screen.getByLabelText('개봉 후 유효시간(시간)'), '0');
+    await user.clear(screen.getByLabelText('유효기한(일)'));
     await user.click(screen.getByRole('button', { name: '저장' }));
-    await screen.findByText('개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.');
+    await screen.findByText('유효기한 관리를 켜면 유효기한(일)을 입력해야 합니다.');
 
     await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02 선택' }));
 
@@ -1081,7 +1058,7 @@ describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => 
       ).not.toBeInTheDocument();
     });
     expect(
-      screen.queryByText('개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.'),
+      screen.queryByText('유효기한 관리를 켜면 유효기한(일)을 입력해야 합니다.'),
     ).not.toBeInTheDocument();
   });
 
@@ -1094,13 +1071,13 @@ describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => 
 
     await findAttrsPane();
 
-    await user.type(screen.getByLabelText('보관 조건'), 'ZZZ');
-    expect(screen.getByLabelText('보관 조건')).toHaveValue('SYN-STORAGE-01ZZZ');
+    await user.type(screen.getByLabelText('생산 LOT 기본크기'), '9');
+    expect(screen.getByLabelText('생산 LOT 기본크기')).toHaveValue(5009);
 
     await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01 선택' }));
 
     // 값이 서버 값으로 되돌아가면 여기서 잡힌다.
-    expect(screen.getByLabelText('보관 조건')).toHaveValue('SYN-STORAGE-01ZZZ');
+    expect(screen.getByLabelText('생산 LOT 기본크기')).toHaveValue(5009);
     expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
   });
 
@@ -1169,11 +1146,11 @@ describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => 
 
     await findAttrsPane();
 
-    await user.type(screen.getByLabelText('보관 조건'), 'ZZZ');
+    await user.type(screen.getByLabelText('생산 LOT 기본크기'), '9');
     await user.type(screen.getByRole('textbox', { name: '품목코드·품목명' }), 'SYN');
 
     expect(history.search()).toBe('?item=1001');
-    expect(screen.getByLabelText('보관 조건')).toHaveValue('SYN-STORAGE-01ZZZ');
+    expect(screen.getByLabelText('생산 LOT 기본크기')).toHaveValue(5009);
   });
 });
 
@@ -1325,12 +1302,12 @@ describe('ItemExtendedAttrsScreen — 취소', () => {
 
     await findAttrsPane();
 
-    await user.type(screen.getByLabelText('보관 조건'), 'ZZZ');
-    expect(screen.getByLabelText('보관 조건')).toHaveValue('SYN-STORAGE-01ZZZ');
+    await user.type(screen.getByLabelText('생산 LOT 기본크기'), '9');
+    expect(screen.getByLabelText('생산 LOT 기본크기')).toHaveValue(5009);
 
     await user.click(screen.getByRole('button', { name: '취소' }));
 
-    expect(screen.getByLabelText('보관 조건')).toHaveValue('SYN-STORAGE-01');
+    expect(screen.getByLabelText('생산 LOT 기본크기')).toHaveValue(500);
   });
 
   /* 되돌린 뒤에는 고친 것이 없다 — 저장·취소가 다시 닫혀야 상태와 액션이 어긋나지 않는다. */
@@ -1339,7 +1316,7 @@ describe('ItemExtendedAttrsScreen — 취소', () => {
 
     await findAttrsPane();
 
-    await user.type(screen.getByLabelText('보관 조건'), 'ZZZ');
+    await user.type(screen.getByLabelText('생산 LOT 기본크기'), '9');
     expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: '취소' }));
@@ -1620,13 +1597,13 @@ describe('ItemExtendedAttrsScreen — 탭 변경이 아무것도 비우지 않�
 
     await findAttrsPane();
 
-    await user.type(screen.getByLabelText('보관 조건'), 'ZZZ');
+    await user.type(screen.getByLabelText('생산 LOT 기본크기'), '9');
 
     await user.click(screen.getByRole('tab', { name: '부속 정보' }));
     await findBuMapPane();
     await user.click(screen.getByRole('tab', { name: '확장 속성' }));
 
-    expect(await screen.findByLabelText('보관 조건')).toHaveValue('SYN-STORAGE-01ZZZ');
+    expect(await screen.findByLabelText('생산 LOT 기본크기')).toHaveValue(5009);
   });
 
   /* 탭을 옮겼다고 저장 실패 배너까지 지우면 사용자가 실패 사실을 못 본 채 넘어간다. */

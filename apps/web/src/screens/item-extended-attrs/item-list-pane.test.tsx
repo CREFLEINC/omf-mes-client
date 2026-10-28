@@ -47,11 +47,21 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemListPane>[0]> = {})
 };
 
 describe('ItemListPane — 목록', () => {
-  it('품목코드 · 품목명 · 품목유형 세 열을 낸다', () => {
+  it('품목코드 · 품목명 · 품목유형 · IQC 대상 네 열을 낸다', () => {
     renderPane();
 
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
-    expect(headers).toEqual(['품목코드', '품목명', '품목유형']);
+    expect(headers).toEqual(['품목코드', '품목명', '품목유형', 'IQC 대상']);
+  });
+
+  it('IQC 대상 여부를 Y / N 으로 낸다', () => {
+    renderPane();
+
+    const cells = screen
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('cell').at(-1)?.textContent);
+    expect(cells).toEqual(itemFixtures.map((item) => (item.inspectionRequired ? 'Y' : 'N')));
   });
 
   it('품목코드를 눌러 고른다', async () => {
@@ -118,6 +128,7 @@ describe('ItemListPane — 조회 조건', () => {
       q: 'SYN',
       itemType: 'RAW_MATERIAL',
       includeInactive: false,
+      iqc: '',
     });
   });
 
@@ -131,12 +142,24 @@ describe('ItemListPane — 조회 조건', () => {
       q: '',
       itemType: 'RAW_MATERIAL',
       includeInactive: true,
+      iqc: '',
     });
+  });
+
+  /* 품목유형처럼 「조회」로 건다. */
+  it('IQC 대상 조건을 골라 조회한다', async () => {
+    const { onApplyFilters, user } = renderPane();
+
+    await user.click(screen.getByRole('combobox', { name: 'IQC 대상' }));
+    await user.click(await screen.findByRole('option', { name: 'Y' }));
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    expect(onApplyFilters).toHaveBeenLastCalledWith({ ...EMPTY_ITEM_FILTERS, iqc: 'Y' });
   });
 
   it('초기화는 조건을 통째로 푼다', async () => {
     const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'SYN', itemType: '', includeInactive: true },
+      appliedFilters: { q: 'SYN', itemType: '', includeInactive: true, iqc: '' },
     });
 
     await user.click(screen.getByRole('button', { name: '초기화' }));
@@ -148,14 +171,14 @@ describe('ItemListPane — 조회 조건', () => {
   it('품목 유형 선택지를 코드 그룹 이름으로 낸다', () => {
     renderPane({
       itemTypeOptions: [{ code: 'FINISHED', codeName: '완제품' }],
-      appliedFilters: { q: '', itemType: 'FINISHED', includeInactive: false },
+      appliedFilters: { q: '', itemType: 'FINISHED', includeInactive: false, iqc: '' },
     });
 
     expect(screen.getByRole('combobox', { name: '품목유형' })).toHaveTextContent('완제품');
   });
 
   it('선택지에 없는 유형 코드도 그대로 보인다', () => {
-    renderPane({ appliedFilters: { q: '', itemType: 'CUSTOM', includeInactive: false } });
+    renderPane({ appliedFilters: { q: '', itemType: 'CUSTOM', includeInactive: false, iqc: '' } });
 
     expect(screen.getByRole('combobox', { name: '품목유형' })).toHaveTextContent('CUSTOM');
   });
@@ -171,7 +194,7 @@ describe('ItemListPane — 빈 상태 세 갈래', () => {
   it('조건이 걸린 0건이면 조건을 줄이라고 한다', () => {
     renderPane({
       items: [],
-      appliedFilters: { q: 'SYN', itemType: '', includeInactive: false },
+      appliedFilters: { q: 'SYN', itemType: '', includeInactive: false, iqc: '' },
       pageView: pageView(1, 0, 0),
     });
 

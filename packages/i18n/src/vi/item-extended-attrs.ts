@@ -48,6 +48,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     itemSearchLabel: 'Mã·tên mặt hàng',
     itemTypeLabel: 'Loại mặt hàng',
     itemTypeAll: 'Tất cả',
+    iqcLabel: 'Đối tượng IQC',
   },
   loading: {
     items: 'Đang tải danh sách mặt hàng',
@@ -76,6 +77,8 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     unknown: 'Không rõ',
     /** 「알 수 없음」과 가른다 - 둘을 같은 말로 내면 자료가 잘못 담긴 것으로 읽힌다. */
     loading: 'Đang tải…',
+    yes: 'Y',
+    no: 'N',
   },
   /* 원본 구획 - 외부 시스템이 소유하는 네 열. 안내는 공통 `editability.receivedFromErp`가 낸다. */
   origin: {
@@ -97,9 +100,9 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       value: 'Giá trị',
     },
     groups: {
-      lot: 'Mặc định · nhận diện LOT',
+      lot: 'Mặc định LOT',
       shelfLife: 'Hạn sử dụng · thứ tự xuất',
-      inventory: 'Kiểm tra · tồn kho · bảo quản',
+      inventory: 'Kiểm tra · tồn kho',
     },
     fields: {
       nameKo: 'Tên mặt hàng (tiếng Hàn)',

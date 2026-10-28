@@ -60,6 +60,8 @@ export const itemExtendedAttrs = {
     /** 품목 유형 선택. 선택지 이름은 코드 그룹 `ITEM_TYPE`이 준다 — 화면이 짓지 않는다 */
     itemTypeLabel: '품목유형',
     itemTypeAll: '전체',
+    /** IQC 대상 여부 조건. */
+    iqcLabel: 'IQC 대상',
   },
   loading: {
     items: '품목 목록을 불러오는 중',
@@ -104,6 +106,9 @@ export const itemExtendedAttrs = {
      * 사용자가 원본 시스템을 확인하러 간다.
      */
     loading: '불러오는 중…',
+    /** 예 / 아니오 칸(IQC 대상 열 · 조건). 사용자 지시로 Y · N 그대로 쓴다. */
+    yes: 'Y',
+    no: 'N',
   },
   /**
    * 원본 구획 — 외부 시스템이 소유하는 네 열. **여기에 입력칸도 저장도 없다.**
@@ -135,9 +140,9 @@ export const itemExtendedAttrs = {
       value: '설정값',
     },
     groups: {
-      lot: 'LOT 기본값·식별',
+      lot: 'LOT 기본값',
       shelfLife: '유효기한·선출',
-      inventory: '검사·재고·보관',
+      inventory: '검사·재고',
     },
     fields: {
       nameKo: '품목명(한국어)',

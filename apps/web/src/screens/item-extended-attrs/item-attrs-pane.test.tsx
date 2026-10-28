@@ -2,23 +2,10 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { FREE_TEXT_CODES } from './code-catalog';
 import { itemFixtures } from './fixtures';
 import { ItemAttrsPane } from './item-attrs-pane';
 import { itemToAttrsFormValues } from './item-attrs-mappers';
 import type { ItemAttrsFormValues } from './types';
-
-/**
- * **이 구획이 소유한** 자유 입력 코드와 그 화면 라벨.
- *
- * `code-catalog.ts`의 목록은 화면 전체를 담는다 — `externalSystemCode`는 부속 정보 탭의
- * 외부 코드 구획에 있어 여기서 찾을 수 없다. 그래서 이 구획 몫만 뽑아 쓰되,
- * 아래에서 **그 몫이 실제로 목록에 있는지** 함께 확인한다(목록과 화면이 갈리지 않도록).
- */
-const FREE_TEXT_LABELS: Record<string, string> = {
-  serialControlTypeCode: '시리얼 관리 유형',
-  storageConditionCode: '보관 조건',
-};
 
 const renderPane = (overrides: Partial<Parameters<typeof ItemAttrsPane>[0]> = {}) => {
   const onChange = vi.fn<(patch: Partial<ItemAttrsFormValues>) => void>();
@@ -58,25 +45,8 @@ describe('ItemAttrsPane — 폼 구성', () => {
     renderPane();
 
     expect(screen.queryByRole('rowgroup', { name: '다국어 명칭' })).not.toBeInTheDocument();
-    for (const name of ['LOT 기본값·식별', '유효기한·선출', '검사·재고·보관']) {
+    for (const name of ['LOT 기본값', '유효기한·선출', '검사·재고']) {
       expect(screen.getByRole('rowgroup', { name })).toBeInTheDocument();
-    }
-  });
-
-  /*
-   * 값 목록이 확정되지 않은 코드는 **자유 입력**이다(결정 4).
-   * 빈 선택지로 두면 저장 자체가 막히고, 값을 지어내면 화면이 코드 체계를 주장하게 된다.
-   */
-  it.each(Object.keys(FREE_TEXT_LABELS))('%s는 자유 입력이다', (field) => {
-    renderPane();
-
-    expect(screen.getByLabelText(FREE_TEXT_LABELS[field]!)).toHaveProperty('tagName', 'INPUT');
-  });
-
-  /* 위 목록이 자리표시 기록과 갈리면 「무엇이 자유 입력인가」의 정본이 둘이 된다. */
-  it('이 구획의 자유 입력 필드가 자리표시 기록에 들어 있다', () => {
-    for (const field of Object.keys(FREE_TEXT_LABELS)) {
-      expect(FREE_TEXT_CODES).toContain(field);
     }
   });
 
@@ -99,12 +69,27 @@ describe('ItemAttrsPane — 폼 구성', () => {
   it('최신 계약의 확장 속성을 내고 계약에 없는 재생재 입력은 만들지 않는다', () => {
     renderPane();
 
-    for (const label of ['LOT 보관 단위 기본값', '생산 LOT 기본크기', '개발품']) {
+    for (const label of ['LOT 보관 단위 기본값', '생산 LOT 기본크기', 'IQC 대상']) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
     expect(screen.queryByLabelText('재생재')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('품목명(한국어)')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('품목명(베트남어)')).not.toBeInTheDocument();
+  });
+
+  /* 동작에 쓰이지 않는 항목은 뺐다(사용자 지시 2026-10-28) — 값은 저장 때 조회한 그대로 되돌려 실린다. */
+  it('시리얼 관리 유형 · 개발품 · 개봉 후 유효시간 · 보관 조건 · LOT 관리를 내지 않는다', () => {
+    renderPane();
+
+    for (const label of [
+      '시리얼 관리 유형',
+      '개발품',
+      '개봉 후 유효시간(시간)',
+      '보관 조건',
+      'LOT 관리',
+    ]) {
+      expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
+    }
   });
 });
 
@@ -121,26 +106,6 @@ describe('ItemAttrsPane — 고치지 않는 값은 폼에 없다', () => {
     expect(screen.queryByText('MES 구분')).not.toBeInTheDocument();
     expect(screen.queryByText('사용 여부')).not.toBeInTheDocument();
     expect(screen.queryByRole('switch', { name: '사용 여부' })).not.toBeInTheDocument();
-  });
-});
-
-describe('ItemAttrsPane — LOT 관리 여부', () => {
-  it('토글을 바꾸면 boolean 계약 필드만 알린다', async () => {
-    const { onChange, user } = renderPane();
-
-    await user.click(screen.getByRole('switch', { name: 'LOT 관리' }));
-
-    expect(onChange).toHaveBeenCalledWith({ lotControlled: false });
-  });
-});
-
-describe('ItemAttrsPane — 최신 확장 속성', () => {
-  it('개발품을 바꾸면 boolean 계약 필드만 알린다', async () => {
-    const { onChange, user } = renderPane();
-
-    await user.click(screen.getByRole('switch', { name: '개발품' }));
-
-    expect(onChange).toHaveBeenCalledWith({ developmentItem: false });
   });
 });
 
@@ -174,9 +139,9 @@ describe('ItemAttrsPane — 입력과 액션', () => {
   it('입력을 고치면 그 필드만 알린다', async () => {
     const { onChange, user } = renderPane();
 
-    await user.type(screen.getByLabelText('보관 조건'), 'X');
+    await user.type(screen.getByLabelText('생산 LOT 기본크기'), '1');
 
-    expect(onChange).toHaveBeenLastCalledWith({ storageConditionCode: 'SYN-STORAGE-01X' });
+    expect(onChange).toHaveBeenLastCalledWith({ defaultProductionLotSize: '5001' });
   });
 
   it('고친 것이 없으면 저장과 취소가 닫혀 있다', () => {

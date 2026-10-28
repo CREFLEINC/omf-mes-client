@@ -35,17 +35,12 @@ export const ItemAttrsPane = ({
   onSave,
   onCancel,
 }: ItemAttrsPaneProps) => {
-  const serialId = useId();
   const lotStorageUomId = useId();
   const productionLotSizeId = useId();
-  const lotControlledId = useId();
   const shelfLifeManagedId = useId();
   const fifoId = useId();
-  const openedId = useId();
   const inspectionId = useId();
   const negativeStockId = useId();
-  const developmentId = useId();
-  const storageId = useId();
   const lotStorageUomOptions: SelectOption[] = [
     { value: '', label: t.attrs.values.unspecified },
     ...uomOptions,
@@ -55,17 +50,6 @@ export const ItemAttrsPane = ({
     {
       label: t.attrs.groups.lot,
       rows: [
-        {
-          id: lotControlledId,
-          label: t.attrs.fields.lotControlled,
-          control: (
-            <Switch
-              id={lotControlledId}
-              checked={values.lotControlled}
-              onChange={(event) => onChange({ lotControlled: event.target.checked })}
-            />
-          ),
-        },
         {
           id: lotStorageUomId,
           label: t.attrs.fields.defaultLotStorageUom,
@@ -93,21 +77,6 @@ export const ItemAttrsPane = ({
               value={values.defaultProductionLotSize}
               onChange={(event) => onChange({ defaultProductionLotSize: event.target.value })}
               error={fieldErrors.defaultProductionLotSize}
-            />
-          ),
-        },
-        {
-          id: serialId,
-          label: t.attrs.fields.serialControlType,
-          required: true,
-          control: (
-            <TextField
-              size="sm"
-              id={serialId}
-              value={values.serialControlTypeCode}
-              onChange={(event) => onChange({ serialControlTypeCode: event.target.value })}
-              error={fieldErrors.serialControlTypeCode}
-              aria-required
             />
           ),
         },
@@ -144,22 +113,6 @@ export const ItemAttrsPane = ({
                 </span>
               )}
             </>
-          ),
-        },
-        {
-          id: openedId,
-          label: t.attrs.fields.openedShelfLifeHours,
-          control: (
-            <TextField
-              size="sm"
-              id={openedId}
-              type="number"
-              step={1}
-              min={1}
-              value={values.openedShelfLifeHours}
-              onChange={(event) => onChange({ openedShelfLifeHours: event.target.value })}
-              error={fieldErrors.openedShelfLifeHours}
-            />
           ),
         },
         {
@@ -203,30 +156,6 @@ export const ItemAttrsPane = ({
               id={negativeStockId}
               checked={values.negativeStockAllowed}
               onChange={(event) => onChange({ negativeStockAllowed: event.target.checked })}
-            />
-          ),
-        },
-        {
-          id: developmentId,
-          label: t.attrs.fields.developmentItem,
-          control: (
-            <Switch
-              id={developmentId}
-              checked={values.developmentItem}
-              onChange={(event) => onChange({ developmentItem: event.target.checked })}
-            />
-          ),
-        },
-        {
-          id: storageId,
-          label: t.attrs.fields.storageCondition,
-          control: (
-            <TextField
-              size="sm"
-              id={storageId}
-              value={values.storageConditionCode}
-              onChange={(event) => onChange({ storageConditionCode: event.target.value })}
-              error={fieldErrors.storageConditionCode}
             />
           ),
         },
