@@ -43,8 +43,13 @@ const isOpenLine = (line: InboundScheduleLine): boolean =>
 export const isCheckable = (line: InboundScheduleLine): boolean =>
   isOpenLine(line) && line.remainingQty > 0;
 
-/** 행을 눌러 받을 수 있는 줄 — 취소되지 않은 줄 전부(다 받은 줄에도 초과 입하가 온다). */
-export const isEditable = (line: InboundScheduleLine): boolean => isOpenLine(line);
+/**
+ * 행을 눌러 받을 수 있는 줄 — 취소되지 않았고 **라벨이 아직 발행되지 않은 줄**(다 받은 줄에도 초과 입하가 온다).
+ * 라벨이 발행된 줄(LOT 이 붙은 줄)은 수량을 정해 받지 못한다 — 남은 수량은 체크로만 받고, 초과 입하는 막는다
+ * (사용자 지시 2026-10-28 「라벨 발행 이후에 입하 수량 수정 및 초과 수령 막기」).
+ */
+export const isEditable = (line: InboundScheduleLine, isLabeled: boolean): boolean =>
+  isOpenLine(line) && !isLabeled;
 
 /**
  * 일부만 받고 남은 줄 — 「모두 선택」이 빼는 줄이다(PDA 와 같다). 남은 수량을 그대로 넣으면 부분 입하가 무색해진다 —

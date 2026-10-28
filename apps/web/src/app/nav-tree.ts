@@ -32,6 +32,8 @@ import type { LocalizedLabel } from '../patterns/localized-label';
  */
 export interface NavTab extends LocalizedLabel {
   readonly to: string;
+  /** 이 탭이 품은 옛 화면의 주소 — 그중 하나라도 볼 수 있으면 탭을 세운다(`NavEntry.alsoFor` 와 같은 뜻 · 탭 묶음용). */
+  readonly alsoFor?: readonly string[];
 }
 
 /** 메뉴 항목 하나 — 주소 · 아이콘(Material Symbols 리가처) · 두 언어의 보이는 이름. */
@@ -136,18 +138,31 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       /*
        * 입고 관리 — 들어올 것(아직 다 들어오지 않은 P/O 라인)을 보고 → 도착한 것을 등록하고 → 창고로 받아들인다.
-       * **화면 하나다**(W-01-09). 입하 등록(W-01-03) · 초과분 연결 · 입고 처리(W-01-10)는 그 화면의 오른쪽 창이 됐다
-       * (사용자 지시 2026-10-21 「분리된 화면을 그 화면으로 차츰 모은다」 · 2026-10-23 탭 합치기). 옛 「자재 입고 처리」
-       * 탭(입하 전표 기준)은 뺐다 — 발주 없이 들어오는 입하가 없어(사용자 확인 2026-10-23) 발주 기준 화면이 입하를 다 품는다.
-       * 탭이 하나면 묶음이 아니라 탭을 두지 않는다 — 이름과 단계 칩은 화면이 제 막대에 세운다.
+       * 입하 등록(W-01-03) · 입고 처리(W-01-10)는 입고 관리 화면(W-01-09) 안에서 한다(사용자 지시 2026-10-21 「분리된 화면을
+       * 그 화면으로 차츰 모은다」 · 2026-10-23 탭 합치기). 옛 「자재 입고 처리」 탭(입하 전표 기준)은 뺐다 — 발주 없이
+       * 들어오는 입하가 없어(사용자 확인 2026-10-23) 발주 기준 화면이 입하를 다 품는다.
+       * 「초과분 발주 연결」은 오른쪽 창이던 것을 둘째 탭으로 뗐다(사용자 지시 2026-10-28). 설계 화면 코드가 없어 입고 관리의
+       * 코드를 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
        */
       {
         to: '/logistics/inbound-schedule',
         icon: 'local_shipping',
         label: '입고 관리',
         labelVi: 'Quản lý nhập kho',
-        /* 입하 등록(W-01-03) · 입고 처리(W-01-10)만 가진 사람도 이 화면에서 그 일을 한다. */
-        alsoFor: ['/logistics/over-receipt-split', '/logistics/goods-receipt'],
+        tabs: [
+          {
+            to: '/logistics/inbound-schedule',
+            label: '입고 관리',
+            labelVi: 'Quản lý nhập kho',
+            /* 입하 등록(W-01-03) · 입고 처리(W-01-10)만 가진 사람도 이 화면에서 그 일을 한다. */
+            alsoFor: ['/logistics/over-receipt-split', '/logistics/goods-receipt'],
+          },
+          {
+            to: '/logistics/inbound-excess',
+            label: '초과분 발주 연결',
+            labelVi: 'Liên kết phần vượt với P/O',
+          },
+        ],
       },
       /*
        * 재고 관리 — **가장 자주 여는 재고 현황이 첫 탭이다**(사이드바 한 번에 그 화면). 실사로 장부와

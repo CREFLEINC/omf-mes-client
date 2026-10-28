@@ -1,24 +1,15 @@
-import {
-  AlertBanner,
-  Button,
-  Chip,
-  type Column,
-  Dialog,
-  EmptyState,
-  SkeletonText,
-  Stepper,
-  type StepperItem,
-  Table,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { MouseEvent, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useEffect, useId, useState } from 'react';
+import { useSearchParams } from 'react-router';
 
-import { useColumnWidths } from '../../patterns/column-resize';
+import { BoardFrame } from '../../patterns/board-frame';
+import { BoardTable } from '../../patterns/board-table';
 import { SaveErrorBanner } from '../../patterns/master';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
-import type { ExcessEntry } from './excess-entry';
+import { readExcessEntry } from './excess-entry';
 import {
   EXCESS_PAGE_SIZE,
   useExcessCandidates,
@@ -58,36 +49,6 @@ const allocatedOrdersText = (allocations: readonly InboundAllocation[]): string 
     ? orEmpty(null)
     : allocations.map((allocation) => orderLineText(allocation.orderLine)).join(', ');
 
-/**
- * 표 부품에 줄 클릭이 없어 감싼 상자가 받는다 — 누른 줄 안의 고르기 단추(`data-pick`)로 어느 줄인지 안다.
- * 키보드는 그 단추가 받는다(Enter·Space 가 단추의 click 을 내어 여기로 올라온다). 입하 예정 발주 목록과 같은 길이다.
- */
-const pickedIdOf = (event: MouseEvent<HTMLElement>): number | null => {
-  const row = (event.target as HTMLElement).closest('tbody tr');
-  const raw = row?.querySelector<HTMLElement>('[data-pick]')?.dataset.pick;
-
-  return raw === undefined ? null : Number(raw);
-};
-
-interface PickButtonProps {
-  id: number;
-  selected: boolean;
-  label: string;
-  children: ReactNode;
-}
-
-const PickButton = ({ id, selected, label, children }: PickButtonProps) => (
-  <button
-    type="button"
-    className="link-cell"
-    aria-current={selected ? true : undefined}
-    aria-label={label}
-    data-pick={id}
-  >
-    {children}
-  </button>
-);
-
 /** 방금 등록한 전표의 초과분을 앞에 세운다 — 나머지 순서는 서버 순서(오래된 것부터) 그대로다. */
 export const orderExcesses = (
   rows: readonly UnallocatedLine[],
@@ -100,25 +61,23 @@ export const orderExcesses = (
         ...rows.filter((row) => row.inboundReceiptNo !== focusReceiptNo),
       ];
 
-export interface ExcessPanelProps {
-  /** 주소가 정한 시작 상태(`excess-entry.ts`). */
-  entry: ExcessEntry;
-  /** 상세에서 보던 발주 — 그 발주의 후보 라인에 표식을 단다. 없으면 `null`. */
-  currentOrderId: number | null;
-  onClose: () => void;
-}
-
 /**
- * 초과분 발주 연결 창(서버 장부 P-115 입하 ↔ P/O 배정) — **오른쪽에서 열리는 넓은 창이다.** 입고 관리의 두 표를
- * 덮지 않고 옆에 세워 「어느 추가 발주에 연결하는가」를 보던 맥락에서 정한다.
+ * 「초과분 발주 연결」 탭(서버 장부 P-115 입하 ↔ P/O 배정) — 입고 관리 묶음의 둘째 탭이다(사용자 지시 2026-10-28 · 옛 오른쪽
+ * 창을 탭으로 뗐다). 입고 관리와 같은 짜임이다: 왼쪽은 미연결 초과분, 오른쪽은 고른 초과분과 그것을 연결할 발주 라인 후보.
  *
- * 위에 세 단계(초과분 선택 → 발주 라인 선택 → 연결)를 두고, 단추 옆에 무엇이 어디로 가는지 요약을 늘 보인다.
  * 후보는 서버가 정하고(같은 공장·공급사·품목·단위 · 다 받을 수 있는 라인 · 수량 일치가 먼저) 사람이 고른다.
- * 초과분 한 줄은 늘 **전부** 연결한다(서버는 일부도 받지만 화면은 아직 나누지 않는다).
+ * 초과분 한 줄은 늘 **전부** 연결한다(서버는 일부도 받지만 화면은 아직 나누지 않는다). 단추 옆에 무엇이 어디로 가는지
+ * 요약을 늘 보인다.
+ *
+ * 시작 상태는 주소가 정한다(`excess-entry.ts`) — 입고 관리 라인 표의 「초과분」 칸이나 입하 등록 결과에서 건너오면
+ * 그 초과분 · 라인을 고른 채로 선다. 고르는 것은 이 화면의 상태다(누를 때마다 뒤로가기 기록이 늘지 않게).
  *
  * 연결 해제는 아직 없다 — 「연결한 초과분」 목록이 서버에 없어 해제할 자리를 정하지 못했다(사용자 결정 2026-10-27).
  */
-export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps) => {
+export const InboundExcessScreen = () => {
+  const [searchParams] = useSearchParams();
+  const entry = readExcessEntry(searchParams);
+
   /** 고른 초과분 — 입하 줄 번호(`inboundReceiptLineId`)로 가리킨다. */
   const [selectedExcessId, setSelectedExcessId] = useState<number | null>(
     entry.inboundReceiptLineId,
@@ -180,17 +139,17 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
     });
   }, [candidateItems]);
 
-  const pickExcess = (id: number): void => {
-    if (isSaving || id === selectedExcessId) return;
-    setSelectedExcessId(id);
+  const pickExcess = (row: UnallocatedLine): void => {
+    if (isSaving || row.inboundReceiptLineId === selectedExcessId) return;
+    setSelectedExcessId(row.inboundReceiptLineId);
     setSelectedLineId(null);
     setDone(null);
     link.reset();
   };
 
-  const pickLine = (id: number): void => {
+  const pickLine = (row: ExcessCandidate): void => {
     if (isSaving) return;
-    setSelectedLineId(id);
+    setSelectedLineId(row.purchaseOrderLineId);
     setDone(null);
     link.reset();
   };
@@ -215,16 +174,6 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
     );
   };
 
-  /* ── 단계 안내 ── */
-  const step: 'pick' | 'line' | 'link' =
-    selectedExcess === null ? 'pick' : selectedCandidate !== null ? 'link' : 'line';
-  const stepOrder = ['pick', 'line', 'link'] as const;
-  const stepIndex = stepOrder.indexOf(step);
-  const stepItems: StepperItem[] = stepOrder.map((key, index) => ({
-    label: t.steps[key],
-    status: index < stepIndex ? 'complete' : index === stepIndex ? 'current' : 'pending',
-  }));
-
   /* ── 단추 옆 문장 — 막힌 사유이거나, 누르면 바뀌는 것 ── */
   const sentence = ((): string => {
     if (selectedExcess === null) return t.blocked.noExcess;
@@ -239,20 +188,25 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
 
   /* ── 열 ── */
   const excessColumns: Column<UnallocatedLine>[] = [
+    { key: 'receiptDate', header: t.table.receiptDate, width: '104px', render: receiptDateOf },
     {
-      key: 'receiptNo',
-      header: t.table.receiptNo,
-      /* 입하번호(약 125px) + 「방금 등록」 칩까지 한 줄에 — 좁으면 칩이 잘린다. */
-      width: '232px',
+      key: 'supplier',
+      header: t.table.supplier,
+      width: '144px',
+      render: (row) => <OneLine text={orEmpty(row.supplierName)} />,
+    },
+    /*
+     * 입하번호 열은 두지 않는다 — 고른 초과분의 머리에 선다(사용자 지시 2026-10-28). 품목코드 · 품목명은 열을 나눈다.
+     * 고르는 단추와 「방금 등록」 칩은 품목코드 칸이 진다.
+     */
+    {
+      key: 'itemCode',
+      header: t.table.itemCode,
+      /* 품목코드(10자 안팎) + 「방금 등록」 칩까지 한 줄에. */
+      width: '200px',
       render: (row) => (
         <span className="excess-receipt-cell">
-          <PickButton
-            id={row.inboundReceiptLineId}
-            selected={row.inboundReceiptLineId === selectedExcessId}
-            label={t.pickExcess(row.inboundReceiptNo, row.lineNo)}
-          >
-            {row.inboundReceiptNo}
-          </PickButton>
+          {row.itemCode}
           {row.inboundReceiptNo === entry.receiptNo && (
             <Chip variant="status" status="info" size="sm">
               {t.justRegistered}
@@ -261,35 +215,17 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
         </span>
       ),
     },
-    { key: 'receiptDate', header: t.table.receiptDate, width: '96px', render: receiptDateOf },
     {
-      key: 'supplier',
-      header: t.table.supplier,
-      render: (row) => <OneLine text={orEmpty(row.supplierName)} />,
-    },
-    {
-      key: 'item',
-      header: t.table.item,
-      render: (row) => <OneLine text={`${row.itemCode} · ${row.itemName}`} />,
+      key: 'itemName',
+      header: t.table.itemName,
+      render: (row) => <OneLine text={row.itemName} />,
     },
     {
       key: 'excessQty',
       header: t.table.excessQty,
-      width: '104px',
+      width: '112px',
       align: 'end',
       render: (row) => <strong>{qtyWithUom(row.unallocatedQty, row.uomCode)}</strong>,
-    },
-    {
-      key: 'lot',
-      header: t.table.lot,
-      width: '168px',
-      render: (row) => <OneLine text={orEmpty(row.lotNo)} />,
-    },
-    {
-      key: 'sourceOrder',
-      header: t.table.sourceOrder,
-      width: '168px',
-      render: (row) => <OneLine text={allocatedOrdersText(row.allocations)} />,
     },
   ];
 
@@ -298,28 +234,33 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
     {
       key: 'purchaseOrderNo',
       header: t.candidates.purchaseOrderNo,
-      width: '240px',
+      /* 발주번호만 — 라인 번호는 싣지 않는다(사용자 지시 2026-10-28). 칩 둘까지 한 줄에. */
+      width: '264px',
       render: (row) => (
         <span className="excess-receipt-cell">
-          <PickButton
-            id={row.purchaseOrderLineId}
-            selected={row.purchaseOrderLineId === selectedLineId}
-            label={t.pickLine(row.purchaseOrderNo, row.lineNo)}
-          >
-            {t.orderLine(row.purchaseOrderNo, row.lineNo)}
-          </PickButton>
+          {row.purchaseOrderNo}
           {row.exactMatch && (
             <Chip variant="status" status="success" size="sm">
               {t.candidates.exact}
             </Chip>
           )}
-          {row.purchaseOrderId === currentOrderId && (
+          {row.purchaseOrderId === entry.purchaseOrderId && (
             <Chip variant="status" status="info" size="sm">
               {t.candidates.current}
             </Chip>
           )}
         </span>
       ),
+    },
+    /*
+     * 후보는 서버가 고른 초과분과 **같은 품목**의 라인만 준다(같은 공장·공급사·품목·단위) — 응답에 품목코드가 없어
+     * 고른 초과분의 것을 쓴다.
+     */
+    {
+      key: 'itemCode',
+      header: t.candidates.itemCode,
+      width: '144px',
+      render: () => <OneLine text={selectedExcess?.itemCode ?? orEmpty(null)} />,
     },
     {
       key: 'orderDate',
@@ -355,11 +296,6 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
       render: (row) => qtyWithUom(row.roomQty, uomCode),
     },
   ];
-  const excessTable = useColumnWidths('omf-mes:inbound-schedule:columns:excess', excessColumns);
-  const candidateTable = useColumnWidths(
-    'omf-mes:inbound-schedule:columns:excess-candidates',
-    candidateColumns,
-  );
 
   const listBody = (): ReactNode => {
     if (unlinked.isError) {
@@ -383,129 +319,158 @@ export const ExcessPanel = ({ entry, currentOrderId, onClose }: ExcessPanelProps
 
     return (
       <>
-        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-        <div
-          className="wide-table po-board-table excess-table"
-          style={excessTable.style}
-          onClick={(event) => {
-            const id = pickedIdOf(event);
-            if (id !== null) pickExcess(id);
+        <h2 className="pane-title">{t.listCount(total)}</h2>
+        <BoardTable
+          label={t.listTitle}
+          widthKey="omf-mes:inbound-excess:columns:excess"
+          minWidth="720px"
+          columns={excessColumns}
+          rows={rows}
+          getRowId={(row) => String(row.inboundReceiptLineId)}
+          pick={{
+            columnKey: 'itemCode',
+            label: (row) => t.pickExcess(row.inboundReceiptNo, row.lineNo),
+            currentId: selectedExcessId === null ? null : String(selectedExcessId),
+            onPick: pickExcess,
           }}
-        >
-          <Table
-            density="compact"
-            caption={<span className="erp-data-table-caption">{t.listTitle}</span>}
-            columns={excessTable.columns}
-            rows={rows}
-            getRowId={(row) => String(row.inboundReceiptLineId)}
-            empty={<EmptyState size="sm" title={t.emptyTitle} />}
-          />
-        </div>
+          empty={<EmptyState size="sm" title={t.emptyTitle} />}
+        />
         {total > rows.length && <p className="field-note">{t.truncated(rows.length, total)}</p>}
       </>
     );
   };
 
-  const candidatePane = (): ReactNode => {
-    /* 초과분을 고르기 전에는 후보 구획을 세우지 않는다 — 무엇을 고를지는 단추 옆 문장이 말한다. */
-    if (selectedExcess === null) return null;
-
-    const body = ((): ReactNode => {
-      if (candidates.isError) {
-        return (
-          <LoadErrorBanner
-            error={candidates.error}
-            onRetry={() => {
-              void candidates.refetch();
-            }}
-          />
-        );
-      }
-      if (candidates.isPending) {
-        return (
-          <div role="status" aria-label={t.candidates.loading}>
-            <SkeletonText lines={2} />
-          </div>
-        );
-      }
-
+  const candidateBody = (): ReactNode => {
+    if (candidates.isError) {
       return (
-        /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
-        <div
-          className="wide-table po-board-table excess-table"
-          style={candidateTable.style}
-          onClick={(event) => {
-            const id = pickedIdOf(event);
-            if (id !== null) pickLine(id);
+        <LoadErrorBanner
+          error={candidates.error}
+          onRetry={() => {
+            void candidates.refetch();
           }}
-        >
-          <Table
-            density="compact"
-            caption={<span className="erp-data-table-caption">{t.candidates.title}</span>}
-            columns={candidateTable.columns}
-            rows={candidateRows}
-            getRowId={(row) => String(row.purchaseOrderLineId)}
-            empty={
-              <EmptyState
-                size="sm"
-                title={t.candidates.emptyTitle}
-                description={t.candidates.emptyDescription}
-              />
-            }
-          />
+        />
+      );
+    }
+    if (candidates.isPending) {
+      return (
+        <div role="status" aria-label={t.candidates.loading}>
+          <SkeletonText lines={2} />
         </div>
       );
-    })();
+    }
 
     return (
-      <section className="excess-section" aria-label={t.candidates.title}>
-        <h3 className="excess-section-title">
-          {t.candidates.title}
-          <span className="excess-section-sub">
-            {selectedExcess.itemCode} ·{' '}
-            {qtyWithUom(selectedExcess.unallocatedQty, selectedExcess.uomCode)}
-          </span>
-        </h3>
-        {body}
-      </section>
+      <BoardTable
+        label={t.candidates.title}
+        widthKey="omf-mes:inbound-excess:columns:candidates"
+        minWidth="940px"
+        columns={candidateColumns}
+        rows={candidateRows}
+        getRowId={(row) => String(row.purchaseOrderLineId)}
+        pick={{
+          columnKey: 'purchaseOrderNo',
+          label: (row) => t.pickLine(row.purchaseOrderNo, row.lineNo),
+          currentId: selectedLineId === null ? null : String(selectedLineId),
+          onPick: pickLine,
+        }}
+        empty={
+          <EmptyState
+            size="sm"
+            title={t.candidates.emptyTitle}
+            description={t.candidates.emptyDescription}
+          />
+        }
+      />
     );
   };
 
-  return (
-    <Dialog
-      open
-      onClose={onClose}
-      placement="right"
-      size="lg"
-      className="excess-dialog"
-      title={t.title}
-      footer={
-        <div className="excess-footer">
-          <p id={confirmId} className="excess-confirm" aria-live="polite">
-            {sentence}
-          </p>
-          <Button disabled={!canRun} aria-describedby={confirmId} onClick={runLink}>
-            {t.actions.link}
-          </Button>
-        </div>
-      }
-    >
-      <div className="excess-panel">
-        <nav className="excess-guide" aria-label={t.steps.label}>
-          <Stepper size="sm" steps={stepItems} />
-        </nav>
-
+  /** 오른쪽 — 고른 초과분의 머리(입고 관리 발주 머리와 같은 모양) · 연결 단추 · 후보 라인. */
+  const detailBody = (): ReactNode => {
+    const feedback = (
+      <>
         {done !== null && (
           <div role="status">
             <AlertBanner variant="success">{done}</AlertBanner>
           </div>
         )}
         {saveError !== null && <SaveErrorBanner error={toApiError(saveError)} />}
+      </>
+    );
 
-        {listBody()}
+    if (selectedExcess === null) {
+      return (
+        <>
+          {feedback}
+          <EmptyState size="sm" title={t.blocked.noExcess} />
+        </>
+      );
+    }
 
-        {candidatePane()}
-      </div>
-    </Dialog>
+    return (
+      <>
+        <header className="po-board-order-head">
+          <div className="po-board-order-title">
+            <span className="po-board-order-eyebrow">{t.table.receiptNo}</span>
+            <span className="po-board-order-no">{selectedExcess.inboundReceiptNo}</span>
+          </div>
+          <dl className="po-board-order-facts">
+            <div>
+              <dt>{t.table.supplier}</dt>
+              <dd>{orEmpty(selectedExcess.supplierName)}</dd>
+            </div>
+            <div>
+              <dt>{t.table.item}</dt>
+              <dd>{`${selectedExcess.itemCode} · ${selectedExcess.itemName}`}</dd>
+            </div>
+            <div>
+              <dt>{t.table.excessQty}</dt>
+              <dd>
+                <strong>{qtyWithUom(selectedExcess.unallocatedQty, selectedExcess.uomCode)}</strong>
+              </dd>
+            </div>
+            <div>
+              <dt>{t.table.receiptDate}</dt>
+              <dd>{receiptDateOf(selectedExcess)}</dd>
+            </div>
+            <div>
+              <dt>{t.table.lot}</dt>
+              <dd>{orEmpty(selectedExcess.lotNo)}</dd>
+            </div>
+            <div>
+              <dt>{t.table.sourceOrder}</dt>
+              <dd>{allocatedOrdersText(selectedExcess.allocations)}</dd>
+            </div>
+          </dl>
+          <div className="po-board-order-actions">
+            <span id={confirmId} className="po-board-checked-count" aria-live="polite">
+              {sentence}
+            </span>
+            <Button
+              size="sm"
+              disabled={!canRun}
+              loading={isSaving}
+              aria-describedby={confirmId}
+              onClick={runLink}
+            >
+              {t.actions.link}
+            </Button>
+          </div>
+        </header>
+        {feedback}
+        <h3 className="excess-section-title">{t.candidates.title}</h3>
+        {candidateBody()}
+      </>
+    );
+  };
+
+  return (
+    <BoardFrame
+      splitKey="omf-mes:inbound-excess:split"
+      /* 왼쪽 표의 고정 폭(576px) + 품목 칸이 1920 폭에서 다 보이게 — 오른쪽은 후보 표가 가로로 넘긴다. */
+      initialRatio={0.55}
+      splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
+      list={{ label: t.listTitle, content: listBody() }}
+      detail={{ label: t.candidates.title, content: detailBody() }}
+    />
   );
 };

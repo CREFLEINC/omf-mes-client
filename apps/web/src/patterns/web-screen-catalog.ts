@@ -323,4 +323,6 @@ export const WEB_SCREEN_TABS: readonly WebScreenTab[] = [
    * 그 기능을 「ERP 연동 현황·이력 탭(W-06-10)」의 일로 적었고 「지금 읽기」를 W-06-10 오퍼레이션에 묶었다.
    */
   { path: '/master-data/erp-inbound', ownerPath: '/master-data/integration-sync' },
+  /* 초과분 발주 연결 — 입고 관리(W-01-09)의 오른쪽 창이던 것을 탭으로 뗐다(사용자 지시 2026-10-28). */
+  { path: '/logistics/inbound-excess', ownerPath: '/logistics/inbound-schedule' },
 ];

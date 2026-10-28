@@ -350,16 +350,24 @@ describe('AppLayout', () => {
    * ⚠ 옛 이름 「정상품 입하 처리」는 입고 화면을 입하라 불렀다 — 입하는 «도착»이고 입고는
    * «창고로 받아들임»이다(`nav-tree.ts`).
    */
-  it('입고 관리는 탭 없는 한 줄이고, 옛 자재 입고 처리 · 초과 입하 분리 탭이 없다', () => {
-    renderLayout('본문 내용', { route: '/logistics/inbound-schedule' });
+  it('입고 관리 탭 막대가 입고 관리 → 초과분 발주 연결 차례고, 옛 자재 입고 처리 · 초과 입하 분리 탭이 없다', () => {
+    renderLayout('본문 내용', { route: '/logistics/inbound-excess' });
 
     const sidebar = navSidebar();
+    const tabs = screen.getByRole('navigation', { name: '입고 관리' });
 
     expect(within(sidebar).getByRole('link', { name: '입고 관리' })).toHaveAttribute(
       'href',
       '/logistics/inbound-schedule',
     );
-    expect(screen.queryByRole('navigation', { name: '입고 관리' })).toBeNull();
+    expect(within(tabs).getAllByRole('link').map((link) => link.textContent)).toEqual([
+      '입고 관리',
+      '초과분 발주 연결',
+    ]);
+    expect(within(tabs).getByRole('link', { name: '초과분 발주 연결' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     expect(screen.queryByRole('link', { name: '자재 입고 처리' })).toBeNull();
     expect(screen.queryByRole('link', { name: '초과 입하 분리' })).toBeNull();
     expect(screen.queryByRole('link', { name: '입하 예정 조회' })).toBeNull();

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
+import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { plantToday } from '../../patterns/plant-time';
 import { SessionProvider, type Session } from '../../patterns/session';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
@@ -16,7 +17,6 @@ import {
 } from '../../test/api-harness';
 import type { UnallocatedLine } from './excess-types';
 import {
-  candidateFixture,
   excessFixture,
   itemDetailFixtures,
   labelPendingProgress,
@@ -48,8 +48,6 @@ const CODE_VALUES_PATH = '/mdm/code-values';
 const ITEM_PATH_PREFIX = '/mdm/items/';
 /** 초과분 발주 연결(서버 장부 P-115 입하 ↔ P/O 배정) — 계약 밖 경로 셋. */
 const EXCESS_PATH = '/logistics/inbound-unallocated';
-const CANDIDATES_PATH = /^\/logistics\/inbound-receipt-lines\/\d+\/allocation-candidates$/;
-const ALLOCATIONS_PATH = /^\/logistics\/inbound-receipt-lines\/(\d+)\/allocations$/;
 /** 입고 진행(계약 대기) — 발주 하나의 LOT 단계 · 묶음별 수 · IQC 의뢰. */
 const PROGRESS_PATH = /^\/logistics\/purchase-orders\/(\d+)\/inbound-progress$/;
 const STAGE_COUNTS_PATH = '/logistics/purchase-orders:inbound-stage-counts';
@@ -172,43 +170,6 @@ const failingExcessListRoute = (status: number): StubRoute => ({
   respond: () => jsonResponse({ message: '' }, { status }),
 });
 
-const candidatesRoute = (items: unknown[]): StubRoute => ({
-  match: (request) =>
-    request.method === 'GET' && CANDIDATES_PATH.test(new URL(request.url).pathname),
-  respond: () => jsonResponse({ items }),
-});
-
-/** 연결(서버 「배정」) — 본문을 모은다. 응답은 주어진 것(기본 201 배정 한 몫). */
-const allocationWriteRoute = (
-  bodies: unknown[],
-  respond: () => Response = () =>
-    jsonResponse(
-      {
-        inboundReceiptPoAllocationId: 9702,
-        inboundReceiptLineId: 9411,
-        allocatedQty: 30,
-        allocatedAt: '2026-10-21T03:00:00.000Z',
-        orderLine: {
-          purchaseOrderLineId: 7301,
-          purchaseOrderId: 7101,
-          purchaseOrderNo: 'SAMPLE-PO-0001',
-          erpPurchaseOrderNo: 'SAMPLE-ERP-0001',
-          lineNo: 1,
-        },
-      },
-      { status: 201 },
-    ),
-): StubRoute => ({
-  match: (request) =>
-    request.method === 'POST' && ALLOCATIONS_PATH.test(new URL(request.url).pathname),
-  respond: async (request) => {
-    const text = await request.clone().text();
-    bodies.push(text === '' ? null : JSON.parse(text));
-
-    return respond();
-  },
-});
-
 /** 발주 7101 의 LOT 진행. 다른 발주는 비어 있다. */
 const progressRoute = (items: unknown[] = progressFixtures): StubRoute => ({
   match: (request) => request.method === 'GET' && PROGRESS_PATH.test(new URL(request.url).pathname),
@@ -295,6 +256,8 @@ const renderScreen = (
 
   renderWithProviders(
     <SessionProvider>
+      {/* 셸의 탭 막대 오른쪽 자리 — 단계 칩이 여기 선다. */}
+      <div id={HUB_ACTIONS_ID} />
       <InboundScheduleScreen />
       <LocationProbe />
       <BackProbe />
@@ -369,14 +332,13 @@ describe('InboundScheduleScreen — 첫 진입 조회', () => {
     expect(currentLocation()).toBe(ROUTE);
   });
 
-  it('이름은 화면 막대에 한 번만 서고 경로 표시와 안내 문장은 두지 않는다', async () => {
+  it('이름은 셸의 탭 막대가 세우고 화면은 제목 · 경로 표시 · 안내 문장을 두지 않는다', async () => {
     renderScreen([listRoute(), ...lookupRoutes()]);
 
     await screen.findByText('SAMPLE-PO-0001');
 
-    // 사용자 지시(2026-10-21) — 이름은 한 곳만. 탭을 합친 뒤(2026-10-23)에는 화면 막대의 「입고 관리」가 그 자리다.
-    expect(screen.getAllByRole('heading', { name: t.title })).toHaveLength(1);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('입고 관리');
+    // 사용자 지시(2026-10-21) — 이름은 한 곳만. 2026-10-28 탭 묶음(입고 관리 · 초과분 발주 연결)부터는 셸의 탭 막대가 그 자리다.
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
     expect(
       screen.queryByRole('navigation', { name: messages.common.shell.breadcrumb }),
     ).not.toBeInTheDocument();
@@ -869,8 +831,9 @@ describe('InboundScheduleScreen — 입하 등록(라인 표)', () => {
     ).toBeInTheDocument();
 
     await user.click(within(linesPane()).getByRole('button', { name: t.receive.goExcess }));
-    expect(currentLocation()).toContain('excessReceipt=SAMPLE-IR-0090');
-    expect(currentLocation()).toContain('excessReceiptLine=9490');
+    expect(currentLocation()).toBe(
+      '/logistics/inbound-excess?receipt=SAMPLE-IR-0090&receiptLine=9490&po=7101',
+    );
   });
 
   it('다 받은 줄도 행을 눌러 받으면 전부 초과분이다', async () => {
@@ -1372,85 +1335,35 @@ describe('InboundScheduleScreen — 발주일과 폭 조절', () => {
   });
 });
 
-describe('InboundScheduleScreen — 초과분 발주 연결', () => {
+describe('InboundScheduleScreen — 초과분 발주 연결(둘째 탭으로 건너감)', () => {
   const te = t.excess;
   const QTY = '30 SAMPLE-EA';
-  const ORDER_LINE = te.orderLine('SAMPLE-PO-0001', 1);
 
-  it('미연결 초과분이 없으면 탭 줄 끝 단추는 이름만 있고 수가 붙지 않는다', async () => {
-    renderScreen([listRoute(), ...lookupRoutes()]);
+  it.each([403, 404])('초과분 경로가 %i 이면 「초과분」 칸이 서지 않는다', async (status) => {
+    renderScreen([failingExcessListRoute(status), listRoute(), ...lookupRoutes()], '?po=7101');
 
-    expect(await screen.findByRole('button', { name: te.entry })).toBeInTheDocument();
+    await within(linesPane()).findByText('SAMPLE-ITEM-01');
+
+    expect(within(linesPane()).queryByRole('columnheader', { name: te.lineColumn })).toBeNull();
   });
-
-  it('미연결 초과분이 있으면 단추에 그 수가 붙고, 누르면 창이 주소로 열리고 닫으면 주소에서 빠진다', async () => {
-    const { user } = renderScreen([
-      excessListRoute([excessFixture()]),
-      listRoute(),
-      ...lookupRoutes(),
-    ]);
-
-    await user.click(
-      await screen.findByRole('button', { name: `${te.entry} — ${te.entryCount(1)}` }),
-    );
-
-    const dialog = await screen.findByRole('dialog', { name: te.title });
-    expect(currentLocation()).toContain('excess=1');
-    /* 고를 것이 하나뿐이라 저절로 골랐다 — 다음 할 일은 발주 라인 선택이다. */
-    expect(await within(dialog).findByText(te.blocked.noLine)).toBeInTheDocument();
-
-    /* 닫기는 창 머리의 단추 하나다(디자인 시스템) — 아래에는 할 일(연결)만 둔다. */
-    await user.click(within(dialog).getByRole('button', { name: messages.common.close }));
-
-    await waitFor(() => {
-      expect(currentLocation()).not.toContain('excess');
-    });
-  });
-
-  it.each([403, 404])(
-    '초과분 경로가 %i 이면 단추도 「초과분」 칸도 서지 않는다',
-    async (status) => {
-      renderScreen([failingExcessListRoute(status), listRoute(), ...lookupRoutes()], '?po=7101');
-
-      await within(linesPane()).findByText('SAMPLE-ITEM-01');
-
-      expect(screen.queryByRole('button', { name: new RegExp(te.entry) })).toBeNull();
-      expect(within(linesPane()).queryByRole('columnheader', { name: te.lineColumn })).toBeNull();
-    },
-  );
 
   it('맞는 초과분이 없는 발주에는 「초과분」 칸이 서지 않는다', async () => {
-    renderScreen(
+    const { requests } = renderScreen(
       [excessListRoute([excessFixture({ itemId: 8999 })]), listRoute(), ...lookupRoutes()],
       '?po=7101',
     );
 
     await within(linesPane()).findByText('SAMPLE-ITEM-01');
-    await screen.findByRole('button', { name: `${te.entry} — ${te.entryCount(1)}` });
+    await waitFor(() => {
+      expect(requestsTo(requests, EXCESS_PATH)).not.toHaveLength(0);
+    });
 
     expect(within(linesPane()).queryByRole('columnheader', { name: te.lineColumn })).toBeNull();
   });
 
-  it('라인의 「연결」을 누르면 그 초과분·라인을 고른 채로 열리고, 「연결」만 누르면 된다', async () => {
-    const bodies: unknown[] = [];
-    const { requests, user } = renderScreen(
-      [
-        excessListRoute([excessFixture()]),
-        candidatesRoute([
-          /* 수량 일치 후보가 따로 있어도 사람이 라인에서 고른 줄이 남는다. */
-          candidateFixture({
-            purchaseOrderLineId: 7388,
-            purchaseOrderId: 7188,
-            purchaseOrderNo: 'SAMPLE-PO-0088',
-            roomQty: 30,
-            exactMatch: true,
-          }),
-          candidateFixture(),
-        ]),
-        allocationWriteRoute(bodies),
-        listRoute(),
-        ...lookupRoutes(),
-      ],
+  it('라인의 「연결」을 누르면 초과분 탭으로 그 초과분 · 라인 · 보던 발주를 싣고 건너간다', async () => {
+    const { user } = renderScreen(
+      [excessListRoute([excessFixture()]), listRoute(), ...lookupRoutes()],
       '?po=7101',
     );
 
@@ -1458,128 +1371,20 @@ describe('InboundScheduleScreen — 초과분 발주 연결', () => {
       await within(linesPane()).findByRole('button', { name: te.lineLinkableLabel(1, QTY) }),
     );
 
-    const dialog = await screen.findByRole('dialog', { name: te.title });
-    expect(await within(dialog).findByText(te.confirmLink(QTY, ORDER_LINE))).toBeInTheDocument();
-    /* 후보 표식 — 수량 일치 · 선택한 발주. */
-    expect(within(dialog).getByText(te.candidates.exact)).toBeInTheDocument();
-    expect(within(dialog).getByText(te.candidates.current)).toBeInTheDocument();
-
-    await user.click(within(dialog).getByRole('button', { name: te.actions.link }));
-
-    expect(await within(dialog).findByText(te.done.linked(QTY, ORDER_LINE))).toBeInTheDocument();
-    /* 그 입하 줄의 초과분 전부를 싣는다. */
-    expect(bodies).toEqual([{ purchaseOrderLineId: 7301, qty: 30 }]);
-    expect(
-      requests.some(
-        (request) =>
-          request.method === 'POST' &&
-          request.url.pathname === '/logistics/inbound-receipt-lines/9411/allocations',
-      ),
-    ).toBe(true);
+    expect(currentLocation()).toBe('/logistics/inbound-excess?receiptLine=9411&line=7301&po=7101');
   });
 
-  it('라인을 고르기 전에는 「연결」이 잠기고 무엇을 고를지 말한다', async () => {
-    const { user } = renderScreen(
-      [
-        excessListRoute([
-          excessFixture(),
-          excessFixture({ inboundReceiptLineId: 9412, lineNo: 2 }),
-        ]),
-        candidatesRoute([
-          candidateFixture(),
-          candidateFixture({ purchaseOrderLineId: 7302, lineNo: 2 }),
-        ]),
-        listRoute(),
-        ...lookupRoutes(),
-      ],
-      '?excess=1',
-    );
-
-    const dialog = await screen.findByRole('dialog', { name: te.title });
-    expect(await within(dialog).findByText(te.blocked.noExcess)).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: te.actions.link })).toBeDisabled();
-
-    await user.click(
-      within(dialog).getByRole('button', { name: te.pickExcess('SAMPLE-IR-0001', 2) }),
-    );
-
-    expect(await within(dialog).findByText(te.blocked.noLine)).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: te.actions.link })).toBeDisabled();
-
-    await user.click(
-      await within(dialog).findByRole('button', { name: te.pickLine('SAMPLE-PO-0001', 2) }),
-    );
-
-    expect(
-      within(dialog).getByText(te.confirmLink(QTY, te.orderLine('SAMPLE-PO-0001', 2))),
-    ).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: te.actions.link })).toBeEnabled();
-  });
-
-  it('후보가 없으면 연결할 발주 라인이 없다고 말한다', async () => {
+  it('옛 창 주소(excess=1)는 탭 주소로 옮긴다', async () => {
     renderScreen(
-      [excessListRoute([excessFixture()]), candidatesRoute([]), listRoute(), ...lookupRoutes()],
-      '?excess=1',
+      [listRoute(), ...lookupRoutes()],
+      '?po=7101&excess=1&excessReceipt=SAMPLE-IR-0001&excessLine=7301',
     );
 
-    const dialog = await screen.findByRole('dialog', { name: te.title });
-
-    expect(await within(dialog).findByText(te.candidates.emptyTitle)).toBeInTheDocument();
-  });
-
-  it('「입하 등록」에서 건너온 전표의 초과분은 앞에 서고 「방금 등록」이 붙는다', async () => {
-    renderScreen(
-      [
-        excessListRoute([
-          excessFixture({ inboundReceiptLineId: 9410, inboundReceiptNo: 'SAMPLE-IR-0000' }),
-          excessFixture(),
-        ]),
-        candidatesRoute([candidateFixture()]),
-        listRoute(),
-        ...lookupRoutes(),
-      ],
-      '?excess=1&excessReceipt=SAMPLE-IR-0001',
-    );
-
-    const dialog = await screen.findByRole('dialog', { name: te.title });
-    const table = (await within(dialog).findAllByRole('table'))[0] as HTMLElement;
-    const firstRow = (await within(table).findAllByRole('row'))[1] as HTMLElement;
-
-    expect(within(firstRow).getByText('SAMPLE-IR-0001')).toBeInTheDocument();
-    expect(within(firstRow).getByText(te.justRegistered)).toBeInTheDocument();
-    /* 그 전표의 초과분이 하나뿐이라 골라 두고, 후보도 하나뿐이라 골라 둔다. */
-    expect(await within(dialog).findByText(te.confirmLink(QTY, ORDER_LINE))).toBeInTheDocument();
-  });
-
-  it('창에는 미연결 목록 하나만 있다 — 「연결됨」 탭 · 연결 해제는 없고, 원 발주 칸은 이미 들어간 발주 라인이다', async () => {
-    renderScreen(
-      [
-        excessListRoute([
-          excessFixture(),
-          /* 다 초과분이라 들어간 발주가 없는 줄. */
-          excessFixture({
-            inboundReceiptLineId: 9412,
-            inboundReceiptNo: 'SAMPLE-IR-0002',
-            unallocatedQty: 130,
-            allocations: [],
-          }),
-        ]),
-        listRoute(),
-        ...lookupRoutes(),
-      ],
-      '?excess=1',
-    );
-
-    const dialog = await screen.findByRole('dialog', { name: te.title });
-    const table = (await within(dialog).findAllByRole('table'))[0] as HTMLElement;
-    const rows = await within(table).findAllByRole('row');
-
-    expect(
-      within(rows[1] as HTMLElement).getByText(te.orderLine('SAMPLE-PO-0099', 1)),
-    ).toBeInTheDocument();
-    expect(within(rows[2] as HTMLElement).getByText('130 SAMPLE-EA')).toBeInTheDocument();
-    expect(within(dialog).queryByRole('tab')).toBeNull();
-    expect(within(dialog).getAllByRole('button', { name: te.actions.link })).toHaveLength(1);
+    await waitFor(() => {
+      expect(currentLocation()).toBe(
+        '/logistics/inbound-excess?receipt=SAMPLE-IR-0001&line=7301&po=7101',
+      );
+    });
   });
 
   it('고객사급 · 무상샘플 입하 줄은 이을 발주가 없어 서버에 빼 달라고 부른다(초과입하 · 긴급입하는 남긴다)', async () => {
@@ -1594,42 +1399,6 @@ describe('InboundScheduleScreen — 초과분 발주 연결', () => {
     expect(list?.url.searchParams.get('excludeExceptionTypeCode')).toBe(
       'CUSTOMER_SUPPLY,FREE_SAMPLE',
     );
-  });
-
-  it('연결이 막히면(남은 초과분을 넘음) 서버 사유를 배너로 내고 창은 열린 채다', async () => {
-    const { user } = renderScreen(
-      [
-        excessListRoute([excessFixture()]),
-        candidatesRoute([candidateFixture()]),
-        allocationWriteRoute([], () =>
-          jsonResponse(
-            {
-              errors: [
-                {
-                  scope: 'field',
-                  field: 'qty',
-                  code: 'RANGE',
-                  message: '받은 수량 중 배정하지 않은 몫을 넘습니다.',
-                },
-              ],
-            },
-            { status: 400 },
-          ),
-        ),
-        listRoute(),
-        ...lookupRoutes(),
-      ],
-      '?excess=1',
-    );
-
-    const dialog = await screen.findByRole('dialog', { name: te.title });
-    await within(dialog).findByText(te.confirmLink(QTY, ORDER_LINE));
-    await user.click(within(dialog).getByRole('button', { name: te.actions.link }));
-
-    expect(
-      await within(dialog).findByText('받은 수량 중 배정하지 않은 몫을 넘습니다.'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('dialog', { name: te.title })).toBeInTheDocument();
   });
 });
 
@@ -1699,6 +1468,86 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     expect(screen.queryByText(t.lot.loadFailed)).toBeNull();
   });
 
+  it('라벨이 발행된(LOT 이 붙은) 라인은 행을 눌러 수량을 넣지 못한다 — LOT 없는 라인은 그대로다', async () => {
+    const progressWithoutLine2 = progressFixtures.filter((lot) => lot.purchaseOrderLineId !== 7302);
+    renderScreen(progressRoutes(ROWS_WITH_STAGES, [], progressWithoutLine2), '?po=7101');
+
+    await within(linesPane()).findByText('SAMPLE|LOT|0003');
+
+    expect(
+      within(linesPane()).queryByRole('button', { name: t.receive.editRow('SAMPLE-ITEM-01') }),
+    ).toBeNull();
+    expect(within(linesPane()).getByTitle(t.receive.labeledLocked)).toHaveTextContent(
+      'SAMPLE-ITEM-01',
+    );
+    expect(
+      within(linesPane()).getByRole('button', { name: t.receive.editRow('SAMPLE-ITEM-02') }),
+    ).toBeInTheDocument();
+  });
+
+  it('「입고 대기」 LOT 줄만 체크가 서고, 체크하면 일괄 입고 창이 그 LOT 으로 열린다', async () => {
+    const { user } = renderScreen(progressRoutes(), '?po=7101');
+
+    const check = await within(linesPane()).findByRole('checkbox', {
+      name: t.lot.selectForPost('SAMPLE|LOT|0003'),
+    });
+    /* 입고 대기가 아닌 LOT 줄에는 체크가 없다. */
+    expect(
+      within(linesPane()).queryByRole('checkbox', {
+        name: t.lot.selectForPost('SAMPLE|LOT|0002'),
+      }),
+    ).toBeNull();
+    const submit = within(linesPane()).getByRole('button', { name: t.lot.postChecked });
+    expect(submit).toBeDisabled();
+
+    await user.click(check);
+    expect(within(linesPane()).getByText(t.lot.checkedForPost(1))).toBeInTheDocument();
+    await user.click(submit);
+
+    const dialog = await screen.findByRole('dialog', {
+      name: messages.goodsReceipt.batch.title(1),
+    });
+    expect(dialog).toHaveTextContent('SAMPLE|LOT|0003');
+  });
+
+  it('「입고 대기 전체」 체크가 입고 대기 LOT 을 모두 고르고, 다시 누르면 모두 푼다', async () => {
+    const extraReady = {
+      ...progressFixtures[0],
+      lotId: 7713,
+      lotNo: 'SAMPLE|LOT|0013',
+      inboundReceiptLineId: 7613,
+    };
+    const { user } = renderScreen(
+      progressRoutes(ROWS_WITH_STAGES, [], [...progressFixtures, extraReady]),
+      '?po=7101',
+    );
+
+    const all = await within(linesPane()).findByRole('checkbox', {
+      name: t.lot.selectAllForPost,
+    });
+    const one = within(linesPane()).getByRole('checkbox', {
+      name: t.lot.selectForPost('SAMPLE|LOT|0003'),
+    });
+    const other = within(linesPane()).getByRole('checkbox', {
+      name: t.lot.selectForPost('SAMPLE|LOT|0013'),
+    });
+
+    /* 하나만 고르면 전체 체크는 반쯤 찬다. */
+    await user.click(one);
+    expect(all).toHaveProperty('indeterminate', true);
+
+    await user.click(all);
+    expect(one).toBeChecked();
+    expect(other).toBeChecked();
+    expect(all).toBeChecked();
+    expect(within(linesPane()).getByText(t.lot.checkedForPost(2))).toBeInTheDocument();
+
+    await user.click(all);
+    expect(one).not.toBeChecked();
+    expect(other).not.toBeChecked();
+    expect(within(linesPane()).getByRole('button', { name: t.lot.postChecked })).toBeDisabled();
+  });
+
   it('진행 조회가 다른 이유로 실패하면 라인은 그대로 두고 한 줄로 알린다', async () => {
     renderScreen(
       [failingProgressRoute(500), stageCountsRoute(), listRoute(), ...lookupRoutes()],
@@ -1746,9 +1595,11 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     expect(
       within(pane).getByRole('button', { name: t.actions.requestIqcRow('SAMPLE|LOT|0002') }),
     ).toBeInTheDocument();
+    /* 줄 단추 둘과, 발주 머리의 「체크한 LOT 입고 처리」(입고 대기 LOT 이 있어 선다 · 체크 전이라 잠김). */
     expect(within(pane).getAllByRole('button', { name: /입고 처리|IQC 의뢰 요청/ })).toHaveLength(
-      2,
+      3,
     );
+    expect(within(pane).getByRole('button', { name: t.lot.postChecked })).toBeDisabled();
     expect(within(pane).queryByRole('link')).toBeNull();
 
     /* 발주 머리의 「진행」. */

@@ -20,6 +20,7 @@ import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen
 import { MaterialIssueRequestScreen } from '../screens/material-issue-request/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
 import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-redirect';
+import { InboundExcessScreen } from '../screens/inbound-schedule/excess-screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
 import { InspectionSheetTemplateScreen } from '../screens/inspection-sheet-template/screen';
@@ -190,6 +191,8 @@ export const appRouter = createBrowserRouter([
        * 낱말로 두어 화면과 계약의 대응이 주소에서 읽히게 한다. 뒤따르는 W-01 화면들이 그대로 쓴다.
        */
       { path: 'logistics/inbound-schedule', element: <InboundScheduleScreen /> },
+      /* 입고 관리 묶음의 둘째 탭 — 초과분 발주 연결(오른쪽 창이던 것 · 사용자 지시 2026-10-28). 코드는 W-01-09 를 따른다. */
+      { path: 'logistics/inbound-excess', element: <InboundExcessScreen /> },
       /*
        * W-01-03 「입하 등록」 — **화면이 아니라 입고 관리의 라인 표에서 바로 한다**(사용자 지시 2026-10-24 · 옛 창은
        * 걷었다). 옛 「초과 입하 분리」 주소는 즐겨찾기가 죽지 않게 입고 관리로 옮겨 준다(고른 발주 `po` 는 그대로).
