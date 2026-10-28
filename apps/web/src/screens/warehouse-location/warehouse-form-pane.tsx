@@ -1,8 +1,9 @@
-import { Button, Chip, Select, Switch, TextField } from '@crefle/web-ui';
+import { Button, Chip, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useId } from 'react';
 
+import { Select } from '../../patterns/select';
 import type { LookupOptions, WarehouseFormValues } from './types';
 
 export interface WarehouseFormPaneProps {

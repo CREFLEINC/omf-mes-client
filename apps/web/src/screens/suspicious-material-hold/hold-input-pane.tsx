@@ -1,4 +1,4 @@
-import { AlertBanner, Radio, RadioGroup, Select, TextArea, TextField } from '@crefle/web-ui';
+import { AlertBanner, Radio, RadioGroup, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
@@ -7,6 +7,7 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
+import { Select } from '../../patterns/select';
 import type { SelectedLotSnapshot } from './candidate-model';
 
 type LotHoldCreate = components['schemas']['LotHoldCreate'];

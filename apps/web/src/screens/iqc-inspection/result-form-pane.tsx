@@ -1,10 +1,11 @@
-import { Button, Dialog, Icon, Select, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Icon, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent, type ReactElement, type ReactNode } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 
+import { Select } from '../../patterns/select';
 import { isKnownCode, type CodeOption } from './code-options';
 import { FieldLabel } from './field-label';
 

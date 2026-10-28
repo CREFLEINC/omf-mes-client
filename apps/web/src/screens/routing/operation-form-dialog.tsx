@@ -1,7 +1,8 @@
-import { Button, Checkbox, Dialog, Select, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
 import { OPERATION_FLAG_KEYS } from './operation-order';
 import type { OperationDraft, SelectOption } from './types';
@@ -35,7 +36,13 @@ interface ProcessSelectFieldProps {
   error?: string;
 }
 
-const ProcessSelectField = ({ label, options, value, onChange, error }: ProcessSelectFieldProps) => {
+const ProcessSelectField = ({
+  label,
+  options,
+  value,
+  onChange,
+  error,
+}: ProcessSelectFieldProps) => {
   const id = useId();
   const errorId = `${id}-error`;
 

@@ -4,7 +4,6 @@ import {
   Checkbox,
   type Column,
   EmptyState,
-  Select,
   SkeletonText,
   TextField,
 } from '@crefle/web-ui';
@@ -20,6 +19,7 @@ import { pickBom, useBomTree, type BomTreeRoot, type BomTreeRow } from '../../pa
 import { BomTreeCell } from '../../patterns/bom-tree-cell';
 import { OneLine } from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
+import { Select } from '../../patterns/select';
 import { PageNav } from '../integration-sync/page-nav';
 import { toPageView } from '../integration-sync/pagination';
 import {

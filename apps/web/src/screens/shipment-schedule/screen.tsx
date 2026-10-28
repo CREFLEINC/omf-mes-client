@@ -1,16 +1,9 @@
-import {
-  Breadcrumb,
-  Button,
-  Dialog,
-  PageHeader,
-  Select,
-  useToast,
-  type SortState,
-} from '@crefle/web-ui';
+import { Breadcrumb, Button, Dialog, PageHeader, useToast, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { Select } from '../../patterns/select';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   describeReference,

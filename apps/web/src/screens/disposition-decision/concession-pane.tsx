@@ -1,4 +1,4 @@
-import { Button, Chip, Select, Table, TextArea, TextField, type Column } from '@crefle/web-ui';
+import { Button, Chip, Table, TextArea, TextField, type Column } from '@crefle/web-ui';
 import type { components, ConcessionCreate } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
@@ -7,6 +7,7 @@ import { useEffect, useId, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
+import { Select } from '../../patterns/select';
 import { toBusinessDate } from './decision-form';
 import { dispositionKeys } from './queries';
 import type { NonconformanceLotRow } from './types';

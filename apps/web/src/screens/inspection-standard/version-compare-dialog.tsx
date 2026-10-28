@@ -1,16 +1,8 @@
-import {
-  Button,
-  Checkbox,
-  Chip,
-  type Column,
-  Dialog,
-  Select,
-  SkeletonText,
-  Table,
-} from '@crefle/web-ui';
+import { Button, Checkbox, Chip, type Column, Dialog, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId, useState } from 'react';
 
+import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
 import { resolveVersionStatus } from './plan-version-status';

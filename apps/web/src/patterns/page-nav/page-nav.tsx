@@ -1,5 +1,7 @@
-import { Button, Select } from '@crefle/web-ui';
+import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+
+import { Select } from '../select';
 
 /**
  * C-8 페이지 이동 공용 부품. 목록 아래 한 줄: 왼쪽에 총 건수와 페이지 크기, 오른쪽에 [처음] [이전] n/N [다음] [마지막].

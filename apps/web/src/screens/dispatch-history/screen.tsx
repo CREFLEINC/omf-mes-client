@@ -4,7 +4,6 @@ import {
   Button,
   EmptyState,
   PageHeader,
-  Select,
   Skeleton,
   TextField,
 } from '@crefle/web-ui';
@@ -15,6 +14,7 @@ import { useSearchParams } from 'react-router';
 import { DetailDrawer } from '../../patterns/detail-drawer';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
+import { Select } from '../../patterns/select';
 import { DeliveryTable, toDeliveryView } from './delivery-table';
 import { DispatchTable } from './dispatch-table';
 import {

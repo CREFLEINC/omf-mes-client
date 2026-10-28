@@ -1,7 +1,8 @@
-import { Button, Select, TextField } from '@crefle/web-ui';
+import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { Select } from '../../patterns/select';
 import { sourceCodeOptions, stageOptions, type CodeOption } from './codes';
 import type { TargetFilters } from './filters';
 import type { CodeOptionSource } from './lookups';
