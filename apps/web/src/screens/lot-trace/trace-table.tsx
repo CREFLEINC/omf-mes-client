@@ -40,7 +40,7 @@ export const LotNo = ({ lotNo }: { lotNo: string }) => {
 
 /**
  * 이력 목록 표. 검사 조회·판정 목록과 같은 짜임이다 — 열 폭은 정한 값(px)으로 고정하고 넘치면 말줄임, 행은 한 줄.
- * 열 폭과 순서는 머리칸에서 끌어 바꾸고 브라우저에 남는다. 목록 창이 좁으면 표 안에서 가로로 구른다.
+ * 열 폭과 순서는 머리칸에서 끌어 바꾸고 브라우저에 남는다. 목록 창이 좁으면 열이 비율대로 줄어 말줄임이 된다.
  * 행 선택은 C-1 공용 부품(`SelectableTable`)이 맡는다.
  */
 export const ListTable = <Row,>({
@@ -66,7 +66,8 @@ export const ListTable = <Row,>({
 }) => {
   const ordered = useColumnOrder(`${storageKey}:order`, columns);
   const resizable = useColumnWidths(storageKey, ordered, { fitContent: true });
-  const fit = useFitColumns(resizable.columns, { scrollX: true });
+  /* 목록 창 폭에 열을 맞춘다 — 좁으면 열이 비율대로 줄어 말줄임이 되고, 머리칸이 창 밖으로 밀려 잘리지 않는다. */
+  const fit = useFitColumns(resizable.columns);
   return (
     <div
       ref={fit.ref}
