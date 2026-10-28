@@ -163,6 +163,7 @@ export const inspectionStandard = {
     chipInactive: '미사용',
     editBasic: '기본 정보 수정',
     itemUnset: '품목 미지정',
+    pqcSkipOn: '허용',
     close: '닫기',
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */

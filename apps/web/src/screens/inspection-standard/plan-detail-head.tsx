@@ -44,8 +44,11 @@ export const PlanDetailHead = ({ plan, itemLabel, processLabel, onEdit }: PlanDe
           {t.detail.editBasic}
         </Button>
       </div>
-      {/* 이름표를 단 값들 — 한 줄로 이으면 무엇이 품목이고 무엇이 유형인지 알 수 없다(사용자 지시 · #196). */}
-      <dl className="inspection-standard-plan-meta">
+      {/*
+       * 이름표를 단 값들 — 한 줄로 이으면 무엇이 품목이고 무엇이 유형인지 알 수 없다(사용자 지시 · #196).
+       * 모양은 버전 요약 상자와 같다: 테두리 상자 · 칸마다 이름표 위 · 값 아래 · 칸 사이 세로선(사용자 시안).
+       */}
+      <dl className="inspection-standard-facts-line inspection-standard-plan-facts">
         {[
           { label: t.fields.inspectionPlanName, value: plan.inspectionPlanName },
           { label: t.fields.inspectionPlanCode, value: plan.inspectionPlanCode },
@@ -54,15 +57,20 @@ export const PlanDetailHead = ({ plan, itemLabel, processLabel, onEdit }: PlanDe
           ...(processLabel === null ? [] : [{ label: t.fields.process, value: processLabel }]),
         ].map((fact) => (
           <div key={fact.label}>
-            <dt>{fact.label}</dt>
+            <dt className="field-label">{fact.label}</dt>
             <dd>{fact.value}</dd>
           </div>
         ))}
         {/* PQC 생략 허용(omf-all-around#119) — 켜진 PQC 기준에만 붙인다. 이 기준으로 배포한 W/O 의 PQC 가 생략된다. */}
         {plan.inspectionTypeCode === 'PQC' && plan.pqcSkipAllowed === true && (
-          <Chip variant="status" size="sm" status="info">
-            {t.fields.pqcSkipAllowed}
-          </Chip>
+          <div>
+            <dt className="field-label">{t.fields.pqcSkipAllowed}</dt>
+            <dd>
+              <Chip variant="status" size="sm" status="info">
+                {t.detail.pqcSkipOn}
+              </Chip>
+            </dd>
+          </div>
         )}
       </dl>
     </div>

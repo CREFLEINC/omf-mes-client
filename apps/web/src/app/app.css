@@ -431,35 +431,14 @@ main > * + * {
   overflow-wrap: anywhere;
 }
 
-.inspection-standard-plan-code,
-.inspection-standard-plan-meta {
+.inspection-standard-plan-code {
   margin: 0;
   color: var(--on-surface-variant);
 }
 
-.inspection-standard-plan-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-5);
-}
-
-/* 이름표(흐리게) · 값 한 쌍 — 쌍끼리는 띄워 가른다(#196). */
-.inspection-standard-plan-meta > div {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.inspection-standard-plan-meta dt {
-  color: var(--on-surface-variant);
-  font: var(--type-label-md);
-}
-
-.inspection-standard-plan-meta dd {
-  margin: 0;
-  color: var(--on-surface);
+/* 상세 머리의 기준 정보 상자 — 버전 요약 상자(`.inspection-standard-facts-line`)와 같은 모양. 이름이 길면 값이 줄을 넘긴다(#196). */
+.inspection-standard-plan-facts dd {
+  white-space: normal;
   overflow-wrap: anywhere;
 }
 
