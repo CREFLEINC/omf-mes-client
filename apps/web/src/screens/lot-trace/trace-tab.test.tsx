@@ -191,7 +191,7 @@ describe('W-02-09 LOT 추적: 자재 LOT 탭', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('자재 LOT 상세: 입하, 자재 입고, 사용처, 생산 LOT마다 생산 입고, 포장, 출하를 이름표 단 표로 보인다', async () => {
+  it('자재 LOT 상세: 입하, 자재 입고, 사용처, 생산 LOT마다 제품입고, 포장, 출하를 이름표 단 표로 보인다', async () => {
     const shipped = productionLot(201, PROD, {
       productionReceipts: [
         {
@@ -272,8 +272,8 @@ describe('W-02-09 LOT 추적: 자재 LOT 탭', () => {
 
     const lots = within(pane).getByRole('region', { name: '생산 LOT' });
     expect(within(lots).getByText(PROD)).toBeInTheDocument();
-    expect(within(lots).getByText('생산 입고 1건, 포장 2건, 출하 1건')).toBeInTheDocument();
-    expect(within(lots).getByRole('table', { name: '생산 입고' })).toHaveTextContent('GR-SYN-0041');
+    expect(within(lots).getByText('제품입고 1건, 포장 2건, 출하 1건')).toBeInTheDocument();
+    expect(within(lots).getByRole('table', { name: '제품입고' })).toHaveTextContent('GR-SYN-0041');
     expect(within(lots).getByRole('table', { name: '포장' })).toHaveTextContent('포장 중');
     /* 출하는 출하번호로 묶는다 — 출하 한 건은 한 줄이고 수량은 합이다. */
     const shipments = within(lots).getByRole('table', { name: '출하' });
@@ -449,7 +449,7 @@ describe('W-02-09 LOT 추적: 제품 LOT 탭', () => {
     expect(within(inputs).getAllByText('SL-0001')).toHaveLength(2);
     expect(within(inputs).getAllByText('공급사 A')).toHaveLength(2);
     expect(within(pane).getByText(NOTICE)).toBeInTheDocument();
-    for (const name of ['생산 입고', '포장', '출하']) {
+    for (const name of ['제품입고', '포장', '출하']) {
       expect(within(pane).getByRole('region', { name })).toBeInTheDocument();
     }
 
@@ -631,7 +631,7 @@ describe('W-02-09 LOT 추적: 큰 사슬과 단계 줄', () => {
       'pending',
     ]);
     expect(items[2]).toHaveAttribute('aria-current', 'step');
-    expect(within(stages).getByRole('button', { name: /생산 입고\s*0건/ })).toBeDisabled();
+    expect(within(stages).getByRole('button', { name: /제품입고\s*0건/ })).toBeDisabled();
   });
 });
 

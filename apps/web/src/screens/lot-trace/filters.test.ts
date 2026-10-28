@@ -25,7 +25,7 @@ describe('입출고 현황 주소 조건', () => {
     expect(toSearchParams(readFilters(params(query))).toString()).toBe(query);
   });
 
-  it('생산 입고에는 공급사, 고객 조건이 없다 — 주소에 있어도 버린다', () => {
+  it('제품입고에는 공급사, 고객 조건이 없다 — 주소에 있어도 버린다', () => {
     expect(readFilters(params('kind=PRODUCT&from=2026-10-20&partner=9')).partner).toBe('');
   });
 

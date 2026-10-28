@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { escapeCsvField } from '../../patterns/csv';
-import { EXPORT_PAGE_SIZE, fetchAllRows, toCsv } from './export';
+import { messages } from '@omf-mes/i18n';
+
+import { EXPORT_PAGE_SIZE, exportFileName, fetchAllRows, toCsv } from './export';
+import { readFilters } from './filters';
 import type { MovementRow } from './rows';
 
 const row = (id: number, overrides: Partial<MovementRow> = {}): MovementRow => ({
@@ -64,7 +67,7 @@ describe('엑셀 내보내기 파일(CSV)', () => {
     expect(line).toContain(',-5,KG,');
   });
 
-  it('생산 입고는 상대 대신 W/O 번호 열이다', () => {
+  it('제품입고는 상대 대신 W/O 번호 열이다', () => {
     const csv = toCsv(
       'PRODUCT',
       [row(1, { kind: 'PRODUCT', partner: null, workOrderNo: 'WO-SYN-1' })],
@@ -112,5 +115,18 @@ describe('현재 조건 전체 받기', () => {
     });
     await expect(fetchAllRows(fetchPage, abort.signal, () => {})).rejects.toThrow();
     expect(fetchPage).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('내보낸 파일 이름', () => {
+  it('화면명_조건_기간이다(비가동 집계와 같은 규칙)', () => {
+    expect(
+      exportFileName(
+        readFilters(new URLSearchParams('kind=PRODUCT&from=2026-10-20&to=2026-10-27')),
+      ),
+    ).toBe('LOT추적_제품입고_2026-10-20_2026-10-27.csv');
+    const name = messages.lotTrace.export.fileName;
+    expect(name('자재 LOT', '', '')).toBe('LOT추적_자재 LOT_전체.csv');
+    expect(name('자재 LOT', '2026-10-01', '')).toBe('LOT추적_자재 LOT_2026-10-01_이후.csv');
   });
 });

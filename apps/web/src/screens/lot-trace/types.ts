@@ -1,6 +1,6 @@
 import type { paths } from '@omf-mes/api-client';
 
-/** 입고 줄 목록(자재 입고, 생산 입고). 계약 정본: 서버 `contracts/logistics-01자재창고.json`. */
+/** 입고 줄 목록(자재 입고, 제품입고). 계약 정본: 서버 `contracts/logistics-01자재창고.json`. */
 export type ReceiptLineQuery = NonNullable<
   paths['/logistics/goods-receipt-lines']['get']['parameters']['query']
 >;

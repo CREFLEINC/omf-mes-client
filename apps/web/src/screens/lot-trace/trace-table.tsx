@@ -7,7 +7,6 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { SelectableTable } from '../../patterns/selectable-table';
-import { formatQty } from './rows';
 import type { BackwardListRow, FlowBasis, ForwardListRow, ForwardStage } from './trace-types';
 
 const t = messages.lotTrace;
@@ -88,8 +87,6 @@ const itemCell = (item: { code: string; name: string }) => (
   </span>
 );
 
-const qtyCell = (qty: number, uomCode: string) => `${formatQty(qty)} ${uomCode}`;
-
 /**
  * 목록 표. 검사 조회·판정 목록과 같은 짜임이다 — 열 폭은 정한 값(px)으로 고정하고 넘치면 말줄임, 행은 한 줄.
  * 열 폭과 순서는 머리칸에서 끌어 바꾸고 브라우저에 남는다. 목록 창이 좁으면 표 안에서 가로로 구른다.
@@ -127,7 +124,17 @@ const TraceTable = <Row extends { lotId: number; lotNo: string }>({
   );
 };
 
-/** 자재 LOT 목록: LOT 번호 | 자재 | 입고일 | 입고 수량 | 투입량 | 진행(C-1, C-10, C-16). 공급사, 출하는 상세에 있다. */
+/*
+ * 목록 열은 고르는 데 필요한 넷만 둔다 — LOT 번호, 품목, 날짜, 진행. 상세 창이 옆에 서는 폭(1440px, 목록 창 절반)에서도
+ * 머리칸이 잘리지 않게 열 폭 합을 목록 창 안에 맞추고, 넓은 창(1280px의 위아래 배치 등)에서는 비율대로 넓어진다.
+ * 수량, W/O 번호, 공급사, 출하는 상세 창과 내려받은 파일에 있다.
+ */
+const LOT_WIDTH = '168px';
+const NAME_WIDTH = '92px';
+const DATE_WIDTH = '104px';
+const STAGE_WIDTH = '156px';
+
+/** 자재 LOT 목록: LOT 번호 | 자재명 | 입고일 | 진행(C-1, C-10, C-16). */
 export const ForwardTable = (props: TraceTableProps<ForwardListRow>) => (
   <TraceTable
     {...props}
@@ -136,40 +143,26 @@ export const ForwardTable = (props: TraceTableProps<ForwardListRow>) => (
       {
         key: 'lotNo',
         header: t.trace.columns.lotNo,
-        width: '260px',
+        width: LOT_WIDTH,
         render: (row) => lotCell(row.lotNo),
       },
       {
         key: 'name',
         header: t.trace.columns.materialName,
-        width: '200px',
+        width: NAME_WIDTH,
         render: (row) => itemCell(row.item),
       },
       {
         key: 'receivedAt',
         header: t.trace.columns.receivedAt,
-        width: '104px',
+        width: DATE_WIDTH,
         align: 'center',
         render: (row) => plantDate(row.firstReceivedAt),
       },
       {
-        key: 'receivedQty',
-        header: t.trace.columns.receivedQty,
-        width: '112px',
-        align: 'end',
-        render: (row) => qtyCell(row.receivedQty, row.uomCode),
-      },
-      {
-        key: 'consumedQty',
-        header: t.trace.columns.consumedQty,
-        width: '112px',
-        align: 'end',
-        render: (row) => qtyCell(row.consumedQty, row.uomCode),
-      },
-      {
         key: 'stage',
         header: t.trace.columns.stage,
-        width: '152px',
+        width: STAGE_WIDTH,
         align: 'center',
         render: (row) => <StageCell stage={row.currentStageCode} basis={row.basis} />,
       },
@@ -177,7 +170,7 @@ export const ForwardTable = (props: TraceTableProps<ForwardListRow>) => (
   />
 );
 
-/** 제품 LOT 목록: LOT 번호 | 제품 | W/O 번호 | 생산일 | 양품 수량 | 진행. 투입 자재와 출하(고객)는 상세에 있다. */
+/** 제품 LOT 목록: LOT 번호 | 제품명 | 생산일 | 진행. */
 export const BackwardTable = (props: TraceTableProps<BackwardListRow>) => (
   <TraceTable
     {...props}
@@ -186,39 +179,26 @@ export const BackwardTable = (props: TraceTableProps<BackwardListRow>) => (
       {
         key: 'lotNo',
         header: t.trace.columns.lotNo,
-        width: '240px',
+        width: LOT_WIDTH,
         render: (row) => lotCell(row.lotNo),
       },
       {
         key: 'name',
         header: t.trace.columns.productName,
-        width: '180px',
+        width: NAME_WIDTH,
         render: (row) => itemCell(row.item),
-      },
-      {
-        key: 'workOrder',
-        header: t.trace.columns.workOrder,
-        width: '150px',
-        render: (row) => <span className="mono-cell">{row.workOrder.workOrderNo}</span>,
       },
       {
         key: 'producedAt',
         header: t.trace.columns.producedAt,
-        width: '104px',
+        width: DATE_WIDTH,
         align: 'center',
         render: (row) => plantDate(row.lastProducedAt),
       },
       {
-        key: 'goodQty',
-        header: t.trace.columns.goodQty,
-        width: '112px',
-        align: 'end',
-        render: (row) => qtyCell(row.producedQty, row.uomCode),
-      },
-      {
         key: 'stage',
         header: t.trace.columns.stage,
-        width: '152px',
+        width: STAGE_WIDTH,
         align: 'center',
         render: (row) => <StageCell stage={row.currentStageCode} basis={row.basis} />,
       },

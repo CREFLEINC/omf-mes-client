@@ -38,7 +38,7 @@ import { useAllPagesExport } from './use-export';
 const t = messages.lotTrace;
 
 /**
- * 행을 누르면 그 LOT의 추적으로 간다. 자재 입고는 자재 LOT 탭, 생산 입고는 제품 LOT 탭,
+ * 행을 누르면 그 LOT의 추적으로 간다. 자재 입고는 자재 LOT 탭, 제품입고는 제품 LOT 탭,
  * 제품 출고는 그 출하번호로 제품 LOT 탭(LOT이 하나면 그 LOT의 상세를 연다).
  */
 export const traceParamsOf = (row: MovementRow): URLSearchParams => {
@@ -56,7 +56,7 @@ export const traceParamsOf = (row: MovementRow): URLSearchParams => {
   });
 };
 
-/** 입출고 현황 탭 — 자재 입고, 생산 입고, 제품 출고 줄을 기간으로 본다(T-W-A 목록). */
+/** 입출고 현황 탭 — 자재 입고, 제품입고, 제품 출고 줄을 기간으로 본다(T-W-A 목록). */
 export const MovementsTab = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { client } = useApiClient();

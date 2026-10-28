@@ -71,7 +71,7 @@ const productStages = (sides: readonly FlowProductSide[]): StageCell[] => {
   ];
 };
 
-/** 정방향 단계 줄: 입고 → 투입 → 생산 → 생산 입고 → 포장 → 출하. */
+/** 정방향 단계 줄: 입고 → 투입 → 생산 → 제품입고 → 포장 → 출하. */
 export const forwardStages = (chain: ForwardChain): StageCell[] => {
   const lots = uniqueProductionLots(chain);
   return [
@@ -82,7 +82,7 @@ export const forwardStages = (chain: ForwardChain): StageCell[] => {
   ];
 };
 
-/** 역방향 단계 줄: 생산 → 생산 입고 → 포장 → 출하. */
+/** 역방향 단계 줄: 생산 → 제품입고 → 포장 → 출하. */
 export const backwardStages = (chain: BackwardChain): StageCell[] => [
   { stage: 'PRODUCED', count: chain.workOrder === null ? 0 : 1 },
   ...productStages([chain]),

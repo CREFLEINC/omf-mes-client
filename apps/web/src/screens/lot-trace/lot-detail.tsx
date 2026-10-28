@@ -110,8 +110,8 @@ interface Fact {
   wide?: boolean;
 }
 
-const Facts = ({ items }: { items: (Fact | null)[] }) => (
-  <dl className="lot-trace-facts">
+const Facts = ({ items, compact = false }: { items: (Fact | null)[]; compact?: boolean }) => (
+  <dl className={compact ? 'lot-trace-facts is-compact' : 'lot-trace-facts'}>
     {items
       .filter((item): item is Fact => item !== null)
       .map((item) => (
@@ -300,7 +300,7 @@ const shipmentColumns = (uomCode: string): Column<ShipmentGroup>[] => [
 ];
 
 /**
- * 생산 입고, 포장, 출하 세 표. 생산 LOT 하나의 아래 단계다. `sections`이면(가운데 LOT이 생산 LOT) 표마다 구획으로
+ * 제품입고, 포장, 출하 세 표. 생산 LOT 하나의 아래 단계다. `sections`이면(가운데 LOT이 생산 LOT) 표마다 구획으로
  * 세우고, 아니면(자재 LOT의 생산 LOT 묶음 안) 이름표 단 작은 표로 둔다.
  */
 const ProductSideTables = ({
@@ -424,7 +424,7 @@ const workOrdersOf = (chain: ForwardChain, lotId: number): string[] =>
     .filter((wo) => wo.productionLots.some((lot) => lot.lotId === lotId))
     .map((wo) => wo.workOrderNo);
 
-/** 생산 LOT이 이보다 많으면 묶음을 접은 채 시작한다. 펼치면 그 LOT의 생산 입고, 포장, 출하가 보인다. */
+/** 생산 LOT이 이보다 많으면 묶음을 접은 채 시작한다. 펼치면 그 LOT의 제품입고, 포장, 출하가 보인다. */
 const OPEN_GROUPS = 3;
 
 const ProductionLotGroup = ({
@@ -491,7 +491,7 @@ const ProductionLotGroup = ({
   );
 };
 
-/** 사용처: 이 LOT이 투입된 W/O 표, 그리고 그 W/O로 만든 생산 LOT마다 생산 입고, 포장, 출하. */
+/** 사용처: 이 LOT이 투입된 W/O 표, 그리고 그 W/O로 만든 생산 LOT마다 제품입고, 포장, 출하. */
 const UsageSections = ({
   chain,
   onView,
@@ -850,6 +850,7 @@ const DetailFrame = ({
         </div>
       </header>
       <Facts
+        compact
         items={[
           {
             key: 'item',
@@ -984,8 +985,8 @@ const ProductionView = ({
 
 /**
  * 고른 LOT 하나의 추적(T-W-A 상세 창). 그 LOT을 가운데 두고 위 방향과 아래 방향을 한 번에 보인다.
- * - 자재 LOT: 입하, 자재 입고, 사용처(투입된 W/O), 생산 LOT마다 생산 입고, 포장, 출하.
- * - 생산 LOT: 생산 실적, 투입 자재, 생산 입고, 포장, 출하. 다시 투입된 반제품이면 사용처도 잇는다.
+ * - 자재 LOT: 입하, 자재 입고, 사용처(투입된 W/O), 생산 LOT마다 제품입고, 포장, 출하.
+ * - 생산 LOT: 생산 실적, 투입 자재, 제품입고, 포장, 출하. 다시 투입된 반제품이면 사용처도 잇는다.
  * 두 사슬(정방향, 역방향)을 함께 부르고, 응답의 LOT 종류로 무엇을 보일지 정한다. 상세 안의 LOT은 [보기]로
  * 가운데에 다시 둔다(목록과 탭은 그대로). 지나온 LOT은 머리 위 경로 줄과 [이전 LOT]으로 되돌아간다.
  */

@@ -2,7 +2,7 @@ import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
 import type { Period } from './period';
 import type { ReceiptLineQuery, ShipmentLineQuery } from './types';
 
-/** 구분 조건 칩. 자재 입고와 생산 입고는 입고 줄 목록, 제품 출고는 출하 줄 목록이다. */
+/** 구분 조건 칩. 자재 입고와 제품입고는 입고 줄 목록, 제품 출고는 출하 줄 목록이다. */
 export const KINDS = ['MATERIAL', 'PRODUCT', 'SHIPMENT'] as const;
 export type MovementKind = (typeof KINDS)[number];
 
@@ -11,7 +11,7 @@ export interface LotTraceFilters extends Period {
   kind: MovementKind;
   item: string;
   warehouse: string;
-  /** 자재 입고의 공급사, 제품 출고의 고객. 생산 입고에는 없다. */
+  /** 자재 입고의 공급사, 제품 출고의 고객. 제품입고에는 없다. */
   partner: string;
   status: string;
   page: number;

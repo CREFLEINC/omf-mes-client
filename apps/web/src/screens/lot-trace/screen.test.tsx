@@ -201,7 +201,7 @@ describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
         'true',
       );
     });
-    expect(within(group).getByRole('button', { name: '생산 입고 1' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: '제품입고 1' })).toBeInTheDocument();
     expect(within(group).getByRole('button', { name: '제품 출고 1' })).toBeInTheDocument();
   });
 
@@ -305,7 +305,7 @@ describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
     expect(receiptQueries).toHaveLength(0);
   });
 
-  it('조건 더보기를 펴면 창고, 공급사, 상태가 보인다. 생산 입고에는 공급사가 없다', async () => {
+  it('조건 더보기를 펴면 창고, 공급사, 상태가 보인다. 제품입고에는 공급사가 없다', async () => {
     const user = userEvent.setup();
     setup();
 
@@ -314,7 +314,7 @@ describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
     expect(screen.getByLabelText('공급사')).toBeInTheDocument();
     expect(screen.getByLabelText('상태')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /생산 입고/ }));
+    await user.click(screen.getByRole('button', { name: /제품입고/ }));
     await waitFor(() => expect(screen.queryByLabelText('공급사')).toBeNull());
     expect(screen.queryByLabelText('고객')).toBeNull();
   });

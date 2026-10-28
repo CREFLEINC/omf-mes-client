@@ -141,7 +141,7 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
   const canOpenLotStatus = toWebAccess(session?.permissions).allows(LOT_STATUS_PATH);
   const exporter = useAllPagesExport();
   const { splitRef, aboveRef } = useFitToViewport();
-  const split = usePaneSplit('omf-mes:lot-trace:split', 0.45);
+  const split = usePaneSplit('omf-mes:lot-trace:split', 0.5);
   const itemLabel = useItemLabel(filters.item);
 
   /* 처음 열면(조건이 하나도 없으면) 기본 기간 30일을 채운다. 다른 탭에서 LOT으로 넘어오면 기간을 두지 않는다. */
@@ -211,7 +211,6 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
     ) : undefined;
 
   const startExport = () => {
-    const today = plantToday();
     if (direction === 'forward') {
       void exporter.start<ForwardListRow>({
         total,
@@ -220,7 +219,7 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
           return { rows: result.items, page: result.page };
         },
         build: (rows) => ({
-          fileName: t.trace.fileName(t.tabs.forward, today),
+          fileName: t.export.fileName(t.tabs.forward, filters.from, filters.to),
           content: toCsvText(forwardCsv(stageName), rows),
         }),
       });
@@ -233,7 +232,7 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
         return { rows: result.items, page: result.page };
       },
       build: (rows) => ({
-        fileName: t.trace.fileName(t.tabs.backward, today),
+        fileName: t.export.fileName(t.tabs.backward, filters.from, filters.to),
         content: toCsvText(backwardCsv(stageName), rows),
       }),
     });
