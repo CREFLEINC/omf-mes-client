@@ -2132,14 +2132,15 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     });
   });
 
-  it('확정 버전에서는 작성 취소가 비활성이고 폐기하라고 알린다', async () => {
+  it('확정 버전에서는 작성 취소를 두지 않는다', async () => {
     renderSelectedVersion(
       [versionDetailRoute(inspectionPlanVersionFixtures[1]), itemListRoute(4001)],
       '?plan=3001&ver=4001',
     );
 
-    expect(await screen.findByRole('button', { name: '작성 취소' })).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.discardNeedsDraft)).toBeInTheDocument();
+    /* 폐기 단추가 서면 버전 줄이 그려진 것이다. */
+    expect(await screen.findByRole('button', { name: '폐기' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '작성 취소' })).not.toBeInTheDocument();
   });
 
   /* 계약에 경로가 없다. 감추면 「이 화면에는 없는 기능」으로 오해한다. */

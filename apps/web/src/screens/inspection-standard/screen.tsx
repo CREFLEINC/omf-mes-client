@@ -1098,7 +1098,9 @@ export const InspectionStandardScreen = () => {
         <DisabledAction label={t.actions.obsolete} reason={obsoleteDisabledReason} />
       )}
 
-      {discardDisabledReason === null ? (
+      {/* 고칠 수 없는 버전(확정 · 폐기)에는 작성 취소를 두지 않는다 — 확정된 버전은 폐기가 그 길이다(사용자 지시 · #196). */}
+      {versionStatus !== null && !versionStatus.isEditable ? null : discardDisabledReason ===
+        null ? (
         <div className="field-cell">
           <Button
             variant="outlined"
