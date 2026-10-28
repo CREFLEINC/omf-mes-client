@@ -217,6 +217,8 @@ export const inspectionStandard = {
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
   versionSection: {
+    /* 요약 줄의 샘플 개수 표기(#201 · #196). */
+    samplingQtyValue: (qty: string): string => `${qty}개`,
     title: '검사 기준 버전',
     sampling: '샘플링',
     effectivePeriod: '유효기간',

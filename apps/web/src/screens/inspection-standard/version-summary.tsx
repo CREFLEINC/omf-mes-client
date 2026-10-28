@@ -30,12 +30,16 @@ export const VersionSummary = ({
   frequencyIntervalUomOptions,
 }: VersionSummaryProps) => {
   const sampling = labelOf(SAMPLING_METHOD_OPTIONS, values.samplingMethodCode);
-  const withRatio =
-    values.samplingMethodCode !== FULL_INSPECTION &&
-    values.samplingMethodCode !== '' &&
-    values.samplingRatio !== ''
+  /* 샘플링 검사면 비율(%) 또는 개수 중 들어 있는 쪽을 함께 낸다(#201). */
+  const isSampling =
+    values.samplingMethodCode !== FULL_INSPECTION && values.samplingMethodCode !== '';
+  const withRatio = !isSampling
+    ? sampling
+    : values.samplingRatio !== ''
       ? `${sampling} · ${values.samplingRatio}%`
-      : sampling;
+      : values.samplingQty !== ''
+        ? `${sampling} · ${t.versionSection.samplingQtyValue(values.samplingQty)}`
+        : sampling;
 
   const facts: { label: string; value: string }[] = [
     {
