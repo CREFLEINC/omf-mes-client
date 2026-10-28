@@ -1,6 +1,8 @@
-import { Button, Checkbox, Chip, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, SearchInput, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useState } from 'react';
+
+import { ItemPickerDialog } from '../../patterns/item-picker';
 
 import { INSPECTION_TYPE_OPTIONS, ensureOption } from './code-options';
 import { FieldLabel } from './field-label';
@@ -79,6 +81,15 @@ export const PlanPane = ({
 }: PlanPaneProps) => {
   const codeId = useId();
   const nameId = useId();
+  const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
+  /* 창에서 고른 품목의 이름 — 선택지 목록(첫 쪽)에 없는 품목도 이름이 보이게 둔다(#196). */
+  const [pickedItemLabels, setPickedItemLabels] = useState<Record<string, string>>({});
+  const itemLabel =
+    values.itemId === ''
+      ? ''
+      : (pickedItemLabels[values.itemId] ??
+        itemOptions.find((option) => option.value === values.itemId)?.label ??
+        '');
 
   const approvedAt = formatApprovedAt(plan?.approvedAt);
   /* 바꿀 수 없는 칸에는 필수 표시를 두지 않는다 — 고칠 수 없는 칸에 「꼭 채우라」는 뜻이 없다(사용자 지시 · #196). */
@@ -156,13 +167,24 @@ export const PlanPane = ({
           error={fieldErrors.inspectionTypeCode}
         />
 
-        {/* 비우면 「전 품목 공통 기준」이다 — 계약이 널을 허용한다. */}
-        <SelectField
+        {/*
+         * 비우면 「전 품목 공통 기준」이다 — 계약이 널을 허용한다.
+         * 품목은 **창에서 검색해서 고른다**(#196) — 선택칸은 품목 목록의 첫 쪽만 담아 뒤쪽 품목을 고를 수 없었다.
+         * 읽기 전용 칸을 누르거나 엔터를 치면 품목 선택 창이 열린다. 조회 줄의 품목 조건과 같은 모양이다.
+         */}
+        <SearchInput
           label={t.fields.item}
-          options={[{ value: '', label: t.values.allItems }, ...itemOptions]}
-          value={values.itemId}
-          onChange={(itemId) => onChange({ itemId })}
+          placeholder={t.values.allItems}
+          value={itemLabel}
+          readOnly
+          title={itemLabel === '' ? undefined : itemLabel}
+          aria-haspopup="dialog"
+          clearLabel={t.actions.itemClear}
           error={fieldErrors.itemId}
+          onClick={() => setIsItemPickerOpen(true)}
+          onSearch={() => setIsItemPickerOpen(true)}
+          onChange={() => undefined}
+          onClear={() => onChange({ itemId: '' })}
         />
 
         {/* IQC 에는 공정이 없다 — 비우는 것이 정상 값이다. */}
@@ -215,6 +237,26 @@ export const PlanPane = ({
           {mode === 'create' ? t.actions.addPlan : messages.common.save}
         </Button>
       </div>
+      {isItemPickerOpen && (
+        <ItemPickerDialog
+          multiple={false}
+          compact
+          showAvailability={false}
+          confirmLabel={t.filters.itemPick}
+          onClose={() => setIsItemPickerOpen(false)}
+          onConfirm={([item]) => {
+            if (item !== undefined) {
+              const itemId = String(item.itemId);
+              setPickedItemLabels((prev) => ({
+                ...prev,
+                [itemId]: `${item.itemCode} · ${item.itemName}`,
+              }));
+              onChange({ itemId });
+            }
+            setIsItemPickerOpen(false);
+          }}
+        />
+      )}
     </section>
   );
 };

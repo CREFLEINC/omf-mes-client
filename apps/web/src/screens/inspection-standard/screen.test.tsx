@@ -696,6 +696,15 @@ const lookupRoutes = (): StubRoute[] => [
 
 const planForm = (): HTMLElement => screen.getByRole('region', { name: '기준 정보' });
 
+/** 기본 정보 폼의 품목은 품목 선택 창에서 고른다(#196) — 칸을 눌러 창을 열고 코드로 고른 뒤 「선택」. */
+const pickPlanItem = async (user: ReturnType<typeof userEvent.setup>, itemCode: string) => {
+  await user.click(within(planForm()).getByLabelText('품목'));
+  const pickers = await screen.findAllByRole('dialog');
+  const picker = within(pickers[pickers.length - 1]!);
+  await user.click(await picker.findByRole('checkbox', { name: itemCode }));
+  await user.click(picker.getByRole('button', { name: '선택' }));
+};
+
 const renderSelectedPlan = (extraRoutes: StubRoute[] = [], search = '?plan=3001') =>
   renderScreen([planListRoute(), planDetailRoute(), ...lookupRoutes(), ...extraRoutes], search);
 
@@ -1067,8 +1076,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     );
 
     await awaitPlanForm();
-    await user.click(await screen.findByRole('combobox', { name: '품목' }));
-    await user.click(screen.getByRole('option', { name: 'SYN-ITEM-01 · 합성 품목 A' }));
+    await pickPlanItem(user, 'SYN-ITEM-01');
 
     await waitFor(() => {
       expect(requestsTo(requests, '/planning/routings')).toHaveLength(1);
@@ -1092,8 +1100,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
       );
     });
 
-    await user.click(screen.getByRole('combobox', { name: '품목' }));
-    await user.click(screen.getByRole('option', { name: 'SYN-ITEM-02 · 합성 품목 B' }));
+    await pickPlanItem(user, 'SYN-ITEM-02');
 
     expect(screen.getByRole('combobox', { name: '라우팅' })).not.toHaveTextContent(
       'SYN-ROUTE-01 · Rev 3',
@@ -1139,9 +1146,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     /* 기본 정보 폼은 「기본 정보 수정」 창 안에 있다(#196). */
     await awaitPlanForm();
     await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: '품목' })).toHaveTextContent(
-        'SYN-ITEM-99 · 합성 품목 Z',
-      );
+      expect(within(planForm()).getByLabelText('품목')).toHaveValue('SYN-ITEM-99 · 합성 품목 Z');
     });
     expect(requestsTo(requests, '/mdm/items/5099')).toHaveLength(1);
   });
@@ -1151,14 +1156,12 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await awaitPlanForm();
     await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: '품목' })).toHaveTextContent(
-        'SYN-ITEM-01 · 합성 품목 A',
-      );
+      expect(within(planForm()).getByLabelText('품목')).toHaveValue('SYN-ITEM-01 · 합성 품목 A');
     });
     /* 목록 · 상세 머리의 품목 이름이 한 번 부른다 — 폼은 같은 키를 써서 더 부르지 않는다(#196). */
-    expect(
-      requests.filter((request) => request.url.pathname === '/mdm/items/5001'),
-    ).toHaveLength(1);
+    expect(requests.filter((request) => request.url.pathname === '/mdm/items/5001')).toHaveLength(
+      1,
+    );
   });
 
   it('지정된 품목이 없으면(404) 알 수 없음으로 낸다', async () => {
@@ -1177,7 +1180,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await awaitPlanForm();
     await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: '품목' })).toHaveTextContent(
+      expect(within(planForm()).getByLabelText('품목')).toHaveValue(
         messages.common.reference.unknown,
       );
     });
@@ -2361,15 +2364,13 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     ).toBeInTheDocument();
   });
 
-  it('작성중 버전에서는 폐기가 비활성이고 먼저 확정하라고 알린다', async () => {
+  /* 작성중 버전은 「작성 취소」가 그 길이라 폐기를 두지 않는다(사용자 지시 · #196). */
+  it('작성중 버전에서는 폐기 단추가 없다', async () => {
     renderSelectedVersion();
 
-    const form = await awaitVersionForm();
+    await awaitVersionForm();
 
-    expect(screen.getByRole('button', { name: '폐기' })).toBeDisabled();
-    expect(
-      screen.getByText('폐기는 확정된 버전에만 할 수 있습니다. 먼저 확정하세요.'),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '폐기' })).not.toBeInTheDocument();
   });
 
   it('확정 버전에서는 폐기가 활성이고 확인하면 요청이 나간다', async () => {

@@ -16,6 +16,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     items: 'Hạng mục kiểm tra',
   },
   actions: {
+    itemClear: 'Xóa mặt hàng',
     prevPage: 'Trước',
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',

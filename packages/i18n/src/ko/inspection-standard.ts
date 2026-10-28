@@ -16,6 +16,8 @@ export const inspectionStandard = {
     items: '검사 항목',
   },
   actions: {
+    /* 기본 정보 폼의 품목 칸 지우기 — 비우면 전 품목 공통 기준이다(#196). */
+    itemClear: '품목 지우기',
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',

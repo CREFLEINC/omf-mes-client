@@ -957,7 +957,8 @@ export const InspectionStandardScreen = () => {
       );
     }
 
-    if (lookups.some((lookup) => lookup.truncated)) {
+    /* 품목은 품목 선택 창에서 검색해 고른다 — 목록이 잘려도 고를 수 있어 잘림 안내 대상이 아니다(#196). */
+    if ([processOptions, routingOptions].some((lookup) => lookup.truncated)) {
       return (
         <div className="banner-slot">
           <AlertBanner variant="warning">{t.optionsTruncated}</AlertBanner>
@@ -1142,8 +1143,9 @@ export const InspectionStandardScreen = () => {
       {versionStatus !== null && !versionStatus.isEditable ? null : confirmDisabledReason ===
         null ? (
         <div className="field-cell">
+          {/* 확정은 이 줄의 주 동작 — 빨간 채운 단추(사용자 지시 · #196). */}
           <Button
-            variant="outlined"
+            variant="filled"
             disabled={isVersionTransitionRunning}
             onClick={() => {
               confirmWrite.reset();
@@ -1157,7 +1159,9 @@ export const InspectionStandardScreen = () => {
         <DisabledAction label={t.actions.confirm} reason={confirmDisabledReason} />
       )}
 
-      {obsoleteDisabledReason === null ? (
+      {/* 작성중 버전에는 폐기를 두지 않는다 — 작성중은 「작성 취소」가 그 길이다(사용자 지시 · #196). */}
+      {versionStatus !== null && versionStatus.isEditable ? null : obsoleteDisabledReason ===
+        null ? (
         <div className="field-cell">
           <Button
             variant="outlined"
@@ -1661,6 +1665,11 @@ export const InspectionStandardScreen = () => {
     selectableOptions(uomOptions, uomId).find((option) => option.value === uomId)?.label ??
     lookupDisplayLabel(uomOptions, uomId);
 
+  /** 검사값 유형 코드를 공통코드 이름으로 옮긴다 — 단위와 같은 방식(#196). */
+  const dataTypeLabelOf = (dataTypeCode: string): string =>
+    selectableOptions(dataTypeOptions, dataTypeCode).find((option) => option.value === dataTypeCode)
+      ?.label ?? lookupDisplayLabel(dataTypeOptions, dataTypeCode);
+
   /**
    * 검사 항목이 쓰는 선택 목록이 잘리거나 실패했다는 사실을 표 위에 낸다.
    * 알리지 않으면 단위 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
@@ -1700,6 +1709,7 @@ export const InspectionStandardScreen = () => {
       <ItemPane
         drafts={itemDrafts}
         uomLabel={uomLabelOf}
+        dataTypeLabel={dataTypeLabelOf}
         isLoading={itemSpecs.isPending}
         isVersionSelected={selectedVersionId !== null}
         loadError={

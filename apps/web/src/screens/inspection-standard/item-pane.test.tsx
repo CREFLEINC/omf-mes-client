@@ -18,6 +18,7 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemPane>[0]> = {}) => 
     <ItemPane
       drafts={toItemDrafts(inspectionItemSpecFixtures)}
       uomLabel={(uomId) => (uomId === '41' ? 'EA · 개' : uomId)}
+      dataTypeLabel={(code) => (code === 'NUMERIC' ? '수치' : code)}
       isLoading={false}
       isVersionSelected
       loadError={null}
