@@ -5,13 +5,15 @@ import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
 import { CODE_GROUPS } from './code-options';
-import type { LookupEntry, LookupSources, WarehouseFilters } from './types';
+import type { Location, LookupEntry, LookupSources, WarehouseFilters } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
 type Warehouse = components['schemas']['Warehouse'];
 type WarehouseDetailResponse = components['schemas']['WarehouseDetailResponse'];
-type Location = components['schemas']['Location'];
-type LocationDetailResponse = components['schemas']['LocationDetailResponse'];
+/* 위치는 서버가 만든 위치의 역할 · 별칭(계약 밖)까지 읽는다 — `./types` 의 `Location`. */
+type LocationDetailResponse = Omit<components['schemas']['LocationDetailResponse'], 'location'> & {
+  location: Location;
+};
 
 export interface WarehouseListResponse {
   items: Warehouse[];

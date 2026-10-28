@@ -1,6 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
 import type { LookupSource } from '../../patterns/lookup-display';
+import type { SystemLocationFields } from '../../patterns/system-location';
 
 /**
  * W-06-07 화면 슬라이스의 계약. Phase 2(데이터 연동)가 이 이름을 그대로 소비한다.
@@ -8,7 +9,8 @@ import type { LookupSource } from '../../patterns/lookup-display';
  */
 
 export type Warehouse = components['schemas']['Warehouse'];
-export type Location = components['schemas']['Location'];
+/** 서버가 만든 위치의 역할 · 별칭(계약 밖, `patterns/system-location.ts`)을 함께 읽는다. */
+export type Location = components['schemas']['Location'] & SystemLocationFields;
 
 export interface WarehouseFilters {
   q: string;
@@ -35,6 +37,8 @@ export interface LocationFormValues {
   parentLocationId: string;
   locationCode: string;
   locationName: string;
+  /** MES 별칭. 빈 글이면 별칭 없음. */
+  aliasName: string;
   locationTypeCode: string;
   qualityZoneCode: string;
   storageConditionCode: string;

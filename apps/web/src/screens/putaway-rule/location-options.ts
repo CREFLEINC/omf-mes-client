@@ -32,7 +32,17 @@ const t = messages.putawayRule;
 export const toLocationChoices = (
   source: ReferenceSource,
   currentValue: string | null = null,
+  /** 고를 수 없는 위치 — 「적치 대기」(서버 #875). 이미 그 값을 가진 규칙이면 남긴다. */
+  excludedValues: readonly string[] = [],
 ): SelectOption[] => [
   { value: '', label: t.values.warehouseWide },
-  ...toWritableSelectOptions(source, currentValue),
+  ...toWritableSelectOptions(
+    {
+      ...source,
+      entries: source.entries.filter(
+        (entry) => entry.value === currentValue || !excludedValues.includes(entry.value),
+      ),
+    },
+    currentValue,
+  ),
 ];

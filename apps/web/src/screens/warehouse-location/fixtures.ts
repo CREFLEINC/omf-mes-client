@@ -222,6 +222,7 @@ export const locationFormInitialValues: LocationFormValues = {
   parentLocationId: '',
   locationCode: '',
   locationName: '',
+  aliasName: '',
   locationTypeCode: 'RACK',
   qualityZoneCode: '',
   storageConditionCode: '',

@@ -5,7 +5,8 @@ import type { Location, LocationFormValues, Warehouse, WarehouseFormValues } fro
 type WarehouseCreate = components['schemas']['WarehouseCreate'];
 type WarehouseUpdate = components['schemas']['WarehouseUpdate'];
 type LocationCreate = components['schemas']['LocationCreate'];
-type LocationUpdate = components['schemas']['LocationUpdate'];
+/* 별칭(`aliasName`)은 계약 사본에 아직 없다 — 서버 #875 가 받는다. */
+type LocationUpdate = components['schemas']['LocationUpdate'] & { aliasName: string | null };
 
 /**
  * 계약 표현과 폼 표현 사이의 변환.
@@ -82,6 +83,7 @@ export const locationToFormValues = (location: Location): LocationFormValues => 
   parentLocationId: optionalIdToText(location.parentLocationId),
   locationCode: location.locationCode,
   locationName: location.locationName,
+  aliasName: location.aliasName ?? '',
   locationTypeCode: location.locationTypeCode,
   qualityZoneCode: optionalTextToText(location.qualityZoneCode),
   storageConditionCode: optionalTextToText(location.storageConditionCode),
@@ -99,6 +101,7 @@ export const emptyLocationFormValues = (): LocationFormValues => ({
   parentLocationId: '',
   locationCode: '',
   locationName: '',
+  aliasName: '',
   locationTypeCode: '',
   qualityZoneCode: '',
   storageConditionCode: '',
@@ -119,6 +122,8 @@ export const toLocationUpdate = (values: LocationFormValues): LocationUpdate => 
   parentLocationId: textToOptionalId(values.parentLocationId),
   locationCode: values.locationCode.trim(),
   locationName: values.locationName.trim(),
+  /* 빈 글은 「별칭 없음」이다 — 서버도 빈 글을 없음으로 받지만 null 로 보내 뜻을 하나로 둔다. */
+  aliasName: values.aliasName.trim() === '' ? null : values.aliasName.trim(),
   locationTypeCode: values.locationTypeCode,
   qualityZoneCode: textToOptionalCode(values.qualityZoneCode),
   storageConditionCode: textToOptionalCode(values.storageConditionCode),

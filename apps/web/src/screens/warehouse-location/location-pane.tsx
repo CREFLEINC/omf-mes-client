@@ -11,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
+import { locationDisplayName } from '../../patterns/system-location';
 import type { LocationTreeRow } from './location-tree';
 import type { Location } from './types';
 
@@ -112,7 +113,7 @@ export const LocationPane = ({
       key: 'locationName',
       header: t.fields.locationName,
       align: 'center',
-      render: (row) => row.location.locationName,
+      render: (row) => locationDisplayName(row.location.locationName, row.location),
     },
     {
       key: 'isActive',

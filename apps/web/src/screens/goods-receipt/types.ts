@@ -4,6 +4,7 @@ import type {
   InboundReceiptSplitLot,
 } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { locationDisplayName, type SystemLocationFields } from '../../patterns/system-location';
 
 /**
  * W-01-10 화면 슬라이스의 계약.
@@ -179,11 +180,12 @@ export interface LocationView {
   locationName: string;
 }
 
-export const toLocationView = (data: LocationResponse): LocationView => ({
+/** 이름에 MES 별칭을 함께 싣는다 — 별칭은 계약 사본에 아직 없다(`patterns/system-location.ts`). */
+export const toLocationView = (data: LocationResponse & SystemLocationFields): LocationView => ({
   locationId: data.locationId,
   parentLocationId: data.parentLocationId ?? null,
   locationCode: data.locationCode,
-  locationName: data.locationName,
+  locationName: locationDisplayName(data.locationName, data),
 });
 
 /** 값 목록이 확정되지 않은 코드 다섯. 선택지와 자리표시는 `code-options.ts`가 소유한다. */

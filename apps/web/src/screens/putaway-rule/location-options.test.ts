@@ -60,4 +60,22 @@ describe('toLocationChoices', () => {
 
     expect(choices[0]?.label).not.toBe(t.filters.all);
   });
+
+  /** 적치 대기는 서버가 규칙 위치로 받지 않는다(400 INVALID · #875) — 이미 가진 규칙만 남긴다. */
+  it('적치 대기는 새로 고를 수 없고, 현재 값이면 남긴다', () => {
+    const entries = [
+      { value: '9301', label: 'SYN-LOC-01 · 합성위치 가', isActive: true },
+      { value: '9309', label: 'SYS-STAGING · 적치 대기', isActive: true },
+    ];
+
+    expect(toLocationChoices(source(entries), null, ['9309']).map((c) => c.value)).toEqual([
+      '',
+      '9301',
+    ]);
+    expect(toLocationChoices(source(entries), '9309', ['9309']).map((c) => c.value)).toEqual([
+      '',
+      '9301',
+      '9309',
+    ]);
+  });
 });

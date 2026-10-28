@@ -3,6 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import {
+  isPutawayStaging,
+  locationDisplayName,
+  type SystemLocationFields,
+} from '../../patterns/system-location';
 import { fetchAllPages } from './fetch-all-pages';
 import type { LookupEntry, PageMeta, SelectOption } from './types';
 
@@ -98,6 +103,11 @@ export interface WarehouseLookupResult extends LookupResult {
 /** 위치 조회만이 갖는 것. 위치 자체 용량은 다른 세 참조에 없는 사실이다. */
 export interface LocationLookupResult extends LookupResult {
   capacities: readonly LocationCapacity[];
+  /**
+   * 「적치 대기」 위치의 선택지 값. 서버가 창고마다 두는 자리라 규칙의 위치로 고를 수 없다(400 INVALID · #875) —
+   * 선택지에서만 빼고, 이름 풀이에는 남긴다.
+   */
+  stagingValues: readonly string[];
 }
 
 /**
@@ -283,6 +293,7 @@ export const findLocationCapacity = (
 const EMPTY_ENTRIES: LookupEntry[] = [];
 const EMPTY_LEVELS: WarehouseLevel[] = [];
 const EMPTY_CAPACITIES: LocationCapacity[] = [];
+const EMPTY_VALUES: string[] = [];
 
 /** 서버가 보낸 전체 건수가 받은 건수보다 많으면 잘린 것이다. */
 const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
@@ -425,15 +436,23 @@ export const useLocationLookup = (warehouseId: number | null): LocationLookupRes
     },
   });
 
-  const data = query.data;
+  /* 서버가 만든 위치의 역할 · 별칭은 계약 사본에 아직 없다(`patterns/system-location.ts`). */
+  const data = query.data as
+    | {
+        items: (NonNullable<typeof query.data>['items'][number] & SystemLocationFields)[];
+        page: PageMeta;
+      }
+    | undefined;
 
   return {
     entries:
       data?.items.map((item) => ({
         value: String(item.locationId),
-        label: `${item.locationCode} · ${item.locationName}`,
+        label: `${item.locationCode} · ${locationDisplayName(item.locationName, item)}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
+    stagingValues:
+      data?.items.filter(isPutawayStaging).map((item) => String(item.locationId)) ?? EMPTY_VALUES,
     /*
      * **둘 다 있는 위치만 담는다.** 계약이 수량과 단위를 함께 두게 했지만, 한쪽만 온 자료를
      * 그대로 받으면 단위를 모르는 수량으로 견주게 된다 — 그 자리는 담지 않는 것이 정확하다.

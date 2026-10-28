@@ -17,6 +17,7 @@ import { useSearchParams } from 'react-router';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { runRequest, toApiError } from '../../patterns/request';
+import { isPutawayStaging, isSystemLocation } from '../../patterns/system-location';
 import { selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { LocationFormDialog } from './location-form-dialog';
@@ -1157,7 +1158,15 @@ export const WarehouseLocationScreen = () => {
         codeLockReason={
           locationDetail.data === undefined
             ? null
-            : codeLockMessage(locationDetail.data.editability)
+            : isSystemLocation(locationDetail.data.location)
+              ? t.actionReasons.systemLocation
+              : codeLockMessage(locationDetail.data.editability)
+        }
+        systemLocked={
+          locationDetail.data !== undefined && isSystemLocation(locationDetail.data.location)
+        }
+        canToggleActive={
+          locationDetail.data === undefined || !isPutawayStaging(locationDetail.data.location)
         }
         uomOptions={selectableOptions(lookups.sources.uoms, locationValues.capacityUomId)}
         locationTypeOptions={formLookups.locationTypes}

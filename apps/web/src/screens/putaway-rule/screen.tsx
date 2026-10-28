@@ -1240,6 +1240,7 @@ export const PutawayRuleScreen = () => {
         locationChoices={toLocationChoices(
           formLocations,
           isCreating ? null : draft.values.locationId,
+          formLocations.stagingValues,
         )}
         locationNote={lookupNote(formLocations)}
         /* 고정 설계의 관리수준을 그대로 읽는다. WAREHOUSE면 사유와 해제 위치를 함께 보인다. */

@@ -203,6 +203,11 @@ describe('toLocationCreate · toLocationUpdate', () => {
     expect(body.capacityUomId).toBeNull();
   });
 
+  it('별칭은 앞뒤 공백을 떼어 보내고, 비면 널로 보낸다', () => {
+    expect(toLocationUpdate({ ...values, aliasName: ' 입고 대기 ' }).aliasName).toBe('입고 대기');
+    expect(toLocationUpdate({ ...values, aliasName: '  ' }).aliasName).toBeNull();
+  });
+
   it('고르지 않은 품질구역·보관조건은 널로 보낸다', () => {
     const body = toLocationUpdate({ ...values, qualityZoneCode: '', storageConditionCode: '' });
 

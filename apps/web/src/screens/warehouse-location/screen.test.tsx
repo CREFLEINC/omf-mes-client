@@ -1863,6 +1863,103 @@ const refusingFetch: StubFetch = async () => {
   throw new TypeError('Failed to fetch');
 };
 
+/* 서버가 창고마다 두는 위치(서버 #875) — 코드·이름은 서버 것, MES 는 별칭만 고친다. */
+const stagingLocation: Location = {
+  ...locationFixtures[0]!,
+  locationId: 2099,
+  locationCode: 'SYS-STAGING',
+  locationName: '적치 대기',
+  locationTypeCode: 'TEMP',
+  systemRoleCode: 'PUTAWAY_STAGING',
+  aliasName: '입고 대기',
+};
+
+const systemLocationRoutes = (location: Location, ...extra: StubRoute[]): StubRoute[] => [
+  warehouseListRoute(),
+  warehouseDetailRoute(),
+  locationListRoute([...locationFixtures, location]),
+  ...lookupRoutes(),
+  {
+    match: (request) => isGet(request, `/mdm/locations/${String(location.locationId)}`),
+    respond: () =>
+      jsonResponse(
+        { location, editability: { codeEditable: false, reason: 'SYSTEM_OWNED' } },
+        { headers: { ETag: '"3"' } },
+      ),
+  },
+  ...extra,
+];
+
+describe('WarehouseLocationScreen — 서버가 만든 위치', () => {
+  it('위치명 옆에 별칭을 함께 보인다', async () => {
+    const { user } = renderScreen(systemLocationRoutes(stagingLocation), '?wh=1001');
+
+    const panel = await openLocationTab(user);
+
+    expect(within(panel).getByText('적치 대기 (입고 대기)')).toBeInTheDocument();
+  });
+
+  it('적치 대기는 별칭만 고칠 수 있고 사용 중지 단추가 없다 — 저장하면 별칭이 실린다', async () => {
+    const { requests, user } = renderScreen(
+      systemLocationRoutes(stagingLocation, {
+        match: (request) =>
+          request.method === 'PUT' && new URL(request.url).pathname === '/mdm/locations/2099',
+        respond: () => jsonResponse({ ...stagingLocation, aliasName: '입고 대기 2' }),
+      }),
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: 'SYS-STAGING' }));
+
+    const dialog = screen.getByRole('dialog');
+    const alias = within(dialog).getByLabelText('별칭');
+    await waitFor(() => expect(alias).toBeEnabled());
+    expect(within(dialog).getByLabelText('위치 코드')).toBeDisabled();
+    expect(within(dialog).getByLabelText('위치명')).toBeDisabled();
+    expect(
+      within(dialog).getByText(messages.warehouseLocation.actionReasons.systemLocation),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole('button', { name: messages.common.deactivate }),
+    ).not.toBeInTheDocument();
+
+    await user.type(alias, ' 2');
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+
+    const put = requests.find(
+      (request) => request.method === 'PUT' && request.url.pathname === '/mdm/locations/2099',
+    );
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({
+      locationCode: 'SYS-STAGING',
+      locationName: '적치 대기',
+      aliasName: '입고 대기 2',
+    });
+  });
+
+  it('창고 전체는 잠겨도 사용 중지는 할 수 있다', async () => {
+    const whole: Location = {
+      ...stagingLocation,
+      locationCode: 'SYS-WHOLE',
+      locationName: '창고 전체',
+      systemRoleCode: 'WAREHOUSE_WHOLE',
+      aliasName: null,
+    };
+    const { user } = renderScreen(systemLocationRoutes(whole), '?wh=1001');
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: 'SYS-WHOLE' }));
+
+    const dialog = screen.getByRole('dialog');
+    await waitFor(() => expect(within(dialog).getByLabelText('별칭')).toBeEnabled());
+    expect(within(dialog).getByLabelText('위치명')).toBeDisabled();
+    expect(
+      within(dialog).getByRole('button', { name: messages.common.deactivate }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('WarehouseLocationScreen — 서버에 닿지 못할 때', () => {
   afterEach(() => {
     onlineManager.setOnline(true);

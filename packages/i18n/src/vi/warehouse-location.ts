@@ -27,6 +27,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     managementLevelWarehouseNoLocation: 'Không chỉ định Location.',
     plantFixedAfterCreate: 'Không thể đổi nhà máy sau khi đăng ký.',
     warehouseFixedInLocation: 'Cố định theo kho đã chọn ở bên trái.',
+    systemLocation: 'Vị trí do hệ thống tạo, chỉ có thể đổi tên gọi khác.',
   },
   loading: {
     warehouses: 'Đang tải danh sách kho',
@@ -83,6 +84,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     parentLocation: 'Vị trí cấp trên',
     locationCode: 'Mã vị trí',
     locationName: 'Tên vị trí',
+    aliasName: 'Tên gọi khác',
     locationType: 'Loại vị trí',
     qualityZone: 'Khu vực chất lượng',
     storageCondition: 'Điều kiện bảo quản',
@@ -109,6 +111,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     partnerRequiredForExternal: 'Là kho bên ngoài thì phải chỉ định đối tác.',
     capacityNeedsUom: 'Sức chứa và đơn vị phải cùng nhập hoặc cùng để trống.',
     capacityInvalid: 'Hãy nhập sức chứa bằng số từ 0 trở lên.',
+    aliasTooLong: (max: number): string => `Tên gọi khác tối đa ${String(max)} ký tự.`,
     locationsDisabledByManagementLevel: 'Ở mức quản lý kho hiện tại không lưu được Location.',
     parentLocationUnavailable:
       'Không xác nhận được vị trí cấp trên trong toàn bộ danh sách Location.',

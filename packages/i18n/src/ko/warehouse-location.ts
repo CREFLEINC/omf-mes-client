@@ -21,6 +21,8 @@ export const warehouseLocation = {
     managementLevelWarehouseNoLocation: 'Location을 지정하지 않습니다.',
     plantFixedAfterCreate: '공장은 등록 후 변경할 수 없습니다.',
     warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
+    /* 서버가 창고마다 두는 위치(적치 대기 · 창고 전체) — 별칭만 고친다(서버 #875). */
+    systemLocation: '시스템이 만든 위치라 별칭만 바꿀 수 있습니다.',
   },
   loading: {
     warehouses: '창고 목록을 불러오는 중',
@@ -78,6 +80,7 @@ export const warehouseLocation = {
     parentLocation: '상위 위치',
     locationCode: '위치 코드',
     locationName: '위치명',
+    aliasName: '별칭',
     locationType: '위치유형',
     qualityZone: '품질구역',
     storageCondition: '보관조건',
@@ -105,6 +108,7 @@ export const warehouseLocation = {
     partnerRequiredForExternal: '외부 창고이면 거래처를 지정해야 합니다.',
     capacityNeedsUom: '수용량과 단위는 함께 입력하거나 함께 비워야 합니다.',
     capacityInvalid: '수용량은 0 이상의 숫자로 입력하세요.',
+    aliasTooLong: (max: number): string => `별칭은 ${String(max)}자 이하로 입력하세요.`,
     locationsDisabledByManagementLevel: '현재 창고 관리 수준에서는 Location을 저장할 수 없습니다.',
     parentLocationUnavailable: '상위 위치를 전체 Location 목록에서 확인할 수 없습니다.',
     locationDepthExceeded: '현재 창고 관리 수준에서 허용하는 계층 깊이를 넘었습니다.',
