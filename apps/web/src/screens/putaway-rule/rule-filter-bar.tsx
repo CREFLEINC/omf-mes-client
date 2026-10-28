@@ -1,7 +1,7 @@
-import { Button, Checkbox, Chip } from '@crefle/web-ui';
+import { Button, Checkbox } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
-import { toFilterChips, type FilterKey } from './filters';
 import { SelectField } from './select-field';
 import type { RuleFilters, SelectOption } from './types';
 
@@ -26,13 +26,10 @@ export interface RuleFilterBarProps {
   itemOptions: SelectOption[];
   itemNote?: string;
   itemPlaceholder?: string;
-  /** 조건 칩에 실을 창고 이름. 번호를 문구로 만드는 자리를 두지 않기 위한 것이다. */
-  warehouseLabel: (warehouseId: string) => string;
-  itemLabel: (itemId: string) => string;
   onApply: (filters: RuleFilters) => void;
-  /** 조건 칩의 ×. 그 조건 하나만 푼다. */
-  onRemoveFilter: (key: FilterKey) => void;
   onReset: () => void;
+  /** 줄 오른쪽 끝의 화면 단추(규칙 추가 · 다시 조회) — 입고 관리 짜임에는 머리 줄이 없다(사용자 지시 2026-10-29). */
+  actions?: ReactNode;
 }
 
 /**
@@ -70,11 +67,9 @@ export const RuleFilterBar = ({
   itemOptions,
   itemNote,
   itemPlaceholder,
-  warehouseLabel,
-  itemLabel,
   onApply,
-  onRemoveFilter,
   onReset,
+  actions,
 }: RuleFilterBarProps) => {
   /* 「전체」를 값이 빈 선택지로 둔다 — 두지 않으면 한 번 고른 뒤에 해제할 방법이 칸 안에 없어진다. */
   const withAll = (options: SelectOption[]): SelectOption[] => [
@@ -90,78 +85,61 @@ export const RuleFilterBar = ({
     options.length === 0 ? [] : withAll(options);
 
   const hasWarehouse = appliedFilters.warehouseId !== '';
-  const chips = toFilterChips(appliedFilters, warehouseLabel, itemLabel);
 
   return (
-    <>
-      <div className="filter-bar">
-        {/*
-         * 규범 3-2 — 선택칸이 「코드 · 이름」을 고른다. 최소 폭을 주지 않으면 선택지 목록이
-         * 트리거 폭에 갇혀 잘리고, 무엇을 고르는지 읽을 수 없다.
-         */}
-        <SelectField
-          wide
-          label={t.fields.warehouse}
-          options={withAllOrEmpty(warehouseOptions)}
-          value={appliedFilters.warehouseId}
-          note={warehouseNote}
-          placeholder={warehousePlaceholder}
-          onChange={(value) => {
-            /* 창고가 바뀌면 앞 창고 기준으로 고른 품목 조건이 뜻을 잃는다 — 함께 비운다. */
-            onApply({ ...appliedFilters, warehouseId: value, itemId: '' });
+    <div className="filter-bar">
+      {/*
+       * 규범 3-2 — 선택칸이 「코드 · 이름」을 고른다. 최소 폭을 주지 않으면 선택지 목록이
+       * 트리거 폭에 갇혀 잘리고, 무엇을 고르는지 읽을 수 없다.
+       */}
+      <SelectField
+        wide
+        label={t.fields.warehouse}
+        options={withAllOrEmpty(warehouseOptions)}
+        value={appliedFilters.warehouseId}
+        note={warehouseNote}
+        placeholder={warehousePlaceholder}
+        onChange={(value) => {
+          /* 창고가 바뀌면 앞 창고 기준으로 고른 품목 조건이 뜻을 잃는다 — 함께 비운다. */
+          onApply({ ...appliedFilters, warehouseId: value, itemId: '' });
+        }}
+      />
+
+      <SelectField
+        wide
+        label={t.fields.item}
+        options={withAllOrEmpty(itemOptions)}
+        value={appliedFilters.itemId}
+        disabled={!hasWarehouse}
+        disabledReason={t.filters.itemNeedsWarehouse}
+        note={itemNote}
+        placeholder={itemPlaceholder}
+        onChange={(value) => {
+          onApply({ ...appliedFilters, itemId: value });
+        }}
+      />
+
+      <div className="field-cell field-cell-unlabeled">
+        <Checkbox
+          checked={appliedFilters.activeOnly}
+          onChange={(event) => {
+            onApply({ ...appliedFilters, activeOnly: event.target.checked });
           }}
-        />
-
-        <SelectField
-          wide
-          label={t.fields.item}
-          options={withAllOrEmpty(itemOptions)}
-          value={appliedFilters.itemId}
-          disabled={!hasWarehouse}
-          disabledReason={t.filters.itemNeedsWarehouse}
-          note={itemNote}
-          placeholder={itemPlaceholder}
-          onChange={(value) => {
-            onApply({ ...appliedFilters, itemId: value });
-          }}
-        />
-
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={appliedFilters.activeOnly}
-            onChange={(event) => {
-              onApply({ ...appliedFilters, activeOnly: event.target.checked });
-            }}
-          >
-            {t.filters.activeOnly}
-          </Checkbox>
-        </div>
-
-        <div className="field-cell field-cell-unlabeled">
-          <div className="filter-actions">
-            <Button variant="outlined" onClick={onReset}>
-              {messages.common.reset}
-            </Button>
-          </div>
-        </div>
+        >
+          {t.filters.activeOnly}
+        </Checkbox>
       </div>
 
-      {chips.length > 0 && (
-        <div className="filter-bar">
-          {chips.map((chip) => (
-            <Chip
-              key={chip.key}
-              variant="status"
-              removeLabel={chip.removeLabel}
-              onRemove={() => {
-                onRemoveFilter(chip.key);
-              }}
-            >
-              {chip.label}
-            </Chip>
-          ))}
+      <div className="field-cell field-cell-unlabeled">
+        <div className="filter-actions">
+          <Button variant="outlined" onClick={onReset}>
+            {messages.common.reset}
+          </Button>
         </div>
+      </div>
+      {actions !== undefined && (
+        <div className="field-cell-unlabeled putaway-rule-actions">{actions}</div>
       )}
-    </>
+    </div>
   );
 };

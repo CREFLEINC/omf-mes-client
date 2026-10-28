@@ -176,7 +176,7 @@ export const RuleFormPane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.panes.form}>
+    <section className="board-frame-sub" aria-label={t.panes.form}>
       {banner}
 
       <div className="form-grid">

@@ -9,7 +9,12 @@ import type { Translated } from './translated';
 export const putawayRule: Translated<typeof ko.putawayRule> = {
   title: 'Quy tắc cất hàng',
   breadcrumbRoot: 'Quản lý dữ liệu gốc',
+  splitter: 'Kéo để chỉnh độ rộng danh sách · chi tiết',
+  listCollapse: 'Thu gọn danh sách quy tắc cất hàng',
+  listExpand: 'Mở danh sách quy tắc cất hàng',
   panes: {
+    filters: 'Điều kiện tra cứu quy tắc cất hàng',
+    detail: 'Chi tiết quy tắc cất hàng',
     list: 'Danh sách quy tắc cất hàng',
     uncovered: 'Mặt hàng chưa có quy tắc',
     /** 등록과 수정이 한 구획을 쓴다 — 「수정」(`Sửa`)과 갈리게 편집은 `Chỉnh sửa`로 둔다. */

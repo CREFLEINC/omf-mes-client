@@ -1,7 +1,9 @@
-import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { BoardTable } from '../../patterns/board-table';
+import { OneLine } from '../../patterns/po-board';
 import type { RuleBalance } from './balance-lookup';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -107,24 +109,13 @@ export const RuleListPane = ({
     {
       key: 'item',
       header: t.fields.item,
-      render: (row) => (
-        <button
-          type="button"
-          className="link-cell"
-          aria-label={t.actions.selectRow(itemLabel(row.itemId), locationLabel(row.locationId))}
-          aria-current={row.putawayRuleId === selectedRuleId ? 'true' : undefined}
-          onClick={() => {
-            onSelect(row.putawayRuleId);
-          }}
-        >
-          {itemLabel(row.itemId)}
-        </button>
-      ),
+      /* 고르는 단추는 `BoardTable` 의 `pick` 이 이 칸을 감싸 세운다 — 줄 어디를 눌러도 고른다. */
+      render: (row) => <OneLine text={itemLabel(row.itemId)} />,
     },
     {
       key: 'location',
       header: t.fields.location,
-      render: (row) => locationLabel(row.locationId),
+      render: (row) => <OneLine text={locationLabel(row.locationId)} />,
     },
     {
       key: 'capacity',
@@ -233,11 +224,21 @@ export const RuleListPane = ({
 
   return (
     <>
-      <Table
-        density="compact"
+      <BoardTable
+        label={t.panes.list}
         columns={columns}
         rows={rules}
         getRowId={(row) => String(row.putawayRuleId)}
+        widthKey="omf-mes:putaway-rule:list-widths"
+        minWidth="976px"
+        pick={{
+          columnKey: 'item',
+          label: (row) => t.actions.selectRow(itemLabel(row.itemId), locationLabel(row.locationId)),
+          currentId: selectedRuleId === null ? null : String(selectedRuleId),
+          onPick: (row) => {
+            onSelect(row.putawayRuleId);
+          },
+        }}
         /* 0건을 바깥에서 가르지 않는다 — 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */
         empty={emptySlot}
       />

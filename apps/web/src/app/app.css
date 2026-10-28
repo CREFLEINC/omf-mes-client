@@ -24912,7 +24912,9 @@ table.col-measuring td {
 .erp-po-order-type-field > :not(label) {
   width: 100%;
   min-width: 0;
+}
 
+/*
  * 선택지가 많은 선택 칸의 검색창(`patterns/select.tsx`) — 펼친 목록 맨 위에 붙어, 목록을 내려도 남는다. 목록 바탕과 같은
  * 색으로 덮어 아래 줄이 비치지 않게 한다.
  */
@@ -24949,4 +24951,17 @@ table.col-measuring td {
   padding: var(--space-2) var(--space-1) var(--space-1);
   color: var(--on-surface-muted);
   font: var(--type-body-md);
+}
+
+/* 적치 규칙(입고 관리 짜임, 사용자 지시 2026-10-29) — 규칙 추가 · 다시 조회는 조건 줄 오른쪽 끝. */
+.putaway-rule-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* 오른쪽 구획의 첫 갈래는 구획 위 여백에 바로 붙는다. */
+.po-board-scroll > .board-frame-sub:first-child {
+  margin-top: 0;
 }

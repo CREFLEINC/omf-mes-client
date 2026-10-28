@@ -11,7 +11,13 @@
 export const putawayRule = {
   title: '적치 규칙',
   breadcrumbRoot: '기준정보 관리',
+  /* 입고 관리 짜임(사용자 지시 2026-10-29) — 위 조건 상자 · 왼쪽 규칙 목록 | 오른쪽 편집. */
+  splitter: '끌어서 목록·상세 폭 조절',
+  listCollapse: '적치 규칙 목록 접기',
+  listExpand: '적치 규칙 목록 펼치기',
   panes: {
+    filters: '적치 규칙 조회 조건',
+    detail: '적치 규칙 상세',
     list: '적치 규칙 목록',
     uncovered: '규칙 없는 품목',
     /** 등록과 수정이 **한 구획**을 쓴다 — 두 폼을 나란히 두면 어느 것이 지금 열린 것인지 흐려진다. */

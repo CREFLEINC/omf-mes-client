@@ -1,10 +1,11 @@
-import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText, useToast } from '@crefle/web-ui';
+import { Button, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { BoardFrame } from '../../patterns/board-frame';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { ActivationDialog } from './activation-dialog';
@@ -24,7 +25,6 @@ import { duplicateRuleIds } from './duplicate-badge';
 import { judgeDuplicate } from './duplicate-check';
 import {
   DEFAULT_FILTERS,
-  clearFilter,
   isCreating as readIsCreating,
   readFilters,
   readPage,
@@ -33,7 +33,6 @@ import {
   toSearchParams,
   toSelectionSearchParams,
   withoutSelection,
-  type FilterKey,
 } from './filters';
 import { ItemPickerDialog } from './item-picker-dialog';
 import { LoadErrorBanner } from './load-error-banner';
@@ -785,10 +784,6 @@ export const PutawayRuleScreen = () => {
     applyUserNavigation(toSearchParams(next, 1));
   };
 
-  const handleRemoveFilter = (key: FilterKey): void => {
-    applyFilters(clearFilter(filters, key));
-  };
-
   const handleChangePage = (nextPage: number): void => {
     applyUserNavigation(toSearchParams(filters, nextPage));
   };
@@ -1294,7 +1289,7 @@ export const PutawayRuleScreen = () => {
 
     if (isRefreshingLatest) {
       return (
-        <section className="pane" aria-label={t.panes.form}>
+        <section className="board-frame-sub" aria-label={t.panes.form}>
           <SkeletonText lines={4} />
         </section>
       );
@@ -1302,7 +1297,7 @@ export const PutawayRuleScreen = () => {
 
     if (isRuleNotFound || isRuleMissing) {
       return (
-        <section className="pane" aria-label={t.panes.form}>
+        <section className="board-frame-sub" aria-label={t.panes.form}>
           <EmptyState
             size="sm"
             live
@@ -1315,7 +1310,7 @@ export const PutawayRuleScreen = () => {
 
     if (selectedRuleId === null) {
       return (
-        <section className="pane" aria-label={t.panes.form}>
+        <section className="board-frame-sub" aria-label={t.panes.form}>
           <EmptyState
             size="sm"
             title={t.empty.noSelectionTitle}
@@ -1327,7 +1322,7 @@ export const PutawayRuleScreen = () => {
 
     if (detail.isError) {
       return (
-        <section className="pane" aria-label={t.panes.form}>
+        <section className="board-frame-sub" aria-label={t.panes.form}>
           <LoadErrorBanner error={detail.error} onRetry={() => refreshDraftFromLatestDetail()} />
         </section>
       );
@@ -1341,7 +1336,7 @@ export const PutawayRuleScreen = () => {
     return (
       <>
         {draft === null ? (
-          <section className="pane" aria-label={t.panes.form}>
+          <section className="board-frame-sub" aria-label={t.panes.form}>
             <div role="status" aria-label={t.loading.detail}>
               <SkeletonText lines={5} />
             </div>
@@ -1381,104 +1376,115 @@ export const PutawayRuleScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        actions={
-          <>
-            {/*
-             * **잠긴 자리에는 반드시 사유가 붙는다**(배치 규범 4). 이 버튼은 두 사유로 잠기는데
-             * 둘 다 사용자가 할 일이 다르다 — 창고를 고르거나(등록 본문이 창고를 요구한다),
-             * 나가는 중인 요청을 기다리거나. 사유 없이 잠그면 고장으로 읽힌다.
-             *
-             * 폼 안 「등록」의 사유를 돌려 쓰지 않는다 — 사유는 **그 컨트롤의 이름으로 시작해야**
-             * 사용자가 어느 버튼 이야기인지 되짚지 않는다.
-             */}
-            {warehouseId === null ? (
-              <DisabledAction label={t.actions.create} reason={t.actionReasons.addNeedsWarehouse} />
-            ) : !selectedWarehouseIsActive ? (
-              <DisabledAction
-                label={t.actions.create}
-                reason={t.actionReasons.addNeedsActiveWarehouse}
-              />
-            ) : isLocked ? (
-              <DisabledAction
-                label={t.actions.create}
-                reason={t.actionReasons.addLockedByOtherSave}
+      <BoardFrame
+        splitKey="omf-mes:putaway-rule:split"
+        initialRatio={0.55}
+        splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
+        above={{
+          label: t.panes.filters,
+          content: (
+            <>
+              <div className="pane po-board-filter">
+                <RuleFilterBar
+                  appliedFilters={filters}
+                  warehouseOptions={toSelectOptions(warehouses)}
+                  warehouseNote={lookupNote(warehouses)}
+                  /*
+                   * ⛔ **「고를 창고가 없습니다」는 조회가 실제로 0건을 돌려줬을 때에만 말한다.**
+                   * 조건 줄은 배열 길이밖에 볼 수 없어 미도착·실패를 「없다」와 가를 수 없다.
+                   */
+                  warehousePlaceholder={optionsPlaceholder(
+                    warehouses,
+                    t.filters.noWarehouseOptions,
+                  )}
+                  itemOptions={toSelectOptions(items)}
+                  itemNote={lookupNote(items)}
+                  itemPlaceholder={optionsPlaceholder(items, t.filters.noItemOptions)}
+                  onApply={applyFilters}
+                  onReset={() => {
+                    applyFilters(DEFAULT_FILTERS);
+                  }}
+                  actions={
+                    <>
+                      {/*
+                       * **잠긴 자리에는 반드시 사유가 붙는다**(배치 규범 4). 이 버튼은 두 사유로 잠기는데
+                       * 둘 다 사용자가 할 일이 다르다 — 창고를 고르거나(등록 본문이 창고를 요구한다),
+                       * 나가는 중인 요청을 기다리거나. 사유 없이 잠그면 고장으로 읽힌다.
+                       *
+                       * 폼 안 「등록」의 사유를 돌려 쓰지 않는다 — 사유는 **그 컨트롤의 이름으로 시작해야**
+                       * 사용자가 어느 버튼 이야기인지 되짚지 않는다.
+                       */}
+                      {warehouseId === null ? (
+                        <DisabledAction
+                          label={t.actions.create}
+                          reason={t.actionReasons.addNeedsWarehouse}
+                        />
+                      ) : !selectedWarehouseIsActive ? (
+                        <DisabledAction
+                          label={t.actions.create}
+                          reason={t.actionReasons.addNeedsActiveWarehouse}
+                        />
+                      ) : isLocked ? (
+                        <DisabledAction
+                          label={t.actions.create}
+                          reason={t.actionReasons.addLockedByOtherSave}
+                        />
+                      ) : (
+                        <Button variant="outlined" onClick={handleCreate}>
+                          {t.actions.create}
+                        </Button>
+                      )}
+                      {/* 「다시 조회」는 잠그지 않는다 — 응답 없음 안내가 가리키는 **확인 자리**다. */}
+                      <Button variant="outlined" onClick={handleReload}>
+                        {t.actions.reload}
+                      </Button>
+                    </>
+                  }
+                />
+              </div>
+              {/*
+               * **잠긴 이유를 상시 밝힌다**(G-30) — 자리가 **폼 밖**이다.
+               *
+               * 폼은 대상이 풀리면 닫히는데(뒤로가기·주소 직접 편집) 잠금은 요청이 끝날 때까지 남는다.
+               * 사유를 폼 구획 안에 두면 **폼이 닫힌 채 잠긴 갈래**에서 잠긴 이유가 화면 어디에도 없다.
+               */}
+              {isLocked && <p className="field-note">{t.notes.savingLock}</p>}
+            </>
+          ),
+        }}
+        list={{ label: t.panes.list, content: listSlot() }}
+        detail={{
+          label: t.panes.detail,
+          content:
+            /* 창고를 고른 뒤에만 편집 자리가 선다 — 그전에는 만들 대상도 고를 대상도 없다. */
+            warehouseId === null ? (
+              <EmptyState
+                size="sm"
+                title={t.empty.noSelectionTitle}
+                description={t.empty.noSelectionDescription}
               />
             ) : (
-              <Button variant="outlined" onClick={handleCreate}>
-                {t.actions.create}
-              </Button>
-            )}
-            {/* 「다시 조회」는 잠그지 않는다 — 응답 없음 안내가 가리키는 **확인 자리**다. */}
-            <Button variant="outlined" onClick={handleReload}>
-              {t.actions.reload}
-            </Button>
-          </>
-        }
-      />
-
-      {/*
-       * **잠긴 이유를 상시 밝힌다**(G-30) — 자리가 **폼 밖**이다.
-       *
-       * 폼은 대상이 풀리면 닫히는데(뒤로가기·주소 직접 편집) 잠금은 요청이 끝날 때까지 남는다.
-       * 사유를 폼 구획 안에 두면 **폼이 닫힌 채 잠긴 갈래**에서 잠긴 이유가 화면 어디에도 없다.
-       * 전환(끄기·켜기)은 초안이 서기 전에도 시작될 수 있어 그 갈래가 흔해진다.
-       */}
-      {isLocked && <p className="field-note">{t.notes.savingLock}</p>}
-
-      <div className="pane-stack">
-        <section className="pane" aria-label={t.panes.list}>
-          <RuleFilterBar
-            appliedFilters={filters}
-            warehouseOptions={toSelectOptions(warehouses)}
-            warehouseNote={lookupNote(warehouses)}
-            /*
-             * ⛔ **「고를 창고가 없습니다」는 조회가 실제로 0건을 돌려줬을 때에만 말한다.**
-             * 조건 줄은 배열 길이밖에 볼 수 없어 미도착·실패를 「없다」와 가를 수 없다.
-             */
-            warehousePlaceholder={optionsPlaceholder(warehouses, t.filters.noWarehouseOptions)}
-            itemOptions={toSelectOptions(items)}
-            itemNote={lookupNote(items)}
-            itemPlaceholder={optionsPlaceholder(items, t.filters.noItemOptions)}
-            warehouseLabel={warehouseLabelOf}
-            itemLabel={(itemId) => itemLabelOf(Number(itemId))}
-            onApply={applyFilters}
-            onRemoveFilter={handleRemoveFilter}
-            onReset={() => {
-              applyFilters(DEFAULT_FILTERS);
-            }}
-          />
-          {listSlot()}
-        </section>
-
-        {/* 창고를 고른 뒤에만 편집 자리가 선다 — 그전에는 만들 대상도 고를 대상도 없다. */}
-        {warehouseId !== null && editSlot()}
-
-        {warehouseId !== null && (
-          <UncoveredItemsPane
-            items={uncovered.data?.items ?? EMPTY_UNCOVERED}
-            total={uncovered.data?.page.total ?? 0}
-            isLoading={uncovered.isPending}
-            loadError={
-              uncovered.isError ? (
-                <LoadErrorBanner
-                  error={uncovered.error}
-                  onRetry={() => {
-                    void uncovered.refetch();
-                  }}
+              <>
+                {editSlot()}
+                <UncoveredItemsPane
+                  items={uncovered.data?.items ?? EMPTY_UNCOVERED}
+                  total={uncovered.data?.page.total ?? 0}
+                  isLoading={uncovered.isPending}
+                  loadError={
+                    uncovered.isError ? (
+                      <LoadErrorBanner
+                        error={uncovered.error}
+                        onRetry={() => {
+                          void uncovered.refetch();
+                        }}
+                      />
+                    ) : null
+                  }
                 />
-              ) : null
-            }
-          />
-        )}
-      </div>
+              </>
+            ),
+        }}
+      />
 
       {/*
        * 창은 **열 때만 붙인다** — 디자인 시스템 `Dialog`는 닫혀도 내용이 DOM에 남아

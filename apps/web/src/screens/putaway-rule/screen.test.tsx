@@ -835,18 +835,6 @@ describe('PutawayRuleScreen — 조건과 쪽', () => {
     expect(currentLocation()).not.toContain('item=');
   });
 
-  it('조건 칩의 ×가 그 조건만 푼다', async () => {
-    const { user } = renderScreen('/?wh=9201&item=9101');
-
-    await waitForRows();
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveItem }));
-
-    await waitFor(() => {
-      expect(currentLocation()).not.toContain('item=');
-    });
-    expect(currentLocation()).toContain('wh=9201');
-  });
-
   it('초기화가 조건을 전부 되돌린다', async () => {
     const { user } = renderScreen('/?wh=9201&item=9101&active=1');
 

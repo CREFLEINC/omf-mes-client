@@ -27,7 +27,6 @@ const renderBar = (
   overrides: Partial<Parameters<typeof RuleFilterBar>[0]> = {},
 ) => {
   const onApply = vi.fn();
-  const onRemoveFilter = vi.fn();
   const onReset = vi.fn();
 
   render(
@@ -35,16 +34,13 @@ const renderBar = (
       appliedFilters={appliedFilters}
       warehouseOptions={warehouseOptions}
       itemOptions={itemOptions}
-      warehouseLabel={(id) => `창고${id}`}
-      itemLabel={(id) => `품목${id}`}
       onApply={onApply}
-      onRemoveFilter={onRemoveFilter}
       onReset={onReset}
       {...overrides}
     />,
   );
 
-  return { onApply, onRemoveFilter, onReset, user: userEvent.setup() };
+  return { onApply, onReset, user: userEvent.setup() };
 };
 
 const selectOption = async (
@@ -57,6 +53,18 @@ const selectOption = async (
 };
 
 describe('RuleFilterBar', () => {
+  it('조건 칩 줄이 없다 — 걸린 조건은 칸에 보인다(입고 관리 짜임)', () => {
+    renderBar({ ...DEFAULT_FILTERS, warehouseId: '9201' });
+
+    expect(screen.queryByRole('button', { name: /조건 제거|해제/u })).not.toBeInTheDocument();
+  });
+
+  it('받은 화면 단추를 줄 끝에 둔다', () => {
+    renderBar(DEFAULT_FILTERS, { actions: <button type="button">합성 단추</button> });
+
+    expect(screen.getByRole('button', { name: '합성 단추' })).toBeInTheDocument();
+  });
+
   it('창고·품목·사용 중만 세 조건이 선다', () => {
     renderBar();
 
@@ -197,28 +205,6 @@ describe('RuleFilterBar', () => {
       itemId: '',
       activeOnly: true,
     });
-  });
-
-  it('적용된 조건마다 칩이 서고 ×가 그 조건만 푼다', async () => {
-    const { onRemoveFilter, user } = renderBar({
-      warehouseId: '9201',
-      itemId: '9101',
-      activeOnly: true,
-    });
-
-    expect(screen.getByText(t.filters.chipWarehouse('창고9201'))).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveItem }));
-
-    expect(onRemoveFilter).toHaveBeenCalledWith('itemId');
-  });
-
-  it('조건이 없으면 칩도 없다', () => {
-    renderBar();
-
-    expect(
-      screen.queryByRole('button', { name: t.filters.chipRemoveWarehouse }),
-    ).not.toBeInTheDocument();
   });
 
   it('초기화가 조건 전부를 되돌린다', async () => {

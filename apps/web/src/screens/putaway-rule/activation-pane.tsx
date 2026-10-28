@@ -120,7 +120,7 @@ export const ActivationPane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.panes.activation}>
+    <section className="board-frame-sub" aria-label={t.panes.activation}>
       {banner}
       <div className="form-actions">{actionSlot()}</div>
       {duplicateUnknownNote !== null && <p className="field-note">{duplicateUnknownNote}</p>}

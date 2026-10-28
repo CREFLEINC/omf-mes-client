@@ -151,7 +151,7 @@ export const UncoveredItemsPane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.panes.uncovered}>
+    <section className="board-frame-sub" aria-label={t.panes.uncovered}>
       {body()}
     </section>
   );
