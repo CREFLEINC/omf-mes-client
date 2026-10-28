@@ -22437,8 +22437,15 @@ body.col-reordering * {
  * 상하 배치 — 목록이 위, 상세가 아래. 가운데 폭 막대는 감춘다. 목록은 정해진 높이 안에서 구르고(머리줄 고정),
  * 상세는 내용 높이로 아래로 이어진다(쪽 전체가 구른다).
  */
-.po-board-split.inspection-split.is-stacked {
+/*
+ * 상하 배치는 목록, 높이 막대, 상세 세 줄이 내용 높이만큼 선다. 품질 승인 처리의 위아래 배치 규칙
+ * (`.po-board-split.is-stacked`의 `grid-template-rows: 2fr 3fr`, 1440px 이상)이 여기에도 걸려 높이 막대 줄이 3fr을
+ * 받아 목록과 상세 사이가 크게 벌어졌다(LOT 생산 이력 조회, 검사 조회·판정). 줄 높이를 내용으로 되돌린다.
+ */
+.po-board-split.inspection-split.is-stacked,
+.po-board-split.inspection-split.is-stacked:has(> .po-board-gutter) {
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: none;
   align-items: start;
   row-gap: 0;
   height: auto;
