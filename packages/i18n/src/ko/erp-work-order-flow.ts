@@ -14,7 +14,7 @@ const SCREEN_NAME = '작업지시 목록';
 
 /**
  * 처리 상태 이름. 키는 서버 칩 판정(`worklistState`)이다. 조건 칩, 행 상태 칩이 같은 이름을 쓴다(C-17).
- * 칩 이름은 여기만 고치면 바뀐다. 빈 목록 제목(`list.emptyNeedsReviewTitle`)은 문장이라 따로 적었으니 함께 고친다.
+ * 칩 이름은 여기만 고치면 바뀐다. 빈 목록 제목(`list.emptyActionRequiredTitle`)은 문장이라 따로 적었으니 함께 고친다.
  */
 const status = {
   BEFORE_PLAN: '계획 전',
@@ -32,6 +32,12 @@ const steps = {
   release: '배포 확인',
 } as const;
 
+/** 생산계획 단계의 버튼 이름. 사유 칩 도움말이 같은 이름으로 가리킨다. */
+const planButtons = {
+  add: '계획 추가',
+  confirm: '전개 확정',
+} as const;
+
 /** 사유 칩 이름. 무엇을 해야 하는지로 짓는다. */
 const reasons = {
   BOM_MISSING: '기본 BOM 지정 필요',
@@ -41,7 +47,7 @@ const reasons = {
   PLAN_NOT_CONFIRMED: '생산계획 확정 필요',
   QTY_REMAINING: '남은 수량 계획 필요',
   AUTO_PLAN_RERUN_NEEDED: '자동 계획 다시 실행 필요',
-  NO_LIVE_WORK_ORDER: 'W/O 다시 전개 필요',
+  NO_LIVE_WORK_ORDER: '계획 추가 필요',
   WORK_ORDER_LINE_MISSING: 'W/O 생산 라인 지정 필요',
   WORK_ORDER_LOCATION_MISSING: 'W/O 기본 위치 지정 필요',
   LINE_PLANT_MISMATCH: 'W/O 생산 라인 변경 필요',
@@ -102,7 +108,7 @@ export const erpWorkOrderFlow = {
     AUTO_PLAN_RERUN_NEEDED: (): string =>
       '기준정보가 갖춰졌거나 자동 계획이 실패했습니다. 처리 화면 오른쪽 위 [자동 계획 다시 실행]을 눌러야 합니다.',
     NO_LIVE_WORK_ORDER: (): string =>
-      `확정한 계획에 W/O가 없거나 모두 취소되었습니다. ${steps.plan} 단계에서 계획을 다시 전개하거나 계획을 추가해야 합니다.`,
+      `확정한 계획의 W/O가 없거나 모두 취소되었습니다. ${steps.plan} 단계에서 [${planButtons.add}]로 필요한 수량을 다시 계획하고 [${planButtons.confirm}]을 눌러야 합니다.`,
     WORK_ORDER_LINE_MISSING: ({ workOrderCount }: ReasonDetail): string =>
       `${pendingWorkOrders(workOrderCount)}에 생산 라인이 없습니다. ${steps.assign} 단계에서 생산 라인을 지정해야 합니다.`,
     WORK_ORDER_LOCATION_MISSING: ({ workOrderCount }: ReasonDetail): string =>
@@ -149,8 +155,8 @@ export const erpWorkOrderFlow = {
     loadFailedDescription: '잠시 후 다시 조회하세요.',
     emptyTitle: '조건에 맞는 ERP W/O가 없습니다',
     emptyDescription: '조회 조건을 바꿔 다시 조회하세요.',
-    emptyNeedsReviewTitle: '조치가 필요한 ERP W/O가 없습니다',
-    emptyNeedsReviewDescription: `「${status.RELEASE_PENDING}」 건은 그 조건에서 골라 일괄 배포하세요.`,
+    emptyActionRequiredTitle: '조치가 필요한 ERP W/O가 없습니다',
+    emptyActionRequiredDescription: `「${status.RELEASE_PENDING}」 건은 그 조건에서 골라 일괄 배포하세요.`,
   },
 
   bulk: {
@@ -288,8 +294,8 @@ export const erpWorkOrderFlow = {
     },
     plan: {
       heading: '생산계획',
-      add: '계획 추가',
-      confirm: '전개 확정',
+      add: planButtons.add,
+      confirm: planButtons.confirm,
       saveDraft: '임시 저장',
       newRow: (displayNo: number): string => `신규 계획 ${String(displayNo)}`,
       newStatus: '신규',

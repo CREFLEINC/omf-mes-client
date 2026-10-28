@@ -129,7 +129,13 @@ export const releaseWorkOrder = async (
   }
 };
 
-/** ERP W/O 하나의 배포 전 W/O 목록(끝까지). */
+/** 배포 전 W/O의 상태. 서버 「배포 전 W/O」 수(`releasePendingWorkOrderCount`)와 같은 조건이다. */
+const RELEASE_PENDING_STATUSES: readonly string[] = ['PLANNED', 'CONFIRMED'];
+
+/**
+ * ERP W/O 하나의 배포 전 W/O 목록(끝까지). 배포 시각이 없어도 취소된 W/O는 빼서 목록 열의 「배포 전」 수와 맞춘다.
+ * 목록 API의 `statusCode`는 값 하나만 받아, 모든 쪽을 받은 뒤 상태로 거른다.
+ */
 export const unreleasedWorkOrdersOf = async (
   client: Client,
   productionOrderId: number,
@@ -141,10 +147,12 @@ export const unreleasedWorkOrdersOf = async (
       }),
     ),
   );
-  return list.items.map((item) => ({
-    workOrderId: item.workOrderId,
-    workOrderNo: item.workOrderNo,
-  }));
+  return list.items
+    .filter((item) => RELEASE_PENDING_STATUSES.includes(item.statusCode))
+    .map((item) => ({
+      workOrderId: item.workOrderId,
+      workOrderNo: item.workOrderNo,
+    }));
 };
 
 export interface ReleaseForecast {

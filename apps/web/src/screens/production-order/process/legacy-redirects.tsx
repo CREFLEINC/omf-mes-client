@@ -43,4 +43,6 @@ export const LegacyAssignmentRedirect = () => {
   return <ToOrder productionOrderId={plan.data.productionOrderId} />;
 };
 
-export const LegacyReleaseRedirect = () => <Navigate to={`${WORKLIST}?autoPlan=DONE`} replace />;
+export const LegacyReleaseRedirect = () => (
+  <Navigate to={`${WORKLIST}?state=RELEASE_PENDING`} replace />
+);

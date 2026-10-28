@@ -78,7 +78,13 @@ interface Options {
 
 const stub = ({ orders, released = [] }: Options): { fetch: StubFetch; requests: Request[] } => {
   const requests: Request[] = [];
-  const pending = [workOrder(9001, 702, null), workOrder(9002, 702, 11), workOrder(9003, 703, 11)];
+  /* 9004는 배포 시각이 없지만 취소된 W/O다. 배포 전 W/O로 세지 않는다. */
+  const pending = [
+    workOrder(9001, 702, null),
+    workOrder(9002, 702, 11),
+    workOrder(9003, 703, 11),
+    workOrder(9004, 703, 11, { statusCode: 'CANCELLED' }),
+  ];
   const fetch: StubFetch = async (request) => {
     requests.push(request.clone());
     const url = new URL(request.url);
@@ -218,6 +224,15 @@ describe('작업지시 목록 작업함', () => {
     }
   });
 
+  it('화면이 모르는 상태 코드는 빈 칩 대신 코드를 보이고, 서버가 수를 싣지 않으면 「배포 전 W/O」 칸을 비운다', async () => {
+    const unknown = order(741, 'SYN-PO-741', { status: 'DONE', reasons: [] }, 1, 'NEW_STATE');
+    render({ orders: [unknown] }, '/production/production-orders?state=ALL');
+
+    const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-741') });
+    expect(within(row).getByText('NEW_STATE')).toBeVisible();
+    expect(within(row).queryByText(/\d+ \/ \d+/)).toBeNull();
+  });
+
   it('「배포 전 W/O」 열은 서버가 센 배포 전 수와 전체 수를 보인다', async () => {
     const counts = (base: object, pending: number, live: number) => ({
       ...base,
@@ -270,8 +285,8 @@ describe('작업지시 목록 작업함', () => {
     ],
     [
       'NO_LIVE_WORK_ORDER',
-      'W/O 다시 전개 필요',
-      '확정한 계획에 W/O가 없거나 모두 취소되었습니다. 생산계획 단계에서 계획을 다시 전개하거나 계획을 추가해야 합니다.',
+      '계획 추가 필요',
+      '확정한 계획의 W/O가 없거나 모두 취소되었습니다. 생산계획 단계에서 [계획 추가]로 필요한 수량을 다시 계획하고 [전개 확정]을 눌러야 합니다.',
     ],
     ['NEW_CODE', '조치 필요(NEW_CODE)', '처리 화면을 열어 남은 일을 확인해야 합니다.'],
   ])(
@@ -389,6 +404,7 @@ describe('작업지시 목록 작업함', () => {
 
     const dialog = screen.getByRole('dialog', { name: t.bulk.releaseDialog.title });
     expect(within(dialog).getByText(t.bulk.releaseDialog.target(2))).toBeVisible();
+    /* 취소된 9004는 예고에도 배포에도 들지 않는다(서버 「배포 전」 수와 같은 조건). */
     expect(
       await within(dialog).findByText(t.bulk.releaseDialog.forecast(1, 1, 0, 2)),
     ).toBeVisible();

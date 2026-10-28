@@ -7,7 +7,7 @@ import type { ProductionOrderListResponse } from './types';
 import type { WorklistFilter } from './worklist-model';
 
 /**
- * 작업함 조회. 키는 `production-orders`와 `work-orders` 접두를 써서, 자동 계획과 배포가 끝나면 기존 무효화로 함께 갱신된다.
+ * 작업함 조회. 키는 `production-orders` 접두를 써서, 자동 계획과 배포가 끝나면 기존 무효화(`invalidateFlow`)로 함께 갱신된다.
  */
 export interface WorklistFilters {
   state: WorklistFilter;

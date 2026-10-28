@@ -789,11 +789,7 @@ export interface ProductionOrderAutoPlan {
 }
 
 /**
- * 서버 선행 — P/O 에 자동 계획 결과를 싣는다. `null` 은 자동 계획을 한 번도 하지 않은 P/O 다
- * (기능 전에 받았거나, 받을 때 납기가 지났거나 수신 상태가 아니라 건너뛰었다) — 계획도 없다.
- */
-/**
- * 서버 선행 P-142(omf-mes-server#870) — 작업지시 목록(W-02-01) 칩 판정. 조회 때 서버가 계산하고, 질의
+ * 서버 선행 P-142 — 작업지시 목록(W-02-01) 칩 판정. 조회 때 서버가 계산하고, 질의
  * `worklistState` 가 같은 식으로 거른다.
  */
 export type WorklistState =
@@ -812,7 +808,11 @@ export interface WorklistReasonEntry {
   workOrderCount: number;
 }
 
-/** 생성 타입의 `autoPlan` 은 사유 목록이 좁아(AUTO_PLAN_RERUN_NEEDED 없음) 빼고 선행 타입으로 다시 싣는다. */
+/**
+ * 서버 선행 — P/O 에 자동 계획 결과를 싣는다. `null` 은 자동 계획을 한 번도 하지 않은 P/O 다
+ * (기능 전에 받았거나, 받을 때 납기가 지났거나 수신 상태가 아니라 건너뛰었다) — 계획도 없다.
+ * 생성 타입의 `autoPlan` 은 사유 목록이 좁아(AUTO_PLAN_RERUN_NEEDED 없음) 빼고 선행 타입으로 다시 싣는다.
+ */
 export type ProductionOrderForward = Omit<components['schemas']['ProductionOrder'], 'autoPlan'> & {
   autoPlan?: ProductionOrderAutoPlan | null;
   worklistState?: WorklistState;

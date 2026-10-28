@@ -334,12 +334,12 @@ export const ProductionOrderScreen = () => {
                   size="sm"
                   title={
                     filters.state === 'ACTION_REQUIRED'
-                      ? t.list.emptyNeedsReviewTitle
+                      ? t.list.emptyActionRequiredTitle
                       : t.list.emptyTitle
                   }
                   description={
                     filters.state === 'ACTION_REQUIRED'
-                      ? t.list.emptyNeedsReviewDescription
+                      ? t.list.emptyActionRequiredDescription
                       : t.list.emptyDescription
                   }
                 />

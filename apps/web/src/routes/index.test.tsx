@@ -1567,7 +1567,7 @@ describe('appRouter — 작업지시 목록 작업함의 진입 경로', () => {
     ).toHaveLength(1);
     expect(hubTab('작업지시 목록', '작업지시 목록')).toHaveAttribute('aria-current', 'page');
     expect(
-      await screen.findByText(messages.erpWorkOrderFlow.list.emptyNeedsReviewTitle),
+      await screen.findByText(messages.erpWorkOrderFlow.list.emptyActionRequiredTitle),
     ).toBeVisible();
   });
 
@@ -1597,7 +1597,7 @@ describe('appRouter — 합친 옛 주소', () => {
   it('확정, 배포 주소는 작업함의 「배포 대기」 조건으로 넘어간다', async () => {
     renderRoutedApp('/production/work-order-release', productionOrderRoutes());
     await waitFor(() =>
-      expect(currentLocation()).toBe('/production/production-orders?autoPlan=DONE'),
+      expect(currentLocation()).toBe('/production/production-orders?state=RELEASE_PENDING'),
     );
     expect(screen.queryByRole('link', { name: 'W/O 확정·배포·생산LOT 선발행' })).toBeNull();
   });

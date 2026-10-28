@@ -15,9 +15,12 @@ export const STATE_TONE: Record<ProcessState, ChipStatus> = {
   CANCELLED: 'error',
 };
 
-export const ProcessStateChip = ({ state }: { state: ProcessState }) => (
-  <Chip variant="status" size="sm" status={STATE_TONE[state]}>
-    {t.status[state]}
+const isKnownState = (state: string): state is ProcessState => Object.hasOwn(STATE_TONE, state);
+
+/** 상태 칩. 화면이 모르는 상태 코드는 빈 칩 대신 중립 색으로 코드를 그대로 보인다. */
+export const ProcessStateChip = ({ state }: { state: string }) => (
+  <Chip variant="status" size="sm" status={isKnownState(state) ? STATE_TONE[state] : 'idle'}>
+    {isKnownState(state) ? t.status[state] : state}
   </Chip>
 );
 
