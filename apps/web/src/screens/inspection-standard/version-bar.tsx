@@ -41,6 +41,7 @@ export const VersionBar = ({
     onCreateVersion,
     banner,
     newRevisionDisabledReason,
+    newRevisionNotice,
     isCreating,
     isPublishing,
     onNewRevision,
@@ -123,6 +124,7 @@ export const VersionBar = ({
               emphasized
               hasVersions={versions.length > 0}
               newRevisionDisabledReason={newRevisionDisabledReason}
+              newRevisionNotice={newRevisionNotice}
               isCreating={isCreating}
               isPublishing={isPublishing}
               onNewRevision={onNewRevision}
@@ -153,6 +155,7 @@ export const VersionBar = ({
                   emphasized
                   hasVersions={versions.length > 0}
                   newRevisionDisabledReason={newRevisionDisabledReason}
+                  newRevisionNotice={newRevisionNotice}
                   isCreating={isCreating}
                   isPublishing={isPublishing}
                   onNewRevision={onNewRevision}

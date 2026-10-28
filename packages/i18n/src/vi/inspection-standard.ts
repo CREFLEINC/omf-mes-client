@@ -46,6 +46,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     /* 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다. */
     newVersionBlockedByUnsaved:
       'Việc phát hành phiên bản mới không thực hiện được khi còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',
+    /* 작성중 판은 기준당 하나만 둔다(#196). */
+    newVersionBlockedByDraft:
+      'Đang có phiên bản đang soạn. Hãy xác nhận hoặc hủy soạn.',
     confirmNeedsDraft:
       'Việc xác nhận chỉ thực hiện được với phiên bản đang soạn. Muốn thay đổi thì hãy phát hành phiên bản mới.',
     /* 계약이 항목 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
@@ -224,7 +227,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     versionNoneDescription: 'Hãy tạo phiên bản đầu tiên bằng «Đăng ký phiên bản».',
     versionNotSelected: 'Hãy chọn phiên bản',
     itemNoneTitle: 'Chưa đăng ký hạng mục kiểm tra',
-    itemNoneDescription: 'Hãy đăng ký hạng mục đầu tiên bằng «Thêm hạng mục».',
+    itemNoneDescription: 'Hãy đăng ký hạng mục kiểm tra.',
   },
   fields: {
     inspectionPlanCode: 'Mã tiêu chuẩn',

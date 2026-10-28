@@ -11,6 +11,8 @@ const t = messages.inspectionStandard;
 export interface VersionPrimaryActionProps {
   hasVersions: boolean;
   newRevisionDisabledReason: string | null;
+  /** 발행 단추 대신 낼 안내 — 작성중 버전이 이미 있을 때(#196). null이면 단추를 낸다 */
+  newRevisionNotice: string | null;
   isCreating: boolean;
   isPublishing: boolean;
   onNewRevision: () => void;
@@ -31,6 +33,7 @@ export interface VersionPrimaryActionProps {
 export const VersionPrimaryAction = ({
   hasVersions,
   newRevisionDisabledReason,
+  newRevisionNotice,
   isCreating,
   isPublishing,
   onNewRevision,
@@ -53,6 +56,14 @@ export const VersionPrimaryAction = ({
           {t.actions.createVersion}
         </Button>
       </div>
+    );
+  }
+
+  if (newRevisionNotice !== null) {
+    return (
+      <span className="field-note inspection-standard-new-revision-notice">
+        {newRevisionNotice}
+      </span>
     );
   }
 
@@ -79,6 +90,8 @@ export interface VersionPaneProps {
   loadError: ReactNode;
   /** 신규 버전 발행을 막는 사유. null이면 누를 수 있다 */
   newRevisionDisabledReason: string | null;
+  /** 발행 단추 대신 낼 안내(작성중 버전이 이미 있을 때 · #196) */
+  newRevisionNotice: string | null;
   /** 첫 버전 등록 폼이 이미 열려 있으면 참. 같은 폼을 두 번 열지 않는다 */
   isCreating: boolean;
   isPublishing: boolean;
@@ -109,6 +122,7 @@ export const VersionPane = ({
   onSelect,
   loadError,
   newRevisionDisabledReason,
+  newRevisionNotice,
   isCreating,
   isPublishing,
   onNewRevision,
@@ -214,6 +228,7 @@ export const VersionPane = ({
           <VersionPrimaryAction
             hasVersions={hasVersions}
             newRevisionDisabledReason={newRevisionDisabledReason}
+            newRevisionNotice={newRevisionNotice}
             isCreating={isCreating}
             isPublishing={isPublishing}
             onNewRevision={onNewRevision}

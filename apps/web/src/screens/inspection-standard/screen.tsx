@@ -1022,9 +1022,17 @@ export const InspectionStandardScreen = () => {
    */
   const isAnythingDirty = isPlanDirty || isVersionDirty || isItemsDirty;
 
+  /* 작성중 버전이 이미 있으면 새로 발행하지 않는다 — 서버는 막지 않아 화면이 먼저 막는다(사용자 지시 · #196). */
+  const hasDraftVersion = versions.some((version) => {
+    const view = resolveVersionStatus(version.statusCode);
+    return view.isRecognized && view.status === 'draft';
+  });
+
   const newRevisionDisabledReason = isAnythingDirty
     ? t.actionReasons.newVersionBlockedByUnsaved
     : null;
+  /* 작성중 버전이 있으면 발행 단추 대신 안내 문구만 둔다(사용자 지시 · #196). */
+  const newRevisionNotice = hasDraftVersion ? t.actionReasons.newVersionBlockedByDraft : null;
 
   /**
    * 확정을 막는 사유. 서버가 최종 판정을 하지만(400 `STATE_LOCKED`·`LINE_REQUIRED`),
@@ -1161,6 +1169,7 @@ export const InspectionStandardScreen = () => {
         ) : null
       }
       newRevisionDisabledReason={newRevisionDisabledReason}
+      newRevisionNotice={newRevisionNotice}
       isCreating={versionCreateValues !== null}
       isPublishing={newRevisionWrite.isSaving}
       onNewRevision={() => {

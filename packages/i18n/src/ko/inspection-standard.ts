@@ -54,6 +54,9 @@ export const inspectionStandard = {
      */
     newVersionBlockedByUnsaved:
       '신규 버전 발행은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+    /* 작성중 판은 기준당 하나만 둔다 — 둘이면 어느 쪽을 확정할지 엇갈린다(사용자 지시 · #196). */
+    newVersionBlockedByDraft:
+      '작성중인 버전이 있습니다. 확정하거나 작성을 취소하세요.',
     confirmNeedsDraft: '확정은 작성중 버전에만 할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
     /* 계약이 항목 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
     confirmNeedsItems: '확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.',
@@ -241,7 +244,7 @@ export const inspectionStandard = {
     versionNoneDescription: '「버전 등록」으로 첫 버전을 만드세요.',
     versionNotSelected: '버전을 선택하세요',
     itemNoneTitle: '등록된 검사 항목이 없습니다',
-    itemNoneDescription: '「항목 추가」로 첫 항목을 등록하세요.',
+    itemNoneDescription: '검사 항목을 등록하세요.',
   },
   fields: {
     inspectionPlanCode: '기준코드',

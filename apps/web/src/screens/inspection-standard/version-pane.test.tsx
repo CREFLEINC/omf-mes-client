@@ -19,6 +19,7 @@ const renderPane = (overrides: Partial<Parameters<typeof VersionPane>[0]> = {}) 
       onSelect={onSelect}
       loadError={null}
       newRevisionDisabledReason={null}
+      newRevisionNotice={null}
       isCreating={false}
       isPublishing={false}
       onNewRevision={onNewRevision}

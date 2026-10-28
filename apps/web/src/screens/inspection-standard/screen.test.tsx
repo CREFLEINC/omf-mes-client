@@ -1255,6 +1255,12 @@ const versionRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, VERSIONS_PATH);
 
 /** 넘긴 규칙이 기본 규칙보다 **앞선다** — 스텁은 첫 일치를 쓰므로 이 순서가 곧 덮어쓰기다. */
+/* 작성중 버전이 있으면 발행이 막힌다(#196) — 발행 흐름을 보는 시험은 확정 버전만 있는 목록을 쓴다. */
+const confirmedOnlyVersionListRoute = (): StubRoute =>
+  versionListRoute(
+    inspectionPlanVersionFixtures.map((version) => ({ ...version, statusCode: 'CONFIRMED' })),
+  );
+
 const renderVersions = (extraRoutes: StubRoute[] = [], search = '?plan=3001') =>
   renderScreen(
     [...extraRoutes, planListRoute(), planDetailRoute(), versionListRoute(), ...lookupRoutes()],
@@ -1429,7 +1435,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
   });
 
   it('버전이 1건 이상이면 중 페인 액션이 「신규 버전 발행」이다', async () => {
-    renderVersions();
+    renderVersions([confirmedOnlyVersionListRoute()]);
 
     expect(
       await within(await versionPane()).findByRole('button', { name: '신규 버전 발행' }),
@@ -1473,7 +1479,10 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
 
   /* 버전이 1건 이상이면 개정 경로다 — 생성 경로를 부르면 유일 제약을 위반한다. */
   it('「신규 버전 발행」은 개정 경로로 나가고 본문이 없다', async () => {
-    const { requests, user } = renderVersions([newRevisionRoute()]);
+    const { requests, user } = renderVersions([
+      confirmedOnlyVersionListRoute(),
+      newRevisionRoute(),
+    ]);
 
     await user.click(
       await within(await versionPane()).findByRole('button', { name: '신규 버전 발행' }),
@@ -1499,7 +1508,10 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
    * 마지막 행을 대상으로 삼으면 옛 판을 복사하게 된다.
    */
   it('아무것도 고르지 않았으면 목록 첫 행을 원본으로 삼는다', async () => {
-    const { requests, user } = renderVersions([newRevisionRoute(4002)]);
+    const { requests, user } = renderVersions([
+      confirmedOnlyVersionListRoute(),
+      newRevisionRoute(4002),
+    ]);
 
     await user.click(
       await within(await versionPane()).findByRole('button', { name: '신규 버전 발행' }),
@@ -1514,7 +1526,10 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
   });
 
   it('버전을 골랐으면 그 버전을 원본으로 삼는다', async () => {
-    const { requests, user } = renderVersions([newRevisionRoute(4001)], '?plan=3001&ver=4001');
+    const { requests, user } = renderVersions(
+      [confirmedOnlyVersionListRoute(), newRevisionRoute(4001)],
+      '?plan=3001&ver=4001',
+    );
 
     await user.click(
       await within(await versionPane()).findByRole('button', { name: '신규 버전 발행' }),
@@ -1529,7 +1544,10 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
 
   /* 201에는 ETag가 없다 — 새 버전으로 옮겨 다시 조회해야 잠금 토큰이 생긴다. */
   it('발행에 성공하면 새 버전으로 옮기고 버전 목록을 다시 조회한다', async () => {
-    const { requests, user } = renderVersions([newRevisionRoute()]);
+    const { requests, user } = renderVersions([
+      confirmedOnlyVersionListRoute(),
+      newRevisionRoute(),
+    ]);
 
     await within(await versionPane()).findByRole('button', { name: '신규 버전 발행' });
     const before = versionRequests(requests).filter((request) => request.method === 'GET').length;
@@ -1553,6 +1571,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
    */
   it('상태 잠김은 「최신 불러오기」 없는 배너로 낸다', async () => {
     const { user } = renderVersions([
+      confirmedOnlyVersionListRoute(),
       newRevisionRoute(4002, () =>
         jsonResponse(
           {
@@ -1581,7 +1600,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
   });
 
   it('기준에 저장하지 않은 변경이 있으면 발행이 비활성이고 사유가 보인다', async () => {
-    const { user } = renderVersions([newRevisionRoute()]);
+    const { user } = renderVersions([confirmedOnlyVersionListRoute(), newRevisionRoute()]);
 
     await user.type(await findPlanField('기준명'), 'X');
 
@@ -1609,6 +1628,21 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     expect(versionRequests(requests).filter((request) => request.method === 'POST')).toHaveLength(
       0,
     );
+  });
+
+  /* 작성중 판은 기준당 하나만 둔다(사용자 지시 · #196) — 서버가 막지 않아 화면이 먼저 막는다. */
+  it('작성중 버전이 있으면 확정 버전을 골라도 발행 단추 대신 안내만 보인다', async () => {
+    const { requests } = renderVersions([newRevisionRoute(4001)], '?plan=3001&ver=4001');
+
+    await waitFor(async () => {
+      expect(
+        within(await versionPane()).queryByRole('button', { name: '신규 버전 발행' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getAllByText('작성중인 버전이 있습니다. 확정하거나 작성을 취소하세요.').length,
+    ).toBeGreaterThan(0);
+    expect(requestsTo(requests, `${VERSIONS_PATH}/4001:new-revision`)).toHaveLength(0);
   });
 });
 
@@ -2075,9 +2109,10 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '40' } });
 
     expect(screen.getByRole('button', { name: '확정' })).toBeDisabled();
+    /* 작성중 버전을 고치는 중이라 발행 단추는 아예 없다(#196). */
     expect(
-      within(await versionPane()).getByRole('button', { name: '신규 버전 발행' }),
-    ).toBeDisabled();
+      within(await versionPane()).queryByRole('button', { name: '신규 버전 발행' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText(
         '확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
@@ -2785,6 +2820,19 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
         planListRoute(),
         planDetailRoute(),
         planDetailRoute(inspectionPlanFixtures[1]),
+        /* 둘째 기준에는 확정 버전만 있다 — 작성중 버전이 있으면 발행 단추 자체가 없다(#196). */
+        {
+          match: (request) =>
+            isGet(request, VERSIONS_PATH) &&
+            new URL(request.url).searchParams.get('inspectionPlanId') === '3002',
+          respond: () =>
+            jsonResponse({
+              items: inspectionPlanVersionFixtures.map((version) => ({
+                ...version,
+                statusCode: 'CONFIRMED',
+              })),
+            }),
+        },
         versionListRoute(),
         versionDetailRoute(),
         itemListRoute(),
@@ -2797,12 +2845,6 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
 
     const form = await awaitVersionForm();
     fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '40' } });
-
-    // 고친 상태에서는 발행이 막힌다 — 여기까지는 의도한 동작이다.
-    expect(
-      within(await versionPane()).getByRole('button', { name: '신규 버전 발행' }),
-    ).toBeDisabled();
-    await user.click(screen.getByRole('button', { name: '닫기' }));
 
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-02' }));
 
