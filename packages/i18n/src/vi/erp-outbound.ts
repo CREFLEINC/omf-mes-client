@@ -49,6 +49,8 @@ export const erpOutbound: Translated<typeof ko.erpOutbound> = {
     to: 'Đến ngày',
   },
   chips: {
+    sendOn: 'Gửi: bật',
+    sendOff: 'Gửi: tắt',
     label: 'Tình trạng gửi ERP',
     pending: (count: number): string => `Chờ gửi ${String(count)}`,
     failed: (count: number): string => `Gửi lỗi ${String(count)}`,

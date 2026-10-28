@@ -13,7 +13,11 @@ export interface ErpProductionOrderFilters {
   /** 계획 시작일 범위(YYYY-MM-DD). */
   from: string;
   to: string;
+  /** 진행(생산이 다 됐는가) — 「전체 · 미완료 · 완료」. 주소에는 `progress=open|done` 으로 적고 전체는 적지 않는다 */
+  progress: ProgressFilter;
 }
+
+export type ProgressFilter = 'all' | 'open' | 'done';
 
 export const DEFAULT_FILTERS: ErpProductionOrderFilters = {
   q: '',
@@ -21,9 +25,16 @@ export const DEFAULT_FILTERS: ErpProductionOrderFilters = {
   status: '',
   from: '',
   to: '',
+  progress: 'all',
 };
 
 const KEYS = ['q', 'item', 'status', 'from', 'to'] as const;
+
+/** 진행 조건. 모르는 값은 전체로 읽는다 — 손으로 고친 주소가 400 을 부르지 않게. */
+const readProgress = (params: URLSearchParams): ProgressFilter => {
+  const progress = params.get('progress');
+  return progress === 'open' || progress === 'done' ? progress : 'all';
+};
 
 export const readFilters = (params: URLSearchParams): ErpProductionOrderFilters => ({
   q: params.get('q') ?? '',
@@ -31,6 +42,7 @@ export const readFilters = (params: URLSearchParams): ErpProductionOrderFilters 
   status: params.get('status') ?? '',
   from: params.get('from') ?? '',
   to: params.get('to') ?? '',
+  progress: readProgress(params),
 });
 
 /** 1 보다 작거나 정수가 아닌 쪽 번호는 첫 쪽으로 읽는다 — 손으로 고친 주소가 화면을 깨지 않게. */
@@ -49,6 +61,7 @@ export const toSearchParams = (
     const value = filters[key].trim();
     if (value !== '') params.set(key, value);
   });
+  if (filters.progress !== 'all') params.set('progress', filters.progress);
   if (page > 1) params.set('page', String(page));
   return params;
 };
@@ -84,5 +97,7 @@ export const toListQuery = (
   if (filters.status !== '') query.statusCode = filters.status;
   if (isIsoDate(filters.from)) query.plannedStartDateFrom = filters.from;
   if (isIsoDate(filters.to)) query.plannedStartDateTo = filters.to;
+  if (filters.progress === 'open') query.progress = 'OPEN';
+  if (filters.progress === 'done') query.progress = 'COMPLETED';
   return query;
 };

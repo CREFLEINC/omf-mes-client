@@ -12,6 +12,7 @@ export const erpSalesOrder = {
     customer: '고객사',
     orderDate: '수주일',
     status: '상태',
+    progress: '진행',
     lineNo: '라인',
     item: '품목',
     orderedQty: '수주수량',
@@ -49,6 +50,22 @@ export const erpSalesOrder = {
     firstPage: '첫 쪽',
     prevPage: '이전',
     nextPage: '다음',
+  },
+  /**
+   * 진행 — 출하가 다 됐는가(사용자 지시 2026-10-28). 조건 단추와 목록 열이 같은 낱말을 쓴다.
+   * 표지는 서버 `shipStatusCode` 의 넷이다.
+   */
+  progress: {
+    group: '진행 조건',
+    all: '전체',
+    open: '미완료',
+    done: '완료',
+    status: {
+      NOT_STARTED: '출하 전',
+      PARTIAL: '일부 출하',
+      COMPLETED: '출하 완료',
+      CANCELLED: '취소',
+    },
   },
   values: {
     searchPlaceholder: '수주번호',

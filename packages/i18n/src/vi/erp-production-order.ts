@@ -17,6 +17,7 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
     storageLocation: 'Kho',
     rework: 'Làm lại',
     status: 'Trạng thái',
+    progress: 'Tiến độ',
     plannedStartFrom: 'Ngày bắt đầu kế hoạch từ',
     plannedStartTo: 'Ngày bắt đầu kế hoạch đến',
     q: 'Số ERP W/O',
@@ -36,6 +37,18 @@ export const erpProductionOrder: Translated<typeof ko.erpProductionOrder> = {
     firstPage: 'Trang đầu',
     prevPage: 'Trước',
     nextPage: 'Sau',
+  },
+  progress: {
+    group: 'Điều kiện tiến độ',
+    all: 'Tất cả',
+    open: 'Chưa xong',
+    done: 'Đã xong',
+    status: {
+      NOT_STARTED: 'Chưa sản xuất',
+      PARTIAL: 'Đang sản xuất',
+      COMPLETED: 'Đã sản xuất xong',
+      CANCELLED: 'Đã hủy',
+    },
   },
   values: {
     searchPlaceholder: 'Một phần số ERP W/O',

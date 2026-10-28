@@ -20,6 +20,7 @@ export const erpProductionOrder = {
     storageLocation: '창고',
     rework: '재작업',
     status: '상태',
+    progress: '진행',
     plannedStartFrom: '계획 시작일 시작',
     plannedStartTo: '계획 시작일 종료',
     q: 'ERP W/O 번호',
@@ -39,6 +40,22 @@ export const erpProductionOrder = {
     firstPage: '첫 쪽',
     prevPage: '이전',
     nextPage: '다음',
+  },
+  /**
+   * 진행 — 이 W/O 에서 펼친 MES 작업지시가 다 닫혔는가(사용자 지시 2026-10-28). 조건 단추와 목록 열이 같은 낱말을 쓴다.
+   * 표지는 서버 `progressStatusCode` 의 넷이다.
+   */
+  progress: {
+    group: '진행 조건',
+    all: '전체',
+    open: '미완료',
+    done: '완료',
+    status: {
+      NOT_STARTED: '생산 전',
+      PARTIAL: '생산 중',
+      COMPLETED: '생산 완료',
+      CANCELLED: '취소',
+    },
   },
   values: {
     searchPlaceholder: 'ERP W/O 번호 일부',

@@ -43,18 +43,49 @@ const retryUnlessForbidden = (count: number, error: Error): boolean =>
   !isForbidden(error) && count < 2;
 
 /** 송신 항목 다섯 — 서버가 차례와 이름을 정한다. */
-export const useOutboundItems = (): UseQueryResult<OutboundItem[]> => {
+/** 송신 항목 설정 응답 — 항목들과 이 서버의 송신 켜짐(`ERP_SEND_ENABLED`). */
+interface OutboundSettings {
+  /** 서버 #849(장부 P-129) 이전 응답에는 없다 — 그때는 `null`(모름)이다. */
+  sendEnabled: boolean | null;
+  items: OutboundItem[];
+}
+
+/**
+ * 송신 항목 목록과 송신 켜짐을 한 번에 받는다 — 목록 구획과 탭 막대 칩이 같은 조회를 나눠 쓴다(`select` 로 갈라 읽는다).
+ * 조회 조건이 없는 지금 상태라 조회 키도 하나다.
+ */
+const useOutboundSettings = <T>(
+  select: (settings: OutboundSettings) => T,
+  enabled = true,
+): UseQueryResult<T> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: erpOutboundKeys.items,
-    queryFn: async () => {
-      const data = await runRequest(() => client.GET('/integration/outbound-item-settings'));
+    enabled,
+    queryFn: async (): Promise<OutboundSettings> => {
+      /* `sendEnabled` 는 계약 사본에 아직 없다(서버 #849) — 계약에 실리면 이 넓힘을 걷는다. */
+      const data: { sendEnabled?: boolean; items: Parameters<typeof toOutboundItem>[0][] } =
+        await runRequest(() => client.GET('/integration/outbound-item-settings'));
 
-      return data.items.map(toOutboundItem);
+      return {
+        sendEnabled: typeof data.sendEnabled === 'boolean' ? data.sendEnabled : null,
+        items: data.items.map(toOutboundItem),
+      };
     },
+    select,
   });
 };
+
+const selectItems = (settings: OutboundSettings): OutboundItem[] => settings.items;
+const selectSendEnabled = (settings: OutboundSettings): boolean | null => settings.sendEnabled;
+
+export const useOutboundItems = (): UseQueryResult<OutboundItem[]> =>
+  useOutboundSettings(selectItems);
+
+/** 이 서버에서 ERP 송신이 켜져 있는가 — 모르면(옛 서버 · 아직 못 받음 · 권한 없음) `null`. */
+export const useSendEnabled = (enabled = true): boolean | null =>
+  useOutboundSettings(selectSendEnabled, enabled).data ?? null;
 
 /** 짝이 있는 송신 인터페이스 — 건수를 셀 대상이다. */
 const COUNTED_INTERFACES: readonly string[] = Object.values(OUTBOUND_INTERFACE).filter(

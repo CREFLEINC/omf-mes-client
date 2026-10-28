@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -35,6 +36,7 @@ const order: ErpProductionOrder = {
   erpReworkFlag: 'N',
   expandedWorkOrderCount: 0,
   plannedWorkOrderCount: 0,
+  progressStatusCode: 'PARTIAL',
 };
 
 /** 계약 밖 칸이 비면 키가 빠진다(장부 P-67) — 키 없는 행. */
@@ -104,6 +106,12 @@ const recordingFetch = (routes: StubRoute[]): { fetch: StubFetch; requests: Requ
 const listUrls = (requests: Request[]): URL[] =>
   requests.map((request) => new URL(request.url)).filter((url) => url.pathname === LIST_PATH);
 
+/** 주소의 조건을 읽는 탐침 — 진행 단추가 주소로 가는지 본다. */
+const LocationProbe = () => {
+  const location = useLocation();
+  return <output data-testid="location">{location.search}</output>;
+};
+
 /** 목록에서 그 번호가 든 줄. */
 const findRow = async (orderNo: string): Promise<HTMLElement> => {
   const listPane = screen.getByRole('region', { name: t.panes.list });
@@ -151,8 +159,55 @@ describe('ErpProductionOrderScreen', () => {
     renderWithProviders(<ErpProductionOrderScreen />, { fetch });
 
     const row = within(await findRow('SYN-EWO-902'));
-    /* 계획 시작일·공정번호·창고·재작업 넷이 빠진 행. */
-    expect(row.getAllByText(t.values.missing)).toHaveLength(4);
+    /* 계획 시작일·공정번호·창고·재작업·진행 다섯이 빠진 행. */
+    expect(row.getAllByText(t.values.missing)).toHaveLength(5);
+  });
+
+  it('진행 열은 생산 진행을 표지로 보인다', async () => {
+    const { fetch } = recordingFetch(normalRoutes);
+    renderWithProviders(<ErpProductionOrderScreen />, { fetch });
+
+    const row = within(await findRow('SYN-EWO-901'));
+    expect(row.getByText(t.progress.status.PARTIAL)).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.panes.list })).getByRole('columnheader', {
+        name: t.fields.progress,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('진행은 기본 전체라 조건을 싣지 않고, 미완료·완료는 누르는 즉시 다른 조건을 지킨 채 목록 요청과 주소에 싣는다', async () => {
+    const { fetch, requests } = recordingFetch(normalRoutes);
+    renderWithProviders(
+      <>
+        <ErpProductionOrderScreen />
+        <LocationProbe />
+      </>,
+      { fetch, route: '/?status=UPDATED&page=2' },
+    );
+    const user = userEvent.setup();
+
+    await findRow('SYN-EWO-901');
+    expect(listUrls(requests)[0]?.searchParams.has('progress')).toBe(false);
+    const group = screen.getByRole('group', { name: t.progress.group });
+    const button = (name: string) => within(group).getByRole('button', { name });
+    expect(button(t.progress.all)).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(button(t.progress.done));
+    await waitFor(() =>
+      expect(listUrls(requests).at(-1)?.searchParams.get('progress')).toBe('COMPLETED'),
+    );
+    const done = listUrls(requests).at(-1);
+    expect(done?.searchParams.get('statusCode')).toBe('UPDATED');
+    expect(done?.searchParams.get('page')).toBe('1');
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\?status=UPDATED&progress=done$/);
+    expect(button(t.progress.done)).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(button(t.progress.open));
+    await waitFor(() =>
+      expect(listUrls(requests).at(-1)?.searchParams.get('progress')).toBe('OPEN'),
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent(/progress=open$/);
   });
 
   it('상세 구획 없이 목록 한 구획만 서고, 줄을 눌러도 상세를 부르지 않으며, 쓰기·계획으로 가는 길이 없다', async () => {

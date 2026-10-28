@@ -11,7 +11,11 @@ export interface SalesOrderFilters {
   to: string;
   /** 아직 편성되지 않은 것만. 주소에는 `1` 로 적는다 */
   unassignedOnly: boolean;
+  /** 진행(출하가 다 됐는가) — 「전체 · 미완료 · 완료」. 주소에는 `progress=open|done` 으로 적고 전체는 적지 않는다 */
+  progress: ProgressFilter;
 }
+
+export type ProgressFilter = 'all' | 'open' | 'done';
 
 export const DEFAULT_FILTERS: SalesOrderFilters = {
   q: '',
@@ -20,9 +24,16 @@ export const DEFAULT_FILTERS: SalesOrderFilters = {
   from: '',
   to: '',
   unassignedOnly: false,
+  progress: 'all',
 };
 
 const TEXT_KEYS = ['q', 'customer', 'status', 'from', 'to'] as const;
+
+/** 진행 조건. 모르는 값은 전체로 읽는다 — 손으로 고친 주소가 400 을 부르지 않게. */
+const readProgress = (params: URLSearchParams): ProgressFilter => {
+  const progress = params.get('progress');
+  return progress === 'open' || progress === 'done' ? progress : 'all';
+};
 
 export const readFilters = (params: URLSearchParams): SalesOrderFilters => ({
   q: params.get('q') ?? '',
@@ -31,6 +42,7 @@ export const readFilters = (params: URLSearchParams): SalesOrderFilters => ({
   from: params.get('from') ?? '',
   to: params.get('to') ?? '',
   unassignedOnly: params.get('unassigned') === '1',
+  progress: readProgress(params),
 });
 
 /** 1 보다 작거나 정수가 아닌 쪽 번호는 첫 쪽으로 읽는다 — 손으로 고친 주소가 화면을 깨지 않게. */
@@ -54,6 +66,7 @@ export const toSearchParams = (filters: SalesOrderFilters, page: number): URLSea
     if (value !== '') params.set(key, value);
   });
   if (filters.unassignedOnly) params.set('unassigned', '1');
+  if (filters.progress !== 'all') params.set('progress', filters.progress);
   if (page > 1) params.set('page', String(page));
   return params;
 };
@@ -81,6 +94,11 @@ export interface SalesOrderListQuery {
   orderDateFrom?: string;
   orderDateTo?: string;
   unassignedOnly?: boolean;
+  /**
+   * 진행 조건 — **계약 사본에 아직 없다**(서버에 요청 2026-10-28). 그전 서버는 모르는 조건을 무시해 거르지 않은 목록을
+   * 낸다. 두 값 말고는 400 일 수 있어 이 둘만 싣는다. 계약에 실리면 이 칸을 걷고 계약 타입을 따른다.
+   */
+  progress?: 'OPEN' | 'COMPLETED';
   page?: number;
   size?: number;
 }
@@ -99,5 +117,7 @@ export const toListQuery = (filters: SalesOrderFilters, page: number): SalesOrde
   if (filters.from !== '') query.orderDateFrom = filters.from;
   if (filters.to !== '') query.orderDateTo = filters.to;
   if (filters.unassignedOnly) query.unassignedOnly = true;
+  if (filters.progress === 'open') query.progress = 'OPEN';
+  if (filters.progress === 'done') query.progress = 'COMPLETED';
   return query;
 };

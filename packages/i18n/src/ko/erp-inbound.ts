@@ -8,6 +8,12 @@ export const erpInbound = {
   title: 'ERP 수신',
   /** 서버에서 ERP 연동이 꺼져 있을 때만 — 단추가 왜 잠겼는지. */
   disabledReason: '지금 읽기는 이 서버에서 ERP 연동이 꺼져 있어 쓸 수 없습니다.',
+  /** 탭 막대 오른쪽 칩 — 이 서버의 수신 켜짐(ERP_SYNC_ENABLED). */
+  chips: {
+    label: 'ERP 수신 상태',
+    receiveOn: '수신 켜짐',
+    receiveOff: '수신 꺼짐',
+  },
   table: {
     label: 'ERP 수신 표',
     name: '표',

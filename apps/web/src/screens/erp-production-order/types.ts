@@ -22,6 +22,11 @@ export type ErpProductionOrder = Omit<ContractProductionOrder, 'lastChange'> & {
   erpStorageLocationCode?: string;
   /** ERP `RE_WORK_FLG` — 재작업 표지 문자열(최대 2자, 받은 값 그대로. 보통 `Y`·`N`). */
   erpReworkFlag?: string;
+  /**
+   * 생산 진행 — `NOT_STARTED` · `PARTIAL` · `COMPLETED` · `CANCELLED`. 완료는 이 W/O 에서 펼친 MES 작업지시가 모두
+   * 닫혔다는 뜻이다. **서버에 요청한 칸이라(2026-10-28) 아직 오지 않는다** — 그전에는 목록의 진행 칸이 「없음」이다.
+   */
+  progressStatusCode?: string | null;
 };
 
 type ContractListQuery = NonNullable<
@@ -38,6 +43,11 @@ export type ErpProductionOrderListQuery = Pick<
 > & {
   plannedStartDateFrom?: string;
   plannedStartDateTo?: string;
+  /**
+   * 진행 조건 — **계약 사본에 아직 없다**(서버에 요청 2026-10-28). 그전 서버는 모르는 조건을 무시해 거르지 않은 목록을
+   * 낸다. 두 값 말고는 400 일 수 있어 이 둘만 싣는다. 계약에 실리면 이 칸을 걷고 계약 타입을 따른다.
+   */
+  progress?: 'OPEN' | 'COMPLETED';
 };
 
 export interface PageMeta {

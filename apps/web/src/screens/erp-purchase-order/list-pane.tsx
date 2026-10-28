@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { BoardTable } from '../../patterns/board-table';
 import { OneLine } from '../../patterns/po-board';
 import { PageNav } from './page-nav';
+import { ProgressChip } from './progress';
 import type { PageView } from './pagination';
 import type { PurchaseOrder } from './types';
 
@@ -79,6 +80,12 @@ export const ErpPurchaseOrderListPane = ({
       render: (row) => displayOr(row.expectedReceiptDate),
     },
     {
+      key: 'receiptStatusCode',
+      header: t.fields.progress,
+      width: '96px',
+      render: (row) => <ProgressChip code={row.receiptStatusCode} />,
+    },
+    {
       key: 'statusCode',
       header: t.fields.status,
       width: '88px',
@@ -103,7 +110,7 @@ export const ErpPurchaseOrderListPane = ({
       <BoardTable
         label={t.panes.list}
         widthKey="omf-mes:erp-purchase-order:columns:orders"
-        minWidth="54rem"
+        minWidth="60rem"
         columns={columns}
         rows={rows}
         getRowId={(row) => String(row.purchaseOrderId)}

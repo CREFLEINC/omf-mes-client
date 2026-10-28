@@ -123,6 +123,8 @@ const renderScreen = (routes: StubRoute[], search = '') => {
 
   renderWithProviders(
     <>
+      {/* 탭 막대 오른쪽 칩 자리(app/hub-tabs.tsx) — 화면이 그리기 전에 서 있어야 칩이 꽂힌다. */}
+      <div id="hub-actions" data-testid="hub-actions" />
       <ErpOutboundScreen />
       <LocationProbe />
     </>,
@@ -181,6 +183,31 @@ describe('ErpOutboundScreen — 송신 항목', () => {
     expect(gr?.searchParams.get('directionCode')).toBe('OUTBOUND');
     expect(gr?.searchParams.get('createdFrom')).toBe('2000-01-01T00:00:00.000Z');
     expect(gr?.searchParams.get('createdTo')).toBe('2100-01-01T00:00:00.000Z');
+  });
+});
+
+describe('ErpOutboundScreen — 탭 막대 칩', () => {
+  it('송신이 꺼진 서버면 「송신 꺼짐」 칩을 맨 앞에 세운다', async () => {
+    renderScreen([
+      {
+        match: (request) =>
+          request.method === 'GET' && new URL(request.url).pathname === SETTINGS_PATH,
+        respond: () => jsonResponse({ ...SETTINGS, sendEnabled: false }),
+      },
+      messagesRoute(),
+    ]);
+
+    const hub = within(screen.getByTestId('hub-actions'));
+    expect(await hub.findByText('송신 꺼짐')).toBeInTheDocument();
+    expect(await hub.findByText(/^송신 대기 /)).toBeInTheDocument();
+  });
+
+  it('켜짐을 모르는 서버(응답에 없음)면 켜짐 칩을 세우지 않는다', async () => {
+    renderScreen([settingsRoute, messagesRoute()]);
+
+    const hub = within(screen.getByTestId('hub-actions'));
+    expect(await hub.findByText(/^송신 대기 /)).toBeInTheDocument();
+    expect(hub.queryByText(/^송신 (켜짐|꺼짐)$/)).toBeNull();
   });
 });
 

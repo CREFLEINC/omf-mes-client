@@ -126,6 +126,24 @@ describe('ErpInboundScreen — 표시', () => {
   });
 });
 
+describe('ErpInboundScreen — 탭 막대 칩', () => {
+  it.each([
+    [true, '수신 켜짐'],
+    [false, '수신 꺼짐'],
+  ])('수신 켜짐(%s)을 탭 막대 오른쪽 칩으로 낸다', async (enabled, label) => {
+    const { fetch } = createServer([result([ITEM], enabled)]);
+    renderWithProviders(
+      <>
+        <div id="hub-actions" data-testid="hub-actions" />
+        <ErpInboundScreen />
+      </>,
+      { fetch },
+    );
+
+    expect(await within(screen.getByTestId('hub-actions')).findByText(label)).toBeInTheDocument();
+  });
+});
+
 describe('ErpInboundScreen — 지금 읽기', () => {
   it('누르면 그 표의 경로로 요청하고, 다 읽을 때까지 다시 읽은 뒤 결과를 알린다', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

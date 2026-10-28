@@ -12,6 +12,7 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
     customer: 'Khách hàng',
     orderDate: 'Ngày nhận đơn',
     status: 'Trạng thái',
+    progress: 'Tiến độ',
     lineNo: 'Dòng',
     item: 'Mặt hàng',
     orderedQty: 'Số lượng đặt',
@@ -47,6 +48,18 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
     firstPage: 'Trang đầu',
     prevPage: 'Trước',
     nextPage: 'Sau',
+  },
+  progress: {
+    group: 'Điều kiện tiến độ',
+    all: 'Tất cả',
+    open: 'Chưa xong',
+    done: 'Đã xong',
+    status: {
+      NOT_STARTED: 'Chưa xuất',
+      PARTIAL: 'Xuất một phần',
+      COMPLETED: 'Đã xuất đủ',
+      CANCELLED: 'Đã hủy',
+    },
   },
   values: {
     searchPlaceholder: 'Số đơn bán',

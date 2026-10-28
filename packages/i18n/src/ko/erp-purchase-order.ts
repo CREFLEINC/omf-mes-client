@@ -14,6 +14,7 @@ export const erpPurchaseOrder = {
     orderDate: '발주일',
     expectedReceiptDate: '입고 예정일',
     status: '상태',
+    progress: '진행',
     lineNo: '라인',
     item: '품목',
     orderedQty: '발주수량',
@@ -28,7 +29,6 @@ export const erpPurchaseOrder = {
     cancelled: '취소',
     orderDateFrom: '발주일 시작',
     orderDateTo: '발주일 종료',
-    openOnly: '입하 미완료만',
     q: '발주번호',
   },
   /** 두 구획 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
@@ -51,6 +51,22 @@ export const erpPurchaseOrder = {
     firstPage: '첫 쪽',
     prevPage: '이전',
     nextPage: '다음',
+  },
+  /**
+   * 진행 — 입하가 다 됐는가(사용자 지시 2026-10-28). 조건 단추와 목록 열이 같은 낱말을 쓴다.
+   * 표지는 서버 `receiptStatusCode` 의 넷이다.
+   */
+  progress: {
+    group: '진행 조건',
+    all: '전체',
+    open: '미완료',
+    done: '완료',
+    status: {
+      NOT_STARTED: '입하 전',
+      PARTIAL: '일부 입하',
+      COMPLETED: '입하 완료',
+      CANCELLED: '취소',
+    },
   },
   values: {
     searchPlaceholder: 'P/O 번호',

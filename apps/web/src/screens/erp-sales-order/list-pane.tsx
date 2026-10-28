@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { BoardTable } from '../../patterns/board-table';
 import { OneLine } from '../../patterns/po-board';
 import { PageNav } from './page-nav';
+import { ProgressChip } from './progress';
 import type { PageView } from './pagination';
 import type { SalesOrder } from './types';
 
@@ -63,6 +64,12 @@ export const ErpSalesOrderListPane = ({
       render: (row) => <OneLine text={salesGroupNameOf(row.erpSalesGroupCode)} />,
     },
     {
+      key: 'shipStatusCode',
+      header: t.fields.progress,
+      width: '96px',
+      render: (row) => <ProgressChip code={row.shipStatusCode} />,
+    },
+    {
       key: 'statusCode',
       header: t.fields.status,
       width: '88px',
@@ -87,7 +94,7 @@ export const ErpSalesOrderListPane = ({
       <BoardTable
         label={t.panes.list}
         widthKey="omf-mes:erp-sales-order:columns:orders"
-        minWidth="42rem"
+        minWidth="48rem"
         columns={columns}
         rows={rows}
         getRowId={(row) => String(row.salesOrderId)}

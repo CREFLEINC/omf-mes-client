@@ -10,9 +10,11 @@ export interface PurchaseOrderFilters {
   status: string;
   from: string;
   to: string;
-  /** 입하가 끝나지 않은 건만. 주소에는 `1` 로 적는다 */
-  openOnly: boolean;
+  /** 진행(입하가 다 됐는가) — 「전체 · 미완료 · 완료」. 주소에는 `progress=open|done` 으로 적고 전체는 적지 않는다 */
+  progress: ProgressFilter;
 }
+
+export type ProgressFilter = 'all' | 'open' | 'done';
 
 export const DEFAULT_FILTERS: PurchaseOrderFilters = {
   q: '',
@@ -21,10 +23,20 @@ export const DEFAULT_FILTERS: PurchaseOrderFilters = {
   status: '',
   from: '',
   to: '',
-  openOnly: false,
+  progress: 'all',
 };
 
 const TEXT_KEYS = ['q', 'supplier', 'plant', 'status', 'from', 'to'] as const;
+
+/**
+ * 진행 조건. 예전 주소의 「입하 미완료만」(`open=1`)은 미완료로 읽는다 — 저장해 둔 링크가 깨지지 않게.
+ * 다시 적을 때는 `progress` 로만 적는다.
+ */
+const readProgress = (params: URLSearchParams): ProgressFilter => {
+  const progress = params.get('progress');
+  if (progress === 'open' || progress === 'done') return progress;
+  return params.get('open') === '1' ? 'open' : 'all';
+};
 
 export const readFilters = (params: URLSearchParams): PurchaseOrderFilters => ({
   q: params.get('q') ?? '',
@@ -33,7 +45,7 @@ export const readFilters = (params: URLSearchParams): PurchaseOrderFilters => ({
   status: params.get('status') ?? '',
   from: params.get('from') ?? '',
   to: params.get('to') ?? '',
-  openOnly: params.get('open') === '1',
+  progress: readProgress(params),
 });
 
 /** 1 보다 작거나 정수가 아닌 쪽 번호는 첫 쪽으로 읽는다 — 손으로 고친 주소가 화면을 깨지 않게. */
@@ -57,7 +69,7 @@ export const toSearchParams = (filters: PurchaseOrderFilters, page: number): URL
     const value = filters[key].trim();
     if (value !== '') params.set(key, value);
   });
-  if (filters.openOnly) params.set('open', '1');
+  if (filters.progress !== 'all') params.set('progress', filters.progress);
   if (page > 1) params.set('page', String(page));
   return params;
 };
@@ -86,6 +98,11 @@ export interface PurchaseOrderListQuery {
   orderDateFrom?: string;
   orderDateTo?: string;
   openOnly?: boolean;
+  /**
+   * 진행 조건 — **계약 사본에 아직 없다**(서버에 요청 2026-10-28). 그전 서버는 모르는 조건을 무시해 거르지 않은 목록을
+   * 낸다. 두 값 말고는 400 일 수 있어 이 둘만 싣는다. 계약에 실리면 이 칸을 걷고 계약 타입을 따른다.
+   */
+  progress?: 'OPEN' | 'COMPLETED';
   page?: number;
   size?: number;
 }
@@ -107,6 +124,11 @@ export const toListQuery = (
   if (filters.status !== '') query.statusCode = filters.status;
   if (filters.from !== '') query.orderDateFrom = filters.from;
   if (filters.to !== '') query.orderDateTo = filters.to;
-  if (filters.openOnly) query.openOnly = true;
+  /* 미완료는 지금 서버가 아는 `openOnly` 도 함께 싣는다 — `progress` 를 모르는 서버에서도 미완료는 걸러진다. */
+  if (filters.progress === 'open') {
+    query.openOnly = true;
+    query.progress = 'OPEN';
+  }
+  if (filters.progress === 'done') query.progress = 'COMPLETED';
   return query;
 };

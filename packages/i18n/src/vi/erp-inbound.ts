@@ -5,6 +5,11 @@ import type { Translated } from './translated';
 export const erpInbound: Translated<typeof ko.erpInbound> = {
   title: 'Nhận ERP',
   disabledReason: 'Không thể dùng Đọc ngay vì liên kết ERP đang tắt trên máy chủ này.',
+  chips: {
+    label: 'Trạng thái nhận ERP',
+    receiveOn: 'Nhận: bật',
+    receiveOff: 'Nhận: tắt',
+  },
   table: {
     label: 'Bảng nhận ERP',
     name: 'Bảng',

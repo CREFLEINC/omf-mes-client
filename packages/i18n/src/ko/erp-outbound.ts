@@ -58,6 +58,9 @@ export const erpOutbound = {
     to: '종료일',
   },
   chips: {
+    /** 이 서버의 송신 켜짐(ERP_SEND_ENABLED) — 꺼져 있으면 대기가 쌓여도 보내지 않는다. */
+    sendOn: '송신 켜짐',
+    sendOff: '송신 꺼짐',
     label: 'ERP 송신 상태',
     pending: (count: number): string => `송신 대기 ${String(count)}`,
     failed: (count: number): string => `송신 실패 ${String(count)}`,

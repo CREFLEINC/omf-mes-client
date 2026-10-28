@@ -12,6 +12,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import { BoardFrame } from '../../patterns/board-frame';
 import { BoardTable } from '../../patterns/board-table';
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { toApiError } from '../../patterns/request';
 import { describeLoadError, LoadErrorBanner } from '../integration-sync/load-error-banner';
 import { formatDateTime } from '../integration-sync/message-status';
@@ -51,6 +52,7 @@ interface PendingRun {
  */
 export const ErpInboundScreen = () => {
   const disabledReasonId = useId();
+  const hubTarget = useHubActionsTarget();
   const toast = useToast();
   const status = useSyncTables();
   const run = useRequestSyncRun();
@@ -201,51 +203,63 @@ export const ErpInboundScreen = () => {
   ];
 
   return (
-    <BoardFrame
-      list={{
-        label: t.table.label,
-        content: (
-          <>
-            {status.isError && (
-              <LoadErrorBanner error={status.error} onRetry={() => void status.refetch()} />
-            )}
+    <>
+      {/* 탭 막대 오른쪽 — 이 서버의 수신 켜짐 · 꺼짐(사용자 지시 2026-10-28). 받기 전에는 세우지 않는다. */}
+      {hubTarget !== null && status.data !== undefined && (
+        <HubActions target={hubTarget}>
+          <div className="erp-send-chips" role="group" aria-label={t.chips.label}>
+            <Chip variant="status" size="sm" status={enabled ? 'success' : 'warning'}>
+              {enabled ? t.chips.receiveOn : t.chips.receiveOff}
+            </Chip>
+          </div>
+        </HubActions>
+      )}
+      <BoardFrame
+        list={{
+          label: t.table.label,
+          content: (
+            <>
+              {status.isError && (
+                <LoadErrorBanner error={status.error} onRetry={() => void status.refetch()} />
+              )}
 
-            {run.isError && (
-              <div className="banner-slot">
-                <AlertBanner variant="error" title={t.runErrorTitle}>
-                  {describeLoadError(toApiError(run.error))}
-                </AlertBanner>
-              </div>
-            )}
+              {run.isError && (
+                <div className="banner-slot">
+                  <AlertBanner variant="error" title={t.runErrorTitle}>
+                    {describeLoadError(toApiError(run.error))}
+                  </AlertBanner>
+                </div>
+              )}
 
-            {/* 배치 규범 4 — 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 낸다. 연동이 꺼진 서버에서만 선다. */}
-            {status.data !== undefined && !enabled && (
-              <p id={disabledReasonId} className="field-note">
-                {t.disabledReason}
-              </p>
-            )}
+              {/* 배치 규범 4 — 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 낸다. 연동이 꺼진 서버에서만 선다. */}
+              {status.data !== undefined && !enabled && (
+                <p id={disabledReasonId} className="field-note">
+                  {t.disabledReason}
+                </p>
+              )}
 
-            {status.isPending ? (
-              <div role="status" aria-label={t.loading}>
-                <SkeletonText lines={3} />
-              </div>
-            ) : (
-              !status.isError && (
-                <BoardTable
-                  label={t.table.label}
-                  widthKey="omf-mes:erp-inbound:columns:tables"
-                  minWidth="58rem"
-                  columns={columns}
-                  rows={items}
-                  getRowId={(item) => item.interfaceCode}
-                  empty={<EmptyState size="sm" title={t.empty} />}
-                />
-              )
-            )}
-          </>
-        ),
-      }}
-    />
+              {status.isPending ? (
+                <div role="status" aria-label={t.loading}>
+                  <SkeletonText lines={3} />
+                </div>
+              ) : (
+                !status.isError && (
+                  <BoardTable
+                    label={t.table.label}
+                    widthKey="omf-mes:erp-inbound:columns:tables"
+                    minWidth="58rem"
+                    columns={columns}
+                    rows={items}
+                    getRowId={(item) => item.interfaceCode}
+                    empty={<EmptyState size="sm" title={t.empty} />}
+                  />
+                )
+              )}
+            </>
+          ),
+        }}
+      />
+    </>
   );
 };
 

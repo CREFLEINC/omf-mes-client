@@ -5,6 +5,7 @@ import { BoardTable } from '../../patterns/board-table';
 import { OneLine } from '../../patterns/po-board';
 import { displayOr, formatQty, reworkLabel } from './format';
 import { PageNav } from './page-nav';
+import { ProgressChip } from './progress';
 import type { PageView } from './pagination';
 import type { ErpProductionOrder } from './types';
 
@@ -98,6 +99,12 @@ export const ErpProductionOrderListPane = ({
       render: (row) => reworkLabel(row.erpReworkFlag),
     },
     {
+      key: 'progressStatusCode',
+      header: t.fields.progress,
+      width: '96px',
+      render: (row) => <ProgressChip code={row.progressStatusCode} />,
+    },
+    {
       key: 'statusCode',
       header: t.fields.status,
       width: '88px',
@@ -123,7 +130,7 @@ export const ErpProductionOrderListPane = ({
         label={t.panes.list}
         widthKey="omf-mes:erp-production-order:columns:orders"
         /* 납기 열이 서면 그 폭(104px)만큼 넓힌다. */
-        minWidth={hasDueDate ? '63rem' : '56rem'}
+        minWidth={hasDueDate ? '69rem' : '62rem'}
         columns={columns}
         rows={rows}
         getRowId={(row) => String(row.productionOrderId)}
