@@ -219,7 +219,19 @@ export const ItemPane = ({
   /** 선택 전 → 조회 실패 → 로딩 → 표 순서로 하나만 낸다. */
   const listSlot = (): ReactNode => {
     if (!isVersionSelected) {
-      return <EmptyState size="sm" title={t.empty.versionNotSelected} />;
+      return (
+        <EmptyState
+          size="sm"
+          /* 둥근 바탕 위 아이콘 · 제목 · 설명 — 「검사 기준을 선택해 주세요」와 같은 모양(사용자 시안 · #196). */
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="layers" size={20} />
+            </span>
+          }
+          title={t.empty.versionNotSelected}
+          description={t.empty.versionNotSelectedDescription}
+        />
+      );
     }
 
     if (loadError !== null && loadError !== undefined) return loadError;

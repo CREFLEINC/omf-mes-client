@@ -296,6 +296,7 @@ export const inspectionStandard = {
     versionNoneTitle: '등록된 버전이 없습니다',
     versionNoneDescription: '「버전 등록」으로 첫 버전을 만드세요.',
     versionNotSelected: '버전을 선택하세요',
+    versionNotSelectedDescription: '선택한 버전의 검사 기준 정보가 표시됩니다.',
     itemNoneTitle: '등록된 검사 항목이 없습니다',
     itemNoneDescription: '검사 항목을 등록하세요.',
   },

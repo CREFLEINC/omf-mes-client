@@ -273,6 +273,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     versionNoneTitle: 'Chưa đăng ký phiên bản',
     versionNoneDescription: 'Hãy tạo phiên bản đầu tiên bằng «Đăng ký phiên bản».',
     versionNotSelected: 'Hãy chọn phiên bản',
+    versionNotSelectedDescription: 'Thông tin tiêu chuẩn kiểm tra của phiên bản đã chọn sẽ hiển thị.',
     itemNoneTitle: 'Chưa đăng ký hạng mục kiểm tra',
     itemNoneDescription: 'Hãy đăng ký hạng mục kiểm tra.',
   },
