@@ -1,5 +1,8 @@
 import { Icon } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+
+import { useNarrowWindow, useSplitDefault } from './split-orientation';
 
 /**
  * 발주 목록 · 발주 상세 두 표 배치(W-01-09 입하 예정)가 함께 쓰는 조각.
@@ -246,13 +249,19 @@ export type PaneLayout = 'side' | 'stack';
  * 이 값은 넓은 창에서만 뜻이 있다(`.po-board-split.is-stacked`).
  */
 export const usePaneLayout = (storageKey: string) => {
-  const [layout, setLayout] = useState<PaneLayout>(() => {
+  const [chosen, setLayout] = useState<PaneLayout | null>(() => {
     try {
-      return window.localStorage.getItem(storageKey) === 'stack' ? 'stack' : 'side';
+      const saved = window.localStorage.getItem(storageKey);
+      return saved === 'stack' || saved === 'side' ? saved : null;
     } catch {
-      return 'side';
+      return null;
     }
   });
+  /* 고른 적이 없으면 창 폭으로(1440px 이상 좌우), 관리웹 최소 폭(1280px)보다 좁으면 늘 위아래다 — 목록 · 상세 배치와 같다. */
+  const orientation = useSplitDefault(
+    chosen === null ? null : chosen === 'side' ? 'row' : 'column',
+  );
+  const layout: PaneLayout = orientation === 'row' ? 'side' : 'stack';
 
   const change = (next: PaneLayout): void => {
     setLayout(next);
@@ -285,25 +294,34 @@ export const PaneLayoutToggle = ({
   layout: PaneLayout;
   onChange: (next: PaneLayout) => void;
   labels: { group: string; side: string; stack: string };
-}) => (
-  <div
-    className="po-board-layout-toggle split-orientation-toggle"
-    role="group"
-    aria-label={labels.group}
-  >
-    {(['side', 'stack'] as const).map((value) => (
-      <button
-        key={value}
-        type="button"
-        className="split-orientation-option"
-        aria-pressed={layout === value}
-        onClick={() => {
-          if (layout !== value) onChange(value);
-        }}
-      >
-        <Icon name={LAYOUT_ICONS[value]} size={16} />
-        {labels[value]}
-      </button>
-    ))}
-  </div>
-);
+}) => {
+  /* 관리웹 최소 폭보다 좁으면 좌우를 잠근다 — 목록 · 상세 배치 단추와 같다. */
+  const narrow = useNarrowWindow();
+  return (
+    <div
+      className="po-board-layout-toggle split-orientation-toggle"
+      role="group"
+      aria-label={labels.group}
+    >
+      {(['side', 'stack'] as const).map((value) => {
+        const locked = narrow && value === 'side';
+        return (
+          <button
+            key={value}
+            type="button"
+            className="split-orientation-option"
+            aria-pressed={layout === value}
+            aria-disabled={locked ? true : undefined}
+            title={locked ? messages.common.inspectionHub.layoutSideBySideNarrow : undefined}
+            onClick={() => {
+              if (!locked && layout !== value) onChange(value);
+            }}
+          >
+            <Icon name={LAYOUT_ICONS[value]} size={16} />
+            {labels[value]}
+          </button>
+        );
+      })}
+    </div>
+  );
+};

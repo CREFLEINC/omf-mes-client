@@ -7502,6 +7502,187 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
+ * 1280~1439px에서도 고른 배치가 좌우면 좌우로 선다(사용자 지시 2026-10-28). 위 1440px 이상 규칙과 같은 값을 배치를 고르는
+ * 화면(`usePaneLayout`의 `is-side`, `useSplitOrientation`의 `.inspection-split` 중 쌓지 않은 것)에만 건다. 고르는 단추가
+ * 없는 화면(입하 예정 조회 등)은 종전처럼 1440px 미만에서 위아래로 쌓는다.
+ */
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked)) {
+    height: calc(100dvh - var(--split-top, 20rem) - var(--space-6));
+    min-height: 20rem;
+    align-items: stretch;
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked)) .po-board-pane {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-height: 0;
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-pane
+    > .po-board-table {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked)) .po-board-pane.po-board-scroll {
+    overflow: auto;
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-pane.po-board-scroll
+    > .po-board-table {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked)) {
+    grid-template-columns: minmax(0, var(--split-left, 1fr)) minmax(0, var(--split-right, 2fr));
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked)):has(> .po-board-gutter) {
+    grid-template-columns:
+      minmax(0, var(--split-left, 1fr)) var(--space-5)
+      minmax(0, var(--split-right, 2fr));
+    column-gap: 0;
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked)) > .po-board-gutter {
+    position: relative;
+    display: block;
+    align-self: stretch;
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-gutter
+    > .po-board-splitter {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    display: block;
+    width: var(--space-4);
+    transform: translateX(-50%);
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked)) .po-board-collapse {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    transform: translateX(-50%);
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--on-surface-variant);
+    cursor: pointer;
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked)) .po-board-collapse:hover {
+    border-color: var(--semantic-info);
+    color: var(--on-surface);
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-collapse:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))[data-left-collapsed] {
+    grid-template-columns: var(--space-6) minmax(0, 1fr);
+    column-gap: 0;
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))[data-left-collapsed]
+    > .po-board-pane:first-child {
+    display: none;
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-gutter
+    > .po-board-splitter::before {
+    content: '';
+    position: absolute;
+    top: var(--space-2);
+    bottom: var(--space-2);
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    border-radius: var(--radius-full);
+    background: var(--outline-variant);
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-gutter
+    > .po-board-splitter::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 40px;
+    transform: translate(-50%, -50%);
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    background:
+      radial-gradient(circle, var(--on-surface-variant) 1.5px, transparent 2px) center / 4px 8px
+        repeat-y,
+      var(--surface);
+    box-shadow: var(--elevation-1);
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-gutter
+    > .po-board-splitter:hover::before,
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-gutter
+    > .po-board-splitter:focus-visible::before {
+    width: 4px;
+    background: var(--semantic-info);
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-gutter
+    > .po-board-splitter:hover::after,
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-gutter
+    > .po-board-splitter:focus-visible::after {
+    border-color: var(--semantic-info);
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-gutter
+    > .po-board-splitter:focus-visible {
+    outline: none;
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-gutter
+    > .po-board-splitter:focus-visible::after {
+    box-shadow: var(--focus-ring);
+  }
+
+  .po-board-split:is(.is-side, .inspection-split:not(.is-stacked))
+    .po-board-gutter
+    > .po-board-splitter:focus-visible {
+    box-shadow: var(--focus-ring);
+    outline: none;
+  }
+}
+
+/*
  * 발주번호(발주 목록) · 품목코드(라인 표 — 그 품목을 받는 단추)는 다른 칸과 같은 글자로 보인다(사용자 지시 2026-10-21) —
  * 줄 전체가 누르는 자리라 링크처럼 꾸밀 까닭이 없다. 단추는 키보드로 고르는 자리로만 남는다(초점 테두리는 `.link-cell` 것을 그대로 쓴다).
  */
@@ -22157,7 +22338,8 @@ body.col-reordering * {
   max-height: calc(100dvh - 20rem);
 }
 
-@media (min-width: 1440px) {
+/* 좌우 배치는 관리웹 최소 폭(1280px)부터 고를 수 있다(patterns/split-orientation.tsx). */
+@media (min-width: 1280px) {
   .inspection-split > .iqc-inspection-queue-pane,
   .inspection-split > .oqc-inspection-queue-pane,
   .inspection-split > .pqc-web-list.pane,
@@ -22358,7 +22540,7 @@ body.col-reordering * {
  * 위아래로 쌓일 때(상하 배치 · 좁은 창) — 목록 상자는 줄 수만큼만 크고 넘치면 상자 안에서 구른다(사용자 지시 2026-10-26).
  * 고른 의뢰가 없어도 상세 자리에는 「검사 의뢰를 선택하세요」 안내가 선다(좌우 배치와 같다).
  */
-@media (max-width: 1439px) {
+@media (max-width: 1279px) {
   .po-board-split.inspection-split > .iqc-inspection-queue-pane,
   .po-board-split.inspection-split > .oqc-inspection-queue-pane,
   .po-board-split.inspection-split > .pqc-web-list.pane,

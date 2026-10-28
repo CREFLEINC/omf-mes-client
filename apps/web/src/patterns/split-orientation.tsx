@@ -15,37 +15,62 @@ const OPTIONS: readonly { value: SplitOrientation; icon: string; label: string }
 ];
 
 /**
- * 좌우로 설 수 있는 가장 좁은 창 폭. 이보다 좁으면 CSS(`.po-board-split`)가 목록과 상세를 위아래로 쌓는다.
- * app.css 의 `@media (min-width: 1440px)` 와 같은 값이어야 한다.
+ * 관리웹이 받치는 가장 좁은 창 폭(C-14 1280×800). 이보다 좁으면 좌우로 세울 자리가 없어 늘 위아래로 쌓는다.
+ * 그 위로는 고른 배치를 그대로 따른다. 고른 적이 없으면 `WIDE_WIDTH` 이상에서 좌우, 그보다 좁으면 위아래다.
+ * app.css 의 `.po-board-split` 좌우 배치 규칙과 같은 값이어야 한다.
  */
-export const SIDE_BY_SIDE_MIN_WIDTH = 1440;
-const NARROW_QUERY = `(max-width: ${String(SIDE_BY_SIDE_MIN_WIDTH - 1)}px)`;
+export const SIDE_BY_SIDE_MIN_WIDTH = 1280;
+export const WIDE_WIDTH = 1440;
 
-const subscribeNarrow = (onChange: () => void): (() => void) => {
-  if (typeof window.matchMedia !== 'function') return () => {};
-  const query = window.matchMedia(NARROW_QUERY);
-  query.addEventListener('change', onChange);
-  return () => query.removeEventListener('change', onChange);
-};
-const readNarrow = (): boolean =>
-  typeof window.matchMedia === 'function' && window.matchMedia(NARROW_QUERY).matches;
+const mediaStore = (query: string) => ({
+  subscribe: (onChange: () => void): (() => void) => {
+    if (typeof window.matchMedia !== 'function') return () => {};
+    const list = window.matchMedia(query);
+    list.addEventListener('change', onChange);
+    return () => list.removeEventListener('change', onChange);
+  },
+  read: (): boolean => typeof window.matchMedia === 'function' && window.matchMedia(query).matches,
+});
+const narrowStore = mediaStore(`(max-width: ${String(SIDE_BY_SIDE_MIN_WIDTH - 1)}px)`);
+const wideStore = mediaStore(`(min-width: ${String(WIDE_WIDTH)}px)`);
 
-/** 창이 좁아 좌우 배치를 쓸 수 없는가. 시험 환경(matchMedia 없음)에서는 거짓이다. */
+/** 창이 좁아(1280px 미만) 좌우 배치를 쓸 수 없는가. 시험 환경(matchMedia 없음)에서는 거짓이다. */
 export const useNarrowWindow = (): boolean =>
-  useSyncExternalStore(subscribeNarrow, readNarrow, () => false);
+  useSyncExternalStore(narrowStore.subscribe, narrowStore.read, () => false);
+
+/** 고른 배치가 없을 때의 기본 — 창이 넓으면(1440px 이상) 좌우. 시험 환경(matchMedia 없음)에서는 좌우다. */
+const useWideWindow = (): boolean =>
+  useSyncExternalStore(
+    wideStore.subscribe,
+    () => typeof window.matchMedia !== 'function' || wideStore.read(),
+    () => true,
+  );
+
+/**
+ * 실제 배치 — 관리웹 최소 폭(1280px)보다 좁으면 늘 위아래, 그 위로는 고른 배치, 고른 적이 없으면 창 폭(1440px 이상 좌우).
+ * `usePaneLayout`(po-board)도 같은 규칙을 쓴다.
+ */
+export const useSplitDefault = (chosen: SplitOrientation | null): SplitOrientation => {
+  const narrow = useNarrowWindow();
+  const wide = useWideWindow();
+  if (narrow) return 'column';
+  return chosen ?? (wide ? 'row' : 'column');
+};
 
 /**
  * 목록 · 상세 배치를 고르고 브라우저에 남긴다(사용자 지시 2026-10-26 · omf-all-around#185).
- * 다시 들어오거나 다시 로그인해도 같은 배치다. 저장소가 막혀 있으면 좌우다.
+ * 다시 들어오거나 다시 로그인해도 같은 배치다. 고른 적이 없으면 창 폭으로 정한다(1440px 이상 좌우).
  */
 export const useSplitOrientation = (storageKey: string) => {
-  const [orientation, setOrientation] = useState<SplitOrientation>(() => {
+  const [chosen, setOrientation] = useState<SplitOrientation | null>(() => {
     try {
-      return window.localStorage.getItem(storageKey) === 'column' ? 'column' : 'row';
+      const saved = window.localStorage.getItem(storageKey);
+      return saved === 'column' || saved === 'row' ? saved : null;
     } catch {
-      return 'row';
+      return null;
     }
   });
+  const orientation = useSplitDefault(chosen);
 
   const change = (next: SplitOrientation): void => {
     setOrientation(next);
@@ -81,13 +106,13 @@ export const useSplitOrientation = (storageKey: string) => {
   ) as CSSProperties;
 
   /*
-   * 창이 좁으면 고른 배치와 관계없이 위아래로 선다(CSS). 화면과 단추가 실제 배치를 말하도록 그때는 `column` 을 돌려준다.
-   * 고른 값(`preferred`)은 남겨 두어 창을 넓히면 그 배치로 돌아간다.
+   * 창이 관리웹 최소 폭(1280px)보다 좁으면 고른 배치와 관계없이 위아래로 선다. 화면과 단추가 실제 배치를 말하도록 그때는
+   * `column` 을 돌려준다. 고른 값(`preferred`)은 남겨 두어 창을 넓히면 그 배치로 돌아간다.
    */
   const narrow = useNarrowWindow();
   return {
-    orientation: narrow ? ('column' as const) : orientation,
-    preferred: orientation,
+    orientation,
+    preferred: chosen,
     narrow,
     change,
     listHeight,
@@ -170,7 +195,7 @@ export const SplitOrientationToggle = ({
   const reasonId = useId();
   if (target === null) return null;
 
-  /* 창이 좁으면 실제 배치(상하)를 눌린 상태로 보이고, 좌우는 사유와 함께 잠근다 — 단추가 보이지 않는 배치를 말하지 않게. */
+  /* 창이 관리웹 최소 폭보다 좁으면 실제 배치(상하)를 눌린 상태로 보이고, 좌우는 사유와 함께 잠근다. */
   const shown: SplitOrientation = narrow ? 'column' : orientation;
 
   return (
