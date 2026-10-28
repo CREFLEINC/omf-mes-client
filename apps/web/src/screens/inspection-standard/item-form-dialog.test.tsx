@@ -58,8 +58,9 @@ describe('ItemFormDialog — 표시', () => {
   it('확인이 표에만 반영된다는 사실을 창 안에서 밝힌다', () => {
     renderDialog();
 
-    expect(screen.getByText('확인을 누르면 표에만 반영됩니다.')).toBeInTheDocument();
-    expect(screen.getByText('「저장」을 눌러야 서버에 반영됩니다.')).toBeInTheDocument();
+    expect(
+      screen.getByText('확인 시 목록에 추가되며, 저장 후 최종 반영됩니다.'),
+    ).toBeInTheDocument();
   });
 
   /*
@@ -93,6 +94,14 @@ describe('ItemFormDialog — 표시', () => {
 });
 
 describe('ItemFormDialog — 차단과 경고', () => {
+  /* 비어 있는 필수 칸은 처음부터 테두리만 빨갛다 — 글은 화면 읽기로만 남긴다(검사 조회·판정과 같다 · #196). */
+  it('비어 있는 필수 칸은 확인 전에도 오류 상태다', () => {
+    renderDialog({ values: { ...savedDrafts()[0]!, inspectionItemCode: '' } });
+
+    expect(screen.getByLabelText('항목코드')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('항목명')).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
   it('차단 오류는 그 칸 옆에 낸다', () => {
     renderDialog({
       fieldErrors: {

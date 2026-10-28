@@ -119,18 +119,17 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
      * 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다 —
      * 이 창의 확인은 표에만 반영된다는 사실을 감추지 않는다.
      */
-    itemLocalNoteTitle: 'Bấm Xác nhận thì chỉ áp dụng vào bảng.',
-    itemLocalNoteBody: 'Phải bấm «Lưu» mới áp dụng lên máy chủ.',
+    itemLocalNote: 'Bấm Xác nhận thì thêm vào danh sách, bấm Lưu thì mới áp dụng chính thức.',
     itemPlaceholders: {
-      inspectionItemCode: 'Nhập mã hạng mục.',
-      inspectionItemName: 'Nhập tên hạng mục.',
-      dataType: 'Chọn kiểu dữ liệu.',
-      uom: 'Chọn đơn vị.',
-      targetValue: 'Nhập giá trị mục tiêu.',
-      lowerLimit: 'Nhập giới hạn dưới.',
-      upperLimit: 'Nhập giới hạn trên.',
-      inspectionMethod: 'Chọn phương pháp kiểm tra.',
-      defaultInspectionEquipment: 'Chọn thiết bị kiểm tra chỉ định.',
+      inspectionItemCode: 'Nhập mã hạng mục',
+      inspectionItemName: 'Nhập tên hạng mục',
+      dataType: 'Chọn kiểu dữ liệu',
+      uom: 'Chọn đơn vị',
+      targetValue: 'Nhập giá trị mục tiêu',
+      lowerLimit: 'Nhập giới hạn dưới',
+      upperLimit: 'Nhập giới hạn trên',
+      inspectionMethod: 'Chọn phương pháp kiểm tra',
+      defaultInspectionEquipment: 'Chọn thiết bị kiểm tra chỉ định',
     },
     requiredFlagNote: 'Hạng mục này bắt buộc phải nhập khi kiểm tra.',
     automaticJudgmentNote: 'Giá trị nhập vào được tự động phán định theo tiêu chuẩn.',
