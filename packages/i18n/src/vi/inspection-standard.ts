@@ -35,8 +35,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     removeItem: (displayNo: number): string => `Xóa hạng mục số ${String(displayNo)}`,
   },
   actionReasons: {
-    excelUploadUnavailable:
-      'Việc tải lên Excel hiện chưa thể thực hiện. Khi biểu mẫu được ấn định thì có thể dùng nút này.',
     /* 계약의 Routing 조회가 품목을 필수 쿼리로 둔다 — 품목을 비우면 고를 라우팅 자체가 없다. */
     routingNeedsItem: 'Routing chỉ chọn được sau khi đã chọn mặt hàng. Hãy chọn mặt hàng trước.',
     approveAlreadyDone: 'Việc phê duyệt không thực hiện lại được với tiêu chuẩn đã phê duyệt.',
@@ -126,6 +124,35 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     confirmed: 'Đã xác nhận phiên bản.',
     obsoleted: 'Đã hủy bỏ phiên bản.',
     discarded: 'Đã hủy phiên bản đang soạn.',
+  },
+  import: {
+    title: 'Tải lên Excel tiêu chuẩn kiểm tra',
+    partialWarningTitle: 'Việc tải lên không hoàn tác toàn bộ',
+    partialWarning:
+      'Được áp dụng theo từng mã tiêu chuẩn. Tiêu chuẩn thành công được đăng ký, chỉ tiêu chuẩn thất bại được trả lại. Hãy kiểm tra tệp trước.',
+    draftNote:
+      'Sau khi tải lên, mỗi mã tiêu chuẩn có một phiên bản đang soạn. Tiêu chuẩn đã có sẽ tạo phiên bản mới từ phiên bản xác nhận mới nhất và điền hạng mục từ Excel. Việc xác nhận hãy làm trực tiếp trên màn hình.',
+    columnsNote:
+      'Đọc dòng đầu của trang tính đầu tiên làm tiêu đề. Cột bắt buộc: mã tiêu chuẩn · mã hạng mục · tên hạng mục. Cũng có thể tải lên nguyên tệp Bảng tiêu chuẩn kiểm tra (TCKT) — mỗi bảng thành một tiêu chuẩn.',
+    fileLabel: 'Tệp Excel tiêu chuẩn kiểm tra (.xlsx, có thể chọn nhiều)',
+    filePlaceholder: 'Chọn tệp',
+    fileNone: 'Chưa chọn tệp.',
+    fileRequired: 'Hãy chọn tệp cần tải lên trước.',
+    fileCount: (count: number): string => `Đã chọn ${String(count)} tệp.`,
+    removeFile: (name: string): string => `Bỏ ${name}`,
+    progress: (done: number, total: number): string =>
+      `Đã xử lý ${String(done)}/${String(total)} tệp. Đừng đóng cửa sổ.`,
+    submit: 'Tải lên',
+    resultTitle: 'Kết quả tải lên',
+    succeeded: (count: number): string => `Đã áp dụng ${String(count)} tiêu chuẩn.`,
+    noneSucceeded: 'Không có tiêu chuẩn nào được áp dụng.',
+    failed: (count: number): string => `${String(count)} tiêu chuẩn thất bại.`,
+    allSucceeded: 'Không có tiêu chuẩn nào thất bại.',
+    fields: {
+      key: 'Mã tiêu chuẩn',
+      reason: 'Lý do',
+    },
+    keyUnknown: 'Không có mã tiêu chuẩn',
   },
   filters: {
     searchLabel: 'Tìm tiêu chuẩn kiểm tra',

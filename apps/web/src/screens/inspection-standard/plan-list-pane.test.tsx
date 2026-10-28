@@ -26,6 +26,7 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
       onSelect={onSelect}
       isCreating={false}
       onAddPlan={onAddPlan}
+      onExcelUpload={vi.fn<() => void>()}
       loadError={null}
       {...overrides}
     />,

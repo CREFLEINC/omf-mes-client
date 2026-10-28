@@ -6488,7 +6488,7 @@ export interface paths {
     put?: never;
     /**
      * 버전 확정
-     * @description 작성중 → 확정. 이후 in-place 수정은 불가하며 변경은 신규 버전으로만 한다. 검사 항목이 1건 이상이어야 한다(위반 시 400, code=LINE_REQUIRED). 상태≠작성중이면 400(code=STATE_LOCKED). 근거: W-06-02 §5-1 「확정」 · 공유계약 B-2
+     * @description 작성중 → 확정. 이후 in-place 수정은 불가하며 변경은 신규 버전으로만 한다. 검사 항목이 1건 이상이어야 한다(위반 시 400, code=LINE_REQUIRED). 샘플링 방식인데 샘플 비율(%)이 없으면 400(code=REQUIRED, field=samplingRatio) — 엑셀 올리기가 비율 없이 만든 작성중 버전이다(P-140). 상태≠작성중이면 400(code=STATE_LOCKED). 근거: W-06-02 §5-1 「확정」 · 공유계약 B-2
      */
     post: {
       parameters: {
@@ -6513,7 +6513,7 @@ export interface paths {
             'application/json': components['schemas']['InspectionPlanVersion'];
           };
         };
-        /** @description 검증 실패 — 항목 0건인 채 확정 시도(code=LINE_REQUIRED) 또는 상태≠작성중(code=STATE_LOCKED) */
+        /** @description 검증 실패 — 항목 0건인 채 확정 시도(code=LINE_REQUIRED) · 샘플링 방식인데 비율 없음(code=REQUIRED) 또는 상태≠작성중(code=STATE_LOCKED) */
         400: {
           headers: {
             [name: string]: unknown;
@@ -14630,6 +14630,85 @@ export interface paths {
           };
           content: {
             'application/json': components['schemas']['ConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-plans:import': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 검사기준 엑셀 올리기
+     * @description ⭐ 선행 구현(P-140) — 설계 사본에 서버가 먼저 적은 자리다. 한 행 = 검사 항목 하나, 같은 기준코드 행들이 기준 하나·작성중 버전 하나가 된다. 첫 시트만 읽고 머리글 이름으로 열을 찾는다. 첫 줄이 머리글 표가 아니면 고객사 검사기준서(TCKT) 서식으로 읽는다 — 기준서 한 장이 기준 하나(Code No. 가 여럿이면 품목마다 하나)이고 샘플 비율(%)은 채우지 않는다 — 비율 없는 작성중 버전으로 두고 확정할 때 막는다(omf-all-around#201). 새 기준코드는 기준 등록 → 버전 등록 → 항목 저장, 이미 있는 기준코드는 신규 버전 발행 → 버전 설정 저장 → 항목 저장을 차례로 부른다(각 단계의 검증·오류 문구가 그대로다). 통째로 되돌리지 않는다 — 기준코드 묶음 단위로 성공·실패를 돌려주고, 실패한 묶음이 만든 기준·버전은 지운다. 확정은 하지 않는다. 파일은 보관하지 않는다. 근거: W-06-02 §5-1 「엑셀 업로드」 · omf-all-around#199
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            /**
+             * Format: binary
+             * @description 검사기준 엑셀 파일(.xlsx)
+             */
+            file: string;
+          };
+        };
+      };
+      responses: {
+        /** @description 처리 결과. succeeded 는 반영된 기준코드 수, BatchResult.failed[].index 는 그 묶음 첫 행의 자료 순번(머리글 제외 0부터), key 는 기준코드다 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['BatchResult'];
+          };
+        };
+        /** @description 파일을 읽을 수 없다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
