@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { AttachmentPanel } from './attachment-panel';
@@ -109,6 +109,54 @@ describe('AttachmentPanel', () => {
     renderWithProviders(<AttachmentPanel targetTypeCode="LOT" targetId={8801} />, { fetch });
     return { posts, gets: () => gets };
   };
+
+  /* 불러오는 중에 닫으면 늦게 온 결과가 창을 다시 띄우지 않는다(#185 리뷰). */
+  it('미리보기를 불러오는 중에 닫으면 늦은 결과를 버린다', async () => {
+    let release: (response: Response) => void = () => undefined;
+    const content = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const createObjectURL = vi.fn(() => 'blob:preview');
+    const original = { create: URL.createObjectURL, revoke: URL.revokeObjectURL };
+    URL.createObjectURL = createObjectURL;
+    URL.revokeObjectURL = vi.fn();
+    onTestFinished(() => {
+      URL.createObjectURL = original.create;
+      URL.revokeObjectURL = original.revoke;
+    });
+    const fetch: StubFetch = async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname === '/app/attachments/3/content') return content;
+      if (url.pathname === '/app/attachments') {
+        return jsonResponse({
+          items: [
+            {
+              attachmentId: 3,
+              targetTypeCode: 'LOT',
+              targetId: 8801,
+              fileName: '사진.png',
+              contentType: 'image/png',
+              byteSize: 10,
+              uploadedAt: '2026-10-16T01:00:00Z',
+            },
+          ],
+        });
+      }
+      throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
+    };
+    renderWithProviders(<AttachmentPanel targetTypeCode="LOT" targetId={8801} />, { fetch });
+
+    await userEvent.click(await screen.findByRole('button', { name: t.preview('사진.png') }));
+    expect(await screen.findByRole('dialog', { name: '사진.png' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: t.previewClose }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    release(new Response(new Blob(['png'], { type: 'image/png' })));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(createObjectURL).not.toHaveBeenCalled();
+  });
 
   it('LOT 의 첨부 문서를 보이고, 문서를 올린다', async () => {
     const { posts } = renderPanel();

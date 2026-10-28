@@ -17,6 +17,10 @@ export interface RequestListProps {
   selectedId: number | null;
   onSelect: (id: number) => void;
   onChangePage: (page: number) => void;
+  /** 대상 열 이름 — 탭(승인 유형)에 맞춘다(#193). 주지 않으면 「대상 LOT」. */
+  targetHeader?: string;
+  /** 승인 유형 열 — 한 유형 탭(특채 · IQC 생략 · OQC 생략)은 탭이 이미 유형을 말해 두지 않는다(#193). 기본은 보인다. */
+  showType?: boolean;
 }
 
 export const RequestList = ({
@@ -27,6 +31,8 @@ export const RequestList = ({
   selectedId,
   onSelect,
   onChangePage,
+  targetHeader,
+  showType = true,
 }: RequestListProps) => {
   const t = messages.qualityApproval;
   const columns: Column<RequestRow>[] = [
@@ -47,7 +53,21 @@ export const RequestList = ({
       ),
     },
     /* 대상 LOT 은 폭을 정하지 않는다 — 남는 폭을 흡수한다(`patterns/column-resize.tsx`). */
-    { key: 'target', header: t.fields.targetLot, render: (row) => row.targetName },
+    { key: 'target', header: targetHeader ?? t.fields.targetLot, render: (row) => row.targetName },
+    /* 언제 상신됐는지 — 모든 탭 목록에 둔다(사용자 지시 2026-10-27 · #193). */
+    {
+      key: 'requestedAt',
+      header: t.fields.requestedAt,
+      width: '150px',
+      align: 'center',
+      /*
+       * 머리를 눌러 오름 · 내림차순(사용자 지시 2026-10-27) — 검사 조회·판정의 요청 일시와 같은 방식이다. 서버에 정렬
+       * 조건이 없어 지금 받은 쪽 안에서 정렬한다. 원문(RFC3339)으로 정렬한다.
+       */
+      sortable: true,
+      sortAccessor: (row) => row.requestedAt,
+      render: (row) => row.requestedAtText,
+    },
     /* 상태는 코드 대신 사용자 용어 배지로(#144) — 대기 주황 · 승인 초록 · 반려 빨강. */
     {
       key: 'status',
@@ -60,19 +80,26 @@ export const RequestList = ({
         </Chip>
       ),
     },
-    /* 승인 유형 꼬리표 — 탭으로 거른 목록에서도 어떤 결재인지 한눈에 보인다(#144). */
-    {
-      key: 'type',
-      header: t.fields.approvalTypeCode,
-      width: '160px',
-      align: 'center',
-      render: (row) => <Chip size="sm">{approvalTypeLabelOf(row.approvalTypeCode)}</Chip>,
-    },
+    /* 승인 유형 꼬리표(#144) — 전체 탭에서만 둔다. 한 유형 탭은 탭이 유형을 말한다(사용자 지시 2026-10-27). */
+    ...(showType
+      ? [
+          {
+            key: 'type',
+            header: t.fields.approvalTypeCode,
+            width: '160px',
+            align: 'center',
+            render: (row: RequestRow) => (
+              <Chip size="sm">{approvalTypeLabelOf(row.approvalTypeCode)}</Chip>
+            ),
+          } satisfies Column<RequestRow>,
+        ]
+      : []),
     /* 내 차례 꼬리표(#144) — 칸 가운데에 둔다(#186 사용자 지시). */
     {
       key: 'myTurn',
       header: t.fields.myTurn,
-      width: '96px',
+      /* 「내 결재 차례」 배지가 한 줄로 들어가는 폭(#193). */
+      width: '120px',
       align: 'center',
       render: (row) =>
         row.isMyTurn ? (

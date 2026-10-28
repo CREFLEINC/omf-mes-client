@@ -1,4 +1,4 @@
-import { Button, Icon, Progress, Select, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Icon, Select, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent, type ReactElement, type ReactNode } from 'react';
@@ -51,7 +51,6 @@ import { withUom } from './uom-lookup';
  */
 
 const t = messages.iqcInspection.result;
-const unknownValue = messages.iqcInspection.queue.emptyValue;
 
 export interface ResultFormPaneProps {
   /** 편집할 회차. 아직 아무도 손대지 않은 의뢰면 `null` */
@@ -120,6 +119,20 @@ export interface ResultFormPaneProps {
    * 없어 처분·반품으로 잇는다. 없으면 종전대로 「재검사」 단추다.
    */
   reinspectReplacement?: ReactNode;
+  /** 확정된 회차를 다시 검사할 수 없는 까닭(LOT 이 검사 대기가 아님 · #185). 있으면 재검사 단추 대신 이 글줄이 선다. */
+  reinspectBlockedReason?: string | null;
+  /** 최종 판정을 검사 수량 줄에 세운다 — 상하 배치(사용자 지시 2026-10-27 · #185). */
+  inlineJudgment?: boolean;
+  /** 「판정 상세 입력」에 적을 것이 있는가(불합격 · 판정 변경 사유) — 수량 줄 판정일 때만 본다. */
+  hasJudgmentDetail?: boolean;
+  /** 2단계(판정)를 다 채웠다 — 판정을 골랐고 꼭 적을 상세가 비지 않았다. 단계 번호가 강조색이 된다. */
+  judgmentDone?: boolean;
+  /** 3단계(4M)를 다 채웠다 — 4M 변경품이고 비고를 적었다. */
+  fourMDone?: boolean;
+  /** 「판정 상세 입력」 창을 열 때 — 부르는 쪽이 지금 값을 담아 둔다. */
+  onJudgmentDetailOpen?: () => void;
+  /** 「판정 상세 입력」 창의 [취소] — 열 때 값으로 되돌린다. */
+  onJudgmentDetailCancel?: () => void;
   /** 확정만 막는 사유(저장은 막지 않는다) — 불합격인데 불량 코드를 고르지 않았을 때다. */
   confirmOnlyBlockedReason?: string | null;
 }
@@ -130,6 +143,41 @@ const FIELD_OF: Record<string, keyof QuantityDraft> = {
   rejectedQty: 'rejected',
   heldQty: 'held',
 };
+
+/**
+ * 단계 머리 — 「① 검사 수량 입력 ──── ② 판정 ──── ③ 4M 변경 정보」(사용자 지시 2026-10-27 · #185).
+ * 입력에 따라 단계가 넘어간다(사용자 지시 2026-10-27 · #185) — 다 채운 단계는 번호 · 제목 · 이어지는 선이 강조색,
+ * 아직 덜 채운 첫 단계가 「지금 단계」로 번호 · 제목이 강조색, 그 뒤 단계는 흐리다. 마지막 단계는 선이 없다.
+ */
+const StepHead = ({
+  step,
+  title,
+  done,
+  current,
+  hint,
+  children,
+}: {
+  step: number;
+  title: string;
+  done: boolean;
+  current: boolean;
+  hint?: string;
+  children?: ReactNode;
+}) => (
+  <div
+    className="iqc-inspection-step-head"
+    data-done={done ? '' : undefined}
+    data-current={current ? '' : undefined}
+    aria-current={current ? 'step' : undefined}
+  >
+    <span className="iqc-inspection-step-no" aria-hidden>
+      {step}
+    </span>
+    <h3 title={hint}>{title}</h3>
+    {children}
+    <span className="iqc-inspection-step-line" aria-hidden />
+  </div>
+);
 
 export const ResultFormPane = ({
   round,
@@ -162,6 +210,13 @@ export const ResultFormPane = ({
   judgmentBelow = null,
   confirmOnlyBlockedReason = null,
   reinspectReplacement = null,
+  reinspectBlockedReason = null,
+  inlineJudgment = false,
+  hasJudgmentDetail = false,
+  onJudgmentDetailOpen,
+  onJudgmentDetailCancel,
+  judgmentDone = false,
+  fourMDone = false,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const partialNoteId = useId();
@@ -169,6 +224,7 @@ export const ResultFormPane = ({
   const errors = validateQuantities(draft);
   const totals = toTotals(draft, inspectedQty);
   const [showErrors, setShowErrors] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   /**
    * 저장. **합계가 맞지 않아도 보낸다** — 막는 것은 보낼 수 없는 값이 남아 있을 때뿐이다.
@@ -213,60 +269,35 @@ export const ResultFormPane = ({
     return entry === undefined ? undefined : fieldErrors[entry[0]];
   };
 
-  /**
-   * 입력 현황 줄 아래 한 문장 — 맞으면 일치, 넘기면 넘긴 양을 숫자로 말한다. 모자랄 때는 바로 위
-   * 「잔여」와 막대가 이미 보이므로 문장을 두지 않는다.
-   *
-   * ⛔ **셀 수 없으면 아무 말도 하지 않는다.** 한 칸이라도 수량이 아니면 합계는 알 수 없는
-   * 것이고, 그때 「일치합니다」든 「남아 있습니다」든 내면 **거짓을 말하는 것**이다. 무엇을
-   * 고쳐야 하는지는 그 칸의 오류가 이미 말한다.
+  /*
+   * 총 검사 수량 카드에 넘치면 「+3 EA」, 모자라면 「-1 EA」를 붙인다(사용자 지시 2026-10-27 · #185).
+   * ⛔ 셀 수 없으면(한 칸이라도 수량이 아니면) 아무 말도 하지 않는다 — 그 칸의 오류가 이미 말한다.
    */
   const isOver = totals.kind === 'counted' && totals.remaining < 0n;
-  const overText = isOver ? withUom(formatMicro(-totals.remaining), uomCode) : '';
-  const totalsNote =
-    totals.kind === 'uncountable'
+  const deltaText =
+    totals.kind !== 'counted' || totals.remaining === 0n
       ? null
-      : /* 맞으면 문장을 두지 않는다 — 「검사수량과 일치합니다」는 담당자가 지웠다(#133 용어 정정 7). */
-        totals.matches
-        ? null
-        : isOver
-          ? t.over(overText)
-          : /* 모자랄 때는 오른쪽 「미입력 N」이 이미 말한다 — 문장을 두지 않는다(#133). */
-            null;
+      : isOver
+        ? t.overDelta(withUom(formatMicro(-totals.remaining), uomCode))
+        : t.shortDelta(withUom(formatMicro(totals.remaining), uomCode));
 
-  /**
-   * 진행 막대 — **보이기 위한 값일 뿐이다**(합계·잔여 계산은 위 `toTotals` 그대로).
-   * 셀 수 없으면 비우고, 넘기면 가득 채워 경고색, 맞으면 성공색, 모자라면 기본색이다.
-   */
-  const inspectedMicro = fromServerQty(inspectedQty);
-  const progress =
-    totals.kind === 'uncountable'
-      ? { value: 0, tone: 'idle' as const }
-      : totals.matches
-        ? { value: 100, tone: 'success' as const }
-        : /* 넘기면 가득 채우되 오류색 — 정상 완료(성공색)와 헷갈리지 않게(#133). */
-          totals.remaining < 0n
-          ? { value: 100, tone: 'error' as const }
-          : {
-              value: inspectedMicro > 0n ? Number((totals.sum * 10000n) / inspectedMicro) / 100 : 0,
-              /* 미입력이 남았으면 주의색(노랑) — 완료(초록) · 초과(빨강)와 갈린다(#133). */
-              tone: 'warning' as const,
-            };
-  const sumText = totals.kind === 'counted' ? formatMicro(totals.sum) : unknownValue;
   const inspectedText = withUom(String(inspectedQty), uomCode);
-  /* 오른쪽 상태 — 「미입력 N」(이름표는 왼쪽 「입력 완료」와 같은 보조색) · 넘치면 「N 초과」. 음수는 보이지 않는다(#133). */
-  const statusText: ReactNode = isOver ? (
-    t.overBy(overText)
-  ) : (
-    <>
-      <span className="iqc-inspection-progress-label">{t.remaining} </span>
-      {totals.kind === 'counted' ? withUom(formatMicro(totals.remaining), uomCode) : unknownValue}
-    </>
-  );
+  const qtyDone = totals.kind === 'counted' && totals.matches && !isOver;
+  /* 지금 단계 — 덜 채운 첫 단계. 확정된 회차는 고칠 것이 없어 두지 않는다. 4M 칸이 없으면 3단계도 없다. */
+  const currentStep = isConfirmed
+    ? null
+    : !qtyDone
+      ? 1
+      : !judgmentDone
+        ? 2
+        : fourMSlot !== null && !fourMDone
+          ? 3
+          : null;
 
   const field = (key: keyof QuantityDraft, label: string, invalid: boolean): ReactElement => (
     /* 단위 코드는 칸 바로 옆 글자로 — 입력값 자체에는 넣지 않는다. 모르면 붙이지 않는다. */
-    <div className="iqc-inspection-qty-field">
+    /* 칸 종류 — 숫자 색을 판정 색으로(합격 초록 · 불합격 빨강 · 보류 노랑 · 사용자 지시 2026-10-27 · #185). */
+    <div className="iqc-inspection-qty-field" data-kind={key}>
       <TextField
         label={label}
         inputMode="decimal"
@@ -282,141 +313,50 @@ export const ResultFormPane = ({
     </div>
   );
 
-  return (
-    <form aria-label={t.heading} onSubmit={submit}>
+  /*
+   * 최종 판정 칸 — 상하 배치(넓은 상세)에서는 검사 수량 줄의 세 칸 옆에 선다(사용자 지시 2026-10-27 · #185).
+   * 좌우 배치에서는 종전처럼 「판정」 구획 첫 칸이다.
+   */
+  const judgmentField = (
+    <div
+      className="field-cell iqc-inspection-judgment-field"
+      data-judgment={judgment === '' ? undefined : judgment}
+    >
+      <FieldLabel htmlFor={judgmentId} label={t.judgment} required hint={judgmentHint} />
+      <Select
+        id={judgmentId}
+        options={judgmentOptions}
+        value={judgment}
+        placeholder={t.judgmentPlaceholder}
+        /* 필수 칸이 비어 있으면 빨간 테두리(사용자 지시 2026-10-26) — 고칠 수 없는 회차는 제외. */
+        invalid={judgment === '' && !isConfirmed && !isInputLocked}
+        disabled={isConfirmed || isInputLocked || judgmentOptions.length === 0}
+        onChange={onJudgmentChange}
+      />
+      {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
       {/*
-       * 위에서 아래로 한 줄기 — 검사 수량 → 판정 → 4M 변경 정보, 그 아래 저장·확정(omf-all-around#133).
-       * 판정 칸이 늘어도 수량 칸 옆에 빈 자리가 생기지 않는다. 저장·확정은 창을 내려도 화면 아래에 붙어 있다.
+       * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
+       * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
        */}
-      <div className="iqc-inspection-work">
-        {/* ── 검사 결과 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}
-        <section className="iqc-inspection-section">
-          <div className="iqc-inspection-section-head">
-            <h3>{t.sectionTitle}</h3>
-            {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 판정 단추 아래가 말한다). */}
-            {isReinspecting ? (
-              <p className="field-note">{t.reinspectRound}</p>
-            ) : round !== null ? (
-              <p className="field-note">{t.round(round.inspectionRound)}</p>
-            ) : null}
-            {/* 기준값(검사수량)은 제목 줄 오른쪽 끝에 — 세 칸은 이 값을 나눈 결과다. 따로 한 줄을 쓰지 않는다(#133). */}
-            <dl className="iqc-inspection-qty-base">
-              <dt className="iqc-inspection-progress-label">{t.fields.inspectedQty}</dt>
-              <dd>{inspectedText}</dd>
-            </dl>
-          </div>
+      {!isKnownCode(judgmentOptions, judgment) && (
+        <p className="field-note">{t.judgmentUnknown(judgment)}</p>
+      )}
+    </div>
+  );
 
-          {/*
-           * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사
-           * 시작으로 삼은 규율과 같다(omf-mes 확정 2026-08-21 §1.2) — 열어 두고 떠난 사람이
-           * 빈 회차를 남기지 않는다.
-           *
-           * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 고를 값
-           * 목록이 정해지지 않았다. 감추지 않고 왜 없는지 밝힌다(omf-mes#179).
-           */}
-          {isReinspecting && (
-            <>
-              <p className="field-note">{t.reinspectNote}</p>
-              <p className="field-note">{t.reinspectReasonPending}</p>
-            </>
-          )}
-
-          <div className="iqc-inspection-qty" data-over={isOver ? '' : undefined}>
-            {field('accepted', t.fields.accepted, errors.accepted)}
-            {field('rejected', t.fields.rejected, errors.rejected)}
-            {field('held', t.fields.held, errors.held)}
-          </div>
-
-          {/* 잠근 이유는 세 칸마다 되풀이하지 않고 수량 줄 아래 한 번만 밝힌다. */}
-          {isConfirmed && <p className="field-note">{t.confirmed}</p>}
-
-          {/* 입력 현황 — 「합계 / 검사수량」 · 잔여 · 막대 · 한 줄 안내. 계산은 그대로다. */}
-          <div
-            className="iqc-inspection-progress"
-            data-state={
-              isOver ? 'over' : totals.kind === 'counted' && totals.matches ? 'done' : undefined
-            }
-          >
-            <div className="iqc-inspection-progress-row">
-              <span className="iqc-inspection-progress-sum">
-                {/* 「입력 완료 15 / 20 EA」 — 숫자 앞 이름표(#133 용어 정정 5). */}
-                <span className="iqc-inspection-progress-label">{t.sum} </span>
-                {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
-              </span>
-              <span className="iqc-inspection-progress-status">{statusText}</span>
-            </div>
-            <Progress
-              value={progress.value}
-              tone={progress.tone}
-              label={t.progressLabel}
-              valueText={`${sumText} / ${inspectedText}`}
-            />
-            {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
-          </div>
-        </section>
-
-        {/* ── 판정 — 종합 판정을 고르고, 임시 저장 뒤 확정한다 ── */}
-        <section className="iqc-inspection-section iqc-inspection-judgment-section">
-          <h3>{t.judgmentSectionTitle}</h3>
-
-          {/*
-           * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고,
-           * 목록이 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2). 시드가 아직 안 들어가
-           * 빌 수 있는데, 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
-           */}
-          {/* 고른 판정을 테두리 색으로 바로 알아보게 한다(합격·불합격·보류 — app.css `[data-judgment]`). */}
-          <div className="iqc-inspection-judgment-main">
-            <div
-              className="field-cell iqc-inspection-judgment-field"
-              data-judgment={judgment === '' ? undefined : judgment}
-            >
-              <FieldLabel htmlFor={judgmentId} label={t.judgment} required hint={judgmentHint} />
-              <Select
-                id={judgmentId}
-                options={judgmentOptions}
-                value={judgment}
-                placeholder={t.judgmentPlaceholder}
-                disabled={isConfirmed || isInputLocked || judgmentOptions.length === 0}
-                onChange={onJudgmentChange}
-              />
-              {judgmentOptions.length === 0 && (
-                <p className="field-note">{t.judgmentUnavailable}</p>
-              )}
-              {/*
-               * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
-               * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
-               */}
-              {!isKnownCode(judgmentOptions, judgment) && (
-                <p className="field-note">{t.judgmentUnknown(judgment)}</p>
-              )}
-            </div>
-            {/* 판정 변경 사유는 최종 판정 바로 아래 — 무엇을 왜 바꿨는지 한 자리에서 읽힌다(#133). */}
-            {judgmentBelow}
-          </div>
-          {/* 판정에 따라 열리는 칸(불합격 사유) — 구르지 않고 제 높이대로 선다(#133). */}
-          <div className="iqc-inspection-judgment-detail">{judgmentDetail}</div>
-
-          <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
-
-          {/*
-           * ⛔ **되돌릴 수 없는 쓰기가 끝난 것을 말한다.** 확정 여부와 무관하게 쓰기가 성공한
-           * «그 순간» 낸다 — 확정 상태는 회차를 다시 부른 «뒤에» 참이 된다.
-           */}
-          {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
-        </section>
-
-        {/* ── 4M 변경 정보 — 판정과 다른 업무라 판정 아래 따로 선다(#133) ── */}
-        {fourMSlot !== null && (
-          <section className="iqc-inspection-section iqc-inspection-four-m-block">
-            <h3>
-              {t.fourMChange.sectionTitle}
-              <span className="iqc-inspection-label-hint">{t.fourMChange.hint}</span>
-            </h3>
-            {fourMSlot}
-          </section>
-        )}
-      </div>
-
+  /*
+   * 상하 배치에서 확정된 회차는 할 일이 재검사뿐이라 그 줄(확정 라벨 · [재검사 회차 추가])을 입력 현황 줄 오른쪽 끝에
+   * 둔다(사용자 지시 2026-10-27 · #185). 그 밖은 종전처럼 카드 아래 한 줄이다.
+   */
+  const actionInQty = inlineJudgment && isConfirmed;
+  const lockedBadge = (
+    <span className="iqc-inspection-head-badge iqc-inspection-locked-badge">
+      <Icon name="lock" size={14} aria-hidden />
+      {t.confirmed}
+    </span>
+  );
+  const actionArea = (
+    <>
       {/*
        * 저장 · 확정 줄 — 한 줄에 왼쪽 부분 입고, 가운데 지금 상황의 안내(막힌 까닭 · 확정 경고 · 저장 결과), 오른쪽 끝에
        * [임시 저장](보조) [판정 확정](주). 안내는 그 상황에서만 서고, 단추 자리는 판정 칸이 늘어도 그대로다(#133).
@@ -425,10 +365,30 @@ export const ResultFormPane = ({
       <div className="iqc-inspection-action-area">
         {isConfirmed && reinspectReplacement !== null ? (
           reinspectReplacement
+        ) : isConfirmed && reinspectBlockedReason !== null ? (
+          <div className="iqc-inspection-action-row">
+            <div className="iqc-inspection-action-notes">
+              <p className="iqc-inspection-action-note" data-tone="info">
+                <Icon name="info" size={14} aria-hidden />
+                {reinspectBlockedReason}
+              </p>
+            </div>
+          </div>
         ) : isConfirmed ? (
           <div className="iqc-inspection-action-row">
             <div className="iqc-inspection-action-buttons">
-              <Button type="button" variant="outlined" size="md" onClick={onStartReinspection}>
+              {/*
+               * 잠근 이유는 [재검사 회차 추가] 바로 왼쪽 라벨로 한 번만 밝힌다(사용자 지시 2026-10-27 · #185).
+               * 상하 배치에서는 수량 구획이 이 문구 길이만큼 넓어지지 않게 회차 옆(제목 줄)으로 간다.
+               */}
+              {!actionInQty && lockedBadge}
+              <Button
+                type="button"
+                variant="outlined"
+                size="md"
+                leadingIcon={<Icon name="add" size={18} aria-hidden />}
+                onClick={onStartReinspection}
+              >
                 {t.reinspect}
               </Button>
             </div>
@@ -462,7 +422,7 @@ export const ResultFormPane = ({
               {/* 막혔으면 «무엇이» 막혔는지 단추 바로 왼쪽 한 줄로 밝힌다(공유계약 G-23 · 띠 대신 글줄 #133). */}
               {confirmBlockedReason !== null && (
                 <p className="iqc-inspection-action-note" data-tone="info">
-                  <Icon name="info" size={18} aria-hidden />
+                  <Icon name="info" size={14} aria-hidden />
                   {confirmBlockedReason}
                 </p>
               )}
@@ -472,7 +432,7 @@ export const ResultFormPane = ({
                */}
               {confirmBlockedReason === null && (
                 <p className="iqc-inspection-action-note" data-tone="warning">
-                  <Icon name="warning" size={18} aria-hidden />
+                  <Icon name="warning" size={14} aria-hidden />
                   {t.confirmNote}
                 </p>
               )}
@@ -483,7 +443,7 @@ export const ResultFormPane = ({
               {isReinspecting && (
                 <Button
                   type="button"
-                  variant="text"
+                  variant="outlined"
                   size="md"
                   disabled={isSaving || isConfirming}
                   onClick={onCancelReinspection}
@@ -513,6 +473,233 @@ export const ResultFormPane = ({
           </div>
         )}
       </div>
+    </>
+  );
+
+  return (
+    <form aria-label={t.heading} onSubmit={submit}>
+      {/*
+       * 위에서 아래로 한 줄기 — 검사 수량 → 판정 → 4M 변경 정보, 그 아래 저장·확정(omf-all-around#133).
+       * 판정 칸이 늘어도 수량 칸 옆에 빈 자리가 생기지 않는다. 저장·확정은 화면 아래에 붙이지 않는다(#185).
+       */}
+      <div className="iqc-inspection-work">
+        {/*
+         * 상하 배치는 한 줄을 반으로 — 왼쪽 검사 수량 입력, 오른쪽 「판정」(최종 판정)(사용자 지시 2026-10-27 · #185).
+         * 좌우 배치는 종전처럼 수량 구획 하나다.
+         */}
+        <div
+          className={inlineJudgment ? 'iqc-inspection-qty-judgment-row' : 'iqc-inspection-qty-only'}
+          /* 확정된 회차 — 판정 상자는 제 높이만(단추 자리를 잡지 않는다 · 사용자 지시 2026-10-27 · #185). */
+          data-locked={isConfirmed ? '' : undefined}
+          /* 재검사 중 — 안내 한 줄, 수량 카드 넷을 한 줄로(사용자 지시 2026-10-27 · #185). */
+          data-reinspect={isReinspecting ? '' : undefined}
+        >
+          {/* ── 검사 결과 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */}
+          <section className="iqc-inspection-section">
+            <div className="iqc-inspection-static">
+              <StepHead step={1} title={t.sectionTitle} done={qtyDone} current={currentStep === 1}>
+                {/* 회차는 제목 옆 라벨로(사용자 지시 2026-10-27 · #185). 회차가 아직 없으면 두지 않는다. */}
+                {isReinspecting ? (
+                  <span className="iqc-inspection-head-badge iqc-inspection-round-badge">
+                    {t.reinspectRound}
+                  </span>
+                ) : round !== null ? (
+                  <span className="iqc-inspection-head-badge iqc-inspection-round-badge">
+                    {t.round(round.inspectionRound)}
+                  </span>
+                ) : null}
+                {/* 재검사 안내 — 「재검사」 라벨 옆, 정보 아이콘이 붙은 라벨(사용자 지시 2026-10-27 · #185). */}
+                {isReinspecting && (
+                  <span className="iqc-inspection-head-badge iqc-inspection-locked-badge">
+                    <Icon name="info" size={14} aria-hidden />
+                    {t.reinspectNote}
+                  </span>
+                )}
+                {actionInQty && lockedBadge}
+              </StepHead>
+              <div className="iqc-inspection-collapsible-body iqc-inspection-qty-body">
+                {/*
+                 * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사
+                 * 시작으로 삼은 규율과 같다(omf-mes 확정 2026-08-21 §1.2) — 열어 두고 떠난 사람이
+                 * 빈 회차를 남기지 않는다.
+                 *
+                 * 재검사 사유 칸은 두지 않는다 — 계약이 선택으로 받지만 고를 값 목록이 정해지지 않았다(omf-mes#179).
+                 * 「추후 제공」 안내 줄은 사용자 지시(2026-10-27 · #185)로 뺐다.
+                 */}
+
+                {/*
+                 * 합격 · 불합격 · 보류 · 총 검사 수량을 같은 모양 카드 넷으로(사용자 지시 2026-10-27 · #185). 다 맞으면 1단계
+                 * 번호가 강조색이 된다. 넘치면 총 검사 수량 카드에 「+N EA」가 붙는다.
+                 */}
+                <div className="iqc-inspection-qty" data-over={isOver ? '' : undefined}>
+                  {field('accepted', t.fields.accepted, errors.accepted)}
+                  {field('rejected', t.fields.rejected, errors.rejected)}
+                  {field('held', t.fields.held, errors.held)}
+                  <dl className="iqc-inspection-qty-field iqc-inspection-qty-total">
+                    <dt>{t.fields.inspectedQty}</dt>
+                    <dd>
+                      <span className="iqc-inspection-qty-total-value">{inspectedText}</span>
+                      {deltaText !== null && (
+                        <span className="iqc-inspection-qty-over">{deltaText}</span>
+                      )}
+                    </dd>
+                  </dl>
+                </div>
+                {actionInQty && <div className="iqc-inspection-qty-actions">{actionArea}</div>}
+              </div>
+            </div>
+          </section>
+          {inlineJudgment && (
+            <section className="iqc-inspection-section iqc-inspection-inline-judgment">
+              <div className="iqc-inspection-static">
+                <StepHead
+                  step={2}
+                  title={t.judgmentSectionTitle}
+                  done={judgmentDone}
+                  current={currentStep === 2}
+                />
+                <div className="iqc-inspection-collapsible-body iqc-inspection-step-box">
+                  <div className="iqc-inspection-judgment-inline-row">
+                    {judgmentField}
+                    {/* 판정 상세(불합격 사유 · 판정 변경 사유)는 [상세 입력] 창에서 적는다 — 적을 것이 있을 때만 선다(#185). */}
+                    {hasJudgmentDetail && (
+                      <div className="iqc-inspection-judgment-detail-cell">
+                        <div className="iqc-inspection-judgment-detail-action">
+                          <Button
+                            type="button"
+                            variant="outlined"
+                            size="md"
+                            onClick={() => {
+                              onJudgmentDetailOpen?.();
+                              setIsDetailOpen(true);
+                            }}
+                          >
+                            {t.judgmentDetailOpen}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+          {/* 4M 변경 정보 — 판정 오른쪽에 제 제목으로 따로 선다. 체크 · [비고 입력](사용자 지시 2026-10-27 · #185). 안내는 마우스를 올리면 보인다. */}
+          {inlineJudgment && fourMSlot !== null && (
+            <section className="iqc-inspection-section iqc-inspection-inline-four-m">
+              <div className="iqc-inspection-static">
+                <StepHead
+                  step={3}
+                  title={t.fourMChange.sectionTitle}
+                  hint={t.fourMChange.hint}
+                  done={fourMDone}
+                  current={currentStep === 3}
+                />
+                <div className="iqc-inspection-collapsible-body iqc-inspection-step-box">
+                  {fourMSlot}
+                </div>
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/*
+         * ── 판정 — 종합 판정을 고르고, 임시 저장 뒤 확정한다 ──
+         * 상하 배치에서는 최종 판정이 수량 줄로 올라가고, 이 구획은 「판정 상세 입력」으로 불합격 · 판정 변경 사유가 있을 때만 선다(#185).
+         */}
+        {/*
+         * 판정 상세 입력 창 — 수량 줄 판정일 때(#185). [완료]는 적은 값을 남기고, [취소] · Esc 는 열 때 값으로
+         * 되돌린다(사용자 지시 2026-10-27 · #185).
+         */}
+        {inlineJudgment && hasJudgmentDetail && (
+          <Dialog
+            open={isDetailOpen}
+            onClose={() => {
+              onJudgmentDetailCancel?.();
+              setIsDetailOpen(false);
+            }}
+            size="lg"
+            title={t.judgmentDetailTitle}
+            showCloseButton={false}
+            footer={
+              <>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="md"
+                  onClick={() => {
+                    onJudgmentDetailCancel?.();
+                    setIsDetailOpen(false);
+                  }}
+                >
+                  {t.judgmentDetailCancel}
+                </Button>
+                <Button type="button" size="md" onClick={() => setIsDetailOpen(false)}>
+                  {t.judgmentDetailDone}
+                </Button>
+              </>
+            }
+          >
+            <div className="iqc-inspection-judgment-dialog">
+              {judgmentBelow}
+              {judgmentDetail}
+            </div>
+          </Dialog>
+        )}
+
+        {!inlineJudgment && (
+          <section
+            className="iqc-inspection-section iqc-inspection-judgment-section"
+            data-inline={inlineJudgment ? '' : undefined}
+          >
+            <div className="iqc-inspection-static">
+              <div className="iqc-inspection-section-head">
+                <h3>{inlineJudgment ? t.judgmentDetailTitle : t.judgmentSectionTitle}</h3>
+              </div>
+              <div className="iqc-inspection-collapsible-body">
+                {/*
+                 * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고,
+                 * 목록이 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2). 시드가 아직 안 들어가
+                 * 빌 수 있는데, 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
+                 */}
+                {/* 고른 판정을 테두리 색으로 바로 알아보게 한다(합격·불합격·보류 — app.css `[data-judgment]`). */}
+                <div className="iqc-inspection-judgment-main">
+                  {!inlineJudgment && judgmentField}
+                  {/* 판정 변경 사유는 최종 판정 바로 아래 — 무엇을 왜 바꿨는지 한 자리에서 읽힌다(#133). */}
+                  {judgmentBelow}
+                </div>
+                {/* 판정에 따라 열리는 칸(불합격 사유) — 구르지 않고 제 높이대로 선다(#133). */}
+                <div className="iqc-inspection-judgment-detail">{judgmentDetail}</div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
+
+        {/*
+         * ⛔ **되돌릴 수 없는 쓰기가 끝난 것을 말한다.** 확정 여부와 무관하게 쓰기가 성공한
+         * «그 순간» 낸다 — 확정 상태는 회차를 다시 부른 «뒤에» 참이 된다.
+         */}
+        {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
+
+        {/* ── 4M 변경 정보 — 수량 줄 판정이 아닐 때만 판정 아래 따로 선다(#133). 접지 않는다(사용자 지시 2026-10-27 · #185) ── */}
+        {fourMSlot !== null && !inlineJudgment && (
+          <section className="iqc-inspection-section iqc-inspection-four-m-block">
+            <div className="iqc-inspection-static">
+              <div className="iqc-inspection-section-head">
+                <h3>
+                  {t.fourMChange.sectionTitle}
+                  <span className="iqc-inspection-label-hint">{t.fourMChange.hint}</span>
+                </h3>
+              </div>
+              <div className="iqc-inspection-collapsible-body">{fourMSlot}</div>
+            </div>
+          </section>
+        )}
+      </div>
+
+      {!actionInQty && actionArea}
     </form>
   );
 };

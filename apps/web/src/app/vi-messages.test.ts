@@ -90,7 +90,6 @@ const TRANSLATED = [
   'inboundSchedule',
   'iqcInspection',
   'iqcSkipApproval',
-  'overReceiptSplit',
   'poRegister',
   'stockAdjust',
   'stockStatus',

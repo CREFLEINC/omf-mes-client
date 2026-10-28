@@ -613,19 +613,41 @@ describe('appRouter', () => {
   });
 
   /*
-   * W-01-03 은 화면이 아니라 입하 예정 조회의 「입하 등록」 창이다(사용자 지시 2026-10-21). 옛 주소는
-   * 즐겨찾기가 죽지 않게 라우트에 남아 그 창으로 옮겨 준다(`register-redirect.tsx` 가 옮기는 모양을 잰다).
+   * W-01-03 「입하 등록」은 화면이 아니라 입고 관리의 라인 표에서 바로 한다(사용자 지시 2026-10-24 · 옛 창은 걷었다).
+   * 옛 주소는 즐겨찾기가 죽지 않게 라우트에 남아 입고 관리로 옮겨 준다(`register-redirect.test` 가 옮기는 모양을 잰다).
    */
   it('옛 초과 입하 분리 주소가 자재창고 앞머리로 남아 있다', () => {
     expect(routedPaths()).toContain('/logistics/over-receipt-split');
   });
 
   /*
-   * W-01-10의 계약 경로는 `/logistics/goods-receipts`(복수)인데 화면 주소는 단수다 —
-   * 주소는 **계약 리소스가 아니라 화면**을 가리키므로 다른 화면들과 같은 형태를 쓴다.
+   * W-01-10 은 화면이 아니라 입고 관리의 「입고 처리」 창이다(사용자 지시 2026-10-23 탭 합치기). 옛 「자재 입고 처리」
+   * 주소는 즐겨찾기가 죽지 않게 라우트에 남아 입고 관리로 옮겨 준다.
    */
-  it('자재 입고 처리가 자재 관리(/logistics) 앞머리로 등록돼 있다', () => {
+  it('옛 자재 입고 처리 주소가 자재창고 앞머리로 남아 있다', () => {
     expect(routedPaths()).toContain('/logistics/goods-receipt');
+  });
+
+  /* 라우트가 있는 것만으로는 어디로 옮기는지 모른다 — 그 라우트의 요소를 실제로 태워 착지점을 잰다. */
+  it('옛 자재 입고 처리 주소로 들어오면 질의가 붙어도 입고 관리에 조건 없이 착지한다', async () => {
+    const oldRoute = (appRouter.routes[0]?.children ?? []).find(
+      (route) => route.path === 'logistics/goods-receipt',
+    );
+    const OldAddress = () =>
+      useRoutes([
+        { path: '/logistics/goods-receipt', element: oldRoute?.element },
+        { path: '/logistics/inbound-schedule', element: <LocationProbe /> },
+      ]);
+
+    renderWithProviders(<OldAddress />, {
+      fetch: createStubFetch([]),
+      route: '/logistics/goods-receipt?ir=7501&status=RECEIVED',
+      session: SYNTHETIC_SESSION,
+    });
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe('/logistics/inbound-schedule');
+    });
   });
 
   /*
@@ -998,13 +1020,17 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
    * **C33** — 메뉴에 항목이 없다. 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가
    * 같은 화면을 열어도 통과하고, 글자만 보면 이름을 바꿔 단 메뉴가 통과한다.
    */
-  it('사이드바에도 입고 관리 탭 막대에도 이 화면 항목이 없다', async () => {
-    const tabs = await hubTabLinks('입고 관리');
+  it('사이드바에 이 화면 항목이 없다 — 입고 관리는 탭 없는 한 줄이다', () => {
+    renderWithProviders(
+      <SessionProvider>
+        <AppLayout>본문</AppLayout>
+      </SessionProvider>,
+      { session: SYNTHETIC_SESSION },
+    );
+    expandAllNavGroups();
 
-    /* 짝 양성 — 탭 막대는 실제로 그려졌고 첫 화면(입하 예정 조회)은 거기 있다. */
-    expect(tabs).toContainEqual({ name: '입하 예정 조회', href: '/logistics/inbound-schedule' });
-    expect(tabs.map((tab) => tab.href)).not.toContain('/logistics/po-register');
-    expect(tabs.map((tab) => tab.name)).not.toContain('신규 P/O 등록');
+    /* 입고 관리는 탭 묶음이 아니다(2026-10-23 탭 합치기) — 이 화면이 숨을 탭 막대도 없다. */
+    expect(screen.queryByRole('navigation', { name: '입고 관리' })).toBeNull();
 
     const nav = screen.getByRole('navigation', { name: '주 메뉴' });
     const hrefs = within(nav)
@@ -1230,12 +1256,16 @@ describe('appRouter — 계정 로그인의 자리', () => {
  * 실제로 이 화면을 연다.
  */
 describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
+  /* 사이드바는 「검사 조회·판정」 묶음 한 줄이고 그 줄이 IQC 화면을 가리킨다(IQC · PQC · OQC 는 본문 맨 위 탭 · #185). */
   it('사이드바에 이 화면 항목이 있다', () => {
     expect(sidebarHrefs()).toContain('/logistics/iqc-inspection');
 
     const nav = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(nav).getByText(messages.iqcInspection.title)).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: '검사 조회·판정' })).toHaveAttribute(
+      'href',
+      '/logistics/iqc-inspection',
+    );
   });
 
   /**
@@ -1254,12 +1284,15 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
     );
   });
 
-  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  /**
+   * **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. 묶음 안에서는 제목을 세우지
+   * 않으므로(탭 막대가 화면 이름을 말한다 · #185) 검사 대기 목록 구획으로 잰다.
+   */
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes());
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: messages.iqcInspection.title }),
+      await screen.findByRole('region', { name: messages.iqcInspection.queue.heading }),
     ).toBeInTheDocument();
   });
 
@@ -1275,8 +1308,6 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
    */
   it('첫 진입에 검사 대기 큐가 실제로 그려진다', async () => {
     renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes());
-
-    await screen.findByRole('heading', { level: 1, name: messages.iqcInspection.title });
 
     expect(await screen.findByRole('button', { name: /IR-2026-0001/ })).toBeInTheDocument();
   });

@@ -1,6 +1,7 @@
 import type {
   InboundLotProgress,
   InboundScheduleLine,
+  IssuedLotProgress,
   InboundStageCode,
   InboundStageCounts,
   InboundStageGroup,
@@ -14,8 +15,12 @@ import type {
  * 검사 결과·입고 전표·적치 작업을 조합해 단계를 지어내는 코드는 두지 않는다.
  */
 
-/** 묶음의 차례 — 흐름 순서다. 앞에 있을수록 「뒤처진」 것이다(검사가 안 끝난 LOT 이 입고 대기 LOT 보다 앞 단계). */
+/**
+ * 묶음의 차례 — 흐름 순서다. 앞에 있을수록 「뒤처진」 것이다(검사가 안 끝난 LOT 이 입고 대기 LOT 보다 앞 단계).
+ * 라벨 발행 대기가 맨 앞이다 — LOT 이 있어야 검사 의뢰도 입고도 할 수 있다.
+ */
 export const STAGE_GROUPS: readonly InboundStageGroup[] = [
+  'LABEL',
   'INSPECTION',
   'HELD',
   'RECEIPT',
@@ -23,6 +28,7 @@ export const STAGE_GROUPS: readonly InboundStageGroup[] = [
 ];
 
 const GROUP_OF: Record<InboundStageCode, InboundStageGroup | null> = {
+  LABEL_PENDING: 'LABEL',
   INSPECTION_REQUIRED: 'INSPECTION',
   INSPECTION_REQUESTED: 'INSPECTION',
   INSPECTION_IN_PROGRESS: 'INSPECTION',
@@ -48,6 +54,8 @@ export const stageGroupOf = (code: string): InboundStageGroup | null =>
 export type StageTone = 'idle' | 'info' | 'success' | 'error' | 'warning';
 
 const TONE_OF: Record<InboundStageCode, StageTone> = {
+  /* 라벨 발행은 POP 의 일 — 적치(PDA)와 같은 「다른 곳의 할 일」 색이다. */
+  LABEL_PENDING: 'idle',
   /* 검사 의뢰 전은 **이 화면의 할 일**(IQC 의뢰 요청)이라 입고 대기와 같은 파랑이다. */
   INSPECTION_REQUIRED: 'info',
   INSPECTION_REQUESTED: 'warning',
@@ -63,6 +71,7 @@ const TONE_OF: Record<InboundStageCode, StageTone> = {
 export const stageTone = (code: string): StageTone => (isStageCode(code) ? TONE_OF[code] : 'idle');
 
 const GROUP_TONE: Record<InboundStageGroup, StageTone> = {
+  LABEL: 'idle',
   INSPECTION: 'warning',
   HELD: 'error',
   RECEIPT: 'info',
@@ -70,6 +79,13 @@ const GROUP_TONE: Record<InboundStageGroup, StageTone> = {
 };
 
 export const stageGroupTone = (group: InboundStageGroup): StageTone => GROUP_TONE[group];
+
+/**
+ * 서버가 센 묶음만 흐름 순서로 — 칩 줄이 쓴다. 앞선 서버는 라벨 발행 대기를 세지 않아(키가 없다) 그 칩이 서지 않는다.
+ * 센 묶음은 0 이어도 선다 — 「보류 0」이 보여야 보류가 없음을 안다.
+ */
+export const countedGroups = (counts: InboundStageCounts): InboundStageGroup[] =>
+  STAGE_GROUPS.filter((group) => counts[group] !== undefined);
 
 /** 수가 있는 묶음만 흐름 순서로. */
 export const presentGroups = (counts: InboundStageCounts): InboundStageGroup[] =>
@@ -98,8 +114,13 @@ export const stageLead = (counts: InboundStageCounts): StageLead | null => {
 export const hasStageCounts = (rows: readonly PurchaseOrderSummary[]): boolean =>
   rows.some((row) => row.inboundStageCounts !== undefined);
 
+/** LOT 이 붙은 줄인가 — 라벨 미부착 입하 줄(`LABEL_PENDING`)은 LOT 이 없다. */
+export const hasLot = (lot: InboundLotProgress): lot is IssuedLotProgress =>
+  lot.lotId !== null && lot.lotNo !== null;
+
 /**
  * LOT 을 발주 라인별로 묶는다. 한 라인 안은 **입하 일시 → LOT 번호** 순이다 — 먼저 들어온 것이 위다.
+ * LOT 이 없는 줄(라벨 미부착)은 같은 입하 일시 안에서 입하 라인 순이다.
  * 라인에 없는 LOT(서버가 다른 라인 번호를 실었다)은 어느 줄 아래에도 서지 않는다.
  */
 export const progressByLine = (
@@ -117,7 +138,8 @@ export const progressByLine = (
     bucket.sort(
       (left, right) =>
         left.receiptDatetime.localeCompare(right.receiptDatetime) ||
-        left.lotNo.localeCompare(right.lotNo),
+        (left.lotNo ?? '').localeCompare(right.lotNo ?? '') ||
+        left.inboundReceiptLineId - right.inboundReceiptLineId,
     );
   }
 
@@ -162,11 +184,13 @@ export const toLineTableRows = (
     ];
   });
 
-/** React key — 화면에 나오지 않는다. */
+/** React key — 화면에 나오지 않는다. LOT 이 없는 줄은 입하 라인으로 가린다. */
 export const lineTableRowId = (row: LineTableRow): string =>
   row.kind === 'line'
     ? String(row.line.purchaseOrderLineId)
-    : `${String(row.line.purchaseOrderLineId)}:lot:${String(row.lot.lotId)}`;
+    : row.lot.lotId === null
+      ? `${String(row.line.purchaseOrderLineId)}:receipt-line:${String(row.lot.inboundReceiptLineId)}`
+      : `${String(row.line.purchaseOrderLineId)}:lot:${String(row.lot.lotId)}`;
 
 /** LOT 이 딸린 라인 번호 전부 — 「모두 접기」가 접는 대상이다. */
 export const linesWithLots = (

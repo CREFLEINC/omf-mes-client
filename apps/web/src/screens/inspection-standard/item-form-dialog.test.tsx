@@ -23,6 +23,8 @@ const renderDialog = (overrides: Partial<Parameters<typeof ItemFormDialog>[0]> =
       onChange={onChange}
       fieldErrors={{}}
       fieldWarnings={{}}
+      dataTypeOptions={[{ value: 'NUMERIC', label: '수치' }]}
+      inspectionMethodOptions={[{ value: 'MEASUREMENT', label: '측정' }]}
       uomOptions={[{ value: '41', label: 'EA · 개' }]}
       equipmentOptions={[{ value: '6001', label: '합성 설비 A' }]}
       isSubmitting={false}

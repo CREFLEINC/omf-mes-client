@@ -23,6 +23,7 @@ import {
   activeStatusChip,
   statusChipChoice,
 } from '../quality-approval/type-tabs';
+import { RelatedLink } from '../quality-approval/related-link';
 import { QUALITY_APPROVAL_TYPE_CODES } from '../quality-approval/code-options';
 import {
   EMPTY_FILTERS as QUALITY_APPROVAL_EMPTY_FILTERS,
@@ -92,6 +93,10 @@ import {
 
 const t = messages.iqcSkipApproval;
 
+/** 「다음 할 일」이 여는 화면(#193) — 반려 뒤 수입검사, 실행 뒤 자재 입고 처리. */
+const IQC_INSPECTION_PATH = '/logistics/iqc-inspection';
+const GOODS_RECEIPT_PATH = '/logistics/goods-receipt';
+
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ITEMS: ApprovalRequest[] = [];
 
@@ -150,11 +155,15 @@ export const IqcSkipApprovalScreen = () => {
   const navigate = useNavigate();
   /* 두 구획이 창 바닥에서 멈추고, 가운데 막대로 고른 폭은 다음에 들어와도 남는다(입하 예정 조회와 같다). */
   const { splitRef, aboveRef } = useFitToViewport();
-  const split = usePaneSplit('omf-mes:iqc-skip-approval:split', 0.4);
   const paneLayout = usePaneLayout('omf-mes:iqc-skip-approval:layout');
+  /* 좌우 배치는 폭, 상하 배치는 높이를 따로 기억한다(품질 승인 처리와 같다 · #193). */
+  const sideSplit = usePaneSplit('omf-mes:iqc-skip-approval:split', 0.4);
+  const stackSplit = usePaneSplit('omf-mes:iqc-skip-approval:stack-split', 0.4);
+  const split = paneLayout.layout === 'stack' ? stackSplit : sideSplit;
   const { session } = useSession();
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다 — 품질 승인 처리를 못 보면 탭을 세우지 않는다. */
-  const canOpenQualityApprovals = toWebAccess(session?.permissions).allows(QUALITY_APPROVALS_PATH);
+  const access = toWebAccess(session?.permissions);
+  const canOpenQualityApprovals = access.allows(QUALITY_APPROVALS_PATH);
 
   /**
    * **주소 키의 수명 — 무엇이 바뀔 때 무엇을 비우는가.**
@@ -840,23 +849,27 @@ export const IqcSkipApprovalScreen = () => {
          * 인라인 오류는 **로컬 판정이 먼저**다: 방금 사용자가 부딪힌 벽이 지난 서버 응답보다
          * 지금 무엇을 해야 하는지를 정확히 말한다.
          */}
-        <DecisionPane
-          isMyTurn={request.isMyTurn}
-          comment={comment}
-          onChangeComment={changeComment}
-          commentError={localCommentError ?? serverCommentError}
-          isLocked={isLocked}
-          onApprove={() => {
-            setDialogKind('approve');
-          }}
-          onReject={() => {
-            setDialogKind('reject');
-          }}
-          banner={decisionBanner}
-        />
+        {/* 내 결재 차례가 아니면 조회만 한다 — 결재 구획을 세우지 않는다(#193). 보내는 중·보낸 결과 안내는 남긴다. */}
+        {(request.isMyTurn || isLocked || decisionError !== null) && (
+          <DecisionPane
+            isMyTurn={request.isMyTurn}
+            comment={comment}
+            onChangeComment={changeComment}
+            commentError={localCommentError ?? serverCommentError}
+            isLocked={isLocked}
+            onApprove={() => {
+              setDialogKind('approve');
+            }}
+            onReject={() => {
+              setDialogKind('reject');
+            }}
+            banner={decisionBanner}
+          />
+        )}
         {/* 승인된 IQC 생략만 실행 구획이 선다 — 판정은 `target.ts` 한 곳이 한다(대상 유형 코드로 가르지 않는다). */}
         {skipLotId !== null && (
           <SkipExecutePane
+            compact={messages.iqcSkipApproval.skipExecute.compact}
             state={judgeSkipExecute(skipLot)}
             isSaving={skipExecuteWrite.isSaving}
             onExecute={() => {
@@ -865,6 +878,34 @@ export const IqcSkipApprovalScreen = () => {
             banner={<SaveErrorBanner error={skipExecuteWrite.error} />}
           />
         )}
+        {/*
+         * 「다음 할 일」(#193 · 품질 승인 처리와 같다) — 반려면 수입검사로, 생략을 실행했으면 자재 입고 처리로 잇는다.
+         * 생략 재요청은 PDA 몫이라 관리웹에서 잇지 않는다. 그 화면 권한이 없으면 세우지 않는다.
+         */}
+        {request.statusCode === 'REJECTED'
+          ? access.allows(IQC_INSPECTION_PATH) && (
+              <RelatedLink
+                heading={messages.qualityApproval.next.heading}
+                value={messages.qualityApproval.next.iqcRejected}
+                to={IQC_INSPECTION_PATH}
+                label={messages.qualityApproval.next.openIqcInspection}
+                alert={{
+                  title: messages.qualityApproval.next.iqcRejectedTitle,
+                  note: messages.qualityApproval.next.iqcRejectedNote,
+                }}
+              />
+            )
+          : skipLotId !== null &&
+            judgeSkipExecute(skipLot).kind === 'executed' &&
+            access.allows(GOODS_RECEIPT_PATH) && (
+              <RelatedLink
+                heading={messages.qualityApproval.next.heading}
+                value={messages.qualityApproval.next.iqcDone}
+                to={GOODS_RECEIPT_PATH}
+                label={messages.qualityApproval.next.openGoodsReceipt}
+                alert={{ title: messages.qualityApproval.next.iqcDoneTitle, tone: 'success' }}
+              />
+            )}
       </>
     );
   };
@@ -1029,6 +1070,7 @@ export const IqcSkipApprovalScreen = () => {
           label={messages.qualityApproval.splitter}
           ratio={split.ratio}
           onChange={split.commit}
+          orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
         />
 
         {/*

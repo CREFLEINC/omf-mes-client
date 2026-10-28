@@ -21,7 +21,6 @@ import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen
 import { MaterialIssueRequestScreen } from '../screens/material-issue-request/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
 import { LotTraceScreen } from '../screens/lot-trace/screen';
-import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-redirect';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
@@ -51,7 +50,6 @@ import { ToolPmResultScreen } from '../screens/tool-pm-result/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
-import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
 import { LotStatusHistoryScreen } from '../screens/lot-status-history/screen';
@@ -78,6 +76,7 @@ import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/
 import { InspectionLevelScreen } from '../screens/inspection-level/screen';
 import { ProductStockStatusScreen } from '../screens/product-stock-status/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
+import { IQC_SKIP_TYPE_CODE } from '../screens/quality-approval/type-tabs';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ExpeditedShipmentScreen } from '../screens/expedited-shipment/screen';
 import { ProductDisposalRequestScreen } from '../screens/product-disposal-request/screen';
@@ -194,8 +193,8 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'logistics/inbound-schedule', element: <InboundScheduleScreen /> },
       /*
-       * W-01-03 「입하 등록」 — **화면이 아니라 입하 예정 조회의 창이다**(사용자 지시 2026-10-21 — 입하·입고 일을
-       * 그 화면으로 모은다). 옛 「초과 입하 분리」 주소는 즐겨찾기가 죽지 않게 그 창으로 옮겨 준다.
+       * W-01-03 「입하 등록」 — **화면이 아니라 입고 관리의 라인 표에서 바로 한다**(사용자 지시 2026-10-24 · 옛 창은
+       * 걷었다). 옛 「초과 입하 분리」 주소는 즐겨찾기가 죽지 않게 입고 관리로 옮겨 준다(고른 발주 `po` 는 그대로).
        */
       { path: 'logistics/over-receipt-split', element: <OverReceiptSplitRedirect /> },
       /*
@@ -233,10 +232,14 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'logistics/iqc-inspection', element: <IqcInspectionScreen /> },
       /*
-       * W-01-10 — 같은 규칙(사이드바 섹션)을 따르고 차례도 업무 순서다: 도착을 처리한 뒤
-       * (입하 등록) 창고로 받아들이고(정상품 입하 처리) 그 결과를 재고에서 확인한다.
+       * W-01-10 「입고 처리」 — **화면이 아니라 입고 관리의 LOT 줄에서 여는 창이다**(사용자 지시 2026-10-23 탭 합치기).
+       * 옛 「자재 입고 처리」 주소는 즐겨찾기가 죽지 않게 입고 관리로 옮겨 준다. 옛 주소는 입하 전표를 골랐지만
+       * 창은 LOT 하나로 서므로 조건은 옮기지 않는다. 차례는 업무 순서(입하 등록 → 입고 → 재고)를 따른다.
        */
-      { path: 'logistics/goods-receipt', element: <GoodsReceiptScreen /> },
+      {
+        path: 'logistics/goods-receipt',
+        element: <Navigate to="/logistics/inbound-schedule" replace />,
+      },
       /*
        * W-01-07 — 앞머리는 **사이드바 섹션(도메인)을 따른다.** 계약 경로와 같아지는 경우가
        * 많지만 그것이 근거는 아니다: 이 화면의 계약 경로는 `/inventory/**`·`/trace/**`인데
@@ -301,7 +304,14 @@ export const appRouter = createBrowserRouter([
        * 결재할 수 없는 판정 화면을 노출하면 승인자가 **판단 근거를 다 보고서도 아무것도
        * 할 수 없다**(정책 §5.2 — 접근 불가능한 경계).
        */
-      { path: 'logistics/iqc-skip-approval', element: <IqcSkipApprovalScreen /> },
+      /*
+       * 긴급 IQC 생략 한도승인(W-01-02) — 품질 승인 처리의 「IQC (수입검사) 생략」 탭이다. 전체 탭과 같은 화면 · 같은
+       * 조회 조건을 쓰고 유형만 고정한다(#193 · 사용자 지시 2026-10-27).
+       */
+      {
+        path: 'logistics/iqc-skip-approval',
+        element: <QualityApprovalScreen fixedTypeCode={IQC_SKIP_TYPE_CODE} />,
+      },
       /*
        * W-01-13 — 앞머리는 같은 규칙(사이드바 섹션)을 따른다. 계약 경로도 `/logistics/**`라 둘이
        * **우연히 같지만** 근거는 여기서도 섹션이다 — 계약을 근거로 삼았다면 W-01-07·W-01-12에서

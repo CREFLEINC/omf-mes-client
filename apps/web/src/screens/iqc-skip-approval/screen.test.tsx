@@ -1652,14 +1652,21 @@ describe('결재 — 《승인 시 결과》 구획', () => {
     t.decision.outcome.inspectionPending,
   ];
 
-  it('버튼 위 상시 자리에 서고 내 차례가 아니어도 사라지지 않는다', async () => {
-    await renderDecision(decisionRoutes(), '?rq=9002');
+  it('내 차례면 버튼 위 상시 자리에 선다', async () => {
+    await renderDecision();
 
     for (const sentence of outcomeSentences) {
       expect(within(outcomePane()).getByText(sentence)).toBeVisible();
     }
-    /* 짝 방향 — 그 상태에서 버튼이 실제로 잠겨 있다(문구만 남고 잠금이 풀린 것이 아니다). */
-    expect(approveButton()).toBeDisabled();
+  });
+
+  /* 내 차례가 아니면 조회만 한다 — 결재 구획째 서지 않는다(#193). */
+  it('내 차례가 아니면 결재 구획이 서지 않는다', async () => {
+    renderScreen(decisionRoutes(), '?rq=9002');
+
+    await screen.findByRole('group', { name: t.panes.progress });
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.decision.approve })).toBeNull();
   });
 
   it('결재에 성공한 뒤 알림에는 그 문장이 없다', async () => {
@@ -1707,16 +1714,11 @@ describe('결재 — 내 차례 판정(첫째 겹)', () => {
    * **서버 값을 따른다.** 9002는 단계 배열로 다시 계산하면 「내 차례」가 되는데
    * 서버가 아니라고 했다 — 배열을 훑는 코드가 들어오면 여기서 드러난다.
    */
-  it('서버가 아니라고 하면 배열로 맞아도 잠기고 요청이 나가지 않는다', async () => {
-    const { requests, user } = await renderDecision(decisionRoutes(), '?rq=9002');
+  it('서버가 아니라고 하면 배열로 맞아도 결재 구획이 서지 않고 요청이 나가지 않는다', async () => {
+    const { requests } = renderScreen(decisionRoutes(), '?rq=9002');
 
-    expect(approveButton()).toBeDisabled();
-    expect(rejectButton()).toBeDisabled();
-    expect(approveButton()).toHaveAccessibleDescription(t.progress.notMyTurn);
-
-    await user.click(approveButton());
-    await user.click(rejectButton());
-
+    await screen.findByRole('group', { name: t.panes.progress });
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
     expect(writeRequests(requests)).toHaveLength(0);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
@@ -1729,11 +1731,12 @@ describe('결재 — 내 차례 판정(첫째 겹)', () => {
   });
 
   /** 승인자 이름이 없어 멈춘 요청도 **오류가 아니라 잠긴 안내**다 — 기다리는 것이 정상이다. */
-  it('멈춘 요청에서도 경보를 세우지 않고 사유만 붙인다', async () => {
-    await renderDecision(decisionRoutes(), '?rq=9003');
+  it('멈춘 요청에서도 경보를 세우지 않고 결재 구획을 세우지 않는다', async () => {
+    renderScreen(decisionRoutes(), '?rq=9003');
 
-    expect(within(decisionPane()).queryByRole('alert')).toBeNull();
-    expect(rejectButton()).toHaveAccessibleDescription(t.progress.notMyTurn);
+    await screen.findByRole('group', { name: t.panes.progress });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
   });
 });
 
@@ -2127,8 +2130,8 @@ describe('결재 — 성공한 뒤', () => {
     /* 재조회가 아직 오지 않았는데도 결재 응답의 값이 보인다. */
     expect(await screen.findByText('합성 결재를 마친 의견')).toBeVisible();
     expect(screen.getByText(DECIDED_STATUS_CODE)).toBeVisible();
-    /* 《승인 시 결과》는 결재 뒤에도 그대로다 — 상시 구획의 뜻이 그것이다. */
-    expect(within(outcomePane()).getByText(t.decision.outcome.statusOnly)).toBeVisible();
+    /* 결재를 마쳐 내 차례가 아니게 되면 조회만 한다 — 결재 구획이 걷힌다(#193). */
+    expect(screen.queryByRole('group', { name: t.panes.decision })).toBeNull();
 
     release();
   });
@@ -2398,7 +2401,12 @@ describe('결재 — 의견 초안이 매인 대상', () => {
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9002');
     });
-    expect(commentBox()).toHaveValue('');
+    /* 9002 는 내 차례가 아니라 칸이 없다 — 9001 로 돌아와 초안이 비었는지 본다(#193). */
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-001') }));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('rq=9001');
+    });
+    expect(await screen.findByLabelText(t.decision.commentLabel)).toHaveValue('');
   });
 
   /** 짝 방향 — 같은 요청을 보는 동안에는 지워지지 않는다(응답이 다시 와도 그렇다). */
@@ -2433,7 +2441,8 @@ describe('결재 — 의견 초안이 매인 대상', () => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
     expect(writeRequests(requests)).toHaveLength(0);
-    expect(commentBox()).toHaveValue('');
+    /* 9002 는 내 차례가 아니라 의견 칸째 없다(#193). */
+    expect(screen.queryByLabelText(t.decision.commentLabel)).toBeNull();
   });
 });
 
@@ -2862,7 +2871,10 @@ describe('IqcSkipApprovalScreen — IQC 생략 실행', () => {
 
     const pane = await screen.findByRole('region', { name: t.skipExecute.heading });
     // LOT 을 읽는 동안은 버튼이 없다(확인 중) — 검사 대기를 받은 뒤에 선다.
-    await user.click(await within(pane).findByRole('button', { name: t.skipExecute.action }));
+    /* 한 줄 압축형(#193) — 여는 단추는 짧은 「실행」, 확인 창의 단추는 종전 이름 그대로다. */
+    await user.click(
+      await within(pane).findByRole('button', { name: t.skipExecute.compact.action }),
+    );
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: t.skipExecute.action }));
 
@@ -2883,8 +2895,8 @@ describe('IqcSkipApprovalScreen — IQC 생략 실행', () => {
     );
 
     const pane = await screen.findByRole('region', { name: t.skipExecute.heading });
-    expect(await within(pane).findByText(t.skipExecute.executed)).toBeInTheDocument();
-    expect(within(pane).queryByRole('button', { name: t.skipExecute.action })).toBeNull();
+    expect(await within(pane).findByText(t.skipExecute.compact.done)).toBeInTheDocument();
+    expect(within(pane).queryByRole('button', { name: t.skipExecute.compact.action })).toBeNull();
   });
 
   it('LOT 이 검사 대기가 아니면(불량 등) 실행할 수 없다고 말한다', async () => {
@@ -2897,7 +2909,7 @@ describe('IqcSkipApprovalScreen — IQC 생략 실행', () => {
     expect(
       await within(pane).findByText(t.skipExecute.notPending('DEFECTIVE')),
     ).toBeInTheDocument();
-    expect(within(pane).queryByRole('button', { name: t.skipExecute.action })).toBeNull();
+    expect(within(pane).queryByRole('button', { name: t.skipExecute.compact.action })).toBeNull();
   });
 
   it('승인 전 요청에는 실행 구획이 없다', async () => {

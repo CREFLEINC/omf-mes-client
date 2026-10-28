@@ -403,9 +403,6 @@ export const oqcInspection = {
    * 시리얼 판정은 시리얼당 한 줄로 남는다. 재검 회차는 1차를 그대로 두고 최종만 바꾼다.
    */
   serials: {
-    openByScan: '시리얼 번호 스캔',
-    openByScanHelp: '시리얼 번호를 입력하면 해당 OQC 검사 의뢰를 조회합니다.',
-    openByScanPlaceholder: '시리얼 번호 스캔 또는 번호를 입력하세요',
     openByScanNotFound: '등록되지 않은 시리얼 번호입니다.',
     /** 관리웹 판정 화면의 「시리얼별 검사 결과」 구획(#136). POP 는 위 공용 키를 그대로 쓴다. */
     judge: {

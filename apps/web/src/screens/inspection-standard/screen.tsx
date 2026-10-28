@@ -15,7 +15,13 @@ import { useSearchParams } from 'react-router';
 import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
-import { selectableOptions } from './code-options';
+import {
+  DATA_TYPE_CODE_GROUP,
+  FREQUENCY_INTERVAL_UOM_CODE_GROUP,
+  INSPECTION_FREQUENCY_CODE_GROUP,
+  INSPECTION_METHOD_CODE_GROUP,
+  selectableOptions,
+} from './code-options';
 import { DisabledAction } from './disabled-action';
 import { readFilters, readPage, toSearchParams } from './filters';
 import { ItemFormDialog } from './item-form-dialog';
@@ -54,6 +60,7 @@ import {
   useInspectionPlanList,
   useInspectionPlanVersionDetail,
   useInspectionPlanVersionList,
+  useCodeValueOptions,
   useEquipmentOptions,
   useItemOptions,
   useProcessOptions,
@@ -477,7 +484,44 @@ export const InspectionStandardScreen = () => {
     onDone: () => finishVersionTransition(t.result.obsoleted),
   });
 
-  const versionTransitionWrite = versionTransition === 'obsolete' ? obsoleteWrite : confirmWrite;
+  /*
+   * 작성 취소는 버전을 지운다 — 지운 버전에 머물면 상세가 404가 된다.
+   * 목록은 판 번호 내림차순이므로(계약) 남은 첫 행이 최신이다.
+   */
+  const discardWrite = useMasterWrite<void, unknown>({
+    request: (_variables, headers) =>
+      client.DELETE('/quality/inspection-plan-versions/{inspectionPlanVersionId}', {
+        params: {
+          path: { inspectionPlanVersionId: selectedVersionId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    // 계약이 이 경로에 If-Match를 요구하지 않는다.
+    etagPath: null,
+    invalidateKeys: [versionKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      const remaining = versions.find(
+        (version) => version.inspectionPlanVersionId !== selectedVersionId,
+      );
+      resetVersionEditing();
+      if (remaining === undefined) {
+        const next = new URLSearchParams(searchParams);
+        next.delete('ver');
+        setSearchParams(next);
+      } else {
+        selectVersion(remaining.inspectionPlanVersionId);
+      }
+      toast.show({ variant: 'success', description: t.result.discarded });
+    },
+  });
+
+  const versionTransitionWrite =
+    versionTransition === 'obsolete'
+      ? obsoleteWrite
+      : versionTransition === 'discard'
+        ? discardWrite
+        : confirmWrite;
 
   /*
    * 검사 항목은 화면의 로컬 초안 목록으로 다룬다 — 순서 컬럼에 유일 제약이 있어
@@ -537,6 +581,10 @@ export const InspectionStandardScreen = () => {
 
   const uomOptions = useUomOptions();
   const equipmentOptions = useEquipmentOptions();
+  const inspectionFrequencyOptions = useCodeValueOptions(INSPECTION_FREQUENCY_CODE_GROUP);
+  const frequencyIntervalUomOptions = useCodeValueOptions(FREQUENCY_INTERVAL_UOM_CODE_GROUP);
+  const dataTypeOptions = useCodeValueOptions(DATA_TYPE_CODE_GROUP);
+  const inspectionMethodOptions = useCodeValueOptions(INSPECTION_METHOD_CODE_GROUP);
 
   /**
    * 다른 버전으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다.
@@ -552,6 +600,7 @@ export const InspectionStandardScreen = () => {
     versionWrite.reset();
     confirmWrite.reset();
     obsoleteWrite.reset();
+    discardWrite.reset();
     itemsWrite.reset();
     setVersionTransition(null);
     setVersionCreateValues(null);
@@ -906,7 +955,15 @@ export const InspectionStandardScreen = () => {
     return versionStatus.status === 'confirmed' ? null : t.actionReasons.obsoleteNeedsConfirmed;
   })();
 
-  const isVersionTransitionRunning = confirmWrite.isSaving || obsoleteWrite.isSaving;
+  /** 작성 취소는 작성중 버전에만 성립한다 — 확정된 버전은 폐기가 그 길이다. */
+  const discardDisabledReason = ((): string | null => {
+    if (versionStatus === null) return t.actionReasons.transitionNeedsVersion;
+
+    return versionStatus.isEditable ? null : t.actionReasons.discardNeedsDraft;
+  })();
+
+  const isVersionTransitionRunning =
+    confirmWrite.isSaving || obsoleteWrite.isSaving || discardWrite.isSaving;
 
   const renderVersionTransitionActions = (): ReactNode => (
     <>
@@ -942,6 +999,23 @@ export const InspectionStandardScreen = () => {
         </div>
       ) : (
         <DisabledAction label={t.actions.obsolete} reason={obsoleteDisabledReason} />
+      )}
+
+      {discardDisabledReason === null ? (
+        <div className="field-cell">
+          <Button
+            variant="outlined"
+            disabled={isVersionTransitionRunning}
+            onClick={() => {
+              discardWrite.reset();
+              setVersionTransition('discard');
+            }}
+          >
+            {t.actions.discard}
+          </Button>
+        </div>
+      ) : (
+        <DisabledAction label={t.actions.discard} reason={discardDisabledReason} />
       )}
 
       {/* 계약에 경로가 없다. 감추지 않고 사유와 함께 비활성으로 둔다. */}
@@ -1094,6 +1168,12 @@ export const InspectionStandardScreen = () => {
    * 우 중단 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
+  /** 버전 폼의 공통코드 선택지를 받지 못했으면 선택칸 아래에 알린다 — 감추면 선택칸이 이유 없이 빈다. */
+  const versionCodeOptionsNote =
+    inspectionFrequencyOptions.isError || frequencyIntervalUomOptions.isError
+      ? t.optionsLoadFailed
+      : undefined;
+
   const renderVersionFormPane = (): ReactNode => {
     if (versionCreateValues !== null) {
       return (
@@ -1105,6 +1185,15 @@ export const InspectionStandardScreen = () => {
           values={versionCreateValues}
           onChange={handleChangeVersionCreateValues}
           fieldErrors={{ ...versionCreateWrite.fieldErrors, ...versionCreateFieldErrors }}
+          inspectionFrequencyOptions={optionsFor(
+            inspectionFrequencyOptions,
+            versionCreateValues.inspectionFrequencyCode,
+          )}
+          frequencyIntervalUomOptions={optionsFor(
+            frequencyIntervalUomOptions,
+            versionCreateValues.frequencyIntervalUomCode,
+          )}
+          codeOptionsNote={versionCodeOptionsNote}
           /* 첫 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
           banner={<PlanActionBanner error={versionCreateWrite.error} />}
           isDirty={!isSameVersionValues(versionCreateValues, emptyVersionFormValues())}
@@ -1157,6 +1246,15 @@ export const InspectionStandardScreen = () => {
         onChange={handleChangeVersionValues}
         // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
         fieldErrors={{ ...versionWrite.fieldErrors, ...versionFieldErrors }}
+        inspectionFrequencyOptions={optionsFor(
+          inspectionFrequencyOptions,
+          versionFormState.values.inspectionFrequencyCode,
+        )}
+        frequencyIntervalUomOptions={optionsFor(
+          frequencyIntervalUomOptions,
+          versionFormState.values.frequencyIntervalUomCode,
+        )}
+        codeOptionsNote={versionCodeOptionsNote}
         banner={
           <PlanActionBanner error={versionWrite.error} onReload={handleReloadVersionDetail} />
         }
@@ -1198,7 +1296,12 @@ export const InspectionStandardScreen = () => {
    * 알리지 않으면 단위 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
    */
   const itemOptionsNotice = (() => {
-    const lookups: LookupResult[] = [uomOptions, equipmentOptions];
+    const lookups: LookupResult[] = [
+      uomOptions,
+      equipmentOptions,
+      dataTypeOptions,
+      inspectionMethodOptions,
+    ];
 
     if (lookups.some((lookup) => lookup.isError)) {
       return (
@@ -1385,6 +1488,11 @@ export const InspectionStandardScreen = () => {
           fieldErrors={itemDialogErrors}
           /* 경고는 확인을 막지 않는다 — 계약이 경고 등급으로 정했다(A-9 ⓑ). */
           fieldWarnings={warnItemDraft(itemDialog.values)}
+          dataTypeOptions={optionsFor(dataTypeOptions, itemDialog.values.dataTypeCode)}
+          inspectionMethodOptions={optionsFor(
+            inspectionMethodOptions,
+            itemDialog.values.inspectionMethodCode,
+          )}
           uomOptions={optionsFor(uomOptions, itemDialog.values.uomId)}
           equipmentOptions={optionsFor(
             equipmentOptions,
@@ -1407,6 +1515,7 @@ export const InspectionStandardScreen = () => {
             setVersionTransition(null);
             confirmWrite.reset();
             obsoleteWrite.reset();
+            discardWrite.reset();
           }}
           onConfirm={() => {
             versionTransitionWrite.write();

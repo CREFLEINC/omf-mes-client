@@ -67,7 +67,10 @@ describe('toListQuery', () => {
   });
 
   it('비어 있는 조건은 키 자체를 싣지 않는다', () => {
-    const query = toListQuery({ itemId: 2101, keyword: 'IR-OQC', pendingOnly: true }, 2);
+    const query = toListQuery(
+      { itemId: 2101, keyword: 'IR-OQC', pendingOnly: true, statusCode: null },
+      2,
+    );
 
     expect(query.itemId).toBe(2101);
     expect(query.q).toBe('IR-OQC');
@@ -86,7 +89,10 @@ describe('toSearchParams', () => {
   });
 
   it('고른 의뢰를 싣지 않는다 — 조건이 바뀌면 그 의뢰가 목록에 없을 수 있다', () => {
-    const params = toSearchParams({ itemId: 2101, keyword: 'IR', pendingOnly: true }, 3);
+    const params = toSearchParams(
+      { itemId: 2101, keyword: 'IR', pendingOnly: true, statusCode: null },
+      3,
+    );
 
     expect(params.get('it')).toBe('2101');
     expect(params.get('q')).toBe('IR');

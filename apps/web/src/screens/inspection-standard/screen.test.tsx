@@ -482,10 +482,50 @@ const planCreateRoute = (
   respond,
 });
 
+/** 공통코드 그룹별 값(서버 시드와 같은 코드). 이름은 시험용이다. */
+const CODE_VALUES: Record<string, { code: string; codeName: string }[]> = {
+  INSPECTION_FREQUENCY: [
+    { code: 'WORK_ORDER', codeName: '작업지시' },
+    { code: 'PRODUCTION_LOT', codeName: '생산 LOT' },
+  ],
+  INSPECTION_FREQUENCY_INTERVAL_UOM: [
+    { code: 'HOUR', codeName: '시간' },
+    { code: 'QUANTITY', codeName: '수량' },
+  ],
+  INSPECTION_ITEM_SPEC_DATA_TYPE: [
+    { code: 'NUMERIC', codeName: '수치' },
+    { code: 'TEXT', codeName: '텍스트' },
+    { code: 'BOOLEAN', codeName: '불리언' },
+  ],
+  INSPECTION_ITEM_SPEC_METHOD: [
+    { code: 'VISUAL', codeName: '육안' },
+    { code: 'MEASUREMENT', codeName: '측정' },
+    { code: 'FUNCTIONAL', codeName: '기능' },
+  ],
+};
+
+const codeValuesRoute = (): StubRoute => ({
+  match: (request) => isGet(request, '/mdm/code-values'),
+  respond: (request) => {
+    const group = new URL(request.url).searchParams.get('codeGroupCode') ?? '';
+    const items = (CODE_VALUES[group] ?? []).map((value, index) => ({
+      codeValueId: 9000 + index,
+      codeGroupId: 1,
+      code: value.code,
+      codeName: value.codeName,
+      displayOrder: index + 1,
+      isActive: true,
+    }));
+
+    return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
+  },
+});
+
 const lookupRoutes = (): StubRoute[] => [
   itemOptionsRoute(),
   processOptionsRoute(),
   routingOptionsRoute(),
+  codeValuesRoute(),
 ];
 
 const planForm = (): HTMLElement => screen.getByRole('region', { name: '기준 정보' });
@@ -1295,7 +1335,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     await user.click(screen.getByRole('option', { name: '샘플링(LOT 단위)' }));
     await user.type(within(form).getByLabelText(/샘플 비율/), '10');
     await user.click(within(form).getByRole('combobox', { name: '검사 주기' }));
-    await user.click(screen.getByRole('option', { name: '선택지 준비 중' }));
+    await user.click(screen.getByRole('option', { name: '생산 LOT' }));
     await user.click(within(form).getByRole('button', { name: '버전 등록' }));
 
     await screen.findByText('등록했습니다');
@@ -1310,6 +1350,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     expect(body.effectiveFrom).toBe('2026-08-01');
     expect(body.samplingMethodCode).toBe('SAMPLE_BY_LOT');
     expect(body.samplingRatio).toBe(10);
+    expect(body.inspectionFrequencyCode).toBe('PRODUCTION_LOT');
     expect('planVersion' in body).toBe(false);
     expect('statusCode' in body).toBe(false);
   });
@@ -1921,6 +1962,44 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(posts[0]?.headers.get('If-Match')).toBeNull();
   });
 
+  it('작성중 버전의 작성 취소는 확인 창을 거쳐 DELETE로 나가고, 남은 최신 버전으로 옮긴다', async () => {
+    const { requests, user } = renderSelectedVersion([
+      {
+        match: (request) =>
+          request.method === 'DELETE' && new URL(request.url).pathname === VERSION_DETAIL_PATH,
+        respond: () => new Response(null, { status: 204 }),
+      },
+    ]);
+
+    const form = await awaitVersionForm();
+    await user.click(within(form).getByRole('button', { name: '작성 취소' }));
+    expect(
+      requestsTo(requests, VERSION_DETAIL_PATH).filter((r) => r.method === 'DELETE'),
+    ).toHaveLength(0);
+
+    await user.click(within(await dialog()).getByRole('button', { name: '작성 취소' }));
+    await screen.findByText(t.result.discarded);
+
+    const deletes = requestsTo(requests, VERSION_DETAIL_PATH).filter((r) => r.method === 'DELETE');
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0]?.headers.get('If-Match')).toBeNull();
+    expect(deletes[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    await waitFor(() => {
+      expect(requestsTo(requests, `${VERSIONS_PATH}/4001`).length).toBeGreaterThan(0);
+    });
+  });
+
+  it('확정 버전에서는 작성 취소가 비활성이고 폐기하라고 알린다', async () => {
+    renderSelectedVersion(
+      [versionDetailRoute(inspectionPlanVersionFixtures[1]), itemListRoute(4001)],
+      '?plan=3001&ver=4001',
+    );
+
+    await screen.findByLabelText('샘플 비율(%)');
+    expect(within(versionForm()).getByRole('button', { name: '작성 취소' })).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.discardNeedsDraft)).toBeInTheDocument();
+  });
+
   /* 계약에 경로가 없다. 감추면 「이 화면에는 없는 기능」으로 오해한다. */
   it('버전 비교와 변경 이력은 비활성이고 사유가 보인다', async () => {
     renderSelectedVersion();
@@ -2105,6 +2184,8 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
       ),
     ).toBeInTheDocument();
 
+    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
     expect(await screen.findByText('SYN-ITEM-CODE-09 · 합성 항목 Z')).toBeInTheDocument();
@@ -2121,6 +2202,8 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-01');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
+    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
     expect(
@@ -2218,6 +2301,8 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
+    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
     await user.click(within(itemPane()).getByRole('button', { name: '저장' }));
@@ -2241,6 +2326,41 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     expect(body.items[0]?.inspectionItemSpecId).toBe(5101);
     expect('inspectionItemSpecId' in (body.items[2] ?? {})).toBe(false);
     expect(body.items.every((item) => item.inspectionPlanVersionId === 4002)).toBe(true);
+  });
+
+  /* omf-all-around#194 — 자료형·검사 방법은 공통코드에서 받은 값으로 저장된다(자리표시 값이면 서버가 거절한다). */
+  it('자료형·검사 방법은 공통코드 값에서 골라 저장된다', async () => {
+    const { requests, user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+    const dialogNode = await dialog();
+    await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
+    await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
+
+    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    for (const name of ['수치', '텍스트', '불리언']) {
+      expect(screen.getByRole('option', { name })).toBeInTheDocument();
+    }
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+    await user.click(screen.getByRole('option', { name: '수치' }));
+    await user.click(within(dialogNode).getByRole('combobox', { name: '검사 방법' }));
+    await user.click(screen.getByRole('option', { name: '측정' }));
+    await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
+
+    await user.click(within(itemPane()).getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    const put = requests.find(
+      (request) => request.method === 'PUT' && request.url.pathname === ITEMS_PATH,
+    );
+    const body = JSON.parse(put?.body ?? '{}') as {
+      items: { inspectionItemCode: string; dataTypeCode: string; inspectionMethodCode?: string }[];
+    };
+    const added = body.items.find((item) => item.inspectionItemCode === 'SYN-ITEM-CODE-09');
+
+    expect(added?.dataTypeCode).toBe('NUMERIC');
+    expect(added?.inspectionMethodCode).toBe('MEASUREMENT');
   });
 
   /*
@@ -2378,6 +2498,8 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
+    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
     expect(await screen.findByText('SYN-ITEM-CODE-09 · 합성 항목 Z')).toBeInTheDocument();

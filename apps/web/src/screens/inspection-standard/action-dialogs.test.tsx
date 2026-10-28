@@ -104,6 +104,19 @@ describe('VersionTransitionDialog — 문면 잣대', () => {
     expect(description).toContain('쓸 수 없게 됩니다');
     expect(screen.getByRole('button', { name: t.actions.obsolete })).toBeInTheDocument();
   });
+
+  /** 작성 취소는 폐기와 달리 «지운다» — 되돌릴 수 없음과 미저장 변경의 소실을 함께 말한다. */
+  it('작성 취소가 버전과 항목을 지우고 되돌릴 수 없음을 밝힌다', () => {
+    renderVersionTransition({ kind: 'discard' });
+
+    const description = t.dialog.discardDescription;
+
+    expect(screen.getByRole('dialog', { name: t.dialog.discardTitle })).toBeInTheDocument();
+    expect(screen.getByText(description)).toBeInTheDocument();
+    expect(description).toContain('삭제');
+    expect(description).toContain('되돌릴 수 없습니다');
+    expect(screen.getByRole('button', { name: t.actions.discard })).toBeInTheDocument();
+  });
 });
 
 describe.each([
@@ -169,6 +182,7 @@ describe('검사기준 상태 변경 — 결과 문면 잣대', () => {
     ['사용 중지', t.result.deactivated, '검사기준', '중지'],
     ['확정', t.result.confirmed, '버전', '확정'],
     ['폐기', t.result.obsoleted, '버전', '폐기'],
+    ['작성 취소', t.result.discarded, '버전', '취소'],
   ])('%s 결과가 대상·행위·완료를 말한다', (_name, result, target, action) => {
     expect(result).toContain(target);
     expect(result).toContain(action);

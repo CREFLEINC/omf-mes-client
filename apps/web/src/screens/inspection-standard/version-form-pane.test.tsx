@@ -22,6 +22,8 @@ const renderPane = (overrides: Partial<Parameters<typeof VersionFormPane>[0]> = 
       values={versionToFormValues(inspectionPlanVersionFixtures[0]!)}
       onChange={onChange}
       fieldErrors={{}}
+      inspectionFrequencyOptions={[{ value: 'PRODUCTION_LOT', label: '생산 LOT' }]}
+      frequencyIntervalUomOptions={[{ value: 'HOUR', label: '시간' }]}
       banner={null}
       isDirty={false}
       isSaving={false}
@@ -219,14 +221,12 @@ describe('VersionFormPane — 편집', () => {
     expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
   });
 
-  /* 값 목록이 확정되지 않았다는 사실을 감추지 않는다. */
-  it('자리표시 선택칸에 준비 중 안내가 붙는다', () => {
-    renderPane();
+  /* 선택지를 받지 못했다는 사실을 감추지 않는다 — 감추면 선택칸이 이유 없이 빈다. */
+  it('공통코드 선택지를 받지 못했으면 선택칸에 안내가 붙는다', () => {
+    renderPane({ codeOptionsNote: messages.inspectionStandard.optionsLoadFailed });
 
     expect(
-      screen.getAllByText(
-        '선택지 준비 중입니다. 코드 목록이 확정되면 이 항목에서 고를 수 있습니다.',
-      ).length,
+      screen.getAllByText(messages.inspectionStandard.optionsLoadFailed).length,
     ).toBeGreaterThan(0);
   });
 });

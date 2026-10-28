@@ -3,12 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { LookupSource } from '../../patterns/lookup-display';
 import {
-  DATA_TYPE_OPTIONS,
-  FREQUENCY_INTERVAL_UOM_OPTIONS,
-  INSPECTION_FREQUENCY_OPTIONS,
-  INSPECTION_METHOD_OPTIONS,
+  DATA_TYPE_CODE_GROUP,
+  FREQUENCY_INTERVAL_UOM_CODE_GROUP,
+  INSPECTION_FREQUENCY_CODE_GROUP,
+  INSPECTION_METHOD_CODE_GROUP,
   INSPECTION_TYPE_OPTIONS,
-  PENDING_CODE_VALUE,
   SAMPLING_METHOD_OPTIONS,
   ensureOption,
   inspectionTypeLabel,
@@ -142,17 +141,18 @@ describe('자리표시 상수', () => {
     expect(values(INSPECTION_TYPE_OPTIONS)).toEqual(['IQC', 'PQC', 'OQC']);
   });
 
-  /** 값 목록이 확정되지 않은 코드는 **값을 지어내지 않는다** — 자리표시 한 값만 둔다. */
-  it('값 목록이 미확정인 코드는 자리표시 한 값만 갖는다', () => {
-    const pending = [
-      INSPECTION_FREQUENCY_OPTIONS,
-      FREQUENCY_INTERVAL_UOM_OPTIONS,
-      DATA_TYPE_OPTIONS,
-      INSPECTION_METHOD_OPTIONS,
-    ];
-
-    for (const options of pending) {
-      expect(values(options)).toEqual([PENDING_CODE_VALUE]);
-    }
+  /* omf-all-around#194 — 서버가 저장 값을 검사하는 그룹과 같아야 저장이 통과한다. */
+  it('공통코드로 받는 선택지는 서버가 검사하는 그룹을 가리킨다', () => {
+    expect([
+      INSPECTION_FREQUENCY_CODE_GROUP,
+      FREQUENCY_INTERVAL_UOM_CODE_GROUP,
+      DATA_TYPE_CODE_GROUP,
+      INSPECTION_METHOD_CODE_GROUP,
+    ]).toEqual([
+      'INSPECTION_FREQUENCY',
+      'INSPECTION_FREQUENCY_INTERVAL_UOM',
+      'INSPECTION_ITEM_SPEC_DATA_TYPE',
+      'INSPECTION_ITEM_SPEC_METHOD',
+    ]);
   });
 });

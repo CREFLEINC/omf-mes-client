@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen } from '@testing-library/react';
+import { cleanup, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -59,12 +59,9 @@ const saveButton = () => screen.getByRole('button', { name: t.save });
 /** 이미 만들어진 작성중 회차. 확정 갈래는 회차가 «있어야» 성립한다. */
 const savedRound = toInspectionResultRound(draftRound);
 
-/** 입력 현황의 「합계 / 검사수량」 — 「합계」는 화면에서 감추고 읽기용으로만 둔다. */
-const sumText = (): string | null | undefined =>
-  document.querySelector('.iqc-inspection-progress-sum')?.textContent;
-/** 오른쪽 상태 「미입력 N」 — 이름표와 숫자가 다른 요소라 글자를 이어 읽는다(#133). */
-const statusText = (): string | null | undefined =>
-  document.querySelector('.iqc-inspection-progress-status')?.textContent;
+/** 1단계(검사 수량 입력)를 다 채웠는가 — 합계가 검사수량과 맞으면 단계 머리에 `data-done` 이 선다(#185). */
+const qtyStepDone = (): boolean =>
+  document.querySelector('.iqc-inspection-step-head')?.hasAttribute('data-done') ?? false;
 
 describe('ResultFormPane', () => {
   it('회차를 밝힌다', () => {
@@ -88,37 +85,37 @@ describe('ResultFormPane', () => {
     expect(onChange).toHaveBeenCalledWith({ ...EMPTY_QUANTITY_DRAFT, accepted: '4' });
   });
 
-  it('합계가 맞으면 「입력 완료 500 / 500」 · 미입력 0, 따로 일치 문장은 없다(#133)', () => {
+  it('합계가 맞으면 1단계가 다 채워진 것으로 서고, 따로 일치 문장은 없다(#133 · #185)', () => {
     renderPane({ accepted: '480', rejected: '15', held: '5' });
 
-    expect(sumText()).toBe(`${t.sum} 500 / 500`);
-    expect(statusText()).toBe(`${t.remaining} 0`);
+    expect(qtyStepDone()).toBe(true);
     expect(screen.queryByText('검사수량과 일치합니다.')).not.toBeInTheDocument();
   });
 
-  it('모자라면 「입력 완료 N / M」·미입력·막대로 보이고 따로 문장은 없다(#133)', () => {
+  it('모자라면 1단계가 아직이고 따로 문장은 없다(#133 · #185)', () => {
     renderPane({ accepted: '400', rejected: '0', held: '0' });
 
-    expect(sumText()).toBe(`${t.sum} 400 / 500`);
-    expect(statusText()).toBe(`${t.remaining} 100`);
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '80');
+    expect(qtyStepDone()).toBe(false);
+    /* 모자란 양은 총 검사 수량 옆 「-100」으로 말한다(#185). */
+    expect(screen.getByText(t.shortDelta('100'))).toBeInTheDocument();
     expect(screen.queryByText(/남았습니다/)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.over('100'))).not.toBeInTheDocument();
+    expect(screen.queryByText(t.overDelta('100'))).not.toBeInTheDocument();
   });
 
   it('넘기면 얼마나 넘겼는지 말한다 — 0으로 깎아 감추지 않는다', () => {
     renderPane({ accepted: '600', rejected: '0', held: '0' });
 
-    expect(screen.getByText(t.over('100'))).toBeInTheDocument();
-    /* 음수 잔여(「잔여 -100」)가 아니라 「100 초과」로 말한다(#133). */
-    expect(screen.getByText(t.overBy('100'))).toBeInTheDocument();
+    /* 총 검사 수량 카드에 「+100」으로 넘친 양을 붙인다(#185). */
+    expect(screen.getByText(t.overDelta('100'))).toBeInTheDocument();
+    /* 음수 잔여(「잔여 -100」)로 말하지 않는다(#133). 넘친 것은 다 채운 것이 아니다. */
     expect(screen.queryByText(/-100/)).not.toBeInTheDocument();
+    expect(qtyStepDone()).toBe(false);
   });
 
   it('소수 합이 부동소수 오차로 어긋나지 않는다', () => {
     renderPane({ accepted: '0.1', rejected: '0.2', held: '0' }, null, 0.3);
 
-    expect(statusText()).toBe(`${t.remaining} 0`);
+    expect(qtyStepDone()).toBe(true);
   });
 
   it('오류를 타이핑마다 보이지 않는다 — 「0.5」를 치는 도중 「0.」에서 틀렸다고 하지 않는다', () => {
@@ -143,16 +140,7 @@ describe('ResultFormPane', () => {
     /* 0으로 읽고 세면 abc + 500 + 빈칸 = 500 이 되어 「일치합니다」가 거짓이 된다. */
     renderPane({ accepted: 'abc', rejected: '500', held: '' });
 
-    expect(statusText()).not.toBe(`${t.remaining} 0`);
-  });
-
-  it('셀 수 없으면 합계·잔여도 숫자로 내지 않는다 — 0으로 읽은 합은 그 숫자가 거짓이다', () => {
-    renderPane({ accepted: 'abc', rejected: '500', held: '' });
-
-    const empty = messages.iqcInspection.queue.emptyValue;
-    expect(sumText()).toBe(`${t.sum} ${empty}`);
-    expect(statusText()).toBe(`${t.remaining} ${empty}`);
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+    expect(qtyStepDone()).toBe(false);
   });
 
   it('확정된 회차는 고칠 수 있는 것처럼 보이지 않는다 — 이전 회차는 정정하지 않는다', () => {
@@ -324,13 +312,6 @@ describe('ResultFormPane — 재검사', () => {
     expect(screen.getByText(t.reinspectNote)).toBeInTheDocument();
   });
 
-  /* ⛔ 사유 칸을 지어내지 않되 감추지도 않는다 — 왜 없는지 밝힌다(omf-mes#179). */
-  it('재검사 사유가 아직 없다는 사실을 감추지 않는다', () => {
-    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isReinspecting: true });
-
-    expect(screen.getByText(t.reinspectReasonPending)).toBeInTheDocument();
-  });
-
   it('재검사를 그만두는 길이 함께 있다 — 열고 나서 갇히지 않는다', async () => {
     const onCancelReinspection = vi.fn();
     renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isReinspecting: true, onCancelReinspection });
@@ -427,12 +408,10 @@ describe('ResultFormPane — 미결과 결과 문면', () => {
     expect(screen.queryByText(t.confirmSucceeded)).not.toBeInTheDocument();
   });
 
-  it('단위 코드를 알면 검사수량·입력 현황·칸 옆에 붙인다 — 입력값에는 넣지 않는다', () => {
+  it('단위 코드를 알면 총 검사 수량 · 칸 옆에 붙인다 — 입력값에는 넣지 않는다', () => {
     renderPane({ accepted: '400', rejected: '', held: '' }, undefined, 500, { uomCode: 'EA' });
 
     expect(screen.getByText('500 EA')).toBeInTheDocument();
-    expect(sumText()).toBe(`${t.sum} 400 / 500 EA`);
-    expect(statusText()).toBe(`${t.remaining} 100 EA`);
     expect(screen.getAllByText('EA')).toHaveLength(3);
     expect(screen.getByLabelText(t.fields.accepted)).toHaveValue('400');
   });
@@ -443,5 +422,88 @@ describe('ResultFormPane — 미결과 결과 문면', () => {
     });
 
     expect(saveButton()).toBeDisabled();
+  });
+});
+
+describe('ResultFormPane — 입력 현황(#185)', () => {
+  it('진행 막대는 두지 않는다 — 라벨 · 수량 · 미입력 글만 선다', () => {
+    renderPane({ accepted: '400', rejected: '0', held: '0' });
+
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 상하 배치 판정(#185)', () => {
+  it('「판정 상세 입력」 창의 [취소]는 열 때 값으로 되돌리게 알린다', async () => {
+    const onJudgmentDetailOpen = vi.fn();
+    const onJudgmentDetailCancel = vi.fn();
+    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, {
+      inlineJudgment: true,
+      hasJudgmentDetail: true,
+      judgmentDetail: <p>불합격 칸</p>,
+      onJudgmentDetailOpen,
+      onJudgmentDetailCancel,
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: t.judgmentDetailOpen }));
+    expect(onJudgmentDetailOpen).toHaveBeenCalledTimes(1);
+    await userEvent.click(await screen.findByRole('button', { name: t.judgmentDetailCancel }));
+    expect(onJudgmentDetailCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('지금 단계는 입력에 따라 넘어간다 — 수량이 맞으면 2단계, 판정까지 채우면 3단계', () => {
+    const current = () =>
+      [...document.querySelectorAll('.iqc-inspection-step-head')].findIndex((head) =>
+        head.hasAttribute('data-current'),
+      ) + 1;
+    const fourMSlot = <p>4M 칸</p>;
+
+    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, { inlineJudgment: true, fourMSlot });
+    expect(current()).toBe(1);
+    cleanup();
+
+    renderPane({ accepted: '500', rejected: '0', held: '0' }, savedRound, 500, {
+      inlineJudgment: true,
+      fourMSlot,
+    });
+    expect(current()).toBe(2);
+    cleanup();
+
+    renderPane({ accepted: '500', rejected: '0', held: '0' }, savedRound, 500, {
+      inlineJudgment: true,
+      fourMSlot,
+      judgmentDone: true,
+    });
+    expect(current()).toBe(3);
+  });
+
+  it('4M 은 판정 오른쪽에 「4M 변경 정보」 제목으로 따로 선다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, {
+      inlineJudgment: true,
+      fourMSlot: <p>4M 칸</p>,
+    });
+
+    expect(screen.getByText('4M 칸')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.fourMChange.sectionTitle })).toBeInTheDocument();
+  });
+
+  it('최종 판정은 수량 구획 오른쪽 「판정」 절반에 서고, 적을 것이 없으면 「판정 상세 입력」 구획을 두지 않는다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, { inlineJudgment: true });
+
+    expect(screen.getByRole('heading', { name: t.judgmentSectionTitle })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: t.judgment })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t.judgmentDetailTitle })).not.toBeInTheDocument();
+  });
+
+  it('불합격 · 판정 변경 사유가 있으면 [상세 입력]이 서고, 누르면 「판정 상세 입력」 창에 그 칸이 선다', async () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, {
+      inlineJudgment: true,
+      hasJudgmentDetail: true,
+      judgmentDetail: <p>불합격 칸</p>,
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: t.judgmentDetailOpen }));
+    expect(await screen.findByRole('dialog', { name: t.judgmentDetailTitle })).toBeInTheDocument();
+    expect(screen.getByText('불합격 칸')).toBeInTheDocument();
   });
 });

@@ -245,3 +245,29 @@ describe('isNavEntryAllowed', () => {
     expect(isNavEntryAllowed(PLAIN, allowing('/other'))).toBe(false);
   });
 });
+
+describe('filterNavGroupsByAccess — 옛 화면을 품은 항목(`alsoFor`)', () => {
+  const MERGED: NavEntry = {
+    to: '/merged',
+    icon: 'm',
+    label: '합친 화면',
+    labelVi: 'Merged',
+    alsoFor: ['/old/register', '/old/post'],
+  };
+  const MERGED_GROUPS: readonly NavGroup[] = [
+    { label: '합친 섹션', labelVi: 'Merged section', icon: 'm', items: [MERGED] },
+  ];
+
+  /** 화면을 합쳐도 옛 화면 권한만 가진 사람이 메뉴를 잃지 않는다 — 그 일을 이 화면에서 한다. */
+  it('제 주소를 못 봐도 품은 옛 화면 하나를 볼 수 있으면 선다', () => {
+    expect(filterNavGroupsByAccess(MERGED_GROUPS, allowing('/old/post'))[0]?.items).toEqual([
+      MERGED,
+    ]);
+    expect(isNavEntryAllowed(MERGED, allowing('/old/register'))).toBe(true);
+  });
+
+  it('제 주소도 옛 화면도 못 보면 빠진다', () => {
+    expect(filterNavGroupsByAccess(MERGED_GROUPS, allowing('/plain'))).toEqual([]);
+    expect(isNavEntryAllowed(MERGED, allowing('/plain'))).toBe(false);
+  });
+});

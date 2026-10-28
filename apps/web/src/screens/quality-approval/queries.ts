@@ -11,6 +11,7 @@ import type {
   PageMeta,
   Partner,
   Process,
+  ShipmentRequest,
   Uom,
   WorkOrder,
 } from './types';
@@ -45,6 +46,8 @@ export const qualityApprovalKeys = {
     ['quality-approval', 'condition-customer', partnerId] as const,
   uoms: ['quality-approval', 'condition-uoms'] as const,
   processes: ['quality-approval', 'condition-processes'] as const,
+  oqcShipment: (shipmentRequestId: number | null) =>
+    ['quality-approval', 'oqc-shipment', shipmentRequestId] as const,
 };
 
 export const requestDetailPath = (approvalRequestId: number): string =>
@@ -162,6 +165,30 @@ export const useConditionCustomer = (partnerId: number | null): UseQueryResult<P
 
       return runRequest(() =>
         client.GET('/mdm/partners/{partnerId}', { params: { path: { partnerId } } }),
+      );
+    },
+  });
+};
+
+/**
+ * OQC 생략의 대상 출하작업지시(#193) — 번호 · 출하 예정일 · 피킹 LOT 과 출하검사 상태(실행 여부)를 이 한 조회로 읽는다.
+ * 생략을 실행하면 서버가 열린 OQC 의뢰를 SKIPPED 로 닫아 출하검사 상태가 PASSED 가 된다.
+ */
+export const useOqcSkipShipment = (
+  shipmentRequestId: number | null,
+): UseQueryResult<ShipmentRequest> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: qualityApprovalKeys.oqcShipment(shipmentRequestId),
+    enabled: shipmentRequestId !== null,
+    queryFn: () => {
+      if (shipmentRequestId === null) throw new Error('OQC 생략 대상이 없습니다.');
+
+      return runRequest(() =>
+        client.GET('/logistics/shipment-requests/{shipmentRequestId}', {
+          params: { path: { shipmentRequestId } },
+        }),
       );
     },
   });

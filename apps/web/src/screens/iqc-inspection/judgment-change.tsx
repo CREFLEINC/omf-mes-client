@@ -17,6 +17,9 @@ const t = messages.iqcInspection.result.judgmentChange;
 export interface PlanVersionRule extends SamplingRule {
   /** 합격판정개수. 비면 자동 판정이 없다(종전처럼 사람이 고른다). */
   acceptanceNumber: number | null;
+  /** 이 버전이 속한 검사기준과 버전 번호 — 기본 정보의 「적용 검사 기준」이 보이고 그 기준으로 이동한다(#185). */
+  inspectionPlanId: number;
+  planVersion: number;
 }
 
 /** 종합 판정 3값(`INSPECTION_RESULT_OVERALL_JUDGMENT`). */

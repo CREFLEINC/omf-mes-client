@@ -11,6 +11,7 @@ export type Partner = components['schemas']['Partner'];
 export type Uom = components['schemas']['Uom'];
 export type Process = components['schemas']['Process'];
 export type PageMeta = components['schemas']['PageMeta'];
+export type ShipmentRequest = components['schemas']['ShipmentRequest'];
 
 export interface ConcessionListResponse {
   items: Concession[];
@@ -22,6 +23,10 @@ export interface RequestRow {
   approvalRequestNo: string;
   approvalTypeCode: string;
   targetName: string;
+  /** 상신 일시 원문(RFC3339) — 정렬에 쓴다. 표기는 `requestedAtText`. */
+  requestedAt: string;
+  /** 상신 일시 — 공장 시각으로 적는다(#193 · 모든 탭 목록 열). */
+  requestedAtText: string;
   statusCode: string;
   isMyTurn: boolean;
 }
@@ -37,6 +42,8 @@ export const toRequestRow = (request: ApprovalRequest): RequestRow => ({
     request.target.displayName,
     messages.qualityApproval.values.unknownTarget,
   ),
+  requestedAt: request.requestedAt,
+  requestedAtText: formatDateTime(request.requestedAt),
   statusCode: request.statusCode,
   isMyTurn: request.isMyTurn,
 });

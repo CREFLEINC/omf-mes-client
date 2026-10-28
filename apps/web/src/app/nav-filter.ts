@@ -145,6 +145,10 @@ export const filterNavGroupsByAccess = (
   );
 };
 
+/** 탭 없는 항목 — 제 주소나, 품은 옛 화면(`alsoFor`) 중 하나라도 볼 수 있으면 선다. */
+const allowsEntry = (entry: NavEntry, access: WebAccess): boolean =>
+  access.allows(entry.to) || (entry.alsoFor ?? []).some((path) => access.allows(path));
+
 /**
  * 항목 하나를 권한으로 좁힌다 — 볼 수 없으면 `null`.
  *
@@ -153,7 +157,7 @@ export const filterNavGroupsByAccess = (
  * 선다.
  */
 const narrowNavEntryByAccess = (entry: NavEntry, access: WebAccess): NavEntry | null => {
-  if (entry.tabs === undefined) return access.allows(entry.to) ? entry : null;
+  if (entry.tabs === undefined) return allowsEntry(entry, access) ? entry : null;
 
   const tabs = entry.tabs.filter((tab) => access.allows(tab.to));
   const [first] = tabs;
@@ -167,4 +171,4 @@ const narrowNavEntryByAccess = (entry: NavEntry, access: WebAccess): NavEntry | 
  * ⛔ **묶음과 따로 묻는다** — `filterNavGroupsByAccess` 와 같은 이유다.
  */
 export const isNavEntryAllowed = (entry: NavEntry, access: WebAccess): boolean =>
-  access.allows(entry.to);
+  allowsEntry(entry, access);

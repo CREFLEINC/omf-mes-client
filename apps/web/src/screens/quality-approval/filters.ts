@@ -6,6 +6,8 @@ export interface RequestFilters {
   from: string;
   to: string;
   q: string;
+  /** 지금 「나」가 결재할 차례인 요청만(#193 · 계약 `myTurnOnly`). 주소에는 켠 것만 `mt=1` 로 적는다. */
+  myTurnOnly?: boolean;
 }
 
 type ListQueryParams = NonNullable<paths['/app/approval-requests']['get']['parameters']['query']>;
@@ -13,6 +15,7 @@ type ListQueryParams = NonNullable<paths['/app/approval-requests']['get']['param
 export interface RequestListQuery {
   assignedToMe: true;
   pendingOnly?: true;
+  myTurnOnly?: true;
   /** 계약이 값 목록을 닫았다(코드 사전 2026-09-03). 허용 값은 `allowedCode`가 목록으로 거른다 */
   approvalTypeCode?: ListQueryParams['approvalTypeCode'];
   statusCode?: string;
@@ -29,6 +32,7 @@ const KEYS = {
   to: 'to',
   q: 'q',
   pendingOnly: 'pd',
+  myTurnOnly: 'mt',
   page: 'page',
   selected: 'approvalRequestId',
 } as const;
@@ -71,6 +75,7 @@ export const EMPTY_FILTERS: RequestFilters = {
   from: '',
   to: '',
   q: '',
+  myTurnOnly: false,
 };
 
 export const readFilters = (
@@ -83,6 +88,7 @@ export const readFilters = (
   from: dateOf(params.get(KEYS.from) ?? ''),
   to: dateOf(params.get(KEYS.to) ?? ''),
   q: params.get(KEYS.q) ?? '',
+  myTurnOnly: params.get(KEYS.myTurnOnly) === '1',
 });
 
 export const readPendingOnly = (params: URLSearchParams): boolean =>
@@ -116,6 +122,7 @@ export const toAppliedSearchParams = (
   replace(next, KEYS.from, dateOf(filters.from));
   replace(next, KEYS.to, dateOf(filters.to));
   replace(next, KEYS.q, filters.q.trim());
+  replace(next, KEYS.myTurnOnly, filters.myTurnOnly === true ? '1' : '');
   replace(next, KEYS.pendingOnly, pendingOnly === PENDING_ONLY_DEFAULT ? '' : '1');
   replace(next, KEYS.page, page > 1 ? String(page) : '');
   next.delete(KEYS.selected);
@@ -144,6 +151,7 @@ export const toRequestListQuery = (
   return {
     assignedToMe: true,
     ...(pendingOnly ? { pendingOnly: true } : {}),
+    ...(filters.myTurnOnly === true ? { myTurnOnly: true } : {}),
     ...(filters.approvalTypeCode === ''
       ? {}
       : { approvalTypeCode: filters.approvalTypeCode as ListQueryParams['approvalTypeCode'] }),

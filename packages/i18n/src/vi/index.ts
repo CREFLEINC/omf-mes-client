@@ -78,7 +78,6 @@ import { notificationCenter } from './notification-center';
 import { oqcInspection } from './oqc-inspection';
 import { outboxPending } from './outbox-pending';
 import { outboxRejections } from './outbox-rejections';
-import { overReceiptSplit } from './over-receipt-split';
 import { packingLabelReprint } from './packing-label-reprint';
 import { packingRepack } from './packing-repack';
 import { packingResult } from './packing-result';
@@ -234,7 +233,6 @@ export const vi: Translated<Messages> = {
   oqcInspection,
   outboxPending,
   outboxRejections,
-  overReceiptSplit,
   packingLabelReprint,
   packingRepack,
   packingResult,
