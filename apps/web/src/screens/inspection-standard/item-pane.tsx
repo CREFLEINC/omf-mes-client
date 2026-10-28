@@ -249,7 +249,7 @@ export const ItemPane = ({
       /* 표 전체를 얇은 테두리 상자로 — 0건이어도 머리를 두고 표 안에 아이콘 · 제목 · 안내를 띄운다(검사 조회·판정과 같다 · #196). */
       <div
         ref={fit.ref}
-        className="inspection-queue-table inspection-standard-table-box inspection-standard-item-rows"
+        className={`inspection-queue-table inspection-standard-table-box inspection-standard-item-rows${isEditable ? ' is-reorderable' : ''}`}
         style={resizable.style}
       >
         <Table

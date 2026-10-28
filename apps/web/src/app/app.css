@@ -498,7 +498,9 @@ main > * + * {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
+  justify-content: flex-end;
   gap: var(--space-3);
+  min-width: 0;
   margin-left: auto;
 }
 
@@ -641,6 +643,18 @@ h2:has(> .inspection-standard-dialog-title) {
   cursor: not-allowed;
 }
 
+/*
+ * 순서 이동 열(디자인 시스템이 그린다)은 화살표 둘만큼 — 폭이 없으면 「목표·범위」와 남는 폭을 나눠 가져
+ * 오른쪽에 빈 칸이 생긴다(사용자 지적 · #196). 폭 숫자는 `item-pane.tsx` REORDER_COLUMN_WIDTH 와 같다.
+ */
+.inspection-standard-item-rows.is-reorderable col:last-child {
+  width: 96px;
+}
+
+.inspection-standard-item-rows.is-reorderable tr > :last-child {
+  text-align: center;
+}
+
 /* 버전 비교 창(#196) — 버전 고르기 두 칸, 설정 표, 검사 항목 표를 위아래로. */
 .inspection-standard-compare {
   display: grid;
@@ -679,7 +693,8 @@ h2:has(> .inspection-standard-dialog-title) {
   align-items: center;
   gap: var(--space-1);
   margin: 0;
-  white-space: nowrap;
+  /* 좁으면 줄을 바꾼다 — 한 줄로 고정하면 카드 밖으로 넘친다(#196). */
+  white-space: normal;
 }
 
 /*
