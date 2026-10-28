@@ -20,7 +20,7 @@ export interface ExportProgress {
   received: number;
 }
 
-/** 한 쪽 — 줄과 쪽 정보. 입출고 현황과 두 추적 목록이 같은 모양으로 넘긴다. */
+/** 한 쪽 — 줄과 쪽 정보. 기간별 이력과 두 LOT별 이력 목록이 같은 모양으로 넘긴다. */
 export interface RowPage<Row> {
   rows: Row[];
   page: { total: number };

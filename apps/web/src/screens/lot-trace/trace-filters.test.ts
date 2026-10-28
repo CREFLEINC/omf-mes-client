@@ -18,8 +18,9 @@ import {
 const params = (query: string) => new URLSearchParams(query);
 
 describe('추적 탭 주소 조건', () => {
-  it('탭은 처음 자재 LOT(forward)이다', () => {
-    expect(readTab(params(''))).toBe('forward');
+  it('탭은 처음 기간별 이력(movements)이다. 종전 주소 값은 그대로 읽는다', () => {
+    expect(readTab(params(''))).toBe('movements');
+    expect(readTab(params('tab=forward'))).toBe('forward');
     expect(readTab(params('tab=backward'))).toBe('backward');
     expect(readTab(params('tab=movements'))).toBe('movements');
   });

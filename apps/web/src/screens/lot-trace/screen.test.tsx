@@ -176,10 +176,16 @@ const setup = (options: SetupOptions = {}) => {
   return { ...result, receiptQueries, shipmentQueries, traceCalls };
 };
 
+/** 표의 LOT 번호 칸(앞쪽만 줄이려고 두 조각으로 그린다). */
+const listLot =
+  (lotNo: string) =>
+  (_content: string, element: Element | null): boolean =>
+    element?.classList.contains('lot-trace-lot') === true && element.textContent === lotNo;
+
 const listQueries = (queries: URL[]) =>
   queries.filter((url) => url.searchParams.get('size') !== '1');
 
-describe('W-02-09 LOT 생산 이력 조회: 입출고 현황 탭', () => {
+describe('W-02-09 LOT 생산 이력 조회: 기간별 이력 탭', () => {
   it('주소에 기간이 없으면 공장 날짜 오늘을 끝으로 7일을 채워 자재 입고를 조회한다', async () => {
     const { receiptQueries } = setup({ route: '/production/lot-trace?tab=movements' });
     const expected = defaultPeriod(plantToday());
@@ -202,18 +208,26 @@ describe('W-02-09 LOT 생산 이력 조회: 입출고 현황 탭', () => {
       );
     });
     expect(within(group).getByRole('button', { name: '제품입고 1' })).toBeInTheDocument();
-    expect(within(group).getByRole('button', { name: '제품 출고 1' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: '제품 출하 1' })).toBeInTheDocument();
   });
 
-  it('목록 위 합계와 줄의 문서번호, LOT 번호, 수량, 공급사명을 한 줄로 보인다', async () => {
+  it('처음 여는 탭은 기간별 이력이다(주소에 탭이 없을 때)', async () => {
+    setup({ route: '/production/lot-trace' });
+
+    expect(
+      await screen.findByRole('tab', { name: '기간별 이력', selected: true }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('GR-SYN-0001')).toBeInTheDocument();
+  });
+
+  it('목록 위 합계와 줄의 일자, 문서번호, LOT 번호, 수량을 한 줄로 보인다', async () => {
     setup();
 
     expect(await screen.findByText('전체 2줄')).toBeInTheDocument();
     expect(screen.getByText('1,000 KG')).toBeInTheDocument();
-    const row = screen.getByRole('link', { name: /GR-SYN-0001/ });
-    expect(within(row).getByText('ITEM-A|500|261023|SUP-A|0001')).toBeInTheDocument();
+    const row = screen.getByRole('row', { name: /GR-SYN-0001/ });
+    expect(within(row).getByText(listLot('ITEM-A|500|261023|SUP-A|0001'))).toBeInTheDocument();
     expect(within(row).getByText('500 KG')).toBeInTheDocument();
-    expect(within(row).getByText('공급사 A')).toBeInTheDocument();
   });
 
   it('제품 출고 칩을 누르면 출하 줄을 부르고 첫 LOT과 「외 N」을 보인다', async () => {
@@ -222,54 +236,59 @@ describe('W-02-09 LOT 생산 이력 조회: 입출고 현황 탭', () => {
       route: `${ROUTE}&partner=3&status=POSTED`,
     });
 
-    await user.click(await screen.findByRole('button', { name: /제품 출고/ }));
+    await user.click(await screen.findByRole('button', { name: /제품 출하/ }));
 
     expect(await screen.findByText('SH-SYN-0011')).toBeInTheDocument();
-    expect(screen.getByText('P-SYN-0001')).toBeInTheDocument();
+    expect(screen.getByText(listLot('P-SYN-0001'))).toBeInTheDocument();
     expect(screen.getByText('외 6')).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: '고객명' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /출하 번호/ })).toBeInTheDocument();
     const list = listQueries(shipmentQueries).at(-1);
     /* 공급사와 상태는 구분마다 뜻이 달라 바꿀 때 비운다. */
     expect(list?.searchParams.has('customerId')).toBe(false);
     expect(list?.searchParams.has('statusCode')).toBe(false);
   });
 
-  it('자재 입고 줄을 누르면 그 LOT을 자재 LOT 탭에서 연다(기간 없이 LOT 번호 정확 일치)', async () => {
+  it('자재 입고 줄을 누르면 탭을 바꾸지 않고 옆 상세 창에 그 자재 LOT을 세운다', async () => {
     const user = userEvent.setup();
     const { traceCalls } = setup();
 
     await user.click(
-      await screen.findByRole('link', {
-        name: 'GR-SYN-0001 ITEM-A|500|261023|SUP-A|0001 추적 열기',
+      await screen.findByRole('row', {
+        name: 'GR-SYN-0001 ITEM-A|500|261023|SUP-A|0001 상세 보기',
       }),
     );
 
-    expect(
-      await screen.findByRole('tab', { name: '자재 LOT', selected: true }),
-    ).toBeInTheDocument();
-    await waitFor(() => {
-      const list = traceCalls.find((url) => url.pathname === '/trace/material-lot-flows');
-      expect(list?.searchParams.get('lotNo')).toBe('ITEM-A|500|261023|SUP-A|0001');
-      expect(list?.searchParams.has('receiptDateFrom')).toBe(false);
-    });
+    expect(screen.getByRole('tab', { name: '기간별 이력', selected: true })).toBeInTheDocument();
     await waitFor(() =>
       expect(traceCalls.some((url) => url.pathname === '/trace/lots/101/forward-flow')).toBe(true),
     );
+    expect(
+      screen.getByRole('row', { name: 'GR-SYN-0001 ITEM-A|500|261023|SUP-A|0001 상세 보기' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(traceCalls.some((url) => url.pathname === '/trace/material-lot-flows')).toBe(false);
   });
 
-  it('제품 출고 줄을 누르면 그 출하번호로 제품 LOT 탭을 연다', async () => {
+  it('LOT이 여럿인 출하 줄을 누르면 상세 머리에 그 줄의 LOT 고르기가 서고, 고르면 그 LOT으로 바뀐다', async () => {
     const user = userEvent.setup();
     const { traceCalls } = setup({ route: `${ROUTE}&kind=SHIPMENT` });
 
-    await user.click(await screen.findByRole('link', { name: /SH-SYN-0011/ }));
+    await user.click(await screen.findByRole('row', { name: /SH-SYN-0011/ }));
 
+    const picker = await screen.findByRole('group', { name: '이 줄의 LOT' });
+    const buttons = within(picker).getAllByRole('button');
+    expect(buttons[0]).toHaveAttribute('aria-pressed', 'true');
     expect(
-      await screen.findByRole('tab', { name: '제품 LOT', selected: true }),
+      within(picker).getByText(/외 2개 LOT은 출하번호로 제품 LOT별 이력에서 찾으세요/),
     ).toBeInTheDocument();
-    await waitFor(() => {
-      const list = traceCalls.find((url) => url.pathname === '/trace/product-lot-flows');
-      expect(list?.searchParams.get('shipmentNo')).toBe('SH-SYN-0011');
-    });
+    expect(screen.getByRole('tab', { name: '기간별 이력', selected: true })).toBeInTheDocument();
+
+    await user.click(buttons[1] as HTMLElement);
+    await waitFor(() =>
+      expect(within(picker).getAllByRole('button')[1]).toHaveAttribute('aria-pressed', 'true'),
+    );
+    expect(traceCalls.some((url) => /\/trace\/lots\/\d+\/backward-flow/.test(url.pathname))).toBe(
+      true,
+    );
   });
 
   it('0건이면 좁힌 조건과 함께 안내하고 내보내기를 사유와 함께 잠근다', async () => {
@@ -285,7 +304,7 @@ describe('W-02-09 LOT 생산 이력 조회: 입출고 현황 탭', () => {
   it('조회에 실패하면 [다시 조회]를 보인다', async () => {
     setup({ failList: true });
 
-    expect(await screen.findByText('입출고 현황을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(await screen.findByText('기간별 이력을 불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다시 조회' })).toBeInTheDocument();
   });
 
@@ -320,13 +339,13 @@ describe('W-02-09 LOT 생산 이력 조회: 입출고 현황 탭', () => {
   });
 });
 
-describe('W-02-09 LOT 생산 이력 조회: 입출고 현황 조건 바로 반영', () => {
+describe('W-02-09 LOT 생산 이력 조회: 기간별 이력 조건 바로 반영', () => {
   it('기간을 고르면 [조회] 없이 반영하고, 쪽을 1로 돌리고, 주소를 바꿔 쓴다', async () => {
     const user = userEvent.setup();
     const { receiptQueries } = setup({ route: `${ROUTE}&page=2` });
     await screen.findByText('GR-SYN-0001');
 
-    await pickRange(user, screen.getByLabelText(/^기간/), '2026-10-21', '2026-10-24');
+    await pickRange(user, screen.getByLabelText(/^기간(?!별)/), '2026-10-21', '2026-10-24');
 
     await waitFor(() =>
       expect(listQueries(receiptQueries).at(-1)?.searchParams.get('receiptDateFrom')).toBe(
@@ -345,7 +364,7 @@ describe('W-02-09 LOT 생산 이력 조회: 입출고 현황 조건 바로 반�
     setup();
     await screen.findByText('GR-SYN-0001');
 
-    await user.click(screen.getByRole('button', { name: /제품 출고/ }));
+    await user.click(screen.getByRole('button', { name: /제품 출하/ }));
 
     await waitFor(() => expect(navState()).toContain('kind=SHIPMENT'));
     expect(navState()).toMatch(/^REPLACE /);

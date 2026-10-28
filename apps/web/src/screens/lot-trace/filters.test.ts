@@ -11,7 +11,7 @@ import {
 
 const params = (query: string) => new URLSearchParams(query);
 
-describe('입출고 현황 주소 조건', () => {
+describe('기간별 이력 주소 조건', () => {
   it('빈 주소는 자재 입고, 50건이다', () => {
     const filters = readFilters(params(''));
     expect(filters.kind).toBe('MATERIAL');
@@ -36,7 +36,7 @@ describe('입출고 현황 주소 조건', () => {
   });
 });
 
-describe('입출고 현황 질의', () => {
+describe('기간별 이력 질의', () => {
   const filters = readFilters(
     params('from=2026-10-20&to=2026-10-26&item=7&wh=3&partner=9&status=POSTED&page=2'),
   );

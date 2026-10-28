@@ -1,4 +1,4 @@
-/** W-02-09 LOT 생산 이력 조회 — 자재 LOT, 제품 LOT, 입출고 현황 세 탭. */
+/** W-02-09 LOT 생산 이력 조회 — 기간별 이력, 자재 LOT별 이력, 제품 LOT별 이력 세 탭. */
 export const lotTrace = {
   title: 'LOT 생산 이력 조회',
   breadcrumbRoot: '생산 관리',
@@ -6,7 +6,7 @@ export const lotTrace = {
     label: '구분',
     MATERIAL: '자재 입고',
     PRODUCT: '제품입고',
-    SHIPMENT: '제품 출고',
+    SHIPMENT: '제품 출하',
     count: (name: string, count: number): string => `${name} ${count.toLocaleString('ko-KR')}`,
   },
   filters: {
@@ -51,18 +51,23 @@ export const lotTrace = {
     notFound: '목록에서 LOT을 다시 고르세요.',
   },
   list: {
-    pane: '입출고 현황',
-    caption: '입출고 줄 목록',
-    loading: '입출고 현황을 불러오는 중',
+    pane: '기간별 이력',
+    caption: '기간별 이력 줄 목록',
+    loading: '기간별 이력을 불러오는 중',
     totalLines: (count: number): string => `전체 ${count.toLocaleString('ko-KR')}줄`,
     totalQty: '수량 합계',
-    loadFailed: '입출고 현황을 불러오지 못했습니다',
+    loadFailed: '기간별 이력을 불러오지 못했습니다',
     loadFailedDescription: '잠시 뒤 다시 조회하세요.',
     retry: '다시 조회',
     emptyTitle: (kind: string): string => `조건에 맞는 ${kind} 줄이 없습니다`,
     emptyDescription: '기간을 넓히거나 다른 품목으로 찾으세요.',
     narrowedBy: (conditions: string): string => `좁힌 조건: ${conditions}`,
-    openRow: (documentNo: string, lotNo: string): string => `${documentNo} ${lotNo} 추적 열기`,
+    openRow: (documentNo: string, lotNo: string): string => `${documentNo} ${lotNo} 상세 보기`,
+    /** 한 줄에 LOT이 여럿(출하)일 때 상세 머리의 LOT 고르기 줄. */
+    lotPicker: '이 줄의 LOT',
+    lotPickerMore: (count: number): string =>
+      `외 ${count.toLocaleString('ko-KR')}개 LOT은 출하번호로 제품 LOT별 이력에서 찾으세요`,
+    pick: '목록에서 줄을 고르면 그 LOT의 투입 자재, 사용처, 제품입고, 포장, 출하가 보입니다.',
     moreLots: (count: number): string => `외 ${count.toLocaleString('ko-KR')}`,
     columns: {
       kind: '구분',
@@ -101,9 +106,9 @@ export const lotTrace = {
   splitter: '목록과 상세 폭 나누기',
   tabs: {
     label: 'LOT 생산 이력 조회 탭',
-    forward: '자재 LOT',
-    backward: '제품 LOT',
-    movements: '입출고 현황',
+    forward: '자재 LOT별 이력',
+    backward: '제품 LOT별 이력',
+    movements: '기간별 이력',
   },
   stages: {
     label: '진행',
@@ -276,7 +281,7 @@ export const lotTrace = {
     noProduction: 'W/O 실적으로 만든 LOT이 아닙니다',
     usageFailed: '사용처를 불러오지 못했습니다',
     truncated: (total: number): string =>
-      `생산 LOT ${total.toLocaleString('ko-KR')}건 중 500건까지 보이며 추적 내보내기에도 이 500건만 담깁니다. 나머지는 제품 LOT 탭에서 W/O 번호나 출하번호로 찾으세요.`,
+      `생산 LOT ${total.toLocaleString('ko-KR')}건 중 500건까지 보이며 추적 내보내기에도 이 500건만 담깁니다. 나머지는 제품 LOT별 이력 탭에서 W/O 번호나 출하번호로 찾으세요.`,
     loading: 'LOT 생산 이력을 불러오는 중',
     loadFailed: '추적 정보를 불러오지 못했습니다',
     retry: '다시 조회',

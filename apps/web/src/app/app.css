@@ -23599,6 +23599,21 @@ table.col-measuring td {
 }
 
 /* 상세 조건이 접혀 있는데 그 안의 조건이 걸려 있을 때 한 줄로 알린다. */
+/* 기간별 이력에서 고른 줄에 LOT이 여럿일 때 상세 머리의 LOT 고르기 줄. */
+.lot-trace-lot-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.lot-trace-lot-picker > .field-label {
+  margin: 0;
+}
+
 .lot-trace-hidden-summary {
   flex-basis: 100%;
   margin: 0;

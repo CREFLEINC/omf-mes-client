@@ -30,7 +30,7 @@ export interface MovementRow {
   qty: number;
   uomCode: string;
   warehouse: Ref;
-  /** 자재 입고의 공급사 또는 제품 출고의 고객. */
+  /** 자재 입고의 공급사 또는 제품 출하의 고객. */
   partner: Ref | null;
   workOrderNo: string | null;
   statusCode: string;

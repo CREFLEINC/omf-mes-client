@@ -1,7 +1,7 @@
 import type { ko } from '../ko';
 import type { Translated } from './translated';
 
-/** W-02-09 LOT 생산 이력 조회 — 자재 LOT, 제품 LOT, 입출고 현황 세 탭. 수는 베트남어 자리 구분으로 적는다. */
+/** W-02-09 LOT 생산 이력 조회 — 기간별 이력, 자재 LOT별 이력, 제품 LOT별 이력 세 탭. 수는 베트남어 자리 구분으로 적는다. */
 const num = (value: number): string => value.toLocaleString('vi-VN');
 
 export const lotTrace: Translated<typeof ko.lotTrace> = {
@@ -55,18 +55,22 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     notFound: 'Hãy chọn lại LOT trong danh sách.',
   },
   list: {
-    pane: 'Tình hình nhập xuất',
-    caption: 'Danh sách dòng nhập xuất',
-    loading: 'Đang tải tình hình nhập xuất',
+    pane: 'Lịch sử theo kỳ',
+    caption: 'Danh sách dòng lịch sử theo kỳ',
+    loading: 'Đang tải lịch sử theo kỳ',
     totalLines: (count: number): string => `Tất cả ${num(count)} dòng`,
     totalQty: 'Tổng số lượng',
-    loadFailed: 'Không tải được tình hình nhập xuất',
+    loadFailed: 'Không tải được lịch sử theo kỳ',
     loadFailedDescription: 'Hãy tra cứu lại sau ít phút.',
     retry: 'Tra cứu lại',
     emptyTitle: (kind: string): string => `Không có dòng ${kind} nào khớp điều kiện`,
     emptyDescription: 'Hãy nới rộng kỳ hoặc tìm theo mặt hàng khác.',
     narrowedBy: (conditions: string): string => `Điều kiện đã lọc: ${conditions}`,
-    openRow: (documentNo: string, lotNo: string): string => `Mở truy xuất ${documentNo} ${lotNo}`,
+    openRow: (documentNo: string, lotNo: string): string => `Xem chi tiết ${documentNo} ${lotNo}`,
+    lotPicker: 'LOT của dòng này',
+    lotPickerMore: (count: number): string =>
+      `${num(count)} LOT khác hãy tìm ở thẻ Lịch sử theo LOT thành phẩm theo số phiếu xuất hàng`,
+    pick: 'Chọn một dòng trong danh sách để xem vật tư đã đưa vào, nơi sử dụng, nhập kho thành phẩm, đóng gói, xuất hàng của LOT đó.',
     moreLots: (count: number): string => `và ${num(count)} LOT khác`,
     columns: {
       kind: 'Loại',
@@ -104,9 +108,9 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
   splitter: 'Chia độ rộng danh sách và chi tiết',
   tabs: {
     label: 'Thẻ tra cứu lịch sử sản xuất LOT',
-    forward: 'LOT vật tư',
-    backward: 'LOT thành phẩm',
-    movements: 'Tình hình nhập xuất',
+    forward: 'Lịch sử theo LOT vật tư',
+    backward: 'Lịch sử theo LOT thành phẩm',
+    movements: 'Lịch sử theo kỳ',
   },
   stages: {
     label: 'Tiến độ',
@@ -281,7 +285,7 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     noProduction: 'LOT này không được làm từ kết quả W/O',
     usageFailed: 'Không tải được nơi sử dụng',
     truncated: (total: number): string =>
-      `Chỉ hiện 500 trong ${num(total)} LOT sản xuất, tệp xuất truy xuất cũng chỉ có 500 LOT này. Phần còn lại hãy tìm ở thẻ LOT thành phẩm theo số W/O hoặc số phiếu xuất hàng.`,
+      `Chỉ hiện 500 trong ${num(total)} LOT sản xuất, tệp xuất truy xuất cũng chỉ có 500 LOT này. Phần còn lại hãy tìm ở thẻ Lịch sử theo LOT thành phẩm theo số W/O hoặc số phiếu xuất hàng.`,
     loading: 'Đang tải lịch sử sản xuất LOT',
     loadFailed: 'Không tải được thông tin truy xuất',
     retry: 'Tra cứu lại',

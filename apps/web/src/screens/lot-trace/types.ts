@@ -8,7 +8,7 @@ export type ReceiptLinePage =
   paths['/logistics/goods-receipt-lines']['get']['responses'][200]['content']['application/json'];
 export type ReceiptLine = ReceiptLinePage['items'][number];
 
-/** 출하 줄 목록(제품 출고). 계약 정본: 서버 `contracts/shipment-04제품출하.json`. */
+/** 출하 줄 목록(제품 출하). 계약 정본: 서버 `contracts/shipment-04제품출하.json`. */
 export type ShipmentLineQuery = NonNullable<
   paths['/logistics/shipment-lines']['get']['parameters']['query']
 >;

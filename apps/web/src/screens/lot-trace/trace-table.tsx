@@ -88,18 +88,31 @@ const itemCell = (item: { code: string; name: string }) => (
 );
 
 /**
- * 목록 표. 검사 조회·판정 목록과 같은 짜임이다 — 열 폭은 정한 값(px)으로 고정하고 넘치면 말줄임, 행은 한 줄.
+ * 목록 표(세 탭 공용). 검사 조회·판정 목록과 같은 짜임이다 — 열 폭은 정한 값(px)으로 고정하고 넘치면 말줄임, 행은 한 줄.
  * 열 폭과 순서는 머리칸에서 끌어 바꾸고 브라우저에 남는다. 목록 창이 좁으면 표 안에서 가로로 구른다.
  * 행 선택은 C-1 공용 부품(`SelectableTable`)이 맡는다.
  */
-const TraceTable = <Row extends { lotId: number; lotNo: string }>({
+export const ListTable = <Row,>({
   storageKey,
   columns,
   rows,
   activeId,
   onOpen,
   empty,
-}: TraceTableProps<Row> & { storageKey: string; columns: Column<Row>[] }) => {
+  getRowId,
+  rowLabel,
+  caption,
+}: {
+  storageKey: string;
+  columns: Column<Row>[];
+  rows: Row[];
+  activeId: string | null;
+  onOpen: (row: Row) => void;
+  empty: ReactNode;
+  getRowId: (row: Row) => string;
+  rowLabel: (row: Row) => string;
+  caption: string;
+}) => {
   const ordered = useColumnOrder(`${storageKey}:order`, columns);
   const resizable = useColumnWidths(storageKey, ordered, { fitContent: true });
   const fit = useFitColumns(resizable.columns, { scrollX: true });
@@ -111,18 +124,31 @@ const TraceTable = <Row extends { lotId: number; lotNo: string }>({
     >
       <SelectableTable
         className="lot-trace-table"
-        caption={<span className="visually-hidden">{t.trace.listCaption}</span>}
+        caption={<span className="visually-hidden">{caption}</span>}
         columns={fit.columns}
         rows={rows}
-        getRowId={(row) => String(row.lotId)}
-        activeId={activeId === null ? null : String(activeId)}
-        rowLabel={(row) => t.trace.openRow(row.lotNo)}
+        getRowId={getRowId}
+        activeId={activeId}
+        rowLabel={rowLabel}
         onActivate={onOpen}
         empty={empty}
       />
     </div>
   );
 };
+
+const TraceTable = <Row extends { lotId: number; lotNo: string }>({
+  activeId,
+  ...props
+}: TraceTableProps<Row> & { storageKey: string; columns: Column<Row>[] }) => (
+  <ListTable
+    {...props}
+    activeId={activeId === null ? null : String(activeId)}
+    getRowId={(row) => String(row.lotId)}
+    rowLabel={(row) => t.trace.openRow(row.lotNo)}
+    caption={t.trace.listCaption}
+  />
+);
 
 /*
  * 목록 열은 고르는 데 필요한 넷만 둔다 — LOT 번호, 품목, 날짜, 진행. 상세 창이 옆에 서는 폭(1440px, 목록 창 절반)에서도

@@ -84,11 +84,13 @@ const estimatedChip = (lotNo: string): HTMLElement | null => {
 };
 
 describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
-  it('메뉴로 처음 열면 자재 LOT 탭이고, 기본 기간(오늘까지 7일)만으로 목록을 부른다', async () => {
-    const { calls } = setup('/production/lot-trace', { forwardRows: [forwardRow(101, MAT)] });
+  it('자재 LOT별 이력 탭을 처음 열면 기본 기간(오늘까지 7일)만으로 목록을 부른다', async () => {
+    const { calls } = setup('/production/lot-trace?tab=forward', {
+      forwardRows: [forwardRow(101, MAT)],
+    });
 
     expect(
-      await screen.findByRole('tab', { name: '자재 LOT', selected: true }),
+      await screen.findByRole('tab', { name: '자재 LOT별 이력', selected: true }),
     ).toBeInTheDocument();
     expect(await screen.findByText(listLot(MAT))).toBeInTheDocument();
     const expected = defaultPeriod(plantToday());
@@ -110,7 +112,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
   });
 
   it('기간 안에 결과가 없으면 그 기간에 없다고 말하고 기간을 넓히라고 한다', async () => {
-    setup('/production/lot-trace?from=2026-10-01&to=2026-10-07', { forwardRows: [] });
+    setup('/production/lot-trace?tab=forward&from=2026-10-01&to=2026-10-07', { forwardRows: [] });
 
     expect(
       await screen.findByText('2026-10-01 ~ 2026-10-07에 조건에 맞는 LOT이 없습니다'),
@@ -120,15 +122,18 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
 
   it('LOT 번호로 찾으면 목록과 단계 칩(단계별 LOT 수)을 보이고, 칩을 누르면 그 단계로 거른다', async () => {
     const user = userEvent.setup();
-    const { calls } = setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
-      forwardRows: [
-        forwardRow(101, MAT),
-        forwardRow(102, 'ITEM-A|500|261023|SUP-A|0002', {
-          currentStageCode: 'RECEIVED',
-          consumedQty: 0,
-        }),
-      ],
-    });
+    const { calls } = setup(
+      '/production/lot-trace?tab=forward&q=ITEM-A&from=2026-10-01&to=2026-10-26',
+      {
+        forwardRows: [
+          forwardRow(101, MAT),
+          forwardRow(102, 'ITEM-A|500|261023|SUP-A|0002', {
+            currentStageCode: 'RECEIVED',
+            consumedQty: 0,
+          }),
+        ],
+      },
+    );
 
     expect(await screen.findByText(listLot(MAT))).toBeInTheDocument();
     const first = lists(calls, '/trace/material-lot-flows')[0];
@@ -152,7 +157,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
   it('목록: 서버 basis가 있으면 진행 칩 옆에 「추정 포함」 칩과 근거 한 문장, null이면 칩이 없다', async () => {
     const wo = 'ITEM-A|500|261023|SUP-A|0002';
     const none = 'ITEM-A|500|261023|SUP-A|0003';
-    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
+    setup('/production/lot-trace?tab=forward&q=ITEM-A&from=2026-10-01&to=2026-10-26', {
       forwardRows: [
         forwardRow(101, MAT),
         forwardRow(102, wo, { basis: 'WORK_ORDER_ESTIMATE' }),
@@ -167,7 +172,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
   });
 
   it('서버가 진입점 칸 오류(400)를 돌려주면 LOT 번호 칸 아래에 화면 문구로 보인다', async () => {
-    setup('/production/lot-trace?q=X&from=2026-10-01', {
+    setup('/production/lot-trace?tab=forward&q=X&from=2026-10-01', {
       listStatus: 400,
       listErrors: {
         errors: [
@@ -181,7 +186,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
   });
 
   it('LOT을 고르기 전에는 상세 자리에 고르라는 안내를 둔다', async () => {
-    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
+    setup('/production/lot-trace?tab=forward&q=ITEM-A&from=2026-10-01&to=2026-10-26', {
       forwardRows: [forwardRow(101, MAT)],
     });
     await screen.findByText(listLot(MAT));
@@ -191,7 +196,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
 
   it('행을 누르면 목록 옆 상세에 그 LOT이 서고, 고른 행을 표시한다', async () => {
     const user = userEvent.setup();
-    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
+    setup('/production/lot-trace?tab=forward&q=ITEM-A&from=2026-10-01&to=2026-10-26', {
       forwardRows: [forwardRow(101, MAT)],
       forwardChains: { 101: forwardChain(101, MAT, []) },
     });
@@ -256,7 +261,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
         },
       ],
     });
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+    setup(`/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       forwardChains: {
         101: forwardChain(101, MAT, [
@@ -312,7 +317,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
   });
 
   it('아직 투입되지 않은 LOT은 사용처에 「아직 투입된 기록이 없습니다」', async () => {
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+    setup(`/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       forwardChains: { 101: forwardChain(101, MAT, []) },
     });
@@ -325,7 +330,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
   });
 
   it('상세의 추정 안내는 서버 최상위 basis로만 정한다(null이면 생산 LOT이 있어도 두지 않는다)', async () => {
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+    setup(`/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       forwardChains: {
         101: { ...forwardChain(101, MAT, [workOrder(3, [productionLot(201, PROD)])]), basis: null },
@@ -339,17 +344,22 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
 
   it('[보기]는 탭과 목록을 두고 그 LOT을 상세 가운데에 둔다. [이전 LOT]과 경로로 되돌아간다', async () => {
     const user = userEvent.setup();
-    const { calls } = setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
-      forwardRows: [forwardRow(101, MAT)],
-      forwardChains: { 101: forwardChain(101, MAT, [workOrder(3, [productionLot(201, PROD)])]) },
-      backwardChains: { 201: backwardChain(201, PROD, [inputMaterial(101, MAT)]) },
-    });
+    const { calls } = setup(
+      `/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`,
+      {
+        forwardRows: [forwardRow(101, MAT)],
+        forwardChains: { 101: forwardChain(101, MAT, [workOrder(3, [productionLot(201, PROD)])]) },
+        backwardChains: { 201: backwardChain(201, PROD, [inputMaterial(101, MAT)]) },
+      },
+    );
 
     await detailHead(MAT);
     await user.click(within(detailPane()).getByRole('button', { name: `${PROD} 추적 보기` }));
 
     expect(await detailHead(PROD)).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '자재 LOT', selected: true })).toBeInTheDocument();
+    expect(
+      screen.getByRole('tab', { name: '자재 LOT별 이력', selected: true }),
+    ).toBeInTheDocument();
     /* 목록은 그대로이고 처음 고른 행을 짚는다. */
     expect(screen.getByRole('row', { name: `${MAT} 추적 열기` })).toHaveAttribute(
       'aria-selected',
@@ -372,7 +382,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
 
   it('[보기]로 지나온 LOT에 다시 가면 경로를 그 자리까지 되돌린다(자재 → 생산 → 같은 자재)', async () => {
     const user = userEvent.setup();
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+    setup(`/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       forwardChains: { 101: forwardChain(101, MAT, [workOrder(3, [productionLot(201, PROD)])]) },
       backwardChains: { 201: backwardChain(201, PROD, [inputMaterial(101, MAT)]) },
@@ -390,10 +400,13 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
   });
 
   it('자재 LOT 탭에서 고른 자재 LOT은 역방향 사슬을 부르지 않는다', async () => {
-    const { calls } = setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
-      forwardRows: [forwardRow(101, MAT)],
-      forwardChains: { 101: forwardChain(101, MAT, []) },
-    });
+    const { calls } = setup(
+      `/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`,
+      {
+        forwardRows: [forwardRow(101, MAT)],
+        forwardChains: { 101: forwardChain(101, MAT, []) },
+      },
+    );
 
     await detailHead(MAT);
     expect(calls.some((url) => url.pathname === '/trace/lots/101/backward-flow')).toBe(false);
@@ -401,7 +414,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
 
   it('W-03-01 권한이 있으면 [LOT 상태 보기]를 둔다', async () => {
     setup(
-      `/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`,
+      `/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`,
       { forwardRows: [forwardRow(101, MAT)], forwardChains: { 101: forwardChain(101, MAT, []) } },
       ['W-02-09', 'W-03-01'],
     );
@@ -411,7 +424,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
 
   it('W-03-01 권한이 없으면 [LOT 상태 보기]를 두지 않는다', async () => {
     setup(
-      `/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`,
+      `/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`,
       { forwardRows: [forwardRow(101, MAT)], forwardChains: { 101: forwardChain(101, MAT, []) } },
       ['W-02-09'],
     );
@@ -427,7 +440,7 @@ describe('W-02-09 LOT 생산 이력 조회: 제품 LOT 탭', () => {
     });
 
     expect(
-      await screen.findByRole('tab', { name: '제품 LOT', selected: true }),
+      await screen.findByRole('tab', { name: '제품 LOT별 이력', selected: true }),
     ).toBeInTheDocument();
     expect(await screen.findByText(listLot(PROD))).toBeInTheDocument();
     const list = lists(calls, '/trace/product-lot-flows')[0];
@@ -524,7 +537,9 @@ describe('W-02-09 LOT 생산 이력 조회: 제품 LOT 탭', () => {
     expect(
       within(detailPane()).getByText(listLot('ITEM-A|20|261023|SUP-A|0002')),
     ).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '제품 LOT', selected: true })).toBeInTheDocument();
+    expect(
+      screen.getByRole('tab', { name: '제품 LOT별 이력', selected: true }),
+    ).toBeInTheDocument();
   });
 
   it('다시 투입된 반제품 LOT은 사용처와 그 생산 LOT도 함께 보인다', async () => {
@@ -583,7 +598,10 @@ describe('W-02-09 LOT 생산 이력 조회: 권한 없음과 없는 LOT', () => 
     ['오류 봉투', PERMISSION_DENIED],
     ['빈 본문', null],
   ])('목록이 403(%s)이면 권한 안내를 보이고 [다시 조회]를 두지 않는다', async (_label, body) => {
-    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01', { listStatus: 403, listErrors: body });
+    setup('/production/lot-trace?tab=forward&q=ITEM-A&from=2026-10-01', {
+      listStatus: 403,
+      listErrors: body,
+    });
 
     expect(await screen.findByText(FORBIDDEN_TITLE)).toBeInTheDocument();
     expect(screen.getByText(/「합성 묶음 › 합성 메뉴」 메뉴에서/)).toBeInTheDocument();
@@ -593,7 +611,7 @@ describe('W-02-09 LOT 생산 이력 조회: 권한 없음과 없는 LOT', () => 
   });
 
   it('추적이 403이면 상세에 권한 안내를 보이고 [다시 조회]를 두지 않는다', async () => {
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+    setup(`/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       chainFailures: { 'forward-101': 403 },
     });
@@ -613,7 +631,7 @@ describe('W-02-09 LOT 생산 이력 조회: 권한 없음과 없는 LOT', () => 
   });
 
   it('그 밖의 실패(500)는 [다시 조회]를 둔다', async () => {
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+    setup(`/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       chainFailures: { 'forward-101': 500 },
     });
@@ -645,7 +663,7 @@ describe('W-02-09 LOT 생산 이력 조회: 큰 사슬과 단계 줄', () => {
         ],
       }),
     );
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+    setup(`/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       forwardChains: {
         101: {
@@ -660,7 +678,7 @@ describe('W-02-09 LOT 생산 이력 조회: 큰 사슬과 단계 줄', () => {
     const pane = detailPane();
     expect(
       within(pane).getByText(
-        '생산 LOT 812건 중 500건까지 보이며 추적 내보내기에도 이 500건만 담깁니다. 나머지는 제품 LOT 탭에서 W/O 번호나 출하번호로 찾으세요.',
+        '생산 LOT 812건 중 500건까지 보이며 추적 내보내기에도 이 500건만 담깁니다. 나머지는 제품 LOT별 이력 탭에서 W/O 번호나 출하번호로 찾으세요.',
       ),
     ).toBeInTheDocument();
     const group = within(pane).getByText('P-SYN-0201').closest('details');
@@ -677,7 +695,7 @@ describe('W-02-09 LOT 생산 이력 조회: 큰 사슬과 단계 줄', () => {
     Element.prototype.scrollIntoView = function scrollIntoView(this: Element) {
       scrolled.push(this);
     };
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+    setup(`/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       forwardChains: {
         101: forwardChain(101, MAT, [workOrder(2, []), workOrder(3, [productionLot(201, PROD)])]),
@@ -692,7 +710,7 @@ describe('W-02-09 LOT 생산 이력 조회: 큰 사슬과 단계 줄', () => {
   });
 
   it('공정 순서의 단계 줄: 지난 단계는 완료, 가장 멀리 간 단계는 진행 중, 닿지 않은 단계는 대기다', async () => {
-    setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}&selected=101`, {
+    setup(`/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       forwardChains: { 101: forwardChain(101, MAT, [workOrder(3, [productionLot(201, PROD)])]) },
     });
@@ -717,7 +735,7 @@ describe('W-02-09 LOT 생산 이력 조회: LOT 번호 칸', () => {
   it('기간이 비어 있으면 LOT 번호 정확 일치(lotNo)로 기간 없이 부른다', async () => {
     const user = userEvent.setup();
     const old = 'ITEM-A|500|240101|SUP-A|0009';
-    const { calls } = setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}`, {
+    const { calls } = setup(`/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}`, {
       forwardRows: [forwardRow(101, MAT)],
     });
 
@@ -735,9 +753,12 @@ describe('W-02-09 LOT 생산 이력 조회: LOT 번호 칸', () => {
 
   it('기간이 있으면 LOT 번호 일부(q)로 부른다', async () => {
     const user = userEvent.setup();
-    const { calls } = setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
-      forwardRows: [forwardRow(101, MAT)],
-    });
+    const { calls } = setup(
+      '/production/lot-trace?tab=forward&q=ITEM-A&from=2026-10-01&to=2026-10-26',
+      {
+        forwardRows: [forwardRow(101, MAT)],
+      },
+    );
 
     const field = await screen.findByLabelText('LOT 번호');
     await user.clear(field);
@@ -752,7 +773,7 @@ describe('W-02-09 LOT 생산 이력 조회: LOT 번호 칸', () => {
   });
 
   it('기간 400은 문구가 아니라 코드로 가른다(RANGE → 366일 안내)', async () => {
-    setup('/production/lot-trace?q=X&from=2025-01-01', {
+    setup('/production/lot-trace?tab=forward&q=X&from=2025-01-01', {
       listStatus: 400,
       listErrors: {
         errors: [{ scope: 'field', field: 'receiptDateFrom', code: 'RANGE', message: '내부 문구' }],
@@ -763,7 +784,7 @@ describe('W-02-09 LOT 생산 이력 조회: LOT 번호 칸', () => {
   });
 
   it('생산 LOT을 자재 LOT 탭으로 열면 목록이 빈 까닭을 말한다', async () => {
-    setup(`/production/lot-trace?lot=${PROD}&selected=201`, {
+    setup(`/production/lot-trace?tab=forward&lot=${PROD}&selected=201`, {
       forwardRows: [],
       forwardChains: { 201: forwardChain(201, PROD, [], 'PRODUCTION') },
       backwardChains: { 201: backwardChain(201, PROD, []) },
@@ -787,7 +808,7 @@ describe('W-02-09 LOT 생산 이력 조회: 목록 내보내기', () => {
     const exportGate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01', {
+    setup('/production/lot-trace?tab=forward&q=ITEM-A&from=2026-10-01', {
       forwardRows: [forwardRow(101, MAT)],
       exportGate,
     });
@@ -806,7 +827,7 @@ describe('W-02-09 LOT 생산 이력 조회: 목록 내보내기', () => {
     const user = userEvent.setup();
     const createObjectURL = vi.fn(() => 'blob:synthetic');
     vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
-    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01', {
+    setup('/production/lot-trace?tab=forward&q=ITEM-A&from=2026-10-01', {
       forwardRows: [forwardRow(101, MAT)],
     });
 
@@ -822,7 +843,7 @@ describe('W-02-09 LOT 생산 이력 조회: 추적 조건 바로 반영', () => 
 
   it('LOT 번호는 칠 때마다 부르지 않고 칸을 떠날 때 반영한다', async () => {
     const user = userEvent.setup();
-    const { calls } = setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}`, {
+    const { calls } = setup(`/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}`, {
       forwardRows: [forwardRow(101, MAT)],
     });
     const field = await screen.findByLabelText('LOT 번호');
@@ -840,7 +861,7 @@ describe('W-02-09 LOT 생산 이력 조회: 추적 조건 바로 반영', () => 
 
   it('LOT 번호를 지우면(×) 바로 반영하고, 남은 조건이 없으면 기본 기간으로 다시 부른다', async () => {
     const user = userEvent.setup();
-    const { calls } = setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}`, {
+    const { calls } = setup(`/production/lot-trace?tab=forward&lot=${encodeURIComponent(MAT)}`, {
       forwardRows: [forwardRow(101, MAT)],
     });
     await screen.findByText(listLot(MAT));
@@ -857,9 +878,12 @@ describe('W-02-09 LOT 생산 이력 조회: 추적 조건 바로 반영', () => 
 
   it('기간이 366일을 넘으면 반영하지 않고 기간 칸 아래 사유를 보인다', async () => {
     const user = userEvent.setup();
-    const { calls } = setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
-      forwardRows: [forwardRow(101, MAT)],
-    });
+    const { calls } = setup(
+      '/production/lot-trace?tab=forward&q=ITEM-A&from=2026-10-01&to=2026-10-26',
+      {
+        forwardRows: [forwardRow(101, MAT)],
+      },
+    );
     await screen.findByText(listLot(MAT));
     const before = flows(calls).length;
 
@@ -872,9 +896,12 @@ describe('W-02-09 LOT 생산 이력 조회: 추적 조건 바로 반영', () => 
 
   it('기간을 고르면 바로 반영하고 쪽을 1로 돌린다', async () => {
     const user = userEvent.setup();
-    const { calls } = setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26&page=2', {
-      forwardRows: [forwardRow(101, MAT)],
-    });
+    const { calls } = setup(
+      '/production/lot-trace?tab=forward&q=ITEM-A&from=2026-10-01&to=2026-10-26&page=2',
+      {
+        forwardRows: [forwardRow(101, MAT)],
+      },
+    );
     await screen.findByText(listLot(MAT));
 
     await pickRange(user, screen.getByLabelText('입고 기간'), '2026-10-05', '2026-10-20');
@@ -888,7 +915,7 @@ describe('W-02-09 LOT 생산 이력 조회: 추적 조건 바로 반영', () => 
 
   it('단계 칩은 바로 반영하고 주소를 바꿔 쓴다', async () => {
     const user = userEvent.setup();
-    setup('/production/lot-trace?q=ITEM-A&from=2026-10-01&to=2026-10-26', {
+    setup('/production/lot-trace?tab=forward&q=ITEM-A&from=2026-10-01&to=2026-10-26', {
       forwardRows: [forwardRow(101, MAT)],
     });
     const chips = await screen.findByRole('group', { name: '진행' });

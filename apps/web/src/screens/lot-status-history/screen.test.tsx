@@ -1174,7 +1174,7 @@ describe('LOT 상세의 [추적 보기]', () => {
     permissions,
   });
 
-  it('자재 LOT은 LOT 생산 이력 조회의 자재 LOT 탭으로 그 LOT을 연다', async () => {
+  it('자재 LOT은 LOT 생산 이력 조회의 자재 LOT별 이력 탭으로 그 LOT을 연다', async () => {
     renderScreen(
       '/quality/lot-status?lot=401',
       'ready',
@@ -1192,10 +1192,11 @@ describe('LOT 상세의 [추적 보기]', () => {
     );
     expect(locationSearch().get('lot')).toBe('SAMPLE-LOT-001');
     expect(locationSearch().get('selected')).toBe('401');
-    expect(locationSearch().has('tab')).toBe(false);
+    /* 탭이 없으면 기간별 이력이 열리므로 자재 LOT별 이력 탭을 주소에 싣는다. */
+    expect(locationSearch().get('tab')).toBe('forward');
   });
 
-  it('생산 LOT은 제품 LOT 탭으로 연다', async () => {
+  it('생산 LOT은 제품 LOT별 이력 탭으로 연다', async () => {
     renderScreen(
       '/quality/lot-status?lot=401',
       'ready',

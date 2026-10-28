@@ -2,7 +2,15 @@ import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
 import type { Period } from './period';
 import type { ReceiptLineQuery, ShipmentLineQuery } from './types';
 
-/** 구분 조건 칩. 자재 입고와 제품입고는 입고 줄 목록, 제품 출고는 출하 줄 목록이다. */
+/**
+ * 기간별 이력의 구분 조건 칩. 자재 입고와 제품입고는 입고 줄 목록(`/logistics/goods-receipt-lines`), 제품 출하는 출하 줄
+ * 목록이다. 칩 순서는 공정 흐름(자재 입고 → 투입 → 제품입고 → 포장 → 제품 출하)을 따른다.
+ *
+ * ⚠ 투입(`CONSUMED`)과 포장(`PACKED`)은 아직 없다. 기간으로 줄을 부르는 서버 목록이 없어서다 — 투입 목록
+ * (`GET /production/material-consumptions`)은 기간 조건은 있으나 LOT 번호, 품목, W/O 번호 없이 번호만 주고, 포장
+ * (`GET /inventory/handling-units`)은 기간도 LOT도 없다. 서버 목록이 들어오면 여기 순서 자리에 넣고, `rows.ts`에
+ * 줄 바꾸개(`from...Line`)를, `queries.ts`의 `fetchMovementPage`와 건수에 갈래를 더한다. 상세(LotDetail)는 그대로 쓴다.
+ */
 export const KINDS = ['MATERIAL', 'PRODUCT', 'SHIPMENT'] as const;
 export type MovementKind = (typeof KINDS)[number];
 
@@ -11,7 +19,7 @@ export interface LotTraceFilters extends Period {
   kind: MovementKind;
   item: string;
   warehouse: string;
-  /** 자재 입고의 공급사, 제품 출고의 고객. 제품입고에는 없다. */
+  /** 자재 입고의 공급사, 제품 출하의 고객. 제품입고에는 없다. */
   partner: string;
   status: string;
   page: number;
