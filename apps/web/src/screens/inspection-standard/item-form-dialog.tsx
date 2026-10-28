@@ -1,4 +1,4 @@
-import { Button, Checkbox, Dialog, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -59,12 +59,19 @@ export const ItemFormDialog = ({
   const nameId = useId();
   const measurementCountId = useId();
   const targetValueId = useId();
+  const lowerLimitId = useId();
+  const upperLimitId = useId();
+  const requiredNoteId = useId();
+  const automaticNoteId = useId();
+  const ph = t.dialog.itemPlaceholders;
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
       size="lg"
+      /* 닫기는 「취소」로 한다 — 머리의 ✕는 두지 않는다(사용자 지시 · #196). */
+      showCloseButton={false}
       title={mode === 'create' ? t.dialog.itemCreateTitle : t.dialog.itemEditTitle}
       footer={
         <>
@@ -83,6 +90,7 @@ export const ItemFormDialog = ({
           <TextField
             id={codeId}
             value={values.inspectionItemCode}
+            placeholder={ph.inspectionItemCode}
             onChange={(event) => onChange({ inspectionItemCode: event.target.value })}
             error={fieldErrors.inspectionItemCode}
             aria-required
@@ -94,6 +102,7 @@ export const ItemFormDialog = ({
           <TextField
             id={nameId}
             value={values.inspectionItemName}
+            placeholder={ph.inspectionItemName}
             onChange={(event) => onChange({ inspectionItemName: event.target.value })}
             error={fieldErrors.inspectionItemName}
             aria-required
@@ -105,6 +114,7 @@ export const ItemFormDialog = ({
           required
           options={dataTypeOptions}
           value={values.dataTypeCode}
+          placeholder={ph.dataType}
           onChange={(dataTypeCode) => onChange({ dataTypeCode })}
           error={fieldErrors.dataTypeCode}
         />
@@ -113,6 +123,7 @@ export const ItemFormDialog = ({
           label={t.fields.uom}
           options={[{ value: '', label: t.values.empty }, ...uomOptions]}
           value={values.uomId}
+          placeholder={ph.uom}
           onChange={(uomId) => onChange({ uomId })}
           error={fieldErrors.uomId}
         />
@@ -128,27 +139,37 @@ export const ItemFormDialog = ({
             id={targetValueId}
             type="number"
             value={values.targetValue}
+            placeholder={ph.targetValue}
             onChange={(event) => onChange({ targetValue: event.target.value })}
             error={fieldErrors.targetValue}
             helperText={fieldWarnings.targetValue}
           />
         </div>
 
-        <TextField
-          type="number"
-          label={t.fields.lowerLimit}
-          value={values.lowerLimit}
-          onChange={(event) => onChange({ lowerLimit: event.target.value })}
-          error={fieldErrors.lowerLimit}
-        />
+        {/* 라벨은 다른 칸과 같은 `FieldLabel` 로 단다 — 내장 라벨이면 라벨 줄 모양이 갈린다(#196). */}
+        <div className="field-cell">
+          <FieldLabel htmlFor={lowerLimitId} label={t.fields.lowerLimit} />
+          <TextField
+            id={lowerLimitId}
+            type="number"
+            value={values.lowerLimit}
+            placeholder={ph.lowerLimit}
+            onChange={(event) => onChange({ lowerLimit: event.target.value })}
+            error={fieldErrors.lowerLimit}
+          />
+        </div>
 
-        <TextField
-          type="number"
-          label={t.fields.upperLimit}
-          value={values.upperLimit}
-          onChange={(event) => onChange({ upperLimit: event.target.value })}
-          error={fieldErrors.upperLimit}
-        />
+        <div className="field-cell">
+          <FieldLabel htmlFor={upperLimitId} label={t.fields.upperLimit} />
+          <TextField
+            id={upperLimitId}
+            type="number"
+            value={values.upperLimit}
+            placeholder={ph.upperLimit}
+            onChange={(event) => onChange({ upperLimit: event.target.value })}
+            error={fieldErrors.upperLimit}
+          />
+        </div>
 
         {/* 계약 CHECK > 0이고 표본 번호의 상한이라 정수여야 한다. */}
         <div className="field-cell">
@@ -169,6 +190,7 @@ export const ItemFormDialog = ({
           label={t.fields.inspectionMethod}
           options={inspectionMethodOptions}
           value={values.inspectionMethodCode}
+          placeholder={ph.inspectionMethod}
           onChange={(inspectionMethodCode) => onChange({ inspectionMethodCode })}
           error={fieldErrors.inspectionMethodCode}
         />
@@ -177,27 +199,46 @@ export const ItemFormDialog = ({
           label={t.fields.defaultInspectionEquipment}
           options={[{ value: '', label: t.values.empty }, ...equipmentOptions]}
           value={values.defaultInspectionEquipmentId}
+          placeholder={ph.defaultInspectionEquipment}
           onChange={(defaultInspectionEquipmentId) => onChange({ defaultInspectionEquipmentId })}
           error={fieldErrors.defaultInspectionEquipmentId}
         />
+
+        {/* 확인칸마다 무슨 뜻인지 한 줄을 붙인다(사용자 시안 · #196). */}
+        <div className="inspection-standard-item-flag">
+          <Checkbox
+            checked={values.requiredFlag}
+            aria-describedby={requiredNoteId}
+            onChange={(event) => onChange({ requiredFlag: event.target.checked })}
+          >
+            {t.fields.requiredFlag}
+          </Checkbox>
+          <span id={requiredNoteId} className="inspection-standard-item-flag-note">
+            {t.dialog.requiredFlagNote}
+          </span>
+        </div>
+        <div className="inspection-standard-item-flag">
+          <Checkbox
+            checked={values.automaticJudgment}
+            aria-describedby={automaticNoteId}
+            onChange={(event) => onChange({ automaticJudgment: event.target.checked })}
+          >
+            {t.fields.automaticJudgment}
+          </Checkbox>
+          <span id={automaticNoteId} className="inspection-standard-item-flag-note">
+            {t.dialog.automaticJudgmentNote}
+          </span>
+        </div>
       </div>
 
-      <div className="check-group">
-        <Checkbox
-          checked={values.requiredFlag}
-          onChange={(event) => onChange({ requiredFlag: event.target.checked })}
-        >
-          {t.fields.requiredFlag}
-        </Checkbox>
-        <Checkbox
-          checked={values.automaticJudgment}
-          onChange={(event) => onChange({ automaticJudgment: event.target.checked })}
-        >
-          {t.fields.automaticJudgment}
-        </Checkbox>
-      </div>
-
-      <p className="field-note">{t.dialog.itemLocalNote}</p>
+      {/* 안내는 다른 화면과 같은 공용 안내 상자로 낸다(#196). */}
+      <AlertBanner
+        variant="info"
+        className="inspection-standard-item-local-note"
+        title={t.dialog.itemLocalNoteTitle}
+      >
+        {t.dialog.itemLocalNoteBody}
+      </AlertBanner>
     </Dialog>
   );
 };

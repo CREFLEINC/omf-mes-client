@@ -58,9 +58,8 @@ describe('ItemFormDialog — 표시', () => {
   it('확인이 표에만 반영된다는 사실을 창 안에서 밝힌다', () => {
     renderDialog();
 
-    expect(
-      screen.getByText('확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('확인을 누르면 표에만 반영됩니다.')).toBeInTheDocument();
+    expect(screen.getByText('「저장」을 눌러야 서버에 반영됩니다.')).toBeInTheDocument();
   });
 
   /*
@@ -82,6 +81,14 @@ describe('ItemFormDialog — 표시', () => {
     fireEvent.change(screen.getByLabelText('측정 횟수'), { target: { value: '5' } });
 
     expect(onChange).toHaveBeenCalledWith({ measurementCount: '5' });
+  });
+
+  /* 머리의 ✕는 두지 않는다 — 닫기는 「취소」로 한다(사용자 지시 · #196). */
+  it('창 머리에 닫기 단추가 없다', () => {
+    renderDialog();
+
+    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '취소' })).toBeInTheDocument();
   });
 });
 

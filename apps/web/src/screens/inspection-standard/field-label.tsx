@@ -22,6 +22,12 @@ export interface FieldLabelProps {
 export const FieldLabel = ({ htmlFor, label, required = false }: FieldLabelProps) => (
   <span className="field-label">
     <label htmlFor={htmlFor}>{label}</label>
-    {required && <span aria-hidden="true"> *</span>}
+    {/* `required-mark` — 다른 화면과 같은 빨간 필수 표시(#196). */}
+    {required && (
+      <span className="required-mark" aria-hidden="true">
+        {' '}
+        *
+      </span>
+    )}
   </span>
 );

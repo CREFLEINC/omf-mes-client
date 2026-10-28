@@ -124,7 +124,22 @@ export const inspectionStandard = {
      * 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다 —
      * 이 창의 확인은 표에만 반영되고 서버 반영은 「저장」 한 번뿐이다. 그 사실을 감추지 않는다.
      */
-    itemLocalNote: '확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.',
+    itemLocalNoteTitle: '확인을 누르면 표에만 반영됩니다.',
+    itemLocalNoteBody: '「저장」을 눌러야 서버에 반영됩니다.',
+    /* 칸마다 무엇을 넣을지 알린다(사용자 시안 · #196). */
+    itemPlaceholders: {
+      inspectionItemCode: '항목코드를 입력하세요.',
+      inspectionItemName: '항목명을 입력하세요.',
+      dataType: '자료형을 선택하세요.',
+      uom: '단위를 선택하세요.',
+      targetValue: '목표값을 입력하세요.',
+      lowerLimit: '하한값을 입력하세요.',
+      upperLimit: '상한값을 입력하세요.',
+      inspectionMethod: '검사 방법을 선택하세요.',
+      defaultInspectionEquipment: '지정 검사장비를 선택하세요.',
+    },
+    requiredFlagNote: '이 항목은 검사 시 반드시 입력해야 합니다.',
+    automaticJudgmentNote: '입력된 값이 기준에 따라 자동으로 판정됩니다.',
   },
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {

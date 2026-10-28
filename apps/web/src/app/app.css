@@ -588,6 +588,22 @@ main > * + * {
   margin: 0;
 }
 
+/* 검사 항목 창의 확인칸 — 확인칸 아래에 뜻 한 줄, 글머리를 확인칸 글자에 맞춘다(사용자 시안 · #196). */
+.inspection-standard-item-flag {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.inspection-standard-item-local-note {
+  margin-top: var(--space-4);
+}
+
+.inspection-standard-item-flag-note {
+  padding-left: calc(18px + var(--space-2));
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
 /* 발행 단추 자리의 안내(작성중 버전이 있을 때 · #196) — 짧은 한 문장이라 꺾지 않는다. */
 .inspection-standard-new-revision-notice {
   margin: 0;
