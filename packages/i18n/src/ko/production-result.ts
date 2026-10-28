@@ -92,6 +92,8 @@ export const productionResult = {
       remove: (label: string): string => `${label} 삭제`,
       duplicate: '이미 있는 불량 유형입니다.',
       typeMissing: '유형을 고르세요',
+      /** 불량 줄의 문제를 목록 아래 한 줄로 말한다. */
+      rowIssue: (row: string, issue: string): string => `${row}: ${issue}`,
       qtyMissing: '수량을 입력하세요',
       noProcess: '공정이 없는 W/O라 불량 유형을 고를 수 없습니다.',
       /* 키패드 이름 — 지금 어느 칸에 치는지 말한다. 칸 이름과 겹치지 않게 「키패드」를 붙인다. */

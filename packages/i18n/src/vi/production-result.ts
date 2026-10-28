@@ -76,6 +76,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       remove: (label: string): string => `Xóa ${label}`,
       duplicate: 'Loại lỗi này đã có.',
       typeMissing: 'Hãy chọn loại',
+      rowIssue: (row: string, issue: string): string => `${row}: ${issue}`,
       qtyMissing: 'Hãy nhập số lượng',
       noProcess: 'W/O không có công đoạn nên không chọn được loại lỗi.',
       keypadGood: 'Bàn phím số lượng đạt',

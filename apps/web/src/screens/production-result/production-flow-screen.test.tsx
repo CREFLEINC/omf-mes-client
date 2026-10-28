@@ -2143,8 +2143,11 @@ describe('ProductionFlowScreen 불량', () => {
       await user.click(screen.getByRole('button', { name: '1' }));
     }
 
+    /* 줄의 문제는 목록 아래 한 줄이 줄 이름과 함께 말하고, 그 줄의 수량 칸이 그 문장을 가리킨다. */
+    const issue = t.flow.defects.rowIssue(t.flow.defects.row(2), t.flow.defects.duplicate);
+    expect(within(defectSection()).getByText(issue)).toBeInTheDocument();
     const second = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(2) });
-    expect(within(second).getByText(t.flow.defects.duplicate)).toBeInTheDocument();
+    expect(within(second).getByLabelText(t.flow.defects.qty)).toHaveAccessibleDescription(issue);
     expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
   });
 
@@ -2195,7 +2198,8 @@ describe('ProductionFlowScreen 불량', () => {
     expect(within(defectSection()).getByLabelText(t.flow.defects.qty)).toHaveValue('5');
   });
 
-  it('덜 채운 불량 줄은 무엇이 빠졌는지 그 줄에 말한다', async () => {
+  /* 손대지 않은 칸은 나무라지 않는다(C-7). 할 일은 하단 바가 말하고, 칸을 떠나면 목록 아래 한 줄로 말한다. */
+  it('덜 채운 불량 줄은 칸을 떠난 뒤에만 무엇이 빠졌는지 말한다', async () => {
     const user = userEvent.setup();
     renderScreen([], defectRoutes);
     await screen.findByRole('region', { name: t.flow.defects.title });
@@ -2207,11 +2211,24 @@ describe('ProductionFlowScreen 불량', () => {
       }),
     );
     const row = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) });
-    expect(within(row).getByText(t.flow.defects.typeMissing)).toBeInTheDocument();
+    const rowName = t.flow.defects.row(1);
+    expect(screen.getByText(t.flow.next.defectType)).toBeInTheDocument();
+    expect(
+      screen.queryByText(t.flow.defects.rowIssue(rowName, t.flow.defects.typeMissing)),
+    ).not.toBeInTheDocument();
 
     await user.click(within(row).getByRole('button', { name: new RegExp(t.flow.defects.type) }));
     await pickDefect(user, '긁힘');
-    expect(within(row).getByText(t.flow.defects.qtyMissing)).toBeInTheDocument();
+    expect(screen.getByText(t.flow.next.defectQty)).toBeInTheDocument();
+    expect(
+      screen.queryByText(t.flow.defects.rowIssue(rowName, t.flow.defects.qtyMissing)),
+    ).not.toBeInTheDocument();
+
+    await user.click(within(row).getByLabelText(t.flow.defects.qty));
+    await user.tab();
+    expect(
+      screen.getByText(t.flow.defects.rowIssue(rowName, t.flow.defects.qtyMissing)),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
   });
 
