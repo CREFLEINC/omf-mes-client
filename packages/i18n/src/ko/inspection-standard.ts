@@ -16,6 +16,8 @@ export const inspectionStandard = {
     items: '검사 항목',
   },
   actions: {
+    /* 기본 정보 폼의 품목 칸 지우기 — 비우면 전 품목 공통 기준이다(#196). */
+    itemClear: '품목 지우기',
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
@@ -53,6 +55,9 @@ export const inspectionStandard = {
      */
     newVersionBlockedByUnsaved:
       '신규 버전 발행은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+    /* 작성중 판은 기준당 하나만 둔다 — 둘이면 어느 쪽을 확정할지 엇갈린다(사용자 지시 · #196). */
+    newVersionBlockedByDraft:
+      '작성중인 버전이 있습니다. 확정하거나 작성을 취소하세요.',
     confirmNeedsDraft: '확정은 작성중 버전에만 할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
     /* 계약이 항목 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
     confirmNeedsItems: '확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.',
@@ -65,10 +70,6 @@ export const inspectionStandard = {
     discardNeedsDraft: '작성 취소는 작성중 버전에만 할 수 있습니다. 확정된 버전은 폐기하세요.',
     /** 여러 컨트롤이 공유하는 안내라 무엇에 대한 안내인지로 시작한다. */
     transitionNeedsVersion: '확정·폐기는 버전을 먼저 등록해야 할 수 있습니다.',
-    compareVersionsUnavailable:
-      '버전 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
-    changeHistoryUnavailable:
-      '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     /*
      * 확정·폐기 버전에서는 검사 항목도 잠긴다. 여러 컨트롤(추가·수정·삭제·순서 이동·저장)이
      * 공유하는 안내라 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다(배치 규범 4의 이탈 조건).
@@ -120,7 +121,22 @@ export const inspectionStandard = {
      * 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다 —
      * 이 창의 확인은 표에만 반영되고 서버 반영은 「저장」 한 번뿐이다. 그 사실을 감추지 않는다.
      */
-    itemLocalNote: '확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.',
+    itemLocalNote: '확인 시 목록에 추가되며, 저장 후 최종 반영됩니다.',
+    /* 칸마다 무엇을 넣을지 알린다(사용자 시안 · #196). */
+    itemPlaceholders: {
+      inspectionItemCode: '항목코드를 입력하세요',
+      inspectionItemName: '항목명을 입력하세요',
+      dataType: '검사값 유형을 선택하세요',
+      uom: '검사 단위를 선택하세요',
+      targetValue: '기준값을 입력하세요',
+      lowerLimit: '하한값을 입력하세요',
+      upperLimit: '상한값을 입력하세요',
+      inspectionMethod: '검사 방법을 선택하세요',
+      defaultInspectionEquipment: '검사 장비를 선택하세요',
+    },
+    /* 창의 확인칸 이름 — 표의 짧은 라벨(필수 · 자동판정)과 따로 둔다(사용자 지시 · #196). */
+    requiredFlagLabel: '필수 검사 항목 여부',
+    automaticJudgmentLabel: '자동 판정 사용 여부',
   },
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {
@@ -161,15 +177,146 @@ export const inspectionStandard = {
     keyUnknown: '기준코드 없음',
   },
   filters: {
-    searchLabel: '검사기준 검색',
-    searchPlaceholder: '기준코드 또는 기준명',
-    inspectionType: '검사 유형',
+    searchLabel: '검사 기준 검색',
+    searchPlaceholder: '기준 코드 또는 기준명을 입력하세요',
+    searchClear: '검사 기준 검색 지우기',
+    inspectionType: '검사 유형 선택',
     typeAll: '전체 유형',
     chipKeyword: (value: string): string => `검색어: ${value}`,
     chipInspectionType: (label: string): string => `검사 유형: ${label}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveInspectionType: '검사 유형 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+    /* 품목 조건 — 검사 조회·판정의 품목 검색과 같은 모양(#196). */
+    item: '품목 검색',
+    itemPlaceholder: '품목을 입력하세요',
+    itemClear: '품목 조건 지우기',
+    itemPick: '선택',
+    chipItem: (label: string): string => `품목: ${label}`,
+    chipRemoveItem: '품목 조건 제거',
+  },
+  /*
+   * 상세 칸 맨 위의 버전 고르기 줄 — 선택칸으로 바로 고르고, 「버전 목록」 창에서 표로 고르거나
+   * 신규 버전을 발행한다(omf-all-around#196).
+   */
+  /* 기준 정보 구획 머리(omf-all-around#196) — 제목과 승인 · 사용 상태 칩. */
+  detail: {
+    title: '검사 기준 상세',
+    createTitle: '검사 기준 등록',
+    chipNotApproved: '미승인',
+    chipActive: '사용',
+    chipInactive: '미사용',
+    editBasic: '기본 정보 수정',
+    itemUnset: '품목 미지정',
+    pqcSkipOn: '허용',
+    close: '닫기',
+  },
+  /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
+  versionSection: {
+    /* 샘플을 비율 · 개수 중 무엇으로 받을지 고르는 칩(#196). */
+    samplingByRatio: '비율(%)',
+    samplingByQty: '수량',
+    samplingBasis: '샘플 기준 선택',
+    samplingBasisLocked: '전수검사는 샘플을 입력하지 않습니다. 검사 방식을 샘플링으로 바꾸면 고를 수 있습니다.',
+    /* 요약 줄의 샘플 개수 표기(#201 · #196). */
+    samplingQtyValue: (qty: string): string => `${qty}개`,
+    title: '검사 기준 버전',
+    sampling: '검사 방식',
+    effectivePeriod: '적용 기간',
+    noEnd: '종료일 미설정',
+    itemsTitle: (count: number): string => `검사 항목 (${String(count)})`,
+    lockedHint: '검사 항목을 추가하려면 신규 버전을 발행하세요.',
+    tabsLabel: '버전 내용',
+    tabItems: '검사 항목',
+    editSettings: '버전 설정 수정',
+    tabItemsCount: (count: number): string => `검사 항목 ${String(count)}건`,
+    tabHistory: '이력',
+    notSet: '미설정',
+  },
+  /* 검사 기준 목록 표의 추가 열(omf-all-around#196). */
+  listColumns: {
+    item: '품목',
+    approval: '승인 여부',
+    active: '사용 여부',
+    approved: '승인',
+    notApproved: '미승인',
+  },
+  /* 버전 비교 창 — 두 버전의 설정 · 검사 항목 차이(사용자 지시 · #196). 서버 비교 경로 없이 두 버전을 불러 화면이 견준다. */
+  compare: {
+    title: '버전 비교',
+    base: '기준 버전',
+    target: '비교 버전',
+    settingsTitle: '버전 설정 비교',
+    itemsTitle: '검사 항목 비교',
+    legendChanged: '변경',
+    legendAdded: '추가',
+    legendRemoved: '삭제',
+    count: (count: number): string => `총 ${String(count)}건`,
+    fieldColumn: '항목',
+    statusColumn: '상태',
+    itemColumn: '검사 항목',
+    changesColumn: '변경',
+    added: '추가',
+    removed: '삭제',
+    changed: '변경',
+    same: '같음',
+    hideSame: '동일 항목 숨기기',
+    sameVersion: '서로 다른 버전을 고르세요.',
+    noItemDiff: '바뀐 검사 항목이 없습니다.',
+    noItems: '두 버전 모두 검사 항목이 없습니다.',
+    yes: '예',
+    no: '아니요',
+    change: (label: string, before: string, after: string): string => `${label}: ${before} → ${after}`,
+    needTwo: '버전 비교는 버전이 2개 이상일 때 할 수 있습니다.',
+    loading: '비교할 버전을 불러오는 중',
+  },
+  /* 버전 변경 이력(#196) — 서버가 버전 쓰기마다 남긴 감사 이력을 읽는다. 최근 1년만 조회한다(조회 경로가 기간을 요구한다). */
+  history: {
+    title: '변경 이력',
+    occurredAt: '일시',
+    performedBy: '처리자',
+    action: '구분',
+    changes: '변경 내용',
+    created: '버전 생성',
+    revised: '신규 버전 발행',
+    settingsSaved: '버전 설정',
+    itemsSaved: '검사 항목',
+    confirmed: '확정',
+    obsoleted: '폐기',
+    discarded: '작성 취소',
+    updated: '수정',
+    unknownUser: (userId: number): string => `사용자 #${String(userId)}`,
+    system: '시스템',
+    itemAdded: '항목 추가',
+    itemRemoved: '항목 삭제',
+    itemField: (code: string, label: string): string => `${code} · ${label}`,
+    none: '변경 이력이 없습니다',
+    noneDescription: '이 버전을 저장 · 확정 · 폐기하면 여기에 남습니다.',
+    loading: '변경 이력을 불러오는 중',
+    range: '최근 1년',
+  },
+  versionBar: {
+    label: '버전',
+    placeholder: '버전을 선택하세요',
+    openList: '버전 목록',
+    close: '닫기',
+  },
+  /* 검사 기준 검색 창 — 검사 조회·판정의 품목 선택 창과 같은 모양(omf-all-around#196). */
+  picker: {
+    title: '검사 기준 검색',
+    keywordLabel: '검색어',
+    keywordPlaceholder: '기준 코드 또는 기준명을 입력하세요',
+    search: '찾기',
+    cancel: '취소',
+    pick: '선택',
+    searching: '찾는 중입니다.',
+    noResult: '찾는 검사 기준이 없습니다.',
+    searchFailed: '검사 기준을 찾지 못했습니다. 다시 시도하세요.',
+    columns: {
+      select: '선택',
+      code: '기준 코드',
+      name: '기준명',
+    },
   },
   loading: {
     plans: '검사기준 목록을 불러오는 중',
@@ -191,12 +338,16 @@ export const inspectionStandard = {
      */
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
-    planNotSelected: '좌측에서 검사기준을 먼저 고르세요',
+    planNotSelected: '목록에서 검사 기준을 먼저 고르세요',
+    /* 상세 칸 빈 안내(사용자 시안 · #196) — 배치(좌우 · 상하)에 따라 목록 위치가 달라 「왼쪽」이라 하지 않는다. */
+    detailNotSelectedTitle: '검사 기준을 선택해 주세요',
+    detailNotSelectedDescription: '목록에서 선택하면 상세 정보가 표시됩니다.',
     versionNoneTitle: '등록된 버전이 없습니다',
     versionNoneDescription: '「버전 등록」으로 첫 버전을 만드세요.',
-    versionNotSelected: '가운데에서 버전을 먼저 고르세요',
+    versionNotSelected: '버전을 선택하세요',
+    versionNotSelectedDescription: '선택한 버전의 검사 기준 정보가 표시됩니다.',
     itemNoneTitle: '등록된 검사 항목이 없습니다',
-    itemNoneDescription: '「항목 추가」로 첫 항목을 등록하세요.',
+    itemNoneDescription: '검사 항목을 등록하세요.',
   },
   fields: {
     inspectionPlanCode: '기준코드',
@@ -211,25 +362,25 @@ export const inspectionStandard = {
     active: '사용',
     planVersion: '버전',
     status: '상태',
-    effectiveFrom: '유효시작',
-    effectiveTo: '유효종료',
-    samplingMethod: '샘플링 방법',
+    effectiveFrom: '적용 시작일',
+    effectiveTo: '적용 종료일',
+    samplingMethod: '검사 방식',
     /*
      * **단위를 라벨에 박는다.** 받는 값이 백분율인데 라벨이 그것을 말하지 않으면
      * 30을 30개로 읽는다(#201).
      */
     samplingRatio: '샘플 비율(%)',
-    samplingQty: '샘플 개수',
+    samplingQty: '샘플 수량',
     aqlValue: 'AQL',
-    acceptanceNumber: '합격판정개수',
-    rejectionNumber: '불합격판정개수',
+    acceptanceNumber: '합격 허용 불량 수',
+    rejectionNumber: '불합격 판정 불량 수',
     inspectionFrequency: '검사 주기',
-    frequencyIntervalValue: '주기 값',
+    frequencyIntervalValue: '검사 주기 값',
     frequencyIntervalUom: '주기 단위',
     sequence: '순서',
     /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
     itemSpec: '항목',
-    dataType: '자료형',
+    dataType: '검사값 유형',
     targetRange: '목표·범위',
     measurementCount: '측정 횟수',
     judgment: '판정',
@@ -237,12 +388,12 @@ export const inspectionStandard = {
     rowActions: '편집',
     inspectionItemCode: '항목코드',
     inspectionItemName: '항목명',
-    uom: '단위',
-    targetValue: '목표값',
-    lowerLimit: '하한',
-    upperLimit: '상한',
+    uom: '검사 단위',
+    targetValue: '기준값',
+    lowerLimit: '하한값',
+    upperLimit: '상한값',
     inspectionMethod: '검사 방법',
-    defaultInspectionEquipment: '지정 검사장비',
+    defaultInspectionEquipment: '검사 장비',
     requiredFlag: '필수',
     automaticJudgment: '자동판정',
   },
@@ -291,36 +442,36 @@ export const inspectionStandard = {
     required: '필수 입력 항목입니다.',
     planCodeBlank: '기준코드는 공백만으로 지정할 수 없습니다.',
     planNameBlank: '기준명은 공백만으로 지정할 수 없습니다.',
-    effectiveRangeReversed: '유효종료는 유효시작과 같거나 그 뒤여야 합니다.',
+    effectiveRangeReversed: '적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.',
     /* 계약이 짝을 요구하나 데이터베이스 CHECK 가 없다 — 화면이 먼저 막는다. */
-    frequencyPairRequired: '주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
+    frequencyPairRequired: '검사 주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
     /* 계약 CHECK > 0 — 0 은 「없음」이 아니라 위반이다. */
-    rejectionNumberInvalid: '불합격판정개수는 0보다 큰 숫자여야 합니다.',
+    rejectionNumberInvalid: '불합격 판정 불량 수는 0보다 큰 숫자여야 합니다.',
     /* 계약 CHECK ≥ 0 — 0 은 허용된다. 불합격판정개수와 규칙이 다르다. */
-    acceptanceNumberInvalid: '합격판정개수는 0 이상의 숫자여야 합니다.',
+    acceptanceNumberInvalid: '합격 허용 불량 수는 0 이상의 숫자여야 합니다.',
     /*
      * 계약 exclusiveMinimum: 0 · maximum: 100. 라벨과 같은 말을 쓴다 —
      * 단위 `%`가 문구에 없으면 무엇을 고쳐야 하는지 알 수 없다.
      */
     samplingRatioInvalid: '샘플 비율(%)은 0보다 크고 100 이하인 값이어야 합니다.',
     /* 샘플 방식이면 검사 수량을 비율로 환산한다 — 비율 없이는 몇 개를 검사할지 정할 수 없다. */
-    samplingRatioRequired: '샘플링 방식이면 샘플 비율(%) 또는 샘플 개수를 입력하세요.',
-    samplingQtyBoth: '샘플 비율(%)과 샘플 개수 중 하나만 입력하세요.',
-    samplingQtyInvalid: '샘플 개수는 1 이상의 정수여야 합니다.',
+    samplingRatioRequired: '샘플링 방식이면 샘플 비율(%) 또는 샘플 수량을 입력하세요.',
+    samplingQtyBoth: '샘플 비율(%)과 샘플 수량 중 하나만 입력하세요.',
+    samplingQtyInvalid: '샘플 수량은 1 이상의 정수여야 합니다.',
     /*
      * 계약이 버전 내 유일 제약을 두지 않았다 — 막는 곳이 화면과 서버뿐이다.
      * 중복이 저장되면 측정 기록이 어느 항목의 것인지 가릴 수 없다.
      */
     itemCodeDuplicated: '같은 항목코드가 이 버전에 이미 있습니다. 다른 코드를 입력하세요.',
     /* 계약 ck_inspection_limits — 데이터베이스가 막는다. 먼저 막는 것이 사용자에게 이롭다. */
-    limitsReversed: '상한은 하한과 같거나 그보다 커야 합니다.',
+    limitsReversed: '상한값은 하한값과 같거나 그보다 커야 합니다.',
     /* 계약 CHECK > 0. 측정 횟수는 표본 번호의 상한이라 정수여야 한다. */
     measurementCountInvalid: '측정 횟수는 1 이상의 정수여야 합니다.',
     /*
      * **경고이지 차단이 아니다.** 계약이 목표값 범위 밖을 데이터베이스로 막지 않고
      * 서버가 경고 등급으로 다룬다 — 관리 한계와 규격 한계가 다른 경우가 업무상 정상이다.
      */
-    targetOutOfRange: '목표값이 하한~상한 밖입니다. 의도한 값인지 확인하세요.',
+    targetOutOfRange: '기준값이 하한값~상한값 밖입니다. 의도한 값인지 확인하세요.',
   },
   /**
    * 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다.

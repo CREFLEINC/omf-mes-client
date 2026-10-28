@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -12,7 +12,6 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
   const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
   const onSelect = vi.fn<(id: number) => void>();
   const onChangePage = vi.fn<(page: number) => void>();
-  const onAddPlan = vi.fn<() => void>();
 
   render(
     <PlanListPane
@@ -21,26 +20,33 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
       appliedFilters={DEFAULT_PLAN_FILTERS}
       onApplyFilters={onApplyFilters}
       pageView={toPageView({ page: 1, size: 50, total: 3 }, 3)}
+      pageMeta={{ page: 1, size: 50, total: 3 }}
+      onChangePageSize={vi.fn()}
       onChangePage={onChangePage}
       selectedPlanId={null}
       onSelect={onSelect}
-      isCreating={false}
-      onAddPlan={onAddPlan}
-      onExcelUpload={vi.fn<() => void>()}
       loadError={null}
+      itemPartsOf={(itemId) =>
+        itemId === null || itemId === undefined
+          ? null
+          : { name: `품목 ${String(itemId)}`, code: `CODE-${String(itemId)}` }
+      }
       {...overrides}
     />,
   );
 
-  return { onApplyFilters, onSelect, onChangePage, onAddPlan, user: userEvent.setup() };
+  return { onApplyFilters, onSelect, onChangePage, user: userEvent.setup() };
 };
 
 describe('PlanListPane — 목록 표시', () => {
-  it('기준코드·기준명·유형 세 열만 낸다', () => {
+  it('기준코드·기준명·유형과 품목·승인·사용 열을 낸다', () => {
     renderPane();
 
-    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
-    expect(headers).toEqual(['기준코드', '기준명', '검사 유형']);
+    /* 머리칸에는 열 순서를 옮기는 손잡이 아이콘 글자(drag_indicator)가 함께 있다 — 이름만 견준다. */
+    const headers = screen
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
+    expect(headers).toEqual(['기준코드', '기준명', '검사 유형', '품목', '승인 여부', '사용 여부']);
   });
 
   it('고른 기준의 행에 선택 표식이 붙는다', () => {
@@ -61,6 +67,22 @@ describe('PlanListPane — 목록 표시', () => {
     expect(onSelect).toHaveBeenCalledWith(3003);
   });
 
+  /* 줄 아무 곳이나 눌러도 고른다 — 검사 조회·판정 목록과 같다(omf-all-around#196). */
+  it('기준명 칸을 눌러도 그 줄의 기준을 고른다', async () => {
+    const { onSelect, user } = renderPane();
+
+    await user.click(screen.getByText(inspectionPlanFixtures[1]?.inspectionPlanName ?? ''));
+
+    expect(onSelect).toHaveBeenCalledWith(inspectionPlanFixtures[1]?.inspectionPlanId);
+  });
+
+  /* 표 아래 「선택한 검사 기준: …」 줄은 걷었다(사용자 지시 · #196). */
+  it('고른 기준이 있어도 표 아래에 선택 문구를 내지 않는다', () => {
+    renderPane({ selectedPlanId: inspectionPlanFixtures[1]?.inspectionPlanId ?? null });
+
+    expect(screen.queryByText(/선택한 검사 기준/)).not.toBeInTheDocument();
+  });
+
   /* 실패를 「등록된 검사기준이 없습니다」로 보이면 사실과 다른 안내가 된다. */
   it('조회 실패 표시가 있으면 표와 빈 상태를 함께 내지 않는다', () => {
     renderPane({ plans: [], loadError: <p>불러오지 못했습니다</p> });
@@ -78,93 +100,16 @@ describe('PlanListPane — 목록 표시', () => {
   });
 });
 
-describe('PlanListPane — 조건', () => {
-  it('조회를 누르면 편집 중이던 조건이 한꺼번에 적용된다', async () => {
-    const { onApplyFilters, user } = renderPane();
-
-    await user.type(screen.getByLabelText('검사기준 검색'), 'SYN');
-    await user.click(screen.getByRole('button', { name: '조회' }));
-
-    expect(onApplyFilters).toHaveBeenCalledWith({
-      q: 'SYN',
-      inspectionTypeCode: '',
-      includeInactive: false,
-    });
-  });
-
-  /* 해제 축이라 변경 즉시 적용한다 — 조회를 한 번 더 누르게 하면 켜 놓고 잊는다. */
-  it('미사용 포함은 누르는 즉시 적용된다', async () => {
-    const { onApplyFilters, user } = renderPane();
-
-    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
-
-    expect(onApplyFilters).toHaveBeenCalledWith({
-      q: '',
-      inspectionTypeCode: '',
-      includeInactive: true,
-    });
-  });
-
-  /*
-   * 규범 3-2 — 디자인 시스템 이슈 #62로 선택지 목록이 트리거 폭에 갇힌다.
-   * 최소 폭을 주지 않으면 「IQC (수입검사)」가 「IQC (수⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
-   * 브라우저 확인에서 실제로 잘린 자리라 클래스가 붙어 있는지 여기서 고정한다.
-   */
-  it('검사 유형 선택칸이 선택지 폭을 확보하는 클래스를 갖는다', () => {
-    renderPane();
-
-    expect(screen.getByRole('combobox', { name: '검사 유형' }).closest('.field-cell')).toHaveClass(
-      'wide-select',
-    );
-  });
-
-  it('적용된 조건마다 칩이 하나씩 서고 제거 라벨이 서로 다르다', () => {
-    renderPane({
-      appliedFilters: { q: 'SYN', inspectionTypeCode: 'IQC', includeInactive: true },
-    });
-
-    expect(screen.getByText('검색어: SYN')).toBeInTheDocument();
-    expect(screen.getByText('검사 유형: IQC (수입검사)')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '검색어 조건 제거' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '검사 유형 조건 제거' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '미사용 포함 조건 제거' })).toBeInTheDocument();
-  });
-
-  it('칩을 제거하면 그 조건만 풀린다', async () => {
-    const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'SYN', inspectionTypeCode: 'IQC', includeInactive: true },
-    });
-
-    await user.click(screen.getByRole('button', { name: '검사 유형 조건 제거' }));
-
-    expect(onApplyFilters).toHaveBeenCalledWith({
-      q: 'SYN',
-      inspectionTypeCode: '',
-      includeInactive: true,
-    });
-  });
-
+describe('PlanListPane — 0건 안내', () => {
   it('조건이 걸린 0건이면 조건을 줄이라고 안내한다', () => {
     renderPane({
       plans: [],
-      appliedFilters: { q: 'SYN', inspectionTypeCode: '', includeInactive: false },
+      appliedFilters: { q: 'SYN', inspectionTypeCode: '', itemId: '', includeInactive: false },
       pageView: toPageView({ page: 1, size: 50, total: 0 }, 0),
     });
 
     expect(screen.getByText('조건에 맞는 검사기준이 없습니다')).toBeInTheDocument();
     expect(screen.queryByText('등록된 검사기준이 없습니다')).not.toBeInTheDocument();
-  });
-
-  /* 결과가 없어도 조건을 고칠 수단이 사라지면 안 된다. */
-  it('결과가 없어도 조건 줄은 남는다', () => {
-    renderPane({ plans: [], pageView: toPageView({ page: 1, size: 50, total: 0 }, 0) });
-
-    expect(screen.getByLabelText('검사기준 검색')).toBeInTheDocument();
-    expect(
-      within(screen.getByRole('region', { name: '검사기준' })).getByRole('button', {
-        name: '조회',
-      }),
-    ).toBeInTheDocument();
   });
 });
 
@@ -172,6 +117,7 @@ describe('PlanListPane — 쪽 이동', () => {
   it('다음을 누르면 다음 쪽 번호를 알린다', async () => {
     const { onChangePage, user } = renderPane({
       pageView: toPageView({ page: 2, size: 50, total: 240 }, 50),
+      pageMeta: { page: 2, size: 50, total: 240 },
     });
 
     await user.click(screen.getByRole('button', { name: '다음' }));

@@ -269,26 +269,33 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
+      /*
+       * 품질 기준 정보 — 검사기준 · 검사표 기준(W-06-24 · OA 전용) · 검사 수준 관리 · 불량·원인코드 · 판정유형 코드를 사이드바 한 줄 ·
+       * 본문 위 탭으로 묶는다(사용자 2026-10-26). 모두 판정이 기대는 기준·코드 마스터다.
+       * 검사표 기준 탭은 OA 공장이 없는 계정에서 셸이 거른다(`OA_ONLY_PATHS`).
+       */
       {
         to: '/master-data/inspection-standard',
         icon: 'rule_settings',
-        label: '검사기준',
-        labelVi: 'Tiêu chuẩn kiểm tra',
-      },
-      /* W-06-24 — OA 제품 검사표의 모델별 단계·항목(omf-all-around#89). 검사기준 바로 뒤 — 같은 「기준」 갈래다. */
-      {
-        to: '/master-data/inspection-sheet-template',
-        icon: 'checklist',
-        label: '검사표 기준',
-        labelVi: 'Tiêu chuẩn phiếu kiểm tra',
-      },
-      /* 품질 코드 — 불량·원인과 판정유형은 둘 다 판정에 붙이는 코드 마스터다. */
-      {
-        to: '/master-data/defect-cause-code',
-        icon: 'rule',
-        label: '품질 코드',
-        labelVi: 'Mã chất lượng',
+        label: '품질 기준 정보',
+        labelVi: 'Dữ liệu chuẩn chất lượng',
         tabs: [
+          {
+            to: '/master-data/inspection-standard',
+            label: '검사 기준',
+            labelVi: 'Tiêu chuẩn kiểm tra',
+          },
+          {
+            to: '/master-data/inspection-sheet-template',
+            label: '검사표 기준',
+            labelVi: 'Tiêu chuẩn phiếu kiểm tra',
+          },
+          /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
+          {
+            to: '/quality/inspection-levels',
+            label: '검사 수준 관리',
+            labelVi: 'Quản lý mức kiểm tra',
+          },
           {
             to: '/master-data/defect-cause-code',
             label: '불량·원인코드',
@@ -296,7 +303,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
           {
             to: '/master-data/judgment-code',
-            label: '판정유형 코드',
+            label: '판정 유형 코드',
             labelVi: 'Mã loại đánh giá',
           },
         ],
@@ -364,13 +371,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'gavel',
         label: '처분 판정 처리',
         labelVi: 'Ra quyết định xử lý',
-      },
-      /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
-      {
-        to: '/quality/inspection-levels',
-        icon: 'tune',
-        label: '검사 수준 관리',
-        labelVi: 'Quản lý mức kiểm tra',
       },
     ],
   },

@@ -19,6 +19,7 @@ const renderPane = (overrides: Partial<Parameters<typeof VersionPane>[0]> = {}) 
       onSelect={onSelect}
       loadError={null}
       newRevisionDisabledReason={null}
+      newRevisionNotice={null}
       isCreating={false}
       isPublishing={false}
       onNewRevision={onNewRevision}
@@ -67,7 +68,7 @@ describe('VersionPane — 목록', () => {
   it('기준을 고르기 전에는 선택 안내를 내고 액션도 내지 않는다', () => {
     renderPane({ isPlanSelected: false, versions: [] });
 
-    expect(screen.getByText('좌측에서 검사기준을 먼저 고르세요')).toBeInTheDocument();
+    expect(screen.getByText('목록에서 검사 기준을 먼저 고르세요')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '버전 등록' })).not.toBeInTheDocument();
   });
 

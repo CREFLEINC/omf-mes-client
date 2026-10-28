@@ -133,7 +133,8 @@ describe('toVersionUpdate', () => {
     expect(byQty.samplingRatio).toBeNull();
     expect(byQty.samplingQty).toBe(5);
     expect(
-      toVersionUpdate({ ...filled, samplingMethodCode: 'FULL_INSPECTION', samplingQty: '5' }).samplingQty,
+      toVersionUpdate({ ...filled, samplingMethodCode: 'FULL_INSPECTION', samplingQty: '5' })
+        .samplingQty,
     ).toBeNull();
   });
 
