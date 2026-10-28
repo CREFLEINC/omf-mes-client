@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { ProductionOrderScreen } from './screen';
+import { reasonHelpText } from './worklist-chips';
 
 const t = messages.erpWorkOrderFlow;
 const path = (request: Request) => new URL(request.url).pathname;
@@ -141,7 +142,7 @@ const render = (options: Options, route = '/production/production-orders') => {
 };
 
 describe('작업지시 목록 작업함', () => {
-  it('기본 조건은 「확인 필요」이고 사유를 첫 칩과 「외 N」으로 목록에 보인다(C-17)', async () => {
+  it('기본 조건은 「조치 필요」이고 사유를 첫 칩과 「외 N」으로 목록에 보인다(C-17)', async () => {
     const { requests } = render({ orders: [REVIEW, DONE_BLOCKED, DONE_READY] });
 
     const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
@@ -172,7 +173,7 @@ describe('작업지시 목록 작업함', () => {
     expect(screen.queryByText('자동 계획', { exact: true })).toBeNull();
   });
 
-  it('자동 계획 완료 행은 조건과 같은 상태 칩이고, 라인 미정 W/O는 사유 칩 「4M 배정 미완」으로만 보인다(C-17)', async () => {
+  it('배포 대기 행은 조건과 같은 상태 칩이고, 생산 라인 없는 W/O는 사유 칩 「W/O 생산 라인 지정 필요」로만 보인다(C-17)', async () => {
     render(
       { orders: [REVIEW, DONE_BLOCKED, DONE_READY] },
       '/production/production-orders?autoPlan=DONE',
@@ -184,6 +185,13 @@ describe('작업지시 목록 작업함', () => {
     );
     expect(within(blocked).getByText(t.status.DONE)).toBeVisible();
     expect(within(blocked).getByText(t.list.pendingWorkOrders(2, 2))).toBeVisible();
+    /* 툴팁은 무엇이 잘못됐고 어디서 고치는지 수와 함께 말한다. */
+    expect(
+      within(blocked).getByText(t.reasons.ASSIGNMENT_INCOMPLETE).closest('.reason-chips'),
+    ).toHaveAttribute(
+      'title',
+      '배포 전 W/O 2건 중 1건에 생산 라인이 없습니다. 4M 배정 단계에서 생산 라인을 지정해야 합니다.',
+    );
     const ready = screen.getByRole('link', { name: t.list.openRow('SYN-PO-703') });
     expect(within(ready).getByText(t.status.DONE)).toBeVisible();
   });
@@ -271,7 +279,7 @@ describe('작업지시 목록 작업함', () => {
     expect(confirm).toHaveAccessibleDescription(t.bulk.releaseDialog.nothing);
   });
 
-  it('배포 대기가 0이면 「배포 완료」로 보이고, 체크박스는 행마다 다른 이름이다(C-1, C-17)', async () => {
+  it('배포 전 W/O가 0건이면 「배포 완료」로 보이고, 체크박스는 행마다 다른 이름이다(C-1, C-17)', async () => {
     const RELEASED = order(704, 'SYN-PO-704', { status: 'DONE', reasons: [] }, 1);
     render({ orders: [RELEASED] }, '/production/production-orders?autoPlan=DONE');
 
@@ -282,7 +290,7 @@ describe('작업지시 목록 작업함', () => {
     ).toBeVisible();
   });
 
-  it('배포 대기 목록이 상한에 걸려 잘리면 목록에 없는 건을 「배포 완료」로 보이지 않고 「확인 불가」로 둔다', async () => {
+  it('배포 전 W/O 목록이 상한에 걸려 잘리면 목록에 없는 건을 「배포 완료」로 보이지 않고 「확인 불가」로 둔다', async () => {
     const UNKNOWN = order(705, 'SYN-PO-705', { status: 'DONE', reasons: [] }, 1);
     const harness = stub({ orders: [UNKNOWN] });
     const fetch: StubFetch = async (request) =>
@@ -330,5 +338,25 @@ describe('작업지시 목록 작업함', () => {
     await user.click(screen.getByRole('button', { name: '화면 전환' }));
 
     expect(await screen.findByRole('region', { name: t.bulk.resultTitle.release })).toBeVisible();
+  });
+});
+
+describe('사유 칩 도움말', () => {
+  it('계획 수량을 알면 주문과 계획 수량을 넣고, 모르면 수 없이 말한다', () => {
+    expect(
+      reasonHelpText(['QTY_REMAINING'], { orderQty: '1,000', plannedQty: '600', uom: 'EA' }),
+    ).toBe(
+      '주문 1,000 EA 중 600 EA만 계획되었습니다. 생산계획 단계에서 남은 수량을 계획해야 합니다.',
+    );
+    expect(reasonHelpText(['QTY_REMAINING'])).toBe(
+      '확정한 계획 수량이 주문 수량보다 적습니다. 생산계획 단계에서 남은 수량을 계획해야 합니다.',
+    );
+  });
+
+  it('사유가 여럿이면 줄을 바꿔 모두 말한다', () => {
+    expect(reasonHelpText(['BOM_MISSING', 'ROUTING_MISSING']).split('\n')).toEqual([
+      '이 품목의 기본 BOM이 없거나 둘 이상입니다. 품목·BOM 정보에서 기본 BOM을 하나로 지정해야 합니다.',
+      '이 품목에 쓸 수 있는 공정(Routing)이 없습니다. 공정(Routing) 화면에서 등록해야 합니다.',
+    ]);
   });
 });

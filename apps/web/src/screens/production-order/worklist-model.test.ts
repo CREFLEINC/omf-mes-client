@@ -21,7 +21,7 @@ describe('작업함 처리 상태(C-17 잠정 규칙)', () => {
     ).toEqual({ state: 'NEEDS_REVIEW', reasons: ['LINE_UNKNOWN', 'BOM_MISSING'] });
   });
 
-  it('자동 계획 완료여도 상태는 그대로 두고 배포 막힘은 사유 칩으로만 보인다', () => {
+  it('배포 대기여도 상태는 그대로 두고 배포 막힘은 사유 칩으로만 보인다', () => {
     expect(
       deriveWorklistState(order({ status: 'DONE', reasons: [] }), { pending: 3, blocked: 2 }),
     ).toEqual({

@@ -13,15 +13,47 @@
 const SCREEN_NAME = '작업지시 목록';
 
 /**
- * 처리 상태 이름. 조건 칩, 행 상태 칩이 같은 이름을 쓴다(C-17 잠정 규칙: 서버 자동 계획 결과).
- * 칩 이름은 여기만 고치면 바뀐다. 빈 목록 안내(`list.emptyNeedsReview*`)는 문장이라 따로 적었으니 함께 고친다.
+ * 처리 상태 이름. 조건 칩, 행 상태 칩이 같은 이름을 쓴다(C-17 잠정 규칙: 서버 자동 계획 결과, omf-all-around#204).
+ * 칩 이름은 여기만 고치면 바뀐다. 빈 목록 제목(`list.emptyNeedsReviewTitle`)은 문장이라 따로 적었으니 함께 고친다.
+ * 「배포 대기」는 계획을 채운 건이다. 그중 W/O 생산 라인이 없어 배포할 수 없는 건은 사유 칩이 따로 말한다.
  */
 const status = {
-  NOT_PLANNED: '자동 계획 전',
-  NEEDS_REVIEW: '확인 필요',
-  DONE: '자동 계획 완료',
+  NOT_PLANNED: '계획 전',
+  NEEDS_REVIEW: '조치 필요',
+  DONE: '배포 대기',
   RELEASED: '배포 완료',
 } as const;
+
+/** 처리 화면 단계 이름. 사유 칩 도움말이 고칠 단계를 이 이름으로 말한다. */
+const steps = {
+  master: '마스터 점검',
+  plan: '생산계획',
+  assign: '4M 배정',
+  release: '배포 확인',
+} as const;
+
+/** 사유 칩 이름. 무엇을 해야 하는지로 짓는다. */
+const reasons = {
+  BOM_MISSING: '기본 BOM 지정 필요',
+  ROUTING_MISSING: '공정(Routing) 등록 필요',
+  ROUTING_AMBIGUOUS: '기본 공정(Routing) 지정 필요',
+  LINE_UNKNOWN: '생산 라인 지정 필요',
+  PLAN_NOT_CONFIRMED: '생산계획 확정 필요',
+  QTY_REMAINING: '남은 수량 계획 필요',
+  ASSIGNMENT_INCOMPLETE: 'W/O 생산 라인 지정 필요',
+} as const;
+
+/**
+ * 사유 칩 도움말에 넣는 수와 수량. 화면이 아는 것만 채운다. 작업함은 행마다 부르지 않으므로(C-15 2) 계획 수량을 모른다.
+ * 수량은 부르는 쪽이 표시 형식으로 바꿔 넘긴다.
+ */
+export interface ReasonDetail {
+  orderQty?: string;
+  plannedQty?: string;
+  uom?: string;
+  pendingWorkOrders?: number;
+  lineMissingWorkOrders?: number;
+}
 
 export const erpWorkOrderFlow = {
   title: SCREEN_NAME,
@@ -37,14 +69,30 @@ export const erpWorkOrderFlow = {
 
   status,
   reasons: {
-    BOM_MISSING: '기본 BOM 없음',
-    ROUTING_MISSING: 'Routing 없음',
-    ROUTING_AMBIGUOUS: 'Routing 여러 개',
-    LINE_UNKNOWN: '라인 미정',
-    PLAN_NOT_CONFIRMED: '계획 확정 전',
-    QTY_REMAINING: '계획 수량 부족',
-    ASSIGNMENT_INCOMPLETE: '4M 배정 미완',
+    ...reasons,
     more: (count: number): string => `외 ${String(count)}`,
+  },
+  /** 사유 칩 도움말(툴팁). 무엇이 잘못됐고 어디서 고치는지 말한다. */
+  reasonHelp: {
+    BOM_MISSING: (): string =>
+      // ui-check-ignore: C-13 메뉴 이름 「품목·BOM 정보」를 그대로 쓴다(사용자 지시 2026-10-28, omf-all-around#204)
+      '이 품목의 기본 BOM이 없거나 둘 이상입니다. 품목·BOM 정보에서 기본 BOM을 하나로 지정해야 합니다.',
+    ROUTING_MISSING: (): string =>
+      '이 품목에 쓸 수 있는 공정(Routing)이 없습니다. 공정(Routing) 화면에서 등록해야 합니다.',
+    ROUTING_AMBIGUOUS: (): string =>
+      `쓸 수 있는 공정(Routing)이 여럿이고 기본이 정해지지 않았습니다. 공정(Routing) 화면에서 기본을 지정하거나 ${steps.master} 단계에서 골라야 합니다.`,
+    LINE_UNKNOWN: (): string =>
+      `생산계획에 생산 라인이 정해지지 않았습니다. ${steps.plan} 단계에서 생산 라인을 골라야 합니다.`,
+    PLAN_NOT_CONFIRMED: (): string =>
+      `작성 중인 생산계획이 있습니다. ${steps.plan} 단계에서 계획을 확정해야 합니다.`,
+    QTY_REMAINING: ({ orderQty, plannedQty, uom = '' }: ReasonDetail): string =>
+      orderQty !== undefined && plannedQty !== undefined
+        ? `주문 ${`${orderQty} ${uom}`.trim()} 중 ${`${plannedQty} ${uom}`.trim()}만 계획되었습니다. ${steps.plan} 단계에서 남은 수량을 계획해야 합니다.`
+        : `확정한 계획 수량이 주문 수량보다 적습니다. ${steps.plan} 단계에서 남은 수량을 계획해야 합니다.`,
+    ASSIGNMENT_INCOMPLETE: ({ pendingWorkOrders, lineMissingWorkOrders }: ReasonDetail): string =>
+      pendingWorkOrders !== undefined && lineMissingWorkOrders !== undefined
+        ? `배포 전 W/O ${String(pendingWorkOrders)}건 중 ${String(lineMissingWorkOrders)}건에 생산 라인이 없습니다. ${steps.assign} 단계에서 생산 라인을 지정해야 합니다.`
+        : `배포 전 W/O 가운데 생산 라인이 없는 것이 있습니다. ${steps.assign} 단계에서 생산 라인을 지정해야 합니다.`,
   },
 
   filters: {
@@ -68,9 +116,9 @@ export const erpWorkOrderFlow = {
       itemName: '품목명',
       orderQty: '주문 수량',
       dueDate: '납기일',
-      pendingWorkOrders: '배포 대기',
+      pendingWorkOrders: '배포 전 W/O',
       status: '처리 상태',
-      reasons: '확인 사유',
+      reasons: '필요한 조치',
       open: '이동',
     },
     pendingWorkOrders: (pending: number, total: number): string =>
@@ -80,15 +128,14 @@ export const erpWorkOrderFlow = {
     loading: 'ERP W/O 목록 불러오는 중',
     loadFailed: 'ERP W/O 목록을 불러오지 못했습니다',
     loadFailedDescription: '잠시 후 다시 조회하세요.',
-    readinessFailed:
-      '배포 대기 W/O를 불러오지 못해 라인 미정 사유를 표시하지 못했습니다. 다시 조회하세요.',
+    readinessFailed: `배포 전 W/O를 불러오지 못해 「${reasons.ASSIGNMENT_INCOMPLETE}」 사유를 표시하지 못했습니다. 다시 조회하세요.`,
     readinessTruncated:
-      '배포 대기 W/O가 너무 많아 일부만 받았습니다. 받지 못한 ERP W/O는 배포 대기를 「확인 불가」로 표시합니다.',
+      '배포 전 W/O가 너무 많아 일부만 받았습니다. 받지 못한 ERP W/O는 배포 전 W/O 수를 「확인 불가」로 표시합니다.',
     pendingUnknown: '확인 불가',
     emptyTitle: '조건에 맞는 ERP W/O가 없습니다',
     emptyDescription: '조회 조건을 바꿔 다시 조회하세요.',
-    emptyNeedsReviewTitle: '확인 필요한 ERP W/O가 없습니다',
-    emptyNeedsReviewDescription: '자동 계획 완료 건은 일괄 배포로 넘기세요.',
+    emptyNeedsReviewTitle: '조치가 필요한 ERP W/O가 없습니다',
+    emptyNeedsReviewDescription: `「${status.DONE}」 건은 그 조건에서 골라 일괄 배포하세요.`,
   },
 
   bulk: {
@@ -135,7 +182,7 @@ export const erpWorkOrderFlow = {
       noWorkOrders: '배포할 W/O 없음',
       setupMissing: '라인이나 기본 위치 미정',
       noLotSize: '품목 기본 LOT 크기 없음',
-      draft: '계획 확정 전',
+      draft: reasons.PLAN_NOT_CONFIRMED,
       failed: '실행하지 못했습니다',
     },
   },
@@ -160,12 +207,7 @@ export const erpWorkOrderFlow = {
       NOT_PLANNED: '자동 계획으로 계획을 만들지 못했습니다',
       running: '자동 계획이 진행 중입니다. 잠시 뒤 다시 실행하세요',
     },
-    steps: {
-      master: '마스터 점검',
-      plan: '생산계획',
-      assign: '4M 배정',
-      release: '배포 확인',
-    },
+    steps,
     /** 지난 단계 요약의 「라벨 값」 쌍(T-W-C 지난 단계 요약 형식) */
     pastSummary: {
       bom: 'BOM',

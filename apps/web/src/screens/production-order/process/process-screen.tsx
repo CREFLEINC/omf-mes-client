@@ -306,7 +306,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     pending: unreleased.data?.length ?? 0,
     blocked: blockedIds?.size ?? 0,
   });
-  /* 서버 사유에 없어도 데이터로 보이는 막힘(작성 중 계획의 라인 미정)을 앞에 둔다(T-W-C 처음 여는 단계와 같은 판단). */
+  /* 서버 사유에 없어도 데이터로 보이는 막힘(작성 중 계획의 생산 라인 없음)을 앞에 둔다(T-W-C 처음 여는 단계와 같은 판단). */
   const derived =
     derivedBase.state === 'NEEDS_REVIEW' &&
     unconfirmedRows.some((row) => row.draft.plannedLineId === '') &&
@@ -721,7 +721,18 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
             state={derived.state}
             cancelledName={codeNames.productionOrderStatus('CANCELLED')}
           />
-          <ReasonChips reasons={derived.reasons} />
+          <ReasonChips
+            reasons={derived.reasons}
+            detail={{
+              orderQty: formatQty(order.orderQty),
+              plannedQty: formatQty(
+                confirmedPlans.reduce((sum, entry) => sum + entry.plannedQty, 0),
+              ),
+              uom: uomLabelOf(order.uomId),
+              pendingWorkOrders: unreleased.data?.length,
+              lineMissingWorkOrders: blockedIds?.size,
+            }}
+          />
         </>
       }
       summary={

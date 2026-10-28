@@ -1551,7 +1551,7 @@ describe('appRouter — 작업지시 목록 작업함의 진입 경로', () => {
   /*
    * 생산 관리의 「작업지시 목록」 묶음 줄은 첫 탭(작업지시 목록)을 건다. W-02-01은 처리형 작업함이다(화면 구성 규범 T-W-C).
    */
-  it('생산 관리 메뉴(작업지시 목록)를 키보드로 열면 작업함이 「확인 필요」 조건으로 선다', async () => {
+  it('생산 관리 메뉴(작업지시 목록)를 키보드로 열면 작업함이 「조치 필요」 조건으로 선다', async () => {
     const user = userEvent.setup();
     renderRoutedApp('/quality/lot-status', [...productionOrderRoutes(), ...lotStatusRoutes()]);
 
@@ -1594,7 +1594,7 @@ describe('appRouter — 합친 옛 주소', () => {
     await waitFor(() => expect(currentLocation()).toBe('/production/production-orders'));
   });
 
-  it('확정, 배포 주소는 작업함의 「자동 계획 완료」 조건으로 넘어간다', async () => {
+  it('확정, 배포 주소는 작업함의 「배포 대기」 조건으로 넘어간다', async () => {
     renderRoutedApp('/production/work-order-release', productionOrderRoutes());
     await waitFor(() =>
       expect(currentLocation()).toBe('/production/production-orders?autoPlan=DONE'),

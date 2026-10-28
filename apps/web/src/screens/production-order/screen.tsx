@@ -1,9 +1,9 @@
 /**
  * W-02-01 작업지시 목록 작업함
  * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
- * 이탈: C-17 「자동 계획 완료」는 배포 가능을 뜻하지 않는다. 서버가 배포 가능 여부로 거르고 세지 못해(계약 대기,
+ * 이탈: C-17 「배포 대기」(서버 자동 계획 결과 DONE)는 배포 가능을 뜻하지 않는다. 서버가 배포 가능 여부로 거르고 세지 못해(계약 대기,
  *       omf-all-around#129) 잠정 규칙대로 조건, 건수, 행 칩을 서버 자동 계획 결과로 두고
- *       막힘(라인 미정)은 사유 칩으로만 보인다. C-12 기간 칸의 「시작일부터」 적용은 DS 기간 선택이 지원하지 않아 미구현.
+ *       막힘(W/O 생산 라인 없음)은 사유 칩으로만 보인다. 상태 이름은 omf-all-around#204 사용자 결정이다. C-12 기간 칸의 「시작일부터」 적용은 DS 기간 선택이 지원하지 않아 미구현.
  */
 import {
   AlertBanner,
@@ -57,6 +57,9 @@ export interface WorklistRow {
   fact: ProductionOrderFact;
   derived: WorklistDerived;
   pending: number | null;
+  /** 배포 전 W/O 가운데 생산 라인이 없는 수. 모르면 null. */
+  lineMissing: number | null;
+  uom: string;
   itemCode: string;
   itemName: string;
   qtyLabel: string;
@@ -98,6 +101,8 @@ export const ProductionOrderScreen = () => {
       fact,
       derived: deriveWorklistState(fact, entry),
       pending: entry?.pending ?? null,
+      lineMissing: entry?.blocked ?? null,
+      uom,
       itemCode: item?.itemCode ?? '',
       itemName: item?.itemName ?? '',
       qtyLabel: `${quantity(fact.orderQty)} ${uom}`.trim(),
@@ -214,7 +219,17 @@ export const ProductionOrderScreen = () => {
     {
       key: 'reasons',
       header: t.list.columns.reasons,
-      render: (row) => <ReasonChips reasons={row.derived.reasons} />,
+      render: (row) => (
+        <ReasonChips
+          reasons={row.derived.reasons}
+          detail={{
+            orderQty: quantity(row.fact.orderQty),
+            uom: row.uom,
+            pendingWorkOrders: row.pending ?? undefined,
+            lineMissingWorkOrders: row.lineMissing ?? undefined,
+          }}
+        />
+      ),
     },
     {
       key: 'open',
@@ -239,7 +254,10 @@ export const ProductionOrderScreen = () => {
           />
         }
         description={
-          /* 조건 칩은 「전체」를 맨 앞에 두고 나머지는 처리 순서대로 놓는다. 보이는 묶음 이름은 두지 않고 접근명만 붙인다. */
+          /*
+           * 조건 칩은 「전체」를 맨 앞에 두고 나머지는 처리 순서대로 놓는다. 서버가 거를 수 있는 조건만 칩으로 둔다(계획 전과
+           * 배포 완료는 거를 수 없다). 보이는 묶음 이름은 두지 않고 접근명만 붙인다.
+           */
           <span className="erp-wo-counts" role="group" aria-label={t.counts.label}>
             <CountChip
               state="NOT_PLANNED"

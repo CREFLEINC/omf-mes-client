@@ -8,7 +8,7 @@ import {
 } from './worklist-filters';
 
 describe('작업함 주소 조건', () => {
-  it('빈 주소는 기본 조건(확인 필요, 1쪽, 20건)이고 기본값은 주소에 쓰지 않는다', () => {
+  it('빈 주소는 기본 조건(조치 필요, 1쪽, 20건)이고 기본값은 주소에 쓰지 않는다', () => {
     expect(readWorklistFilters(new URLSearchParams())).toEqual(DEFAULT_WORKLIST_FILTERS);
     expect(toWorklistSearchParams(DEFAULT_WORKLIST_FILTERS).toString()).toBe('');
   });
