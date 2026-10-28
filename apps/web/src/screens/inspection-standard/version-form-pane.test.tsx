@@ -136,6 +136,7 @@ describe('VersionFormPane — 샘플링 방법 (omf-all-around#103)', () => {
     expect(onChange).toHaveBeenCalledWith({
       samplingMethodCode: 'FULL_INSPECTION',
       samplingRatio: '',
+      samplingQty: '',
     });
   });
 });

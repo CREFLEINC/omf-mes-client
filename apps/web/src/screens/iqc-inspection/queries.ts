@@ -411,6 +411,7 @@ export const useSamplingRule = (
       ).then(({ inspectionPlanVersion }) => ({
         samplingMethodCode: inspectionPlanVersion.samplingMethodCode,
         samplingRatio: inspectionPlanVersion.samplingRatio ?? null,
+        samplingQty: inspectionPlanVersion.samplingQty ?? null,
         acceptanceNumber: inspectionPlanVersion.acceptanceNumber ?? null,
         inspectionPlanId: inspectionPlanVersion.inspectionPlanId,
         planVersion: inspectionPlanVersion.planVersion,

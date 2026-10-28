@@ -15,6 +15,7 @@ const filled: VersionFormValues = {
   effectiveTo: '2026-08-31',
   samplingMethodCode: 'PENDING',
   samplingRatio: '30',
+  samplingQty: '',
   aqlValue: '1',
   acceptanceNumber: '0',
   rejectionNumber: '2',
@@ -30,6 +31,7 @@ describe('versionToFormValues', () => {
       effectiveTo: '',
       samplingMethodCode: 'PENDING',
       samplingRatio: '30',
+      samplingQty: '',
       aqlValue: '',
       acceptanceNumber: '0',
       rejectionNumber: '2',
@@ -72,6 +74,7 @@ describe('toVersionUpdate', () => {
       effectiveTo: '2026-08-31',
       samplingMethodCode: 'PENDING',
       samplingRatio: 30,
+      samplingQty: null,
       aqlValue: 1,
       acceptanceNumber: 0,
       rejectionNumber: 2,
@@ -123,14 +126,15 @@ describe('toVersionUpdate', () => {
     expect(toVersionUpdate({ ...filled, samplingRatio: '2.5' }).samplingRatio).toBe(2.5);
   });
 
-  /* 두 필드를 함께 두지 않는다(#201 ⛔) — 어긋난 자료가 쌓이지 않게 옛 이름은 본문에서 사라진다. */
-  it('본문 키 목록에 옛 수량 필드가 없다', () => {
-    const body = toVersionUpdate(filled) as Record<string, unknown>;
+  /* omf-all-around#201 — 샘플은 비율 또는 개수 중 하나다. 개수는 그대로 싣고, 전수검사면 둘 다 싣지 않는다. */
+  it('샘플 개수를 숫자로 싣고, 전수검사면 개수도 싣지 않는다', () => {
+    const byQty = toVersionUpdate({ ...filled, samplingRatio: '', samplingQty: '5' });
 
-    // 음성 단언은 짝 양성과 같은 시점에 잰다 — 값이 실려 있음을 먼저 확인한다.
-    expect(body.samplingRatio).toBe(30);
-    expect(Object.keys(body)).toContain('samplingRatio');
-    expect(Object.keys(body)).not.toContain('samplingQty');
+    expect(byQty.samplingRatio).toBeNull();
+    expect(byQty.samplingQty).toBe(5);
+    expect(
+      toVersionUpdate({ ...filled, samplingMethodCode: 'FULL_INSPECTION', samplingQty: '5' }).samplingQty,
+    ).toBeNull();
   });
 
   /*

@@ -65,6 +65,8 @@ export interface PlanVersionView {
   planVersion: number;
   /** 샘플 비율(%). 못 받으면 `null` — 지어내지 않는다. */
   samplingRatio: number | null;
+  /** 샘플 개수 — 비율과 둘 중 하나만 있다(omf-all-around#201). */
+  samplingQty: number | null;
 }
 
 export const useInspectionRequestDetail = (
@@ -294,6 +296,7 @@ export const useInspectionPlanVersion = (
         planCode: plan.inspectionPlan.inspectionPlanCode,
         planVersion: version.inspectionPlanVersion.planVersion,
         samplingRatio: version.inspectionPlanVersion.samplingRatio ?? null,
+        samplingQty: version.inspectionPlanVersion.samplingQty ?? null,
       };
     },
   });
