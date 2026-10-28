@@ -1,7 +1,7 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { ActionBar } from '../../patterns/action-bar';
@@ -16,11 +16,8 @@ import {
   usePopWorkOrder,
   usePopWorkOrderProcess,
 } from '../../patterns/pop-process-gate';
-import { WorkerNoDialog } from '../../patterns/worker-no-dialog';
-import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
-import { useWorkerLookup } from '../work-start/queries';
-import { assignedAtText } from '../work-start/terminal-clock';
-import { verifyWorker } from '../work-start/worker-verify';
+import { usePopWorkerEntry } from '../../patterns/pop-worker-entry';
+import { useWorkerSession } from '../../patterns/worker-session';
 import { POP_TOUCH_SIZE } from '../work-start/touch-spec';
 
 import { confirmBlockReason, remainingText } from './block-reason';
@@ -171,26 +168,12 @@ export const MaterialInputScanScreen = () => {
    *    사번 입력 창을 열고, 잠긴 동안 스캔 칸이나 목록을 누르면 다시 연다(PG-27과 같은 판단). 확인되면
    *    같은 W/O에서 그대로 이어 간다. 작업 시작으로 돌려보내지 않는다.
    */
-  const isWorkerMissing = workerNo === null;
-  const [isWorkerDialogOpen, setWorkerDialogOpen] = useState(isWorkerMissing);
-  const [submittedWorkerNo, setSubmittedWorkerNo] = useState<string | null>(null);
-  const workerLookup = useWorkerLookup(submittedWorkerNo);
-  /* 사번 확인은 작업 시작과 같은 판정이다. 단말 공장 비교는 이 화면에서 하지 않는다(서버가 집행). */
-  const verifiedWorker = useMemo(
-    () =>
-      submittedWorkerNo !== null && workerLookup.data !== undefined
-        ? verifyWorker(workerLookup.data, submittedWorkerNo, null)
-        : null,
-    [workerLookup.data, submittedWorkerNo],
-  );
-  const workerError = ((): string | null => {
-    if (submittedWorkerNo === null) return null;
-    if (workerLookup.isError) return messages.popChrome.workerNoDialog.lookupFailed;
-    if (verifiedWorker?.kind === 'unknown') return messages.popChrome.workerNoDialog.unknown;
-    if (verifiedWorker?.kind === 'inactive') return messages.popChrome.workerNoDialog.inactive;
-
-    return null;
-  })();
+  /* 사번 확인은 작업 시작과 같은 판정이다. 확인되면 스캔 칸으로 포커스를 되돌린다. */
+  const workerEntry = usePopWorkerEntry(workerNo, () => {
+    setScanFocusRequest((prev) => prev + 1);
+  });
+  const isWorkerMissing = workerEntry.isMissing;
+  const openWorkerDialog = workerEntry.open;
   const workerName =
     workerSession !== null && workerSession.worker.workerNo === workerNo
       ? (workerSession.worker.workerName ?? null)
@@ -265,25 +248,6 @@ export const MaterialInputScanScreen = () => {
   const [selectedLotId, setSelectedLotId] = useState<number | null>(null);
   /* 기록한 뒤 스캔 칸으로 포커스를 되돌린다 — 다음 스캔이 칸으로 들어가야 한다. */
   const [scanFocusRequest, setScanFocusRequest] = useState(0);
-
-  /* 확인된 사번을 단말의 현재 작업자로 정하고 창을 닫는다. 렌더 중에 화면 밖 저장소를 쓰지 않는다. */
-  useEffect(() => {
-    if (verifiedWorker?.kind !== 'ok') return;
-
-    setWorkerSession({
-      worker: verifiedWorker.worker,
-      assignedAt: assignedAtText(new Date()),
-      isOtherPlant: verifiedWorker.isOtherPlant,
-    });
-    setSubmittedWorkerNo(null);
-    setWorkerDialogOpen(false);
-    setScanFocusRequest((prev) => prev + 1);
-  }, [verifiedWorker]);
-
-  const openWorkerDialog = (): void => {
-    setSubmittedWorkerNo(null);
-    setWorkerDialogOpen(true);
-  };
 
   /*
    * 「미전송」 투입(사용자 결정 2026-10-26, PI-26). 스캔한 LOT의 잔량을 곧바로 투입으로 잡아
@@ -1108,36 +1072,7 @@ export const MaterialInputScanScreen = () => {
         </Button>
       </ActionBar>
 
-      <WorkerNoDialog
-        open={isWorkerDialogOpen && isWorkerMissing}
-        title={messages.popChrome.workerNoDialog.title}
-        confirmLabel={messages.popChrome.workerNoDialog.confirm}
-        cancelLabel={messages.popChrome.workerNoDialog.cancel}
-        isChecking={submittedWorkerNo !== null && workerLookup.isFetching}
-        error={workerError}
-        errorAction={
-          workerLookup.isError ? (
-            <Button
-              type="button"
-              variant="outlined"
-              size="sm"
-              onClick={() => {
-                void workerLookup.refetch();
-              }}
-            >
-              {messages.popChrome.workerNoDialog.retry}
-            </Button>
-          ) : undefined
-        }
-        onCancel={() => {
-          setSubmittedWorkerNo(null);
-          setWorkerDialogOpen(false);
-        }}
-        onSubmit={setSubmittedWorkerNo}
-        onDraftChange={() => {
-          setSubmittedWorkerNo(null);
-        }}
-      />
+      {workerEntry.dialog}
     </main>
   );
 };
