@@ -5,13 +5,19 @@ export const erpBom = {
   title: 'BOM 조회 (ERP)',
   breadcrumbRoot: '시스템 관리',
   fields: {
-    parentItem: '모품목',
+    hasBom: 'BOM 있는 품목만',
+    itemType: '유형',
+    q: '품목코드·품목명',
   },
-  actions: {
-    pickParent: '모품목 선택',
-    confirmPick: '선택',
-  },
+  /** 두 구획 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
+  splitter: '끌어서 모품목 목록·BOM 폭 조절',
+  /** 막대 위쪽 끝의 단추 — 모품목 목록을 왼쪽으로 완전히 접고 편다. */
+  listCollapse: '모품목 목록 접기',
+  listExpand: '모품목 목록 펼치기',
+  /** 줄 단추의 접근 이름 — 품목코드를 담는다. */
+  pickParent: (itemCode: string): string => `${itemCode} 선택`,
   panes: {
+    parents: '모품목 목록',
     filter: '조회 조건',
     components: '구성품',
   },
@@ -49,15 +55,16 @@ export const erpBom = {
     empty: '—',
     yes: '예',
     no: '아니오',
-    notPicked: '선택 안 함',
     loadingName: '불러오는 중',
     failedName: '불러오지 못함',
     unknown: '알 수 없음',
   },
   loading: {
+    parents: '모품목 목록을 불러오는 중',
     boms: 'BOM 을 불러오는 중',
   },
   empty: {
+    noParentsTitle: '조건에 맞는 모품목이 없습니다',
     noParentTitle: '모품목을 고르세요',
     noBomTitle: '이 품목에는 BOM 이 없습니다',
   },

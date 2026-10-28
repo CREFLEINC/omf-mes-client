@@ -100,6 +100,24 @@ const references: StubRoute[] = [
         : jsonResponse({ item: { itemId: Number(id), ...found } });
     },
   },
+  /* 왼쪽 모품목 목록 — 품목 목록(유형 · 검색어로 좁힌다). */
+  {
+    match: (request) => isGet(request, '/mdm/items'),
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            itemId: 7001,
+            itemCode: 'SYN-PARENT',
+            itemName: '합성 모품목',
+            itemTypeCode: 'FINISHED',
+            baseUomId: 8101,
+            isActive: true,
+          },
+        ],
+        page: { page: 1, size: 50, total: 1 },
+      }),
+  },
 ];
 
 /**
@@ -158,70 +176,70 @@ const renderScreen = (routes: StubRoute[], search = '') => {
 };
 
 describe('ErpBomScreen', () => {
-  it('모품목을 고르기 전에는 BOM 을 부르지 않고 안내만 낸다', async () => {
+  it('왼쪽에 제품 모품목 목록을 내고, 고르기 전에는 BOM 을 부르지 않는다', async () => {
     const { urls } = renderScreen([]);
 
-    expect(await screen.findByText(t.empty.noParentTitle)).toBeInTheDocument();
-    // 읽기 전용 안내 문구는 두지 않는다 — 쓰기 조작이 없는 화면이라 따로 알릴 것이 없다.
-    expect(screen.queryByText(/고칠 수 없습니다/)).not.toBeInTheDocument();
-    // 조건은 모품목 하나 — BOM 코드 검색칸 · 조회 단추를 두지 않는다.
-    expect(screen.queryByLabelText('BOM 코드')).toBeNull();
-    expect(screen.queryByRole('button', { name: messages.common.search })).toBeNull();
+    const list = screen.getByRole('region', { name: t.panes.parents });
+    expect(await within(list).findByText('SYN-PARENT')).toHaveClass('bom-tree-code');
+    const search = urls().find((url) => url.pathname === '/mdm/items');
+    // 처음 유형은 제품이고, 지난 자료도 본다.
+    expect(search?.searchParams.get('itemTypeCode')).toBe('FINISHED');
+    expect(search?.searchParams.get('includeInactive')).toBe('true');
+    // BOM 있는 품목만이 처음부터 켜져 있다.
+    expect(search?.searchParams.get('hasBom')).toBe('true');
+    expect(screen.getByRole('checkbox', { name: t.fields.hasBom })).toBeChecked();
+    expect(screen.getByText(t.empty.noParentTitle)).toBeInTheDocument();
     expect(urls().some((url) => url.pathname === BOMS_PATH)).toBe(false);
+    // 읽기 전용 안내 문구는 두지 않는다.
+    expect(screen.queryByText(/고칠 수 없습니다/)).not.toBeInTheDocument();
   });
 
-  it('대화상자로 모품목을 고르면 그 품목의 BOM 을 조회한다', async () => {
-    const { urls, user } = renderScreen([
-      bomsRoute(),
-      componentsRoute,
-      {
-        match: (request) => isGet(request, '/mdm/items'),
-        respond: () =>
-          jsonResponse({
-            items: [
-              {
-                itemId: 7001,
-                itemCode: 'SYN-PARENT',
-                itemName: '합성 모품목',
-                itemTypeCode: 'FINISHED',
-                baseUomId: 8101,
-                isActive: true,
-              },
-            ],
-            page: { page: 1, size: 20, total: 1 },
-          }),
-      },
-    ]);
+  it('품목코드 · 품목명 검색어를 목록 조건으로 싣는다', async () => {
+    const { urls, user } = renderScreen([]);
+    await screen.findByText('SYN-PARENT');
 
-    await user.click(screen.getByRole('button', { name: t.actions.pickParent }));
-    const dialog = await screen.findByRole('dialog');
+    await user.type(screen.getByLabelText(t.fields.q), 'SYN');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
 
-    // 유형은 처음부터 제품이고, BOM 이 없는 원자재 · 상품 · 부자재는 선택지에 없다.
     await waitFor(() => {
-      const search = urls()
+      const last = urls()
         .filter((url) => url.pathname === '/mdm/items')
         .at(-1);
-      expect(search?.searchParams.get('itemTypeCode')).toBe('FINISHED');
+      expect(last?.searchParams.get('q')).toBe('SYN');
+      expect(last?.searchParams.get('itemTypeCode')).toBe('FINISHED');
     });
-    await user.click(within(dialog).getByRole('combobox', { name: '유형' }));
-    expect(await within(dialog).findByRole('option', { name: '제품' })).toBeInTheDocument();
-    expect(within(dialog).getByRole('option', { name: '반제품' })).toBeInTheDocument();
-    for (const name of ['원자재', '상품', '부자재']) {
-      expect(within(dialog).queryByRole('option', { name })).toBeNull();
-    }
-    await user.keyboard('{Escape}');
-
-    await user.click(await within(dialog).findByRole('checkbox', { name: 'SYN-PARENT' }));
-    await user.click(within(dialog).getByRole('button', { name: t.actions.confirmPick }));
-
-    expect(await tree().findByText('SYN-CHILD-1')).toBeInTheDocument();
-    const list = urls().find((url) => url.pathname === BOMS_PATH);
-    expect(list?.searchParams.get('parentItemId')).toBe('7001');
-    const filter = screen.getByRole('region', { name: t.panes.filter });
-    expect(within(filter).getByText('SYN-PARENT · 합성 모품목')).toBeInTheDocument();
   });
 
-  it('한 구획에 기본 BOM 의 하이라키를 연다 — 모품목 아래로 자품목을 순번대로, ERP 원본 열만', async () => {
+  it('「BOM 있는 품목만」을 끄면 그 조건 없이 부른다', async () => {
+    const { urls, user } = renderScreen([]);
+    await screen.findByText('SYN-PARENT');
+
+    await user.click(screen.getByRole('checkbox', { name: t.fields.hasBom }));
+
+    await waitFor(() => {
+      const last = urls()
+        .filter((url) => url.pathname === '/mdm/items')
+        .at(-1);
+      expect(last?.searchParams.has('hasBom')).toBe(false);
+    });
+    expect(screen.getByRole('checkbox', { name: t.fields.hasBom })).not.toBeChecked();
+  });
+
+  it('모품목 줄을 누르면 오른쪽에 그 품목의 BOM 하이라키를 연다', async () => {
+    const { urls, user } = renderScreen([bomsRoute(), componentsRoute]);
+
+    await user.click(await screen.findByRole('button', { name: t.pickParent('SYN-PARENT') }));
+
+    expect(await tree().findByText('SYN-CHILD-1')).toBeInTheDocument();
+    const boms = urls().find((url) => url.pathname === BOMS_PATH);
+    expect(boms?.searchParams.get('parentItemId')).toBe('7001');
+    expect(screen.getByRole('button', { name: t.pickParent('SYN-PARENT') })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  it('기본 BOM 의 하이라키를 연다 — 모품목 아래로 자품목을 순번대로, ERP 원본 열만', async () => {
     const { requests } = renderScreen([bomsRoute(), componentsRoute], '?item=7001');
 
     expect(await tree().findByText('SYN-CHILD-1')).toBeInTheDocument();
@@ -231,9 +249,6 @@ describe('ErpBomScreen', () => {
     expect(within(facts).getByText('1 SYN-EA')).toBeInTheDocument();
     expect(await within(facts).findByText('SYN-PARENT')).toHaveClass('bom-tree-code');
     expect(tree().getByText('SYN-CHILD-1')).toHaveClass('bom-tree-code');
-    // 좌우로 나누지 않는다 — BOM 목록 구획도 나눔 막대도 없다.
-    expect(screen.queryByRole('region', { name: 'BOM 목록' })).toBeNull();
-    expect(screen.queryByRole('separator')).toBeNull();
     expect(await tree().findByText('2.5 SYN-EA')).toBeInTheDocument();
     expect(tree().getByText('1,000 SYN-EA')).toBeInTheDocument();
     expect(tree().getByText('5%')).toBeInTheDocument();
@@ -314,7 +329,7 @@ describe('ErpBomScreen', () => {
       '?item=7001',
     );
 
-    expect(await screen.findByRole('button', { name: messages.common.retry })).toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(await tree().findByRole('button', { name: messages.common.retry })).toBeInTheDocument();
+    expect(tree().queryByRole('table')).not.toBeInTheDocument();
   });
 });

@@ -27,6 +27,7 @@ export const erpBomKeys = {
   components: (bomId: number | null) => ['erp-bom', 'components', bomId] as const,
   uoms: ['erp-bom', 'lookup', 'uoms'] as const,
   codes: (group: string) => ['erp-bom', 'lookup', 'codes', group] as const,
+  parents: (query: ParentItemQuery) => ['erp-bom', 'parents', query] as const,
   item: (itemId: number) => ['erp-bom', 'lookup', 'item', itemId] as const,
 };
 
@@ -147,11 +148,6 @@ export const useItemSummaries = (itemIds: readonly number[]): ((itemId: number) 
 export const labelOf = (summary: ItemSummary): string =>
   summary.code === null ? summary.name : `${summary.code} · ${summary.name}`;
 
-export const useItemLabels = (itemIds: readonly number[]): ((itemId: number) => string) => {
-  const summaryOf = useItemSummaries(itemIds);
-  return (itemId) => labelOf(summaryOf(itemId));
-};
-
 /** 코드값 이름 — 품목 유형(ITEM_TYPE) · BOM 상태(MASTER_VERSION_STATUS). 중지된 값도 받는다(ERP 수신본). */
 const useCodeNames = (codeGroupCode: string): NameOf => {
   const { client } = useApiClient();
@@ -171,3 +167,34 @@ const useCodeNames = (codeGroupCode: string): NameOf => {
 
 export const useItemTypeNames = (): NameOf => useCodeNames('ITEM_TYPE');
 export const useStatusNames = (): NameOf => useCodeNames('MASTER_VERSION_STATUS');
+
+/** 모품목 목록의 조건 — 품목코드 · 품목명 검색어와 유형(제품 · 반제품). */
+export interface ParentItemQuery {
+  q?: string;
+  itemTypeCode: string;
+  page?: number;
+  /** BOM 이 있는 품목만(사용자 지시 2026-10-28). 서버에 요청했다 — 아직 모르는 서버는 무시하고 전부 준다. */
+  hasBom?: boolean;
+}
+
+export const PARENT_PAGE_SIZE = 50;
+
+/**
+ * 왼쪽 모품목 목록(사용자 지시 2026-10-28). 품목 목록에 「BOM 이 있는 품목만」 조건이 없어 유형으로 좁힌다 — BOM 이 없는
+ * 품목을 고르면 오른쪽이 그렇다고 말한다. 지난 자료를 보는 창이라 사용 중지된 품목도 낸다.
+ */
+export const useParentItems = (query: ParentItemQuery) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: erpBomKeys.parents(query),
+    queryFn: () => {
+      /*
+       * `hasBom` 은 계약 사본에 아직 없다(서버에 요청 2026-10-28) — 리터럴로 넘기면 타입이 막아 변수로 넘긴다. 서버는
+       * 계약에 없는 조건을 막지 않고 무시하므로, 서버가 넣기 전에는 거르지 않은 목록이 온다. 계약에 실리면 이 우회를 걷는다.
+       */
+      const params = { ...query, includeInactive: true, size: PARENT_PAGE_SIZE };
+      return runRequest(() => client.GET('/mdm/items', { params: { query: params } }));
+    },
+  });
+};

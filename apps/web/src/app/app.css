@@ -7770,7 +7770,8 @@ th:hover > .col-drag {
   white-space: nowrap;
 }
 
-dd.bom-tree-code {
+dd.bom-tree-code,
+.bom-tree-code.bom-code-cell {
   margin-left: 0;
 }
 
