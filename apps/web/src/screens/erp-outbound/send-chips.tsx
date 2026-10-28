@@ -3,6 +3,9 @@ import { messages } from '@omf-mes/i18n';
 import { Link } from 'react-router';
 
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
+import { useQueryClient } from '@tanstack/react-query';
+import { sessionKeys, type Session } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
 import { MESSAGE_STATUS } from './outbound-items';
 import { useOutboundCounts, useSendEnabled } from './queries';
 
@@ -22,6 +25,12 @@ export const ERP_OUTBOUND_PATH = '/master-data/erp-outbound';
  */
 export const ErpSendChips = ({ linkToTab = false }: { linkToTab?: boolean }) => {
   const target = useHubActionsTarget();
+  /*
+   * ERP 송신 탭(W-06-12)을 볼 수 없는 사람에게는 링크로 세우지 않는다 — 누르면 막힌 탭으로 간다. 세션은 로그인 때
+   * 조회 캐시에 들어 있다 — 여러 탭이 나눠 쓰는 칩이라 세션 공급자에 기대지 않고 캐시에서 읽는다(없으면 판정하지 않음).
+   */
+  const session = useQueryClient().getQueryData<Session | null>(sessionKeys.current);
+  const canOpenTab = toWebAccess(session?.permissions).allows(ERP_OUTBOUND_PATH);
   /* 꽂을 자리가 없으면 세지도 않는다 — 보이지 않을 건수를 부르지 않는다. */
   const counts = useOutboundCounts(target !== null);
   const sendEnabled = useSendEnabled(target !== null);
@@ -53,8 +62,9 @@ export const ErpSendChips = ({ linkToTab = false }: { linkToTab?: boolean }) => 
 
   return (
     <HubActions target={target}>
-      {linkToTab ? (
-        <Link to={ERP_OUTBOUND_PATH} className="erp-send-chips" aria-label={t.chips.label}>
+      {linkToTab && canOpenTab ? (
+        /* 접근 이름을 따로 주지 않는다 — 주면 칩 글자(켜짐 · 대기 N · 실패 N)를 덮어 건수가 읽히지 않는다. */
+        <Link to={ERP_OUTBOUND_PATH} className="erp-send-chips">
           {chips}
         </Link>
       ) : (

@@ -96,14 +96,7 @@ const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequ
   requests.filter((request) => request.url.pathname === pathname);
 
 /** 목록과 선택지가 같은 경로를 쓴다. 조건이 실렸는지로 가른다. */
-const NARROWING_KEYS = [
-  'statusCode',
-  'interfaceCode',
-  'directionCode',
-  'targetTypeCode',
-  'retryCountMin',
-  'page',
-];
+const NARROWING_KEYS = ['statusCode', 'interfaceCode', 'directionCode', 'retryCountMin', 'page'];
 
 const isNarrowed = (request: RecordedRequest): boolean =>
   NARROWING_KEYS.some((key) => request.url.searchParams.has(key));
@@ -569,7 +562,9 @@ describe('IntegrationSyncScreen — 상세', () => {
   });
 
   const openFirstDetail = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(await screen.findByRole('button', { name: 'SAMPLE-KEY-0001 상세 열기' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 상세 열기' }),
+    );
   };
 
   it('메시지 키를 누르기 전에는 상세를 조회하지 않는다', async () => {
@@ -595,10 +590,9 @@ describe('IntegrationSyncScreen — 상세', () => {
       await detailPane().findByRole('heading', { name: '연계 메시지 상세' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 상세 열기' })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
+    expect(
+      screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 상세 열기' }),
+    ).toHaveAttribute('aria-current', 'true');
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(1);
     expect(currentLocation()).toContain('sel=9001');
   });
@@ -690,14 +684,18 @@ describe('IntegrationSyncScreen — 단건 재처리', () => {
   const okRetry = retryRoute(() => jsonResponse(messageRowFixtures[0]));
 
   const confirmRetry = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(await screen.findByRole('button', { name: 'SAMPLE-KEY-0001 재처리' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }),
+    );
     await user.click(await screen.findByRole('button', { name: '재처리' }));
   };
 
   it('확인을 거쳐야 요청이 나간다', async () => {
     const { requests, user } = renderScreen([listRoute(), okRetry], PERIOD);
 
-    await user.click(await screen.findByRole('button', { name: 'SAMPLE-KEY-0001 재처리' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }),
+    );
     expect(within(screen.getByRole('dialog')).getByText('다시 보낼까요?')).toBeInTheDocument();
     expect(requestsTo(requests, RETRY_PATH)).toHaveLength(0);
 
@@ -745,7 +743,9 @@ describe('IntegrationSyncScreen — 단건 재처리', () => {
       PERIOD,
     );
 
-    await user.click(await screen.findByRole('button', { name: 'SAMPLE-KEY-0001 재처리' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }),
+    );
     const confirm = await screen.findByRole('button', { name: '재처리' });
     await user.click(confirm);
     await user.click(confirm);
@@ -1144,7 +1144,7 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
     await selectRow(user, 0);
     expect(screen.getByText('선택 1건')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'SAMPLE-KEY-0002 상세 열기' }));
+    await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-B SAMPLE-KEY-0002 상세 열기' }));
 
     // 정상 경로로 열렸는지 확인한다 — 실패 배너가 아니라 상세 항목이 보여야 한다.
     expect(
@@ -1169,7 +1169,7 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
     await selectRow(user, 1);
     expect(screen.getByText('선택 1건')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 재처리' }));
+    await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }));
     await user.click(await screen.findByRole('button', { name: '재처리' }));
     await user.click(await screen.findByRole('button', { name: '다시 조회' }));
 
@@ -1193,7 +1193,7 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
     expect(screen.getByText('선택 3건')).toBeInTheDocument();
 
     // 재처리에 성공하면 목록을 다시 조회한다. 그 결과에서 9001이 사라진다.
-    await user.click(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 재처리' }));
+    await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }));
     await user.click(await screen.findByRole('button', { name: '재처리' }));
 
     // 남은 두 건만 선택으로 남는다 — 보이지 않는 건이 일괄 요청에 실리면 안 된다.

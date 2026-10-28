@@ -26,8 +26,10 @@ export interface BomTreeRoot {
  * 줄 하나의 처지.
  * - `expanded` 하위 구성을 펼쳤다 · `collapsed` 하위 구성이 있는데 접었다 · `leaf` 하위 구성이 없다
  * - `loading` 하위 구성을 찾는 중 · `failed` 찾지 못했다 · `cycle` 위 단계와 같은 품목이라 내려가지 않는다
+ * - `depthLimit` 하위 구성이 있지만 깊이 한도(`MAX_DEPTH`)라 펴지 않는다 — 펼치기 단추를 두지 않는다
  */
-export type BomTreeNodeState = 'expanded' | 'collapsed' | 'leaf' | 'loading' | 'failed' | 'cycle';
+export type BomTreeNodeState =
+  'expanded' | 'collapsed' | 'leaf' | 'loading' | 'failed' | 'cycle' | 'depthLimit';
 
 export interface BomTreeRow {
   /** 뿌리부터의 경로 — 접기 상태의 열쇠이자 줄의 열쇠다. */
@@ -109,7 +111,11 @@ export const walkBomTree = (
       bomId = bom.bomId;
     }
 
-    if (collapsed.has(key) || depth >= MAX_DEPTH) {
+    if (depth >= MAX_DEPTH) {
+      row.state = 'depthLimit';
+      return;
+    }
+    if (collapsed.has(key)) {
       row.state = 'collapsed';
       return;
     }

@@ -43,6 +43,9 @@ export const erpBom = {
   },
   /** 하이라키 — 모품목 아래로 자품목, 자품목의 기본 BOM 구성을 한 단계씩 들여 쓴다. */
   tree: {
+    /** 깊이 한도(20단계)에 닿아 더 펴지 않는다. */
+    depthLimit: '더 깊은 단계는 펴지 않습니다',
+    retry: (label: string): string => `${label} 하위 구성 다시 불러오기`,
     item: '품목',
     expand: (label: string): string => `${label} 펼치기`,
     collapse: (label: string): string => `${label} 접기`,
@@ -64,6 +67,7 @@ export const erpBom = {
     boms: 'BOM 을 불러오는 중',
   },
   empty: {
+    parentsBeyondLast: '이 쪽에는 모품목이 없습니다',
     noParentsTitle: '조건에 맞는 모품목이 없습니다',
     noParentTitle: '모품목을 고르세요',
     noBomTitle: '이 품목에는 BOM 이 없습니다',

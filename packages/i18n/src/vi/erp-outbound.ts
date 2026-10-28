@@ -32,7 +32,7 @@ export const erpOutbound: Translated<typeof ko.erpOutbound> = {
   },
   pickRow: (name: string): string => `Chọn ${name}`,
   pendingTitle: (name: string, count: number): string => `${name} · chờ gửi ${String(count)}`,
-  openMessage: (messageKey: string): string => `Mở chi tiết ${messageKey}`,
+  openMessage: (title: string): string => `Mở chi tiết ${title}`,
   empty: {
     pickItem: 'Hãy chọn hạng mục gửi',
     noInterface: 'Hạng mục này chưa gửi sang ERP',

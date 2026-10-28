@@ -93,7 +93,7 @@ describe('MessageTable', () => {
   it('메시지 키가 상세를 여는 버튼이고 접근 이름에 그 키가 들어간다', async () => {
     const { onOpenDetail, user } = renderTable();
 
-    await user.click(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 상세 열기' }));
+    await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 상세 열기' }));
 
     expect(onOpenDetail).toHaveBeenCalledWith(9001);
   });
@@ -104,7 +104,7 @@ describe('MessageTable', () => {
       rows: [messageRow({ statusCode: 'ERROR', lockedBy: 'sync-worker-01' })],
     });
 
-    const button = screen.getByRole('button', { name: 'SAMPLE-KEY-0001 재처리' });
+    const button = screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' });
     expect(button).toBeEnabled();
 
     await user.click(button);
@@ -121,8 +121,12 @@ describe('MessageTable', () => {
       retryingId: 9001,
     });
 
-    expect(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 재처리' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'SAMPLE-KEY-0002 재처리' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0002 재처리' }),
+    ).toBeEnabled();
   });
 
   it('행마다 선택칸이 있고 고르면 그 식별자가 넘어간다', async () => {

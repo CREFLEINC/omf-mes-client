@@ -770,7 +770,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
           /*
            * ERP 받기 표의 상태와 「지금 읽기」 — 연동 현황·이력 위에 접혀 있던 것을 탭으로 뗐다(사용자 지시 2026-10-27).
-           * 설계 화면 코드가 따로 없어 이름표(web-screen-catalog.ts)에 없다 — 모르는 주소라 탭은 늘 서고, 권한은 서버가 막는다.
+           * 설계 화면 코드가 따로 없어 묶음 화면(연동 현황·이력 W-06-10)의 코드를 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
            */
           { to: '/master-data/erp-inbound', label: 'ERP 수신', labelVi: 'Nhận ERP' },
           /* 송신 항목과 그 송신 예정 목록(W-06-12) — 받기(아래 ERP 데이터 탭)와 갈라 연동 현황 바로 뒤. */

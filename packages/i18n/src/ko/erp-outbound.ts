@@ -38,7 +38,7 @@ export const erpOutbound = {
   /** 송신 예정 구획의 제목 — 고른 항목과 건수. */
   pendingTitle: (name: string, count: number): string => `${name} · 송신 예정 ${String(count)}건`,
   /** 메시지 키 링크 — 「ERP 연동 현황·이력」에서 그 건의 상세를 연다. */
-  openMessage: (messageKey: string): string => `${messageKey} 상세 열기`,
+  openMessage: (title: string): string => `${title} 상세 열기`,
   empty: {
     pickItem: '송신 항목을 고르세요',
     /** 반품 · 실사 조정 — 서버에 아직 송신이 없다. */
@@ -46,7 +46,6 @@ export const erpOutbound = {
     noPending: '보낼 건이 없습니다',
     beyondLast: '이 쪽에는 보낼 건이 없습니다',
   },
-  /** 탭 막대 오른쪽의 상태 칩 — 송신 항목 전체의 합. 누르면 이 탭으로 온다. */
   /** 송신 예정의 생성일 조건 — 바로 고르는 범위(오늘 포함)와 날짜 두 칸. */
   created: {
     label: '생성일',
@@ -57,6 +56,7 @@ export const erpOutbound = {
     from: '시작일',
     to: '종료일',
   },
+  /** 탭 막대 오른쪽의 상태 칩 — 송신 항목 전체의 합. 누르면 이 탭으로 온다. */
   chips: {
     /** 이 서버의 송신 켜짐(ERP_SEND_ENABLED) — 꺼져 있으면 대기가 쌓여도 보내지 않는다. */
     sendOn: '송신 켜짐',

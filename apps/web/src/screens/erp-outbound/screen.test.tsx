@@ -11,13 +11,14 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { messageRow } from '../integration-sync/fixtures';
+import type { Session } from '../../patterns/session';
 import { ErpOutboundScreen } from './screen';
 
 const ROUTE = '/master-data/erp-outbound';
 const SETTINGS_PATH = '/integration/outbound-item-settings';
 const MESSAGES_PATH = '/integration/messages';
 
-/** 서버 응답 그대로 — 차례 · 이름은 서버가 정한다. 짝(interfaceCode)은 아직 싣지 않는다(앞선 서버). */
+/** 서버 응답 그대로(서버 #849) — 차례 · 이름 · 짝 · 대기 · 실패 건수는 서버가 정한다. 송신 켜짐은 시험마다 붙인다. */
 const SETTINGS = {
   items: [
     {
@@ -26,40 +27,38 @@ const SETTINGS = {
       enabled: true,
       locked: true,
       lockReason: '필수',
+      interfaceCode: 'IF-WO-CLOSE-SEND',
       pendingMessageCount: 0,
+      failedMessageCount: 0,
     },
     {
       outboundItemCode: 'GOODS_RECEIPT',
       outboundItemName: '입고 (G/R)',
       enabled: true,
       locked: false,
-      pendingMessageCount: 0,
+      interfaceCode: 'IF-GR-SEND',
+      pendingMessageCount: 2,
+      failedMessageCount: 1,
     },
     {
       outboundItemCode: 'SHIPMENT_PGI',
       outboundItemName: '출하 (PGI)',
       enabled: false,
       locked: false,
+      interfaceCode: 'IF-SHIPMENT-PGI-SEND',
       pendingMessageCount: 0,
+      failedMessageCount: 0,
     },
     {
       outboundItemCode: 'RETURN',
       outboundItemName: '반품',
       enabled: true,
       locked: false,
+      interfaceCode: null,
       pendingMessageCount: 0,
+      failedMessageCount: 0,
     },
   ],
-};
-
-/** 인터페이스 · 상태별 건수(목록의 page.total). */
-const COUNTS: Record<string, number> = {
-  'IF-WO-CLOSE-SEND:PENDING': 0,
-  'IF-WO-CLOSE-SEND:FAILED': 0,
-  'IF-GR-SEND:PENDING': 2,
-  'IF-GR-SEND:FAILED': 1,
-  'IF-SHIPMENT-PGI-SEND:PENDING': 0,
-  'IF-SHIPMENT-PGI-SEND:FAILED': 0,
 };
 
 const GR_PENDING = [
@@ -98,11 +97,11 @@ const messagesRoute = (status = 200): StubRoute => ({
   respond: (request) => {
     if (status !== 200) return jsonResponse({ message: '' }, { status });
     const query = new URL(request.url).searchParams;
-    const key = `${query.get('interfaceCode') ?? ''}:${query.get('statusCode') ?? ''}`;
-    const total = COUNTS[key] ?? 0;
-    const items = query.get('size') === '1' ? [] : key === 'IF-GR-SEND:PENDING' ? GR_PENDING : [];
+    const isGrPending =
+      query.get('interfaceCode') === 'IF-GR-SEND' && query.get('statusCode') === 'PENDING';
+    const items = isGrPending ? GR_PENDING : [];
 
-    return jsonResponse({ items, page: { page: 1, size: 20, total } });
+    return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
   },
 });
 
@@ -112,7 +111,7 @@ const LocationProbe = () => {
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
-const renderScreen = (routes: StubRoute[], search = '') => {
+const renderScreen = (routes: StubRoute[], search = '', session?: Session | null) => {
   const requests: URL[] = [];
   const stub = createStubFetch(routes);
   const fetch: StubFetch = async (request) => {
@@ -128,7 +127,7 @@ const renderScreen = (routes: StubRoute[], search = '') => {
       <ErpOutboundScreen />
       <LocationProbe />
     </>,
-    { fetch, route: `${ROUTE}${search}` },
+    { fetch, route: `${ROUTE}${search}`, ...(session === undefined ? {} : { session }) },
   );
 
   return { requests, user: userEvent.setup() };
@@ -168,21 +167,13 @@ describe('ErpOutboundScreen — 송신 항목', () => {
     ).toEqual(['반품', '켜짐', '—', '—']);
   });
 
-  it('건수는 송신 · 상태 · 인터페이스로 좁혀 넓은 기간으로 센다', async () => {
+  it('건수는 송신 항목 설정에 실려 오는 서버 값이다 — 메시지 목록을 따로 세지 않는다', async () => {
     const { requests } = renderScreen([settingsRoute, messagesRoute()]);
 
     await waitFor(() => {
-      expect(requests.filter((url) => url.searchParams.get('size') === '1')).toHaveLength(6);
+      expect(within(itemRow('입고 (G/R)')).getByText('2')).toBeInTheDocument();
     });
-    const gr = requests.find(
-      (url) =>
-        url.searchParams.get('size') === '1' &&
-        url.searchParams.get('interfaceCode') === 'IF-GR-SEND' &&
-        url.searchParams.get('statusCode') === 'PENDING',
-    );
-    expect(gr?.searchParams.get('directionCode')).toBe('OUTBOUND');
-    expect(gr?.searchParams.get('createdFrom')).toBe('2000-01-01T00:00:00.000Z');
-    expect(gr?.searchParams.get('createdTo')).toBe('2100-01-01T00:00:00.000Z');
+    expect(requests.filter((url) => url.searchParams.get('size') === '1')).toHaveLength(0);
   });
 });
 
@@ -208,6 +199,29 @@ describe('ErpOutboundScreen — 탭 막대 칩', () => {
     const hub = within(screen.getByTestId('hub-actions'));
     expect(await hub.findByText(/^송신 대기 /)).toBeInTheDocument();
     expect(hub.queryByText(/^송신 (켜짐|꺼짐)$/)).toBeNull();
+  });
+});
+
+describe('ErpOutboundScreen — 끝 쪽 넘김', () => {
+  it('송신 예정이 끝 쪽을 넘었으면 「첫 쪽으로」로 빠져나간다', async () => {
+    /* 3쪽을 보던 사이 송신기가 대기를 비웠다 — 전체는 2건인데 3쪽을 부른다. */
+    const beyondRoute: StubRoute = {
+      match: (request) => {
+        const url = new URL(request.url);
+        return url.pathname === MESSAGES_PATH && url.searchParams.get('page') === '3';
+      },
+      respond: () => jsonResponse({ items: [], page: { page: 3, size: 20, total: 2 } }),
+    };
+    const { user } = renderScreen(
+      [beyondRoute, settingsRoute, messagesRoute()],
+      '?item=GOODS_RECEIPT&page=3',
+    );
+
+    expect(await pendingPane().findByText('이 쪽에는 보낼 건이 없습니다')).toBeInTheDocument();
+    await user.click(pendingPane().getByRole('button', { name: '첫 쪽으로' }));
+
+    expect(await pendingPane().findByText('SAMPLE-GR-0001')).toBeInTheDocument();
+    expect(screen.getByTestId('location')).not.toHaveTextContent('page=');
   });
 });
 
@@ -256,10 +270,8 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
       'aria-pressed',
       'true',
     );
-    // 처음은 기간 없이(넓은 기간으로) 부른다.
-    expect(pendingListRequests(requests).at(-1)?.searchParams.get('createdFrom')).toBe(
-      '2000-01-01T00:00:00.000Z',
-    );
+    // 처음은 기간 없이 부른다(대기는 기간 없이 부를 수 있다 — 서버 #849).
+    expect(pendingListRequests(requests).at(-1)?.searchParams.has('createdFrom')).toBe(false);
 
     await user.click(pendingPane().getByRole('button', { name: '최근 1주일' }));
 
@@ -313,7 +325,7 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     renderScreen([settingsRoute, messagesRoute()], '?item=GOODS_RECEIPT');
 
     expect(
-      await pendingPane().findByRole('link', { name: 'IF-GR-SEND:SAMPLE-GR-0001 상세 열기' }),
+      await pendingPane().findByRole('link', { name: '입고 (G/R) SAMPLE-GR-0001 상세 열기' }),
     ).toHaveAttribute('href', '/master-data/integration-sync?sel=9101');
   });
 
@@ -324,7 +336,27 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     expect(pendingListRequests(requests)).toHaveLength(0);
   });
 
-  it('메시지를 읽을 권한이 없으면(403) 권한 안내를 내고 건수는 「—」다', async () => {
+  it('송신 항목 설정을 읽을 권한이 없으면(403) 목록 대신 권한 안내를 낸다', async () => {
+    renderScreen(
+      [
+        {
+          match: (request) =>
+            request.method === 'GET' && new URL(request.url).pathname === SETTINGS_PATH,
+          respond: () => jsonResponse({ message: '' }, { status: 403 }),
+        },
+        messagesRoute(),
+      ],
+      '?item=GOODS_RECEIPT',
+    );
+
+    expect(
+      await itemsPane().findByText(
+        '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('메시지를 읽을 권한이 없으면(403) 송신 예정 자리에 권한 안내를 낸다', async () => {
     renderScreen([settingsRoute, messagesRoute(403)], '?item=GOODS_RECEIPT');
 
     expect(
@@ -332,10 +364,5 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
         '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
       ),
     ).toBeInTheDocument();
-    expect(
-      within(itemRow('입고 (G/R)'))
-        .getAllByRole('cell')
-        .map((c) => c.textContent),
-    ).toEqual(['입고 (G/R)', '켜짐', '—', '—']);
   });
 });

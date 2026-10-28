@@ -50,7 +50,6 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     status: 'Trạng thái',
     interfaceCode: 'Hạng mục',
     direction: 'Phân loại',
-    targetType: 'Loại đối tượng',
     retryMin: 'Số lần thử lại (từ)',
   },
   actions: {
@@ -59,7 +58,7 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     goFirstPage: 'Về trang đầu',
     retry: 'Xử lý lại',
     /* 행 버튼의 접근 이름. 보이는 글자(`Xử lý lại`)를 그대로 담아 음성 조작이 부를 수 있게 둔다. */
-    retryRow: (messageKey: string): string => `Xử lý lại ${messageKey}`,
+    retryRow: (title: string): string => `Xử lý lại ${title}`,
     reload: 'Tra cứu lại',
     batchRetry: 'Xử lý lại theo lô mục đã chọn',
   },
@@ -122,7 +121,7 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   detail: {
     title: 'Chi tiết bản tin liên kết',
     pick: 'Hãy chọn một bản tin trong danh sách',
-    openAction: (messageKey: string): string => `Mở chi tiết ${messageKey}`,
+    openAction: (title: string): string => `Mở chi tiết ${title}`,
     retryCount: 'Số lần thử lại',
     availableAt: 'Lần thử tiếp theo',
     sentAt: 'Thời điểm gửi',
@@ -143,12 +142,10 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     chipStatus: (value: string): string => `Trạng thái: ${value}`,
     chipInterface: (value: string): string => `Hạng mục: ${value}`,
     chipDirection: (value: string): string => `Phân loại: ${value}`,
-    chipTargetType: (value: string): string => `Loại đối tượng: ${value}`,
     chipRetryMin: (value: string): string => `Thử lại từ ${value} lần`,
     chipRemoveStatus: 'Bỏ điều kiện trạng thái',
     chipRemoveInterface: 'Bỏ điều kiện hạng mục',
     chipRemoveDirection: 'Bỏ điều kiện phân loại',
-    chipRemoveTargetType: 'Bỏ điều kiện loại đối tượng',
     chipRemoveRetryMin: 'Bỏ điều kiện số lần thử lại',
   },
   /** 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다. */

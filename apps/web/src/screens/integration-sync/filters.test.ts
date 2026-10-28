@@ -15,7 +15,7 @@ const PERIOD = { from: '2026-08-01', to: '2026-08-06' };
 const params = (search: string): URLSearchParams => new URLSearchParams(search);
 
 describe('readFilters · readPage', () => {
-  it('주소에 있는 조건을 그대로 읽는다', () => {
+  it('주소에 있는 조건을 그대로 읽는다 — 걷어 낸 대상 유형(`target`)은 읽지 않는다', () => {
     expect(
       readFilters(
         params('status=FAILED&iface=IF-SAMPLE-A&dir=OUTBOUND&target=SAMPLE_TARGET&retryMin=3'),
@@ -24,7 +24,6 @@ describe('readFilters · readPage', () => {
       status: 'FAILED',
       iface: 'IF-SAMPLE-A',
       direction: 'OUTBOUND',
-      targetType: 'SAMPLE_TARGET',
       retryMin: '3',
     });
   });
@@ -71,7 +70,6 @@ describe('toSearchParams', () => {
         status: 'FAILED',
         iface: 'IF-SAMPLE-A',
         direction: 'INBOUND',
-        targetType: 'X',
         retryMin: '2',
       },
       1,
@@ -80,7 +78,7 @@ describe('toSearchParams', () => {
     expect(next.get('status')).toBe('FAILED');
     expect(next.get('iface')).toBe('IF-SAMPLE-A');
     expect(next.get('dir')).toBe('INBOUND');
-    expect(next.get('target')).toBe('X');
+    expect(next.has('target')).toBe(false);
     expect(next.get('retryMin')).toBe('2');
   });
 
@@ -102,14 +100,12 @@ describe('toFilterQuery', () => {
         status: 'FAILED',
         iface: 'IF-SAMPLE-A',
         direction: 'OUTBOUND',
-        targetType: 'SAMPLE_TARGET',
         retryMin: '3',
       }),
     ).toEqual({
       statusCode: 'FAILED',
       interfaceCode: 'IF-SAMPLE-A',
       directionCode: 'OUTBOUND',
-      targetTypeCode: 'SAMPLE_TARGET',
       retryCountMin: 3,
     });
   });
@@ -125,22 +121,15 @@ describe('toFilterChips · hasAnyFilter', () => {
       status: 'FAILED',
       iface: 'IF-SAMPLE-A',
       direction: 'OUTBOUND',
-      targetType: 'SAMPLE_TARGET',
       retryMin: '3',
     });
 
-    expect(chips.map((chip) => chip.key)).toEqual([
-      'status',
-      'iface',
-      'direction',
-      'targetType',
-      'retryMin',
-    ]);
+    expect(chips.map((chip) => chip.key)).toEqual(['status', 'iface', 'direction', 'retryMin']);
     // 코드 대신 업무 이름 — 모르는 연계 코드는 코드 그대로.
     expect(chips[0]?.label).toBe('상태: 실패');
     expect(chips[1]?.label).toBe('항목: IF-SAMPLE-A');
     expect(chips[2]?.label).toBe('구분: 송신');
-    expect(chips[4]?.label).toBe('재시도 3회 이상');
+    expect(chips[3]?.label).toBe('재시도 3회 이상');
   });
 
   it('걸리지 않은 조건은 칩을 만들지 않는다', () => {
@@ -148,12 +137,11 @@ describe('toFilterChips · hasAnyFilter', () => {
     expect(toFilterChips({ ...EMPTY_FILTERS, status: 'FAILED' })).toHaveLength(1);
   });
 
-  it('칩마다 제거 버튼의 이름이 따로 있다 — 「제거」가 다섯 개면 어느 것인지 알 수 없다', () => {
+  it('칩마다 제거 버튼의 이름이 따로 있다 — 「제거」가 넷이면 어느 것인지 알 수 없다', () => {
     const chips = toFilterChips({
       status: 'FAILED',
       iface: 'IF-SAMPLE-A',
       direction: '',
-      targetType: '',
       retryMin: '',
     });
 

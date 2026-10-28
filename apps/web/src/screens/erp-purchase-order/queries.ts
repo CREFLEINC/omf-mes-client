@@ -29,8 +29,8 @@ const fetchList = async (
   query: PurchaseOrderListQuery,
 ): Promise<PurchaseOrderListResult> => {
   /*
-   * `progress` 는 계약 사본에 아직 없다(서버에 요청 2026-10-28) — 리터럴로 넘기면 타입이 막아 변수로 넘긴다. 서버는
-   * 계약에 없는 조건을 막지 않고 무시하므로, 서버가 넣기 전에는 거르지 않은 목록이 온다. 계약에 실리면 이 우회를 걷는다.
+   * `progress` 는 서버에 들어왔지만(#850 · 장부 P-131) 계약 사본에는 아직 없다 — 리터럴로 넘기면 타입이 막아 변수로
+   * 넘긴다. 계약에 실리면 이 우회를 걷는다.
    */
   const data = await runRequest(() =>
     client.GET('/logistics/purchase-orders', { params: { query } }),

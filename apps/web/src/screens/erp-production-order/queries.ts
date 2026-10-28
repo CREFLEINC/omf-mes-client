@@ -35,7 +35,7 @@ const fetchList = async (
   const data = await runRequest(() =>
     client.GET('/planning/production-orders', {
       // 계획 시작일 범위는 계약 밖 질의다(omf-mes-server#737 · 장부 P-66) — 생성 타입에 없어 넓혀 넘긴다.
-      // 진행 조건(`progress`)도 계약 사본에 아직 없다(서버에 요청 2026-10-28) — 계약에 실리면 그 몫의 우회를 걷는다.
+      // 진행 조건(`progress`)도 계약 사본에 아직 없다(서버 #852 · 장부 P-133 — 계약 사본에는 아직 없다) — 계약에 실리면 그 몫의 우회를 걷는다.
       // openapi-fetch 는 받은 키를 모두 직렬화하므로 서버에 그대로 간다.
       params: { query: query as ContractListQuery },
     }),

@@ -1,12 +1,12 @@
-import { Chip, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
+import { Button, Chip, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { BoardTable } from '../../patterns/board-table';
-import { OneLine, PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import { BoardFrame } from '../../patterns/board-frame';
+import { OneLine } from '../../patterns/po-board';
 import { LoadErrorBanner } from '../integration-sync/load-error-banner';
-import { documentNoOf } from '../integration-sync/message-labels';
+import { documentNoOf, messageTitleOf } from '../integration-sync/message-labels';
 import { formatDateTime } from '../integration-sync/message-status';
 import { PageNav } from '../integration-sync/page-nav';
 import { toPageView } from '../integration-sync/pagination';
@@ -24,6 +24,7 @@ import {
 import { ErpSendChips } from './send-chips';
 
 const t = messages.erpOutbound;
+const ts = messages.integrationSync;
 
 /** 연동 현황·이력 — 송신 예정 건의 메시지 키가 그 탭의 상세를 연다. */
 const INTEGRATION_SYNC_PATH = '/master-data/integration-sync';
@@ -125,7 +126,7 @@ const PendingTable = ({ rows }: { rows: IntegrationMessageRow[] }) => {
         <Link
           className="link-cell"
           to={`${INTEGRATION_SYNC_PATH}?sel=${String(row.integrationMessageId)}`}
-          aria-label={t.openMessage(row.messageKey)}
+          aria-label={t.openMessage(messageTitleOf(row))}
         >
           <OneLine text={documentNoOf(row)} />
         </Link>
@@ -178,8 +179,6 @@ const PendingTable = ({ rows }: { rows: IntegrationMessageRow[] }) => {
  */
 export const ErpOutboundScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { splitRef } = useFitToViewport();
-  const split = usePaneSplit('omf-mes:erp-outbound:split', 0.35);
 
   const items = useOutboundItems();
   const counts = useOutboundCounts();
@@ -188,9 +187,13 @@ export const ErpOutboundScreen = () => {
   const selected =
     itemRows.find((item) => item.outboundItemCode === requestedCode) ?? itemRows[0] ?? null;
   const page = readPage(searchParams.get('page'));
-  /* 생성일 조건 — 주소의 `from` · `to`(공장 시각 날짜). 없으면 전체다. */
+  /* 생성일 조건 — 주소의 `from` · `to`(날짜). 없으면 전체다. */
   const created = readCreatedPeriod(searchParams);
-  const [today] = useState(() => new Date());
+  /*
+   * 「오늘」은 그릴 때마다 다시 잰다 — 목록이 15초마다 다시 그려지므로, 자정을 넘겨 켜 둔 화면에서도 「최근 1주일」이
+   * 오늘까지로 걸린다(한 번만 재면 어제에 머문다).
+   */
+  const today = new Date();
   const offsetMinutes = -today.getTimezoneOffset();
 
   const pending = usePendingMessages(
@@ -250,15 +253,30 @@ export const ErpOutboundScreen = () => {
         </div>
       );
     }
-    if (pendingRows.length === 0) {
+    /*
+     * 끝 쪽을 넘었다 — 송신기가 대기를 계속 비우고 목록은 15초마다 다시 읽으므로 2쪽을 보던 사람이 곧 여기 닿는다.
+     * 빠져나갈 길(첫 쪽으로)을 함께 둔다.
+     */
+    if (pageView.isBeyondLast) {
       return (
         <EmptyState
           size="sm"
           live
-          title={pageView.isBeyondLast ? t.empty.beyondLast : t.empty.noPending}
+          title={t.empty.beyondLast}
+          action={
+            <Button
+              variant="outlined"
+              onClick={() => {
+                changePage(1);
+              }}
+            >
+              {ts.actions.goFirstPage}
+            </Button>
+          }
         />
       );
     }
+    if (pendingRows.length === 0) return <EmptyState size="sm" live title={t.empty.noPending} />;
 
     return (
       <>
@@ -274,14 +292,13 @@ export const ErpOutboundScreen = () => {
     <>
       <ErpSendChips />
 
-      <div
-        ref={splitRef}
-        className="po-board-split"
-        style={split.style}
-        data-left-collapsed={split.collapsed ? 'true' : undefined}
-      >
-        <section className="pane po-board-pane" aria-label={t.panes.items}>
-          {items.isError ? (
+      <BoardFrame
+        splitKey="omf-mes:erp-outbound:split"
+        initialRatio={0.35}
+        splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
+        list={{
+          label: t.panes.items,
+          content: items.isError ? (
             <LoadErrorBanner error={items.error} onRetry={() => void items.refetch()} />
           ) : items.isPending ? (
             <div role="status" aria-label={t.loading.items}>
@@ -294,37 +311,30 @@ export const ErpOutboundScreen = () => {
               selectedCode={selected?.outboundItemCode ?? null}
               onSelect={select}
             />
-          )}
-        </section>
-
-        <PaneSplitter
-          label={t.splitter}
-          ratio={split.ratio}
-          onChange={split.commit}
-          collapse={{
-            collapsed: split.collapsed,
-            onToggle: split.toggleCollapsed,
-            collapseLabel: t.listCollapse,
-            expandLabel: t.listExpand,
-          }}
-        />
-
-        <section className="pane po-board-pane" aria-label={t.panes.pending}>
-          {selected !== null && (
-            <h2 className="pane-title">
-              {selected.interfaceCode !== null && pendingCount !== undefined
-                ? t.pendingTitle(selected.outboundItemName, pendingCount)
-                : selected.outboundItemName}
-            </h2>
-          )}
-          {selected?.interfaceCode != null && (
-            <div className="po-board-filter">
-              <CreatedFilter applied={created} today={today} onApply={applyCreated} />
-            </div>
-          )}
-          {pendingSlot()}
-        </section>
-      </div>
+          ),
+        }}
+        detail={{
+          label: t.panes.pending,
+          scroll: false,
+          content: (
+            <>
+              {selected !== null && (
+                <h2 className="pane-title">
+                  {selected.interfaceCode !== null && pendingCount !== undefined
+                    ? t.pendingTitle(selected.outboundItemName, pendingCount)
+                    : selected.outboundItemName}
+                </h2>
+              )}
+              {selected?.interfaceCode != null && (
+                <div className="po-board-filter">
+                  <CreatedFilter applied={created} today={today} onApply={applyCreated} />
+                </div>
+              )}
+              {pendingSlot()}
+            </>
+          ),
+        }}
+      />
     </>
   );
 };

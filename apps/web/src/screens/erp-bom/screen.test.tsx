@@ -53,6 +53,7 @@ const ITEMS: Record<string, { itemCode: string; itemName: string }> = {
   '7101': { itemCode: 'SYN-CHILD-1', itemName: '합성 자품목 1' },
   '7102': { itemCode: 'SYN-CHILD-2', itemName: '합성 자품목 2' },
   '7201': { itemCode: 'SYN-GRAND-1', itemName: '합성 손품목 1' },
+  '7301': { itemCode: 'SYN-GREAT-1', itemName: '합성 증손품목 1' },
 };
 
 const isGet = (request: Request, pathname: string): boolean =>
@@ -297,6 +298,68 @@ describe('ErpBomScreen', () => {
     expect(
       tree().getByRole('button', { name: 'SYN-CHILD-1 · 합성 자품목 1 펼치기' }),
     ).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('세 단계까지 한 단계씩 내려가며 편다 — 손품목의 하위 BOM 도 부른다', async () => {
+    renderScreen(
+      [
+        bomsRoute([bom()], {
+          ...SUB_BOMS,
+          '7201': [bom({ bomId: 503, parentItemId: 7201, bomCode: 'SYN-SUB-2' })],
+        }),
+        componentsRoute,
+        subComponentsRoute,
+        componentsOf(503, [
+          component({ bomComponentId: 9201, bomId: 503, componentItemId: 7301, requiredQty: 4 }),
+        ]),
+      ],
+      '?item=7001',
+    );
+
+    const great = await tree().findByText('SYN-GREAT-1');
+    const rails = [...(great.closest('.bom-tree-cell')?.querySelectorAll('.bom-tree-rail') ?? [])];
+    // 3단계 — 윗 단계 세로선 둘(1단계 이어짐 · 2단계 마지막이라 끊김) 다음 가지선.
+    expect(rails.map((rail) => (rail as HTMLElement).dataset.line)).toEqual([
+      'pass',
+      'none',
+      'elbow',
+    ]);
+  });
+
+  it('하위 구성을 받지 못한 줄은 그 사실을 알리고, 다시 시도하면 그 자리부터 다시 편다 — 실패를 되풀이해 부르지 않는다', async () => {
+    let fail = true;
+    let subCalls = 0;
+    const { user } = renderScreen(
+      [
+        bomsRoute([bom()], SUB_BOMS),
+        componentsRoute,
+        {
+          match: (request) => isGet(request, `${BOMS_PATH}/502/components`),
+          respond: () => {
+            subCalls += 1;
+            return fail
+              ? jsonResponse({ message: '' }, { status: 500 })
+              : jsonResponse({
+                  items: [component({ bomComponentId: 9101, bomId: 502, componentItemId: 7201 })],
+                });
+          },
+        },
+      ],
+      '?item=7001',
+    );
+
+    expect(await tree().findByText(t.tree.failed, {}, { timeout: 5000 })).toBeInTheDocument();
+    const callsAfterFailure = subCalls;
+    // 실패한 채로 더 부르지 않는다(되풀이 없음).
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(subCalls).toBe(callsAfterFailure);
+
+    fail = false;
+    await user.click(
+      tree().getByRole('button', { name: t.tree.retry('SYN-CHILD-1 · 합성 자품목 1') }),
+    );
+
+    expect(await tree().findByText('SYN-GRAND-1')).toBeInTheDocument();
   });
 
   it('자품목이 위 단계의 품목을 다시 가리키면 더 내려가지 않는다', async () => {

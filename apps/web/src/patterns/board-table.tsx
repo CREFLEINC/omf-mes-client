@@ -150,7 +150,7 @@ export const BoardTable = <T,>({
     .join(' ');
 
   return (
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+    /* 상자는 누름을 받아 줄로 넘기기만 한다 — 키보드는 줄 안의 고르는 단추가 받는다(위 `BoardTablePick` 설명). */
     <div ref={boxRef} className={boxClass} style={style} onClick={handleClick}>
       <Table
         density="compact"

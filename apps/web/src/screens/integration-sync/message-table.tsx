@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 import { BoardTable } from '../../patterns/board-table';
 import { OneLine } from '../../patterns/po-board';
-import { directionName, documentNoOf, interfaceName } from './message-labels';
+import { directionName, documentNoOf, interfaceName, messageTitleOf } from './message-labels';
 import { formatDateTime, toStatusView } from './message-status';
 import type { IntegrationMessageRow } from './types';
 
@@ -128,7 +128,7 @@ export const MessageTable = ({
           variant="outlined"
           size="sm"
           loading={retryingId === row.integrationMessageId}
-          aria-label={t.actions.retryRow(row.messageKey)}
+          aria-label={t.actions.retryRow(messageTitleOf(row))}
           onClick={() => {
             onRetry(row);
           }}
@@ -187,7 +187,8 @@ export const MessageTable = ({
       pick={{
         columnKey: 'messageKey',
         // 접근 이름에 메시지 키를 넣는다 — 「상세 열기」가 행마다 되풀이되면 어느 건인지 알 수 없다.
-        label: (row) => t.detail.openAction(row.messageKey),
+        /* 접근 이름도 업무 이름으로 — 보이는 번호를 담고 시스템 코드(메시지 키)는 쓰지 않는다. */
+        label: (row) => t.detail.openAction(messageTitleOf(row)),
         currentId: openedId === null ? null : String(openedId),
         onPick: (row) => {
           onOpenDetail(row.integrationMessageId);

@@ -39,6 +39,8 @@ export const erpBom: Translated<typeof ko.erpBom> = {
     isMandatory: 'Bắt buộc',
   },
   tree: {
+    depthLimit: 'Không mở thêm các cấp sâu hơn',
+    retry: (label: string): string => `Tải lại cấu trúc con của ${label}`,
     item: 'Mặt hàng',
     expand: (label: string): string => `Mở ${label}`,
     collapse: (label: string): string => `Thu gọn ${label}`,
@@ -59,6 +61,7 @@ export const erpBom: Translated<typeof ko.erpBom> = {
     boms: 'Đang tải BOM',
   },
   empty: {
+    parentsBeyondLast: 'Trang này không có mặt hàng cha',
     noParentsTitle: 'Không có mặt hàng cha phù hợp',
     noParentTitle: 'Hãy chọn mặt hàng cha',
     noBomTitle: 'Mặt hàng này không có BOM',

@@ -28,7 +28,7 @@ export interface SalesOrderErpFields {
 }
 
 /**
- * 출하 진행 — **서버에 요청한 칸이라(2026-10-28) 아직 오지 않는다.** 실려 오기 전에는 목록의 진행 칸이 「없음」이다.
+ * 출하 진행 — 서버 #851(장부 P-132)이 싣는 칸이다. 계약 사본에는 아직 없어 여기서 넓힌다.
  * 계약 사본에 실려 오면 이 교차 타입을 걷는다.
  */
 export interface SalesOrderProgressFields {

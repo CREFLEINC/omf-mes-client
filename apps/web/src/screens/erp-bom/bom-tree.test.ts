@@ -132,7 +132,8 @@ describe('walkBomTree', () => {
     const { rows } = walkBomTree(ROOT, chain, new Set());
 
     expect(rows).toHaveLength(MAX_DEPTH + 1);
-    expect(rows.at(-1)?.state).toBe('collapsed');
+    // 한도의 줄은 펼칠 수 없다 — 「접힘」이 아니라 따로 알린다(펼치기 단추가 서지 않는다).
+    expect(rows.at(-1)?.state).toBe('depthLimit');
   });
 });
 

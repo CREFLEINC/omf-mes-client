@@ -1,31 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { interfaceCodeOf, toOutboundItem } from './outbound-items';
+import { toOutboundItem } from './outbound-items';
 
-describe('송신 항목 ↔ 송신 인터페이스', () => {
-  it.each([
-    ['PRODUCTION_RESULT', 'IF-WO-CLOSE-SEND'],
-    ['GOODS_RECEIPT', 'IF-GR-SEND'],
-    ['SHIPMENT_PGI', 'IF-SHIPMENT-PGI-SEND'],
-  ])('%s 는 %s 로 보낸다', (item, interfaceCode) => {
-    expect(interfaceCodeOf(item)).toBe(interfaceCode);
-  });
-
-  it.each(['RETURN', 'STOCK_ADJUSTMENT', 'UNKNOWN'])(
-    '%s 는 아직 보내지 않는다(짝 없음)',
-    (item) => {
-      expect(interfaceCodeOf(item)).toBeNull();
-    },
-  );
-
-  it('서버 설정 한 줄에 짝을 붙인다 — 이름 · 켜짐 · 잠금은 서버 값 그대로', () => {
+describe('송신 항목 — 서버 설정 한 줄', () => {
+  it('짝 · 대기 · 실패 건수를 서버 값 그대로 옮긴다(서버 #849)', () => {
     expect(
       toOutboundItem({
         outboundItemCode: 'GOODS_RECEIPT',
         outboundItemName: '입고 (G/R)',
         enabled: false,
         locked: false,
-        pendingMessageCount: 0,
+        interfaceCode: 'IF-GR-SEND',
+        pendingMessageCount: 3,
+        failedMessageCount: 1,
       }),
     ).toEqual({
       outboundItemCode: 'GOODS_RECEIPT',
@@ -33,6 +20,21 @@ describe('송신 항목 ↔ 송신 인터페이스', () => {
       enabled: false,
       locked: false,
       interfaceCode: 'IF-GR-SEND',
+      pendingCount: 3,
+      failedCount: 1,
     });
+  });
+
+  it('송신이 없는 항목(반품)은 짝이 없고, 실패 건수를 주지 않는 옛 서버는 0 으로 둔다', () => {
+    const item = toOutboundItem({
+      outboundItemCode: 'RETURN',
+      outboundItemName: '반품',
+      enabled: true,
+      locked: false,
+      pendingMessageCount: 0,
+    });
+
+    expect(item.interfaceCode).toBeNull();
+    expect(item.failedCount).toBe(0);
   });
 });

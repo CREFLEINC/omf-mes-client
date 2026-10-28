@@ -173,7 +173,7 @@ export interface ParentItemQuery {
   q?: string;
   itemTypeCode: string;
   page?: number;
-  /** BOM 이 있는 품목만(사용자 지시 2026-10-28). 서버에 요청했다 — 아직 모르는 서버는 무시하고 전부 준다. */
+  /** BOM 이 있는 품목만(사용자 지시 2026-10-28 · 서버 #848 · 장부 P-130). */
   hasBom?: boolean;
 }
 
@@ -190,8 +190,8 @@ export const useParentItems = (query: ParentItemQuery) => {
     queryKey: erpBomKeys.parents(query),
     queryFn: () => {
       /*
-       * `hasBom` 은 계약 사본에 아직 없다(서버에 요청 2026-10-28) — 리터럴로 넘기면 타입이 막아 변수로 넘긴다. 서버는
-       * 계약에 없는 조건을 막지 않고 무시하므로, 서버가 넣기 전에는 거르지 않은 목록이 온다. 계약에 실리면 이 우회를 걷는다.
+       * `hasBom` 은 서버에 들어왔지만(#848 · 장부 P-130) 계약 사본에는 아직 없다 — 리터럴로 넘기면 타입이 막아 변수로
+       * 넘긴다. 계약에 실리면 이 우회를 걷는다.
        */
       const params = { ...query, includeInactive: true, size: PARENT_PAGE_SIZE };
       return runRequest(() => client.GET('/mdm/items', { params: { query: params } }));

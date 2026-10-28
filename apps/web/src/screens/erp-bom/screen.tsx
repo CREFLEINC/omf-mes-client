@@ -11,6 +11,7 @@ import {
 } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
@@ -22,6 +23,7 @@ import { PageNav } from '../integration-sync/page-nav';
 import { toPageView } from '../integration-sync/pagination';
 import { pickBom, useBomTree, type BomTreeRoot, type BomTreeRow } from './bom-tree';
 import {
+  erpBomKeys,
   type ItemDetail,
   type ItemSummary,
   labelOf,
@@ -192,10 +194,12 @@ interface BomTreeCellProps {
   row: BomTreeRow;
   item: ItemSummary;
   onToggle: (key: string) => void;
+  /** 하위 구성을 받지 못한 줄의 다시 시도. */
+  onRetry: () => void;
 }
 
 /** 하이라키 칸 — 단계만큼 들여 쓰고, 하위 구성이 있으면 펼치고 접는 단추를 앞에 둔다. */
-const BomTreeCell = ({ row, item, onToggle }: BomTreeCellProps) => {
+const BomTreeCell = ({ row, item, onToggle, onRetry }: BomTreeCellProps) => {
   const label = labelOf(item);
   const canToggle = row.state === 'expanded' || row.state === 'collapsed';
   const note =
@@ -205,7 +209,9 @@ const BomTreeCell = ({ row, item, onToggle }: BomTreeCellProps) => {
         ? t.tree.failed
         : row.state === 'cycle'
           ? t.tree.cycle
-          : null;
+          : row.state === 'depthLimit'
+            ? t.tree.depthLimit
+            : null;
 
   return (
     <span className="bom-tree-cell">
@@ -250,6 +256,11 @@ const BomTreeCell = ({ row, item, onToggle }: BomTreeCellProps) => {
       {item.code !== null && <span className="bom-tree-code">{item.code}</span>}
       <OneLine text={item.code === null ? item.name : `· ${item.name}`} />
       {note !== null && <span className="field-note bom-tree-note">{note}</span>}
+      {row.state === 'failed' && (
+        <Button variant="text" size="sm" aria-label={t.tree.retry(label)} onClick={onRetry}>
+          {messages.common.retry}
+        </Button>
+      )}
     </span>
   );
 };
@@ -270,6 +281,14 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
   const rows = useBomTree(root, collapsed);
   const itemOf = useItemSummaries(rows.map((row) => row.itemId));
+  const queryClient = useQueryClient();
+  /* 받지 못한 하위 구성(BOM 목록 · 구성품)만 다시 부른다 — 받으면 트리가 그 자리부터 다시 펴진다. */
+  const retryFailed = (): void => {
+    void queryClient.refetchQueries({
+      queryKey: erpBomKeys.all,
+      predicate: (query) => query.state.status === 'error',
+    });
+  };
 
   const toggle = (key: string): void => {
     setCollapsed((current) => {
@@ -285,7 +304,9 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
     {
       key: 'item',
       header: t.tree.item,
-      render: (row) => <BomTreeCell row={row} item={itemOf(row.itemId)} onToggle={toggle} />,
+      render: (row) => (
+        <BomTreeCell row={row} item={itemOf(row.itemId)} onToggle={toggle} onRetry={retryFailed} />
+      ),
     },
     {
       key: 'requiredQty',
@@ -364,7 +385,8 @@ const ParentFacts = ({ item, bom }: ParentFactsProps) => {
     {
       key: 'effective',
       label: t.parent.effective,
-      value: t.parent.effectiveRange(bom.effectiveFrom, bom.effectiveTo ?? ''),
+      /* 끝이 없는 BOM 은 「~ —」로 — 끝이 비면 잘린 값처럼 보인다. */
+      value: t.parent.effectiveRange(bom.effectiveFrom, bom.effectiveTo ?? t.values.empty),
     },
     {
       key: 'baseQty',
@@ -472,7 +494,13 @@ export const ErpBomScreen = () => {
               setSearchParams(toSearchParams(filters, page, row.itemId));
             },
           }}
-          empty={<EmptyState size="sm" live title={t.empty.noParentsTitle} />}
+          empty={
+            <EmptyState
+              size="sm"
+              live
+              title={pageView.isBeyondLast ? t.empty.parentsBeyondLast : t.empty.noParentsTitle}
+            />
+          }
         />
         <PageNav
           view={pageView}

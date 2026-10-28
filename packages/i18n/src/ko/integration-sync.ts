@@ -58,7 +58,6 @@ export const integrationSync = {
     status: '상태',
     interfaceCode: '항목',
     direction: '구분',
-    targetType: '대상 유형',
     retryMin: '재시도 횟수(이상)',
   },
   actions: {
@@ -67,10 +66,10 @@ export const integrationSync = {
     goFirstPage: '첫 쪽으로',
     retry: '재처리',
     /*
-     * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 메시지 키를 넣어 어느 건인지 밝히되,
+     * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 그 건의 이름(항목 · 번호)을 넣어 어느 건인지 밝히되,
      * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「재처리」로 이 버튼을 부를 수 없다.
      */
-    retryRow: (messageKey: string): string => `${messageKey} 재처리`,
+    retryRow: (title: string): string => `${title} 재처리`,
     reload: '다시 조회',
     batchRetry: '선택 일괄 재처리',
   },
@@ -145,7 +144,7 @@ export const integrationSync = {
     title: '연계 메시지 상세',
     /** 오른쪽 구획 — 아직 고르지 않았을 때. */
     pick: '목록에서 메시지를 고르세요',
-    openAction: (messageKey: string): string => `${messageKey} 상세 열기`,
+    openAction: (title: string): string => `${title} 상세 열기`,
     retryCount: '재시도 횟수',
     availableAt: '다음 시도',
     sentAt: '보낸 시각',
@@ -172,12 +171,10 @@ export const integrationSync = {
     chipStatus: (value: string): string => `상태: ${value}`,
     chipInterface: (value: string): string => `항목: ${value}`,
     chipDirection: (value: string): string => `구분: ${value}`,
-    chipTargetType: (value: string): string => `대상 유형: ${value}`,
     chipRetryMin: (value: string): string => `재시도 ${value}회 이상`,
     chipRemoveStatus: '상태 조건 제거',
     chipRemoveInterface: '항목 조건 제거',
     chipRemoveDirection: '구분 조건 제거',
-    chipRemoveTargetType: '대상 유형 조건 제거',
     chipRemoveRetryMin: '재시도 횟수 조건 제거',
   },
   /**

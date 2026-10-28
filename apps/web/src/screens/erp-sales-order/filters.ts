@@ -95,8 +95,8 @@ export interface SalesOrderListQuery {
   orderDateTo?: string;
   unassignedOnly?: boolean;
   /**
-   * 진행 조건 — **계약 사본에 아직 없다**(서버에 요청 2026-10-28). 그전 서버는 모르는 조건을 무시해 거르지 않은 목록을
-   * 낸다. 두 값 말고는 400 일 수 있어 이 둘만 싣는다. 계약에 실리면 이 칸을 걷고 계약 타입을 따른다.
+   * 진행 조건 — **계약 사본에 아직 없다**(서버 #851 · 장부 P-132). 대소문자를 가리고 두 값 말고는 400 이라 이 둘만
+   * 싣는다. 계약에 실리면 이 칸을 걷고 계약 타입을 따른다.
    */
   progress?: 'OPEN' | 'COMPLETED';
   page?: number;

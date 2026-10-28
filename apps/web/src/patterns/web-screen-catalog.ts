@@ -104,7 +104,7 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/master-data/integration-sync', code: 'W-06-10', name: '연계 동기화 현황·실패 재처리' },
   /*
    * W-06-12 — 송신 항목(서버 `outbound-item-settings` 가 이 코드의 화면이라고 적었다)과 고른 항목의 송신 예정 목록.
-   * 항목 켜고 끄기는 아직 화면에 없다. 송신 예정은 연계 메시지 목록을 읽어 W-06-10 권한도 있어야 보인다(서버에 요청).
+   * 항목 켜고 끄기는 아직 화면에 없다. 송신 예정은 연계 메시지 목록을 읽는다 — W-06-12 권한으로도 읽힌다(서버 #849).
    */
   {
     path: '/master-data/erp-outbound',
