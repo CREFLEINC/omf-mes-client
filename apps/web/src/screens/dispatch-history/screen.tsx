@@ -7,12 +7,14 @@ import {
   Select,
   Skeleton,
   TextField,
+  type SelectItems,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { DetailDrawer } from '../../patterns/detail-drawer';
+import { handoverTypeName, useHandoverAlertTypes } from '../../patterns/handover-alert-types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 import { DeliveryTable, toDeliveryView } from './delivery-table';
@@ -75,12 +77,25 @@ export const DispatchHistoryScreen = () => {
   const dispatches = useDispatches(query);
   const deliveries = useDeliveries(selected, periodQuery);
   const events = useEvents();
+  /* 인계 작업 10종(피처 002) — 이름 풀이와 이벤트 거르기에 기존 6종 뒤로 더한다. 못 받으면 코드 그대로. */
+  const handoverTypes = useHandoverAlertTypes();
   const departments = useDepartments();
 
   const eventName = (code: string): string => {
+    const handover = handoverTypes.data?.find((type) => type.alertTypeCode === code);
+    if (handover !== undefined) return handoverTypeName(handover, code);
     const name = events.data?.find((event) => event.eventCode === code)?.eventName ?? '';
     return name.trim() === '' ? code : name;
   };
+
+  const eventOptions = (events.data ?? []).map((event) => ({
+    value: event.eventCode,
+    label: eventName(event.eventCode),
+  }));
+  const handoverOptions = (handoverTypes.data ?? []).map((type) => ({
+    value: type.alertTypeCode,
+    label: eventName(type.alertTypeCode),
+  }));
 
   const draftReason = validatePeriod(period);
   const search = (): void => {
@@ -96,7 +111,7 @@ export const DispatchHistoryScreen = () => {
     key: string,
     label: string,
     value: string,
-    options: { value: string; label: string }[],
+    options: SelectItems,
     onChange: (value: string) => void,
   ): ReactNode => (
     <div className="field-cell wide-select">
@@ -249,10 +264,14 @@ export const DispatchHistoryScreen = () => {
           'event',
           t.filters.event,
           filters.event,
-          (events.data ?? []).map((event) => ({
-            value: event.eventCode,
-            label: eventName(event.eventCode),
-          })),
+          handoverOptions.length === 0
+            ? eventOptions
+            : [
+                ...(eventOptions.length === 0
+                  ? []
+                  : [{ label: t.filters.eventGroup, options: eventOptions }]),
+                { label: t.filters.handoverGroup, options: handoverOptions },
+              ],
           (value) => setFilters((prev) => ({ ...prev, event: value })),
         )}
         {selectField(

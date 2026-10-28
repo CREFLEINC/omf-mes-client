@@ -32,6 +32,7 @@ import {
   QualityOverviewTab,
 } from './quality-panels';
 import { useSession } from '../../patterns/session';
+import { useHandoverEventEntries } from '../notification-center/handover-lookups';
 import { useNotificationEventOptions } from '../notification-center/lookups';
 import { toWebAccess } from '../../patterns/web-access';
 import { useDashboardSummary } from './queries';
@@ -123,6 +124,8 @@ export const DashboardScreen = () => {
   const periodError = periodErrorOf(summary.error);
   /* 알림 이름 풀이 — 알림센터와 같은 유형 목록을 쓴다(코드 원문을 보이지 않는다). */
   const alertEvents = useNotificationEventOptions();
+  /* 인계 작업 10종(피처 002) — 알림센터와 같은 풀이로 기존 6종 뒤에 더한다. */
+  const handoverEvents = useHandoverEventEntries();
   /* 출하 현황 칸을 눌러 갈 화면 — 사이드바와 같은 권한 판정(세션 권한)으로 링크 여부를 정한다. */
   const { session } = useSession();
   const access = toWebAccess(session?.permissions);
@@ -245,7 +248,11 @@ export const DashboardScreen = () => {
             allows={access.allows}
           />
           <Panel title={t.panes.alerts} action={<AlertCenterButton />}>
-            <AlertPanel views={alerts} events={alertEvents.entries} isLoading={summary.isPending} />
+            <AlertPanel
+              views={alerts}
+              events={[...alertEvents.entries, ...handoverEvents]}
+              isLoading={summary.isPending}
+            />
           </Panel>
         </div>
       </div>
