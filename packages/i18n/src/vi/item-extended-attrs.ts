@@ -111,6 +111,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       lotControlled: 'Quản lý LOT',
       defaultLotStorageUom: 'Đơn vị bảo quản LOT mặc định',
       defaultProductionLotSize: 'Kích thước LOT sản xuất mặc định',
+      defaultMaterialLotSize: 'Kích thước LOT vật tư mặc định',
       serialControlType: 'Loại quản lý serial',
       shelfLifeManaged: 'Quản lý hạn sử dụng',
       shelfLifeDays: 'Hạn sử dụng (ngày)',
@@ -141,7 +142,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       /* 계약 exclusiveMinimum: 0 - 유효기한(일)과 규칙이 다르다. */
       openedShelfLifeHoursInvalid: 'Hãy nhập thời hạn sau khi mở (giờ) là số nguyên từ 1 trở lên.',
       defaultLotStorageUomInvalid: 'Hãy chọn lại đơn vị bảo quản LOT mặc định.',
-      defaultProductionLotSizeInvalid: 'Hãy nhập kích thước LOT sản xuất mặc định bằng số.',
+      defaultProductionLotSizeInvalid: 'Hãy nhập kích thước LOT mặc định bằng số.',
     },
   },
   /* 대상 품목을 검색해서 고르는 묶음(결정 8) - 번호를 입력받지 않는다. */

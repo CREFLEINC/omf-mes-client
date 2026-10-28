@@ -10,6 +10,8 @@ const t = messages.itemExtendedAttrs;
 
 export interface ItemAttrsPaneProps {
   values: ItemAttrsFormValues;
+  /** 고른 품목의 유형 코드 — LOT 기본크기의 이름과 표시 여부가 이것으로 갈린다(`lotSizeLabelOf`). */
+  itemTypeCode: string;
   uomOptions: SelectOption[];
   onChange: (patch: Partial<ItemAttrsFormValues>) => void;
   fieldErrors: Record<string, string>;
@@ -26,6 +28,7 @@ export interface ItemAttrsPaneProps {
  */
 export const ItemAttrsPane = ({
   values,
+  itemTypeCode,
   uomOptions,
   onChange,
   fieldErrors,
@@ -41,6 +44,7 @@ export const ItemAttrsPane = ({
   const fifoId = useId();
   const inspectionId = useId();
   const negativeStockId = useId();
+  const lotSizeLabel = lotSizeLabelOf(itemTypeCode);
   const lotStorageUomOptions: SelectOption[] = [
     { value: '', label: t.attrs.values.unspecified },
     ...uomOptions,
@@ -65,21 +69,25 @@ export const ItemAttrsPane = ({
             />
           ),
         },
-        {
-          id: productionLotSizeId,
-          label: t.attrs.fields.defaultProductionLotSize,
-          control: (
-            <TextField
-              size="sm"
-              id={productionLotSizeId}
-              type="number"
-              step="any"
-              value={values.defaultProductionLotSize}
-              onChange={(event) => onChange({ defaultProductionLotSize: event.target.value })}
-              error={fieldErrors.defaultProductionLotSize}
-            />
-          ),
-        },
+        ...(lotSizeLabel === null
+          ? []
+          : [
+              {
+                id: productionLotSizeId,
+                label: lotSizeLabel,
+                control: (
+                  <TextField
+                    size="sm"
+                    id={productionLotSizeId}
+                    type="number"
+                    step="any"
+                    value={values.defaultProductionLotSize}
+                    onChange={(event) => onChange({ defaultProductionLotSize: event.target.value })}
+                    error={fieldErrors.defaultProductionLotSize}
+                  />
+                ),
+              },
+            ]),
       ],
     },
     {
@@ -211,6 +219,21 @@ export const ItemAttrsPane = ({
       </div>
     </section>
   );
+};
+
+/**
+ * LOT 기본크기의 이름 — 품목유형마다 뜻이 다르다(사용자 지시 2026-10-28). 반제품 · 제품은 생산 LOT, 원자재 · 부자재는
+ * 자재 LOT 의 기본크기다. 상품과 그 밖의 유형은 쓰지 않아 칸을 두지 않는다(`null`) — 값은 조회한 그대로 되돌려 실린다.
+ * 칸은 하나(`defaultProductionLotSize`)를 함께 쓴다 — 서버에 포괄적인 이름(`defaultLotSize`)으로 바꾸기를 요청함.
+ */
+export const lotSizeLabelOf = (itemTypeCode: string): string | null => {
+  if (itemTypeCode === 'SEMI_FINISHED' || itemTypeCode === 'FINISHED') {
+    return t.attrs.fields.defaultProductionLotSize;
+  }
+  if (itemTypeCode === 'RAW_MATERIAL' || itemTypeCode === 'SUBSIDIARY_MATERIAL') {
+    return t.attrs.fields.defaultMaterialLotSize;
+  }
+  return null;
 };
 
 interface SettingRow {

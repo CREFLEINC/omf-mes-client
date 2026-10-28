@@ -770,9 +770,12 @@ describe('ItemExtendedAttrsScreen — 탭', () => {
 const findAttrsPane = async (): Promise<HTMLElement> =>
   screen.findByRole('region', { name: '확장 속성' });
 
-/** 폼을 한 군데 고쳐 저장을 연다. 어느 필드를 고쳐도 결과는 같다. */
+/**
+ * 폼을 한 군데 고쳐 저장을 연다. 어느 필드를 고쳐도 결과는 같다 — 품목유형과 상관없이 늘 있는 IQC 대상을 바꾼다
+ * (LOT 기본크기는 품목유형에 따라 칸이 없다).
+ */
 const editAndSave = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.type(screen.getByLabelText('생산 LOT 기본크기'), '1');
+  await user.click(screen.getByRole('switch', { name: 'IQC 대상' }));
   await user.click(screen.getByRole('button', { name: '저장' }));
 };
 
@@ -3119,7 +3122,7 @@ describe('ItemExtendedAttrsScreen — 원본 구획의 품목유형 이름', () 
     await findOriginContent();
 
     await waitFor(() => {
-      expect(within(itemOriginPane()).getByLabelText('품목유형')).toHaveTextContent('합성 유형 A');
+      expect(within(itemOriginPane()).getByLabelText('품목유형')).toHaveTextContent('완제품');
     });
     expect(
       codeValueGets(requests, 'ITEM_TYPE').some(
@@ -3144,7 +3147,7 @@ describe('ItemExtendedAttrsScreen — 원본 구획의 품목유형 이름', () 
       ).toBe(true);
     });
 
-    expect(within(itemOriginPane()).getByLabelText('품목유형')).toHaveTextContent('SYN-TYPE-A');
+    expect(within(itemOriginPane()).getByLabelText('품목유형')).toHaveTextContent('FINISHED');
   });
 });
 

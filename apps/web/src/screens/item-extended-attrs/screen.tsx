@@ -684,6 +684,7 @@ export const ItemExtendedAttrsScreen = () => {
     return (
       <ItemAttrsPane
         values={formState.values}
+        itemTypeCode={formState.source.item.itemTypeCode}
         uomOptions={selectableOptions(uomOptions, formState.values.defaultLotStorageUomId)}
         onChange={changeAttrsValues}
         // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { itemFixtures } from './fixtures';
-import { ItemAttrsPane } from './item-attrs-pane';
+import { ItemAttrsPane, lotSizeLabelOf } from './item-attrs-pane';
 import { itemToAttrsFormValues } from './item-attrs-mappers';
 import type { ItemAttrsFormValues } from './types';
 
@@ -15,6 +15,7 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemAttrsPane>[0]> = {}
   render(
     <ItemAttrsPane
       values={itemToAttrsFormValues(itemFixtures[0]!)}
+      itemTypeCode="FINISHED"
       uomOptions={[
         { value: '7001', label: '합성 단위 A' },
         { value: '7003', label: '합성 단위 C' },
@@ -177,5 +178,32 @@ describe('ItemAttrsPane — 입력과 액션', () => {
     expect(
       within(screen.getByRole('region', { name: '확장 속성' })).getByText('저장 실패 자리'),
     ).toBeInTheDocument();
+  });
+});
+
+/* LOT 기본크기는 품목유형마다 뜻이 다르다(사용자 지시 2026-10-28) — 칸은 하나를 함께 쓴다. */
+describe('ItemAttrsPane — 품목유형별 LOT 기본크기', () => {
+  it('반제품 · 제품은 생산 LOT, 원자재 · 부자재는 자재 LOT, 상품은 칸이 없다', () => {
+    expect(lotSizeLabelOf('FINISHED')).toBe('생산 LOT 기본크기');
+    expect(lotSizeLabelOf('SEMI_FINISHED')).toBe('생산 LOT 기본크기');
+    expect(lotSizeLabelOf('RAW_MATERIAL')).toBe('자재 LOT 기본크기');
+    expect(lotSizeLabelOf('SUBSIDIARY_MATERIAL')).toBe('자재 LOT 기본크기');
+    expect(lotSizeLabelOf('MERCHANDISE')).toBeNull();
+  });
+
+  it('원자재는 같은 칸을 자재 LOT 기본크기로 낸다', async () => {
+    const { onChange, user } = renderPane({ itemTypeCode: 'RAW_MATERIAL' });
+
+    expect(screen.queryByLabelText('생산 LOT 기본크기')).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('자재 LOT 기본크기'), '1');
+
+    expect(onChange).toHaveBeenLastCalledWith({ defaultProductionLotSize: '5001' });
+  });
+
+  it('상품은 LOT 기본크기 칸이 없다', () => {
+    renderPane({ itemTypeCode: 'MERCHANDISE' });
+
+    expect(screen.queryByLabelText('생산 LOT 기본크기')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('자재 LOT 기본크기')).not.toBeInTheDocument();
   });
 });

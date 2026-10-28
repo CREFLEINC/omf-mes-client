@@ -151,6 +151,8 @@ export const itemExtendedAttrs = {
       lotControlled: 'LOT 관리',
       defaultLotStorageUom: 'LOT 보관 단위 기본값',
       defaultProductionLotSize: '생산 LOT 기본크기',
+      /** 원자재 · 부자재의 LOT 기본크기 — 생산 LOT 기본크기와 같은 칸을 쓴다(품목유형으로 이름만 갈린다). */
+      defaultMaterialLotSize: '자재 LOT 기본크기',
       serialControlType: '시리얼 관리 유형',
       shelfLifeManaged: '유효기한 관리',
       shelfLifeDays: '유효기한(일)',
@@ -182,7 +184,7 @@ export const itemExtendedAttrs = {
       /* 계약 exclusiveMinimum: 0 — 유효기한(일)과 규칙이 다르다. 0을 받지 않는다. */
       openedShelfLifeHoursInvalid: '개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.',
       defaultLotStorageUomInvalid: 'LOT 보관 단위 기본값을 다시 선택하세요.',
-      defaultProductionLotSizeInvalid: '생산 LOT 기본크기는 숫자로 입력하세요.',
+      defaultProductionLotSizeInvalid: 'LOT 기본크기는 숫자로 입력하세요.',
     },
   },
   /**
