@@ -369,7 +369,7 @@ describe('InspectionStandardScreen — 기준 선택', () => {
 
 describe('InspectionStandardScreen — 만들지 않기로 한 것', () => {
   /* 감추면 사용자가 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다. */
-  it('엑셀 올리기는 비활성 아이콘 단추이고 사유 줄은 내지 않는다', async () => {
+  it('엑셀 올리기는 비활성 단추이고 사유 줄은 내지 않는다', async () => {
     renderScreen([planListRoute()]);
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
