@@ -219,6 +219,7 @@ export const inspectionStandard = {
      * 30을 30개로 읽는다(#201).
      */
     samplingRatio: '샘플 비율(%)',
+    samplingQty: '샘플 개수',
     aqlValue: 'AQL',
     acceptanceNumber: '합격판정개수',
     rejectionNumber: '불합격판정개수',
@@ -303,7 +304,9 @@ export const inspectionStandard = {
      */
     samplingRatioInvalid: '샘플 비율(%)은 0보다 크고 100 이하인 값이어야 합니다.',
     /* 샘플 방식이면 검사 수량을 비율로 환산한다 — 비율 없이는 몇 개를 검사할지 정할 수 없다. */
-    samplingRatioRequired: '샘플링 방식이면 샘플 비율(%)을 입력하세요.',
+    samplingRatioRequired: '샘플링 방식이면 샘플 비율(%) 또는 샘플 개수를 입력하세요.',
+    samplingQtyBoth: '샘플 비율(%)과 샘플 개수 중 하나만 입력하세요.',
+    samplingQtyInvalid: '샘플 개수는 1 이상의 정수여야 합니다.',
     /*
      * 계약이 버전 내 유일 제약을 두지 않았다 — 막는 곳이 화면과 서버뿐이다.
      * 중복이 저장되면 측정 기록이 어느 항목의 것인지 가릴 수 없다.

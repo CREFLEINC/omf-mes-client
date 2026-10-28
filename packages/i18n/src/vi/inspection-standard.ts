@@ -207,6 +207,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     samplingMethod: 'Phương pháp lấy mẫu',
     /* 단위를 라벨에 박는다 — 받는 값이 백분율인데 라벨이 그것을 말하지 않으면 30을 30개로 읽는다(#201). */
     samplingRatio: 'Tỷ lệ lấy mẫu (%)',
+    samplingQty: 'Số lượng mẫu',
     aqlValue: 'AQL',
     /** 합격·불합격 판정 개수는 AQL 표의 Ac·Re 다 — 검사 결과 건수가 아니다. */
     acceptanceNumber: 'Số chấp nhận',
@@ -285,7 +286,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     acceptanceNumberInvalid: 'Số chấp nhận phải là số từ 0 trở lên.',
     /* 계약 exclusiveMinimum: 0 · maximum: 100. 라벨과 같은 말을 쓴다 — 단위 `%`를 빼지 않는다. */
     samplingRatioInvalid: 'Tỷ lệ lấy mẫu (%) phải là giá trị lớn hơn 0 và nhỏ hơn hoặc bằng 100.',
-    samplingRatioRequired: 'Với phương thức lấy mẫu, hãy nhập tỷ lệ lấy mẫu (%).',
+    samplingRatioRequired: 'Với phương thức lấy mẫu, hãy nhập tỷ lệ lấy mẫu (%) hoặc số lượng mẫu.',
+    samplingQtyBoth: 'Chỉ nhập một trong tỷ lệ lấy mẫu (%) hoặc số lượng mẫu.',
+    samplingQtyInvalid: 'Số lượng mẫu phải là số nguyên từ 1 trở lên.',
     /* 계약이 버전 내 유일 제약을 두지 않았다 — 중복이 저장되면 측정 기록의 임자를 가릴 수 없다. */
     itemCodeDuplicated: 'Mã hạng mục này đã có trong phiên bản này. Hãy nhập mã khác.',
     /* 계약 ck_inspection_limits — 데이터베이스가 막는다. 먼저 막는 것이 사용자에게 이롭다. */

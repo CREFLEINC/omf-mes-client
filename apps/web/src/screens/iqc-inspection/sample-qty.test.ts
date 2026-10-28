@@ -23,6 +23,14 @@ describe('sampleQtyOf — 샘플 검사수량 (omf-all-around#102)', () => {
     expect(sampleQtyOf(5, { samplingMethodCode: 'SAMPLE_BY_LOT', samplingRatio: 1 })).toBe(1);
   });
 
+  /* omf-all-around#201 — 샘플 개수로 정한 기준은 그 개수, 의뢰수량보다 크면 의뢰수량이다. */
+  it('샘플 개수면 그 개수다 — 의뢰수량보다 크면 의뢰수량', () => {
+    const byQty = { samplingMethodCode: 'SAMPLE_BY_LOT', samplingRatio: null, samplingQty: 5 };
+
+    expect(sampleQtyOf(500, byQty)).toBe(5);
+    expect(sampleQtyOf(3, byQty)).toBe(3);
+  });
+
   it('비율이 비어 있으면 의뢰수량이다', () => {
     expect(sampleQtyOf(500, { samplingMethodCode: 'SAMPLE_BY_LOT', samplingRatio: null })).toBe(
       500,
