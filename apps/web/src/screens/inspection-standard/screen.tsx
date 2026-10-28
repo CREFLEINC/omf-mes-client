@@ -779,7 +779,7 @@ export const InspectionStandardScreen = () => {
   const activeValues = createValues ?? formState?.values ?? null;
   const activeItemId = Number(activeValues?.itemId ?? '') || null;
 
-  const itemOptions = useItemOptions();
+  const itemOptions = useItemOptions(activeItemId);
   const processOptions = useProcessOptions();
   const routingOptions = useRoutingOptions(activeItemId);
 

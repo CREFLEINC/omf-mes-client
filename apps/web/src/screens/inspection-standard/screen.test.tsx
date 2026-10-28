@@ -916,6 +916,89 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     );
   });
 
+  /*
+   * 품목 목록은 한 쪽만 받는다 — 지정된 품목이 첫 쪽에 없으면 그 품목만 상세로 불러 이름을 낸다.
+   * omf-all-around#200: 품목이 많은 DB에서 지정된 품목이 「알 수 없음」으로 보였다.
+   */
+  it('지정된 품목이 선택 목록에 없으면 품목 상세로 이름을 채운다', async () => {
+    const { requests } = renderScreen(
+      [
+        planListRoute(),
+        planDetailRoute({ ...inspectionPlanFixtures[0]!, itemId: 5099 }),
+        ...lookupRoutes(),
+        {
+          match: (request) => isGet(request, '/mdm/items/5099'),
+          respond: () =>
+            jsonResponse({
+              item: {
+                itemId: 5099,
+                itemCode: 'SYN-ITEM-99',
+                itemName: '합성 품목 Z',
+                itemTypeCode: 'PRODUCT',
+                baseUomId: 41,
+                lotControlled: true,
+                serialControlTypeCode: 'NONE',
+                shelfLifeDays: null,
+                inspectionRequired: true,
+                fifoPolicyCode: 'FIFO',
+                negativeStockAllowed: false,
+                storageConditionCode: null,
+                openedShelfLifeHours: null,
+                isActive: true,
+              },
+            }),
+        },
+      ],
+      '?plan=3001',
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: '품목' })).toHaveTextContent(
+        'SYN-ITEM-99 · 합성 품목 Z',
+      );
+    });
+    expect(requestsTo(requests, '/mdm/items/5099')).toHaveLength(1);
+  });
+
+  it('지정된 품목이 선택 목록에 있으면 품목 상세를 부르지 않는다', async () => {
+    const { requests } = renderSelectedPlan();
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: '품목' })).toHaveTextContent(
+        'SYN-ITEM-01 · 합성 품목 A',
+      );
+    });
+    expect(
+      requests.filter((request) => request.url.pathname.startsWith('/mdm/items/')),
+    ).toHaveLength(0);
+  });
+
+  it('지정된 품목이 없으면(404) 알 수 없음으로 낸다', async () => {
+    renderScreen(
+      [
+        planListRoute(),
+        planDetailRoute({ ...inspectionPlanFixtures[0]!, itemId: 5099 }),
+        ...lookupRoutes(),
+        {
+          match: (request) => isGet(request, '/mdm/items/5099'),
+          respond: () => jsonResponse({ message: '' }, { status: 404 }),
+        },
+      ],
+      '?plan=3001',
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: '품목' })).toHaveTextContent(
+        messages.common.reference.unknown,
+      );
+    });
+    expect(
+      within(planForm()).queryByText(
+        '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   /* 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다. */
   it('선택 목록이 잘리면 그 사실을 폼 위에 낸다', async () => {
     renderScreen(
