@@ -1,5 +1,6 @@
 import {
   AppShell,
+  Badge,
   Button,
   SearchInput,
   Sidebar,
@@ -26,6 +27,7 @@ import {
   matchesNavEntry,
 } from './nav-filter';
 import { HubTabs } from './hub-tabs';
+import { IQC_PATH, useIqcPendingCount } from './iqc-pending';
 import { NavGroup } from './nav-group';
 import { NAV_GROUPS, NAV_LEAD, navEntryPaths, type NavEntry, type NavTab } from './nav-tree';
 import { SHELL_BRAND } from './shell-label';
@@ -93,13 +95,15 @@ interface NavItemProps {
    * 사용처를 `typecheck` 에서 짚어 준다. 넓은 `string` 이면 조용히 남는다.
    */
   className?: 'sidebar-lead' | 'nav-child';
+  /** 후행 배지(DS `SidebarItem.badge`) — 접힌 레일에서는 DS 가 코너 점으로 줄인다. */
+  badge?: ReactNode;
 }
 
 /**
  * DS `SidebarItem`을 라우터에 잇는 어댑터.
  * `href`는 `useHref`로 만들고, 클릭은 `useLinkClickHandler`로 가로채 전체 새로고침 없이 이동한다.
  */
-const NavItem = ({ to, paths = [to], icon, children, className }: NavItemProps) => {
+const NavItem = ({ to, paths = [to], icon, children, className, badge }: NavItemProps) => {
   const href = useHref(to);
   const handleClick = useLinkClickHandler(to);
   const location = useLocation();
@@ -112,6 +116,7 @@ const NavItem = ({ to, paths = [to], icon, children, className }: NavItemProps) 
       active={isActive}
       onClick={handleClick}
       className={className}
+      badge={badge}
     >
       {children}
     </SidebarItem>
@@ -325,6 +330,18 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       !(oaAccess === 'not-oa' && OA_ONLY_PATHS.has(path)) && permissionAccess.allows(path),
   };
   const allowedGroups = filterNavGroupsByAccess(NAV_GROUPS, access);
+
+  /*
+   * 피처 002 — IQC 대기 수. 「검사 조회·판정」 줄과 IQC 탭에 수, 닫힌 「품질 관리」 묶음에 점(확정 항목 2).
+   * IQC 화면을 볼 수 없으면 묻지도 보이지도 않는다(US4-3). 1~9, 10 이상 「9+」, 0·실패면 없음.
+   */
+  const iqcCount = useIqcPendingCount(access.allows(IQC_PATH));
+  const iqcBadge: ReactNode =
+    iqcCount !== undefined && iqcCount > 0 ? (
+      <Badge count={iqcCount} max={9} aria-label={t.iqcPending(iqcCount)} />
+    ) : null;
+  const badgeOf = (paths: readonly string[]): ReactNode =>
+    paths.includes(IQC_PATH) ? iqcBadge : null;
   const isLeadAllowed = isNavEntryAllowed(NAV_LEAD, access);
 
   /* 「검색 결과 없음」의 기준도 **볼 수 있는 것**이다 — 못 보는 항목이 걸렸다고 말할 수 없다. */
@@ -342,7 +359,11 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const activeHub = findActiveHub(allowedGroups, pathname);
   const hubTabs =
     activeHub !== null && activeHub.hub.tabs.length > 1 && activeHub.hub.inlineTabs !== true ? (
-      <HubTabs hub={activeHub.hub} activePath={activeHub.activePath} />
+      <HubTabs
+        hub={activeHub.hub}
+        activePath={activeHub.activePath}
+        badgeOf={(path) => (path === IQC_PATH ? iqcBadge : null)}
+      />
     ) : null;
   /* 탭 막대가 섰으면 화면에 알린다 — 그 화면은 경로·제목을 따로 세우지 않는다(`patterns/page-hub.tsx`). */
   const pageHub: PageHub | null =
@@ -425,6 +446,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                       to={item.to}
                       paths={navEntryPaths(item)}
                       icon={item.icon}
+                      badge={badgeOf(navEntryPaths(item))}
                     >
                       {localizedLabel(item)}
                     </NavItem>
@@ -458,6 +480,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                      */
                     isLocked={isSearching}
                     onToggle={() => toggleGroup(group.label)}
+                    hasWork={group.items.some((item) => badgeOf(navEntryPaths(item)) !== null)}
                   >
                     {group.items.map((item) => (
                       <NavItem
@@ -466,6 +489,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                         paths={navEntryPaths(item)}
                         icon={item.icon}
                         className="nav-child"
+                        badge={badgeOf(navEntryPaths(item))}
                       >
                         {localizedLabel(item)}
                       </NavItem>

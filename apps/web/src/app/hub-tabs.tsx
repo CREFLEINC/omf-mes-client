@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useHref, useLinkClickHandler } from 'react-router';
 
 import { HUB_ACTIONS_ID } from '../patterns/hub-actions';
@@ -7,10 +8,11 @@ import type { NavEntry, NavTab } from './nav-tree';
 interface HubTabLinkProps {
   tab: NavTab;
   isActive: boolean;
+  badge?: ReactNode;
 }
 
 /** 탭 하나 — 라우터 링크다. 클릭을 가로채 전체 새로고침 없이 옮긴다(`layout.tsx` `NavItem` 과 같다). */
-const HubTabLink = ({ tab, isActive }: HubTabLinkProps) => {
+const HubTabLink = ({ tab, isActive, badge }: HubTabLinkProps) => {
   const href = useHref(tab.to);
   const handleClick = useLinkClickHandler(tab.to);
 
@@ -22,6 +24,9 @@ const HubTabLink = ({ tab, isActive }: HubTabLinkProps) => {
       onClick={handleClick}
     >
       {localizedLabel(tab)}
+      {badge === undefined || badge === null ? null : (
+        <span className="hub-tab-badge">{badge}</span>
+      )}
     </a>
   );
 };
@@ -31,6 +36,8 @@ export interface HubTabsProps {
   hub: NavEntry & { tabs: readonly NavTab[] };
   /** 지금 켜진 탭의 주소. */
   activePath: string;
+  /** 탭 뒤 배지(피처 002 — IQC 탭의 대기 수). 주소로 찾는다. */
+  badgeOf?: (path: string) => ReactNode;
 }
 
 /**
@@ -46,11 +53,16 @@ export interface HubTabsProps {
  *
  * 탭 오른쪽 끝에 **화면의 일 단추 자리**(`patterns/hub-actions.tsx`)를 빈 상자로 둔다 — 링크 목록(`nav`) 밖이다.
  */
-export const HubTabs = ({ hub, activePath }: HubTabsProps) => (
+export const HubTabs = ({ hub, activePath, badgeOf }: HubTabsProps) => (
   <div className="hub-bar">
     <nav className="hub-tabs" aria-label={localizedLabel(hub)}>
       {hub.tabs.map((tab) => (
-        <HubTabLink key={tab.to} tab={tab} isActive={tab.to === activePath} />
+        <HubTabLink
+          key={tab.to}
+          tab={tab}
+          isActive={tab.to === activePath}
+          badge={badgeOf?.(tab.to)}
+        />
       ))}
     </nav>
     <div id={HUB_ACTIONS_ID} className="hub-actions" />
