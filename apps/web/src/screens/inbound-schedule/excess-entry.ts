@@ -1,33 +1,23 @@
 /**
- * 초과분 연결 창의 주소 키 — **창을 여는 것은 주소다.** 입하 등록 결과의 「초과분 연결」에서 건너오면
- * 창을 연 채로 시작하고, 뒤로가기가 창을 닫는다.
+ * 「초과분 발주 연결」 탭의 주소(사용자 지시 2026-10-28 — 입고 관리의 오른쪽 창을 탭 화면으로 뗐다). 입고 관리 라인 표의
+ * 「초과분」 칸이나 입하 등록 결과의 「초과분 연결」에서 건너오면 그 초과분 · 라인을 고른 채로 시작한다.
  *
  * | 키 | 뜻 |
  * | --- | --- |
- * | `excess=1` | 창을 연다 |
- * | `excessReceipt` | 이 입하번호의 초과분을 앞에 세운다 — 방금 등록한 전표 |
- * | `excessReceiptLine` | 이 입하 줄의 초과분을 고른 채로 연다 |
- * | `excessLine` | 이 P/O 라인을 고른 채로 연다(서버 후보에 있을 때만) |
+ * | `receipt` | 이 입하번호의 초과분을 앞에 세운다 — 방금 등록한 전표 |
+ * | `receiptLine` | 이 입하 줄의 초과분을 고른 채로 연다 |
+ * | `line` | 이 P/O 라인을 고른 채로 연다(서버 후보에 있을 때만) |
+ * | `po` | 입고 관리에서 보던 발주 — 그 발주의 후보 라인에 표식을 단다 |
  */
+
+export const EXCESS_TAB_PATH = '/logistics/inbound-excess';
 
 export interface ExcessEntry {
   receiptNo: string | null;
   inboundReceiptLineId: number | null;
   purchaseOrderLineId: number | null;
+  purchaseOrderId: number | null;
 }
-
-/*
- * `excessTab` · `excessId` 는 옛 키다(「연결됨」 탭 · 옛 초과분 번호). 읽지 않되 창을 닫거나 새로 열 때 함께 뗀다 —
- * 즐겨찾기에 남은 옛 주소가 다음 주소로 따라오지 않게.
- */
-const EXCESS_KEYS = [
-  'excess',
-  'excessReceipt',
-  'excessReceiptLine',
-  'excessLine',
-  'excessTab',
-  'excessId',
-] as const;
 
 const readId = (raw: string | null): number | null => {
   if (raw === null || !/^[1-9]\d{0,15}$/.test(raw)) return null;
@@ -35,38 +25,45 @@ const readId = (raw: string | null): number | null => {
   return Number(raw);
 };
 
-/** 창이 닫혀 있으면 `null`. */
-export const readExcessEntry = (params: URLSearchParams): ExcessEntry | null => {
+const readText = (raw: string | null): string | null => {
+  const text = raw?.trim() ?? '';
+
+  return text === '' ? null : text;
+};
+
+/** 탭 주소의 시작 상태. */
+export const readExcessEntry = (params: URLSearchParams): ExcessEntry => ({
+  receiptNo: readText(params.get('receipt')),
+  inboundReceiptLineId: readId(params.get('receiptLine')),
+  purchaseOrderLineId: readId(params.get('line')),
+  purchaseOrderId: readId(params.get('po')),
+});
+
+/** 탭으로 가는 주소 — 빈 값은 키를 싣지 않는다. */
+export const excessTabHref = (entry: Partial<ExcessEntry> = {}): string => {
+  const params = new URLSearchParams();
+  if (entry.receiptNo != null) params.set('receipt', entry.receiptNo);
+  if (entry.inboundReceiptLineId != null) {
+    params.set('receiptLine', String(entry.inboundReceiptLineId));
+  }
+  if (entry.purchaseOrderLineId != null) params.set('line', String(entry.purchaseOrderLineId));
+  if (entry.purchaseOrderId != null) params.set('po', String(entry.purchaseOrderId));
+  const query = params.toString();
+
+  return query === '' ? EXCESS_TAB_PATH : `${EXCESS_TAB_PATH}?${query}`;
+};
+
+/**
+ * 옛 창 주소(입고 관리 `?excess=1&excessReceipt=…&excessReceiptLine=…&excessLine=…`) — 즐겨찾기 · 공유한 주소가 죽지 않게
+ * 탭으로 옮긴다. 창 키가 없으면 `null`.
+ */
+export const readLegacyExcessEntry = (params: URLSearchParams): ExcessEntry | null => {
   if (params.get('excess') !== '1') return null;
 
-  const receiptNo = params.get('excessReceipt')?.trim() ?? '';
-
   return {
-    receiptNo: receiptNo === '' ? null : receiptNo,
+    receiptNo: readText(params.get('excessReceipt')),
     inboundReceiptLineId: readId(params.get('excessReceiptLine')),
     purchaseOrderLineId: readId(params.get('excessLine')),
+    purchaseOrderId: readId(params.get('po')),
   };
-};
-
-/** 지금 주소에 창 키를 얹는다 — 조회 조건·고른 발주는 그대로 둔다. */
-export const withExcessEntry = (
-  params: URLSearchParams,
-  entry: Partial<ExcessEntry> = {},
-): URLSearchParams => {
-  const next = withoutExcessEntry(params);
-  next.set('excess', '1');
-  if (entry.receiptNo != null) next.set('excessReceipt', entry.receiptNo);
-  if (entry.inboundReceiptLineId != null) {
-    next.set('excessReceiptLine', String(entry.inboundReceiptLineId));
-  }
-  if (entry.purchaseOrderLineId != null) next.set('excessLine', String(entry.purchaseOrderLineId));
-
-  return next;
-};
-
-export const withoutExcessEntry = (params: URLSearchParams): URLSearchParams => {
-  const next = new URLSearchParams(params);
-  for (const key of EXCESS_KEYS) next.delete(key);
-
-  return next;
 };

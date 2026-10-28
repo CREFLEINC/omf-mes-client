@@ -61,7 +61,9 @@ export const VersionPrimaryAction = ({
 
   if (newRevisionNotice !== null) {
     return (
+      /* 정보 아이콘 + 한 줄 — 검사 조회·판정의 안내 줄과 같은 모양(사용자 지시 · #196). */
       <span className="field-note inspection-standard-new-revision-notice">
+        <Icon name="info" size={18} aria-hidden />
         {newRevisionNotice}
       </span>
     );

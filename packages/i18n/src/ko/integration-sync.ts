@@ -11,14 +11,54 @@ export const integrationSync = {
   breadcrumbRoot: '시스템 관리',
   /** 메뉴에서 이 화면까지의 경로 — 다른 화면이 「어디로 가라」고 안내할 때 쓴다. 메뉴 라벨과 같아야 한다(app/nav-menu-path.test.ts). */
   menuPath: '시스템 관리 › ERP 연동 현황·이력 › 연동 현황·이력',
+  /** 구획 이름 — 조회 조건 · 왼쪽 목록 · 오른쪽 상세(입고 관리와 같은 짜임). */
+  panes: {
+    filter: '조회 조건',
+    list: '연계 메시지 목록',
+    detail: '연계 메시지 상세',
+  },
+  /** 두 구획 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
+  splitter: '끌어서 목록·상세 폭 조절',
+  listCollapse: '목록 접기',
+  listExpand: '목록 펼치기',
+  /**
+   * 코드 → 업무 이름(사용자 지시 2026-10-27 「메시지 키 · 연계 종류가 무슨 말인지 모르겠다」 — screens/integration-sync/
+   * message-labels.ts). 서버의 연계 정의 목록(`GET /integration/interface-definitions`)이 비어 이름을 받을 데가 없어
+   * 여기 옮긴다 — 수신 이름은 서버 `erp-sync/tables` 의 `name`, 송신 이름은 `outbound-item-settings` 의
+   * `outboundItemName` 과 같다. 상태 넷은 계약이 확정했다(공통코드 INTEGRATION_MESSAGE_STATUS). 모르는 코드는 코드 그대로 낸다.
+   */
+  labels: {
+    directions: {
+      INBOUND: '수신',
+      OUTBOUND: '송신',
+    } as Readonly<Record<string, string>>,
+    statuses: {
+      PENDING: '대기',
+      PROCESSING: '처리 중',
+      DONE: '완료',
+      FAILED: '실패',
+    } as Readonly<Record<string, string>>,
+    interfaces: {
+      'IF-ERP-CODE-RECV': '공통코드',
+      'IF-ERP-EMP-RECV': '사원',
+      'IF-ERP-ITEM-RECV': '품목',
+      'IF-ERP-BP-RECV': '거래처',
+      'IF-ERP-BOM-RECV': 'BOM',
+      'IF-ERP-PO-RECV': '구매발주',
+      'IF-ERP-SO-RECV': '수주',
+      'IF-ERP-PRODORD-RECV': 'ERP W/O',
+      'IF-WO-CLOSE-SEND': '생산 실적',
+      'IF-GR-SEND': '입고 (G/R)',
+      'IF-SHIPMENT-PGI-SEND': '출하 (PGI)',
+    } as Readonly<Record<string, string>>,
+  },
   fields: {
     periodFrom: '기간 시작',
     periodTo: '기간 종료',
     status: '상태',
-    interfaceCode: '연계 종류',
-    direction: '방향',
-    targetType: '대상 유형',
-    retryMin: '시도 횟수 하한',
+    interfaceCode: '항목',
+    direction: '구분',
+    retryMin: '재시도 횟수(이상)',
   },
   actions: {
     prevPage: '이전',
@@ -26,10 +66,10 @@ export const integrationSync = {
     goFirstPage: '첫 쪽으로',
     retry: '재처리',
     /*
-     * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 메시지 키를 넣어 어느 건인지 밝히되,
+     * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 그 건의 이름(항목 · 번호)을 넣어 어느 건인지 밝히되,
      * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「재처리」로 이 버튼을 부를 수 없다.
      */
-    retryRow: (messageKey: string): string => `${messageKey} 재처리`,
+    retryRow: (title: string): string => `${title} 재처리`,
     reload: '다시 조회',
     batchRetry: '선택 일괄 재처리',
   },
@@ -56,7 +96,7 @@ export const integrationSync = {
    */
   retry: {
     confirmTitle: '다시 보낼까요?',
-    confirmDescription: '같은 메시지 키로 다시 보냅니다. 새 건을 만들지 않습니다.',
+    confirmDescription: '같은 건을 다시 보냅니다. 새 건을 만들지 않습니다.',
     requested: '다시 보내도록 요청했습니다',
   },
   /**
@@ -76,19 +116,20 @@ export const integrationSync = {
   },
   /** 목록 표의 머리글. 열 구성의 근거는 screens/integration-sync/message-table.tsx에 있다. */
   table: {
-    messageKey: '메시지 키',
-    interfaceCode: '연계 종류',
+    direction: '구분',
+    interfaceCode: '항목',
+    /** 메시지 키에서 연계 코드를 뗀 번호(송신은 입고 번호 같은 업무 번호, 수신은 ERP 전송 순번). */
+    messageKey: '번호',
     status: '상태',
-    retryCount: '시도',
-    createdAt: '생성',
-    lastErrorMessage: '마지막 오류',
+    retryCount: '재시도',
+    createdAt: '발생 시각',
+    lastErrorMessage: '오류 내용',
     retry: '재처리',
   },
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
   reasons: {
     searchNeedsPeriod: '조회는 기간을 모두 채운 뒤에 쓸 수 있습니다. 시작일과 종료일을 고르세요.',
     periodReversed: '기간 종료는 기간 시작보다 앞설 수 없습니다.',
-    batchNeedsSelection: '선택 일괄 재처리는 목록에서 건을 고른 뒤에 쓸 수 있습니다.',
   },
   loading: {
     messages: '연계 메시지 목록을 불러오는 중',
@@ -101,24 +142,14 @@ export const integrationSync = {
    */
   detail: {
     title: '연계 메시지 상세',
-    openAction: (messageKey: string): string => `${messageKey} 상세 열기`,
-    direction: '방향',
-    target: '대상',
-    createdAt: '생성',
+    /** 오른쪽 구획 — 아직 고르지 않았을 때. */
+    pick: '목록에서 메시지를 고르세요',
+    openAction: (title: string): string => `${title} 상세 열기`,
+    retryCount: '재시도 횟수',
     availableAt: '다음 시도',
-    sentAt: '전송',
-    completedAt: '완료',
+    sentAt: '보낸 시각',
+    completedAt: '완료 시각',
     lockedBy: '처리 중',
-    lastErrorMessage: '마지막 오류',
-    payload: '전송 내용',
-    payloadAction: '전송 내용 보기',
-    payloadLocked: '전송 내용은 열람 범위가 정해진 뒤에 볼 수 있습니다. 지금은 표시하지 않습니다.',
-    /*
-     * 대상은 유형 코드와 번호를 그대로 낸다. 유형에서 어느 목록을 찾을지의 지도가 없어
-     * 화면이 이름을 만들 수 없다 — 지어내지 않는다.
-     */
-    targetValue: (typeCode: string, id: number): string => `${typeCode} · ${String(id)}`,
-    lockedValue: (worker: string, at: string): string => `${worker} (${at})`,
   },
   /**
    * 상태 열의 보조 한 줄. 계약이 정의한 사실만 옮긴다 —
@@ -137,18 +168,14 @@ export const integrationSync = {
    */
   filters: {
     all: '전체',
-    optionsNote:
-      '선택지는 조회한 기간의 기록에서 만듭니다. 한 번도 실행되지 않았거나 이 기간에 없는 값은 목록에 없습니다.',
     chipStatus: (value: string): string => `상태: ${value}`,
-    chipInterface: (value: string): string => `연계 종류: ${value}`,
-    chipDirection: (value: string): string => `방향: ${value}`,
-    chipTargetType: (value: string): string => `대상 유형: ${value}`,
-    chipRetryMin: (value: string): string => `시도 횟수 하한: ${value}`,
+    chipInterface: (value: string): string => `항목: ${value}`,
+    chipDirection: (value: string): string => `구분: ${value}`,
+    chipRetryMin: (value: string): string => `재시도 ${value}회 이상`,
     chipRemoveStatus: '상태 조건 제거',
-    chipRemoveInterface: '연계 종류 조건 제거',
-    chipRemoveDirection: '방향 조건 제거',
-    chipRemoveTargetType: '대상 유형 조건 제거',
-    chipRemoveRetryMin: '시도 횟수 하한 조건 제거',
+    chipRemoveInterface: '항목 조건 제거',
+    chipRemoveDirection: '구분 조건 제거',
+    chipRemoveRetryMin: '재시도 횟수 조건 제거',
   },
   /**
    * 쪽 이동. 번호 목록을 두지 않는다 — 로그성 조회에서 「7쪽으로 점프」는 정상 경로가 아니고,
@@ -163,55 +190,8 @@ export const integrationSync = {
   },
   empty: {
     noResultTitle: '조건에 맞는 기록이 없습니다',
-    noResultDescription: '기간을 넓히거나 조건을 줄인 뒤 다시 조회하세요.',
     noPeriodTitle: '기간을 고르고 조회하세요',
-    noPeriodDescription: '연계 기록은 기간을 정해야 조회할 수 있습니다.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
-    beyondLastDescription: '첫 쪽으로 이동하세요.',
-  },
-  /**
-   * ERP 받기 표 여덟의 상태와 「지금 읽기」(omf-mes-server#757 · 장부 P-81).
-   * 「지금 읽기」는 다음 주기를 기다리지 않는 한 회차다 — 아직 읽지 않은 줄만 가져오고, 이미 읽은 줄을 다시 가져오지 않는다.
-   */
-  syncTables: {
-    title: 'ERP 받기 상태',
-    description:
-      '기준정보는 12시간, 전표는 15분마다 ERP 에서 읽어 옵니다. 「지금 읽기」는 다음 주기를 기다리지 않고 아직 읽지 않은 줄을 바로 가져옵니다. 다른 표를 참조하는 표(BOM 은 품목 등)는 위에서부터 차례로 읽으세요.',
-    disabledReason: '지금 읽기는 이 서버에서 ERP 연동이 꺼져 있어 쓸 수 없습니다.',
-    table: {
-      name: '표',
-      state: '상태',
-      lastFinishedAt: '마지막 읽음',
-      read: '읽음',
-      applied: '반영',
-      failed: '실패',
-      held: '보류',
-      nextRunAt: '다음 예정',
-      action: '지금 읽기',
-    },
-    actions: {
-      runNow: '지금 읽기',
-      /* 행 버튼의 접근 이름. 보이는 글자를 그대로 담아 음성 조작이 부를 수 있게 둔다. */
-      runNowRow: (name: string): string => `${name} 지금 읽기`,
-    },
-    state: {
-      running: '읽는 중',
-      requested: '대기 중',
-      never: '기록 없음',
-      succeeded: '성공',
-      failed: '실패',
-    },
-    requestedAt: (time: string): string => `${time} 요청`,
-    runErrorTitle: '읽기를 요청하지 못했습니다',
-    finished: {
-      succeeded: (name: string, applied: number): string =>
-        `${name} 읽기를 마쳤습니다. ${String(applied)}건을 반영했습니다.`,
-      withFailures: (name: string, applied: number, failed: number): string =>
-        `${name} 읽기를 마쳤습니다. ${String(applied)}건을 반영했고 ${String(failed)}건은 반영하지 못했습니다.`,
-      failed: (name: string): string => `${name} 읽기에 실패했습니다. 상태 열의 사유를 확인하세요.`,
-    },
-    loading: 'ERP 받기 상태를 불러오는 중',
-    empty: '받는 표가 없습니다',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */

@@ -11,9 +11,10 @@ import {
   Tabs,
   useToast,
 } from '@crefle/web-ui';
-import type { ApiClient, components } from '@omf-mes/api-client';
+import { createIdempotencyKey, type ApiClient, type components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -26,6 +27,7 @@ import {
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
+import { runRequest, toApiError } from '../../patterns/request';
 import {
   DATA_TYPE_CODE_GROUP,
   FREQUENCY_INTERVAL_UOM_CODE_GROUP,
@@ -51,6 +53,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
 import { PlanActionBanner } from './plan-action-banner';
 import { PlanActionDialog, type PlanActionKind } from './plan-action-dialog';
+import { ImportDialog, type ImportOutcome } from './import-dialog';
 import { PlanDetailHead } from './plan-detail-head';
 import { PlanFilterBar } from './plan-filter-bar';
 import { PlanListPane } from './plan-list-pane';
@@ -233,6 +236,62 @@ export const InspectionStandardScreen = () => {
   const selectedPlanId = Number(searchParams.get('plan') ?? '') || null;
 
   const planList = useInspectionPlanList(filters, page, pageSize);
+
+  /** 엑셀 올리기 창. `null` 이면 닫혀 있다 — 파일과 결과는 창이 닫히면 함께 버린다. */
+  const [importState, setImportState] = useState<{
+    files: File[];
+    outcomes: ImportOutcome[];
+  } | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const queryClient = useQueryClient();
+
+  /**
+   * 엑셀 올리기(#199) — 고른 파일을 **차례로** 하나씩 올린다. 서버 경로는 파일 하나를 받는다.
+   *
+   * ⛔ 동시에 보내지 않는다 — 같은 기준코드가 두 파일에 있으면 둘 다 「새 기준」으로 판정돼 한쪽이 실패하거나,
+   *    있는 기준이면 신규 버전이 둘 선다. 서버가 묶음을 차례로 넣는 것과 같은 이유다.
+   * ⛔ 파일마다 새 멱등 키를 쓴다 — `File` 은 값 지문에서 `{}` 가 되어, 키를 이어 쓰면 다른 파일에
+   *    앞 파일의 결과가 되돌아온다.
+   * ⚠ 생성된 타입이 `file: string` 이다(openapi-typescript 가 `format: binary` 를 문자열로 옮긴다).
+   *    실제로 보낼 것은 `FormData` 라 단언을 여기 한 곳에 가둔다 — 경계 문자열은 브라우저가 정한다.
+   */
+  const runImport = async (files: File[]): Promise<void> => {
+    setIsImporting(true);
+    const outcomes: ImportOutcome[] = [];
+    for (const file of files) {
+      const form = new FormData();
+      form.append('file', file);
+      try {
+        const result = await runRequest(() =>
+          client.POST('/quality/inspection-plans:import', {
+            params: { header: { 'Idempotency-Key': createIdempotencyKey() } },
+            body: form as unknown as { file: string },
+          }),
+        );
+        outcomes.push({ fileName: file.name, result, error: null });
+      } catch (cause) {
+        // 한 파일이 거절돼도 나머지는 올린다 — 이유는 그 파일 자리에 남긴다.
+        outcomes.push({ fileName: file.name, result: null, error: toApiError(cause) });
+      }
+      const done = [...outcomes];
+      setImportState((prev) => (prev === null ? prev : { ...prev, outcomes: done }));
+    }
+    // 새 기준·새 버전이 생긴다 — 목록과 버전 목록을 함께 다시 받는다.
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: planKeys.all }),
+      queryClient.invalidateQueries({ queryKey: versionKeys.all }),
+    ]);
+    setIsImporting(false);
+
+    // 오류가 없으면 창을 닫고 알린다. 하나라도 실패·거절이면 사유를 봐야 하므로 창을 남긴다.
+    const hasError = outcomes.some(
+      (outcome) => outcome.result === null || outcome.result.failed.length > 0,
+    );
+    if (!hasError) {
+      setImportState(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    }
+  };
   const plans = planList.data?.items ?? [];
 
   const planDetail = useInspectionPlanDetail(selectedPlanId);
@@ -879,7 +938,7 @@ export const InspectionStandardScreen = () => {
   const activeValues = createValues ?? formState?.values ?? null;
   const activeItemId = Number(activeValues?.itemId ?? '') || null;
 
-  const itemOptions = useItemOptions();
+  const itemOptions = useItemOptions(activeItemId);
   const processOptions = useProcessOptions();
   const routingOptions = useRoutingOptions(activeItemId);
 
@@ -1695,22 +1754,17 @@ export const InspectionStandardScreen = () => {
         <PlanFilterBar
           appliedFilters={filters}
           onApplyFilters={applyFilters}
-          /*
-           * 조회 · 초기화 뒤 구분선 너머에 엑셀 올리기 · 기준 추가(사용자 시안 · #196).
-           * 엑셀 올리기는 계약에 경로가 없고 양식도 정해지지 않았다 — 감추지 않고 비활성으로 두며 사유는 마우스를 올리면 보인다.
-           */
+          /* 조회 · 초기화 뒤 구분선 너머에 엑셀 올리기 · 기준 추가(사용자 시안 · #196). 엑셀 올리기는 올리기 창을 연다(#199). */
           actions={
             <>
               {/* 표 아이콘 · 이름을 단 테두리 단추(사용자 시안 · #196). */}
-              <span title={t.actionReasons.excelUploadUnavailable}>
-                <Button
-                  variant="outlined"
-                  disabled
-                  leadingIcon={<Icon name="table_chart" size={18} />}
-                >
-                  {t.actions.excelUpload}
-                </Button>
-              </span>
+              <Button
+                variant="outlined"
+                leadingIcon={<Icon name="table_chart" size={18} />}
+                onClick={() => setImportState({ files: [], outcomes: [] })}
+              >
+                {t.actions.excelUpload}
+              </Button>
               <Button
                 leadingIcon={<Icon name="add" size={18} />}
                 disabled={createValues !== null}
@@ -1833,6 +1887,20 @@ export const InspectionStandardScreen = () => {
             setItemDialogErrors({});
           }}
           onSubmit={handleSubmitItemDialog}
+        />
+      )}
+
+      {importState !== null && (
+        <ImportDialog
+          files={importState.files}
+          onSelectFiles={(files) => setImportState({ files, outcomes: [] })}
+          outcomes={importState.outcomes}
+          isSaving={isImporting}
+          onClose={() => setImportState(null)}
+          onSubmit={() => {
+            setImportState({ files: importState.files, outcomes: [] });
+            void runImport(importState.files);
+          }}
         />
       )}
 

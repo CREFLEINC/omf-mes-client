@@ -159,7 +159,9 @@ const allowsEntry = (entry: NavEntry, access: WebAccess): boolean =>
 const narrowNavEntryByAccess = (entry: NavEntry, access: WebAccess): NavEntry | null => {
   if (entry.tabs === undefined) return allowsEntry(entry, access) ? entry : null;
 
-  const tabs = entry.tabs.filter((tab) => access.allows(tab.to));
+  const tabs = entry.tabs.filter(
+    (tab) => access.allows(tab.to) || (tab.alsoFor ?? []).some((path) => access.allows(path)),
+  );
   const [first] = tabs;
 
   return first === undefined ? null : { ...entry, to: first.to, tabs };

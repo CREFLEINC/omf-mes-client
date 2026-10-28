@@ -33,7 +33,6 @@ export interface PartnerListQuery {
 export const partnerKeys = {
   all: ['erp-partner'] as const,
   list: (query: PartnerListQuery) => ['erp-partner', 'list', query] as const,
-  detail: (id: number | null) => ['erp-partner', 'detail', id] as const,
   roles: (id: number) => ['erp-partner', 'roles', id] as const,
 };
 
@@ -46,26 +45,7 @@ export const usePartnerList = (query: PartnerListQuery): UseQueryResult<PartnerL
   });
 };
 
-/** 거래처 한 건. 고르기 전에는 조회하지 않는다 — 들어오기만 해도 부르면 쓰지 않는 요청이 나간다. */
-export const usePartnerDetail = (id: number | null): UseQueryResult<Partner> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: partnerKeys.detail(id),
-    enabled: id !== null,
-    queryFn: () => {
-      if (id === null) {
-        throw new Error('거래처를 고르기 전에는 상세를 조회하지 않습니다.');
-      }
-
-      return runRequest(() =>
-        client.GET('/mdm/partners/{partnerId}', { params: { path: { partnerId: id } } }),
-      );
-    },
-  });
-};
-
-/** 한 거래처의 역할 상태. 표 칸과 상세가 같은 모양을 읽는다. */
+/** 한 거래처의 역할 상태. 표의 역할 칸이 읽는다. */
 export type RolesState =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; roles: PartnerRole[] };
 

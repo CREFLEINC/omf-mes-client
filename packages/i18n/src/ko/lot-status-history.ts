@@ -191,6 +191,7 @@ export const lotStatusHistory = {
     loading: 'LOT 상세를 불러오는 중',
     failed: 'LOT 상세를 불러오지 못했습니다.',
     close: '닫기',
+    trace: '추적 보기',
     attributes: 'LOT 속성',
     fields: {
       lotNo: 'LOT 번호',

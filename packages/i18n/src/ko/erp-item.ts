@@ -6,7 +6,10 @@
 export const erpItem = {
   title: '품목정보 조회 (ERP)',
   breadcrumbRoot: '시스템 관리',
-  readOnlyNote: 'ERP 에서 받은 정보입니다. MES 에서는 고칠 수 없습니다.',
+  panes: {
+    filter: '조회 조건',
+    list: '품목 목록',
+  },
   fields: {
     q: '품목코드·품목명',
     itemType: '품목유형',
@@ -23,11 +26,6 @@ export const erpItem = {
     erpItemGroupCode: '품목그룹',
     baseUom: '기준 단위',
     isActive: '사용',
-  },
-  detail: {
-    label: '품목 상세',
-    openAction: (itemCode: string): string => `${itemCode} 상세 보기`,
-    selectHint: '목록에서 품목을 고르면 상세가 보입니다.',
   },
   values: {
     empty: '—',
@@ -47,12 +45,9 @@ export const erpItem = {
   },
   loading: {
     list: '품목 목록을 불러오는 중',
-    detail: '품목 상세를 불러오는 중',
   },
   empty: {
     noResultTitle: '조건에 맞는 품목이 없습니다',
-    noResultDescription: '검색어나 품목유형을 바꾸거나 미사용 포함을 켜 보세요.',
     beyondLastTitle: '이 쪽에는 품목이 없습니다',
-    beyondLastDescription: '첫 쪽으로 돌아가 다시 보세요.',
   },
 } as const;

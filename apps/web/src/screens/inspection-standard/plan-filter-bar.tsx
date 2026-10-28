@@ -133,8 +133,8 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
           <Button type="button" variant="filled" onClick={() => onApplyFilters(draft)}>
             {messages.common.search}
           </Button>
-          {/* 초기화는 글자 단추 — 조회 옆에서 한 단계 낮춘다(사용자 시안 · #196). */}
-          <Button variant="text" onClick={() => onApplyFilters(DEFAULT_PLAN_FILTERS)}>
+          {/* 초기화는 테두리 단추 — 조회 옆에서 한 단계 낮춘다(사용자 지시 · #196). */}
+          <Button variant="outlined" onClick={() => onApplyFilters(DEFAULT_PLAN_FILTERS)}>
             {messages.common.reset}
           </Button>
           {actions !== undefined && (

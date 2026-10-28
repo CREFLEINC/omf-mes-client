@@ -133,6 +133,13 @@ export const inboundReceipt = {
       partialSkipped: (count: number) => `부분 입하 ${String(count)}건은 빼고 선택했습니다`,
       prompt: '체크한 품목은 남은 수량 그대로 등록합니다',
       noneChecked: '등록할 품목을 체크하세요',
+      /** 등록 단추를 누르면 한 번 묻는다(사용자 지시 2026-10-27). */
+      confirm: {
+        title: (count: number) => `${String(count)}건을 입하 등록할까요?`,
+        body: '남은 수량 그대로 등록합니다.',
+        cancel: '돌아가기',
+        proceed: '등록합니다',
+      },
       done: {
         sent: (count: number) => `${String(count)}건을 입하 등록했습니다`,
         queued: (count: number) => `${String(count)}건을 담았습니다. 연결되면 보냅니다`,
@@ -170,7 +177,7 @@ export const inboundReceipt = {
     itemNotFound: (code: string) => `등록된 품목 중에 ${code}가 없습니다. 라벨을 다시 확인하세요.`,
     /** 그 품목의 미마감 발주가 없다. 다른 품목의 발주는 라벨과 맞지 않아 내지 않는다. */
     noneForItem: (code: string) =>
-      `${code} 품목의 미마감 자재 P/O가 없습니다. 발주 없이 들어온 물건이면 「자재 P/O 없이 등록」으로 진행하세요.`,
+      `${code} 품목의 미마감 자재 P/O가 없습니다. 구매 담당자에게 알리세요.`,
     linesLoading: '자재 P/O 라인을 불러오는 중입니다',
     linesLoadFailed: '자재 P/O 라인을 확인할 수 없습니다',
     linesNone: '이 자재 P/O에 라인이 없습니다',
@@ -197,36 +204,6 @@ export const inboundReceipt = {
     tolerance: (over: string, under: string) => `허용 +${over} / -${under}`,
     linePicked: '선택됨',
     clear: '자재 P/O 선택 지우기',
-  },
-  exception: {
-    /** 발주가 없으면 공급사도 품목도 단위도 승계할 곳이 없어 담당자가 고른다. */
-    legend: '자재 P/O 없이 도착',
-    open: '자재 P/O 없이 등록',
-    openNote: '자재 P/O가 없으면 공급사와 품목과 단위를 직접 고릅니다.',
-    close: '자재 P/O 고르기로 되돌리기',
-    supplierLabel: '공급사',
-    supplierPlaceholder: '공급사를 고르세요',
-    supplierLoading: '공급사를 불러오는 중입니다',
-    supplierLoadFailed: '공급사를 확인할 수 없습니다',
-    supplierNone: '고를 공급사가 없습니다',
-    itemLabel: '품목',
-    itemNone: '고른 품목이 없습니다',
-    itemPick: '품목 찾기',
-    itemChange: '품목 변경하기',
-    /** 품목 마스터의 주인은 ERP 다. 이 화면이 품목을 만들 길은 계약에 없다. */
-    itemUnregistered: '목록에 없는 품목은 여기서 만들 수 없습니다',
-    itemUnregisteredWhy: 'ERP에 품목이 만들어진 뒤에 고를 수 있습니다.',
-    uomLabel: '단위',
-    uomPlaceholder: '단위를 고르세요',
-    uomLoadFailed: '단위를 확인할 수 없습니다',
-    typeLabel: '예외입하 유형',
-    typePlaceholder: '예외 유형을 고르세요',
-    typeLoadFailed: '예외입하 유형을 불러오지 못했습니다',
-    reasonLabel: '예외 사유',
-    /** 예정 수량이 없으므로 견줄 것이 없다. 판정하지 않는다는 사실을 말한다. */
-    noVerdict: '자재 P/O가 없어 예정 수량과 비교하지 않습니다',
-    /** 공장은 단말 토큰이 싣고 온다. 없으면 지어내지 않고 막는다. */
-    noPlant: '이 기기의 공장을 확인할 수 없어 등록할 수 없습니다',
   },
   /** 품목 마스터가 커서 한 화면에 늘어놓을 수 없다. 찾아서 고르는 자리를 따로 둔다. */
   itemPicker: {
@@ -300,8 +277,12 @@ export const inboundReceipt = {
        */
       keepExcess: '초과분 나눠 등록',
       normalOnly: '정량분만 등록',
-      /** 정량분이 0 이면(받을 것이 남지 않은 라인) 나눌 것이 없다. */
-      noRoom: '이 라인은 받을 수량이 남지 않았습니다. 자재 P/O 없이 등록하세요.',
+      /**
+       * 정량분이 0 이면(받을 것이 남지 않은 라인) 받은 수량 전부가 그 라인의 초과분이다. 발주 없이
+       * 받는 길은 없다(사용자 결정 2026-10-27 · omf-all-around#182).
+       */
+      noRoom: '이 라인은 받을 수량이 남지 않았습니다. 모두 초과분으로 등록합니다.',
+      excessAll: '모두 초과분으로 등록',
       kept: '초과분은 자재 P/O에 넣지 않고 초과분 목록에 남깁니다.',
     },
     under: (remaining: string, arrived: string) =>
@@ -367,11 +348,6 @@ export const inboundReceipt = {
     noWorker: '사번을 확인해야 등록할 수 있습니다',
     noOrder: '자재 P/O를 먼저 고르세요',
     noOrderLine: '자재 P/O 라인을 먼저 고르세요',
-    noSupplier: '공급사를 먼저 고르세요',
-    noItem: '품목을 먼저 고르세요',
-    noUom: '단위를 먼저 고르세요',
-    noExceptionType: '예외입하 유형을 먼저 고르세요',
-    noExceptionReason: '예외 사유를 먼저 적으세요',
     /* 공장은 발주에서 승계하거나 기기가 싣고 온다. 작업자가 이 화면에서 고칠 수 없다. */
     noPlant: '이 입하의 공장을 확인할 수 없습니다. 관리자에게 문의하세요.',
     qtyEmpty: '실입하 수량을 먼저 적으세요',
@@ -438,7 +414,6 @@ export const inboundReceipt = {
     /** 라벨 없이 고르는 두 화면의 번호 - 단계 2 안의 첫째 · 둘째. */
     lotlessOrderBadge: '2-1',
     lotlessItemBadge: '2-2',
-    unordered: '발주 없이 받을 품목과 수량을 적으세요',
     /* 칸 이름(「실입하 수량」)과 겹치지 않게 짧게 쓴다 — 겹치면 낭독기가 두 자리를 같은 이름으로 읽는다. */
     qty: '수량 확인',
     /** 라벨 없이 2-2 에서 품목을 눌러 오는 셋째 화면 - 남은 수량을 다 받는 것은 2-2 의 체크가 한다. */

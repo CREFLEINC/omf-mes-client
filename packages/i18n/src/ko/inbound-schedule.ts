@@ -201,23 +201,20 @@ export const inboundSchedule = {
    * 아직 안 한 일을 말할 뿐 현장에서 벌어진 일(발주보다 더 왔다)을 말하지 않는다 — 발주 없는 입하가 없어 미배정은 늘 초과분이다.
    */
   excess: {
-    /** 탭 줄 오른쪽의 진입 단추. 미연결 초과분이 있으면 그 수가 붙는다. */
-    entry: '초과분 연결',
-    entryCount: (count: number): string => `미연결 초과분 ${String(count)}건`,
-    title: '초과분 발주 연결',
-    steps: {
-      label: '진행 단계',
-      pick: '초과분 선택',
-      line: '발주 라인 선택',
-      link: '연결',
-    },
-    /** 창의 목록 이름 — 연결할 초과분만 보인다(연결한 것은 아직 보이지 않는다 · 사용자 결정 2026-10-27). */
+    /** 탭 이름은 사이드바 묶음(`app/nav-tree.ts`)이 갖는다. 왼쪽 표 위 제목 — 미연결 건수. */
+    listCount: (count: number): string => `미연결 초과분 ${String(count)}건`,
+    splitter: '초과분 목록과 연결할 발주 라인 사이',
+    listCollapse: '초과분 목록 접기',
+    listExpand: '초과분 목록 펼치기',
+    /** 목록 이름 — 연결할 초과분만 보인다(연결한 것은 아직 보이지 않는다 · 사용자 결정 2026-10-27). */
     listTitle: '미연결 초과분',
     table: {
       receiptNo: '입하번호',
       receiptDate: '입하일',
       supplier: '공급사',
       item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       lot: 'LOT',
       excessQty: '초과 수량',
       /** 이 입하 줄이 이미 들어간 발주 라인(들). 다 초과분이면 「—」. */
@@ -226,6 +223,7 @@ export const inboundSchedule = {
     candidates: {
       title: '연결할 발주 라인',
       purchaseOrderNo: '발주번호',
+      itemCode: '품목코드',
       orderDate: '발주일',
       dueDate: '납기',
       ordered: '발주 수량',
@@ -333,7 +331,10 @@ export const inboundSchedule = {
       qtyEmpty: '이번 입하 수량을 넣으세요.',
       qtyNotNumber: '이번 입하 수량은 숫자로 넣으세요.',
       qtyNotPositive: '이번 입하 수량은 0보다 커야 합니다.',
+      labelIssued: '라벨이 발행된 품목은 수량을 바꿔 입하할 수 없습니다.',
     },
+    /** 라벨이 발행된 줄의 품목코드에 마우스를 올리면 — 행을 눌러도 수량 입력칸이 열리지 않는 까닭. */
+    labeledLocked: '라벨 발행됨 · 남은 수량은 체크해 입하',
     /** 사유 코드를 못 받으면 라벨 미부착으로 보낼 수 없다 — 서버가 사유 없는 미부착 줄을 받지 않는다. */
     noReason: '라벨 미부착 사유 코드를 불러오지 못해 입하를 등록할 수 없습니다.',
     confirm: {
@@ -362,6 +363,11 @@ export const inboundSchedule = {
   },
   /** 라인 아래 LOT 줄 — 번호 · 입하일 · 수량과, 그 단계의 근거(서버가 준 값만 적는다). */
   lot: {
+    /** 「입고 대기」 LOT 줄의 체크 — 체크한 LOT 을 한 번에 입고한다(사용자 지시 2026-10-28). */
+    selectForPost: (lotNo: string): string => `${lotNo} 입고 선택`,
+    selectAllForPost: '입고 대기 전체',
+    checkedForPost: (count: number): string => `선택 ${String(count)}건`,
+    postChecked: '체크한 LOT 입고 처리',
     receivedOn: (date: string): string => `입하 ${date}`,
     /** 적치는 PDA 의 일이다 — 이 화면은 보기만 한다. */
     putawayOnPda: 'PDA에서 적치',

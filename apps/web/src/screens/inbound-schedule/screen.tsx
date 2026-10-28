@@ -1,21 +1,17 @@
 import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
+import { GoodsReceiptBatchPostPanel, type BatchPostLot } from '../goods-receipt/batch-post-panel';
 import { GoodsReceiptPostPanel } from '../goods-receipt/post-panel';
-import {
-  readExcessEntry,
-  withExcessEntry,
-  withoutExcessEntry,
-  type ExcessEntry,
-} from './excess-entry';
+import { excessTabHref, readLegacyExcessEntry, type ExcessEntry } from './excess-entry';
 import { excessesByLine } from './excess-match';
-import { ExcessPanel } from './excess-panel';
 import {
   EXCESS_PAGE_SIZE,
   excessKeys,
@@ -75,7 +71,7 @@ import {
 } from './receive-entry';
 import { useReceivePerLine, useSubstituteLotReasons } from './receive-queries';
 import { useReceiveDraft } from './use-receive-draft';
-import { hasLot, progressByLine } from './stage';
+import { hasLot, isReceiptReady, labeledLineIds, progressByLine } from './stage';
 import { StageChips } from './stage-chips';
 import type {
   InboundScheduleLine,
@@ -268,15 +264,16 @@ export const InboundScheduleScreen = () => {
       ),
     [lineRows, excessAvailable, unlinkedExcesses.data],
   );
-  const unlinkedCount = unlinkedExcesses.data?.page.total ?? 0;
 
-  /* 창은 한 번에 하나다 — 하나를 열면 다른 하나의 키를 걷는다. */
-  const excessEntry = readExcessEntry(searchParams);
+  /*
+   * 초과분 연결은 **둘째 탭**이다(사용자 지시 2026-10-28 — 옛 오른쪽 창을 탭으로 뗐다). 라인 표의 「초과분」 칸 · 입하 등록
+   * 결과의 「초과분 연결」은 그 탭을 초과분 · 라인을 고른 채로 연다. 보던 발주는 함께 넘겨 후보에 표식을 단다.
+   */
+  const navigate = useNavigate();
   const openExcess = (entry: Partial<ExcessEntry> = {}): void => {
-    setSearchParams(withExcessEntry(withoutPostEntry(searchParams), entry));
-  };
-  const closeExcess = (): void => {
-    setSearchParams(withoutExcessEntry(searchParams));
+    void navigate(
+      excessTabHref({ ...entry, purchaseOrderId: selectedOrder?.purchaseOrderId ?? null }),
+    );
   };
 
   /*
@@ -284,7 +281,8 @@ export const InboundScheduleScreen = () => {
    * 그대로 한꺼번에, 행을 누르면 그 품목만 수량을 정해 받는다. 라벨 미부착으로만 받고 입하번호는 품목마다 하나다(`:per-line`).
    * 되돌릴 수 없는 쓰기라 확인 창을 한 번 거친다. 결과는 표 위 한 줄 — 만든 입하번호와, 초과분이 있으면 연결 창으로 가는 길.
    */
-  const receiveDraft = useReceiveDraft(lineRows, selectedOrder?.purchaseOrderId ?? null);
+  const labeled = useMemo(() => labeledLineIds(lotsByLine), [lotsByLine]);
+  const receiveDraft = useReceiveDraft(lineRows, selectedOrder?.purchaseOrderId ?? null, labeled);
   const lotReasons = useSubstituteLotReasons(canRegister);
   const lotReason = defaultReasonOf(lotReasons.data ?? []);
   const [confirmPicks, setConfirmPicks] = useState<ReceivePick[] | null>(null);
@@ -390,10 +388,57 @@ export const InboundScheduleScreen = () => {
       ? null
       : (lineRows.find((line) => line.purchaseOrderLineId === postLot.purchaseOrderLineId) ?? null);
   const openPost = (lot: IssuedLotProgress): void => {
-    setSearchParams(withPostEntry(withoutExcessEntry(searchParams), lot.lotId));
+    setSearchParams(withPostEntry(searchParams, lot.lotId));
   };
   const closePost = (): void => {
     setSearchParams(withoutPostEntry(searchParams));
+  };
+
+  /*
+   * 「입고 대기」 LOT 일괄 입고(사용자 지시 2026-10-28 「입고 요청 일괄 처리」) — LOT 줄을 체크해 한 창에서 한 번에 입고한다.
+   * 체크는 지금 진행 자료로 다시 거른다(다른 곳에서 입고돼 단계가 바뀐 LOT 은 빠진다). 발주가 바뀌면 비운다.
+   */
+  const [checkedLotIds, setCheckedLotIds] = useState<ReadonlySet<number>>(new Set());
+  const [batchLots, setBatchLots] = useState<BatchPostLot[] | null>(null);
+  useEffect(() => {
+    setCheckedLotIds(new Set());
+    setBatchLots(null);
+  }, [selectedOrderId]);
+  const readyLots = (progress.data?.items ?? []).filter(isReceiptReady);
+  const checkedLots = readyLots.filter((lot) => checkedLotIds.has(lot.lotId));
+  const toggleLot = (lotId: number): void => {
+    setCheckedLotIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(lotId)) next.delete(lotId);
+      else next.add(lotId);
+
+      return next;
+    });
+  };
+  const toggleAllLots = (): void => {
+    setCheckedLotIds(
+      checkedLots.length === readyLots.length
+        ? new Set()
+        : new Set(readyLots.map((lot) => lot.lotId)),
+    );
+  };
+  const openBatch = (): void => {
+    if (checkedLots.length === 0) return;
+    setBatchLots(
+      checkedLots.map((lot) => {
+        const line = lineRows.find((each) => each.purchaseOrderLineId === lot.purchaseOrderLineId);
+
+        return {
+          inboundReceiptId: lot.inboundReceiptId,
+          inboundReceiptLineId: lot.inboundReceiptLineId,
+          lotId: lot.lotId,
+          lotNo: lot.lotNo,
+          itemCode: line?.itemCode ?? '',
+          itemName: line?.itemName ?? '',
+          uomCode: lot.uomCode,
+        };
+      }),
+    );
   };
 
   /*
@@ -463,50 +508,20 @@ export const InboundScheduleScreen = () => {
     ) : undefined;
 
   /*
-   * 「초과분 연결」 진입 단추 — **화면 막대 오른쪽**(이름 「입고 관리」와 같은 줄)에 둔다. 조건 줄은 이미 꽉 차 있어
-   * 거기 두면 한 줄이 더 생긴다.
-   */
-  const excessEntryButton = excessAvailable ? (
-    <Button
-      variant={unlinkedCount > 0 ? 'outlined' : 'text'}
-      size="sm"
-      aria-label={
-        unlinkedCount > 0
-          ? `${t.excess.entry} — ${t.excess.entryCount(unlinkedCount)}`
-          : t.excess.entry
-      }
-      onClick={() => {
-        openExcess();
-      }}
-    >
-      {t.excess.entry}
-      {unlinkedCount > 0 && (
-        <span className="po-board-tool-count" aria-hidden="true">
-          {unlinkedCount}
-        </span>
-      )}
-    </Button>
-  ) : null;
-
-  /*
-   * 단계 칩 — 화면 막대 오른쪽, 「초과분 연결」 앞. 누르면 그 묶음의 LOT 이 있는 발주만 남는다(조건이 바뀌니 첫 쪽으로).
+   * 단계 칩 — 탭 막대 오른쪽(셸의 일 단추 자리). 누르면 그 묶음의 LOT 이 있는 발주만 남는다(조건이 바뀌니 첫 쪽으로).
    * 서버가 묶음 수를 셀 수 없으면(404·403) 세우지 않는다 — 조건·머리 건수·행 칩은 같은 기준이어야 한다(C-17).
    */
+  const hubActions = useHubActionsTarget();
   const stageChips =
     stageAvailable && stageCounts.data !== undefined ? (
-      <StageChips
-        counts={stageCounts.data.counts}
-        active={filters.stage}
-        onChange={(next) => {
-          applyQuery(period, { ...filters, stage: next });
-        }}
-      />
-    ) : null;
-  const barTools =
-    stageChips !== null || excessEntryButton !== null ? (
       <div className="po-board-bar-tools">
-        {stageChips}
-        {excessEntryButton}
+        <StageChips
+          counts={stageCounts.data.counts}
+          active={filters.stage}
+          onChange={(next) => {
+            applyQuery(period, { ...filters, stage: next });
+          }}
+        />
       </div>
     ) : null;
 
@@ -521,16 +536,19 @@ export const InboundScheduleScreen = () => {
     setReceiveProblem(null);
   };
 
+  /* 옛 「초과분 연결」 창 주소(`excess=1`)는 탭으로 옮긴다 — 즐겨찾기 · 공유한 주소가 죽지 않게. */
+  const legacyExcess = readLegacyExcessEntry(searchParams);
+  if (legacyExcess !== null) return <Navigate to={excessTabHref(legacyExcess)} replace />;
+
   return (
     <>
       {/*
-       * 화면 막대 — 이름 「입고 관리」 하나와 오른쪽의 단계 칩 · 「초과분 연결」(구성안 캔버스 2026-10-22). 옛 탭 막대와
-       * 같은 모양이다 — 탭을 합치며(2026-10-23) 셸의 탭 막대가 빠져 화면이 제 줄을 그린다. 경로 표시는 두지 않는다.
+       * 이름 「입고 관리」와 「초과분 발주 연결」은 셸의 탭 막대가 세운다(2026-10-28 탭 묶음). 단계 칩은 그 막대 오른쪽 자리에
+       * 넣는다 — 셸이 자리를 그리지 않았으면(화면만 그린 시험) 서지 않는다.
        */}
-      <div className="po-board-bar">
-        <h1 className="po-board-title">{t.title}</h1>
-        {barTools}
-      </div>
+      {hubActions !== null && stageChips !== null && (
+        <HubActions target={hubActions}>{stageChips}</HubActions>
+      )}
 
       {/* 조회 실패는 빈 상태로 오인시키지 않는다 — 「없습니다」로 내면 자료가 없는 줄 안다. */}
       {list.isError && (
@@ -685,6 +703,17 @@ export const InboundScheduleScreen = () => {
               {...(linesNotice === undefined ? {} : { notice: linesNotice })}
               requestingLotId={requestingLotId}
               {...(canPost ? { onPostReceipt: openPost } : {})}
+              {...(canPost
+                ? {
+                    lotPick: {
+                      checked: new Set(checkedLots.map((lot) => lot.lotId)),
+                      toggle: toggleLot,
+                      total: readyLots.length,
+                      toggleAll: toggleAllLots,
+                      onSubmit: openBatch,
+                    },
+                  }
+                : {})}
               onRequestIqc={sendIqcRequest}
             />
           )}
@@ -714,6 +743,17 @@ export const InboundScheduleScreen = () => {
         />
       )}
 
+      {batchLots !== null && (
+        <GoodsReceiptBatchPostPanel
+          lots={batchLots}
+          refreshKeys={POST_REFRESH_KEYS}
+          onClose={() => {
+            setBatchLots(null);
+            setCheckedLotIds(new Set());
+          }}
+        />
+      )}
+
       {confirmPicks !== null && selectedOrder !== null && (
         <ReceiveConfirmDialog
           purchaseOrderNo={selectedOrder.purchaseOrderNo}
@@ -726,14 +766,6 @@ export const InboundScheduleScreen = () => {
             setConfirmPicks(null);
             receiveWrite.reset();
           }}
-        />
-      )}
-
-      {excessEntry !== null && (
-        <ExcessPanel
-          entry={excessEntry}
-          currentOrderId={selectedOrder?.purchaseOrderId ?? null}
-          onClose={closeExcess}
         />
       )}
     </>

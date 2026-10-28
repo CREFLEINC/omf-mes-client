@@ -14,6 +14,8 @@ export interface ReceiveEditing {
 
 export interface ReceiveDraft {
   checked: ReadonlySet<number>;
+  /** 라벨이 발행된 줄 — 행을 눌러 받지 못한다. */
+  isLabeled: (purchaseOrderLineId: number) => boolean;
   editing: ReceiveEditing | null;
   /** 표 위 한 줄 — 「모두 선택」이 뺀 부분 입하 수. */
   note: string | null;
@@ -33,6 +35,7 @@ export interface ReceiveDraft {
 }
 
 const NONE: ReadonlySet<number> = new Set();
+const NO_LABELED: ReadonlySet<number> = new Set();
 
 /**
  * 라인 표에서 바로 받는 입하의 **초안** — 체크한 줄과 행을 눌러 고친 줄 하나. 고른 발주가 바뀌면 비운다(앞 발주의 체크가
@@ -43,6 +46,8 @@ const NONE: ReadonlySet<number> = new Set();
 export const useReceiveDraft = (
   lines: readonly InboundScheduleLine[],
   orderId: number | null,
+  /** 라벨이 발행된(LOT 이 붙은) 발주 라인(`stage.ts` `labeledLineIds`). 진행 자료가 없으면 빈 묶음이다. */
+  labeled: ReadonlySet<number> = NO_LABELED,
 ): ReceiveDraft => {
   const [checkedIds, setChecked] = useState<ReadonlySet<number>>(NONE);
   const [editing, setEditing] = useState<ReceiveEditing | null>(null);
@@ -76,6 +81,7 @@ export const useReceiveDraft = (
 
   return {
     checked,
+    isLabeled: (id) => labeled.has(id),
     editing,
     note,
     allChecked,
@@ -109,7 +115,7 @@ export const useReceiveDraft = (
       );
     },
     startEdit: (line) => {
-      if (!isEditable(line)) return;
+      if (!isEditable(line, labeled.has(line.purchaseOrderLineId))) return;
       if (editing?.purchaseOrderLineId === line.purchaseOrderLineId) return;
       setNote(null);
       setEditing({
@@ -139,6 +145,8 @@ export const useReceiveDraft = (
       if (editing === null) return null;
       const line = lineOf(editing.purchaseOrderLineId);
       if (line === undefined) return null;
+      /* 고치는 사이에 라벨이 발행됐다(다시 읽은 진행) — 수량을 정해 받지 않는다. */
+      if (labeled.has(line.purchaseOrderLineId)) return { error: t.receive.errors.labelIssued };
       const qty = checkQty(editing.qtyText);
 
       switch (qty.kind) {

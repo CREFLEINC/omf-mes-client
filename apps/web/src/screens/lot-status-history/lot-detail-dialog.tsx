@@ -1,6 +1,7 @@
 import { AlertBanner, Button, Chip, Dialog, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
+import { useNavigate } from 'react-router';
 
 import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
 import type { FilterOption } from './lot-filter-bar';
@@ -12,6 +13,9 @@ import { lotStatusTone } from './options';
 import { useLotDetail } from './queries';
 import { useItemNameSources } from './reference-options';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
+import { LOT_TRACE_PATH, lotTraceHref } from '../lot-trace/trace-filters';
 
 const t = messages.lotStatusHistory;
 const EMPTY = '—';
@@ -38,6 +42,16 @@ export const LotDetailDialog = ({
   onClose,
 }: LotDetailDialogProps) => {
   const detail = useLotDetail(lotId);
+  const navigate = useNavigate();
+  const { session } = useSession();
+  const traceHref =
+    detail.data !== undefined && toWebAccess(session?.permissions).allows(LOT_TRACE_PATH)
+      ? lotTraceHref({
+          lotId,
+          lotNo: detail.data.lotNo,
+          lotTypeCode: detail.data.lotTypeCode,
+        })
+      : null;
   const transitionNoteId = useId();
   const fourMTypeLabel = useFourMChangeTypeLabel();
   const itemId = detail.data?.itemId;
@@ -66,9 +80,17 @@ export const LotDetailDialog = ({
       title={t.detail.title}
       size="lg"
       footer={
-        <Button variant="outlined" onClick={onClose}>
-          {t.detail.close}
-        </Button>
+        <>
+          {/* LOT 추적으로 간다. 자재 LOT은 자재 LOT 탭, 생산 LOT은 제품 LOT 탭에서 연다. */}
+          {traceHref !== null && (
+            <Button variant="outlined" onClick={() => void navigate(traceHref)}>
+              {t.detail.trace}
+            </Button>
+          )}
+          <Button variant="outlined" onClick={onClose}>
+            {t.detail.close}
+          </Button>
+        </>
       }
     >
       {detail.isPending && (

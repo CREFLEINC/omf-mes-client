@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -35,6 +36,7 @@ const order: ErpProductionOrder = {
   erpReworkFlag: 'N',
   expandedWorkOrderCount: 0,
   plannedWorkOrderCount: 0,
+  progressStatusCode: 'PARTIAL',
 };
 
 /** 계약 밖 칸이 비면 키가 빠진다(장부 P-67) — 키 없는 행. */
@@ -69,28 +71,6 @@ const references: StubRoute[] = [
       jsonResponse(page(codeValues(new URL(request.url).searchParams.get('codeGroupCode')))),
   },
   {
-    match: (request) => exact(request, '/mdm/business-units'),
-    respond: () =>
-      jsonResponse(
-        page([
-          {
-            businessUnitId: 2101,
-            legalEntityId: 1,
-            businessUnitCode: 'SYN-BU',
-            businessUnitName: '합성 사업부',
-            isActive: true,
-          },
-        ]),
-      ),
-  },
-  {
-    match: (request) => exact(request, '/mdm/plants'),
-    respond: () =>
-      jsonResponse(
-        page([{ plantId: 3101, plantCode: 'SYN-PLANT', plantName: '합성 공장', isActive: true }]),
-      ),
-  },
-  {
     match: (request) => exact(request, '/mdm/uoms'),
     respond: () =>
       jsonResponse(page([{ uomId: 8101, uomCode: 'SYN-EA', uomName: 'each', isActive: true }])),
@@ -102,34 +82,12 @@ const references: StubRoute[] = [
   },
 ];
 
-const detail: ErpProductionOrder = {
-  ...order,
-  remarks: '합성 비고',
-  lastChange: {
-    receivedAt: '2026-10-08T02:00:00.000Z',
-    changedFields: [
-      { field: 'ORDER_QTY', label: '수량', beforeText: '1000', afterText: '1200', beforeQty: 1000 },
-      {
-        field: 'PLANNED_START_DATE',
-        label: '계획 시작일',
-        beforeText: '2026-10-06',
-        afterText: '2026-10-08',
-        beforeQty: null,
-      },
-    ],
-  },
-};
-
 const normalRoutes: StubRoute[] = [
   ...references,
   {
     match: (request) => exact(request, LIST_PATH),
     respond: () =>
       jsonResponse({ items: [order, bareOrder], page: { page: 1, size: 25, total: 2 } }),
-  },
-  {
-    match: (request) => exact(request, `${LIST_PATH}/901`),
-    respond: () => jsonResponse(detail),
   },
 ];
 
@@ -148,6 +106,21 @@ const recordingFetch = (routes: StubRoute[]): { fetch: StubFetch; requests: Requ
 const listUrls = (requests: Request[]): URL[] =>
   requests.map((request) => new URL(request.url)).filter((url) => url.pathname === LIST_PATH);
 
+/** 주소의 조건을 읽는 탐침 — 진행 단추가 주소로 가는지 본다. */
+const LocationProbe = () => {
+  const location = useLocation();
+  return <output data-testid="location">{location.search}</output>;
+};
+
+/** 목록에서 그 번호가 든 줄. */
+const findRow = async (orderNo: string): Promise<HTMLElement> => {
+  const listPane = screen.getByRole('region', { name: t.panes.list });
+  const cell = await within(listPane).findByText(orderNo);
+  const row = cell.closest('tr');
+  expect(row).not.toBeNull();
+  return row as HTMLElement;
+};
+
 describe('ErpProductionOrderScreen', () => {
   it('주소의 조건을 계약 밖 질의까지 실어 목록을 부르고, 값을 이름으로 풀어 보인다', async () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
@@ -156,7 +129,7 @@ describe('ErpProductionOrderScreen', () => {
       route: '/?status=UPDATED&item=7101&from=2026-10-01&to=2026-10-31&q=SYN',
     });
 
-    await screen.findByRole('button', { name: t.actions.select('SYN-EWO-901') });
+    const cells = within(await findRow('SYN-EWO-901'));
     const url = listUrls(requests)[0];
     expect(url?.searchParams.get('statusCode')).toBe('UPDATED');
     expect(url?.searchParams.get('itemId')).toBe('7101');
@@ -165,12 +138,6 @@ describe('ErpProductionOrderScreen', () => {
     expect(url?.searchParams.get('q')).toBe('SYN');
     expect(url?.searchParams.has('dueDateFrom')).toBe(false);
 
-    const listPane = screen.getByRole('region', { name: t.panes.list });
-    const firstRow = within(listPane)
-      .getByRole('button', { name: t.actions.select('SYN-EWO-901') })
-      .closest('tr');
-    expect(firstRow).not.toBeNull();
-    const cells = within(firstRow as HTMLElement);
     expect(await cells.findByText('SYN-ITEM · 합성 품목')).toBeInTheDocument();
     expect(await cells.findByText('1,200 SYN-EA')).toBeInTheDocument();
     expect(cells.getByText('2026-10-08')).toBeInTheDocument();
@@ -179,9 +146,11 @@ describe('ErpProductionOrderScreen', () => {
     expect(cells.getByText('아니오')).toBeInTheDocument();
     expect(await cells.findByText('합성 수정됨')).toBeInTheDocument();
     /* ERP W/O 는 납기가 비어 온다 — 늘 빈 열을 세우지 않는다. */
+    const listPane = screen.getByRole('region', { name: t.panes.list });
     expect(within(listPane).queryByRole('columnheader', { name: t.fields.dueDate })).toBeNull();
-    /* 고르기 전에는 상세도, 상세에만 쓰는 참조도 부르지 않는다. */
+    /* 상세가 없다 — 한 건도, 상세에만 쓰던 참조(사업부·공장)도 부르지 않는다. */
     expect(requests.some((r) => new URL(r.url).pathname.startsWith(`${LIST_PATH}/`))).toBe(false);
+    expect(requests.some((r) => exact(r, '/mdm/business-units'))).toBe(false);
     expect(requests.some((r) => exact(r, '/mdm/plants'))).toBe(false);
   });
 
@@ -189,44 +158,88 @@ describe('ErpProductionOrderScreen', () => {
     const { fetch } = recordingFetch(normalRoutes);
     renderWithProviders(<ErpProductionOrderScreen />, { fetch });
 
-    const button = await screen.findByRole('button', { name: t.actions.select('SYN-EWO-902') });
-    const row = within(button.closest('tr') as HTMLElement);
-    /* 계획 시작일·공정번호·창고·재작업 넷이 빠진 행. */
-    expect(row.getAllByText(t.values.missing)).toHaveLength(4);
+    const row = within(await findRow('SYN-EWO-902'));
+    /* 계획 시작일·공정번호·창고·재작업·진행 다섯이 빠진 행. */
+    expect(row.getAllByText(t.values.missing)).toHaveLength(5);
   });
 
-  it('번호를 누르면 받은 칸 전부와 마지막 ERP 변경을 보이고, 쓰기·계획으로 가는 길이 없다', async () => {
-    const { fetch, requests } = recordingFetch(normalRoutes);
+  it('진행 열은 생산 진행을 표지로 보인다', async () => {
+    const { fetch } = recordingFetch(normalRoutes);
     renderWithProviders(<ErpProductionOrderScreen />, { fetch });
+
+    const row = within(await findRow('SYN-EWO-901'));
+    expect(row.getByText(t.progress.status.PARTIAL)).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.panes.list })).getByRole('columnheader', {
+        name: t.fields.progress,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('진행은 기본 전체라 조건을 싣지 않고, 미완료·완료는 누르는 즉시 다른 조건을 지킨 채 목록 요청과 주소에 싣는다', async () => {
+    const { fetch, requests } = recordingFetch(normalRoutes);
+    renderWithProviders(
+      <>
+        <ErpProductionOrderScreen />
+        <LocationProbe />
+      </>,
+      { fetch, route: '/?status=UPDATED&page=2' },
+    );
     const user = userEvent.setup();
 
-    expect(screen.getByText(t.readOnlyNote)).toBeInTheDocument();
-    await user.click(await screen.findByRole('button', { name: t.actions.select('SYN-EWO-901') }));
+    await findRow('SYN-EWO-901');
+    expect(listUrls(requests)[0]?.searchParams.has('progress')).toBe(false);
+    const group = screen.getByRole('group', { name: t.progress.group });
+    const button = (name: string) => within(group).getByRole('button', { name });
+    expect(button(t.progress.all)).toHaveAttribute('aria-pressed', 'true');
 
-    const pane = await screen.findByRole('region', { name: t.panes.detail });
-    expect(await within(pane).findByText('SYN-BU · 합성 사업부')).toBeInTheDocument();
-    expect(await within(pane).findByText('SYN-PLANT · 합성 공장')).toBeInTheDocument();
-    expect(within(pane).getByText('합성 비고')).toBeInTheDocument();
-    expect(within(pane).getByText('1000 → 1200')).toBeInTheDocument();
-    /* 계약 enum 밖 변경 항목(장부 P-66)도 버리지 않는다. */
-    expect(within(pane).getByText('2026-10-06 → 2026-10-08')).toBeInTheDocument();
+    await user.click(button(t.progress.done));
+    await waitFor(() =>
+      expect(listUrls(requests).at(-1)?.searchParams.get('progress')).toBe('COMPLETED'),
+    );
+    const done = listUrls(requests).at(-1);
+    expect(done?.searchParams.get('statusCode')).toBe('UPDATED');
+    expect(done?.searchParams.get('page')).toBe('1');
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\?status=UPDATED&progress=done$/);
+    expect(button(t.progress.done)).toHaveAttribute('aria-pressed', 'true');
 
-    const detailUrl = requests
-      .map((request) => new URL(request.url))
-      .find((url) => url.pathname === `${LIST_PATH}/901`);
-    expect(detailUrl?.searchParams.get('withLastChange')).toBe('true');
+    await user.click(button(t.progress.open));
+    await waitFor(() =>
+      expect(listUrls(requests).at(-1)?.searchParams.get('progress')).toBe('OPEN'),
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent(/progress=open$/);
+  });
+
+  it('상세 구획 없이 목록 한 구획만 서고, 줄을 눌러도 상세를 부르지 않으며, 쓰기·계획으로 가는 길이 없다', async () => {
+    const { fetch, requests } = recordingFetch(normalRoutes);
+    /* 예전 주소의 고른 건(`sel`)도 읽지 않는다. */
+    renderWithProviders(<ErpProductionOrderScreen />, { fetch, route: '/?sel=901' });
+    const user = userEvent.setup();
+
+    /* 읽기 전용 안내 문구는 두지 않는다 — 쓰기 조작이 없는 것으로 충분하다. */
+    expect(screen.queryByText(/고칠 수 없습니다/)).not.toBeInTheDocument();
+    const row = await findRow('SYN-EWO-901');
+    await user.click(within(row).getByText('SYN-EWO-901'));
+
+    expect(screen.getByRole('region', { name: t.panes.list })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /상세/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    /* 고르는 단추도, 고른 줄 표지도 없다. */
+    expect(within(row).queryByRole('button')).not.toBeInTheDocument();
+    expect(row.querySelector('[aria-current]')).toBeNull();
+    expect(requests.some((r) => new URL(r.url).pathname.startsWith(`${LIST_PATH}/`))).toBe(false);
 
     expect(requests.every((request) => request.method === 'GET')).toBe(true);
     expect(screen.queryByRole('button', { name: /저장|수정|삭제|등록|전개|편성/ })).toBeNull();
     expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
 
-  it('조회 조건을 고쳐 조회하면 고른 건을 놓고 새 조건으로 부른다', async () => {
+  it('조회 조건을 고쳐 조회하면 새 조건으로 부른다', async () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
-    renderWithProviders(<ErpProductionOrderScreen />, { fetch, route: '/?sel=901' });
+    renderWithProviders(<ErpProductionOrderScreen />, { fetch });
     const user = userEvent.setup();
 
-    await screen.findByText('합성 비고');
+    await findRow('SYN-EWO-901');
     await user.type(screen.getByLabelText(t.fields.plannedStartFrom), '2026-10-05');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
@@ -235,7 +248,6 @@ describe('ErpProductionOrderScreen', () => {
         '2026-10-05',
       );
     });
-    expect(await screen.findByText(t.empty.notSelectedTitle)).toBeInTheDocument();
   });
 
   it('목록 실패를 빈 결과로 바꾸지 않는다', async () => {

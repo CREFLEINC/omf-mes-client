@@ -4,9 +4,9 @@ import { toBatchResultView, type RequestedMessage } from './batch-result';
 import type { BatchResult } from './types';
 
 const REQUESTED: RequestedMessage[] = [
-  { id: 9001, messageKey: 'SAMPLE-KEY-0001' },
-  { id: 9002, messageKey: 'SAMPLE-KEY-0002' },
-  { id: 9003, messageKey: 'SAMPLE-KEY-0003' },
+  { id: 9001, label: 'SAMPLE-KEY-0001' },
+  { id: 9002, label: 'SAMPLE-KEY-0002' },
+  { id: 9003, label: 'SAMPLE-KEY-0003' },
 ];
 
 const failure = (index: number, messages: string[] = ['보내지 못했습니다']) => ({

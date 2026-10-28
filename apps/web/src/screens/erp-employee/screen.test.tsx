@@ -58,19 +58,20 @@ const listRoute = (items: Worker[] = ROWS, total = items.length): StubRoute => (
   respond: () => jsonResponse({ items, page: { page: 1, size: 50, total } }),
 });
 
-const detailRoute: StubRoute = {
-  match: (request) => isGet(request, `${LIST_PATH}/9001`),
-  respond: () =>
-    jsonResponse({ worker: ROWS[0], editability: { editable: false, lockedFields: [] } }),
-};
-
 describe('ErpEmployeeScreen', () => {
   it('목록을 그리고 비어 있는 값은 표시 기호로 낸다', async () => {
     renderScreen([listRoute()]);
 
-    expect(await screen.findByRole('button', { name: 'SAMPLE-001 상세 보기' })).toBeInTheDocument();
-    expect(screen.getByText('예시 사원 B')).toBeInTheDocument();
-    expect(screen.getByText('퇴사')).toBeInTheDocument();
+    const table = await screen.findByRole('table');
+    expect(within(table).getByText('SAMPLE-001')).toBeInTheDocument();
+    expect(within(table).getByText('예시 사원 B')).toBeInTheDocument();
+    expect(within(table).getByText('퇴사')).toBeInTheDocument();
+    // 두 행 모두 부서가 비어 있다.
+    expect(within(table).getAllByText('—')).toHaveLength(2);
+    // 한국어·베트남어 명칭 열은 두지 않는다.
+    expect(within(table).queryByText('한국어 명칭')).not.toBeInTheDocument();
+    expect(within(table).queryByText('베트남어 명칭')).not.toBeInTheDocument();
+    expect(within(table).queryByText('Nhan vien A')).not.toBeInTheDocument();
     expect(screen.getByText('1–2 / 전체 2건')).toBeInTheDocument();
     // 쓰기 조작이 없다.
     expect(screen.queryByRole('button', { name: /저장|등록|삭제/ })).not.toBeInTheDocument();
@@ -91,14 +92,16 @@ describe('ErpEmployeeScreen', () => {
     });
   });
 
-  it('사번을 누르면 상세를 조회해 보인다', async () => {
-    const { user } = renderScreen([listRoute(), detailRoute]);
+  it('상세 구획 없이 목록 한 구획만 서고, 줄을 눌러도 상세를 부르지 않는다', async () => {
+    const { urls, user } = renderScreen([listRoute()]);
 
-    await user.click(await screen.findByRole('button', { name: 'SAMPLE-001 상세 보기' }));
+    await user.click(await screen.findByText('SAMPLE-001'));
 
-    const group = await screen.findByRole('group', { name: '사원 상세' });
-    expect(within(group).getByText('사업장')).toBeInTheDocument();
-    expect(within(group).getByText('11')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '사원 목록' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '사원 상세' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /상세 보기/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    expect(urls.some((url) => url.pathname.startsWith(`${LIST_PATH}/`))).toBe(false);
   });
 
   it('결과가 없으면 빈 상태를 낸다', async () => {

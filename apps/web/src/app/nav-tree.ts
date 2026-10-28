@@ -22,7 +22,7 @@
  * 이름을 읽는 쪽에서만 드러난다. 새 항목은 `label` 과 `labelVi` 를 **함께** 적는다.
  */
 
-import type { LocalizedLabel } from '../patterns/localized-label';
+import { localizedLabel, type LocalizedLabel } from '../patterns/localized-label';
 
 /**
  * 탭 묶음 안의 화면 하나 — 주소와 두 언어의 탭 이름. 아이콘은 묶음의 것을 쓴다.
@@ -32,6 +32,8 @@ import type { LocalizedLabel } from '../patterns/localized-label';
  */
 export interface NavTab extends LocalizedLabel {
   readonly to: string;
+  /** 이 탭이 품은 옛 화면의 주소 — 그중 하나라도 볼 수 있으면 탭을 세운다(`NavEntry.alsoFor` 와 같은 뜻 · 탭 묶음용). */
+  readonly alsoFor?: readonly string[];
 }
 
 /** 메뉴 항목 하나 — 주소 · 아이콘(Material Symbols 리가처) · 두 언어의 보이는 이름. */
@@ -136,18 +138,31 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       /*
        * 입고 관리 — 들어올 것(아직 다 들어오지 않은 P/O 라인)을 보고 → 도착한 것을 등록하고 → 창고로 받아들인다.
-       * **화면 하나다**(W-01-09). 입하 등록(W-01-03) · 초과분 연결 · 입고 처리(W-01-10)는 그 화면의 오른쪽 창이 됐다
-       * (사용자 지시 2026-10-21 「분리된 화면을 그 화면으로 차츰 모은다」 · 2026-10-23 탭 합치기). 옛 「자재 입고 처리」
-       * 탭(입하 전표 기준)은 뺐다 — 발주 없이 들어오는 입하가 없어(사용자 확인 2026-10-23) 발주 기준 화면이 입하를 다 품는다.
-       * 탭이 하나면 묶음이 아니라 탭을 두지 않는다 — 이름과 단계 칩은 화면이 제 막대에 세운다.
+       * 입하 등록(W-01-03) · 입고 처리(W-01-10)는 입고 관리 화면(W-01-09) 안에서 한다(사용자 지시 2026-10-21 「분리된 화면을
+       * 그 화면으로 차츰 모은다」 · 2026-10-23 탭 합치기). 옛 「자재 입고 처리」 탭(입하 전표 기준)은 뺐다 — 발주 없이
+       * 들어오는 입하가 없어(사용자 확인 2026-10-23) 발주 기준 화면이 입하를 다 품는다.
+       * 「초과분 발주 연결」은 오른쪽 창이던 것을 둘째 탭으로 뗐다(사용자 지시 2026-10-28). 설계 화면 코드가 없어 입고 관리의
+       * 코드를 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
        */
       {
         to: '/logistics/inbound-schedule',
         icon: 'local_shipping',
         label: '입고 관리',
         labelVi: 'Quản lý nhập kho',
-        /* 입하 등록(W-01-03) · 입고 처리(W-01-10)만 가진 사람도 이 화면에서 그 일을 한다. */
-        alsoFor: ['/logistics/over-receipt-split', '/logistics/goods-receipt'],
+        tabs: [
+          {
+            to: '/logistics/inbound-schedule',
+            label: '입고 관리',
+            labelVi: 'Quản lý nhập kho',
+            /* 입하 등록(W-01-03) · 입고 처리(W-01-10)만 가진 사람도 이 화면에서 그 일을 한다. */
+            alsoFor: ['/logistics/over-receipt-split', '/logistics/goods-receipt'],
+          },
+          {
+            to: '/logistics/inbound-excess',
+            label: '초과분 발주 연결',
+            labelVi: 'Liên kết phần vượt với P/O',
+          },
+        ],
       },
       /*
        * 재고 관리 — **가장 자주 여는 재고 현황이 첫 탭이다**(사이드바 한 번에 그 화면). 실사로 장부와
@@ -413,6 +428,17 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'monitoring',
         label: 'W/O 진행현황 조회',
         labelVi: 'Tra cứu tiến độ W/O',
+      },
+      /*
+       * W-02-09 — 「W/O 진행현황 조회」 바로 아래. 정방향과 역방향 모두 「투입 → W/O → 생산 LOT」을 지나
+       * 생산이 가진 자료다. 세 탭(자재 LOT, 제품 LOT, 입출고 현황)은 한 권한이라 셸 탭 묶음(탭마다
+       * 화면 코드)이 아니라 화면이 그린다.
+       */
+      {
+        to: '/production/lot-trace',
+        icon: 'timeline',
+        label: 'LOT 추적',
+        labelVi: 'Truy xuất LOT',
       },
       /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
       {
@@ -761,6 +787,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: '연동 현황·이력',
             labelVi: 'Tình trạng · lịch sử liên kết',
           },
+          /*
+           * ERP 받기 표의 상태와 「지금 읽기」 — 연동 현황·이력 위에 접혀 있던 것을 탭으로 뗐다(사용자 지시 2026-10-27).
+           * 설계 화면 코드가 따로 없어 묶음 화면(연동 현황·이력 W-06-10)의 코드를 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
+           */
+          { to: '/master-data/erp-inbound', label: 'ERP 수신', labelVi: 'Nhận ERP' },
+          /* 송신 항목과 그 송신 예정 목록(W-06-12) — 받기(아래 ERP 데이터 탭)와 갈라 연동 현황 바로 뒤. */
+          { to: '/master-data/erp-outbound', label: 'ERP 송신', labelVi: 'Gửi ERP' },
           { to: '/system/erp-data/common-codes', label: '공통코드', labelVi: 'Mã chung' },
           { to: '/system/erp-data/employees', label: '사원', labelVi: 'Nhân viên' },
           { to: '/system/erp-data/items', label: '품목', labelVi: 'Mặt hàng' },
@@ -844,3 +877,20 @@ export const NAV_ENTRIES: readonly NavEntry[] = [
     ),
   ),
 ];
+
+/** 메뉴 경로 사이의 표시. 화면 문구가 「시스템 관리 › 사용자·역할·권한」처럼 사이드바를 따라가게 쓴다. */
+const MENU_PATH_SEPARATOR = ' › ';
+
+/**
+ * 주소에 닿는 메뉴의 경로(묶음 이름 › 항목 이름), 활성 언어로. 사이드바에 없는 주소면 `null`.
+ * 화면 문구가 메뉴 이름을 손으로 옮겨 적지 않게 한다. 메뉴 이름이 바뀌면 안내도 함께 바뀐다.
+ */
+export const navMenuPath = (path: string): string | null => {
+  for (const group of NAV_GROUPS) {
+    const item = group.items.find((entry) => navEntryPaths(entry).includes(path));
+    if (item !== undefined) {
+      return [localizedLabel(group), localizedLabel(item)].join(MENU_PATH_SEPARATOR);
+    }
+  }
+  return null;
+};

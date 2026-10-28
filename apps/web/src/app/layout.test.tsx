@@ -342,16 +342,24 @@ describe('AppLayout', () => {
    * ⚠ 옛 이름 「정상품 입하 처리」는 입고 화면을 입하라 불렀다 — 입하는 «도착»이고 입고는
    * «창고로 받아들임»이다(`nav-tree.ts`).
    */
-  it('입고 관리는 탭 없는 한 줄이고, 옛 자재 입고 처리 · 초과 입하 분리 탭이 없다', () => {
-    renderLayout('본문 내용', { route: '/logistics/inbound-schedule' });
+  it('입고 관리 탭 막대가 입고 관리 → 초과분 발주 연결 차례고, 옛 자재 입고 처리 · 초과 입하 분리 탭이 없다', () => {
+    renderLayout('본문 내용', { route: '/logistics/inbound-excess' });
 
     const sidebar = navSidebar();
+    const tabs = screen.getByRole('navigation', { name: '입고 관리' });
 
     expect(within(sidebar).getByRole('link', { name: '입고 관리' })).toHaveAttribute(
       'href',
       '/logistics/inbound-schedule',
     );
-    expect(screen.queryByRole('navigation', { name: '입고 관리' })).toBeNull();
+    expect(within(tabs).getAllByRole('link').map((link) => link.textContent)).toEqual([
+      '입고 관리',
+      '초과분 발주 연결',
+    ]);
+    expect(within(tabs).getByRole('link', { name: '초과분 발주 연결' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     expect(screen.queryByRole('link', { name: '자재 입고 처리' })).toBeNull();
     expect(screen.queryByRole('link', { name: '초과 입하 분리' })).toBeNull();
     expect(screen.queryByRole('link', { name: '입하 예정 조회' })).toBeNull();
@@ -746,9 +754,17 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/work-order-progress')).toBe(
       links.indexOf('/production/emergency-work-orders') + 1,
     );
+    /* W-02-09 LOT 추적 — 「W/O 진행현황 조회」 바로 아래. */
+    expect(within(sidebar).getByRole('link', { name: 'LOT 추적' })).toHaveAttribute(
+      'href',
+      '/production/lot-trace',
+    );
+    expect(links.indexOf('/production/lot-trace')).toBe(
+      links.indexOf('/production/work-order-progress') + 1,
+    );
     /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
     expect(links.indexOf('/production/work-order-close')).toBe(
-      links.indexOf('/production/work-order-progress') + 1,
+      links.indexOf('/production/lot-trace') + 1,
     );
     /* 영업 / 출하 관리가 생산 바로 뒤에 선다 — 매일 일하는 묶음끼리 붙어 있다. */
     expect(links.indexOf('/shipment/shipment-request-create')).toBe(
@@ -966,10 +982,11 @@ describe('AppLayout', () => {
       '/quality/suspicious-material-hold',
       '/quality/approvals',
       '/quality/dispositions',
-      /* 생산 관리 — ERP W/O(처리, 변경 확인) → (긴급) → 진행 → 마감. */
+      /* 생산 관리 — ERP W/O(처리, 변경 확인) → (긴급) → 진행 → LOT 추적 → 마감. */
       '/production/production-orders' /* ← ERP W/O */,
       '/production/emergency-work-orders',
       '/production/work-order-progress',
+      '/production/lot-trace',
       '/production/work-order-close',
       /* 영업 / 출하 관리 — 편성 → 예정 → 출하 처리 → 확정 → 반품·클레임. */
       '/shipment/shipment-request-create',
@@ -1053,6 +1070,8 @@ describe('AppLayout', () => {
       /* 연동 로그가 첫 탭, 그 뒤가 받은 데이터 — 기준 데이터 다음 전표 차례다. */
       'ERP 연동 현황·이력': [
         '/master-data/integration-sync',
+        '/master-data/erp-inbound',
+        '/master-data/erp-outbound',
         '/system/erp-data/common-codes',
         '/system/erp-data/employees',
         '/system/erp-data/items',
@@ -1622,7 +1641,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(43);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
   });
 
   /*
@@ -1672,7 +1691,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(43);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

@@ -367,14 +367,167 @@ describe('InspectionStandardScreen — 기준 선택', () => {
   });
 });
 
-describe('InspectionStandardScreen — 만들지 않기로 한 것', () => {
-  /* 감추면 사용자가 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다. */
-  it('엑셀 올리기는 비활성 단추이고 사유 줄은 내지 않는다', async () => {
-    renderScreen([planListRoute()]);
+describe('InspectionStandardScreen — 엑셀 올리기', () => {
+  const IMPORT_PATH = '/quality/inspection-plans:import';
+  const importRoute = (
+    respond: StubRoute['respond'] = () => jsonResponse({ succeeded: 1, failed: [] }),
+  ): StubRoute => ({
+    match: (request) => request.method === 'POST' && new URL(request.url).pathname === IMPORT_PATH,
+    respond,
+  });
+  const excelFile = (): File =>
+    new File(['xlsx'], '검사기준.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+
+  it('창을 열면 되돌리지 않음·작성중 버전이 생김을 먼저 말하고, 파일 없이는 올릴 수 없다', async () => {
+    const { user } = renderScreen([planListRoute()]);
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
-    expect(screen.getByRole('button', { name: '엑셀 올리기' })).toBeDisabled();
-    expect(screen.queryByText('엑셀 양식 확정 후 사용할 수 있습니다.')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+
+    expect(within(dialog).getByText(t.import.partialWarningTitle)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.import.draftNote)).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(t.import.fileLabel)).toHaveAttribute('accept', '.xlsx');
+    expect(within(dialog).getByRole('button', { name: t.import.submit })).toBeDisabled();
+  });
+
+  it('모두 반영되면 창을 닫고 「저장했습니다」를 알린다', async () => {
+    const { user } = renderScreen([importRoute(), planListRoute()]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: t.import.title })).not.toBeInTheDocument();
+  });
+
+  it('올리면 파일을 멱등 키와 함께 보내고, 성공·실패 기준과 사유를 창 안에 남긴다', async () => {
+    const { requests, user } = renderScreen([
+      importRoute(() =>
+        jsonResponse({
+          succeeded: 1,
+          failed: [
+            {
+              index: 2,
+              key: 'P-BAD',
+              errors: [
+                { scope: 'field', code: 'INVALID', message: '엑셀 4행: 없는 코드입니다: EA2' },
+              ],
+            },
+          ],
+        }),
+      ),
+      planListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+
+    expect(await within(dialog).findByText(t.import.succeeded(1))).toBeInTheDocument();
+    expect(within(dialog).getByText(t.import.failed(1))).toBeInTheDocument();
+    expect(within(dialog).getByText('P-BAD')).toBeInTheDocument();
+    expect(within(dialog).getByText('엑셀 4행: 없는 코드입니다: EA2')).toBeInTheDocument();
+
+    const posts = requestsTo(requests, IMPORT_PATH);
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    expect(posts[0]?.body).toContain('name="file"');
+  });
+
+  it('여러 파일을 차례로 하나씩, 파일마다 새 멱등 키로 올리고 결과를 파일별로 남긴다', async () => {
+    let call = 0;
+    const { requests, user } = renderScreen([
+      importRoute(() => {
+        call += 1;
+        return call === 1
+          ? jsonResponse({ succeeded: 2, failed: [] })
+          : jsonResponse(
+              {
+                errors: [
+                  {
+                    scope: 'screen',
+                    code: 'INVALID',
+                    message: '엑셀 파일을 열 수 없습니다. .xlsx 파일인지 확인하세요.',
+                  },
+                ],
+              },
+              { status: 400 },
+            );
+      }),
+      planListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), [
+      new File(['a'], 'A.xlsx'),
+      new File(['b'], 'B.xlsx'),
+    ]);
+    expect(within(dialog).getByText(t.import.fileCount(2))).toBeInTheDocument();
+
+    // 잘못 고른 파일 하나만 뺄 수 있다.
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), [
+      new File(['a'], 'A.xlsx'),
+      new File(['x'], 'WRONG.xlsx'),
+      new File(['b'], 'B.xlsx'),
+    ]);
+    await user.click(
+      within(dialog).getByRole('button', { name: t.import.removeFile('WRONG.xlsx') }),
+    );
+    expect(within(dialog).queryByText('WRONG.xlsx')).not.toBeInTheDocument();
+    expect(within(dialog).getByText(t.import.fileCount(2))).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+
+    const first = await within(dialog).findByRole('region', { name: 'A.xlsx' });
+    expect(within(first).getByText(t.import.succeeded(2))).toBeInTheDocument();
+    const second = await within(dialog).findByRole('region', { name: 'B.xlsx' });
+    expect(
+      within(second).getByText('엑셀 파일을 열 수 없습니다. .xlsx 파일인지 확인하세요.'),
+    ).toBeInTheDocument();
+
+    const keys = requestsTo(requests, IMPORT_PATH).map((r) => r.headers.get('Idempotency-Key'));
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
+  it('파일을 읽을 수 없으면 창을 닫지 않고 사유를 배너로 낸다', async () => {
+    const { user } = renderScreen([
+      importRoute(() =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: 'INVALID',
+                message: '엑셀 파일을 열 수 없습니다. .xlsx 파일인지 확인하세요.',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+      planListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+
+    expect(
+      await within(dialog).findByText('엑셀 파일을 열 수 없습니다. .xlsx 파일인지 확인하세요.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.import.title })).toBeInTheDocument();
   });
 });
 
@@ -945,6 +1098,94 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     expect(screen.getByRole('combobox', { name: '라우팅' })).not.toHaveTextContent(
       'SYN-ROUTE-01 · Rev 3',
     );
+  });
+
+  /*
+   * 품목 목록은 한 쪽만 받는다 — 지정된 품목이 첫 쪽에 없으면 그 품목만 상세로 불러 이름을 낸다.
+   * omf-all-around#200: 품목이 많은 DB에서 지정된 품목이 「알 수 없음」으로 보였다.
+   */
+  it('지정된 품목이 선택 목록에 없으면 품목 상세로 이름을 채운다', async () => {
+    const { requests } = renderScreen(
+      [
+        planListRoute(),
+        planDetailRoute({ ...inspectionPlanFixtures[0]!, itemId: 5099 }),
+        ...lookupRoutes(),
+        {
+          match: (request) => isGet(request, '/mdm/items/5099'),
+          respond: () =>
+            jsonResponse({
+              item: {
+                itemId: 5099,
+                itemCode: 'SYN-ITEM-99',
+                itemName: '합성 품목 Z',
+                itemTypeCode: 'PRODUCT',
+                baseUomId: 41,
+                lotControlled: true,
+                serialControlTypeCode: 'NONE',
+                shelfLifeDays: null,
+                inspectionRequired: true,
+                fifoPolicyCode: 'FIFO',
+                negativeStockAllowed: false,
+                storageConditionCode: null,
+                openedShelfLifeHours: null,
+                isActive: true,
+              },
+            }),
+        },
+      ],
+      '?plan=3001',
+    );
+
+    /* 기본 정보 폼은 「기본 정보 수정」 창 안에 있다(#196). */
+    await awaitPlanForm();
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: '품목' })).toHaveTextContent(
+        'SYN-ITEM-99 · 합성 품목 Z',
+      );
+    });
+    expect(requestsTo(requests, '/mdm/items/5099')).toHaveLength(1);
+  });
+
+  it('지정된 품목이 선택 목록에 있으면 품목 상세를 부르지 않는다', async () => {
+    const { requests } = renderSelectedPlan();
+
+    await awaitPlanForm();
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: '품목' })).toHaveTextContent(
+        'SYN-ITEM-01 · 합성 품목 A',
+      );
+    });
+    /* 목록 · 상세 머리의 품목 이름이 한 번 부른다 — 폼은 같은 키를 써서 더 부르지 않는다(#196). */
+    expect(
+      requests.filter((request) => request.url.pathname === '/mdm/items/5001'),
+    ).toHaveLength(1);
+  });
+
+  it('지정된 품목이 없으면(404) 알 수 없음으로 낸다', async () => {
+    renderScreen(
+      [
+        planListRoute(),
+        planDetailRoute({ ...inspectionPlanFixtures[0]!, itemId: 5099 }),
+        ...lookupRoutes(),
+        {
+          match: (request) => isGet(request, '/mdm/items/5099'),
+          respond: () => jsonResponse({ message: '' }, { status: 404 }),
+        },
+      ],
+      '?plan=3001',
+    );
+
+    await awaitPlanForm();
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: '품목' })).toHaveTextContent(
+        messages.common.reference.unknown,
+      );
+    });
+    expect(
+      within(planForm()).queryByText(
+        '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
+      ),
+    ).not.toBeInTheDocument();
   });
 
   /* 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다. */

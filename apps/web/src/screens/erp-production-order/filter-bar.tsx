@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from 'react';
 
 import { ItemPickerDialog } from '../../patterns/item-picker';
 import type { ErpProductionOrderFilters } from './filters';
+import { ProgressFilterField } from './progress';
 import { useItemNames } from './lookups';
 import type { SelectOption } from './types';
 
@@ -93,6 +94,7 @@ export interface ErpProductionOrderFilterBarProps {
 /**
  * 조건 줄. 고치는 동안은 초안(`draft`)에만 담고 「조회」를 눌러야 주소로 간다 —
  * 칸 하나를 바꿀 때마다 조회가 나가면 기간을 다 고르기도 전에 엉뚱한 결과가 뜬다.
+ * 진행 단추만은 누르는 즉시 건다 — 걸린 조건에 진행만 바꿔 얹고, 고치던 초안은 그대로 둔다.
  */
 export const ErpProductionOrderFilterBar = ({
   appliedFilters,
@@ -102,9 +104,12 @@ export const ErpProductionOrderFilterBar = ({
 }: ErpProductionOrderFilterBarProps) => {
   const [draft, setDraft] = useState(appliedFilters);
   const reasonId = useId();
-  const { q, item, status, from, to } = appliedFilters;
-  /* 주소가 바뀌면(뒤로가기·초기화) 초안도 따라간다. */
-  useEffect(() => setDraft({ q, item, status, from, to }), [q, item, status, from, to]);
+  const { q, item, status, from, to, progress } = appliedFilters;
+  /* 주소가 바뀌면(뒤로가기·초기화) 초안도 따라간다. 진행은 초안을 거치지 않아 따라가지 않는다. */
+  useEffect(
+    () => setDraft((current) => ({ ...current, q, item, status, from, to })),
+    [q, item, status, from, to],
+  );
 
   const reversed = draft.from !== '' && draft.to !== '' && draft.from > draft.to;
   const update = <K extends keyof ErpProductionOrderFilters>(
@@ -112,7 +117,7 @@ export const ErpProductionOrderFilterBar = ({
     value: ErpProductionOrderFilters[K],
   ) => setDraft((current) => ({ ...current, [key]: value }));
   const search = (): void => {
-    if (!reversed) onSearch(draft);
+    if (!reversed) onSearch({ ...draft, progress });
   };
 
   return (
@@ -143,6 +148,10 @@ export const ErpProductionOrderFilterBar = ({
         onChange={(event) => update('q', event.target.value)}
         onSearch={search}
         clearLabel={messages.common.clear}
+      />
+      <ProgressFilterField
+        value={progress}
+        onChange={(next) => onSearch({ ...appliedFilters, progress: next })}
       />
       <div className="field-cell field-cell-unlabeled">
         {reversed && (

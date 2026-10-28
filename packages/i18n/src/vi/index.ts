@@ -50,6 +50,8 @@ import { inboundSchedule } from './inbound-schedule';
 import { inboundVariance } from './inbound-variance';
 import { inspectionResultInsights } from './inspection-result-insights';
 import { inspectionStandard } from './inspection-standard';
+import { erpInbound } from './erp-inbound';
+import { erpOutbound } from './erp-outbound';
 import { integrationSync } from './integration-sync';
 import { erpBom } from './erp-bom';
 import { erpEmployee } from './erp-employee';
@@ -92,6 +94,7 @@ import { inspectionDocuments } from './inspection-documents';
 import { inspectionHistory } from './inspection-history';
 import { fourMInputs } from './four-m-inputs';
 import { lotGenealogy } from './lot-genealogy';
+import { lotTrace } from './lot-trace';
 import { pqcInspectionRegister } from './pqc-inspection-register';
 import { inspectionLevel } from './inspection-level';
 import { inspectionSheet } from './inspection-sheet';
@@ -204,6 +207,8 @@ export const vi: Translated<Messages> = {
   inboundVariance,
   inspectionResultInsights,
   inspectionStandard,
+  erpInbound,
+  erpOutbound,
   integrationSync,
   erpBom,
   erpEmployee,
@@ -245,6 +250,7 @@ export const vi: Translated<Messages> = {
   inspectionHistory,
   fourMInputs,
   lotGenealogy,
+  lotTrace,
   pqcInspectionRegister,
   inspectionLevel,
   inspectionSheet,

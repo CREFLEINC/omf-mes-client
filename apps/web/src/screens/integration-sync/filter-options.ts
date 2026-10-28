@@ -18,7 +18,6 @@ import type { IntegrationMessageRow } from './types';
 export const PLACEHOLDER_STATUS_CODES: readonly string[] = [];
 export const PLACEHOLDER_INTERFACE_CODES: readonly string[] = [];
 export const PLACEHOLDER_DIRECTION_CODES = ['INBOUND', 'OUTBOUND'] as const;
-export const PLACEHOLDER_TARGET_TYPE_CODES: readonly string[] = [];
 
 /** 한 필드의 값 목록을 뽑는다. 빈 값은 버리고 문자열 오름차순으로 낸다. */
 export const distinctValues = (

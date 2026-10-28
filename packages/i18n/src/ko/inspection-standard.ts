@@ -38,7 +38,6 @@ export const inspectionStandard = {
     removeItem: (displayNo: number): string => `${String(displayNo)}번 항목 삭제`,
   },
   actionReasons: {
-    excelUploadUnavailable: '엑셀 양식 확정 후 사용할 수 있습니다.',
     /*
      * 계약의 라우팅 조회가 품목을 필수 쿼리로 둔다 — 품목을 비운 「전 품목 공통 기준」에는
      * 고를 수 있는 라우팅 자체가 없다. 값을 고를 수 없는 칸을 활성으로 두면
@@ -148,6 +147,36 @@ export const inspectionStandard = {
     confirmed: '버전을 확정했습니다.',
     obsoleted: '버전을 폐기했습니다.',
     discarded: '작성중 버전을 취소했습니다.',
+  },
+  /** 엑셀 올리기 창(#199). 툴 엑셀 올리기와 같이 «올리기 전에» 되돌리지 않음을 말한다. */
+  import: {
+    title: '검사기준 엑셀 올리기',
+    partialWarningTitle: '올리기는 통째로 되돌리지 않습니다',
+    partialWarning:
+      '기준코드별로 반영됩니다. 성공한 기준은 그대로 등록되고 실패한 기준만 돌아옵니다. 파일을 먼저 확인하세요.',
+    draftNote:
+      '올리면 기준코드마다 작성중 버전이 생깁니다. 이미 있는 기준은 최신 확정 버전에서 새 버전을 만들고 엑셀 항목으로 채웁니다. 확정은 화면에서 직접 하세요.',
+    columnsNote:
+      '첫 시트 첫 줄을 머리글로 읽습니다. 필요한 열: 기준코드·항목코드·항목명(필수), 기준명·검사유형·품목코드·공정코드, 유효시작일·샘플링방식·샘플비율·AQL·합격판정개수·불합격판정개수·검사주기, 순서·데이터유형·단위·목표값·하한·상한·측정횟수·검사방법·필수·자동판정. 고객사 검사기준서(TCKT) 파일도 그대로 올릴 수 있습니다 — 기준서 한 장이 기준 하나가 됩니다.',
+    fileLabel: '검사기준 엑셀 파일(.xlsx, 여러 개 가능)',
+    filePlaceholder: '파일 고르기',
+    fileNone: '고른 파일이 없습니다.',
+    fileRequired: '올릴 파일을 먼저 고르세요.',
+    fileCount: (count: number): string => `파일 ${String(count)}개를 골랐습니다.`,
+    removeFile: (name: string): string => `${name} 빼기`,
+    progress: (done: number, total: number): string =>
+      `${String(total)}개 중 ${String(done)}개를 처리했습니다. 창을 닫지 마세요.`,
+    submit: '올리기',
+    resultTitle: '올리기 결과',
+    succeeded: (count: number): string => `기준 ${String(count)}건을 반영했습니다.`,
+    noneSucceeded: '반영된 기준이 없습니다.',
+    failed: (count: number): string => `기준 ${String(count)}건이 실패했습니다.`,
+    allSucceeded: '실패한 기준이 없습니다.',
+    fields: {
+      key: '기준코드',
+      reason: '사유',
+    },
+    keyUnknown: '기준코드 없음',
   },
   filters: {
     searchLabel: '검사 기준 검색',
