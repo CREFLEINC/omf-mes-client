@@ -6488,7 +6488,7 @@ export interface paths {
     put?: never;
     /**
      * 버전 확정
-     * @description 작성중 → 확정. 이후 in-place 수정은 불가하며 변경은 신규 버전으로만 한다. 검사 항목이 1건 이상이어야 한다(위반 시 400, code=LINE_REQUIRED). 샘플링 방식인데 샘플 비율(%)이 없으면 400(code=REQUIRED, field=samplingRatio) — 엑셀 올리기가 비율 없이 만든 작성중 버전이다(P-140). 상태≠작성중이면 400(code=STATE_LOCKED). 근거: W-06-02 §5-1 「확정」 · 공유계약 B-2
+     * @description 작성중 → 확정. 이후 in-place 수정은 불가하며 변경은 신규 버전으로만 한다. 검사 항목이 1건 이상이어야 한다(위반 시 400, code=LINE_REQUIRED). 샘플링 방식인데 샘플 비율(%)·샘플 개수가 둘 다 없으면 400(code=REQUIRED, field=samplingRatio) — 엑셀 올리기가 비워 둔 작성중 버전이다(P-140·P-141). 상태≠작성중이면 400(code=STATE_LOCKED). 근거: W-06-02 §5-1 「확정」 · 공유계약 B-2
      */
     post: {
       parameters: {
@@ -41095,10 +41095,15 @@ export interface components {
       statusCode: string;
       /**
        * Format: double
-       * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 실제 검사 «수량»은 검사 시점에 로트 크기로 환산되는 파생값이라 여기서 받지 않는다.
+       * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 샘플링 방식이면 샘플 개수(samplingQty)와 둘 중 하나만 지정한다(P-141).
        * @example 30
        */
       samplingRatio?: number | null;
+      /**
+       * @description 샘플 개수. 샘플링 방식이면 샘플 비율(%)과 둘 중 하나만 지정한다 — 1 이상 정수. 검사 수량은 이 개수이되 로트(지시) 수량보다 크면 그 수량이다. 전수검사에는 넣지 않는다.
+       * @example 5
+       */
+      samplingQty?: number | null;
     };
     /** @description 검사기준 버전 최초 등록(버전 1) 요청 — 기준에 버전이 하나도 없을 때만 쓴다. planVersion 은 서버가 항상 1로, statusCode 는 항상 작성중으로 채운다. 근거: W-06-02 §4-B·§5-1 */
     InspectionPlanVersionCreate: {
@@ -41142,10 +41147,15 @@ export interface components {
       frequencyIntervalUomCode?: string | null;
       /**
        * Format: double
-       * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 실제 검사 «수량»은 검사 시점에 로트 크기로 환산되는 파생값이라 여기서 받지 않는다.
+       * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 샘플링 방식이면 샘플 개수(samplingQty)와 둘 중 하나만 지정한다(P-141).
        * @example 30
        */
       samplingRatio?: number | null;
+      /**
+       * @description 샘플 개수. 샘플링 방식이면 샘플 비율(%)과 둘 중 하나만 지정한다 — 1 이상 정수. 검사 수량은 이 개수이되 로트(지시) 수량보다 크면 그 수량이다. 전수검사에는 넣지 않는다.
+       * @example 5
+       */
+      samplingQty?: number | null;
     };
     /** @description 검사기준 버전 수정 요청. 상태=작성중일 때만 허용한다. inspectionPlanId·planVersion·statusCode 는 이 요청에 포함하지 않는다. 근거: W-06-02 §4-B·§5-4 */
     InspectionPlanVersionUpdate: {
@@ -41184,10 +41194,15 @@ export interface components {
       frequencyIntervalUomCode?: string | null;
       /**
        * Format: double
-       * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 실제 검사 «수량»은 검사 시점에 로트 크기로 환산되는 파생값이라 여기서 받지 않는다.
+       * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 샘플링 방식이면 샘플 개수(samplingQty)와 둘 중 하나만 지정한다(P-141).
        * @example 30
        */
       samplingRatio?: number | null;
+      /**
+       * @description 샘플 개수. 샘플링 방식이면 샘플 비율(%)과 둘 중 하나만 지정한다 — 1 이상 정수. 검사 수량은 이 개수이되 로트(지시) 수량보다 크면 그 수량이다. 전수검사에는 넣지 않는다.
+       * @example 5
+       */
+      samplingQty?: number | null;
     };
     InspectionPlanVersionDetailResponse: {
       inspectionPlanVersion: components['schemas']['InspectionPlanVersion'];
