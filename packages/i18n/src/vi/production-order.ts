@@ -74,6 +74,13 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
       LINE_UNKNOWN: 'Cần chỉ định dây chuyền sản xuất',
       PLAN_NOT_CONFIRMED: 'Cần chốt kế hoạch sản xuất',
       QTY_REMAINING: 'Cần lập kế hoạch cho số lượng còn lại',
+      AUTO_PLAN_RERUN_NEEDED: 'Cần chạy lại kế hoạch tự động',
+    },
+    worklistReasons: {
+      NO_LIVE_WORK_ORDER: 'Cần triển khai lại W/O',
+      WORK_ORDER_LINE_MISSING: 'Cần chỉ định dây chuyền sản xuất cho W/O',
+      WORK_ORDER_LOCATION_MISSING: 'Cần chỉ định vị trí mặc định cho W/O',
+      LINE_PLANT_MISMATCH: 'Cần đổi dây chuyền sản xuất của W/O',
     },
   },
   autoPlan: {

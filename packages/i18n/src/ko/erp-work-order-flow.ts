@@ -13,15 +13,15 @@
 const SCREEN_NAME = '작업지시 목록';
 
 /**
- * 처리 상태 이름. 조건 칩, 행 상태 칩이 같은 이름을 쓴다(C-17 잠정 규칙: 서버 자동 계획 결과).
+ * 처리 상태 이름. 키는 서버 칩 판정(`worklistState`)이다. 조건 칩, 행 상태 칩이 같은 이름을 쓴다(C-17).
  * 칩 이름은 여기만 고치면 바뀐다. 빈 목록 제목(`list.emptyNeedsReviewTitle`)은 문장이라 따로 적었으니 함께 고친다.
- * 「배포 대기」는 계획을 채운 건이다. 그중 W/O 생산 라인이 없어 배포할 수 없는 건은 사유 칩이 따로 말한다.
  */
 const status = {
-  NOT_PLANNED: '계획 전',
-  NEEDS_REVIEW: '조치 필요',
-  DONE: '배포 대기',
+  BEFORE_PLAN: '계획 전',
+  ACTION_REQUIRED: '조치 필요',
+  RELEASE_PENDING: '배포 대기',
   RELEASED: '배포 완료',
+  CANCELLED: '취소',
 } as const;
 
 /** 처리 화면 단계 이름. 사유 칩 도움말이 고칠 단계를 이 이름으로 말한다. */
@@ -40,20 +40,27 @@ const reasons = {
   LINE_UNKNOWN: '생산 라인 지정 필요',
   PLAN_NOT_CONFIRMED: '생산계획 확정 필요',
   QTY_REMAINING: '남은 수량 계획 필요',
-  ASSIGNMENT_INCOMPLETE: 'W/O 생산 라인 지정 필요',
+  AUTO_PLAN_RERUN_NEEDED: '자동 계획 다시 실행 필요',
+  NO_LIVE_WORK_ORDER: 'W/O 다시 전개 필요',
+  WORK_ORDER_LINE_MISSING: 'W/O 생산 라인 지정 필요',
+  WORK_ORDER_LOCATION_MISSING: 'W/O 기본 위치 지정 필요',
+  LINE_PLANT_MISMATCH: 'W/O 생산 라인 변경 필요',
 } as const;
 
 /**
  * 사유 칩 도움말에 넣는 수와 수량. 화면이 아는 것만 채운다. 작업함은 행마다 부르지 않으므로(C-15 2) 계획 수량을 모른다.
- * 수량은 부르는 쪽이 표시 형식으로 바꿔 넘긴다.
+ * 수량은 부르는 쪽이 표시 형식으로 바꿔 넘긴다. `workOrderCount`는 그 사유에 걸린 배포 전 W/O 수다(서버가 준다).
  */
 export interface ReasonDetail {
   orderQty?: string;
   plannedQty?: string;
   uom?: string;
-  pendingWorkOrders?: number;
-  lineMissingWorkOrders?: number;
+  workOrderCount?: number;
 }
+
+/** 「배포 전 W/O N건」. 수를 모르면 「배포 전 W/O 가운데 일부」로 말한다. */
+const pendingWorkOrders = (count: number | undefined): string =>
+  count === undefined ? '배포 전 W/O 가운데 일부' : `배포 전 W/O ${String(count)}건`;
 
 export const erpWorkOrderFlow = {
   title: SCREEN_NAME,
@@ -63,14 +70,16 @@ export const erpWorkOrderFlow = {
   counts: {
     label: '처리 상태',
     all: (count: number): string => `전체 ${String(count)}건`,
-    needsReview: (count: number): string => `${status.NEEDS_REVIEW} ${String(count)}건`,
-    done: (count: number): string => `${status.DONE} ${String(count)}건`,
+    actionRequired: (count: number): string => `${status.ACTION_REQUIRED} ${String(count)}건`,
+    releasePending: (count: number): string => `${status.RELEASE_PENDING} ${String(count)}건`,
   },
 
   status,
   reasons: {
     ...reasons,
     more: (count: number): string => `외 ${String(count)}`,
+    /** 화면이 모르는 사유 코드. 빈 칩을 그리지 않고 코드를 보인다. */
+    unknown: (code: string): string => `${status.ACTION_REQUIRED}(${code})`,
   },
   /** 사유 칩 도움말(툴팁). 무엇이 잘못됐고 어디서 고치는지 말한다. */
   reasonHelp: {
@@ -90,10 +99,18 @@ export const erpWorkOrderFlow = {
       orderQty !== undefined && plannedQty !== undefined
         ? `주문 ${`${orderQty} ${uom}`.trim()} 중 ${`${plannedQty} ${uom}`.trim()}만 계획되었습니다. ${steps.plan} 단계에서 남은 수량을 계획해야 합니다.`
         : `확정한 계획 수량이 주문 수량보다 적습니다. ${steps.plan} 단계에서 남은 수량을 계획해야 합니다.`,
-    ASSIGNMENT_INCOMPLETE: ({ pendingWorkOrders, lineMissingWorkOrders }: ReasonDetail): string =>
-      pendingWorkOrders !== undefined && lineMissingWorkOrders !== undefined
-        ? `배포 전 W/O ${String(pendingWorkOrders)}건 중 ${String(lineMissingWorkOrders)}건에 생산 라인이 없습니다. ${steps.assign} 단계에서 생산 라인을 지정해야 합니다.`
-        : `배포 전 W/O 가운데 생산 라인이 없는 것이 있습니다. ${steps.assign} 단계에서 생산 라인을 지정해야 합니다.`,
+    AUTO_PLAN_RERUN_NEEDED: (): string =>
+      '기준정보가 갖춰졌거나 자동 계획이 실패했습니다. 처리 화면 오른쪽 위 [자동 계획 다시 실행]을 눌러야 합니다.',
+    NO_LIVE_WORK_ORDER: (): string =>
+      `확정한 계획에 W/O가 없거나 모두 취소되었습니다. ${steps.plan} 단계에서 계획을 다시 전개하거나 계획을 추가해야 합니다.`,
+    WORK_ORDER_LINE_MISSING: ({ workOrderCount }: ReasonDetail): string =>
+      `${pendingWorkOrders(workOrderCount)}에 생산 라인이 없습니다. ${steps.assign} 단계에서 생산 라인을 지정해야 합니다.`,
+    WORK_ORDER_LOCATION_MISSING: ({ workOrderCount }: ReasonDetail): string =>
+      `${pendingWorkOrders(workOrderCount)}에 기본 WIP 위치, 기본 완제품 위치, 기본 스크랩 위치 가운데 빈 것이 있습니다. ${steps.assign} 단계에서 기본 위치를 지정해야 합니다.`,
+    LINE_PLANT_MISMATCH: ({ workOrderCount }: ReasonDetail): string =>
+      `${pendingWorkOrders(workOrderCount)}의 생산 라인이 이 ERP W/O와 다른 공장의 라인입니다. ${steps.assign} 단계에서 이 공장의 생산 라인으로 바꿔야 합니다.`,
+    /** 화면이 모르는 사유 코드. */
+    unknown: (): string => '처리 화면을 열어 남은 일을 확인해야 합니다.',
   },
 
   filters: {
@@ -117,26 +134,19 @@ export const erpWorkOrderFlow = {
       itemName: '품목명',
       orderQty: '주문 수량',
       dueDate: '납기일',
-      pendingWorkOrders: '배포 전 W/O',
       status: '처리 상태',
       reasons: '필요한 조치',
       open: '이동',
     },
-    pendingWorkOrders: (pending: number, total: number): string =>
-      `${String(pending)} / ${String(total)}`,
     openRow: (orderNo: string): string => `${orderNo} 처리 화면 열기`,
     checkRow: (orderNo: string): string => `${orderNo} 선택`,
     loading: 'ERP W/O 목록 불러오는 중',
     loadFailed: 'ERP W/O 목록을 불러오지 못했습니다',
     loadFailedDescription: '잠시 후 다시 조회하세요.',
-    readinessFailed: `배포 전 W/O를 불러오지 못해 「${reasons.ASSIGNMENT_INCOMPLETE}」 사유를 표시하지 못했습니다. 다시 조회하세요.`,
-    readinessTruncated:
-      '배포 전 W/O가 너무 많아 일부만 받았습니다. 받지 못한 ERP W/O는 배포 전 W/O 수를 「확인 불가」로 표시합니다.',
-    pendingUnknown: '확인 불가',
     emptyTitle: '조건에 맞는 ERP W/O가 없습니다',
     emptyDescription: '조회 조건을 바꿔 다시 조회하세요.',
     emptyNeedsReviewTitle: '조치가 필요한 ERP W/O가 없습니다',
-    emptyNeedsReviewDescription: `「${status.DONE}」 건은 그 조건에서 골라 일괄 배포하세요.`,
+    emptyNeedsReviewDescription: `「${status.RELEASE_PENDING}」 건은 그 조건에서 골라 일괄 배포하세요.`,
   },
 
   bulk: {

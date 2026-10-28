@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, ProductionOrderForward } from '@omf-mes/api-client';
 
 /**
  * W-02-06 화면 슬라이스의 계약.
@@ -9,7 +9,7 @@ import type { components } from '@omf-mes/api-client';
  * 이 파일은 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-type ProductionOrderResponse = components['schemas']['ProductionOrder'];
+type ProductionOrderResponse = ProductionOrderForward;
 type ProductionOrderChangeResponse = components['schemas']['ProductionOrderChange'];
 type ChangedFieldResponse = components['schemas']['ProductionOrderChangedField'];
 type WorkOrderResponse = components['schemas']['WorkOrder'];

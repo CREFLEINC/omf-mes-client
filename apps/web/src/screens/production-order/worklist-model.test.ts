@@ -1,43 +1,62 @@
 import { describe, expect, it } from 'vitest';
 
-import { deriveWorklistState, REASON_STEP, toReleaseBacklog } from './worklist-model';
+import { deriveWorklistState, REASON_STEP } from './worklist-model';
 
-const order = (autoPlan: { status: 'DONE' | 'NEEDS_REVIEW'; reasons: string[] } | null) => ({
+const order = (
+  worklistState: string | null,
+  autoPlan: { status: 'DONE' | 'NEEDS_REVIEW'; reasons: string[] } | null,
+  worklistReasons: { code: string; workOrderCount: number }[] = [],
+) => ({
   statusCode: 'RECEIVED',
   autoPlan: autoPlan as never,
+  worklistState: worklistState as never,
+  worklistReasons: worklistReasons as never,
 });
 
-describe('작업함 처리 상태(C-17 잠정 규칙)', () => {
-  it('행 상태는 조건, 머리 건수와 같은 기준인 서버 자동 계획 결과다', () => {
-    expect(deriveWorklistState(order(null), undefined)).toEqual({
-      state: 'NOT_PLANNED',
+describe('작업함 처리 상태(C-17)', () => {
+  it('행 상태는 서버 칩 판정(worklistState) 그대로다', () => {
+    expect(deriveWorklistState(order('BEFORE_PLAN', null)).state).toBe('BEFORE_PLAN');
+    expect(deriveWorklistState(order('RELEASE_PENDING', { status: 'DONE', reasons: [] }))).toEqual({
+      state: 'RELEASE_PENDING',
       reasons: [],
     });
+    expect(deriveWorklistState(order('RELEASED', { status: 'DONE', reasons: [] })).state).toBe(
+      'RELEASED',
+    );
+    expect(deriveWorklistState(order('CANCELLED', null)).state).toBe('CANCELLED');
+  });
+
+  it('조치 필요의 사유는 자동 계획 확인 필요면 autoPlan.reasons, 자동 계획이 끝났으면 worklistReasons다', () => {
     expect(
       deriveWorklistState(
-        order({ status: 'NEEDS_REVIEW', reasons: ['LINE_UNKNOWN', 'BOM_MISSING'] }),
-        undefined,
+        order('ACTION_REQUIRED', { status: 'NEEDS_REVIEW', reasons: ['AUTO_PLAN_RERUN_NEEDED'] }),
       ),
-    ).toEqual({ state: 'NEEDS_REVIEW', reasons: ['LINE_UNKNOWN', 'BOM_MISSING'] });
+    ).toEqual({ state: 'ACTION_REQUIRED', reasons: [{ code: 'AUTO_PLAN_RERUN_NEEDED' }] });
+    expect(
+      deriveWorklistState(
+        order('ACTION_REQUIRED', { status: 'DONE', reasons: [] }, [
+          { code: 'WORK_ORDER_LINE_MISSING', workOrderCount: 2 },
+          { code: 'WORK_ORDER_LOCATION_MISSING', workOrderCount: 1 },
+        ]),
+      ),
+    ).toEqual({
+      state: 'ACTION_REQUIRED',
+      reasons: [
+        { code: 'WORK_ORDER_LINE_MISSING', workOrderCount: 2 },
+        { code: 'WORK_ORDER_LOCATION_MISSING', workOrderCount: 1 },
+      ],
+    });
   });
 
-  it('배포 대기여도 상태는 그대로 두고 배포 막힘은 사유 칩으로만 보인다', () => {
+  it('worklistState를 싣지 않는 서버에서는 자동 계획 결과로 가른다', () => {
+    expect(deriveWorklistState(order(null, null)).state).toBe('BEFORE_PLAN');
     expect(
-      deriveWorklistState(order({ status: 'DONE', reasons: [] }), { pending: 3, blocked: 2 }),
-    ).toEqual({
-      state: 'DONE',
-      reasons: ['ASSIGNMENT_INCOMPLETE'],
-    });
-    expect(
-      deriveWorklistState(order({ status: 'DONE', reasons: [] }), { pending: 3, blocked: 0 }),
-    ).toEqual({
-      state: 'DONE',
-      reasons: [],
-    });
-  });
-
-  it('취소된 ERP W/O는 취소로 보인다', () => {
-    expect(deriveWorklistState({ ...order(null), statusCode: 'CANCELLED' }, undefined).state).toBe(
+      deriveWorklistState(order(null, { status: 'NEEDS_REVIEW', reasons: ['BOM_MISSING'] })),
+    ).toEqual({ state: 'ACTION_REQUIRED', reasons: [{ code: 'BOM_MISSING' }] });
+    expect(deriveWorklistState(order(null, { status: 'DONE', reasons: [] })).state).toBe(
+      'RELEASE_PENDING',
+    );
+    expect(deriveWorklistState({ ...order(null, null), statusCode: 'CANCELLED' }).state).toBe(
       'CANCELLED',
     );
   });
@@ -45,15 +64,10 @@ describe('작업함 처리 상태(C-17 잠정 규칙)', () => {
   it('사유가 가리키는 단계(구성안 대응표)', () => {
     expect(REASON_STEP.BOM_MISSING).toBe('master');
     expect(REASON_STEP.PLAN_NOT_CONFIRMED).toBe('plan');
-    expect(REASON_STEP.ASSIGNMENT_INCOMPLETE).toBe('assign');
-  });
-
-  it('W/O 목록을 ERP W/O별로 센다', () => {
-    const map = toReleaseBacklog(
-      [{ productionOrderId: 1 }, { productionOrderId: 1 }, { productionOrderId: 2 }],
-      [{ productionOrderId: 1 }],
-    );
-    expect(map.get(1)).toEqual({ pending: 2, blocked: 1 });
-    expect(map.get(2)).toEqual({ pending: 1, blocked: 0 });
+    expect(REASON_STEP.AUTO_PLAN_RERUN_NEEDED).toBe('plan');
+    expect(REASON_STEP.NO_LIVE_WORK_ORDER).toBe('plan');
+    expect(REASON_STEP.WORK_ORDER_LINE_MISSING).toBe('assign');
+    expect(REASON_STEP.WORK_ORDER_LOCATION_MISSING).toBe('assign');
+    expect(REASON_STEP.LINE_PLANT_MISMATCH).toBe('assign');
   });
 });

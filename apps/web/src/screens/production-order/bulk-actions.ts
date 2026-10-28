@@ -14,6 +14,7 @@ import {
   unreleasedWorkOrdersOf,
   type ReleaseForecast,
 } from './release-runner';
+import { reasonLabel } from './worklist-chips';
 import { processPath } from './worklist-filters';
 
 const t = messages.erpWorkOrderFlow;
@@ -152,11 +153,7 @@ export const useWorklistBulk = () => {
         if (result.outcome === 'CONFIRMED') return outcomeOf(target, 'processed', null);
         if (result.outcome === 'DRAFT')
           return outcomeOf(target, 'skipped', t.bulk.outcomeReasons.draft);
-        return outcomeOf(
-          target,
-          'skipped',
-          result.reasons.map((reason) => t.reasons[reason]).join(', '),
-        );
+        return outcomeOf(target, 'skipped', result.reasons.map(reasonLabel).join(', '));
       } catch (cause) {
         return outcomeOf(target, 'failed', apiErrorText(toApiError(cause)));
       }

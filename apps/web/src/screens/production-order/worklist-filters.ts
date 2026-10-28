@@ -1,10 +1,10 @@
 import { PAGE_SIZES } from '../../patterns/page-nav';
-import { DEFAULT_AUTO_PLAN_FILTER, type AutoPlanFilter } from './worklist-model';
+import { DEFAULT_WORKLIST_FILTER, type WorklistFilter } from './worklist-model';
 import type { WorklistFilters } from './worklist-queries';
 
 /** 작업함 조회 조건과 주소 쿼리. 기본 조건(조치 필요, 1쪽, 20건)은 주소에 쓰지 않는다. */
 export const DEFAULT_WORKLIST_FILTERS: WorklistFilters = {
-  autoPlan: DEFAULT_AUTO_PLAN_FILTER,
+  state: DEFAULT_WORKLIST_FILTER,
   q: '',
   dueFrom: '',
   dueTo: '',
@@ -21,15 +21,23 @@ const positive = (value: string | null): number | null => {
   return Number.isSafeInteger(parsed) ? parsed : null;
 };
 
-const autoPlanOf = (value: string | null): AutoPlanFilter =>
-  value === 'DONE' || value === 'NEEDS_REVIEW' || value === 'ALL'
-    ? value
-    : DEFAULT_AUTO_PLAN_FILTER;
+/** 옛 주소의 `autoPlan` 값. 옛 W-02-04 주소와 저장해 둔 작업함 조건이 이 값을 쓴다. */
+const LEGACY_AUTO_PLAN: Record<string, WorklistFilter> = {
+  NEEDS_REVIEW: 'ACTION_REQUIRED',
+  DONE: 'RELEASE_PENDING',
+  ALL: 'ALL',
+};
+
+const stateOf = (params: URLSearchParams): WorklistFilter => {
+  const value = params.get('state');
+  if (value === 'ALL' || value === 'ACTION_REQUIRED' || value === 'RELEASE_PENDING') return value;
+  return LEGACY_AUTO_PLAN[params.get('autoPlan') ?? ''] ?? DEFAULT_WORKLIST_FILTER;
+};
 
 export const readWorklistFilters = (params: URLSearchParams): WorklistFilters => {
   const size = positive(params.get('size'));
   return {
-    autoPlan: autoPlanOf(params.get('autoPlan')),
+    state: stateOf(params),
     q: (params.get('q') ?? '').trim(),
     dueFrom: datePattern.test(params.get('dueFrom') ?? '') ? (params.get('dueFrom') ?? '') : '',
     dueTo: datePattern.test(params.get('dueTo') ?? '') ? (params.get('dueTo') ?? '') : '',
@@ -41,7 +49,7 @@ export const readWorklistFilters = (params: URLSearchParams): WorklistFilters =>
 
 export const toWorklistSearchParams = (filters: WorklistFilters): URLSearchParams => {
   const next = new URLSearchParams();
-  if (filters.autoPlan !== DEFAULT_AUTO_PLAN_FILTER) next.set('autoPlan', filters.autoPlan);
+  if (filters.state !== DEFAULT_WORKLIST_FILTER) next.set('state', filters.state);
   if (filters.q !== '') next.set('q', filters.q);
   if (filters.dueFrom !== '') next.set('dueFrom', filters.dueFrom);
   if (filters.dueTo !== '') next.set('dueTo', filters.dueTo);

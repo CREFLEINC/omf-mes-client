@@ -39,7 +39,7 @@ import { useItemCodeNames } from '../item-lookups';
 import { useAutoPlanMutation } from '../mutations';
 import { useUomReferenceLookup } from '../reference-lookups';
 import { apiErrorText, invalidateFlow, releaseWorkOrder } from '../release-runner';
-import { ProcessStateChip, ReasonChips } from '../worklist-chips';
+import { ProcessStateChip, ReasonChips, reasonLabel } from '../worklist-chips';
 import {
   processPath,
   readWorklistFilters,
@@ -295,28 +295,26 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
         variant: result.outcome === 'CONFIRMED' ? 'success' : 'warning',
         description:
           result.outcome === 'NOT_PLANNED'
-            ? `${tp.autoPlanResult.NOT_PLANNED}: ${result.reasons.map((reason) => t.reasons[reason]).join(', ')}`
+            ? `${tp.autoPlanResult.NOT_PLANNED}: ${result.reasons.map(reasonLabel).join(', ')}`
             : tp.autoPlanResult[result.outcome],
       });
       setStep(null);
     },
   });
 
-  const derivedBase = deriveWorklistState(order, {
-    pending: unreleased.data?.length ?? 0,
-    blocked: blockedIds?.size ?? 0,
-  });
+  const derivedBase = deriveWorklistState(order);
   /* 서버 사유에 없어도 데이터로 보이는 막힘(작성 중 계획의 생산 라인 없음)을 앞에 둔다(T-W-C 처음 여는 단계와 같은 판단). */
   const derived =
-    derivedBase.state === 'NEEDS_REVIEW' &&
+    derivedBase.state === 'ACTION_REQUIRED' &&
+    order.autoPlan?.status === 'NEEDS_REVIEW' &&
     unconfirmedRows.some((row) => row.draft.plannedLineId === '') &&
-    !derivedBase.reasons.includes('LINE_UNKNOWN')
-      ? { ...derivedBase, reasons: ['LINE_UNKNOWN' as const, ...derivedBase.reasons] }
+    !derivedBase.reasons.some((reason) => reason.code === 'LINE_UNKNOWN')
+      ? { ...derivedBase, reasons: [{ code: 'LINE_UNKNOWN' }, ...derivedBase.reasons] }
       : derivedBase;
   const lastSearch = useMemo(() => rememberedWorklistSearch(), []);
   const lastFilters = useMemo(() => readWorklistFilters(lastSearch), [lastSearch]);
   const nextList = useWorklist(lastFilters);
-  const needsReviewCount = useWorklistCount('NEEDS_REVIEW');
+  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED');
   const nextOrder = (() => {
     const items = nextList.data?.items ?? [];
     const index = items.findIndex((entry) => entry.productionOrderNo === order.productionOrderNo);
@@ -470,7 +468,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
 
   const guidance =
     step === 'done'
-      ? { text: tp.remaining.remainingOrders(needsReviewCount.data ?? 0), todo: false }
+      ? { text: tp.remaining.remainingOrders(actionRequiredCount.data ?? 0), todo: false }
       : step === 'release'
         ? releaseGuidance
         : judgments[step].guidance;
@@ -708,7 +706,10 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   })();
 
   const dirtyPlans = step === 'plan' && planDirty;
-  const canRerun = derived.state === 'NEEDS_REVIEW' || derived.state === 'NOT_PLANNED';
+  /* 자동 계획을 다시 돌릴 일은 계획 전이거나 자동 계획이 확인 필요로 끝난 건이다. W/O에서 막힌 건은 4M 배정에서 고친다. */
+  const canRerun =
+    order.statusCode !== 'CANCELLED' &&
+    (order.autoPlan === null || order.autoPlan.status === 'NEEDS_REVIEW');
 
   return (
     <ProcessPage
@@ -717,10 +718,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       title={order.productionOrderNo}
       badges={
         <>
-          <ProcessStateChip
-            state={derived.state}
-            cancelledName={codeNames.productionOrderStatus('CANCELLED')}
-          />
+          <ProcessStateChip state={derived.state} />
           <ReasonChips
             reasons={derived.reasons}
             detail={{
@@ -729,8 +727,6 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
                 confirmedPlans.reduce((sum, entry) => sum + entry.plannedQty, 0),
               ),
               uom: uomLabelOf(order.uomId),
-              pendingWorkOrders: unreleased.data?.length,
-              lineMissingWorkOrders: blockedIds?.size,
             }}
           />
         </>

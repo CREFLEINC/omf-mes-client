@@ -68,6 +68,14 @@ export const productionOrder = {
       LINE_UNKNOWN: erpWorkOrderFlow.reasons.LINE_UNKNOWN,
       PLAN_NOT_CONFIRMED: erpWorkOrderFlow.reasons.PLAN_NOT_CONFIRMED,
       QTY_REMAINING: erpWorkOrderFlow.reasons.QTY_REMAINING,
+      AUTO_PLAN_RERUN_NEEDED: erpWorkOrderFlow.reasons.AUTO_PLAN_RERUN_NEEDED,
+    },
+    /** 조치 필요인데 자동 계획은 끝난 까닭(서버 `worklistReasons`). */
+    worklistReasons: {
+      NO_LIVE_WORK_ORDER: erpWorkOrderFlow.reasons.NO_LIVE_WORK_ORDER,
+      WORK_ORDER_LINE_MISSING: erpWorkOrderFlow.reasons.WORK_ORDER_LINE_MISSING,
+      WORK_ORDER_LOCATION_MISSING: erpWorkOrderFlow.reasons.WORK_ORDER_LOCATION_MISSING,
+      LINE_PLANT_MISMATCH: erpWorkOrderFlow.reasons.LINE_PLANT_MISMATCH,
     },
   },
   autoPlan: {

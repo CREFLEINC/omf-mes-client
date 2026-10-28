@@ -1,4 +1,9 @@
-import type { components, WorkOrderForward, WorkSessionForward } from '@omf-mes/api-client';
+import type {
+  components,
+  ProductionOrderForward,
+  WorkOrderForward,
+  WorkSessionForward,
+} from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -12,7 +17,7 @@ type PreIssuedLotSummary = components['schemas']['PreIssuedLotSummary'];
 type PageMeta = components['schemas']['PageMeta'];
 type OutboundItemSetting = components['schemas']['OutboundItemSetting'];
 type CodeValue = components['schemas']['CodeValue'];
-type ProductionOrder = components['schemas']['ProductionOrder'];
+type ProductionOrder = ProductionOrderForward;
 type ProductionResult = components['schemas']['ProductionResult'];
 type Worker = components['schemas']['Worker'];
 export type WorkOrderCloseDailyResults = components['schemas']['WorkOrderDailyResults'];
