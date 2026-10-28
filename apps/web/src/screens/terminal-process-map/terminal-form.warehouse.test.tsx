@@ -55,7 +55,7 @@ const noCodes: TerminalCodeNames = (() => {
 })();
 
 describe('W-CO-06 단말 창고(피처 002)', () => {
-  it('US5-1 창고 선택지는 단말 공장의 사용 중인 창고만이고 공장 질의를 싣는다', async () => {
+  it('US5-1 US5-2 창고 선택지는 단말 공장의 사용 중인 창고만이고 공장 질의를 싣는다', async () => {
     const queries: URL[] = [];
     const { result } = renderHookWithProviders(() => useWarehouseOptions('1'), {
       fetch: createStubFetch([
