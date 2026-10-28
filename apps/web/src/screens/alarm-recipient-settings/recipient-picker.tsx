@@ -17,6 +17,8 @@ import { CANDIDATE_PAGE_SIZE, useRecipientCandidates } from './queries';
 import type { Candidate } from './types';
 
 const t = messages.alarmRecipientSettings;
+/** 상한 안내는 상한을 쓰는 화면(W-CO-14)의 문구다 — W-CO-11 은 상한을 주지 않는다. */
+const limitText = messages.handoverAlertSettings.picker;
 
 export interface RecipientPickerProps {
   open: boolean;
@@ -24,6 +26,11 @@ export interface RecipientPickerProps {
   existingIds: ReadonlySet<number>;
   onAdd: (picked: Candidate[]) => void;
   onClose: () => void;
+  /**
+   * 수신자 최대 인원(이미 있는 사람 포함, D-11). 차면 남은 체크가 잠긴다.
+   * 주지 않으면 상한이 없고 지금과 같다(W-CO-11).
+   */
+  max?: number;
 }
 
 /**
@@ -35,7 +42,13 @@ export interface RecipientPickerProps {
  * ⭐ **고른 사람은 쪽을 넘겨도 남는다** — 이름순으로 흩어진 사람을 한 번에 더할 수 있어야 한다.
  * 그래서 고른 것을 쪽 단위가 아니라 번호 → 후보로 든다.
  */
-export const RecipientPicker = ({ open, existingIds, onAdd, onClose }: RecipientPickerProps) => {
+export const RecipientPicker = ({
+  open,
+  existingIds,
+  onAdd,
+  onClose,
+  max,
+}: RecipientPickerProps) => {
   const [keyword, setKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [page, setPage] = useState(1);
@@ -54,6 +67,8 @@ export const RecipientPicker = ({ open, existingIds, onAdd, onClose }: Recipient
   const rows = candidates.data?.items ?? [];
   const total = candidates.data?.page.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / CANDIDATE_PAGE_SIZE));
+  /* 더 고를 수 있는 사람 수. 상한이 없으면 null. */
+  const slotsLeft = max === undefined ? null : Math.max(0, max - existingIds.size - picked.size);
 
   const applySearch = (value: string): void => {
     setAppliedKeyword(value.trim());
@@ -82,7 +97,9 @@ export const RecipientPicker = ({ open, existingIds, onAdd, onClose }: Recipient
         <Checkbox
           aria-label={t.values.selectRow(row.userName)}
           checked={existingIds.has(row.appUserId) || picked.has(row.appUserId)}
-          disabled={existingIds.has(row.appUserId)}
+          disabled={
+            existingIds.has(row.appUserId) || (slotsLeft === 0 && !picked.has(row.appUserId))
+          }
           onChange={(event) => toggle(row, event.target.checked)}
         />
       ),
@@ -187,6 +204,11 @@ export const RecipientPicker = ({ open, existingIds, onAdd, onClose }: Recipient
           clearLabel={messages.common.clear}
           fullWidth
         />
+        {slotsLeft !== null && max !== undefined && (
+          <AlertBanner variant={slotsLeft > 0 ? 'info' : 'warning'}>
+            {slotsLeft > 0 ? limitText.slotsLeft(slotsLeft, max) : limitText.full(max)}
+          </AlertBanner>
+        )}
         {body}
         {totalPages > 1 && (
           <div className="alarm-picker-pages">

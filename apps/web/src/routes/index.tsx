@@ -5,6 +5,7 @@ import { GuestOnly, RequireSession } from '../patterns/session';
 import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { AlarmRecipientSettingsScreen } from '../screens/alarm-recipient-settings/screen';
+import { HandoverAlertSettingsScreen } from '../screens/handover-alert-settings/screen';
 import { ZaloConnectionScreen } from '../screens/zalo-connection/screen';
 import { DispatchHistoryScreen } from '../screens/dispatch-history/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
@@ -575,6 +576,8 @@ export const appRouter = createBrowserRouter([
       { path: 'notification/center', element: <NotificationCenterScreen /> },
       /* W-CO-11 — 알림 이벤트별 수신 규칙을 관리한다. 이벤트 목록 자체는 계약이 소유한다. */
       { path: 'notification/recipient-settings', element: <AlarmRecipientSettingsScreen /> },
+      /* W-CO-14 — 인계 작업 종류별 담당자(피처 002). 종류 목록은 계약이 소유한다. */
+      { path: 'notification/handover-settings', element: <HandoverAlertSettingsScreen /> },
       /* W-CO-12 — Zalo 연결 정보(001). */
       { path: 'notification/zalo-connection', element: <ZaloConnectionScreen /> },
       /* W-CO-13 — 이벤트 처리 결과와 Zalo 발송 이력(001). */
