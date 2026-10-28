@@ -6,7 +6,11 @@
 export const erpCommonCode = {
   title: '공통코드 조회 (ERP)',
   breadcrumbRoot: '시스템 관리',
-  readOnlyNote: 'ERP 에서 받은 공통코드입니다. MES 에서는 고칠 수 없습니다.',
+  /** 두 구획 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
+  splitter: '끌어서 그룹·코드값 폭 조절',
+  /** 막대 위쪽 끝의 단추 — 그룹 목록을 왼쪽으로 완전히 접고 편다. */
+  listCollapse: 'ERP 코드 그룹 접기',
+  listExpand: 'ERP 코드 그룹 펼치기',
   groups: {
     label: 'ERP 코드 그룹',
     groupCode: '그룹 코드',
@@ -19,11 +23,9 @@ export const erpCommonCode = {
   values: {
     label: '코드값',
     labelOf: (groupCode: string): string => `${groupCode} 코드값`,
-    selectHint: '그룹을 고르면 코드값이 보입니다.',
+    selectHint: '코드 그룹을 고르세요',
     code: '코드',
     codeName: '코드명',
-    nameKo: '한국어 명칭',
-    nameVi: '베트남어 명칭',
     displayOrder: '표시 순서',
     effectiveFrom: '적용 시작',
     effectiveTo: '적용 종료',
@@ -55,10 +57,7 @@ export const erpCommonCode = {
   },
   empty: {
     noGroupsTitle: 'ERP 에서 받은 코드 그룹이 없습니다',
-    noGroupsDescription: 'ERP 연동이 아직 공통코드를 보내지 않았습니다.',
     noValuesTitle: '조건에 맞는 코드값이 없습니다',
-    noValuesDescription: '검색어를 바꾸거나 미사용 포함을 켜 보세요.',
     beyondLastTitle: '이 쪽에는 코드값이 없습니다',
-    beyondLastDescription: '첫 쪽으로 돌아가 다시 보세요.',
   },
 } as const;

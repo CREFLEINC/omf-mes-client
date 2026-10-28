@@ -761,6 +761,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: '연동 현황·이력',
             labelVi: 'Tình trạng · lịch sử liên kết',
           },
+          /*
+           * ERP 받기 표의 상태와 「지금 읽기」 — 연동 현황·이력 위에 접혀 있던 것을 탭으로 뗐다(사용자 지시 2026-10-27).
+           * 설계 화면 코드가 따로 없어 묶음 화면(연동 현황·이력 W-06-10)의 코드를 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
+           */
+          { to: '/master-data/erp-inbound', label: 'ERP 수신', labelVi: 'Nhận ERP' },
+          /* 송신 항목과 그 송신 예정 목록(W-06-12) — 받기(아래 ERP 데이터 탭)와 갈라 연동 현황 바로 뒤. */
+          { to: '/master-data/erp-outbound', label: 'ERP 송신', labelVi: 'Gửi ERP' },
           { to: '/system/erp-data/common-codes', label: '공통코드', labelVi: 'Mã chung' },
           { to: '/system/erp-data/employees', label: '사원', labelVi: 'Nhân viên' },
           { to: '/system/erp-data/items', label: '품목', labelVi: 'Mặt hàng' },

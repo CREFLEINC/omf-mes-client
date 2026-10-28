@@ -5,7 +5,10 @@ import type { Translated } from './translated';
 export const erpItem: Translated<typeof ko.erpItem> = {
   title: 'Tra cứu mặt hàng (ERP)',
   breadcrumbRoot: 'Quản trị hệ thống',
-  readOnlyNote: 'Thông tin nhận từ ERP. Không thể sửa trong MES.',
+  panes: {
+    filter: 'Điều kiện tra cứu',
+    list: 'Danh sách mặt hàng',
+  },
   fields: {
     q: 'Mã·Tên mặt hàng',
     itemType: 'Loại mặt hàng',
@@ -22,11 +25,6 @@ export const erpItem: Translated<typeof ko.erpItem> = {
     erpItemGroupCode: 'Nhóm mặt hàng',
     baseUom: 'Đơn vị cơ sở',
     isActive: 'Sử dụng',
-  },
-  detail: {
-    label: 'Chi tiết mặt hàng',
-    openAction: (itemCode: string): string => `Xem chi tiết ${itemCode}`,
-    selectHint: 'Chọn một mặt hàng trong danh sách để xem chi tiết.',
   },
   values: {
     empty: '—',
@@ -46,12 +44,9 @@ export const erpItem: Translated<typeof ko.erpItem> = {
   },
   loading: {
     list: 'Đang tải danh sách mặt hàng',
-    detail: 'Đang tải chi tiết mặt hàng',
   },
   empty: {
     noResultTitle: 'Không có mặt hàng phù hợp',
-    noResultDescription: 'Hãy đổi từ khóa, loại mặt hàng hoặc bật bao gồm ngừng sử dụng.',
     beyondLastTitle: 'Trang này không có mặt hàng',
-    beyondLastDescription: 'Hãy quay về trang đầu.',
   },
 };

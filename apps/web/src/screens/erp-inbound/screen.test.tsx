@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { syncTable } from './sync-table-fixtures';
-import { SyncTablePanel } from './sync-table-panel';
+import { ErpInboundScreen } from './screen';
 import { SYNC_POLL_MS, type SyncTableStatus, type SyncTablesResult } from './sync-tables';
 
 const STATUS_PATH = '/integration/erp-sync/tables';
@@ -66,16 +66,16 @@ const createServer = (
 
 const result = (items: SyncTableStatus[], enabled = true): SyncTablesResult => ({ enabled, items });
 
-const panel = () => within(screen.getByRole('region', { name: 'ERP 받기 상태' }));
+const panel = () => within(screen.getByRole('region', { name: 'ERP 수신 표' }));
 
 afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('SyncTablePanel — 표시', () => {
+describe('ErpInboundScreen — 표시', () => {
   it('표마다 한 줄 — 상태·마지막 읽음·건수·다음 예정·지금 읽기를 낸다', async () => {
     const { fetch } = createServer([result([ITEM, BOM])]);
-    renderWithProviders(<SyncTablePanel />, { fetch });
+    renderWithProviders(<ErpInboundScreen />, { fetch });
 
     expect(await panel().findByText('품목')).toBeInTheDocument();
     const headers = panel()
@@ -92,6 +92,8 @@ describe('SyncTablePanel — 표시', () => {
       '다음 예정',
       '지금 읽기',
     ]);
+    // 주기 설명 같은 안내문은 두지 않는다(사용자 지시 2026-10-27).
+    expect(screen.queryByText(/12시간/)).toBeNull();
 
     const itemRow = panel().getByRole('row', { name: /^품목/ });
     // 시각은 공장 시각(UTC+7)으로 낸다.
@@ -105,7 +107,7 @@ describe('SyncTablePanel — 표시', () => {
 
   it('ERP 연동이 꺼진 서버면 버튼을 잠그고 사유를 보이는 글자로 낸다', async () => {
     const { fetch } = createServer([result([ITEM], false)]);
-    renderWithProviders(<SyncTablePanel />, { fetch });
+    renderWithProviders(<ErpInboundScreen />, { fetch });
 
     const button = await panel().findByRole('button', { name: '품목 지금 읽기' });
     expect(button).toBeDisabled();
@@ -116,7 +118,7 @@ describe('SyncTablePanel — 표시', () => {
 
   it('상태를 읽지 못하면 표 대신 오류 배너와 다시 시도가 나온다', async () => {
     const fetch: StubFetch = async () => jsonResponse({ message: '' }, { status: 500 });
-    renderWithProviders(<SyncTablePanel />, { fetch });
+    renderWithProviders(<ErpInboundScreen />, { fetch });
 
     expect(await panel().findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
     expect(panel().getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
@@ -124,7 +126,25 @@ describe('SyncTablePanel — 표시', () => {
   });
 });
 
-describe('SyncTablePanel — 지금 읽기', () => {
+describe('ErpInboundScreen — 탭 막대 칩', () => {
+  it.each([
+    [true, '수신 켜짐'],
+    [false, '수신 꺼짐'],
+  ])('수신 켜짐(%s)을 탭 막대 오른쪽 칩으로 낸다', async (enabled, label) => {
+    const { fetch } = createServer([result([ITEM], enabled)]);
+    renderWithProviders(
+      <>
+        <div id="hub-actions" data-testid="hub-actions" />
+        <ErpInboundScreen />
+      </>,
+      { fetch },
+    );
+
+    expect(await within(screen.getByTestId('hub-actions')).findByText(label)).toBeInTheDocument();
+  });
+});
+
+describe('ErpInboundScreen — 지금 읽기', () => {
   it('누르면 그 표의 경로로 요청하고, 다 읽을 때까지 다시 읽은 뒤 결과를 알린다', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const requested = syncTable({ requestedAt: '2026-10-20T08:00:00Z' });
@@ -144,7 +164,7 @@ describe('SyncTablePanel — 지금 읽기', () => {
       result([running]),
       result([finished]),
     ]);
-    renderWithProviders(<SyncTablePanel />, { fetch });
+    renderWithProviders(<ErpInboundScreen />, { fetch });
     const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTime(ms) });
 
     await user.click(await panel().findByRole('button', { name: '품목 지금 읽기' }));
@@ -179,7 +199,7 @@ describe('SyncTablePanel — 지금 읽기', () => {
   it('바쁜 표가 없으면 목록을 다시 읽지 않는다', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { fetch, requests } = createServer([result([ITEM, BOM])]);
-    renderWithProviders(<SyncTablePanel />, { fetch });
+    renderWithProviders(<ErpInboundScreen />, { fetch });
     await panel().findByText('품목');
 
     await act(async () => {
@@ -192,7 +212,7 @@ describe('SyncTablePanel — 지금 읽기', () => {
   it('들어왔을 때 이미 도는 표가 있으면 그것을 따라 다시 읽는다', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { fetch, requests } = createServer([result([syncTable({ running: true })])]);
-    renderWithProviders(<SyncTablePanel />, { fetch });
+    renderWithProviders(<ErpInboundScreen />, { fetch });
     await panel().findByText('읽는 중');
 
     await act(async () => {
@@ -219,7 +239,7 @@ describe('SyncTablePanel — 지금 읽기', () => {
         { status: 400 },
       ),
     );
-    renderWithProviders(<SyncTablePanel />, { fetch });
+    renderWithProviders(<ErpInboundScreen />, { fetch });
     const user = userEvent.setup();
 
     await user.click(await panel().findByRole('button', { name: '품목 지금 읽기' }));

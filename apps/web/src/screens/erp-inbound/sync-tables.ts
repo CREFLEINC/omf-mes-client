@@ -10,7 +10,7 @@ import {
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, type ApiCallResult } from '../../patterns/request';
-import { formatDateTime } from './message-status';
+import { formatDateTime } from '../integration-sync/message-status';
 
 /**
  * ERP 받기 표 여덟의 상태와 「지금 읽기」(omf-mes-server#757 · 장부 P-81).
@@ -27,7 +27,7 @@ import { formatDateTime } from './message-status';
  * 끝을 안다 — `requestedAt` 이 비고 `lastFinishedAt` 이 바뀌면 다 읽은 것이다.
  */
 
-const t = messages.integrationSync.syncTables;
+const t = messages.erpInbound;
 
 /** 마지막으로 끝난 회차의 결과. 서버가 이 둘만 쓴다. */
 export const SYNC_RESULT = { succeeded: 'SUCCEEDED', failed: 'FAILED' } as const;

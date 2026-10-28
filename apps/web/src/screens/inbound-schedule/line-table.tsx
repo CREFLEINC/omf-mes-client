@@ -1,11 +1,4 @@
-import {
-  Button,
-  type Column,
-  EmptyState,
-  SkeletonText,
-  type SortState,
-  Table,
-} from '@crefle/web-ui';
+import { Button, type Column, EmptyState, SkeletonText, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import {
   useEffect,
@@ -16,7 +9,7 @@ import {
   type RefObject,
 } from 'react';
 
-import { useColumnWidths } from '../../patterns/column-resize';
+import { BoardTable } from '../../patterns/board-table';
 import type { ExcessEntry } from './excess-entry';
 import { lineExcessesOf } from './excess-match';
 import type { UnallocatedLine } from './excess-types';
@@ -635,7 +628,6 @@ export const LineTable = ({
       },
     },
   ];
-  const resizable = useColumnWidths('omf-mes:inbound-schedule:columns:lines', columns);
   const tableBoxRef = useRef<HTMLDivElement>(null);
 
   useMergedLotCells(
@@ -734,12 +726,15 @@ export const LineTable = ({
            * **행 어디를 눌러도 그 품목을 받기 시작한다**(PDA 의 품목 누름과 같다). 표 부품에 줄 클릭이 없어 감싼 상자가 받는다 —
            * 누른 줄의 품목코드 단추(`data-receive-line`)로 어느 줄인지 안다. 단추 · 입력칸 · 체크를 누른 것은 그쪽이 받는다.
            */}
-          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-          <div
-            ref={tableBoxRef}
-            className="wide-table po-board-table po-board-lines"
-            style={resizable.style}
-            onClick={(event) => {
+          <BoardTable
+            label={t.panes.lines}
+            className="po-board-lines"
+            widthKey="omf-mes:inbound-schedule:columns:lines"
+            boxRef={tableBoxRef}
+            columns={columns}
+            rows={tableRows}
+            getRowId={lineTableRowId}
+            onBoxClick={(event) => {
               const target = event.target as HTMLElement;
               if (target.closest('button, input, a, label, select, textarea') !== null) return;
               const marker = target
@@ -749,19 +744,11 @@ export const LineTable = ({
               const line = rows.find((each) => each.purchaseOrderLineId === id);
               if (line !== undefined) draft?.startEdit(line);
             }}
-          >
-            <Table
-              density="compact"
-              caption={<span className="erp-data-table-caption">{t.panes.lines}</span>}
-              columns={resizable.columns}
-              rows={tableRows}
-              getRowId={lineTableRowId}
-              /* 제어 정렬 — 부품은 받은 순서대로 그린다. 정렬은 위에서 라인 단위로 마쳤다(LOT 줄이 제 라인을 따라간다). */
-              sort={sort}
-              onSortChange={setSort}
-              empty={<EmptyState size="sm" title={t.empty.noLinesTitle} />}
-            />
-          </div>
+            /* 제어 정렬 — 부품은 받은 순서대로 그린다. 정렬은 위에서 라인 단위로 마쳤다(LOT 줄이 제 라인을 따라간다). */
+            sort={sort}
+            onSortChange={setSort}
+            empty={<EmptyState size="sm" title={t.empty.noLinesTitle} />}
+          />
         </>
       )}
     </>

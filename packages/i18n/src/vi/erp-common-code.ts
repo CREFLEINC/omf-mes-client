@@ -5,7 +5,9 @@ import type { Translated } from './translated';
 export const erpCommonCode: Translated<typeof ko.erpCommonCode> = {
   title: 'Tra cứu mã chung (ERP)',
   breadcrumbRoot: 'Quản trị hệ thống',
-  readOnlyNote: 'Mã chung nhận từ ERP. Không thể sửa trong MES.',
+  splitter: 'Kéo để điều chỉnh độ rộng nhóm mã·giá trị mã',
+  listCollapse: 'Thu gọn nhóm mã ERP',
+  listExpand: 'Mở nhóm mã ERP',
   groups: {
     label: 'Nhóm mã ERP',
     groupCode: 'Mã nhóm',
@@ -18,11 +20,9 @@ export const erpCommonCode: Translated<typeof ko.erpCommonCode> = {
   values: {
     label: 'Giá trị mã',
     labelOf: (groupCode: string): string => `Giá trị mã ${groupCode}`,
-    selectHint: 'Chọn một nhóm để xem giá trị mã.',
+    selectHint: 'Hãy chọn nhóm mã',
     code: 'Mã',
     codeName: 'Tên mã',
-    nameKo: 'Tên tiếng Hàn',
-    nameVi: 'Tên tiếng Việt',
     displayOrder: 'Thứ tự hiển thị',
     effectiveFrom: 'Hiệu lực từ',
     effectiveTo: 'Hiệu lực đến',
@@ -54,10 +54,7 @@ export const erpCommonCode: Translated<typeof ko.erpCommonCode> = {
   },
   empty: {
     noGroupsTitle: 'Chưa có nhóm mã nhận từ ERP',
-    noGroupsDescription: 'Liên kết ERP chưa gửi mã chung.',
     noValuesTitle: 'Không có giá trị mã phù hợp',
-    noValuesDescription: 'Hãy đổi từ khóa hoặc bật bao gồm ngừng sử dụng.',
     beyondLastTitle: 'Trang này không có giá trị mã',
-    beyondLastDescription: 'Hãy quay về trang đầu.',
   },
 };

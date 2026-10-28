@@ -98,11 +98,19 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   /* 같은 코드값 편집기를 열지만 **화면은 갈린다** — IA §3-1 「기준정보 > 품질 기준」의 독립 항목이다. */
   { path: '/master-data/judgment-code', code: 'W-06-04', name: '판정유형 코드 마스터' },
   /*
-   * ⚠ **연계(I/F) 3장 중 하나다.** 나머지 둘(`W-06-09` 연계정의 관리 · `W-06-12` 송신 I/F 정의)은
-   * 아직 화면도 메뉴도 없다 — 그 둘이 서면 코드가 헷갈리기 쉬우니 여기 적어 둔다. 이 화면은
-   * **실행 로그를 보고 실패를 재처리**하는 쪽이다.
+   * ⚠ **연계(I/F) 3장 중 하나다.** 나머지 둘은 `W-06-09` 연계정의 관리(아직 화면 없음) · `W-06-12` 송신 I/F 정의(아래
+   * 「ERP 송신」 탭)다 — 코드가 헷갈리기 쉬우니 여기 적어 둔다. 이 화면은 **실행 로그를 보고 실패를 재처리**하는 쪽이다.
    */
   { path: '/master-data/integration-sync', code: 'W-06-10', name: '연계 동기화 현황·실패 재처리' },
+  /*
+   * W-06-12 — 송신 항목(서버 `outbound-item-settings` 가 이 코드의 화면이라고 적었다)과 고른 항목의 송신 예정 목록.
+   * 항목 켜고 끄기는 아직 화면에 없다. 송신 예정은 연계 메시지 목록을 읽는다 — W-06-12 권한으로도 읽힌다(서버 #849).
+   */
+  {
+    path: '/master-data/erp-outbound',
+    code: 'W-06-12',
+    name: 'MES→ERP 송신 I/F 정의(송신 항목 · 송신 예정)',
+  },
   {
     path: '/master-data/item-extended-attrs',
     code: 'W-06-05',
@@ -292,4 +300,27 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 그래서 권한으로 감추면 안 되는 자리이기도 하다(`nav-tree.ts` 가 같은 사실을 적어 두었다).
    */
   { path: '/system/password-change', code: 'W-CO-10', name: '비밀번호 변경' },
+];
+
+/** 묶음 화면 하나를 탭으로 나눈 자리 — 탭 주소가 **묶음 화면의 코드를 그대로 따른다.** */
+export interface WebScreenTab {
+  /** 탭 주소(`NavEntry.tabs[].to`). */
+  path: string;
+  /** 이 탭이 속한 화면의 주소 — `WEB_SCREENS` 에 있어야 한다. 권한 판정은 그 화면의 코드로 한다. */
+  ownerPath: string;
+}
+
+/**
+ * **설계 화면 하나를 탭 여럿으로 나눴을 때** 뗀 탭의 주소. 설계 화면 코드가 따로 없으므로 새 코드를 지어 붙이지
+ * 않고(코드는 서버 권한과 1:1 이다) 묶음 화면의 코드를 따른다. `WEB_SCREENS` 에 넣지 않는 것은 「주소마다 코드가
+ * 하나, 코드마다 화면이 하나」라는 그쪽 불변식을 지키기 위해서다.
+ *
+ * ⛔ **설계 화면 코드가 있는 탭은 여기 두지 않는다**(ERP 송신 `W-06-12` · ERP 데이터 탭 `W-06-16~23` 처럼 위에 둔다).
+ */
+export const WEB_SCREEN_TABS: readonly WebScreenTab[] = [
+  /*
+   * ERP 수신 — 연동 현황·이력(W-06-10) 위에 접혀 있던 ERP 받기 상태를 탭으로 뗐다(사용자 지시 2026-10-27). 서버도
+   * 그 기능을 「ERP 연동 현황·이력 탭(W-06-10)」의 일로 적었고 「지금 읽기」를 W-06-10 오퍼레이션에 묶었다.
+   */
+  { path: '/master-data/erp-inbound', ownerPath: '/master-data/integration-sync' },
 ];

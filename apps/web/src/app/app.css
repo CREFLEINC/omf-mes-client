@@ -7303,6 +7303,14 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 두 표(server #762) — 열별 폭의 도출 표는 order-table.tsx · line-table.tsx 에 있다.
  * 열 폭을 끌어 바꾸면 최소 폭이 그만큼 따라간다(`--col-grow` · `--col-floor`, patterns/column-resize.tsx).
  */
+/*
+ * 입고 관리 짜임의 표(patterns/board-table.tsx) — 최소 폭은 표마다(`--board-table-min`), 열을 넓힌 만큼 따라간다.
+ * 아래 화면별 규칙(발주 목록 · 라인 표)이 뒤에 서서 이긴다.
+ */
+.wide-table.board-table table {
+  min-width: max(var(--board-table-min, 38rem) + var(--col-grow, 0px), var(--col-floor, 0px));
+}
+
 .wide-table.po-board-orders table {
   min-width: max(38rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
@@ -7841,13 +7849,23 @@ body.po-board-resizing.is-row-resize {
   color: var(--semantic-warning);
 }
 
-/* 발주 줄은 어디를 눌러도 고른다(order-table.tsx). */
-.po-board-orders tbody tr {
+/* 줄은 어디를 눌러도 고른다(patterns/board-table.tsx `pick` — 발주 목록 · ERP 송신 항목 · 연계 메시지). */
+.board-table-pickable tbody tr {
   cursor: pointer;
 }
 
-.po-board-orders tbody tr:hover > td {
+.board-table-pickable tbody tr:hover > td {
   background: var(--surface-container);
+}
+
+/* 고르는 단추는 다른 칸과 같은 글자다 — 줄 전체가 누르는 자리라 링크처럼 꾸밀 까닭이 없다(발주 목록과 같다). */
+.board-table .board-table-pick {
+  color: inherit;
+  text-decoration: none;
+}
+
+.board-table .board-table-pick:hover {
+  background: none;
 }
 
 /*
@@ -7856,8 +7874,8 @@ body.po-board-resizing.is-row-resize {
  * 올렸다 떼도 남도록 hover 보다 우선한다(사용자 지시 2026-10-21 「선택 행 하이라이트 유지」).
  */
 /* 붉은 계열(primary)은 쓰지 않는다 — 문제가 있다는 뜻으로 읽힌다(사용자 지시 2026-10-21). 정보 파랑이다. */
-.po-board-orders tbody tr:has([aria-current='true']) > td,
-.po-board-orders tbody tr:has([aria-current='true']):hover > td,
+.board-table tbody tr:has(.board-table-pick[aria-current='true']) > td,
+.board-table tbody tr:has(.board-table-pick[aria-current='true']):hover > td,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td,
 .iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
@@ -7866,7 +7884,7 @@ body.po-board-resizing.is-row-resize {
 }
 
 /* 품질 승인 처리 목록(#186)도 같은 표시다 — 고른 요청이 입하 예정 조회의 고른 발주처럼 보인다. */
-.po-board-orders tbody tr:has([aria-current='true']) > td:first-child,
+.board-table tbody tr:has(.board-table-pick[aria-current='true']) > td:first-child,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child,
 .iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
@@ -8242,6 +8260,207 @@ th:hover > .col-drag {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+/*
+ * 연동 현황·이력 · 화면 틀(patterns/board-frame.tsx) — 위 상자(받기 상태 · 조회 조건 · 조회 실패 안내)는 구획 사이
+ * 간격만 둔다.
+ */
+.integration-sync-above,
+.board-frame-above {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+/* 조건 줄 아래 한 줄 안내(ERP 데이터 탭의 「고칠 수 없습니다」) — 상자 폭을 다 써 한 줄로 선다. */
+.po-board-filter > .field-note {
+  max-width: none;
+}
+
+/*
+ * 상세 구획 안의 둘째 묶음(전표 라인) — 앞 사실 칸과 표제 사이를 둔다. 라인 표가 구획보다 넓으면 표만 가로로 넘긴다 —
+ * 구획이 통째로 옆으로 밀리면 위 사실 칸까지 화면 밖으로 나간다.
+ */
+.board-frame-sub {
+  margin-top: var(--space-5);
+}
+
+.board-frame-sub > .po-board-table {
+  overflow-x: auto;
+}
+
+/*
+ * ERP BOM 하이라키(erp-bom/screen.tsx `BomTreeCell`) — 단계마다 들여 쓰고, 펼치고 접는 단추 자리를 줄마다 같은 폭으로
+ * 둔다(단추가 없는 줄도 글자가 같은 세로선에 선다). 넘치는 이름은 `OneLine` 이 말줄임한다.
+ */
+.bom-tree-cell {
+  /*
+   * 연결선이 줄 사이에서 끊기지 않게 칸 여백(위 8px · 아래 8px + 테두리 1px — 디자인 시스템 표의 촘촘한 밀도)만큼
+   * 칸 밖으로 늘린다. 표의 밀도가 바뀌면 이 둘을 함께 고친다.
+   */
+  --bom-tree-bleed-top: 8px;
+  --bom-tree-bleed-bottom: 9px;
+  --bom-tree-line: 1px dotted var(--outline);
+
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 24px;
+}
+
+/* 단계 한 칸(24px) — 세로선은 칸 가운데, 위 단계의 펼침 단추 가운데와 같은 세로선이다. */
+.bom-tree-rail {
+  position: relative;
+  flex: 0 0 24px;
+  align-self: stretch;
+}
+
+.bom-tree-rail[data-line='pass']::before,
+.bom-tree-rail[data-line='tee']::before,
+.bom-tree-rail[data-line='elbow']::before {
+  content: '';
+  position: absolute;
+  top: calc(-1 * var(--bom-tree-bleed-top));
+  bottom: calc(-1 * var(--bom-tree-bleed-bottom));
+  left: 11px;
+  border-left: var(--bom-tree-line);
+}
+
+/* └ — 마지막 형제는 세로선이 이 줄 가운데에서 멈춘다. */
+.bom-tree-rail[data-line='elbow']::before {
+  bottom: 50%;
+}
+
+/* ├ · └ 의 가로선 — 이 줄의 단추 · 이름 쪽으로. */
+.bom-tree-rail[data-line='tee']::after,
+.bom-tree-rail[data-line='elbow']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 11px;
+  border-top: var(--bom-tree-line);
+}
+
+.bom-tree-toggle,
+.bom-tree-spacer {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+/* 하위 구성이 없는 줄 — 가지선을 이름 앞까지 끌어온다. */
+.bom-tree-spacer[data-branch='true']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: var(--space-1);
+  left: 0;
+  border-top: var(--bom-tree-line);
+}
+
+/* 펼친 줄 — 단추 아래에서 줄 끝까지 세로선을 내려 첫 자식의 가지선과 잇는다. */
+.bom-tree-toggle[aria-expanded='true']::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 11px;
+  height: var(--bom-tree-bleed-bottom);
+  border-left: var(--bom-tree-line);
+}
+
+.bom-tree-toggle {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+.bom-tree-toggle:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+.bom-tree-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.bom-tree-cell > .po-board-one-line {
+  flex: 0 1 auto;
+  margin-left: var(--space-1);
+}
+
+.bom-tree-note {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+/* 품목코드는 굵게(사용자 지시 2026-10-27) — 하이라키 줄 · 모품목 상세. */
+.bom-tree-code {
+  flex: 0 0 auto;
+  margin-left: var(--space-1);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+dd.bom-tree-code,
+.bom-tree-code.bom-code-cell {
+  margin-left: 0;
+}
+
+/* 모품목 상세 — 하이라키 표 위, 표와 사이를 둔다. */
+.bom-parent-facts {
+  flex: 0 0 auto;
+  margin-bottom: var(--space-3);
+}
+
+/* 목록 한 구획(상세 없음) — 나란히 설 때도 전체 폭을 쓴다. */
+@media (min-width: 1440px) {
+  .po-board-split.board-frame-single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ERP 받기 상태 머리 줄 — 제목 · 요약 · 펼치기가 한 줄이다(접힌 상태가 기본). */
+.sync-tables-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.sync-tables-head > .pane-title {
+  margin: 0;
+}
+
+.sync-tables-head > button {
+  margin-left: auto;
+}
+
+/*
+ * ERP 송신 상태 칩(erp-outbound/send-chips.tsx) — 단계 칩과 같은 간격. 연동 현황·이력에서는 묶음이 ERP 송신 탭으로 가는
+ * 링크라 밑줄 없이 칩 모양 그대로 둔다.
+ */
+.erp-send-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: inherit;
+  text-decoration: none;
+}
+
+a.erp-send-chips:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
 }
 
 /* 「입고 처리」 창 — 입고 정보 칸이 두 줄에 들어오는 폭. 입하 등록 창(88rem)보다 좁다. */
@@ -19389,7 +19608,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   background: var(--state-hover-neutral);
 }
 
-/* 고른 줄은 입하 예정 조회와 같은 파랑이다(#186 · `.po-board-orders` 규칙 곁에 함께 적었다). */
+/* 고른 줄은 입하 예정 조회와 같은 파랑이다(#186 · `.board-table` 규칙 곁에 함께 적었다). */
 
 /* 요청번호 — 한 줄, 본문색·굵게. 줄 전체가 누르는 자리라(#186) 요청번호만 따로 누를 곳처럼 보이지 않게 한다. */
 .iqc-skip-approval-list .iqc-skip-approval-request-no {

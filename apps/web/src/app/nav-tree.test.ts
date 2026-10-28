@@ -268,6 +268,8 @@ describe('주 메뉴 트리', () => {
       '/equipment/tool-pm-result → schedule',
       '/equipment/downtime-summary → timelapse',
       '/master-data/integration-sync → sync_alt',
+      '/master-data/erp-inbound → sync_alt',
+      '/master-data/erp-outbound → sync_alt',
       '/system/erp-data/common-codes → sync_alt',
       '/system/erp-data/employees → sync_alt',
       '/system/erp-data/items → sync_alt',

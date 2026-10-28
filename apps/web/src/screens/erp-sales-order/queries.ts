@@ -25,6 +25,10 @@ const fetchList = async (
   client: Client,
   query: SalesOrderListQuery,
 ): Promise<SalesOrderListResult> => {
+  /*
+   * `progress` 는 서버에 들어왔지만(#851 · 장부 P-132) 계약 사본에는 아직 없다 — 리터럴로 넘기면 타입이 막아 변수로
+   * 넘긴다. 계약에 실리면 이 우회를 걷는다.
+   */
   const data = await runRequest(() => client.GET('/logistics/sales-orders', { params: { query } }));
   return { items: data.items, page: data.page };
 };

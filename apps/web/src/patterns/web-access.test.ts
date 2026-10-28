@@ -70,6 +70,12 @@ describe('toWebAccess', () => {
     it('대응표에 없는 주소는 막지 않는다', () => {
       expect(toWebAccess([]).allows('/syn/not-in-catalog')).toBe(true);
     });
+
+    /* 묶음 화면에서 뗀 탭(ERP 수신)은 그 화면(연동 현황·이력 W-06-10)의 권한을 따른다 — 모르는 주소로 늘 서지 않는다. */
+    it('뗀 탭은 묶음 화면의 코드로 판정한다', () => {
+      expect(toWebAccess(['W-06-10']).allows('/master-data/erp-inbound')).toBe(true);
+      expect(toWebAccess(['W-06-12']).allows('/master-data/erp-inbound')).toBe(false);
+    });
   });
 
   /** ⛔ 예외가 늘면 「허용된 화면만 보인다」는 말이 사실이 아니게 된다. */

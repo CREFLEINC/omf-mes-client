@@ -8,7 +8,7 @@ import { runRequest, toApiError } from '../../patterns/request';
 import type { SelectOption } from './types';
 
 /**
- * 내부 번호(FK)·코드로 이어진 값을 이름으로 푼다 — 사업부·공장·단위·품목, 그리고 상태·창고 코드.
+ * 내부 번호(FK)·코드로 이어진 값을 이름으로 푼다 — 단위·품목, 그리고 상태·창고 코드.
  *
  * **번호를 화면에 내지 않는다.** 이름을 못 찾으면 「알 수 없음」, 아직 안 왔으면 「불러오는 중」,
  * 못 받았으면 「불러오지 못함」으로 갈라 낸다 — 셋을 뭉개면 정상 값이 잘못된 값처럼 보인다.
@@ -40,53 +40,9 @@ const toLookup = (
 };
 
 export const lookupKeys = {
-  businessUnits: ['erp-production-order', 'lookup', 'business-units'] as const,
-  plants: ['erp-production-order', 'lookup', 'plants'] as const,
   uoms: ['erp-production-order', 'lookup', 'uoms'] as const,
   codes: (groupCode: string) => ['erp-production-order', 'lookup', 'codes', groupCode] as const,
   item: (itemId: number) => ['erp-production-order', 'lookup', 'item', itemId] as const,
-};
-
-/** 사업부 — 상세에만 보인다. **건을 고르기 전에는 부르지 않는다**(`enabled`). */
-export const useBusinessUnitLookup = (enabled: boolean): NameLookup => {
-  const { client } = useApiClient();
-  const query = useQuery({
-    queryKey: lookupKeys.businessUnits,
-    enabled,
-    queryFn: async () => {
-      const data = await fetchAllPages((page, size) =>
-        runRequest(() =>
-          client.GET('/mdm/business-units', {
-            params: { query: { includeInactive: true, page, size } },
-          }),
-        ),
-      );
-      return data.items.map((item) => ({
-        value: String(item.businessUnitId),
-        label: `${item.businessUnitCode} · ${item.businessUnitName}`,
-      }));
-    },
-  });
-  return toLookup(query.data, enabled && query.isPending, query.isError);
-};
-
-/** 공장 — 상세에만 보인다. **건을 고르기 전에는 부르지 않는다**(`enabled`). */
-export const usePlantLookup = (enabled: boolean): NameLookup => {
-  const { client } = useApiClient();
-  const query = useQuery({
-    queryKey: lookupKeys.plants,
-    enabled,
-    queryFn: async () => {
-      const data = await runRequest(() =>
-        client.GET('/mdm/plants', { params: { query: { includeInactive: true } } }),
-      );
-      return data.items.map((item) => ({
-        value: String(item.plantId),
-        label: `${item.plantCode} · ${item.plantName}`,
-      }));
-    },
-  });
-  return toLookup(query.data, enabled && query.isPending, query.isError);
 };
 
 /** 단위 — 목록의 「지시 수량」 칸이 수량 뒤에 붙인다. */
