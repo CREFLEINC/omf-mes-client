@@ -60,10 +60,15 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '생산 작업',
     acceptsWorkOrderId: true,
   },
-  { path: '/pop/packing-work', code: 'P-02-08', name: '생산 포장' },
+  { path: '/pop/packing-work', code: 'P-02-08', name: '생산 포장', acceptsWorkOrderId: true },
   { path: '/pop/packing-label-reprint', code: 'P-02-09', name: '포장 라벨 재출력' },
-  { path: '/pop/work-hold', code: 'P-02-10', name: '작업 중단' },
-  { path: '/pop/running-change', code: 'P-02-11', name: '러닝체인지 부품 교체' },
+  { path: '/pop/work-hold', code: 'P-02-10', name: '작업 중단', acceptsWorkOrderId: true },
+  {
+    path: '/pop/running-change',
+    code: 'P-02-11',
+    name: '러닝체인지 부품 교체',
+    acceptsWorkOrderId: true,
+  },
   { path: '/pop/emergency-work-orders', code: 'P-02-12', name: '긴급 W/O' },
   { path: '/pop/pqc-inspection', code: 'P-02-13', name: 'PQC 제품 검사' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#108) — 화면 코드는 사용자 결정으로 부여했다. */

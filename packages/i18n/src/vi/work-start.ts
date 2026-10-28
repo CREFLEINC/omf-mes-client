@@ -98,8 +98,6 @@ export const workStart: Translated<typeof ko.workStart> = {
 
     otherEquipment: (equipment: string): string =>
       `Thiết bị theo kế hoạch của lệnh này là ${equipment}. Vẫn có thể bắt đầu trên thiết bị này.`,
-
-    otherWork: 'Công việc khác',
   },
 
   actions: {
@@ -133,12 +131,6 @@ export const workStart: Translated<typeof ko.workStart> = {
     retry: 'Kiểm tra lại',
 
     offline: 'Mất kết nối nên không bắt đầu được. Khi kết nối lại, danh sách sẽ được tải lại',
-
-    holdWork: 'Tạm dừng công việc',
-    runningChange: 'Thay linh kiện',
-    pqcInspection: 'Kiểm tra PQC',
-    pqcInspectionOf: (inspectionRequestNo: string): string => `Kiểm tra PQC ${inspectionRequestNo}`,
-    packingWork: 'Đóng gói',
   },
 
   closing: {

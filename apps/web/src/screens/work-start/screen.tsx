@@ -26,7 +26,6 @@ import { SelectionCard } from './selection-card';
 import {
   fetchWorkersByNo,
   useOpenSession,
-  usePendingPqcRequests,
   useSessionWorkers,
   useTerminal,
   useUomCodes,
@@ -34,7 +33,6 @@ import {
   useWorkOrders,
   useWorkerLookup,
 } from './queries';
-import { SessionEntryActions } from './session-entry-actions';
 import { POP_TOUCH_SIZE } from './touch-spec';
 import { toSessionRequest } from './session-request';
 import { assignedAtText, terminalNow } from './terminal-clock';
@@ -211,18 +209,6 @@ export const WorkStartScreen = () => {
    *    「충돌」로만 적어 두어, 409 를 「진행 중」으로 읽으면 뜻을 지어내는 것이 된다.
    */
   const openSession = useOpenSession(selected?.workOrderId ?? null, selected !== null);
-
-  /*
-   * 고른 지시의 **끝나지 않은 PQC 검사 의뢰**(omf-all-around#42). 그 화면으로 가는 단추가
-   * 설 조건이다 — 의뢰가 없으면 PQC 대상이 아닌 지시라 단추를 내지 않는다.
-   *
-   * ⚠ **세션이 열려 있을 때만 묻는다** — 다른 진입 단추와 같은 조건에서만 서므로, 그 밖에서는
-   *   물을 이유가 없다. 지시를 훑는 동안 쪽마다 조회가 따라붙지 않게 하는 자리이기도 하다.
-   */
-  const pendingPqc = usePendingPqcRequests(
-    selected?.workOrderId ?? null,
-    selected !== null && openSession.data != null,
-  );
 
   /*
    * 함께 일하는 작업자. 열린 세션을 고른 동안은 그 세션의 지금 참여자를 넣고 빼고(즉시 반영),
@@ -406,43 +392,6 @@ export const WorkStartScreen = () => {
    */
   const goToMaterialInput = (workOrderId: number): void => {
     void navigate(`/pop/material-input?workOrderId=${String(workOrderId)}`);
-  };
-
-  /**
-   * **작업 중단(`P-02-10`)으로 보낸다**(omf-all-around#42).
-   *
-   * ⛔ **여기서도 작업지시를 주소로 넘긴다.** 중단 화면은 지시를 주소로만 받고, 못 받으면
-   *    「작업 시작 화면에서 지시를 고른 뒤 들어오세요」로 막힌다 — 그 안내가 가리키는 길이
-   *    이것이다. 설치본에는 주소창이 없어 손으로 넣을 수도 없었다.
-   */
-  const goToWorkHold = (workOrderId: number): void => {
-    void navigate(`/pop/work-hold?workOrderId=${String(workOrderId)}`);
-  };
-
-  /**
-   * **러닝체인지 부품 교체(`P-02-11`)로 보낸다**(omf-all-around#42).
-   *
-   * ⚠ 스펙 §2 의 진입은 「메인 작업 화면 안의 인라인 교체」다 — 그 화면이 이 저장소에 서면
-   *   진입을 그쪽으로 옮긴다. 그때까지 작업지시를 실어 보낼 길이 여기밖에 없다.
-   */
-  const goToRunningChange = (workOrderId: number): void => {
-    void navigate(`/pop/running-change?workOrderId=${String(workOrderId)}`);
-  };
-
-  /**
-   * **PQC 제품 검사(`P-02-13`)로 보낸다**(omf-all-around#42).
-   *
-   * ⛔ **작업지시가 아니라 «검사 의뢰»를 싣는다.** 그 화면의 진입 인자는 의뢰 하나이고
-   *    (`pqc-inspection/target.ts`), 화면 안에 대상 목록을 두지 않는다(스펙 §5-10) — 여럿이면
-   *    고르는 것은 이 화면의 몫이다.
-   */
-  const goToPqcInspection = (inspectionRequestId: number): void => {
-    void navigate(`/pop/pqc-inspection?ir=${String(inspectionRequestId)}`);
-  };
-
-  /** **포장 작업(`P-02-08`)으로 보낸다**(omf-all-around#42) — 여기도 작업지시를 주소로 받는다. */
-  const goToPackingWork = (workOrderId: number): void => {
-    void navigate(`/pop/packing-work?workOrderId=${String(workOrderId)}`);
   };
 
   const startWork = useStartWork({
@@ -855,27 +804,6 @@ export const WorkStartScreen = () => {
             }
             uomCodeOf={uomCodeOf}
           />
-
-          {/*
-           * 진행 중인 작업에서 갈 수 있는 다른 작업 화면(omf-all-around#42). 모두 작업지시를 주소로
-           * 받아야 열리므로 열린 세션이 있는 이 자리에서 길을 낸다.
-           */}
-          {isContinue && (
-            <SessionEntryActions
-              onHold={() => {
-                goToWorkHold(selected.workOrderId);
-              }}
-              onRunningChange={() => {
-                goToRunningChange(selected.workOrderId);
-              }}
-              onPacking={() => {
-                goToPackingWork(selected.workOrderId);
-              }}
-              /* 아직 못 받았거나 조회가 실패했으면 없는 것으로 둔다. 지어내지 않는다. */
-              pendingPqc={pendingPqc.data ?? []}
-              onPqcInspection={goToPqcInspection}
-            />
-          )}
         </section>
       </div>
 

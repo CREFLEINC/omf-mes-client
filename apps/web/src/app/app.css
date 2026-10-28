@@ -12856,12 +12856,6 @@ button.app-button-neutral {
   justify-self: stretch;
 }
 
-.work-start-other-work {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
 /* 함께 일하는 작업자. 한 줄에 사람을 늘어놓고 끝에 더하기 버튼을 둔다. */
 .work-start-crew-head {
   display: flex;

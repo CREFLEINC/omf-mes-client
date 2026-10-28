@@ -135,9 +135,6 @@ export const workStart = {
     /** 계획 설비가 다른 지시는 막지 않는다. 실제 설비는 세션에 기록된다. */
     otherEquipment: (equipment: string): string =>
       `이 작업지시의 계획 설비는 ${equipment}입니다. 이 설비에서 시작할 수 있습니다.`,
-
-    /** 진행 중인 작업에서 갈 수 있는 다른 작업 화면. */
-    otherWork: '다른 작업',
   },
 
   /** 하단 바 주 동작. */
@@ -178,14 +175,6 @@ export const workStart = {
 
     /** 오프라인은 큐가 아니라 거부다. */
     offline: '연결이 끊겨 작업을 시작할 수 없습니다. 연결되면 목록을 다시 불러옵니다',
-
-    /** 이미 진행 중인 세션이 있으면 새로 시작하지 않는다. 주 동작이 [작업 이어하기]로 선다. */
-    holdWork: '작업 중단',
-    runningChange: '부품 교체',
-    pqcInspection: 'PQC 검사',
-    /** 의뢰가 여럿이면 의뢰마다 버튼을 세우고 의뢰 번호를 적는다. */
-    pqcInspectionOf: (inspectionRequestNo: string): string => `PQC 검사 ${inspectionRequestNo}`,
-    packingWork: '포장 작업',
   },
 
   /**
