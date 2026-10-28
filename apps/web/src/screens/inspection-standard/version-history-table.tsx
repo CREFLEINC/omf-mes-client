@@ -1,4 +1,4 @@
-import { type Column, EmptyState, Icon, SkeletonText, Table } from '@crefle/web-ui';
+import { Chip, type Column, EmptyState, Icon, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -97,7 +97,13 @@ export const VersionHistoryTable = ({
 
   return (
     <div className="inspection-standard-history">
-      {showRange && <p className="inspection-standard-history-range">{t.history.range}</p>}
+      {showRange && (
+        <span className="inspection-standard-history-range">
+          <Chip variant="status" size="sm" status="idle">
+            {t.history.range}
+          </Chip>
+        </span>
+      )}
       <div className="inspection-queue-table inspection-standard-table-box inspection-standard-history-rows">
         <Table
           density="compact"

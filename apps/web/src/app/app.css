@@ -580,9 +580,7 @@ main > * + * {
 }
 
 .inspection-standard-history-range {
-  margin: 0;
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
+  display: inline-flex;
 }
 
 .inspection-standard-history > .inspection-standard-history-range {

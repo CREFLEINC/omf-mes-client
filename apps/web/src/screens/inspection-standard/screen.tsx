@@ -1533,7 +1533,10 @@ export const InspectionStandardScreen = () => {
             title={
               <span className="inspection-standard-dialog-title">
                 {t.history.title}
-                <span className="inspection-standard-history-range">{t.history.range}</span>
+                {/* 조회 기간은 라벨로(사용자 지시 · #196) */}
+                <Chip variant="status" size="sm" status="idle">
+                  {t.history.range}
+                </Chip>
               </span>
             }
             onClose={() => setIsHistoryOpen(false)}
