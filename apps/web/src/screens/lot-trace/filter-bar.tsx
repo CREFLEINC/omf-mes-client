@@ -1,26 +1,26 @@
-import { Button, DatePicker, Icon, Select } from '@crefle/web-ui';
+import { Button, DatePicker, Icon, SearchInput } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { ReferenceField } from '../../patterns/reference-picker';
 import type { LotTraceFilters } from './filters';
 import { validatePeriod } from './period';
-import {
-  partnerRoleOf,
-  useItemLabel,
-  useItemSource,
-  usePartnerLabel,
-  usePartnerSource,
-  useStatusCodes,
-  useWarehouseLabel,
-  useWarehouseSource,
-} from './queries';
+import { useItemLabel, useItemSource, usePartnerLabel, usePartnerSource } from './queries';
 
 const t = messages.lotTrace.filters;
 
 export type FilterDraft = Pick<
   LotTraceFilters,
-  'from' | 'to' | 'item' | 'warehouse' | 'partner' | 'status'
+  | 'from'
+  | 'to'
+  | 'item'
+  | 'materialLot'
+  | 'productLot'
+  | 'inbound'
+  | 'workOrder'
+  | 'shipment'
+  | 'supplier'
+  | 'customer'
 >;
 
 export type FilterSearchMode = 'auto' | 'manual';
@@ -36,53 +36,64 @@ const draftOf = (filters: LotTraceFilters): FilterDraft => ({
   from: filters.from,
   to: filters.to,
   item: filters.item,
-  warehouse: filters.warehouse,
-  partner: filters.partner,
-  status: filters.status,
+  materialLot: filters.materialLot,
+  productLot: filters.productLot,
+  inbound: filters.inbound,
+  workOrder: filters.workOrder,
+  shipment: filters.shipment,
+  supplier: filters.supplier,
+  customer: filters.customer,
 });
 
-type Picked = Partial<Record<'item' | 'warehouse' | 'partner', { id: string; label: string }>>;
+type TextKey = 'materialLot' | 'productLot' | 'inbound' | 'workOrder' | 'shipment';
+type PickKey = 'item' | 'supplier' | 'customer';
+type Picked = Partial<Record<PickKey, { id: string; label: string }>>;
 
 /**
- * C-6 조회 조건. 기본 줄: 기간(넓음, 필수. 「시작일 ~ 종료일」이 보통 폭에서 잘린다), 품목(보통), [상세 조건 펼치기], [초기화], [조회].
- * 상세 조건(처음엔 접힘, 걸린 조건은 버튼 옆 한 줄): 창고(보통), 공급사 또는 고객(보통, 제품입고에는 없음), 상태(좁음).
- * 구분은 페이지 머리 조건 칩이 맡는다(C-6, C-17). 기간 검증은 실행할 때 한다(C-7).
- * 조건은 고르면 바로 반영한다. 기간이 맞지 않으면 반영하지 않고 사유를 보인다. [조회]는 다시 조회하는 자리로 남는다.
+ * C-6 조회 조건. 기본 줄: 기간(넓음, 필수, 늘 보임), 품목(보통), [상세 조건 펼치기], [초기화], [조회].
+ * 상세 조건(처음엔 접힘): 자재 LOT 번호, 제품 LOT 번호, 입하번호, W/O 번호, 출하번호, 공급사, 고객.
+ * 접혀 있는데 그 안의 조건이 걸려 있으면 버튼 옆 한 줄로 알린다.
+ * 고르면 끝나는 조건(기간, 품목, 공급사, 고객)은 바로 반영한다. 글자 칸은 Enter나 칸을 떠날 때, 지우기(×)는 바로
+ * 반영한다. 기간이 맞지 않으면 반영하지 않고 기간 칸 아래 사유를 보인다(C-7). [조회]는 다시 조회하는 자리로 남는다.
  */
 export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   const [draft, setDraft] = useState<FilterDraft>(() => draftOf(applied));
   const [picked, setPicked] = useState<Picked>({});
   const [periodError, setPeriodError] = useState<string | null>(null);
-  /* 상세 조건은 늘 접힌 채 시작한다. 그 안의 조건이 걸려 있으면 버튼 옆 한 줄로 알린다. */
+  /* 상세 조건은 늘 접힌 채 시작한다. */
   const [moreOpen, setMoreOpen] = useState(false);
   const periodId = useId();
   const periodErrorId = useId();
-  const statusId = useId();
   const moreId = useId();
 
-  const { kind, from, to, item, warehouse, partner, status } = applied;
+  const appliedKey = JSON.stringify(draftOf(applied));
   useEffect(() => {
-    setDraft({ from, to, item, warehouse, partner, status });
+    setDraft(JSON.parse(appliedKey) as FilterDraft);
     setPeriodError(null);
-  }, [from, to, item, warehouse, partner, status]);
+  }, [appliedKey]);
 
-  const role = partnerRoleOf(kind);
   const itemSource = useItemSource();
-  const warehouseSource = useWarehouseSource();
-  const partnerSource = usePartnerSource(role);
-  const statusCodes = useStatusCodes(kind);
+  const supplierSource = usePartnerSource('SUPPLIER');
+  const customerSource = usePartnerSource('CUSTOMER');
   const resolvedItem = useItemLabel(draft.item);
-  const resolvedWarehouse = useWarehouseLabel(draft.warehouse);
-  const resolvedPartner = usePartnerLabel(draft.partner, role);
-  const labelOf = (key: keyof Picked, id: string, resolved: string): string =>
+  const resolvedSupplier = usePartnerLabel(draft.supplier, 'SUPPLIER');
+  const resolvedCustomer = usePartnerLabel(draft.customer, 'CUSTOMER');
+  const labelOf = (key: PickKey, id: string, resolved: string): string =>
     id === '' ? '' : picked[key]?.id === id ? (picked[key]?.label ?? '') : resolved;
+
   const hiddenConditions = [
-    warehouse !== '' ? `${t.warehouse} ${labelOf('warehouse', warehouse, resolvedWarehouse)}` : '',
-    role !== null && partner !== ''
-      ? `${role === 'SUPPLIER' ? t.supplier : t.customer} ${labelOf('partner', partner, resolvedPartner)}`
-      : '',
-    status !== '' ? `${t.status} ${statusCodes.nameOf(status)}` : '',
-  ].filter((text) => text !== '');
+    applied.materialLot === '' ? '' : `${t.materialLot} ${applied.materialLot}`,
+    applied.productLot === '' ? '' : `${t.productLot} ${applied.productLot}`,
+    applied.inbound === '' ? '' : `${t.inboundNo} ${applied.inbound}`,
+    applied.workOrder === '' ? '' : `${t.workOrderNo} ${applied.workOrder}`,
+    applied.shipment === '' ? '' : `${t.shipmentNo} ${applied.shipment}`,
+    applied.supplier === ''
+      ? ''
+      : `${t.supplier} ${labelOf('supplier', applied.supplier, resolvedSupplier)}`,
+    applied.customer === ''
+      ? ''
+      : `${t.customer} ${labelOf('customer', applied.customer, resolvedCustomer)}`,
+  ].filter((value) => value !== '');
 
   const set = (patch: Partial<FilterDraft>) => setDraft((current) => ({ ...current, ...patch }));
   const submit = () => {
@@ -97,6 +108,32 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
     setPeriodError(reason);
     if (reason === null) onSearch(next, 'auto');
   };
+  const pick = (key: PickKey, row: { id: number; code: string; name: string }) => {
+    setPicked((current) => ({
+      ...current,
+      [key]: { id: String(row.id), label: named(row.name, row.code) },
+    }));
+    commit({ [key]: String(row.id) });
+  };
+  const leave = (key: TextKey) => {
+    if (draft[key] !== applied[key]) commit({});
+  };
+
+  const textField = (key: TextKey, label: string, placeholder: string) => (
+    <div className="field-cell filter-field-md">
+      <SearchInput
+        fullWidth
+        label={label}
+        placeholder={placeholder}
+        value={draft[key]}
+        clearLabel={messages.common.clear}
+        onChange={(event) => set({ [key]: event.target.value.trim() })}
+        onSearch={submit}
+        onBlur={() => leave(key)}
+        onClear={() => commit({ [key]: '' })}
+      />
+    </div>
+  );
 
   return (
     <form
@@ -139,13 +176,7 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           label={t.item}
           valueLabel={labelOf('item', draft.item, resolvedItem)}
           source={itemSource}
-          onPick={(row) => {
-            setPicked((current) => ({
-              ...current,
-              item: { id: String(row.id), label: named(row.name, row.code) },
-            }));
-            commit({ item: String(row.id) });
-          }}
+          onPick={(row) => pick('item', row)}
           onClear={() => commit({ item: '' })}
         />
       </div>
@@ -175,48 +206,27 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
       )}
       {moreOpen && (
         <div id={moreId} className="lot-trace-filter-more">
+          {textField('materialLot', t.materialLot, t.exactPlaceholder)}
+          {textField('productLot', t.productLot, t.exactPlaceholder)}
+          {textField('inbound', t.inboundNo, t.exactPlaceholder)}
+          {textField('workOrder', t.workOrderNo, t.exactPlaceholder)}
+          {textField('shipment', t.shipmentNo, t.exactPlaceholder)}
           <div className="filter-field-md">
             <ReferenceField
-              label={t.warehouse}
-              valueLabel={labelOf('warehouse', draft.warehouse, resolvedWarehouse)}
-              source={warehouseSource}
-              onPick={(row) => {
-                setPicked((current) => ({
-                  ...current,
-                  warehouse: { id: String(row.id), label: named(row.name, row.code) },
-                }));
-                commit({ warehouse: String(row.id) });
-              }}
-              onClear={() => commit({ warehouse: '' })}
+              label={t.supplier}
+              valueLabel={labelOf('supplier', draft.supplier, resolvedSupplier)}
+              source={supplierSource}
+              onPick={(row) => pick('supplier', row)}
+              onClear={() => commit({ supplier: '' })}
             />
           </div>
-          {role !== null && (
-            <div className="filter-field-md">
-              <ReferenceField
-                label={role === 'SUPPLIER' ? t.supplier : t.customer}
-                valueLabel={labelOf('partner', draft.partner, resolvedPartner)}
-                source={partnerSource}
-                onPick={(row) => {
-                  setPicked((current) => ({
-                    ...current,
-                    partner: { id: String(row.id), label: named(row.name, row.code) },
-                  }));
-                  commit({ partner: String(row.id) });
-                }}
-                onClear={() => commit({ partner: '' })}
-              />
-            </div>
-          )}
-          <div className="field-cell filter-field-sm">
-            <label className="field-label" htmlFor={statusId}>
-              {t.status}
-            </label>
-            <Select
-              id={statusId}
-              value={draft.status}
-              placeholder={t.statusAll}
-              options={[{ value: '', label: t.statusAll }, ...statusCodes.options]}
-              onChange={(value) => commit({ status: value })}
+          <div className="filter-field-md">
+            <ReferenceField
+              label={t.customer}
+              valueLabel={labelOf('customer', draft.customer, resolvedCustomer)}
+              source={customerSource}
+              onPick={(row) => pick('customer', row)}
+              onClear={() => commit({ customer: '' })}
             />
           </div>
         </div>

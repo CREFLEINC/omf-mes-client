@@ -8,22 +8,31 @@ import { masterName } from '../../patterns/master-name';
 import { REFERENCE_PAGE_SIZE, type ReferenceSource } from '../../patterns/reference-picker';
 import { runRequest } from '../../patterns/request';
 import {
-  receiptCountQuery,
+  EVENT_KINDS,
+  inputQuery,
+  packingQuery,
   receiptQuery,
-  shipmentCountQuery,
   shipmentQuery,
+  sourceQuery,
+  type KindFilter,
   type LotTraceFilters,
   type MovementKind,
 } from './filters';
-import { fromReceiptLine, fromShipmentLine, type MovementRow } from './rows';
+import {
+  fromInputLine,
+  fromPackingLine,
+  fromReceiptLine,
+  fromShipmentLine,
+  type MovementRow,
+} from './rows';
 import type { QtyByUom } from './types';
 
 const t = messages.lotTrace.filters;
 
 export const lotTraceKeys = {
   list: (filters: LotTraceFilters) => ['lot-trace', 'list', filters] as const,
-  counts: (from: string, to: string, item: string, warehouse: string) =>
-    ['lot-trace', 'counts', from, to, item, warehouse] as const,
+  counts: (filters: LotTraceFilters) =>
+    ['lot-trace', 'counts', { ...filters, kind: 'ALL', page: 1 }] as const,
   codes: (group: string) => ['lot-trace', 'codes', group] as const,
   item: (id: string) => ['lot-trace', 'item', id] as const,
   warehouse: (id: string) => ['lot-trace', 'warehouse', id] as const,
@@ -34,7 +43,159 @@ export interface MovementPage {
   rows: MovementRow[];
   page: { page: number; size: number; total: number };
   totals: { lineCount: number; qtyByUom: QtyByUom[] };
+  /** 전체(`ALL`)를 모을 때 구분마다 받는 줄 수 상한에 걸렸다 */
+  capped: boolean;
 }
+
+type Client = ReturnType<typeof useApiClient>['client'];
+
+const EMPTY_PAGE = (page: number, size: number): MovementPage => ({
+  rows: [],
+  page: { page, size, total: 0 },
+  totals: { lineCount: 0, qtyByUom: [] },
+  capped: false,
+});
+
+/** 한 구분의 한 쪽. 그 구분이 조건을 다 걸 수 없으면 빈 쪽이다(`sourceQuery`). 번호 조건이 있으면 기간 없이 부른다. */
+const fetchKindPage = async (
+  client: Client,
+  kind: MovementKind,
+  filters: LotTraceFilters,
+  page: number,
+  size: number,
+  signal?: AbortSignal,
+): Promise<MovementPage> => {
+  const part = sourceQuery(kind, filters);
+  if (part === null) return EMPTY_PAGE(page, size);
+  const init = signal === undefined ? {} : { signal };
+  if (kind === 'SHIPMENT') {
+    const data = await runRequest(() =>
+      client.GET('/logistics/shipment-lines', {
+        params: { query: shipmentQuery(filters, part, page, size) },
+        ...init,
+      }),
+    );
+    return {
+      rows: data.items.map(fromShipmentLine),
+      page: data.page,
+      totals: data.totals,
+      capped: false,
+    };
+  }
+  if (kind === 'MATERIAL' || kind === 'PRODUCT') {
+    const data = await runRequest(() =>
+      client.GET('/logistics/goods-receipt-lines', {
+        params: { query: receiptQuery(kind, filters, part, page, size) },
+        ...init,
+      }),
+    );
+    return {
+      rows: data.items.map(fromReceiptLine),
+      page: data.page,
+      totals: { lineCount: data.totals.lineCount, qtyByUom: data.totals.qtyByUom },
+      capped: false,
+    };
+  }
+  if (kind === 'CONSUMED') {
+    const data = await runRequest(() =>
+      client.GET('/trace/material-input-lines', {
+        params: { query: inputQuery(filters, part, page, size) },
+        ...init,
+      }),
+    );
+    return {
+      rows: data.items.map(fromInputLine),
+      page: data.page,
+      totals: data.totals,
+      capped: false,
+    };
+  }
+  const data = await runRequest(() =>
+    client.GET('/trace/packing-lines', {
+      params: { query: packingQuery(filters, part, page, size) },
+      ...init,
+    }),
+  );
+  return {
+    rows: data.items.map(fromPackingLine),
+    page: data.page,
+    totals: data.totals,
+    capped: false,
+  };
+};
+
+/** 전체를 모을 때 구분마다 받는 줄 수 상한. 넘으면 최근 줄부터 이만큼만 모으고 알린다. */
+export const ALL_CAP = 1000;
+const ALL_PAGE = 200;
+
+const mergeQty = (lists: readonly QtyByUom[][]): QtyByUom[] => {
+  const byUom = new Map<string, QtyByUom>();
+  for (const entry of lists.flat()) {
+    const current = byUom.get(entry.uomCode);
+    byUom.set(
+      entry.uomCode,
+      current === undefined ? { ...entry } : { ...current, qty: current.qty + entry.qty },
+    );
+  }
+  return [...byUom.values()];
+};
+
+/** 줄 시각(공장 날짜와 시각) 내림차순 — 서버 목록과 같은 순서. */
+const newestFirst = (a: MovementRow, b: MovementRow): number =>
+  `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`);
+
+/**
+ * 전체 — 서버 목록이 있는 구분을 모두 받아 시각순으로 합친다. 서버에 합친 목록이 없어 화면이 모은다.
+ * 구분마다 `ALL_CAP`줄까지 받고, 넘으면 `capped`로 알린다. 쪽은 화면이 나눈다.
+ */
+const fetchAll = async (
+  client: Client,
+  filters: LotTraceFilters,
+  signal?: AbortSignal,
+): Promise<{ rows: MovementRow[]; totals: MovementPage['totals']; capped: boolean }> => {
+  const kinds = EVENT_KINDS.filter((kind) => sourceQuery(kind, filters) !== null);
+  const results = await Promise.all(
+    kinds.map(async (kind) => {
+      const rows: MovementRow[] = [];
+      let first: MovementPage | null = null;
+      for (let page = 1; rows.length < ALL_CAP; page += 1) {
+        const data = await fetchKindPage(client, kind, filters, page, ALL_PAGE, signal);
+        first ??= data;
+        rows.push(...data.rows);
+        if (data.rows.length === 0 || rows.length >= data.page.total) break;
+      }
+      return { rows, first };
+    }),
+  );
+  return {
+    rows: results.flatMap((result) => result.rows).sort(newestFirst),
+    totals: {
+      lineCount: results.reduce((sum, result) => sum + (result.first?.totals.lineCount ?? 0), 0),
+      qtyByUom: mergeQty(results.map((result) => result.first?.totals.qtyByUom ?? [])),
+    },
+    capped: results.some((result) => (result.first?.page.total ?? 0) > ALL_CAP),
+  };
+};
+
+/** 한 쪽을 받는다. 목록과 내려받기가 같은 함수를 쓴다(같은 조건, 같은 모양). */
+export const fetchMovementPage = async (
+  client: Client,
+  filters: LotTraceFilters,
+  page: number,
+  size: number,
+  signal?: AbortSignal,
+): Promise<MovementPage> => {
+  if (filters.kind !== 'ALL') {
+    return fetchKindPage(client, filters.kind, filters, page, size, signal);
+  }
+  const all = await fetchAll(client, filters, signal);
+  return {
+    rows: all.rows.slice((page - 1) * size, page * size),
+    page: { page, size, total: all.rows.length },
+    totals: all.totals,
+    capped: all.capped,
+  };
+};
 
 /** 고른 구분의 한 쪽. 기간이 맞지 않으면(`enabled` 거짓) 부르지 않는다 — 서버가 400을 낸다. */
 export const useMovementList = (
@@ -46,74 +207,34 @@ export const useMovementList = (
     queryKey: lotTraceKeys.list(filters),
     enabled,
     placeholderData: keepPreviousData,
-    queryFn: () => fetchMovementPage(client, filters, filters.page, filters.size),
+    queryFn: ({ signal }) => fetchMovementPage(client, filters, filters.page, filters.size, signal),
   });
 };
 
-type Client = ReturnType<typeof useApiClient>['client'];
+export type KindCounts = Record<KindFilter, number>;
 
-/** 한 쪽을 받는다. 목록과 내려받기가 같은 함수를 쓴다(같은 조건, 같은 모양). */
-export const fetchMovementPage = async (
-  client: Client,
-  filters: LotTraceFilters,
-  page: number,
-  size: number,
-  signal?: AbortSignal,
-): Promise<MovementPage> => {
-  if (filters.kind === 'SHIPMENT') {
-    const data = await runRequest(() =>
-      client.GET('/logistics/shipment-lines', {
-        params: { query: shipmentQuery(filters, page, size) },
-        ...(signal === undefined ? {} : { signal }),
-      }),
-    );
-    return { rows: data.items.map(fromShipmentLine), page: data.page, totals: data.totals };
-  }
-  const data = await runRequest(() =>
-    client.GET('/logistics/goods-receipt-lines', {
-      params: { query: receiptQuery(filters, page, size) },
-      ...(signal === undefined ? {} : { signal }),
-    }),
-  );
-  return { rows: data.items.map(fromReceiptLine), page: data.page, totals: data.totals };
-};
-
-export type KindCounts = Record<MovementKind, number>;
-
-/**
- * 구분 칩의 건수 — 공통 조건(기간, 품목, 창고)만 건 한 줄짜리 두 호출.
- * 입고 줄 목록의 `lineCountByType`은 그 기간에 줄이 있는 유형만 싣는다 — 없는 유형은 0이다.
- */
+/** 구분 칩의 건수 — 구분마다 같은 조건으로 한 줄짜리를 부른다. 걸 수 없는 조건이 있는 구분은 0이다. 전체는 합이다. */
 export const useKindCounts = (
   filters: LotTraceFilters,
   enabled: boolean,
 ): UseQueryResult<KindCounts> => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: lotTraceKeys.counts(filters.from, filters.to, filters.item, filters.warehouse),
+    queryKey: lotTraceKeys.counts(filters),
     enabled,
     placeholderData: keepPreviousData,
-    queryFn: async () => {
-      const [receipts, shipments] = await Promise.all([
-        runRequest(() =>
-          client.GET('/logistics/goods-receipt-lines', {
-            params: { query: receiptCountQuery(filters) },
-          }),
+    queryFn: async ({ signal }) => {
+      const entries = await Promise.all(
+        EVENT_KINDS.map(
+          async (kind) =>
+            [
+              kind,
+              (await fetchKindPage(client, kind, filters, 1, 1, signal)).totals.lineCount,
+            ] as const,
         ),
-        runRequest(() =>
-          client.GET('/logistics/shipment-lines', {
-            params: { query: shipmentCountQuery(filters) },
-          }),
-        ),
-      ]);
-      const byType = (code: string): number =>
-        receipts.totals.lineCountByType.find((entry) => entry.receiptTypeCode === code)
-          ?.lineCount ?? 0;
-      return {
-        MATERIAL: byType('MATERIAL'),
-        PRODUCT: byType('PRODUCT'),
-        SHIPMENT: shipments.totals.lineCount,
-      };
+      );
+      const counts = Object.fromEntries(entries) as Record<MovementKind, number>;
+      return { ...counts, ALL: entries.reduce((sum, [, count]) => sum + count, 0) };
     },
   });
 };

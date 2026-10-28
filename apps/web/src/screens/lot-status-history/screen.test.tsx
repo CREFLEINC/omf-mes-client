@@ -1174,7 +1174,7 @@ describe('LOT 상세의 [추적 보기]', () => {
     permissions,
   });
 
-  it('자재 LOT은 LOT 생산 이력 조회의 자재 LOT별 이력 탭으로 그 LOT을 연다', async () => {
+  it('자재 LOT은 LOT 생산 이력 조회를 자재 LOT 번호 조건으로 열고 그 LOT을 상세에 세운다', async () => {
     renderScreen(
       '/quality/lot-status?lot=401',
       'ready',
@@ -1190,13 +1190,13 @@ describe('LOT 상세의 [추적 보기]', () => {
     await waitFor(() =>
       expect(screen.getByTestId('location')).toHaveTextContent('/production/lot-trace?'),
     );
-    expect(locationSearch().get('lot')).toBe('SAMPLE-LOT-001');
+    /* 자재 LOT은 자재 LOT 번호 조건으로 찾고 그 LOT을 상세에 세운다. */
+    expect(locationSearch().get('mlot')).toBe('SAMPLE-LOT-001');
     expect(locationSearch().get('selected')).toBe('401');
-    /* 탭이 없으면 기간별 이력이 열리므로 자재 LOT별 이력 탭을 주소에 싣는다. */
-    expect(locationSearch().get('tab')).toBe('forward');
+    expect(locationSearch().has('tab')).toBe(false);
   });
 
-  it('생산 LOT은 제품 LOT별 이력 탭으로 연다', async () => {
+  it('생산 LOT은 제품 LOT 번호 조건으로 연다', async () => {
     renderScreen(
       '/quality/lot-status?lot=401',
       'ready',
@@ -1209,7 +1209,7 @@ describe('LOT 상세의 [추적 보기]', () => {
     const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
     await user.click(await within(dialog).findByRole('button', { name: '추적 보기' }));
 
-    await waitFor(() => expect(locationSearch().get('tab')).toBe('backward'));
+    await waitFor(() => expect(locationSearch().get('plot')).toBe('SAMPLE-LOT-001'));
     expect(locationSearch().get('selected')).toBe('401');
   });
 

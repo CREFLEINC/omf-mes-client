@@ -4,8 +4,8 @@ import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
-import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { CountChip } from '../../patterns/count-chip';
+import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { PageNav } from '../../patterns/page-nav';
 import { plantToday } from '../../patterns/plant-time';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
@@ -18,90 +18,107 @@ import {
 import { toWebAccess } from '../../patterns/web-access';
 import { exportFileName, toCsv } from './export';
 import { FilterBar, type FilterDraft, type FilterSearchMode } from './filter-bar';
-import { LoadFailure } from './load-failure';
-import { LOT_STATUS_PATH, LotDetail } from './lot-detail';
 import {
   DEFAULT_SIZE,
-  KINDS,
+  EMPTY_FILTERS,
+  KIND_FILTERS,
+  hasNumberCondition,
+  periodReasonOf,
   readFilters,
   toSearchParams,
   withKind,
+  type KindFilter,
   type LotTraceFilters,
 } from './filters';
+import { LoadFailure } from './load-failure';
+import { LOT_STATUS_PATH, LotDetail } from './lot-detail';
 import { MovementTable } from './movement-table';
-import { defaultPeriod, validatePeriod } from './period';
+import { defaultPeriod } from './period';
 import {
+  ALL_CAP,
   fetchMovementPage,
-  partnerRoleOf,
+  useCodeNames,
   useItemLabel,
   useKindCounts,
   useMovementList,
   usePartnerLabel,
-  useStatusCodes,
-  useWarehouseLabel,
 } from './queries';
-import { formatQtyByUom, type MovementRow } from './rows';
+import { formatQtyByUom, rowKeyOf, type MovementRow } from './rows';
 import { TabToolbar } from './tab-toolbar';
 import { appendPath, readPath, readTraceSelected, type PathStep } from './trace-filters';
 import { useAllPagesExport } from './use-export';
 
 const t = messages.lotTrace;
 
-const POSITIVE = /^[1-9][0-9]*$/;
+const LINE = /^[A-Z]+-[1-9][0-9]*$/;
 
-/** 고른 줄(`line`). 상세에 선 LOT은 `selected`, 지나온 경로는 `via`다(다른 두 탭과 같다). */
-const readLine = (params: URLSearchParams): number | null => {
+/** 고른 줄(`line`, 「구분-번호」). 상세에 선 LOT은 `selected`, 지나온 경로는 `via`다. */
+const readLine = (params: URLSearchParams): string | null => {
   const raw = params.get('line');
-  return raw !== null && POSITIVE.test(raw) ? Number(raw) : null;
+  return raw !== null && LINE.test(raw) ? raw : null;
 };
 
 /**
- * 기간별 이력 탭 — 자재 입고, 제품입고, 제품 출하 줄을 기간으로 본다(T-W-A 목록과 상세). 줄을 고르면 탭을 바꾸지 않고
- * 오른쪽 상세 창에 그 줄의 LOT을 세운다(다른 두 탭과 같은 상세, [보기]와 [이전 LOT]도 같다). 한 줄에 LOT이 여럿이면
- * 상세 머리에서 LOT을 고른다. 투입과 포장 줄은 기간으로 부르는 서버 목록이 들어오면 구분에 더한다(`filters.ts`).
+ * LOT 생산 이력 조회 본문 — 이력 줄 하나의 목록(T-W-A 목록과 상세). 자재 입고, 투입, 제품입고, 포장, 제품 출하 줄을
+ * 기간으로 보고, 구분 칩으로 거른다. 줄을 고르면 오른쪽 상세 창에 그 줄의 LOT을 세운다(투입 자재, 사용처, 제품입고, 포장,
+ * 출하, 단계 줄, [보기], [이전 LOT]). 한 줄에 LOT이 여럿이면 상세 머리에서 LOT을 고른다.
+ * LOT 번호로 찾아 줄이 모두 한 LOT이면 그 LOT의 상세를 바로 연다. 번호 조건이 있으면 기간은 선택이다.
  */
-export const MovementsTab = () => {
+export const LotHistory = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { client } = useApiClient();
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
-  const hasPeriod = searchParams.has('from');
-
-  /* 주소에 기간이 없을 때만 기본 7일(공장 날짜)을 채운다. replace 로 두어 뒤로가기가 빈 주소로 가지 않는다. */
-  useEffect(() => {
-    if (hasPeriod) return;
-    const seeded = { ...readFilters(searchParams), ...defaultPeriod(plantToday()) };
-    setSearchParams(toSearchParams(seeded), { replace: true });
-  }, [hasPeriod, searchParams, setSearchParams]);
-
-  const periodReason = hasPeriod ? validatePeriod(filters) : null;
-  const ready = hasPeriod && periodReason === null;
-  const list = useMovementList(filters, ready);
-  const counts = useKindCounts(filters, ready);
-  const statusCodes = useStatusCodes(filters.kind);
-  const exporter = useAllPagesExport();
   const line = readLine(searchParams);
   const selected = readTraceSelected(searchParams);
   const path = useMemo(() => readPath(searchParams), [searchParams]);
+  /* 주소에 기간도 번호 조건도 없으면 기본 7일(공장 날짜)을 채운다. 고른 LOT과 경로는 둔다. replace 로 두어 뒤로 가기가 빈 주소로 가지 않는다. */
+  const seed = filters.from === '' && filters.to === '' && !hasNumberCondition(filters);
+  useEffect(() => {
+    if (!seed) return;
+    const next = toSearchParams({ ...filters, ...defaultPeriod(plantToday()) });
+    for (const key of ['line', 'selected']) {
+      const value = searchParams.get(key);
+      if (value !== null) next.set(key, value);
+    }
+    for (const step of searchParams.getAll('via')) next.append('via', step);
+    setSearchParams(next, { replace: true });
+  }, [filters, seed, searchParams, setSearchParams]);
+
+  /* 번호 조건(LOT 번호, 입하번호, W/O 번호, 출하번호)이 있으면 기간 없이도 부른다(서버 규칙). */
+  const periodReason = periodReasonOf(filters);
+  const ready = periodReason === null;
+  const list = useMovementList(filters, ready);
+  const counts = useKindCounts(filters, ready);
+  const receiptStatus = useCodeNames('LOGISTICS_DOCUMENT_STATUS');
+  const shipmentStatus = useCodeNames('SHIPMENT_STATUS');
+  const statusName = (row: MovementRow) =>
+    row.kind === 'SHIPMENT'
+      ? shipmentStatus.nameOf(row.statusCode)
+      : receiptStatus.nameOf(row.statusCode);
+  const exporter = useAllPagesExport();
   const { session } = useSession();
   const canOpenLotStatus = toWebAccess(session?.permissions).allows(LOT_STATUS_PATH);
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:lot-trace:split', 0.5);
   const layout = useSplitOrientation('omf-mes:lot-trace:split-orientation');
-
-  const role = partnerRoleOf(filters.kind);
   const itemLabel = useItemLabel(filters.item);
-  const warehouseLabel = useWarehouseLabel(filters.warehouse);
-  const partnerLabel = usePartnerLabel(filters.partner, role);
+  const supplierLabel = usePartnerLabel(filters.supplier, 'SUPPLIER');
+  const customerLabel = usePartnerLabel(filters.customer, 'CUSTOMER');
 
-  /* 조건을 바꿔 바로 반영하는 갈래는 주소를 바꿔 쓴다. 뒤로 가기가 조건 변경으로 넘치지 않게 한다. 조건이 바뀌면 고른 줄은 푼다. */
+  /* 조건을 바꿔 바로 반영하는 갈래는 주소를 바꿔 쓴다. 조건이 바뀌면 고른 줄은 푼다. */
   const apply = (next: LotTraceFilters, replace = false) =>
     setSearchParams(toSearchParams(next), { replace });
-  /** 줄과 LOT을 고른다(목록과 조건은 그대로). */
-  const choose = (nextLine: number, lotId: number, nextPath: readonly PathStep[] = []) => {
+  /** 줄(없으면 LOT만)과 LOT을 고른다. 목록과 조건은 그대로다. */
+  const choose = (
+    nextLine: string | null,
+    lotId: number,
+    nextPath: readonly PathStep[] = [],
+    replace = false,
+  ) => {
     const params = toSearchParams(filters);
-    params.set('line', String(nextLine));
+    if (nextLine !== null) params.set('line', nextLine);
     params.set('selected', String(lotId));
-    setSearchParams(appendPath(params, nextPath));
+    setSearchParams(appendPath(params, nextPath), { replace });
   };
   /** 같은 조건의 [조회]는 다시 조회한다(받는 중이면 겹쳐 부르지 않는다). */
   const search = (draft: FilterDraft, mode: FilterSearchMode) => {
@@ -116,29 +133,48 @@ export const MovementsTab = () => {
     apply(next, mode === 'auto');
   };
 
-  /* 고른 칩은 목록과 같은 기준(목록 합계), 다른 칩은 공통 조건으로 센 값이다(C-17). */
-  const countOf = (kind: (typeof KINDS)[number]): number | undefined =>
-    kind === filters.kind && list.data !== undefined && !list.isPlaceholderData
-      ? list.data.totals.lineCount
-      : counts.data?.[kind];
-
   const rows = list.data?.rows ?? [];
-  const chosenRow = rows.find((row) => row.id === line);
-  const total = list.data?.totals.lineCount ?? 0;
+  const chosenRow = rows.find((row) => rowKeyOf(row) === line);
+  const total = list.data?.page.total ?? 0;
+
+  /*
+   * LOT 번호로 찾아 목록의 줄이 모두 한 LOT이면 그 LOT의 상세를 바로 연다(고른 LOT이 없을 때만). 첫 줄을 짚는다.
+   */
+  const lotSearch = filters.materialLot !== '' || filters.productLot !== '';
+  const onlyLot =
+    lotSearch && selected === null && !list.isPlaceholderData && rows.length > 0
+      ? new Set(rows.flatMap((row) => row.lots.map((lot) => lot.lotId)))
+      : null;
+  const autoRow = onlyLot !== null && onlyLot.size === 1 ? rows[0] : undefined;
+  const autoKey = autoRow === undefined ? '' : rowKeyOf(autoRow);
+  useEffect(() => {
+    const first = autoRow?.lots[0];
+    if (autoRow === undefined || first === undefined) return;
+    choose(rowKeyOf(autoRow), first.lotId, [], true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 그 줄이 바뀔 때만 고른다
+  }, [autoKey]);
+
+  /* 고른 칩은 목록과 같은 기준(목록 합계), 다른 칩은 같은 조건으로 센 값이다(C-17). */
+  const countOf = (kind: KindFilter): number | undefined =>
+    kind === filters.kind && list.data !== undefined && !list.isPlaceholderData
+      ? list.data.page.total
+      : counts.data?.[kind];
 
   const narrowed = [
     `${t.filters.period} ${filters.from} ~ ${filters.to}`.trim(),
     ...(filters.item === '' ? [] : [`${t.filters.item} ${itemLabel}`]),
-    ...(filters.warehouse === '' ? [] : [`${t.filters.warehouse} ${warehouseLabel}`]),
-    ...(filters.partner === '' || role === null
-      ? []
-      : [`${role === 'SUPPLIER' ? t.filters.supplier : t.filters.customer} ${partnerLabel}`]),
-    ...(filters.status === '' ? [] : [`${t.filters.status} ${statusCodes.nameOf(filters.status)}`]),
+    ...(filters.materialLot === '' ? [] : [`${t.filters.materialLot} ${filters.materialLot}`]),
+    ...(filters.productLot === '' ? [] : [`${t.filters.productLot} ${filters.productLot}`]),
+    ...(filters.inbound === '' ? [] : [`${t.filters.inboundNo} ${filters.inbound}`]),
+    ...(filters.workOrder === '' ? [] : [`${t.filters.workOrderNo} ${filters.workOrder}`]),
+    ...(filters.shipment === '' ? [] : [`${t.filters.shipmentNo} ${filters.shipment}`]),
+    ...(filters.supplier === '' ? [] : [`${t.filters.supplier} ${supplierLabel}`]),
+    ...(filters.customer === '' ? [] : [`${t.filters.customer} ${customerLabel}`]),
   ].join(', ');
 
   const chips = (
     <span className="lot-trace-kinds" role="group" aria-label={t.kinds.label}>
-      {KINDS.map((kind) => {
+      {KIND_FILTERS.map((kind) => {
         const count = countOf(kind);
         return (
           <CountChip
@@ -169,6 +205,7 @@ export const MovementsTab = () => {
       </div>
     ) : (
       <>
+        {list.data.capped && <AlertBanner variant="info">{t.list.capped(ALL_CAP)}</AlertBanner>}
         {total > 0 && (
           <p className="lot-trace-totals">
             <span>{t.list.totalLines(total)}</span>
@@ -179,17 +216,21 @@ export const MovementsTab = () => {
           </p>
         )}
         <MovementTable
-          kind={filters.kind}
+          showKind={filters.kind === 'ALL'}
           rows={rows}
-          activeId={line}
+          activeKey={line}
           onOpen={(row) => {
             const first = row.lots[0];
-            if (first !== undefined) choose(row.id, first.lotId);
+            if (first !== undefined) choose(rowKeyOf(row), first.lotId);
           }}
           empty={
             <EmptyState
               size="sm"
-              title={t.list.emptyTitle(t.kinds[filters.kind])}
+              title={
+                filters.from === '' && filters.to === ''
+                  ? t.list.emptyTitleNoPeriod
+                  : t.list.emptyTitle(filters.from, filters.to)
+              }
               description={
                 <>
                   {t.list.emptyDescription}
@@ -207,6 +248,8 @@ export const MovementsTab = () => {
         />
       </>
     );
+
+  const lotOfRow = (row: MovementRow, lotId: number) => row.lots.some((lot) => lot.lotId === lotId);
 
   return (
     <>
@@ -227,7 +270,7 @@ export const MovementsTab = () => {
               fetchMovementPage(client, filters, page, size, signal),
             build: (all) => ({
               fileName: exportFileName(filters),
-              content: toCsv(filters.kind, all, statusCodes.nameOf),
+              content: toCsv(all, statusName),
             }),
           })
         }
@@ -239,16 +282,7 @@ export const MovementsTab = () => {
           applied={filters}
           onSearch={search}
           onReset={() =>
-            apply({
-              ...filters,
-              ...defaultPeriod(plantToday()),
-              item: '',
-              warehouse: '',
-              partner: '',
-              status: '',
-              page: 1,
-              size: DEFAULT_SIZE,
-            })
+            apply({ ...EMPTY_FILTERS, ...defaultPeriod(plantToday()), size: DEFAULT_SIZE })
           }
         />
       </section>
@@ -269,7 +303,7 @@ export const MovementsTab = () => {
           />
         )}
         <section className="pane lot-trace-detail-pane" aria-label={t.chain.pane}>
-          {selected === null || line === null ? (
+          {selected === null ? (
             <EmptyState size="sm" title={t.chain.pickTitle} description={t.list.pick} />
           ) : (
             <>
@@ -282,7 +316,7 @@ export const MovementsTab = () => {
                       tone="idle"
                       label={lot.lotNo}
                       selected={lot.lotId === (path[0]?.lotId ?? selected)}
-                      onSelect={() => choose(chosenRow.id, lot.lotId)}
+                      onSelect={() => choose(rowKeyOf(chosenRow), lot.lotId)}
                     />
                   ))}
                   {chosenRow.lotCount > chosenRow.lots.length && (
@@ -298,11 +332,13 @@ export const MovementsTab = () => {
                 path={path}
                 canOpenLotStatus={canOpenLotStatus}
                 typeHint={
-                  path.length > 0 || chosenRow === undefined
+                  path.length > 0
                     ? null
-                    : chosenRow.kind === 'MATERIAL'
-                      ? 'MATERIAL'
-                      : 'PRODUCTION'
+                    : chosenRow !== undefined && lotOfRow(chosenRow, selected)
+                      ? chosenRow.kind === 'MATERIAL' || chosenRow.kind === 'CONSUMED'
+                        ? 'MATERIAL'
+                        : 'PRODUCTION'
+                      : null
                 }
                 onCenter={(lot, nextPath) => choose(line, lot.lotId, nextPath)}
               />

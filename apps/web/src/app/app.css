@@ -23664,8 +23664,18 @@ table.col-measuring td {
   min-height: 0;
 }
 
-/* DS 표가 자기 감싸개(가로 넘침용)를 두므로, 세로로 구르는 상자도 그 감싸개가 맡아야 머리줄이 붙는다. */
+/*
+ * DS 표가 자기 감싸개(가로 넘침용)를 두므로, 세로로 구르는 상자도 그 감싸개가 맡아야 머리줄이 위에 붙는다
+ * (검사 조회·판정 목록의 `.iqc-inspection-queue-rows > div` 와 같은 방법).
+ */
 .lot-trace-list-rows > .selectable-table {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.lot-trace-list-rows > .selectable-table > div {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
