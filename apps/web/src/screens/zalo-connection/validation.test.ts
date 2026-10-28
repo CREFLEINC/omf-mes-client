@@ -120,9 +120,7 @@ describe('sameValues', () => {
 });
 
 describe('paramsOf', () => {
-  it('이벤트별 고정 파라미터 이름에 공통 두 칸이 붙는다', () => {
-    expect(paramsOf('WORK_SESSION_STOPPED')).toBe(
-      'wo_no, item, process, line, reason, event_time, actor',
-    );
+  it('이벤트별 파라미터 이름은 등록 템플릿의 키와 순서다', () => {
+    expect(paramsOf('WORK_SESSION_STOPPED')).toBe('line, work_order, event_time, reason');
   });
 });
