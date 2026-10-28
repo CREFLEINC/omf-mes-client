@@ -9,12 +9,11 @@ import {
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
-import { PageNav, type PageSize } from '../../patterns/page-nav';
 
 import { DisabledAction } from './disabled-action';
 import type { ItemDraft } from './types';
@@ -113,26 +112,6 @@ export const ItemPane = ({
   onCancel,
 }: ItemPaneProps) => {
   /*
-   * 쪽 나누기 — 검사 기준 목록과 같은 「총 N건 · 쪽 크기 · 처음/이전/다음/마지막」(사용자 지시 · #196).
-   * 항목은 한 번에 다 받으므로 화면에서 자른다. 순서 · 번호는 전체 기준이라 쪽의 시작 위치를 더한다.
-   */
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<PageSize>(50);
-  const totalPages = Math.max(1, Math.ceil(drafts.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const offset = (currentPage - 1) * pageSize;
-  const pageRows = drafts.slice(offset, offset + pageSize);
-
-  /* 항목을 더하면 새 줄이 있는 마지막 쪽으로 간다 — 첫 쪽에 머물면 더한 줄이 보이지 않는다. */
-  const previousCount = useRef(drafts.length);
-  useEffect(() => {
-    if (drafts.length > previousCount.current) {
-      setPage(Math.max(1, Math.ceil(drafts.length / pageSize)));
-    }
-    previousCount.current = drafts.length;
-  }, [drafts.length, pageSize]);
-
-  /*
    * 지정 폭의 합은 656px이고 디자인 시스템이 렌더하는 순서 이동 열(96px)을 더해도
    * `.wide-table`의 최소 폭(58rem = 928px) 안에 들어간다 — `app.css`를 고치지 않는다.
    * 「목표·범위」만 폭을 지정하지 않는다: 여러 값을 이어 담는 칸이라 남는 폭을 이 열이 가져가는 것이 맞다.
@@ -143,7 +122,7 @@ export const ItemPane = ({
       header: t.fields.sequence,
       align: 'center',
       width: '72px',
-      render: (_row, rowIndex) => String(offset + rowIndex + 1),
+      render: (_row, rowIndex) => String(rowIndex + 1),
     },
     {
       key: 'inspectionItemCode',
@@ -201,14 +180,14 @@ export const ItemPane = ({
           <IconButton
             icon="edit"
             size="sm"
-            aria-label={t.actions.editItem(offset + rowIndex + 1)}
+            aria-label={t.actions.editItem(rowIndex + 1)}
             disabled={!isEditable}
             onClick={() => onEdit(row.draftId)}
           />
           <IconButton
             icon="delete"
             size="sm"
-            aria-label={t.actions.removeItem(offset + rowIndex + 1)}
+            aria-label={t.actions.removeItem(rowIndex + 1)}
             disabled={!isEditable}
             onClick={() => onRemove(row.draftId)}
           />
@@ -263,7 +242,7 @@ export const ItemPane = ({
         <Table
           density="compact"
           columns={fit.columns}
-          rows={pageRows}
+          rows={drafts}
           getRowId={(row) => row.draftId}
           /*
            * 순서 이동 열은 디자인 시스템이 렌더하고 접근성 처리(포커스 이동·라이브 안내)도 맡는다.
@@ -271,7 +250,7 @@ export const ItemPane = ({
            * 무엇이 막혔는지는 머리의 「읽기 전용」과 안내 한 줄이 말한다.
            */
           reorderable={isEditable}
-          onRowReorder={(from, to) => onReorder(offset + from, offset + to)}
+          onRowReorder={onReorder}
           empty={
             <EmptyState
               size="sm"
@@ -312,18 +291,6 @@ export const ItemPane = ({
       )}
 
       {listSlot()}
-
-      {isVersionSelected && (loadError === null || loadError === undefined) && !isLoading && (
-        <PageNav
-          meta={{ page: currentPage, size: pageSize, total: drafts.length }}
-          buttonSize="md"
-          onChangePage={setPage}
-          onChangeSize={(size) => {
-            setPageSize(size);
-            setPage(1);
-          }}
-        />
-      )}
 
       {isVersionSelected && isEditable && (
         <div className="form-actions">

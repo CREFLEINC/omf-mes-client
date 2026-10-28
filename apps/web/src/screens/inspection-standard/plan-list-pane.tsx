@@ -65,7 +65,7 @@ export const PlanListPane = ({
   const columns: Column<InspectionPlan>[] = [
     {
       key: 'inspectionPlanCode',
-      align: 'start',
+      align: 'center',
       header: t.fields.inspectionPlanCode,
       width: '240px',
       /*
@@ -86,7 +86,7 @@ export const PlanListPane = ({
     },
     {
       key: 'inspectionPlanName',
-      align: 'start',
+      align: 'center',
       header: t.fields.inspectionPlanName,
       width: '280px',
       render: (row) => <span title={row.inspectionPlanName}>{row.inspectionPlanName}</span>,
@@ -101,7 +101,7 @@ export const PlanListPane = ({
     /* 목록에서 바로 가를 수 있게 품목 · 승인 · 사용을 함께 싣는다(사용자 지시 · #196). */
     {
       key: 'item',
-      align: 'start',
+      align: 'center',
       header: t.listColumns.item,
       width: '240px',
       /* 「이름 코드」 한 줄 — 코드는 흐리게 뒤에 붙인다(사용자 시안 · #196, 검사 조회·판정 목록과 같다). */

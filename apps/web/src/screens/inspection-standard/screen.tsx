@@ -1139,6 +1139,27 @@ export const InspectionStandardScreen = () => {
 
   const renderVersionTransitionActions = (): ReactNode => (
     <>
+      {/* 작성 취소는 확정 앞에 둔다 — 주 동작(확정)이 줄 맨 끝(사용자 지시 · #196). 고칠 수 없는 버전(확정 · 폐기)에는 작성 취소를 두지 않는다 — 확정된 버전은 폐기가 그 길이다(사용자 지시 · #196). */}
+      {versionStatus !== null && !versionStatus.isEditable ? null : discardDisabledReason ===
+        null ? (
+        <div className="field-cell">
+          <Button
+            variant="outlined"
+            /* ✕ 아이콘을 단다(사용자 시안 · #196). */
+            leadingIcon={<Icon name="close" size={18} />}
+            disabled={isVersionTransitionRunning}
+            onClick={() => {
+              discardWrite.reset();
+              setVersionTransition('discard');
+            }}
+          >
+            {t.actions.discard}
+          </Button>
+        </div>
+      ) : (
+        <DisabledAction label={t.actions.discard} reason={discardDisabledReason} />
+      )}
+
       {/* 고칠 수 없는 버전(확정 · 폐기)에는 확정을 두지 않는다 — 다시 확정할 일이 없다(사용자 지시 · #196). */}
       {versionStatus !== null && !versionStatus.isEditable ? null : confirmDisabledReason ===
         null ? (
@@ -1176,27 +1197,6 @@ export const InspectionStandardScreen = () => {
         </div>
       ) : (
         <DisabledAction label={t.actions.obsolete} reason={obsoleteDisabledReason} />
-      )}
-
-      {/* 고칠 수 없는 버전(확정 · 폐기)에는 작성 취소를 두지 않는다 — 확정된 버전은 폐기가 그 길이다(사용자 지시 · #196). */}
-      {versionStatus !== null && !versionStatus.isEditable ? null : discardDisabledReason ===
-        null ? (
-        <div className="field-cell">
-          <Button
-            variant="outlined"
-            /* ✕ 아이콘을 단다(사용자 시안 · #196). */
-            leadingIcon={<Icon name="close" size={18} />}
-            disabled={isVersionTransitionRunning}
-            onClick={() => {
-              discardWrite.reset();
-              setVersionTransition('discard');
-            }}
-          >
-            {t.actions.discard}
-          </Button>
-        </div>
-      ) : (
-        <DisabledAction label={t.actions.discard} reason={discardDisabledReason} />
       )}
 
       {/* 버전 비교 · 변경 이력은 버전 고르기 줄로 옮겼다(#196). */}

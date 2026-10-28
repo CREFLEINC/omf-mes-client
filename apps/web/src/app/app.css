@@ -810,11 +810,19 @@ h2:has(> .inspection-standard-dialog-title) {
 /*
  * 열 순서 손잡이는 어느 열이든 머리 이름 바로 오른쪽(사용자 지시 2026-10-27 · #196) — 공용 표 규칙이 가운데 열에서만
  * 칸 왼쪽 끝으로 띄우는 것을 이 표에서는 되돌린다.
+ * 손잡이가 자리를 차지하면 이름이 값보다 왼쪽으로 밀린다 — 이름 오른쪽에 띄워 이름은 칸 가운데에 둔다(사용자 지시 · #196).
  */
-.inspection-queue-table.inspection-standard-plan-rows thead th[data-align='center'] .col-grip,
-.inspection-queue-table.inspection-standard-item-rows thead th[data-align='center'] .col-grip {
-  position: static;
-  transform: none;
+.inspection-queue-table.inspection-standard-plan-rows thead .col-head,
+.inspection-queue-table.inspection-standard-item-rows thead .col-head {
+  position: relative;
+}
+
+.inspection-queue-table.inspection-standard-plan-rows thead th .col-grip,
+.inspection-queue-table.inspection-standard-item-rows thead th .col-grip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-1));
+  transform: translateY(-50%);
 }
 
 /* 검사 기준 검색 창의 검색어 칸 — 안내 문구가 잘리지 않는 폭(사용자 지시 · #196). */
@@ -876,7 +884,9 @@ h2:has(> .inspection-standard-dialog-title) {
   background: none;
   color: var(--on-surface);
   font: inherit;
-  text-align: left;
+  /* 목록 표는 모든 열을 가운데 정렬한다(사용자 지시 · #196). */
+  width: 100%;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
