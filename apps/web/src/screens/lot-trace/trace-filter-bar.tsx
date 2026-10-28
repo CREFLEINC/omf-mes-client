@@ -1,4 +1,4 @@
-import { Button, DatePicker, Radio, RadioGroup, SearchInput } from '@crefle/web-ui';
+import { Button, DatePicker, Icon, Radio, RadioGroup, SearchInput } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -12,7 +12,6 @@ import {
   useWarehouseSource,
 } from './queries';
 import {
-  hasEntry,
   tracePeriodReason,
   type DateAxis,
   type TraceDirection,
@@ -81,10 +80,11 @@ export const withLotMatch = (draft: TraceDraft): TraceDraft => {
 type Picked = Partial<Record<'item' | 'warehouse' | 'partner', { id: string; label: string }>>;
 
 /**
- * C-6 조회 조건(정방향, 역방향 공용). 기본 줄: LOT 번호(보통), 자재 품목 또는 제품 품목(보통), [조건 더보기], [초기화], [조회].
- * 조건 더보기: 기간(넓음) — 정방향은 입하번호, 공급사, 창고 / 역방향은 기간 기준, 출하번호, W/O 번호, 고객.
- * 진입점(품목, LOT 번호, 입하번호, 출하번호, W/O 번호)이 없으면 [조회]를 잠그고 줄 끝에 그 사유를 보인다(C-4).
- * 1280×800에서 세 칸과 버튼이 한 줄에 들어가지 않아 기간을 조건 더보기로 내렸다. 기간 값이 있으면 처음부터 편다.
+ * C-6 조회 조건(자재 LOT, 제품 LOT 공용). 기본 줄: LOT 번호(보통), 자재 품목 또는 제품 품목(보통), 기간(넓음, 늘 보임),
+ * 제품 LOT은 기간 기준, [상세 조건 펼치기], [초기화], [조회].
+ * 상세 조건(처음엔 접힘): 자재 LOT은 입하번호, 공급사, 창고 / 제품 LOT은 출하번호, W/O 번호, 고객.
+ * 접혀 있는데 그 안의 조건이 걸려 있으면 버튼 옆 한 줄로 알린다.
+ * 기간만으로 조회한다(서버 진입점 완화 대기). 기간이 비어도 정확 일치 번호(LOT 번호, 입하번호, 출하번호, W/O 번호)면 조회한다.
  * 고르면 끝나는 조건(품목, 기간, 기간 기준, 공급사, 고객, 창고)은 바로 반영한다. 글자 칸은 Enter나 칸을 떠날 때,
  * 지우기(×)는 바로 반영한다. [조회]는 같은 조건으로 다시 조회하는 자리로 남는다.
  */
@@ -98,18 +98,10 @@ export const TraceFilterBar = ({
   const [draft, setDraft] = useState<TraceDraft>(() => draftOf(applied));
   const [picked, setPicked] = useState<Picked>({});
   const [periodError, setPeriodError] = useState<string | null>(null);
-  const hiddenApplied =
-    applied.from !== '' ||
-    applied.to !== '' ||
-    applied.inbound !== '' ||
-    applied.shipment !== '' ||
-    applied.workOrder !== '' ||
-    applied.partner !== '' ||
-    applied.warehouse !== '';
-  const [moreOpen, setMoreOpen] = useState(hiddenApplied);
+  /* 상세 조건은 늘 접힌 채 시작한다. 그 안의 조건이 걸려 있으면 버튼 옆 한 줄(`hiddenConditions`)로 알린다. */
+  const [moreOpen, setMoreOpen] = useState(false);
   const periodId = useId();
   const periodErrorId = useId();
-  const entryReasonId = useId();
   const entryErrorId = useId();
   const moreId = useId();
 
@@ -118,9 +110,6 @@ export const TraceFilterBar = ({
     setDraft(JSON.parse(appliedKey) as TraceDraft);
     setPeriodError(null);
   }, [appliedKey]);
-  useEffect(() => {
-    if (hiddenApplied) setMoreOpen(true);
-  }, [hiddenApplied]);
 
   const forward = direction === 'forward';
   const role = forward ? 'SUPPLIER' : 'CUSTOMER';
@@ -135,20 +124,15 @@ export const TraceFilterBar = ({
 
   const set = (patch: Partial<TraceDraft>) => setDraft((current) => ({ ...current, ...patch }));
   /**
-   * 바꾼 조건을 바로 반영한다. 진입점이 없으면 주소만 맞추고(목록은 부르지 않고 시작 안내를 보인다),
-   * 기간이 맞지 않으면 반영하지 않고 기간 칸 아래 사유를 보인다.
+   * 바꾼 조건을 바로 반영한다. 기간이 맞지 않으면 반영하지 않고 기간 칸 아래 사유를 보인다.
    */
   const commit = (patch: Partial<TraceDraft>) => {
     const next = withLotMatch({ ...draft, ...patch });
     setDraft(next);
-    if (hasEntry({ ...applied, ...next })) {
-      const reason = tracePeriodReason({ ...applied, ...next });
-      setPeriodError(reason);
-      if (reason !== null) {
-        setMoreOpen(true);
-        return;
-      }
-    }
+    const reason = tracePeriodReason({ ...applied, ...next });
+    setPeriodError(reason);
+    /* 고른 기간이 틀리면 반영하지 않는다. 기간이 비면 반영하고, 목록 자리가 기간을 고르라고 말한다. */
+    if (reason !== null && (next.from !== '' || next.to !== '')) return;
     onSearch(next, 'auto');
   };
   const pick = (key: keyof Picked, row: { id: number; code: string; name: string }) => {
@@ -159,16 +143,24 @@ export const TraceFilterBar = ({
     commit({ [key]: String(row.id) });
   };
 
-  const draftFilters = { ...applied, ...draft };
-  const entryMissing = !hasEntry(draftFilters);
   const periodMessage = periodError ?? serverErrors.period ?? null;
+  const open = moreOpen;
+  const hiddenConditions = [
+    forward && applied.inbound !== '' ? `${t.trace.inboundNo} ${applied.inbound}` : '',
+    !forward && applied.shipment !== '' ? `${t.trace.shipmentNo} ${applied.shipment}` : '',
+    !forward && applied.workOrder !== '' ? `${t.trace.workOrderNo} ${applied.workOrder}` : '',
+    applied.partner !== ''
+      ? `${forward ? t.filters.supplier : t.filters.customer} ${labelOf('partner', applied.partner, resolvedPartner)}`
+      : '',
+    forward && applied.warehouse !== ''
+      ? `${t.filters.warehouse} ${labelOf('warehouse', applied.warehouse, resolvedWarehouse)}`
+      : '',
+  ].filter((text) => text !== '');
   const submit = () => {
-    if (entryMissing) return;
     const next = withLotMatch(draft);
     const reason = tracePeriodReason({ ...applied, ...next });
     setPeriodError(reason);
-    if (reason !== null) setMoreOpen(true);
-    else onSearch(next, 'manual');
+    if (reason === null) onSearch(next, 'manual');
   };
   /* 글자 칸은 칠 때마다가 아니라 Enter나 칸을 떠날 때 반영한다. 일부 LOT 번호로 부르면 기간이 필요해진다. */
   const lotText = (value: Pick<TraceDraft, 'lot' | 'q'>) =>
@@ -236,78 +228,74 @@ export const TraceFilterBar = ({
           onClear={() => commit({ item: '' })}
         />
       </div>
+      <div className="field-cell filter-field-lg">
+        <label className="field-label" htmlFor={periodId}>
+          {forward ? t.trace.receiptPeriod : t.trace.period}
+        </label>
+        <DatePicker
+          id={periodId}
+          mode="range"
+          clearable
+          value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
+          placeholder={t.filters.periodPlaceholder}
+          invalid={periodMessage !== null}
+          aria-describedby={periodMessage === null ? undefined : periodErrorId}
+          onChange={(value) =>
+            commit({ from: value === null ? '' : value[0], to: value === null ? '' : value[1] })
+          }
+        />
+        {periodMessage !== null && (
+          <span id={periodErrorId} className="field-error" role="alert">
+            {periodMessage}
+          </span>
+        )}
+      </div>
+      {!forward && (
+        <div className="field-cell">
+          <span className="field-label" id={`${periodId}-axis`}>
+            {t.trace.dateAxis}
+          </span>
+          <RadioGroup
+            name={`${periodId}-axis`}
+            orientation="horizontal"
+            aria-labelledby={`${periodId}-axis`}
+            value={draft.axis}
+            onChange={(next) => commit({ axis: next as DateAxis })}
+            className="lot-trace-axis"
+          >
+            <Radio value="PRODUCED">{t.trace.dateAxisProduced}</Radio>
+            <Radio value="SHIPPED">{t.trace.dateAxisShipped}</Radio>
+          </RadioGroup>
+        </div>
+      )}
       <div className="field-cell field-cell-unlabeled">
         <Button
           type="button"
           variant="outlined"
-          aria-expanded={moreOpen}
-          aria-controls={moreOpen ? moreId : undefined}
-          onClick={() => setMoreOpen((open) => !open)}
+          className="lot-trace-more-toggle"
+          aria-expanded={open}
+          aria-controls={open ? moreId : undefined}
+          onClick={() => setMoreOpen(!open)}
         >
-          {moreOpen ? t.filters.less : t.filters.more}
+          {open ? t.filters.less : t.filters.more}
+          <Icon name={open ? 'expand_less' : 'expand_more'} size={18} />
         </Button>
       </div>
-      <div className="field-cell field-cell-unlabeled filter-actions-end lot-trace-actions-cell">
+      <div className="field-cell field-cell-unlabeled filter-actions-end">
         <div className="filter-actions">
           <Button type="button" variant="outlined" onClick={onReset}>
             {messages.common.reset}
           </Button>
-          <Button
-            type="submit"
-            disabled={entryMissing}
-            aria-describedby={entryMissing ? entryReasonId : undefined}
-          >
-            {messages.common.search}
-          </Button>
+          <Button type="submit">{messages.common.search}</Button>
         </div>
-        {entryMissing && (
-          <span id={entryReasonId} className="lot-trace-entry-reason">
-            {t.trace.entryRequired}
-          </span>
-        )}
       </div>
-      {moreOpen && (
+      {!open && hiddenConditions.length > 0 && (
+        <p className="lot-trace-hidden-summary">
+          {t.filters.hiddenApplied(hiddenConditions.join(', '))}
+        </p>
+      )}
+      {open && (
         <div id={moreId} className="lot-trace-filter-more">
-          <div className="field-cell filter-field-lg">
-            <label className="field-label" htmlFor={periodId}>
-              {forward ? t.trace.receiptPeriod : t.trace.period}
-            </label>
-            <DatePicker
-              id={periodId}
-              mode="range"
-              clearable
-              value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-              placeholder={t.filters.periodPlaceholder}
-              invalid={periodMessage !== null}
-              aria-describedby={periodMessage === null ? undefined : periodErrorId}
-              onChange={(value) =>
-                commit({ from: value === null ? '' : value[0], to: value === null ? '' : value[1] })
-              }
-            />
-            {periodMessage !== null && (
-              <span id={periodErrorId} className="field-error" role="alert">
-                {periodMessage}
-              </span>
-            )}
-          </div>
-          {!forward && (
-            <div className="field-cell">
-              <span className="field-label" id={`${periodId}-axis`}>
-                {t.trace.dateAxis}
-              </span>
-              <RadioGroup
-                name={`${periodId}-axis`}
-                orientation="horizontal"
-                aria-labelledby={`${periodId}-axis`}
-                value={draft.axis}
-                onChange={(next) => commit({ axis: next as DateAxis })}
-                className="lot-trace-axis"
-              >
-                <Radio value="PRODUCED">{t.trace.dateAxisProduced}</Radio>
-                <Radio value="SHIPPED">{t.trace.dateAxisShipped}</Radio>
-              </RadioGroup>
-            </div>
-          )}
           {forward
             ? textField('inbound', t.trace.inboundNo, t.trace.inboundNoPlaceholder)
             : textField('shipment', t.trace.shipmentNo, t.trace.shipmentNoPlaceholder)}

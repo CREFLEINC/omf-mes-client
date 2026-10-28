@@ -23426,6 +23426,28 @@ table.col-measuring td {
   margin: var(--space-3) 0;
 }
 
+.lot-trace-toolbar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+/* 상세 조건 펼치기 단추 — 글 오른쪽에 펼침 화살표. */
+.lot-trace-more-toggle {
+  gap: var(--space-1);
+}
+
+/* 상세 조건이 접혀 있는데 그 안의 조건이 걸려 있을 때 한 줄로 알린다. */
+.lot-trace-hidden-summary {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
 .lot-trace-toolbar-start {
   display: flex;
   flex-wrap: wrap;
@@ -23436,18 +23458,6 @@ table.col-measuring td {
 
 .lot-trace-list-pane {
   margin-top: var(--space-4);
-}
-
-/* 진입점이 없을 때 [조회] 아래 사유 한 줄(C-4) */
-.lot-trace-actions-cell {
-  align-items: flex-end;
-}
-
-.lot-trace-entry-reason {
-  margin-top: var(--space-1);
-  font: var(--type-body-sm);
-  color: var(--on-surface-variant);
-  white-space: nowrap;
 }
 
 .lot-trace-filter-more {

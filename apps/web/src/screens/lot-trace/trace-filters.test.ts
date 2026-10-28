@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   backwardQuery,
   forwardQuery,
-  hasEntry,
+  hasExactEntry,
   openLotParams,
   pathTo,
   readPath,
@@ -63,9 +63,13 @@ describe('추적 탭 주소 조건', () => {
     ).toBe(query);
   });
 
-  it('진입점이 없으면 부르지 않는다. 정확 일치 진입점이면 기간은 선택이다', () => {
-    const none = readTraceFilters('forward', params('from=2026-10-01'));
-    expect(hasEntry(none)).toBe(false);
+  it('기간만으로 부른다. 정확 일치 번호면 기간은 선택이다', () => {
+    expect(tracePeriodReason(readTraceFilters('forward', params('from=2026-10-01')))).toBeNull();
+    expect(tracePeriodReason(readTraceFilters('backward', params('')))).toBe(
+      '기간 시작일을 고르세요',
+    );
+    expect(hasExactEntry(readTraceFilters('backward', params('wo=WO-1')))).toBe(true);
+    expect(hasExactEntry(readTraceFilters('forward', params('q=A&item=3')))).toBe(false);
     expect(tracePeriodReason(readTraceFilters('forward', params('lot=A')))).toBeNull();
     expect(tracePeriodReason(readTraceFilters('forward', params('q=A')))).toBe(
       '기간 시작일을 고르세요',

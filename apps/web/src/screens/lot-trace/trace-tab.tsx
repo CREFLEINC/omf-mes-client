@@ -32,8 +32,7 @@ import {
 } from './trace-filter-bar';
 import {
   EMPTY_TRACE_FILTERS,
-  TRACE_DEFAULT_DAYS,
-  hasEntry,
+  hasExactEntry,
   readPath,
   readTraceFilters,
   readTraceSelected,
@@ -154,21 +153,24 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
 
   /* 처음 열면(조건이 하나도 없으면) 기본 기간 30일을 채운다. 다른 탭에서 LOT으로 넘어오면 기간을 두지 않는다. */
   const fresh =
-    !hasEntry(filters) && !searchParams.has('from') && !searchParams.has('to') && selected === null;
+    !hasExactEntry(filters) &&
+    !searchParams.has('from') &&
+    !searchParams.has('to') &&
+    selected === null;
   useEffect(() => {
     if (!fresh) return;
     setSearchParams(
       toTraceSearchParams(direction, {
         ...EMPTY_TRACE_FILTERS,
-        ...defaultPeriod(plantToday(), TRACE_DEFAULT_DAYS),
+        ...defaultPeriod(plantToday()),
       }),
       { replace: true },
     );
   }, [direction, fresh, setSearchParams]);
 
-  const entry = hasEntry(filters);
-  const periodReason = entry ? tracePeriodReason(filters) : null;
-  const ready = entry && periodReason === null;
+  /* 기간이 맞으면(또는 정확 일치 번호로 기간 없이) 부른다. 기간만으로도 부른다. */
+  const periodReason = tracePeriodReason(filters);
+  const ready = periodReason === null;
   const list = useTraceList(direction, filters, ready);
   const serverErrors = list.isError ? toFieldErrors(list.error) : {};
   const fieldError = serverErrors.entry !== undefined || serverErrors.period !== undefined;
@@ -274,7 +276,7 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
   ) : (
     <EmptyState
       size="sm"
-      title={t.trace.emptyTitle}
+      title={noPeriod ? t.trace.emptyTitle : t.trace.emptyInPeriod(filters.from, filters.to)}
       description={
         <>
           {noPeriod && filters.lot !== ''
@@ -291,14 +293,7 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
   const listActive = path[0]?.lotId ?? selected;
 
   let body: ReactNode;
-  if (!entry) {
-    body = (
-      <EmptyState
-        size="sm"
-        title={direction === 'forward' ? t.trace.startForward : t.trace.startBackward}
-      />
-    );
-  } else if (periodReason !== null) {
+  if (periodReason !== null) {
     body = <AlertBanner variant="warning">{periodReason}</AlertBanner>;
   } else if (list.isError && !fieldError) {
     body = (
@@ -368,7 +363,7 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
           onReset={() =>
             apply({
               ...EMPTY_TRACE_FILTERS,
-              ...defaultPeriod(plantToday(), TRACE_DEFAULT_DAYS),
+              ...defaultPeriod(plantToday()),
             })
           }
         />

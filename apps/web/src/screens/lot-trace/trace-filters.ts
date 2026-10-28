@@ -27,9 +27,6 @@ export const BACKWARD_STAGES = ['PRODUCED', 'PRODUCTION_RECEIVED', 'PACKED', 'SH
 export const stagesOf = (direction: TraceDirection): readonly ForwardStage[] =>
   direction === 'forward' ? FORWARD_STAGES : BACKWARD_STAGES;
 
-/** 기본 기간 30일(정방향은 입고 기간). 역방향도 같은 길이로 둔다. */
-export const TRACE_DEFAULT_DAYS = 30;
-
 export type DateAxis = 'PRODUCED' | 'SHIPPED';
 
 /** 정방향, 역방향 조회 조건 — **주소가 정본이다.** 빈 조건은 키를 두지 않는다. */
@@ -176,17 +173,11 @@ export const EMPTY_TRACE_FILTERS: TraceFilters = {
   size: DEFAULT_SIZE,
 };
 
-/** 진입점 — 정방향은 품목, LOT 번호, 입하번호. 역방향은 품목, LOT 번호, 출하번호, W/O 번호(계약 400). */
-export const hasEntry = (filters: TraceFilters): boolean =>
-  [filters.item, filters.q, filters.lot, filters.inbound, filters.shipment, filters.workOrder].some(
-    (value) => value !== '',
-  );
-
 /** 정확 일치 진입점(LOT 번호, 입하번호, 출하번호, W/O 번호)으로 집으면 기간은 선택이다(계약). */
-const hasExactEntry = (filters: TraceFilters): boolean =>
+export const hasExactEntry = (filters: TraceFilters): boolean =>
   [filters.lot, filters.inbound, filters.shipment, filters.workOrder].some((value) => value !== '');
 
-/** 조회할 수 있으면 `null`, 아니면 기간 칸 아래 사유. 진입점 없음은 따로 본다(`hasEntry`). */
+/** 조회할 수 있으면 `null`, 아니면 기간 칸 아래 사유. 기간만으로 조회하고, 정확 일치 번호가 있으면 기간은 선택이다. */
 export const tracePeriodReason = (filters: TraceFilters): string | null =>
   filters.from === '' && filters.to === '' && hasExactEntry(filters)
     ? null

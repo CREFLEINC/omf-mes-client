@@ -84,23 +84,38 @@ const estimatedChip = (lotNo: string): HTMLElement | null => {
 };
 
 describe('W-02-09 LOT 추적: 자재 LOT 탭', () => {
-  it('처음 열면 자재 LOT 탭이고, 기본 기간 30일을 채우고 진입점이 없으면 부르지 않고 [조회]를 사유와 함께 잠근다', async () => {
-    const { calls } = setup('/production/lot-trace', {});
+  it('메뉴로 처음 열면 자재 LOT 탭이고, 기본 기간(오늘까지 7일)만으로 목록을 부른다', async () => {
+    const { calls } = setup('/production/lot-trace', { forwardRows: [forwardRow(101, MAT)] });
 
     expect(
       await screen.findByRole('tab', { name: '자재 LOT', selected: true }),
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText('품목이나 LOT 번호로 찾으세요. 입하번호로도 찾을 수 있습니다'),
-    ).toBeInTheDocument();
-    const search = screen.getByRole('button', { name: '조회' });
-    expect(search).toBeDisabled();
-    expect(search).toHaveAccessibleDescription('품목이나 LOT 번호를 넣으세요');
-    const expected = defaultPeriod(plantToday(), 30);
+    expect(await screen.findByText(listLot(MAT))).toBeInTheDocument();
+    const expected = defaultPeriod(plantToday());
+    const first = lists(calls, '/trace/material-lot-flows')[0];
+    expect(first?.searchParams.get('receiptDateFrom')).toBe(expected.from);
+    expect(first?.searchParams.get('receiptDateTo')).toBe(expected.to);
+    expect(first?.searchParams.has('itemId')).toBe(false);
+    expect(first?.searchParams.has('q')).toBe(false);
+    /* 기간은 기본 줄에 늘 보이고, 상세 조건은 접혀 있다. */
     expect(screen.getByLabelText('입고 기간')).toHaveTextContent(
       `${expected.from} ~ ${expected.to}`,
     );
-    expect(calls).toHaveLength(0);
+    expect(screen.getByRole('button', { name: '상세 조건 펼치기' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.queryByLabelText('입하번호')).toBeNull();
+    expect(screen.getByRole('button', { name: '조회' })).toBeEnabled();
+  });
+
+  it('기간 안에 결과가 없으면 그 기간에 없다고 말하고 기간을 넓히라고 한다', async () => {
+    setup('/production/lot-trace?from=2026-10-01&to=2026-10-07', { forwardRows: [] });
+
+    expect(
+      await screen.findByText('2026-10-01 ~ 2026-10-07에 조건에 맞는 LOT이 없습니다'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/기간을 넓히거나 조건을 줄이세요/)).toBeInTheDocument();
   });
 
   it('LOT 번호로 찾으면 목록과 단계 칩(단계별 LOT 수)을 보이고, 칩을 누르면 그 단계로 거른다', async () => {
@@ -418,6 +433,19 @@ describe('W-02-09 LOT 추적: 제품 LOT 탭', () => {
     const list = lists(calls, '/trace/product-lot-flows')[0];
     expect(list?.searchParams.get('workOrderNo')).toBe('WO-SYN-0001');
     expect(list?.searchParams.has('dateFrom')).toBe(false);
+  });
+
+  it('상세 조건 안의 조건(W/O 번호)이 주소에 있어도 접힌 채 열고, 걸린 조건을 한 줄로 알린다', async () => {
+    setup('/production/lot-trace?tab=backward&wo=WO-SYN-0001', {
+      backwardRows: [backwardRow(201, PROD)],
+    });
+
+    await screen.findByText(listLot(PROD));
+    expect(screen.getByRole('button', { name: '상세 조건 펼치기' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.getByText('상세 조건: W/O 번호 WO-SYN-0001')).toBeInTheDocument();
   });
 
   it('목록: 서버 basis가 있으면 「추정 포함」 칩, null이면 칩이 없다', async () => {
@@ -808,22 +836,21 @@ describe('W-02-09 LOT 추적: 추적 조건 바로 반영', () => {
     expect(navState()).toMatch(/^REPLACE /);
   });
 
-  it('LOT 번호를 지우면(×) 바로 반영하고, 진입점이 없으니 부르지 않고 시작 안내를 보인다', async () => {
+  it('LOT 번호를 지우면(×) 바로 반영하고, 남은 조건이 없으면 기본 기간으로 다시 부른다', async () => {
     const user = userEvent.setup();
     const { calls } = setup(`/production/lot-trace?lot=${encodeURIComponent(MAT)}`, {
       forwardRows: [forwardRow(101, MAT)],
     });
     await screen.findByText(listLot(MAT));
-    const before = flows(calls).length;
 
     await user.click(screen.getByRole('button', { name: '지우기' }));
 
-    expect(
-      await screen.findByText('품목이나 LOT 번호로 찾으세요. 입하번호로도 찾을 수 있습니다'),
-    ).toBeInTheDocument();
+    const expected = defaultPeriod(plantToday());
+    await waitFor(() =>
+      expect(flows(calls).at(-1)?.searchParams.get('receiptDateFrom')).toBe(expected.from),
+    );
+    expect(flows(calls).at(-1)?.searchParams.has('lotNo')).toBe(false);
     expect(navState()).not.toContain('lot=');
-    expect(flows(calls)).toHaveLength(before);
-    expect(screen.getByRole('button', { name: '조회' })).toBeDisabled();
   });
 
   it('기간이 366일을 넘으면 반영하지 않고 기간 칸 아래 사유를 보인다', async () => {
