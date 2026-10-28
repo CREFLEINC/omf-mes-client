@@ -78,8 +78,6 @@ export const workStart: Translated<typeof ko.workStart> = {
     retry: 'Thử lại',
 
     total: (total: number): string => `Tổng ${String(total)} mục`,
-    range: (total: number, from: number, to: number): string =>
-      `Mục ${String(from)}~${String(to)} trên tổng ${String(total)}`,
 
     pageNav: 'Chuyển trang danh sách lệnh sản xuất',
 

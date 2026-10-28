@@ -208,7 +208,7 @@ describe('P-02-01 작업지시 카드 — T-P-W 카드 정보', () => {
 });
 
 describe('P-02-01 작업지시 목록 — 건수 줄', () => {
-  it('쪽이 하나면 전체 건수, 여럿이면 지금 쪽이 몇 번째부터 몇 번째인지 말한다', () => {
+  it('건수는 쪽 수와 관계없이 관리웹과 같은 「총 N건」이다', () => {
     const { rerender } = render(
       <WorkOrderList
         {...base}
@@ -227,6 +227,6 @@ describe('P-02-01 작업지시 목록 — 건수 줄', () => {
         pageMeta={{ page: 2, size: 20, total: 29 }}
       />,
     );
-    expect(screen.getByText(t.range(29, 21, 29))).toBeInTheDocument();
+    expect(screen.getByText(t.total(29))).toBeInTheDocument();
   });
 });

@@ -11563,6 +11563,11 @@ button.app-button-neutral {
   margin-right: auto;
 }
 
+/* 줄 안 글자의 문단 여백을 턴다. 여백이 남으면 글자가 버튼과 같은 세로 가운데에 서지 않는다. */
+.pop-page-nav > p {
+  margin-block: 0;
+}
+
 /*
  * 머리 오른쪽의 프린터 상태.
  *
@@ -12763,12 +12768,23 @@ button.app-button-neutral {
   overflow-y: auto;
 }
 
+/*
+ * 쪽 이동 줄은 스크롤 영역 아래 제 줄이다. 구분선과 간격으로 목록과 나눠, 잘린 카드가 줄 뒤에 숨은 것처럼
+ * 보이지 않게 한다. 건수, 버튼, 위치 표시는 한 세로 가운데에 선다.
+ */
 .work-start-list-foot {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  margin-block-start: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--outline-variant);
+}
+
+.work-start-list-foot > p {
+  margin-block: 0;
 }
 
 /*

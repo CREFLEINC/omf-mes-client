@@ -278,15 +278,8 @@ export const WorkOrderList = ({
       {!isError && (
         <div className="work-start-list-foot">
           {total !== undefined && total > 0 && (
-            <p className="field-note">
-              {pageMeta === undefined || total <= pageMeta.size
-                ? t.total(total)
-                : t.range(
-                    total,
-                    (pageMeta.page - 1) * pageMeta.size + 1,
-                    Math.min(pageMeta.page * pageMeta.size, total),
-                  )}
-            </p>
+            /* 건수는 관리웹 페이지 이동과 같은 「총 N건」이다. 지금 쪽은 옆 「1 / 2」가 말한다. */
+            <p className="field-note">{t.total(total)}</p>
           )}
           {/* 잘렸다고 말하기만 하지 않는다. 키오스크라 주소창도 뒤로가기도 없다(#1005). */}
           <PopPageNav

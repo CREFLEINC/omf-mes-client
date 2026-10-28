@@ -106,10 +106,8 @@ export const workStart = {
     loadError: '작업지시를 불러오지 못했습니다. 다시 시도하세요.',
     retry: '다시 시도',
 
-    total: (total: number): string => `전체 ${String(total)}건`,
-    /** 쪽이 여럿일 때. 지금 쪽이 전체의 몇 번째부터 몇 번째인지 말한다. */
-    range: (total: number, from: number, to: number): string =>
-      `전체 ${String(total)}건 중 ${String(from)}~${String(to)}번째`,
+    /** 관리웹 페이지 이동과 같은 꼴(`screenPatterns.pageNav.total`). */
+    total: (total: number): string => `총 ${String(total)}건`,
 
     pageNav: '작업지시 목록 페이지 이동',
 
