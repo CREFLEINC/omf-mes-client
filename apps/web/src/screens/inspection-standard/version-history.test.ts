@@ -33,8 +33,11 @@ describe('toHistoryRow', () => {
       labels,
     );
 
-    expect(row.action).toBe('버전 설정 저장');
-    expect(row.changes).toEqual(['검사 방식: 전수검사 → SAMPLE_BY_LOT', 'AQL: — → 0.65']);
+    expect(row.action).toBe('버전 설정');
+    expect(row.changes).toEqual([
+      { label: '검사 방식', before: '전수검사', after: 'SAMPLE_BY_LOT' },
+      { label: 'AQL', before: '—', after: '0.65' },
+    ]);
   });
 
   it('검사 항목 저장은 항목코드별 추가 · 삭제 · 바뀐 칸을 낸다', () => {
@@ -56,8 +59,12 @@ describe('toHistoryRow', () => {
       labels,
     );
 
-    expect(row.action).toBe('검사 항목 저장');
-    expect(row.changes).toEqual(['LEN 기준값: 12.5 → 12.6', '항목 추가: HGT', '항목 삭제: WGT']);
+    expect(row.action).toBe('검사 항목');
+    expect(row.changes).toEqual([
+      { label: 'LEN · 기준값', before: '12.5', after: '12.6' },
+      { label: 'HGT', note: 'added' },
+      { label: 'WGT', note: 'removed' },
+    ]);
   });
 
   it('상태 전이 · 발행 · 작성 취소를 가른다', () => {

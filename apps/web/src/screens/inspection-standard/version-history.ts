@@ -14,12 +14,20 @@ export interface VersionAuditEvent {
   performedBy: number | null;
 }
 
+/** 바뀐 칸 하나 — 이름과 전/후 값. 항목 추가 · 삭제는 값 대신 `note` 를 둔다. */
+export interface HistoryChange {
+  label: string;
+  before?: string;
+  after?: string;
+  note?: 'added' | 'removed';
+}
+
 export interface HistoryRow {
   id: number;
   occurredAt: string;
   performedBy: number | null;
   action: string;
-  changes: string[];
+  changes: HistoryChange[];
 }
 
 type Fields = Record<string, unknown>;
@@ -107,7 +115,7 @@ const actionOf = (event: VersionAuditEvent): string => {
   return t.history.updated;
 };
 
-const itemLines = (before: Fields, after: Fields, labels: CompareLabels): string[] => {
+const itemLines = (before: Fields, after: Fields, labels: CompareLabels): HistoryChange[] => {
   const fields = itemFields(labels);
   const asList = (value: unknown): Fields[] =>
     Array.isArray(value)
@@ -118,30 +126,27 @@ const itemLines = (before: Fields, after: Fields, labels: CompareLabels): string
   const codeOf = (item: Fields): string => raw(item.inspectionItemCode);
   const beforeByCode = new Map(beforeItems.map((item) => [codeOf(item), item]));
   const afterCodes = new Set(afterItems.map(codeOf));
-  const lines: string[] = [];
+  const lines: HistoryChange[] = [];
 
   for (const item of afterItems) {
     const old = beforeByCode.get(codeOf(item));
     if (old === undefined) {
-      lines.push(t.history.itemAdded(codeOf(item)));
+      lines.push({ label: codeOf(item), note: 'added' });
       continue;
     }
     for (const key of Object.keys(item)) {
       if (key === 'inspectionItemCode') continue;
       const field = fields[key];
       const format = field?.format ?? raw;
-      lines.push(
-        t.history.itemChanged(
-          codeOf(item),
-          field?.label ?? key,
-          format(old[key]),
-          format(item[key]),
-        ),
-      );
+      lines.push({
+        label: t.history.itemField(codeOf(item), field?.label ?? key),
+        before: format(old[key]),
+        after: format(item[key]),
+      });
     }
   }
   for (const item of beforeItems) {
-    if (!afterCodes.has(codeOf(item))) lines.push(t.history.itemRemoved(codeOf(item)));
+    if (!afterCodes.has(codeOf(item))) lines.push({ label: codeOf(item), note: 'removed' });
   }
   return lines;
 };
@@ -152,7 +157,7 @@ export const toHistoryRow = (event: VersionAuditEvent, labels: CompareLabels): H
   const after = event.afterValue ?? {};
   const fields = versionFields(labels);
 
-  let changes: string[];
+  let changes: HistoryChange[];
   if ('items' in before || 'items' in after) {
     changes = itemLines(before, after, labels);
   } else if (event.eventTypeCode === 'CREATE' || event.eventTypeCode === 'DELETE') {
@@ -164,7 +169,11 @@ export const toHistoryRow = (event: VersionAuditEvent, labels: CompareLabels): H
     changes = keys.map((key) => {
       const field = fields[key];
       const format = field?.format ?? raw;
-      return t.compare.change(field?.label ?? key, format(before[key]), format(after[key]));
+      return {
+        label: field?.label ?? key,
+        before: format(before[key]),
+        after: format(after[key]),
+      };
     });
   }
 

@@ -2495,10 +2495,11 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
 
     await awaitVersionForm();
     await user.click(screen.getByRole('button', { name: '변경 이력' }));
-    const dialog = await screen.findByRole('dialog', { name: '변경 이력' });
+    const dialog = await screen.findByRole('dialog', { name: /^변경 이력/ });
 
-    expect(await within(dialog).findByText('버전 설정 저장')).toBeInTheDocument();
-    expect(within(dialog).getByText('AQL: — → 0.65')).toBeInTheDocument();
+    expect(await within(dialog).findByText('버전 설정')).toBeInTheDocument();
+    expect(within(dialog).getByText('AQL')).toBeInTheDocument();
+    expect(within(dialog).getByText('0.65')).toBeInTheDocument();
     expect(await within(dialog).findByText('합성 사용자')).toBeInTheDocument();
 
     const history = requestsTo(requests, '/audit/events')[0];

@@ -13,6 +13,8 @@ const t = messages.inspectionStandard;
 export interface VersionHistoryTableProps {
   inspectionPlanVersionId: number;
   labels: CompareLabels;
+  /** 조회 기간 표기를 표 위 오른쪽에 둔다 — 창에서는 제목 줄이 대신 말한다(#196). */
+  showRange?: boolean;
 }
 
 /**
@@ -22,6 +24,7 @@ export interface VersionHistoryTableProps {
 export const VersionHistoryTable = ({
   inspectionPlanVersionId,
   labels,
+  showRange = false,
 }: VersionHistoryTableProps) => {
   const history = useVersionHistory(inspectionPlanVersionId);
   const events = history.data?.items ?? [];
@@ -65,13 +68,27 @@ export const VersionHistoryTable = ({
       key: 'changes',
       header: t.history.changes,
       align: 'center',
+      /* 바뀐 칸마다 한 줄 — 이름은 왼쪽, 「전 → 후」는 오른쪽, 바뀐 뒤 값은 초록(사용자 시안 · #196). */
       render: (row): ReactNode =>
         row.changes.length === 0 ? (
           t.values.empty
         ) : (
-          <ul className="inspection-standard-compare-changes">
+          <ul className="inspection-standard-history-changes">
             {row.changes.map((change) => (
-              <li key={change}>{change}</li>
+              <li key={`${change.label}:${change.note ?? ''}`}>
+                <span className="inspection-standard-history-label">{change.label}</span>
+                {change.note === undefined ? (
+                  <span className="inspection-standard-history-value">
+                    {change.before}
+                    <Icon name="arrow_forward" size={14} aria-label="→" />
+                    <span className="inspection-standard-history-after">{change.after}</span>
+                  </span>
+                ) : (
+                  <span className="inspection-standard-history-note" data-tone={change.note}>
+                    {change.note === 'added' ? t.history.itemAdded : t.history.itemRemoved}
+                  </span>
+                )}
+              </li>
             ))}
           </ul>
         ),
@@ -80,6 +97,7 @@ export const VersionHistoryTable = ({
 
   return (
     <div className="inspection-standard-history">
+      {showRange && <p className="inspection-standard-history-range">{t.history.range}</p>}
       <div className="inspection-queue-table inspection-standard-table-box inspection-standard-history-rows">
         <Table
           density="compact"
@@ -96,7 +114,6 @@ export const VersionHistoryTable = ({
           }
         />
       </div>
-      <p className="field-note">{t.history.rangeNote}</p>
     </div>
   );
 };

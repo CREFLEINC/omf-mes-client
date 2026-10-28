@@ -1514,6 +1514,7 @@ export const InspectionStandardScreen = () => {
                   <VersionHistoryTable
                     inspectionPlanVersionId={selectedVersionId}
                     labels={compareLabels}
+                    showRange
                   />
                 ),
             },
@@ -1528,7 +1529,13 @@ export const InspectionStandardScreen = () => {
             size="lg"
             closeOnBackdropClick={false}
             showCloseButton={false}
-            title={t.history.title}
+            /* 제목 줄 오른쪽에 조회 기간(사용자 시안 · #196) */
+            title={
+              <span className="inspection-standard-dialog-title">
+                {t.history.title}
+                <span className="inspection-standard-history-range">{t.history.range}</span>
+              </span>
+            }
             onClose={() => setIsHistoryOpen(false)}
             footer={
               <Button variant="outlined" onClick={() => setIsHistoryOpen(false)}>
