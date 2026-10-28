@@ -1,6 +1,7 @@
-import { Select, type SelectItems } from '@crefle/web-ui';
+import { type SelectItems } from '@crefle/web-ui';
 import { useId, type ReactNode } from 'react';
 
+import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
 
 export interface SelectFieldProps {

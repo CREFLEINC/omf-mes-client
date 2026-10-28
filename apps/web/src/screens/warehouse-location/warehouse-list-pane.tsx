@@ -5,7 +5,6 @@ import {
   type Column,
   EmptyState,
   SearchInput,
-  Select,
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
@@ -13,6 +12,7 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import { type LookupSource, lookupDisplayLabel } from '../../patterns/lookup-display';
+import { Select } from '../../patterns/select';
 import { codeLabel, defaultWarehouseFilters } from './code-options';
 import type { LookupEntry, Warehouse, WarehouseFilters } from './types';
 

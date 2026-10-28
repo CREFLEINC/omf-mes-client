@@ -1,7 +1,8 @@
-import { Button, Chip, Dialog, Icon, Select, type SelectOptionGroup } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Icon, type SelectOptionGroup } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
+import { Select } from '../../patterns/select';
 import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
 import { resolveVersionStatus } from './plan-version-status';

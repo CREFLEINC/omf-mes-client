@@ -5,7 +5,6 @@ import {
   type Column,
   EmptyState,
   PageHeader,
-  Select,
   Table,
   TextField,
   useToast,
@@ -20,6 +19,7 @@ import { useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { Select } from '../../patterns/select';
 import { PageNav } from '../oqc-inspection/page-nav';
 import { toPageView } from '../oqc-inspection/pagination';
 import { LEVEL_CODES, LevelDialog } from './level-dialog';

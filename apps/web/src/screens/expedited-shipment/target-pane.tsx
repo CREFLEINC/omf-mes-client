@@ -1,15 +1,9 @@
-import {
-  AlertBanner,
-  DatePicker,
-  EmptyState,
-  Select,
-  SkeletonText,
-  TextField,
-} from '@crefle/web-ui';
+import { AlertBanner, DatePicker, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { Select } from '../../patterns/select';
 import type { ExpeditedLookup } from './lookups';
 import type { Period } from './period';
 import { formatQty, type QuantityLimits } from './quantity';

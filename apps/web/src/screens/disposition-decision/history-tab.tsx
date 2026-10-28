@@ -1,16 +1,9 @@
-import {
-  Button,
-  type Column,
-  DatePicker,
-  EmptyState,
-  Select,
-  SkeletonText,
-  Table,
-} from '@crefle/web-ui';
+import { Button, type Column, DatePicker, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { Select } from '../../patterns/select';
 import { dispositionTypeLabel, type CodeOption } from './disposition-codes';
 import type { HistoryFilters } from './history-filters';
 import { LoadErrorBanner } from './load-error';

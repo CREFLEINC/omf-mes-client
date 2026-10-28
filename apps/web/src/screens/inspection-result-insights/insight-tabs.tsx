@@ -3,7 +3,6 @@ import {
   Button,
   type Column,
   EmptyState,
-  Select,
   SkeletonText,
   Table,
   Tabs,
@@ -12,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { Select } from '../../patterns/select';
 import type { InspectionInsightFilters } from './filters';
 import { useDefectDistribution, type DefectDistribution } from './queries';
 import type { DistributionGroup } from './request-queries';

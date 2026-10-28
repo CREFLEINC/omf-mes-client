@@ -7,7 +7,6 @@ import {
   EmptyState,
   PageHeader,
   Progress,
-  Select,
   SkeletonText,
   Stepper,
   Table,
@@ -22,6 +21,7 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { Select } from '../../patterns/select';
 import { ConfirmDialog, type ReinstatementSummary } from './confirm-dialog';
 import {
   EMPTY_DRAFT,

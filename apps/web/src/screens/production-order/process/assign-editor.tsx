@@ -2,7 +2,6 @@ import {
   AlertBanner,
   Button,
   Chip,
-  Select,
   SkeletonText,
   TextField,
   Tooltip,
@@ -15,6 +14,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { DateTimeField } from '../../../patterns/date-time-field';
 import { ReferenceField, type ReferenceRow } from '../../../patterns/reference-picker';
 import { SaveErrorBanner } from '../../../patterns/master';
+import { Select } from '../../../patterns/select';
 import {
   LINE_LOCATION_WAREHOUSE_TYPES,
   useWorkOrderEquipment,

@@ -1,8 +1,9 @@
-import { Button, Checkbox, Chip, SearchInput, Select } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import { ItemPickerDialog } from '../../patterns/item-picker';
+import { Select } from '../../patterns/select';
 import { DEFAULT_PLAN_FILTERS, INSPECTION_TYPE_OPTIONS } from './code-options';
 import { FieldLabel } from './field-label';
 import { clearFilter, toFilterChips } from './filters';

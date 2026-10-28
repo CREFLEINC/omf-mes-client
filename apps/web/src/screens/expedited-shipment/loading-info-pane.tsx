@@ -1,7 +1,8 @@
-import { AlertBanner, Select, SkeletonText, TextField } from '@crefle/web-ui';
+import { AlertBanner, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { Select } from '../../patterns/select';
 import type { WarehouseResolution } from './lookups';
 import type { LoadingInfoDraft } from './submission';
 

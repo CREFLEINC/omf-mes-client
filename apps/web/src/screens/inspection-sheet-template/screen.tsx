@@ -5,7 +5,6 @@ import {
   type Column,
   EmptyState,
   PageHeader,
-  Select,
   Table,
 } from '@crefle/web-ui';
 import type { InspectionSheetTemplate } from '@omf-mes/api-client';
@@ -14,6 +13,7 @@ import { useId, useState } from 'react';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
+import { Select } from '../../patterns/select';
 import { useSession } from '../../patterns/session';
 import { PageNav } from '../oqc-inspection/page-nav';
 import { toPageView } from '../oqc-inspection/pagination';

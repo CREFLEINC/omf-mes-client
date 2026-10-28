@@ -3,7 +3,6 @@ import {
   Button,
   Checkbox,
   Dialog,
-  Select,
   Table,
   TextField,
   type Column,
@@ -11,6 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { Select } from '../select';
 import {
   ITEM_PAGE_SIZE,
   useItemAvailability,

@@ -86,7 +86,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
   },
   quick: {
     supplier: 'Nhà cung cấp',
-    supplierPlaceholder: 'Nhập tên hoặc ID nhà cung cấp',
     item: 'Mã mặt hàng',
     itemPlaceholder: 'Nhập mã mặt hàng',
     scanNotFound: (value: string): string => `Không có mặt hàng khớp với 「${value}」.`,
