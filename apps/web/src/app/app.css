@@ -19866,58 +19866,12 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   border: 0;
 }
 
-/*
- * 입고 관리 — 화면 막대. 이름 「입고 관리」(옛 탭 막대의 켜진 탭 `.hub-tab[aria-current]` 과 같은 모양) + 오른쪽의
- * 단계 칩 · 「초과분 연결」. 탭을 합치며(2026-10-23) 셸의 탭 막대(`.hub-bar`)가 빠져 화면이 같은 모양의 줄을 그린다.
- * 밑줄은 줄 전체에 긋는다.
- */
-.po-board-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  box-shadow: inset 0 -1px 0 var(--outline-variant);
-}
-
-.po-board-title {
-  flex: none;
-  margin: 0;
-  padding: var(--space-2) var(--space-4);
-  color: var(--primary-text);
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-  white-space: nowrap;
-  box-shadow: inset 0 -2px 0 var(--primary-text);
-}
-
+/* 입고 관리 — 탭 막대 오른쪽 자리(`hub-actions`)에 넣는 단계 칩 줄. */
 .po-board-bar-tools {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin-left: auto;
-}
-
-/*
- * 입하 예정 — 초과분 발주 연결(서버 장부 P-100). 화면 막대 끝의 진입 단추와 오른쪽에서 열리는 연결 창.
- * 고른 줄 표시는 발주 목록과 같은 정보 파랑이다(붉은 계열은 문제로 읽힌다).
- */
-
-.po-board-tool-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  margin-left: var(--space-2);
-  padding: 0 var(--space-1);
-  border-radius: 999px;
-  background: var(--semantic-warning-container);
-  color: var(--semantic-on-warning-container, var(--on-surface));
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.excess-dialog {
-  --dialog-max-lg: 72rem;
 }
 
 .register-panel {
@@ -19951,41 +19905,17 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   margin: 0;
 }
 
-.excess-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.excess-guide {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.excess-table {
-  max-height: 40vh;
-  overflow: auto;
-}
-
-/* 열 폭을 끌어 바꾸면 최소 폭이 따라간다(patterns/column-resize.tsx). 기본은 `.wide-table` 의 58rem 이다. */
-.wide-table.excess-table table {
-  min-width: max(58rem + var(--col-grow, 0px), var(--col-floor, 0px));
-}
-
-.excess-table tbody tr {
+/* 「입고 대기 전체」 — 발주 머리의 체크 하나와 이름. */
+.po-board-check-all {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.excess-table tbody tr:has([aria-current='true']) > td,
-.excess-table tbody tr:has([aria-current='true']):hover > td {
-  background: var(--semantic-info-container);
-}
-
-.excess-table tbody tr:has([aria-current='true']) > td:first-child {
-  box-shadow: inset 3px 0 0 var(--semantic-info);
-}
-
+/* 입고 관리 묶음의 「초과분 발주 연결」 탭(2026-10-28 — 오른쪽 창을 탭으로 뗐다). */
 .excess-receipt-cell {
   display: inline-flex;
   align-items: center;
@@ -19993,29 +19923,32 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 .excess-section-title {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  margin: 0 0 var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
   font-size: 1rem;
 }
 
-.excess-section-sub {
-  color: var(--on-surface-variant);
-  font-size: 0.875rem;
-  font-weight: 400;
-}
-
-.excess-footer {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+/* 입고 일괄 처리 창의 LOT 표 — 몇 줄이라 표 부품 없이 촘촘하게. */
+.batch-post-lots {
   width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
 }
 
-.excess-confirm {
-  flex: 1;
-  margin: 0;
+.batch-post-lots th,
+.batch-post-lots td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.batch-post-lots th {
+  color: var(--on-surface-variant);
+  font-weight: 500;
+}
+
+.batch-post-lots .batch-post-qty {
+  text-align: right;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

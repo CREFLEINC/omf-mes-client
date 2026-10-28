@@ -146,15 +146,10 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     inactiveSuffix: ' (không dùng)',
   },
   excess: {
-    entry: 'Liên kết phần vượt',
-    entryCount: (count: number): string => `${String(count)} phần vượt chưa liên kết`,
-    title: 'Liên kết phần vượt với P/O',
-    steps: {
-      label: 'Các bước',
-      pick: 'Chọn phần vượt',
-      line: 'Chọn dòng P/O',
-      link: 'Liên kết',
-    },
+    listCount: (count: number): string => `${String(count)} phần vượt chưa liên kết`,
+    splitter: 'Giữa danh sách phần vượt và dòng P/O để liên kết',
+    listCollapse: 'Thu gọn danh sách phần vượt',
+    listExpand: 'Mở rộng danh sách phần vượt',
     listTitle: 'Phần vượt chưa liên kết',
     table: {
       receiptNo: 'Số nhập hàng',
@@ -248,7 +243,9 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
       qtyEmpty: 'Hãy nhập số lượng nhận lần này.',
       qtyNotNumber: 'Số lượng nhận lần này phải là số.',
       qtyNotPositive: 'Số lượng nhận lần này phải lớn hơn 0.',
+      labelIssued: 'Mặt hàng đã phát hành nhãn không thể nhập hàng với số lượng thay đổi.',
     },
+    labeledLocked: 'Đã phát hành nhãn · số lượng còn lại hãy chọn để nhập hàng',
     noReason: 'Không tải được mã lý do không dán nhãn nên không thể đăng ký nhập hàng.',
     confirm: {
       title: 'Đăng ký nhập hàng',
@@ -273,6 +270,10 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     goExcess: 'Liên kết phần vượt',
   },
   lot: {
+    selectForPost: (lotNo: string): string => `Chọn ${lotNo} để nhập kho`,
+    selectAllForPost: 'Tất cả chờ nhập kho',
+    checkedForPost: (count: number): string => `Đã chọn ${String(count)} chờ nhập kho`,
+    postChecked: 'Nhập kho các LOT đã chọn',
     receivedOn: (date: string): string => `Nhận ${date}`,
     putawayOnPda: 'Xếp kho trên PDA',
     issueLabelOnPop: 'Phát hành nhãn trên POP',
