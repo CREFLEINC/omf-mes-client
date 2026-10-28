@@ -88,7 +88,10 @@ export const PlanListPane = ({
       key: 'inspectionPlanName',
       align: 'center',
       header: t.fields.inspectionPlanName,
-      width: '280px',
+      /*
+       * 폭을 정하지 않는다 — 남는 폭을 이 열이 맡는다(검사 조회·판정 표와 같다 · 사용자 지시 #196).
+       * 모든 열이 폭을 가지면 한 열을 끌 때 나머지가 비율대로 함께 늘고 줄어 끈 대로 서지 않는다.
+       */
       render: (row) => <span title={row.inspectionPlanName}>{row.inspectionPlanName}</span>,
     },
     {
@@ -152,7 +155,8 @@ export const PlanListPane = ({
 
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다 — 검사 조회·판정 목록과 같다(omf-all-around#196). */
   const ordered = useColumnOrder('omf-mes:inspection-standard:columns:plans:order', columns);
-  const resizable = useColumnWidths('omf-mes:inspection-standard:columns:plans', ordered, {
+  /* `:v2` — 모든 열이 고정 폭이던 때 최소 폭으로 잘못 저장된 값을 버리고 새로 시작한다(#196). */
+  const resizable = useColumnWidths('omf-mes:inspection-standard:columns:plans:v2', ordered, {
     fitContent: true,
   });
   /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다. 더 넓히면 표 안에서 가로로 구른다. */

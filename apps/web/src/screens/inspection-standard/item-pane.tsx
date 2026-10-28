@@ -154,7 +154,7 @@ export const ItemPane = ({
       key: 'targetRange',
       header: t.fields.targetRange,
       align: 'center',
-      width: '240px',
+      /* 폭을 정하지 않는다 — 남는 폭을 이 열이 맡는다(검사 조회·판정 표와 같다 · #196). */
       render: (row) => rangeLabel(row, uomLabel),
     },
     {
@@ -204,7 +204,8 @@ export const ItemPane = ({
     'omf-mes:inspection-standard:columns:items:order',
     isEditable ? columns : columns.filter((column) => column.key !== 'rowActions'),
   );
-  const resizable = useColumnWidths('omf-mes:inspection-standard:columns:items', ordered, {
+  /* `:v2` — 모든 열이 고정 폭이던 때 최소 폭으로 잘못 저장된 값을 버리고 새로 시작한다(#196). */
+  const resizable = useColumnWidths('omf-mes:inspection-standard:columns:items:v2', ordered, {
     fitContent: true,
   });
   /*
