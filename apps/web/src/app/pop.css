@@ -3542,7 +3542,19 @@
  *   보조 조작 둘이라 서로 다르게 생길 이유가 없다 — 규칙을 «한 벌»로 두어 한쪽만 바뀌는
  *   일을 막는다. ⚠ 그 단추는 `.pop-ui` 안(머리줄 흐름)에 서므로 겨냥을 한 단계 올려 잡는다.
  */
+/*
+ * 화면이 머리줄에 두는 상시 동작(공용 `pop-header` 의 `actions`, 예: 생산 작업 [작업 중단]). 셸의 [화면 이동]
+ * 바로 앞에 서고 [사용자 전환]과 같은 생김새다. 이름에 `action` 을 넣지 않는다(바닥 띠 규칙이 걸린다).
+ */
+.pop-ui .pop-header-tools {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .pop-logout button,
+.pop-ui .pop-header-tools button,
 .pop-ui .pop-terminal-header__reregister {
   min-height: 30px;
   padding-inline: 10px;
@@ -3555,7 +3567,8 @@
  *    머리줄의 작은 보조 조작이다 — 같은 자리의 [사용자 전환](`.pop-logout`, `.pop-ui` 밖이라
  *    DS 기본 `--radius-full` 을 그대로 받는다)과 생김새를 한 벌로 맞춘다.
  */
-.pop-ui .pop-terminal-header__reregister {
+.pop-ui .pop-terminal-header__reregister,
+.pop-ui .pop-header-tools button {
   border-radius: var(--radius-full);
 }
 

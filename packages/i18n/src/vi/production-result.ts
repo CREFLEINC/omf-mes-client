@@ -20,6 +20,18 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       remaining: (qty: string): string => `Còn lại ${qty}`,
       noLot: 'Không còn LOT để sản xuất.',
       noWorkOrder: 'Chưa chỉ định lệnh sản xuất.',
+      closed: 'Lệnh sản xuất đã đóng.',
+      completedLots: 'LOT đã đóng',
+      completedCount: (count: number): string => `${String(count)} mục`,
+      view: 'Xem',
+      pqcPending: (count: number): string => `Chờ kiểm tra ${String(count)} mục`,
+      inspect: 'Kiểm tra',
+      inspectOf: (inspectionRequestNo: string): string => `Kiểm tra ${inspectionRequestNo}`,
+    },
+    actions: {
+      holdWork: 'Tạm dừng công việc',
+      runningChange: 'Thay linh kiện',
+      packingWork: 'Sang đóng gói sản xuất',
     },
     next: {
       noWorkOrder: 'Chưa chỉ định lệnh sản xuất. Hãy chọn lệnh sản xuất ở danh sách lệnh sản xuất',
@@ -47,6 +59,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       defectQty: 'Hãy nhập số lượng lỗi',
       defectDuplicate: 'Cùng một loại lỗi nằm ở hai dòng. Hãy xóa một dòng',
       ready: 'Có thể chuyển sang Quét nhãn',
+      planReached: 'Đã đạt số lượng kế hoạch. Có thể chuyển sang Đóng lệnh sản xuất',
+      closed: 'Đã đóng lệnh sản xuất. Có thể chuyển sang Đóng gói',
     },
     currentLot: {
       current: 'LOT hiện tại',

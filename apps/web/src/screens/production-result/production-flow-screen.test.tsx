@@ -23,7 +23,8 @@ const LOT_ETAG = '"7"';
 const WORK_ORDER_ID = 701;
 const WORK_SESSION_ID = 8801;
 const pathOf = (request: Request): string => new URL(request.url).pathname;
-const NO_LOT_TEXT = t.flow.next.noLot;
+/* LOT이 없을 때 단계 본문의 한 줄. 하단 바는 [작업지시 마감]의 사유나 마감 안내를 말한다. */
+const NO_LOT_TEXT = t.flow.work.noLot;
 
 const routes = (writes: Request[]): StubRoute[] => [
   {
@@ -739,7 +740,8 @@ describe('ProductionFlowScreen', () => {
     const user = userEvent.setup();
     renderScreen(writes, [completedRoute]);
 
-    await user.click(await screen.findByRole('button', { name: t.flow.currentLot.completed }));
+    /* 마감된 LOT 정보 줄 끝 [보기]가 창을 연다. */
+    await user.click(await screen.findByRole('button', { name: t.flow.work.view }));
     expect(await screen.findByText('LOT-CLOSED-1')).toBeVisible();
     expect(screen.getByRole('button', { name: t.flow.currentLot.prev })).toBeDisabled();
     const pageDown = screen.getByRole('button', { name: t.flow.currentLot.next });
@@ -749,7 +751,8 @@ describe('ProductionFlowScreen', () => {
     expect(await screen.findByText('LOT-CLOSED-2')).toBeVisible();
     expect(screen.getByRole('button', { name: t.flow.currentLot.prev })).toBeEnabled();
     expect(screen.getByRole('button', { name: t.flow.currentLot.next })).toBeDisabled();
-    expect(requestedPages).toEqual([1, 2]);
+    /* 첫 쪽은 정보 줄 건수와 창이 함께 읽는다(같은 조회). 넘긴 쪽은 서버에 묻는다. */
+    expect([...new Set(requestedPages)]).toEqual([1, 2]);
   });
 
   it('인식표 부족분 1001장은 1000장과 1장 발번으로 나눠 연속 처리한다', async () => {
@@ -3059,5 +3062,74 @@ describe('ProductionFlowScreen 현재 LOT', () => {
 
     await waitFor(() => expect(screen.queryByText(t.flow.currentLot.loadFailed)).toBeNull());
     expect(attempts).toBe(2);
+  });
+});
+
+/*
+ * 보조 동작의 자리(사용자 결정 2026-10-28). 늘 쓸 수 있는 동작은 머리줄, 대상에 딸린 동작은 그 정보 곁,
+ * 다음 단계는 「남은 일」과 주 동작이 낸다. 하단 바의 채움 버튼은 늘 하나다.
+ */
+describe('ProductionFlowScreen — 보조 동작 자리', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save: vi.fn().mockResolvedValue('/tmp/lot.prn') } },
+    });
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.clear();
+    Reflect.deleteProperty(window, 'pop');
+  });
+
+  const bar = () => screen.getByRole('region', { name: messages.screenPatterns.actionBar.region });
+
+  it('[작업 중단]은 머리줄, [부품 교체]와 이른 [작업지시 마감]은 현재 LOT 구획 아래에 선다', async () => {
+    renderScreen([]);
+
+    const header = screen.getAllByRole('banner')[0] as HTMLElement;
+    expect(
+      await within(header).findByRole('button', { name: t.flow.actions.holdWork }),
+    ).toBeInTheDocument();
+    const lotPane = await screen.findByRole('region', { name: t.flow.currentLot.current });
+    expect(
+      await within(lotPane).findByRole('button', { name: t.flow.actions.runningChange }),
+    ).toBeInTheDocument();
+    expect(
+      within(lotPane).getByRole('button', { name: t.flow.woClose.button }),
+    ).toBeInTheDocument();
+    expect(
+      within(bar())
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual([t.flow.output.issue]);
+  });
+
+  it('마감된 LOT이 0건이면 건수만 보이고 [보기]를 두지 않는다', async () => {
+    renderScreen([]);
+
+    expect(await screen.findByText(t.flow.work.completedCount(0))).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.flow.work.view })).not.toBeInTheDocument();
+  });
+
+  it('남은 LOT이 없으면 하단 바 주 동작이 [작업지시 마감]이고 현재 LOT 구획에는 두지 않는다', async () => {
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) => pathOf(request) === '/trace/lots',
+          respond: () => jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } }),
+        },
+      ],
+    );
+
+    await screen.findByText(NO_LOT_TEXT);
+    expect(
+      await within(bar()).findByRole('button', { name: t.flow.woClose.button }),
+    ).toBeInTheDocument();
+    expect(within(bar()).queryByRole('button', { name: t.flow.output.issue })).toBeNull();
+    const lotPane = screen.getByRole('region', { name: t.flow.currentLot.current });
+    expect(within(lotPane).queryByRole('button', { name: t.flow.woClose.button })).toBeNull();
   });
 });

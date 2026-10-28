@@ -1,5 +1,6 @@
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 export interface PopHeaderProps {
   /** 표제와 본문을 잇는 id. 셸이 없는 화면이라 표제가 본문의 이름이 된다. */
@@ -37,6 +38,11 @@ export interface PopHeaderProps {
   isConnected?: boolean;
   /** 아직 서버에 닿지 않은 기록 수. 0이거나 넘기지 않으면 칩을 두지 않는다. */
   unsentCount?: number;
+  /**
+   * 그 화면에서 언제든 쓸 수 있는 동작(예: 생산 작업의 [작업 중단]). 머리줄 오른쪽 끝, 셸의 [화면 이동] 바로
+   * 앞에 선다. 테두리 버튼 하나를 넘기지 않는다(머리줄 폭).
+   */
+  actions?: ReactNode;
 }
 
 const hasText = (value: string | null | undefined): value is string =>
@@ -67,6 +73,7 @@ export const PopHeader = ({
   isMoldMissing = false,
   isConnected,
   unsentCount = 0,
+  actions,
 }: PopHeaderProps) => {
   const t = messages.popChrome.header;
 
@@ -128,6 +135,10 @@ export const PopHeader = ({
           </Chip>
         )}
       </p>
+
+      {actions !== undefined && actions !== null && (
+        <span className="pop-header-tools">{actions}</span>
+      )}
     </header>
   );
 };

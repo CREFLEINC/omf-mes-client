@@ -20,6 +20,7 @@ import { messages, named } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { ActionBar } from '../../patterns/action-bar';
 import { josa } from '../../patterns/josa';
@@ -34,6 +35,7 @@ import { PopQtyProgress, PopRowInfo, PopRowPair } from '../../patterns/pop-list-
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { usePopWorkerEntry } from '../../patterns/pop-worker-entry';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { usePendingPqcRequests } from '../work-start/queries';
 import { POP_TOUCH_SIZE } from '../work-start/touch-spec';
 import {
   areDefectRowsReady,
@@ -46,7 +48,7 @@ import {
 import { DefectPicker } from './defect-picker';
 import { useResultEntry } from './entry-context';
 import { UnderReasonDialog } from './under-reason-dialog';
-import { WorkOrderCloseAction } from './wo-close-action';
+import { blockedReason as closeBlockedReason, WorkOrderCloseAction } from './wo-close-action';
 import { useFlowGates, type FlowGateVerdict } from './flow-gating';
 import { useDocumentIssue, useLotComplete, useSerialIssue } from './flow-mutations';
 import { useLabelPrintRunner, type PrintTarget } from './flow-print';
@@ -257,6 +259,14 @@ export const ProductionFlowScreen = () => {
   /* 생략(SKIPPED · #119)된 PQC 는 검사가 아니다 — 나누지 않고 「PQC 생략」 칩만 단다. */
   const isPqcSkipped = workOrderPqc.data?.statusCode === PQC_SKIPPED;
   const pqcTargetId = isPqcSkipped ? null : (workOrderPqc.data?.inspectionRequestId ?? null);
+  /*
+   * 끝나지 않은 PQC 의뢰 중 이 화면 오른쪽에 띄우지 않은 것. 있을 때만 PQC 정보 줄 끝에 [검사]가 선다
+   * (작업 지시 목록에서 옮긴 길, omf-all-around#42). 여럿이면 의뢰마다 번호를 붙여 세운다.
+   */
+  const pendingPqc = usePendingPqcRequests(entry.workOrderId, entry.workOrderId !== null);
+  const otherPendingPqc = (pendingPqc.data ?? []).filter(
+    (request) => request.inspectionRequestId !== pqcTargetId,
+  );
   const item = useItem(currentLot.data?.itemId ?? workOrder.data?.itemId ?? null);
   const lotPrinters = usePrinters('PRODUCTION_LOT_LABEL');
   const tagPrinters = usePrinters('IDENTIFICATION_TAG');
@@ -279,6 +289,8 @@ export const ProductionFlowScreen = () => {
   const [activeQty, setActiveQty] = useState<string>('good');
   const [pickingRowKey, setPickingRowKey] = useState<string | null>(null);
   const [touchedDefectKeys, setTouchedDefectKeys] = useState<string[]>([]);
+  /** 이 화면에서 작업지시를 마감했다. */
+  const [closedHere, setClosedHere] = useState(false);
   const defectIssueId = useId();
   /** 불량만 적은 저장의 결과 — 큐에 넣는 것이 곧 성공이라 넣자마자 알린다 */
   const [defectNotice, setDefectNotice] = useState<'saved' | 'queued' | null>(null);
@@ -345,6 +357,9 @@ export const ProductionFlowScreen = () => {
   const sessionEndBodyRef = useRef<ReturnType<typeof buildSessionEnd> | null>(null);
 
   const completedLots = useCompletedLots(entry.workOrderId, isCompletedOpen, completedPage);
+  /* 마감된 LOT 정보 줄의 건수(C-21 정보 곁의 동작). 창의 첫 쪽과 같은 조회다. */
+  const completedLotCount = useCompletedLots(entry.workOrderId, true, 1);
+  const navigate = useNavigate();
   const isTagTarget = item.data === undefined ? null : requiresIdentificationTag(item.data);
   const serials = useSerials(currentLot.data?.lotId ?? null, isTagTarget === true);
   const tagIssueSummary = useTagIssueSummary(serials.data?.items ?? [], isTagTarget === true);
@@ -469,6 +484,7 @@ export const ProductionFlowScreen = () => {
     workerNo: entry.workerNo ?? '',
     onSuccess: () => {
       setOutputPhase('completed');
+      void completedLotCount.refetch();
       setScanValue('');
       setScanMismatch(false);
       /* 마감한 LOT 의 수량을 다음 LOT 이 서기 전까지 남기지 않는다 — 다음 LOT 이 서면 그 계획 수량이 들어온다. */
@@ -1297,16 +1313,44 @@ export const ProductionFlowScreen = () => {
    * 하단 바 「남은 일」(C-4, C-5). 주 동작 [생산 라벨 출력]이 잠긴 사유이고, 라벨 스캔 단계에서는 다음 할
    * 일이다. 앞의 것이 먼저다.
    */
+  /*
+   * 작업지시 마감의 자리. 계획 수량을 달성했거나 남은 LOT이 없으면 하단 바 주 동작이 [작업지시 마감]이다.
+   * 그 전에는 현재 LOT 구획 아래의 테두리 버튼(이른 마감)이다. 마감했으면 다음 단계(생산 포장)로 이끈다.
+   * 라벨 스캔 중이면 그 LOT을 먼저 끝낸다.
+   */
+  /*
+   * 마감 성공은 이 화면이 아는 사실이라 따로 붙든다. 서버는 마감한 W/O를 POP 단말에 다시 읽어 주지 않아
+   * (「단말 인증 범위 밖」) 다시 읽으면 옛 상태가 남는다(P04 빈틈).
+   */
+  const isWorkOrderClosed = workOrder.data?.statusCode === 'CLOSED' || closedHere;
+  const isCloseMode =
+    !isWorkOrderClosed &&
+    workOrder.data !== undefined &&
+    !currentLot.isError &&
+    currentLot.data !== undefined &&
+    (lot === null || (isPlanAchieved && step === 'input'));
+  const closeBlock =
+    workOrder.data === undefined
+      ? null
+      : closeBlockedReason({
+          gate: gates.close,
+          statusCode: workOrder.data.statusCode,
+          isOnline: outbox.isOnline,
+          pendingCount: outbox.pendingCount,
+          workerNo: entry.workerNo,
+        });
+
   const nextText = ((): string | null => {
     const next = t.flow.next;
     if (entry.workOrderId === null) return next.noWorkOrder;
     if (entry.workerNo === null) return next.noWorker;
+    if (isWorkOrderClosed) return next.closed;
     if (currentLot.error instanceof CurrentLotUnreliableError) {
       return t.flow.currentLot.unreliable(currentLot.error.lotNos.join(', '));
     }
     if (currentLot.isError) return t.flow.currentLot.loadFailed;
     if (currentLot.data === undefined) return null;
-    if (lot === null) return next.noLot;
+    if (isCloseMode) return closeBlock ?? (lot === null ? next.noLot : next.planReached);
 
     if (step === 'scan') {
       switch (outputPhase) {
@@ -1365,6 +1409,26 @@ export const ProductionFlowScreen = () => {
         ? t.flow.work.pqcSkipped
         : null;
   const isScanStep = step === 'scan';
+  /* 작업지시 마감은 한 자리에만 선다(C-1 같은 이름의 버튼을 두 곳에 두지 않는다). */
+  const closeAction = (variant: 'filled' | 'outlined') =>
+    entry.workOrderId === null || workOrder.data === undefined ? null : (
+      <WorkOrderCloseAction
+        workOrderId={entry.workOrderId}
+        workOrderNo={workOrder.data.workOrderNo}
+        statusCode={workOrder.data.statusCode}
+        workerNo={entry.workerNo}
+        gate={gates.close}
+        isOnline={outbox.isOnline}
+        pendingCount={outbox.pendingCount}
+        terminalId={identity.terminalId}
+        uomLabel={uom.labelOf(workOrder.data.uomId) ?? ''}
+        variant={variant}
+        reasonId={variant === 'filled' ? remainingId : undefined}
+        onClosed={() => {
+          setClosedHere(true);
+        }}
+      />
+    );
   /*
    * 작업 세션 자동 종료가 **어긋났을 때만** 선다. 세션을 닫는 것은 마감 흐름의 끝이라 그 흐름이 끝나는
    * 자리(라벨 스캔 단계, 마지막 LOT을 마감한 뒤의 빈 단계 본문)에 둔다(사용자 지시 2026-09-16). 잘 닫힌
@@ -1403,6 +1467,21 @@ export const ProductionFlowScreen = () => {
         isEmergency={workOrder.data !== undefined && isEmergency(workOrder.data)}
         isConnected={outbox.isOnline}
         unsentCount={outbox.pendingCount}
+        /* 작업 중 언제든 쓸 수 있는 동작이라 머리줄에 둔다(P-02-10). */
+        actions={
+          entry.workOrderId === null || isWorkOrderClosed ? undefined : (
+            <Button
+              type="button"
+              variant="outlined"
+              size="md"
+              onClick={() => {
+                void navigate(`/pop/work-hold?workOrderId=${String(entry.workOrderId)}`);
+              }}
+            >
+              {t.flow.actions.holdWork}
+            </Button>
+          )
+        }
       />
 
       {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
@@ -1433,7 +1512,7 @@ export const ProductionFlowScreen = () => {
               )}
             </div>
 
-            {workOrder.isError && (
+            {workOrder.isError && !isWorkOrderClosed && (
               <LoadErrorBanner error={workOrder.error} onRetry={() => void workOrder.refetch()} />
             )}
             {workOrderPqc.isError && (
@@ -1484,10 +1563,55 @@ export const ProductionFlowScreen = () => {
                   lotPrinter.displayName
                 )}
               </PopRowPair>
-              <PopRowPair label={t.flow.work.pqc}>{inspectionOff}</PopRowPair>
+              <PopRowPair label={t.flow.work.pqc}>
+                {inspectionOff ??
+                  (otherPendingPqc.length === 0 ? null : (
+                    <span className="production-work-row-value">
+                      {t.flow.work.pqcPending(otherPendingPqc.length)}
+                      {otherPendingPqc.map((request) => (
+                        <Button
+                          key={request.inspectionRequestId}
+                          type="button"
+                          variant="outlined"
+                          size="sm"
+                          onClick={() => {
+                            void navigate(
+                              `/pop/pqc-inspection?ir=${String(request.inspectionRequestId)}`,
+                            );
+                          }}
+                        >
+                          {otherPendingPqc.length === 1
+                            ? t.flow.work.inspect
+                            : t.flow.work.inspectOf(request.inspectionRequestNo)}
+                        </Button>
+                      ))}
+                    </span>
+                  ))}
+              </PopRowPair>
+              {/* 마감된 LOT은 건수와 [보기]. 0건이면 버튼을 두지 않는다. */}
+              <PopRowPair label={t.flow.work.completedLots}>
+                {completedLotCount.data === undefined ? null : (
+                  <span className="production-work-row-value">
+                    {t.flow.work.completedCount(completedLotCount.data.page.total)}
+                    {completedLotCount.data.page.total > 0 && (
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        size="sm"
+                        onClick={() => {
+                          setCompletedPage(1);
+                          setIsCompletedOpen(true);
+                        }}
+                      >
+                        {t.flow.work.view}
+                      </Button>
+                    )}
+                  </span>
+                )}
+              </PopRowPair>
             </PopRowInfo>
 
-            {step !== null && (
+            {step !== null && !isWorkOrderClosed && (
               <Stepper
                 className="production-work-steps"
                 size="sm"
@@ -1626,33 +1750,25 @@ export const ProductionFlowScreen = () => {
               </div>
             )}
 
-            {/* W/O 단위 동작: 마감된 LOT 보기와 작업지시 마감(보조 동작, 테두리). */}
-            <div className="production-work-wo">
-              <Button
-                type="button"
-                variant="outlined"
-                size={POP_TOUCH_SIZE}
-                onClick={() => {
-                  setCompletedPage(1);
-                  setIsCompletedOpen(true);
-                }}
-              >
-                {t.flow.currentLot.completed}
-              </Button>
-              {entry.workOrderId !== null && workOrder.data !== undefined && (
-                <WorkOrderCloseAction
-                  workOrderId={entry.workOrderId}
-                  workOrderNo={workOrder.data.workOrderNo}
-                  statusCode={workOrder.data.statusCode}
-                  workerNo={entry.workerNo}
-                  gate={gates.close}
-                  isOnline={outbox.isOnline}
-                  pendingCount={outbox.pendingCount}
-                  terminalId={identity.terminalId}
-                  uomLabel={uom.labelOf(workOrder.data.uomId) ?? ''}
-                />
-              )}
-            </div>
+            {/*
+             * 현재 LOT 작업에 딸린 보조 동작(테두리). 부품 교체(P-02-11)와 이른 작업지시 마감. 마감이 다음
+             * 단계가 되면 [작업지시 마감]은 하단 바 주 동작으로 옮겨 가고 여기에는 두지 않는다.
+             */}
+            {entry.workOrderId !== null && workOrder.data !== undefined && !isWorkOrderClosed && (
+              <div className="production-work-wo">
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size={POP_TOUCH_SIZE}
+                  onClick={() => {
+                    void navigate(`/pop/running-change?workOrderId=${String(entry.workOrderId)}`);
+                  }}
+                >
+                  {t.flow.actions.runningChange}
+                </Button>
+                {!isCloseMode && closeAction('outlined')}
+              </div>
+            )}
           </section>
 
           {workerEntry.isMissing ? (
@@ -1674,7 +1790,7 @@ export const ProductionFlowScreen = () => {
                 </Button>
               </div>
             </section>
-          ) : step === 'scan' ? (
+          ) : step === 'scan' && !isWorkOrderClosed ? (
             <section className="pane production-work-step" aria-label={t.flow.scan.title}>
               <h2 className="pane-title">{t.flow.scan.title}</h2>
               {/* 결과 한 줄(C-21). 실패면 그 자리에 다시 시도 버튼을 둔다. */}
@@ -1746,10 +1862,14 @@ export const ProductionFlowScreen = () => {
                   </AlertBanner>
                 </div>
               )}
-              {lot === null ? (
+              {lot === null || isWorkOrderClosed ? (
                 <>
                   <p className="field-note">
-                    {entry.workOrderId === null ? t.flow.work.noWorkOrder : t.flow.work.noLot}
+                    {entry.workOrderId === null
+                      ? t.flow.work.noWorkOrder
+                      : isWorkOrderClosed
+                        ? t.flow.work.closed
+                        : t.flow.work.noLot}
                   </p>
                   {sessionNote}
                 </>
@@ -1950,7 +2070,9 @@ export const ProductionFlowScreen = () => {
         remainingId={remainingId}
         leading={
           /* 다시 시도가 뜻이 있는 갈래: 현재 LOT 조회 실패, 단말 기능 확인 실패(G-3). */
-          currentLot.isError && !(currentLot.error instanceof CurrentLotUnreliableError) ? (
+          !isWorkOrderClosed &&
+          currentLot.isError &&
+          !(currentLot.error instanceof CurrentLotUnreliableError) ? (
             <Button
               type="button"
               variant="outlined"
@@ -1968,19 +2090,49 @@ export const ProductionFlowScreen = () => {
         }
       >
         {/*
-         * 주 동작 하나(C-3). 이름은 단계와 관계없이 같고, 잠기면 왼쪽 「남은 일」이 사유다(C-4).
-         * ⛔ **초과라고 끄지도, 되묻지도 않는다** — 초과 생산은 허용이다(✓확정 QA #27).
+         * 주 동작 하나(C-3). 생산 중에는 [생산 라벨 출력], 계획 수량을 달성했거나 남은 LOT이 없으면
+         * [작업지시 마감], 마감했으면 [생산 포장으로]. 잠기면 왼쪽 「남은 일」이 사유다(C-4).
+         * ⛔ **초과라고 끄지도, 되묻지도 않는다** — 초과 생산은 허용이다(✓확정 QA #27). 계획을 달성해도
+         *    남은 LOT에 더 만들 수 있게 [생산 라벨 출력]을 테두리로 남긴다.
          */}
-        <Button
-          type="button"
-          variant="filled"
-          size={POP_TOUCH_SIZE}
-          disabled={!canOutput}
-          aria-describedby={remainingId}
-          onClick={queueOutput}
-        >
-          {t.flow.output.issue}
-        </Button>
+        {isWorkOrderClosed ? (
+          <Button
+            type="button"
+            variant="filled"
+            size={POP_TOUCH_SIZE}
+            onClick={() => {
+              void navigate(`/pop/packing-work?workOrderId=${String(entry.workOrderId)}`);
+            }}
+          >
+            {t.flow.actions.packingWork}
+          </Button>
+        ) : isCloseMode ? (
+          <>
+            {lot !== null && (
+              <Button
+                type="button"
+                variant="outlined"
+                size={POP_TOUCH_SIZE}
+                disabled={!canOutput}
+                onClick={queueOutput}
+              >
+                {t.flow.output.issue}
+              </Button>
+            )}
+            {closeAction('filled')}
+          </>
+        ) : (
+          <Button
+            type="button"
+            variant="filled"
+            size={POP_TOUCH_SIZE}
+            disabled={!canOutput}
+            aria-describedby={remainingId}
+            onClick={queueOutput}
+          >
+            {t.flow.output.issue}
+          </Button>
+        )}
       </ActionBar>
 
       <DefectPicker

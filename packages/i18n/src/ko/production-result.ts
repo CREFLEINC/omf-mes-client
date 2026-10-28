@@ -31,6 +31,25 @@ export const productionResult = {
       remaining: (qty: string): string => `잔량 ${qty}`,
       noLot: '생산할 LOT이 없습니다.',
       noWorkOrder: '작업지시가 지정되지 않았습니다.',
+      closed: '마감한 작업지시입니다.',
+      /** 마감된 LOT 정보 줄. 0건이면 [보기]를 두지 않는다. */
+      completedLots: '마감된 LOT',
+      completedCount: (count: number): string => `${String(count)}건`,
+      view: '보기',
+      /** PQC 줄: 이 화면에 띄우지 않은 대기 의뢰가 있을 때만 [검사]. 여럿이면 의뢰 번호를 붙인다. */
+      pqcPending: (count: number): string => `검사 대기 ${String(count)}건`,
+      inspect: '검사',
+      inspectOf: (inspectionRequestNo: string): string => `검사 ${inspectionRequestNo}`,
+    },
+    /**
+     * 보조 동작. 늘 쓸 수 있는 것은 머리줄([작업 중단]), 대상에 딸린 것은 그 정보 곁([부품 교체],
+     * [작업지시 마감]), 다음 단계는 「남은 일」과 주 동작([포장 작업으로])이 낸다.
+     */
+    actions: {
+      holdWork: '작업 중단',
+      runningChange: '부품 교체',
+      /** 갈 화면의 이름을 그대로 쓴다(P-02-08 「생산 포장」, C-13). */
+      packingWork: '생산 포장으로',
     },
     /**
      * 하단 바 「남은 일」(C-5). 머리말 없이 문장만, 끝 마침표 없이 쓴다. 앞의 것이 먼저다.
@@ -61,6 +80,10 @@ export const productionResult = {
       defectQty: '불량 수량을 입력하세요',
       defectDuplicate: '같은 불량 유형이 두 줄에 있습니다. 한 줄을 삭제하세요',
       ready: '라벨 스캔으로 진행할 수 있습니다',
+      /** 계획 수량 달성. 주 동작이 [작업지시 마감]으로 바뀐다. */
+      planReached: '계획 수량을 달성했습니다. 작업지시 마감으로 진행할 수 있습니다',
+      /** 마감한 작업지시. 주 동작이 [포장 작업으로]다. */
+      closed: '작업지시를 마감했습니다. 생산 포장으로 진행할 수 있습니다',
     },
     currentLot: {
       current: '현재 LOT',
