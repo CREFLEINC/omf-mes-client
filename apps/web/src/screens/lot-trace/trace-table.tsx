@@ -62,7 +62,7 @@ interface TraceTableProps<Row> {
  * LOT 번호 — 한 줄. 칸이 모자라면 앞쪽만 줄이고 끝 마디(일련번호)는 남긴다. 같은 품목, 같은 날 LOT은 끝 마디만
  * 달라 끝이 잘리면 줄끼리 구분이 안 된다(검사 조회·판정 목록과 같다). 전체 번호는 마우스를 올리면 보인다.
  */
-const lotCell = (lotNo: string) => {
+export const LotNo = ({ lotNo }: { lotNo: string }) => {
   /* 구분자가 없는 번호(생산 LOT)는 끝 8자를 남긴다 — 같은 날 LOT은 앞이 같고 끝이 다르다. */
   const cut = lotNo.includes('|') ? lotNo.lastIndexOf('|') + 1 : Math.max(0, lotNo.length - 8);
   return (
@@ -144,7 +144,7 @@ export const ForwardTable = (props: TraceTableProps<ForwardListRow>) => (
         key: 'lotNo',
         header: t.trace.columns.lotNo,
         width: LOT_WIDTH,
-        render: (row) => lotCell(row.lotNo),
+        render: (row) => <LotNo lotNo={row.lotNo} />,
       },
       {
         key: 'name',
@@ -180,7 +180,7 @@ export const BackwardTable = (props: TraceTableProps<BackwardListRow>) => (
         key: 'lotNo',
         header: t.trace.columns.lotNo,
         width: LOT_WIDTH,
-        render: (row) => lotCell(row.lotNo),
+        render: (row) => <LotNo lotNo={row.lotNo} />,
       },
       {
         key: 'name',

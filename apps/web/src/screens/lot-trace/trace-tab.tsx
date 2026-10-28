@@ -10,7 +10,13 @@ import { plantToday } from '../../patterns/plant-time';
 import { toApiError } from '../../patterns/request';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
+import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { toCsvText, type CsvColumn } from '../../patterns/csv';
 import { LoadFailure, toLoadCause } from './load-failure';
 import { LOT_STATUS_PATH, LotDetail, LotDetailEmpty } from './lot-detail';
@@ -140,7 +146,9 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
   const { session } = useSession();
   const canOpenLotStatus = toWebAccess(session?.permissions).allows(LOT_STATUS_PATH);
   const exporter = useAllPagesExport();
+  /* 목록과 상세 배치 — 검사 조회·판정과 같은 좌우 분할, 가운데 막대로 폭을 나눈다. 좌우 · 상하 배치를 골라 브라우저에 남긴다. */
   const { splitRef, aboveRef } = useFitToViewport();
+  const layout = useSplitOrientation('omf-mes:lot-trace:split-orientation');
   const split = usePaneSplit('omf-mes:lot-trace:split', 0.5);
   const itemLabel = useItemLabel(filters.item);
 
@@ -252,7 +260,7 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
   ].join(', ');
 
   /*
-   * 정방향 목록은 자재 입고가 있는 LOT만 싣는다. 생산 LOT을 [이 LOT 기준으로] 정방향으로 열면 목록이 비고
+   * 자재 LOT 목록은 자재 입고가 있는 LOT만 싣는다. 생산 LOT을 자재 LOT 탭으로 열면(다른 화면의 링크 등) 목록이 비고
    * 사슬만 열린다. 빈 까닭을 그대로 말한다.
    */
   const notMaterial = direction === 'forward' && filters.lot !== '' && selected !== null;
@@ -341,6 +349,12 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
         chips={chips}
         exportState={exporter.state}
         total={total}
+        actions={
+          <>
+            <div id={HUB_ACTIONS_ID} className="hub-actions" />
+            <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+          </>
+        }
         onExport={startExport}
         onCancelExport={exporter.cancel}
         onDismissExport={exporter.dismiss}
@@ -359,7 +373,11 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
           }
         />
       </section>
-      <div ref={splitRef} className="po-board-split lot-trace-split" style={split.style}>
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split lot-trace-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
         <section
           className="pane lot-trace-list-pane"
           aria-label={direction === 'forward' ? t.tabs.forward : t.tabs.backward}
@@ -367,6 +385,13 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
           {body}
         </section>
         <PaneSplitter label={t.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={messages.common.inspectionHub.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
         <section className="pane lot-trace-detail-pane" aria-label={t.chain.pane}>
           {selected === null ? (
             <LotDetailEmpty material={direction === 'forward'} />
@@ -376,6 +401,9 @@ export const TraceTab = ({ direction }: { direction: TraceDirection }) => {
               lotId={selected}
               path={path}
               canOpenLotStatus={canOpenLotStatus}
+              typeHint={
+                path.length > 0 ? null : direction === 'forward' ? 'MATERIAL' : 'PRODUCTION'
+              }
               onCenter={(lot, nextPath) =>
                 setSearchParams(toTraceSearchParams(direction, filters, lot.lotId, nextPath))
               }

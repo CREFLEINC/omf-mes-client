@@ -9,6 +9,8 @@ const t = messages.lotTrace;
 export interface TabToolbarProps {
   /** 조건 칩(C-17). 없으면 비운다. */
   chips?: ReactNode;
+  /** 내보내기 왼쪽의 화면 동작 자리(목록과 상세 배치 단추). */
+  actions?: ReactNode;
   exportState: ExportState;
   total: number;
   onExport: () => void;
@@ -22,6 +24,7 @@ export interface TabToolbarProps {
  */
 export const TabToolbar = ({
   chips,
+  actions,
   exportState,
   total,
   onExport,
@@ -33,6 +36,7 @@ export const TabToolbar = ({
     <>
       <div className="lot-trace-toolbar">
         <div className="lot-trace-toolbar-start">{chips}</div>
+        {actions}
         {exportState.phase === 'running' ? (
           <div className="lot-trace-export">
             <span className="lot-trace-export-progress" role="status">

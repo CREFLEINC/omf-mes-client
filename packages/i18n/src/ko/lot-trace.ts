@@ -248,13 +248,9 @@ export const lotTrace = {
       itemCode: '품목 코드',
       itemName: '품목명',
       consumedQty: '투입량',
-      firstConsumedAt: '첫 투입',
       lastConsumedAt: '마지막 투입',
       basis: '연결 근거',
       materialLot: '자재 LOT',
-      supplierName: '공급사명',
-      inboundAt: '입하일',
-      supplierLot: '공급사 LOT',
       handlingUnitNo: '포장 번호',
       shippingUnitNo: '출하 단위 번호',
       packingStatus: '포장 상태',
@@ -305,7 +301,6 @@ export const lotTrace = {
       PACKAGE: '포장',
       SHIPMENT: '출하',
     },
-    exportFileName: (lotNo: string): string =>
-      `LOT 추적_${lotNo.replace(/[\\/:*?"<>|]/g, '_')}.csv`,
+    exportFileName: (lotNo: string): string => `LOT추적_${lotNo.replace(/[\\/:*?"<>|]/g, '_')}.csv`,
   },
 };

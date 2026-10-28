@@ -21999,7 +21999,8 @@ body.col-reordering * {
  */
 .inspection-split > .iqc-inspection-queue-pane,
 .inspection-split > .oqc-inspection-queue-pane,
-.inspection-split > .pqc-web-list.pane {
+.inspection-split > .pqc-web-list.pane,
+.inspection-split > .lot-trace-list-pane {
   height: auto;
   max-height: calc(100dvh - 20rem);
 }
@@ -22007,14 +22008,16 @@ body.col-reordering * {
 @media (min-width: 1440px) {
   .inspection-split > .iqc-inspection-queue-pane,
   .inspection-split > .oqc-inspection-queue-pane,
-  .inspection-split > .pqc-web-list.pane {
+  .inspection-split > .pqc-web-list.pane,
+  .inspection-split > .lot-trace-list-pane {
     max-height: none;
     min-height: 0;
   }
 
   .inspection-split > .iqc-inspection-detail,
   .inspection-split > .oqc-inspection-detail,
-  .inspection-split > .pqc-web-detail {
+  .inspection-split > .pqc-web-detail,
+  .inspection-split > .lot-trace-detail-pane {
     min-height: 0;
     overflow: auto;
   }
@@ -22114,7 +22117,8 @@ body.col-reordering * {
 
 .po-board-split.inspection-split.is-stacked > .iqc-inspection-queue-pane,
 .po-board-split.inspection-split.is-stacked > .oqc-inspection-queue-pane,
-.po-board-split.inspection-split.is-stacked > .pqc-web-list.pane {
+.po-board-split.inspection-split.is-stacked > .pqc-web-list.pane,
+.po-board-split.inspection-split.is-stacked > .lot-trace-list-pane {
   /* 가운데 막대로 높이를 정했으면 그 높이, 아니면 줄 수만큼(넘치면 상자 안에서 구른다). */
   box-sizing: border-box;
   height: var(--stacked-list-height, auto);
@@ -22124,7 +22128,8 @@ body.col-reordering * {
 
 .po-board-split.inspection-split.is-stacked > .iqc-inspection-detail,
 .po-board-split.inspection-split.is-stacked > .oqc-inspection-detail,
-.po-board-split.inspection-split.is-stacked > .pqc-web-detail {
+.po-board-split.inspection-split.is-stacked > .pqc-web-detail,
+.po-board-split.inspection-split.is-stacked > .lot-trace-detail-pane {
   overflow: visible;
 }
 
@@ -22204,7 +22209,8 @@ body.col-reordering * {
 @media (max-width: 1439px) {
   .po-board-split.inspection-split > .iqc-inspection-queue-pane,
   .po-board-split.inspection-split > .oqc-inspection-queue-pane,
-  .po-board-split.inspection-split > .pqc-web-list.pane {
+  .po-board-split.inspection-split > .pqc-web-list.pane,
+  .po-board-split.inspection-split > .lot-trace-list-pane {
     height: auto;
     min-height: 0;
     max-height: min(28rem, 50dvh);
@@ -23454,8 +23460,8 @@ table.col-measuring td {
 }
 
 /*
- * 자재 LOT, 제품 LOT 탭 — 목록과 상세를 나란히(검사 조회·판정과 같다). 나란히 서는 폭(1440px 이상)에서는 두 창이 창 바닥에서
- * 멈추고 각 창 안에서 구른다. 그보다 좁으면 목록(줄 수만큼, 넘치면 상자 안에서 구름) 아래에 상세가 선다.
+ * 자재 LOT, 제품 LOT 탭 — 목록과 상세 배치는 검사 조회·판정과 같은 규칙(`.inspection-split`, 좌우 · 상하 배치 고름)을 쓴다.
+ * 여기에는 목록 창 안의 짜임만 둔다: 표만 안에서 구르고 쪽 넘김은 제자리, 머리줄은 위에 붙는다.
  */
 .lot-trace-split {
   margin-top: var(--space-4);
@@ -23465,8 +23471,6 @@ table.col-measuring td {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  min-height: 0;
-  max-height: min(28rem, 50dvh);
   margin-top: 0;
 }
 
@@ -23488,17 +23492,6 @@ table.col-measuring td {
   position: sticky;
   top: 0;
   z-index: 1;
-}
-
-@media (min-width: 1440px) {
-  .lot-trace-split > .lot-trace-list-pane {
-    max-height: none;
-  }
-
-  .lot-trace-split > .lot-trace-detail-pane {
-    min-height: 0;
-    overflow: auto;
-  }
 }
 
 /* 상세 창 — 카드 폭으로 배치를 고른다(창 폭이 아니라 카드 폭이 정한다). */
@@ -23721,35 +23714,49 @@ table.col-measuring td {
 }
 
 /*
- * 상세 안 작은 표 — 셀은 한 줄(C-16). 번호, 수량, 일시 열은 내용만큼, 이름 열 하나가 남는 폭을 쓰고 넘치면
- * 말줄임이다. 카드보다 넓으면 표 안에서 가로로 구른다.
+ * 상세 안 작은 표 — 셀은 한 줄(C-16), 표는 상세 창 폭 안에 들어온다. 번호, 수량, 날짜 열은 정한 폭, 이름 열이 남는
+ * 폭을 쓴다. 모자라면 칸 안에서 말줄임이고 전체 값은 마우스를 올리면 보인다. 창 안에서 가로로 구르지 않는다.
  */
 .lot-trace-detail-table {
   min-width: 0;
-  overflow-x: auto;
 }
 
 .lot-trace-detail-table table {
   width: 100%;
+  table-layout: fixed;
 }
 
 .lot-trace-detail-table th,
 .lot-trace-detail-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.lot-trace-detail-table td .ellipsis-cell {
-  max-width: 14rem;
+.lot-trace-detail-table td .ellipsis-cell,
+.lot-trace-detail-table td .mono-cell:not(.lot-trace-lot) {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* [보기] 열은 표가 가로로 구를 때도 오른쪽에 붙어 보인다(C-1 오른쪽 고정 열). */
-.lot-trace-detail-table.has-action td:last-child,
-.lot-trace-detail-table.has-action th:last-child {
-  position: sticky;
-  right: 0;
-  z-index: 1;
-  background: var(--surface);
-  box-shadow: inset 1px 0 0 var(--outline-variant);
+/* 번호와 칩을 한 칸에 — 번호가 먼저 줄고 칩은 그대로 보인다. */
+.lot-trace-cell-with-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.lot-trace-cell-with-chip > .mono-cell {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.lot-trace-cell-with-chip > :last-child:not(.mono-cell) {
+  flex: none;
 }
 
 /* 생산 LOT 묶음 — 머리 줄(생산 LOT 번호와 문서 건수)을 눌러 접고 편다. 펴면 요약 항목과 세 표. */

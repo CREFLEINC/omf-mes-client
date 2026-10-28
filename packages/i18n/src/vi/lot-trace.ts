@@ -95,7 +95,7 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     cancel: 'Hủy',
     failed: 'Không tạo được tệp Excel. Hãy xuất lại.',
     fileName: (condition: string, from: string, to: string): string =>
-      `TruyXuatLOT_${condition}_${from === '' && to === '' ? 'TatCa' : `${from === '' ? 'BatDau' : from}_${to === '' ? 'HienTai' : to}`}.csv`,
+      `TruyXuatLOT_${condition}_${from === '' && to === '' ? 'TatCa' : `${from === '' ? 'BatDau' : from}_${to === '' ? 'TroDi' : to}`}.csv`,
     uom: 'Đơn vị',
     lotCount: 'Số LOT',
     datetime: 'Thời điểm',
@@ -255,13 +255,9 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
       itemCode: 'Mã mặt hàng',
       itemName: 'Tên mặt hàng',
       consumedQty: 'Lượng đưa vào',
-      firstConsumedAt: 'Đưa vào lần đầu',
       lastConsumedAt: 'Đưa vào lần cuối',
       basis: 'Căn cứ liên kết',
       materialLot: 'LOT vật tư',
-      supplierName: 'Tên nhà cung cấp',
-      inboundAt: 'Ngày nhập hàng',
-      supplierLot: 'LOT nhà cung cấp',
       handlingUnitNo: 'Số kiện',
       shippingUnitNo: 'Số đơn vị xuất hàng',
       packingStatus: 'Trạng thái đóng gói',
@@ -313,6 +309,6 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
       SHIPMENT: 'Xuất hàng',
     },
     exportFileName: (lotNo: string): string =>
-      `Truy xuat LOT_${lotNo.replace(/[\\/:*?"<>|]/g, '_')}.csv`,
+      `TruyXuatLOT_${lotNo.replace(/[\\/:*?"<>|]/g, '_')}.csv`,
   },
 };

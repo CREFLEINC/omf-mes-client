@@ -16,7 +16,7 @@ export interface MovementLot {
   qty: number;
 }
 
-/** 입고 줄과 출하 줄을 한 모양으로 — 표, 드로어, 내려받기가 같은 값을 읽는다. */
+/** 입고 줄과 출하 줄을 한 모양으로 — 표와 내려받기가 같은 값을 읽는다. */
 export interface MovementRow {
   id: number;
   kind: MovementKind;
@@ -85,5 +85,5 @@ export const formatQty = (value: number): string =>
 export const formatQtyByUom = (totals: readonly QtyByUom[]): string =>
   totals.map((entry) => `${formatQty(entry.qty)} ${entry.uomCode}`).join(', ');
 
-/** 표와 드로어의 수량 글자. 파일에는 숫자 그대로 쓴다. */
+/** 표와 상세의 수량 글자. 파일에는 숫자 그대로 쓴다. */
 export const qtyLabel = (row: MovementRow): string => `${formatQty(row.qty)} ${row.uomCode}`;

@@ -80,38 +80,21 @@ describe('사슬 계산', () => {
     expect(backwardImpact(chain)).toEqual({ lots: 2, suppliers: 1 });
   });
 
-  it('사슬 내보내기는 펼친 단계까지만 담고, 지나온 LOT은 다시 담지 않는다', () => {
-    const semi = productionLot(201, 'P-1', { consumedFurther: 1 });
-    const root = forwardChain(101, 'M-1', [workOrder(1, [semi])]);
-    const nested = forwardChain(
-      201,
-      'P-1',
-      [workOrder(2, [productionLot(101, 'M-1')])],
-      'PRODUCTION',
-    );
-
-    const closed = flattenForward(root, new Map());
-    expect(closed.filter((line) => line.kind === 'WORK_ORDER')).toHaveLength(1);
-
-    const open = flattenForward(
-      root,
-      new Map([
-        [201, nested],
-        [101, root],
-      ]),
-    );
-    expect(open.filter((line) => line.kind === 'WORK_ORDER').map((line) => line.number)).toEqual([
-      'WO-SYN-0001',
-      'WO-SYN-0002',
+  it('추적 내보내기: LOT, 입하, 자재 입고, W/O, 생산 LOT 순으로 단계 깊이를 단다', () => {
+    const root = forwardChain(101, 'M-1', [workOrder(1, [productionLot(201, 'P-1')])]);
+    const lines = flattenForward(root);
+    expect(lines.map((line) => [line.depth, line.kind])).toEqual([
+      [0, 'LOT'],
+      [1, 'INBOUND'],
+      [1, 'RECEIPT'],
+      [1, 'WORK_ORDER'],
+      [2, 'PRODUCTION_LOT'],
     ]);
-    expect(open[0]).toMatchObject({ depth: 0, kind: 'LOT', number: 'M-1' });
+    expect(lines[0]).toMatchObject({ number: 'M-1' });
   });
 
   it('역방향 내보내기: 투입 자재와 근거, 공급사를 담는다', () => {
-    const lines = flattenBackward(
-      backwardChain(201, 'P-1', [inputMaterial(101, 'M-1')]),
-      new Map(),
-    );
+    const lines = flattenBackward(backwardChain(201, 'P-1', [inputMaterial(101, 'M-1')]));
     expect(lines.find((line) => line.kind === 'INPUT_MATERIAL')).toMatchObject({
       number: 'M-1',
       basis: 'LOT_GENEALOGY_ESTIMATE',

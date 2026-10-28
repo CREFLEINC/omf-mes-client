@@ -10,7 +10,7 @@ import type {
 } from './trace-types';
 
 /**
- * 사슬 드로어의 계산 — 순수 함수만 둔다(단계 줄, 영향 요약, 출하 묶음, 내보내기 줄).
+ * LOT 상세의 계산 — 순수 함수만 둔다(단계 줄, 영향 요약, 출하 묶음, 내보내기 줄).
  * 단계와 수는 응답에 있는 문서만 센다. 포장은 확정(PACKED)만 센다 — 포장 중(OPEN)은 칩으로만 보인다(계약).
  */
 
@@ -187,57 +187,50 @@ const productLines = (side: FlowProductSide, depth: number, uomCode: string): Ch
   })),
 ];
 
-/** 정방향 사슬을 줄로 편다. `expanded`는 펼친 반제품 LOT의 사슬이다. */
-export const flattenForward = (
-  chain: ForwardChain,
-  expanded: ReadonlyMap<number, ForwardChain>,
-  depth = 0,
-  seen: ReadonlySet<number> = new Set([chain.lot.lotId]),
-): ChainLine[] => {
+/** 정방향 사슬을 줄로 편다(추적 내보내기). */
+export const flattenForward = (chain: ForwardChain): ChainLine[] => {
   const { lot } = chain;
   const lines: ChainLine[] = [];
-  if (depth === 0) {
+  lines.push({
+    depth: 0,
+    kind: 'LOT',
+    number: lot.lotNo,
+    item: lot.item,
+    qty: chain.receivedQty,
+    uomCode: lot.uomCode,
+    at: null,
+    partner: chain.inbound?.supplier ?? null,
+    basis: null,
+  });
+  if (chain.inbound !== null) {
     lines.push({
-      depth,
-      kind: 'LOT',
-      number: lot.lotNo,
-      item: lot.item,
-      qty: chain.receivedQty,
-      uomCode: lot.uomCode,
-      at: null,
-      partner: chain.inbound?.supplier ?? null,
+      depth: 1,
+      kind: 'INBOUND',
+      number: chain.inbound.inboundReceiptNo,
+      item: null,
+      qty: null,
+      uomCode: '',
+      at: chain.inbound.receiptDatetime,
+      partner: chain.inbound.supplier,
       basis: null,
     });
-    if (chain.inbound !== null) {
-      lines.push({
-        depth: depth + 1,
-        kind: 'INBOUND',
-        number: chain.inbound.inboundReceiptNo,
-        item: null,
-        qty: null,
-        uomCode: '',
-        at: chain.inbound.receiptDatetime,
-        partner: chain.inbound.supplier,
-        basis: null,
-      });
-    }
-    for (const receipt of chain.receipts) {
-      lines.push({
-        depth: depth + 1,
-        kind: 'RECEIPT',
-        number: receipt.goodsReceiptNo,
-        item: null,
-        qty: receipt.qty,
-        uomCode: lot.uomCode,
-        at: receipt.receiptDatetime,
-        partner: null,
-        basis: null,
-      });
-    }
+  }
+  for (const receipt of chain.receipts) {
+    lines.push({
+      depth: 1,
+      kind: 'RECEIPT',
+      number: receipt.goodsReceiptNo,
+      item: null,
+      qty: receipt.qty,
+      uomCode: lot.uomCode,
+      at: receipt.receiptDatetime,
+      partner: null,
+      basis: null,
+    });
   }
   for (const wo of chain.workOrders) {
     lines.push({
-      depth: depth + 1,
+      depth: 1,
       kind: 'WORK_ORDER',
       number: wo.workOrderNo,
       item: wo.item,
@@ -249,7 +242,7 @@ export const flattenForward = (
     });
     for (const child of wo.productionLots) {
       lines.push({
-        depth: depth + 2,
+        depth: 2,
         kind: 'PRODUCTION_LOT',
         number: child.lotNo,
         item: child.item,
@@ -259,42 +252,31 @@ export const flattenForward = (
         partner: null,
         basis: child.linkBasis,
       });
-      lines.push(...productLines(child, depth + 3, child.uomCode));
-      const next = expanded.get(child.lotId);
-      if (next !== undefined && !seen.has(child.lotId)) {
-        lines.push(...flattenForward(next, expanded, depth + 2, new Set([...seen, child.lotId])));
-      }
+      lines.push(...productLines(child, 3, child.uomCode));
     }
   }
   return lines;
 };
 
-/** 역방향 사슬을 줄로 편다. `expanded`는 펼친 반제품 투입 LOT의 사슬이다. */
-export const flattenBackward = (
-  chain: BackwardChain,
-  expanded: ReadonlyMap<number, BackwardChain>,
-  depth = 0,
-  seen: ReadonlySet<number> = new Set([chain.lot.lotId]),
-): ChainLine[] => {
+/** 역방향 사슬을 줄로 편다(추적 내보내기). */
+export const flattenBackward = (chain: BackwardChain): ChainLine[] => {
   const { lot } = chain;
   const lines: ChainLine[] = [];
-  if (depth === 0) {
-    lines.push({
-      depth,
-      kind: 'LOT',
-      number: lot.lotNo,
-      item: lot.item,
-      qty: chain.goodQty,
-      uomCode: lot.uomCode,
-      at: lot.completedAt,
-      partner: null,
-      basis: null,
-    });
-    lines.push(...productLines(chain, depth + 1, lot.uomCode));
-  }
+  lines.push({
+    depth: 0,
+    kind: 'LOT',
+    number: lot.lotNo,
+    item: lot.item,
+    qty: chain.goodQty,
+    uomCode: lot.uomCode,
+    at: lot.completedAt,
+    partner: null,
+    basis: null,
+  });
+  lines.push(...productLines(chain, 1, lot.uomCode));
   if (chain.workOrder !== null) {
     lines.push({
-      depth: depth + 1,
+      depth: 1,
       kind: 'WORK_ORDER',
       number: chain.workOrder.workOrderNo,
       item: chain.workOrder.item,
@@ -307,7 +289,7 @@ export const flattenBackward = (
   }
   for (const input of chain.inputMaterials) {
     lines.push({
-      depth: depth + 2,
+      depth: 2,
       kind: 'INPUT_MATERIAL',
       number: input.lotNo,
       item: input.item,
@@ -317,10 +299,6 @@ export const flattenBackward = (
       partner: input.inbound?.supplier ?? null,
       basis: input.linkBasis,
     });
-    const next = expanded.get(input.lotId);
-    if (next !== undefined && !seen.has(input.lotId)) {
-      lines.push(...flattenBackward(next, expanded, depth + 2, new Set([...seen, input.lotId])));
-    }
   }
   return lines;
 };

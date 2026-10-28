@@ -26,7 +26,7 @@ const partnerHeader = (kind: MovementKind): string =>
 /**
  * 입출고 줄 표(C-1, C-10, C-16). 셀은 한 줄. 품목명이 남는 폭을 가져가고 말줄임한다(툴팁 「이름 (코드)」).
  * 문서번호와 LOT 번호는 대조에 쓰여 고정폭, 말줄임 없음(C-10). 출하 줄의 LOT은 첫 LOT과 「외 N」.
- * 1280×800 가로 넘침(C-16)으로 구분, 품목 코드, 창고, 상태는 드로어와 내려받은 파일에 둔다.
+ * 1280×800 가로 넘침(C-16)으로 구분, 품목 코드, 창고, 상태는 내려받은 파일에 둔다(행을 누르면 그 LOT의 추적 상세로 간다).
  */
 export const MovementTable = ({ kind, rows, onOpen, empty }: MovementTableProps) => {
   const columns: Column<MovementRow>[] = [

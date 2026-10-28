@@ -5,11 +5,14 @@ import {
   forwardQuery,
   hasEntry,
   openLotParams,
+  pathTo,
   readPath,
   readTab,
   readTraceFilters,
+  readTraceSelected,
   toTraceSearchParams,
   tracePeriodReason,
+  type PathStep,
 } from './trace-filters';
 
 const params = (query: string) => new URLSearchParams(query);
@@ -29,6 +32,27 @@ describe('추적 탭 주소 조건', () => {
     expect(query.get('tab')).toBe('backward');
     expect(query.get('lot')).toBe('P-1');
     expect(query.get('selected')).toBe('201');
+  });
+
+  it('주소의 깨진 값은 버린다: 숫자가 아닌 selected, 모양이 틀린 via, selected 없는 via', () => {
+    expect(readTraceSelected(params('selected=abc'))).toBeNull();
+    expect(readTraceSelected(params('selected=0'))).toBeNull();
+    expect(readTraceSelected(params('selected=12'))).toBe(12);
+    expect(
+      readPath(params('selected=12&via=X~1~A&via=M~abc~A&via=M~5~&via=P~7~P-1&via=M~0~B')),
+    ).toEqual([{ lotType: 'PRODUCTION', lotId: 7, lotNo: 'P-1' }]);
+    expect(readPath(params('via=M~5~A'))).toEqual([]);
+  });
+
+  it('[보기]의 경로: 이미 지나온 LOT이면 그 자리까지 되돌려 경로가 돌며 늘지 않는다', () => {
+    const m: PathStep = { lotType: 'MATERIAL', lotId: 101, lotNo: 'M-1' };
+    const p: PathStep = { lotType: 'PRODUCTION', lotId: 201, lotNo: 'P-1' };
+    const q: PathStep = { lotType: 'PRODUCTION', lotId: 301, lotNo: 'P-2' };
+    expect(pathTo([], m, p)).toEqual([m]);
+    expect(pathTo([m], p, q)).toEqual([m, p]);
+    /* M → P → 다시 M: 경로는 비고 M이 가운데다. */
+    expect(pathTo([m], p, m)).toEqual([]);
+    expect(pathTo([m, p], q, p)).toEqual([m]);
   });
 
   it('읽고 쓰면 같은 주소가 된다(제품 LOT 탭)', () => {

@@ -95,22 +95,34 @@ export const readTraceSelected = (params: URLSearchParams): number | null => {
   return raw !== null && POSITIVE.test(raw) ? Number(raw) : null;
 };
 
+/**
+ * [보기]로 `next`를 가운데 둘 때의 경로. 이미 지나온 LOT이면 그 자리까지 되돌려 경로가 돌며 늘지 않게 한다
+ * (자재 → 생산 → 같은 자재). 아니면 지금 LOT(`here`)을 끝에 붙인다.
+ */
+export const pathTo = (path: readonly PathStep[], here: PathStep, next: PathStep): PathStep[] => {
+  const index = path.findIndex((step) => step.lotId === next.lotId);
+  return index >= 0 ? path.slice(0, index) : [...path, here];
+};
+
 const STEP_SEPARATOR = '~';
 
+/** 지나온 경로. 가운데 LOT(`selected`)이 없으면 경로도 뜻이 없어 비운다. 깨진 단계는 버린다. */
 export const readPath = (params: URLSearchParams): PathStep[] =>
-  params.getAll('via').flatMap((raw) => {
-    const [type, id, ...rest] = raw.split(STEP_SEPARATOR);
-    const lotNo = rest.join(STEP_SEPARATOR);
-    if (type !== 'M' && type !== 'P') return [];
-    if (id === undefined || !POSITIVE.test(id) || lotNo === '') return [];
-    return [
-      {
-        lotType: type === 'M' ? 'MATERIAL' : 'PRODUCTION',
-        lotId: Number(id),
-        lotNo,
-      } satisfies PathStep,
-    ];
-  });
+  readTraceSelected(params) === null
+    ? []
+    : params.getAll('via').flatMap((raw) => {
+        const [type, id, ...rest] = raw.split(STEP_SEPARATOR);
+        const lotNo = rest.join(STEP_SEPARATOR);
+        if (type !== 'M' && type !== 'P') return [];
+        if (id === undefined || !POSITIVE.test(id) || lotNo === '') return [];
+        return [
+          {
+            lotType: type === 'M' ? 'MATERIAL' : 'PRODUCTION',
+            lotId: Number(id),
+            lotNo,
+          } satisfies PathStep,
+        ];
+      });
 
 const writeStep = (step: PathStep): string =>
   [step.lotType === 'MATERIAL' ? 'M' : 'P', String(step.lotId), step.lotNo].join(STEP_SEPARATOR);

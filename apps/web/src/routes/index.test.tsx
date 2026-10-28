@@ -1498,7 +1498,7 @@ describe('appRouter — 처분 판정 처리의 진입 경로', () => {
     expect(routedPaths()).toContain(WORK_ORDER_PROGRESS_PATH);
   });
 
-  /* W-02-09 LOT 추적 드로어의 [LOT 상태 보기]가 가는 W-03-01 주소다. 갈리면 조용히 404로 간다. */
+  /* W-02-09 LOT 추적 상세의 [LOT 상태 보기]가 가는 W-03-01 주소다. 갈리면 조용히 404로 간다. */
   it('⭐ LOT 추적이 여는 LOT 상태 주소와 등록된 라우트가 «같다»', () => {
     expect(routedPaths()).toContain(LOT_STATUS_PATH);
   });

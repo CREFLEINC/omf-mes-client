@@ -34,9 +34,9 @@ import {
 import { LoadFailure, toLoadCause } from './load-failure';
 import { useCodeNames } from './queries';
 import { formatQty } from './rows';
-import type { PathStep } from './trace-filters';
+import { pathTo, type PathStep } from './trace-filters';
 import { useBackwardChain, useForwardChain } from './trace-queries';
-import { plantDate, plantDateTime } from './trace-table';
+import { LotNo, plantDate, plantDateTime } from './trace-table';
 import type {
   BackwardChain,
   FlowBasis,
@@ -71,6 +71,11 @@ export interface LotDetailProps {
   canOpenLotStatus: boolean;
   /** 다른 LOT을 가운데 둔다. 목록과 탭은 그대로다. `path`는 그 LOT까지 지나온 경로다. */
   onCenter: (lot: LotRef, path: PathStep[]) => void;
+  /**
+   * 목록에서 바로 고른 LOT의 종류(자재 LOT 탭이면 자재 LOT). 자재 LOT이면 역방향 사슬은 볼 것이 없어 부르지 않는다.
+   * 모르면(상세 안에서 [보기]로 옮겨 옴) `null`이고 두 사슬을 함께 부른다.
+   */
+  typeHint: PathStep['lotType'] | null;
 }
 
 const lotTypeOf = (head: FlowLotHead): PathStep['lotType'] =>
@@ -179,11 +184,8 @@ const SmallTable = <Row,>({
   rows,
   getRowId,
   empty,
-  sticky = false,
 }: {
   title: string;
-  /** 마지막 열(행 동작)을 오른쪽에 붙여 둔다. */
-  sticky?: boolean;
   /** 거짓이면 이름표를 두지 않는다(구획 제목이 이미 같은 말을 할 때). 표의 접근 이름으로는 남는다. */
   heading?: boolean;
   stage?: string;
@@ -197,7 +199,7 @@ const SmallTable = <Row,>({
     {rows.length === 0 ? (
       <p className="field-note lot-trace-block-empty">{empty}</p>
     ) : (
-      <div className={sticky ? 'lot-trace-detail-table has-action' : 'lot-trace-detail-table'}>
+      <div className="lot-trace-detail-table">
         <Table
           caption={<span className="visually-hidden">{title}</span>}
           density="compact"
@@ -217,17 +219,20 @@ const k = c.columns;
 const receiptColumns = (uomCode: string): Column<FlowReceipt>[] => [
   {
     key: 'no',
+    width: '160px',
     header: k.receiptNo,
     render: (row) => <Mono>{row.goodsReceiptNo}</Mono>,
   },
   {
     key: 'date',
+    width: '112px',
     header: k.receiptDate,
     align: 'center',
     render: (row) => plantDate(row.receiptDatetime),
   },
   {
     key: 'qty',
+    width: '96px',
     header: k.qty,
     align: 'end',
     render: (row) => qty(row.qty, uomCode),
@@ -242,11 +247,13 @@ const receiptColumns = (uomCode: string): Column<FlowReceipt>[] => [
 const packageColumns = (uomCode: string): Column<FlowPackage>[] => [
   {
     key: 'no',
+    width: '160px',
     header: k.handlingUnitNo,
     render: (row) => <Mono>{row.handlingUnitNo}</Mono>,
   },
   {
     key: 'qty',
+    width: '96px',
     header: k.qty,
     align: 'end',
     render: (row) => qty(row.qty, uomCode),
@@ -259,6 +266,7 @@ const packageColumns = (uomCode: string): Column<FlowPackage>[] => [
   },
   {
     key: 'status',
+    width: '96px',
     header: k.packingStatus,
     align: 'center',
     render: (row) =>
@@ -275,17 +283,20 @@ const packageColumns = (uomCode: string): Column<FlowPackage>[] => [
 const shipmentColumns = (uomCode: string): Column<ShipmentGroup>[] => [
   {
     key: 'no',
+    width: '160px',
     header: k.shipmentNo,
     render: (row) => <Mono>{row.shipmentNo}</Mono>,
   },
   {
     key: 'date',
+    width: '112px',
     header: k.shippedAt,
     align: 'center',
     render: (row) => plantDate(row.shippedAt),
   },
   {
     key: 'qty',
+    width: '96px',
     header: k.qty,
     align: 'end',
     render: (row) => qty(row.qty, uomCode),
@@ -376,11 +387,22 @@ const ProductSideTables = ({
 
 /* ── 사용처(자재 LOT, 반제품 LOT의 아래 방향) ────────────────────────── */
 
-const usageColumns = (uomCode: string, withBasis: boolean): Column<ForwardWorkOrder>[] => [
+/*
+ * 상세 창의 표는 창 폭(1440px에서 약 520px) 안에 들어온다 — 번호, 수량, 날짜 열은 정한 폭, 이름 열이 남는 폭을 쓰고
+ * 넘치면 말줄임이다. 빠진 값(첫 투입 일시, 공급사, 입하일, 공급사 LOT)은 [보기]로 그 LOT을 열거나 추적 내보내기에 있다.
+ */
+const usageColumns = (uomCode: string): Column<ForwardWorkOrder>[] => [
   {
     key: 'no',
     header: k.workOrderNo,
-    render: (row) => <Mono>{row.workOrderNo}</Mono>,
+    width: '200px',
+    /* 투입은 있으나 실적이 없는 W/O는 번호 옆에 「투입만」 칩 — 줄 첫 자리에서 보인다. */
+    render: (row) => (
+      <span className="lot-trace-cell-with-chip">
+        <Mono>{row.workOrderNo}</Mono>
+        {row.linkBasis === null && <EstimateChip basis="inputOnly" />}
+      </span>
+    ),
   },
   {
     key: 'item',
@@ -390,32 +412,17 @@ const usageColumns = (uomCode: string, withBasis: boolean): Column<ForwardWorkOr
   {
     key: 'qty',
     header: k.consumedQty,
+    width: '96px',
     align: 'end',
     render: (row) => qty(row.consumedQty, uomCode),
   },
   {
-    key: 'first',
-    header: k.firstConsumedAt,
-    align: 'center',
-    render: (row) => plantDateTime(row.firstConsumedAt),
-  },
-  {
     key: 'last',
     header: k.lastConsumedAt,
+    width: '112px',
     align: 'center',
-    render: (row) => plantDateTime(row.lastConsumedAt),
+    render: (row) => plantDate(row.lastConsumedAt),
   },
-  ...(withBasis
-    ? [
-        {
-          key: 'basis',
-          header: k.basis,
-          align: 'center' as const,
-          render: (row: ForwardWorkOrder) =>
-            row.linkBasis === null ? <EstimateChip basis="inputOnly" /> : null,
-        },
-      ]
-    : []),
 ];
 
 /** 생산 LOT마다 W/O 번호(여러 W/O에 걸친 LOT도 있다). */
@@ -506,10 +513,7 @@ const UsageSections = ({
         <SmallTable
           title={c.sections.usage}
           heading={false}
-          columns={usageColumns(
-            chain.lot.uomCode,
-            chain.workOrders.some((wo) => wo.linkBasis === null),
-          )}
+          columns={usageColumns(chain.lot.uomCode)}
           rows={chain.workOrders}
           getRowId={(row) => String(row.workOrderId)}
           empty={c.noInput}
@@ -549,47 +553,27 @@ const inputColumns = (
   {
     key: 'lot',
     header: k.materialLot,
-    render: (row) => <Mono>{row.lotNo}</Mono>,
+    render: (row) => <LotNo lotNo={row.lotNo} />,
   },
   {
     key: 'item',
     header: k.itemName,
+    width: '22%',
     render: (row) => <Ellipsis text={row.item.name} title={named(row.item.name, row.item.code)} />,
   },
   {
     key: 'qty',
     header: k.consumedQty,
+    width: '88px',
     align: 'end',
     render: (row) => qty(row.consumedQty, row.uomCode),
-  },
-  {
-    key: 'supplier',
-    header: k.supplierName,
-    render: (row) =>
-      row.inbound === null ? null : (
-        <Ellipsis
-          text={row.inbound.supplier.name}
-          title={named(row.inbound.supplier.name, row.inbound.supplier.code)}
-        />
-      ),
-  },
-  {
-    key: 'inboundAt',
-    header: k.inboundAt,
-    align: 'center',
-    render: (row) => (row.inbound === null ? null : plantDate(row.inbound.receiptDatetime)),
-  },
-  {
-    key: 'supplierLot',
-    header: k.supplierLot,
-    render: (row) =>
-      row.inbound?.supplierLotNo == null ? null : <Mono>{row.inbound.supplierLotNo}</Mono>,
   },
   ...(withBasis
     ? [
         {
           key: 'basis',
           header: k.basis,
+          width: '120px',
           align: 'center' as const,
           render: (row: FlowInputMaterial) => <EstimateChip basis={row.linkBasis} />,
         },
@@ -598,6 +582,7 @@ const inputColumns = (
   {
     key: 'action',
     header: k.action,
+    width: '76px',
     align: 'center',
     render: (row) => <ViewButton lot={refOf(row)} onView={onView} />,
   },
@@ -644,7 +629,6 @@ const ProductionSections = ({
         <SmallTable
           title={c.sections.inputs}
           heading={false}
-          sticky
           columns={inputColumns(
             onView,
             chain.inputMaterials.some((input) => input.linkBasis !== null),
@@ -726,8 +710,6 @@ const exportColumns = (): CsvColumn<ChainLine>[] => {
     },
   ];
 };
-
-const NO_EXPANDED = new Map<number, never>();
 
 /* ── 상세 ────────────────────────────────────────────────────────────── */
 
@@ -872,7 +854,7 @@ type FrameProps = Pick<ViewProps, 'path' | 'canOpenLotStatus' | 'onCenter'>;
 
 const MaterialView = ({ chain, ...frame }: FrameProps & { chain: ForwardChain }) => {
   const impact = forwardImpact(chain);
-  const view = (lot: LotRef) => frame.onCenter(lot, [...frame.path, refOf(chain.lot)]);
+  const view = (lot: LotRef) => frame.onCenter(lot, pathTo(frame.path, refOf(chain.lot), lot));
   const inbound = chain.inbound;
   return (
     <DetailFrame
@@ -890,7 +872,7 @@ const MaterialView = ({ chain, ...frame }: FrameProps & { chain: ForwardChain })
       ]}
       cells={forwardStages(chain)}
       estimated={chain.basis !== null}
-      lines={() => flattenForward(chain, NO_EXPANDED)}
+      lines={() => flattenForward(chain)}
     >
       <Section title={c.sections.inbound} stage="RECEIVED">
         {inbound === null ? (
@@ -943,11 +925,12 @@ const ProductionView = ({
   chain: BackwardChain;
   /** 다시 투입된 반제품이면 그 정방향 사슬. 투입된 적이 없으면 `undefined`. */
   usage: ForwardChain | undefined;
-  usageError: boolean;
+  /** 사용처(정방향 사슬)를 받지 못한 원인. 없는 사슬(404)은 실패가 아니라 `null`이다. */
+  usageError: unknown;
   onRetryUsage: () => void;
 }) => {
   const impact = backwardImpact(chain);
-  const view = (lot: LotRef) => frame.onCenter(lot, [...frame.path, refOf(chain.lot)]);
+  const view = (lot: LotRef) => frame.onCenter(lot, pathTo(frame.path, refOf(chain.lot), lot));
   return (
     <DetailFrame
       {...frame}
@@ -960,25 +943,26 @@ const ProductionView = ({
       cells={backwardStages(chain)}
       estimated={chain.basis !== null || (usage !== undefined && usage.basis !== null)}
       lines={() => [
-        ...flattenBackward(chain, NO_EXPANDED),
-        ...(usage === undefined
-          ? []
-          : flattenForward(usage, NO_EXPANDED).filter((line) => line.depth > 0)),
+        ...flattenBackward(chain),
+        ...(usage === undefined ? [] : flattenForward(usage).filter((line) => line.depth > 0)),
       ]}
     >
       <ProductionSections chain={chain} onView={view} />
       {usage !== undefined && <UsageSections chain={usage} onView={view} />}
-      {usageError && (
-        <AlertBanner
-          variant="error"
-          title={c.usageFailed}
-          action={
-            <Button size="sm" variant="outlined" onClick={onRetryUsage}>
-              {c.retry}
-            </Button>
-          }
-        />
-      )}
+      {usageError !== null &&
+        (toLoadCause(usageError) === 'forbidden' ? (
+          <LoadFailure error={usageError} title={c.usageFailed} onRetry={onRetryUsage} />
+        ) : (
+          <AlertBanner
+            variant="error"
+            title={c.usageFailed}
+            action={
+              <Button size="sm" variant="outlined" onClick={onRetryUsage}>
+                {c.retry}
+              </Button>
+            }
+          />
+        ))}
     </DetailFrame>
   );
 };
@@ -990,9 +974,15 @@ const ProductionView = ({
  * 두 사슬(정방향, 역방향)을 함께 부르고, 응답의 LOT 종류로 무엇을 보일지 정한다. 상세 안의 LOT은 [보기]로
  * 가운데에 다시 둔다(목록과 탭은 그대로). 지나온 LOT은 머리 위 경로 줄과 [이전 LOT]으로 되돌아간다.
  */
-export const LotDetail = ({ lotId, ...frame }: LotDetailProps) => {
+export const LotDetail = ({ lotId, typeHint, ...frame }: LotDetailProps) => {
   const forward = useForwardChain(lotId);
-  const backward = useBackwardChain(lotId);
+  /* 자재 LOT으로 짐작되면 정방향 사슬로 종류를 확인한 뒤에만 부른다(생산 LOT이었거나 정방향이 실패했을 때). */
+  const backward = useBackwardChain(
+    lotId,
+    typeHint !== 'MATERIAL' ||
+      forward.isError ||
+      (forward.data !== undefined && forward.data.lot.lotTypeCode !== 'MATERIAL'),
+  );
   const head = forward.data?.lot ?? backward.data?.lot;
 
   if (head === undefined) {
@@ -1037,7 +1027,8 @@ export const LotDetail = ({ lotId, ...frame }: LotDetailProps) => {
   const usage =
     forward.data !== undefined && forward.data.workOrders.length > 0 ? forward.data : undefined;
   /* 사용처 사슬이 없는 LOT(404)은 실패가 아니다. 그 밖의 실패만 알린다. */
-  const usageError = forward.isError && toLoadCause(forward.error) !== 'notFound';
+  const usageError =
+    forward.isError && toLoadCause(forward.error) !== 'notFound' ? forward.error : null;
   return (
     <ProductionView
       chain={backward.data}

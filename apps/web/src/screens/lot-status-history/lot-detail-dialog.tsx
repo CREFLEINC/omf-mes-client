@@ -81,7 +81,7 @@ export const LotDetailDialog = ({
       size="lg"
       footer={
         <>
-          {/* LOT 추적으로 간다. 자재 LOT은 정방향, 생산 LOT은 역방향으로 연다. */}
+          {/* LOT 추적으로 간다. 자재 LOT은 자재 LOT 탭, 생산 LOT은 제품 LOT 탭에서 연다. */}
           {traceHref !== null && (
             <Button variant="outlined" onClick={() => void navigate(traceHref)}>
               {t.detail.trace}

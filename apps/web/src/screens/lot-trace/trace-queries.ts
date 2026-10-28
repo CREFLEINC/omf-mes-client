@@ -84,10 +84,11 @@ export const useForwardChain = (lotId: number): UseQueryResult<ForwardChain> => 
   });
 };
 
-export const useBackwardChain = (lotId: number): UseQueryResult<BackwardChain> => {
+export const useBackwardChain = (lotId: number, enabled = true): UseQueryResult<BackwardChain> => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: traceKeys.chain('backward', lotId),
+    enabled,
     queryFn: () => fetchBackwardChain(client, lotId),
   });
 };
