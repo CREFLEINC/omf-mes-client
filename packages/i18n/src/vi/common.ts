@@ -76,6 +76,7 @@ export const common: Translated<typeof ko.common> = {
     layoutLabel: 'Bố cục danh sách · chi tiết',
     layoutSideBySide: 'Trái phải',
     layoutStacked: 'Trên dưới',
+    layoutSideBySideNarrow: 'Cửa sổ hẹp nên không dùng được bố cục trái phải',
   },
   selectDate: 'Chọn ngày',
   popWorker: {

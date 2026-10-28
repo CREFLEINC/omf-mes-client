@@ -93,6 +93,8 @@ export const common = {
     layoutLabel: '목록·상세 배치', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)
     layoutSideBySide: '좌우 배치',
     layoutStacked: '상하 배치',
+    /** 창이 좁아(1440px 미만) 목록과 상세가 위아래로만 설 때 [좌우 배치]에 붙는 사유. */
+    layoutSideBySideNarrow: '창이 좁아 좌우 배치를 쓸 수 없습니다',
   },
   reference: {
     empty: '—',

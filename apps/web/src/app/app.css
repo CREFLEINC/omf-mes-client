@@ -22419,6 +22419,12 @@ body.col-reordering * {
   color: var(--primary);
 }
 
+/* 창이 좁아 쓸 수 없는 배치(좌우) — 흐리게, 누를 수 없다는 커서. 사유는 마우스를 올리면 보인다. */
+.split-orientation-option[aria-disabled='true'] {
+  color: var(--on-surface-muted);
+  cursor: not-allowed;
+}
+
 /*
  * 상하 배치의 가운데 가로 막대 — 끌어 목록 높이를 바꾼다(사용자 지시 2026-10-26). 좌우 배치의 세로 막대와 같은 모양
  * (가는 선 + 가운데 점 손잡이)을 눕혔다. 올리거나 초점이 오면 파랗다.
