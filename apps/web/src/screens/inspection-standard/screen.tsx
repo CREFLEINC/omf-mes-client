@@ -1206,7 +1206,16 @@ export const InspectionStandardScreen = () => {
     if (selectedPlanId === null) {
       return (
         <section className="pane" aria-label={t.panes.planForm}>
-          <EmptyState size="sm" title={t.empty.planNotSelected} />
+          {/* 둥근 바탕 위 아이콘 · 제목 · 설명(사용자 시안 · #196). */}
+          <EmptyState
+            icon={
+              <span className="inspection-standard-empty-icon">
+                <Icon name="assignment" size={28} />
+              </span>
+            }
+            title={t.empty.detailNotSelectedTitle}
+            description={t.empty.detailNotSelectedDescription}
+          />
         </section>
       );
     }

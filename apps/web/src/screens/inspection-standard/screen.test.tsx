@@ -362,7 +362,8 @@ describe('InspectionStandardScreen — 기준 선택', () => {
     renderScreen([planListRoute()]);
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
-    expect(screen.getAllByText('목록에서 검사 기준을 먼저 고르세요').length).toBeGreaterThan(0);
+    expect(screen.getByText('검사 기준을 선택해 주세요')).toBeInTheDocument();
+    expect(screen.getByText('목록에서 선택하면 상세 정보가 표시됩니다.')).toBeInTheDocument();
   });
 });
 

@@ -235,6 +235,9 @@ export const inspectionStandard = {
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
     planNotSelected: '목록에서 검사 기준을 먼저 고르세요',
+    /* 상세 칸 빈 안내(사용자 시안 · #196) — 배치(좌우 · 상하)에 따라 목록 위치가 달라 「왼쪽」이라 하지 않는다. */
+    detailNotSelectedTitle: '검사 기준을 선택해 주세요',
+    detailNotSelectedDescription: '목록에서 선택하면 상세 정보가 표시됩니다.',
     versionNoneTitle: '등록된 버전이 없습니다',
     versionNoneDescription: '「버전 등록」으로 첫 버전을 만드세요.',
     versionNotSelected: '버전을 선택하세요',

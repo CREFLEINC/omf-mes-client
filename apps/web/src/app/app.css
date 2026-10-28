@@ -380,6 +380,17 @@ main > * + * {
  * 검사 기준 상세 카드(#196) — 머리 / 버전 고르기 / 버전 요약 / 탭. 카드 안의 구획(버전 설정 · 검사 항목)은 카드가
  * 테두리를 맡아 상자를 겹쳐 그리지 않는다.
  */
+/* 상세 칸 빈 안내의 아이콘 — 옅은 원 바탕(사용자 시안 · #196). */
+.inspection-standard-empty-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+}
+
 .inspection-standard-detail-card {
   display: grid;
   /* 카드 폭을 넘지 않는다 — 열이 가장 넓은 내용(요약 상자 · 검사 항목 표) 폭으로 늘면 카드 밖으로 삐져나간다(#196). */

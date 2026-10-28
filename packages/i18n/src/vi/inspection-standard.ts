@@ -218,6 +218,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     beyondLastTitle: 'Trang này không có kết quả',
     beyondLastDescription: 'Hãy chuyển về trang đầu.',
     planNotSelected: 'Hãy chọn tiêu chuẩn kiểm tra trong danh sách trước',
+    detailNotSelectedTitle: 'Hãy chọn tiêu chuẩn kiểm tra',
+    detailNotSelectedDescription: 'Chọn trong danh sách để hiển thị thông tin chi tiết.',
     versionNoneTitle: 'Chưa đăng ký phiên bản',
     versionNoneDescription: 'Hãy tạo phiên bản đầu tiên bằng «Đăng ký phiên bản».',
     versionNotSelected: 'Hãy chọn phiên bản',
