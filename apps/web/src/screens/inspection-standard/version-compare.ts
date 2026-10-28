@@ -29,6 +29,9 @@ export interface ItemCompareRow {
   code: string;
   name: string;
   status: ItemCompareStatus;
+  /** 버전마다의 대표 값(기준값 · 범위 · 검사값 유형 순) — 그 버전에 없으면 「—」 */
+  baseValue: string;
+  targetValue: string;
   /** 바뀐 칸만 — 「이름: 전 → 후」 */
   changes: string[];
 }
@@ -114,6 +117,19 @@ const itemFields = (
   { label: t.dialog.automaticJudgmentLabel, value: flagText(spec.automaticJudgment) },
 ];
 
+/** 표의 한 칸에 담을 그 항목의 대표 값 — 기준값이 있으면 기준값, 없으면 범위, 그것도 없으면 검사값 유형. */
+const summaryOf = (spec: InspectionItemSpec | undefined, labels: CompareLabels): string => {
+  if (spec === undefined) return EMPTY;
+  if (spec.targetValue !== null && spec.targetValue !== undefined) return String(spec.targetValue);
+  if (
+    (spec.lowerLimit !== null && spec.lowerLimit !== undefined) ||
+    (spec.upperLimit !== null && spec.upperLimit !== undefined)
+  ) {
+    return `${numberText(spec.lowerLimit)}~${numberText(spec.upperLimit)}`;
+  }
+  return labelOrEmpty(spec.dataTypeCode, labels.dataType);
+};
+
 /**
  * 검사 항목을 **항목코드로 짝지어** 견준다 — 순서 값은 서버 채번이라 짝의 기준이 될 수 없다.
  * 비교 버전의 순서대로 놓고, 기준 버전에만 있는(삭제된) 항목은 뒤에 붙인다.
@@ -133,6 +149,8 @@ export const compareItems = (
         code: spec.inspectionItemCode,
         name: spec.inspectionItemName,
         status: 'added',
+        baseValue: EMPTY,
+        targetValue: summaryOf(spec, labels),
         changes: [],
       };
     }
@@ -145,6 +163,8 @@ export const compareItems = (
       code: spec.inspectionItemCode,
       name: spec.inspectionItemName,
       status: changes.length === 0 ? 'same' : 'changed',
+      baseValue: summaryOf(before, labels),
+      targetValue: summaryOf(spec, labels),
       changes,
     };
   });
@@ -155,6 +175,8 @@ export const compareItems = (
         code: spec.inspectionItemCode,
         name: spec.inspectionItemName,
         status: 'removed',
+        baseValue: summaryOf(spec, labels),
+        targetValue: EMPTY,
         changes: [],
       });
     }

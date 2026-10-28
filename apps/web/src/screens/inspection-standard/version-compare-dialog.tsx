@@ -28,10 +28,10 @@ import { versionToFormValues } from './version-mappers';
 
 const t = messages.inspectionStandard;
 
-const STATUS_TONE: Record<ItemCompareStatus, 'success' | 'error' | 'warning' | 'idle'> = {
+const STATUS_TONE: Record<ItemCompareStatus, 'success' | 'error' | 'info' | 'idle'> = {
   added: 'success',
   removed: 'error',
-  changed: 'warning',
+  changed: 'info',
   same: 'idle',
 };
 
@@ -115,31 +115,32 @@ export const VersionCompareDialog = ({
     const allItemRows = compareItems(baseItems.data.items, targetItems.data.items, labels);
     const itemRows = hideSame ? allItemRows.filter((row) => row.status !== 'same') : allItemRows;
 
-    /* 값이 다른 칸은 글자를 강조한다 — 표 줄에 색을 칠할 길이 디자인 시스템에 없다. */
-    const marked = (row: SettingRow, value: string): ReactNode => (
-      <span className={row.changed ? 'inspection-standard-compare-changed' : undefined}>
-        {value}
-      </span>
-    );
+    /*
+     * 칸 강조 — 바뀐 값은 파랑, 추가는 초록, 삭제는 빨강(머리의 범례와 같다 · 사용자 시안 #196).
+     * 디자인 시스템 표에 칸 색을 칠할 길이 없어 표시 글자에 이름을 붙이고 CSS 가 그 칸(td)을 칠한다.
+     */
+    const cell = (value: string, tone?: 'changed' | 'added' | 'removed'): ReactNode =>
+      tone === undefined ? (
+        value
+      ) : (
+        <span className="inspection-standard-compare-cell" data-tone={tone}>
+          {value}
+        </span>
+      );
+
     const settingColumns: Column<SettingRow>[] = [
-      {
-        key: 'label',
-        header: t.compare.fieldColumn,
-        align: 'center',
-        width: '180px',
-        render: (row) => marked(row, row.label),
-      },
+      { key: 'label', header: t.compare.fieldColumn, align: 'center', width: '30%' },
       {
         key: 'base',
         header: versionLabel(baseId),
         align: 'center',
-        render: (row) => marked(row, row.base),
+        render: (row) => cell(row.base),
       },
       {
         key: 'target',
         header: versionLabel(targetId),
         align: 'center',
-        render: (row) => marked(row, row.target),
+        render: (row) => cell(row.target, row.changed ? 'changed' : undefined),
       },
     ];
     const itemColumns: Column<ItemCompareRow>[] = [
@@ -158,23 +159,55 @@ export const VersionCompareDialog = ({
         key: 'code',
         header: t.compare.itemColumn,
         align: 'center',
-        width: '220px',
+        width: '24%',
         render: (row) => t.values.itemLabel(row.code, row.name),
+      },
+      {
+        key: 'baseValue',
+        header: versionLabel(baseId),
+        align: 'center',
+        width: '16%',
+        render: (row) => cell(row.baseValue, row.status === 'removed' ? 'removed' : undefined),
+      },
+      {
+        key: 'targetValue',
+        header: versionLabel(targetId),
+        align: 'center',
+        width: '16%',
+        render: (row) =>
+          cell(
+            row.targetValue,
+            row.status === 'added' ? 'added' : row.status === 'changed' ? 'changed' : undefined,
+          ),
       },
       {
         key: 'changes',
         header: t.compare.changesColumn,
-        align: 'start',
-        render: (row) =>
-          row.changes.length === 0 ? (
-            t.values.empty
-          ) : (
+        align: 'center',
+        render: (row) => {
+          if (row.status === 'added') {
+            return (
+              <span className="inspection-standard-compare-note" data-tone="added">
+                {t.compare.itemAdded}
+              </span>
+            );
+          }
+          if (row.status === 'removed') {
+            return (
+              <span className="inspection-standard-compare-note" data-tone="removed">
+                {t.compare.itemRemoved}
+              </span>
+            );
+          }
+          if (row.changes.length === 0) return t.values.empty;
+          return (
             <ul className="inspection-standard-compare-changes">
               {row.changes.map((change) => (
                 <li key={change}>{change}</li>
               ))}
             </ul>
-          ),
+          );
+        },
       },
     ];
 
@@ -184,8 +217,16 @@ export const VersionCompareDialog = ({
           className="inspection-standard-compare-section"
           aria-label={t.compare.settingsTitle}
         >
-          <h3 className="pane-subtitle">{t.compare.settingsTitle}</h3>
-          <div className="inspection-queue-table inspection-standard-table-box inspection-standard-compare-settings">
+          <div className="inspection-standard-section-head">
+            <h3 className="pane-title">{t.compare.settingsTitle}</h3>
+            {/* 범례 — 칸 색의 뜻(사용자 시안 · #196) */}
+            <ul className="inspection-standard-compare-legend">
+              <li data-tone="changed">{t.compare.legendChanged}</li>
+              <li data-tone="added">{t.compare.legendAdded}</li>
+              <li data-tone="removed">{t.compare.legendRemoved}</li>
+            </ul>
+          </div>
+          <div className="inspection-queue-table inspection-standard-table-box inspection-standard-compare-table">
             <Table
               density="compact"
               columns={settingColumns}
@@ -197,7 +238,12 @@ export const VersionCompareDialog = ({
 
         <section className="inspection-standard-compare-section" aria-label={t.compare.itemsTitle}>
           <div className="inspection-standard-section-head">
-            <h3 className="pane-subtitle">{t.compare.itemsTitle}</h3>
+            <div className="inspection-standard-compare-title">
+              <h3 className="pane-title">{t.compare.itemsTitle}</h3>
+              <Chip variant="status" size="sm" status="idle">
+                {t.compare.count(itemRows.length)}
+              </Chip>
+            </div>
             <Checkbox checked={hideSame} onChange={(event) => setHideSame(event.target.checked)}>
               {t.compare.hideSame}
             </Checkbox>
@@ -207,7 +253,7 @@ export const VersionCompareDialog = ({
           ) : itemRows.length === 0 ? (
             <p className="field-note">{t.compare.noItemDiff}</p>
           ) : (
-            <div className="inspection-queue-table inspection-standard-table-box">
+            <div className="inspection-queue-table inspection-standard-table-box inspection-standard-compare-table">
               <Table
                 density="compact"
                 columns={itemColumns}

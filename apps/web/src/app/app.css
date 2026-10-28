@@ -670,16 +670,81 @@ h2:has(> .inspection-standard-dialog-title) {
   margin: 0;
 }
 
-/* 두 버전 값이 다른 칸 — 글자를 굵게 · 경고색으로 */
-.inspection-standard-compare-changed {
-  color: var(--semantic-warning);
-  font-weight: 600;
+/* 두 구획(버전 설정 비교 · 검사 항목 비교)은 테두리 상자로 나눈다(사용자 시안 · #196). */
+.inspection-standard-compare-section {
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.inspection-standard-compare-section .pane-title {
+  margin: 0;
+}
+
+.inspection-standard-compare-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inspection-standard-compare-legend {
+  display: inline-flex;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  list-style: none;
+}
+
+.inspection-standard-compare-legend > li::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-1);
+  border-radius: 50%;
+  background: var(--compare-tone);
+  vertical-align: middle;
+}
+
+/* 칸 색 — 바뀜 파랑 · 추가 초록 · 삭제 빨강. 칸(td)을 칠하고 왼쪽에 굵은 선을 둔다. */
+.inspection-standard-compare-legend > [data-tone='changed'],
+.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='changed']),
+.inspection-standard-compare-note[data-tone='changed'] {
+  --compare-tone: var(--semantic-info);
+  --compare-fill: var(--semantic-info-container);
+}
+
+.inspection-standard-compare-legend > [data-tone='added'],
+.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='added']),
+.inspection-standard-compare-note[data-tone='added'] {
+  --compare-tone: var(--semantic-success);
+  --compare-fill: var(--semantic-success-container);
+}
+
+.inspection-standard-compare-legend > [data-tone='removed'],
+.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='removed']),
+.inspection-standard-compare-note[data-tone='removed'] {
+  --compare-tone: var(--semantic-error);
+  --compare-fill: var(--semantic-error-container);
+}
+
+/* 짝수 줄 바탕 규칙보다 무거워야 한다 — `tr:nth-child(n)` 로 무게를 올린다. */
+.inspection-standard-compare-table tbody tr:nth-child(n) td:has(.inspection-standard-compare-cell) {
+  background: var(--compare-fill);
+  box-shadow: inset 3px 0 0 var(--compare-tone);
+}
+
+.inspection-standard-compare-note {
+  color: var(--compare-tone);
 }
 
 .inspection-standard-compare-changes {
   margin: 0;
-  padding-left: var(--space-4);
-  text-align: left;
+  padding: 0;
+  list-style: none;
+  text-align: center;
 }
 
 .inspection-standard-item-local-note {
@@ -805,7 +870,22 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .inspection-standard-dialog-close {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* 정보 라벨 — 검사 조회·판정의 안내 줄(`.oqc-inspection-action-note[data-tone='info']`)과 같은 모양(사용자 지시 · #196). */
+.inspection-standard-notice-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0 auto 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--semantic-info-container);
+  color: var(--on-semantic-info-container);
+  font: var(--type-body-md);
 }
 
 .inspection-standard-detail {

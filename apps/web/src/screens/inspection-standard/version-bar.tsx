@@ -1,4 +1,4 @@
-import { Button, Chip, Dialog, Select, type SelectOptionGroup } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Icon, Select, type SelectOptionGroup } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
@@ -127,20 +127,27 @@ export const VersionBar = ({
         {/* 오른쪽 끝 — 고른 버전의 일(버전 설정 수정 · 확정 · 폐기), 맨 끝에 「+ 신규 버전 발행」(사용자 시안 · #196). */}
         <div className="inspection-standard-version-actions">
           {versionActions}
-          {/* 작성중 버전을 보고 있으면 발행 단추를 두지 않는다 — 이미 고칠 수 있는 판이다(사용자 지시 · #196). */}
-          {!isLoading && !hasLoadError && selectedStatus?.status !== 'draft' && (
-            <VersionPrimaryAction
-              /* 버전 줄의 주 단추 — 채운 단추로 낸다(사용자 시안 · #196). */
-              emphasized
-              hasVersions={versions.length > 0}
-              newRevisionDisabledReason={newRevisionDisabledReason}
-              newRevisionNotice={newRevisionNotice}
-              isCreating={isCreating}
-              isPublishing={isPublishing}
-              onNewRevision={onNewRevision}
-              onCreateVersion={onCreateVersion}
-            />
-          )}
+          {/*
+           * 작성중 버전을 보고 있으면 발행 단추를 두지 않는다 — 이미 고칠 수 있는 판이다(사용자 지시 · #196).
+           * 작성중 버전이 따로 있으면 이 줄에는 단추도 안내도 두지 않는다 — 확정 버전을 보는 자리에 그 안내는
+           * 군더더기다(사용자 지시 · #196). 안내는 「버전 목록」 창에만 남는다.
+           */}
+          {!isLoading &&
+            !hasLoadError &&
+            selectedStatus?.status !== 'draft' &&
+            newRevisionNotice === null && (
+              <VersionPrimaryAction
+                /* 버전 줄의 주 단추 — 채운 단추로 낸다(사용자 시안 · #196). */
+                emphasized
+                hasVersions={versions.length > 0}
+                newRevisionDisabledReason={newRevisionDisabledReason}
+                newRevisionNotice={newRevisionNotice}
+                isCreating={isCreating}
+                isPublishing={isPublishing}
+                onNewRevision={onNewRevision}
+                onCreateVersion={onCreateVersion}
+              />
+            )}
         </div>
       </div>
 
@@ -160,7 +167,8 @@ export const VersionBar = ({
           <div className="inspection-standard-version-dialog">
             <div className="inspection-standard-section-head">
               <h2 className="pane-title">{t.versionBar.openList}</h2>
-              {!isLoading && !hasLoadError && (
+              {/* 작성중 버전이 있으면 제목 줄에는 단추를 두지 않고, 안내는 바닥 줄에 라벨로 낸다(사용자 지시 · #196). */}
+              {!isLoading && !hasLoadError && newRevisionNotice === null && (
                 <VersionPrimaryAction
                   emphasized
                   size="sm"
@@ -188,6 +196,12 @@ export const VersionBar = ({
               }}
             />
             <div className="inspection-standard-dialog-close">
+              {newRevisionNotice !== null && (
+                <p className="inspection-standard-notice-label">
+                  <Icon name="info" size={18} aria-hidden />
+                  {newRevisionNotice}
+                </p>
+              )}
               <Button variant="outlined" onClick={() => setIsListOpen(false)}>
                 {t.versionBar.close}
               </Button>
