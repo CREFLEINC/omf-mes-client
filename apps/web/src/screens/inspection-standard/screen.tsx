@@ -13,7 +13,7 @@ import {
 } from '@crefle/web-ui';
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -739,11 +739,54 @@ export const InspectionStandardScreen = () => {
     setSearchParams(next);
   }
 
+  /**
+   * 목록에서 기준을 고르면 버전 목록 창을 띄우지 않고 최신 버전(판 번호가 가장 큰 것)을 바로 고른다(사용자 지시 · #196).
+   * 버전 목록이 와야 고를 수 있어, 고른 기준 번호를 쥐고 있다가 그 기준의 목록이 오면 한 번 고른다.
+   * 주소로 들어온 경우(새로고침 · 공유)는 주소의 선택을 그대로 둔다 — 목록을 누른 때만 고른다.
+   */
+  const [latestPendingPlanId, setLatestPendingPlanId] = useState<number | null>(null);
+
   const handleSelectPlan = (inspectionPlanId: number) => {
     resetPlanEditing();
     selectPlan(inspectionPlanId);
-    setIsVersionListOpen(true);
+    setLatestPendingPlanId(inspectionPlanId);
   };
+
+  useEffect(() => {
+    if (latestPendingPlanId === null) return;
+    /*
+     * 주소(`plan`)는 누른 다음 화면에서야 바뀐다 — 아직 다른 기준을 가리키면 기다린다.
+     * 다른 기준을 누르면 그 번호로 덮이므로 묵은 기다림이 남지 않는다.
+     */
+    if (latestPendingPlanId !== selectedPlanId) return;
+    if (versionList.isError) {
+      setLatestPendingPlanId(null);
+      return;
+    }
+    if (versionList.data === undefined) return;
+
+    setLatestPendingPlanId(null);
+    if (selectedVersionId !== null) return;
+    /* 버전이 없으면 고를 것이 없다 — 상세 칸이 「버전 등록」을 안내한다. */
+    const latest = versionList.data.items.reduce<InspectionPlanVersion | null>(
+      (best, version) => (best === null || version.planVersion > best.planVersion ? version : best),
+      null,
+    );
+    if (latest === null) return;
+
+    const next = new URLSearchParams(searchParams);
+    next.set('ver', String(latest.inspectionPlanVersionId));
+    /* 기준을 고른 한 번의 동작이다 — 뒤로 가기 기록을 두 번 남기지 않는다. */
+    setSearchParams(next, { replace: true });
+  }, [
+    latestPendingPlanId,
+    selectedPlanId,
+    selectedVersionId,
+    versionList.data,
+    versionList.isError,
+    searchParams,
+    setSearchParams,
+  ]);
 
   function selectVersion(inspectionPlanVersionId: number): void {
     const next = new URLSearchParams(searchParams);

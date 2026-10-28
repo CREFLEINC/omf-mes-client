@@ -19,7 +19,7 @@ const t = messages.inspectionStandard;
  * 기준을 고르기 전에는 서지 않는다 — 기준 정보 · 버전 정보 칸이 「먼저 고르세요」를 이미 말한다.
  */
 export interface VersionBarProps extends VersionPaneProps {
-  /** 「버전 목록」 창이 열렸는가 — 화면이 쥔다(목록에서 기준을 고르면 창을 바로 연다 · 사용자 지시 #196). */
+  /** 「버전 목록」 창이 열렸는가 — 화면이 쥔다(신규 버전 발행에 성공하면 창을 닫는다 · #196). */
   isListOpen: boolean;
   onListOpenChange: (open: boolean) => void;
   /** 고른 버전의 일 — 버전 설정 수정 · 확정 · 폐기(줄 오른쪽 끝 · #196) */
