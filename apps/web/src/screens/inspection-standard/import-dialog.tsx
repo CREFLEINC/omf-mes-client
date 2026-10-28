@@ -94,7 +94,7 @@ export const ImportDialog = ({
           <AlertBanner variant="info">{t.draftNote}</AlertBanner>
         </div>
 
-        <p className="form-grid-full field-note">{t.columnsNote}</p>
+        <p className="form-grid-full dialog-lead">{t.columnsNote}</p>
 
         <FileField
           label={t.fileLabel}
