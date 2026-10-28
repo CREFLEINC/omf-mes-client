@@ -107,7 +107,9 @@ import {
   toVersionUpdate,
   versionToFormValues,
 } from './version-mappers';
+import type { CompareLabels } from './version-compare';
 import { VersionCompareDialog } from './version-compare-dialog';
+import { VersionHistoryTable } from './version-history-table';
 import { VersionBar } from './version-bar';
 import { VersionSummary } from './version-summary';
 import { VersionTransitionDialog, type VersionTransitionKind } from './version-transition-dialog';
@@ -228,6 +230,8 @@ export const InspectionStandardScreen = () => {
   const [isVersionListOpen, setIsVersionListOpen] = useState(false);
   /* 「버전 비교」 창(#196) — 두 버전을 불러 화면이 견준다. */
   const [isCompareOpen, setIsCompareOpen] = useState(false);
+  /* 「변경 이력」 창(#196) */
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   /* 「버전 설정 수정」 창 — 작성중 버전의 설정을 고친다(버전 설정 탭을 걷었다 · #196). */
   const [isVersionEditOpen, setIsVersionEditOpen] = useState(false);
   const [versionTab, setVersionTab] = useState('items');
@@ -1212,6 +1216,7 @@ export const InspectionStandardScreen = () => {
   const renderVersionBar = (): ReactNode => (
     <VersionBar
       onCompare={versions.length >= 2 ? () => setIsCompareOpen(true) : undefined}
+      onHistory={selectedVersionId === null ? undefined : () => setIsHistoryOpen(true)}
       isListOpen={isVersionListOpen}
       onListOpenChange={setIsVersionListOpen}
       versionActions={
@@ -1503,21 +1508,40 @@ export const InspectionStandardScreen = () => {
             {
               value: 'history',
               label: t.versionSection.tabHistory,
-              /* 이력 조회 경로가 아직 없다 — 검사 항목 표와 같은 상자 안 빈 안내로 둔다(#196). */
-              content: (
-                <div className="inspection-standard-table-box inspection-standard-history-empty">
-                  <EmptyState
-                    size="sm"
-                    icon={<Icon name="history" size={32} />}
-                    title={t.versionSection.historyPreparing}
+              /* 고른 버전의 변경 이력(#196) — 「변경 이력」 창과 같은 표. */
+              content:
+                selectedVersionId === null ? null : (
+                  <VersionHistoryTable
+                    inspectionPlanVersionId={selectedVersionId}
+                    labels={compareLabels}
                   />
-                </div>
-              ),
+                ),
             },
           ]}
         />
 
         {isCompareOpen && renderCompareDialog()}
+
+        {isHistoryOpen && selectedVersionId !== null && (
+          <Dialog
+            open
+            size="lg"
+            closeOnBackdropClick={false}
+            showCloseButton={false}
+            title={t.history.title}
+            onClose={() => setIsHistoryOpen(false)}
+            footer={
+              <Button variant="outlined" onClick={() => setIsHistoryOpen(false)}>
+                {t.versionBar.close}
+              </Button>
+            }
+          >
+            <VersionHistoryTable
+              inspectionPlanVersionId={selectedVersionId}
+              labels={compareLabels}
+            />
+          </Dialog>
+        )}
 
         {isVersionEditOpen && versionStatus.isEditable && (
           <Dialog
@@ -1697,6 +1721,19 @@ export const InspectionStandardScreen = () => {
     selectableOptions(lookup, value).find((option) => option.value === value)?.label ??
     lookupDisplayLabel(lookup, value);
 
+  /** 버전 비교 · 변경 이력이 코드 · id 를 이름으로 푸는 길(#196). */
+  const compareLabels: CompareLabels = {
+    samplingMethod: (code) =>
+      ensureOption(SAMPLING_METHOD_OPTIONS, code).find((option) => option.value === code)?.label ??
+      code,
+    inspectionFrequency: (code) => lookupLabelOf(inspectionFrequencyOptions, code),
+    frequencyIntervalUom: (code) => lookupLabelOf(frequencyIntervalUomOptions, code),
+    dataType: (code) => dataTypeLabelOf(code),
+    uom: (uomId) => uomLabelOf(uomId),
+    inspectionMethod: (code) => lookupLabelOf(inspectionMethodOptions, code),
+    equipment: (id) => lookupLabelOf(equipmentOptions, id),
+  };
+
   /**
    * 버전 비교 창(#196). 처음에는 지금 고른 버전을 「비교 버전」, 그 바로 이전 버전을 「기준 버전」으로 둔다 —
    * 목록은 최신이 위라 바로 아래 줄이 이전 버전이다. 고른 버전이 없으면 가장 최신 둘을 견준다.
@@ -1716,17 +1753,7 @@ export const InspectionStandardScreen = () => {
         versions={versions}
         initialBaseId={base.inspectionPlanVersionId}
         initialTargetId={target.inspectionPlanVersionId}
-        labels={{
-          samplingMethod: (code) =>
-            ensureOption(SAMPLING_METHOD_OPTIONS, code).find((option) => option.value === code)
-              ?.label ?? code,
-          inspectionFrequency: (code) => lookupLabelOf(inspectionFrequencyOptions, code),
-          frequencyIntervalUom: (code) => lookupLabelOf(frequencyIntervalUomOptions, code),
-          dataType: dataTypeLabelOf,
-          uom: uomLabelOf,
-          inspectionMethod: (code) => lookupLabelOf(inspectionMethodOptions, code),
-          equipment: (id) => lookupLabelOf(equipmentOptions, id),
-        }}
+        labels={compareLabels}
         onClose={() => setIsCompareOpen(false)}
       />
     );

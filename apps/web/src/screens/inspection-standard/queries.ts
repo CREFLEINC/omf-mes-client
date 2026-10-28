@@ -6,6 +6,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
 import { runRequest, toApiError } from '../../patterns/request';
 import { DEFAULT_PAGE_SIZE, toListQuery } from './filters';
+import type { VersionAuditEvent } from './version-history';
 import type {
   InspectionItemSpec,
   InspectionPlan,
@@ -511,4 +512,76 @@ export const useItemNameParts = (
     }
     return result.data;
   };
+};
+
+/** 최근 1년 — 감사 이력 조회가 기간을 요구한다(파티션 · 공유계약 B-5). */
+const HISTORY_RANGE_MS = 366 * 24 * 60 * 60 * 1000;
+
+/**
+ * 버전 변경 이력(#196) — 서버가 버전 쓰기마다 남긴 감사 이력. 고를 때마다 새로 받는다(저장 뒤 바로 보이게).
+ * 한 버전의 이력은 소수라 첫 쪽(100건)만 받는다.
+ */
+export const useVersionHistory = (
+  inspectionPlanVersionId: number | null,
+): UseQueryResult<{ items: VersionAuditEvent[] }> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: [...versionKeys.all, 'history', inspectionPlanVersionId ?? 0] as const,
+    enabled: inspectionPlanVersionId !== null,
+    staleTime: 0,
+    queryFn: async () => {
+      if (inspectionPlanVersionId === null) {
+        throw new Error('버전을 고르기 전에는 변경 이력을 조회하지 않습니다.');
+      }
+      const now = Date.now();
+      const data = await runRequest(() =>
+        client.GET('/audit/events', {
+          params: {
+            query: {
+              targetTypeCode: 'INSPECTION_PLAN_VERSION',
+              targetId: inspectionPlanVersionId,
+              occurredFrom: new Date(now - HISTORY_RANGE_MS).toISOString(),
+              occurredTo: new Date(now + 60 * 1000).toISOString(),
+              size: 100,
+            },
+          },
+        }),
+      );
+      return {
+        items: data.items.map((item) => ({
+          auditEventId: item.auditEventId,
+          occurredAt: item.occurredAt,
+          eventTypeCode: item.eventTypeCode,
+          beforeValue: (item.beforeValue ?? null) as Record<string, unknown> | null,
+          afterValue: (item.afterValue ?? null) as Record<string, unknown> | null,
+          performedBy: item.performedBy ?? null,
+        })),
+      };
+    },
+  });
+};
+
+/** 처리자 이름 — 사용자 상세로 푼다. 못 받으면(권한 · 없는 사용자) 호출부가 번호로 낸다. */
+export const useUserNames = (
+  userIds: readonly (number | null)[],
+): ((userId: number) => string | null) => {
+  const { client } = useApiClient();
+  const ids = [...new Set(userIds.filter((id): id is number => id !== null))];
+
+  const results = useQueries({
+    queries: ids.map((appUserId) => ({
+      queryKey: ['inspection-standard', 'user-name', appUserId] as const,
+      queryFn: async () => {
+        const data = await runRequest(() =>
+          client.GET('/app/users/{appUserId}', { params: { path: { appUserId } } }),
+        );
+        return data.appUser.userName;
+      },
+      retry: false,
+      staleTime: Infinity,
+    })),
+  });
+
+  return (userId) => results[ids.indexOf(userId)]?.data ?? null;
 };

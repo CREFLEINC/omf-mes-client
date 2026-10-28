@@ -26,6 +26,8 @@ export interface VersionBarProps extends VersionPaneProps {
   versionActions?: ReactNode;
   /** 「버전 비교」 창을 연다(#196). 견줄 버전이 2개 미만이면 화면이 넘기지 않는다 — 단추가 사유와 함께 잠긴다. */
   onCompare?: () => void;
+  /** 「변경 이력」 창을 연다(#196). 버전을 고르기 전에는 화면이 넘기지 않는다. */
+  onHistory?: () => void;
 }
 
 export const VersionBar = ({
@@ -33,6 +35,7 @@ export const VersionBar = ({
   onListOpenChange,
   versionActions,
   onCompare,
+  onHistory,
   ...props
 }: VersionBarProps) => {
   const {
@@ -117,13 +120,10 @@ export const VersionBar = ({
             {t.actions.compareVersions}
           </Button>
         )}
-        <span title={t.actionReasons.changeHistoryUnavailable}>
-          <DisabledAction
-            label={t.actions.changeHistory}
-            reason={t.actionReasons.changeHistoryUnavailable}
-            className="inspection-standard-tooltip-reason"
-          />
-        </span>
+        {/* 고른 버전의 변경 이력 — 서버가 버전 쓰기마다 남긴 감사 이력(#196). */}
+        <Button variant="outlined" disabled={onHistory === undefined} onClick={onHistory}>
+          {t.actions.changeHistory}
+        </Button>
         {/* 오른쪽 끝 — 고른 버전의 일(버전 설정 수정 · 확정 · 폐기), 맨 끝에 「+ 신규 버전 발행」(사용자 시안 · #196). */}
         <div className="inspection-standard-version-actions">
           {versionActions}

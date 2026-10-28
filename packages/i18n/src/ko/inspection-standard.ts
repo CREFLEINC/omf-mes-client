@@ -70,8 +70,6 @@ export const inspectionStandard = {
     discardNeedsDraft: '작성 취소는 작성중 버전에만 할 수 있습니다. 확정된 버전은 폐기하세요.',
     /** 여러 컨트롤이 공유하는 안내라 무엇에 대한 안내인지로 시작한다. */
     transitionNeedsVersion: '확정·폐기는 버전을 먼저 등록해야 할 수 있습니다.',
-    changeHistoryUnavailable:
-      '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     /*
      * 확정·폐기 버전에서는 검사 항목도 잠긴다. 여러 컨트롤(추가·수정·삭제·순서 이동·저장)이
      * 공유하는 안내라 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다(배치 규범 4의 이탈 조건).
@@ -234,7 +232,6 @@ export const inspectionStandard = {
     tabItemsCount: (count: number): string => `검사 항목 ${String(count)}건`,
     tabHistory: '이력',
     notSet: '미설정',
-    historyPreparing: '변경 이력 조회 기능은 준비 중입니다.',
   },
   /* 검사 기준 목록 표의 추가 열(omf-all-around#196). */
   listColumns: {
@@ -272,6 +269,32 @@ export const inspectionStandard = {
     change: (label: string, before: string, after: string): string => `${label}: ${before} → ${after}`,
     needTwo: '버전 비교는 버전이 2개 이상일 때 할 수 있습니다.',
     loading: '비교할 버전을 불러오는 중',
+  },
+  /* 버전 변경 이력(#196) — 서버가 버전 쓰기마다 남긴 감사 이력을 읽는다. 최근 1년만 조회한다(조회 경로가 기간을 요구한다). */
+  history: {
+    title: '변경 이력',
+    occurredAt: '일시',
+    performedBy: '처리자',
+    action: '구분',
+    changes: '변경 내용',
+    created: '버전 생성',
+    revised: '신규 버전 발행',
+    settingsSaved: '버전 설정 저장',
+    itemsSaved: '검사 항목 저장',
+    confirmed: '확정',
+    obsoleted: '폐기',
+    discarded: '작성 취소',
+    updated: '수정',
+    unknownUser: (userId: number): string => `사용자 #${String(userId)}`,
+    system: '시스템',
+    itemAdded: (code: string): string => `항목 추가: ${code}`,
+    itemRemoved: (code: string): string => `항목 삭제: ${code}`,
+    itemChanged: (code: string, label: string, before: string, after: string): string =>
+      `${code} ${label}: ${before} → ${after}`,
+    none: '변경 이력이 없습니다',
+    noneDescription: '이 버전을 저장 · 확정 · 폐기하면 여기에 남습니다.',
+    loading: '변경 이력을 불러오는 중',
+    rangeNote: '최근 1년의 이력을 보여 줍니다.',
   },
   versionBar: {
     label: '버전',

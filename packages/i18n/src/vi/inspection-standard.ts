@@ -63,8 +63,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     /** 여러 컨트롤이 공유하는 안내라 무엇에 대한 안내인지로 시작한다. */
     transitionNeedsVersion:
       'Việc xác nhận · hủy bỏ chỉ thực hiện được sau khi đã đăng ký phiên bản.',
-    changeHistoryUnavailable:
-      'Lịch sử thay đổi hiện chưa thể xem. Khi chức năng tra cứu sẵn sàng thì có thể dùng nút này.',
     /*
      * 확정·폐기 버전에서는 검사 항목도 잠긴다. 여러 컨트롤이 공유하는 안내라
      * 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다.
@@ -216,7 +214,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     tabItemsCount: (count: number): string => `Hạng mục kiểm tra ${String(count)}`,
     tabHistory: 'Lịch sử',
     notSet: 'Chưa thiết lập',
-    historyPreparing: 'Chức năng xem lịch sử thay đổi đang được chuẩn bị.',
   },
   listColumns: {
     item: 'Mặt hàng',
@@ -252,6 +249,31 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     change: (label: string, before: string, after: string): string => `${label}: ${before} → ${after}`,
     needTwo: 'Chỉ so sánh được khi có từ 2 phiên bản trở lên.',
     loading: 'Đang tải phiên bản để so sánh',
+  },
+  history: {
+    title: 'Lịch sử thay đổi',
+    occurredAt: 'Thời điểm',
+    performedBy: 'Người xử lý',
+    action: 'Loại',
+    changes: 'Nội dung thay đổi',
+    created: 'Tạo phiên bản',
+    revised: 'Phát hành phiên bản mới',
+    settingsSaved: 'Lưu thiết lập phiên bản',
+    itemsSaved: 'Lưu hạng mục kiểm tra',
+    confirmed: 'Xác nhận',
+    obsoleted: 'Hủy bỏ',
+    discarded: 'Hủy soạn',
+    updated: 'Sửa',
+    unknownUser: (userId: number): string => `Người dùng #${String(userId)}`,
+    system: 'Hệ thống',
+    itemAdded: (code: string): string => `Thêm hạng mục: ${code}`,
+    itemRemoved: (code: string): string => `Xóa hạng mục: ${code}`,
+    itemChanged: (code: string, label: string, before: string, after: string): string =>
+      `${code} ${label}: ${before} → ${after}`,
+    none: 'Chưa có lịch sử thay đổi',
+    noneDescription: 'Khi lưu · xác nhận · hủy bỏ phiên bản này, lịch sử sẽ hiện ở đây.',
+    loading: 'Đang tải lịch sử thay đổi',
+    rangeNote: 'Hiển thị lịch sử trong 1 năm gần nhất.',
   },
   versionBar: {
     label: 'Phiên bản',

@@ -2442,15 +2442,14 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
   });
 
   /* 계약에 경로가 없다. 감추면 「이 화면에는 없는 기능」으로 오해한다. */
-  /* 버전 비교는 두 버전을 불러 화면이 견준다(#196). 변경 이력은 조회 경로가 없어 아직 잠겨 있다. */
-  it('버전 비교 창이 고른 버전과 그 이전 버전의 설정 차이를 보이고, 변경 이력은 비활성이다', async () => {
+  /* 버전 비교는 두 버전을 불러 화면이 견준다(#196). */
+  it('버전 비교 창이 고른 버전과 그 이전 버전의 설정 차이를 보인다', async () => {
     const { user } = renderSelectedVersion([
       versionDetailRoute(inspectionPlanVersionFixtures[1]),
       itemListRoute(4001),
     ]);
 
     await awaitVersionForm();
-    expect(screen.getByRole('button', { name: '변경 이력' })).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: '버전 비교' }));
     const dialog = await screen.findByRole('dialog', { name: '버전 비교' });
@@ -2460,6 +2459,52 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(within(dialog).getByText('2026-08-01')).toBeInTheDocument();
     /* 검사 항목은 같다 — 같은 것은 숨겨 「바뀐 검사 항목이 없습니다」 */
     expect(within(dialog).getByText('바뀐 검사 항목이 없습니다.')).toBeInTheDocument();
+  });
+
+  /* 변경 이력은 서버가 버전 쓰기마다 남긴 감사 이력을 읽는다(#196). 처리자 이름은 사용자 상세로 푼다. */
+  it('변경 이력 창이 고른 버전의 감사 이력을 구분 · 처리자 · 바뀐 칸으로 보인다', async () => {
+    const { requests, user } = renderSelectedVersion([
+      {
+        match: (request) => isGet(request, '/audit/events'),
+        respond: () =>
+          jsonResponse({
+            items: [
+              {
+                auditEventId: 1,
+                occurredAt: '2026-10-28T01:00:00Z',
+                targetTypeCode: 'INSPECTION_PLAN_VERSION',
+                targetId: 4002,
+                eventTypeCode: 'UPDATE',
+                beforeValue: { aqlValue: null },
+                afterValue: { aqlValue: 0.65 },
+                performedBy: 7,
+              },
+            ],
+            page: { page: 1, size: 100, total: 1 },
+          }),
+      },
+      {
+        match: (request) => isGet(request, '/app/users/7'),
+        respond: () =>
+          jsonResponse({
+            appUser: { appUserId: 7, loginId: 'syn', userName: '합성 사용자' },
+            editability: { codeEditable: true, reason: 'EDITABLE' },
+          }),
+      },
+    ]);
+
+    await awaitVersionForm();
+    await user.click(screen.getByRole('button', { name: '변경 이력' }));
+    const dialog = await screen.findByRole('dialog', { name: '변경 이력' });
+
+    expect(await within(dialog).findByText('버전 설정 저장')).toBeInTheDocument();
+    expect(within(dialog).getByText('AQL: — → 0.65')).toBeInTheDocument();
+    expect(await within(dialog).findByText('합성 사용자')).toBeInTheDocument();
+
+    const history = requestsTo(requests, '/audit/events')[0];
+    expect(history?.url.searchParams.get('targetTypeCode')).toBe('INSPECTION_PLAN_VERSION');
+    expect(history?.url.searchParams.get('targetId')).toBe('4002');
+    expect(history?.url.searchParams.get('occurredFrom')).not.toBeNull();
   });
 
   it('버전이 하나뿐이면 버전 비교가 비활성이고 사유가 보인다', async () => {
