@@ -234,6 +234,11 @@ describe('작업지시 목록 작업함', () => {
     ).toBeVisible();
     expect(within(dialog).getByText('품목에 ★로 지정한 설비와 금형 자동 배정')).toBeVisible();
     expect(within(dialog).queryByText('라인을 정할 수 없는 ERP W/O')).toBeNull();
+    expect(
+      within(dialog).getByText(
+        '확정한 계획 수량이 주문 수량보다 적고 작성 중인 계획이 없는 ERP W/O(남은 수량은 생산계획 단계에서 계획)',
+      ),
+    ).toBeVisible();
   });
 
   it('일괄 배포는 실행과 같은 판정으로 예고하고, 일부 처리를 따로 세며, 결과 칩을 상태 칩 자리에 보인다(C-16, C-18)', async () => {

@@ -175,7 +175,11 @@ export const erpWorkOrderFlow = {
        */
       effects: ['생산계획 작성과 확정', 'W/O 전개', '품목에 ★로 지정한 설비와 금형 자동 배정'],
       skipTitle: '건너뛰는 조건',
-      skipConditions: ['기본 BOM이나 Routing이 없는 ERP W/O'],
+      /* 확정 계획이 있으면 자동 계획은 남은 수량을 채우지 않는다(서버 `act`: 작성 중 계획이 없으면 NOT_PLANNED). */
+      skipConditions: [
+        '기본 BOM이나 Routing이 없는 ERP W/O',
+        '확정한 계획 수량이 주문 수량보다 적고 작성 중인 계획이 없는 ERP W/O(남은 수량은 생산계획 단계에서 계획)',
+      ],
       /** 라인을 모르면 건너뛰지 않고 작성 중 계획을 남긴다(서버 자동 계획 결과 DRAFT). */
       draftNote: '생산 라인을 정할 수 없으면 작성 중인 계획만 만들고 확정하지 않습니다.',
       confirm: '재실행',
