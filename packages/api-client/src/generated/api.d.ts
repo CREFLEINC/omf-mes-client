@@ -25900,6 +25900,9 @@ export interface paths {
           withLastChange?: boolean;
           /** @description 자동 계획 상태로 거른다 — 응답 autoPlan.status 와 같은 판정이다. NEEDS_REVIEW 면 「확인 필요」만 낸다. autoPlan 이 null 인 오더는 어느 값에도 걸리지 않는다. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-67) */
           autoPlanStatus?: 'NEEDS_REVIEW' | 'DONE';
+          /** @description 작업지시 목록(W-02-01) 칩 판정으로 거른다 — 응답 worklistState 와 같은 식이다. 칩 건수는 같은 조건에 size=1 을 주고 page.total 로 센다. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-142) */
+          worklistState?:
+            'BEFORE_PLAN' | 'ACTION_REQUIRED' | 'RELEASE_PENDING' | 'RELEASED' | 'CANCELLED';
           page?: number;
           size?: number;
         };
@@ -50761,6 +50764,40 @@ export interface components {
        */
       plannedWorkOrderCount?: number;
       autoPlan?: components['schemas']['ProductionOrderAutoPlan'];
+      /**
+       * @description 작업지시 목록(W-02-01) 칩 판정 — 조회 때 계산한다. BEFORE_PLAN 계획 전(자동 계획 시도도 계획도 없음) · ACTION_REQUIRED 조치 필요(자동 계획 확인 필요, 또는 계획은 다 됐는데 W/O 가 없거나 배포 전 W/O 중 생산 라인·기본 위치(WIP·완제품·스크랩)가 비었거나 라인이 다른 공장 것) · RELEASE_PENDING 배포 대기(배포 전 W/O 가 있고 모두 배포 가능) · RELEASED 배포 완료(배포 전 W/O 없음) · CANCELLED 취소된 ERP W/O. 배포 전 W/O = 아직 배포되지 않은 PLANNED·CONFIRMED W/O. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-142)
+       * @example RELEASE_PENDING
+       * @enum {string}
+       */
+      worklistState?:
+        'BEFORE_PLAN' | 'ACTION_REQUIRED' | 'RELEASE_PENDING' | 'RELEASED' | 'CANCELLED';
+      /** @description 조치 필요(worklistState ACTION_REQUIRED)인데 자동 계획은 끝난(autoPlan.status DONE) 까닭. 그 밖에는 키가 없다 — 자동 계획 확인 필요의 까닭은 autoPlan.reasons 다. 화면 문구는 코드로 정한다. NO_LIVE_WORK_ORDER W/O 가 없거나 모두 취소(workOrderCount 0) · WORK_ORDER_LINE_MISSING 배포 전 W/O 중 생산 라인이 빔 · WORK_ORDER_LOCATION_MISSING 배포 전 W/O 중 기본 위치(WIP·완제품·스크랩) 가운데 빈 것이 있음 · LINE_PLANT_MISMATCH 배포 전 W/O 의 라인 공장이 ERP W/O 공장과 다름. W/O 하나가 여러 까닭에 함께 세일 수 있다. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-142) */
+      worklistReasons?: {
+        /**
+         * @example WORK_ORDER_LINE_MISSING
+         * @enum {string}
+         */
+        code:
+          | 'NO_LIVE_WORK_ORDER'
+          | 'WORK_ORDER_LINE_MISSING'
+          | 'WORK_ORDER_LOCATION_MISSING'
+          | 'LINE_PLANT_MISMATCH';
+        /**
+         * @description 그 까닭에 걸린 배포 전 W/O 수
+         * @example 1
+         */
+        workOrderCount: number;
+      }[];
+      /**
+       * @description 배포 전 W/O 수 — 아직 배포되지 않은 PLANNED·CONFIRMED W/O(worklistState 와 같은 정의). W/O 가 없으면 0. 화면 「배포 전 W/O」 열의 분자. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-142)
+       * @example 1
+       */
+      releasePendingWorkOrderCount?: number;
+      /**
+       * @description 취소되지 않은 W/O 수(배포된 것 포함). W/O 가 없거나 모두 취소면 0. 화면 「배포 전 W/O」 열의 분모. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-142)
+       * @example 2
+       */
+      liveWorkOrderCount?: number;
       lastChange?: components['schemas']['ProductionOrderChange'];
     };
     /** @description ⚠ 개발팀 선행(P-67). 파생 — 서버가 읽을 때 계산한다. 확정 계획 수량이 오더 수량을 채우면 DONE, 아니면 NEEDS_REVIEW(「확인 필요」)와 그 사유다. 사유가 비어 있는 NEEDS_REVIEW 는 계획이 아직 없고 막는 것도 없다는 뜻이다 — :auto-plan 으로 세운다. ⭐ null = 자동 계획을 시도한 적이 없고 계획도 없다(이 기능 전에 받은 오더 · 받을 때 RECEIVED 가 아니었거나 납기·계획 시작일이 지난 오더) 또는 취소된 오더다 — 화면은 아무것도 보이지 않는다. :auto-plan 을 부르면 상태가 선다. */
@@ -50790,7 +50827,7 @@ export interface components {
       reasons: components['schemas']['AutoPlanReason'][];
     };
     /**
-     * @description ⚠ 개발팀 선행(P-67). BOM_MISSING = 품목의 기본 BOM 이 없다 · ROUTING_MISSING = 쓸 수 있는(확정·유효 기간 안) Routing 이 없다 · ROUTING_AMBIGUOUS = 쓸 수 있는 Routing 이 여럿인데 기본이 없다 · LINE_UNKNOWN = 계획 라인이 없고 기본 매핑 설비도 라인에 속하지 않아 W/O 라인이 정해지지 않는다 · PLAN_NOT_CONFIRMED = 작성중 계획이 있다 · QTY_REMAINING = 확정 계획이 오더 수량에 못 미친다
+     * @description ⚠ 개발팀 선행(P-67). BOM_MISSING = 품목의 기본 BOM 이 없다 · ROUTING_MISSING = 쓸 수 있는(확정·유효 기간 안) Routing 이 없다 · ROUTING_AMBIGUOUS = 쓸 수 있는 Routing 이 여럿인데 기본이 없다 · LINE_UNKNOWN = 계획 라인이 없고 기본 매핑 설비도 라인에 속하지 않아 W/O 라인이 정해지지 않는다 · PLAN_NOT_CONFIRMED = 작성중 계획이 있다 · QTY_REMAINING = 확정 계획이 오더 수량에 못 미친다 · AUTO_PLAN_RERUN_NEEDED = 계획이 없는데 막던 기준정보가 이제 갖춰졌거나, 기준정보는 갖춰졌는데 자동 계획 실행이 실패했다 — 자동 계획을 다시 실행한다(P-142). 확인 필요(NEEDS_REVIEW)는 이유가 늘 하나 이상이다
      * @enum {string}
      */
     AutoPlanReason:
@@ -50799,7 +50836,8 @@ export interface components {
       | 'ROUTING_AMBIGUOUS'
       | 'LINE_UNKNOWN'
       | 'PLAN_NOT_CONFIRMED'
-      | 'QTY_REMAINING';
+      | 'QTY_REMAINING'
+      | 'AUTO_PLAN_RERUN_NEEDED';
     /** @description ⚠ 개발팀 선행(P-30). 생산오더 수기 등록 요청. */
     ProductionOrderCreate: {
       /**

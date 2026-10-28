@@ -770,16 +770,8 @@ export interface ResourceRecommendations {
   workers?: WorkerRecommendation[];
 }
 
-/** 서버 선행 — 오더 수신 때 계획을 자동으로 만들지 못했거나 확정하지 못한 이유. */
-export type AutoPlanReason =
-  | 'BOM_MISSING'
-  | 'ROUTING_MISSING'
-  | 'ROUTING_AMBIGUOUS'
-  | 'LINE_UNKNOWN'
-  | 'PLAN_NOT_CONFIRMED'
-  | 'QTY_REMAINING'
-  /** 서버 선행 P-142 — 막던 기준정보가 갖춰졌거나 자동 계획 실행이 실패했다. 자동 계획을 다시 실행한다. */
-  | 'AUTO_PLAN_RERUN_NEEDED';
+/** 오더 수신 때 계획을 자동으로 만들지 못했거나 확정하지 못한 이유. 생성 타입(P-67, P-142)을 그대로 쓴다. */
+export type AutoPlanReason = components['schemas']['AutoPlanReason'];
 
 export type AutoPlanStatus = 'DONE' | 'NEEDS_REVIEW';
 
@@ -787,50 +779,6 @@ export interface ProductionOrderAutoPlan {
   status: AutoPlanStatus;
   reasons: AutoPlanReason[];
 }
-
-/**
- * 서버 선행 P-142 — 작업지시 목록(W-02-01) 칩 판정. 조회 때 서버가 계산하고, 질의
- * `worklistState` 가 같은 식으로 거른다.
- */
-export type WorklistState =
-  'BEFORE_PLAN' | 'ACTION_REQUIRED' | 'RELEASE_PENDING' | 'RELEASED' | 'CANCELLED';
-
-/** 서버 선행 P-142 — 조치 필요인데 자동 계획은 끝난(DONE) 까닭. */
-export type WorklistReasonCode =
-  | 'NO_LIVE_WORK_ORDER'
-  | 'WORK_ORDER_LINE_MISSING'
-  | 'WORK_ORDER_LOCATION_MISSING'
-  | 'LINE_PLANT_MISMATCH';
-
-export interface WorklistReasonEntry {
-  code: WorklistReasonCode;
-  /** 그 까닭에 걸린 배포 전 W/O 수. NO_LIVE_WORK_ORDER 는 0 이다. */
-  workOrderCount: number;
-}
-
-/**
- * 서버 선행 — P/O 에 자동 계획 결과를 싣는다. `null` 은 자동 계획을 한 번도 하지 않은 P/O 다
- * (기능 전에 받았거나, 받을 때 납기가 지났거나 수신 상태가 아니라 건너뛰었다) — 계획도 없다.
- * 생성 타입의 `autoPlan` 은 사유 목록이 좁아(AUTO_PLAN_RERUN_NEEDED 없음) 빼고 선행 타입으로 다시 싣는다.
- */
-export type ProductionOrderForward = Omit<components['schemas']['ProductionOrder'], 'autoPlan'> & {
-  autoPlan?: ProductionOrderAutoPlan | null;
-  worklistState?: WorklistState;
-  /** ACTION_REQUIRED 이고 autoPlan DONE 일 때만 실린다. 그 밖에는 키가 없다. */
-  worklistReasons?: WorklistReasonEntry[];
-  /** 서버 선행 P-142 — 배포 전 W/O 수(released_at 없고 PLANNED·CONFIRMED). W/O 가 없으면 0. */
-  releasePendingWorkOrderCount?: number;
-  /** 서버 선행 P-142 — 취소되지 않은 W/O 수(배포된 것 포함). W/O 가 없으면 0. */
-  liveWorkOrderCount?: number;
-};
-
-export type ProductionOrderListQueryForward = NonNullable<
-  ProductionOrdersGet['parameters']['query']
-> & {
-  autoPlanStatus?: AutoPlanStatus;
-  /** 서버 선행 P-142 — 응답 `worklistState` 와 같은 식으로 거른다. 잘못된 값은 400(field `worklistState`). */
-  worklistState?: WorklistState;
-};
 
 /** 서버 선행 — `POST /planning/production-orders/{id}:auto-plan` 의 결과. */
 export interface ProductionOrderAutoPlanResult {
@@ -967,9 +915,6 @@ type WorkOrdersPath = paths['/production/work-orders'];
 type WorkOrdersGet = WorkOrdersPath['get'];
 type WorkOrderPath = paths['/production/work-orders/{workOrderId}'];
 type WorkOrderGet = WorkOrderPath['get'];
-
-type ProductionOrdersGet = paths['/planning/production-orders']['get'];
-type ProductionOrderGet = paths['/planning/production-orders/{productionOrderId}']['get'];
 
 interface NoParameters {
   query?: never;
@@ -1988,39 +1933,6 @@ export interface ForwardPaths {
         };
       };
     };
-  };
-  '/planning/production-orders': Unused & {
-    parameters: NoParameters;
-    get: Omit<ProductionOrdersGet, 'parameters' | 'responses'> & {
-      parameters: Omit<ProductionOrdersGet['parameters'], 'query'> & {
-        query?: ProductionOrderListQueryForward;
-      };
-      responses: Omit<ProductionOrdersGet['responses'], 200> & {
-        200: {
-          headers: { [name: string]: unknown };
-          content: {
-            'application/json': {
-              items: ProductionOrderForward[];
-              page: components['schemas']['PageMeta'];
-            };
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-  };
-  '/planning/production-orders/{productionOrderId}': Unused & {
-    parameters: NoParameters;
-    get: Omit<ProductionOrderGet, 'responses'> & {
-      responses: Omit<ProductionOrderGet['responses'], 200> & {
-        200: Omit<ProductionOrderGet['responses'][200], 'content'> & {
-          content: { 'application/json': ProductionOrderForward };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
   };
   '/planning/production-orders/{productionOrderId}:auto-plan': Unused & {
     parameters: NoParameters;
