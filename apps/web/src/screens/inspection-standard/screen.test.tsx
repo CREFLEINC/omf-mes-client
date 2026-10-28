@@ -1933,7 +1933,7 @@ describe('InspectionStandardScreen — 상태 잠금', () => {
    * 고칠 수 없는 버전의 「버전 설정」 탭은 요약 줄에 이미 있는 유효기간 · 샘플링 방법 · 샘플 비율 · 검사 주기를
    * 되풀이하지 않는다(#196) — 남은 칸은 잠기고 「읽기 전용」을 붙인다.
    */
-  it('확정 버전에서는 버전 설정을 고칠 길이 없고 푸는 방법을 안내한다', async () => {
+  it('확정 버전에서는 버전 설정을 고칠 길이 없다', async () => {
     renderSelectedVersion(
       [versionDetailRoute(inspectionPlanVersionFixtures[1]), itemListRoute(4001)],
       '?plan=3001&ver=4001',
@@ -1946,7 +1946,10 @@ describe('InspectionStandardScreen — 상태 잠금', () => {
     });
     expect(screen.queryByRole('button', { name: '버전 설정 수정' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('샘플 비율(%)')).not.toBeInTheDocument();
-    expect(within(itemPane()).getByText('수정하려면 신규 버전을 발행하세요.')).toBeInTheDocument();
+    /* 표 위 안내 줄은 걷었다(사용자 지시 · #196) — 항목이 있으면 표만 선다. */
+    expect(
+      within(itemPane()).queryByText('검사 항목을 추가하려면 신규 버전을 발행하세요.'),
+    ).not.toBeInTheDocument();
   });
 
   it('폐기 버전에서도 버전 설정을 고칠 길이 없다', async () => {
@@ -2620,7 +2623,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
 
-    /* 잠긴 버전에는 누를 수 없는 추가 · 수정 단추를 두지 않고 「읽기 전용」과 푸는 길을 낸다(#196). */
+    /* 잠긴 버전에는 누를 수 없는 추가 · 수정 단추와 표 위 안내 줄을 두지 않는다(#196). */
     expect(within(itemPane()).queryByRole('button', { name: '항목 추가' })).not.toBeInTheDocument();
     expect(
       within(itemPane()).queryByRole('button', { name: '1번 항목 수정' }),
@@ -2628,10 +2631,9 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     expect(
       within(itemPane()).queryByRole('button', { name: /아래로|위로/ }),
     ).not.toBeInTheDocument();
-    expect(within(itemPane()).getByText('수정하려면 신규 버전을 발행하세요.')).toHaveAttribute(
-      'title',
-      '검사 항목은 작성중 버전에서만 편집할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
-    );
+    expect(
+      within(itemPane()).queryByText('검사 항목을 추가하려면 신규 버전을 발행하세요.'),
+    ).not.toBeInTheDocument();
   });
 
   /* 저장하지 않은 초안으로 세면 화면은 1건인데 서버는 0건이라 확정이 400으로 거부된다. */

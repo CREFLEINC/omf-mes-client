@@ -256,22 +256,18 @@ export const ItemPane = ({
 
       {/*
        * 머리 — 제목은 탭 이름(「검사 항목 N건」)이 말하므로 화면에서는 감추고 접근 이름으로만 남긴다(검사 조회·판정과 같다).
-       * 오른쪽에 고칠 수 있으면 「+ 항목 추가」, 없으면 푸는 길 한 줄(#196).
+       * 오른쪽에 고칠 수 있으면 「+ 항목 추가」. 고칠 수 없는 버전은 표 위 안내 줄 없이 표만 둔다(사용자 지시 · #196).
        */}
       {isVersionSelected && (
+        <h4 className="inspection-standard-visually-hidden">
+          {t.versionSection.itemsTitle(drafts.length)}
+        </h4>
+      )}
+      {isVersionSelected && isEditable && (
         <div className="inspection-standard-section-head inspection-standard-tab-toolbar">
-          <h4 className="inspection-standard-visually-hidden">
-            {t.versionSection.itemsTitle(drafts.length)}
-          </h4>
-          {isEditable ? (
-            <Button variant="outlined" leadingIcon={<Icon name="add" size={18} />} onClick={onAdd}>
-              {t.actions.addItem}
-            </Button>
-          ) : (
-            <p className="field-note" title={lockReason}>
-              {t.versionSection.lockedHint}
-            </p>
-          )}
+          <Button variant="outlined" leadingIcon={<Icon name="add" size={18} />} onClick={onAdd}>
+            {t.actions.addItem}
+          </Button>
         </div>
       )}
 

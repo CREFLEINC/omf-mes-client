@@ -160,7 +160,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     effectivePeriod: 'Thời hạn hiệu lực',
     noEnd: 'Chưa chỉ định ngày kết thúc',
     itemsTitle: (count: number): string => `Hạng mục kiểm tra (${String(count)})`,
-    lockedHint: 'Để sửa, hãy phát hành phiên bản mới.',
+    lockedHint: 'Để thêm hạng mục kiểm tra, hãy phát hành phiên bản mới.',
     tabsLabel: 'Nội dung phiên bản',
     tabItems: 'Hạng mục kiểm tra',
     editSettings: 'Sửa cài đặt phiên bản',

@@ -176,21 +176,17 @@ describe('ItemPane — 편집', () => {
     expect(headers).toContain('순서 변경');
   });
 
-  /*
-   * 잠긴 버전에서는 누를 수 없는 추가 · 수정 · 삭제 · 저장 단추를 두지 않고, 머리에 「읽기 전용」과
-   * 푸는 길 한 줄을 낸다(#196). 잠금 사유 원문은 그 줄의 설명(title)으로 남는다.
-   */
-  it('잠긴 버전에서는 추가·수정·삭제·저장 단추가 없고 푸는 길을 낸다', () => {
+  /* 잠긴 버전에서는 누를 수 없는 추가 · 수정 · 삭제 · 저장 단추를 두지 않고, 표 위 안내 줄도 두지 않는다(#196). */
+  it('잠긴 버전에서는 추가·수정·삭제·저장 단추와 표 위 안내 줄이 없다', () => {
     renderPane({ isEditable: false, isDirty: true });
 
     expect(screen.queryByRole('button', { name: '항목 추가' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '1번 항목 수정' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '1번 항목 삭제' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
-    expect(screen.getByText('수정하려면 신규 버전을 발행하세요.')).toHaveAttribute(
-      'title',
-      '검사 항목은 작성중 버전에서만 편집할 수 있습니다.',
-    );
+    expect(
+      screen.queryByText('검사 항목을 추가하려면 신규 버전을 발행하세요.'),
+    ).not.toBeInTheDocument();
   });
 
   it('저장을 막는 사유가 있으면 비활성이고 사유가 보인다', () => {

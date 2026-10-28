@@ -172,7 +172,7 @@ export const inspectionStandard = {
     effectivePeriod: '유효기간',
     noEnd: '종료일 미지정',
     itemsTitle: (count: number): string => `검사 항목 (${String(count)})`,
-    lockedHint: '수정하려면 신규 버전을 발행하세요.',
+    lockedHint: '검사 항목을 추가하려면 신규 버전을 발행하세요.',
     tabsLabel: '버전 내용',
     tabItems: '검사 항목',
     editSettings: '버전 설정 수정',
