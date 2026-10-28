@@ -807,23 +807,7 @@ h2:has(> .inspection-standard-dialog-title) {
   letter-spacing: var(--type-label-lg-tracking);
 }
 
-/*
- * 열 순서 손잡이는 어느 열이든 머리 이름 바로 오른쪽(사용자 지시 2026-10-27 · #196) — 공용 표 규칙이 가운데 열에서만
- * 칸 왼쪽 끝으로 띄우는 것을 이 표에서는 되돌린다.
- * 손잡이가 자리를 차지하면 이름이 값보다 왼쪽으로 밀린다 — 이름 오른쪽에 띄워 이름은 칸 가운데에 둔다(사용자 지시 · #196).
- */
-.inspection-queue-table.inspection-standard-plan-rows thead .col-head,
-.inspection-queue-table.inspection-standard-item-rows thead .col-head {
-  position: relative;
-}
-
-.inspection-queue-table.inspection-standard-plan-rows thead th .col-grip,
-.inspection-queue-table.inspection-standard-item-rows thead th .col-grip {
-  position: absolute;
-  top: 50%;
-  left: calc(100% + var(--space-1));
-  transform: translateY(-50%);
-}
+/* 열 순서 손잡이 · 이름 자리는 검사 조회·판정 표와 같은 공용 규칙을 따른다 — 손잡이는 칸 왼쪽 끝, 이름은 칸 가운데(사용자 지시 · #196). */
 
 /* 검사 기준 검색 창의 검색어 칸 — 안내 문구가 잘리지 않는 폭(사용자 지시 · #196). */
 /* 공용 창의 「첫 칸 12rem」 규칙(`.item-picker-controls > .field-cell:first-child`)보다 앞서야 한다. */
