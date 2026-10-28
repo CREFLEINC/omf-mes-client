@@ -4,7 +4,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
-import { runRequest } from '../../patterns/request';
+import { runRequest, toApiError } from '../../patterns/request';
 import { toListQuery } from './filters';
 import type {
   InspectionItemSpec,
@@ -221,6 +221,7 @@ const EMPTY_ENTRIES: LookupEntry[] = [];
 
 export const lookupKeys = {
   items: ['inspection-standard-items'] as const,
+  itemDetail: (itemId: number) => ['inspection-standard-item-detail', itemId] as const,
   processes: ['inspection-standard-processes'] as const,
   routings: (itemId: number) => ['inspection-standard-routings', itemId] as const,
   uoms: ['inspection-standard-uoms'] as const,
@@ -317,11 +318,21 @@ export const useCodeValueOptions = (codeGroupCode: string): LookupResult => {
   };
 };
 
+const isNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 404;
+};
+
 /**
  * 품목 선택 목록. `includeInactive=true`로 한 번 받아 두고 화면이 표시 규칙을 정한다 —
  * 기본 조회는 사용 중인 것만 내려주므로, 미사용 품목을 참조하는 기준을 열면 이름이 비어 보인다.
+ *
+ * ⭐ 목록은 한 쪽만 받는다. 품목이 많은 환경에서는 기준에 지정된 품목이 첫 쪽에 없어
+ * 이름이 「알 수 없음」으로 선다(omf-all-around#200). 그때만 그 품목 하나를 상세로 불러 덧붙인다.
+ * 없는 품목(404)은 실패가 아니라 「알 수 없음」이다.
  */
-export const useItemOptions = (): LookupResult => {
+export const useItemOptions = (selectedItemId: number | null): LookupResult => {
   const { client } = useApiClient();
 
   const items = useQuery({
@@ -331,17 +342,43 @@ export const useItemOptions = (): LookupResult => {
   });
 
   const data = items.data;
+  const isMissingSelected =
+    data !== undefined &&
+    selectedItemId !== null &&
+    !data.items.some((item) => item.itemId === selectedItemId);
+
+  const selectedItem = useQuery({
+    queryKey: lookupKeys.itemDetail(selectedItemId ?? 0),
+    enabled: isMissingSelected,
+    queryFn: () => {
+      if (selectedItemId === null) {
+        throw new Error('품목을 고르기 전에는 품목 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/items/{itemId}', { params: { path: { itemId: selectedItemId } } }),
+      );
+    },
+  });
+
+  const listed = data?.items ?? [];
+  const extra =
+    isMissingSelected && selectedItem.data !== undefined ? [selectedItem.data.item] : [];
 
   return {
     entries:
-      data?.items.map((item) => ({
-        value: String(item.itemId),
-        label: `${item.itemCode} · ${item.itemName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
+      data === undefined
+        ? EMPTY_ENTRIES
+        : [...listed, ...extra].map((item) => ({
+            value: String(item.itemId),
+            label: `${item.itemCode} · ${item.itemName}`,
+            isActive: item.isActive,
+          })),
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: items.isError,
-    isLoading: items.isPending,
+    isError:
+      items.isError ||
+      (isMissingSelected && selectedItem.isError && !isNotFound(selectedItem.error)),
+    isLoading: items.isPending || (isMissingSelected && selectedItem.isPending),
   };
 };
 
