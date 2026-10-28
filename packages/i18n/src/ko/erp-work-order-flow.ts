@@ -169,9 +169,15 @@ export const erpWorkOrderFlow = {
       title: '자동 계획 재실행',
       target: (count: number): string => `대상 ERP W/O ${String(count)}건`,
       task: '자동 계획',
-      effects: ['생산계획 작성과 확정', 'W/O 전개', '첫 공정 설비와 금형 자동 배정'],
+      /*
+       * 설비와 금형은 품목의 기본(★) 매핑으로 배정한다. 공정을 지정한 매핑은 그 공정의 W/O에, 「전체 공정」 매핑은
+       * 그것이 필요한 첫 공정에만 붙는다(서버 `resource-assign.ts`).
+       */
+      effects: ['생산계획 작성과 확정', 'W/O 전개', '품목에 ★로 지정한 설비와 금형 자동 배정'],
       skipTitle: '건너뛰는 조건',
-      skipConditions: ['기본 BOM이나 Routing이 없는 ERP W/O', '라인을 정할 수 없는 ERP W/O'],
+      skipConditions: ['기본 BOM이나 Routing이 없는 ERP W/O'],
+      /** 라인을 모르면 건너뛰지 않고 작성 중 계획을 남긴다(서버 자동 계획 결과 DRAFT). */
+      draftNote: '생산 라인을 정할 수 없으면 작성 중인 계획만 만들고 확정하지 않습니다.',
       confirm: '재실행',
     },
     resultTitle: {

@@ -218,6 +218,24 @@ describe('작업지시 목록 작업함', () => {
     expect(release).toHaveAccessibleDescription(t.bulk.reasons.noneChecked);
   });
 
+  it('자동 계획 확인 창은 라인을 모를 때 건너뛰지 않고 작성 중 계획만 만든다고 말한다', async () => {
+    const user = userEvent.setup();
+    render({ orders: [REVIEW] });
+
+    const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
+    await user.click(within(row).getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: t.bulk.autoPlan }));
+
+    const dialog = screen.getByRole('dialog', { name: t.bulk.autoPlanDialog.title });
+    expect(
+      within(dialog).getByText(
+        '생산 라인을 정할 수 없으면 작성 중인 계획만 만들고 확정하지 않습니다.',
+      ),
+    ).toBeVisible();
+    expect(within(dialog).getByText('품목에 ★로 지정한 설비와 금형 자동 배정')).toBeVisible();
+    expect(within(dialog).queryByText('라인을 정할 수 없는 ERP W/O')).toBeNull();
+  });
+
   it('일괄 배포는 실행과 같은 판정으로 예고하고, 일부 처리를 따로 세며, 결과 칩을 상태 칩 자리에 보인다(C-16, C-18)', async () => {
     const user = userEvent.setup();
     render({ orders: [DONE_BLOCKED, DONE_READY] }, '/production/production-orders?autoPlan=DONE');

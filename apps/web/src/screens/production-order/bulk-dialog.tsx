@@ -88,6 +88,7 @@ export const WorklistBulkDialog = ({
             ))}
           </ul>
         </section>
+        {kind === 'autoPlan' && <p className="dialog-text">{t.autoPlanDialog.draftNote}</p>}
         {kind === 'release' &&
           (entries === null ? (
             <SkeletonText lines={2} />
