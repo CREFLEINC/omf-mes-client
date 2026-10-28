@@ -40,6 +40,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
 import { PlanActionBanner } from './plan-action-banner';
 import { PlanActionDialog, type PlanActionKind } from './plan-action-dialog';
+import { ImportDialog, type BatchResult } from './import-dialog';
 import { PlanListPane } from './plan-list-pane';
 import {
   emptyPlanFormValues,
@@ -198,6 +199,38 @@ export const InspectionStandardScreen = () => {
   const selectedPlanId = Number(searchParams.get('plan') ?? '') || null;
 
   const planList = useInspectionPlanList(filters, page);
+
+  /** 엑셀 올리기 창. `null` 이면 닫혀 있다 — 파일과 결과는 창이 닫히면 함께 버린다. */
+  const [importState, setImportState] = useState<{
+    file: File | null;
+    result: BatchResult | null;
+  } | null>(null);
+
+  /**
+   * 엑셀 올리기(#199) — 툴 엑셀 올리기와 같은 짜임이다.
+   *
+   * ⚠ 생성된 타입이 `file: string` 이다(openapi-typescript 가 `format: binary` 를 문자열로 옮긴다).
+   * 실제로 보낼 것은 `FormData` 라 단언을 여기 한 곳에 가둔다 — 경계 문자열은 브라우저가 정한다.
+   * ⛔ 멱등 키 수명은 기본값(`per-attempt`)이다 — `File` 은 값 지문에서 `{}` 가 되어, `until-applied` 면
+   * 다른 파일을 골라도 같은 키가 나가 앞 파일의 결과가 되돌아온다.
+   */
+  const importWrite = useMasterWrite<File, BatchResult>({
+    request: (file, headers) => {
+      const form = new FormData();
+      form.append('file', file);
+      return client.POST('/quality/inspection-plans:import', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body: form as unknown as { file: string },
+      });
+    },
+    etagPath: null,
+    // 새 기준·새 버전이 생긴다 — 목록과 버전 목록을 함께 다시 받는다.
+    invalidateKeys: [planKeys.all, versionKeys.all],
+    knownFields: [],
+    onSuccess: (result) => {
+      setImportState((prev) => (prev === null ? prev : { ...prev, result }));
+    },
+  });
   const plans = planList.data?.items ?? [];
 
   const planDetail = useInspectionPlanDetail(selectedPlanId);
@@ -1390,6 +1423,10 @@ export const InspectionStandardScreen = () => {
             resetPlanEditing();
             setCreateValues(emptyPlanFormValues());
           }}
+          onExcelUpload={() => {
+            importWrite.reset();
+            setImportState({ file: null, result: null });
+          }}
           loadError={
             planList.isError ? (
               <LoadErrorBanner error={planList.error} onRetry={() => void planList.refetch()} />
@@ -1504,6 +1541,23 @@ export const InspectionStandardScreen = () => {
             setItemDialogErrors({});
           }}
           onSubmit={handleSubmitItemDialog}
+        />
+      )}
+
+      {importState !== null && (
+        <ImportDialog
+          file={importState.file}
+          onSelectFile={(file) => {
+            importWrite.reset();
+            setImportState({ file, result: null });
+          }}
+          result={importState.result}
+          banner={<PlanActionBanner error={importWrite.error} />}
+          isSaving={importWrite.isSaving}
+          onClose={() => setImportState(null)}
+          onSubmit={() => {
+            if (importState.file !== null) importWrite.write(importState.file);
+          }}
         />
       )}
 
