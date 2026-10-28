@@ -178,12 +178,15 @@ export const WarehouseFormPane = ({
           onChange={(value) => onChange({ businessUnitId: value })}
         />
 
+        {/* 창고 코드 · 창고명은 등록 때만 적는다 — 수정에서는 읽기 전용(사용자 지시 2026-10-29). */}
         <TextField
           label={t.fields.warehouseCode}
           value={values.warehouseCode}
           onChange={(event) => onChange({ warehouseCode: event.target.value })}
-          disabled={codeLockReason !== null}
-          disabledReason={codeLockReason}
+          disabled={mode === 'edit' || codeLockReason !== null}
+          disabledReason={
+            mode === 'edit' ? t.actionReasons.identityFixedAfterCreate : codeLockReason
+          }
           error={fieldErrors.warehouseCode}
         />
 
@@ -191,6 +194,7 @@ export const WarehouseFormPane = ({
           label={t.fields.warehouseName}
           value={values.warehouseName}
           onChange={(event) => onChange({ warehouseName: event.target.value })}
+          disabled={mode === 'edit'}
           error={fieldErrors.warehouseName}
         />
 

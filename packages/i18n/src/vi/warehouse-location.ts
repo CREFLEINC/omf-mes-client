@@ -34,6 +34,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     changeHistoryUnavailable: 'Hiện chưa cung cấp lịch sử thay đổi.',
     managementLevelWarehouseNoLocation: 'Không chỉ định Location.',
     plantFixedAfterCreate: 'Không thể đổi nhà máy sau khi đăng ký.',
+    identityFixedAfterCreate: 'Không thể thay đổi mã kho · tên kho sau khi đăng ký.',
     warehouseFixedInLocation: 'Cố định theo kho đã chọn ở bên trái.',
     systemLocation: 'Vị trí do hệ thống tạo, chỉ có thể đổi tên gọi khác.',
   },

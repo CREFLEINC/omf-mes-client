@@ -80,7 +80,7 @@ describe('WarehouseFormPane', () => {
 
   it('codeLockReason을 주입하면 창고코드가 비활성이고 사유가 화면 텍스트로 보인다', () => {
     const reason = '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.';
-    renderPane({ codeLockReason: reason });
+    renderPane({ mode: 'create', codeLockReason: reason });
 
     expect(screen.getByLabelText('창고 코드')).toBeDisabled();
     expect(screen.getByText(reason)).toBeInTheDocument();
@@ -165,9 +165,16 @@ describe('WarehouseFormPane', () => {
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
 
-  it('창고명을 고치면 바뀐 필드만 담아 onChange를 부른다', async () => {
+  it('수정에서는 창고 코드 · 창고명이 읽기 전용이다', () => {
+    renderPane({ mode: 'edit' });
+
+    expect(screen.getByLabelText('창고 코드')).toBeDisabled();
+    expect(screen.getByLabelText('창고명')).toBeDisabled();
+  });
+
+  it('등록에서 창고명을 고치면 바뀐 필드만 담아 onChange를 부른다', async () => {
     const user = userEvent.setup();
-    const { onChange } = renderPane();
+    const { onChange } = renderPane({ mode: 'create' });
 
     await user.type(screen.getByLabelText('창고명'), '가');
 

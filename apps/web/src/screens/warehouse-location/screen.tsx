@@ -965,7 +965,7 @@ export const WarehouseLocationScreen = () => {
               label: t.tabs.warehouse,
               content: renderWarehouseForm({
                 mode: 'edit',
-                codeLockReason: codeLockMessage(detail.data.editability),
+                codeLockReason: null,
                 isActive: selectedWarehouse.isActive,
               }),
             },

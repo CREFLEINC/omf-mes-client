@@ -427,35 +427,17 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
     );
   });
 
-  it('코드 편집이 잠긴 창고는 입력이 비활성이고 사유가 화면에 보인다', async () => {
-    renderScreen(
-      [
-        warehouseListRoute(),
-        warehouseDetailRoute(warehouseFixtures[0]!, {
-          codeEditable: false,
-          reason: 'REFERENCED',
-          referenceCount: 3,
-        }),
-        locationListRoute(),
-        ...lookupRoutes(),
-      ],
-      '?wh=1001',
-    );
-
-    const code = await screen.findByLabelText('창고 코드');
-    expect(code).toBeDisabled();
-    expect(
-      screen.getByText('이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.'),
-    ).toBeInTheDocument();
-  });
-
-  it('codeEditable이 참이면 코드 입력이 열려 있다', async () => {
+  it('수정에서는 창고 코드 · 창고명이 읽기 전용이다', async () => {
     renderScreen(
       [warehouseListRoute(), warehouseDetailRoute(), locationListRoute(), ...lookupRoutes()],
       '?wh=1001',
     );
 
-    expect(await screen.findByLabelText('창고 코드')).not.toBeDisabled();
+    expect(await screen.findByLabelText('창고 코드')).toBeDisabled();
+    expect(screen.getByLabelText('창고명')).toBeDisabled();
+    expect(
+      screen.getByText(messages.warehouseLocation.actionReasons.identityFixedAfterCreate),
+    ).toBeInTheDocument();
   });
 
   it('상세 조회에 실패하면 폼 대신 오류 배너가 나온다', async () => {
@@ -569,14 +551,14 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
       '?wh=1001',
     );
 
-    const name = await screen.findByLabelText('창고명');
+    await screen.findByLabelText('창고명');
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
 
-    await user.type(name, '가');
+    await editWarehouse(user);
     expect(screen.getByRole('button', { name: '저장' })).not.toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: '취소' }));
-    expect(screen.getByLabelText('창고명')).toHaveValue('1공장 자재창고');
+    expect(screen.getByRole('switch', { name: '불량 창고' })).not.toBeChecked();
   });
 });
 
@@ -852,6 +834,12 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
   });
 });
 
+/** 수정 저장 흐름의 「고친 값」 — 창고 코드 · 창고명은 읽기 전용이라 불량 창고 토글을 바꾼다. */
+const editWarehouse = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await screen.findByLabelText('창고명');
+  await user.click(screen.getByRole('switch', { name: '불량 창고' }));
+};
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const writeRequests = (requests: RecordedRequest[], method: string): RecordedRequest[] =>
@@ -873,19 +861,6 @@ const putRoute = (respond: StubRoute['respond']): StubRoute => ({
 });
 
 describe('WarehouseLocationScreen — 창고 수정 저장', () => {
-  it('로컬 검증이 걸리면 요청을 보내지 않고 인라인 오류만 보인다', async () => {
-    const { requests, user } = renderScreen(
-      saveRoutes(putRoute(() => jsonResponse(warehouseFixtures[0]!))),
-      '?wh=1001',
-    );
-
-    await user.clear(await screen.findByLabelText('창고명'));
-    await user.click(screen.getByRole('button', { name: '저장' }));
-
-    expect(screen.getByText('필수 입력 항목입니다.')).toBeInTheDocument();
-    expect(writeRequests(requests, 'PUT')).toHaveLength(0);
-  });
-
   it('기존 Location 계층보다 낮은 관리수준으로 변경하지 못한다', async () => {
     const { requests, user } = renderScreen(
       saveRoutes(putRoute(() => jsonResponse(warehouseFixtures[0]!))),
@@ -908,7 +883,7 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
       saveRoutes(
         putRoute(() =>
           jsonResponse(
-            { ...warehouseFixtures[0]!, warehouseName: '1공장 자재창고가' },
+            { ...warehouseFixtures[0]!, isDefect: true },
             {
               headers: { ETag: '"8"' },
             },
@@ -918,7 +893,7 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
       '?wh=1001',
     );
 
-    await user.type(await screen.findByLabelText('창고명'), '가');
+    await editWarehouse(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
@@ -928,7 +903,8 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
     // 상세 GET이 준 ETag를 그대로 되돌려 보낸다.
     expect(put?.headers.get('If-Match')).toBe('"7"');
     expect(JSON.parse(put?.body ?? '{}')).toMatchObject({
-      warehouseName: '1공장 자재창고가',
+      warehouseName: '1공장 자재창고',
+      isDefect: true,
       businessUnitId: 21,
     });
   });
@@ -938,7 +914,7 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
       saveRoutes(
         putRoute(() =>
           jsonResponse(
-            { ...warehouseFixtures[0]!, warehouseName: '1공장 자재창고가' },
+            { ...warehouseFixtures[0]!, isDefect: true },
             {
               headers: { ETag: '"8"' },
             },
@@ -948,7 +924,7 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
       '?wh=1001',
     );
 
-    await user.type(await screen.findByLabelText('창고명'), '가');
+    await editWarehouse(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
 
@@ -968,7 +944,7 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
       '?wh=1001',
     );
 
-    await user.type(await screen.findByLabelText('창고명'), '가');
+    await editWarehouse(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(
@@ -988,7 +964,7 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
       '?wh=1001',
     );
 
-    await user.type(await screen.findByLabelText('창고명'), '가');
+    await editWarehouse(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByRole('button', { name: '최신 불러오기' });
 
@@ -1033,7 +1009,7 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
       '?wh=1001',
     );
 
-    await user.type(await screen.findByLabelText('창고명'), '가');
+    await editWarehouse(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(await screen.findByText('이미 사용 중인 코드입니다.')).toBeInTheDocument();
@@ -1050,9 +1026,9 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
               errors: [
                 {
                   scope: 'field',
-                  field: 'warehouseName',
+                  field: 'warehouseTypeCode',
                   code: 'STANDARD',
-                  message: '창고명을 다시 입력하세요.',
+                  message: '창고 유형을 다시 고르세요.',
                 },
               ],
             },
@@ -1063,13 +1039,15 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
       '?wh=1001',
     );
 
-    await user.type(await screen.findByLabelText('창고명'), '가');
+    await editWarehouse(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
-    expect(await screen.findByText('창고명을 다시 입력하세요.')).toBeInTheDocument();
+    expect(await screen.findByText('창고 유형을 다시 고르세요.')).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('창고명'), '나');
+    const form = screen.getByRole('region', { name: '창고 정보' });
+    await user.click(within(form).getByRole('combobox', { name: '창고 유형' }));
+    await user.click(screen.getByRole('option', { name: '제품창고' }));
 
-    expect(screen.queryByText('창고명을 다시 입력하세요.')).not.toBeInTheDocument();
+    expect(screen.queryByText('창고 유형을 다시 고르세요.')).not.toBeInTheDocument();
   });
 
   it('연결이 끊기면 오프라인 안내가 뜬다', async () => {
@@ -1083,7 +1061,7 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
       '?wh=1001',
     );
 
-    await user.type(await screen.findByLabelText('창고명'), '가');
+    await editWarehouse(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(
@@ -2018,7 +1996,7 @@ describe('WarehouseLocationScreen — 서버에 닿지 못할 때', () => {
       '?wh=1001',
     );
 
-    await user.type(await screen.findByLabelText('창고명'), '가');
+    await editWarehouse(user);
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(
