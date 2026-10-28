@@ -1796,6 +1796,10 @@ export const ProductionFlowScreen = () => {
                               aria-label={rowName}
                             >
                               <div className="production-flow-defect-type">
+                                {/* 수량 칸과 같은 라벨 줄을 두어 두 조작이 한 기준선에 선다. */}
+                                <span className="production-flow-defect-label" aria-hidden="true">
+                                  {t.flow.defects.type}
+                                </span>
                                 <Button
                                   type="button"
                                   variant="outlined"
@@ -1849,6 +1853,7 @@ export const ProductionFlowScreen = () => {
                                 }
                               />
                               <IconButton
+                                className="production-flow-defect-remove"
                                 icon="close"
                                 aria-label={t.flow.defects.remove(rowName)}
                                 disabled={areDefectsLocked}
