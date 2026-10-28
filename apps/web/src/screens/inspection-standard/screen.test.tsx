@@ -1309,6 +1309,19 @@ describe('InspectionStandardScreen — 버전 목록', () => {
     );
   });
 
+  /* 고른 기준을 다시 누르면 선택이 풀려 처음 화면(「검사 기준을 선택해 주세요」)으로 돌아간다(사용자 지시 · #196). */
+  it('고른 기준을 다시 누르면 선택이 풀린다', async () => {
+    const { user } = renderVersions([], '?plan=3001&ver=4001');
+
+    const code = await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+    expect(code).toHaveAttribute('aria-current', 'true');
+
+    await user.click(code);
+
+    expect(await screen.findByText('검사 기준을 선택해 주세요')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).not.toHaveAttribute('aria-current');
+  });
+
   it('버전을 누르면 주소에 남아 선택 표식이 붙는다', async () => {
     const { user } = renderVersions();
 
@@ -2813,7 +2826,8 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
    * 같은 규칙의 기준 폼 쪽. **상세 응답 객체가 그대로여도** 폼 상태를 비우면 재시드 조건이
    * 성립해 서버 값으로 다시 세워진다 — 비우지 않으면 옛 편집이 그대로 남는다.
    */
-  it('기준 폼을 고친 뒤 같은 기준을 다시 고르면 고친 값이 남지 않는다', async () => {
+  /* 고른 줄을 다시 누르면 선택이 풀린다(#196) — 한 번 더 눌러 다시 고르면 서버 값으로 선다. */
+  it('기준 폼을 고친 뒤 같은 기준을 풀었다 다시 고르면 고친 값이 남지 않는다', async () => {
     const { user } = renderSelectedPlan();
 
     const name = await findPlanField('기준명');
@@ -2821,10 +2835,11 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
     expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A-편집중');
 
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
+    expect(await screen.findByText('검사 기준을 선택해 주세요')).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A');
-    });
+    await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
+
+    expect(await findPlanField('기준명')).toHaveValue('합성 검사기준 A');
   });
 });
 

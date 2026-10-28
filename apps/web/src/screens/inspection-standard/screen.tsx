@@ -748,6 +748,15 @@ export const InspectionStandardScreen = () => {
 
   const handleSelectPlan = (inspectionPlanId: number) => {
     resetPlanEditing();
+    /* 고른 줄을 다시 누르면 선택을 풀고 아무것도 고르지 않은 처음 화면으로 돌아간다(사용자 지시 · #196). */
+    if (inspectionPlanId === selectedPlanId) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('plan');
+      next.delete('ver');
+      setSearchParams(next);
+      setLatestPendingPlanId(null);
+      return;
+    }
     selectPlan(inspectionPlanId);
     setLatestPendingPlanId(inspectionPlanId);
   };
