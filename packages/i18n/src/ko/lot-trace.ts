@@ -152,17 +152,10 @@ export const lotTrace = {
     stagesLabel: '단계',
     stageCount: (count: number): string => `${count.toLocaleString('ko-KR')}건`,
     count: (count: number): string => count.toLocaleString('ko-KR'),
-    estimateNotice: '일부 연결은 추정입니다. 칩에 마우스를 올리면 근거가 보입니다',
     estimate: {
       LOT_GENEALOGY_ESTIMATE: '추정(투입 시각)',
       WORK_ORDER_ESTIMATE: '추정(W/O)',
       inputOnly: '투입만',
-    },
-    estimateTip: {
-      LOT_GENEALOGY_ESTIMATE: '투입 시각과 생산 LOT의 작업 시간을 맞춰 이은 연결입니다',
-      WORK_ORDER_ESTIMATE:
-        '같은 W/O의 투입과 생산을 이은 연결입니다. 어느 생산 LOT에 들어갔는지는 알 수 없습니다',
-      inputOnly: '투입은 있으나 생산 실적이 없습니다',
     },
     sections: {
       inbound: '입하',
@@ -194,7 +187,6 @@ export const lotTrace = {
       woResultCount: 'W/O 실적 건수',
       woGoodQty: 'W/O 양품 수량',
       woDefectQty: 'W/O 불량 수량',
-      basis: '연결 근거',
     },
     columns: {
       receiptNo: '입고 번호',
@@ -206,7 +198,7 @@ export const lotTrace = {
       itemName: '품목명',
       consumedQty: '투입량',
       lastConsumedAt: '마지막 투입',
-      basis: '연결 근거',
+      supplierName: '공급사명',
       materialLot: '자재 LOT',
       handlingUnitNo: '포장 번호',
       shippingUnitNo: '출하 단위 번호',

@@ -28,7 +28,7 @@ export const MovementTable = ({ showKind, rows, activeKey, onOpen, empty }: Move
     {
       key: 'date',
       header: t.list.columns.date,
-      width: '100px',
+      width: showKind ? '96px' : '100px',
       align: 'center',
       render: (row) => row.date,
     },
@@ -37,7 +37,7 @@ export const MovementTable = ({ showKind, rows, activeKey, onOpen, empty }: Move
           {
             key: 'kind',
             header: t.list.columns.kind,
-            width: '92px',
+            width: '88px',
             align: 'center' as const,
             render: (row: MovementRow) => (
               <Chip variant="status" size="sm" status="idle">
@@ -50,7 +50,7 @@ export const MovementTable = ({ showKind, rows, activeKey, onOpen, empty }: Move
     {
       key: 'documentNo',
       header: t.list.columns.documentNo,
-      width: showKind ? '140px' : '168px',
+      width: showKind ? '136px' : '168px',
       render: (row) => (
         <span className="mono-cell" title={row.documentNo}>
           {row.documentNo}
@@ -60,7 +60,7 @@ export const MovementTable = ({ showKind, rows, activeKey, onOpen, empty }: Move
     {
       key: 'lotNo',
       header: t.list.columns.lotNo,
-      width: showKind ? '112px' : '150px',
+      width: showKind ? '108px' : '150px',
       render: (row) => (
         <span className="lot-trace-cell-with-chip">
           <LotNo lotNo={row.lots[0]?.lotNo ?? ''} />

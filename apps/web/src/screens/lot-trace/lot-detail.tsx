@@ -7,7 +7,6 @@ import {
   SkeletonText,
   Stepper,
   Table,
-  Tooltip,
   type Column,
   type StepStatus,
 } from '@crefle/web-ui';
@@ -39,7 +38,6 @@ import { useBackwardChain, useForwardChain } from './trace-queries';
 import { LotNo, plantDate, plantDateTime } from './trace-table';
 import type {
   BackwardChain,
-  FlowBasis,
   FlowInputMaterial,
   FlowLotHead,
   FlowPackage,
@@ -90,21 +88,6 @@ const refOf = (head: FlowLotHead): LotRef => ({
 const qty = (value: number, uomCode: string): string => `${formatQty(value)} ${uomCode}`.trim();
 
 /* ── 작은 조각 ───────────────────────────────────────────────────────── */
-
-/** 추정 칩. 칩에 마우스를 올리거나 초점을 두면 근거 한 문장이 보인다. */
-const EstimateChip = ({ basis }: { basis: FlowBasis | 'inputOnly' }) => (
-  <Tooltip content={c.estimateTip[basis]}>
-    <span
-      className="lot-trace-chip-anchor"
-      tabIndex={0}
-      aria-label={`${c.estimate[basis]}. ${c.estimateTip[basis]}`}
-    >
-      <Chip variant="status" size="sm" status={basis === 'inputOnly' ? 'idle' : 'info'}>
-        {c.estimate[basis]}
-      </Chip>
-    </span>
-  </Tooltip>
-);
 
 /** 항목명(위)과 값(아래)의 격자. 값이 없는 항목은 그리지 않는다(C-10). */
 interface Fact {
@@ -389,20 +372,14 @@ const ProductSideTables = ({
 
 /*
  * 상세 창의 표는 창 폭(1440px에서 약 520px) 안에 들어온다 — 번호, 수량, 날짜 열은 정한 폭, 이름 열이 남는 폭을 쓰고
- * 넘치면 말줄임이다. 빠진 값(첫 투입 일시, 공급사, 입하일, 공급사 LOT)은 [보기]로 그 LOT을 열거나 추적 내보내기에 있다.
+ * 넘치면 말줄임이다. 빠진 값(첫 투입 일시, 입하일, 공급사 LOT)은 [보기]로 그 LOT을 열거나 추적 내보내기에 있다.
  */
 const usageColumns = (uomCode: string): Column<ForwardWorkOrder>[] => [
   {
     key: 'no',
     header: k.workOrderNo,
-    width: '200px',
-    /* 투입은 있으나 실적이 없는 W/O는 번호 옆에 「투입만」 칩 — 줄 첫 자리에서 보인다. */
-    render: (row) => (
-      <span className="lot-trace-cell-with-chip">
-        <Mono>{row.workOrderNo}</Mono>
-        {row.linkBasis === null && <EstimateChip basis="inputOnly" />}
-      </span>
-    ),
+    width: '160px',
+    render: (row) => <Mono>{row.workOrderNo}</Mono>,
   },
   {
     key: 'item',
@@ -487,7 +464,6 @@ const ProductionLotGroup = ({
               lot.completedAt === null
                 ? null
                 : { key: 'done', label: c.facts.completedAt, value: plantDate(lot.completedAt) },
-              { key: 'basis', label: c.facts.basis, value: <EstimateChip basis={lot.linkBasis} /> },
             ]}
           />
           <ViewButton lot={refOf(lot)} onView={onView} />
@@ -546,10 +522,7 @@ const UsageSections = ({
 
 /* ── 투입 자재(생산 LOT의 위 방향) ────────────────────────────────────── */
 
-const inputColumns = (
-  onView: (lot: LotRef) => void,
-  withBasis: boolean,
-): Column<FlowInputMaterial>[] => [
+const inputColumns = (onView: (lot: LotRef) => void): Column<FlowInputMaterial>[] => [
   {
     key: 'lot',
     header: k.materialLot,
@@ -568,17 +541,18 @@ const inputColumns = (
     align: 'end',
     render: (row) => qty(row.consumedQty, row.uomCode),
   },
-  ...(withBasis
-    ? [
-        {
-          key: 'basis',
-          header: k.basis,
-          width: '120px',
-          align: 'center' as const,
-          render: (row: FlowInputMaterial) => <EstimateChip basis={row.linkBasis} />,
-        },
-      ]
-    : []),
+  {
+    key: 'supplier',
+    header: k.supplierName,
+    width: '24%',
+    render: (row) =>
+      row.inbound === null ? null : (
+        <Ellipsis
+          text={row.inbound.supplier.name}
+          title={named(row.inbound.supplier.name, row.inbound.supplier.code)}
+        />
+      ),
+  },
   {
     key: 'action',
     header: k.action,
@@ -629,10 +603,7 @@ const ProductionSections = ({
         <SmallTable
           title={c.sections.inputs}
           heading={false}
-          columns={inputColumns(
-            onView,
-            chain.inputMaterials.some((input) => input.linkBasis !== null),
-          )}
+          columns={inputColumns(onView)}
           rows={chain.inputMaterials}
           getRowId={(row) => String(row.lotId)}
           empty={c.noInputMaterials}
@@ -773,7 +744,6 @@ interface ViewProps {
   onCenter: LotDetailProps['onCenter'];
   impact: Fact[];
   cells: StageCell[];
-  estimated: boolean;
   lines: () => ChainLine[];
   children: ReactNode;
 }
@@ -786,7 +756,6 @@ const DetailFrame = ({
   onCenter,
   impact,
   cells,
-  estimated,
   lines,
   children,
 }: ViewProps) => {
@@ -844,7 +813,6 @@ const DetailFrame = ({
         ]}
       />
       <StageStrip cells={cells} onJump={jump} />
-      {estimated && <AlertBanner variant="info">{c.estimateNotice}</AlertBanner>}
       {children}
     </div>
   );
@@ -871,7 +839,6 @@ const MaterialView = ({ chain, ...frame }: FrameProps & { chain: ForwardChain })
         { key: 'customers', label: c.facts.customerCount, value: c.count(impact.customers) },
       ]}
       cells={forwardStages(chain)}
-      estimated={chain.basis !== null}
       lines={() => flattenForward(chain)}
     >
       <Section title={c.sections.inbound} stage="RECEIVED">
@@ -941,7 +908,6 @@ const ProductionView = ({
         { key: 'suppliers', label: c.facts.supplierCount, value: c.count(impact.suppliers) },
       ]}
       cells={backwardStages(chain)}
-      estimated={chain.basis !== null || (usage !== undefined && usage.basis !== null)}
       lines={() => [
         ...flattenBackward(chain),
         ...(usage === undefined ? [] : flattenForward(usage).filter((line) => line.depth > 0)),

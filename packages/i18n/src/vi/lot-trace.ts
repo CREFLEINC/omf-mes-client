@@ -156,17 +156,10 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     stagesLabel: 'Các bước',
     stageCount: (count: number): string => `${num(count)} mục`,
     count: (count: number): string => num(count),
-    estimateNotice: 'Một số liên kết là ước tính. Di chuột lên chip để xem căn cứ',
     estimate: {
       LOT_GENEALOGY_ESTIMATE: 'Ước tính (thời điểm đưa vào)',
       WORK_ORDER_ESTIMATE: 'Ước tính (W/O)',
       inputOnly: 'Chỉ đưa vào',
-    },
-    estimateTip: {
-      LOT_GENEALOGY_ESTIMATE: 'Liên kết ghép thời điểm đưa vào với thời gian làm của LOT sản xuất',
-      WORK_ORDER_ESTIMATE:
-        'Liên kết ghép việc đưa vào và sản xuất của cùng W/O. Không biết đã vào LOT sản xuất nào',
-      inputOnly: 'Có đưa vào nhưng chưa có kết quả sản xuất',
     },
     sections: {
       inbound: 'Nhập hàng',
@@ -198,7 +191,6 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
       woResultCount: 'Số lần báo kết quả W/O',
       woGoodQty: 'Số lượng đạt của W/O',
       woDefectQty: 'Số lượng lỗi của W/O',
-      basis: 'Căn cứ liên kết',
     },
     columns: {
       receiptNo: 'Số phiếu nhập kho',
@@ -210,7 +202,7 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
       itemName: 'Tên mặt hàng',
       consumedQty: 'Lượng đưa vào',
       lastConsumedAt: 'Đưa vào lần cuối',
-      basis: 'Căn cứ liên kết',
+      supplierName: 'Tên nhà cung cấp',
       materialLot: 'LOT vật tư',
       handlingUnitNo: 'Số kiện',
       shippingUnitNo: 'Số đơn vị xuất hàng',

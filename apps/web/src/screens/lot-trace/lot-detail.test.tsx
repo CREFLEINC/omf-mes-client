@@ -74,13 +74,7 @@ const setup = (route: string, data: TraceStubData, permissions?: string[]) => {
 
 const lists = (calls: URL[], path: string) => calls.filter((url) => url.pathname === path);
 
-const NOTICE = '일부 연결은 추정입니다. 칩에 마우스를 올리면 근거가 보입니다';
-const TIP_LOT = '투입 시각과 생산 LOT의 작업 시간을 맞춰 이은 연결입니다';
-const TIP_WO =
-  '같은 W/O의 투입과 생산을 이은 연결입니다. 어느 생산 LOT에 들어갔는지는 알 수 없습니다';
-
-/** 목록 줄의 「추정 포함」 칩 — 초점을 두는 칩 자리의 aria-label에 근거 한 문장이 실린다. */
-/** 목록과 투입 자재 표의 LOT 번호 칸. 칸이 좁으면 앞쪽만 줄이려고 번호를 두 조각으로 그려 글자 찾기를 칸 단위로 한다. */
+/** 투입 자재 표의 LOT 번호 칸. 칸이 좁으면 앞쪽만 줄이려고 번호를 두 조각으로 그려 글자 찾기를 칸 단위로 한다. */
 const listLot =
   (lotNo: string) =>
   (_content: string, element: Element | null): boolean =>
@@ -94,11 +88,8 @@ const detailHead = (lotNo: string) => screen.findByRole('heading', { name: lotNo
 const fact = (scope: HTMLElement, label: string) =>
   within(scope).getAllByText(label, { selector: 'dt' })[0]?.nextElementSibling;
 
-const estimatedChip = (lotNo: string): HTMLElement | null => {
-  const row = screen.getByText(listLot(lotNo)).closest('tr');
-  if (row === null) throw new Error(`${lotNo} 줄이 없습니다`);
-  return within(row).queryByLabelText(/^추정 포함\. /);
-};
+/** 추정 연결 표시는 걷었다(사용자 결정 2026-10-28) — 상세 어디에도 「추정」 글이 없어야 한다. */
+const noEstimate = () => expect(within(detailPane()).queryByText(/추정/)).toBeNull();
 
 describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 상세', () => {
   it('LOT을 고르기 전에는 상세 자리에 고르라는 안내를 둔다', async () => {
@@ -184,7 +175,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 상세', () => {
 
     const usage = within(pane).getByRole('region', { name: '사용처' });
     expect(within(usage).getAllByRole('row')).toHaveLength(4);
-    expect(within(usage).getByText('투입만')).toBeInTheDocument();
+    expect(within(usage).queryByText('투입만')).toBeNull();
 
     const lots = within(pane).getByRole('region', { name: '생산 LOT' });
     expect(within(lots).getByText(PROD)).toBeInTheDocument();
@@ -207,7 +198,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 상세', () => {
         .getAllByRole('listitem')
         .every((item) => item.getAttribute('data-status') === 'complete'),
     ).toBe(true);
-    expect(within(pane).getByText(NOTICE)).toBeInTheDocument();
+    noEstimate();
     /* 이름표 없는 한 줄 나열이 없다 — 값은 모두 표나 항목 아래에 있다. */
     expect(within(pane).queryByRole('list', { name: '사슬' })).toBeNull();
   });
@@ -221,11 +212,10 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 상세', () => {
     await detailHead(MAT);
     const usage = within(detailPane()).getByRole('region', { name: '사용처' });
     expect(within(usage).getByText('아직 투입된 기록이 없습니다')).toBeInTheDocument();
-    /* 이어진 생산 LOT이 없으면 서버 basis가 null이고 추정 안내를 두지 않는다. */
-    expect(within(detailPane()).queryByText(NOTICE)).not.toBeInTheDocument();
+    noEstimate();
   });
 
-  it('상세의 추정 안내는 서버 최상위 basis로만 정한다(null이면 생산 LOT이 있어도 두지 않는다)', async () => {
+  it('서버가 추정 연결을 주어도 상세에 추정 표시가 없다', async () => {
     setup(`/production/lot-trace?from=2026-10-20&to=2026-10-26&selected=101`, {
       forwardRows: [forwardRow(101, MAT)],
       forwardChains: {
@@ -235,7 +225,7 @@ describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 상세', () => {
 
     await detailHead(MAT);
     expect(within(detailPane()).getByText(PROD)).toBeInTheDocument();
-    expect(within(detailPane()).queryByText(NOTICE)).not.toBeInTheDocument();
+    noEstimate();
   });
 
   it('[보기]는 목록을 두고 그 LOT을 상세 가운데에 둔다. [이전 LOT]과 경로로 되돌아간다', async () => {
@@ -329,7 +319,7 @@ describe('W-02-09 LOT 생산 이력 조회: 제품 LOT 상세', () => {
     expect(within(pane).getByText('W/O 실적으로 만든 LOT이 아닙니다')).toBeInTheDocument();
     expect(fact(pane, '투입 자재 LOT 수')).toHaveTextContent('0');
     expect(fact(pane, '공급사 수')).toHaveTextContent('0');
-    expect(within(pane).queryByText(NOTICE)).not.toBeInTheDocument();
+    noEstimate();
     /* 사용처가 없는 생산 LOT(정방향 404)은 실패로 보이지 않는다. */
     expect(within(pane).queryByText('사용처를 불러오지 못했습니다')).toBeNull();
     expect(within(pane).queryByRole('region', { name: '사용처' })).toBeNull();
@@ -359,15 +349,15 @@ describe('W-02-09 LOT 생산 이력 조회: 제품 LOT 상세', () => {
     expect(fact(production, 'W/O 실적 건수')).toHaveTextContent('2');
     expect(fact(production, 'W/O 양품 수량')).toHaveTextContent('120 EA');
     expect(fact(production, 'W/O 불량 수량')).toHaveTextContent('5 EA');
-    /* 투입 자재 표는 상세 창 안에 들어오게 자재 LOT, 품목명, 투입량, 연결 근거, [보기]만 둔다. */
+    /* 투입 자재 표는 상세 창 안에 들어오게 자재 LOT, 품목명, 투입량, 공급사명, [보기]만 둔다. */
     const inputs = within(pane).getByRole('table', { name: '투입 자재' });
     expect(
       within(inputs)
         .getAllByRole('columnheader')
         .map((th) => th.textContent),
-    ).toEqual(['자재 LOT', '품목명', '투입량', '연결 근거', '추적']);
-    expect(within(inputs).getAllByText('추정(투입 시각)')).toHaveLength(2);
-    expect(within(pane).getByText(NOTICE)).toBeInTheDocument();
+    ).toEqual(['자재 LOT', '품목명', '투입량', '공급사명', '추적']);
+    expect(within(inputs).getAllByText('공급사 A')).toHaveLength(2);
+    noEstimate();
     for (const name of ['제품입고', '포장', '출하']) {
       expect(within(pane).getByRole('region', { name })).toBeInTheDocument();
     }
