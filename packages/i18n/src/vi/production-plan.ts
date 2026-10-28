@@ -166,7 +166,7 @@ export const productionPlan: Translated<typeof ko.productionPlan> = {
 
   screen: {
     unselected: 'Hãy chọn ERP W/O trước.',
-    openProductionOrders: 'Đến nhận · tra cứu ERP W/O',
+    openProductionOrders: 'Đến danh sách lệnh sản xuất',
     loading: 'Đang tải ERP W/O',
     ownerMismatch: 'Đã nhận về chi tiết khác với ERP W/O đã yêu cầu.',
     loadFailed: 'Không tải được ERP W/O.',

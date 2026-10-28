@@ -30,7 +30,7 @@ export const DiscardDialog = ({ onCancel, onConfirm }: DiscardDialogProps) => (
 );
 
 /**
- * 저장하지 않은 변경이 있는 동안 화면을 떠나는 이동([← ERP W/O 처리], 브라우저 뒤로가기, 다른 메뉴)을 막고 확인한다.
+ * 저장하지 않은 변경이 있는 동안 화면을 떠나는 이동([← 작업지시 목록], 브라우저 뒤로가기, 다른 메뉴)을 막고 확인한다.
  * 새로 고침과 탭 닫기는 브라우저 확인(`beforeunload`)으로 막는다. 데이터 라우터(앱의 `createBrowserRouter`,
  * 시험의 `createMemoryRouter`) 안에서만 쓴다.
  */

@@ -185,22 +185,22 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/shipment/product-disposal-request', code: 'W-04-10', name: '제품 폐기 요청' },
 
   /* ── 생산 ─────────────────────────────────────────────────────────────── */
-  { path: '/production/production-orders', code: 'W-02-01', name: 'ERP W/O 처리' },
+  { path: '/production/production-orders', code: 'W-02-01', name: '작업지시 목록' },
   { path: '/production/po-change-review', code: 'W-02-06', name: 'ERP W/O 변경 관리자 확인' },
   /*
-   * 아래 셋은 사이드바에 없는 옛 주소다. 화면은 「ERP W/O 처리」로 합쳤고, 주소는 대상을 찾아 처리 화면이나
+   * 아래 셋은 사이드바에 없는 옛 주소다. 화면은 「작업지시 목록」으로 합쳤고, 주소는 대상을 찾아 처리 화면이나
    * 작업함으로 넘긴다(`production-order/process/legacy-redirects.tsx`, omf-all-around#129).
    */
-  { path: '/production/production-plans', code: 'W-02-02', name: 'ERP W/O 처리 생산계획' },
+  { path: '/production/production-plans', code: 'W-02-02', name: 'W/O 전개와 편성' },
   {
     path: '/production/work-order-assignments',
     code: 'W-02-03',
-    name: 'ERP W/O 처리 4M 배정',
+    name: '4M 자원배정',
   },
   {
     path: '/production/work-order-release',
     code: 'W-02-04',
-    name: 'ERP W/O 처리 일괄 배포',
+    name: 'W/O 확정과 배포',
   },
   { path: '/production/work-order-close', code: 'W-02-05', name: 'W/O 마감·ERP 실적 송신' },
   /*

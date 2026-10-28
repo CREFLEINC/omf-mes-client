@@ -9,6 +9,7 @@ import {
   useToast,
 } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import { DateTimeField } from '../../../patterns/date-time-field';
@@ -42,6 +43,7 @@ import {
   type ResourceRecommendationChip,
 } from '../../work-order/resource-recommendation';
 import { workOrderDraftEquals, workOrderFieldErrorMessage } from '../../work-order/screen-model';
+import { invalidateFlow } from '../release-runner';
 import { readableFinding } from './finding-text';
 import {
   useEquipmentSource,
@@ -213,9 +215,12 @@ const EditorSession = ({
   const dirty = !workOrderDraftEquals(baseline, draft);
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
+  const queryClient = useQueryClient();
   const update = useUpdateWorkOrder({
     workOrderId: workOrder.workOrderId,
     onSuccess: (saved) => {
+      /* 4M을 저장하면 서버 칩 판정(처리 화면 머리, 작업함, 칩 건수)이 바뀔 수 있다. 저장 경로는 W/O만 무효화하므로 흐름 전체를 다시 읽는다. */
+      void invalidateFlow(queryClient);
       const next = workOrderAssignmentDraftFrom(saved);
       setBaseline(next);
       setDraft(next);

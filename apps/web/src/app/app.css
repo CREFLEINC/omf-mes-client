@@ -21332,15 +21332,11 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   cursor: help;
 }
 
-/* ── W-02-01 ERP W/O 처리 ─────────────────────────────────────────────── */
+/* ── W-02-01 작업지시 목록 ─────────────────────────────────────────────── */
 .erp-wo-counts {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.erp-wo-counts-label {
-  color: var(--on-surface-variant);
 }
 
 .erp-wo-bulk-actions {
@@ -21381,7 +21377,20 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   white-space: nowrap;
+  cursor: help;
+}
+
+/* 사유 도움말은 사유마다 한 줄이다. */
+.reason-help {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  white-space: normal;
 }
 
 .erp-wo-summary {

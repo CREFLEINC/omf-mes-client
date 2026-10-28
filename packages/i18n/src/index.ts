@@ -3,6 +3,7 @@ import { vi } from './vi';
 
 export { ko, type Messages } from './ko';
 export { vi } from './vi';
+export type { ReasonDetail } from './ko/erp-work-order-flow';
 
 /** 이 저장소가 내는 언어. 새 언어는 여기 한 줄을 더한다. */
 export const LOCALES = { ko, vi } as const;

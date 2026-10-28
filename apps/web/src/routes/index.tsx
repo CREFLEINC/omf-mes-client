@@ -103,6 +103,14 @@ const LotTraceRoute = () => (
   <LotTraceScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
 );
 
+/** 작업지시 목록(W-02-01)의 권한 안내도 같은 메뉴를 가리킨다. */
+const ProductionOrderRoute = () => (
+  <ProductionOrderScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
+);
+const ProductionOrderProcessRoute = () => (
+  <ProductionOrderProcessScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
+);
+
 export const appRouter = createBrowserRouter([
   {
     path: '/',
@@ -349,11 +357,14 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'logistics/document-progress', element: <DocumentProgressScreen /> },
       /* W-02-01 — 생산의 첫 화면이며 주소는 API 리소스가 아니라 화면을 가리킨다. */
-      { path: 'production/production-orders', element: <ProductionOrderScreen /> },
+      {
+        path: 'production/production-orders',
+        element: <ProductionOrderRoute />,
+      },
       /* W-02-01 처리 화면 — 주소에 업무 번호(ERP W/O 번호)를 쓴다. W-02-02~04 를 단계로 합쳤다. */
       {
         path: 'production/production-orders/:productionOrderNo',
-        element: <ProductionOrderProcessScreen />,
+        element: <ProductionOrderProcessRoute />,
       },
       /*
        * W-02-06 — P/O 수신·조회 바로 뒤다. 받은 P/O 가 «바뀌었을 때» 판정하는 자리라

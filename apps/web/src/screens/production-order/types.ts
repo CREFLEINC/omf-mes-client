@@ -1,4 +1,8 @@
-import type { ProductionOrderAutoPlan } from '@omf-mes/api-client';
+import type {
+  ProductionOrderAutoPlan,
+  WorklistReasonEntry,
+  WorklistState,
+} from '@omf-mes/api-client';
 
 export interface PageMeta {
   page: number;
@@ -25,6 +29,13 @@ export interface ProductionOrderFact {
   expandedWorkOrderCount: number | null;
   plannedWorkOrderCount: number | null;
   autoPlan: ProductionOrderAutoPlan | null;
+  /** 서버가 정한 작업지시 목록 칩 판정. 싣지 않는 서버면 null. */
+  worklistState: WorklistState | null;
+  /** 조치 필요인데 자동 계획은 끝난 까닭. 그 밖에는 빈 목록. */
+  worklistReasons: WorklistReasonEntry[];
+  /** 배포 전 W/O 수와 취소되지 않은 W/O 수. 싣지 않는 서버면 null. */
+  releasePendingWorkOrderCount: number | null;
+  liveWorkOrderCount: number | null;
 }
 
 export interface ProductionOrderListResponse {

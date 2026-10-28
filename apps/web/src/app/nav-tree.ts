@@ -385,25 +385,28 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     icon: 'factory',
     items: [
       /*
-       * ERP W/O — 받은 ERP W/O 를 보고, 그것이 «바뀌었을 때» 판정한다(W-02-06). 옛 이름의
+       * 작업지시 목록 — 받은 ERP W/O 를 보고, 그것이 «바뀌었을 때» 판정한다(W-02-06). 옛 이름의
        * 「P/O」는 서버 용어 정리로 구매오더만 뜻하게 되었다(서버 `CONTEXT.md` 「오더」 · #731 —
-       * P/O = 구매오더 · ERP W/O = ERP 에서 받은 생산 오더 · 맨 「W/O」 = MES W/O). 「작업지시」·
-       * 「생산오더」로 부르지 않는다.
+       * P/O = 구매오더 · ERP W/O = ERP 에서 받은 생산 오더 · 맨 「W/O」 = MES W/O). 처리하는 대상은
+       * 화면 안에서 계속 「ERP W/O」, 「W/O」로 부른다.
        *
-       * 「ERP W/O 처리」(W-02-01)는 작업함과 처리 화면이다. 옛 W-02-02(W/O 전개와 편성)와 W-02-03(4M 자원배정)은
+       * 이름은 화면 제목(`erpWorkOrderFlow.title`)과 같아야 하고, 안내용 메뉴 경로 시험(`nav-menu-path.test.ts`)이
+       * 그 짝을 잰다.
+       *
+       * 「작업지시 목록」(W-02-01)은 작업함과 처리 화면이다. 옛 W-02-02(W/O 전개와 편성)와 W-02-03(4M 자원배정)은
        * 처리 화면의 단계로 합쳐 메뉴에도 탭에도 두지 않는다. 옛 주소는 `?productionOrderId=`, `?productionPlanId=`로
        * 대상을 찾아 처리 화면으로 넘긴다(`production-order/process/legacy-redirects.tsx`, omf-all-around#129).
        */
       {
         to: '/production/production-orders',
         icon: 'account_tree',
-        label: 'ERP W/O',
-        labelVi: 'ERP W/O',
+        label: '작업지시 목록',
+        labelVi: 'Danh sách lệnh sản xuất',
         tabs: [
           {
             to: '/production/production-orders',
-            label: 'ERP W/O 처리',
-            labelVi: 'Xử lý ERP W/O',
+            label: '작업지시 목록',
+            labelVi: 'Danh sách lệnh sản xuất',
           },
           {
             to: '/production/po-change-review',
@@ -413,8 +416,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * W-02-04(W/O 확정, 배포)는 메뉴에서 뺐다. 배포는 「ERP W/O 처리」 작업함의 일괄 배포와 처리 화면 마지막 단계가
-       * 맡는다(화면 구성 규범 C-17, T-W-C). 옛 주소는 작업함의 「자동 계획 완료」 조건으로 넘어간다.
+       * W-02-04(W/O 확정, 배포)는 메뉴에서 뺐다. 배포는 「작업지시 목록」 작업함의 일괄 배포와 처리 화면 마지막 단계가
+       * 맡는다(화면 구성 규범 C-17, T-W-C). 옛 주소는 작업함의 「배포 대기」 조건으로 넘어간다.
        */
       /* W-02-07 — 계획을 거치지 않고 직접 발행한다. 갈래가 달라 정규 흐름 뒤에 둔다. */
       {
@@ -779,7 +782,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
        * 거래처·BOM) 다음 전표(구매발주·수주·ERP W/O) 차례다.
        *
        * ⛔ **MES 가 고치거나 이어서 일하는 화면은 여기 두지 않는다.** 품목 확장속성(「품목·BOM
-       * 정보」 W-06-05)과 ERP W/O 전개(「ERP W/O」 W-02-01 → 전개·편성)는 같은 데이터를 다루지만
+       * 정보」 W-06-05)과 ERP W/O 전개(「작업지시 목록」 W-02-01 → 전개·편성)는 같은 데이터를 다루지만
        * MES 의 일이라 업무 묶음에 남는다. 이 묶음은 「ERP 가 무엇을 보냈는가」만 답한다.
        */
       {
