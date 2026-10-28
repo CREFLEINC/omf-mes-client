@@ -24,25 +24,29 @@ export const PlanDetailHead = ({ plan, itemLabel, processLabel, onEdit }: PlanDe
   const approvedAt = formatApprovedAt(plan.approvedAt);
 
   return (
-    /* 첫 줄 — 기준명 · (오른쪽) 승인/사용 칩 · 기본 정보 수정. 둘째 줄 — 코드 · 유형 · 품목 · 공정(사용자 시안 · #196). */
+    /*
+     * 첫 줄 — 「검사 기준 상세」 · 승인/사용 칩, 오른쪽 끝 기본 정보 수정(사용자 시안 · #196).
+     * 둘째 줄 — 기준명 · 코드 · 유형 · 품목 · 공정. 시안에는 없으나 무엇을 보고 있는지 알 길이라 남긴다.
+     */
     <div className="inspection-standard-plan-head-card">
       <div className="inspection-standard-plan-head">
-        <h2 className="pane-title inspection-standard-plan-name">{plan.inspectionPlanName}</h2>
-        {/* 승인 · 사용은 전용 액션으로만 바뀐다 — 값 표기로만 낸다. */}
         <div className="inspection-standard-plan-chips">
+          <h2 className="pane-title">{t.detail.title}</h2>
+          {/* 승인 · 사용은 전용 액션으로만 바뀐다 — 값 표기로만 낸다. */}
           <Chip variant="status" status={approvedAt === null ? 'warning' : 'success'}>
             {approvedAt === null ? t.detail.chipNotApproved : t.values.approvedAt(approvedAt)}
           </Chip>
           <Chip variant="status" status={plan.isActive ? 'success' : 'idle'}>
             {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
           </Chip>
-          <Button variant="outlined" leadingIcon={<Icon name="edit" size={18} />} onClick={onEdit}>
-            {t.detail.editBasic}
-          </Button>
         </div>
+        <Button variant="outlined" leadingIcon={<Icon name="edit" size={18} />} onClick={onEdit}>
+          {t.detail.editBasic}
+        </Button>
       </div>
       <p className="inspection-standard-plan-meta">
         {[
+          plan.inspectionPlanName,
           plan.inspectionPlanCode,
           inspectionTypeLabel(plan.inspectionTypeCode),
           itemLabel ?? t.detail.itemUnset,

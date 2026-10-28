@@ -118,6 +118,8 @@ export const VersionBar = ({
           {versionActions}
           {!isLoading && !hasLoadError && (
             <VersionPrimaryAction
+              /* 버전 줄의 주 단추 — 채운 단추로 낸다(사용자 시안 · #196). */
+              emphasized
               hasVersions={versions.length > 0}
               newRevisionDisabledReason={newRevisionDisabledReason}
               isCreating={isCreating}

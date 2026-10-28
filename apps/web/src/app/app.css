@@ -357,6 +357,8 @@ main > * + * {
 
 .inspection-standard-plan-chips {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
 }
 
@@ -626,8 +628,9 @@ main > * + * {
 }
 
 .inspection-standard-version-bar-row > .field-cell {
-  flex: 0 1 22rem;
-  min-width: 12rem;
+  /* 「버전 12」 정도가 들어가는 폭 — 넓으면 오른쪽 단추가 다음 줄로 밀린다(사용자 지시 · #196). */
+  flex: 0 1 11rem;
+  min-width: 9rem;
 }
 
 /*
@@ -730,11 +733,6 @@ main > * + * {
   min-width: min(22em, 100%);
 }
 
-
-.inspection-standard-plan-name {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
 
 .inspection-standard-plan-chips {
   align-items: center;
