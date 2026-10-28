@@ -21,6 +21,8 @@ export const inspectionStandard = {
     goFirstPage: '첫 쪽으로',
     excelUpload: '엑셀 올리기',
     addPlan: '기준 추가',
+    /* 조회 줄의 짧은 이름(사용자 시안 · #196) */
+    addPlanShort: '추가',
     approve: '승인',
     createVersion: '버전 등록',
     newRevision: '신규 버전 발행',
@@ -39,8 +41,6 @@ export const inspectionStandard = {
   },
   actionReasons: {
     excelUploadUnavailable: '엑셀 양식 확정 후 사용할 수 있습니다.',
-    /* 엑셀 올리기 옆 상태 칩(사용자 시안 · #196). */
-    excelUploadPreparing: '준비 중',
     /*
      * 계약의 라우팅 조회가 품목을 필수 쿼리로 둔다 — 품목을 비운 「전 품목 공통 기준」에는
      * 고를 수 있는 라우팅 자체가 없다. 값을 고를 수 없는 칸을 활성으로 두면

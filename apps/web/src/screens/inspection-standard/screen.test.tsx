@@ -369,13 +369,12 @@ describe('InspectionStandardScreen — 기준 선택', () => {
 
 describe('InspectionStandardScreen — 만들지 않기로 한 것', () => {
   /* 감추면 사용자가 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다. */
-  it('엑셀 올리기는 비활성이고 「준비 중」이 붙으며 사유 줄은 내지 않는다', async () => {
+  it('엑셀 올리기는 비활성 아이콘 단추이고 사유 줄은 내지 않는다', async () => {
     renderScreen([planListRoute()]);
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
     expect(screen.getByRole('button', { name: '엑셀 올리기' })).toBeDisabled();
     expect(screen.queryByText('엑셀 양식 확정 후 사용할 수 있습니다.')).not.toBeInTheDocument();
-    expect(screen.getByText('준비 중')).toBeInTheDocument();
   });
 });
 
@@ -807,7 +806,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
   it('「기준 추가」를 누르면 빈 등록 폼이 열린다', async () => {
     const { user } = renderScreen([planListRoute(), ...lookupRoutes(), planCreateRoute()]);
 
-    await user.click(await screen.findByRole('button', { name: '기준 추가' }));
+    await user.click(await screen.findByRole('button', { name: '추가' }));
 
     expect(await screen.findByLabelText('기준코드')).toHaveValue('');
     expect(screen.getByLabelText('기준명')).toHaveValue('');
@@ -824,7 +823,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
       planDetailRoute({ ...inspectionPlanFixtures[0]!, inspectionPlanId: 3010 }),
     ]);
 
-    await user.click(await screen.findByRole('button', { name: '기준 추가' }));
+    await user.click(await screen.findByRole('button', { name: '추가' }));
     await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
     await user.type(screen.getByLabelText('기준명'), '합성 검사기준 J');
     await user.click(within(planForm()).getByRole('combobox', { name: '검사 유형' }));
@@ -857,7 +856,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
       planDetailRoute({ ...inspectionPlanFixtures[0]!, inspectionPlanId: 3010 }),
     ]);
 
-    await user.click(await screen.findByRole('button', { name: '기준 추가' }));
+    await user.click(await screen.findByRole('button', { name: '추가' }));
     await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
     await user.type(screen.getByLabelText('기준명'), '합성 검사기준 J');
     await user.click(within(planForm()).getByRole('combobox', { name: '검사 유형' }));
@@ -877,7 +876,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
       planCreateRoute(),
     ]);
 
-    await user.click(await screen.findByRole('button', { name: '기준 추가' }));
+    await user.click(await screen.findByRole('button', { name: '추가' }));
     await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
     await user.click(within(planForm()).getByRole('button', { name: '기준 추가' }));
 
@@ -1140,7 +1139,7 @@ describe('InspectionStandardScreen — 기준 승인', () => {
   it('등록 폼에서는 승인·사용 중지가 비활성이고 사유가 보인다', async () => {
     const { user } = renderScreen([planListRoute(), ...lookupRoutes()]);
 
-    await user.click(await screen.findByRole('button', { name: '기준 추가' }));
+    await user.click(await screen.findByRole('button', { name: '추가' }));
 
     const form = planForm();
     expect(within(form).getByRole('button', { name: '승인' })).toBeDisabled();

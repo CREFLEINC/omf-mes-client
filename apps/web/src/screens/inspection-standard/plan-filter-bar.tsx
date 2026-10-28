@@ -1,6 +1,6 @@
 import { Button, Checkbox, Chip, SearchInput, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import { ItemPickerDialog } from '../../patterns/item-picker';
 import { DEFAULT_PLAN_FILTERS, INSPECTION_TYPE_OPTIONS } from './code-options';
@@ -17,13 +17,15 @@ export interface PlanFilterBarProps {
   appliedFilters: PlanFilters;
   /** 조회 버튼·Enter·칩 제거·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
   onApplyFilters: (next: PlanFilters) => void;
+  /** 조회 · 초기화 뒤, 구분선 너머에 서는 화면 단추(엑셀 올리기 · 추가 · #196) */
+  actions?: ReactNode;
 }
 
 /**
  * 검사기준 조회 조건 — 검사 조회·판정처럼 목록 위 카드 한 줄에 선다(omf-all-around#196).
  * 목록 구획 안에 두면 좌우 배치에서 좁은 목록 칸에 조건 셋이 끼어 줄이 넘친다.
  */
-export const PlanFilterBar = ({ appliedFilters, onApplyFilters }: PlanFilterBarProps) => {
+export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanFilterBarProps) => {
   const typeSelectId = useId();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const openPicker = (): void => setIsPickerOpen(true);
@@ -131,9 +133,16 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters }: PlanFilterBarP
           <Button type="button" variant="filled" onClick={() => onApplyFilters(draft)}>
             {messages.common.search}
           </Button>
-          <Button variant="outlined" onClick={() => onApplyFilters(DEFAULT_PLAN_FILTERS)}>
+          {/* 초기화는 글자 단추 — 조회 옆에서 한 단계 낮춘다(사용자 시안 · #196). */}
+          <Button variant="text" onClick={() => onApplyFilters(DEFAULT_PLAN_FILTERS)}>
             {messages.common.reset}
           </Button>
+          {actions !== undefined && (
+            <>
+              <span className="inspection-standard-filter-divider" aria-hidden />
+              {actions}
+            </>
+          )}
         </div>
       </div>
 

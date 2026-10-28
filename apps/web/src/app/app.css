@@ -313,9 +313,17 @@ main > * + * {
   margin-bottom: 0;
 }
 
-/* 조회 · 초기화는 줄 오른쪽 끝에 선다(사용자 지시 2026-10-27 · #196). */
+/* 조회 · 초기화 | 엑셀 올리기 · 추가 — 줄 오른쪽 끝에 선다(사용자 시안 · #196). */
 .inspection-standard-search .filter-actions {
+  align-items: center;
   margin-left: auto;
+}
+
+.inspection-standard-filter-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 0 var(--space-1);
+  background: var(--outline-variant);
 }
 
 /*
@@ -722,28 +730,6 @@ main > * + * {
   min-width: min(22em, 100%);
 }
 
-/* 조회 카드 머리(엑셀 올리기 · 기준 추가, 오른쪽) — 조건 줄과 띄운다(#196). */
-.inspection-standard-search > .inspection-standard-section-head {
-  margin-bottom: var(--space-4);
-}
-
-/* 엑셀 올리기 — 단추 · 「준비 중」 칩 한 줄(사용자 시안 · #196). */
-.inspection-standard-excel-upload {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.inspection-standard-excel-upload-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* 제목이 없어 단추 묶음을 오른쪽 끝에 붙인다. 엑셀 올리기 아래 사유 글이 있어 단추 윗줄을 맞춘다. */
-.inspection-standard-search > .inspection-standard-section-head > .inspection-standard-list-toolbar {
-  margin-left: auto;
-  align-items: flex-start;
-}
 
 .inspection-standard-plan-name {
   margin: 0;
@@ -752,15 +738,6 @@ main > * + * {
 
 .inspection-standard-plan-chips {
   align-items: center;
-}
-
-/* 기준 추가 · 엑셀 올리기 — 표 위 오른쪽(omf-all-around#196). */
-.inspection-standard-list-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 /* 엑셀 올리기 사유는 줄 높이를 늘리지 않게 글로는 감추고(마우스를 올리면 보인다) 화면 낭독기 설명으로만 남긴다. */

@@ -2,10 +2,10 @@ import {
   AlertBanner,
   Breadcrumb,
   Button,
-  Chip,
   Dialog,
   EmptyState,
   Icon,
+  IconButton,
   PageHeader,
   SkeletonText,
   Tabs,
@@ -1609,43 +1609,31 @@ export const InspectionStandardScreen = () => {
 
       {/* 조회 조건 — 검사 조회·판정처럼 목록과 다른 카드에 둔다. */}
       <section ref={aboveRef} className="pane inspection-standard-search" role="search">
-        {/*
-         * 머리 — 오른쪽에 엑셀 올리기 · 기준 추가(사용자 시안 · #196, 제목은 걷었다). 조회 조건은 이 카드에 둔다 —
-         * 좁은 목록 칸 안에 두면 좌우 배치에서 칸이 넘친다.
-         */}
-        <div className="inspection-standard-section-head">
-          <div className="inspection-standard-list-toolbar">
-            {/*
-             * 계약에 올리기 경로가 없고 양식도 정해지지 않았다. 감추면 사용자가
-             * 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다 — 사유와 함께 비활성으로 둔다.
-             */}
-            {/* 아이콘 · 「준비 중」 칩(사용자 시안 · #196). 아래 사유 줄은 걷었다(사용자 지시) — 사유는 마우스를 올리면 보인다. */}
-            <div
-              className="inspection-standard-excel-upload"
-              title={t.actionReasons.excelUploadUnavailable}
-            >
-              <div className="inspection-standard-excel-upload-row">
-                <Button variant="outlined" disabled leadingIcon={<Icon name="upload" size={18} />}>
-                  {t.actions.excelUpload}
-                </Button>
-                <Chip variant="status" size="sm" status="idle">
-                  {t.actionReasons.excelUploadPreparing}
-                </Chip>
-              </div>
-            </div>
-            <Button
-              leadingIcon={<Icon name="add" size={18} />}
-              disabled={createValues !== null}
-              onClick={() => {
-                resetPlanEditing();
-                setCreateValues(emptyPlanFormValues());
-              }}
-            >
-              {t.actions.addPlan}
-            </Button>
-          </div>
-        </div>
-        <PlanFilterBar appliedFilters={filters} onApplyFilters={applyFilters} />
+        <PlanFilterBar
+          appliedFilters={filters}
+          onApplyFilters={applyFilters}
+          /*
+           * 조회 · 초기화 뒤 구분선 너머에 엑셀 올리기(아이콘) · 추가(사용자 시안 · #196).
+           * 엑셀 올리기는 계약에 경로가 없고 양식도 정해지지 않았다 — 감추지 않고 비활성으로 두며 사유는 마우스를 올리면 보인다.
+           */
+          actions={
+            <>
+              <span title={t.actionReasons.excelUploadUnavailable}>
+                <IconButton icon="upload" aria-label={t.actions.excelUpload} disabled />
+              </span>
+              <Button
+                leadingIcon={<Icon name="add" size={18} />}
+                disabled={createValues !== null}
+                onClick={() => {
+                  resetPlanEditing();
+                  setCreateValues(emptyPlanFormValues());
+                }}
+              >
+                {t.actions.addPlanShort}
+              </Button>
+            </>
+          }
+        />
       </section>
 
       <div
