@@ -2665,10 +2665,6 @@
       "n": 1,
       "text": "가운뎃점: '공급사·사업부·공장·품목·단위 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
     },
-    "C-13|packages/i18n/src/ko/pop-chrome.ts|80488a82dc80": {
-      "n": 1,
-      "text": "가운뎃점: `${String(page)} / ${String(totalPages)} · 전체 ${String(count)}건`,"
-    },
     "C-13|packages/i18n/src/ko/pop-location-label.ts|d00f945c2cab": {
       "n": 1,
       "text": "가운뎃점: `인쇄 성공 ${String(printed)}건 · 실패 ${String(failed)}건`,"

@@ -78,27 +78,27 @@ describe('P-02-01 작업지시 목록 쪽 넘김 (#1005)', () => {
   it('쪽이 여럿이면 넘길 단추를 세운다', () => {
     render(<WorkOrderList {...base} pageMeta={paged} total={45} />);
 
-    expect(screen.getByRole('button', { name: nav.pageDown })).toBeEnabled();
+    expect(screen.getByRole('button', { name: nav.next })).toBeEnabled();
   });
 
   it('첫 쪽에서는 위로 갈 수 없다', () => {
     render(<WorkOrderList {...base} pageMeta={paged} total={45} />);
 
-    expect(screen.getByRole('button', { name: nav.pageUp })).toBeDisabled();
+    expect(screen.getByRole('button', { name: nav.prev })).toBeDisabled();
   });
 
   it('마지막 쪽에서는 아래로 갈 수 없다', () => {
     render(<WorkOrderList {...base} pageMeta={{ page: 3, size: 20, total: 45 }} total={45} />);
 
-    expect(screen.getByRole('button', { name: nav.pageDown })).toBeDisabled();
-    expect(screen.getByRole('button', { name: nav.pageUp })).toBeEnabled();
+    expect(screen.getByRole('button', { name: nav.next })).toBeDisabled();
+    expect(screen.getByRole('button', { name: nav.prev })).toBeEnabled();
   });
 
   it('누르면 다음 쪽을 청한다', async () => {
     const onPageChange = vi.fn();
 
     render(<WorkOrderList {...base} pageMeta={paged} total={45} onPageChange={onPageChange} />);
-    await userEvent.click(screen.getByRole('button', { name: nav.pageDown }));
+    await userEvent.click(screen.getByRole('button', { name: nav.next }));
 
     expect(onPageChange).toHaveBeenCalledWith(2);
   });
@@ -107,7 +107,7 @@ describe('P-02-01 작업지시 목록 쪽 넘김 (#1005)', () => {
   it('쪽이 하나뿐이면 세우지 않는다', () => {
     render(<WorkOrderList {...base} pageMeta={{ page: 1, size: 20, total: 7 }} total={7} />);
 
-    expect(screen.queryByRole('button', { name: nav.pageDown })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: nav.next })).not.toBeInTheDocument();
   });
 });
 

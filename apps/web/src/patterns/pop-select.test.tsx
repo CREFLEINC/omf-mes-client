@@ -57,17 +57,18 @@ describe('PopSelect — G-34 선택 팝업', () => {
     expect(screen.getByText('항목 3')).toBeInTheDocument();
   });
 
-  it('페이지 위·아래와 현재 페이지·전체 건수를 제공한다', async () => {
+  it('[이전]과 [다음], 현재 페이지와 전체 건수를 관리웹 페이지 이동과 같은 꼴로 제공한다', async () => {
     const user = userEvent.setup();
 
     renderWithProviders(<PopSelect aria-label="사유" options={OPTIONS} />);
     await user.click(screen.getByRole('combobox', { name: '사유' }));
 
-    expect(screen.getByText('1 / 2 · 전체 7건')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '페이지 아래' }));
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    expect(screen.getByText('총 7건')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '다음' }));
     expect(screen.getByRole('option', { name: '항목 7' })).toBeInTheDocument();
-    expect(screen.getByText('2 / 2 · 전체 7건')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '페이지 위' })).toBeEnabled();
+    expect(screen.getByText('2 / 2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '이전' })).toBeEnabled();
   });
 
   /**
@@ -83,7 +84,7 @@ describe('PopSelect — G-34 선택 팝업', () => {
 
     expect(screen.getAllByRole('option')).toHaveLength(5);
 
-    await user.click(screen.getByRole('button', { name: '페이지 아래' }));
+    await user.click(screen.getByRole('button', { name: '다음' }));
     expect(screen.getAllByRole('option')).toHaveLength(2);
   });
 
@@ -97,7 +98,7 @@ describe('PopSelect — G-34 선택 팝업', () => {
     await user.click(screen.getByRole('button', { name: '검색어 지우기' }));
 
     expect(search).toHaveValue('');
-    expect(screen.getByText('1 / 2 · 전체 7건')).toBeInTheDocument();
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
   });
 });
 
@@ -154,7 +155,7 @@ describe('PopSelect — 스캔 목록', () => {
 
   /*
    * ⛔ **검색 줄만 켠다 — 쪽 이동은 켜지 않는다.** 한때 `isShortList` 자체에 `&& !scannable` 을
-   *    붙였더니 후보가 둘뿐인 목록에 양쪽 다 눌리지 않는 [페이지 위]·[페이지 아래]가 함께 섰다.
+   *    붙였더니 후보가 둘뿐인 목록에 양쪽 다 눌리지 않는 [이전]과 [다음]이 함께 섰다.
    *    「짧은 목록에는 검색도 쪽 이동도 두지 않는다」(2026-09-10)가 지우려던 바로 그 모양이다.
    */
   it('짧은 목록에서 검색 줄은 서고 쪽 이동은 서지 않는다', async () => {
@@ -164,9 +165,9 @@ describe('PopSelect — 스캔 목록', () => {
     await user.click(screen.getByRole('combobox', { name: '출하대상' }));
 
     expect(screen.getByRole('searchbox', { name: '스캔 또는 목록 검색' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '페이지 위' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '페이지 아래' })).not.toBeInTheDocument();
-    expect(screen.queryByText(/전체 2건/u)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '이전' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다음' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/총 2건/u)).not.toBeInTheDocument();
   });
 
   /*

@@ -63,7 +63,8 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     scanPlaceholder: 'Quét hoặc tìm trong danh sách',
     clearSearch: 'Xóa',
     empty: 'Không có mục nào để hiển thị.',
-    position: (page: number, totalPages: number, count: number): string =>
-      `${String(page)} / ${String(totalPages)} · Tổng ${String(count)} mục`,
+    position: (page: number, totalPages: number): string =>
+      `${String(page)} / ${String(Math.max(totalPages, 1))}`,
+    total: (count: number): string => `Tổng ${String(count)} mục`,
   },
 };

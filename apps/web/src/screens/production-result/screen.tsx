@@ -2013,7 +2013,7 @@ export const ProductionFlowScreen = () => {
                 disabled={!completedBoundary.canPageUp}
                 onClick={() => setCompletedPage(Math.max(1, completedBoundary.page - 1))}
               >
-                {t.flow.currentLot.pageUp}
+                {t.flow.currentLot.prev}
               </Button>
               <p className="field-note">
                 {t.flow.currentLot.pagePosition(
@@ -2026,7 +2026,7 @@ export const ProductionFlowScreen = () => {
                 disabled={!completedBoundary.canPageDown}
                 onClick={() => setCompletedPage(completedBoundary.page + 1)}
               >
-                {t.flow.currentLot.pageDown}
+                {t.flow.currentLot.next}
               </Button>
             </nav>
           </>

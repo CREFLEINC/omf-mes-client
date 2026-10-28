@@ -92,7 +92,9 @@ export const popChrome = {
     scanPlaceholder: '스캔하거나 목록에서 검색',
     clearSearch: '검색어 지우기',
     empty: '표시할 항목이 없습니다.',
-    position: (page: number, totalPages: number, count: number): string =>
-      `${String(page)} / ${String(totalPages)} · 전체 ${String(count)}건`,
+    /** 관리웹 페이지 이동과 같은 꼴: 위치 「1 / 3」, 건수 「총 7건」. */
+    position: (page: number, totalPages: number): string =>
+      `${String(page)} / ${String(Math.max(totalPages, 1))}`,
+    total: (count: number): string => `총 ${String(count)}건`,
   },
 };

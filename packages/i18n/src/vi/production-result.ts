@@ -54,10 +54,10 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       completedTitle: 'LOT đã đóng',
       completedEmpty: 'Không có LOT đã đóng.',
       pageNav: 'Chuyển trang LOT đã đóng',
-      pageUp: 'Trang trên',
-      pageDown: 'Trang dưới',
+      prev: 'Trước',
+      next: 'Sau',
       pagePosition: (page: number, totalPages: number) =>
-        `Trang ${String(page)}/${String(totalPages)}`,
+        `${String(page)} / ${String(Math.max(totalPages, 1))}`,
       unreliable: (lotNos: string): string =>
         `Máy chủ không xác định được một LOT hiện tại (LOT ${lotNos}). Đã chặn nhập để kết quả không gắn vào LOT khác. Hãy nhờ quản trị viên kiểm tra máy chủ đã là bản mới nhất chưa.`,
       loadFailed: 'Không tải được LOT hiện tại. Hãy kiểm tra kết nối rồi bấm «Thử lại».',

@@ -703,7 +703,7 @@ describe('ProductionFlowScreen', () => {
     expect(complete?.headers.get('If-Match')).not.toBeNull();
   });
 
-  it('마감 LOT 팝업은 서버 페이지 경계에서 페이지 위·아래를 이동한다', async () => {
+  it('마감 LOT 팝업은 서버 페이지 경계에서 [이전]과 [다음]으로 이동한다', async () => {
     const writes: Request[] = [];
     const requestedPages: number[] = [];
     const completedRoute: StubRoute = {
@@ -741,14 +741,14 @@ describe('ProductionFlowScreen', () => {
 
     await user.click(await screen.findByRole('button', { name: t.flow.currentLot.completed }));
     expect(await screen.findByText('LOT-CLOSED-1')).toBeVisible();
-    expect(screen.getByRole('button', { name: t.flow.currentLot.pageUp })).toBeDisabled();
-    const pageDown = screen.getByRole('button', { name: t.flow.currentLot.pageDown });
+    expect(screen.getByRole('button', { name: t.flow.currentLot.prev })).toBeDisabled();
+    const pageDown = screen.getByRole('button', { name: t.flow.currentLot.next });
     expect(pageDown).toBeEnabled();
 
     await user.click(pageDown);
     expect(await screen.findByText('LOT-CLOSED-2')).toBeVisible();
-    expect(screen.getByRole('button', { name: t.flow.currentLot.pageUp })).toBeEnabled();
-    expect(screen.getByRole('button', { name: t.flow.currentLot.pageDown })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.flow.currentLot.prev })).toBeEnabled();
+    expect(screen.getByRole('button', { name: t.flow.currentLot.next })).toBeDisabled();
     expect(requestedPages).toEqual([1, 2]);
   });
 

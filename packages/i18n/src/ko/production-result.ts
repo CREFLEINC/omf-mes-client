@@ -68,10 +68,11 @@ export const productionResult = {
       completedTitle: '마감된 LOT',
       completedEmpty: '마감된 LOT이 없습니다.',
       pageNav: '마감된 LOT 페이지 이동',
-      pageUp: '페이지 위',
-      pageDown: '페이지 아래',
+      /* 쪽 이동은 POP 공용과 같은 말이다(`popPageNav`, 화면 용어집). */
+      prev: '이전',
+      next: '다음',
       pagePosition: (page: number, totalPages: number) =>
-        `${String(totalPages)}쪽 중 ${String(page)}쪽`,
+        `${String(page)} / ${String(Math.max(totalPages, 1))}`,
       /** 서버가 현재 LOT 을 한 건으로 정하지 못했다(옛 서버) — 엉뚱한 LOT 에 실적이 붙지 않게 막는다. */
       unreliable: (lotNos: string): string =>
         `서버가 현재 LOT을 하나로 정하지 못했습니다(LOT ${lotNos}). 다른 LOT에 실적이 붙지 않도록 입력을 막았습니다. 관리자에게 서버가 최신 판인지 확인을 요청하세요.`,
