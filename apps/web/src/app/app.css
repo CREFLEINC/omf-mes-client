@@ -362,6 +362,11 @@ main > * + * {
   gap: var(--space-2);
 }
 
+/* 제목의 아래 여백(공용 `.pane-title`)을 걷어 칩과 같은 높이 가운데에 맞춘다(사용자 지시 · #196). */
+.inspection-standard-plan-chips > .pane-title {
+  margin: 0;
+}
+
 .inspection-standard-version-bar {
   padding-top: var(--space-4);
   border-top: 1px solid var(--outline-variant);
