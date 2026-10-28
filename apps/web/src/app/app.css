@@ -20145,6 +20145,33 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   margin-inline-start: auto;
 }
 
+/* C-17, C-19 CountChip(patterns/count-chip) 조건 칩: 선택과 관계없이 같은 모양, 선택된 것만 테두리가 굵다. 색은 상태 칩과 같다. */
+.count-chip {
+  padding: 0 var(--space-3);
+  min-height: var(--control-height-sm);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  cursor: pointer;
+}
+
+.count-chip-warning {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.count-chip-success {
+  background: var(--semantic-success-container);
+  color: var(--on-semantic-success-container);
+}
+
+.count-chip.is-selected {
+  border-width: 2px;
+  border-color: var(--on-surface);
+}
+
 /* T-W-C ProcessPage. 처리 머리는 제목 줄과 요약 줄 두 줄로 고정한다. */
 .process-page {
   display: flex;
@@ -20438,33 +20465,6 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 
 .erp-wo-counts-label {
   color: var(--on-surface-variant);
-}
-
-/* C-19 조건 칩: 선택과 관계없이 같은 모양, 선택된 것만 테두리가 굵다. 색은 상태 칩과 같다. */
-.count-chip {
-  padding: 0 var(--space-3);
-  min-height: var(--control-height-sm);
-  border: 1px solid var(--outline);
-  border-radius: var(--radius-full);
-  background: var(--surface);
-  color: var(--on-surface);
-  font: var(--type-label-sm);
-  cursor: pointer;
-}
-
-.count-chip-warning {
-  background: var(--semantic-warning-container);
-  color: var(--on-semantic-warning-container);
-}
-
-.count-chip-success {
-  background: var(--semantic-success-container);
-  color: var(--on-semantic-success-container);
-}
-
-.count-chip.is-selected {
-  border-width: 2px;
-  border-color: var(--on-surface);
 }
 
 .erp-wo-bulk-actions {
@@ -22151,7 +22151,8 @@ body.col-reordering * {
  */
 .inspection-split > .iqc-inspection-queue-pane,
 .inspection-split > .oqc-inspection-queue-pane,
-.inspection-split > .pqc-web-list.pane {
+.inspection-split > .pqc-web-list.pane,
+.inspection-split > .lot-trace-list-pane {
   height: auto;
   max-height: calc(100dvh - 20rem);
 }
@@ -22159,14 +22160,16 @@ body.col-reordering * {
 @media (min-width: 1440px) {
   .inspection-split > .iqc-inspection-queue-pane,
   .inspection-split > .oqc-inspection-queue-pane,
-  .inspection-split > .pqc-web-list.pane {
+  .inspection-split > .pqc-web-list.pane,
+  .inspection-split > .lot-trace-list-pane {
     max-height: none;
     min-height: 0;
   }
 
   .inspection-split > .iqc-inspection-detail,
   .inspection-split > .oqc-inspection-detail,
-  .inspection-split > .pqc-web-detail {
+  .inspection-split > .pqc-web-detail,
+  .inspection-split > .lot-trace-detail-pane {
     min-height: 0;
     overflow: auto;
   }
@@ -22266,7 +22269,8 @@ body.col-reordering * {
 
 .po-board-split.inspection-split.is-stacked > .iqc-inspection-queue-pane,
 .po-board-split.inspection-split.is-stacked > .oqc-inspection-queue-pane,
-.po-board-split.inspection-split.is-stacked > .pqc-web-list.pane {
+.po-board-split.inspection-split.is-stacked > .pqc-web-list.pane,
+.po-board-split.inspection-split.is-stacked > .lot-trace-list-pane {
   /* 가운데 막대로 높이를 정했으면 그 높이, 아니면 줄 수만큼(넘치면 상자 안에서 구른다). */
   box-sizing: border-box;
   height: var(--stacked-list-height, auto);
@@ -22276,7 +22280,8 @@ body.col-reordering * {
 
 .po-board-split.inspection-split.is-stacked > .iqc-inspection-detail,
 .po-board-split.inspection-split.is-stacked > .oqc-inspection-detail,
-.po-board-split.inspection-split.is-stacked > .pqc-web-detail {
+.po-board-split.inspection-split.is-stacked > .pqc-web-detail,
+.po-board-split.inspection-split.is-stacked > .lot-trace-detail-pane {
   overflow: visible;
 }
 
@@ -22356,7 +22361,8 @@ body.col-reordering * {
 @media (max-width: 1439px) {
   .po-board-split.inspection-split > .iqc-inspection-queue-pane,
   .po-board-split.inspection-split > .oqc-inspection-queue-pane,
-  .po-board-split.inspection-split > .pqc-web-list.pane {
+  .po-board-split.inspection-split > .pqc-web-list.pane,
+  .po-board-split.inspection-split > .lot-trace-list-pane {
     height: auto;
     min-height: 0;
     max-height: min(28rem, 50dvh);
@@ -23497,4 +23503,528 @@ table.col-measuring td {
   /* 남는 폭을 다 쓴다(창 폭 따라 늘고 준다 · 사용자 지시 2026-10-26). */
   flex: 1 1 20rem;
   min-width: 0;
+}
+
+/* ── W-02-09 LOT 추적(입출고 현황) ────────────────────────────────────── */
+.lot-trace-kinds {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lot-trace-kinds-label {
+  color: var(--on-surface-variant);
+}
+
+.lot-trace-export {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.lot-trace-export-progress,
+.lot-trace-export-reason {
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.filter-bar.lot-trace-filter {
+  margin-bottom: 0;
+}
+
+/* 조건 더보기를 펴면 둘째 줄. 기본 줄의 [초기화] [조회]는 첫 줄 오른쪽 끝에 남는다. */
+.lot-trace-filter-more {
+  display: flex;
+  flex-basis: 100%;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.lot-trace-totals {
+  display: flex;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-3);
+  font: var(--type-body-sm);
+}
+
+.lot-trace-totals-label {
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 품목명이 남는 폭을 가져간다(C-16). 칸 폭을 0에서 늘려 내용 길이가 표 폭을 밀지 못하게 한다.
+ * 대조 열(문서번호, LOT 번호)은 말줄임하지 않는다(C-10).
+ */
+.lot-trace-table td:has(> .lot-trace-fill) {
+  width: 100%;
+  max-width: 0;
+}
+
+.lot-trace-table .lot-trace-fill {
+  min-width: 6rem;
+}
+
+.lot-trace-table .lot-trace-partner {
+  max-width: 8rem;
+}
+
+/* 탭 머리 줄: 왼쪽 조건 칩, 오른쪽 엑셀 내보내기 */
+.lot-trace-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: var(--space-3) 0;
+}
+
+.lot-trace-toolbar-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.lot-trace-list-pane {
+  margin-top: var(--space-4);
+}
+
+/* 진입점이 없을 때 [조회] 아래 사유 한 줄(C-4) */
+.lot-trace-actions-cell {
+  align-items: flex-end;
+}
+
+.lot-trace-entry-reason {
+  margin-top: var(--space-1);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.lot-trace-filter-more {
+  flex-wrap: wrap;
+}
+
+.lot-trace-axis {
+  min-height: var(--control-height-md);
+  align-items: center;
+}
+
+/*
+ * 자재 LOT, 제품 LOT 탭 — 목록과 상세 배치는 검사 조회·판정과 같은 규칙(`.inspection-split`, 좌우 · 상하 배치 고름)을 쓴다.
+ * 여기에는 목록 창 안의 짜임만 둔다: 표만 안에서 구르고 쪽 넘김은 제자리, 머리줄은 위에 붙는다.
+ */
+.lot-trace-split {
+  margin-top: var(--space-4);
+}
+
+.lot-trace-split > .lot-trace-list-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: 0;
+}
+
+.lot-trace-split > .lot-trace-list-pane > .lot-trace-list-rows {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* DS 표가 자기 감싸개(가로 넘침용)를 두므로, 세로로 구르는 상자도 그 감싸개가 맡아야 머리줄이 붙는다. */
+.lot-trace-list-rows > .selectable-table {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.lot-trace-list-rows thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* 상세 창 — 카드 폭으로 배치를 고른다(창 폭이 아니라 카드 폭이 정한다). */
+.lot-trace-detail-pane {
+  container-type: inline-size;
+}
+
+/* 목록 행 — 검사 조회·판정 목록과 같은 표시: 줄무늬 없음, 올리면 옅게, 고른 행은 바탕과 왼쪽 강조선. */
+.lot-trace-list-rows tbody tr,
+.lot-trace-list-rows tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.lot-trace-list-rows .selectable-table tbody > tr.is-active > td,
+.lot-trace-list-rows .selectable-table tbody > tr.is-active:hover > td {
+  background: var(--surface-container-high);
+}
+
+.lot-trace-list-rows .selectable-table tbody > tr.is-active > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+/* LOT 번호 — 한 줄. 모자라면 앞 마디만 줄이고 끝 마디(일련번호)는 남긴다(trace-table.tsx). */
+.lot-trace-lot {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lot-trace-lot:has(> .lot-trace-lot-tail) {
+  display: flex;
+  min-width: 0;
+}
+
+.lot-trace-lot-head {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lot-trace-lot-tail {
+  flex: none;
+}
+
+/* 품목 「이름 코드」 한 줄 — 이름이 먼저 줄고, 코드는 흐리게 뒤에 붙는다. */
+.lot-trace-item-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lot-trace-item-code {
+  flex: 0 10 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 상세 — 경로 줄, 머리, 요약 항목, 단계 줄, 구획(얇은 구분선으로 가른다). */
+.lot-trace-detail {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.lot-trace-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--type-body-sm);
+}
+
+.lot-trace-back {
+  gap: var(--space-1);
+}
+
+.lot-trace-path-steps,
+.lot-trace-path-step {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.lot-trace-path-step > :last-child {
+  color: var(--on-surface-muted);
+}
+
+.lot-trace-path-current {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.lot-trace-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.lot-trace-detail-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.lot-trace-detail-title > h2 {
+  overflow-wrap: anywhere;
+}
+
+.lot-trace-detail-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/*
+ * 항목명(위)과 값(아래)의 격자 — 검사 조회·판정 기본 정보와 같은 모양. 카드 폭만큼 칸을 채우고, 품목처럼 긴 값은
+ * 두 칸을 쓴다.
+ */
+.lot-trace-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0;
+}
+
+.lot-trace-fact.is-wide {
+  grid-column: span 2;
+}
+
+/* 상세 머리의 요약 항목 — 칸마다 제 폭만 써서 한 줄에 선다. 첫 표가 첫 화면에서 멀어지지 않게. */
+.lot-trace-facts.is-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+}
+
+.lot-trace-facts.is-compact > .lot-trace-fact {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.lot-trace-fact {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.lot-trace-fact > dt {
+  margin: 0;
+}
+
+.lot-trace-fact > dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.lot-trace-fact .ellipsis-cell {
+  display: block;
+  max-width: 100%;
+}
+
+/* 번호(입하번호, W/O 번호)는 칸 안에서 접지 않는다. 모자라면 말줄임, 전체는 마우스를 올리면 보인다. */
+.lot-trace-fact > dd > .mono-cell {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lot-trace-section {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  scroll-margin-top: var(--space-3);
+}
+
+.lot-trace-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.lot-trace-section-count {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+.lot-trace-section p,
+.lot-trace-block-empty {
+  margin: 0;
+}
+
+.lot-trace-block {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.lot-trace-block-title {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/*
+ * 상세 안 작은 표 — 셀은 한 줄(C-16), 표는 상세 창 폭 안에 들어온다. 번호, 수량, 날짜 열은 정한 폭, 이름 열이 남는
+ * 폭을 쓴다. 모자라면 칸 안에서 말줄임이고 전체 값은 마우스를 올리면 보인다. 창 안에서 가로로 구르지 않는다.
+ */
+.lot-trace-detail-table {
+  min-width: 0;
+}
+
+.lot-trace-detail-table table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.lot-trace-detail-table th,
+.lot-trace-detail-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lot-trace-detail-table td .ellipsis-cell,
+.lot-trace-detail-table td .mono-cell:not(.lot-trace-lot) {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 번호와 칩을 한 칸에 — 번호가 먼저 줄고 칩은 그대로 보인다. */
+.lot-trace-cell-with-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.lot-trace-cell-with-chip > .mono-cell {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.lot-trace-cell-with-chip > :last-child:not(.mono-cell) {
+  flex: none;
+}
+
+/* 생산 LOT 묶음 — 머리 줄(생산 LOT 번호와 문서 건수)을 눌러 접고 편다. 펴면 요약 항목과 세 표. */
+.lot-trace-group {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  scroll-margin-top: var(--space-3);
+}
+
+.lot-trace-group-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  list-style: none;
+}
+
+.lot-trace-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.lot-trace-group-summary > .field-label {
+  margin: 0;
+}
+
+.lot-trace-group:not([open]) > .lot-trace-group-summary > :first-child {
+  transform: rotate(-90deg);
+}
+
+.lot-trace-group-summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.lot-trace-group-lot {
+  font-weight: 700;
+}
+
+.lot-trace-group-counts {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+.lot-trace-group-body {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.lot-trace-group-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.lot-trace-group-head > .lot-trace-facts {
+  flex: 1 1 auto;
+}
+
+/*
+ * 단계 줄 — DS Stepper(작게). 지난 단계는 완료, 가장 멀리 간 단계는 진행 중, 닿지 않은 단계는 대기 모양이다.
+ * 단계 이름과 건수를 단추 하나로 두어 누르면 상세의 그 단계 첫 구획으로 간다.
+ */
+.lot-trace-stages {
+  margin: 0 0 var(--space-3);
+}
+
+.lot-trace-stage-jump {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lot-trace-stage-jump:hover:not(:disabled) {
+  background: var(--surface-container-high);
+}
+
+.lot-trace-stage-jump:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.lot-trace-stage-jump:disabled {
+  cursor: default;
+}
+
+.lot-trace-stage-count {
+  font: var(--type-body-sm);
+}
+
+[aria-current='step'] .lot-trace-stage-jump {
+  font-weight: 700;
+}
+
+[data-status='pending'] .lot-trace-stage-jump {
+  color: var(--on-surface-muted);
+}
+
+.lot-trace-chip-anchor {
+  display: inline-flex;
+}
+
+.lot-trace-stage-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
 }

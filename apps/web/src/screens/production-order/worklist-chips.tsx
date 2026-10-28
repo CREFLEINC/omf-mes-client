@@ -1,6 +1,7 @@
 import { Chip, type ChipStatus } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { CountChip as SharedCountChip } from '../../patterns/count-chip';
 import type { ProcessState, WorklistReason } from './worklist-model';
 
 const t = messages.erpWorkOrderFlow;
@@ -45,9 +46,7 @@ export const ReasonChips = ({ reasons }: { reasons: readonly WorklistReason[] })
   );
 };
 
-/**
- * 페이지 머리 상태별 건수(C-17). 누르면 그 조건으로 바뀐다. 모양은 선택과 관계없이 같고, 선택된 것만 테두리가 굵다(C-19).
- */
+/** 페이지 머리 상태별 건수(C-17). 공용 `CountChip`에 상태 칩과 같은 색을 넘긴다(C-19). */
 export const CountChip = ({
   state,
   label,
@@ -59,12 +58,5 @@ export const CountChip = ({
   selected: boolean;
   onSelect: () => void;
 }) => (
-  <button
-    type="button"
-    className={`count-chip count-chip-${STATE_TONE[state]}${selected ? ' is-selected' : ''}`}
-    aria-pressed={selected}
-    onClick={onSelect}
-  >
-    {label}
-  </button>
+  <SharedCountChip tone={STATE_TONE[state]} label={label} selected={selected} onSelect={onSelect} />
 );

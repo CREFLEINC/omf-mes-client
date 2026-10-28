@@ -185,6 +185,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     loading: 'Đang tải chi tiết LOT',
     failed: 'Không tải được chi tiết LOT.',
     close: 'Đóng',
+    trace: 'Xem truy xuất',
     attributes: 'Thuộc tính LOT',
     fields: {
       lotNo: 'Số LOT',

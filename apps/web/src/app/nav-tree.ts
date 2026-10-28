@@ -22,7 +22,7 @@
  * 이름을 읽는 쪽에서만 드러난다. 새 항목은 `label` 과 `labelVi` 를 **함께** 적는다.
  */
 
-import type { LocalizedLabel } from '../patterns/localized-label';
+import { localizedLabel, type LocalizedLabel } from '../patterns/localized-label';
 
 /**
  * 탭 묶음 안의 화면 하나 — 주소와 두 언어의 탭 이름. 아이콘은 묶음의 것을 쓴다.
@@ -428,6 +428,17 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'monitoring',
         label: 'W/O 진행현황 조회',
         labelVi: 'Tra cứu tiến độ W/O',
+      },
+      /*
+       * W-02-09 — 「W/O 진행현황 조회」 바로 아래. 정방향과 역방향 모두 「투입 → W/O → 생산 LOT」을 지나
+       * 생산이 가진 자료다. 세 탭(자재 LOT, 제품 LOT, 입출고 현황)은 한 권한이라 셸 탭 묶음(탭마다
+       * 화면 코드)이 아니라 화면이 그린다.
+       */
+      {
+        to: '/production/lot-trace',
+        icon: 'timeline',
+        label: 'LOT 추적',
+        labelVi: 'Truy xuất LOT',
       },
       /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
       {
@@ -866,3 +877,20 @@ export const NAV_ENTRIES: readonly NavEntry[] = [
     ),
   ),
 ];
+
+/** 메뉴 경로 사이의 표시. 화면 문구가 「시스템 관리 › 사용자·역할·권한」처럼 사이드바를 따라가게 쓴다. */
+const MENU_PATH_SEPARATOR = ' › ';
+
+/**
+ * 주소에 닿는 메뉴의 경로(묶음 이름 › 항목 이름), 활성 언어로. 사이드바에 없는 주소면 `null`.
+ * 화면 문구가 메뉴 이름을 손으로 옮겨 적지 않게 한다. 메뉴 이름이 바뀌면 안내도 함께 바뀐다.
+ */
+export const navMenuPath = (path: string): string | null => {
+  for (const group of NAV_GROUPS) {
+    const item = group.items.find((entry) => navEntryPaths(entry).includes(path));
+    if (item !== undefined) {
+      return [localizedLabel(group), localizedLabel(item)].join(MENU_PATH_SEPARATOR);
+    }
+  }
+  return null;
+};

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { NAV_ENTRIES, NAV_GROUPS, NAV_LEAD, navEntryPaths, type NavEntry } from './nav-tree';
+import {
+  NAV_ENTRIES,
+  NAV_GROUPS,
+  NAV_LEAD,
+  navEntryPaths,
+  navMenuPath,
+  type NavEntry,
+} from './nav-tree';
 
 /**
  * ⚠ **중복은 `indexOf`로 잰다 — `Set.add` 의 반환값으로 가르지 않는다.** 이 감지기의 첫 판은
@@ -236,6 +243,7 @@ describe('주 메뉴 트리', () => {
       '/production/po-change-review → account_tree',
       '/production/emergency-work-orders → bolt',
       '/production/work-order-progress → monitoring',
+      '/production/lot-trace → timeline',
       '/production/work-order-close → archive',
       '/shipment/shipment-request-create → assignment',
       '/shipment/shipment-schedule → event_note',
@@ -287,5 +295,15 @@ describe('주 메뉴 트리', () => {
       '/master-data/common-code → list_alt',
       '/system/terminal-process-map → tablet_android',
     ]);
+  });
+});
+
+describe('navMenuPath', () => {
+  it('주소에 닿는 메뉴의 경로를 사이드바 이름 그대로 만든다', () => {
+    expect(navMenuPath('/system/users-roles')).toBe('시스템 관리 › 사용자·역할·권한');
+  });
+
+  it('사이드바에 없는 주소는 null이다', () => {
+    expect(navMenuPath('/no-such-screen')).toBeNull();
   });
 });

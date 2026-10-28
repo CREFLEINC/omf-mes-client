@@ -767,9 +767,17 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/work-order-progress')).toBe(
       links.indexOf('/production/emergency-work-orders') + 1,
     );
+    /* W-02-09 LOT 추적 — 「W/O 진행현황 조회」 바로 아래. */
+    expect(within(sidebar).getByRole('link', { name: 'LOT 추적' })).toHaveAttribute(
+      'href',
+      '/production/lot-trace',
+    );
+    expect(links.indexOf('/production/lot-trace')).toBe(
+      links.indexOf('/production/work-order-progress') + 1,
+    );
     /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
     expect(links.indexOf('/production/work-order-close')).toBe(
-      links.indexOf('/production/work-order-progress') + 1,
+      links.indexOf('/production/lot-trace') + 1,
     );
     /* 영업 / 출하 관리가 생산 바로 뒤에 선다 — 매일 일하는 묶음끼리 붙어 있다. */
     expect(links.indexOf('/shipment/shipment-request-create')).toBe(
@@ -990,10 +998,11 @@ describe('AppLayout', () => {
       '/quality/approvals',
       '/quality/dispositions',
       '/quality/inspection-levels',
-      /* 생산 관리 — ERP W/O(처리, 변경 확인) → (긴급) → 진행 → 마감. */
+      /* 생산 관리 — ERP W/O(처리, 변경 확인) → (긴급) → 진행 → LOT 추적 → 마감. */
       '/production/production-orders' /* ← ERP W/O */,
       '/production/emergency-work-orders',
       '/production/work-order-progress',
+      '/production/lot-trace',
       '/production/work-order-close',
       /* 영업 / 출하 관리 — 편성 → 예정 → 출하 처리 → 확정 → 반품·클레임. */
       '/shipment/shipment-request-create',
@@ -1642,7 +1651,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(47);
   });
 
   /*
@@ -1692,7 +1701,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(47);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */
