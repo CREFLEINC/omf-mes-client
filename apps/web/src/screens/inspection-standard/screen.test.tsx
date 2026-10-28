@@ -1288,8 +1288,8 @@ describe('InspectionStandardScreen — 버전 목록', () => {
     expect(gets[0]?.url.searchParams.get('inspectionPlanId')).toBe('3001');
   });
 
-  /* 목록에서 기준을 고르면 버전 목록 창 없이 최신 버전(판 번호가 가장 큰 것)으로 바로 조회한다(사용자 지시 · #196). */
-  it('목록에서 기준을 고르면 창을 띄우지 않고 최신 버전을 바로 고른다', async () => {
+  /* 목록에서 기준을 고르면 버전 목록 창 없이 확정된 최신 버전으로 바로 조회한다 — 작성중인 버전 2 는 건너뛴다(사용자 지시 · #196). */
+  it('목록에서 기준을 고르면 창을 띄우지 않고 확정된 최신 버전을 바로 고른다', async () => {
     const { user } = renderScreen([
       planListRoute(),
       planDetailRoute(),
@@ -1303,7 +1303,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
       expect(screen.queryAllByText('버전을 선택하세요')).toHaveLength(0);
     });
     expect(screen.queryByRole('region', { name: '버전 목록' })).not.toBeInTheDocument();
-    expect(within(await versionPane()).getByRole('button', { name: '버전 2' })).toHaveAttribute(
+    expect(within(await versionPane()).getByRole('button', { name: '버전 1' })).toHaveAttribute(
       'aria-current',
       'true',
     );
@@ -1335,6 +1335,20 @@ describe('InspectionStandardScreen — 버전 목록', () => {
         planListRoute(),
         planDetailRoute(),
         planDetailRoute(inspectionPlanFixtures[1]),
+        /* 옮겨 간 기준에는 확정된 버전이 없다 — 확정된 최신 버전 자동 고르기(#196)가 끼어들지 않는다. */
+        {
+          match: (request) =>
+            isGet(request, VERSIONS_PATH) &&
+            new URL(request.url).searchParams.get('inspectionPlanId') === '3002',
+          respond: () =>
+            jsonResponse({
+              items: inspectionPlanVersionFixtures.map((version) => ({
+                ...version,
+                inspectionPlanId: 3002,
+                statusCode: 'DRAFT',
+              })),
+            }),
+        },
         versionListRoute(),
         ...lookupRoutes(),
       ],

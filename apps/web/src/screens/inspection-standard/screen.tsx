@@ -740,7 +740,8 @@ export const InspectionStandardScreen = () => {
   }
 
   /**
-   * 목록에서 기준을 고르면 버전 목록 창을 띄우지 않고 최신 버전(판 번호가 가장 큰 것)을 바로 고른다(사용자 지시 · #196).
+   * 목록에서 기준을 고르면 버전 목록 창을 띄우지 않고 **확정된 버전 중** 최신(판 번호가 가장 큰 것)을 바로 고른다
+   * (사용자 지시 · #196). 작성중 · 폐기 버전은 고르지 않는다 — 확정된 버전이 없으면 고르지 않고 「버전을 선택하세요」로 둔다.
    * 버전 목록이 와야 고를 수 있어, 고른 기준 번호를 쥐고 있다가 그 기준의 목록이 오면 한 번 고른다.
    * 주소로 들어온 경우(새로고침 · 공유)는 주소의 선택을 그대로 둔다 — 목록을 누른 때만 고른다.
    */
@@ -767,11 +768,13 @@ export const InspectionStandardScreen = () => {
 
     setLatestPendingPlanId(null);
     if (selectedVersionId !== null) return;
-    /* 버전이 없으면 고를 것이 없다 — 상세 칸이 「버전 등록」을 안내한다. */
-    const latest = versionList.data.items.reduce<InspectionPlanVersion | null>(
-      (best, version) => (best === null || version.planVersion > best.planVersion ? version : best),
-      null,
-    );
+    const latest = versionList.data.items
+      .filter((version) => resolveVersionStatus(version.statusCode).status === 'confirmed')
+      .reduce<InspectionPlanVersion | null>(
+        (best, version) =>
+          best === null || version.planVersion > best.planVersion ? version : best,
+        null,
+      );
     if (latest === null) return;
 
     const next = new URLSearchParams(searchParams);
