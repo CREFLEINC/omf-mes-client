@@ -156,6 +156,8 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
       receiptDate: 'Ngày nhập hàng',
       supplier: 'Nhà cung cấp',
       item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       lot: 'LOT',
       excessQty: 'Số lượng vượt',
       sourceOrder: 'P/O gốc',

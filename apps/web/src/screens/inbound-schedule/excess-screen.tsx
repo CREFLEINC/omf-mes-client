@@ -188,14 +188,25 @@ export const InboundExcessScreen = () => {
 
   /* ── 열 ── */
   const excessColumns: Column<UnallocatedLine>[] = [
+    { key: 'receiptDate', header: t.table.receiptDate, width: '104px', render: receiptDateOf },
     {
-      key: 'receiptNo',
-      header: t.table.receiptNo,
-      /* 입하번호(약 125px) + 「방금 등록」 칩까지 한 줄에 — 좁으면 칩이 잘린다. */
-      width: '216px',
+      key: 'supplier',
+      header: t.table.supplier,
+      width: '144px',
+      render: (row) => <OneLine text={orEmpty(row.supplierName)} />,
+    },
+    /*
+     * 입하번호 열은 두지 않는다 — 고른 초과분의 머리에 선다(사용자 지시 2026-10-28). 품목코드 · 품목명은 열을 나눈다.
+     * 고르는 단추와 「방금 등록」 칩은 품목코드 칸이 진다.
+     */
+    {
+      key: 'itemCode',
+      header: t.table.itemCode,
+      /* 품목코드(10자 안팎) + 「방금 등록」 칩까지 한 줄에. */
+      width: '200px',
       render: (row) => (
         <span className="excess-receipt-cell">
-          {row.inboundReceiptNo}
+          {row.itemCode}
           {row.inboundReceiptNo === entry.receiptNo && (
             <Chip variant="status" status="info" size="sm">
               {t.justRegistered}
@@ -204,17 +215,10 @@ export const InboundExcessScreen = () => {
         </span>
       ),
     },
-    { key: 'receiptDate', header: t.table.receiptDate, width: '104px', render: receiptDateOf },
     {
-      key: 'supplier',
-      header: t.table.supplier,
-      width: '144px',
-      render: (row) => <OneLine text={orEmpty(row.supplierName)} />,
-    },
-    {
-      key: 'item',
-      header: t.table.item,
-      render: (row) => <OneLine text={`${row.itemCode} · ${row.itemName}`} />,
+      key: 'itemName',
+      header: t.table.itemName,
+      render: (row) => <OneLine text={row.itemName} />,
     },
     {
       key: 'excessQty',
@@ -308,12 +312,12 @@ export const InboundExcessScreen = () => {
         <BoardTable
           label={t.listTitle}
           widthKey="omf-mes:inbound-excess:columns:excess"
-          minWidth="760px"
+          minWidth="720px"
           columns={excessColumns}
           rows={rows}
           getRowId={(row) => String(row.inboundReceiptLineId)}
           pick={{
-            columnKey: 'receiptNo',
+            columnKey: 'itemCode',
             label: (row) => t.pickExcess(row.inboundReceiptNo, row.lineNo),
             currentId: selectedExcessId === null ? null : String(selectedExcessId),
             onPick: pickExcess,

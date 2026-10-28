@@ -213,6 +213,8 @@ export const inboundSchedule = {
       receiptDate: '입하일',
       supplier: '공급사',
       item: '품목',
+      itemCode: '품목코드',
+      itemName: '품목명',
       lot: 'LOT',
       excessQty: '초과 수량',
       /** 이 입하 줄이 이미 들어간 발주 라인(들). 다 초과분이면 「—」. */

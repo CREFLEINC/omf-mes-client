@@ -156,6 +156,22 @@ describe('InboundExcessScreen — 초과분 발주 연결 탭', () => {
     expect(within(detailPane()).getByRole('button', { name: te.actions.link })).toBeEnabled();
   });
 
+  it('목록은 입하번호 열 없이 품목코드 · 품목명을 따로 세운다 — 입하번호는 고른 초과분 머리에 선다', async () => {
+    renderTab([excessListRoute([excessFixture()]), candidatesRoute([])]);
+
+    const headers = (await within(listPane()).findAllByRole('columnheader')).map(
+      (header) => header.textContent,
+    );
+    expect(headers).toEqual([
+      te.table.receiptDate,
+      te.table.supplier,
+      te.table.itemCode,
+      te.table.itemName,
+      te.table.excessQty,
+    ]);
+    expect(await within(detailPane()).findByText('SAMPLE-IR-0001')).toBeInTheDocument();
+  });
+
   it('후보가 없으면 연결할 발주 라인이 없다고 말한다', async () => {
     renderTab([excessListRoute([excessFixture()]), candidatesRoute([])]);
 
@@ -177,7 +193,9 @@ describe('InboundExcessScreen — 초과분 발주 연결 탭', () => {
     const rows = await within(listPane()).findAllByRole('row');
     const firstRow = rows[1] as HTMLElement;
 
-    expect(within(firstRow).getByText('SAMPLE-IR-0001')).toBeInTheDocument();
+    expect(
+      within(firstRow).getByRole('button', { name: te.pickExcess('SAMPLE-IR-0001', 1) }),
+    ).toBeInTheDocument();
     expect(within(firstRow).getByText(te.justRegistered)).toBeInTheDocument();
     /* 그 전표의 초과분이 하나뿐이라 골라 두고, 후보도 하나뿐이라 골라 둔다. */
     expect(
