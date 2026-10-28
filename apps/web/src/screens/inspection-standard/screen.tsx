@@ -1505,7 +1505,7 @@ export const InspectionStandardScreen = () => {
             size="lg"
             closeOnBackdropClick={false}
             showCloseButton={false}
-            /* 판 번호 · 상태는 제목 줄 오른쪽에 라벨로 둔다(사용자 지시 · #196). */
+            /* 판 번호는 제목 줄 오른쪽에 라벨로 둔다 — 이 창은 작성중 버전에서만 열려 상태 라벨은 두지 않는다(사용자 지시 · #196). */
             title={
               <span className="inspection-standard-dialog-title">
                 {t.versionSection.editSettings}
@@ -1515,9 +1515,6 @@ export const InspectionStandardScreen = () => {
                       {t.values.version(versionDetail.data.inspectionPlanVersion.planVersion)}
                     </Chip>
                   )}
-                  <Chip variant="status" status={versionStatus.tone}>
-                    {versionStatus.label}
-                  </Chip>
                 </span>
               </span>
             }

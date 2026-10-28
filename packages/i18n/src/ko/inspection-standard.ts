@@ -217,11 +217,15 @@ export const inspectionStandard = {
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
   versionSection: {
+    /* 샘플을 비율 · 개수 중 무엇으로 받을지 고르는 칩(#196). */
+    samplingByRatio: '비율(%)',
+    samplingByQty: '수량',
+    samplingBasis: '샘플 기준 선택',
     /* 요약 줄의 샘플 개수 표기(#201 · #196). */
     samplingQtyValue: (qty: string): string => `${qty}개`,
     title: '검사 기준 버전',
-    sampling: '샘플링',
-    effectivePeriod: '유효기간',
+    sampling: '검사 방식',
+    effectivePeriod: '적용 기간',
     noEnd: '종료일 미설정',
     itemsTitle: (count: number): string => `검사 항목 (${String(count)})`,
     lockedHint: '검사 항목을 추가하려면 신규 버전을 발행하세요.',
@@ -307,20 +311,20 @@ export const inspectionStandard = {
     active: '사용',
     planVersion: '버전',
     status: '상태',
-    effectiveFrom: '유효시작',
-    effectiveTo: '유효종료',
-    samplingMethod: '샘플링 방법',
+    effectiveFrom: '적용 시작일',
+    effectiveTo: '적용 종료일',
+    samplingMethod: '검사 방식',
     /*
      * **단위를 라벨에 박는다.** 받는 값이 백분율인데 라벨이 그것을 말하지 않으면
      * 30을 30개로 읽는다(#201).
      */
     samplingRatio: '샘플 비율(%)',
-    samplingQty: '샘플 개수',
+    samplingQty: '샘플 수량',
     aqlValue: 'AQL',
-    acceptanceNumber: '합격판정개수',
-    rejectionNumber: '불합격판정개수',
+    acceptanceNumber: '합격 허용 불량 수',
+    rejectionNumber: '불합격 판정 불량 수',
     inspectionFrequency: '검사 주기',
-    frequencyIntervalValue: '주기 값',
+    frequencyIntervalValue: '검사 주기 값',
     frequencyIntervalUom: '주기 단위',
     sequence: '순서',
     /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
@@ -387,22 +391,22 @@ export const inspectionStandard = {
     required: '필수 입력 항목입니다.',
     planCodeBlank: '기준코드는 공백만으로 지정할 수 없습니다.',
     planNameBlank: '기준명은 공백만으로 지정할 수 없습니다.',
-    effectiveRangeReversed: '유효종료는 유효시작과 같거나 그 뒤여야 합니다.',
+    effectiveRangeReversed: '적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.',
     /* 계약이 짝을 요구하나 데이터베이스 CHECK 가 없다 — 화면이 먼저 막는다. */
-    frequencyPairRequired: '주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
+    frequencyPairRequired: '검사 주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
     /* 계약 CHECK > 0 — 0 은 「없음」이 아니라 위반이다. */
-    rejectionNumberInvalid: '불합격판정개수는 0보다 큰 숫자여야 합니다.',
+    rejectionNumberInvalid: '불합격 판정 불량 수는 0보다 큰 숫자여야 합니다.',
     /* 계약 CHECK ≥ 0 — 0 은 허용된다. 불합격판정개수와 규칙이 다르다. */
-    acceptanceNumberInvalid: '합격판정개수는 0 이상의 숫자여야 합니다.',
+    acceptanceNumberInvalid: '합격 허용 불량 수는 0 이상의 숫자여야 합니다.',
     /*
      * 계약 exclusiveMinimum: 0 · maximum: 100. 라벨과 같은 말을 쓴다 —
      * 단위 `%`가 문구에 없으면 무엇을 고쳐야 하는지 알 수 없다.
      */
     samplingRatioInvalid: '샘플 비율(%)은 0보다 크고 100 이하인 값이어야 합니다.',
     /* 샘플 방식이면 검사 수량을 비율로 환산한다 — 비율 없이는 몇 개를 검사할지 정할 수 없다. */
-    samplingRatioRequired: '샘플링 방식이면 샘플 비율(%) 또는 샘플 개수를 입력하세요.',
-    samplingQtyBoth: '샘플 비율(%)과 샘플 개수 중 하나만 입력하세요.',
-    samplingQtyInvalid: '샘플 개수는 1 이상의 정수여야 합니다.',
+    samplingRatioRequired: '샘플링 방식이면 샘플 비율(%) 또는 샘플 수량을 입력하세요.',
+    samplingQtyBoth: '샘플 비율(%)과 샘플 수량 중 하나만 입력하세요.',
+    samplingQtyInvalid: '샘플 수량은 1 이상의 정수여야 합니다.',
     /*
      * 계약이 버전 내 유일 제약을 두지 않았다 — 막는 곳이 화면과 서버뿐이다.
      * 중복이 저장되면 측정 기록이 어느 항목의 것인지 가릴 수 없다.

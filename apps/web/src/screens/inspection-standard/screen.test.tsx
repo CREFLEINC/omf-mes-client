@@ -1696,8 +1696,8 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     await user.click(await within(await versionPane()).findByRole('button', { name: '버전 등록' }));
 
     const form = screen.getByRole('region', { name: '버전 정보' });
-    await pickDate(user, within(form).getByLabelText('유효시작'), '2026-08-01');
-    await user.click(within(form).getByRole('combobox', { name: '샘플링 방법' }));
+    await pickDate(user, within(form).getByLabelText('적용 시작일'), '2026-08-01');
+    await user.click(within(form).getByRole('combobox', { name: '검사 방식' }));
     await user.click(screen.getByRole('option', { name: '샘플링(LOT 단위)' }));
     await user.type(within(form).getByLabelText(/샘플 비율/), '10');
     await user.click(within(form).getByRole('combobox', { name: '검사 주기' }));
@@ -1865,7 +1865,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     await user.click(await within(await versionPane()).findByRole('button', { name: '버전 등록' }));
 
     const form = screen.getByRole('region', { name: '버전 정보' });
-    await pickDate(user, within(form).getByLabelText('유효시작'), '2026-08-01');
+    await pickDate(user, within(form).getByLabelText('적용 시작일'), '2026-08-01');
     await user.click(within(form).getByRole('button', { name: '버전 등록' }));
 
     expect(await screen.findAllByText('필수 입력 항목입니다.')).toHaveLength(2);
@@ -2031,7 +2031,9 @@ describe('InspectionStandardScreen — 버전 상세와 샘플 비율 표기', (
   it('0인 합격판정개수가 빈 칸으로 뭉개지지 않는다', async () => {
     renderSelectedVersion();
 
-    expect(await within(await awaitVersionForm()).findByLabelText('합격판정개수')).toHaveValue(0);
+    expect(await within(await awaitVersionForm()).findByLabelText('합격 허용 불량 수')).toHaveValue(
+      0,
+    );
   });
 
   /* 2026-09-03 확정된 공통 상태 코드이므로 이전의 임시 안내를 더는 노출하지 않는다. */
@@ -2142,12 +2144,12 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
 
     const form = await awaitVersionForm();
-    await pickDate(user, within(form).getByLabelText('유효시작'), '2026-09-01');
-    await pickDate(user, within(form).getByLabelText('유효종료'), '2026-08-01');
+    await pickDate(user, within(form).getByLabelText('적용 시작일'), '2026-09-01');
+    await pickDate(user, within(form).getByLabelText('적용 종료일'), '2026-08-01');
     await user.click(within(form).getByRole('button', { name: '저장' }));
 
     expect(
-      await screen.findAllByText('유효종료는 유효시작과 같거나 그 뒤여야 합니다.'),
+      await screen.findAllByText('적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.'),
     ).toHaveLength(2);
     expect(
       requests.filter(
@@ -2160,11 +2162,11 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
 
     const form = await awaitVersionForm();
-    fireEvent.change(within(form).getByLabelText('주기 값'), { target: { value: '4' } });
+    fireEvent.change(within(form).getByLabelText('검사 주기 값'), { target: { value: '4' } });
     await user.click(within(form).getByRole('button', { name: '저장' }));
 
     expect(
-      await screen.findAllByText('주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.'),
+      await screen.findAllByText('검사 주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.'),
     ).toHaveLength(2);
     expect(
       requests.filter(
@@ -2181,18 +2183,22 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
 
     const form = await awaitVersionForm();
-    fireEvent.change(within(form).getByLabelText('불합격판정개수'), { target: { value: '0' } });
-    fireEvent.change(within(form).getByLabelText('합격판정개수'), { target: { value: '0' } });
+    fireEvent.change(within(form).getByLabelText('불합격 판정 불량 수'), {
+      target: { value: '0' },
+    });
+    fireEvent.change(within(form).getByLabelText('합격 허용 불량 수'), { target: { value: '0' } });
     fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '0' } });
     await user.click(within(form).getByRole('button', { name: '저장' }));
 
     expect(
-      await screen.findByText('불합격판정개수는 0보다 큰 숫자여야 합니다.'),
+      await screen.findByText('불합격 판정 불량 수는 0보다 큰 숫자여야 합니다.'),
     ).toBeInTheDocument();
     expect(
       screen.getByText('샘플 비율(%)은 0보다 크고 100 이하인 값이어야 합니다.'),
     ).toBeInTheDocument();
-    expect(screen.queryByText('합격판정개수는 0 이상의 숫자여야 합니다.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('합격 허용 불량 수는 0 이상의 숫자여야 합니다.'),
+    ).not.toBeInTheDocument();
     expect(
       requests.filter(
         (request) => request.method === 'PUT' && request.url.pathname === VERSION_DETAIL_PATH,
@@ -2230,7 +2236,7 @@ describe('InspectionStandardScreen — 상태 잠금', () => {
     );
 
     /* 확정 버전에는 「버전 설정 수정」이 서지 않는다 — 요약 줄로만 본다(#196). */
-    expect(await screen.findByText('유효기간')).toBeInTheDocument();
+    expect(await screen.findByText('적용 기간')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '폐기' })).toBeEnabled();
     });
@@ -2251,7 +2257,7 @@ describe('InspectionStandardScreen — 상태 잠금', () => {
       '?plan=3001&ver=4001',
     );
 
-    expect(await screen.findByText('유효기간')).toBeInTheDocument();
+    expect(await screen.findByText('적용 기간')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '버전 설정 수정' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('샘플 비율(%)')).not.toBeInTheDocument();
   });

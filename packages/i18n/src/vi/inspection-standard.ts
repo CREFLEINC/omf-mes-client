@@ -201,6 +201,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     close: 'Đóng',
   },
   versionSection: {
+    samplingByRatio: 'Tỷ lệ (%)',
+    samplingByQty: 'Số lượng',
+    samplingBasis: 'Chọn cách lấy mẫu',
     samplingQtyValue: (qty: string): string => `${qty} cái`,
     title: 'Phiên bản tiêu chuẩn kiểm tra',
     sampling: 'Lấy mẫu',

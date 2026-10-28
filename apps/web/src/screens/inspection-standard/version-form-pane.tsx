@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import { FULL_INSPECTION, SAMPLING_METHOD_OPTIONS, ensureOption } from './code-options';
 import { DateField } from './date-field';
@@ -72,6 +72,15 @@ export const VersionFormPane = ({
   const statusLabelId = useId();
   const samplingRatioId = useId();
   const samplingQtyId = useId();
+  /* 비율로 받을지 개수로 받을지 — 저장된 값이 개수면 개수로 연다. */
+  const [samplingBasis, setSamplingBasis] = useState<'ratio' | 'qty'>(
+    values.samplingQty !== '' ? 'qty' : 'ratio',
+  );
+  /* 값이 밖에서 바뀌면(다른 버전 · 취소로 되돌림) 들어 있는 쪽으로 맞춘다. */
+  useEffect(() => {
+    if (values.samplingQty !== '') setSamplingBasis('qty');
+    else if (values.samplingRatio !== '') setSamplingBasis('ratio');
+  }, [values.samplingQty, values.samplingRatio]);
 
   const isLocked = status !== null && !status.isEditable;
   /* 전수검사는 비율이 뜻이 없다 — 칸을 잠그고 값을 비운다(omf-all-around#103). */
@@ -155,41 +164,75 @@ export const VersionFormPane = ({
         />
 
         {/*
-         * 계약 exclusiveMinimum: 0 · maximum: 100 — `min={0}`을 걸지 않는다. 0 은 이제 허용되지
-         * 않는 값이라 하한 안내로 두면 거짓말이 된다. 상한만 브라우저에 알리고 하한은 검증이 낸다.
+         * 샘플은 비율(%) 또는 개수 중 하나 — 칩으로 고르고 고른 쪽 칸 하나만 받는다(사용자 지시 · #196 · #201).
+         * 다른 쪽으로 바꾸면 앞 값을 비운다 — 둘 다 차 있으면 서버가 거절한다.
          *
-         * `step="any"` — 기본값 1 은 소수 입력을 브라우저 단에서 막는다. 계약이 double 이다(#201 ③).
+         * 비율: 계약 exclusiveMinimum: 0 · maximum: 100 — `min={0}`을 걸지 않는다(0 은 허용되지 않아 하한 안내가
+         * 거짓말이 된다). `step="any"` — 계약이 double 이라 소수를 막지 않는다(#201 ③).
+         * 개수: 고객사 기준서는 샘플을 개수(n=5)로 적는다(omf-all-around#201).
          */}
         <div className="field-cell">
-          <FieldLabel
-            htmlFor={samplingRatioId}
-            label={t.fields.samplingRatio}
-          />
-          <TextField
-            id={samplingRatioId}
-            type="number"
-            max={100}
-            step="any"
-            value={values.samplingRatio}
-            onChange={(event) => onChange({ samplingRatio: event.target.value })}
-            disabled={isLocked || isFullInspection}
-            error={fieldErrors.samplingRatio}
-          />
-        </div>
-
-        {/* 비율과 둘 중 하나만 — 고객사 기준서는 샘플을 개수(n=5)로 적는다(omf-all-around#201). */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={samplingQtyId} label={t.fields.samplingQty} />
-          <TextField
-            id={samplingQtyId}
-            type="number"
-            min={1}
-            step={1}
-            value={values.samplingQty}
-            onChange={(event) => onChange({ samplingQty: event.target.value })}
-            disabled={isLocked || isFullInspection}
-            error={fieldErrors.samplingQty}
-          />
+          <div className="inspection-standard-sampling-head">
+            <FieldLabel
+              htmlFor={samplingBasis === 'ratio' ? samplingRatioId : samplingQtyId}
+              label={samplingBasis === 'ratio' ? t.fields.samplingRatio : t.fields.samplingQty}
+            />
+            <div
+              className="inspection-standard-sampling-basis"
+              role="group"
+              aria-label={t.versionSection.samplingBasis}
+            >
+              <Chip
+                variant="filter"
+                size="sm"
+                selected={samplingBasis === 'ratio'}
+                disabled={isLocked || isFullInspection}
+                onClick={() => {
+                  if (samplingBasis === 'ratio') return;
+                  setSamplingBasis('ratio');
+                  onChange({ samplingQty: '' });
+                }}
+              >
+                {t.versionSection.samplingByRatio}
+              </Chip>
+              <Chip
+                variant="filter"
+                size="sm"
+                selected={samplingBasis === 'qty'}
+                disabled={isLocked || isFullInspection}
+                onClick={() => {
+                  if (samplingBasis === 'qty') return;
+                  setSamplingBasis('qty');
+                  onChange({ samplingRatio: '' });
+                }}
+              >
+                {t.versionSection.samplingByQty}
+              </Chip>
+            </div>
+          </div>
+          {samplingBasis === 'ratio' ? (
+            <TextField
+              id={samplingRatioId}
+              type="number"
+              max={100}
+              step="any"
+              value={values.samplingRatio}
+              onChange={(event) => onChange({ samplingRatio: event.target.value })}
+              disabled={isLocked || isFullInspection}
+              error={fieldErrors.samplingRatio}
+            />
+          ) : (
+            <TextField
+              id={samplingQtyId}
+              type="number"
+              min={1}
+              step={1}
+              value={values.samplingQty}
+              onChange={(event) => onChange({ samplingQty: event.target.value })}
+              disabled={isLocked || isFullInspection}
+              error={fieldErrors.samplingQty ?? fieldErrors.samplingRatio}
+            />
+          )}
         </div>
 
         <TextField
