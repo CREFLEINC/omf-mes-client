@@ -91,8 +91,11 @@ export const VersionFormPane = ({
       {banner}
 
       <div className="form-grid">
-        {/* 등록 전에는 판 번호가 없다 — 서버가 채우는 값을 미리 지어내 보이지 않는다. */}
-        {planVersion !== null && (
+        {/*
+         * 등록 전에는 판 번호가 없다 — 서버가 채우는 값을 미리 지어내 보이지 않는다.
+         * 「버전 설정 수정」 창에서는 판 번호 · 상태를 창 제목 줄 오른쪽 라벨로 낸다(사용자 지시 · #196).
+         */}
+        {!inDialog && planVersion !== null && (
           <div>
             <span className="field-label" id={versionLabelId}>
               {t.fields.planVersion}
@@ -102,7 +105,7 @@ export const VersionFormPane = ({
         )}
 
         {/* 상태 값은 공통 코드의 확정된 표시명을 쓴다. */}
-        {status !== null && (
+        {!inDialog && status !== null && (
           <div className="field-cell">
             <span className="field-label" id={statusLabelId}>
               {t.fields.status}

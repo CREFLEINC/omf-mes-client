@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Breadcrumb,
   Button,
+  Chip,
   Dialog,
   EmptyState,
   Icon,
@@ -1441,7 +1442,22 @@ export const InspectionStandardScreen = () => {
             size="lg"
             closeOnBackdropClick={false}
             showCloseButton={false}
-            title={t.versionSection.editSettings}
+            /* 판 번호 · 상태는 제목 줄 오른쪽에 라벨로 둔다(사용자 지시 · #196). */
+            title={
+              <span className="inspection-standard-dialog-title">
+                {t.versionSection.editSettings}
+                <span className="inspection-standard-dialog-title-chips">
+                  {versionDetail.data !== undefined && (
+                    <Chip variant="status" status="idle">
+                      {t.values.version(versionDetail.data.inspectionPlanVersion.planVersion)}
+                    </Chip>
+                  )}
+                  <Chip variant="status" status={versionStatus.tone}>
+                    {versionStatus.label}
+                  </Chip>
+                </span>
+              </span>
+            }
             onClose={() => {
               cancelVersionEdit();
               setIsVersionEditOpen(false);
