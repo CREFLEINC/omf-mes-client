@@ -140,7 +140,7 @@ const render = (options: Options, route = '/production/production-orders') => {
   return harness;
 };
 
-describe('ERP W/O 처리 작업함', () => {
+describe('작업지시 목록 작업함', () => {
   it('기본 조건은 「확인 필요」이고 사유를 첫 칩과 「외 N」으로 목록에 보인다(C-17)', async () => {
     const { requests } = render({ orders: [REVIEW, DONE_BLOCKED, DONE_READY] });
 
@@ -157,6 +157,19 @@ describe('ERP W/O 처리 작업함', () => {
     expect(new URL(list?.url ?? 'http://x').searchParams.get('autoPlanStatus')).toBe(
       'NEEDS_REVIEW',
     );
+  });
+
+  it('조건 칩은 「전체」가 맨 앞이고 처리 순서대로 서며, 보이는 묶음 이름 없이 접근명을 갖는다(C-17)', async () => {
+    render({ orders: [REVIEW, DONE_BLOCKED, DONE_READY] });
+
+    const group = await screen.findByRole('group', { name: t.counts.label });
+    const chips = within(group).getAllByRole('button');
+    expect(chips.map((chip) => chip.textContent)).toEqual([
+      expect.stringMatching(/^전체 /),
+      expect.stringMatching(new RegExp(`^${t.status.NEEDS_REVIEW} `)),
+      expect.stringMatching(new RegExp(`^${t.status.DONE} `)),
+    ]);
+    expect(screen.queryByText('자동 계획', { exact: true })).toBeNull();
   });
 
   it('자동 계획 완료 행은 조건과 같은 상태 칩이고, 라인 미정 W/O는 사유 칩 「4M 배정 미완」으로만 보인다(C-17)', async () => {

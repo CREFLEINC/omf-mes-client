@@ -313,7 +313,7 @@ const DRAFT_PLAN: Plan = {
 };
 const CONFIRMED_PLAN: Plan = { ...DRAFT_PLAN, confirmedAt: '2026-10-20T09:00:00+09:00' };
 
-describe('ERP W/O 처리 화면(T-W-C)', () => {
+describe('작업지시 목록 처리 화면(T-W-C)', () => {
   it('처음 여는 단계는 데이터의 첫 미완료 단계다', async () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [] }));
     await currentStep(tp.steps.master);
@@ -469,7 +469,7 @@ describe('ERP W/O 처리 화면(T-W-C)', () => {
     );
   });
 
-  it('옛 4M 배정 주소는 productionPlanId의 ERP W/O 처리 화면에 넘긴다', async () => {
+  it('옛 4M 배정 주소는 productionPlanId의 작업지시 목록 처리 화면에 넘긴다', async () => {
     renderAt(
       '/production/work-order-assignments?productionPlanId=501',
       world({ plans: [{ ...CONFIRMED_PLAN }] }),

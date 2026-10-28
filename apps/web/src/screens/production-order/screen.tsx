@@ -1,5 +1,5 @@
 /**
- * W-02-01 ERP W/O 처리 작업함
+ * W-02-01 작업지시 목록 작업함
  * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
  * 이탈: C-17 「자동 계획 완료」는 배포 가능을 뜻하지 않는다. 서버가 배포 가능 여부로 거르고 세지 못해(계약 대기,
  *       omf-all-around#129) 잠정 규칙대로 조건, 건수, 행 칩을 서버 자동 계획 결과로 두고
@@ -239,8 +239,14 @@ export const ProductionOrderScreen = () => {
           />
         }
         description={
-          <span className="erp-wo-counts">
-            <span className="erp-wo-counts-label">{t.counts.label}</span>
+          /* 조건 칩은 「전체」를 맨 앞에 두고 나머지는 처리 순서대로 놓는다. 보이는 묶음 이름은 두지 않고 접근명만 붙인다. */
+          <span className="erp-wo-counts" role="group" aria-label={t.counts.label}>
+            <CountChip
+              state="NOT_PLANNED"
+              label={t.counts.all(allCount.data ?? 0)}
+              selected={filters.autoPlan === 'ALL'}
+              onSelect={() => apply({ ...filters, autoPlan: 'ALL', page: 1 })}
+            />
             <CountChip
               state="NEEDS_REVIEW"
               label={t.counts.needsReview(needsReviewCount.data ?? 0)}
@@ -252,12 +258,6 @@ export const ProductionOrderScreen = () => {
               label={t.counts.done(doneCount.data ?? 0)}
               selected={filters.autoPlan === 'DONE'}
               onSelect={() => apply({ ...filters, autoPlan: 'DONE', page: 1 })}
-            />
-            <CountChip
-              state="NOT_PLANNED"
-              label={t.counts.all(allCount.data ?? 0)}
-              selected={filters.autoPlan === 'ALL'}
-              onSelect={() => apply({ ...filters, autoPlan: 'ALL', page: 1 })}
             />
           </span>
         }

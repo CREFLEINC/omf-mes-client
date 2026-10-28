@@ -20469,15 +20469,11 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   cursor: help;
 }
 
-/* ── W-02-01 ERP W/O 처리 ─────────────────────────────────────────────── */
+/* ── W-02-01 작업지시 목록 ─────────────────────────────────────────────── */
 .erp-wo-counts {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.erp-wo-counts-label {
-  color: var(--on-surface-variant);
 }
 
 .erp-wo-bulk-actions {

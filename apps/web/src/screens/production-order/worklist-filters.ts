@@ -58,7 +58,7 @@ export const processPath = (orderNo: string): string =>
 const REMEMBER_KEY = 'omf.erp-wo-worklist.search';
 
 /**
- * 사용자가 마지막으로 본 작업함 조건. 처리 화면의 [← ERP W/O 처리]와 완료 화면의 [다음 ERP W/O 처리]가 쓴다
+ * 사용자가 마지막으로 본 작업함 조건. 처리 화면의 [← 작업지시 목록]과 완료 화면의 [다음 ERP W/O]가 쓴다
  * (T-W-C 완료 화면 「마지막으로 본 작업함 조건과 정렬에서 다음 행」). 저장소를 못 쓰면 기본 조건이다.
  */
 export const rememberWorklistSearch = (params: URLSearchParams): void => {

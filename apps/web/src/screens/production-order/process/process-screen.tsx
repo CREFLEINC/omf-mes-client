@@ -1,5 +1,5 @@
 /**
- * W-02-01 ERP W/O 처리 화면 (W-02-02 W/O 전개와 편성, W-02-03 4M 자원배정, W-02-04 W/O 확정과 배포를 단계로 합침)
+ * W-02-01 작업지시 목록 처리 화면 (W-02-02 W/O 전개와 편성, W-02-03 4M 자원배정, W-02-04 W/O 확정과 배포를 단계로 합침)
  * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
  * 이탈: C-17 「자동」 표시 없음(배정 출처 칸 계약 대기, omf-all-around#129).
  *       C-12 마스터 점검의 BOM, Routing 개정은 그 품목의 개정 목록이라 Select다(구성안 C-20 표).
@@ -16,6 +16,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { ActionBar } from '../../../patterns/action-bar';
 import { useApiClient } from '../../../patterns/api-context';
 import { SaveErrorBanner } from '../../../patterns/master';
+import { josa } from '../../../patterns/josa';
 import { plantToday } from '../../../patterns/plant-time';
 import {
   ProcessPage,
@@ -642,12 +643,12 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     if (step === 'done') {
       return nextOrder === undefined ? (
         <Button onClick={() => void navigate(worklistPath(lastSearch))}>
-          {tp.done.toWorklist}
+          {josa(tp.done.toWorklist, '으로/로')}
         </Button>
       ) : (
         <>
           <Button variant="outlined" onClick={() => void navigate(worklistPath(lastSearch))}>
-            {tp.done.toWorklist}
+            {josa(tp.done.toWorklist, '으로/로')}
           </Button>
           <Button onClick={() => void navigate(processPath(nextOrder.productionOrderNo))}>
             {tp.done.nextOrder}

@@ -1,28 +1,41 @@
 /**
- * W-02-01 ERP W/O 처리. 작업함(받은 ERP W/O 목록)과 처리 화면(마스터 점검, 생산계획, 4M 배정, 배포 확인).
+ * W-02-01 작업지시 목록. 작업함(받은 ERP W/O 목록)과 처리 화면(마스터 점검, 생산계획, 4M 배정, 배포 확인).
  *
  * 화면 구성 규범 T-W-C와 C-17에 따라 W-02-02(W/O 전개, 편성), W-02-03(4M 자원배정),
  * W-02-04(W/O 확정, 배포)를 이 화면의 단계와 일괄 동작으로 합쳤다.
  * 조사가 붙는 자리는 부르는 쪽이 `patterns/josa`로 붙여 넘긴다(C-5).
  */
+
+/**
+ * 화면 이름. 제목, 돌아가기 링크, 완료 화면 버튼, 안내용 메뉴 경로(`production-order.ts`)가 이 값을 쓴다.
+ * 사이드바 이름은 `nav-tree.ts`에 따로 적고, `nav-menu-path.test.ts`가 둘이 같은지 잰다.
+ */
+const SCREEN_NAME = '작업지시 목록';
+
+/**
+ * 처리 상태 이름. 조건 칩, 행 상태 칩이 같은 이름을 쓴다(C-17 잠정 규칙: 서버 자동 계획 결과).
+ * 칩 이름은 여기만 고치면 바뀐다. 빈 목록 안내(`list.emptyNeedsReview*`)는 문장이라 따로 적었으니 함께 고친다.
+ */
+const status = {
+  NOT_PLANNED: '자동 계획 전',
+  NEEDS_REVIEW: '확인 필요',
+  DONE: '자동 계획 완료',
+  RELEASED: '배포 완료',
+} as const;
+
 export const erpWorkOrderFlow = {
-  title: 'ERP W/O 처리',
+  title: SCREEN_NAME,
   breadcrumbRoot: '생산 관리',
 
+  /** 페이지 머리 조건 칩. `label`은 보이지 않는 칩 묶음의 접근명이다. */
   counts: {
-    label: '자동 계획',
-    needsReview: (count: number): string => `확인 필요 ${String(count)}건`,
-    done: (count: number): string => `자동 계획 완료 ${String(count)}건`,
+    label: '처리 상태',
     all: (count: number): string => `전체 ${String(count)}건`,
+    needsReview: (count: number): string => `${status.NEEDS_REVIEW} ${String(count)}건`,
+    done: (count: number): string => `${status.DONE} ${String(count)}건`,
   },
 
-  /** 조건, 머리 건수, 행 칩이 같은 이름을 쓴다(C-17 잠정 규칙: 서버 자동 계획 결과). */
-  status: {
-    NOT_PLANNED: '자동 계획 전',
-    NEEDS_REVIEW: '확인 필요',
-    DONE: '자동 계획 완료',
-    RELEASED: '배포 완료',
-  },
+  status,
   reasons: {
     BOM_MISSING: '기본 BOM 없음',
     ROUTING_MISSING: 'Routing 없음',
@@ -128,7 +141,7 @@ export const erpWorkOrderFlow = {
   },
 
   process: {
-    back: 'ERP W/O 처리',
+    back: SCREEN_NAME,
     loading: 'ERP W/O 불러오는 중',
     notFound: '이 번호의 ERP W/O를 찾을 수 없습니다',
     notFoundDescription: '작업함에서 다시 고르세요.',
@@ -374,8 +387,9 @@ export const erpWorkOrderFlow = {
         `${orderNo}의 W/O ${String(count)}건을 배포했습니다`,
       statusLine: (workOrderNo: string, operation: string, status: string): string =>
         `${workOrderNo} ${operation}: ${status}`,
-      toWorklist: 'ERP W/O 처리로',
-      nextOrder: '다음 ERP W/O 처리',
+      /** 작업함으로 돌아가는 버튼. 부르는 쪽이 「으로/로」를 붙인다(C-5). */
+      toWorklist: SCREEN_NAME,
+      nextOrder: '다음 ERP W/O',
       alreadyReleased: '이 ERP W/O의 W/O는 모두 배포되었습니다',
     },
   },

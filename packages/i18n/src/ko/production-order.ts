@@ -1,8 +1,10 @@
+import { erpWorkOrderFlow } from './erp-work-order-flow';
+
 export const productionOrder = {
-  title: 'ERP W/O 처리',
+  title: erpWorkOrderFlow.title,
   breadcrumbRoot: '생산 관리',
   /** 메뉴에서 이 화면까지의 경로 — 다른 화면이 「어디로 가라」고 안내할 때 쓴다. 메뉴 라벨과 같아야 한다(app/nav-menu-path.test.ts). */
-  menuPath: '생산 관리 › ERP W/O › ERP W/O 처리',
+  menuPath: `생산 관리 › ${erpWorkOrderFlow.title} › ${erpWorkOrderFlow.title}`,
   fields: {
     productionOrderNo: 'ERP W/O 번호',
     erpProductionOrderNo: 'ERP 원번호',
