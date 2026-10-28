@@ -258,6 +258,7 @@ describe('주 메뉴 트리', () => {
       '/notification/center → notifications',
       '/notification/notices → campaign',
       '/master-data/item-extended-attrs → category',
+      '/master-data/item-boms → category',
       '/master-data/routing → account_tree',
       '/equipment/master → precision_manufacturing',
       '/equipment/work-calendar → precision_manufacturing',

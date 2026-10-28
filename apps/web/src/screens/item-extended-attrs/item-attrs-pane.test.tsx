@@ -28,8 +28,6 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemAttrsPane>[0]> = {}
   render(
     <ItemAttrsPane
       values={itemToAttrsFormValues(itemFixtures[0]!)}
-      isActive
-      mesCategoryName=""
       uomOptions={[
         { value: '7001', label: '합성 단위 A' },
         { value: '7003', label: '합성 단위 C' },
@@ -55,11 +53,13 @@ describe('ItemAttrsPane — 폼 구성', () => {
     expect(screen.getByRole('region', { name: '확장 속성' })).toBeInTheDocument();
   });
 
-  it('확장 속성을 의미별 네 구획으로 묶는다', () => {
+  /* 다국어 명칭은 이 화면에서 고치지 않는다(사용자 지시 2026-10-28) — 값은 저장 때 그대로 되돌려 싣는다. */
+  it('확장 속성을 의미별 세 구획으로 묶는다', () => {
     renderPane();
 
-    for (const name of ['다국어 명칭', 'LOT 기본값·식별', '유효기한·선출', '검사·재고·보관']) {
-      expect(screen.getByRole('group', { name })).toBeInTheDocument();
+    expect(screen.queryByRole('rowgroup', { name: '다국어 명칭' })).not.toBeInTheDocument();
+    for (const name of ['LOT 기본값·식별', '유효기한·선출', '검사·재고·보관']) {
+      expect(screen.getByRole('rowgroup', { name })).toBeInTheDocument();
     }
   });
 
@@ -99,16 +99,12 @@ describe('ItemAttrsPane — 폼 구성', () => {
   it('최신 계약의 확장 속성을 내고 계약에 없는 재생재 입력은 만들지 않는다', () => {
     renderPane();
 
-    for (const label of [
-      '품목명(한국어)',
-      '품목명(베트남어)',
-      'LOT 보관 단위 기본값',
-      '생산 LOT 기본크기',
-      '개발품',
-    ]) {
+    for (const label of ['LOT 보관 단위 기본값', '생산 LOT 기본크기', '개발품']) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
     expect(screen.queryByLabelText('재생재')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('품목명(한국어)')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('품목명(베트남어)')).not.toBeInTheDocument();
   });
 });
 
@@ -117,61 +113,14 @@ describe('ItemAttrsPane — 폼 구성', () => {
  *
  * 계약이 저장 본문에 필수로 요구하지만 같은 계약이 「사용 중지 액션이 화면에 없다」고 못 박았다.
  */
-describe('ItemAttrsPane — 사용 여부는 값 표기다', () => {
-  it('값으로만 낸다', () => {
+/** 고치지 않는 값(MES 구분 · 사용 여부)은 위 사실 칸에 있다 — 폼에는 고치는 칸만 둔다. */
+describe('ItemAttrsPane — 고치지 않는 값은 폼에 없다', () => {
+  it('MES 구분 · 사용 여부를 내지 않는다', () => {
     renderPane();
 
-    expect(screen.getByLabelText('사용 여부')).toHaveTextContent('사용 중');
-  });
-
-  it('미사용 품목은 미사용으로 낸다', () => {
-    renderPane({ isActive: false });
-
-    expect(screen.getByLabelText('사용 여부')).toHaveTextContent('미사용');
-  });
-
-  /* 값만 있고 바꿀 수단이 없으면 사용자가 화면이 빠뜨린 것으로 읽는다 — 이유를 밝힌다. */
-  it('바꾸지 않는다는 사실을 함께 밝힌다', () => {
-    renderPane();
-
-    expect(
-      screen.getByText(
-        '사용 여부는 이 화면에서 바꾸지 않습니다. 저장해도 지금 값이 그대로 유지됩니다.',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it('사용 여부를 켜고 끄는 컨트롤이 없다', () => {
-    renderPane();
-
-    const switches = screen.getAllByRole('switch').map((element) => element.getAttribute('id'));
-
-    // 스위치는 개발품을 포함한 다섯 확장 불리언뿐이다.
-    expect(switches).toHaveLength(5);
+    expect(screen.queryByText('MES 구분')).not.toBeInTheDocument();
+    expect(screen.queryByText('사용 여부')).not.toBeInTheDocument();
     expect(screen.queryByRole('switch', { name: '사용 여부' })).not.toBeInTheDocument();
-  });
-});
-
-/** MES 구분은 시스템 소유 값이다 — 편집 본문에 자리가 없어 값 표기로만 둔다. */
-describe('ItemAttrsPane — MES 구분은 값 표기다', () => {
-  it('받은 이름을 값으로 낸다', () => {
-    renderPane({ mesCategoryName: '합성 구분 A' });
-
-    expect(screen.getByLabelText('MES 구분')).toHaveTextContent('합성 구분 A');
-  });
-
-  it('값이 없으면 값 없음 표기를 낸다', () => {
-    renderPane({ mesCategoryName: '' });
-
-    expect(screen.getByLabelText('MES 구분')).toHaveTextContent('—');
-  });
-
-  it('바꾸지 않는다는 사실을 함께 밝힌다', () => {
-    renderPane();
-
-    expect(
-      screen.getByText('MES 구분은 시스템이 정하는 값이라 이 화면에서 바꾸지 않습니다.'),
-    ).toBeInTheDocument();
   });
 });
 
@@ -186,14 +135,6 @@ describe('ItemAttrsPane — LOT 관리 여부', () => {
 });
 
 describe('ItemAttrsPane — 최신 확장 속성', () => {
-  it('다국어명을 고치면 해당 계약 필드만 알린다', async () => {
-    const { onChange, user } = renderPane();
-
-    await user.type(screen.getByLabelText('품목명(한국어)'), 'X');
-
-    expect(onChange).toHaveBeenLastCalledWith({ nameKo: '합성 품목 A 표시명X' });
-  });
-
   it('개발품을 바꾸면 boolean 계약 필드만 알린다', async () => {
     const { onChange, user } = renderPane();
 
@@ -219,12 +160,13 @@ describe('ItemAttrsPane — 유효기한 관리 토글', () => {
     expect(screen.getByLabelText('유효기한(일)')).toHaveAttribute('aria-required', 'true');
   });
 
-  it('토글이 꺼져 있으면 필수 표시가 없다', () => {
+  /* 꺼져 있으면 일수 칸 자체가 없다 — 저장 때 비워 보낸다(계약 A-2). */
+  it('토글이 꺼져 있으면 일수 칸이 없다', () => {
     renderPane({
       values: { ...itemToAttrsFormValues(itemFixtures[0]!), shelfLifeManaged: false },
     });
 
-    expect(screen.getByLabelText('유효기한(일)')).not.toHaveAttribute('aria-required');
+    expect(screen.queryByLabelText('유효기한(일)')).not.toBeInTheDocument();
   });
 });
 

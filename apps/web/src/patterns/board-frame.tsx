@@ -74,7 +74,7 @@ export const BoardFrame = ({
       )}
 
       {isSingle ? (
-        <div ref={splitRef} className="po-board-split board-frame-single">
+        <div ref={splitRef} className="po-board-split board-frame board-frame-single">
           <section className="pane po-board-pane" aria-label={list.label}>
             {list.content}
           </section>
@@ -83,7 +83,7 @@ export const BoardFrame = ({
         /* 왼쪽 목록을 접으면 오른쪽 상세가 폭을 다 쓴다 — 나란히 설 때만(app.css). */
         <div
           ref={splitRef}
-          className="po-board-split"
+          className="po-board-split board-frame"
           style={split.style}
           data-left-collapsed={split.collapsed ? 'true' : undefined}
         >

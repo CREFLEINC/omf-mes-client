@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import type { components } from '@omf-mes/api-client';
+
 import { MAX_DEPTH, pickBom, walkBomTree, type BomTreeLookup } from './bom-tree';
-import type { Bom, ErpBomComponent } from './types';
+
+type Bom = components['schemas']['Bom'];
+type ErpBomComponent = components['schemas']['BomComponent'];
 
 /** 지어낸 합성값만 쓴다. */
 const bom = (bomId: number, parentItemId: number, isDefault = true): Bom => ({

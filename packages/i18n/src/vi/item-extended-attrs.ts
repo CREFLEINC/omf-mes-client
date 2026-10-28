@@ -12,13 +12,11 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     label: 'Khu vực chi tiết mặt hàng',
     attrs: 'Thuộc tính mở rộng',
     subsidiary: 'Thông tin phụ',
-    bom: 'BOM',
   },
-  sections: {
-    label: 'Phân loại mặt hàng · BOM',
-    item: 'Mặt hàng',
-    bom: 'BOM',
-  },
+  splitter: 'Kéo để điều chỉnh độ rộng danh sách mặt hàng·chi tiết',
+  listCollapse: 'Thu gọn danh sách mặt hàng',
+  listExpand: 'Mở danh sách mặt hàng',
+  pickItem: (itemCode: string): string => `Chọn ${itemCode}`,
   /* 화면 스펙의 구획 이름이라 여기서 새로 짓지 않는다. */
   subTabs: {
     label: 'Thông tin phụ',
@@ -28,6 +26,8 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     resourceMap: 'Thiết bị · khuôn',
   },
   panes: {
+    detail: 'Chi tiết mặt hàng',
+    filter: 'Điều kiện tra cứu',
     item: 'Mặt hàng',
     itemOrigin: 'Thông tin gốc của mặt hàng',
     itemAttrs: 'Thuộc tính mở rộng',
@@ -45,15 +45,9 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     totalOnly: (total: number): string => `Tổng ${String(total)}`,
   },
   filters: {
-    itemSearchLabel: 'Tìm mặt hàng',
-    itemSearchPlaceholder: 'Mã mặt hàng hoặc tên mặt hàng',
-    chipKeyword: (value: string): string => `Từ khóa: ${value}`,
-    chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
-    chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
+    itemSearchLabel: 'Mã·tên mặt hàng',
     itemTypeLabel: 'Loại mặt hàng',
     itemTypeAll: 'Tất cả',
-    chipItemType: (value: string): string => `Loại mặt hàng: ${value}`,
-    chipRemoveItemType: 'Bỏ điều kiện loại mặt hàng',
   },
   loading: {
     items: 'Đang tải danh sách mặt hàng',
@@ -91,14 +85,18 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       /** 이름은 코드 그룹 `ITEM_TYPE`이 준다 - 받기 전이거나 목록에 없으면 코드 그대로다. */
       itemType: 'Loại mặt hàng',
       baseUom: 'Đơn vị cơ sở',
+      spec: 'Quy cách',
+      itemGroup: 'Nhóm mặt hàng',
     },
-    ownershipNote:
-      'Thông tin gốc ERP được nhận từ ERP và chỉnh sửa trên ERP. Thuộc tính mở rộng bên dưới do MES quản lý.',
   },
   /* 확장 구획 - 이쪽이 소유해 고치는 값. 원본 구획과 말이 갈려 있어야 한다. */
   attrs: {
+    columns: {
+      group: 'Nhóm',
+      field: 'Mục',
+      value: 'Giá trị',
+    },
     groups: {
-      names: 'Tên đa ngôn ngữ',
       lot: 'Mặc định · nhận diện LOT',
       shelfLife: 'Hạn sử dụng · thứ tự xuất',
       inventory: 'Kiểm tra · tồn kho · bảo quản',
@@ -113,7 +111,7 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       serialControlType: 'Loại quản lý serial',
       shelfLifeManaged: 'Quản lý hạn sử dụng',
       shelfLifeDays: 'Hạn sử dụng (ngày)',
-      inspectionRequired: 'Đối tượng kiểm tra nhập kho',
+      inspectionRequired: 'Đối tượng IQC',
       fifoPolicy: 'Chính sách thứ tự xuất',
       negativeStockAllowed: 'Cho phép tồn kho âm',
       storageCondition: 'Điều kiện bảo quản',
@@ -121,16 +119,15 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
       isActive: 'Trạng thái sử dụng',
       mesCategory: 'Phân loại MES',
     },
+    /** 유효기한 관리 스위치 옆 일수 칸의 단위 — 칸 이름은 읽기 도구에만 있다. */
+    units: {
+      days: 'ngày',
+    },
     values: {
       active: 'Đang dùng',
       inactive: 'Ngừng dùng',
       unspecified: 'Không chỉ định',
     },
-    /* 바꿀 수단이 없는 자리는 감추지 않고 밝힌다 - 감추면 화면이 빠뜨린 것으로 읽힌다. */
-    isActiveNote:
-      'Trạng thái sử dụng không đổi được ở màn hình này. Dù lưu thì giá trị hiện tại vẫn giữ nguyên.',
-    /* 시스템 소유 값이라 편집 본문에 자리가 없다 - 바꿀 수 없는 이유를 밝힌다. */
-    mesCategoryNote: 'Phân loại MES do hệ thống xác định nên không đổi ở màn hình này.',
     validation: {
       required: 'Đây là mục bắt buộc.',
       codeTooLong: 'Mã không được vượt quá 50 ký tự.',
@@ -412,6 +409,54 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     actionsColumn: {
       /** 헤더 목록에서 이 BOM 의 내용·구성품을 연다 */
       open: (name: string): string => `Xem thành phần của ${name}`,
+    },
+  },
+  bomTab: {
+    splitter: 'Kéo để điều chỉnh độ rộng danh sách mặt hàng cha·BOM',
+    listCollapse: 'Thu gọn danh sách mặt hàng cha',
+    listExpand: 'Mở danh sách mặt hàng cha',
+    parentFacts: 'Chi tiết mặt hàng cha',
+    panes: {
+      parents: 'Danh sách mặt hàng cha',
+    },
+    fields: {
+      itemType: 'Loại',
+      hasBom: 'Chỉ mặt hàng có BOM',
+      q: 'Mã·tên mặt hàng',
+      bom: 'BOM',
+    },
+    columns: {
+      item: 'Mặt hàng',
+      requiredQty: 'Định mức',
+      scrapRate: 'Tỷ lệ hao hụt',
+      isMandatory: 'Bắt buộc',
+    },
+    tree: {
+      depthLimit: 'Không mở thêm các cấp sâu hơn',
+      retry: (label: string): string => `Tải lại cấu trúc con của ${label}`,
+      expand: (label: string): string => `Mở ${label}`,
+      collapse: (label: string): string => `Thu gọn ${label}`,
+      loading: 'Đang tải',
+      failed: 'Không tải được cấu trúc con',
+      cycle: 'Trùng mặt hàng ở cấp trên',
+    },
+    values: {
+      yes: 'Có',
+      no: 'Không',
+      loadingName: 'Đang tải',
+      failedName: 'Không tải được',
+      unknown: 'Không xác định',
+      defaultBom: (name: string): string => `${name} (mặc định)`,
+    },
+    loading: {
+      parents: 'Đang tải danh sách mặt hàng cha',
+      boms: 'Đang tải BOM',
+    },
+    empty: {
+      parentsBeyondLast: 'Trang này không có mặt hàng cha',
+      noParentsTitle: 'Không có mặt hàng cha phù hợp',
+      noParentTitle: 'Hãy chọn mặt hàng cha',
+      noBomTitle: 'Mặt hàng này không có BOM',
     },
   },
   /*

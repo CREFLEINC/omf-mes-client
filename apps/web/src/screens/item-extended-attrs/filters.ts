@@ -1,5 +1,3 @@
-import { messages } from '@omf-mes/i18n';
-
 import {
   DEFAULT_SUBSIDIARY_TAB_ID,
   DEFAULT_TAB_ID,
@@ -8,7 +6,6 @@ import {
   type ItemExtendedAttrsTabId,
   type SubsidiaryTabId,
 } from './tabs';
-import { codeValueName, type CodeValueOption } from './options';
 import type { ItemFilters } from './types';
 
 /**
@@ -17,8 +14,6 @@ import type { ItemFilters } from './types';
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
-
-const t = messages.itemExtendedAttrs;
 
 /** 주소 키는 짧게 쓰고 계약 이름과 분리한다 — 주소는 사람이 읽고 고치는 자리다. */
 const URL_KEYS = {
@@ -31,40 +26,40 @@ const URL_KEYS = {
 /** 고른 품목의 주소 키. 이 화면의 모든 우 칸 조회가 이 값 하나에 매달린다. */
 export const ITEM_KEY = 'item';
 
-/**
- * 고른 자재 명세서의 주소 키.
- *
- * **품목 아래에 매달린 선택이다.** 품목이 바뀌면 함께 떨어져야 하고, 그 처리는 주소를 만드는
- * 쪽이 한다 — 조건·쪽이 바뀔 때는 `toSearchParams`가 주소를 통째로 다시 만들어 자연히
- * 사라지고, 품목을 직접 고를 때는 그 갱신이 이 키를 함께 지운다.
- */
-export const BOM_KEY = 'bom';
-
-/**
- * 자재 명세서 목록의 BOM 코드 조건 주소 키.
- *
- * **고른 품목 아래에 매달린 조건이다** — `bom`과 같은 수명을 갖는다. 품목 조건·쪽이 바뀌면
- * `toSearchParams`가 주소를 통째로 다시 만들어 사라지고, 품목을 직접 고를 때는 그 갱신이 함께 지운다.
- * 조건을 걸거나 풀면 보이는 줄이 달라지므로 `bom` 선택도 함께 떨군다.
- */
-export const BOM_CODE_KEY = 'bomq';
-
-/** 주소가 들고 있는 BOM 코드 조건. 앞뒤 공백은 조건이 아니다 */
-export const readBomCodeFilter = (params: URLSearchParams): string =>
-  (params.get(BOM_CODE_KEY) ?? '').trim();
-
 /** 켜짐을 나타내는 유일한 값. 다른 값은 꺼진 것으로 본다 — 주소를 손으로 고쳐도 뜻이 흔들리지 않는다. */
 const ON = '1';
 
 const POSITIVE_INTEGER = /^\d+$/;
 
-export const EMPTY_ITEM_FILTERS: ItemFilters = { q: '', itemType: '', includeInactive: false };
+/** 품목유형의 처음 값 — 원자재(사용자 지시 2026-10-28). 확장 속성을 가장 많이 다는 품목이다. */
+export const DEFAULT_ITEM_TYPE = 'RAW_MATERIAL';
 
-export const readItemFilters = (params: URLSearchParams): ItemFilters => ({
-  q: params.get(URL_KEYS.q) ?? '',
-  itemType: params.get(URL_KEYS.itemType) ?? '',
-  includeInactive: params.get(URL_KEYS.includeInactive) === ON,
-});
+/**
+ * 「전체」를 고른 품목유형의 주소 값. 처음 값이 원자재라 빈 키는 원자재다 — 전체는 따로 적는다
+ * (「BOM 조회 (ERP)」의 `bom=all` 과 같은 방식).
+ */
+const ALL_TYPES = 'all';
+
+/** 처음 조건(초기화가 돌아가는 곳). 품목유형은 원자재다. */
+export const EMPTY_ITEM_FILTERS: ItemFilters = {
+  q: '',
+  itemType: DEFAULT_ITEM_TYPE,
+  includeInactive: false,
+};
+
+export const readItemFilters = (params: URLSearchParams): ItemFilters => {
+  const itemType = params.get(URL_KEYS.itemType);
+  return {
+    q: params.get(URL_KEYS.q) ?? '',
+    itemType:
+      itemType === null || itemType === ''
+        ? DEFAULT_ITEM_TYPE
+        : itemType === ALL_TYPES
+          ? ''
+          : itemType,
+    includeInactive: params.get(URL_KEYS.includeInactive) === ON,
+  };
+};
 
 /** 주소가 가리키는 쪽. 이상한 값은 첫 쪽으로 본다 — 주소는 손으로 고쳐지는 자리다. */
 export const readPage = (params: URLSearchParams, key: string = URL_KEYS.page): number => {
@@ -110,7 +105,9 @@ export const toSearchParams = (
   if (tabId !== DEFAULT_TAB_ID) next.set(TAB_KEY, tabId);
   if (subTabId !== DEFAULT_SUBSIDIARY_TAB_ID) next.set(SUBSIDIARY_TAB_KEY, subTabId);
   if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
-  if (filters.itemType !== '') next.set(URL_KEYS.itemType, filters.itemType);
+  if (filters.itemType !== DEFAULT_ITEM_TYPE) {
+    next.set(URL_KEYS.itemType, filters.itemType === '' ? ALL_TYPES : filters.itemType);
+  }
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
 
@@ -142,58 +139,5 @@ export const toItemListQuery = (filters: ItemFilters, page: number): ItemListQue
   ...(page > 1 ? { page } : {}),
 });
 
-export interface FilterChip {
-  key: keyof ItemFilters;
-  label: string;
-  /** 제거 버튼의 접근 이름. 「제거」가 둘이면 어느 조건을 푸는 것인지 알 수 없다. */
-  removeLabel: string;
-}
-
-/**
- * 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다.
- *
- * 품목 유형은 **선택칸과 같은 이름**으로 낸다 — 선택칸은 「제품」인데 칩이 코드를 내면 같은 조건이
- * 두 이름으로 읽힌다. 유형 목록을 아직 받지 못했거나 목록에 없는 코드면 코드 그대로다.
- */
-export const toFilterChips = (
-  filters: ItemFilters,
-  itemTypeOptions?: readonly CodeValueOption[],
-): FilterChip[] => {
-  const chips: FilterChip[] = [];
-
-  if (filters.q !== '') {
-    chips.push({
-      key: 'q',
-      label: t.filters.chipKeyword(filters.q),
-      removeLabel: t.filters.chipRemoveKeyword,
-    });
-  }
-
-  if (filters.itemType !== '') {
-    chips.push({
-      key: 'itemType',
-      label: t.filters.chipItemType(codeValueName(itemTypeOptions, filters.itemType)),
-      removeLabel: t.filters.chipRemoveItemType,
-    });
-  }
-
-  if (filters.includeInactive) {
-    chips.push({
-      key: 'includeInactive',
-      label: messages.common.includeInactive,
-      removeLabel: t.filters.chipRemoveIncludeInactive,
-    });
-  }
-
-  return chips;
-};
-
 export const hasAnyFilter = (filters: ItemFilters): boolean =>
-  filters.q !== '' || filters.itemType !== '' || filters.includeInactive;
-
-/**
- * 조건 하나만 푼다. 칩의 제거 버튼이 쓴다.
- * 키마다 「비었다」의 표현이 달라(문자열 vs 불리언) 호출부가 그것을 알지 않도록 여기서 다룬다.
- */
-export const clearFilter = (filters: ItemFilters, key: keyof ItemFilters): ItemFilters =>
-  key === 'includeInactive' ? { ...filters, includeInactive: false } : { ...filters, [key]: '' };
+  filters.q !== '' || filters.itemType !== DEFAULT_ITEM_TYPE || filters.includeInactive;

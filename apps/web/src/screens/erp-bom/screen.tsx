@@ -4,7 +4,6 @@ import {
   Checkbox,
   type Column,
   EmptyState,
-  Icon,
   Select,
   SkeletonText,
   TextField,
@@ -17,16 +16,17 @@ import { useSearchParams } from 'react-router';
 
 import { BoardFrame } from '../../patterns/board-frame';
 import { BoardTable } from '../../patterns/board-table';
+import { pickBom, useBomTree, type BomTreeRoot, type BomTreeRow } from '../../patterns/bom-tree';
+import { BomTreeCell } from '../../patterns/bom-tree-cell';
 import { OneLine } from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
 import { PageNav } from '../integration-sync/page-nav';
 import { toPageView } from '../integration-sync/pagination';
-import { pickBom, useBomTree, type BomTreeRoot, type BomTreeRow } from './bom-tree';
 import {
+  ERP_BOM_TREE,
   erpBomKeys,
   type ItemDetail,
   type ItemSummary,
-  labelOf,
   type NameOf,
   PARENT_PAGE_SIZE,
   useBomList,
@@ -190,81 +190,6 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   );
 };
 
-interface BomTreeCellProps {
-  row: BomTreeRow;
-  item: ItemSummary;
-  onToggle: (key: string) => void;
-  /** 하위 구성을 받지 못한 줄의 다시 시도. */
-  onRetry: () => void;
-}
-
-/** 하이라키 칸 — 단계만큼 들여 쓰고, 하위 구성이 있으면 펼치고 접는 단추를 앞에 둔다. */
-const BomTreeCell = ({ row, item, onToggle, onRetry }: BomTreeCellProps) => {
-  const label = labelOf(item);
-  const canToggle = row.state === 'expanded' || row.state === 'collapsed';
-  const note =
-    row.state === 'loading'
-      ? t.tree.loading
-      : row.state === 'failed'
-        ? t.tree.failed
-        : row.state === 'cycle'
-          ? t.tree.cycle
-          : row.state === 'depthLimit'
-            ? t.tree.depthLimit
-            : null;
-
-  return (
-    <span className="bom-tree-cell">
-      {/* 연결선 — 윗 단계마다 세로선(이어지면 │, 끝났으면 빈칸), 그다음 이 줄의 가지선(├ · └). 뿌리는 없다. */}
-      {row.rails.map((pass, level) => (
-        <span
-          /* 단계 자리라 순서가 곧 열쇠다. */
-          key={level}
-          className="bom-tree-rail"
-          data-line={pass ? 'pass' : 'none'}
-          aria-hidden="true"
-        />
-      ))}
-      {row.depth > 0 && (
-        <span
-          className="bom-tree-rail"
-          data-line={row.isLast ? 'elbow' : 'tee'}
-          aria-hidden="true"
-        />
-      )}
-      {canToggle ? (
-        <button
-          type="button"
-          className="bom-tree-toggle"
-          aria-expanded={row.state === 'expanded'}
-          aria-label={row.state === 'expanded' ? t.tree.collapse(label) : t.tree.expand(label)}
-          onClick={() => {
-            onToggle(row.key);
-          }}
-        >
-          <Icon name={row.state === 'expanded' ? 'expand_more' : 'chevron_right'} size={18} />
-        </button>
-      ) : (
-        /* 하위 구성이 없는 줄은 가지선을 이름 앞까지 끌어온다. */
-        <span
-          className="bom-tree-spacer"
-          data-branch={row.depth > 0 ? 'true' : undefined}
-          aria-hidden="true"
-        />
-      )}
-      {/* 품목코드는 굵게(사용자 지시 2026-10-27) — 이름은 넘치면 말줄임. */}
-      {item.code !== null && <span className="bom-tree-code">{item.code}</span>}
-      <OneLine text={item.code === null ? item.name : `· ${item.name}`} />
-      {note !== null && <span className="field-note bom-tree-note">{note}</span>}
-      {row.state === 'failed' && (
-        <Button variant="text" size="sm" aria-label={t.tree.retry(label)} onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      )}
-    </span>
-  );
-};
-
 interface BomTreePaneProps {
   root: BomTreeRoot;
   uomNameOf: NameOf;
@@ -279,7 +204,7 @@ interface BomTreePaneProps {
  */
 const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
-  const rows = useBomTree(root, collapsed);
+  const rows = useBomTree(root, collapsed, ERP_BOM_TREE);
   const itemOf = useItemSummaries(rows.map((row) => row.itemId));
   const queryClient = useQueryClient();
   /* 받지 못한 하위 구성(BOM 목록 · 구성품)만 다시 부른다 — 받으면 트리가 그 자리부터 다시 펴진다. */
@@ -304,9 +229,19 @@ const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
     {
       key: 'item',
       header: t.tree.item,
-      render: (row) => (
-        <BomTreeCell row={row} item={itemOf(row.itemId)} onToggle={toggle} onRetry={retryFailed} />
-      ),
+      render: (row) => {
+        const item = itemOf(row.itemId);
+        return (
+          <BomTreeCell
+            row={row}
+            code={item.code}
+            name={item.name}
+            labels={t.tree}
+            onToggle={toggle}
+            onRetry={retryFailed}
+          />
+        );
+      },
     },
     {
       key: 'requiredQty',
