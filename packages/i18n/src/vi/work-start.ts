@@ -110,9 +110,9 @@ export const workStart: Translated<typeof ko.workStart> = {
   remaining: {
     worker: 'Hãy nhập mã nhân viên',
     select: 'Hãy chọn lệnh sản xuất',
-    ready: 'Có thể chuyển sang nạp vật tư',
-    resume: 'Tiếp tục lại rồi chuyển sang nạp vật tư',
-    continue: 'Có thể tiếp tục sang nạp vật tư',
+    ready: 'Hãy bắt đầu công việc',
+    resume: 'Hãy tiếp tục lại công việc đã tạm dừng',
+    continue: 'Hãy làm tiếp công việc đang thực hiện',
   },
 
   blocked: {

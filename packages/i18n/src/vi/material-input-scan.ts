@@ -108,7 +108,7 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
     scan: 'Hãy quét LOT vật tư',
     record: (item: string): string => `Hãy đăng ký đưa vào ${item}`,
     recordMany: (count: number): string => `Hãy đăng ký đưa vào ${String(count)} vật tư đã quét`,
-    done: 'Có thể chuyển sang công việc sản xuất',
+    done: 'Nếu đã đưa vào xong, hãy chuyển sang công việc sản xuất',
     sending: (item: string, qty: string): string => `Sẽ gửi đưa vào ${item} ${qty} khi quét tiếp`,
   },
   confirm: {

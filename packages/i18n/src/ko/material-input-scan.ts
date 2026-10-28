@@ -174,7 +174,8 @@ export const materialInputScan = {
     /** 기록하지 않은 LOT이 하나면 품목 이름으로 가리킨다. LOT 번호 전체를 쓰지 않는다(C-5 한 줄). */
     record: (item: string): string => `${item}의 투입을 등록하세요`,
     recordMany: (count: number): string => `스캔한 자재 ${String(count)}건의 투입을 등록하세요`,
-    done: '생산 작업으로 진행할 수 있습니다',
+    /** 막힘 없음(C-5). 주 동작 [생산 작업으로]가 하는 일을 말한다. */
+    done: '투입을 마쳤으면 생산 작업으로 이동하세요',
     /** 미전송 투입이 있을 때. 막힘이 아니라 곧 일어날 일이다. */
     sending: (item: string, qty: string): string => `${item} ${qty} 투입을 다음 스캔 때 전송합니다`,
   },
