@@ -27,7 +27,7 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     disconnected: common.connection.offline,
     unsent: (count: number): string => `Chờ gửi ${String(count)} mục`,
   },
-  workerMissing: 'Chưa xác nhận mã nhân viên. Hãy xác thực mã nhân viên trước.',
+  workerMissing: 'Chưa xác nhận mã nhân viên. Vui lòng xác thực mã nhân viên trước.',
   workerNoDialog: {
     title: 'Nhập mã nhân viên',
     fieldLabel: 'Mã nhân viên',
@@ -40,19 +40,19 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     groupTitle: 'Người làm',
     empty: 'Chưa nhập mã nhân viên.',
     open: 'Nhập mã nhân viên',
-    unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này. Hãy nhập lại mã nhân viên.',
-    inactive: 'Mã nhân viên này không còn làm việc. Hãy nhập lại mã nhân viên.',
-    lookupFailed: 'Không xác nhận được mã nhân viên. Hãy thử lại.',
+    unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này. Vui lòng nhập lại mã nhân viên.',
+    inactive: 'Mã nhân viên này không còn làm việc. Vui lòng nhập lại mã nhân viên.',
+    lookupFailed: 'Không xác nhận được mã nhân viên. Vui lòng thử lại.',
     retry: 'Thử lại',
   },
   processGate: {
     denied: (process: string, feature: string, menuPath: string): string =>
-      `Máy này đang tắt «${feature}» của công đoạn ${process}. Hãy nhờ quản trị viên bật «${feature}» của công đoạn ${process} ở ${menuPath} trên web quản lý.`,
+      `Máy này đang tắt «${feature}» của công đoạn ${process}. Vui lòng nhờ quản trị viên bật «${feature}» của công đoạn ${process} ở ${menuPath} trên web quản lý.`,
     checkMapping: (menuPath: string): string =>
-      `Nếu vẫn vậy, hãy nhờ quản trị viên kiểm tra ở ${menuPath} trên web quản lý xem công đoạn của lệnh sản xuất này đã được ánh xạ cho máy này chưa.`,
+      `Nếu vẫn vậy, vui lòng nhờ quản trị viên kiểm tra ở ${menuPath} trên web quản lý xem công đoạn của lệnh sản xuất này đã được ánh xạ cho máy này chưa.`,
     serverReason: (reason: string): string => `(Máy chủ trả lời: ${reason})`,
     deniedUnknownProcess: (feature: string, menuPath: string): string =>
-      `Máy này đang tắt «${feature}» của công đoạn thuộc lệnh sản xuất này. Hãy nhờ quản trị viên bật «${feature}» của công đoạn đó ở ${menuPath} trên web quản lý.`,
+      `Máy này đang tắt «${feature}» của công đoạn thuộc lệnh sản xuất này. Vui lòng nhờ quản trị viên bật «${feature}» của công đoạn đó ở ${menuPath} trên web quản lý.`,
   },
   select: 'Chọn',
 

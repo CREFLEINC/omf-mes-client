@@ -55,36 +55,36 @@ export const productionResult = {
      * 하단 바 「남은 일」(C-5). 머리말 없이 문장만, 끝 마침표 없이 쓴다. 앞의 것이 먼저다.
      */
     next: {
-      noWorkOrder: '작업지시가 지정되지 않았습니다. 작업 지시 목록에서 작업지시를 고르세요',
-      noWorker: '사번을 입력하세요',
+      noWorkOrder: '작업지시가 지정되지 않았습니다. 작업 지시 목록에서 작업지시를 골라 주세요',
+      noWorker: '사번을 입력해 주세요',
       noLot:
-        '이 W/O에 생산할 LOT이 없습니다. 생산을 마쳤으면 작업지시를 마감하고, 더 만들어야 하면 관리자에게 알리세요',
+        '이 W/O에 생산할 LOT이 없습니다. 생산을 마쳤으면 작업지시를 마감할 수 있습니다. 더 만들어야 하면 관리자에게 알려 주세요',
       queued: '실적을 단말에 저장했습니다. 연결되면 보내고 LOT 라벨을 발행합니다',
       saving: '실적을 저장하고 있습니다',
       issuing: 'LOT 라벨을 발행하고 있습니다',
       printing: 'LOT 라벨을 인쇄하고 있습니다',
-      scan: '부착한 LOT 라벨을 스캔하세요',
+      scan: '부착한 LOT 라벨을 스캔해 주세요',
       /** 〈다시 시도 버튼 이름〉+을/를. 조사는 화면이 붙인다(`patterns/josa`). */
-      retry: (buttonWithObject: string): string => `${buttonWithObject} 누르세요`,
+      retry: (buttonWithObject: string): string => `${buttonWithObject} 눌러 주세요`,
       legacyMismatch:
-        '실적 없이 만든 이전 라벨 이력이 있어 LOT을 마감할 수 없습니다. 관리자에게 알리세요',
+        '실적 없이 만든 이전 라벨 이력이 있어 LOT을 마감할 수 없습니다. 관리자에게 알려 주세요',
       completing: 'LOT을 마감하고 있습니다',
       completed: '다음 LOT을 불러오고 있습니다',
-      printer: '사용할 수 있는 LOT 라벨 프린터가 없습니다. 관리자에게 프린터 연결을 요청하세요',
-      shell: 'POP 프로그램의 인쇄 통로를 확인할 수 없습니다. 관리자에게 알리세요',
-      tagUnknown: '인식표 대상인지 확인할 수 없습니다. 연결을 확인한 뒤 화면을 다시 여세요',
-      tag: '인식표를 모두 출력해야 생산 라벨을 출력할 수 있습니다. 관리자에게 알리세요',
-      qty: '양품 수량을 입력하세요',
-      defectOnly: '불량만 등록하려면 불량 등록을 누르세요',
-      defectType: '불량 유형을 고르세요',
-      defectQty: '불량 수량을 입력하세요',
-      defectDuplicate: '같은 불량 유형이 두 줄에 있습니다. 한 줄을 삭제하세요',
+      printer: '사용할 수 있는 LOT 라벨 프린터가 없습니다. 관리자에게 프린터 연결을 요청해 주세요',
+      shell: 'POP 프로그램의 인쇄 통로를 확인할 수 없습니다. 관리자에게 알려 주세요',
+      tagUnknown: '인식표 대상인지 확인할 수 없습니다. 연결을 확인한 뒤 화면을 다시 열어 주세요',
+      tag: '인식표를 모두 출력해야 생산 라벨을 출력할 수 있습니다. 관리자에게 알려 주세요',
+      qty: '양품 수량을 입력해 주세요',
+      defectOnly: '불량만 등록하려면 불량 등록을 눌러 주세요',
+      defectType: '불량 유형을 골라 주세요',
+      defectQty: '불량 수량을 입력해 주세요',
+      defectDuplicate: '같은 불량 유형이 두 줄에 있습니다. 한 줄을 삭제해 주세요',
       /** 지금 할 일을 말한다(다음 단계 이름이 아니라). */
-      ready: '양품 수량을 확인하고 생산 라벨을 출력하세요',
+      ready: '양품 수량을 확인한 뒤 생산 라벨을 출력할 수 있습니다',
       /** 계획 수량 달성. 주 동작이 [작업지시 마감]으로 바뀐다. */
-      planReached: '계획 수량을 달성했습니다. 작업지시를 마감하세요',
+      planReached: '계획 수량을 달성했습니다. 작업지시를 마감할 수 있습니다',
       /** 마감한 작업지시. 주 동작이 [포장 작업으로]다. */
-      closed: '작업지시를 마감했습니다. 생산 포장으로 이동해 포장하세요',
+      closed: '작업지시를 마감했습니다. 생산 포장으로 이동할 수 있습니다',
     },
     currentLot: {
       current: '현재 LOT',
@@ -99,12 +99,12 @@ export const productionResult = {
         `${String(page)} / ${String(Math.max(totalPages, 1))}`,
       /** 서버가 현재 LOT 을 한 건으로 정하지 못했다(옛 서버) — 엉뚱한 LOT 에 실적이 붙지 않게 막는다. */
       unreliable: (lotNos: string): string =>
-        `서버가 현재 LOT을 하나로 정하지 못했습니다(LOT ${lotNos}). 다른 LOT에 실적이 붙지 않도록 입력을 막았습니다. 관리자에게 서버가 최신 판인지 확인을 요청하세요.`,
-      loadFailed: '현재 LOT을 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 누르세요.',
+        `서버가 현재 LOT을 하나로 정하지 못했습니다(LOT ${lotNos}). 다른 LOT에 실적이 붙지 않도록 입력을 막았습니다. 관리자에게 서버가 최신 판인지 확인을 요청해 주세요.`,
+      loadFailed: '현재 LOT을 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 눌러 주세요.',
     },
     quantity: {
       actual: '양품 수량',
-      invalid: '0보다 큰 수량을 입력하세요.',
+      invalid: '0보다 큰 수량을 입력해 주세요.',
     },
     defects: {
       title: '불량',
@@ -115,10 +115,10 @@ export const productionResult = {
       qty: '불량 수량',
       remove: (label: string): string => `${label} 삭제`,
       duplicate: '이미 있는 불량 유형입니다.',
-      typeMissing: '유형을 고르세요',
+      typeMissing: '유형을 골라 주세요',
       /** 불량 줄의 문제를 목록 아래 한 줄로 말한다. */
       rowIssue: (row: string, issue: string): string => `${row}: ${issue}`,
-      qtyMissing: '수량을 입력하세요',
+      qtyMissing: '수량을 입력해 주세요',
       noProcess: '공정이 없는 W/O라 불량 유형을 고를 수 없습니다.',
       /* 키패드 이름 — 지금 어느 칸에 치는지 말한다. 칸 이름과 겹치지 않게 「키패드」를 붙인다. */
       keypadGood: '양품 수량 키패드',
@@ -145,7 +145,7 @@ export const productionResult = {
       summaryFailed: '인식표 발행 이력을 확인할 수 없어 생산 라벨 출력을 열지 않습니다.',
       restoreDocuments: (count: number) => `발행 기록이 없는 인식표 ${String(count)}장 복구`,
       printIncomplete: (count: number) =>
-        `인쇄 대기 또는 실패 인식표 ${String(count)}장을 확인해 재출력하세요.`,
+        `인쇄 대기 또는 실패 인식표 ${String(count)}장을 확인해 재출력해 주세요.`,
       printOutcome: {
         PENDING: '인쇄 대기',
         SUCCEEDED: '인쇄 성공',
@@ -153,13 +153,13 @@ export const productionResult = {
       },
       reissue: '선택한 인식표 재출력',
       reissueReason: '인식표 재출력 사유',
-      reissueReasonPlaceholder: '사유를 고르세요',
+      reissueReasonPlaceholder: '사유를 골라 주세요',
       reasonLoadFailed: '재출력 사유를 불러오지 못했습니다.',
       reasonEmpty: '고를 수 있는 재출력 사유가 없어 재출력할 수 없습니다.',
       issuing: '인식표를 발행하고 있습니다.',
       printFailed: '인식표 발행 기록은 남았지만 물리 인쇄에 실패했습니다.',
       reportFailed:
-        '인식표는 인쇄됐지만 결과를 보고하지 못했습니다. 다시 인쇄하지 말고 보고만 다시 보내세요.',
+        '인식표는 인쇄됐지만 결과를 보고하지 못했습니다. 다시 인쇄하지 말고 보고만 다시 보내 주세요.',
       loadFailed: '인식표 개체를 확인할 수 없어 생산 라벨 출력을 열지 않습니다.',
       targetUnknown: '인식표 대상 여부를 확인할 수 없어 출력을 열지 않습니다.',
       printerUnavailable: '인식표를 지원하는 프린터가 없습니다.',
@@ -177,7 +177,7 @@ export const productionResult = {
       renditionFailed: 'LOT 라벨을 발행했지만 인쇄 데이터를 받지 못했습니다.',
       printFailed: 'LOT 라벨을 발행했지만 인쇄하지 못했습니다.',
       reportFailed:
-        'LOT 라벨을 인쇄했지만 결과를 보내지 못했습니다. 다시 인쇄하지 말고 결과만 다시 보내세요.',
+        'LOT 라벨을 인쇄했지만 결과를 보내지 못했습니다. 다시 인쇄하지 말고 결과만 다시 보내 주세요.',
       legacyMismatch: '실적 없이 만든 이전 라벨 이력이 있습니다.',
       shellUnavailable: 'POP 프로그램의 인쇄 통로를 확인할 수 없습니다.',
     },
@@ -190,21 +190,21 @@ export const productionResult = {
        * 잘못됐나」와 「그래서 무엇을 하나」가 두 줄로 갈려 있었다.
        */
       mismatch:
-        '입력한 LOT과 일치하는 라벨을 찾을 수 없습니다. LOT을 다시 확인한 후, 동일한 라벨을 다시 스캔해주세요.',
+        '입력한 LOT과 일치하는 라벨을 찾을 수 없습니다. LOT을 다시 확인한 후, 동일한 라벨을 다시 스캔해 주세요.',
       completed: 'LOT을 마감했습니다.',
-      failed: 'LOT을 마감하지 못했습니다. 같은 라벨을 다시 스캔하세요.',
+      failed: 'LOT을 마감하지 못했습니다. 같은 라벨을 다시 스캔해 주세요.',
       alreadyCompleted: '이미 마감된 LOT입니다. 현재 LOT 상태를 다시 불러옵니다.',
-      noAllocation: '이 LOT에 저장된 실적이 없어 마감할 수 없습니다. 실적을 먼저 저장하세요.',
+      noAllocation: '이 LOT에 저장된 실적이 없어 마감할 수 없습니다. 실적을 먼저 저장해 주세요.',
       /* 마감된 작업지시는 다시 열 수 없다(서버에 재오픈이 없다) — 해제를 요청하라고 하면 갈 곳이 없다. */
       workOrderClosed: (menuPath: string, correction: string): string =>
-        `이 작업지시는 이미 마감돼 LOT 을 미달로 마감할 수 없습니다. 마감된 작업지시는 다시 열 수 없으니, 수량을 고쳐야 하면 관리자에게 관리웹 ${menuPath}의 「${correction}」을 요청하세요.`,
+        `이 작업지시는 이미 마감돼 LOT 을 미달로 마감할 수 없습니다. 마감된 작업지시는 다시 열 수 없으니, 수량을 고쳐야 하면 관리자에게 관리웹 ${menuPath}의 「${correction}」을 요청해 주세요.`,
     },
     /** 작업지시 마감 — 관리웹 W/O 마감과 같은 판정·입력을 현장에서 한다. 온라인에서만 된다. */
     woClose: {
       button: '작업지시 마감',
       title: (workOrderNo: string): string => `작업지시 마감 ${workOrderNo}`,
       loading: '마감할 작업지시를 확인하는 중입니다.',
-      loadFailed: '작업지시를 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 누르세요.',
+      loadFailed: '작업지시를 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 눌러 주세요.',
       fields: {
         orderQty: '지시 수량',
         goodQty: '양품 누계',
@@ -221,8 +221,8 @@ export const productionResult = {
         `이월 W/O는 자동으로 만들어지지 않습니다. 관리웹 ${menuPath}에서 새로 편성합니다.`,
       prefilled: 'LOT 마감 때 고른 사유입니다. 바꿀 수 있습니다.',
       reasonsLoading: '사유를 불러오는 중입니다.',
-      reasonsFailed: '사유를 불러오지 못했습니다. 연결을 확인하고 창을 다시 여세요.',
-      reasonsEmpty: '고를 수 있는 사유가 없습니다. 관리자에게 사유 등록을 요청하세요.',
+      reasonsFailed: '사유를 불러오지 못했습니다. 연결을 확인하고 창을 다시 열어 주세요.',
+      reasonsEmpty: '고를 수 있는 사유가 없습니다. 관리자에게 사유 등록을 요청해 주세요.',
       voidedSlots: (count: number): string =>
         `실적이 없는 LOT ${String(count)}건은 마감과 함께 폐번됩니다.`,
       openLots: (count: number, lotNos: string): string =>
@@ -231,7 +231,7 @@ export const productionResult = {
       needRemainder: '미달이라 잔량 처리(이월 또는 소멸)를 골라야 마감할 수 있습니다.',
       needReason: '미달이나 초과라 사유를 골라야 마감할 수 있습니다.',
       judgmentMissing:
-        '판정을 불러오지 못해 마감할 수 없습니다. 연결을 확인하고 「다시 시도」를 누르세요.',
+        '판정을 불러오지 못해 마감할 수 없습니다. 연결을 확인하고 「다시 시도」를 눌러 주세요.',
       openLotsChecking: '진행 중인 LOT 을 확인하는 중입니다. 확인이 끝나면 마감할 수 있습니다.',
       openLotsUnknown:
         '진행 중인 LOT 을 확인하지 못했습니다. 마감해도 진행 중인 LOT 은 그 상태로 남습니다.',
@@ -239,9 +239,9 @@ export const productionResult = {
         `확인하지 못한 미완료 LOT ${String(count)}건이 더 있습니다. 마감해도 그 LOT 은 그 상태로 남습니다.`,
       sessions: {
         checking: '이 작업지시의 작업 세션을 확인하는 중입니다.',
-        loadFailed: '작업 세션을 확인하지 못했습니다. 연결을 확인하고 「다시 시도」를 누르세요.',
+        loadFailed: '작업 세션을 확인하지 못했습니다. 연결을 확인하고 「다시 시도」를 눌러 주세요.',
         blocked:
-          '아래 작업 세션이 열려 있어 마감할 수 없습니다. 끝낼 곳에서 세션을 끝낸 뒤 다시 누르세요.',
+          '아래 작업 세션이 열려 있어 마감할 수 없습니다. 끝낼 곳에서 세션을 끝낸 뒤 다시 눌러 주세요.',
         listLabel: '열린 작업 세션',
         terminal: '단말',
         worker: '작업자',
@@ -255,32 +255,32 @@ export const productionResult = {
         other: (webMenu: string): string => `그 단말, 또는 관리웹 ${webMenu}의 강제 종료`,
       },
       endForbidden:
-        '이 단말의 작업 세션을 끝낼 권한이 없어 마감하지 않았습니다. 관리자에게 관리웹에서 세션을 강제 종료해 달라고 요청하세요.',
+        '이 단말의 작업 세션을 끝낼 권한이 없어 마감하지 않았습니다. 관리자에게 관리웹에서 세션을 강제 종료해 달라고 요청해 주세요.',
       endNotFound:
-        '이 단말의 작업 세션을 찾지 못해 마감하지 않았습니다. 이미 끝났을 수 있으니 창을 닫고 다시 여세요.',
+        '이 단말의 작업 세션을 찾지 못해 마감하지 않았습니다. 이미 끝났을 수 있으니 창을 닫고 다시 열어 주세요.',
       endedButNotClosed:
-        '이 단말의 작업 세션은 끝났지만 작업지시는 마감되지 않았습니다. 아래 까닭을 확인한 뒤 다시 누르세요.',
+        '이 단말의 작업 세션은 끝났지만 작업지시는 마감되지 않았습니다. 아래 까닭을 확인한 뒤 다시 눌러 주세요.',
       cancel: '취소',
       confirm: '마감',
       done: (workOrderNo: string): string =>
         `${workOrderNo}를 마감했습니다. 작업 지시 목록으로 돌아갑니다.`,
       blocked: {
         denied: (webMenu: string, terminalMenu: string): string =>
-          `이 단말은 작업지시 마감이 허용되지 않았습니다. 관리웹 ${webMenu}에서 마감하거나, 관리자에게 ${terminalMenu}에서 「작업지시 마감」을 켜 달라고 요청하세요.`,
+          `이 단말은 작업지시 마감이 허용되지 않았습니다. 관리웹 ${webMenu}에서 마감하거나, 관리자에게 ${terminalMenu}에서 「작업지시 마감」을 켜 달라고 요청해 주세요.`,
         checking: '이 단말의 마감 권한을 확인하는 중입니다.',
         unavailable:
-          '이 단말의 마감 권한을 확인하지 못했습니다. 연결을 확인하고 화면을 다시 여세요.',
-        offline: '연결이 끊겨 마감할 수 없습니다. 연결을 확인한 뒤 다시 누르세요.',
+          '이 단말의 마감 권한을 확인하지 못했습니다. 연결을 확인하고 화면을 다시 열어 주세요.',
+        offline: '연결이 끊겨 마감할 수 없습니다. 연결을 확인한 뒤 다시 눌러 주세요.',
         pending: (count: number): string =>
-          `아직 보내지 못한 실적 ${String(count)}건이 있습니다. 실적이 모두 보내진 뒤 마감하세요.`,
+          `아직 보내지 못한 실적 ${String(count)}건이 있습니다. 실적이 모두 보내진 뒤 마감해 주세요.`,
         status:
           '이 작업지시는 아직 작업이 시작되지 않아 마감할 수 없습니다. 작업을 시작한 작업지시만 마감할 수 있습니다.',
         unidentified:
-          '이 단말이나 공정을 확인하지 못해 마감할 수 없습니다. 관리자에게 단말 등록과 공정 매핑을 확인해 달라고 요청하세요.',
+          '이 단말이나 공정을 확인하지 못해 마감할 수 없습니다. 관리자에게 단말 등록과 공정 매핑을 확인해 달라고 요청해 주세요.',
         cancelled: '취소된 작업지시는 마감할 수 없습니다.',
       },
       endFailed:
-        '이 단말의 작업 세션을 끝내지 못해 마감하지 않았습니다. 연결을 확인하고 다시 누르세요.',
+        '이 단말의 작업 세션을 끝내지 못해 마감하지 않았습니다. 연결을 확인하고 다시 눌러 주세요.',
     },
     /** 목표에 못 미친 LOT 을 마감할 때 — 서버가 사유를 필수로 받는다. */
     underReason: {
@@ -303,19 +303,20 @@ export const productionResult = {
      */
     session: {
       /** 다시 시도해서 풀릴 수 있는 실패 — 무엇을 하면 되는지까지 적는다. */
-      failed: '작업 세션을 종료하지 못했습니다. 다시 시도하세요.',
+      failed: '작업 세션을 종료하지 못했습니다. 다시 시도해 주세요.',
       /**
        * ⛔ **다시 눌러도 풀리지 않는 실패.** 재시도는 같은 요청을 그대로 다시 보내므로 서버가
        * 상태·권한·대상 때문에 거절한 것이면 답이 같다 — 재시도 대신 «갈 곳»을 말한다.
        */
-      unrecoverable: '작업 세션을 종료할 수 없습니다. [작업 중단] 화면에서 세션 상태를 확인하세요.',
+      unrecoverable:
+        '작업 세션을 종료할 수 없습니다. [작업 중단] 화면에서 세션 상태를 확인해 주세요.',
       retry: '세션 종료 재시도',
       /**
        * 권한이 «거부»된 경우에만 쓴다. ⛔ 조회 중·조회 실패·단말 미식별에 이 문구를 쓰지
        * 않는다 — 그것은 «모른다»이지 «없다»가 아니라, 권한 있는 단말에 「권한 없음」이 뜬다.
        */
       denied: '이 단말은 이 공정의 작업 완료 권한이 없습니다. 작업 세션은 열린 채로 둡니다.',
-      offline: '연결이 끊겨 작업 세션을 종료하지 못했습니다. 연결된 뒤 다시 시도하세요.',
+      offline: '연결이 끊겨 작업 세션을 종료하지 못했습니다. 연결된 뒤 다시 시도해 주세요.',
     },
     gate: {
       input: '이 단말은 생산 실적 입력을 사용할 수 없습니다.',
@@ -339,15 +340,15 @@ export const productionResult = {
      *   보인다. 문장은 포장 화면들(`packing-work`·`work-hold-register`)과 같은 꼴로 맞춘다.
      */
     missingWorkOrder:
-      '작업지시를 받지 못해 실적을 등록할 수 없습니다. 작업 지시 목록에서 작업지시를 고른 뒤 들어오세요.',
+      '작업지시를 받지 못해 실적을 등록할 수 없습니다. 작업 지시 목록에서 작업지시를 고른 뒤 들어와 주세요.',
     loadFailed: '작업지시를 불러오지 못했습니다.',
   },
 
   /** 단말 기능 구성 판정. 「확인할 수 없다」와 「권한이 없다」를 다르게 말한다. */
   gate: {
     checking: '실적 입력 권한을 확인하는 중입니다.',
-    denied: '이 단말은 이 공정의 실적 입력 권한이 없습니다. 담당자에게 문의하세요.',
-    unavailable: '실적 입력 권한을 확인할 수 없습니다. 잠시 후 다시 시도하세요.',
+    denied: '이 단말은 이 공정의 실적 입력 권한이 없습니다. 담당자에게 문의해 주세요.',
+    unavailable: '실적 입력 권한을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.',
     unidentified: '단말이 확인되지 않아 실적을 등록할 수 없습니다.',
     retry: '다시 시도',
   },
@@ -366,7 +367,7 @@ export const productionResult = {
     splitTitle: 'PQC 제품 검사',
     splitNote: '검사 수량, 판정, 결과 확정',
     /** 검사 on/off 를 묻는 조회가 실패했다(리뷰 m6) — 조용히 실적만 보이지 않게 알린다. */
-    loadFailed: 'PQC 정보를 불러오지 못했습니다. 다시 시도하세요.',
+    loadFailed: 'PQC 정보를 불러오지 못했습니다. 다시 시도해 주세요.',
   },
 
   /** 「생산 작업」 화면의 왼쪽(검사 off 면 전체) 구획 머리. */
@@ -443,8 +444,8 @@ export const productionResult = {
     queuedBody: '연결되면 자동으로 보냅니다.',
     failTitle: '실적을 저장하지 못했습니다',
     /** 저장 후 분기 — 잔여가 남으면 이어서, 0 이면 LOT 완료로. */
-    continueBody: '잔여수량이 남아 있습니다. 이어서 입력하세요.',
+    continueBody: '잔여수량이 남아 있습니다. 이어서 입력해 주세요.',
     lotDoneTitle: '이 LOT 의 잔여수량이 없습니다',
-    lotDoneBody: '생산LOT 완료 처리로 넘어가세요.',
+    lotDoneBody: '생산LOT 완료 처리로 넘어가 주세요.',
   },
 } as const;

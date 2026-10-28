@@ -45,7 +45,7 @@ export const popChrome = {
    * 사번을 확인하지 못했을 때 맨 위 경고 띠(`patterns/pop-worker-missing-banner`). 모든 POP 화면이
    * 같은 말을 쓴다(사용자 지시 2026-09-17).
    */
-  workerMissing: '사번이 확인되지 않았습니다. 사번 인증을 먼저 진행해주세요.',
+  workerMissing: '사번이 확인되지 않았습니다. 사번 인증을 먼저 진행해 주세요.',
   /**
    * 공용 사번 입력 창(`patterns/worker-no-dialog`). 작업 시작과 자재 투입이 같은 창을 쓴다.
    * 칸은 읽기 전용이 아니라 키보드와 스캐너 입력을 받는다.
@@ -63,20 +63,20 @@ export const popChrome = {
     groupTitle: '작업자',
     empty: '사번이 입력되지 않았습니다.',
     open: '사번 입력',
-    unknown: '이 공장에 등록되지 않은 사번입니다. 사번을 다시 입력하세요.',
-    inactive: '재직 중이 아닌 사번입니다. 사번을 다시 입력하세요.',
-    lookupFailed: '사번을 확인하지 못했습니다. 다시 시도하세요.',
+    unknown: '이 공장에 등록되지 않은 사번입니다. 사번을 다시 입력해 주세요.',
+    inactive: '재직 중이 아닌 사번입니다. 사번을 다시 입력해 주세요.',
+    lookupFailed: '사번을 확인하지 못했습니다. 다시 시도해 주세요.',
     retry: '다시 시도',
   },
   /** 단말 기능 판정(`patterns/pop-process-gate`) — 어느 공정의 무슨 기능이 꺼졌는지와 켜는 곳. */
   processGate: {
     denied: (process: string, feature: string, menuPath: string): string =>
-      `이 단말은 ${process} 공정의 「${feature}」 기능이 꺼져 있습니다. 관리자에게 관리웹 ${menuPath}에서 ${process} 공정의 「${feature}」 기능을 켜 달라고 요청하세요.`,
+      `이 단말은 ${process} 공정의 「${feature}」 기능이 꺼져 있습니다. 관리자에게 관리웹 ${menuPath}에서 ${process} 공정의 「${feature}」 기능을 켜 달라고 요청해 주세요.`,
     checkMapping: (menuPath: string): string =>
-      `계속되면 관리자에게 관리웹 ${menuPath}에서 이 작업지시의 공정이 이 단말에 매핑돼 있는지 확인해 달라고 하세요.`,
+      `계속되면 관리자에게 관리웹 ${menuPath}에서 이 작업지시의 공정이 이 단말에 매핑돼 있는지 확인해 달라고 해 주세요.`,
     serverReason: (reason: string): string => `(서버 응답: ${reason})`,
     deniedUnknownProcess: (feature: string, menuPath: string): string =>
-      `이 단말은 이 작업지시 공정의 「${feature}」 기능이 꺼져 있습니다. 관리자에게 관리웹 ${menuPath}에서 그 공정의 「${feature}」 기능을 켜 달라고 요청하세요.`,
+      `이 단말은 이 작업지시 공정의 「${feature}」 기능이 꺼져 있습니다. 관리자에게 관리웹 ${menuPath}에서 그 공정의 「${feature}」 기능을 켜 달라고 요청해 주세요.`,
   },
   /** 선택 단추가 따로 이름을 받지 않았을 때의 기본 이름. */
   select: '선택',

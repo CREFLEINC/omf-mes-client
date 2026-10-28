@@ -34,33 +34,34 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       packingWork: 'Sang đóng gói sản xuất',
     },
     next: {
-      noWorkOrder: 'Chưa chỉ định lệnh sản xuất. Hãy chọn lệnh sản xuất ở danh sách lệnh sản xuất',
-      noWorker: 'Hãy nhập mã nhân viên',
+      noWorkOrder:
+        'Chưa chỉ định lệnh sản xuất. Vui lòng chọn lệnh sản xuất ở danh sách lệnh sản xuất',
+      noWorker: 'Vui lòng nhập mã nhân viên',
       noLot:
-        'W/O này không còn LOT để sản xuất. Nếu đã sản xuất xong hãy đóng lệnh sản xuất, nếu cần làm thêm hãy báo quản trị viên',
+        'W/O này không còn LOT để sản xuất. Nếu đã sản xuất xong có thể đóng lệnh sản xuất. Nếu cần làm thêm, vui lòng báo quản trị viên',
       queued: 'Đã lưu kết quả trên máy trạm. Khi có kết nối sẽ gửi và phát hành nhãn LOT',
       saving: 'Đang lưu kết quả',
       issuing: 'Đang phát hành nhãn LOT',
       printing: 'Đang in nhãn LOT',
-      scan: 'Hãy quét nhãn LOT đã dán',
-      retry: (buttonWithObject: string): string => `Hãy bấm ${buttonWithObject}`,
+      scan: 'Vui lòng quét nhãn LOT đã dán',
+      retry: (buttonWithObject: string): string => `Vui lòng bấm ${buttonWithObject}`,
       legacyMismatch:
-        'Có lịch sử nhãn cũ tạo không kèm kết quả nên không đóng được LOT. Hãy báo quản trị viên',
+        'Có lịch sử nhãn cũ tạo không kèm kết quả nên không đóng được LOT. Vui lòng báo quản trị viên',
       completing: 'Đang đóng LOT',
       completed: 'Đang tải LOT kế tiếp',
-      printer: 'Không có máy in nhãn LOT dùng được. Hãy nhờ quản trị viên kết nối máy in',
-      shell: 'Không xác nhận được đường in của chương trình POP. Hãy báo quản trị viên',
+      printer: 'Không có máy in nhãn LOT dùng được. Vui lòng nhờ quản trị viên kết nối máy in',
+      shell: 'Không xác nhận được đường in của chương trình POP. Vui lòng báo quản trị viên',
       tagUnknown:
-        'Không xác nhận được có cần thẻ nhận diện hay không. Hãy kiểm tra kết nối rồi mở lại màn hình',
-      tag: 'Phải in đủ thẻ nhận diện mới in được nhãn sản xuất. Hãy báo quản trị viên',
-      qty: 'Hãy nhập số lượng đạt',
-      defectOnly: 'Để chỉ đăng ký lỗi hãy bấm Đăng ký lỗi',
-      defectType: 'Hãy chọn loại lỗi',
-      defectQty: 'Hãy nhập số lượng lỗi',
-      defectDuplicate: 'Cùng một loại lỗi nằm ở hai dòng. Hãy xóa một dòng',
-      ready: 'Hãy kiểm tra số lượng đạt rồi in nhãn sản xuất',
-      planReached: 'Đã đạt số lượng kế hoạch. Hãy đóng lệnh sản xuất',
-      closed: 'Đã đóng lệnh sản xuất. Hãy chuyển sang đóng gói sản xuất',
+        'Không xác nhận được có cần thẻ nhận diện hay không. Vui lòng kiểm tra kết nối rồi mở lại màn hình',
+      tag: 'Phải in đủ thẻ nhận diện mới in được nhãn sản xuất. Vui lòng báo quản trị viên',
+      qty: 'Vui lòng nhập số lượng đạt',
+      defectOnly: 'Để chỉ đăng ký lỗi vui lòng bấm Đăng ký lỗi',
+      defectType: 'Vui lòng chọn loại lỗi',
+      defectQty: 'Vui lòng nhập số lượng lỗi',
+      defectDuplicate: 'Cùng một loại lỗi nằm ở hai dòng. Vui lòng xóa một dòng',
+      ready: 'Có thể kiểm tra số lượng đạt rồi in nhãn sản xuất',
+      planReached: 'Đã đạt số lượng kế hoạch. Có thể đóng lệnh sản xuất',
+      closed: 'Đã đóng lệnh sản xuất. Có thể chuyển sang đóng gói sản xuất',
     },
     currentLot: {
       current: 'LOT hiện tại',
@@ -73,12 +74,12 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       pagePosition: (page: number, totalPages: number) =>
         `${String(page)} / ${String(Math.max(totalPages, 1))}`,
       unreliable: (lotNos: string): string =>
-        `Máy chủ không xác định được một LOT hiện tại (LOT ${lotNos}). Đã chặn nhập để kết quả không gắn vào LOT khác. Hãy nhờ quản trị viên kiểm tra máy chủ đã là bản mới nhất chưa.`,
-      loadFailed: 'Không tải được LOT hiện tại. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
+        `Máy chủ không xác định được một LOT hiện tại (LOT ${lotNos}). Đã chặn nhập để kết quả không gắn vào LOT khác. Vui lòng nhờ quản trị viên kiểm tra máy chủ đã là bản mới nhất chưa.`,
+      loadFailed: 'Không tải được LOT hiện tại. Vui lòng kiểm tra kết nối rồi bấm «Thử lại».',
     },
     quantity: {
       actual: 'Số lượng đạt',
-      invalid: 'Hãy nhập số lượng lớn hơn 0.',
+      invalid: 'Vui lòng nhập số lượng lớn hơn 0.',
     },
     defects: {
       title: 'Lỗi',
@@ -89,9 +90,9 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       qty: 'Số lượng lỗi',
       remove: (label: string): string => `Xóa ${label}`,
       duplicate: 'Loại lỗi này đã có.',
-      typeMissing: 'Hãy chọn loại',
+      typeMissing: 'Vui lòng chọn loại',
       rowIssue: (row: string, issue: string): string => `${row}: ${issue}`,
-      qtyMissing: 'Hãy nhập số lượng',
+      qtyMissing: 'Vui lòng nhập số lượng',
       noProcess: 'W/O không có công đoạn nên không chọn được loại lỗi.',
       keypadGood: 'Bàn phím số lượng đạt',
       keypadFor: (target: string): string => `Bàn phím số lượng lỗi ${target}`,
@@ -118,7 +119,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       restoreDocuments: (count: number) =>
         `Khôi phục ${String(count)} thẻ nhận diện chưa có bản ghi phát hành`,
       printIncomplete: (count: number) =>
-        `Có ${String(count)} thẻ nhận diện đang chờ in hoặc in thất bại. Hãy kiểm tra và in lại.`,
+        `Có ${String(count)} thẻ nhận diện đang chờ in hoặc in thất bại. Vui lòng kiểm tra và in lại.`,
       printOutcome: {
         PENDING: 'Chờ in',
         SUCCEEDED: 'In thành công',
@@ -126,7 +127,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       },
       reissue: 'In lại thẻ nhận diện đã chọn',
       reissueReason: 'Lý do in lại thẻ nhận diện',
-      reissueReasonPlaceholder: 'Hãy chọn lý do',
+      reissueReasonPlaceholder: 'Vui lòng chọn lý do',
       reasonLoadFailed: 'Không tải được lý do in lại.',
       reasonEmpty: 'Không có lý do in lại để chọn nên không in lại được.',
       issuing: 'Đang phát hành thẻ nhận diện.',
@@ -158,19 +159,20 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       placeholder: 'Nhãn LOT đã dán',
       /* ⚠ 한 줄로 합친 문구다(사용자 지시 2026-09-10). */
       mismatch:
-        'Không tìm thấy nhãn khớp với LOT đã nhập. Hãy kiểm tra lại LOT rồi quét lại đúng nhãn đó.',
+        'Không tìm thấy nhãn khớp với LOT đã nhập. Vui lòng kiểm tra lại LOT rồi quét lại đúng nhãn đó.',
       completed: 'Đã đóng LOT.',
-      failed: 'Không đóng được LOT. Hãy quét lại cùng nhãn.',
+      failed: 'Không đóng được LOT. Vui lòng quét lại cùng nhãn.',
       alreadyCompleted: 'LOT này đã đóng. Đang tải lại trạng thái LOT hiện tại.',
-      noAllocation: 'LOT này chưa có kết quả đã lưu nên không đóng được. Hãy lưu kết quả trước.',
+      noAllocation:
+        'LOT này chưa có kết quả đã lưu nên không đóng được. Vui lòng lưu kết quả trước.',
       workOrderClosed: (menuPath: string, correction: string): string =>
-        `Lệnh sản xuất này đã đóng nên không đóng LOT thiếu được. Lệnh đã đóng không mở lại được, nếu cần sửa số lượng hãy nhờ quản trị viên dùng «${correction}» ở ${menuPath} trên web quản lý.`,
+        `Lệnh sản xuất này đã đóng nên không đóng LOT thiếu được. Lệnh đã đóng không mở lại được, nếu cần sửa số lượng vui lòng nhờ quản trị viên dùng «${correction}» ở ${menuPath} trên web quản lý.`,
     },
     woClose: {
       button: 'Đóng lệnh sản xuất',
       title: (workOrderNo: string): string => `Đóng lệnh sản xuất ${workOrderNo}`,
       loading: 'Đang kiểm tra lệnh sản xuất cần đóng.',
-      loadFailed: 'Không tải được lệnh sản xuất. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
+      loadFailed: 'Không tải được lệnh sản xuất. Vui lòng kiểm tra kết nối rồi bấm «Thử lại».',
       fields: {
         orderQty: 'Số lượng lệnh',
         goodQty: 'Lũy kế đạt',
@@ -187,8 +189,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
         `W/O chuyển sang kỳ sau không được tạo tự động. Sẽ lập mới ở ${menuPath} trên web quản lý.`,
       prefilled: 'Đây là lý do đã chọn khi đóng LOT. Có thể đổi.',
       reasonsLoading: 'Đang tải lý do.',
-      reasonsFailed: 'Không tải được lý do. Hãy kiểm tra kết nối rồi mở lại cửa sổ.',
-      reasonsEmpty: 'Không có lý do nào để chọn. Hãy nhờ quản trị viên đăng ký lý do.',
+      reasonsFailed: 'Không tải được lý do. Vui lòng kiểm tra kết nối rồi mở lại cửa sổ.',
+      reasonsEmpty: 'Không có lý do nào để chọn. Vui lòng nhờ quản trị viên đăng ký lý do.',
       voidedSlots: (count: number): string =>
         `${String(count)} LOT chưa có kết quả sẽ bị hủy số cùng lúc đóng.`,
       openLots: (count: number, lotNos: string): string =>
@@ -199,7 +201,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
         'Vì thiếu nên phải chọn xử lý lượng còn lại (chuyển sang kỳ sau hoặc xóa bỏ) mới đóng được.',
       needReason: 'Vì thiếu hoặc vượt nên phải chọn lý do mới đóng được.',
       judgmentMissing:
-        'Không tải được đánh giá nên chưa đóng được. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
+        'Không tải được đánh giá nên chưa đóng được. Vui lòng kiểm tra kết nối rồi bấm «Thử lại».',
       openLotsChecking: 'Đang kiểm tra LOT đang thực hiện. Kiểm tra xong mới đóng được.',
       openLotsUnknown:
         'Chưa kiểm tra được LOT đang thực hiện. Dù đóng, LOT đang thực hiện vẫn giữ nguyên trạng thái.',
@@ -207,9 +209,10 @@ export const productionResult: Translated<typeof ko.productionResult> = {
         `Còn ${String(count)} LOT chưa hoàn thành chưa kiểm tra được. Dù đóng, các LOT đó vẫn giữ nguyên trạng thái.`,
       sessions: {
         checking: 'Đang kiểm tra phiên làm việc của lệnh sản xuất này.',
-        loadFailed: 'Không kiểm tra được phiên làm việc. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
+        loadFailed:
+          'Không kiểm tra được phiên làm việc. Vui lòng kiểm tra kết nối rồi bấm «Thử lại».',
         blocked:
-          'Các phiên làm việc dưới đây đang mở nên chưa đóng được. Hãy kết thúc phiên ở nơi kết thúc rồi bấm lại.',
+          'Các phiên làm việc dưới đây đang mở nên chưa đóng được. Vui lòng kết thúc phiên ở nơi kết thúc rồi bấm lại.',
         listLabel: 'Phiên làm việc đang mở',
         terminal: 'Máy',
         worker: 'Công nhân',
@@ -224,32 +227,32 @@ export const productionResult: Translated<typeof ko.productionResult> = {
           `Máy đó, hoặc buộc kết thúc ở ${webMenu} trên web quản lý`,
       },
       endForbidden:
-        'Máy này không có quyền kết thúc phiên làm việc nên chưa đóng. Hãy nhờ quản trị viên buộc kết thúc phiên trên web quản lý.',
+        'Máy này không có quyền kết thúc phiên làm việc nên chưa đóng. Vui lòng nhờ quản trị viên buộc kết thúc phiên trên web quản lý.',
       endNotFound:
-        'Không tìm thấy phiên làm việc của máy này nên chưa đóng. Có thể đã kết thúc rồi, hãy đóng cửa sổ và mở lại.',
+        'Không tìm thấy phiên làm việc của máy này nên chưa đóng. Có thể đã kết thúc rồi, vui lòng đóng cửa sổ và mở lại.',
       endedButNotClosed:
-        'Phiên làm việc của máy này đã kết thúc nhưng lệnh sản xuất chưa được đóng. Hãy xem lý do bên dưới rồi bấm lại.',
+        'Phiên làm việc của máy này đã kết thúc nhưng lệnh sản xuất chưa được đóng. Vui lòng xem lý do bên dưới rồi bấm lại.',
       cancel: 'Hủy',
       confirm: 'Đóng',
       done: (workOrderNo: string): string =>
         `Đã đóng ${workOrderNo}. Quay lại màn hình danh sách lệnh sản xuất.`,
       blocked: {
         denied: (webMenu: string, terminalMenu: string): string =>
-          `Máy này không được phép đóng lệnh sản xuất. Hãy đóng ở ${webMenu} trên web quản lý, hoặc nhờ quản trị viên bật «Đóng lệnh sản xuất» ở ${terminalMenu}.`,
+          `Máy này không được phép đóng lệnh sản xuất. Vui lòng đóng ở ${webMenu} trên web quản lý, hoặc nhờ quản trị viên bật «Đóng lệnh sản xuất» ở ${terminalMenu}.`,
         checking: 'Đang kiểm tra quyền đóng của máy này.',
         unavailable:
-          'Chưa kiểm tra được quyền đóng của máy này. Hãy kiểm tra kết nối rồi mở lại màn hình.',
-        offline: 'Mất kết nối nên không đóng được. Hãy kiểm tra kết nối rồi bấm lại.',
+          'Chưa kiểm tra được quyền đóng của máy này. Vui lòng kiểm tra kết nối rồi mở lại màn hình.',
+        offline: 'Mất kết nối nên không đóng được. Vui lòng kiểm tra kết nối rồi bấm lại.',
         pending: (count: number): string =>
-          `Còn ${String(count)} kết quả chưa gửi. Hãy đóng sau khi đã gửi hết kết quả.`,
+          `Còn ${String(count)} kết quả chưa gửi. Vui lòng đóng sau khi đã gửi hết kết quả.`,
         status:
           'Lệnh sản xuất này chưa bắt đầu làm nên chưa đóng được. Chỉ đóng được lệnh đã bắt đầu làm.',
         unidentified:
-          'Chưa xác định được máy hoặc công đoạn nên chưa đóng được. Hãy nhờ quản trị viên kiểm tra đăng ký máy và ánh xạ công đoạn.',
+          'Chưa xác định được máy hoặc công đoạn nên chưa đóng được. Vui lòng nhờ quản trị viên kiểm tra đăng ký máy và ánh xạ công đoạn.',
         cancelled: 'Lệnh sản xuất đã hủy thì không đóng được.',
       },
       endFailed:
-        'Không kết thúc được phiên làm việc của máy này nên chưa đóng. Hãy kiểm tra kết nối rồi bấm lại.',
+        'Không kết thúc được phiên làm việc của máy này nên chưa đóng. Vui lòng kiểm tra kết nối rồi bấm lại.',
     },
     underReason: {
       title: 'Lý do thiếu',
@@ -261,13 +264,14 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       empty: 'Không có lý do thiếu để chọn.',
     },
     session: {
-      failed: 'Không kết thúc được phiên làm việc. Hãy thử lại.',
+      failed: 'Không kết thúc được phiên làm việc. Vui lòng thử lại.',
       unrecoverable:
-        'Không thể kết thúc phiên làm việc. Hãy kiểm tra trạng thái phiên ở màn hình [Dừng công việc].',
+        'Không thể kết thúc phiên làm việc. Vui lòng kiểm tra trạng thái phiên ở màn hình [Dừng công việc].',
       retry: 'Thử lại kết thúc phiên',
       denied:
         'Máy trạm này không có quyền hoàn tất công việc của công đoạn này. Phiên làm việc được giữ mở.',
-      offline: 'Mất kết nối nên chưa kết thúc được phiên làm việc. Hãy thử lại sau khi có kết nối.',
+      offline:
+        'Mất kết nối nên chưa kết thúc được phiên làm việc. Vui lòng thử lại sau khi có kết nối.',
     },
     gate: {
       input: 'Máy trạm này không dùng được nhập kết quả sản xuất.',
@@ -283,14 +287,14 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     itemLabel: 'Mặt hàng',
     workerLabel: 'Mã nhân viên',
     missingWorkOrder:
-      'Chưa nhận được lệnh sản xuất nên không đăng ký được kết quả. Hãy chọn lệnh sản xuất ở màn hình danh sách lệnh sản xuất rồi vào lại.',
+      'Chưa nhận được lệnh sản xuất nên không đăng ký được kết quả. Vui lòng chọn lệnh sản xuất ở màn hình danh sách lệnh sản xuất rồi vào lại.',
     loadFailed: 'Không tải được lệnh sản xuất.',
   },
   gate: {
     checking: 'Đang kiểm tra quyền nhập kết quả.',
     denied:
-      'Máy trạm này không có quyền nhập kết quả ở công đoạn này. Hãy liên hệ người phụ trách.',
-    unavailable: 'Không xác nhận được quyền nhập kết quả. Hãy thử lại sau.',
+      'Máy trạm này không có quyền nhập kết quả ở công đoạn này. Vui lòng liên hệ người phụ trách.',
+    unavailable: 'Không xác nhận được quyền nhập kết quả. Vui lòng thử lại sau.',
     unidentified: 'Chưa xác nhận được máy trạm nên không đăng ký được kết quả.',
     retry: 'Thử lại',
   },
@@ -301,7 +305,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     goInspect: 'Đến màn hình kiểm tra',
     splitTitle: 'Kiểm tra sản phẩm PQC',
     splitNote: 'Số lượng kiểm tra, đánh giá, xác nhận kết quả',
-    loadFailed: 'Không tải được thông tin PQC. Hãy thử lại.',
+    loadFailed: 'Không tải được thông tin PQC. Vui lòng thử lại.',
   },
   zone: {
     title: 'Kết quả sản xuất',
@@ -342,8 +346,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     successTitle: 'Đã lưu kết quả',
     queuedBody: 'Khi có kết nối sẽ tự động gửi.',
     failTitle: 'Không lưu được kết quả',
-    continueBody: 'Vẫn còn số lượng còn lại. Hãy nhập tiếp.',
+    continueBody: 'Vẫn còn số lượng còn lại. Vui lòng nhập tiếp.',
     lotDoneTitle: 'LOT này không còn số lượng còn lại',
-    lotDoneBody: 'Hãy chuyển sang xử lý hoàn thành LOT sản xuất.',
+    lotDoneBody: 'Vui lòng chuyển sang xử lý hoàn thành LOT sản xuất.',
   },
 };

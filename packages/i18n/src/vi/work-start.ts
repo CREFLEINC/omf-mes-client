@@ -19,9 +19,9 @@ export const workStart: Translated<typeof ko.workStart> = {
     open: 'Nhập mã nhân viên',
     dialogTitle: 'Nhập mã nhân viên',
 
-    unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này. Hãy nhập lại mã nhân viên.',
-    inactive: 'Mã nhân viên này không còn làm việc. Hãy nhập lại mã nhân viên.',
-    lookupFailed: 'Không xác nhận được mã nhân viên. Hãy thử lại.',
+    unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này. Vui lòng nhập lại mã nhân viên.',
+    inactive: 'Mã nhân viên này không còn làm việc. Vui lòng nhập lại mã nhân viên.',
+    lookupFailed: 'Không xác nhận được mã nhân viên. Vui lòng thử lại.',
     retry: 'Thử lại',
   },
 
@@ -38,8 +38,8 @@ export const workStart: Translated<typeof ko.workStart> = {
     confirm: 'Thêm',
     duplicate: 'Người này đã có trong danh sách.',
     otherPlant: 'Không thể thêm người của nhà máy khác.',
-    failed: 'Không thay đổi được người làm. Hãy thử lại.',
-    loadFailed: 'Không tải được danh sách người làm. Hãy chọn lại lệnh sản xuất.',
+    failed: 'Không thay đổi được người làm. Vui lòng thử lại.',
+    loadFailed: 'Không tải được danh sách người làm. Vui lòng chọn lại lệnh sản xuất.',
     unknown: 'Chưa đăng ký tên',
   },
 
@@ -74,7 +74,7 @@ export const workStart: Translated<typeof ko.workStart> = {
       `Không có lệnh sản xuất nào phát hành cho ${equipment}.`,
     emptyAll: 'Không có lệnh sản xuất nào có thể thực hiện.',
     loading: 'Đang tải lệnh sản xuất.',
-    loadError: 'Không tải được lệnh sản xuất. Hãy thử lại.',
+    loadError: 'Không tải được lệnh sản xuất. Vui lòng thử lại.',
     retry: 'Thử lại',
 
     total: (total: number): string => `Tổng ${String(total)} mục`,
@@ -108,26 +108,26 @@ export const workStart: Translated<typeof ko.workStart> = {
   },
 
   remaining: {
-    worker: 'Hãy nhập mã nhân viên',
-    select: 'Hãy chọn lệnh sản xuất',
-    ready: 'Hãy bắt đầu công việc',
-    resume: 'Hãy tiếp tục lại công việc đã tạm dừng',
-    continue: 'Hãy làm tiếp công việc đang thực hiện',
+    worker: 'Vui lòng nhập mã nhân viên',
+    select: 'Vui lòng chọn lệnh sản xuất',
+    ready: 'Có thể bắt đầu công việc',
+    resume: 'Có thể tiếp tục lại công việc đã tạm dừng',
+    continue: 'Có thể làm tiếp công việc đang thực hiện',
   },
 
   blocked: {
     unidentified:
-      'Không xác nhận được máy trạm nên không thể tiếp tục. Hãy hoàn tất đăng ký máy rồi mở lại',
+      'Không xác nhận được máy trạm nên không thể tiếp tục. Vui lòng hoàn tất đăng ký máy rồi mở lại',
     processNone:
-      'Máy trạm chưa được gán công đoạn nên không thể tiếp tục. Hãy yêu cầu quản trị viên ánh xạ công đoạn cho máy trạm',
+      'Máy trạm chưa được gán công đoạn nên không thể tiếp tục. Vui lòng yêu cầu quản trị viên ánh xạ công đoạn cho máy trạm',
     processMultiple:
-      'Máy trạm có nhiều công đoạn nên không xác nhận được quyền bắt đầu sản xuất. Hãy liên hệ quản trị viên',
+      'Máy trạm có nhiều công đoạn nên không xác nhận được quyền bắt đầu sản xuất. Vui lòng liên hệ quản trị viên',
     checking: 'Đang kiểm tra quyền của máy trạm',
     denied:
-      'Máy trạm chưa có quyền bắt đầu công việc của công đoạn này nên không thể tiếp tục. Hãy yêu cầu quản trị viên ánh xạ công đoạn cho máy trạm',
+      'Máy trạm chưa có quyền bắt đầu công việc của công đoạn này nên không thể tiếp tục. Vui lòng yêu cầu quản trị viên ánh xạ công đoạn cho máy trạm',
     deniedProcess: (processName: string): string =>
-      `Máy trạm chưa có quyền bắt đầu công việc ${processName} nên không thể tiếp tục. Hãy yêu cầu quản trị viên ánh xạ công đoạn cho máy trạm`,
-    unavailable: 'Không xác nhận được quyền của máy trạm. Hãy bấm Kiểm tra lại',
+      `Máy trạm chưa có quyền bắt đầu công việc ${processName} nên không thể tiếp tục. Vui lòng yêu cầu quản trị viên ánh xạ công đoạn cho máy trạm`,
+    unavailable: 'Không xác nhận được quyền của máy trạm. Vui lòng bấm Kiểm tra lại',
     retry: 'Kiểm tra lại',
 
     offline: 'Mất kết nối nên không bắt đầu được. Khi kết nối lại, danh sách sẽ được tải lại',
@@ -135,15 +135,15 @@ export const workStart: Translated<typeof ko.workStart> = {
 
   closing: {
     fulfilled:
-      'Lệnh sản xuất này đã hoàn tất đăng ký sản lượng. Hãy kết thúc lệnh trên web quản trị.',
+      'Lệnh sản xuất này đã hoàn tất đăng ký sản lượng. Vui lòng kết thúc lệnh trên web quản trị.',
     fulfilledWithOpenSession:
-      'Đã hoàn tất đăng ký sản lượng nhưng vẫn còn công việc đang làm. Hãy hoàn tất công việc đang làm rồi kết thúc lệnh sản xuất trên web quản trị.',
+      'Đã hoàn tất đăng ký sản lượng nhưng vẫn còn công việc đang làm. Vui lòng hoàn tất công việc đang làm rồi kết thúc lệnh sản xuất trên web quản trị.',
   },
 
   resume: {
     sessionNotFound:
-      'Không tìm thấy bản ghi công việc đã tạm dừng nên không thể tiếp tục lại. Hãy liên hệ quản trị viên',
-    sessionLookupFailed: 'Không xác nhận được công việc đang làm. Hãy chọn lại lệnh sản xuất',
+      'Không tìm thấy bản ghi công việc đã tạm dừng nên không thể tiếp tục lại. Vui lòng liên hệ quản trị viên',
+    sessionLookupFailed: 'Không xác nhận được công việc đang làm. Vui lòng chọn lại lệnh sản xuất',
     checking: 'Đang kiểm tra công việc đang làm',
   },
 
@@ -152,8 +152,8 @@ export const workStart: Translated<typeof ko.workStart> = {
     resumed: (workOrderNo: string): string => `Đã tiếp tục lại ${workOrderNo}.`,
     conflict: 'Trạng thái lệnh sản xuất đã thay đổi. Đang tải lại danh sách.',
     notOpened:
-      'Kết quả kiểm tra đã được ghi nhận nhưng công việc chưa bắt đầu. Hãy bấm lại Bắt đầu sản xuất.',
-    startFailed: 'Không bắt đầu được công việc. Hãy kiểm tra kết nối rồi bấm lại.',
-    resumeFailed: 'Không tiếp tục lại được công việc. Hãy kiểm tra kết nối rồi bấm lại.',
+      'Kết quả kiểm tra đã được ghi nhận nhưng công việc chưa bắt đầu. Vui lòng bấm lại Bắt đầu sản xuất.',
+    startFailed: 'Không bắt đầu được công việc. Vui lòng kiểm tra kết nối rồi bấm lại.',
+    resumeFailed: 'Không tiếp tục lại được công việc. Vui lòng kiểm tra kết nối rồi bấm lại.',
   },
 };

@@ -79,14 +79,14 @@ export const materialInputScan = {
         `${itemWithTopic} 「${statusName}」 상태라 담을 수 없습니다.`,
       /** 상태 자체를 받지 못한 경우. 모르는 것을 「정상」으로 그리지 않는다(스펙 §5-2). */
       blockedStatusUnknown: (item: string): string =>
-        `${item}의 상태를 확인하지 못했습니다. 다시 스캔하세요.`,
+        `${item}의 상태를 확인하지 못했습니다. 다시 스캔해 주세요.`,
       ambiguous: (count: number): string =>
-        `${String(count)}건이 함께 검색되었습니다. 라벨의 코드 전체를 스캔하세요.`,
+        `${String(count)}건이 함께 검색되었습니다. 라벨의 코드 전체를 스캔해 주세요.`,
       notFound: (code: string): string =>
-        `${code}에 해당하는 자재 LOT이나 금형이 없습니다. 코드를 확인하세요.`,
-      failed: '조회하지 못했습니다. 다시 스캔하세요.',
+        `${code}에 해당하는 자재 LOT이나 금형이 없습니다. 코드를 확인해 주세요.`,
+      failed: '조회하지 못했습니다. 다시 스캔해 주세요.',
       /** 끊긴 상태에서 「다시 스캔하세요」만 쓰면 될 것처럼 읽힌다. 연결이 먼저다. */
-      offline: '연결이 끊겨 자재를 조회할 수 없습니다. 연결된 뒤 다시 스캔하세요.',
+      offline: '연결이 끊겨 자재를 조회할 수 없습니다. 연결된 뒤 다시 스캔해 주세요.',
       /** 투입을 보낸 뒤 결과 한 줄(다음 동작에서 보냈든 [투입 등록]이든). */
       recorded: (item: string, qty: string): string => `${item} ${qty} 투입`,
       /** 미전송 투입의 [취소] 뒤. 아무것도 보내지 않았다. */
@@ -125,16 +125,16 @@ export const materialInputScan = {
     /** 자동으로 보내지 않고 직접 입력으로 돌리는 까닭 한 줄(PI-28). */
     manualReasons: {
       unknown: '불출량을 몰라 투입량을 직접 입력합니다.',
-      none: '불출량을 모두 투입했습니다. 더 넣으려면 투입량을 직접 입력하세요.',
+      none: '불출량을 모두 투입했습니다. 더 넣으려면 투입량을 직접 입력해 주세요.',
       unit: '단위가 달라 투입량을 직접 입력합니다.',
     },
     /** 보낸 투입을 고르면. 고치거나 거두는 기능은 아직 없다(omf-mes-server#828). */
-    sentReadOnly: '전송한 투입은 지금 고칠 수 없습니다. 더 넣으려면 LOT 라벨을 다시 스캔하세요.',
+    sentReadOnly: '전송한 투입은 지금 고칠 수 없습니다. 더 넣으려면 LOT 라벨을 다시 스캔해 주세요.',
     /** 이번 투입 칸. 보이는 이름은 소제목 「이번 투입」이고 접근 이름에 LOT 번호를 붙인다. */
     qtyLabel: (lotNo: string): string => `${lotNo} 이번 투입`,
     qtyProblems: {
-      empty: '이번 투입 수량을 입력하세요.',
-      format: '이번 투입 수량은 숫자로 입력하세요.',
+      empty: '이번 투입 수량을 입력해 주세요.',
+      format: '이번 투입 수량은 숫자로 입력해 주세요.',
       notPositive: '이번 투입 수량은 0보다 커야 합니다.',
     },
     /** 서버가 통과시키되 기록만 한 것 — 스펙 §5-3. 「통과」가 「정상」이 아니다. */
@@ -152,7 +152,7 @@ export const materialInputScan = {
     overMark: (qty: string): string => `과투입 ${qty}`,
     pendingMark: '투입 중',
     /** 편집 영역에 고른 자재가 없을 때. */
-    noSelection: '목록에서 자재를 고르거나 LOT 라벨을 스캔하세요.',
+    noSelection: '목록에서 자재를 고르거나 LOT 라벨을 스캔해 주세요.',
     /** 받은 LOT을 골랐지만 이번 화면에서 아직 스캔하지 않았을 때. 담기는 스캔으로만 한다. */
     scanToInput: 'LOT 라벨을 스캔하면 이번 투입을 입력할 수 있습니다.',
     /** 예외 칩. 이름은 그 상태에서 할 일이 보이게 짓는다(C-17, C-21). */
@@ -164,18 +164,18 @@ export const materialInputScan = {
     unitMismatch: '단위 다름',
     /* 넘어도 막지 않는다(미결 #6 — 경고만). 그 사실을 문구가 함께 말한다. */
     shotCountExceeded: (mold: string): string =>
-      `금형 ${mold} 적정 타수를 넘었습니다. 투입할 수 있지만 교체를 검토하세요.`,
+      `금형 ${mold} 적정 타수를 넘었습니다. 투입할 수 있지만 교체를 검토해 주세요.`,
   },
 
   /** 하단 바 「남은 일」(C-5). 문장 끝에 마침표를 두지 않는다. */
   remaining: {
-    workOrderMissing: '작업지시가 지정되지 않았습니다. 작업 지시 목록에서 작업지시를 고르세요',
-    scan: '자재 LOT을 스캔하세요',
+    workOrderMissing: '작업지시가 지정되지 않았습니다. 작업 지시 목록에서 작업지시를 골라 주세요',
+    scan: '자재 LOT을 스캔해 주세요',
     /** 기록하지 않은 LOT이 하나면 품목 이름으로 가리킨다. LOT 번호 전체를 쓰지 않는다(C-5 한 줄). */
-    record: (item: string): string => `${item}의 투입을 등록하세요`,
-    recordMany: (count: number): string => `스캔한 자재 ${String(count)}건의 투입을 등록하세요`,
+    record: (item: string): string => `${item}의 투입을 등록해 주세요`,
+    recordMany: (count: number): string => `스캔한 자재 ${String(count)}건의 투입을 등록해 주세요`,
     /** 막힘 없음(C-5). 주 동작 [생산 작업으로]가 하는 일을 말한다. */
-    done: '투입을 마쳤으면 생산 작업으로 이동하세요',
+    done: '투입을 마쳤으면 생산 작업으로 이동할 수 있습니다',
     /** 미전송 투입이 있을 때. 막힘이 아니라 곧 일어날 일이다. */
     sending: (item: string, qty: string): string => `${item} ${qty} 투입을 다음 스캔 때 전송합니다`,
   },
@@ -192,14 +192,14 @@ export const materialInputScan = {
      * 작업자가 할 일이 다르다.
      */
     reasons: {
-      unavailable: '투입 권한을 확인하지 못했습니다. 투입 권한 다시 조회를 누르세요',
+      unavailable: '투입 권한을 확인하지 못했습니다. 투입 권한 다시 조회를 눌러 주세요',
       unidentified:
-        '단말이나 작업지시의 공정을 확인하지 못했습니다. 작업 지시 목록에서 작업지시를 다시 고른 뒤 들어오세요.',
+        '단말이나 작업지시의 공정을 확인하지 못했습니다. 작업 지시 목록에서 작업지시를 다시 고른 뒤 들어와 주세요.',
       checking: '투입 권한을 확인하는 중입니다',
       /* 건별 저장이라 「아직 기록되지 않은 줄」이 남아 있다는 뜻이다 — 닫으면 그 줄이 버려진다. */
-      qtyMissing: '등록하지 않은 자재가 있습니다. 투입량을 입력해 등록하거나 스캔 취소하세요',
+      qtyMissing: '등록하지 않은 자재가 있습니다. 투입량을 입력해 등록하거나 스캔 취소해 주세요',
       /* 이 화면에서 사번 입력 창을 연다(PI-17). 다른 화면으로 돌려보내지 않는다(C-13). */
-      workerMissing: '사번을 입력하세요',
+      workerMissing: '사번을 입력해 주세요',
     },
     /** 이 버튼이 하는 일은 **권한 조회 한 번**이다. */
     retry: '투입 권한 다시 조회',
