@@ -13,7 +13,7 @@ import {
 } from '@crefle/web-ui';
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -211,7 +211,6 @@ const useVersionTransition = ({
 export const InspectionStandardScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const hub = usePageHub();
-  const excelNoteId = useId();
   /* 목록 · 상세 배치 — 검사 조회·판정과 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:inspection-standard:split', 0.4);
@@ -1208,9 +1207,10 @@ export const InspectionStandardScreen = () => {
         <section className="pane" aria-label={t.panes.planForm}>
           {/* 둥근 바탕 위 아이콘 · 제목 · 설명(사용자 시안 · #196). */}
           <EmptyState
+            size="sm"
             icon={
               <span className="inspection-standard-empty-icon">
-                <Icon name="assignment" size={28} />
+                <Icon name="assignment" size={20} />
               </span>
             }
             title={t.empty.detailNotSelectedTitle}
@@ -1619,28 +1619,19 @@ export const InspectionStandardScreen = () => {
              * 계약에 올리기 경로가 없고 양식도 정해지지 않았다. 감추면 사용자가
              * 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다 — 사유와 함께 비활성으로 둔다.
              */}
-            {/* 아이콘 · 「준비 중」 칩 · 아래 ⓘ 사유(사용자 시안 · #196). 사유는 마우스를 올려도 보인다. */}
+            {/* 아이콘 · 「준비 중」 칩(사용자 시안 · #196). 아래 사유 줄은 걷었다(사용자 지시) — 사유는 마우스를 올리면 보인다. */}
             <div
               className="inspection-standard-excel-upload"
               title={t.actionReasons.excelUploadUnavailable}
             >
               <div className="inspection-standard-excel-upload-row">
-                <Button
-                  variant="outlined"
-                  disabled
-                  leadingIcon={<Icon name="upload" size={18} />}
-                  aria-describedby={excelNoteId}
-                >
+                <Button variant="outlined" disabled leadingIcon={<Icon name="upload" size={18} />}>
                   {t.actions.excelUpload}
                 </Button>
                 <Chip variant="status" size="sm" status="idle">
                   {t.actionReasons.excelUploadPreparing}
                 </Chip>
               </div>
-              <p id={excelNoteId} className="field-note inspection-standard-excel-note">
-                <Icon name="info" size={16} aria-hidden />
-                {t.actionReasons.excelUploadUnavailable}
-              </p>
             </div>
             <Button
               leadingIcon={<Icon name="add" size={18} />}

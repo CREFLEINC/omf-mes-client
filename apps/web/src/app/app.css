@@ -384,8 +384,8 @@ main > * + * {
 .inspection-standard-empty-icon {
   display: inline-grid;
   place-items: center;
-  width: 3rem;
-  height: 3rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 50%;
   background: var(--surface-container-high);
   color: var(--on-surface-variant);
@@ -727,7 +727,7 @@ main > * + * {
   margin-bottom: var(--space-4);
 }
 
-/* 엑셀 올리기 — 단추 · 「준비 중」 칩 한 줄, 아래 ⓘ 사유(사용자 시안 · #196). */
+/* 엑셀 올리기 — 단추 · 「준비 중」 칩 한 줄(사용자 시안 · #196). */
 .inspection-standard-excel-upload {
   display: grid;
   gap: var(--space-2);
@@ -737,13 +737,6 @@ main > * + * {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.inspection-standard-excel-note {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin: 0;
 }
 
 /* 제목이 없어 단추 묶음을 오른쪽 끝에 붙인다. 엑셀 올리기 아래 사유 글이 있어 단추 윗줄을 맞춘다. */

@@ -369,12 +369,12 @@ describe('InspectionStandardScreen — 기준 선택', () => {
 
 describe('InspectionStandardScreen — 만들지 않기로 한 것', () => {
   /* 감추면 사용자가 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다. */
-  it('엑셀 올리기는 비활성이고 사유가 함께 보인다', async () => {
+  it('엑셀 올리기는 비활성이고 「준비 중」이 붙으며 사유 줄은 내지 않는다', async () => {
     renderScreen([planListRoute()]);
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
     expect(screen.getByRole('button', { name: '엑셀 올리기' })).toBeDisabled();
-    expect(screen.getByText('엑셀 양식 확정 후 사용할 수 있습니다.')).toBeInTheDocument();
+    expect(screen.queryByText('엑셀 양식 확정 후 사용할 수 있습니다.')).not.toBeInTheDocument();
     expect(screen.getByText('준비 중')).toBeInTheDocument();
   });
 });
