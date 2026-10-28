@@ -34,6 +34,24 @@ export const popMaterialLotLabel = {
     pendingEmpty: '발행할 자재가 없습니다.',
     reprintEmpty: '최근 2주 안에 발행한 라벨이 없습니다.',
   },
+  /**
+   * 발행 대기의 입하 기간(사용자 지시 2026-10-27) — 기본은 이번 주, 주는 월요일부터다.
+   * ⭐ 기간보다 먼저 입하됐는데 아직 남은 줄은 띠로 알린다 — 그냥 지나가지 않게. 「보기」로 그 줄만 모아 본다.
+   */
+  period: {
+    label: '입하 기간',
+    today: '오늘',
+    week: '이번 주',
+    month: '이번 달',
+    all: '전체',
+    pastTitle: (count: number) => `지난 입하 미발행 ${count}장`,
+    pastRange: (from: string, to: string) =>
+      from === to ? `${from} 입하` : `${from} ~ ${to} 입하`,
+    showPast: '보기',
+    /** 지난 줄을 보는 중 — 고른 기간으로 돌아가는 단추. */
+    backTo: (period: string) => `${period} 보기`,
+    empty: (period: string) => `${period} 입하분 중 발행할 자재가 없습니다.`,
+  },
   table: {
     columns: {
       check: '선택',
@@ -48,6 +66,15 @@ export const popMaterialLotLabel = {
       iqc: 'IQC',
     },
     selectAll: '전체 선택',
+    /**
+     * 상세 목록 머리의 품목코드 칸 — **고른 공급사의 줄 안에서만** 거른다(사용자 지시 2026-10-27).
+     * 왼쪽 찾기 칸(모든 공급사 · 품목코드 또는 입하번호)과 따로 둔다. 한 공급사에 줄이 수백 개일 수 있다.
+     */
+    itemFilter: {
+      label: '목록에서 품목코드 찾기',
+      placeholder: '품목코드',
+      clear: '품목코드 지우기',
+    },
     /** IQC 열의 값 — 검사 대상 줄에만 적는다. 그 줄은 IQC 라벨이 한 장 더 나간다(omf-all-around#110). */
     iqcRequired: '필수',
     /** 줄 전체가 체크 칸이다 — 읽어 주는 도구가 줄을 가를 수 있게 품목·수량·입하 시각을 이름에 싣는다. */
@@ -57,8 +84,13 @@ export const popMaterialLotLabel = {
     pageNav: '쪽 이동',
     prev: '◀ 이전',
     next: '다음 ▶',
-    /** 20초마다 스스로 다시 받지만, 기다리지 않고 바로 볼 수단으로 남긴다(omf-all-around#29). */
+    /**
+     * 20초마다 스스로 다시 받지만, 기다리지 않고 바로 볼 수단으로 남긴다(omf-all-around#29).
+     * 왼쪽 기간 아래에 둔다 — 표 아래 구석에서는 보이지 않았다(사용자 지시 2026-10-27).
+     */
     refresh: '새로 고침',
+    /** 새로 고침 옆 — 서버에서 마지막으로 받은 시각(초까지). 눌렀는데 받았는지 알 수 있게 한다. */
+    refreshedAt: (time: string) => `${time} 받음`,
     loadFailed: '입하 목록을 불러오지 못했습니다.',
     retry: '다시 불러오기',
     noMatch: '찾는 품목이 없습니다.',
@@ -107,6 +139,21 @@ export const popMaterialLotLabel = {
     failed: (count: number) => `${count}장이 나오지 않았습니다`,
     stopped: (count: number) => `${count}장이 남았습니다`,
     retry: (count: number) => `${count}장 다시 발행`,
+    /**
+     * 발행 단위 — N장마다 멈추고 이어서(사용자 지시 2026-10-27). 「전체」는 멈추지 않는다.
+     * 작업자가 N장을 붙이고 다음 N장을 찍는다 — 라벨이 프린터 앞에 쌓여 섞이지 않게.
+     */
+    unit: {
+      label: '발행 단위',
+      all: '전체',
+      each: (count: number) => `${count}장`,
+      /** 고른 장수가 단위보다 많을 때 왼쪽 상태 줄에 덧붙인다. */
+      note: (count: number) => `${count}장마다 멈춤`,
+    },
+    /** 한 단위를 다 찍고 쉬는 중. */
+    paused: (done: number, total: number) => `${total}장 중 ${done}장 발행`,
+    pausedNote: (remaining: number) => `라벨을 붙인 뒤 이어서 발행하세요 · 남은 ${remaining}장`,
+    resume: (count: number) => `다음 ${count}장 발행`,
     /** 실패한 까닭마다 할 일. 다시 눌러도 같은 답이 오는 것은 다시 하라고 하지 않는다. */
     next: {
       printFailed: '프린터 연결과 용지를 확인하세요',
