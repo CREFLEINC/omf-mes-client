@@ -30,7 +30,6 @@ export interface WarehouseFormValues {
   managementLevelCode: string;
   isExternal: boolean;
   isDefect: boolean;
-  partnerId: string;
 }
 
 export interface LocationFormValues {
@@ -51,7 +50,6 @@ export interface LocationFormValues {
 export interface LookupOptions {
   plants: { value: string; label: string }[];
   businessUnits: { value: string; label: string }[];
-  partners: { value: string; label: string }[];
   uoms: { value: string; label: string }[];
   warehouseTypes: { value: string; label: string }[];
   managementLevels: { value: string; label: string }[];
@@ -74,7 +72,6 @@ export interface LookupEntry {
 export interface LookupSources {
   plants: LookupSource<LookupEntry>;
   businessUnits: LookupSource<LookupEntry>;
-  partners: LookupSource<LookupEntry>;
   uoms: LookupSource<LookupEntry>;
   warehouseTypes: LookupSource<LookupEntry>;
   managementLevels: LookupSource<LookupEntry>;

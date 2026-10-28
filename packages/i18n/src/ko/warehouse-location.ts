@@ -73,7 +73,6 @@ export const warehouseLocation = {
     warehouseType: '창고 유형',
     managementLevel: '관리 수준',
     isExternal: '외부 창고',
-    partner: '거래처',
     isDefect: '불량 창고',
 
     isActive: '사용 상태',
@@ -91,9 +90,6 @@ export const warehouseLocation = {
     capacityUom: '수용량 단위',
   },
   /** 값이 비었을 때 선택칸 안에 보이는 안내 — 값·검증과 무관하다. */
-  placeholders: {
-    partner: '거래처를 선택하세요',
-  },
   values: {
     active: '사용 중',
     inactive: '미사용',
@@ -106,7 +102,6 @@ export const warehouseLocation = {
     required: '필수 입력 항목입니다.',
     codeBlank: '코드는 공백만으로 지정할 수 없습니다.',
     codeDuplicated: '이미 사용 중인 코드입니다. 다른 코드를 입력하세요.',
-    partnerRequiredForExternal: '외부 창고이면 거래처를 지정해야 합니다.',
     capacityNeedsUom: '수용량과 단위는 함께 입력하거나 함께 비워야 합니다.',
     capacityInvalid: '수용량은 0 이상의 숫자로 입력하세요.',
     aliasTooLong: (max: number): string => `별칭은 ${String(max)}자 이하로 입력하세요.`,

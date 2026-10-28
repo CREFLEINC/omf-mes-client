@@ -76,7 +76,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     warehouseType: 'Loại kho',
     managementLevel: 'Mức quản lý',
     isExternal: 'Kho bên ngoài',
-    partner: 'Đối tác',
     isDefect: 'Kho hàng lỗi',
 
     isActive: 'Trạng thái sử dụng',
@@ -93,9 +92,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     capacityQty: 'Sức chứa',
     capacityUom: 'Đơn vị sức chứa',
   },
-  placeholders: {
-    partner: 'Hãy chọn đối tác',
-  },
   values: {
     active: 'Đang dùng',
     inactive: 'Ngừng dùng',
@@ -108,7 +104,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     required: 'Đây là mục bắt buộc.',
     codeBlank: 'Mã không được chỉ gồm khoảng trắng.',
     codeDuplicated: 'Mã này đang được dùng. Hãy nhập mã khác.',
-    partnerRequiredForExternal: 'Là kho bên ngoài thì phải chỉ định đối tác.',
     capacityNeedsUom: 'Sức chứa và đơn vị phải cùng nhập hoặc cùng để trống.',
     capacityInvalid: 'Hãy nhập sức chứa bằng số từ 0 trở lên.',
     aliasTooLong: (max: number): string => `Tên gọi khác tối đa ${String(max)} ký tự.`,

@@ -75,10 +75,9 @@ export const buildLocationRows = (
     markReachable(root);
   }
 
-  const orderedRoots = [
-    ...roots,
-    ...items.filter((item) => !reachable.has(item.locationId)),
-  ].sort(byLocationCode);
+  const orderedRoots = [...roots, ...items.filter((item) => !reachable.has(item.locationId))].sort(
+    byLocationCode,
+  );
 
   const rows: LocationTreeRow[] = [];
   const visited = new Set<number>();

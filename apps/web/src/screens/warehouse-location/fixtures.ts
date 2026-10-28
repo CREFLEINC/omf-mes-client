@@ -157,12 +157,6 @@ export const businessUnitFixtures: components['schemas']['BusinessUnit'][] = [
   },
 ];
 
-/** 32번은 미사용이다 — 미사용 값이 선택지에서 어떻게 다뤄지는지 확인하는 데 쓴다. */
-export const partnerFixtures: components['schemas']['Partner'][] = [
-  { partnerId: 31, partnerCode: 'SUP-001', partnerName: '(주)대한부품', isActive: true },
-  { partnerId: 32, partnerCode: 'SUP-002', partnerName: '(주)한빛소재', isActive: false },
-];
-
 export const uomFixtures: components['schemas']['Uom'][] = [
   { uomId: 41, uomCode: 'EA', uomName: '개', decimalScale: 0, isActive: true },
   { uomId: 42, uomCode: 'BOX', uomName: '박스', decimalScale: 0, isActive: true },
@@ -176,10 +170,6 @@ export const lookupFixtures: LookupOptions = {
   businessUnits: [
     { value: '21', label: '생산본부' },
     { value: '22', label: '물류본부' },
-  ],
-  partners: [
-    { value: '31', label: '(주)대한부품' },
-    { value: '32', label: '(주)한빛소재' },
   ],
   uoms: [
     { value: '41', label: 'EA' },
@@ -215,7 +205,6 @@ export const warehouseFormInitialValues: WarehouseFormValues = {
   managementLevelCode: 'CELL',
   isExternal: false,
   isDefect: false,
-  partnerId: '',
 };
 
 export const locationFormInitialValues: LocationFormValues = {
@@ -235,7 +224,6 @@ export const locationFormInitialValues: LocationFormValues = {
 /** 입력 오류 표시 확인용 — Phase 1은 검증 함수를 만들지 않고 오류 값을 주입한다. */
 export const warehouseFieldErrorFixtures: Record<string, string> = {
   warehouseCode: messages.warehouseLocation.validation.codeDuplicated,
-  partnerId: messages.warehouseLocation.validation.partnerRequiredForExternal,
 };
 
 export const locationFieldErrorFixtures: Record<string, string> = {

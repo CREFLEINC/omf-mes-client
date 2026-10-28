@@ -17,7 +17,6 @@ export const WAREHOUSE_FORM_FIELDS: readonly string[] = [
   'managementLevelCode',
   'isExternal',
   'isDefect',
-  'partnerId',
 ];
 
 /**
@@ -57,10 +56,6 @@ export const validateWarehouse = (
 
   if (values.businessUnitId === '') {
     errors.businessUnitId = t.required;
-  }
-
-  if (values.isExternal && values.partnerId === '') {
-    errors.partnerId = t.partnerRequiredForExternal;
   }
 
   return errors;

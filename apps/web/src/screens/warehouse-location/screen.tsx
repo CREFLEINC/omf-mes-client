@@ -692,7 +692,6 @@ export const WarehouseLocationScreen = () => {
   const formLookups: LookupOptions = {
     plants: selectableOptions(lookups.sources.plants, formValues.plantId),
     businessUnits: selectableOptions(lookups.sources.businessUnits, formValues.businessUnitId),
-    partners: selectableOptions(lookups.sources.partners, formValues.partnerId),
     uoms: selectableOptions(lookups.sources.uoms, ''),
     warehouseTypes: selectableOptions(lookups.sources.warehouseTypes, formValues.warehouseTypeCode),
     managementLevels: selectableOptions(

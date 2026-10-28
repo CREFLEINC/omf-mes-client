@@ -2,7 +2,6 @@ import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
 import { CODE_GROUPS } from './code-options';
 import type { Location, LookupEntry, LookupSources, WarehouseFilters } from './types';
@@ -241,19 +240,6 @@ export const useLookupOptions = (): LookupResult => {
       ),
   });
 
-  const partners = useQuery({
-    queryKey: lookupKeys.list('partners'),
-    /* 거래처는 936건이라 한 쪽에 들어가지 않는다 — 끝까지 받는다(omf-all-around#38). */
-    queryFn: () =>
-      fetchAllPages((page, size) =>
-        runRequest(() =>
-          client.GET('/mdm/partners', {
-            params: { query: { includeInactive: true, page, size } },
-          }),
-        ),
-      ),
-  });
-
   const uoms = useQuery({
     queryKey: lookupKeys.list('uoms'),
     queryFn: () =>
@@ -311,16 +297,6 @@ export const useLookupOptions = (): LookupResult => {
         isError: businessUnits.isError,
         isLoading: businessUnits.isPending,
       },
-      partners: {
-        entries:
-          partners.data?.items.map((item) => ({
-            value: String(item.partnerId),
-            label: item.partnerName,
-            isActive: item.isActive,
-          })) ?? EMPTY_ENTRIES,
-        isError: partners.isError,
-        isLoading: partners.isPending,
-      },
       uoms: {
         entries:
           uoms.data?.items.map((item) => ({
@@ -341,7 +317,6 @@ export const useLookupOptions = (): LookupResult => {
     truncated:
       isListTruncated(plants.data) ||
       isListTruncated(businessUnits.data) ||
-      isListTruncated(partners.data) ||
       isListTruncated(uoms.data) ||
       isListTruncated(warehouseTypes.data) ||
       isListTruncated(managementLevels.data) ||
@@ -352,7 +327,6 @@ export const useLookupOptions = (): LookupResult => {
     isError:
       plants.isError ||
       businessUnits.isError ||
-      partners.isError ||
       uoms.isError ||
       warehouseTypes.isError ||
       managementLevels.isError ||
@@ -363,7 +337,6 @@ export const useLookupOptions = (): LookupResult => {
     isLoading:
       plants.isPending ||
       businessUnits.isPending ||
-      partners.isPending ||
       uoms.isPending ||
       warehouseTypes.isPending ||
       managementLevels.isPending ||

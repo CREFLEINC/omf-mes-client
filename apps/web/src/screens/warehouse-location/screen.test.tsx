@@ -15,7 +15,6 @@ import {
 import {
   businessUnitFixtures,
   locationFixtures,
-  partnerFixtures,
   plantFixtures,
   uomFixtures,
   warehouseFixtures,
@@ -75,10 +74,6 @@ const lookupRoutes = (truncatedTotal?: number): StubRoute[] => [
   {
     match: (request) => isGet(request, '/mdm/business-units'),
     respond: () => jsonResponse(listBody(businessUnitFixtures)),
-  },
-  {
-    match: (request) => isGet(request, '/mdm/partners'),
-    respond: () => jsonResponse(listBody(partnerFixtures)),
   },
   {
     match: (request) => isGet(request, '/mdm/uoms'),
@@ -468,26 +463,16 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
     expect(screen.queryByLabelText('창고명')).not.toBeInTheDocument();
   });
 
-  it('외부창고를 열면 응답의 거래처를 그대로 표시한다', async () => {
-    const external: Warehouse = {
-      ...warehouseFixtures[2]!,
-      warehouseId: 1001,
-      partnerId: 32,
-    };
-    renderScreen(
-      [
-        warehouseListRoute(),
-        warehouseDetailRoute(external),
-        locationListRoute(),
-        ...lookupRoutes(),
-      ],
+  it('창고 정보에 거래처 칸이 없고 거래처 목록을 부르지 않는다', async () => {
+    const { requests } = renderScreen(
+      [warehouseListRoute(), warehouseDetailRoute(), locationListRoute(), ...lookupRoutes()],
       '?wh=1001',
     );
 
     await screen.findByLabelText('창고명');
 
-    const partner = screen.getByRole('combobox', { name: '거래처' });
-    expect(partner).toHaveTextContent(`(주)한빛소재${messages.common.reference.inactiveSuffix}`);
+    expect(screen.queryByRole('combobox', { name: '거래처' })).not.toBeInTheDocument();
+    expect(requests.some((request) => request.url.pathname === '/mdm/partners')).toBe(false);
   });
 
   it('선택 목록이 잘리면 폼에 그 사실을 알린다', async () => {

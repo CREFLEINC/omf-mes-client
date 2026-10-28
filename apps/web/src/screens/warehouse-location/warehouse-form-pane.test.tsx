@@ -48,12 +48,11 @@ const FIELD_LABELS = [
   '관리 수준',
   '외부 창고',
   '불량 창고',
-  '거래처',
   '사용 상태',
 ];
 
 describe('WarehouseFormPane', () => {
-  it('10개 필드를 각각 접근성 라벨로 조회할 수 있다', () => {
+  it('9개 필드를 각각 접근성 라벨로 조회할 수 있다', () => {
     renderPane();
 
     for (const label of FIELD_LABELS) {
@@ -61,21 +60,12 @@ describe('WarehouseFormPane', () => {
     }
   });
 
-  // 필수 표시(*)는 라벨과 같은 줄에 있어야 하지만 접근성 이름에는 섞이면 안 된다.
-  // 기본 fixture는 isExternal이 false라 이 경로를 지나지 않으므로 따로 세운다.
-  it('필수 항목이 되어도 라벨로 조회할 수 있다', () => {
-    renderPane({ values: { ...warehouseFormInitialValues, isExternal: true } });
-
-    expect(screen.getByLabelText('거래처')).toBeInTheDocument();
-  });
-
-  it('fieldErrors를 주입하면 창고코드와 거래처의 인라인 오류가 화면에 보인다', () => {
-    renderPane({ fieldErrors: warehouseFieldErrorFixtures });
+  it('fieldErrors를 주입하면 창고코드의 인라인 오류가 화면에 보인다', () => {
+    renderPane({ mode: 'create', fieldErrors: warehouseFieldErrorFixtures });
 
     expect(
       screen.getByText('이미 사용 중인 코드입니다. 다른 코드를 입력하세요.'),
     ).toBeInTheDocument();
-    expect(screen.getByText('외부 창고이면 거래처를 지정해야 합니다.')).toBeInTheDocument();
   });
 
   it('codeLockReason을 주입하면 창고코드가 비활성이고 사유가 화면 텍스트로 보인다', () => {
@@ -210,9 +200,9 @@ describe('WarehouseFormPane', () => {
     expect(screen.getAllByText(hint)).toHaveLength(1);
   });
 
-  it('거래처가 비어 있으면 선택칸에 안내 문구가 보인다', () => {
-    renderPane({ values: { ...warehouseFormInitialValues, partnerId: '' } });
+  it('거래처 칸이 없다', () => {
+    renderPane();
 
-    expect(screen.getByText('거래처를 선택하세요')).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: '거래처' })).not.toBeInTheDocument();
   });
 });

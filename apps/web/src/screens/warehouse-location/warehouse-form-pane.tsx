@@ -243,16 +243,6 @@ export const WarehouseFormPane = ({
             </div>
           }
         />
-
-        <SelectField
-          label={t.fields.partner}
-          required={values.isExternal}
-          options={lookups.partners}
-          value={values.partnerId}
-          onChange={(value) => onChange({ partnerId: value })}
-          error={fieldErrors.partnerId}
-          placeholder={t.placeholders.partner}
-        />
       </div>
 
       <div className="form-actions warehouse-location-form-actions">

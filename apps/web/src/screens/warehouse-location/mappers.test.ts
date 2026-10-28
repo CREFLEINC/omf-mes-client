@@ -35,12 +35,6 @@ describe('warehouseToFormValues', () => {
     expect(values.businessUnitId).toBe('21');
   });
 
-  it('조회 응답의 거래처 id를 폼 문자열로 옮긴다', () => {
-    expect(warehouseToFormValues({ ...base, isExternal: true, partnerId: 31 }).partnerId).toBe(
-      '31',
-    );
-  });
-
   /*
    * ⛔ **컨트롤이 없는 값이라 더 중요하다.** 여기서 흘리면 저장 때 지어낸 값이 나가고
    * 서버가 갖고 있던 불량창고 여부가 조용히 덮인다.
@@ -83,16 +77,14 @@ describe('toWarehouseUpdate', () => {
   /* 거래처는 조회로 채워지지 않으므로 사람이 고른 뒤의 폼을 흉내 낸다. */
   const values = {
     ...warehouseToFormValues({ ...base, businessUnitId: 21 }),
-    partnerId: '31',
   };
+
+  it('거래처는 싣지 않는다 — 창고는 거래처를 저장하지 않는다(사용자 지시 2026-10-29)', () => {
+    expect(toWarehouseUpdate(values)).not.toHaveProperty('partnerId');
+  });
 
   it('문자열 id를 계약이 요구하는 숫자로 되돌린다', () => {
     expect(toWarehouseUpdate(values).businessUnitId).toBe(21);
-    expect(toWarehouseUpdate(values).partnerId).toBe(31);
-  });
-
-  it('고르지 않은 거래처는 널로 보낸다 — 0은 유효한 id가 아니다', () => {
-    expect(toWarehouseUpdate({ ...values, partnerId: '' }).partnerId).toBeNull();
   });
 
   /* ⛔ 화면에 컨트롤이 없는 값이다 — 지어내 보내면 서버가 갖고 있던 값이 덮인다. */

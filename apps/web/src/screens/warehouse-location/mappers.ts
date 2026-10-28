@@ -28,7 +28,6 @@ export const warehouseToFormValues = (warehouse: Warehouse): WarehouseFormValues
   managementLevelCode: warehouse.managementLevelCode,
   isExternal: warehouse.isExternal,
   isDefect: warehouse.isDefect,
-  partnerId: optionalIdToText(warehouse.partnerId),
 });
 
 /**
@@ -44,7 +43,6 @@ export const emptyWarehouseFormValues = (): WarehouseFormValues => ({
   isExternal: false,
   /* 신규 창고는 불량창고가 아니다 — 그렇게 정하는 자리가 화면에 없으므로 꺼진 값으로 낸다. */
   isDefect: false,
-  partnerId: '',
 });
 
 /** 빈 문자열은 「고르지 않음」이므로 널로 되돌린다. 0은 유효한 id가 아니다. */
@@ -64,7 +62,6 @@ export const toWarehouseUpdate = (values: WarehouseFormValues): WarehouseUpdate 
   isExternal: values.isExternal,
   /* 화면이 고치지 않은 값을 그대로 되돌려 보낸다 — 여기서 지어내면 서버 값이 덮인다. */
   isDefect: values.isDefect,
-  partnerId: textToOptionalId(values.partnerId),
 });
 
 /**
@@ -152,5 +149,4 @@ export const isSameWarehouseValues = (a: WarehouseFormValues, b: WarehouseFormVa
   a.warehouseTypeCode === b.warehouseTypeCode &&
   a.managementLevelCode === b.managementLevelCode &&
   a.isExternal === b.isExternal &&
-  a.isDefect === b.isDefect &&
-  a.partnerId === b.partnerId;
+  a.isDefect === b.isDefect;
