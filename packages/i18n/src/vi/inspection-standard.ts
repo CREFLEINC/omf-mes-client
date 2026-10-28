@@ -133,7 +133,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     draftNote:
       'Sau khi tải lên, mỗi mã tiêu chuẩn có một phiên bản đang soạn. Tiêu chuẩn đã có sẽ tạo phiên bản mới từ phiên bản xác nhận mới nhất và điền hạng mục từ Excel. Việc xác nhận hãy làm trực tiếp trên màn hình.',
     columnsNote:
-      'Đọc dòng đầu của trang tính đầu tiên làm tiêu đề. Cột bắt buộc: mã tiêu chuẩn · mã hạng mục · tên hạng mục.',
+      'Đọc dòng đầu của trang tính đầu tiên làm tiêu đề. Cột bắt buộc: mã tiêu chuẩn · mã hạng mục · tên hạng mục. Cũng có thể tải lên nguyên tệp Bảng tiêu chuẩn kiểm tra (TCKT) — mỗi bảng thành một tiêu chuẩn.',
     fileLabel: 'Tệp Excel tiêu chuẩn kiểm tra (.xlsx, có thể chọn nhiều)',
     filePlaceholder: 'Chọn tệp',
     fileNone: 'Chưa chọn tệp.',
