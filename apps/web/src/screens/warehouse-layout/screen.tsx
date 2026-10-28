@@ -1,15 +1,12 @@
 import {
   AlertBanner,
-  Breadcrumb,
   Button,
   Checkbox,
   Chip,
   Dialog,
   EmptyState,
-  PageHeader,
   Progress,
   Skeleton,
-  Table,
   type Column,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -17,7 +14,10 @@ import { MarkerOverlay, type OverlayMarker } from '@omf-mes/ui';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { BoardFrame } from '../../patterns/board-frame';
+import { BoardTable } from '../../patterns/board-table';
 import { SaveErrorBanner } from '../../patterns/master';
+import { OneLine } from '../../patterns/po-board';
 import {
   checkDrawingFile,
   DRAWING_MIME_TYPES,
@@ -226,23 +226,18 @@ export const WarehouseLayoutScreen = () => {
     {
       key: 'code',
       header: t.locations.code,
-      render: (row) => (
-        <Button
-          variant="text"
-          size="sm"
-          onClick={() => {
-            setSelectedLocation(row.locationId);
-            setHint(null);
-          }}
-        >
-          {row.locationCode}
-        </Button>
-      ),
+      width: '140px',
+      render: (row) => row.locationCode,
     },
-    { key: 'name', header: t.locations.name, render: (row) => row.locationName },
+    {
+      key: 'name',
+      header: t.locations.name,
+      render: (row) => <OneLine text={row.locationName} />,
+    },
     {
       key: 'placed',
       header: t.locations.placed,
+      width: '120px',
       render: (row) =>
         hasMarker(draft, row.locationId) ? (
           <Chip size="sm" status="success">
@@ -288,285 +283,307 @@ export const WarehouseLayoutScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
-      {flash !== null && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant="success"
-            onDismiss={() => {
-              setFlash(null);
-            }}
-            dismissLabel={messages.common.close}
-          >
-            {flash}
-          </AlertBanner>
-        </div>
-      )}
-
-      <section className="pane" aria-label={t.warehouse.select}>
-        <div className="filter-bar">
-          <SelectField
-            label={t.warehouse.select}
-            options={toOptions(warehouses.entries)}
-            value={warehouseParam}
-            /* ⛔ 도는 동안 창고를 바꾸면 결과가 엉뚱한 화면에 떨어진다 — 사유와 함께 잠근다. */
-            disabled={drawing.isBusy}
-            note={drawing.isBusy ? busyLabel : lookupNote(warehouses, t.warehouse.lookupFailed)}
-            placeholder={t.warehouse.selectPlaceholder}
-            wide
-            onChange={selectWarehouse}
-          />
-          <div className="field-cell field-cell-unlabeled check-group">
-            <Checkbox
-              checked={includeInactive}
-              disabled={drawing.isBusy}
-              onChange={(event) => {
-                setIncludeInactive(event.target.checked);
-              }}
-            >
-              {t.locations.includeInactive}
-            </Checkbox>
-          </div>
-        </div>
-        {/* ⭐ 잠금 토큰이 이 조회에서 온다 — 실패하면 저장을 보낼 수 없다. */}
-        {layout.isError && <p className="pane-lead">{t.map.lockFailed}</p>}
-        {warehouseId !== null && layout.isPending && (
-          <p className="pane-lead">{t.map.lockLoading}</p>
-        )}
-      </section>
-
-      {warehouseId === null ? (
-        <section className="pane" aria-label={t.panes.map}>
-          <EmptyState size="sm" title={t.warehouse.emptyTitle} description={t.warehouse.empty} />
-        </section>
-      ) : (
-        <div className="two-pane">
-          <section className="pane" aria-label={t.panes.locations}>
-            <h2>{t.panes.locations}</h2>
-            <p className="pane-lead">{t.map.placeHint}</p>
-
-            {locations.isError ? (
-              <LoadErrorBanner
-                error={locations.error}
-                onRetry={() => {
-                  void locations.refetch();
-                }}
-              />
-            ) : locations.isPending ? (
-              <Skeleton variant="rect" height="12rem" />
-            ) : (
-              <div className="wide-table">
-                <Table
-                  columns={columns}
-                  rows={rows}
-                  getRowId={(row) => String(row.locationId)}
-                  density="compact"
-                  empty={
-                    <EmptyState
-                      size="sm"
-                      live
-                      title={t.locations.emptyTitle}
-                      description={t.locations.empty}
-                    />
-                  }
-                />
+      <BoardFrame
+        splitKey="omf-mes:warehouse-layout:split"
+        initialRatio={0.35}
+        splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
+        above={{
+          label: t.warehouse.select,
+          content: (
+            <>
+              {flash !== null && (
+                <div className="banner-slot">
+                  <AlertBanner
+                    variant="success"
+                    onDismiss={() => {
+                      setFlash(null);
+                    }}
+                    dismissLabel={messages.common.close}
+                  >
+                    {flash}
+                  </AlertBanner>
+                </div>
+              )}
+              <div className="pane po-board-filter">
+                <div className="filter-bar">
+                  <SelectField
+                    label={t.warehouse.select}
+                    options={toOptions(warehouses.entries)}
+                    value={warehouseParam}
+                    /* ⛔ 도는 동안 창고를 바꾸면 결과가 엉뚱한 화면에 떨어진다 — 사유와 함께 잠근다. */
+                    disabled={drawing.isBusy}
+                    note={
+                      drawing.isBusy ? busyLabel : lookupNote(warehouses, t.warehouse.lookupFailed)
+                    }
+                    placeholder={t.warehouse.selectPlaceholder}
+                    wide
+                    onChange={selectWarehouse}
+                  />
+                  <div className="field-cell field-cell-unlabeled check-group">
+                    <Checkbox
+                      checked={includeInactive}
+                      disabled={drawing.isBusy}
+                      onChange={(event) => {
+                        setIncludeInactive(event.target.checked);
+                      }}
+                    >
+                      {t.locations.includeInactive}
+                    </Checkbox>
+                  </div>
+                </div>
               </div>
-            )}
-            {/* ⚠ 이름을 못 찾은 표식이 있으면 그 사실을 적는다 — 코드만 보이는 이유다. */}
-            {hasOrphan && <p className="field-note">{t.locations.orphanNote}</p>}
-          </section>
-
-          <section className="pane" aria-label={t.panes.map}>
-            <h2>{t.panes.map}</h2>
-            {/* ⭐ 비율이라는 사실과 통째로 바뀐다는 사실을 판 위에 먼저 적는다. */}
-            <p className="pane-lead">{t.map.ratioNote}</p>
-            <p className="pane-lead">{t.map.replaceNote}</p>
-
-            {/* 점 저장의 실패 — 충돌이면 다시 읽어 최신 배치 위에서 다시 정하게 한다. */}
-            <SaveErrorBanner
-              error={replace.error}
-              onReload={() => {
-                void layout.refetch();
-              }}
-            />
-
-            {/*
-             * 도면 «저장» 단계의 실패. ⭐ 첨부는 이미 올라가 있으므로 **다시 올리지 않고 저장만**
-             * 다시 보낼 수 있다 — 다시 올리면 고아 첨부가 하나 더 생긴다.
-             */}
-            {drawing.errorStep === 'save' && (
+              {/* ⭐ 잠금 토큰이 이 조회에서 온다 — 실패하면 저장을 보낼 수 없다. */}
+              {layout.isError && <p className="field-note">{t.map.lockFailed}</p>}
+              {warehouseId !== null && layout.isPending && (
+                <p className="field-note">{t.map.lockLoading}</p>
+              )}
+            </>
+          ),
+        }}
+        list={{
+          label: t.panes.locations,
+          content:
+            warehouseId === null ? (
+              <EmptyState
+                size="sm"
+                title={t.warehouse.emptyTitle}
+                description={t.warehouse.empty}
+              />
+            ) : (
               <>
+                <p className="pane-lead">{t.map.placeHint}</p>
+
+                {locations.isError ? (
+                  <LoadErrorBanner
+                    error={locations.error}
+                    onRetry={() => {
+                      void locations.refetch();
+                    }}
+                  />
+                ) : locations.isPending ? (
+                  <Skeleton variant="rect" height="12rem" />
+                ) : (
+                  <div>
+                    <BoardTable
+                      label={t.panes.locations}
+                      columns={columns}
+                      rows={rows}
+                      getRowId={(row) => String(row.locationId)}
+                      widthKey="omf-mes:warehouse-layout:location-widths"
+                      minWidth="420px"
+                      pick={{
+                        columnKey: 'code',
+                        label: (row) => row.locationCode,
+                        currentId: selectedLocation === null ? null : String(selectedLocation),
+                        onPick: (row) => {
+                          setSelectedLocation(row.locationId);
+                          setHint(null);
+                        },
+                      }}
+                      empty={
+                        <EmptyState
+                          size="sm"
+                          live
+                          title={t.locations.emptyTitle}
+                          description={t.locations.empty}
+                        />
+                      }
+                    />
+                  </div>
+                )}
+                {/* ⚠ 이름을 못 찾은 표식이 있으면 그 사실을 적는다 — 코드만 보이는 이유다. */}
+                {hasOrphan && <p className="field-note">{t.locations.orphanNote}</p>}
+              </>
+            ),
+        }}
+        detail={{
+          label: t.panes.map,
+          content:
+            warehouseId === null ? null : (
+              <>
+                {/* ⭐ 비율이라는 사실과 통째로 바뀐다는 사실을 판 위에 먼저 적는다. */}
+                <p className="pane-lead">{t.map.ratioNote}</p>
+                <p className="pane-lead">{t.map.replaceNote}</p>
+
+                {/* 점 저장의 실패 — 충돌이면 다시 읽어 최신 배치 위에서 다시 정하게 한다. */}
                 <SaveErrorBanner
-                  error={drawing.error}
+                  error={replace.error}
                   onReload={() => {
                     void layout.refetch();
                   }}
                 />
-                {drawing.pendingAttachmentId !== null && (
-                  <div className="form-actions">
-                    <Button
-                      variant="outlined"
-                      size="sm"
-                      disabled={drawing.isBusy}
-                      onClick={() => {
-                        drawing.retrySave();
+
+                {/*
+                 * 도면 «저장» 단계의 실패. ⭐ 첨부는 이미 올라가 있으므로 **다시 올리지 않고 저장만**
+                 * 다시 보낼 수 있다 — 다시 올리면 고아 첨부가 하나 더 생긴다.
+                 */}
+                {drawing.errorStep === 'save' && (
+                  <>
+                    <SaveErrorBanner
+                      error={drawing.error}
+                      onReload={() => {
+                        void layout.refetch();
                       }}
-                    >
-                      {drawingOverwrites ? t.map.overwriteDrawing : t.map.retrySaveDrawing}
-                    </Button>
-                    {/* ⛔ 덮는다는 사실을 버튼 바로 옆에 적는다 — 누르기 전에 읽혀야 한다. */}
-                    {drawingOverwrites && (
-                      <span className="field-note">{t.map.overwriteDrawingNote}</span>
+                    />
+                    {drawing.pendingAttachmentId !== null && (
+                      <div className="form-actions">
+                        <Button
+                          variant="outlined"
+                          size="sm"
+                          disabled={drawing.isBusy}
+                          onClick={() => {
+                            drawing.retrySave();
+                          }}
+                        >
+                          {drawingOverwrites ? t.map.overwriteDrawing : t.map.retrySaveDrawing}
+                        </Button>
+                        {/* ⛔ 덮는다는 사실을 버튼 바로 옆에 적는다 — 누르기 전에 읽혀야 한다. */}
+                        {drawingOverwrites && (
+                          <span className="field-note">{t.map.overwriteDrawingNote}</span>
+                        )}
+                      </div>
                     )}
-                  </div>
+                  </>
+                )}
+
+                {layout.isError ? (
+                  <LoadErrorBanner
+                    error={layout.error}
+                    onRetry={() => {
+                      void layout.refetch();
+                    }}
+                  />
+                ) : layout.isPending ? (
+                  <Skeleton variant="rect" height="16rem" />
+                ) : (
+                  <>
+                    {/* ⭐ 판을 감싼 자리 — 올리는 동안 이 위에 가림막이 선다. */}
+                    <div className="drawing-stage">
+                      <MarkerOverlay
+                        src={drawingSrc}
+                        imageLabel={t.map.imageLabel}
+                        markers={overlayMarkers}
+                        placeholder={drawingPlaceholder}
+                        readOnly={replace.isSaving || drawing.isBusy}
+                        onPlace={place}
+                        onSelect={(id) => {
+                          setSelectedLocation(Number(id));
+                          setHint(null);
+                        }}
+                        onMove={(id, x, y) => {
+                          setDraft(placeMarker(draft, Number(id), x, y));
+                        }}
+                        /* ⭐ 낭독 문구는 화면이 준다 — 판 부품은 표현 전용이라 사람의 말을 갖지 않는다. */
+                        describePosition={t.map.markerPosition}
+                        describeMove={t.map.markerMoved}
+                        /* ⭐ 잠긴 동안 무엇이 막히고 무엇은 되는지 — 눌러 보고 알게 두지 않는다. */
+                        describeReadOnly={t.map.boardLocked}
+                      />
+
+                      {drawing.isBusy && (
+                        /* ⭐ 화면 낭독기에도 전한다 — 「눌렀는데 아무 일도 없다」는 시각만의 문제가 아니다. */
+                        <div className="drawing-busy" role="status">
+                          <div className="drawing-busy-note">
+                            {/*
+                             * ⛔ **막대에 이름을 주지 않는다.** `role="status"` 안에서 막대의
+                             * 접근 이름(`label`)과 옆 `<span>` 이 같은 말을 실으면 낭독기가 그
+                             * 문구를 두 번 읽는다 — 자리는 하나, 말은 한 번이어야 한다. 막대는
+                             * `aria-hidden` 으로 시각 전용이 되고, `<span>` 하나만 낭독된다.
+                             */}
+                            <Progress indeterminate size="sm" aria-hidden />
+                            <span>{busyLabel}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="field-note">{t.map.move}</p>
+                    {hint !== null && <p className="field-error">{hint}</p>}
+
+                    <div className="form-actions">
+                      {replace.isSaving && (
+                        <p className="field-note form-actions-secondary">{t.map.saving}</p>
+                      )}
+                      {/*
+                       * ⭐ **DS 에 파일 입력이 없다** — 숨긴 native 입력을 DS `Button` 이 부르는
+                       * 조합이다(§8 · `tool-master/file-field.tsx` 와 같은 관용구). `display: none`
+                       * 이 아니라 자리만 없애는 이유는 그 파일에 적어 두었다.
+                       */}
+                      <input
+                        ref={fileInput}
+                        type="file"
+                        accept={DRAWING_ACCEPT}
+                        className="file-input"
+                        aria-label={t.map.upload}
+                        /* ⛔ 버튼만 막으면 자판으로 칸에 닿는 길이 남는다 — 칸도 함께 잠근다. */
+                        disabled={draftDirty || replace.isSaving || drawing.isBusy}
+                        onChange={(event) => {
+                          pickFile(event.target.files?.[0] ?? null, event.target);
+                        }}
+                      />
+                      <Button
+                        variant="outlined"
+                        loading={drawing.isBusy}
+                        /* ⛔ 저장하지 않은 점 편집 위에 도면을 갈지 않는다 — 사유는 아래에 적는다. */
+                        disabled={draftDirty || replace.isSaving}
+                        onClick={() => {
+                          fileInput.current?.click();
+                        }}
+                      >
+                        {drawing.isBusy ? busyLabel : t.map.upload}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        disabled={
+                          drawing.isBusy ||
+                          selectedLocation === null ||
+                          !hasMarker(draft, selectedLocation)
+                        }
+                        onClick={() => {
+                          if (selectedLocation === null) {
+                            setHint(t.map.removeNeedsMarker);
+                            return;
+                          }
+                          setDraft(removeMarker(draft, selectedLocation));
+                        }}
+                      >
+                        {t.map.remove}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        disabled={replace.isSaving || drawing.isBusy || !draftDirty}
+                        onClick={() => {
+                          setDraft(original);
+                          setHint(null);
+                        }}
+                      >
+                        {t.map.reset}
+                      </Button>
+                      <Button
+                        disabled={!canSave || drawing.isBusy || !draftDirty}
+                        onClick={() => {
+                          /* ⛔ 도면 id 를 빼면 서버가 도면을 지운다 — 점만 고치는 저장도 싣는다. */
+                          replace.write(toReplaceBody(draft, drawingAttachmentId));
+                        }}
+                      >
+                        {t.map.save}
+                      </Button>
+                    </div>
+
+                    {/* 올리기 자리의 말 — 사유·사전 검사·서버가 돌려준 파일 오류가 여기 모인다. */}
+                    {draftDirty && <p className="field-note">{t.map.uploadNeedsCleanDraft}</p>}
+                    {fileNote !== null && <p className="field-error">{fileNote}</p>}
+                    {drawing.fileError !== null && (
+                      <p className="field-error">{drawing.fileError}</p>
+                    )}
+                    {/* 올리기 «단계»의 실패(413·403 등) — 저장 배너와 자리를 가른다. */}
+                    {drawing.errorStep === 'upload' && <SaveErrorBanner error={drawing.error} />}
+                  </>
                 )}
               </>
-            )}
-
-            {layout.isError ? (
-              <LoadErrorBanner
-                error={layout.error}
-                onRetry={() => {
-                  void layout.refetch();
-                }}
-              />
-            ) : layout.isPending ? (
-              <Skeleton variant="rect" height="16rem" />
-            ) : (
-              <>
-                {/* ⭐ 판을 감싼 자리 — 올리는 동안 이 위에 가림막이 선다. */}
-                <div className="drawing-stage">
-                  <MarkerOverlay
-                    src={drawingSrc}
-                    imageLabel={t.map.imageLabel}
-                    markers={overlayMarkers}
-                    placeholder={drawingPlaceholder}
-                    readOnly={replace.isSaving || drawing.isBusy}
-                    onPlace={place}
-                    onSelect={(id) => {
-                      setSelectedLocation(Number(id));
-                      setHint(null);
-                    }}
-                    onMove={(id, x, y) => {
-                      setDraft(placeMarker(draft, Number(id), x, y));
-                    }}
-                    /* ⭐ 낭독 문구는 화면이 준다 — 판 부품은 표현 전용이라 사람의 말을 갖지 않는다. */
-                    describePosition={t.map.markerPosition}
-                    describeMove={t.map.markerMoved}
-                    /* ⭐ 잠긴 동안 무엇이 막히고 무엇은 되는지 — 눌러 보고 알게 두지 않는다. */
-                    describeReadOnly={t.map.boardLocked}
-                  />
-
-                  {drawing.isBusy && (
-                    /* ⭐ 화면 낭독기에도 전한다 — 「눌렀는데 아무 일도 없다」는 시각만의 문제가 아니다. */
-                    <div className="drawing-busy" role="status">
-                      <div className="drawing-busy-note">
-                        {/*
-                         * ⛔ **막대에 이름을 주지 않는다.** `role="status"` 안에서 막대의
-                         * 접근 이름(`label`)과 옆 `<span>` 이 같은 말을 실으면 낭독기가 그
-                         * 문구를 두 번 읽는다 — 자리는 하나, 말은 한 번이어야 한다. 막대는
-                         * `aria-hidden` 으로 시각 전용이 되고, `<span>` 하나만 낭독된다.
-                         */}
-                        <Progress indeterminate size="sm" aria-hidden />
-                        <span>{busyLabel}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <p className="field-note">{t.map.move}</p>
-                {hint !== null && <p className="field-error">{hint}</p>}
-
-                <div className="form-actions">
-                  {replace.isSaving && (
-                    <p className="field-note form-actions-secondary">{t.map.saving}</p>
-                  )}
-                  {/*
-                   * ⭐ **DS 에 파일 입력이 없다** — 숨긴 native 입력을 DS `Button` 이 부르는
-                   * 조합이다(§8 · `tool-master/file-field.tsx` 와 같은 관용구). `display: none`
-                   * 이 아니라 자리만 없애는 이유는 그 파일에 적어 두었다.
-                   */}
-                  <input
-                    ref={fileInput}
-                    type="file"
-                    accept={DRAWING_ACCEPT}
-                    className="file-input"
-                    aria-label={t.map.upload}
-                    /* ⛔ 버튼만 막으면 자판으로 칸에 닿는 길이 남는다 — 칸도 함께 잠근다. */
-                    disabled={draftDirty || replace.isSaving || drawing.isBusy}
-                    onChange={(event) => {
-                      pickFile(event.target.files?.[0] ?? null, event.target);
-                    }}
-                  />
-                  <Button
-                    variant="outlined"
-                    loading={drawing.isBusy}
-                    /* ⛔ 저장하지 않은 점 편집 위에 도면을 갈지 않는다 — 사유는 아래에 적는다. */
-                    disabled={draftDirty || replace.isSaving}
-                    onClick={() => {
-                      fileInput.current?.click();
-                    }}
-                  >
-                    {drawing.isBusy ? busyLabel : t.map.upload}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    disabled={
-                      drawing.isBusy ||
-                      selectedLocation === null ||
-                      !hasMarker(draft, selectedLocation)
-                    }
-                    onClick={() => {
-                      if (selectedLocation === null) {
-                        setHint(t.map.removeNeedsMarker);
-                        return;
-                      }
-                      setDraft(removeMarker(draft, selectedLocation));
-                    }}
-                  >
-                    {t.map.remove}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    disabled={replace.isSaving || drawing.isBusy || !draftDirty}
-                    onClick={() => {
-                      setDraft(original);
-                      setHint(null);
-                    }}
-                  >
-                    {t.map.reset}
-                  </Button>
-                  <Button
-                    disabled={!canSave || drawing.isBusy || !draftDirty}
-                    onClick={() => {
-                      /* ⛔ 도면 id 를 빼면 서버가 도면을 지운다 — 점만 고치는 저장도 싣는다. */
-                      replace.write(toReplaceBody(draft, drawingAttachmentId));
-                    }}
-                  >
-                    {t.map.save}
-                  </Button>
-                </div>
-
-                {/* 올리기 자리의 말 — 사유·사전 검사·서버가 돌려준 파일 오류가 여기 모인다. */}
-                {draftDirty && <p className="field-note">{t.map.uploadNeedsCleanDraft}</p>}
-                {fileNote !== null && <p className="field-error">{fileNote}</p>}
-                {drawing.fileError !== null && <p className="field-error">{drawing.fileError}</p>}
-                {/* 올리기 «단계»의 실패(413·403 등) — 저장 배너와 자리를 가른다. */}
-                {drawing.errorStep === 'upload' && <SaveErrorBanner error={drawing.error} />}
-              </>
-            )}
-          </section>
-        </div>
-      )}
+            ),
+        }}
+      />
 
       {/*
        * ⚠ **이미 도면이 있을 때만 선다.** 점은 비율이라 새 도면에서도 같은 상대 위치에 남지만,

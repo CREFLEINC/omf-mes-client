@@ -11,6 +11,9 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
   title: 'Sơ đồ bố trí kho',
   breadcrumbRoot: 'Quản lý dữ liệu gốc',
 
+  splitter: 'Kéo để chỉnh độ rộng danh sách · sơ đồ',
+  listCollapse: 'Thu gọn danh sách vị trí',
+  listExpand: 'Mở danh sách vị trí',
   panes: {
     map: 'Sơ đồ bố trí',
     locations: 'Danh sách vị trí',

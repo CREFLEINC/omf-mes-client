@@ -8,6 +8,10 @@ export const warehouseLayout = {
   title: '창고 배치도',
   breadcrumbRoot: '기준정보 관리',
 
+  /* 입고 관리 짜임(사용자 지시 2026-10-29) — 위 창고 고르기 · 왼쪽 위치 목록 | 오른쪽 배치도. */
+  splitter: '끌어서 목록·배치도 폭 조절',
+  listCollapse: '위치 목록 접기',
+  listExpand: '위치 목록 펼치기',
   panes: {
     map: '배치도',
     locations: '위치 목록',
