@@ -21,8 +21,6 @@ export const inspectionStandard = {
     goFirstPage: '첫 쪽으로',
     excelUpload: '엑셀 올리기',
     addPlan: '기준 추가',
-    /* 조회 줄의 짧은 이름(사용자 시안 · #196) */
-    addPlanShort: '추가',
     approve: '승인',
     createVersion: '버전 등록',
     newRevision: '신규 버전 발행',

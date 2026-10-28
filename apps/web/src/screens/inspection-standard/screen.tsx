@@ -1613,7 +1613,7 @@ export const InspectionStandardScreen = () => {
           appliedFilters={filters}
           onApplyFilters={applyFilters}
           /*
-           * 조회 · 초기화 뒤 구분선 너머에 엑셀 올리기(아이콘) · 추가(사용자 시안 · #196).
+           * 조회 · 초기화 뒤 구분선 너머에 엑셀 올리기(아이콘) · 기준 추가(사용자 시안 · #196).
            * 엑셀 올리기는 계약에 경로가 없고 양식도 정해지지 않았다 — 감추지 않고 비활성으로 두며 사유는 마우스를 올리면 보인다.
            */
           actions={
@@ -1629,7 +1629,7 @@ export const InspectionStandardScreen = () => {
                   setCreateValues(emptyPlanFormValues());
                 }}
               >
-                {t.actions.addPlanShort}
+                {t.actions.addPlan}
               </Button>
             </>
           }

@@ -21,7 +21,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     goFirstPage: 'Về trang đầu',
     excelUpload: 'Tải lên Excel',
     addPlan: 'Thêm tiêu chuẩn',
-    addPlanShort: 'Thêm',
     approve: 'Phê duyệt',
     createVersion: 'Đăng ký phiên bản',
     newRevision: 'Phát hành phiên bản mới',
