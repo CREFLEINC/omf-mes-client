@@ -376,6 +376,19 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     expect(within(dialog).getByRole('button', { name: t.import.submit })).toBeDisabled();
   });
 
+  it('모두 반영되면 창을 닫고 「저장했습니다」를 알린다', async () => {
+    const { user } = renderScreen([importRoute(), planListRoute()]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: t.import.title })).not.toBeInTheDocument();
+  });
+
   it('올리면 파일을 멱등 키와 함께 보내고, 성공·실패 기준과 사유를 창 안에 남긴다', async () => {
     const { requests, user } = renderScreen([
       importRoute(() =>

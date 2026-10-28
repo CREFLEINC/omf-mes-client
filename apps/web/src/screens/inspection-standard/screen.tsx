@@ -247,6 +247,15 @@ export const InspectionStandardScreen = () => {
       queryClient.invalidateQueries({ queryKey: versionKeys.all }),
     ]);
     setIsImporting(false);
+
+    // 모두 반영됐으면 창을 닫고 알린다. 하나라도 실패·거절이면 사유를 봐야 하므로 창을 남긴다.
+    const allSaved =
+      outcomes.every((outcome) => outcome.result !== null && outcome.result.failed.length === 0) &&
+      outcomes.some((outcome) => (outcome.result?.succeeded ?? 0) > 0);
+    if (allSaved) {
+      setImportState(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    }
   };
   const plans = planList.data?.items ?? [];
 
