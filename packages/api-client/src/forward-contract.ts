@@ -123,7 +123,13 @@ export interface InputMaterials {
 /** 서버 선행 P-107 — 자재 LOT 이 들어간 시리얼(쪽). */
 export interface UsedSerials {
   basis: TraceBasis;
-  items: { serialNumberId: number; serialNo: string; lotId: number; lotNo: string; producedAt?: string }[];
+  items: {
+    serialNumberId: number;
+    serialNo: string;
+    lotId: number;
+    lotNo: string;
+    producedAt?: string;
+  }[];
   page: { page: number; size: number; total: number };
 }
 
@@ -213,7 +219,10 @@ export type MaterialConsumptionForward = components['schemas']['MaterialConsumpt
   fourMChange?: FourMChangeForward;
 };
 
-export type InspectionResultConfirmForward = Omit<components['schemas']['InspectionResultConfirm'], 'fourMChange'> & {
+export type InspectionResultConfirmForward = Omit<
+  components['schemas']['InspectionResultConfirm'],
+  'fourMChange'
+> & {
   defects?: InspectionDefectInput[];
   /** 서버 선행 P-70(omf-all-around#125·#126) — IQC·OQC 판정이 합격판정개수 기준 자동 판정과 다르면 필수(maxLength 500). */
   judgmentChangeReason?: string;
@@ -226,7 +235,10 @@ type InspectionConfirmPath = paths['/quality/inspection-results/{inspectionResul
  * 서버 선행 P-42·P-48(omf-all-around#122) — 작성중 저장도 IQC 불합격 사유를 싣는다. 실으면 그 회차의 불량 기록을
  * 갈아 끼우고(빈 배열 = 지움), 생략하면 손대지 않는다.
  */
-export type InspectionResultCreateForward = Omit<components['schemas']['InspectionResultCreate'], 'fourMChange'> & {
+export type InspectionResultCreateForward = Omit<
+  components['schemas']['InspectionResultCreate'],
+  'fourMChange'
+> & {
   defects?: InspectionDefectInput[];
   /** 서버 선행 P-70(omf-all-around#125·#126) — statusCode=CONFIRMED 저장의 판정 변경 사유(IQC·OQC). `:confirm` 과 같은 규칙. */
   judgmentChangeReason?: string;
@@ -285,7 +297,10 @@ export type OqcSerialRecord = OqcSerialStep & {
   lotId: number;
   lotNo: string;
 };
-export type InspectionResultUpdateForward = Omit<components['schemas']['InspectionResultUpdate'], 'fourMChange'> & {
+export type InspectionResultUpdateForward = Omit<
+  components['schemas']['InspectionResultUpdate'],
+  'fourMChange'
+> & {
   defects?: InspectionDefectInput[];
   fourMChange?: FourMChangeForward | null;
 };
@@ -1327,7 +1342,122 @@ export type WarehouseListQueryForward = NonNullable<WarehousesGet['parameters'][
   plantId?: number;
 };
 
+/**
+ * 피처 002(omf-all-around#190) 인계 작업 알림 — 서버 선행 P-124·P-125 를 설계 계약
+ * (`specs/002-terminal-task-alerts/contracts/handover-alert-api.md`)대로 먼저 적는다.
+ * 서버 병합 뒤 `gen:api` 가 만들면 아래 타입과 `ForwardPaths` 의 같은 경로를 지운다(D-12).
+ */
+export interface HandoverAlertType {
+  alertTypeCode: string;
+  name: string;
+  nameVi: string;
+  description?: string;
+  targetTypeCode: string;
+}
+
+export interface HandoverAlertSettingSummaryItem {
+  alertTypeCode: string;
+  enabled: boolean;
+  zaloEnabled: boolean;
+  recipientCount: number;
+  noPhoneCount: number;
+  inactiveCount: number;
+}
+
+export interface HandoverAlertSettingSummary {
+  items: HandoverAlertSettingSummaryItem[];
+  /** 계약 §A 에 없는 칸 — 서버가 W-CO-11 요약처럼 실으면 연결 경고에 쓴다. 없으면 경고를 두지 않는다. */
+  zaloStatus?: components['schemas']['ZaloConnection']['status'];
+}
+
+export interface HandoverAlertRecipient {
+  userId: number;
+  name: string;
+  loginId: string;
+  hasPhone: boolean;
+  active: boolean;
+  /** 계약 §A 에 없는 칸 — 실려 오면 이름 옆에 부서를 보인다. */
+  departmentName?: string | null;
+}
+
+export interface HandoverAlertSetting {
+  enabled: boolean;
+  zaloEnabled: boolean;
+  recipients: HandoverAlertRecipient[];
+  version: number;
+}
+
+export interface HandoverAlertSettingReplace {
+  enabled: boolean;
+  zaloEnabled: boolean;
+  recipientUserIds: number[];
+}
+
+export interface HandoverTemplate {
+  alertTypeCode: string;
+  templateId: string | null;
+}
+
+/** P-125 — 기존 `templates`(6종)는 그대로, 인계 10종은 새 칸. 병합 전 서버는 칸을 싣지 않는다. */
+export type ZaloConnectionForward = components['schemas']['ZaloConnection'] & {
+  handoverTemplates?: HandoverTemplate[];
+};
+
+export type ZaloConnectionReplaceForward = components['schemas']['ZaloConnectionReplace'] & {
+  handoverTemplates?: HandoverTemplate[];
+};
+
+type ZaloConnectionPath = paths['/app/zalo-connection'];
+type HandoverSettingPathParams = { plantId: number; alertTypeCode: string };
+
 export interface ForwardPaths {
+  /** 피처 002 P-124 — 인계 작업 종류 10종(기존 `/app/notification-events` 와 별개). */
+  '/app/handover-alert-types': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<NoParameters, never, { 200: Json<{ items: HandoverAlertType[] }> }>;
+  };
+  /** 피처 002 P-124 — 공장의 10종 요약(행이 없으면 꺼짐·0). */
+  '/app/handover-alert-settings': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query: { plantId: number }; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<HandoverAlertSettingSummary> }
+    >;
+  };
+  /** 피처 002 P-124 — 공장 × 종류 상세(ETag)와 저장(If-Match, 행이 없으면 생략). */
+  '/app/handover-alert-settings/{plantId}/{alertTypeCode}': Unused & {
+    parameters: NoParameters;
+    post?: never;
+    get: Op<
+      { query?: never; header?: never; path: HandoverSettingPathParams; cookie?: never },
+      never,
+      { 200: Json<HandoverAlertSetting> }
+    >;
+    put: Op<
+      Params<never, { 'Idempotency-Key': string; 'If-Match'?: string }, HandoverSettingPathParams>,
+      { content: { 'application/json': HandoverAlertSettingReplace } },
+      { 200: Json<HandoverAlertSetting> }
+    >;
+  };
+  /** 피처 002 P-125 — 응답·본문에 `handoverTemplates` 를 더한다. */
+  '/app/zalo-connection': Omit<ZaloConnectionPath, 'get' | 'put'> & {
+    get: Omit<ZaloConnectionPath['get'], 'responses'> & {
+      responses: Omit<ZaloConnectionPath['get']['responses'], 200> & {
+        200: Json<ZaloConnectionForward>;
+      };
+    };
+    put: Omit<ZaloConnectionPath['put'], 'requestBody' | 'responses'> & {
+      requestBody: { content: { 'application/json': ZaloConnectionReplaceForward } };
+      responses: Omit<ZaloConnectionPath['put']['responses'], 200> & {
+        200: Json<ZaloConnectionForward>;
+      };
+    };
+  };
   /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */
   '/quality/concessions': Omit<ConcessionsPath, 'post'> & {
     post: {
@@ -1433,9 +1563,19 @@ export interface ForwardPaths {
   };
   /** 자재 LOT 이 들어간 시리얼 — 서버 선행 P-107. */
   '/trace/lots/{lotId}/used-serials': {
-    parameters: { query?: { page?: number; size?: number }; header?: never; path: { lotId: number }; cookie?: never };
+    parameters: {
+      query?: { page?: number; size?: number };
+      header?: never;
+      path: { lotId: number };
+      cookie?: never;
+    };
     get: {
-      parameters: { query?: { page?: number; size?: number }; header?: never; path: { lotId: number }; cookie?: never };
+      parameters: {
+        query?: { page?: number; size?: number };
+        header?: never;
+        path: { lotId: number };
+        cookie?: never;
+      };
       requestBody?: never;
       responses: {
         200: {

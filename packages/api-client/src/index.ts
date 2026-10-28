@@ -14,6 +14,15 @@ export {
 export type { components, paths } from './generated/api';
 export type {
   AppUserWorker,
+  HandoverAlertRecipient,
+  HandoverAlertSetting,
+  HandoverAlertSettingReplace,
+  HandoverAlertSettingSummary,
+  HandoverAlertSettingSummaryItem,
+  HandoverAlertType,
+  HandoverTemplate,
+  ZaloConnectionForward,
+  ZaloConnectionReplaceForward,
   LineDefaultLocations,
   AttachmentTargetType,
   InspectionHistory,
