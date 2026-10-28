@@ -37,8 +37,8 @@ export const VersionPrimaryAction = ({
   onCreateVersion,
   emphasized = false,
 }: VersionPrimaryActionProps) => {
-  /* 「+」를 달고 낸다(사용자 시안 · #196). 버전 목록 창 제목 줄에서는 주 단추, 버전 구획 머리에서는 테두리 단추다. */
-  const variant = emphasized ? 'tonal' : 'outlined';
+  /* 「+」를 달고 낸다(사용자 시안 · #196). 버전 목록 창 제목 줄에서는 빨간 주 단추, 버전 구획 머리에서는 테두리 단추다. */
+  const variant = emphasized ? 'filled' : 'outlined';
   const icon = <Icon name="add" size={18} />;
 
   if (!hasVersions) {
@@ -119,6 +119,7 @@ export const VersionPane = ({
   const columns: Column<InspectionPlanVersion>[] = [
     {
       key: 'planVersion',
+      align: 'center',
       header: t.fields.planVersion,
       render: (row) => (
         /* 링크 모양 없이 본문 글자 — 줄 아무 곳이나 눌러 고른다(기준 목록과 같다 · omf-all-around#196). */
@@ -134,6 +135,7 @@ export const VersionPane = ({
     },
     {
       key: 'statusCode',
+      align: 'center',
       header: t.fields.status,
       render: (row) => {
         const status = resolveVersionStatus(row.statusCode);
@@ -166,9 +168,9 @@ export const VersionPane = ({
     }
 
     return (
-      /* 줄 아무 곳이나 눌러도 고른다 — 눌린 줄의 버전 단추로 넘긴다(기준 목록과 같다). */
+      /* 줄 아무 곳이나 눌러도 고른다 — 눌린 줄의 버전 단추로 넘긴다. 표 모양 · 고른 줄 표시는 기준 목록과 같다(#196). */
       <div
-        className="inspection-standard-plan-rows"
+        className="inspection-queue-table inspection-standard-plan-rows"
         onClick={(event) => {
           const target = event.target as Element;
           if (target.closest('button, a, input, select, textarea') !== null) return;

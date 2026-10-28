@@ -611,7 +611,7 @@ main > * + * {
 
 /*
  * 버전 목록 창(사용자 시안 · #196) — 제목 줄(제목 · 「+ 신규 버전 발행」) / 표 / 오른쪽 아래 「닫기」.
- * 창 머리를 쓰지 않아 본문 위쪽 여백을 직접 둔다. 표 머리는 바탕 없이 아래 선만, 줄은 기준 목록과 같다.
+ * 창 머리를 쓰지 않아 본문 위쪽 여백을 직접 둔다. 표는 기준 목록 표와 같다.
  */
 .inspection-standard-version-dialog {
   display: grid;
@@ -634,29 +634,10 @@ main > * + * {
   font: var(--type-title-lg);
 }
 
-/* DS 표가 상자 · 머리 · 짝수 줄에 바탕을 깐다 — 창 바탕 위에 선만 남긴다(사용자 시안). */
-.inspection-standard-version-dialog table,
-.inspection-standard-version-dialog thead,
-.inspection-standard-version-dialog thead tr,
-.inspection-standard-version-dialog tbody tr,
-.inspection-standard-version-dialog tbody tr:nth-child(even),
-.inspection-standard-version-dialog tbody tr:nth-child(n) > td,
-.inspection-standard-version-dialog .inspection-standard-plan-rows > div {
-  background: transparent;
-}
-
-.inspection-standard-version-dialog tbody tr:nth-child(n):hover {
-  background: var(--state-hover-neutral);
-}
-
-.inspection-standard-version-dialog thead th {
-  background: transparent;
-  color: var(--on-surface-variant);
-  border-bottom: 1px solid var(--outline-variant);
-}
-
-.inspection-standard-version-dialog tbody td {
-  border-bottom: 0;
+/* 표는 기준 목록 표와 같은 모양(사용자 지시 · #196) — 칸은 가운데 정렬, 버전 글자도 가운데. */
+.inspection-standard-version-dialog .inspection-standard-plan-open {
+  width: 100%;
+  text-align: center;
 }
 
 .inspection-standard-dialog-close {
