@@ -22,6 +22,8 @@ export type PageMeta = components['schemas']['PageMeta'];
 export interface PlanFilters {
   q: string;
   inspectionTypeCode: string;
+  /** 품목 번호(문자열). 비면 전 품목 — 품목 선택 창으로 고른다(#196). */
+  itemId: string;
   includeInactive: boolean;
 }
 

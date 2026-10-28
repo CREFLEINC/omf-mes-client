@@ -1,29 +1,12 @@
 import { messages } from '@omf-mes/i18n';
 
 /**
- * 주소의 보기 상태. 기존 공유 주소(`attrs`·`sub`·`bom`)를 유지하면서 화면에서는
- * 고정 설계에 맞게 품목/BOM 상위 구획과 품목 세부 구획으로 나눠 그린다.
+ * 품목 탭 오른쪽 구획의 보기 상태 — 확장 속성 / 부속 정보. 품목 / BOM 은 셸 탭 막대가 가른다(주소가 다르다).
  */
 
 const t = messages.itemExtendedAttrs;
 
-export type ItemExtendedAttrsSectionId = 'item' | 'bom';
-
-export interface ItemExtendedAttrsSectionDefinition {
-  id: ItemExtendedAttrsSectionId;
-  label: string;
-}
-
-/** 고정 설계의 최상위 정보 구조. 품목의 세부 편집 탭과 섞지 않는다. */
-export const ITEM_EXTENDED_ATTRS_SECTIONS: readonly [
-  ItemExtendedAttrsSectionDefinition,
-  ItemExtendedAttrsSectionDefinition,
-] = [
-  { id: 'item', label: t.sections.item },
-  { id: 'bom', label: t.sections.bom },
-];
-
-export type ItemExtendedAttrsTabId = 'attrs' | 'sub' | 'bom';
+export type ItemExtendedAttrsTabId = 'attrs' | 'sub';
 
 export interface ItemExtendedAttrsTabDefinition {
   /** 주소의 `tab` 값이자 DS `Tabs`의 항목 값 */
@@ -41,11 +24,10 @@ export const ITEM_EXTENDED_ATTRS_TABS: readonly [
 ] = [
   { id: 'attrs', label: t.tabs.attrs },
   { id: 'sub', label: t.tabs.subsidiary },
-  { id: 'bom', label: t.tabs.bom },
 ];
 
-/** 품목 상위 구획 안에서만 보이는 세부 탭. */
-export const ITEM_DETAIL_TABS = ITEM_EXTENDED_ATTRS_TABS.filter((tab) => tab.id !== 'bom');
+/** 오른쪽 구획의 탭. */
+export const ITEM_DETAIL_TABS = ITEM_EXTENDED_ATTRS_TABS;
 
 /**
  * 기본 탭. **주소에 쓰지 않는다** — 「빈 조건·기본값은 키 자체를 두지 않는다」는

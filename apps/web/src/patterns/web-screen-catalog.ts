@@ -327,4 +327,6 @@ export const WEB_SCREEN_TABS: readonly WebScreenTab[] = [
   { path: '/master-data/erp-inbound', ownerPath: '/master-data/integration-sync' },
   /* 초과분 발주 연결 — 입고 관리(W-01-09)의 오른쪽 창이던 것을 탭으로 뗐다(사용자 지시 2026-10-28). */
   { path: '/logistics/inbound-excess', ownerPath: '/logistics/inbound-schedule' },
+  /* BOM — 「품목·BOM 정보」(W-06-05)의 BOM 구역을 탭으로 뗐다(사용자 지시 2026-10-28 · ERP 연동 현황·이력의 BOM 탭처럼). */
+  { path: '/master-data/item-boms', ownerPath: '/master-data/item-extended-attrs' },
 ];

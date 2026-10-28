@@ -269,26 +269,33 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
+      /*
+       * 품질 기준 정보 — 검사기준 · 검사표 기준(W-06-24 · OA 전용) · 검사 수준 관리 · 불량·원인코드 · 판정유형 코드를 사이드바 한 줄 ·
+       * 본문 위 탭으로 묶는다(사용자 2026-10-26). 모두 판정이 기대는 기준·코드 마스터다.
+       * 검사표 기준 탭은 OA 공장이 없는 계정에서 셸이 거른다(`OA_ONLY_PATHS`).
+       */
       {
         to: '/master-data/inspection-standard',
         icon: 'rule_settings',
-        label: '검사기준',
-        labelVi: 'Tiêu chuẩn kiểm tra',
-      },
-      /* W-06-24 — OA 제품 검사표의 모델별 단계·항목(omf-all-around#89). 검사기준 바로 뒤 — 같은 「기준」 갈래다. */
-      {
-        to: '/master-data/inspection-sheet-template',
-        icon: 'checklist',
-        label: '검사표 기준',
-        labelVi: 'Tiêu chuẩn phiếu kiểm tra',
-      },
-      /* 품질 코드 — 불량·원인과 판정유형은 둘 다 판정에 붙이는 코드 마스터다. */
-      {
-        to: '/master-data/defect-cause-code',
-        icon: 'rule',
-        label: '품질 코드',
-        labelVi: 'Mã chất lượng',
+        label: '품질 기준 정보',
+        labelVi: 'Dữ liệu chuẩn chất lượng',
         tabs: [
+          {
+            to: '/master-data/inspection-standard',
+            label: '검사 기준',
+            labelVi: 'Tiêu chuẩn kiểm tra',
+          },
+          {
+            to: '/master-data/inspection-sheet-template',
+            label: '검사표 기준',
+            labelVi: 'Tiêu chuẩn phiếu kiểm tra',
+          },
+          /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
+          {
+            to: '/quality/inspection-levels',
+            label: '검사 수준 관리',
+            labelVi: 'Quản lý mức kiểm tra',
+          },
           {
             to: '/master-data/defect-cause-code',
             label: '불량·원인코드',
@@ -296,7 +303,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
           {
             to: '/master-data/judgment-code',
-            label: '판정유형 코드',
+            label: '판정 유형 코드',
             labelVi: 'Mã loại đánh giá',
           },
         ],
@@ -364,13 +371,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'gavel',
         label: '처분 판정 처리',
         labelVi: 'Ra quyết định xử lý',
-      },
-      /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
-      {
-        to: '/quality/inspection-levels',
-        icon: 'tune',
-        label: '검사 수준 관리',
-        labelVi: 'Quản lý mức kiểm tra',
       },
     ],
   },
@@ -580,12 +580,18 @@ export const NAV_GROUPS: readonly NavGroup[] = [
        * 아키텍처의 「품목정보 조회 (ERP)」·「BOM 조회 (ERP)」를 따로 세웠다가, 이 화면이 이미
        * ERP 원본 정보와 BOM 구역을 갖고 있어 합쳤다 — 같은 품목을 두 화면에서 고르게 하지 않는다.
        * 이름에 「(ERP)」를 붙이지 않은 것은 확장속성을 MES 가 고치기 때문이다.
+       * 품목 · BOM 은 탭이다 — 「ERP 연동 현황·이력」의 품목 · BOM 탭과 같은 짜임(사용자 지시 2026-10-28). BOM 탭은
+       * 설계 화면 코드가 따로 없어 W-06-05 를 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
        */
       {
         to: '/master-data/item-extended-attrs',
         icon: 'category',
         label: '품목·BOM 정보',
         labelVi: 'Thông tin mặt hàng · BOM',
+        tabs: [
+          { to: '/master-data/item-extended-attrs', label: '품목', labelVi: 'Mặt hàng' },
+          { to: '/master-data/item-boms', label: 'BOM', labelVi: 'BOM' },
+        ],
       },
       {
         to: '/master-data/routing',

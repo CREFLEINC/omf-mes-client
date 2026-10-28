@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import type { BomTreeSource } from '../../patterns/bom-tree';
 import { runRequest, toApiError } from '../../patterns/request';
 import type { Bom, ErpBomComponent } from './types';
 
@@ -46,6 +47,14 @@ export const fetchBomComponents = async (
     client.GET('/planning/boms/{bomId}/components', { params: { path: { bomId } } }),
   );
   return data.items;
+};
+
+/** 하이라키(`patterns/bom-tree.ts`)가 부를 것 — 목록 구획과 같은 조회 키다. */
+export const ERP_BOM_TREE: BomTreeSource = {
+  listKey: (itemId) => erpBomKeys.list({ parentItemId: itemId }),
+  componentsKey: (bomId) => erpBomKeys.components(bomId),
+  fetchList: (api, itemId) => fetchBomList(api, { parentItemId: itemId }),
+  fetchComponents: (api, bomId) => fetchBomComponents(api, bomId),
 };
 
 /**

@@ -50,7 +50,20 @@ const lookupKeys = {
  * `baseUomId`는 내부 식별자라 화면에 그대로 낼 수 없다. 이름으로 옮기고,
  * 옮길 수 없으면 「알 수 없음」을 낸다(`options.ts`의 `lookupLabel`).
  */
-export const useUomOptions = (enabled: boolean): LookupResult => {
+export const useUomOptions = (enabled: boolean): LookupResult =>
+  useUomLookup(enabled, (uom) => `${uom.uomCode} · ${uom.uomName}`);
+
+/**
+ * 단위 코드만(「EA」) — 사실 칸 · BOM 하이라키처럼 수량 옆에 붙는 자리. 「BOM 조회 (ERP)」와 같은 표기다.
+ * 선택칸 목록(`useUomOptions`)과 같은 조회를 쓴다.
+ */
+export const useUomCodes = (enabled: boolean): LookupResult =>
+  useUomLookup(enabled, (uom) => uom.uomCode);
+
+const useUomLookup = (
+  enabled: boolean,
+  labelOf: (uom: { uomCode: string; uomName: string }) => string,
+): LookupResult => {
   const { client } = useApiClient();
 
   const query = useQuery({
@@ -67,7 +80,7 @@ export const useUomOptions = (enabled: boolean): LookupResult => {
     entries:
       data?.items.map((item) => ({
         value: String(item.uomId),
-        label: `${item.uomCode} · ${item.uomName}`,
+        label: labelOf(item),
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),

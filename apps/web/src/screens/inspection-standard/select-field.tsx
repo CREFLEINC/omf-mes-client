@@ -16,6 +16,8 @@ export interface SelectFieldProps {
   /** 값 목록이 확정되지 않았다는 안내 등. 오류가 있으면 오류가 우선한다. */
   note?: string;
   error?: string;
+  /** 문구 없이 테두리만 빨갛게 — 비어 있는 필수 칸(검사 조회·판정과 같다 · #196) */
+  invalid?: boolean;
   placeholder?: string;
 }
 
@@ -40,6 +42,7 @@ export const SelectField = ({
   disabledReason,
   note,
   error,
+  invalid = false,
   placeholder,
 }: SelectFieldProps) => {
   const id = useId();
@@ -57,7 +60,7 @@ export const SelectField = ({
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
-        invalid={error !== undefined}
+        invalid={error !== undefined || invalid}
         aria-required={required || undefined}
         aria-describedby={message === undefined ? undefined : noteId}
       />

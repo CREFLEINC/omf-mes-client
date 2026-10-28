@@ -1,8 +1,10 @@
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQueries, useQueryClient, type QueryClient, type QueryKey } from '@tanstack/react-query';
 
-import { useApiClient } from '../../patterns/api-context';
-import { erpBomKeys, fetchBomComponents, fetchBomList } from './queries';
-import type { Bom, ErpBomComponent } from './types';
+import { useApiClient } from './api-context';
+
+type Bom = components['schemas']['Bom'];
+type BomComponent = components['schemas']['BomComponent'];
 
 /**
  * BOM 하이라키(사용자 지시 2026-10-27 — 「ERP BOM 뷰어처럼 하이라키를 확인할 수 있게」).
@@ -11,6 +13,9 @@ import type { Bom, ErpBomComponent } from './types';
  * **기본 BOM**(없으면 첫 BOM)을 찾아 한 단계씩 내려간다. 펼친 줄의 자품목만 부르고, 접은 줄 아래는 부르지 않는다.
  *
  * 같은 품목이 위 단계에 이미 있으면(순환) 더 내려가지 않는다. 깊이도 `MAX_DEPTH` 에서 멈춘다.
+ *
+ * 「BOM 조회 (ERP)」와 「품목·BOM 정보」가 같은 트리를 쓴다(사용자 지시 2026-10-28) — 부르는 쪽이 조회 키와 읽기를
+ * 넘긴다(`BomTreeSource`). 줄 칸은 `bom-tree-cell.tsx`.
  */
 
 /** 이보다 깊으면 펼치지 않는다 — 자료가 잘못돼 끝없이 내려가는 것을 막는다. */
@@ -43,8 +48,10 @@ export interface BomTreeRow {
   /** 형제 중 마지막인가 — 가지선이 └ 로 끝난다(아니면 ├). 뿌리는 참이다. */
   isLast: boolean;
   itemId: number;
-  /** 윗 BOM 에서 본 이 품목의 구성 줄. 뿌리는 없다. */
-  component: ErpBomComponent | null;
+  /** 윗 BOM 의 모품목 — 그 품목의 공정 흐름이 이 줄의 공정 선택지다. 뿌리는 없다. */
+  parentItemId: number | null;
+  /** 윗 BOM 에서 본 이 품목의 구성 줄(`bomId` 가 윗 BOM). 뿌리는 없다. */
+  component: BomComponent | null;
   state: BomTreeNodeState;
 }
 
@@ -52,7 +59,7 @@ type Lookup<T> = T | 'pending' | 'error';
 
 export interface BomTreeLookup {
   boms: (itemId: number) => Lookup<Bom[]>;
-  components: (bomId: number) => Lookup<ErpBomComponent[]>;
+  components: (bomId: number) => Lookup<BomComponent[]>;
 }
 
 /** 품목의 하위 구성으로 쓸 BOM — 기본 BOM, 없으면 첫 BOM. */
@@ -82,7 +89,7 @@ export const walkBomTree = (
 
   const visit = (
     itemId: number,
-    component: ErpBomComponent | null,
+    component: BomComponent | null,
     knownBomId: number | null,
     depth: number,
     ancestors: readonly number[],
@@ -90,7 +97,17 @@ export const walkBomTree = (
     rails: readonly boolean[],
     isLast: boolean,
   ): void => {
-    const row: BomTreeRow = { key, depth, rails, isLast, itemId, component, state: 'leaf' };
+    const parentItemId = ancestors.at(-1) ?? null;
+    const row: BomTreeRow = {
+      key,
+      depth,
+      rails,
+      isLast,
+      itemId,
+      parentItemId,
+      component,
+      state: 'leaf',
+    };
     rows.push(row);
 
     if (ancestors.includes(itemId)) {
@@ -160,13 +177,22 @@ const cached = <T>(queryClient: QueryClient, queryKey: QueryKey): Lookup<T> => {
 
 const EMPTY_WALK: BomTreeWalk = { rows: [], itemIds: [], bomIds: [] };
 
+/** 트리가 부를 것 — 화면마다 제 조회 키를 쓴다(저장 뒤 무효화가 그 화면의 키로 돈다). */
+export interface BomTreeSource {
+  listKey: (itemId: number) => QueryKey;
+  componentsKey: (bomId: number) => QueryKey;
+  fetchList: (api: ApiClient, itemId: number) => Promise<Bom[]>;
+  fetchComponents: (api: ApiClient, bomId: number) => Promise<BomComponent[]>;
+}
+
 /**
  * 트리 줄. 조회 캐시를 읽어 편 다음, 편 결과가 부르라는 것을 `useQueries` 로 부른다 — 응답이 오면 다시 그려져 한 단계
- * 더 편다. 목록 구획(`useBomList`)과 같은 조회 키라 뿌리 품목의 BOM 목록은 다시 부르지 않는다.
+ * 더 편다. 부르는 쪽 목록 구획과 같은 조회 키를 주면 뿌리 품목의 BOM 목록은 다시 부르지 않는다.
  */
 export const useBomTree = (
   root: BomTreeRoot | null,
   collapsed: ReadonlySet<string>,
+  source: BomTreeSource,
 ): BomTreeRow[] => {
   const api = useApiClient();
   const queryClient = useQueryClient();
@@ -177,9 +203,8 @@ export const useBomTree = (
       : walkBomTree(
           root,
           {
-            boms: (itemId) => cached<Bom[]>(queryClient, erpBomKeys.list({ parentItemId: itemId })),
-            components: (bomId) =>
-              cached<ErpBomComponent[]>(queryClient, erpBomKeys.components(bomId)),
+            boms: (itemId) => cached<Bom[]>(queryClient, source.listKey(itemId)),
+            components: (bomId) => cached<BomComponent[]>(queryClient, source.componentsKey(bomId)),
           },
           collapsed,
         );
@@ -193,15 +218,15 @@ export const useBomTree = (
 
   useQueries({
     queries: walk.itemIds.map((itemId) => ({
-      queryKey: erpBomKeys.list({ parentItemId: itemId }),
-      queryFn: () => fetchBomList(api, { parentItemId: itemId }),
+      queryKey: source.listKey(itemId),
+      queryFn: () => source.fetchList(api, itemId),
     })),
     combine: subscribe,
   });
   useQueries({
     queries: walk.bomIds.map((bomId) => ({
-      queryKey: erpBomKeys.components(bomId),
-      queryFn: () => fetchBomComponents(api, bomId),
+      queryKey: source.componentsKey(bomId),
+      queryFn: () => source.fetchComponents(api, bomId),
     })),
     combine: subscribe,
   });

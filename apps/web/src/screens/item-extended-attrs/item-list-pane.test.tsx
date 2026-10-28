@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { EMPTY_ITEM_FILTERS } from './filters';
 import { itemFixtures } from './fixtures';
-import { ItemListPane } from './item-list-pane';
+import { ItemFilterBar, ItemListPane } from './item-list-pane';
 import { toPageView } from './pagination';
 import type { ItemFilters } from './types';
 
@@ -16,44 +16,75 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemListPane>[0]> = {})
   const onSelect = vi.fn<(itemId: number) => void>();
   const onChangePage = vi.fn<(page: number) => void>();
 
+  const props = {
+    items: itemFixtures,
+    isLoading: false,
+    appliedFilters: EMPTY_ITEM_FILTERS,
+    onApplyFilters,
+    pageView: pageView(),
+    onChangePage,
+    selectedItemId: null,
+    onSelect,
+    loadError: null,
+    ...overrides,
+  };
+
+  /* 화면처럼 위 조건 상자와 왼쪽 목록을 함께 세운다. */
   render(
-    <ItemListPane
-      items={itemFixtures}
-      isLoading={false}
-      appliedFilters={EMPTY_ITEM_FILTERS}
-      onApplyFilters={onApplyFilters}
-      pageView={pageView()}
-      onChangePage={onChangePage}
-      selectedItemId={null}
-      onSelect={onSelect}
-      loadError={null}
-      {...overrides}
-    />,
+    <>
+      <ItemFilterBar
+        applied={props.appliedFilters}
+        onApply={props.onApplyFilters}
+        {...(props.itemTypeOptions === undefined ? {} : { itemTypeOptions: props.itemTypeOptions })}
+      />
+      <section aria-label="품목">
+        <ItemListPane {...props} />
+      </section>
+    </>,
   );
 
   return { onApplyFilters, onSelect, onChangePage, user: userEvent.setup() };
 };
 
 describe('ItemListPane — 목록', () => {
-  it('품목코드와 품목명 두 열만 낸다', () => {
+  it('품목코드 · 품목명 · 품목유형 · IQC 대상 네 열을 낸다', () => {
     renderPane();
 
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
-    expect(headers).toEqual(['품목코드', '품목명']);
+    expect(headers).toEqual(['품목코드', '품목명', '품목유형', 'IQC 대상']);
+  });
+
+  it('IQC 대상 여부를 Y / N 으로 낸다', () => {
+    renderPane();
+
+    const cells = screen
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('cell').at(-1)?.textContent);
+    expect(cells).toEqual(itemFixtures.map((item) => (item.inspectionRequired ? 'Y' : 'N')));
   });
 
   it('품목코드를 눌러 고른다', async () => {
     const { onSelect, user } = renderPane();
 
-    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01' }));
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01 선택' }));
 
     expect(onSelect).toHaveBeenCalledWith(1001);
+  });
+
+  /* 줄 어디를 눌러도 그 품목을 고른다(`BoardTable` 의 `pick`). */
+  it('품목명 칸을 눌러도 고른다', async () => {
+    const { onSelect, user } = renderPane();
+
+    await user.click(screen.getByText(itemFixtures[1]!.itemName));
+
+    expect(onSelect).toHaveBeenCalledWith(itemFixtures[1]!.itemId);
   });
 
   it('고른 행을 표시한다', () => {
     renderPane({ selectedItemId: 1001 });
 
-    expect(screen.getByRole('button', { name: 'SYN-ITEM-01' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'SYN-ITEM-01 선택' })).toHaveAttribute(
       'aria-current',
       'true',
     );
@@ -90,10 +121,15 @@ describe('ItemListPane — 조회 조건', () => {
   it('검색어를 모아서 적용한다', async () => {
     const { onApplyFilters, user } = renderPane();
 
-    await user.type(screen.getByRole('searchbox', { name: '품목 검색' }), 'SYN');
+    await user.type(screen.getByRole('textbox', { name: '품목코드·품목명' }), 'SYN');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: 'SYN', itemType: '', includeInactive: false });
+    expect(onApplyFilters).toHaveBeenCalledWith({
+      q: 'SYN',
+      itemType: 'RAW_MATERIAL',
+      includeInactive: false,
+      iqc: '',
+    });
   });
 
   /* 해제 축이라 변경 즉시 적용한다 — 「조회」를 한 번 더 누르게 하지 않는다. */
@@ -102,12 +138,28 @@ describe('ItemListPane — 조회 조건', () => {
 
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', itemType: '', includeInactive: true });
+    expect(onApplyFilters).toHaveBeenCalledWith({
+      q: '',
+      itemType: 'RAW_MATERIAL',
+      includeInactive: true,
+      iqc: '',
+    });
+  });
+
+  /* 품목유형처럼 「조회」로 건다. */
+  it('IQC 대상 조건을 골라 조회한다', async () => {
+    const { onApplyFilters, user } = renderPane();
+
+    await user.click(screen.getByRole('combobox', { name: 'IQC 대상' }));
+    await user.click(await screen.findByRole('option', { name: 'Y' }));
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    expect(onApplyFilters).toHaveBeenLastCalledWith({ ...EMPTY_ITEM_FILTERS, iqc: 'Y' });
   });
 
   it('초기화는 조건을 통째로 푼다', async () => {
     const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'SYN', itemType: '', includeInactive: true },
+      appliedFilters: { q: 'SYN', itemType: '', includeInactive: true, iqc: '' },
     });
 
     await user.click(screen.getByRole('button', { name: '초기화' }));
@@ -115,58 +167,34 @@ describe('ItemListPane — 조회 조건', () => {
     expect(onApplyFilters).toHaveBeenCalledWith(EMPTY_ITEM_FILTERS);
   });
 
-  it('걸린 조건을 칩으로 낸다', () => {
-    renderPane({ appliedFilters: { q: 'SYN', itemType: '', includeInactive: true } });
-
-    expect(screen.getByText('검색어: SYN')).toBeInTheDocument();
-    // 「미사용 포함」은 확인칸 라벨에도 있다 — 칩은 제거 버튼으로 가린다.
-    expect(screen.getByRole('button', { name: '미사용 포함 조건 제거' })).toBeInTheDocument();
-  });
-
-  it('칩을 제거하면 그 조건만 풀린다', async () => {
-    const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'SYN', itemType: '', includeInactive: true },
-    });
-
-    await user.click(screen.getByRole('button', { name: '검색어 조건 제거' }));
-
-    expect(onApplyFilters).toHaveBeenCalledWith({ q: '', itemType: '', includeInactive: true });
-  });
-
   /* 선택지 이름은 코드 그룹이 준다. 목록 밖 코드가 주소에 실려 와도 사라지지 않는다. */
   it('품목 유형 선택지를 코드 그룹 이름으로 낸다', () => {
     renderPane({
       itemTypeOptions: [{ code: 'FINISHED', codeName: '완제품' }],
-      appliedFilters: { q: '', itemType: 'FINISHED', includeInactive: false },
+      appliedFilters: { q: '', itemType: 'FINISHED', includeInactive: false, iqc: '' },
     });
 
     expect(screen.getByRole('combobox', { name: '품목유형' })).toHaveTextContent('완제품');
   });
 
   it('선택지에 없는 유형 코드도 그대로 보인다', () => {
-    renderPane({ appliedFilters: { q: '', itemType: 'CUSTOM', includeInactive: false } });
+    renderPane({ appliedFilters: { q: '', itemType: 'CUSTOM', includeInactive: false, iqc: '' } });
 
     expect(screen.getByRole('combobox', { name: '품목유형' })).toHaveTextContent('CUSTOM');
-    expect(screen.getByText('품목유형: CUSTOM')).toBeInTheDocument();
   });
 });
 
 describe('ItemListPane — 빈 상태 세 갈래', () => {
-  it('조건 없이 0건이면 원본 시스템을 가리킨다 — 여기서 만들 수 없는 자료다', () => {
+  it('조건 없이 0건이면 없다고만 한다', () => {
     renderPane({ items: [], pageView: pageView(1, 0, 0) });
 
     expect(screen.getByText('표시할 품목이 없습니다')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        '품목은 외부 시스템에서 받아옵니다. 원본 시스템에 자료가 있는지 확인하세요.',
-      ),
-    ).toBeInTheDocument();
   });
 
   it('조건이 걸린 0건이면 조건을 줄이라고 한다', () => {
     renderPane({
       items: [],
-      appliedFilters: { q: 'SYN', itemType: '', includeInactive: false },
+      appliedFilters: { q: 'SYN', itemType: '', includeInactive: false, iqc: '' },
       pageView: pageView(1, 0, 0),
     });
 

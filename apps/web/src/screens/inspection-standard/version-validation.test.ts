@@ -65,8 +65,8 @@ describe('validateVersionForm — 유효기간', () => {
   it('유효종료가 유효시작보다 앞서면 두 칸 모두에 오류를 낸다', () => {
     const errors = validateVersionForm(values({ effectiveTo: '2026-07-31' }));
 
-    expect(errors.effectiveFrom).toBe('유효종료는 유효시작과 같거나 그 뒤여야 합니다.');
-    expect(errors.effectiveTo).toBe('유효종료는 유효시작과 같거나 그 뒤여야 합니다.');
+    expect(errors.effectiveFrom).toBe('적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.');
+    expect(errors.effectiveTo).toBe('적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.');
   });
 
   it('유효시작이 비어 있으면 비교하지 않고 필수 오류만 남긴다', () => {
@@ -97,10 +97,10 @@ describe('validateVersionForm — 주기 짝', () => {
     const errors = validateVersionForm(values({ frequencyIntervalValue: '4' }));
 
     expect(errors.frequencyIntervalValue).toBe(
-      '주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
+      '검사 주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
     );
     expect(errors.frequencyIntervalUomCode).toBe(
-      '주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
+      '검사 주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
     );
   });
 
@@ -116,7 +116,7 @@ describe('validateVersionForm — 판정 개수', () => {
   /* 계약 CHECK > 0 — 0 은 「없음」이 아니라 위반이다. */
   it('불합격판정개수 0을 거부한다', () => {
     expect(validateVersionForm(values({ rejectionNumber: '0' })).rejectionNumber).toBe(
-      '불합격판정개수는 0보다 큰 숫자여야 합니다.',
+      '불합격 판정 불량 수는 0보다 큰 숫자여야 합니다.',
     );
   });
 
@@ -132,7 +132,7 @@ describe('validateVersionForm — 판정 개수', () => {
 
   it('합격판정개수 음수를 거부한다', () => {
     expect(validateVersionForm(values({ acceptanceNumber: '-1' })).acceptanceNumber).toBe(
-      '합격판정개수는 0 이상의 숫자여야 합니다.',
+      '합격 허용 불량 수는 0 이상의 숫자여야 합니다.',
     );
   });
 
@@ -194,9 +194,16 @@ describe('validateVersionForm — 샘플 비율', () => {
     const sampling = { samplingMethodCode: 'SAMPLE_BY_LOT' };
 
     expect(validateVersionForm(values({ ...sampling, samplingQty: '5' }))).toEqual({});
-    expect(validateVersionForm(values({ ...sampling, samplingRatio: '10', samplingQty: '5' })).samplingQty).toBe(v.samplingQtyBoth);
-    expect(validateVersionForm(values({ ...sampling, samplingQty: '0' })).samplingQty).toBe(v.samplingQtyInvalid);
-    expect(validateVersionForm(values({ ...sampling, samplingQty: '1.5' })).samplingQty).toBe(v.samplingQtyInvalid);
+    expect(
+      validateVersionForm(values({ ...sampling, samplingRatio: '10', samplingQty: '5' }))
+        .samplingQty,
+    ).toBe(v.samplingQtyBoth);
+    expect(validateVersionForm(values({ ...sampling, samplingQty: '0' })).samplingQty).toBe(
+      v.samplingQtyInvalid,
+    );
+    expect(validateVersionForm(values({ ...sampling, samplingQty: '1.5' })).samplingQty).toBe(
+      v.samplingQtyInvalid,
+    );
   });
 
   /*
