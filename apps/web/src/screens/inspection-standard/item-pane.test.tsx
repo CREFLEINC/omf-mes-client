@@ -58,7 +58,7 @@ describe('ItemPane — 표', () => {
     expect(headers.slice(0, 7)).toEqual([
       '순서',
       '항목',
-      '자료형',
+      '검사값 유형',
       '목표·범위',
       '측정 횟수',
       '판정',

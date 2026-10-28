@@ -129,13 +129,13 @@ export const inspectionStandard = {
     itemPlaceholders: {
       inspectionItemCode: '항목코드를 입력하세요',
       inspectionItemName: '항목명을 입력하세요',
-      dataType: '자료형을 선택하세요',
-      uom: '단위를 선택하세요',
-      targetValue: '목표값을 입력하세요',
+      dataType: '검사값 유형을 선택하세요',
+      uom: '검사 단위를 선택하세요',
+      targetValue: '기준값을 입력하세요',
       lowerLimit: '하한값을 입력하세요',
       upperLimit: '상한값을 입력하세요',
       inspectionMethod: '검사 방법을 선택하세요',
-      defaultInspectionEquipment: '지정 검사장비를 선택하세요',
+      defaultInspectionEquipment: '검사 장비를 선택하세요',
     },
     /* 창의 확인칸 이름 — 표의 짧은 라벨(필수 · 자동판정)과 따로 둔다(사용자 지시 · #196). */
     requiredFlagLabel: '필수 검사 항목 여부',
@@ -291,7 +291,7 @@ export const inspectionStandard = {
     sequence: '순서',
     /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
     itemSpec: '항목',
-    dataType: '자료형',
+    dataType: '검사값 유형',
     targetRange: '목표·범위',
     measurementCount: '측정 횟수',
     judgment: '판정',
@@ -299,12 +299,12 @@ export const inspectionStandard = {
     rowActions: '편집',
     inspectionItemCode: '항목코드',
     inspectionItemName: '항목명',
-    uom: '단위',
-    targetValue: '목표값',
-    lowerLimit: '하한',
-    upperLimit: '상한',
+    uom: '검사 단위',
+    targetValue: '기준값',
+    lowerLimit: '하한값',
+    upperLimit: '상한값',
     inspectionMethod: '검사 방법',
-    defaultInspectionEquipment: '지정 검사장비',
+    defaultInspectionEquipment: '검사 장비',
     requiredFlag: '필수',
     automaticJudgment: '자동판정',
   },
@@ -373,14 +373,14 @@ export const inspectionStandard = {
      */
     itemCodeDuplicated: '같은 항목코드가 이 버전에 이미 있습니다. 다른 코드를 입력하세요.',
     /* 계약 ck_inspection_limits — 데이터베이스가 막는다. 먼저 막는 것이 사용자에게 이롭다. */
-    limitsReversed: '상한은 하한과 같거나 그보다 커야 합니다.',
+    limitsReversed: '상한값은 하한값과 같거나 그보다 커야 합니다.',
     /* 계약 CHECK > 0. 측정 횟수는 표본 번호의 상한이라 정수여야 한다. */
     measurementCountInvalid: '측정 횟수는 1 이상의 정수여야 합니다.',
     /*
      * **경고이지 차단이 아니다.** 계약이 목표값 범위 밖을 데이터베이스로 막지 않고
      * 서버가 경고 등급으로 다룬다 — 관리 한계와 규격 한계가 다른 경우가 업무상 정상이다.
      */
-    targetOutOfRange: '목표값이 하한~상한 밖입니다. 의도한 값인지 확인하세요.',
+    targetOutOfRange: '기준값이 하한값~상한값 밖입니다. 의도한 값인지 확인하세요.',
   },
   /**
    * 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다.

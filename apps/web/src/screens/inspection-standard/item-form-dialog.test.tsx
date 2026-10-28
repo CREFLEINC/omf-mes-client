@@ -70,10 +70,10 @@ describe('ItemFormDialog — 표시', () => {
   it('자료형과 무관하게 단위·목표값·상하한이 항상 보인다', () => {
     renderDialog({ values: { ...savedDrafts()[0]!, dataTypeCode: '' } });
 
-    expect(screen.getByRole('combobox', { name: '단위' })).toBeInTheDocument();
-    expect(screen.getByLabelText('목표값')).toBeInTheDocument();
-    expect(screen.getByLabelText('하한')).toBeInTheDocument();
-    expect(screen.getByLabelText('상한')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '검사 단위' })).toBeInTheDocument();
+    expect(screen.getByLabelText('기준값')).toBeInTheDocument();
+    expect(screen.getByLabelText('하한값')).toBeInTheDocument();
+    expect(screen.getByLabelText('상한값')).toBeInTheDocument();
   });
 
   it('값을 고치면 그 값만 알린다', () => {
@@ -132,7 +132,7 @@ describe('ItemFormDialog — 차단과 경고', () => {
     });
 
     expect(
-      screen.getByText('목표값이 하한~상한 밖입니다. 의도한 값인지 확인하세요.'),
+      screen.getByText('기준값이 하한값~상한값 밖입니다. 의도한 값인지 확인하세요.'),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '확인' }));

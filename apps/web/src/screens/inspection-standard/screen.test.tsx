@@ -2376,7 +2376,7 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
       within(dialogNode).getByText('확인 시 목록에 추가되며, 저장 후 최종 반영됩니다.'),
     ).toBeInTheDocument();
 
-    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(within(dialogNode).getByRole('combobox', { name: '검사값 유형' }));
     await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
@@ -2394,7 +2394,7 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-01');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
-    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(within(dialogNode).getByRole('combobox', { name: '검사값 유형' }));
     await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
@@ -2426,10 +2426,12 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     await user.click(within(itemPane()).getByRole('button', { name: '1번 항목 수정' }));
 
     const dialogNode = await dialog();
-    fireEvent.change(within(dialogNode).getByLabelText('상한'), { target: { value: '1' } });
+    fireEvent.change(within(dialogNode).getByLabelText('상한값'), { target: { value: '1' } });
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
-    expect(await screen.findAllByText('상한은 하한과 같거나 그보다 커야 합니다.')).toHaveLength(2);
+    expect(await screen.findAllByText('상한값은 하한값과 같거나 그보다 커야 합니다.')).toHaveLength(
+      2,
+    );
     expect(confirmDialogs()).toHaveLength(1);
   });
 
@@ -2455,10 +2457,12 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     await user.click(within(itemPane()).getByRole('button', { name: '1번 항목 수정' }));
 
     const dialogNode = await dialog();
-    fireEvent.change(within(dialogNode).getByLabelText('목표값'), { target: { value: '99' } });
+    fireEvent.change(within(dialogNode).getByLabelText('기준값'), { target: { value: '99' } });
 
     expect(
-      await within(dialogNode).findByText('목표값이 하한~상한 밖입니다. 의도한 값인지 확인하세요.'),
+      await within(dialogNode).findByText(
+        '기준값이 하한값~상한값 밖입니다. 의도한 값인지 확인하세요.',
+      ),
     ).toBeInTheDocument();
 
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
@@ -2493,7 +2497,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
-    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(within(dialogNode).getByRole('combobox', { name: '검사값 유형' }));
     await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
@@ -2530,7 +2534,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
 
-    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(within(dialogNode).getByRole('combobox', { name: '검사값 유형' }));
     for (const name of ['수치', '텍스트', '불리언']) {
       expect(screen.getByRole('option', { name })).toBeInTheDocument();
     }
@@ -2692,7 +2696,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
-    await user.click(within(dialogNode).getByRole('combobox', { name: '자료형' }));
+    await user.click(within(dialogNode).getByRole('combobox', { name: '검사값 유형' }));
     await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 

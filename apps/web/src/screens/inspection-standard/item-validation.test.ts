@@ -77,8 +77,8 @@ describe('validateItemDraft — 상하한', () => {
   it('상한이 하한보다 작으면 두 칸 모두에 오류를 낸다', () => {
     const errors = validateItemDraft(draft({ lowerLimit: '11', upperLimit: '9' }), []);
 
-    expect(errors.lowerLimit).toBe('상한은 하한과 같거나 그보다 커야 합니다.');
-    expect(errors.upperLimit).toBe('상한은 하한과 같거나 그보다 커야 합니다.');
+    expect(errors.lowerLimit).toBe('상한값은 하한값과 같거나 그보다 커야 합니다.');
+    expect(errors.upperLimit).toBe('상한값은 하한값과 같거나 그보다 커야 합니다.');
   });
 
   it('상한과 하한이 같으면 통과한다', () => {
@@ -126,7 +126,7 @@ describe('warnItemDraft — 목표값 범위', () => {
   it('목표값이 범위 밖이면 경고를 낸다', () => {
     const warnings = warnItemDraft(draft({ targetValue: '12', lowerLimit: '9', upperLimit: '11' }));
 
-    expect(warnings.targetValue).toBe('목표값이 하한~상한 밖입니다. 의도한 값인지 확인하세요.');
+    expect(warnings.targetValue).toBe('기준값이 하한값~상한값 밖입니다. 의도한 값인지 확인하세요.');
   });
 
   it('하한보다 작아도 경고를 낸다', () => {
