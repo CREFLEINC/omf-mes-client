@@ -121,7 +121,13 @@ export const PopHeader = ({
           <span>{hasText(terminalCode) ? t.terminalLabel(terminalCode) : t.terminalUnknown}</span>
         )}
 
-        <span>{hasText(workerNo) ? t.workerLabel(workerNo, workerName) : t.workerUnset}</span>
+        {hasText(workerNo) ? (
+          <span title={t.workerTitle(workerNo, workerName)}>
+            {t.workerLabel(workerNo, workerName)}
+          </span>
+        ) : (
+          <span>{t.workerUnset}</span>
+        )}
 
         {isConnected !== undefined && (
           <Chip variant="status" size="md" status={isConnected ? 'success' : 'error'}>

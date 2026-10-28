@@ -16,6 +16,8 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     equipmentTitle: (code: string, name: string): string => `Thiết bị ${named(name, code)}`,
     workerUnset: 'Chưa nhập mã nhân viên',
     workerLabel: (workerNo: string, workerName?: string | null): string =>
+      named(workerName, workerNo),
+    workerTitle: (workerNo: string, workerName?: string | null): string =>
       `Người làm ${named(workerName, workerNo)}`,
     workOrderLabel: (workOrderNo: string): string => `W/O ${workOrderNo}`,
     moldLabel: (mold: string): string => `Khuôn ${mold}`,

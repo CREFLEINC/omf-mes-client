@@ -23,7 +23,13 @@ export const popChrome = {
       `설비 ${name.trim() === '' ? code : name}`,
     equipmentTitle: (code: string, name: string): string => `설비 ${named(name, code)}`,
     workerUnset: '사번 미입력',
+    /*
+     * 머리줄의 작업자는 「이름 (사번)」만 보인다. 이름과 사번이 함께 서면 작업자임이 드러나고, 1024 폭에서
+     * 설비 이름이 줄지 않게 「작업자」 라벨 낱말을 뺀다. 라벨은 툴팁과 접근 이름(`workerTitle`)이 말한다.
+     */
     workerLabel: (workerNo: string, workerName?: string | null): string =>
+      named(workerName, workerNo),
+    workerTitle: (workerNo: string, workerName?: string | null): string =>
       `작업자 ${named(workerName, workerNo)}`,
     workOrderLabel: (workOrderNo: string): string => `W/O ${workOrderNo}`,
     /** 이 투입에 지정한 금형(C-21, 있을 때만). */
