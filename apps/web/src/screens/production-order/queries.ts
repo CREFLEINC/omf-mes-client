@@ -32,6 +32,8 @@ export const toProductionOrderFact = (order: ProductionOrder): ProductionOrderFa
   autoPlan: order.autoPlan ?? null,
   worklistState: order.worklistState ?? null,
   worklistReasons: order.worklistReasons ?? [],
+  releasePendingWorkOrderCount: order.releasePendingWorkOrderCount ?? null,
+  liveWorkOrderCount: order.liveWorkOrderCount ?? null,
 });
 
 /** 선택한 P/O만 정확한 계약 경로에서 읽고 목록과 같은 사실 형태로 쓴다. */

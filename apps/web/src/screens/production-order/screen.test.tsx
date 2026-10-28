@@ -218,6 +218,40 @@ describe('작업지시 목록 작업함', () => {
     }
   });
 
+  it('「배포 전 W/O」 열은 서버가 센 배포 전 수와 전체 수를 보인다', async () => {
+    const counts = (base: object, pending: number, live: number) => ({
+      ...base,
+      releasePendingWorkOrderCount: pending,
+      liveWorkOrderCount: live,
+    });
+    render(
+      {
+        orders: [
+          counts(
+            order(731, 'SYN-PO-731', { status: 'DONE', reasons: [] }, 2, 'RELEASE_PENDING'),
+            1,
+            2,
+          ),
+          counts(order(732, 'SYN-PO-732', { status: 'DONE', reasons: [] }, 2, 'RELEASED'), 0, 2),
+          counts(order(733, 'SYN-PO-733', null, 0, 'BEFORE_PLAN'), 0, 0),
+        ],
+      },
+      '/production/production-orders?state=ALL',
+    );
+
+    expect(
+      await screen.findByRole('columnheader', { name: t.list.columns.pendingWorkOrders }),
+    ).toBeVisible();
+    for (const [no, text] of [
+      ['SYN-PO-731', '1 / 2'],
+      ['SYN-PO-732', '0 / 2'],
+      ['SYN-PO-733', '0 / 0'],
+    ] as const) {
+      const row = await screen.findByRole('link', { name: t.list.openRow(no) });
+      expect(within(row).getByText(text)).toBeVisible();
+    }
+  });
+
   it.each([
     [
       'WORK_ORDER_LINE_MISSING',

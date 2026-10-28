@@ -818,6 +818,10 @@ export type ProductionOrderForward = Omit<components['schemas']['ProductionOrder
   worklistState?: WorklistState;
   /** ACTION_REQUIRED 이고 autoPlan DONE 일 때만 실린다. 그 밖에는 키가 없다. */
   worklistReasons?: WorklistReasonEntry[];
+  /** 서버 선행 P-142 — 배포 전 W/O 수(released_at 없고 PLANNED·CONFIRMED). W/O 가 없으면 0. */
+  releasePendingWorkOrderCount?: number;
+  /** 서버 선행 P-142 — 취소되지 않은 W/O 수(배포된 것 포함). W/O 가 없으면 0. */
+  liveWorkOrderCount?: number;
 };
 
 export type ProductionOrderListQueryForward = NonNullable<

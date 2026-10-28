@@ -134,10 +134,14 @@ export const erpWorkOrderFlow = {
       itemName: '품목명',
       orderQty: '주문 수량',
       dueDate: '납기일',
+      pendingWorkOrders: '배포 전 W/O',
       status: '처리 상태',
       reasons: '필요한 조치',
       open: '이동',
     },
+    /** 배포 전 W/O 수 / 취소되지 않은 W/O 수. W/O가 없으면 「0 / 0」이다. */
+    pendingWorkOrders: (pending: number, total: number): string =>
+      `${String(pending)} / ${String(total)}`,
     openRow: (orderNo: string): string => `${orderNo} 처리 화면 열기`,
     checkRow: (orderNo: string): string => `${orderNo} 선택`,
     loading: 'ERP W/O 목록 불러오는 중',

@@ -161,6 +161,22 @@ export const ProductionOrderScreen = () => {
       render: (row) => <span className="nowrap-cell">{row.fact.dueDate ?? ''}</span>,
     },
     {
+      key: 'pending',
+      header: t.list.columns.pendingWorkOrders,
+      align: 'end',
+      render: (row) =>
+        row.fact.releasePendingWorkOrderCount === null || row.fact.liveWorkOrderCount === null ? (
+          ''
+        ) : (
+          <span className="nowrap-cell">
+            {t.list.pendingWorkOrders(
+              row.fact.releasePendingWorkOrderCount,
+              row.fact.liveWorkOrderCount,
+            )}
+          </span>
+        ),
+    },
+    {
       key: 'status',
       header: t.list.columns.status,
       /*
