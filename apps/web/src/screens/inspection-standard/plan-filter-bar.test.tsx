@@ -1,6 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+
+import { renderWithProviders } from '../../test/api-harness';
 
 import { DEFAULT_PLAN_FILTERS } from './code-options';
 import { PlanFilterBar } from './plan-filter-bar';
@@ -9,7 +11,9 @@ import type { PlanFilters } from './types';
 const renderBar = (appliedFilters: PlanFilters = DEFAULT_PLAN_FILTERS) => {
   const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
 
-  render(<PlanFilterBar appliedFilters={appliedFilters} onApplyFilters={onApplyFilters} />);
+  renderWithProviders(
+    <PlanFilterBar appliedFilters={appliedFilters} onApplyFilters={onApplyFilters} />,
+  );
 
   return { onApplyFilters, user: userEvent.setup() };
 };
@@ -19,6 +23,7 @@ describe('PlanFilterBar — 조건', () => {
     const { onApplyFilters, user } = renderBar({
       q: 'SYN',
       inspectionTypeCode: '',
+      itemId: '',
       includeInactive: false,
     });
 
@@ -31,6 +36,7 @@ describe('PlanFilterBar — 조건', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({
       q: 'SYN',
       inspectionTypeCode: 'PQC',
+      itemId: '',
       includeInactive: false,
     });
   });
@@ -54,6 +60,7 @@ describe('PlanFilterBar — 조건', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({
       q: '',
       inspectionTypeCode: '',
+      itemId: '',
       includeInactive: true,
     });
   });
@@ -72,7 +79,7 @@ describe('PlanFilterBar — 조건', () => {
   });
 
   it('적용된 조건마다 칩이 하나씩 서고 제거 라벨이 서로 다르다', () => {
-    renderBar({ q: 'SYN', inspectionTypeCode: 'IQC', includeInactive: true });
+    renderBar({ q: 'SYN', inspectionTypeCode: 'IQC', itemId: '', includeInactive: true });
 
     expect(screen.getByText('검색어: SYN')).toBeInTheDocument();
     expect(screen.getByText('검사 유형: IQC (수입검사)')).toBeInTheDocument();
@@ -85,6 +92,7 @@ describe('PlanFilterBar — 조건', () => {
     const { onApplyFilters, user } = renderBar({
       q: 'SYN',
       inspectionTypeCode: 'IQC',
+      itemId: '',
       includeInactive: true,
     });
 
@@ -93,6 +101,7 @@ describe('PlanFilterBar — 조건', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({
       q: 'SYN',
       inspectionTypeCode: '',
+      itemId: '',
       includeInactive: true,
     });
   });

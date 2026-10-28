@@ -16,6 +16,7 @@ const t = messages.inspectionStandard;
 const URL_KEYS = {
   q: 'q',
   inspectionTypeCode: 'type',
+  itemId: 'item',
   includeInactive: 'inactive',
   page: 'page',
   size: 'size',
@@ -33,6 +34,10 @@ const POSITIVE_INTEGER = /^\d+$/;
 export const readFilters = (params: URLSearchParams): PlanFilters => ({
   q: params.get(URL_KEYS.q) ?? '',
   inspectionTypeCode: params.get(URL_KEYS.inspectionTypeCode) ?? '',
+  /* 품목 번호는 양의 정수만 받는다 — 주소를 손으로 고친 이상한 값은 전 품목으로 본다. */
+  itemId: POSITIVE_INTEGER.test(params.get(URL_KEYS.itemId) ?? '')
+    ? (params.get(URL_KEYS.itemId) ?? '')
+    : '',
   includeInactive: params.get(URL_KEYS.includeInactive) === ON,
 });
 
@@ -67,6 +72,7 @@ export const toSearchParams = (
   if (filters.inspectionTypeCode !== '') {
     next.set(URL_KEYS.inspectionTypeCode, filters.inspectionTypeCode);
   }
+  if (filters.itemId !== '') next.set(URL_KEYS.itemId, filters.itemId);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
   if (size !== DEFAULT_PAGE_SIZE) next.set(URL_KEYS.size, String(size));
@@ -78,6 +84,7 @@ export const toSearchParams = (
 export interface PlanListQuery {
   q?: string;
   inspectionTypeCode?: string;
+  itemId?: number;
   includeInactive?: boolean;
   page?: number;
 }
@@ -96,6 +103,7 @@ export const toListQuery = (
 ): PlanListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.inspectionTypeCode === '' ? {} : { inspectionTypeCode: filters.inspectionTypeCode }),
+  ...(filters.itemId === '' ? {} : { itemId: Number(filters.itemId) }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
   ...(size !== DEFAULT_PAGE_SIZE ? { size } : {}),
@@ -108,8 +116,8 @@ export interface FilterChip {
   removeLabel: string;
 }
 
-/** 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다. */
-export const toFilterChips = (filters: PlanFilters): FilterChip[] => {
+/** 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다. 품목은 이름(`itemLabel`)으로 적는다. */
+export const toFilterChips = (filters: PlanFilters, itemLabel = ''): FilterChip[] => {
   const chips: FilterChip[] = [];
 
   if (filters.q !== '') {
@@ -128,6 +136,14 @@ export const toFilterChips = (filters: PlanFilters): FilterChip[] => {
     });
   }
 
+  if (filters.itemId !== '') {
+    chips.push({
+      key: 'itemId',
+      label: t.filters.chipItem(itemLabel === '' ? filters.itemId : itemLabel),
+      removeLabel: t.filters.chipRemoveItem,
+    });
+  }
+
   if (filters.includeInactive) {
     chips.push({
       key: 'includeInactive',
@@ -140,7 +156,10 @@ export const toFilterChips = (filters: PlanFilters): FilterChip[] => {
 };
 
 export const hasAnyFilter = (filters: PlanFilters): boolean =>
-  filters.q !== '' || filters.inspectionTypeCode !== '' || filters.includeInactive;
+  filters.q !== '' ||
+  filters.inspectionTypeCode !== '' ||
+  filters.itemId !== '' ||
+  filters.includeInactive;
 
 /**
  * 조건 하나만 푼다. 칩의 제거 버튼이 쓴다.

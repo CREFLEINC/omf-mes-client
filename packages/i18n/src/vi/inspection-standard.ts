@@ -35,8 +35,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     removeItem: (displayNo: number): string => `Xóa hạng mục số ${String(displayNo)}`,
   },
   actionReasons: {
-    excelUploadUnavailable:
-      'Việc tải lên Excel hiện chưa thể thực hiện. Khi biểu mẫu được ấn định thì có thể dùng nút này.',
+    excelUploadUnavailable: 'Có thể sử dụng sau khi biểu mẫu Excel được xác định.',
+    excelUploadPreparing: 'Đang chuẩn bị',
     /* 계약의 Routing 조회가 품목을 필수 쿼리로 둔다 — 품목을 비우면 고를 라우팅 자체가 없다. */
     routingNeedsItem: 'Routing chỉ chọn được sau khi đã chọn mặt hàng. Hãy chọn mặt hàng trước.',
     approveAlreadyDone: 'Việc phê duyệt không thực hiện lại được với tiêu chuẩn đã phê duyệt.',
@@ -138,6 +138,12 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
     chipRemoveInspectionType: 'Bỏ điều kiện loại kiểm tra',
     chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
+    item: 'Mặt hàng',
+    itemPlaceholder: 'Chọn mặt hàng',
+    itemClear: 'Xóa điều kiện mặt hàng',
+    itemPick: 'Chọn',
+    chipItem: (label: string): string => `Mặt hàng: ${label}`,
+    chipRemoveItem: 'Bỏ điều kiện mặt hàng',
   },
   detail: {
     title: 'Chi tiết tiêu chuẩn kiểm tra',
@@ -165,17 +171,11 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     historyPreparing: 'Chức năng xem lịch sử thay đổi đang được chuẩn bị.',
   },
   listColumns: {
-    itemProcess: 'Mặt hàng / Công đoạn',
+    item: 'Mặt hàng',
     approval: 'Trạng thái phê duyệt',
     active: 'Trạng thái sử dụng',
-    pqcSkip: 'Bỏ qua PQC',
     approved: 'Đã duyệt',
     notApproved: 'Chưa duyệt',
-    pqcSkipAllowed: 'Cho phép',
-  },
-  listHead: {
-    title: 'Quản lý tiêu chuẩn kiểm tra',
-    selected: (name: string): string => `Tiêu chuẩn đã chọn: ${name}`,
   },
   versionBar: {
     label: 'Phiên bản',
@@ -220,7 +220,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     planNotSelected: 'Hãy chọn tiêu chuẩn kiểm tra trong danh sách trước',
     versionNoneTitle: 'Chưa đăng ký phiên bản',
     versionNoneDescription: 'Hãy tạo phiên bản đầu tiên bằng «Đăng ký phiên bản».',
-    versionNotSelected: 'Hãy chọn phiên bản trong chi tiết tiêu chuẩn kiểm tra trước',
+    versionNotSelected: 'Hãy chọn phiên bản',
     itemNoneTitle: 'Chưa đăng ký hạng mục kiểm tra',
     itemNoneDescription: 'Hãy đăng ký hạng mục đầu tiên bằng «Thêm hạng mục».',
   },

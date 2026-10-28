@@ -35,8 +35,6 @@ export interface PlanListPaneProps {
   loadError: ReactNode;
   /** 품목 번호 → 표시 이름. 품목이 없으면(전 품목 공통) null */
   itemLabelOf: (itemId: number | null | undefined) => string | null;
-  /** 공정 번호 → 표시 이름. 공정이 없으면 null */
-  processLabelOf: (processId: number | null | undefined) => string | null;
 }
 
 /**
@@ -62,9 +60,7 @@ export const PlanListPane = ({
   onSelect,
   loadError,
   itemLabelOf,
-  processLabelOf,
 }: PlanListPaneProps) => {
-  const selectedPlan = plans.find((plan) => plan.inspectionPlanId === selectedPlanId);
   const columns: Column<InspectionPlan>[] = [
     {
       key: 'inspectionPlanCode',
@@ -101,16 +97,14 @@ export const PlanListPane = ({
       width: '136px',
       render: (row) => inspectionTypeLabel(row.inspectionTypeCode),
     },
-    /* 목록에서 바로 가를 수 있게 품목 · 공정 · 승인 · 사용 · PQC 생략 허용을 함께 싣는다(사용자 지시 · #196). */
+    /* 목록에서 바로 가를 수 있게 품목 · 승인 · 사용을 함께 싣는다(사용자 지시 · #196). */
     {
-      key: 'itemProcess',
+      key: 'item',
       align: 'start',
-      header: t.listColumns.itemProcess,
+      header: t.listColumns.item,
       width: '240px',
       render: (row) => {
-        const label = [itemLabelOf(row.itemId) ?? t.values.allItems, processLabelOf(row.processId)]
-          .filter((part): part is string => part !== null)
-          .join(' / ');
+        const label = itemLabelOf(row.itemId) ?? t.values.allItems;
         return <span title={label}>{label}</span>;
       },
     },
@@ -140,17 +134,6 @@ export const PlanListPane = ({
           {row.isActive ? t.detail.chipActive : t.detail.chipInactive}
         </Chip>
       ),
-    },
-    {
-      key: 'pqcSkipAllowed',
-      align: 'center',
-      header: t.listColumns.pqcSkip,
-      width: '96px',
-      /* PQC 기준에만 뜻이 있다 — 다른 유형은 빈 표시. */
-      render: (row) =>
-        row.inspectionTypeCode === 'PQC' && row.pqcSkipAllowed === true
-          ? t.listColumns.pqcSkipAllowed
-          : messages.common.reference.empty,
     },
   ];
 
@@ -260,15 +243,13 @@ export const PlanListPane = ({
     <section className="pane inspection-standard-list-pane" aria-label={t.panes.plan}>
       {listSlot()}
 
-      {/* 고른 기준을 표 아래 한 줄로 다시 말한다 — 표가 길어 고른 줄이 가려져도 무엇을 보고 있는지 안다(사용자 시안 · #196). */}
-      {selectedPlan !== undefined && (
-        <p className="field-note inspection-standard-selected-plan">
-          {t.listHead.selected(selectedPlan.inspectionPlanName)}
-        </p>
-      )}
-
       {(loadError === null || loadError === undefined) && !isLoading && (
-        <PageNav meta={pageMeta} onChangePage={onChangePage} onChangeSize={onChangePageSize} />
+        <PageNav
+          meta={pageMeta}
+          buttonSize="md"
+          onChangePage={onChangePage}
+          onChangeSize={onChangePageSize}
+        />
       )}
     </section>
   );

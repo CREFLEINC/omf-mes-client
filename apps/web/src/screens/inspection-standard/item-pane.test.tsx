@@ -123,7 +123,7 @@ describe('ItemPane — 표', () => {
   it('버전을 고르기 전에는 선택 안내를 낸다', () => {
     renderPane({ drafts: [], isVersionSelected: false });
 
-    expect(screen.getByText('검사 기준 상세에서 버전을 먼저 고르세요')).toBeInTheDocument();
+    expect(screen.getByText('버전을 선택하세요')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 

@@ -41,7 +41,7 @@ export const PlanPickerDialog = ({
   const [picked, setPicked] = useState<InspectionPlan | null>(null);
 
   const search = useInspectionPlanList(
-    { q: submitted, inspectionTypeCode: '', includeInactive },
+    { q: submitted, inspectionTypeCode: '', itemId: '', includeInactive },
     page,
     size,
   );
@@ -161,6 +161,7 @@ export const PlanPickerDialog = ({
         {/* 쪽 이동 — 목록 표와 같은 공용 줄(총 건수 · 쪽 크기 · 처음/이전/다음/마지막 · #196). 늘 선다. */}
         <PageNav
           meta={search.data?.page ?? { page, size, total: 0 }}
+          buttonSize="md"
           onChangePage={setPage}
           onChangeSize={(next) => {
             setSize(next);

@@ -373,11 +373,8 @@ describe('InspectionStandardScreen — 만들지 않기로 한 것', () => {
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
     expect(screen.getByRole('button', { name: '엑셀 올리기' })).toBeDisabled();
-    expect(
-      screen.getByText(
-        '엑셀 올리기는 아직 할 수 없습니다. 양식이 정해지면 이 버튼을 쓸 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('엑셀 양식 확정 후 사용할 수 있습니다.')).toBeInTheDocument();
+    expect(screen.getByText('준비 중')).toBeInTheDocument();
   });
 });
 

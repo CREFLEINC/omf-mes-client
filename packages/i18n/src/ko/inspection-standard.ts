@@ -38,8 +38,9 @@ export const inspectionStandard = {
     removeItem: (displayNo: number): string => `${String(displayNo)}번 항목 삭제`,
   },
   actionReasons: {
-    excelUploadUnavailable:
-      '엑셀 올리기는 아직 할 수 없습니다. 양식이 정해지면 이 버튼을 쓸 수 있습니다.',
+    excelUploadUnavailable: '엑셀 양식 확정 후 사용할 수 있습니다.',
+    /* 엑셀 올리기 옆 상태 칩(사용자 시안 · #196). */
+    excelUploadPreparing: '준비 중',
     /*
      * 계약의 라우팅 조회가 품목을 필수 쿼리로 둔다 — 품목을 비운 「전 품목 공통 기준」에는
      * 고를 수 있는 라우팅 자체가 없다. 값을 고를 수 없는 칸을 활성으로 두면
@@ -143,6 +144,13 @@ export const inspectionStandard = {
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveInspectionType: '검사 유형 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+    /* 품목 조건 — 검사 조회·판정의 품목 검색과 같은 모양(#196). */
+    item: '품목 검색',
+    itemPlaceholder: '품목을 입력하세요',
+    itemClear: '품목 조건 지우기',
+    itemPick: '선택',
+    chipItem: (label: string): string => `품목: ${label}`,
+    chipRemoveItem: '품목 조건 제거',
   },
   /*
    * 상세 칸 맨 위의 버전 고르기 줄 — 선택칸으로 바로 고르고, 「버전 목록」 창에서 표로 고르거나
@@ -177,22 +185,15 @@ export const inspectionStandard = {
   },
   /* 검사 기준 목록 표의 추가 열(omf-all-around#196). */
   listColumns: {
-    itemProcess: '품목 / 공정',
+    item: '품목',
     approval: '승인 여부',
     active: '사용 여부',
-    pqcSkip: 'PQC 생략',
     approved: '승인',
     notApproved: '미승인',
-    pqcSkipAllowed: '허용',
-  },
-  /* 조회 카드 머리 · 목록 아래 선택 표시(사용자 시안 · #196). */
-  listHead: {
-    title: '검사 기준 관리',
-    selected: (name: string): string => `선택한 검사 기준: ${name}`,
   },
   versionBar: {
     label: '버전',
-    placeholder: '버전을 고르세요',
+    placeholder: '버전을 선택하세요',
     openList: '버전 목록',
     close: '닫기',
   },
@@ -236,7 +237,7 @@ export const inspectionStandard = {
     planNotSelected: '목록에서 검사 기준을 먼저 고르세요',
     versionNoneTitle: '등록된 버전이 없습니다',
     versionNoneDescription: '「버전 등록」으로 첫 버전을 만드세요.',
-    versionNotSelected: '검사 기준 상세에서 버전을 먼저 고르세요',
+    versionNotSelected: '버전을 선택하세요',
     itemNoneTitle: '등록된 검사 항목이 없습니다',
     itemNoneDescription: '「항목 추가」로 첫 항목을 등록하세요.',
   },

@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Breadcrumb,
   Button,
+  Chip,
   Dialog,
   EmptyState,
   Icon,
@@ -12,7 +13,7 @@ import {
 } from '@crefle/web-ui';
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -210,6 +211,7 @@ const useVersionTransition = ({
 export const InspectionStandardScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const hub = usePageHub();
+  const excelNoteId = useId();
   /* 목록 · 상세 배치 — 검사 조회·판정과 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:inspection-standard:split', 0.4);
@@ -1599,21 +1601,38 @@ export const InspectionStandardScreen = () => {
       {/* 조회 조건 — 검사 조회·판정처럼 목록과 다른 카드에 둔다. */}
       <section ref={aboveRef} className="pane inspection-standard-search" role="search">
         {/*
-         * 머리 — 「검사 기준 관리」, 오른쪽에 엑셀 올리기 · 기준 추가(사용자 시안 · #196). 조회 조건은 이 카드에 둔다 —
+         * 머리 — 오른쪽에 엑셀 올리기 · 기준 추가(사용자 시안 · #196, 제목은 걷었다). 조회 조건은 이 카드에 둔다 —
          * 좁은 목록 칸 안에 두면 좌우 배치에서 칸이 넘친다.
          */}
         <div className="inspection-standard-section-head">
-          <h2 className="pane-title">{t.listHead.title}</h2>
           <div className="inspection-standard-list-toolbar">
             {/*
              * 계약에 올리기 경로가 없고 양식도 정해지지 않았다. 감추면 사용자가
              * 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다 — 사유와 함께 비활성으로 둔다.
              */}
-            <DisabledAction
-              label={t.actions.excelUpload}
-              reason={t.actionReasons.excelUploadUnavailable}
-              className="inspection-standard-tooltip-reason"
-            />
+            {/* 아이콘 · 「준비 중」 칩 · 아래 ⓘ 사유(사용자 시안 · #196). 사유는 마우스를 올려도 보인다. */}
+            <div
+              className="inspection-standard-excel-upload"
+              title={t.actionReasons.excelUploadUnavailable}
+            >
+              <div className="inspection-standard-excel-upload-row">
+                <Button
+                  variant="outlined"
+                  disabled
+                  leadingIcon={<Icon name="upload" size={18} />}
+                  aria-describedby={excelNoteId}
+                >
+                  {t.actions.excelUpload}
+                </Button>
+                <Chip variant="status" size="sm" status="idle">
+                  {t.actionReasons.excelUploadPreparing}
+                </Chip>
+              </div>
+              <p id={excelNoteId} className="field-note inspection-standard-excel-note">
+                <Icon name="info" size={16} aria-hidden />
+                {t.actionReasons.excelUploadUnavailable}
+              </p>
+            </div>
             <Button
               leadingIcon={<Icon name="add" size={18} />}
               disabled={createValues !== null}
@@ -1636,11 +1655,6 @@ export const InspectionStandardScreen = () => {
       >
         <PlanListPane
           itemLabelOf={itemLabelOf}
-          processLabelOf={(processId) =>
-            processId === null || processId === undefined
-              ? null
-              : lookupDisplayLabel(processOptions, String(processId))
-          }
           plans={plans}
           isLoading={planList.isPending}
           appliedFilters={filters}

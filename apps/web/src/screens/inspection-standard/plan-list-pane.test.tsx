@@ -29,9 +29,6 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
       itemLabelOf={(itemId) =>
         itemId === null || itemId === undefined ? null : `품목 ${String(itemId)}`
       }
-      processLabelOf={(processId) =>
-        processId === null || processId === undefined ? null : `공정 ${String(processId)}`
-      }
       {...overrides}
     />,
   );
@@ -40,22 +37,14 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
 };
 
 describe('PlanListPane — 목록 표시', () => {
-  it('기준코드·기준명·유형과 품목/공정·승인·사용·PQC 생략 열을 낸다', () => {
+  it('기준코드·기준명·유형과 품목·승인·사용 열을 낸다', () => {
     renderPane();
 
     /* 머리칸에는 열 순서를 옮기는 손잡이 아이콘 글자(drag_indicator)가 함께 있다 — 이름만 견준다. */
     const headers = screen
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent?.replace('drag_indicator', ''));
-    expect(headers).toEqual([
-      '기준코드',
-      '기준명',
-      '검사 유형',
-      '품목 / 공정',
-      '승인 여부',
-      '사용 여부',
-      'PQC 생략',
-    ]);
+    expect(headers).toEqual(['기준코드', '기준명', '검사 유형', '품목', '승인 여부', '사용 여부']);
   });
 
   it('고른 기준의 행에 선택 표식이 붙는다', () => {
@@ -85,13 +74,11 @@ describe('PlanListPane — 목록 표시', () => {
     expect(onSelect).toHaveBeenCalledWith(inspectionPlanFixtures[1]?.inspectionPlanId);
   });
 
-  /* 고른 기준을 표 아래 한 줄로 다시 말한다(사용자 시안 · #196). 기준 추가 · 엑셀 올리기는 조회 카드 머리로 옮겼다. */
-  it('고른 기준이 있으면 표 아래에 그 이름을 낸다', () => {
+  /* 표 아래 「선택한 검사 기준: …」 줄은 걷었다(사용자 지시 · #196). */
+  it('고른 기준이 있어도 표 아래에 선택 문구를 내지 않는다', () => {
     renderPane({ selectedPlanId: inspectionPlanFixtures[1]?.inspectionPlanId ?? null });
 
-    expect(
-      screen.getByText(`선택한 검사 기준: ${inspectionPlanFixtures[1]?.inspectionPlanName ?? ''}`),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/선택한 검사 기준/)).not.toBeInTheDocument();
   });
 
   /* 실패를 「등록된 검사기준이 없습니다」로 보이면 사실과 다른 안내가 된다. */
@@ -115,7 +102,7 @@ describe('PlanListPane — 0건 안내', () => {
   it('조건이 걸린 0건이면 조건을 줄이라고 안내한다', () => {
     renderPane({
       plans: [],
-      appliedFilters: { q: 'SYN', inspectionTypeCode: '', includeInactive: false },
+      appliedFilters: { q: 'SYN', inspectionTypeCode: '', itemId: '', includeInactive: false },
       pageView: toPageView({ page: 1, size: 50, total: 0 }, 0),
     });
 

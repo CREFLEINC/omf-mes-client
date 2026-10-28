@@ -382,6 +382,8 @@ main > * + * {
  */
 .inspection-standard-detail-card {
   display: grid;
+  /* 카드 폭을 넘지 않는다 — 열이 가장 넓은 내용(요약 상자 · 검사 항목 표) 폭으로 늘면 카드 밖으로 삐져나간다(#196). */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
   min-width: 0;
 }
@@ -647,6 +649,8 @@ main > * + * {
 
 .inspection-standard-detail {
   display: grid;
+  /* 칸 폭을 넘지 않는다 — 열을 내용 폭(검사 항목 표 등)으로 늘리면 카드 밖으로 삐져나간다(#196). */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
   align-content: start;
   min-width: 0;
@@ -707,17 +711,34 @@ main > * + * {
   min-width: min(22em, 100%);
 }
 
-/* 조회 카드 머리(「검사 기준 관리」 · 단추) — 조건 줄과 띄운다(#196). */
+/* 조회 카드 머리(엑셀 올리기 · 기준 추가, 오른쪽) — 조건 줄과 띄운다(#196). */
 .inspection-standard-search > .inspection-standard-section-head {
   margin-bottom: var(--space-4);
 }
 
-.inspection-standard-search > .inspection-standard-section-head > .pane-title {
+/* 엑셀 올리기 — 단추 · 「준비 중」 칩 한 줄, 아래 ⓘ 사유(사용자 시안 · #196). */
+.inspection-standard-excel-upload {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.inspection-standard-excel-upload-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inspection-standard-excel-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   margin: 0;
 }
 
-.inspection-standard-selected-plan {
-  margin: 0;
+/* 제목이 없어 단추 묶음을 오른쪽 끝에 붙인다. 엑셀 올리기 아래 사유 글이 있어 단추 윗줄을 맞춘다. */
+.inspection-standard-search > .inspection-standard-section-head > .inspection-standard-list-toolbar {
+  margin-left: auto;
+  align-items: flex-start;
 }
 
 .inspection-standard-plan-name {

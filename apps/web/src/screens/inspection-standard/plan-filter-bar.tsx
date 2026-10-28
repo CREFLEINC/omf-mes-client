@@ -2,10 +2,12 @@ import { Button, Checkbox, Chip, SearchInput, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { ItemPickerDialog } from '../../patterns/item-picker';
 import { DEFAULT_PLAN_FILTERS, INSPECTION_TYPE_OPTIONS } from './code-options';
 import { FieldLabel } from './field-label';
 import { clearFilter, toFilterChips } from './filters';
 import { PlanPickerDialog } from './plan-picker-dialog';
+import { useItemNameLabels } from './queries';
 import type { PlanFilters } from './types';
 
 const t = messages.inspectionStandard;
@@ -25,6 +27,8 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters }: PlanFilterBarP
   const typeSelectId = useId();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const openPicker = (): void => setIsPickerOpen(true);
+  const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
+  const openItemPicker = (): void => setIsItemPickerOpen(true);
 
   /*
    * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -34,6 +38,7 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters }: PlanFilterBarP
   const {
     q: appliedQ,
     inspectionTypeCode: appliedInspectionTypeCode,
+    itemId: appliedItemId,
     includeInactive: appliedIncludeInactive,
   } = appliedFilters;
 
@@ -41,11 +46,16 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters }: PlanFilterBarP
     setDraft({
       q: appliedQ,
       inspectionTypeCode: appliedInspectionTypeCode,
+      itemId: appliedItemId,
       includeInactive: appliedIncludeInactive,
     });
-  }, [appliedQ, appliedInspectionTypeCode, appliedIncludeInactive]);
+  }, [appliedQ, appliedInspectionTypeCode, appliedItemId, appliedIncludeInactive]);
 
-  const chips = toFilterChips(appliedFilters);
+  /* 품목은 번호로 들고 이름은 품목 상세로 푼다 — 주소로 들어와 창을 거치지 않은 값도 이름이 선다. */
+  const toItemId = (value: string): number | null => (value === '' ? null : Number(value));
+  const itemLabelOf = useItemNameLabels([toItemId(draft.itemId), toItemId(appliedItemId)]);
+  const draftItemLabel = itemLabelOf(toItemId(draft.itemId)) ?? '';
+  const chips = toFilterChips(appliedFilters, itemLabelOf(toItemId(appliedItemId)) ?? '');
 
   return (
     <>
@@ -67,6 +77,24 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters }: PlanFilterBarP
           onSearch={openPicker}
           onChange={() => undefined}
           onClear={() => setDraft((prev) => ({ ...prev, q: '' }))}
+        />
+
+        {/*
+         * 품목 — 검사 조회·판정의 품목 조건과 같은 모양(#196). 읽기 전용 칸을 누르거나 엔터를 치면 품목 선택 창이 열린다.
+         * 조회를 눌러야 목록에 걸린다(다른 조건과 같은 트리거). 지난 기준도 찾게 사용 중지 품목까지 찾는다.
+         */}
+        <SearchInput
+          label={t.filters.item}
+          placeholder={t.filters.itemPlaceholder}
+          value={draftItemLabel}
+          readOnly
+          title={draftItemLabel === '' ? undefined : draftItemLabel}
+          aria-haspopup="dialog"
+          clearLabel={t.filters.itemClear}
+          onClick={openItemPicker}
+          onSearch={openItemPicker}
+          onChange={() => undefined}
+          onClear={() => setDraft((prev) => ({ ...prev, itemId: '' }))}
         />
 
         {/*
@@ -122,6 +150,21 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters }: PlanFilterBarP
             </Chip>
           ))}
         </div>
+      )}
+
+      {isItemPickerOpen && (
+        <ItemPickerDialog
+          multiple={false}
+          compact
+          includeInactive
+          showAvailability={false}
+          confirmLabel={t.filters.itemPick}
+          onClose={() => setIsItemPickerOpen(false)}
+          onConfirm={([item]) => {
+            if (item !== undefined) setDraft((prev) => ({ ...prev, itemId: String(item.itemId) }));
+            setIsItemPickerOpen(false);
+          }}
+        />
       )}
 
       {isPickerOpen && (

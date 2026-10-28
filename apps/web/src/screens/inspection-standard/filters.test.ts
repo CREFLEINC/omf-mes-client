@@ -16,6 +16,7 @@ describe('readFilters', () => {
     expect(readFilters(params(''))).toEqual({
       q: '',
       inspectionTypeCode: '',
+      itemId: '',
       includeInactive: false,
     });
   });
@@ -24,6 +25,7 @@ describe('readFilters', () => {
     expect(readFilters(params('q=SYN&type=IQC&inactive=1'))).toEqual({
       q: 'SYN',
       inspectionTypeCode: 'IQC',
+      itemId: '',
       includeInactive: true,
     });
   });
@@ -32,6 +34,12 @@ describe('readFilters', () => {
   it('inactive가 1이 아니면 꺼진 것으로 읽는다', () => {
     expect(readFilters(params('inactive=0')).includeInactive).toBe(false);
     expect(readFilters(params('inactive=true')).includeInactive).toBe(false);
+  });
+
+  /* 품목 조건(#196) — 양의 정수만 받는다. 손으로 고친 이상한 값은 전 품목으로 본다. */
+  it('item은 숫자일 때만 품목 조건으로 읽는다', () => {
+    expect(readFilters(params('item=42')).itemId).toBe('42');
+    expect(readFilters(params('item=abc')).itemId).toBe('');
   });
 });
 
@@ -56,13 +64,16 @@ describe('readPage', () => {
 describe('toSearchParams', () => {
   it('빈 조건은 키 자체를 두지 않는다', () => {
     expect(
-      toSearchParams({ q: '', inspectionTypeCode: '', includeInactive: false }, 1).toString(),
+      toSearchParams(
+        { q: '', inspectionTypeCode: '', itemId: '', includeInactive: false },
+        1,
+      ).toString(),
     ).toBe('');
   });
 
   it('채운 조건만 싣는다', () => {
     const search = toSearchParams(
-      { q: 'SYN', inspectionTypeCode: 'PQC', includeInactive: true },
+      { q: 'SYN', inspectionTypeCode: 'PQC', itemId: '', includeInactive: true },
       2,
     );
 
@@ -74,7 +85,10 @@ describe('toSearchParams', () => {
 
   /* 기본값을 주소에 적으면 같은 화면의 주소가 두 가지가 된다. */
   it('첫 쪽이면 page를 적지 않고 미사용 포함이 꺼지면 inactive를 적지 않는다', () => {
-    const search = toSearchParams({ q: 'SYN', inspectionTypeCode: '', includeInactive: false }, 1);
+    const search = toSearchParams(
+      { q: 'SYN', inspectionTypeCode: '', itemId: '', includeInactive: false },
+      1,
+    );
 
     expect(search.has('page')).toBe(false);
     expect(search.has('inactive')).toBe(false);
@@ -85,7 +99,10 @@ describe('toSearchParams', () => {
    * 그것이 어디서 왔는지 알 수 없다. 새 주소를 처음부터 만들어 선택이 따라오지 못하게 한다.
    */
   it('선택(plan·ver)을 담지 않는다 — 조건이 바뀌면 선택이 사라져야 한다', () => {
-    const search = toSearchParams({ q: 'SYN', inspectionTypeCode: '', includeInactive: false }, 3);
+    const search = toSearchParams(
+      { q: 'SYN', inspectionTypeCode: '', itemId: '', includeInactive: false },
+      3,
+    );
 
     expect(search.has('plan')).toBe(false);
     expect(search.has('ver')).toBe(false);
@@ -93,13 +110,24 @@ describe('toSearchParams', () => {
 });
 
 describe('toListQuery', () => {
+  it('품목 조건은 itemId 숫자로 싣는다', () => {
+    expect(
+      toListQuery({ q: '', inspectionTypeCode: '', itemId: '42', includeInactive: false }, 1),
+    ).toEqual({ itemId: 42 });
+  });
+
   it('빈 조건은 쿼리에 싣지 않는다', () => {
-    expect(toListQuery({ q: '', inspectionTypeCode: '', includeInactive: false }, 1)).toEqual({});
+    expect(
+      toListQuery({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: false }, 1),
+    ).toEqual({});
   });
 
   /* 계약의 기본값이 false다 — 끈 상태를 값으로 실어 보내면 캐시 키가 갈린다. */
   it('미사용 포함이 꺼져 있으면 includeInactive를 싣지 않는다', () => {
-    const query = toListQuery({ q: 'SYN', inspectionTypeCode: '', includeInactive: false }, 1);
+    const query = toListQuery(
+      { q: 'SYN', inspectionTypeCode: '', itemId: '', includeInactive: false },
+      1,
+    );
 
     expect(query).toEqual({ q: 'SYN' });
     expect('includeInactive' in query).toBe(false);
@@ -107,20 +135,24 @@ describe('toListQuery', () => {
 
   it('미사용 포함이 켜지면 true를 싣는다', () => {
     expect(
-      toListQuery({ q: '', inspectionTypeCode: '', includeInactive: true }, 1).includeInactive,
+      toListQuery({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: true }, 1)
+        .includeInactive,
     ).toBe(true);
   });
 
   it('첫 쪽이면 page를 싣지 않고 둘째 쪽부터 싣는다', () => {
     expect(
-      'page' in toListQuery({ q: '', inspectionTypeCode: '', includeInactive: false }, 1),
+      'page' in
+        toListQuery({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: false }, 1),
     ).toBe(false);
-    expect(toListQuery({ q: '', inspectionTypeCode: '', includeInactive: false }, 4).page).toBe(4);
+    expect(
+      toListQuery({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: false }, 4).page,
+    ).toBe(4);
   });
 
   it('검사 유형은 계약 이름으로 옮긴다', () => {
     expect(
-      toListQuery({ q: '', inspectionTypeCode: 'OQC', includeInactive: false }, 1)
+      toListQuery({ q: '', inspectionTypeCode: 'OQC', itemId: '', includeInactive: false }, 1)
         .inspectionTypeCode,
     ).toBe('OQC');
   });
@@ -128,11 +160,18 @@ describe('toListQuery', () => {
 
 describe('toFilterChips', () => {
   it('적용된 조건만 칩으로 낸다', () => {
-    expect(toFilterChips({ q: '', inspectionTypeCode: '', includeInactive: false })).toEqual([]);
+    expect(
+      toFilterChips({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: false }),
+    ).toEqual([]);
   });
 
   it('검색어·유형·미사용 포함이 각각 칩이 된다', () => {
-    const chips = toFilterChips({ q: 'SYN', inspectionTypeCode: 'IQC', includeInactive: true });
+    const chips = toFilterChips({
+      q: 'SYN',
+      inspectionTypeCode: 'IQC',
+      itemId: '',
+      includeInactive: true,
+    });
 
     expect(chips.map((chip) => chip.key)).toEqual(['q', 'inspectionTypeCode', 'includeInactive']);
     expect(chips[0]?.label).toBe('검색어: SYN');
@@ -142,7 +181,12 @@ describe('toFilterChips', () => {
 
   /* 「제거」가 셋이면 어느 조건을 푸는 것인지 알 수 없다. */
   it('제거 라벨이 조건마다 다르다', () => {
-    const chips = toFilterChips({ q: 'SYN', inspectionTypeCode: 'IQC', includeInactive: true });
+    const chips = toFilterChips({
+      q: 'SYN',
+      inspectionTypeCode: 'IQC',
+      itemId: '',
+      includeInactive: true,
+    });
     const labels = chips.map((chip) => chip.removeLabel);
 
     expect(new Set(labels).size).toBe(3);
@@ -151,10 +195,14 @@ describe('toFilterChips', () => {
 
 describe('hasAnyFilter', () => {
   it('아무 조건도 없으면 거짓이다', () => {
-    expect(hasAnyFilter({ q: '', inspectionTypeCode: '', includeInactive: false })).toBe(false);
+    expect(
+      hasAnyFilter({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: false }),
+    ).toBe(false);
   });
 
   it('미사용 포함만 켜져 있어도 참이다', () => {
-    expect(hasAnyFilter({ q: '', inspectionTypeCode: '', includeInactive: true })).toBe(true);
+    expect(hasAnyFilter({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: true })).toBe(
+      true,
+    );
   });
 });
