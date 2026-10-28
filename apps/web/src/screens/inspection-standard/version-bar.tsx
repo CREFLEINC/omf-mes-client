@@ -116,7 +116,8 @@ export const VersionBar = ({
         {/* 오른쪽 끝 — 고른 버전의 일(버전 설정 수정 · 확정 · 폐기), 맨 끝에 「+ 신규 버전 발행」(사용자 시안 · #196). */}
         <div className="inspection-standard-version-actions">
           {versionActions}
-          {!isLoading && !hasLoadError && (
+          {/* 작성중 버전을 보고 있으면 발행 단추를 두지 않는다 — 이미 고칠 수 있는 판이다(사용자 지시 · #196). */}
+          {!isLoading && !hasLoadError && selectedStatus?.status !== 'draft' && (
             <VersionPrimaryAction
               /* 버전 줄의 주 단추 — 채운 단추로 낸다(사용자 시안 · #196). */
               emphasized
