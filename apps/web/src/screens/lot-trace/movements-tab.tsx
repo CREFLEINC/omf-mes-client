@@ -99,7 +99,7 @@ export const LotHistory = () => {
   const { session } = useSession();
   const canOpenLotStatus = toWebAccess(session?.permissions).allows(LOT_STATUS_PATH);
   const { splitRef, aboveRef } = useFitToViewport();
-  const split = usePaneSplit('omf-mes:lot-trace:split', 0.5);
+  const split = usePaneSplit('omf-mes:lot-trace:split', 0.56);
   const layout = useSplitOrientation('omf-mes:lot-trace:split-orientation');
   const itemLabel = useItemLabel(filters.item);
   const supplierLabel = usePartnerLabel(filters.supplier, 'SUPPLIER');

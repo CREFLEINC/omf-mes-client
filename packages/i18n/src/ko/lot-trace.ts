@@ -83,6 +83,7 @@ export const lotTrace = {
     pick: '목록에서 줄을 고르면 그 LOT의 투입 자재, 사용처, 제품입고, 포장, 출하가 보입니다.',
     moreLots: (count: number): string => `외 ${count.toLocaleString('ko-KR')}`,
     columns: {
+      datetime: '일시',
       kind: '구분',
       date: '일자',
       documentNo: '문서번호',

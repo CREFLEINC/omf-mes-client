@@ -1,9 +1,9 @@
 import { Chip, type Column } from '@crefle/web-ui';
-import { messages } from '@omf-mes/i18n';
+import { messages, named } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { qtyLabel, rowKeyOf, type MovementRow } from './rows';
-import { ListTable, LotNo } from './trace-table';
+import { ListTable } from './trace-table';
 
 const t = messages.lotTrace;
 
@@ -18,26 +18,32 @@ export interface MovementTableProps {
 }
 
 /**
- * 이력 줄 표(C-1, C-10, C-16) — 일자, 구분(전체일 때), 문서번호, LOT 번호, 수량. 열 폭은 px로 정하고 넘치면 말줄임,
- * 행은 한 줄이다. 목록 창(1440px 좌우 배치에서 화면 절반)에 맞춘 열 넷 또는 다섯이다. 품목, 창고, 공급사 또는 고객,
- * 상태는 상세 창과 내려받은 파일에 있다. 현재 단계 열은 창에 들어가지 않아 두지 않는다 — 상세의 단계 줄이 보인다.
- * 출하 줄의 LOT은 첫 LOT과 「외 N」이고, 줄을 고르면 상세 머리에서 LOT을 고른다.
+ * 일시 — 목록의 줄이 모두 한 해이면 해를 빼고 「MM-DD HH:mm」, 해가 섞이면 「YYYY-MM-DD HH:mm」. 기간은 366일까지라
+ * 해가 바뀌는 기간이 있다.
+ */
+const dateTimeOf = (row: MovementRow, withYear: boolean): string =>
+  `${withYear ? row.date : row.date.slice(5)} ${row.time}`.trim();
+
+/**
+ * 이력 줄 표(C-1, C-10, C-16) — 일시, 구분(전체일 때), 문서번호, 품목명, 수량. 행은 한 줄이다.
+ * 일시, 구분, 문서번호, 수량은 정한 폭이고 줄이지 않는다(구분과 문서번호는 잘리지 않아야 한다). 품목명이 남는 폭을 쓰고
+ * 넘치면 말줄임(전체는 마우스를 올리면 「이름 (코드)」). LOT 번호는 목록에서 빼고 상세 머리와 내려받은 파일에 둔다.
  */
 export const MovementTable = ({ showKind, rows, activeKey, onOpen, empty }: MovementTableProps) => {
+  const withYear = new Set(rows.map((row) => row.date.slice(0, 4))).size > 1;
   const columns: Column<MovementRow>[] = [
     {
       key: 'date',
-      header: t.list.columns.date,
-      width: showKind ? '104px' : '100px',
-      align: 'center',
-      render: (row) => row.date,
+      header: t.list.columns.datetime,
+      width: withYear ? '148px' : '108px',
+      render: (row) => dateTimeOf(row, withYear),
     },
     ...(showKind
       ? [
           {
             key: 'kind',
             header: t.list.columns.kind,
-            width: '84px',
+            width: '92px',
             align: 'center' as const,
             render: (row: MovementRow) => (
               <Chip variant="status" size="sm" status="idle">
@@ -50,25 +56,15 @@ export const MovementTable = ({ showKind, rows, activeKey, onOpen, empty }: Move
     {
       key: 'documentNo',
       header: t.list.columns.documentNo,
-      width: showKind ? '128px' : '168px',
-      render: (row) => (
-        <span className="mono-cell" title={row.documentNo}>
-          {row.documentNo}
-        </span>
-      ),
+      width: '160px',
+      render: (row) => <span className="mono-cell lot-trace-doc">{row.documentNo}</span>,
     },
     {
-      key: 'lotNo',
-      header: t.list.columns.lotNo,
-      width: showKind ? '108px' : '150px',
+      key: 'item',
+      header: t.list.columns.itemName,
       render: (row) => (
-        <span className="lot-trace-cell-with-chip">
-          <LotNo lotNo={row.lots[0]?.lotNo ?? ''} />
-          {row.lotCount > 1 && (
-            <Chip variant="status" size="sm" status="idle">
-              {t.list.moreLots(row.lotCount - 1)}
-            </Chip>
-          )}
+        <span className="ellipsis-cell" title={named(row.item.name, row.item.code)}>
+          {row.item.name}
         </span>
       ),
     },
@@ -83,7 +79,7 @@ export const MovementTable = ({ showKind, rows, activeKey, onOpen, empty }: Move
 
   return (
     <ListTable
-      storageKey={`omf-mes:lot-trace:columns:history:${showKind ? 'all' : 'kind'}`}
+      storageKey={`omf-mes:lot-trace:columns:history2:${showKind ? 'all' : 'kind'}`}
       columns={columns}
       rows={rows}
       activeId={activeKey}

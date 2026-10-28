@@ -270,12 +270,6 @@ const setup = (options: SetupOptions = {}) => {
 const listQueries = (queries: URL[]) =>
   queries.filter((url) => url.searchParams.get('size') !== '1');
 
-/** 표의 LOT 번호 칸(앞쪽만 줄이려고 두 조각으로 그린다). */
-const listLot =
-  (lotNo: string) =>
-  (_content: string, element: Element | null): boolean =>
-    element?.classList.contains('lot-trace-lot') === true && element.textContent === lotNo;
-
 const kindChips = () => screen.getByRole('group', { name: '구분' });
 
 describe('W-02-09 LOT 생산 이력 조회: 이력 목록', () => {
@@ -335,15 +329,22 @@ describe('W-02-09 LOT 생산 이력 조회: 이력 목록', () => {
     expect(screen.queryByRole('columnheader', { name: /구분/ })).toBeNull();
   });
 
-  it('제품 출하 칩을 누르면 출하 줄을 부르고 첫 LOT과 「외 N」을 보인다', async () => {
+  it('제품 출하 칩을 누르면 출하 줄을 부르고 일시, 문서번호, 품목명, 수량을 보인다(LOT 번호는 상세에)', async () => {
     const user = userEvent.setup();
     setup();
 
     await user.click(await screen.findByRole('button', { name: /^제품 출하/ }));
 
     expect(await screen.findByText('SH-SYN-0011')).toBeInTheDocument();
-    expect(screen.getByText(listLot('P-SYN-0001'))).toBeInTheDocument();
-    expect(screen.getByText('외 6')).toBeInTheDocument();
+    const row = screen.getByRole('row', { name: /SH-SYN-0011/ });
+    expect(within(row).getByText('제품 A')).toBeInTheDocument();
+    expect(within(row).getByText(/^10-24 \d\d:\d\d$/)).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole('columnheader')
+        .map((th) => th.textContent?.replace('drag_indicator', '')),
+    ).toEqual(['일시', '문서번호', '품목명', '수량']);
+    expect(within(row).queryByText(/P-SYN-0001/)).toBeNull();
     expect(navState()).toContain('kind=SHIPMENT');
     expect(navState()).toMatch(/^REPLACE /);
   });

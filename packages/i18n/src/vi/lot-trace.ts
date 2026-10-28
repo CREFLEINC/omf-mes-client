@@ -86,6 +86,7 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     pick: 'Chọn một dòng trong danh sách để xem vật tư đã đưa vào, nơi sử dụng, nhập kho thành phẩm, đóng gói, xuất hàng của LOT đó.',
     moreLots: (count: number): string => `và ${num(count)} LOT khác`,
     columns: {
+      datetime: 'Thời điểm',
       kind: 'Loại',
       date: 'Ngày',
       documentNo: 'Số chứng từ',

@@ -2,7 +2,6 @@ import { type Column } from '@crefle/web-ui';
 import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
-import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { SelectableTable } from '../../patterns/selectable-table';
@@ -40,7 +39,7 @@ export const LotNo = ({ lotNo }: { lotNo: string }) => {
 
 /**
  * 이력 목록 표. 검사 조회·판정 목록과 같은 짜임이다 — 열 폭은 정한 값(px)으로 고정하고 넘치면 말줄임, 행은 한 줄.
- * 열 폭과 순서는 머리칸에서 끌어 바꾸고 브라우저에 남는다. 목록 창이 좁으면 열이 비율대로 줄어 말줄임이 된다.
+ * 열 폭과 순서는 머리칸에서 끌어 바꾸고 브라우저에 남는다.
  * 행 선택은 C-1 공용 부품(`SelectableTable`)이 맡는다.
  */
 export const ListTable = <Row,>({
@@ -65,19 +64,17 @@ export const ListTable = <Row,>({
   caption: string;
 }) => {
   const ordered = useColumnOrder(`${storageKey}:order`, columns);
+  /*
+   * 번호, 구분, 일시, 수량 열은 정한 폭 그대로 두고(줄이지 않는다 — 문서번호는 대조 값이라 잘리면 안 된다),
+   * 폭을 정하지 않은 이름 열 하나가 남는 폭을 쓰고 넘치면 말줄임이다(C-16).
+   */
   const resizable = useColumnWidths(storageKey, ordered, { fitContent: true });
-  /* 목록 창 폭에 열을 맞춘다 — 좁으면 열이 비율대로 줄어 말줄임이 되고, 머리칸이 창 밖으로 밀려 잘리지 않는다. */
-  const fit = useFitColumns(resizable.columns);
   return (
-    <div
-      ref={fit.ref}
-      className="lot-trace-list-rows inspection-queue-table"
-      style={resizable.style}
-    >
+    <div className="lot-trace-list-rows inspection-queue-table" style={resizable.style}>
       <SelectableTable
         className="lot-trace-table"
         caption={<span className="visually-hidden">{caption}</span>}
-        columns={fit.columns}
+        columns={resizable.columns}
         rows={rows}
         getRowId={getRowId}
         activeId={activeId}
