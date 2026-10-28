@@ -1325,25 +1325,9 @@
       "n": 1,
       "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
     },
-    "C-13|apps/web/src/screens/production-result/defect-picker.tsx|c25bf7d6079a": {
-      "n": 1,
-      "text": "가운뎃점: title={major === null ? t.pickerTitle : `${t.pickerTitle} · ${major.name}`}"
-    },
     "C-13|apps/web/src/screens/production-result/flow-gating.ts|ebdf7662a399": {
       "n": 1,
       "text": "가운뎃점: throw new Error('단말·공정을 모르면 기능 구성을 조회하지 않습니다.');"
-    },
-    "C-13|apps/web/src/screens/production-result/screen.tsx|2c63ae6670e6": {
-      "n": 1,
-      "text": "가운뎃점: {`${t.flow.header.erpWorkOrder} ${workOrder.data.productionOrderNo ?? '—'} · ${t.flow.header.workOrder} ${workOrde"
-    },
-    "C-13|apps/web/src/screens/production-result/screen.tsx|6e774ceac997": {
-      "n": 1,
-      "text": "가운뎃점: {`${serial.serialNo} · ${t.flow.tag.printOutcome[outcome]}`}"
-    },
-    "C-13|apps/web/src/screens/production-result/session.ts|8353813ef506": {
-      "n": 1,
-      "text": "가운뎃점: throw new Error('작업지시·단말을 모르면 세션을 조회하지 않습니다.');"
     },
     "C-13|apps/web/src/screens/putaway-rule/fixtures.ts|031a19d980f1": {
       "n": 1,
@@ -2817,38 +2801,6 @@
       "n": 1,
       "text": "가운뎃점: '창고·품목 이름을 불러오지 못했습니다. 선택지 자리에 사유가 표시됩니다.',"
     },
-    "C-13|packages/i18n/src/ko/production-result.ts|2ec29c116ab2": {
-      "n": 1,
-      "text": "가운뎃점: printing: '생산 실적 저장 완료 · 라벨 인쇄 중',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|36fef52a0810": {
-      "n": 1,
-      "text": "가운뎃점: issuing: '생산 실적 저장 완료 · 라벨 발행 중',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|666a31e0cb76": {
-      "n": 1,
-      "text": "가운뎃점: completed: 'LOT 마감 완료 · 다음 LOT으로 전환합니다.',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|668f11b810d7": {
-      "n": 1,
-      "text": "가운뎃점: queued: '불량을 저장했습니다 · 연결되면 보냅니다.',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|709d2cf5dc62": {
-      "n": 1,
-      "text": "가운뎃점: splitNote: '검사 수량 · 판정 · 결과 확정',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|733697ddc4a9": {
-      "n": 1,
-      "text": "가운뎃점: note: 'LOT 진행 · 수량 입력 · 라벨 발행',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|c8cfff05f44c": {
-      "n": 1,
-      "text": "가운뎃점: mismatchBlocked: '실적·라벨 상태 확인 필요',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|d1009391f930": {
-      "n": 1,
-      "text": "가운뎃점: printed: '생산 LOT 라벨 인쇄 완료 · 부착한 라벨을 스캔하세요.',"
-    },
     "C-13|packages/i18n/src/ko/putaway-rule.ts|18c6896b38bb": {
       "n": 1,
       "text": "가운뎃점: `${itemLabel} · ${locationLabel} 규칙을 다시 사용합니다.`,"
@@ -3645,29 +3597,9 @@
       "n": 1,
       "text": "<Button disabled={submitLock !== undefined} /* ⭐ 되돌릴 수 없는 쓰기라 «누르기 전»에 한 겹을 둔다 — 창이 무엇"
     },
-    "C-4|apps/web/src/screens/production-result/screen.tsx|8e876326ddab": {
-      "n": 1,
-      "text": "<Button disabled={lot === null || entry.workerNo === null} onClick={retryLotIssue}>"
-    },
     "C-4|apps/web/src/screens/production-result/screen.tsx|a6922078522a": {
       "n": 1,
       "text": "<Button disabled={ IDENTIFICATION_TAG_ISSUE_LOCKED || tagReissue"
-    },
-    "C-4|apps/web/src/screens/production-result/screen.tsx|be1c872850b3": {
-      "n": 1,
-      "text": "<Button disabled={!canOutput} /* * ⛔ **초과라고 단추를 끄지도, 되묻"
-    },
-    "C-4|apps/web/src/screens/production-result/screen.tsx|bf89ce998ea7": {
-      "n": 1,
-      "text": "<Button disabled>"
-    },
-    "C-4|apps/web/src/screens/production-result/screen.tsx|e5d1db9686f1": {
-      "n": 1,
-      "text": "<Button disabled={ IDENTIFICATION_TAG_ISSUE_LOCKED ||"
-    },
-    "C-4|apps/web/src/screens/production-result/screen.tsx|fcacf1b55b68": {
-      "n": 1,
-      "text": "<Button onClick={retrySessionEnd} disabled={sessionEnd.isSaving}>"
     },
     "C-4|apps/web/src/screens/repack-label-issue/pending-pane.tsx|e7341b2a9a88": {
       "n": 1,
@@ -4604,10 +4536,6 @@
     "TOKEN|apps/web/src/app/pop.css|b741de1ed0f9": {
       "n": 1,
       "text": "border-inline-start-color: var(--color-danger, rgb(220 80 70));"
-    },
-    "TOKEN|apps/web/src/app/pop.css|cc5efc716a9b": {
-      "n": 1,
-      "text": "grid-auto-rows: minmax(var(--pop-touch-min, 48px), 1fr);"
     },
     "TOKEN|packages/ui/src/ds-candidates/marker-overlay.css|22cb8c648609": {
       "n": 1,

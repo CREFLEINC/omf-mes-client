@@ -110,8 +110,7 @@ const isOpen = (session: WorkSession): boolean =>
  * ⛔ **「종료가 아니면 진행 중」으로 읽지 않는다.** 모르는 문자열까지 진행 중으로 삼게 된다 —
  *    `work-hold-register/types.ts` 가 같은 판단을 적어 두었고 값도 그 파일이 고정했다.
  */
-const isRunning = (session: WorkSession): boolean =>
-  session.statusCode === RUNNING_STATUS_CODE;
+const isRunning = (session: WorkSession): boolean => session.statusCode === RUNNING_STATUS_CODE;
 
 /**
  * 받은 목록에서 **닫을 세션 하나**를 고른다.
@@ -188,7 +187,7 @@ export const useOpenWorkSession = (
     enabled: isEnabled,
     queryFn: () => {
       if (workOrderId === null || terminalId === null) {
-        throw new Error('작업지시·단말을 모르면 세션을 조회하지 않습니다.');
+        throw new Error('작업지시와 단말을 모르면 세션을 조회하지 않습니다.');
       }
 
       return fetchOpenSession(client, workOrderId, terminalId);

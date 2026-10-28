@@ -5,19 +5,52 @@ import type { Translated } from './translated';
 export const productionResult: Translated<typeof ko.productionResult> = {
   title: 'Công việc sản xuất',
   flow: {
-    header: {
-      /* ⚠ ERP 쪽 번호와 나란히 서는 자리라 어느 쪽 번호인지 밝힌다(사용자 지시 2026-09-10). */
-      erpWorkOrder: 'ERP W/O',
-      workOrder: 'MES W/O',
-      item: 'Mặt hàng',
-      emergency: 'Khẩn',
+    work: {
+      lot: 'LOT',
+      lotProgress: 'Kết quả LOT',
+      workOrderProgress: 'Kết quả W/O',
+      progressText: (good: string, target: string, uom: string): string =>
+        uom === '' ? `${good} / ${target}` : `${good} / ${target} ${uom}`,
+      pqc: 'PQC',
+      pqcNotInspected: 'Không kiểm tra',
+      pqcSkipped: 'Bỏ qua',
+      printerNone: 'Không có',
+      stepsLabel: 'Các bước làm LOT',
+      steps: { input: 'Nhập kết quả', scan: 'Quét nhãn' },
+      remaining: (qty: string): string => `Còn lại ${qty}`,
+      noLot: 'Không còn LOT để sản xuất.',
+      noWorkOrder: 'Chưa chỉ định lệnh sản xuất.',
+    },
+    next: {
+      noWorkOrder: 'Chưa chỉ định lệnh sản xuất. Hãy chọn lệnh sản xuất ở danh sách lệnh sản xuất',
+      noWorker: 'Hãy nhập mã nhân viên',
+      noLot:
+        'W/O này không còn LOT để sản xuất. Nếu đã sản xuất xong hãy đóng lệnh sản xuất, nếu cần làm thêm hãy báo quản trị viên',
+      queued: 'Đã lưu kết quả trên máy trạm. Khi có kết nối sẽ gửi và phát hành nhãn LOT',
+      saving: 'Đang lưu kết quả',
+      issuing: 'Đang phát hành nhãn LOT',
+      printing: 'Đang in nhãn LOT',
+      scan: 'Hãy quét nhãn LOT đã dán',
+      retry: (buttonWithObject: string): string => `Hãy bấm ${buttonWithObject}`,
+      legacyMismatch:
+        'Có lịch sử nhãn cũ tạo không kèm kết quả nên không đóng được LOT. Hãy báo quản trị viên',
+      completing: 'Đang đóng LOT',
+      completed: 'Đang tải LOT kế tiếp',
+      printer: 'Không có máy in nhãn LOT dùng được. Hãy nhờ quản trị viên kết nối máy in',
+      shell: 'Không xác nhận được đường in của chương trình POP. Hãy báo quản trị viên',
+      tagUnknown:
+        'Không xác nhận được có cần thẻ nhận diện hay không. Hãy kiểm tra kết nối rồi mở lại màn hình',
+      tag: 'Phải in đủ thẻ nhận diện mới in được nhãn sản xuất. Hãy báo quản trị viên',
+      qty: 'Hãy nhập số lượng đạt',
+      defectOnly: 'Để chỉ đăng ký lỗi hãy bấm Đăng ký lỗi',
+      defectType: 'Hãy chọn loại lỗi',
+      defectQty: 'Hãy nhập số lượng lỗi',
+      defectDuplicate: 'Cùng một loại lỗi nằm ở hai dòng. Hãy xóa một dòng',
+      ready: 'Có thể chuyển sang Quét nhãn',
     },
     currentLot: {
-      title: 'Tiến độ LOT',
       current: 'LOT hiện tại',
-      sequence: (current: number | null, total: number | null) =>
-        `${current === null ? '—' : String(current)} / ${total === null ? '—' : String(total)}`,
-      completed: 'Xem danh sách LOT đã đóng',
+      completed: 'LOT đã đóng',
       completedTitle: 'LOT đã đóng',
       completedEmpty: 'Không có LOT đã đóng.',
       pageNav: 'Chuyển trang LOT đã đóng',
@@ -25,41 +58,38 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       pageDown: 'Trang dưới',
       pagePosition: (page: number, totalPages: number) =>
         `Trang ${String(page)}/${String(totalPages)}`,
-      none: (closeButton: string): string =>
-        `W/O này không còn LOT để sản xuất. Nếu đã sản xuất xong hãy bấm [${closeButton}] bên dưới, nếu cần làm thêm hãy báo quản trị viên.`,
       unreliable: (lotNos: string): string =>
         `Máy chủ không xác định được một LOT hiện tại (LOT ${lotNos}). Đã chặn nhập để kết quả không gắn vào LOT khác. Hãy nhờ quản trị viên kiểm tra máy chủ đã là bản mới nhất chưa.`,
       loadFailed: 'Không tải được LOT hiện tại. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
     },
     quantity: {
-      title: 'Số lượng sản xuất',
-      target: 'Số lượng mục tiêu',
       actual: 'Số lượng đạt',
       invalid: 'Hãy nhập số lượng lớn hơn 0.',
     },
     defects: {
       title: 'Lỗi',
-      add: '+ Lỗi',
+      add: 'Thêm lỗi',
       row: (index: number): string => `Lỗi ${String(index)}`,
       type: 'Loại lỗi',
       choose: 'Chọn loại',
       qty: 'Số lượng lỗi',
-      remove: (label: string): string => `Bỏ ${label}`,
+      remove: (label: string): string => `Xóa ${label}`,
       duplicate: 'Loại lỗi này đã có.',
       typeMissing: 'Hãy chọn loại',
       qtyMissing: 'Hãy nhập số lượng',
       noProcess: 'W/O không có công đoạn nên không chọn được loại lỗi.',
       keypadGood: 'Bàn phím số lượng đạt',
-      keypadFor: (target: string): string => `Bàn phím số lượng lỗi — ${target}`,
+      keypadFor: (target: string): string => `Bàn phím số lượng lỗi ${target}`,
       pickerTitle: 'Loại lỗi',
+      pickerTitleFor: (major: string): string => `Loại lỗi ${major}`,
       back: '← Nhóm lớn',
       cancel: 'Hủy',
       loading: 'Đang tải loại lỗi.',
       loadFailed: 'Không tải được loại lỗi.',
       empty: 'Công đoạn này chưa có loại lỗi.',
-      saveOnly: 'Lưu lỗi',
-      saved: 'Đã ghi nhận lỗi.',
-      queued: 'Đã lưu lỗi · Sẽ gửi khi có kết nối.',
+      saveOnly: 'Đăng ký lỗi',
+      saved: 'Đã đăng ký lỗi.',
+      queued: 'Đã lưu lỗi trên máy trạm. Sẽ gửi khi có kết nối.',
     },
     tag: {
       title: 'Thẻ nhận diện',
@@ -93,37 +123,28 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       printerUnavailable: 'Không có máy in hỗ trợ thẻ nhận diện.',
     },
     output: {
-      title: 'Nhãn LOT',
       template: 'Nhãn LOT sản xuất',
       printer: 'Máy in',
-      printerUnknown: 'Không xác nhận được',
       issue: 'In nhãn sản xuất',
       retryIssue: 'Thử phát hành nhãn lại',
-      retryPrint: 'In lại nhãn đã phát hành',
+      retryPrint: 'In lại nhãn',
       retryReport: 'Gửi lại kết quả',
-      queued:
-        'Đã lưu kết quả sản xuất vào hàng chờ gửi. Sau khi máy chủ nhận sẽ tiếp tục phát hành nhãn.',
-      saving: 'Đang gửi kết quả sản xuất lên máy chủ.',
-      issuing: 'Đã lưu kết quả sản xuất · đang phát hành nhãn',
-      printing: 'Đã lưu kết quả sản xuất · đang in nhãn',
-      printed: 'Đã in nhãn LOT sản xuất · hãy quét nhãn đã dán.',
-      issueFailed: 'Đã lưu kết quả sản xuất nhưng phát hành nhãn thất bại.',
-      renditionFailed: 'Đã phát hành nhãn nhưng không nhận được dữ liệu in.',
-      printFailed: 'Đã phát hành nhãn nhưng chưa in ra.',
-      reportFailed: 'Đã in nhãn. Hãy gửi lại kết quả.',
-      legacyMismatch: 'Có lịch sử nhãn cũ được tạo không kèm kết quả sản xuất. Chưa mở đóng LOT.',
-      mismatchBlocked: 'Cần kiểm tra trạng thái kết quả · nhãn',
-      shellUnavailable: 'Không xác nhận được đường in của shell Electron POP.',
-      printerUnavailable: 'Không có máy in nhãn dùng được.',
+      printed: 'Đã in nhãn LOT.',
+      issueFailed: 'Đã lưu kết quả nhưng không phát hành được nhãn LOT.',
+      renditionFailed: 'Đã phát hành nhãn LOT nhưng không nhận được dữ liệu in.',
+      printFailed: 'Đã phát hành nhãn LOT nhưng chưa in ra.',
+      reportFailed: 'Đã in nhãn LOT nhưng chưa gửi được kết quả. Đừng in lại, chỉ gửi lại kết quả.',
+      legacyMismatch: 'Có lịch sử nhãn cũ tạo không kèm kết quả.',
+      shellUnavailable: 'Không xác nhận được đường in của chương trình POP.',
     },
     scan: {
-      title: 'Chờ quét',
-      label: 'Quét số LOT đã dán',
+      title: 'Quét nhãn',
+      label: 'Quét',
+      placeholder: 'Nhãn LOT đã dán',
       /* ⚠ 한 줄로 합친 문구다(사용자 지시 2026-09-10). */
       mismatch:
         'Không tìm thấy nhãn khớp với LOT đã nhập. Hãy kiểm tra lại LOT rồi quét lại đúng nhãn đó.',
-      completing: 'Đang đóng đăng ký sản xuất LOT.',
-      completed: 'Đã đóng LOT · chuyển sang LOT kế tiếp.',
+      completed: 'Đã đóng LOT.',
       failed: 'Không đóng được LOT. Hãy quét lại cùng nhãn.',
       alreadyCompleted: 'LOT này đã đóng. Đang tải lại trạng thái LOT hiện tại.',
       noAllocation: 'LOT này chưa có kết quả đã lưu nên không đóng được. Hãy lưu kết quả trước.',
@@ -132,7 +153,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     },
     woClose: {
       button: 'Đóng lệnh sản xuất',
-      title: (workOrderNo: string): string => `Đóng lệnh sản xuất — ${workOrderNo}`,
+      title: (workOrderNo: string): string => `Đóng lệnh sản xuất ${workOrderNo}`,
       loading: 'Đang kiểm tra lệnh sản xuất cần đóng.',
       loadFailed: 'Không tải được lệnh sản xuất. Hãy kiểm tra kết nối rồi bấm «Thử lại».',
       fields: {
@@ -148,7 +169,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       judgments: { UNDER: 'Thiếu', NORMAL: 'Bình thường', OVER: 'Vượt' },
       remainder: { CARRY_OVER: 'Chuyển sang kỳ sau', WRITE_OFF: 'Xóa bỏ' },
       carryOverNote: (menuPath: string): string =>
-        `W/O chuyển sang kỳ sau không được tạo tự động — sẽ lập mới ở ${menuPath} trên web quản lý.`,
+        `W/O chuyển sang kỳ sau không được tạo tự động. Sẽ lập mới ở ${menuPath} trên web quản lý.`,
       prefilled: 'Đây là lý do đã chọn khi đóng LOT. Có thể đổi.',
       reasonsLoading: 'Đang tải lý do.',
       reasonsFailed: 'Không tải được lý do. Hãy kiểm tra kết nối rồi mở lại cửa sổ.',
@@ -217,7 +238,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     },
     underReason: {
       title: 'Lý do thiếu',
-      summary: (target: string, actual: string): string => `Mục tiêu ${target} · Thực tế ${actual}`,
+      summary: (target: string, actual: string): string =>
+        `Số lượng LOT ${target}, thực tế ${actual}`,
       cancel: 'Hủy',
       loading: 'Đang tải lý do thiếu.',
       loadFailed: 'Không tải được lý do thiếu.',
@@ -247,8 +269,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     workerLabel: 'Mã nhân viên',
     missingWorkOrder:
       'Chưa nhận được lệnh sản xuất nên không đăng ký được kết quả. Hãy chọn lệnh sản xuất ở màn hình danh sách lệnh sản xuất rồi vào lại.',
-    missingWorker:
-      'Chưa xác nhận được mã nhân viên nên không lưu được. Hãy xác nhận mã nhân viên trước.',
     loadFailed: 'Không tải được lệnh sản xuất.',
   },
   gate: {
@@ -265,14 +285,12 @@ export const productionResult: Translated<typeof ko.productionResult> = {
   pqc: {
     goInspect: 'Đến màn hình kiểm tra',
     splitTitle: 'Kiểm tra sản phẩm PQC',
-    splitNote: 'Số lượng kiểm tra · Đánh giá · Xác nhận kết quả',
-    notInspected: 'Không kiểm tra PQC',
-    skipped: 'Bỏ qua PQC',
+    splitNote: 'Số lượng kiểm tra, đánh giá, xác nhận kết quả',
     loadFailed: 'Không tải được thông tin PQC. Hãy thử lại.',
   },
   zone: {
     title: 'Kết quả sản xuất',
-    note: 'Tiến độ LOT · Nhập số lượng · In nhãn',
+    note: 'Nhập kết quả, quét nhãn',
   },
   lot: {
     sectionLabel: 'LOT đối tượng',
@@ -292,20 +310,14 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     clearGlyph: 'Xóa hết',
     decimalKey: 'Dấu thập phân',
     quickAdd: (step: number) => `＋${String(step)}`,
-    remaining: 'Số lượng còn lại',
-    orderedSuffix: (ordered: string, uom: string | null) =>
-      uom === null ? `/ ${ordered}` : `/ ${ordered} ${uom}`,
-    remainingUnknown: 'Không xác nhận được số lượng còn lại.',
-    remainingNoWorkOrder: 'Chưa nhận được lệnh sản xuất nên không tính được số lượng còn lại.',
-    remainingNotAsked: 'Chưa tra cứu.',
-    remainingLoadFailed: 'Không tải được số lượng còn lại. Hãy kiểm tra kết nối rồi thử lại.',
   },
   overrun: {
     notice: (over: string, remaining: string) =>
-      `Vượt mức — nhiều hơn số còn lại ${remaining} là ${over}.`,
-    noticeNoRemaining: 'Vượt mức — lệnh sản xuất này không còn số lượng còn lại.',
+      `Nhiều hơn số còn lại ${remaining} là ${over}. Vẫn có thể đăng ký sản xuất vượt.`,
+    noticeNoRemaining:
+      'Lệnh sản xuất này không còn số lượng còn lại. Vẫn có thể đăng ký sản xuất vượt.',
     achieved: 'Đã đạt số lượng kế hoạch',
-    achievedOver: (over: string): string => `Đã đạt số lượng kế hoạch · vượt +${over}`,
+    achievedOver: (over: string): string => `Vượt mức ${over}`,
   },
   actions: {
     save: 'Lưu',

@@ -105,54 +105,6 @@
   --field-label-layer: calc(16px + var(--space-1));
 }
 
-/*
- * P-02-04 통합 흐름. 공통 POP 밀도는 건드리지 않고 이 화면의 구획 배치만 소유한다.
- *
- * ⛔ **화면째 스크롤하지 않는다**(E-4 「스크롤 구획을 하나 지정한다」). 한때 여기에
- *    `overflow-y: auto` 를 두어 화면 전체가 굴렀는데, 그러면 **머리줄이 위로 밀려 사라진다** —
- *    W/O·품목·사번이 그 줄에만 있어 「지금 무엇을 등록하고 있는가」가 화면에서 없어진다
- *    (실측 · 스크롤 224px). 스크롤은 아래 본문 격자가 맡는다.
- */
-.pop-ui.production-flow {
-  overflow-y: hidden;
-}
-
-.production-flow-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: var(--space-3);
-  padding: var(--space-3);
-}
-
-.production-flow-grid-no-tags {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.production-flow-grid .pop-section {
-  min-width: 0;
-}
-
-.production-flow-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.production-flow-progress,
-.production-flow-scan {
-  grid-column: 1 / -1;
-}
-
-.production-flow-quantity .numeric-keypad {
-  margin-top: var(--space-2);
-}
-
-.production-flow-target-qty,
-.production-flow-count {
-  margin-bottom: var(--space-2);
-}
-
 .production-flow-serials {
   display: flex;
   max-height: 104px;
@@ -178,17 +130,6 @@
 
 .production-flow-completed-pages .field-note {
   margin: 0;
-}
-
-@media (max-width: 900px) {
-  .production-flow-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .production-flow-progress,
-  .production-flow-scan {
-    grid-column: auto;
-  }
 }
 
 html,
@@ -12652,6 +12593,117 @@ button.app-button-neutral {
 
 .material-input-uom {
   color: var(--on-surface-variant);
+}
+
+/* ------------------------------------------------------------------------ *
+ * P-02-04 생산 작업
+ *
+ * 화면 구성 규범 T-P-W 작업형(실적 탭)이다. 머리줄, 본문 좌우 2단(왼쪽 현재 LOT: 품목 이름 제목 줄,
+ * 「라벨 값」 정보 영역, 단계 표시. 오른쪽 현재 단계 본문: 실적 입력이나 라벨 스캔), 하단 동작 바(공용
+ * `action-bar`). 두 구획은 각자 안에서 스크롤한다(C-14).
+ *
+ * 클래스 이름을 `production-work-` 로 시작한다. 이름에 `action` 을 넣지 않는다. POP 바닥 띠
+ * 규칙(`[class*='action']`)이 걸린다.
+ * ------------------------------------------------------------------------ */
+
+.production-work-screen {
+  /* 본문이 늘어나도 동작 바가 밀려 나가지 않게 한 열로 세운다. */
+  grid-template-columns: 1fr;
+}
+
+.pop-ui > .pop-panes.production-work-panes {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+/* 두 구획 모두 블록 사이를 같은 간격 하나로 띄운다. 제목과 안내 상자의 자기 여백을 턴다. */
+.production-work-lot,
+.production-work-step {
+  gap: var(--space-3);
+}
+
+.production-work-lot > *,
+.production-work-step > * {
+  flex: 0 0 auto;
+}
+
+.production-work-lot > .pane-title,
+.production-work-lot > .banner-slot,
+.production-work-step > .pane-title,
+.production-work-step > .field-note,
+.production-work-step > .banner-slot {
+  margin: 0;
+}
+
+/* 제목 줄: 제목은 왼쪽, 조작은 오른쪽 끝(C-19). 상태에 따라 서는 칩은 그 사이에 둔다. */
+.production-work-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.pop-ui .production-work-head > .pane-title {
+  margin: 0;
+  margin-inline-end: auto;
+}
+
+.production-work-head > .pop-row-chips {
+  margin-inline-start: 0;
+}
+
+/* 정보 영역은 제목 줄과 구분선으로 나눈다(C-21). */
+.production-work-info {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* LOT 번호는 라벨과 대조하는 값이다. 저장값 그대로 고정폭 한 줄(C-10). */
+.production-work-lot-no {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+/* W/O 단위 보조 동작 줄. 마감할 수 없으면 [작업지시 마감] 곁에 사유가 선다(`wo-close-action`). */
+.production-work-wo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.production-work-group {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.production-work-group > p {
+  margin: 0;
+}
+
+.production-work-subtitle {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.production-work-remaining {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+/* PQC 분할(omf-all-around#107)에서는 반 폭이라 두 구획을 위아래로 두고 그 영역 안에서 스크롤한다. */
+.production-flow-zone > .pop-panes.production-work-panes {
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: max-content;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 영역 전체가 한 번에 스크롤하므로 구획은 제 높이로 선다(구획마다 스크롤이 생기지 않게). */
+.pop-ui .production-flow-zone > .production-work-panes > .pane {
+  overflow: visible;
 }
 
 /* ------------------------------------------------------------------------ *
