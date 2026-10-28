@@ -18,6 +18,7 @@
  * .check-group  한 칸에 나란히 놓은 확인칸 사이 간격
  * .picker-group 폼 안에서 «함께 읽어야 하는» 칸들을 이름 붙은 한 묶음으로 두는 자리
  * .dialog-lead  창 안에서 폭 전체를 쓰는 안내 문장(`.field-note` 의 20rem 제한 밖)
+ * .import-file-list 올리기 창에서 고른 파일 목록(이름 + 빼기 단추)
  * .form-actions 폼 하단 액션 줄(우측 정렬)
  * .form-actions-secondary  사유가 붙은 보조 액션만 줄 왼쪽 끝으로(규범 4)
  * .wide-select  값이 긴 코드를 고르는 선택칸에 최소 폭을 준다(옵트인 · 규범 3-2)
@@ -8567,6 +8568,18 @@ a.erp-send-chips:focus-visible {
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface-muted);
+}
+
+/* 올리기 창에서 고른 파일 목록 — 이름 옆에 [빼기] 단추를 둔다(검사기준 엑셀 올리기 #199). */
+.import-file-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.import-file-list li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /*

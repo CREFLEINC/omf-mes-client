@@ -1,4 +1,4 @@
-import { AlertBanner, Button, type Column, Dialog, Table } from '@crefle/web-ui';
+import { AlertBanner, Button, type Column, Dialog, IconButton, Table } from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useRef } from 'react';
@@ -141,9 +141,19 @@ export const ImportDialog = ({
             {t.fileRequired}
           </span>
         ) : (
-          <ul className="form-grid-full dialog-lead">
+          <ul className="form-grid-full dialog-lead import-file-list">
             {files.map((file, index) => (
-              <li key={`${String(index)}-${file.name}`}>{file.name}</li>
+              <li key={`${String(index)}-${file.name}`}>
+                <span>{file.name}</span>
+                {/* 잘못 고른 파일 하나만 뺀다 — 다시 고르게 하면 나머지를 또 찾아야 한다. */}
+                <IconButton
+                  icon="close"
+                  size="sm"
+                  aria-label={t.removeFile(file.name)}
+                  disabled={isSaving}
+                  onClick={() => onSelectFiles(files.filter((_, at) => at !== index))}
+                />
+              </li>
             ))}
           </ul>
         )}

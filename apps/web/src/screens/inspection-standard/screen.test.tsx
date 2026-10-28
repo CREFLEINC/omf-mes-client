@@ -443,6 +443,18 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
       new File(['b'], 'B.xlsx'),
     ]);
     expect(within(dialog).getByText(t.import.fileCount(2))).toBeInTheDocument();
+
+    // 잘못 고른 파일 하나만 뺄 수 있다.
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), [
+      new File(['a'], 'A.xlsx'),
+      new File(['x'], 'WRONG.xlsx'),
+      new File(['b'], 'B.xlsx'),
+    ]);
+    await user.click(
+      within(dialog).getByRole('button', { name: t.import.removeFile('WRONG.xlsx') }),
+    );
+    expect(within(dialog).queryByText('WRONG.xlsx')).not.toBeInTheDocument();
+    expect(within(dialog).getByText(t.import.fileCount(2))).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
 
     const first = await within(dialog).findByRole('region', { name: 'A.xlsx' });

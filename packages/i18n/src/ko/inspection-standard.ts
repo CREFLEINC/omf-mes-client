@@ -145,6 +145,7 @@ export const inspectionStandard = {
     fileNone: '고른 파일이 없습니다.',
     fileRequired: '올릴 파일을 먼저 고르세요.',
     fileCount: (count: number): string => `파일 ${String(count)}개를 골랐습니다.`,
+    removeFile: (name: string): string => `${name} 빼기`,
     progress: (done: number, total: number): string =>
       `${String(total)}개 중 ${String(done)}개를 처리했습니다. 창을 닫지 마세요.`,
     submit: '올리기',

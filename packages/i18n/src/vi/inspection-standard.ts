@@ -139,6 +139,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     fileNone: 'Chưa chọn tệp.',
     fileRequired: 'Hãy chọn tệp cần tải lên trước.',
     fileCount: (count: number): string => `Đã chọn ${String(count)} tệp.`,
+    removeFile: (name: string): string => `Bỏ ${name}`,
     progress: (done: number, total: number): string =>
       `Đã xử lý ${String(done)}/${String(total)} tệp. Đừng đóng cửa sổ.`,
     submit: 'Tải lên',
