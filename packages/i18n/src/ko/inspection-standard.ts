@@ -171,7 +171,7 @@ export const inspectionStandard = {
     title: '검사 기준 버전',
     sampling: '샘플링',
     effectivePeriod: '유효기간',
-    noEnd: '종료일 미지정',
+    noEnd: '종료일 미설정',
     itemsTitle: (count: number): string => `검사 항목 (${String(count)})`,
     lockedHint: '검사 항목을 추가하려면 신규 버전을 발행하세요.',
     tabsLabel: '버전 내용',
