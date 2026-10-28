@@ -50,6 +50,7 @@ import { inboundSchedule } from './inbound-schedule';
 import { inboundVariance } from './inbound-variance';
 import { inspectionResultInsights } from './inspection-result-insights';
 import { inspectionStandard } from './inspection-standard';
+import { erpInbound } from './erp-inbound';
 import { erpOutbound } from './erp-outbound';
 import { integrationSync } from './integration-sync';
 import { erpBom } from './erp-bom';
@@ -205,6 +206,7 @@ export const vi: Translated<Messages> = {
   inboundVariance,
   inspectionResultInsights,
   inspectionStandard,
+  erpInbound,
   erpOutbound,
   integrationSync,
   erpBom,

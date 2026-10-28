@@ -9,7 +9,6 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
   breadcrumbRoot: 'Quản trị hệ thống',
   fields: {
     purchaseOrderNo: 'Số P/O',
-    erpPurchaseOrderNo: 'Số đơn mua ERP',
     supplier: 'Nhà cung cấp',
     plant: 'Nhà máy',
     orderDate: 'Ngày đặt hàng',
@@ -32,6 +31,9 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
     openOnly: 'Chỉ đơn chưa nhận đủ',
     q: 'Số đơn mua',
   },
+  splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
+  listCollapse: 'Thu gọn danh sách đơn mua hàng',
+  listExpand: 'Mở danh sách đơn mua hàng',
   panes: {
     filters: 'Điều kiện tra cứu đơn mua hàng',
     list: 'Danh sách đơn mua hàng',
@@ -47,13 +49,9 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
     firstPage: 'Trang đầu',
     prevPage: 'Trước',
     nextPage: 'Sau',
-    integrationSync: 'Xem tình trạng liên kết',
   },
   values: {
-    erpReadOnlyNotice:
-      'Thông tin nhận từ ERP nên không thể sửa tại màn hình này. Hãy sửa trên ERP rồi đồng bộ lại.',
-    erpSyncHint: 'Có thể xem kết quả đồng bộ tại tình trạng liên kết.',
-    searchPlaceholder: 'Số P/O · số đơn mua ERP',
+    searchPlaceholder: 'Số P/O',
     missing: '-',
     unknown: 'Không xác định',
     loadingName: 'Đang tải',
@@ -62,13 +60,9 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
   },
   empty: {
     title: 'Không có đơn mua hàng phù hợp điều kiện',
-    description: 'Hãy đổi điều kiện và tra cứu lại.',
     beyondTitle: 'Trang này không có đơn mua hàng',
-    beyondDescription: 'Hãy quay về trang đầu.',
     notSelectedTitle: 'Hãy chọn một đơn mua hàng',
-    notSelectedDescription: 'Bấm số P/O trong danh sách để xem chi tiết và các dòng.',
     linesTitle: 'Không có dòng',
-    linesDescription: 'Đơn mua hàng này không có dòng nào.',
   },
   loading: 'Đang tải đơn mua hàng',
   listLoadFailedTitle: 'Không tải được danh sách đơn mua hàng',

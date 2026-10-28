@@ -1,6 +1,8 @@
-import { Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { BoardTable } from '../../patterns/board-table';
+import { OneLine } from '../../patterns/po-board';
 import { displayOr, formatQty, reworkLabel } from './format';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -12,26 +14,25 @@ export interface ErpProductionOrderListPaneProps {
   rows: ErpProductionOrder[];
   isLoading: boolean;
   page: PageView;
-  selectedId: number | null;
   itemNameOf: (itemId: number) => string;
   uomNameOf: (uomId: number) => string;
   storageLocationOf: (code: string) => string;
   statusNameOf: (code: string) => string;
-  onSelect: (productionOrderId: number) => void;
   onChangePage: (page: number) => void;
 }
 
-/** ERP W/O 목록. 행 고르기 말고는 조작이 없다 — 읽기 전용 화면이다. */
+/**
+ * ERP W/O 목록 — 화면 틀(`BoardFrame`)의 한 구획 내용(상세가 없어 전체 폭을 쓴다). 쪽 이동 말고는 조작이 없다 — 읽기
+ * 전용 화면이고, 줄을 고르는 일도 없다.
+ */
 export const ErpProductionOrderListPane = ({
   rows,
   isLoading,
   page,
-  selectedId,
   itemNameOf,
   uomNameOf,
   storageLocationOf,
   statusNameOf,
-  onSelect,
   onChangePage,
 }: ErpProductionOrderListPaneProps) => {
   /*
@@ -41,33 +42,23 @@ export const ErpProductionOrderListPane = ({
   const hasDueDate = rows.some((row) => row.dueDate !== undefined && row.dueDate !== '');
 
   const columns: Column<ErpProductionOrder>[] = [
+    { key: 'productionOrderNo', header: t.fields.productionOrderNo, width: '152px' },
     {
-      key: 'productionOrderNo',
-      header: t.fields.productionOrderNo,
-      render: (row) => (
-        <button
-          type="button"
-          className="link-cell"
-          aria-label={t.actions.select(row.productionOrderNo)}
-          aria-current={selectedId === row.productionOrderId ? true : undefined}
-          onClick={() => {
-            onSelect(row.productionOrderId);
-          }}
-        >
-          {row.productionOrderNo}
-        </button>
-      ),
+      key: 'itemId',
+      header: t.fields.item,
+      render: (row) => <OneLine text={itemNameOf(row.itemId)} />,
     },
-    { key: 'itemId', header: t.fields.item, render: (row) => itemNameOf(row.itemId) },
     {
       key: 'orderQty',
       header: t.fields.orderQty,
+      width: '112px',
       align: 'end',
       render: (row) => t.values.qtyWithUom(formatQty(row.orderQty), uomNameOf(row.uomId)),
     },
     {
       key: 'plannedStartDate',
       header: t.fields.plannedStartDate,
+      width: '104px',
       render: (row) => displayOr(row.plannedStartDate),
     },
     ...(hasDueDate
@@ -75,6 +66,7 @@ export const ErpProductionOrderListPane = ({
           {
             key: 'dueDate',
             header: t.fields.dueDate,
+            width: '104px',
             render: (row: ErpProductionOrder) => displayOr(row.dueDate),
           },
         ]
@@ -82,24 +74,33 @@ export const ErpProductionOrderListPane = ({
     {
       key: 'erpOperationNo',
       header: t.fields.operationNo,
+      width: '80px',
       render: (row) => displayOr(row.erpOperationNo),
     },
     {
       key: 'erpStorageLocationCode',
       header: t.fields.storageLocation,
-      render: (row) =>
-        row.erpStorageLocationCode === undefined || row.erpStorageLocationCode === ''
-          ? t.values.missing
-          : storageLocationOf(row.erpStorageLocationCode),
+      width: '128px',
+      render: (row) => (
+        <OneLine
+          text={
+            row.erpStorageLocationCode === undefined || row.erpStorageLocationCode === ''
+              ? t.values.missing
+              : storageLocationOf(row.erpStorageLocationCode)
+          }
+        />
+      ),
     },
     {
       key: 'erpReworkFlag',
       header: t.fields.rework,
+      width: '72px',
       render: (row) => reworkLabel(row.erpReworkFlag),
     },
     {
       key: 'statusCode',
       header: t.fields.status,
+      width: '88px',
       render: (row) => (
         <Chip variant="status" size="sm">
           {statusNameOf(row.statusCode)}
@@ -110,36 +111,32 @@ export const ErpProductionOrderListPane = ({
 
   if (isLoading) {
     return (
-      <section className="pane" aria-label={t.panes.list}>
-        <div role="status" aria-label={t.loading}>
-          <SkeletonText lines={4} />
-        </div>
-      </section>
+      <div role="status" aria-label={t.loading}>
+        <SkeletonText lines={4} />
+      </div>
     );
   }
 
   return (
-    <section className="pane" aria-label={t.panes.list}>
-      <h2>{t.panes.list}</h2>
-      <div className="wide-table">
-        <Table
-          caption={<span className="erp-data-table-caption">{t.panes.list}</span>}
-          density="compact"
-          columns={columns}
-          rows={rows}
-          getRowId={(row) => String(row.productionOrderId)}
-          sort={null}
-          empty={
-            <EmptyState
-              size="sm"
-              live
-              title={page.isBeyondLast ? t.empty.beyondTitle : t.empty.title}
-              description={page.isBeyondLast ? t.empty.beyondDescription : t.empty.description}
-            />
-          }
-        />
-      </div>
+    <>
+      <BoardTable
+        label={t.panes.list}
+        widthKey="omf-mes:erp-production-order:columns:orders"
+        /* 납기 열이 서면 그 폭(104px)만큼 넓힌다. */
+        minWidth={hasDueDate ? '63rem' : '56rem'}
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => String(row.productionOrderId)}
+        sort={null}
+        empty={
+          <EmptyState
+            size="sm"
+            live
+            title={page.isBeyondLast ? t.empty.beyondTitle : t.empty.title}
+          />
+        }
+      />
       <PageNav view={page} onChange={onChangePage} />
-    </section>
+    </>
   );
 };

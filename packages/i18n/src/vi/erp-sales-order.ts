@@ -9,9 +9,7 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
   breadcrumbRoot: 'Quản trị hệ thống',
   fields: {
     salesOrderNo: 'Số đơn bán',
-    erpSalesOrderNo: 'Số gốc ERP',
     customer: 'Khách hàng',
-    shipTo: 'Nơi giao',
     orderDate: 'Ngày nhận đơn',
     status: 'Trạng thái',
     lineNo: 'Dòng',
@@ -31,6 +29,9 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
     storageLocation: 'Kho',
     cancelled: 'Hủy',
   },
+  splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
+  listCollapse: 'Thu gọn danh sách đơn bán hàng',
+  listExpand: 'Mở danh sách đơn bán hàng',
   panes: {
     filters: 'Điều kiện tra cứu đơn bán hàng',
     list: 'Danh sách đơn bán hàng',
@@ -46,13 +47,9 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
     firstPage: 'Trang đầu',
     prevPage: 'Trước',
     nextPage: 'Sau',
-    integrationSync: 'Xem tình trạng liên kết',
   },
   values: {
-    erpReadOnlyNotice:
-      'Thông tin nhận từ ERP nên không thể sửa tại màn hình này. Hãy sửa trên ERP rồi đồng bộ lại.',
-    erpSyncHint: 'Có thể xem kết quả đồng bộ tại tình trạng liên kết.',
-    searchPlaceholder: 'Số đơn bán · số gốc ERP',
+    searchPlaceholder: 'Số đơn bán',
     missing: '-',
     unknown: 'Không xác định',
     loadingName: 'Đang tải',
@@ -61,13 +58,9 @@ export const erpSalesOrder: Translated<typeof ko.erpSalesOrder> = {
   },
   empty: {
     title: 'Không có đơn bán hàng phù hợp điều kiện',
-    description: 'Hãy đổi điều kiện và tra cứu lại.',
     beyondTitle: 'Trang này không có đơn bán hàng',
-    beyondDescription: 'Hãy quay về trang đầu.',
     notSelectedTitle: 'Hãy chọn một đơn bán hàng',
-    notSelectedDescription: 'Bấm số đơn bán trong danh sách để xem chi tiết và các dòng.',
     linesTitle: 'Không có dòng',
-    linesDescription: 'Đơn bán hàng này không có dòng nào.',
   },
   loading: 'Đang tải đơn bán hàng',
   listLoadFailedTitle: 'Không tải được danh sách đơn bán hàng',

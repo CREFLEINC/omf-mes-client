@@ -6,26 +6,12 @@ import type { components, paths } from '@omf-mes/api-client';
  */
 
 type ContractProductionOrder = components['schemas']['ProductionOrder'];
-type ContractChangedField = components['schemas']['ProductionOrderChangedField'];
-type ContractChange = components['schemas']['ProductionOrderChange'];
-
-/**
- * 변경 항목. 서버가 계약 enum 밖의 `PLANNED_START_DATE`(「계획 시작일」)를 더해 낸다
- * (omf-mes-server#737 · 장부 P-66). 화면은 `label`·`beforeText`·`afterText` 를 그대로 그릴 뿐
- * `field` 로 거르지 않는다 — enum 으로 거르면 이 항목이 사라진다.
- */
-export type ProductionOrderChangedField = Omit<ContractChangedField, 'field'> & {
-  field: ContractChangedField['field'] | 'PLANNED_START_DATE';
-};
-
-export type ProductionOrderChange = Omit<ContractChange, 'changedFields'> & {
-  changedFields: ProductionOrderChangedField[];
-};
 
 /**
  * ERP W/O 한 건. 계약 `ProductionOrder` 에 서버가 더한 계약 밖 칸 넷을 얹는다
  * (omf-mes-server#737 · 장부 P-66 `plannedStartDate` · P-67 나머지 셋). **값이 없으면 키가 빠진다.**
- * 계약에 실려 오면(장부 「사본을 당길 때 ⓐ」) 이 얹기를 걷는다.
+ * 계약에 실려 오면(장부 「사본을 당길 때 ⓐ」) 이 얹기를 걷는다. 최근 ERP 변경(`lastChange`)은 목록이 `withLastChange` 를
+ * 켜지 않아 오지 않으므로 뺀다.
  */
 export type ErpProductionOrder = Omit<ContractProductionOrder, 'lastChange'> & {
   /** ERP `PLAN_START_DT`(YYYY-MM-DD). ERP W/O 의 날짜는 이것 하나다 — 납기는 비어 온다(P-66). */
@@ -36,7 +22,6 @@ export type ErpProductionOrder = Omit<ContractProductionOrder, 'lastChange'> & {
   erpStorageLocationCode?: string;
   /** ERP `RE_WORK_FLG` — 재작업 표지 문자열(최대 2자, 받은 값 그대로. 보통 `Y`·`N`). */
   erpReworkFlag?: string;
-  lastChange?: ProductionOrderChange;
 };
 
 type ContractListQuery = NonNullable<

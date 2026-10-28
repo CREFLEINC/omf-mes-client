@@ -10,10 +10,11 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
+import { BoardFrame } from '../../patterns/board-frame';
 import { BoardTable } from '../../patterns/board-table';
 import { toApiError } from '../../patterns/request';
-import { describeLoadError, LoadErrorBanner } from './load-error-banner';
-import { formatDateTime } from './message-status';
+import { describeLoadError, LoadErrorBanner } from '../integration-sync/load-error-banner';
+import { formatDateTime } from '../integration-sync/message-status';
 import {
   isRunFinished,
   SYNC_RESULT,
@@ -23,11 +24,11 @@ import {
   type SyncTableStatus,
 } from './sync-tables';
 
-const t = messages.integrationSync.syncTables;
+const t = messages.erpInbound;
 
 /** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
 const orEmptyMark = (value: string | number | null): ReactNode =>
-  value === null ? messages.integrationSync.values.empty : value;
+  value === null ? t.values.empty : value;
 
 /**
  * 누른 표의 기다림. `baseline` 은 누를 때 보이던 마지막 끝난 시각이고, `seenRequest` 는 목록이 그 요청을
@@ -38,59 +39,18 @@ interface PendingRun {
   seenRequest: boolean;
 }
 
-/** 펼침을 브라우저에 남기는 열쇠 — 다시 들어와도 접은 채로 둔 사람은 접힌 채로 본다. */
-export const EXPANDED_KEY = 'omf-mes:integration-sync:sync-tables-expanded';
-
-const readExpanded = (): boolean => {
-  try {
-    return window.localStorage.getItem(EXPANDED_KEY) === '1';
-  } catch {
-    return false;
-  }
-};
-
-/** 접은 줄의 요약 — 표 수 · 마지막 회차가 실패한 표 수 · 가장 늦은 마지막 읽음. */
-export const summaryOf = (items: readonly SyncTableStatus[]): string => {
-  const failed = items.filter((item) => item.lastStatusCode === SYNC_RESULT.failed).length;
-  const latest = items
-    .map((item) => item.lastFinishedAt)
-    .filter((value): value is string => value !== null)
-    .sort()
-    .at(-1);
-
-  return t.summary(
-    items.length,
-    failed,
-    formatDateTime(latest) ?? messages.integrationSync.values.empty,
-  );
-};
-
 /**
- * ERP 받기 표 여덟의 상태와 「지금 읽기」(omf-mes-server#757 · 장부 P-81).
+ * ERP 수신 — ERP 받기 표 여덟의 상태와 「지금 읽기」(omf-mes-server#757 · 장부 P-81).
  *
- * 연계 메시지 목록 **위에** 둔다 — 「지금 읽었는가」가 먼저 읽히고, 읽은 결과의 실패 건은 아래 목록에서
- * 다시 보낸다. 조회 조건(기간·상태)과 무관한 현재 상태라 주소에 아무것도 두지 않는다.
- *
- * **기본은 접힌 한 줄이다**(사용자 지시 2026-10-27 — 입고 관리처럼 목록 · 상세가 창 높이를 쓴다). 접혀도 요약
- * (표 수 · 실패 · 마지막 읽음)과 실패 배너는 보인다. 펼치면 표와 「지금 읽기」가 선다.
+ * 「ERP 연동 현황·이력」 묶음의 탭이다(사용자 지시 2026-10-27 — 연동 현황·이력 위에 접혀 있던 받기 상태를 탭으로 뗐다).
+ * 입고 관리 짜임의 한 구획(`BoardFrame`)이라 표가 창 바닥까지 서고 넘치는 줄은 구획 안에서 스크롤한다. 조회 조건이
+ * 없는 지금 상태라 주소에 아무것도 두지 않는다. 읽은 결과의 실패 건은 「연동 현황·이력」 탭에서 다시 보낸다.
  *
  * 끝을 아는 법은 서버가 정했다 — 요청 시각이 비고 마지막 끝난 시각이 바뀌면 다 읽은 것이다.
  * 그때 결과를 알림으로 한 번 알린다(창을 열어 둔 채 다른 일을 하는 사람이 표를 다시 보지 않아도 되게).
  */
-export const SyncTablePanel = () => {
-  const titleId = useId();
-  const bodyId = useId();
+export const ErpInboundScreen = () => {
   const disabledReasonId = useId();
-  const [expanded, setExpanded] = useState<boolean>(readExpanded);
-  const toggleExpanded = (): void => {
-    const next = !expanded;
-    setExpanded(next);
-    try {
-      window.localStorage.setItem(EXPANDED_KEY, next ? '1' : '0');
-    } catch {
-      /* 저장하지 못해도 이번 화면에서는 그대로 쓴다. */
-    }
-  };
   const toast = useToast();
   const status = useSyncTables();
   const run = useRequestSyncRun();
@@ -241,68 +201,55 @@ export const SyncTablePanel = () => {
   ];
 
   return (
-    <section className="pane sync-tables-pane" aria-labelledby={titleId}>
-      <div className="sync-tables-head">
-        <h2 id={titleId} className="pane-title">
-          {t.title}
-        </h2>
-        {status.data !== undefined && <span className="field-note">{summaryOf(items)}</span>}
-        <Button
-          variant="text"
-          size="sm"
-          aria-expanded={expanded}
-          aria-controls={bodyId}
-          onClick={toggleExpanded}
-        >
-          {expanded ? t.collapse : t.expand}
-        </Button>
-      </div>
-      {expanded && <p className="field-note">{t.description}</p>}
+    <BoardFrame
+      list={{
+        label: t.table.label,
+        content: (
+          <>
+            {status.isError && (
+              <LoadErrorBanner error={status.error} onRetry={() => void status.refetch()} />
+            )}
 
-      {status.isError && (
-        <LoadErrorBanner error={status.error} onRetry={() => void status.refetch()} />
-      )}
+            {run.isError && (
+              <div className="banner-slot">
+                <AlertBanner variant="error" title={t.runErrorTitle}>
+                  {describeLoadError(toApiError(run.error))}
+                </AlertBanner>
+              </div>
+            )}
 
-      {run.isError && (
-        <div className="banner-slot">
-          <AlertBanner variant="error" title={t.runErrorTitle}>
-            {describeLoadError(toApiError(run.error))}
-          </AlertBanner>
-        </div>
-      )}
+            {/* 배치 규범 4 — 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 낸다. 연동이 꺼진 서버에서만 선다. */}
+            {status.data !== undefined && !enabled && (
+              <p id={disabledReasonId} className="field-note">
+                {t.disabledReason}
+              </p>
+            )}
 
-      {/* 배치 규범 4 — 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 낸다. */}
-      {expanded && status.data !== undefined && !enabled && (
-        <p id={disabledReasonId} className="field-note">
-          {t.disabledReason}
-        </p>
-      )}
-
-      {!expanded ? null : status.isPending ? (
-        <div role="status" aria-label={t.loading}>
-          <SkeletonText lines={3} />
-        </div>
-      ) : (
-        !status.isError && (
-          <div id={bodyId}>
-            {/* 입고 관리와 같은 표(열 폭 끌기 · 한 줄). 제목이 바로 위 h2 에 보이므로 표 이름은 읽는 이에게만 준다. */}
-            <BoardTable
-              label={t.title}
-              widthKey="omf-mes:integration-sync:columns:sync-tables"
-              minWidth="58rem"
-              columns={columns}
-              rows={items}
-              getRowId={(item) => item.interfaceCode}
-              empty={<EmptyState size="sm" title={t.empty} />}
-            />
-          </div>
-        )
-      )}
-    </section>
+            {status.isPending ? (
+              <div role="status" aria-label={t.loading}>
+                <SkeletonText lines={3} />
+              </div>
+            ) : (
+              !status.isError && (
+                <BoardTable
+                  label={t.table.label}
+                  widthKey="omf-mes:erp-inbound:columns:tables"
+                  minWidth="58rem"
+                  columns={columns}
+                  rows={items}
+                  getRowId={(item) => item.interfaceCode}
+                  empty={<EmptyState size="sm" title={t.empty} />}
+                />
+              )
+            )}
+          </>
+        ),
+      }}
+    />
   );
 };
 
-/** 다 읽은 표 하나의 알림. 실패 건이 있으면 성공으로 칠하지 않는다 — 아래 목록에서 다시 보내야 한다. */
+/** 다 읽은 표 하나의 알림. 실패 건이 있으면 성공으로 칠하지 않는다 — 연동 현황·이력에서 다시 보내야 한다. */
 const finishedToast = (item: SyncTableStatus) => {
   if (item.lastStatusCode === SYNC_RESULT.failed) {
     return { variant: 'error' as const, description: t.finished.failed(item.name) };

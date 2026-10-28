@@ -1063,6 +1063,7 @@ describe('AppLayout', () => {
       /* 연동 로그가 첫 탭, 그 뒤가 받은 데이터 — 기준 데이터 다음 전표 차례다. */
       'ERP 연동 현황·이력': [
         '/master-data/integration-sync',
+        '/master-data/erp-inbound',
         '/master-data/erp-outbound',
         '/system/erp-data/common-codes',
         '/system/erp-data/employees',

@@ -20,8 +20,8 @@ export const erpOutbound = {
     send: '송신',
     pending: '대기',
     failed: '실패',
-    messageKey: '메시지 키',
-    target: '대상',
+    /** 메시지 키에서 연계 코드를 뗀 번호 — 입고 번호 같은 업무 번호(연동 현황·이력의 「번호」와 같다). */
+    messageKey: '번호',
     createdAt: '생성',
     availableAt: '보낼 시각',
     retryCount: '시도',
@@ -47,6 +47,16 @@ export const erpOutbound = {
     beyondLast: '이 쪽에는 보낼 건이 없습니다',
   },
   /** 탭 막대 오른쪽의 상태 칩 — 송신 항목 전체의 합. 누르면 이 탭으로 온다. */
+  /** 송신 예정의 생성일 조건 — 바로 고르는 범위(오늘 포함)와 날짜 두 칸. */
+  created: {
+    label: '생성일',
+    presets: '생성일 범위 바로 고르기',
+    all: '전체',
+    week: '최근 1주일',
+    month: '최근 1개월',
+    from: '시작일',
+    to: '종료일',
+  },
   chips: {
     label: 'ERP 송신 상태',
     pending: (count: number): string => `송신 대기 ${String(count)}`,

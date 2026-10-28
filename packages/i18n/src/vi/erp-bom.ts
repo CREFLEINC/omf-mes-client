@@ -5,37 +5,43 @@ import type { Translated } from './translated';
 export const erpBom: Translated<typeof ko.erpBom> = {
   title: 'Tra cứu BOM (ERP)',
   breadcrumbRoot: 'Quản trị hệ thống',
-  readOnlyNote: 'Thông tin nhận từ ERP. Không thể sửa trong MES.',
   fields: {
     parentItem: 'Mặt hàng cha',
-    bomCode: 'Mã BOM',
   },
   actions: {
     pickParent: 'Chọn mặt hàng cha',
     confirmPick: 'Chọn',
   },
   panes: {
-    boms: 'Danh sách BOM',
+    filter: 'Điều kiện tra cứu',
     components: 'Thành phần',
   },
-  bomTable: {
+  parent: {
+    label: 'Chi tiết mặt hàng cha',
+    itemCode: 'Mã mặt hàng',
+    itemName: 'Tên mặt hàng',
+    itemType: 'Loại',
+    spec: 'Quy cách',
+    baseUom: 'Đơn vị cơ bản',
     bomCode: 'Mã BOM',
     bomVersion: 'Rev',
     status: 'Trạng thái',
-    isDefault: 'Mặc định',
-    effectiveFrom: 'Hiệu lực từ',
-    effectiveTo: 'Hiệu lực đến',
+    effective: 'Thời hạn hiệu lực',
+    effectiveRange: (from: string, to: string): string => `${from} ~ ${to}`,
     baseQty: 'Số lượng cơ sở',
-    openAction: (bomCode: string, bomVersion: number): string =>
-      `Xem thành phần ${bomCode} Rev ${String(bomVersion)}`,
   },
   componentTable: {
-    sequenceNo: 'STT',
-    componentItem: 'Mặt hàng con',
     requiredQty: 'Định mức',
     scrapRate: 'Tỷ lệ hao hụt',
     isMandatory: 'Bắt buộc',
-    erpChildItemSeq: 'STT mặt hàng con ERP',
+  },
+  tree: {
+    item: 'Mặt hàng',
+    expand: (label: string): string => `Mở ${label}`,
+    collapse: (label: string): string => `Thu gọn ${label}`,
+    loading: 'Đang tải',
+    failed: 'Không tải được cấu trúc con',
+    cycle: 'Trùng mặt hàng ở cấp trên',
   },
   values: {
     empty: '—',
@@ -47,16 +53,10 @@ export const erpBom: Translated<typeof ko.erpBom> = {
     unknown: 'Không xác định',
   },
   loading: {
-    boms: 'Đang tải danh sách BOM',
-    components: 'Đang tải thành phần',
+    boms: 'Đang tải BOM',
   },
   empty: {
     noParentTitle: 'Hãy chọn mặt hàng cha',
-    noParentDescription: 'Chọn mặt hàng bằng «Chọn mặt hàng cha» để xem BOM của mặt hàng đó.',
-    noBomTitle: 'Không có BOM phù hợp',
-    noBomDescription: 'Hãy xóa mã BOM hoặc chọn mặt hàng cha khác.',
-    notSelected: 'Chọn một BOM trong danh sách để xem thành phần.',
-    noComponentTitle: 'Không có thành phần',
-    noComponentDescription: 'BOM này không có thành phần nhận từ ERP.',
+    noBomTitle: 'Mặt hàng này không có BOM',
   },
 };

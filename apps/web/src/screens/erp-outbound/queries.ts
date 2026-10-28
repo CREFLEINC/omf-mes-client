@@ -2,6 +2,7 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 
 import { useApiClient } from '../../patterns/api-context';
 import { ApiRequestError, runRequest } from '../../patterns/request';
+import type { PeriodQuery } from '../integration-sync/period';
 import type { MessageListResult } from '../integration-sync/types';
 import {
   ALL_TIME,
@@ -30,8 +31,8 @@ export const erpOutboundKeys = {
   items: ['erp-outbound', 'items'] as const,
   count: (interfaceCode: string, status: CountedStatus) =>
     ['integration-messages', 'outbound-count', interfaceCode, status] as const,
-  pending: (interfaceCode: string | null, page: number) =>
-    ['integration-messages', 'outbound-pending', interfaceCode, page] as const,
+  pending: (interfaceCode: string | null, page: number, period: PeriodQuery | null) =>
+    ['integration-messages', 'outbound-pending', interfaceCode, page, period] as const,
 };
 
 /** 권한이 없으면(403) 다시 불러도 같다 — 되풀이하지 않는다. */
@@ -129,11 +130,13 @@ export const useOutboundCounts = (enabled = true): OutboundCounts => {
 export const usePendingMessages = (
   interfaceCode: string | null,
   page: number,
+  /** 생성일 조건. 없으면 기간 없이(전체) — 「아직 보내지 않은 것」은 기간과 상관없다. */
+  period: PeriodQuery | null = null,
 ): UseQueryResult<MessageListResult> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: erpOutboundKeys.pending(interfaceCode, page),
+    queryKey: erpOutboundKeys.pending(interfaceCode, page, period),
     enabled: interfaceCode !== null,
     refetchInterval: REFRESH_MS,
     retry: retryUnlessForbidden,
@@ -146,7 +149,7 @@ export const usePendingMessages = (
         client.GET('/integration/messages', {
           params: {
             query: {
-              ...ALL_TIME,
+              ...(period ?? ALL_TIME),
               directionCode: OUTBOUND_DIRECTION,
               statusCode: MESSAGE_STATUS.pending,
               interfaceCode,

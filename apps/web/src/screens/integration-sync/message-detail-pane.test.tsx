@@ -40,12 +40,15 @@ describe('MessageDetailPane — 항목', () => {
       }),
     });
 
-    expect(fieldValue('방향')).toBe('INBOUND');
-    expect(fieldValue('대상')).toBe('SAMPLE_TARGET · 9101');
-    expect(fieldValue('전송')).toBe('2026-08-04 07:13');
-    expect(fieldValue('완료')).toBe('2026-08-04 07:15');
-    expect(fieldValue('처리 중')).toBe('sync-worker-01 (2026-08-04 09:20)');
+    expect(fieldValue('구분')).toBe('수신');
+    expect(fieldValue('보낸 시각')).toBe('2026-08-04 07:13');
+    expect(fieldValue('완료 시각')).toBe('2026-08-04 07:15');
+    // 처리하는 워커 이름 · 대상 코드 같은 시스템 값은 보이지 않는다(사용자 지시 2026-10-27).
+    expect(fieldValue('처리 중')).toBe('2026-08-04 09:20부터 처리 중');
     expect(fieldValue('다음 시도')).toBe('2026-08-04 07:20');
+    expect(screen.queryByText('대상')).toBeNull();
+    expect(screen.queryByText(/sync-worker-01/)).toBeNull();
+    expect(screen.queryByText(/SAMPLE_TARGET/)).toBeNull();
   });
 
   it('null인 값은 빈 칸이 아니라 「—」로 나온다', () => {
@@ -59,36 +62,33 @@ describe('MessageDetailPane — 항목', () => {
       }),
     });
 
-    expect(fieldValue('전송')).toBe('—');
-    expect(fieldValue('완료')).toBe('—');
+    expect(fieldValue('보낸 시각')).toBe('—');
+    expect(fieldValue('완료 시각')).toBe('—');
     expect(fieldValue('처리 중')).toBe('—');
-    expect(fieldValue('마지막 오류')).toBe('—');
+    expect(fieldValue('오류 내용')).toBe('—');
   });
 
   it('시도 횟수가 0이어도 그대로 보인다', () => {
     renderPane({ view: messageRow({ retryCount: 0 }) });
 
-    expect(fieldValue('시도')).toBe('0');
+    expect(fieldValue('재시도 횟수')).toBe('0');
   });
 
-  it('잡고 있는 워커는 있는데 시각이 없으면 시각 자리만 「—」다', () => {
+  it('처리 중인데 시작 시각이 없으면 「처리 중」만 낸다 — 시각을 지어내지 않는다', () => {
     renderPane({ view: messageRow({ lockedBy: 'sync-worker-01', lockedAt: null }) });
 
-    expect(fieldValue('처리 중')).toBe('sync-worker-01 (—)');
+    // 이름표와 값이 같은 글자다 — 그 칸의 두 글자를 함께 본다.
+    const cell = screen.getAllByText('처리 중')[0]?.closest('.field-cell');
+    expect(cell?.textContent).toBe('처리 중처리 중');
   });
 });
 
 describe('MessageDetailPane — 전송 내용 구획', () => {
-  it('구획은 있으나 잠겨 있고 사유가 이어져 있다', () => {
+  it('늘 잠긴 「전송 내용 보기」 단추와 그 사유 안내를 두지 않는다(사용자 지시 2026-10-27)', () => {
     renderPane();
 
-    const action = screen.getByRole('button', { name: '전송 내용 보기' });
-    expect(action).toBeDisabled();
-
-    const reasonId = action.getAttribute('aria-describedby') ?? '';
-    expect(document.getElementById(reasonId)).toHaveTextContent(
-      '전송 내용은 열람 범위가 정해진 뒤에 볼 수 있습니다.',
-    );
+    expect(screen.queryByRole('button', { name: '전송 내용 보기' })).toBeNull();
+    expect(screen.queryByText(/열람 범위가 정해진 뒤/)).toBeNull();
   });
 
   it('화면 타입에 전문이 없어 그릴 값 자체가 없다', () => {

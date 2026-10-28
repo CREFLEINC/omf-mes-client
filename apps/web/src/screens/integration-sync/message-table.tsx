@@ -3,6 +3,8 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { BoardTable } from '../../patterns/board-table';
+import { OneLine } from '../../patterns/po-board';
+import { directionName, documentNoOf, interfaceName } from './message-labels';
 import { formatDateTime, toStatusView } from './message-status';
 import type { IntegrationMessageRow } from './types';
 
@@ -38,7 +40,8 @@ const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty
 /**
  * 연계 메시지 목록 표.
  *
- * 계약의 `IntegrationMessage`에는 필드가 14개 있으나 **자료 열은 여섯이다**(+ 재처리 열).
+ * 계약의 `IntegrationMessage`에는 필드가 14개 있으나 **자료 열은 일곱이다**(+ 재처리 열). 코드는 업무 이름으로
+ * 옮겨 낸다(구분 · 항목 · 번호 · 상태 — `message-labels.ts`).
  * 전부 열로 만들면 표가 짓눌려 셀이 낱말 단위로 쪼개진다 —
  * 앞 화면에서 「표를 읽을 수 없다」로 보고된 결함이다. 나머지는 상세에서 본다.
  *
@@ -60,19 +63,30 @@ export const MessageTable = ({
   now,
 }: MessageTableProps) => {
   const columns: Column<IntegrationMessageRow>[] = [
+    /* 코드 대신 업무 이름(사용자 지시 2026-10-27) — `message-labels.ts`. */
+    {
+      key: 'directionCode',
+      header: t.table.direction,
+      width: '64px',
+      render: (row) => directionName(row.directionCode),
+    },
+    {
+      key: 'interfaceCode',
+      header: t.table.interfaceCode,
+      width: '112px',
+      render: (row) => <OneLine text={interfaceName(row.interfaceCode)} />,
+    },
     {
       key: 'messageKey',
       header: t.table.messageKey,
-      /* 송신 키(`IF-GR-SEND:GR-…`)가 받기 키보다 길다 — 잘리지 않는 폭. */
-      width: '232px',
+      width: '168px',
       /* 상세를 여는 단추 자리(`BoardTable` 의 `pick`) — 줄 어디를 눌러도 연다(체크 · 재처리 단추는 그쪽이 받는다). */
-      render: (row) => row.messageKey,
+      render: (row) => <OneLine text={documentNoOf(row)} />,
     },
-    { key: 'interfaceCode', header: t.table.interfaceCode, width: '128px' },
     {
       key: 'statusCode',
       header: t.table.status,
-      width: '160px',
+      width: '152px',
       render: (row) => {
         const view = toStatusView(row, now);
 
@@ -93,15 +107,11 @@ export const MessageTable = ({
       width: '148px',
       render: (row) => orEmptyMark(formatDateTime(row.createdAt)),
     },
-    /*
-     * 폭을 지정하지 않는 유일한 열이다 — 남는 폭을 이 열이 가져간다.
-     * 지정 폭의 합 **764px**(176+128+160+64+148+88)이 `.wide-table`의 최소 폭 928px 안에 들어가므로
-     * 가장 좁을 때도 이 열에 164px이 남는다. 도출 표는 docs/layout-conventions.md에 있다.
-     */
+    /* 폭을 지정하지 않는 유일한 열이다 — 남는 폭을 이 열이 가져간다. */
     {
       key: 'lastErrorMessage',
       header: t.table.lastErrorMessage,
-      render: (row) => orEmptyMark(row.lastErrorMessage ?? null),
+      render: (row) => <OneLine text={row.lastErrorMessage ?? t.values.empty} />,
     },
     {
       key: 'retry',
@@ -140,13 +150,7 @@ export const MessageTable = ({
   /** 조회 전 → 범위 밖 쪽 → 결과 없음 순서로 하나만 낸다. 셋은 사용자가 할 조치가 서로 다르다. */
   const emptySlot = (): ReactNode => {
     if (!hasPeriod) {
-      return (
-        <EmptyState
-          size="sm"
-          title={t.empty.noPeriodTitle}
-          description={t.empty.noPeriodDescription}
-        />
-      );
+      return <EmptyState size="sm" title={t.empty.noPeriodTitle} />;
     }
 
     if (isBeyondLast) {
@@ -155,7 +159,6 @@ export const MessageTable = ({
           size="sm"
           live
           title={t.empty.beyondLastTitle}
-          description={t.empty.beyondLastDescription}
           action={
             <Button variant="outlined" onClick={onFirstPage}>
               {t.actions.goFirstPage}
@@ -165,14 +168,7 @@ export const MessageTable = ({
       );
     }
 
-    return (
-      <EmptyState
-        size="sm"
-        live
-        title={t.empty.noResultTitle}
-        description={t.empty.noResultDescription}
-      />
-    );
+    return <EmptyState size="sm" live title={t.empty.noResultTitle} />;
   };
 
   /* 입고 관리와 같은 표 — 열 폭 끌기 · 줄 어디를 눌러도 상세 · 연 줄 칠하기(`patterns/board-table.tsx`). */
@@ -180,7 +176,7 @@ export const MessageTable = ({
     <BoardTable
       label={t.panes.list}
       widthKey="omf-mes:integration-sync:columns:messages"
-      minWidth="58rem"
+      minWidth="60rem"
       columns={columns}
       rows={rows}
       /*

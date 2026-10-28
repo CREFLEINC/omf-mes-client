@@ -13,7 +13,6 @@ import {
   PLACEHOLDER_DIRECTION_CODES,
   PLACEHOLDER_INTERFACE_CODES,
   PLACEHOLDER_STATUS_CODES,
-  PLACEHOLDER_TARGET_TYPE_CODES,
   toCodeOptions,
 } from './filter-options';
 import {
@@ -32,10 +31,10 @@ import { MessageTable } from './message-table';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { defaultPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
+import { messageTitleOf } from './message-labels';
 import { messageKeys, useFilterOptions, useMessageDetail, useMessageList } from './queries';
 import { retryMessage, retryMessagesBatch } from './requests';
 import { RetryErrorBanner } from './retry-error-banner';
-import { SyncTablePanel } from './sync-table-panel';
 import type { BatchResult, IntegrationMessageRow } from './types';
 
 const t = messages.integrationSync;
@@ -94,7 +93,6 @@ export const IntegrationSyncScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { client } = useApiClient();
-  const batchReasonId = useId();
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:integration-sync:split', 0.6);
 
@@ -307,7 +305,7 @@ export const IntegrationSyncScreen = () => {
     setRequested(
       rows
         .filter((row) => selectedIds.includes(String(row.integrationMessageId)))
-        .map((row) => ({ id: row.integrationMessageId, messageKey: row.messageKey })),
+        .map((row) => ({ id: row.integrationMessageId, label: messageTitleOf(row) })),
     );
     setIsBatchOpen(true);
   };
@@ -343,13 +341,10 @@ export const IntegrationSyncScreen = () => {
       <ErpSendChips linkToTab />
 
       {/*
-       * 위 — 받기 상태(접힘)와 조회 조건. 둘을 한 상자로 재야 받기 상태를 펼치고 접을 때도 아래 두 구획이 창 바닥에
-       * 맞춰 다시 선다(`useFitToViewport` 가 이 상자의 크기 변화를 본다).
+       * 위 — 조회 실패 안내와 조회 조건. 한 상자로 재야 안내가 서고 사라질 때도 아래 두 구획이 창 바닥에 맞춰 다시
+       * 선다(`useFitToViewport` 가 이 상자의 크기 변화를 본다). ERP 받기 상태는 「ERP 수신」 탭으로 뗐다(사용자 지시 2026-10-27).
        */}
       <section ref={aboveRef} className="integration-sync-above" aria-label={t.panes.filter}>
-        {/* 연계 메시지 목록과 따로 읽는다 — 조회 조건과 무관한 지금 상태라 목록이 실패해도 보인다. */}
-        <SyncTablePanel />
-
         {list.isError && <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />}
 
         {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
@@ -375,12 +370,6 @@ export const IntegrationSyncScreen = () => {
               (row) => row.directionCode,
               filters.direction,
             )}
-            targetTypeOptions={toCodeOptions(
-              PLACEHOLDER_TARGET_TYPE_CODES,
-              optionRows,
-              (row) => row.targetTypeCode,
-              filters.targetType,
-            )}
             onSearch={(nextPeriod, nextFilters) => {
               applyQuery(nextPeriod, nextFilters);
             }}
@@ -405,23 +394,17 @@ export const IntegrationSyncScreen = () => {
           {/* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「기록이 없습니다」로 보이면 안 된다. */}
           {!list.isError && (
             <>
-              {/* 배치 규범 4 — 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 낸다. */}
+              {/* 고른 건이 없으면 단추만 잠근다 — 사유 안내 줄은 두지 않는다(사용자 지시 2026-10-27 「불필요한 안내문 제거」). */}
               <div className="filter-bar">
                 <div className="field-cell">
                   <span className="field-label">{t.batch.selectionCount(selectedIds.length)}</span>
                   <Button
                     variant="outlined"
                     disabled={selectedIds.length === 0}
-                    aria-describedby={selectedIds.length === 0 ? batchReasonId : undefined}
                     onClick={openBatch}
                   >
                     {t.actions.batchRetry}
                   </Button>
-                  {selectedIds.length === 0 && (
-                    <span id={batchReasonId} className="field-note">
-                      {t.reasons.batchNeedsSelection}
-                    </span>
-                  )}
                 </div>
               </div>
 

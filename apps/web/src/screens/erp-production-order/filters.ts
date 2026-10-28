@@ -2,7 +2,6 @@ import type { ErpProductionOrderListQuery } from './types';
 
 /**
  * 조회 조건은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
- * 고른 ERP W/O(`sel`)도 주소에 두어 링크 하나로 같은 상세를 연다.
  */
 
 export interface ErpProductionOrderFilters {
@@ -40,15 +39,7 @@ export const readPage = (params: URLSearchParams): number => {
   return Number.isSafeInteger(page) && page > 0 ? page : 1;
 };
 
-export const readSelectedId = (params: URLSearchParams): number | null => {
-  const id = Number(params.get('sel'));
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
-};
-
-/**
- * 조건·쪽을 주소로 옮긴다. **조건이 바뀌면 고른 건을 놓는다** — 새 결과에 그 건이 없을 수 있다.
- * 빈 값은 적지 않아 주소가 짧게 남는다.
- */
+/** 조건·쪽을 주소로 옮긴다. 빈 값은 적지 않아 주소가 짧게 남는다. */
 export const toSearchParams = (
   filters: ErpProductionOrderFilters,
   page: number,
@@ -60,16 +51,6 @@ export const toSearchParams = (
   });
   if (page > 1) params.set('page', String(page));
   return params;
-};
-
-/** 고른 건만 바꾼다 — 조건과 쪽은 그대로 둔다. */
-export const toSelectionSearchParams = (
-  current: URLSearchParams,
-  productionOrderId: number,
-): URLSearchParams => {
-  const next = new URLSearchParams(current);
-  next.set('sel', String(productionOrderId));
-  return next;
 };
 
 /** 숫자로 읽히지 않는 식별자는 보내지 않는다 — 서버가 400 으로 목록 전체를 막는다. */

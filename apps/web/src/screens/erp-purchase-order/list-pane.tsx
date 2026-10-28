@@ -1,6 +1,8 @@
-import { Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { BoardTable } from '../../patterns/board-table';
+import { OneLine } from '../../patterns/po-board';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { PurchaseOrder } from './types';
@@ -26,7 +28,10 @@ export interface ErpPurchaseOrderListPaneProps {
   onChangePage: (page: number) => void;
 }
 
-/** 헤더 목록. 행 고르기 말고는 조작이 없다 — 읽기 전용 화면이다. */
+/**
+ * 헤더 목록 — 화면 틀(`BoardFrame`)의 왼쪽 구획 내용. 줄 어디를 눌러도 그 건을 고른다(입고 관리의 발주 목록과 같다).
+ * 행 고르기 말고는 조작이 없다 — 읽기 전용 화면이다.
+ */
 export const ErpPurchaseOrderListPane = ({
   rows,
   isLoading,
@@ -41,53 +46,42 @@ export const ErpPurchaseOrderListPane = ({
   onChangePage,
 }: ErpPurchaseOrderListPaneProps) => {
   const columns: Column<PurchaseOrder>[] = [
-    {
-      key: 'purchaseOrderNo',
-      header: t.fields.purchaseOrderNo,
-      render: (row) => (
-        <button
-          type="button"
-          className="link-cell"
-          aria-label={t.actions.select(row.purchaseOrderNo)}
-          aria-current={selectedId === row.purchaseOrderId ? true : undefined}
-          onClick={() => {
-            onSelect(row.purchaseOrderId);
-          }}
-        >
-          {row.purchaseOrderNo}
-        </button>
-      ),
-    },
-    {
-      key: 'erpPurchaseOrderNo',
-      header: t.fields.erpPurchaseOrderNo,
-      render: (row) => displayOr(row.erpPurchaseOrderNo),
-    },
+    /* 고르는 단추 자리(`BoardTable` 의 `pick`). */
+    { key: 'purchaseOrderNo', header: t.fields.purchaseOrderNo, width: '128px' },
     {
       key: 'supplierId',
       header: t.fields.supplier,
-      render: (row) => supplierNameOf(row.supplierId),
+      render: (row) => <OneLine text={supplierNameOf(row.supplierId)} />,
     },
-    { key: 'plantId', header: t.fields.plant, render: (row) => plantNameOf(row.plantId) },
+    {
+      key: 'plantId',
+      header: t.fields.plant,
+      width: '88px',
+      render: (row) => <OneLine text={plantNameOf(row.plantId)} />,
+    },
     {
       key: 'erpOrderTypeCode',
       header: t.fields.orderType,
-      render: (row) => orderTypeNameOf(row.erpOrderTypeCode),
+      width: '96px',
+      render: (row) => <OneLine text={orderTypeNameOf(row.erpOrderTypeCode)} />,
     },
     {
       key: 'erpPurchaseGroupCode',
       header: t.fields.purchaseGroup,
-      render: (row) => purchaseGroupNameOf(row.erpPurchaseGroupCode),
+      width: '96px',
+      render: (row) => <OneLine text={purchaseGroupNameOf(row.erpPurchaseGroupCode)} />,
     },
-    { key: 'orderDate', header: t.fields.orderDate },
+    { key: 'orderDate', header: t.fields.orderDate, width: '104px' },
     {
       key: 'expectedReceiptDate',
       header: t.fields.expectedReceiptDate,
+      width: '104px',
       render: (row) => displayOr(row.expectedReceiptDate),
     },
     {
       key: 'statusCode',
       header: t.fields.status,
+      width: '88px',
       render: (row) => (
         <Chip variant="status" size="sm">
           {statusNameOf(row.statusCode)}
@@ -98,36 +92,39 @@ export const ErpPurchaseOrderListPane = ({
 
   if (isLoading) {
     return (
-      <section className="pane" aria-label={t.panes.list}>
-        <div role="status" aria-label={t.loading}>
-          <SkeletonText lines={4} />
-        </div>
-      </section>
+      <div role="status" aria-label={t.loading}>
+        <SkeletonText lines={4} />
+      </div>
     );
   }
 
   return (
-    <section className="pane" aria-label={t.panes.list}>
-      <h2>{t.panes.list}</h2>
-      <div className="wide-table">
-        <Table
-          caption={<span className="erp-data-table-caption">{t.panes.list}</span>}
-          density="compact"
-          columns={columns}
-          rows={rows}
-          getRowId={(row) => String(row.purchaseOrderId)}
-          sort={null}
-          empty={
-            <EmptyState
-              size="sm"
-              live
-              title={page.isBeyondLast ? t.empty.beyondTitle : t.empty.title}
-              description={page.isBeyondLast ? t.empty.beyondDescription : t.empty.description}
-            />
-          }
-        />
-      </div>
+    <>
+      <BoardTable
+        label={t.panes.list}
+        widthKey="omf-mes:erp-purchase-order:columns:orders"
+        minWidth="54rem"
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => String(row.purchaseOrderId)}
+        pick={{
+          columnKey: 'purchaseOrderNo',
+          label: (row) => t.actions.select(row.purchaseOrderNo),
+          currentId: selectedId === null ? null : String(selectedId),
+          onPick: (row) => {
+            onSelect(row.purchaseOrderId);
+          },
+        }}
+        sort={null}
+        empty={
+          <EmptyState
+            size="sm"
+            live
+            title={page.isBeyondLast ? t.empty.beyondTitle : t.empty.title}
+          />
+        }
+      />
       <PageNav view={page} onChange={onChangePage} />
-    </section>
+    </>
   );
 };

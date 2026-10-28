@@ -160,6 +160,8 @@ describe('ErpPurchaseOrderScreen', () => {
     const listPane = screen.getByRole('region', { name: t.panes.list });
     expect(await within(listPane).findByText('SYN-SUP · 합성 공급사')).toBeInTheDocument();
     expect(await within(listPane).findByText('합성 등록')).toBeInTheDocument();
+    /* ERP 발주번호는 P/O 번호와 겹쳐 보이지 않는다. */
+    expect(within(listPane).queryByText('SYN-EPO-901')).not.toBeInTheDocument();
     /* ERP 원본 코드는 공통코드 이름으로(서버 #737 · P-67). */
     expect(await within(listPane).findByText('합성 발주유형')).toBeInTheDocument();
     expect(await within(listPane).findByText('합성 구매그룹')).toBeInTheDocument();
@@ -185,14 +187,13 @@ describe('ErpPurchaseOrderScreen', () => {
     expect(within(detailPane).getByText('합성 구매그룹')).toBeInTheDocument();
     /* 입출고 유형은 코드 그룹이 없어 원본 그대로. */
     expect(within(detailPane).getByText('SYN-IO1')).toBeInTheDocument();
+    expect(within(detailPane).queryByText('SYN-EPO-901')).not.toBeInTheDocument();
 
     /* 읽기 전용 — 쓰기 요청이 한 번도 나가지 않고, 수정 단추도 없다. */
     expect(requests.every((request) => request.method === 'GET')).toBe(true);
     expect(screen.queryByRole('button', { name: /저장|수정|삭제|등록/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: t.actions.integrationSync })).toHaveAttribute(
-      'href',
-      '/master-data/integration-sync',
-    );
+    /* 읽기 전용 안내 문구는 두지 않는다 — 수정 컨트롤이 없는 것으로 충분하다. */
+    expect(screen.queryByText(/수정할 수 없습니다/)).not.toBeInTheDocument();
   });
 
   it('주소에 고른 건이 있으면 바로 상세를 연다', async () => {
@@ -200,7 +201,8 @@ describe('ErpPurchaseOrderScreen', () => {
     renderWithProviders(<ErpPurchaseOrderScreen />, { fetch, route: '/?sel=901' });
 
     const detailPane = await screen.findByRole('region', { name: t.panes.detail });
-    expect(await within(detailPane).findByText('SYN-EPO-901')).toBeInTheDocument();
+    expect(await within(detailPane).findByText('SYN-PO-901')).toBeInTheDocument();
+    expect(within(detailPane).queryByText('SYN-EPO-901')).not.toBeInTheDocument();
   });
 
   it('ERP 칸이 null 이면 「-」, 이름을 못 찾은 코드는 원본, 취소된 라인은 취소 표지와 시각을 보인다', async () => {

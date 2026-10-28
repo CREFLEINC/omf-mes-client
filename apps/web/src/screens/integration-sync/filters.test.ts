@@ -136,8 +136,11 @@ describe('toFilterChips · hasAnyFilter', () => {
       'targetType',
       'retryMin',
     ]);
-    expect(chips[0]?.label).toBe('상태: FAILED');
-    expect(chips[4]?.label).toBe('시도 횟수 하한: 3');
+    // 코드 대신 업무 이름 — 모르는 연계 코드는 코드 그대로.
+    expect(chips[0]?.label).toBe('상태: 실패');
+    expect(chips[1]?.label).toBe('항목: IF-SAMPLE-A');
+    expect(chips[2]?.label).toBe('구분: 송신');
+    expect(chips[4]?.label).toBe('재시도 3회 이상');
   });
 
   it('걸리지 않은 조건은 칩을 만들지 않는다', () => {

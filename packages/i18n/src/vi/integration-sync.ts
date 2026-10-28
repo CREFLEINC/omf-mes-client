@@ -19,14 +19,39 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
   listCollapse: 'Thu gọn danh sách',
   listExpand: 'Mở danh sách',
+  labels: {
+    directions: {
+      INBOUND: 'Nhận',
+      OUTBOUND: 'Gửi',
+    },
+    statuses: {
+      PENDING: 'Chờ',
+      PROCESSING: 'Đang xử lý',
+      DONE: 'Hoàn tất',
+      FAILED: 'Thất bại',
+    },
+    interfaces: {
+      'IF-ERP-CODE-RECV': 'Mã chung',
+      'IF-ERP-EMP-RECV': 'Nhân viên',
+      'IF-ERP-ITEM-RECV': 'Mặt hàng',
+      'IF-ERP-BP-RECV': 'Đối tác',
+      'IF-ERP-BOM-RECV': 'BOM',
+      'IF-ERP-PO-RECV': 'Đơn mua hàng',
+      'IF-ERP-SO-RECV': 'Đơn bán hàng',
+      'IF-ERP-PRODORD-RECV': 'ERP W/O',
+      'IF-WO-CLOSE-SEND': 'Kết quả sản xuất',
+      'IF-GR-SEND': 'Nhập kho (G/R)',
+      'IF-SHIPMENT-PGI-SEND': 'Xuất hàng (PGI)',
+    },
+  },
   fields: {
     periodFrom: 'Bắt đầu kỳ',
     periodTo: 'Kết thúc kỳ',
     status: 'Trạng thái',
-    interfaceCode: 'Loại liên kết',
-    direction: 'Hướng',
+    interfaceCode: 'Hạng mục',
+    direction: 'Phân loại',
     targetType: 'Loại đối tượng',
-    retryMin: 'Số lần thử tối thiểu',
+    retryMin: 'Số lần thử lại (từ)',
   },
   actions: {
     prevPage: 'Trước',
@@ -55,7 +80,7 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   /** 재처리는 같은 메시지 키로 다시 보내는 것이라 새 건을 만들지 않는다고 못 박는다. */
   retry: {
     confirmTitle: 'Gửi lại?',
-    confirmDescription: 'Gửi lại bằng cùng khóa bản tin. Không tạo mục mới.',
+    confirmDescription: 'Gửi lại cùng mục này. Không tạo mục mới.',
     requested: 'Đã yêu cầu gửi lại',
   },
   /** 이 화면의 쓰기는 저장이 아니라 재처리 요청이라 「저장」 어휘를 쓰지 않는다. */
@@ -74,12 +99,13 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   },
   /** 목록 표의 머리글. 열 구성의 근거는 screens/integration-sync/message-table.tsx에 있다. */
   table: {
-    messageKey: 'Khóa bản tin',
-    interfaceCode: 'Loại liên kết',
+    direction: 'Phân loại',
+    interfaceCode: 'Hạng mục',
+    messageKey: 'Số',
     status: 'Trạng thái',
-    retryCount: 'Lần thử',
-    createdAt: 'Tạo',
-    lastErrorMessage: 'Lỗi cuối',
+    retryCount: 'Thử lại',
+    createdAt: 'Thời điểm phát sinh',
+    lastErrorMessage: 'Nội dung lỗi',
     retry: 'Xử lý lại',
   },
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
@@ -87,8 +113,6 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     searchNeedsPeriod:
       'Tra cứu chỉ dùng được sau khi điền đủ kỳ. Hãy chọn ngày bắt đầu và ngày kết thúc.',
     periodReversed: 'Kết thúc kỳ không được sớm hơn bắt đầu kỳ.',
-    batchNeedsSelection:
-      'Xử lý lại theo lô mục đã chọn chỉ dùng được sau khi chọn mục trong danh sách.',
   },
   loading: {
     messages: 'Đang tải danh sách bản tin liên kết',
@@ -99,20 +123,11 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
     title: 'Chi tiết bản tin liên kết',
     pick: 'Hãy chọn một bản tin trong danh sách',
     openAction: (messageKey: string): string => `Mở chi tiết ${messageKey}`,
-    direction: 'Hướng',
-    target: 'Đối tượng',
-    createdAt: 'Tạo',
+    retryCount: 'Số lần thử lại',
     availableAt: 'Lần thử tiếp theo',
-    sentAt: 'Gửi',
-    completedAt: 'Hoàn tất',
+    sentAt: 'Thời điểm gửi',
+    completedAt: 'Thời điểm hoàn tất',
     lockedBy: 'Đang xử lý',
-    lastErrorMessage: 'Lỗi cuối',
-    payload: 'Nội dung gửi',
-    payloadAction: 'Xem nội dung gửi',
-    payloadLocked: 'Nội dung gửi chỉ xem được sau khi định phạm vi xem. Hiện chưa hiển thị.',
-    /* 대상은 유형 코드와 번호를 그대로 낸다. 어느 목록을 찾을지의 지도가 없어 이름을 지어내지 않는다. */
-    targetValue: (typeCode: string, id: number): string => `${typeCode} · ${String(id)}`,
-    lockedValue: (worker: string, at: string): string => `${worker} (${at})`,
   },
   /** 계약이 정의한 사실만 옮긴다 — 「잠금이 오래됐다」 같은 판정은 하지 않는다. */
   status: {
@@ -125,18 +140,16 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   /** 선택지는 조회한 기록에서 만들므로 그 한계를 문구가 함께 밝힌다. */
   filters: {
     all: 'Tất cả',
-    optionsNote:
-      'Danh sách chọn được tạo từ bản ghi trong kỳ đã tra cứu. Giá trị chưa từng chạy hoặc không có trong kỳ này thì không nằm trong danh sách.',
     chipStatus: (value: string): string => `Trạng thái: ${value}`,
-    chipInterface: (value: string): string => `Loại liên kết: ${value}`,
-    chipDirection: (value: string): string => `Hướng: ${value}`,
+    chipInterface: (value: string): string => `Hạng mục: ${value}`,
+    chipDirection: (value: string): string => `Phân loại: ${value}`,
     chipTargetType: (value: string): string => `Loại đối tượng: ${value}`,
-    chipRetryMin: (value: string): string => `Số lần thử tối thiểu: ${value}`,
+    chipRetryMin: (value: string): string => `Thử lại từ ${value} lần`,
     chipRemoveStatus: 'Bỏ điều kiện trạng thái',
-    chipRemoveInterface: 'Bỏ điều kiện loại liên kết',
-    chipRemoveDirection: 'Bỏ điều kiện hướng',
+    chipRemoveInterface: 'Bỏ điều kiện hạng mục',
+    chipRemoveDirection: 'Bỏ điều kiện phân loại',
     chipRemoveTargetType: 'Bỏ điều kiện loại đối tượng',
-    chipRemoveRetryMin: 'Bỏ điều kiện số lần thử tối thiểu',
+    chipRemoveRetryMin: 'Bỏ điều kiện số lần thử lại',
   },
   /** 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다. */
   pageNav: {
@@ -148,55 +161,8 @@ export const integrationSync: Translated<typeof ko.integrationSync> = {
   },
   empty: {
     noResultTitle: 'Không có bản ghi khớp điều kiện',
-    noResultDescription: 'Hãy mở rộng kỳ hoặc giảm bớt điều kiện rồi tra cứu lại.',
     noPeriodTitle: 'Hãy chọn kỳ rồi tra cứu',
-    noPeriodDescription: 'Bản ghi liên kết chỉ tra cứu được khi đã định kỳ.',
     beyondLastTitle: 'Trang này không có kết quả',
-    beyondLastDescription: 'Hãy chuyển về trang đầu.',
-  },
-  /** ERP 받기 표별 상태와 「지금 읽기」. 받기는 `nhận`, 지금 읽기는 `Đọc ngay` 로 한 벌로 맞춘다. */
-  syncTables: {
-    title: 'Trạng thái nhận dữ liệu ERP',
-    description:
-      'Dữ liệu chuẩn được đọc từ ERP mỗi 12 giờ, chứng từ mỗi 15 phút. 「Đọc ngay」 lấy ngay các dòng chưa đọc mà không chờ chu kỳ tiếp theo. Với bảng tham chiếu bảng khác (BOM tham chiếu mặt hàng…), hãy đọc lần lượt từ trên xuống.',
-    disabledReason: 'Không thể dùng Đọc ngay vì liên kết ERP đang tắt trên máy chủ này.',
-    table: {
-      name: 'Bảng',
-      state: 'Trạng thái',
-      lastFinishedAt: 'Đọc lần cuối',
-      read: 'Đã đọc',
-      applied: 'Đã áp dụng',
-      failed: 'Lỗi',
-      held: 'Tạm giữ',
-      nextRunAt: 'Lần kế tiếp',
-      action: 'Đọc ngay',
-    },
-    actions: {
-      runNow: 'Đọc ngay',
-      runNowRow: (name: string): string => `Đọc ngay ${name}`,
-    },
-    state: {
-      running: 'Đang đọc',
-      requested: 'Đang chờ',
-      never: 'Chưa có bản ghi',
-      succeeded: 'Thành công',
-      failed: 'Thất bại',
-    },
-    requestedAt: (time: string): string => `Yêu cầu lúc ${time}`,
-    runErrorTitle: 'Không gửi được yêu cầu đọc',
-    finished: {
-      succeeded: (name: string, applied: number): string =>
-        `Đã đọc xong ${name}. Đã áp dụng ${String(applied)} mục.`,
-      withFailures: (name: string, applied: number, failed: number): string =>
-        `Đã đọc xong ${name}. Đã áp dụng ${String(applied)} mục, ${String(failed)} mục không áp dụng được.`,
-      failed: (name: string): string => `Đọc ${name} thất bại. Hãy xem lý do ở cột trạng thái.`,
-    },
-    loading: 'Đang tải trạng thái nhận dữ liệu ERP',
-    summary: (count: number, failed: number, lastAt: string): string =>
-      `${String(count)} bảng · lỗi ${String(failed)} · đọc lần cuối ${lastAt}`,
-    expand: 'Mở',
-    collapse: 'Thu gọn',
-    empty: 'Không có bảng nhận dữ liệu',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */

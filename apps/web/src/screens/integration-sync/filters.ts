@@ -1,6 +1,7 @@
 import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { directionName, interfaceName, statusName } from './message-labels';
 import type { PeriodInput } from './period';
 
 /**
@@ -126,17 +127,17 @@ export const toFilterChips = (filters: MessageFilters): FilterChip[] => {
   const candidates: FilterChip[] = [
     {
       key: 'status',
-      label: t.filters.chipStatus(filters.status),
+      label: t.filters.chipStatus(statusName(filters.status)),
       removeLabel: t.filters.chipRemoveStatus,
     },
     {
       key: 'iface',
-      label: t.filters.chipInterface(filters.iface),
+      label: t.filters.chipInterface(interfaceName(filters.iface)),
       removeLabel: t.filters.chipRemoveInterface,
     },
     {
       key: 'direction',
-      label: t.filters.chipDirection(filters.direction),
+      label: t.filters.chipDirection(directionName(filters.direction)),
       removeLabel: t.filters.chipRemoveDirection,
     },
     {

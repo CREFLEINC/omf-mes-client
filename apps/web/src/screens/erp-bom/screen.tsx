@@ -1,31 +1,27 @@
-import {
-  AlertBanner,
-  Breadcrumb,
-  Button,
-  type Column,
-  EmptyState,
-  PageHeader,
-  SkeletonText,
-  Table,
-  TextField,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, type Column, EmptyState, Icon, SkeletonText } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { BoardFrame } from '../../patterns/board-frame';
+import { BoardTable } from '../../patterns/board-table';
 import { ItemPickerDialog } from '../../patterns/item-picker';
+import { OneLine } from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
+import { pickBom, useBomTree, type BomTreeRoot, type BomTreeRow } from './bom-tree';
 import {
-  type BomListQuery,
+  type ItemSummary,
+  labelOf,
   type NameOf,
-  useBomComponents,
   useBomList,
   useItemLabels,
+  useItemSummaries,
+  useItemTypeNames,
   useStatusNames,
   useUomNames,
 } from './queries';
-import type { Bom, ErpBomComponent } from './types';
+import type { Bom } from './types';
 
 const t = messages.erpBom;
 
@@ -69,13 +65,6 @@ const LoadErrorBanner = ({ error, onRetry }: { error: unknown; onRetry: () => vo
   </div>
 );
 
-/**
- * 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다.
- * ⭐ 0 은 값이다 — ERP 자품목 순번은 0 으로도 온다(장부 P-67).
- */
-const orEmpty = (value: string | number | null | undefined): ReactNode =>
-  value === null || value === undefined || value === '' ? t.values.empty : String(value);
-
 const yesNo = (value: boolean): string => (value ? t.values.yes : t.values.no);
 
 const formatQty = (qty: number, uom: string): string => `${qty.toLocaleString()} ${uom}`;
@@ -83,65 +72,39 @@ const formatQty = (qty: number, uom: string): string => `${qty.toLocaleString()}
 /** 손실률은 0~1 비율로 온다(A-8) — 퍼센트로 옮겨 낸다. 부동소수 꼬리는 소수 둘째 자리에서 자른다. */
 const formatRate = (rate: number): string => `${String(Math.round(rate * 10000) / 100)}%`;
 
-/** 주소의 조건. 조건은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다. */
-interface Filters {
-  parentItemId: number | null;
-  bomCode: string;
-}
-
-const EMPTY_FILTERS: Filters = { parentItemId: null, bomCode: '' };
-
-const readId = (value: string | null): number | null => {
-  const id = Number(value ?? '');
+/** 주소의 조건 — 모품목 하나. 새로고침·뒤로가기·공유가 같은 결과를 낸다. */
+const readParent = (params: URLSearchParams): number | null => {
+  const id = Number(params.get('item') ?? '');
   return Number.isInteger(id) && id > 0 ? id : null;
 };
 
-const toSearchParams = (filters: Filters, sel: number | null = null) => {
+const toSearchParams = (parentItemId: number | null) => {
   const next = new URLSearchParams();
-  if (filters.parentItemId !== null) next.set('item', String(filters.parentItemId));
-  if (filters.bomCode !== '') next.set('code', filters.bomCode);
-  if (sel !== null) next.set('sel', String(sel));
+  if (parentItemId !== null) next.set('item', String(parentItemId));
   return next;
 };
 
-const toListQuery = (filters: Filters): BomListQuery | null =>
-  filters.parentItemId === null
-    ? null
-    : {
-        parentItemId: filters.parentItemId,
-        ...(filters.bomCode !== '' ? { bomCode: filters.bomCode } : {}),
-      };
+/**
+ * 모품목 고르는 창의 유형 — 처음은 제품. 원자재 · 상품 · 부자재는 BOM 이 없어 선택지에서 뺀다(사용자 지시 2026-10-27).
+ * 남는 것은 제품 · 반제품(과 「전체」)이다.
+ */
+const DEFAULT_PARENT_TYPE = 'FINISHED';
+const EXCLUDED_PARENT_TYPES = ['RAW_MATERIAL', 'MERCHANDISE', 'SUBSIDIARY_MATERIAL'] as const;
 
 interface FilterBarProps {
-  applied: Filters;
   parentLabel: string;
-  onSearch: (filters: Filters) => void;
+  onPick: (parentItemId: number) => void;
   onReset: () => void;
 }
 
-/**
- * 조건 줄. BOM 코드는 입력 중인 값을 이 줄이 갖고 「조회」를 눌러야 주소로 옮긴다.
- * 모품목은 대화상자에서 고르는 순간 조회한다 — 계약이 모품목을 필수로 요구해 그것 없이는 볼 것이 없다.
- */
-const FilterBar = ({ applied, parentLabel, onSearch, onReset }: FilterBarProps) => {
-  const [bomCode, setBomCode] = useState(applied.bomCode);
+/** 조건 줄 — 모품목 하나. 대화상자에서 고르는 순간 조회한다(계약이 모품목을 필수로 요구한다). */
+const FilterBar = ({ parentLabel, onPick, onReset }: FilterBarProps) => {
   const [pickerOpen, setPickerOpen] = useState(false);
   const parentLabelId = useId();
 
-  // 뒤로가기 등으로 주소가 바뀌면 입력칸도 따라간다.
-  useEffect(() => {
-    setBomCode(applied.bomCode);
-  }, [applied.bomCode]);
-
   return (
     <>
-      <form
-        className="filter-bar"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSearch({ parentItemId: applied.parentItemId, bomCode: bomCode.trim() });
-        }}
-      >
+      <div className="filter-bar">
         <div className="field-cell">
           <span className="field-label" id={parentLabelId}>
             {t.fields.parentItem}
@@ -161,29 +124,20 @@ const FilterBar = ({ applied, parentLabel, onSearch, onReset }: FilterBarProps) 
             </Button>
           </div>
         </div>
-        <TextField
-          label={t.fields.bomCode}
-          value={bomCode}
-          onChange={(event) => {
-            setBomCode(event.target.value);
-          }}
-        />
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
-            {/* 모품목이 없으면 조회할 수 없다 — 계약이 모품목을 필수로 요구한다. */}
-            <Button type="submit" disabled={applied.parentItemId === null}>
-              {messages.common.search}
-            </Button>
             <Button variant="outlined" onClick={onReset}>
               {messages.common.reset}
             </Button>
           </div>
         </div>
-      </form>
+      </div>
 
       {pickerOpen && (
         <ItemPickerDialog
           multiple={false}
+          defaultItemTypeCode={DEFAULT_PARENT_TYPE}
+          excludeItemTypeCodes={EXCLUDED_PARENT_TYPES}
           /* 지난 자료를 보는 창이다 — 사용 중지된 품목의 BOM 도 찾을 수 있어야 한다. */
           includeInactive
           showAvailability={false}
@@ -194,8 +148,7 @@ const FilterBar = ({ applied, parentLabel, onSearch, onReset }: FilterBarProps) 
           onConfirm={(items) => {
             setPickerOpen(false);
             const [picked] = items;
-            if (picked === undefined) return;
-            onSearch({ parentItemId: picked.itemId, bomCode: bomCode.trim() });
+            if (picked !== undefined) onPick(picked.itemId);
           }}
         />
       )}
@@ -203,179 +156,228 @@ const FilterBar = ({ applied, parentLabel, onSearch, onReset }: FilterBarProps) 
   );
 };
 
-interface ComponentPaneProps {
-  bomId: number | null;
+interface BomTreeCellProps {
+  row: BomTreeRow;
+  item: ItemSummary;
+  onToggle: (key: string) => void;
+}
+
+/** 하이라키 칸 — 단계만큼 들여 쓰고, 하위 구성이 있으면 펼치고 접는 단추를 앞에 둔다. */
+const BomTreeCell = ({ row, item, onToggle }: BomTreeCellProps) => {
+  const label = labelOf(item);
+  const canToggle = row.state === 'expanded' || row.state === 'collapsed';
+  const note =
+    row.state === 'loading'
+      ? t.tree.loading
+      : row.state === 'failed'
+        ? t.tree.failed
+        : row.state === 'cycle'
+          ? t.tree.cycle
+          : null;
+
+  return (
+    <span className="bom-tree-cell">
+      {/* 연결선 — 윗 단계마다 세로선(이어지면 │, 끝났으면 빈칸), 그다음 이 줄의 가지선(├ · └). 뿌리는 없다. */}
+      {row.rails.map((pass, level) => (
+        <span
+          /* 단계 자리라 순서가 곧 열쇠다. */
+          key={level}
+          className="bom-tree-rail"
+          data-line={pass ? 'pass' : 'none'}
+          aria-hidden="true"
+        />
+      ))}
+      {row.depth > 0 && (
+        <span
+          className="bom-tree-rail"
+          data-line={row.isLast ? 'elbow' : 'tee'}
+          aria-hidden="true"
+        />
+      )}
+      {canToggle ? (
+        <button
+          type="button"
+          className="bom-tree-toggle"
+          aria-expanded={row.state === 'expanded'}
+          aria-label={row.state === 'expanded' ? t.tree.collapse(label) : t.tree.expand(label)}
+          onClick={() => {
+            onToggle(row.key);
+          }}
+        >
+          <Icon name={row.state === 'expanded' ? 'expand_more' : 'chevron_right'} size={18} />
+        </button>
+      ) : (
+        /* 하위 구성이 없는 줄은 가지선을 이름 앞까지 끌어온다. */
+        <span
+          className="bom-tree-spacer"
+          data-branch={row.depth > 0 ? 'true' : undefined}
+          aria-hidden="true"
+        />
+      )}
+      {/* 품목코드는 굵게(사용자 지시 2026-10-27) — 이름은 넘치면 말줄임. */}
+      {item.code !== null && <span className="bom-tree-code">{item.code}</span>}
+      <OneLine text={item.code === null ? item.name : `· ${item.name}`} />
+      {note !== null && <span className="field-note bom-tree-note">{note}</span>}
+    </span>
+  );
+};
+
+interface BomTreePaneProps {
+  root: BomTreeRoot;
   uomNameOf: NameOf;
 }
 
 /**
- * 고른 BOM 의 구성품. **ERP 원본 열만** 보인다 — 공정·LOT 추적·자동 차감 같은 MES 확장 열은
- * 품목 확장속성 화면의 몫이다. 여기서 함께 보이면 「ERP 가 준 값」으로 읽힌다.
+ * 고른 BOM 의 **하이라키**(사용자 지시 2026-10-27 — ERP BOM 뷰어처럼). 모품목 줄 아래로 자품목을 들여 쓰고, 자품목이
+ * 또 BOM 을 가지면 그 구성을 한 단계 더 들여 쓴다(`bom-tree.ts`). 처음에는 다 펼친 채로 서고 줄마다 접는다.
+ *
+ * **ERP 원본 열만** 보인다 — 공정·LOT 추적·자동 차감 같은 MES 확장 열은 품목 확장속성 화면의 몫이다.
+ * 소요량은 그 줄의 윗 BOM 기준 수량이다(단계를 곱하지 않는다).
  */
-const ComponentPane = ({ bomId, uomNameOf }: ComponentPaneProps) => {
-  const components = useBomComponents(bomId);
-  const rows = components.data ?? [];
-  const itemLabelOf = useItemLabels(rows.map((row) => row.componentItemId));
+const BomTreePane = ({ root, uomNameOf }: BomTreePaneProps) => {
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
+  const rows = useBomTree(root, collapsed);
+  const itemOf = useItemSummaries(rows.map((row) => row.itemId));
 
-  if (bomId === null) {
-    return <p className="field-note">{t.empty.notSelected}</p>;
-  }
+  const toggle = (key: string): void => {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
-  if (components.isError) {
-    return <LoadErrorBanner error={components.error} onRetry={() => void components.refetch()} />;
-  }
-
-  if (components.data === undefined) {
-    return (
-      <div role="status" aria-label={t.loading.components}>
-        <SkeletonText lines={3} />
-      </div>
-    );
-  }
-
-  const columns: Column<ErpBomComponent>[] = [
-    { key: 'sequenceNo', header: t.componentTable.sequenceNo, width: '72px', align: 'end' },
+  const columns: Column<BomTreeRow>[] = [
+    /* 폭을 주지 않는 유일한 열 — 들여 쓴 품목 이름이 남는 폭을 다 쓴다. */
     {
-      key: 'componentItemId',
-      header: t.componentTable.componentItem,
-      render: (row) => itemLabelOf(row.componentItemId),
+      key: 'item',
+      header: t.tree.item,
+      render: (row) => <BomTreeCell row={row} item={itemOf(row.itemId)} onToggle={toggle} />,
     },
     {
       key: 'requiredQty',
       header: t.componentTable.requiredQty,
-      width: '140px',
+      width: '128px',
       align: 'end',
-      render: (row) => formatQty(row.requiredQty, uomNameOf(row.uomId)),
+      render: (row) =>
+        row.component === null
+          ? t.values.empty
+          : formatQty(row.component.requiredQty, uomNameOf(row.component.uomId)),
     },
     {
       key: 'scrapRate',
       header: t.componentTable.scrapRate,
-      width: '96px',
+      width: '80px',
       align: 'end',
-      render: (row) => formatRate(row.scrapRate),
+      render: (row) =>
+        row.component === null ? t.values.empty : formatRate(row.component.scrapRate),
     },
     {
       key: 'isMandatory',
       header: t.componentTable.isMandatory,
-      width: '80px',
-      render: (row) => yesNo(row.isMandatory),
-    },
-    {
-      key: 'erpChildItemSeq',
-      header: t.componentTable.erpChildItemSeq,
-      width: '128px',
-      align: 'end',
-      render: (row) => orEmpty(row.erpChildItemSeq),
+      width: '64px',
+      render: (row) => (row.component === null ? t.values.empty : yesNo(row.component.isMandatory)),
     },
   ];
 
   return (
-    <div className="wide-table">
-      <Table
-        density="compact"
-        columns={columns}
-        rows={[...rows].sort((a, b) => a.sequenceNo - b.sequenceNo)}
-        getRowId={(row) => String(row.bomComponentId)}
-        empty={
-          <EmptyState
-            size="sm"
-            live
-            title={t.empty.noComponentTitle}
-            description={t.empty.noComponentDescription}
-          />
-        }
-      />
-    </div>
+    <BoardTable
+      label={t.panes.components}
+      className="bom-tree-table"
+      widthKey="omf-mes:erp-bom:columns:tree"
+      minWidth="38rem"
+      columns={columns}
+      rows={rows}
+      getRowId={(row) => row.key}
+    />
   );
 };
+
+interface ParentFactsProps {
+  item: ItemSummary;
+  bom: Bom;
+}
+
+/**
+ * 모품목 상세(사용자 지시 2026-10-27 「모품목 상세 정보는 표시해줘야지」) — 품목 칸과 그 BOM 칸을 하이라키 위에 한 줄로.
+ * 입고 관리 라인 머리의 사실 칸과 같은 모양이다.
+ */
+const ParentFacts = ({ item, bom }: ParentFactsProps) => {
+  const typeNameOf = useItemTypeNames();
+  const statusNameOf = useStatusNames();
+  const uomNameOf = useUomNames();
+  const detail = item.item;
+  const facts = [
+    { key: 'code', label: t.parent.itemCode, value: item.code ?? item.name, strong: true },
+    { key: 'name', label: t.parent.itemName, value: detail?.itemName ?? t.values.empty },
+    {
+      key: 'type',
+      label: t.parent.itemType,
+      value: detail === null ? t.values.empty : typeNameOf(detail.itemTypeCode),
+    },
+    {
+      key: 'spec',
+      label: t.parent.spec,
+      value: orEmptyText(detail?.erpSpec),
+    },
+    {
+      key: 'uom',
+      label: t.parent.baseUom,
+      value: detail === null ? t.values.empty : uomNameOf(detail.baseUomId),
+    },
+    { key: 'bom', label: t.parent.bomCode, value: bom.bomCode },
+    { key: 'rev', label: t.parent.bomVersion, value: String(bom.bomVersion) },
+    { key: 'status', label: t.parent.status, value: statusNameOf(bom.statusCode) },
+    {
+      key: 'effective',
+      label: t.parent.effective,
+      value: t.parent.effectiveRange(bom.effectiveFrom, bom.effectiveTo ?? ''),
+    },
+    {
+      key: 'baseQty',
+      label: t.parent.baseQty,
+      value: formatQty(bom.baseQty, uomNameOf(bom.baseUomId)),
+    },
+  ];
+
+  return (
+    <dl className="po-board-order-facts bom-parent-facts" aria-label={t.parent.label}>
+      {facts.map((fact) => (
+        <div key={fact.key}>
+          <dt>{fact.label}</dt>
+          <dd className={fact.strong === true ? 'bom-tree-code' : undefined}>{fact.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+};
+
+const orEmptyText = (value: string | null | undefined): string =>
+  value === null || value === undefined || value === '' ? t.values.empty : value;
 
 const EMPTY_BOMS: Bom[] = [];
 
 /**
- * BOM 조회 (ERP) · W-06-18. ERP 가 보낸 BOM 헤더와 구성품을 읽기만 한다 — 쓰기 조작이 하나도 없다.
+ * BOM 조회 (ERP) · W-06-18. ERP 가 보낸 BOM 을 읽기만 한다 — 쓰기 조작이 하나도 없다.
  *
- * 모품목 → BOM 목록 → 고른 BOM 의 구성품. 모품목·BOM 코드·고른 BOM 을 전부 주소에 둔다.
- * 모품목은 공용 품목 선택 대화상자로 고른다 — 품목 마스터가 수천 건이라 선택칸에 담을 수 없다.
+ * 한 구획이다(사용자 지시 2026-10-27 「모품목 · 구성품으로 좌우 분할하지 말고 하나에서」): 위에 모품목, 아래에 그 품목의
+ * 기본 BOM(없으면 첫 BOM) 하이라키. 모품목만 주소에 둔다. 모품목은 공용 품목 선택 대화상자로 고른다 — 품목 마스터가
+ * 수천 건이라 선택칸에 담을 수 없다.
  */
 export const ErpBomScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const parentItemId = readParent(searchParams);
 
-  const filters: Filters = {
-    parentItemId: readId(searchParams.get('item')),
-    bomCode: searchParams.get('code') ?? '',
-  };
-  const selectedId = readId(searchParams.get('sel'));
-
-  const list = useBomList(toListQuery(filters));
-  const statusNameOf = useStatusNames();
+  const list = useBomList(parentItemId === null ? null : { parentItemId });
   const uomNameOf = useUomNames();
-  const itemLabelOf = useItemLabels(filters.parentItemId === null ? [] : [filters.parentItemId]);
-  const boms = list.data ?? EMPTY_BOMS;
+  const itemLabelOf = useItemLabels(parentItemId === null ? [] : [parentItemId]);
+  const parentOf = useItemSummaries(parentItemId === null ? [] : [parentItemId]);
+  const bom = pickBom(list.data ?? EMPTY_BOMS) ?? null;
 
-  /** 조건이 바뀌면 구성품을 닫는다 — 고른 BOM 이 새 결과에 없을 수 있다. */
-  const applyQuery = (nextFilters: Filters) => {
-    setSearchParams(toSearchParams(nextFilters));
-  };
-
-  const columns: Column<Bom>[] = [
-    {
-      key: 'bomCode',
-      header: t.bomTable.bomCode,
-      render: (row) => (
-        // 접근 이름에 코드·Rev 를 넣는다 — 같은 코드의 여러 Rev 가 한 목록에 선다.
-        <button
-          type="button"
-          className="link-cell"
-          aria-label={t.bomTable.openAction(row.bomCode, row.bomVersion)}
-          aria-pressed={row.bomId === selectedId}
-          onClick={() => {
-            setSearchParams(toSearchParams(filters, row.bomId));
-          }}
-        >
-          {row.bomCode}
-        </button>
-      ),
-    },
-    { key: 'bomVersion', header: t.bomTable.bomVersion, width: '64px', align: 'end' },
-    {
-      key: 'statusCode',
-      header: t.bomTable.status,
-      width: '96px',
-      render: (row) => statusNameOf(row.statusCode),
-    },
-    {
-      key: 'isDefault',
-      header: t.bomTable.isDefault,
-      width: '72px',
-      render: (row) => yesNo(row.isDefault),
-    },
-    { key: 'effectiveFrom', header: t.bomTable.effectiveFrom, width: '112px' },
-    {
-      key: 'effectiveTo',
-      header: t.bomTable.effectiveTo,
-      width: '112px',
-      render: (row) => orEmpty(row.effectiveTo),
-    },
-    {
-      key: 'baseQty',
-      header: t.bomTable.baseQty,
-      width: '128px',
-      align: 'end',
-      render: (row) => formatQty(row.baseQty, uomNameOf(row.baseUomId)),
-    },
-  ];
-
-  const renderBoms = (): ReactNode => {
-    if (filters.parentItemId === null) {
-      return (
-        <EmptyState
-          size="sm"
-          title={t.empty.noParentTitle}
-          description={t.empty.noParentDescription}
-        />
-      );
-    }
-    // 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 안 된다.
+  const content = (): ReactNode => {
+    if (parentItemId === null) return <EmptyState size="sm" title={t.empty.noParentTitle} />;
+    // 조회에 실패했으면 빈 상태를 내지 않는다 — 실패를 「없습니다」로 보이면 안 된다.
     if (list.isError) {
       return <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />;
     }
@@ -386,61 +388,40 @@ export const ErpBomScreen = () => {
         </div>
       );
     }
+    if (bom === null) return <EmptyState size="sm" live title={t.empty.noBomTitle} />;
+
+    /* 모품목을 바꾸면 접은 줄을 잊는다 — 다른 BOM 의 경로다. */
     return (
-      <div className="wide-table">
-        <Table
-          density="compact"
-          columns={columns}
-          rows={boms}
-          getRowId={(row) => String(row.bomId)}
-          empty={
-            <EmptyState
-              size="sm"
-              live
-              title={t.empty.noBomTitle}
-              description={t.empty.noBomDescription}
-            />
-          }
+      <>
+        <ParentFacts item={parentOf(bom.parentItemId)} bom={bom} />
+        <BomTreePane
+          key={bom.bomId}
+          root={{ itemId: bom.parentItemId, bomId: bom.bomId }}
+          uomNameOf={uomNameOf}
         />
-      </div>
+      </>
     );
   };
 
   return (
-    <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
-      <section className="pane" aria-label={t.title}>
-        <p className="field-note">{t.readOnlyNote}</p>
-        <FilterBar
-          applied={filters}
-          parentLabel={
-            filters.parentItemId === null ? t.values.notPicked : itemLabelOf(filters.parentItemId)
-          }
-          onSearch={applyQuery}
-          onReset={() => {
-            applyQuery(EMPTY_FILTERS);
-          }}
-        />
-      </section>
-
-      <section className="pane" aria-label={t.panes.boms}>
-        <h2>{t.panes.boms}</h2>
-        {renderBoms()}
-      </section>
-
-      <section className="pane" aria-label={t.panes.components}>
-        <h2>{t.panes.components}</h2>
-        <ComponentPane bomId={selectedId} uomNameOf={uomNameOf} />
-      </section>
-    </>
+    <BoardFrame
+      above={{
+        label: t.panes.filter,
+        content: (
+          <div className="pane po-board-filter">
+            <FilterBar
+              parentLabel={parentItemId === null ? t.values.notPicked : itemLabelOf(parentItemId)}
+              onPick={(id) => {
+                setSearchParams(toSearchParams(id));
+              }}
+              onReset={() => {
+                setSearchParams(toSearchParams(null));
+              }}
+            />
+          </div>
+        ),
+      }}
+      list={{ label: t.panes.components, content: content() }}
+    />
   );
 };

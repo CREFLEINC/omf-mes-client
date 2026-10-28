@@ -206,14 +206,80 @@ describe('ErpOutboundScreen — 송신 예정 목록', () => {
     expect(
       await pendingPane().findByRole('heading', { name: '입고 (G/R) · 송신 예정 2건' }),
     ).toBeInTheDocument();
-    expect(pendingPane().getByText('IF-GR-SEND:SAMPLE-GR-0001')).toBeInTheDocument();
-    expect(pendingPane().getByText('GOODS_RECEIPT · 7702')).toBeInTheDocument();
+    // 메시지 키 대신 업무 번호만 — 연계 코드 · 대상 코드는 보이지 않는다(사용자 지시 2026-10-27).
+    expect(pendingPane().getByText('SAMPLE-GR-0001')).toBeInTheDocument();
+    expect(pendingPane().queryByText('IF-GR-SEND:SAMPLE-GR-0001')).toBeNull();
+    expect(pendingPane().queryByText('GOODS_RECEIPT · 7702')).toBeNull();
     expect(screen.getByTestId('location')).toHaveTextContent(`${ROUTE}?item=GOODS_RECEIPT`);
 
     const list = pendingListRequests(requests).at(-1);
     expect(list?.searchParams.get('interfaceCode')).toBe('IF-GR-SEND');
     expect(list?.searchParams.get('statusCode')).toBe('PENDING');
     expect(list?.searchParams.get('directionCode')).toBe('OUTBOUND');
+  });
+
+  it('생성일 — 처음은 전체, 최근 1주일 단추는 오늘 포함 7일로, 날짜 두 칸은 「조회」로 건다', async () => {
+    const { requests, user } = renderScreen(
+      [settingsRoute, messagesRoute()],
+      '?item=GOODS_RECEIPT',
+    );
+
+    await pendingPane().findByText('SAMPLE-GR-0001');
+    expect(pendingPane().getByRole('button', { name: '전체' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    // 처음은 기간 없이(넓은 기간으로) 부른다.
+    expect(pendingListRequests(requests).at(-1)?.searchParams.get('createdFrom')).toBe(
+      '2000-01-01T00:00:00.000Z',
+    );
+
+    await user.click(pendingPane().getByRole('button', { name: '최근 1주일' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent(/from=\d{4}-\d{2}-\d{2}&to=/);
+    });
+    expect(pendingPane().getByRole('button', { name: '최근 1주일' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await waitFor(() => {
+      expect(pendingListRequests(requests).at(-1)?.searchParams.get('createdFrom')).toMatch(
+        /T00:00:00[+-]\d{2}:\d{2}$/,
+      );
+    });
+
+    const from = pendingPane().getByLabelText('시작일');
+    const to = pendingPane().getByLabelText('종료일');
+    await user.clear(from);
+    await user.type(from, '2026-10-01');
+    await user.clear(to);
+    await user.type(to, '2026-10-20');
+    await user.click(pendingPane().getByRole('button', { name: '조회' }));
+
+    await waitFor(() => {
+      const last = pendingListRequests(requests).at(-1);
+      expect(last?.searchParams.get('createdFrom')).toMatch(/^2026-10-01T00:00:00/);
+      expect(last?.searchParams.get('createdTo')).toMatch(/^2026-10-20T23:59:59/);
+    });
+    // 바로 고르는 범위와 다르면 어느 단추도 눌려 있지 않다.
+    expect(pendingPane().getByRole('button', { name: '최근 1주일' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  it('생성일 칸이 거꾸로면 조회를 잠그고 사유를 낸다', async () => {
+    const { user } = renderScreen([settingsRoute, messagesRoute()], '?item=GOODS_RECEIPT');
+    await pendingPane().findByText('SAMPLE-GR-0001');
+
+    await user.type(pendingPane().getByLabelText('시작일'), '2026-10-20');
+    await user.type(pendingPane().getByLabelText('종료일'), '2026-10-01');
+
+    expect(pendingPane().getByRole('button', { name: '조회' })).toBeDisabled();
+    expect(
+      pendingPane().getByText('기간 종료는 기간 시작보다 앞설 수 없습니다.'),
+    ).toBeInTheDocument();
   });
 
   it('메시지 키는 연동 현황 · 이력에서 그 건의 상세를 연다', async () => {

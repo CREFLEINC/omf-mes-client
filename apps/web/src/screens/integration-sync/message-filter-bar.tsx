@@ -3,26 +3,31 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { toFilterChips, type MessageFilters } from './filters';
+import { directionName, interfaceName, statusName } from './message-labels';
 import { validatePeriod, type PeriodInput } from './period';
 
 const t = messages.integrationSync;
 
-/** 한 선택칸이 필요로 하는 것 전부. 네 칸이 같은 구조라 목록으로 돌린다. */
+/** 한 선택칸이 필요로 하는 것 전부. 세 칸이 같은 구조라 목록으로 돌린다. */
 interface CodeSelect {
   key: keyof MessageFilters;
   label: string;
   options: readonly string[];
+  /** 선택지에 보이는 이름 — 코드 대신 업무 이름(`message-labels.ts`). 값은 코드 그대로 보낸다. */
+  nameOf: (code: string) => string;
 }
 
 export interface MessageFilterBarProps {
   /** 주소에 반영된(= 조회에 쓰인) 기간. 편집 중인 값은 이 부품 안에만 있다. */
   appliedPeriod: PeriodInput;
   appliedFilters: MessageFilters;
-  /** 코드 선택지 4종. 조회 결과에서 만들어 화면이 넘긴다. */
+  /**
+   * 코드 선택지 3종. 조회 결과에서 만들어 화면이 넘긴다. 대상 유형 칸은 두지 않는다 — 값이 ERP 수신 표 이름 같은
+   * 시스템 코드라 읽을 수 없고, 항목과 하나씩 짝이라 항목으로 거르면 된다(사용자 지시 2026-10-27).
+   */
   statusOptions: readonly string[];
   interfaceOptions: readonly string[];
   directionOptions: readonly string[];
-  targetTypeOptions: readonly string[];
   onSearch: (period: PeriodInput, filters: MessageFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: keyof MessageFilters) => void;
@@ -42,7 +47,6 @@ export const MessageFilterBar = ({
   statusOptions,
   interfaceOptions,
   directionOptions,
-  targetTypeOptions,
   onSearch,
   onRemoveFilter,
   onReset,
@@ -79,10 +83,19 @@ export const MessageFilterBar = ({
   const searchReason = validatePeriod(period);
 
   const codeSelects: CodeSelect[] = [
-    { key: 'status', label: t.fields.status, options: statusOptions },
-    { key: 'iface', label: t.fields.interfaceCode, options: interfaceOptions },
-    { key: 'direction', label: t.fields.direction, options: directionOptions },
-    { key: 'targetType', label: t.fields.targetType, options: targetTypeOptions },
+    {
+      key: 'direction',
+      label: t.fields.direction,
+      options: directionOptions,
+      nameOf: directionName,
+    },
+    {
+      key: 'iface',
+      label: t.fields.interfaceCode,
+      options: interfaceOptions,
+      nameOf: interfaceName,
+    },
+    { key: 'status', label: t.fields.status, options: statusOptions, nameOf: statusName },
   ];
 
   const chips = toFilterChips(appliedFilters);
@@ -130,7 +143,7 @@ export const MessageFilterBar = ({
                */
               options={[
                 { value: '', label: t.filters.all },
-                ...select.options.map((code) => ({ value: code, label: code })),
+                ...select.options.map((code) => ({ value: code, label: select.nameOf(code) })),
               ]}
               onChange={(value) => {
                 setFilters((prev) => ({ ...prev, [select.key]: value }));
@@ -182,9 +195,6 @@ export const MessageFilterBar = ({
           )}
         </div>
       </div>
-
-      {/* 선택지가 어디서 왔고 무엇이 빠져 있는지 밝힌다 — 없으면 값이 사라진 것으로 읽힌다. */}
-      <p className="field-note">{t.filters.optionsNote}</p>
 
       {chips.length > 0 && (
         <div className="filter-bar">

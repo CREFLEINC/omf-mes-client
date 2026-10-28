@@ -155,7 +155,9 @@ describe('ErpSalesOrderScreen', () => {
     ).toBe(false);
     const listPane = screen.getByRole('region', { name: t.panes.list });
     expect(await within(listPane).findByText('SYN-CUS · 합성 고객')).toBeInTheDocument();
-    expect(within(listPane).getByText('SYN-SHIP · 합성 납품처')).toBeInTheDocument();
+    /* ERP 원번호·납품처는 수주번호·고객사와 겹쳐 보이지 않는다. */
+    expect(within(listPane).queryByText('SYN-ERP-SO-801')).not.toBeInTheDocument();
+    expect(within(listPane).queryByText('SYN-SHIP · 합성 납품처')).not.toBeInTheDocument();
     /* 상태·ERP 원본 코드는 공통코드 이름으로(서버 장부 P-67 · P-68). */
     expect(await within(listPane).findByText('수신')).toBeInTheDocument();
     expect(await within(listPane).findByText('합성 수주유형')).toBeInTheDocument();
@@ -183,9 +185,14 @@ describe('ErpSalesOrderScreen', () => {
     expect(detailValue(t.fields.salesGroup)).toBe('합성 영업그룹');
     /* 이동 유형은 코드 그룹이 없어 원본 그대로. */
     expect(detailValue(t.fields.movementType)).toBe('SYN-MOV1');
+    const detailPane = screen.getByRole('region', { name: t.panes.detail });
+    expect(within(detailPane).queryByText('SYN-ERP-SO-801')).not.toBeInTheDocument();
+    expect(within(detailPane).queryByText('SYN-SHIP · 합성 납품처')).not.toBeInTheDocument();
 
     expect(requests.every((request) => request.method === 'GET')).toBe(true);
     expect(screen.queryByRole('button', { name: /저장|수정|삭제|등록/ })).not.toBeInTheDocument();
+    /* 읽기 전용 안내 문구는 두지 않는다 — 수정 컨트롤이 없는 것으로 충분하다. */
+    expect(screen.queryByText(/수정할 수 없습니다/)).not.toBeInTheDocument();
   });
 
   it('상세에 라인이 없으면 빈 라인 안내를 낸다', async () => {

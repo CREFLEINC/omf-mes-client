@@ -1,14 +1,19 @@
 import { Chip, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { BoardTable } from '../../patterns/board-table';
 import { OneLine, PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { LoadErrorBanner } from '../integration-sync/load-error-banner';
+import { documentNoOf } from '../integration-sync/message-labels';
 import { formatDateTime } from '../integration-sync/message-status';
 import { PageNav } from '../integration-sync/page-nav';
 import { toPageView } from '../integration-sync/pagination';
+import { toPeriodQuery, type PeriodInput } from '../integration-sync/period';
 import type { IntegrationMessageRow } from '../integration-sync/types';
+import { CreatedFilter } from './created-filter';
+import { readCreatedPeriod } from './created-period';
 import { MESSAGE_STATUS, type OutboundItem } from './outbound-items';
 import {
   useOutboundCounts,
@@ -19,7 +24,6 @@ import {
 import { ErpSendChips } from './send-chips';
 
 const t = messages.erpOutbound;
-const ts = messages.integrationSync;
 
 /** 연동 현황·이력 — 송신 예정 건의 메시지 키가 그 탭의 상세를 연다. */
 const INTEGRATION_SYNC_PATH = '/master-data/integration-sync';
@@ -116,22 +120,16 @@ const PendingTable = ({ rows }: { rows: IntegrationMessageRow[] }) => {
     {
       key: 'messageKey',
       header: t.table.messageKey,
-      width: '240px',
+      width: '184px',
       render: (row) => (
         <Link
           className="link-cell"
           to={`${INTEGRATION_SYNC_PATH}?sel=${String(row.integrationMessageId)}`}
           aria-label={t.openMessage(row.messageKey)}
         >
-          <OneLine text={row.messageKey} />
+          <OneLine text={documentNoOf(row)} />
         </Link>
       ),
-    },
-    {
-      key: 'target',
-      header: t.table.target,
-      width: '200px',
-      render: (row) => ts.detail.targetValue(row.targetTypeCode, row.targetId),
     },
     {
       key: 'createdAt',
@@ -163,7 +161,7 @@ const PendingTable = ({ rows }: { rows: IntegrationMessageRow[] }) => {
     <BoardTable
       label={t.panes.pending}
       widthKey="omf-mes:erp-outbound:columns:pending"
-      minWidth="52rem"
+      minWidth="44rem"
       columns={columns}
       rows={rows}
       getRowId={(row) => String(row.integrationMessageId)}
@@ -190,16 +188,44 @@ export const ErpOutboundScreen = () => {
   const selected =
     itemRows.find((item) => item.outboundItemCode === requestedCode) ?? itemRows[0] ?? null;
   const page = readPage(searchParams.get('page'));
+  /* 생성일 조건 — 주소의 `from` · `to`(공장 시각 날짜). 없으면 전체다. */
+  const created = readCreatedPeriod(searchParams);
+  const [today] = useState(() => new Date());
+  const offsetMinutes = -today.getTimezoneOffset();
 
-  const pending = usePendingMessages(selected?.interfaceCode ?? null, page);
+  const pending = usePendingMessages(
+    selected?.interfaceCode ?? null,
+    page,
+    created === null ? null : toPeriodQuery(created, offsetMinutes),
+  );
   const pendingRows = pending.data?.items ?? [];
   const pageView = toPageView(
     pending.data?.page ?? { page, size: 0, total: 0 },
     pendingRows.length,
   );
 
+  /** 항목을 바꿔도 생성일 조건은 남긴다 — 같은 기간으로 다른 항목을 본다. 쪽은 처음으로. */
   const select = (code: string): void => {
-    setSearchParams(new URLSearchParams({ item: code }));
+    const next = new URLSearchParams({ item: code });
+    if (created !== null) {
+      next.set('from', created.from);
+      next.set('to', created.to);
+    }
+    setSearchParams(next);
+  };
+  /** 생성일 조건을 바꾸면 쪽은 처음으로. */
+  const applyCreated = (period: PeriodInput | null): void => {
+    const next = new URLSearchParams(searchParams);
+    if (selected !== null) next.set('item', selected.outboundItemCode);
+    next.delete('page');
+    if (period === null) {
+      next.delete('from');
+      next.delete('to');
+    } else {
+      next.set('from', period.from);
+      next.set('to', period.to);
+    }
+    setSearchParams(next);
   };
   const changePage = (nextPage: number): void => {
     const next = new URLSearchParams(searchParams);
@@ -290,6 +316,11 @@ export const ErpOutboundScreen = () => {
                 ? t.pendingTitle(selected.outboundItemName, pendingCount)
                 : selected.outboundItemName}
             </h2>
+          )}
+          {selected?.interfaceCode != null && (
+            <div className="po-board-filter">
+              <CreatedFilter applied={created} today={today} onApply={applyCreated} />
+            </div>
           )}
           {pendingSlot()}
         </section>

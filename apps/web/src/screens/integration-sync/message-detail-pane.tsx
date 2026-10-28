@@ -1,7 +1,8 @@
-import { Button, Chip, SkeletonText } from '@crefle/web-ui';
+import { Chip, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
+import { directionName, documentNoOf, interfaceName } from './message-labels';
 import { formatDateTime, toStatusView } from './message-status';
 import type { MessageDetailView } from './types';
 
@@ -28,11 +29,16 @@ const orEmptyMark = (value: string | null): string => value ?? t.values.empty;
 const toItems = (view: MessageDetailView, now: Date): DetailItem[] => {
   const status = toStatusView(view, now);
 
+  const lockedAt = formatDateTime(view.lockedAt);
+
+  /*
+   * 코드 대신 업무 이름(사용자 지시 2026-10-27). 메시지 키 · 대상(ERP 수신 표 이름 · 순번) · 처리하는 워커 이름 같은
+   * 시스템 값은 보이지 않는다 — 번호와 항목이 그 건을 부른다.
+   */
   return [
-    { label: t.table.messageKey, value: view.messageKey },
-    { label: t.table.interfaceCode, value: view.interfaceCode },
-    { label: t.detail.direction, value: view.directionCode },
-    { label: t.detail.target, value: t.detail.targetValue(view.targetTypeCode, view.targetId) },
+    { label: t.table.direction, value: directionName(view.directionCode) },
+    { label: t.table.interfaceCode, value: interfaceName(view.interfaceCode) },
+    { label: t.table.messageKey, value: documentNoOf(view) },
     {
       label: t.table.status,
       value: (
@@ -41,23 +47,22 @@ const toItems = (view: MessageDetailView, now: Date): DetailItem[] => {
         </Chip>
       ),
     },
-    { label: t.table.retryCount, value: String(view.retryCount) },
-    { label: t.detail.createdAt, value: orEmptyMark(formatDateTime(view.createdAt)) },
+    { label: t.detail.retryCount, value: String(view.retryCount) },
+    { label: t.table.createdAt, value: orEmptyMark(formatDateTime(view.createdAt)) },
     { label: t.detail.availableAt, value: orEmptyMark(formatDateTime(view.availableAt)) },
     { label: t.detail.sentAt, value: orEmptyMark(formatDateTime(view.sentAt)) },
     { label: t.detail.completedAt, value: orEmptyMark(formatDateTime(view.completedAt)) },
     {
       label: t.detail.lockedBy,
-      /*
-       * 잡고 있는 워커와 그 시각을 함께 낸다. 계약이 준 사실을 그대로 옮길 뿐이며
-       * 「잠금이 오래됐다」 같은 판정은 하지 않는다.
-       */
+      /* 처리를 시작한 시각만 낸다 — 「잠금이 오래됐다」 같은 판정은 하지 않는다. */
       value:
         (view.lockedBy ?? '') === ''
           ? t.values.empty
-          : t.detail.lockedValue(view.lockedBy ?? '', orEmptyMark(formatDateTime(view.lockedAt))),
+          : lockedAt === null
+            ? t.status.processingNoTime
+            : t.status.processing(lockedAt),
     },
-    { label: t.detail.lastErrorMessage, value: orEmptyMark(view.lastErrorMessage ?? null) },
+    { label: t.table.lastErrorMessage, value: orEmptyMark(view.lastErrorMessage ?? null) },
   ];
 };
 
@@ -65,14 +70,11 @@ const toItems = (view: MessageDetailView, now: Date): DetailItem[] => {
  * 상세 — 목록에 없는 항목을 보이는 자리. 목록 오른쪽 구획이다(입고 관리와 같은 짜임 · 사용자 지시 2026-10-27).
  * 옛 판은 창(Dialog)으로 떠 목록을 가렸다.
  *
- * **전송 내용(전문)은 구획만 두고 값을 그리지 않는다.** 서버는 전문을 언제나 실어 보내지만
- * 거래처·수량 등이 들어 있어 누구에게까지 보일지가 정해지지 않았다. 화면은 응답에서
- * 그 값을 꺼내지도 않는다 — 꺼내 두면 언젠가 그려진다.
- *
+ * **전송 내용(전문)은 그리지 않는다.** 서버는 전문을 언제나 실어 보내지만 거래처·수량 등이 들어 있어 누구에게까지
+ * 보일지가 정해지지 않았다. 화면은 응답에서 그 값을 꺼내지도 않는다 — 꺼내 두면 언젠가 그려진다. 늘 잠긴 「전송 내용
+ * 보기」 단추와 그 사유 안내는 걷어 냈다(사용자 지시 2026-10-27 「불필요한 안내문 제거」).
  */
 export const MessageDetailPane = ({ view, isLoading, loadError, now }: MessageDetailPaneProps) => {
-  const payloadReasonId = useId();
-
   const body = (): ReactNode => {
     if (loadError !== null && loadError !== undefined) return loadError;
 
@@ -85,30 +87,14 @@ export const MessageDetailPane = ({ view, isLoading, loadError, now }: MessageDe
     }
 
     return (
-      <>
-        <div className="form-grid">
-          {toItems(view, now).map((item) => (
-            <div className="field-cell" key={item.label}>
-              <span className="field-label">{item.label}</span>
-              <span>{item.value}</span>
-            </div>
-          ))}
-        </div>
-
-        {/*
-         * 배치 규범 4 — 잠긴 것은 감추지 않고 사유를 항상 보이는 DOM 텍스트로 낸다.
-         * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 보조기술 사용자가 닿을 수 없다.
-         */}
-        <div className="field-cell">
-          <span className="field-label">{t.detail.payload}</span>
-          <Button variant="outlined" disabled aria-describedby={payloadReasonId}>
-            {t.detail.payloadAction}
-          </Button>
-          <span id={payloadReasonId} className="field-note">
-            {t.detail.payloadLocked}
-          </span>
-        </div>
-      </>
+      <div className="form-grid">
+        {toItems(view, now).map((item) => (
+          <div className="field-cell" key={item.label}>
+            <span className="field-label">{item.label}</span>
+            <span>{item.value}</span>
+          </div>
+        ))}
+      </div>
     );
   };
 

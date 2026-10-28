@@ -14,21 +14,21 @@ interface BarOptions {
   statusOptions?: string[];
   interfaceOptions?: string[];
   directionOptions?: string[];
-  targetTypeOptions?: string[];
 }
 
 interface FilterChangeCase {
   key: keyof MessageFilters;
   label: string;
   value: string;
+  /** 선택칸에 보이는 이름 — 코드 대신 업무 이름(모르는 코드는 코드 그대로). */
+  shown: string;
 }
 
 const FILTER_CHANGE_CASES: FilterChangeCase[] = [
-  { key: 'status', label: '상태', value: 'FAILED' },
-  { key: 'iface', label: '연계 종류', value: 'SYN_IFACE' },
-  { key: 'direction', label: '방향', value: 'OUTBOUND' },
-  { key: 'targetType', label: '대상 유형', value: 'SYN_TARGET' },
-  { key: 'retryMin', label: '시도 횟수 하한', value: '5' },
+  { key: 'status', label: '상태', value: 'FAILED', shown: '실패' },
+  { key: 'iface', label: '항목', value: 'IF-GR-SEND', shown: '입고 (G/R)' },
+  { key: 'direction', label: '구분', value: 'OUTBOUND', shown: '송신' },
+  { key: 'retryMin', label: '재시도 횟수(이상)', value: '5', shown: '5' },
 ];
 
 const renderBar = ({
@@ -37,7 +37,6 @@ const renderBar = ({
   statusOptions = [],
   interfaceOptions = [],
   directionOptions = [],
-  targetTypeOptions = [],
 }: BarOptions = {}) => {
   const onSearch = vi.fn();
   const onRemoveFilter = vi.fn();
@@ -50,7 +49,6 @@ const renderBar = ({
       statusOptions={statusOptions}
       interfaceOptions={interfaceOptions}
       directionOptions={directionOptions}
-      targetTypeOptions={targetTypeOptions}
       onSearch={onSearch}
       onRemoveFilter={onRemoveFilter}
       onReset={onReset}
@@ -94,12 +92,12 @@ describe('MessageFilterBar — 기간', () => {
 
     await user.clear(screen.getByLabelText('기간 종료'));
     await user.type(screen.getByLabelText('기간 종료'), '2026-08-10');
-    await user.type(screen.getByLabelText('시도 횟수 하한'), '3');
+    await user.type(screen.getByLabelText('재시도 횟수(이상)'), '3');
 
     rerenderWithApplied({ ...APPLIED }, { ...EMPTY_FILTERS });
 
     expect(screen.getByLabelText('기간 종료')).toHaveValue('2026-08-10');
-    expect(screen.getByLabelText('시도 횟수 하한')).toHaveValue(3);
+    expect(screen.getByLabelText('재시도 횟수(이상)')).toHaveValue(3);
   });
 
   it.each([
@@ -160,33 +158,30 @@ describe('MessageFilterBar — 기간', () => {
   });
 });
 
-describe('MessageFilterBar — 조건 5종', () => {
+describe('MessageFilterBar — 조건 4종', () => {
   it('선택칸마다 눈에 보이는 라벨이 붙는다', () => {
     renderBar();
 
-    for (const label of ['상태', '연계 종류', '방향', '대상 유형', '시도 횟수 하한']) {
+    for (const label of ['구분', '항목', '상태', '재시도 횟수(이상)']) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
+    // 대상 유형 칸은 두지 않는다 — 값이 시스템 코드라 읽을 수 없고 항목과 짝이다.
+    expect(screen.queryByLabelText('대상 유형')).toBeNull();
   });
 
-  it('선택지 아래에 어디서 만든 목록인지 안내가 붙는다', () => {
+  it('선택지 출처를 설명하는 안내문은 두지 않는다(사용자 지시 2026-10-27)', () => {
     renderBar();
 
-    expect(
-      screen.getByText(
-        '선택지는 조회한 기간의 기록에서 만듭니다. 한 번도 실행되지 않았거나 이 기간에 없는 값은 목록에 없습니다.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/선택지는 조회한 기간의 기록에서 만듭니다/)).toBeNull();
   });
 
   it.each(FILTER_CHANGE_CASES)(
     '적용된 $key 값만 바뀌어도 편집 상태를 그 값으로 돌린다',
-    ({ key, label, value }) => {
+    ({ key, label, value, shown }) => {
       const { rerenderWithApplied } = renderBar({
         statusOptions: ['FAILED'],
-        interfaceOptions: ['SYN_IFACE'],
+        interfaceOptions: ['IF-GR-SEND'],
         directionOptions: ['OUTBOUND'],
-        targetTypeOptions: ['SYN_TARGET'],
       });
 
       rerenderWithApplied({ ...APPLIED }, { ...EMPTY_FILTERS, [key]: value });
@@ -196,14 +191,14 @@ describe('MessageFilterBar — 조건 5종', () => {
         expect(field).toHaveValue(Number(value));
         return;
       }
-      expect(field).toHaveTextContent(value);
+      expect(field).toHaveTextContent(shown);
     },
   );
 
   it('시도 하한을 고쳐 조회하면 그 값이 함께 넘어간다', async () => {
     const { onSearch, user } = renderBar();
 
-    await user.type(screen.getByLabelText('시도 횟수 하한'), '3');
+    await user.type(screen.getByLabelText('재시도 횟수(이상)'), '3');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(onSearch).toHaveBeenCalledWith(APPLIED, { ...EMPTY_FILTERS, retryMin: '3' });
@@ -214,8 +209,8 @@ describe('MessageFilterBar — 조건 5종', () => {
       filters: { ...EMPTY_FILTERS, status: 'FAILED', retryMin: '2' },
     });
 
-    expect(screen.getByText('상태: FAILED')).toBeInTheDocument();
-    expect(screen.getByText('시도 횟수 하한: 2')).toBeInTheDocument();
+    expect(screen.getByText('상태: 실패')).toBeInTheDocument();
+    expect(screen.getByText('재시도 2회 이상')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '상태 조건 제거' }));
 
