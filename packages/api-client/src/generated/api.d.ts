@@ -6488,7 +6488,7 @@ export interface paths {
     put?: never;
     /**
      * 버전 확정
-     * @description 작성중 → 확정. 이후 in-place 수정은 불가하며 변경은 신규 버전으로만 한다. 검사 항목이 1건 이상이어야 한다(위반 시 400, code=LINE_REQUIRED). 상태≠작성중이면 400(code=STATE_LOCKED). 근거: W-06-02 §5-1 「확정」 · 공유계약 B-2
+     * @description 작성중 → 확정. 이후 in-place 수정은 불가하며 변경은 신규 버전으로만 한다. 검사 항목이 1건 이상이어야 한다(위반 시 400, code=LINE_REQUIRED). 샘플링 방식인데 샘플 비율(%)이 없으면 400(code=REQUIRED, field=samplingRatio) — 엑셀 올리기가 비율 없이 만든 작성중 버전이다(P-140). 상태≠작성중이면 400(code=STATE_LOCKED). 근거: W-06-02 §5-1 「확정」 · 공유계약 B-2
      */
     post: {
       parameters: {
@@ -6513,7 +6513,7 @@ export interface paths {
             'application/json': components['schemas']['InspectionPlanVersion'];
           };
         };
-        /** @description 검증 실패 — 항목 0건인 채 확정 시도(code=LINE_REQUIRED) 또는 상태≠작성중(code=STATE_LOCKED) */
+        /** @description 검증 실패 — 항목 0건인 채 확정 시도(code=LINE_REQUIRED) · 샘플링 방식인데 비율 없음(code=REQUIRED) 또는 상태≠작성중(code=STATE_LOCKED) */
         400: {
           headers: {
             [name: string]: unknown;
@@ -14640,6 +14640,85 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/quality/inspection-plans:import': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 검사기준 엑셀 올리기
+     * @description ⭐ 선행 구현(P-140) — 설계 사본에 서버가 먼저 적은 자리다. 한 행 = 검사 항목 하나, 같은 기준코드 행들이 기준 하나·작성중 버전 하나가 된다. 첫 시트만 읽고 머리글 이름으로 열을 찾는다. 첫 줄이 머리글 표가 아니면 고객사 검사기준서(TCKT) 서식으로 읽는다 — 기준서 한 장이 기준 하나(Code No. 가 여럿이면 품목마다 하나)이고 샘플 비율(%)은 채우지 않는다 — 비율 없는 작성중 버전으로 두고 확정할 때 막는다(omf-all-around#201). 새 기준코드는 기준 등록 → 버전 등록 → 항목 저장, 이미 있는 기준코드는 신규 버전 발행 → 버전 설정 저장 → 항목 저장을 차례로 부른다(각 단계의 검증·오류 문구가 그대로다). 통째로 되돌리지 않는다 — 기준코드 묶음 단위로 성공·실패를 돌려주고, 실패한 묶음이 만든 기준·버전은 지운다. 확정은 하지 않는다. 파일은 보관하지 않는다. 근거: W-06-02 §5-1 「엑셀 업로드」 · omf-all-around#199
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            /**
+             * Format: binary
+             * @description 검사기준 엑셀 파일(.xlsx)
+             */
+            file: string;
+          };
+        };
+      };
+      responses: {
+        /** @description 처리 결과. succeeded 는 반영된 기준코드 수, BatchResult.failed[].index 는 그 묶음 첫 행의 자료 순번(머리글 제외 0부터), key 는 기준코드다 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['BatchResult'];
+          };
+        };
+        /** @description 파일을 읽을 수 없다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/inventory/adjustments': {
     parameters: {
       query?: never;
@@ -17192,14 +17271,14 @@ export interface paths {
     };
     /**
      * 입고 줄 목록(자재입고·생산입고 현황)
-     * @description 입고 건을 가로지르는 줄 목록. 입고 목록은 머리글 단위라 품목·수량이 없다. 기간은 공장 현지 날짜(양 끝 포함)이고 시작이 필수, 최대 366일이다 — 입고 목록의 receiptDateFrom/To(UTC 날짜)와 다르다. 상태를 고르지 않으면 취소 완료(CANCELLED) 입고만 뺀다 — 취소요청 중인 입고는 재고가 그대로라 보인다. 정렬: 입고 일시 내림차순 → 입고 → 줄 번호. 근거: 서버 선행 · 장부 P-119
+     * @description 입고 건을 가로지르는 줄 목록. 입고 목록은 머리글 단위라 품목·수량이 없다. 기간은 공장 현지 날짜(양 끝 포함)이고 최대 366일이다. 기간 시작이 필수이고, lotNo·inboundReceiptNo·workOrderNo 로 집으면 기간은 선택(장부 P-140) — 입고 목록의 receiptDateFrom/To(UTC 날짜)와 다르다. 상태를 고르지 않으면 취소 완료(CANCELLED) 입고만 뺀다 — 취소요청 중인 입고는 재고가 그대로라 보인다. 정렬: 입고 일시 내림차순 → 입고 → 줄 번호. 근거: 서버 선행 · 장부 P-119
      */
     get: {
       parameters: {
         query?: {
           /** @description 입고 유형(공통코드 RECEIPT_TYPE) — 자재입고 MATERIAL · 생산입고 PRODUCT */
           receiptTypeCode?: string;
-          /** @description 입고일 시작(공장 현지 날짜) · 필수 */
+          /** @description 입고일 시작(공장 현지 날짜) · lotNo·inboundReceiptNo·workOrderNo 가 없으면 필수 */
           receiptDateFrom?: string;
           /** @description 입고일 종료(공장 현지 날짜, 포함) */
           receiptDateTo?: string;
@@ -17208,6 +17287,12 @@ export interface paths {
           itemId?: number;
           /** @description 입하 줄에서 온 입고(자재입고)의 공급사 */
           supplierId?: number;
+          /** @description LOT 번호 정확 일치(장부 P-140) */
+          lotNo?: string;
+          /** @description 입하 번호 정확 일치 — 그 입하 줄에서 온 자재입고(장부 P-140) */
+          inboundReceiptNo?: string;
+          /** @description W/O 번호 정확 일치 — LOT 원천이 그 W/O 인 생산입고(장부 P-140) */
+          workOrderNo?: string;
           /** @description 물류 전표 상태(LOGISTICS_DOCUMENT_STATUS). 주면 취소도 그 값으로 고른다 */
           statusCode?: string;
           /** @description 입고 번호·LOT 번호 부분 검색 */
@@ -17296,7 +17381,7 @@ export interface paths {
             };
           };
         };
-        /** @description 검증 실패 — 기간 시작 없음·종료가 시작보다 앞섬·366일 초과. 고쳐야 풀린다 */
+        /** @description 검증 실패 — 기간 시작과 집는 번호가 모두 없음 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류). 고쳐야 풀린다 */
         400: {
           headers: {
             [name: string]: unknown;
@@ -17314,7 +17399,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 권한 없음 — LOT 추적 화면 권한 */
+        /** @description 권한 없음 — LOT 생산 이력 조회 화면 권한 */
         403: {
           headers: {
             [name: string]: unknown;
@@ -20281,7 +20366,7 @@ export interface paths {
     };
     /**
      * LOT 추적 정방향 목록(자재 LOT)
-     * @description 자재입고가 있는 LOT 과 단계 진행. 진입점(itemId·lotNo·inboundReceiptNo·q) 중 하나가 필요하다. 기간 축은 첫 자재입고 일시(취소 완료 제외 · 공장 현지 날짜, 양 끝 포함, 최대 366일) — lotNo·inboundReceiptNo 로 집으면 기간은 선택. 정렬: 첫 자재입고 일시 내림차순. 근거: 서버 선행 · 장부 P-119
+     * @description 자재입고가 있는 LOT 과 단계 진행. 기간(receiptDateFrom)이나 LOT 을 집는 번호(lotNo·inboundReceiptNo) 중 하나가 필요하다. 기간만 넣으면 그 기간의 자재 LOT 전체를 본다. 둘 다 없으면 400(receiptDateFrom REQUIRED). itemId·q 와 그 밖의 칸은 거르는 조건이다. 기간 축은 첫 자재입고 일시(취소 완료 제외 · 공장 현지 날짜, 양 끝 포함, 최대 366일) — lotNo·inboundReceiptNo 로 집으면 기간은 선택. 정렬: 첫 자재입고 일시 내림차순. 근거: 서버 선행 · 장부 P-119
      */
     get: {
       parameters: {
@@ -20378,7 +20463,7 @@ export interface paths {
             };
           };
         };
-        /** @description 검증 실패 — 진입점 없음 · 기간 시작 없음 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류). 고쳐야 풀린다 */
+        /** @description 검증 실패 — 기간 시작과 집는 번호가 모두 없음 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류). 고쳐야 풀린다 */
         400: {
           headers: {
             [name: string]: unknown;
@@ -20396,7 +20481,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 권한 없음 — LOT 추적 화면 권한 */
+        /** @description 권한 없음 — LOT 생산 이력 조회 화면 권한 */
         403: {
           headers: {
             [name: string]: unknown;
@@ -20424,7 +20509,7 @@ export interface paths {
     };
     /**
      * LOT 추적 역방향 목록(생산 LOT)
-     * @description 실적 배분이 있는 생산 LOT 과 단계 진행(빈 선발행 슬롯 제외). 진입점(itemId·lotNo·shipmentNo·workOrderNo·q) 중 하나가 필요하다. 기간 축은 dateAxis — PRODUCED(기본, 첫 실적 시각) 또는 SHIPPED(그 LOT 이 실린 출하의 출하 일시). 공장 현지 날짜, 양 끝 포함, 최대 366일 — lotNo·shipmentNo·workOrderNo 로 집으면 기간은 선택. 정렬: 첫 실적 시각 내림차순. 근거: 서버 선행 · 장부 P-119
+     * @description 실적 배분이 있는 생산 LOT 과 단계 진행(빈 선발행 슬롯 제외). 기간(dateFrom)이나 LOT 을 집는 번호(lotNo·shipmentNo·workOrderNo) 중 하나가 필요하다. 기간만 넣으면 그 기간의 생산 LOT 전체를 본다. 둘 다 없으면 400(dateFrom REQUIRED). itemId·q 와 그 밖의 칸은 거르는 조건이다. 기간 축은 dateAxis — PRODUCED(기본, 첫 실적 시각) 또는 SHIPPED(그 LOT 이 실린 출하의 출하 일시). 공장 현지 날짜, 양 끝 포함, 최대 366일 — lotNo·shipmentNo·workOrderNo 로 집으면 기간은 선택. 정렬: 첫 실적 시각 내림차순. 근거: 서버 선행 · 장부 P-119
      */
     get: {
       parameters: {
@@ -20514,7 +20599,7 @@ export interface paths {
             };
           };
         };
-        /** @description 검증 실패 — 진입점 없음 · 기간 시작 없음 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류). 고쳐야 풀린다 */
+        /** @description 검증 실패 — 기간 시작과 집는 번호가 모두 없음 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류). 고쳐야 풀린다 */
         400: {
           headers: {
             [name: string]: unknown;
@@ -20532,7 +20617,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 권한 없음 — LOT 추적 화면 권한 */
+        /** @description 권한 없음 — LOT 생산 이력 조회 화면 권한 */
         403: {
           headers: {
             [name: string]: unknown;
@@ -20616,7 +20701,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 권한 없음 — LOT 추적 화면 권한 */
+        /** @description 권한 없음 — LOT 생산 이력 조회 화면 권한 */
         403: {
           headers: {
             [name: string]: unknown;
@@ -20711,7 +20796,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 권한 없음 — LOT 추적 화면 권한 */
+        /** @description 권한 없음 — LOT 생산 이력 조회 화면 권한 */
         403: {
           headers: {
             [name: string]: unknown;
@@ -20722,6 +20807,293 @@ export interface paths {
         };
         /** @description 없는 LOT */
         404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/material-input-lines': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 투입 줄 목록(기간별 이력)
+     * @description 자재 투입 기록을 기간으로 거른 목록. 기간은 투입 시각의 공장 현지 날짜(양 끝 포함)이고 최대 366일이다. 기간 시작이 필수이고, lotNo·workOrderNo·inboundReceiptNo 로 집으면 기간은 선택이다. 투입에는 취소 상태가 없어 정정된 원 투입은 빼고 정정 투입을 싣는다(정방향 목록의 투입량과 같은 셈). 정렬: 투입 시각 내림차순. 근거: 서버 선행 · 장부 P-140
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description 투입일 시작(공장 현지 날짜) · lotNo·workOrderNo·inboundReceiptNo 가 없으면 필수 */
+          inputDateFrom?: string;
+          /** @description 투입일 종료(공장 현지 날짜, 포함) */
+          inputDateTo?: string;
+          /** @description LOT 의 공장 */
+          plantId?: number;
+          itemId?: number;
+          /** @description LOT 번호 정확 일치(투입한 LOT · 담긴 LOT) */
+          lotNo?: string;
+          /** @description 투입한 W/O 번호 정확 일치 */
+          workOrderNo?: string;
+          /** @description 투입한 LOT 이 들어온 입하 번호 정확 일치 */
+          inboundReceiptNo?: string;
+          /** @description 투입한 LOT 이 들어온 입하의 공급사 */
+          supplierId?: number;
+          /** @description LOT 번호·W/O 번호 부분 검색 */
+          q?: string;
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: {
+                /** Format: int64 */
+                materialConsumptionId: number;
+                consumptionNo: string;
+                /**
+                 * Format: date-time
+                 * @description 투입 시각
+                 */
+                occurredAt: string;
+                statusCode: string;
+                consumptionTypeCode: string;
+                /**
+                 * Format: int64
+                 * @description 정정 투입이면 그 원 투입. 아니면 null
+                 */
+                correctsConsumptionId: number | null;
+                /**
+                 * Format: int64
+                 * @description 투입한 LOT 의 공장
+                 */
+                plantId: number;
+                /** @description 투입한 W/O */
+                workOrder: {
+                  /** Format: int64 */
+                  workOrderId: number;
+                  workOrderNo: string;
+                };
+                /** @description 투입 자재 품목 */
+                item: {
+                  /** Format: int64 */
+                  id: number;
+                  code: string;
+                  name: string;
+                };
+                /** Format: int64 */
+                lotId: number;
+                lotNo: string;
+                inputQty: number;
+                /** Format: int64 */
+                uomId: number;
+                uomCode: string;
+              }[];
+              page: components['schemas']['PageMeta'];
+              /** @description 필터 전체(쪽과 무관)의 합계. 단위가 섞이면 더할 수 없어 단위마다 둔다. */
+              totals: {
+                /** @description 줄 수. page.total 과 같다 */
+                lineCount: number;
+                qtyByUom: {
+                  /** Format: int64 */
+                  uomId: number;
+                  uomCode: string;
+                  qty: number;
+                }[];
+              };
+            };
+          };
+        };
+        /** @description 검증 실패 — 기간 시작과 집는 번호가 모두 없음 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류). 고쳐야 풀린다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — LOT 생산 이력 조회 화면 권한 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/trace/packing-lines': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 포장 줄 목록(기간별 이력)
+     * @description 확정(PACKED)된 취급 단위의 구성 줄을 기간으로 거른 목록. 한 행은 상자 하나에 담긴 LOT 하나다. 기간은 packedAt 의 공장 현지 날짜(양 끝 포함)이고 최대 366일이다. 기간 시작이 필수이고, lotNo·workOrderNo·shipmentNo 로 집으면 기간은 선택이다. 열린 상자(포장 중)는 싣지 않는다. 정렬: packedAt 내림차순 → 취급 단위 번호. 근거: 서버 선행 · 장부 P-140
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description 포장일 시작(공장 현지 날짜) · lotNo·workOrderNo·shipmentNo 가 없으면 필수 */
+          packedDateFrom?: string;
+          /** @description 포장일 종료(공장 현지 날짜, 포함) */
+          packedDateTo?: string;
+          /** @description LOT 의 공장 */
+          plantId?: number;
+          itemId?: number;
+          /** @description LOT 번호 정확 일치(투입한 LOT · 담긴 LOT) */
+          lotNo?: string;
+          /** @description 담긴 LOT 의 원천 W/O 번호 정확 일치 */
+          workOrderNo?: string;
+          /** @description 상자가 담긴 출하 단위의 출하 번호 정확 일치 */
+          shipmentNo?: string;
+          /** @description 상자가 담긴 출하 단위의 출하 고객 */
+          customerId?: number;
+          /** @description LOT 번호·취급 단위 번호 부분 검색 */
+          q?: string;
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: {
+                /** Format: int64 */
+                handlingUnitContentId: number;
+                /** Format: int64 */
+                handlingUnitId: number;
+                /** @description 취급 단위(상자) 번호 */
+                handlingUnitNo: string;
+                handlingUnitTypeCode: string;
+                /** @description 취급 단위 상태. 확정(PACKED)된 상자만 실어 지금은 늘 PACKED 다 */
+                handlingUnitStatusCode: string;
+                /**
+                 * Format: date-time
+                 * @description 구성 줄 생성 시각. 포장 확정과 구성 치환(포장 재구성)이 구성 줄을 다시 만들어, 확정 시각이거나 그 뒤 마지막으로 구성을 고친 시각이다
+                 */
+                packedAt: string;
+                /**
+                 * Format: int64
+                 * @description 담긴 LOT 의 공장
+                 */
+                plantId: number;
+                /** @description 품목 */
+                item: {
+                  /** Format: int64 */
+                  id: number;
+                  code: string;
+                  name: string;
+                };
+                /** Format: int64 */
+                lotId: number;
+                lotNo: string;
+                qty: number;
+                /** Format: int64 */
+                uomId: number;
+                uomCode: string;
+                /** @description LOT 원천이 W/O 일 때만. 아니면 null */
+                workOrder: {
+                  /** Format: int64 */
+                  workOrderId: number;
+                  workOrderNo: string;
+                } | null;
+                /** @description 상자가 출하 단위에 담겼을 때만. 아니면 null */
+                shippingUnit: {
+                  /** Format: int64 */
+                  shippingUnitId: number;
+                  shippingUnitNo: string;
+                } | null;
+              }[];
+              page: components['schemas']['PageMeta'];
+              /** @description 필터 전체(쪽과 무관)의 합계. 단위가 섞이면 더할 수 없어 단위마다 둔다. */
+              totals: {
+                /** @description 줄 수. page.total 과 같다 */
+                lineCount: number;
+                qtyByUom: {
+                  /** Format: int64 */
+                  uomId: number;
+                  uomCode: string;
+                  qty: number;
+                }[];
+              };
+            };
+          };
+        };
+        /** @description 검증 실패 — 기간 시작과 집는 번호가 모두 없음 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류). 고쳐야 풀린다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — LOT 생산 이력 조회 화면 권한 */
+        403: {
           headers: {
             [name: string]: unknown;
           };
@@ -33838,12 +34210,12 @@ export interface paths {
     };
     /**
      * 출하 줄 목록(제품출고 현황)
-     * @description 출하 건을 가로지르는 줄 목록. 출하 목록은 머리글 단위라 품목 필터·수량이 없다. 기간 축은 출하 일시(shipped_at)이고 출하 창고 공장의 현지 날짜(양 끝 포함)다 — 시작이 필수, 최대 366일. 상태를 고르지 않으면 취소된 출하는 뺀다. 정렬: 출하 일시 내림차순 → 출하 → 줄 번호. 근거: 서버 선행 · 장부 P-119
+     * @description 출하 건을 가로지르는 줄 목록. 출하 목록은 머리글 단위라 품목 필터·수량이 없다. 기간 축은 출하 일시(shipped_at)이고 출하 창고 공장의 현지 날짜(양 끝 포함)다 — 최대 366일. 기간 시작이 필수이고, lotNo·shipmentNo·workOrderNo 로 집으면 기간은 선택이다. 기간 없이 집어도 아직 출하하지 않은 출하(shipped_at 없음)는 뺀다(장부 P-140). 상태를 고르지 않으면 취소된 출하는 뺀다. 정렬: 출하 일시 내림차순 → 출하 → 줄 번호. 근거: 서버 선행 · 장부 P-119
      */
     get: {
       parameters: {
         query?: {
-          /** @description 출하일 시작(공장 현지 날짜) · 필수 */
+          /** @description 출하일 시작(공장 현지 날짜) · lotNo·shipmentNo·workOrderNo 가 없으면 필수 */
           shipDateFrom?: string;
           /** @description 출하일 종료(공장 현지 날짜, 포함) */
           shipDateTo?: string;
@@ -33852,6 +34224,12 @@ export interface paths {
           warehouseId?: number;
           itemId?: number;
           customerId?: number;
+          /** @description 줄에 배분된 LOT 번호 정확 일치(장부 P-140) */
+          lotNo?: string;
+          /** @description 출하 번호 정확 일치(장부 P-140) */
+          shipmentNo?: string;
+          /** @description 줄에 배분된 LOT 의 원천 W/O 번호 정확 일치(장부 P-140) */
+          workOrderNo?: string;
           /** @description 출하 상태(SHIPMENT_STATUS). 주면 취소도 그 값으로 고른다 */
           statusCode?: string;
           /** @description 출하 번호·LOT 번호 부분 검색 */
@@ -33933,7 +34311,7 @@ export interface paths {
             };
           };
         };
-        /** @description 검증 실패 — 기간 시작 없음·종료가 시작보다 앞섬·366일 초과. 고쳐야 풀린다 */
+        /** @description 검증 실패 — 기간 시작과 집는 번호가 모두 없음 · 종료가 시작보다 앞섬 · 366일 초과(field·code 가 있는 칸 오류). 고쳐야 풀린다 */
         400: {
           headers: {
             [name: string]: unknown;
@@ -33951,7 +34329,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 권한 없음 — LOT 추적 화면 권한 */
+        /** @description 권한 없음 — LOT 생산 이력 조회 화면 권한 */
         403: {
           headers: {
             [name: string]: unknown;
