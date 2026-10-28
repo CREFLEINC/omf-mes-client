@@ -412,6 +412,51 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     expect(posts[0]?.body).toContain('name="file"');
   });
 
+  it('여러 파일을 차례로 하나씩, 파일마다 새 멱등 키로 올리고 결과를 파일별로 남긴다', async () => {
+    let call = 0;
+    const { requests, user } = renderScreen([
+      importRoute(() => {
+        call += 1;
+        return call === 1
+          ? jsonResponse({ succeeded: 2, failed: [] })
+          : jsonResponse(
+              {
+                errors: [
+                  {
+                    scope: 'screen',
+                    code: 'INVALID',
+                    message: '엑셀 파일을 열 수 없습니다. .xlsx 파일인지 확인하세요.',
+                  },
+                ],
+              },
+              { status: 400 },
+            );
+      }),
+      planListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), [
+      new File(['a'], 'A.xlsx'),
+      new File(['b'], 'B.xlsx'),
+    ]);
+    expect(within(dialog).getByText(t.import.fileCount(2))).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+
+    const first = await within(dialog).findByRole('region', { name: 'A.xlsx' });
+    expect(within(first).getByText(t.import.succeeded(2))).toBeInTheDocument();
+    const second = await within(dialog).findByRole('region', { name: 'B.xlsx' });
+    expect(
+      within(second).getByText('엑셀 파일을 열 수 없습니다. .xlsx 파일인지 확인하세요.'),
+    ).toBeInTheDocument();
+
+    const keys = requestsTo(requests, IMPORT_PATH).map((r) => r.headers.get('Idempotency-Key'));
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
   it('파일을 읽을 수 없으면 창을 닫지 않고 사유를 배너로 낸다', async () => {
     const { user } = renderScreen([
       importRoute(() =>

@@ -140,10 +140,13 @@ export const inspectionStandard = {
       '올리면 기준코드마다 작성중 버전이 생깁니다. 이미 있는 기준은 최신 확정 버전에서 새 버전을 만들고 엑셀 항목으로 채웁니다. 확정은 화면에서 직접 하세요.',
     columnsNote:
       '첫 시트 첫 줄을 머리글로 읽습니다. 필요한 열: 기준코드·항목코드·항목명(필수), 기준명·검사유형·품목코드·공정코드, 유효시작일·샘플링방식·샘플비율·AQL·합격판정개수·불합격판정개수·검사주기, 순서·데이터유형·단위·목표값·하한·상한·측정횟수·검사방법·필수·자동판정.',
-    fileLabel: '검사기준 엑셀 파일(.xlsx)',
+    fileLabel: '검사기준 엑셀 파일(.xlsx, 여러 개 가능)',
     filePlaceholder: '파일 고르기',
     fileNone: '고른 파일이 없습니다.',
     fileRequired: '올릴 파일을 먼저 고르세요.',
+    fileCount: (count: number): string => `파일 ${String(count)}개를 골랐습니다.`,
+    progress: (done: number, total: number): string =>
+      `${String(total)}개 중 ${String(done)}개를 처리했습니다. 창을 닫지 마세요.`,
     submit: '올리기',
     resultTitle: '올리기 결과',
     succeeded: (count: number): string => `기준 ${String(count)}건을 반영했습니다.`,

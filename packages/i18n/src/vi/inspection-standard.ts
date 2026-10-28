@@ -134,10 +134,13 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       'Sau khi tải lên, mỗi mã tiêu chuẩn có một phiên bản đang soạn. Tiêu chuẩn đã có sẽ tạo phiên bản mới từ phiên bản xác nhận mới nhất và điền hạng mục từ Excel. Việc xác nhận hãy làm trực tiếp trên màn hình.',
     columnsNote:
       'Đọc dòng đầu của trang tính đầu tiên làm tiêu đề. Cột bắt buộc: mã tiêu chuẩn · mã hạng mục · tên hạng mục.',
-    fileLabel: 'Tệp Excel tiêu chuẩn kiểm tra (.xlsx)',
+    fileLabel: 'Tệp Excel tiêu chuẩn kiểm tra (.xlsx, có thể chọn nhiều)',
     filePlaceholder: 'Chọn tệp',
     fileNone: 'Chưa chọn tệp.',
     fileRequired: 'Hãy chọn tệp cần tải lên trước.',
+    fileCount: (count: number): string => `Đã chọn ${String(count)} tệp.`,
+    progress: (done: number, total: number): string =>
+      `Đã xử lý ${String(done)}/${String(total)} tệp. Đừng đóng cửa sổ.`,
     submit: 'Tải lên',
     resultTitle: 'Kết quả tải lên',
     succeeded: (count: number): string => `Đã áp dụng ${String(count)} tiêu chuẩn.`,

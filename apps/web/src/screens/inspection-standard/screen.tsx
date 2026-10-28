@@ -7,14 +7,16 @@ import {
   SkeletonText,
   useToast,
 } from '@crefle/web-ui';
-import type { ApiClient, components } from '@omf-mes/api-client';
+import { createIdempotencyKey, type ApiClient, type components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
+import { runRequest, toApiError } from '../../patterns/request';
 import {
   DATA_TYPE_CODE_GROUP,
   FREQUENCY_INTERVAL_UOM_CODE_GROUP,
@@ -40,7 +42,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
 import { PlanActionBanner } from './plan-action-banner';
 import { PlanActionDialog, type PlanActionKind } from './plan-action-dialog';
-import { ImportDialog, type BatchResult } from './import-dialog';
+import { ImportDialog, type ImportOutcome } from './import-dialog';
 import { PlanListPane } from './plan-list-pane';
 import {
   emptyPlanFormValues,
@@ -202,35 +204,50 @@ export const InspectionStandardScreen = () => {
 
   /** 엑셀 올리기 창. `null` 이면 닫혀 있다 — 파일과 결과는 창이 닫히면 함께 버린다. */
   const [importState, setImportState] = useState<{
-    file: File | null;
-    result: BatchResult | null;
+    files: File[];
+    outcomes: ImportOutcome[];
   } | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const queryClient = useQueryClient();
 
   /**
-   * 엑셀 올리기(#199) — 툴 엑셀 올리기와 같은 짜임이다.
+   * 엑셀 올리기(#199) — 고른 파일을 **차례로** 하나씩 올린다. 서버 경로는 파일 하나를 받는다.
    *
+   * ⛔ 동시에 보내지 않는다 — 같은 기준코드가 두 파일에 있으면 둘 다 「새 기준」으로 판정돼 한쪽이 실패하거나,
+   *    있는 기준이면 신규 버전이 둘 선다. 서버가 묶음을 차례로 넣는 것과 같은 이유다.
+   * ⛔ 파일마다 새 멱등 키를 쓴다 — `File` 은 값 지문에서 `{}` 가 되어, 키를 이어 쓰면 다른 파일에
+   *    앞 파일의 결과가 되돌아온다.
    * ⚠ 생성된 타입이 `file: string` 이다(openapi-typescript 가 `format: binary` 를 문자열로 옮긴다).
-   * 실제로 보낼 것은 `FormData` 라 단언을 여기 한 곳에 가둔다 — 경계 문자열은 브라우저가 정한다.
-   * ⛔ 멱등 키 수명은 기본값(`per-attempt`)이다 — `File` 은 값 지문에서 `{}` 가 되어, `until-applied` 면
-   * 다른 파일을 골라도 같은 키가 나가 앞 파일의 결과가 되돌아온다.
+   *    실제로 보낼 것은 `FormData` 라 단언을 여기 한 곳에 가둔다 — 경계 문자열은 브라우저가 정한다.
    */
-  const importWrite = useMasterWrite<File, BatchResult>({
-    request: (file, headers) => {
+  const runImport = async (files: File[]): Promise<void> => {
+    setIsImporting(true);
+    const outcomes: ImportOutcome[] = [];
+    for (const file of files) {
       const form = new FormData();
       form.append('file', file);
-      return client.POST('/quality/inspection-plans:import', {
-        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        body: form as unknown as { file: string },
-      });
-    },
-    etagPath: null,
+      try {
+        const result = await runRequest(() =>
+          client.POST('/quality/inspection-plans:import', {
+            params: { header: { 'Idempotency-Key': createIdempotencyKey() } },
+            body: form as unknown as { file: string },
+          }),
+        );
+        outcomes.push({ fileName: file.name, result, error: null });
+      } catch (cause) {
+        // 한 파일이 거절돼도 나머지는 올린다 — 이유는 그 파일 자리에 남긴다.
+        outcomes.push({ fileName: file.name, result: null, error: toApiError(cause) });
+      }
+      const done = [...outcomes];
+      setImportState((prev) => (prev === null ? prev : { ...prev, outcomes: done }));
+    }
     // 새 기준·새 버전이 생긴다 — 목록과 버전 목록을 함께 다시 받는다.
-    invalidateKeys: [planKeys.all, versionKeys.all],
-    knownFields: [],
-    onSuccess: (result) => {
-      setImportState((prev) => (prev === null ? prev : { ...prev, result }));
-    },
-  });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: planKeys.all }),
+      queryClient.invalidateQueries({ queryKey: versionKeys.all }),
+    ]);
+    setIsImporting(false);
+  };
   const plans = planList.data?.items ?? [];
 
   const planDetail = useInspectionPlanDetail(selectedPlanId);
@@ -1423,10 +1440,7 @@ export const InspectionStandardScreen = () => {
             resetPlanEditing();
             setCreateValues(emptyPlanFormValues());
           }}
-          onExcelUpload={() => {
-            importWrite.reset();
-            setImportState({ file: null, result: null });
-          }}
+          onExcelUpload={() => setImportState({ files: [], outcomes: [] })}
           loadError={
             planList.isError ? (
               <LoadErrorBanner error={planList.error} onRetry={() => void planList.refetch()} />
@@ -1546,17 +1560,14 @@ export const InspectionStandardScreen = () => {
 
       {importState !== null && (
         <ImportDialog
-          file={importState.file}
-          onSelectFile={(file) => {
-            importWrite.reset();
-            setImportState({ file, result: null });
-          }}
-          result={importState.result}
-          banner={<PlanActionBanner error={importWrite.error} />}
-          isSaving={importWrite.isSaving}
+          files={importState.files}
+          onSelectFiles={(files) => setImportState({ files, outcomes: [] })}
+          outcomes={importState.outcomes}
+          isSaving={isImporting}
           onClose={() => setImportState(null)}
           onSubmit={() => {
-            if (importState.file !== null) importWrite.write(importState.file);
+            setImportState({ files: importState.files, outcomes: [] });
+            void runImport(importState.files);
           }}
         />
       )}
