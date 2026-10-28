@@ -74,9 +74,15 @@ const workOrder = (
 interface Options {
   orders: unknown[];
   released?: number[];
+  /** 목록과 건수 조회를 403(오류 봉투)으로 거절한다 */
+  forbidden?: boolean;
 }
 
-const stub = ({ orders, released = [] }: Options): { fetch: StubFetch; requests: Request[] } => {
+const stub = ({
+  orders,
+  released = [],
+  forbidden = false,
+}: Options): { fetch: StubFetch; requests: Request[] } => {
   const requests: Request[] = [];
   /* 9004는 배포 시각이 없지만 취소된 W/O다. 배포 전 W/O로 세지 않는다. */
   const pending = [
@@ -88,6 +94,12 @@ const stub = ({ orders, released = [] }: Options): { fetch: StubFetch; requests:
   const fetch: StubFetch = async (request) => {
     requests.push(request.clone());
     const url = new URL(request.url);
+    if (path(request) === '/planning/production-orders' && forbidden) {
+      return jsonResponse(
+        { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '권한이 없습니다.' }] },
+        { status: 403 },
+      );
+    }
     if (path(request) === '/planning/production-orders') {
       const state = url.searchParams.get('worklistState');
       const filtered = (orders as { worklistState: string }[]).filter(
@@ -193,12 +205,17 @@ describe('작업지시 목록 작업함', () => {
     render({ orders: [REVIEW, DONE_BLOCKED, DONE_READY] });
 
     const group = await screen.findByRole('group', { name: t.counts.label });
-    const chips = within(group).getAllByRole('button');
-    expect(chips.map((chip) => chip.textContent)).toEqual([
-      expect.stringMatching(/^전체 /),
-      expect.stringMatching(new RegExp(`^${t.status.ACTION_REQUIRED} `)),
-      expect.stringMatching(new RegExp(`^${t.status.RELEASE_PENDING} `)),
-    ]);
+    await waitFor(() =>
+      expect(
+        within(group)
+          .getAllByRole('button')
+          .map((chip) => chip.textContent),
+      ).toEqual([
+        expect.stringMatching(/^전체 /),
+        expect.stringMatching(new RegExp(`^${t.status.ACTION_REQUIRED} `)),
+        expect.stringMatching(new RegExp(`^${t.status.RELEASE_PENDING} `)),
+      ]),
+    );
     expect(screen.queryByText('자동 계획', { exact: true })).toBeNull();
   });
 
@@ -306,7 +323,7 @@ describe('작업지시 목록 작업함', () => {
       expect(within(row).getByText(t.status.ACTION_REQUIRED)).toBeVisible();
       const chip = within(row).getByText(label);
       expect(chip).toBeVisible();
-      expect(chip.closest('.reason-chips')).toHaveAttribute('title', help);
+      expect(chip.closest('button')).toHaveAccessibleDescription(help);
     },
   );
 
@@ -319,8 +336,7 @@ describe('작업지시 목록 작업함', () => {
 
     const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-721') });
     const chip = within(row).getByText('자동 계획 다시 실행 필요');
-    expect(chip.closest('.reason-chips')).toHaveAttribute(
-      'title',
+    expect(chip.closest('button')).toHaveAccessibleDescription(
       '기준정보가 갖춰졌거나 자동 계획이 실패했습니다. 처리 화면 오른쪽 위 [자동 계획 다시 실행]을 눌러야 합니다.',
     );
   });
@@ -345,6 +361,71 @@ describe('작업지시 목록 작업함', () => {
     expect(new URL(list?.url ?? 'http://x').searchParams.get('worklistState')).toBe(
       'RELEASE_PENDING',
     );
+  });
+
+  it('목록을 볼 권한이 없으면 다시 시도 없이 없는 권한과 요청할 곳을 말하고, 칩은 건수 없이 이름만 보인다', async () => {
+    render({ orders: [REVIEW], forbidden: true });
+
+    expect(await screen.findByText(t.access.forbiddenTitle)).toBeVisible();
+    expect(screen.getByText(t.access.forbiddenNoMenu)).toBeVisible();
+    expect(screen.queryByText(t.list.loadFailed)).toBeNull();
+    expect(screen.queryByRole('button', { name: messages.common.retry })).toBeNull();
+    const group = screen.getByRole('group', { name: t.counts.label });
+    await waitFor(() =>
+      expect(
+        within(group)
+          .getAllByRole('button')
+          .map((chip) => chip.textContent),
+      ).toEqual([t.counts.allName, t.status.ACTION_REQUIRED, t.status.RELEASE_PENDING]),
+    );
+  });
+
+  it('권한 안내는 라우트가 넘긴 메뉴 경로를 가리킨다', async () => {
+    const harness = stub({ orders: [REVIEW], forbidden: true });
+    renderWithProviders(<ProductionOrderScreen permissionMenuPath="시스템 관리 › 권한" />, {
+      fetch: harness.fetch,
+      route: '/production/production-orders',
+    });
+
+    expect(await screen.findByText(t.access.forbidden('시스템 관리 › 권한'))).toBeVisible();
+  });
+
+  it('조회 조건 때문에 비었으면 조건 없음 안내와 구별해 [초기화]를 두고, 누르면 조건만 지운다', async () => {
+    const user = userEvent.setup();
+    render({ orders: [] }, '/production/production-orders?q=NONE&state=RELEASE_PENDING');
+
+    expect(await screen.findByText(t.list.emptyTitle)).toBeVisible();
+    expect(screen.queryByText(t.list.emptyActionRequiredTitle)).toBeNull();
+    const listPane = screen.getByRole('region', { name: t.list.pane });
+    await user.click(within(listPane).getByRole('button', { name: messages.common.reset }));
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      /^\/production\/production-orders\?state=RELEASE_PENDING$/,
+    );
+  });
+
+  it('조건 없이 조치 필요가 0건이면 조치 필요 안내를 보인다', async () => {
+    render({ orders: [] });
+
+    expect(await screen.findByText(t.list.emptyActionRequiredTitle)).toBeVisible();
+    const listPane = screen.getByRole('region', { name: t.list.pane });
+    expect(within(listPane).queryByRole('button', { name: messages.common.reset })).toBeNull();
+  });
+
+  it('사유 칩은 키보드로 닿고, 초점을 두면 도움말 툴팁이 열린다', async () => {
+    const user = userEvent.setup();
+    render({ orders: [DONE_BLOCKED] });
+
+    const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-702') });
+    const trigger = within(row).getByRole('button', {
+      name: new RegExp(t.reasons.WORK_ORDER_LINE_MISSING),
+    });
+    const help =
+      '배포 전 W/O 1건에 생산 라인이 없습니다. 4M 배정 단계에서 생산 라인을 지정해야 합니다.';
+    expect(trigger).toHaveAccessibleDescription(help);
+    await user.click(within(row).getByRole('checkbox'));
+    await user.tab();
+    expect(trigger).toHaveFocus();
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(help);
   });
 
   it('행을 누르면 업무 번호 주소의 처리 화면으로 간다. 체크박스 칸은 이동하지 않는다(C-1, T-W-C)', async () => {

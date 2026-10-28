@@ -26,6 +26,7 @@ import {
 import { PageNav } from '../../patterns/page-nav';
 import { SelectableTable } from '../../patterns/selectable-table';
 import { useWorklistBulk, type BulkKind, type BulkTarget } from './bulk-actions';
+import { ForbiddenNotice, isForbidden } from './forbidden-notice';
 import { WorklistBulkDialog } from './bulk-dialog';
 import { useItemCodeNames } from './item-lookups';
 import { useUomReferenceLookup } from './reference-lookups';
@@ -43,6 +44,17 @@ import { useWorklist, useWorklistCount, type WorklistFilters } from './worklist-
 import { CountChip, ProcessStateChip, ReasonChips } from './worklist-chips';
 
 const t = messages.erpWorkOrderFlow;
+
+/** 조회 조건 칸(번호, 납기, 품목)에 값이 있는가. 처리 상태 칩은 조건으로 치지 않는다. */
+const hasSearchConditions = (filters: WorklistFilters): boolean =>
+  filters.q !== '' || filters.dueFrom !== '' || filters.dueTo !== '' || filters.item !== '';
+
+/** 칩 건수. 건수를 받지 못했으면(권한 없음, 오류, 불러오는 중) 0으로 보이지 않고 이름만 보인다. */
+const countLabel = (
+  count: number | undefined,
+  withCount: (count: number) => string,
+  name: string,
+): string => (count === undefined ? name : withCount(count));
 const quantity = (value: number): string =>
   new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
 
@@ -56,7 +68,14 @@ export interface WorklistRow {
   outcome: BulkOutcome | undefined;
 }
 
-export const ProductionOrderScreen = () => {
+export interface ProductionOrderScreenProps {
+  /** 권한 안내가 가리킬 메뉴 경로(「시스템 관리 › 사용자·역할·권한」). 라우트가 사이드바 이름으로 넘긴다. */
+  permissionMenuPath?: string | null;
+}
+
+export const ProductionOrderScreen = ({
+  permissionMenuPath = null,
+}: ProductionOrderScreenProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const filters = useMemo(() => readWorklistFilters(searchParams), [searchParams]);
@@ -233,19 +252,27 @@ export const ProductionOrderScreen = () => {
           <span className="erp-wo-counts" role="group" aria-label={t.counts.label}>
             <CountChip
               state="BEFORE_PLAN"
-              label={t.counts.all(allCount.data ?? 0)}
+              label={countLabel(allCount.data, t.counts.all, t.counts.allName)}
               selected={filters.state === 'ALL'}
               onSelect={() => apply({ ...filters, state: 'ALL', page: 1 })}
             />
             <CountChip
               state="ACTION_REQUIRED"
-              label={t.counts.actionRequired(actionRequiredCount.data ?? 0)}
+              label={countLabel(
+                actionRequiredCount.data,
+                t.counts.actionRequired,
+                t.status.ACTION_REQUIRED,
+              )}
               selected={filters.state === 'ACTION_REQUIRED'}
               onSelect={() => apply({ ...filters, state: 'ACTION_REQUIRED', page: 1 })}
             />
             <CountChip
               state="RELEASE_PENDING"
-              label={t.counts.releasePending(releasePendingCount.data ?? 0)}
+              label={countLabel(
+                releasePendingCount.data,
+                t.counts.releasePending,
+                t.status.RELEASE_PENDING,
+              )}
               selected={filters.state === 'RELEASE_PENDING'}
               onSelect={() => apply({ ...filters, state: 'RELEASE_PENDING', page: 1 })}
             />
@@ -296,7 +323,9 @@ export const ProductionOrderScreen = () => {
         />
       )}
       <section className="pane erp-wo-list-pane" aria-label={t.list.pane}>
-        {list.isError ? (
+        {list.isError && isForbidden(list.error) ? (
+          <ForbiddenNotice menuPath={permissionMenuPath} />
+        ) : list.isError ? (
           <AlertBanner
             variant="error"
             title={t.list.loadFailed}
@@ -330,19 +359,43 @@ export const ProductionOrderScreen = () => {
               checkedIds={checked}
               onCheckedChange={setChecked}
               empty={
-                <EmptyState
-                  size="sm"
-                  title={
-                    filters.state === 'ACTION_REQUIRED'
-                      ? t.list.emptyActionRequiredTitle
-                      : t.list.emptyTitle
-                  }
-                  description={
-                    filters.state === 'ACTION_REQUIRED'
-                      ? t.list.emptyActionRequiredDescription
-                      : t.list.emptyDescription
-                  }
-                />
+                hasSearchConditions(filters) ? (
+                  /* 조회 조건 때문에 비었으면 조건을 지우는 길을 둔다. 고른 칩(처리 상태)과 쪽 크기는 그대로다. */
+                  <EmptyState
+                    size="sm"
+                    title={t.list.emptyTitle}
+                    description={t.list.emptyDescription}
+                    action={
+                      <Button
+                        size="sm"
+                        variant="outlined"
+                        onClick={() =>
+                          apply({
+                            ...DEFAULT_WORKLIST_FILTERS,
+                            state: filters.state,
+                            size: filters.size,
+                          })
+                        }
+                      >
+                        {messages.common.reset}
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    size="sm"
+                    title={
+                      filters.state === 'ACTION_REQUIRED'
+                        ? t.list.emptyActionRequiredTitle
+                        : t.list.emptyTitle
+                    }
+                    description={
+                      filters.state === 'ACTION_REQUIRED'
+                        ? t.list.emptyActionRequiredDescription
+                        : undefined
+                    }
+                  />
+                )
               }
             />
             {resultFilter === null && (

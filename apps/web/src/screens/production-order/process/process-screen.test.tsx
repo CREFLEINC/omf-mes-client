@@ -49,6 +49,13 @@ interface World {
   rejectRelease: number[];
   /** 저장 전에 서버 판을 올려 낙관적 잠금 충돌을 만든다 */
   bumpPlanVersion?: boolean;
+  /** 서버 칩 판정. 시험 도중 바꿔 머리가 다시 읽는지 본다. */
+  worklistState?: string;
+  worklistReasons?: { code: string; workOrderCount: number }[];
+  /** Routing 21이 작성중(쓸 수 없는) 개정이라 usableOnly 목록에 없다 */
+  routingDraft?: boolean;
+  /** 이 경로를 403으로 거절한다 */
+  forbidden?: string;
 }
 
 const world = (overrides: Partial<World> = {}): World => ({
@@ -98,6 +105,8 @@ const orderBody = (state: World) => ({
   expandedWorkOrderCount: state.workOrders.length,
   plannedWorkOrderCount: state.workOrders.length,
   autoPlan: state.autoPlan,
+  ...(state.worklistState === undefined ? {} : { worklistState: state.worklistState }),
+  ...(state.worklistReasons === undefined ? {} : { worklistReasons: state.worklistReasons }),
 });
 
 const planBody = (plan: Plan) => ({
@@ -151,6 +160,12 @@ const serve = (state: World) => {
     const planMatch = /^\/planning\/production-plans\/(\d+)(:confirm)?$/.exec(at);
     const workOrderMatch = /^\/production\/work-orders\/(\d+)(\/validation|:release)?$/.exec(at);
 
+    if (state.forbidden === at) {
+      return jsonResponse(
+        { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '권한이 없습니다.' }] },
+        { status: 403 },
+      );
+    }
     if (at === '/planning/production-orders') {
       const q = url.searchParams.get('q');
       return jsonResponse(page(q === null || ORDER_NO.includes(q) ? [orderBody(state)] : []));
@@ -158,6 +173,9 @@ const serve = (state: World) => {
     if (at === '/planning/production-orders/701') return jsonResponse(orderBody(state));
     if (at === '/planning/boms') return jsonResponse(page(state.boms));
     if (at === '/planning/routings') {
+      if (state.routingDraft === true && url.searchParams.get('usableOnly') === 'true') {
+        return jsonResponse(page([]));
+      }
       return jsonResponse(
         page([
           {
@@ -165,7 +183,7 @@ const serve = (state: World) => {
             itemId: 7101,
             routingCode: 'SYN-RT',
             routingVersion: 1,
-            statusCode: 'ACTIVE',
+            statusCode: state.routingDraft === true ? 'DRAFT' : 'ACTIVE',
             isDefault: true,
           },
         ]),
@@ -391,6 +409,57 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(
       await screen.findByRole('region', { name: tp.assign.editorLabel('SYN-WO-9002') }),
     ).toBeVisible();
+  });
+
+  it('4M을 저장하면 머리의 상태 칩과 사유 칩을 서버 판정으로 다시 읽는다', async () => {
+    const user = userEvent.setup();
+    const state = world({
+      autoPlan: { status: 'DONE', reasons: [] },
+      plans: [{ ...CONFIRMED_PLAN }],
+      workOrders: [{ workOrderId: 9001, productionLineId: 31, located: false }],
+      worklistState: 'ACTION_REQUIRED',
+      worklistReasons: [{ code: 'WORK_ORDER_LOCATION_MISSING', workOrderCount: 1 }],
+    });
+    renderAt(`${WORKLIST}/${ORDER_NO}`, state);
+    await currentStep(tp.steps.assign);
+    expect(await screen.findByText(t.reasons.WORK_ORDER_LOCATION_MISSING)).toBeVisible();
+    const editor = await screen.findByRole('region', {
+      name: tp.assign.editorLabel('SYN-WO-9001'),
+    });
+    const save = await within(editor).findByRole('button', { name: tp.assign.actions.save });
+    await waitFor(() => {
+      expect(save).toBeEnabled();
+    });
+    /* 저장하면 서버 판정이 배포 대기로 바뀐다. 새로 읽기 전에는 화면이 이 값을 모른다. */
+    state.worklistState = 'RELEASE_PENDING';
+    delete state.worklistReasons;
+    await user.click(save);
+
+    expect(await screen.findByText(t.status.RELEASE_PENDING)).toBeVisible();
+    expect(screen.queryByText(t.reasons.WORK_ORDER_LOCATION_MISSING)).toBeNull();
+  });
+
+  it('확정된 계획이 쓰는 Routing 개정이 이제 쓸 수 없어도 마스터 점검은 그 개정으로 통과한다', async () => {
+    renderAt(
+      `${WORKLIST}/${ORDER_NO}`,
+      world({
+        autoPlan: { status: 'DONE', reasons: [] },
+        plans: [{ ...CONFIRMED_PLAN }],
+        workOrders: [{ workOrderId: 9001, located: false }],
+        routingDraft: true,
+      }),
+    );
+
+    await currentStep(tp.steps.assign);
+    expect(screen.queryByText(tp.remaining.select('Routing을'))).toBeNull();
+  });
+
+  it('처리 화면을 볼 권한이 없으면 다시 시도 없이 권한과 요청할 곳을 말한다', async () => {
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world({ forbidden: '/planning/production-orders' }));
+
+    expect(await screen.findByText(t.access.forbiddenTitle)).toBeVisible();
+    expect(screen.getByText(t.access.forbiddenNoMenu)).toBeVisible();
+    expect(screen.queryByRole('button', { name: tp.retry })).toBeNull();
   });
 
   it('배포가 모두 성공하면 완료 화면을 보인다', async () => {

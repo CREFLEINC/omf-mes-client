@@ -39,6 +39,7 @@ import { useItemCodeNames } from '../item-lookups';
 import { useAutoPlanMutation } from '../mutations';
 import { useUomReferenceLookup } from '../reference-lookups';
 import { apiErrorText, invalidateFlow, releaseWorkOrder } from '../release-runner';
+import { ForbiddenNotice, isForbidden } from '../forbidden-notice';
 import { ProcessStateChip, ReasonChips, reasonLabel } from '../worklist-chips';
 import {
   processPath,
@@ -101,11 +102,16 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
 
   /* 마스터 점검 */
   const boms = useBomReferenceQuery(order.itemId);
-  const routings = useRoutingReferenceQuery(order.itemId, true);
   const lines = useProductionLineReferenceQuery(order.plantId);
   const editor = useProductionPlanEditorSession(order.productionOrderId);
   const planFacts = editor.plans.data?.items ?? [];
   const confirmedPlans = planFacts.filter((plan) => plan.confirmedAt !== null);
+  /*
+   * 확정된 계획이 있으면 개정은 바꿀 수 없다. 그 계획이 쓰는 개정이 지금은 쓸 수 없는(작성중, 기간 밖) 개정이어도
+   * 보여야 하므로, 이때는 쓸 수 있는 것만이 아니라 모든 개정을 받는다.
+   */
+  const fixedByPlan = confirmedPlans.length > 0;
+  const routings = useRoutingReferenceQuery(order.itemId, !fixedByPlan);
   const planBom = confirmedPlans[0]?.bomId ?? planFacts[0]?.bomId;
   const planRouting = confirmedPlans[0]?.routingId ?? planFacts[0]?.routingId;
   const [bomChoice, setBomChoice] = useState<string | null>(null);
@@ -128,6 +134,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       routingCount: routingItems.length,
       bomSelected: bomItems.some((entry) => String(entry.bomId) === bomId),
       routingSelected: routingItems.some((entry) => String(entry.routingId) === routingId),
+      fixedByPlan,
     },
     stepName('plan'),
   );
@@ -523,7 +530,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
             }}
             bomId={bomId}
             routingId={routingId}
-            locked={confirmedPlans.length > 0}
+            locked={fixedByPlan}
             statusNameOf={codeNames.masterVersionStatus}
             onBomChange={setBomChoice}
             onRoutingChange={setRoutingChoice}
@@ -820,7 +827,14 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   );
 };
 
-export const ProductionOrderProcessScreen = () => {
+export interface ProductionOrderProcessScreenProps {
+  /** 권한 안내가 가리킬 메뉴 경로. 라우트가 사이드바 이름으로 넘긴다. */
+  permissionMenuPath?: string | null;
+}
+
+export const ProductionOrderProcessScreen = ({
+  permissionMenuPath = null,
+}: ProductionOrderProcessScreenProps) => {
   const { productionOrderNo = '' } = useParams();
   const navigate = useNavigate();
   const order = useProductionOrderByNumber(productionOrderNo);
@@ -831,6 +845,9 @@ export const ProductionOrderProcessScreen = () => {
         <SkeletonText lines={6} />
       </div>
     );
+  }
+  if (order.isError && isForbidden(order.error)) {
+    return <ForbiddenNotice menuPath={permissionMenuPath} />;
   }
   if (order.isError || order.data === null) {
     return (

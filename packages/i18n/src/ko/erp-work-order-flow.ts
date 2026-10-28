@@ -72,9 +72,18 @@ export const erpWorkOrderFlow = {
   title: SCREEN_NAME,
   breadcrumbRoot: '생산 관리',
 
+  /** 권한 없음(403). 권한 이름은 서버 기능 권한 W-02-01의 이름과 같다. */
+  access: {
+    forbiddenTitle: `${SCREEN_NAME} 권한이 없습니다`,
+    forbidden: (menuPath: string): string =>
+      `이 화면을 보려면 「${SCREEN_NAME}」(W-02-01) 권한이 필요합니다. 관리자가 「${menuPath}」 메뉴에서 역할에 이 권한을 줄 수 있으니 관리자에게 요청하세요.`,
+    forbiddenNoMenu: `이 화면을 보려면 「${SCREEN_NAME}」(W-02-01) 권한이 필요합니다. 관리자에게 권한을 요청하세요.`,
+  },
+
   /** 페이지 머리 조건 칩. `label`은 보이지 않는 칩 묶음의 접근명이다. */
   counts: {
     label: '처리 상태',
+    allName: '전체',
     all: (count: number): string => `전체 ${String(count)}건`,
     actionRequired: (count: number): string => `${status.ACTION_REQUIRED} ${String(count)}건`,
     releasePending: (count: number): string => `${status.RELEASE_PENDING} ${String(count)}건`,
@@ -133,7 +142,7 @@ export const erpWorkOrderFlow = {
 
   list: {
     pane: 'ERP W/O 목록',
-    caption: 'ERP W/O 작업함',
+    caption: SCREEN_NAME,
     columns: {
       orderNo: 'ERP W/O 번호',
       itemCode: '품목 코드',
@@ -150,8 +159,8 @@ export const erpWorkOrderFlow = {
       `${String(pending)} / ${String(total)}`,
     openRow: (orderNo: string): string => `${orderNo} 처리 화면 열기`,
     checkRow: (orderNo: string): string => `${orderNo} 선택`,
-    loading: 'ERP W/O 목록 불러오는 중',
-    loadFailed: 'ERP W/O 목록을 불러오지 못했습니다',
+    loading: `${SCREEN_NAME} 불러오는 중`,
+    loadFailed: `${SCREEN_NAME}을 불러오지 못했습니다`,
     loadFailedDescription: '잠시 후 다시 조회하세요.',
     emptyTitle: '조건에 맞는 ERP W/O가 없습니다',
     emptyDescription: '조회 조건을 바꿔 다시 조회하세요.',
@@ -164,14 +173,21 @@ export const erpWorkOrderFlow = {
     autoPlan: '자동 계획 재실행',
     itemName: 'W/O',
     reasons: {
-      noneChecked: '일괄 처리할 ERP W/O를 목록에서 체크하세요',
+      noneChecked: `${SCREEN_NAME}에서 일괄 처리할 ERP W/O를 고르세요`,
       running: '일괄 동작을 실행하는 중입니다',
     },
     releaseDialog: {
       title: '일괄 배포',
       target: (count: number): string => `대상 ERP W/O ${String(count)}건`,
       task: '배포',
-      effects: ['W/O 상태 변경: 배포', '생산 LOT 선발행', '자재 출고 요청 발행'],
+      /* 피킹 지시는 출고 요청과 함께(BOM 투입 자재가 있을 때), PQC 의뢰는 검사 공정일 때 서버 배포가 만든다(work-order-release.service). */
+      effects: [
+        'W/O 상태 변경: 배포',
+        '생산 LOT 선발행',
+        '자재 출고 요청 발행',
+        '피킹 지시(투입 자재가 있을 때)',
+        '공정검사(PQC) 의뢰(검사 공정일 때)',
+      ],
       skipTitle: '건너뛰는 조건',
       skipConditions: [
         '생산 라인이나 기본 위치가 정해지지 않은 W/O',
@@ -449,6 +465,8 @@ export const erpWorkOrderFlow = {
         status: (count: number): string => `W/O 상태 변경: 배포 (${String(count)}건)`,
         lots: (count: number): string => `생산 LOT 선발행 (${String(count)}개)`,
         materials: '자재 출고 요청 발행',
+        picking: '피킹 지시(투입 자재가 있을 때)',
+        pqc: '공정검사(PQC) 의뢰(검사 공정일 때)',
       },
       irreversible: '배포 후에는 수정할 수 없습니다. W/O 취소로 처리합니다.',
       release: '배포',

@@ -1,5 +1,6 @@
-import { Chip, type ChipStatus } from '@crefle/web-ui';
+import { Chip, Tooltip, type ChipStatus } from '@crefle/web-ui';
 import { messages, type ReasonDetail } from '@omf-mes/i18n';
+import { useId } from 'react';
 
 import { CountChip as SharedCountChip } from '../../patterns/count-chip';
 import type { ProcessState, WorklistReasonItem } from './worklist-model';
@@ -49,7 +50,10 @@ export const reasonHelpText = (
     )
     .join('\n');
 
-/** C-17 사유 칩. 첫 사유와 「외 N」 칩, 사유마다 할 일은 툴팁. */
+/**
+ * C-17 사유 칩. 첫 사유와 「외 N」 칩. 사유마다 할 일은 DS 툴팁이 보인다(마우스를 올리거나 초점을 두거나 누르면 열린다).
+ * 칩 묶음은 하나의 버튼이라 키보드로 닿고, 툴팁 내용이 그 버튼의 설명(aria-describedby)이 된다. 행 이동은 버튼에서 일어나지 않는다.
+ */
 export const ReasonChips = ({
   reasons,
   detail,
@@ -57,19 +61,40 @@ export const ReasonChips = ({
   reasons: readonly WorklistReasonItem[];
   detail?: ReasonDetail;
 }) => {
+  const helpId = useId();
   const first = reasons[0];
   if (first === undefined) return null;
+  const help = reasonHelpText(reasons, detail).split('\n');
   return (
-    <span className="reason-chips" title={reasonHelpText(reasons, detail)}>
-      <Chip variant="status" size="sm" status="warning">
-        {reasonLabel(first.code)}
-      </Chip>
-      {reasons.length > 1 && (
-        <Chip variant="status" size="sm" status="idle">
-          {t.reasons.more(reasons.length - 1)}
-        </Chip>
-      )}
-    </span>
+    <>
+      <Tooltip
+        content={
+          <span className="reason-help">
+            {help.map((line, index) => (
+              <span key={index}>{line}</span>
+            ))}
+          </span>
+        }
+      >
+        <button type="button" className="reason-chips" aria-describedby={helpId}>
+          <Chip variant="status" size="sm" status="warning">
+            {reasonLabel(first.code)}
+          </Chip>
+          {reasons.length > 1 && (
+            <Chip variant="status" size="sm" status="idle">
+              {t.reasons.more(reasons.length - 1)}
+            </Chip>
+          )}
+          <span className="info-mark" aria-hidden="true">
+            ⓘ
+          </span>
+        </button>
+      </Tooltip>
+      {/* 툴팁은 열릴 때만 그려지므로, 화면 읽기 프로그램이 늘 읽을 설명을 따로 둔다. */}
+      <span id={helpId} className="visually-hidden">
+        {help.join(' ')}
+      </span>
+    </>
   );
 };
 
