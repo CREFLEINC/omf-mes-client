@@ -74,6 +74,7 @@ import {
   useInspectionPlanVersionList,
   useCodeValueOptions,
   useItemNameLabels,
+  useItemNameParts,
   useEquipmentOptions,
   useItemOptions,
   useProcessOptions,
@@ -983,10 +984,9 @@ export const InspectionStandardScreen = () => {
   };
 
   /* 목록 · 상세 머리의 품목 이름 — 보이는 품목만 상세로 푼다(#196). */
-  const itemLabelOf = useItemNameLabels([
-    ...plans.map((plan) => plan.itemId),
-    planDetail.data?.inspectionPlan.itemId,
-  ]);
+  const itemIds = [...plans.map((plan) => plan.itemId), planDetail.data?.inspectionPlan.itemId];
+  const itemLabelOf = useItemNameLabels(itemIds);
+  const itemPartsOf = useItemNameParts(itemIds);
   const routingDisabledReason = activeItemId === null ? t.actionReasons.routingNeedsItem : null;
 
   const optionsFor = (lookup: LookupResult, selected: string) =>
@@ -1705,7 +1705,7 @@ export const InspectionStandardScreen = () => {
         style={{ ...split.style, ...layout.style }}
       >
         <PlanListPane
-          itemLabelOf={itemLabelOf}
+          itemPartsOf={itemPartsOf}
           plans={plans}
           isLoading={planList.isPending}
           appliedFilters={filters}

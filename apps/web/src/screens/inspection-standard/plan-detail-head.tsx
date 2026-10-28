@@ -26,7 +26,7 @@ export const PlanDetailHead = ({ plan, itemLabel, processLabel, onEdit }: PlanDe
   return (
     /*
      * 첫 줄 — 「검사 기준 상세」 · 승인/사용 칩, 오른쪽 끝 기본 정보 수정(사용자 시안 · #196).
-     * 둘째 줄 — 기준명 · 코드 · 유형 · 품목 · 공정. 시안에는 없으나 무엇을 보고 있는지 알 길이라 남긴다.
+     * 둘째 줄 — 기준명 · 기준코드 · 검사 유형 · 품목 · 공정을 이름표와 함께. 시안에는 없으나 무엇을 보고 있는지 알 길이라 남긴다.
      */
     <div className="inspection-standard-plan-head-card">
       <div className="inspection-standard-plan-head">
@@ -44,23 +44,27 @@ export const PlanDetailHead = ({ plan, itemLabel, processLabel, onEdit }: PlanDe
           {t.detail.editBasic}
         </Button>
       </div>
-      <p className="inspection-standard-plan-meta">
+      {/* 이름표를 단 값들 — 한 줄로 이으면 무엇이 품목이고 무엇이 유형인지 알 수 없다(사용자 지시 · #196). */}
+      <dl className="inspection-standard-plan-meta">
         {[
-          plan.inspectionPlanName,
-          plan.inspectionPlanCode,
-          inspectionTypeLabel(plan.inspectionTypeCode),
-          itemLabel ?? t.detail.itemUnset,
-          processLabel,
-        ]
-          .filter((part): part is string => part !== null)
-          .join(' · ')}
+          { label: t.fields.inspectionPlanName, value: plan.inspectionPlanName },
+          { label: t.fields.inspectionPlanCode, value: plan.inspectionPlanCode },
+          { label: t.fields.inspectionType, value: inspectionTypeLabel(plan.inspectionTypeCode) },
+          { label: t.fields.item, value: itemLabel ?? t.detail.itemUnset },
+          ...(processLabel === null ? [] : [{ label: t.fields.process, value: processLabel }]),
+        ].map((fact) => (
+          <div key={fact.label}>
+            <dt>{fact.label}</dt>
+            <dd>{fact.value}</dd>
+          </div>
+        ))}
         {/* PQC 생략 허용(omf-all-around#119) — 켜진 PQC 기준에만 붙인다. 이 기준으로 배포한 W/O 의 PQC 가 생략된다. */}
         {plan.inspectionTypeCode === 'PQC' && plan.pqcSkipAllowed === true && (
           <Chip variant="status" size="sm" status="info">
             {t.fields.pqcSkipAllowed}
           </Chip>
         )}
-      </p>
+      </dl>
     </div>
   );
 };

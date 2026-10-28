@@ -438,10 +438,54 @@ main > * + * {
 }
 
 .inspection-standard-plan-meta {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: var(--space-2) var(--space-5);
+}
+
+/* 이름표(흐리게) · 값 한 쌍 — 쌍끼리는 띄워 가른다(#196). */
+.inspection-standard-plan-meta > div {
+  display: inline-flex;
+  align-items: baseline;
   gap: var(--space-2);
+  min-width: 0;
+}
+
+.inspection-standard-plan-meta dt {
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.inspection-standard-plan-meta dd {
+  margin: 0;
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+}
+
+/* 목록 품목 칸 — 「이름 코드」 한 줄, 코드는 흐리게(사용자 시안 · #196). */
+.inspection-standard-item-cell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.inspection-standard-item-cell-name,
+.inspection-standard-item-cell-code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspection-standard-item-cell-name {
+  min-width: 0;
+}
+
+.inspection-standard-item-cell-code {
+  flex: 0 0 auto;
+  color: var(--on-surface-variant);
 }
 
 .inspection-standard-section-head {

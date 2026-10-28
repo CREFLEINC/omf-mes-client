@@ -416,6 +416,12 @@ export const useRoutingOptions = (itemId: number | null): LookupResult => {
   };
 };
 
+/** 품목 표시 — 이름과 코드. 부르는 중 · 못 찾음 · 실패면 `code` 가 null 이고 `name` 이 공용 표기다. */
+export interface ItemNameParts {
+  name: string;
+  code: string | null;
+}
+
 /**
  * 품목 번호 → 「이름 (코드)」(omf-all-around#196). 목록 · 상세 머리가 보이는 품목만 하나씩 상세로 푼다 —
  * 품목 선택 목록(`useItemOptions`)은 첫 쪽만 받아 그 밖의 품목이 「알 수 없음」으로 섰다.
@@ -424,6 +430,19 @@ export const useRoutingOptions = (itemId: number | null): LookupResult => {
 export const useItemNameLabels = (
   itemIds: readonly (number | null | undefined)[],
 ): ((itemId: number | null | undefined) => string | null) => {
+  const partsOf = useItemNameParts(itemIds);
+
+  return (itemId) => {
+    const parts = partsOf(itemId);
+    if (parts === null) return null;
+    return parts.code === null ? parts.name : `${parts.name} (${parts.code})`;
+  };
+};
+
+/** 같은 조회를 이름 · 코드로 나눠 준다 — 목록 표가 「이름 코드(흐리게)」로 그린다(사용자 시안 · #196). */
+export const useItemNameParts = (
+  itemIds: readonly (number | null | undefined)[],
+): ((itemId: number | null | undefined) => ItemNameParts | null) => {
   const { client } = useApiClient();
   const ids = [...new Set(itemIds.filter((id): id is number => typeof id === 'number'))];
 
@@ -434,7 +453,7 @@ export const useItemNameLabels = (
         const data = await runRequest(() =>
           client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
         );
-        return `${masterName(data.item, data.item.itemName)} (${data.item.itemCode})`;
+        return { name: masterName(data.item, data.item.itemName), code: data.item.itemCode };
       },
       retry: false,
       staleTime: Infinity,
@@ -444,8 +463,12 @@ export const useItemNameLabels = (
   return (itemId) => {
     if (itemId === null || itemId === undefined) return null;
     const result = results[ids.indexOf(itemId)];
-    if (result === undefined || result.isPending) return messages.common.reference.loading;
-    if (result.isError) return messages.common.reference.unknown;
-    return result.data ?? messages.common.reference.unknown;
+    if (result === undefined || result.isPending) {
+      return { name: messages.common.reference.loading, code: null };
+    }
+    if (result.isError || result.data === undefined) {
+      return { name: messages.common.reference.unknown, code: null };
+    }
+    return result.data;
   };
 };

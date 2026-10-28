@@ -26,8 +26,10 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
       selectedPlanId={null}
       onSelect={onSelect}
       loadError={null}
-      itemLabelOf={(itemId) =>
-        itemId === null || itemId === undefined ? null : `품목 ${String(itemId)}`
+      itemPartsOf={(itemId) =>
+        itemId === null || itemId === undefined
+          ? null
+          : { name: `품목 ${String(itemId)}`, code: `CODE-${String(itemId)}` }
       }
       {...overrides}
     />,

@@ -10,6 +10,7 @@ import { DEFAULT_PLAN_FILTERS, inspectionTypeLabel } from './code-options';
 import { hasAnyFilter } from './filters';
 import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
 import type { PageView } from './pagination';
+import type { ItemNameParts } from './queries';
 import type { InspectionPlan, PlanFilters } from './types';
 
 const t = messages.inspectionStandard;
@@ -33,8 +34,8 @@ export interface PlanListPaneProps {
    * 실패를 「등록된 검사기준이 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
-  /** 품목 번호 → 표시 이름. 품목이 없으면(전 품목 공통) null */
-  itemLabelOf: (itemId: number | null | undefined) => string | null;
+  /** 품목 번호 → 이름 · 코드. 품목이 없으면(전 품목 공통) null */
+  itemPartsOf: (itemId: number | null | undefined) => ItemNameParts | null;
 }
 
 /**
@@ -59,7 +60,7 @@ export const PlanListPane = ({
   selectedPlanId,
   onSelect,
   loadError,
-  itemLabelOf,
+  itemPartsOf,
 }: PlanListPaneProps) => {
   const columns: Column<InspectionPlan>[] = [
     {
@@ -103,9 +104,21 @@ export const PlanListPane = ({
       align: 'start',
       header: t.listColumns.item,
       width: '240px',
+      /* 「이름 코드」 한 줄 — 코드는 흐리게 뒤에 붙인다(사용자 시안 · #196, 검사 조회·판정 목록과 같다). */
       render: (row) => {
-        const label = itemLabelOf(row.itemId) ?? t.values.allItems;
-        return <span title={label}>{label}</span>;
+        const parts = itemPartsOf(row.itemId);
+        if (parts === null) return t.values.allItems;
+        return (
+          <span
+            className="inspection-standard-item-cell"
+            title={parts.code === null ? parts.name : `${parts.name} ${parts.code}`}
+          >
+            <span className="inspection-standard-item-cell-name">{parts.name}</span>
+            {parts.code !== null && (
+              <span className="inspection-standard-item-cell-code">{parts.code}</span>
+            )}
+          </span>
+        );
       },
     },
     {
