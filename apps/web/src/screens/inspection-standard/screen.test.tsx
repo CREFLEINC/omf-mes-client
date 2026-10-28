@@ -2099,8 +2099,9 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
       },
     ]);
 
-    const form = await awaitVersionForm();
-    await user.click(within(form).getByRole('button', { name: '작성 취소' }));
+    /* 작성 취소는 버전 고르기 줄에 있다(#196). */
+    await awaitVersionForm();
+    await user.click(screen.getByRole('button', { name: '작성 취소' }));
     expect(
       requestsTo(requests, VERSION_DETAIL_PATH).filter((r) => r.method === 'DELETE'),
     ).toHaveLength(0);
@@ -2123,8 +2124,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
       '?plan=3001&ver=4001',
     );
 
-    await screen.findByLabelText('샘플 비율(%)');
-    expect(within(versionForm()).getByRole('button', { name: '작성 취소' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: '작성 취소' })).toBeDisabled();
     expect(screen.getByText(t.actionReasons.discardNeedsDraft)).toBeInTheDocument();
   });
 
