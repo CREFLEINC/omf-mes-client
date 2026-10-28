@@ -1,24 +1,17 @@
-import { Button, Switch, TextField } from '@crefle/web-ui';
+import { Button, Select, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import { fifoPolicyOptions } from './code-catalog';
 import { FieldLabel } from './field-label';
-import { SelectField } from './select-field';
 import type { ItemAttrsFormValues, SelectOption } from './types';
-import { ValueField } from './value-field';
 
 const t = messages.itemExtendedAttrs;
 
 export interface ItemAttrsPaneProps {
   values: ItemAttrsFormValues;
-  /** 조회한 사용 여부. 저장할 때 이 값을 그대로 되돌려 싣는다. */
-  isActive: boolean;
-  /**
-   * MES 구분(`mesCategoryCode`)의 표시명. **값 표기만 있다** — 시스템이 소유하는 값이라
-   * 편집 본문(`ItemUpdate`)에 자리가 없다. 빈 문자열이면 값 없음 표기다.
-   */
-  mesCategoryName: string;
+  /** 고른 품목의 유형 코드 — LOT 기본크기의 이름과 표시 여부가 이것으로 갈린다(`lotSizeLabelOf`). */
+  itemTypeCode: string;
   uomOptions: SelectOption[];
   onChange: (patch: Partial<ItemAttrsFormValues>) => void;
   fieldErrors: Record<string, string>;
@@ -29,11 +22,13 @@ export interface ItemAttrsPaneProps {
   onCancel: () => void;
 }
 
-/** W-06-05 품목 탭의 MES 확장 편집 구획. ERP 원본 열은 이 폼에 두지 않는다. */
+/**
+ * W-06-05 품목 탭의 MES 확장 편집 구획 — 설정 항목 표. ERP 원본 열은 여기 두지 않는다 — 고치지 않는 값(MES 구분 ·
+ * 사용 여부)은 위 사실 칸(`ItemOriginFacts`)에 있다. 탭 이름이 곧 제목이라 구획 제목을 따로 두지 않는다.
+ */
 export const ItemAttrsPane = ({
   values,
-  isActive,
-  mesCategoryName,
+  itemTypeCode,
   uomOptions,
   onChange,
   fieldErrors,
@@ -43,205 +38,176 @@ export const ItemAttrsPane = ({
   onSave,
   onCancel,
 }: ItemAttrsPaneProps) => {
-  const nameKoId = useId();
-  const nameViId = useId();
-  const serialId = useId();
+  const lotStorageUomId = useId();
   const productionLotSizeId = useId();
-  const shelfLifeDaysId = useId();
-  const storageId = useId();
-  const openedId = useId();
+  const shelfLifeManagedId = useId();
+  const fifoId = useId();
+  const inspectionId = useId();
+  const negativeStockId = useId();
+  const lotSizeLabel = lotSizeLabelOf(itemTypeCode);
   const lotStorageUomOptions: SelectOption[] = [
     { value: '', label: t.attrs.values.unspecified },
     ...uomOptions,
   ];
 
-  return (
-    <section className="pane item-attrs-pane" aria-labelledby="item-attrs-title">
-      <h2 id="item-attrs-title" className="pane-title">
-        {t.panes.itemAttrs}
-      </h2>
-      {banner}
-
-      <div className="item-attrs-form">
-        <fieldset className="item-attrs-section">
-          <legend>{t.attrs.groups.names}</legend>
-          <div className="form-grid">
-            <div className="field-cell">
-              <FieldLabel htmlFor={nameKoId} label={t.attrs.fields.nameKo} />
-              <TextField
-                id={nameKoId}
-                value={values.nameKo}
-                onChange={(event) => onChange({ nameKo: event.target.value })}
-                error={fieldErrors.nameKo}
-              />
-            </div>
-
-            <div className="field-cell">
-              <FieldLabel htmlFor={nameViId} label={t.attrs.fields.nameVi} />
-              <TextField
-                id={nameViId}
-                value={values.nameVi}
-                onChange={(event) => onChange({ nameVi: event.target.value })}
-                error={fieldErrors.nameVi}
-              />
-            </div>
-          </div>
-        </fieldset>
-
-        <fieldset className="item-attrs-section">
-          <legend>{t.attrs.groups.lot}</legend>
-          <div className="form-grid">
-            <div className="field-cell">
-              <Switch
-                label={t.attrs.fields.lotControlled}
-                checked={values.lotControlled}
-                onChange={(event) => onChange({ lotControlled: event.target.checked })}
-              />
-            </div>
-
-            <div className="field-cell">
-              <FieldLabel htmlFor={serialId} label={t.attrs.fields.serialControlType} required />
-              <TextField
-                id={serialId}
-                value={values.serialControlTypeCode}
-                onChange={(event) => onChange({ serialControlTypeCode: event.target.value })}
-                error={fieldErrors.serialControlTypeCode}
-                aria-required
-              />
-            </div>
-
-            <SelectField
-              label={t.attrs.fields.defaultLotStorageUom}
+  const groups: SettingGroup[] = [
+    {
+      label: t.attrs.groups.lot,
+      rows: [
+        {
+          id: lotStorageUomId,
+          label: t.attrs.fields.defaultLotStorageUom,
+          error: fieldErrors.defaultLotStorageUomId,
+          control: (
+            <Select
+              size="sm"
+              id={lotStorageUomId}
               options={lotStorageUomOptions}
               value={values.defaultLotStorageUomId}
               onChange={(value) => onChange({ defaultLotStorageUomId: value })}
-              error={fieldErrors.defaultLotStorageUomId}
+              invalid={fieldErrors.defaultLotStorageUomId !== undefined}
             />
-
-            <div className="field-cell">
-              <FieldLabel
-                htmlFor={productionLotSizeId}
-                label={t.attrs.fields.defaultProductionLotSize}
-              />
-              <TextField
-                id={productionLotSizeId}
-                type="number"
-                step="any"
-                value={values.defaultProductionLotSize}
-                onChange={(event) => onChange({ defaultProductionLotSize: event.target.value })}
-                error={fieldErrors.defaultProductionLotSize}
-              />
-            </div>
-          </div>
-        </fieldset>
-
-        <fieldset className="item-attrs-section">
-          <legend>{t.attrs.groups.shelfLife}</legend>
-          <div className="form-grid">
-            <div className="field-cell">
+          ),
+        },
+        ...(lotSizeLabel === null
+          ? []
+          : [
+              {
+                id: productionLotSizeId,
+                label: lotSizeLabel,
+                control: (
+                  <TextField
+                    size="sm"
+                    id={productionLotSizeId}
+                    type="number"
+                    step="any"
+                    value={values.defaultProductionLotSize}
+                    onChange={(event) => onChange({ defaultProductionLotSize: event.target.value })}
+                    error={fieldErrors.defaultProductionLotSize}
+                  />
+                ),
+              },
+            ]),
+      ],
+    },
+    {
+      label: t.attrs.groups.shelfLife,
+      rows: [
+        {
+          id: shelfLifeManagedId,
+          label: t.attrs.fields.shelfLifeManaged,
+          /* 켜야 일수를 넣는다 — 스위치 옆에 일수 칸이 나타난다(꺼져 있으면 칸이 없다 · 저장 때 비워 보낸다). */
+          control: (
+            <>
               <Switch
-                label={t.attrs.fields.shelfLifeManaged}
+                id={shelfLifeManagedId}
                 checked={values.shelfLifeManaged}
                 onChange={(event) => onChange({ shelfLifeManaged: event.target.checked })}
               />
-            </div>
-
-            <div className="field-cell">
-              <FieldLabel
-                htmlFor={shelfLifeDaysId}
-                label={t.attrs.fields.shelfLifeDays}
-                required={values.shelfLifeManaged}
-              />
-              <TextField
-                id={shelfLifeDaysId}
-                type="number"
-                step={1}
-                min={0}
-                value={values.shelfLifeDays}
-                onChange={(event) => onChange({ shelfLifeDays: event.target.value })}
-                error={fieldErrors.shelfLifeDays}
-                aria-required={values.shelfLifeManaged || undefined}
-              />
-            </div>
-
-            <SelectField
-              label={t.attrs.fields.fifoPolicy}
-              required
+              {values.shelfLifeManaged && (
+                <span className="item-attrs-inline">
+                  <TextField
+                    size="sm"
+                    aria-label={t.attrs.fields.shelfLifeDays}
+                    type="number"
+                    step={1}
+                    min={0}
+                    value={values.shelfLifeDays}
+                    onChange={(event) => onChange({ shelfLifeDays: event.target.value })}
+                    error={fieldErrors.shelfLifeDays}
+                    aria-required
+                  />
+                  <span className="item-attrs-unit">{t.attrs.units.days}</span>
+                </span>
+              )}
+            </>
+          ),
+        },
+        {
+          id: fifoId,
+          label: t.attrs.fields.fifoPolicy,
+          required: true,
+          error: fieldErrors.fifoPolicyCode,
+          control: (
+            <Select
+              size="sm"
+              id={fifoId}
               options={fifoPolicyOptions(values.fifoPolicyCode)}
-              value={values.fifoPolicyCode}
+              value={values.fifoPolicyCode === '' ? null : values.fifoPolicyCode}
               onChange={(value) => onChange({ fifoPolicyCode: value })}
-              error={fieldErrors.fifoPolicyCode}
+              invalid={fieldErrors.fifoPolicyCode !== undefined}
+              aria-required
             />
+          ),
+        },
+      ],
+    },
+    {
+      label: t.attrs.groups.inventory,
+      rows: [
+        {
+          id: inspectionId,
+          label: t.attrs.fields.inspectionRequired,
+          control: (
+            <Switch
+              id={inspectionId}
+              checked={values.inspectionRequired}
+              onChange={(event) => onChange({ inspectionRequired: event.target.checked })}
+            />
+          ),
+        },
+        {
+          id: negativeStockId,
+          label: t.attrs.fields.negativeStockAllowed,
+          control: (
+            <Switch
+              id={negativeStockId}
+              checked={values.negativeStockAllowed}
+              onChange={(event) => onChange({ negativeStockAllowed: event.target.checked })}
+            />
+          ),
+        },
+      ],
+    },
+  ];
 
-            <div className="field-cell">
-              <FieldLabel htmlFor={openedId} label={t.attrs.fields.openedShelfLifeHours} />
-              <TextField
-                id={openedId}
-                type="number"
-                step={1}
-                min={1}
-                value={values.openedShelfLifeHours}
-                onChange={(event) => onChange({ openedShelfLifeHours: event.target.value })}
-                error={fieldErrors.openedShelfLifeHours}
-              />
-            </div>
-          </div>
-        </fieldset>
+  return (
+    <section className="item-attrs-pane" aria-label={t.panes.itemAttrs}>
+      {banner}
 
-        <fieldset className="item-attrs-section">
-          <legend>{t.attrs.groups.inventory}</legend>
-          <div className="form-grid">
-            <div className="field-cell">
-              <Switch
-                label={t.attrs.fields.inspectionRequired}
-                checked={values.inspectionRequired}
-                onChange={(event) => onChange({ inspectionRequired: event.target.checked })}
-              />
-            </div>
-
-            <div className="field-cell">
-              <Switch
-                label={t.attrs.fields.negativeStockAllowed}
-                checked={values.negativeStockAllowed}
-                onChange={(event) => onChange({ negativeStockAllowed: event.target.checked })}
-              />
-            </div>
-
-            <div className="field-cell">
-              <FieldLabel htmlFor={storageId} label={t.attrs.fields.storageCondition} />
-              <TextField
-                id={storageId}
-                value={values.storageConditionCode}
-                onChange={(event) => onChange({ storageConditionCode: event.target.value })}
-                error={fieldErrors.storageConditionCode}
-              />
-            </div>
-
-            <div className="field-cell">
-              <Switch
-                label={t.attrs.fields.developmentItem}
-                checked={values.developmentItem}
-                onChange={(event) => onChange({ developmentItem: event.target.checked })}
-              />
-            </div>
-
-            <div className="field-cell">
-              <ValueField
-                label={t.attrs.fields.mesCategory}
-                value={mesCategoryName === '' ? t.values.empty : mesCategoryName}
-              />
-              <span className="field-note">{t.attrs.mesCategoryNote}</span>
-            </div>
-            <div className="field-cell">
-              <ValueField
-                label={t.attrs.fields.isActive}
-                value={isActive ? t.attrs.values.active : t.attrs.values.inactive}
-              />
-              <span className="field-note">{t.attrs.isActiveNote}</span>
-            </div>
-          </div>
-        </fieldset>
-      </div>
+      {/*
+       * 설정 항목 전체를 한 표로(사용자 지시 2026-10-28 「전체 수정 항목을 목록으로 · 스크롤 없이 한 화면에」).
+       * 구분 | 항목 | 설정값 — 한 줄에 한 항목, 구분은 묶음의 첫 줄에만 쓴다.
+       */}
+      <table className="item-attrs-table">
+        <thead>
+          <tr>
+            <th scope="col">{t.attrs.columns.group}</th>
+            <th scope="col">{t.attrs.columns.field}</th>
+            <th scope="col">{t.attrs.columns.value}</th>
+          </tr>
+        </thead>
+        {groups.map((group) => (
+          <tbody key={group.label} aria-label={group.label}>
+            {group.rows.map((row, index) => (
+              <tr key={row.id}>
+                {index === 0 && (
+                  <th scope="rowgroup" rowSpan={group.rows.length} className="item-attrs-group">
+                    {group.label}
+                  </th>
+                )}
+                <th scope="row" className="item-attrs-field">
+                  <FieldLabel htmlFor={row.id} label={row.label} required={row.required ?? false} />
+                </th>
+                <td>
+                  <div className="item-attrs-inline">{row.control}</div>
+                  {row.error !== undefined && <span className="field-error">{row.error}</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        ))}
+      </table>
 
       <div className="form-actions">
         <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
@@ -254,3 +220,33 @@ export const ItemAttrsPane = ({
     </section>
   );
 };
+
+/**
+ * LOT 기본크기의 이름 — 품목유형마다 뜻이 다르다(사용자 지시 2026-10-28). 반제품 · 제품은 생산 LOT, 원자재 · 부자재는
+ * 자재 LOT 의 기본크기다. 상품과 그 밖의 유형은 쓰지 않아 칸을 두지 않는다(`null`) — 값은 조회한 그대로 되돌려 실린다.
+ * 칸은 하나(`defaultProductionLotSize`)를 함께 쓴다 — 서버에 포괄적인 이름(`defaultLotSize`)으로 바꾸기를 요청함.
+ */
+export const lotSizeLabelOf = (itemTypeCode: string): string | null => {
+  if (itemTypeCode === 'SEMI_FINISHED' || itemTypeCode === 'FINISHED') {
+    return t.attrs.fields.defaultProductionLotSize;
+  }
+  if (itemTypeCode === 'RAW_MATERIAL' || itemTypeCode === 'SUBSIDIARY_MATERIAL') {
+    return t.attrs.fields.defaultMaterialLotSize;
+  }
+  return null;
+};
+
+interface SettingRow {
+  /** 고르는 칸의 id — 항목 이름(label)이 이 칸을 부른다. */
+  id: string;
+  label: string;
+  required?: boolean;
+  /** 선택칸의 오류(입력칸은 제 칸 아래에 낸다). */
+  error?: string | undefined;
+  control: ReactNode;
+}
+
+interface SettingGroup {
+  label: string;
+  rows: SettingRow[];
+}

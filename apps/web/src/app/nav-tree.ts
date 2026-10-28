@@ -577,12 +577,18 @@ export const NAV_GROUPS: readonly NavGroup[] = [
        * 아키텍처의 「품목정보 조회 (ERP)」·「BOM 조회 (ERP)」를 따로 세웠다가, 이 화면이 이미
        * ERP 원본 정보와 BOM 구역을 갖고 있어 합쳤다 — 같은 품목을 두 화면에서 고르게 하지 않는다.
        * 이름에 「(ERP)」를 붙이지 않은 것은 확장속성을 MES 가 고치기 때문이다.
+       * 품목 · BOM 은 탭이다 — 「ERP 연동 현황·이력」의 품목 · BOM 탭과 같은 짜임(사용자 지시 2026-10-28). BOM 탭은
+       * 설계 화면 코드가 따로 없어 W-06-05 를 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
        */
       {
         to: '/master-data/item-extended-attrs',
         icon: 'category',
         label: '품목·BOM 정보',
         labelVi: 'Thông tin mặt hàng · BOM',
+        tabs: [
+          { to: '/master-data/item-extended-attrs', label: '품목', labelVi: 'Mặt hàng' },
+          { to: '/master-data/item-boms', label: 'BOM', labelVi: 'BOM' },
+        ],
       },
       {
         to: '/master-data/routing',

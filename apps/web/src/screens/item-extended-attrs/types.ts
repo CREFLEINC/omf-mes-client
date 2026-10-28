@@ -46,7 +46,11 @@ export interface ItemFilters {
   /** 품목 유형 코드. 비면 전체 */
   itemType: string;
   includeInactive: boolean;
+  /** IQC 대상 여부 — `''` 전체 · `'Y'` 대상 · `'N'` 비대상(사용자 지시 2026-10-28). */
+  iqc: IqcFilter;
 }
+
+export type IqcFilter = '' | 'Y' | 'N';
 
 /**
  * 확장 속성 폼 값. 문자열이 많은 이유는 디자인 시스템 입력·선택이 문자열을 다루기 때문이고,

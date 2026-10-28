@@ -1153,30 +1153,85 @@ h2:has(> .inspection-standard-dialog-title) {
   margin: 0;
 }
 
-.item-attrs-form {
-  display: grid;
-  gap: var(--space-5);
+/*
+ * 확장 속성 설정 항목 표(item-attrs-pane.tsx) — 구분 | 항목 | 설정값, 한 줄에 한 항목. 스크롤 없이 한 화면에 들어가게
+ * 줄을 촘촘히 둔다(사용자 지시 2026-10-28). 구분은 묶음 첫 줄에만 쓰고 묶음 사이에 굵은 선을 둔다.
+ */
+.item-attrs-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
 }
 
-.item-attrs-section {
-  min-width: 0;
+.item-attrs-table th,
+.item-attrs-table td {
+  padding: 3px var(--space-3);
+  font-weight: 400;
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.item-attrs-table thead th {
+  height: 2.25rem;
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.item-attrs-table thead th:nth-child(1) {
+  width: 9rem;
+}
+
+.item-attrs-table thead th:nth-child(2) {
+  width: 14rem;
+}
+
+.item-attrs-table tbody + tbody tr:first-child > * {
+  border-top: 2px solid var(--outline-variant);
+}
+
+.item-attrs-group {
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  vertical-align: top !important;
+  padding-top: var(--space-2) !important;
+}
+
+.item-attrs-field .field-label {
   margin: 0;
-  padding: var(--space-4) 0 0;
-  border: 0;
-  border-top: 1px solid var(--outline-variant);
-}
-
-.item-attrs-section:first-child {
-  padding-top: 0;
-  border-top: 0;
-}
-
-.item-attrs-section > legend {
-  padding: 0;
-  margin-bottom: var(--space-3);
   color: var(--on-surface);
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
+  font: var(--type-body-md);
+  line-height: 1.25;
+}
+
+.item-attrs-table td .field-error {
+  display: block;
+  font: var(--type-label-sm);
+}
+
+.item-attrs-table td .item-attrs-inline > :not(label):not(.item-attrs-inline) {
+  width: 16rem;
+  max-width: 100%;
+}
+
+.item-attrs-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.item-attrs-inline .item-attrs-inline {
+  gap: var(--space-2);
+}
+
+.item-attrs-inline .item-attrs-inline > :first-child {
+  width: 7rem !important;
+}
+
+.item-attrs-unit {
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
 }
 
 /* W-06-01 공정 마스터 — 목록과 편집의 축이 대등하므로 1:1로 나눈다. */
@@ -8109,6 +8164,15 @@ dl.filter-bar.approval-inbox-detail-facts {
  */
 .wide-table.board-table table {
   min-width: max(var(--board-table-min, 38rem) + var(--col-grow, 0px), var(--col-floor, 0px));
+}
+
+/*
+ * 구획 틀(board-frame.tsx) 안의 표는 넓힌 만큼 표가 함께 늘지 않는다 — 넓힌 열은 이름 열(남는 폭)에서 폭을 가져온다.
+ * 표가 칸을 넘으면 뒤 열이 칸 끝에서 잘려 보였다(사용자 지시 2026-10-28). 이름 열에 남긴 폭(`--col-floor` 에 드는
+ * 「적어도 이만큼」)도 표를 늘리지 않는다 — 고정 폭 열의 합 + 이름 열 80px 까지만. 끄는 끝은 `column-resize.tsx` 가 칸 폭에서 멈춘다.
+ */
+.board-frame .wide-table.board-table table {
+  min-width: max(var(--board-table-min, 38rem), var(--col-fixed, 0px) + 80px);
 }
 
 .wide-table.po-board-orders table {

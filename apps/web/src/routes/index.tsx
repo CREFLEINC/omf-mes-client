@@ -53,6 +53,7 @@ import { ToolPmResultScreen } from '../screens/tool-pm-result/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
+import { ItemBomScreen } from '../screens/item-extended-attrs/bom-screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
 import { LotStatusHistoryScreen } from '../screens/lot-status-history/screen';
@@ -168,6 +169,8 @@ export const appRouter = createBrowserRouter([
       { path: 'system/erp-data/sales-orders', element: <ErpSalesOrderScreen /> },
       { path: 'system/erp-data/production-orders', element: <ErpProductionOrderScreen /> },
       { path: 'master-data/item-extended-attrs', element: <ItemExtendedAttrsScreen /> },
+      /* 「품목·BOM 정보」 묶음의 BOM 탭(사용자 지시 2026-10-28). 코드는 W-06-05 를 따른다. */
+      { path: 'master-data/item-boms', element: <ItemBomScreen /> },
       { path: 'master-data/master-change', element: <MasterChangeScreen /> },
       /* W-CO-02 — 기준정보가 아니라 시스템 운영이라 경로 앞머리를 가른다. */
       { path: 'system/users-roles', element: <UsersRolesScreen /> },
