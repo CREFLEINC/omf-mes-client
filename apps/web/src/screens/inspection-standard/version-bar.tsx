@@ -153,6 +153,7 @@ export const VersionBar = ({
               {!isLoading && !hasLoadError && (
                 <VersionPrimaryAction
                   emphasized
+                  size="sm"
                   hasVersions={versions.length > 0}
                   newRevisionDisabledReason={newRevisionDisabledReason}
                   newRevisionNotice={newRevisionNotice}

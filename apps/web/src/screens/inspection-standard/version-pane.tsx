@@ -19,6 +19,8 @@ export interface VersionPrimaryActionProps {
   onCreateVersion: () => void;
   /** 버전 목록 창의 제목 줄 — 「+」 아이콘을 단 주 단추로 낸다(사용자 시안 · #196). */
   emphasized?: boolean;
+  /** 단추 크기 — 버전 목록 창 제목 줄은 작게(사용자 지시 · #196). */
+  size?: 'sm' | 'md';
 }
 
 /**
@@ -39,6 +41,7 @@ export const VersionPrimaryAction = ({
   onNewRevision,
   onCreateVersion,
   emphasized = false,
+  size = 'md',
 }: VersionPrimaryActionProps) => {
   /* 「+」를 달고 낸다(사용자 시안 · #196). 버전 목록 창 제목 줄에서는 빨간 주 단추, 버전 구획 머리에서는 테두리 단추다. */
   const variant = emphasized ? 'filled' : 'outlined';
@@ -49,6 +52,7 @@ export const VersionPrimaryAction = ({
       <div className="field-cell">
         <Button
           variant={variant}
+          size={size}
           leadingIcon={icon}
           disabled={isCreating}
           onClick={onCreateVersion}
@@ -75,7 +79,13 @@ export const VersionPrimaryAction = ({
 
   return (
     <div className="field-cell">
-      <Button variant={variant} leadingIcon={icon} disabled={isPublishing} onClick={onNewRevision}>
+      <Button
+        variant={variant}
+        size={size}
+        leadingIcon={icon}
+        disabled={isPublishing}
+        onClick={onNewRevision}
+      >
         {t.actions.newRevision}
       </Button>
     </div>
