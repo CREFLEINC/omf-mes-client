@@ -1,8 +1,11 @@
-import type {
-  ProductionOrderAutoPlan,
-  WorklistReasonEntry,
-  WorklistState,
-} from '@omf-mes/api-client';
+import type { components, ProductionOrderAutoPlan } from '@omf-mes/api-client';
+
+type ProductionOrder = components['schemas']['ProductionOrder'];
+
+/** 서버 칩 판정(P-142). 생성 타입에서 가져온다. */
+export type WorklistState = NonNullable<ProductionOrder['worklistState']>;
+export type WorklistReasonEntry = NonNullable<ProductionOrder['worklistReasons']>[number];
+export type WorklistReasonCode = WorklistReasonEntry['code'];
 
 export interface PageMeta {
   page: number;

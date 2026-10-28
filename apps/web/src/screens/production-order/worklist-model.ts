@@ -1,6 +1,6 @@
-import type { AutoPlanReason, WorklistReasonCode, WorklistState } from '@omf-mes/api-client';
+import type { AutoPlanReason } from '@omf-mes/api-client';
 
-import type { ProductionOrderFact } from './types';
+import type { ProductionOrderFact, WorklistReasonCode, WorklistState } from './types';
 
 /**
  * ERP W/O 작업함의 처리 상태(규범 C-17).
