@@ -104,8 +104,9 @@ export interface PurchaseOrderListQuery {
   plantId?: number;
   statusCode?: string;
   /**
-   * 발주 유형 — **계약 사본에 없다**(사용자 지시 2026-10-28 「발주 유형별로 구분」, 서버 세션에 요청). 이 조건을 모르는
-   * 서버는 무시하고 전체를 준다. 계약에 실리면 이 주석을 걷고 계약 타입을 따른다.
+   * 발주 유형 — **계약 사본에 없다**(사용자 지시 2026-10-28 「발주 유형별로 구분」, 서버 #873 · 장부 P-144). 공통코드
+   * `ORDER_TYPE` 에 없는 코드는 400 이다. 이 조건을 모르는 옛 서버는 무시하고 전체를 준다. 계약에 실리면 이 주석을 걷고
+   * 계약 타입을 따른다.
    */
   erpOrderTypeCode?: string;
   orderDateFrom?: string;
