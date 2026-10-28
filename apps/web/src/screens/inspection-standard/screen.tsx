@@ -1120,6 +1120,8 @@ export const InspectionStandardScreen = () => {
         <div className="field-cell">
           <Button
             variant="outlined"
+            /* ✕ 아이콘을 단다(사용자 시안 · #196). */
+            leadingIcon={<Icon name="close" size={18} />}
             disabled={isVersionTransitionRunning}
             onClick={() => {
               discardWrite.reset();
