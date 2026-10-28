@@ -191,16 +191,16 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 아래 셋은 사이드바에 없는 옛 주소다. 화면은 「작업지시 목록」으로 합쳤고, 주소는 대상을 찾아 처리 화면이나
    * 작업함으로 넘긴다(`production-order/process/legacy-redirects.tsx`, omf-all-around#129).
    */
-  { path: '/production/production-plans', code: 'W-02-02', name: '작업지시 목록 생산계획' },
+  { path: '/production/production-plans', code: 'W-02-02', name: 'W/O 전개와 편성' },
   {
     path: '/production/work-order-assignments',
     code: 'W-02-03',
-    name: '작업지시 목록 4M 배정',
+    name: '4M 자원배정',
   },
   {
     path: '/production/work-order-release',
     code: 'W-02-04',
-    name: '작업지시 목록 일괄 배포',
+    name: 'W/O 확정과 배포',
   },
   { path: '/production/work-order-close', code: 'W-02-05', name: 'W/O 마감·ERP 실적 송신' },
   /*

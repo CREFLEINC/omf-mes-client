@@ -390,9 +390,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
        * P/O = 구매오더 · ERP W/O = ERP 에서 받은 생산 오더 · 맨 「W/O」 = MES W/O). 처리하는 대상은
        * 화면 안에서 계속 「ERP W/O」, 「W/O」로 부른다.
        *
-       * 메뉴와 화면 이름은 「작업지시 목록」이다(사용자 결정 2026-10-28, omf-all-around#204). 옛 이름은
-       * 「ERP W/O 처리」였다. 이름은 화면 제목(`erpWorkOrderFlow.title`)과 같아야 하고, 안내용 메뉴 경로
-       * 시험(`nav-menu-path.test.ts`)이 그 짝을 잰다.
+       * 이름은 화면 제목(`erpWorkOrderFlow.title`)과 같아야 하고, 안내용 메뉴 경로 시험(`nav-menu-path.test.ts`)이
+       * 그 짝을 잰다.
        *
        * 「작업지시 목록」(W-02-01)은 작업함과 처리 화면이다. 옛 W-02-02(W/O 전개와 편성)와 W-02-03(4M 자원배정)은
        * 처리 화면의 단계로 합쳐 메뉴에도 탭에도 두지 않는다. 옛 주소는 `?productionOrderId=`, `?productionPlanId=`로

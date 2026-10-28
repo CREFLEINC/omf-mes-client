@@ -1,5 +1,5 @@
 import { Chip, type ChipStatus } from '@crefle/web-ui';
-import { messages } from '@omf-mes/i18n';
+import { messages, type ReasonDetail } from '@omf-mes/i18n';
 
 import { CountChip as SharedCountChip } from '../../patterns/count-chip';
 import type { ProcessState, WorklistReason } from './worklist-model';
@@ -26,9 +26,6 @@ export const ProcessStateChip = ({
     {state === 'CANCELLED' ? cancelledName : t.status[state]}
   </Chip>
 );
-
-/** 사유 칩 도움말에 넣는 수와 수량. 화면이 아는 것만 채운다. */
-export type ReasonDetail = Parameters<typeof t.reasonHelp.QTY_REMAINING>[0];
 
 /** 사유마다 「무엇이 잘못됐고 어디서 고치는지」 한 줄. 툴팁에 줄을 바꿔 모두 보인다. */
 export const reasonHelpText = (

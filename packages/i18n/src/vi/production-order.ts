@@ -10,7 +10,7 @@ import type { Translated } from './translated';
 export const productionOrder: Translated<typeof ko.productionOrder> = {
   title: 'Danh sách lệnh sản xuất',
   breadcrumbRoot: 'Quản lý sản xuất',
-  menuPath: 'Quản lý sản xuất › Danh sách lệnh sản xuất › Danh sách lệnh sản xuất',
+  menuPath: 'Quản lý sản xuất › Danh sách lệnh sản xuất',
   fields: {
     productionOrderNo: 'Số ERP W/O',
     erpProductionOrderNo: 'Số gốc ERP',
@@ -71,7 +71,7 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
       BOM_MISSING: 'Cần chỉ định BOM mặc định',
       ROUTING_MISSING: 'Cần đăng ký công đoạn (Routing)',
       ROUTING_AMBIGUOUS: 'Cần chỉ định công đoạn (Routing) mặc định',
-      LINE_UNKNOWN: 'Cần chỉ định chuyền sản xuất',
+      LINE_UNKNOWN: 'Cần chỉ định dây chuyền sản xuất',
       PLAN_NOT_CONFIRMED: 'Cần chốt kế hoạch sản xuất',
       QTY_REMAINING: 'Cần lập kế hoạch cho số lượng còn lại',
     },

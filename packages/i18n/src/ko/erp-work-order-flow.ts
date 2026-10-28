@@ -13,7 +13,7 @@
 const SCREEN_NAME = '작업지시 목록';
 
 /**
- * 처리 상태 이름. 조건 칩, 행 상태 칩이 같은 이름을 쓴다(C-17 잠정 규칙: 서버 자동 계획 결과, omf-all-around#204).
+ * 처리 상태 이름. 조건 칩, 행 상태 칩이 같은 이름을 쓴다(C-17 잠정 규칙: 서버 자동 계획 결과).
  * 칩 이름은 여기만 고치면 바뀐다. 빈 목록 제목(`list.emptyNeedsReviewTitle`)은 문장이라 따로 적었으니 함께 고친다.
  * 「배포 대기」는 계획을 채운 건이다. 그중 W/O 생산 라인이 없어 배포할 수 없는 건은 사유 칩이 따로 말한다.
  */
@@ -75,14 +75,15 @@ export const erpWorkOrderFlow = {
   /** 사유 칩 도움말(툴팁). 무엇이 잘못됐고 어디서 고치는지 말한다. */
   reasonHelp: {
     BOM_MISSING: (): string =>
-      // ui-check-ignore: C-13 메뉴 이름 「품목·BOM 정보」를 그대로 쓴다(사용자 지시 2026-10-28, omf-all-around#204)
+      // ui-check-ignore: C-13 메뉴 이름 「품목·BOM 정보」를 그대로 쓴다
       '이 품목의 기본 BOM이 없거나 둘 이상입니다. 품목·BOM 정보에서 기본 BOM을 하나로 지정해야 합니다.',
     ROUTING_MISSING: (): string =>
       '이 품목에 쓸 수 있는 공정(Routing)이 없습니다. 공정(Routing) 화면에서 등록해야 합니다.',
     ROUTING_AMBIGUOUS: (): string =>
-      `쓸 수 있는 공정(Routing)이 여럿이고 기본이 정해지지 않았습니다. 공정(Routing) 화면에서 기본을 지정하거나 ${steps.master} 단계에서 골라야 합니다.`,
+      `이 품목에 쓸 수 있는 공정(Routing)이 여럿이고 기본이 없거나 둘 이상입니다. 공정(Routing) 화면에서 기본을 하나로 지정하거나 ${steps.master} 단계에서 골라야 합니다.`,
     LINE_UNKNOWN: (): string =>
-      `생산계획에 생산 라인이 정해지지 않았습니다. ${steps.plan} 단계에서 생산 라인을 골라야 합니다.`,
+      // ui-check-ignore: C-13 메뉴 경로 「품목·BOM 정보 › 설비·금형」을 그대로 쓴다
+      `생산계획에 생산 라인이 정해지지 않았습니다. ${steps.plan} 단계에서 생산 라인을 고르거나, 기준정보 관리 › 품목·BOM 정보 › 설비·금형 탭에서 라인에 속한 설비를 자동 배정 지정(★)한 뒤 자동 계획을 다시 실행해야 합니다.`,
     PLAN_NOT_CONFIRMED: (): string =>
       `작성 중인 생산계획이 있습니다. ${steps.plan} 단계에서 계획을 확정해야 합니다.`,
     QTY_REMAINING: ({ orderQty, plannedQty, uom = '' }: ReasonDetail): string =>
@@ -177,7 +178,7 @@ export const erpWorkOrderFlow = {
       skipTitle: '건너뛰는 조건',
       /* 확정 계획이 있으면 자동 계획은 남은 수량을 채우지 않는다(서버 `act`: 작성 중 계획이 없으면 NOT_PLANNED). */
       skipConditions: [
-        '기본 BOM이나 Routing이 없는 ERP W/O',
+        '기본 BOM이나 Routing이 없거나 하나로 정해지지 않은 ERP W/O',
         '확정한 계획 수량이 주문 수량보다 적고 작성 중인 계획이 없는 ERP W/O(남은 수량은 생산계획 단계에서 계획)',
       ],
       /** 라인을 모르면 건너뛰지 않고 작성 중 계획을 남긴다(서버 자동 계획 결과 DRAFT). */
