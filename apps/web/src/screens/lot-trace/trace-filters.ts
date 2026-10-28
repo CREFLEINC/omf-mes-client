@@ -241,7 +241,7 @@ export const openLotParams = (
 export const openShipmentParams = (shipmentNo: string, onlyLotId: number | null): URLSearchParams =>
   toTraceSearchParams('backward', { ...EMPTY_TRACE_FILTERS, shipment: shipmentNo }, onlyLotId);
 
-/** LOT 추적 화면 주소. 다른 화면(W-03-01 LOT 상세)이 한 LOT의 추적을 열 때 쓴다. */
+/** LOT 생산 이력 조회 화면 주소. 다른 화면(W-03-01 LOT 상세)이 한 LOT의 추적을 열 때 쓴다. */
 export const LOT_TRACE_PATH = '/production/lot-trace';
 
 /** 한 LOT의 추적을 여는 주소. 자재 LOT은 자재 LOT 탭, 그 밖의 LOT(생산, 제품)은 제품 LOT 탭이다. */

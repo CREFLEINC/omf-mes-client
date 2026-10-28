@@ -97,7 +97,7 @@ import { UsersRolesScreen } from '../screens/users-roles/screen';
 import { WarehouseLayoutScreen } from '../screens/warehouse-layout/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 
-/** LOT 추적의 권한 안내는 사용자와 역할 메뉴를 사이드바의 이름 그대로 가리킨다. 그리는 순간의 언어로 만든다. */
+/** LOT 생산 이력 조회의 권한 안내는 사용자와 역할 메뉴를 사이드바의 이름 그대로 가리킨다. 그리는 순간의 언어로 만든다. */
 const LotTraceRoute = () => (
   <LotTraceScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
 );

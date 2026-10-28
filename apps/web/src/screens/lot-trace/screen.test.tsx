@@ -179,7 +179,7 @@ const setup = (options: SetupOptions = {}) => {
 const listQueries = (queries: URL[]) =>
   queries.filter((url) => url.searchParams.get('size') !== '1');
 
-describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
+describe('W-02-09 LOT 생산 이력 조회: 입출고 현황 탭', () => {
   it('주소에 기간이 없으면 공장 날짜 오늘을 끝으로 7일을 채워 자재 입고를 조회한다', async () => {
     const { receiptQueries } = setup({ route: '/production/lot-trace?tab=movements' });
     const expected = defaultPeriod(plantToday());
@@ -292,7 +292,7 @@ describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
   it('권한이 없으면(403) 권한 안내를 보이고 [다시 조회]를 두지 않는다', async () => {
     setup({ failList: true, failStatus: 403 });
 
-    expect(await screen.findByText('LOT 추적 권한이 없습니다')).toBeInTheDocument();
+    expect(await screen.findByText('LOT 생산 이력 조회 권한이 없습니다')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '다시 조회' })).toBeNull();
   });
 
@@ -320,7 +320,7 @@ describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
   });
 });
 
-describe('W-02-09 LOT 추적: 입출고 현황 조건 바로 반영', () => {
+describe('W-02-09 LOT 생산 이력 조회: 입출고 현황 조건 바로 반영', () => {
   it('기간을 고르면 [조회] 없이 반영하고, 쪽을 1로 돌리고, 주소를 바꿔 쓴다', async () => {
     const user = userEvent.setup();
     const { receiptQueries } = setup({ route: `${ROUTE}&page=2` });

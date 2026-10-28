@@ -124,9 +124,9 @@ describe('내보낸 파일 이름', () => {
       exportFileName(
         readFilters(new URLSearchParams('kind=PRODUCT&from=2026-10-20&to=2026-10-27')),
       ),
-    ).toBe('LOT추적_제품입고_2026-10-20_2026-10-27.csv');
+    ).toBe('LOT생산이력조회_제품입고_2026-10-20_2026-10-27.csv');
     const name = messages.lotTrace.export.fileName;
-    expect(name('자재 LOT', '', '')).toBe('LOT추적_자재 LOT_전체.csv');
-    expect(name('자재 LOT', '2026-10-01', '')).toBe('LOT추적_자재 LOT_2026-10-01_이후.csv');
+    expect(name('자재 LOT', '', '')).toBe('LOT생산이력조회_자재 LOT_전체.csv');
+    expect(name('자재 LOT', '2026-10-01', '')).toBe('LOT생산이력조회_자재 LOT_2026-10-01_이후.csv');
   });
 });

@@ -1,6 +1,6 @@
-/** W-02-09 LOT 추적 — 자재 LOT, 제품 LOT, 입출고 현황 세 탭. */
+/** W-02-09 LOT 생산 이력 조회 — 자재 LOT, 제품 LOT, 입출고 현황 세 탭. */
 export const lotTrace = {
-  title: 'LOT 추적',
+  title: 'LOT 생산 이력 조회',
   breadcrumbRoot: '생산 관리',
   kinds: {
     label: '구분',
@@ -43,10 +43,10 @@ export const lotTrace = {
     invalid: '기간 날짜 형식이 맞지 않습니다. 달력에서 다시 고르세요',
   },
   access: {
-    forbiddenTitle: 'LOT 추적 권한이 없습니다',
+    forbiddenTitle: 'LOT 생산 이력 조회 권한이 없습니다',
     forbidden: (menuPath: string): string =>
-      `관리자가 「${menuPath}」 메뉴에서 역할에 LOT 추적 권한을 줄 수 있습니다. 관리자에게 권한을 요청하세요.`,
-    forbiddenNoMenu: '관리자에게 LOT 추적 권한을 요청하세요.',
+      `관리자가 「${menuPath}」 메뉴에서 역할에 LOT 생산 이력 조회 권한을 줄 수 있습니다. 관리자에게 권한을 요청하세요.`,
+    forbiddenNoMenu: '관리자에게 LOT 생산 이력 조회 권한을 요청하세요.',
     notFoundTitle: 'LOT을 찾을 수 없습니다',
     notFound: '목록에서 LOT을 다시 고르세요.',
   },
@@ -93,14 +93,14 @@ export const lotTrace = {
     failed: '엑셀 파일을 만들지 못했습니다. 다시 내보내세요.',
     /** 화면명_조건_기간(비가동 집계 내려받기와 같은 규칙). 기간이 없으면(LOT 번호로 찾음) 「전체」다. */
     fileName: (condition: string, from: string, to: string): string =>
-      `LOT추적_${condition}_${from === '' && to === '' ? '전체' : `${from === '' ? '처음' : from}_${to === '' ? '이후' : to}`}.csv`,
+      `LOT생산이력조회_${condition}_${from === '' && to === '' ? '전체' : `${from === '' ? '처음' : from}_${to === '' ? '이후' : to}`}.csv`,
     uom: '단위',
     lotCount: 'LOT 수',
     datetime: '일시',
   },
   splitter: '목록과 상세 폭 나누기',
   tabs: {
-    label: 'LOT 추적 탭',
+    label: 'LOT 생산 이력 조회 탭',
     forward: '자재 LOT',
     backward: '제품 LOT',
     movements: '입출고 현황',
@@ -277,7 +277,7 @@ export const lotTrace = {
     usageFailed: '사용처를 불러오지 못했습니다',
     truncated: (total: number): string =>
       `생산 LOT ${total.toLocaleString('ko-KR')}건 중 500건까지 보이며 추적 내보내기에도 이 500건만 담깁니다. 나머지는 제품 LOT 탭에서 W/O 번호나 출하번호로 찾으세요.`,
-    loading: 'LOT 추적을 불러오는 중',
+    loading: 'LOT 생산 이력을 불러오는 중',
     loadFailed: '추적 정보를 불러오지 못했습니다',
     retry: '다시 조회',
     exportColumns: {
@@ -303,6 +303,7 @@ export const lotTrace = {
       PACKAGE: '포장',
       SHIPMENT: '출하',
     },
-    exportFileName: (lotNo: string): string => `LOT추적_${lotNo.replace(/[\\/:*?"<>|]/g, '_')}.csv`,
+    exportFileName: (lotNo: string): string =>
+      `LOT생산이력조회_${lotNo.replace(/[\\/:*?"<>|]/g, '_')}.csv`,
   },
 };

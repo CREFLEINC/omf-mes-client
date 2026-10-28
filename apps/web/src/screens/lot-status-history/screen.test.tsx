@@ -1174,7 +1174,7 @@ describe('LOT 상세의 [추적 보기]', () => {
     permissions,
   });
 
-  it('자재 LOT은 LOT 추적의 정방향으로 그 LOT을 연다', async () => {
+  it('자재 LOT은 LOT 생산 이력 조회의 자재 LOT 탭으로 그 LOT을 연다', async () => {
     renderScreen(
       '/quality/lot-status?lot=401',
       'ready',
@@ -1195,7 +1195,7 @@ describe('LOT 상세의 [추적 보기]', () => {
     expect(locationSearch().has('tab')).toBe(false);
   });
 
-  it('생산 LOT은 역방향으로 연다', async () => {
+  it('생산 LOT은 제품 LOT 탭으로 연다', async () => {
     renderScreen(
       '/quality/lot-status?lot=401',
       'ready',
@@ -1212,7 +1212,7 @@ describe('LOT 상세의 [추적 보기]', () => {
     expect(locationSearch().get('selected')).toBe('401');
   });
 
-  it('LOT 추적 권한이 없으면 두지 않는다', async () => {
+  it('LOT 생산 이력 조회 권한이 없으면 두지 않는다', async () => {
     renderScreen(
       '/quality/lot-status?lot=401',
       'ready',

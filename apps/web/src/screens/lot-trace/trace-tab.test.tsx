@@ -83,7 +83,7 @@ const estimatedChip = (lotNo: string): HTMLElement | null => {
   return within(row).queryByLabelText(/^추정 포함\. /);
 };
 
-describe('W-02-09 LOT 추적: 자재 LOT 탭', () => {
+describe('W-02-09 LOT 생산 이력 조회: 자재 LOT 탭', () => {
   it('메뉴로 처음 열면 자재 LOT 탭이고, 기본 기간(오늘까지 7일)만으로 목록을 부른다', async () => {
     const { calls } = setup('/production/lot-trace', { forwardRows: [forwardRow(101, MAT)] });
 
@@ -420,7 +420,7 @@ describe('W-02-09 LOT 추적: 자재 LOT 탭', () => {
   });
 });
 
-describe('W-02-09 LOT 추적: 제품 LOT 탭', () => {
+describe('W-02-09 LOT 생산 이력 조회: 제품 LOT 탭', () => {
   it('W/O 번호 진입점으로 부른다(기간 없이)', async () => {
     const { calls } = setup('/production/lot-trace?tab=backward&wo=WO-SYN-0001', {
       backwardRows: [backwardRow(201, PROD)],
@@ -552,7 +552,9 @@ describe('W-02-09 LOT 추적: 제품 LOT 탭', () => {
     });
 
     await detailHead(PROD);
-    expect(within(detailPane()).getByText('LOT 추적 권한이 없습니다')).toBeInTheDocument();
+    expect(
+      within(detailPane()).getByText('LOT 생산 이력 조회 권한이 없습니다'),
+    ).toBeInTheDocument();
     expect(within(detailPane()).queryByRole('button', { name: '다시 조회' })).toBeNull();
   });
 
@@ -569,14 +571,14 @@ describe('W-02-09 LOT 추적: 제품 LOT 탭', () => {
   });
 });
 
-const FORBIDDEN_TITLE = 'LOT 추적 권한이 없습니다';
+const FORBIDDEN_TITLE = 'LOT 생산 이력 조회 권한이 없습니다';
 const PERMISSION_DENIED = {
   errors: [
     { scope: 'screen', code: 'PERMISSION_DENIED', message: '이 기능을 쓸 권한이 없습니다.' },
   ],
 };
 
-describe('W-02-09 LOT 추적: 권한 없음과 없는 LOT', () => {
+describe('W-02-09 LOT 생산 이력 조회: 권한 없음과 없는 LOT', () => {
   it.each([
     ['오류 봉투', PERMISSION_DENIED],
     ['빈 본문', null],
@@ -623,7 +625,7 @@ describe('W-02-09 LOT 추적: 권한 없음과 없는 LOT', () => {
   });
 });
 
-describe('W-02-09 LOT 추적: 큰 사슬과 단계 줄', () => {
+describe('W-02-09 LOT 생산 이력 조회: 큰 사슬과 단계 줄', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -711,7 +713,7 @@ describe('W-02-09 LOT 추적: 큰 사슬과 단계 줄', () => {
   });
 });
 
-describe('W-02-09 LOT 추적: LOT 번호 칸', () => {
+describe('W-02-09 LOT 생산 이력 조회: LOT 번호 칸', () => {
   it('기간이 비어 있으면 LOT 번호 정확 일치(lotNo)로 기간 없이 부른다', async () => {
     const user = userEvent.setup();
     const old = 'ITEM-A|500|240101|SUP-A|0009';
@@ -772,7 +774,7 @@ describe('W-02-09 LOT 추적: LOT 번호 칸', () => {
   });
 });
 
-describe('W-02-09 LOT 추적: 목록 내보내기', () => {
+describe('W-02-09 LOT 생산 이력 조회: 목록 내보내기', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -815,7 +817,7 @@ describe('W-02-09 LOT 추적: 목록 내보내기', () => {
   });
 });
 
-describe('W-02-09 LOT 추적: 추적 조건 바로 반영', () => {
+describe('W-02-09 LOT 생산 이력 조회: 추적 조건 바로 반영', () => {
   const flows = (calls: URL[]) => lists(calls, '/trace/material-lot-flows');
 
   it('LOT 번호는 칠 때마다 부르지 않고 칸을 떠날 때 반영한다', async () => {

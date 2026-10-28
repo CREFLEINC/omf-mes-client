@@ -23505,7 +23505,7 @@ table.col-measuring td {
   min-width: 0;
 }
 
-/* ── W-02-09 LOT 추적(입출고 현황) ────────────────────────────────────── */
+/* ── W-02-09 LOT 생산 이력 조회(입출고 현황) ────────────────────────────────────── */
 .lot-trace-kinds {
   display: inline-flex;
   align-items: center;

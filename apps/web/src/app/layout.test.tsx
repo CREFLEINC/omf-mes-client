@@ -360,10 +360,11 @@ describe('AppLayout', () => {
       'href',
       '/logistics/inbound-schedule',
     );
-    expect(within(tabs).getAllByRole('link').map((link) => link.textContent)).toEqual([
-      '입고 관리',
-      '초과분 발주 연결',
-    ]);
+    expect(
+      within(tabs)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['입고 관리', '초과분 발주 연결']);
     expect(within(tabs).getByRole('link', { name: '초과분 발주 연결' })).toHaveAttribute(
       'aria-current',
       'page',
@@ -767,8 +768,8 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/work-order-progress')).toBe(
       links.indexOf('/production/emergency-work-orders') + 1,
     );
-    /* W-02-09 LOT 추적 — 「W/O 진행현황 조회」 바로 아래. */
-    expect(within(sidebar).getByRole('link', { name: 'LOT 추적' })).toHaveAttribute(
+    /* W-02-09 LOT 생산 이력 조회 — 「W/O 진행현황 조회」 바로 아래. */
+    expect(within(sidebar).getByRole('link', { name: 'LOT 생산 이력 조회' })).toHaveAttribute(
       'href',
       '/production/lot-trace',
     );
@@ -998,7 +999,7 @@ describe('AppLayout', () => {
       '/quality/approvals',
       '/quality/dispositions',
       '/quality/inspection-levels',
-      /* 생산 관리 — ERP W/O(처리, 변경 확인) → (긴급) → 진행 → LOT 추적 → 마감. */
+      /* 생산 관리 — ERP W/O(처리, 변경 확인) → (긴급) → 진행 → LOT 생산 이력 조회 → 마감. */
       '/production/production-orders' /* ← ERP W/O */,
       '/production/emergency-work-orders',
       '/production/work-order-progress',

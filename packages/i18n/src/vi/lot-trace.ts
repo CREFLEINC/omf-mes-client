@@ -1,11 +1,11 @@
 import type { ko } from '../ko';
 import type { Translated } from './translated';
 
-/** W-02-09 LOT 추적 — 자재 LOT, 제품 LOT, 입출고 현황 세 탭. 수는 베트남어 자리 구분으로 적는다. */
+/** W-02-09 LOT 생산 이력 조회 — 자재 LOT, 제품 LOT, 입출고 현황 세 탭. 수는 베트남어 자리 구분으로 적는다. */
 const num = (value: number): string => value.toLocaleString('vi-VN');
 
 export const lotTrace: Translated<typeof ko.lotTrace> = {
-  title: 'Truy xuất LOT',
+  title: 'Tra cứu lịch sử sản xuất LOT',
   breadcrumbRoot: 'Quản lý sản xuất',
   kinds: {
     label: 'Loại',
@@ -47,10 +47,10 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     invalid: 'Ngày của kỳ không đúng định dạng. Hãy chọn lại trên lịch',
   },
   access: {
-    forbiddenTitle: 'Không có quyền truy xuất LOT',
+    forbiddenTitle: 'Không có quyền tra cứu lịch sử sản xuất LOT',
     forbidden: (menuPath: string): string =>
-      `Quản trị viên có thể cấp quyền truy xuất LOT cho vai trò ở menu 「${menuPath}」. Hãy đề nghị quản trị viên cấp quyền.`,
-    forbiddenNoMenu: 'Hãy đề nghị quản trị viên cấp quyền truy xuất LOT.',
+      `Quản trị viên có thể cấp quyền tra cứu lịch sử sản xuất LOT cho vai trò ở menu 「${menuPath}」. Hãy đề nghị quản trị viên cấp quyền.`,
+    forbiddenNoMenu: 'Hãy đề nghị quản trị viên cấp quyền tra cứu lịch sử sản xuất LOT.',
     notFoundTitle: 'Không tìm thấy LOT',
     notFound: 'Hãy chọn lại LOT trong danh sách.',
   },
@@ -96,14 +96,14 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     cancel: 'Hủy',
     failed: 'Không tạo được tệp Excel. Hãy xuất lại.',
     fileName: (condition: string, from: string, to: string): string =>
-      `TruyXuatLOT_${condition}_${from === '' && to === '' ? 'TatCa' : `${from === '' ? 'BatDau' : from}_${to === '' ? 'TroDi' : to}`}.csv`,
+      `TraCuuLichSuSanXuatLOT_${condition}_${from === '' && to === '' ? 'TatCa' : `${from === '' ? 'BatDau' : from}_${to === '' ? 'TroDi' : to}`}.csv`,
     uom: 'Đơn vị',
     lotCount: 'Số LOT',
     datetime: 'Thời điểm',
   },
   splitter: 'Chia độ rộng danh sách và chi tiết',
   tabs: {
-    label: 'Thẻ truy xuất LOT',
+    label: 'Thẻ tra cứu lịch sử sản xuất LOT',
     forward: 'LOT vật tư',
     backward: 'LOT thành phẩm',
     movements: 'Tình hình nhập xuất',
@@ -282,7 +282,7 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     usageFailed: 'Không tải được nơi sử dụng',
     truncated: (total: number): string =>
       `Chỉ hiện 500 trong ${num(total)} LOT sản xuất, tệp xuất truy xuất cũng chỉ có 500 LOT này. Phần còn lại hãy tìm ở thẻ LOT thành phẩm theo số W/O hoặc số phiếu xuất hàng.`,
-    loading: 'Đang tải truy xuất LOT',
+    loading: 'Đang tải lịch sử sản xuất LOT',
     loadFailed: 'Không tải được thông tin truy xuất',
     retry: 'Tra cứu lại',
     exportColumns: {
@@ -309,6 +309,6 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
       SHIPMENT: 'Xuất hàng',
     },
     exportFileName: (lotNo: string): string =>
-      `TruyXuatLOT_${lotNo.replace(/[\\/:*?"<>|]/g, '_')}.csv`,
+      `TraCuuLichSuSanXuatLOT_${lotNo.replace(/[\\/:*?"<>|]/g, '_')}.csv`,
   },
 };

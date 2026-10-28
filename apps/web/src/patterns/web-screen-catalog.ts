@@ -218,8 +218,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     code: 'W-02-08',
     name: 'W/O 진행현황 조회(생산 실적 집계 포함)',
   },
-  /* 서버 권한 키 W-02-09 「LOT 추적」. */
-  { path: '/production/lot-trace', code: 'W-02-09', name: 'LOT 추적' },
+  /* 서버 권한 키 W-02-09 「LOT 생산 이력 조회」. */
+  { path: '/production/lot-trace', code: 'W-02-09', name: 'LOT 생산 이력 조회' },
 
   /* ── 품질관리 ─────────────────────────────────────────────────────────── */
   {
