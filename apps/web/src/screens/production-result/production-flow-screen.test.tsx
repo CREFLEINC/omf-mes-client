@@ -3085,7 +3085,7 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
 
   const bar = () => screen.getByRole('region', { name: messages.screenPatterns.actionBar.region });
 
-  it('[작업 중단]은 머리줄, [부품 교체]와 이른 [작업지시 마감]은 현재 LOT 구획 아래에 선다', async () => {
+  it('[작업 중단]은 머리줄, [부품 교체]는 현재 LOT 구획 아래에 서고, 실적 전에는 이른 마감을 두지 않는다', async () => {
     renderScreen([]);
 
     const header = screen.getAllByRole('banner')[0] as HTMLElement;
@@ -3096,14 +3096,46 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
     expect(
       await within(lotPane).findByRole('button', { name: t.flow.actions.runningChange }),
     ).toBeInTheDocument();
-    expect(
-      within(lotPane).getByRole('button', { name: t.flow.woClose.button }),
-    ).toBeInTheDocument();
+    /* 마감할 수 없는 상태에서 늘 잠긴 버튼을 두지 않는다(C-3 보조 동작의 자리). */
+    expect(within(lotPane).queryByRole('button', { name: t.flow.woClose.button })).toBeNull();
     expect(
       within(bar())
         .getAllByRole('button')
         .map((button) => button.textContent),
     ).toEqual([t.flow.output.issue]);
+    expect(await screen.findByText(t.flow.next.ready)).toBeInTheDocument();
+  });
+
+  it('작업이 시작되고 실적이 있으면 현재 LOT 구획 아래에 이른 [작업지시 마감]이 선다', async () => {
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) =>
+            pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+          respond: () =>
+            jsonResponse({
+              workOrderId: WORK_ORDER_ID,
+              workOrderNo: 'WO-SYN-001',
+              productionPlanId: 1,
+              routingOperationId: 1,
+              itemId: 101,
+              itemCode: 'ITEM-SYN-01',
+              orderQty: 12,
+              uomId: 1,
+              workOrderTypeCode: 'NORMAL',
+              statusCode: 'IN_PROGRESS',
+              priorityNo: 1,
+              progress: { goodQty: 5, varianceQty: 7, completionJudgmentCode: 'UNDER' },
+            }),
+        },
+      ],
+    );
+
+    const lotPane = await screen.findByRole('region', { name: t.flow.currentLot.current });
+    expect(
+      await within(lotPane).findByRole('button', { name: t.flow.woClose.button }),
+    ).toBeInTheDocument();
   });
 
   it('마감된 LOT이 0건이면 건수만 보이고 [보기]를 두지 않는다', async () => {

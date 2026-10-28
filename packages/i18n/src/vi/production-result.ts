@@ -58,9 +58,9 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       defectType: 'Hãy chọn loại lỗi',
       defectQty: 'Hãy nhập số lượng lỗi',
       defectDuplicate: 'Cùng một loại lỗi nằm ở hai dòng. Hãy xóa một dòng',
-      ready: 'Có thể chuyển sang Quét nhãn',
-      planReached: 'Đã đạt số lượng kế hoạch. Có thể chuyển sang Đóng lệnh sản xuất',
-      closed: 'Đã đóng lệnh sản xuất. Có thể chuyển sang Đóng gói',
+      ready: 'Hãy kiểm tra số lượng đạt rồi in nhãn sản xuất',
+      planReached: 'Đã đạt số lượng kế hoạch. Hãy đóng lệnh sản xuất',
+      closed: 'Đã đóng lệnh sản xuất. Hãy chuyển sang đóng gói sản xuất',
     },
     currentLot: {
       current: 'LOT hiện tại',

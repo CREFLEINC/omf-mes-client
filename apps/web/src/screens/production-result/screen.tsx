@@ -49,6 +49,7 @@ import { DefectPicker } from './defect-picker';
 import { useResultEntry } from './entry-context';
 import { UnderReasonDialog } from './under-reason-dialog';
 import { blockedReason as closeBlockedReason, WorkOrderCloseAction } from './wo-close-action';
+import { CLOSABLE_STATUSES } from './wo-close';
 import { useFlowGates, type FlowGateVerdict } from './flow-gating';
 import { useDocumentIssue, useLotComplete, useSerialIssue } from './flow-mutations';
 import { useLabelPrintRunner, type PrintTarget } from './flow-print';
@@ -1350,7 +1351,7 @@ export const ProductionFlowScreen = () => {
     }
     if (currentLot.isError) return t.flow.currentLot.loadFailed;
     if (currentLot.data === undefined) return null;
-    if (isCloseMode) return closeBlock ?? (lot === null ? next.noLot : next.planReached);
+    if (isCloseMode) return closeBlock ?? (isPlanAchieved ? next.planReached : next.noLot);
 
     if (step === 'scan') {
       switch (outputPhase) {
@@ -1409,6 +1410,16 @@ export const ProductionFlowScreen = () => {
         ? t.flow.work.pqcSkipped
         : null;
   const isScanStep = step === 'scan';
+  /*
+   * 이른 작업지시 마감은 마감할 수 있는 상태일 때만 선다(C-3 보조 동작의 자리): 작업이 시작된 W/O이고
+   * 실적이 하나라도 있다. 그 전에는 늘 잠긴 버튼과 긴 사유를 두지 않는다. 연결, 미전송, 단말 권한으로
+   * 잠기면 그때는 사유와 함께 선다.
+   */
+  const canCloseEarly =
+    !isCloseMode &&
+    workOrder.data !== undefined &&
+    CLOSABLE_STATUSES.includes(workOrder.data.statusCode) &&
+    (workOrderGoodQty ?? 0) > 0;
   /* 작업지시 마감은 한 자리에만 선다(C-1 같은 이름의 버튼을 두 곳에 두지 않는다). */
   const closeAction = (variant: 'filled' | 'outlined') =>
     entry.workOrderId === null || workOrder.data === undefined ? null : (
@@ -1766,7 +1777,7 @@ export const ProductionFlowScreen = () => {
                 >
                   {t.flow.actions.runningChange}
                 </Button>
-                {!isCloseMode && closeAction('outlined')}
+                {canCloseEarly && closeAction('outlined')}
               </div>
             )}
           </section>
