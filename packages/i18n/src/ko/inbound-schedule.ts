@@ -223,6 +223,7 @@ export const inboundSchedule = {
     candidates: {
       title: '연결할 발주 라인',
       purchaseOrderNo: '발주번호',
+      itemCode: '품목코드',
       orderDate: '발주일',
       dueDate: '납기',
       ordered: '발주 수량',
@@ -365,7 +366,7 @@ export const inboundSchedule = {
     /** 「입고 대기」 LOT 줄의 체크 — 체크한 LOT 을 한 번에 입고한다(사용자 지시 2026-10-28). */
     selectForPost: (lotNo: string): string => `${lotNo} 입고 선택`,
     selectAllForPost: '입고 대기 전체',
-    checkedForPost: (count: number): string => `입고 대기 선택 ${String(count)}건`,
+    checkedForPost: (count: number): string => `선택 ${String(count)}건`,
     postChecked: '체크한 LOT 입고 처리',
     receivedOn: (date: string): string => `입하 ${date}`,
     /** 적치는 PDA 의 일이다 — 이 화면은 보기만 한다. */

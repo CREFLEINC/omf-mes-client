@@ -172,6 +172,21 @@ describe('InboundExcessScreen — 초과분 발주 연결 탭', () => {
     expect(await within(detailPane()).findByText('SAMPLE-IR-0001')).toBeInTheDocument();
   });
 
+  it('후보 표는 발주번호만(줄 번호 없이) 싣고 고른 초과분의 품목코드를 함께 보인다', async () => {
+    renderTab([excessListRoute([excessFixture()]), candidatesRoute([candidateFixture()])]);
+
+    const pick = await within(detailPane()).findByRole('button', {
+      name: te.pickLine('SAMPLE-PO-0001', 1),
+    });
+    const row = pick.closest('tr') as HTMLElement;
+
+    expect(pick).toHaveTextContent(/^SAMPLE-PO-0001$/);
+    expect(within(row).getByText('SAMPLE-ITEM-01')).toBeInTheDocument();
+    expect(
+      within(detailPane()).getByRole('columnheader', { name: te.candidates.itemCode }),
+    ).toBeInTheDocument();
+  });
+
   it('후보가 없으면 연결할 발주 라인이 없다고 말한다', async () => {
     renderTab([excessListRoute([excessFixture()]), candidatesRoute([])]);
 

@@ -165,6 +165,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     candidates: {
       title: 'Dòng P/O để liên kết',
       purchaseOrderNo: 'Số đơn đặt hàng',
+      itemCode: 'Mã mặt hàng',
       orderDate: 'Ngày đặt hàng',
       dueDate: 'Hạn giao',
       ordered: 'Số lượng đặt',
@@ -274,7 +275,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
   lot: {
     selectForPost: (lotNo: string): string => `Chọn ${lotNo} để nhập kho`,
     selectAllForPost: 'Tất cả chờ nhập kho',
-    checkedForPost: (count: number): string => `Đã chọn ${String(count)} chờ nhập kho`,
+    checkedForPost: (count: number): string => `Đã chọn ${String(count)}`,
     postChecked: 'Nhập kho các LOT đã chọn',
     receivedOn: (date: string): string => `Nhận ${date}`,
     putawayOnPda: 'Xếp kho trên PDA',

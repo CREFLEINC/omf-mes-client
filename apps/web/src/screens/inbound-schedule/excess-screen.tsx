@@ -234,10 +234,11 @@ export const InboundExcessScreen = () => {
     {
       key: 'purchaseOrderNo',
       header: t.candidates.purchaseOrderNo,
-      width: '280px',
+      /* 발주번호만 — 라인 번호는 싣지 않는다(사용자 지시 2026-10-28). 칩 둘까지 한 줄에. */
+      width: '264px',
       render: (row) => (
         <span className="excess-receipt-cell">
-          {t.orderLine(row.purchaseOrderNo, row.lineNo)}
+          {row.purchaseOrderNo}
           {row.exactMatch && (
             <Chip variant="status" status="success" size="sm">
               {t.candidates.exact}
@@ -250,6 +251,16 @@ export const InboundExcessScreen = () => {
           )}
         </span>
       ),
+    },
+    /*
+     * 후보는 서버가 고른 초과분과 **같은 품목**의 라인만 준다(같은 공장·공급사·품목·단위) — 응답에 품목코드가 없어
+     * 고른 초과분의 것을 쓴다.
+     */
+    {
+      key: 'itemCode',
+      header: t.candidates.itemCode,
+      width: '144px',
+      render: () => <OneLine text={selectedExcess?.itemCode ?? orEmpty(null)} />,
     },
     {
       key: 'orderDate',
@@ -352,7 +363,7 @@ export const InboundExcessScreen = () => {
       <BoardTable
         label={t.candidates.title}
         widthKey="omf-mes:inbound-excess:columns:candidates"
-        minWidth="820px"
+        minWidth="940px"
         columns={candidateColumns}
         rows={candidateRows}
         getRowId={(row) => String(row.purchaseOrderLineId)}
