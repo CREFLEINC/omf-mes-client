@@ -24904,3 +24904,31 @@ table.col-measuring td {
   gap: var(--space-2);
   white-space: nowrap;
 }
+
+/*
+ * 구매발주 조회(ERP) 라인 표 머리 — 제목 오른쪽에 외자 발주의 [통관번호 받아오기](omf-all-around#206). 받아온 결과의 띠는
+ * 머리 아래 한 줄을 통째로 쓴다.
+ */
+.erp-po-lines-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.erp-po-lines-head > .pane-title {
+  margin: 0;
+}
+
+.erp-po-customs-result {
+  display: grid;
+  flex-basis: 100%;
+  gap: var(--space-2);
+}
+
+.erp-po-customs-candidates {
+  margin: 0;
+  padding-left: var(--space-5);
+}

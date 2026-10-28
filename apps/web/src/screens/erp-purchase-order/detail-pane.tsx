@@ -1,11 +1,13 @@
 import { AlertBanner, Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { BoardTable } from '../../patterns/board-table';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { OneLine } from '../../patterns/po-board';
 
-import type { PurchaseOrderDetail, PurchaseOrderLine } from './types';
+import { formatCustomsClearance } from './customs-clearance';
+import { isForeignOrder, type PurchaseOrderDetail, type PurchaseOrderLine } from './types';
 
 const t = messages.erpPurchaseOrder;
 
@@ -35,6 +37,8 @@ export interface ErpPurchaseOrderDetailPaneProps {
   orderTypeNameOf: (code: string | null | undefined) => string;
   purchaseGroupNameOf: (code: string | null | undefined) => string;
   storageLocationNameOf: (code: string | null | undefined) => string;
+  /** 라인 표 머리 오른쪽 — 외자 발주의 [통관번호 받아오기]. 세울지는 화면이 정한다(권한 · 발주 유형). */
+  linesAction?: ReactNode;
 }
 
 /** 라인 취소 표시 — 취소 표지와 ERP 가 취소를 보낸 시각(공장 시각). 취소되지 않았으면 「-」 */
@@ -62,6 +66,7 @@ export const ErpPurchaseOrderDetailPane = ({
   orderTypeNameOf,
   purchaseGroupNameOf,
   storageLocationNameOf,
+  linesAction = null,
 }: ErpPurchaseOrderDetailPaneProps) => {
   if (state.kind === 'idle') {
     return (
@@ -151,6 +156,24 @@ export const ErpPurchaseOrderDetailPane = ({
       align: 'end',
       render: (row) => `${formatQty(row.toleranceOverQty)} / ${formatQty(row.toleranceUnderQty)}`,
     },
+    /* 통관번호 / 순번 — 외자 발주에만 있는 칸이라 그때만 세운다(omf-all-around#206). */
+    ...(isForeignOrder(header)
+      ? [
+          {
+            key: 'erpCustomsClearanceNo',
+            header: t.fields.customsClearance,
+            width: '152px',
+            render: (row: PurchaseOrderLine) => (
+              <OneLine
+                text={
+                  formatCustomsClearance(row.erpCustomsClearanceNo, row.erpCustomsClearanceSeq) ??
+                  t.values.missing
+                }
+              />
+            ),
+          },
+        ]
+      : []),
     {
       key: 'erpStorageLocationCode',
       header: t.fields.storageLocation,
@@ -181,7 +204,10 @@ export const ErpPurchaseOrderDetailPane = ({
         ))}
       </dl>
       <section className="board-frame-sub" aria-label={t.panes.lines}>
-        <h2 className="pane-title">{t.panes.lines}</h2>
+        <div className="erp-po-lines-head">
+          <h2 className="pane-title">{t.panes.lines}</h2>
+          {linesAction}
+        </div>
         <BoardTable
           label={t.panes.lines}
           widthKey="omf-mes:erp-purchase-order:columns:lines"

@@ -1,9 +1,13 @@
 import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 
 import { BoardFrame } from '../../patterns/board-frame';
+import { sessionKeys, type Session } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
+import { CustomsClearanceAction } from './customs-clearance-action';
 import { ErpPurchaseOrderDetailPane, type DetailState } from './detail-pane';
 import { ErpPurchaseOrderFilterBar } from './filter-bar';
 import {
@@ -27,10 +31,13 @@ import {
 } from './lookups';
 import { toPageView } from './pagination';
 import { usePurchaseOrderDetail, usePurchaseOrderList } from './queries';
-import type { PurchaseOrder } from './types';
+import { isForeignOrder, type PurchaseOrder } from './types';
 
 const t = messages.erpPurchaseOrder;
 const EMPTY_ROWS: PurchaseOrder[] = [];
+
+/** 통관번호 받아오기의 권한 화면 — 「지금 읽기」와 같이 W-06-10(연동 현황·이력)에 묶였다(서버 장부 P-143). */
+const ERP_SYNC_PATH = '/master-data/integration-sync';
 
 /**
  * 구매발주 조회(ERP) — ERP 가 내려 준 P/O(구매오더)를 **읽기만** 한다.
@@ -57,6 +64,15 @@ export const ErpPurchaseOrderScreen = () => {
   const storageLocations = useCodeLookup('SL_TYPE', selectedId !== null);
   const lines = detail.data?.lines ?? [];
   const itemNameOf = useItemNames(lines.map((line) => line.itemId));
+
+  /* 세션은 로그인 때 조회 캐시에 들어 있다(`erp-outbound/send-chips.tsx` 와 같은 길). 권한 목록이 없으면 거르지 않는다. */
+  const session = useQueryClient().getQueryData<Session | null>(sessionKeys.current);
+  const canFetchCustoms = toWebAccess(session?.permissions).allows(ERP_SYNC_PATH);
+  const order = detail.data?.purchaseOrder;
+  const linesAction =
+    order !== undefined && isForeignOrder(order) && canFetchCustoms ? (
+      <CustomsClearanceAction key={order.purchaseOrderId} purchaseOrderId={order.purchaseOrderId} />
+    ) : null;
 
   const rows = list.data?.items ?? EMPTY_ROWS;
   const pageView = toPageView(
@@ -132,6 +148,7 @@ export const ErpPurchaseOrderScreen = () => {
             orderTypeNameOf={orderTypes.nameOf}
             purchaseGroupNameOf={purchaseGroups.nameOf}
             storageLocationNameOf={storageLocations.nameOf}
+            linesAction={linesAction}
           />
         ),
       }}
