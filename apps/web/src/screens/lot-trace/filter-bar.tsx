@@ -1,4 +1,4 @@
-import { Button, DatePicker, Select } from '@crefle/web-ui';
+import { Button, DatePicker, Icon, Select } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -44,8 +44,8 @@ const draftOf = (filters: LotTraceFilters): FilterDraft => ({
 type Picked = Partial<Record<'item' | 'warehouse' | 'partner', { id: string; label: string }>>;
 
 /**
- * C-6 조회 조건. 기본 줄: 기간(넓음, 필수. 「시작일 ~ 종료일」이 보통 폭에서 잘린다), 품목(보통), [조건 더보기], [초기화], [조회].
- * 조건 더보기: 창고(보통), 공급사 또는 고객(보통, 제품입고에는 없음), 상태(좁음).
+ * C-6 조회 조건. 기본 줄: 기간(넓음, 필수. 「시작일 ~ 종료일」이 보통 폭에서 잘린다), 품목(보통), [상세 조건 펼치기], [초기화], [조회].
+ * 상세 조건(처음엔 접힘, 걸린 조건은 버튼 옆 한 줄): 창고(보통), 공급사 또는 고객(보통, 제품입고에는 없음), 상태(좁음).
  * 구분은 페이지 머리 조건 칩이 맡는다(C-6, C-17). 기간 검증은 실행할 때 한다(C-7).
  * 조건은 고르면 바로 반영한다. 기간이 맞지 않으면 반영하지 않고 사유를 보인다. [조회]는 다시 조회하는 자리로 남는다.
  */
@@ -53,8 +53,8 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   const [draft, setDraft] = useState<FilterDraft>(() => draftOf(applied));
   const [picked, setPicked] = useState<Picked>({});
   const [periodError, setPeriodError] = useState<string | null>(null);
-  const hiddenApplied = applied.warehouse !== '' || applied.partner !== '' || applied.status !== '';
-  const [moreOpen, setMoreOpen] = useState(hiddenApplied);
+  /* 상세 조건은 늘 접힌 채 시작한다. 그 안의 조건이 걸려 있으면 버튼 옆 한 줄로 알린다. */
+  const [moreOpen, setMoreOpen] = useState(false);
   const periodId = useId();
   const periodErrorId = useId();
   const statusId = useId();
@@ -65,9 +65,6 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
     setDraft({ from, to, item, warehouse, partner, status });
     setPeriodError(null);
   }, [from, to, item, warehouse, partner, status]);
-  useEffect(() => {
-    if (hiddenApplied) setMoreOpen(true);
-  }, [hiddenApplied]);
 
   const role = partnerRoleOf(kind);
   const itemSource = useItemSource();
@@ -79,6 +76,13 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   const resolvedPartner = usePartnerLabel(draft.partner, role);
   const labelOf = (key: keyof Picked, id: string, resolved: string): string =>
     id === '' ? '' : picked[key]?.id === id ? (picked[key]?.label ?? '') : resolved;
+  const hiddenConditions = [
+    warehouse !== '' ? `${t.warehouse} ${labelOf('warehouse', warehouse, resolvedWarehouse)}` : '',
+    role !== null && partner !== ''
+      ? `${role === 'SUPPLIER' ? t.supplier : t.customer} ${labelOf('partner', partner, resolvedPartner)}`
+      : '',
+    status !== '' ? `${t.status} ${statusCodes.nameOf(status)}` : '',
+  ].filter((text) => text !== '');
 
   const set = (patch: Partial<FilterDraft>) => setDraft((current) => ({ ...current, ...patch }));
   const submit = () => {
@@ -149,11 +153,13 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
         <Button
           type="button"
           variant="outlined"
+          className="lot-trace-more-toggle"
           aria-expanded={moreOpen}
           aria-controls={moreOpen ? moreId : undefined}
           onClick={() => setMoreOpen((open) => !open)}
         >
           {moreOpen ? t.less : t.more}
+          <Icon name={moreOpen ? 'expand_less' : 'expand_more'} size={18} />
         </Button>
       </div>
       <div className="field-cell field-cell-unlabeled filter-actions-end">
@@ -164,6 +170,9 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           <Button type="submit">{messages.common.search}</Button>
         </div>
       </div>
+      {!moreOpen && hiddenConditions.length > 0 && (
+        <p className="lot-trace-hidden-summary">{t.hiddenApplied(hiddenConditions.join(', '))}</p>
+      )}
       {moreOpen && (
         <div id={moreId} className="lot-trace-filter-more">
           <div className="filter-field-md">

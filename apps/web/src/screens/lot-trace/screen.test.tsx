@@ -305,11 +305,11 @@ describe('W-02-09 LOT 추적: 입출고 현황 탭', () => {
     expect(receiptQueries).toHaveLength(0);
   });
 
-  it('조건 더보기를 펴면 창고, 공급사, 상태가 보인다. 제품입고에는 공급사가 없다', async () => {
+  it('상세 조건을 펴면 창고, 공급사, 상태가 보인다. 제품입고에는 공급사가 없다', async () => {
     const user = userEvent.setup();
     setup();
 
-    await user.click(await screen.findByRole('button', { name: '조건 더보기' }));
+    await user.click(await screen.findByRole('button', { name: '상세 조건 펼치기' }));
     expect(screen.getByLabelText('창고')).toBeInTheDocument();
     expect(screen.getByLabelText('공급사')).toBeInTheDocument();
     expect(screen.getByLabelText('상태')).toBeInTheDocument();

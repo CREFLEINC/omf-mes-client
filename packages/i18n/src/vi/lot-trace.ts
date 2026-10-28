@@ -22,8 +22,9 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     itemPicker: 'Chọn mặt hàng',
     itemCode: 'Mã mặt hàng',
     itemName: 'Tên mặt hàng',
-    more: 'Thêm điều kiện',
-    less: 'Thu gọn điều kiện',
+    more: 'Mở điều kiện chi tiết',
+    less: 'Thu gọn điều kiện chi tiết',
+    hiddenApplied: (conditions: string): string => `Điều kiện chi tiết: ${conditions}`,
     warehouse: 'Kho',
     warehousePicker: 'Chọn kho',
     warehouseCode: 'Mã kho',
@@ -134,11 +135,10 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
     dateAxisProduced: 'Ngày sản xuất',
     dateAxisShipped: 'Ngày xuất hàng',
     entryRequired: 'Hãy nhập mặt hàng hoặc số LOT',
-    startForward: 'Hãy tìm theo mặt hàng hoặc số LOT. Cũng có thể tìm theo số phiếu nhập hàng',
-    startBackward:
-      'Hãy tìm theo mặt hàng hoặc số LOT. Cũng có thể tìm theo số phiếu xuất hàng, số W/O',
+    emptyInPeriod: (from: string, to: string): string =>
+      `Không có LOT nào khớp điều kiện trong kỳ ${from} ~ ${to}`,
     emptyTitle: 'Không có LOT nào khớp điều kiện',
-    emptyDescription: 'Hãy nới rộng kỳ hoặc tìm theo mặt hàng khác.',
+    emptyDescription: 'Hãy nới rộng kỳ hoặc bớt điều kiện.',
     emptyPartialHint: 'Nếu để trống kỳ, hệ thống tìm theo toàn bộ số LOT mà không giới hạn kỳ.',
     emptyExactDescription:
       'Hãy kiểm tra đã nhập toàn bộ số LOT chưa. Để tìm theo một phần số, hãy nhập cả kỳ.',

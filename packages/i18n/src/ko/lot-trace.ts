@@ -17,8 +17,10 @@ export const lotTrace = {
     itemPicker: '품목 선택',
     itemCode: '품목 코드',
     itemName: '품목명',
-    more: '조건 더보기',
-    less: '조건 접기',
+    more: '상세 조건 펼치기',
+    less: '상세 조건 접기',
+    /** 상세 조건이 접혀 있는데 그 안의 조건이 걸려 있을 때 버튼 옆 한 줄. */
+    hiddenApplied: (conditions: string): string => `상세 조건: ${conditions}`,
     warehouse: '창고',
     warehousePicker: '창고 선택',
     warehouseCode: '창고 코드',
@@ -130,10 +132,10 @@ export const lotTrace = {
     dateAxisProduced: '생산일',
     dateAxisShipped: '출하일',
     entryRequired: '품목이나 LOT 번호를 넣으세요',
-    startForward: '품목이나 LOT 번호로 찾으세요. 입하번호로도 찾을 수 있습니다',
-    startBackward: '품목이나 LOT 번호로 찾으세요. 출하번호, W/O 번호로도 찾을 수 있습니다',
+    emptyInPeriod: (from: string, to: string): string =>
+      `${from} ~ ${to}에 조건에 맞는 LOT이 없습니다`,
     emptyTitle: '조건에 맞는 LOT이 없습니다',
-    emptyDescription: '기간을 넓히거나 다른 품목으로 찾으세요.',
+    emptyDescription: '기간을 넓히거나 조건을 줄이세요.',
     emptyPartialHint: '기간을 비우면 LOT 번호 전체로 기간과 관계없이 찾습니다.',
     emptyExactDescription:
       'LOT 번호 전체를 넣었는지 확인하세요. 번호 일부로 찾으려면 기간을 함께 넣으세요.',
