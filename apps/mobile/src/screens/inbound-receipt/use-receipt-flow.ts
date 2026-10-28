@@ -45,13 +45,13 @@ import {
   stepOf,
   submitLockOf,
   toOutboxDraft,
-  toSplitOutboxDraft,
+  toNormalOnlyOutboxDraft,
   typedOverPlanned,
   verdictOf,
+  type PurchaseOrder,
   type PurchaseOrderLine,
   type ReceiptDraft,
   type RecordedReceipt,
-  type SplitMode,
   partialReasonLockOf,
 } from './receipt';
 
@@ -75,7 +75,6 @@ const summaryOf = (draft: ReceiptDraft): string | null => {
 
   return draft.purchaseOrder === null ? lot : `${lot} · ${draft.purchaseOrder.purchaseOrderNo}`;
 };
-const INBOUND_RECEIPT_EXCEPTION_TYPE = 'INBOUND_RECEIPT_EXCEPTION_TYPE';
 /** 계약 InboundReceiptLineUpsert.supplierLotNo의 varchar(100) 상한. 붙여넣기를 자르지 않는다. */
 const SUPPLIER_LOT_NO_MAX_LENGTH = 100;
 
@@ -86,12 +85,6 @@ const emptyDraft: ReceiptDraft = {
   supplierLotMissing: false,
   supplierLotLabelAttached: true,
   substituteLotReasonCode: '',
-  unordered: false,
-  supplierId: null,
-  itemId: null,
-  uomId: null,
-  exceptionTypeCode: '',
-  exceptionReason: '',
   purchaseOrder: null,
   purchaseOrderLine: null,
   deliveryNoteNo: '',
@@ -170,8 +163,12 @@ export const useReceiptFlow = () => {
   /*
    * 라벨이 없을 때(LOT 번호 없음) 품목을 보고 있는 자재 P/O 와 입고 예정 목록의 거르기. 수량에서
    * 라인을 바꾸러 돌아와도 남아 있어, 같은 자재 P/O 의 다른 품목을 바로 고르고 다시 거르지 않는다.
+   *
+   * 번호가 아니라 자재 P/O 를 붙든다 - 한꺼번에 다 받으면 그 자재 P/O 는 미마감 목록에서 빠진다.
+   * 번호로 목록에서 다시 찾으면 못 찾아, 품목 표 자리에 입고 예정 표가 섞여 나온다.
    */
-  const [lotlessOrderId, setLotlessOrderIdState] = useState<number | null>(null);
+  const [lotlessOrder, setLotlessOrderState] = useState<PurchaseOrder | null>(null);
+  const lotlessOrderId = lotlessOrder?.purchaseOrderId ?? null;
   const [lotlessFilter, setLotlessFilter] = useState<LotlessFilter>(() => initialLotlessFilter());
   /*
    * 라벨 없이 한꺼번에 받으려고 체크한 라인과 방금 한꺼번에 등록한 결과. 자재 P/O 를 바꾸면 둘 다
@@ -180,8 +177,8 @@ export const useReceiptFlow = () => {
   const [lotlessChecked, setLotlessChecked] = useState<number[]>([]);
   const [lotlessDone, setLotlessDone] = useState<LotlessDone | null>(null);
   const [lotlessBusy, setLotlessBusy] = useState(false);
-  const setLotlessOrderId = (next: number | null) => {
-    setLotlessOrderIdState(next);
+  const setLotlessOrder = (next: PurchaseOrder | null) => {
+    setLotlessOrderState(next);
     setLotlessChecked([]);
     setLotlessDone(null);
   };
@@ -283,7 +280,7 @@ export const useReceiptFlow = () => {
     if (outcome !== null || code !== draft.supplierLotNo) {
       setContinueUnder(false);
       setShowAllOrders(false);
-      setLotlessOrderId(null);
+      setLotlessOrder(null);
       setLotlessFilter(initialLotlessFilter());
       setKeypadFor(null);
       setChangingLine(false);
@@ -420,7 +417,6 @@ export const useReceiptFlow = () => {
     setContinueUnder(false);
     setShowAllOrders(false);
     setKeypadFor(null);
-    setPickingItem(false);
     setDraft(emptyDraft);
   }, [registeredLot]);
   /*
@@ -467,7 +463,6 @@ export const useReceiptFlow = () => {
     /* setDraft 는 그릴 때마다 새로 만들어진다. 라인 값이 바뀔 때만 본다. */
   }, [lines.data, draft.purchaseOrderLine]);
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
-  const exceptionTypes = useCodeValues(INBOUND_RECEIPT_EXCEPTION_TYPE);
 
   /*
    * ⭐ **대체 LOT 사유의 기본값을 미리 골라 둔다** — 「라벨 미부착」(사용자 지시 2026-09-19 ·
@@ -485,23 +480,14 @@ export const useReceiptFlow = () => {
 
     patch({ substituteLotReasonCode: picked });
   }, [draft.supplierLotMissing, draft.substituteLotReasonCode, reasons.data]);
-  const item = useItem((draft.unordered ? draft.itemId : draft.purchaseOrderLine?.itemId) ?? null);
+  const item = useItem(draft.purchaseOrderLine?.itemId ?? null);
   const uoms = useUomCodes(true);
   /* 목록의 발주 라인은 품목 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
   const itemLabels = useItemLabels((lines.data ?? []).map((each) => each.itemId));
-  /* 무발주는 공급사를 고르고, 라벨이 없으면 공급사로 받을 품목을 가른다 - 둘 다 이름이 필요하다. */
-  const suppliers = useSuppliers(draft.unordered || draft.supplierLotMissing);
-  /* 무발주는 작업자가 품목을 직접 고른다. 마스터가 커서 찾는 일에 화면을 통째로 내준다. */
-  const [pickingItem, setPickingItem] = useState(false);
-  /*
-   * 찾는 화면에서 뒤로가기는 폼으로 되돌린다. 라우터 이력에는 이 화면 하나뿐이라, 두지
-   * 않으면 품목을 고르러 들어간 사람이 한 번에 작업 목록까지 나가고 적어 둔 것을 잃는다.
-   */
-  useBackStep(pickingItem, () => {
-    setPickingItem(false);
-  });
-  /* 공장은 단말 토큰이 싣고 온다. 발주가 없으면 승계할 곳이 여기뿐이다. */
-  const plantId = draft.unordered ? currentPlantId() : (draft.purchaseOrder?.plantId ?? null);
+  /* 라벨이 없으면 입고 예정 표에 공급사 이름을 적는다. */
+  const suppliers = useSuppliers(draft.supplierLotMissing);
+  /* 공장은 고른 자재 P/O 에서 승계한다. */
+  const plantId = draft.purchaseOrder?.plantId ?? null;
 
   const started = draft.supplierLotNo !== '' || draft.supplierLotMissing;
   const received = Number(draft.receivedQty.trim());
@@ -584,7 +570,7 @@ export const useReceiptFlow = () => {
    */
   const uomOf = (uomId: number | null | undefined): string =>
     uoms.data?.get(uomId ?? -1) ?? t.po.uomUnknown;
-  const uom = uomOf(draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId);
+  const uom = uomOf(draft.purchaseOrderLine?.uomId);
 
   /**
    * 품목의 코드와 이름 — **각자의 줄에 선다**(사용자 지시 2026-09-19 · omf-all-around#34).
@@ -618,7 +604,7 @@ export const useReceiptFlow = () => {
     setContinueUnder(false);
     setSaveFailed(false);
     setShowAllOrders(false);
-    setLotlessOrderId(null);
+    setLotlessOrder(null);
     setLotlessFilter(initialLotlessFilter());
     setChangingLine(false);
     setPlannedQty(null);
@@ -634,33 +620,22 @@ export const useReceiptFlow = () => {
    * 두지 않으면 수량을 적던 사람이 한 번에 작업 목록까지 나가고 적어 둔 것을 잃었다.
    *
    * - 수량 → 라인 고르기: 적은 것은 그대로 둔다. 같은 라인을 다시 고르면 이어서 적는다.
-   * - 발주 없이 받기 → 라인 고르기: 그 갈래를 접는다.
    * - 라벨 없이 본 자재 P/O 의 품목 → 입고 예정 목록.
    * - 라인 고르기 → 스캔: 라벨을 비운다. 다음 라벨을 받을 자리다. 수량에서 라인을 바꾸러 온
    *   자리도 같다 - 앱바의 「이전 단계」를 두 번 누르면 단계 1 로 가야 한다. 전에는 수량으로
    *   되돌아가 2 → 3 으로 앞으로 갔다(사용자 지적 2026-10-21).
    *
-   * 조건을 서로 배타로 둔다 - 품목을 찾는 화면(`pickingItem`)이 열려 있으면 그것이 먼저다.
+   * 조건을 서로 배타로 둔다.
    */
-  useBackStep(step === 'qty' && !pickingItem, () => {
+  useBackStep(step === 'qty', () => {
     setKeypadFor(null);
     setChangingLine(true);
   });
-  useBackStep(step === 'unordered' && !pickingItem, () => {
-    patch({
-      unordered: false,
-      supplierId: null,
-      itemId: null,
-      uomId: null,
-      exceptionTypeCode: '',
-      exceptionReason: '',
-    });
-  });
   const lotlessPicked = draft.supplierLotMissing && lotlessOrderId !== null;
-  useBackStep(step === 'line' && lotlessPicked && !pickingItem, () => {
-    setLotlessOrderId(null);
+  useBackStep(step === 'line' && lotlessPicked, () => {
+    setLotlessOrder(null);
   });
-  useBackStep(step === 'line' && !lotlessPicked && !pickingItem, () => {
+  useBackStep(step === 'line' && !lotlessPicked, () => {
     restart();
   });
 
@@ -686,7 +661,6 @@ export const useReceiptFlow = () => {
     if (
       !autoNarrowed ||
       outcome !== null ||
-      draft.unordered ||
       draft.purchaseOrder !== null ||
       autoPickedFor.current === draft.supplierLotNo
     ) {
@@ -699,7 +673,7 @@ export const useReceiptFlow = () => {
       patch({ purchaseOrder: order, purchaseOrderLine: null, ...LINE_SCOPED_BLANK });
     }
     /* patch 는 그릴 때마다 새로 만들어진다. 고를 근거가 바뀔 때만 다시 본다. */
-  }, [autoNarrowed, orders.data, draft.purchaseOrder, draft.unordered, outcome]);
+  }, [autoNarrowed, orders.data, draft.purchaseOrder, outcome]);
 
   useEffect(() => {
     if (
@@ -739,7 +713,11 @@ export const useReceiptFlow = () => {
     outcome,
   ]);
 
-  const submit = async (splitMode?: SplitMode | typeof KEEP_EXCESS) => {
+  /**
+   * 등록한다. 초과면 둘 중 하나 - 초과분을 한 건에 나눠 싣거나(KEEP_EXCESS) 정량분만 받는다
+   * (NORMAL_ONLY). 받을 것이 남지 않은 라인은 전부 초과분으로 싣는다.
+   */
+  const submit = async (mode?: typeof KEEP_EXCESS | 'NORMAL_ONLY') => {
     if (worker === null || source === null || plantId === null || inFlight.current) {
       return;
     }
@@ -751,7 +729,7 @@ export const useReceiptFlow = () => {
     try {
       const now = new Date();
       const entry =
-        splitMode === KEEP_EXCESS
+        mode === KEEP_EXCESS
           ? toOutboxDraft(
               draft,
               source.itemId,
@@ -768,7 +746,7 @@ export const useReceiptFlow = () => {
                     queuedQty,
                   ).excess,
             )
-          : splitMode === undefined
+          : mode === undefined
             ? toOutboxDraft(
                 /* 부분 입하 사유는 부족일 때만 싣는다 - 적고 나서 수량을 고쳐 부족이 아니게 되면 버린다. */
                 verdict === UNDER ? draft : { ...draft, partialReasonCode: '', partialReason: '' },
@@ -779,7 +757,7 @@ export const useReceiptFlow = () => {
                 now,
                 worker.workerNo,
               )
-            : toSplitOutboxDraft(
+            : toNormalOnlyOutboxDraft(
                 draft,
                 source.itemId,
                 source.uomId,
@@ -787,9 +765,6 @@ export const useReceiptFlow = () => {
                 source.supplierId,
                 now,
                 worker.workerNo,
-                splitMode,
-                '',
-                '',
                 queuedQty,
               );
 
@@ -858,7 +833,7 @@ export const useReceiptFlow = () => {
        * 결과 화면으로 갔다 - 그것은 사람이 꼭 봐야 한다.
        */
       if (
-        splitMode === undefined &&
+        mode === undefined &&
         draft.supplierLotMissing &&
         verdict === UNDER &&
         draft.purchaseOrderLine !== null
@@ -913,11 +888,7 @@ export const useReceiptFlow = () => {
    * 라벨 미부착 일괄 입하. 보고 있는 자재 P/O 의 라인을 흐름도 함께 읽는다 - 등록할 때 남은 수량을
    * 그 순간의 값으로 다시 센다(화면이 그린 뒤 다른 입하가 담겼을 수 있다).
    */
-  const lotlessOrder =
-    lotlessOrderId === null
-      ? undefined
-      : candidates?.data?.find((each) => each.purchaseOrderId === lotlessOrderId);
-  const lotlessLines = usePurchaseOrdersLines(lotlessOrder === undefined ? [] : [lotlessOrder]);
+  const lotlessLines = usePurchaseOrdersLines(lotlessOrder === null ? [] : [lotlessOrder]);
   const lotlessLabels = useItemLabels(lotlessLines.lines.map((each) => each.line.itemId));
   /* 체크한 라인 중 아직 받을 것이 남은 것만. 다 받은 라인은 체크해도 실리지 않는다. */
   const lotlessPicks = lotlessLines.lines
@@ -938,7 +909,7 @@ export const useReceiptFlow = () => {
           : null;
 
   const submitLotless = async () => {
-    if (lotlessOrder === undefined || worker === null || lotlessLock !== null || inFlight.current) {
+    if (lotlessOrder === null || worker === null || lotlessLock !== null || inFlight.current) {
       return;
     }
 
@@ -1037,8 +1008,9 @@ export const useReceiptFlow = () => {
     keypadFor,
     setKeypadFor,
     setShowAllOrders,
+    lotlessOrder,
     lotlessOrderId,
-    setLotlessOrderId,
+    setLotlessOrder,
     lotlessFilter,
     setLotlessFilter,
     lotlessChecked,
@@ -1066,12 +1038,9 @@ export const useReceiptFlow = () => {
     narrowedWithCandidates,
     lines,
     reasons,
-    exceptionTypes,
     item,
     uoms,
     suppliers,
-    pickingItem,
-    setPickingItem,
     plantId,
     started,
     received,
