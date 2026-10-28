@@ -137,8 +137,9 @@ export const inspectionStandard = {
       inspectionMethod: '검사 방법을 선택하세요',
       defaultInspectionEquipment: '지정 검사장비를 선택하세요',
     },
-    requiredFlagNote: '이 항목은 검사 시 반드시 입력해야 합니다.',
-    automaticJudgmentNote: '입력된 값이 기준에 따라 자동으로 판정됩니다.',
+    /* 창의 확인칸 이름 — 표의 짧은 라벨(필수 · 자동판정)과 따로 둔다(사용자 지시 · #196). */
+    requiredFlagLabel: '필수 검사 항목 여부',
+    automaticJudgmentLabel: '자동 판정 사용 여부',
   },
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {

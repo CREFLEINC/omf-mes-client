@@ -131,8 +131,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       inspectionMethod: 'Chọn phương pháp kiểm tra',
       defaultInspectionEquipment: 'Chọn thiết bị kiểm tra chỉ định',
     },
-    requiredFlagNote: 'Hạng mục này bắt buộc phải nhập khi kiểm tra.',
-    automaticJudgmentNote: 'Giá trị nhập vào được tự động phán định theo tiêu chuẩn.',
+    requiredFlagLabel: 'Hạng mục kiểm tra bắt buộc',
+    automaticJudgmentLabel: 'Sử dụng tự động phán định',
   },
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {

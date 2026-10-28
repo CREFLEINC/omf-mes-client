@@ -61,8 +61,6 @@ export const ItemFormDialog = ({
   const targetValueId = useId();
   const lowerLimitId = useId();
   const upperLimitId = useId();
-  const requiredNoteId = useId();
-  const automaticNoteId = useId();
   const ph = t.dialog.itemPlaceholders;
 
   /*
@@ -101,31 +99,19 @@ export const ItemFormDialog = ({
       }
     >
       <div className="form-grid">
-        {/* 확인칸은 맨 위에 두고, 칸마다 무슨 뜻인지 한 줄을 붙인다(사용자 지시 · #196). */}
-        <div className="inspection-standard-item-flag">
-          <Checkbox
-            checked={values.requiredFlag}
-            aria-describedby={requiredNoteId}
-            onChange={(event) => onChange({ requiredFlag: event.target.checked })}
-          >
-            {t.fields.requiredFlag}
-          </Checkbox>
-          <span id={requiredNoteId} className="inspection-standard-item-flag-note">
-            {t.dialog.requiredFlagNote}
-          </span>
-        </div>
-        <div className="inspection-standard-item-flag">
-          <Checkbox
-            checked={values.automaticJudgment}
-            aria-describedby={automaticNoteId}
-            onChange={(event) => onChange({ automaticJudgment: event.target.checked })}
-          >
-            {t.fields.automaticJudgment}
-          </Checkbox>
-          <span id={automaticNoteId} className="inspection-standard-item-flag-note">
-            {t.dialog.automaticJudgmentNote}
-          </span>
-        </div>
+        {/* 확인칸은 맨 위에 둔다(사용자 지시 · #196). */}
+        <Checkbox
+          checked={values.requiredFlag}
+          onChange={(event) => onChange({ requiredFlag: event.target.checked })}
+        >
+          {t.dialog.requiredFlagLabel}
+        </Checkbox>
+        <Checkbox
+          checked={values.automaticJudgment}
+          onChange={(event) => onChange({ automaticJudgment: event.target.checked })}
+        >
+          {t.dialog.automaticJudgmentLabel}
+        </Checkbox>
 
         <div className="field-cell">
           <FieldLabel htmlFor={codeId} label={t.fields.inspectionItemCode} required />
