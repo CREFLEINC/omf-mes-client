@@ -710,22 +710,19 @@ h2:has(> .inspection-standard-dialog-title) {
 
 /* 칸 색 — 바뀜 파랑 · 추가 초록 · 삭제 빨강. 칸(td)을 칠하고 왼쪽에 굵은 선을 둔다. */
 .inspection-standard-compare-legend > [data-tone='changed'],
-.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='changed']),
-.inspection-standard-compare-note[data-tone='changed'] {
+.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='changed']) {
   --compare-tone: var(--semantic-info);
   --compare-fill: var(--semantic-info-container);
 }
 
 .inspection-standard-compare-legend > [data-tone='added'],
-.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='added']),
-.inspection-standard-compare-note[data-tone='added'] {
+.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='added']) {
   --compare-tone: var(--semantic-success);
   --compare-fill: var(--semantic-success-container);
 }
 
 .inspection-standard-compare-legend > [data-tone='removed'],
-.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='removed']),
-.inspection-standard-compare-note[data-tone='removed'] {
+.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='removed']) {
   --compare-tone: var(--semantic-error);
   --compare-fill: var(--semantic-error-container);
 }
@@ -734,10 +731,6 @@ h2:has(> .inspection-standard-dialog-title) {
 .inspection-standard-compare-table tbody tr:nth-child(n) td:has(.inspection-standard-compare-cell) {
   background: var(--compare-fill);
   box-shadow: inset 3px 0 0 var(--compare-tone);
-}
-
-.inspection-standard-compare-note {
-  color: var(--compare-tone);
 }
 
 .inspection-standard-compare-changes {

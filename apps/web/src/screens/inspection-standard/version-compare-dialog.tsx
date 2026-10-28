@@ -143,71 +143,28 @@ export const VersionCompareDialog = ({
         render: (row) => cell(row.target, row.changed ? 'changed' : undefined),
       },
     ];
+    /* 검사 항목 · 두 버전 값 · 변경 칩(사용자 시안 · #196). 바뀐 칸은 칩에 마우스를 올리면 「전 → 후」로 보인다. */
     const itemColumns: Column<ItemCompareRow>[] = [
-      {
-        key: 'status',
-        header: t.compare.statusColumn,
-        align: 'center',
-        width: '88px',
-        render: (row) => (
-          <Chip variant="status" size="sm" status={STATUS_TONE[row.status]}>
-            {t.compare[row.status]}
-          </Chip>
-        ),
-      },
       {
         key: 'code',
         header: t.compare.itemColumn,
         align: 'center',
-        width: '24%',
+        width: '34%',
         render: (row) => t.values.itemLabel(row.code, row.name),
       },
+      { key: 'baseValue', header: versionLabel(baseId), align: 'center', width: '22%' },
+      { key: 'targetValue', header: versionLabel(targetId), align: 'center', width: '22%' },
       {
-        key: 'baseValue',
-        header: versionLabel(baseId),
-        align: 'center',
-        width: '16%',
-        render: (row) => cell(row.baseValue, row.status === 'removed' ? 'removed' : undefined),
-      },
-      {
-        key: 'targetValue',
-        header: versionLabel(targetId),
-        align: 'center',
-        width: '16%',
-        render: (row) =>
-          cell(
-            row.targetValue,
-            row.status === 'added' ? 'added' : row.status === 'changed' ? 'changed' : undefined,
-          ),
-      },
-      {
-        key: 'changes',
+        key: 'status',
         header: t.compare.changesColumn,
         align: 'center',
-        render: (row) => {
-          if (row.status === 'added') {
-            return (
-              <span className="inspection-standard-compare-note" data-tone="added">
-                {t.compare.itemAdded}
-              </span>
-            );
-          }
-          if (row.status === 'removed') {
-            return (
-              <span className="inspection-standard-compare-note" data-tone="removed">
-                {t.compare.itemRemoved}
-              </span>
-            );
-          }
-          if (row.changes.length === 0) return t.values.empty;
-          return (
-            <ul className="inspection-standard-compare-changes">
-              {row.changes.map((change) => (
-                <li key={change}>{change}</li>
-              ))}
-            </ul>
-          );
-        },
+        render: (row) => (
+          <span title={row.changes.length === 0 ? undefined : row.changes.join('\n')}>
+            <Chip variant="status" size="sm" status={STATUS_TONE[row.status]}>
+              {t.compare[row.status]}
+            </Chip>
+          </span>
+        ),
       },
     ];
 
