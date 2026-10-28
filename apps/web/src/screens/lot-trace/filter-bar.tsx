@@ -1,8 +1,9 @@
-import { Button, DatePicker, Select } from '@crefle/web-ui';
+import { Button, DatePicker } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { ReferenceField } from '../../patterns/reference-picker';
+import { Select } from '../../patterns/select';
 import type { LotTraceFilters } from './filters';
 import { validatePeriod } from './period';
 import {

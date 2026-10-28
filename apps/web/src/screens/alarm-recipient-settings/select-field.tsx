@@ -1,6 +1,6 @@
-import { Select } from '@crefle/web-ui';
 import { useId } from 'react';
 
+import { Select } from '../../patterns/select';
 import type { Option } from './types';
 
 export interface SelectFieldProps {

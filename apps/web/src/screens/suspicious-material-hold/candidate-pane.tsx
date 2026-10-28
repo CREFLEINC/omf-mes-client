@@ -5,7 +5,6 @@ import {
   type Column,
   EmptyState,
   SearchInput,
-  Select,
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
@@ -16,6 +15,7 @@ import { useEffect, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { Select } from '../../patterns/select';
 import {
   useItemReferenceOptions,
   useLocationReferenceOptions,

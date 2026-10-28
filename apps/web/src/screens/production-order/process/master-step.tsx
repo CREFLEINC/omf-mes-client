@@ -1,7 +1,8 @@
-import { AlertBanner, Button, Chip, Select, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { Select } from '../../../patterns/select';
 import type { BomRevisionFact, RoutingRevisionFact } from '../../production-plan/reference-queries';
 
 const t = messages.erpWorkOrderFlow.process.master;

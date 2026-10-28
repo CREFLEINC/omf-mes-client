@@ -108,8 +108,6 @@ export type {
   AutoPlanStatus,
   ProductionOrderAutoPlan,
   ProductionOrderAutoPlanResult,
-  ProductionOrderForward,
-  ProductionOrderListQueryForward,
   WarehouseListQueryForward,
   WorkOrderForward,
   TerminalProcessForward,

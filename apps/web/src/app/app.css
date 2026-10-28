@@ -21332,15 +21332,11 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   cursor: help;
 }
 
-/* ── W-02-01 ERP W/O 처리 ─────────────────────────────────────────────── */
+/* ── W-02-01 작업지시 목록 ─────────────────────────────────────────────── */
 .erp-wo-counts {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.erp-wo-counts-label {
-  color: var(--on-surface-variant);
 }
 
 .erp-wo-bulk-actions {
@@ -21381,7 +21377,20 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   white-space: nowrap;
+  cursor: help;
+}
+
+/* 사유 도움말은 사유마다 한 줄이다. */
+.reason-help {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  white-space: normal;
 }
 
 .erp-wo-summary {
@@ -24944,4 +24953,41 @@ table.col-measuring td {
 .erp-po-order-type-field > :not(label) {
   width: 100%;
   min-width: 0;
+
+ * 선택지가 많은 선택 칸의 검색창(`patterns/select.tsx`) — 펼친 목록 맨 위에 붙어, 목록을 내려도 남는다. 목록 바탕과 같은
+ * 색으로 덮어 아래 줄이 비치지 않게 한다.
+ */
+.select-search {
+  box-sizing: border-box;
+  position: sticky;
+  top: calc(-1 * var(--space-1));
+  z-index: 1;
+  margin-top: calc(-1 * var(--space-1));
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  background: var(--surface-container-high);
+}
+
+.select-search-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 10rem;
+  height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--type-body-md);
+}
+
+.select-search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.select-search-empty {
+  margin: 0;
+  padding: var(--space-2) var(--space-1) var(--space-1);
+  color: var(--on-surface-muted);
+  font: var(--type-body-md);
 }

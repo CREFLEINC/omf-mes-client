@@ -1,7 +1,8 @@
-import { Button, Select, Switch, TextField } from '@crefle/web-ui';
+import { Button, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
+import { Select } from '../../patterns/select';
 import { fifoPolicyOptions } from './code-catalog';
 import { FieldLabel } from './field-label';
 import type { ItemAttrsFormValues, SelectOption } from './types';

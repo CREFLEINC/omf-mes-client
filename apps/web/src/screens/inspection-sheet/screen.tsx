@@ -7,7 +7,6 @@ import {
   Dialog,
   EmptyState,
   PageHeader,
-  Select,
   Table,
   TextField,
   useToast,
@@ -24,6 +23,7 @@ import { createPortal } from 'react-dom';
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
+import { Select } from '../../patterns/select';
 import { useSession } from '../../patterns/session';
 import { PageNav } from '../oqc-inspection/page-nav';
 import { toPageView } from '../oqc-inspection/pagination';

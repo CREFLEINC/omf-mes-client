@@ -4,7 +4,6 @@ import {
   Dialog,
   Radio,
   RadioGroup,
-  Select,
   TextArea,
   TextField,
   useToast,
@@ -16,6 +15,7 @@ import { useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { Select } from '../../patterns/select';
 import {
   isKnownReason,
   LOT_HOLD_REASON_GROUP,

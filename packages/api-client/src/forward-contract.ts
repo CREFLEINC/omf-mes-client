@@ -123,7 +123,13 @@ export interface InputMaterials {
 /** 서버 선행 P-107 — 자재 LOT 이 들어간 시리얼(쪽). */
 export interface UsedSerials {
   basis: TraceBasis;
-  items: { serialNumberId: number; serialNo: string; lotId: number; lotNo: string; producedAt?: string }[];
+  items: {
+    serialNumberId: number;
+    serialNo: string;
+    lotId: number;
+    lotNo: string;
+    producedAt?: string;
+  }[];
   page: { page: number; size: number; total: number };
 }
 
@@ -213,7 +219,10 @@ export type MaterialConsumptionForward = components['schemas']['MaterialConsumpt
   fourMChange?: FourMChangeForward;
 };
 
-export type InspectionResultConfirmForward = Omit<components['schemas']['InspectionResultConfirm'], 'fourMChange'> & {
+export type InspectionResultConfirmForward = Omit<
+  components['schemas']['InspectionResultConfirm'],
+  'fourMChange'
+> & {
   defects?: InspectionDefectInput[];
   /** 서버 선행 P-70(omf-all-around#125·#126) — IQC·OQC 판정이 합격판정개수 기준 자동 판정과 다르면 필수(maxLength 500). */
   judgmentChangeReason?: string;
@@ -226,7 +235,10 @@ type InspectionConfirmPath = paths['/quality/inspection-results/{inspectionResul
  * 서버 선행 P-42·P-48(omf-all-around#122) — 작성중 저장도 IQC 불합격 사유를 싣는다. 실으면 그 회차의 불량 기록을
  * 갈아 끼우고(빈 배열 = 지움), 생략하면 손대지 않는다.
  */
-export type InspectionResultCreateForward = Omit<components['schemas']['InspectionResultCreate'], 'fourMChange'> & {
+export type InspectionResultCreateForward = Omit<
+  components['schemas']['InspectionResultCreate'],
+  'fourMChange'
+> & {
   defects?: InspectionDefectInput[];
   /** 서버 선행 P-70(omf-all-around#125·#126) — statusCode=CONFIRMED 저장의 판정 변경 사유(IQC·OQC). `:confirm` 과 같은 규칙. */
   judgmentChangeReason?: string;
@@ -285,7 +297,10 @@ export type OqcSerialRecord = OqcSerialStep & {
   lotId: number;
   lotNo: string;
 };
-export type InspectionResultUpdateForward = Omit<components['schemas']['InspectionResultUpdate'], 'fourMChange'> & {
+export type InspectionResultUpdateForward = Omit<
+  components['schemas']['InspectionResultUpdate'],
+  'fourMChange'
+> & {
   defects?: InspectionDefectInput[];
   fourMChange?: FourMChangeForward | null;
 };
@@ -755,14 +770,8 @@ export interface ResourceRecommendations {
   workers?: WorkerRecommendation[];
 }
 
-/** 서버 선행 — 오더 수신 때 계획을 자동으로 만들지 못했거나 확정하지 못한 이유. */
-export type AutoPlanReason =
-  | 'BOM_MISSING'
-  | 'ROUTING_MISSING'
-  | 'ROUTING_AMBIGUOUS'
-  | 'LINE_UNKNOWN'
-  | 'PLAN_NOT_CONFIRMED'
-  | 'QTY_REMAINING';
+/** 오더 수신 때 계획을 자동으로 만들지 못했거나 확정하지 못한 이유. 생성 타입(P-67, P-142)을 그대로 쓴다. */
+export type AutoPlanReason = components['schemas']['AutoPlanReason'];
 
 export type AutoPlanStatus = 'DONE' | 'NEEDS_REVIEW';
 
@@ -770,20 +779,6 @@ export interface ProductionOrderAutoPlan {
   status: AutoPlanStatus;
   reasons: AutoPlanReason[];
 }
-
-/**
- * 서버 선행 — P/O 에 자동 계획 결과를 싣는다. `null` 은 자동 계획을 한 번도 하지 않은 P/O 다
- * (기능 전에 받았거나, 받을 때 납기가 지났거나 수신 상태가 아니라 건너뛰었다) — 계획도 없다.
- */
-export type ProductionOrderForward = components['schemas']['ProductionOrder'] & {
-  autoPlan?: ProductionOrderAutoPlan | null;
-};
-
-export type ProductionOrderListQueryForward = NonNullable<
-  ProductionOrdersGet['parameters']['query']
-> & {
-  autoPlanStatus?: AutoPlanStatus;
-};
 
 /** 서버 선행 — `POST /planning/production-orders/{id}:auto-plan` 의 결과. */
 export interface ProductionOrderAutoPlanResult {
@@ -920,9 +915,6 @@ type WorkOrdersPath = paths['/production/work-orders'];
 type WorkOrdersGet = WorkOrdersPath['get'];
 type WorkOrderPath = paths['/production/work-orders/{workOrderId}'];
 type WorkOrderGet = WorkOrderPath['get'];
-
-type ProductionOrdersGet = paths['/planning/production-orders']['get'];
-type ProductionOrderGet = paths['/planning/production-orders/{productionOrderId}']['get'];
 
 interface NoParameters {
   query?: never;
@@ -1433,9 +1425,19 @@ export interface ForwardPaths {
   };
   /** 자재 LOT 이 들어간 시리얼 — 서버 선행 P-107. */
   '/trace/lots/{lotId}/used-serials': {
-    parameters: { query?: { page?: number; size?: number }; header?: never; path: { lotId: number }; cookie?: never };
+    parameters: {
+      query?: { page?: number; size?: number };
+      header?: never;
+      path: { lotId: number };
+      cookie?: never;
+    };
     get: {
-      parameters: { query?: { page?: number; size?: number }; header?: never; path: { lotId: number }; cookie?: never };
+      parameters: {
+        query?: { page?: number; size?: number };
+        header?: never;
+        path: { lotId: number };
+        cookie?: never;
+      };
       requestBody?: never;
       responses: {
         200: {
@@ -1931,39 +1933,6 @@ export interface ForwardPaths {
         };
       };
     };
-  };
-  '/planning/production-orders': Unused & {
-    parameters: NoParameters;
-    get: Omit<ProductionOrdersGet, 'parameters' | 'responses'> & {
-      parameters: Omit<ProductionOrdersGet['parameters'], 'query'> & {
-        query?: ProductionOrderListQueryForward;
-      };
-      responses: Omit<ProductionOrdersGet['responses'], 200> & {
-        200: {
-          headers: { [name: string]: unknown };
-          content: {
-            'application/json': {
-              items: ProductionOrderForward[];
-              page: components['schemas']['PageMeta'];
-            };
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-  };
-  '/planning/production-orders/{productionOrderId}': Unused & {
-    parameters: NoParameters;
-    get: Omit<ProductionOrderGet, 'responses'> & {
-      responses: Omit<ProductionOrderGet['responses'], 200> & {
-        200: Omit<ProductionOrderGet['responses'][200], 'content'> & {
-          content: { 'application/json': ProductionOrderForward };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
   };
   '/planning/production-orders/{productionOrderId}:auto-plan': Unused & {
     parameters: NoParameters;

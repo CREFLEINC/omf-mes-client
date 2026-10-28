@@ -5,7 +5,6 @@ import {
   Dialog,
   EmptyState,
   IconButton,
-  Select,
   SkeletonText,
   Table,
   useToast,
@@ -17,6 +16,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { Select } from '../../patterns/select';
 import {
   createDependencyDraft,
   type DependencyDraft,

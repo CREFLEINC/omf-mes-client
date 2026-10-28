@@ -1,8 +1,9 @@
-import { AlertBanner, Checkbox, Select, TextArea } from '@crefle/web-ui';
+import { AlertBanner, Checkbox, TextArea } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
+import { Select } from '../../patterns/select';
 import { ISSUE_TYPE_OTHER } from './codes';
 import type { RouteState } from './queries';
 import { reasonError, REASON_MAX, type DisposalDraft } from './request-draft';

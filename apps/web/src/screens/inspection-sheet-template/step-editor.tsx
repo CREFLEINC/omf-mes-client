@@ -1,7 +1,8 @@
-import { Button, Checkbox, type Column, Select, Table, TextArea, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, type Column, Table, TextArea, TextField } from '@crefle/web-ui';
 import type { InspectionSheetMethodCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { Select } from '../../patterns/select';
 import { type ItemDraft, nextKey, type StepDraft } from './draft';
 
 const t = messages.inspectionSheetTemplate;

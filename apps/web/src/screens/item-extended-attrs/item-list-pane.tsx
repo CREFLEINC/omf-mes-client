@@ -1,17 +1,10 @@
-import {
-  Button,
-  Checkbox,
-  type Column,
-  EmptyState,
-  Select,
-  SkeletonText,
-  TextField,
-} from '@crefle/web-ui';
+import { Button, Checkbox, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import { BoardTable } from '../../patterns/board-table';
 import { OneLine } from '../../patterns/po-board';
+import { Select } from '../../patterns/select';
 import { EMPTY_ITEM_FILTERS, hasAnyFilter } from './filters';
 import type { ItemTypeOption } from './item-queries';
 import { codeValueName } from './options';

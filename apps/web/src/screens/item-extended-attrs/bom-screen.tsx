@@ -6,7 +6,6 @@ import {
   type Column,
   EmptyState,
   IconButton,
-  Select,
   SkeletonText,
   TextField,
   useToast,
@@ -24,6 +23,7 @@ import { pickBom, useBomTree, type BomTreeRow } from '../../patterns/bom-tree';
 import { BomTreeCell } from '../../patterns/bom-tree-cell';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { OneLine } from '../../patterns/po-board';
+import { Select } from '../../patterns/select';
 import {
   bomName,
   componentRowName,

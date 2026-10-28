@@ -4,7 +4,6 @@ import {
   Checkbox,
   type Column,
   EmptyState,
-  Select,
   SkeletonText,
   TextField,
 } from '@crefle/web-ui';
@@ -17,6 +16,7 @@ import { BoardFrame } from '../../patterns/board-frame';
 import { BoardTable } from '../../patterns/board-table';
 import { OneLine } from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
+import { Select } from '../../patterns/select';
 import { type ErpItemListQuery, useErpItemList, useItemTypeLookup, useUomLookup } from './queries';
 import type { ErpItem, SelectOption } from './types';
 
