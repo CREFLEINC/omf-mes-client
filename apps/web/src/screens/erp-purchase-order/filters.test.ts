@@ -67,4 +67,16 @@ describe('erp-purchase-order filters', () => {
       orderDateTo: '2026-10-31',
     });
   });
+
+  it('발주 유형은 주소 `type` 과 쿼리 `erpOrderTypeCode` 로 옮기고, 전체면 싣지 않는다', () => {
+    const params = toSearchParams({ ...DEFAULT_FILTERS, orderType: 'PO' }, 1);
+    expect(params.toString()).toBe('type=PO');
+    expect(readFilters(params).orderType).toBe('PO');
+    expect(toListQuery(readFilters(params), 1)).toEqual({
+      page: 1,
+      size: 25,
+      erpOrderTypeCode: 'PO',
+    });
+    expect(toListQuery(DEFAULT_FILTERS, 1)).not.toHaveProperty('erpOrderTypeCode');
+  });
 });

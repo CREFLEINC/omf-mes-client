@@ -152,7 +152,7 @@ describe('ErpPurchaseOrderScreen', () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
     renderWithProviders(<ErpPurchaseOrderScreen />, {
       fetch,
-      route: '/?supplier=4101&status=REGISTERED&open=1&from=2026-10-01',
+      route: '/?supplier=4101&status=REGISTERED&type=SYN-OT1&open=1&from=2026-10-01',
     });
     const user = userEvent.setup();
 
@@ -162,6 +162,11 @@ describe('ErpPurchaseOrderScreen', () => {
       .find((url) => url.pathname === '/logistics/purchase-orders');
     expect(listUrl?.searchParams.get('supplierId')).toBe('4101');
     expect(listUrl?.searchParams.get('statusCode')).toBe('REGISTERED');
+    /* 발주 유형(주소 `type`) — 서버 조건 `erpOrderTypeCode`, 칸에는 공통코드 이름. */
+    expect(listUrl?.searchParams.get('erpOrderTypeCode')).toBe('SYN-OT1');
+    expect(await screen.findByRole('combobox', { name: t.fields.orderType })).toHaveTextContent(
+      '합성 발주유형',
+    );
     /* 예전 주소의 「입하 미완료만」(`open=1`)은 미완료로 읽는다. */
     expect(listUrl?.searchParams.get('openOnly')).toBe('true');
     expect(listUrl?.searchParams.get('progress')).toBe('OPEN');

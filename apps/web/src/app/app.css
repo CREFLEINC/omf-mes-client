@@ -24932,3 +24932,16 @@ table.col-measuring td {
   margin: 0;
   padding-left: var(--space-5);
 }
+
+/*
+ * 구매발주 조회(ERP) 발주 유형 조건 — 코드 이름이 길어(「외자발주(직수입)(IMPORT P/O)」) 칸이 이름만큼 넓어지면 조회 ·
+ * 초기화가 다음 줄로 밀린다. 폭을 정하고 넘치는 이름은 말줄임한다.
+ */
+.erp-po-order-type-field {
+  width: 13rem;
+}
+
+.erp-po-order-type-field > :not(label) {
+  width: 100%;
+  min-width: 0;
+}

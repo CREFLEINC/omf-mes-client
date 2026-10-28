@@ -110,6 +110,7 @@ export const ErpPurchaseOrderScreen = () => {
                 supplierOptions={suppliers.options}
                 plantOptions={plants.options}
                 statusOptions={status.options}
+                orderTypeOptions={orderTypes.options}
                 onSearch={(next) => setSearchParams(toSearchParams(next, 1))}
                 onReset={() => setSearchParams(toSearchParams(DEFAULT_FILTERS, 1))}
               />

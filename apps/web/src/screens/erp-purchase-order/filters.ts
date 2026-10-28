@@ -8,6 +8,8 @@ export interface PurchaseOrderFilters {
   supplier: string;
   plant: string;
   status: string;
+  /** 발주 유형 — ERP 발주 유형 코드(공통코드 `ORDER_TYPE`). 주소 `type` */
+  orderType: string;
   from: string;
   to: string;
   /** 진행(입하가 다 됐는가) — 「전체 · 미완료 · 완료」. 주소에는 `progress=open|done` 으로 적고 전체는 적지 않는다 */
@@ -21,12 +23,15 @@ export const DEFAULT_FILTERS: PurchaseOrderFilters = {
   supplier: '',
   plant: '',
   status: '',
+  orderType: '',
   from: '',
   to: '',
   progress: 'all',
 };
 
 const TEXT_KEYS = ['q', 'supplier', 'plant', 'status', 'from', 'to'] as const;
+/** 주소 키가 칸 이름과 다른 조건 — 발주 유형은 주소에 `type` 으로 짧게 적는다. */
+const ORDER_TYPE_KEY = 'type';
 
 /**
  * 진행 조건. 예전 주소의 「입하 미완료만」(`open=1`)은 미완료로 읽는다 — 저장해 둔 링크가 깨지지 않게.
@@ -43,6 +48,7 @@ export const readFilters = (params: URLSearchParams): PurchaseOrderFilters => ({
   supplier: params.get('supplier') ?? '',
   plant: params.get('plant') ?? '',
   status: params.get('status') ?? '',
+  orderType: params.get(ORDER_TYPE_KEY) ?? '',
   from: params.get('from') ?? '',
   to: params.get('to') ?? '',
   progress: readProgress(params),
@@ -69,6 +75,8 @@ export const toSearchParams = (filters: PurchaseOrderFilters, page: number): URL
     const value = filters[key].trim();
     if (value !== '') params.set(key, value);
   });
+  const orderType = filters.orderType.trim();
+  if (orderType !== '') params.set(ORDER_TYPE_KEY, orderType);
   if (filters.progress !== 'all') params.set('progress', filters.progress);
   if (page > 1) params.set('page', String(page));
   return params;
@@ -95,6 +103,11 @@ export interface PurchaseOrderListQuery {
   supplierId?: number;
   plantId?: number;
   statusCode?: string;
+  /**
+   * 발주 유형 — **계약 사본에 없다**(사용자 지시 2026-10-28 「발주 유형별로 구분」, 서버 세션에 요청). 이 조건을 모르는
+   * 서버는 무시하고 전체를 준다. 계약에 실리면 이 주석을 걷고 계약 타입을 따른다.
+   */
+  erpOrderTypeCode?: string;
   orderDateFrom?: string;
   orderDateTo?: string;
   openOnly?: boolean;
@@ -122,6 +135,7 @@ export const toListQuery = (
   const plantId = toId(filters.plant);
   if (plantId !== undefined) query.plantId = plantId;
   if (filters.status !== '') query.statusCode = filters.status;
+  if (filters.orderType !== '') query.erpOrderTypeCode = filters.orderType;
   if (filters.from !== '') query.orderDateFrom = filters.from;
   if (filters.to !== '') query.orderDateTo = filters.to;
   /* 미완료는 지금 서버가 아는 `openOnly` 도 함께 싣는다 — `progress` 를 모르는 서버에서도 미완료는 걸러진다. */
