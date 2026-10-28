@@ -24,12 +24,15 @@ export interface VersionBarProps extends VersionPaneProps {
   onListOpenChange: (open: boolean) => void;
   /** 고른 버전의 일 — 버전 설정 수정 · 확정 · 폐기(줄 오른쪽 끝 · #196) */
   versionActions?: ReactNode;
+  /** 「버전 비교」 창을 연다(#196). 견줄 버전이 2개 미만이면 화면이 넘기지 않는다 — 단추가 사유와 함께 잠긴다. */
+  onCompare?: () => void;
 }
 
 export const VersionBar = ({
   isListOpen,
   onListOpenChange,
   versionActions,
+  onCompare,
   ...props
 }: VersionBarProps) => {
   const {
@@ -100,13 +103,20 @@ export const VersionBar = ({
           {t.versionBar.openList}
         </Button>
         {/* 계약에 경로가 없다. 감추지 않고 사유와 함께 비활성으로 둔다(사유는 마우스를 올리면 보인다). */}
-        <span title={t.actionReasons.compareVersionsUnavailable}>
-          <DisabledAction
-            label={t.actions.compareVersions}
-            reason={t.actionReasons.compareVersionsUnavailable}
-            className="inspection-standard-tooltip-reason"
-          />
-        </span>
+        {/* 버전이 2개 이상이면 연다 — 두 버전을 불러 화면이 견준다(사용자 지시 · #196). */}
+        {onCompare === undefined ? (
+          <span title={t.compare.needTwo}>
+            <DisabledAction
+              label={t.actions.compareVersions}
+              reason={t.compare.needTwo}
+              className="inspection-standard-tooltip-reason"
+            />
+          </span>
+        ) : (
+          <Button variant="outlined" onClick={onCompare}>
+            {t.actions.compareVersions}
+          </Button>
+        )}
         <span title={t.actionReasons.changeHistoryUnavailable}>
           <DisabledAction
             label={t.actions.changeHistory}

@@ -63,8 +63,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     /** 여러 컨트롤이 공유하는 안내라 무엇에 대한 안내인지로 시작한다. */
     transitionNeedsVersion:
       'Việc xác nhận · hủy bỏ chỉ thực hiện được sau khi đã đăng ký phiên bản.',
-    compareVersionsUnavailable:
-      'Việc so sánh phiên bản hiện chưa thể thực hiện. Khi chức năng so sánh sẵn sàng thì có thể dùng nút này.',
     changeHistoryUnavailable:
       'Lịch sử thay đổi hiện chưa thể xem. Khi chức năng tra cứu sẵn sàng thì có thể dùng nút này.',
     /*
@@ -226,6 +224,30 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     active: 'Trạng thái sử dụng',
     approved: 'Đã duyệt',
     notApproved: 'Chưa duyệt',
+  },
+  compare: {
+    title: 'So sánh phiên bản',
+    base: 'Phiên bản gốc',
+    target: 'Phiên bản so sánh',
+    settingsTitle: 'Thiết lập phiên bản',
+    itemsTitle: 'Hạng mục kiểm tra',
+    fieldColumn: 'Mục',
+    statusColumn: 'Trạng thái',
+    itemColumn: 'Hạng mục kiểm tra',
+    changesColumn: 'Nội dung thay đổi',
+    added: 'Thêm',
+    removed: 'Xóa',
+    changed: 'Thay đổi',
+    same: 'Giống',
+    hideSame: 'Ẩn mục giống nhau',
+    sameVersion: 'Hãy chọn hai phiên bản khác nhau.',
+    noItemDiff: 'Không có hạng mục kiểm tra nào thay đổi.',
+    noItems: 'Cả hai phiên bản đều không có hạng mục kiểm tra.',
+    yes: 'Có',
+    no: 'Không',
+    change: (label: string, before: string, after: string): string => `${label}: ${before} → ${after}`,
+    needTwo: 'Chỉ so sánh được khi có từ 2 phiên bản trở lên.',
+    loading: 'Đang tải phiên bản để so sánh',
   },
   versionBar: {
     label: 'Phiên bản',

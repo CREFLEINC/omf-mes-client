@@ -33,6 +33,8 @@ import {
   FREQUENCY_INTERVAL_UOM_CODE_GROUP,
   INSPECTION_FREQUENCY_CODE_GROUP,
   INSPECTION_METHOD_CODE_GROUP,
+  SAMPLING_METHOD_OPTIONS,
+  ensureOption,
   selectableOptions,
 } from './code-options';
 import { DisabledAction } from './disabled-action';
@@ -105,6 +107,7 @@ import {
   toVersionUpdate,
   versionToFormValues,
 } from './version-mappers';
+import { VersionCompareDialog } from './version-compare-dialog';
 import { VersionBar } from './version-bar';
 import { VersionSummary } from './version-summary';
 import { VersionTransitionDialog, type VersionTransitionKind } from './version-transition-dialog';
@@ -223,6 +226,8 @@ export const InspectionStandardScreen = () => {
   const [isPlanEditOpen, setIsPlanEditOpen] = useState(false);
   /* 「버전 목록」 창 — 목록에서 기준을 고르면 바로 열어 버전을 고르게 한다(사용자 지시 · #196). */
   const [isVersionListOpen, setIsVersionListOpen] = useState(false);
+  /* 「버전 비교」 창(#196) — 두 버전을 불러 화면이 견준다. */
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
   /* 「버전 설정 수정」 창 — 작성중 버전의 설정을 고친다(버전 설정 탭을 걷었다 · #196). */
   const [isVersionEditOpen, setIsVersionEditOpen] = useState(false);
   const [versionTab, setVersionTab] = useState('items');
@@ -1206,6 +1211,7 @@ export const InspectionStandardScreen = () => {
   /** 버전 고르기 줄 — 기준 상세 구획에 합친다(선택칸 + 「버전 목록」 창 · omf-all-around#196). */
   const renderVersionBar = (): ReactNode => (
     <VersionBar
+      onCompare={versions.length >= 2 ? () => setIsCompareOpen(true) : undefined}
       isListOpen={isVersionListOpen}
       onListOpenChange={setIsVersionListOpen}
       versionActions={
@@ -1511,6 +1517,8 @@ export const InspectionStandardScreen = () => {
           ]}
         />
 
+        {isCompareOpen && renderCompareDialog()}
+
         {isVersionEditOpen && versionStatus.isEditable && (
           <Dialog
             open
@@ -1683,6 +1691,46 @@ export const InspectionStandardScreen = () => {
   const uomLabelOf = (uomId: string): string =>
     selectableOptions(uomOptions, uomId).find((option) => option.value === uomId)?.label ??
     lookupDisplayLabel(uomOptions, uomId);
+
+  /** 선택 목록에서 코드의 이름을 찾는다 — 목록에 없으면 조회 상태(불러오는 중 · 알 수 없음)를 낸다. */
+  const lookupLabelOf = (lookup: LookupResult, value: string): string =>
+    selectableOptions(lookup, value).find((option) => option.value === value)?.label ??
+    lookupDisplayLabel(lookup, value);
+
+  /**
+   * 버전 비교 창(#196). 처음에는 지금 고른 버전을 「비교 버전」, 그 바로 이전 버전을 「기준 버전」으로 둔다 —
+   * 목록은 최신이 위라 바로 아래 줄이 이전 버전이다. 고른 버전이 없으면 가장 최신 둘을 견준다.
+   */
+  const renderCompareDialog = (): ReactNode => {
+    const targetIndex = Math.max(
+      0,
+      versions.findIndex((version) => version.inspectionPlanVersionId === selectedVersionId),
+    );
+    const baseIndex = targetIndex + 1 < versions.length ? targetIndex + 1 : targetIndex - 1;
+    const target = versions[targetIndex];
+    const base = versions[baseIndex];
+    if (target === undefined || base === undefined) return null;
+
+    return (
+      <VersionCompareDialog
+        versions={versions}
+        initialBaseId={base.inspectionPlanVersionId}
+        initialTargetId={target.inspectionPlanVersionId}
+        labels={{
+          samplingMethod: (code) =>
+            ensureOption(SAMPLING_METHOD_OPTIONS, code).find((option) => option.value === code)
+              ?.label ?? code,
+          inspectionFrequency: (code) => lookupLabelOf(inspectionFrequencyOptions, code),
+          frequencyIntervalUom: (code) => lookupLabelOf(frequencyIntervalUomOptions, code),
+          dataType: dataTypeLabelOf,
+          uom: uomLabelOf,
+          inspectionMethod: (code) => lookupLabelOf(inspectionMethodOptions, code),
+          equipment: (id) => lookupLabelOf(equipmentOptions, id),
+        }}
+        onClose={() => setIsCompareOpen(false)}
+      />
+    );
+  };
 
   /** 검사값 유형 코드를 공통코드 이름으로 옮긴다 — 단위와 같은 방식(#196). */
   const dataTypeLabelOf = (dataTypeCode: string): string =>

@@ -2442,17 +2442,34 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
   });
 
   /* 계약에 경로가 없다. 감추면 「이 화면에는 없는 기능」으로 오해한다. */
-  it('버전 비교와 변경 이력은 비활성이고 사유가 보인다', async () => {
-    renderSelectedVersion();
+  /* 버전 비교는 두 버전을 불러 화면이 견준다(#196). 변경 이력은 조회 경로가 없어 아직 잠겨 있다. */
+  it('버전 비교 창이 고른 버전과 그 이전 버전의 설정 차이를 보이고, 변경 이력은 비활성이다', async () => {
+    const { user } = renderSelectedVersion([
+      versionDetailRoute(inspectionPlanVersionFixtures[1]),
+      itemListRoute(4001),
+    ]);
 
-    const form = await awaitVersionForm();
+    await awaitVersionForm();
+    expect(screen.getByRole('button', { name: '변경 이력' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '버전 비교' }));
+    const dialog = await screen.findByRole('dialog', { name: '버전 비교' });
+
+    /* 적용 시작일이 다르다 — 기준(버전 1) 2026-07-01, 비교(버전 2) 2026-08-01 */
+    expect(await within(dialog).findByText('2026-07-01')).toBeInTheDocument();
+    expect(within(dialog).getByText('2026-08-01')).toBeInTheDocument();
+    /* 검사 항목은 같다 — 같은 것은 숨겨 「바뀐 검사 항목이 없습니다」 */
+    expect(within(dialog).getByText('바뀐 검사 항목이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('버전이 하나뿐이면 버전 비교가 비활성이고 사유가 보인다', async () => {
+    renderSelectedVersion([versionListRoute([inspectionPlanVersionFixtures[0]!])]);
+
+    await awaitVersionForm();
 
     expect(screen.getByRole('button', { name: '버전 비교' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '변경 이력' })).toBeDisabled();
     expect(
-      screen.getByText(
-        '버전 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
-      ),
+      screen.getByText('버전 비교는 버전이 2개 이상일 때 할 수 있습니다.'),
     ).toBeInTheDocument();
   });
 });

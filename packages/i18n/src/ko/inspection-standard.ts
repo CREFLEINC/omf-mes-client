@@ -70,8 +70,6 @@ export const inspectionStandard = {
     discardNeedsDraft: '작성 취소는 작성중 버전에만 할 수 있습니다. 확정된 버전은 폐기하세요.',
     /** 여러 컨트롤이 공유하는 안내라 무엇에 대한 안내인지로 시작한다. */
     transitionNeedsVersion: '확정·폐기는 버전을 먼저 등록해야 할 수 있습니다.',
-    compareVersionsUnavailable:
-      '버전 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     changeHistoryUnavailable:
       '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     /*
@@ -245,6 +243,31 @@ export const inspectionStandard = {
     active: '사용 여부',
     approved: '승인',
     notApproved: '미승인',
+  },
+  /* 버전 비교 창 — 두 버전의 설정 · 검사 항목 차이(사용자 지시 · #196). 서버 비교 경로 없이 두 버전을 불러 화면이 견준다. */
+  compare: {
+    title: '버전 비교',
+    base: '기준 버전',
+    target: '비교 버전',
+    settingsTitle: '버전 설정',
+    itemsTitle: '검사 항목',
+    fieldColumn: '항목',
+    statusColumn: '상태',
+    itemColumn: '검사 항목',
+    changesColumn: '바뀐 내용',
+    added: '추가',
+    removed: '삭제',
+    changed: '변경',
+    same: '같음',
+    hideSame: '같은 것 숨기기',
+    sameVersion: '서로 다른 버전을 고르세요.',
+    noItemDiff: '바뀐 검사 항목이 없습니다.',
+    noItems: '두 버전 모두 검사 항목이 없습니다.',
+    yes: '예',
+    no: '아니요',
+    change: (label: string, before: string, after: string): string => `${label}: ${before} → ${after}`,
+    needTwo: '버전 비교는 버전이 2개 이상일 때 할 수 있습니다.',
+    loading: '비교할 버전을 불러오는 중',
   },
   versionBar: {
     label: '버전',
