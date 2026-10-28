@@ -26,6 +26,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     newRevision: 'Phát hành phiên bản mới',
     confirm: 'Xác nhận',
     obsolete: 'Hủy bỏ',
+    discard: 'Hủy bản nháp',
     compareVersions: 'So sánh phiên bản',
     changeHistory: 'Lịch sử thay đổi',
     addItem: 'Thêm hạng mục',
@@ -55,6 +56,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       'Việc xác nhận không thực hiện được khi còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',
     obsoleteNeedsConfirmed:
       'Việc hủy bỏ chỉ thực hiện được với phiên bản đã xác nhận. Hãy xác nhận trước.',
+    discardNeedsDraft:
+      'Chỉ hủy bản nháp được với phiên bản đang soạn. Phiên bản đã xác nhận thì hãy hủy bỏ.',
     /** 여러 컨트롤이 공유하는 안내라 무엇에 대한 안내인지로 시작한다. */
     transitionNeedsVersion:
       'Việc xác nhận · hủy bỏ chỉ thực hiện được sau khi đã đăng ký phiên bản.',
@@ -105,6 +108,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     obsoleteTitle: 'Hủy bỏ phiên bản này?',
     obsoleteDescription:
       'Không xóa. Sau khi hủy bỏ thì không dùng phiên bản này cho lần kiểm tra mới được nữa.',
+    discardTitle: 'Hủy phiên bản đang soạn này?',
+    discardDescription:
+      'Phiên bản này và các hạng mục kiểm tra sẽ bị xóa, không khôi phục được. Thay đổi chưa lưu cũng mất.',
     itemCreateTitle: 'Thêm hạng mục kiểm tra',
     itemEditTitle: 'Sửa hạng mục kiểm tra',
     /*
@@ -119,6 +125,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     deactivated: 'Đã ngừng sử dụng tiêu chuẩn kiểm tra.',
     confirmed: 'Đã xác nhận phiên bản.',
     obsoleted: 'Đã hủy bỏ phiên bản.',
+    discarded: 'Đã hủy phiên bản đang soạn.',
   },
   filters: {
     searchLabel: 'Tìm tiêu chuẩn kiểm tra',

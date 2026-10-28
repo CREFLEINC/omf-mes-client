@@ -1962,6 +1962,44 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(posts[0]?.headers.get('If-Match')).toBeNull();
   });
 
+  it('작성중 버전의 작성 취소는 확인 창을 거쳐 DELETE로 나가고, 남은 최신 버전으로 옮긴다', async () => {
+    const { requests, user } = renderSelectedVersion([
+      {
+        match: (request) =>
+          request.method === 'DELETE' && new URL(request.url).pathname === VERSION_DETAIL_PATH,
+        respond: () => new Response(null, { status: 204 }),
+      },
+    ]);
+
+    const form = await awaitVersionForm();
+    await user.click(within(form).getByRole('button', { name: '작성 취소' }));
+    expect(
+      requestsTo(requests, VERSION_DETAIL_PATH).filter((r) => r.method === 'DELETE'),
+    ).toHaveLength(0);
+
+    await user.click(within(await dialog()).getByRole('button', { name: '작성 취소' }));
+    await screen.findByText(t.result.discarded);
+
+    const deletes = requestsTo(requests, VERSION_DETAIL_PATH).filter((r) => r.method === 'DELETE');
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0]?.headers.get('If-Match')).toBeNull();
+    expect(deletes[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    await waitFor(() => {
+      expect(requestsTo(requests, `${VERSIONS_PATH}/4001`).length).toBeGreaterThan(0);
+    });
+  });
+
+  it('확정 버전에서는 작성 취소가 비활성이고 폐기하라고 알린다', async () => {
+    renderSelectedVersion(
+      [versionDetailRoute(inspectionPlanVersionFixtures[1]), itemListRoute(4001)],
+      '?plan=3001&ver=4001',
+    );
+
+    await screen.findByLabelText('샘플 비율(%)');
+    expect(within(versionForm()).getByRole('button', { name: '작성 취소' })).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.discardNeedsDraft)).toBeInTheDocument();
+  });
+
   /* 계약에 경로가 없다. 감추면 「이 화면에는 없는 기능」으로 오해한다. */
   it('버전 비교와 변경 이력은 비활성이고 사유가 보인다', async () => {
     renderSelectedVersion();

@@ -484,7 +484,44 @@ export const InspectionStandardScreen = () => {
     onDone: () => finishVersionTransition(t.result.obsoleted),
   });
 
-  const versionTransitionWrite = versionTransition === 'obsolete' ? obsoleteWrite : confirmWrite;
+  /*
+   * 작성 취소는 버전을 지운다 — 지운 버전에 머물면 상세가 404가 된다.
+   * 목록은 판 번호 내림차순이므로(계약) 남은 첫 행이 최신이다.
+   */
+  const discardWrite = useMasterWrite<void, unknown>({
+    request: (_variables, headers) =>
+      client.DELETE('/quality/inspection-plan-versions/{inspectionPlanVersionId}', {
+        params: {
+          path: { inspectionPlanVersionId: selectedVersionId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    // 계약이 이 경로에 If-Match를 요구하지 않는다.
+    etagPath: null,
+    invalidateKeys: [versionKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      const remaining = versions.find(
+        (version) => version.inspectionPlanVersionId !== selectedVersionId,
+      );
+      resetVersionEditing();
+      if (remaining === undefined) {
+        const next = new URLSearchParams(searchParams);
+        next.delete('ver');
+        setSearchParams(next);
+      } else {
+        selectVersion(remaining.inspectionPlanVersionId);
+      }
+      toast.show({ variant: 'success', description: t.result.discarded });
+    },
+  });
+
+  const versionTransitionWrite =
+    versionTransition === 'obsolete'
+      ? obsoleteWrite
+      : versionTransition === 'discard'
+        ? discardWrite
+        : confirmWrite;
 
   /*
    * 검사 항목은 화면의 로컬 초안 목록으로 다룬다 — 순서 컬럼에 유일 제약이 있어
@@ -563,6 +600,7 @@ export const InspectionStandardScreen = () => {
     versionWrite.reset();
     confirmWrite.reset();
     obsoleteWrite.reset();
+    discardWrite.reset();
     itemsWrite.reset();
     setVersionTransition(null);
     setVersionCreateValues(null);
@@ -917,7 +955,15 @@ export const InspectionStandardScreen = () => {
     return versionStatus.status === 'confirmed' ? null : t.actionReasons.obsoleteNeedsConfirmed;
   })();
 
-  const isVersionTransitionRunning = confirmWrite.isSaving || obsoleteWrite.isSaving;
+  /** 작성 취소는 작성중 버전에만 성립한다 — 확정된 버전은 폐기가 그 길이다. */
+  const discardDisabledReason = ((): string | null => {
+    if (versionStatus === null) return t.actionReasons.transitionNeedsVersion;
+
+    return versionStatus.isEditable ? null : t.actionReasons.discardNeedsDraft;
+  })();
+
+  const isVersionTransitionRunning =
+    confirmWrite.isSaving || obsoleteWrite.isSaving || discardWrite.isSaving;
 
   const renderVersionTransitionActions = (): ReactNode => (
     <>
@@ -953,6 +999,23 @@ export const InspectionStandardScreen = () => {
         </div>
       ) : (
         <DisabledAction label={t.actions.obsolete} reason={obsoleteDisabledReason} />
+      )}
+
+      {discardDisabledReason === null ? (
+        <div className="field-cell">
+          <Button
+            variant="outlined"
+            disabled={isVersionTransitionRunning}
+            onClick={() => {
+              discardWrite.reset();
+              setVersionTransition('discard');
+            }}
+          >
+            {t.actions.discard}
+          </Button>
+        </div>
+      ) : (
+        <DisabledAction label={t.actions.discard} reason={discardDisabledReason} />
       )}
 
       {/* 계약에 경로가 없다. 감추지 않고 사유와 함께 비활성으로 둔다. */}
@@ -1452,6 +1515,7 @@ export const InspectionStandardScreen = () => {
             setVersionTransition(null);
             confirmWrite.reset();
             obsoleteWrite.reset();
+            discardWrite.reset();
           }}
           onConfirm={() => {
             versionTransitionWrite.write();
