@@ -179,6 +179,8 @@ export const VersionFormPane = ({
             />
             <div
               className="inspection-standard-sampling-basis"
+              /* 전수검사면 잠긴 까닭을 마우스를 올리면 보인다(#196). */
+              title={isFullInspection ? t.versionSection.samplingBasisLocked : undefined}
               role="group"
               aria-label={t.versionSection.samplingBasis}
             >

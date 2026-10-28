@@ -221,6 +221,7 @@ export const inspectionStandard = {
     samplingByRatio: '비율(%)',
     samplingByQty: '수량',
     samplingBasis: '샘플 기준 선택',
+    samplingBasisLocked: '전수검사는 샘플을 입력하지 않습니다. 검사 방식을 샘플링으로 바꾸면 고를 수 있습니다.',
     /* 요약 줄의 샘플 개수 표기(#201 · #196). */
     samplingQtyValue: (qty: string): string => `${qty}개`,
     title: '검사 기준 버전',
