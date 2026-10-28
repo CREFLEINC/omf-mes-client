@@ -27,6 +27,7 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
     ioType: 'Loại nhập/xuất',
     storageLocation: 'Kho',
     cancelled: 'Hủy',
+    customsClearance: 'Số thông quan',
     orderDateFrom: 'Ngày đặt từ',
     orderDateTo: 'Ngày đặt đến',
     q: 'Số đơn mua',
@@ -61,6 +62,20 @@ export const erpPurchaseOrder: Translated<typeof ko.erpPurchaseOrder> = {
       COMPLETED: 'Đã nhận đủ',
       CANCELLED: 'Đã hủy',
     },
+  },
+  customs: {
+    fetch: 'Lấy số thông quan',
+    fetchFailedTitle: 'Không lấy được số thông quan',
+    notFoundOrder: 'Không tìm thấy đơn mua hàng.',
+    summary: (total: number, saved: number, notFound: number, multiple: number): string =>
+      [
+        `Đã nhận ${String(saved)}/${String(total)} dòng`,
+        ...(notFound > 0 ? [`${String(notFound)} dòng chưa thông quan`] : []),
+        ...(multiple > 0 ? [`${String(multiple)} dòng cần kiểm tra`] : []),
+      ].join(' · '),
+    multipleTitle: 'Có dòng không lưu vì có nhiều số thông quan — cần kiểm tra',
+    multipleLine: (lineNo: number, candidates: string): string =>
+      `Dòng ${String(lineNo)}: ${candidates}`,
   },
   values: {
     searchPlaceholder: 'Số P/O',

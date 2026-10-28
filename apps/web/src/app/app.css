@@ -24915,6 +24915,45 @@ table.col-measuring td {
 }
 
 /*
+ * 구매발주 조회(ERP) 라인 표 머리 — 제목 오른쪽에 외자 발주의 [통관번호 받아오기](omf-all-around#206). 받아온 결과의 띠는
+ * 머리 아래 한 줄을 통째로 쓴다.
+ */
+.erp-po-lines-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.erp-po-lines-head > .pane-title {
+  margin: 0;
+}
+
+.erp-po-customs-result {
+  display: grid;
+  flex-basis: 100%;
+  gap: var(--space-2);
+}
+
+.erp-po-customs-candidates {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+/*
+ * 구매발주 조회(ERP) 발주 유형 조건 — 코드 이름이 길어(「외자발주(직수입)(IMPORT P/O)」) 칸이 이름만큼 넓어지면 조회 ·
+ * 초기화가 다음 줄로 밀린다. 폭을 정하고 넘치는 이름은 말줄임한다.
+ */
+.erp-po-order-type-field {
+  width: 13rem;
+}
+
+.erp-po-order-type-field > :not(label) {
+  width: 100%;
+  min-width: 0;
+
  * 선택지가 많은 선택 칸의 검색창(`patterns/select.tsx`) — 펼친 목록 맨 위에 붙어, 목록을 내려도 남는다. 목록 바탕과 같은
  * 색으로 덮어 아래 줄이 비치지 않게 한다.
  */

@@ -11,6 +11,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { ErpPurchaseOrderScreen } from './screen';
 
 const t = messages.erpPurchaseOrder;
@@ -151,7 +152,7 @@ describe('ErpPurchaseOrderScreen', () => {
     const { fetch, requests } = recordingFetch(normalRoutes);
     renderWithProviders(<ErpPurchaseOrderScreen />, {
       fetch,
-      route: '/?supplier=4101&status=REGISTERED&open=1&from=2026-10-01',
+      route: '/?supplier=4101&status=REGISTERED&type=SYN-OT1&open=1&from=2026-10-01',
     });
     const user = userEvent.setup();
 
@@ -161,6 +162,11 @@ describe('ErpPurchaseOrderScreen', () => {
       .find((url) => url.pathname === '/logistics/purchase-orders');
     expect(listUrl?.searchParams.get('supplierId')).toBe('4101');
     expect(listUrl?.searchParams.get('statusCode')).toBe('REGISTERED');
+    /* 발주 유형(주소 `type`) — 서버 조건 `erpOrderTypeCode`, 칸에는 공통코드 이름. */
+    expect(listUrl?.searchParams.get('erpOrderTypeCode')).toBe('SYN-OT1');
+    expect(await screen.findByRole('combobox', { name: t.fields.orderType })).toHaveTextContent(
+      '합성 발주유형',
+    );
     /* 예전 주소의 「입하 미완료만」(`open=1`)은 미완료로 읽는다. */
     expect(listUrl?.searchParams.get('openOnly')).toBe('true');
     expect(listUrl?.searchParams.get('progress')).toBe('OPEN');
@@ -389,5 +395,150 @@ describe('ErpPurchaseOrderScreen', () => {
 
     await waitFor(() => expect(screen.getByText(t.listLoadFailedTitle)).toBeInTheDocument());
     expect(screen.queryByText(t.empty.title)).not.toBeInTheDocument();
+  });
+});
+
+/*
+ * 외자 발주 통관번호(omf-all-around#206 · 서버 장부 P-143). 발주 유형 `PO` 일 때만 라인 칸과 단추가 서고, 단추는
+ * W-06-10 권한이 있어야 보인다.
+ */
+describe('ErpPurchaseOrderScreen — 외자 발주 통관번호', () => {
+  const FETCH_PATH = '/integration/erp-sync/purchase-orders/901/customs-clearances:fetch';
+  const foreign = { ...header, erpOrderTypeCode: 'PO' };
+  const lines = [
+    { ...line, erpCustomsClearanceNo: 'SYN-CC-01', erpCustomsClearanceSeq: 2 },
+    { ...line, purchaseOrderLineId: 9012, lineNo: 2, erpCustomsClearanceNo: null },
+    { ...line, purchaseOrderLineId: 9013, lineNo: 3 },
+  ];
+
+  const routesFor = (
+    order: typeof header,
+    fetchRespond: StubRoute['respond'] = () =>
+      jsonResponse({
+        purchaseOrderId: 901,
+        lines: [
+          {
+            purchaseOrderLineId: 9011,
+            lineNo: 1,
+            result: 'SAVED',
+            customsClearanceNo: 'SYN-CC-01',
+            customsClearanceSeq: 2,
+            candidates: [],
+          },
+          {
+            purchaseOrderLineId: 9012,
+            lineNo: 2,
+            result: 'NOT_FOUND',
+            customsClearanceNo: null,
+            customsClearanceSeq: null,
+            candidates: [],
+          },
+          {
+            purchaseOrderLineId: 9013,
+            lineNo: 3,
+            result: 'MULTIPLE',
+            customsClearanceNo: null,
+            customsClearanceSeq: null,
+            candidates: [
+              { customsClearanceNo: 'SYN-CC-01', customsClearanceSeq: 5 },
+              { customsClearanceNo: 'SYN-CC-02', customsClearanceSeq: 1 },
+            ],
+          },
+        ],
+      }),
+  ): StubRoute[] => [
+    ...references,
+    {
+      match: (request) => exact(request, '/logistics/purchase-orders'),
+      respond: () => jsonResponse({ items: [order], page: { page: 1, size: 25, total: 1 } }),
+    },
+    {
+      match: (request) => exact(request, '/logistics/purchase-orders/901'),
+      respond: () => jsonResponse({ purchaseOrder: order, lines }),
+    },
+    {
+      match: (request) => request.method === 'POST' && exact(request, FETCH_PATH),
+      respond: fetchRespond,
+    },
+  ];
+
+  const render = (routes: StubRoute[], permissions = ['W-06-10', 'W-06-21']) => {
+    const recorded = recordingFetch(routes);
+    renderWithProviders(<ErpPurchaseOrderScreen />, {
+      fetch: recorded.fetch,
+      route: '/?sel=901',
+      session: { ...SYNTHETIC_SESSION, permissions },
+    });
+    return { requests: recorded.requests, user: userEvent.setup() };
+  };
+
+  it('라인에 통관번호 / 순번 칸을 두고, 받아오면 결과를 알리고 상세를 다시 읽으며 여럿인 라인은 후보를 남긴다', async () => {
+    const { requests, user } = render(routesFor(foreign));
+
+    const linesPane = await screen.findByRole('region', { name: t.panes.lines });
+    expect(
+      await within(linesPane).findByRole('columnheader', { name: t.fields.customsClearance }),
+    ).toBeInTheDocument();
+    expect(within(linesPane).getByText('SYN-CC-01 / 2')).toBeInTheDocument();
+    /* 비었거나 칸이 없는 라인은 「-」. 창고 · 취소는 여전히 마지막 두 칸이다. */
+    expect(storageAndCancelCells(linesPane)).toEqual(['합성 창고', t.values.missing]);
+
+    const detailReads = () =>
+      requests.filter((request) => exact(request, '/logistics/purchase-orders/901')).length;
+    const before = detailReads();
+    await user.click(within(linesPane).getByRole('button', { name: t.customs.fetch }));
+
+    expect(
+      await screen.findByText('3줄 중 1줄 받음 · 1줄 통관 전 · 1줄 확인 필요'),
+    ).toBeInTheDocument();
+    const posts = requests.filter((request) => request.method === 'POST');
+    expect(posts.map((request) => new URL(request.url).pathname)).toEqual([FETCH_PATH]);
+    await waitFor(() => expect(detailReads()).toBeGreaterThan(before));
+    expect(screen.getByText(t.customs.multipleTitle)).toBeInTheDocument();
+    expect(screen.getByText('라인 3: SYN-CC-01 / 5, SYN-CC-02 / 1')).toBeInTheDocument();
+  });
+
+  it('외자가 아니면 칸도 단추도 없다', async () => {
+    render(routesFor(header));
+
+    const linesPane = await screen.findByRole('region', { name: t.panes.lines });
+    /* 세 라인이 같은 품목이다. */
+    expect(await within(linesPane).findAllByText('SYN-ITEM · 합성 품목')).toHaveLength(3);
+    expect(
+      within(linesPane).queryByRole('columnheader', { name: t.fields.customsClearance }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.customs.fetch })).not.toBeInTheDocument();
+  });
+
+  it('W-06-10 권한이 없으면 단추를 숨기고 칸은 보인다', async () => {
+    render(routesFor(foreign), ['W-06-21']);
+
+    const linesPane = await screen.findByRole('region', { name: t.panes.lines });
+    expect(await within(linesPane).findByText('SYN-CC-01 / 2')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.customs.fetch })).not.toBeInTheDocument();
+  });
+
+  it('서버가 막으면(STATE_LOCKED) 서버 문구를 그대로 보인다', async () => {
+    const { user } = render(
+      routesFor(foreign, () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: 'STATE_LOCKED',
+                message: '합성 — 통관 조회가 설정되지 않았습니다',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+
+    await user.click(await screen.findByRole('button', { name: t.customs.fetch }));
+
+    expect(await screen.findByText(t.customs.fetchFailedTitle)).toBeInTheDocument();
+    expect(screen.getByText('합성 — 통관 조회가 설정되지 않았습니다')).toBeInTheDocument();
   });
 });
