@@ -324,7 +324,7 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     await waitFor(() => {
       expect(listRequests(requests).at(-1)?.url.searchParams.get('plantId')).toBe('12');
     });
-    expect(screen.getByText('공장: 2공장')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '공장' })).toHaveTextContent('2공장');
   });
 
   it('주소의 공장 조건이 첫 조회에 다른 조건과 함께 실린다', async () => {
@@ -347,20 +347,6 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     expect(
       listRequests(requests).every((request) => !request.url.searchParams.has('plantId')),
     ).toBe(true);
-  });
-
-  it('공장 칩을 지우면 plantId 없이 다시 조회한다', async () => {
-    const { requests, user } = renderScreen(
-      [warehouseListRoute(), ...lookupRoutes()],
-      '?plant=12&q=WH',
-    );
-    await user.click(await screen.findByRole('button', { name: '공장 조건 제거' }));
-
-    await waitFor(() => {
-      const last = listRequests(requests).at(-1);
-      expect(last?.url.searchParams.has('plantId')).toBe(false);
-      expect(last?.url.searchParams.get('q')).toBe('WH');
-    });
   });
 
   it('초기화를 누르면 공장 조건도 함께 빠진다', async () => {

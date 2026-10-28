@@ -1,6 +1,15 @@
 export const warehouseLocation = {
   title: '창고·Location',
   breadcrumbRoot: '기준정보 관리',
+  /* 입고 관리 짜임(사용자 지시 2026-10-29) — 위 조건 상자 · 왼쪽 창고 목록 | 오른쪽 상세. */
+  splitter: '끌어서 목록·상세 폭 조절',
+  listCollapse: '창고 목록 접기',
+  listExpand: '창고 목록 펼치기',
+  panes: {
+    filters: '창고 조회 조건',
+    list: '창고 목록',
+    detail: '창고 상세',
+  },
   tabs: {
     warehouse: '창고 정보',
     location: 'Location',
@@ -38,9 +47,7 @@ export const warehouseLocation = {
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   empty: {
     warehouseNoneTitle: '아직 등록된 창고가 없습니다',
-    warehouseNoneDescription: '「창고 추가」로 첫 창고를 등록하세요.',
     warehouseNoMatchTitle: '조건에 맞는 결과가 없습니다',
-    warehouseNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
     locationNoneTitle: '등록된 Location이 없습니다',
     locationNoneDescription: '최상위 Location을 추가해 주세요.',
     locationNoMatchTitle: '조건에 맞는 Location이 없습니다',
@@ -56,13 +63,6 @@ export const warehouseLocation = {
     locationSearchPlaceholder: '위치 코드 또는 위치명',
     plantAll: '전체 공장',
     typeAll: '전체 유형',
-    chipRemoveKeyword: '검색어 조건 제거',
-    chipRemovePlant: '공장 조건 제거',
-    chipRemoveType: '창고 유형 조건 제거',
-    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
-    chipKeyword: (value: string): string => `검색어: ${value}`,
-    chipPlant: (label: string): string => `공장: ${label}`,
-    chipType: (label: string): string => `창고 유형: ${label}`,
   },
   fields: {
     plant: '공장',

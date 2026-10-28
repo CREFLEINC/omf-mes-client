@@ -1,27 +1,19 @@
-import {
-  Button,
-  Checkbox,
-  Chip,
-  type Column,
-  EmptyState,
-  SearchInput,
-  SkeletonText,
-  Table,
-} from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import type { ReactNode } from 'react';
 
+import { BoardTable } from '../../patterns/board-table';
 import { type LookupSource, lookupDisplayLabel } from '../../patterns/lookup-display';
-import { Select } from '../../patterns/select';
+import { OneLine } from '../../patterns/po-board';
 import { codeLabel, defaultWarehouseFilters } from './code-options';
 import type { LookupEntry, Warehouse, WarehouseFilters } from './types';
 
 export interface WarehouseListPaneProps {
   items: Warehouse[];
   isLoading: boolean;
-  /** 적용된(URL에 반영된) 조건 — 조건 칩의 렌더 기준 */
+  /** 적용된 조건 — 빈 상태가 「맞는 창고 없음」인지 「등록된 창고 없음」인지 가른다 */
   appliedFilters: WarehouseFilters;
-  /** 조회 버튼·Enter·칩 제거·초기화가 호출 */
+  /** 빈 상태의 초기화 */
   onApplyFilters: (next: WarehouseFilters) => void;
   selectedWarehouseId: number | null;
   onSelect: (warehouseId: number) => void;
@@ -33,9 +25,7 @@ export interface WarehouseListPaneProps {
    */
   loadError: ReactNode;
   warehouseTypeOptions: { value: string; label: string }[];
-  /** 공장 선택지. 미사용 공장은 지금 고른 값일 때만 남는다 */
-  plantOptions: { value: string; label: string }[];
-  /** 공장 이름 풀이용 원본 — 공장 열과 조건 칩은 선택지가 아니라 전체에서 이름을 찾는다 */
+  /** 공장 이름 풀이용 원본 — 공장 열은 선택지가 아니라 전체에서 이름을 찾는다 */
   plants: LookupSource<LookupEntry>;
 }
 
@@ -47,6 +37,10 @@ const hasAnyFilter = (filters: WarehouseFilters): boolean =>
   filters.warehouseTypeCode !== '' ||
   filters.includeInactive;
 
+/**
+ * 창고 목록 — 입고 관리 짜임의 표(`BoardTable`, 사용자 지시 2026-10-29). 줄 어디를 눌러도 그 창고를 고른다.
+ * 폭 없는 열은 창고명 하나, 나머지는 폭 지정 · minWidth = 고정 폭 합 + 160px.
+ */
 export const WarehouseListPane = ({
   items,
   isLoading,
@@ -57,66 +51,33 @@ export const WarehouseListPane = ({
   onAddWarehouse,
   loadError,
   warehouseTypeOptions,
-  plantOptions,
   plants,
 }: WarehouseListPaneProps) => {
-  const plantSelectId = useId();
-  const typeSelectId = useId();
-
-  /*
-   * 트리거 모델: **검색어만** 모아서 적용([조회]·Enter), 공장·창고 유형·미사용 포함은 바꾸는 즉시 적용.
-   *
-   * ⛔ 유형(공장도 같다)을 draft 에 두면 안 된다(omf-all-around#17 · 실화면 재현 2026-09-18). 유형을 고르기만
-   *    하면 요청이 나가지 않아 「필터가 안 먹는다」로 보였고, [조회] 전에 「미사용 포함」을 누르면
-   *    draft 가 적용값으로 덮여 고른 유형이 지워진 채 조회됐다.
-   * ⛔ 입력 중인 검색어는 적용된 검색어가 바뀔 때만 맞춘다 — 즉시 적용 축(공장·유형·미사용)을 바꿀
-   *    때 입력하던 검색어가 지워지지 않게 한다. 조건 칩에는 미러하지 않는다.
-   */
-  const [draftQ, setDraftQ] = useState(appliedFilters.q);
-  const appliedQ = appliedFilters.q;
-
-  useEffect(() => {
-    setDraftQ(appliedQ);
-  }, [appliedQ]);
-
-  const applyDraft = () => onApplyFilters({ ...appliedFilters, q: draftQ });
-
   const columns: Column<Warehouse>[] = [
+    { key: 'warehouseCode', header: t.fields.warehouseCode, width: '140px' },
     {
-      key: 'warehouseCode',
-      header: t.fields.warehouseCode,
-      /* 창고명만 왼쪽, 나머지 열은 머리·값 모두 가운데(사용자 지시 2026-09-18 · omf-all-around#17). */
-      align: 'center',
-      render: (row) => (
-        <button
-          type="button"
-          className="link-cell"
-          aria-current={row.warehouseId === selectedWarehouseId ? 'true' : undefined}
-          onClick={() => onSelect(row.warehouseId)}
-        >
-          {row.warehouseCode}
-        </button>
-      ),
+      key: 'warehouseName',
+      header: t.fields.warehouseName,
+      render: (row) => <OneLine text={row.warehouseName} />,
     },
-    /* 「명칭」이 무엇의 이름인지 머리에서 바로 읽히게 한다(omf-all-around#17). */
-    { key: 'warehouseName', header: t.fields.warehouseName },
     {
       key: 'plantId',
       /* 사업부가 아니라 공장이다 — 같은 사업부 안에서 창고가 공장으로 갈린다(P-109). */
       header: t.fields.plant,
-      align: 'center',
-      render: (row) => lookupDisplayLabel(plants, row.plantId),
+      width: '140px',
+      render: (row) => <OneLine text={lookupDisplayLabel(plants, row.plantId)} />,
     },
     {
       key: 'warehouseTypeCode',
       header: t.fields.warehouseType,
-      align: 'center',
+      width: '110px',
       render: (row) => codeLabel(row.warehouseTypeCode, warehouseTypeOptions),
     },
     {
       key: 'isActive',
       header: t.fields.isActive,
       align: 'center',
+      width: '90px',
       /* 상태는 기존 칩으로 — 사용 중 success · 미사용 idle(W-CO 단말 공정 매핑과 같은 규칙). */
       render: (row) => (
         <Chip size="sm" status={row.isActive ? 'success' : 'idle'}>
@@ -131,7 +92,6 @@ export const WarehouseListPane = ({
       size="sm"
       live
       title={t.empty.warehouseNoMatchTitle}
-      description={t.empty.warehouseNoMatchDescription}
       action={
         <Button variant="outlined" onClick={() => onApplyFilters(defaultWarehouseFilters)}>
           {messages.common.reset}
@@ -143,136 +103,36 @@ export const WarehouseListPane = ({
       size="sm"
       live
       title={t.empty.warehouseNoneTitle}
-      description={t.empty.warehouseNoneDescription}
       action={<Button onClick={onAddWarehouse}>{t.actions.addWarehouse}</Button>}
     />
   );
 
   /** 조회 실패 → 로딩 → 표 순서로 하나만 낸다. 실패했는데 빈 표를 함께 보이면 안 된다. */
-  const listSlot = (): ReactNode => {
-    if (loadError !== null && loadError !== undefined) return loadError;
+  if (loadError !== null && loadError !== undefined) return loadError;
 
-    if (isLoading) {
-      return (
-        <div role="status" aria-label={t.loading.warehouses}>
-          <SkeletonText lines={3} />
-        </div>
-      );
-    }
-
+  if (isLoading) {
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={items}
-        getRowId={(row) => String(row.warehouseId)}
-        empty={emptySlot}
-      />
+      <div role="status" aria-label={t.loading.warehouses}>
+        <SkeletonText lines={3} />
+      </div>
     );
-  };
+  }
 
   return (
-    <section className="pane" aria-label={t.title}>
-      {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-      <div className="filter-bar">
-        <SearchInput
-          label={t.filters.searchLabel}
-          placeholder={t.filters.searchPlaceholder}
-          value={draftQ}
-          onChange={(event) => setDraftQ(event.target.value)}
-          onSearch={(value) => onApplyFilters({ ...appliedFilters, q: value })}
-          clearLabel={messages.common.clear}
-        />
-        <div className="field-cell">
-          <label className="field-label" htmlFor={plantSelectId}>
-            {t.fields.plant}
-          </label>
-          <Select
-            id={plantSelectId}
-            options={[{ value: '', label: t.filters.plantAll }, ...plantOptions]}
-            value={appliedFilters.plantId}
-            onChange={(value) => onApplyFilters({ ...appliedFilters, plantId: value })}
-          />
-        </div>
-        <div className="field-cell">
-          <label className="field-label" htmlFor={typeSelectId}>
-            {t.fields.warehouseType}
-          </label>
-          <Select
-            id={typeSelectId}
-            options={[{ value: '', label: t.filters.typeAll }, ...warehouseTypeOptions]}
-            value={appliedFilters.warehouseTypeCode}
-            onChange={(value) => onApplyFilters({ ...appliedFilters, warehouseTypeCode: value })}
-          />
-        </div>
-        {/* 해제 축이라 변경 즉시 적용한다(공장·유형과 같다). */}
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={appliedFilters.includeInactive}
-            onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
-            }
-          >
-            {messages.common.includeInactive}
-          </Checkbox>
-        </div>
-        {/*
-         * 조회·초기화는 한 묶음으로 줄 오른쪽 끝에 붙인다(사용자 지시 2026-09-18 · omf-all-around#17).
-         * 묶음이라 좁아져 줄이 넘쳐도 둘이 함께 다음 줄 오른쪽으로 간다(규범 2-1).
-         */}
-        <div className="filter-actions field-cell-unlabeled warehouse-location-filter-actions">
-          <Button onClick={applyDraft}>{messages.common.search}</Button>
-          <Button variant="outlined" onClick={() => onApplyFilters(defaultWarehouseFilters)}>
-            {messages.common.reset}
-          </Button>
-        </div>
-      </div>
-
-      {/* 걸린 조건이 없으면 칩 줄을 그리지 않는다 — 빈 줄이 조건과 표 사이를 벌렸다. */}
-      {hasAnyFilter(appliedFilters) && (
-        <div className="filter-bar">
-          {appliedFilters.q !== '' && (
-            <Chip
-              variant="status"
-              removeLabel={t.filters.chipRemoveKeyword}
-              onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
-            >
-              {t.filters.chipKeyword(appliedFilters.q)}
-            </Chip>
-          )}
-          {appliedFilters.plantId !== '' && (
-            <Chip
-              variant="status"
-              removeLabel={t.filters.chipRemovePlant}
-              onRemove={() => onApplyFilters({ ...appliedFilters, plantId: '' })}
-            >
-              {t.filters.chipPlant(lookupDisplayLabel(plants, appliedFilters.plantId))}
-            </Chip>
-          )}
-          {appliedFilters.warehouseTypeCode !== '' && (
-            <Chip
-              variant="status"
-              removeLabel={t.filters.chipRemoveType}
-              onRemove={() => onApplyFilters({ ...appliedFilters, warehouseTypeCode: '' })}
-            >
-              {t.filters.chipType(
-                codeLabel(appliedFilters.warehouseTypeCode, warehouseTypeOptions),
-              )}
-            </Chip>
-          )}
-          {appliedFilters.includeInactive && (
-            <Chip
-              variant="status"
-              removeLabel={t.filters.chipRemoveIncludeInactive}
-              onRemove={() => onApplyFilters({ ...appliedFilters, includeInactive: false })}
-            >
-              {messages.common.includeInactive}
-            </Chip>
-          )}
-        </div>
-      )}
-
-      <div className="warehouse-location-list-table">{listSlot()}</div>
-    </section>
+    <BoardTable
+      label={t.panes.list}
+      columns={columns}
+      rows={items}
+      getRowId={(row) => String(row.warehouseId)}
+      widthKey="omf-mes:warehouse-location:list-widths"
+      minWidth="640px"
+      pick={{
+        columnKey: 'warehouseCode',
+        label: (row) => row.warehouseCode,
+        currentId: selectedWarehouseId === null ? null : String(selectedWarehouseId),
+        onPick: (row) => onSelect(row.warehouseId),
+      }}
+      empty={emptySlot}
+    />
   );
 };

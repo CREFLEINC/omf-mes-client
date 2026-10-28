@@ -8,6 +8,14 @@ import type { Translated } from './translated';
 export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   title: 'Kho · Location',
   breadcrumbRoot: 'Quản lý dữ liệu gốc',
+  splitter: 'Kéo để chỉnh độ rộng danh sách · chi tiết',
+  listCollapse: 'Thu gọn danh sách kho',
+  listExpand: 'Mở danh sách kho',
+  panes: {
+    filters: 'Điều kiện tra cứu kho',
+    list: 'Danh sách kho',
+    detail: 'Chi tiết kho',
+  },
   tabs: {
     warehouse: 'Thông tin kho',
     location: 'Location',
@@ -43,9 +51,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   optionsLoadFailed: 'Không tải được danh sách chọn. Chỉ hiển thị giá trị đang lưu.',
   empty: {
     warehouseNoneTitle: 'Chưa đăng ký kho nào',
-    warehouseNoneDescription: 'Hãy đăng ký kho đầu tiên bằng «Thêm kho».',
     warehouseNoMatchTitle: 'Không có kết quả khớp điều kiện',
-    warehouseNoMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
     locationNoneTitle: 'Chưa đăng ký Location',
     locationNoneDescription: 'Hãy thêm Location cấp trên cùng.',
     locationNoMatchTitle: 'Không có Location khớp điều kiện',
@@ -60,13 +66,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     locationSearchPlaceholder: 'Mã vị trí hoặc tên vị trí',
     plantAll: 'Tất cả nhà máy',
     typeAll: 'Tất cả loại',
-    chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
-    chipRemovePlant: 'Bỏ điều kiện nhà máy',
-    chipRemoveType: 'Bỏ điều kiện loại kho',
-    chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
-    chipKeyword: (value: string): string => `Từ khóa: ${value}`,
-    chipPlant: (label: string): string => `Nhà máy: ${label}`,
-    chipType: (label: string): string => `Loại kho: ${label}`,
   },
   fields: {
     plant: 'Nhà máy',

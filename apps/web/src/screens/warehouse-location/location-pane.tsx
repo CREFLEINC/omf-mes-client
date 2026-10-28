@@ -6,11 +6,12 @@ import {
   IconButton,
   SearchInput,
   SkeletonText,
-  Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
+import { BoardTable } from '../../patterns/board-table';
+import { OneLine } from '../../patterns/po-board';
 import { locationDisplayName } from '../../patterns/system-location';
 import type { LocationTreeRow } from './location-tree';
 import type { Location } from './types';
@@ -78,6 +79,7 @@ export const LocationPane = ({
     {
       key: 'locationCode',
       header: t.fields.locationCode,
+      width: '260px',
       /*
        * 위치 코드만 머리·값 왼쪽(사용자 결정 2026-09-18 · omf-all-around#17) — 가운데로 두면 행마다 따로
        * 가운데에 서서 깊이 들여쓰기가 상쇄돼 상하위가 읽히지 않았다. 위치명·사용 상태는 가운데.
@@ -112,14 +114,16 @@ export const LocationPane = ({
     {
       key: 'locationName',
       header: t.fields.locationName,
-      align: 'center',
-      render: (row) => locationDisplayName(row.location.locationName, row.location),
+      render: (row) => (
+        <OneLine text={locationDisplayName(row.location.locationName, row.location)} />
+      ),
     },
     {
       key: 'isActive',
       header: t.fields.isActive,
       /* 창고 목록과 같은 상태 칩(omf-all-around#17). */
       align: 'center',
+      width: '90px',
       render: (row) => (
         <Chip size="sm" status={row.location.isActive ? 'success' : 'idle'}>
           {row.location.isActive ? t.values.active : t.values.inactive}
@@ -159,18 +163,20 @@ export const LocationPane = ({
     }
 
     return (
-      <div className="warehouse-location-location-table">
-        <Table
-          density="compact"
-          columns={columns}
-          rows={rows}
-          getRowId={(row) => String(row.location.locationId)}
-          selectable
-          selectedIds={selectedIds}
-          onSelectionChange={onSelectionChange}
-          empty={emptySlot}
-        />
-      </div>
+      /* 입고 관리 짜임의 표(사용자 지시 2026-10-29). 폭 없는 열은 위치명 하나. */
+      <BoardTable
+        label={t.tabs.location}
+        className="warehouse-location-location-table"
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => String(row.location.locationId)}
+        widthKey="omf-mes:warehouse-location:location-widths"
+        minWidth="560px"
+        selectable
+        selectedIds={selectedIds}
+        onSelectionChange={onSelectionChange}
+        empty={emptySlot}
+      />
     );
   };
 

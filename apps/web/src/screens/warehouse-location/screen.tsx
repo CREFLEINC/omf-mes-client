@@ -1,13 +1,4 @@
-import {
-  AlertBanner,
-  Breadcrumb,
-  Button,
-  EmptyState,
-  PageHeader,
-  SkeletonText,
-  Tabs,
-  useToast,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMutation } from '@tanstack/react-query';
@@ -15,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { BoardFrame } from '../../patterns/board-frame';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { runRequest, toApiError } from '../../patterns/request';
 import { isPutawayStaging, isSystemLocation } from '../../patterns/system-location';
@@ -58,6 +50,7 @@ import type {
   WarehouseFormValues,
 } from './types';
 import { WarehouseFormPane } from './warehouse-form-pane';
+import { WarehouseFilterBar } from './warehouse-filter-bar';
 import { WarehouseListPane } from './warehouse-list-pane';
 import { WAREHOUSE_FORM_FIELDS, validateWarehouse } from './warehouse-validation';
 
@@ -926,15 +919,13 @@ export const WarehouseLocationScreen = () => {
      */
     if (isCreateMode) {
       return (
-        <div className="pane">
-          {renderWarehouseForm({ mode: 'create', codeLockReason: null, isActive: true })}
-        </div>
+        <div>{renderWarehouseForm({ mode: 'create', codeLockReason: null, isActive: true })}</div>
       );
     }
 
     if (selectedWarehouseId === null) {
       return (
-        <div className="pane">
+        <div>
           <EmptyState
             size="sm"
             title={t.empty.warehouseNotSelectedTitle}
@@ -946,7 +937,7 @@ export const WarehouseLocationScreen = () => {
 
     if (detail.isError) {
       return (
-        <div className="pane">
+        <div>
           <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />
         </div>
       );
@@ -954,7 +945,7 @@ export const WarehouseLocationScreen = () => {
 
     if (detail.data === undefined || formState === null || selectedWarehouse === null) {
       return (
-        <div className="pane">
+        <div>
           <div role="status" aria-label={t.loading.warehouseDetail}>
             <SkeletonText lines={5} />
           </div>
@@ -963,7 +954,7 @@ export const WarehouseLocationScreen = () => {
     }
 
     return (
-      <div className="pane">
+      <div>
         <Tabs
           aria-label={t.title}
           value={activeTab}
@@ -1053,66 +1044,80 @@ export const WarehouseLocationScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        actions={<Button onClick={handleAddWarehouse}>{t.actions.addWarehouse}</Button>}
+      <BoardFrame
+        splitKey="omf-mes:warehouse-location:split"
+        initialRatio={0.45}
+        splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
+        above={{
+          label: t.panes.filters,
+          content: (
+            <>
+              {/*
+               * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
+               * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
+               */}
+              {listTruncated && listPage !== undefined && (
+                <AlertBanner variant="warning">
+                  {t.listTruncated(warehouses.length, listPage.total)}
+                </AlertBanner>
+              )}
+              <div className="pane po-board-filter">
+                <WarehouseFilterBar
+                  appliedFilters={filters}
+                  onApplyFilters={handleApplyFilters}
+                  onAddWarehouse={handleAddWarehouse}
+                  warehouseTypeOptions={selectableOptions(
+                    lookups.sources.warehouseTypes,
+                    filters.warehouseTypeCode,
+                  )}
+                  plantOptions={selectableOptions(lookups.sources.plants, filters.plantId)}
+                />
+              </div>
+            </>
+          ),
+        }}
+        list={{
+          label: t.panes.list,
+          content: (
+            <WarehouseListPane
+              items={warehouses}
+              isLoading={warehouseList.isPending}
+              appliedFilters={filters}
+              onApplyFilters={handleApplyFilters}
+              selectedWarehouseId={selectedWarehouseId}
+              onSelect={(warehouseId) => {
+                warehouseWrite.reset();
+                setLocalFieldErrors({});
+                setSelectedLocationIds([]);
+                setLocationFilterText('');
+                setDialogState(CLOSED_LOCATION_DIALOG);
+                setLocationFormSource(null);
+                setLocationSourceEtag(null);
+                setPendingLabelIds(null);
+                setLabelPreviews(null);
+                labelSummary.reset();
+                labelWrite.reset();
+                updateParams({ wh: String(warehouseId), mode: null });
+              }}
+              onAddWarehouse={handleAddWarehouse}
+              loadError={
+                warehouseList.isError ? (
+                  <LoadErrorBanner
+                    error={warehouseList.error}
+                    onRetry={() => void warehouseList.refetch()}
+                  />
+                ) : null
+              }
+              warehouseTypeOptions={selectableOptions(
+                lookups.sources.warehouseTypes,
+                filters.warehouseTypeCode,
+              )}
+              plants={lookups.sources.plants}
+            />
+          ),
+        }}
+        detail={{ label: t.panes.detail, content: renderDetailPane() }}
       />
-
-      {/*
-       * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
-       * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
-       */}
-      {listTruncated && listPage !== undefined && (
-        <AlertBanner variant="warning">
-          {t.listTruncated(warehouses.length, listPage.total)}
-        </AlertBanner>
-      )}
-
-      <div className="two-pane warehouse-location-layout">
-        <WarehouseListPane
-          items={warehouses}
-          isLoading={warehouseList.isPending}
-          appliedFilters={filters}
-          onApplyFilters={handleApplyFilters}
-          selectedWarehouseId={selectedWarehouseId}
-          onSelect={(warehouseId) => {
-            warehouseWrite.reset();
-            setLocalFieldErrors({});
-            setSelectedLocationIds([]);
-            setLocationFilterText('');
-            setDialogState(CLOSED_LOCATION_DIALOG);
-            setLocationFormSource(null);
-            setLocationSourceEtag(null);
-            setPendingLabelIds(null);
-            setLabelPreviews(null);
-            labelSummary.reset();
-            labelWrite.reset();
-            updateParams({ wh: String(warehouseId), mode: null });
-          }}
-          onAddWarehouse={handleAddWarehouse}
-          loadError={
-            warehouseList.isError ? (
-              <LoadErrorBanner
-                error={warehouseList.error}
-                onRetry={() => void warehouseList.refetch()}
-              />
-            ) : null
-          }
-          warehouseTypeOptions={selectableOptions(
-            lookups.sources.warehouseTypes,
-            filters.warehouseTypeCode,
-          )}
-          plantOptions={selectableOptions(lookups.sources.plants, filters.plantId)}
-          plants={lookups.sources.plants}
-        />
-        {renderDetailPane()}
-      </div>
 
       <DeactivateConfirmDialog
         open={warehouseStatusOpen}
