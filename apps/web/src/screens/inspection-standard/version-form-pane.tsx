@@ -71,6 +71,7 @@ export const VersionFormPane = ({
   const versionLabelId = useId();
   const statusLabelId = useId();
   const samplingRatioId = useId();
+  const samplingQtyId = useId();
 
   const isLocked = status !== null && !status.isEditable;
   /* 전수검사는 비율이 뜻이 없다 — 칸을 잠그고 값을 비운다(omf-all-around#103). */
@@ -145,7 +146,7 @@ export const VersionFormPane = ({
           onChange={(samplingMethodCode) =>
             onChange(
               samplingMethodCode === FULL_INSPECTION
-                ? { samplingMethodCode, samplingRatio: '' }
+                ? { samplingMethodCode, samplingRatio: '', samplingQty: '' }
                 : { samplingMethodCode },
             )
           }
@@ -163,7 +164,6 @@ export const VersionFormPane = ({
           <FieldLabel
             htmlFor={samplingRatioId}
             label={t.fields.samplingRatio}
-            required={!isFullInspection && values.samplingMethodCode !== ''}
           />
           <TextField
             id={samplingRatioId}
@@ -174,6 +174,21 @@ export const VersionFormPane = ({
             onChange={(event) => onChange({ samplingRatio: event.target.value })}
             disabled={isLocked || isFullInspection}
             error={fieldErrors.samplingRatio}
+          />
+        </div>
+
+        {/* 비율과 둘 중 하나만 — 고객사 기준서는 샘플을 개수(n=5)로 적는다(omf-all-around#201). */}
+        <div className="field-cell">
+          <FieldLabel htmlFor={samplingQtyId} label={t.fields.samplingQty} />
+          <TextField
+            id={samplingQtyId}
+            type="number"
+            min={1}
+            step={1}
+            value={values.samplingQty}
+            onChange={(event) => onChange({ samplingQty: event.target.value })}
+            disabled={isLocked || isFullInspection}
+            error={fieldErrors.samplingQty}
           />
         </div>
 

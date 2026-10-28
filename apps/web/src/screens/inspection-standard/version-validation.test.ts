@@ -10,6 +10,7 @@ const values = (overrides: Partial<VersionFormValues> = {}): VersionFormValues =
   effectiveTo: '',
   samplingMethodCode: 'FULL_INSPECTION',
   samplingRatio: '',
+  samplingQty: '',
   aqlValue: '',
   acceptanceNumber: '',
   rejectionNumber: '',
@@ -185,6 +186,17 @@ describe('validateVersionForm — 샘플 비율', () => {
       validateVersionForm(values({ samplingMethodCode, samplingRatio: '' })).samplingRatio,
     ).toBe(messages.inspectionStandard.validation.samplingRatioRequired);
     expect(validateVersionForm(values({ samplingMethodCode, samplingRatio: '10' }))).toEqual({});
+  });
+
+  /* omf-all-around#201 — 샘플은 비율 또는 개수 중 하나다. */
+  it('샘플 개수만 넣어도 되고, 둘 다 넣거나 1 미만·소수면 개수 칸 오류다', () => {
+    const v = messages.inspectionStandard.validation;
+    const sampling = { samplingMethodCode: 'SAMPLE_BY_LOT' };
+
+    expect(validateVersionForm(values({ ...sampling, samplingQty: '5' }))).toEqual({});
+    expect(validateVersionForm(values({ ...sampling, samplingRatio: '10', samplingQty: '5' })).samplingQty).toBe(v.samplingQtyBoth);
+    expect(validateVersionForm(values({ ...sampling, samplingQty: '0' })).samplingQty).toBe(v.samplingQtyInvalid);
+    expect(validateVersionForm(values({ ...sampling, samplingQty: '1.5' })).samplingQty).toBe(v.samplingQtyInvalid);
   });
 
   /*

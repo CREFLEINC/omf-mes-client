@@ -2081,10 +2081,10 @@ describe('InspectionStandardScreen — 버전 저장', () => {
   });
 
   /*
-   * 비율은 그대로 실린다 — 수량으로 환산하려면 로트 크기가 필요하고 그것은 검사 시점에
-   * 정해진다(#201 ④). 옛 이름을 함께 실으면 어느 쪽이 이기는지를 또 정해야 한다.
+   * 비율은 그대로 실린다 — 수량으로 환산하지 않는다. 비운 샘플 개수는 null 로 실려
+   * 비율과 함께 남지 않는다(omf-all-around#201 · 둘 중 하나만).
    */
-  it('저장 본문에 비율이 입력값 그대로 실리고 옛 수량 키는 실리지 않는다', async () => {
+  it('저장 본문에 비율이 입력값 그대로 실리고 비운 샘플 개수는 null 이다', async () => {
     const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
 
     const form = await awaitVersionForm();
@@ -2100,8 +2100,7 @@ describe('InspectionStandardScreen — 버전 저장', () => {
 
     // 음성 단언은 짝 양성과 같은 시점에 잰다 — 값이 실려 있음을 먼저 확인한다.
     expect(body.samplingRatio).toBe(30.5);
-    expect(Object.keys(body)).toContain('samplingRatio');
-    expect(Object.keys(body)).not.toContain('samplingQty');
+    expect(body.samplingQty).toBeNull();
   });
 
   /**

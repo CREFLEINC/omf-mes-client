@@ -14,6 +14,7 @@ export const VERSION_FORM_FIELDS = [
   'effectiveTo',
   'samplingMethodCode',
   'samplingRatio',
+  'samplingQty',
   'aqlValue',
   'acceptanceNumber',
   'rejectionNumber',
@@ -86,8 +87,18 @@ export const validateVersionForm = (values: VersionFormValues): Record<string, s
    */
   const isSampling =
     !isBlank(values.samplingMethodCode) && values.samplingMethodCode !== FULL_INSPECTION;
-  // 샘플 방식은 비율로 검사 수량을 환산한다 — 비율이 없으면 검사 수량이 정해지지 않는다(#103).
-  if (isSampling && isBlank(values.samplingRatio)) errors.samplingRatio = t.samplingRatioRequired;
+  // 샘플 방식은 비율 또는 개수로 검사 수량을 정한다 — 둘 다 없으면 정해지지 않고, 둘 다 있으면 갈린다(#103 · omf-all-around#201).
+  if (isSampling && isBlank(values.samplingRatio) && isBlank(values.samplingQty)) {
+    errors.samplingRatio = t.samplingRatioRequired;
+  }
+  if (!isBlank(values.samplingRatio) && !isBlank(values.samplingQty)) {
+    errors.samplingQty = t.samplingQtyBoth;
+  }
+  if (!isBlank(values.samplingQty)) {
+    const qty = Number(values.samplingQty);
+
+    if (!Number.isInteger(qty) || qty < 1) errors.samplingQty = t.samplingQtyInvalid;
+  }
 
   if (!isBlank(values.samplingRatio)) {
     const ratio = Number(values.samplingRatio);
