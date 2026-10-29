@@ -107,7 +107,7 @@ export const inspectionSheetTemplate = {
     basicSection: 'Thông tin cơ bản',
     model: 'Mặt hàng',
     pickModel: 'Chọn mặt hàng',
-    pickConfirm: 'Chọn mặt hàng này',
+    pickConfirm: 'Chọn',
     pickLotConfirm: 'Chọn vật tư này',
     noModel: 'Hãy chọn mặt hàng.',
     businessUnit: 'Bộ phận kinh doanh',

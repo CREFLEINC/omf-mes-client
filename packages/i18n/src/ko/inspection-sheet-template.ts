@@ -107,7 +107,7 @@ export const inspectionSheetTemplate = {
     basicSection: '기본 정보',
     model: '품목',
     pickModel: '품목 선택',
-    pickConfirm: '이 품목으로',
+    pickConfirm: '선택',
     pickLotConfirm: '이 자재로',
     noModel: '품목을 선택하세요.',
     businessUnit: '사업부',
