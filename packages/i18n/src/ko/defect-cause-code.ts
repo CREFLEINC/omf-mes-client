@@ -41,8 +41,7 @@ export const defectCauseCode = {
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   /** 상위가 목록에 없는 코드를 모으는 그룹. 감추면 사용자는 코드가 사라진 줄 안다. */
   groupHeaderOrphan: '상위를 찾을 수 없는 코드',
-  categoryWarning:
-    '대분류는 전사에서 공통으로 쓰는 축입니다. 추가하면 모든 현장에서 함께 쓰이므로 신중히 정하세요.',
+  categoryWarning: '대분류는 모든 현장에서 공통으로 사용됩니다. 추가 시 신중하게 확인해 주세요.',
   parentListProvisional: '대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.',
   empty: {
     codeNoneTitle: '아직 등록된 코드가 없습니다',
