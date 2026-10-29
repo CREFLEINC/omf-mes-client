@@ -42,8 +42,8 @@ describe('PlanActionBanner', () => {
     ).toBeInTheDocument();
   });
 
-  /* 삼키면 어디에도 보이지 않는 오류가 된다. */
-  it('서버가 함께 준 문구도 덧붙인다', () => {
+  /* 서버도 같은 뜻의 문구를 주어 두 줄이 겹쳐 보였다. */
+  it('아는 코드는 서버 문구를 덧붙이지 않는다', () => {
     render(
       <PlanActionBanner
         error={{
@@ -62,7 +62,7 @@ describe('PlanActionBanner', () => {
     expect(
       screen.getByText('승인은 확정된 버전이 있어야 할 수 있습니다. 버전을 먼저 확정하세요.'),
     ).toBeInTheDocument();
-    expect(screen.getByText('확정 버전이 없습니다.')).toBeInTheDocument();
+    expect(screen.queryByText('확정 버전이 없습니다.')).not.toBeInTheDocument();
   });
 
   it('아는 코드가 아니면 서버 문구를 그대로 낸다', () => {

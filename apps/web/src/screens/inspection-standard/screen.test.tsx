@@ -2082,6 +2082,19 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     expect('statusCode' in body).toBe(false);
   });
 
+  /* 열어 두면 저장이 된 건지 헷갈린다 — 저장이 끝나면 「버전 설정 수정」 창을 닫는다. */
+  it('저장에 성공하면 버전 설정 수정 창이 닫힌다', async () => {
+    const { user } = renderSelectedVersion([versionSaveRoute()]);
+
+    const form = await awaitVersionForm();
+    fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '40' } });
+    await user.click(within(form).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+
+    expect(screen.queryByRole('region', { name: '버전 정보' })).not.toBeInTheDocument();
+  });
+
   /*
    * 비율은 그대로 실린다 — 수량으로 환산하지 않는다. 비운 샘플 개수는 null 로 실려
    * 비율과 함께 남지 않는다(omf-all-around#201 · 둘 중 하나만).
@@ -2748,6 +2761,25 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
       2,
     );
     expect(confirmDialogs()).toHaveLength(1);
+  });
+
+  /* 뒤바뀜 오류는 두 칸에 함께 걸린다 — 하한만 고쳐도 상한 칸의 오류가 남지 않아야 한다. */
+  it('하한을 고치면 상한 칸의 뒤바뀜 오류도 걷힌다', async () => {
+    const { user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '1번 항목 수정' }));
+
+    const dialogNode = await dialog();
+    fireEvent.change(within(dialogNode).getByLabelText('상한값'), { target: { value: '1' } });
+    await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
+    await screen.findAllByText('상한값은 하한값과 같거나 그보다 커야 합니다.');
+
+    fireEvent.change(within(dialogNode).getByLabelText('하한값'), { target: { value: '0' } });
+
+    expect(
+      screen.queryByText('상한값은 하한값과 같거나 그보다 커야 합니다.'),
+    ).not.toBeInTheDocument();
   });
 
   it('측정 횟수가 0이면 확인이 막힌다', async () => {

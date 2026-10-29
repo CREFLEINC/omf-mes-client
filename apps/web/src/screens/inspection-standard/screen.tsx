@@ -561,6 +561,8 @@ export const InspectionStandardScreen = () => {
       setVersionFormState((prev) =>
         prev === null ? prev : { ...prev, baseline: next, values: next },
       );
+      /* 「버전 설정 수정」 창은 저장으로 할 일이 끝난다 — 열어 두면 저장이 된 건지 헷갈린다. */
+      setIsVersionEditOpen(false);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
@@ -1976,7 +1978,13 @@ export const InspectionStandardScreen = () => {
               prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
             );
 
-            for (const field of Object.keys(patch)) {
+            /* 하한 · 상한 뒤바뀜 오류는 두 칸에 함께 걸린다 — 한쪽을 고치면 둘 다 걷는다. */
+            const changed = Object.keys(patch);
+            const fields = changed.some((key) => key === 'lowerLimit' || key === 'upperLimit')
+              ? [...changed, 'lowerLimit', 'upperLimit']
+              : changed;
+
+            for (const field of fields) {
               setItemDialogErrors((prev) => {
                 if (!(field in prev)) return prev;
                 const next = { ...prev };
