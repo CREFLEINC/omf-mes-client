@@ -24,8 +24,9 @@ export const defectCauseCode = {
   },
   actionReasons: {
     addChildNeedsCategory: '상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.',
-    parentLockedByChildren:
-      '상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다. 하위 코드를 다른 대분류로 옮기면 이 항목을 쓸 수 있습니다.',
+    parentLockedByChildren: '하위 코드가 있어 대분류를 변경할 수 없습니다.',
+    /** 다른 기록에서 쓰고 있어 코드가 잠겼을 때(수정 창 · 사용자 시안 #209) */
+    codeLockedReferenced: '이미 사용된 코드는 변경할 수 없습니다.',
     deactivateNeedsActive: '사용 중지는 이미 미사용인 코드에는 할 수 없습니다.',
   },
   loading: {
@@ -71,6 +72,9 @@ export const defectCauseCode = {
     parent: '상위 대분류',
     isActive: '사용',
     kind: '구분',
+    /** 불량코드 탭의 코드 · 이름 칸 이름(창 · 상세 · #209) */
+    defectCode: '불량코드',
+    defectName: '불량명',
     disposition: '처분 유형',
     process: '공정',
     nameKo: '한국어명',
@@ -107,9 +111,10 @@ export const defectCauseCode = {
     createCategoryTitle: (tab: string): string => `대분류 ${tab} 추가`,
     createChildTitle: (tab: string): string => `상세 ${tab} 추가`,
     editTitle: (tab: string): string => `${tab} 수정`,
-    codePlaceholder: '코드 입력',
-    /** 이름 칸 입력 안내 — 탭마다 「불량명 입력」 · 「원인명 입력」(사용자 시안 · #209) */
-    defectNamePlaceholder: '불량명 입력',
+    /** 코드 · 이름 칸 입력 안내 — 탭마다 다르다(사용자 지시 2026-10-29 · #209) */
+    defectCodePlaceholder: '불량코드를 입력하세요',
+    defectNamePlaceholder: '불량명을 입력하세요',
+    causeCodePlaceholder: '코드 입력',
     causeNamePlaceholder: '원인명 입력',
   },
   values: {

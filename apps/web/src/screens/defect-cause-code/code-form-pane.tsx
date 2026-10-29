@@ -61,13 +61,15 @@ export const CodeFormPane = ({
   const parentLockId = `${parentId}-lock`;
   const parentNoteId = `${parentId}-note`;
   const codeId = useId();
+  const codeLockId = `${codeId}-lock`;
   const nameId = useId();
+  const codeLocked = codeLockReason !== null;
 
   const parentError = fieldErrors.parentId;
   const describedBy = [
     parentError === undefined ? null : parentErrorId,
     parentLockReason === null ? null : parentLockId,
-    parentNoteId,
+    parentLockReason === null ? parentNoteId : null,
   ]
     .filter((id): id is string => id !== null)
     .join(' ');
@@ -134,15 +136,17 @@ export const CodeFormPane = ({
 
       <div className="form-grid defect-cause-form-grid">
         <div className="field-cell">
-          {fieldLabel(codeId, adapter.labels.code, true)}
+          {/* 잠긴 코드는 고칠 수 없으니 필수 표시를 빼고 칸 안에 자물쇠를 둔다(사용자 시안 · #209). */}
+          {fieldLabel(codeId, adapter.labels.code, !codeLocked)}
           <TextField
             id={codeId}
-            placeholder={t.dialog.codePlaceholder}
+            placeholder={adapter.labels.codePlaceholder}
             value={values.code}
             onChange={(event) => onChange({ code: event.target.value })}
-            disabled={codeLockReason !== null}
-            disabledReason={codeLockReason}
-            aria-required
+            disabled={codeLocked}
+            trailingIcon={codeLocked ? <Icon name="lock" size={18} /> : undefined}
+            aria-describedby={codeLocked ? codeLockId : undefined}
+            aria-required={!codeLocked}
             {...requiredText('code')}
           />
         </div>
@@ -163,6 +167,14 @@ export const CodeFormPane = ({
          * 디자인 시스템 Select에는 label prop이 없다. 라벨을 직접 만들어 htmlFor로 이어야
          * 스크린리더 접근명과 테스트의 라벨 조회가 함께 성립한다(배치 규범 3).
          */}
+        {/* 코드 잠금 안내 — 두 칸 아래 한 줄 전체 폭(사용자 시안 · #209). */}
+        {codeLocked && (
+          <p id={codeLockId} className="field-note defect-cause-form-wide defect-cause-lock-note">
+            <Icon name="info" size={18} aria-hidden />
+            {codeLockReason}
+          </p>
+        )}
+
         {/* 상위 대분류는 줄 전체 폭(사용자 시안 · #209). */}
         <div className="field-cell defect-cause-form-wide">
           {fieldLabel(parentId, adapter.labels.parent, parentRequired)}
@@ -189,16 +201,20 @@ export const CodeFormPane = ({
               {parentLockReason}
             </span>
           )}
-          {/* 대분류 목록이 확정되기 전이라는 사실을 감추지 않는다. */}
-          {/* 정보 안내 — 검사 조회·판정의 안내 줄과 같은 모양(사용자 지시 2026-10-29 · #209). */}
-          <span
-            id={parentNoteId}
-            className="iqc-inspection-action-note defect-cause-info-note"
-            data-tone="info"
-          >
-            <Icon name="info" size={14} aria-hidden />
-            {t.parentListProvisional}
-          </span>
+          {/*
+           * 대분류 목록이 확정되기 전이라는 사실을 감추지 않는다 — 고를 수 있을 때만(잠기면 고를 것이 없다 · #209).
+           * 정보 안내 — 검사 조회·판정의 안내 줄과 같은 모양(사용자 지시 2026-10-29 · #209).
+           */}
+          {parentLockReason === null && (
+            <span
+              id={parentNoteId}
+              className="iqc-inspection-action-note defect-cause-info-note"
+              data-tone="info"
+            >
+              <Icon name="info" size={14} aria-hidden />
+              {t.parentListProvisional}
+            </span>
+          )}
         </div>
       </div>
     </Dialog>

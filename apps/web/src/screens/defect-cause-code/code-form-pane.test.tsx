@@ -38,8 +38,8 @@ describe('CodeFormPane — 입력칸', () => {
   it('코드·명칭·상위 대분류를 입력할 수 있다', async () => {
     const { props, user } = renderPane();
 
-    await user.type(screen.getByLabelText('코드'), 'D');
-    await user.type(screen.getByLabelText('명칭'), '가');
+    await user.type(screen.getByLabelText('불량코드'), 'D');
+    await user.type(screen.getByLabelText('불량명'), '가');
 
     expect(props.onChange).toHaveBeenCalledWith({ code: 'D' });
     expect(props.onChange).toHaveBeenCalledWith({ name: '가' });
@@ -113,7 +113,7 @@ describe('CodeFormPane — 잠금과 사유', () => {
       codeLockReason: '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.',
     });
 
-    expect(screen.getByLabelText('코드')).toBeDisabled();
+    expect(screen.getByLabelText('불량코드')).toBeDisabled();
     expect(
       screen.getByText('이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.'),
     ).toBeInTheDocument();
@@ -123,16 +123,13 @@ describe('CodeFormPane — 잠금과 사유', () => {
   it('하위가 있으면 상위 선택칸이 비활성이고 사유가 보인다', () => {
     renderPane({
       mode: 'edit',
-      parentLockReason:
-        '상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다. 하위 코드를 다른 대분류로 옮기면 이 항목을 쓸 수 있습니다.',
+      parentLockReason: '하위 코드가 있어 대분류를 변경할 수 없습니다.',
     });
 
     const parent = screen.getByRole('combobox', { name: '상위 대분류' });
     expect(parent).toBeDisabled();
     expect(parent).toHaveAttribute('aria-describedby');
-    expect(
-      screen.getByText(/상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/하위 코드가 있어 대분류를 변경할 수 없습니다/)).toBeInTheDocument();
   });
 });
 
@@ -167,6 +164,27 @@ describe('CodeFormPane — 저장·취소', () => {
   });
 });
 
+describe('CodeFormPane — 잠긴 코드 (#209 시안)', () => {
+  it('잠긴 코드는 필수 표시 없이 자물쇠와 정보 안내 한 줄로 낸다', () => {
+    renderPane({ mode: 'edit', codeLockReason: '이미 사용된 코드는 변경할 수 없습니다.' });
+
+    const code = screen.getByLabelText('불량코드');
+    expect(code).toBeDisabled();
+    expect(code).not.toHaveAttribute('aria-required', 'true');
+    expect(screen.getByText('이미 사용된 코드는 변경할 수 없습니다.')).toBeInTheDocument();
+    expect(code).toHaveAttribute('aria-describedby');
+  });
+
+  it('상위가 잠기면 대분류 임시 목록 안내를 내지 않는다', () => {
+    renderPane({ mode: 'edit', parentLockReason: '하위 코드가 있어 대분류를 변경할 수 없습니다.' });
+
+    expect(screen.getByText('하위 코드가 있어 대분류를 변경할 수 없습니다.')).toBeInTheDocument();
+    expect(
+      screen.queryByText('대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.'),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('CodeFormPane — 창 모양 (#209)', () => {
   it('머리 ✕ 없이 「취소」로 닫는다', () => {
     renderPane();
@@ -178,23 +196,23 @@ describe('CodeFormPane — 창 모양 (#209)', () => {
   it('입력 안내가 칸 안에 보인다', () => {
     renderPane();
 
-    expect(screen.getByPlaceholderText('코드 입력')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('불량명 입력')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('불량코드를 입력하세요')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('불량명을 입력하세요')).toBeInTheDocument();
   });
 
   it('처음 열 때는 빨간 테두리 없이 필수 표시만 붙인다', () => {
     renderPane();
 
-    expect(screen.getByLabelText('코드')).not.toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByLabelText('명칭')).not.toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('불량코드')).not.toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('불량명')).not.toHaveAttribute('aria-invalid', 'true');
     expect(screen.getAllByText('*').length).toBeGreaterThanOrEqual(2);
   });
 
   it('비운 채 저장하면 그 칸은 글을 띄우지 않고 테두리만 빨갛게 한다', () => {
     renderPane({ fieldErrors: { code: '필수 입력 항목입니다.' } });
 
-    expect(screen.getByLabelText('코드')).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByLabelText('명칭')).not.toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('불량코드')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('불량명')).not.toHaveAttribute('aria-invalid', 'true');
     for (const node of screen.queryAllByText('필수 입력 항목입니다.')) {
       expect(node.closest('.inspection-standard-border-only')).not.toBeNull();
     }

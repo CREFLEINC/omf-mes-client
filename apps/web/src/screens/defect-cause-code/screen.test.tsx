@@ -444,7 +444,7 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
 
     await user.click(screen.getByRole('button', { name: '대분류 추가' }));
 
-    expect(screen.getByLabelText('코드')).toHaveValue('');
+    expect(screen.getByLabelText('불량코드')).toHaveValue('');
     expect(
       screen.getByText(
         '대분류는 전사에서 공통으로 쓰는 축입니다. 추가하면 모든 현장에서 함께 쓰이므로 신중히 정하세요.',
@@ -517,6 +517,10 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
 
     const card = screen.getByRole('region', { name: '불량코드 상세' });
     expect(within(card).getByText('DF-10')).toBeInTheDocument();
+    // 뒤 카드의 상세 추가 단추도 사라지지 않는다(#209 버그 수정).
+    expect(
+      within(card).getByRole('button', { name: '상세 추가', hidden: true }),
+    ).toBeInTheDocument();
     expect(screen.queryByText('코드를 선택하세요')).not.toBeInTheDocument();
   });
 
@@ -543,7 +547,7 @@ describe('DefectCauseCodeScreen — 상위 선택지', () => {
       [defectOptionsRoute(), defectListRoute(activeDefectFixtures)],
       '?mode=create',
     );
-    await screen.findByLabelText('코드');
+    await screen.findByLabelText('불량코드');
 
     await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
 
@@ -557,7 +561,7 @@ describe('DefectCauseCodeScreen — 상위 선택지', () => {
       [defectOptionsRoute(), defectListRoute(activeDefectFixtures)],
       '?mode=create',
     );
-    await screen.findByLabelText('코드');
+    await screen.findByLabelText('불량코드');
 
     await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
 
@@ -612,8 +616,8 @@ describe('DefectCauseCodeScreen — 등록 저장', () => {
       '?mode=create',
     );
 
-    await user.type(await screen.findByLabelText('코드'), 'DF-30');
-    await user.type(screen.getByLabelText('명칭'), '신규');
+    await user.type(await screen.findByLabelText('불량코드'), 'DF-30');
+    await user.type(screen.getByLabelText('불량명'), '신규');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(await screen.findByText('등록했습니다')).toBeInTheDocument();
@@ -637,8 +641,8 @@ describe('DefectCauseCodeScreen — 등록 저장', () => {
       '?sel=1001&mode=create',
     );
 
-    await user.type(await screen.findByLabelText('코드'), 'DF-13');
-    await user.type(screen.getByLabelText('명칭'), '눌림');
+    await user.type(await screen.findByLabelText('불량코드'), 'DF-13');
+    await user.type(screen.getByLabelText('불량명'), '눌림');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('등록했습니다');
 
@@ -652,16 +656,16 @@ describe('DefectCauseCodeScreen — 등록 저장', () => {
       '?mode=create',
     );
 
-    await user.type(await screen.findByLabelText('코드'), 'DF-30');
-    await user.type(screen.getByLabelText('명칭'), '신규');
+    await user.type(await screen.findByLabelText('불량코드'), 'DF-30');
+    await user.type(screen.getByLabelText('불량명'), '신규');
 
     const before = requests.filter((request) => request.method === 'GET').length;
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('등록했습니다');
 
     expect(requests.filter((request) => request.method === 'GET').length).toBeGreaterThan(before);
-    expect(screen.getByLabelText('코드')).toHaveValue('');
-    expect(screen.getByLabelText('명칭')).toHaveValue('');
+    expect(screen.getByLabelText('불량코드')).toHaveValue('');
+    expect(screen.getByLabelText('불량명')).toHaveValue('');
   });
 
   it('코드·명칭이 공백만이면 요청을 보내지 않고 인라인 오류만 보인다', async () => {
@@ -670,8 +674,8 @@ describe('DefectCauseCodeScreen — 등록 저장', () => {
       '?mode=create',
     );
 
-    await user.type(await screen.findByLabelText('코드'), '   ');
-    await user.type(screen.getByLabelText('명칭'), '  ');
+    await user.type(await screen.findByLabelText('불량코드'), '   ');
+    await user.type(screen.getByLabelText('불량명'), '  ');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(screen.getByText('코드는 공백만으로 지정할 수 없습니다.')).toBeInTheDocument();
@@ -690,8 +694,8 @@ describe('DefectCauseCodeScreen — 등록 저장', () => {
       '?sel=1002&mode=create',
     );
 
-    await user.type(await screen.findByLabelText('코드'), 'DF-99');
-    await user.type(screen.getByLabelText('명칭'), '신규');
+    await user.type(await screen.findByLabelText('불량코드'), 'DF-99');
+    await user.type(screen.getByLabelText('불량명'), '신규');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(
@@ -728,8 +732,8 @@ describe('DefectCauseCodeScreen — 등록 저장', () => {
       '?mode=create',
     );
 
-    await user.type(await screen.findByLabelText('코드'), 'DF-30');
-    await user.type(screen.getByLabelText('명칭'), '신규');
+    await user.type(await screen.findByLabelText('불량코드'), 'DF-30');
+    await user.type(screen.getByLabelText('불량명'), '신규');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(await screen.findByText('이미 사용 중인 코드입니다.')).toBeInTheDocument();
@@ -758,12 +762,12 @@ describe('DefectCauseCodeScreen — 등록 저장', () => {
       '?mode=create',
     );
 
-    await user.type(await screen.findByLabelText('코드'), 'DF-30');
-    await user.type(screen.getByLabelText('명칭'), '신규');
+    await user.type(await screen.findByLabelText('불량코드'), 'DF-30');
+    await user.type(screen.getByLabelText('불량명'), '신규');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('이미 사용 중인 코드입니다.');
 
-    await user.type(screen.getByLabelText('코드'), '1');
+    await user.type(screen.getByLabelText('불량코드'), '1');
 
     expect(screen.queryByText('이미 사용 중인 코드입니다.')).not.toBeInTheDocument();
   });
@@ -785,8 +789,8 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
     await user.click(await screen.findByRole('button', { name: 'DF-11' }));
 
     await openEdit();
-    expect(await screen.findByLabelText('코드')).toHaveValue('DF-11');
-    expect(screen.getByLabelText('명칭')).toHaveValue('스크래치');
+    expect(await screen.findByLabelText('불량코드')).toHaveValue('DF-11');
+    expect(screen.getByLabelText('불량명')).toHaveValue('스크래치');
     expect(requestsTo(requests, `${DEFECT_LIST_PATH}/1002`)).toHaveLength(1);
   });
 
@@ -803,7 +807,7 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
     renderScreen(editFlowRoutes(defectDetailRoute()), '?sel=1001');
 
     await openEdit();
-    expect(await screen.findByLabelText('코드')).toHaveValue('DF-10');
+    expect(await screen.findByLabelText('불량코드')).toHaveValue('DF-10');
   });
 
   it('불러오는 동안에는 스켈레톤을 낸다', () => {
@@ -826,7 +830,7 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
     );
 
     await openEdit();
-    expect(await screen.findByLabelText('코드')).toBeDisabled();
+    expect(await screen.findByLabelText('불량코드')).toBeDisabled();
     expect(
       screen.getByText('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
     ).toBeInTheDocument();
@@ -836,7 +840,7 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
     renderScreen(editFlowRoutes(defectDetailRoute()), '?sel=1001');
 
     await openEdit();
-    expect(await screen.findByLabelText('코드')).not.toBeDisabled();
+    expect(await screen.findByLabelText('불량코드')).not.toBeDisabled();
   });
 
   it('상세 조회에 실패하면 폼 대신 오류 배너와 다시 시도가 뜬다', async () => {
@@ -853,7 +857,7 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
     expect(
       screen.getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText('코드')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('불량코드')).not.toBeInTheDocument();
   });
 });
 
@@ -864,7 +868,7 @@ describe('DefectCauseCodeScreen — 수정 중의 상위 선택', () => {
       '?inactive=1&sel=1006',
     );
     await openEdit();
-    await screen.findByLabelText('코드');
+    await screen.findByLabelText('불량코드');
 
     await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
 
@@ -875,14 +879,10 @@ describe('DefectCauseCodeScreen — 수정 중의 상위 선택', () => {
   it('하위가 있는 코드는 상위 선택칸이 잠기고 사유가 보인다', async () => {
     renderScreen(editFlowRoutes(defectDetailRoute()), '?sel=1001');
     await openEdit();
-    await screen.findByLabelText('코드');
+    await screen.findByLabelText('불량코드');
 
     expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
-    expect(
-      screen.getByText(
-        '상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다. 하위 코드를 다른 대분류로 옮기면 이 항목을 쓸 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('하위 코드가 있어 대분류를 변경할 수 없습니다.')).toBeInTheDocument();
   });
 
   /* 「미사용 포함」이 꺼져 있어도 상위의 이름이 보여야 한다 — 계층 판정용 목록을 따로 받는 이유다. */
@@ -933,7 +933,7 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
     );
 
     await openEdit();
-    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.type(await screen.findByLabelText('불량명'), '가');
     await user.click(screen.getByRole('button', { name: '저장' }));
     expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
 
@@ -964,7 +964,7 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
     );
 
     await openEdit();
-    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.type(await screen.findByLabelText('불량명'), '가');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
 
@@ -989,7 +989,7 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
     );
 
     await openEdit();
-    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.type(await screen.findByLabelText('불량명'), '가');
 
     const before = requests.filter((request) => request.method === 'GET').length;
     await user.click(screen.getByRole('button', { name: '저장' }));
@@ -1025,12 +1025,12 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
     );
 
     await openEdit();
-    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.type(await screen.findByLabelText('불량명'), '가');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
 
     await openEdit();
-    await user.type(await screen.findByLabelText('명칭'), '나');
+    await user.type(await screen.findByLabelText('불량명'), '나');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
@@ -1055,7 +1055,7 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
     );
 
     await openEdit();
-    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.type(await screen.findByLabelText('불량명'), '가');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(
@@ -1074,7 +1074,7 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
     );
 
     await openEdit();
-    await user.clear(await screen.findByLabelText('명칭'));
+    await user.clear(await screen.findByLabelText('불량명'));
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(screen.getByText('필수 입력 항목입니다.')).toBeInTheDocument();
@@ -1108,7 +1108,7 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
     );
 
     await openEdit();
-    await user.type(await screen.findByLabelText('명칭'), ' 불량');
+    await user.type(await screen.findByLabelText('불량명'), ' 불량');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
 
@@ -1121,12 +1121,10 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
   it('그래도 상위 선택칸은 잠겨 있고 사유가 보인다 — 계층을 더 깨지 못하게 한다', async () => {
     renderScreen(legacyRoutes(defectDetailRoute(legacyThreeLevelCodeFixtures[1])), '?sel=4002');
     await openEdit();
-    await screen.findByLabelText('명칭');
+    await screen.findByLabelText('불량명');
 
     expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
-    expect(
-      screen.getByText(/상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/하위 코드가 있어 대분류를 변경할 수 없습니다/)).toBeInTheDocument();
   });
 
   /* 3계층의 막내 DF-42는 상위가 상세 코드다. 그래도 명칭만 고치는 것은 막지 않는다. */
@@ -1145,7 +1143,7 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
     );
 
     await openEdit();
-    await user.type(await screen.findByLabelText('명칭'), ' 심함');
+    await user.type(await screen.findByLabelText('불량명'), ' 심함');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
 
@@ -1170,7 +1168,7 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
     );
 
     await openEdit();
-    await screen.findByLabelText('명칭');
+    await screen.findByLabelText('불량명');
     await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
     await user.click(await screen.findByRole('option', { name: 'DF-40 · 조립' }));
     await user.click(screen.getByRole('button', { name: '저장' }));
@@ -1208,7 +1206,7 @@ describe('DefectCauseCodeScreen — 상위가 상세 코드이면서 하위도 �
     );
 
     await openEdit();
-    await user.type(await screen.findByLabelText('명칭'), ' 다수');
+    await user.type(await screen.findByLabelText('불량명'), ' 다수');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
 
@@ -1220,7 +1218,7 @@ describe('DefectCauseCodeScreen — 상위가 상세 코드이면서 하위도 �
   it('그래도 상위 선택칸은 잠겨 있다 — 계층을 더 깨지 못하게 한다', async () => {
     renderScreen(deepRoutes(defectDetailRoute(deepHierarchyCodeFixtures[2])), '?sel=5003');
     await openEdit();
-    await screen.findByLabelText('명칭');
+    await screen.findByLabelText('불량명');
 
     expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
   });
@@ -1246,7 +1244,7 @@ describe('DefectCauseCodeScreen — 상세 코드를 대분류로 되돌리기',
     );
 
     await openEdit();
-    await screen.findByLabelText('명칭');
+    await screen.findByLabelText('불량명');
     await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
     await user.click(screen.getByRole('option', { name: '없음 (대분류)' }));
     await user.click(screen.getByRole('button', { name: '저장' }));
@@ -1280,7 +1278,7 @@ describe('DefectCauseCodeScreen — 저장 충돌', () => {
     const { user } = renderScreen(conflictRoutes(cause), '?sel=1001');
 
     await openEdit();
-    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.type(await screen.findByLabelText('불량명'), '가');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(await screen.findByText(expected)).toBeInTheDocument();
@@ -1291,7 +1289,7 @@ describe('DefectCauseCodeScreen — 저장 충돌', () => {
     const { requests, user } = renderScreen(conflictRoutes('user'), '?sel=1001');
 
     await openEdit();
-    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.type(await screen.findByLabelText('불량명'), '가');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByRole('button', { name: '최신 불러오기' });
 
@@ -1301,7 +1299,7 @@ describe('DefectCauseCodeScreen — 저장 충돌', () => {
     await waitFor(() => {
       expect(requestsTo(requests, `${DEFECT_LIST_PATH}/1001`).length).toBeGreaterThan(before);
     });
-    expect(await screen.findByLabelText('명칭')).toHaveValue('외관');
+    expect(await screen.findByLabelText('불량명')).toHaveValue('외관');
   });
 });
 
@@ -1515,8 +1513,8 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
         TAB_ROUTE[definition.kind],
       );
 
-      await user.type(await screen.findByLabelText('코드'), 'X-01');
-      await user.type(screen.getByLabelText('명칭'), '새 코드');
+      await user.type(await screen.findByLabelText(definition.adapter.labels.code), 'X-01');
+      await user.type(screen.getByLabelText(definition.adapter.labels.name), '새 코드');
       await user.click(screen.getByRole('button', { name: '저장' }));
       await screen.findByText('등록했습니다');
 
@@ -1587,7 +1585,7 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
       );
 
       await openEdit();
-      await user.type(await screen.findByLabelText('명칭'), '가');
+      await user.type(await screen.findByLabelText(definition.adapter.labels.name), '가');
       await user.click(screen.getByRole('button', { name: '저장' }));
       await screen.findByText('저장했습니다');
 

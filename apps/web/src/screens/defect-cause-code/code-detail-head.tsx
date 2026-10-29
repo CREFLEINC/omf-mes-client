@@ -55,8 +55,9 @@ export const CodeDetailHead = ({
         </div>
         <div className="defect-cause-head-actions">
           {onAddChild !== undefined && (
+            /* 상세 추가는 이 카드의 주 동작 — 채운 빨강(사용자 지시 · #209). */
             <Button
-              variant="outlined"
+              variant="filled"
               leadingIcon={<Icon name="add" size={18} />}
               onClick={onAddChild}
             >

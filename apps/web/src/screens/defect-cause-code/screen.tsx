@@ -51,6 +51,7 @@ import { ProcessMappingPane } from './process-mapping-pane';
 import { resolveTab } from './tabs';
 import type {
   CodeDetailResult,
+  Editability,
   CodeFilters,
   CodeFormValues,
   CodeKind,
@@ -60,6 +61,16 @@ import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.defectCauseCode;
 const hubText = messages.common.inspectionHub;
+
+/**
+ * 코드 잠금 사유 — 다른 기록에서 쓰는 코드는 짧은 한 줄로(사용자 시안 · #209), 그 밖(ERP 수신 등)은 공용 문구 그대로.
+ * 잠김 판정의 주인은 `codeEditable` 이다(공용 문구가 정한다).
+ */
+const codeLockReasonOf = (editability: Editability): string | null => {
+  const message = codeLockMessage(editability);
+  if (message === null) return null;
+  return editability.reason === 'REFERENCED' ? t.actionReasons.codeLockedReferenced : message;
+};
 
 /** 목록 · 상세 배치는 「불량·판정 코드」 묶음의 탭끼리 함께 쓴다(#209). */
 const DEFECT_JUDGMENT_ORIENTATION_KEY = 'omf-mes:defect-judgment-hub:split-orientation';
@@ -174,7 +185,6 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const processLabelOf = useProcessLabels();
 
   const selected = selectedId === null ? null : (byId.get(selectedId) ?? null);
-  const canAddChild = selected !== null && isCategory(selected);
 
   const detail = useCodeDetail(adapter, selectedId);
   /*
@@ -475,7 +485,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       }
       codeLockReason={
         formMode === 'edit' && detail.data !== undefined
-          ? codeLockMessage(detail.data.editability)
+          ? codeLockReasonOf(detail.data.editability)
           : null
       }
       parentOptions={parentOptions}
@@ -564,7 +574,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
           processLabel={processLabelOf(shown.data.processId)}
           referenceCount={shown.data.editability.referenceCount ?? null}
           // 대분류를 고르면 상세 카드에서 상세를 추가한다 — 고른 대분류가 상위 초기값이 된다.
-          onAddChild={canAddChild ? () => openCreateForm({}) : undefined}
+          // 창이 열려 있는 동안에도 뒤 카드의 단추는 그대로 둔다 — 보이는 코드(`viewId`)로 판정한다(#209 버그 수정).
+          onAddChild={isCategory(code) ? () => openCreateForm({}) : undefined}
           onEdit={() => {
             write.reset();
             setLocalFieldErrors({});

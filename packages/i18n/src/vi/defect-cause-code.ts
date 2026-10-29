@@ -26,8 +26,8 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   },
   actionReasons: {
     addChildNeedsCategory: 'Thêm chi tiết chỉ dùng được sau khi chọn một cấp lớn.',
-    parentLockedByChildren:
-      'Cấp lớn bên trên không đổi được khi còn mã cấp dưới. Chuyển mã cấp dưới sang cấp lớn khác thì dùng được mục này.',
+    parentLockedByChildren: 'Có mã cấp dưới nên không đổi được cấp lớn.',
+    codeLockedReferenced: 'Mã đã được sử dụng nên không thể thay đổi.',
     deactivateNeedsActive: 'Ngừng sử dụng không làm được với mã đã ngừng dùng.',
   },
   loading: {
@@ -75,6 +75,8 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     parent: 'Cấp lớn bên trên',
     isActive: 'Sử dụng',
     kind: 'Phân loại',
+    defectCode: 'Mã lỗi',
+    defectName: 'Tên lỗi',
     disposition: 'Loại xử lý',
     process: 'Công đoạn',
     nameKo: 'Tên tiếng Hàn',
@@ -107,8 +109,9 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     createCategoryTitle: (tab: string): string => `Thêm cấp lớn ${tab}`,
     createChildTitle: (tab: string): string => `Thêm chi tiết ${tab}`,
     editTitle: (tab: string): string => `Sửa ${tab}`,
-    codePlaceholder: 'Nhập mã',
+    defectCodePlaceholder: 'Nhập mã lỗi',
     defectNamePlaceholder: 'Nhập tên lỗi',
+    causeCodePlaceholder: 'Nhập mã',
     causeNamePlaceholder: 'Nhập tên nguyên nhân',
   },
   values: {
