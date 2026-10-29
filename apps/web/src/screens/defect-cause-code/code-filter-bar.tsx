@@ -1,4 +1,4 @@
-import { Button, Checkbox, Chip, SearchInput } from '@crefle/web-ui';
+import { Button, Chip, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
@@ -141,22 +141,7 @@ export const CodeFilterBar = ({
           onChange={() => undefined}
           onClear={() => setDraft((prev) => ({ ...prev, processId: '' }))}
         />
-        {/* 해제 축이라 변경 즉시 적용한다. */}
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={appliedFilters.includeInactive}
-            onChange={(event) =>
-              // 끄면 「미사용만」도 함께 풀린다 — 미사용을 빼고 미사용만 볼 수는 없다.
-              onApplyFilters({
-                ...appliedFilters,
-                includeInactive: event.target.checked,
-                inactiveOnly: event.target.checked && appliedFilters.inactiveOnly,
-              })
-            }
-          >
-            {messages.common.includeInactive}
-          </Checkbox>
-        </div>
+        {/* 「미사용 포함」 확인칸은 두지 않는다 — 탭 줄의 사용 여부 칩(전체 · 사용 · 미사용)이 맡는다(사용자 지시 · #209). */}
         {/*
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
          * 조회는 이 줄의 주 동작(채운 빨강), 초기화는 테두리 단추 — 검사 기준 탭과 같다(#196).
@@ -177,7 +162,6 @@ export const CodeFilterBar = ({
       </div>
 
       {(appliedFilters.q !== '' ||
-        appliedFilters.includeInactive ||
         appliedFilters.dispositionTypeCode !== '' ||
         appliedFilters.processId !== '') && (
         <div className="filter-bar">
@@ -206,17 +190,6 @@ export const CodeFilterBar = ({
               onRemove={() => onApplyFilters({ ...appliedFilters, processId: '' })}
             >
               {t.filters.chipProcess(processLabel(appliedFilters.processId))}
-            </Chip>
-          )}
-          {appliedFilters.includeInactive && (
-            <Chip
-              variant="status"
-              removeLabel={t.filters.chipRemoveIncludeInactive}
-              onRemove={() =>
-                onApplyFilters({ ...appliedFilters, includeInactive: false, inactiveOnly: false })
-              }
-            >
-              {messages.common.includeInactive}
             </Chip>
           )}
         </div>

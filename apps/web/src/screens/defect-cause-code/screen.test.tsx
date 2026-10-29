@@ -235,10 +235,10 @@ describe('DefectCauseCodeScreen — 목록 조회', () => {
   });
 
   it('조건을 적용하면 요청 쿼리와 주소에 함께 실린다', async () => {
-    const { requests, user } = renderScreen([defectListRoute()]);
+    // 미사용 포함은 탭 줄 사용 여부 칩(「전체」)이 주소에 싣는다 — 조회 카드에는 확인칸이 없다(#209).
+    const { requests, user } = renderScreen([defectListRoute()], '?inactive=1');
     await screen.findByRole('button', { name: 'DF-10' });
 
-    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
     await pickCode(user, '불량코드 검색', 'DF-11');
     await user.click(screen.getByRole('button', { name: '조회' }));
 

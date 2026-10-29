@@ -56,20 +56,10 @@ describe('CodeFilterBar — 조회 조건', () => {
     });
   });
 
-  it('미사용 포함은 해제 축이라 바꾸는 즉시 적용된다', async () => {
-    const { props, user } = renderBar();
+  it('「미사용 포함」 확인칸을 두지 않는다 — 탭 줄 사용 여부 칩이 맡는다(#209)', () => {
+    renderBar();
 
-    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
-
-    expect(props.onApplyFilters).toHaveBeenCalledWith({
-      q: '',
-      includeInactive: true,
-      inactiveOnly: false,
-      dispositionTypeCode: '',
-      processId: '',
-      page: 1,
-      size: 20,
-    });
+    expect(screen.queryByRole('checkbox', { name: '미사용 포함' })).not.toBeInTheDocument();
   });
 
   it('초기화는 조건을 모두 비운다', async () => {
