@@ -794,7 +794,6 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-top: var(--space-4);
 }
 
-
 /* 발행 단추 자리의 안내(작성중 버전이 있을 때 · #196) — 짧은 한 문장이라 꺾지 않는다. */
 .inspection-standard-new-revision-notice {
   display: inline-flex;
@@ -905,10 +904,32 @@ h2:has(> .inspection-standard-dialog-title) {
   font: var(--type-title-lg);
 }
 
-/* 표는 기준 목록 표와 같은 모양(사용자 지시 · #196) — 칸은 가운데 정렬, 버전 글자도 가운데. */
-.inspection-standard-version-dialog .inspection-standard-plan-open {
-  width: 100%;
-  text-align: center;
+/* 버전 목록 — 표 머리 없이 버전 · 상태 두 칸 줄, 줄 사이 가는 선, 왼쪽 정렬(사용자 시안 · #208). */
+.inspection-standard-version-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inspection-standard-version-list > li {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  padding: var(--space-3) 0;
+  cursor: pointer;
+}
+
+.inspection-standard-version-list > li + li {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.inspection-standard-version-list > li > .inspection-standard-plan-open {
+  text-align: left;
+}
+
+.inspection-standard-version-list > li > :last-child {
+  justify-self: start;
 }
 
 .inspection-standard-dialog-close {
@@ -918,16 +939,14 @@ h2:has(> .inspection-standard-dialog-title) {
   gap: var(--space-3);
 }
 
-/* 정보 라벨 — 검사 조회·판정의 안내 줄(`.oqc-inspection-action-note[data-tone='info']`)과 같은 모양(사용자 지시 · #196). */
+/* 정보 라벨 — 버전 목록 창 바닥 줄의 안내(사용자 시안 · #208). */
 .inspection-standard-notice-label {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   margin: 0 auto 0 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--semantic-info-container);
-  color: var(--on-semantic-info-container);
+  /* 바탕 상자 없이 아이콘 + 글자만(사용자 시안 · #208). */
+  color: var(--on-surface);
   font: var(--type-body-md);
 }
 
@@ -1002,7 +1021,6 @@ h2:has(> .inspection-standard-dialog-title) {
   flex: 1 1 22em;
   min-width: min(22em, 100%);
 }
-
 
 .inspection-standard-plan-chips {
   align-items: center;

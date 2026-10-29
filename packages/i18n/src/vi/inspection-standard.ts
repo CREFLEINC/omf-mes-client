@@ -47,8 +47,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     newVersionBlockedByUnsaved:
       'Việc phát hành phiên bản mới không thực hiện được khi còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',
     /* 작성중 판은 기준당 하나만 둔다(#196). */
-    newVersionBlockedByDraft:
-      'Đang có phiên bản đang soạn. Hãy xác nhận hoặc hủy soạn.',
+    newVersionBlockedByDraft: (planVersion: number): string =>
+      `Phiên bản ${String(planVersion)} đang được soạn. Hãy xác nhận hoặc hủy soạn.`,
     confirmNeedsDraft:
       'Việc xác nhận chỉ thực hiện được với phiên bản đang soạn. Muốn thay đổi thì hãy phát hành phiên bản mới.',
     /* 계약이 항목 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
@@ -200,7 +200,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     samplingByRatio: 'Tỷ lệ (%)',
     samplingByQty: 'Số lượng',
     samplingBasis: 'Chọn cách lấy mẫu',
-    samplingBasisLocked: 'Kiểm tra toàn bộ không nhập mẫu. Đổi phương thức sang lấy mẫu thì mới chọn được.',
+    samplingBasisLocked:
+      'Kiểm tra toàn bộ không nhập mẫu. Đổi phương thức sang lấy mẫu thì mới chọn được.',
     samplingQtyValue: (qty: string): string => `${qty} cái`,
     title: 'Phiên bản tiêu chuẩn kiểm tra',
     sampling: 'Lấy mẫu',
@@ -241,12 +242,12 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     changed: 'Thay đổi',
     same: 'Giống',
     hideSame: 'Ẩn hạng mục giống nhau',
-    sameVersion: 'Hãy chọn hai phiên bản khác nhau.',
     noItemDiff: 'Không có hạng mục kiểm tra nào thay đổi.',
     noItems: 'Cả hai phiên bản đều không có hạng mục kiểm tra.',
     yes: 'Có',
     no: 'Không',
-    change: (label: string, before: string, after: string): string => `${label}: ${before} → ${after}`,
+    change: (label: string, before: string, after: string): string =>
+      `${label}: ${before} → ${after}`,
     loading: 'Đang tải phiên bản để so sánh',
   },
   history: {
@@ -319,7 +320,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     versionNoneTitle: 'Chưa đăng ký phiên bản',
     versionNoneDescription: 'Hãy tạo phiên bản đầu tiên bằng «Đăng ký phiên bản».',
     versionNotSelected: 'Hãy chọn phiên bản',
-    versionNotSelectedDescription: 'Thông tin tiêu chuẩn kiểm tra của phiên bản đã chọn sẽ hiển thị.',
+    versionNotSelectedDescription:
+      'Thông tin tiêu chuẩn kiểm tra của phiên bản đã chọn sẽ hiển thị.',
     itemNoneTitle: 'Chưa đăng ký hạng mục kiểm tra',
     itemNoneDescription: 'Hãy đăng ký hạng mục kiểm tra.',
   },

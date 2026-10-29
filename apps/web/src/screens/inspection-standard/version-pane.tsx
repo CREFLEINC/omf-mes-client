@@ -1,4 +1,4 @@
-import { Button, Chip, type Column, EmptyState, Icon, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, Chip, EmptyState, Icon, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -142,39 +142,6 @@ export const VersionPane = ({
   banner,
   hideActions = false,
 }: VersionPaneProps) => {
-  const columns: Column<InspectionPlanVersion>[] = [
-    {
-      key: 'planVersion',
-      align: 'center',
-      header: t.fields.planVersion,
-      render: (row) => (
-        /* 링크 모양 없이 본문 글자 — 줄 아무 곳이나 눌러 고른다(기준 목록과 같다 · omf-all-around#196). */
-        <button
-          type="button"
-          className="inspection-standard-plan-open"
-          aria-current={row.inspectionPlanVersionId === selectedVersionId ? 'true' : undefined}
-          onClick={() => onSelect(row.inspectionPlanVersionId)}
-        >
-          {t.values.version(row.planVersion)}
-        </button>
-      ),
-    },
-    {
-      key: 'statusCode',
-      align: 'center',
-      header: t.fields.status,
-      render: (row) => {
-        const status = resolveVersionStatus(row.statusCode);
-
-        return (
-          <Chip variant="status" status={status.tone}>
-            {status.label}
-          </Chip>
-        );
-      },
-    },
-  ];
-
   const hasLoadError = loadError !== null && loadError !== undefined;
 
   /** 선택 전 → 조회 실패 → 로딩 → 표 순서로 하나만 낸다. */
@@ -193,34 +160,55 @@ export const VersionPane = ({
       );
     }
 
+    if (versions.length === 0) {
+      return (
+        <EmptyState
+          size="sm"
+          live
+          title={t.empty.versionNoneTitle}
+          description={t.empty.versionNoneDescription}
+        />
+      );
+    }
+
     return (
-      /* 줄 아무 곳이나 눌러도 고른다 — 눌린 줄의 버전 단추로 넘긴다. 표 모양 · 고른 줄 표시는 기준 목록과 같다(#196). */
-      <div
-        className="inspection-queue-table inspection-standard-plan-rows"
+      /*
+       * 표 머리 없이 줄만 놓는다 — 버전 · 상태 두 칸, 줄 사이 가는 선(사용자 시안 · #208).
+       * 줄 아무 곳이나 눌러도 고른다 — 눌린 줄의 버전 단추로 넘긴다.
+       */
+      <ul
+        className="inspection-standard-version-list"
         onClick={(event) => {
           const target = event.target as Element;
           if (target.closest('button, a, input, select, textarea') !== null) return;
           target
-            .closest('tbody tr')
+            .closest('li')
             ?.querySelector<HTMLButtonElement>('.inspection-standard-plan-open')
             ?.click();
         }}
       >
-        <Table
-          density="compact"
-          columns={columns}
-          rows={versions}
-          getRowId={(row) => String(row.inspectionPlanVersionId)}
-          empty={
-            <EmptyState
-              size="sm"
-              live
-              title={t.empty.versionNoneTitle}
-              description={t.empty.versionNoneDescription}
-            />
-          }
-        />
-      </div>
+        {versions.map((row) => {
+          const status = resolveVersionStatus(row.statusCode);
+
+          return (
+            <li key={row.inspectionPlanVersionId}>
+              <button
+                type="button"
+                className="inspection-standard-plan-open"
+                aria-current={
+                  row.inspectionPlanVersionId === selectedVersionId ? 'true' : undefined
+                }
+                onClick={() => onSelect(row.inspectionPlanVersionId)}
+              >
+                {t.values.version(row.planVersion)}
+              </button>
+              <Chip variant="status" status={status.tone}>
+                {status.label}
+              </Chip>
+            </li>
+          );
+        })}
+      </ul>
     );
   };
 

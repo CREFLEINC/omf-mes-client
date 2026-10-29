@@ -1884,7 +1884,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
       ).not.toBeInTheDocument();
     });
     expect(
-      screen.getAllByText('작성중인 버전이 있습니다. 확정하거나 작성을 취소하세요.').length,
+      screen.getAllByText('버전 2가 작성 중입니다. 확정하거나 작성을 취소해 주세요.').length,
     ).toBeGreaterThan(0);
     expect(requestsTo(requests, `${VERSIONS_PATH}/4001:new-revision`)).toHaveLength(0);
   });
@@ -2472,6 +2472,24 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(within(dialog).getByText('2026-08-01')).toBeInTheDocument();
     /* 검사 항목은 같다 — 같은 것은 숨겨 「바뀐 검사 항목이 없습니다」 */
     expect(within(dialog).getByText('바뀐 검사 항목이 없습니다.')).toBeInTheDocument();
+  });
+
+  /* 같은 버전끼리는 견줄 것이 없다 — 반대쪽에서 고른 버전은 선택지에 없다. */
+  it('버전 비교에서 반대쪽에 고른 버전은 고를 수 없다', async () => {
+    const { user } = renderSelectedVersion([
+      versionDetailRoute(inspectionPlanVersionFixtures[1]),
+      itemListRoute(4001),
+    ]);
+
+    await awaitVersionForm();
+    await user.click(screen.getByRole('button', { name: '버전 비교' }));
+    const dialog = await screen.findByRole('dialog', { name: '버전 비교' });
+
+    await user.click(within(dialog).getByRole('combobox', { name: '기준 버전' }));
+    const options = screen.getAllByRole('option').map((option) => option.textContent);
+
+    expect(options.some((label) => label?.includes('버전 1'))).toBe(true);
+    expect(options.some((label) => label?.includes('버전 2'))).toBe(false);
   });
 
   /* 변경 이력은 서버가 버전 쓰기마다 남긴 감사 이력을 읽는다(#196). 처리자 이름은 사용자 상세로 푼다. */

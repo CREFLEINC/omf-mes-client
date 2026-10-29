@@ -56,8 +56,9 @@ export const inspectionStandard = {
     newVersionBlockedByUnsaved:
       '신규 버전 발행은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
     /* 작성중 판은 기준당 하나만 둔다 — 둘이면 어느 쪽을 확정할지 엇갈린다(사용자 지시 · #196). */
-    newVersionBlockedByDraft:
-      '작성중인 버전이 있습니다. 확정하거나 작성을 취소하세요.',
+    /* 어느 버전이 작성 중인지 밝힌다(사용자 시안 · #208). 조사는 숫자 끝자리 읽기를 따른다(2 · 4 · 5 · 9 → 가). */
+    newVersionBlockedByDraft: (planVersion: number): string =>
+      `버전 ${String(planVersion)}${[2, 4, 5, 9].includes(planVersion % 10) ? '가' : '이'} 작성 중입니다. 확정하거나 작성을 취소해 주세요.`,
     confirmNeedsDraft: '확정은 작성중 버전에만 할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
     /* 계약이 항목 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
     confirmNeedsItems: '확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.',
@@ -217,7 +218,8 @@ export const inspectionStandard = {
     samplingByRatio: '비율(%)',
     samplingByQty: '수량',
     samplingBasis: '샘플 기준 선택',
-    samplingBasisLocked: '전수검사는 샘플을 입력하지 않습니다. 검사 방식을 샘플링으로 바꾸면 고를 수 있습니다.',
+    samplingBasisLocked:
+      '전수검사는 샘플을 입력하지 않습니다. 검사 방식을 샘플링으로 바꾸면 고를 수 있습니다.',
     /* 요약 줄의 샘플 개수 표기(#201 · #196). */
     samplingQtyValue: (qty: string): string => `${qty}개`,
     title: '검사 기준 버전',
@@ -261,12 +263,12 @@ export const inspectionStandard = {
     changed: '변경',
     same: '같음',
     hideSame: '동일 항목 숨기기',
-    sameVersion: '서로 다른 버전을 선택하세요.',
     noItemDiff: '바뀐 검사 항목이 없습니다.',
     noItems: '두 버전 모두 검사 항목이 없습니다.',
     yes: '예',
     no: '아니요',
-    change: (label: string, before: string, after: string): string => `${label}: ${before} → ${after}`,
+    change: (label: string, before: string, after: string): string =>
+      `${label}: ${before} → ${after}`,
     loading: '비교할 버전을 불러오는 중',
   },
   /* 버전 변경 이력(#196) — 서버가 버전 쓰기마다 남긴 감사 이력을 읽는다. 최근 1년만 조회한다(조회 경로가 기간을 요구한다). */
