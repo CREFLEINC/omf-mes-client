@@ -20,6 +20,7 @@ describe('readFilters', () => {
       includeInactive: false,
       inactiveOnly: false,
       unapprovedOnly: false,
+      versionStatus: '',
     });
   });
 
@@ -31,6 +32,7 @@ describe('readFilters', () => {
       includeInactive: true,
       inactiveOnly: false,
       unapprovedOnly: false,
+      versionStatus: '',
     });
   });
 
@@ -76,6 +78,7 @@ describe('toSearchParams', () => {
           includeInactive: false,
           inactiveOnly: false,
           unapprovedOnly: false,
+          versionStatus: '',
         },
         1,
       ).toString(),
@@ -91,6 +94,7 @@ describe('toSearchParams', () => {
         includeInactive: true,
         inactiveOnly: false,
         unapprovedOnly: false,
+        versionStatus: '',
       },
       2,
     );
@@ -111,6 +115,7 @@ describe('toSearchParams', () => {
         includeInactive: false,
         inactiveOnly: false,
         unapprovedOnly: false,
+        versionStatus: '',
       },
       1,
     );
@@ -132,6 +137,7 @@ describe('toSearchParams', () => {
         includeInactive: false,
         inactiveOnly: false,
         unapprovedOnly: false,
+        versionStatus: '',
       },
       3,
     );
@@ -152,6 +158,7 @@ describe('toListQuery', () => {
           includeInactive: false,
           inactiveOnly: false,
           unapprovedOnly: false,
+          versionStatus: '',
         },
         1,
       ),
@@ -168,6 +175,7 @@ describe('toListQuery', () => {
           includeInactive: false,
           inactiveOnly: false,
           unapprovedOnly: false,
+          versionStatus: '',
         },
         1,
       ),
@@ -184,6 +192,7 @@ describe('toListQuery', () => {
         includeInactive: false,
         inactiveOnly: false,
         unapprovedOnly: false,
+        versionStatus: '',
       },
       1,
     );
@@ -202,6 +211,7 @@ describe('toListQuery', () => {
           includeInactive: true,
           inactiveOnly: false,
           unapprovedOnly: false,
+          versionStatus: '',
         },
         1,
       ).includeInactive,
@@ -219,6 +229,7 @@ describe('toListQuery', () => {
             includeInactive: false,
             inactiveOnly: false,
             unapprovedOnly: false,
+            versionStatus: '',
           },
           1,
         ),
@@ -232,6 +243,7 @@ describe('toListQuery', () => {
           includeInactive: false,
           inactiveOnly: false,
           unapprovedOnly: false,
+          versionStatus: '',
         },
         4,
       ).page,
@@ -248,6 +260,7 @@ describe('toListQuery', () => {
           includeInactive: false,
           inactiveOnly: false,
           unapprovedOnly: false,
+          versionStatus: '',
         },
         1,
       ).inspectionTypeCode,
@@ -265,6 +278,7 @@ describe('toFilterChips', () => {
         includeInactive: false,
         inactiveOnly: false,
         unapprovedOnly: false,
+        versionStatus: '',
       }),
     ).toEqual([]);
   });
@@ -278,6 +292,7 @@ describe('toFilterChips', () => {
       includeInactive: true,
       inactiveOnly: false,
       unapprovedOnly: true,
+      versionStatus: '',
     });
 
     expect(chips.map((chip) => chip.key)).toEqual(['q', 'inspectionTypeCode', 'unapprovedOnly']);
@@ -295,6 +310,7 @@ describe('toFilterChips', () => {
       includeInactive: false,
       inactiveOnly: false,
       unapprovedOnly: true,
+      versionStatus: '',
     });
     const labels = chips.map((chip) => chip.removeLabel);
 
@@ -312,6 +328,7 @@ describe('hasAnyFilter', () => {
         includeInactive: false,
         inactiveOnly: false,
         unapprovedOnly: false,
+        versionStatus: '',
       }),
     ).toBe(false);
   });
@@ -325,6 +342,7 @@ describe('hasAnyFilter', () => {
         includeInactive: true,
         inactiveOnly: false,
         unapprovedOnly: false,
+        versionStatus: '',
       }),
     ).toBe(true);
   });

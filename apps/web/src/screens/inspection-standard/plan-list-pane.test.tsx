@@ -119,6 +119,7 @@ describe('PlanListPane — 0건 안내', () => {
         includeInactive: false,
         inactiveOnly: false,
         unapprovedOnly: false,
+        versionStatus: '',
       },
       pageView: toPageView({ page: 1, size: 50, total: 0 }, 0),
     });

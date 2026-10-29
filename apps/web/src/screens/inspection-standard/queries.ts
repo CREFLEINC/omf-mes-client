@@ -6,6 +6,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
 import { runRequest, toApiError } from '../../patterns/request';
 import { DEFAULT_PAGE_SIZE, type PlanListQuery, toListQuery } from './filters';
+import { resolveVersionStatus, type VersionScreenStatus } from './plan-version-status';
 import type { VersionAuditEvent } from './version-history';
 import type {
   InspectionItemSpec,
@@ -58,7 +59,7 @@ export const useInspectionPlanList = (
   return useQuery({
     queryKey: planKeys.list(filters, page, size),
     queryFn: async () => {
-      if (!filters.inactiveOnly && !filters.unapprovedOnly) {
+      if (!needsClientFilter(filters)) {
         return runRequest(() =>
           client.GET('/quality/inspection-plans', {
             params: { query: toListQuery(filters, page, size) },
@@ -67,18 +68,10 @@ export const useInspectionPlanList = (
       }
 
       /*
-       * 「미사용만」 · 「미승인만」은 서버 조건이 없다(#208) — 나머지 조건으로 전부 받아 화면이 거르고 쪽을 나눈다.
+       * 「미사용만」 · 「미승인만」 · 상태는 서버 조건이 없다(#208) — 나머지 조건으로 전부 받아 화면이 거르고 쪽을 나눈다.
        * 검사 기준은 품목 · 유형별이라 수가 많지 않다.
        */
-      const all = await fetchAllPlans(
-        (query) => runRequest(() => client.GET('/quality/inspection-plans', { params: { query } })),
-        toListQuery(filters, 1, ALL_PAGE_SIZE),
-      );
-      const kept = all.filter(
-        (plan) =>
-          (!filters.inactiveOnly || !plan.isActive) &&
-          (!filters.unapprovedOnly || plan.approvedAt === null || plan.approvedAt === undefined),
-      );
+      const kept = await fetchFilteredPlans(client, filters);
 
       return {
         items: kept.slice((page - 1) * size, page * size),
@@ -86,6 +79,46 @@ export const useInspectionPlanList = (
       };
     },
   });
+};
+
+/** 서버 조건으로는 거를 수 없는 조건이 걸렸는가 — 그러면 전부 받아 화면이 거른다. */
+const needsClientFilter = (filters: PlanFilters): boolean =>
+  filters.inactiveOnly || filters.unapprovedOnly || filters.versionStatus !== '';
+
+type ApiClient = ReturnType<typeof useApiClient>['client'];
+
+/** 기준의 가장 높은 버전의 화면 상태. 버전이 없으면 null. */
+const latestVersionStatus = async (
+  client: ApiClient,
+  inspectionPlanId: number,
+): Promise<VersionScreenStatus | null> => {
+  const data = await runRequest(() =>
+    client.GET('/quality/inspection-plan-versions', { params: { query: { inspectionPlanId } } }),
+  );
+  const latest = [...data.items].sort((left, right) => right.planVersion - left.planVersion)[0];
+  return latest === undefined ? null : resolveVersionStatus(latest.statusCode).status;
+};
+
+/** 서버 조건으로 전부 받아 미사용만 · 미승인만 · 상태를 화면이 거른다. */
+const fetchFilteredPlans = async (
+  client: ApiClient,
+  filters: PlanFilters,
+): Promise<InspectionPlanListResponse['items']> => {
+  const all = await fetchAllPlans(
+    (query) => runRequest(() => client.GET('/quality/inspection-plans', { params: { query } })),
+    toListQuery(filters, 1, ALL_PAGE_SIZE),
+  );
+  const kept = all.filter(
+    (plan) =>
+      (!filters.inactiveOnly || !plan.isActive) &&
+      (!filters.unapprovedOnly || plan.approvedAt === null || plan.approvedAt === undefined),
+  );
+  if (filters.versionStatus === '') return kept;
+
+  const statuses = await Promise.all(
+    kept.map((plan) => latestVersionStatus(client, plan.inspectionPlanId)),
+  );
+  return kept.filter((_, index) => statuses[index] === filters.versionStatus);
 };
 
 /** 사용 여부 칩의 건수(#208). */
@@ -114,7 +147,7 @@ export const usePlanUsageCounts = (
       const list = (query: PlanListQuery & { size?: number }) =>
         runRequest(() => client.GET('/quality/inspection-plans', { params: { query } }));
 
-      if (!base.unapprovedOnly) {
+      if (!needsClientFilter(base)) {
         const [all, active] = await Promise.all([
           list({ ...toListQuery({ ...base, includeInactive: true }, 1), size: 1 }),
           list({ ...toListQuery(base, 1), size: 1 }),
@@ -126,9 +159,7 @@ export const usePlanUsageCounts = (
         };
       }
 
-      const plans = (
-        await fetchAllPlans(list, toListQuery({ ...base, includeInactive: true }, 1, ALL_PAGE_SIZE))
-      ).filter((plan) => plan.approvedAt === null || plan.approvedAt === undefined);
+      const plans = await fetchFilteredPlans(client, { ...base, includeInactive: true });
       const active = plans.filter((plan) => plan.isActive).length;
       return { all: plans.length, active, inactive: plans.length - active };
     },

@@ -150,6 +150,20 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     expect(planRequests(requests)[0]?.url.searchParams.has('includeInactive')).toBe(false);
   });
 
+  /* 상태 선택(#208) — 가장 높은 버전의 상태로 거른다. 픽스처의 가장 높은 버전(2)은 작성중이다. */
+  it('상태를 확정으로 거르면 가장 높은 버전이 작성중인 기준은 빠진다', async () => {
+    renderScreen([planListRoute(), versionListRoute(), ...lookupRoutes()], '?vstatus=confirmed');
+
+    expect(await screen.findByText('조건에 맞는 검사기준이 없습니다')).toBeInTheDocument();
+    expect(screen.getByText('상태: 확정')).toBeInTheDocument();
+  });
+
+  it('상태를 작성중으로 거르면 기준이 남는다', async () => {
+    renderScreen([planListRoute(), versionListRoute(), ...lookupRoutes()], '?vstatus=draft');
+
+    expect(await screen.findByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
+  });
+
   /* 「미승인」은 서버 조건이 없어 화면이 거른다(#208) — 승인된 SYN-PLAN-03 은 빠진다. */
   it('미승인을 켜면 승인되지 않은 기준만 남는다', async () => {
     const { user } = renderScreen([planListRoute()], '?inactive=1');

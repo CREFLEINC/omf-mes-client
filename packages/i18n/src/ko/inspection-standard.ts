@@ -167,6 +167,11 @@ export const inspectionStandard = {
     keyUnknown: '기준코드 없음',
   },
   filters: {
+    versionStatus: '상태 선택',
+    versionStatusAll: '전체 상태',
+    versionStatuses: { draft: '작성중', confirmed: '확정', obsolete: '폐기' },
+    chipVersionStatus: (label: string): string => `상태: ${label}`,
+    chipRemoveVersionStatus: '상태 조건 제거',
     searchLabel: '검사 기준 검색',
     searchPlaceholder: '기준 코드 또는 기준명을 입력하세요',
     searchClear: '검사 기준 검색 지우기',

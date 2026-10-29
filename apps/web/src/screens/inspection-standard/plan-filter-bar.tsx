@@ -29,6 +29,7 @@ export interface PlanFilterBarProps {
  */
 export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanFilterBarProps) => {
   const typeSelectId = useId();
+  const statusSelectId = useId();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const openPicker = (): void => setIsPickerOpen(true);
   const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
@@ -46,6 +47,7 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
     includeInactive: appliedIncludeInactive,
     inactiveOnly: appliedInactiveOnly,
     unapprovedOnly: appliedUnapprovedOnly,
+    versionStatus: appliedVersionStatus,
   } = appliedFilters;
 
   useEffect(() => {
@@ -56,6 +58,7 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
       includeInactive: appliedIncludeInactive,
       inactiveOnly: appliedInactiveOnly,
       unapprovedOnly: appliedUnapprovedOnly,
+      versionStatus: appliedVersionStatus,
     });
   }, [
     appliedQ,
@@ -64,6 +67,7 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
     appliedIncludeInactive,
     appliedInactiveOnly,
     appliedUnapprovedOnly,
+    appliedVersionStatus,
   ]);
 
   /* 품목은 번호로 들고 이름은 품목 상세로 푼다 — 주소로 들어와 창을 거치지 않은 값도 이름이 선다. */
@@ -87,6 +91,28 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
             options={[{ value: '', label: t.filters.typeAll }, ...INSPECTION_TYPE_OPTIONS]}
             value={draft.inspectionTypeCode}
             onChange={(value) => setDraft((prev) => ({ ...prev, inspectionTypeCode: value }))}
+          />
+        </div>
+
+        {/* 상태 — 가장 높은 버전의 상태로 거른다(사용자 지시 · #208). 조회를 눌러야 걸린다. */}
+        <div className="field-cell inspection-standard-status-filter">
+          <FieldLabel htmlFor={statusSelectId} label={t.filters.versionStatus} />
+          <Select
+            id={statusSelectId}
+            options={[
+              { value: '', label: t.filters.versionStatusAll },
+              ...(['draft', 'confirmed', 'obsolete'] as const).map((status) => ({
+                value: status,
+                label: t.filters.versionStatuses[status],
+              })),
+            ]}
+            value={draft.versionStatus}
+            onChange={(value) =>
+              setDraft((prev) => ({
+                ...prev,
+                versionStatus: value as PlanFilters['versionStatus'],
+              }))
+            }
           />
         </div>
 

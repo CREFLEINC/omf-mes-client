@@ -21,6 +21,7 @@ const URL_KEYS = {
   /* 사용 여부 칩 「미사용」 — `inactive=1` 과 함께 `usage=off`(#208). */
   inactiveOnly: 'usage',
   unapprovedOnly: 'unapproved',
+  versionStatus: 'vstatus',
   page: 'page',
   size: 'size',
 } as const;
@@ -45,7 +46,14 @@ export const readFilters = (params: URLSearchParams): PlanFilters => ({
   includeInactive: params.get(URL_KEYS.includeInactive) === ON,
   inactiveOnly: params.get(URL_KEYS.inactiveOnly) === OFF,
   unapprovedOnly: params.get(URL_KEYS.unapprovedOnly) === ON,
+  versionStatus: readVersionStatus(params.get(URL_KEYS.versionStatus)),
 });
+
+const VERSION_STATUSES = ['draft', 'confirmed', 'obsolete'] as const;
+
+/** 주소의 상태 값은 아는 값만 받는다 — 손으로 고친 이상한 값은 전체로 본다. */
+const readVersionStatus = (raw: string | null): PlanFilters['versionStatus'] =>
+  VERSION_STATUSES.find((status) => status === raw) ?? '';
 
 /** 주소가 가리키는 쪽. 이상한 값은 첫 쪽으로 본다 — 주소는 손으로 고쳐지는 자리다. */
 export const readPage = (params: URLSearchParams): number => {
@@ -82,6 +90,7 @@ export const toSearchParams = (
   if (filters.includeInactive || filters.inactiveOnly) next.set(URL_KEYS.includeInactive, ON);
   if (filters.inactiveOnly) next.set(URL_KEYS.inactiveOnly, OFF);
   if (filters.unapprovedOnly) next.set(URL_KEYS.unapprovedOnly, ON);
+  if (filters.versionStatus !== '') next.set(URL_KEYS.versionStatus, filters.versionStatus);
   if (page > 1) next.set(URL_KEYS.page, String(page));
   if (size !== DEFAULT_PAGE_SIZE) next.set(URL_KEYS.size, String(size));
 
@@ -161,6 +170,14 @@ export const toFilterChips = (filters: PlanFilters, itemLabel = ''): FilterChip[
     });
   }
 
+  if (filters.versionStatus !== '') {
+    chips.push({
+      key: 'versionStatus',
+      label: t.filters.chipVersionStatus(t.filters.versionStatuses[filters.versionStatus]),
+      removeLabel: t.filters.chipRemoveVersionStatus,
+    });
+  }
+
   return chips;
 };
 
@@ -170,7 +187,8 @@ export const hasAnyFilter = (filters: PlanFilters): boolean =>
   filters.itemId !== '' ||
   filters.includeInactive ||
   filters.inactiveOnly ||
-  filters.unapprovedOnly;
+  filters.unapprovedOnly ||
+  filters.versionStatus !== '';
 
 /**
  * 조건 하나만 푼다. 칩의 제거 버튼이 쓴다.

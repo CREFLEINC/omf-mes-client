@@ -157,6 +157,11 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     keyUnknown: 'Không có mã tiêu chuẩn',
   },
   filters: {
+    versionStatus: 'Chọn trạng thái',
+    versionStatusAll: 'Tất cả trạng thái',
+    versionStatuses: { draft: 'Đang soạn', confirmed: 'Đã xác nhận', obsolete: 'Đã hủy bỏ' },
+    chipVersionStatus: (label: string): string => `Trạng thái: ${label}`,
+    chipRemoveVersionStatus: 'Bỏ điều kiện trạng thái',
     searchLabel: 'Tìm tiêu chuẩn kiểm tra',
     searchPlaceholder: 'Nhập mã tiêu chuẩn hoặc tên tiêu chuẩn',
     searchClear: 'Xóa tìm kiếm tiêu chuẩn kiểm tra',

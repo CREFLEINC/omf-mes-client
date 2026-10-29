@@ -27,6 +27,7 @@ describe('PlanFilterBar — 조건', () => {
       includeInactive: false,
       inactiveOnly: false,
       unapprovedOnly: false,
+      versionStatus: '',
     });
 
     await user.click(screen.getByRole('combobox', { name: '검사 유형 선택' }));
@@ -42,6 +43,7 @@ describe('PlanFilterBar — 조건', () => {
       includeInactive: false,
       inactiveOnly: false,
       unapprovedOnly: false,
+      versionStatus: '',
     });
   });
 
@@ -69,6 +71,7 @@ describe('PlanFilterBar — 조건', () => {
       includeInactive: false,
       inactiveOnly: false,
       unapprovedOnly: true,
+      versionStatus: '',
     });
   });
 
@@ -93,6 +96,7 @@ describe('PlanFilterBar — 조건', () => {
       includeInactive: false,
       inactiveOnly: false,
       unapprovedOnly: true,
+      versionStatus: '',
     });
 
     expect(screen.getByText('검색어: SYN')).toBeInTheDocument();
@@ -110,6 +114,7 @@ describe('PlanFilterBar — 조건', () => {
       includeInactive: true,
       inactiveOnly: false,
       unapprovedOnly: false,
+      versionStatus: '',
     });
 
     await user.click(screen.getByRole('button', { name: '검사 유형 조건 제거' }));
@@ -121,6 +126,7 @@ describe('PlanFilterBar — 조건', () => {
       includeInactive: true,
       inactiveOnly: false,
       unapprovedOnly: false,
+      versionStatus: '',
     });
   });
 });
