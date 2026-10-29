@@ -1311,6 +1311,15 @@ h2:has(> .inspection-standard-dialog-title) {
   max-height: var(--stacked-list-height, min(28rem, 50dvh));
 }
 
+/*
+ * 검사 수준 관리 목록 카드는 표 위에 제목 · 검색 · 안내 세 줄을 더 담는다 — 세 탭이 같이 쓰는 목록 높이를 그대로 쓰면
+ * 표 자리가 한 줄로 줄어든다(#208). 그 세 줄 만큼 더 준다.
+ */
+.po-board-split.inspection-split.is-stacked > .inspection-level-list-pane:first-child {
+  height: calc(var(--stacked-list-height, 20rem) + 9rem);
+  max-height: calc(var(--stacked-list-height, min(28rem, 50dvh)) + 9rem);
+}
+
 .po-board-split.inspection-split.is-stacked > .quality-standard-detail {
   overflow: visible;
 }
