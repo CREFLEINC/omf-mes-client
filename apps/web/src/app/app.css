@@ -332,13 +332,14 @@ main > * + * {
  * 창이 좁으면 그만큼 줄어든다(사용자 지시 2026-10-27 · #196).
  */
 .inspection-standard-search > .filter-bar:first-child > :nth-child(3) {
-  flex: 0 1 19.5em;
+  /* 상태 칸이 들어와 한 줄에 서도록 조금 줄였다 — 흐린 안내 끝이 조금 잘릴 수 있다(#208). */
+  flex: 0 1 16.5em;
   min-width: 12rem;
 }
 
 /* 상태 칸 — 「작성중」 같은 짧은 값이라 좁게(#208). */
 .inspection-standard-status-filter {
-  flex: 0 0 8rem;
+  flex: 0 0 7rem;
 }
 
 .inspection-standard-status-filter > :not(label) {
@@ -347,7 +348,7 @@ main > * + * {
 
 /* 품목 칸은 고른 품목 이름 길이로 늘지 않는다 — 늘면 조회 · 초기화가 아랫줄로 밀린다(#208). 전체 이름은 title 로 본다. */
 .inspection-standard-search > .filter-bar:first-child > :nth-child(4) {
-  flex: 0 1 14em;
+  flex: 0 1 12em;
   min-width: 10rem;
 }
 
