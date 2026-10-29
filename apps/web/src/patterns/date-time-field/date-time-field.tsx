@@ -14,8 +14,6 @@ export interface DateTimeFieldProps {
   size?: 'sm' | 'md';
   disabled?: boolean;
   invalid?: boolean;
-  /** 필수 칸 — 라벨 뒤 빨간 「*」(다른 필수 칸과 같은 표시). */
-  required?: boolean;
   'aria-describedby'?: string;
   onChange: (value: string) => void;
 }
@@ -31,7 +29,6 @@ export const DateTimeField = ({
   size = 'md',
   disabled = false,
   invalid = false,
-  required = false,
   'aria-describedby': describedBy,
   onChange,
 }: DateTimeFieldProps) => {
@@ -44,11 +41,6 @@ export const DateTimeField = ({
     <div className="field-cell date-time-field">
       <label className="field-label" htmlFor={id}>
         {label}
-        {required && (
-          <span className="required-mark" aria-hidden="true">
-            {' *'}
-          </span>
-        )}
       </label>
       <div className="date-time-field-controls">
         <DatePicker

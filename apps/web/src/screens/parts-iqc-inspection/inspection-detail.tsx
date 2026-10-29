@@ -3,6 +3,7 @@ import {
   Button,
   Checkbox,
   Chip,
+  DatePicker,
   Dialog,
   IconButton,
   Icon,
@@ -13,14 +14,14 @@ import {
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
-import { DateTimeField } from '../../patterns/date-time-field';
 import { FieldLabel } from '../iqc-inspection/field-label';
 import { formatPlantDateTime, plantNowLocal, PLANT_UTC_OFFSET } from '../../patterns/plant-time';
 import { useSession } from '../../patterns/session';
+import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 import {
   useDefectCodes,
   useInspectionItemSpecs,
@@ -72,6 +73,15 @@ type DefectCode = {
 };
 
 const t = messages.partsIqcInspection;
+
+const TIME_LABELS: TimeFieldLabels = {
+  field: t.lot.inspectedTime,
+  hourList: t.lot.inspectedHour,
+  minuteList: t.lot.inspectedMinute,
+  hourHead: t.lot.hourHead,
+  minuteHead: t.lot.minuteHead,
+  placeholder: t.lot.timePlaceholder,
+};
 
 const toOffset = (local: string): string => `${local}:00${PLANT_UTC_OFFSET}`;
 /** 비고 글자 수 — 사용자 시안(0/200). 서버 칸에는 길이 제한이 없다. */
@@ -277,6 +287,11 @@ const InspectionForm = (props: FormProps) => {
   const [history, dispatch] = useReducer(historyReducer, initial, startHistory);
   const form = history.present;
   const change = (next: PartsIqcForm) => dispatch({ type: 'change', next });
+  const inspectedAtId = useId();
+  const [inspectedDate = '', inspectedTimeRaw = ''] = form.inspectedAt.split('T');
+  const inspectedTime = inspectedTimeRaw.slice(0, 5);
+  const changeInspectedAt = (date: string, time: string) =>
+    change({ ...form, inspectedAt: date === '' ? '' : `${date}T${time === '' ? '00:00' : time}` });
   const [chosen, setChosen] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -491,12 +506,30 @@ const InspectionForm = (props: FormProps) => {
             </div>
           </dl>
           <div className="parts-iqc-lot-inspected">
-            <DateTimeField
-              required
-              label={t.lot.inspectedAt}
-              value={form.inspectedAt}
-              onChange={(value) => change({ ...form, inspectedAt: value })}
-            />
+            {/* 시각은 입고 화면과 같은 시·분 고르기(공용 패턴) — 글자 입력 대신 DS 모양으로(사용자 지시 2026-10-29). */}
+            <div className="field-cell date-time-field">
+              <label className="field-label" htmlFor={inspectedAtId}>
+                {t.lot.inspectedAt}
+                <span className="required-mark" aria-hidden="true">
+                  {' *'}
+                </span>
+              </label>
+              <div className="date-time-field-controls">
+                <DatePicker
+                  id={inspectedAtId}
+                  value={inspectedDate === '' ? null : inspectedDate}
+                  onChange={(next) => changeInspectedAt(next, inspectedTime)}
+                />
+                <TimeField
+                  labels={TIME_LABELS}
+                  hour={inspectedTime.slice(0, 2)}
+                  minute={inspectedTime.slice(3, 5)}
+                  disabled={false}
+                  invalid={false}
+                  onChange={(hour, minute) => changeInspectedAt(inspectedDate, `${hour}:${minute}`)}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -41,6 +41,12 @@ export const partsIqcInspection = {
     qty: 'LOT 수량',
     receivedAt: '입고일시',
     inspectedAt: '검사일시',
+    inspectedTime: '검사 시각',
+    inspectedHour: '검사 시각(시)',
+    inspectedMinute: '검사 시각(분)',
+    hourHead: '시',
+    minuteHead: '분',
+    timePlaceholder: '시각 선택',
   },
 
   dimension: {
