@@ -270,7 +270,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     itemRemoved: 'Xóa hạng mục',
     itemField: (code: string, label: string): string => `${code} · ${label}`,
     none: 'Chưa có lịch sử thay đổi',
-    noneDescription: 'Khi lưu · xác nhận · hủy bỏ phiên bản này, lịch sử sẽ hiện ở đây.',
+    noneDescription: 'Được ghi lại khi lưu · xác nhận · hủy bỏ phiên bản.',
     loading: 'Đang tải lịch sử thay đổi',
     range: '1 năm gần nhất',
   },

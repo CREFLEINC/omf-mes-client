@@ -291,7 +291,7 @@ export const inspectionStandard = {
     itemRemoved: '항목 삭제',
     itemField: (code: string, label: string): string => `${code} · ${label}`,
     none: '변경 이력이 없습니다',
-    noneDescription: '이 버전을 저장 · 확정 · 폐기하면 여기에 남습니다.',
+    noneDescription: '버전 저장 · 확정 · 폐기 시 기록됩니다.',
     loading: '변경 이력을 불러오는 중',
     range: '최근 1년',
   },
