@@ -467,11 +467,7 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     await user.click(screen.getByRole('button', { name: '대분류 추가' }));
 
     expect(screen.getByLabelText('불량코드')).toHaveValue('');
-    expect(
-      screen.getByText(
-        '대분류는 모든 현장에서 공통으로 사용됩니다. 추가 시 신중하게 확인해 주세요.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('대분류는 모든 현장에서 공통으로 사용됩니다.')).toBeInTheDocument();
     expect(
       screen.getByText('대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.'),
     ).toBeInTheDocument();

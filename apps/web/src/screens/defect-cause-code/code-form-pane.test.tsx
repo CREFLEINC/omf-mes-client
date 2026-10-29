@@ -86,11 +86,7 @@ describe('CodeFormPane — 대분류 경고', () => {
   it('상위를 비운 채 등록하면 전사 공통 축이라는 경고가 보인다', () => {
     renderPane();
 
-    expect(
-      screen.getByText(
-        '대분류는 모든 현장에서 공통으로 사용됩니다. 추가 시 신중하게 확인해 주세요.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('대분류는 모든 현장에서 공통으로 사용됩니다.')).toBeInTheDocument();
   });
 
   it('상위를 고른 상세 등록에는 그 경고가 없다', () => {
