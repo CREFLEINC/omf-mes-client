@@ -329,4 +329,10 @@ export const WEB_SCREEN_TABS: readonly WebScreenTab[] = [
   { path: '/logistics/inbound-excess', ownerPath: '/logistics/inbound-schedule' },
   /* BOM — 「품목·BOM 정보」(W-06-05)의 BOM 구역을 탭으로 뗐다(사용자 지시 2026-10-28 · ERP 연동 현황·이력의 BOM 탭처럼). */
   { path: '/master-data/item-boms', ownerPath: '/master-data/item-extended-attrs' },
+  /*
+   * 원인코드 · 공정 매핑 — 불량·원인코드(W-06-03) 화면 안 하위 탭을 「불량·판정 코드」 탭 막대로 뗐다
+   * (사용자 지시 2026-10-29 · omf-all-around#208). 불량코드는 종전 주소 그대로다.
+   */
+  { path: '/master-data/cause-code', ownerPath: '/master-data/defect-cause-code' },
+  { path: '/master-data/defect-process-mapping', ownerPath: '/master-data/defect-cause-code' },
 ];

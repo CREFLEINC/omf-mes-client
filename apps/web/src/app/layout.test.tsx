@@ -240,8 +240,8 @@ describe('AppLayout', () => {
     );
   });
 
-  /* 판정유형 코드는 「불량·판정 코드」 묶음의 끝 탭이다 — 불량·원인코드 바로 뒤에 선다(#208). */
-  it('불량·판정 코드 탭 막대에 판정유형 코드가 불량·원인코드 뒤에 보인다', () => {
+  /* 불량·원인코드의 하위 탭을 탭 막대 한 줄로 폈다 — 판정유형 코드는 그 끝이다(#208). */
+  it('불량·판정 코드 탭 막대에 불량코드 · 원인코드 · 공정 매핑 · 판정 유형 코드가 한 줄로 선다', () => {
     renderLayout('본문 내용', { route: '/master-data/judgment-code' });
 
     const tabs = screen.getByRole('navigation', { name: '불량·판정 코드' });
@@ -252,6 +252,8 @@ describe('AppLayout', () => {
     );
     expect(hubTabHrefs('불량·판정 코드')).toEqual([
       '/master-data/defect-cause-code',
+      '/master-data/cause-code',
+      '/master-data/defect-process-mapping',
       '/master-data/judgment-code',
     ]);
   });
@@ -1051,7 +1053,12 @@ describe('AppLayout', () => {
         '/master-data/inspection-sheet-template',
         '/quality/inspection-levels',
       ],
-      '불량·판정 코드': ['/master-data/defect-cause-code', '/master-data/judgment-code'],
+      '불량·판정 코드': [
+        '/master-data/defect-cause-code',
+        '/master-data/cause-code',
+        '/master-data/defect-process-mapping',
+        '/master-data/judgment-code',
+      ],
       'LOT 상태': ['/quality/lot-status', '/quality/lot-status-transition'],
       '작업지시 목록': ['/production/production-orders', '/production/po-change-review'],
       '설비 보전': [

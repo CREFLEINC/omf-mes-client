@@ -308,10 +308,16 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: '불량·판정 코드',
         labelVi: 'Mã lỗi · đánh giá',
         tabs: [
+          /*
+           * 불량·원인코드 화면 안 하위 탭(불량코드 · 원인코드 · 공정 매핑)을 탭 막대 한 줄로 폈다(사용자 지시 · #208).
+           * 원인코드 · 공정 매핑 주소는 W-06-03 의 화면 코드·권한을 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
+           */
+          { to: '/master-data/defect-cause-code', label: '불량코드', labelVi: 'Mã lỗi' },
+          { to: '/master-data/cause-code', label: '원인코드', labelVi: 'Mã nguyên nhân' },
           {
-            to: '/master-data/defect-cause-code',
-            label: '불량·원인코드',
-            labelVi: 'Mã lỗi · nguyên nhân',
+            to: '/master-data/defect-process-mapping',
+            label: '공정 매핑',
+            labelVi: 'Ánh xạ công đoạn',
           },
           {
             to: '/master-data/judgment-code',

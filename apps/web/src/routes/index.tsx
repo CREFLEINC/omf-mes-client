@@ -157,6 +157,12 @@ export const appRouter = createBrowserRouter([
       /* W-06-24 — 검사표 기준(omf-all-around#89 · 설계보다 앞선 화면). OA 제품 검사표의 모델별 단계·항목. */
       { path: 'master-data/inspection-sheet-template', element: <InspectionSheetTemplateScreen /> },
       { path: 'master-data/defect-cause-code', element: <DefectCauseCodeScreen /> },
+      /* 불량·원인코드 화면의 하위 탭을 탭 막대로 뗀 주소(#208) — 같은 화면이 보일 탭만 받는다. */
+      { path: 'master-data/cause-code', element: <DefectCauseCodeScreen tab="cause" /> },
+      {
+        path: 'master-data/defect-process-mapping',
+        element: <DefectCauseCodeScreen tab="mapping" />,
+      },
       { path: 'master-data/common-code', element: <CommonCodeScreen /> },
       /* W-06-04 — 전용 자원이 아니라 공통코드의 코드값 편집기를 한 그룹으로 고정해 여는 진입점이다. */
       { path: 'master-data/judgment-code', element: <JudgmentCodeScreen /> },
