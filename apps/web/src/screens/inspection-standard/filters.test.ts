@@ -18,6 +18,8 @@ describe('readFilters', () => {
       inspectionTypeCode: '',
       itemId: '',
       includeInactive: false,
+      inactiveOnly: false,
+      unapprovedOnly: false,
     });
   });
 
@@ -27,6 +29,8 @@ describe('readFilters', () => {
       inspectionTypeCode: 'IQC',
       itemId: '',
       includeInactive: true,
+      inactiveOnly: false,
+      unapprovedOnly: false,
     });
   });
 
@@ -65,7 +69,14 @@ describe('toSearchParams', () => {
   it('빈 조건은 키 자체를 두지 않는다', () => {
     expect(
       toSearchParams(
-        { q: '', inspectionTypeCode: '', itemId: '', includeInactive: false },
+        {
+          q: '',
+          inspectionTypeCode: '',
+          itemId: '',
+          includeInactive: false,
+          inactiveOnly: false,
+          unapprovedOnly: false,
+        },
         1,
       ).toString(),
     ).toBe('');
@@ -73,7 +84,14 @@ describe('toSearchParams', () => {
 
   it('채운 조건만 싣는다', () => {
     const search = toSearchParams(
-      { q: 'SYN', inspectionTypeCode: 'PQC', itemId: '', includeInactive: true },
+      {
+        q: 'SYN',
+        inspectionTypeCode: 'PQC',
+        itemId: '',
+        includeInactive: true,
+        inactiveOnly: false,
+        unapprovedOnly: false,
+      },
       2,
     );
 
@@ -86,7 +104,14 @@ describe('toSearchParams', () => {
   /* 기본값을 주소에 적으면 같은 화면의 주소가 두 가지가 된다. */
   it('첫 쪽이면 page를 적지 않고 미사용 포함이 꺼지면 inactive를 적지 않는다', () => {
     const search = toSearchParams(
-      { q: 'SYN', inspectionTypeCode: '', itemId: '', includeInactive: false },
+      {
+        q: 'SYN',
+        inspectionTypeCode: '',
+        itemId: '',
+        includeInactive: false,
+        inactiveOnly: false,
+        unapprovedOnly: false,
+      },
       1,
     );
 
@@ -100,7 +125,14 @@ describe('toSearchParams', () => {
    */
   it('선택(plan·ver)을 담지 않는다 — 조건이 바뀌면 선택이 사라져야 한다', () => {
     const search = toSearchParams(
-      { q: 'SYN', inspectionTypeCode: '', itemId: '', includeInactive: false },
+      {
+        q: 'SYN',
+        inspectionTypeCode: '',
+        itemId: '',
+        includeInactive: false,
+        inactiveOnly: false,
+        unapprovedOnly: false,
+      },
       3,
     );
 
@@ -112,20 +144,47 @@ describe('toSearchParams', () => {
 describe('toListQuery', () => {
   it('품목 조건은 itemId 숫자로 싣는다', () => {
     expect(
-      toListQuery({ q: '', inspectionTypeCode: '', itemId: '42', includeInactive: false }, 1),
+      toListQuery(
+        {
+          q: '',
+          inspectionTypeCode: '',
+          itemId: '42',
+          includeInactive: false,
+          inactiveOnly: false,
+          unapprovedOnly: false,
+        },
+        1,
+      ),
     ).toEqual({ itemId: 42 });
   });
 
   it('빈 조건은 쿼리에 싣지 않는다', () => {
     expect(
-      toListQuery({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: false }, 1),
+      toListQuery(
+        {
+          q: '',
+          inspectionTypeCode: '',
+          itemId: '',
+          includeInactive: false,
+          inactiveOnly: false,
+          unapprovedOnly: false,
+        },
+        1,
+      ),
     ).toEqual({});
   });
 
   /* 계약의 기본값이 false다 — 끈 상태를 값으로 실어 보내면 캐시 키가 갈린다. */
   it('미사용 포함이 꺼져 있으면 includeInactive를 싣지 않는다', () => {
     const query = toListQuery(
-      { q: 'SYN', inspectionTypeCode: '', itemId: '', includeInactive: false },
+      {
+        q: 'SYN',
+        inspectionTypeCode: '',
+        itemId: '',
+        includeInactive: false,
+        inactiveOnly: false,
+        unapprovedOnly: false,
+      },
       1,
     );
 
@@ -135,25 +194,63 @@ describe('toListQuery', () => {
 
   it('미사용 포함이 켜지면 true를 싣는다', () => {
     expect(
-      toListQuery({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: true }, 1)
-        .includeInactive,
+      toListQuery(
+        {
+          q: '',
+          inspectionTypeCode: '',
+          itemId: '',
+          includeInactive: true,
+          inactiveOnly: false,
+          unapprovedOnly: false,
+        },
+        1,
+      ).includeInactive,
     ).toBe(true);
   });
 
   it('첫 쪽이면 page를 싣지 않고 둘째 쪽부터 싣는다', () => {
     expect(
       'page' in
-        toListQuery({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: false }, 1),
+        toListQuery(
+          {
+            q: '',
+            inspectionTypeCode: '',
+            itemId: '',
+            includeInactive: false,
+            inactiveOnly: false,
+            unapprovedOnly: false,
+          },
+          1,
+        ),
     ).toBe(false);
     expect(
-      toListQuery({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: false }, 4).page,
+      toListQuery(
+        {
+          q: '',
+          inspectionTypeCode: '',
+          itemId: '',
+          includeInactive: false,
+          inactiveOnly: false,
+          unapprovedOnly: false,
+        },
+        4,
+      ).page,
     ).toBe(4);
   });
 
   it('검사 유형은 계약 이름으로 옮긴다', () => {
     expect(
-      toListQuery({ q: '', inspectionTypeCode: 'OQC', itemId: '', includeInactive: false }, 1)
-        .inspectionTypeCode,
+      toListQuery(
+        {
+          q: '',
+          inspectionTypeCode: 'OQC',
+          itemId: '',
+          includeInactive: false,
+          inactiveOnly: false,
+          unapprovedOnly: false,
+        },
+        1,
+      ).inspectionTypeCode,
     ).toBe('OQC');
   });
 });
@@ -161,22 +258,32 @@ describe('toListQuery', () => {
 describe('toFilterChips', () => {
   it('적용된 조건만 칩으로 낸다', () => {
     expect(
-      toFilterChips({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: false }),
+      toFilterChips({
+        q: '',
+        inspectionTypeCode: '',
+        itemId: '',
+        includeInactive: false,
+        inactiveOnly: false,
+        unapprovedOnly: false,
+      }),
     ).toEqual([]);
   });
 
-  it('검색어·유형·미사용 포함이 각각 칩이 된다', () => {
+  /* 사용 여부는 탭 줄 칩이 보인다 — 조건 칩으로 되풀이하지 않는다(#208). */
+  it('검색어·유형·미승인이 각각 칩이 되고 사용 여부는 칩이 되지 않는다', () => {
     const chips = toFilterChips({
       q: 'SYN',
       inspectionTypeCode: 'IQC',
       itemId: '',
       includeInactive: true,
+      inactiveOnly: false,
+      unapprovedOnly: true,
     });
 
-    expect(chips.map((chip) => chip.key)).toEqual(['q', 'inspectionTypeCode', 'includeInactive']);
+    expect(chips.map((chip) => chip.key)).toEqual(['q', 'inspectionTypeCode', 'unapprovedOnly']);
     expect(chips[0]?.label).toBe('검색어: SYN');
     expect(chips[1]?.label).toBe('검사 유형: IQC (수입검사)');
-    expect(chips[2]?.label).toBe('미사용 포함');
+    expect(chips[2]?.label).toBe('미승인');
   });
 
   /* 「제거」가 셋이면 어느 조건을 푸는 것인지 알 수 없다. */
@@ -185,7 +292,9 @@ describe('toFilterChips', () => {
       q: 'SYN',
       inspectionTypeCode: 'IQC',
       itemId: '',
-      includeInactive: true,
+      includeInactive: false,
+      inactiveOnly: false,
+      unapprovedOnly: true,
     });
     const labels = chips.map((chip) => chip.removeLabel);
 
@@ -196,13 +305,27 @@ describe('toFilterChips', () => {
 describe('hasAnyFilter', () => {
   it('아무 조건도 없으면 거짓이다', () => {
     expect(
-      hasAnyFilter({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: false }),
+      hasAnyFilter({
+        q: '',
+        inspectionTypeCode: '',
+        itemId: '',
+        includeInactive: false,
+        inactiveOnly: false,
+        unapprovedOnly: false,
+      }),
     ).toBe(false);
   });
 
   it('미사용 포함만 켜져 있어도 참이다', () => {
-    expect(hasAnyFilter({ q: '', inspectionTypeCode: '', itemId: '', includeInactive: true })).toBe(
-      true,
-    );
+    expect(
+      hasAnyFilter({
+        q: '',
+        inspectionTypeCode: '',
+        itemId: '',
+        includeInactive: true,
+        inactiveOnly: false,
+        unapprovedOnly: false,
+      }),
+    ).toBe(true);
   });
 });

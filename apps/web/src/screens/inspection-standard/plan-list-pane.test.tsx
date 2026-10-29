@@ -104,7 +104,14 @@ describe('PlanListPane — 0건 안내', () => {
   it('조건이 걸린 0건이면 조건을 줄이라고 안내한다', () => {
     renderPane({
       plans: [],
-      appliedFilters: { q: 'SYN', inspectionTypeCode: '', itemId: '', includeInactive: false },
+      appliedFilters: {
+        q: 'SYN',
+        inspectionTypeCode: '',
+        itemId: '',
+        includeInactive: false,
+        inactiveOnly: false,
+        unapprovedOnly: false,
+      },
       pageView: toPageView({ page: 1, size: 50, total: 0 }, 0),
     });
 

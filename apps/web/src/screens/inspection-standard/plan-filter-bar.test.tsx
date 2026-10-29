@@ -25,6 +25,8 @@ describe('PlanFilterBar — 조건', () => {
       inspectionTypeCode: '',
       itemId: '',
       includeInactive: false,
+      inactiveOnly: false,
+      unapprovedOnly: false,
     });
 
     await user.click(screen.getByRole('combobox', { name: '검사 유형 선택' }));
@@ -38,6 +40,8 @@ describe('PlanFilterBar — 조건', () => {
       inspectionTypeCode: 'PQC',
       itemId: '',
       includeInactive: false,
+      inactiveOnly: false,
+      unapprovedOnly: false,
     });
   });
 
@@ -51,17 +55,20 @@ describe('PlanFilterBar — 조건', () => {
     expect(field).toHaveAttribute('aria-haspopup', 'dialog');
   });
 
-  /* 해제 축이라 변경 즉시 적용한다 — 조회를 한 번 더 누르게 하면 켜 놓고 잊는다. */
-  it('미사용 포함은 누르는 즉시 적용된다', async () => {
+  /* 「미승인」은 누르는 즉시 적용한다(#208). 종전 「미사용 포함」 체크는 탭 줄 사용 여부 칩으로 옮겼다. */
+  it('미승인은 누르는 즉시 적용되고 미사용 포함 체크는 없다', async () => {
     const { onApplyFilters, user } = renderBar();
 
-    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
+    expect(screen.queryByRole('checkbox', { name: '미사용 포함' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox', { name: '미승인' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({
       q: '',
       inspectionTypeCode: '',
       itemId: '',
-      includeInactive: true,
+      includeInactive: false,
+      inactiveOnly: false,
+      unapprovedOnly: true,
     });
   });
 
@@ -79,13 +86,20 @@ describe('PlanFilterBar — 조건', () => {
   });
 
   it('적용된 조건마다 칩이 하나씩 서고 제거 라벨이 서로 다르다', () => {
-    renderBar({ q: 'SYN', inspectionTypeCode: 'IQC', itemId: '', includeInactive: true });
+    renderBar({
+      q: 'SYN',
+      inspectionTypeCode: 'IQC',
+      itemId: '',
+      includeInactive: false,
+      inactiveOnly: false,
+      unapprovedOnly: true,
+    });
 
     expect(screen.getByText('검색어: SYN')).toBeInTheDocument();
     expect(screen.getByText('검사 유형: IQC (수입검사)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '검색어 조건 제거' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '검사 유형 조건 제거' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '미사용 포함 조건 제거' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '미승인 조건 제거' })).toBeInTheDocument();
   });
 
   it('칩을 제거하면 그 조건만 풀린다', async () => {
@@ -94,6 +108,8 @@ describe('PlanFilterBar — 조건', () => {
       inspectionTypeCode: 'IQC',
       itemId: '',
       includeInactive: true,
+      inactiveOnly: false,
+      unapprovedOnly: false,
     });
 
     await user.click(screen.getByRole('button', { name: '검사 유형 조건 제거' }));
@@ -103,6 +119,8 @@ describe('PlanFilterBar — 조건', () => {
       inspectionTypeCode: '',
       itemId: '',
       includeInactive: true,
+      inactiveOnly: false,
+      unapprovedOnly: false,
     });
   });
 });

@@ -18,6 +18,9 @@ const URL_KEYS = {
   inspectionTypeCode: 'type',
   itemId: 'item',
   includeInactive: 'inactive',
+  /* 사용 여부 칩 「미사용」 — `inactive=1` 과 함께 `usage=off`(#208). */
+  inactiveOnly: 'usage',
+  unapprovedOnly: 'unapproved',
   page: 'page',
   size: 'size',
 } as const;
@@ -28,6 +31,7 @@ const PAGE_SIZE_VALUES = [20, 50, 100];
 
 /** 켜짐을 나타내는 유일한 값. 다른 값은 꺼진 것으로 본다 — 주소를 손으로 고쳐도 뜻이 흔들리지 않는다. */
 const ON = '1';
+const OFF = 'off';
 
 const POSITIVE_INTEGER = /^\d+$/;
 
@@ -39,6 +43,8 @@ export const readFilters = (params: URLSearchParams): PlanFilters => ({
     ? (params.get(URL_KEYS.itemId) ?? '')
     : '',
   includeInactive: params.get(URL_KEYS.includeInactive) === ON,
+  inactiveOnly: params.get(URL_KEYS.inactiveOnly) === OFF,
+  unapprovedOnly: params.get(URL_KEYS.unapprovedOnly) === ON,
 });
 
 /** 주소가 가리키는 쪽. 이상한 값은 첫 쪽으로 본다 — 주소는 손으로 고쳐지는 자리다. */
@@ -73,7 +79,9 @@ export const toSearchParams = (
     next.set(URL_KEYS.inspectionTypeCode, filters.inspectionTypeCode);
   }
   if (filters.itemId !== '') next.set(URL_KEYS.itemId, filters.itemId);
-  if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
+  if (filters.includeInactive || filters.inactiveOnly) next.set(URL_KEYS.includeInactive, ON);
+  if (filters.inactiveOnly) next.set(URL_KEYS.inactiveOnly, OFF);
+  if (filters.unapprovedOnly) next.set(URL_KEYS.unapprovedOnly, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
   if (size !== DEFAULT_PAGE_SIZE) next.set(URL_KEYS.size, String(size));
 
@@ -104,7 +112,7 @@ export const toListQuery = (
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.inspectionTypeCode === '' ? {} : { inspectionTypeCode: filters.inspectionTypeCode }),
   ...(filters.itemId === '' ? {} : { itemId: Number(filters.itemId) }),
-  ...(filters.includeInactive ? { includeInactive: true } : {}),
+  ...(filters.includeInactive || filters.inactiveOnly ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
   ...(size !== DEFAULT_PAGE_SIZE ? { size } : {}),
 });
@@ -144,11 +152,12 @@ export const toFilterChips = (filters: PlanFilters, itemLabel = ''): FilterChip[
     });
   }
 
-  if (filters.includeInactive) {
+  /* 사용 여부는 탭 줄의 칩(전체 · 사용 · 미사용)이 보인다 — 조건 칩으로 되풀이하지 않는다(#208). */
+  if (filters.unapprovedOnly) {
     chips.push({
-      key: 'includeInactive',
-      label: messages.common.includeInactive,
-      removeLabel: t.filters.chipRemoveIncludeInactive,
+      key: 'unapprovedOnly',
+      label: t.filters.unapprovedOnly,
+      removeLabel: t.filters.chipRemoveUnapproved,
     });
   }
 
@@ -159,11 +168,15 @@ export const hasAnyFilter = (filters: PlanFilters): boolean =>
   filters.q !== '' ||
   filters.inspectionTypeCode !== '' ||
   filters.itemId !== '' ||
-  filters.includeInactive;
+  filters.includeInactive ||
+  filters.inactiveOnly ||
+  filters.unapprovedOnly;
 
 /**
  * 조건 하나만 푼다. 칩의 제거 버튼이 쓴다.
  * 키마다 「비었다」의 표현이 달라(문자열 vs 불리언) 호출부가 그것을 알지 않도록 여기서 다룬다.
  */
 export const clearFilter = (filters: PlanFilters, key: keyof PlanFilters): PlanFilters =>
-  key === 'includeInactive' ? { ...filters, includeInactive: false } : { ...filters, [key]: '' };
+  key === 'includeInactive' || key === 'inactiveOnly' || key === 'unapprovedOnly'
+    ? { ...filters, [key]: false }
+    : { ...filters, [key]: '' };

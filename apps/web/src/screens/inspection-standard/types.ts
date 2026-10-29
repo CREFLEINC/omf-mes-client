@@ -25,6 +25,10 @@ export interface PlanFilters {
   /** 품목 번호(문자열). 비면 전 품목 — 품목 선택 창으로 고른다(#196). */
   itemId: string;
   includeInactive: boolean;
+  /** 사용 여부 칩의 「미사용」 — 미사용인 기준만(#208). 서버 조건이 없어 화면이 거른다. */
+  inactiveOnly: boolean;
+  /** 「미승인」 체크 — 승인되지 않은 기준만(#208). 서버 조건이 없어 화면이 거른다. */
+  unapprovedOnly: boolean;
 }
 
 /**

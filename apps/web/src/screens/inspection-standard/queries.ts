@@ -5,7 +5,7 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
 import { runRequest, toApiError } from '../../patterns/request';
-import { DEFAULT_PAGE_SIZE, toListQuery } from './filters';
+import { DEFAULT_PAGE_SIZE, type PlanListQuery, toListQuery } from './filters';
 import type { VersionAuditEvent } from './version-history';
 import type {
   InspectionItemSpec,
@@ -56,13 +56,52 @@ export const useInspectionPlanList = (
 
   return useQuery({
     queryKey: planKeys.list(filters, page, size),
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/quality/inspection-plans', {
-          params: { query: toListQuery(filters, page, size) },
-        }),
-      ),
+    queryFn: async () => {
+      if (!filters.inactiveOnly && !filters.unapprovedOnly) {
+        return runRequest(() =>
+          client.GET('/quality/inspection-plans', {
+            params: { query: toListQuery(filters, page, size) },
+          }),
+        );
+      }
+
+      /*
+       * 「미사용만」 · 「미승인만」은 서버 조건이 없다(#208) — 나머지 조건으로 전부 받아 화면이 거르고 쪽을 나눈다.
+       * 검사 기준은 품목 · 유형별이라 수가 많지 않다.
+       */
+      const all = await fetchAllPlans(
+        (query) => runRequest(() => client.GET('/quality/inspection-plans', { params: { query } })),
+        toListQuery(filters, 1, ALL_PAGE_SIZE),
+      );
+      const kept = all.filter(
+        (plan) =>
+          (!filters.inactiveOnly || !plan.isActive) &&
+          (!filters.unapprovedOnly || plan.approvedAt === null || plan.approvedAt === undefined),
+      );
+
+      return {
+        items: kept.slice((page - 1) * size, page * size),
+        page: { page, size, total: kept.length },
+      };
+    },
   });
+};
+
+/** 화면이 거를 때 한 번에 받는 쪽 크기. */
+const ALL_PAGE_SIZE = 100;
+
+/** 같은 조건의 쪽을 끝까지 모은다. */
+const fetchAllPlans = async (
+  request: (query: PlanListQuery & { size?: number }) => Promise<InspectionPlanListResponse>,
+  base: PlanListQuery & { size?: number },
+): Promise<InspectionPlanListResponse['items']> => {
+  const items: InspectionPlanListResponse['items'] = [];
+
+  for (let page = 1; ; page += 1) {
+    const response = await request({ ...base, page, size: ALL_PAGE_SIZE });
+    items.push(...response.items);
+    if (items.length >= response.page.total || response.items.length === 0) return items;
+  }
 };
 
 /** 받은 건수가 전체보다 적으면 목록이 잘린 것이다. 선택 목록의 잘림 판정에 쓴다. */

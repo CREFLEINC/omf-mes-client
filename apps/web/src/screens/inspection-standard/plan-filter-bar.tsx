@@ -44,6 +44,8 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
     inspectionTypeCode: appliedInspectionTypeCode,
     itemId: appliedItemId,
     includeInactive: appliedIncludeInactive,
+    inactiveOnly: appliedInactiveOnly,
+    unapprovedOnly: appliedUnapprovedOnly,
   } = appliedFilters;
 
   useEffect(() => {
@@ -52,8 +54,17 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
       inspectionTypeCode: appliedInspectionTypeCode,
       itemId: appliedItemId,
       includeInactive: appliedIncludeInactive,
+      inactiveOnly: appliedInactiveOnly,
+      unapprovedOnly: appliedUnapprovedOnly,
     });
-  }, [appliedQ, appliedInspectionTypeCode, appliedItemId, appliedIncludeInactive]);
+  }, [
+    appliedQ,
+    appliedInspectionTypeCode,
+    appliedItemId,
+    appliedIncludeInactive,
+    appliedInactiveOnly,
+    appliedUnapprovedOnly,
+  ]);
 
   /* 품목은 번호로 들고 이름은 품목 상세로 푼다 — 주소로 들어와 창을 거치지 않은 값도 이름이 선다. */
   const toItemId = (value: string): number | null => (value === '' ? null : Number(value));
@@ -115,15 +126,18 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
           />
         </div>
 
-        {/* 해제 축이라 변경 즉시 적용한다. */}
+        {/*
+         * 「미승인」만 보기(사용자 지시 · #208) — 바로 적용한다. 사용 여부(전체 · 사용 · 미사용)는 탭 줄의 칩이 맡아
+         * 종전 「미사용 포함」 체크는 걷었다.
+         */}
         <div className="field-cell field-cell-unlabeled">
           <Checkbox
-            checked={appliedFilters.includeInactive}
+            checked={appliedFilters.unapprovedOnly}
             onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
+              onApplyFilters({ ...appliedFilters, unapprovedOnly: event.target.checked })
             }
           >
-            {messages.common.includeInactive}
+            {t.filters.unapprovedOnly}
           </Checkbox>
         </div>
 
@@ -188,7 +202,7 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
       {isPickerOpen &&
         createPortal(
           <PlanPickerDialog
-            includeInactive={appliedFilters.includeInactive}
+            includeInactive={appliedFilters.includeInactive || appliedFilters.inactiveOnly}
             onClose={() => setIsPickerOpen(false)}
             onConfirm={(plan) => {
               setDraft((prev) => ({ ...prev, q: plan.inspectionPlanCode }));

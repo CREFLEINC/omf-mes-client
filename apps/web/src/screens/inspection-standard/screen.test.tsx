@@ -150,25 +150,37 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     expect(planRequests(requests)[0]?.url.searchParams.has('includeInactive')).toBe(false);
   });
 
-  it('미사용 포함을 켜면 includeInactive=true가 실린다', async () => {
-    const { requests, user } = renderScreen([planListRoute()]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+  /* 「미승인」은 서버 조건이 없어 화면이 거른다(#208) — 승인된 SYN-PLAN-03 은 빠진다. */
+  it('미승인을 켜면 승인되지 않은 기준만 남는다', async () => {
+    const { user } = renderScreen([planListRoute()], '?inactive=1');
+    await screen.findByRole('button', { name: 'SYN-PLAN-03' });
 
-    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
+    await user.click(screen.getByRole('checkbox', { name: '미승인' }));
 
-    const last = planRequests(requests).at(-1);
-    expect(last?.url.searchParams.get('includeInactive')).toBe('true');
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'SYN-PLAN-03' })).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
+  });
+
+  /* 사용 여부 칩 「미사용」(#208) — 미사용인 기준만 남는다. 주소 `usage=off` 로 들어온다. */
+  it('미사용만 보기는 미사용인 기준만 남기고 includeInactive=true 로 받는다', async () => {
+    const { requests } = renderScreen([planListRoute()], '?inactive=1&usage=off');
+
+    expect(await screen.findByRole('button', { name: 'SYN-PLAN-03' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'SYN-PLAN-01' })).not.toBeInTheDocument();
+    expect(planRequests(requests)[0]?.url.searchParams.get('includeInactive')).toBe('true');
   });
 
   it('조회 조건은 주소에 남는다 — 새로고침·공유가 같은 결과를 낸다', async () => {
-    const { requests } = renderScreen([planListRoute()], '?q=SYN&type=OQC&inactive=1');
+    const { requests } = renderScreen([planListRoute()], '?q=SYN&type=OQC&inactive=1&unapproved=1');
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
     const first = planRequests(requests)[0];
     expect(first?.url.searchParams.get('q')).toBe('SYN');
     expect(first?.url.searchParams.get('inspectionTypeCode')).toBe('OQC');
     expect(first?.url.searchParams.get('includeInactive')).toBe('true');
-    expect(screen.getByRole('checkbox', { name: '미사용 포함' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '미승인' })).toBeChecked();
   });
 
   it('조회에 실패하면 표와 빈 상태 대신 오류 배너와 다시 시도가 뜬다', async () => {

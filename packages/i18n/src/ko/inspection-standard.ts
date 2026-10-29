@@ -176,7 +176,12 @@ export const inspectionStandard = {
     chipInspectionType: (label: string): string => `검사 유형: ${label}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveInspectionType: '검사 유형 조건 제거',
-    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+    unapprovedOnly: '미승인',
+    chipRemoveUnapproved: '미승인 조건 제거',
+    usageLabel: '사용 여부',
+    usageAll: '전체',
+    usageActive: '사용',
+    usageInactive: '미사용',
     /* 품목 조건 — 검사 조회·판정의 품목 검색과 같은 모양(#196). */
     item: '품목 검색',
     itemPlaceholder: '품목을 입력하세요',

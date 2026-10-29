@@ -14,6 +14,8 @@ export const DEFAULT_PLAN_FILTERS: PlanFilters = {
   inspectionTypeCode: '',
   itemId: '',
   includeInactive: false,
+  inactiveOnly: false,
+  unapprovedOnly: false,
 };
 
 /**

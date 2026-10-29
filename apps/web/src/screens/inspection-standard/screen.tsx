@@ -110,6 +110,7 @@ import {
 } from './version-mappers';
 import type { CompareLabels } from './version-compare';
 import { VersionCompareDialog } from './version-compare-dialog';
+import { UsageChips, usageOf, withUsage } from './usage-chips';
 import { VersionHistoryTable } from './version-history-table';
 import { VersionBar } from './version-bar';
 import { VersionSummary } from './version-summary';
@@ -1809,6 +1810,11 @@ export const InspectionStandardScreen = () => {
 
   return (
     <>
+      {/* 탭 줄 오른쪽 — 사용 여부 칩 다음에 좌우 · 상하 배치(사용자 지시 · #208). 그린 순서대로 선다. */}
+      <UsageChips
+        value={usageOf(filters)}
+        onChange={(usage) => applyFilters(withUsage(filters, usage))}
+      />
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다. */}
       {hub === null && (
