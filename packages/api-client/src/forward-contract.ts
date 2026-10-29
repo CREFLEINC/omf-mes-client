@@ -342,7 +342,7 @@ export type DefectRecordListQueryForward = Omit<
 
 /**
  * 서버 선행 P-57(omf-all-around#58) — 첨부 대상에 검사 문서(LOT·검사 결과)를 더한다.
- * P-152(omf-all-around#211) — 검사기준 버전 도면(읽기만 · 기준서 엑셀 올리기가 붙인다).
+ * P-155(omf-all-around#211) — 검사기준 버전 도면(읽기만 · 기준서 엑셀 올리기가 붙인다).
  */
 export type AttachmentTargetType =
   'WAREHOUSE' | 'NOTICE' | 'BREAKDOWN' | 'LOT' | 'INSPECTION_RESULT' | 'INSPECTION_PLAN_VERSION';

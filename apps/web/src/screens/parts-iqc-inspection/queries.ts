@@ -25,7 +25,7 @@ export const partsIqcKeys = {
   plan: (planId: number) => [...ALL_KEY, 'plan', planId] as const,
 };
 
-/** OA 화면의 목록 질의(`toListQuery`)에 LOT 의 공장을 더한다(서버 P-152 `plantId`). */
+/** OA 화면의 목록 질의(`toListQuery`)에 LOT 의 공장을 더한다(서버 P-155 `plantId`). */
 export type PartsQueueQuery = QueueListQuery & { plantId: number };
 
 /** 부품 공장 LOT 의 IQC 의뢰만 — OA 공장 LOT 은 OA 화면이 다룬다. */
@@ -72,7 +72,7 @@ export const useInspectionPlan = (planId: number | null) => {
 };
 
 /**
- * 검사기준 버전의 도면(서버 P-152) — 기준서 엑셀을 올릴 때 「Bản vẽ」 칸 그림을 붙였다. 바이트까지 받아 `blob:` 주소로 낸다.
+ * 검사기준 버전의 도면(서버 P-155) — 기준서 엑셀을 올릴 때 「Bản vẽ」 칸 그림을 붙였다. 바이트까지 받아 `blob:` 주소로 낸다.
  * 도면이 없으면 빈 목록이다.
  */
 export const useDrawings = (versionId: number | null) => {
