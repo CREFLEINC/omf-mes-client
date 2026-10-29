@@ -1,4 +1,3 @@
-import type { HandoverAlertRecipient, HandoverAlertSetting } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -13,6 +12,7 @@ import {
 import { SessionProvider } from '../../patterns/session';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { HandoverAlertSettingsScreen } from './screen';
+import type { HandoverAlertRecipient, HandoverAlertSetting } from './types';
 
 const t = messages.handoverAlertSettings;
 
@@ -85,10 +85,11 @@ const setup = (options: SetupOptions = {}) => {
   const settings: Record<string, HandoverAlertSetting> = {};
   for (const type of TYPES) {
     settings[type.alertTypeCode] = {
+      plantId: PLANT_A.plantId,
+      alertTypeCode: type.alertTypeCode,
       enabled: false,
       zaloEnabled: false,
       recipients: [],
-      version: 1,
       ...options.settings?.[type.alertTypeCode],
     };
   }
@@ -115,6 +116,9 @@ const setup = (options: SetupOptions = {}) => {
       respond: (request) => {
         summaryQueries.push(new URL(request.url));
         return jsonResponse({
+          plantId: PLANT_A.plantId,
+          plantName: PLANT_A.plantName,
+          zaloStatus: 'ACTIVE',
           items: Object.entries(settings).map(([alertTypeCode, setting]) => ({
             alertTypeCode,
             enabled: setting.enabled,

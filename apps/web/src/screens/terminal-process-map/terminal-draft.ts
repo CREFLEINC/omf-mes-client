@@ -1,4 +1,4 @@
-import type { TerminalCreateForward, TerminalUpdateForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { TerminalView } from './types';
@@ -20,8 +20,8 @@ import type { TerminalView } from './types';
 const t = messages.terminalProcessMap;
 const NEW_TERMINAL_STATUS = 'RUNNING';
 
-type TerminalCreate = TerminalCreateForward;
-type TerminalUpdate = TerminalUpdateForward;
+type TerminalCreate = components['schemas']['TerminalCreate'];
+type TerminalUpdate = components['schemas']['TerminalUpdate'];
 
 export interface TerminalDraft {
   terminalCode: string;

@@ -1,8 +1,10 @@
-import type { TerminalWorkCounts } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
 import { runRequest } from './request';
+
+type TerminalWorkCounts = components['schemas']['TerminalWorkCounts'];
 
 /** 열려 있는 동안 다시 세는 간격(SC-002 — 60초 안). */
 export const POP_WORK_COUNT_INTERVAL_MS = 60_000;

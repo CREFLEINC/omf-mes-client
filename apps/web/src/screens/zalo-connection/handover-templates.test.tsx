@@ -1,4 +1,3 @@
-import type { HandoverTemplate } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -7,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { HANDOVER_ALERT_ORDER } from '../../patterns/handover-alert-types';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { ZaloConnectionScreen } from './screen';
-import type { Connection } from './types';
+import type { Connection, HandoverTemplate } from './types';
 
 const t = messages.zaloConnection;
 
@@ -162,7 +161,7 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
     expect(writes).toHaveLength(0);
   });
 
-  it('서버가 인계 칸을 아직 싣지 않아도(병합 전) 빈 칸 10개로 보인다', async () => {
+  it('응답에 인계 칸이 없어도 빈 칸 10개로 보인다', async () => {
     setup(connection());
 
     const card = await waitFor(() => handoverCard());

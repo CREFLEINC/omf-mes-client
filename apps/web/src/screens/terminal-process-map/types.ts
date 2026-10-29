@@ -2,7 +2,6 @@ import type {
   components,
   TerminalProcessForward,
   TerminalRegistrationStatusCode,
-  TerminalWarehouseForward,
 } from '@omf-mes/api-client';
 
 import { ALL_CLOSED, FLAG_KEYS, OPEN_BY_DEFAULT, type FlagKey } from './flags';
@@ -98,7 +97,6 @@ const equipmentLabelOf = (source: Terminal): string | null => {
 };
 
 type TerminalWithRegistration = Terminal &
-  TerminalWarehouseForward &
   Partial<{
     registrationStatusCode: TerminalRegistrationStatusCode;
     registrationConfirmedAt: string | null;

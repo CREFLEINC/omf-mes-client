@@ -1,4 +1,4 @@
-import type { TerminalWarehouseForward, TerminalWorkCounts } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../patterns/api-context';
@@ -7,6 +7,8 @@ import { runRequest } from '../patterns/request';
 import { readTerminalIdFromToken } from '../patterns/token-claims';
 import { useWorkerSession } from '../patterns/worker-session';
 import type { HomeScreen } from './home-menu';
+
+type TerminalWorkCounts = components['schemas']['TerminalWorkCounts'];
 
 /** 홈에 머무는 동안 다시 세는 간격(FR-015, SC-002 — 열려 있으면 60초 안). */
 export const WORK_COUNT_INTERVAL_MS = 60_000;
@@ -42,7 +44,7 @@ export const useWorkCounts = (): TerminalWorkCounts | undefined => {
 
 /**
  * 수의 기준 — 이 단말의 창고 이름, 창고가 없으면 `null`(공장 전체). 모르면 `undefined` 라 표시하지 않는다.
- * 병합 전 서버는 단말 응답에 창고 칸을 싣지 않는다 — 그때는 창고 지정이 없는 것이라 공장 전체다.
+ * 단말 응답에 창고 칸이 없으면 창고 지정이 없는 것이라 공장 전체다.
  */
 export const useCountBasis = (enabled: boolean): string | null | undefined => {
   const { client } = useApiClient();
@@ -60,7 +62,7 @@ export const useCountBasis = (enabled: boolean): string | null | undefined => {
   });
 
   if (query.data === undefined || query.isError) return undefined;
-  const { warehouseName } = query.data as TerminalWarehouseForward;
+  const { warehouseName } = query.data;
   return warehouseName === undefined || warehouseName === null || warehouseName.trim() === ''
     ? null
     : warehouseName;

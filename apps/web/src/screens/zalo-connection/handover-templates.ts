@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { HandoverTemplate, ZaloConnectionForward } from '@omf-mes/api-client';
+import type { Connection, HandoverTemplate } from './types';
 
 const t = messages.zaloConnection.errors;
 
@@ -13,9 +13,9 @@ const TEMPLATE_ID = /^[A-Za-z0-9]{1,40}$/;
  */
 export type HandoverTemplateValues = Record<string, string>;
 
-/** 병합 전 서버는 칸을 싣지 않는다 — 그때는 모두 빈 칸으로 본다. */
+/** 칸이 없으면 모두 빈 칸으로 본다. */
 export const toHandoverValues = (
-  connection: ZaloConnectionForward,
+  connection: Connection,
   order: readonly string[],
 ): HandoverTemplateValues => {
   const saved = new Map(

@@ -464,7 +464,7 @@ export const HandoverAlertSettingsScreen = () => {
         }
       />
 
-      {summary.data?.zaloStatus !== undefined && summary.data.zaloStatus !== 'ACTIVE' && (
+      {summary.data !== undefined && summary.data.zaloStatus !== 'ACTIVE' && (
         <div className="banner-slot">
           <AlertBanner
             variant="warning"
