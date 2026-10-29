@@ -13,6 +13,7 @@ import {
 } from './judgment-group';
 import { LoadErrorBanner } from './load-error-banner';
 import type { CodeGroupFilters } from './types';
+import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.judgmentCode;
 
@@ -63,6 +64,7 @@ const GROUP_LOOKUP_FILTERS: CodeGroupFilters = {
 const GROUP_LOOKUP_PAGE = 1;
 
 export const JudgmentCodeScreen = () => {
+  const hub = usePageHub();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const groupList = useCodeGroupList(GROUP_LOOKUP_FILTERS, GROUP_LOOKUP_PAGE, true);
@@ -232,20 +234,26 @@ export const JudgmentCodeScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        /*
-         * 편집기 안의 문구는 「코드값」이다 — 공통코드 화면과 한 묶음을 공유해 여기서 바꾸면
-         * 그쪽 화면이 함께 바뀐다. 화면 이름과 편집기 어휘가 다른 이유를 머리에서 밝힌다.
-         */
-        description={t.notices.editorScope}
-      />
+      {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
+      {hub === null ? (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+          /*
+           * 편집기 안의 문구는 「코드값」이다 — 공통코드 화면과 한 묶음을 공유해 여기서 바꾸면
+           * 그쪽 화면이 함께 바뀐다. 화면 이름과 편집기 어휘가 다른 이유를 머리에서 밝힌다.
+           */
+          description={t.notices.editorScope}
+        />
+      ) : (
+        /* 머리를 세우지 않아도 편집기 어휘 안내는 남긴다 — 문구를 지우지 않는다. */
+        <p className="field-note">{t.notices.editorScope}</p>
+      )}
 
       {/*
        * 배너 셋은 **편집기 바깥**에 선다. 한 벌에 prop을 더해 안에서 그리면 그 파일이 바뀌고,

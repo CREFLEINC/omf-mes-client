@@ -24,6 +24,7 @@ import { PageNav } from '../oqc-inspection/page-nav';
 import { toPageView } from '../oqc-inspection/pagination';
 import { LEVEL_CODES, LevelDialog } from './level-dialog';
 import { useLevelWrite } from './level-write';
+import { usePageHub } from '../../patterns/page-hub';
 import {
   inspectionLevelKeys,
   type LevelListFilter,
@@ -50,6 +51,7 @@ export const historyReason = (row: ItemInspectionLevelHistory): string => {
  * 자동 전환은 없다 — 사용자가 정한 수준만 쓴다(omf-all-around#133). 이력의 「자동」 줄은 그 전 기록이다.
  */
 export const InspectionLevelScreen = () => {
+  const hub = usePageHub();
   const toast = useToast();
   const keywordId = useId();
   const levelFilterId = useId();
@@ -161,15 +163,18 @@ export const InspectionLevelScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+      {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
 
       <p className="field-note">{t.rule}</p>
 

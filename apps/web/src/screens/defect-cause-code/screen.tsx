@@ -40,6 +40,7 @@ import { isTruncated, useCodeDetail, useCodeList, useCodeOptions } from './queri
 import { ProcessMappingPane } from './process-mapping-pane';
 import { CODE_TABS, resolveTab } from './tabs';
 import type { CodeDetailResult, CodeFilters, CodeFormValues, HierarchyCode } from './types';
+import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.defectCauseCode;
 
@@ -492,6 +493,7 @@ const resolveScreenTab = (value: string | null): ScreenTab => {
 
 /** W-06-03의 현상·원인·공정 매핑 세 축. 비활성 탭은 렌더하지 않아 숨은 요청을 만들지 않는다. */
 export const DefectCauseCodeScreen = () => {
+  const hub = usePageHub();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = resolveScreenTab(searchParams.get('tab'));
 
@@ -501,15 +503,18 @@ export const DefectCauseCodeScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+      {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
       <Tabs
         aria-label={t.title}
         value={activeTab}

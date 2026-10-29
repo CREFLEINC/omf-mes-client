@@ -25,6 +25,7 @@ import {
 } from './queries';
 import type { StepDraft } from './draft';
 import { TemplateEditor, TemplateStatusChip } from './template-editor';
+import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.inspectionSheetTemplate;
 
@@ -49,6 +50,7 @@ export const InspectionSheetTemplateScreen = () => (
 );
 
 const InspectionSheetTemplateScreenBody = () => {
+  const hub = usePageHub();
   const statusId = useId();
   const { session } = useSession();
   const [statusInput, setStatusInput] = useState<TemplateStatusFilter>('');
@@ -127,15 +129,18 @@ const InspectionSheetTemplateScreenBody = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+      {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
       <p className="field-note inspection-sheet-template-rule">{t.rule}</p>
 
       <div className="two-pane inspection-sheet-template-layout">
