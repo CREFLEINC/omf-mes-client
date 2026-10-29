@@ -22130,15 +22130,10 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   width: 100%;
 }
 
-/*
- * 품목 · 재료 검색 칸 — 남는 폭을 나눠 늘어 조회 단추 앞이 휑하지 않게 한다(사용자 지시 · #208).
- * 흐린 안내가 잘리지 않는 폭 아래로는 줄지 않고, 너무 길어지지 않게 위 한도를 둔다.
- */
+/* 품목 · 재료 검색 칸 — 흐린 안내(「품목을 입력하세요」 · 「재료를 입력하세요」)가 꼭 맞는 폭(사용자 지시 · #208). */
 .inspection-sheet-template-search > .filter-bar > :nth-child(3),
 .inspection-sheet-template-search > .filter-bar > :nth-child(4) {
-  flex: 1 1 14rem;
-  min-width: 12rem;
-  max-width: 24rem;
+  flex: 0 0 12em;
 }
 
 /* 목록 칸 — 표 · 쪽 이동 줄 사이를 띄운다(#208). */
