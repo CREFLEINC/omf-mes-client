@@ -83,11 +83,17 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     nameVi: 'Tên tiếng Việt',
     referenceCount: 'Đang dùng',
   },
+  tree: {
+    childCount: (count: number): string => `${String(count)} mã cấp dưới`,
+    collapse: 'Thu gọn mã cấp dưới',
+    expand: 'Mở rộng mã cấp dưới',
+  },
   usage: {
     label: 'Lọc theo trạng thái sử dụng',
     all: 'Tất cả',
     active: 'Sử dụng',
     inactive: 'Ngừng dùng',
+    count: (label: string, count: number): string => `${label} ${String(count)}`,
   },
   listColumns: {
     defectCode: 'Mã lỗi',
@@ -137,11 +143,11 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
     title: 'Ngừng sử dụng?',
-    description: 'Không xóa. Ngừng sử dụng thì không chọn được ở công việc mới.',
+    description:
+      'Ngừng sử dụng thì không chọn được mã này ở công việc mới. Dữ liệu cũ vẫn được giữ.',
     confirm: 'Ngừng sử dụng',
     /* 목록이 잘렸으면 하위 건수가 실제보다 적을 수 있어 「표시된 목록 기준」이라는 단서를 함께 남긴다. */
-    childCount: (count: number): string =>
-      `Cấp lớn này có ${count} mã chi tiết cấp dưới theo danh sách đang hiển thị.`,
+    childCount: (count: number): string => `Có ${String(count)} mã cấp dưới được liên kết.`,
   },
   mapping: {
     description:

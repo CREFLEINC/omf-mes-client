@@ -326,6 +326,110 @@ main > * + * {
   margin: 0;
 }
 
+/*
+ * 불량·원인코드 표의 대분류 · 상세 관계(사용자 지시 · #209) — 대분류 줄이 묶음 머리(접기 단추 · 굵은 코드 ·
+ * 「하위 코드 N건」), 상세 줄은 왼쪽 선으로 대분류에 잇는다. 선은 칸(td) 기준으로 그어 줄 사이가 끊기지 않는다.
+ */
+.inspection-queue-table.defect-cause-rows tbody tr:has(.defect-cause-tree-head) > td {
+  background: var(--surface-container);
+}
+
+.defect-cause-tree-head {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.defect-cause-fold {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+.defect-cause-fold:hover:not(:disabled) {
+  background: var(--surface-container-high);
+}
+
+/* 하위가 없으면 접을 것이 없다 — 자리는 남겨 코드가 같은 줄에 서게 한다. */
+.defect-cause-fold:disabled {
+  visibility: hidden;
+}
+
+.defect-cause-head-text {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+}
+
+.defect-cause-head-text > .defect-cause-open {
+  font-weight: 600;
+}
+
+/* 코드 칸은 왼쪽 정렬 — 공용 코드 단추의 가운데 정렬 · 가득 폭을 걷어 대분류 · 상세 코드가 같은 자리에서 시작한다. */
+.defect-cause-rows .defect-cause-open {
+  width: auto;
+  padding-inline: 0;
+  text-align: start;
+}
+
+.defect-cause-child-count {
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+}
+
+.defect-cause-orphan {
+  color: var(--on-surface-muted);
+}
+
+.inspection-queue-table.defect-cause-rows td:has(> .defect-cause-tree-child) {
+  position: relative;
+}
+
+/* 접기 단추 가운데(칸 왼쪽 여백 + 단추 반폭)에서 세로선, 그 높이 가운데에서 코드 쪽으로 가로선. */
+.defect-cause-tree-child {
+  --tree-x: calc(var(--space-6) + 12px);
+
+  display: inline-flex;
+  align-items: center;
+  /* 대분류 코드와 같은 자리에서 시작한다 — 접기 단추(24px) + 간격. */
+  padding-left: calc(24px + var(--space-2));
+}
+
+.defect-cause-tree-child::before,
+.defect-cause-tree-child::after {
+  content: '';
+  position: absolute;
+  left: var(--tree-x);
+  pointer-events: none;
+}
+
+.defect-cause-tree-child::before {
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--outline);
+}
+
+.defect-cause-tree-child[data-last='true']::before {
+  bottom: 50%;
+}
+
+.defect-cause-tree-child::after {
+  top: 50%;
+  width: 14px;
+  border-top: 1px solid var(--outline);
+}
+
+.defect-cause-dialog-note {
+  margin-top: var(--space-3);
+}
+
 .defect-cause-head-actions {
   display: flex;
   flex-wrap: wrap;

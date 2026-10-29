@@ -139,6 +139,10 @@ const pageListRequests = (requests: RecordedRequest[], pathname: string): Record
       request.url.searchParams.get('includeInactive') !== 'true',
   );
 
+/** 대분류 줄이 묶음 머리다(#209) — 그 코드 단추가 머리 칸(접기 단추 옆)에 있는가. */
+const isHeadRow = (code: string): boolean =>
+  screen.getByRole('button', { name: code }).closest('.defect-cause-tree-head') !== null;
+
 /** 상세는 값 표기로만 보이고, 고치기는 「수정」 창에서 한다(#209) — 수정 흐름 시험은 먼저 창을 연다. */
 const openEdit = async (): Promise<void> => {
   await userEvent.setup().click(await screen.findByRole('button', { name: '수정' }));
@@ -316,10 +320,11 @@ describe('DefectCauseCodeScreen — 목록 조회', () => {
 });
 
 describe('DefectCauseCodeScreen — 2계층 표시', () => {
-  it('대분류마다 그룹 머리글이 나오고 그 아래 첫 행이 대분류 자신이다', async () => {
+  it('대분류 줄이 묶음 머리이고 그 아래 상세가 이어진다', async () => {
     renderScreen([defectListRoute()]);
 
-    expect(await screen.findByText('DF-10 · 외관')).toBeInTheDocument();
+    await screen.findByRole('button', { name: 'DF-10' });
+    expect(isHeadRow('DF-10')).toBe(true);
 
     const codes = screen
       .getAllByRole('button')
@@ -331,7 +336,8 @@ describe('DefectCauseCodeScreen — 2계층 표시', () => {
   it('자기참조 행은 대분류로 보인다 — 목 서버가 실제로 내려주는 모양이다', async () => {
     renderScreen([defectListRoute()]);
 
-    expect(await screen.findByText('DF-20 · 치수')).toBeInTheDocument();
+    await screen.findByRole('button', { name: 'DF-20' });
+    expect(isHeadRow('DF-20')).toBe(true);
   });
 
   it('고아 행은 별도 그룹으로 나오고 사라지지 않는다', async () => {
@@ -1333,9 +1339,7 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
 
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('사용 중지할까요?')).toBeInTheDocument();
-    expect(
-      within(dialog).getByText('이 대분류에는 표시된 목록 기준 하위 상세 코드 2건이 있습니다.'),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText('연결된 하위 코드 2건이 있습니다.')).toBeInTheDocument();
   });
 
   it('하위가 없는 코드에는 건수 문장이 나오지 않는다', async () => {
@@ -1453,7 +1457,6 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
     const listPath = detailPath.slice(0, detailPath.lastIndexOf('/'));
     const fixtures = definition.kind === 'defect' ? defectCodeFixtures : causeCodeFixtures;
     const firstCode = definition.kind === 'defect' ? 'DF-10' : 'CS-10';
-    const groupHeader = definition.kind === 'defect' ? 'DF-10 · 외관' : 'CS-10 · 설비';
 
     const routes: StubRoute[] = [
       {
@@ -1466,7 +1469,7 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
       const { requests } = renderScreen(routes, '', TAB_ROUTE[definition.kind]);
 
       expect(await screen.findByRole('button', { name: firstCode })).toBeInTheDocument();
-      expect(screen.getByText(groupHeader)).toBeInTheDocument();
+      expect(isHeadRow(firstCode)).toBe(true);
       expect(pageListRequests(requests, listPath)).toHaveLength(1);
     });
 

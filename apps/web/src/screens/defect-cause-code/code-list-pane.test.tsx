@@ -43,17 +43,41 @@ const renderPane = (overrides: Partial<CodeListPaneProps> = {}) => {
   return { props, user: userEvent.setup() };
 };
 
+/** 대분류 줄이 묶음 머리다(#209) — 그 코드 단추가 머리 칸(접기 단추 옆)에 있는가. */
+const isHeadRow = (code: string): boolean =>
+  screen.getByRole('button', { name: code }).closest('.defect-cause-tree-head') !== null;
+
 describe('CodeListPane — 2계층 표시', () => {
-  /*
-   * 그룹 머리글은 <th scope="rowgroup">로 렌더돼 역할 조회가 불안정하다.
-   * 텍스트로 찾는다(디자인 시스템 구현 실측).
-   */
-  it('대분류마다 그룹 머리글이 하나씩 나온다', () => {
+  it('대분류 줄이 묶음 머리가 되고 하위 코드 수를 함께 낸다(#209)', () => {
     renderPane();
 
-    expect(screen.getByText('DF-10 · 외관')).toBeInTheDocument();
-    expect(screen.getByText('DF-20 · 치수')).toBeInTheDocument();
-    expect(screen.getByText('DF-90 · 사용하지 않는 축')).toBeInTheDocument();
+    expect(isHeadRow('DF-10')).toBe(true);
+    expect(isHeadRow('DF-20')).toBe(true);
+    expect(isHeadRow('DF-90')).toBe(true);
+    expect(isHeadRow('DF-11')).toBe(false);
+    expect(screen.getAllByText(/하위 코드 \d+건/).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('상세 줄은 선으로 대분류에 잇고, 묶음의 마지막 줄에서 선을 끝낸다', () => {
+    renderPane();
+
+    const child = screen.getByRole('button', { name: 'DF-12' }).closest('.defect-cause-tree-child');
+    expect(child).not.toBeNull();
+    expect(child).toHaveAttribute('data-last', 'true');
+    expect(
+      screen.getByRole('button', { name: 'DF-11' }).closest('.defect-cause-tree-child'),
+    ).not.toHaveAttribute('data-last');
+  });
+
+  it('접기 단추를 누르면 그 대분류의 상세 줄을 숨기고, 다시 누르면 보인다', async () => {
+    const { user } = renderPane();
+
+    const [fold] = screen.getAllByRole('button', { name: '하위 코드 접기' });
+    await user.click(fold!);
+    expect(screen.queryByRole('button', { name: 'DF-11' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '하위 코드 펼치기' }));
+    expect(screen.getByRole('button', { name: 'DF-11' })).toBeInTheDocument();
   });
 
   it('상위를 찾을 수 없는 코드는 별도 그룹으로 나온다 — 사라지지 않는다', () => {
@@ -209,7 +233,7 @@ describe('CodeListPane — 행이 하나뿐인 목록', () => {
   it('그룹이 하나여도 머리글과 행이 함께 나온다', () => {
     renderPane({ rows: single, byId: indexById(single) });
 
-    expect(screen.getByText('DF-01 · 단독')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'DF-01' })).toBeInTheDocument();
+    expect(isHeadRow('DF-01')).toBe(true);
+    expect(screen.getByText('하위 코드 0건')).toBeInTheDocument();
   });
 });

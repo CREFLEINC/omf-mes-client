@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -55,6 +55,12 @@ export const DeactivateConfirmDialog = ({
     {banner}
     <p>{t.description}</p>
     {/* 하위가 딸린 대분류를 중지하면 영향 범위가 넓다. 누르기 전에 그 사실을 보인다. */}
-    {childCount !== null && <p>{t.childCount(childCount)}</p>}
+    {/* 정보 안내 — 검사 조회·판정의 안내 줄과 같은 모양(사용자 지시 · #209). */}
+    {childCount !== null && (
+      <p className="iqc-inspection-action-note defect-cause-dialog-note" data-tone="info">
+        <Icon name="info" size={14} aria-hidden />
+        {t.childCount(childCount)}
+      </p>
+    )}
   </Dialog>
 );

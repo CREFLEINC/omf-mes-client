@@ -11,13 +11,26 @@ const renderWithSlot = (value: 'all' | 'active' | 'inactive') => {
   render(
     <>
       <div id={HUB_ACTIONS_ID} />
-      <UsageChips value={value} onChange={onChange} />
+      <UsageChips counts={null} value={value} onChange={onChange} />
     </>,
   );
   return { onChange, user: userEvent.setup() };
 };
 
 describe('UsageChips (#209)', () => {
+  it('건수를 받으면 칩마다 「이름 건수」로 낸다', async () => {
+    render(
+      <>
+        <div id={HUB_ACTIONS_ID} />
+        <UsageChips counts={{ all: 9, active: 7, inactive: 2 }} value="active" onChange={vi.fn()} />
+      </>,
+    );
+
+    expect(await screen.findByRole('button', { name: '전체 9' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '사용 7' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '미사용 2' })).toBeInTheDocument();
+  });
+
   it('전체 · 사용 · 미사용 칩을 내고 지금 고른 칩이 눌린 상태다', async () => {
     renderWithSlot('active');
 
@@ -46,7 +59,7 @@ describe('UsageChips (#209)', () => {
   });
 
   it('탭 줄 자리가 없으면 그리지 않는다', () => {
-    render(<UsageChips value="all" onChange={vi.fn()} />);
+    render(<UsageChips counts={null} value="all" onChange={vi.fn()} />);
 
     expect(screen.queryByRole('group', { name: '사용 여부로 거르기' })).not.toBeInTheDocument();
   });

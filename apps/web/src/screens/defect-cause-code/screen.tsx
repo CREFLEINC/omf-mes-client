@@ -405,13 +405,24 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
 
   /*
    * 하위가 딸린 대분류를 중지하면 영향 범위가 넓다. 누르기 전에 그 건수를 보인다.
-   * 세는 대상은 지금 화면에 그려진 목록이라 문구가 「표시된 목록 기준」이라고 밝힌다.
+   * 표가 쪽으로 나뉘므로(#209) 쪽 목록이 아니라 미사용까지 받은 전체 목록으로 센다.
    */
   const selectedCode = selected ?? detail.data?.code ?? null;
   const deactivateChildCount =
-    selectedCode !== null && isCategory(selectedCode) && childCountOf(items, selectedCode.id) > 0
-      ? childCountOf(items, selectedCode.id)
+    selectedCode !== null &&
+    isCategory(selectedCode) &&
+    childCountOf(options.items, selectedCode.id) > 0
+      ? childCountOf(options.items, selectedCode.id)
       : null;
+
+  /* 탭 줄 사용 여부 칩의 건수(사용자 지시 · #209) — 미사용까지 받은 전체 목록으로 센다. 받기 전이면 건수 없이 낸다. */
+  const usageCounts = options.isLoading
+    ? null
+    : {
+        all: options.items.length,
+        active: options.items.filter((item) => item.isActive).length,
+        inactive: options.items.filter((item) => !item.isActive).length,
+      };
 
   const codeListPane = (
     <CodeListPane
@@ -594,6 +605,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     <>
       {/* 탭 줄 오른쪽 — 사용 여부 칩 다음에 좌우·상하 배치(사용자 지시 · #209). 그린 순서대로 선다. */}
       <UsageChips
+        counts={usageCounts}
         value={filters.inactiveOnly ? 'inactive' : filters.includeInactive ? 'all' : 'active'}
         onChange={(usage) =>
           handleApplyFilters({

@@ -81,12 +81,20 @@ export const defectCauseCode = {
     nameVi: '베트남어명',
     referenceCount: '사용 중',
   },
+  /** 표의 대분류 · 상세 관계(사용자 지시 · #209) */
+  tree: {
+    childCount: (count: number): string => `하위 코드 ${String(count)}건`,
+    collapse: '하위 코드 접기',
+    expand: '하위 코드 펼치기',
+  },
   /** 탭 줄 오른쪽 사용 여부 칩(사용자 지시 2026-10-29 · #209) */
   usage: {
     label: '사용 여부로 거르기',
     all: '전체',
     active: '사용',
     inactive: '미사용',
+    /** 칩 글 — 「사용 6」처럼 건수를 붙인다(사용자 지시 · #209) */
+    count: (label: string, count: number): string => `${label} ${String(count)}`,
   },
   /** 표 머리 문구(사용자 지시 2026-10-29 · #209). 폼 · 상세 이름표는 `fields` 를 그대로 쓴다. */
   listColumns: {
@@ -140,14 +148,14 @@ export const defectCauseCode = {
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
     title: '사용 중지할까요?',
-    description: '삭제하지 않습니다. 사용 중지하면 새 작업에서 고를 수 없게 됩니다.',
+    description:
+      '사용 중지하면 새 작업에서 이 코드를 선택할 수 없습니다. 기존 데이터는 유지됩니다.',
     confirm: '사용 중지',
     /*
      * 「표시된 목록 기준」이라고 적는 이유: 목록이 잘렸으면 하위 건수가 실제보다 적을 수 있다.
      * 「N건입니다」라고 단정하면 사실과 다른 안내가 된다.
      */
-    childCount: (count: number): string =>
-      `이 대분류에는 표시된 목록 기준 하위 상세 코드 ${count}건이 있습니다.`,
+    childCount: (count: number): string => `연결된 하위 코드 ${String(count)}건이 있습니다.`,
   },
   mapping: {
     description:
