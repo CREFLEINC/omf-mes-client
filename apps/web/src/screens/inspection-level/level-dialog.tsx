@@ -35,6 +35,14 @@ export interface LevelDialogProps {
   onSave: (values: LevelDialogValues) => void;
 }
 
+/** 필수 표시 — 다른 화면과 같은 빨간 `*`(#208). 접근성 이름에 섞이지 않게 숨긴다. */
+const RequiredMark = () => (
+  <span className="required-mark" aria-hidden="true">
+    {' '}
+    *
+  </span>
+);
+
 /** 검사 수준 지정·수동 변경 창. 사유는 선택이고 넣으면 이력에 남는다(omf-all-around#133 — 예전에는 수준 변경 때 필수). */
 export const LevelDialog = ({
   row,
@@ -55,6 +63,8 @@ export const LevelDialog = ({
   const [picking, setPicking] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const shown = { ...fieldErrors, ...errors };
+  /* 새로 지정하고 품목이 미리 정해지지 않았을 때만 품목을 고른다. */
+  const canPick = row === null && presetItem === undefined;
 
   const save = () => {
     const found: Record<string, string> = {};
@@ -90,23 +100,42 @@ export const LevelDialog = ({
         {/* 품목 · 검사 수준 · 사유를 한 열로 — 위에서 아래로 읽고 고른다(#133). */}
         <div className="form-grid inspection-level-form">
           <div className="field-cell">
-            <span className="field-label">{t.dialog.item}</span>
-            {/* 품목은 이 창의 대상이라 값을 한 단계 크게(#133). 품목 코드는 제목에 되풀이하지 않는다. */}
-            <p className="inspection-level-form-item">
-              {item === null ? '—' : `${item.itemCode} · ${item.itemName}`}
-            </p>
-            {row === null && presetItem === undefined && (
-              <Button variant="outlined" size="sm" onClick={() => setPicking(true)}>
-                {t.dialog.pickItem}
-              </Button>
+            <span className="field-label">
+              {t.dialog.item}
+              {/* 고를 수 있을 때만 필수 표시 — 검사 기준 탭과 같은 빨간 `*`(#208). */}
+              {canPick && <RequiredMark />}
+            </span>
+            {canPick ? (
+              /* 고른 품목 · 「품목 찾기」를 한 줄로 — 비어 있으면 처음부터 빨간 테두리만(#208 · 검사 기준 탭과 같다). */
+              <div className="inspection-level-pick">
+                <span
+                  className={
+                    item === null
+                      ? 'inspection-level-pick-value inspection-level-pick-empty'
+                      : 'inspection-level-pick-value'
+                  }
+                  title={item === null ? undefined : `${item.itemCode} · ${item.itemName}`}
+                >
+                  {item === null ? t.dialog.itemPlaceholder : `${item.itemCode} · ${item.itemName}`}
+                </span>
+                <Button variant="outlined" onClick={() => setPicking(true)}>
+                  {t.dialog.pickItem}
+                </Button>
+              </div>
+            ) : (
+              /* 품목은 이 창의 대상이라 값을 한 단계 크게(#133). 품목 코드는 제목에 되풀이하지 않는다. */
+              <p className="inspection-level-form-item">
+                {item === null ? '—' : `${item.itemCode} · ${item.itemName}`}
+              </p>
             )}
             {shown.itemId && <span className="field-error">{shown.itemId}</span>}
           </div>
 
           <div className="field-cell">
-            <label className="field-label" htmlFor={levelId}>
-              {t.dialog.level}
-            </label>
+            <span className="field-label">
+              <label htmlFor={levelId}>{t.dialog.level}</label>
+              <RequiredMark />
+            </span>
             <Select
               id={levelId}
               options={LEVEL_CODES.map((code) => ({ value: code, label: t.levels[code] ?? code }))}
@@ -136,6 +165,7 @@ export const LevelDialog = ({
             <TextField
               id={reasonId}
               fullWidth
+              placeholder={t.dialog.reasonPlaceholder}
               value={reason}
               maxLength={500}
               onChange={(event) => setReason(event.target.value)}

@@ -2,8 +2,11 @@ import {
   AlertBanner,
   Breadcrumb,
   Button,
+  Chip,
+  type ChipStatus,
   type Column,
   EmptyState,
+  Icon,
   PageHeader,
   Table,
   TextField,
@@ -17,11 +20,13 @@ import type {
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner } from '../../patterns/master';
+import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
-import { PageNav } from '../oqc-inspection/page-nav';
-import { toPageView } from '../oqc-inspection/pagination';
 import { LEVEL_CODES, LevelDialog } from './level-dialog';
 import { useLevelWrite } from './level-write';
 import { usePageHub } from '../../patterns/page-hub';
@@ -35,6 +40,28 @@ import {
 const t = messages.inspectionLevel;
 
 const levelName = (code: string | null): string => (code === null ? '' : (t.levels[code] ?? code));
+
+/** 검사 수준을 글자 + 색으로 가른다(#208) — 무검사는 흐리게, 수월은 초록, 보통은 파랑, 엄격은 주의색. */
+const LEVEL_TONE: Record<string, ChipStatus> = {
+  NONE: 'idle',
+  REDUCED: 'success',
+  NORMAL: 'info',
+  TIGHTENED: 'warning',
+};
+
+const LevelChip = ({ code }: { code: string | null }) =>
+  code === null ? null : (
+    <Chip variant="status" size="sm" status={LEVEL_TONE[code] ?? 'idle'}>
+      {levelName(code)}
+    </Chip>
+  );
+
+/** 빈 상태의 둥근 바탕 아이콘 — 검사 기준 탭과 같다(#208). */
+const emptyIcon = (
+  <span className="inspection-standard-empty-icon">
+    <Icon name="assignment" size={20} />
+  </span>
+);
 
 /** 이력의 사유 칸 — 자동은 연속 합격 수나 불합격 의뢰, 수동은 입력한 사유. */
 export const historyReason = (row: ItemInspectionLevelHistory): string => {
@@ -81,25 +108,41 @@ export const InspectionLevelScreen = () => {
     setEditing({ row });
   };
 
+  /* 목록 표는 모든 열을 가운데 정렬한다 — 검사 기준 탭과 같다(#208). */
   const columns: Column<ItemInspectionLevel>[] = [
-    { key: 'itemCode', header: t.columns.itemCode, render: (row) => row.itemCode },
-    { key: 'itemName', header: t.columns.itemName, render: (row) => row.itemName },
+    {
+      key: 'itemCode',
+      align: 'center',
+      header: t.columns.itemCode,
+      width: '160px',
+      render: (row) => row.itemCode,
+    },
+    {
+      key: 'itemName',
+      align: 'center',
+      header: t.columns.itemName,
+      /* 폭을 정하지 않는다 — 남는 폭을 품목명 열이 맡는다(검사 기준 탭과 같다 · #208). */
+      render: (row) => <span title={row.itemName}>{row.itemName}</span>,
+    },
     {
       key: 'level',
+      align: 'center',
       header: t.columns.level,
-      width: '96px',
-      render: (row) => levelName(row.inspectionLevelCode),
+      width: '104px',
+      render: (row) => <LevelChip code={row.inspectionLevelCode} />,
     },
     {
       key: 'updatedAt',
+      align: 'center',
       header: t.columns.updatedAt,
       width: '150px',
       render: (row) => formatPlantDateTime(row.updatedAt) ?? '',
     },
     {
       key: 'actions',
+      align: 'center',
       header: t.columns.actions,
-      width: '180px',
+      width: '168px',
       render: (row) => (
         <>
           <Button
@@ -130,18 +173,26 @@ export const InspectionLevelScreen = () => {
   const historyColumns: Column<ItemInspectionLevelHistory>[] = [
     {
       key: 'changedAt',
+      align: 'center',
       header: t.history.columns.changedAt,
       width: '150px',
       render: (row) => formatPlantDateTime(row.changedAt) ?? '',
     },
     {
       key: 'item',
+      align: 'center',
       header: t.history.columns.item,
-      render: (row) => `${row.itemCode} · ${row.itemName}`,
+      width: '240px',
+      render: (row) => {
+        const label = `${row.itemCode} · ${row.itemName}`;
+        return <span title={label}>{label}</span>;
+      },
     },
     {
       key: 'change',
+      align: 'center',
       header: t.history.columns.change,
+      width: '160px',
       render: (row) =>
         row.fromLevelCode === null
           ? `${levelName(row.toLevelCode)} ${t.history.firstSet}`
@@ -149,17 +200,47 @@ export const InspectionLevelScreen = () => {
     },
     {
       key: 'type',
+      align: 'center',
       header: t.history.columns.type,
       width: '72px',
       render: (row) => t.history.types[row.changeTypeCode] ?? row.changeTypeCode,
     },
-    { key: 'reason', header: t.history.columns.reason, render: historyReason },
+    {
+      key: 'reason',
+      align: 'center',
+      header: t.history.columns.reason,
+      /* 폭을 정하지 않는다 — 사유가 가장 길어 남는 폭을 맡는다(#208). */
+      render: (row) => {
+        const reason = historyReason(row);
+        return <span title={reason}>{reason}</span>;
+      },
+    },
     {
       key: 'changedBy',
+      align: 'center',
       header: t.history.columns.changedBy,
+      width: '112px',
       render: (row) => row.changedByName ?? '',
     },
   ];
+
+  /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다 — 검사 기준 탭 목록과 같다(#208). */
+  const ordered = useColumnOrder('omf-mes:inspection-level:columns:list:order', columns);
+  const resizable = useColumnWidths('omf-mes:inspection-level:columns:list', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
+
+  const historyOrdered = useColumnOrder(
+    'omf-mes:inspection-level:columns:history:order',
+    historyColumns,
+  );
+  const historyResizable = useColumnWidths(
+    'omf-mes:inspection-level:columns:history',
+    historyOrdered,
+    { fitContent: true },
+  );
+  const historyFit = useFitColumns(historyResizable.columns, { scrollX: true });
 
   return (
     <>
@@ -178,17 +259,11 @@ export const InspectionLevelScreen = () => {
 
       <p className="field-note">{t.rule}</p>
 
-      <section className="pane" aria-label={t.list.heading}>
-        <h2 className="pane-title">{t.list.heading}</h2>
-        {list.isError && (
-          <AlertBanner variant="error">
-            {t.list.loadFailed}{' '}
-            <Button size="sm" variant="text" onClick={() => void list.refetch()}>
-              {t.list.retry}
-            </Button>
-          </AlertBanner>
-        )}
-
+      {/*
+       * 조회 조건 — 검사 기준 탭처럼 목록 위 카드 한 줄: 품목 · 검사 수준 → 조회 → 구분선 → 품목 추가(#208).
+       * 「초기화」는 원래 없던 단추라 새로 두지 않는다.
+       */}
+      <section className="pane inspection-level-search" role="search">
         <form
           className="filter-bar"
           onSubmit={(event) => {
@@ -196,17 +271,20 @@ export const InspectionLevelScreen = () => {
             setFilter({ q: keyword.trim(), level: levelFilter, page: 1 });
           }}
         >
-          <div className="field-cell">
+          <div className="field-cell inspection-level-keyword">
             <label className="field-label" htmlFor={keywordId}>
               {t.list.keyword}
             </label>
             <TextField
               id={keywordId}
+              fullWidth
+              placeholder={t.list.keywordPlaceholder}
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
             />
           </div>
-          <div className="field-cell">
+          {/* 「무검사」·「보통」 같은 짧은 값이라 좁게(#208). */}
+          <div className="field-cell inspection-level-level-filter">
             <label className="field-label" htmlFor={levelFilterId}>
               {t.list.level}
             </label>
@@ -220,75 +298,116 @@ export const InspectionLevelScreen = () => {
               onChange={(value) => setLevelFilter(value as InspectionLevelCode | '')}
             />
           </div>
-          <div className="field-cell field-cell-unlabeled">
-            <Button type="submit" variant="outlined">
-              {t.list.search}
+          <div className="filter-actions field-cell-unlabeled">
+            <Button type="submit" variant="filled">
+              {messages.common.search}
+            </Button>
+            <span className="inspection-standard-filter-divider" aria-hidden />
+            <Button
+              variant="filled"
+              leadingIcon={<Icon name="add" size={18} />}
+              onClick={() => openDialog(null)}
+            >
+              {t.list.add}
             </Button>
           </div>
-          <div className="field-cell field-cell-unlabeled">
-            <Button onClick={() => openDialog(null)}>{t.list.add}</Button>
-          </div>
         </form>
+      </section>
 
-        <div className="wide-table">
+      <section className="pane inspection-level-list-pane" aria-label={t.list.heading}>
+        <h2 className="pane-title">{t.list.heading}</h2>
+        {list.isError && (
+          <AlertBanner variant="error">
+            {t.list.loadFailed}{' '}
+            <Button size="sm" variant="text" onClick={() => void list.refetch()}>
+              {t.list.retry}
+            </Button>
+          </AlertBanner>
+        )}
+        <div
+          ref={fit.ref}
+          className="inspection-queue-table inspection-standard-table-box inspection-level-rows"
+          style={resizable.style}
+        >
           <Table
             caption={t.list.caption}
             density="compact"
-            columns={columns}
+            columns={fit.columns}
             rows={rows}
             getRowId={(row) => String(row.itemInspectionLevelId)}
             empty={
-              <EmptyState size="sm" live title={list.isPending ? t.list.loading : t.list.empty} />
+              list.isPending ? (
+                <EmptyState size="sm" live title={t.list.loading} />
+              ) : (
+                <EmptyState
+                  size="sm"
+                  live
+                  icon={emptyIcon}
+                  title={t.list.empty}
+                  description={t.list.emptyHint}
+                />
+              )
             }
           />
         </div>
         {list.data !== undefined && (
           <PageNav
-            view={toPageView(list.data.page, rows.length)}
-            onChange={(page) => setFilter((prev) => ({ ...prev, page }))}
+            meta={list.data.page}
+            buttonSize="md"
+            onChangePage={(page) => setFilter((prev) => ({ ...prev, page }))}
           />
         )}
       </section>
 
-      <section className="pane" aria-label={t.history.heading}>
-        <h2 className="pane-title">{t.history.heading}</h2>
-        {historyItem !== null && (
-          <p className="field-note">
-            {t.history.filteredBy(historyItem.itemCode)}{' '}
-            <Button
-              size="sm"
-              variant="text"
-              onClick={() => {
-                setHistoryItem(null);
-                setHistoryPage(1);
-              }}
-            >
-              {t.history.showAll}
-            </Button>
-          </p>
-        )}
+      <section className="pane inspection-level-list-pane" aria-label={t.history.heading}>
+        {/* 제목 옆에 「어느 품목만 보는 중 · 전체 보기」를 같은 줄로 — 줄 하나를 아낀다(#208). */}
+        <div className="inspection-level-section-head">
+          <h2 className="pane-title">{t.history.heading}</h2>
+          {historyItem !== null && (
+            <span className="inspection-level-history-filter">
+              {t.history.filteredBy(historyItem.itemCode)}
+              <Button
+                size="sm"
+                variant="outlined"
+                onClick={() => {
+                  setHistoryItem(null);
+                  setHistoryPage(1);
+                }}
+              >
+                {t.history.showAll}
+              </Button>
+            </span>
+          )}
+        </div>
         {histories.isError && <AlertBanner variant="error">{t.history.loadFailed}</AlertBanner>}
-        <div className="wide-table">
+        <div
+          ref={historyFit.ref}
+          className="inspection-queue-table inspection-standard-table-box inspection-level-rows"
+          style={historyResizable.style}
+        >
           <Table
             caption={t.history.caption}
             density="compact"
-            columns={historyColumns}
+            columns={historyFit.columns}
             rows={historyRows}
             getRowId={(row) => String(row.itemInspectionLevelHistoryId)}
             empty={
-              <EmptyState
-                size="sm"
-                live
-                title={histories.isPending ? t.history.loading : t.history.empty}
-              />
+              histories.isPending ? (
+                <EmptyState size="sm" live title={t.history.loading} />
+              ) : (
+                <EmptyState
+                  size="sm"
+                  live
+                  icon={emptyIcon}
+                  title={t.history.empty}
+                  description={t.history.emptyHint}
+                />
+              )
             }
           />
         </div>
         {histories.data !== undefined && (
-          <PageNav
-            view={toPageView(histories.data.page, historyRows.length)}
-            onChange={setHistoryPage}
-          />
+          <PageNav meta={histories.data.page} buttonSize="md" onChangePage={setHistoryPage} />
         )}
       </section>
 

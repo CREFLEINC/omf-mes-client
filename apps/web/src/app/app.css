@@ -17389,6 +17389,121 @@ button.app-button-neutral {
   letter-spacing: var(--type-title-sm-tracking);
 }
 
+/* 검사 수준 창 — 고른 품목 칸 · 「품목 찾기」를 한 줄로(#208). */
+.inspection-level-pick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* 입력칸과 같은 높이·테두리의 읽기 전용 값 — 긴 품목명은 말줄임(#208). */
+.inspection-level-pick-value {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: var(--space-2) var(--space-3);
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  color: var(--on-surface);
+  font: var(--type-body-md);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 비어 있는 필수 칸은 처음부터 빨간 테두리만 — 안내는 흐린 글(검사 기준 탭과 같다 · #208). */
+.inspection-level-pick-empty {
+  border-color: var(--semantic-error-text);
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 검사 수준 관리 탭(#208) — 검사 기준 탭과 같은 조회 카드 한 줄 · 둥근 테두리 표 · 쪽 이동.
+ * 카드 안 조회 줄의 아래 여백은 걷는다.
+ */
+.inspection-level-search > .filter-bar {
+  margin-bottom: 0;
+}
+
+.inspection-level-search .filter-actions {
+  align-items: center;
+}
+
+/* 품목 코드·이름 칸 — 안내 문구가 잘리지 않는 폭, 수준 칸은 짧은 값이라 좁게(#208). */
+.inspection-level-keyword {
+  flex: 0 1 18rem;
+  min-width: min(14rem, 100%);
+}
+
+.inspection-level-level-filter {
+  flex: 0 0 8rem;
+}
+
+.inspection-level-level-filter > :not(label) {
+  width: 100%;
+}
+
+/* 목록 · 이력 카드 — 제목 · 표 · 쪽 이동 줄 사이를 같은 간격으로(#208). */
+.inspection-level-list-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.inspection-level-list-pane .pane-title {
+  margin: 0;
+}
+
+.inspection-level-list-pane > .page-nav {
+  margin-top: 0;
+}
+
+/* 이력 제목 옆 「품목 … 이력만 보는 중 [전체 보기]」 — 같은 줄(#208). */
+.inspection-level-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.inspection-level-history-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+.inspection-level-rows thead th {
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  white-space: nowrap;
+}
+
+/* 긴 품목명 · 사유는 한 줄 말줄임 — 행 높이를 고르게(#208). 전체 글은 마우스를 올리면 보인다. */
+.inspection-level-rows tbody td span[title] {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ⚠ 공용 규칙(`.inspection-queue-table thead th[data-align='center'] .col-grip`)보다 무거워야 손잡이가 이름 옆에 선다. */
+.inspection-queue-table.inspection-level-rows thead .col-head {
+  position: relative;
+}
+
+.inspection-queue-table.inspection-level-rows thead th[data-align] .col-grip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-1));
+  transform: translateY(-50%);
+}
+
 /* IQC 상세 「검사 수준」 칸 — 수준 이름 바로 옆에 테두리 있는 [변경] 버튼(omf-all-around#133). */
 .iqc-inspection-level {
   display: inline-flex;
