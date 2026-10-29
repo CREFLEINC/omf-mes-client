@@ -362,7 +362,7 @@ describe('InspectionStandardScreen — 기준 선택', () => {
     renderScreen([planListRoute()]);
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
-    expect(screen.getByText('검사 기준을 선택해 주세요')).toBeInTheDocument();
+    expect(screen.getByText('검사 기준을 선택하세요')).toBeInTheDocument();
     expect(screen.getByText('목록에서 선택하면 상세 정보가 표시됩니다.')).toBeInTheDocument();
   });
 });
@@ -1064,7 +1064,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     await awaitPlanForm();
     expect(await screen.findByRole('combobox', { name: '라우팅' })).toBeDisabled();
     expect(
-      screen.getByText('라우팅은 품목을 고른 뒤에 고를 수 있습니다. 먼저 품목을 고르세요.'),
+      screen.getByText('라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.'),
     ).toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings')).toHaveLength(0);
   });
@@ -1568,7 +1568,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
 
     await user.click(code);
 
-    expect(await screen.findByText('검사 기준을 선택해 주세요')).toBeInTheDocument();
+    expect(await screen.findByText('검사 기준을 선택하세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).not.toHaveAttribute('aria-current');
   });
 
@@ -3189,7 +3189,7 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
     expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A-편집중');
 
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
-    expect(await screen.findByText('검사 기준을 선택해 주세요')).toBeInTheDocument();
+    expect(await screen.findByText('검사 기준을 선택하세요')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
 

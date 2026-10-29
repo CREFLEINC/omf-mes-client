@@ -126,12 +126,12 @@ describe('PlanPane — 잠금과 사유', () => {
   it('품목을 고르지 않으면 라우팅 선택칸이 비활성이고 사유가 붙는다', () => {
     renderPane({
       values: { ...planToFormValues(inspectionPlanFixtures[0]!), itemId: '' },
-      routingDisabledReason: '라우팅은 품목을 고른 뒤에 고를 수 있습니다. 먼저 품목을 고르세요.',
+      routingDisabledReason: '라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.',
     });
 
     expect(screen.getByRole('combobox', { name: '라우팅' })).toBeDisabled();
     expect(
-      screen.getByText('라우팅은 품목을 고른 뒤에 고를 수 있습니다. 먼저 품목을 고르세요.'),
+      screen.getByText('라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.'),
     ).toBeInTheDocument();
   });
 

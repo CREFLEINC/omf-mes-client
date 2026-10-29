@@ -45,7 +45,7 @@ export const inspectionStandard = {
      * 고를 수 있는 라우팅 자체가 없다. 값을 고를 수 없는 칸을 활성으로 두면
      * 사용자가 무엇이 막혔는지 모르고, 감추면 「이 화면에는 없는 항목」으로 오해한다.
      */
-    routingNeedsItem: '라우팅은 품목을 고른 뒤에 고를 수 있습니다. 먼저 품목을 고르세요.',
+    routingNeedsItem: '라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.',
     approveAlreadyDone: '승인은 이미 승인된 기준에 다시 할 수 없습니다.',
     approveNeedsPlan: '승인은 기준을 먼저 등록해야 할 수 있습니다.',
     deactivateAlreadyDone: '사용 중지는 이미 미사용인 기준에 다시 할 수 없습니다.',
@@ -159,7 +159,7 @@ export const inspectionStandard = {
     fileLabel: '검사기준 엑셀 파일(.xlsx, 여러 개 가능)',
     filePlaceholder: '파일 고르기',
     fileNone: '고른 파일이 없습니다.',
-    fileRequired: '올릴 파일을 먼저 고르세요.',
+    fileRequired: '올릴 파일을 먼저 선택하세요.',
     fileCount: (count: number): string => `파일 ${String(count)}개를 골랐습니다.`,
     removeFile: (name: string): string => `${name} 빼기`,
     progress: (done: number, total: number): string =>
@@ -261,7 +261,7 @@ export const inspectionStandard = {
     changed: '변경',
     same: '같음',
     hideSame: '동일 항목 숨기기',
-    sameVersion: '서로 다른 버전을 고르세요.',
+    sameVersion: '서로 다른 버전을 선택하세요.',
     noItemDiff: '바뀐 검사 항목이 없습니다.',
     noItems: '두 버전 모두 검사 항목이 없습니다.',
     yes: '예',
@@ -338,9 +338,9 @@ export const inspectionStandard = {
      */
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
-    planNotSelected: '목록에서 검사 기준을 먼저 고르세요',
+    planNotSelected: '목록에서 검사 기준을 먼저 선택하세요',
     /* 상세 칸 빈 안내(사용자 시안 · #196) — 배치(좌우 · 상하)에 따라 목록 위치가 달라 「왼쪽」이라 하지 않는다. */
-    detailNotSelectedTitle: '검사 기준을 선택해 주세요',
+    detailNotSelectedTitle: '검사 기준을 선택하세요',
     detailNotSelectedDescription: '목록에서 선택하면 상세 정보가 표시됩니다.',
     versionNoneTitle: '등록된 버전이 없습니다',
     versionNoneDescription: '「버전 등록」으로 첫 버전을 만드세요.',

@@ -18,8 +18,8 @@ export const judgmentCode: Translated<typeof ko.judgmentCode> = {
       `Không có nhóm mã nào có mã nhóm là «${groupCode}». Hãy đăng ký nhóm mã này ở màn hình mã chung trước.`,
   },
   status: {
-    header: 'Trạng thái',
-    active: 'Đang dùng',
+    header: 'Trạng thái sử dụng',
+    active: 'Sử dụng',
     inactive: 'Ngừng dùng',
   },
   notices: {

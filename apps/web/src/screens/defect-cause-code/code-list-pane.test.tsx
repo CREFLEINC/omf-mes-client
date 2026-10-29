@@ -77,7 +77,7 @@ describe('CodeListPane — 2계층 표시', () => {
     renderPane();
 
     expect(screen.getByText('미사용')).toBeInTheDocument();
-    expect(screen.getAllByText('사용 중').length).toBe(6);
+    expect(screen.getAllByText('사용').length).toBe(6);
   });
 
   it('코드를 누르면 그 코드가 선택된다', async () => {

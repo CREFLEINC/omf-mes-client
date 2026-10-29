@@ -52,8 +52,8 @@ export const defectCauseCode = {
     codeNoneDescription: '「대분류 추가」로 첫 대분류를 등록하세요.',
     codeNoMatchTitle: '조건에 맞는 결과가 없습니다',
     codeNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-    codeNotSelectedTitle: '코드를 고르세요',
-    codeNotSelected: '목록에서 코드를 고르거나 「대분류 추가」로 시작하세요.',
+    codeNotSelectedTitle: '코드를 선택하세요',
+    codeNotSelected: '목록에서 선택하면 상세 정보가 표시됩니다.',
     mappingNoneTitle: '매핑할 상세 불량코드가 없습니다',
     mappingNoneDescription: '불량코드 탭에서 대분류 아래에 상세 코드를 먼저 등록하세요.',
     processNoneTitle: '매핑할 공정이 없습니다',
@@ -72,10 +72,10 @@ export const defectCauseCode = {
     code: '코드',
     name: '명칭',
     parent: '상위 대분류',
-    isActive: '사용',
+    isActive: '사용 여부',
   },
   values: {
-    active: '사용 중',
+    active: '사용',
     inactive: '미사용',
     noParent: '없음 (대분류)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */

@@ -180,7 +180,7 @@ describe('CodeFormPane — 사용 여부와 사용 중지', () => {
   it('등록에는 아직 사용 여부도 사용 중지도 없다', () => {
     renderPane();
 
-    expect(screen.queryByText('사용 중')).not.toBeInTheDocument();
+    expect(screen.queryByText('사용', { exact: true })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
 

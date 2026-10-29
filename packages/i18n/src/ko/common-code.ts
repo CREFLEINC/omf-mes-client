@@ -532,7 +532,7 @@ export const commonCode = {
       noneDescription: '「코드값 추가」로 첫 코드값을 등록하세요.',
       noMatchTitle: '조건에 맞는 코드값이 없습니다',
       noMatchDescription: '「미사용 포함」을 켜면 미사용 코드값도 보입니다.',
-      notSelected: '위 목록에서 코드값을 먼저 고르세요',
+      notSelected: '코드값을 선택하세요',
       /*
        * 결과는 있는데 **이 쪽에는** 없다. 바깥 묶음에 같은 문구가 있으나 여기 따로 둔다 —
        * 한 벌은 자기 묶음만 들고 옮겨진다.

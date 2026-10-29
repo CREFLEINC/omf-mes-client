@@ -56,7 +56,7 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     codeNoMatchTitle: 'Không có kết quả khớp điều kiện',
     codeNoMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
     codeNotSelectedTitle: 'Hãy chọn mã',
-    codeNotSelected: 'Chọn mã trong danh sách hoặc bắt đầu bằng «Thêm cấp lớn».',
+    codeNotSelected: 'Chọn trong danh sách để hiển thị thông tin chi tiết.',
     mappingNoneTitle: 'Không có mã lỗi chi tiết để ánh xạ',
     mappingNoneDescription: 'Hãy đăng ký mã chi tiết dưới cấp lớn ở tab mã lỗi trước.',
     processNoneTitle: 'Không có công đoạn để ánh xạ',
@@ -76,10 +76,10 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     code: 'Mã',
     name: 'Tên',
     parent: 'Cấp lớn bên trên',
-    isActive: 'Sử dụng',
+    isActive: 'Trạng thái sử dụng',
   },
   values: {
-    active: 'Đang dùng',
+    active: 'Sử dụng',
     inactive: 'Ngừng dùng',
     noParent: 'Không có (cấp lớn)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */

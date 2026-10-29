@@ -34,7 +34,7 @@ export const inspectionSheetTemplate = {
     loadFailed: 'Không tải được tiêu chuẩn phiếu kiểm tra.',
     retry: 'Thử lại',
     selectTitle: 'Chọn tiêu chuẩn phiếu kiểm tra',
-    selectHint: 'Chọn trong danh sách hoặc bấm «Đăng ký tiêu chuẩn mới».',
+    selectHint: 'Chọn trong danh sách để hiển thị thông tin chi tiết.',
     openRow: (itemCode: string, version: number) => `Mở ${itemCode} bản ${version}`,
   },
 

@@ -48,7 +48,7 @@ export const inspectionLevel = {
     item: '품목',
     pickItem: '품목 찾기',
     pickConfirm: '선택',
-    noItem: '품목을 고르세요.',
+    noItem: '품목을 선택하세요.',
     itemPlaceholder: '품목을 선택하세요',
     level: '검사 수준',
     reason: '사유',

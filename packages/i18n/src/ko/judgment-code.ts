@@ -27,7 +27,7 @@ export const judgmentCode = {
   },
   /** 목록 상태 열 — 사용/미사용을 글자 + 색으로 가른다(#208). */
   status: {
-    header: '상태',
+    header: '사용 여부',
     active: '사용',
     inactive: '미사용',
   },

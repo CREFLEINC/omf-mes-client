@@ -297,9 +297,8 @@ describe('DefectCauseCodeScreen — 2계층 표시', () => {
     renderScreen([defectListRoute()]);
     await screen.findByRole('button', { name: 'DF-10' });
 
-    expect(
-      screen.getByText('목록에서 코드를 고르거나 「대분류 추가」로 시작하세요.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('코드를 선택하세요')).toBeInTheDocument();
+    expect(screen.getByText('목록에서 선택하면 상세 정보가 표시됩니다.')).toBeInTheDocument();
   });
 });
 
