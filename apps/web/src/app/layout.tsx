@@ -27,7 +27,13 @@ import {
   matchesNavEntry,
 } from './nav-filter';
 import { HubTabs } from './hub-tabs';
-import { IQC_PATH, useIqcPendingCount } from './iqc-pending';
+import {
+  IQC_PATH,
+  OQC_PATH,
+  PQC_PATH,
+  useInspectionPendingCount,
+  useIqcPendingCount,
+} from './iqc-pending';
 import { NavGroup } from './nav-group';
 import { NAV_GROUPS, NAV_LEAD, navEntryPaths, type NavEntry, type NavTab } from './nav-tree';
 import { SHELL_BRAND } from './shell-label';
@@ -340,6 +346,23 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     iqcCount !== undefined && iqcCount > 0 ? (
       <Badge count={iqcCount} max={9} aria-label={t.iqcPending(iqcCount)} />
     ) : null;
+  /*
+   * PQC · OQC 탭에도 대기 수(사용자 지시 2026-10-29 · #197) — 탭에만 붙인다. 「검사 조회·판정」 줄 · 묶음 점은 종전대로 IQC 수다(D-10).
+   */
+  const pqcCount = useInspectionPendingCount('PQC', access.allows(PQC_PATH));
+  const oqcCount = useInspectionPendingCount('OQC', access.allows(OQC_PATH));
+  const pendingBadge = (count: number | undefined, label: (count: number) => string): ReactNode =>
+    count !== undefined && count > 0 ? (
+      <Badge count={count} max={9} aria-label={label(count)} />
+    ) : null;
+  const tabBadgeOf = (path: string): ReactNode =>
+    path === IQC_PATH
+      ? iqcBadge
+      : path === PQC_PATH
+        ? pendingBadge(pqcCount, t.pqcPending)
+        : path === OQC_PATH
+          ? pendingBadge(oqcCount, t.oqcPending)
+          : null;
   const badgeOf = (paths: readonly string[]): ReactNode =>
     paths.includes(IQC_PATH) ? iqcBadge : null;
   const isLeadAllowed = isNavEntryAllowed(NAV_LEAD, access);
@@ -359,11 +382,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const activeHub = findActiveHub(allowedGroups, pathname);
   const hubTabs =
     activeHub !== null && activeHub.hub.tabs.length > 1 && activeHub.hub.inlineTabs !== true ? (
-      <HubTabs
-        hub={activeHub.hub}
-        activePath={activeHub.activePath}
-        badgeOf={(path) => (path === IQC_PATH ? iqcBadge : null)}
-      />
+      <HubTabs hub={activeHub.hub} activePath={activeHub.activePath} badgeOf={tabBadgeOf} />
     ) : null;
   /* 탭 막대가 섰으면 화면에 알린다 — 그 화면은 경로·제목을 따로 세우지 않는다(`patterns/page-hub.tsx`). */
   const pageHub: PageHub | null =

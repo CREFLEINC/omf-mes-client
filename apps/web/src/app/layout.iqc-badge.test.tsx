@@ -25,6 +25,8 @@ const Go = ({ to }: { to: string }) => {
 
 interface Setup {
   total?: number | 'fail';
+  /** 검사 유형별 수 — 주면 `total` 대신 쓴다(PQC · OQC 탭). */
+  totalsByType?: Record<string, number>;
   permissions?: string[];
   route?: string;
 }
@@ -51,7 +53,16 @@ const setup = (options: Setup = {}) => {
               ? jsonResponse({ message: '' }, { status: 503 })
               : jsonResponse({
                   items: [],
-                  page: { page: 1, size: 1, total: options.total ?? 4 },
+                  page: {
+                    page: 1,
+                    size: 1,
+                    total:
+                      options.totalsByType?.[
+                        new URL(request.url).searchParams.get('inspectionTypeCode') ?? ''
+                      ] ??
+                      options.total ??
+                      4,
+                  },
                 });
           },
         },
@@ -96,6 +107,36 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
     const tabs = await screen.findByRole('navigation', { name: INSPECTION_ROW });
     const iqcTab = within(tabs).getByRole('link', { name: /^IQC/ });
     expect(await within(iqcTab).findByLabelText(t.iqcPending(4))).toHaveTextContent('4');
+  });
+
+  it('PQC · OQC 탭에도 그 검사의 대기 수가 붙고, 사이드바 줄은 IQC 수 그대로다(#197)', async () => {
+    const { counted } = setup({
+      route: '/logistics/iqc-inspection',
+      permissions: ['W-01-01', 'W-03-11', 'W-04-03'],
+      totalsByType: { IQC: 4, PQC: 12, OQC: 0 },
+    });
+
+    const tabs = await screen.findByRole('navigation', { name: INSPECTION_ROW });
+    const pqcTab = within(tabs).getByRole('link', { name: /^PQC/ });
+    expect(await within(pqcTab).findByLabelText(t.pqcPending(12))).toHaveTextContent('9+');
+    /* 0건이면 배지가 없다. */
+    const oqcTab = within(tabs).getByRole('link', { name: /^OQC/ });
+    expect(within(oqcTab).queryByLabelText(t.oqcPending(0))).toBeNull();
+    expect(within(sidebar()).getByLabelText(t.iqcPending(4))).toBeInTheDocument();
+    /* 유형마다 목록과 같은 조건(대기만 · size 1)으로 묻는다. */
+    await waitFor(() =>
+      expect(new Set(counted.map((url) => url.searchParams.get('inspectionTypeCode')))).toEqual(
+        new Set(['IQC', 'PQC', 'OQC']),
+      ),
+    );
+    expect(counted.every((url) => url.searchParams.get('pendingOnly') === 'true')).toBe(true);
+  });
+
+  it('PQC · OQC 화면 권한이 없으면 그 수를 묻지 않는다', async () => {
+    const { counted } = setup({ permissions: ['W-01-01', 'W-CO-09'] });
+
+    await waitFor(() => expect(counted.length).toBeGreaterThan(0));
+    expect(counted.every((url) => url.searchParams.get('inspectionTypeCode') === 'IQC')).toBe(true);
   });
 
   it('US4-2 닫힌 「품질 관리」 묶음 손잡이에 점, 열면 점 대신 줄의 수', async () => {
