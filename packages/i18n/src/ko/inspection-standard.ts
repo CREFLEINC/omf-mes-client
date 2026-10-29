@@ -105,7 +105,7 @@ export const inspectionStandard = {
     confirmDescription:
       '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
     obsoleteTitle: '이 버전을 폐기할까요?',
-    obsoleteDescription: '삭제하지 않습니다. 폐기하면 새 검사에서 이 버전을 쓸 수 없게 됩니다.',
+    obsoleteDescription: '폐기한 버전은 새 검사에서 사용할 수 없습니다. 기존 데이터는 유지됩니다.',
     discardTitle: '이 작성중 버전을 취소할까요?',
     discardDescription:
       '이 버전과 검사 항목이 삭제되며 되돌릴 수 없습니다. 저장하지 않은 변경도 함께 사라집니다.',

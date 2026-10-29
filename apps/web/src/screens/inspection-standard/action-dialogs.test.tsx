@@ -79,9 +79,9 @@ describe('VersionTransitionDialog — 문면 잣대', () => {
 
     expect(screen.getByRole('dialog', { name: t.dialog.obsoleteTitle })).toBeInTheDocument();
     expect(screen.getByText(description)).toBeInTheDocument();
-    expect(description).toContain('삭제하지 않습니다');
     expect(description).toContain('새 검사');
-    expect(description).toContain('쓸 수 없게 됩니다');
+    expect(description).toContain('사용할 수 없습니다');
+    expect(description).toContain('기존 데이터는 유지됩니다');
     expect(screen.getByRole('button', { name: t.actions.obsolete })).toBeInTheDocument();
   });
 

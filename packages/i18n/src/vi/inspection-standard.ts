@@ -98,7 +98,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       'Đã xác nhận thì phiên bản này không sửa được nữa. Muốn thay đổi thì phải phát hành phiên bản mới.',
     obsoleteTitle: 'Hủy bỏ phiên bản này?',
     obsoleteDescription:
-      'Không xóa. Sau khi hủy bỏ thì không dùng phiên bản này cho lần kiểm tra mới được nữa.',
+      'Phiên bản đã hủy bỏ không dùng được cho lần kiểm tra mới. Dữ liệu hiện có vẫn được giữ.',
     discardTitle: 'Hủy phiên bản đang soạn này?',
     discardDescription:
       'Phiên bản này và các hạng mục kiểm tra sẽ bị xóa, không khôi phục được. Thay đổi chưa lưu cũng mất.',
