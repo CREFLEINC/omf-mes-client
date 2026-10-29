@@ -128,18 +128,6 @@ const fetchKindPage = async (
 export const ALL_CAP = 1000;
 const ALL_PAGE = 200;
 
-const mergeQty = (lists: readonly QtyByUom[][]): QtyByUom[] => {
-  const byUom = new Map<string, QtyByUom>();
-  for (const entry of lists.flat()) {
-    const current = byUom.get(entry.uomCode);
-    byUom.set(
-      entry.uomCode,
-      current === undefined ? { ...entry } : { ...current, qty: current.qty + entry.qty },
-    );
-  }
-  return [...byUom.values()];
-};
-
 /** 줄 시각(공장 날짜와 시각) 내림차순 — 서버 목록과 같은 순서. */
 const newestFirst = (a: MovementRow, b: MovementRow): number =>
   `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`);
@@ -171,7 +159,8 @@ const fetchAll = async (
     rows: results.flatMap((result) => result.rows).sort(newestFirst),
     totals: {
       lineCount: results.reduce((sum, result) => sum + (result.first?.totals.lineCount ?? 0), 0),
-      qtyByUom: mergeQty(results.map((result) => result.first?.totals.qtyByUom ?? [])),
+      /* 입고, 투입, 포장, 출하 수량은 같은 LOT을 단계마다 다시 센 값이라 더하지 않는다. */
+      qtyByUom: [],
     },
     capped: results.some((result) => (result.first?.page.total ?? 0) > ALL_CAP),
   };

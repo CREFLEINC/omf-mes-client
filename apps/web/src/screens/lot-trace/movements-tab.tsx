@@ -209,10 +209,13 @@ export const LotHistory = () => {
         {total > 0 && (
           <p className="lot-trace-totals">
             <span>{t.list.totalLines(total)}</span>
-            <span>
-              <span className="lot-trace-totals-label">{t.list.totalQty}</span>{' '}
-              {formatQtyByUom(list.data.totals.qtyByUom)}
-            </span>
+            {/* 전체는 구분마다 같은 LOT을 다시 센 수량이라 합계를 보이지 않는다. */}
+            {filters.kind !== 'ALL' && (
+              <span>
+                <span className="lot-trace-totals-label">{t.list.totalQty}</span>{' '}
+                {formatQtyByUom(list.data.totals.qtyByUom)}
+              </span>
+            )}
           </p>
         )}
         <MovementTable

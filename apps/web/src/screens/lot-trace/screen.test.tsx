@@ -294,6 +294,8 @@ describe('W-02-09 LOT 생산 이력 조회: 이력 목록', () => {
     expect(screen.getByText('SH-SYN-0011')).toBeInTheDocument();
     /* 전체일 때만 구분 열이 있다. */
     expect(screen.getByRole('columnheader', { name: /구분/ })).toBeInTheDocument();
+    /* 구분마다 같은 LOT을 다시 센 수량이라 전체에는 수량 합계가 없다. */
+    expect(screen.queryByText('수량 합계')).toBeNull();
   });
 
   it('구분 칩: 전체, 자재 입고, 자재 투입, 제품입고, 포장, 제품 출하와 건수', async () => {
@@ -327,6 +329,7 @@ describe('W-02-09 LOT 생산 이력 조회: 이력 목록', () => {
     expect(listQueries(shipmentQueries)).toHaveLength(before);
     /* 구분 칩 하나를 고르면 구분 열은 없다. */
     expect(screen.queryByRole('columnheader', { name: /구분/ })).toBeNull();
+    expect(screen.getByText('수량 합계')).toBeInTheDocument();
   });
 
   it('제품 출하 칩을 누르면 출하 줄을 부르고 일시, 문서번호, 품목명, 수량을 보인다(LOT 번호는 상세에)', async () => {
