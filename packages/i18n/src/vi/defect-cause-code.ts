@@ -140,8 +140,8 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     categoryLabel: 'Chọn cấp lớn',
     linkLabel: 'Lọc theo trạng thái liên kết',
     processLabel: 'Chọn công đoạn',
-    linked: 'Đã liên kết',
-    unlinked: 'Chưa liên kết',
+    linked: 'Ánh xạ',
+    unlinked: 'Bỏ ánh xạ',
     noMatchTitle: 'Không có mã lỗi khớp điều kiện',
     noMatchDescription: 'Hãy rút gọn từ khóa hoặc đặt lại rồi tìm lại.',
     counts: (defects: number, processes: number): string =>

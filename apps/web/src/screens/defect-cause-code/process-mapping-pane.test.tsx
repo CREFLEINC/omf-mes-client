@@ -179,11 +179,11 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
       'aria-pressed',
       'true',
     );
-    await user.click(screen.getByRole('button', { name: '연결됨 1' }));
+    await user.click(screen.getByRole('button', { name: '매핑 1' }));
     expect(screen.getByRole('rowheader', { name: /DF-11 · 스크래치/ })).toBeInTheDocument();
     expect(screen.queryByRole('rowheader', { name: /DF-12/ })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '연결 안 됨 3' }));
+    await user.click(screen.getByRole('button', { name: '매핑 해제 3' }));
     expect(screen.queryByRole('rowheader', { name: /DF-11 · 스크래치/ })).not.toBeInTheDocument();
     expect(screen.getByRole('rowheader', { name: /DF-12/ })).toBeInTheDocument();
   });

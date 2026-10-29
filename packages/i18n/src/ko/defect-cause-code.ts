@@ -26,8 +26,8 @@ export const defectCauseCode = {
     categoryLabel: '대분류 선택',
     linkLabel: '연결 상태로 거르기',
     processLabel: '공정 선택',
-    linked: '연결됨',
-    unlinked: '연결 안 됨',
+    linked: '매핑',
+    unlinked: '매핑 해제',
     noMatchTitle: '조건에 맞는 불량코드가 없습니다',
     noMatchDescription: '검색어를 줄이거나 초기화한 뒤 다시 찾으세요.',
     counts: (defects: number, processes: number): string =>
