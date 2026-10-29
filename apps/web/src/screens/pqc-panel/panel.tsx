@@ -1,7 +1,7 @@
 import { AlertBanner, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
@@ -98,6 +98,8 @@ export interface PqcPanelProps {
    * 입력을 고치면 참, 서버가 저장·확정을 받았으면 거짓이다.
    */
   onDirtyChange?: (dirty: boolean) => void;
+  /** 관리웹 요청 정보 카드 바로 아래 자리 — PQC 생략 구획이 선다(OQC 판정 화면과 같은 차례 · omf-all-around#212). */
+  afterSummary?: ReactNode;
 }
 
 /**
@@ -117,6 +119,7 @@ export const PqcPanel = ({
   withKeypad,
   variant,
   onDirtyChange,
+  afterSummary,
 }: PqcPanelProps) => {
   const detail = useInspectionRequestDetail(inspectionRequestId);
   const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
@@ -426,6 +429,8 @@ export const PqcPanel = ({
           planVersion={planVersion.data ?? null}
           uomCode={uomCodeOf(target.uomId)}
         />
+
+        {afterSummary}
 
         {roundLoadFailed && (
           <QueueLoadErrorBanner

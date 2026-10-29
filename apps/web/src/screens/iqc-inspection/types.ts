@@ -121,6 +121,8 @@ export interface InspectionRequestDetail {
   requestedAt: string;
   /** 의뢰 LOT 의 4M 변경품 기록. 변경품이 아니면 `null`(omf-all-around#63 · 서버 선행 P-86). */
   fourMChange: FourMChangeForward | null;
+  /** 생략 근거(omf-all-around#212) — 생략 구획이 「기본 설정」인지 「결재 승인」인지 가른다. */
+  skipBasisCode: SkipBasisCode | null;
 }
 
 export const toInspectionRequestDetail = (
@@ -137,6 +139,7 @@ export const toInspectionRequestDetail = (
   statusCode: item.statusCode,
   requestedAt: item.requestedAt,
   fourMChange: item.fourMChange ?? null,
+  skipBasisCode: item.skipBasisCode ?? null,
 });
 
 /**

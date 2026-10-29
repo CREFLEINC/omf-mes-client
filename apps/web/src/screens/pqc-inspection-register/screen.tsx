@@ -266,18 +266,6 @@ export const PqcInspectionRegisterScreen = () => {
             />
           ) : (
             <>
-              {/* PQC 생략(#212) — 작업지시 대상이고 확정 회차가 없을 때만. 판정이 난 의뢰는 생략으로 덮지 않는다. */}
-              {detail.data !== undefined &&
-                detail.data.inspectionRequestId === selectedId &&
-                detail.data.targetTypeCode === 'WORK_ORDER' &&
-                rounds.data !== undefined &&
-                rounds.data.every((row) => row.statusCode !== 'CONFIRMED') && (
-                  <PqcSkipPane
-                    workOrderId={detail.data.targetId}
-                    requestStatusCode={detail.data.statusCode}
-                    skipBasisCode={detail.data.skipBasisCode}
-                  />
-                )}
               <LeaveGuardProvider value={leaveFor}>
                 <PqcPanel
                   /* 의뢰마다 새로 세운다 — 앞 의뢰의 입력이 다음 의뢰에 남지 않게. */
@@ -289,6 +277,20 @@ export const PqcInspectionRegisterScreen = () => {
                   withKeypad={false}
                   variant="web"
                   onDirtyChange={onDirtyChange}
+                  /* PQC 생략(#212) — 작업지시 대상이고 확정 회차가 없을 때만. 판정이 난 의뢰는 생략으로 덮지 않는다. */
+                  afterSummary={
+                    detail.data !== undefined &&
+                    detail.data.inspectionRequestId === selectedId &&
+                    detail.data.targetTypeCode === 'WORK_ORDER' &&
+                    rounds.data !== undefined &&
+                    rounds.data.every((row) => row.statusCode !== 'CONFIRMED') && (
+                      <PqcSkipPane
+                        workOrderId={detail.data.targetId}
+                        requestStatusCode={detail.data.statusCode}
+                        skipBasisCode={detail.data.skipBasisCode}
+                      />
+                    )
+                  }
                 />
               </LeaveGuardProvider>
             </>
