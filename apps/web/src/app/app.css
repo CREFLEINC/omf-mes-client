@@ -514,7 +514,7 @@ main > * + * {
  * 검색 칸은 안내 문구가 읽히는 만큼만, 처분 유형은 「재작업 가능」이 잘리지 않는 만큼만 차지한다.
  */
 .inspection-standard-search.defect-cause-search .filter-bar > .defect-cause-code-field {
-  flex: 0 1 16rem;
+  flex: 0 1 18.5rem;
   min-width: 11rem;
 }
 
@@ -539,7 +539,7 @@ main > * + * {
 }
 
 .defect-cause-search .defect-cause-process-field {
-  flex: 0 1 14rem;
+  flex: 0 1 12rem;
   min-width: 10rem;
 }
 
