@@ -199,6 +199,18 @@ describe('검사표 기준', () => {
     expect(screen.queryByRole('row', { name: /AAR4/ })).not.toBeInTheDocument();
   });
 
+  /* 상태는 줄(품목의 가장 높은 버전) 기준으로 거른다(#208). */
+  it('상태를 확정으로 거르면 작성중인 품목 줄은 빠진다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('row', { name: /AAR4/ });
+
+    await user.click(screen.getByRole('combobox', { name: t.list.status }));
+    await user.click(screen.getByRole('option', { name: t.statuses.CONFIRMED }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+  });
+
   /* 양식 · 재료는 받은 쪽 안에서 거른다(#208). */
   it('재료 조건에 맞지 않으면 조건 결과 없음 안내가 나온다', async () => {
     const { user } = setup(template());

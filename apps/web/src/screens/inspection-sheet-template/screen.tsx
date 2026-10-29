@@ -122,7 +122,8 @@ const InspectionSheetTemplateScreenBody = () => {
     setStepCode(null);
   };
 
-  const list = useTemplates(filter.status, filter.itemId);
+  /* 상태는 줄(품목의 가장 높은 버전) 기준으로 거른다 — 서버의 버전 상태 조건으로 거르면 품목 줄이 다른 버전으로 바뀐다(#208). */
+  const list = useTemplates('', filter.itemId);
   const detail = useTemplate(opened?.kind === 'existing' ? opened.id : null);
   const businessUnits = useBusinessUnitNames();
   /*
@@ -152,7 +153,9 @@ const InspectionSheetTemplateScreenBody = () => {
       latestByItem.set(row.itemId, row);
     }
   }
-  const itemRows = [...latestByItem.values()];
+  const itemRows = [...latestByItem.values()].filter(
+    (row) => filter.status === '' || row.statusCode === filter.status,
+  );
   const usageCounts: Record<TemplateUsage, number> = {
     all: itemRows.length,
     active: itemRows.filter(isInUse).length,
