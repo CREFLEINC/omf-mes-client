@@ -1,6 +1,8 @@
 import { Button, Checkbox, Chip, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
+
+import { Select } from '../../patterns/select';
 
 import type { CodeAdapter } from './adapters';
 import { DEFAULT_CODE_FILTERS } from './code-options';
@@ -17,6 +19,8 @@ export interface CodeFilterBarProps {
   onApplyFilters: (next: CodeFilters) => void;
   /** 조회 · 초기화 뒤, 구분선 너머에 서는 화면 단추(대분류 추가 · 상세 추가) */
   actions: ReactNode;
+  /** 공정 조건 선택지(「공정코드 · 공정명」). 불량코드 탭만 조건을 세운다 */
+  processOptions: { value: string; label: string }[];
 }
 
 /**
@@ -28,7 +32,16 @@ export const CodeFilterBar = ({
   appliedFilters,
   onApplyFilters,
   actions,
+  processOptions,
 }: CodeFilterBarProps) => {
+  const dispositionId = useId();
+  const processSelectId = useId();
+  /* 처분 유형 · 공정 조건은 불량코드 탭에만 둔다(사용자 지시 2026-10-29 · #209). */
+  const showCodeConditions = adapter.hasDisposition;
+  const dispositionLabel = (code: CodeFilters['dispositionTypeCode']): string =>
+    code === '' ? t.filters.all : t.values.disposition[code];
+  const processLabel = (id: string): string =>
+    processOptions.find((option) => option.value === id)?.label ?? id;
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   // 편집 중인 값은 draft에만 있고 조건 칩에는 미러하지 않는다.
   const [draft, setDraft] = useState<CodeFilters>(appliedFilters);
@@ -37,6 +50,8 @@ export const CodeFilterBar = ({
     q: appliedQ,
     includeInactive: appliedIncludeInactive,
     inactiveOnly: appliedInactiveOnly,
+    dispositionTypeCode: appliedDisposition,
+    processId: appliedProcessId,
     page: appliedPage,
     size: appliedSize,
   } = appliedFilters;
@@ -46,10 +61,20 @@ export const CodeFilterBar = ({
       q: appliedQ,
       includeInactive: appliedIncludeInactive,
       inactiveOnly: appliedInactiveOnly,
+      dispositionTypeCode: appliedDisposition,
+      processId: appliedProcessId,
       page: appliedPage,
       size: appliedSize,
     });
-  }, [appliedQ, appliedIncludeInactive, appliedInactiveOnly, appliedPage, appliedSize]);
+  }, [
+    appliedQ,
+    appliedIncludeInactive,
+    appliedInactiveOnly,
+    appliedDisposition,
+    appliedProcessId,
+    appliedPage,
+    appliedSize,
+  ]);
 
   return (
     <>
@@ -72,6 +97,42 @@ export const CodeFilterBar = ({
           onChange={() => undefined}
           onClear={() => setDraft((prev) => ({ ...prev, q: '' }))}
         />
+        {/* 처분 유형 · 공정 — 다른 조건처럼 「조회」를 눌러야 목록에 걸린다(#209). */}
+        {showCodeConditions && (
+          <>
+            <div className="field-cell defect-cause-filter-select">
+              <span className="field-label">
+                <label htmlFor={dispositionId}>{t.filters.disposition}</label>
+              </span>
+              <Select
+                id={dispositionId}
+                options={[
+                  { value: '', label: t.filters.all },
+                  { value: 'REWORKABLE', label: t.values.disposition.REWORKABLE },
+                  { value: 'SCRAP', label: t.values.disposition.SCRAP },
+                ]}
+                value={draft.dispositionTypeCode}
+                onChange={(value) =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    dispositionTypeCode: value as CodeFilters['dispositionTypeCode'],
+                  }))
+                }
+              />
+            </div>
+            <div className="field-cell defect-cause-filter-select">
+              <span className="field-label">
+                <label htmlFor={processSelectId}>{t.filters.process}</label>
+              </span>
+              <Select
+                id={processSelectId}
+                options={[{ value: '', label: t.filters.all }, ...processOptions]}
+                value={draft.processId}
+                onChange={(value) => setDraft((prev) => ({ ...prev, processId: value }))}
+              />
+            </div>
+          </>
+        )}
         {/* 해제 축이라 변경 즉시 적용한다. */}
         <div className="field-cell field-cell-unlabeled">
           <Checkbox
@@ -107,7 +168,10 @@ export const CodeFilterBar = ({
         </div>
       </div>
 
-      {(appliedFilters.q !== '' || appliedFilters.includeInactive) && (
+      {(appliedFilters.q !== '' ||
+        appliedFilters.includeInactive ||
+        appliedFilters.dispositionTypeCode !== '' ||
+        appliedFilters.processId !== '') && (
         <div className="filter-bar">
           {appliedFilters.q !== '' && (
             <Chip
@@ -116,6 +180,24 @@ export const CodeFilterBar = ({
               onRemove={() => onApplyFilters({ ...appliedFilters, q: '' })}
             >
               {t.filters.chipKeyword(appliedFilters.q)}
+            </Chip>
+          )}
+          {appliedFilters.dispositionTypeCode !== '' && (
+            <Chip
+              variant="status"
+              removeLabel={t.filters.chipRemoveDisposition}
+              onRemove={() => onApplyFilters({ ...appliedFilters, dispositionTypeCode: '' })}
+            >
+              {t.filters.chipDisposition(dispositionLabel(appliedFilters.dispositionTypeCode))}
+            </Chip>
+          )}
+          {appliedFilters.processId !== '' && (
+            <Chip
+              variant="status"
+              removeLabel={t.filters.chipRemoveProcess}
+              onRemove={() => onApplyFilters({ ...appliedFilters, processId: '' })}
+            >
+              {t.filters.chipProcess(processLabel(appliedFilters.processId))}
             </Chip>
           )}
           {appliedFilters.includeInactive && (

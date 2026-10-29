@@ -509,6 +509,11 @@ main > * + * {
   width: fit-content;
 }
 
+/* 처분 유형 · 공정 조건 칸(#209) — 「재작업 가능」 · 공정 이름이 잘리지 않는 폭. */
+.defect-cause-search .defect-cause-filter-select {
+  min-width: 10rem;
+}
+
 .defect-cause-head-actions {
   display: flex;
   flex-wrap: wrap;

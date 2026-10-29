@@ -48,6 +48,8 @@ export const CodePickerDialog = ({
     q: submitted,
     includeInactive,
     inactiveOnly: false,
+    dispositionTypeCode: '',
+    processId: '',
     page,
     size,
   });

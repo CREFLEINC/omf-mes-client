@@ -40,6 +40,10 @@ export interface CodeFilters {
    * 화면이 거른다 — 그래서 쪽 나눔도 화면이 한다. 켜면 `includeInactive` 도 켜져 있다.
    */
   inactiveOnly: boolean;
+  /** 처분 유형 조건(불량코드 탭 · #209). 서버에 조건이 없어 끝까지 받아 화면이 거른다. 비면 거르지 않는다 */
+  dispositionTypeCode: '' | 'REWORKABLE' | 'SCRAP';
+  /** 공정 조건(공정 번호, #209) — 서버가 받는다(`processId`). 비면 거르지 않는다 */
+  processId: string;
   /** 쪽 번호(1부터)와 쪽 크기 — 서버가 나눠 준다(#209). 조건을 바꾸면 1쪽으로 돌아간다. */
   page: number;
   size: number;

@@ -47,7 +47,13 @@ import {
   toServerFieldName,
 } from './mappers';
 import { UsageChips } from './usage-chips';
-import { useCodeDetail, useCodeList, useCodeOptions, useProcessLabels } from './queries';
+import {
+  useCodeDetail,
+  useCodeList,
+  useCodeOptions,
+  useProcessLabels,
+  useProcessOptions,
+} from './queries';
 import { ProcessMappingPane } from './process-mapping-pane';
 import { resolveTab } from './tabs';
 import type {
@@ -162,10 +168,17 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       includeInactive: searchParams.get('inactive') === '1',
       // `usage=off` 는 미사용만 — 미사용 포함이 켜져 있을 때만 뜻이 있다(#209).
       inactiveOnly: searchParams.get('inactive') === '1' && searchParams.get('usage') === 'off',
+      // 처분 유형 · 공정 조건(불량코드 탭 · #209) — 주소가 소유한다(새로고침 · 공유가 같은 결과).
+      dispositionTypeCode:
+        adapter.hasDisposition &&
+        (searchParams.get('disp') === 'REWORKABLE' || searchParams.get('disp') === 'SCRAP')
+          ? (searchParams.get('disp') as 'REWORKABLE' | 'SCRAP')
+          : '',
+      processId: adapter.hasDisposition ? (searchParams.get('proc') ?? '') : '',
       page: Math.max(1, Number(searchParams.get('page')) || 1),
       size: PAGE_SIZES.find((size) => String(size) === searchParams.get('size')) ?? 20,
     }),
-    [searchParams],
+    [searchParams, adapter.hasDisposition],
   );
 
   const isCreateMode = searchParams.get('mode') === 'create';
@@ -189,6 +202,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const byId = useMemo(() => indexById([...options.items, ...items]), [options.items, items]);
   const rows = useMemo(() => orderForGrouping(items, byId), [items, byId]);
   const processLabelOf = useProcessLabels();
+  const processOptions = useProcessOptions();
 
   const selected = selectedId === null ? null : (byId.get(selectedId) ?? null);
 
@@ -302,6 +316,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       q: next.q === '' ? null : next.q,
       inactive: next.includeInactive ? '1' : null,
       usage: next.includeInactive && next.inactiveOnly ? 'off' : null,
+      disp: next.dispositionTypeCode === '' ? null : next.dispositionTypeCode,
+      proc: next.processId === '' ? null : next.processId,
       page: null,
       size: next.size === 20 ? null : String(next.size),
     });
@@ -646,6 +662,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
           appliedFilters={filters}
           onApplyFilters={handleApplyFilters}
           actions={filterActions}
+          processOptions={processOptions}
         />
       </section>
 

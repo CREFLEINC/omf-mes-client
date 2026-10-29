@@ -158,9 +158,10 @@ const toCauseUpdate = (payload: CodeWritePayload): CauseCodeUpdate => ({
  */
 const listQuery = (
   filters: CodeFilters,
-): { q?: string; includeInactive?: boolean; page: number; size: number } => ({
+): { q?: string; includeInactive?: boolean; processId?: number; page: number; size: number } => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
+  ...(filters.processId === '' ? {} : { processId: Number(filters.processId) }),
   page: filters.page,
   size: filters.size,
 });

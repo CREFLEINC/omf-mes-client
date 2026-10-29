@@ -13,6 +13,8 @@ export const DEFAULT_CODE_FILTERS: CodeFilters = {
   q: '',
   includeInactive: false,
   inactiveOnly: false,
+  dispositionTypeCode: '',
+  processId: '',
   page: 1,
   size: 20,
 };

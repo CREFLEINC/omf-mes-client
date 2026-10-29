@@ -251,6 +251,23 @@ describe('DefectCauseCodeScreen — 목록 조회', () => {
     expect(currentLocation()).toContain('inactive=1');
   });
 
+  it('공정 조건은 서버 요청에 실리고, 처분 유형 조건은 화면이 걸러 그 수로 센다(#209)', async () => {
+    const withDisposition = defectCodeFixtures.map((item, index) => ({
+      ...item,
+      dispositionTypeCode: index % 2 === 0 ? 'SCRAP' : 'REWORKABLE',
+    }));
+    const { requests } = renderScreen([defectListRoute(withDisposition)], '?proc=3001&disp=SCRAP');
+
+    const scrap = withDisposition.filter((item) => item.dispositionTypeCode === 'SCRAP');
+    expect(await screen.findByText(`총 ${String(scrap.length)}건`)).toBeInTheDocument();
+    expect(
+      pageListRequests(requests, DEFECT_LIST_PATH).every(
+        (request) => request.url.searchParams.get('processId') === '3001',
+      ),
+    ).toBe(true);
+    expect(screen.getByText('처분 유형: 폐기')).toBeInTheDocument();
+  });
+
   it('주소에 있던 조건이 첫 조회에 그대로 실린다 — 새로고침·공유가 같은 결과를 낸다', async () => {
     const { requests } = renderScreen([defectListRoute()], '?q=DF&inactive=1');
     await screen.findByRole('button', { name: 'DF-10' });

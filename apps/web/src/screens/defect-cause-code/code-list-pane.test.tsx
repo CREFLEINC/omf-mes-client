@@ -12,6 +12,8 @@ const NO_FILTERS: CodeFilters = {
   q: '',
   includeInactive: false,
   inactiveOnly: false,
+  dispositionTypeCode: '',
+  processId: '',
   page: 1,
   size: 20,
 };
@@ -149,7 +151,15 @@ describe('CodeListPane — 상태별 표시', () => {
   it('조건이 걸린 0건이면 조건을 고치라는 빈 상태를 낸다', async () => {
     const { props, user } = renderPane({
       rows: [],
-      appliedFilters: { q: 'ZZ', includeInactive: false, inactiveOnly: false, page: 1, size: 20 },
+      appliedFilters: {
+        q: 'ZZ',
+        includeInactive: false,
+        inactiveOnly: false,
+        dispositionTypeCode: '',
+        processId: '',
+        page: 1,
+        size: 20,
+      },
     });
 
     expect(screen.getByText('조건에 맞는 결과가 없습니다')).toBeInTheDocument();
@@ -160,6 +170,8 @@ describe('CodeListPane — 상태별 표시', () => {
       q: '',
       includeInactive: false,
       inactiveOnly: false,
+      dispositionTypeCode: '',
+      processId: '',
       page: 1,
       size: 20,
     });

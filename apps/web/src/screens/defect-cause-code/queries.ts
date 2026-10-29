@@ -33,30 +33,40 @@ export const useCodeList = (
   return useQuery({
     queryKey: adapter.keys.list(filters),
     queryFn: () =>
-      filters.inactiveOnly
-        ? fetchInactiveOnly(adapter, client, filters)
+      filters.inactiveOnly || filters.dispositionTypeCode !== ''
+        ? fetchFilteredOnScreen(adapter, client, filters)
         : adapter.fetchList(client, filters),
   });
 };
 
 /**
- * 「미사용」 칩(#209) — 서버에 미사용만 거르는 조건이 없어 미사용 포함으로 끝까지 받아 화면이 거르고,
- * 쪽도 화면이 나눈다. 코드 마스터라 건수가 적어 끝까지 받아도 부담이 작다.
+ * 서버에 없는 조건 — 「미사용」 칩 · 처분 유형(#209). 서버가 받는 조건(검색어 · 공정 · 미사용 포함)으로
+ * 끝까지 받아 화면이 거르고, 쪽도 화면이 나눈다. 코드 마스터라 건수가 적어 끝까지 받아도 부담이 작다.
  */
-const fetchInactiveOnly = async (
+const fetchFilteredOnScreen = async (
   adapter: CodeAdapter,
   client: Parameters<CodeAdapter['fetchList']>[0],
   filters: CodeFilters,
 ): Promise<CodeListResult> => {
   const all = await fetchAllPages((page, size) =>
-    adapter.fetchList(client, { ...filters, includeInactive: true, page, size }),
+    adapter.fetchList(client, {
+      ...filters,
+      includeInactive: filters.includeInactive || filters.inactiveOnly,
+      page,
+      size,
+    }),
   );
-  const inactive = all.items.filter((item) => !item.isActive);
+  const matched = all.items.filter(
+    (item) =>
+      (!filters.inactiveOnly || !item.isActive) &&
+      (filters.dispositionTypeCode === '' ||
+        item.dispositionTypeCode === filters.dispositionTypeCode),
+  );
   const start = (filters.page - 1) * filters.size;
 
   return {
-    items: inactive.slice(start, start + filters.size),
-    page: { page: filters.page, size: filters.size, total: inactive.length },
+    items: matched.slice(start, start + filters.size),
+    page: { page: filters.page, size: filters.size, total: matched.length },
   };
 };
 
@@ -159,4 +169,26 @@ export const useProcessLabels = (): ((processId: number | null | undefined) => s
     if (processId === null || processId === undefined) return null;
     return byId.get(processId) ?? String(processId);
   };
+};
+
+/** 공정 조건 선택지(#209) — 공정 칸 이름과 같은 조회(캐시)를 쓴다. 「공정코드 · 공정명」 순. */
+export const useProcessOptions = (): { value: string; label: string }[] => {
+  const { client } = useApiClient();
+
+  const processes = useQuery({
+    queryKey: ['defect-cause-code', 'process-labels'],
+    queryFn: () =>
+      fetchAllPages((page, size) =>
+        runRequest(() => client.GET('/mdm/processes', { params: { query: { page, size } } })),
+      ),
+  });
+
+  return useMemo(
+    () =>
+      (processes.data?.items ?? []).map((process) => ({
+        value: String(process.processId),
+        label: `${process.processCode} · ${process.processName}`,
+      })),
+    [processes.data],
+  );
 };
