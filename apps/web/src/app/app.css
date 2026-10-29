@@ -336,6 +336,12 @@ main > * + * {
   min-width: 12rem;
 }
 
+/* 품목 칸은 고른 품목 이름 길이로 늘지 않는다 — 늘면 조회 · 초기화가 아랫줄로 밀린다(#208). 전체 이름은 title 로 본다. */
+.inspection-standard-search > .filter-bar:first-child > :nth-child(2) {
+  flex: 0 1 14em;
+  min-width: 10rem;
+}
+
 /*
  * 검사 기준 상세(#196) — 머리(제목 · 상태 칩) / 칸 / 버전 고르기 / 구분선 아래 단추 줄(왼쪽 승인 · 사용 중지, 오른쪽 취소 · 저장).
  */
