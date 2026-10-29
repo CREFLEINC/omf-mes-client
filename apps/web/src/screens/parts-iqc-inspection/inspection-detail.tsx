@@ -791,7 +791,6 @@ const InspectionForm = (props: FormProps) => {
           >
             <span className="parts-iqc-auto-label">
               {t.verdict.suggested}
-              <Icon name="info" aria-label={t.verdict.suggestedHint} />
             </span>
             {suggested === null ? (
               <span className="parts-iqc-muted">{t.verdict.pending}</span>

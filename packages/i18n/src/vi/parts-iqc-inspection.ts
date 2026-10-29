@@ -98,7 +98,6 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   verdict: {
     heading: 'Phán định',
     suggested: 'Kết quả phán định tự động',
-    suggestedHint: 'Một hạng mục NG là không đạt',
     pending: 'Nhập các hạng mục kiểm tra rồi xem kết quả phán định.',
     waiting: 'Chờ phán định',
     overall: 'Phán định tổng',

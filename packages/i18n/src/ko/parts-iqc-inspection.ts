@@ -95,7 +95,6 @@ export const partsIqcInspection = {
   verdict: {
     heading: '판정',
     suggested: '자동 판정 결과',
-    suggestedHint: '검사 항목 중 하나라도 NG 면 불합격',
     pending: '검사 항목 입력 후 판정 결과를 확인하세요.',
     waiting: '판정 대기',
     overall: '종합 판정',
