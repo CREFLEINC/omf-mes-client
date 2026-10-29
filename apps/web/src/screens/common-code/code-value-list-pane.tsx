@@ -1,6 +1,7 @@
 import {
   AlertBanner,
   Checkbox,
+  Chip,
   type Column,
   EmptyState,
   SkeletonText,
@@ -34,6 +35,17 @@ export interface CodeValueListPaneProps {
    * 실패를 「등록된 코드값이 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /**
+   * 상태 열 문구. 주면 「사용/미사용」을 글자 + 색 칩 열로 따로 보이고 코드명 뒤 「(미사용)」을 붙이지 않는다.
+   * 주지 않으면(공통코드 화면) 종전 그대로다 — 판정유형 코드 탭만 쓴다(#208).
+   */
+  statusColumn?: CodeValueStatusColumn;
+}
+
+export interface CodeValueStatusColumn {
+  header: string;
+  active: string;
+  inactive: string;
 }
 
 /** 유효기간 표기. 한쪽만 있는 것도 계약이 허용한다 — 없는 쪽을 지어내지 않고 자리를 비운다. */
@@ -69,6 +81,7 @@ export const CodeValueListPane = ({
   onSelect,
   addAction,
   loadError,
+  statusColumn,
 }: CodeValueListPaneProps) => {
   const rows = sortForDisplay(codeValues);
 
@@ -91,7 +104,10 @@ export const CodeValueListPane = ({
     {
       key: 'codeName',
       header: t.fields.codeName,
-      render: (row) => (row.isActive ? row.codeName : `${row.codeName}${t.values.inactiveSuffix}`),
+      render: (row) =>
+        row.isActive || statusColumn !== undefined
+          ? row.codeName
+          : `${row.codeName}${t.values.inactiveSuffix}`,
     },
     {
       key: 'displayOrder',
@@ -106,6 +122,20 @@ export const CodeValueListPane = ({
       width: '200px',
       render: (row) => formatPeriod(row.effectiveFrom, row.effectiveTo),
     },
+    ...(statusColumn === undefined
+      ? []
+      : [
+          {
+            key: 'isActive',
+            header: statusColumn.header,
+            width: '88px',
+            render: (row: CodeValue) => (
+              <Chip variant="status" size="sm" status={row.isActive ? 'success' : 'idle'}>
+                {row.isActive ? statusColumn.active : statusColumn.inactive}
+              </Chip>
+            ),
+          },
+        ]),
   ];
 
   /**

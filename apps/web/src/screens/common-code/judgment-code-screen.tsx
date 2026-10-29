@@ -17,6 +17,9 @@ import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.judgmentCode;
 
+/** 목록 상태 열 문구 — 사용/미사용을 코드명 뒤 글이 아니라 따로 칩으로 보인다(#208). */
+const STATUS_COLUMN = t.status;
+
 /**
  * W-06-04 판정유형 코드 마스터 — **진입점 하나**다(omf-mes-client#16).
  *
@@ -227,13 +230,16 @@ export const JudgmentCodeScreen = () => {
           onIncludeInactiveChange={changeIncludeInactive}
           page={page}
           onPageChange={changePage}
+          statusColumn={STATUS_COLUMN}
+          primaryAdd
         />
       </div>
     );
   };
 
+  /* 화면 전용 래퍼 — 스타일을 이 탭에만 묶어 같은 편집기를 쓰는 공통코드 화면에 번지지 않게 한다(#208). */
   return (
-    <>
+    <div className="judgment-code-screen">
       {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
       {hub === null ? (
         <PageHeader
@@ -289,6 +295,6 @@ export const JudgmentCodeScreen = () => {
       )}
 
       {renderBody()}
-    </>
+    </div>
   );
 };

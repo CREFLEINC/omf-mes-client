@@ -25370,3 +25370,122 @@ table.col-measuring td {
 .defect-cause-form > .form-actions {
   margin-top: var(--space-4);
 }
+
+/*
+ * 판정 유형 코드(W-06-04 · omf-all-around#208) — 검사 기준 탭과 같은 한 줄 조작 · 둥근 테두리 표 · 상태 칩.
+ * 편집기는 공통코드 화면과 한 벌이라 모든 규칙을 이 탭 래퍼(`.judgment-code-screen`) 아래로만 묶는다.
+ */
+.judgment-code-screen {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.judgment-code-screen > .field-note {
+  margin: 0;
+}
+
+.judgment-code-screen > .banner-slot {
+  margin-bottom: 0;
+}
+
+.judgment-code-screen .pane-stack {
+  gap: var(--space-3);
+}
+
+/* 목록 칸 — 「미사용 포함」(왼쪽) · 「코드값 추가」(오른쪽)를 표 위 한 줄로, 표 · 쪽 이동이 아래로(#208). */
+.judgment-code-screen .pane-stack > section.pane:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.judgment-code-screen .pane-stack > section.pane:first-child > * {
+  flex: 1 0 100%;
+  order: 3;
+  min-width: 0;
+}
+
+.judgment-code-screen .pane-stack > section.pane:first-child > .banner-slot {
+  order: 0;
+  margin-bottom: 0;
+}
+
+.judgment-code-screen .pane-stack > section.pane:first-child > .filter-bar {
+  flex: 1 1 auto;
+  order: 1;
+  align-items: center;
+  margin: 0;
+}
+
+.judgment-code-screen .pane-stack > section.pane:first-child > .filter-bar:last-child {
+  flex: 0 0 auto;
+  order: 2;
+}
+
+.judgment-code-screen .field-cell-unlabeled {
+  margin-top: 0;
+}
+
+.judgment-code-screen .pane-stack > section.pane:first-child > .form-actions {
+  margin-top: 0;
+}
+
+/* 표 — 둥근 테두리 상자, 모든 열 가운데. 열이 다섯뿐이라 공용 최소 폭(58rem)을 줄여 1024px 에서도 가로로 넘기지 않는다. */
+.judgment-code-screen .wide-table {
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.judgment-code-screen .wide-table table {
+  min-width: 40rem;
+}
+
+.judgment-code-screen .wide-table thead th,
+.judgment-code-screen .wide-table thead th[data-align],
+.judgment-code-screen .wide-table td,
+.judgment-code-screen .wide-table td[data-align] {
+  text-align: center;
+}
+
+.judgment-code-screen .wide-table thead th {
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/* 고른 줄 — 바탕 + 왼쪽 강조선(검사 기준 탭 목록과 같다). */
+.judgment-code-screen .wide-table tbody tr:nth-child(n):has(.link-cell[aria-current='true']) {
+  background: var(--surface-container-high);
+}
+
+.judgment-code-screen .wide-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+/* 상세 입력 칸 — 데이터 길이에 맞춘 폭: 코드 짧게 · 코드명 넓게 · 정렬 순서 짧게 · 날짜 둘(#208). */
+.judgment-code-screen .form-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+
+.judgment-code-screen .form-grid > .field-cell {
+  flex: 0 1 11rem;
+  min-width: 0;
+}
+
+.judgment-code-screen .form-grid > .field-cell:nth-child(1) {
+  flex-basis: 10rem;
+}
+
+.judgment-code-screen .form-grid > .field-cell:nth-child(2) {
+  flex: 1 1 14rem;
+  max-width: 24rem;
+}
+
+.judgment-code-screen .form-grid > .field-cell:nth-child(3) {
+  flex-basis: 7rem;
+}

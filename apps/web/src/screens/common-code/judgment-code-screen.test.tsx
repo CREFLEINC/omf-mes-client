@@ -516,6 +516,20 @@ describe('JudgmentCodeScreen — 그룹 찾음', () => {
       expect(within(codeValuePane()).getByText(row.code)).toBeInTheDocument();
     }
   });
+
+  /* 사용/미사용을 코드명 뒤 글이 아니라 상태 열의 글자 + 색 칩으로 가른다(#208). */
+  it('상태 열이 사용/미사용을 따로 보이고 코드명에 미사용 꼬리를 붙이지 않는다', async () => {
+    renderScreen([groupListRoute(), codeValueListRoute()]);
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    const pane = codeValuePane();
+    expect(
+      within(pane).getByRole('columnheader', { name: messages.judgmentCode.status.header }),
+    ).toBeInTheDocument();
+    expect(within(pane).getAllByText(messages.judgmentCode.status.active)).toHaveLength(2);
+    expect(within(pane).getByText(messages.judgmentCode.status.inactive)).toBeInTheDocument();
+    expect(within(pane).getByText('합성 판정유형 C')).toBeInTheDocument();
+  });
 });
 
 /**

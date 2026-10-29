@@ -17,10 +17,15 @@ export const judgmentCode: Translated<typeof ko.judgmentCode> = {
     groupNotFoundDescription: (groupCode: string): string =>
       `Không có nhóm mã nào có mã nhóm là «${groupCode}». Hãy đăng ký nhóm mã này ở màn hình mã chung trước.`,
   },
+  status: {
+    header: 'Trạng thái',
+    active: 'Đang dùng',
+    inactive: 'Ngừng dùng',
+  },
   notices: {
     /* 값을 지어내지 않으므로 그 한계를 문구가 밝힌다. */
     provisionalList:
-      'Loại đánh giá vẫn là danh sách tạm chưa được chốt. Giá trị đang thấy có thể chưa phải tất cả, và khi chốt thì có thể khác đi.',
+      'Loại đánh giá vẫn là danh sách tạm. Khi chốt, giá trị có thể thêm hoặc thay đổi.',
     /* 그룹이 꺼져 있어도 값은 그대로 고칠 수 있다 - 사실과 조치할 곳을 함께 밝힌다. */
     groupInactive:
       'Nhóm mã này đang ở trạng thái ngừng dùng. Vẫn sửa được giá trị, nhưng muốn mở dùng lại thì hãy kiểm tra nhóm mã ở màn hình mã chung.',

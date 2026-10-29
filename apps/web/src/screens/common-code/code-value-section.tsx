@@ -1,4 +1,4 @@
-import { Button, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
+import { Button, EmptyState, Icon, SkeletonText, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useState } from 'react';
@@ -6,7 +6,7 @@ import { type ReactNode, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { CodeValueFormPane } from './code-value-form-pane';
-import { CodeValueListPane } from './code-value-list-pane';
+import { CodeValueListPane, type CodeValueStatusColumn } from './code-value-list-pane';
 import {
   codeValueToFormValues,
   emptyCodeValueFormValues,
@@ -70,6 +70,10 @@ export interface CodeValueSectionProps {
   onIncludeInactiveChange: (includeInactive: boolean) => void;
   page: number;
   onPageChange: (page: number) => void;
+  /** 목록 상태 열 문구. 주지 않으면 종전 그대로(코드명 뒤 「(미사용)」) — 판정유형 코드 탭만 쓴다(#208). */
+  statusColumn?: CodeValueStatusColumn;
+  /** 참이면 「코드값 추가」를 주 동작(채운 단추 + 더하기 아이콘)으로 보인다. 기본은 종전 외곽선 단추(#208). */
+  primaryAdd?: boolean;
 }
 
 /**
@@ -98,6 +102,8 @@ export const CodeValueSection = ({
   onIncludeInactiveChange,
   page,
   onPageChange,
+  statusColumn,
+  primaryAdd = false,
 }: CodeValueSectionProps) => {
   const toast = useToast();
   const { client } = useApiClient();
@@ -323,7 +329,12 @@ export const CodeValueSection = ({
       <DisabledAction label={t.actions.add} reason={t.actionReasons.addNeedsGroup} />
     ) : (
       <div className="field-cell">
-        <Button variant="outlined" disabled={isCreating} onClick={handleAdd}>
+        <Button
+          variant={primaryAdd ? 'filled' : 'outlined'}
+          leadingIcon={primaryAdd ? <Icon name="add" size={18} /> : undefined}
+          disabled={isCreating}
+          onClick={handleAdd}
+        >
           {t.actions.add}
         </Button>
       </div>
@@ -433,6 +444,7 @@ export const CodeValueSection = ({
         selectedCodeValueId={selectedCodeValueId}
         onSelect={handleSelect}
         addAction={addAction}
+        statusColumn={statusColumn}
         loadError={
           list.isError ? (
             <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
