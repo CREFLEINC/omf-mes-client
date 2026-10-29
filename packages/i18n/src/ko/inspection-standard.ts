@@ -408,6 +408,9 @@ export const inspectionStandard = {
           : '켜면 이 기준이 걸리는 작업지시는 PQC 없이 진행하고, 실적을 등록하면 LOT 이 바로 정상이 됩니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.',
     defaultSkipAllItemsNote:
       '품목을 비운 IQC 기준이라 자기 기준이 없는 모든 품목의 수입검사가 생략됩니다.',
+    /** 품목 전용 IQC 기준 — 품목 기준정보 「IQC 대상」과 연동된다(omf-all-around#215). */
+    defaultSkipItemSyncNote:
+      '품목 기준정보의 ‘IQC 대상’과 함께 바뀝니다. 기본 생략을 켜면 그 품목의 IQC 대상이 꺼집니다.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (미사용)',

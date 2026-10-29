@@ -127,6 +127,8 @@ export const itemExtendedAttrs: Translated<typeof ko.itemExtendedAttrs> = {
     units: {
       days: 'ngày',
     },
+    inspectionRequiredSyncNote:
+      'Thay đổi cùng với ‘Bỏ qua mặc định’ IQC trong tiêu chuẩn kiểm tra. Khi tắt, tiêu chuẩn IQC của mặt hàng này sẽ được bỏ qua mặc định.',
     values: {
       active: 'Đang dùng',
       inactive: 'Ngừng dùng',

@@ -28,6 +28,7 @@ import {
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 import { runRequest, toApiError } from '../../patterns/request';
+import { itemKeys } from '../item-extended-attrs/item-queries';
 import {
   DATA_TYPE_CODE_GROUP,
   FREQUENCY_INTERVAL_UOM_CODE_GROUP,
@@ -357,7 +358,8 @@ export const InspectionStandardScreen = () => {
      * 이것이 그 하나다(계약 실측).
      */
     etagPath: selectedPlanId === null ? null : planDetailPath(selectedPlanId),
-    invalidateKeys: [planKeys.all],
+    /* 품목 전용 IQC 기준의 기본 생략은 품목 「IQC 대상」을 함께 바꾼다(#215) — 품목 화면 자료도 다시 읽게 한다. */
+    invalidateKeys: [planKeys.all, itemKeys.all],
     knownFields: PLAN_FORM_FIELDS,
     onSuccess: (saved) => {
       setPlanFieldErrors({});
@@ -375,7 +377,7 @@ export const InspectionStandardScreen = () => {
       }),
     // 아직 없는 자원이라 잠글 대상이 없다. 201 응답에도 ETag가 없다(계약 실측).
     etagPath: null,
-    invalidateKeys: [planKeys.all],
+    invalidateKeys: [planKeys.all, itemKeys.all],
     knownFields: PLAN_FORM_FIELDS,
     onSuccess: (saved) => {
       setCreateValues(null);

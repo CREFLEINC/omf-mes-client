@@ -222,6 +222,10 @@ export const PlanPane = ({
             {values.defaultSkip && values.inspectionTypeCode === 'IQC' && values.itemId === '' && (
               <p className="field-note">{t.values.defaultSkipAllItemsNote}</p>
             )}
+            {/* 품목 전용 IQC 기준은 품목 「IQC 대상」과 함께 바뀐다(omf-all-around#215). */}
+            {values.inspectionTypeCode === 'IQC' && values.itemId !== '' && (
+              <p className="field-note">{t.values.defaultSkipItemSyncNote}</p>
+            )}
           </div>
         )}
       </div>
