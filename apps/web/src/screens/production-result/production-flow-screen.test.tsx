@@ -2209,7 +2209,8 @@ describe('ProductionFlowScreen 불량', () => {
     expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
     await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
     await pickDefect(user, '찍힘');
-    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+    /* 키보드 없는 단말도 화면 숫자판으로 불량 수량을 넣는다. */
+    await user.click(screen.getByRole('button', { name: '2' }));
 
     const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
     await waitFor(() => expect(saveOnly).toBeEnabled());

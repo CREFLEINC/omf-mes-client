@@ -594,6 +594,8 @@ export const MaterialInputScanScreen = () => {
   /* 이미 반영한 거부 수. 거부 목록은 쌓이므로 새로 온 거부만 반영한다(같은 LOT을 다시 담았으면 남긴다). */
   const handledRejections = useRef(0);
   useEffect(() => {
+    /* 거부 목록을 비웠으면(clearResults) 처음부터 센다. */
+    if (outbox.rejections.length < handledRejections.current) handledRejections.current = 0;
     const rejected = outbox.rejections
       .slice(handledRejections.current)
       .map((one) => one.entry.body.lotId);

@@ -2009,6 +2009,24 @@ export const ProductionFlowScreen = () => {
                   {sessionNote}
                   {/* 넣을 LOT이 없어도 불량만 등록할 수는 있다(LOT 없이 저장하는 불량, 마감 전). */}
                   {entry.workOrderId !== null && !isWorkOrderClosed && defectSection}
+                  {/* 고른 불량 줄의 수량도 화면 숫자판으로 넣는다(키보드 없는 단말). */}
+                  {entry.workOrderId !== null && !isWorkOrderClosed && activeDefectRow !== null && (
+                    <NumericKeypad
+                      value={activeDefectRow.qty}
+                      dropLeadingZero
+                      disabled={areDefectsLocked}
+                      label={t.flow.defects.keypadFor(
+                        defectLabelOf(defectMajors, activeDefectRow.defectCodeId) ??
+                          t.flow.defects.row(defectRows.indexOf(activeDefectRow) + 1),
+                      )}
+                      backspaceLabel={t.quantity.backspace}
+                      clearLabel={t.quantity.clearGlyph}
+                      maxLength={GOOD_QTY_MAX_LENGTH}
+                      allowDecimal={uom.decimalScaleOf(workOrder.data?.uomId) > 0}
+                      decimalLabel={t.quantity.decimalKey}
+                      onChange={(value) => updateDefectRow(activeDefectRow.key, { qty: value })}
+                    />
+                  )}
                 </>
               ) : (
                 <>
