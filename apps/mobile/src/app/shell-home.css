@@ -319,3 +319,26 @@
   flex: 0 0 auto;
   margin-inline-end: var(--space-2);
 }
+
+/* 남은 작업 배지(피처 002). 중립색 — 빨강은 「이어서 하기」 전용이다. 화살표 앞에 붙는다. */
+.shell-home__badge {
+  flex: 0 0 auto;
+}
+
+.shell-home__area-left {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--on-surface);
+}
+
+/* 수의 기준 — 홈 맨 아래 단추 위 한 줄. */
+.shell-home__basis {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}

@@ -42,6 +42,45 @@ export const lookupKeys = {
   plants: ['terminal-process-map-lookups', 'plants'] as const,
   equipments: ['terminal-process-map-lookups', 'equipments'] as const,
   processes: ['terminal-process-map-lookups', 'processes'] as const,
+  warehouses: (plantId: string) => ['terminal-process-map-lookups', 'warehouses', plantId] as const,
+};
+
+/**
+ * 단말 공장의 사용 중인 창고(피처 002, W-CO-06). 공장을 고르기 전에는 부르지 않는다.
+ *
+ * ⭐ **공장 질의를 싣고도 화면에서 다시 거른다** — 질의(P-109)를 모르는 서버는 모든 공장의 창고를
+ * 낸다. 다른 공장 창고는 서버도 400 `PLANT_MISMATCH` 로 막는다.
+ */
+export const useWarehouseOptions = (plant: string): LookupResult => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: lookupKeys.warehouses(plant),
+    enabled: plant !== '',
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/warehouses', {
+          params: { query: { plantId: Number(plant), includeInactive: false } },
+        }),
+      ),
+  });
+  const data = query.data;
+  const items = data?.items.filter((item) => String(item.plantId) === plant && item.isActive);
+
+  return {
+    entries:
+      items?.map((item) => ({
+        value: String(item.warehouseId),
+        label: `${item.warehouseCode} ${item.warehouseName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    error: query.error,
+    isLoading: plant !== '' && query.isPending,
+    refetch: () => {
+      void query.refetch();
+    },
+  };
 };
 
 export const usePlantOptions = (): LookupResult => {

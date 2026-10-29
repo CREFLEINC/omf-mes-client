@@ -1384,10 +1384,52 @@ export type ZaloConnectionReplaceForward = components['schemas']['ZaloConnection
   handoverTemplates?: HandoverTemplate[];
 };
 
+/**
+ * 피처 002 P-127 — 단말 작업 수. 단말 유형에 맞는 키만 온다(모바일 넷 · POP 다섯). 각 수는 같은
+ * 화면 목록의 건수다(research R-5). 모르는 키가 와도 무시한다.
+ */
+export interface TerminalWorkCounts {
+  putaway?: number;
+  materialPicking?: number;
+  stockTransferArrival?: number;
+  shipmentPicking?: number;
+  shipmentPacking?: number;
+  workStart?: number;
+  emergencyWorkOrder?: number;
+  reworkResult?: number;
+  oqcInspection?: number;
+}
+
+export type TerminalWorkCountKey = keyof TerminalWorkCounts;
+
+/**
+ * 피처 002 P-126 — 단말 창고. 응답에 `warehouseId`·`warehouseName`, 등록·수정 본문에 `warehouseId?`
+ * (null = 비움 = 공장 전체). 병합 전 서버는 싣지 않으므로 응답 칸은 선택으로 읽는다.
+ */
+export interface TerminalWarehouseForward {
+  warehouseId?: number | null;
+  warehouseName?: string | null;
+}
+
+export type TerminalCreateForward = components['schemas']['TerminalCreate'] & {
+  warehouseId?: number | null;
+};
+
+export type TerminalUpdateForward = components['schemas']['TerminalUpdate'] & {
+  warehouseId?: number | null;
+};
+
 type ZaloConnectionPath = paths['/app/zalo-connection'];
 type HandoverSettingPathParams = { plantId: number; alertTypeCode: string };
 
 export interface ForwardPaths {
+  /** 피처 002 P-127 — 단말 토큰(POP·MOBILE)으로 부른다. */
+  '/app/terminal-work-counts': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<NoParameters, never, { 200: Json<TerminalWorkCounts> }>;
+  };
   /** 피처 002 P-124 — 인계 작업 종류 10종(기존 `/app/notification-events` 와 별개). */
   '/app/handover-alert-types': Unused & {
     parameters: NoParameters;

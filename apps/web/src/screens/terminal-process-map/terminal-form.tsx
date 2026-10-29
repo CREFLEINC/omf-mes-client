@@ -28,12 +28,23 @@ export interface TerminalFormProps {
   fieldErrors: Record<string, string>;
   plants: LookupResult;
   equipments: LookupResult;
+  /** 단말 공장의 창고(피처 002). 주지 않으면 빈 목록이다. */
+  warehouses?: LookupResult;
   /** 단말 유형·운영 상태 선택지 — 공통코드(TERMINAL_TYPE·TERMINAL_STATUS). 저장값은 코드 그대로다. */
   codeNames: TerminalCodeNames;
   onChange: (patch: Partial<TerminalDraft>) => void;
   onSubmit: () => void;
   onCancel: () => void;
 }
+
+const NO_WAREHOUSES: LookupResult = {
+  entries: [],
+  truncated: false,
+  isError: false,
+  error: null,
+  isLoading: false,
+  refetch: () => undefined,
+};
 
 const toOptions = (entries: { value: string; label: string }[]): SelectOption[] =>
   entries.map((entry) => ({ value: entry.value, label: entry.label }));
@@ -55,6 +66,7 @@ export const TerminalForm = ({
   fieldErrors,
   plants,
   equipments,
+  warehouses = NO_WAREHOUSES,
   codeNames,
   onChange,
   onSubmit,
@@ -65,9 +77,9 @@ export const TerminalForm = ({
 
   return (
     <>
-      {/* 다루지 않는 칸이 있다는 사실을 감추지 않는다 — 카드 제목 바로 아래 정보 띠(내용 폭). */}
+      {/* 창고 칸이 무엇을 바꾸는지 — 카드 제목 바로 아래 정보 띠(내용 폭, 피처 002). */}
       <AlertBanner className="terminal-map-notice terminal-map-form-notice" variant="info">
-        {t.terminal.locationOmitted}
+        {t.terminal.warehouseGuide}
       </AlertBanner>
       <SaveErrorBanner error={saveError} />
       {plants.isError ? <LoadErrorBanner error={plants.error} onRetry={plants.refetch} /> : null}
@@ -98,7 +110,8 @@ export const TerminalForm = ({
           placeholder={t.terminal.plantPlaceholder}
           wide
           onChange={(value) => {
-            onChange({ plant: value });
+            /* 다른 공장의 창고가 남지 않게 비운다. */
+            onChange(value === draft.plant ? { plant: value } : { plant: value, warehouse: '' });
           }}
         />
 
@@ -141,6 +154,28 @@ export const TerminalForm = ({
           wide
           onChange={(value) => {
             onChange({ equipment: value });
+          }}
+        />
+
+        <SelectField
+          label={t.terminal.warehouse}
+          options={[
+            { value: '', label: t.terminal.warehouseAll },
+            ...toOptions(warehouses.entries),
+          ]}
+          value={draft.warehouse}
+          disabled={draft.plant === ''}
+          note={
+            draft.plant === ''
+              ? t.terminal.warehouseNeedsPlant
+              : lookupNote(warehouses, t.terminal.warehouseLookupFailed)
+          }
+          hint={t.terminal.warehouseHint}
+          error={fieldErrors.warehouseId}
+          placeholder={t.terminal.warehouseAll}
+          wide
+          onChange={(value) => {
+            onChange({ warehouse: value });
           }}
         />
       </div>
