@@ -25,11 +25,16 @@ import {
   type ListPageSize,
 } from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from '../oqc-inspection/load-error-banner';
-import { useInspectionQueue } from '../oqc-inspection/queries';
+import {
+  useInspectionQueue,
+  useInspectionRequestDetail,
+  useInspectionRounds,
+} from '../oqc-inspection/queries';
 import { useDirectSubmitter } from '../pqc-panel/direct-submitter';
 import { PqcPanel } from '../pqc-panel/panel';
 import { EMPTY_PQC_FILTERS, PqcFilterBar, type PqcFilters } from './filter-bar';
 import { PqcQueueTable } from './queue-table';
+import { PqcSkipPane } from './skip-pane';
 
 const t = messages.pqcInspectionRegister;
 const hubText = messages.common.inspectionHub;
@@ -89,6 +94,9 @@ export const PqcInspectionRegisterScreen = () => {
     size: pageSize,
   });
   const rows = queue.data?.rows ?? [];
+  /* PQC 생략 구획(omf-all-around#212)이 보는 의뢰 상태·작업지시·확정 회차 — 판정 입력은 패널이 따로 부른다. */
+  const detail = useInspectionRequestDetail(selectedId);
+  const rounds = useInspectionRounds(selectedId);
 
   const openRequest = (inspectionRequestId: number | null): void => {
     setDirty(false);
@@ -258,6 +266,18 @@ export const PqcInspectionRegisterScreen = () => {
             />
           ) : (
             <>
+              {/* PQC 생략(#212) — 작업지시 대상이고 확정 회차가 없을 때만. 판정이 난 의뢰는 생략으로 덮지 않는다. */}
+              {detail.data !== undefined &&
+                detail.data.inspectionRequestId === selectedId &&
+                detail.data.targetTypeCode === 'WORK_ORDER' &&
+                rounds.data !== undefined &&
+                rounds.data.every((row) => row.statusCode !== 'CONFIRMED') && (
+                  <PqcSkipPane
+                    workOrderId={detail.data.targetId}
+                    requestStatusCode={detail.data.statusCode}
+                    skipBasisCode={detail.data.skipBasisCode}
+                  />
+                )}
               <LeaveGuardProvider value={leaveFor}>
                 <PqcPanel
                   /* 의뢰마다 새로 세운다 — 앞 의뢰의 입력이 다음 의뢰에 남지 않게. */

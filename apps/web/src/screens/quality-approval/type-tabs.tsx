@@ -11,12 +11,12 @@ export const IQC_SKIP_APPROVAL_PATH = '/logistics/iqc-skip-approval';
 export const IQC_SKIP_TYPE_CODE = 'IQC_SKIP';
 
 /**
- * 유형 탭 선택지 — 이 화면의 유형에 IQC 생략 탭을 OQC 생략 앞에 끼운다(IQC → OQC 흐름 차례).
+ * 유형 탭 선택지 — 이 화면의 유형에 IQC 생략 탭을 PQC·OQC 생략 앞에 끼운다(IQC → PQC → OQC 흐름 차례 · #212).
  * 그 화면을 볼 권한이 없으면(`withIqcSkip` 거짓) 끼우지 않는다 — 누르는 순간 막힌 화면이 선다.
  */
 export const toTypeTabOptions = (codes: readonly string[], withIqcSkip = true): CodeOption[] => {
   if (!withIqcSkip) return toTypeOptions(codes);
-  const at = codes.indexOf('OQC_SKIP');
+  const at = codes.findIndex((code) => code === 'PQC_SKIP' || code === 'OQC_SKIP');
   const ordered =
     at === -1
       ? [...codes, IQC_SKIP_TYPE_CODE]

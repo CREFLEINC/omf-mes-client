@@ -109,6 +109,8 @@ const describeLoadError = (error: ApiError): string => {
 
 /** OQC 생략 결재 유형 — 서버 선행 값(omf-all-around#119 · P-83). 생성 타입의 enum 에 아직 없다. */
 const OQC_SKIP = 'OQC_SKIP';
+/** PQC 생략(omf-all-around#212 · 서버 선행 P-152) — 대상은 작업지시다. */
+const PQC_SKIP = 'PQC_SKIP';
 /** 「다음 할 일」이 여는 화면(#193) — 반려 뒤 정상 검사로, 실행 뒤 그다음 업무로. */
 const IQC_INSPECTION_PATH = '/logistics/iqc-inspection';
 const OQC_INSPECTION_PATH = '/shipment/oqc-inspection';
@@ -181,8 +183,10 @@ export const QualityApprovalScreen = ({
    * 「생략 실행」 구획이 선다(부품·판정·쓰기를 그 탭의 것 그대로 쓴다). 실행 권한은 서버가 W-01-02 로 거른다.
    */
   const isIqcSkip = String(detail.data?.request.approvalTypeCode) === IQC_SKIP_TYPE_CODE;
+  /* PQC 생략(#212)도 특채가 아니다 — OQC 생략처럼 승인된 뒤 이 화면에서 실행한다. */
+  const isPqcSkip = String(detail.data?.request.approvalTypeCode) === PQC_SKIP;
   const conditionCandidates = useConcessionCandidates(
-    isOqcSkip || isIqcSkip ? null : (detail.data?.request.approvalRequestId ?? null),
+    isOqcSkip || isIqcSkip || isPqcSkip ? null : (detail.data?.request.approvalRequestId ?? null),
   );
   const approvedIqcSkipLotId =
     detail.data === undefined ? null : skipExecuteLotIdOf(detail.data.request, IQC_SKIP_TYPE_CODE);
@@ -215,6 +219,7 @@ export const QualityApprovalScreen = ({
   const hasSafeCondition =
     isOqcSkip ||
     isIqcSkip ||
+    isPqcSkip ||
     (selectedId !== null &&
       conditionCandidates.data !== undefined &&
       !conditionCandidates.isError &&
@@ -278,6 +283,32 @@ export const QualityApprovalScreen = ({
         setOqcSkipDoneIds((current) => new Set(current).add(shipmentRequestId));
       }
       toast.show({ variant: 'success', description: t.oqcSkipExecute.done });
+    },
+  });
+
+  /*
+   * 승인된 PQC 생략의 실행(#212) — OQC 생략 실행과 같은 짜임이다. 서버가 이 화면(W-03-09) 권한으로도 실행을 연다.
+   * ⚠ 실행 여부를 읽을 서버 값이 없다 — 이 화면에서 실행을 마친 작업지시만 「완료」로 보이고, 이미 실행된 건을 다시 누르면
+   *   서버가 400 으로 막아 그 문구가 배너에 선다(OQC 생략의 상태를 못 읽었을 때와 같다).
+   */
+  const [pqcSkipSentId, setPqcSkipSentId] = useState<number | null>(null);
+  const pqcSkipSentRef = useRef<number | null>(null);
+  const [pqcSkipDoneIds, setPqcSkipDoneIds] = useState<ReadonlySet<number>>(() => new Set());
+  const pqcSkipWrite = useMasterWrite<number, unknown>({
+    request: (workOrderId, headers) =>
+      client.POST('/production/work-orders/{workOrderId}:skip-pqc', {
+        params: {
+          path: { workOrderId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    etagPath: null,
+    invalidateKeys: [qualityApprovalKeys.all, oqcInspectionKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      const workOrderId = pqcSkipSentRef.current;
+      if (workOrderId !== null) setPqcSkipDoneIds((current) => new Set(current).add(workOrderId));
+      toast.show({ variant: 'success', description: t.pqcSkipExecute.done });
     },
   });
 
@@ -435,7 +466,7 @@ export const QualityApprovalScreen = ({
 
     if (detail.data === undefined) return null;
     /* 특채는 요청 정보와 특채 조건이 한 카드다 — 수량 요약 아래에 요청 정보가 선다(#193 특채 승인 상세). */
-    if (!isOqcSkip && !isIqcSkip) {
+    if (!isOqcSkip && !isIqcSkip && !isPqcSkip) {
       return (
         <ConditionPane
           approvalRequestId={detail.data.request.approvalRequestId}
@@ -484,6 +515,34 @@ export const QualityApprovalScreen = ({
               oqcUoms.data?.items.find((uom) => uom.uomId === uomId)?.uomName.trim() ?? ''
             }
             canOpenLot={canOpenLotStatus}
+          />
+        )}
+        {/* PQC 생략(#212)은 연결 조건이 없다 — 승인된 뒤에만 생략 실행 구획이 선다. */}
+        {isPqcSkip && detail.data.request.statusCode === 'APPROVED' && (
+          <SkipExecutePane
+            texts={t.pqcSkipExecute}
+            compact={t.pqcSkipExecute.compact}
+            state={
+              pqcSkipDoneIds.has(detail.data.request.target.targetId)
+                ? { kind: 'executed' }
+                : { kind: 'executable' }
+            }
+            isSaving={
+              pqcSkipSentId === detail.data.request.target.targetId && pqcSkipWrite.isSaving
+            }
+            onExecute={() => {
+              const workOrderId = detail.data.request.target.targetId;
+              pqcSkipSentRef.current = workOrderId;
+              setPqcSkipSentId(workOrderId);
+              pqcSkipWrite.write(workOrderId);
+            }}
+            banner={
+              <SaveErrorBanner
+                error={
+                  pqcSkipSentId === detail.data.request.target.targetId ? pqcSkipWrite.error : null
+                }
+              />
+            }
           />
         )}
         {/* OQC 생략(#119)은 연결 조건이 없다 — IQC 생략처럼 승인된 뒤에만 생략 실행 구획이 선다(#193). */}
@@ -783,7 +842,9 @@ export const QualityApprovalScreen = ({
                 ? t.fields.target
                 : typeCode === OQC_SKIP
                   ? t.fields.targetShipmentRequest
-                  : t.fields.targetLot
+                  : typeCode === PQC_SKIP
+                    ? t.fields.targetWorkOrder
+                    : t.fields.targetLot
             }
             rows={rows}
             isLoading={list.isPending}

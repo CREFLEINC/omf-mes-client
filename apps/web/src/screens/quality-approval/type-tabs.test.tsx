@@ -52,6 +52,10 @@ describe('TypeTabs', () => {
       'CONCESSION',
       'IQC_SKIP',
     ]);
+    /* #212 — PQC 생략이 있으면 그 앞에 끼운다(IQC → PQC → OQC 차례). */
+    expect(
+      toTypeTabOptions(['CONCESSION', 'PQC_SKIP', 'OQC_SKIP']).map((option) => option.value),
+    ).toEqual(['CONCESSION', 'IQC_SKIP', 'PQC_SKIP', 'OQC_SKIP']);
   });
 
   it('고를 유형이 없으면 탭을 세우지 않는다', () => {
