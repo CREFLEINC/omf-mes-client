@@ -261,7 +261,7 @@ const APP_PERMISSIONS = [
   { code: 'P-02-13', name: 'PQC 제품 검사·검사 결과 입력', groupCode: '02' },
   /* ⭐ 설계보다 앞서 만든 화면이다 — 화면 코드는 사용자 결정(omf-all-around#108 · 서버 장부 P-52). */
   { code: 'P-02-14', name: '자재 불량 등록', groupCode: '02' },
-  { code: 'W-02-01', name: 'ERP W/O 수신·조회', groupCode: '02' },
+  { code: 'W-02-01', name: '작업지시 목록', groupCode: '02' },
   { code: 'W-02-02', name: 'W/O 전개·편성', groupCode: '02' },
   { code: 'W-02-03', name: '4M 자원배정·유효성 점검', groupCode: '02' },
   { code: 'W-02-04', name: 'W/O 확정·배포·생산LOT 선발행', groupCode: '02' },

@@ -8,6 +8,12 @@ import { runRequest } from './request';
 
 const t = messages.common.inspectionHub;
 
+/**
+ * 건수 칩 조회의 앞머리 — 저장 · 확정으로 의뢰 상태가 바뀌면 화면이 이 키를 무효화해 칩을 다시 센다(#197).
+ * 비워 두면 30초 동안 저장 전 건수가 남는다.
+ */
+export const INSPECTION_HUB_COUNTS_KEY = ['inspection-hub-counts'] as const;
+
 /** 칩으로 세우는 검사 의뢰 상태. 화면마다 고른다 — IQC 는 대기 큐라 완료가 없다. */
 export type InspectionHubStatus = 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETED';
 
@@ -48,7 +54,7 @@ export const InspectionHubCounts = ({
   /* 칩을 세울 자리(탭 막대)가 없으면 세지도 않는다 — 쓰지 않을 조회를 내지 않는다. */
   const counts = useQueries({
     queries: statuses.map((statusCode) => ({
-      queryKey: ['inspection-hub-counts', inspectionTypeCode, statusCode],
+      queryKey: [...INSPECTION_HUB_COUNTS_KEY, inspectionTypeCode, statusCode],
       /* 한 줄만 받아 쪽 정보의 전체 건수를 쓴다 — 목록을 다 받지 않는다. */
       queryFn: () =>
         runRequest(() =>

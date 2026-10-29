@@ -5,13 +5,12 @@ import {
   EmptyState,
   PageHeader,
   SkeletonText,
-  Tabs,
   useToast,
 } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Navigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
@@ -38,8 +37,15 @@ import {
 } from './mappers';
 import { isTruncated, useCodeDetail, useCodeList, useCodeOptions } from './queries';
 import { ProcessMappingPane } from './process-mapping-pane';
-import { CODE_TABS, resolveTab } from './tabs';
-import type { CodeDetailResult, CodeFilters, CodeFormValues, HierarchyCode } from './types';
+import { resolveTab } from './tabs';
+import type {
+  CodeDetailResult,
+  CodeFilters,
+  CodeFormValues,
+  CodeKind,
+  HierarchyCode,
+} from './types';
+import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.defectCauseCode;
 
@@ -106,14 +112,14 @@ interface CodeFormState {
 
 /**
  * W-06-03 컨테이너. 불량 코드와 원인 코드를 같은 부품으로 그리고,
- * 탭·조회 조건·선택을 주소에 둔다.
+ * 조회 조건·선택을 주소에 둔다. 어느 코드를 다룰지는 주소(경로)가 정한다(#208).
  */
-const CodeMasterWorkspace = () => {
+const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { client } = useApiClient();
 
-  const tab = resolveTab(searchParams.get('tab'));
+  const tab = resolveTab(kind);
   const adapter = tab.adapter;
 
   const filters = useMemo<CodeFilters>(
@@ -485,48 +491,64 @@ const CodeMasterWorkspace = () => {
 
 type ScreenTab = 'defect' | 'cause' | 'mapping';
 
-const resolveScreenTab = (value: string | null): ScreenTab => {
-  if (value === 'cause' || value === 'mapping') return value;
-  return 'defect';
+/** 하위 탭마다 고유 주소 — 「불량·판정 코드」 탭 막대 한 줄에 선다(사용자 지시 · #208). */
+const TAB_PATHS: Record<ScreenTab, string> = {
+  defect: '/master-data/defect-cause-code',
+  cause: '/master-data/cause-code',
+  mapping: '/master-data/defect-process-mapping',
 };
 
-/** W-06-03의 현상·원인·공정 매핑 세 축. 비활성 탭은 렌더하지 않아 숨은 요청을 만들지 않는다. */
-export const DefectCauseCodeScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = resolveScreenTab(searchParams.get('tab'));
+interface DefectCauseCodeScreenProps {
+  /** 보일 하위 탭. 주소가 정한다 — 종전 주소(불량코드)는 비워 둔다. */
+  tab?: ScreenTab;
+}
 
-  const changeTab = (value: string) => {
-    setSearchParams(new URLSearchParams({ tab: resolveScreenTab(value) }));
-  };
+/**
+ * W-06-03의 현상·원인·공정 매핑 세 축. 하위 탭은 셸 탭 막대(주소)로 고른다 — 화면 안 탭 줄은 두지 않는다(#208).
+ * 다른 하위 탭 화면은 렌더하지 않아 숨은 요청을 만들지 않는다.
+ */
+export const DefectCauseCodeScreen = ({ tab }: DefectCauseCodeScreenProps) => {
+  const hub = usePageHub();
+  const [searchParams] = useSearchParams();
+
+  /*
+   * 종전 주소 `?tab=cause|mapping` 은 새 주소로 옮긴다(다른 질의값은 그대로) — 북마크·다른 화면 연결이 산다.
+   */
+  const legacyTab = searchParams.get('tab');
+  if (tab === undefined && (legacyTab === 'cause' || legacyTab === 'mapping')) {
+    const rest = new URLSearchParams(searchParams);
+    rest.delete('tab');
+    const search = rest.toString();
+    return (
+      <Navigate
+        replace
+        to={{ pathname: TAB_PATHS[legacyTab], search: search === '' ? '' : `?${search}` }}
+      />
+    );
+  }
+
+  const activeTab: ScreenTab = tab ?? 'defect';
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-      <Tabs
-        aria-label={t.title}
-        value={activeTab}
-        onChange={changeTab}
-        items={[
-          ...CODE_TABS.map((definition) => ({
-            value: definition.kind,
-            label: definition.adapter.labels.tab,
-            content: definition.kind === activeTab ? <CodeMasterWorkspace /> : null,
-          })),
-          {
-            value: 'mapping',
-            label: t.tabs.mapping,
-            content: activeTab === 'mapping' ? <ProcessMappingPane /> : null,
-          },
-        ]}
-      />
+      {/* 탭 묶음 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
+      {/* key — 하위 탭을 옮기면 폼·선택 상태를 새로 세운다. 탭끼리 상태가 섞이지 않는다. */}
+      {activeTab === 'mapping' ? (
+        <ProcessMappingPane key="mapping" />
+      ) : (
+        <CodeMasterWorkspace key={activeTab} kind={activeTab} />
+      )}
     </>
   );
 };

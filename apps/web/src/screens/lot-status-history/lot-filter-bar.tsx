@@ -1,7 +1,8 @@
-import { Button, SearchInput, Select } from '@crefle/web-ui';
+import { Button, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { Select } from '../../patterns/select';
 import { ALL_LOT_TYPES, type LotFilters } from './filters';
 import { ItemFilterField } from './item-filter-field';
 import { useLocationReferenceOptions } from './reference-options';

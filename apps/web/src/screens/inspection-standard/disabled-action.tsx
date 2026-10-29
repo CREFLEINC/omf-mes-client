@@ -25,7 +25,11 @@ export const DisabledAction = ({ label, reason, className }: DisabledActionProps
   const noteId = useId();
 
   return (
-    <div className={className === undefined ? 'field-cell' : `field-cell ${className}`}>
+    /* 사유는 마우스를 올려도 보인다 — 사유 글을 감추는 줄(버전 고르기 줄 등)에서도 읽히게(#196). */
+    <div
+      className={className === undefined ? 'field-cell' : `field-cell ${className}`}
+      title={reason}
+    >
       <Button variant="outlined" disabled aria-describedby={noteId}>
         {label}
       </Button>

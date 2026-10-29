@@ -185,22 +185,22 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/shipment/product-disposal-request', code: 'W-04-10', name: '제품 폐기 요청' },
 
   /* ── 생산 ─────────────────────────────────────────────────────────────── */
-  { path: '/production/production-orders', code: 'W-02-01', name: 'ERP W/O 처리' },
+  { path: '/production/production-orders', code: 'W-02-01', name: '작업지시 목록' },
   { path: '/production/po-change-review', code: 'W-02-06', name: 'ERP W/O 변경 관리자 확인' },
   /*
-   * 아래 셋은 사이드바에 없는 옛 주소다. 화면은 「ERP W/O 처리」로 합쳤고, 주소는 대상을 찾아 처리 화면이나
+   * 아래 셋은 사이드바에 없는 옛 주소다. 화면은 「작업지시 목록」으로 합쳤고, 주소는 대상을 찾아 처리 화면이나
    * 작업함으로 넘긴다(`production-order/process/legacy-redirects.tsx`, omf-all-around#129).
    */
-  { path: '/production/production-plans', code: 'W-02-02', name: 'ERP W/O 처리 생산계획' },
+  { path: '/production/production-plans', code: 'W-02-02', name: 'W/O 전개와 편성' },
   {
     path: '/production/work-order-assignments',
     code: 'W-02-03',
-    name: 'ERP W/O 처리 4M 배정',
+    name: '4M 자원배정',
   },
   {
     path: '/production/work-order-release',
     code: 'W-02-04',
-    name: 'ERP W/O 처리 일괄 배포',
+    name: 'W/O 확정과 배포',
   },
   { path: '/production/work-order-close', code: 'W-02-05', name: 'W/O 마감·ERP 실적 송신' },
   /*
@@ -283,6 +283,11 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 「내 알림을 보는 곳」이고 이것은 관리자가 「누가 받을지」를 정하는 곳이다. v1.5 신설(DR-003).
    */
   { path: '/notification/recipient-settings', code: 'W-CO-11', name: '알림 수신자 설정' },
+  /*
+   * 피처 002(omf-all-around#190) — 공장 × 인계 작업 종류의 담당자. 설계 저장소 생성본에 없는 코드를
+   * 서버가 손으로 더했다(서버 `permissions.ts` 와 같은 값).
+   */
+  { path: '/notification/handover-settings', code: 'W-CO-14', name: '인계작업 알림 설정' },
   /* 001(omf-all-around#160) — Zalo 연결 정보. 알림센터가 정본이고 Zalo 는 부가 전달이다. */
   { path: '/notification/zalo-connection', code: 'W-CO-12', name: '알림 연결 설정' },
   { path: '/notification/dispatch-history', code: 'W-CO-13', name: '알림 발송 이력' },
@@ -327,4 +332,12 @@ export const WEB_SCREEN_TABS: readonly WebScreenTab[] = [
   { path: '/master-data/erp-inbound', ownerPath: '/master-data/integration-sync' },
   /* 초과분 발주 연결 — 입고 관리(W-01-09)의 오른쪽 창이던 것을 탭으로 뗐다(사용자 지시 2026-10-28). */
   { path: '/logistics/inbound-excess', ownerPath: '/logistics/inbound-schedule' },
+  /* BOM — 「품목·BOM 정보」(W-06-05)의 BOM 구역을 탭으로 뗐다(사용자 지시 2026-10-28 · ERP 연동 현황·이력의 BOM 탭처럼). */
+  { path: '/master-data/item-boms', ownerPath: '/master-data/item-extended-attrs' },
+  /*
+   * 원인코드 · 공정 매핑 — 불량·원인코드(W-06-03) 화면 안 하위 탭을 「불량·판정 코드」 탭 막대로 뗐다
+   * (사용자 지시 2026-10-29 · omf-all-around#208). 불량코드는 종전 주소 그대로다.
+   */
+  { path: '/master-data/cause-code', ownerPath: '/master-data/defect-cause-code' },
+  { path: '/master-data/defect-process-mapping', ownerPath: '/master-data/defect-cause-code' },
 ];

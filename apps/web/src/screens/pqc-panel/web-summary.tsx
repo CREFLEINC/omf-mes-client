@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { PlanViewLauncher } from '../iqc-inspection/plan-view-launcher';
 import type { PlanVersionView } from '../pqc-inspection/queries';
 import type { InspectionRequestDetail } from '../pqc-inspection/types';
 import { useItem, useLotDetail } from '../production-result/flow-queries';
@@ -91,12 +92,23 @@ export const WebSummary = ({ detail, planVersion, uomCode }: WebSummaryProps) =>
     {
       key: 'plan',
       label: t.plan,
+      /* IQC 와 같이 「버전 N」 + [기준 조회](사용자 지시 2026-10-28 · #197). */
       value:
-        detail.inspectionPlanVersionId === null
-          ? t.noPlan
-          : planVersion === null
-            ? empty
-            : t.planLabel(planVersion.planCode, planVersion.planVersion),
+        detail.inspectionPlanVersionId === null ? (
+          t.noPlan
+        ) : (
+          <span className="iqc-inspection-plan-cell">
+            <span>
+              {planVersion === null
+                ? empty
+                : messages.iqcInspection.detail.planVersion(planVersion.planVersion)}
+            </span>
+            <PlanViewLauncher
+              inspectionPlanVersionId={detail.inspectionPlanVersionId}
+              label={messages.iqcInspection.detail.openPlan}
+            />
+          </span>
+        ),
     },
     { key: 'lot', label: t.lot, value: lotValue },
     {

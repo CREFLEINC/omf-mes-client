@@ -1,6 +1,7 @@
-import { AlertBanner, type Column, Select, Table } from '@crefle/web-ui';
+import { AlertBanner, type Column, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { Select } from '../../patterns/select';
 import type { ExpansionState } from './expansion';
 import type { RoutingOperation } from './types';
 

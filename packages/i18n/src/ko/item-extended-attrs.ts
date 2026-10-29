@@ -16,13 +16,14 @@ export const itemExtendedAttrs = {
     label: '품목 상세 구획',
     attrs: '확장 속성',
     subsidiary: '부속 정보',
-    bom: '자재 명세서',
   },
-  sections: {
-    label: '품목·자재 명세서 구분',
-    item: '품목',
-    bom: 'BOM',
-  },
+  /** 두 구획 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
+  splitter: '끌어서 품목 목록·상세 폭 조절',
+  /** 막대 위쪽 끝의 단추 — 품목 목록을 왼쪽으로 완전히 접고 편다. */
+  listCollapse: '품목 목록 접기',
+  listExpand: '품목 목록 펼치기',
+  /** 줄 단추의 접근 이름 — 품목코드를 담는다. */
+  pickItem: (itemCode: string): string => `${itemCode} 선택`,
   /**
    * 부속 정보 안의 하위 탭. 계약이 인용한 화면 스펙의 구획 이름을 그대로 옮긴 것이다 —
    * 여기서 이름을 새로 지으면 설계 문서와 화면이 다른 말을 하게 된다.
@@ -35,6 +36,8 @@ export const itemExtendedAttrs = {
     resourceMap: '설비·금형',
   },
   panes: {
+    detail: '품목 상세',
+    filter: '조회 조건',
     item: '품목',
     itemOrigin: '품목 원본 정보',
     itemAttrs: '확장 속성',
@@ -53,16 +56,12 @@ export const itemExtendedAttrs = {
     totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   filters: {
-    itemSearchLabel: '품목 검색',
-    itemSearchPlaceholder: '품목코드 또는 품목명',
-    chipKeyword: (value: string): string => `검색어: ${value}`,
-    chipRemoveKeyword: '검색어 조건 제거',
-    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+    itemSearchLabel: '품목코드·품목명',
     /** 품목 유형 선택. 선택지 이름은 코드 그룹 `ITEM_TYPE`이 준다 — 화면이 짓지 않는다 */
     itemTypeLabel: '품목유형',
     itemTypeAll: '전체',
-    chipItemType: (value: string): string => `품목유형: ${value}`,
-    chipRemoveItemType: '품목유형 조건 제거',
+    /** IQC 대상 여부 조건. */
+    iqcLabel: 'IQC 대상',
   },
   loading: {
     items: '품목 목록을 불러오는 중',
@@ -107,6 +106,9 @@ export const itemExtendedAttrs = {
      * 사용자가 원본 시스템을 확인하러 간다.
      */
     loading: '불러오는 중…',
+    /** 예 / 아니오 칸(IQC 대상 열 · 조건). 사용자 지시로 Y · N 그대로 쓴다. */
+    yes: 'Y',
+    no: 'N',
   },
   /**
    * 원본 구획 — 외부 시스템이 소유하는 네 열. **여기에 입력칸도 저장도 없다.**
@@ -119,10 +121,10 @@ export const itemExtendedAttrs = {
       /** 이름은 코드 그룹 `ITEM_TYPE`이 준다 — 받기 전이거나 목록에 없으면 코드 그대로다. */
       itemType: '품목유형',
       baseUom: '기준 단위',
+      spec: '규격',
+      /** ERP 코드 그대로 낸다 — 이름을 담은 코드 그룹이 아직 없다(장부 P-67). */
+      itemGroup: '품목그룹',
     },
-    /** 원본과 확장의 소유 경계를 한 줄로 밝힌다 — 어느 값을 어디서 고치는지 */
-    ownershipNote:
-      'ERP 원본 정보는 ERP에서 받아 오며 ERP에서 수정합니다. 아래 확장 속성은 MES가 관리합니다.',
   },
   /**
    * 확장 구획 — 이쪽이 소유해 편집하는 값. **원본 구획과 말이 갈려 있어야 한다.**
@@ -131,11 +133,16 @@ export const itemExtendedAttrs = {
    * 두 항목을 한 줄로 붙여 놓아 무엇이 무엇을 켜는지 보이게 한다.
    */
   attrs: {
+    /** 설정 항목 표의 머리. */
+    columns: {
+      group: '구분',
+      field: '항목',
+      value: '설정값',
+    },
     groups: {
-      names: '다국어 명칭',
-      lot: 'LOT 기본값·식별',
+      lot: 'LOT 기본값',
       shelfLife: '유효기한·선출',
-      inventory: '검사·재고·보관',
+      inventory: '검사·재고',
     },
     fields: {
       nameKo: '품목명(한국어)',
@@ -144,10 +151,12 @@ export const itemExtendedAttrs = {
       lotControlled: 'LOT 관리',
       defaultLotStorageUom: 'LOT 보관 단위 기본값',
       defaultProductionLotSize: '생산 LOT 기본크기',
+      /** 원자재 · 부자재의 LOT 기본크기 — 생산 LOT 기본크기와 같은 칸을 쓴다(품목유형으로 이름만 갈린다). */
+      defaultMaterialLotSize: '자재 LOT 기본크기',
       serialControlType: '시리얼 관리 유형',
       shelfLifeManaged: '유효기한 관리',
       shelfLifeDays: '유효기한(일)',
-      inspectionRequired: '입고검사 대상',
+      inspectionRequired: 'IQC 대상',
       fifoPolicy: '선출 정책',
       negativeStockAllowed: '마이너스 재고 허용',
       storageCondition: '보관 조건',
@@ -156,21 +165,15 @@ export const itemExtendedAttrs = {
       /** 신재·재생재. 이름은 코드 그룹 `MES_CATEGORY`가 준다 — 화면이 짓지 않는다 */
       mesCategory: 'MES 구분',
     },
+    /** 유효기한 관리 스위치 옆 일수 칸의 단위 — 칸 이름은 읽기 도구에만 있다. */
+    units: {
+      days: '일',
+    },
     values: {
       active: '사용 중',
       inactive: '미사용',
       unspecified: '지정하지 않음',
     },
-    /**
-     * 사용 여부에 컨트롤을 두지 않는 이유. **감추지 않고 밝힌다** —
-     * 값만 있고 바꿀 수단이 없으면 사용자가 화면이 빠뜨린 것으로 읽는다.
-     */
-    isActiveNote: '사용 여부는 이 화면에서 바꾸지 않습니다. 저장해도 지금 값이 그대로 유지됩니다.',
-    /**
-     * MES 구분에 컨트롤을 두지 않는 이유. 시스템이 소유하는 값이고 편집 본문(`ItemUpdate`)에 자리가 없다 —
-     * 같은 품목코드의 신재·재생재를 두 행으로 가르는 유일 키의 일부다.
-     */
-    mesCategoryNote: 'MES 구분은 시스템이 정하는 값이라 이 화면에서 바꾸지 않습니다.',
     validation: {
       required: '필수 입력 항목입니다.',
       codeTooLong: '코드는 50자를 넘을 수 없습니다.',
@@ -181,7 +184,7 @@ export const itemExtendedAttrs = {
       /* 계약 exclusiveMinimum: 0 — 유효기한(일)과 규칙이 다르다. 0을 받지 않는다. */
       openedShelfLifeHoursInvalid: '개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.',
       defaultLotStorageUomInvalid: 'LOT 보관 단위 기본값을 다시 선택하세요.',
-      defaultProductionLotSizeInvalid: '생산 LOT 기본크기는 숫자로 입력하세요.',
+      defaultProductionLotSizeInvalid: 'LOT 기본크기는 숫자로 입력하세요.',
     },
   },
   /**
@@ -489,6 +492,62 @@ export const itemExtendedAttrs = {
     actionsColumn: {
       /** 헤더 목록에서 이 자재 명세서의 내용·구성품을 연다 */
       open: (name: string): string => `${name} 구성품 보기`,
+    },
+  },
+  /**
+   * BOM 탭 — 「ERP 연동 현황·이력 > BOM」과 같은 짜임(사용자 지시 2026-10-28). 모품목 목록 · 하이라키 문구.
+   * 하이라키 줄 문구는 그 화면(`erpBom.tree`)과 같은 말을 쓴다.
+   */
+  bomTab: {
+    splitter: '끌어서 모품목 목록·BOM 폭 조절',
+    listCollapse: '모품목 목록 접기',
+    listExpand: '모품목 목록 펼치기',
+    parentFacts: '모품목 상세',
+    panes: {
+      parents: '모품목 목록',
+    },
+    fields: {
+      itemType: '유형',
+      hasBom: 'BOM 있는 품목만',
+      q: '품목코드·품목명',
+      /** 모품목의 BOM 이 여럿일 때 고르는 칸. */
+      bom: 'BOM',
+    },
+    columns: {
+      item: '품목',
+      requiredQty: '소요량',
+      scrapRate: '손실률',
+      isMandatory: '필수',
+    },
+    tree: {
+      /** 깊이 한도(20단계)에 닿아 더 펴지 않는다. */
+      depthLimit: '더 깊은 단계는 펴지 않습니다',
+      retry: (label: string): string => `${label} 하위 구성 다시 불러오기`,
+      expand: (label: string): string => `${label} 펼치기`,
+      collapse: (label: string): string => `${label} 접기`,
+      loading: '불러오는 중',
+      failed: '하위 구성을 불러오지 못했습니다',
+      /** 같은 품목이 위 단계에 이미 있다 — 더 내려가지 않는다. */
+      cycle: '위 단계와 같은 품목',
+    },
+    values: {
+      yes: '예',
+      no: '아니오',
+      loadingName: '불러오는 중',
+      failedName: '불러오지 못함',
+      unknown: '알 수 없음',
+      /** BOM 고르기 선택지 — 기본 BOM 표시. */
+      defaultBom: (name: string): string => `${name} (기본)`,
+    },
+    loading: {
+      parents: '모품목 목록을 불러오는 중',
+      boms: 'BOM 을 불러오는 중',
+    },
+    empty: {
+      parentsBeyondLast: '이 쪽에는 모품목이 없습니다',
+      noParentsTitle: '조건에 맞는 모품목이 없습니다',
+      noParentTitle: '모품목을 고르세요',
+      noBomTitle: '이 품목에는 BOM 이 없습니다',
     },
   },
   /**

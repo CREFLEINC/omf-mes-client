@@ -1,6 +1,7 @@
-import { type Column, EmptyState, IconButton, Select, TextField, Table } from '@crefle/web-ui';
+import { type Column, EmptyState, IconButton, TextField, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { Select } from '../../patterns/select';
 import type { LotCandidateResult } from './lot-candidates';
 import {
   lineAllocationIssues,

@@ -13,6 +13,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { type TabPageSize, TAB_PAGE_SIZES } from '../../patterns/client-page';
+import { PageNav } from '../../patterns/page-nav';
 import { runRequest } from '../../patterns/request';
 
 type Partner = components['schemas']['Partner'];
@@ -20,8 +22,8 @@ type Partner = components['schemas']['Partner'];
 const t = messages.iqcInspection.filters.supplierPicker;
 const itemPicker = messages.itemPicker;
 
-/** 한 쪽에 보이는 공급사 수 — 품목 검색 창과 같다. */
-const SUPPLIER_PAGE_SIZE = 20;
+/** 처음 한 쪽에 보이는 공급사 수 — 품목 검색 창과 같다. */
+const SUPPLIER_PAGE_SIZE: TabPageSize = 20;
 
 export interface SupplierPickerDialogProps {
   onClose: () => void;
@@ -40,10 +42,11 @@ export const SupplierPickerDialog = ({ onClose, onConfirm }: SupplierPickerDialo
   const [keyword, setKeyword] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [page, setPage] = useState(1);
+  const [size, setSize] = useState<TabPageSize>(SUPPLIER_PAGE_SIZE);
   const [picked, setPicked] = useState<Partner | null>(null);
 
   const search = useQuery({
-    queryKey: ['iqc-inspection', 'supplier-picker', submitted, page] as const,
+    queryKey: ['iqc-inspection', 'supplier-picker', submitted, page, size] as const,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/partners', {
@@ -52,7 +55,7 @@ export const SupplierPickerDialog = ({ onClose, onConfirm }: SupplierPickerDialo
               ...(submitted === '' ? {} : { q: submitted }),
               includeInactive: true,
               page,
-              size: SUPPLIER_PAGE_SIZE,
+              size,
             },
           },
         }),
@@ -106,10 +109,6 @@ export const SupplierPickerDialog = ({ onClose, onConfirm }: SupplierPickerDialo
       ),
     },
   ];
-
-  const from = (page - 1) * SUPPLIER_PAGE_SIZE + 1;
-  const to = Math.min(page * SUPPLIER_PAGE_SIZE, total);
-  const hasNext = page * SUPPLIER_PAGE_SIZE < total;
 
   return (
     <Dialog
@@ -192,29 +191,16 @@ export const SupplierPickerDialog = ({ onClose, onConfirm }: SupplierPickerDialo
           />
         </div>
 
-        <div className="item-picker-pager">
-          {total > 0 && (
-            <span className="field-note">{itemPicker.page.range(from, to, total)}</span>
-          )}
-          <Button
-            variant="outlined"
-            disabled={page <= 1}
-            onClick={() => {
-              setPage((prev) => Math.max(1, prev - 1));
-            }}
-          >
-            {itemPicker.page.previous}
-          </Button>
-          <Button
-            variant="outlined"
-            disabled={!hasNext}
-            onClick={() => {
-              setPage((prev) => prev + 1);
-            }}
-          >
-            {itemPicker.page.next}
-          </Button>
-        </div>
+        {/* 목록 표 아래와 같은 쪽 이동 줄 — 총 건수 · 10 · 20 · 50건 · [처음] [이전] n/N [다음] [마지막](사용자 지시 2026-10-28 · #197). */}
+        <PageNav
+          meta={{ page, size, total }}
+          sizes={TAB_PAGE_SIZES}
+          onChangePage={setPage}
+          onChangeSize={(next) => {
+            setSize(next);
+            setPage(1);
+          }}
+        />
       </div>
     </Dialog>
   );

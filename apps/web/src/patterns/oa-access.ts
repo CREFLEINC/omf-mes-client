@@ -11,6 +11,8 @@ export const OA_PLANT_GROUP = 'INSPECTION_SHEET_PLANT';
 export const OA_ONLY_PATHS: ReadonlySet<string> = new Set([
   '/master-data/inspection-sheet-template',
   '/quality/inspection-sheets',
+  /* IQC 수입검사 — 부품 공장은 화면이 달라 따로 만든다(사용자 지시 2026-10-29). */
+  '/logistics/iqc-inspection',
 ]);
 
 /** `checking` = 아직 판단 중 · `unknown` = 판단할 근거를 못 받음(감추지 않고 서버의 403 에 맡긴다). */

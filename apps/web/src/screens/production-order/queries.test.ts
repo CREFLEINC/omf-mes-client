@@ -108,6 +108,10 @@ describe('useProductionOrderDetail', () => {
       expandedWorkOrderCount: 4,
       plannedWorkOrderCount: 5,
       autoPlan: null,
+      worklistState: null,
+      worklistReasons: [],
+      releasePendingWorkOrderCount: null,
+      liveWorkOrderCount: null,
     });
     expect(productionOrderKeys.detail(202)).not.toEqual(productionOrderKeys.detail(203));
   });

@@ -123,6 +123,8 @@ export const PqcFilterBar = ({
           compact
           includeInactive
           showAvailability={false}
+          /* 목록 표 아래와 같은 쪽 이동 줄(사용자 지시 2026-10-28 · #197). */
+          pageNav
           confirmLabel={t.itemPick}
           onClose={() => setIsPickerOpen(false)}
           onConfirm={([picked]) => {

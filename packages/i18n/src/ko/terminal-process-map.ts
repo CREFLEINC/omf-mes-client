@@ -34,6 +34,9 @@ export const terminalProcessMap = {
     registrationComplete: '등록 완료',
     registrationUnknown: '확인 전',
     equipment: '설비',
+    /** 피처 002 — 단말 창고. 없으면 공장 전체 기준이다. */
+    warehouse: '창고',
+    warehouseAll: '공장 전체',
     active: '사용',
     activeHeader: '사용 여부',
     inactive: '중지',
@@ -61,8 +64,18 @@ export const terminalProcessMap = {
     equipmentHint: 'POP 유형일 시 지정해 주세요',
     plantPlaceholder: '공장을 지정하세요',
     typePlaceholder: '유형을 지정하세요',
-    /** 설치 위치는 창고를 먼저 골라야 조회되는 자원이라 이 화면에서 열지 않는다. */
-    locationOmitted: '설치 위치를 설정하려면 먼저 창고를 선택해 주세요.',
+    /**
+     * 피처 002 — 창고 칸 안내. 전에는 창고 칸이 없어 「설치 위치를 설정하려면 먼저 창고를」을 띄웠다
+     * (확정 2026-10-28). 설치 위치 칸은 이번 범위가 아니다.
+     */
+    // ui-check-ignore: C-13 화면 목록 이름 나열(시안 WCO06-After 그대로)
+    warehouseGuide:
+      '창고를 지정하면 이 단말의 작업 목록(적치, 자재 출고, 재고 이동, 출하 포장)과 남은 작업 수가 그 창고 기준으로 보입니다. 비우면 공장 전체입니다.',
+    warehouse: '창고',
+    warehouseHint: '선택, 같은 공장의 창고',
+    warehouseAll: '공장 전체 (지정 안 함)',
+    warehouseNeedsPlant: '공장을 먼저 고르세요',
+    warehouseLookupFailed: '창고 목록을 불러오지 못해 지금은 고를 수 없습니다.',
     save: '저장',
     saving: '저장하는 중입니다.',
     saved: '단말 정보를 저장했습니다.',

@@ -1,8 +1,10 @@
 import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
+import { LeaveGuardProvider } from '../../patterns/leave-guard';
+import { PageNav } from '../../patterns/page-nav';
 import { toApiError } from '../../patterns/request';
 import { usePageHub } from '../../patterns/page-hub';
 import {
@@ -16,11 +18,13 @@ import {
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 import { LotScan } from '../inspection-documents/lot-scan';
-import { PAGE_SIZE, QUEUE_STATUSES } from '../oqc-inspection/filters';
+import {
+  LIST_PAGE_SIZES,
+  PAGE_SIZE,
+  QUEUE_STATUSES,
+  type ListPageSize,
+} from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from '../oqc-inspection/load-error-banner';
-/* 쪽 넘김 단추는 IQC 판정 화면(#133)의 것 — 같은 크기로 선다. */
-import { PageNav } from '../iqc-inspection/page-nav';
-import { toPageView } from '../oqc-inspection/pagination';
 import { useInspectionQueue } from '../oqc-inspection/queries';
 import { useDirectSubmitter } from '../pqc-panel/direct-submitter';
 import { PqcPanel } from '../pqc-panel/panel';
@@ -57,10 +61,21 @@ export const PqcInspectionRegisterScreen = () => {
   /* 탭 줄 상태 칩(#185) — 비면 거르지 않는다. */
   const [statusCode, setStatusCode] = useState<InspectionHubStatus | null>(null);
   const [page, setPage] = useState(1);
+  /* 목록 쪽 크기 — IQC 목록과 같은 10 · 20 · 50건(사용자 지시 2026-10-28 · #197). */
+  const [pageSize, setPageSize] = useState<ListPageSize>(PAGE_SIZE);
   const [filters, setFilters] = useState<PqcFilters>(EMPTY_PQC_FILTERS);
   const [dirty, setDirty] = useState(false);
   /* 저장하지 않은 입력을 두고 옮기려 할 때 묻는 자리(#133 · #185). `to` 가 `null` 이면 상세 닫기다. */
-  const [leaveTo, setLeaveTo] = useState<{ to: number | null } | null>(null);
+  const [leaveTo, setLeaveTo] = useState<{ to: number | null; href?: string } | null>(null);
+  /* 다른 화면으로 옮기기(기준 조회 창의 [수정] · #197) — 저장 안 한 입력이 있으면 먼저 묻는다. */
+  const navigate = useNavigate();
+  const leaveFor = (href: string): void => {
+    if (selectedId !== null && dirty) {
+      setLeaveTo({ to: selectedId, href });
+      return;
+    }
+    void navigate(href);
+  };
   const submitter = useDirectSubmitter();
 
   const queue = useInspectionQueue({
@@ -71,10 +86,9 @@ export const PqcInspectionRegisterScreen = () => {
     ...(filters.workOrderId === null ? {} : { workOrderId: filters.workOrderId }),
     ...(filters.keyword === '' ? {} : { q: filters.keyword }),
     page,
-    size: PAGE_SIZE,
+    size: pageSize,
   });
   const rows = queue.data?.rows ?? [];
-  const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
 
   const openRequest = (inspectionRequestId: number | null): void => {
     setDirty(false);
@@ -100,7 +114,9 @@ export const PqcInspectionRegisterScreen = () => {
     }
     openRequest(to);
   };
-  const select = (inspectionRequestId: number): void => moveTo(inspectionRequestId);
+  /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세가 닫힌다(저장 안 한 입력이 있으면 먼저 묻는다 · 사용자 지시 2026-10-28 · #197). */
+  const select = (inspectionRequestId: number): void =>
+    moveTo(inspectionRequestId === selectedId ? null : inspectionRequestId);
 
   /* 목록 · 상세 배치 — 입하 예정 조회와 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
   const { splitRef, aboveRef } = useFitToViewport();
@@ -209,7 +225,19 @@ export const PqcInspectionRegisterScreen = () => {
             empty={emptyContent}
           />
 
-          {queue.data !== undefined && <PageNav view={pageView} onChange={setPage} />}
+          {/* 쪽 이동은 IQC 목록과 같은 모양 — 총 건수 · [처음] [이전] n/N [다음] [마지막](사용자 지시 2026-10-28 · #197). */}
+          {queue.data !== undefined && (
+            <PageNav
+              meta={queue.data.page}
+              controlSize="md"
+              onChangePage={setPage}
+              sizes={LIST_PAGE_SIZES}
+              onChangeSize={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+            />
+          )}
         </section>
 
         <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
@@ -230,27 +258,19 @@ export const PqcInspectionRegisterScreen = () => {
             />
           ) : (
             <>
-              <div className="pqc-web-back">
-                <Button
-                  variant="text"
-                  size="md"
-                  className="pqc-web-back-button"
-                  onClick={() => moveTo(null)}
-                >
-                  {hubText.closeDetail}
-                </Button>
-              </div>
-              <PqcPanel
-                /* 의뢰마다 새로 세운다 — 앞 의뢰의 입력이 다음 의뢰에 남지 않게. */
-                key={selectedId}
-                inspectionRequestId={selectedId}
-                submitter={submitter}
-                workerNo={null}
-                requiresWorker={false}
-                withKeypad={false}
-                variant="web"
-                onDirtyChange={onDirtyChange}
-              />
+              <LeaveGuardProvider value={leaveFor}>
+                <PqcPanel
+                  /* 의뢰마다 새로 세운다 — 앞 의뢰의 입력이 다음 의뢰에 남지 않게. */
+                  key={selectedId}
+                  inspectionRequestId={selectedId}
+                  submitter={submitter}
+                  workerNo={null}
+                  requiresWorker={false}
+                  withKeypad={false}
+                  variant="web"
+                  onDirtyChange={onDirtyChange}
+                />
+              </LeaveGuardProvider>
             </>
           )}
         </section>
@@ -271,7 +291,12 @@ export const PqcInspectionRegisterScreen = () => {
               >
                 {t.detail.keepEditing}
               </Button>
-              <Button variant="filled" onClick={() => openRequest(leaveTo.to)}>
+              <Button
+                variant="filled"
+                onClick={() =>
+                  leaveTo.href === undefined ? openRequest(leaveTo.to) : void navigate(leaveTo.href)
+                }
+              >
                 {t.detail.leaveAnyway}
               </Button>
             </>

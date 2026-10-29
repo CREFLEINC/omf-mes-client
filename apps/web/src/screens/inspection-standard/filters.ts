@@ -16,9 +16,15 @@ const t = messages.inspectionStandard;
 const URL_KEYS = {
   q: 'q',
   inspectionTypeCode: 'type',
+  itemId: 'item',
   includeInactive: 'inactive',
   page: 'page',
+  size: 'size',
 } as const;
+
+/** 쪽 크기 — 공용 쪽 이동의 20 · 50 · 100. 기본 50 은 서버 기본과 같아 주소 · 요청에 싣지 않는다(#196). */
+export const DEFAULT_PAGE_SIZE = 50;
+const PAGE_SIZE_VALUES = [20, 50, 100];
 
 /** 켜짐을 나타내는 유일한 값. 다른 값은 꺼진 것으로 본다 — 주소를 손으로 고쳐도 뜻이 흔들리지 않는다. */
 const ON = '1';
@@ -28,6 +34,10 @@ const POSITIVE_INTEGER = /^\d+$/;
 export const readFilters = (params: URLSearchParams): PlanFilters => ({
   q: params.get(URL_KEYS.q) ?? '',
   inspectionTypeCode: params.get(URL_KEYS.inspectionTypeCode) ?? '',
+  /* 품목 번호는 양의 정수만 받는다 — 주소를 손으로 고친 이상한 값은 전 품목으로 본다. */
+  itemId: POSITIVE_INTEGER.test(params.get(URL_KEYS.itemId) ?? '')
+    ? (params.get(URL_KEYS.itemId) ?? '')
+    : '',
   includeInactive: params.get(URL_KEYS.includeInactive) === ON,
 });
 
@@ -45,15 +55,27 @@ export const readPage = (params: URLSearchParams): number => {
  * **선택(`plan`·`ver`)을 담지 않는다.** 조건·쪽이 바뀌면 보이는 행이 달라지므로
  * 이 함수의 결과로 주소를 통째로 갈아 끼우면 선택이 자연히 사라진다.
  */
-export const toSearchParams = (filters: PlanFilters, page: number): URLSearchParams => {
+export const readSize = (params: URLSearchParams): number => {
+  const raw = Number(params.get(URL_KEYS.size) ?? '');
+
+  return PAGE_SIZE_VALUES.includes(raw) ? raw : DEFAULT_PAGE_SIZE;
+};
+
+export const toSearchParams = (
+  filters: PlanFilters,
+  page: number,
+  size: number = DEFAULT_PAGE_SIZE,
+): URLSearchParams => {
   const next = new URLSearchParams();
 
   if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
   if (filters.inspectionTypeCode !== '') {
     next.set(URL_KEYS.inspectionTypeCode, filters.inspectionTypeCode);
   }
+  if (filters.itemId !== '') next.set(URL_KEYS.itemId, filters.itemId);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
+  if (size !== DEFAULT_PAGE_SIZE) next.set(URL_KEYS.size, String(size));
 
   return next;
 };
@@ -62,6 +84,7 @@ export const toSearchParams = (filters: PlanFilters, page: number): URLSearchPar
 export interface PlanListQuery {
   q?: string;
   inspectionTypeCode?: string;
+  itemId?: number;
   includeInactive?: boolean;
   page?: number;
 }
@@ -73,11 +96,17 @@ export interface PlanListQuery {
  * 끈 상태를 값으로 실어 보내면 「보내지 않음」과 「false를 보냄」 두 상태가 생겨 캐시 키가 갈린다.
  * 첫 쪽도 같은 이유로 싣지 않는다.
  */
-export const toListQuery = (filters: PlanFilters, page: number): PlanListQuery => ({
+export const toListQuery = (
+  filters: PlanFilters,
+  page: number,
+  size: number = DEFAULT_PAGE_SIZE,
+): PlanListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.inspectionTypeCode === '' ? {} : { inspectionTypeCode: filters.inspectionTypeCode }),
+  ...(filters.itemId === '' ? {} : { itemId: Number(filters.itemId) }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
+  ...(size !== DEFAULT_PAGE_SIZE ? { size } : {}),
 });
 
 export interface FilterChip {
@@ -87,8 +116,8 @@ export interface FilterChip {
   removeLabel: string;
 }
 
-/** 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다. */
-export const toFilterChips = (filters: PlanFilters): FilterChip[] => {
+/** 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다. 품목은 이름(`itemLabel`)으로 적는다. */
+export const toFilterChips = (filters: PlanFilters, itemLabel = ''): FilterChip[] => {
   const chips: FilterChip[] = [];
 
   if (filters.q !== '') {
@@ -107,6 +136,14 @@ export const toFilterChips = (filters: PlanFilters): FilterChip[] => {
     });
   }
 
+  if (filters.itemId !== '') {
+    chips.push({
+      key: 'itemId',
+      label: t.filters.chipItem(itemLabel === '' ? filters.itemId : itemLabel),
+      removeLabel: t.filters.chipRemoveItem,
+    });
+  }
+
   if (filters.includeInactive) {
     chips.push({
       key: 'includeInactive',
@@ -119,7 +156,10 @@ export const toFilterChips = (filters: PlanFilters): FilterChip[] => {
 };
 
 export const hasAnyFilter = (filters: PlanFilters): boolean =>
-  filters.q !== '' || filters.inspectionTypeCode !== '' || filters.includeInactive;
+  filters.q !== '' ||
+  filters.inspectionTypeCode !== '' ||
+  filters.itemId !== '' ||
+  filters.includeInactive;
 
 /**
  * 조건 하나만 푼다. 칩의 제거 버튼이 쓴다.

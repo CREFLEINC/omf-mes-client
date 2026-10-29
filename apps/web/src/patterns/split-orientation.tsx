@@ -1,6 +1,6 @@
 import { Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useState, useSyncExternalStore, type CSSProperties } from 'react';
 
 import { HubActions, useHubActionsTarget } from './hub-actions';
 
@@ -15,62 +15,17 @@ const OPTIONS: readonly { value: SplitOrientation; icon: string; label: string }
 ];
 
 /**
- * 관리웹이 받치는 가장 좁은 창 폭(C-14 1280×800). 이보다 좁으면 좌우로 세울 자리가 없어 늘 위아래로 쌓는다.
- * 그 위로는 고른 배치를 그대로 따른다. 고른 적이 없으면 `WIDE_WIDTH` 이상에서 좌우, 그보다 좁으면 위아래다.
- * app.css 의 `.po-board-split` 좌우 배치 규칙과 같은 값이어야 한다.
- */
-export const SIDE_BY_SIDE_MIN_WIDTH = 1280;
-export const WIDE_WIDTH = 1440;
-
-const mediaStore = (query: string) => ({
-  subscribe: (onChange: () => void): (() => void) => {
-    if (typeof window.matchMedia !== 'function') return () => {};
-    const list = window.matchMedia(query);
-    list.addEventListener('change', onChange);
-    return () => list.removeEventListener('change', onChange);
-  },
-  read: (): boolean => typeof window.matchMedia === 'function' && window.matchMedia(query).matches,
-});
-const narrowStore = mediaStore(`(max-width: ${String(SIDE_BY_SIDE_MIN_WIDTH - 1)}px)`);
-const wideStore = mediaStore(`(min-width: ${String(WIDE_WIDTH)}px)`);
-
-/** 창이 좁아(1280px 미만) 좌우 배치를 쓸 수 없는가. 시험 환경(matchMedia 없음)에서는 거짓이다. */
-export const useNarrowWindow = (): boolean =>
-  useSyncExternalStore(narrowStore.subscribe, narrowStore.read, () => false);
-
-/** 고른 배치가 없을 때의 기본 — 창이 넓으면(1440px 이상) 좌우. 시험 환경(matchMedia 없음)에서는 좌우다. */
-const useWideWindow = (): boolean =>
-  useSyncExternalStore(
-    wideStore.subscribe,
-    () => typeof window.matchMedia !== 'function' || wideStore.read(),
-    () => true,
-  );
-
-/**
- * 실제 배치 — 관리웹 최소 폭(1280px)보다 좁으면 늘 위아래, 그 위로는 고른 배치, 고른 적이 없으면 창 폭(1440px 이상 좌우).
- * `usePaneLayout`(po-board)도 같은 규칙을 쓴다.
- */
-export const useSplitDefault = (chosen: SplitOrientation | null): SplitOrientation => {
-  const narrow = useNarrowWindow();
-  const wide = useWideWindow();
-  if (narrow) return 'column';
-  return chosen ?? (wide ? 'row' : 'column');
-};
-
-/**
  * 목록 · 상세 배치를 고르고 브라우저에 남긴다(사용자 지시 2026-10-26 · omf-all-around#185).
- * 다시 들어오거나 다시 로그인해도 같은 배치다. 고른 적이 없으면 창 폭으로 정한다(1440px 이상 좌우).
+ * 다시 들어오거나 다시 로그인해도 같은 배치다. 저장소가 막혀 있으면 좌우다.
  */
 export const useSplitOrientation = (storageKey: string) => {
-  const [chosen, setOrientation] = useState<SplitOrientation | null>(() => {
+  const [orientation, setOrientation] = useState<SplitOrientation>(() => {
     try {
-      const saved = window.localStorage.getItem(storageKey);
-      return saved === 'column' || saved === 'row' ? saved : null;
+      return window.localStorage.getItem(storageKey) === 'column' ? 'column' : 'row';
     } catch {
-      return null;
+      return 'row';
     }
   });
-  const orientation = useSplitDefault(chosen);
 
   const change = (next: SplitOrientation): void => {
     setOrientation(next);
@@ -105,20 +60,7 @@ export const useSplitOrientation = (storageKey: string) => {
     listHeight === null ? {} : { '--stacked-list-height': `${String(listHeight)}px` }
   ) as CSSProperties;
 
-  /*
-   * 창이 관리웹 최소 폭(1280px)보다 좁으면 고른 배치와 관계없이 위아래로 선다. 화면과 단추가 실제 배치를 말하도록 그때는
-   * `column` 을 돌려준다. 고른 값(`preferred`)은 남겨 두어 창을 넓히면 그 배치로 돌아간다.
-   */
-  const narrow = useNarrowWindow();
-  return {
-    orientation,
-    preferred: chosen,
-    narrow,
-    change,
-    listHeight,
-    changeListHeight,
-    style,
-  };
+  return { orientation, change, listHeight, changeListHeight, style };
 };
 
 /** 상하 배치에서 목록이 이보다 낮아지지 않는다(머리줄 + 두어 줄). */
@@ -179,6 +121,28 @@ export const PaneHeightSplitter = ({
   />
 );
 
+/** 좌우로 나란히 설 수 있는 창 폭 — 이보다 좁으면 고른 배치와 상관없이 위아래로 쌓인다(app.css `.po-board-split`). */
+const SIDE_BY_SIDE_QUERY = '(min-width: 1440px)';
+
+/* 판단할 수 없으면(시험 환경 등 `matchMedia` 가 없거나 모자람) 넓다고 보고 구독도 하지 않는다. */
+const wideQuery = (): MediaQueryList | null =>
+  typeof window.matchMedia === 'function' ? (window.matchMedia(SIDE_BY_SIDE_QUERY) ?? null) : null;
+
+const subscribeWide = (onChange: () => void): (() => void) => {
+  const media = wideQuery();
+  if (media === null || typeof media.addEventListener !== 'function') return () => undefined;
+  media.addEventListener('change', onChange);
+  return () => media.removeEventListener('change', onChange);
+};
+
+/** 창이 좌우 배치를 담을 만큼 넓은가. */
+export const useSideBySideFits = (): boolean =>
+  useSyncExternalStore(
+    subscribeWide,
+    () => wideQuery()?.matches ?? true,
+    () => true,
+  );
+
 /**
  * 탭 줄 오른쪽(상태 칩 옆)의 배치 단추 둘 — 아이콘 + 「좌우 배치」 · 「상하 배치」. 고른 배치는 붉은 톤으로 눌린 상태다.
  * 탭 묶음 밖(탭 막대가 없는 계정 · 화면만 그린 시험)에서는 자리가 없어 그리지 않는다 — 배치는 좌우다.
@@ -191,41 +155,28 @@ export const SplitOrientationToggle = ({
   onChange: (next: SplitOrientation) => void;
 }) => {
   const target = useHubActionsTarget();
-  const narrow = useNarrowWindow();
-  const reasonId = useId();
+  /* 창이 좁으면 실제로 위아래로 쌓인다 — 눌린 표시도 상하, 좌우는 끈다(사용자 지시 2026-10-29 · #197). */
+  const fits = useSideBySideFits();
   if (target === null) return null;
-
-  /* 창이 관리웹 최소 폭보다 좁으면 실제 배치(상하)를 눌린 상태로 보이고, 좌우는 사유와 함께 잠근다. */
-  const shown: SplitOrientation = narrow ? 'column' : orientation;
+  const shown: SplitOrientation = fits ? orientation : 'column';
 
   return (
     <HubActions target={target}>
       <div className="split-orientation-toggle" role="group" aria-label={t.layoutLabel}>
-        {OPTIONS.map((option) => {
-          const locked = narrow && option.value === 'row';
-          return (
-            <button
-              key={option.value}
-              type="button"
-              className="split-orientation-option"
-              aria-pressed={shown === option.value}
-              aria-disabled={locked ? true : undefined}
-              aria-describedby={locked ? reasonId : undefined}
-              title={locked ? t.layoutSideBySideNarrow : undefined}
-              onClick={() => {
-                if (!locked) onChange(option.value);
-              }}
-            >
-              <Icon name={option.icon} size={16} />
-              {option.label}
-            </button>
-          );
-        })}
-        {narrow && (
-          <span id={reasonId} className="visually-hidden">
-            {t.layoutSideBySideNarrow}
-          </span>
-        )}
+        {OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            className="split-orientation-option"
+            aria-pressed={shown === option.value}
+            disabled={!fits && option.value === 'row'}
+            title={!fits && option.value === 'row' ? t.layoutNarrow : undefined}
+            onClick={() => onChange(option.value)}
+          >
+            <Icon name={option.icon} size={16} />
+            {option.label}
+          </button>
+        ))}
       </div>
     </HubActions>
   );

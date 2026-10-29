@@ -1238,12 +1238,13 @@ describe('InboundScheduleScreen — 빠른 조회', () => {
     expect(within(dialog).getByDisplayValue('SAMPLE-ITEM')).toBeInTheDocument();
   });
 
-  it('공급업체 후보를 고르면 바로 그 공급사로 조회한다', async () => {
+  it('공급업체 선택 칸에서 고르면 바로 그 공급사로 조회한다', async () => {
     const { user } = renderScreen([listRoute(), ...lookupRoutes()]);
 
     await screen.findByText('SAMPLE-PO-0001');
-    // 후보 목록에서 고른 것은 칸 글자가 후보 하나와 같아지는 것으로 온다.
-    await user.type(screen.getByLabelText(t.quick.supplier), SUPPLIER_LABEL);
+    // 다른 선택 칸과 같은 선택 칸이다(사용자 지시 2026-10-28) — 펼쳐서 줄을 고른다.
+    await user.click(screen.getByRole('combobox', { name: t.quick.supplier }));
+    await user.click(await screen.findByRole('option', { name: new RegExp(`${SUPPLIER_LABEL}$`) }));
 
     await waitFor(() => {
       expect(currentLocation()).toBe(`${ROUTE}?supplier=8101`);

@@ -1,10 +1,11 @@
-import { AlertBanner, Select, SkeletonText, TextField } from '@crefle/web-ui';
+import { AlertBanner, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { Select } from '../../patterns/select';
 import type { LookupResult } from './lookups';
 
 type Warehouse = components['schemas']['Warehouse'];

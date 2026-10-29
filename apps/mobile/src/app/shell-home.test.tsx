@@ -1,10 +1,14 @@
+import { createApiClient } from '@omf-mes/api-client';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { ApiClientProvider } from '../patterns/api-context';
 import { ApiRequestError } from '../patterns/request';
+import { createTestQueryClient } from '../test/api-harness';
 import { OutboxProvider, useOutbox, type OutboxTransport } from '../patterns/outbox';
 import { TaskDraftProvider, useTaskDraft } from '../patterns/task-draft';
 import { WorkerSessionProvider, useWorkerSession } from '../patterns/worker-session';
@@ -42,15 +46,28 @@ const Shell = ({
   path?: string;
   send?: OutboxTransport;
 }) => (
-  <MemoryRouter initialEntries={[path]}>
-    <OutboxProvider send={send}>
-      <WorkerSessionProvider>
-        <TaskDraftProvider>
-          <FrequentScreensProvider>{children}</FrequentScreensProvider>
-        </TaskDraftProvider>
-      </WorkerSessionProvider>
-    </OutboxProvider>
-  </MemoryRouter>
+  /*
+   * 홈이 남은 작업 수를 부른다(피처 002) — 이 시험들은 그 수를 재지 않으므로 조회는 늘 실패하게 둔다.
+   * 실패하면 배지가 서지 않아 지금과 같은 홈이다(배지는 `shell-home.badge.test.tsx`).
+   */
+  <QueryClientProvider client={createTestQueryClient()}>
+    <ApiClientProvider
+      client={createApiClient({
+        baseUrl: 'http://api.test',
+        fetch: () => Promise.reject(new Error('이 시험은 서버를 부르지 않는다')),
+      })}
+    >
+      <MemoryRouter initialEntries={[path]}>
+        <OutboxProvider send={send}>
+          <WorkerSessionProvider>
+            <TaskDraftProvider>
+              <FrequentScreensProvider>{children}</FrequentScreensProvider>
+            </TaskDraftProvider>
+          </WorkerSessionProvider>
+        </OutboxProvider>
+      </MemoryRouter>
+    </ApiClientProvider>
+  </QueryClientProvider>
 );
 
 const HomeRoutes = () => (

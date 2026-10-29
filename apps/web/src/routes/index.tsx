@@ -6,6 +6,7 @@ import { GuestOnly, RequireSession } from '../patterns/session';
 import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { AlarmRecipientSettingsScreen } from '../screens/alarm-recipient-settings/screen';
+import { HandoverAlertSettingsScreen } from '../screens/handover-alert-settings/screen';
 import { ZaloConnectionScreen } from '../screens/zalo-connection/screen';
 import { DispatchHistoryScreen } from '../screens/dispatch-history/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
@@ -53,6 +54,7 @@ import { ToolPmResultScreen } from '../screens/tool-pm-result/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
+import { ItemBomScreen } from '../screens/item-extended-attrs/bom-screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
 import { LotStatusHistoryScreen } from '../screens/lot-status-history/screen';
@@ -102,6 +104,14 @@ const LotTraceRoute = () => (
   <LotTraceScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
 );
 
+/** 작업지시 목록(W-02-01)의 권한 안내도 같은 메뉴를 가리킨다. */
+const ProductionOrderRoute = () => (
+  <ProductionOrderScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
+);
+const ProductionOrderProcessRoute = () => (
+  <ProductionOrderProcessScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
+);
+
 export const appRouter = createBrowserRouter([
   {
     path: '/',
@@ -148,6 +158,12 @@ export const appRouter = createBrowserRouter([
       /* W-06-24 — 검사표 기준(omf-all-around#89 · 설계보다 앞선 화면). OA 제품 검사표의 모델별 단계·항목. */
       { path: 'master-data/inspection-sheet-template', element: <InspectionSheetTemplateScreen /> },
       { path: 'master-data/defect-cause-code', element: <DefectCauseCodeScreen /> },
+      /* 불량·원인코드 화면의 하위 탭을 탭 막대로 뗀 주소(#208) — 같은 화면이 보일 탭만 받는다. */
+      { path: 'master-data/cause-code', element: <DefectCauseCodeScreen tab="cause" /> },
+      {
+        path: 'master-data/defect-process-mapping',
+        element: <DefectCauseCodeScreen tab="mapping" />,
+      },
       { path: 'master-data/common-code', element: <CommonCodeScreen /> },
       /* W-06-04 — 전용 자원이 아니라 공통코드의 코드값 편집기를 한 그룹으로 고정해 여는 진입점이다. */
       { path: 'master-data/judgment-code', element: <JudgmentCodeScreen /> },
@@ -168,6 +184,8 @@ export const appRouter = createBrowserRouter([
       { path: 'system/erp-data/sales-orders', element: <ErpSalesOrderScreen /> },
       { path: 'system/erp-data/production-orders', element: <ErpProductionOrderScreen /> },
       { path: 'master-data/item-extended-attrs', element: <ItemExtendedAttrsScreen /> },
+      /* 「품목·BOM 정보」 묶음의 BOM 탭(사용자 지시 2026-10-28). 코드는 W-06-05 를 따른다. */
+      { path: 'master-data/item-boms', element: <ItemBomScreen /> },
       { path: 'master-data/master-change', element: <MasterChangeScreen /> },
       /* W-CO-02 — 기준정보가 아니라 시스템 운영이라 경로 앞머리를 가른다. */
       { path: 'system/users-roles', element: <UsersRolesScreen /> },
@@ -346,11 +364,14 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'logistics/document-progress', element: <DocumentProgressScreen /> },
       /* W-02-01 — 생산의 첫 화면이며 주소는 API 리소스가 아니라 화면을 가리킨다. */
-      { path: 'production/production-orders', element: <ProductionOrderScreen /> },
+      {
+        path: 'production/production-orders',
+        element: <ProductionOrderRoute />,
+      },
       /* W-02-01 처리 화면 — 주소에 업무 번호(ERP W/O 번호)를 쓴다. W-02-02~04 를 단계로 합쳤다. */
       {
         path: 'production/production-orders/:productionOrderNo',
-        element: <ProductionOrderProcessScreen />,
+        element: <ProductionOrderProcessRoute />,
       },
       /*
        * W-02-06 — P/O 수신·조회 바로 뒤다. 받은 P/O 가 «바뀌었을 때» 판정하는 자리라
@@ -595,6 +616,8 @@ export const appRouter = createBrowserRouter([
       { path: 'notification/center', element: <NotificationCenterScreen /> },
       /* W-CO-11 — 알림 이벤트별 수신 규칙을 관리한다. 이벤트 목록 자체는 계약이 소유한다. */
       { path: 'notification/recipient-settings', element: <AlarmRecipientSettingsScreen /> },
+      /* W-CO-14 — 인계 작업 종류별 담당자(피처 002). 종류 목록은 계약이 소유한다. */
+      { path: 'notification/handover-settings', element: <HandoverAlertSettingsScreen /> },
       /* W-CO-12 — Zalo 연결 정보(001). */
       { path: 'notification/zalo-connection', element: <ZaloConnectionScreen /> },
       /* W-CO-13 — 이벤트 처리 결과와 Zalo 발송 이력(001). */

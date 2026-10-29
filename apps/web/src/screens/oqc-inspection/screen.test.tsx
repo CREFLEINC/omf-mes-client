@@ -38,7 +38,14 @@ import type { InspectionResultResponse } from './types';
  */
 
 const t = messages.oqcInspection;
-const closeDetail = messages.common.inspectionHub.closeDetail;
+/** 고른 줄(대기 의뢰)을 다시 누른다 — 고르지 않은 상태로 돌아간다(#197). */
+const reselectWaiting = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(
+    await screen.findByRole('button', {
+      name: t.queue.openRow(waitingRequest.inspectionRequestNo),
+    }),
+  );
+};
 
 /** 응답 하나를 손에 쥐고 있다가 원할 때 푸는 문. 「도는 중」을 실제로 만들려면 필요하다. */
 const createGate = () => {
@@ -205,12 +212,11 @@ const acceptedField = () => screen.getByLabelText(t.result.fields.accepted);
  * 입력이 있으면 「저장하지 않고 이동」) 그 줄을 연다. 옮긴 뒤 지켜야 할 규칙(R2 · R3)은 종전과 같다.
  */
 const switchTo = async (user: ReturnType<typeof userEvent.setup>, inspectionRequestNo: string) => {
-  await user.click(screen.getByRole('button', { name: closeDetail }));
-  const leave = screen.queryByRole('button', { name: t.detail.leaveAnyway });
-  if (leave !== null) await user.click(leave);
   await user.click(
     await screen.findByRole('button', { name: t.queue.openRow(inspectionRequestNo) }),
   );
+  const leave = screen.queryByRole('button', { name: t.detail.leaveAnyway });
+  if (leave !== null) await user.click(leave);
 };
 
 /** 우측 창의 「대상 정보」 구획 — 좌측 표와 같은 숫자가 겹치므로 여기서 찾는다. */
@@ -594,7 +600,6 @@ describe('OqcInspectionScreen — 우측 네 갈래', () => {
         name: t.queue.openRow(waitingRequest.inspectionRequestNo),
       }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: closeDetail })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(t.result.fields.accepted)).not.toBeInTheDocument();
   });
 
@@ -616,7 +621,7 @@ describe('OqcInspectionScreen — 우측 네 갈래', () => {
 
     expect(await screen.findByText(messages.httpError.loadTitle)).toBeInTheDocument();
     /* 고른 것이 사라진 것처럼 목록으로 돌아가지 않는다 — 상세 자리에 실패가 선다. */
-    expect(screen.getByRole('button', { name: closeDetail })).toBeInTheDocument();
+    expect(screen.queryByText(messages.common.inspectionHub.pickRequest)).not.toBeInTheDocument();
   });
 
   it('고른 의뢰의 대상 정보와 판정 폼이 함께 선다', async () => {
@@ -644,7 +649,7 @@ describe('OqcInspectionScreen — 우측 네 갈래', () => {
  * 저장하지 않은 입력이 있으면 한 번 묻는다.
  */
 describe('OqcInspectionScreen — 목록 ↔ 상세(#136)', () => {
-  it('줄을 누르면 옆에 상세가 서고, 상세를 닫아도 검색 조건이 그대로다', async () => {
+  it('줄을 누르면 옆에 상세가 서고, 같은 줄을 다시 눌러 닫아도 검색 조건이 그대로다', async () => {
     const user = userEvent.setup();
 
     renderScreen({ route: '/?q=OQC&pd=0' });
@@ -657,7 +662,7 @@ describe('OqcInspectionScreen — 목록 ↔ 상세(#136)', () => {
     await screen.findByLabelText(t.result.fields.accepted);
 
     /* 입력이 없으면 묻지 않고 바로 돌아간다. */
-    await user.click(screen.getByRole('button', { name: closeDetail }));
+    await reselectWaiting(user);
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(await screen.findByLabelText(t.filters.keyword)).toHaveValue('OQC');
@@ -671,7 +676,7 @@ describe('OqcInspectionScreen — 목록 ↔ 상세(#136)', () => {
 
     await screen.findByLabelText(t.result.fields.accepted);
     await user.type(acceptedField(), '480');
-    await user.click(screen.getByRole('button', { name: closeDetail }));
+    await reselectWaiting(user);
 
     expect(screen.getByRole('dialog', { name: t.detail.leaveUnsaved })).toBeInTheDocument();
 
@@ -687,7 +692,7 @@ describe('OqcInspectionScreen — 목록 ↔ 상세(#136)', () => {
 
     await screen.findByLabelText(t.result.fields.accepted);
     await user.type(acceptedField(), '480');
-    await user.click(screen.getByRole('button', { name: closeDetail }));
+    await reselectWaiting(user);
     await user.click(screen.getByRole('button', { name: t.detail.leaveAnyway }));
 
     await waitFor(() =>
@@ -727,7 +732,7 @@ describe('OqcInspectionScreen — 목록 ↔ 상세(#136)', () => {
     });
 
     await screen.findByRole('button', { name: t.result.reinspect });
-    await user.click(screen.getByRole('button', { name: closeDetail }));
+    await reselectWaiting(user);
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(

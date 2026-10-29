@@ -2,15 +2,15 @@ import type { ko } from '../ko';
 import type { Translated } from './translated';
 
 /**
- * W-02-01 ERP W/O 수신·조회. ERP 가 내려 준 ERP W/O 를 **읽기만** 하는 화면이다.
+ * W-02-01 작업지시 목록. ERP 가 내려 준 ERP W/O 를 **읽기만** 하는 화면이다.
  *
  * ⚠ **고칠 수 없다는 사실을 문구가 진다.** 화면에 수정 컨트롤이 없으므로, 왜 없는지와 어디서
  * 고치는지를 `values.erpReadOnlyNotice` 가 대신 말한다.
  */
 export const productionOrder: Translated<typeof ko.productionOrder> = {
-  title: 'Nhận · tra cứu ERP W/O',
+  title: 'Danh sách lệnh sản xuất',
   breadcrumbRoot: 'Quản lý sản xuất',
-  menuPath: 'Quản lý sản xuất › ERP W/O › Xử lý ERP W/O',
+  menuPath: 'Quản lý sản xuất › Danh sách lệnh sản xuất',
   fields: {
     productionOrderNo: 'Số ERP W/O',
     erpProductionOrderNo: 'Số gốc ERP',
@@ -64,16 +64,16 @@ export const productionOrder: Translated<typeof ko.productionOrder> = {
     itemFailed: 'Không tải được tên mặt hàng.',
     missingRemarks: 'Không có ghi chú',
     autoPlanStatus: {
-      DONE: 'Hoàn tất',
-      NEEDS_REVIEW: 'Cần kiểm tra',
+      DONE: 'Chờ phát hành',
+      NEEDS_REVIEW: 'Cần xử lý',
     },
     autoPlanReasons: {
-      BOM_MISSING: 'Không có BOM mặc định',
-      ROUTING_MISSING: 'Không có Routing khả dụng',
-      ROUTING_AMBIGUOUS: 'Nhiều Routing',
-      LINE_UNKNOWN: 'Chưa xác định dây chuyền',
-      PLAN_NOT_CONFIRMED: 'Có kế hoạch chưa xác nhận',
-      QTY_REMAINING: 'Thiếu số lượng kế hoạch',
+      BOM_MISSING: 'Cần chỉ định BOM mặc định',
+      ROUTING_MISSING: 'Cần đăng ký công đoạn (Routing)',
+      ROUTING_AMBIGUOUS: 'Cần chỉ định công đoạn (Routing) mặc định',
+      LINE_UNKNOWN: 'Cần chỉ định dây chuyền sản xuất',
+      PLAN_NOT_CONFIRMED: 'Cần chốt kế hoạch sản xuất',
+      QTY_REMAINING: 'Cần lập kế hoạch cho số lượng còn lại',
     },
   },
   autoPlan: {

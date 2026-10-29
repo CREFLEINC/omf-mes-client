@@ -1,7 +1,8 @@
-import { Button, Chip, Select, TextField } from '@crefle/web-ui';
+import { Button, Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { Select } from '../../patterns/select';
 import { toFilterChips, type MessageFilters } from './filters';
 import { directionName, interfaceName, statusName } from './message-labels';
 import { validatePeriod, type PeriodInput } from './period';

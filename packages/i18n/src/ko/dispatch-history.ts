@@ -13,6 +13,9 @@ export const dispatchHistory = {
     deliveryStatus: '상태',
     all: '전체',
     search: '조회',
+    /** 이벤트 선택지의 묶음 이름 — 기존 6종 뒤에 인계 작업 10종(피처 002). */
+    eventGroup: '이벤트',
+    handoverGroup: '인계 작업',
   },
   results: { NOTIFIED: '알림', SKIPPED: '건너뜀' },
   /** 알리지 않은 이유(data-model §5). */

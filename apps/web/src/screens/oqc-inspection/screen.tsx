@@ -1,9 +1,11 @@
 import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { useOaAccess } from '../../patterns/oa-access';
+import { LeaveGuardProvider } from '../../patterns/leave-guard';
+import { PageNav } from '../../patterns/page-nav';
 import { toApiError } from '../../patterns/request';
 import { usePageHub } from '../../patterns/page-hub';
 import {
@@ -19,20 +21,23 @@ import {
 import { CODE_GROUPS, labelOfCode, toCodeOptions } from './code-options';
 import {
   EMPTY_FILTERS,
+  LIST_PAGE_SIZES,
+  PAGE_SIZE,
   QUEUE_STATUSES,
   withDraft,
   withStatus,
   readFilters,
   readPage,
+  readPageSize,
   readSelectedId,
   toListQuery,
   toPageParams,
   toSearchParams,
+  toPageSizeParams,
   URL_KEYS,
   type QueueFilters,
 } from './filters';
 import { QueueLoadErrorBanner } from './load-error-banner';
-import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
 import { expectedJudgmentOf, needsJudgmentChangeReason } from './judgment-change';
@@ -98,9 +103,10 @@ export const OqcInspectionScreen = () => {
 
   const filters = readFilters(searchParams);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
 
-  const queue = useInspectionQueue(toListQuery(filters, page));
+  const queue = useInspectionQueue(toListQuery(filters, page, pageSize));
   const detail = useInspectionRequestDetail(selectedId);
   const rounds = useInspectionRounds(selectedId);
 
@@ -279,6 +285,8 @@ export const OqcInspectionScreen = () => {
     /* 상세가 목록 옆에 열려 있으면 그대로 둔다(#185) — 조회 한 번에 쓰던 판정 입력이 사라지지 않게. */
     const params = toSearchParams(next);
     if (selectedId !== null) params.set(URL_KEYS.selected, String(selectedId));
+    /* 고른 쪽 크기는 조회해도 그대로다(#197). */
+    if (pageSize !== PAGE_SIZE) params.set(URL_KEYS.size, String(pageSize));
     setSearchParams(params);
   };
 
@@ -289,6 +297,7 @@ export const OqcInspectionScreen = () => {
   const applyStatus = (statusCode: InspectionHubStatus | null): void => {
     const next = toSearchParams(withStatus(filters, statusCode));
     if (selectedId !== null) next.set(URL_KEYS.selected, String(selectedId));
+    if (pageSize !== PAGE_SIZE) next.set(URL_KEYS.size, String(pageSize));
     setSearchParams(next);
   };
 
@@ -326,13 +335,26 @@ export const OqcInspectionScreen = () => {
    * 목록과 상세가 한 화면에 나란히 선다(#185) — 상세를 쓰는 중에 다른 줄을 누르거나(시리얼 스캔 포함) 상세를 닫으면,
    * 저장하지 않은 입력이 있을 때 바로 옮기지 않고 한 번 묻는다(#136 의 「목록으로」와 같은 팝업). `to` 가 `null` 이면 닫기다.
    */
-  const [leaveTo, setLeaveTo] = useState<{ to: number | null; apply?: () => void } | null>(null);
+  const [leaveTo, setLeaveTo] = useState<{
+    to: number | null;
+    apply?: () => void;
+    href?: string;
+  } | null>(null);
   useEffect(() => {
     setLeaveTo(null);
   }, [selectedId]);
   const go = (to: number | null, apply?: () => void): void => {
     apply?.();
     openRequest(to);
+  };
+  /* 다른 화면으로 옮기기(기준 조회 창의 [수정] · #197) — 저장 안 한 입력이 있으면 먼저 묻는다. */
+  const navigate = useNavigate();
+  const leaveFor = (href: string): void => {
+    if (selectedId !== null && hasUnsavedInput) {
+      setLeaveTo({ to: selectedId, href });
+      return;
+    }
+    void navigate(href);
   };
   const moveTo = (to: number | null, apply?: () => void): void => {
     if (to === selectedId) {
@@ -345,7 +367,9 @@ export const OqcInspectionScreen = () => {
     }
     go(to, apply);
   };
-  const select = (inspectionRequestId: number): void => moveTo(inspectionRequestId);
+  /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세가 닫힌다(저장 안 한 입력이 있으면 먼저 묻는다 · 사용자 지시 2026-10-28 · #197). */
+  const select = (inspectionRequestId: number): void =>
+    moveTo(inspectionRequestId === selectedId ? null : inspectionRequestId);
 
   /* 목록 · 상세 배치 — 입하 예정 조회와 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
   const { splitRef, aboveRef } = useFitToViewport();
@@ -540,13 +564,16 @@ export const OqcInspectionScreen = () => {
       <p className="field-note">{t.detail.loading}</p>
     ) : (
       <>
-        <RequestDetailPane
-          detail={detail.data}
-          uomCode={uomCode}
-          itemNames={itemNames}
-          lotNumbers={lotNumbers}
-          unitFact={unitFact}
-        />
+        {/* 기준 조회 창의 [수정]은 저장 안 한 입력이 있으면 먼저 묻고 옮긴다(#197). */}
+        <LeaveGuardProvider value={leaveFor}>
+          <RequestDetailPane
+            detail={detail.data}
+            uomCode={uomCode}
+            itemNames={itemNames}
+            lotNumbers={lotNumbers}
+            unitFact={unitFact}
+          />
+        </LeaveGuardProvider>
 
         {/* OQC 생략(#119) — 출하작업지시 대상이고 판정이 아직 없을 때만. 확정 회차가 있으면 생략으로 덮지 않는다. */}
         {detail.data.targetTypeCode === 'SHIPMENT_REQUEST' &&
@@ -831,9 +858,17 @@ export const OqcInspectionScreen = () => {
           {queue.data !== undefined && (
             /*
              * 저장이 나가 있는 동안 쪽을 잠근다 — 쪽이 바뀌면 목록이 통째로 갈리는데, 그 사이
-             * 돌아온 성공이 다른 목록 위에 서면 무엇에 대한 성공인지 읽을 수 없다.
+             * 돌아온 성공이 다른 목록 위에 서면 무엇에 대한 성공인지 읽을 수 없다. 모양은 IQC 목록과 같은 쪽 이동
+             * — 총 건수 · [처음] [이전] n/N [다음] [마지막](사용자 지시 2026-10-28 · #197).
              */
-            <PageNav view={pageView} disabled={save.isSaving} onChange={goToPage} />
+            <PageNav
+              meta={queue.data.page}
+              controlSize="md"
+              disabled={save.isSaving}
+              onChangePage={goToPage}
+              sizes={LIST_PAGE_SIZES}
+              onChangeSize={(size) => setSearchParams(toPageSizeParams(searchParams, size))}
+            />
           )}
         </section>
 
@@ -858,16 +893,6 @@ export const OqcInspectionScreen = () => {
             />
           ) : (
             <>
-              <div className="oqc-inspection-back">
-                <Button
-                  variant="text"
-                  size="md"
-                  className="oqc-inspection-back-button"
-                  onClick={() => moveTo(null)}
-                >
-                  {hubText.closeDetail}
-                </Button>
-              </div>
               {detailContent}
               {auxContent}
             </>
@@ -894,7 +919,14 @@ export const OqcInspectionScreen = () => {
               >
                 {t.detail.keepEditing}
               </Button>
-              <Button variant="filled" onClick={() => go(leaveTo.to, leaveTo.apply)}>
+              <Button
+                variant="filled"
+                onClick={() =>
+                  leaveTo.href === undefined
+                    ? go(leaveTo.to, leaveTo.apply)
+                    : void navigate(leaveTo.href)
+                }
+              >
                 {t.detail.leaveAnyway}
               </Button>
             </>

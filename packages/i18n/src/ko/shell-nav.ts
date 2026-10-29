@@ -13,6 +13,11 @@ export const shellNav = {
     /* 맞는 것이 없을 때. 「없다」로 끝내지 않고 무엇을 하면 되는지 말한다. */
     empty: '일치하는 화면이 없습니다. 이름의 일부만 입력해 보세요.',
   },
+  /** 「검사 조회·판정」 줄·IQC 탭의 대기 배지 접근명(피처 002, US4). 줄이지 않은 실제 수다. */
+  iqcPending: (count: number) => `IQC 대기 ${String(count)}건`,
+  /** PQC · OQC 탭의 대기 배지 접근명(사용자 지시 2026-10-29 · #197). */
+  pqcPending: (count: number) => `PQC 대기 ${String(count)}건`,
+  oqcPending: (count: number) => `OQC 대기 ${String(count)}건`,
   group: {
     /*
      * 묶음 손잡이의 접근명. 펼쳤는지는 aria-expanded 가 말하므로 여기 넣지 않는다 -
@@ -20,6 +25,8 @@ export const shellNav = {
      * 항목 수는 넣는다 - 접힌 묶음은 이름만 남아 누르기 전에는 안을 알 수 없다.
      */
     name: (label: string, count: number) => `${label} (화면 ${count}개)`,
+    /** 닫힌 묶음 안에 대기 작업이 있다는 점의 접근명(피처 002 — IQC 대기). */
+    hasWork: '대기 작업 있음',
   },
   version: {
     /*

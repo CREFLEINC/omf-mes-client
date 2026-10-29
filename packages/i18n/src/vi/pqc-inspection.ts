@@ -22,6 +22,7 @@ export const pqcInspection: Translated<typeof ko.pqcInspection> = {
     },
     planLabel: (code: string, version: number): string => `Tiêu chuẩn ${code} v${String(version)}`,
     sample: (ratio: number): string => `Mẫu ${String(ratio)}%`,
+    sampleQty: (qty: number): string => `Mẫu ${String(qty)} cái`,
   },
   coverage: {
     heading: 'Khoảng sản xuất áp dụng',

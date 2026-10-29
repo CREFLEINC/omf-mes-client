@@ -154,6 +154,8 @@ export const ReleaseStep = ({
             { key: 'status', label: t.effects.status(lines.length) },
             { key: 'lots', label: t.effects.lots(totalLots) },
             { key: 'materials', label: t.effects.materials },
+            { key: 'picking', label: t.effects.picking },
+            { key: 'pqc', label: t.effects.pqc },
           ]}
         />
         <AlertBanner variant="info">{t.irreversible}</AlertBanner>

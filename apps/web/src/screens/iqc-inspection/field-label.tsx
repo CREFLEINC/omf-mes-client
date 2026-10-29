@@ -5,6 +5,8 @@ export interface FieldLabelProps {
   required?: boolean;
   /** 라벨 오른쪽 같은 줄의 보조 글(예: 자동 판정 기준). 없으면 두지 않는다 */
   hint?: string;
+  /** 라벨 바로 뒤 「· EA」 단위(#197). 접근 이름에는 넣지 않는다 — 칸 이름이 그대로다. */
+  unit?: string | null;
 }
 
 /**
@@ -20,9 +22,23 @@ export interface FieldLabelProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const FieldLabel = ({ htmlFor, label, required = false, hint }: FieldLabelProps) => (
+/** 라벨 뒤 덧붙임 글 — 「합격 수량 · EA」. */
+export const unitSuffix = (unit: string): string => ` · ${unit}`; // ui-check-ignore: C-13 사용자 시안의 라벨 덧붙임 「· EA」(2026-10-29 · #197)
+
+export const FieldLabel = ({
+  htmlFor,
+  label,
+  required = false,
+  hint,
+  unit = null,
+}: FieldLabelProps) => (
   <span className="field-label">
     <label htmlFor={htmlFor}>{label}</label>
+    {unit !== null && (
+      <span className="iqc-inspection-label-unit" aria-hidden="true">
+        {unitSuffix(unit)}
+      </span>
+    )}
     {required && (
       <span className="required-mark" aria-hidden="true">
         {' *'}

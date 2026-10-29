@@ -6,6 +6,18 @@
 export const popChrome = {
   /** 머리줄의 화면 이동 선택 단추. */
   screenNav: '화면 이동',
+  /**
+   * 화면 이동의 남은 작업 표시(피처 002). 수는 그 화면 목록의 건수다. 접근 이름에는 줄이지 않은 실제 수를 싣는다.
+   */
+  screenNavWork: {
+    /** 남은 작업이 하나라도 있을 때 단추의 설명 — 단추의 점은 눈에만 보인다. */
+    trigger: '남은 작업 있음',
+    /** 팝업 맨 위 묶음의 제목. 수가 있는 화면만 모은다. */
+    title: '남은 작업',
+    count: (name: string, count: number): string => `${name}, 남은 작업 ${String(count)}건`,
+    /** 목록 항목 뒤에 붙는 숨은 글 — 보이는 것은 배지다. */
+    suffix: (count: number): string => `, 남은 작업 ${String(count)}건`,
+  },
   /** 머리줄의 사번 놓기 단추. */
   userSwitch: '사용자 전환',
   /**

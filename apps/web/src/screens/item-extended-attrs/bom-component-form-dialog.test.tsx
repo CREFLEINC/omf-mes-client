@@ -84,17 +84,6 @@ describe('BomComponentFormDialog — 확장 열 넷뿐이다 (C14)', () => {
     expect(screen.queryAllByRole('spinbutton')).toHaveLength(0);
   });
 
-  /* 없는 것을 찾다가 「화면이 빠뜨렸다」로 읽지 않게 한다. */
-  it('원본 열이 여기서 바뀌지 않는다는 안내가 있다', () => {
-    renderDialog();
-
-    expect(
-      screen.getByText(
-        '원본 열은 외부 시스템이 소유해 여기서 바꿀 수 없습니다. 아래 네 가지만 저장됩니다.',
-      ),
-    ).toBeInTheDocument();
-  });
-
   it('제목이 대상 줄을 담는다', () => {
     renderDialog();
 

@@ -50,12 +50,12 @@ describe('createItemDraft', () => {
     expect(createItemDraft().inspectionItemSpecId).toBeNull();
   });
 
-  /* 계약이 기본값을 정했다 — 화면이 다른 값을 정하지 않는다. */
-  it('계약의 기본값을 그대로 쓴다', () => {
+  /* 측정 횟수는 계약 기본값, 확인칸은 필수 해제 · 자동판정 체크로 연다(사용자 지시 · #196). */
+  it('새 항목은 측정 횟수 1, 필수 해제, 자동판정 체크로 연다', () => {
     const draft = createItemDraft();
 
     expect(draft.measurementCount).toBe('1');
-    expect(draft.requiredFlag).toBe(true);
+    expect(draft.requiredFlag).toBe(false);
     expect(draft.automaticJudgment).toBe(true);
   });
 

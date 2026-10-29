@@ -51,7 +51,20 @@ export interface PurchaseOrderLineErpFields {
   erpStorageLocationCode?: string | null;
   /** ERP 가 라인 취소(`CREATE_TYPE=C`)를 보낸 시각(date-time). 없으면 취소되지 않은 라인 */
   cancelledAt?: string | null;
+  /**
+   * ERP 통관번호 · 순번 · 받은 시각 — 외자 발주 라인만 채워진다(서버 장부 P-143 · omf-mes-server#872). 계약 밖 칸이라
+   * 키가 빠진 응답(옛 서버)도 받는다 — 둘 다 「없음」이다.
+   */
+  erpCustomsClearanceNo?: string | null;
+  erpCustomsClearanceSeq?: number | null;
+  erpCustomsClearanceFetchedAt?: string | null;
 }
+
+/** 외자 발주(직수입)의 ERP 발주 유형 코드. 통관번호 단추와 칸은 이 발주에만 보인다. */
+export const FOREIGN_ORDER_TYPE = 'PO';
+
+export const isForeignOrder = (order: PurchaseOrder): boolean =>
+  order.erpOrderTypeCode === FOREIGN_ORDER_TYPE;
 
 export interface PageMeta {
   page: number;

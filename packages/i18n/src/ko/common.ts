@@ -19,6 +19,9 @@ export const common = {
    * 이것은 검색칸 하나만 비운다.
    */
   clear: '지우기',
+  /** 선택지가 많은 선택 칸(`patterns/select.tsx`)의 목록 맨 위 검색창 — 접근명과 빈 결과. */
+  selectSearch: '검색',
+  selectNoMatch: '맞는 항목이 없습니다',
   deactivate: '사용 중지',
   saved: '저장했습니다',
   created: '등록했습니다',
@@ -87,14 +90,13 @@ export const common = {
     pickRequest: '검사 의뢰를 선택하세요',
     pickRequestHint: '검사 의뢰를 선택하면 상세 내용을 확인할 수 있습니다.',
     close: '닫기',
-    closeDetail: '상세 닫기',
     splitter: '목록과 상세 폭 나누기',
     heightSplitter: '목록과 상세 높이 나누기',
     layoutLabel: '목록·상세 배치', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)
     layoutSideBySide: '좌우 배치',
     layoutStacked: '상하 배치',
-    /** 창이 좁아(1440px 미만) 목록과 상세가 위아래로만 설 때 [좌우 배치]에 붙는 사유. */
-    layoutSideBySideNarrow: '창이 좁아 좌우 배치를 쓸 수 없습니다',
+    /** 창이 좁아 좌우 배치를 쓸 수 없을 때 그 단추의 설명(#197). */
+    layoutNarrow: '창이 좁아 상하로 배치됩니다.',
   },
   reference: {
     empty: '—',
