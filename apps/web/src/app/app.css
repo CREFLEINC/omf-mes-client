@@ -588,6 +588,12 @@ main > * + * {
   width: 100%;
 }
 
+/* 공정 매핑 검색 칸 — 「불량코드 또는 불량명을 입력하세요」가 잘리지 않는 만큼만(#209). */
+.inspection-standard-search.defect-cause-search .filter-bar > .defect-mapping-search-field {
+  flex: 0 1 16.5rem;
+  min-width: 11rem;
+}
+
 .defect-cause-search .defect-cause-process-field {
   flex: 0 1 12rem;
   min-width: 10rem;

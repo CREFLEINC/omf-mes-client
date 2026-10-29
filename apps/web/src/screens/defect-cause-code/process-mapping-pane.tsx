@@ -473,7 +473,9 @@ export const ProcessMappingPane = () => {
               onChange={(value) => setDraft((prev) => ({ ...prev, processId: value }))}
             />
           </div>
+          {/* 흐린 안내 글이 잘리지 않는 폭(사용자 지시 2026-10-29 · #209). */}
           <SearchInput
+            containerClassName="defect-mapping-search-field"
             label={t.mappingView.searchLabel}
             placeholder={t.mappingView.searchPlaceholder}
             value={draft.q}
