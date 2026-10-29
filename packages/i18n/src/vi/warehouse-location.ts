@@ -25,6 +25,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     addWarehouse: 'Thêm kho',
     addZone: 'Thêm khu',
     addRack: 'Thêm kệ',
+    printLabels: 'In nhãn hàng loạt',
     activate: 'Dùng lại',
   },
   actionReasons: {
@@ -86,6 +87,8 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     inactiveSuffix: ' (ngừng dùng)',
     /** 위치 단계(서버 `locationLevelCode`) — 창고 › 구역 › 랙 › 층 › 셀. */
     locationLevels: { ZONE: 'Khu', RACK: 'Kệ', LEVEL: 'Tầng', CELL: 'Ô' },
+    /** 서버가 만든 자리의 역할 이름 — 수정 창 머리에 단계 대신 보인다. */
+    systemRoles: { PUTAWAY_STAGING: 'Chờ cất hàng', WAREHOUSE_WHOLE: 'Toàn kho' },
   },
   validation: {
     required: 'Đây là mục bắt buộc.',
@@ -96,6 +99,8 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   locationTable: {
     expand: 'Mở cấp dưới',
     collapse: 'Thu cấp dưới',
+    collapseAll: 'Thu gọn tất cả',
+    expandAll: 'Mở rộng tất cả',
     selectionLabel: 'Chọn Location',
   },
   dialog: {
@@ -104,11 +109,15 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     createRackTitle: 'Thêm kệ',
     editRackTitle: 'Sửa kệ',
     editTitle: 'Sửa Location',
+    /** 창 안의 묶음 제목 — 짧게. */
+    sections: { basic: 'Thông tin cơ bản', layout: 'Bố trí tầng·ô' },
   },
   /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
   deleteLocation: {
     title: 'Xóa vị trí',
-    description: (code: string): string => `Xóa ${code} và tất cả vị trí bên dưới?`,
+    /** 그 위치와 밑의 위치 수. */
+    count: (count: number): string =>
+      count > 1 ? `${String(count)} vị trí sẽ cùng bị xóa.` : '1 vị trí sẽ bị xóa.',
     confirm: 'Xóa',
     deleted: 'Đã xóa',
   },
@@ -140,18 +149,29 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   labelIssue: {
     title: 'Phát hành lại nhãn',
+    alreadyIssued: (count: number): string => `${String(count)} mục đã được phát hành.`,
     reason: 'Lý do phát hành lại',
     confirm: 'Phát hành lại',
+  },
+  /** 라벨 일괄 출력(사용자 지시 2026-10-29) — 발행한 그림을 모아 보고 인쇄한다. */
+  labelPreview: {
+    title: 'In nhãn',
+    seq: (issueSeq: number): string => `lượt ${String(issueSeq)}`,
+    print: 'In',
   },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
     title: 'Ngừng sử dụng?',
     description: 'Không xóa. Ngừng sử dụng thì không chọn được ở công việc mới.',
     confirm: 'Ngừng sử dụng',
+    count: (count: number): string =>
+      count > 1 ? `${String(count)} vị trí sẽ cùng ngừng sử dụng.` : '1 vị trí sẽ ngừng sử dụng.',
   },
   activate: {
     title: 'Dùng lại?',
     description: 'Dùng lại thì có thể chọn mục này ở công việc mới.',
     confirm: 'Dùng lại',
+    count: (count: number): string =>
+      count > 1 ? `${String(count)} vị trí sẽ cùng được dùng lại.` : '1 vị trí sẽ được dùng lại.',
   },
 };

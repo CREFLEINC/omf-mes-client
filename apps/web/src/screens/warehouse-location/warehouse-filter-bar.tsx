@@ -1,9 +1,8 @@
 import { Button, Checkbox, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Select } from '../../patterns/select';
-import { defaultWarehouseFilters } from './code-options';
 import type { WarehouseFilters } from './types';
 
 export interface WarehouseFilterBarProps {
@@ -21,7 +20,7 @@ export interface WarehouseFilterBarProps {
 const t = messages.warehouseLocation;
 
 /**
- * 창고 조회 조건 — 입고 관리처럼 화면 위 상자에 한 줄로 둔다(사용자 지시 2026-10-29).
+ * 창고 조회 조건 — 왼쪽 창고 목록 위에 좁게 둔다(사용자 지시 2026-10-29).
  *
  * 트리거 모델: **검색어만** 모아서 적용([조회]·Enter), 공장·창고 유형·미사용 포함은 바꾸는 즉시 적용.
  *
@@ -38,8 +37,6 @@ export const WarehouseFilterBar = ({
   warehouseTypeOptions,
   plantOptions,
 }: WarehouseFilterBarProps) => {
-  const plantSelectId = useId();
-  const typeSelectId = useId();
   const [draftQ, setDraftQ] = useState(appliedFilters.q);
   const appliedQ = appliedFilters.q;
 
@@ -47,40 +44,47 @@ export const WarehouseFilterBar = ({
     setDraftQ(appliedQ);
   }, [appliedQ]);
 
+  /*
+   * 왼쪽 목록 위에 두 줄로 좁게(사용자 지시 2026-10-29) — 윗줄 검색어(X 로 비움) · 조회 · 창고 추가, 아랫줄 공장 · 유형 ·
+   * 미사용. 칸 라벨은 선택지 글자(「전체 공장」 등)가 대신해 접근명으로만 둔다.
+   */
   return (
-    <div className="filter-bar">
-      <SearchInput
-        label={t.filters.searchLabel}
-        placeholder={t.filters.searchPlaceholder}
-        value={draftQ}
-        onChange={(event) => setDraftQ(event.target.value)}
-        onSearch={(value) => onApplyFilters({ ...appliedFilters, q: value })}
-        clearLabel={messages.common.clear}
-      />
-      <div className="field-cell">
-        <label className="field-label" htmlFor={plantSelectId}>
-          {t.fields.plant}
-        </label>
+    <div className="warehouse-location-filter">
+      <div className="warehouse-location-filter-row">
+        <SearchInput
+          aria-label={t.filters.searchLabel}
+          placeholder={t.filters.searchPlaceholder}
+          value={draftQ}
+          onChange={(event) => setDraftQ(event.target.value)}
+          onSearch={(value) => onApplyFilters({ ...appliedFilters, q: value })}
+          /* 초기화 단추 대신 검색칸의 X(사용자 지시 2026-10-29) — 검색어를 비우고 바로 다시 조회한다. */
+          onClear={() => {
+            setDraftQ('');
+            onApplyFilters({ ...appliedFilters, q: '' });
+          }}
+          clearLabel={messages.common.clear}
+        />
+        <Button onClick={() => onApplyFilters({ ...appliedFilters, q: draftQ })}>
+          {messages.common.search}
+        </Button>
+        <Button className="warehouse-location-add" onClick={onAddWarehouse}>
+          {t.actions.addWarehouse}
+        </Button>
+      </div>
+      <div className="warehouse-location-filter-row">
         <Select
-          id={plantSelectId}
+          aria-label={t.fields.plant}
           options={[{ value: '', label: t.filters.plantAll }, ...plantOptions]}
           value={appliedFilters.plantId}
           onChange={(value) => onApplyFilters({ ...appliedFilters, plantId: value })}
         />
-      </div>
-      <div className="field-cell">
-        <label className="field-label" htmlFor={typeSelectId}>
-          {t.fields.warehouseType}
-        </label>
         <Select
-          id={typeSelectId}
+          aria-label={t.fields.warehouseType}
           options={[{ value: '', label: t.filters.typeAll }, ...warehouseTypeOptions]}
           value={appliedFilters.warehouseTypeCode}
           onChange={(value) => onApplyFilters({ ...appliedFilters, warehouseTypeCode: value })}
         />
-      </div>
-      {/* 해제 축이라 변경 즉시 적용한다(공장·유형과 같다). */}
-      <div className="field-cell field-cell-unlabeled">
+        {/* 해제 축이라 변경 즉시 적용한다(공장·유형과 같다). */}
         <Checkbox
           checked={appliedFilters.includeInactive}
           onChange={(event) =>
@@ -89,20 +93,6 @@ export const WarehouseFilterBar = ({
         >
           {messages.common.includeInactive}
         </Checkbox>
-      </div>
-      {/*
-       * 조회·초기화는 한 묶음 — 좁아져 줄이 넘쳐도 둘이 함께 다음 줄로 간다(규범 2-1).
-       */}
-      <div className="filter-actions field-cell-unlabeled">
-        <Button onClick={() => onApplyFilters({ ...appliedFilters, q: draftQ })}>
-          {messages.common.search}
-        </Button>
-        <Button variant="outlined" onClick={() => onApplyFilters(defaultWarehouseFilters)}>
-          {messages.common.reset}
-        </Button>
-      </div>
-      <div className="field-cell-unlabeled warehouse-location-add">
-        <Button onClick={onAddWarehouse}>{t.actions.addWarehouse}</Button>
       </div>
     </div>
   );

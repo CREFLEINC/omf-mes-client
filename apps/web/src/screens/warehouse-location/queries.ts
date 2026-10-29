@@ -335,6 +335,7 @@ type DocumentIssue = components['schemas']['DocumentIssue'];
 
 /** 위치 라벨 발행 기록의 캐시 키 — 발행 · 재발행 뒤 이것만 다시 받는다. */
 export const locationLabelKeys = {
+  all: ['location-labels'] as const,
   of: (locationId: number) => ['location-labels', locationId] as const,
 };
 

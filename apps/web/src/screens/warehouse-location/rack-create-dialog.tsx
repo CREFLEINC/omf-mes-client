@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Dialog, TextField, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon, TextField, useToast } from '@crefle/web-ui';
 import {
   type components,
   createIdempotencyKey,
@@ -12,6 +12,7 @@ import { useApiClient } from '../../patterns/api-context';
 import type { LocationLevelCode, LocationLevelFields } from '../../patterns/location-level';
 import { runRequest, toApiError } from '../../patterns/request';
 import { issueLocationCode } from './location-code';
+import { DialogSection, LocationFacts, LocationIdentity } from './location-identity';
 import { locationAliasOrCode, locationToFormValues, toLocationUpdate } from './mappers';
 import { locationDetailPath, locationKeys, useLocationDetail } from './queries';
 import {
@@ -23,7 +24,6 @@ import {
   rackLayoutGrid,
 } from './rack-layout';
 import type { Location } from './types';
-import { ReadOnlyField } from './warehouse-form-pane';
 
 export interface RackCreateDialogProps {
   /** 랙을 달 구역(고칠 때는 그 랙의 구역). null 이면 닫힌다. */
@@ -31,6 +31,8 @@ export interface RackCreateDialogProps {
   /** 고칠 랙 — 있으면 수정, 없으면 추가(사용자 지시 2026-10-29: 랙을 다시 누르면 층 · 셀 수를 고친다). */
   rack?: Location | null;
   warehouseId: number;
+  /** 어느 창고의 랙인지 — 「창고코드 · 창고명」. */
+  warehouseLabel?: string;
   /** 고른 창고의 위치 전체 — 쓰는 코드를 여기서 본다. */
   items: readonly Location[];
   onClose: () => void;
@@ -40,6 +42,9 @@ export interface RackCreateDialogProps {
   labelSlot?: ReactNode;
   /** 고칠 때 랙 삭제(밑의 층 · 셀까지). */
   onDelete?: (() => void) | undefined;
+  /** 고칠 때 사용 중지 · 다시 사용 — 랙 단위로 끈다(사용자 지시 2026-10-29). 확인은 화면이 띄운다. */
+  onToggleActive?: (() => void) | undefined;
+  isActive?: boolean;
 }
 
 /* 별칭(`aliasName`)은 계약 사본에 아직 없다 — 서버 #875 가 받는다. */
@@ -95,11 +100,14 @@ export const RackCreateDialog = ({
   zone,
   rack: editRack = null,
   warehouseId,
+  warehouseLabel = '',
   items,
   onClose,
   onCreated,
   labelSlot,
   onDelete,
+  onToggleActive,
+  isActive = true,
 }: RackCreateDialogProps) => {
   const { client, etags } = useApiClient();
   /* 고칠 때는 별칭을 고칠 잠금 토큰(ETag)이 상세에 있다. */
@@ -126,8 +134,9 @@ export const RackCreateDialog = ({
   if (openKey !== null && openedFor !== openKey) {
     setOpenedFor(openKey);
     setAliasText(editRack?.aliasName ?? '');
-    setLevelText(String(Math.max(current?.levelCount ?? 1, 1)));
-    setCellText(String(Math.max(current?.cellCount ?? 1, 1)));
+    /* 고칠 때는 지금 모양 그대로(셀 없는 랙은 0) — 새 랙은 1 × 1 에서 시작한다. */
+    setLevelText(String(current === null ? 1 : Math.max(current.levelCount, 1)));
+    setCellText(String(current === null ? 1 : current.cellCount));
     setCreatedRack(editRack);
     setFailure(null);
     setProgress(null);
@@ -323,6 +332,10 @@ export const RackCreateDialog = ({
     }
   };
 
+  /** 칸 하나의 모양 — 고칠 때 새로 생길 칸 · 지울 칸을 가른다. 추가할 때는 모두 새 칸이라 가르지 않는다. */
+  const cellClass = (entry: { isNew: boolean; isRemoved: boolean }): string | undefined =>
+    entry.isRemoved ? 'is-removed' : editRack !== null && entry.isNew ? 'is-new' : undefined;
+
   return (
     <Dialog
       open={zone !== null}
@@ -331,10 +344,32 @@ export const RackCreateDialog = ({
       size="lg"
       footer={
         <>
-          {editRack !== null && onDelete !== undefined && (
-            <Button variant="outlined" disabled={saving} onClick={onDelete}>
-              {t.deleteLocation.confirm}
-            </Button>
+          {/* 지우기 · 끄기는 왼쪽에 따로 — 저장과 섞이지 않게. */}
+          {editRack !== null && (onDelete !== undefined || onToggleActive !== undefined) && (
+            <div className="location-dialog-footer-start">
+              {onDelete !== undefined && (
+                <Button
+                  variant="outlined"
+                  className="location-danger-button"
+                  leadingIcon={<Icon name="delete" size={18} />}
+                  disabled={saving}
+                  onClick={onDelete}
+                >
+                  {t.deleteLocation.confirm}
+                </Button>
+              )}
+              {onToggleActive !== undefined && (
+                <Button
+                  variant="text"
+                  className="location-state-button"
+                  leadingIcon={<Icon name={isActive ? 'block' : 'restart_alt'} size={18} />}
+                  disabled={saving || detailPending}
+                  onClick={onToggleActive}
+                >
+                  {isActive ? messages.common.deactivate : t.actions.activate}
+                </Button>
+              )}
+            </div>
           )}
           <Button variant="outlined" disabled={saving} onClick={close}>
             {messages.common.cancel}
@@ -353,99 +388,99 @@ export const RackCreateDialog = ({
     >
       {failure !== null && <AlertBanner variant="error" title={failure} />}
       {zone !== null && (
-        <div className="rack-layout">
-          <div className="form-grid">
-            <ReadOnlyField label={t.fields.parentLocation} value={locationAliasOrCode(zone)} />
-            <ReadOnlyField label={t.fields.locationCode} value={rackCode} />
-          </div>
-          <TextField
-            label={t.fields.aliasName}
-            value={aliasText}
-            onChange={(event) => setAliasText(event.target.value)}
-            disabled={saving || (editRack === null && createdRack !== null)}
-            error={aliasError}
+        <div className="location-dialog-body rack-layout">
+          <LocationIdentity
+            subject={{ locationLevelCode: 'RACK' }}
+            code={rackCode}
+            alias={aliasText}
+            isActive={editRack === null ? undefined : isActive}
           />
-          <div className="form-grid rack-layout-counts">
+          <LocationFacts
+            facts={[
+              ...(warehouseLabel === ''
+                ? []
+                : [{ label: t.fields.warehouse, value: warehouseLabel }]),
+              { label: t.fields.parentLocation, value: locationAliasOrCode(zone) },
+            ]}
+          />
+
+          <DialogSection title={t.dialog.sections.basic}>
             <TextField
-              label={t.rackLayout.levelCount}
-              inputMode="numeric"
-              value={levelText}
-              onChange={(event) => setLevelText(event.target.value)}
-              disabled={saving}
-              error={levelError}
+              label={t.fields.aliasName}
+              value={aliasText}
+              onChange={(event) => setAliasText(event.target.value)}
+              disabled={saving || (editRack === null && createdRack !== null)}
+              error={aliasError}
             />
-            <TextField
-              label={t.rackLayout.cellCount}
-              inputMode="numeric"
-              value={cellText}
-              onChange={(event) => setCellText(event.target.value)}
-              disabled={saving}
-              error={cellError}
-            />
-          </div>
-          {grid.length > 0 && (
-            <div className="rack-layout-grid-wrap">
-              <table className="rack-layout-grid" aria-label={t.rackLayout.previewLabel}>
-                <thead>
-                  <tr>
-                    <th scope="col">
-                      <span className="rack-layout-visually-hidden">
-                        {t.rackLayout.levelHeader}
-                      </span>
-                    </th>
-                    {Array.from({ length: levelOnly ? 0 : columnCount }, (_, index) => (
-                      <th key={index} scope="col">
-                        {t.rackLayout.columnHeader(index + 1)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {grid.map((row) => (
-                    <tr key={row.locationCode}>
-                      <th scope="row">{t.rackLayout.rowHeader(row.levelNo)}</th>
-                      {/* 셀이 0 이면 층이 맨 아래 위치다 — 층 자체를 칸으로 보인다. */}
-                      {levelOnly && (
-                        <td
-                          title={row.locationCode}
-                          className={
-                            row.isRemoved
-                              ? 'is-removed'
-                              : editRack !== null && row.isNew
-                                ? 'is-new'
-                                : undefined
-                          }
-                        >
-                          {lastSegment(row.locationCode)}
-                        </td>
-                      )}
-                      {Array.from({ length: columnCount }, (_, index) => {
-                        const cell = row.cells[index];
-                        return cell === undefined ? (
-                          <td key={index} className="is-empty" />
-                        ) : (
-                          <td
-                            key={cell.locationCode}
-                            title={cell.locationCode}
-                            /* 고칠 때 새로 생길 칸 · 지울 칸을 가른다 — 추가할 때는 모두 새 칸이다. */
-                            className={
-                              cell.isRemoved
-                                ? 'is-removed'
-                                : editRack !== null && cell.isNew
-                                  ? 'is-new'
-                                  : undefined
-                            }
-                          >
-                            {lastSegment(cell.locationCode)}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          </DialogSection>
+
+          <DialogSection title={t.dialog.sections.layout}>
+            <div className="form-grid rack-layout-counts">
+              <TextField
+                label={t.rackLayout.levelCount}
+                inputMode="numeric"
+                value={levelText}
+                onChange={(event) => setLevelText(event.target.value)}
+                disabled={saving}
+                error={levelError}
+              />
+              <TextField
+                label={t.rackLayout.cellCount}
+                inputMode="numeric"
+                value={cellText}
+                onChange={(event) => setCellText(event.target.value)}
+                disabled={saving}
+                error={cellError}
+              />
             </div>
-          )}
+            {grid.length > 0 && (
+              <div className="rack-layout-grid-wrap">
+                <table className="rack-layout-grid" aria-label={t.rackLayout.previewLabel}>
+                  <thead>
+                    <tr>
+                      <th scope="col">
+                        <span className="rack-layout-visually-hidden">
+                          {t.rackLayout.levelHeader}
+                        </span>
+                      </th>
+                      {Array.from({ length: levelOnly ? 0 : columnCount }, (_, index) => (
+                        <th key={index} scope="col">
+                          {t.rackLayout.columnHeader(index + 1)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grid.map((row) => (
+                      <tr key={row.locationCode}>
+                        <th scope="row">{t.rackLayout.rowHeader(row.levelNo)}</th>
+                        {/* 셀이 0 이면 층이 맨 아래 위치다 — 층 자체를 칸으로 보인다. */}
+                        {levelOnly && (
+                          <td title={row.locationCode} className={cellClass(row)}>
+                            {lastSegment(row.locationCode)}
+                          </td>
+                        )}
+                        {Array.from({ length: columnCount }, (_, index) => {
+                          const cell = row.cells[index];
+                          return cell === undefined ? (
+                            <td key={index} className="is-empty" />
+                          ) : (
+                            <td
+                              key={cell.locationCode}
+                              title={cell.locationCode}
+                              className={cellClass(cell)}
+                            >
+                              {lastSegment(cell.locationCode)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </DialogSection>
           {editRack !== null && labelSlot}
         </div>
       )}

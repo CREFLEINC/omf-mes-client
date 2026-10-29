@@ -17,6 +17,9 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
   const onAddRoot = vi.fn();
   const onAddChild = vi.fn();
   const onEdit = vi.fn();
+  const onCollapseAll = vi.fn();
+  const onExpandAll = vi.fn();
+  const onPrintLabels = vi.fn();
 
   render(
     <LocationPane
@@ -24,6 +27,8 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
       isLoading={false}
       expandedIds={expandedIds}
       onToggleExpand={onToggleExpand}
+      onCollapseAll={onCollapseAll}
+      onExpandAll={onExpandAll}
       selectedIds={[]}
       onSelectionChange={onSelectionChange}
       filterText=""
@@ -33,6 +38,9 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
       onAddRoot={onAddRoot}
       canAddChild={false}
       onAddChild={onAddChild}
+      canPrintLabels={false}
+      isPrintingLabels={false}
+      onPrintLabels={onPrintLabels}
       onEdit={onEdit}
       actionBanner={null}
       loadError={null}
@@ -47,6 +55,9 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
     onAddRoot,
     onAddChild,
     onEdit,
+    onCollapseAll,
+    onExpandAll,
+    onPrintLabels,
   };
 };
 
@@ -169,6 +180,37 @@ describe('LocationPane', () => {
     await user.type(screen.getByLabelText('Location 검색'), 'B-01');
 
     expect(onFilterTextChange).toHaveBeenCalled();
+  });
+
+  it('검색칸은 제목 없이 접근명만 둔다', () => {
+    renderPane();
+
+    expect(screen.getByRole('searchbox', { name: 'Location 검색' })).toBeInTheDocument();
+    expect(screen.queryByText('Location 검색')).not.toBeInTheDocument();
+  });
+
+  it('고른 행이 있으면 구역 추가를 막는다', () => {
+    renderPane({ selectedIds: ['2004'] });
+
+    expect(screen.getByRole('button', { name: '구역 추가' })).toBeDisabled();
+  });
+
+  it('라벨 일괄 출력은 랙 추가 바로 오른쪽에 있고, 낼 것이 있을 때만 누를 수 있다', async () => {
+    const user = userEvent.setup();
+    const { onPrintLabels } = renderPane({ canPrintLabels: true });
+
+    const print = screen.getByRole('button', { name: '라벨 일괄 출력' });
+    expect(screen.getByRole('button', { name: '랙 추가' }).nextElementSibling).toBe(print);
+    await user.click(print);
+    expect(onPrintLabels).toHaveBeenCalledTimes(1);
+  });
+
+  it('전체 접기 · 펼치기는 펼친 것이 있는지에 따라 바뀐다', async () => {
+    const user = userEvent.setup();
+    const { onCollapseAll } = renderPane();
+
+    await user.click(screen.getByRole('button', { name: '전체 접기' }));
+    expect(onCollapseAll).toHaveBeenCalledTimes(1);
   });
 
   it('로딩 중에는 표 대신 스켈레톤을 낸다', () => {

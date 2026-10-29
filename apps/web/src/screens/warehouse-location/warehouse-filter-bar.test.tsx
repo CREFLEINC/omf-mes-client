@@ -43,7 +43,7 @@ describe('WarehouseFilterBar', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({ ...defaultWarehouseFilters, q: 'WH-0' });
   });
 
-  it('초기화를 누르면 기본 조건으로 즉시 되돌린다', async () => {
+  it('초기화 단추 대신 검색칸의 X 가 검색어만 비우고 바로 다시 조회한다', async () => {
     const user = userEvent.setup();
     const applied: WarehouseFilters = {
       q: 'WH',
@@ -53,9 +53,10 @@ describe('WarehouseFilterBar', () => {
     };
     const { onApplyFilters } = renderPane({ appliedFilters: applied });
 
-    await user.click(screen.getByRole('button', { name: '초기화' }));
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '지우기' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith(defaultWarehouseFilters);
+    expect(onApplyFilters).toHaveBeenCalledWith({ ...applied, q: '' });
   });
 
   it('미사용 포함은 변경 즉시 적용한다', async () => {

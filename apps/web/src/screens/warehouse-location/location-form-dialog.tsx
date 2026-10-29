@@ -1,9 +1,15 @@
-import { Button, Dialog, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import {
+  DialogSection,
+  type LocationFact,
+  LocationFacts,
+  LocationIdentity,
+  type LocationIdentityProps,
+} from './location-identity';
 import type { LocationFormValues } from './types';
-import { ReadOnlyField } from './warehouse-form-pane';
 
 export interface LocationFormDialogProps {
   open: boolean;
@@ -15,6 +21,8 @@ export interface LocationFormDialogProps {
   warehouseLabel: string;
   /** 상위 위치 — 별칭, 없으면 코드. 구역이면 창고. 바꿀 수 없어 글자로만 보인다. */
   parentLabel: string;
+  /** 머리의 단계 아이콘 · 단계 이름 — 고칠 때는 그 위치, 추가할 때는 만들 단계. */
+  subject: LocationIdentityProps['subject'];
   values: LocationFormValues;
   onChange: (patch: Partial<LocationFormValues>) => void;
   fieldErrors: Record<string, string>;
@@ -24,7 +32,10 @@ export interface LocationFormDialogProps {
    * 칸마다 STATE_LOCKED 로 거부한다(#875).
    */
   systemLocked: boolean;
-  /** 사용 중지 · 다시 사용 단추를 둘지. 적치 대기는 끌 수 없어 단추를 숨긴다. */
+  /**
+   * 사용 중지 · 다시 사용 단추를 둘지 — 구역 단위로 끈다(사용자 지시 2026-10-29). 층 · 셀은 랙에서, 적치 대기는
+   * 끌 수 없어 숨긴다.
+   */
   canToggleActive: boolean;
   isActive: boolean;
   /** 편집 상세 조회가 끝나 ETag와 현재 상태를 확보했을 때만 쓰기를 허용한다. */
@@ -47,11 +58,11 @@ export const LocationFormDialog = ({
   createTitle,
   warehouseLabel,
   parentLabel,
+  subject,
   values,
   onChange,
   fieldErrors,
   banner,
-  systemLocked,
   canToggleActive,
   isActive,
   isReady,
@@ -61,8 +72,19 @@ export const LocationFormDialog = ({
   onSave,
   labelSlot,
 }: LocationFormDialogProps) => {
-  /* 별칭 밖의 칸 — 상세가 오기 전이거나 서버가 만든 위치면 잠근다. */
-  const locked = !isReady || systemLocked;
+  /* 구역 · 서버가 만든 자리는 창고 바로 밑이다 — 상위가 창고와 같아 창고 한 줄만 보인다. */
+  const facts: LocationFact[] =
+    values.parentLocationId === ''
+      ? [{ label: t.fields.warehouse, value: warehouseLabel, error: fieldErrors.parentLocationId }]
+      : [
+          { label: t.fields.warehouse, value: warehouseLabel },
+          {
+            label: t.fields.parentLocation,
+            value: parentLabel,
+            error: fieldErrors.parentLocationId,
+          },
+        ];
+  const showStateActions = mode === 'edit' && (onDelete !== undefined || canToggleActive);
 
   return (
     <Dialog
@@ -72,15 +94,32 @@ export const LocationFormDialog = ({
       title={mode === 'create' ? (createTitle ?? t.dialog.createTitle) : t.dialog.editTitle}
       footer={
         <>
-          {mode === 'edit' && onDelete !== undefined && (
-            <Button variant="outlined" disabled={!isReady} onClick={onDelete}>
-              {t.deleteLocation.confirm}
-            </Button>
-          )}
-          {mode === 'edit' && canToggleActive && (
-            <Button variant="outlined" disabled={!isReady} onClick={onToggleActive}>
-              {isActive ? messages.common.deactivate : t.actions.activate}
-            </Button>
+          {/* 지우기 · 끄기는 왼쪽에 따로 — 저장과 섞이지 않게. */}
+          {showStateActions && (
+            <div className="location-dialog-footer-start">
+              {onDelete !== undefined && (
+                <Button
+                  variant="outlined"
+                  className="location-danger-button"
+                  leadingIcon={<Icon name="delete" size={18} />}
+                  disabled={!isReady}
+                  onClick={onDelete}
+                >
+                  {t.deleteLocation.confirm}
+                </Button>
+              )}
+              {canToggleActive && (
+                <Button
+                  variant="text"
+                  className="location-state-button"
+                  leadingIcon={<Icon name={isActive ? 'block' : 'restart_alt'} size={18} />}
+                  disabled={!isReady}
+                  onClick={onToggleActive}
+                >
+                  {isActive ? messages.common.deactivate : t.actions.activate}
+                </Button>
+              )}
+            </div>
           )}
           <Button variant="outlined" onClick={onClose}>
             {messages.common.cancel}
@@ -93,33 +132,32 @@ export const LocationFormDialog = ({
     >
       {banner}
 
-      <div className="form-grid">
-        <ReadOnlyField label={t.fields.warehouse} value={warehouseLabel} />
-
-        <ReadOnlyField
-          label={t.fields.parentLocation}
-          value={parentLabel}
-          error={fieldErrors.parentLocationId}
+      <div className="location-dialog-body">
+        {/* 위치 코드는 MES 가 발행한다(사용자 지시 2026-10-29) — 치는 칸 없이 머리에 크게. */}
+        <LocationIdentity
+          subject={subject}
+          code={values.locationCode}
+          alias={values.aliasName}
+          isActive={mode === 'edit' ? isActive : undefined}
         />
+        {fieldErrors.locationCode !== undefined && (
+          <span className="field-error">{fieldErrors.locationCode}</span>
+        )}
+        <LocationFacts facts={facts} />
 
-        {/* 위치 코드는 MES 가 발행한다(사용자 지시 2026-10-29) — 치는 칸도, 안내문도 없다. */}
-        <ReadOnlyField
-          label={t.fields.locationCode}
-          value={values.locationCode}
-          error={fieldErrors.locationCode}
-        />
+        <DialogSection title={t.dialog.sections.basic}>
+          {/* 별칭이 위치의 이름이다 — 위치명 칸은 따로 두지 않는다. */}
+          <TextField
+            label={t.fields.aliasName}
+            value={values.aliasName}
+            onChange={(event) => onChange({ aliasName: event.target.value })}
+            disabled={!isReady}
+            error={fieldErrors.aliasName}
+          />
+        </DialogSection>
 
-        {/* 별칭이 위치의 이름이다 — 위치명 칸은 따로 두지 않는다. */}
-        <TextField
-          label={t.fields.aliasName}
-          value={values.aliasName}
-          onChange={(event) => onChange({ aliasName: event.target.value })}
-          disabled={!isReady}
-          error={fieldErrors.aliasName}
-        />
+        {labelSlot}
       </div>
-
-      {labelSlot}
     </Dialog>
   );
 };

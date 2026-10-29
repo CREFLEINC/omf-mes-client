@@ -19,6 +19,7 @@ export const warehouseLocation = {
     addWarehouse: '창고 추가',
     addZone: '구역 추가',
     addRack: '랙 추가',
+    printLabels: '라벨 일괄 출력',
     activate: '다시 사용',
   },
   actionReasons: {
@@ -82,6 +83,8 @@ export const warehouseLocation = {
     inactiveSuffix: ' (미사용)',
     /** 위치 단계(서버 `locationLevelCode`) — 창고 › 구역 › 랙 › 층 › 셀. */
     locationLevels: { ZONE: '구역', RACK: '랙', LEVEL: '층', CELL: '셀' },
+    /** 서버가 만든 자리의 역할 이름 — 수정 창 머리에 단계 대신 보인다. */
+    systemRoles: { PUTAWAY_STAGING: '적치 대기', WAREHOUSE_WHOLE: '창고 전체' },
   },
   validation: {
     required: '필수 입력 항목입니다.',
@@ -92,6 +95,8 @@ export const warehouseLocation = {
   locationTable: {
     expand: '하위 펼치기',
     collapse: '하위 접기',
+    collapseAll: '전체 접기',
+    expandAll: '전체 펼치기',
     selectionLabel: 'Location 선택',
   },
   dialog: {
@@ -100,11 +105,15 @@ export const warehouseLocation = {
     createRackTitle: '랙 추가',
     editRackTitle: '랙 수정',
     editTitle: 'Location 수정',
+    /** 창 안의 묶음 제목 — 짧게. */
+    sections: { basic: '기본 정보', layout: '층·셀 구성' },
   },
   /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
   deleteLocation: {
     title: '위치 삭제',
-    description: (code: string): string => `${code} 와 그 밑의 위치를 모두 삭제할까요?`,
+    /** 그 위치와 밑의 위치 수. */
+    count: (count: number): string =>
+      count > 1 ? `위치 ${String(count)}개가 함께 삭제됩니다.` : '위치 1개가 삭제됩니다.',
     confirm: '삭제',
     deleted: '삭제했습니다',
   },
@@ -136,18 +145,29 @@ export const warehouseLocation = {
   },
   labelIssue: {
     title: '라벨 재발행',
+    alreadyIssued: (count: number): string => `${String(count)}건은 이미 발행했습니다.`,
     reason: '재발행 사유',
     confirm: '재발행',
+  },
+  /** 라벨 일괄 출력(사용자 지시 2026-10-29) — 발행한 그림을 모아 보고 인쇄한다. */
+  labelPreview: {
+    title: '라벨 출력',
+    seq: (issueSeq: number): string => `${String(issueSeq)}회`,
+    print: '인쇄',
   },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
     title: '사용 중지할까요?',
     description: '삭제하지 않습니다. 사용 중지하면 새 작업에서 고를 수 없게 됩니다.',
     confirm: '사용 중지',
+    count: (count: number): string =>
+      count > 1 ? `위치 ${String(count)}개가 함께 사용 중지됩니다.` : '위치 1개가 사용 중지됩니다.',
   },
   activate: {
     title: '다시 사용할까요?',
     description: '다시 사용하면 새 작업에서 이 항목을 선택할 수 있습니다.',
     confirm: '다시 사용',
+    count: (count: number): string =>
+      count > 1 ? `위치 ${String(count)}개를 함께 다시 사용합니다.` : '위치 1개를 다시 사용합니다.',
   },
 } as const;

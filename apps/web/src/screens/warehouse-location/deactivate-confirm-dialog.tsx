@@ -1,6 +1,9 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
+
+import { ConfirmTarget } from './location-identity';
+import type { Location } from './types';
 
 const t = messages.warehouseLocation.deactivate;
 
@@ -12,6 +15,8 @@ export interface DeactivateConfirmDialogProps {
   /** 저장 실패 배너 슬롯. 다이얼로그를 닫지 않고 이유를 보여야 다시 시도할 수 있다. */
   banner: ReactNode;
   mode?: 'deactivate' | 'activate';
+  /** 위치를 끄고 켤 때 — 대상 코드와 함께 바뀌는 위치 수(그 위치와 밑의 위치)를 보인다. 창고는 없다. */
+  location?: { target: Pick<Location, 'locationCode' | 'aliasName'>; count: number } | undefined;
 }
 
 /**
@@ -28,25 +33,49 @@ export const DeactivateConfirmDialog = ({
   isSaving,
   banner,
   mode = 'deactivate',
-}: DeactivateConfirmDialogProps) => (
-  <Dialog
-    open={open}
-    onClose={onClose}
-    size="sm"
-    title={mode === 'deactivate' ? t.title : messages.warehouseLocation.activate.title}
-    closeOnBackdropClick={false}
-    footer={
-      <>
-        <Button variant="outlined" onClick={onClose}>
-          {messages.common.cancel}
-        </Button>
-        <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
-          {mode === 'deactivate' ? t.confirm : messages.warehouseLocation.activate.confirm}
-        </Button>
-      </>
-    }
-  >
-    {banner}
-    <p>{mode === 'deactivate' ? t.description : messages.warehouseLocation.activate.description}</p>
-  </Dialog>
-);
+  location,
+}: DeactivateConfirmDialogProps) => {
+  const deactivating = mode === 'deactivate';
+  const copy = deactivating ? t : messages.warehouseLocation.activate;
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      size="sm"
+      title={copy.title}
+      closeOnBackdropClick={false}
+      footer={
+        <>
+          <Button variant="outlined" onClick={onClose}>
+            {messages.common.cancel}
+          </Button>
+          <Button
+            leadingIcon={
+              location === undefined ? undefined : (
+                <Icon name={deactivating ? 'block' : 'restart_alt'} size={18} />
+              )
+            }
+            loading={isSaving}
+            disabled={isSaving}
+            onClick={onConfirm}
+          >
+            {copy.confirm}
+          </Button>
+        </>
+      }
+    >
+      {banner}
+      {location === undefined ? (
+        <p>{copy.description}</p>
+      ) : (
+        <ConfirmTarget
+          tone={deactivating ? 'warning' : 'success'}
+          icon={deactivating ? 'warning' : 'restart_alt'}
+          target={location.target}
+          line={copy.count(location.count)}
+        />
+      )}
+    </Dialog>
+  );
+};

@@ -5,6 +5,8 @@ import type { ReactNode } from 'react';
 import { SelectField } from './warehouse-form-pane';
 
 export interface LocationLabelIssueDialogProps {
+  /** 여럿을 한꺼번에 낼 때 이미 발행한 건수 — 한 줄로 알린다. 하나만 다시 낼 때는 없다. */
+  alreadyIssuedCount?: number;
   reasonCode: string;
   reasonOptions: { value: string; label: string }[];
   reasonError?: string;
@@ -17,6 +19,7 @@ export interface LocationLabelIssueDialogProps {
 
 /** 이미 발행한 라벨을 다시 발행할 때 회차를 올릴 사유를 받는다. */
 export const LocationLabelIssueDialog = ({
+  alreadyIssuedCount,
   reasonCode,
   reasonOptions,
   reasonError,
@@ -43,6 +46,11 @@ export const LocationLabelIssueDialog = ({
     }
   >
     {banner}
+    {alreadyIssuedCount !== undefined && (
+      <p className="dialog-lead">
+        {messages.warehouseLocation.labelIssue.alreadyIssued(alreadyIssuedCount)}
+      </p>
+    )}
     <div className="form-grid warehouse-location-label-reissue-form">
       <SelectField
         label={messages.warehouseLocation.labelIssue.reason}

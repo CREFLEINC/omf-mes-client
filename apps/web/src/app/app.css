@@ -9795,12 +9795,17 @@ a.erp-send-chips:focus-visible {
 }
 
 /*
- * 위치 코드 머리 — 값 칸은 [펼치기 단추 자리 32px + 간격 --space-2] 뒤에서 코드 글자가 시작한다.
- * 머리 글자를 그만큼 밀어 depth 0 코드 글자와 왼쪽 끝을 맞춘다(단추는 그 여백 자리에 선다).
- * 32px 은 location-pane 의 단추 자리(IconButton sm·빈칸) 폭, 12px(--space-3)은 compact 표의 칸 여백.
+ * 위치 코드 머리 — 행과 같이 [펼치기 단추 자리 32px + 간격 --space-2] 뒤에서 글자가 시작한다. 머리의 단추 자리에는
+ * 전체 접기 · 펼치기(IconButton sm)가 놓여 행의 펼치기 단추와 세로로 맞는다.
  */
-.warehouse-location-location-table thead th:nth-child(2) {
-  padding-left: calc(var(--space-3) + 32px + var(--space-2));
+.warehouse-location-location-table .tree-toggle-header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.warehouse-location-location-table .tree-toggle-header > :first-child {
+  flex: none;
 }
 
 /* 펼치기 단추 자리는 줄지 않는다 — 긴 코드가 폭을 먹으면 32px 빈칸이 눌려 깊이 들여쓰기가 어긋났다. */
@@ -9817,34 +9822,22 @@ a.erp-send-chips:focus-visible {
   grid-template-columns: 1fr;
 }
 
-/* 위치 수정 창 안의 라벨 — 칸들 아래 얇은 선으로 나누고, 그림 아래 단추 둘(사용자 지시 2026-10-29). */
-.location-label-section {
-  display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.location-label-title {
+/* 위치 수정 창 안의 라벨 — 흰 카드 위 그림, 아래 오른쪽에 아이콘 단추(사용자 지시 2026-10-29). */
+.location-label-section .location-label-image {
   margin: 0;
-  font: var(--type-title-sm);
-}
-
-.location-label-image {
-  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
 
 .location-label-image img,
 .location-label-failed {
   display: block;
   width: 100%;
-  max-height: 20rem;
-  min-height: 10rem;
+  max-height: 18rem;
+  min-height: 9rem;
   object-fit: contain;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface-container-low);
 }
 
 .location-label-failed {
@@ -9852,6 +9845,7 @@ a.erp-send-chips:focus-visible {
   place-content: center;
   justify-items: center;
   gap: var(--space-3);
+  color: var(--on-surface-variant);
 }
 
 .location-label-failed p {
@@ -9868,6 +9862,7 @@ a.erp-send-chips:focus-visible {
 .location-label-download {
   display: inline-flex;
   align-items: center;
+  gap: var(--space-2);
   min-height: 40px;
   padding-inline: var(--space-4);
   border: 1px solid var(--outline);
@@ -9879,6 +9874,69 @@ a.erp-send-chips:focus-visible {
 
 .location-label-download:hover {
   background: var(--surface-container-low);
+}
+
+/* 라벨 일괄 출력 창 — 흰 카드 격자, 카드 아래 코드 · 회차 · 내려받기 아이콘. */
+.location-label-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: var(--space-4);
+}
+
+.location-label-card {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.location-label-card img,
+.location-label-card .location-label-failed {
+  display: block;
+  width: 100%;
+  height: 9rem;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.location-label-card figcaption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.location-label-card-code {
+  overflow: hidden;
+  font: var(--type-label-lg);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-label-card-seq {
+  flex: none;
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+.location-label-card-download {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  border-radius: var(--radius-full);
+  color: var(--primary);
+}
+
+.location-label-card-download:hover {
+  background: var(--surface-container);
 }
 
 /*
@@ -25016,9 +25074,6 @@ table.col-measuring td {
 
 /* 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29) — 대상 랙 · 두 수 · 만들 위치 미리보기. */
 .rack-layout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
   min-width: 0;
 }
 
@@ -25026,55 +25081,69 @@ table.col-measuring td {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* 랙 추가의 층 · 셀 표 — 행이 층(위층이 위), 열이 셀. */
+/* 랙의 층 · 셀 표 — 행이 층(위층이 위), 열이 셀. 머리는 옅은 글자, 칸은 같은 크기. */
 .rack-layout-grid-wrap {
   max-height: 22rem;
   overflow: auto;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
 }
 
 .rack-layout-grid {
   border-collapse: separate;
-  border-spacing: var(--space-1);
-  font: var(--type-body-md);
+  border-spacing: 6px;
+  font: var(--type-label-lg);
 }
 
 .rack-layout-grid th {
   position: sticky;
   top: 0;
-  padding: var(--space-1) var(--space-2);
-  background: var(--surface);
+  z-index: 1;
+  padding: 0 var(--space-1);
+  background: var(--surface-container-low);
   color: var(--on-surface-variant);
-  font-weight: 500;
+  font: var(--type-label-sm);
   white-space: nowrap;
 }
 
 .rack-layout-grid tbody th {
   left: 0;
-  text-align: left;
+  padding-right: var(--space-2);
+  text-align: right;
 }
 
 .rack-layout-grid td {
-  min-width: 3rem;
-  padding: var(--space-1) var(--space-2);
+  width: 4.5rem;
+  min-width: 4.5rem;
+  height: 2.75rem;
+  padding: 0 var(--space-2);
   border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-sm);
-  background: var(--surface-container);
+  border-radius: var(--radius-md);
+  background: var(--surface);
   color: var(--on-surface);
   text-align: center;
   white-space: nowrap;
 }
 
+/* 새로 생길 칸 — 초록 점선, 앞에 + 표시. */
 .rack-layout-grid td.is-new {
-  border: 1px dashed var(--primary);
-  background: var(--primary-container);
+  border: 1.5px dashed var(--semantic-success);
+  background: var(--semantic-success-container);
+  color: var(--semantic-success-text);
+  font-weight: 600;
 }
 
+.rack-layout-grid td.is-new::before {
+  content: '+';
+  margin-right: 2px;
+}
+
+/* 지울 칸 — 붉은 바탕에 줄 긋기. */
 .rack-layout-grid td.is-removed {
-  border: 1px dashed var(--outline);
-  background: none;
-  color: var(--on-surface-variant);
+  border: 1px solid var(--semantic-error);
+  background: var(--semantic-error-container);
+  color: var(--semantic-error-text);
   text-decoration: line-through;
 }
 
@@ -25090,6 +25159,216 @@ table.col-measuring td {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* 위치 수정 · 추가 창 — 머리(단계 · 코드 · 별칭 · 상태) · 고칠 수 없는 값 판 · 제목 붙은 묶음(사용자 지시 2026-10-29). */
+.location-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.location-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.location-identity-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.location-identity-icon.is-zone {
+  color: var(--primary);
+}
+
+.location-identity-icon.is-rack {
+  color: var(--semantic-info);
+}
+
+.location-identity-icon.is-level {
+  color: var(--semantic-success);
+}
+
+.location-identity-icon.is-cell {
+  color: var(--semantic-warning);
+}
+
+.location-identity-icon.is-system,
+.location-identity-icon.is-none {
+  color: var(--on-surface-variant);
+}
+
+.location-identity-text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.location-identity-level {
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.location-identity-name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.location-identity-code {
+  font: var(--type-title-lg);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.location-identity-alias {
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font: var(--type-body-lg);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 고칠 수 없는 값 — 옅은 판 하나에 이름 · 값 두 열. */
+.location-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+.location-facts-row {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.location-facts dt {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+.location-facts dd {
+  display: grid;
+  margin: 0;
+  font: var(--type-body-md);
+}
+
+.location-facts output {
+  overflow-wrap: anywhere;
+}
+
+.location-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.location-section-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+}
+
+/* 창 바닥 — 지우기 · 끄기는 왼쪽에 모아 저장 · 취소와 떨어뜨린다. */
+.location-dialog-footer-start {
+  display: flex;
+  gap: var(--space-2);
+  margin-right: auto;
+}
+
+/* DS 외곽선 단추의 테두리는 box-shadow 다 — 같은 자리에 붉은 선을 둔다. */
+.location-danger-button:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+  color: var(--semantic-error-text);
+}
+
+/* 사용 중지 · 다시 사용은 지우기보다 낮게 — 무채색 글자 단추. */
+.location-state-button:not(:disabled) {
+  color: var(--on-surface-variant);
+}
+
+.location-danger-filled:not(:disabled) {
+  background: var(--semantic-error);
+  color: var(--on-primary);
+}
+
+/* 삭제 · 사용 중지 확인 — 둥근 바탕의 경고 아이콘 · 대상 코드 · 바뀌는 위치 수. */
+.location-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.location-confirm-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+}
+
+.location-confirm-icon.is-danger {
+  background: var(--semantic-error-container);
+  color: var(--semantic-error);
+}
+
+.location-confirm-icon.is-warning {
+  background: var(--semantic-warning-container);
+  color: var(--semantic-warning);
+}
+
+.location-confirm-icon.is-success {
+  background: var(--semantic-success-container);
+  color: var(--semantic-success);
+}
+
+.location-confirm-text {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  padding-top: var(--space-1);
+}
+
+.location-confirm-text p {
+  margin: 0;
+}
+
+.location-confirm-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font: var(--type-title-md);
+}
+
+.location-confirm-target strong {
+  font-weight: 700;
+}
+
+.location-confirm-alias {
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+}
+
+.location-confirm-line {
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
 }
 
 /* 위치 목록 — 코드 앞 단계 아이콘(사용자 지시 2026-10-29). 단계마다 색을 달리해 줄이 한눈에 갈린다. */
@@ -25117,4 +25396,37 @@ table.col-measuring td {
 .location-level-icon.is-system,
 .location-level-icon.is-none {
   color: var(--on-surface-variant);
+}
+
+/* 창고·Location 왼쪽 — 조회 조건을 목록 위에 좁게(사용자 지시 2026-10-29). 윗줄 검색 · 조회 · 창고 추가는 한 줄을 지킨다. */
+.warehouse-location-filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.warehouse-location-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.warehouse-location-filter-row:first-child {
+  flex-wrap: nowrap;
+}
+
+.warehouse-location-filter-row button {
+  flex: none;
+  white-space: nowrap;
+}
+
+.warehouse-location-filter-row:first-child > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.warehouse-location-filter-row:last-child > :nth-child(-n + 2) {
+  flex: 1 1 8rem;
+  min-width: 0;
 }

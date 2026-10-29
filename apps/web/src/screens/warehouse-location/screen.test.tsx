@@ -344,19 +344,25 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     ).toBe(true);
   });
 
-  it('초기화를 누르면 공장 조건도 함께 빠진다', async () => {
+  it('검색칸의 X 는 검색어만 비우고 공장 · 유형 조건은 그대로 다시 조회한다', async () => {
     const { requests, user } = renderScreen(
       [warehouseListRoute(), ...lookupRoutes()],
-      '?plant=12&type=MATERIAL',
+      '?q=WH&plant=12&type=MATERIAL',
     );
     await screen.findByRole('button', { name: 'WH-01' });
 
-    await user.click(screen.getAllByRole('button', { name: '초기화' })[0]!);
+    expect(screen.queryByRole('button', { name: '초기화' })).toBeNull();
+    await user.click(
+      within(
+        screen.getByRole('searchbox', { name: '창고 검색' }).closest('div')!.parentElement!,
+      ).getByRole('button', { name: '지우기' }),
+    );
 
     await waitFor(() => {
       const last = listRequests(requests).at(-1);
-      expect(last?.url.searchParams.has('plantId')).toBe(false);
-      expect(last?.url.searchParams.has('warehouseTypeCode')).toBe(false);
+      expect(last?.url.searchParams.has('q')).toBe(false);
+      expect(last?.url.searchParams.get('plantId')).toBe('12');
+      expect(last?.url.searchParams.get('warehouseTypeCode')).toBe('MATERIAL');
     });
   });
 
@@ -797,8 +803,11 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     await user.click(within(panel).getByRole('button', { name: '구역 추가' }));
 
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByLabelText('상위 위치')).toHaveTextContent('WH-01 · 1공장 자재창고');
-    expect(within(dialog).queryByRole('combobox', { name: '상위 위치' })).not.toBeInTheDocument();
+    // 구역의 상위는 창고다 — 같은 값을 두 번 보이지 않고 창고 한 줄만.
+    expect(within(dialog).getByLabelText('창고')).toHaveTextContent('WH-01 · 1공장 자재창고');
+    expect(within(dialog).queryByLabelText('상위 위치')).toBeNull();
+    // 머리에 만들 단계가 보인다.
+    expect(within(dialog).getByText('구역')).toBeInTheDocument();
     // 있는 구역(A-01 · B-01)은 모양이 달라 세지 않는다 — 서버처럼 Z 번호 가운데 가장 큰 것 + 1.
     expect(within(dialog).getByLabelText('위치 코드')).toHaveTextContent('Z01');
     expect(within(dialog).queryByRole('textbox', { name: '위치 코드' })).not.toBeInTheDocument();
@@ -1479,7 +1488,7 @@ const locationWriteRoutes = (...extra: StubRoute[]): StubRoute[] => [
 ];
 
 describe('WarehouseLocationScreen — Location 등록·수정', () => {
-  it('구역을 고칠 때 상위는 창고로 글자로 보인다', async () => {
+  it('구역을 고칠 때 상위는 창고 한 줄로 보인다', async () => {
     const { user } = renderScreen(
       locationWriteRoutes(locationDetailRoute(locationFixtures[0]!)),
       '?wh=1001',
@@ -1489,8 +1498,8 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     await user.click(within(panel).getByRole('button', { name: 'A-01' }));
     const dialog = screen.getByRole('dialog');
 
-    expect(within(dialog).queryByRole('combobox', { name: '상위 위치' })).not.toBeInTheDocument();
-    expect(within(dialog).getByLabelText('상위 위치')).toHaveTextContent('WH-01 · 1공장 자재창고');
+    expect(within(dialog).queryByLabelText('상위 위치')).toBeNull();
+    expect(within(dialog).getByLabelText('창고')).toHaveTextContent('WH-01 · 1공장 자재창고');
     expect(within(dialog).queryByText('없음 (최상위)')).not.toBeInTheDocument();
   });
 
@@ -1511,6 +1520,8 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     expect(within(dialog).queryByRole('combobox', { name: '상위 위치' })).toBeNull();
     // A-01-01 밑에 층 하나(A-01-01-01), 셀은 없다.
     expect(within(dialog).getByLabelText('행 (층 수)')).toHaveValue('1');
+    // 셀 없는 랙은 열이 0 에서 시작한다 — 지금 모양 그대로.
+    expect(within(dialog).getByLabelText('열 (층마다 셀 수)')).toHaveValue('0');
     await user.clear(within(dialog).getByLabelText('행 (층 수)'));
     await user.type(within(dialog).getByLabelText('행 (층 수)'), '0');
     expect(within(dialog).getByText('1부터 99까지 숫자로 입력하세요.')).toBeInTheDocument();
@@ -1523,13 +1534,9 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     const posts = requests.filter(
       (request) => request.method === 'POST' && request.url.pathname === '/mdm/locations',
     );
-    // 새 층 하나 · 두 층의 셀 하나씩(셀 수 1).
-    expect(posts.map((post) => JSON.parse(post.body ?? '{}').locationLevelCode)).toEqual([
-      'CELL',
-      'LEVEL',
-      'CELL',
-    ]);
-    expect(JSON.parse(posts[1]?.body ?? '{}')).toMatchObject({ parentLocationId: 2002 });
+    // 새 층 하나만(셀 0).
+    expect(posts.map((post) => JSON.parse(post.body ?? '{}').locationLevelCode)).toEqual(['LEVEL']);
+    expect(JSON.parse(posts[0]?.body ?? '{}')).toMatchObject({ parentLocationId: 2002 });
     // 별칭을 고치지 않았으니 PUT 은 없다.
     expect(requests.some((request) => request.method === 'PUT')).toBe(false);
   });
@@ -1566,6 +1573,9 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     await user.click(within(form).getByRole('button', { name: '삭제' }));
 
     const confirm = screen.getByRole('dialog', { name: '위치 삭제' });
+    // 대상 코드와 함께 지워질 위치 수(A-01 · 그 밑의 둘).
+    expect(within(confirm).getByText('A-01')).toBeInTheDocument();
+    expect(within(confirm).getByText('위치 3개가 함께 삭제됩니다.')).toBeInTheDocument();
     await user.click(within(confirm).getByRole('button', { name: '삭제' }));
     expect(await within(confirm).findByText('쓰인 위치라 지울 수 없습니다.')).toBeInTheDocument();
 
@@ -1712,7 +1722,11 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     await user.click(within(panel).getByRole('button', { name: 'A-01-01' }));
 
     const dialog = screen.getByRole('dialog');
-    await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
+    await waitFor(() =>
+      expect(requests.some((request) => request.url.pathname === '/mdm/locations/2002')).toBe(true),
+    );
+    // 바꾼 것이 없으면 저장할 것도 없다.
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
     expect(within(dialog).getByLabelText('위치 코드')).toHaveTextContent('A-01-01');
     expect(within(dialog).queryByRole('textbox', { name: '위치 코드' })).not.toBeInTheDocument();
     expect(within(dialog).queryByText('MES가 자동으로 발행합니다.')).not.toBeInTheDocument();
@@ -1827,7 +1841,9 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     const { requests, user } = renderScreen(locationWriteRoutes(), '?wh=1001');
     const panel = await openLocationTab(user);
 
-    await user.type(within(panel).getByLabelText('Location 검색'), 'B-01');
+    await user.type(within(panel).getByRole('searchbox', { name: 'Location 검색' }), 'B-01');
+    // 칸 제목은 보이지 않는다 — 접근명으로만 둔다(사용자 지시 2026-10-29).
+    expect(within(panel).queryByText('Location 검색')).not.toBeInTheDocument();
 
     await waitFor(() => {
       const last = requests.filter((request) => request.url.pathname === '/mdm/locations').at(-1);
@@ -1868,25 +1884,26 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
 
   it('위치를 누르면 창 안에 마지막 회차의 라벨 그림과 내려받기 · 재발행이 보인다', async () => {
     const { requests, user } = renderScreen(
-      locationWriteRoutes(locationDetailRoute(locationFixtures[0]!), {
+      locationWriteRoutes(locationDetailRoute(locationFixtures[3]!), {
         match: isLabelList,
-        respond: () => jsonResponse(listBody([labelIssue(7001, 1), labelIssue(7002, 2)])),
+        respond: () =>
+          jsonResponse(listBody([labelIssue(7001, 1, 2004), labelIssue(7002, 2, 2004)])),
       }),
       '?wh=1001',
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: 'A-01' }));
+    await user.click(within(panel).getByRole('button', { name: 'B-01' }));
     const dialog = screen.getByRole('dialog');
 
-    const image = await within(dialog).findByRole('img', { name: 'A-01 라벨 2회차' });
+    const image = await within(dialog).findByRole('img', { name: 'B-01 라벨 2회차' });
     expect(image).toHaveAttribute(
       'src',
       'http://api.test/app/document-issues/7002/rendition?format=png',
     );
     expect(within(dialog).getByRole('link', { name: '이미지 내려받기' })).toHaveAttribute(
       'download',
-      'A-01.png',
+      'B-01.png',
     );
     expect(within(dialog).getByRole('button', { name: '재발행' })).toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: '라벨 발행' })).not.toBeInTheDocument();
@@ -1895,41 +1912,41 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     expect(Object.fromEntries(list?.url.searchParams ?? [])).toMatchObject({
       documentTypeCode: 'LOCATION_LABEL',
       targetTypeCode: 'LOCATION',
-      targetId: '2001',
+      targetId: '2004',
     });
   });
 
   it('그림을 받지 못하면 실패를 알리고 다시 시도할 수 있다', async () => {
     const { user } = renderScreen(
-      locationWriteRoutes(locationDetailRoute(locationFixtures[0]!), {
+      locationWriteRoutes(locationDetailRoute(locationFixtures[3]!), {
         match: isLabelList,
-        respond: () => jsonResponse(listBody([labelIssue(7001, 1)])),
+        respond: () => jsonResponse(listBody([labelIssue(7001, 1, 2004)])),
       }),
       '?wh=1001',
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: 'A-01' }));
+    await user.click(within(panel).getByRole('button', { name: 'B-01' }));
     const dialog = screen.getByRole('dialog');
 
-    fireEvent.error(await within(dialog).findByRole('img', { name: 'A-01 라벨 1회차' }));
+    fireEvent.error(await within(dialog).findByRole('img', { name: 'B-01 라벨 1회차' }));
     expect(within(dialog).getByText('라벨 이미지를 불러오지 못했습니다.')).toBeInTheDocument();
 
     await user.click(within(dialog).getByRole('button', { name: '다시 시도' }));
-    expect(within(dialog).getByRole('img', { name: 'A-01 라벨 1회차' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('img', { name: 'B-01 라벨 1회차' })).toBeInTheDocument();
   });
 
   it('발행한 적이 없으면 라벨 발행 단추만 있고, 누르면 사유 없이 발행해 그림을 보인다', async () => {
     let issued: unknown[] = [];
     const { requests, user } = renderScreen(
       locationWriteRoutes(
-        locationDetailRoute(locationFixtures[0]!),
+        locationDetailRoute(locationFixtures[3]!),
         { match: isLabelList, respond: () => jsonResponse(listBody(issued)) },
         {
           match: (request) =>
             request.method === 'POST' && new URL(request.url).pathname === '/app/document-issues',
           respond: () => {
-            issued = [labelIssue(7001, 1)];
+            issued = [labelIssue(7001, 1, 2004)];
             return jsonResponse({ items: issued, issuedCount: 1 }, { status: 201 });
           },
         },
@@ -1938,12 +1955,12 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: 'A-01' }));
+    await user.click(within(panel).getByRole('button', { name: 'B-01' }));
     const dialog = screen.getByRole('dialog');
 
     await user.click(await within(dialog).findByRole('button', { name: '라벨 발행' }));
 
-    expect(await within(dialog).findByRole('img', { name: 'A-01 라벨 1회차' })).toHaveAttribute(
+    expect(await within(dialog).findByRole('img', { name: 'B-01 라벨 1회차' })).toHaveAttribute(
       'src',
       'http://api.test/app/document-issues/7001/rendition?format=png',
     );
@@ -1953,21 +1970,21 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     expect(post?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
     expect(JSON.parse(post?.body ?? '{}')).toEqual({
       documentTypeCode: 'LOCATION_LABEL',
-      targets: [{ targetTypeCode: 'LOCATION', targetId: 2001 }],
+      targets: [{ targetTypeCode: 'LOCATION', targetId: 2004 }],
     });
   });
 
   it('재발행은 사유를 받은 뒤 새 회차를 요청하고 그 그림으로 바꾼다', async () => {
-    let issued: unknown[] = [labelIssue(7001, 1)];
+    let issued: unknown[] = [labelIssue(7001, 1, 2004)];
     const { requests, user } = renderScreen(
       locationWriteRoutes(
-        locationDetailRoute(locationFixtures[0]!),
+        locationDetailRoute(locationFixtures[3]!),
         { match: isLabelList, respond: () => jsonResponse(listBody(issued)) },
         {
           match: (request) =>
             request.method === 'POST' && new URL(request.url).pathname === '/app/document-issues',
           respond: () => {
-            issued = [labelIssue(7001, 1), labelIssue(7002, 2)];
+            issued = [labelIssue(7001, 1, 2004), labelIssue(7002, 2, 2004)];
             return jsonResponse({ items: [issued[1]], issuedCount: 1 }, { status: 201 });
           },
         },
@@ -1976,7 +1993,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: 'A-01' }));
+    await user.click(within(panel).getByRole('button', { name: 'B-01' }));
     const dialog = screen.getByRole('dialog');
 
     await user.click(await within(dialog).findByRole('button', { name: '재발행' }));
@@ -1987,19 +2004,19 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     await user.click(screen.getByRole('option', { name: '라벨 훼손' }));
     await user.click(within(reason).getByRole('button', { name: '재발행' }));
 
-    expect(await within(dialog).findByRole('img', { name: 'A-01 라벨 2회차' })).toBeInTheDocument();
+    expect(await within(dialog).findByRole('img', { name: 'B-01 라벨 2회차' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: '라벨 재발행' })).not.toBeInTheDocument();
     const post = requests.find(
       (request) => request.method === 'POST' && request.url.pathname === '/app/document-issues',
     );
     expect(JSON.parse(post?.body ?? '{}')).toMatchObject({
-      targets: [{ targetTypeCode: 'LOCATION', targetId: 2001 }],
+      targets: [{ targetTypeCode: 'LOCATION', targetId: 2004 }],
       reissueReasonCode: 'DAMAGED',
     });
   });
 
-  it('랙을 눌러 연 랙 수정 창에도 그 랙의 라벨이 보인다', async () => {
-    const { user } = renderScreen(
+  it('하위가 있는 위치(랙 · 구역)는 라벨 칸이 없다 — 라벨은 맨 아래 위치에만', async () => {
+    const { requests, user } = renderScreen(
       locationWriteRoutes(locationDetailRoute(), {
         match: isLabelList,
         respond: () => jsonResponse(listBody([labelIssue(7005, 1, 2002)])),
@@ -2010,11 +2027,11 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     const panel = await openLocationTab(user);
     await user.click(within(panel).getByRole('button', { name: 'A-01-01' }));
     const dialog = screen.getByRole('dialog', { name: '랙 수정' });
+    await waitFor(() => expect(within(dialog).getByLabelText('행 (층 수)')).toBeInTheDocument());
 
-    expect(await within(dialog).findByRole('img', { name: 'A-01-01 라벨 1회차' })).toHaveAttribute(
-      'src',
-      'http://api.test/app/document-issues/7005/rendition?format=png',
-    );
+    expect(within(dialog).queryByRole('button', { name: '라벨 발행' })).toBeNull();
+    expect(within(dialog).queryByRole('img')).toBeNull();
+    expect(requests.some((request) => request.url.pathname === '/app/document-issues')).toBe(false);
   });
 });
 
@@ -2214,5 +2231,228 @@ describe('WarehouseLocationScreen — 예시 데이터 제거', () => {
     await screen.findByRole('button', { name: 'WH-01' });
 
     expect(screen.queryByText(/다른 사용자가 먼저 저장했습니다/)).not.toBeInTheDocument();
+  });
+});
+
+/** 표의 한 행의 확인칸 — 행은 코드 단추로 찾는다. */
+const rowCheckbox = (panel: HTMLElement, code: string): HTMLElement =>
+  within(within(panel).getByRole('button', { name: code }).closest('tr')!).getByRole('checkbox');
+
+describe('WarehouseLocationScreen — 사용 중지 · 삭제는 구역 · 랙 단위', () => {
+  it('층을 고칠 때는 사용 중지 단추가 없다', async () => {
+    const { user } = renderScreen(
+      locationWriteRoutes(locationDetailRoute(locationFixtures[2]!)),
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: '하위 펼치기' }));
+    await user.click(within(panel).getByRole('button', { name: 'A-01-01-01' }));
+    const dialog = screen.getByRole('dialog', { name: 'Location 수정' });
+    await waitFor(() => expect(within(dialog).getByLabelText('별칭')).toBeEnabled());
+
+    expect(within(dialog).queryByRole('button', { name: '사용 중지' })).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: '다시 사용' })).toBeNull();
+    // 삭제도 구역 · 랙 단위 — 층에는 없다.
+    expect(within(dialog).queryByRole('button', { name: '삭제' })).toBeNull();
+  });
+
+  it('구역을 고칠 때는 사용 중지 · 삭제가 있다', async () => {
+    const { user } = renderScreen(
+      locationWriteRoutes(locationDetailRoute(locationFixtures[0]!)),
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: 'A-01' }));
+    const dialog = screen.getByRole('dialog', { name: 'Location 수정' });
+
+    expect(await within(dialog).findByRole('button', { name: '삭제' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '사용 중지' })).toBeInTheDocument();
+  });
+
+  it('랙 창에서 사용 중지하면 확인 뒤 그 랙에 :deactivate 를 상세 ETag 와 보낸다', async () => {
+    const { requests, user } = renderScreen(
+      locationWriteRoutes(locationDetailRoute(), {
+        match: (request) =>
+          request.method === 'POST' &&
+          new URL(request.url).pathname === '/mdm/locations/2002:deactivate',
+        respond: () => jsonResponse({ ...locationFixtures[1]!, isActive: false }),
+      }),
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: 'A-01-01' }));
+    const dialog = screen.getByRole('dialog', { name: '랙 수정' });
+    expect(within(dialog).getByRole('button', { name: '삭제' })).toBeInTheDocument();
+    const toggle = within(dialog).getByRole('button', { name: '사용 중지' });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    await user.click(toggle);
+
+    // 확인 전에는 나가지 않는다.
+    expect(requests.some((request) => request.url.pathname.endsWith(':deactivate'))).toBe(false);
+    const confirm = screen.getByRole('dialog', { name: '사용 중지할까요?' });
+    expect(within(confirm).getByText('A-01-01')).toBeInTheDocument();
+    expect(within(confirm).getByText('위치 2개가 함께 사용 중지됩니다.')).toBeInTheDocument();
+    await user.click(within(confirm).getByRole('button', { name: '사용 중지' }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    const post = requests.find(
+      (request) => request.url.pathname === '/mdm/locations/2002:deactivate',
+    );
+    expect(post?.headers.get('If-Match')).toBe('"5"');
+    expect(screen.queryByRole('dialog', { name: '랙 수정' })).not.toBeInTheDocument();
+  });
+});
+
+describe('WarehouseLocationScreen — 목록 단추', () => {
+  it('무엇이든 고르면 구역 추가를 막는다', async () => {
+    const { user } = renderScreen(locationWriteRoutes(), '?wh=1001');
+
+    const panel = await openLocationTab(user);
+    const addZone = within(panel).getByRole('button', { name: '구역 추가' });
+    await waitFor(() => expect(addZone).toBeEnabled());
+
+    await user.click(rowCheckbox(panel, 'B-01'));
+    expect(addZone).toBeDisabled();
+
+    await user.click(rowCheckbox(panel, 'B-01'));
+    expect(addZone).toBeEnabled();
+  });
+
+  it('전체 펼치기는 모든 하위를, 전체 접기는 구역만 남긴다', async () => {
+    const { user } = renderScreen(locationWriteRoutes(), '?wh=1001');
+
+    const panel = await openLocationTab(user);
+    // 처음에는 구역이 펼쳐 있어 접기다.
+    await user.click(within(panel).getByRole('button', { name: '전체 접기' }));
+    expect(within(panel).queryByRole('button', { name: 'A-01-01' })).not.toBeInTheDocument();
+
+    await user.click(within(panel).getByRole('button', { name: '전체 펼치기' }));
+    expect(within(panel).getByRole('button', { name: 'A-01-01-01' })).toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: '전체 접기' })).toBeInTheDocument();
+  });
+});
+
+describe('WarehouseLocationScreen — 라벨 일괄 출력', () => {
+  /* A-01-01-01 층 밑에 셀 셋 — 하나는 꺼져 있다. */
+  const cell = (locationId: number, code: string, isActive = true): Location => ({
+    ...locationFixtures[2]!,
+    locationId,
+    parentLocationId: 2003,
+    locationCode: code,
+    isActive,
+  });
+  const withCells = [
+    ...locationFixtures,
+    cell(2010, 'A-01-01-01-01'),
+    cell(2011, 'A-01-01-01-02'),
+    cell(2012, 'A-01-01-01-03', false),
+  ];
+
+  /* 쿼리는 `targetIds=1,2` 로도, 되풀이로도 실릴 수 있다 — 둘 다 받는다. */
+  const summaryTargetIds = (url: URL): number[] =>
+    url.searchParams
+      .getAll('targetIds')
+      .flatMap((value) => value.split(','))
+      .map(Number);
+
+  const isSummary = (request: Request): boolean => isGet(request, '/app/document-issues/summary');
+  const isIssue = (request: Request): boolean =>
+    request.method === 'POST' && new URL(request.url).pathname === '/app/document-issues';
+
+  const labelRoutes = (issuedIds: number[]): StubRoute[] => [
+    warehouseListRoute(),
+    warehouseDetailRoute(),
+    locationListRoute(withCells),
+    ...lookupRoutes(),
+    {
+      match: isSummary,
+      respond: (request) =>
+        jsonResponse({
+          items: summaryTargetIds(new URL(request.url)).map((id) => ({
+            targetTypeCode: 'LOCATION',
+            targetId: Number(id),
+            issueCount: issuedIds.includes(Number(id)) ? 1 : 0,
+          })),
+        }),
+    },
+    {
+      match: isIssue,
+      respond: async (request) => {
+        const body = (await request.clone().json()) as { targets: { targetId: number }[] };
+        const items = body.targets.map((target, index) =>
+          labelIssue(7100 + index, 1, target.targetId),
+        );
+        return jsonResponse({ items, issuedCount: items.length }, { status: 201 });
+      },
+    },
+    noLabelRoute,
+  ];
+
+  it('고른 것이 없으면 막혀 있다', async () => {
+    const { user } = renderScreen(labelRoutes([]), '?wh=1001');
+
+    const panel = await openLocationTab(user);
+    expect(within(panel).getByRole('button', { name: '라벨 일괄 출력' })).toBeDisabled();
+  });
+
+  it('랙을 고르면 그 밑의 켜진 셀을 모아 발행하고 그림과 인쇄 단추를 보인다', async () => {
+    const { requests, user } = renderScreen(labelRoutes([]), '?wh=1001');
+
+    const panel = await openLocationTab(user);
+    await user.click(rowCheckbox(panel, 'A-01-01'));
+    await user.click(rowCheckbox(panel, 'B-01'));
+    const print = within(panel).getByRole('button', { name: '라벨 일괄 출력' });
+    await waitFor(() => expect(print).toBeEnabled());
+    await user.click(print);
+
+    const preview = await screen.findByRole('dialog', { name: '라벨 출력' });
+    expect(within(preview).getByRole('img', { name: 'A-01-01-01-01 라벨 1회차' })).toHaveAttribute(
+      'src',
+      'http://api.test/app/document-issues/7100/rendition?format=png',
+    );
+    expect(within(preview).getAllByRole('img')).toHaveLength(3);
+    expect(within(preview).getAllByRole('link', { name: '이미지 내려받기' })).toHaveLength(3);
+    expect(within(preview).getByRole('button', { name: '인쇄' })).toBeEnabled();
+
+    const summary = requests.find((request) => request.url.pathname.endsWith('/summary'));
+    expect(summaryTargetIds(summary!.url).sort()).toEqual([2004, 2010, 2011]);
+    const post = requests.find((request) => request.method === 'POST');
+    const body = JSON.parse(post?.body ?? '{}') as {
+      documentTypeCode: string;
+      targets: { targetTypeCode: string; targetId: number }[];
+      reissueReasonCode?: string;
+    };
+    expect(body.documentTypeCode).toBe('LOCATION_LABEL');
+    // 꺼진 셀(2012) · 하위가 있는 랙 · 층은 빠진다.
+    expect(body.targets.map((target) => target.targetId).sort()).toEqual([2004, 2010, 2011]);
+    expect(body.targets.every((target) => target.targetTypeCode === 'LOCATION')).toBe(true);
+    expect(body.reissueReasonCode).toBeUndefined();
+  });
+
+  it('이미 낸 것이 섞이면 건수를 알리고 사유를 받아 모두 다시 발행한다', async () => {
+    const { requests, user } = renderScreen(labelRoutes([2010]), '?wh=1001');
+
+    const panel = await openLocationTab(user);
+    await user.click(rowCheckbox(panel, 'A-01-01'));
+    const print = within(panel).getByRole('button', { name: '라벨 일괄 출력' });
+    await waitFor(() => expect(print).toBeEnabled());
+    await user.click(print);
+
+    const reason = await screen.findByRole('dialog', { name: '라벨 재발행' });
+    expect(within(reason).getByText('1건은 이미 발행했습니다.')).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'POST')).toBe(false);
+    await user.click(within(reason).getByRole('combobox', { name: '재발행 사유' }));
+    await user.click(screen.getByRole('option', { name: '라벨 훼손' }));
+    await user.click(within(reason).getByRole('button', { name: '재발행' }));
+
+    expect(await screen.findByRole('dialog', { name: '라벨 출력' })).toBeInTheDocument();
+    const post = requests.find((request) => request.method === 'POST');
+    expect(JSON.parse(post?.body ?? '{}')).toMatchObject({ reissueReasonCode: 'DAMAGED' });
+    expect(
+      (JSON.parse(post?.body ?? '{}') as { targets: { targetId: number }[] }).targets.length,
+    ).toBe(2);
   });
 });

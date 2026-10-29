@@ -12,9 +12,8 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import { BoardTable } from '../../patterns/board-table';
-import type { LocationLevelCode } from '../../patterns/location-level';
 import { OneLine } from '../../patterns/po-board';
-import { isPutawayStaging, isSystemLocation } from '../../patterns/system-location';
+import { levelIconOf } from './location-identity';
 import type { LocationTreeRow } from './location-tree';
 import { locationShownName } from './mappers';
 import type { Location } from './types';
@@ -25,6 +24,9 @@ export interface LocationPaneProps {
   isLoading: boolean;
   expandedIds: ReadonlySet<number>;
   onToggleExpand: (locationId: number) => void;
+  /** 전체 접기(구역만 남는다) · 전체 펼치기(사용자 지시 2026-10-29). */
+  onCollapseAll: () => void;
+  onExpandAll: () => void;
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
   /** 서버 조회에 전달할 검색어 */
@@ -36,6 +38,10 @@ export interface LocationPaneProps {
   /** 구역 하나를 골랐을 때만 — 그 구역 밑에 랙을 층 · 셀과 함께 단다. */
   canAddChild: boolean;
   onAddChild: () => void;
+  /** 고른 위치(랙이면 그 밑의 셀까지)에 낼 라벨이 있을 때만. */
+  canPrintLabels: boolean;
+  isPrintingLabels: boolean;
+  onPrintLabels: () => void;
   onEdit: (location: Location) => void;
   actionBanner: ReactNode;
   /**
@@ -47,26 +53,6 @@ export interface LocationPaneProps {
 
 const t = messages.warehouseLocation;
 
-/**
- * 단계마다 다른 모양 · 색의 아이콘(사용자 지시 2026-10-29) — 줄마다 어느 단계인지 한눈에 갈리게. 서버가 만든 자리는
- * 단계가 구역이어도 따로 둔다(창고 전체 · 적치 대기).
- */
-const LEVEL_ICONS: Record<LocationLevelCode, string> = {
-  ZONE: 'grid_view',
-  RACK: 'shelves',
-  LEVEL: 'layers',
-  CELL: 'crop_square',
-};
-
-const levelIconOf = (location: Location): { name: string; tone: string } => {
-  if (isPutawayStaging(location)) return { name: 'move_to_inbox', tone: 'system' };
-  if (isSystemLocation(location)) return { name: 'warehouse', tone: 'system' };
-  const level = location.locationLevelCode ?? null;
-  return level === null
-    ? { name: 'place', tone: 'none' }
-    : { name: LEVEL_ICONS[level], tone: level.toLowerCase() };
-};
-
 /** 들여쓰기 한 단계의 픽셀 폭. depth에 곱해 쓴다. */
 const INDENT_PX = 20;
 
@@ -75,6 +61,8 @@ export const LocationPane = ({
   isLoading,
   expandedIds,
   onToggleExpand,
+  onCollapseAll,
+  onExpandAll,
   selectedIds,
   onSelectionChange,
   filterText,
@@ -84,11 +72,19 @@ export const LocationPane = ({
   onAddRoot,
   canAddChild,
   onAddChild,
+  canPrintLabels,
+  isPrintingLabels,
+  onPrintLabels,
   onEdit,
   actionBanner,
   loadError,
 }: LocationPaneProps) => {
   const addRootNoteId = useId();
+  /* 하나라도 펼쳐 있으면 접기, 다 접혀 있으면 펼치기. */
+  const anyExpanded = rows.some(
+    (row) => row.hasChildren && expandedIds.has(row.location.locationId),
+  );
+  const toggleAllLabel = anyExpanded ? t.locationTable.collapseAll : t.locationTable.expandAll;
 
   /**
    * DS에 Tree 컴포넌트가 없어 Table + 들여쓰기 + 접기 버튼의 조합으로 계층을 만든다.
@@ -97,7 +93,20 @@ export const LocationPane = ({
   const columns: Column<LocationTreeRow>[] = [
     {
       key: 'locationCode',
-      header: t.fields.locationCode,
+      /* 전체 접기 · 펼치기는 머리의 펼치기 단추 자리에(사용자 지시 2026-10-29) — 행의 펼치기 단추와 한 줄로 선다. */
+      header: (
+        <span className="tree-toggle-header">
+          <IconButton
+            size="sm"
+            icon={anyExpanded ? 'unfold_less' : 'unfold_more'}
+            aria-label={toggleAllLabel}
+            title={toggleAllLabel}
+            disabled={!rows.some((row) => row.hasChildren)}
+            onClick={anyExpanded ? onCollapseAll : onExpandAll}
+          />
+          {t.fields.locationCode}
+        </span>
+      ),
       width: '380px',
       /*
        * 위치 코드만 머리·값 왼쪽(사용자 결정 2026-09-18 · omf-all-around#17) — 가운데로 두면 행마다 따로
@@ -221,25 +230,24 @@ export const LocationPane = ({
     <section aria-label={t.tabs.location}>
       {actionBanner}
       {/*
-       * 역할별로 묶는다(omf-all-around#17) — 검색(왼쪽) · 등록(오른쪽 끝). 라벨은 위치를 눌러 연 창에서 본다
-       * (사용자 지시 2026-10-29) — 고르기는 랙 추가에서 구역 하나를 고를 때만 쓴다.
-       * 구역 추가의 비활성 사유만 묶음 바로 아래 도움말로 붙인다. 하위 추가는 사유 없이 비활성만 둔다
-       * (사용자 지시 2026-09-18) — 활성 조건은 그대로다.
+       * 역할별로 묶는다(omf-all-around#17) — 검색(왼쪽) · 등록 · 출력(오른쪽 끝). 검색은 칸 제목 없이 접근명만
+       * (사용자 지시 2026-10-29). 고르기는 랙 추가(구역 하나)와 라벨 일괄 출력에 쓰고, 무엇이든 고른 동안 구역 추가는
+       * 막는다(사용자 지시 2026-10-29). 구역 추가의 비활성 사유는 계층을 못 불렀을 때만 묶음 아래에 붙인다.
        */}
       <div className="filter-bar warehouse-location-location-toolbar">
         <SearchInput
-          label={t.filters.locationSearchLabel}
+          aria-label={t.filters.locationSearchLabel}
           placeholder={t.filters.locationSearchPlaceholder}
           value={filterText}
           onChange={(event) => onFilterTextChange(event.target.value)}
           onClear={() => onFilterTextChange('')}
           clearLabel={messages.common.clear}
         />
-        <div className="field-cell-unlabeled warehouse-location-location-create">
+        <div className="warehouse-location-location-create">
           <div className="filter-actions">
             <Button
               variant="outlined"
-              disabled={!canAddRoot}
+              disabled={!canAddRoot || selectedIds.length > 0}
               aria-describedby={canAddRoot ? undefined : addRootNoteId}
               onClick={onAddRoot}
             >
@@ -247,6 +255,14 @@ export const LocationPane = ({
             </Button>
             <Button variant="outlined" disabled={!canAddChild} onClick={onAddChild}>
               {t.actions.addRack}
+            </Button>
+            <Button
+              variant="outlined"
+              disabled={!canPrintLabels || isPrintingLabels}
+              loading={isPrintingLabels}
+              onClick={onPrintLabels}
+            >
+              {t.actions.printLabels}
             </Button>
           </div>
           {!canAddRoot && (

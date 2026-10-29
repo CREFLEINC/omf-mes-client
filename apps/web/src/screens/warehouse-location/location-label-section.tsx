@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Skeleton, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, Icon, Skeleton, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
@@ -91,7 +91,8 @@ export const LocationLabelSection = ({
       return (
         <div className="location-label-actions">
           <Button
-            variant="outlined"
+            variant="tonal"
+            leadingIcon={<Icon name="print" size={18} />}
             loading={issueWrite.isSaving}
             disabled={issueWrite.isSaving}
             onClick={() => issue()}
@@ -133,10 +134,12 @@ export const LocationLabelSection = ({
         </figure>
         <div className="location-label-actions">
           <a className="location-label-download" href={src} download={`${locationCode}.png`}>
+            <Icon name="download" size={18} />
             {t.download}
           </a>
           <Button
             variant="outlined"
+            leadingIcon={<Icon name="refresh" size={18} />}
             onClick={() => {
               issueWrite.reset();
               setReasonCode('');
@@ -151,8 +154,8 @@ export const LocationLabelSection = ({
   };
 
   return (
-    <section className="location-label-section" aria-label={t.title}>
-      <h3 className="location-label-title">{t.title}</h3>
+    <section className="location-section location-label-section" aria-label={t.title}>
+      <h3 className="location-section-title">{t.title}</h3>
       {!reissueOpen && <SaveErrorBanner error={issueWrite.error} />}
       {body()}
 

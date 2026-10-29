@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Dialog, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon, useToast } from '@crefle/web-ui';
 import { createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, toApiError } from '../../patterns/request';
+import { ConfirmTarget } from './location-identity';
 import { locationKeys } from './queries';
 import type { Location } from './types';
 
@@ -14,6 +15,8 @@ const t = messages.warehouseLocation.deleteLocation;
 export interface LocationDeleteDialogProps {
   /** 지울 위치. null 이면 닫힌다. */
   target: Location | null;
+  /** 함께 지워질 위치 수 — 그 위치와 밑의 위치 전부. */
+  count: number;
   onClose: () => void;
   /** 지운 뒤 — 화면이 열린 수정 창을 닫는다. */
   onDeleted: () => void;
@@ -39,7 +42,12 @@ const failureReason = (error: unknown): string => {
  * 위치 삭제 확인(서버 위치 ③b) — 그 위치와 밑의 위치를 함께 지운다. 하나라도 어디서 쓰였으면 서버가 거절하고
  * 아무것도 지우지 않는다 — 그때는 사용 중지를 쓴다. 스크림 클릭으로 닫히지 않는다.
  */
-export const LocationDeleteDialog = ({ target, onClose, onDeleted }: LocationDeleteDialogProps) => {
+export const LocationDeleteDialog = ({
+  target,
+  count,
+  onClose,
+  onDeleted,
+}: LocationDeleteDialogProps) => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -88,14 +96,22 @@ export const LocationDeleteDialog = ({ target, onClose, onDeleted }: LocationDel
           <Button variant="outlined" disabled={saving} onClick={close}>
             {messages.common.cancel}
           </Button>
-          <Button loading={saving} disabled={saving} onClick={() => void confirm()}>
+          <Button
+            className="location-danger-filled"
+            leadingIcon={<Icon name="delete" size={18} />}
+            loading={saving}
+            disabled={saving}
+            onClick={() => void confirm()}
+          >
             {t.confirm}
           </Button>
         </>
       }
     >
       {failure !== null && <AlertBanner variant="error" title={failure} />}
-      {target !== null && <p>{t.description(target.locationCode)}</p>}
+      {target !== null && (
+        <ConfirmTarget tone="danger" icon="warning" target={target} line={t.count(count)} />
+      )}
     </Dialog>
   );
 };
