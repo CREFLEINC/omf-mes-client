@@ -20,7 +20,7 @@ export const defectCauseCode = {
   },
   actions: {
     addCategory: '대분류 추가',
-    addChild: '상세 추가',
+    addChild: '하위 코드 추가',
   },
   actionReasons: {
     addChildNeedsCategory: '상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.',
@@ -97,11 +97,11 @@ export const defectCauseCode = {
   },
   /** 표 머리 문구(사용자 지시 2026-10-29 · #209). 폼 · 상세 이름표는 `fields` 를 그대로 쓴다. */
   listColumns: {
-    defectCode: '불량 코드',
+    defectCode: '불량코드',
     defectName: '불량명',
     causeCode: '코드',
     causeName: '명칭',
-    kind: '코드 구분',
+    kind: '구분',
     isActive: '사용 여부',
   },
   /** 상세 카드(omf-all-around#209) — 제목 · 상태 칩 · 이름표 상자, 수정은 창에서. */

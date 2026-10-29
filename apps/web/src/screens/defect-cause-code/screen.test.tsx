@@ -493,7 +493,7 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     renderScreen([defectListRoute(activeDefectFixtures)]);
     await screen.findByRole('button', { name: 'DF-10' });
 
-    expect(screen.queryByRole('button', { name: '상세 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '하위 코드 추가' })).not.toBeInTheDocument();
     expect(
       screen.queryByText('상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.'),
     ).not.toBeInTheDocument();
@@ -510,7 +510,7 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     );
     await screen.findByRole('button', { name: '수정' });
 
-    expect(screen.queryByRole('button', { name: '상세 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '하위 코드 추가' })).not.toBeInTheDocument();
   });
 
   it('대분류 추가 창이 열려 있어도 뒤의 상세 카드는 고른 코드를 그대로 보이고, 상위는 비어 있다(#209 버그 수정)', async () => {
@@ -535,14 +535,14 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
       [defectOptionsRoute(), defectListRoute(activeDefectFixtures), defectDetailRoute()],
       '?sel=1001',
     );
-    await user.click(await screen.findByRole('button', { name: '상세 추가' }));
+    await user.click(await screen.findByRole('button', { name: '하위 코드 추가' }));
     await screen.findByRole('dialog', { name: '상세 불량코드 추가' });
 
     const card = screen.getByRole('region', { name: '불량코드 상세' });
     expect(within(card).getByText('DF-10')).toBeInTheDocument();
     // 뒤 카드의 상세 추가 단추도 사라지지 않는다(#209 버그 수정).
     expect(
-      within(card).getByRole('button', { name: '상세 추가', hidden: true }),
+      within(card).getByRole('button', { name: '하위 코드 추가', hidden: true }),
     ).toBeInTheDocument();
     expect(screen.queryByText('코드를 선택하세요')).not.toBeInTheDocument();
   });
@@ -554,7 +554,7 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     );
     await screen.findByRole('button', { name: 'DF-10' });
 
-    await user.click(screen.getByRole('button', { name: '상세 추가' }));
+    await user.click(screen.getByRole('button', { name: '하위 코드 추가' }));
 
     const parent = await screen.findByRole('combobox', { name: '상위 대분류' });
     await waitFor(() => {

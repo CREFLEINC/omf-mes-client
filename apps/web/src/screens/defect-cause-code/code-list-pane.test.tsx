@@ -201,10 +201,10 @@ describe('CodeListPane — 표에 싣는 값 (#209)', () => {
 });
 
 describe('CodeListPane — 표 머리 문구 (#209)', () => {
-  it('불량코드 표는 불량 코드 · 불량명 · 코드 구분 · 사용 여부로 적는다', () => {
+  it('불량코드 표는 불량코드 · 불량명 · 구분 · 사용 여부로 적는다', () => {
     renderPane();
 
-    for (const header of ['불량 코드', '불량명', '코드 구분', '사용 여부']) {
+    for (const header of ['불량코드', '불량명', '구분', '사용 여부']) {
       expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument();
     }
   });
@@ -221,7 +221,7 @@ describe('CodeListPane — 선택', () => {
     renderPane();
 
     expect(screen.queryByRole('button', { name: '조회' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '상세 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '하위 코드 추가' })).not.toBeInTheDocument();
   });
 });
 
