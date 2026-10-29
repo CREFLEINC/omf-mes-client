@@ -1,6 +1,7 @@
 import {
   AlertBanner,
   Button,
+  Chip,
   EmptyState,
   Icon,
   SearchInput,
@@ -13,6 +14,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { useId, useMemo, useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest, toApiError, type ApiCallResult } from '../../patterns/request';
 import { Select } from '../../patterns/select';
@@ -32,15 +34,17 @@ interface ListResponse<T> {
   page: PageMeta;
 }
 
-/** 조회 카드 조건(#209) — 검색어 · 대분류 · 연결 상태 · 공정. 「조회」를 눌러야 표에 걸린다. */
+/** 조회 카드 조건(#209) — 대분류 · 공정 · 검색어. 「조회」를 눌러야 표에 걸린다. */
 interface MappingFilters {
   q: string;
   categoryId: string;
-  link: '' | 'linked' | 'unlinked';
   processId: string;
 }
 
-const EMPTY_MAPPING_FILTERS: MappingFilters = { q: '', categoryId: '', link: '', processId: '' };
+const EMPTY_MAPPING_FILTERS: MappingFilters = { q: '', categoryId: '', processId: '' };
+
+/** 연결 상태 — 탭 줄 오른쪽 칩으로 고른다(사용자 지시 2026-10-29 · #209). 누르면 바로 걸린다. */
+type MappingLink = 'all' | 'linked' | 'unlinked';
 
 interface MappingToggle {
   defectCodeId: number;
@@ -207,9 +211,10 @@ export const ProcessMappingPane = () => {
    * 조회 카드 조건(#209) — 화면에 받은 목록 안에서 거른다. 매핑 저장과 무관하다.
    * 공정을 고르면 그 공정 열만 보이고, 연결 상태도 보이는 공정 기준으로 판단한다.
    */
+  const hubTarget = useHubActionsTarget();
   const categoryFieldId = useId();
-  const linkFieldId = useId();
   const processFieldId = useId();
+  const [link, setLink] = useState<MappingLink>('all');
   const [draft, setDraft] = useState<MappingFilters>(EMPTY_MAPPING_FILTERS);
   const [applied, setApplied] = useState<MappingFilters>(EMPTY_MAPPING_FILTERS);
   const resetFilters = (): void => {
@@ -221,19 +226,29 @@ export const ProcessMappingPane = () => {
       ? processes
       : processes.filter((process) => String(process.processId) === applied.processId);
   const needle = applied.q.trim().toLowerCase();
-  const shownDefects = defects.filter((defect) => {
+  const isLinked = (defectId: number): boolean => {
+    const mapped = mappedByDefect.get(defectId);
+    return shownProcesses.some((process) => mapped?.has(process.processId) === true);
+  };
+  /* 칩 건수는 조회 조건까지 거른 코드 기준이다 — 칩끼리 더하면 「전체」가 된다. */
+  const searchedDefects = defects.filter((defect) => {
     if (applied.categoryId !== '' && String(defect.parentId) !== applied.categoryId) return false;
-    if (applied.link !== '') {
-      const mapped = mappedByDefect.get(defect.id);
-      const linked = shownProcesses.some((process) => mapped?.has(process.processId) === true);
-      if (linked !== (applied.link === 'linked')) return false;
-    }
     if (needle === '') return true;
     return [defect.code, defect.name, categories.get(defect.parentId ?? 0)?.name ?? '']
       .join(' ')
       .toLowerCase()
       .includes(needle);
   });
+  const linkedCount = searchedDefects.filter((defect) => isLinked(defect.id)).length;
+  const linkCounts: Record<MappingLink, number> = {
+    all: searchedDefects.length,
+    linked: linkedCount,
+    unlinked: searchedDefects.length - linkedCount,
+  };
+  const shownDefects =
+    link === 'all'
+      ? searchedDefects
+      : searchedDefects.filter((defect) => isLinked(defect.id) === (link === 'linked'));
 
   const firstMappingError = mappingQueries.find((query) => query.isError)?.error;
   const loadError = defectsQuery.error ?? processesQuery.error ?? firstMappingError ?? null;
@@ -385,20 +400,45 @@ export const ProcessMappingPane = () => {
       );
   }
 
+  const linkOptions: readonly { value: MappingLink; label: string }[] = [
+    { value: 'all', label: t.usage.all },
+    { value: 'linked', label: t.mappingView.linked },
+    { value: 'unlinked', label: t.mappingView.unlinked },
+  ];
+
   return (
     <>
+      {/* 연결 상태 칩 — 불량코드 탭의 사용 여부 칩과 같은 자리 · 모양(사용자 지시 2026-10-29 · #209). */}
+      {hubTarget !== null && (
+        <HubActions target={hubTarget}>
+          <div
+            className="inspection-hub-counts defect-cause-usage"
+            role="group"
+            aria-label={t.mappingView.linkLabel}
+          >
+            {linkOptions.map((option) => (
+              <Chip
+                key={option.value}
+                variant="filter"
+                size="sm"
+                selected={link === option.value}
+                aria-pressed={link === option.value}
+                onSelectedChange={() => {
+                  if (link !== option.value) setLink(option.value);
+                }}
+              >
+                {isLoading || loadError !== null
+                  ? option.label
+                  : t.usage.count(option.label, linkCounts[option.value])}
+              </Chip>
+            ))}
+          </div>
+        </HubActions>
+      )}
       {/* 조회 조건 — 불량코드 탭처럼 표와 다른 카드에 둔다(#209). */}
       <section className="pane inspection-standard-search defect-cause-search" role="search">
         <div className="filter-bar">
-          <SearchInput
-            label={t.mappingView.searchLabel}
-            placeholder={t.mappingView.searchPlaceholder}
-            value={draft.q}
-            onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-            onSearch={(value) => setApplied({ ...draft, q: value })}
-            clearLabel={messages.common.clear}
-          />
-          {/* 대분류 · 연결 상태 · 공정 선택(사용자 지시 2026-10-29 · #209) */}
+          {/* 순서: 대분류 선택 · 공정 선택 · 불량코드 검색(사용자 지시 2026-10-29 · #209). */}
           <div className="field-cell defect-cause-filter-select">
             <span className="field-label">
               <label htmlFor={categoryFieldId}>{t.mappingView.categoryLabel}</label>
@@ -418,23 +458,6 @@ export const ProcessMappingPane = () => {
           </div>
           <div className="field-cell defect-cause-filter-select">
             <span className="field-label">
-              <label htmlFor={linkFieldId}>{t.mappingView.linkLabel}</label>
-            </span>
-            <Select
-              id={linkFieldId}
-              options={[
-                { value: '', label: t.filters.all },
-                { value: 'linked', label: t.mappingView.linked },
-                { value: 'unlinked', label: t.mappingView.unlinked },
-              ]}
-              value={draft.link}
-              onChange={(value) =>
-                setDraft((prev) => ({ ...prev, link: value as MappingFilters['link'] }))
-              }
-            />
-          </div>
-          <div className="field-cell defect-cause-filter-select">
-            <span className="field-label">
               <label htmlFor={processFieldId}>{t.mappingView.processLabel}</label>
             </span>
             <Select
@@ -450,6 +473,14 @@ export const ProcessMappingPane = () => {
               onChange={(value) => setDraft((prev) => ({ ...prev, processId: value }))}
             />
           </div>
+          <SearchInput
+            label={t.mappingView.searchLabel}
+            placeholder={t.mappingView.searchPlaceholder}
+            value={draft.q}
+            onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
+            onSearch={(value) => setApplied({ ...draft, q: value })}
+            clearLabel={messages.common.clear}
+          />
           <div className="filter-actions field-cell-unlabeled">
             <Button variant="filled" onClick={() => setApplied(draft)}>
               {messages.common.search}
