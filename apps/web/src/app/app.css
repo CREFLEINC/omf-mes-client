@@ -514,8 +514,14 @@ main > * + * {
  * 검색 칸은 안내 문구가 읽히는 만큼만, 처분 유형은 「재작업 가능」이 잘리지 않는 만큼만 차지한다.
  */
 .inspection-standard-search.defect-cause-search .filter-bar > .defect-cause-code-field {
-  flex: 0 1 18rem;
+  flex: 0 1 16rem;
   min-width: 11rem;
+}
+
+/* 칸 글자는 검사 조회·판정의 조건 줄과 같은 한 단계 작은 본문 글자(사용자 지시 · #209). */
+.defect-cause-search {
+  --type-body-lg: var(--type-body-sm);
+  --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
 }
 
 /* 맨 앞 칸이 되어도 공용 「첫 칸 19.5em」 규칙(`.inspection-standard-search .filter-bar > :first-child`)을 받지 않는다 — 내용 폭. */
@@ -525,7 +531,7 @@ main > * + * {
 }
 
 .defect-cause-search .defect-cause-process-field {
-  flex: 0 1 15rem;
+  flex: 0 1 14rem;
   min-width: 10rem;
 }
 
