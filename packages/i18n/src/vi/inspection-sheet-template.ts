@@ -3,8 +3,6 @@ export const inspectionSheetTemplate = {
   title: 'Tiêu chuẩn phiếu kiểm tra',
   breadcrumbRoot: 'Quản lý chất lượng',
 
-  rule: 'Mỗi model chỉ xác nhận được một bản. Sau khi xác nhận không thể sửa, bản mới áp dụng từ các lệnh sản xuất sau đó.',
-
   layouts: { OP: 'Mẫu OP', PP: 'Mẫu PP' } as Record<string, string>,
   statuses: { DRAFT: 'Đang soạn', CONFIRMED: 'Đã xác nhận', OBSOLETE: 'Hủy bỏ' } as Record<
     string,
@@ -24,16 +22,21 @@ export const inspectionSheetTemplate = {
   } as Record<string, string>,
 
   list: {
-    model: 'Model',
-    modelPlaceholder: 'Chọn model',
-    modelClear: 'Xóa điều kiện model',
-    layout: 'Mẫu',
+    model: 'Tìm mặt hàng',
+    modelPlaceholder: 'Nhập mặt hàng',
+    modelClear: 'Xóa điều kiện mặt hàng',
+    layout: 'Chọn mẫu',
     layoutAll: 'Tất cả',
-    material: 'Vật liệu',
+    material: 'Tìm vật liệu',
     materialPlaceholder: 'Nhập vật liệu',
     heading: 'Danh sách tiêu chuẩn',
     caption: 'Danh sách tiêu chuẩn phiếu kiểm tra',
-    status: 'Trạng thái',
+    status: 'Chọn trạng thái',
+    usageLabel: 'Sử dụng',
+    usageAll: 'Tất cả',
+    usageActive: 'Đang dùng',
+    usageInactive: 'Ngừng dùng',
+    usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
     statusAll: 'Tất cả',
     add: 'Đăng ký tiêu chuẩn mới',
     empty: 'Chưa có tiêu chuẩn phiếu kiểm tra.',
@@ -47,13 +50,14 @@ export const inspectionSheetTemplate = {
   },
 
   columns: {
-    model: 'Model',
+    model: 'Mặt hàng',
     version: 'Bản',
     layout: 'Mẫu',
     status: 'Trạng thái',
     confirmedAt: 'Thời điểm xác nhận',
     material: 'Vật liệu',
     confirmedBy: 'Người xác nhận',
+    usage: 'Sử dụng',
   },
 
   editor: {
@@ -67,11 +71,11 @@ export const inspectionSheetTemplate = {
     loadFailed: 'Không tải được tiêu chuẩn.',
     readOnly: 'Bản đã xác nhận hoặc hủy bỏ không sửa được.',
     basicSection: 'Thông tin cơ bản',
-    model: 'Model',
-    pickModel: 'Chọn model',
-    pickConfirm: 'Chọn model này',
+    model: 'Mặt hàng',
+    pickModel: 'Chọn mặt hàng',
+    pickConfirm: 'Chọn mặt hàng này',
     pickLotConfirm: 'Chọn vật tư này',
-    noModel: 'Hãy chọn model.',
+    noModel: 'Hãy chọn mặt hàng.',
     businessUnit: 'Bộ phận kinh doanh',
     noBusinessUnit:
       'Tài khoản đăng nhập không có phạm vi bộ phận kinh doanh nên không tạo được tiêu chuẩn.',
@@ -119,14 +123,14 @@ export const inspectionSheetTemplate = {
     copyAsNew: 'Tạo bản mới',
     close: 'Đóng',
     saved: 'Đã lưu tiêu chuẩn.',
-    confirmed: 'Đã xác nhận tiêu chuẩn. Bản xác nhận trước của model này đã bị hủy bỏ.',
+    confirmed: 'Đã xác nhận tiêu chuẩn. Bản xác nhận trước của mặt hàng này đã bị hủy bỏ.',
     copied: 'Đã tạo bản mới.',
   },
 
   confirmDialog: {
     title: 'Xác nhận tiêu chuẩn',
     body: (itemCode: string, version: number) =>
-      `Xác nhận ${itemCode} bản ${version}. Sau khi xác nhận sẽ không sửa được, và bản xác nhận trước của model này bị hủy bỏ.`,
+      `Xác nhận ${itemCode} bản ${version}. Sau khi xác nhận sẽ không sửa được, và bản xác nhận trước của mặt hàng này bị hủy bỏ.`,
     ok: 'Xác nhận',
   },
 

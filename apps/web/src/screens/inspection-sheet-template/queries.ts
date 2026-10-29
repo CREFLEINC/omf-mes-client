@@ -12,8 +12,8 @@ export type TemplateStatusFilter = InspectionSheetTemplate['statusCode'] | '';
 export const templateKeys = {
   /** 무효화용 앞부분 — 저장·확정하면 목록과 상세가 함께 낡는다. */
   all: ['inspection-sheet-template'] as const,
-  list: (status: TemplateStatusFilter, itemId: number | null, page: number, size: number) =>
-    ['inspection-sheet-template', 'list', status, itemId, page, size] as const,
+  list: (status: TemplateStatusFilter, itemId: number | null) =>
+    ['inspection-sheet-template', 'list', status, itemId] as const,
   detail: (id: number) => ['inspection-sheet-template', 'detail', id] as const,
   businessUnits: ['inspection-sheet-template', 'business-units'] as const,
 };
@@ -22,33 +22,40 @@ export const templateKeys = {
 export const templateDetailPath = (id: number): string =>
   `/quality/inspection-sheet-templates/${id}`;
 
-export const useTemplates = (
-  status: TemplateStatusFilter,
-  page: number,
-  size: number = PAGE_SIZE,
-  /** 모델 조건(#208) — 목록 조회가 품목 번호로 거른다. */
-  itemId: number | null = null,
-) => {
+/**
+ * 조건(상태 · 품목)에 맞는 기준을 **전부** 받는다(#208). 검사표 기준은 품목별 판이라 수가 많지 않다 —
+ * 사용 여부 · 양식 · 재료 거르기, 사용 여부 건수, 확정 일시 정렬, 쪽 나누기를 화면이 빠짐없이 하려고 한 번에 받는다.
+ */
+export const useTemplates = (status: TemplateStatusFilter, itemId: number | null = null) => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: templateKeys.list(status, itemId, page, size),
+    queryKey: templateKeys.list(status, itemId),
     placeholderData: keepPreviousData,
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/quality/inspection-sheet-templates', {
-          params: {
-            query: {
-              ...(status === '' ? {} : { statusCode: status }),
-              ...(itemId === null ? {} : { itemId }),
-              page,
-              size,
+    queryFn: async () => {
+      const items: InspectionSheetTemplate[] = [];
+      for (let page = 1; ; page += 1) {
+        const response = await runRequest(() =>
+          client.GET('/quality/inspection-sheet-templates', {
+            params: {
+              query: {
+                ...(status === '' ? {} : { statusCode: status }),
+                ...(itemId === null ? {} : { itemId }),
+                page,
+                size: FETCH_SIZE,
+              },
             },
-          },
-        }),
-      ),
+          }),
+        );
+        items.push(...response.items);
+        if (items.length >= response.page.total || response.items.length === 0) return items;
+      }
+    },
   });
 };
+
+/** 전부 받을 때 한 번에 받는 쪽 크기. */
+const FETCH_SIZE = 100;
 
 export const useTemplate = (id: number | null) => {
   const { client } = useApiClient();

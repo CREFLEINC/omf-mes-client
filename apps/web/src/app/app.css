@@ -22076,13 +22076,14 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   flex: 0 0 auto;
 }
 
-/* 조회 카드(#208) — 검사 기준 탭과 같은 한 줄: 상태 → 조회 · 새 기준 등록(구분선 없이). 카드 안 줄의 아래 여백은 걷는다. */
+/* 조회 카드(#208) — 검사 기준 탭과 같은 한 줄: 조건들 → (오른쪽) 조회 · 초기화 | 새 기준 등록. 카드 안 줄의 아래 여백은 걷는다. */
 .inspection-sheet-template-search > .filter-bar {
   margin-bottom: 0;
 }
 
 .inspection-sheet-template-search .filter-actions {
   align-items: center;
+  margin-left: auto;
 }
 
 /* 상태 칸 — 「작성중」 같은 짧은 값이라 좁게, 선택칸이 칸 폭을 다 써서 「조회」와 사이가 뜨지 않게(#208). */

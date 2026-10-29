@@ -183,6 +183,21 @@ describe('검사표 기준', () => {
     expect(screen.getByRole('columnheader', { name: t.columns.confirmedBy })).toBeInTheDocument();
   });
 
+  /* 사용 여부 — 작성중 · 확정은 사용, 폐기는 미사용. 처음에는 사용만 보인다(#208). */
+  it('사용 여부 열이 보이고, 폐기된 판은 처음 목록에서 빠진다', async () => {
+    setup(template());
+    const row = await screen.findByRole('row', { name: /AAR4/ });
+    expect(row).toHaveTextContent(t.list.usageActive);
+    expect(screen.getByRole('columnheader', { name: t.columns.usage })).toBeInTheDocument();
+  });
+
+  it('폐기된 판만 있으면 처음 목록은 비어 있다', async () => {
+    setup(template({ statusCode: 'OBSOLETE' }));
+    /* 받은 판은 있으니 「등록한 기준이 없다」가 아니라 「조건에 맞는 기준이 없다」다. */
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /AAR4/ })).not.toBeInTheDocument();
+  });
+
   /* 양식 · 재료는 받은 쪽 안에서 거른다(#208). */
   it('재료 조건에 맞지 않으면 조건 결과 없음 안내가 나온다', async () => {
     const { user } = setup(template());

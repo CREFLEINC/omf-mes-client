@@ -5,8 +5,10 @@ import {
   type Column,
   EmptyState,
   Icon,
+  Chip,
   PageHeader,
   SearchInput,
+  type SortState,
   Table,
   TextField,
 } from '@crefle/web-ui';
@@ -40,6 +42,7 @@ import {
 } from './queries';
 import type { StepDraft } from './draft';
 import { TemplateEditor, TemplateStatusChip } from './template-editor';
+import { UsageChips, type UsageChipValue } from './usage-chips';
 import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.inspectionSheetTemplate;
@@ -50,6 +53,22 @@ const STATUSES: readonly InspectionSheetTemplate['statusCode'][] = [
   'CONFIRMED',
   'OBSOLETE',
 ];
+
+/** 사용 여부로 거르기 — 전체 · 사용(기본) · 미사용(#208). */
+type TemplateUsage = UsageChipValue;
+
+/** 작성중 · 확정 판은 사용, 폐기된 판은 미사용이다(#208). */
+const isInUse = (row: InspectionSheetTemplate): boolean => row.statusCode !== 'OBSOLETE';
+
+const INITIAL_FILTER = {
+  status: '' as TemplateStatusFilter,
+  itemId: null as number | null,
+  layout: '' as InspectionSheetLayoutCode | '',
+  material: '',
+  usage: 'active' as TemplateUsage,
+  page: 1,
+  size: PAGE_SIZE,
+};
 
 /** 무엇을 펴 두었나 — 새 기준이거나 목록에서 연 기준. */
 type Opened = { kind: 'new' } | { kind: 'existing'; id: number } | null;
@@ -86,16 +105,12 @@ const InspectionSheetTemplateScreenBody = () => {
     itemId: number | null;
     layout: InspectionSheetLayoutCode | '';
     material: string;
+    usage: TemplateUsage;
     page: number;
     size: number;
-  }>({
-    status: '',
-    itemId: null,
-    layout: '',
-    material: '',
-    page: 1,
-    size: PAGE_SIZE,
-  });
+  }>(INITIAL_FILTER);
+  /* 확정 일시 정렬 — 걸러 낸 전체 줄을 세운 뒤 쪽을 나눈다(#208). */
+  const [sort, setSort] = useState<SortState | null>(null);
   const [opened, setOpened] = useState<Opened>(null);
   const [stepCode, setStepCode] = useState<StepDraft['stepCode'] | null>(null);
   /** 다른 기준을 열면 단계 고름을 처음으로 돌린다. */
@@ -104,21 +119,41 @@ const InspectionSheetTemplateScreenBody = () => {
     setStepCode(null);
   };
 
-  const list = useTemplates(filter.status, filter.page, filter.size, filter.itemId);
+  const list = useTemplates(filter.status, filter.itemId);
   const detail = useTemplate(opened?.kind === 'existing' ? opened.id : null);
   const businessUnits = useBusinessUnitNames();
   /*
-   * 양식 · 재료는 목록 조회에 조건이 없어 받은 쪽 안에서 거른다(#208). 모델별 기준이라 한 쪽(50건)에 대부분 담긴다.
-   * 재료는 대소문자 구분 없이 일부만 맞아도 걸린다.
+   * 사용 여부 · 양식 · 재료는 화면이 거른다 — 조건에 맞는 기준을 전부 받아 두었다(#208).
+   * 사용 = 작성중 · 확정, 미사용 = 폐기(앞 확정 판은 새 판을 확정하면 폐기된다). 재료는 대소문자 구분 없이 일부만 맞아도 걸린다.
    */
   const materialKeyword = filter.material.trim().toLowerCase();
-  const isClientFiltered = filter.layout !== '' || materialKeyword !== '';
-  const hasFilter = isClientFiltered || filter.status !== '' || filter.itemId !== null;
-  const rows = (list.data?.items ?? []).filter(
+  const hasFilter =
+    filter.layout !== '' ||
+    materialKeyword !== '' ||
+    filter.status !== '' ||
+    filter.itemId !== null ||
+    filter.usage !== 'active';
+  const matched = (list.data ?? []).filter(
     (row) =>
       (filter.layout === '' || row.formLayoutCode === filter.layout) &&
       (materialKeyword === '' || (row.materialText ?? '').toLowerCase().includes(materialKeyword)),
   );
+  const usageCounts: Record<TemplateUsage, number> = {
+    all: matched.length,
+    active: matched.filter(isInUse).length,
+    inactive: matched.filter((row) => !isInUse(row)).length,
+  };
+  const filtered = matched.filter(
+    (row) => filter.usage === 'all' || (filter.usage === 'active') === isInUse(row),
+  );
+  const sorted =
+    sort === null
+      ? filtered
+      : [...filtered].sort((left, right) => {
+          const order = (left.confirmedAt ?? '').localeCompare(right.confirmedAt ?? '');
+          return sort.direction === 'ascending' ? order : -order;
+        });
+  const rows = sorted.slice((filter.page - 1) * filter.size, filter.page * filter.size);
   const userNameOf = useUserNames(rows.map((row) => row.confirmedBy));
   const scopeIds = (session?.scopes ?? []).map((scope) => scope.businessUnitId);
   const names = businessUnits.data ?? new Map<number, string>();
@@ -170,6 +205,18 @@ const InspectionSheetTemplateScreenBody = () => {
       width: '80px',
       render: (row) => <TemplateStatusChip size="sm" statusCode={row.statusCode} />,
     },
+    /* 사용 여부 — 작성중 · 확정은 사용, 폐기는 미사용(사용자 지시 · #208). */
+    {
+      key: 'usage',
+      align: 'center',
+      header: t.columns.usage,
+      width: '88px',
+      render: (row) => (
+        <Chip variant="status" size="sm" status={isInUse(row) ? 'success' : 'idle'}>
+          {isInUse(row) ? t.list.usageActive : t.list.usageInactive}
+        </Chip>
+      ),
+    },
     /* 재료 · 확정자 — 목록에서 모델을 가르고 누가 확정했는지 본다(사용자 지시 · #208). */
     {
       key: 'material',
@@ -190,12 +237,8 @@ const InspectionSheetTemplateScreenBody = () => {
       key: 'confirmedAt',
       align: 'center',
       header: t.columns.confirmedAt,
-      /*
-       * 머리를 누르면 오름 · 내림차순(사용자 지시 · #208). 목록 조회에 정렬 조건이 없어 받은 쪽 안에서 줄을 세운다.
-       * 확정 전인 판(값 없음)은 오름차순 맨 앞이다.
-       */
+      /* 머리를 누르면 오름 · 내림차순(사용자 지시 · #208). 확정 전인 판(값 없음)은 오름차순 맨 앞이다. */
       sortable: true,
-      sortAccessor: (row) => row.confirmedAt ?? '',
       /* 「2026-10-29 10:02」가 잘리지 않는 폭(#208) */
       width: '152px',
       render: (row) => (
@@ -215,6 +258,12 @@ const InspectionSheetTemplateScreenBody = () => {
 
   return (
     <>
+      {/* 탭 줄 오른쪽 — 사용 여부 칩 다음에 좌우 · 상하 배치(사용자 지시 · #208). */}
+      <UsageChips
+        counts={list.data === undefined ? null : usageCounts}
+        value={filter.usage}
+        onChange={(usage) => setFilter((prev) => ({ ...prev, usage, page: 1 }))}
+      />
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
       {hub === null && (
@@ -229,9 +278,7 @@ const InspectionSheetTemplateScreenBody = () => {
         />
       )}
       {/*
-       * 조회 조건 — 검사 기준 탭처럼 목록 위 카드 한 줄: 상태 · 모델 · 양식 · 재료 → 조회 · 새 기준 등록(#208).
-       * 단추는 구분선 없이 바로 붙여 한 작업 줄로 둔다(사용자 지시). 「초기화」는 두지 않는다(없던 단추를 만들지 않는다).
-       * 규칙 안내는 줄 아래 작은 보조 글 한 줄 — 박스 · 바탕 없이(사용자 지시 · #208).
+       * 조회 조건 — 검사 기준 탭과 같은 한 줄: 상태 · 품목 · 양식 · 재료 → (오른쪽) 조회 · 초기화 | 새 기준 등록(사용자 지시 · #208).
        */}
       <section ref={aboveRef} className="pane inspection-sheet-template-search" role="search">
         <form
@@ -308,6 +355,20 @@ const InspectionSheetTemplateScreenBody = () => {
             <Button type="submit" variant="filled">
               {messages.common.search}
             </Button>
+            {/* 초기화 — 입력과 적용된 조건을 처음으로(사용 여부는 「사용」) 되돌린다. 검사 기준 탭과 같다. */}
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setStatusInput('');
+                setModelInput(null);
+                setLayoutInput('');
+                setMaterialInput('');
+                setFilter((prev) => ({ ...INITIAL_FILTER, size: prev.size }));
+              }}
+            >
+              {messages.common.reset}
+            </Button>
+            <span className="inspection-standard-filter-divider" aria-hidden />
             <Button
               variant="filled"
               leadingIcon={<Icon name="add" size={18} />}
@@ -317,10 +378,6 @@ const InspectionSheetTemplateScreenBody = () => {
             </Button>
           </div>
         </form>
-        <p className="inspection-sheet-template-rule">
-          <Icon name="info" size={16} />
-          {t.rule}
-        </p>
       </section>
 
       <div
@@ -362,6 +419,11 @@ const InspectionSheetTemplateScreenBody = () => {
               density="compact"
               columns={fit.columns}
               rows={rows}
+              sort={sort}
+              onSortChange={(next) => {
+                setSort(next);
+                setFilter((prev) => ({ ...prev, page: 1 }));
+              }}
               getRowId={(row) => String(row.inspectionSheetTemplateId)}
               empty={
                 <EmptyState
@@ -370,7 +432,7 @@ const InspectionSheetTemplateScreenBody = () => {
                   title={
                     list.isPending
                       ? t.list.loading
-                      : hasFilter
+                      : hasFilter || (list.data?.length ?? 0) > 0
                         ? t.list.emptyFiltered
                         : t.list.empty
                   }
@@ -381,15 +443,7 @@ const InspectionSheetTemplateScreenBody = () => {
           {list.data !== undefined && (
             /* 쪽 이동은 다섯 목록이 같은 모양 · 같은 단추 크기 — 검사 기준 목록 기준(사용자 지시 · #208). */
             <PageNav
-              /*
-               * 양식 · 재료는 받은 쪽 안에서 걸렀다 — 한 쪽에 다 담긴 경우에만 거른 건수로 고쳐 보인다(#208).
-               * 여러 쪽이면 서버 건수를 그대로 둔다(다른 쪽의 줄 수를 알 수 없다).
-               */
-              meta={
-                isClientFiltered && list.data.page.total <= list.data.page.size
-                  ? { ...list.data.page, total: rows.length }
-                  : list.data.page
-              }
+              meta={{ page: filter.page, size: filter.size, total: sorted.length }}
               buttonSize="md"
               onChangePage={(page) => setFilter((prev) => ({ ...prev, page }))}
               onChangeSize={(size) => setFilter((prev) => ({ ...prev, size, page: 1 }))}

@@ -3,8 +3,6 @@ export const inspectionSheetTemplate = {
   title: '검사표 기준',
   breadcrumbRoot: '품질 관리',
 
-  rule: '모델별로 하나의 판만 확정할 수 있습니다. 확정 후 수정할 수 없으며, 새 판은 이후 작업지시부터 적용됩니다.',
-
   layouts: { OP: 'OP향 양식', PP: 'PP향 양식' } as Record<string, string>,
   statuses: { DRAFT: '작성중', CONFIRMED: '확정', OBSOLETE: '폐기' } as Record<string, string>,
   methods: { FULL: '전수', SAMPLE: '발취(샘플)' } as Record<string, string>,
@@ -24,17 +22,22 @@ export const inspectionSheetTemplate = {
   } as Record<string, string>,
 
   list: {
-    model: '모델',
-    modelPlaceholder: '모델을 선택하세요',
-    modelClear: '모델 조건 지우기',
-    layout: '양식',
+    model: '품목 검색',
+    modelPlaceholder: '품목을 입력하세요',
+    modelClear: '품목 조건 지우기',
+    layout: '양식 선택',
     layoutAll: '전체',
-    material: '재료',
+    material: '재료 검색',
     materialPlaceholder: '재료를 입력하세요',
     heading: '검사표 기준 목록',
     caption: '검사표 기준 목록',
-    status: '상태',
+    status: '상태 선택',
     statusAll: '전체',
+    usageLabel: '사용 여부',
+    usageAll: '전체',
+    usageActive: '사용',
+    usageInactive: '미사용',
+    usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
     add: '새 기준 등록',
     empty: '등록한 검사표 기준이 없습니다.',
     emptyFiltered: '조건에 맞는 검사표 기준이 없습니다.',
@@ -47,13 +50,14 @@ export const inspectionSheetTemplate = {
   },
 
   columns: {
-    model: '모델',
+    model: '품목',
     version: '판',
     layout: '양식',
     status: '상태',
     confirmedAt: '확정 일시',
     material: '재료',
     confirmedBy: '확정자',
+    usage: '사용 여부',
   },
 
   editor: {
@@ -67,11 +71,11 @@ export const inspectionSheetTemplate = {
     loadFailed: '검사표 기준을 불러오지 못했습니다.',
     readOnly: '확정 또는 폐기된 판은 고칠 수 없습니다.',
     basicSection: '기본 정보',
-    model: '모델',
-    pickModel: '모델 고르기',
-    pickConfirm: '이 모델로',
+    model: '품목',
+    pickModel: '품목 선택',
+    pickConfirm: '이 품목으로',
     pickLotConfirm: '이 자재로',
-    noModel: '모델을 선택하세요.',
+    noModel: '품목을 선택하세요.',
     businessUnit: '사업부',
     noBusinessUnit: '로그인 계정에 사업부 범위가 없어 기준을 만들 수 없습니다.',
     layout: '출력 양식',
@@ -118,14 +122,14 @@ export const inspectionSheetTemplate = {
     copyAsNew: '새 판 만들기',
     close: '닫기',
     saved: '검사표 기준을 저장했습니다.',
-    confirmed: '검사표 기준을 확정했습니다. 이 모델의 앞 확정 판은 폐기됐습니다.',
+    confirmed: '검사표 기준을 확정했습니다. 이 품목의 앞 확정 판은 폐기됐습니다.',
     copied: '새 판을 만들었습니다.',
   },
 
   confirmDialog: {
     title: '검사표 기준 확정',
     body: (itemCode: string, version: number) =>
-      `${itemCode} ${version}판을 확정합니다. 확정하면 고칠 수 없고, 이 모델의 앞 확정 판은 폐기됩니다.`,
+      `${itemCode} ${version}판을 확정합니다. 확정하면 고칠 수 없고, 이 품목의 앞 확정 판은 폐기됩니다.`,
     ok: '확정',
   },
 
