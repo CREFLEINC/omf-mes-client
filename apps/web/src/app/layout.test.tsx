@@ -756,8 +756,8 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/work-order-progress')).toBe(
       links.indexOf('/production/emergency-work-orders') + 1,
     );
-    /* W-02-09 LOT 추적 — 「W/O 진행현황 조회」 바로 아래. */
-    expect(within(sidebar).getByRole('link', { name: 'LOT 추적' })).toHaveAttribute(
+    /* W-02-09 LOT 생산 이력 조회 — 「W/O 진행현황 조회」 바로 아래. */
+    expect(within(sidebar).getByRole('link', { name: 'LOT 생산 이력 조회' })).toHaveAttribute(
       'href',
       '/production/lot-trace',
     );
@@ -989,7 +989,7 @@ describe('AppLayout', () => {
       '/quality/suspicious-material-hold',
       '/quality/approvals',
       '/quality/dispositions',
-      /* 생산 관리 — 작업지시 목록(작업함, 변경 확인) → (긴급) → 진행 → LOT 추적 → 마감. */
+      /* 생산 관리 — 작업지시 목록(작업함, 변경 확인) → (긴급) → 진행 → LOT 생산 이력 조회 → 마감. */
       '/production/production-orders' /* ← 작업지시 목록 */,
       '/production/emergency-work-orders',
       '/production/work-order-progress',
