@@ -1,6 +1,7 @@
 import { Button, Chip, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { Select } from '../../patterns/select';
 
@@ -194,26 +195,34 @@ export const CodeFilterBar = ({
           )}
         </div>
       )}
-      {isProcessPickerOpen && (
-        <ProcessPickerDialog
-          onClose={() => setIsProcessPickerOpen(false)}
-          onConfirm={(process) => {
-            setDraft((prev) => ({ ...prev, processId: String(process.processId) }));
-            setIsProcessPickerOpen(false);
-          }}
-        />
-      )}
-      {isPickerOpen && (
-        <CodePickerDialog
-          adapter={adapter}
-          includeInactive={appliedFilters.includeInactive}
-          onClose={() => setIsPickerOpen(false)}
-          onConfirm={(code) => {
-            setDraft((prev) => ({ ...prev, q: code.code }));
-            setIsPickerOpen(false);
-          }}
-        />
-      )}
+      {/*
+       * 검색 창은 문서 맨 바깥에 붙인다 — 조회 카드 안에 붙으면 카드의 마지막 줄이 바뀌어
+       * 「마지막 줄 아래 여백 없음」 규칙이 풀리고 카드가 그만큼 높아진다(#209 버그 수정).
+       */}
+      {isProcessPickerOpen &&
+        createPortal(
+          <ProcessPickerDialog
+            onClose={() => setIsProcessPickerOpen(false)}
+            onConfirm={(process) => {
+              setDraft((prev) => ({ ...prev, processId: String(process.processId) }));
+              setIsProcessPickerOpen(false);
+            }}
+          />,
+          document.body,
+        )}
+      {isPickerOpen &&
+        createPortal(
+          <CodePickerDialog
+            adapter={adapter}
+            includeInactive={appliedFilters.includeInactive}
+            onClose={() => setIsPickerOpen(false)}
+            onConfirm={(code) => {
+              setDraft((prev) => ({ ...prev, q: code.code }));
+              setIsPickerOpen(false);
+            }}
+          />,
+          document.body,
+        )}
     </>
   );
 };
