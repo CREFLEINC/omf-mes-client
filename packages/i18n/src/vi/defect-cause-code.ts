@@ -82,6 +82,14 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     nameVi: 'Tên tiếng Việt',
     referenceCount: 'Đang dùng',
   },
+  listColumns: {
+    defectCode: 'Mã lỗi',
+    defectName: 'Tên lỗi',
+    causeCode: 'Mã',
+    causeName: 'Tên',
+    kind: 'Phân loại mã',
+    isActive: 'Sử dụng',
+  },
   detail: {
     title: (tab: string): string => `Chi tiết ${tab}`,
     edit: 'Sửa',

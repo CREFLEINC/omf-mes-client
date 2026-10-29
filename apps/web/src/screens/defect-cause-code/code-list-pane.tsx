@@ -82,7 +82,7 @@ export const CodeListPane = ({
     {
       key: 'code',
       align: 'center',
-      header: adapter.labels.code,
+      header: adapter.labels.listCode,
       width: '160px',
       /*
        * 코드는 링크 모양을 걷고 본문 글자로 둔다 — 줄 아무 곳이나 눌러 고른다(검사 기준 탭과 같다 · #209).
@@ -103,7 +103,7 @@ export const CodeListPane = ({
     {
       key: 'name',
       align: 'center',
-      header: adapter.labels.name,
+      header: adapter.labels.listName,
       // 폭을 정하지 않는다 — 남는 폭을 이 열이 맡는다(검사 기준 탭과 같다).
       render: (row) => <span title={row.name}>{row.name}</span>,
     },
@@ -125,7 +125,7 @@ export const CodeListPane = ({
     {
       key: 'kind',
       align: 'center',
-      header: t.fields.kind,
+      header: t.listColumns.kind,
       width: '96px',
       render: (row) => (isCategory(row) ? t.detail.kindCategory : t.detail.kindChild),
     },
@@ -156,7 +156,7 @@ export const CodeListPane = ({
     {
       key: 'isActive',
       align: 'center',
-      header: t.fields.isActive,
+      header: t.listColumns.isActive,
       width: '96px',
       render: (row) => (
         <Chip variant="status" size="sm" status={row.isActive ? 'success' : 'idle'}>

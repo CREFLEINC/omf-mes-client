@@ -169,6 +169,16 @@ describe('CodeListPane — 표에 싣는 값 (#209)', () => {
   });
 });
 
+describe('CodeListPane — 표 머리 문구 (#209)', () => {
+  it('불량코드 표는 불량 코드 · 불량명 · 코드 구분 · 사용 여부로 적는다', () => {
+    renderPane();
+
+    for (const header of ['불량 코드', '불량명', '코드 구분', '사용 여부']) {
+      expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument();
+    }
+  });
+});
+
 describe('CodeListPane — 선택', () => {
   it('고른 코드에 현재 선택 표식이 붙는다', () => {
     renderPane({ selectedId: 1002 });

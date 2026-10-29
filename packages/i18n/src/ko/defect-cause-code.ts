@@ -78,6 +78,15 @@ export const defectCauseCode = {
     nameVi: '베트남어명',
     referenceCount: '사용 중',
   },
+  /** 표 머리 문구(사용자 지시 2026-10-29 · #209). 폼 · 상세 이름표는 `fields` 를 그대로 쓴다. */
+  listColumns: {
+    defectCode: '불량 코드',
+    defectName: '불량명',
+    causeCode: '코드',
+    causeName: '명칭',
+    kind: '코드 구분',
+    isActive: '사용 여부',
+  },
   /** 상세 카드(omf-all-around#209) — 제목 · 상태 칩 · 이름표 상자, 수정은 창에서. */
   detail: {
     title: (tab: string): string => `${tab} 상세`,

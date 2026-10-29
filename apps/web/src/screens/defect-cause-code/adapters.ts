@@ -44,6 +44,9 @@ export interface CodeLabels {
   tab: string;
   code: string;
   name: string;
+  /** 표 머리의 코드 · 이름 칸(#209) */
+  listCode: string;
+  listName: string;
   parent: string;
   searchLabel: string;
   searchPlaceholder: string;
@@ -174,6 +177,8 @@ export const defectCodeAdapter: CodeAdapter = {
     tab: t.tabs.defect,
     code: t.fields.code,
     name: t.fields.name,
+    listCode: t.listColumns.defectCode,
+    listName: t.listColumns.defectName,
     parent: t.fields.parent,
     searchLabel: t.filters.defectSearchLabel,
     searchPlaceholder: t.filters.defectSearchPlaceholder,
@@ -257,6 +262,8 @@ export const causeCodeAdapter: CodeAdapter = {
     tab: t.tabs.cause,
     code: t.fields.code,
     name: t.fields.name,
+    listCode: t.listColumns.causeCode,
+    listName: t.listColumns.causeName,
     parent: t.fields.parent,
     searchLabel: t.filters.causeSearchLabel,
     searchPlaceholder: t.filters.causeSearchPlaceholder,
