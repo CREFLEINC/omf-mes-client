@@ -46,12 +46,12 @@ export const inspectionSheetTemplate = {
     retry: '다시 시도',
     selectTitle: '검사표 기준을 선택하세요',
     selectHint: '목록에서 선택하면 상세 정보가 표시됩니다.',
-    openRow: (itemCode: string, version: number) => `${itemCode} ${version}판 열기`,
+    openRow: (itemCode: string, version: number) => `${itemCode} 버전 ${version} 열기`,
   },
 
   columns: {
     model: '품목',
-    version: '판',
+    version: '버전',
     layout: '양식',
     status: '상태',
     confirmedAt: '확정 일시',
@@ -62,14 +62,14 @@ export const inspectionSheetTemplate = {
 
   editor: {
     detailTitle: '검사표 기준 상세',
-    versionChip: (version: number) => `${version}판`,
+    versionChip: (version: number) => `버전 ${version}`,
     editBasic: '기본 정보 수정',
     basicConfirm: '확인',
     newHeading: '새 검사표 기준',
-    heading: (itemCode: string, version: number) => `${itemCode} ${version}판`,
+    heading: (itemCode: string, version: number) => `${itemCode} 버전 ${version}`,
     loading: '검사표 기준을 불러오는 중입니다.',
     loadFailed: '검사표 기준을 불러오지 못했습니다.',
-    readOnly: '확정 또는 폐기된 판은 고칠 수 없습니다.',
+    readOnly: '확정 또는 폐기된 버전은 고칠 수 없습니다.',
     basicSection: '기본 정보',
     model: '품목',
     pickModel: '품목 선택',
@@ -119,17 +119,17 @@ export const inspectionSheetTemplate = {
     confirm: '확정',
     dirty: '저장하지 않은 변경이 있습니다.',
     confirmBlocked: '먼저 저장해야 확정할 수 있습니다.',
-    copyAsNew: '새 판 만들기',
+    copyAsNew: '새 버전 만들기',
     close: '닫기',
     saved: '검사표 기준을 저장했습니다.',
-    confirmed: '검사표 기준을 확정했습니다. 이 품목의 앞 확정 판은 폐기됐습니다.',
-    copied: '새 판을 만들었습니다.',
+    confirmed: '검사표 기준을 확정했습니다. 이 품목의 앞 확정 버전은 폐기됐습니다.',
+    copied: '새 버전을 만들었습니다.',
   },
 
   confirmDialog: {
     title: '검사표 기준 확정',
     body: (itemCode: string, version: number) =>
-      `${itemCode} ${version}판을 확정합니다. 확정하면 고칠 수 없고, 이 품목의 앞 확정 판은 폐기됩니다.`,
+      `${itemCode} 버전 ${version}을 확정합니다. 확정하면 고칠 수 없고, 이 품목의 앞 확정 버전은 폐기됩니다.`,
     ok: '확정',
   },
 

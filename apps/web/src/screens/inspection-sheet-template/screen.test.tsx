@@ -167,7 +167,7 @@ const openRow = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('검사표 기준', () => {
-  it('목록에 모델·판·양식·상태를 보인다', async () => {
+  it('목록에 품목·버전·양식·상태를 보인다', async () => {
     setup(template());
 
     const row = await within(await screen.findByRole('table', { name: t.list.caption })).findByRole(
@@ -184,14 +184,14 @@ describe('검사표 기준', () => {
   });
 
   /* 사용 여부 — 작성중 · 확정은 사용, 폐기는 미사용. 처음에는 사용만 보인다(#208). */
-  it('사용 여부 열이 보이고, 폐기된 판은 처음 목록에서 빠진다', async () => {
+  it('사용 여부 열이 보이고, 폐기된 버전은 처음 목록에서 빠진다', async () => {
     setup(template());
     const row = await screen.findByRole('row', { name: /AAR4/ });
     expect(row).toHaveTextContent(t.list.usageActive);
     expect(screen.getByRole('columnheader', { name: t.columns.usage })).toBeInTheDocument();
   });
 
-  it('폐기된 판만 있으면 처음 목록은 비어 있다', async () => {
+  it('폐기된 버전만 있으면 처음 목록은 비어 있다', async () => {
     setup(template({ statusCode: 'OBSOLETE' }));
     /* 받은 판은 있으니 「등록한 기준이 없다」가 아니라 「조건에 맞는 기준이 없다」다. */
     expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
@@ -289,7 +289,7 @@ describe('검사표 기준', () => {
     expect(requests.find((r) => r.path.endsWith(':confirm'))!.headers.get('If-Match')).toBe('"4"');
   });
 
-  it('확정된 기준은 고칠 수 없고, 새 판 만들기가 같은 모델·사업부로 복사해 등록한다', async () => {
+  it('확정된 기준은 고칠 수 없고, 새 버전 만들기가 같은 품목·사업부로 복사해 등록한다', async () => {
     const { user, requests } = setup(
       template({ statusCode: 'CONFIRMED', confirmedBy: 1, confirmedAt: '2026-10-21T01:00:00Z' }),
     );

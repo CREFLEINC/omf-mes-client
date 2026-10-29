@@ -46,12 +46,12 @@ export const inspectionSheetTemplate = {
     retry: 'Thử lại',
     selectTitle: 'Chọn tiêu chuẩn phiếu kiểm tra',
     selectHint: 'Chọn trong danh sách để hiển thị thông tin chi tiết.',
-    openRow: (itemCode: string, version: number) => `Mở ${itemCode} bản ${version}`,
+    openRow: (itemCode: string, version: number) => `Mở ${itemCode} phiên bản ${version}`,
   },
 
   columns: {
     model: 'Mặt hàng',
-    version: 'Bản',
+    version: 'Phiên bản',
     layout: 'Mẫu',
     status: 'Trạng thái',
     confirmedAt: 'Thời điểm xác nhận',
@@ -62,14 +62,14 @@ export const inspectionSheetTemplate = {
 
   editor: {
     detailTitle: 'Chi tiết tiêu chuẩn phiếu kiểm tra',
-    versionChip: (version: number) => `Bản ${version}`,
+    versionChip: (version: number) => `Phiên bản ${version}`,
     editBasic: 'Sửa thông tin cơ bản',
     basicConfirm: 'Xác nhận',
     newHeading: 'Tiêu chuẩn phiếu kiểm tra mới',
-    heading: (itemCode: string, version: number) => `${itemCode} · bản ${version}`,
+    heading: (itemCode: string, version: number) => `${itemCode} · phiên bản ${version}`,
     loading: 'Đang tải tiêu chuẩn.',
     loadFailed: 'Không tải được tiêu chuẩn.',
-    readOnly: 'Bản đã xác nhận hoặc hủy bỏ không sửa được.',
+    readOnly: 'Phiên bản đã xác nhận hoặc hủy bỏ không sửa được.',
     basicSection: 'Thông tin cơ bản',
     model: 'Mặt hàng',
     pickModel: 'Chọn mặt hàng',
@@ -120,17 +120,17 @@ export const inspectionSheetTemplate = {
     confirm: 'Xác nhận',
     dirty: 'Có thay đổi chưa lưu.',
     confirmBlocked: 'Hãy lưu trước rồi mới xác nhận được.',
-    copyAsNew: 'Tạo bản mới',
+    copyAsNew: 'Tạo phiên bản mới',
     close: 'Đóng',
     saved: 'Đã lưu tiêu chuẩn.',
-    confirmed: 'Đã xác nhận tiêu chuẩn. Bản xác nhận trước của mặt hàng này đã bị hủy bỏ.',
-    copied: 'Đã tạo bản mới.',
+    confirmed: 'Đã xác nhận tiêu chuẩn. Phiên bản xác nhận trước của mặt hàng này đã bị hủy bỏ.',
+    copied: 'Đã tạo phiên bản mới.',
   },
 
   confirmDialog: {
     title: 'Xác nhận tiêu chuẩn',
     body: (itemCode: string, version: number) =>
-      `Xác nhận ${itemCode} bản ${version}. Sau khi xác nhận sẽ không sửa được, và bản xác nhận trước của mặt hàng này bị hủy bỏ.`,
+      `Xác nhận ${itemCode} phiên bản ${version}. Sau khi xác nhận sẽ không sửa được, và phiên bản xác nhận trước của mặt hàng này bị hủy bỏ.`,
     ok: 'Xác nhận',
   },
 
