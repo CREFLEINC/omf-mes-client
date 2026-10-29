@@ -22458,7 +22458,11 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 /* 저장·확정 줄 — 상세 맨 아래에 붙어 따라온다. 상세 패딩까지 덮어 뒤 내용이 비치지 않게 한다. */
 .inspection-sheet-template-actions {
   position: sticky;
-  bottom: 0;
+  /*
+   * 본문 칸(main)의 아래 안쪽 여백(24px)만큼 내려 화면 맨 아래에 붙인다 — 0 이면 그 여백 틈으로
+   * 뒤의 항목이 비쳐 보인다(#208).
+   */
+  bottom: calc(var(--space-6) * -1);
   z-index: 2;
   display: flex;
   flex-wrap: wrap;

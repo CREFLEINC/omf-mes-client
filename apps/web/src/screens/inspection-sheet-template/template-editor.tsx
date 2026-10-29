@@ -463,12 +463,8 @@ export const TemplateEditor = ({
           {t.editor.close}
         </Button>
         {!readOnly && (
-          <Button
-            variant={template === null ? undefined : 'outlined'}
-            disabled={saving}
-            loading={create.isSaving || update.isSaving}
-            onClick={save}
-          >
+          /* 저장은 채운 빨강 — 검사 기준 탭의 저장과 같다(사용자 지시 · #208). */
+          <Button disabled={saving} loading={create.isSaving || update.isSaving} onClick={save}>
             {t.editor.save}
           </Button>
         )}
