@@ -794,7 +794,6 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-top: var(--space-4);
 }
 
-
 /* 발행 단추 자리의 안내(작성중 버전이 있을 때 · #196) — 짧은 한 문장이라 꺾지 않는다. */
 .inspection-standard-new-revision-notice {
   display: inline-flex;
@@ -1002,7 +1001,6 @@ h2:has(> .inspection-standard-dialog-title) {
   flex: 1 1 22em;
   min-width: min(22em, 100%);
 }
-
 
 .inspection-standard-plan-chips {
   align-items: center;
@@ -25005,4 +25003,42 @@ table.col-measuring td {
 /* 오른쪽 구획의 첫 갈래는 구획 위 여백에 바로 붙는다. */
 .po-board-scroll > .board-frame-sub:first-child {
   margin-top: 0;
+}
+
+/* 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29) — 대상 랙 · 두 수 · 만들 위치 미리보기. */
+.rack-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.rack-layout-target {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+}
+
+.rack-layout-counts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rack-layout-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 16rem;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  font: var(--type-body-md);
+}
+
+.rack-layout-kind {
+  display: inline-block;
+  min-width: 2.5rem;
+  color: var(--on-surface-variant);
 }

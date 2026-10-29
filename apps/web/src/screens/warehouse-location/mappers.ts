@@ -33,13 +33,20 @@ export const warehouseToFormValues = (warehouse: Warehouse): WarehouseFormValues
 /**
  * 신규 등록 폼의 초기값. 공통코드 선택은 서버가 준 목록에서 사용자가 직접 고른다.
  */
+/**
+ * 창고 관리 수준은 화면에서 없앴다(사용자 결정 2026-10-29 — 위치 계층은 위치가 정한다). 계약 사본이 아직 필수로
+ * 두어 등록에 값을 실어야 하는데, 서버는 이 값을 검사도 판단도 하지 않는다(서버 위치 계층 계약 ①). 가장 깊은 값을
+ * 실어 이행 전 서버에서도 위치를 막지 않게 한다. 계약이 바뀌면 걷는다.
+ */
+const TRANSITIONAL_MANAGEMENT_LEVEL = 'CELL';
+
 export const emptyWarehouseFormValues = (): WarehouseFormValues => ({
   plantId: '',
   businessUnitId: '',
   warehouseCode: '',
   warehouseName: '',
   warehouseTypeCode: '',
-  managementLevelCode: '',
+  managementLevelCode: TRANSITIONAL_MANAGEMENT_LEVEL,
   isExternal: false,
   /* 신규 창고는 불량창고가 아니다 — 그렇게 정하는 자리가 화면에 없으므로 꺼진 값으로 낸다. */
   isDefect: false,

@@ -259,13 +259,6 @@ export const WarehouseFormPane = ({
           onChange={(value) => onChange({ warehouseTypeCode: value })}
           error={fieldErrors.warehouseTypeCode}
         />
-        <SelectField
-          label={t.fields.managementLevel}
-          options={lookups.managementLevels}
-          value={values.managementLevelCode}
-          onChange={(value) => onChange({ managementLevelCode: value })}
-          error={fieldErrors.managementLevelCode}
-        />
       </div>
 
       <div className="warehouse-location-form-flags">

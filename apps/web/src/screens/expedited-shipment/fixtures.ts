@@ -17,10 +17,12 @@ export interface ExpeditedStubOptions {
   /** 활성 창고를 여럿 둔다 — 자동 확정이 안 되는 갈래. */
   manyWarehouses?: boolean;
   /**
-   * 구역(ZONE) 단위로 관리되는 창고를 하나 섞는다 — 위치 입력 칸이 없는 이 화면에서는 후보에서
-   * 빠져야 한다(통보 221 · 대응표 「긴급 직행 위치」).
+   * 「창고 안을 나눈 창고」(`dividedOnly=true`가 내는 창고)를 하나 섞는다 — 위치 입력 칸이 없는
+   * 이 화면에서는 후보에서 빠져야 한다(장부 P-153 · 대응표 「긴급 직행 위치」).
    */
-  zoneManagedWarehouse?: boolean;
+  dividedWarehouse?: boolean;
+  /** 나눈 창고 목록 조회만 실패시킨다. */
+  dividedWarehousesFail?: boolean;
   /** 출하 라인의 품목을 바꾼다 — 맞는 라인이 없는 갈래. */
   lineItemId?: number;
   /** 배정·출하 수량을 바꾼다. */
@@ -83,6 +85,25 @@ export const expeditedStub = (options: ExpeditedStubOptions = {}): StubFetch => 
     ],
   };
 
+  /*
+   * ⭐ 위치 입력 칸이 없는 이 화면에서는 나눈 창고가 활성 창고에 섞여 있어도 후보에서 빠져야
+   * 한다(P-153) — 활성 창고 «전체» 개수가 아니라 나누지 않은 창고 개수로 자동/선택이 갈리는지를
+   * 이 값으로 확인한다. 이 창고는 활성 목록과 `dividedOnly=true` 목록 양쪽에 실린다.
+   */
+  const dividedWarehouses =
+    options.dividedWarehouse === true
+      ? [
+          {
+            warehouseId: 2099,
+            plantId: 1001,
+            businessUnitId: 1,
+            warehouseCode: 'SYNTH-WH-DIV',
+            warehouseName: '합성 위치 나눈 창고',
+            isActive: true,
+          },
+        ]
+      : [];
+
   const warehouses = [
     ...(options.manyWarehouses === true
       ? [
@@ -92,7 +113,6 @@ export const expeditedStub = (options: ExpeditedStubOptions = {}): StubFetch => 
             businessUnitId: 1,
             warehouseCode: 'SYNTH-WH-1',
             warehouseName: '합성 창고 1',
-            managementLevelCode: 'WAREHOUSE',
             isActive: true,
           },
           {
@@ -101,7 +121,6 @@ export const expeditedStub = (options: ExpeditedStubOptions = {}): StubFetch => 
             businessUnitId: 1,
             warehouseCode: 'SYNTH-WH-2',
             warehouseName: '합성 창고 2',
-            managementLevelCode: 'WAREHOUSE',
             isActive: true,
           },
         ]
@@ -112,28 +131,10 @@ export const expeditedStub = (options: ExpeditedStubOptions = {}): StubFetch => 
             businessUnitId: 1,
             warehouseCode: 'SYNTH-WH-1',
             warehouseName: '합성 창고 1',
-            managementLevelCode: 'WAREHOUSE',
             isActive: true,
           },
         ]),
-    /*
-     * ⭐ 위치 입력 칸이 없는 이 화면에서는 구역 단위 관리 창고가 섞여 있어도 후보에서 빠져야
-     * 한다(통보 221) — 활성 창고 «전체» 개수가 아니라 창고 단위 관리 창고 개수로 자동/선택이
-     * 갈리는지를 이 값으로 확인한다.
-     */
-    ...(options.zoneManagedWarehouse === true
-      ? [
-          {
-            warehouseId: 2099,
-            plantId: 1001,
-            businessUnitId: 1,
-            warehouseCode: 'SYNTH-WH-ZONE',
-            warehouseName: '합성 구역관리 창고',
-            managementLevelCode: 'ZONE',
-            isActive: true,
-          },
-        ]
-      : []),
+    ...dividedWarehouses,
   ];
 
   const routes = [
@@ -179,7 +180,15 @@ export const expeditedStub = (options: ExpeditedStubOptions = {}): StubFetch => 
     },
     {
       match: (request: Request) => new URL(request.url).pathname === '/mdm/warehouses',
-      respond: () => jsonResponse({ items: warehouses, page: page(warehouses.length) }),
+      respond: (request: Request) => {
+        if (new URL(request.url).searchParams.get('dividedOnly') !== 'true') {
+          return jsonResponse({ items: warehouses, page: page(warehouses.length) });
+        }
+        if (options.dividedWarehousesFail === true) {
+          return jsonResponse({ code: 'INTERNAL', message: '합성 오류' }, { status: 500 });
+        }
+        return jsonResponse({ items: dividedWarehouses, page: page(dividedWarehouses.length) });
+      },
     },
     {
       match: (request: Request) =>

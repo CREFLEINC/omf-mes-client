@@ -41,7 +41,6 @@ import {
   describeLocation,
   describeReference,
   findLocationCapacity,
-  findWarehouseLevel,
   lookupNote,
   nameLookupTruncatedNote,
   optionsPlaceholder,
@@ -54,7 +53,6 @@ import {
   useUomLookup,
   useWarehouseLookup,
 } from './lookups';
-import { isLocationInputOpen } from './management-level';
 import { toPageView } from './pagination';
 import {
   putawayRuleKeys,
@@ -939,11 +937,7 @@ export const PutawayRulePanel = () => {
     if (Object.keys(errors).length > 0) return;
 
     if (isCreating) {
-      const body = toRuleCreate(draft.values, {
-        locationAllowed: isLocationInputOpen(
-          findWarehouseLevel(warehouses.levels, formWarehouseId),
-        ),
-      });
+      const body = toRuleCreate(draft.values);
 
       if (body === null) return;
 
@@ -1234,15 +1228,9 @@ export const PutawayRulePanel = () => {
         locationChoices={toLocationChoices(
           formLocations,
           isCreating ? null : draft.values.locationId,
-          formLocations.stagingValues,
+          formLocations.unstockableValues,
         )}
         locationNote={lookupNote(formLocations)}
-        /* 고정 설계의 관리수준을 그대로 읽는다. WAREHOUSE면 사유와 해제 위치를 함께 보인다. */
-        locationDisabledReason={
-          isLocationInputOpen(findWarehouseLevel(warehouses.levels, formWarehouseId))
-            ? null
-            : t.notes.locationNotManaged
-        }
         uomOptions={toWritableSelectOptions(uoms, isCreating ? null : draft.values.uomId)}
         uomNote={lookupNote(uoms)}
         uomPlaceholder={optionsPlaceholder(uoms, t.form.noUomOptions)}

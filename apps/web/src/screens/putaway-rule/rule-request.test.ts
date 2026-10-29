@@ -42,10 +42,8 @@ describe('toRuleCreate', () => {
     expect(body?.locationId).toBeNull();
   });
 
-  it('위치를 관리하지 않는 창고에는 남아 있던 위치 값을 보내지 않는다', () => {
-    expect(
-      toRuleCreate(validCreate({ locationId: '9301' }), { locationAllowed: false })?.locationId,
-    ).toBeNull();
+  it('고른 위치를 번호로 싣는다', () => {
+    expect(toRuleCreate(validCreate({ locationId: '9301' }))?.locationId).toBe(9301);
   });
 
   it('비고를 비우면 null을 싣는다', () => {

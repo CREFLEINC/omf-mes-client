@@ -258,7 +258,6 @@ export const useLookupOptions = (): LookupResult => {
     });
 
   const warehouseTypes = useCodeGroup(CODE_GROUPS.warehouseType);
-  const managementLevels = useCodeGroup(CODE_GROUPS.managementLevel);
   const locationTypes = useCodeGroup(CODE_GROUPS.locationType);
   const qualityZones = useCodeGroup(CODE_GROUPS.qualityZone);
   const storageConditions = useCodeGroup(CODE_GROUPS.storageCondition);
@@ -308,7 +307,6 @@ export const useLookupOptions = (): LookupResult => {
         isLoading: uoms.isPending,
       },
       warehouseTypes: codeSource(warehouseTypes),
-      managementLevels: codeSource(managementLevels),
       locationTypes: codeSource(locationTypes),
       qualityZones: codeSource(qualityZones),
       storageConditions: codeSource(storageConditions),
@@ -319,7 +317,6 @@ export const useLookupOptions = (): LookupResult => {
       isListTruncated(businessUnits.data) ||
       isListTruncated(uoms.data) ||
       isListTruncated(warehouseTypes.data) ||
-      isListTruncated(managementLevels.data) ||
       isListTruncated(locationTypes.data) ||
       isListTruncated(qualityZones.data) ||
       isListTruncated(storageConditions.data) ||
@@ -329,7 +326,6 @@ export const useLookupOptions = (): LookupResult => {
       businessUnits.isError ||
       uoms.isError ||
       warehouseTypes.isError ||
-      managementLevels.isError ||
       locationTypes.isError ||
       qualityZones.isError ||
       storageConditions.isError ||
@@ -339,7 +335,6 @@ export const useLookupOptions = (): LookupResult => {
       businessUnits.isPending ||
       uoms.isPending ||
       warehouseTypes.isPending ||
-      managementLevels.isPending ||
       locationTypes.isPending ||
       qualityZones.isPending ||
       storageConditions.isPending ||

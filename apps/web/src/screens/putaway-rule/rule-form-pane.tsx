@@ -28,8 +28,6 @@ export interface RuleFormPaneProps {
   /** 위치 선택지. **첫 자리가 빈 값(「창고 전체」)이다** — 그 규칙은 `location-options.ts`가 갖는다. */
   locationChoices: SelectOption[];
   locationNote?: string;
-  /** 창고 관리수준이 위치 입력을 잠근 사유. `null`이면 열려 있다(`management-level.ts`). */
-  locationDisabledReason: string | null;
   uomOptions: SelectOption[];
   uomNote?: string;
   uomPlaceholder?: string;
@@ -98,9 +96,7 @@ export interface RuleFormPaneProps {
  * 4. 열어 두어 얻는 것이 없다 — 저장·취소·창 열기가 이미 전역으로 잠기므로 열어 두면
  *    「칠 수는 있는데 저장할 수도 되돌릴 수도 없고, 곧 덮인다」가 된다.
  *
- * ⛔ **되돌리려면 일곱 자리를 함께 본다**(여섯이 아니다) — 위치 칸은
- * `isLocked || locationDisabledReason !== null`이라 `disabled={isLocked}` 문자열 검색에
- * 걸리지 않는다. 일곱 자리 전부에 감지기가 있다(`rule-form-pane.test.tsx`).
+ * ⛔ **되돌리려면 일곱 자리를 함께 본다** — 일곱 자리 전부에 감지기가 있다(`rule-form-pane.test.tsx`).
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -115,7 +111,6 @@ export const RuleFormPane = ({
   banner,
   locationChoices,
   locationNote,
-  locationDisabledReason,
   uomOptions,
   uomNote,
   uomPlaceholder,
@@ -204,8 +199,7 @@ export const RuleFormPane = ({
           value={values.locationId}
           note={locationNote}
           error={fieldErrors.locationId}
-          disabled={isLocked || locationDisabledReason !== null}
-          disabledReason={locationDisabledReason ?? undefined}
+          disabled={isLocked}
           onChange={(value) => {
             onChange({ locationId: value });
           }}

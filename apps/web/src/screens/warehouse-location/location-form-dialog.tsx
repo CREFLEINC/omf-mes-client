@@ -10,6 +10,8 @@ export interface LocationFormDialogProps {
   open: boolean;
   onClose: () => void;
   mode: 'create' | 'edit';
+  /** 추가할 때의 제목 — 구역 추가 · 랙 추가. 없으면 「Location 추가」. */
+  createTitle?: string;
   /** 어느 창고의 Location인지 — 「창고코드 · 창고명」 */
   warehouseLabel: string;
   parentOptions: { value: string; label: string }[];
@@ -44,6 +46,7 @@ export const LocationFormDialog = ({
   open,
   onClose,
   mode,
+  createTitle,
   warehouseLabel,
   parentOptions,
   values,
@@ -72,7 +75,7 @@ export const LocationFormDialog = ({
       open={open}
       onClose={onClose}
       size="lg"
-      title={mode === 'create' ? t.dialog.createTitle : t.dialog.editTitle}
+      title={mode === 'create' ? (createTitle ?? t.dialog.createTitle) : t.dialog.editTitle}
       footer={
         <>
           {mode === 'edit' && canToggleActive && (

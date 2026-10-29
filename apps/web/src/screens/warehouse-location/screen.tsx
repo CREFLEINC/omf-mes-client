@@ -13,6 +13,7 @@ import { isPutawayStaging, isSystemLocation } from '../../patterns/system-locati
 import { selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { LocationFormDialog } from './location-form-dialog';
+import { RackLayoutDialog } from './rack-layout-dialog';
 import { LocationLabelDialog, type LocationLabelPreview } from './location-label-dialog';
 import { LocationLabelIssueDialog } from './location-label-issue-dialog';
 import { LocationPane } from './location-pane';
@@ -93,13 +94,13 @@ const CLOSED_LOCATION_DIALOG: LocationDialogState = {
   locationId: null,
 };
 
-/** root의 depth를 0으로 둘 때 관리수준별 허용 최하위 depth. */
-const LOCATION_MAX_DEPTH: Readonly<Record<string, number>> = {
-  WAREHOUSE: -1,
-  ZONE: 0,
-  RACK: 1,
-  CELL: 2,
-};
+/**
+ * 위치 계층은 창고가 아니라 위치가 정한다(사용자 결정 2026-10-29 · 서버 위치 계층 계약): 구역(0) › 랙(1) › 층(2) ›
+ * 셀(3). 건너뛰기 없이 상위 아래 한 단계씩이라 root 를 0 으로 둘 때 허용 최하위 depth 는 3(셀)이다.
+ */
+const LOCATION_MAX_DEPTH = 3;
+const ZONE_DEPTH = 0;
+const RACK_DEPTH = 1;
 
 /** 노드를 옮길 때 함께 움직이는 하위 트리의 상대 높이. 순환 자료도 한 번씩만 센다. */
 const locationSubtreeHeight = (items: readonly Location[], rootId: number): number => {
@@ -495,21 +496,8 @@ export const WarehouseLocationScreen = () => {
 
   const selectedWarehouse = detail.data?.warehouse ?? null;
 
-  /*
-   * 저장된 관리 수준이 「창고」면 Location 탭을 잠근다(사용자 결정 2026-09-18 · omf-all-around#17).
-   * 이 수준은 Location을 두지 않으므로(LOCATION_MAX_DEPTH = -1) 탭 안의 추가가 늘 막히고 목록이 늘 비었다.
-   * 폼에서 값을 바꾸기만 해서는 풀리지 않는다 — 저장 후 다시 받은 상세가 기준이다.
-   */
-  const locationTabLocked = selectedWarehouse?.managementLevelCode === 'WAREHOUSE';
-  const activeTab = locationTabLocked && requestedTab === 'location' ? 'warehouse' : requestedTab;
-
-  /* 잠긴 창고를 tab=location 주소로 열면 주소도 창고 정보 탭으로 맞춘다 — 기록을 쌓지 않게 replace. */
-  useEffect(() => {
-    if (!locationTabLocked || searchParams.get('tab') !== 'location') return;
-    const next = new URLSearchParams(searchParams);
-    next.delete('tab');
-    setSearchParams(next, { replace: true });
-  }, [locationTabLocked, searchParams, setSearchParams]);
+  /* 창고 관리 수준이 없어져(2026-10-29) Location 탭은 늘 열린다 — 위치가 없는 창고는 창고 단위로 관리된다. */
+  const activeTab = requestedTab;
 
   /** 서버가 돌려준 현재 계층에서 하위를 가진 노드를 기본으로 펼친다. */
   const expandableIds = useMemo(() => {
@@ -615,23 +603,6 @@ export const WarehouseLocationScreen = () => {
   const handleSaveWarehouse = () => {
     const errors = validateWarehouse(formValues, isCreateMode ? 'create' : 'edit');
 
-    if (
-      !isCreateMode &&
-      formState !== null &&
-      formValues.managementLevelCode !== formState.baseline.managementLevelCode
-    ) {
-      const maxDepth = LOCATION_MAX_DEPTH[formValues.managementLevelCode] ?? -1;
-      const deepestLocation = allLocationRows.reduce(
-        (deepest, row) => Math.max(deepest, row.depth),
-        -1,
-      );
-
-      if (locationHierarchy.data === undefined) {
-        errors.managementLevelCode = t.validation.locationHierarchyUnavailable;
-      } else if (deepestLocation > maxDepth) {
-        errors.managementLevelCode = t.validation.managementLevelTooShallow;
-      }
-    }
     setLocalFieldErrors(errors);
 
     // 화면에서 잡히는 오류는 서버로 보내지 않는다.
@@ -700,10 +671,6 @@ export const WarehouseLocationScreen = () => {
     businessUnits: selectableOptions(lookups.sources.businessUnits, formValues.businessUnitId),
     uoms: selectableOptions(lookups.sources.uoms, ''),
     warehouseTypes: selectableOptions(lookups.sources.warehouseTypes, formValues.warehouseTypeCode),
-    managementLevels: selectableOptions(
-      lookups.sources.managementLevels,
-      formValues.managementLevelCode,
-    ),
     locationTypes: selectableOptions(
       lookups.sources.locationTypes,
       locationValues.locationTypeCode,
@@ -775,10 +742,7 @@ export const WarehouseLocationScreen = () => {
 
   const handleSaveLocation = () => {
     const errors = validateLocation(locationValues);
-    const maxDepth =
-      selectedWarehouse === null
-        ? -1
-        : (LOCATION_MAX_DEPTH[selectedWarehouse.managementLevelCode] ?? -1);
+    const maxDepth = selectedWarehouse === null ? -1 : LOCATION_MAX_DEPTH;
     const parentId = Number(locationValues.parentLocationId) || null;
     const parentDepth = parentId === null ? -1 : locationDepthById.get(parentId);
     const subtreeHeight =
@@ -786,10 +750,14 @@ export const WarehouseLocationScreen = () => {
         ? 0
         : locationSubtreeHeight(hierarchyItems, dialogState.locationId);
 
-    if (maxDepth < 0) {
-      errors.parentLocationId = t.validation.locationsDisabledByManagementLevel;
-    } else if (parentDepth === undefined) {
+    /* 고칠 때 상위는 같은 단계의 다른 상위로만 바꾼다 — 단계가 바뀌면 서버가 거절한다(위치 계층 계약). */
+    const currentDepth =
+      dialogState.locationId === null ? undefined : locationDepthById.get(dialogState.locationId);
+
+    if (parentDepth === undefined) {
       errors.parentLocationId = t.validation.parentLocationUnavailable;
+    } else if (currentDepth !== undefined && parentDepth + 1 !== currentDepth) {
+      errors.parentLocationId = t.validation.locationLevelChanged;
     } else if (parentDepth + 1 + subtreeHeight > maxDepth) {
       errors.parentLocationId = t.validation.locationDepthExceeded;
     }
@@ -825,23 +793,42 @@ export const WarehouseLocationScreen = () => {
     return unavailable;
   }, [dialogState.locationId, hierarchyItems]);
 
-  const maxLocationDepth =
-    selectedWarehouse === null
-      ? -1
-      : (LOCATION_MAX_DEPTH[selectedWarehouse.managementLevelCode] ?? -1);
+  const maxLocationDepth = selectedWarehouse === null ? -1 : LOCATION_MAX_DEPTH;
   const selectedLocationRow = allLocationRows.find(
     (row) => String(row.location.locationId) === selectedLocationIds[0],
   );
   const canAddRootLocation = maxLocationDepth >= 0 && locationHierarchy.data !== undefined;
-  const canAddChildLocation =
+  /*
+   * 단추는 단계로 나눈다(사용자 지시 2026-10-29) — 구역은 창고 밑에, 랙은 고른 구역 밑에, 층 · 셀은 고른 랙에서
+   * 한꺼번에 짠다. 시스템 자리(창고 전체 · 적치 대기) 밑에는 달 수 없다(서버 400 INVALID).
+   */
+  const selectedUserLocationDepth =
     selectedLocationIds.length === 1 &&
     selectedLocationRow !== undefined &&
-    selectedLocationRow.depth < maxLocationDepth &&
-    locationHierarchy.data !== undefined;
+    !isSystemLocation(selectedLocationRow.location) &&
+    locationHierarchy.data !== undefined
+      ? selectedLocationRow.depth
+      : null;
+  const canAddChildLocation = selectedUserLocationDepth === ZONE_DEPTH;
+  const canConfigureRack = selectedUserLocationDepth === RACK_DEPTH;
+  const [rackLayoutTarget, setRackLayoutTarget] = useState<Location | null>(null);
+  const createParentDepth =
+    locationValues.parentLocationId === ''
+      ? -1
+      : locationDepthById.get(Number(locationValues.parentLocationId));
+  const createLocationTitle =
+    createParentDepth === -1
+      ? t.dialog.createZoneTitle
+      : createParentDepth === ZONE_DEPTH
+        ? t.dialog.createRackTitle
+        : undefined;
 
   const parentOptions = allLocationRows
     .filter(
-      (row) => !unavailableParentIds.has(row.location.locationId) && row.depth < maxLocationDepth,
+      (row) =>
+        !unavailableParentIds.has(row.location.locationId) &&
+        row.depth < maxLocationDepth &&
+        !isSystemLocation(row.location),
     )
     .map((row) => ({
       value: String(row.location.locationId),
@@ -977,7 +964,6 @@ export const WarehouseLocationScreen = () => {
             {
               value: 'location',
               label: t.tabs.location,
-              disabled: locationTabLocked,
               content: (
                 <LocationPane
                   rows={locationRows}
@@ -1004,6 +990,8 @@ export const WarehouseLocationScreen = () => {
                   onAddRoot={() => openCreateLocation(null)}
                   canAddChild={canAddChildLocation}
                   onAddChild={() => openCreateLocation(selectedLocationId)}
+                  canConfigureRack={canConfigureRack}
+                  onConfigureRack={() => setRackLayoutTarget(selectedLocationRow?.location ?? null)}
                   onEdit={handleEditLocation}
                   onGenerateLabels={() =>
                     labelSummary.mutate(selectedLocationIds.map((id) => Number(id)))
@@ -1145,6 +1133,13 @@ export const WarehouseLocationScreen = () => {
         }
       />
 
+      <RackLayoutDialog
+        rack={rackLayoutTarget}
+        warehouseId={selectedWarehouseId ?? 0}
+        items={hierarchyItems}
+        onClose={() => setRackLayoutTarget(null)}
+      />
+
       <LocationFormDialog
         open={dialogState.open}
         onClose={() => {
@@ -1153,6 +1148,7 @@ export const WarehouseLocationScreen = () => {
           setLocationSourceEtag(null);
         }}
         mode={dialogState.mode}
+        {...(createLocationTitle === undefined ? {} : { createTitle: createLocationTitle })}
         warehouseLabel={warehouseLabel}
         parentOptions={parentOptions}
         values={locationValues}

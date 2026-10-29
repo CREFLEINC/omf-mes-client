@@ -171,9 +171,6 @@ export const putawayRule: Translated<typeof ko.putawayRule> = {
     itemFixed: 'Mặt hàng và kho chỉ chọn được khi đăng ký. Muốn đổi thì hãy tạo quy tắc mới.',
     /** 빈 값이 아니라 확정된 뜻이라 칸 옆에서 말한다 — 말하지 않으면 「고르다 만 것」으로 읽힌다. */
     locationEmptyMeansWarehouseWide: 'Để trống vị trí thì quy tắc áp dụng cho toàn kho đó.',
-    /** `WAREHOUSE` 수준에서는 Location을 받지 않는다. 해제 위치도 함께 안내한다(G-10). */
-    locationNotManaged:
-      'Kho này không quản lý vị trí. Có thể đổi mức quản lý ở màn hình Kho · Location.',
     /** 방향은 데이터에 적혀 있지 않고 계약이 정한 것이라 화면이 말해야 한다. */
     priorityDirection: 'Số càng nhỏ thì càng được đề xuất trước.',
     /** 위치 자체 용량을 나란히 보인다 — 규칙 용량 하나만으로는 그 수를 판단할 근거가 없다. */

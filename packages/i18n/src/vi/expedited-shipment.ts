@@ -79,7 +79,7 @@ export const expeditedShipment: Translated<typeof ko.expeditedShipment> = {
     warehouseAmbiguous:
       'Có nhiều kho đang hoạt động nên màn hình để bạn tự chọn. Hãy chọn nơi cần ghi nhận.',
     warehouseNone:
-      'Không có kho nào đang hoạt động nên không tiếp tục được. Hãy đăng ký dữ liệu gốc của kho trước.',
+      'Không có kho nào dùng được mà không cần chọn vị trí nên không tiếp tục được. Hãy kiểm tra dữ liệu gốc của kho.',
     warehouseFailed: 'Không tải được danh sách kho',
     warehouseLoading: 'Đang tải kho',
   },

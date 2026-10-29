@@ -45,14 +45,13 @@ const FIELD_LABELS = [
   '창고 코드',
   '창고명',
   '창고 유형',
-  '관리 수준',
   '외부 창고',
   '불량 창고',
   '사용 상태',
 ];
 
 describe('WarehouseFormPane', () => {
-  it('9개 필드를 각각 접근성 라벨로 조회할 수 있다', () => {
+  it('8개 필드를 각각 접근성 라벨로 조회할 수 있다', () => {
     renderPane();
 
     for (const label of FIELD_LABELS) {
@@ -182,10 +181,11 @@ describe('WarehouseFormPane', () => {
     ).not.toBeNull();
   });
 
-  it('관리 수준에 안내문을 붙이지 않는다', () => {
-    renderPane({ values: { ...warehouseFormInitialValues, managementLevelCode: 'WAREHOUSE' } });
+  /* 위치 계층은 위치가 정한다 — 창고에서 관리 수준을 고르지 않는다(사용자 결정 2026-10-29). */
+  it('관리 수준 칸이 없다', () => {
+    renderPane({ mode: 'create' });
 
-    expect(screen.queryByText('Location을 지정하지 않습니다.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: '관리 수준' })).not.toBeInTheDocument();
   });
 
   it('거래처 칸이 없다', () => {

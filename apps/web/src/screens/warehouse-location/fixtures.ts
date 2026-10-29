@@ -181,12 +181,6 @@ export const lookupFixtures: LookupOptions = {
     { value: 'PRODUCT', label: '제품' },
     { value: 'GENERAL', label: '일반' },
   ],
-  managementLevels: [
-    { value: 'WAREHOUSE', label: '창고' },
-    { value: 'ZONE', label: '구역' },
-    { value: 'RACK', label: '랙' },
-    { value: 'CELL', label: '셀' },
-  ],
   locationTypes: [
     { value: 'RACK', label: '랙' },
     { value: 'FLOOR', label: '바닥' },

@@ -37,7 +37,6 @@ const renderPane = (overrides: Partial<RuleFormPaneProps> = {}) => {
       fieldErrors={{}}
       banner={null}
       locationChoices={locationChoices}
-      locationDisabledReason={null}
       uomOptions={uomOptions}
       capacityNote={{ kind: 'none' }}
       uomLabel={() => 'SYN-UOM-01 · 합성단위 가'}
@@ -158,15 +157,6 @@ describe('RuleFormPane — 필수 표시와 위치의 뜻', () => {
     renderPane();
 
     expect(screen.getByText(t.notes.priorityDirection)).toBeInTheDocument();
-  });
-
-  /** C3-4 — `WAREHOUSE` 수준에서 잠기면 사유와 해제 위치가 함께 선다. */
-  it('위치 입력이 잠기면 잠긴 사유가 선다', () => {
-    renderPane({ locationDisabledReason: t.notes.locationNotManaged });
-
-    expect(screen.getByRole('combobox', { name: t.fields.location })).toBeDisabled();
-    expect(screen.getByText(t.notes.locationNotManaged)).toBeInTheDocument();
-    expect(screen.getByText(/창고·Location 화면/)).toBeInTheDocument();
   });
 });
 
@@ -298,7 +288,7 @@ describe('RuleFormPane — 저장 자리의 네 상태', () => {
     expect(screen.getByLabelText(t.fields.priorityNo)).toBeDisabled();
     expect(screen.getByLabelText(t.fields.remarks)).toBeDisabled();
     expect(screen.getByRole('combobox', { name: t.fields.uom })).toBeDisabled();
-    /* 위치 칸은 관리수준으로도 잠기는 자리라 **문자열 검색에 걸리지 않는다** — 따로 잰다. */
+    /* 위치 칸 */
     expect(screen.getByRole('combobox', { name: t.fields.location })).toBeDisabled();
     /* 창 열기 */
     expect(screen.getByRole('button', { name: t.actions.openItemPicker })).toBeDisabled();

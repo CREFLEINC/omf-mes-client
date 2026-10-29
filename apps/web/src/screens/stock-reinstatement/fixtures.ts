@@ -36,7 +36,6 @@ const warehouses = [
     warehouseCode: 'WH-DEFECT',
     warehouseName: '합성 불량창고',
     warehouseTypeCode: 'PRODUCT',
-    managementLevelCode: 'WAREHOUSE',
     isExternal: false,
     isDefect: true,
     isActive: true,
@@ -48,11 +47,45 @@ const warehouses = [
     warehouseCode: 'WH-FG',
     warehouseName: '합성 완제품창고',
     warehouseTypeCode: 'PRODUCT',
-    managementLevelCode: 'CELL',
     isExternal: false,
     isDefect: false,
     isActive: true,
   },
+];
+
+const location = (
+  locationId: number,
+  locationCode: string,
+  locationName: string,
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> => ({
+  locationId,
+  warehouseId: 202,
+  locationCode,
+  locationName,
+  locationTypeCode: 'RACK',
+  allowMixedItem: false,
+  allowMixedLot: false,
+  isActive: true,
+  locationLevelCode: 'CELL',
+  isLeaf: true,
+  systemRoleCode: null,
+  ...extra,
+});
+
+/** 재고를 둘 수 없는 위치 — 적치 대기와 켜진 하위가 있는 랙. 어느 경우든 고를 거리에서 빠진다. */
+export const unstockableLocations = [
+  location(301, 'FG-STAGING', '적치 대기', {
+    locationLevelCode: 'ZONE',
+    systemRoleCode: 'PUTAWAY_STAGING',
+  }),
+  location(302, 'FG-A', '합성 완제품 랙', { locationLevelCode: 'RACK', isLeaf: false }),
+];
+
+/** 재고를 둘 수 있는 위치 둘 — 기본은 위치를 고르게 하는 창고. */
+export const stockableLocations = [
+  location(303, 'FG-A-01', '합성 완제품 셀'),
+  location(304, 'FG-A-02', '합성 완제품 둘째 셀'),
 ];
 
 const pathOf = (request: Request): string => new URL(request.url).pathname;
@@ -60,6 +93,8 @@ const pathOf = (request: Request): string => new URL(request.url).pathname;
 export interface ReinstatementStubOptions {
   emptyOptionalReasons?: boolean;
   postResponse?: () => Response;
+  /** 대상 창고(202)의 위치 목록. 기본은 고를 수 있는 둘과 고를 수 없는 둘. */
+  locations?: readonly Record<string, unknown>[];
 }
 
 export const reinstatementStub = (options: ReinstatementStubOptions = {}): StubFetch => {
@@ -166,18 +201,7 @@ export const reinstatementStub = (options: ReinstatementStubOptions = {}): StubF
       match: (request) => request.method === 'GET' && pathOf(request) === '/mdm/locations',
       respond: () =>
         jsonResponse(
-          page([
-            {
-              locationId: 303,
-              warehouseId: 202,
-              locationCode: 'FG-A-01',
-              locationName: '합성 완제품 셀',
-              locationTypeCode: 'RACK',
-              allowMixedItem: false,
-              allowMixedLot: false,
-              isActive: true,
-            },
-          ]),
+          page([...(options.locations ?? [...unstockableLocations, ...stockableLocations])]),
         ),
     },
     {

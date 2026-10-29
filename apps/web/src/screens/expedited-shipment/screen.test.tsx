@@ -270,20 +270,32 @@ describe('ExpeditedShipmentScreen', () => {
   });
 
   /*
-   * ⭐ 통보 221 — `expedited=true`는 창고 단위 관리 창고에서 활성 위치가 정확히 하나일 때만
-   * 위치 없이 처리된다. 이 화면은 위치 입력 칸이 없으므로(대응표 「보류」 — 임의로 만들지
-   * 않는다) 구역 단위로 관리되는 창고는 애초에 고를 수 없어야 한다 — 골라 봐야 확정에서 400을
-   * 만난다.
+   * ⭐ P-153 — 본문에 위치가 없으면 서버는 재고를 둘 수 있는 위치가 정확히 하나일 때만 그리로
+   * 넣는다. 이 화면은 위치 입력 칸이 없으므로(대응표 「보류」 — 임의로 만들지 않는다) 「창고 안을
+   * 나눈 창고」(`dividedOnly=true`)는 애초에 고를 수 없어야 한다 — 골라 봐야 확정에서 400을 만난다.
    */
-  it('⭐ 구역 단위 관리 창고는 활성 창고에 섞여 있어도 후보에서 빠진다', async () => {
-    const { user } = renderScreen({ zoneManagedWarehouse: true });
+  it('⭐ 창고 안을 나눈 창고는 활성 창고에 섞여 있어도 후보에서 빠진다', async () => {
+    const { user } = renderScreen({ dividedWarehouse: true });
     await fillAll(user);
 
-    /* 창고 단위 관리 창고가 하나뿐이라 자동으로 채워지고, 구역 단위 관리 창고는 보이지 않는다. */
+    /* 나누지 않은 창고가 하나뿐이라 자동으로 채워지고, 나눈 창고는 보이지 않는다. */
     expect(await screen.findByText(/SYNTH-WH-1/)).toBeInTheDocument();
-    expect(screen.queryByText(/SYNTH-WH-ZONE/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/SYNTH-WH-DIV/)).not.toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.submit })).toBeEnabled();
     });
+    const dividedReads = requestsSent().filter((request) => {
+      const url = new URL(request.url);
+      return url.pathname === '/mdm/warehouses' && url.searchParams.get('dividedOnly') === 'true';
+    });
+    expect(dividedReads.length).toBeGreaterThan(0);
+  });
+
+  it('나눈 창고 목록을 못 읽으면 창고를 정하지 않고 확정을 잠근다', async () => {
+    const { user } = renderScreen({ dividedWarehousesFail: true });
+    await fillAll(user);
+
+    expect(await screen.findByText(t.loading.warehouseFailed)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
   });
 });

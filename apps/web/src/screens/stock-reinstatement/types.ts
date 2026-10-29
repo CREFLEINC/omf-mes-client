@@ -1,12 +1,18 @@
 import type { components } from '@omf-mes/api-client';
 
+import type { LocationLevelFields } from '../../patterns/location-level';
+import type { SystemLocationFields } from '../../patterns/system-location';
+
 export type DecisionResponse = components['schemas']['DispositionDecision'];
 export type NonconformanceResponse = components['schemas']['Nonconformance'];
 export type LotDetailResponse = components['schemas']['LotDetailResponse'];
 export type LotStatusResponse = components['schemas']['LotQualityStatus'];
 export type LotHoldResponse = components['schemas']['LotHold'];
 export type WarehouseResponse = components['schemas']['Warehouse'];
-export type LocationResponse = components['schemas']['Location'];
+/** 위치 — 단계·맨 아래 여부(P-154)와 서버가 만든 위치 표시(P-145)는 계약 사본에 아직 없어 넓혀 둔다. */
+export type LocationResponse = components['schemas']['Location'] &
+  LocationLevelFields &
+  SystemLocationFields;
 export type StockReinstatementCreate = components['schemas']['StockReinstatementCreate'];
 export type StockReinstatementResponse = components['schemas']['StockReinstatementResponse'];
 export type PageMeta = components['schemas']['PageMeta'];

@@ -30,8 +30,12 @@ export interface LocationPaneProps {
   canAddRoot: boolean;
   addRootDisabledReason: string;
   onAddRoot: () => void;
+  /** 구역 하나를 골랐을 때만 — 그 구역 밑에 랙을 단다. */
   canAddChild: boolean;
   onAddChild: () => void;
+  /** 랙 하나를 골랐을 때만 — 그 랙의 층 · 셀을 짠다. */
+  canConfigureRack: boolean;
+  onConfigureRack: () => void;
   onEdit: (location: Location) => void;
   onGenerateLabels: () => void;
   isGeneratingLabels: boolean;
@@ -62,6 +66,8 @@ export const LocationPane = ({
   onAddRoot,
   canAddChild,
   onAddChild,
+  canConfigureRack,
+  onConfigureRack,
   onEdit,
   onGenerateLabels,
   isGeneratingLabels,
@@ -117,6 +123,19 @@ export const LocationPane = ({
       render: (row) => (
         <OneLine text={locationDisplayName(row.location.locationName, row.location)} />
       ),
+    },
+    {
+      key: 'locationLevel',
+      header: t.fields.locationLevel,
+      /* 단계는 서버가 상위를 보고 정한다(P-154) — 화면은 읽기만 한다. 넷보다 깊던 옛 위치는 비어 온다. */
+      align: 'center',
+      width: '72px',
+      render: (row) => {
+        const code = row.location.locationLevelCode;
+        return code === null || code === undefined
+          ? messages.common.reference.empty
+          : t.values.locationLevels[code];
+      },
     },
     {
       key: 'isActive',
@@ -205,10 +224,13 @@ export const LocationPane = ({
               aria-describedby={canAddRoot ? undefined : addRootNoteId}
               onClick={onAddRoot}
             >
-              {t.actions.addRootLocation}
+              {t.actions.addZone}
             </Button>
             <Button variant="outlined" disabled={!canAddChild} onClick={onAddChild}>
-              {t.actions.addChildLocation}
+              {t.actions.addRack}
+            </Button>
+            <Button variant="outlined" disabled={!canConfigureRack} onClick={onConfigureRack}>
+              {t.actions.configureRack}
             </Button>
           </div>
           {!canAddRoot && (

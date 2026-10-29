@@ -1,6 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
 import type { LookupSource } from '../../patterns/lookup-display';
+import type { LocationLevelFields } from '../../patterns/location-level';
 import type { SystemLocationFields } from '../../patterns/system-location';
 
 /**
@@ -9,8 +10,10 @@ import type { SystemLocationFields } from '../../patterns/system-location';
  */
 
 export type Warehouse = components['schemas']['Warehouse'];
-/** 서버가 만든 위치의 역할 · 별칭(계약 밖, `patterns/system-location.ts`)을 함께 읽는다. */
-export type Location = components['schemas']['Location'] & SystemLocationFields;
+/** 서버가 만든 위치의 역할 · 별칭 · 단계(계약 밖, `patterns/system-location.ts` · `location-level.ts`)를 함께 읽는다. */
+export type Location = components['schemas']['Location'] &
+  SystemLocationFields &
+  LocationLevelFields;
 
 export interface WarehouseFilters {
   q: string;
@@ -52,7 +55,6 @@ export interface LookupOptions {
   businessUnits: { value: string; label: string }[];
   uoms: { value: string; label: string }[];
   warehouseTypes: { value: string; label: string }[];
-  managementLevels: { value: string; label: string }[];
   locationTypes: { value: string; label: string }[];
   qualityZones: { value: string; label: string }[];
   storageConditions: { value: string; label: string }[];
@@ -74,7 +76,6 @@ export interface LookupSources {
   businessUnits: LookupSource<LookupEntry>;
   uoms: LookupSource<LookupEntry>;
   warehouseTypes: LookupSource<LookupEntry>;
-  managementLevels: LookupSource<LookupEntry>;
   locationTypes: LookupSource<LookupEntry>;
   qualityZones: LookupSource<LookupEntry>;
   storageConditions: LookupSource<LookupEntry>;

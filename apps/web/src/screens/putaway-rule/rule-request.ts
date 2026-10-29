@@ -23,11 +23,6 @@ import { parseIdentifier, parseIntegerValue, parseNumber } from './rule-validati
 export type PutawayRuleCreate = components['schemas']['PutawayRuleCreate'];
 export type PutawayRuleUpdate = components['schemas']['PutawayRuleUpdate'];
 
-export interface RuleCreateOptions {
-  /** 창고 관리수준상 Location을 사용할 수 있는가. */
-  locationAllowed: boolean;
-}
-
 /** 비고는 **비우면 `null`**이다. 빈 문자열을 보내면 「빈 글자를 적어 둔 것」이 되어 뜻이 다르다. */
 const toRemarks = (raw: string): string | null => {
   const text = raw.trim();
@@ -57,10 +52,7 @@ const toPriorityNo = (raw: string): number | null => {
  *
  * **`isActive`를 싣지 않는다** — 계약이 받지 않는다(신규는 항상 사용 중이다).
  */
-export const toRuleCreate = (
-  values: RuleFormValues,
-  options: RuleCreateOptions = { locationAllowed: true },
-): PutawayRuleCreate | null => {
+export const toRuleCreate = (values: RuleFormValues): PutawayRuleCreate | null => {
   const itemId = parseIdentifier(values.itemId);
   const warehouseId = parseIdentifier(values.warehouseId);
   const uomId = parseIdentifier(values.uomId);
@@ -81,7 +73,7 @@ export const toRuleCreate = (
     itemId,
     warehouseId,
     /* 비운 위치는 **「창고 전체」라는 값**이다. 생략하지 않고 `null`을 명시해 싣는다. */
-    locationId: options.locationAllowed ? parseIdentifier(values.locationId) : null,
+    locationId: parseIdentifier(values.locationId),
     capacityQty,
     uomId,
     priorityNo,

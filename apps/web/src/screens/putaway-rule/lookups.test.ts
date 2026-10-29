@@ -15,7 +15,6 @@ import {
   describeLocation,
   describeReference,
   findLocationCapacity,
-  findWarehouseLevel,
   lookupNote,
   nameLookupTruncatedNote,
   optionsPlaceholder,
@@ -32,6 +31,7 @@ import {
   type ReferenceSource,
 } from './lookups';
 import { itemFixtures, locationFixtures, uomFixtures, warehouseFixtures } from './fixtures';
+import { toLocationChoices } from './location-options';
 import type { LookupEntry } from './types';
 
 const t = messages.putawayRule;
@@ -468,43 +468,26 @@ describe('useUomLookup', () => {
   });
 });
 
-describe('useWarehouseLookup — 관리수준', () => {
-  /**
-   * 관리수준은 **창고 조회에만 있는 사실**이다. 이름 풀이 항목에 얹으면 나머지 셋에 쓰이지
-   * 않는 통로가 생긴다(사본 체크리스트 7번).
-   */
-  it('창고마다 관리수준 코드를 함께 낸다', async () => {
-    const { fetch } = recordingFetch([route(WAREHOUSES_PATH, warehouseFixtures)]);
-    const { result } = renderHookWithProviders(() => useWarehouseLookup(), { fetch });
+describe('useLocationLookup — 고를 수 있는 위치', () => {
+  /** 규칙은 재고가 놓이는 맨 아래 위치를 가리킨다 — 하위가 있는 위치는 선택지에서 뺀다(P-153). */
+  it('하위가 있는 위치는 선택지에 없고, 맨 아래 위치는 있다', async () => {
+    const locations = [
+      { ...locationFixtures[0], isLeaf: true },
+      { ...locationFixtures[1], locationId: 9303, locationCode: 'SYN-RACK-01', isLeaf: false },
+    ];
+    const { fetch } = recordingFetch([route(LOCATIONS_PATH, locations)]);
+    const { result } = renderHookWithProviders(() => useLocationLookup(9201), { fetch });
 
     await waitFor(() => {
-      expect(result.current.levels).toHaveLength(2);
+      expect(result.current.hasLoaded).toBe(true);
     });
 
-    expect(result.current.levels[0]).toEqual({
-      warehouseId: 9201,
-      managementLevelCode: 'ZONE',
-    });
-  });
-});
+    const values = toLocationChoices(result.current, null, result.current.unstockableValues).map(
+      (choice) => choice.value,
+    );
 
-describe('findWarehouseLevel', () => {
-  const levels = [
-    { warehouseId: 9201, managementLevelCode: 'SYN-LEVEL' },
-    { warehouseId: 9202, managementLevelCode: 'SYN-OTHER' },
-  ];
-
-  it('그 창고의 관리수준을 찾는다', () => {
-    expect(findWarehouseLevel(levels, 9202)).toBe('SYN-OTHER');
-  });
-
-  /** 없는 것을 값으로 지어내지 않는다 — 개폐 판정이 「모르는 상태」를 그대로 받아야 한다. */
-  it('목록에 없으면 null이다', () => {
-    expect(findWarehouseLevel(levels, 9999)).toBeNull();
-  });
-
-  it('창고를 고르기 전에는 null이다', () => {
-    expect(findWarehouseLevel(levels, null)).toBeNull();
+    expect(values).toContain('9301');
+    expect(values).not.toContain('9303');
   });
 });
 

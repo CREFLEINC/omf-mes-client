@@ -14,7 +14,6 @@ export const WAREHOUSE_FORM_FIELDS: readonly string[] = [
   'warehouseCode',
   'warehouseName',
   'warehouseTypeCode',
-  'managementLevelCode',
   'isExternal',
   'isDefect',
 ];
@@ -22,7 +21,7 @@ export const WAREHOUSE_FORM_FIELDS: readonly string[] = [
 /**
  * 보내기 전에 화면에서 잡을 수 있는 것만 잡는다.
  *
- * 코드 값의 유효성(관리수준 등)과 코드 중복은 검사하지 않는다 —
+ * 코드 값의 유효성과 코드 중복은 검사하지 않는다 —
  * 계약이 유효성 판정을 서버 몫으로 두었고, 화면이 흉내 내면 서버와 다른 답을 낼 수 있다.
  */
 export const validateWarehouse = (
@@ -43,10 +42,6 @@ export const validateWarehouse = (
 
   if (values.warehouseTypeCode === '') {
     errors.warehouseTypeCode = t.required;
-  }
-
-  if (values.managementLevelCode === '') {
-    errors.managementLevelCode = t.required;
   }
 
   // 공장은 등록 후 바꿀 수 없어 수정 요청에 실리지 않는다. 사업부는 두 요청 모두에 실린다.

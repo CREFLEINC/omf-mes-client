@@ -17,8 +17,9 @@ export const warehouseLocation = {
   },
   actions: {
     addWarehouse: '창고 추가',
-    addRootLocation: '최상위 Location 추가',
-    addChildLocation: '하위 Location 추가',
+    addZone: '구역 추가',
+    addRack: '랙 추가',
+    configureRack: '층·셀 설정',
     generateLabel: '라벨 이미지 생성',
     activate: '다시 사용',
   },
@@ -67,7 +68,6 @@ export const warehouseLocation = {
     warehouseCode: '창고 코드',
     warehouseName: '창고명',
     warehouseType: '창고 유형',
-    managementLevel: '관리 수준',
     isExternal: '외부 창고',
     isDefect: '불량 창고',
 
@@ -76,6 +76,7 @@ export const warehouseLocation = {
     parentLocation: '상위 위치',
     locationCode: '위치 코드',
     locationName: '위치명',
+    locationLevel: '단계',
     aliasName: '별칭',
     locationType: '위치유형',
     qualityZone: '품질구역',
@@ -93,6 +94,8 @@ export const warehouseLocation = {
     currentParentOutsideList: '현재 상위 위치 (조회 목록 밖)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
     inactiveSuffix: ' (미사용)',
+    /** 위치 단계(서버 `locationLevelCode`) — 창고 › 구역 › 랙 › 층 › 셀. */
+    locationLevels: { ZONE: '구역', RACK: '랙', LEVEL: '층', CELL: '셀' },
   },
   validation: {
     required: '필수 입력 항목입니다.',
@@ -101,11 +104,9 @@ export const warehouseLocation = {
     capacityNeedsUom: '수용량과 단위는 함께 입력하거나 함께 비워야 합니다.',
     capacityInvalid: '수용량은 0 이상의 숫자로 입력하세요.',
     aliasTooLong: (max: number): string => `별칭은 ${String(max)}자 이하로 입력하세요.`,
-    locationsDisabledByManagementLevel: '현재 창고 관리 수준에서는 Location을 저장할 수 없습니다.',
     parentLocationUnavailable: '상위 위치를 전체 Location 목록에서 확인할 수 없습니다.',
-    locationDepthExceeded: '현재 창고 관리 수준에서 허용하는 계층 깊이를 넘었습니다.',
-    locationHierarchyUnavailable: 'Location 계층을 불러온 뒤 관리 수준을 변경할 수 있습니다.',
-    managementLevelTooShallow: '기존 Location 계층보다 낮은 관리 수준으로 변경할 수 없습니다.',
+    locationDepthExceeded: '셀 아래에는 Location을 둘 수 없습니다(구역 › 랙 › 층 › 셀).',
+    locationLevelChanged: '같은 단계의 다른 상위로만 옮길 수 있습니다.',
   },
   locationTable: {
     expand: '하위 펼치기',
@@ -114,7 +115,30 @@ export const warehouseLocation = {
   },
   dialog: {
     createTitle: 'Location 추가',
+    createZoneTitle: '구역 추가',
+    createRackTitle: '랙 추가',
     editTitle: 'Location 수정',
+  },
+  /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
+  rackLayout: {
+    title: '층·셀 설정',
+    target: (code: string, name: string): string => `랙 ${code} · ${name}`,
+    levelCount: '층 수',
+    cellCount: '층마다 셀 수',
+    countInvalid: (max: number): string => `1부터 ${String(max)}까지 숫자로 입력하세요.`,
+    cannotShrink: (count: number): string =>
+      `이미 ${String(count)}층이 있습니다. 줄이려면 층을 사용 중지하세요.`,
+    summary: (levels: number, cells: number): string =>
+      `층 ${String(levels)}개 · 셀 ${String(cells)}개를 새로 만듭니다.`,
+    nothingToCreate: '새로 만들 위치가 없습니다.',
+    previewLabel: '새로 만들 위치',
+    more: (count: number): string => `외 ${String(count)}건`,
+    shrinkNote: '이미 있는 층·셀은 그대로 둡니다. 셀이 더 많은 층은 줄이지 않습니다.',
+    submit: '만들기',
+    saving: (done: number, total: number): string => `만드는 중 ${String(done)}/${String(total)}`,
+    created: (count: number): string => `위치 ${String(count)}개를 만들었습니다.`,
+    stopped: (done: number, reason: string): string =>
+      `${String(done)}개를 만든 뒤 멈췄습니다. ${reason} 다시 만들기를 누르면 남은 것만 만듭니다.`,
   },
   labelPreview: {
     title: 'Location 라벨 미리보기',

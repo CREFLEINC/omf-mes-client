@@ -270,9 +270,6 @@ export const putawayRule = {
      * 말하지 않으면 사용자는 「고르다 만 것」으로 읽는다.
      */
     locationEmptyMeansWarehouseWide: '위치를 비우면 그 창고 전체에 적용되는 규칙입니다.',
-    /** `WAREHOUSE` 수준에서는 Location을 받지 않는다. 해제 위치도 함께 안내한다(G-10). */
-    locationNotManaged:
-      '이 창고는 위치를 관리하지 않습니다. 창고·Location 화면에서 관리수준을 변경할 수 있습니다.',
     /** 우선순위 방향은 **데이터에 적혀 있지 않고 계약이 정한 것**이라 화면이 말해야 한다. */
     priorityDirection: '작을수록 먼저 권장합니다.',
     /**

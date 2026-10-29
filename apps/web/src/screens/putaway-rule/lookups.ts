@@ -2,12 +2,9 @@ import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { isStockableLocation, type LocationLevelFields } from '../../patterns/location-level';
 import { runRequest, toApiError } from '../../patterns/request';
-import {
-  isPutawayStaging,
-  locationDisplayName,
-  type SystemLocationFields,
-} from '../../patterns/system-location';
+import { locationDisplayName, type SystemLocationFields } from '../../patterns/system-location';
 import { fetchAllPages } from './fetch-all-pages';
 import type { LookupEntry, PageMeta, SelectOption } from './types';
 
@@ -55,18 +52,6 @@ export interface ReferenceSource {
 }
 
 /**
- * 창고 하나의 관리수준 코드. **창고 조회에만 있는 사실이다.**
- *
- * 이름 풀이용 `LookupEntry`에 얹지 않는다 — 넷 중 하나만 갖는 값을 공통 항목에 두면
- * 나머지 셋에 쓰이지 않는 통로가 생기고, 죽은 통로는 다음 사본으로 전파된다
- * (사본 체크리스트 7번).
- */
-export interface WarehouseLevel {
-  warehouseId: number;
-  managementLevelCode: string;
-}
-
-/**
  * 위치 하나가 스스로 가진 용량.
  *
  * **수량과 단위를 함께 들고 있을 때만 만든다.** 계약이 둘을 「함께 있거나 함께 비어야
@@ -95,19 +80,14 @@ export interface LookupResult extends ReferenceSource {
   refetch: () => void;
 }
 
-/** 창고 조회만이 갖는 것. 나머지 셋에는 관리수준이라는 사실 자체가 없다. */
-export interface WarehouseLookupResult extends LookupResult {
-  levels: readonly WarehouseLevel[];
-}
-
 /** 위치 조회만이 갖는 것. 위치 자체 용량은 다른 세 참조에 없는 사실이다. */
 export interface LocationLookupResult extends LookupResult {
   capacities: readonly LocationCapacity[];
   /**
-   * 「적치 대기」 위치의 선택지 값. 서버가 창고마다 두는 자리라 규칙의 위치로 고를 수 없다(400 INVALID · #875) —
+   * 재고를 둘 수 없는 위치의 선택지 값 — 미사용 · 「적치 대기」(400 INVALID · #875) · 켜진 하위가 있는 위치(P-153).
    * 선택지에서만 빼고, 이름 풀이에는 남긴다.
    */
-  stagingValues: readonly string[];
+  unstockableValues: readonly string[];
 }
 
 /**
@@ -262,20 +242,6 @@ export const optionsPlaceholder = (lookup: LookupResult, emptyText: string): str
   lookup.hasLoaded && lookup.entries.length === 0 ? emptyText : undefined;
 
 /**
- * 고른 창고의 관리수준 코드. 목록에 없거나 아직 오지 않았으면 `null`이다.
- *
- * **없는 것을 값으로 지어내지 않는다** — 개폐를 판정하는 자리(`management-level.ts`)가
- * 「모르는 상태」를 그대로 받아 스스로 판정해야 한다.
- */
-export const findWarehouseLevel = (
-  levels: readonly WarehouseLevel[],
-  warehouseId: number | null,
-): string | null =>
-  warehouseId === null
-    ? null
-    : (levels.find((level) => level.warehouseId === warehouseId)?.managementLevelCode ?? null);
-
-/**
  * 그 위치가 스스로 가진 용량. 용량이 없거나 위치를 고르지 않았으면 `null`이다.
  *
  * `null`이 「용량이 0이다」가 아니라 **「견줄 값이 없다」**임에 주의한다 —
@@ -291,7 +257,6 @@ export const findLocationCapacity = (
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ENTRIES: LookupEntry[] = [];
-const EMPTY_LEVELS: WarehouseLevel[] = [];
 const EMPTY_CAPACITIES: LocationCapacity[] = [];
 const EMPTY_VALUES: string[] = [];
 
@@ -355,10 +320,9 @@ export const lookupKeys = {
  * **`includeInactive=true`로 끝 쪽까지 받아 둔다.** 기본 조회는 사용 중인 것만 내려주므로,
  * 지금은 쓰지 않는 창고에 남은 규칙을 찾을 길이 사라진다.
  *
- * **관리수준 코드를 함께 낸다**(`levels`). 그 값이 위치 입력의 개폐를 가르는데
- * (`management-level.ts` · `omf-mes#64`), 이름 풀이 항목에는 담을 자리가 없다.
+ * 창고 관리수준은 서버가 걷었다(P-153) — 응답에 남은 `managementLevelCode` 는 읽지 않는다.
  */
-export const useWarehouseLookup = (): WarehouseLookupResult => {
+export const useWarehouseLookup = (): LookupResult => {
   const { client } = useApiClient();
 
   const query = useQuery({
@@ -382,11 +346,6 @@ export const useWarehouseLookup = (): WarehouseLookupResult => {
         label: `${item.warehouseCode} · ${item.warehouseName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
-    levels:
-      data?.items.map((item) => ({
-        warehouseId: item.warehouseId,
-        managementLevelCode: item.managementLevelCode,
-      })) ?? EMPTY_LEVELS,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     hasLoaded: query.isSuccess,
     isError: query.isError,
@@ -436,10 +395,12 @@ export const useLocationLookup = (warehouseId: number | null): LocationLookupRes
     },
   });
 
-  /* 서버가 만든 위치의 역할 · 별칭은 계약 사본에 아직 없다(`patterns/system-location.ts`). */
+  /* 서버가 만든 위치의 역할 · 별칭 · 단계는 계약 사본에 아직 없다(`patterns/system-location.ts` · `location-level.ts`). */
   const data = query.data as
     | {
-        items: (NonNullable<typeof query.data>['items'][number] & SystemLocationFields)[];
+        items: (NonNullable<typeof query.data>['items'][number] &
+          SystemLocationFields &
+          LocationLevelFields)[];
         page: PageMeta;
       }
     | undefined;
@@ -451,8 +412,11 @@ export const useLocationLookup = (warehouseId: number | null): LocationLookupRes
         label: `${item.locationCode} · ${locationDisplayName(item.locationName, item)}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
-    stagingValues:
-      data?.items.filter(isPutawayStaging).map((item) => String(item.locationId)) ?? EMPTY_VALUES,
+    /* 규칙은 재고가 실제로 놓이는 맨 아래 위치를 가리킨다 — 서버가 도착 위치를 고르는 기준과 같다. */
+    unstockableValues:
+      data?.items
+        .filter((item) => !isStockableLocation(item))
+        .map((item) => String(item.locationId)) ?? EMPTY_VALUES,
     /*
      * **둘 다 있는 위치만 담는다.** 계약이 수량과 단위를 함께 두게 했지만, 한쪽만 온 자료를
      * 그대로 받으면 단위를 모르는 수량으로 견주게 된다 — 그 자리는 담지 않는 것이 정확하다.

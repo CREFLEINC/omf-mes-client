@@ -669,8 +669,8 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     expect(within(panel).getAllByRole('button', { name: '하위 접기' })).toHaveLength(2);
   });
 
-  /* 관리 수준 「창고」는 Location을 두지 않는다 — 탭 자체를 잠근다(사용자 결정 2026-09-18 · omf-all-around#17). */
-  it('저장된 관리 수준이 WAREHOUSE이면 Location 탭이 잠긴다', async () => {
+  /* 위치 계층은 위치가 정한다 — 창고 관리 수준으로 탭을 잠그지 않는다(사용자 결정 2026-10-29). */
+  it('관리 수준과 상관없이 Location 탭을 열 수 있다', async () => {
     renderScreen(
       [
         warehouseListRoute(),
@@ -682,37 +682,24 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     );
 
     await screen.findByLabelText('창고명');
-    expect(screen.getByRole('tab', { name: 'Location' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('tab', { name: 'Location' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
-  it('잠긴 창고를 tab=location 주소로 열면 창고 정보 탭을 보이고 주소를 바꾼다(replace)', async () => {
-    const { fetch } = createRecordingFetch([
-      warehouseListRoute(),
-      warehouseDetailRoute(warehouseFixtures[1]!),
-      locationListRoute(),
-      ...lookupRoutes(),
-    ]);
-    let search = '';
-    let historyAction = '';
-    const Probe = () => {
-      const location = useLocation();
-      search = location.search;
-      historyAction = useNavigationType();
-      return null;
-    };
-    renderWithProviders(
-      <>
-        <WarehouseLocationScreen />
-        <Probe />
-      </>,
-      { fetch, route: `${ROUTE}?wh=1002&tab=location` },
+  it('tab=location 주소로 열면 관리 수준과 상관없이 Location 탭이 열린다', async () => {
+    renderScreen(
+      [
+        warehouseListRoute(),
+        warehouseDetailRoute(warehouseFixtures[1]!),
+        locationListRoute(),
+        ...lookupRoutes(),
+      ],
+      '?wh=1002&tab=location',
     );
 
-    await screen.findByLabelText('창고명');
-    expect(screen.getByRole('tab', { name: '창고 정보' })).toHaveAttribute('aria-selected', 'true');
-    await waitFor(() => expect(new URLSearchParams(search).get('tab')).toBeNull());
-    expect(new URLSearchParams(search).get('wh')).toBe('1002');
-    expect(historyAction).toBe('REPLACE');
+    await screen.findByRole('tab', { name: 'Location', selected: true });
   });
 
   it('관리 수준이 WAREHOUSE가 아니면 Location 탭을 열 수 있고 안내가 없다', async () => {
@@ -732,21 +719,26 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     expect(screen.getByRole('tab', { name: 'Location' })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('관리수준의 최하위에 도달한 Location에는 하위 추가를 막는다', async () => {
-    const rackWarehouse = { ...warehouseFixtures[2]!, isActive: true };
+  it('셀(계층의 맨 아래)에는 하위 추가를 막는다', async () => {
+    const cell = {
+      ...locationFixtures[2]!,
+      locationId: 2009,
+      parentLocationId: 2003,
+      locationCode: 'A-01-01-01-01',
+    };
     const { user } = renderScreen(
       [
         warehouseListRoute(),
-        warehouseDetailRoute(rackWarehouse),
-        locationListRoute(),
+        warehouseDetailRoute(),
+        locationListRoute([...locationFixtures, cell]),
         ...lookupRoutes(),
       ],
-      '?wh=1003',
+      '?wh=1001',
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getAllByRole('checkbox')[2]!);
-    const addChild = within(panel).getByRole('button', { name: '하위 Location 추가' });
+    await user.click(within(panel).getAllByRole('checkbox')[4]!);
+    const addChild = within(panel).getByRole('button', { name: '랙 추가' });
 
     // 활성 조건(깊이 한도)은 그대로이고, 사유 문구는 내지 않는다(omf-all-around#17).
     expect(addChild).toBeDisabled();
@@ -795,7 +787,7 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: '최상위 Location 추가' }));
+    await user.click(within(panel).getByRole('button', { name: '구역 추가' }));
 
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('WH-01 · 1공장 자재창고')).toBeInTheDocument();
@@ -919,23 +911,6 @@ describe('WarehouseLocationScreen — 적치 규칙 탭', () => {
 });
 
 describe('WarehouseLocationScreen — 창고 수정 저장', () => {
-  it('기존 Location 계층보다 낮은 관리수준으로 변경하지 못한다', async () => {
-    const { requests, user } = renderScreen(
-      saveRoutes(putRoute(() => jsonResponse(warehouseFixtures[0]!))),
-      '?wh=1001',
-    );
-
-    await screen.findByLabelText('창고명');
-    await user.click(screen.getByRole('combobox', { name: '관리 수준' }));
-    await user.click(screen.getByRole('option', { name: '랙' }));
-    await user.click(screen.getByRole('button', { name: '저장' }));
-
-    expect(
-      screen.getByText('기존 Location 계층보다 낮은 관리 수준으로 변경할 수 없습니다.'),
-    ).toBeVisible();
-    expect(writeRequests(requests, 'PUT')).toHaveLength(0);
-  });
-
   it('저장하면 PUT에 UUID 멱등 키와 상세 경로의 If-Match가 실린다', async () => {
     const { requests, user } = renderScreen(
       saveRoutes(
@@ -1162,8 +1137,6 @@ const fillCreateForm = async (user: ReturnType<typeof userEvent.setup>): Promise
   await user.type(within(form).getByLabelText('창고명'), '신규 창고');
   await user.click(within(form).getByRole('combobox', { name: '창고 유형' }));
   await user.click(screen.getByRole('option', { name: '자재창고' }));
-  await user.click(within(form).getByRole('combobox', { name: '관리 수준' }));
-  await user.click(screen.getByRole('option', { name: '셀' }));
 };
 
 describe('WarehouseLocationScreen — 창고 신규 등록', () => {
@@ -1472,33 +1445,7 @@ const locationWriteRoutes = (...extra: StubRoute[]): StubRoute[] => [
 ];
 
 describe('WarehouseLocationScreen — Location 등록·수정', () => {
-  it('관리수준보다 깊은 기존 Location은 수정 저장을 보내지 않는다', async () => {
-    const rackWarehouse = { ...warehouseFixtures[2]!, isActive: true };
-    const { requests, user } = renderScreen(
-      [
-        warehouseListRoute(),
-        warehouseDetailRoute(rackWarehouse),
-        locationListRoute(),
-        ...lookupRoutes(),
-        locationDetailRoute(locationFixtures[2]!),
-      ],
-      '?wh=1003',
-    );
-
-    const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: 'A-01-01-01' }));
-    const dialog = screen.getByRole('dialog');
-    await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
-    await user.type(within(dialog).getByLabelText('위치명'), ' 수정');
-    await user.click(within(dialog).getByRole('button', { name: '저장' }));
-
-    expect(
-      within(dialog).getByText('현재 창고 관리 수준에서 허용하는 계층 깊이를 넘었습니다.'),
-    ).toBeVisible();
-    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
-  });
-
-  it('하위 트리가 있는 Location을 옮길 때 자손까지 포함해 깊이를 검증한다', async () => {
+  it('단계가 바뀌는 상위로는 옮기지 않는다(구역을 다른 구역 밑으로)', async () => {
     const { requests, user } = renderScreen(
       locationWriteRoutes(locationDetailRoute(locationFixtures[0]!)),
       '?wh=1001',
@@ -1512,9 +1459,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     await user.click(screen.getByRole('option', { name: 'B-01 · B구역' }));
     await user.click(within(dialog).getByRole('button', { name: '저장' }));
 
-    expect(
-      within(dialog).getByText('현재 창고 관리 수준에서 허용하는 계층 깊이를 넘었습니다.'),
-    ).toBeVisible();
+    expect(within(dialog).getByText('같은 단계의 다른 상위로만 옮길 수 있습니다.')).toBeVisible();
     expect(requests.some((request) => request.method === 'PUT')).toBe(false);
   });
 
@@ -1537,7 +1482,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     const panel = await openLocationTab(user);
     // 하위 추가는 선택이 정확히 1건일 때만 열린다.
     await user.click(within(panel).getAllByRole('checkbox')[1]!);
-    await user.click(within(panel).getByRole('button', { name: '하위 Location 추가' }));
+    await user.click(within(panel).getByRole('button', { name: '랙 추가' }));
 
     const dialog = screen.getByRole('dialog');
     await user.type(within(dialog).getByLabelText('위치 코드'), 'A-01-09');
@@ -1570,7 +1515,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: '최상위 Location 추가' }));
+    await user.click(within(panel).getByRole('button', { name: '구역 추가' }));
 
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('없음 (최상위)')).toBeInTheDocument();
@@ -1592,7 +1537,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     const { requests, user } = renderScreen(locationWriteRoutes(), '?wh=1001');
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: '최상위 Location 추가' }));
+    await user.click(within(panel).getByRole('button', { name: '구역 추가' }));
 
     const dialog = screen.getByRole('dialog');
     await user.type(within(dialog).getByLabelText('수용량'), '10');
@@ -1721,7 +1666,7 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     );
 
     const panel = await openLocationTab(user);
-    await user.click(within(panel).getByRole('button', { name: '최상위 Location 추가' }));
+    await user.click(within(panel).getByRole('button', { name: '구역 추가' }));
 
     const dialog = screen.getByRole('dialog');
     await user.type(within(dialog).getByLabelText('위치 코드'), 'A-01');

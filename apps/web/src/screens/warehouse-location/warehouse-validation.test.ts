@@ -68,7 +68,9 @@ describe('validateWarehouse', () => {
 
 describe('WAREHOUSE_FORM_FIELDS', () => {
   it('폼이 소유한 입력칸 이름을 전부 담는다 — 서버 오류를 인라인으로 낼 기준이다', () => {
+    /* 관리 수준은 화면에 칸이 없어(이행용 값만 싣는다) 그 오류는 배너로 간다. */
     for (const field of Object.keys(emptyWarehouseFormValues())) {
+      if (field === 'managementLevelCode') continue;
       expect(WAREHOUSE_FORM_FIELDS).toContain(field);
     }
   });

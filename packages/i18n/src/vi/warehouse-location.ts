@@ -23,8 +23,9 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   actions: {
     addWarehouse: 'Thêm kho',
-    addRootLocation: 'Thêm Location cấp trên cùng',
-    addChildLocation: 'Thêm Location cấp dưới',
+    addZone: 'Thêm khu',
+    addRack: 'Thêm kệ',
+    configureRack: 'Thiết lập tầng·ô',
     generateLabel: 'Tạo ảnh nhãn',
     activate: 'Dùng lại',
   },
@@ -70,7 +71,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     warehouseCode: 'Mã kho',
     warehouseName: 'Tên kho',
     warehouseType: 'Loại kho',
-    managementLevel: 'Mức quản lý',
     isExternal: 'Kho bên ngoài',
     isDefect: 'Kho hàng lỗi',
 
@@ -79,6 +79,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     parentLocation: 'Vị trí cấp trên',
     locationCode: 'Mã vị trí',
     locationName: 'Tên vị trí',
+    locationLevel: 'Cấp',
     aliasName: 'Tên gọi khác',
     locationType: 'Loại vị trí',
     qualityZone: 'Khu vực chất lượng',
@@ -95,6 +96,8 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     currentParentOutsideList: 'Vị trí cấp trên hiện tại (ngoài danh sách tra cứu)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
     inactiveSuffix: ' (ngừng dùng)',
+    /** 위치 단계(서버 `locationLevelCode`) — 창고 › 구역 › 랙 › 층 › 셀. */
+    locationLevels: { ZONE: 'Khu', RACK: 'Kệ', LEVEL: 'Tầng', CELL: 'Ô' },
   },
   validation: {
     required: 'Đây là mục bắt buộc.',
@@ -103,13 +106,10 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     capacityNeedsUom: 'Sức chứa và đơn vị phải cùng nhập hoặc cùng để trống.',
     capacityInvalid: 'Hãy nhập sức chứa bằng số từ 0 trở lên.',
     aliasTooLong: (max: number): string => `Tên gọi khác tối đa ${String(max)} ký tự.`,
-    locationsDisabledByManagementLevel: 'Ở mức quản lý kho hiện tại không lưu được Location.',
     parentLocationUnavailable:
       'Không xác nhận được vị trí cấp trên trong toàn bộ danh sách Location.',
-    locationDepthExceeded: 'Đã vượt độ sâu phân cấp mà mức quản lý kho hiện tại cho phép.',
-    locationHierarchyUnavailable: 'Tải xong phân cấp Location rồi mới đổi được mức quản lý.',
-    managementLevelTooShallow:
-      'Không đổi sang mức quản lý thấp hơn phân cấp Location hiện có được.',
+    locationDepthExceeded: 'Không thể đặt Location dưới ô (khu › giá › tầng › ô).',
+    locationLevelChanged: 'Chỉ có thể chuyển sang cấp trên khác cùng cấp.',
   },
   locationTable: {
     expand: 'Mở cấp dưới',
@@ -118,7 +118,30 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   dialog: {
     createTitle: 'Thêm Location',
+    createZoneTitle: 'Thêm khu',
+    createRackTitle: 'Thêm kệ',
     editTitle: 'Sửa Location',
+  },
+  /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
+  rackLayout: {
+    title: 'Thiết lập tầng·ô',
+    target: (code: string, name: string): string => `Kệ ${code} · ${name}`,
+    levelCount: 'Số tầng',
+    cellCount: 'Số ô mỗi tầng',
+    countInvalid: (max: number): string => `Nhập số từ 1 đến ${String(max)}.`,
+    cannotShrink: (count: number): string =>
+      `Đã có ${String(count)} tầng. Để giảm, hãy ngừng dùng tầng.`,
+    summary: (levels: number, cells: number): string =>
+      `Sẽ tạo mới ${String(levels)} tầng · ${String(cells)} ô.`,
+    nothingToCreate: 'Không có vị trí nào cần tạo mới.',
+    previewLabel: 'Vị trí sẽ tạo mới',
+    more: (count: number): string => `và ${String(count)} mục khác`,
+    shrinkNote: 'Giữ nguyên tầng·ô đã có. Không giảm tầng có nhiều ô hơn.',
+    submit: 'Tạo',
+    saving: (done: number, total: number): string => `Đang tạo ${String(done)}/${String(total)}`,
+    created: (count: number): string => `Đã tạo ${String(count)} vị trí.`,
+    stopped: (done: number, reason: string): string =>
+      `Đã dừng sau khi tạo ${String(done)} mục. ${reason} Nhấn Tạo lại để chỉ tạo phần còn lại.`,
   },
   labelPreview: {
     title: 'Xem trước nhãn Location',

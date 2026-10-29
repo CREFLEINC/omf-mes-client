@@ -34,6 +34,8 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
       onAddRoot={onAddRoot}
       canAddChild={false}
       onAddChild={onAddChild}
+      canConfigureRack={false}
+      onConfigureRack={vi.fn()}
       onEdit={onEdit}
       onGenerateLabels={onGenerateLabels}
       isGeneratingLabels={false}
@@ -75,6 +77,19 @@ describe('LocationPane', () => {
     );
   });
 
+  it('단계는 서버 값을 이름으로, 비어 오면 줄표로 보인다', () => {
+    const [zone, rack] = locationFixtures;
+    if (zone === undefined || rack === undefined) throw new Error('fixture');
+    const leveled = [
+      { ...zone, locationLevelCode: 'ZONE' as const },
+      { ...rack, locationLevelCode: null },
+    ];
+    renderPane({ rows: buildLocationRows(leveled, expandedIds) });
+
+    expect(screen.getByRole('cell', { name: '구역' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '—' })).toBeInTheDocument();
+  });
+
   it('접기·펴기 버튼에 상태에 맞는 접근성 이름이 있다', () => {
     renderPane();
 
@@ -114,7 +129,7 @@ describe('LocationPane', () => {
   it('선택이 없으면 하위 추가가 비활성이고 사유 문구는 없다', () => {
     renderPane({ selectedIds: [] });
 
-    const button = screen.getByRole('button', { name: '하위 Location 추가' });
+    const button = screen.getByRole('button', { name: '랙 추가' });
 
     expect(button).toBeDisabled();
     expect(button).not.toHaveAttribute('aria-describedby');
@@ -123,14 +138,14 @@ describe('LocationPane', () => {
   it('선택이 2건 이상이면 하위 추가가 비활성이다', () => {
     renderPane({ selectedIds: ['2001', '2004'] });
 
-    expect(screen.getByRole('button', { name: '하위 Location 추가' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '랙 추가' })).toBeDisabled();
   });
 
   it('선택이 정확히 1건이면 하위 추가를 눌러 onAddChild를 부른다', async () => {
     const user = userEvent.setup();
     const { onAddChild } = renderPane({ selectedIds: ['2001'], canAddChild: true });
 
-    const addChild = screen.getByRole('button', { name: '하위 Location 추가' });
+    const addChild = screen.getByRole('button', { name: '랙 추가' });
     expect(addChild).not.toBeDisabled();
 
     await user.click(addChild);
@@ -162,7 +177,7 @@ describe('LocationPane', () => {
     const user = userEvent.setup();
     const { onAddRoot } = renderPane();
 
-    await user.click(screen.getByRole('button', { name: '최상위 Location 추가' }));
+    await user.click(screen.getByRole('button', { name: '구역 추가' }));
 
     expect(onAddRoot).toHaveBeenCalledTimes(1);
   });
@@ -205,7 +220,7 @@ describe('LocationPane', () => {
   it('loadError가 있어도 추가 액션 줄은 남는다', () => {
     renderPane({ rows: [], loadError: <AlertBanner variant="error" title="실패" /> });
 
-    expect(screen.getByRole('button', { name: '최상위 Location 추가' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '구역 추가' })).toBeInTheDocument();
   });
 
   /* Location 탭 정돈(omf-all-around#17 4차) — 문구·배치만, 활성 조건은 그대로. */

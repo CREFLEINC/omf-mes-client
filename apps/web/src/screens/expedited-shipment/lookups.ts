@@ -141,26 +141,31 @@ export interface WarehouseOption {
 }
 
 /**
- * 창고 관리 수준 중 「창고」 자체 — 계약 `Warehouse.managementLevelCode`의 값 목록(창고·구역·랙·셀)
- * 가운데 위치를 받지 않는 수준이다.
+ * ⭐ **위치를 고르지 않아도 되는 창고만 후보로 남긴다.** 이 화면은 입고 위치 칸이 없다 — 대응표
+ * 「보류」가 `ShipmentCreate`에 위치 필드를 임의로 만들지 말라고 못박았다. 서버는 본문에 위치가
+ * 없으면 재고를 둘 수 있는 위치(활성 · 적치 대기 아님 · 켜진 하위 없음)가 정확히 하나일 때만 그
+ * 위치로 넣고, 둘 이상이면 400(REQUIRED)으로 돌려보낸다(장부 P-153). 그런 창고를 고르게 두면
+ * 확정을 눌러야 비로소 400을 만난다 — 그래서 「창고 안을 나눈 창고」(`dividedOnly=true`, 적치 대기가
+ * 아닌 활성 위치가 둘 이상)를 활성 창고에서 뺀다. 위치 입력 칸이 생기기 전까지는 이렇게 좁힌다
+ * (대응표 「긴급 직행 위치」).
+ *
+ * ⚠ 나눈 창고 판정은 서버가 한다 — 화면이 위치를 세지 않는다. 모든 창고에 「창고 전체」 위치가
+ * 있으므로, 나누지 않은 창고는 적치 대기 말고 활성 위치가 그 하나뿐이고 서버가 그리로 넣는다.
+ * 서버의 「나눔」은 맨 아래 여부를 보지 않아 위치를 하나만 고를 수 있는 창고도 빠질 수 있다 —
+ * 400을 만나는 것보다 후보가 좁은 쪽을 택한다.
  */
-const WAREHOUSE_LEVEL_MANAGED = 'WAREHOUSE';
-
-/**
- * ⭐ **창고 단위 관리 창고만 후보로 남긴다.** 이 화면은 입고 위치 칸이 없다 — 대응표 「보류」가
- * `ShipmentCreate`에 위치 필드를 임의로 만들지 말라고 못박았다. 서버는 `expedited=true`를
- * 창고 단위 관리 창고에서 활성 위치가 정확히 하나일 때만 위치 없이 받아 준다(통보 221) — 그
- * 밖(구역·랙·셀 단위로 관리되는 창고)을 고르게 두면 확정을 눌러야 비로소 400을 만난다. 위치
- * 입력 칸이 생기기 전까지는 고를 수 있는 목록 자체를 창고 단위 관리 창고로 좁힌다(대응표
- * 「긴급 직행 위치」).
- */
-export const toWarehouseOptions = (items: readonly Warehouse[]): WarehouseOption[] =>
-  items
-    .filter((item) => item.managementLevelCode === WAREHOUSE_LEVEL_MANAGED)
+export const toWarehouseOptions = (
+  items: readonly Warehouse[],
+  dividedItems: readonly Warehouse[],
+): WarehouseOption[] => {
+  const divided = new Set(dividedItems.map((item) => item.warehouseId));
+  return items
+    .filter((item) => !divided.has(item.warehouseId))
     .map((item) => ({
       warehouseId: item.warehouseId,
       label: `${item.warehouseCode} · ${item.warehouseName}`,
     }));
+};
 
 export const useActiveWarehouses = () => {
   const { client } = useApiClient();
@@ -170,6 +175,21 @@ export const useActiveWarehouses = () => {
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/warehouses', { params: { query: { includeInactive: false } } }),
+      ),
+  });
+};
+
+/** 「창고 안을 나눈 창고」 — 위치를 골라야 할 수 있어 이 화면의 후보에서 뺀다(`toWarehouseOptions`). */
+export const useDividedWarehouses = () => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['expedited-shipment-lookups', 'warehouses', 'divided'],
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/warehouses', {
+          params: { query: { includeInactive: false, dividedOnly: true } },
+        }),
       ),
   });
 };
