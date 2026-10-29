@@ -17743,14 +17743,20 @@ button.app-button-neutral {
 /* 품목명/코드 칸 — 위 품목명, 아래 품목 코드를 작고 흐리게 두 줄(사용자 시안 · #208). */
 .inspection-level-item-cell {
   display: flex;
-  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
   min-width: 0;
+  white-space: nowrap;
 }
 
 .inspection-level-item-code {
-  color: var(--on-surface-muted);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
+  flex: 0 0 auto;
+}
+
+.inspection-level-item-cell > .inspection-sheet-template-muted {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 긴 품목명 · 사유는 한 줄 말줄임 — 행 높이를 고르게(#208). 전체 글은 마우스를 올리면 보인다. */

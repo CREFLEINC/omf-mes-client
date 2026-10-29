@@ -139,11 +139,13 @@ export const InspectionLevelScreen = () => {
       key: 'item',
       align: 'center',
       header: t.columns.item,
-      /* 폭을 정하지 않는다 — 남는 폭을 품목명/코드 열이 맡는다. 위 품목명 · 아래 품목 코드(흐리게) 두 줄(사용자 시안 · #208). */
+      /* 폭을 정하지 않는다 — 남는 폭을 품목 열이 맡는다. 품목 코드 · 품목명(흐리게) 한 줄 — 검사표 기준 탭과 같다(사용자 지시 · #208). */
       render: (row) => (
         <span className="inspection-level-item-cell">
-          <span title={row.itemName}>{row.itemName}</span>
           <span className="inspection-level-item-code">{row.itemCode}</span>
+          <span className="inspection-sheet-template-muted" title={row.itemName}>
+            {row.itemName}
+          </span>
         </span>
       ),
     },

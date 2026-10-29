@@ -26,8 +26,8 @@ export const inspectionLevel = {
   },
 
   columns: {
-    item: 'Tên / mã vật tư',
-    level: 'Mức hiện tại',
+    item: 'Vật tư',
+    level: 'Mức kiểm tra',
     updatedAt: 'Thời điểm sửa',
     actions: 'Thao tác',
   },

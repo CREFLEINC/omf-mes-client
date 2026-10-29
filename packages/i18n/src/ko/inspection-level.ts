@@ -26,8 +26,8 @@ export const inspectionLevel = {
   },
 
   columns: {
-    item: '품목명 / 코드',
-    level: '현재 수준',
+    item: '품목',
+    level: '검사 수준',
     updatedAt: '수정 일시',
     actions: '작업',
   },
