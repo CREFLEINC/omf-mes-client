@@ -39,6 +39,8 @@ export const DeactivateConfirmDialog = ({
     size="sm"
     title={t.title}
     closeOnBackdropClick={false}
+    /* 닫기는 「취소」로 한다 — 머리의 ✕는 두지 않는다(검사 기준 탭과 같다 · #209). */
+    showCloseButton={false}
     footer={
       <>
         <Button variant="outlined" onClick={onClose}>

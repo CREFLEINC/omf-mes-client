@@ -3,18 +3,27 @@ import {
   Breadcrumb,
   Button,
   EmptyState,
+  Icon,
   PageHeader,
   SkeletonText,
   useToast,
 } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useId, useMemo, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { toApiError } from '../../patterns/request';
+import { CodeDetailHead } from './code-detail-head';
+import { CodeFilterBar } from './code-filter-bar';
 import { CodeFormPane } from './code-form-pane';
 import { CodeListPane } from './code-list-pane';
 import { selectableCategoryOptions } from './code-options';
@@ -48,6 +57,10 @@ import type {
 import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.defectCauseCode;
+const hubText = messages.common.inspectionHub;
+
+/** 목록 · 상세 배치는 「불량·판정 코드」 묶음의 탭끼리 함께 쓴다(#209). */
+const DEFECT_JUDGMENT_ORIENTATION_KEY = 'omf-mes:defect-judgment-hub:split-orientation';
 
 /**
  * 조회 실패의 원인을 한 줄 안내로 옮긴다.
@@ -121,6 +134,14 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
 
   const tab = resolveTab(kind);
   const adapter = tab.adapter;
+  const addChildNoteId = useId();
+
+  /* 목록 · 상세 배치 — 검사 기준 탭과 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다 · #209). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:defect-cause-code:split', 0.45);
+  const layout = useSplitOrientation(DEFECT_JUDGMENT_ORIENTATION_KEY);
+  /* 「수정」 창 — 고른 코드의 값을 고친다(#209). 등록 창은 주소(`mode=create`)가 연다. */
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const filters = useMemo<CodeFilters>(
     () => ({
@@ -208,6 +229,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
 
       const next = codeToFormValues(saved);
       setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      setIsEditOpen(false);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
@@ -257,7 +279,17 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const openCreateForm = (patch: Record<string, string | null>) => {
     write.reset();
     setLocalFieldErrors({});
+    setIsEditOpen(false);
     updateParams({ mode: 'create', ...patch });
+  };
+
+  /** 창의 「취소」 — 고친 값을 버리고 닫는다. 등록 창은 주소에서 `mode` 를 지워 닫는다. */
+  const closeForm = () => {
+    setLocalFieldErrors({});
+    write.reset();
+    setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+    setIsEditOpen(false);
+    if (isCreateMode) updateParams({ mode: null });
   };
 
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
@@ -365,12 +397,12 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       appliedFilters={filters}
       onApplyFilters={handleApplyFilters}
       selectedId={selectedId}
-      onSelect={(id) => updateParams({ sel: String(id), mode: null })}
+      onSelect={(id) => {
+        setIsEditOpen(false);
+        updateParams({ sel: String(id), mode: null });
+      }}
       // 대분류 추가는 선택을 지운다 — 어느 코드의 하위도 아닌 새 축이다.
       onAddCategory={() => openCreateForm({ sel: null })}
-      // 상세 추가는 고른 대분류를 그대로 남겨 상위 초기값으로 쓴다.
-      onAddChild={() => openCreateForm({})}
-      canAddChild={canAddChild}
       loadError={
         list.isError ? (
           <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
@@ -379,10 +411,44 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     />
   );
 
+  /* 조회 · 초기화 뒤 구분선 너머의 화면 단추 — 검사 기준 탭의 「기준 추가」 자리와 같다(#209). */
+  const filterActions = (
+    <>
+      {/*
+       * 배치 규범 4 — 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더하고
+       * aria-describedby로 잇는다(사유 글은 조회 카드 아래 줄에 선다).
+       */}
+      <Button
+        variant="outlined"
+        leadingIcon={<Icon name="add" size={18} />}
+        disabled={!canAddChild}
+        aria-describedby={canAddChild ? undefined : addChildNoteId}
+        // 상세 추가는 고른 대분류를 그대로 남겨 상위 초기값으로 쓴다.
+        onClick={() => openCreateForm({})}
+      >
+        {t.actions.addChild}
+      </Button>
+      <Button
+        leadingIcon={<Icon name="add" size={18} />}
+        onClick={() => openCreateForm({ sel: null })}
+      >
+        {t.actions.addCategory}
+      </Button>
+    </>
+  );
+
+  const formTitle = (): string => {
+    if (!isCreateMode) return t.dialog.editTitle(adapter.labels.tab);
+    return createParentSeed === null
+      ? t.dialog.createCategoryTitle(adapter.labels.tab)
+      : t.dialog.createChildTitle(adapter.labels.tab);
+  };
+
   const renderForm = (formMode: 'create' | 'edit'): ReactNode => (
     <CodeFormPane
       adapter={adapter}
       mode={formMode}
+      title={formTitle()}
       values={formValues}
       onChange={changeFormValues}
       // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
@@ -406,59 +472,98 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       }
       parentOptions={parentOptions}
       parentLockReason={parentLockReason}
-      isActive={detail.data?.code.isActive ?? true}
       isDirty={isDirty}
       isSaving={write.isSaving}
       onSave={handleSave}
-      onCancel={() => {
-        setLocalFieldErrors({});
-        write.reset();
-        setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
-      }}
-      onDeactivate={() => {
-        deactivateWrite.reset();
-        setIsDeactivateOpen(true);
-      }}
+      onCancel={closeForm}
     />
   );
 
+  /** 창은 열 때만 붙인다 — 닫힌 창을 남겨 두면 지난 값이 그대로 살아 있다. */
+  const renderFormDialog = (): ReactNode => {
+    if (isCreateMode) return formState === null ? null : renderForm('create');
+    if (isEditOpen && detail.data !== undefined && formState !== null) return renderForm('edit');
+    return null;
+  };
+
+  /** 상위 대분류의 표시(「코드 · 명칭」). 목록이 조건으로 걸러져도 찾게 선택지 목록까지 본다. */
+  const parentLabelOf = (code: HierarchyCode): string | null => {
+    if (code.parentId === null) return null;
+    const parent =
+      byId.get(code.parentId) ?? options.items.find((item) => item.id === code.parentId);
+    return parent === undefined
+      ? String(code.parentId)
+      : t.values.groupHeader(parent.code, parent.name);
+  };
+
   /**
-   * 우 페인. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
-   * 선택 전·등록·불러오는 중·실패를 각각 다른 화면으로 낸다.
+   * 우 칸. 상세를 받지 못한 상태에서 빈 카드를 보이면 사용자가 그것을 자료로 읽는다 —
+   * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
-  const renderFormPane = (): ReactNode => {
-    if (isCreateMode) {
-      return formState === null ? null : renderForm('create');
-    }
-
+  const renderDetail = (): ReactNode => {
     if (selectedId === null) {
-      return <EmptyState size="sm" title={t.empty.codeNotSelected} />;
-    }
-
-    if (detail.isError) {
-      return <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />;
-    }
-
-    if (detail.data === undefined || formState === null) {
       return (
-        <div role="status" aria-label={t.loading.codeDetail}>
-          <SkeletonText lines={4} />
-        </div>
+        <section className="pane" aria-label={t.detail.title(adapter.labels.tab)}>
+          <EmptyState
+            size="sm"
+            /* 둥근 바탕 위 아이콘 · 제목 · 설명 — 검사 기준 탭과 같은 모양(#196). */
+            icon={
+              <span className="inspection-standard-empty-icon">
+                <Icon name="layers" size={20} />
+              </span>
+            }
+            title={t.empty.codeNotSelectedTitle}
+            description={t.empty.codeNotSelectedDescription}
+          />
+        </section>
       );
     }
 
-    return renderForm('edit');
-  };
+    if (detail.isError) {
+      return (
+        <section className="pane" aria-label={t.detail.title(adapter.labels.tab)}>
+          <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />
+        </section>
+      );
+    }
 
-  const tabContent = (
-    <div className="two-pane">
-      {codeListPane}
-      <div className="pane">{renderFormPane()}</div>
-    </div>
-  );
+    if (detail.data === undefined) {
+      return (
+        <section className="pane" aria-label={t.detail.title(adapter.labels.tab)}>
+          <div role="status" aria-label={t.loading.codeDetail}>
+            <SkeletonText lines={4} />
+          </div>
+        </section>
+      );
+    }
+
+    const code = detail.data.code;
+    return (
+      <section
+        className="pane inspection-standard-detail-card"
+        aria-label={t.detail.title(adapter.labels.tab)}
+      >
+        <CodeDetailHead
+          adapter={adapter}
+          code={code}
+          parentLabel={parentLabelOf(code)}
+          onEdit={() => {
+            write.reset();
+            setLocalFieldErrors({});
+            setIsEditOpen(true);
+          }}
+          onDeactivate={() => {
+            deactivateWrite.reset();
+            setIsDeactivateOpen(true);
+          }}
+        />
+      </section>
+    );
+  };
 
   return (
     <>
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       {/*
        * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
        * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
@@ -474,7 +579,45 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
         </div>
       )}
 
-      {tabContent}
+      {/* 조회 조건 — 검사 기준 탭처럼 목록과 다른 카드에 둔다(#209). */}
+      <section
+        ref={aboveRef}
+        className="pane inspection-standard-search defect-cause-search"
+        role="search"
+      >
+        <CodeFilterBar
+          adapter={adapter}
+          appliedFilters={filters}
+          onApplyFilters={handleApplyFilters}
+          actions={filterActions}
+        />
+        {!canAddChild && (
+          <p id={addChildNoteId} className="field-note defect-cause-action-note">
+            {t.actionReasons.addChildNeedsCategory}
+          </p>
+        )}
+      </section>
+
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split inspection-standard-split defect-cause-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
+        {codeListPane}
+
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+
+        <div className="inspection-standard-detail">{renderDetail()}</div>
+      </div>
+
+      {renderFormDialog()}
 
       <DeactivateConfirmDialog
         open={isDeactivateOpen}

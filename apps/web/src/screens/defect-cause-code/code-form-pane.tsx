@@ -1,4 +1,4 @@
-import { AlertBanner, Button, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
@@ -12,6 +12,8 @@ export interface CodeFormPaneProps {
   /** 탭이 무엇인지는 어댑터만 안다 — 이 부품은 라벨과 폼 값만 다룬다. */
   adapter: CodeAdapter;
   mode: 'create' | 'edit';
+  /** 창 제목(대분류 추가 · 상세 추가 · 수정) */
+  title: string;
   values: CodeFormValues;
   onChange: (patch: Partial<CodeFormValues>) => void;
   /** 폼 입력칸 이름 기준의 인라인 오류. 서버 필드 이름은 화면이 미리 옮겨 준다. */
@@ -23,18 +25,22 @@ export interface CodeFormPaneProps {
   parentOptions: CodeOption[];
   /** null이 아니면 상위 선택칸을 잠그고 이 사유를 낸다(차단 R3의 1차 방어) */
   parentLockReason: string | null;
-  isActive: boolean;
   isDirty: boolean;
   isSaving: boolean;
   onSave: () => void;
+  /** 「취소」 — 고친 값을 버리고 창을 닫는다 */
   onCancel: () => void;
-  onDeactivate: () => void;
 }
 
-/** 우 페인 — 코드 하나를 등록하거나 고치는 자리. 두 탭이 같은 부품을 쓴다. */
+/**
+ * 코드 하나를 등록하거나 고치는 창(omf-all-around#209). 두 탭이 같은 부품을 쓴다.
+ * 검사 기준 탭의 창과 같은 모양(#196) — 머리 ✕ 없이 「취소」로 닫고, 입력 안내를 두고,
+ * 비어 있는 필수 칸은 테두리만 빨갛게 한다.
+ */
 export const CodeFormPane = ({
   adapter,
   mode,
+  title,
   values,
   onChange,
   fieldErrors,
@@ -42,19 +48,15 @@ export const CodeFormPane = ({
   codeLockReason,
   parentOptions,
   parentLockReason,
-  isActive,
   isDirty,
   isSaving,
   onSave,
   onCancel,
-  onDeactivate,
 }: CodeFormPaneProps) => {
   const parentId = useId();
   const parentErrorId = `${parentId}-error`;
   const parentLockId = `${parentId}-lock`;
   const parentNoteId = `${parentId}-note`;
-  const activeLabelId = useId();
-  const deactivateNoteId = useId();
 
   const parentError = fieldErrors.parentId;
   const describedBy = [
@@ -71,9 +73,38 @@ export const CodeFormPane = ({
    */
   const showCategoryWarning = mode === 'create' && values.parentId === '';
 
+  /*
+   * 비어 있는 필수 칸은 처음부터 테두리만 빨갛게 한다 — 「필수 입력 항목입니다」 글은 화면에 띄우지 않고
+   * 화면 읽기로만 남긴다(검사 기준 탭과 같다 · #196). 다른 오류(중복 · 형식)는 글로 낸다.
+   */
+  const requiredText = (key: 'code' | 'name', value: string, locked: boolean) => {
+    const error = fieldErrors[key];
+    if (error !== undefined && error !== t.validation.required) return { error };
+    return !locked && value.trim() === ''
+      ? { error: t.validation.required, containerClassName: 'inspection-standard-border-only' }
+      : {};
+  };
+
   return (
-    <section aria-label={t.panes.form(adapter.labels.tab)}>
-      <h2 className="pane-title">{t.panes.form(adapter.labels.tab)}</h2>
+    <Dialog
+      open
+      size="md"
+      title={title}
+      onClose={onCancel}
+      closeOnBackdropClick={false}
+      /* 닫기는 「취소」로 한다 — 머리의 ✕는 두지 않는다(검사 기준 탭과 같다 · #196). */
+      showCloseButton={false}
+      footer={
+        <>
+          <Button variant="outlined" onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
+          <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+            {messages.common.save}
+          </Button>
+        </>
+      }
+    >
       {banner}
 
       {showCategoryWarning && (
@@ -82,21 +113,25 @@ export const CodeFormPane = ({
         </div>
       )}
 
-      <div className="form-grid">
+      <div className="form-grid defect-cause-form-grid">
         <TextField
           label={adapter.labels.code}
+          placeholder={t.dialog.codePlaceholder}
           value={values.code}
           onChange={(event) => onChange({ code: event.target.value })}
           disabled={codeLockReason !== null}
           disabledReason={codeLockReason}
-          error={fieldErrors.code}
+          aria-required
+          {...requiredText('code', values.code, codeLockReason !== null)}
         />
 
         <TextField
           label={adapter.labels.name}
+          placeholder={t.dialog.namePlaceholder}
           value={values.name}
           onChange={(event) => onChange({ name: event.target.value })}
-          error={fieldErrors.name}
+          aria-required
+          {...requiredText('name', values.name, false)}
         />
 
         {/*
@@ -135,46 +170,7 @@ export const CodeFormPane = ({
             {t.parentListProvisional}
           </span>
         </div>
-
-        {/*
-         * 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다.
-         *
-         * `form-actions-secondary`를 함께 붙인다. `.form-grid .field-cell`은 규범 3-1로
-         * `align-items: stretch`라 선택 컨트롤뿐 아니라 **버튼까지 칸 폭 전체로 늘린다** —
-         * 액션 버튼이 입력칸처럼 보인다. `margin-right: auto`가 칸을 내용 폭으로 줄여 준다.
-         */}
-        {mode === 'edit' && (
-          <div className="field-cell form-actions-secondary">
-            <span className="field-label" id={activeLabelId}>
-              {t.fields.isActive}
-            </span>
-            <p aria-labelledby={activeLabelId}>{isActive ? t.values.active : t.values.inactive}</p>
-            {/* 이미 미사용인 코드에는 중지할 대상이 없다. 감추지 않고 사유를 밝힌다(배치 규범 4). */}
-            <Button
-              variant="outlined"
-              disabled={!isActive}
-              aria-describedby={isActive ? undefined : deactivateNoteId}
-              onClick={onDeactivate}
-            >
-              {messages.common.deactivate}
-            </Button>
-            {!isActive && (
-              <span id={deactivateNoteId} className="field-note">
-                {t.actionReasons.deactivateNeedsActive}
-              </span>
-            )}
-          </div>
-        )}
       </div>
-
-      <div className="form-actions">
-        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {messages.common.save}
-        </Button>
-      </div>
-    </section>
+    </Dialog>
   );
 };

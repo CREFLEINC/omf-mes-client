@@ -50,6 +50,8 @@ export const defectCauseCode = {
     codeNoMatchTitle: '조건에 맞는 결과가 없습니다',
     codeNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
     codeNotSelected: '왼쪽에서 코드를 고르거나 「대분류 추가」로 시작하세요',
+    codeNotSelectedTitle: '코드를 선택하세요',
+    codeNotSelectedDescription: '목록에서 선택하면 상세 정보가 표시됩니다.',
     mappingNoneTitle: '매핑할 상세 불량코드가 없습니다',
     mappingNoneDescription: '불량코드 탭에서 대분류 아래에 상세 코드를 먼저 등록하세요.',
     processNoneTitle: '매핑할 공정이 없습니다',
@@ -57,7 +59,7 @@ export const defectCauseCode = {
   },
   filters: {
     defectSearchLabel: '불량코드 검색',
-    defectSearchPlaceholder: '불량코드 또는 불량명',
+    defectSearchPlaceholder: '불량코드 또는 불량명을 입력하세요',
     causeSearchLabel: '원인코드 검색',
     causeSearchPlaceholder: '원인코드 또는 원인명',
     chipRemoveKeyword: '검색어 조건 제거',
@@ -69,6 +71,24 @@ export const defectCauseCode = {
     name: '명칭',
     parent: '상위 대분류',
     isActive: '사용',
+    kind: '구분',
+  },
+  /** 상세 카드(omf-all-around#209) — 제목 · 상태 칩 · 이름표 상자, 수정은 창에서. */
+  detail: {
+    title: (tab: string): string => `${tab} 상세`,
+    edit: '수정',
+    chipActive: '사용',
+    chipInactive: '미사용',
+    kindCategory: '대분류',
+    kindChild: '상세',
+  },
+  /** 등록 · 수정 창(#209). 닫기는 「취소」로 한다. */
+  dialog: {
+    createCategoryTitle: (tab: string): string => `${tab} 대분류 추가`,
+    createChildTitle: (tab: string): string => `${tab} 상세 추가`,
+    editTitle: (tab: string): string => `${tab} 수정`,
+    codePlaceholder: '코드를 입력하세요',
+    namePlaceholder: '명칭을 입력하세요',
   },
   values: {
     active: '사용 중',

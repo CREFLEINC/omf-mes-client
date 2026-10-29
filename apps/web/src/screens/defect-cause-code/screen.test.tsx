@@ -130,6 +130,11 @@ const causeListRoute = (items: unknown[] = causeCodeFixtures): StubRoute => ({
   respond: () => jsonResponse(listBody(items)),
 });
 
+/** 상세는 값 표기로만 보이고, 고치기는 「수정」 창에서 한다(#209) — 수정 흐름 시험은 먼저 창을 연다. */
+const openEdit = async (): Promise<void> => {
+  await userEvent.setup().click(await screen.findByRole('button', { name: '수정' }));
+};
+
 /** 주소가 실제로 어떻게 바뀌는지 본다 — 탭 전환이 조건을 지우는지 판정할 유일한 근거다. */
 const LocationProbe = () => {
   const location = useLocation();
@@ -320,9 +325,8 @@ describe('DefectCauseCodeScreen — 2계층 표시', () => {
     renderScreen([defectListRoute()]);
     await screen.findByRole('button', { name: 'DF-10' });
 
-    expect(
-      screen.getByText('왼쪽에서 코드를 고르거나 「대분류 추가」로 시작하세요'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('코드를 선택하세요')).toBeInTheDocument();
+    expect(screen.getByText('목록에서 선택하면 상세 정보가 표시됩니다.')).toBeInTheDocument();
   });
 });
 
@@ -727,6 +731,7 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
 
     await user.click(await screen.findByRole('button', { name: 'DF-11' }));
 
+    await openEdit();
     expect(await screen.findByLabelText('코드')).toHaveValue('DF-11');
     expect(screen.getByLabelText('명칭')).toHaveValue('스크래치');
     expect(requestsTo(requests, `${DEFECT_LIST_PATH}/1002`)).toHaveLength(1);
@@ -744,6 +749,7 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
   it('주소에 있던 선택이 그대로 복원된다', async () => {
     renderScreen(editFlowRoutes(defectDetailRoute()), '?sel=1001');
 
+    await openEdit();
     expect(await screen.findByLabelText('코드')).toHaveValue('DF-10');
   });
 
@@ -766,6 +772,7 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
       '?sel=1001',
     );
 
+    await openEdit();
     expect(await screen.findByLabelText('코드')).toBeDisabled();
     expect(
       screen.getByText('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
@@ -775,6 +782,7 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
   it('codeEditable이 참이면 코드 입력이 열려 있다', async () => {
     renderScreen(editFlowRoutes(defectDetailRoute()), '?sel=1001');
 
+    await openEdit();
     expect(await screen.findByLabelText('코드')).not.toBeDisabled();
   });
 
@@ -802,6 +810,7 @@ describe('DefectCauseCodeScreen — 수정 중의 상위 선택', () => {
       editFlowRoutes(defectDetailRoute(defectCodeFixtures[5])),
       '?inactive=1&sel=1006',
     );
+    await openEdit();
     await screen.findByLabelText('코드');
 
     await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
@@ -812,6 +821,7 @@ describe('DefectCauseCodeScreen — 수정 중의 상위 선택', () => {
 
   it('하위가 있는 코드는 상위 선택칸이 잠기고 사유가 보인다', async () => {
     renderScreen(editFlowRoutes(defectDetailRoute()), '?sel=1001');
+    await openEdit();
     await screen.findByLabelText('코드');
 
     expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
@@ -849,6 +859,7 @@ describe('DefectCauseCodeScreen — 수정 중의 상위 선택', () => {
       '?sel=1008',
     );
 
+    await openEdit();
     expect(await screen.findByText('DF-90 · 사용하지 않는 축 (미사용)')).toBeInTheDocument();
   });
 });
@@ -868,6 +879,7 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
       '?sel=1001',
     );
 
+    await openEdit();
     await user.type(await screen.findByLabelText('명칭'), '가');
     await user.click(screen.getByRole('button', { name: '저장' }));
     expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
@@ -898,6 +910,7 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
       '?sel=1002',
     );
 
+    await openEdit();
     await user.type(await screen.findByLabelText('명칭'), '가');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
@@ -922,6 +935,7 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
       '?sel=1001',
     );
 
+    await openEdit();
     await user.type(await screen.findByLabelText('명칭'), '가');
 
     const before = requests.filter((request) => request.method === 'GET').length;
@@ -929,7 +943,8 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
     await screen.findByText('저장했습니다');
 
     expect(requests.filter((request) => request.method === 'GET').length).toBeGreaterThan(before);
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    // 수정 창은 저장에 성공하면 닫힌다(#209).
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   /* 저장 응답의 ETag가 같은 경로로 갱신돼야 재조회 없이 이어서 고칠 수 있다. */
@@ -956,11 +971,13 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
       '?sel=1001',
     );
 
+    await openEdit();
     await user.type(await screen.findByLabelText('명칭'), '가');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
 
-    await user.type(screen.getByLabelText('명칭'), '나');
+    await openEdit();
+    await user.type(await screen.findByLabelText('명칭'), '나');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
@@ -984,6 +1001,7 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
       '?sel=1001',
     );
 
+    await openEdit();
     await user.type(await screen.findByLabelText('명칭'), '가');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
@@ -1002,6 +1020,7 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
       '?sel=1001',
     );
 
+    await openEdit();
     await user.clear(await screen.findByLabelText('명칭'));
     await user.click(screen.getByRole('button', { name: '저장' }));
 
@@ -1035,6 +1054,7 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
       '?sel=4002',
     );
 
+    await openEdit();
     await user.type(await screen.findByLabelText('명칭'), ' 불량');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
@@ -1047,6 +1067,7 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
 
   it('그래도 상위 선택칸은 잠겨 있고 사유가 보인다 — 계층을 더 깨지 못하게 한다', async () => {
     renderScreen(legacyRoutes(defectDetailRoute(legacyThreeLevelCodeFixtures[1])), '?sel=4002');
+    await openEdit();
     await screen.findByLabelText('명칭');
 
     expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
@@ -1070,6 +1091,7 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
       '?sel=4003',
     );
 
+    await openEdit();
     await user.type(await screen.findByLabelText('명칭'), ' 심함');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
@@ -1094,6 +1116,7 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
       '?sel=4003',
     );
 
+    await openEdit();
     await screen.findByLabelText('명칭');
     await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
     await user.click(await screen.findByRole('option', { name: 'DF-40 · 조립' }));
@@ -1131,6 +1154,7 @@ describe('DefectCauseCodeScreen — 상위가 상세 코드이면서 하위도 �
       '?sel=5003',
     );
 
+    await openEdit();
     await user.type(await screen.findByLabelText('명칭'), ' 다수');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
@@ -1142,6 +1166,7 @@ describe('DefectCauseCodeScreen — 상위가 상세 코드이면서 하위도 �
 
   it('그래도 상위 선택칸은 잠겨 있다 — 계층을 더 깨지 못하게 한다', async () => {
     renderScreen(deepRoutes(defectDetailRoute(deepHierarchyCodeFixtures[2])), '?sel=5003');
+    await openEdit();
     await screen.findByLabelText('명칭');
 
     expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
@@ -1167,6 +1192,7 @@ describe('DefectCauseCodeScreen — 상세 코드를 대분류로 되돌리기',
       '?sel=1002',
     );
 
+    await openEdit();
     await screen.findByLabelText('명칭');
     await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
     await user.click(screen.getByRole('option', { name: '없음 (대분류)' }));
@@ -1200,6 +1226,7 @@ describe('DefectCauseCodeScreen — 저장 충돌', () => {
   ])('충돌 원인 %s에 맞는 문구와 최신 불러오기가 나온다', async (cause, expected) => {
     const { user } = renderScreen(conflictRoutes(cause), '?sel=1001');
 
+    await openEdit();
     await user.type(await screen.findByLabelText('명칭'), '가');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
@@ -1210,6 +1237,7 @@ describe('DefectCauseCodeScreen — 저장 충돌', () => {
   it('최신 불러오기를 누르면 상세를 다시 조회하고 입력한 내용이 사라진다', async () => {
     const { requests, user } = renderScreen(conflictRoutes('user'), '?sel=1001');
 
+    await openEdit();
     await user.type(await screen.findByLabelText('명칭'), '가');
     await user.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByRole('button', { name: '최신 불러오기' });
@@ -1505,6 +1533,7 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
         TAB_ROUTE[definition.kind],
       );
 
+      await openEdit();
       await user.type(await screen.findByLabelText('명칭'), '가');
       await user.click(screen.getByRole('button', { name: '저장' }));
       await screen.findByText('저장했습니다');

@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { causeCodeAdapter, defectCodeAdapter } from './adapters';
+import { defectCodeAdapter } from './adapters';
 import { CodeListPane, type CodeListPaneProps } from './code-list-pane';
 import { hierarchyFixtures } from './fixtures';
 import { indexById, orderForGrouping } from './hierarchy';
@@ -24,8 +24,6 @@ const renderPane = (overrides: Partial<CodeListPaneProps> = {}) => {
     selectedId: null,
     onSelect: vi.fn(),
     onAddCategory: vi.fn(),
-    onAddChild: vi.fn(),
-    canAddChild: false,
     loadError: null,
     ...overrides,
   };
@@ -77,7 +75,10 @@ describe('CodeListPane — 2계층 표시', () => {
     renderPane();
 
     expect(screen.getByText('미사용')).toBeInTheDocument();
-    expect(screen.getAllByText('사용 중').length).toBe(6);
+    // 머리칸 「사용」은 빼고 센다.
+    expect(screen.getAllByText('사용').filter((node) => node.closest('th') === null)).toHaveLength(
+      6,
+    );
   });
 
   it('코드를 누르면 그 코드가 선택된다', async () => {
@@ -125,77 +126,18 @@ describe('CodeListPane — 상태별 표시', () => {
   });
 });
 
-describe('CodeListPane — 조회 조건', () => {
-  it('검색어를 넣고 조회를 누르면 조건이 적용된다', async () => {
-    const { props, user } = renderPane();
-
-    await user.type(screen.getByLabelText('불량코드 검색'), 'DF-1');
-    await user.click(screen.getByRole('button', { name: '조회' }));
-
-    expect(props.onApplyFilters).toHaveBeenCalledWith({ q: 'DF-1', includeInactive: false });
-  });
-
-  it('미사용 포함은 해제 축이라 바꾸는 즉시 적용된다', async () => {
-    const { props, user } = renderPane();
-
-    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
-
-    expect(props.onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: true });
-  });
-
-  it('적용된 조건은 칩으로 보이고 칩을 지우면 그 조건만 풀린다', async () => {
-    const { props, user } = renderPane({
-      appliedFilters: { q: 'DF-1', includeInactive: true },
-    });
-
-    expect(screen.getByText('검색어: DF-1')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '검색어 조건 제거' }));
-
-    expect(props.onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: true });
-  });
-
-  it('탭마다 검색 라벨이 다르다', () => {
-    renderPane({ adapter: causeCodeAdapter });
-
-    expect(screen.getByLabelText('원인코드 검색')).toBeInTheDocument();
-  });
-});
-
-describe('CodeListPane — 등록 액션', () => {
-  it('대분류 추가는 언제나 쓸 수 있다', async () => {
-    const { props, user } = renderPane();
-
-    await user.click(screen.getByRole('button', { name: '대분류 추가' }));
-
-    expect(props.onAddCategory).toHaveBeenCalled();
-  });
-
-  it('상세 추가는 대분류를 고르기 전에는 비활성이고 사유가 보인다', () => {
-    renderPane({ canAddChild: false });
-
-    const addChild = screen.getByRole('button', { name: '상세 추가' });
-    expect(addChild).toBeDisabled();
-    expect(
-      screen.getByText('상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.'),
-    ).toBeInTheDocument();
-    expect(addChild).toHaveAttribute('aria-describedby');
-  });
-
-  it('대분류를 고르면 상세 추가를 쓸 수 있다', async () => {
-    const { props, user } = renderPane({ canAddChild: true, selectedId: 1001 });
-
-    expect(
-      screen.queryByText('상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.'),
-    ).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '상세 추가' }));
-
-    expect(props.onAddChild).toHaveBeenCalled();
-  });
-
+describe('CodeListPane — 선택', () => {
   it('고른 코드에 현재 선택 표식이 붙는다', () => {
     renderPane({ selectedId: 1002 });
 
     expect(screen.getByRole('button', { name: 'DF-11' })).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('조회 조건과 등록 단추는 목록 칸에 두지 않는다 — 위 조회 카드에 선다(#209)', () => {
+    renderPane();
+
+    expect(screen.queryByRole('button', { name: '조회' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '상세 추가' })).not.toBeInTheDocument();
   });
 });
 
