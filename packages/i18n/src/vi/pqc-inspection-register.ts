@@ -137,7 +137,7 @@ export const pqcInspectionRegister = {
     executed: 'Đã bỏ qua PQC. LOT sản phẩm đang chờ kiểm tra đã trở thành bình thường.',
     skipped: 'Yêu cầu này đã bỏ qua PQC theo phê duyệt.',
     skippedDefault:
-      'Tiêu chuẩn kiểm tra là «Bỏ qua mặc định» nên lệnh sản xuất này chạy không cần PQC.',
+      'Tiêu chuẩn kiểm tra được đặt là ‘Bỏ qua mặc định’ nên sản xuất được xử lý mà không kiểm tra PQC.',
     loading: 'Đang tải trạng thái phê duyệt bỏ qua.',
     loadFailed: 'Không tải được trạng thái phê duyệt bỏ qua.',
   },

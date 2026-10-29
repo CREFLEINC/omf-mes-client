@@ -511,7 +511,8 @@ export const iqcInspection = {
     rejected: '직전 생략 요청이 반려됐습니다. 다시 요청할 수 있습니다.',
     executed: 'IQC 를 생략했습니다. LOT 이 정상이 됐습니다.',
     skipped: '이 의뢰는 결재 승인으로 IQC 가 생략됐습니다.',
-    skippedDefault: '검사 기준이 「기본 생략」이라 이 LOT 은 수입검사 없이 정상이 됐습니다.',
+    skippedDefault:
+      '검사 기준이 ‘기본 생략’으로 설정되어 IQC 검사 없이 LOT 이 정상 처리되었습니다.',
     loading: '생략 결재 상태를 불러오는 중입니다.',
     loadFailed: '생략 결재 상태를 불러오지 못했습니다.',
     /** 요청은 사번을 함께 보낸다 — 계정에 작업자가 없으면 요청하지 못한다. */

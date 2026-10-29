@@ -152,7 +152,7 @@ export const pqcInspectionRegister = {
     rejected: '직전 생략 요청이 반려됐습니다. 다시 요청할 수 있습니다.',
     executed: 'PQC 를 생략했습니다. 검사 대기였던 생산 LOT 은 정상이 됐습니다.',
     skipped: '이 의뢰는 결재 승인으로 PQC 가 생략됐습니다.',
-    skippedDefault: '검사 기준이 「기본 생략」이라 이 작업지시는 PQC 없이 진행합니다.',
+    skippedDefault: '검사 기준이 ‘기본 생략’으로 설정되어 PQC 검사 없이 생산 처리됩니다.',
     loading: '생략 결재 상태를 불러오는 중입니다.',
     loadFailed: '생략 결재 상태를 불러오지 못했습니다.',
   },

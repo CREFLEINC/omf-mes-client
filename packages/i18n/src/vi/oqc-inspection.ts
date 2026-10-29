@@ -236,7 +236,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     executed: 'Đã bỏ qua OQC. Kiểm tra xuất hàng đã chuyển sang đạt.',
     skipped: 'Yêu cầu này đã đóng do bỏ qua OQC.',
     skippedDefault:
-      'Tiêu chuẩn kiểm tra là «Bỏ qua mặc định» nên lô xuất này được thông qua mà không cần OQC.',
+      'Tiêu chuẩn kiểm tra được đặt là ‘Bỏ qua mặc định’ nên đã xuất hàng mà không kiểm tra OQC.',
     loading: 'Đang tải trạng thái phê duyệt bỏ qua.',
     loadFailed: 'Không tải được trạng thái phê duyệt bỏ qua.',
   },

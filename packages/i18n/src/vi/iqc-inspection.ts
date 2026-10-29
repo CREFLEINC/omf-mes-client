@@ -327,7 +327,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     executed: 'Đã bỏ qua IQC. LOT đã trở thành bình thường.',
     skipped: 'Yêu cầu này đã bỏ qua IQC theo phê duyệt.',
     skippedDefault:
-      'Tiêu chuẩn kiểm tra là «Bỏ qua mặc định» nên LOT này trở thành bình thường mà không cần kiểm tra đầu vào.',
+      'Tiêu chuẩn kiểm tra được đặt là ‘Bỏ qua mặc định’ nên LOT đã được xử lý bình thường mà không kiểm tra IQC.',
     loading: 'Đang tải trạng thái phê duyệt bỏ qua.',
     loadFailed: 'Không tải được trạng thái phê duyệt bỏ qua.',
     workerNotLinked:

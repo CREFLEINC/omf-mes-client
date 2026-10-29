@@ -399,7 +399,7 @@ export const oqcInspection = {
     executed: 'OQC 를 생략했습니다. 출하검사가 통과로 바뀌었습니다.',
     skipped: '이 의뢰는 OQC 생략으로 닫혔습니다.',
     /** 검사 기준의 기본 생략으로 만들어진 의뢰(omf-all-around#212) — 결재 없이 처음부터 생략이다. */
-    skippedDefault: '검사 기준이 「기본 생략」이라 이 출하는 OQC 없이 통과했습니다.',
+    skippedDefault: '검사 기준이 ‘기본 생략’으로 설정되어 OQC 검사 없이 출하 처리되었습니다.',
     loading: '생략 결재 상태를 불러오는 중입니다.',
     loadFailed: '생략 결재 상태를 불러오지 못했습니다.',
   },

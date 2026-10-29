@@ -217,18 +217,8 @@ export const InspectionSkipPane = ({
                 {t.openRequest}
               </Button>
             )}
-        </div>
-      </div>
-
-      {approval.isPending ? (
-        <p className="field-note">{t.loading}</p>
-      ) : approval.isError ? (
-        <AlertBanner variant="error" title={t.loadFailed} />
-      ) : status === 'PENDING' && latest !== null ? (
-        <>
-          <AlertBanner variant="info" title={t.pending} />
-          {/* 요청한 그 건을 골라 결재 화면을 연다 — 「특채·한도승인 승인 처리」(#136). */}
-          <div className="oqc-inspection-skip-actions">
+          {/* 요청한 그 건을 골라 결재 화면을 연다 — 단계 상자 안 오른쪽, 「생략 요청」 단추 자리(#136 · 담당자 지시 2026-10-29). */}
+          {!approval.isPending && !approval.isError && status === 'PENDING' && latest !== null && (
             <Button
               type="button"
               variant="outlined"
@@ -241,7 +231,17 @@ export const InspectionSkipPane = ({
             >
               {t.openApproval}
             </Button>
-          </div>
+          )}
+        </div>
+      </div>
+
+      {approval.isPending ? (
+        <p className="field-note">{t.loading}</p>
+      ) : approval.isError ? (
+        <AlertBanner variant="error" title={t.loadFailed} />
+      ) : status === 'PENDING' && latest !== null ? (
+        <>
+          <AlertBanner variant="info" title={t.pending} />
         </>
       ) : status === 'APPROVED' ? (
         <>
