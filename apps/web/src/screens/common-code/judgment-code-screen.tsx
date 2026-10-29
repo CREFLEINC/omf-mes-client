@@ -287,16 +287,7 @@ export const JudgmentCodeScreen = () => {
         </div>
       )}
 
-      {/*
-       * 값 추가 경고 — **등록 폼이 열려 있는 동안에만** 낸다. 늘 보이는 경고는 읽히지 않아
-       * 정작 값을 늘리는 순간에 효력이 없다. 경고가 필요한 자리는 그 순간 하나뿐이다.
-       */}
-      {isCreating && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.notices.addAffectsOtherScreens}</AlertBanner>
-        </div>
-      )}
-
+      {/* 값 추가 경고는 판정 유형 추가 창 안에 둔다(사용자 지시 2026-10-29 · #209) — `judgment-code-editor.tsx`. */}
       {renderBody()}
     </>
   );

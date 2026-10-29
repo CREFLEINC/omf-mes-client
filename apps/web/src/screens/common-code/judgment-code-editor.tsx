@@ -1,4 +1,5 @@
 import {
+  AlertBanner,
   Button,
   Chip,
   type Column,
@@ -587,6 +588,17 @@ export const JudgmentCodeEditor = ({
           error={activeWrite.error}
           onReload={isCreating ? undefined : reloadDetail}
         />
+        {/*
+         * 값 추가 경고 — 추가 창 안에서만 낸다(사용자 지시 2026-10-29 · #209). 불량코드 창의 대분류 경고와 같은 모양.
+         * 늘 보이는 경고는 읽히지 않아, 값을 늘리는 그 순간에만 낸다.
+         */}
+        {isCreating && (
+          <div className="banner-slot">
+            <AlertBanner variant="warning">
+              {messages.judgmentCode.notices.addAffectsOtherScreens}
+            </AlertBanner>
+          </div>
+        )}
         <div className="form-grid defect-cause-form-grid">
           <div className="field-cell">
             <FieldLabel htmlFor={codeId} label={t.fields.code} required={!codeLocked} />

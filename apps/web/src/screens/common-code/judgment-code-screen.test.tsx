@@ -873,6 +873,13 @@ describe('JudgmentCodeScreen — 안내와 경고', () => {
     expect(screen.queryByText(t.notices.editorScope)).not.toBeInTheDocument();
   });
 
+  it('값 추가 경고는 추가 창 안에 뜬다(사용자 지시 · #209)', async () => {
+    renderScreen([groupListRoute(), codeValueListRoute()], '?new=1');
+
+    const dialog = await screen.findByRole('dialog', { name: te.createTitle });
+    expect(within(dialog).getByText(t.notices.addAffectsOtherScreens)).toBeInTheDocument();
+  });
+
   it('임시 목록 안내를 내지 않는다(사용자 지시 · #209)', async () => {
     renderScreen([groupListRoute(), codeValueListRoute()]);
 
