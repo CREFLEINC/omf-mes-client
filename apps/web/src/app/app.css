@@ -331,13 +331,13 @@ main > * + * {
  * 검사 기준 검색 칸 — 흐린 안내(「기준 코드 또는 기준명을 입력하세요」)가 잘리지 않는 폭을 기본으로 하고,
  * 창이 좁으면 그만큼 줄어든다(사용자 지시 2026-10-27 · #196).
  */
-.inspection-standard-search .filter-bar > :first-child {
+.inspection-standard-search > .filter-bar:first-child > :nth-child(2) {
   flex: 0 1 19.5em;
   min-width: 12rem;
 }
 
 /* 품목 칸은 고른 품목 이름 길이로 늘지 않는다 — 늘면 조회 · 초기화가 아랫줄로 밀린다(#208). 전체 이름은 title 로 본다. */
-.inspection-standard-search > .filter-bar:first-child > :nth-child(2) {
+.inspection-standard-search > .filter-bar:first-child > :nth-child(3) {
   flex: 0 1 14em;
   min-width: 10rem;
 }

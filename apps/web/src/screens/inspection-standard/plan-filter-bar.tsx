@@ -75,6 +75,21 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
   return (
     <>
       <div className="filter-bar">
+        {/* 순서: 검사 유형 → 검사 기준 검색 → 품목 검색 → 미승인 체크(사용자 지시 · #208). */}
+        {/*
+         * 규범 3-2 — 선택지 목록이 트리거 폭에 갇혀 있어(디자인 시스템 이슈 #62) 최소 폭을 주지 않으면
+         * 「IQC (수입검사)」가 「IQC (수⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
+         */}
+        <div className="field-cell wide-select">
+          <FieldLabel htmlFor={typeSelectId} label={t.filters.inspectionType} />
+          <Select
+            id={typeSelectId}
+            options={[{ value: '', label: t.filters.typeAll }, ...INSPECTION_TYPE_OPTIONS]}
+            value={draft.inspectionTypeCode}
+            onChange={(value) => setDraft((prev) => ({ ...prev, inspectionTypeCode: value }))}
+          />
+        </div>
+
         {/*
          * 검사 기준은 **창에서 검색해서 고른다** — 검사 조회·판정의 품목 조건과 같은 모양(omf-all-around#196).
          * 읽기 전용 칸을 누르거나 엔터를 치면 창이 열리고, 고른 기준의 코드가 검색어로 들어간다.
@@ -111,20 +126,6 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
           onChange={() => undefined}
           onClear={() => setDraft((prev) => ({ ...prev, itemId: '' }))}
         />
-
-        {/*
-         * 규범 3-2 — 선택지 목록이 트리거 폭에 갇혀 있어(디자인 시스템 이슈 #62) 최소 폭을 주지 않으면
-         * 「IQC (수입검사)」가 「IQC (수⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
-         */}
-        <div className="field-cell wide-select">
-          <FieldLabel htmlFor={typeSelectId} label={t.filters.inspectionType} />
-          <Select
-            id={typeSelectId}
-            options={[{ value: '', label: t.filters.typeAll }, ...INSPECTION_TYPE_OPTIONS]}
-            value={draft.inspectionTypeCode}
-            onChange={(value) => setDraft((prev) => ({ ...prev, inspectionTypeCode: value }))}
-          />
-        </div>
 
         {/*
          * 「미승인」만 보기(사용자 지시 · #208) — 바로 적용한다. 사용 여부(전체 · 사용 · 미사용)는 탭 줄의 칩이 맡아
