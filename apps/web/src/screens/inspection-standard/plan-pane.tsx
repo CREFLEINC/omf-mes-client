@@ -208,16 +208,20 @@ export const PlanPane = ({
           error={fieldErrors.routingId}
         />
 
-        {/* PQC 생략 허용(omf-all-around#119) — PQC 기준에만 선다. 켜면 이 기준으로 배포한 W/O 의 PQC 가 생략된다. */}
-        {values.inspectionTypeCode === 'PQC' && (
+        {/* 기본 생략(omf-all-around#212) — 검사 유형을 고르면 IQC·PQC·OQC 모두 선다. 켜면 이 기준이 걸리는 건은 검사 의뢰 없이 넘어간다. */}
+        {values.inspectionTypeCode !== '' && (
           <div className="field-cell">
             <Checkbox
-              checked={values.pqcSkipAllowed}
-              onChange={(event) => onChange({ pqcSkipAllowed: event.target.checked })}
+              checked={values.defaultSkip}
+              onChange={(event) => onChange({ defaultSkip: event.target.checked })}
             >
-              {t.fields.pqcSkipAllowed}
+              {t.fields.defaultSkip}
             </Checkbox>
-            <p className="field-note">{t.values.pqcSkipAllowedNote}</p>
+            <p className="field-note">{t.values.defaultSkipNote(values.inspectionTypeCode)}</p>
+            {/* 품목을 비운 IQC 기준은 전 품목 공통이라 자기 기준이 없는 품목이 모두 생략된다. */}
+            {values.defaultSkip && values.inspectionTypeCode === 'IQC' && values.itemId === '' && (
+              <p className="field-note">{t.values.defaultSkipAllItemsNote}</p>
+            )}
           </div>
         )}
       </div>

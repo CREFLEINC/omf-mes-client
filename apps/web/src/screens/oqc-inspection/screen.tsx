@@ -582,6 +582,7 @@ export const OqcInspectionScreen = () => {
             <SkipPane
               shipmentRequestId={detail.data.targetId}
               requestStatusCode={detail.data.statusCode}
+              skipBasisCode={detail.data.skipBasisCode}
             />
           )}
 

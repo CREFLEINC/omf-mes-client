@@ -28,6 +28,8 @@ export interface SkipPaneProps {
   shipmentRequestId: number;
   /** 의뢰 상태. 생략(SKIPPED)으로 닫혔으면 그 사실만 말한다. */
   requestStatusCode: string;
+  /** 생략 근거 — 기본 생략(DEFAULT)이면 결재 없이 처음부터 생략된 것이라 그렇게 말한다(omf-all-around#212). */
+  skipBasisCode?: string | null;
 }
 
 /**
@@ -37,7 +39,11 @@ export interface SkipPaneProps {
  * ⭐ 단위는 출하작업지시다 — 실행하면 그 출하작업지시의 열린 OQC 의뢰가 함께 생략된다(D4).
  * ⛔ 확정 회차가 있는 의뢰에는 세우지 않는다 — 판정이 난 의뢰를 생략으로 덮지 않는다(서버도 400).
  */
-export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps) => {
+export const SkipPane = ({
+  shipmentRequestId,
+  requestStatusCode,
+  skipBasisCode = null,
+}: SkipPaneProps) => {
   const { client } = useApiClient();
   const [reason, setReason] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
@@ -115,7 +121,10 @@ export const SkipPane = ({ shipmentRequestId, requestStatusCode }: SkipPaneProps
     return (
       <section className="oqc-inspection-section oqc-inspection-skip" aria-label={t.heading}>
         <h3>{t.heading}</h3>
-        <AlertBanner variant="info" title={notice ?? t.skipped} />
+        <AlertBanner
+          variant="info"
+          title={notice ?? (skipBasisCode === 'DEFAULT' ? t.skippedDefault : t.skipped)}
+        />
       </section>
     );
   }

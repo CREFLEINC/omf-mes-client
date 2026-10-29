@@ -49,6 +49,8 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     inProgress: 'Đang làm',
     completed: 'Xong',
     skipped: 'Bỏ qua',
+    skippedDefault: 'Bỏ qua (mặc định)',
+    skippedApproval: 'Bỏ qua (đã duyệt)',
     cancelled: 'Đã hủy',
   },
 
@@ -233,6 +235,8 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     rejected: 'Yêu cầu bỏ qua trước đó đã bị từ chối. Có thể yêu cầu lại.',
     executed: 'Đã bỏ qua OQC. Kiểm tra xuất hàng đã chuyển sang đạt.',
     skipped: 'Yêu cầu này đã đóng do bỏ qua OQC.',
+    skippedDefault:
+      'Tiêu chuẩn kiểm tra là «Bỏ qua mặc định» nên lô xuất này được thông qua mà không cần OQC.',
     loading: 'Đang tải trạng thái phê duyệt bỏ qua.',
     loadFailed: 'Không tải được trạng thái phê duyệt bỏ qua.',
   },

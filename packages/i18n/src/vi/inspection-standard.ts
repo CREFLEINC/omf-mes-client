@@ -47,8 +47,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     newVersionBlockedByUnsaved:
       'Việc phát hành phiên bản mới không thực hiện được khi còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',
     /* 작성중 판은 기준당 하나만 둔다(#196). */
-    newVersionBlockedByDraft:
-      'Đang có phiên bản đang soạn. Hãy xác nhận hoặc hủy soạn.',
+    newVersionBlockedByDraft: 'Đang có phiên bản đang soạn. Hãy xác nhận hoặc hủy soạn.',
     confirmNeedsDraft:
       'Việc xác nhận chỉ thực hiện được với phiên bản đang soạn. Muốn thay đổi thì hãy phát hành phiên bản mới.',
     /* 계약이 항목 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
@@ -193,14 +192,15 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     chipInactive: 'Ngừng dùng',
     editBasic: 'Sửa thông tin cơ bản',
     itemUnset: 'Chưa chỉ định mặt hàng',
-    pqcSkipOn: 'Cho phép',
+    pqcSkipOn: 'Bật',
     close: 'Đóng',
   },
   versionSection: {
     samplingByRatio: 'Tỷ lệ (%)',
     samplingByQty: 'Số lượng',
     samplingBasis: 'Chọn cách lấy mẫu',
-    samplingBasisLocked: 'Kiểm tra toàn bộ không nhập mẫu. Đổi phương thức sang lấy mẫu thì mới chọn được.',
+    samplingBasisLocked:
+      'Kiểm tra toàn bộ không nhập mẫu. Đổi phương thức sang lấy mẫu thì mới chọn được.',
     samplingQtyValue: (qty: string): string => `${qty} cái`,
     title: 'Phiên bản tiêu chuẩn kiểm tra',
     sampling: 'Lấy mẫu',
@@ -246,7 +246,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     noItems: 'Cả hai phiên bản đều không có hạng mục kiểm tra.',
     yes: 'Có',
     no: 'Không',
-    change: (label: string, before: string, after: string): string => `${label}: ${before} → ${after}`,
+    change: (label: string, before: string, after: string): string =>
+      `${label}: ${before} → ${after}`,
     needTwo: 'Chỉ so sánh được khi có từ 2 phiên bản trở lên.',
     loading: 'Đang tải phiên bản để so sánh',
   },
@@ -320,7 +321,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     versionNoneTitle: 'Chưa đăng ký phiên bản',
     versionNoneDescription: 'Hãy tạo phiên bản đầu tiên bằng «Đăng ký phiên bản».',
     versionNotSelected: 'Hãy chọn phiên bản',
-    versionNotSelectedDescription: 'Thông tin tiêu chuẩn kiểm tra của phiên bản đã chọn sẽ hiển thị.',
+    versionNotSelectedDescription:
+      'Thông tin tiêu chuẩn kiểm tra của phiên bản đã chọn sẽ hiển thị.',
     itemNoneTitle: 'Chưa đăng ký hạng mục kiểm tra',
     itemNoneDescription: 'Hãy đăng ký hạng mục kiểm tra.',
   },
@@ -331,7 +333,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     item: 'Mặt hàng',
     process: 'Công đoạn',
     routing: 'Routing',
-    pqcSkipAllowed: 'Cho phép bỏ qua PQC',
+    defaultSkip: 'Bỏ qua mặc định',
     approval: 'Phê duyệt',
     active: 'Sử dụng',
     planVersion: 'Phiên bản',
@@ -370,8 +372,14 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     automaticJudgment: 'Đánh giá tự động',
   },
   values: {
-    pqcSkipAllowedNote:
-      'Khi bật, PQC của lệnh sản xuất phát hành theo tiêu chuẩn này sẽ được bỏ qua. Khi đăng ký kết quả, LOT trở thành bình thường ngay.',
+    defaultSkipNote: (inspectionTypeCode: string): string =>
+      inspectionTypeCode === 'IQC'
+        ? 'Khi bật, LOT nhập theo tiêu chuẩn này trở thành bình thường ngay mà không kiểm tra đầu vào. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».'
+        : inspectionTypeCode === 'OQC'
+          ? 'Khi bật, lệnh xuất hàng theo tiêu chuẩn này được thông qua mà không kiểm tra xuất hàng. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».'
+          : 'Khi bật, lệnh sản xuất theo tiêu chuẩn này chạy không cần PQC; khi đăng ký kết quả, LOT trở thành bình thường ngay. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».',
+    defaultSkipAllItemsNote:
+      'Tiêu chuẩn IQC không chọn mặt hàng nên mọi mặt hàng không có tiêu chuẩn riêng đều được bỏ qua kiểm tra đầu vào.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (ngừng dùng)',

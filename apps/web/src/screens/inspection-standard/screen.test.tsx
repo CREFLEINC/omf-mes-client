@@ -881,8 +881,7 @@ describe('InspectionStandardScreen — 기준 저장', () => {
       itemId: 5001,
       processId: null,
       routingId: null,
-      // PQC 생략 허용(#119) — PQC 가 아닌 기준은 끈 채로 보낸다.
-      pqcSkipAllowed: false,
+      defaultSkip: false,
     });
     expect('approvedBy' in body).toBe(false);
     expect('approvedAt' in body).toBe(false);
@@ -1004,8 +1003,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
       itemId: null,
       processId: null,
       routingId: null,
-      // PQC 생략 허용(#119) — PQC 가 아닌 기준은 끈 채로 보낸다.
-      pqcSkipAllowed: false,
+      defaultSkip: false,
     });
   });
 

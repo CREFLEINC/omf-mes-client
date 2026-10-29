@@ -56,8 +56,7 @@ export const inspectionStandard = {
     newVersionBlockedByUnsaved:
       '신규 버전 발행은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
     /* 작성중 판은 기준당 하나만 둔다 — 둘이면 어느 쪽을 확정할지 엇갈린다(사용자 지시 · #196). */
-    newVersionBlockedByDraft:
-      '작성중인 버전이 있습니다. 확정하거나 작성을 취소하세요.',
+    newVersionBlockedByDraft: '작성중인 버전이 있습니다. 확정하거나 작성을 취소하세요.',
     confirmNeedsDraft: '확정은 작성중 버전에만 할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
     /* 계약이 항목 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
     confirmNeedsItems: '확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.',
@@ -208,7 +207,7 @@ export const inspectionStandard = {
     chipInactive: '미사용',
     editBasic: '기본 정보 수정',
     itemUnset: '품목 미지정',
-    pqcSkipOn: '허용',
+    pqcSkipOn: '켜짐',
     close: '닫기',
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
@@ -217,7 +216,8 @@ export const inspectionStandard = {
     samplingByRatio: '비율(%)',
     samplingByQty: '수량',
     samplingBasis: '샘플 기준 선택',
-    samplingBasisLocked: '전수검사는 샘플을 입력하지 않습니다. 검사 방식을 샘플링으로 바꾸면 고를 수 있습니다.',
+    samplingBasisLocked:
+      '전수검사는 샘플을 입력하지 않습니다. 검사 방식을 샘플링으로 바꾸면 고를 수 있습니다.',
     /* 요약 줄의 샘플 개수 표기(#201 · #196). */
     samplingQtyValue: (qty: string): string => `${qty}개`,
     title: '검사 기준 버전',
@@ -266,7 +266,8 @@ export const inspectionStandard = {
     noItems: '두 버전 모두 검사 항목이 없습니다.',
     yes: '예',
     no: '아니요',
-    change: (label: string, before: string, after: string): string => `${label}: ${before} → ${after}`,
+    change: (label: string, before: string, after: string): string =>
+      `${label}: ${before} → ${after}`,
     needTwo: '버전 비교는 버전이 2개 이상일 때 할 수 있습니다.',
     loading: '비교할 버전을 불러오는 중',
   },
@@ -356,8 +357,8 @@ export const inspectionStandard = {
     item: '품목',
     process: '공정',
     routing: '라우팅',
-    /** omf-all-around#119 — PQC 기준에만 선다. */
-    pqcSkipAllowed: 'PQC 생략 허용',
+    /** omf-all-around#212 — 검사 유형 공통(옛 「PQC 생략 허용」 #119). */
+    defaultSkip: '기본 생략',
     approval: '승인',
     active: '사용',
     planVersion: '버전',
@@ -398,8 +399,15 @@ export const inspectionStandard = {
     automaticJudgment: '자동판정',
   },
   values: {
-    pqcSkipAllowedNote:
-      '켜면 이 기준으로 배포한 작업지시의 PQC 를 생략합니다. 실적을 등록하면 LOT 이 바로 정상이 됩니다.',
+    /** 검사 유형마다 무엇이 생략되는지(#212). */
+    defaultSkipNote: (inspectionTypeCode: string): string =>
+      inspectionTypeCode === 'IQC'
+        ? '켜면 이 기준이 걸리는 입하 LOT 은 수입검사 없이 바로 정상이 됩니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.'
+        : inspectionTypeCode === 'OQC'
+          ? '켜면 이 기준이 걸리는 출하작업지시는 출하검사 없이 통과합니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.'
+          : '켜면 이 기준이 걸리는 작업지시는 PQC 없이 진행하고, 실적을 등록하면 LOT 이 바로 정상이 됩니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.',
+    defaultSkipAllItemsNote:
+      '품목을 비운 IQC 기준이라 자기 기준이 없는 모든 품목의 수입검사가 생략됩니다.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (미사용)',

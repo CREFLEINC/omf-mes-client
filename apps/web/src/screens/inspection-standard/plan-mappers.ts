@@ -1,10 +1,12 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, InspectionPlanUpdateForward } from '@omf-mes/api-client';
 
 import type { InspectionPlan, PlanFormValues } from './types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
-type InspectionPlanCreate = components['schemas']['InspectionPlanCreate'];
-type InspectionPlanUpdate = components['schemas']['InspectionPlanUpdate'];
+type InspectionPlanCreate = components['schemas']['InspectionPlanCreate'] & {
+  defaultSkip?: boolean;
+};
+type InspectionPlanUpdate = InspectionPlanUpdateForward;
 
 /**
  * 계약 표현과 폼 표현 사이의 변환.
@@ -14,9 +16,6 @@ type InspectionPlanUpdate = components['schemas']['InspectionPlanUpdate'];
  */
 
 /** 널·없음을 빈 문자열로 모은다 — 입력칸의 「지정하지 않음」이 하나의 값이어야 한다. */
-/** 생략 허용이 뜻을 갖는 유일한 검사 유형(omf-all-around#119). */
-const PQC = 'PQC';
-
 const optionalIdToText = (value: number | null | undefined): string =>
   value === null || value === undefined ? '' : String(value);
 
@@ -30,7 +29,8 @@ export const planToFormValues = (plan: InspectionPlan): PlanFormValues => ({
   itemId: optionalIdToText(plan.itemId),
   processId: optionalIdToText(plan.processId),
   routingId: optionalIdToText(plan.routingId),
-  pqcSkipAllowed: plan.pqcSkipAllowed ?? false,
+  // 옛 서버는 `defaultSkip` 을 안 싣는다 — 같은 뜻의 호환 칸으로 읽는다(#212).
+  defaultSkip: plan.defaultSkip ?? plan.pqcSkipAllowed ?? false,
 });
 
 export const emptyPlanFormValues = (): PlanFormValues => ({
@@ -40,7 +40,7 @@ export const emptyPlanFormValues = (): PlanFormValues => ({
   itemId: '',
   processId: '',
   routingId: '',
-  pqcSkipAllowed: false,
+  defaultSkip: false,
 });
 
 /**
@@ -57,7 +57,7 @@ export const toPlanUpdate = (values: PlanFormValues): InspectionPlanUpdate => ({
   itemId: textToOptionalId(values.itemId),
   processId: textToOptionalId(values.processId),
   routingId: textToOptionalId(values.routingId),
-  pqcSkipAllowed: values.inspectionTypeCode === PQC && values.pqcSkipAllowed,
+  defaultSkip: values.defaultSkip,
 });
 
 /**
@@ -74,7 +74,7 @@ export const isSamePlanValues = (a: PlanFormValues, b: PlanFormValues): boolean 
   a.itemId === b.itemId &&
   a.processId === b.processId &&
   a.routingId === b.routingId &&
-  a.pqcSkipAllowed === b.pqcSkipAllowed;
+  a.defaultSkip === b.defaultSkip;
 
 /**
  * 승인 시각 표기. 값이 없으면 null이다.
