@@ -1779,6 +1779,9 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
 
     /* 검사 방식은 전수검사로 시작한다(#208) — 비어 있는 필수는 검사 주기 하나다. */
     expect(await screen.findAllByText('필수 입력 항목입니다.')).toHaveLength(1);
+    /* 아직 없는 버전에는 전이할 대상이 없다 — 작성 취소 · 확정 · 폐기를 두지 않는다(#208). */
+    expect(within(form).queryByRole('button', { name: '확정' })).not.toBeInTheDocument();
+    expect(within(form).queryByRole('button', { name: '폐기' })).not.toBeInTheDocument();
     expect(versionRequests(requests).filter((request) => request.method === 'POST')).toHaveLength(
       0,
     );

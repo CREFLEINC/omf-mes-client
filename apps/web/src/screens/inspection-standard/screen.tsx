@@ -1593,8 +1593,7 @@ export const InspectionStandardScreen = () => {
           isSaving={versionCreateWrite.isSaving}
           onSave={handleSaveVersionCreate}
           onCancel={resetVersionEditing}
-          // 아직 없는 버전에는 전이할 대상이 없다. 감추지 않고 사유와 함께 비활성으로 둔다.
-          transitionActions={renderVersionTransitionActions()}
+          /* 아직 없는 버전에는 전이할 대상이 없다 — 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208). */
         />
       );
     }
