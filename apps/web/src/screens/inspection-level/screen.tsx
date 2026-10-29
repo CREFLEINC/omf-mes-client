@@ -257,7 +257,8 @@ export const InspectionLevelScreen = () => {
         />
       )}
 
-      <p className="field-note">{t.rule}</p>
+      {/* 규칙 안내는 한 줄 폭을 다 쓴다 — `.field-note` 의 좁은 폭에 갇혀 세 줄로 꺾였다(#208). */}
+      <p className="field-note inspection-level-rule">{t.rule}</p>
 
       {/*
        * 조회 조건 — 검사 기준 탭처럼 목록 위 카드 한 줄: 품목 · 검사 수준 → 조회 → 구분선 → 품목 추가(#208).
@@ -330,7 +331,8 @@ export const InspectionLevelScreen = () => {
           style={resizable.style}
         >
           <Table
-            caption={t.list.caption}
+            /* 표 이름은 카드 제목과 겹친다 — 화면에서는 감추고 읽기 도구에만 남긴다(#208). */
+            caption={<span className="inspection-standard-visually-hidden">{t.list.caption}</span>}
             density="compact"
             columns={fit.columns}
             rows={rows}
@@ -386,7 +388,9 @@ export const InspectionLevelScreen = () => {
           style={historyResizable.style}
         >
           <Table
-            caption={t.history.caption}
+            caption={
+              <span className="inspection-standard-visually-hidden">{t.history.caption}</span>
+            }
             density="compact"
             columns={historyFit.columns}
             rows={historyRows}
