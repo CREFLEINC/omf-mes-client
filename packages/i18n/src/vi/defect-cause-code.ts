@@ -44,7 +44,8 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   optionsLoadFailed: 'Không tải được danh sách chọn. Chỉ hiển thị giá trị đang lưu.',
   /** 상위가 목록에 없는 코드를 모으는 그룹. 감추면 사용자는 코드가 사라진 줄 안다. */
   groupHeaderOrphan: 'Mã không tìm được cấp trên',
-  categoryWarning: 'Cấp lớn được dùng chung cho mọi hiện trường.',
+  categoryWarning:
+    'Cấp lớn là trục dùng chung toàn công ty. Thêm vào thì mọi hiện trường đều dùng, hãy cân nhắc kỹ.',
   parentListProvisional: 'Danh sách cấp lớn là tạm thời, có thể thay đổi sau khi chốt.',
   empty: {
     codeNoneTitle: 'Chưa đăng ký mã nào',
