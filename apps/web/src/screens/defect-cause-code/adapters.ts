@@ -265,8 +265,8 @@ export const causeCodeAdapter: CodeAdapter = {
   hasDisposition: false,
   labels: {
     tab: t.tabs.cause,
-    code: t.fields.code,
-    name: t.fields.name,
+    code: t.fields.causeCode,
+    name: t.fields.causeName,
     listCode: t.listColumns.causeCode,
     listName: t.listColumns.causeName,
     parent: t.fields.parent,
