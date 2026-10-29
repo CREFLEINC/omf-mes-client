@@ -191,7 +191,7 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     childCount: (count: number): string => `Có ${String(count)} mã cấp dưới được liên kết.`,
   },
   mapping: {
-    description: 'Bấm ô để gắn hoặc gỡ mã lỗi khỏi công đoạn đó ngay.',
+    description: 'Chọn để liên kết, chọn lại để hủy liên kết.',
     assigned: 'Đã ánh xạ',
     notAssigned: 'Chưa ánh xạ',
     saved: 'Đã áp dụng ánh xạ công đoạn',

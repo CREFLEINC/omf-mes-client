@@ -203,7 +203,7 @@ export const defectCauseCode = {
     childCount: (count: number): string => `연결된 하위 코드 ${String(count)}건이 있습니다.`,
   },
   mapping: {
-    description: '칸을 누르면 그 공정에 불량코드가 바로 연결되거나 풀립니다.',
+    description: '선택하면 연결되고, 다시 선택하면 해제됩니다.',
     assigned: '매핑됨',
     notAssigned: '매핑 안 됨',
     saved: '공정 매핑을 반영했습니다',
