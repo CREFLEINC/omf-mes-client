@@ -19,6 +19,8 @@ import {
 } from './draft';
 import { TemplateBasicDialog, type TemplateBasics } from './basic-dialog';
 import { templateDetailPath, templateKeys } from './queries';
+import { TemplateVersionCompareDialog } from './version-compare-dialog';
+import { TemplateVersionListDialog } from './version-list-dialog';
 import { StepEditor, StepList } from './step-editor';
 
 const t = messages.inspectionSheetTemplate;
@@ -91,6 +93,7 @@ export const TemplateEditor = ({
   const toast = useToast();
   const ids = {
     status: useId(),
+    version: useId(),
     material: useId(),
     structure: useId(),
     remarks: useId(),
@@ -110,6 +113,15 @@ export const TemplateEditor = ({
   const [confirming, setConfirming] = useState(false);
   /* 새 기준의 「기본 정보 수정」 팝업 — 처음 고르는 팝업은 화면이 띄운다(뒤 상세를 바꾸지 않게 · #208). */
   const [isBasicOpen, setIsBasicOpen] = useState(false);
+  const [isVersionListOpen, setIsVersionListOpen] = useState(false);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  /* 같은 품목의 버전 — 높은 버전이 위. 받기 전에는 연 버전 하나로 둔다. */
+  const sortedVersions = [
+    ...(versions.length > 0 ? versions : template === null ? [] : [template]),
+  ].sort((left, right) => right.templateVersion - left.templateVersion);
+  /* 작성중 버전은 품목당 하나 — 있으면 새 버전을 만들지 않는다(검사 기준 탭과 같다 · #208). */
+  const draftVersion =
+    sortedVersions.find((version) => version.statusCode === 'DRAFT')?.templateVersion ?? null;
 
   const readOnly = template !== null && template.statusCode !== 'DRAFT';
   const patch = (next: Partial<TemplateDraft>) => {
@@ -217,33 +229,6 @@ export const TemplateEditor = ({
             <h2 className="pane-title">
               {template === null ? t.editor.newHeading : t.editor.detailTitle}
             </h2>
-            {/*
-             * 버전 고르기 — 같은 품목의 버전을 여기서 바꾼다(표는 품목마다 한 줄 · 사용자 지시 · #208).
-             * 버전이 하나뿐이면 고를 것이 없어 칩으로만 보인다.
-             */}
-            {template !== null &&
-              (versions.length > 1 && onSelectVersion !== undefined ? (
-                <div className="inspection-sheet-template-version-select">
-                  <Select
-                    aria-label={t.editor.versionSelect}
-                    options={[...versions]
-                      .sort((left, right) => right.templateVersion - left.templateVersion)
-                      .map((version) => ({
-                        value: String(version.inspectionSheetTemplateId),
-                        label: `${t.editor.versionChip(version.templateVersion)} · ${
-                          t.statuses[version.statusCode] ?? version.statusCode
-                        }`,
-                      }))}
-                    value={String(template.inspectionSheetTemplateId)}
-                    onChange={(value) => onSelectVersion(Number(value))}
-                  />
-                </div>
-              ) : (
-                <Chip variant="status" status="idle">
-                  {t.editor.versionChip(template.templateVersion)}
-                </Chip>
-              ))}
-            {template !== null && <TemplateStatusChip statusCode={template.statusCode} />}
           </div>
           <div className="inspection-standard-plan-head-actions">
             {template === null && (
@@ -253,32 +238,6 @@ export const TemplateEditor = ({
                 onClick={() => setIsBasicOpen(true)}
               >
                 {t.editor.editBasic}
-              </Button>
-            )}
-            {readOnly && template !== null && (
-              <Button
-                disabled={saving}
-                loading={create.isSaving}
-                onClick={() =>
-                  create.write({
-                    source: {
-                      ...draft,
-                      itemId: template.itemId,
-                      businessUnitId: template.businessUnitId,
-                    },
-                  })
-                }
-              >
-                {t.editor.copyAsNew}
-              </Button>
-            )}
-            {template !== null && !readOnly && (
-              <Button
-                aria-describedby={ids.status}
-                disabled={saving || dirty}
-                onClick={() => setConfirming(true)}
-              >
-                {t.editor.confirm}
               </Button>
             )}
           </div>
@@ -305,6 +264,72 @@ export const TemplateEditor = ({
           ))}
         </dl>
       </div>
+      {/*
+       * 버전 줄 — 검사 기준 탭 상세와 같은 모양(사용자 지시 · #208): 버전 고르기 · 상태 · 버전 목록 · 버전 비교,
+       * 오른쪽 끝에 고른 버전의 일(확정) 또는 「새 버전 만들기」. 작성중 버전이 따로 있으면 새 버전은 만들지 않는다.
+       */}
+      {template !== null && (
+        <div className="inspection-standard-version-bar">
+          <div className="inspection-standard-version-bar-row">
+            <div className="field-cell wide-select">
+              <label className="field-label" htmlFor={ids.version}>
+                {t.versionBar.label}
+              </label>
+              <Select
+                id={ids.version}
+                options={sortedVersions.map((version) => ({
+                  value: String(version.inspectionSheetTemplateId),
+                  label: `${t.editor.versionChip(version.templateVersion)} · ${
+                    t.statuses[version.statusCode] ?? version.statusCode
+                  }`,
+                }))}
+                value={String(template.inspectionSheetTemplateId)}
+                disabled={sortedVersions.length < 2 || onSelectVersion === undefined}
+                onChange={(value) => onSelectVersion?.(Number(value))}
+              />
+            </div>
+            <TemplateStatusChip statusCode={template.statusCode} />
+            <Button variant="outlined" onClick={() => setIsVersionListOpen(true)}>
+              {t.versionBar.openList}
+            </Button>
+            {/* 견줄 버전이 둘 이상일 때만 선다 — 쓸 수 없는 단추는 두지 않는다(검사 기준 탭과 같다). */}
+            {sortedVersions.length > 1 && (
+              <Button variant="outlined" onClick={() => setIsCompareOpen(true)}>
+                {t.versionBar.compare}
+              </Button>
+            )}
+            <div className="inspection-standard-version-actions">
+              {!readOnly && (
+                <Button
+                  aria-describedby={ids.status}
+                  disabled={saving || dirty}
+                  onClick={() => setConfirming(true)}
+                >
+                  {t.editor.confirm}
+                </Button>
+              )}
+              {readOnly && draftVersion === null && (
+                <Button
+                  leadingIcon={<Icon name="add" size={18} />}
+                  disabled={saving}
+                  loading={create.isSaving}
+                  onClick={() =>
+                    create.write({
+                      source: {
+                        ...draft,
+                        itemId: template.itemId,
+                        businessUnitId: template.businessUnitId,
+                      },
+                    })
+                  }
+                >
+                  {t.editor.copyAsNew}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {readOnly && <p className="field-note">{t.editor.readOnly}</p>}
       <SaveErrorBanner
         error={writeError}
@@ -525,6 +550,35 @@ export const TemplateEditor = ({
             });
             setErrors((prev) => ({ ...prev, item: '' }));
           }}
+        />
+      )}
+
+      {isVersionListOpen && template !== null && (
+        <TemplateVersionListDialog
+          versions={sortedVersions}
+          selectedId={template.inspectionSheetTemplateId}
+          draftVersion={draftVersion}
+          onSelect={(id) => {
+            setIsVersionListOpen(false);
+            if (id !== template.inspectionSheetTemplateId) onSelectVersion?.(id);
+          }}
+          onClose={() => setIsVersionListOpen(false)}
+        />
+      )}
+
+      {isCompareOpen && template !== null && sortedVersions.length > 1 && (
+        <TemplateVersionCompareDialog
+          versions={sortedVersions}
+          /* 처음에는 연 버전을 비교 버전, 그 바로 아래 버전을 기준 버전으로 둔다(검사 기준 탭과 같다). */
+          initialTargetId={template.inspectionSheetTemplateId}
+          initialBaseId={
+            (sortedVersions.find((version) => version.templateVersion < template.templateVersion) ??
+              sortedVersions.find(
+                (version) =>
+                  version.inspectionSheetTemplateId !== template.inspectionSheetTemplateId,
+              ))!.inspectionSheetTemplateId
+          }
+          onClose={() => setIsCompareOpen(false)}
         />
       )}
 

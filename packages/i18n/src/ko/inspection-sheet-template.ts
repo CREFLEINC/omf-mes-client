@@ -60,8 +60,41 @@ export const inspectionSheetTemplate = {
     usage: '사용 여부',
   },
 
+  versionBar: {
+    label: '버전',
+    openList: '버전 목록',
+    compare: '버전 비교',
+    draftNotice: (version: number): string =>
+      `버전 ${String(version)}${[2, 4, 5, 9].includes(version % 10) ? '가' : '이'} 작성 중입니다. 확정하거나 작성을 취소해 주세요.`,
+  },
+
+  compare: {
+    title: '버전 비교',
+    base: '기준 버전',
+    target: '비교 버전',
+    loading: '두 버전을 불러오는 중입니다.',
+    settingsTitle: '검사표 상단 정보 비교',
+    itemsTitle: '검사 항목 비교',
+    fieldColumn: '항목',
+    stepColumn: '단계',
+    codeColumn: '항목 번호',
+    changeColumn: '변경',
+    legendChanged: '변경',
+    legendAdded: '추가',
+    legendRemoved: '삭제',
+    changed: '변경',
+    added: '추가',
+    removed: '삭제',
+    same: '같음',
+    hideSame: '동일 항목 숨기기',
+    count: (count: number): string => `${String(count)}건`,
+    noItems: '두 버전 모두 검사 항목이 없습니다.',
+    noItemDiff: '바뀐 검사 항목이 없습니다.',
+    yes: '있음',
+    no: '없음',
+  },
+
   editor: {
-    versionSelect: '버전 선택',
     detailTitle: '검사표 기준 상세',
     versionChip: (version: number) => `버전 ${version}`,
     editBasic: '기본 정보 수정',

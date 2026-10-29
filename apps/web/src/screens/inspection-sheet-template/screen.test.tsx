@@ -290,6 +290,18 @@ describe('검사표 기준', () => {
     ).toHaveAttribute('aria-current', 'true');
   });
 
+  /* 버전 줄 — 검사 기준 탭 상세와 같다(#208). 버전이 하나면 비교할 것이 없어 「버전 비교」가 없다. */
+  it('상세에 버전 줄(버전 · 버전 목록)이 서고, 버전이 하나면 버전 비교는 없다', async () => {
+    const { user } = setup(template());
+    await openRow(user);
+
+    expect(screen.getByRole('button', { name: t.versionBar.openList })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.versionBar.compare })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.versionBar.openList }));
+    expect(await screen.findByRole('dialog', { name: t.versionBar.openList })).toBeInTheDocument();
+  });
+
   it('작성중 기준을 확정하면 확인 뒤 :confirm 을 보낸다', async () => {
     const { user, requests } = setup(template());
     await openRow(user);

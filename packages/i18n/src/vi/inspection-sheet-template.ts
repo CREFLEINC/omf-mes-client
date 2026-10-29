@@ -60,8 +60,41 @@ export const inspectionSheetTemplate = {
     usage: 'Sử dụng',
   },
 
+  versionBar: {
+    label: 'Phiên bản',
+    openList: 'Danh sách phiên bản',
+    compare: 'So sánh phiên bản',
+    draftNotice: (version: number): string =>
+      `Phiên bản ${String(version)} đang được soạn. Hãy xác nhận hoặc hủy soạn.`,
+  },
+
+  compare: {
+    title: 'So sánh phiên bản',
+    base: 'Phiên bản gốc',
+    target: 'Phiên bản so sánh',
+    loading: 'Đang tải hai phiên bản.',
+    settingsTitle: 'So sánh thông tin đầu phiếu',
+    itemsTitle: 'So sánh hạng mục kiểm tra',
+    fieldColumn: 'Mục',
+    stepColumn: 'Công đoạn',
+    codeColumn: 'Số hạng mục',
+    changeColumn: 'Thay đổi',
+    legendChanged: 'Thay đổi',
+    legendAdded: 'Thêm',
+    legendRemoved: 'Xóa',
+    changed: 'Thay đổi',
+    added: 'Thêm',
+    removed: 'Xóa',
+    same: 'Giống',
+    hideSame: 'Ẩn hạng mục giống nhau',
+    count: (count: number): string => `${String(count)}`,
+    noItems: 'Cả hai phiên bản đều không có hạng mục kiểm tra.',
+    noItemDiff: 'Không có hạng mục kiểm tra nào thay đổi.',
+    yes: 'Có',
+    no: 'Không',
+  },
+
   editor: {
-    versionSelect: 'Chọn phiên bản',
     detailTitle: 'Chi tiết tiêu chuẩn phiếu kiểm tra',
     versionChip: (version: number) => `Phiên bản ${version}`,
     editBasic: 'Sửa thông tin cơ bản',
