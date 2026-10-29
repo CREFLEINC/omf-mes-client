@@ -56,7 +56,7 @@ export const TemplateBasicDialog = ({
     <>
       <Dialog
         open
-        size="lg"
+        size="md"
         closeOnBackdropClick={false}
         showCloseButton={false}
         title={t.editor.newHeading}
@@ -145,7 +145,7 @@ export const TemplateBasicDialog = ({
           </div>
           {/* 양식 안내 — 안내 알약(아이콘 + 한 줄 · 사용자 시안 · #208). */}
           <p className="inspection-standard-notice-label">
-            <Icon name="info" size={18} aria-hidden />
+            <Icon name="info" size={16} aria-hidden />
             {t.editor.layoutNote}
           </p>
         </div>

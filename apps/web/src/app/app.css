@@ -22081,6 +22081,13 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* 팝업 안 양식 안내는 작은 글자 한 줄 — 칸 이름 · 보조 글과 크기를 맞춘다(사용자 지시 · #208). */
+.inspection-sheet-template-basic-grid > .inspection-standard-notice-label {
+  padding: var(--space-1) var(--space-3);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
 /* 조회 카드(#208) — 검사 기준 탭과 같은 한 줄: 조건들 → (오른쪽) 조회 · 초기화 | 새 기준 등록. 카드 안 줄의 아래 여백은 걷는다. */
 .inspection-sheet-template-search > .filter-bar {
   margin-bottom: 0;
