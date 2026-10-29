@@ -132,21 +132,22 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   },
   import: {
     title: 'Tải lên Excel tiêu chuẩn kiểm tra',
-    partialWarningTitle: 'Việc tải lên không hoàn tác toàn bộ',
+    partialWarningTitle: 'Không thể hoàn tác tệp đã tải lên trong một lần.',
     partialWarning:
-      'Được áp dụng theo từng mã tiêu chuẩn. Tiêu chuẩn thành công được đăng ký, chỉ tiêu chuẩn thất bại được trả lại. Hãy kiểm tra tệp trước.',
+      'Mỗi tiêu chuẩn sẽ tạo một phiên bản đang soạn mới, chỉ những mục thành công được lưu.',
     draftNote:
       'Sau khi tải lên, mỗi mã tiêu chuẩn có một phiên bản đang soạn. Tiêu chuẩn đã có sẽ tạo phiên bản mới từ phiên bản xác nhận mới nhất và điền hạng mục từ Excel. Việc xác nhận hãy làm trực tiếp trên màn hình.',
     columnsNote:
       'Đọc dòng đầu của trang tính đầu tiên làm tiêu đề. Cột bắt buộc: mã tiêu chuẩn · mã hạng mục · tên hạng mục. Cũng có thể tải lên nguyên tệp Bảng tiêu chuẩn kiểm tra (TCKT) — mỗi bảng thành một tiêu chuẩn.',
-    fileLabel: 'Tệp Excel tiêu chuẩn kiểm tra (.xlsx, có thể chọn nhiều)',
-    filePlaceholder: 'Chọn tệp',
-    fileNone: 'Chưa chọn tệp.',
+    fileLabel: 'Tệp Excel tiêu chuẩn kiểm tra',
+    fileHint: '.xlsx · có thể chọn nhiều tệp',
+    filePlaceholder: 'Thêm tệp',
     fileRequired: 'Hãy chọn tệp cần tải lên trước.',
-    fileCount: (count: number): string => `Đã chọn ${String(count)} tệp.`,
+    fileCount: (count: number): string => `Đã chọn ${String(count)} tệp`,
     removeFile: (name: string): string => `Bỏ ${name}`,
     progress: (done: number, total: number): string =>
       `Đã xử lý ${String(done)}/${String(total)} tệp. Đừng đóng cửa sổ.`,
+    formatGuide: 'Hướng dẫn định dạng Excel',
     submit: 'Tải lên',
     resultTitle: 'Kết quả tải lên',
     succeeded: (count: number): string => `Đã áp dụng ${String(count)} tiêu chuẩn.`,

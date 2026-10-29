@@ -1,4 +1,4 @@
-import { AlertBanner, Button, type Column, Dialog, IconButton, Table } from '@crefle/web-ui';
+import { AlertBanner, Button, type Column, Dialog, Icon, IconButton, Table } from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useRef } from 'react';
@@ -100,15 +100,15 @@ export const ImportDialog = ({
           </AlertBanner>
         </div>
 
-        <div className="form-grid-full">
-          <AlertBanner variant="info">{t.draftNote}</AlertBanner>
-        </div>
-
-        <p className="form-grid-full dialog-lead">{t.columnsNote}</p>
-
-        {/* 디자인 시스템에 파일 입력이 없다 — 툴 화면의 `FileField` 와 같이 숨긴 입력을 버튼이 부른다. */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={inputId} label={t.fileLabel} />
+        {/*
+         * 파일 상자 — 머리 줄(건수 · 「파일 추가」), 구분선, 파일 목록(사용자 시안 · #208).
+         * 디자인 시스템에 파일 입력이 없다 — 툴 화면의 `FileField` 와 같이 숨긴 입력을 버튼이 부른다.
+         */}
+        <div className="form-grid-full inspection-standard-import-files">
+          <div className="inspection-standard-import-files-label">
+            <FieldLabel htmlFor={inputId} label={t.fileLabel} />
+            <span className="field-note">{t.fileHint}</span>
+          </div>
           <input
             ref={inputRef}
             id={inputId}
@@ -118,45 +118,63 @@ export const ImportDialog = ({
             disabled={isSaving}
             className="file-input"
             onChange={(event) => {
-              onSelectFiles([...(event.target.files ?? [])]);
+              /* 「파일 추가」 — 고른 목록에 더한다. 같은 이름은 한 번만 둔다. */
+              const picked = [...(event.target.files ?? [])];
+              const names = new Set(picked.map((file) => file.name));
+              onSelectFiles([...files.filter((file) => !names.has(file.name)), ...picked]);
               // 같은 파일을 다시 골라도 onChange 가 오게 비운다.
               event.target.value = '';
             }}
           />
-          <Button
-            type="button"
-            variant="outlined"
-            disabled={isSaving}
-            onClick={() => inputRef.current?.click()}
-          >
-            {t.filePlaceholder}
-          </Button>
-          <span className="field-note">
-            {files.length === 0 ? t.fileNone : t.fileCount(files.length)}
-          </span>
+          <div className="inspection-standard-import-box">
+            <div className="inspection-standard-import-box-head">
+              <Icon name="file_copy" size={20} aria-hidden />
+              {files.length === 0 ? (
+                <span id={fileRequiredId}>{t.fileRequired}</span>
+              ) : (
+                <strong>{t.fileCount(files.length)}</strong>
+              )}
+              <Button
+                type="button"
+                variant="outlined"
+                size="sm"
+                disabled={isSaving}
+                onClick={() => inputRef.current?.click()}
+              >
+                {t.filePlaceholder}
+              </Button>
+            </div>
+            {files.length > 0 && (
+              <ul className="inspection-standard-import-file-list">
+                {files.map((file, index) => (
+                  <li key={`${String(index)}-${file.name}`}>
+                    <Icon name="table_chart" size={18} aria-hidden />
+                    <span>{file.name}</span>
+                    {/* 잘못 고른 파일 하나만 뺀다 — 다시 고르게 하면 나머지를 또 찾아야 한다. */}
+                    <IconButton
+                      icon="close"
+                      size="sm"
+                      aria-label={t.removeFile(file.name)}
+                      disabled={isSaving}
+                      onClick={() => onSelectFiles(files.filter((_, at) => at !== index))}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
-        {files.length === 0 ? (
-          <span id={fileRequiredId} className="field-note">
-            {t.fileRequired}
-          </span>
-        ) : (
-          <ul className="form-grid-full dialog-lead import-file-list">
-            {files.map((file, index) => (
-              <li key={`${String(index)}-${file.name}`}>
-                <span>{file.name}</span>
-                {/* 잘못 고른 파일 하나만 뺀다 — 다시 고르게 하면 나머지를 또 찾아야 한다. */}
-                <IconButton
-                  icon="close"
-                  size="sm"
-                  aria-label={t.removeFile(file.name)}
-                  disabled={isSaving}
-                  onClick={() => onSelectFiles(files.filter((_, at) => at !== index))}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
+        {/* 형식 안내는 접어 둔다 — 처음 쓰는 사람만 펼쳐 본다(사용자 시안 · #208). */}
+        <details className="form-grid-full inspection-standard-import-guide">
+          <summary>
+            <Icon name="info" size={18} aria-hidden />
+            {t.formatGuide}
+            <Icon name="expand_more" size={20} aria-hidden />
+          </summary>
+          <p>{t.draftNote}</p>
+          <p>{t.columnsNote}</p>
+        </details>
 
         {(outcomes.length > 0 || isSaving) && (
           <div className="form-grid-full">

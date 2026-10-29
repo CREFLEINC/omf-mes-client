@@ -944,6 +944,99 @@ h2:has(> .inspection-standard-dialog-title) {
   margin: 0 auto 0 0;
 }
 
+/* 엑셀 올리기 창(사용자 시안 · #208) — 라벨 줄(이름 · 형식), 파일 상자(머리 · 구분선 · 목록), 접는 형식 안내. */
+.inspection-standard-import-files {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.inspection-standard-import-files-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.inspection-standard-import-box {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.inspection-standard-import-box-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--on-surface);
+}
+
+.inspection-standard-import-box-head > span {
+  color: var(--on-surface-muted);
+}
+
+.inspection-standard-import-box-head > button {
+  margin-left: auto;
+}
+
+.inspection-standard-import-file-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) 0 0;
+  border-top: 1px solid var(--outline-variant);
+  list-style: none;
+}
+
+.inspection-standard-import-file-list > li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inspection-standard-import-file-list > li > :first-child {
+  color: var(--semantic-success);
+}
+
+.inspection-standard-import-file-list > li > :nth-child(2) {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--on-surface);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.inspection-standard-import-guide {
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+  color: var(--on-surface-muted);
+}
+
+.inspection-standard-import-guide > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  list-style: none;
+}
+
+.inspection-standard-import-guide > summary::-webkit-details-marker {
+  display: none;
+}
+
+.inspection-standard-import-guide > summary > :last-child {
+  margin-left: auto;
+  transition: transform 0.15s;
+}
+
+.inspection-standard-import-guide[open] > summary > :last-child {
+  transform: rotate(180deg);
+}
+
+.inspection-standard-import-guide > p {
+  margin: var(--space-2) 0 0;
+  font: var(--type-body-sm);
+}
+
 .inspection-standard-detail {
   display: grid;
   /* 칸 폭을 넘지 않는다 — 열을 내용 폭(검사 항목 표 등)으로 늘리면 카드 밖으로 삐져나간다(#196). */
