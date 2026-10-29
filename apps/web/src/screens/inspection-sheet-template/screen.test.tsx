@@ -327,6 +327,19 @@ describe('검사표 기준', () => {
     expect(requests.some((r) => r.method === 'POST')).toBe(false);
   });
 
+  /* 버그 수정(#208) — 팝업을 여는 것만으로 뒤 상세 칸이 새 기준으로 바뀌면 안 된다. */
+  it('새 기준 등록 팝업을 열어도 뒤에 열린 기준 상세는 그대로다', async () => {
+    const { user } = setup(template());
+    await openRow(user);
+
+    await user.click(screen.getByRole('button', { name: t.list.add }));
+    await screen.findByRole('dialog', { name: t.editor.newHeading });
+
+    expect(screen.getByText(t.editor.detailTitle)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    expect(screen.getByText(t.editor.detailTitle)).toBeInTheDocument();
+  });
+
   it('새 기준 팝업에서 취소하면 등록을 그만둔다', async () => {
     const { user } = setup(template());
     await user.click(await screen.findByRole('button', { name: t.list.add }));

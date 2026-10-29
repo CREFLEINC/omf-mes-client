@@ -41,6 +41,7 @@ import {
   useUserNames,
 } from './queries';
 import type { StepDraft } from './draft';
+import { TemplateBasicDialog, type TemplateBasics } from './basic-dialog';
 import { TemplateEditor, TemplateStatusChip } from './template-editor';
 import { UsageChips, type UsageChipValue } from './usage-chips';
 import { usePageHub } from '../../patterns/page-hub';
@@ -71,7 +72,8 @@ const INITIAL_FILTER = {
 };
 
 /** 무엇을 펴 두었나 — 새 기준이거나 목록에서 연 기준. */
-type Opened = { kind: 'new' } | { kind: 'existing'; id: number } | null;
+type Opened =
+  { kind: 'new'; basics: TemplateBasics; seq: number } | { kind: 'existing'; id: number } | null;
 
 /**
  * 검사표 기준(관리웹 · 품질 관리 · W-06-24 · omf-all-around#89). OA 제품 검사표의 모델별 단계·항목·머리 문구를
@@ -112,6 +114,7 @@ const InspectionSheetTemplateScreenBody = () => {
   /* 확정 일시 정렬 — 걸러 낸 전체 줄을 세운 뒤 쪽을 나눈다(#208). */
   const [sort, setSort] = useState<SortState | null>(null);
   const [opened, setOpened] = useState<Opened>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [stepCode, setStepCode] = useState<StepDraft['stepCode'] | null>(null);
   /** 다른 기준을 열면 단계 고름을 처음으로 돌린다. */
   const open = (next: Opened) => {
@@ -278,7 +281,7 @@ const InspectionSheetTemplateScreenBody = () => {
         />
       )}
       {/*
-       * 조회 조건 — 검사 기준 탭과 같은 한 줄: 상태 · 품목 · 양식 · 재료 → (오른쪽) 조회 · 초기화 | 새 기준 등록(사용자 지시 · #208).
+       * 조회 조건 — 검사 기준 탭과 같은 한 줄: 양식 · 상태 · 품목 · 재료 → (오른쪽) 조회 · 초기화 | 새 기준 등록(사용자 지시 · #208).
        */}
       <section ref={aboveRef} className="pane inspection-sheet-template-search" role="search">
         <form
@@ -295,6 +298,24 @@ const InspectionSheetTemplateScreenBody = () => {
             }));
           }}
         >
+          {/* 순서: 양식 선택 → 상태 선택 → 품목 검색 → 재료 검색(사용자 지시 · #208). */}
+          <div className="field-cell inspection-sheet-template-status-filter">
+            <label className="field-label" htmlFor={layoutFilterId}>
+              {t.list.layout}
+            </label>
+            <Select
+              id={layoutFilterId}
+              options={[
+                { value: '', label: t.list.layoutAll },
+                ...(['OP', 'PP'] as const).map((code) => ({
+                  value: code,
+                  label: t.layouts[code] ?? code,
+                })),
+              ]}
+              value={layoutInput}
+              onChange={(value) => setLayoutInput(value as InspectionSheetLayoutCode | '')}
+            />
+          </div>
           <div className="field-cell inspection-sheet-template-status-filter">
             <label className="field-label" htmlFor={statusId}>
               {t.list.status}
@@ -323,23 +344,6 @@ const InspectionSheetTemplateScreenBody = () => {
             onChange={() => undefined}
             onClear={() => setModelInput(null)}
           />
-          <div className="field-cell inspection-sheet-template-status-filter">
-            <label className="field-label" htmlFor={layoutFilterId}>
-              {t.list.layout}
-            </label>
-            <Select
-              id={layoutFilterId}
-              options={[
-                { value: '', label: t.list.layoutAll },
-                ...(['OP', 'PP'] as const).map((code) => ({
-                  value: code,
-                  label: t.layouts[code] ?? code,
-                })),
-              ]}
-              value={layoutInput}
-              onChange={(value) => setLayoutInput(value as InspectionSheetLayoutCode | '')}
-            />
-          </div>
           <div className="field-cell inspection-sheet-template-material-filter">
             <label className="field-label" htmlFor={materialFilterId}>
               {t.list.material}
@@ -372,7 +376,8 @@ const InspectionSheetTemplateScreenBody = () => {
             <Button
               variant="filled"
               leadingIcon={<Icon name="add" size={18} />}
-              onClick={() => open({ kind: 'new' })}
+              /* 기본 정보 팝업만 연다 — 뒤 상세 칸은 「확인」 전까지 그대로 둔다(버그 수정 · #208). */
+              onClick={() => setIsCreating(true)}
             >
               {t.list.add}
             </Button>
@@ -478,8 +483,9 @@ const InspectionSheetTemplateScreenBody = () => {
           )}
           {opened?.kind === 'new' && (
             <TemplateEditor
-              key="new"
+              key={`new-${opened.seq}`}
               template={null}
+              initialBasics={opened.basics}
               businessUnitIds={scopeIds}
               businessUnitNames={names}
               stepCode={stepCode}
@@ -509,6 +515,23 @@ const InspectionSheetTemplateScreenBody = () => {
           )}
         </div>
       </div>
+      {isCreating && (
+        <TemplateBasicDialog
+          initial={{
+            itemId: null,
+            itemLabel: '',
+            businessUnitId: scopeIds[0] ?? null,
+            formLayoutCode: 'OP',
+          }}
+          businessUnitIds={scopeIds}
+          businessUnitNames={names}
+          onCancel={() => setIsCreating(false)}
+          onConfirm={(basics) => {
+            setIsCreating(false);
+            open({ kind: 'new', basics, seq: Date.now() });
+          }}
+        />
+      )}
       {isModelPickerOpen && (
         <ItemPickerDialog
           multiple={false}

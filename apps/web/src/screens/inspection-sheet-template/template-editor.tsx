@@ -1,9 +1,5 @@
 import { Button, Checkbox, Chip, Dialog, Icon, TextField, useToast } from '@crefle/web-ui';
-import type {
-  InspectionSheetLayoutCode,
-  InspectionSheetLotSlot,
-  InspectionSheetTemplate,
-} from '@omf-mes/api-client';
+import type { InspectionSheetLotSlot, InspectionSheetTemplate } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
@@ -21,6 +17,7 @@ import {
   toDraft,
   validateDraft,
 } from './draft';
+import { TemplateBasicDialog, type TemplateBasics } from './basic-dialog';
 import { templateDetailPath, templateKeys } from './queries';
 import { StepEditor, StepList } from './step-editor';
 
@@ -29,6 +26,8 @@ const t = messages.inspectionSheetTemplate;
 export interface TemplateEditorProps {
   /** 연 기준. null 이면 새 기준이다. */
   template: InspectionSheetTemplate | null;
+  /** 새 기준의 기본 정보 — 화면의 등록 팝업에서 고른 값(#208). 연 기준에는 쓰지 않는다. */
+  initialBasics?: TemplateBasics;
   /** 로그인 계정의 데이터 범위 사업부 — 새 기준의 사업부는 이 안에서 고른다. */
   businessUnitIds: readonly number[];
   businessUnitNames: ReadonlyMap<number, string>;
@@ -62,19 +61,12 @@ const splitLabel = (label: string): [string, string] => {
 };
 
 /** 필수 표시 — 다른 화면과 같은 빨간 `*`(#208). 접근성 이름에 섞이지 않게 숨긴다. */
-const Required = () => (
-  <span className="required-mark" aria-hidden="true">
-    {' '}
-    *
-  </span>
-);
-
 /** 그 단계(이름·항목) 안에 칸 오류가 있나 — 단계 목록 표시와 저장 실패 때 단계를 여는 데 쓴다. */
 const stepInvalid = (step: StepDraft, errors: Record<string, string>): boolean =>
   Boolean(errors[`${step.stepCode}.name`]) ||
   step.items.some((item) => Boolean(errors[`${item.key}.code`] || errors[`${item.key}.name`]));
 
-type Picking = { kind: 'model' } | { kind: 'lot'; slot: InspectionSheetLotSlot } | null;
+type Picking = { kind: 'lot'; slot: InspectionSheetLotSlot } | null;
 
 /**
  * 검사표 기준 편집 — 작성중 판만 고친다. 확정·폐기 판은 읽기 전용이고 「새 판 만들기」로 복사한다(서버도 400 으로 막는다).
@@ -82,6 +74,7 @@ type Picking = { kind: 'model' } | { kind: 'lot'; slot: InspectionSheetLotSlot }
  */
 export const TemplateEditor = ({
   template,
+  initialBasics,
   businessUnitIds,
   businessUnitNames,
   stepCode,
@@ -93,29 +86,25 @@ export const TemplateEditor = ({
   const toast = useToast();
   const ids = {
     status: useId(),
-    bu: useId(),
-    layout: useId(),
     material: useId(),
     structure: useId(),
     remarks: useId(),
   };
   const pp = { name: useId(), power: useId(), motor: useId() };
 
-  const [draft, setDraft] = useState<TemplateDraft>(() =>
-    template === null ? emptyDraft(businessUnitIds[0] ?? null) : toDraft(template),
-  );
+  const [draft, setDraft] = useState<TemplateDraft>(() => {
+    if (template !== null) return toDraft(template);
+    const empty = emptyDraft(businessUnitIds[0] ?? null);
+    return initialBasics === undefined
+      ? empty
+      : { ...empty, ...initialBasics, steps: layoutSteps(initialBasics.formLayoutCode) };
+  });
   const [dirty, setDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [picking, setPicking] = useState<Picking>(null);
   const [confirming, setConfirming] = useState(false);
-  /*
-   * 새 기준의 기본 정보(모델 · 사업부 · 양식)는 팝업에서 고른다 — 검사 기준 탭의 「기준 추가」 창과 같다(사용자 지시 · #208).
-   * 처음 열 때 바로 띄우고, 확인 뒤에는 머리의 「기본 정보 수정」으로 다시 연다. 취소하면 연 때의 값으로 되돌린다.
-   */
-  const [basicSnapshot, setBasicSnapshot] = useState<TemplateDraft | null>(() =>
-    template === null ? draft : null,
-  );
-  const [basicConfirmed, setBasicConfirmed] = useState(false);
+  /* 새 기준의 「기본 정보 수정」 팝업 — 처음 고르는 팝업은 화면이 띄운다(뒤 상세를 바꾸지 않게 · #208). */
+  const [isBasicOpen, setIsBasicOpen] = useState(false);
 
   const readOnly = template !== null && template.statusCode !== 'DRAFT';
   const patch = (next: Partial<TemplateDraft>) => {
@@ -203,15 +192,8 @@ export const TemplateEditor = ({
     else update.write({ id: template.inspectionSheetTemplateId, source: draft });
   };
 
-  const setLayout = (layout: InspectionSheetLayoutCode) =>
-    patch({ formLayoutCode: layout, steps: layoutSteps(layout, draft.steps) });
   const setStep = (next: StepDraft) =>
     patch({ steps: draft.steps.map((step) => (step.stepCode === next.stepCode ? next : step)) });
-
-  const scopeOptions = businessUnitIds.map((id) => ({
-    value: String(id),
-    label: businessUnitNames.get(id) ?? String(id),
-  }));
 
   const currentStep =
     draft.steps.find((step) => step.stepCode === stepCode) ??
@@ -242,7 +224,7 @@ export const TemplateEditor = ({
               <Button
                 variant="outlined"
                 leadingIcon={<Icon name="edit" size={18} />}
-                onClick={() => setBasicSnapshot(draft)}
+                onClick={() => setIsBasicOpen(true)}
               >
                 {t.editor.editBasic}
               </Button>
@@ -495,113 +477,42 @@ export const TemplateEditor = ({
         </Dialog>
       )}
 
-      {basicSnapshot !== null && (
-        <Dialog
-          open
-          size="lg"
-          closeOnBackdropClick={false}
-          showCloseButton={false}
-          title={t.editor.newHeading}
-          onClose={() => {
-            if (!basicConfirmed) return onClose();
-            setDraft(basicSnapshot);
-            setBasicSnapshot(null);
+      {isBasicOpen && (
+        <TemplateBasicDialog
+          initial={{
+            itemId: draft.itemId,
+            itemLabel: draft.itemLabel,
+            businessUnitId: draft.businessUnitId,
+            formLayoutCode: draft.formLayoutCode,
           }}
-          footer={
-            <>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  /* 처음 고르는 중에 취소하면 등록을 그만둔다. 다시 연 창의 취소는 연 때의 값으로 되돌린다. */
-                  if (!basicConfirmed) return onClose();
-                  setDraft(basicSnapshot);
-                  setBasicSnapshot(null);
-                }}
-              >
-                {messages.common.cancel}
-              </Button>
-              <Button
-                disabled={scopeOptions.length === 0}
-                onClick={() => {
-                  if (draft.itemId === null) {
-                    setErrors((prev) => ({ ...prev, item: t.editor.noModel }));
-                    return;
-                  }
-                  setBasicConfirmed(true);
-                  setBasicSnapshot(null);
-                }}
-              >
-                {t.editor.basicConfirm}
-              </Button>
-            </>
-          }
-        >
-          <div className="form-grid">
-            <div className="field-cell">
-              <span className="field-label">
-                {t.editor.model}
-                <Required />
-              </span>
-              <div className="inspection-sheet-template-pick">
-                <span className="inspection-sheet-ellipsis" title={draft.itemLabel || undefined}>
-                  {draft.itemLabel || '—'}
-                </span>
-                <Button variant="outlined" onClick={() => setPicking({ kind: 'model' })}>
-                  {t.editor.pickModel}
-                </Button>
-              </div>
-              {errors.item && <span className="field-error">{errors.item}</span>}
-            </div>
-            <div className="field-cell">
-              <span className="field-label">
-                <label htmlFor={ids.bu}>{t.editor.businessUnit}</label>
-                <Required />
-              </span>
-              {scopeOptions.length === 0 ? (
-                <p className="field-error">{t.editor.noBusinessUnit}</p>
-              ) : (
-                <Select
-                  id={ids.bu}
-                  options={scopeOptions}
-                  value={String(draft.businessUnitId ?? '')}
-                  onChange={(value) => patch({ businessUnitId: Number(value) })}
-                />
-              )}
-            </div>
-            <div className="field-cell">
-              <span className="field-label">
-                <label htmlFor={ids.layout}>{t.editor.layout}</label>
-                <Required />
-              </span>
-              <Select
-                id={ids.layout}
-                options={(['OP', 'PP'] as const).map((code) => ({
-                  value: code,
-                  label: t.layouts[code] ?? code,
-                }))}
-                value={draft.formLayoutCode}
-                onChange={(value) => setLayout(value as InspectionSheetLayoutCode)}
-              />
-              <span className="field-note">{t.editor.layoutNote}</span>
-            </div>
-          </div>
-        </Dialog>
+          businessUnitIds={businessUnitIds}
+          businessUnitNames={businessUnitNames}
+          onCancel={() => setIsBasicOpen(false)}
+          onConfirm={(basics) => {
+            setIsBasicOpen(false);
+            patch({
+              ...basics,
+              steps:
+                basics.formLayoutCode === draft.formLayoutCode
+                  ? draft.steps
+                  : layoutSteps(basics.formLayoutCode, draft.steps),
+            });
+            setErrors((prev) => ({ ...prev, item: '' }));
+          }}
+        />
       )}
 
       {picking !== null && (
         <ItemPickerDialog
           multiple={false}
           showAvailability={false}
-          confirmLabel={picking.kind === 'model' ? t.editor.pickConfirm : t.editor.pickLotConfirm}
+          confirmLabel={t.editor.pickLotConfirm}
           onClose={() => setPicking(null)}
           onConfirm={([picked]) => {
             setPicking(null);
             if (picked === undefined) return;
             const label = `${picked.itemName} (${picked.itemCode})`;
-            if (picking.kind === 'model') {
-              patch({ itemId: picked.itemId, itemLabel: label });
-              setErrors((prev) => ({ ...prev, item: '' }));
-            } else if (
+            if (
               !draft.lotSources.some(
                 (row) => row.slotCode === picking.slot && row.itemId === picked.itemId,
               )
