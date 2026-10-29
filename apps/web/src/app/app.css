@@ -26785,3 +26785,14 @@ button.iqc-inspection-step-toggle:focus-visible {
 .pqc-web > .inspection-steps {
   margin: var(--space-5) 0 var(--space-3);
 }
+
+/* 품목 설정의 스위치 아래 한 줄 안내(IQC 대상 ↔ 검사 기준 기본 생략 연동 · omf-all-around#215). */
+.item-attrs-control-with-note {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+}
+
+.item-attrs-control-with-note > .field-note {
+  margin: 0;
+}

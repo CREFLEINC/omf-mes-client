@@ -150,11 +150,15 @@ export const ItemAttrsPane = ({
           id: inspectionId,
           label: t.attrs.fields.inspectionRequired,
           control: (
-            <Switch
-              id={inspectionId}
-              checked={values.inspectionRequired}
-              onChange={(event) => onChange({ inspectionRequired: event.target.checked })}
-            />
+            <div className="item-attrs-control-with-note">
+              <Switch
+                id={inspectionId}
+                checked={values.inspectionRequired}
+                onChange={(event) => onChange({ inspectionRequired: event.target.checked })}
+              />
+              {/* 검사 기준의 IQC 「기본 생략」과 함께 바뀐다(omf-all-around#215). */}
+              <p className="field-note">{t.attrs.inspectionRequiredSyncNote}</p>
+            </div>
           ),
         },
         {
