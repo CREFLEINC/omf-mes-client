@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import { useApiClient } from '../../patterns/api-context';
+import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
 import { InspectionSkipPane } from '../inspection-skip/skip-pane';
 import { oqcInspectionKeys } from '../oqc-inspection/queries';
 import { pqcInspectionKeys } from '../pqc-inspection/queries';
@@ -51,7 +52,7 @@ export const PqcSkipPane = ({
       }
       /* 목록은 OQC 화면의 질의를 함께 쓴다 — 그 열쇠 아래에 둬야 실행 뒤 목록과 함께 다시 부른다. */
       queryKeyRoot={oqcInspectionKeys.all}
-      invalidateKeys={[oqcInspectionKeys.all, pqcInspectionKeys.all]}
+      invalidateKeys={[oqcInspectionKeys.all, pqcInspectionKeys.all, INSPECTION_HUB_COUNTS_KEY]}
     />
   );
 };

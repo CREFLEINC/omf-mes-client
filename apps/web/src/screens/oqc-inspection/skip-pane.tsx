@@ -6,6 +6,7 @@ import { Fragment, useEffect, useId, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { FieldLabel } from './field-label';
@@ -109,7 +110,7 @@ export const SkipPane = ({
       }),
     etagPath: null,
     /* 실행은 이 출하작업지시의 의뢰를 함께 닫는다 — 목록·상세를 다시 부른다. */
-    invalidateKeys: [oqcInspectionKeys.all],
+    invalidateKeys: [oqcInspectionKeys.all, INSPECTION_HUB_COUNTS_KEY],
     knownFields: [],
     keyLifetime: 'until-applied',
     onSuccess: () => setNotice(t.executed),
