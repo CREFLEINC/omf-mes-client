@@ -1214,11 +1214,10 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
   });
 });
 
-const APPROVE_PATH = `${PLANS_PATH}/3001:approve`;
 const DEACTIVATE_PATH = `${PLANS_PATH}/3001:deactivate`;
 
 const planActionRoute = (
-  action: 'approve' | 'deactivate',
+  action: 'deactivate',
   respond: StubRoute['respond'] = () => jsonResponse(inspectionPlanFixtures[0]),
 ): StubRoute => ({
   match: (request) =>
@@ -1246,149 +1245,24 @@ const dialog = async (): Promise<HTMLElement> =>
     return first;
   });
 
-describe('InspectionStandardScreen — 기준 승인', () => {
-  it('「승인」을 누르면 확인 창이 열리고 확인 전에는 요청이 나가지 않는다', async () => {
-    const { requests, user } = renderSelectedPlan([planActionRoute('approve')]);
+/* 승인은 현장 검사에 효력이 없는 기록뿐이라 단추를 걷었다(사용자 지시 · #208). */
+describe('InspectionStandardScreen — 기준 승인 단추 없음', () => {
+  it('기본 정보 수정 창에 승인 단추가 없다', async () => {
+    renderSelectedPlan();
 
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
-
-    expect(await dialog()).toBeInTheDocument();
-    expect(screen.getByText('이 검사기준을 승인할까요?')).toBeInTheDocument();
-    expect(requestsTo(requests, APPROVE_PATH)).toHaveLength(0);
+    const form = await awaitPlanForm();
+    expect(within(form).getByRole('button', { name: '사용 중지' })).toBeInTheDocument();
+    expect(within(form).queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
   });
 
-  /* 승인자와 승인 시각은 서버가 함께 기록한다 — 화면이 보내지 않는다. */
-  it('확인하면 본문 없이 멱등 키만 실어 보내고 If-Match를 싣지 않는다', async () => {
-    const { requests, user } = renderSelectedPlan([planActionRoute('approve')]);
-
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
-    await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
-
-    await screen.findByText(t.result.approved);
-
-    const posts = requestsTo(requests, APPROVE_PATH);
-    expect(posts).toHaveLength(1);
-    expect(posts[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
-    expect(posts[0]?.headers.get('If-Match')).toBeNull();
-    expect(posts[0]?.body).toBe('');
-  });
-
-  /* 두 요청의 멱등 키가 같으면 서버가 두 번째를 첫 번째의 재시도로 본다. */
-  it('멱등 키는 요청마다 새로 만든다', async () => {
-    const { requests, user } = renderSelectedPlan([
-      planActionRoute('approve', () =>
-        jsonResponse(
-          { errors: [{ scope: 'screen', code: 'STANDARD', message: '거부' }] },
-          { status: 400 },
-        ),
-      ),
-    ]);
-
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
-    const confirmButton = within(await dialog()).getByRole('button', { name: '승인' });
-    await user.click(confirmButton);
-    await screen.findByText('거부');
-    await user.click(confirmButton);
-
-    await waitFor(() => {
-      expect(requestsTo(requests, APPROVE_PATH)).toHaveLength(2);
-    });
-
-    const keys = requestsTo(requests, APPROVE_PATH).map((request) =>
-      request.headers.get('Idempotency-Key'),
-    );
-    expect(keys[0]).toMatch(UUID_PATTERN);
-    expect(keys[0]).not.toBe(keys[1]);
-  });
-
-  /* 서버가 코드만 주고 문구를 비워 보내는 일이 실제로 있다. */
-  it('확정 버전이 없다는 거부는 서버 문구가 비어도 화면 안내가 남는다', async () => {
-    const { user } = renderSelectedPlan([
-      planActionRoute('approve', () =>
-        jsonResponse(
-          { errors: [{ scope: 'screen', code: 'CONFIRMED_VERSION_REQUIRED', message: '' }] },
-          { status: 400 },
-        ),
-      ),
-    ]);
-
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
-    await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
-
-    expect(
-      await screen.findByText(
-        '승인은 확정된 버전이 있어야 할 수 있습니다. 버전을 먼저 확정하세요.',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  /* 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다. */
-  it('실패해도 확인 창이 닫히지 않는다', async () => {
-    const { user } = renderSelectedPlan([
-      planActionRoute('approve', () => jsonResponse({ message: '' }, { status: 403 })),
-    ]);
-
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
-    await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
-
-    expect(
-      await screen.findByText(
-        '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
-      ),
-    ).toBeInTheDocument();
-    expect(confirmDialogs()).toHaveLength(1);
-  });
-
-  /* 응답에 ETag가 없다 — 재조회로 새 잠금 토큰을 확보해야 그다음 저장이 막히지 않는다. */
-  it('성공하면 목록과 상세를 다시 조회하고 창이 닫힌다', async () => {
-    const { requests, user } = renderSelectedPlan([planActionRoute('approve')]);
-
-    await findPlanField('기준코드');
-    const before = {
-      detail: requestsTo(requests, PLAN_DETAIL_PATH).length,
-      list: planRequests(requests).length,
-    };
-
-    await user.click(within(planForm()).getByRole('button', { name: '승인' }));
-    await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
-    await screen.findByText(t.result.approved);
-
-    await waitFor(() => {
-      expect(requestsTo(requests, PLAN_DETAIL_PATH).length).toBeGreaterThan(before.detail);
-    });
-    expect(planRequests(requests).length).toBeGreaterThan(before.list);
-    expect(confirmDialogs()).toHaveLength(0);
-  });
-
-  it('확인 창에서 취소하면 요청이 나가지 않는다', async () => {
-    const { requests, user } = renderSelectedPlan([planActionRoute('approve')]);
-
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
-    await user.click(within(await dialog()).getByRole('button', { name: '취소' }));
-
-    expect(confirmDialogs()).toHaveLength(0);
-    expect(requestsTo(requests, APPROVE_PATH)).toHaveLength(0);
-  });
-
-  it('이미 승인된 기준은 승인이 비활성이고 사유가 보인다', async () => {
-    renderScreen(
-      [planListRoute(), planDetailRoute(inspectionPlanFixtures[2]), ...lookupRoutes()],
-      '?plan=3003',
-    );
-
-    expect(within(await awaitPlanForm()).getByRole('button', { name: '승인' })).toBeDisabled();
-    expect(screen.getByText('승인은 이미 승인된 기준에 다시 할 수 없습니다.')).toBeInTheDocument();
-  });
-
-  it('등록 폼에서는 승인·사용 중지가 비활성이고 사유가 보인다', async () => {
+  it('등록 폼에는 승인 단추가 없고 사용 중지가 비활성이다', async () => {
     const { user } = renderScreen([planListRoute(), ...lookupRoutes()]);
 
     await user.click(await screen.findByRole('button', { name: '기준 추가' }));
 
     const form = planForm();
-    expect(within(form).getByRole('button', { name: '승인' })).toBeDisabled();
     expect(within(form).getByRole('button', { name: '사용 중지' })).toBeDisabled();
-    expect(screen.getByText('승인은 기준을 먼저 등록해야 할 수 있습니다.')).toBeInTheDocument();
+    expect(within(form).queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
   });
 });
 

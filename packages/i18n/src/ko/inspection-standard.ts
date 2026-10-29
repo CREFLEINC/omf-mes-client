@@ -23,7 +23,6 @@ export const inspectionStandard = {
     goFirstPage: '첫 쪽으로',
     excelUpload: '엑셀 올리기',
     addPlan: '기준 추가',
-    approve: '승인',
     createVersion: '버전 등록',
     newRevision: '신규 버전 발행',
     confirm: '확정',
@@ -46,8 +45,6 @@ export const inspectionStandard = {
      * 사용자가 무엇이 막혔는지 모르고, 감추면 「이 화면에는 없는 항목」으로 오해한다.
      */
     routingNeedsItem: '라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.',
-    approveAlreadyDone: '승인은 이미 승인된 기준에 다시 할 수 없습니다.',
-    approveNeedsPlan: '승인은 기준을 먼저 등록해야 할 수 있습니다.',
     deactivateAlreadyDone: '사용 중지는 이미 미사용인 기준에 다시 할 수 없습니다.',
     deactivateNeedsPlan: '사용 중지는 기준을 먼저 등록해야 할 수 있습니다.',
     /*
@@ -101,10 +98,6 @@ export const inspectionStandard = {
     obsolete: '폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
   },
   dialog: {
-    approveTitle: '이 검사기준을 승인할까요?',
-    /* 계약이 승인 해제를 제공하지 않는다 — 되돌릴 수 없다는 사실을 먼저 밝힌다. */
-    approveDescription:
-      '승인하면 되돌릴 수 없습니다. 승인 해제는 제공되지 않습니다. 승인자와 승인 시각은 서버가 기록합니다.',
     deactivateTitle: '이 검사기준을 사용 중지할까요?',
     deactivateDescription:
       '삭제하지 않습니다. 사용 중지하면 새 검사에서 이 기준을 쓸 수 없게 됩니다.',
@@ -141,7 +134,6 @@ export const inspectionStandard = {
   },
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {
-    approved: '검사기준을 승인했습니다.',
     deactivated: '검사기준 사용을 중지했습니다.',
     confirmed: '버전을 확정했습니다.',
     obsoleted: '버전을 폐기했습니다.',

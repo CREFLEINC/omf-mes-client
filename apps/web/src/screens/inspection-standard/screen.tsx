@@ -62,7 +62,6 @@ import { PlanFilterBar } from './plan-filter-bar';
 import { PlanListPane } from './plan-list-pane';
 import {
   emptyPlanFormValues,
-  formatApprovedAt,
   isSamePlanValues,
   planToFormValues,
   toPlanCreate,
@@ -387,32 +386,6 @@ export const InspectionStandardScreen = () => {
   });
 
   /**
-   * 승인 — **`If-Match`를 싣지 않는다.** 계약이 이 경로에 낙관적 잠금을 두지 않았다.
-   * 상세 경로를 주면 토큰을 찾지 못했을 때 요청을 보내지 않고 멈춰
-   * 「눌러도 아무 일이 없다」가 된다.
-   *
-   * **본문이 없다.** 승인자와 승인 시각은 서버가 함께 기록한다 — 화면이 보내지 않는다.
-   * 응답에 `ETag`가 없으므로 성공하면 상세를 무효화해 재조회가 새 토큰을 확보하게 한다.
-   */
-  const approveWrite = useMasterWrite<void, InspectionPlan>({
-    request: (_variables, headers) =>
-      client.POST('/quality/inspection-plans/{inspectionPlanId}:approve', {
-        params: {
-          path: { inspectionPlanId: selectedPlanId ?? 0 },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
-        },
-      }),
-    etagPath: null,
-    invalidateKeys: [planKeys.all],
-    // 액션에는 입력칸이 없다 — 인라인으로 낼 자리가 없어 서버 오류는 전부 배너로 간다.
-    knownFields: [],
-    onSuccess: () => {
-      setPlanAction(null);
-      toast.show({ variant: 'success', description: t.result.approved });
-    },
-  });
-
-  /**
    * 사용 중지 — 같은 기준에 걸리는 액션인데도 **`If-Match`를 요구한다.**
    * 승인과 규약이 다르다(계약 실측). 여기에 `null`을 주면 서버가 거부한다.
    */
@@ -437,7 +410,7 @@ export const InspectionStandardScreen = () => {
   });
 
   const [planAction, setPlanAction] = useState<PlanActionKind | null>(null);
-  const planActionWrite = planAction === 'deactivate' ? deactivateWrite : approveWrite;
+  const planActionWrite = deactivateWrite;
 
   const versionList = useInspectionPlanVersionList(selectedPlanId);
   const versions = versionList.data?.items ?? [];
@@ -770,7 +743,6 @@ export const InspectionStandardScreen = () => {
   const resetPlanEditing = () => {
     planWrite.reset();
     createWrite.reset();
-    approveWrite.reset();
     deactivateWrite.reset();
     setPlanAction(null);
     setFormState(null);
@@ -1071,13 +1043,6 @@ export const InspectionStandardScreen = () => {
    */
   const savedPlan = planDetail.data?.inspectionPlan ?? null;
 
-  const approveDisabledReason = ((): string | null => {
-    if (createValues !== null || savedPlan === null) return t.actionReasons.approveNeedsPlan;
-    if (formatApprovedAt(savedPlan.approvedAt) !== null) return t.actionReasons.approveAlreadyDone;
-
-    return null;
-  })();
-
   const deactivateDisabledReason = ((): string | null => {
     if (createValues !== null || savedPlan === null) return t.actionReasons.deactivateNeedsPlan;
     if (!savedPlan.isActive) return t.actionReasons.deactivateAlreadyDone;
@@ -1085,7 +1050,7 @@ export const InspectionStandardScreen = () => {
     return null;
   })();
 
-  const isPlanActionRunning = approveWrite.isSaving || deactivateWrite.isSaving;
+  const isPlanActionRunning = deactivateWrite.isSaving;
 
   /*
    * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
@@ -1276,23 +1241,6 @@ export const InspectionStandardScreen = () => {
 
   const renderPlanActions = (): ReactNode => (
     <>
-      {approveDisabledReason === null ? (
-        <div className="field-cell">
-          <Button
-            variant="outlined"
-            disabled={isPlanActionRunning}
-            onClick={() => {
-              approveWrite.reset();
-              setPlanAction('approve');
-            }}
-          >
-            {t.actions.approve}
-          </Button>
-        </div>
-      ) : (
-        <DisabledAction label={t.actions.approve} reason={approveDisabledReason} />
-      )}
-
       {deactivateDisabledReason === null ? (
         <div className="field-cell form-actions-secondary">
           <Button
@@ -1953,7 +1901,6 @@ export const InspectionStandardScreen = () => {
           kind={planAction}
           onClose={() => {
             setPlanAction(null);
-            approveWrite.reset();
             deactivateWrite.reset();
           }}
           onConfirm={() => {
@@ -1961,11 +1908,7 @@ export const InspectionStandardScreen = () => {
           }}
           isSaving={planActionWrite.isSaving}
           banner={
-            <PlanActionBanner
-              error={planActionWrite.error}
-              /* 409는 사용 중지에만 있다(계약 실측) — 승인에 내면 헛수고를 시킨다. */
-              onReload={planAction === 'deactivate' ? handleReloadPlanDetail : undefined}
-            />
+            <PlanActionBanner error={planActionWrite.error} onReload={handleReloadPlanDetail} />
           }
         />
       )}

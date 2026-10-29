@@ -14,7 +14,7 @@ const t = messages.inspectionStandard;
 const renderPlanAction = (overrides: Partial<PlanActionDialogProps> = {}) => {
   const props: PlanActionDialogProps = {
     open: true,
-    kind: 'approve',
+    kind: 'deactivate',
     onClose: vi.fn(),
     onConfirm: vi.fn(),
     isSaving: false,
@@ -40,26 +40,6 @@ const renderVersionTransition = (overrides: Partial<VersionTransitionDialogProps
 };
 
 describe('PlanActionDialog — 문면 잣대', () => {
-  /**
-   * ⭐ **승인은 되돌릴 수 없고 기록 주체는 서버다.** 제목·버튼만 검사하면 이 두 사실을
-   * 본문에서 지워도 통과한다. 사실 → 제공되지 않는 되돌림 → 기록 주체의 순서도 함께 문다.
-   */
-  it('승인의 비가역성과 서버 기록을 차례로 밝힌다', () => {
-    renderPlanAction();
-
-    const description = t.dialog.approveDescription;
-    const irreversibleAt = description.indexOf('되돌릴 수 없습니다');
-    const noUndoAt = description.indexOf('승인 해제는 제공되지 않습니다');
-    const serverAt = description.indexOf('서버가 기록합니다');
-
-    expect(screen.getByRole('dialog', { name: t.dialog.approveTitle })).toBeInTheDocument();
-    expect(screen.getByText(description)).toBeInTheDocument();
-    expect(irreversibleAt).toBeGreaterThanOrEqual(0);
-    expect(irreversibleAt).toBeLessThan(noUndoAt);
-    expect(noUndoAt).toBeLessThan(serverAt);
-    expect(screen.getByRole('button', { name: t.actions.approve })).toBeInTheDocument();
-  });
-
   /** 사용 중지는 삭제가 아니며 앞으로 적용되지 않는다는 두 사실을 함께 말해야 한다. */
   it('사용 중지가 삭제가 아니고 새 검사에서 적용되지 않음을 밝힌다', () => {
     renderPlanAction({ kind: 'deactivate' });
@@ -178,7 +158,6 @@ describe('검사기준 상태 변경 — 결과 문면 잣대', () => {
    * 사용자가 같은 버튼을 다시 누르지 않는다.
    */
   it.each([
-    ['승인', t.result.approved, '검사기준', '승인'],
     ['사용 중지', t.result.deactivated, '검사기준', '중지'],
     ['확정', t.result.confirmed, '버전', '확정'],
     ['폐기', t.result.obsoleted, '버전', '폐기'],
