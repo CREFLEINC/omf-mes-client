@@ -233,6 +233,7 @@ export const inspectionStandard = {
   },
   /* 검사 기준 목록 표의 추가 열(omf-all-around#196). */
   listColumns: {
+    versionStatus: '상태',
     item: '품목',
     approval: '승인 여부',
     active: '사용 여부',

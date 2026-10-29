@@ -39,14 +39,22 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
 };
 
 describe('PlanListPane — 목록 표시', () => {
-  it('기준코드·기준명·유형과 품목·승인·사용 열을 낸다', () => {
+  it('기준코드·기준명·유형과 품목·상태·승인·사용 열을 낸다', () => {
     renderPane();
 
     /* 머리칸에는 열 순서를 옮기는 손잡이 아이콘 글자(drag_indicator)가 함께 있다 — 이름만 견준다. */
     const headers = screen
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent?.replace('drag_indicator', ''));
-    expect(headers).toEqual(['기준코드', '기준명', '검사 유형', '품목', '승인 여부', '사용 여부']);
+    expect(headers).toEqual([
+      '기준코드',
+      '기준명',
+      '검사 유형',
+      '품목',
+      '상태',
+      '승인 여부',
+      '사용 여부',
+    ]);
   });
 
   it('고른 기준의 행에 선택 표식이 붙는다', () => {

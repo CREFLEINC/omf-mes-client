@@ -1421,11 +1421,18 @@ const renderVersions = (extraRoutes: StubRoute[] = [], search = '?plan=3001') =>
   );
 
 describe('InspectionStandardScreen — 버전 목록', () => {
-  it('기준을 고르기 전에는 버전 요청이 나가지 않는다', async () => {
+  /* 표의 「상태」 칸(#208) — 목록이 오면 줄마다 그 기준의 버전 목록을 한 번씩 받는다. */
+  it('목록이 오면 줄마다 버전 상태를 한 번씩 조회해 상태 칸에 보인다', async () => {
     const { requests } = renderScreen([planListRoute(), versionListRoute(), ...lookupRoutes()]);
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
-    expect(versionRequests(requests)).toHaveLength(0);
+    await waitFor(() => {
+      expect(versionRequests(requests)).toHaveLength(inspectionPlanFixtures.length);
+    });
+    const ids = versionRequests(requests).map((request) =>
+      request.url.searchParams.get('inspectionPlanId'),
+    );
+    expect(new Set(ids).size).toBe(inspectionPlanFixtures.length);
   });
 
   it('기준을 고르면 기준 번호를 실은 버전 요청이 한 번 나가고 목록이 그려진다', async () => {
@@ -1442,9 +1449,14 @@ describe('InspectionStandardScreen — 버전 목록', () => {
       await within(await versionPane()).findByRole('button', { name: '버전 2' }),
     ).toBeInTheDocument();
 
-    const gets = versionRequests(requests).filter((request) => request.method === 'GET');
-    expect(gets).toHaveLength(1);
-    expect(gets[0]?.url.searchParams.get('inspectionPlanId')).toBe('3001');
+    /*
+     * 표의 상태 칸과 같은 캐시를 쓴다 — 상세가 붙으며 한 번 더 새로 받을 수 있다. 기준 3001 의 버전 요청이 있으면 된다.
+     */
+    const gets = versionRequests(requests).filter(
+      (request) =>
+        request.method === 'GET' && request.url.searchParams.get('inspectionPlanId') === '3001',
+    );
+    expect(gets.length).toBeGreaterThan(0);
   });
 
   /* 목록에서 기준을 고르면 버전 목록 창 없이 확정된 최신 버전으로 바로 조회한다 — 작성중인 버전 2 는 건너뛴다(사용자 지시 · #196). */

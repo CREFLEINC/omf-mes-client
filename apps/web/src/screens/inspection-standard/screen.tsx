@@ -76,6 +76,7 @@ import {
   useInspectionItemSpecs,
   useInspectionPlanDetail,
   useInspectionPlanList,
+  useLatestVersionStatuses,
   usePlanUsageCounts,
   useInspectionPlanVersionDetail,
   useInspectionPlanVersionList,
@@ -315,6 +316,9 @@ export const InspectionStandardScreen = () => {
     }
   };
   const plans = planList.data?.items ?? [];
+  const latestVersionStatusOf = useLatestVersionStatuses(
+    plans.map((plan) => plan.inspectionPlanId),
+  );
 
   const planDetail = useInspectionPlanDetail(selectedPlanId);
 
@@ -1869,6 +1873,7 @@ export const InspectionStandardScreen = () => {
       >
         <PlanListPane
           itemPartsOf={itemPartsOf}
+          versionStatusOf={latestVersionStatusOf}
           plans={plans}
           isLoading={planList.isPending}
           appliedFilters={filters}

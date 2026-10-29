@@ -213,6 +213,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     notSet: 'Chưa thiết lập',
   },
   listColumns: {
+    versionStatus: 'Trạng thái',
     item: 'Mặt hàng',
     approval: 'Trạng thái phê duyệt',
     active: 'Trạng thái sử dụng',

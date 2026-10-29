@@ -8,6 +8,7 @@ import { useColumnWidths } from '../../patterns/column-resize';
 
 import { DEFAULT_PLAN_FILTERS, inspectionTypeLabel } from './code-options';
 import { hasAnyFilter } from './filters';
+import { resolveVersionStatus } from './plan-version-status';
 import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
 import type { PageView } from './pagination';
 import type { ItemNameParts } from './queries';
@@ -36,6 +37,8 @@ export interface PlanListPaneProps {
   loadError: ReactNode;
   /** 품목 번호 → 이름 · 코드. 품목이 없으면(전 품목 공통) null */
   itemPartsOf: (itemId: number | null | undefined) => ItemNameParts | null;
+  /** 줄마다 가장 높은 버전의 상태 코드(#208). 없으면 null, 받는 중이면 undefined */
+  versionStatusOf?: (inspectionPlanId: number) => string | null | undefined;
 }
 
 /**
@@ -61,6 +64,7 @@ export const PlanListPane = ({
   onSelect,
   loadError,
   itemPartsOf,
+  versionStatusOf,
 }: PlanListPaneProps) => {
   const columns: Column<InspectionPlan>[] = [
     {
@@ -121,6 +125,24 @@ export const PlanListPane = ({
               <span className="inspection-standard-item-cell-code">{parts.code}</span>
             )}
           </span>
+        );
+      },
+    },
+    /* 상태 — 가장 높은 버전의 상태(작성중 · 확정 · 폐기, 사용자 지시 · #208). 버전이 없으면 「—」. */
+    {
+      key: 'versionStatus',
+      align: 'center',
+      header: t.listColumns.versionStatus,
+      width: '96px',
+      render: (row) => {
+        const code = versionStatusOf?.(row.inspectionPlanId);
+        if (code === undefined) return '';
+        if (code === null) return t.values.empty;
+        const status = resolveVersionStatus(code);
+        return (
+          <Chip variant="status" size="sm" status={status.tone}>
+            {status.label}
+          </Chip>
         );
       },
     },

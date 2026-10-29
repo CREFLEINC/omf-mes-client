@@ -152,6 +152,34 @@ const fetchAllPlans = async (
   }
 };
 
+/**
+ * 목록 줄마다 그 기준의 **가장 높은 버전의 상태 코드**(#208) — 표의 「상태」 칸. 버전이 없으면 `null`,
+ * 아직 받는 중이면 `undefined`. 버전 목록은 기준 하나씩만 받는다(계약) — 상세의 버전 목록과 같은 캐시를 쓴다.
+ */
+export const useLatestVersionStatuses = (
+  inspectionPlanIds: readonly number[],
+): ((inspectionPlanId: number) => string | null | undefined) => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: inspectionPlanIds.map((inspectionPlanId) => ({
+      queryKey: versionKeys.list(inspectionPlanId),
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/quality/inspection-plan-versions', {
+            params: { query: { inspectionPlanId } },
+          }),
+        ),
+    })),
+  });
+
+  return (inspectionPlanId) => {
+    const data = results[inspectionPlanIds.indexOf(inspectionPlanId)]?.data;
+    if (data === undefined) return undefined;
+    const latest = [...data.items].sort((left, right) => right.planVersion - left.planVersion)[0];
+    return latest === undefined ? null : latest.statusCode;
+  };
+};
+
 /** 받은 건수가 전체보다 적으면 목록이 잘린 것이다. 선택 목록의 잘림 판정에 쓴다. */
 export const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
 
