@@ -171,7 +171,12 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const selectedParam = Number(searchParams.get('sel') ?? '') || null;
   const selectedId = isCreateMode ? null : selectedParam;
   /** 「상세 추가」로 열면 그때 고른 대분류가 상위 초기값이 된다. */
-  const createParentSeed = isCreateMode ? selectedParam : null;
+  /*
+   * 「대분류 추가」는 `as=category` 로 연다 — 고른 코드(`sel`)는 뒤 상세 카드에 그대로 두고, 상위 씨앗으로는 쓰지 않는다
+   * (#209 버그 수정: 대분류 추가를 누르면 상세 카드가 비던 문제).
+   */
+  const isCategoryCreate = isCreateMode && searchParams.get('as') === 'category';
+  const createParentSeed = isCreateMode && !isCategoryCreate ? selectedParam : null;
 
   const list = useCodeList(adapter, filters);
   const items = useMemo(() => list.data?.items ?? [], [list.data]);
@@ -191,7 +196,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
    * 오른쪽 상세 카드가 보이는 코드 — 「상세 추가」 창이 열려 있는 동안에도 고른 대분류를 그대로 보인다(#209 버그 수정).
    * 수정 · 저장은 `detail` 이 맡는다. 등록이 아니면 같은 키라 요청이 하나 더 나가지 않는다.
    */
-  const viewId = selectedId ?? createParentSeed;
+  const viewId = isCreateMode ? selectedParam : selectedId;
   const shown = useCodeDetail(adapter, viewId);
 
   /*
@@ -305,7 +310,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     write.reset();
     setLocalFieldErrors({});
     setIsEditOpen(false);
-    updateParams({ mode: 'create', ...patch });
+    updateParams({ mode: 'create', as: null, ...patch });
   };
 
   /** 창의 「취소」 — 고친 값을 버리고 닫는다. 등록 창은 주소에서 `mode` 를 지워 닫는다. */
@@ -314,7 +319,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     write.reset();
     setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
     setIsEditOpen(false);
-    if (isCreateMode) updateParams({ mode: null });
+    if (isCreateMode) updateParams({ mode: null, as: null });
   };
 
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
@@ -441,10 +446,10 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       processLabelOf={processLabelOf}
       onSelect={(id) => {
         setIsEditOpen(false);
-        updateParams({ sel: String(id), mode: null });
+        updateParams({ sel: String(id), mode: null, as: null });
       }}
       // 대분류 추가는 선택을 지운다 — 어느 코드의 하위도 아닌 새 축이다.
-      onAddCategory={() => openCreateForm({ sel: null })}
+      onAddCategory={() => openCreateForm({ as: 'category' })}
       loadError={
         list.isError ? (
           <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
@@ -460,7 +465,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const filterActions = (
     <Button
       leadingIcon={<Icon name="add" size={18} />}
-      onClick={() => openCreateForm({ sel: null })}
+      onClick={() => openCreateForm({ as: 'category' })}
     >
       {t.actions.addCategory}
     </Button>
