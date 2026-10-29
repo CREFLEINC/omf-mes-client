@@ -26844,6 +26844,7 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 .parts-iqc-cell {
+  box-sizing: border-box;
   width: 100%;
   min-width: 3.5rem;
   height: var(--control-height-md);
