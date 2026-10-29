@@ -200,6 +200,20 @@ const useVersionTransition = ({
   });
 
 /**
+ * 두 칸에 함께 걸리는 오류(뒤바뀜 · 짝 채우기)는 한쪽만 고쳐도 둘 다 걷는다 —
+ * 고친 칸만 걷으면 짝 칸에 지난 오류가 남는다(#208).
+ */
+const PAIRED_FIELDS: readonly (readonly [string, string])[] = [
+  ['effectiveFrom', 'effectiveTo'],
+  ['frequencyIntervalValue', 'frequencyIntervalUomCode'],
+  ['lowerLimit', 'upperLimit'],
+];
+
+const withPairedFields = (changed: string[]): string[] => [
+  ...new Set(changed.flatMap((key) => PAIRED_FIELDS.find((pair) => pair.includes(key)) ?? [key])),
+];
+
+/**
  * W-06-02 컨테이너 — 기준 목록 → 버전 목록 → 기준·버전·항목을 3단으로 놓는다.
  *
  * **배치는 W-06-01(Routing)과 같은 3단이다.** 착수 이슈 #12가 「버전 마스터 형 골격을 그대로
@@ -856,7 +870,7 @@ export const InspectionStandardScreen = () => {
   const handleChangeVersionCreateValues = (patch: Partial<VersionFormValues>) => {
     setVersionCreateValues((prev) => (prev === null ? prev : { ...prev, ...patch }));
 
-    for (const field of Object.keys(patch)) {
+    for (const field of withPairedFields(Object.keys(patch))) {
       versionCreateWrite.clearFieldError(field);
       setVersionCreateFieldErrors((prev) => {
         if (!(field in prev)) return prev;
@@ -884,7 +898,7 @@ export const InspectionStandardScreen = () => {
       prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
     );
 
-    for (const field of Object.keys(patch)) {
+    for (const field of withPairedFields(Object.keys(patch))) {
       versionWrite.clearFieldError(field);
       setVersionFieldErrors((prev) => {
         if (!(field in prev)) return prev;
@@ -1938,13 +1952,7 @@ export const InspectionStandardScreen = () => {
               prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
             );
 
-            /* 하한 · 상한 뒤바뀜 오류는 두 칸에 함께 걸린다 — 한쪽을 고치면 둘 다 걷는다. */
-            const changed = Object.keys(patch);
-            const fields = changed.some((key) => key === 'lowerLimit' || key === 'upperLimit')
-              ? [...changed, 'lowerLimit', 'upperLimit']
-              : changed;
-
-            for (const field of fields) {
+            for (const field of withPairedFields(Object.keys(patch))) {
               setItemDialogErrors((prev) => {
                 if (!(field in prev)) return prev;
                 const next = { ...prev };

@@ -2053,6 +2053,23 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     ).toHaveLength(0);
   });
 
+  /* 두 칸에 함께 걸린 오류는 한쪽만 고쳐도 둘 다 걷힌다(#208). */
+  it('종료일만 고쳐도 시작일 칸의 역전 오류가 걷힌다', async () => {
+    const { user } = renderSelectedVersion([versionSaveRoute()]);
+
+    const form = await awaitVersionForm();
+    await pickDate(user, within(form).getByLabelText('적용 시작일'), '2026-09-01');
+    await pickDate(user, within(form).getByLabelText('적용 종료일'), '2026-08-01');
+    await user.click(within(form).getByRole('button', { name: '저장' }));
+    await screen.findAllByText('적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.');
+
+    await pickDate(user, within(form).getByLabelText('적용 종료일'), '2026-09-30');
+
+    expect(
+      screen.queryByText('적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.'),
+    ).not.toBeInTheDocument();
+  });
+
   it('주기 값만 채우면 두 칸 모두에 오류를 내고 보내지 않는다', async () => {
     const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
 
