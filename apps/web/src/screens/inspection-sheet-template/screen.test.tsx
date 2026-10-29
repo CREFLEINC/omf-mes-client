@@ -162,25 +162,26 @@ const setup = (detail: InspectionSheetTemplate, plantCode = 'PL13') => {
 };
 
 const openRow = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(await screen.findByRole('button', { name: t.list.openRow('AAR4', 2) }));
+  await user.click(await screen.findByRole('button', { name: t.list.openRow('AAR4') }));
   await screen.findByText(t.editor.stepSection);
 };
 
 describe('검사표 기준', () => {
-  it('목록에 품목·버전·양식·상태를 보인다', async () => {
+  it('목록에 품목·양식·상태를 보이고 버전 열은 없다', async () => {
     setup(template());
 
     const row = await within(await screen.findByRole('table', { name: t.list.caption })).findByRole(
       'row',
       { name: /AAR4/ },
     );
-    expect(row).toHaveTextContent('2');
     expect(row).toHaveTextContent(t.layouts.OP!);
     expect(row).toHaveTextContent(t.statuses.DRAFT!);
     /* 재료 · 확정자 열(#208) */
     expect(row).toHaveTextContent('방청 처리');
     expect(screen.getByRole('columnheader', { name: t.columns.material })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: t.columns.confirmedBy })).toBeInTheDocument();
+    /* 표는 품목마다 한 줄 — 버전은 상세에서 고른다(#208). */
+    expect(screen.queryByRole('columnheader', { name: t.columns.version })).not.toBeInTheDocument();
   });
 
   /* 사용 여부 — 작성중 · 확정은 사용, 폐기는 미사용. 처음에는 사용만 보인다(#208). */

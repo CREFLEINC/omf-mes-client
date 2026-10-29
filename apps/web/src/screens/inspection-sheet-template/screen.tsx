@@ -141,12 +141,24 @@ const InspectionSheetTemplateScreenBody = () => {
       (filter.layout === '' || row.formLayoutCode === filter.layout) &&
       (materialKeyword === '' || (row.materialText ?? '').toLowerCase().includes(materialKeyword)),
   );
+  /*
+   * 표는 품목마다 한 줄 — 검사 기준 탭처럼 버전은 상세에서 고른다(사용자 지시 · #208).
+   * 줄은 그 품목의 가장 높은 버전으로 그린다. 사용 여부 · 건수도 그 줄 기준이다.
+   */
+  const latestByItem = new Map<number, InspectionSheetTemplate>();
+  for (const row of matched) {
+    const prev = latestByItem.get(row.itemId);
+    if (prev === undefined || row.templateVersion > prev.templateVersion) {
+      latestByItem.set(row.itemId, row);
+    }
+  }
+  const itemRows = [...latestByItem.values()];
   const usageCounts: Record<TemplateUsage, number> = {
-    all: matched.length,
-    active: matched.filter(isInUse).length,
-    inactive: matched.filter((row) => !isInUse(row)).length,
+    all: itemRows.length,
+    active: itemRows.filter(isInUse).length,
+    inactive: itemRows.filter((row) => !isInUse(row)).length,
   };
-  const filtered = matched.filter(
+  const filtered = itemRows.filter(
     (row) => filter.usage === 'all' || (filter.usage === 'active') === isInUse(row),
   );
   const sorted =
@@ -161,7 +173,9 @@ const InspectionSheetTemplateScreenBody = () => {
   const scopeIds = (session?.scopes ?? []).map((scope) => scope.businessUnitId);
   const names = businessUnits.data ?? new Map<number, string>();
 
-  const openedId = opened?.kind === 'existing' ? opened.id : null;
+  /* 연 기준의 품목 — 표의 고른 줄 표시와 상세의 버전 고르기에 쓴다. */
+  const openedItemId = detail.data?.itemId ?? null;
+  const itemVersions = useTemplates('', openedItemId, openedItemId !== null);
   /* 목록 표는 모든 열을 가운데 정렬한다 — 검사 기준 탭과 같다(#208). */
   const columns: Column<InspectionSheetTemplate>[] = [
     {
@@ -178,21 +192,14 @@ const InspectionSheetTemplateScreenBody = () => {
           type="button"
           className="inspection-sheet-template-open"
           title={`${row.itemCode} ${row.itemName}`}
-          aria-label={t.list.openRow(row.itemCode, row.templateVersion)}
-          aria-current={row.inspectionSheetTemplateId === openedId ? 'true' : undefined}
+          aria-label={t.list.openRow(row.itemCode)}
+          aria-current={row.itemId === openedItemId ? 'true' : undefined}
           onClick={() => open({ kind: 'existing', id: row.inspectionSheetTemplateId })}
         >
           <span className="inspection-sheet-template-open-code">{row.itemCode}</span>
           <span className="inspection-sheet-template-muted">{row.itemName}</span>
         </button>
       ),
-    },
-    {
-      key: 'version',
-      align: 'center',
-      header: t.columns.version,
-      width: '56px',
-      render: (row) => row.templateVersion,
     },
     {
       key: 'layout',
@@ -505,6 +512,8 @@ const InspectionSheetTemplateScreenBody = () => {
               /* 저장·확정 뒤 다시 받은 상세로 입력을 새로 채운다 — 서버가 정한 순번·상태가 화면과 같아지게. */
               key={`${opened.id}-${detail.dataUpdatedAt}`}
               template={detail.data}
+              versions={itemVersions.data ?? []}
+              onSelectVersion={(id) => open({ kind: 'existing', id })}
               businessUnitIds={scopeIds}
               businessUnitNames={names}
               stepCode={stepCode}

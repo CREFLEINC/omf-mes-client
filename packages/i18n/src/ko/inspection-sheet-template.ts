@@ -46,7 +46,7 @@ export const inspectionSheetTemplate = {
     retry: '다시 시도',
     selectTitle: '검사표 기준을 선택하세요',
     selectHint: '목록에서 선택하면 상세 정보가 표시됩니다.',
-    openRow: (itemCode: string, version: number) => `${itemCode} 버전 ${version} 열기`,
+    openRow: (itemCode: string) => `${itemCode} 열기`,
   },
 
   columns: {
@@ -61,6 +61,7 @@ export const inspectionSheetTemplate = {
   },
 
   editor: {
+    versionSelect: '버전 선택',
     detailTitle: '검사표 기준 상세',
     versionChip: (version: number) => `버전 ${version}`,
     editBasic: '기본 정보 수정',

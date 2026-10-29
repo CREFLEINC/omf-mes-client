@@ -28,6 +28,9 @@ export interface TemplateEditorProps {
   template: InspectionSheetTemplate | null;
   /** 새 기준의 기본 정보 — 화면의 등록 팝업에서 고른 값(#208). 연 기준에는 쓰지 않는다. */
   initialBasics?: TemplateBasics;
+  /** 연 기준과 같은 품목의 모든 버전 — 머리의 버전 고르기(검사 기준 탭과 같다 · #208). */
+  versions?: readonly InspectionSheetTemplate[];
+  onSelectVersion?: (inspectionSheetTemplateId: number) => void;
   /** 로그인 계정의 데이터 범위 사업부 — 새 기준의 사업부는 이 안에서 고른다. */
   businessUnitIds: readonly number[];
   businessUnitNames: ReadonlyMap<number, string>;
@@ -75,6 +78,8 @@ type Picking = { kind: 'lot'; slot: InspectionSheetLotSlot } | null;
 export const TemplateEditor = ({
   template,
   initialBasics,
+  versions = [],
+  onSelectVersion,
   businessUnitIds,
   businessUnitNames,
   stepCode,
@@ -212,11 +217,32 @@ export const TemplateEditor = ({
             <h2 className="pane-title">
               {template === null ? t.editor.newHeading : t.editor.detailTitle}
             </h2>
-            {template !== null && (
-              <Chip variant="status" status="idle">
-                {t.editor.versionChip(template.templateVersion)}
-              </Chip>
-            )}
+            {/*
+             * 버전 고르기 — 같은 품목의 버전을 여기서 바꾼다(표는 품목마다 한 줄 · 사용자 지시 · #208).
+             * 버전이 하나뿐이면 고를 것이 없어 칩으로만 보인다.
+             */}
+            {template !== null &&
+              (versions.length > 1 && onSelectVersion !== undefined ? (
+                <div className="inspection-sheet-template-version-select">
+                  <Select
+                    aria-label={t.editor.versionSelect}
+                    options={[...versions]
+                      .sort((left, right) => right.templateVersion - left.templateVersion)
+                      .map((version) => ({
+                        value: String(version.inspectionSheetTemplateId),
+                        label: `${t.editor.versionChip(version.templateVersion)} · ${
+                          t.statuses[version.statusCode] ?? version.statusCode
+                        }`,
+                      }))}
+                    value={String(template.inspectionSheetTemplateId)}
+                    onChange={(value) => onSelectVersion(Number(value))}
+                  />
+                </div>
+              ) : (
+                <Chip variant="status" status="idle">
+                  {t.editor.versionChip(template.templateVersion)}
+                </Chip>
+              ))}
             {template !== null && <TemplateStatusChip statusCode={template.statusCode} />}
           </div>
           <div className="inspection-standard-plan-head-actions">

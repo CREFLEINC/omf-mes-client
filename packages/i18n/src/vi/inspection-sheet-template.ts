@@ -46,7 +46,7 @@ export const inspectionSheetTemplate = {
     retry: 'Thử lại',
     selectTitle: 'Chọn tiêu chuẩn phiếu kiểm tra',
     selectHint: 'Chọn trong danh sách để hiển thị thông tin chi tiết.',
-    openRow: (itemCode: string, version: number) => `Mở ${itemCode} phiên bản ${version}`,
+    openRow: (itemCode: string) => `Mở ${itemCode}`,
   },
 
   columns: {
@@ -61,6 +61,7 @@ export const inspectionSheetTemplate = {
   },
 
   editor: {
+    versionSelect: 'Chọn phiên bản',
     detailTitle: 'Chi tiết tiêu chuẩn phiếu kiểm tra',
     versionChip: (version: number) => `Phiên bản ${version}`,
     editBasic: 'Sửa thông tin cơ bản',

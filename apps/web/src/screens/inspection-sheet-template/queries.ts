@@ -26,11 +26,16 @@ export const templateDetailPath = (id: number): string =>
  * 조건(상태 · 품목)에 맞는 기준을 **전부** 받는다(#208). 검사표 기준은 품목별 판이라 수가 많지 않다 —
  * 사용 여부 · 양식 · 재료 거르기, 사용 여부 건수, 확정 일시 정렬, 쪽 나누기를 화면이 빠짐없이 하려고 한 번에 받는다.
  */
-export const useTemplates = (status: TemplateStatusFilter, itemId: number | null = null) => {
+export const useTemplates = (
+  status: TemplateStatusFilter,
+  itemId: number | null = null,
+  enabled = true,
+) => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: templateKeys.list(status, itemId),
+    enabled,
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const items: InspectionSheetTemplate[] = [];
