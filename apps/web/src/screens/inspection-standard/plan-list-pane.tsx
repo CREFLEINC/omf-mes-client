@@ -1,23 +1,16 @@
-import {
-  Button,
-  Checkbox,
-  Chip,
-  type Column,
-  EmptyState,
-  SearchInput,
-  Select,
-  SkeletonText,
-  Table,
-} from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import type { ReactNode } from 'react';
 
-import { DEFAULT_PLAN_FILTERS, INSPECTION_TYPE_OPTIONS, inspectionTypeLabel } from './code-options';
-import { DisabledAction } from './disabled-action';
-import { FieldLabel } from './field-label';
-import { clearFilter, hasAnyFilter, toFilterChips } from './filters';
-import { PageNav } from './page-nav';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
+
+import { DEFAULT_PLAN_FILTERS, inspectionTypeLabel } from './code-options';
+import { hasAnyFilter } from './filters';
+import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
 import type { PageView } from './pagination';
+import type { ItemNameParts } from './queries';
 import type { InspectionPlan, PlanFilters } from './types';
 
 const t = messages.inspectionStandard;
@@ -25,22 +18,24 @@ const t = messages.inspectionStandard;
 export interface PlanListPaneProps {
   plans: InspectionPlan[];
   isLoading: boolean;
-  /** 적용된(주소에 반영된) 조건 — 조건 칩의 렌더 기준 */
+  /** 적용된 조건 — 0건 안내를 가른다(조건 줄은 `PlanFilterBar` 가 목록 위에 따로 세운다) */
   appliedFilters: PlanFilters;
-  /** 조회 버튼·Enter·칩 제거·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
+  /** 0건 안내의 초기화가 호출한다 */
   onApplyFilters: (next: PlanFilters) => void;
   pageView: PageView;
+  /** 서버가 준 쪽 정보 — 공용 쪽 이동(총 건수 · 쪽 크기 · 처음/이전/다음/마지막)이 읽는다(#196). */
+  pageMeta: PageNavMeta;
+  onChangePageSize: (size: PageSize) => void;
   onChangePage: (page: number) => void;
   selectedPlanId: number | null;
   onSelect: (inspectionPlanId: number) => void;
-  /** 등록 폼이 이미 열려 있으면 참. 같은 폼을 두 번 열지 않는다 */
-  isCreating: boolean;
-  onAddPlan: () => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 검사기준이 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /** 품목 번호 → 이름 · 코드. 품목이 없으면(전 품목 공통) null */
+  itemPartsOf: (itemId: number | null | undefined) => ItemNameParts | null;
 }
 
 /**
@@ -59,56 +54,113 @@ export const PlanListPane = ({
   appliedFilters,
   onApplyFilters,
   pageView,
+  pageMeta,
+  onChangePageSize,
   onChangePage,
   selectedPlanId,
   onSelect,
-  isCreating,
-  onAddPlan,
   loadError,
+  itemPartsOf,
 }: PlanListPaneProps) => {
-  const typeSelectId = useId();
-
-  /*
-   * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
-   * 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다 — 칩은 「적용된 조건」의 표시다.
-   */
-  const [draft, setDraft] = useState<PlanFilters>(appliedFilters);
-  const {
-    q: appliedQ,
-    inspectionTypeCode: appliedInspectionTypeCode,
-    includeInactive: appliedIncludeInactive,
-  } = appliedFilters;
-
-  useEffect(() => {
-    setDraft({
-      q: appliedQ,
-      inspectionTypeCode: appliedInspectionTypeCode,
-      includeInactive: appliedIncludeInactive,
-    });
-  }, [appliedQ, appliedInspectionTypeCode, appliedIncludeInactive]);
-
   const columns: Column<InspectionPlan>[] = [
     {
       key: 'inspectionPlanCode',
+      align: 'center',
       header: t.fields.inspectionPlanCode,
+      width: '240px',
+      /*
+       * 기준 코드는 링크 모양을 걷고 본문 글자로 둔다(omf-all-around#196) — 줄 아무 곳이나 눌러 고른다.
+       * 단추는 남긴다: 키보드·화면 낭독기가 줄을 고르는 길이고, 고른 줄 표시(`aria-current`)가 여기 실린다.
+       */
       render: (row) => (
         <button
           type="button"
-          className="link-cell"
+          className="inspection-standard-plan-open"
           aria-current={row.inspectionPlanId === selectedPlanId ? 'true' : undefined}
+          title={row.inspectionPlanCode}
           onClick={() => onSelect(row.inspectionPlanId)}
         >
           {row.inspectionPlanCode}
         </button>
       ),
     },
-    { key: 'inspectionPlanName', header: t.fields.inspectionPlanName },
+    {
+      key: 'inspectionPlanName',
+      align: 'center',
+      header: t.fields.inspectionPlanName,
+      /*
+       * 폭을 정하지 않는다 — 남는 폭을 이 열이 맡는다(검사 조회·판정 표와 같다 · 사용자 지시 #196).
+       * 모든 열이 폭을 가지면 한 열을 끌 때 나머지가 비율대로 함께 늘고 줄어 끈 대로 서지 않는다.
+       */
+      render: (row) => <span title={row.inspectionPlanName}>{row.inspectionPlanName}</span>,
+    },
     {
       key: 'inspectionTypeCode',
+      align: 'center',
       header: t.fields.inspectionType,
+      width: '136px',
       render: (row) => inspectionTypeLabel(row.inspectionTypeCode),
     },
+    /* 목록에서 바로 가를 수 있게 품목 · 승인 · 사용을 함께 싣는다(사용자 지시 · #196). */
+    {
+      key: 'item',
+      align: 'center',
+      header: t.listColumns.item,
+      width: '240px',
+      /* 「이름 코드」 한 줄 — 코드는 흐리게 뒤에 붙인다(사용자 시안 · #196, 검사 조회·판정 목록과 같다). */
+      render: (row) => {
+        const parts = itemPartsOf(row.itemId);
+        if (parts === null) return t.values.allItems;
+        return (
+          <span
+            className="inspection-standard-item-cell"
+            title={parts.code === null ? parts.name : `${parts.name} ${parts.code}`}
+          >
+            <span className="inspection-standard-item-cell-name">{parts.name}</span>
+            {parts.code !== null && (
+              <span className="inspection-standard-item-cell-code">{parts.code}</span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'approvedAt',
+      align: 'center',
+      header: t.listColumns.approval,
+      width: '96px',
+      render: (row) =>
+        row.approvedAt === null || row.approvedAt === undefined ? (
+          <Chip variant="status" size="sm" status="warning">
+            {t.listColumns.notApproved}
+          </Chip>
+        ) : (
+          <Chip variant="status" size="sm" status="success">
+            {t.listColumns.approved}
+          </Chip>
+        ),
+    },
+    {
+      key: 'isActive',
+      align: 'center',
+      header: t.listColumns.active,
+      width: '96px',
+      render: (row) => (
+        <Chip variant="status" size="sm" status={row.isActive ? 'success' : 'idle'}>
+          {row.isActive ? t.detail.chipActive : t.detail.chipInactive}
+        </Chip>
+      ),
+    },
   ];
+
+  /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다 — 검사 조회·판정 목록과 같다(omf-all-around#196). */
+  const ordered = useColumnOrder('omf-mes:inspection-standard:columns:plans:order', columns);
+  /* `:v2` — 모든 열이 고정 폭이던 때 최소 폭으로 잘못 저장된 값을 버리고 새로 시작한다(#196). */
+  const resizable = useColumnWidths('omf-mes:inspection-standard:columns:plans:v2', ordered, {
+    fitContent: true,
+  });
+  /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다. 더 넓히면 표 안에서 가로로 구른다. */
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   /**
    * 빈 상태는 세 갈래다 — **셋을 뭉치면 사실과 다른 안내가 된다.**
@@ -176,107 +228,46 @@ export const PlanListPane = ({
     }
 
     return (
-      <>
+      /*
+       * 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 기준 코드 단추로 넘긴다(검사 조회·판정과 같다).
+       * 키보드·화면 낭독기는 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
+       */
+      <div
+        ref={fit.ref}
+        className="inspection-queue-table inspection-standard-plan-rows"
+        style={resizable.style}
+        onClick={(event) => {
+          const target = event.target as Element;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('tbody tr')
+            ?.querySelector<HTMLButtonElement>('.inspection-standard-plan-open')
+            ?.click();
+        }}
+      >
         <Table
           density="compact"
-          columns={columns}
+          columns={fit.columns}
           rows={plans}
           getRowId={(row) => String(row.inspectionPlanId)}
           empty={emptySlot}
         />
-        <PageNav view={pageView} onChange={onChangePage} />
-      </>
+      </div>
     );
   };
 
-  const chips = toFilterChips(appliedFilters);
-
   return (
-    <section className="pane" aria-label={t.panes.plan}>
-      {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-      <div className="filter-bar">
-        <SearchInput
-          label={t.filters.searchLabel}
-          placeholder={t.filters.searchPlaceholder}
-          value={draft.q}
-          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
-          clearLabel={messages.common.clear}
-        />
-
-        {/*
-         * 규범 3-2 — 선택지 목록이 트리거 폭에 갇혀 있어(디자인 시스템 이슈 #62) 최소 폭을 주지 않으면
-         * 「IQC (수입검사)」가 「IQC (수⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
-         *
-         * 계획은 「값이 3자(`IQC`)라 붙이지 않는다」로 판단했으나 **고르는 것은 코드가 아니라 선택지 문구**라
-         * 전제가 어긋났다 — 브라우저 확인에서 실제로 잘리는 것을 보고 붙였다(계획 §5.4가 예고한 처리 경로).
-         * 이미 있는 옵트인 클래스라 `app.css`를 고치지 않는다.
-         */}
-        <div className="field-cell wide-select">
-          <FieldLabel htmlFor={typeSelectId} label={t.filters.inspectionType} />
-          <Select
-            id={typeSelectId}
-            options={[{ value: '', label: t.filters.typeAll }, ...INSPECTION_TYPE_OPTIONS]}
-            value={draft.inspectionTypeCode}
-            onChange={(value) => setDraft((prev) => ({ ...prev, inspectionTypeCode: value }))}
-          />
-        </div>
-
-        {/* 해제 축이라 변경 즉시 적용한다. */}
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={appliedFilters.includeInactive}
-            onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
-            }
-          >
-            {messages.common.includeInactive}
-          </Checkbox>
-        </div>
-
-        {/*
-         * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
-         * 갈라지면 남은 버튼이 무엇에 딸린 것인지 읽히지 않는다.
-         */}
-        <div className="filter-actions field-cell-unlabeled">
-          <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
-          <Button variant="outlined" onClick={() => onApplyFilters(DEFAULT_PLAN_FILTERS)}>
-            {messages.common.reset}
-          </Button>
-        </div>
-      </div>
-
-      <div className="filter-bar">
-        {chips.map((chip) => (
-          <Chip
-            key={chip.key}
-            variant="status"
-            removeLabel={chip.removeLabel}
-            onRemove={() => onApplyFilters(clearFilter(appliedFilters, chip.key))}
-          >
-            {chip.label}
-          </Chip>
-        ))}
-      </div>
-
+    <section className="pane inspection-standard-list-pane" aria-label={t.panes.plan}>
       {listSlot()}
 
-      <div className="filter-bar">
-        <div className="field-cell">
-          <Button variant="outlined" disabled={isCreating} onClick={onAddPlan}>
-            {t.actions.addPlan}
-          </Button>
-        </div>
-
-        {/*
-         * 계약에 올리기 경로가 없고 양식도 정해지지 않았다. 감추면 사용자가
-         * 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다 — 사유와 함께 비활성으로 둔다.
-         */}
-        <DisabledAction
-          label={t.actions.excelUpload}
-          reason={t.actionReasons.excelUploadUnavailable}
+      {(loadError === null || loadError === undefined) && !isLoading && (
+        <PageNav
+          meta={pageMeta}
+          buttonSize="md"
+          onChangePage={onChangePage}
+          onChangeSize={onChangePageSize}
         />
-      </div>
+      )}
     </section>
   );
 };

@@ -1,11 +1,4 @@
-import {
-  Button,
-  type Column,
-  EmptyState,
-  SkeletonText,
-  type SortState,
-  Table,
-} from '@crefle/web-ui';
+import { Button, type Column, EmptyState, SkeletonText, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import {
   useEffect,
@@ -16,7 +9,7 @@ import {
   type RefObject,
 } from 'react';
 
-import { useColumnWidths } from '../../patterns/column-resize';
+import { BoardTable } from '../../patterns/board-table';
 import type { ExcessEntry } from './excess-entry';
 import { lineExcessesOf } from './excess-match';
 import type { UnallocatedLine } from './excess-types';
@@ -32,6 +25,7 @@ import {
 import { formatDate } from './period';
 import { formatQty, OneLine, orEmpty, ReceiptStatusCell } from './receipt-status';
 import {
+  isReceiptReady,
   lineTableRowId,
   linesWithLots,
   presentGroups,
@@ -95,6 +89,18 @@ export interface LineTableProps {
   onPostReceipt?: (lot: IssuedLotProgress) => void;
   /** LOT 줄의 「IQC 의뢰 요청」. */
   onRequestIqc?: (lot: IssuedLotProgress) => void;
+  /**
+   * 「입고 대기」 LOT 을 체크해 한 번에 입고(사용자 지시 2026-10-28). 없으면(입고 권한 없음) LOT 줄에 체크가 서지 않는다.
+   */
+  lotPick?: {
+    checked: ReadonlySet<number>;
+    toggle: (lotId: number) => void;
+    /** 이 발주의 「입고 대기」 LOT 수 — 「입고 대기 전체」 체크가 다 골랐는지 잰다. */
+    total: number;
+    /** 「입고 대기 전체」 — 다 골랐으면 모두 풀고, 아니면 모두 고른다. */
+    toggleAll: () => void;
+    onSubmit: () => void;
+  };
 }
 
 const NO_LINE_EXCESSES: ReadonlyMap<number, readonly UnallocatedLine[]> = new Map();
@@ -274,6 +280,7 @@ export const LineTable = ({
   requestingLotId = null,
   onPostReceipt,
   onRequestIqc,
+  lotPick,
 }: LineTableProps) => {
   const isTree = lots !== undefined;
 
@@ -325,31 +332,55 @@ export const LineTable = ({
           return qty.kind === 'qty' ? qty.value : null;
         })();
 
+  /* 「입고 대기」 LOT — 체크해 한 번에 입고한다. */
+  const hasReceiptReady =
+    lots !== undefined && [...lots.values()].some((own) => own.some(isReceiptReady));
+
   const columns: Column<LineTableRow>[] = [
     /*
      * 체크 열 — 체크한 품목은 남은 수량 그대로 한꺼번에 받는다(PDA 와 같다). 받을 것이 남은 줄만 체크할 수 있고, 머리칸의
-     * 「모두 선택」은 부분 입하 줄을 뺀다. 권한이 없으면 이 열이 없다.
+     * 「모두 선택」은 부분 입하 줄을 뺀다. 「입고 대기」 LOT 줄도 여기서 체크해 한 번에 입고한다(`lotPick`).
+     * 두 권한이 다 없으면 이 열이 없다.
      */
-    ...(draft !== undefined
+    ...(draft !== undefined || (lotPick !== undefined && hasReceiptReady)
       ? [
           {
             key: 'check',
-            header: (
-              <input
-                type="checkbox"
-                className="po-board-check"
-                aria-label={t.receive.selectAll}
-                checked={draft.allChecked}
-                ref={(node) => {
-                  if (node !== null) node.indeterminate = draft.someChecked && !draft.allChecked;
-                }}
-                disabled={receive?.isSaving === true || !rows.some(isCheckable)}
-                onChange={draft.toggleAll}
-              />
-            ),
+            header:
+              draft === undefined ? null : (
+                <input
+                  type="checkbox"
+                  className="po-board-check"
+                  aria-label={t.receive.selectAll}
+                  checked={draft.allChecked}
+                  ref={(node) => {
+                    if (node !== null) node.indeterminate = draft.someChecked && !draft.allChecked;
+                  }}
+                  disabled={receive?.isSaving === true || !rows.some(isCheckable)}
+                  onChange={draft.toggleAll}
+                />
+              ),
             width: '40px',
-            render: (row: LineTableRow) =>
-              row.kind === 'line' ? (
+            render: (row: LineTableRow) => {
+              if (row.kind === 'lot') {
+                const { lot } = row;
+                if (lotPick === undefined || !isReceiptReady(lot)) return null;
+
+                return (
+                  <input
+                    type="checkbox"
+                    className="po-board-check"
+                    aria-label={t.lot.selectForPost(lot.lotNo)}
+                    checked={lotPick.checked.has(lot.lotId)}
+                    onChange={() => {
+                      lotPick.toggle(lot.lotId);
+                    }}
+                  />
+                );
+              }
+              if (draft === undefined) return null;
+
+              return (
                 <input
                   type="checkbox"
                   className="po-board-check"
@@ -360,7 +391,8 @@ export const LineTable = ({
                     draft.toggle(row.line.purchaseOrderLineId);
                   }}
                 />
-              ) : null,
+              );
+            },
           } satisfies Column<LineTableRow>,
         ]
       : []),
@@ -447,7 +479,15 @@ export const LineTable = ({
        */
       render: (row) => {
         if (row.kind !== 'line') return '';
-        if (draft === undefined || !isEditable(row.line)) return orEmpty(row.line.itemCode);
+        if (draft === undefined) return orEmpty(row.line.itemCode);
+        if (!isEditable(row.line, draft.isLabeled(row.line.purchaseOrderLineId))) {
+          /* 라벨이 발행된 줄은 수량을 정해 받지 못한다 — 눌러도 아무 일이 없는 까닭을 마우스를 올리면 알린다. */
+          return draft.isLabeled(row.line.purchaseOrderLineId) ? (
+            <span title={t.receive.labeledLocked}>{orEmpty(row.line.itemCode)}</span>
+          ) : (
+            orEmpty(row.line.itemCode)
+          );
+        }
 
         return (
           <button
@@ -635,7 +675,6 @@ export const LineTable = ({
       },
     },
   ];
-  const resizable = useColumnWidths('omf-mes:inbound-schedule:columns:lines', columns);
   const tableBoxRef = useRef<HTMLDivElement>(null);
 
   useMergedLotCells(
@@ -693,6 +732,35 @@ export const LineTable = ({
           <OrderProgress order={order} />
         </dl>
         {/*
+         * 체크한 「입고 대기」 LOT 을 한 번에 입고한다 — 입고 대기 LOT 이 있을 때만 선다. 「입고 대기 전체」 체크가 이 발주의
+         * 입고 대기 LOT 을 한 번에 고르고 푼다(사용자 지시 2026-10-28 — 하나씩 체크하기 번거롭다).
+         */}
+        {lotPick !== undefined && hasReceiptReady && (
+          <div className="po-board-order-actions">
+            <label className="po-board-check-all">
+              <input
+                type="checkbox"
+                className="po-board-check"
+                checked={lotPick.total > 0 && lotPick.checked.size === lotPick.total}
+                ref={(node) => {
+                  if (node !== null) {
+                    node.indeterminate =
+                      lotPick.checked.size > 0 && lotPick.checked.size < lotPick.total;
+                  }
+                }}
+                onChange={lotPick.toggleAll}
+              />
+              {t.lot.selectAllForPost}
+            </label>
+            <span className="po-board-checked-count" aria-live="polite">
+              {t.lot.checkedForPost(lotPick.checked.size)}
+            </span>
+            <Button size="sm" disabled={lotPick.checked.size === 0} onClick={lotPick.onSubmit}>
+              {t.lot.postChecked}
+            </Button>
+          </div>
+        )}
+        {/*
          * 체크한 품목을 한꺼번에 받는다 — 옛 「입하 등록」 창을 걷고 이 자리에 섰다(사용자 지시 2026-10-24). 체크한 수는 옆
          * 글자가 말하고, 체크가 없으면 잠긴다. 취소된 발주는 더 받을 것이 없어 세우지 않는다.
          */}
@@ -734,12 +802,15 @@ export const LineTable = ({
            * **행 어디를 눌러도 그 품목을 받기 시작한다**(PDA 의 품목 누름과 같다). 표 부품에 줄 클릭이 없어 감싼 상자가 받는다 —
            * 누른 줄의 품목코드 단추(`data-receive-line`)로 어느 줄인지 안다. 단추 · 입력칸 · 체크를 누른 것은 그쪽이 받는다.
            */}
-          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-          <div
-            ref={tableBoxRef}
-            className="wide-table po-board-table po-board-lines"
-            style={resizable.style}
-            onClick={(event) => {
+          <BoardTable
+            label={t.panes.lines}
+            className="po-board-lines"
+            widthKey="omf-mes:inbound-schedule:columns:lines"
+            boxRef={tableBoxRef}
+            columns={columns}
+            rows={tableRows}
+            getRowId={lineTableRowId}
+            onBoxClick={(event) => {
               const target = event.target as HTMLElement;
               if (target.closest('button, input, a, label, select, textarea') !== null) return;
               const marker = target
@@ -749,19 +820,11 @@ export const LineTable = ({
               const line = rows.find((each) => each.purchaseOrderLineId === id);
               if (line !== undefined) draft?.startEdit(line);
             }}
-          >
-            <Table
-              density="compact"
-              caption={<span className="erp-data-table-caption">{t.panes.lines}</span>}
-              columns={resizable.columns}
-              rows={tableRows}
-              getRowId={lineTableRowId}
-              /* 제어 정렬 — 부품은 받은 순서대로 그린다. 정렬은 위에서 라인 단위로 마쳤다(LOT 줄이 제 라인을 따라간다). */
-              sort={sort}
-              onSortChange={setSort}
-              empty={<EmptyState size="sm" title={t.empty.noLinesTitle} />}
-            />
-          </div>
+            /* 제어 정렬 — 부품은 받은 순서대로 그린다. 정렬은 위에서 라인 단위로 마쳤다(LOT 줄이 제 라인을 따라간다). */
+            sort={sort}
+            onSortChange={setSort}
+            empty={<EmptyState size="sm" title={t.empty.noLinesTitle} />}
+          />
         </>
       )}
     </>

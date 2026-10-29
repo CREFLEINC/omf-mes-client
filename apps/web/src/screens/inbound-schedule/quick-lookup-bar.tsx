@@ -7,6 +7,7 @@ import { ItemPickerDialog } from '../../patterns/item-picker';
 import type { ScheduleFilters } from './filters';
 import { resolveScannedItem } from './lookups';
 import type { PeriodInput } from './period';
+import { SelectField } from './select-field';
 import type { SelectOption } from './types';
 
 const t = messages.inboundSchedule;
@@ -27,7 +28,9 @@ export interface QuickLookupBarProps {
 /**
  * 빠른 조회 줄 — 세 가지 찾는 길(사용자 결정 2026-10-20).
  *
- * 1. **공급업체** — 이름이나 코드를 치면 후보가 뜨고, 고르는 즉시 조회한다
+ * 1. **공급업체** — 선택 칸이다. 펼친 목록 맨 위 검색창에 이름이나 코드를 쳐서 거르고(`patterns/select.tsx`),
+ *    고르는 즉시 조회한다. 예전에는 입력칸 + 브라우저 자동완성(`datalist`)이라 모양이 다른 선택 칸과 달랐다
+ *    (사용자 지시 2026-10-28 「다른 것들과 ui 가 달라」)
  * 2. **품목코드** — 스캔하거나 품목번호를 치고 Enter. 정확히 하나로 정해지면 즉시 조회하고,
  *    아니면 그 값으로 찾아 둔 품목 선택 창을 연다. 칸은 비워 다음 스캔을 받는다
  * 3. **오늘 도착 · 지연** — 확인칸. 켜고 끄는 즉시 조회한다
@@ -58,22 +61,13 @@ export const QuickLookupBar = forwardRef<QuickLookupHandle, QuickLookupBarProps>
     ref,
   ) => {
     const { client } = useApiClient();
-    const supplierListId = useId();
     const scanNoteId = useId();
     const scanRef = useRef<HTMLInputElement>(null);
 
-    const appliedSupplierLabel =
-      supplierOptions.find((option) => option.value === appliedFilters.supplier)?.label ?? '';
-    const [supplierText, setSupplierText] = useState(appliedSupplierLabel);
     const [scanText, setScanText] = useState('');
     const [scanNote, setScanNote] = useState<string | null>(null);
     const [isScanning, setIsScanning] = useState(false);
     const [pickerKeyword, setPickerKeyword] = useState<string | null>(null);
-
-    /* 칩 ×·초기화로 주소의 공급사가 바뀌면 칸 글자도 따라간다. */
-    useEffect(() => {
-      setSupplierText(appliedSupplierLabel);
-    }, [appliedSupplierLabel]);
 
     /* 들어오자마자 스캔을 받는다 — 스캐너는 키보드처럼 글자와 Enter 를 보낸다. */
     useEffect(() => {
@@ -89,19 +83,6 @@ export const QuickLookupBar = forwardRef<QuickLookupHandle, QuickLookupBarProps>
      * (상세 조건 칸에 고쳐 둔 값 포함)이다. 품목 선택 창을 거쳐 늦게 정해져도 같은 바탕을 쓴다.
      */
     const baseRef = useRef<{ period: PeriodInput; filters: ScheduleFilters } | null>(null);
-
-    const changeSupplier = (text: string): void => {
-      setSupplierText(text);
-      if (text === '') {
-        if (appliedFilters.supplier !== '') apply({ supplier: '' });
-        return;
-      }
-      /* 후보에서 고른 순간(글자가 선택지 하나와 같아진 순간)에만 조회한다 — 치는 동안에는 나가지 않는다. */
-      const picked = supplierOptions.find((option) => option.label === text);
-      if (picked !== undefined && picked.value !== appliedFilters.supplier) {
-        apply({ supplier: picked.value });
-      }
-    };
 
     const applyItem = (itemId: number): void => {
       setScanText('');
@@ -146,24 +127,16 @@ export const QuickLookupBar = forwardRef<QuickLookupHandle, QuickLookupBarProps>
 
     return (
       <div className="po-board-quick">
-        <div className="field-cell wide-select">
-          <TextField
-            label={t.quick.supplier}
-            list={supplierListId}
-            value={supplierText}
-            placeholder={t.quick.supplierPlaceholder}
-            autoComplete="off"
-            onChange={(event) => {
-              changeSupplier(event.target.value);
-            }}
-          />
-          <datalist id={supplierListId}>
-            {supplierOptions.map((option) => (
-              <option key={option.value} value={option.label} />
-            ))}
-          </datalist>
-          {supplierNote !== undefined && <span className="field-note">{supplierNote}</span>}
-        </div>
+        <SelectField
+          wide
+          label={t.quick.supplier}
+          options={[{ value: '', label: t.filters.all }, ...supplierOptions]}
+          value={appliedFilters.supplier}
+          onChange={(value) => {
+            if (value !== appliedFilters.supplier) apply({ supplier: value });
+          }}
+          {...(supplierNote === undefined ? {} : { note: supplierNote })}
+        />
 
         <div className="field-cell wide-select">
           <TextField

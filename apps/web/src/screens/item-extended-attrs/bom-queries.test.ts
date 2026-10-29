@@ -22,27 +22,6 @@ describe('bomKeys', () => {
   it('구성품 목록 키가 다른 자재 명세서를 덮지 않는다', () => {
     expect(isPrefixOf(bomKeys.components(2001), bomKeys.component(2002, 7001))).toBe(false);
   });
-
-  /**
-   * 기본 지정은 **헤더 목록만** 무효화한다 — 구성품은 달라지지 않는데 함께 받으면
-   * 표가 이유 없이 다시 그려진다.
-   */
-  it('헤더 목록 키가 구성품을 덮지 않는다', () => {
-    expect(isPrefixOf(bomKeys.list(1001), bomKeys.components(2001))).toBe(false);
-    expect(isPrefixOf(bomKeys.list(1001), bomKeys.component(2001, 7001))).toBe(false);
-  });
-
-  /* 품목이 다르면 헤더 목록도 다른 자료다. */
-  it('헤더 목록 키가 품목마다 갈린다', () => {
-    expect(bomKeys.list(1001)).not.toEqual(bomKeys.list(1002));
-  });
-
-  /* 기본 지정은 `list`로 무효화한다 — BOM 코드 조건이 걸린 목록도 함께 다시 받아야 표가 낡지 않는다. */
-  it('헤더 목록 키가 그 품목의 조건 걸린 목록을 덮는다', () => {
-    expect(isPrefixOf(bomKeys.list(1001), bomKeys.filteredList(1001, ''))).toBe(true);
-    expect(isPrefixOf(bomKeys.list(1001), bomKeys.filteredList(1001, 'SYN-BOM'))).toBe(true);
-    expect(isPrefixOf(bomKeys.list(1001), bomKeys.filteredList(1002, 'SYN-BOM'))).toBe(false);
-  });
 });
 
 /**

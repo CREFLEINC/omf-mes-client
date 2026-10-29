@@ -1,9 +1,10 @@
-import { Button, Select, TextArea } from '@crefle/web-ui';
+import { Button, TextArea } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { Select } from '../../patterns/select';
 import type { Lock } from './lock';
 import type { CodeOptionSource } from './lookups';
 import type { NonconformanceFormErrors, NonconformanceFormValue } from './nonconformance-form';

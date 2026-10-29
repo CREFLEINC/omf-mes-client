@@ -1,7 +1,8 @@
-import { Progress, Radio, RadioGroup, Select, TextField } from '@crefle/web-ui';
+import { Progress, Radio, RadioGroup, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactElement, type ReactNode } from 'react';
 
+import { Select } from '../../patterns/select';
 import { isKnownCode, type CodeOption } from '../pqc-inspection/code-options';
 import { canChooseDisposition, type DispositionState } from '../pqc-inspection/disposition';
 import {

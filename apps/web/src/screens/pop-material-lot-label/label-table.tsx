@@ -56,8 +56,20 @@ const CrossMark = () => (
   </svg>
 );
 
-/** 입하 시각 — 오늘이면 시각만, 아니면 날짜를 앞에 붙인다. */
+/**
+ * 입하 일시 — **`yy.mm.dd hh:mm`**(사용자 지시 2026-10-27). 오늘 들어온 줄도 날짜를 빼지 않는다 —
+ * 기간을 넘겨 보는 목록이라 날짜가 빠지면 어느 날 것인지 다시 따져야 한다.
+ */
 const receivedText = (value: string): string => {
+  const when = receiptWhen(value);
+
+  return when === null
+    ? ''
+    : `${when.date.slice(2, 4)}.${when.date.slice(5, 7)}.${when.date.slice(8, 10)} ${when.time}`;
+};
+
+/** 다시 인쇄의 마지막 발행 — 오늘이면 시각만, 아니면 날짜를 앞에 붙인다. */
+const issuedText = (value: string): string => {
   const when = receiptWhen(value);
 
   if (when === null) return '';
@@ -224,7 +236,7 @@ export const LabelTable = ({
                 <span className="pop-mlot-cell-when">
                   {row.lastIssue === null
                     ? ''
-                    : t.issuedAt(row.lastIssue.issueSeq, receivedText(row.lastIssue.issuedAt))}
+                    : t.issuedAt(row.lastIssue.issueSeq, issuedText(row.lastIssue.issuedAt))}
                 </span>
               ) : (
                 <span className="pop-mlot-cell-when">{received}</span>

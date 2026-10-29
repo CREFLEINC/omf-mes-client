@@ -86,24 +86,19 @@ const rolesRoute: StubRoute = {
   },
 };
 
-const detailRoute: StubRoute = {
-  match: (request) => isGet(request, `${LIST_PATH}/7001`),
-  respond: () => jsonResponse({ ...ROWS[0], countryCode: 'VN' }),
-};
-
 describe('ErpPartnerScreen', () => {
   it('목록과 행마다 역할을 그린다', async () => {
     renderScreen([listRoute(), rolesRoute]);
 
-    const rowA = rowOf(await screen.findByRole('button', { name: 'SAMPLE-P1 상세 보기' }));
+    const rowA = rowOf(await screen.findByText('예시 거래처 A'));
     expect(await within(rowA).findByText('고객사, 공급사')).toBeInTheDocument();
 
-    const rowB = rowOf(screen.getByRole('button', { name: 'SAMPLE-P2 상세 보기' }));
+    const rowB = rowOf(screen.getByText('예시 거래처 B'));
     // ERP 코드·국가·역할이 모두 비어 있다.
     expect(await within(rowB).findAllByText('—')).toHaveLength(3);
     expect(within(rowB).getByText('미사용')).toBeInTheDocument();
 
-    const rowC = rowOf(screen.getByRole('button', { name: 'SAMPLE-P3 상세 보기' }));
+    const rowC = rowOf(screen.getByText('예시 거래처 C'));
     expect(await within(rowC).findByText('불러오지 못함')).toBeInTheDocument();
 
     expect(screen.getByText('1–3 / 전체 3건')).toBeInTheDocument();
@@ -137,14 +132,17 @@ describe('ErpPartnerScreen', () => {
     expect(first?.searchParams.has('roleTypeCode')).toBe(false);
   });
 
-  it('거래처 코드를 누르면 상세를 조회해 역할과 함께 보인다', async () => {
-    const { user } = renderScreen([listRoute(), rolesRoute, detailRoute]);
+  it('상세 구획 없이 목록 한 구획만 서고, 줄을 눌러도 상세를 부르지 않는다', async () => {
+    const { urls, user } = renderScreen([listRoute(), rolesRoute]);
 
-    await user.click(await screen.findByRole('button', { name: 'SAMPLE-P1 상세 보기' }));
+    await user.click(await screen.findByText('예시 거래처 A'));
 
-    const group = await screen.findByRole('group', { name: '거래처 상세' });
-    expect(within(group).getByText('VN')).toBeInTheDocument();
-    expect(await within(group).findByText('고객사, 공급사')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '거래처 목록' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '거래처 상세' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /상세 보기/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    // 행마다 역할만 부르고, 거래처 한 건 조회는 나가지 않는다.
+    expect(urls.some((url) => url.pathname === `${LIST_PATH}/7001`)).toBe(false);
   });
 
   it('결과가 없으면 빈 상태를 낸다', async () => {

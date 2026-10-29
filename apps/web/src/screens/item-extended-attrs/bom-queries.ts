@@ -4,8 +4,6 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 
-type BomListResponse = components['schemas']['BomListResponse'];
-type BomComponentListResponse = components['schemas']['BomComponentListResponse'];
 type BomComponentDetailResponse = components['schemas']['BomComponentDetailResponse'];
 
 /**
@@ -42,85 +40,9 @@ type BomComponentDetailResponse = components['schemas']['BomComponentDetailRespo
  */
 export const bomKeys = {
   all: ['item-extended-attrs-boms'] as const,
-  /** 한 품목의 헤더 목록 전부. 기본 지정이 이 앞부분으로 무효화해 조건이 걸린 목록까지 함께 다시 받는다 */
-  list: (parentItemId: number) => ['item-extended-attrs-boms', 'list', parentItemId] as const,
-  /** BOM 코드 조건이 걸린 목록. 빈 조건도 같은 형태로 둔다 — 키 모양이 조건 유무로 갈리지 않게 */
-  filteredList: (parentItemId: number, bomCode: string) =>
-    ['item-extended-attrs-boms', 'list', parentItemId, bomCode] as const,
   components: (bomId: number) => ['item-extended-attrs-boms', 'components', bomId] as const,
   component: (bomId: number, bomComponentId: number) =>
     ['item-extended-attrs-boms', 'components', bomId, bomComponentId] as const,
-};
-
-/**
- * 품목의 자재 명세서 헤더 목록.
- *
- * **품목을 고르기 전에는 조회하지 않는다.** 계약이 `parentItemId`를 **필수 쿼리**로 두어
- * `enabled` 없이 부르면 서버가 422로 되돌린다(목 실측).
- *
- * **헤더 상세(`GET /planning/boms/{bomId}`)를 따로 부르지 않는다.** 이 응답이 `Bom` 전 필드를
- * 담고 있어 헤더 구획이 쓸 값이 다 있다. 상세가 더 주는 것은 `editability`뿐인데 원본 구획에
- * 쓰기 경로를 두지 않기로 한 이상(결정 1) 읽을 자리가 없다. 더해 **목록에서 고른 헤더를 쓰면
- * 「주소의 번호가 이 품목의 것이 아니다」가 저절로 걸러진다** — 상세를 따로 부르면
- * 다른 품목의 자재 명세서를 그려 버린다.
- *
- * **BOM 코드 조건은 서버로 보낸다**(계약의 `bomCode` 쿼리). 맞춤 방식(일치·포함)은 서버가 정한다 —
- * 화면이 받은 목록을 다시 거르면 두 규칙이 겹쳐 서버가 낸 줄이 이유 없이 사라질 수 있다.
- * 빈 조건은 키 자체를 싣지 않는다.
- */
-export const useBomList = (
-  parentItemId: number | null,
-  enabled: boolean,
-  bomCode = '',
-): UseQueryResult<BomListResponse> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: bomKeys.filteredList(parentItemId ?? 0, bomCode),
-    enabled: enabled && parentItemId !== null,
-    queryFn: () => {
-      if (parentItemId === null) {
-        throw new Error('품목을 고르기 전에는 자재 명세서를 조회하지 않습니다.');
-      }
-
-      return runRequest(() =>
-        client.GET('/planning/boms', {
-          params: { query: { parentItemId, ...(bomCode === '' ? {} : { bomCode }) } },
-        }),
-      );
-    },
-  });
-};
-
-/**
- * 자재 명세서의 구성품 목록.
- *
- * **자재 명세서를 고르기 전에는 조회하지 않는다.** 경로에 `bomId`가 들어가므로 `enabled` 없이
- * 부르면 `0`을 실은 요청이 나간다.
- *
- * **이 응답에 `ETag`가 없다**(계약 실측 L). 여기서 받은 행을 그대로 저장하면 잠금 토큰이
- * 없어 요청이 조용히 멈춘다 — 편집 창은 행 상세를 따로 조회한다(§5.3 6행).
- *
- * `sequenceNo` 오름차순으로 온다. 화면이 다시 정렬하지 않는다.
- */
-export const useBomComponents = (
-  bomId: number | null,
-): UseQueryResult<BomComponentListResponse> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: bomKeys.components(bomId ?? 0),
-    enabled: bomId !== null,
-    queryFn: () => {
-      if (bomId === null) {
-        throw new Error('자재 명세서를 고르기 전에는 구성품을 조회하지 않습니다.');
-      }
-
-      return runRequest(() =>
-        client.GET('/planning/boms/{bomId}/components', { params: { path: { bomId } } }),
-      );
-    },
-  });
 };
 
 /**

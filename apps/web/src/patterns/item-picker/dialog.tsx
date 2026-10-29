@@ -3,7 +3,6 @@ import {
   Button,
   Checkbox,
   Dialog,
-  Select,
   Table,
   TextField,
   type Column,
@@ -11,6 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { Select } from '../select';
 import {
   ITEM_PAGE_SIZE,
   useItemAvailability,
@@ -58,6 +58,8 @@ export interface ItemPickerDialogProps {
    *    알지 않는다.
    */
   defaultItemTypeCode?: string;
+  /** 유형 선택지에서 뺄 유형 코드 — 그 업무에 뜻이 없는 유형(BOM 조회의 원자재처럼). 비우면 다 낸다. */
+  excludeItemTypeCodes?: readonly string[];
   /** 이미 라인에 담긴 품목 번호. 표식을 다는 데만 쓴다 — 고르는 것을 막지 않는다. */
   addedItemIds?: readonly number[];
   onClose: () => void;
@@ -114,6 +116,7 @@ const describeAvailability = (state: AvailabilityState): string => {
 export const ItemPickerDialog = ({
   multiple,
   defaultItemTypeCode = '',
+  excludeItemTypeCodes = [],
   addedItemIds = [],
   onClose,
   onConfirm,
@@ -160,7 +163,9 @@ export const ItemPickerDialog = ({
 
   const typeOptions = [
     { value: '', label: t.typeAll },
-    ...(types.data ?? []).map((option) => ({ value: option.code, label: option.codeName })),
+    ...(types.data ?? [])
+      .filter((option) => !excludeItemTypeCodes.includes(option.code))
+      .map((option) => ({ value: option.code, label: option.codeName })),
   ];
 
   const columns: Column<ItemRow>[] = [

@@ -18,6 +18,7 @@
  * .check-group  한 칸에 나란히 놓은 확인칸 사이 간격
  * .picker-group 폼 안에서 «함께 읽어야 하는» 칸들을 이름 붙은 한 묶음으로 두는 자리
  * .dialog-lead  창 안에서 폭 전체를 쓰는 안내 문장(`.field-note` 의 20rem 제한 밖)
+ * .import-file-list 올리기 창에서 고른 파일 목록(이름 + 빼기 단추)
  * .form-actions 폼 하단 액션 줄(우측 정렬)
  * .form-actions-secondary  사유가 붙은 보조 액션만 줄 왼쪽 끝으로(규범 4)
  * .wide-select  값이 긴 코드를 고르는 선택칸에 최소 폭을 준다(옵트인 · 규범 3-2)
@@ -292,12 +293,811 @@ main > * + * {
 }
 
 /*
- * W-06-02 검사기준 — 3단 배치를 위치 기준으로 삼는다(omf-all-around#103 · 3단계 검증).
+ * W-06-02 검사기준 — 목록 · 상세 분할을 위치 기준으로 삼는다(omf-all-around#103 · 3단계 검증).
  * 항목 표(DS Table 재정렬)의 화면 낭독기용 숨김 요소가 `position: absolute` 라, 위치 지정 조상이 없으면 main 의
  * 스크롤 영역 밖으로 빠져 문서 높이를 늘린다(실측 3197px) — 창이 따로 스크롤되며 앱 틀 아래가 빈 바탕으로 보였다.
  */
-.inspection-standard-layout {
+.inspection-standard-split,
+.inspection-standard-detail {
   position: relative;
+}
+
+/*
+ * 검사기준 목록 · 상세(omf-all-around#196) — 검사 조회·판정과 같은 분할(`.inspection-split`). 상세 칸은 Rev 목록 위,
+ * 기준 정보 · Rev 정보 · 검사 항목이 아래로 쌓인다. 목록은 표 안에서 · 상세는 칸 안에서 구른다.
+ */
+.inspection-standard-search {
+  margin-bottom: var(--space-4);
+}
+
+.inspection-standard-search > .filter-bar:last-child {
+  margin-bottom: 0;
+}
+
+/* 조회 · 초기화 | 엑셀 올리기 · 추가 — 줄 오른쪽 끝에 선다(사용자 시안 · #196). */
+.inspection-standard-search .filter-actions {
+  align-items: center;
+  margin-left: auto;
+}
+
+.inspection-standard-filter-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 0 var(--space-1);
+  background: var(--outline-variant);
+}
+
+/*
+ * 검사 기준 검색 칸 — 흐린 안내(「기준 코드 또는 기준명을 입력하세요」)가 잘리지 않는 폭을 기본으로 하고,
+ * 창이 좁으면 그만큼 줄어든다(사용자 지시 2026-10-27 · #196).
+ */
+.inspection-standard-search .filter-bar > :first-child {
+  flex: 0 1 19.5em;
+  min-width: 12rem;
+}
+
+/*
+ * 검사 기준 상세(#196) — 머리(제목 · 상태 칩) / 칸 / 버전 고르기 / 구분선 아래 단추 줄(왼쪽 승인 · 사용 중지, 오른쪽 취소 · 저장).
+ */
+.inspection-standard-plan-pane {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.inspection-standard-plan-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.inspection-standard-plan-head > .pane-title {
+  margin: 0;
+}
+
+.inspection-standard-plan-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 제목의 아래 여백(공용 `.pane-title`)을 걷어 칩과 같은 높이 가운데에 맞춘다(사용자 지시 · #196). */
+.inspection-standard-plan-chips > .pane-title {
+  margin: 0;
+}
+
+.inspection-standard-version-bar {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.inspection-standard-plan-footer {
+  align-items: center;
+  margin-top: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.inspection-standard-plan-footer-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-right: auto;
+}
+
+.inspection-standard-plan-footer-start > .form-actions-secondary {
+  margin-right: 0;
+}
+
+/*
+ * 검사 기준 상세 카드(#196) — 머리 / 버전 고르기 / 버전 요약 / 탭. 카드 안의 구획(버전 설정 · 검사 항목)은 카드가
+ * 테두리를 맡아 상자를 겹쳐 그리지 않는다.
+ */
+/* 상세 칸 빈 안내의 아이콘 — 옅은 원 바탕(사용자 시안 · #196). */
+.inspection-standard-empty-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+}
+
+.inspection-standard-detail-card {
+  display: grid;
+  /* 카드 폭을 넘지 않는다 — 열이 가장 넓은 내용(요약 상자 · 검사 항목 표) 폭으로 늘면 카드 밖으로 삐져나간다(#196). */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.inspection-standard-detail-card .pane {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.inspection-standard-plan-head-card {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.inspection-standard-plan-title {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.inspection-standard-plan-title > .pane-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.inspection-standard-plan-code {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+/* 상세 머리의 기준 정보 상자 — 버전 요약 상자(`.inspection-standard-facts-line`)와 같은 모양. 이름이 길면 값이 줄을 넘긴다(#196). */
+.inspection-standard-plan-facts dd {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* 목록 품목 칸 — 「이름 코드」 한 줄, 코드는 흐리게(사용자 시안 · #196). */
+.inspection-standard-item-cell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.inspection-standard-item-cell-name,
+.inspection-standard-item-cell-code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspection-standard-item-cell-name {
+  min-width: 0;
+}
+
+.inspection-standard-item-cell-code {
+  flex: 0 0 auto;
+  color: var(--on-surface-variant);
+}
+
+.inspection-standard-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.inspection-standard-section-head > .pane-subtitle {
+  margin: 0;
+}
+
+.inspection-standard-version-bar {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/*
+ * 버전 줄 오른쪽 끝 — 버전 설정 수정 · 확정 · 폐기(#196). 막힌 단추의 사유 글은 줄 높이를 늘리지 않게 글로는 감추고
+ * 마우스를 올리면 보인다(화면 낭독기는 설명으로 읽는다).
+ */
+.inspection-standard-version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-left: auto;
+}
+
+.inspection-standard-version-actions .field-cell > .field-note {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.inspection-standard-version-actions .form-actions-secondary {
+  margin-right: 0;
+}
+
+/* 고칠 수 없는 버전의 설정 값 — 이름 위 · 값 아래, 두 칸(#196). */
+.inspection-standard-readonly-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
+  margin: 0;
+}
+
+.inspection-standard-readonly-grid dt {
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.inspection-standard-readonly-grid dd {
+  margin: var(--space-1) 0 0;
+}
+
+/*
+ * 검사 기준 버전 탭(검사 항목 · 이력) — 검사 조회·판정 상세 탭과 같은 짜임(#196): 탭 이름에 건수, 탭 안 제목은 감추고
+ * 오른쪽에 할 일 한 줄, 표는 얇은 테두리 상자, 「필수」는 이름 앞 라벨.
+ */
+.inspection-standard-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.inspection-standard-border-only > p {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.inspection-standard-tab-toolbar {
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+  /* 「항목 추가」와 표 사이를 띄운다(사용자 지시 · #196). */
+  margin-bottom: var(--space-3);
+}
+
+.inspection-standard-table-box {
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+/* 변경 이력 표(#196) — 탭 안에서는 탭 줄과 띄운다. */
+.inspection-standard-history {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.inspection-standard-history-range {
+  display: inline-flex;
+}
+
+.inspection-standard-history > .inspection-standard-history-range {
+  justify-self: end;
+}
+
+/* 변경 내용 — 바뀐 칸마다 한 줄(이름 왼쪽 · 「전 → 후」 오른쪽), 줄 사이 옅은 선(사용자 시안 · #196). */
+.inspection-standard-history-changes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inspection-standard-history-changes > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-1) 0;
+  text-align: left;
+}
+
+.inspection-standard-history-changes > li + li {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.inspection-standard-history-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.inspection-standard-history-after {
+  color: var(--semantic-success);
+}
+
+.inspection-standard-history-note[data-tone='added'] {
+  color: var(--semantic-success);
+}
+
+.inspection-standard-history-note[data-tone='removed'] {
+  color: var(--semantic-error);
+}
+
+.inspection-standard-item-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.inspection-standard-item-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 구획 제목 + 칩(「검사 항목 (N)」 · 「읽기 전용」). */
+.inspection-standard-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inspection-standard-section-head > .field-note {
+  margin: 0;
+}
+
+/* 창 제목(h2)이 머리 줄 폭을 다 써야 라벨이 오른쪽 끝에 붙는다 — DS 제목은 내용 폭만 차지한다. */
+h2:has(> .inspection-standard-dialog-title) {
+  flex: 1;
+}
+
+.inspection-standard-dialog-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.inspection-standard-dialog-title-chips {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+/* 샘플 칸 머리 — 라벨 왼쪽, 비율(%) · 개수 칩 오른쪽(#196). 칩 높이가 라벨 줄을 밀지 않게 여백을 걷는다. */
+.inspection-standard-sampling-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.inspection-standard-sampling-head > .field-label {
+  margin: 0;
+}
+
+.inspection-standard-sampling-basis {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+/* 잠긴 칩은 흐리게 — 눌리는 칩과 같아 보이면 안 눌리는 까닭을 모른다(사용자 지적 · #196). */
+.inspection-standard-sampling-basis > button:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+/*
+ * 순서 이동 열(디자인 시스템이 그린다)은 화살표 둘만큼 — 폭이 없으면 「목표·범위」와 남는 폭을 나눠 가져
+ * 오른쪽에 빈 칸이 생긴다(사용자 지적 · #196). 폭 숫자는 `item-pane.tsx` REORDER_COLUMN_WIDTH 와 같다.
+ */
+.inspection-standard-item-rows.is-reorderable col:last-child {
+  width: 96px;
+}
+
+.inspection-standard-item-rows.is-reorderable tr > :last-child {
+  text-align: center;
+}
+
+/* 버전 비교 창(#196) — 버전 고르기 두 칸, 설정 표, 검사 항목 표를 위아래로. */
+.inspection-standard-compare {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.inspection-standard-compare-section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.inspection-standard-compare-section .pane-subtitle {
+  margin: 0;
+}
+
+/* 두 구획(버전 설정 비교 · 검사 항목 비교)은 테두리 상자로 나눈다(사용자 시안 · #196). */
+.inspection-standard-compare-section {
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.inspection-standard-compare-section .pane-title {
+  margin: 0;
+}
+
+.inspection-standard-compare-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inspection-standard-compare-legend {
+  display: inline-flex;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  list-style: none;
+}
+
+.inspection-standard-compare-legend > li::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-1);
+  border-radius: 50%;
+  background: var(--compare-tone);
+  vertical-align: middle;
+}
+
+/* 칸 색 — 바뀜 파랑 · 추가 초록 · 삭제 빨강. 칸(td)을 칠하고 왼쪽에 굵은 선을 둔다. */
+.inspection-standard-compare-legend > [data-tone='changed'],
+.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='changed']) {
+  --compare-tone: var(--semantic-info);
+  --compare-fill: var(--semantic-info-container);
+}
+
+.inspection-standard-compare-legend > [data-tone='added'],
+.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='added']) {
+  --compare-tone: var(--semantic-success);
+  --compare-fill: var(--semantic-success-container);
+}
+
+.inspection-standard-compare-legend > [data-tone='removed'],
+.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='removed']) {
+  --compare-tone: var(--semantic-error);
+  --compare-fill: var(--semantic-error-container);
+}
+
+/* 짝수 줄 바탕 규칙보다 무거워야 한다 — `tr:nth-child(n)` 로 무게를 올린다. */
+.inspection-standard-compare-table tbody tr:nth-child(n) td:has(.inspection-standard-compare-cell) {
+  background: var(--compare-fill);
+  box-shadow: inset 3px 0 0 var(--compare-tone);
+}
+
+.inspection-standard-compare-changes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: center;
+}
+
+.inspection-standard-item-local-note {
+  margin-top: var(--space-4);
+}
+
+
+/* 발행 단추 자리의 안내(작성중 버전이 있을 때 · #196) — 짧은 한 문장이라 꺾지 않는다. */
+.inspection-standard-new-revision-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  /* 좁으면 줄을 바꾼다 — 한 줄로 고정하면 카드 밖으로 넘친다(#196). */
+  white-space: normal;
+}
+
+/*
+ * 검사 항목 표 — 검사 조회·판정 수입검사 결과 표와 같은 모양: 둥근 테두리 상자, 가운데 정렬, 머리칸 사이 세로선(열 폭 손잡이).
+ * 0건이면 표 머리 없이 옅은 상자 하나로 안내한다(사용자 시안 · #196).
+ */
+.inspection-standard-item-rows thead th {
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.inspection-standard-item-rows tbody tr,
+.inspection-standard-item-rows tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.inspection-standard-item-rows tbody tr:nth-child(n):hover {
+  background: var(--state-hover-neutral);
+}
+
+/*
+ * 버전 요약 한 줄 — 검사 조회·판정 기본 정보와 같은 모양(사용자 시안 · #196): 테두리 상자 안에 칸이 나란히,
+ * 이름 위 · 값 아래, 칸 사이 세로 구분선. 폭이 모자라면 다음 줄로 넘긴다.
+ */
+.inspection-standard-facts-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-3) 0;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+}
+
+.inspection-standard-facts-line > div {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.inspection-standard-facts-line > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.inspection-standard-facts-line dd {
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* 상세 칸 맨 위 버전 고르기 줄 — 선택칸과 「버전 목록」 단추를 한 줄에(#196). */
+.inspection-standard-version-bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.inspection-standard-version-bar-row > .chip,
+.inspection-standard-version-bar-row > [class*='chip'] {
+  align-self: center;
+  margin-top: var(--space-5);
+}
+
+.inspection-standard-version-bar-row > .field-cell {
+  /* 「버전 12」 정도가 들어가는 폭 — 넓으면 오른쪽 단추가 다음 줄로 밀린다(사용자 지시 · #196). */
+  flex: 0 1 11rem;
+  min-width: 9rem;
+}
+
+/*
+ * 버전 목록 창(사용자 시안 · #196) — 제목 줄(제목 · 「+ 신규 버전 발행」) / 표 / 오른쪽 아래 「닫기」.
+ * 창 머리를 쓰지 않아 본문 위쪽 여백을 직접 둔다. 표는 기준 목록 표와 같다.
+ */
+.inspection-standard-version-dialog {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-3);
+}
+
+.inspection-standard-version-dialog > .inspection-standard-section-head > .pane-title {
+  margin: 0;
+}
+
+.inspection-standard-version-dialog > .pane {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.inspection-standard-version-dialog > .inspection-standard-section-head > .pane-title {
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+}
+
+/* 표는 기준 목록 표와 같은 모양(사용자 지시 · #196) — 칸은 가운데 정렬, 버전 글자도 가운데. */
+.inspection-standard-version-dialog .inspection-standard-plan-open {
+  width: 100%;
+  text-align: center;
+}
+
+.inspection-standard-dialog-close {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* 정보 라벨 — 검사 조회·판정의 안내 줄(`.oqc-inspection-action-note[data-tone='info']`)과 같은 모양(사용자 지시 · #196). */
+.inspection-standard-notice-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0 auto 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--semantic-info-container);
+  color: var(--on-semantic-info-container);
+  font: var(--type-body-md);
+}
+
+.inspection-standard-detail {
+  display: grid;
+  /* 칸 폭을 넘지 않는다 — 열을 내용 폭(검사 항목 표 등)으로 늘리면 카드 밖으로 삐져나간다(#196). */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-content: start;
+  min-width: 0;
+}
+
+.inspection-split > .inspection-standard-list-pane {
+  display: flex;
+  flex-direction: column;
+  /* 단추 줄 · 표 · 쪽 이동 줄 사이를 띄운다(사용자 지시 2026-10-27 · #196). */
+  gap: var(--space-3);
+  height: auto;
+  max-height: calc(100dvh - 20rem);
+  overflow: hidden;
+}
+
+/* 표만 상자 안에서 구르고(머리줄 고정), 위 단추 줄 · 아래 쪽 이동 줄은 상자에 남는다. */
+.inspection-standard-list-pane > * {
+  flex: 0 0 auto;
+}
+
+.inspection-standard-list-pane > .inspection-standard-plan-rows {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* DS 표가 자기 감싸개(가로 넘침용)를 두므로, 세로로 구르는 상자도 그 감싸개가 맡아야 머리줄이 붙는다. */
+.inspection-standard-plan-rows > div {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.inspection-standard-plan-rows thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/*
+ * 열 순서 손잡이는 머리 이름 바로 오른쪽(사용자 지시 · #196). 자리를 차지하지 않게 띄워 이름은 칸 가운데에 둔다.
+ * ⚠ 공용 규칙(`.inspection-queue-table thead th[data-align='center'] .col-grip` — 칸 왼쪽 끝)보다 무거워야 한다 —
+ *   같은 무게면 뒤에 있는 공용 규칙이 이겨 손잡이가 이름 위에 겹쳐 잡을 수 없다.
+ */
+.inspection-queue-table.inspection-standard-plan-rows thead .col-head,
+.inspection-queue-table.inspection-standard-item-rows thead .col-head {
+  position: relative;
+}
+
+.inspection-queue-table.inspection-standard-plan-rows thead th[data-align] .col-grip,
+.inspection-queue-table.inspection-standard-item-rows thead th[data-align] .col-grip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-1));
+  transform: translateY(-50%);
+}
+
+/* 검사 기준 검색 창의 검색어 칸 — 안내 문구가 잘리지 않는 폭(사용자 지시 · #196). */
+/* 공용 창의 「첫 칸 12rem」 규칙(`.item-picker-controls > .field-cell:first-child`)보다 앞서야 한다. */
+.item-picker-controls > .field-cell.inspection-standard-picker-keyword:first-child {
+  flex: 1 1 22em;
+  min-width: min(22em, 100%);
+}
+
+
+.inspection-standard-plan-chips {
+  align-items: center;
+}
+
+/* 엑셀 올리기 사유는 줄 높이를 늘리지 않게 글로는 감추고(마우스를 올리면 보인다) 화면 낭독기 설명으로만 남긴다. */
+.inspection-standard-tooltip-reason > .field-note {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 줄 — 검사 조회·판정 목록과 같다: 아무 곳이나 눌러 고르고, 올리면 옅게, 고른 줄은 바탕 + 왼쪽 강조선. */
+.inspection-standard-plan-rows tbody tr,
+.inspection-standard-plan-rows tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.inspection-standard-plan-rows tbody tr {
+  transition: background-color 0.12s ease;
+  cursor: pointer;
+}
+
+.inspection-standard-plan-rows tbody tr:nth-child(n):hover {
+  background: var(--state-hover-neutral);
+}
+
+.inspection-standard-plan-rows
+  tbody
+  tr:nth-child(n):has(.inspection-standard-plan-open[aria-current='true']) {
+  background: var(--surface-container-high);
+}
+
+.inspection-standard-plan-rows
+  tbody
+  tr:has(.inspection-standard-plan-open[aria-current='true'])
+  > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+/* 기준 코드 — 링크 모양 없이 본문 글자. 누를 수 있다는 것은 커서와 줄 바탕으로 보인다. */
+.inspection-standard-plan-open {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-surface);
+  font: inherit;
+  /* 목록 표는 모든 열을 가운데 정렬한다(사용자 지시 · #196). */
+  width: 100%;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (min-width: 1440px) {
+  .inspection-split > .inspection-standard-list-pane {
+    max-height: none;
+    min-height: 0;
+  }
+
+  .inspection-split > .inspection-standard-detail {
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
+.po-board-split.inspection-split.is-stacked > .inspection-standard-list-pane {
+  box-sizing: border-box;
+  height: var(--stacked-list-height, auto);
+  min-height: 0;
+  max-height: var(--stacked-list-height, min(28rem, 50dvh));
+}
+
+.po-board-split.inspection-split.is-stacked > .inspection-standard-detail {
+  overflow: visible;
+}
+
+/*
+ * 상하 배치에서는 좌우 폭 막대 자리(`PaneSplitter`)가 한 줄을 차지하지 않게 감추고, 줄 높이는 내용대로 둔다 —
+ * 공용 상하 배치의 2 : 3 줄 나눔이 남으면 높이 막대가 3 줄을 차지해 목록과 상세 사이가 비어 보인다.
+ */
+.po-board-split.inspection-standard-split.is-stacked,
+.po-board-split.inspection-standard-split.is-stacked:has(> .po-board-gutter) {
+  grid-template-rows: none;
+}
+
+.po-board-split.inspection-standard-split.is-stacked > .po-board-gutter {
+  display: none;
 }
 
 .pane-stack {
@@ -353,30 +1153,85 @@ main > * + * {
   margin: 0;
 }
 
-.item-attrs-form {
-  display: grid;
-  gap: var(--space-5);
+/*
+ * 확장 속성 설정 항목 표(item-attrs-pane.tsx) — 구분 | 항목 | 설정값, 한 줄에 한 항목. 스크롤 없이 한 화면에 들어가게
+ * 줄을 촘촘히 둔다(사용자 지시 2026-10-28). 구분은 묶음 첫 줄에만 쓰고 묶음 사이에 굵은 선을 둔다.
+ */
+.item-attrs-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
 }
 
-.item-attrs-section {
-  min-width: 0;
+.item-attrs-table th,
+.item-attrs-table td {
+  padding: 3px var(--space-3);
+  font-weight: 400;
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.item-attrs-table thead th {
+  height: 2.25rem;
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.item-attrs-table thead th:nth-child(1) {
+  width: 9rem;
+}
+
+.item-attrs-table thead th:nth-child(2) {
+  width: 14rem;
+}
+
+.item-attrs-table tbody + tbody tr:first-child > * {
+  border-top: 2px solid var(--outline-variant);
+}
+
+.item-attrs-group {
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  vertical-align: top !important;
+  padding-top: var(--space-2) !important;
+}
+
+.item-attrs-field .field-label {
   margin: 0;
-  padding: var(--space-4) 0 0;
-  border: 0;
-  border-top: 1px solid var(--outline-variant);
-}
-
-.item-attrs-section:first-child {
-  padding-top: 0;
-  border-top: 0;
-}
-
-.item-attrs-section > legend {
-  padding: 0;
-  margin-bottom: var(--space-3);
   color: var(--on-surface);
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
+  font: var(--type-body-md);
+  line-height: 1.25;
+}
+
+.item-attrs-table td .field-error {
+  display: block;
+  font: var(--type-label-sm);
+}
+
+.item-attrs-table td .item-attrs-inline > :not(label):not(.item-attrs-inline) {
+  width: 16rem;
+  max-width: 100%;
+}
+
+.item-attrs-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.item-attrs-inline .item-attrs-inline {
+  gap: var(--space-2);
+}
+
+.item-attrs-inline .item-attrs-inline > :first-child {
+  width: 7rem !important;
+}
+
+.item-attrs-unit {
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
 }
 
 /* W-06-01 공정 마스터 — 목록과 편집의 축이 대등하므로 1:1로 나눈다. */
@@ -7303,6 +8158,23 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 두 표(server #762) — 열별 폭의 도출 표는 order-table.tsx · line-table.tsx 에 있다.
  * 열 폭을 끌어 바꾸면 최소 폭이 그만큼 따라간다(`--col-grow` · `--col-floor`, patterns/column-resize.tsx).
  */
+/*
+ * 입고 관리 짜임의 표(patterns/board-table.tsx) — 최소 폭은 표마다(`--board-table-min`), 열을 넓힌 만큼 따라간다.
+ * 아래 화면별 규칙(발주 목록 · 라인 표)이 뒤에 서서 이긴다.
+ */
+.wide-table.board-table table {
+  min-width: max(var(--board-table-min, 38rem) + var(--col-grow, 0px), var(--col-floor, 0px));
+}
+
+/*
+ * 구획 틀(board-frame.tsx) 안의 표는 넓힌 만큼 표가 함께 늘지 않는다 — 넓힌 열은 이름 열(남는 폭)에서 폭을 가져온다.
+ * 표가 칸을 넘으면 뒤 열이 칸 끝에서 잘려 보였다(사용자 지시 2026-10-28). 이름 열에 남긴 폭(`--col-floor` 에 드는
+ * 「적어도 이만큼」)도 표를 늘리지 않는다 — 고정 폭 열의 합 + 이름 열 80px 까지만. 끄는 끝은 `column-resize.tsx` 가 칸 폭에서 멈춘다.
+ */
+.board-frame .wide-table.board-table table {
+  min-width: max(var(--board-table-min, 38rem), var(--col-fixed, 0px) + 80px);
+}
+
 .wide-table.po-board-orders table {
   min-width: max(38rem + var(--col-grow, 0px), var(--col-floor, 0px));
 }
@@ -7841,13 +8713,23 @@ body.po-board-resizing.is-row-resize {
   color: var(--semantic-warning);
 }
 
-/* 발주 줄은 어디를 눌러도 고른다(order-table.tsx). */
-.po-board-orders tbody tr {
+/* 줄은 어디를 눌러도 고른다(patterns/board-table.tsx `pick` — 발주 목록 · ERP 송신 항목 · 연계 메시지). */
+.board-table-pickable tbody tr {
   cursor: pointer;
 }
 
-.po-board-orders tbody tr:hover > td {
+.board-table-pickable tbody tr:hover > td {
   background: var(--surface-container);
+}
+
+/* 고르는 단추는 다른 칸과 같은 글자다 — 줄 전체가 누르는 자리라 링크처럼 꾸밀 까닭이 없다(발주 목록과 같다). */
+.board-table .board-table-pick {
+  color: inherit;
+  text-decoration: none;
+}
+
+.board-table .board-table-pick:hover {
+  background: none;
 }
 
 /*
@@ -7856,8 +8738,8 @@ body.po-board-resizing.is-row-resize {
  * 올렸다 떼도 남도록 hover 보다 우선한다(사용자 지시 2026-10-21 「선택 행 하이라이트 유지」).
  */
 /* 붉은 계열(primary)은 쓰지 않는다 — 문제가 있다는 뜻으로 읽힌다(사용자 지시 2026-10-21). 정보 파랑이다. */
-.po-board-orders tbody tr:has([aria-current='true']) > td,
-.po-board-orders tbody tr:has([aria-current='true']):hover > td,
+.board-table tbody tr:has(.board-table-pick[aria-current='true']) > td,
+.board-table tbody tr:has(.board-table-pick[aria-current='true']):hover > td,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td,
 .iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
@@ -7866,7 +8748,7 @@ body.po-board-resizing.is-row-resize {
 }
 
 /* 품질 승인 처리 목록(#186)도 같은 표시다 — 고른 요청이 입하 예정 조회의 고른 발주처럼 보인다. */
-.po-board-orders tbody tr:has([aria-current='true']) > td:first-child,
+.board-table tbody tr:has(.board-table-pick[aria-current='true']) > td:first-child,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child,
 .iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
@@ -8244,6 +9126,207 @@ th:hover > .col-drag {
   gap: var(--space-1);
 }
 
+/*
+ * 연동 현황·이력 · 화면 틀(patterns/board-frame.tsx) — 위 상자(받기 상태 · 조회 조건 · 조회 실패 안내)는 구획 사이
+ * 간격만 둔다.
+ */
+.integration-sync-above,
+.board-frame-above {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+/* 조건 줄 아래 한 줄 안내(ERP 데이터 탭의 「고칠 수 없습니다」) — 상자 폭을 다 써 한 줄로 선다. */
+.po-board-filter > .field-note {
+  max-width: none;
+}
+
+/*
+ * 상세 구획 안의 둘째 묶음(전표 라인) — 앞 사실 칸과 표제 사이를 둔다. 라인 표가 구획보다 넓으면 표만 가로로 넘긴다 —
+ * 구획이 통째로 옆으로 밀리면 위 사실 칸까지 화면 밖으로 나간다.
+ */
+.board-frame-sub {
+  margin-top: var(--space-5);
+}
+
+.board-frame-sub > .po-board-table {
+  overflow-x: auto;
+}
+
+/*
+ * ERP BOM 하이라키(erp-bom/screen.tsx `BomTreeCell`) — 단계마다 들여 쓰고, 펼치고 접는 단추 자리를 줄마다 같은 폭으로
+ * 둔다(단추가 없는 줄도 글자가 같은 세로선에 선다). 넘치는 이름은 `OneLine` 이 말줄임한다.
+ */
+.bom-tree-cell {
+  /*
+   * 연결선이 줄 사이에서 끊기지 않게 칸 여백(위 8px · 아래 8px + 테두리 1px — 디자인 시스템 표의 촘촘한 밀도)만큼
+   * 칸 밖으로 늘린다. 표의 밀도가 바뀌면 이 둘을 함께 고친다.
+   */
+  --bom-tree-bleed-top: 8px;
+  --bom-tree-bleed-bottom: 9px;
+  --bom-tree-line: 1px dotted var(--outline);
+
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 24px;
+}
+
+/* 단계 한 칸(24px) — 세로선은 칸 가운데, 위 단계의 펼침 단추 가운데와 같은 세로선이다. */
+.bom-tree-rail {
+  position: relative;
+  flex: 0 0 24px;
+  align-self: stretch;
+}
+
+.bom-tree-rail[data-line='pass']::before,
+.bom-tree-rail[data-line='tee']::before,
+.bom-tree-rail[data-line='elbow']::before {
+  content: '';
+  position: absolute;
+  top: calc(-1 * var(--bom-tree-bleed-top));
+  bottom: calc(-1 * var(--bom-tree-bleed-bottom));
+  left: 11px;
+  border-left: var(--bom-tree-line);
+}
+
+/* └ — 마지막 형제는 세로선이 이 줄 가운데에서 멈춘다. */
+.bom-tree-rail[data-line='elbow']::before {
+  bottom: 50%;
+}
+
+/* ├ · └ 의 가로선 — 이 줄의 단추 · 이름 쪽으로. */
+.bom-tree-rail[data-line='tee']::after,
+.bom-tree-rail[data-line='elbow']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 11px;
+  border-top: var(--bom-tree-line);
+}
+
+.bom-tree-toggle,
+.bom-tree-spacer {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+/* 하위 구성이 없는 줄 — 가지선을 이름 앞까지 끌어온다. */
+.bom-tree-spacer[data-branch='true']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: var(--space-1);
+  left: 0;
+  border-top: var(--bom-tree-line);
+}
+
+/* 펼친 줄 — 단추 아래에서 줄 끝까지 세로선을 내려 첫 자식의 가지선과 잇는다. */
+.bom-tree-toggle[aria-expanded='true']::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 11px;
+  height: var(--bom-tree-bleed-bottom);
+  border-left: var(--bom-tree-line);
+}
+
+.bom-tree-toggle {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+.bom-tree-toggle:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+.bom-tree-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.bom-tree-cell > .po-board-one-line {
+  flex: 0 1 auto;
+  margin-left: var(--space-1);
+}
+
+.bom-tree-note {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+/* 품목코드는 굵게(사용자 지시 2026-10-27) — 하이라키 줄 · 모품목 상세. */
+.bom-tree-code {
+  flex: 0 0 auto;
+  margin-left: var(--space-1);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+dd.bom-tree-code,
+.bom-tree-code.bom-code-cell {
+  margin-left: 0;
+}
+
+/* 모품목 상세 — 하이라키 표 위, 표와 사이를 둔다. */
+.bom-parent-facts {
+  flex: 0 0 auto;
+  margin-bottom: var(--space-3);
+}
+
+/* 목록 한 구획(상세 없음) — 나란히 설 때도 전체 폭을 쓴다. */
+@media (min-width: 1440px) {
+  .po-board-split.board-frame-single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ERP 받기 상태 머리 줄 — 제목 · 요약 · 펼치기가 한 줄이다(접힌 상태가 기본). */
+.sync-tables-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.sync-tables-head > .pane-title {
+  margin: 0;
+}
+
+.sync-tables-head > button {
+  margin-left: auto;
+}
+
+/*
+ * ERP 송신 상태 칩(erp-outbound/send-chips.tsx) — 단계 칩과 같은 간격. 연동 현황·이력에서는 묶음이 ERP 송신 탭으로 가는
+ * 링크라 밑줄 없이 칩 모양 그대로 둔다.
+ */
+.erp-send-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: inherit;
+  text-decoration: none;
+}
+
+a.erp-send-chips:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+}
+
 /* 「입고 처리」 창 — 입고 정보 칸이 두 줄에 들어오는 폭. 입하 등록 창(88rem)보다 좁다. */
 .post-dialog {
   --dialog-max-lg: 72rem;
@@ -8348,6 +9431,18 @@ th:hover > .col-drag {
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface-muted);
+}
+
+/* 올리기 창에서 고른 파일 목록 — 이름 옆에 [빼기] 단추를 둔다(검사기준 엑셀 올리기 #199). */
+.import-file-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.import-file-list li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /*
@@ -19442,7 +20537,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   background: var(--state-hover-neutral);
 }
 
-/* 고른 줄은 입하 예정 조회와 같은 파랑이다(#186 · `.po-board-orders` 규칙 곁에 함께 적었다). */
+/* 고른 줄은 입하 예정 조회와 같은 파랑이다(#186 · `.board-table` 규칙 곁에 함께 적었다). */
 
 /* 요청번호 — 한 줄, 본문색·굵게. 줄 전체가 누르는 자리라(#186) 요청번호만 따로 누를 곳처럼 보이지 않게 한다. */
 .iqc-skip-approval-list .iqc-skip-approval-request-no {
@@ -19700,58 +20795,12 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   border: 0;
 }
 
-/*
- * 입고 관리 — 화면 막대. 이름 「입고 관리」(옛 탭 막대의 켜진 탭 `.hub-tab[aria-current]` 과 같은 모양) + 오른쪽의
- * 단계 칩 · 「초과분 연결」. 탭을 합치며(2026-10-23) 셸의 탭 막대(`.hub-bar`)가 빠져 화면이 같은 모양의 줄을 그린다.
- * 밑줄은 줄 전체에 긋는다.
- */
-.po-board-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  box-shadow: inset 0 -1px 0 var(--outline-variant);
-}
-
-.po-board-title {
-  flex: none;
-  margin: 0;
-  padding: var(--space-2) var(--space-4);
-  color: var(--primary-text);
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-  white-space: nowrap;
-  box-shadow: inset 0 -2px 0 var(--primary-text);
-}
-
+/* 입고 관리 — 탭 막대 오른쪽 자리(`hub-actions`)에 넣는 단계 칩 줄. */
 .po-board-bar-tools {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin-left: auto;
-}
-
-/*
- * 입하 예정 — 초과분 발주 연결(서버 장부 P-100). 화면 막대 끝의 진입 단추와 오른쪽에서 열리는 연결 창.
- * 고른 줄 표시는 발주 목록과 같은 정보 파랑이다(붉은 계열은 문제로 읽힌다).
- */
-
-.po-board-tool-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  margin-left: var(--space-2);
-  padding: 0 var(--space-1);
-  border-radius: 999px;
-  background: var(--semantic-warning-container);
-  color: var(--semantic-on-warning-container, var(--on-surface));
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.excess-dialog {
-  --dialog-max-lg: 72rem;
 }
 
 .register-panel {
@@ -19785,41 +20834,17 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   margin: 0;
 }
 
-.excess-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.excess-guide {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.excess-table {
-  max-height: 40vh;
-  overflow: auto;
-}
-
-/* 열 폭을 끌어 바꾸면 최소 폭이 따라간다(patterns/column-resize.tsx). 기본은 `.wide-table` 의 58rem 이다. */
-.wide-table.excess-table table {
-  min-width: max(58rem + var(--col-grow, 0px), var(--col-floor, 0px));
-}
-
-.excess-table tbody tr {
+/* 「입고 대기 전체」 — 발주 머리의 체크 하나와 이름. */
+.po-board-check-all {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.excess-table tbody tr:has([aria-current='true']) > td,
-.excess-table tbody tr:has([aria-current='true']):hover > td {
-  background: var(--semantic-info-container);
-}
-
-.excess-table tbody tr:has([aria-current='true']) > td:first-child {
-  box-shadow: inset 3px 0 0 var(--semantic-info);
-}
-
+/* 입고 관리 묶음의 「초과분 발주 연결」 탭(2026-10-28 — 오른쪽 창을 탭으로 뗐다). */
 .excess-receipt-cell {
   display: inline-flex;
   align-items: center;
@@ -19827,29 +20852,32 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 .excess-section-title {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  margin: 0 0 var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
   font-size: 1rem;
 }
 
-.excess-section-sub {
-  color: var(--on-surface-variant);
-  font-size: 0.875rem;
-  font-weight: 400;
-}
-
-.excess-footer {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+/* 입고 일괄 처리 창의 LOT 표 — 몇 줄이라 표 부품 없이 촘촘하게. */
+.batch-post-lots {
   width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
 }
 
-.excess-confirm {
-  flex: 1;
-  margin: 0;
+.batch-post-lots th,
+.batch-post-lots td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.batch-post-lots th {
+  color: var(--on-surface-variant);
+  font-weight: 500;
+}
+
+.batch-post-lots .batch-post-qty {
+  text-align: right;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -20044,6 +21072,33 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option'] > :first-child {
   order: 1;
   margin-inline-start: auto;
+}
+
+/* C-17, C-19 CountChip(patterns/count-chip) 조건 칩: 선택과 관계없이 같은 모양, 선택된 것만 테두리가 굵다. 색은 상태 칩과 같다. */
+.count-chip {
+  padding: 0 var(--space-3);
+  min-height: var(--control-height-sm);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  cursor: pointer;
+}
+
+.count-chip-warning {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.count-chip-success {
+  background: var(--semantic-success-container);
+  color: var(--on-semantic-success-container);
+}
+
+.count-chip.is-selected {
+  border-width: 2px;
+  border-color: var(--on-surface);
 }
 
 /* T-W-C ProcessPage. 처리 머리는 제목 줄과 요약 줄 두 줄로 고정한다. */
@@ -20330,42 +21385,11 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   cursor: help;
 }
 
-/* ── W-02-01 ERP W/O 처리 ─────────────────────────────────────────────── */
+/* ── W-02-01 작업지시 목록 ─────────────────────────────────────────────── */
 .erp-wo-counts {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.erp-wo-counts-label {
-  color: var(--on-surface-variant);
-}
-
-/* C-19 조건 칩: 선택과 관계없이 같은 모양, 선택된 것만 테두리가 굵다. 색은 상태 칩과 같다. */
-.count-chip {
-  padding: 0 var(--space-3);
-  min-height: var(--control-height-sm);
-  border: 1px solid var(--outline);
-  border-radius: var(--radius-full);
-  background: var(--surface);
-  color: var(--on-surface);
-  font: var(--type-label-sm);
-  cursor: pointer;
-}
-
-.count-chip-warning {
-  background: var(--semantic-warning-container);
-  color: var(--on-semantic-warning-container);
-}
-
-.count-chip-success {
-  background: var(--semantic-success-container);
-  color: var(--on-semantic-success-container);
-}
-
-.count-chip.is-selected {
-  border-width: 2px;
-  border-color: var(--on-surface);
 }
 
 .erp-wo-bulk-actions {
@@ -20406,7 +21430,20 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   white-space: nowrap;
+  cursor: help;
+}
+
+/* 사유 도움말은 사유마다 한 줄이다. */
+.reason-help {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  white-space: normal;
 }
 
 .erp-wo-summary {
@@ -22052,7 +23089,8 @@ body.col-reordering * {
  */
 .inspection-split > .iqc-inspection-queue-pane,
 .inspection-split > .oqc-inspection-queue-pane,
-.inspection-split > .pqc-web-list.pane {
+.inspection-split > .pqc-web-list.pane,
+.inspection-split > .lot-trace-list-pane {
   height: auto;
   max-height: calc(100dvh - 20rem);
 }
@@ -22060,14 +23098,16 @@ body.col-reordering * {
 @media (min-width: 1440px) {
   .inspection-split > .iqc-inspection-queue-pane,
   .inspection-split > .oqc-inspection-queue-pane,
-  .inspection-split > .pqc-web-list.pane {
+  .inspection-split > .pqc-web-list.pane,
+  .inspection-split > .lot-trace-list-pane {
     max-height: none;
     min-height: 0;
   }
 
   .inspection-split > .iqc-inspection-detail,
   .inspection-split > .oqc-inspection-detail,
-  .inspection-split > .pqc-web-detail {
+  .inspection-split > .pqc-web-detail,
+  .inspection-split > .lot-trace-detail-pane {
     min-height: 0;
     overflow: auto;
   }
@@ -22167,7 +23207,8 @@ body.col-reordering * {
 
 .po-board-split.inspection-split.is-stacked > .iqc-inspection-queue-pane,
 .po-board-split.inspection-split.is-stacked > .oqc-inspection-queue-pane,
-.po-board-split.inspection-split.is-stacked > .pqc-web-list.pane {
+.po-board-split.inspection-split.is-stacked > .pqc-web-list.pane,
+.po-board-split.inspection-split.is-stacked > .lot-trace-list-pane {
   /* 가운데 막대로 높이를 정했으면 그 높이, 아니면 줄 수만큼(넘치면 상자 안에서 구른다). */
   box-sizing: border-box;
   height: var(--stacked-list-height, auto);
@@ -22177,7 +23218,8 @@ body.col-reordering * {
 
 .po-board-split.inspection-split.is-stacked > .iqc-inspection-detail,
 .po-board-split.inspection-split.is-stacked > .oqc-inspection-detail,
-.po-board-split.inspection-split.is-stacked > .pqc-web-detail {
+.po-board-split.inspection-split.is-stacked > .pqc-web-detail,
+.po-board-split.inspection-split.is-stacked > .lot-trace-detail-pane {
   overflow: visible;
 }
 
@@ -22257,7 +23299,8 @@ body.col-reordering * {
 @media (max-width: 1439px) {
   .po-board-split.inspection-split > .iqc-inspection-queue-pane,
   .po-board-split.inspection-split > .oqc-inspection-queue-pane,
-  .po-board-split.inspection-split > .pqc-web-list.pane {
+  .po-board-split.inspection-split > .pqc-web-list.pane,
+  .po-board-split.inspection-split > .lot-trace-list-pane {
     height: auto;
     min-height: 0;
     max-height: min(28rem, 50dvh);
@@ -23398,6 +24441,608 @@ table.col-measuring td {
   /* 남는 폭을 다 쓴다(창 폭 따라 늘고 준다 · 사용자 지시 2026-10-26). */
   flex: 1 1 20rem;
   min-width: 0;
+}
+
+/* ── W-02-09 LOT 추적(입출고 현황) ────────────────────────────────────── */
+.lot-trace-kinds {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lot-trace-kinds-label {
+  color: var(--on-surface-variant);
+}
+
+.lot-trace-export {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.lot-trace-export-progress,
+.lot-trace-export-reason {
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.filter-bar.lot-trace-filter {
+  margin-bottom: 0;
+}
+
+/* 조건 더보기를 펴면 둘째 줄. 기본 줄의 [초기화] [조회]는 첫 줄 오른쪽 끝에 남는다. */
+.lot-trace-filter-more {
+  display: flex;
+  flex-basis: 100%;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.lot-trace-totals {
+  display: flex;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-3);
+  font: var(--type-body-sm);
+}
+
+.lot-trace-totals-label {
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 품목명이 남는 폭을 가져간다(C-16). 칸 폭을 0에서 늘려 내용 길이가 표 폭을 밀지 못하게 한다.
+ * 대조 열(문서번호, LOT 번호)은 말줄임하지 않는다(C-10).
+ */
+.lot-trace-table td:has(> .lot-trace-fill) {
+  width: 100%;
+  max-width: 0;
+}
+
+.lot-trace-table .lot-trace-fill {
+  min-width: 6rem;
+}
+
+.lot-trace-table .lot-trace-partner {
+  max-width: 8rem;
+}
+
+/* 탭 머리 줄: 왼쪽 조건 칩, 오른쪽 엑셀 내보내기 */
+.lot-trace-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: var(--space-3) 0;
+}
+
+.lot-trace-toolbar-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.lot-trace-list-pane {
+  margin-top: var(--space-4);
+}
+
+/* 진입점이 없을 때 [조회] 아래 사유 한 줄(C-4) */
+.lot-trace-actions-cell {
+  align-items: flex-end;
+}
+
+.lot-trace-entry-reason {
+  margin-top: var(--space-1);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.lot-trace-filter-more {
+  flex-wrap: wrap;
+}
+
+.lot-trace-axis {
+  min-height: var(--control-height-md);
+  align-items: center;
+}
+
+/*
+ * 자재 LOT, 제품 LOT 탭 — 목록과 상세 배치는 검사 조회·판정과 같은 규칙(`.inspection-split`, 좌우 · 상하 배치 고름)을 쓴다.
+ * 여기에는 목록 창 안의 짜임만 둔다: 표만 안에서 구르고 쪽 넘김은 제자리, 머리줄은 위에 붙는다.
+ */
+.lot-trace-split {
+  margin-top: var(--space-4);
+}
+
+.lot-trace-split > .lot-trace-list-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: 0;
+}
+
+.lot-trace-split > .lot-trace-list-pane > .lot-trace-list-rows {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* DS 표가 자기 감싸개(가로 넘침용)를 두므로, 세로로 구르는 상자도 그 감싸개가 맡아야 머리줄이 붙는다. */
+.lot-trace-list-rows > .selectable-table {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.lot-trace-list-rows thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* 상세 창 — 카드 폭으로 배치를 고른다(창 폭이 아니라 카드 폭이 정한다). */
+.lot-trace-detail-pane {
+  container-type: inline-size;
+}
+
+/* 목록 행 — 검사 조회·판정 목록과 같은 표시: 줄무늬 없음, 올리면 옅게, 고른 행은 바탕과 왼쪽 강조선. */
+.lot-trace-list-rows tbody tr,
+.lot-trace-list-rows tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.lot-trace-list-rows .selectable-table tbody > tr.is-active > td,
+.lot-trace-list-rows .selectable-table tbody > tr.is-active:hover > td {
+  background: var(--surface-container-high);
+}
+
+.lot-trace-list-rows .selectable-table tbody > tr.is-active > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+/* LOT 번호 — 한 줄. 모자라면 앞 마디만 줄이고 끝 마디(일련번호)는 남긴다(trace-table.tsx). */
+.lot-trace-lot {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lot-trace-lot:has(> .lot-trace-lot-tail) {
+  display: flex;
+  min-width: 0;
+}
+
+.lot-trace-lot-head {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lot-trace-lot-tail {
+  flex: none;
+}
+
+/* 품목 「이름 코드」 한 줄 — 이름이 먼저 줄고, 코드는 흐리게 뒤에 붙는다. */
+.lot-trace-item-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lot-trace-item-code {
+  flex: 0 10 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 상세 — 경로 줄, 머리, 요약 항목, 단계 줄, 구획(얇은 구분선으로 가른다). */
+.lot-trace-detail {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.lot-trace-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--type-body-sm);
+}
+
+.lot-trace-back {
+  gap: var(--space-1);
+}
+
+.lot-trace-path-steps,
+.lot-trace-path-step {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.lot-trace-path-step > :last-child {
+  color: var(--on-surface-muted);
+}
+
+.lot-trace-path-current {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.lot-trace-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.lot-trace-detail-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.lot-trace-detail-title > h2 {
+  overflow-wrap: anywhere;
+}
+
+.lot-trace-detail-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/*
+ * 항목명(위)과 값(아래)의 격자 — 검사 조회·판정 기본 정보와 같은 모양. 카드 폭만큼 칸을 채우고, 품목처럼 긴 값은
+ * 두 칸을 쓴다.
+ */
+.lot-trace-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0;
+}
+
+.lot-trace-fact.is-wide {
+  grid-column: span 2;
+}
+
+/* 상세 머리의 요약 항목 — 칸마다 제 폭만 써서 한 줄에 선다. 첫 표가 첫 화면에서 멀어지지 않게. */
+.lot-trace-facts.is-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+}
+
+.lot-trace-facts.is-compact > .lot-trace-fact {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.lot-trace-fact {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.lot-trace-fact > dt {
+  margin: 0;
+}
+
+.lot-trace-fact > dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.lot-trace-fact .ellipsis-cell {
+  display: block;
+  max-width: 100%;
+}
+
+/* 번호(입하번호, W/O 번호)는 칸 안에서 접지 않는다. 모자라면 말줄임, 전체는 마우스를 올리면 보인다. */
+.lot-trace-fact > dd > .mono-cell {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lot-trace-section {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  scroll-margin-top: var(--space-3);
+}
+
+.lot-trace-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.lot-trace-section-count {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+.lot-trace-section p,
+.lot-trace-block-empty {
+  margin: 0;
+}
+
+.lot-trace-block {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.lot-trace-block-title {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+/*
+ * 상세 안 작은 표 — 셀은 한 줄(C-16), 표는 상세 창 폭 안에 들어온다. 번호, 수량, 날짜 열은 정한 폭, 이름 열이 남는
+ * 폭을 쓴다. 모자라면 칸 안에서 말줄임이고 전체 값은 마우스를 올리면 보인다. 창 안에서 가로로 구르지 않는다.
+ */
+.lot-trace-detail-table {
+  min-width: 0;
+}
+
+.lot-trace-detail-table table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.lot-trace-detail-table th,
+.lot-trace-detail-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lot-trace-detail-table td .ellipsis-cell,
+.lot-trace-detail-table td .mono-cell:not(.lot-trace-lot) {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 번호와 칩을 한 칸에 — 번호가 먼저 줄고 칩은 그대로 보인다. */
+.lot-trace-cell-with-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.lot-trace-cell-with-chip > .mono-cell {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.lot-trace-cell-with-chip > :last-child:not(.mono-cell) {
+  flex: none;
+}
+
+/* 생산 LOT 묶음 — 머리 줄(생산 LOT 번호와 문서 건수)을 눌러 접고 편다. 펴면 요약 항목과 세 표. */
+.lot-trace-group {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  scroll-margin-top: var(--space-3);
+}
+
+.lot-trace-group-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  list-style: none;
+}
+
+.lot-trace-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.lot-trace-group-summary > .field-label {
+  margin: 0;
+}
+
+.lot-trace-group:not([open]) > .lot-trace-group-summary > :first-child {
+  transform: rotate(-90deg);
+}
+
+.lot-trace-group-summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.lot-trace-group-lot {
+  font-weight: 700;
+}
+
+.lot-trace-group-counts {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+.lot-trace-group-body {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.lot-trace-group-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.lot-trace-group-head > .lot-trace-facts {
+  flex: 1 1 auto;
+}
+
+/*
+ * 단계 줄 — DS Stepper(작게). 지난 단계는 완료, 가장 멀리 간 단계는 진행 중, 닿지 않은 단계는 대기 모양이다.
+ * 단계 이름과 건수를 단추 하나로 두어 누르면 상세의 그 단계 첫 구획으로 간다.
+ */
+.lot-trace-stages {
+  margin: 0 0 var(--space-3);
+}
+
+.lot-trace-stage-jump {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lot-trace-stage-jump:hover:not(:disabled) {
+  background: var(--surface-container-high);
+}
+
+.lot-trace-stage-jump:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.lot-trace-stage-jump:disabled {
+  cursor: default;
+}
+
+.lot-trace-stage-count {
+  font: var(--type-body-sm);
+}
+
+[aria-current='step'] .lot-trace-stage-jump {
+  font-weight: 700;
+}
+
+[data-status='pending'] .lot-trace-stage-jump {
+  color: var(--on-surface-muted);
+}
+
+.lot-trace-chip-anchor {
+  display: inline-flex;
+}
+
+.lot-trace-stage-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+/*
+ * 구매발주 조회(ERP) 라인 표 머리 — 제목 오른쪽에 외자 발주의 [통관번호 받아오기](omf-all-around#206). 받아온 결과의 띠는
+ * 머리 아래 한 줄을 통째로 쓴다.
+ */
+.erp-po-lines-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.erp-po-lines-head > .pane-title {
+  margin: 0;
+}
+
+.erp-po-customs-result {
+  display: grid;
+  flex-basis: 100%;
+  gap: var(--space-2);
+}
+
+.erp-po-customs-candidates {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+/*
+ * 구매발주 조회(ERP) 발주 유형 조건 — 코드 이름이 길어(「외자발주(직수입)(IMPORT P/O)」) 칸이 이름만큼 넓어지면 조회 ·
+ * 초기화가 다음 줄로 밀린다. 폭을 정하고 넘치는 이름은 말줄임한다.
+ */
+.erp-po-order-type-field {
+  width: 13rem;
+}
+
+.erp-po-order-type-field > :not(label) {
+  width: 100%;
+  min-width: 0;
+
+ * 선택지가 많은 선택 칸의 검색창(`patterns/select.tsx`) — 펼친 목록 맨 위에 붙어, 목록을 내려도 남는다. 목록 바탕과 같은
+ * 색으로 덮어 아래 줄이 비치지 않게 한다.
+ */
+.select-search {
+  box-sizing: border-box;
+  position: sticky;
+  top: calc(-1 * var(--space-1));
+  z-index: 1;
+  margin-top: calc(-1 * var(--space-1));
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  background: var(--surface-container-high);
+}
+
+.select-search-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 10rem;
+  height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--type-body-md);
+}
+
+.select-search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.select-search-empty {
+  margin: 0;
+  padding: var(--space-2) var(--space-1) var(--space-1);
+  color: var(--on-surface-muted);
+  font: var(--type-body-md);
 }
 
 /* 피처 002 — 닫힌 묶음 손잡이의 대기 점(IQC 대기, 확정 항목 2). 이름 바로 뒤, 화살표 앞이다. */

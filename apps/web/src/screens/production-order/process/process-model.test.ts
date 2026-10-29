@@ -47,6 +47,18 @@ describe('처리 화면 단계 판정(C-5)', () => {
     });
   });
 
+  it('확정된 계획이 있으면 그 계획의 개정으로 통과한다(개정 목록에 없거나 쓸 수 없어도)', () => {
+    expect(
+      judgeMaster(
+        { ...master, routingCount: 0, routingSelected: false, fixedByPlan: true },
+        '생산계획',
+      ),
+    ).toEqual({
+      complete: true,
+      guidance: { text: '생산계획으로 진행할 수 있습니다', todo: false },
+    });
+  });
+
   it('막힘이 없으면 「남은 일」 없이 다음 단계 문장을 쓰고 조사를 받침에 맞춘다', () => {
     expect(judgeMaster(master, '생산계획').guidance).toEqual({
       text: '생산계획으로 진행할 수 있습니다',

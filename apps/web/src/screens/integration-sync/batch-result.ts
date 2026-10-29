@@ -17,7 +17,8 @@ const t = messages.integrationSync;
 /** 보낸 건 하나. 위치 번호를 되짚는 정본이라 **보낸 순서 그대로** 보관해야 한다. */
 export interface RequestedMessage {
   id: number;
-  messageKey: string;
+  /** 결과에 그 건을 부르는 이름 — 「입고 (G/R) GR-…」(`message-labels.ts` `messageTitleOf`). */
+  label: string;
 }
 
 export interface BatchFailureView {
@@ -48,7 +49,7 @@ const toFailureView = (
   const reasons = failure.errors.map((item) => item.message).filter((message) => message !== '');
 
   return {
-    label: target === undefined ? t.batch.unknownItem : target.messageKey,
+    label: target === undefined ? t.batch.unknownItem : target.label,
     reasons: reasons.length > 0 ? reasons : [t.batch.noReason],
   };
 };

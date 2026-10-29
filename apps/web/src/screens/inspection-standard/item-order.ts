@@ -55,7 +55,7 @@ export const toItemDrafts = (items: InspectionItemSpec[]): ItemDraft[] =>
  */
 let newDraftSequence = 0;
 
-/** 새 항목 한 행. 불리언·측정 횟수의 기본값은 계약이 정한 값을 그대로 쓴다. */
+/** 새 항목 한 행. 측정 횟수의 기본값은 계약이 정한 값을 그대로 쓴다. */
 export const createItemDraft = (): ItemDraft => {
   newDraftSequence += 1;
 
@@ -72,7 +72,8 @@ export const createItemDraft = (): ItemDraft => {
     measurementCount: '1',
     inspectionMethodCode: '',
     defaultInspectionEquipmentId: '',
-    requiredFlag: true,
+    /* 새 항목은 필수 해제 · 자동판정 체크로 연다 — 계약 기본값(필수 참)과 다르다(사용자 지시 · #196). */
+    requiredFlag: false,
     automaticJudgment: true,
   };
 };

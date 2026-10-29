@@ -3,7 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
-import type { ErpItem, ErpItemListResult, SelectOption } from './types';
+import type { ErpItemListResult, SelectOption } from './types';
 
 /**
  * 품목정보 조회 (ERP)의 읽기. 경로 리터럴은 이 파일에만 둔다 —
@@ -24,7 +24,6 @@ export interface ErpItemListQuery {
 export const erpItemKeys = {
   all: ['erp-item'] as const,
   list: (query: ErpItemListQuery) => ['erp-item', 'list', query] as const,
-  detail: (id: number | null) => ['erp-item', 'detail', id] as const,
   itemTypes: ['erp-item', 'lookup', 'item-types'] as const,
   uoms: ['erp-item', 'lookup', 'uoms'] as const,
 };
@@ -37,28 +36,6 @@ export const useErpItemList = (query: ErpItemListQuery): UseQueryResult<ErpItemL
     queryFn: async () => {
       const data = await runRequest(() => client.GET('/mdm/items', { params: { query } }));
       return { items: data.items, page: data.page };
-    },
-  });
-};
-
-/** 품목 상세. 고르기 전에는 조회하지 않는다 — 들어오기만 해도 부르면 쓰지 않는 요청이 나간다. */
-export const useErpItemDetail = (id: number | null): UseQueryResult<ErpItem> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: erpItemKeys.detail(id),
-    enabled: id !== null,
-    queryFn: async () => {
-      if (id === null) {
-        throw new Error('품목을 고르기 전에는 상세를 조회하지 않습니다.');
-      }
-
-      const data = await runRequest(() =>
-        client.GET('/mdm/items/{itemId}', { params: { path: { itemId: id } } }),
-      );
-
-      // 편집 가능 여부(editability)는 쓰지 않는다 — 이 화면에는 쓰기가 없다.
-      return data.item;
     },
   });
 };

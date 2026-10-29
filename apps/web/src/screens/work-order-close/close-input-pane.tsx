@@ -1,7 +1,8 @@
 import { messages } from '@omf-mes/i18n';
-import { Radio, Select, TextArea, type SelectItems } from '@crefle/web-ui';
+import { Radio, TextArea, type SelectItems } from '@crefle/web-ui';
 import { type JSX, useId } from 'react';
 
+import { Select } from '../../patterns/select';
 import type {
   WorkOrderCloseInputDraft,
   WorkOrderCloseRemainderDisposition,

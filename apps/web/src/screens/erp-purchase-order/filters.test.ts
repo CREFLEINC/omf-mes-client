@@ -12,11 +12,35 @@ import {
 
 describe('erp-purchase-order filters', () => {
   it('주소와 조건이 서로 되돌아간다', () => {
-    const filters = { ...DEFAULT_FILTERS, q: 'PO-1', supplier: '4101', openOnly: true };
+    const filters = { ...DEFAULT_FILTERS, q: 'PO-1', supplier: '4101', progress: 'open' as const };
     const params = toSearchParams(filters, 3);
-    expect(params.toString()).toBe('q=PO-1&supplier=4101&open=1&page=3');
+    expect(params.toString()).toBe('q=PO-1&supplier=4101&progress=open&page=3');
     expect(readFilters(params)).toEqual(filters);
     expect(readPage(params)).toBe(3);
+  });
+
+  it('진행은 전체면 적지 않고, 예전 주소의 `open=1` 은 미완료로 읽는다', () => {
+    expect(toSearchParams(DEFAULT_FILTERS, 1).toString()).toBe('');
+    expect(readFilters(new URLSearchParams('progress=done')).progress).toBe('done');
+    expect(readFilters(new URLSearchParams('open=1')).progress).toBe('open');
+    expect(readFilters(new URLSearchParams('progress=weird')).progress).toBe('all');
+    expect(toSearchParams(readFilters(new URLSearchParams('open=1')), 1).toString()).toBe(
+      'progress=open',
+    );
+  });
+
+  it('미완료는 `openOnly` 와 `progress=OPEN` 을 함께, 완료는 `progress=COMPLETED` 만 싣는다', () => {
+    expect(toListQuery({ ...DEFAULT_FILTERS, progress: 'open' }, 1)).toEqual({
+      page: 1,
+      size: 25,
+      openOnly: true,
+      progress: 'OPEN',
+    });
+    expect(toListQuery({ ...DEFAULT_FILTERS, progress: 'done' }, 1)).toEqual({
+      page: 1,
+      size: 25,
+      progress: 'COMPLETED',
+    });
   });
 
   it('조건을 바꾸면 고른 건을 놓고, 고르기는 조건을 지키지 않는다', () => {
@@ -42,5 +66,17 @@ describe('erp-purchase-order filters', () => {
       statusCode: 'POSTED',
       orderDateTo: '2026-10-31',
     });
+  });
+
+  it('발주 유형은 주소 `type` 과 쿼리 `erpOrderTypeCode` 로 옮기고, 전체면 싣지 않는다', () => {
+    const params = toSearchParams({ ...DEFAULT_FILTERS, orderType: 'PO' }, 1);
+    expect(params.toString()).toBe('type=PO');
+    expect(readFilters(params).orderType).toBe('PO');
+    expect(toListQuery(readFilters(params), 1)).toEqual({
+      page: 1,
+      size: 25,
+      erpOrderTypeCode: 'PO',
+    });
+    expect(toListQuery(DEFAULT_FILTERS, 1)).not.toHaveProperty('erpOrderTypeCode');
   });
 });

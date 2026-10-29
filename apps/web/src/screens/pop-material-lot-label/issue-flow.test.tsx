@@ -1,10 +1,12 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ISSUE_UNIT_STORAGE_KEY } from './issue-unit';
 import { PRINTER_STORAGE_KEY } from './printer-choice';
 import {
+  HARNESS_NOW,
   WORKER_NO,
   line,
   lotIdFor,
@@ -26,10 +28,18 @@ import {
 
 const t = messages.popMaterialLotLabel;
 
+beforeEach(() => {
+  /* 발판의 입하일(08-27)이 화면의 기본 기간(이번 주)에 들게 날짜만 멈춘다(`HARNESS_NOW`). */
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(HARNESS_NOW);
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   delete window.pop;
   try {
     window.localStorage.removeItem(PRINTER_STORAGE_KEY);
+    window.localStorage.removeItem(ISSUE_UNIT_STORAGE_KEY);
   } catch {
     /* 저장소가 없는 시험 환경 — 지울 것도 없다. */
   }
@@ -206,6 +216,11 @@ describe('일괄 발행 — 멈추는 자리', () => {
     await issueAll(user, 3);
 
     await waitFor(() => expect(screen.getByText(t.bar.failed(3))).toBeInTheDocument());
+    /* 진짜 실패는 오류 모양이다 — 일부러 멈춘 끝(차분한 모양)과 갈린다. */
+    expect(screen.getByText(t.bar.failed(3)).closest('.pop-mlot-bar-text')).toHaveAttribute(
+      'data-tone',
+      'error',
+    );
     expect(save).toHaveBeenCalledTimes(1);
     expect(sentTo(sent, '/trace/lots')).toHaveLength(1);
     expect(screen.getByText(t.status.failed.printFailed)).toBeInTheDocument();
@@ -416,6 +431,113 @@ describe('일괄 발행 — 멈추는 자리', () => {
     expect(screen.getByText(t.status.printed)).toBeInTheDocument();
     expect(screen.getAllByText(t.status.stopped)).toHaveLength(2);
     expect(screen.getByRole('button', { name: t.bar.retry(2) })).toBeInTheDocument();
+  });
+});
+
+/** 한 공급사에 열두 줄 — 09:00 부터 1분 간격. 발행 단위(10장)보다 많다. */
+const TWELVE = {
+  receipts: Array.from({ length: 12 }, (_, index) =>
+    receipt(8101 + index, 8201, `2026-08-27T02:${String(index).padStart(2, '0')}:00Z`),
+  ),
+  lines: Array.from({ length: 12 }, (_, index) =>
+    line(8501 + index, 8101 + index, index % 2 === 0 ? 8601 : 8602, 100 + index),
+  ),
+} satisfies HarnessOptions;
+
+const unitButton = (name: string): HTMLElement =>
+  within(screen.getByRole('group', { name: t.bar.unit.label })).getByRole('button', { name });
+
+describe('일괄 발행 — N장마다 멈추고 이어서', () => {
+  it('10장을 찍고 멈춘다 — 「다음 2장 발행」으로 남은 장을 이어 찍는다', async () => {
+    const user = userEvent.setup();
+    const save = installShell();
+    renderLabelScreen(TWELVE);
+
+    await waitFor(() => expect(rows().length).toBeGreaterThan(0));
+    await user.click(unitButton(t.bar.unit.each(10)));
+    await user.click(screen.getByRole('checkbox', { name: t.table.selectAll }));
+    expect(screen.getByText(new RegExp(t.bar.unit.note(10), 'u'))).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.bar.issue(12) }));
+
+    const resume = await screen.findByRole('button', { name: t.bar.resume(2) }, { timeout: 5000 });
+    expect(screen.getByText(t.bar.paused(10, 12))).toBeInTheDocument();
+    expect(save).toHaveBeenCalledTimes(10);
+    /* 아직 찍지 않은 두 장(맨 끝)은 결과 표 마지막 쪽에 「대기」로 선다. */
+    await user.click(screen.getByRole('button', { name: t.table.next }));
+    expect(await screen.findAllByText(t.status.waiting)).toHaveLength(2);
+
+    await user.click(resume);
+
+    await waitFor(() => expect(screen.getByText(t.bar.done(12))).toBeInTheDocument(), {
+      timeout: 5000,
+    });
+    expect(save).toHaveBeenCalledTimes(12);
+  });
+
+  it('쉬는 중에 「멈춤」을 누르면 남은 장은 멈춘 것으로 두고 「다시 발행」으로 이어 간다', async () => {
+    const user = userEvent.setup();
+    installShell();
+    renderLabelScreen(TWELVE);
+
+    await waitFor(() => expect(rows().length).toBeGreaterThan(0));
+    await user.click(unitButton(t.bar.unit.each(10)));
+    await user.click(screen.getByRole('checkbox', { name: t.table.selectAll }));
+    await user.click(screen.getByRole('button', { name: t.bar.issue(12) }));
+    await screen.findByRole('button', { name: t.bar.resume(2) }, { timeout: 5000 });
+
+    await user.click(screen.getByRole('button', { name: t.bar.stop }));
+
+    const stopped = await screen.findByText(t.bar.stopped(2));
+    /* 일부러 멈춘 것은 오류 모양(빨강 · 「!」)으로 서지 않는다. */
+    expect(stopped.closest('.pop-mlot-bar-text')).toHaveAttribute('data-tone', 'idle');
+    expect(stopped.closest('.pop-mlot-bar-text')?.querySelector('.pop-mlot-bar-icon')).toBeNull();
+    await user.click(screen.getByRole('button', { name: t.table.next }));
+    expect(await screen.findAllByText(t.status.stopped)).toHaveLength(2);
+    expect(screen.getByRole('button', { name: t.bar.retry(2) })).toBeInTheDocument();
+  });
+
+  it('「전체」는 멈추지 않는다 — 지금까지와 같다', async () => {
+    const user = userEvent.setup();
+    const save = installShell();
+    renderLabelScreen(TWELVE);
+
+    await waitFor(() => expect(rows().length).toBeGreaterThan(0));
+    expect(unitButton(t.bar.unit.all)).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('checkbox', { name: t.table.selectAll }));
+    await user.click(screen.getByRole('button', { name: t.bar.issue(12) }));
+
+    await waitFor(() => expect(screen.getByText(t.bar.done(12))).toBeInTheDocument(), {
+      timeout: 5000,
+    });
+    expect(save).toHaveBeenCalledTimes(12);
+  });
+
+  it('고른 단위를 단말이 기억한다 — 다시 열어도 그 단위다', async () => {
+    const user = userEvent.setup();
+    const first = renderLabelScreen(TWELVE);
+
+    await waitFor(() => expect(rows().length).toBeGreaterThan(0));
+    await user.click(unitButton(t.bar.unit.each(20)));
+    first.unmount();
+
+    renderLabelScreen(TWELVE);
+
+    await waitFor(() => expect(rows().length).toBeGreaterThan(0));
+    expect(unitButton(t.bar.unit.each(20))).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('다시 인쇄에는 단위가 없다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen({
+      receipts: [receipt(8101, 8201, '2026-08-27T02:00:00Z')],
+      lines: [line(8501, 8101, 8601, 500, { issued: true })],
+      lineList: 'served',
+    });
+
+    await user.click(await screen.findByRole('button', { name: t.tabs.reprint }));
+
+    await waitFor(() => expect(rows()).toHaveLength(1));
+    expect(screen.queryByRole('group', { name: t.bar.unit.label })).toBeNull();
   });
 });
 

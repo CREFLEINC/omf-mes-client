@@ -12,6 +12,7 @@ import type { LookupEntry, PlanFilters, SelectOption } from './types';
 export const DEFAULT_PLAN_FILTERS: PlanFilters = {
   q: '',
   inspectionTypeCode: '',
+  itemId: '',
   includeInactive: false,
 };
 

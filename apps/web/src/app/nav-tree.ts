@@ -22,7 +22,7 @@
  * 이름을 읽는 쪽에서만 드러난다. 새 항목은 `label` 과 `labelVi` 를 **함께** 적는다.
  */
 
-import type { LocalizedLabel } from '../patterns/localized-label';
+import { localizedLabel, type LocalizedLabel } from '../patterns/localized-label';
 
 /**
  * 탭 묶음 안의 화면 하나 — 주소와 두 언어의 탭 이름. 아이콘은 묶음의 것을 쓴다.
@@ -32,6 +32,8 @@ import type { LocalizedLabel } from '../patterns/localized-label';
  */
 export interface NavTab extends LocalizedLabel {
   readonly to: string;
+  /** 이 탭이 품은 옛 화면의 주소 — 그중 하나라도 볼 수 있으면 탭을 세운다(`NavEntry.alsoFor` 와 같은 뜻 · 탭 묶음용). */
+  readonly alsoFor?: readonly string[];
 }
 
 /** 메뉴 항목 하나 — 주소 · 아이콘(Material Symbols 리가처) · 두 언어의 보이는 이름. */
@@ -136,18 +138,31 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       /*
        * 입고 관리 — 들어올 것(아직 다 들어오지 않은 P/O 라인)을 보고 → 도착한 것을 등록하고 → 창고로 받아들인다.
-       * **화면 하나다**(W-01-09). 입하 등록(W-01-03) · 초과분 연결 · 입고 처리(W-01-10)는 그 화면의 오른쪽 창이 됐다
-       * (사용자 지시 2026-10-21 「분리된 화면을 그 화면으로 차츰 모은다」 · 2026-10-23 탭 합치기). 옛 「자재 입고 처리」
-       * 탭(입하 전표 기준)은 뺐다 — 발주 없이 들어오는 입하가 없어(사용자 확인 2026-10-23) 발주 기준 화면이 입하를 다 품는다.
-       * 탭이 하나면 묶음이 아니라 탭을 두지 않는다 — 이름과 단계 칩은 화면이 제 막대에 세운다.
+       * 입하 등록(W-01-03) · 입고 처리(W-01-10)는 입고 관리 화면(W-01-09) 안에서 한다(사용자 지시 2026-10-21 「분리된 화면을
+       * 그 화면으로 차츰 모은다」 · 2026-10-23 탭 합치기). 옛 「자재 입고 처리」 탭(입하 전표 기준)은 뺐다 — 발주 없이
+       * 들어오는 입하가 없어(사용자 확인 2026-10-23) 발주 기준 화면이 입하를 다 품는다.
+       * 「초과분 발주 연결」은 오른쪽 창이던 것을 둘째 탭으로 뗐다(사용자 지시 2026-10-28). 설계 화면 코드가 없어 입고 관리의
+       * 코드를 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
        */
       {
         to: '/logistics/inbound-schedule',
         icon: 'local_shipping',
         label: '입고 관리',
         labelVi: 'Quản lý nhập kho',
-        /* 입하 등록(W-01-03) · 입고 처리(W-01-10)만 가진 사람도 이 화면에서 그 일을 한다. */
-        alsoFor: ['/logistics/over-receipt-split', '/logistics/goods-receipt'],
+        tabs: [
+          {
+            to: '/logistics/inbound-schedule',
+            label: '입고 관리',
+            labelVi: 'Quản lý nhập kho',
+            /* 입하 등록(W-01-03) · 입고 처리(W-01-10)만 가진 사람도 이 화면에서 그 일을 한다. */
+            alsoFor: ['/logistics/over-receipt-split', '/logistics/goods-receipt'],
+          },
+          {
+            to: '/logistics/inbound-excess',
+            label: '초과분 발주 연결',
+            labelVi: 'Liên kết phần vượt với P/O',
+          },
+        ],
       },
       /*
        * 재고 관리 — **가장 자주 여는 재고 현황이 첫 탭이다**(사이드바 한 번에 그 화면). 실사로 장부와
@@ -254,26 +269,33 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
+      /*
+       * 품질 기준 정보 — 검사기준 · 검사표 기준(W-06-24 · OA 전용) · 검사 수준 관리 · 불량·원인코드 · 판정유형 코드를 사이드바 한 줄 ·
+       * 본문 위 탭으로 묶는다(사용자 2026-10-26). 모두 판정이 기대는 기준·코드 마스터다.
+       * 검사표 기준 탭은 OA 공장이 없는 계정에서 셸이 거른다(`OA_ONLY_PATHS`).
+       */
       {
         to: '/master-data/inspection-standard',
         icon: 'rule_settings',
-        label: '검사기준',
-        labelVi: 'Tiêu chuẩn kiểm tra',
-      },
-      /* W-06-24 — OA 제품 검사표의 모델별 단계·항목(omf-all-around#89). 검사기준 바로 뒤 — 같은 「기준」 갈래다. */
-      {
-        to: '/master-data/inspection-sheet-template',
-        icon: 'checklist',
-        label: '검사표 기준',
-        labelVi: 'Tiêu chuẩn phiếu kiểm tra',
-      },
-      /* 품질 코드 — 불량·원인과 판정유형은 둘 다 판정에 붙이는 코드 마스터다. */
-      {
-        to: '/master-data/defect-cause-code',
-        icon: 'rule',
-        label: '품질 코드',
-        labelVi: 'Mã chất lượng',
+        label: '품질 기준 정보',
+        labelVi: 'Dữ liệu chuẩn chất lượng',
         tabs: [
+          {
+            to: '/master-data/inspection-standard',
+            label: '검사 기준',
+            labelVi: 'Tiêu chuẩn kiểm tra',
+          },
+          {
+            to: '/master-data/inspection-sheet-template',
+            label: '검사표 기준',
+            labelVi: 'Tiêu chuẩn phiếu kiểm tra',
+          },
+          /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
+          {
+            to: '/quality/inspection-levels',
+            label: '검사 수준 관리',
+            labelVi: 'Quản lý mức kiểm tra',
+          },
           {
             to: '/master-data/defect-cause-code',
             label: '불량·원인코드',
@@ -281,7 +303,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
           {
             to: '/master-data/judgment-code',
-            label: '판정유형 코드',
+            label: '판정 유형 코드',
             labelVi: 'Mã loại đánh giá',
           },
         ],
@@ -350,13 +372,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: '처분 판정 처리',
         labelVi: 'Ra quyết định xử lý',
       },
-      /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
-      {
-        to: '/quality/inspection-levels',
-        icon: 'tune',
-        label: '검사 수준 관리',
-        labelVi: 'Quản lý mức kiểm tra',
-      },
     ],
   },
   /*
@@ -370,25 +385,28 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     icon: 'factory',
     items: [
       /*
-       * ERP W/O — 받은 ERP W/O 를 보고, 그것이 «바뀌었을 때» 판정한다(W-02-06). 옛 이름의
+       * 작업지시 목록 — 받은 ERP W/O 를 보고, 그것이 «바뀌었을 때» 판정한다(W-02-06). 옛 이름의
        * 「P/O」는 서버 용어 정리로 구매오더만 뜻하게 되었다(서버 `CONTEXT.md` 「오더」 · #731 —
-       * P/O = 구매오더 · ERP W/O = ERP 에서 받은 생산 오더 · 맨 「W/O」 = MES W/O). 「작업지시」·
-       * 「생산오더」로 부르지 않는다.
+       * P/O = 구매오더 · ERP W/O = ERP 에서 받은 생산 오더 · 맨 「W/O」 = MES W/O). 처리하는 대상은
+       * 화면 안에서 계속 「ERP W/O」, 「W/O」로 부른다.
        *
-       * 「ERP W/O 처리」(W-02-01)는 작업함과 처리 화면이다. 옛 W-02-02(W/O 전개와 편성)와 W-02-03(4M 자원배정)은
+       * 이름은 화면 제목(`erpWorkOrderFlow.title`)과 같아야 하고, 안내용 메뉴 경로 시험(`nav-menu-path.test.ts`)이
+       * 그 짝을 잰다.
+       *
+       * 「작업지시 목록」(W-02-01)은 작업함과 처리 화면이다. 옛 W-02-02(W/O 전개와 편성)와 W-02-03(4M 자원배정)은
        * 처리 화면의 단계로 합쳐 메뉴에도 탭에도 두지 않는다. 옛 주소는 `?productionOrderId=`, `?productionPlanId=`로
        * 대상을 찾아 처리 화면으로 넘긴다(`production-order/process/legacy-redirects.tsx`, omf-all-around#129).
        */
       {
         to: '/production/production-orders',
         icon: 'account_tree',
-        label: 'ERP W/O',
-        labelVi: 'ERP W/O',
+        label: '작업지시 목록',
+        labelVi: 'Danh sách lệnh sản xuất',
         tabs: [
           {
             to: '/production/production-orders',
-            label: 'ERP W/O 처리',
-            labelVi: 'Xử lý ERP W/O',
+            label: '작업지시 목록',
+            labelVi: 'Danh sách lệnh sản xuất',
           },
           {
             to: '/production/po-change-review',
@@ -398,8 +416,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * W-02-04(W/O 확정, 배포)는 메뉴에서 뺐다. 배포는 「ERP W/O 처리」 작업함의 일괄 배포와 처리 화면 마지막 단계가
-       * 맡는다(화면 구성 규범 C-17, T-W-C). 옛 주소는 작업함의 「자동 계획 완료」 조건으로 넘어간다.
+       * W-02-04(W/O 확정, 배포)는 메뉴에서 뺐다. 배포는 「작업지시 목록」 작업함의 일괄 배포와 처리 화면 마지막 단계가
+       * 맡는다(화면 구성 규범 C-17, T-W-C). 옛 주소는 작업함의 「배포 대기」 조건으로 넘어간다.
        */
       /* W-02-07 — 계획을 거치지 않고 직접 발행한다. 갈래가 달라 정규 흐름 뒤에 둔다. */
       {
@@ -413,6 +431,17 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'monitoring',
         label: 'W/O 진행현황 조회',
         labelVi: 'Tra cứu tiến độ W/O',
+      },
+      /*
+       * W-02-09 — 「W/O 진행현황 조회」 바로 아래. 정방향과 역방향 모두 「투입 → W/O → 생산 LOT」을 지나
+       * 생산이 가진 자료다. 세 탭(자재 LOT, 제품 LOT, 입출고 현황)은 한 권한이라 셸 탭 묶음(탭마다
+       * 화면 코드)이 아니라 화면이 그린다.
+       */
+      {
+        to: '/production/lot-trace',
+        icon: 'timeline',
+        label: 'LOT 추적',
+        labelVi: 'Truy xuất LOT',
       },
       /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
       {
@@ -551,12 +580,18 @@ export const NAV_GROUPS: readonly NavGroup[] = [
        * 아키텍처의 「품목정보 조회 (ERP)」·「BOM 조회 (ERP)」를 따로 세웠다가, 이 화면이 이미
        * ERP 원본 정보와 BOM 구역을 갖고 있어 합쳤다 — 같은 품목을 두 화면에서 고르게 하지 않는다.
        * 이름에 「(ERP)」를 붙이지 않은 것은 확장속성을 MES 가 고치기 때문이다.
+       * 품목 · BOM 은 탭이다 — 「ERP 연동 현황·이력」의 품목 · BOM 탭과 같은 짜임(사용자 지시 2026-10-28). BOM 탭은
+       * 설계 화면 코드가 따로 없어 W-06-05 를 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
        */
       {
         to: '/master-data/item-extended-attrs',
         icon: 'category',
         label: '품목·BOM 정보',
         labelVi: 'Thông tin mặt hàng · BOM',
+        tabs: [
+          { to: '/master-data/item-extended-attrs', label: '품목', labelVi: 'Mặt hàng' },
+          { to: '/master-data/item-boms', label: 'BOM', labelVi: 'BOM' },
+        ],
       },
       {
         to: '/master-data/routing',
@@ -747,7 +782,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
        * 거래처·BOM) 다음 전표(구매발주·수주·ERP W/O) 차례다.
        *
        * ⛔ **MES 가 고치거나 이어서 일하는 화면은 여기 두지 않는다.** 품목 확장속성(「품목·BOM
-       * 정보」 W-06-05)과 ERP W/O 전개(「ERP W/O」 W-02-01 → 전개·편성)는 같은 데이터를 다루지만
+       * 정보」 W-06-05)과 ERP W/O 전개(「작업지시 목록」 W-02-01 → 전개·편성)는 같은 데이터를 다루지만
        * MES 의 일이라 업무 묶음에 남는다. 이 묶음은 「ERP 가 무엇을 보냈는가」만 답한다.
        */
       {
@@ -761,6 +796,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: '연동 현황·이력',
             labelVi: 'Tình trạng · lịch sử liên kết',
           },
+          /*
+           * ERP 받기 표의 상태와 「지금 읽기」 — 연동 현황·이력 위에 접혀 있던 것을 탭으로 뗐다(사용자 지시 2026-10-27).
+           * 설계 화면 코드가 따로 없어 묶음 화면(연동 현황·이력 W-06-10)의 코드를 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
+           */
+          { to: '/master-data/erp-inbound', label: 'ERP 수신', labelVi: 'Nhận ERP' },
+          /* 송신 항목과 그 송신 예정 목록(W-06-12) — 받기(아래 ERP 데이터 탭)와 갈라 연동 현황 바로 뒤. */
+          { to: '/master-data/erp-outbound', label: 'ERP 송신', labelVi: 'Gửi ERP' },
           { to: '/system/erp-data/common-codes', label: '공통코드', labelVi: 'Mã chung' },
           { to: '/system/erp-data/employees', label: '사원', labelVi: 'Nhân viên' },
           { to: '/system/erp-data/items', label: '품목', labelVi: 'Mặt hàng' },
@@ -851,3 +893,20 @@ export const NAV_ENTRIES: readonly NavEntry[] = [
     ),
   ),
 ];
+
+/** 메뉴 경로 사이의 표시. 화면 문구가 「시스템 관리 › 사용자·역할·권한」처럼 사이드바를 따라가게 쓴다. */
+const MENU_PATH_SEPARATOR = ' › ';
+
+/**
+ * 주소에 닿는 메뉴의 경로(묶음 이름 › 항목 이름), 활성 언어로. 사이드바에 없는 주소면 `null`.
+ * 화면 문구가 메뉴 이름을 손으로 옮겨 적지 않게 한다. 메뉴 이름이 바뀌면 안내도 함께 바뀐다.
+ */
+export const navMenuPath = (path: string): string | null => {
+  for (const group of NAV_GROUPS) {
+    const item = group.items.find((entry) => navEntryPaths(entry).includes(path));
+    if (item !== undefined) {
+      return [localizedLabel(group), localizedLabel(item)].join(MENU_PATH_SEPARATOR);
+    }
+  }
+  return null;
+};

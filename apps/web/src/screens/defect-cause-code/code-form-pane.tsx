@@ -1,7 +1,8 @@
-import { AlertBanner, Button, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
+import { Select } from '../../patterns/select';
 import type { CodeAdapter } from './adapters';
 import type { CodeFormValues, CodeOption } from './types';
 

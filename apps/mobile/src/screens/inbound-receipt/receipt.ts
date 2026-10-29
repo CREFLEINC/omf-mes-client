@@ -14,7 +14,6 @@ export type PurchaseOrderLine = components['schemas']['PurchaseOrderLine'];
 export type InboundReceiptCreate = components['schemas']['InboundReceiptCreate'];
 export type InboundReceiptLineUpsert = components['schemas']['InboundReceiptLineUpsert'];
 export type InboundReceiptSplitRequest = components['schemas']['InboundReceiptSplitRequest'];
-export type SplitMode = InboundReceiptSplitRequest['mode'];
 
 /**
  * 입하 검증 세 갈래.
@@ -168,19 +167,6 @@ export interface ReceiptDraft {
   substituteLotReasonCode: string;
   purchaseOrder: PurchaseOrder | null;
   purchaseOrderLine: PurchaseOrderLine | null;
-  /**
-   * 발주 없이 도착한 건인가.
-   *
-   * 발주가 없으면 공급사도 품목도 단위도 승계할 곳이 없어 담당자가 고른다. 발주를 고르지
-   * 않은 것과 무발주로 넣겠다는 것은 다른 상태다 - 앞엣것은 아직 안 고른 것이고 뒤엣것은
-   * 고를 발주가 없다는 뜻이라, 하나로 뭉치면 덜 고른 채로 등록이 열린다.
-   */
-  unordered: boolean;
-  supplierId: number | null;
-  itemId: number | null;
-  uomId: number | null;
-  exceptionTypeCode: string;
-  exceptionReason: string;
   deliveryNoteNo: string;
   vehicleNo: string;
   receivedQty: string;
@@ -290,16 +276,20 @@ export const recordedPartsOf = (path: string, body: unknown): RecordedPart[] => 
     const first = firstLineOf(body);
     const excess = first?.excessQty ?? 0;
 
-    /* 초과분을 나눠 받은 한 건 - 정량분과 초과분으로 나눠 되읽는다(장부 P-100). */
+    /*
+     * 초과분을 나눠 받은 한 건 - 정량분과 초과분으로 나눠 되읽는다(장부 P-100). 받을 것이 남지
+     * 않은 라인이면 전부 초과분이다 - 보내지 않은 정량분 0 을 적지 않는다.
+     */
     if (first !== undefined && excess > 0) {
-      return [
-        {
-          part: 'normal',
-          receivedQty: exact((to) => to(first.receivedQty) - to(excess)),
-          packageCount: first.packageCount ?? null,
-        },
-        { part: 'excess', receivedQty: excess, packageCount: null },
-      ];
+      const normal = exact((to) => to(first.receivedQty) - to(excess));
+      const excessPart: RecordedPart = { part: 'excess', receivedQty: excess, packageCount: null };
+
+      return normal > 0
+        ? [
+            { part: 'normal', receivedQty: normal, packageCount: first.packageCount ?? null },
+            excessPart,
+          ]
+        : [excessPart];
     }
 
     const only = partOf(body, null);
@@ -385,11 +375,6 @@ export type SubmitLock =
   | 'noWorker'
   | 'noOrder'
   | 'noOrderLine'
-  | 'noSupplier'
-  | 'noItem'
-  | 'noUom'
-  | 'noExceptionType'
-  | 'noExceptionReason'
   | 'noPlant'
   | 'qtyEmpty'
   | 'qtyNotNumber'
@@ -421,20 +406,9 @@ const draftLockOf = (draft: ReceiptDraft, hasWorker: boolean): SubmitLock | null
     return 'noWorker';
   }
 
-  /*
-   * 무발주는 승계할 곳이 없어 셋을 사람이 고른다. 하나라도 비면 서버가 거부하는데, 그 거부는
-   * 담아 둔 뒤에야 오므로 화면에서 막는다.
-   */
-  if (draft.unordered) {
-    if (draft.supplierId === null) return 'noSupplier';
-    if (draft.itemId === null) return 'noItem';
-    if (draft.uomId === null) return 'noUom';
-    if (draft.exceptionTypeCode.trim() === '') return 'noExceptionType';
-    if (draft.exceptionReason.trim() === '') return 'noExceptionReason';
-  } else {
-    if (draft.purchaseOrder === null) return 'noOrder';
-    if (draft.purchaseOrderLine === null) return 'noOrderLine';
-  }
+  /* 입하는 늘 자재 P/O 라인에 단다 - 발주 없는 입하는 PDA 에서 받지 않는다(사용자 결정 2026-10-27). */
+  if (draft.purchaseOrder === null) return 'noOrder';
+  if (draft.purchaseOrderLine === null) return 'noOrderLine';
 
   const qty = qtyProblem(draft.receivedQty);
 
@@ -551,7 +525,7 @@ export const labelMismatchOf = (
   return segments === null ? null : codeMismatchOf(segments, codes);
 };
 
-/** 이 건이 실을 품목·단위·공급사. 발주가 있으면 승계하고 없으면 고른 값을 쓴다. */
+/** 이 건이 실을 품목·단위·공급사. 고른 자재 P/O 라인에서 승계한다. */
 export interface ReceiptSource {
   itemId: number;
   uomId: number;
@@ -559,12 +533,6 @@ export interface ReceiptSource {
 }
 
 export const sourceOf = (draft: ReceiptDraft): ReceiptSource | null => {
-  if (draft.unordered) {
-    return draft.supplierId === null || draft.itemId === null || draft.uomId === null
-      ? null
-      : { itemId: draft.itemId, uomId: draft.uomId, supplierId: draft.supplierId };
-  }
-
   const line = draft.purchaseOrderLine;
 
   return line === null || draft.purchaseOrder === null
@@ -635,12 +603,6 @@ export const toOutboxDraft = (
     deliveryNoteNo: optional(draft.deliveryNoteNo),
     vehicleNo: optional(draft.vehicleNo),
     ...(remarks === null ? {} : { remarks }),
-    ...(draft.unordered
-      ? {
-          exceptionTypeCode: draft.exceptionTypeCode.trim(),
-          exceptionReason: draft.exceptionReason.trim(),
-        }
-      : {}),
     /* 업무 기준일은 단말이 정한다. 서버가 수신 시각으로 잡으면 날짜 경계에서 이중 계상이 난다. */
     businessDate: businessDateOf(now),
     occurredAt,
@@ -768,31 +730,15 @@ export const splitQuantitiesOf = (
   return { remaining, normal, excess: exact((to) => to(arrivedQty) - to(normal)) };
 };
 
-const splitPart = (
-  draft: ReceiptDraft,
-  itemId: number,
-  uomId: number,
-  plantId: number,
-  supplierId: number,
-  receiptDatetime: string,
-  receivedQty: number,
-  purchaseOrderLineId: number | null,
-) => ({
-  supplierId,
-  plantId,
-  receiptDatetime,
-  deliveryNoteNo: optional(draft.deliveryNoteNo),
-  vehicleNo: optional(draft.vehicleNo),
-  lines: [toLine(draft, itemId, uomId, receivedQty, purchaseOrderLineId)],
-});
-
 /**
- * 모바일 초과 입하를 한 트랜잭션 요청으로 만든다.
+ * 초과 입하에서 정량분만 받는다 - 원 자재 P/O 라인에 넣을 수 있는 만큼만 등록하고 초과분은
+ * 싣지 않는다(분리 요청 `:split` 의 NORMAL_ONLY).
  *
- * 정량분만 원 자재 P/O 라인에 귀속한다. 초과분에 그 식별자를 싣으면 초과가 원 발주 누적에
- * 다시 더해져 분리 자체가 무효가 된다.
+ * 초과분 파트는 자재 P/O 라인 없이 나가 발주 없는 입하가 된다 - 초과분 기록이 남지 않아
+ * 추가 발주에 연결할 길이 없다. 초과분을 받을 때는 한 건에 `excessQty` 로 싣는다
+ * (`toOutboxDraft`, 장부 P-100 · 사용자 결정 2026-10-27).
  */
-export const toSplitOutboxDraft = (
+export const toNormalOnlyOutboxDraft = (
   draft: ReceiptDraft,
   itemId: number,
   uomId: number,
@@ -800,62 +746,31 @@ export const toSplitOutboxDraft = (
   supplierId: number,
   now: Date,
   workerNo: string,
-  mode: SplitMode,
-  exceptionTypeCode: string,
-  exceptionReason: string,
   queuedQty = 0,
 ): OutboxDraft => {
   const line = draft.purchaseOrderLine;
 
   if (line === null) {
-    throw new Error('초과 입하 분리는 자재 P/O 라인을 고른 뒤에만 만들 수 있습니다.');
+    throw new Error('정량분만 받기는 자재 P/O 라인을 고른 뒤에만 만들 수 있습니다.');
   }
 
   const occurredAt = now.toISOString();
   const quantities = splitQuantitiesOf(line, Number(draft.receivedQty.trim()), queuedQty);
-  const normal = splitPart(
-    draft,
-    itemId,
-    uomId,
-    plantId,
+  /* 한 건 등록과 같은 머리 칸을 싣는다 - 차량번호는 계약의 분리 파트에 없지만 전부터 함께 보냈다. */
+  const normal = {
     supplierId,
-    occurredAt,
-    quantities.normal,
-    line.purchaseOrderLineId,
-  );
-  const excessPart = splitPart(
-    draft,
-    itemId,
-    uomId,
     plantId,
-    supplierId,
-    occurredAt,
-    quantities.excess,
-    null,
-  );
-  /*
-   * 초과분은 라벨 «미부착»으로 보낸다(omf-all-around#21 · 사용자 결정 2026-09-18). 스캔한 사전부착
-   * LOT 은 정량분만 쓴다 — 두 파트가 같은 부착 LOT 을 실으면 서버가 「한 요청 안에서 겹칩니다」로
-   * 거부해 사전부착 라벨이면 분리 등록이 늘 400 이었다. 공급사 LOT 번호는 추적용으로 남기고
-   * `supplierLotMissing` 은 그대로라 대체 사유가 필요 없다. 초과분 LOT 처리의 최종 설계는
-   * omf-all-around#23 대기 — 그때 다시 본다.
-   */
-  const excess = {
-    ...excessPart,
-    lines: excessPart.lines.map((excessLine) => ({
-      ...excessLine,
-      supplierLotLabelAttached: false,
-    })),
-    exceptionTypeCode: exceptionTypeCode.trim(),
-    exceptionReason: exceptionReason.trim(),
+    receiptDatetime: occurredAt,
+    deliveryNoteNo: optional(draft.deliveryNoteNo),
+    vehicleNo: optional(draft.vehicleNo),
+    lines: [toLine(draft, itemId, uomId, quantities.normal, line.purchaseOrderLineId)],
   };
-  const shared = { businessDate: businessDateOf(now), occurredAt };
-  const body: InboundReceiptSplitRequest =
-    mode === 'BOTH'
-      ? { ...shared, mode: 'BOTH', normal, excess }
-      : mode === 'NORMAL_ONLY'
-        ? { ...shared, mode: 'NORMAL_ONLY', normal }
-        : { ...shared, mode: 'EXCESS_ONLY', excess };
+  const body: InboundReceiptSplitRequest = {
+    businessDate: businessDateOf(now),
+    occurredAt,
+    mode: 'NORMAL_ONLY',
+    normal,
+  };
 
   return {
     label: messages.inboundReceipt.record,
@@ -874,14 +789,12 @@ export const toSplitOutboxDraft = (
  *
  * - scan: 라벨을 아직 받지 않았다
  * - line: 라벨은 받았고 자재 P/O 라인을 고를 차례다(라인을 바꾸러 돌아온 때도)
- * - unordered: 발주 없이 받는다 — 공급사·품목·단위·예외를 적고 같은 자리에서 수량까지 적는다
  * - qty: 라인을 골랐고 수량을 확인할 차례다
  */
-export type ReceiptStep = 'scan' | 'line' | 'unordered' | 'qty';
+export type ReceiptStep = 'scan' | 'line' | 'qty';
 
 export const stepOf = (draft: ReceiptDraft, changingLine: boolean): ReceiptStep => {
   if (draft.supplierLotNo === '' && !draft.supplierLotMissing) return 'scan';
-  if (draft.unordered) return 'unordered';
   if (draft.purchaseOrderLine === null || changingLine) return 'line';
 
   return 'qty';

@@ -1,15 +1,9 @@
-import {
-  AlertBanner,
-  Card,
-  Chip,
-  type Column,
-  EmptyState,
-  SkeletonText,
-  Table,
-} from '@crefle/web-ui';
+import { AlertBanner, Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { BoardTable } from '../../patterns/board-table';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { OneLine } from '../../patterns/po-board';
 
 import type { SalesOrder, SalesOrderLine } from './types';
 
@@ -66,34 +60,26 @@ export const ErpSalesOrderDetailPane = ({
 }: ErpSalesOrderDetailPaneProps) => {
   if (state.kind === 'idle') {
     return (
-      <section className="pane" aria-label={t.panes.detail}>
-        <h2>{t.panes.detail}</h2>
-        <EmptyState
-          size="sm"
-          title={t.empty.notSelectedTitle}
-          description={t.empty.notSelectedDescription}
-        />
-      </section>
+      <>
+        <h2 className="pane-title">{t.panes.detail}</h2>
+        <EmptyState size="sm" title={t.empty.notSelectedTitle} />
+      </>
     );
   }
 
   if (state.kind === 'loading') {
     return (
-      <section className="pane" aria-label={t.panes.detail}>
-        <div role="status" aria-label={t.loading}>
-          <SkeletonText lines={4} />
-        </div>
-      </section>
+      <div role="status" aria-label={t.loading}>
+        <SkeletonText lines={4} />
+      </div>
     );
   }
 
   if (state.kind === 'failed') {
     return (
-      <section className="pane" aria-label={t.panes.detail}>
-        <AlertBanner variant="error" title={t.detailLoadFailedTitle}>
-          {t.loadFailedDescription}
-        </AlertBanner>
-      </section>
+      <AlertBanner variant="error" title={t.detailLoadFailedTitle}>
+        {t.loadFailedDescription}
+      </AlertBanner>
     );
   }
 
@@ -102,9 +88,7 @@ export const ErpSalesOrderDetailPane = ({
   const lines = order.lines ?? [];
   const fields = [
     { key: 'no', label: t.fields.salesOrderNo, value: order.salesOrderNo },
-    { key: 'erp', label: t.fields.erpSalesOrderNo, value: displayOr(order.erpSalesOrderNo) },
     { key: 'customer', label: t.fields.customer, value: partnerNameOf(order.customerId) },
-    { key: 'shipTo', label: t.fields.shipTo, value: partnerNameOf(order.shipToPartnerId) },
     { key: 'orderDate', label: t.fields.orderDate, value: order.orderDate },
     { key: 'status', label: t.fields.status, value: statusNameOf(order.statusCode) },
     { key: 'orderType', label: t.fields.orderType, value: orderTypeNameOf(order.erpOrderTypeCode) },
@@ -123,80 +107,81 @@ export const ErpSalesOrderDetailPane = ({
 
   /* 잔량은 서버가 내리지 않는다 — 수주에서 출하를 뺀 값을 표시로만 보인다(0 아래로 내리지 않는다). */
   const columns: Column<SalesOrderLine>[] = [
-    { key: 'lineNo', header: t.fields.lineNo, align: 'end' },
-    { key: 'itemId', header: t.fields.item, render: (row) => itemNameOf(row.itemId) },
+    { key: 'lineNo', header: t.fields.lineNo, width: '56px', align: 'end' },
+    {
+      key: 'itemId',
+      header: t.fields.item,
+      render: (row) => <OneLine text={itemNameOf(row.itemId)} />,
+    },
     {
       key: 'orderedQty',
       header: t.fields.orderedQty,
+      width: '88px',
       align: 'end',
       render: (row) => formatQty(row.orderedQty),
     },
     {
       key: 'shippedQty',
       header: t.fields.shippedQty,
+      width: '88px',
       align: 'end',
       render: (row) => formatQty(row.shippedQty),
     },
     {
       key: 'remainingQty',
       header: t.fields.remainingQty,
+      width: '88px',
       align: 'end',
       render: (row) => formatQty(Math.max(0, row.orderedQty - row.shippedQty)),
     },
-    { key: 'uomId', header: t.fields.uom, render: (row) => uomNameOf(row.uomId) },
+    { key: 'uomId', header: t.fields.uom, width: '64px', render: (row) => uomNameOf(row.uomId) },
     {
       key: 'requestedDeliveryDate',
       header: t.fields.requestedDeliveryDate,
+      width: '104px',
       render: (row) => displayOr(row.requestedDeliveryDate),
     },
     {
       key: 'erpStorageLocationCode',
       header: t.fields.storageLocation,
-      render: (row) => storageLocationNameOf(row.erpStorageLocationCode),
+      width: '104px',
+      render: (row) => <OneLine text={storageLocationNameOf(row.erpStorageLocationCode)} />,
     },
     {
       key: 'cancelledAt',
       header: t.fields.cancelled,
+      width: '184px',
       render: (row) => renderCancelled(row.cancelledAt),
     },
   ];
 
+  /*
+   * 화면 틀(`BoardFrame`)의 오른쪽 구획 내용 — 머리 사실 칸(입고 관리 라인 머리와 같은 모양) 다음 라인 표. 구획이 통째로
+   * 스크롤한다.
+   */
   return (
     <>
-      <section className="pane" aria-label={t.panes.detail}>
-        <h2>{t.panes.detail}</h2>
-        <Card bordered>
-          <Card.Body>
-            <dl>
-              {fields.map((field) => (
-                <div key={field.key}>
-                  <dt className="field-label">{field.label}</dt>
-                  <dd>{field.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </Card.Body>
-        </Card>
-      </section>
-      <section className="pane" aria-label={t.panes.lines}>
-        <h2>{t.panes.lines}</h2>
-        <div className="wide-table">
-          <Table
-            caption={<span className="erp-data-table-caption">{t.panes.lines}</span>}
-            density="compact"
-            columns={columns}
-            rows={lines}
-            getRowId={(row) => String(row.salesOrderLineId)}
-            sort={null}
-            empty={
-              <EmptyState
-                size="sm"
-                title={t.empty.linesTitle}
-                description={t.empty.linesDescription}
-              />
-            }
-          />
-        </div>
+      <h2 className="pane-title">{t.panes.detail}</h2>
+      <dl className="po-board-order-facts">
+        {fields.map((field) => (
+          <div key={field.key}>
+            <dt>{field.label}</dt>
+            <dd>{field.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <section className="board-frame-sub" aria-label={t.panes.lines}>
+        <h2 className="pane-title">{t.panes.lines}</h2>
+        <BoardTable
+          label={t.panes.lines}
+          widthKey="omf-mes:erp-sales-order:columns:lines"
+          minWidth="59rem"
+          columns={columns}
+          rows={lines}
+          getRowId={(row) => String(row.salesOrderLineId)}
+          sort={null}
+          empty={<EmptyState size="sm" title={t.empty.linesTitle} />}
+        />
       </section>
     </>
   );

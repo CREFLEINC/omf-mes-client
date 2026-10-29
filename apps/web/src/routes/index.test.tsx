@@ -11,6 +11,7 @@ import {
   dispositionEntryPath,
 } from '../screens/disposition-decision/filters';
 import { WORK_ORDER_PROGRESS_PATH } from '../screens/work-order-progress/filters';
+import { LOT_STATUS_PATH } from '../screens/lot-trace/lot-detail';
 import { SessionProvider } from '../patterns/session';
 import { expandAllNavGroups } from '../test/nav-groups';
 import {
@@ -1497,6 +1498,11 @@ describe('appRouter — 처분 판정 처리의 진입 경로', () => {
     expect(routedPaths()).toContain(WORK_ORDER_PROGRESS_PATH);
   });
 
+  /* W-02-09 LOT 추적 상세의 [LOT 상태 보기]가 가는 W-03-01 주소다. 갈리면 조용히 404로 간다. */
+  it('⭐ LOT 추적이 여는 LOT 상태 주소와 등록된 라우트가 «같다»', () => {
+    expect(routedPaths()).toContain(LOT_STATUS_PATH);
+  });
+
   it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {
     expect(routedPaths()).not.toContain('/quality/disposition');
     expect(routedPaths()).not.toContain('/disposition-decision');
@@ -1541,16 +1547,16 @@ describe('appRouter — W/O 마감·ERP 실적 송신의 진입 경로', () => {
   });
 });
 
-describe('appRouter — ERP W/O 처리 작업함의 진입 경로', () => {
+describe('appRouter — 작업지시 목록 작업함의 진입 경로', () => {
   /*
-   * 생산 관리의 「ERP W/O」 묶음 줄은 첫 탭(ERP W/O 처리)을 건다. W-02-01은 처리형 작업함이다(화면 구성 규범 T-W-C).
+   * 생산 관리의 「작업지시 목록」 묶음 줄은 첫 탭(작업지시 목록)을 건다. W-02-01은 처리형 작업함이다(화면 구성 규범 T-W-C).
    */
-  it('생산 관리 메뉴(ERP W/O)를 키보드로 열면 작업함이 「확인 필요」 조건으로 선다', async () => {
+  it('생산 관리 메뉴(작업지시 목록)를 키보드로 열면 작업함이 「조치 필요」 조건으로 선다', async () => {
     const user = userEvent.setup();
     renderRoutedApp('/quality/lot-status', [...productionOrderRoutes(), ...lotStatusRoutes()]);
 
     const link = within(screen.getByRole('navigation', { name: '주 메뉴' })).getByRole('link', {
-      name: 'ERP W/O',
+      name: '작업지시 목록',
     });
     link.focus();
     await user.keyboard('{Enter}');
@@ -1559,9 +1565,9 @@ describe('appRouter — ERP W/O 처리 작업함의 진입 경로', () => {
     expect(
       screen.getAllByRole('heading', { level: 1, name: messages.erpWorkOrderFlow.title }),
     ).toHaveLength(1);
-    expect(hubTab('ERP W/O', 'ERP W/O 처리')).toHaveAttribute('aria-current', 'page');
+    expect(hubTab('작업지시 목록', '작업지시 목록')).toHaveAttribute('aria-current', 'page');
     expect(
-      await screen.findByText(messages.erpWorkOrderFlow.list.emptyNeedsReviewTitle),
+      await screen.findByText(messages.erpWorkOrderFlow.list.emptyActionRequiredTitle),
     ).toBeVisible();
   });
 
@@ -1574,7 +1580,7 @@ describe('appRouter — ERP W/O 처리 작업함의 진입 경로', () => {
 
 /*
  * W-02-02(전개, 편성), W-02-03(4M 자원배정)은 처리 화면의 단계로, W-02-04(확정, 배포)는 작업함의 일괄 배포와
- * 처리 화면 마지막 단계로 합쳤다. 옛 주소는 살려 두고 ERP W/O 처리로 넘긴다.
+ * 처리 화면 마지막 단계로 합쳤다. 옛 주소는 살려 두고 작업지시 목록으로 넘긴다.
  */
 describe('appRouter — 합친 옛 주소', () => {
   it('대상 없는 전개, 편성 주소는 작업함으로 넘어간다', async () => {
@@ -1588,10 +1594,10 @@ describe('appRouter — 합친 옛 주소', () => {
     await waitFor(() => expect(currentLocation()).toBe('/production/production-orders'));
   });
 
-  it('확정, 배포 주소는 작업함의 「자동 계획 완료」 조건으로 넘어간다', async () => {
+  it('확정, 배포 주소는 작업함의 「배포 대기」 조건으로 넘어간다', async () => {
     renderRoutedApp('/production/work-order-release', productionOrderRoutes());
     await waitFor(() =>
-      expect(currentLocation()).toBe('/production/production-orders?autoPlan=DONE'),
+      expect(currentLocation()).toBe('/production/production-orders?state=RELEASE_PENDING'),
     );
     expect(screen.queryByRole('link', { name: 'W/O 확정·배포·생산LOT 선발행' })).toBeNull();
   });

@@ -53,6 +53,7 @@ export const pqcInspection = {
      * 화면에 요구한 것이다.
      */
     sample: (ratio: number): string => `샘플 ${String(ratio)}%`,
+    sampleQty: (qty: number): string => `샘플 ${String(qty)}개`,
   },
 
   /**

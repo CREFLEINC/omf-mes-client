@@ -1,9 +1,10 @@
-import { Button, Chip, Select, Table, TextField, type Column } from '@crefle/web-ui';
+import { Button, Chip, Table, TextField, type Column } from '@crefle/web-ui';
 import type { AffectedProductionLots } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { Select } from '../../patterns/select';
 import { useLotStatusLabels } from '../material-input-scan/lot-status-labels';
 import {
   EMPTY_DEFECT_CODE,
@@ -181,7 +182,9 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
       <h3>{t.affected.heading}</h3>
       <p className="field-note">
         <Chip variant="status" size="sm" status="warning">
-          {affected.data?.basis === 'LOT_GENEALOGY_ESTIMATE' ? t.affected.genealogy : t.affected.estimate}
+          {affected.data?.basis === 'LOT_GENEALOGY_ESTIMATE'
+            ? t.affected.genealogy
+            : t.affected.estimate}
         </Chip>
       </p>
       {affected.isError ? (

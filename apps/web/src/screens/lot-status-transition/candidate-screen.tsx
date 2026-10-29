@@ -6,7 +6,6 @@ import {
   DatePicker,
   EmptyState,
   SearchInput,
-  Select,
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
@@ -22,6 +21,7 @@ import {
   selectableLookupOptions,
 } from '../../patterns/lookup-display';
 import { runRequest } from '../../patterns/request';
+import { Select } from '../../patterns/select';
 import {
   codeName,
   lotStatusTone,
