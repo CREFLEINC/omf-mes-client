@@ -300,6 +300,55 @@ export const InspectionLevelScreen = () => {
     },
   ];
 
+  /*
+   * 품목 이력 창의 열 — 사용자 시안(#208): 변경 일시 · 검사 수준(새 수준 칩 + 아래 「최초 지정」/「이전 수준에서 변경」) ·
+   * 변경 방식 · 변경 사유 · 처리자. 품목은 창 머리가 말하므로 열에서 뺀다. 왼쪽 정렬.
+   */
+  const itemHistoryColumns: Column<ItemInspectionLevelHistory>[] = [
+    {
+      key: 'changedAt',
+      header: t.history.itemColumns.changedAt,
+      width: '150px',
+      render: (row) => formatPlantDateTime(row.changedAt) ?? '',
+    },
+    {
+      key: 'level',
+      header: t.history.itemColumns.level,
+      width: '130px',
+      render: (row) => (
+        <span className="inspection-level-history-level">
+          <LevelChip code={row.toLevelCode} />
+          <span className="inspection-sheet-template-muted">
+            {row.fromLevelCode === null
+              ? t.history.firstSetNote
+              : t.history.changedFrom(levelName(row.fromLevelCode))}
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: 'type',
+      header: t.history.itemColumns.type,
+      width: '90px',
+      render: (row) => t.history.types[row.changeTypeCode] ?? row.changeTypeCode,
+    },
+    {
+      key: 'reason',
+      header: t.history.itemColumns.reason,
+      width: '150px',
+      render: (row) => {
+        const reason = historyReason(row);
+        return <span title={reason}>{reason}</span>;
+      },
+    },
+    {
+      key: 'changedBy',
+      header: t.history.itemColumns.changedBy,
+      width: '120px',
+      render: (row) => row.changedByName ?? '',
+    },
+  ];
+
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다 — 검사 기준 탭 목록과 같다(#208). */
   const ordered = useColumnOrder('omf-mes:inspection-level:columns:list:order', columns);
   const resizable = useColumnWidths('omf-mes:inspection-level:columns:list', ordered, {
@@ -542,16 +591,7 @@ export const InspectionLevelScreen = () => {
       {historyItem !== null && (
         <ItemHistoryDialog
           item={historyItem}
-          /* 품목 열은 빼고(창 제목이 말한다), 사유 폭을 줄여 일시 · 처리자가 창 안에서 잘리지 않게(#208). */
-          columns={historyColumns
-            .filter((column) => column.key !== 'item')
-            .map((column) =>
-              column.key === 'reason'
-                ? { ...column, width: '140px' }
-                : column.key === 'change'
-                  ? { ...column, width: '150px' }
-                  : column,
-            )}
+          columns={itemHistoryColumns}
           onClose={() => setHistoryItem(null)}
         />
       )}

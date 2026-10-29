@@ -11,7 +11,7 @@ const t = messages.inspectionLevel;
 
 export interface ItemHistoryDialogProps {
   item: ItemInspectionLevel;
-  /** 아래 「전환 이력」 표와 같은 열 — 품목 열은 뺀다(창 제목이 품목을 말한다). */
+  /** 이력 열 — 품목은 창 머리가 말하므로 없다. */
   columns: Column<ItemInspectionLevelHistory>[];
   onClose: () => void;
 }
@@ -33,7 +33,7 @@ export const ItemHistoryDialog = ({ item, columns, onClose }: ItemHistoryDialogP
       size="lg"
       closeOnBackdropClick={false}
       showCloseButton={false}
-      title={t.history.itemTitle(item.itemCode, item.itemName)}
+      title={t.history.itemTitle}
       onClose={onClose}
       footer={
         <Button variant="outlined" onClick={onClose}>
@@ -42,6 +42,11 @@ export const ItemHistoryDialog = ({ item, columns, onClose }: ItemHistoryDialogP
       }
     >
       <div className="inspection-level-history-dialog">
+        {/* 품목 머리 — 품목명(크게) · 아래 「품목코드 …」(흐리게) · 사용자 시안(#208). */}
+        <div className="inspection-level-history-item">
+          <p className="inspection-level-history-item-name">{item.itemName}</p>
+          <p className="inspection-sheet-template-muted">{t.history.itemCode(item.itemCode)}</p>
+        </div>
         {histories.isError && <AlertBanner variant="error">{t.history.loadFailed}</AlertBanner>}
         <div
           ref={fit.ref}
