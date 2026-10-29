@@ -33,12 +33,11 @@ const renderPane = (overrides: Partial<Parameters<typeof VersionPane>[0]> = {}) 
 };
 
 describe('VersionPane — 목록', () => {
-  /* 표 머리 없이 줄만 놓는다(사용자 시안 · #208). */
-  it('표 머리 없이 버전마다 한 줄을 낸다', () => {
+  it('버전과 상태 두 열만 낸다', () => {
     renderPane();
 
-    expect(screen.queryByRole('columnheader')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('listitem')).toHaveLength(2);
+    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
+    expect(headers).toEqual(['버전', '상태']);
   });
 
   it('받은 순서를 그대로 그린다 — 최신이 위다', () => {
@@ -77,7 +76,7 @@ describe('VersionPane — 목록', () => {
     renderPane({ versions: [], loadError: <p>불러오지 못했습니다</p> });
 
     expect(screen.getByText('불러오지 못했습니다')).toBeInTheDocument();
-    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.queryByText('등록된 버전이 없습니다')).not.toBeInTheDocument();
   });
 
