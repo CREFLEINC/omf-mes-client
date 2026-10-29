@@ -12,8 +12,8 @@ export type TemplateStatusFilter = InspectionSheetTemplate['statusCode'] | '';
 export const templateKeys = {
   /** 무효화용 앞부분 — 저장·확정하면 목록과 상세가 함께 낡는다. */
   all: ['inspection-sheet-template'] as const,
-  list: (status: TemplateStatusFilter, page: number, size: number) =>
-    ['inspection-sheet-template', 'list', status, page, size] as const,
+  list: (status: TemplateStatusFilter, itemId: number | null, page: number, size: number) =>
+    ['inspection-sheet-template', 'list', status, itemId, page, size] as const,
   detail: (id: number) => ['inspection-sheet-template', 'detail', id] as const,
   businessUnits: ['inspection-sheet-template', 'business-units'] as const,
 };
@@ -26,17 +26,24 @@ export const useTemplates = (
   status: TemplateStatusFilter,
   page: number,
   size: number = PAGE_SIZE,
+  /** 모델 조건(#208) — 목록 조회가 품목 번호로 거른다. */
+  itemId: number | null = null,
 ) => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: templateKeys.list(status, page, size),
+    queryKey: templateKeys.list(status, itemId, page, size),
     placeholderData: keepPreviousData,
     queryFn: () =>
       runRequest(() =>
         client.GET('/quality/inspection-sheet-templates', {
           params: {
-            query: { ...(status === '' ? {} : { statusCode: status }), page, size },
+            query: {
+              ...(status === '' ? {} : { statusCode: status }),
+              ...(itemId === null ? {} : { itemId }),
+              page,
+              size,
+            },
           },
         }),
       ),

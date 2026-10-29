@@ -183,6 +183,40 @@ describe('검사표 기준', () => {
     expect(screen.getByRole('columnheader', { name: t.columns.confirmedBy })).toBeInTheDocument();
   });
 
+  /* 양식 · 재료는 받은 쪽 안에서 거른다(#208). */
+  it('재료 조건에 맞지 않으면 조건 결과 없음 안내가 나온다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('row', { name: /AAR4/ });
+
+    await user.type(screen.getByLabelText(t.list.material), '없는재료');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /AAR4/ })).not.toBeInTheDocument();
+  });
+
+  it('재료는 일부만 맞아도 걸린다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('row', { name: /AAR4/ });
+
+    await user.type(screen.getByLabelText(t.list.material), '방청');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(await screen.findByRole('row', { name: /AAR4/ })).toBeInTheDocument();
+  });
+
+  /* 확정 일시는 머리를 눌러 오름 · 내림차순으로 줄을 세운다(#208). */
+  it('확정 일시 머리를 누르면 정렬된다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('table', { name: t.list.caption });
+
+    const header = screen.getByRole('columnheader', { name: t.columns.confirmedAt });
+    await user.click(within(header).getByRole('button'));
+    expect(header).toHaveAttribute('aria-sort', 'ascending');
+    await user.click(within(header).getByRole('button'));
+    expect(header).toHaveAttribute('aria-sort', 'descending');
+  });
+
   it('작성중 기준의 단계 이름을 고쳐 저장하면 상세의 ETag 로 잠가 통째로 보낸다', async () => {
     const { user, requests } = setup(template());
     await openRow(user);
