@@ -375,6 +375,17 @@ describe('DefectCauseCodeScreen — 목록 조회', () => {
 
     expect(await screen.findByText('조건에 맞는 결과가 없습니다')).toBeInTheDocument();
   });
+
+  /* #209 버그 — 처분 유형 · 공정 조건만 건 0건도 「조건에 맞는 결과가 없습니다」다. */
+  it.each([
+    ['처분 유형', '?disp=SCRAP'],
+    ['공정', '?proc=3001'],
+  ])('%s 조건만 건 0건도 조건을 고치라고 안내한다', async (_label, search) => {
+    renderScreen([defectListRoute([])], search);
+
+    expect(await screen.findByText('조건에 맞는 결과가 없습니다')).toBeInTheDocument();
+    expect(screen.queryByText('아직 등록된 코드가 없습니다')).not.toBeInTheDocument();
+  });
 });
 
 describe('DefectCauseCodeScreen — 2계층 표시', () => {

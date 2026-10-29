@@ -106,7 +106,12 @@ const buildTree = (
   return out;
 };
 
-const hasAnyFilter = (filters: CodeFilters): boolean => filters.q !== '' || filters.includeInactive;
+/* 처분 유형 · 공정 조건도 센다(#209 버그 수정) — 빠지면 조건에 걸러 빈 목록을 「아직 등록된 코드가 없습니다」로 안내했다. */
+const hasAnyFilter = (filters: CodeFilters): boolean =>
+  filters.q !== '' ||
+  filters.includeInactive ||
+  filters.dispositionTypeCode !== '' ||
+  filters.processId !== '';
 
 /** 둥근 바탕 아이콘 — 검사 기준 탭의 빈 안내와 같은 모양(#196). */
 const EmptyIcon = ({ name }: { name: string }) => (
@@ -218,7 +223,11 @@ export const CodeListPane = ({
       key: 'name',
       align: 'center',
       header: adapter.labels.listName,
-      // 폭을 정하지 않는다 — 남는 폭을 이 열이 맡는다(검사 기준 탭과 같다).
+      /*
+       * 폭을 정한다(#209 버그 수정) — 정하지 않으면 좁은 화면에서 가로 넘김이 생길 때 이 열이 0 폭으로 사라졌다.
+       * 넓은 화면에서는 `useFitColumns` 가 모든 열을 같은 비율로 늘려 줄을 채운다.
+       */
+      width: '180px',
       render: cell((row) => <span title={row.name}>{row.name}</span>),
     },
     /* 서버가 목록에 주는 값을 모두 싣는다(사용자 지시 · #209) — 한국어명 · 베트남어명 · 처분 유형 · 공정. */
@@ -334,6 +343,12 @@ export const CodeListPane = ({
         </div>
       );
     }
+
+    /*
+     * 빈 목록 안내는 표 밖에 낸다(#209 버그 수정) — 표 안에 두면 가로로 넓은 표 전체 폭의 가운데에 서서
+     * 좁은 화면에서 문장 · 「초기화」 단추가 잘렸다.
+     */
+    if (tree.length === 0) return <div className="defect-cause-list-empty">{emptySlot}</div>;
 
     return (
       /*

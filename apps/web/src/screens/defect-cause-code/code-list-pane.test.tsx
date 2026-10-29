@@ -163,8 +163,13 @@ describe('CodeListPane — 상태별 표시', () => {
     });
 
     expect(screen.getByText('조건에 맞는 결과가 없습니다')).toBeInTheDocument();
-    // 필터 바에도 같은 이름의 버튼이 있다 — 빈 상태 안의 것을 고른다.
-    await user.click(within(screen.getByRole('table')).getByRole('button', { name: '초기화' }));
+    // 빈 안내는 표 밖에 선다(#209) — 좁은 화면에서 넓은 표 가운데에 서서 잘리지 않게. 목록 구획 안의 것을 고른다.
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    await user.click(
+      within(screen.getByRole('region', { name: '불량코드 목록' })).getByRole('button', {
+        name: '초기화',
+      }),
+    );
 
     expect(props.onApplyFilters).toHaveBeenCalledWith({
       q: '',
