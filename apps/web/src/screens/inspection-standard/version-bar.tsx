@@ -153,7 +153,7 @@ export const VersionBar = ({
          */
         <Dialog
           open
-          size="md"
+          size="lg"
           aria-label={t.versionBar.openList}
           closeOnBackdropClick={false}
           showCloseButton={false}
