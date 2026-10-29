@@ -1137,10 +1137,17 @@ describe('InboundScheduleScreen — 두 표', () => {
     expect(marked[0]?.closest('tr')).toHaveTextContent('SAMPLE-ITEM-01');
   });
 
-  it('공급사 목록을 못 받으면 공급업체 칸 아래에 알린다', async () => {
-    renderScreen([listRoute(), failingLookupRoute(PARTNERS_PATH), ...lookupRoutes()]);
+  /* 공급업체 칸은 펼칠 때 쪽 단위로 받는다(사용자 지시 2026-10-29) — 못 받으면 펼친 목록 안에서 알린다. */
+  it('공급사 목록을 못 받으면 공급업체 칸을 펼쳤을 때 알린다', async () => {
+    const { user } = renderScreen([
+      listRoute(),
+      failingLookupRoute(PARTNERS_PATH),
+      ...lookupRoutes(),
+    ]);
 
-    expect(await screen.findByText(t.filters.lookupFailed)).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: t.quick.supplier }));
+
+    expect(await screen.findByText(messages.common.selectLoadFailed)).toBeInTheDocument();
   });
 
   /* #44 — 두 표 어디에도 내부 번호(7100·7300·8100대)가 글자로 서지 않는다. */

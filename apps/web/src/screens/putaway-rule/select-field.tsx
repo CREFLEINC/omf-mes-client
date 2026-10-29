@@ -1,5 +1,6 @@
 import { useId } from 'react';
 
+import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
 import type { SelectOption } from './types';
@@ -16,7 +17,13 @@ import type { SelectOption } from './types';
  */
 export interface SelectFieldProps {
   label: string;
-  options: SelectOption[];
+  /** 선택지. `items` 를 주면 쓰지 않는다. */
+  options?: SelectOption[];
+  /**
+   * 품목 칸 — 선택지를 받지 않고 품목 마스터를 쪽 단위로 찾는다(`ItemSelect`, 중지 품목 포함). 고정 선택지(「전체」)는
+   * `leadingOptions` 로.
+   */
+  items?: { leadingOptions: SelectOption[] };
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
@@ -48,7 +55,8 @@ export interface SelectFieldProps {
  */
 export const SelectField = ({
   label,
-  options,
+  options = [],
+  items,
   value,
   onChange,
   required = false,
@@ -71,22 +79,28 @@ export const SelectField = ({
    * 선택지에 빈 값(「전체」)이 있으면 **빈 값도 고른 값이다** —
    * 그때는 자리표시로 대신하지 않는다.
    */
-  const hasEmptyOption = options.some((option) => option.value === '');
+  const hasEmptyOption = [...options, ...(items?.leadingOptions ?? [])].some(
+    (option) => option.value === '',
+  );
+  const shared = {
+    id,
+    value: value === '' && !hasEmptyOption ? null : value,
+    onChange,
+    disabled,
+    invalid: error !== undefined,
+    'aria-required': required || undefined,
+    'aria-describedby': message === undefined ? undefined : noteId,
+    ...(placeholder === undefined ? {} : { placeholder }),
+  };
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
       <FieldLabel htmlFor={id} label={label} required={required} />
-      <Select
-        id={id}
-        options={options}
-        value={value === '' && !hasEmptyOption ? null : value}
-        onChange={onChange}
-        placeholder={placeholder}
-        disabled={disabled}
-        invalid={error !== undefined}
-        aria-required={required || undefined}
-        aria-describedby={message === undefined ? undefined : noteId}
-      />
+      {items === undefined ? (
+        <Select {...shared} options={options} />
+      ) : (
+        <ItemSelect {...shared} includeInactive leadingOptions={items.leadingOptions} />
+      )}
       {message !== undefined && (
         <span id={noteId} className={error === undefined ? 'field-note' : 'field-error'}>
           {message}

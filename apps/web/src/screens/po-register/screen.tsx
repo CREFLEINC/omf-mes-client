@@ -864,7 +864,6 @@ export const PoRegisterScreen = () => {
                 warnings={lineValidation.warnings}
                 itemLookup={items}
                 uomLookup={uoms}
-                itemOptions={toSelectOptions(items)}
                 uomOptions={toSelectOptions(uoms)}
                 isLocked={isFormLocked}
                 onPatch={patchLine}

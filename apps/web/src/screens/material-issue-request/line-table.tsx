@@ -2,6 +2,7 @@ import { Chip, type Column, EmptyState, IconButton, Table, TextField } from '@cr
 import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
+import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import { isOutsideBom } from './bom-origin';
 import type { ItemLookupResult, LookupResult } from './lookups';
@@ -46,7 +47,6 @@ export interface LineTableProps {
    */
   itemNameSources: ReadonlyMap<string, LookupSource>;
   uomLookup: LookupResult;
-  itemOptions: SelectOption[];
   uomOptions: SelectOption[];
   isLocked?: boolean;
   onPatch: (key: string, patch: Partial<Omit<MaterialIssueLineDraft, 'key'>>) => void;
@@ -80,7 +80,6 @@ export const LineTable = ({
   itemLookup,
   itemNameSources,
   uomLookup,
-  itemOptions,
   uomOptions,
   isLocked = false,
   onPatch,
@@ -100,26 +99,22 @@ export const LineTable = ({
               {lookupDisplayLabel(itemNameSources.get(row.itemId) ?? itemLookup, row.itemId)}
             </span>
           ) : (
-            <Select
+            <ItemSelect
               size="sm"
-              options={itemOptions}
+              includeInactive
               value={row.itemId === '' ? null : row.itemId}
               invalid={errorOf(row, 'itemId') !== undefined}
               disabled={isLocked}
               aria-label={t.lineTable.itemLabel(rowIndex + 1)}
               onChange={(value) => {
+                onPatch(row.key, { itemId: value });
+              }}
+              onItemChange={(item) => {
                 /*
                  * 품목을 고르면 기준단위를 함께 채운다 — 단위를 따로 고르게 두면 비운 채로
                  * 두기 쉽고, 그 줄은 본문에서 조용히 빠진다.
                  */
-                const baseUomId = itemLookup.entries.find(
-                  (entry) => entry.value === value,
-                )?.baseUomId;
-
-                onPatch(row.key, {
-                  itemId: value,
-                  ...(baseUomId === undefined ? {} : { uomId: String(baseUomId) }),
-                });
+                onPatch(row.key, { uomId: String(item.baseUomId) });
               }}
             />
           )}

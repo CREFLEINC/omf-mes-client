@@ -393,28 +393,34 @@ describe('useLocationLookup', () => {
 });
 
 describe('useItemLookup', () => {
-  it('열리기 전에는 부르지 않는다', () => {
-    const { fetch, urls } = recordingFetch([route(ITEMS_PATH, itemFixtures)]);
+  it('풀 품목이 없으면 부르지 않는다', () => {
+    const { fetch, urls } = recordingFetch([]);
 
-    renderHookWithProviders(() => useItemLookup(false), { fetch });
+    renderHookWithProviders(() => useItemLookup([]), { fetch });
 
     expect(urls).toHaveLength(0);
   });
 
-  /** 목록 조건을 이름 풀이 조회에 싣지 않는다 — 좁힘 밖의 정상 자료가 「알 수 없음」이 된다. */
-  it('열리면 좁히지 않은 조회를 한 번 부른다', async () => {
-    const { fetch, urls } = recordingFetch([route(ITEMS_PATH, itemFixtures)]);
-    const { result } = renderHookWithProviders(() => useItemLookup(true), { fetch });
+  /** 9천여 건을 통째로 받지 않는다 — 뜬 품목만 번호로, 같은 번호는 한 번. */
+  it('뜬 품목만 번호로 한 번씩 부른다', async () => {
+    const item = itemFixtures[0];
+    const { fetch, urls } = recordingFetch([
+      {
+        match: (request) =>
+          new URL(request.url).pathname === `${ITEMS_PATH}/${String(item?.itemId)}`,
+        respond: () => jsonResponse({ item }),
+      },
+    ]);
+    const ids = [item?.itemId ?? 0, item?.itemId ?? 0];
+    const { result } = renderHookWithProviders(() => useItemLookup(ids), { fetch });
 
     await waitFor(() => {
-      expect(result.current.entries).toHaveLength(itemFixtures.length);
+      expect(result.current.entries).toHaveLength(1);
     });
-
-    const query = urls[0]?.searchParams;
-
-    expect(query?.get('includeInactive')).toBe('true');
-    expect(query?.has('q')).toBe(false);
-    expect(query?.has('itemTypeCode')).toBe(false);
+    expect(result.current.entries[0]?.label).toBe(
+      `${item?.itemCode ?? ''} · ${item?.itemName ?? ''}`,
+    );
+    expect(urls.map((url) => url.pathname)).toEqual([`${ITEMS_PATH}/${String(item?.itemId)}`]);
   });
 });
 

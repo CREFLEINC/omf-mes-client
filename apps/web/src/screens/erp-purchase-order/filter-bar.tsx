@@ -2,6 +2,7 @@ import { Button, SearchInput, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { PartnerSelect } from '../../patterns/partner-select';
 import { Select } from '../../patterns/select';
 import type { PurchaseOrderFilters } from './filters';
 import { ProgressFilterField } from './progress';
@@ -15,28 +16,46 @@ interface FilterSelectProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  /** 거래처 칸 — 선택지를 받지 않고 쪽 단위로 찾는다(`PartnerSelect`, 사용자 지시 2026-10-29). */
+  partners?: boolean;
 }
 
-const FilterSelect = ({ label, options, value, onChange, className }: FilterSelectProps) => {
+const FilterSelect = ({
+  label,
+  options,
+  value,
+  onChange,
+  className,
+  partners = false,
+}: FilterSelectProps) => {
   const id = useId();
   return (
     <div className={className === undefined ? 'field-cell' : `field-cell ${className}`}>
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
-      <Select
-        id={id}
-        options={[{ value: '', label: t.filters.all }, ...options]}
-        value={value}
-        onChange={onChange}
-      />
+      {partners ? (
+        <PartnerSelect
+          id={id}
+          includeInactive
+          leadingOptions={[{ value: '', label: t.filters.all }]}
+          value={value}
+          onChange={onChange}
+        />
+      ) : (
+        <Select
+          id={id}
+          options={[{ value: '', label: t.filters.all }, ...options]}
+          value={value}
+          onChange={onChange}
+        />
+      )}
     </div>
   );
 };
 
 export interface ErpPurchaseOrderFilterBarProps {
   appliedFilters: PurchaseOrderFilters;
-  supplierOptions: SelectOption[];
   plantOptions: SelectOption[];
   statusOptions: SelectOption[];
   /** 발주 유형 — 공통코드 `ORDER_TYPE` */
@@ -52,7 +71,6 @@ export interface ErpPurchaseOrderFilterBarProps {
  */
 export const ErpPurchaseOrderFilterBar = ({
   appliedFilters,
-  supplierOptions,
   plantOptions,
   statusOptions,
   orderTypeOptions,
@@ -90,8 +108,9 @@ export const ErpPurchaseOrderFilterBar = ({
         onChange={(event) => update('to', event.target.value)}
       />
       <FilterSelect
+        partners
         label={t.fields.supplier}
-        options={supplierOptions}
+        options={[]}
         value={draft.supplier}
         onChange={(value) => update('supplier', value)}
       />

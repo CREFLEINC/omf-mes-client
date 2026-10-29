@@ -55,6 +55,18 @@ const stub = (options: WriteStubOptions): StubRoute[] => [
     respond: () => jsonResponse(scopeItemsResponse()),
   },
   {
+    /* 품목 칸(`ItemSelect`)은 이미 걸린 품목의 이름을 번호로 받는다. */
+    match: (request) => new URL(request.url).pathname.startsWith('/mdm/items/'),
+    respond: (request) => {
+      const itemId = Number(new URL(request.url).pathname.split('/').at(-1));
+      const item = scopeItemsResponse().items.find((row) => row.itemId === itemId);
+
+      return item === undefined
+        ? jsonResponse({ errors: [] }, { status: 404 })
+        : jsonResponse({ item });
+    },
+  },
+  {
     match: (request) => isPath(request, '/mdm/processes'),
     respond: () => jsonResponse(scopeProcessesResponse()),
   },
@@ -564,28 +576,28 @@ describe('W-05-07 ② — 창 안의 선택 목록', () => {
   });
 
   /**
-   * ⛔ **한계는 그 목록의 칸에만 붙는다.** 하나로 묶어 세 칸에 같이 달면 같은 문구가 셋 서고,
-   * 무엇보다 **틀린 말을 한다** — 단위를 못 받았는데 품목 칸이 「못 받았습니다」라고 한다.
+   * ⛔ **한계는 그 목록의 칸에만 붙는다.** 하나로 묶어 여러 칸에 같이 달면 같은 문구가 여럿 서고,
+   * 무엇보다 **틀린 말을 한다** — 공정을 못 받았는데 단위 칸이 「못 받았습니다」라고 한다.
    */
   it('한 목록이 실패해도 다른 칸은 그 말을 하지 않는다', async () => {
     const user = userEvent.setup();
-    const withFailingItems: StubRoute[] = [
+    const withFailingProcesses: StubRoute[] = [
       {
-        match: (request) => isPath(request, '/mdm/items'),
+        match: (request) => isPath(request, '/mdm/processes'),
         respond: () => jsonResponse({ errors: [] }, { status: 500 }),
       },
       ...stub({ writes: [] }),
     ];
 
     renderWithProviders(<CollectionChannelScreen />, {
-      fetch: createStubFetch(withFailingItems),
+      fetch: createStubFetch(withFailingProcesses),
     });
     await pickFirstEquipment();
     await user.click(within(channelPane()).getByRole('button', { name: t.actions.addChannel }));
 
     const dialog = within(formDialog());
 
-    /* 품목 칸만 말한다 — 단위·공정은 멀쩡히 받았다. */
+    /* 공정 칸만 말한다 — 단위는 멀쩡히 받았다(품목 칸은 펼칠 때 받는다). */
     expect(await dialog.findByText(t.optionsLoadFailed)).toBeInTheDocument();
     expect(dialog.getAllByText(t.optionsLoadFailed)).toHaveLength(1);
   });
@@ -634,7 +646,7 @@ describe('W-05-07 ② — 창 안의 조건 축', () => {
     await user.type(dialog.getByRole('textbox', { name: /채널명/ }), 'NEW_CHANNEL');
 
     await user.click(dialog.getByRole('combobox', { name: t.scope.itemLabel }));
-    await user.click(screen.getByRole('option', { name: /ITM-201/ }));
+    await user.click(await screen.findByRole('option', { name: /ITM-201/ }));
     await user.click(dialog.getByRole('combobox', { name: t.scope.processLabel }));
     await user.click(screen.getByRole('option', { name: /PRC-301/ }));
 
@@ -697,7 +709,7 @@ describe('W-05-07 ② — 창 안의 조건 축', () => {
     await user.type(dialog.getByRole('textbox', { name: /채널명/ }), 'NEW_CHANNEL');
 
     await user.click(dialog.getByRole('combobox', { name: t.scope.itemLabel }));
-    await user.click(screen.getByRole('option', { name: /ITM-201/ }));
+    await user.click(await screen.findByRole('option', { name: /ITM-201/ }));
     await user.click(dialog.getByRole('combobox', { name: t.scope.itemLabel }));
     await user.click(screen.getByRole('option', { name: t.scope.anyOption }));
 
@@ -728,7 +740,11 @@ describe('W-05-07 ② — 창 안의 조건 축', () => {
 
     const dialog = within(await screen.findByRole('dialog'));
 
-    expect(dialog.getByRole('combobox', { name: t.scope.itemLabel })).toHaveTextContent(/ITM-201/);
+    await waitFor(() =>
+      expect(dialog.getByRole('combobox', { name: t.scope.itemLabel })).toHaveTextContent(
+        /ITM-201/,
+      ),
+    );
     /* 걸지 않은 축은 「전체」다 — 빈 칸이 아니다. */
     expect(dialog.getByRole('combobox', { name: t.scope.processLabel })).toHaveTextContent(
       t.scope.anyOption,

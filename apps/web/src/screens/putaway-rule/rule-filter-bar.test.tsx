@@ -1,8 +1,9 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { DEFAULT_FILTERS } from './filters';
 import { RuleFilterBar } from './rule-filter-bar';
 import type { RuleFilters, SelectOption } from './types';
@@ -17,10 +18,18 @@ const warehouseOptions: SelectOption[] = [
   { value: '9202', label: INACTIVE_WAREHOUSE_OPTION_LABEL },
 ];
 
-const itemOptions: SelectOption[] = [
-  { value: '9101', label: 'SYN-ITEM-01 · 합성품목 가' },
-  { value: '9102', label: 'SYN-ITEM-02 · 합성품목 나' },
+/** 품목 칸(`ItemSelect`)은 펼칠 때 품목 목록을 쪽 단위로 부른다. */
+const itemRows = [
+  { itemId: 9101, itemCode: 'SYN-ITEM-01', itemName: '합성품목 가', isActive: true },
+  { itemId: 9102, itemCode: 'SYN-ITEM-02', itemName: '합성품목 나', isActive: true },
 ];
+const fetch = createStubFetch([
+  {
+    match: (request) => new URL(request.url).pathname === '/mdm/items',
+    respond: () =>
+      jsonResponse({ items: itemRows, page: { page: 1, size: 50, total: itemRows.length } }),
+  },
+]);
 
 const renderBar = (
   appliedFilters: RuleFilters = DEFAULT_FILTERS,
@@ -29,15 +38,15 @@ const renderBar = (
   const onApply = vi.fn();
   const onReset = vi.fn();
 
-  render(
+  renderWithProviders(
     <RuleFilterBar
       appliedFilters={appliedFilters}
       warehouseOptions={warehouseOptions}
-      itemOptions={itemOptions}
       onApply={onApply}
       onReset={onReset}
       {...overrides}
     />,
+    { fetch, session: null },
   );
 
   return { onApply, onReset, user: userEvent.setup() };
@@ -107,7 +116,7 @@ describe('RuleFilterBar', () => {
    * 뒤에 온다. 잠근 사실만 두면 사용자가 무엇을 하면 풀리는지 모르므로 사유를 함께 낸다.
    */
   it('창고를 고르기 전에는 품목 칸이 잠기고 사유가 보인다', () => {
-    renderBar(DEFAULT_FILTERS, { itemOptions: [] });
+    renderBar(DEFAULT_FILTERS);
 
     expect(screen.getByRole('combobox', { name: t.fields.item })).toBeDisabled();
     expect(screen.getByText(t.filters.itemNeedsWarehouse)).toBeInTheDocument();
@@ -123,13 +132,13 @@ describe('RuleFilterBar', () => {
    * **선택지가 0건이면 「전체」도 붙이지 않는다.** 고를 것이 하나도 없는데 「전체」만 있으면
    * 「전체를 고를 수 있다 = 목록이 준비됐다」로 읽힌다 — 실제로는 값이 하나도 오지 않은 상태다.
    */
-  it.each([
-    ['창고', t.fields.warehouse, { warehouseOptions: [] }],
-    ['품목', t.fields.item, { itemOptions: [] }],
-  ])('%s 선택지가 0건이면 「전체」도 붙이지 않는다', async (_axis, label, overrides) => {
-    const { user } = renderBar({ warehouseId: '9201', itemId: '', activeOnly: false }, overrides);
+  it('창고 선택지가 0건이면 「전체」도 붙이지 않는다', async () => {
+    const { user } = renderBar(
+      { warehouseId: '9201', itemId: '', activeOnly: false },
+      { warehouseOptions: [] },
+    );
 
-    await user.click(screen.getByRole('combobox', { name: label }));
+    await user.click(screen.getByRole('combobox', { name: t.fields.warehouse }));
 
     expect(screen.queryByRole('option', { name: t.filters.all })).not.toBeInTheDocument();
   });
@@ -142,7 +151,7 @@ describe('RuleFilterBar', () => {
    * 아무 말도 하지 않아야 하며, 그래야 판정이 화면 한 곳에만 산다.
    */
   it('자리표시를 받지 않으면 0건이어도 아무 말도 하지 않는다', () => {
-    renderBar(DEFAULT_FILTERS, { warehouseOptions: [], itemOptions: [] });
+    renderBar(DEFAULT_FILTERS, { warehouseOptions: [] });
 
     /* 두 칸 모두 — 어느 축에서도 부품이 문장을 지어내지 않는다. */
     expect(screen.getByRole('combobox', { name: t.fields.warehouse })).not.toHaveTextContent(

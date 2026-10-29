@@ -598,8 +598,6 @@ export const InboundScheduleScreen = () => {
               appliedFilters={filters}
               today={today}
               fallbackPeriod={fallbackPeriod}
-              supplierOptions={toSelectOptions(suppliers)}
-              supplierNote={lookupNote(suppliers)}
               onApply={(nextPeriod, nextFilters) => {
                 applyQuery(nextPeriod, nextFilters);
               }}

@@ -1,5 +1,6 @@
 import { useId } from 'react';
 
+import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
 import type { CodeOption } from './options';
@@ -63,6 +64,55 @@ export const SelectField = ({
       <Select
         id={id}
         options={options}
+        value={value === '' && !hasEmptyOption ? null : value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        invalid={error !== undefined}
+        aria-required={required || undefined}
+        aria-describedby={message === undefined ? undefined : noteId}
+      />
+      {message !== undefined && (
+        <span id={noteId} className={error === undefined ? 'field-note' : 'field-error'}>
+          {message}
+        </span>
+      )}
+    </div>
+  );
+};
+
+export interface ItemSelectFieldProps extends Omit<SelectFieldProps, 'options' | 'note'> {
+  /** 목록 맨 앞의 고정 선택지 — 조건 축의 「전체」. */
+  leadingOptions?: CodeOption[];
+}
+
+/**
+ * 품목 선택칸 — `SelectField` 와 같은 짜임에 품목만 서버에서 쪽으로 받는다(`ItemSelect`). 품목 마스터가 9천여 건이라
+ * 한 쪽 목록으로는 뒤쪽 품목을 고를 수 없다. 미사용 품목을 조건으로 쓰는 매핑도 열리게 중지 품목까지 싣는다.
+ */
+export const ItemSelectField = ({
+  label,
+  value,
+  onChange,
+  required = false,
+  disabled = false,
+  disabledReason,
+  error,
+  placeholder,
+  leadingOptions,
+}: ItemSelectFieldProps) => {
+  const id = useId();
+  const noteId = `${id}-note`;
+  const message = error ?? (disabled ? disabledReason : undefined);
+  const hasEmptyOption = leadingOptions?.some((option) => option.value === '') ?? false;
+
+  return (
+    <div className="field-cell">
+      <FieldLabel htmlFor={id} label={label} required={required} />
+      <ItemSelect
+        id={id}
+        includeInactive
+        {...(leadingOptions !== undefined ? { leadingOptions } : {})}
         value={value === '' && !hasEmptyOption ? null : value}
         onChange={onChange}
         placeholder={placeholder}

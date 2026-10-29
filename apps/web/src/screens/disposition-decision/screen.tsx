@@ -369,7 +369,6 @@ export const DispositionDecisionScreen = ({
                     applied={filters}
                     severity={severity}
                     status={status}
-                    items={items}
                     onApply={(next) => apply(next)}
                     onReset={() =>
                       apply({

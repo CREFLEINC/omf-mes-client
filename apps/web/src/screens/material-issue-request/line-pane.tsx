@@ -17,7 +17,6 @@ export interface LinePaneProps {
   /** BOM 유래 줄의 품목 이름 — `LineTable` 이 쓴다 */
   itemNameSources: ReadonlyMap<string, LookupSource>;
   uomLookup: LookupResult;
-  itemOptions: SelectOption[];
   uomOptions: SelectOption[];
   isLocked: boolean;
   /** 소요 조회가 도는 중인가 */
@@ -55,7 +54,6 @@ export const LinePane = ({
   itemLookup,
   itemNameSources,
   uomLookup,
-  itemOptions,
   uomOptions,
   isLocked,
   isLoadingShortage,
@@ -110,7 +108,6 @@ export const LinePane = ({
           itemLookup={itemLookup}
           itemNameSources={itemNameSources}
           uomLookup={uomLookup}
-          itemOptions={itemOptions}
           uomOptions={uomOptions}
           isLocked={isLocked}
           onPatch={onPatchLine}

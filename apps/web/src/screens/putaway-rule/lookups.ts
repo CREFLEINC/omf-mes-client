@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -345,7 +345,7 @@ export const lookupKeys = {
   itemSearch: (keyword: string) => ['putaway-rule-lookups', 'item-search', keyword] as const,
   /** 위치는 **창고마다** 캐시가 갈린다 — 계약이 창고를 필수 조건으로 요구한다. */
   locations: (warehouseId: number) => ['putaway-rule-lookups', 'locations', warehouseId] as const,
-  items: ['putaway-rule-lookups', 'items'] as const,
+  item: (itemId: number) => ['putaway-rule-lookups', 'item', itemId] as const,
   uoms: ['putaway-rule-lookups', 'uoms'] as const,
 };
 
@@ -483,42 +483,41 @@ export const useLocationLookup = (warehouseId: number | null): LocationLookupRes
 };
 
 /**
- * 품목 — 조건 줄의 선택칸과 목록 표의 품목 칸이 함께 쓴다.
+ * 품목 이름 — 목록 표 · 폼에 보이는 품목만 **번호로 하나씩** 푼다.
  *
- * **창고를 고른 뒤 부른다.** 그전에는 세울 행도, 좁힐 대상도 없다.
+ * 품목은 9천여 건이라 통째로 받지 않는다(사용자 지시 2026-10-29) — 조건 줄의 품목 칸은 `ItemSelect` 가 쪽 단위로
+ * 받는다. 이름이 필요한 것은 화면에 실제로 뜬 몇 줄뿐이다.
  */
-export const useItemLookup = (enabled: boolean): LookupResult => {
+export const useItemLookup = (itemIds: readonly number[]): ReferenceSource => {
   const { client } = useApiClient();
+  const uniqueIds = [...new Set(itemIds)];
 
-  const query = useQuery({
-    queryKey: lookupKeys.items,
-    enabled,
-    queryFn: () =>
-      fetchAllPages((page) =>
-        runRequest(() =>
-          client.GET('/mdm/items', {
-            params: { query: { includeInactive: true, page, size: LOOKUP_PAGE_SIZE } },
-          }),
-        ),
-      ),
+  const results = useQueries({
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: lookupKeys.item(itemId),
+      queryFn: () =>
+        runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } })),
+    })),
   });
 
-  const data = query.data;
+  const entries = results.flatMap((result): LookupEntry[] => {
+    const item = result.data?.item;
+    return item === undefined
+      ? []
+      : [
+          {
+            value: String(item.itemId),
+            label: `${item.itemCode} · ${item.itemName}`,
+            isActive: item.isActive,
+          },
+        ];
+  });
 
   return {
-    entries:
-      data?.items.map((item) => ({
-        value: String(item.itemId),
-        label: `${item.itemCode} · ${item.itemName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    hasLoaded: query.isSuccess,
-    isError: query.isError,
-    isLoading: enabled && query.isPending,
-    refetch: () => {
-      void query.refetch();
-    },
+    entries,
+    truncated: false,
+    isError: results.some((result) => result.isError),
+    isLoading: results.some((result) => result.isPending),
   };
 };
 
@@ -528,7 +527,7 @@ const EMPTY_SEARCH_ROWS: ItemSearchRow[] = [];
  * 품목 **찾기** — 이름 풀이가 아니라 **고를 대상을 좁히는** 조회다.
  *
  * ⚠ **사본 체크리스트 10번과 갈리는 자리다.** 그 항목이 막는 것은 *좁힌 조회로 이름을 푸는
- * 것*이고, 여기서 좁히는 것은 *고를 선택지*다 — 이름 풀이는 좁히지 않은 `useItemLookup`이
+ * 것*이고, 여기서 좁히는 것은 *고를 선택지*다 — 이름 풀이는 번호로 푸는 `useItemLookup`이
  * 그대로 맡는다. 두 조회가 따로 있는 이유가 그것이다.
  *
  * **검색어가 비면 조회하지 않는다.** 빈 검색어로 받은 앞 N건은 고를 만한 후보가 아니고,

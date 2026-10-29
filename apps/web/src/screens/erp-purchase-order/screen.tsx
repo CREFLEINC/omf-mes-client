@@ -107,7 +107,6 @@ export const ErpPurchaseOrderScreen = () => {
             <div className="pane po-board-filter">
               <ErpPurchaseOrderFilterBar
                 appliedFilters={filters}
-                supplierOptions={suppliers.options}
                 plantOptions={plants.options}
                 statusOptions={status.options}
                 orderTypeOptions={orderTypes.options}

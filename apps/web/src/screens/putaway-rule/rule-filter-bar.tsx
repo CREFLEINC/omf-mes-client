@@ -22,10 +22,6 @@ export interface RuleFilterBarProps {
    * 여기는 결과만 그린다. 확정하지 못한 상태에서는 `undefined`가 온다.
    */
   warehousePlaceholder?: string;
-  /** 품목 선택지. **창고를 고르기 전에는 비어 있다** — 그때는 칸 자체가 잠긴다. */
-  itemOptions: SelectOption[];
-  itemNote?: string;
-  itemPlaceholder?: string;
   onApply: (filters: RuleFilters) => void;
   onReset: () => void;
   /** 줄 오른쪽 끝의 화면 단추(규칙 추가 · 다시 조회) — 입고 관리 짜임에는 머리 줄이 없다(사용자 지시 2026-10-29). */
@@ -64,9 +60,6 @@ export const RuleFilterBar = ({
   warehouseOptions,
   warehouseNote,
   warehousePlaceholder,
-  itemOptions,
-  itemNote,
-  itemPlaceholder,
   onApply,
   onReset,
   actions,
@@ -105,15 +98,14 @@ export const RuleFilterBar = ({
         }}
       />
 
+      {/* 품목은 9천여 건이라 칸이 쪽 단위로 받는다 — 펼칠 때 첫 쪽, 검색은 서버로(사용자 지시 2026-10-29). */}
       <SelectField
         wide
         label={t.fields.item}
-        options={withAllOrEmpty(itemOptions)}
+        items={{ leadingOptions: [{ value: '', label: t.filters.all }] }}
         value={appliedFilters.itemId}
         disabled={!hasWarehouse}
         disabledReason={t.filters.itemNeedsWarehouse}
-        note={itemNote}
-        placeholder={itemPlaceholder}
         onChange={(value) => {
           onApply({ ...appliedFilters, itemId: value });
         }}

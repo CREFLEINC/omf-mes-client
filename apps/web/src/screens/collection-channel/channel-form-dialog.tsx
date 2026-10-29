@@ -5,7 +5,7 @@ import { useId, type ReactNode } from 'react';
 import { ItemPicker, type PickerSlot } from './item-picker';
 import type { CodeOption } from './options';
 import { asScopeId } from './scope';
-import { SelectField } from './select-field';
+import { ItemSelectField, SelectField } from './select-field';
 import type {
   ChannelFormValues,
   InspectionItemSpec,
@@ -14,6 +14,8 @@ import type {
 } from './types';
 
 const t = messages.collectionChannel;
+
+const ANY_ITEM: CodeOption[] = [{ value: '', label: t.scope.anyOption }];
 
 interface ReadOnlyFieldProps {
   label: string;
@@ -50,17 +52,15 @@ export interface ChannelFormDialogProps {
   fieldErrors: Record<string, string>;
   banner: ReactNode;
   unitOptions: CodeOption[];
-  /** 조건 축의 선택지. 비운 값이 「전체」다 */
-  itemOptions: CodeOption[];
+  /** 조건 축의 선택지. 비운 값이 「전체」다. 품목은 칸이 서버에서 쪽으로 받는다 */
   processOptions: CodeOption[];
   /**
    * 선택 목록의 한계(잘림·실패) 안내. 없으면 붙이지 않는다.
    *
-   * ⛔ **칸마다 제 출처를 받는다.** 하나로 묶어 세 칸에 같이 붙이면 ① 같은 문구가 셋 서고
+   * ⛔ **칸마다 제 출처를 받는다.** 하나로 묶어 여러 칸에 같이 붙이면 ① 같은 문구가 여럿 서고
    * ② **틀린 말을 한다** — 공장 목록이 잘렸다고 품목 칸이 말하게 된다.
    */
   unitOptionsNote?: string;
-  itemOptionsNote?: string;
   processOptionsNote?: string;
   isSaving: boolean;
   /** 검사 항목을 찾아가는 세 칸 — 저장되지 않고 좁히는 데만 쓴다 */
@@ -94,10 +94,8 @@ export const ChannelFormDialog = ({
   fieldErrors,
   banner,
   unitOptions,
-  itemOptions,
   processOptions,
   unitOptionsNote,
-  itemOptionsNote,
   processOptionsNote,
   isSaving,
   inspectionPlanId,
@@ -190,12 +188,11 @@ export const ChannelFormDialog = ({
             <p className="dialog-lead">{t.scope.note}</p>
 
             <div className="form-grid">
-              <SelectField
+              <ItemSelectField
                 label={t.scope.itemLabel}
-                options={[{ value: '', label: t.scope.anyOption }, ...itemOptions]}
+                leadingOptions={ANY_ITEM}
                 value={values.itemId === null ? '' : String(values.itemId)}
                 onChange={(value) => onChange({ itemId: asScopeId(value) })}
-                note={itemOptionsNote}
                 error={fieldErrors.itemId}
               />
               <SelectField

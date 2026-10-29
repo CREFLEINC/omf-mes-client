@@ -183,7 +183,7 @@ describe('ProductStockStatusScreen', () => {
     await waitFor(() => expect(screen.getByText(ITEM_LABEL)).toBeInTheDocument());
 
     await user.click(screen.getByLabelText(t.fields.item));
-    await user.click(screen.getByRole('option', { name: ITEM_LABEL }));
+    await user.click(await screen.findByRole('option', { name: ITEM_LABEL }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {

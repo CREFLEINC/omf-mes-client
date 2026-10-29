@@ -252,7 +252,6 @@ export const PutawayRuleScreen = () => {
     warehouseId !== null &&
     warehouses.entries.some((entry) => entry.value === String(warehouseId) && entry.isActive);
   const locations = useLocationLookup(warehouseId);
-  const items = useItemLookup(warehouseId !== null);
   const uoms = useUomLookup(warehouseId !== null);
 
   const rules = useMemo(() => (list.data?.items ?? EMPTY_RULES).map(toRuleView), [list.data]);
@@ -420,7 +419,6 @@ export const PutawayRuleScreen = () => {
 
   const warehouseLabelOf = (id: string): string =>
     describeReference(toReference(warehouses, id === '' ? null : Number(id)));
-  const itemLabelOf = (itemId: number): string => describeReference(toReference(items, itemId));
   const uomLabelOf = (uomId: number): string => describeReference(toReference(uoms, uomId));
   const locationLabelOf = (locationId: number | null): string =>
     describeLocation(toLocation(locations, locationId));
@@ -448,6 +446,14 @@ export const PutawayRuleScreen = () => {
   const formCapacity = parseNumber(draft?.values.capacityQty ?? '');
   const formPriority = parseIntegerValue(draft?.values.priorityNo ?? '');
   const formItemId = parseIdentifier(draft?.values.itemId ?? '');
+
+  /* 품목 이름은 화면에 뜬 것만 번호로 푼다 — 목록 줄 · 폼에서 고른 품목. */
+  const items = useItemLookup(
+    formItemId === null
+      ? rules.map((rule) => rule.itemId)
+      : [...rules.map((rule) => rule.itemId), formItemId],
+  );
+  const itemLabelOf = (itemId: number): string => describeReference(toReference(items, itemId));
 
   /**
    * 위치 자체 용량과 견준 결과. **견줄 값이 없으면 아무 말도 하지 않는다** —
@@ -1397,9 +1403,6 @@ export const PutawayRuleScreen = () => {
                     warehouses,
                     t.filters.noWarehouseOptions,
                   )}
-                  itemOptions={toSelectOptions(items)}
-                  itemNote={lookupNote(items)}
-                  itemPlaceholder={optionsPlaceholder(items, t.filters.noItemOptions)}
                   onApply={applyFilters}
                   onReset={() => {
                     applyFilters(DEFAULT_FILTERS);

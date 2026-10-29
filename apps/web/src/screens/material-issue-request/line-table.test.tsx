@@ -1,7 +1,11 @@
+import { createApiClient } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ApiClientProvider } from '../../patterns/api-context';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { emptyLineDraft, lineDraftsFromShortage } from './line-draft';
 import { LineTable } from './line-table';
@@ -33,11 +37,16 @@ const uomLookup: LookupResult = {
   refetch: vi.fn(),
 };
 
-const itemOptions = itemLookup.entries.map((entry) => ({
-  value: entry.value,
-  label: entry.label,
-}));
 const uomOptions = uomLookup.entries.map((entry) => ({ value: entry.value, label: entry.label }));
+
+/* 품목 칸(`ItemSelect`)이 조회 프로바이더를 쓴다 — 펼치지 않으면 부르지 않는다. */
+const queryClient = new QueryClient();
+const apiClient = createApiClient({ baseUrl: 'http://test.invalid' });
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={queryClient}>
+    <ApiClientProvider client={apiClient}>{children}</ApiClientProvider>
+  </QueryClientProvider>
+);
 
 const renderTable = (
   rows = lineDraftsFromShortage(shortageFixtures.map(toShortageLineView)),
@@ -50,11 +59,11 @@ const renderTable = (
       itemLookup={itemLookup}
       itemNameSources={itemNameSources}
       uomLookup={uomLookup}
-      itemOptions={itemOptions}
       uomOptions={uomOptions}
       onPatch={vi.fn()}
       onRemove={vi.fn()}
     />,
+    { wrapper },
   );
 
 describe('LineTable', () => {

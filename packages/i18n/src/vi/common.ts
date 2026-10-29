@@ -15,6 +15,8 @@ export const common: Translated<typeof ko.common> = {
   clear: 'Xóa',
   selectSearch: 'Tìm kiếm',
   selectNoMatch: 'Không có mục phù hợp',
+  selectLoading: 'Đang tải…',
+  selectLoadFailed: 'Không tải được danh sách',
   deactivate: 'Ngừng sử dụng',
   saved: 'Đã lưu',
   created: 'Đã đăng ký',
