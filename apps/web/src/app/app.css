@@ -1038,7 +1038,6 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-top: var(--space-4);
 }
 
-
 /* 발행 단추 자리의 안내(작성중 버전이 있을 때 · #196) — 짧은 한 문장이라 꺾지 않는다. */
 .inspection-standard-new-revision-notice {
   display: inline-flex;
@@ -1246,7 +1245,6 @@ h2:has(> .inspection-standard-dialog-title) {
   flex: 1 1 22em;
   min-width: min(22em, 100%);
 }
-
 
 .inspection-standard-plan-chips {
   align-items: center;

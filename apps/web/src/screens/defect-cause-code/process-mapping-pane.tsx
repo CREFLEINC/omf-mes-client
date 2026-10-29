@@ -10,11 +10,12 @@ import {
 import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest, toApiError, type ApiCallResult } from '../../patterns/request';
+import { Select } from '../../patterns/select';
 import { defectToHierarchyCode } from './mappers';
 
 type DefectCode = components['schemas']['DefectCode'];
@@ -30,6 +31,16 @@ interface ListResponse<T> {
   items: T[];
   page: PageMeta;
 }
+
+/** 조회 카드 조건(#209) — 검색어 · 대분류 · 연결 상태 · 공정. 「조회」를 눌러야 표에 걸린다. */
+interface MappingFilters {
+  q: string;
+  categoryId: string;
+  link: '' | 'linked' | 'unlinked';
+  processId: string;
+}
+
+const EMPTY_MAPPING_FILTERS: MappingFilters = { q: '', categoryId: '', link: '', processId: '' };
 
 interface MappingToggle {
   defectCodeId: number;
@@ -192,19 +203,37 @@ export const ProcessMappingPane = () => {
     [allDefects],
   );
 
-  /* 조회 카드의 검색어(#209) — 화면에 받은 목록 안에서 코드 · 이름 · 대분류 이름으로 거른다. 매핑 저장과 무관하다. */
-  const [draft, setDraft] = useState('');
-  const [keyword, setKeyword] = useState('');
-  const needle = keyword.trim().toLowerCase();
-  const shownDefects =
-    needle === ''
-      ? defects
-      : defects.filter((defect) =>
-          [defect.code, defect.name, categories.get(defect.parentId ?? 0)?.name ?? '']
-            .join(' ')
-            .toLowerCase()
-            .includes(needle),
-        );
+  /*
+   * 조회 카드 조건(#209) — 화면에 받은 목록 안에서 거른다. 매핑 저장과 무관하다.
+   * 공정을 고르면 그 공정 열만 보이고, 연결 상태도 보이는 공정 기준으로 판단한다.
+   */
+  const categoryFieldId = useId();
+  const linkFieldId = useId();
+  const processFieldId = useId();
+  const [draft, setDraft] = useState<MappingFilters>(EMPTY_MAPPING_FILTERS);
+  const [applied, setApplied] = useState<MappingFilters>(EMPTY_MAPPING_FILTERS);
+  const resetFilters = (): void => {
+    setDraft(EMPTY_MAPPING_FILTERS);
+    setApplied(EMPTY_MAPPING_FILTERS);
+  };
+  const shownProcesses =
+    applied.processId === ''
+      ? processes
+      : processes.filter((process) => String(process.processId) === applied.processId);
+  const needle = applied.q.trim().toLowerCase();
+  const shownDefects = defects.filter((defect) => {
+    if (applied.categoryId !== '' && String(defect.parentId) !== applied.categoryId) return false;
+    if (applied.link !== '') {
+      const mapped = mappedByDefect.get(defect.id);
+      const linked = shownProcesses.some((process) => mapped?.has(process.processId) === true);
+      if (linked !== (applied.link === 'linked')) return false;
+    }
+    if (needle === '') return true;
+    return [defect.code, defect.name, categories.get(defect.parentId ?? 0)?.name ?? '']
+      .join(' ')
+      .toLowerCase()
+      .includes(needle);
+  });
 
   const firstMappingError = mappingQueries.find((query) => query.isError)?.error;
   const loadError = defectsQuery.error ?? processesQuery.error ?? firstMappingError ?? null;
@@ -273,13 +302,7 @@ export const ProcessMappingPane = () => {
         title={t.mappingView.noMatchTitle}
         description={t.mappingView.noMatchDescription}
         action={
-          <Button
-            variant="outlined"
-            onClick={() => {
-              setDraft('');
-              setKeyword('');
-            }}
-          >
+          <Button variant="outlined" onClick={resetFilters}>
             {messages.common.reset}
           </Button>
         }
@@ -293,72 +316,73 @@ export const ProcessMappingPane = () => {
       write.write({ defectCodeId, processId, intent: assigned ? 'revoke' : 'assign' });
     };
 
-    content = (
-      /*
-       * 공정별 불량코드 설정 표(사용자 시안 · #209) — 왼쪽 「불량코드 · 명칭」, 공정마다 둥근 선택 표시.
-       * 칸(셀)이 이름(「코드 · 공정 · 매핑됨/안 됨」)과 상태를 갖고, 칸 안 단추가 키보드로 누르는 길이다.
-       */
-      <table
-        className="defect-mapping-table"
-        role="grid"
-        aria-label={t.panes.mapping}
-        aria-busy={write.isSaving}
-      >
-        <thead>
-          <tr>
-            <th scope="col" className="defect-mapping-corner">
-              {t.mappingView.rowHeader}
-            </th>
-            {processes.map((process) => (
-              <th key={process.processId} scope="col">
-                <span className="defect-mapping-col">
-                  <span>{process.processName}</span>
-                  <span className="defect-mapping-col-code">{process.processCode}</span>
-                </span>
+    content =
+      (
+        /*
+         * 공정별 불량코드 설정 표(사용자 시안 · #209) — 왼쪽 「불량코드 · 명칭」, 공정마다 둥근 선택 표시.
+         * 칸(셀)이 이름(「코드 · 공정 · 매핑됨/안 됨」)과 상태를 갖고, 칸 안 단추가 키보드로 누르는 길이다.
+         */
+        <table
+          className="defect-mapping-table"
+          role="grid"
+          aria-label={t.panes.mapping}
+          aria-busy={write.isSaving}
+        >
+          <thead>
+            <tr>
+              <th scope="col" className="defect-mapping-corner">
+                {t.mappingView.rowHeader}
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {shownDefects.map((defect) => (
-            <tr key={defect.id}>
-              <th scope="row">
-                <span className="defect-mapping-row">
-                  <span className="defect-mapping-row-code">{`${defect.code} · ${defect.name}`}</span>
-                  <span className="defect-mapping-row-parent">
-                    {categories.get(defect.parentId ?? 0)?.name ?? t.groupHeaderOrphan}
+              {shownProcesses.map((process) => (
+                <th key={process.processId} scope="col">
+                  <span className="defect-mapping-col">
+                    <span>{process.processName}</span>
+                    <span className="defect-mapping-col-code">{process.processCode}</span>
                   </span>
-                </span>
-              </th>
-              {processes.map((process) => {
-                const assigned = mappedByDefect.get(defect.id)?.has(process.processId) === true;
-                const label = `${defect.code} · ${process.processName} · ${
-                  assigned ? t.mapping.assigned : t.mapping.notAssigned
-                }`;
-                return (
-                  <td
-                    key={process.processId}
-                    aria-label={label}
-                    data-status={assigned ? 'success' : undefined}
-                    onClick={() => toggle(defect.id, process.processId)}
-                  >
-                    <button
-                      type="button"
-                      className="defect-mapping-toggle"
-                      aria-pressed={assigned}
-                      aria-label={label}
-                      disabled={write.isSaving}
-                    >
-                      {assigned && <Icon name="check" size={16} />}
-                    </button>
-                  </td>
-                );
-              })}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    );
+          </thead>
+          <tbody>
+            {shownDefects.map((defect) => (
+              <tr key={defect.id}>
+                <th scope="row">
+                  <span className="defect-mapping-row">
+                    <span className="defect-mapping-row-code">{`${defect.code} · ${defect.name}`}</span>
+                    <span className="defect-mapping-row-parent">
+                      {categories.get(defect.parentId ?? 0)?.name ?? t.groupHeaderOrphan}
+                    </span>
+                  </span>
+                </th>
+                {shownProcesses.map((process) => {
+                  const assigned = mappedByDefect.get(defect.id)?.has(process.processId) === true;
+                  const label = `${defect.code} · ${process.processName} · ${
+                    assigned ? t.mapping.assigned : t.mapping.notAssigned
+                  }`;
+                  return (
+                    <td
+                      key={process.processId}
+                      aria-label={label}
+                      data-status={assigned ? 'success' : undefined}
+                      onClick={() => toggle(defect.id, process.processId)}
+                    >
+                      <button
+                        type="button"
+                        className="defect-mapping-toggle"
+                        aria-pressed={assigned}
+                        aria-label={label}
+                        disabled={write.isSaving}
+                      >
+                        {assigned && <Icon name="check" size={16} />}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
   }
 
   return (
@@ -369,22 +393,68 @@ export const ProcessMappingPane = () => {
           <SearchInput
             label={t.mappingView.searchLabel}
             placeholder={t.mappingView.searchPlaceholder}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onSearch={(value) => setKeyword(value)}
+            value={draft.q}
+            onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
+            onSearch={(value) => setApplied({ ...draft, q: value })}
             clearLabel={messages.common.clear}
           />
+          {/* 대분류 · 연결 상태 · 공정 선택(사용자 지시 2026-10-29 · #209) */}
+          <div className="field-cell defect-cause-filter-select">
+            <span className="field-label">
+              <label htmlFor={categoryFieldId}>{t.mappingView.categoryLabel}</label>
+            </span>
+            <Select
+              id={categoryFieldId}
+              options={[
+                { value: '', label: t.filters.all },
+                ...[...categories.values()].map((category) => ({
+                  value: String(category.id),
+                  label: category.name,
+                })),
+              ]}
+              value={draft.categoryId}
+              onChange={(value) => setDraft((prev) => ({ ...prev, categoryId: value }))}
+            />
+          </div>
+          <div className="field-cell defect-cause-filter-select">
+            <span className="field-label">
+              <label htmlFor={linkFieldId}>{t.mappingView.linkLabel}</label>
+            </span>
+            <Select
+              id={linkFieldId}
+              options={[
+                { value: '', label: t.filters.all },
+                { value: 'linked', label: t.mappingView.linked },
+                { value: 'unlinked', label: t.mappingView.unlinked },
+              ]}
+              value={draft.link}
+              onChange={(value) =>
+                setDraft((prev) => ({ ...prev, link: value as MappingFilters['link'] }))
+              }
+            />
+          </div>
+          <div className="field-cell defect-cause-filter-select">
+            <span className="field-label">
+              <label htmlFor={processFieldId}>{t.mappingView.processLabel}</label>
+            </span>
+            <Select
+              id={processFieldId}
+              options={[
+                { value: '', label: t.filters.all },
+                ...processes.map((process) => ({
+                  value: String(process.processId),
+                  label: process.processName,
+                })),
+              ]}
+              value={draft.processId}
+              onChange={(value) => setDraft((prev) => ({ ...prev, processId: value }))}
+            />
+          </div>
           <div className="filter-actions field-cell-unlabeled">
-            <Button variant="filled" onClick={() => setKeyword(draft)}>
+            <Button variant="filled" onClick={() => setApplied(draft)}>
               {messages.common.search}
             </Button>
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setDraft('');
-                setKeyword('');
-              }}
-            >
+            <Button variant="outlined" onClick={resetFilters}>
               {messages.common.reset}
             </Button>
           </div>
@@ -400,7 +470,7 @@ export const ProcessMappingPane = () => {
             <h2 className="pane-title">{t.panes.mapping}</h2>
             {!isLoading && loadError === null && (
               <span className="defect-cause-child-count">
-                {t.mappingView.counts(shownDefects.length, processes.length)}
+                {t.mappingView.counts(shownDefects.length, shownProcesses.length)}
               </span>
             )}
           </div>

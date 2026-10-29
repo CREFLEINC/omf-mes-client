@@ -137,6 +137,11 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     searchLabel: 'Tìm mã lỗi',
     searchPlaceholder: 'Nhập mã lỗi hoặc tên lỗi',
     rowHeader: 'Mã lỗi · Tên',
+    categoryLabel: 'Cấp lớn',
+    linkLabel: 'Trạng thái liên kết',
+    processLabel: 'Công đoạn',
+    linked: 'Đã liên kết',
+    unlinked: 'Chưa liên kết',
     noMatchTitle: 'Không có mã lỗi khớp điều kiện',
     noMatchDescription: 'Hãy rút gọn từ khóa hoặc đặt lại rồi tìm lại.',
     counts: (defects: number, processes: number): string =>

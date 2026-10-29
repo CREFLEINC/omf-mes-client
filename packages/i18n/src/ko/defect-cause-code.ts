@@ -23,6 +23,11 @@ export const defectCauseCode = {
     searchLabel: '불량코드 검색',
     searchPlaceholder: '불량코드 또는 불량명을 입력하세요',
     rowHeader: '불량코드 · 명칭',
+    categoryLabel: '대분류',
+    linkLabel: '연결 상태',
+    processLabel: '공정',
+    linked: '연결됨',
+    unlinked: '연결 안 됨',
     noMatchTitle: '조건에 맞는 불량코드가 없습니다',
     noMatchDescription: '검색어를 줄이거나 초기화한 뒤 다시 찾으세요.',
     counts: (defects: number, processes: number): string =>

@@ -136,6 +136,35 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
     expect(screen.getByRole('rowheader', { name: /DF-11 · 스크래치/ })).toBeInTheDocument();
   });
 
+  it('대분류 · 연결 상태 · 공정 선택으로 행과 열을 거른다(#209)', async () => {
+    const { user } = renderMapping();
+    await screen.findByRole('rowheader', { name: /DF-11 · 스크래치/ });
+
+    // 연결 상태 — 연결된 코드는 DF-11(사출) 하나다.
+    await user.click(screen.getByRole('combobox', { name: '연결 상태' }));
+    await user.click(screen.getByRole('option', { name: '연결됨' }));
+    await user.click(screen.getByRole('button', { name: '조회' }));
+    expect(screen.getByRole('rowheader', { name: /DF-11 · 스크래치/ })).toBeInTheDocument();
+    expect(screen.queryByRole('rowheader', { name: /DF-12/ })).not.toBeInTheDocument();
+
+    // 공정을 조립으로 고르면 조립 열만 남고, 조립에 연결된 코드는 없다.
+    await user.click(screen.getByRole('combobox', { name: '공정' }));
+    await user.click(screen.getByRole('option', { name: '조립' }));
+    await user.click(screen.getByRole('button', { name: '조회' }));
+    expect(screen.getByText('조건에 맞는 불량코드가 없습니다')).toBeInTheDocument();
+
+    // 연결 안 됨 + 조립 → 열은 조립 하나, 대분류 치수만 고르면 DF-21 만 남는다.
+    await user.click(screen.getByRole('combobox', { name: '연결 상태' }));
+    await user.click(screen.getByRole('option', { name: '연결 안 됨' }));
+    await user.click(screen.getByRole('combobox', { name: '대분류' }));
+    await user.click(screen.getByRole('option', { name: '치수' }));
+    await user.click(screen.getByRole('button', { name: '조회' }));
+    expect(screen.getByRole('rowheader', { name: /DF-21 · 길이 초과/ })).toBeInTheDocument();
+    expect(screen.queryByRole('rowheader', { name: /DF-11/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: /사출/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /조립\s*OP-ASM/ })).toBeInTheDocument();
+  });
+
   it('빈 셀을 누르면 멱등 키와 공정 번호로 즉시 매핑한다', async () => {
     const { requests, user } = renderMapping([
       {
