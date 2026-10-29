@@ -15,6 +15,7 @@ export const inspectionLevelKeys = {
   /** 무효화용 앞부분 — 저장하면 목록과 이력이 함께 낡는다. */
   all: ['inspection-level'] as const,
   list: (query: LevelListFilter) => ['inspection-level', 'list', query] as const,
+  counts: (itemId: number | null) => ['inspection-level', 'counts', itemId] as const,
   history: (itemId: number | null, page: number, size: number) =>
     ['inspection-level', 'history', itemId, page, size] as const,
 };
@@ -57,6 +58,39 @@ export const useInspectionLevels = (filter: LevelListFilter) => {
           },
         }),
       ),
+  });
+};
+
+/** 상단 칩 건수 — 전체 · 수준별 품목 수. 쪽 크기 1 로 묻고 합계만 쓴다(검사 기준 사용 여부 칩과 같다 · #208). */
+export const useInspectionLevelCounts = (
+  itemId: number | null,
+  levels: readonly InspectionLevelCode[],
+) => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: inspectionLevelKeys.counts(itemId),
+    queryFn: async (): Promise<Record<InspectionLevelCode | '', number>> => {
+      const total = (level: InspectionLevelCode | '') =>
+        runRequest(() =>
+          client.GET('/quality/item-inspection-levels', {
+            params: {
+              query: {
+                ...(itemId === null ? {} : { itemId }),
+                ...(level === '' ? {} : { inspectionLevelCode: level }),
+                page: 1,
+                size: 1,
+              },
+            },
+          }),
+        ).then((paged) => paged.page.total);
+      const keys = ['', ...levels] as const;
+      const totals = await Promise.all(keys.map(total));
+      return Object.fromEntries(keys.map((key, index) => [key, totals[index]])) as Record<
+        InspectionLevelCode | '',
+        number
+      >;
+    },
   });
 };
 

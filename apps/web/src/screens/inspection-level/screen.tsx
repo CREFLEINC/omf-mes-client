@@ -25,6 +25,7 @@ import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner } from '../../patterns/master';
 import { ItemPickerDialog } from '../../patterns/item-picker';
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { PageNav } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { formatPlantDateTime } from '../../patterns/plant-time';
@@ -35,6 +36,7 @@ import {
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
+import { ItemHistoryDialog } from './history-dialog';
 import { LEVEL_CODES, LevelDialog } from './level-dialog';
 import { useLevelWrite } from './level-write';
 import { usePageHub } from '../../patterns/page-hub';
@@ -42,6 +44,7 @@ import {
   inspectionLevelKeys,
   PAGE_SIZE,
   type LevelListFilter,
+  useInspectionLevelCounts,
   useInspectionLevelHistories,
   useInspectionLevels,
 } from './queries';
@@ -65,6 +68,48 @@ const LevelChip = ({ code }: { code: string | null }) =>
       {levelName(code)}
     </Chip>
   );
+
+/**
+ * 검사 수준 칩 — 전체 · 무검사 · 수월 · 보통 · 엄격, 칩마다 품목 수(사용자 지시 · #208).
+ * 하나만 고른다 — 고른 칩을 다시 눌러도 풀리지 않는다. 탭 묶음 밖에서는 자리가 없어 그리지 않는다.
+ */
+const LevelFilterChips = ({
+  counts,
+  value,
+  onChange,
+}: {
+  counts: Record<InspectionLevelCode | '', number> | null;
+  value: InspectionLevelCode | '';
+  onChange: (next: InspectionLevelCode | '') => void;
+}) => {
+  const target = useHubActionsTarget();
+  if (target === null) return null;
+  const options: { value: InspectionLevelCode | ''; label: string }[] = [
+    { value: '', label: t.list.levelAll },
+    ...LEVEL_CODES.map((code) => ({ value: code, label: levelName(code) })),
+  ];
+
+  return (
+    <HubActions target={target}>
+      <div className="inspection-hub-counts" role="group" aria-label={t.list.level}>
+        {options.map((option) => (
+          <Chip
+            key={option.value}
+            variant="filter"
+            size="sm"
+            selected={value === option.value}
+            aria-pressed={value === option.value}
+            onSelectedChange={() => {
+              if (value !== option.value) onChange(option.value);
+            }}
+          >
+            {counts === null ? option.label : t.list.levelCount(option.label, counts[option.value])}
+          </Chip>
+        ))}
+      </div>
+    </HubActions>
+  );
+};
 
 /** 빈 상태의 둥근 바탕 아이콘 — 검사 기준 탭과 같다(#208). */
 const emptyIcon = (
@@ -94,12 +139,10 @@ export const InspectionLevelScreen = () => {
   const split = usePaneSplit('omf-mes:inspection-level:split', 0.4);
   const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const toast = useToast();
-  const levelFilterId = useId();
 
   /* 품목 — 조회 줄의 「품목 검색」 칸을 누르면 품목 선택 창이 열린다(검사표 기준 탭과 같다 · 사용자 지시 · #208). */
   const [itemInput, setItemInput] = useState<{ itemId: number; label: string } | null>(null);
   const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
-  const [levelFilter, setLevelFilter] = useState<InspectionLevelCode | ''>('');
   const [filter, setFilter] = useState<LevelListFilter>({
     itemId: null,
     level: '',
@@ -112,11 +155,9 @@ export const InspectionLevelScreen = () => {
   const [editing, setEditing] = useState<{ row: ItemInspectionLevel | null } | null>(null);
 
   const list = useInspectionLevels(filter);
-  const histories = useInspectionLevelHistories(
-    historyItem?.itemId ?? null,
-    historyPage,
-    historySize,
-  );
+  /* 아래 「전환 이력」 카드는 늘 전체 이력 — 한 품목 이력은 줄의 「이력」 창으로 본다(사용자 지시 · #208). */
+  const histories = useInspectionLevelHistories(null, historyPage, historySize);
+  const counts = useInspectionLevelCounts(filter.itemId, LEVEL_CODES);
   const rows = list.data?.items ?? [];
   const historyRows = histories.data?.items ?? [];
 
@@ -139,7 +180,11 @@ export const InspectionLevelScreen = () => {
       key: 'item',
       align: 'center',
       header: t.columns.item,
-      /* 폭을 정하지 않는다 — 남는 폭을 품목 열이 맡는다. 품목 코드 · 품목명(흐리게) 한 줄 — 검사표 기준 탭과 같다(사용자 지시 · #208). */
+      /*
+       * 품목 코드 · 품목명(흐리게) 한 줄 — 검사표 기준 탭과 같다(사용자 지시 · #208).
+       * 모든 열이 폭을 가져야 좁은 칸에서 이 열이 0 으로 짓눌리지 않고 표가 옆으로 구른다 — 넓으면 비율대로 늘어난다(반응형 · #208).
+       */
+      width: '280px',
       render: (row) => (
         <span className="inspection-level-item-cell">
           <span className="inspection-level-item-code">{row.itemCode}</span>
@@ -187,10 +232,7 @@ export const InspectionLevelScreen = () => {
             size="sm"
             variant="text"
             aria-label={t.actions.showHistoryRow(row.itemCode)}
-            onClick={() => {
-              setHistoryItem(row);
-              setHistoryPage(1);
-            }}
+            onClick={() => setHistoryItem(row)}
           >
             {t.actions.showHistory}
           </Button>
@@ -242,7 +284,8 @@ export const InspectionLevelScreen = () => {
       key: 'reason',
       align: 'center',
       header: t.history.columns.reason,
-      /* 폭을 정하지 않는다 — 사유가 가장 길어 남는 폭을 맡는다(#208). */
+      /* 사유가 가장 길어 가장 넓게 — 폭을 정해 둬야 좁은 칸에서 짓눌리지 않고 표가 옆으로 구른다(반응형 · #208). */
+      width: '240px',
       render: (row) => {
         const reason = historyReason(row);
         return <span title={reason}>{reason}</span>;
@@ -277,6 +320,12 @@ export const InspectionLevelScreen = () => {
 
   return (
     <>
+      {/* 탭 줄 오른쪽 — 검사 수준 칩 다음에 좌우 · 상하 배치(검사 기준 탭의 사용 여부 칩과 같은 자리 · 사용자 지시 · #208). */}
+      <LevelFilterChips
+        counts={counts.data ?? null}
+        value={filter.level}
+        onChange={(level) => setFilter((prev) => ({ ...prev, level, page: 1 }))}
+      />
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
       {hub === null && (
@@ -293,7 +342,7 @@ export const InspectionLevelScreen = () => {
 
       {/*
        * 조회 조건 — 검사 기준 · 검사표 기준 탭과 같은 카드 한 줄(사용자 지시 · #208):
-       * 수준 선택 · 품목 검색 → (오른쪽) 조회 · 초기화 | 품목 추가.
+       * 품목 검색 → (오른쪽) 조회 · 초기화 | 품목 추가. 검사 수준은 탭 줄 오른쪽 칩으로 거른다.
        */}
       <section ref={aboveRef} className="pane inspection-level-search" role="search">
         <form
@@ -303,31 +352,10 @@ export const InspectionLevelScreen = () => {
             setFilter((prev) => ({
               ...prev,
               itemId: itemInput?.itemId ?? null,
-              level: levelFilter,
               page: 1,
             }));
           }}
         >
-          {/* 「무검사」·「보통」 같은 짧은 값이라 좁게(#208). */}
-          <div className="field-cell inspection-level-level-filter">
-            <label className="field-label" htmlFor={levelFilterId}>
-              {t.list.level}
-            </label>
-            <Select
-              id={levelFilterId}
-              options={[
-                { value: '', label: t.list.levelAll },
-                ...LEVEL_CODES.map((code) => ({ value: code, label: levelName(code) })),
-              ]}
-              value={levelFilter}
-              onChange={(value) => {
-                const level = value as InspectionLevelCode | '';
-                setLevelFilter(level);
-                /* 고르면 바로 조회한다 — 다른 탭 조회 줄과 같다(#208). */
-                setFilter((prev) => ({ ...prev, level, page: 1 }));
-              }}
-            />
-          </div>
           <SearchInput
             label={t.list.keyword}
             placeholder={t.list.keywordPlaceholder}
@@ -353,7 +381,6 @@ export const InspectionLevelScreen = () => {
               variant="outlined"
               onClick={() => {
                 setItemInput(null);
-                setLevelFilter('');
                 setFilter((prev) => ({ ...prev, itemId: null, level: '', page: 1 }));
               }}
             >
@@ -430,24 +457,6 @@ export const InspectionLevelScreen = () => {
               onChangeSize={(size) => setFilter((prev) => ({ ...prev, size, page: 1 }))}
             />
           )}
-          {/*
-           * 시안 맨 아래 「전체 전환 이력 보기」 = 이력 칸의 품목 거르기 해제(종전 「전체 보기」)와 같은 일 —
-           * 시안 자리로 옮긴다. 한 품목만 보는 중일 때만 보인다(새 기능 아님 · 사용자 시안 · #208).
-           */}
-          {historyItem !== null && (
-            <div className="inspection-level-card-foot">
-              <Button
-                size="sm"
-                variant="text"
-                onClick={() => {
-                  setHistoryItem(null);
-                  setHistoryPage(1);
-                }}
-              >
-                {t.history.showAll}
-              </Button>
-            </div>
-          )}
         </section>
 
         <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
@@ -463,15 +472,7 @@ export const InspectionLevelScreen = () => {
           className="pane inspection-level-list-pane quality-standard-detail"
           aria-label={t.history.heading}
         >
-          {/* 제목 옆에 「어느 품목만 보는 중」을 같은 줄로 — 해제는 목록 카드 아래 「전체 전환 이력 보기」(#208). */}
-          <div className="inspection-level-section-head">
-            <h2 className="pane-title">{t.history.heading}</h2>
-            {historyItem !== null && (
-              <span className="inspection-level-history-filter">
-                {t.history.filteredBy(historyItem.itemCode)}
-              </span>
-            )}
-          </div>
+          <h2 className="pane-title">{t.history.heading}</h2>
           {histories.isError && <AlertBanner variant="error">{t.history.loadFailed}</AlertBanner>}
           <div
             ref={historyFit.ref}
@@ -535,6 +536,23 @@ export const InspectionLevelScreen = () => {
             setEditing(null);
           }}
           onSave={(values) => formWrite.write({ row: editing.row, values })}
+        />
+      )}
+
+      {historyItem !== null && (
+        <ItemHistoryDialog
+          item={historyItem}
+          /* 품목 열은 빼고(창 제목이 말한다), 사유 폭을 줄여 일시 · 처리자가 창 안에서 잘리지 않게(#208). */
+          columns={historyColumns
+            .filter((column) => column.key !== 'item')
+            .map((column) =>
+              column.key === 'reason'
+                ? { ...column, width: '140px' }
+                : column.key === 'change'
+                  ? { ...column, width: '150px' }
+                  : column,
+            )}
+          onClose={() => setHistoryItem(null)}
         />
       )}
 

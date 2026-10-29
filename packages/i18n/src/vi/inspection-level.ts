@@ -15,8 +15,9 @@ export const inspectionLevel = {
     keyword: 'Tìm vật tư',
     keywordPlaceholder: 'Nhập mã hoặc tên vật tư',
     keywordClear: 'Xóa điều kiện vật tư',
-    level: 'Chọn mức',
+    level: 'Mức kiểm tra',
     levelAll: 'Tất cả',
+    levelCount: (label: string, count: number): string => `${label} ${String(count)}`,
     add: 'Thêm vật tư',
     empty: 'Chưa có vật tư nào được chỉ định mức kiểm tra.',
     emptyHint: 'Dùng 「Thêm vật tư」 để chỉ định mức kiểm tra.',
@@ -56,9 +57,8 @@ export const inspectionLevel = {
 
   history: {
     heading: 'Lịch sử chuyển',
+    itemTitle: (itemCode: string, itemName: string) => `Lịch sử chuyển — ${itemCode} ${itemName}`,
     caption: 'Lịch sử chuyển mức kiểm tra',
-    filteredBy: (itemCode: string) => `Đang xem lịch sử của vật tư ${itemCode}`,
-    showAll: 'Xem toàn bộ lịch sử chuyển',
     empty: 'Không có lịch sử chuyển.',
     emptyHint: 'Khi chỉ định hoặc đổi mức kiểm tra, lịch sử sẽ hiện ở đây.',
     loading: 'Đang tải lịch sử chuyển.',

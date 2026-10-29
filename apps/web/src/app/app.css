@@ -17681,24 +17681,16 @@ button.app-button-neutral {
 }
 
 /* 품목 검색 칸 — 흐린 안내(「품목 코드 또는 품목명을 입력하세요」)가 꼭 맞는 폭, 창이 좁으면 그만큼 준다(사용자 지시 · #208). */
-.inspection-level-search > .filter-bar > :nth-child(2) {
+.inspection-level-search > .filter-bar > :first-child {
   flex: 0 1 19em;
   min-width: 12rem;
 }
 
-/* 「전체 전환 이력 보기」 — 카드 맨 아래 가운데(사용자 시안 · #208). */
-.inspection-level-card-foot {
+/* 품목 이력 창 — 표 · 쪽 이동 사이를 띄운다(#208). */
+.inspection-level-history-dialog {
   display: flex;
-  justify-content: center;
-}
-
-/* 품목 코드·이름 칸 — 남는 폭을 맡는다, 수준 칸은 짧은 값이라 좁게(사용자 시안 · #208). */
-.inspection-level-level-filter {
-  flex: 0 0 8rem;
-}
-
-.inspection-level-level-filter > :not(label) {
-  width: 100%;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 /* 목록 · 이력 카드 — 제목 · 표 · 쪽 이동 줄 사이를 같은 간격으로(#208). */
@@ -17715,22 +17707,6 @@ button.app-button-neutral {
 
 .inspection-level-list-pane > .page-nav {
   margin-top: 0;
-}
-
-/* 이력 제목 옆 「품목 … 이력만 보는 중 [전체 보기]」 — 같은 줄(#208). */
-.inspection-level-section-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-}
-
-.inspection-level-history-filter {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
 }
 
 .inspection-level-rows thead th {

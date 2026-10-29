@@ -15,8 +15,9 @@ export const inspectionLevel = {
     keyword: '품목 검색',
     keywordPlaceholder: '품목 코드 또는 품목명을 입력하세요',
     keywordClear: '품목 조건 지우기',
-    level: '수준 선택',
+    level: '검사 수준',
     levelAll: '전체',
+    levelCount: (label: string, count: number): string => `${label} ${String(count)}`,
     add: '품목 추가',
     empty: '검사 수준을 지정한 품목이 없습니다.',
     emptyHint: '「품목 추가」로 검사 수준을 지정하세요.',
@@ -56,9 +57,8 @@ export const inspectionLevel = {
 
   history: {
     heading: '전환 이력',
+    itemTitle: (itemCode: string, itemName: string) => `전환 이력 — ${itemCode} ${itemName}`,
     caption: '검사 수준 전환 이력',
-    filteredBy: (itemCode: string) => `품목 ${itemCode}의 이력만 보는 중`,
-    showAll: '전체 전환 이력 보기',
     empty: '전환 이력이 없습니다.',
     emptyHint: '검사 수준을 지정하거나 바꾸면 여기에 남습니다.',
     loading: '전환 이력을 불러오는 중입니다.',
