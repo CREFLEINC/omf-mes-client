@@ -562,7 +562,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
 
 type ScreenTab = 'defect' | 'cause' | 'mapping';
 
-/** 하위 탭마다 고유 주소 — 「품질 코드 관리」 탭 막대 한 줄에 선다(사용자 지시 · #208). */
+/** 하위 탭마다 고유 주소 — 「불량·판정 코드」 탭 막대 한 줄에 선다(사용자 지시 · #208). */
 const TAB_PATHS: Record<ScreenTab, string> = {
   defect: '/master-data/defect-cause-code',
   cause: '/master-data/cause-code',
