@@ -4,6 +4,7 @@ import {
   Button,
   type Column,
   EmptyState,
+  Icon,
   PageHeader,
   Table,
 } from '@crefle/web-ui';
@@ -11,12 +12,14 @@ import type { InspectionSheetTemplate } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
+import { PageNav } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import { useSession } from '../../patterns/session';
-import { PageNav } from '../oqc-inspection/page-nav';
-import { toPageView } from '../oqc-inspection/pagination';
 import {
   type TemplateStatusFilter,
   useBusinessUnitNames,
@@ -74,58 +77,68 @@ const InspectionSheetTemplateScreenBody = () => {
   const names = businessUnits.data ?? new Map<number, string>();
 
   const openedId = opened?.kind === 'existing' ? opened.id : null;
+  /* 목록 표는 모든 열을 가운데 정렬한다 — 검사 기준 탭과 같다(#208). */
   const columns: Column<InspectionSheetTemplate>[] = [
     {
       key: 'model',
+      align: 'center',
       header: t.columns.model,
+      /* 폭을 정하지 않는다 — 남는 폭을 모델 열이 맡는다(검사 기준 탭과 같다 · #208). */
       render: (row) => (
-        <span className="inspection-sheet-template-model">
-          <button
-            type="button"
-            className="link-cell"
-            title={row.itemCode}
-            aria-label={t.list.openRow(row.itemCode, row.templateVersion)}
-            aria-current={row.inspectionSheetTemplateId === openedId ? 'true' : undefined}
-            onClick={() => open({ kind: 'existing', id: row.inspectionSheetTemplateId })}
-          >
-            {row.itemCode}
-          </button>
-          <span
-            className="inspection-sheet-ellipsis inspection-sheet-template-muted"
-            title={row.itemName}
-          >
-            {row.itemName}
-          </span>
-        </span>
+        /*
+         * 「코드 이름」 한 줄 — 두 줄이던 칸을 한 줄로 줄여 행 높이를 다른 탭과 맞춘다(#208).
+         * 단추는 키보드·화면 낭독기가 줄을 고르는 길이고, 고른 줄 표시(`aria-current`)가 여기 실린다.
+         */
+        <button
+          type="button"
+          className="inspection-sheet-template-open"
+          title={`${row.itemCode} ${row.itemName}`}
+          aria-label={t.list.openRow(row.itemCode, row.templateVersion)}
+          aria-current={row.inspectionSheetTemplateId === openedId ? 'true' : undefined}
+          onClick={() => open({ kind: 'existing', id: row.inspectionSheetTemplateId })}
+        >
+          <span className="inspection-sheet-template-open-code">{row.itemCode}</span>
+          <span className="inspection-sheet-template-muted">{row.itemName}</span>
+        </button>
       ),
     },
     {
       key: 'version',
+      align: 'center',
       header: t.columns.version,
-      width: '40px',
-      align: 'end',
+      width: '56px',
       render: (row) => row.templateVersion,
     },
     {
       key: 'layout',
+      align: 'center',
       header: t.columns.layout,
-      width: '84px',
+      width: '96px',
       render: (row) => t.layouts[row.formLayoutCode] ?? row.formLayoutCode,
     },
     {
       key: 'status',
+      align: 'center',
       header: t.columns.status,
-      width: '68px',
-      render: (row) => <TemplateStatusChip statusCode={row.statusCode} />,
+      width: '80px',
+      render: (row) => <TemplateStatusChip size="sm" statusCode={row.statusCode} />,
     },
     {
       key: 'confirmedAt',
+      align: 'center',
       header: t.columns.confirmedAt,
-      width: '96px',
+      width: '128px',
       render: (row) =>
         row.confirmedAt === null ? '' : (formatPlantDateTime(row.confirmedAt) ?? ''),
     },
   ];
+
+  /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다 — 검사 기준 탭 목록과 같다(#208). */
+  const ordered = useColumnOrder('omf-mes:inspection-sheet-template:columns:list:order', columns);
+  const resizable = useColumnWidths('omf-mes:inspection-sheet-template:columns:list', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   return (
     <>
@@ -143,24 +156,19 @@ const InspectionSheetTemplateScreenBody = () => {
       )}
       <p className="field-note inspection-sheet-template-rule">{t.rule}</p>
 
-      <div className="two-pane inspection-sheet-template-layout">
-        <section className="pane" aria-label={t.list.heading}>
-          <h2 className="pane-title">{t.list.heading}</h2>
-          {list.isError && (
-            <AlertBanner variant="error">
-              {t.list.loadFailed}{' '}
-              <Button size="sm" variant="text" onClick={() => void list.refetch()}>
-                {t.list.retry}
-              </Button>
-            </AlertBanner>
-          )}
-          <form
-            className="inspection-sheet-template-filter"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setFilter({ status: statusInput, page: 1 });
-            }}
-          >
+      {/*
+       * 조회 조건 — 검사 기준 탭처럼 목록 위 카드 한 줄: 상태 → 조회 → 구분선 → 새 기준 등록(#208).
+       * 조건이 상태 하나라 「초기화」는 두지 않는다(없던 단추를 만들지 않는다).
+       */}
+      <section className="pane inspection-sheet-template-search" role="search">
+        <form
+          className="filter-bar"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setFilter({ status: statusInput, page: 1 });
+          }}
+        >
+          <div className="field-cell inspection-sheet-template-status-filter">
             <label className="field-label" htmlFor={statusId}>
               {t.list.status}
             </label>
@@ -173,18 +181,54 @@ const InspectionSheetTemplateScreenBody = () => {
               value={statusInput}
               onChange={(value) => setStatusInput(value as TemplateStatusFilter)}
             />
-            <Button type="submit" variant="outlined">
-              {t.list.search}
+          </div>
+          <div className="filter-actions field-cell-unlabeled">
+            <Button type="submit" variant="filled">
+              {messages.common.search}
             </Button>
-            <Button className="inspection-sheet-template-add" onClick={() => open({ kind: 'new' })}>
+            <span className="inspection-sheet-template-filter-divider" aria-hidden />
+            <Button
+              variant="filled"
+              leadingIcon={<Icon name="add" size={18} />}
+              onClick={() => open({ kind: 'new' })}
+            >
               {t.list.add}
             </Button>
-          </form>
-          <div className="inspection-sheet-template-list">
+          </div>
+        </form>
+      </section>
+
+      <div className="two-pane inspection-sheet-template-layout">
+        <section className="pane inspection-sheet-template-list-pane" aria-label={t.list.heading}>
+          {list.isError && (
+            <AlertBanner variant="error">
+              {t.list.loadFailed}{' '}
+              <Button size="sm" variant="text" onClick={() => void list.refetch()}>
+                {t.list.retry}
+              </Button>
+            </AlertBanner>
+          )}
+          {/*
+           * 줄 아무 곳이나 눌러도 고른다 — 눌린 줄의 모델 단추로 넘긴다(검사 기준 탭과 같다 · #208).
+           * 키보드·화면 낭독기는 그 단추 하나로 고른다.
+           */}
+          <div
+            ref={fit.ref}
+            className="inspection-queue-table inspection-standard-table-box inspection-sheet-template-rows"
+            style={resizable.style}
+            onClick={(event) => {
+              const target = event.target as Element;
+              if (target.closest('button, a, input, select, textarea') !== null) return;
+              target
+                .closest('tbody tr')
+                ?.querySelector<HTMLButtonElement>('.inspection-sheet-template-open')
+                ?.click();
+            }}
+          >
             <Table
               caption={<span className="inspection-sheet-template-caption">{t.list.caption}</span>}
               density="compact"
-              columns={columns}
+              columns={fit.columns}
               rows={rows}
               getRowId={(row) => String(row.inspectionSheetTemplateId)}
               empty={
@@ -194,8 +238,9 @@ const InspectionSheetTemplateScreenBody = () => {
           </div>
           {list.data !== undefined && (
             <PageNav
-              view={toPageView(list.data.page, rows.length)}
-              onChange={(page) => setFilter((prev) => ({ ...prev, page }))}
+              meta={list.data.page}
+              buttonSize="md"
+              onChangePage={(page) => setFilter((prev) => ({ ...prev, page }))}
             />
           )}
         </section>
@@ -203,7 +248,17 @@ const InspectionSheetTemplateScreenBody = () => {
         <div className="inspection-sheet-template-detail">
           {opened === null && (
             <section className="pane">
-              <EmptyState size="sm" title={t.list.selectHint} />
+              {/* 둥근 바탕 위 아이콘 · 제목 · 설명 — 검사 기준 탭과 같다(#208). */}
+              <EmptyState
+                size="sm"
+                icon={
+                  <span className="inspection-standard-empty-icon">
+                    <Icon name="assignment" size={20} />
+                  </span>
+                }
+                title={t.list.selectTitle}
+                description={t.list.selectHint}
+              />
             </section>
           )}
           {opened?.kind === 'new' && (

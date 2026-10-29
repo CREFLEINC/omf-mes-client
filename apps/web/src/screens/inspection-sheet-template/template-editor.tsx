@@ -1,4 +1,4 @@
-import { Button, Checkbox, Chip, Dialog, TextField, useToast } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, Dialog, Icon, TextField, useToast } from '@crefle/web-ui';
 import type {
   InspectionSheetLayoutCode,
   InspectionSheetLotSlot,
@@ -46,9 +46,9 @@ const STATUS_TONE: Record<string, 'info' | 'success' | 'idle'> = {
   OBSOLETE: 'idle',
 };
 
-/** 작성중·확정·폐기를 색과 글로 함께 가른다 — 목록과 상세 머리가 같은 표식을 쓴다. */
-export const TemplateStatusChip = ({ statusCode }: { statusCode: string }) => (
-  <Chip size="sm" status={STATUS_TONE[statusCode] ?? 'idle'}>
+/** 작성중·확정·폐기를 색과 글로 함께 가른다 — 목록과 상세 머리가 같은 표식을 쓴다(상태 칩 · 검사 기준 탭과 같다 · #208). */
+export const TemplateStatusChip = ({ statusCode, size }: { statusCode: string; size?: 'sm' }) => (
+  <Chip variant="status" size={size} status={STATUS_TONE[statusCode] ?? 'idle'}>
     {t.statuses[statusCode] ?? statusCode}
   </Chip>
 );
@@ -61,8 +61,12 @@ const splitLabel = (label: string): [string, string] => {
     : [label.slice(at + 2, -1), label.slice(0, at)];
 };
 
+/** 필수 표시 — 다른 화면과 같은 빨간 `*`(#208). 접근성 이름에 섞이지 않게 숨긴다. */
 const Required = () => (
-  <span className="inspection-sheet-template-required">{t.editor.required}</span>
+  <span className="required-mark" aria-hidden="true">
+    {' '}
+    *
+  </span>
 );
 
 /** 그 단계(이름·항목) 안에 칸 오류가 있나 — 단계 목록 표시와 저장 실패 때 단계를 여는 데 쓴다. */
@@ -89,7 +93,6 @@ export const TemplateEditor = ({
   const toast = useToast();
   const ids = {
     status: useId(),
-    model: useId(),
     bu: useId(),
     layout: useId(),
     material: useId(),
@@ -206,11 +209,6 @@ export const TemplateEditor = ({
     draft.steps.find((step) => step.stepCode === stepCode) ??
     draft.steps.find((step) => step.enabled) ??
     draft.steps[0]!;
-  const readOnlyValue = (id: string, value: string) => (
-    <p id={id} className="inspection-sheet-template-readonly">
-      {value}
-    </p>
-  );
 
   return (
     <section className="pane inspection-sheet-template-editor" aria-label={t.editor.newHeading}>
@@ -221,9 +219,6 @@ export const TemplateEditor = ({
             : t.editor.heading(template.itemCode, template.templateVersion)}
         </h2>
         {template !== null && <TemplateStatusChip statusCode={template.statusCode} />}
-        {template !== null && (
-          <span className="inspection-sheet-template-muted">{template.itemName}</span>
-        )}
       </header>
       {readOnly && <p className="field-note">{t.editor.readOnly}</p>}
       <SaveErrorBanner
@@ -235,68 +230,84 @@ export const TemplateEditor = ({
         }}
       />
 
-      <h3 className="pane-subtitle">{t.editor.basicSection}</h3>
-      <div className="inspection-sheet-template-grid">
-        <div className="field-cell">
-          <span className="field-label">
-            {t.editor.model} {template === null && <Required />}
-          </span>
-          {template === null ? (
-            <div className="inspection-sheet-template-pick">
-              <span className="inspection-sheet-ellipsis" title={draft.itemLabel || undefined}>
-                {draft.itemLabel || '—'}
+      {template === null ? (
+        <>
+          <h3 className="pane-subtitle">{t.editor.basicSection}</h3>
+          <div className="inspection-sheet-template-grid">
+            <div className="field-cell">
+              <span className="field-label">
+                {t.editor.model}
+                <Required />
               </span>
-              <Button variant="outlined" onClick={() => setPicking({ kind: 'model' })}>
-                {t.editor.pickModel}
-              </Button>
+              <div className="inspection-sheet-template-pick">
+                <span className="inspection-sheet-ellipsis" title={draft.itemLabel || undefined}>
+                  {draft.itemLabel || '—'}
+                </span>
+                <Button variant="outlined" onClick={() => setPicking({ kind: 'model' })}>
+                  {t.editor.pickModel}
+                </Button>
+              </div>
+              {errors.item && <span className="field-error">{errors.item}</span>}
             </div>
-          ) : (
-            readOnlyValue(ids.model, draft.itemLabel)
-          )}
-          {errors.item && <span className="field-error">{errors.item}</span>}
-        </div>
-        <div className="field-cell">
-          <label className="field-label" htmlFor={ids.bu}>
-            {t.editor.businessUnit} {template === null && <Required />}
-          </label>
-          {template === null ? (
-            scopeOptions.length === 0 ? (
-              <p className="field-error">{t.editor.noBusinessUnit}</p>
-            ) : (
+            <div className="field-cell">
+              <span className="field-label">
+                <label htmlFor={ids.bu}>{t.editor.businessUnit}</label>
+                <Required />
+              </span>
+              {scopeOptions.length === 0 ? (
+                <p className="field-error">{t.editor.noBusinessUnit}</p>
+              ) : (
+                <Select
+                  id={ids.bu}
+                  options={scopeOptions}
+                  value={String(draft.businessUnitId ?? '')}
+                  onChange={(value) => patch({ businessUnitId: Number(value) })}
+                />
+              )}
+            </div>
+            <div className="field-cell">
+              <span className="field-label">
+                <label htmlFor={ids.layout}>{t.editor.layout}</label>
+                <Required />
+              </span>
               <Select
-                id={ids.bu}
-                options={scopeOptions}
-                value={String(draft.businessUnitId ?? '')}
-                onChange={(value) => patch({ businessUnitId: Number(value) })}
+                id={ids.layout}
+                options={(['OP', 'PP'] as const).map((code) => ({
+                  value: code,
+                  label: t.layouts[code] ?? code,
+                }))}
+                value={draft.formLayoutCode}
+                onChange={(value) => setLayout(value as InspectionSheetLayoutCode)}
               />
-            )
-          ) : (
-            readOnlyValue(
-              ids.bu,
-              businessUnitNames.get(template.businessUnitId) ?? String(template.businessUnitId),
-            )
-          )}
-        </div>
-        <div className="field-cell">
-          <label className="field-label" htmlFor={ids.layout}>
-            {t.editor.layout} {template === null && <Required />}
-          </label>
-          {template === null ? (
-            <Select
-              id={ids.layout}
-              options={(['OP', 'PP'] as const).map((code) => ({
-                value: code,
-                label: t.layouts[code] ?? code,
-              }))}
-              value={draft.formLayoutCode}
-              onChange={(value) => setLayout(value as InspectionSheetLayoutCode)}
-            />
-          ) : (
-            readOnlyValue(ids.layout, t.layouts[draft.formLayoutCode] ?? draft.formLayoutCode)
-          )}
-          {template === null && <span className="field-note">{t.editor.layoutNote}</span>}
-        </div>
-      </div>
+              <span className="field-note">{t.editor.layoutNote}</span>
+            </div>
+          </div>
+        </>
+      ) : (
+        /*
+         * 등록한 기준의 모델·사업부·양식은 바꿀 수 없다 — 입력 칸 대신 이름표 상자 한 줄로 보인다
+         * (검사 기준 탭 상세의 값 상자와 같은 모양 · #208).
+         */
+        <dl className="inspection-standard-facts-line inspection-sheet-template-facts">
+          {[
+            { label: t.editor.model, value: draft.itemLabel },
+            {
+              label: t.editor.businessUnit,
+              value:
+                businessUnitNames.get(template.businessUnitId) ?? String(template.businessUnitId),
+            },
+            {
+              label: t.editor.layout,
+              value: t.layouts[draft.formLayoutCode] ?? draft.formLayoutCode,
+            },
+          ].map((fact) => (
+            <div key={fact.label}>
+              <dt className="field-label">{fact.label}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
       <h3 className="pane-subtitle">{t.editor.headerSection}</h3>
       <p className="field-note">{t.editor.headerNote}</p>
@@ -354,14 +365,18 @@ export const TemplateEditor = ({
             />
           </>
         )}
-        <TextField
-          label={t.editor.remarks}
-          id={ids.remarks}
-          value={draft.remarks}
-          maxLength={500}
-          disabled={readOnly}
-          onChange={(e) => patch({ remarks: e.target.value })}
-        />
+        {/* 비고는 글이 길다(500자) — 한 줄을 다 쓴다(#208). */}
+        <div className="inspection-sheet-template-wide">
+          <TextField
+            label={t.editor.remarks}
+            id={ids.remarks}
+            value={draft.remarks}
+            maxLength={500}
+            disabled={readOnly}
+            fullWidth
+            onChange={(e) => patch({ remarks: e.target.value })}
+          />
+        </div>
       </div>
 
       <h3 className="pane-subtitle">{t.editor.lotSection}</h3>
@@ -410,6 +425,7 @@ export const TemplateEditor = ({
               {!readOnly && (
                 <Button
                   variant="outlined"
+                  leadingIcon={<Icon name="add" size={18} />}
                   aria-label={t.editor.addLotItem(t.slots[slot] ?? slot)}
                   onClick={() => setPicking({ kind: 'lot', slot })}
                 >
@@ -444,7 +460,8 @@ export const TemplateEditor = ({
           {!readOnly && dirty && t.editor.dirty}
           {template !== null && !readOnly && dirty && ` ${t.editor.confirmBlocked}`}
         </p>
-        <Button variant="text" onClick={onClose}>
+        {/* 닫기는 테두리 단추 — 검사 기준 탭의 「취소」와 같은 단계(#208). */}
+        <Button variant="outlined" onClick={onClose}>
           {t.editor.close}
         </Button>
         {readOnly && template !== null && (
@@ -490,6 +507,7 @@ export const TemplateEditor = ({
           open
           onClose={() => setConfirming(false)}
           title={t.confirmDialog.title}
+          showCloseButton={false}
           footer={
             <>
               <Button variant="outlined" onClick={() => setConfirming(false)}>

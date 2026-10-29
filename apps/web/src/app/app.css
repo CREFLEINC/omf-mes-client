@@ -21701,7 +21701,8 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 }
 
 .two-pane.inspection-sheet-template-layout {
-  grid-template-columns: minmax(22rem, 28rem) minmax(0, 1fr);
+  /* 목록 열이 다섯이라 모델 칸이 읽히는 폭을 준다(#208). */
+  grid-template-columns: minmax(26rem, 34rem) minmax(0, 1fr);
 }
 
 @media (max-width: 1280px) {
@@ -21710,16 +21711,37 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   }
 }
 
-.inspection-sheet-template-filter {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
+/* 조회 카드(#208) — 검사 기준 탭과 같은 한 줄: 상태 → 조회 | 새 기준 등록. 카드 안 줄의 아래 여백은 걷는다. */
+.inspection-sheet-template-search > .filter-bar {
+  margin-bottom: 0;
 }
 
-.inspection-sheet-template-add {
-  margin-left: auto;
+.inspection-sheet-template-search .filter-actions {
+  align-items: center;
+}
+
+/* 상태 칸 — 「작성중」 같은 짧은 값이라 좁게(#208). */
+.inspection-sheet-template-status-filter {
+  flex: 0 0 10rem;
+}
+
+.inspection-sheet-template-filter-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 0 var(--space-1);
+  background: var(--outline-variant);
+}
+
+/* 목록 칸 — 표 · 쪽 이동 줄 사이를 띄운다(#208). */
+.inspection-sheet-template-list-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.inspection-sheet-template-list-pane > .page-nav {
+  margin-top: 0;
 }
 
 .inspection-sheet-template-caption {
@@ -21734,38 +21756,83 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   border: 0;
 }
 
-.inspection-sheet-template-list table {
-  table-layout: fixed;
-}
-
-.inspection-sheet-template-list th {
+/*
+ * 목록 표(#208) — 검사 기준 탭 목록과 같다: 머리 이름 옆 순서 손잡이, 줄 아무 곳이나 눌러 고르기,
+ * 올리면 옅게, 고른 줄은 바탕 + 왼쪽 강조선.
+ */
+.inspection-sheet-template-rows thead th {
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
   white-space: nowrap;
 }
 
-/* 모델 칸 — 코드는 한 줄, 이름은 흐리게 한 줄 말줄임. */
-.inspection-sheet-template-model {
-  display: grid;
-  min-width: 0;
+/* ⚠ 공용 규칙(`.inspection-queue-table thead th[data-align='center'] .col-grip`)보다 무거워야 손잡이가 이름 옆에 선다. */
+.inspection-queue-table.inspection-sheet-template-rows thead .col-head {
+  position: relative;
 }
 
-.inspection-sheet-template-list .link-cell {
-  justify-self: start;
-  max-width: 100%;
-  overflow: hidden;
-  text-align: left;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+.inspection-queue-table.inspection-sheet-template-rows thead th[data-align] .col-grip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-1));
+  transform: translateY(-50%);
 }
 
-.inspection-sheet-template-list tbody tr:has(.link-cell[aria-current='true']) > td {
+.inspection-sheet-template-rows tbody tr,
+.inspection-sheet-template-rows tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.inspection-sheet-template-rows tbody tr {
+  transition: background-color 0.12s ease;
+  cursor: pointer;
+}
+
+.inspection-sheet-template-rows tbody tr:nth-child(n):hover {
   background: var(--state-hover-neutral);
 }
 
-.inspection-sheet-template-list tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+.inspection-sheet-template-rows
+  tbody
+  tr:nth-child(n):has(.inspection-sheet-template-open[aria-current='true']) {
+  background: var(--surface-container-high);
+}
+
+.inspection-sheet-template-rows
+  tbody
+  tr:has(.inspection-sheet-template-open[aria-current='true'])
+  > td:first-child {
   box-shadow: inset 3px 0 0 var(--primary);
 }
 
-.inspection-sheet-template-list .link-cell[aria-current='true'] {
+/* 모델 칸 — 「코드 이름」 한 줄, 이름은 흐리게 말줄임. 링크 모양 없이 본문 글자(검사 기준 탭과 같다). */
+.inspection-sheet-template-open {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-surface);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.inspection-sheet-template-open-code {
+  flex: 0 0 auto;
+}
+
+.inspection-sheet-template-open > .inspection-sheet-template-muted {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inspection-sheet-template-open[aria-current='true'] > .inspection-sheet-template-open-code {
   font-weight: 600;
 }
 
@@ -21803,10 +21870,15 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   color: var(--on-surface-variant);
 }
 
-.inspection-sheet-template-required {
-  margin-left: var(--space-1);
-  color: var(--semantic-error-text);
-  font: var(--type-body-sm);
+/* 상세의 모델 · 사업부 · 양식 값 상자 — 긴 모델 이름은 줄을 넘겨 다 보인다(#208). */
+.inspection-sheet-template-facts dd {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* 비고처럼 긴 글 칸은 한 줄을 다 쓴다(#208). */
+.inspection-sheet-template-wide {
+  grid-column: 1 / -1;
 }
 
 /* 기본 정보와 상단 정보가 같은 칸 폭으로 선다. */
@@ -21821,14 +21893,6 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   .inspection-sheet-template-grid {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-.inspection-sheet-template-readonly {
-  box-sizing: border-box;
-  margin: 0;
-  padding: var(--space-2) 0;
-  color: var(--on-surface);
-  overflow-wrap: anywhere;
 }
 
 .inspection-sheet-template-pick {
