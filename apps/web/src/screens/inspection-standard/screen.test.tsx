@@ -696,6 +696,12 @@ const lookupRoutes = (): StubRoute[] => [
 
 const planForm = (): HTMLElement => screen.getByRole('region', { name: '기준 정보' });
 
+/** 「기준 추가」 창 안의 등록 폼(#208) — 뒤의 상세 칸에도 같은 이름의 구획이 있다. */
+const createForm = (): HTMLElement =>
+  within(screen.getByRole('dialog', { name: '검사 기준 등록' })).getByRole('region', {
+    name: '기준 정보',
+  });
+
 /** 기본 정보 폼의 품목은 품목 선택 창에서 고른다(#196) — 칸을 눌러 창을 열고 코드로 고른 뒤 「선택」. */
 const pickPlanItem = async (user: ReturnType<typeof userEvent.setup>, itemCode: string) => {
   await user.click(within(planForm()).getByLabelText('품목'));
@@ -973,7 +979,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     expect(await screen.findByLabelText('기준코드')).toHaveValue('');
     expect(screen.getByLabelText('기준명')).toHaveValue('');
     // 서버가 채우는 값을 미리 지어내 보이지 않는다.
-    expect(within(planForm()).queryByText('미승인')).not.toBeInTheDocument();
+    expect(within(createForm()).queryByText('미승인')).not.toBeInTheDocument();
   });
 
   /* 아직 없는 자원이라 잠글 대상이 없다 — 계약이 If-Match를 요구하지 않는다. */
@@ -988,9 +994,9 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     await user.click(await screen.findByRole('button', { name: '기준 추가' }));
     await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
     await user.type(screen.getByLabelText('기준명'), '합성 검사기준 J');
-    await user.click(within(planForm()).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
     await user.click(screen.getByRole('option', { name: 'OQC (출하검사)' }));
-    await user.click(within(planForm()).getByRole('button', { name: '기준 추가' }));
+    await user.click(within(createForm()).getByRole('button', { name: '기준 추가' }));
 
     await screen.findByText('등록했습니다');
 
@@ -1021,9 +1027,9 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     await user.click(await screen.findByRole('button', { name: '기준 추가' }));
     await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
     await user.type(screen.getByLabelText('기준명'), '합성 검사기준 J');
-    await user.click(within(planForm()).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
     await user.click(screen.getByRole('option', { name: 'OQC (출하검사)' }));
-    await user.click(within(planForm()).getByRole('button', { name: '기준 추가' }));
+    await user.click(within(createForm()).getByRole('button', { name: '기준 추가' }));
 
     await waitFor(() => {
       expect(requestsTo(requests, `${PLANS_PATH}/3010`)).toHaveLength(1);
@@ -1040,7 +1046,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
 
     await user.click(await screen.findByRole('button', { name: '기준 추가' }));
     await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
-    await user.click(within(planForm()).getByRole('button', { name: '기준 추가' }));
+    await user.click(within(createForm()).getByRole('button', { name: '기준 추가' }));
 
     expect(await screen.findAllByText('필수 입력 항목입니다.')).toHaveLength(2);
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
@@ -1255,13 +1261,15 @@ describe('InspectionStandardScreen — 기준 승인 단추 없음', () => {
     expect(within(form).queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
   });
 
-  it('등록 폼에는 승인 단추가 없고 사용 중지가 비활성이다', async () => {
+  /* 아직 없는 기준에는 걸 대상이 없다 — 등록 창에는 상태 단추를 두지 않는다(#208). */
+  it('등록 창에는 승인 · 사용 중지 단추가 없다', async () => {
     const { user } = renderScreen([planListRoute(), ...lookupRoutes()]);
 
     await user.click(await screen.findByRole('button', { name: '기준 추가' }));
 
-    const form = planForm();
-    expect(within(form).getByRole('button', { name: '사용 중지' })).toBeDisabled();
+    const form = createForm();
+    expect(within(form).getByRole('button', { name: '기준 추가' })).toBeInTheDocument();
+    expect(within(form).queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
     expect(within(form).queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
   });
 });

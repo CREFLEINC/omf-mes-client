@@ -1268,10 +1268,27 @@ export const InspectionStandardScreen = () => {
    * 우 상단 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
-  const renderPlanPane = () => {
-    if (createValues !== null) {
-      return (
+  /** 「기준 추가」 창 — 등록 폼을 팝업으로 연다(사용자 지시 · #208). 취소 · 닫기는 입력을 버린다. */
+  const renderPlanCreateDialog = (): ReactNode => {
+    if (createValues === null) return null;
+
+    const closeCreate = () => {
+      createWrite.reset();
+      setCreateValues(null);
+      setCreateFieldErrors({});
+    };
+
+    return (
+      <Dialog
+        open
+        size="lg"
+        closeOnBackdropClick={false}
+        showCloseButton={false}
+        title={t.detail.createTitle}
+        onClose={closeCreate}
+      >
         <PlanPane
+          embedded
           mode="create"
           plan={null}
           values={createValues}
@@ -1289,17 +1306,13 @@ export const InspectionStandardScreen = () => {
           isDirty={!isSamePlanValues(createValues, emptyPlanFormValues())}
           isSaving={createWrite.isSaving}
           onSave={handleSaveCreate}
-          onCancel={() => {
-            createWrite.reset();
-            setCreateValues(null);
-            setCreateFieldErrors({});
-          }}
-          // 아직 없는 기준에는 승인·중지할 대상이 없다. 감추지 않고 사유와 함께 비활성으로 둔다.
-          transitionActions={renderPlanActions()}
+          onCancel={closeCreate}
         />
-      );
-    }
+      </Dialog>
+    );
+  };
 
+  const renderPlanPane = () => {
     if (selectedPlanId === null) {
       return (
         <section className="pane" aria-label={t.panes.planForm}>
@@ -1886,9 +1899,10 @@ export const InspectionStandardScreen = () => {
         <div className="inspection-standard-detail">
           {/* 버전 고르기 — 선택칸 + 「버전 목록」 창(신규 버전 발행 · 닫기). 기준을 고른 뒤에만 선다(#196). */}
           {renderPlanPane()}
-          {/* 기준 등록 중에는 카드가 없다 — 버전 · 항목은 등록 뒤에 선다. */}
         </div>
       </div>
+
+      {renderPlanCreateDialog()}
 
       {/*
        * 창은 열 때만 붙인다 — 닫힌 창을 남겨 두면 지난 값이 그대로 살아 있다.
