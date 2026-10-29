@@ -27294,11 +27294,6 @@ button.iqc-inspection-step-toggle:focus-visible {
   gap: var(--space-3);
 }
 
-.parts-iqc-attach {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
 .parts-iqc-check-table {
   width: 100%;
   border-collapse: separate;

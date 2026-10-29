@@ -597,7 +597,7 @@ const InspectionForm = (props: FormProps) => {
             {xrfReport === null ? (
               <Button
                 variant="outlined"
-                className="parts-iqc-attach"
+                className="app-button-neutral"
                 leadingIcon={<Icon name="upload" />}
                 onClick={() => fileRef.current?.click()}
               >
