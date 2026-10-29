@@ -261,13 +261,28 @@ describe('검사표 기준', () => {
     expect(body.steps).toHaveLength(1);
   });
 
-  it('새 기준은 모델을 고르지 않으면 보내지 않는다', async () => {
+  /* 새 기준의 모델 · 사업부 · 양식은 팝업에서 고른다 — 검사 기준 탭의 「기준 추가」 창과 같다(#208). */
+  it('새 기준 등록은 기본 정보 팝업으로 열리고, 모델을 고르지 않으면 넘어가지 않는다', async () => {
     const { user, requests } = setup(template());
     await user.click(await screen.findByRole('button', { name: t.list.add }));
-    await user.click(screen.getByRole('button', { name: t.editor.save }));
 
-    expect(screen.getByText(t.editor.noModel)).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog', { name: t.editor.newHeading });
+    await user.click(within(dialog).getByRole('button', { name: t.editor.basicConfirm }));
+
+    expect(within(dialog).getByText(t.editor.noModel)).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.editor.newHeading })).toBeInTheDocument();
     expect(requests.some((r) => r.method === 'POST')).toBe(false);
+  });
+
+  it('새 기준 팝업에서 취소하면 등록을 그만둔다', async () => {
+    const { user } = setup(template());
+    await user.click(await screen.findByRole('button', { name: t.list.add }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.editor.newHeading });
+    await user.click(within(dialog).getByRole('button', { name: messages.common.cancel }));
+
+    expect(screen.queryByRole('dialog', { name: t.editor.newHeading })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.editor.newHeading })).not.toBeInTheDocument();
   });
 
   it('부품 공장 범위만 있는 계정은 「OA 사업부 전용」 안내만 보이고 기준을 조회하지 않는다', async () => {

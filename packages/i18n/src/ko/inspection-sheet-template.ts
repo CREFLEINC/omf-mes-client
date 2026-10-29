@@ -47,6 +47,10 @@ export const inspectionSheetTemplate = {
   },
 
   editor: {
+    detailTitle: '검사표 기준 상세',
+    versionChip: (version: number) => `${version}판`,
+    editBasic: '기본 정보 수정',
+    basicConfirm: '확인',
     newHeading: '새 검사표 기준',
     heading: (itemCode: string, version: number) => `${itemCode} ${version}판`,
     loading: '검사표 기준을 불러오는 중입니다.',

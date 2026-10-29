@@ -47,6 +47,10 @@ export const inspectionSheetTemplate = {
   },
 
   editor: {
+    detailTitle: 'Chi tiết tiêu chuẩn phiếu kiểm tra',
+    versionChip: (version: number) => `Bản ${version}`,
+    editBasic: 'Sửa thông tin cơ bản',
+    basicConfirm: 'Xác nhận',
     newHeading: 'Tiêu chuẩn phiếu kiểm tra mới',
     heading: (itemCode: string, version: number) => `${itemCode} · bản ${version}`,
     loading: 'Đang tải tiêu chuẩn.',

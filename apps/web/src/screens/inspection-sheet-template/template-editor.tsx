@@ -108,6 +108,14 @@ export const TemplateEditor = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [picking, setPicking] = useState<Picking>(null);
   const [confirming, setConfirming] = useState(false);
+  /*
+   * 새 기준의 기본 정보(모델 · 사업부 · 양식)는 팝업에서 고른다 — 검사 기준 탭의 「기준 추가」 창과 같다(사용자 지시 · #208).
+   * 처음 열 때 바로 띄우고, 확인 뒤에는 머리의 「기본 정보 수정」으로 다시 연다. 취소하면 연 때의 값으로 되돌린다.
+   */
+  const [basicSnapshot, setBasicSnapshot] = useState<TemplateDraft | null>(() =>
+    template === null ? draft : null,
+  );
+  const [basicConfirmed, setBasicConfirmed] = useState(false);
 
   const readOnly = template !== null && template.statusCode !== 'DRAFT';
   const patch = (next: Partial<TemplateDraft>) => {
@@ -212,89 +220,70 @@ export const TemplateEditor = ({
 
   return (
     <section className="pane inspection-sheet-template-editor" aria-label={t.editor.newHeading}>
-      <header className="inspection-sheet-template-head">
-        <h2 className="pane-title">
-          {template === null
-            ? t.editor.newHeading
-            : t.editor.heading(template.itemCode, template.templateVersion)}
-        </h2>
-        {template !== null && <TemplateStatusChip statusCode={template.statusCode} />}
-      </header>
-      {readOnly && <p className="field-note">{t.editor.readOnly}</p>}
-      <SaveErrorBanner
-        error={writeError}
-        onReload={() => {
-          create.reset();
-          update.reset();
-          confirm.reset();
-        }}
-      />
-
-      {template === null ? (
-        <>
-          <h3 className="pane-subtitle">{t.editor.basicSection}</h3>
-          <div className="inspection-sheet-template-grid">
-            <div className="field-cell">
-              <span className="field-label">
-                {t.editor.model}
-                <Required />
-              </span>
-              <div className="inspection-sheet-template-pick">
-                <span className="inspection-sheet-ellipsis" title={draft.itemLabel || undefined}>
-                  {draft.itemLabel || '—'}
-                </span>
-                <Button variant="outlined" onClick={() => setPicking({ kind: 'model' })}>
-                  {t.editor.pickModel}
-                </Button>
-              </div>
-              {errors.item && <span className="field-error">{errors.item}</span>}
-            </div>
-            <div className="field-cell">
-              <span className="field-label">
-                <label htmlFor={ids.bu}>{t.editor.businessUnit}</label>
-                <Required />
-              </span>
-              {scopeOptions.length === 0 ? (
-                <p className="field-error">{t.editor.noBusinessUnit}</p>
-              ) : (
-                <Select
-                  id={ids.bu}
-                  options={scopeOptions}
-                  value={String(draft.businessUnitId ?? '')}
-                  onChange={(value) => patch({ businessUnitId: Number(value) })}
-                />
-              )}
-            </div>
-            <div className="field-cell">
-              <span className="field-label">
-                <label htmlFor={ids.layout}>{t.editor.layout}</label>
-                <Required />
-              </span>
-              <Select
-                id={ids.layout}
-                options={(['OP', 'PP'] as const).map((code) => ({
-                  value: code,
-                  label: t.layouts[code] ?? code,
-                }))}
-                value={draft.formLayoutCode}
-                onChange={(value) => setLayout(value as InspectionSheetLayoutCode)}
-              />
-              <span className="field-note">{t.editor.layoutNote}</span>
-            </div>
+      {/*
+       * 머리 상자 — 제목 · 판 · 상태 칩, 오른쪽 끝 상태 단추, 아래 이름표 값 줄(검사 기준 탭 상세와 같은 모양 · 사용자 지시 · #208).
+       * 모델 · 사업부 · 양식은 등록한 뒤에는 바꿀 수 없다 — 새 기준만 「기본 정보 수정」 팝업으로 고친다.
+       */}
+      <div className="inspection-standard-plan-head-card">
+        <div className="inspection-standard-plan-head">
+          <div className="inspection-standard-plan-chips">
+            <h2 className="pane-title">
+              {template === null ? t.editor.newHeading : t.editor.detailTitle}
+            </h2>
+            {template !== null && (
+              <Chip variant="status" status="idle">
+                {t.editor.versionChip(template.templateVersion)}
+              </Chip>
+            )}
+            {template !== null && <TemplateStatusChip statusCode={template.statusCode} />}
           </div>
-        </>
-      ) : (
-        /*
-         * 등록한 기준의 모델·사업부·양식은 바꿀 수 없다 — 입력 칸 대신 이름표 상자 한 줄로 보인다
-         * (검사 기준 탭 상세의 값 상자와 같은 모양 · #208).
-         */
+          <div className="inspection-standard-plan-head-actions">
+            {template === null && (
+              <Button
+                variant="outlined"
+                leadingIcon={<Icon name="edit" size={18} />}
+                onClick={() => setBasicSnapshot(draft)}
+              >
+                {t.editor.editBasic}
+              </Button>
+            )}
+            {readOnly && template !== null && (
+              <Button
+                disabled={saving}
+                loading={create.isSaving}
+                onClick={() =>
+                  create.write({
+                    source: {
+                      ...draft,
+                      itemId: template.itemId,
+                      businessUnitId: template.businessUnitId,
+                    },
+                  })
+                }
+              >
+                {t.editor.copyAsNew}
+              </Button>
+            )}
+            {template !== null && !readOnly && (
+              <Button
+                aria-describedby={ids.status}
+                disabled={saving || dirty}
+                onClick={() => setConfirming(true)}
+              >
+                {t.editor.confirm}
+              </Button>
+            )}
+          </div>
+        </div>
         <dl className="inspection-standard-facts-line inspection-sheet-template-facts">
           {[
-            { label: t.editor.model, value: draft.itemLabel },
+            { label: t.editor.model, value: draft.itemLabel || '—' },
             {
               label: t.editor.businessUnit,
               value:
-                businessUnitNames.get(template.businessUnitId) ?? String(template.businessUnitId),
+                draft.businessUnitId === null
+                  ? '—'
+                  : (businessUnitNames.get(draft.businessUnitId) ?? String(draft.businessUnitId)),
             },
             {
               label: t.editor.layout,
@@ -307,7 +296,16 @@ export const TemplateEditor = ({
             </div>
           ))}
         </dl>
-      )}
+      </div>
+      {readOnly && <p className="field-note">{t.editor.readOnly}</p>}
+      <SaveErrorBanner
+        error={writeError}
+        onReload={() => {
+          create.reset();
+          update.reset();
+          confirm.reset();
+        }}
+      />
 
       <h3 className="pane-subtitle">{t.editor.headerSection}</h3>
       <p className="field-note">{t.editor.headerNote}</p>
@@ -464,23 +462,6 @@ export const TemplateEditor = ({
         <Button variant="outlined" onClick={onClose}>
           {t.editor.close}
         </Button>
-        {readOnly && template !== null && (
-          <Button
-            disabled={saving}
-            loading={create.isSaving}
-            onClick={() =>
-              create.write({
-                source: {
-                  ...draft,
-                  itemId: template.itemId,
-                  businessUnitId: template.businessUnitId,
-                },
-              })
-            }
-          >
-            {t.editor.copyAsNew}
-          </Button>
-        )}
         {!readOnly && (
           <Button
             variant={template === null ? undefined : 'outlined'}
@@ -489,15 +470,6 @@ export const TemplateEditor = ({
             onClick={save}
           >
             {t.editor.save}
-          </Button>
-        )}
-        {template !== null && !readOnly && (
-          <Button
-            aria-describedby={ids.status}
-            disabled={saving || dirty}
-            onClick={() => setConfirming(true)}
-          >
-            {t.editor.confirm}
           </Button>
         )}
       </div>
@@ -524,6 +496,99 @@ export const TemplateEditor = ({
           }
         >
           <p>{t.confirmDialog.body(template.itemCode, template.templateVersion)}</p>
+        </Dialog>
+      )}
+
+      {basicSnapshot !== null && (
+        <Dialog
+          open
+          size="lg"
+          closeOnBackdropClick={false}
+          showCloseButton={false}
+          title={t.editor.newHeading}
+          onClose={() => {
+            if (!basicConfirmed) return onClose();
+            setDraft(basicSnapshot);
+            setBasicSnapshot(null);
+          }}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  /* 처음 고르는 중에 취소하면 등록을 그만둔다. 다시 연 창의 취소는 연 때의 값으로 되돌린다. */
+                  if (!basicConfirmed) return onClose();
+                  setDraft(basicSnapshot);
+                  setBasicSnapshot(null);
+                }}
+              >
+                {messages.common.cancel}
+              </Button>
+              <Button
+                disabled={scopeOptions.length === 0}
+                onClick={() => {
+                  if (draft.itemId === null) {
+                    setErrors((prev) => ({ ...prev, item: t.editor.noModel }));
+                    return;
+                  }
+                  setBasicConfirmed(true);
+                  setBasicSnapshot(null);
+                }}
+              >
+                {t.editor.basicConfirm}
+              </Button>
+            </>
+          }
+        >
+          <div className="form-grid">
+            <div className="field-cell">
+              <span className="field-label">
+                {t.editor.model}
+                <Required />
+              </span>
+              <div className="inspection-sheet-template-pick">
+                <span className="inspection-sheet-ellipsis" title={draft.itemLabel || undefined}>
+                  {draft.itemLabel || '—'}
+                </span>
+                <Button variant="outlined" onClick={() => setPicking({ kind: 'model' })}>
+                  {t.editor.pickModel}
+                </Button>
+              </div>
+              {errors.item && <span className="field-error">{errors.item}</span>}
+            </div>
+            <div className="field-cell">
+              <span className="field-label">
+                <label htmlFor={ids.bu}>{t.editor.businessUnit}</label>
+                <Required />
+              </span>
+              {scopeOptions.length === 0 ? (
+                <p className="field-error">{t.editor.noBusinessUnit}</p>
+              ) : (
+                <Select
+                  id={ids.bu}
+                  options={scopeOptions}
+                  value={String(draft.businessUnitId ?? '')}
+                  onChange={(value) => patch({ businessUnitId: Number(value) })}
+                />
+              )}
+            </div>
+            <div className="field-cell">
+              <span className="field-label">
+                <label htmlFor={ids.layout}>{t.editor.layout}</label>
+                <Required />
+              </span>
+              <Select
+                id={ids.layout}
+                options={(['OP', 'PP'] as const).map((code) => ({
+                  value: code,
+                  label: t.layouts[code] ?? code,
+                }))}
+                value={draft.formLayoutCode}
+                onChange={(value) => setLayout(value as InspectionSheetLayoutCode)}
+              />
+              <span className="field-note">{t.editor.layoutNote}</span>
+            </div>
+          </div>
         </Dialog>
       )}
 
