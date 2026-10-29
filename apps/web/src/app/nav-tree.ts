@@ -323,8 +323,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
           {
             to: '/master-data/judgment-code',
-            label: '판정 유형 코드',
-            labelVi: 'Mã loại đánh giá',
+            // 「판정 유형 코드」 → 「판정 유형」(사용자 지시 2026-10-29 · #209)
+            label: '판정 유형',
+            labelVi: 'Loại đánh giá',
           },
         ],
       },

@@ -241,12 +241,12 @@ describe('AppLayout', () => {
   });
 
   /* 불량·원인코드의 하위 탭을 탭 막대 한 줄로 폈다 — 판정유형 코드는 그 끝이다(#208). */
-  it('품질 코드 관리 탭 막대에 불량코드 · 원인코드 · 불량코드 공정 연결 · 판정 유형 코드가 한 줄로 선다', () => {
+  it('품질 코드 관리 탭 막대에 불량코드 · 원인코드 · 불량코드 공정 연결 · 판정 유형이 한 줄로 선다', () => {
     renderLayout('본문 내용', { route: '/master-data/judgment-code' });
 
     const tabs = screen.getByRole('navigation', { name: '품질 코드 관리' });
 
-    expect(within(tabs).getByRole('link', { name: '판정 유형 코드' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '판정 유형' })).toHaveAttribute(
       'href',
       '/master-data/judgment-code',
     );
