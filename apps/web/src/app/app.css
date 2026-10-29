@@ -800,12 +800,8 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-top: var(--space-4);
 }
 
-
-/* 발행 단추 자리의 안내(작성중 버전이 있을 때 · #196) — 짧은 한 문장이라 꺾지 않는다. */
+/* 발행 단추 자리의 안내(작성중 버전이 있을 때 · #196) — 모양은 안내 알약(#208). */
 .inspection-standard-new-revision-notice {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
   margin: 0;
   /* 좁으면 줄을 바꾼다 — 한 줄로 고정하면 카드 밖으로 넘친다(#196). */
   white-space: normal;
@@ -924,17 +920,28 @@ h2:has(> .inspection-standard-dialog-title) {
   gap: var(--space-3);
 }
 
-/* 정보 라벨 — 검사 조회·판정의 안내 줄(`.oqc-inspection-action-note[data-tone='info']`)과 같은 모양(사용자 지시 · #196). */
-.inspection-standard-notice-label {
+/*
+ * 안내 알약 — 아이콘 + 한 줄, 글 폭만큼 둥근 알약에 옅은 테두리(사용자 시안 · #208).
+ * 품질 기준 정보 탭의 안내는 모두 이 모양이다. 색은 안내 성격에 따라 다르다(정보 · 중립).
+ */
+.inspection-standard-notice-label,
+.inspection-standard-new-revision-notice,
+.inspection-sheet-template-rule {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  margin: 0 auto 0 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
+  gap: var(--space-2);
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--semantic-info) 35%, transparent);
+  border-radius: var(--radius-full);
   background: var(--semantic-info-container);
   color: var(--on-semantic-info-container);
   font: var(--type-body-md);
+}
+
+.inspection-standard-notice-label {
+  margin: 0 auto 0 0;
 }
 
 .inspection-standard-detail {
@@ -1008,7 +1015,6 @@ h2:has(> .inspection-standard-dialog-title) {
   flex: 1 1 22em;
   min-width: min(22em, 100%);
 }
-
 
 .inspection-standard-plan-chips {
   align-items: center;
@@ -21908,15 +21914,12 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
  *    상세 맨 아래에 붙어 따라온다(끝까지 내리면 제자리에 서서 항목을 가리지 않는다).
  * 고른 행은 옅은 중립 배경 + 첫 칸 막대(선례 `.warehouse-location-list-table`).
  */
-/* 규칙 안내 — 조회 카드 안 조건 줄 아래 작은 보조 글 한 줄 + 안내 아이콘. 박스 · 바탕은 두지 않는다(사용자 지시 · #208). */
+/* 규칙 안내 — 조회 카드 안 조건 줄 아래 한 줄. 모양은 안내 알약, 색은 중립(사용자 시안 · #208). */
 .inspection-sheet-template-rule {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
   margin: var(--space-2) 0 0;
+  border-color: var(--outline-variant);
+  background: var(--surface-container-high);
   color: var(--on-surface-muted);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
 }
 
 .inspection-sheet-template-rule > :first-child {
