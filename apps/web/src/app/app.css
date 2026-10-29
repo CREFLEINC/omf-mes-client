@@ -513,12 +513,13 @@ main > * + * {
  * 불량코드 조회 카드(#209) — 조건 칸 사이 빈 폭을 줄인다(사용자 지시 「불필요한 사이 공간」).
  * 검색 칸은 안내 문구가 읽히는 만큼만, 처분 유형은 「재작업 가능」이 잘리지 않는 만큼만 차지한다.
  */
-.inspection-standard-search.defect-cause-search .filter-bar > :first-child {
+.inspection-standard-search.defect-cause-search .filter-bar > .defect-cause-code-field {
   flex: 0 1 18rem;
   min-width: 11rem;
 }
 
-.defect-cause-search .defect-cause-filter-select {
+/* 맨 앞 칸이 되어도 공용 「첫 칸 19.5em」 규칙(`.inspection-standard-search .filter-bar > :first-child`)을 받지 않는다 — 내용 폭. */
+.inspection-standard-search.defect-cause-search .filter-bar > .defect-cause-filter-select {
   flex: 0 0 auto;
   min-width: 7.5rem;
 }

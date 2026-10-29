@@ -133,7 +133,7 @@ describe('CodeFilterBar — 조회 조건', () => {
   it('불량코드 탭에는 처분 유형 · 공정 조건이 있고, 조회를 눌러야 적용된다(#209)', async () => {
     const { props, user } = renderBar();
 
-    await user.click(screen.getByRole('combobox', { name: '처분 유형' }));
+    await user.click(screen.getByRole('combobox', { name: '처분 유형 선택' }));
     await user.click(screen.getByRole('option', { name: '폐기' }));
     expect(props.onApplyFilters).not.toHaveBeenCalled();
 
@@ -156,7 +156,7 @@ describe('CodeFilterBar — 조회 조건', () => {
       },
     });
 
-    const field = screen.getByLabelText('공정');
+    const field = screen.getByLabelText('공정 검색');
     expect(field).toHaveAttribute('readonly');
     expect(field).toHaveAttribute('aria-haspopup', 'dialog');
     expect(field).toHaveValue('P-10 · 조립');
@@ -165,8 +165,8 @@ describe('CodeFilterBar — 조회 조건', () => {
   it('원인코드 탭에는 처분 유형 · 공정 조건이 없다', () => {
     renderBar({ adapter: causeCodeAdapter });
 
-    expect(screen.queryByRole('combobox', { name: '처분 유형' })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('공정')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: '처분 유형 선택' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('공정 검색')).not.toBeInTheDocument();
   });
 
   it('원인코드 탭은 원인코드 검색 라벨을 쓴다', () => {

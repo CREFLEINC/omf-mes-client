@@ -77,8 +77,8 @@ export const defectCauseCode = {
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
     chipKeyword: (value: string): string => `검색어: ${value}`,
     /** 처분 유형 · 공정 조건(불량코드 탭 · #209) */
-    disposition: '처분 유형',
-    process: '공정',
+    disposition: '처분 유형 선택',
+    process: '공정 검색',
     all: '전체',
     chipDisposition: (value: string): string => `처분 유형: ${value}`,
     chipProcess: (value: string): string => `공정: ${value}`,
@@ -122,7 +122,7 @@ export const defectCauseCode = {
     placeholder: '공정코드 또는 공정명을 입력하세요',
     code: '공정코드',
     name: '공정명',
-    fieldPlaceholder: '공정을 검색하세요',
+    fieldPlaceholder: '공정을 입력하세요',
     clear: '공정 검색 지우기',
   },
   /** 표의 대분류 · 상세 관계(사용자 지시 · #209) */

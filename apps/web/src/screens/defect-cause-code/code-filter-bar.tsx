@@ -80,12 +80,36 @@ export const CodeFilterBar = ({
   return (
     <>
       <div className="filter-bar">
+        {/* 순서: 처분 유형 · 불량코드 검색 · 공정 검색 · 미사용 포함(사용자 지시 2026-10-29 · #209). */}
+        {showCodeConditions && (
+          <div className="field-cell defect-cause-filter-select">
+            <span className="field-label">
+              <label htmlFor={dispositionId}>{t.filters.disposition}</label>
+            </span>
+            <Select
+              id={dispositionId}
+              options={[
+                { value: '', label: t.filters.all },
+                { value: 'REWORKABLE', label: t.values.disposition.REWORKABLE },
+                { value: 'SCRAP', label: t.values.disposition.SCRAP },
+              ]}
+              value={draft.dispositionTypeCode}
+              onChange={(value) =>
+                setDraft((prev) => ({
+                  ...prev,
+                  dispositionTypeCode: value as CodeFilters['dispositionTypeCode'],
+                }))
+              }
+            />
+          </div>
+        )}
         {/*
          * 코드는 **창에서 검색해서 고른다** — 검사 조회·판정의 품목 검색과 같은 모양(사용자 지시 2026-10-29 · #209).
          * 코드가 많아도 찾게 한다. 읽기 전용 칸을 누르거나 엔터를 치면 창이 열리고, 고른 코드가 검색어로 들어간다.
          * 지우기는 값이 있을 때만 칸 안의 × 다. 조회를 눌러야 목록에 걸린다(다른 조건과 같은 트리거).
          */}
         <SearchInput
+          containerClassName="defect-cause-code-field"
           label={adapter.labels.searchLabel}
           placeholder={adapter.labels.searchPlaceholder}
           value={draft.q}
@@ -101,26 +125,6 @@ export const CodeFilterBar = ({
         {/* 처분 유형 · 공정 — 다른 조건처럼 「조회」를 눌러야 목록에 걸린다(#209). */}
         {showCodeConditions && (
           <>
-            <div className="field-cell defect-cause-filter-select">
-              <span className="field-label">
-                <label htmlFor={dispositionId}>{t.filters.disposition}</label>
-              </span>
-              <Select
-                id={dispositionId}
-                options={[
-                  { value: '', label: t.filters.all },
-                  { value: 'REWORKABLE', label: t.values.disposition.REWORKABLE },
-                  { value: 'SCRAP', label: t.values.disposition.SCRAP },
-                ]}
-                value={draft.dispositionTypeCode}
-                onChange={(value) =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    dispositionTypeCode: value as CodeFilters['dispositionTypeCode'],
-                  }))
-                }
-              />
-            </div>
             {/*
              * 공정은 많을 수 있어 **창에서 검색해서 고른다** — 불량코드 검색과 같은 조작(사용자 지시 · #209).
              * 읽기 전용 칸을 누르거나 엔터를 치면 창이 열린다. 지우기는 칸 안의 × 다.
