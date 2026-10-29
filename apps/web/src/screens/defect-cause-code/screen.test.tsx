@@ -139,6 +139,20 @@ const pageListRequests = (requests: RecordedRequest[], pathname: string): Record
       request.url.searchParams.get('includeInactive') !== 'true',
   );
 
+/** 검색 칸을 눌러 코드 검색 창에서 찾아 고른다(#209) — 고른 코드가 검색어로 들어간다. */
+const pickCode = async (
+  user: ReturnType<typeof userEvent.setup>,
+  fieldLabel: string,
+  code: string,
+): Promise<void> => {
+  await user.click(screen.getByLabelText(fieldLabel));
+  const dialog = await screen.findByRole('dialog');
+  await user.type(within(dialog).getByLabelText('검색어'), code);
+  await user.click(within(dialog).getByRole('button', { name: '찾기' }));
+  await user.click(await within(dialog).findByRole('checkbox', { name: code }));
+  await user.click(within(dialog).getByRole('button', { name: '선택' }));
+};
+
 /** 대분류 줄이 묶음 머리다(#209) — 그 코드 단추가 머리 칸(접기 단추 옆)에 있는가. */
 const isHeadRow = (code: string): boolean =>
   screen.getByRole('button', { name: code }).closest('.defect-cause-tree-head') !== null;
@@ -225,13 +239,15 @@ describe('DefectCauseCodeScreen — 목록 조회', () => {
     await screen.findByRole('button', { name: 'DF-10' });
 
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
-    await user.type(screen.getByLabelText('불량코드 검색'), 'DF-1');
+    await pickCode(user, '불량코드 검색', 'DF-11');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
-    const last = requestsTo(requests, DEFECT_LIST_PATH).at(-1);
-    expect(last?.url.searchParams.get('q')).toBe('DF-1');
+    // 검색 창과 목록이 같은 조회를 쓰므로(같은 조건이면 캐시) 그 조건의 요청이 있었는지로 본다.
+    const last = requestsTo(requests, DEFECT_LIST_PATH)
+      .filter((request) => request.url.searchParams.get('q') === 'DF-11')
+      .at(-1);
     expect(last?.url.searchParams.get('includeInactive')).toBe('true');
-    expect(currentLocation()).toContain('q=DF-1');
+    expect(currentLocation()).toContain('q=DF-11');
     expect(currentLocation()).toContain('inactive=1');
   });
 
@@ -1515,10 +1531,10 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
       const { requests, user } = renderScreen(routes, '', TAB_ROUTE[definition.kind]);
       await screen.findByRole('button', { name: firstCode });
 
-      await user.type(screen.getByLabelText(definition.adapter.labels.searchLabel), 'X');
+      await pickCode(user, definition.adapter.labels.searchLabel, firstCode);
       await user.click(screen.getByRole('button', { name: '조회' }));
 
-      expect(requestsTo(requests, listPath).at(-1)?.url.searchParams.get('q')).toBe('X');
+      expect(requestsTo(requests, listPath).at(-1)?.url.searchParams.get('q')).toBe(firstCode);
     });
 
     it('탭 안의 목록 페인에 그 탭의 이름이 붙는다', async () => {

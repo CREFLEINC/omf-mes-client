@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 
 import type { CodeAdapter } from './adapters';
 import { DEFAULT_CODE_FILTERS } from './code-options';
+import { CodePickerDialog } from './code-picker-dialog';
 import type { CodeFilters } from './types';
 
 const t = messages.defectCauseCode;
@@ -31,6 +32,7 @@ export const CodeFilterBar = ({
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   // 편집 중인 값은 draft에만 있고 조건 칩에는 미러하지 않는다.
   const [draft, setDraft] = useState<CodeFilters>(appliedFilters);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const {
     q: appliedQ,
     includeInactive: appliedIncludeInactive,
@@ -52,13 +54,23 @@ export const CodeFilterBar = ({
   return (
     <>
       <div className="filter-bar">
+        {/*
+         * 코드는 **창에서 검색해서 고른다** — 검사 조회·판정의 품목 검색과 같은 모양(사용자 지시 2026-10-29 · #209).
+         * 코드가 많아도 찾게 한다. 읽기 전용 칸을 누르거나 엔터를 치면 창이 열리고, 고른 코드가 검색어로 들어간다.
+         * 지우기는 값이 있을 때만 칸 안의 × 다. 조회를 눌러야 목록에 걸린다(다른 조건과 같은 트리거).
+         */}
         <SearchInput
           label={adapter.labels.searchLabel}
           placeholder={adapter.labels.searchPlaceholder}
           value={draft.q}
-          onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
-          clearLabel={messages.common.clear}
+          readOnly
+          title={draft.q === '' ? undefined : draft.q}
+          aria-haspopup="dialog"
+          clearLabel={t.picker.clear(adapter.labels.tab)}
+          onClick={() => setIsPickerOpen(true)}
+          onSearch={() => setIsPickerOpen(true)}
+          onChange={() => undefined}
+          onClear={() => setDraft((prev) => ({ ...prev, q: '' }))}
         />
         {/* 해제 축이라 변경 즉시 적용한다. */}
         <div className="field-cell field-cell-unlabeled">
@@ -118,6 +130,17 @@ export const CodeFilterBar = ({
             </Chip>
           )}
         </div>
+      )}
+      {isPickerOpen && (
+        <CodePickerDialog
+          adapter={adapter}
+          includeInactive={appliedFilters.includeInactive}
+          onClose={() => setIsPickerOpen(false)}
+          onConfirm={(code) => {
+            setDraft((prev) => ({ ...prev, q: code.code }));
+            setIsPickerOpen(false);
+          }}
+        />
       )}
     </>
   );

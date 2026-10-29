@@ -84,6 +84,18 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     nameVi: 'Tên tiếng Việt',
     referenceCount: 'Hồ sơ đã dùng',
   },
+  picker: {
+    title: (tab: string): string => `Tìm ${tab}`,
+    keywordLabel: 'Từ khóa',
+    search: 'Tìm',
+    cancel: 'Hủy',
+    pick: 'Chọn',
+    searching: 'Đang tìm.',
+    noResult: 'Không tìm thấy mã.',
+    searchFailed: 'Không tìm được mã. Hãy thử lại.',
+    select: 'Chọn',
+    clear: (tab: string): string => `Xóa tìm ${tab}`,
+  },
   tree: {
     childCount: (count: number): string => `${String(count)} mã cấp dưới`,
     collapse: 'Thu gọn mã cấp dưới',

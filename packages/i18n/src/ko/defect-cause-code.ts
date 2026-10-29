@@ -80,6 +80,19 @@ export const defectCauseCode = {
     nameVi: '베트남어명',
     referenceCount: '사용된 기록',
   },
+  /** 코드 검색 창(#209) — 검사 조회·판정의 품목 검색 창과 같은 모양 */
+  picker: {
+    title: (tab: string): string => `${tab} 검색`,
+    keywordLabel: '검색어',
+    search: '찾기',
+    cancel: '취소',
+    pick: '선택',
+    searching: '찾는 중입니다.',
+    noResult: '찾는 코드가 없습니다.',
+    searchFailed: '코드를 찾지 못했습니다. 다시 시도하세요.',
+    select: '선택',
+    clear: (tab: string): string => `${tab} 검색 지우기`,
+  },
   /** 표의 대분류 · 상세 관계(사용자 지시 · #209) */
   tree: {
     childCount: (count: number): string => `하위 코드 ${String(count)}건`,

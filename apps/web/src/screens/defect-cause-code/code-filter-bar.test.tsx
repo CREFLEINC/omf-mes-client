@@ -29,14 +29,21 @@ const renderBar = (overrides: Partial<CodeFilterBarProps> = {}) => {
 };
 
 describe('CodeFilterBar — 조회 조건', () => {
-  it('검색어를 넣고 조회를 누르면 조건이 적용된다', async () => {
+  it('검색 칸은 직접 입력하지 않고 검색 창을 연다(#209)', () => {
+    renderBar();
+
+    const field = screen.getByLabelText('불량코드 검색');
+    expect(field).toHaveAttribute('readonly');
+    expect(field).toHaveAttribute('aria-haspopup', 'dialog');
+  });
+
+  it('조회를 누르면 지금 조건이 적용된다', async () => {
     const { props, user } = renderBar();
 
-    await user.type(screen.getByLabelText('불량코드 검색'), 'DF-1');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(props.onApplyFilters).toHaveBeenCalledWith({
-      q: 'DF-1',
+      q: '',
       includeInactive: false,
       inactiveOnly: false,
       page: 1,
