@@ -23,7 +23,6 @@ import {
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 import { toApiError } from '../../patterns/request';
-import { ChildCodeTable } from './child-code-table';
 import { CodeDetailHead } from './code-detail-head';
 import { CodeFilterBar } from './code-filter-bar';
 import { CodeFormPane } from './code-form-pane';
@@ -603,16 +602,6 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
             setIsDeactivateOpen(true);
           }}
         />
-        {/* 대분류를 고르면 그 안의 상세 코드도 함께 본다(사용자 지시 · #209). */}
-        {isCategory(code) && (
-          <ChildCodeTable
-            adapter={adapter}
-            codes={[...byId.values()]
-              .filter((each) => each.parentId === code.id)
-              .sort((left, right) => left.code.localeCompare(right.code))}
-            processLabelOf={processLabelOf}
-          />
-        )}
       </section>
     );
   };

@@ -815,23 +815,6 @@ describe('DefectCauseCodeScreen — 상세 조회', () => {
     expect(requestsTo(requests, `${DEFECT_LIST_PATH}/1002`)).toHaveLength(1);
   });
 
-  /* 대분류를 고르면 그 안의 상세 코드도 함께 본다(사용자 지시 · #209). */
-  it('대분류를 고르면 상세 카드에 그 아래 상세 코드 표가 나온다', async () => {
-    renderScreen(editFlowRoutes(defectDetailRoute()), '?sel=1001');
-
-    const children = await screen.findByRole('region', { name: '상세 코드' });
-    expect(within(children).getByText('상세 코드 2건')).toBeInTheDocument();
-    expect(within(children).getByText('DF-11')).toBeInTheDocument();
-    expect(within(children).getByText('DF-12')).toBeInTheDocument();
-  });
-
-  it('상세 코드를 고르면 상세 코드 표가 없다', async () => {
-    renderScreen(editFlowRoutes(defectDetailRoute(defectCodeFixtures[1])), '?sel=1002');
-
-    await screen.findByRole('button', { name: '수정' });
-    expect(screen.queryByRole('region', { name: '상세 코드' })).not.toBeInTheDocument();
-  });
-
   it('고르기 전에는 상세 요청이 나가지 않는다', async () => {
     const { requests } = renderScreen([defectListRoute(activeDefectFixtures)]);
     await screen.findByRole('button', { name: 'DF-10' });

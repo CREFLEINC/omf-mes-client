@@ -112,9 +112,6 @@ export const defectCauseCode = {
     chipInactive: '미사용',
     kindCategory: '대분류',
     kindChild: '상세',
-    childrenTitle: '상세 코드',
-    childrenCount: (count: number): string => `상세 코드 ${String(count)}건`,
-    childrenEmpty: '이 대분류에 등록된 상세 코드가 없습니다.',
   },
   /** 등록 · 수정 창(#209). 닫기는 「취소」로 한다. */
   dialog: {

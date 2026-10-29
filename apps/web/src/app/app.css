@@ -434,17 +434,6 @@ main > * + * {
   gap: var(--space-2);
 }
 
-/* 대분류 상세 카드 아래의 상세 코드 표(사용자 지시 · #209) — 이름 줄 · 표. */
-.defect-cause-children {
-  display: grid;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-}
-
-.defect-cause-children > h3 {
-  margin: 0;
-}
-
 .inspection-standard-plan-chips {
   display: flex;
   flex-wrap: wrap;
@@ -883,6 +872,7 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-top: var(--space-4);
 }
 
+
 /* 발행 단추 자리의 안내(작성중 버전이 있을 때 · #196) — 짧은 한 문장이라 꺾지 않는다. */
 .inspection-standard-new-revision-notice {
   display: inline-flex;
@@ -1090,6 +1080,7 @@ h2:has(> .inspection-standard-dialog-title) {
   flex: 1 1 22em;
   min-width: min(22em, 100%);
 }
+
 
 .inspection-standard-plan-chips {
   align-items: center;
