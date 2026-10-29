@@ -29,6 +29,7 @@ export const inspectionSheetTemplate = {
     layoutAll: '전체',
     material: '재료 검색',
     materialPlaceholder: '재료를 입력하세요',
+    materialClear: '재료 조건 지우기',
     heading: '검사표 기준 목록',
     caption: '검사표 기준 목록',
     status: '상태 선택',

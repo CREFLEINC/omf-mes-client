@@ -29,6 +29,7 @@ export const inspectionSheetTemplate = {
     layoutAll: 'Tất cả',
     material: 'Tìm vật liệu',
     materialPlaceholder: 'Nhập vật liệu',
+    materialClear: 'Xóa điều kiện vật liệu',
     heading: 'Danh sách tiêu chuẩn',
     caption: 'Danh sách tiêu chuẩn phiếu kiểm tra',
     status: 'Chọn trạng thái',

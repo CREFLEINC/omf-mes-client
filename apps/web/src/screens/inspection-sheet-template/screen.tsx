@@ -10,7 +10,6 @@ import {
   SearchInput,
   type SortState,
   Table,
-  TextField,
 } from '@crefle/web-ui';
 import type { InspectionSheetLayoutCode, InspectionSheetTemplate } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
@@ -101,7 +100,6 @@ const InspectionSheetTemplateScreenBody = () => {
   const [materialInput, setMaterialInput] = useState('');
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
   const layoutFilterId = useId();
-  const materialFilterId = useId();
   const [filter, setFilter] = useState<{
     status: TemplateStatusFilter;
     itemId: number | null;
@@ -374,17 +372,16 @@ const InspectionSheetTemplateScreenBody = () => {
               setFilter((prev) => ({ ...prev, itemId: null, page: 1 }));
             }}
           />
-          <div className="field-cell inspection-sheet-template-material-filter">
-            <label className="field-label" htmlFor={materialFilterId}>
-              {t.list.material}
-            </label>
-            <TextField
-              id={materialFilterId}
-              placeholder={t.list.materialPlaceholder}
-              value={materialInput}
-              onChange={(event) => setMaterialInput(event.target.value)}
-            />
-          </div>
+          {/* 재료 — 품목 칸과 같은 검색 칸(돋보기 · 지우기 · 사용자 지시 · #208). 치는 대로 0.3초 뒤 조회된다. */}
+          <SearchInput
+            label={t.list.material}
+            placeholder={t.list.materialPlaceholder}
+            value={materialInput}
+            clearLabel={t.list.materialClear}
+            onChange={(event) => setMaterialInput(event.target.value)}
+            onSearch={() => setFilter((prev) => ({ ...prev, material: materialInput, page: 1 }))}
+            onClear={() => setMaterialInput('')}
+          />
           <div className="filter-actions field-cell-unlabeled">
             <Button type="submit" variant="filled">
               {messages.common.search}

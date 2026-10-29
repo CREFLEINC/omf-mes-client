@@ -17675,18 +17675,9 @@ button.app-button-neutral {
   margin-bottom: 0;
 }
 
-/* 제목 줄 — 왼쪽 카드 제목, 오른쪽 「품목 추가」(#208). */
-.inspection-level-card-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-3);
-}
-
-/* 안내 줄 — 카드의 줄 간격이 띄우므로 자체 위 여백은 걷는다(#208). */
-.inspection-level-list-pane > .inspection-sheet-template-rule {
-  margin-top: 0;
+/* 「품목 추가」 — 검색 줄 오른쪽 끝(#208). */
+.inspection-level-add {
+  margin-left: auto;
 }
 
 /* 「전체 전환 이력 보기」 — 카드 맨 아래 가운데(사용자 시안 · #208). */
@@ -22128,6 +22119,17 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 
 .inspection-sheet-template-status-filter > :not(label) {
   width: 100%;
+}
+
+/*
+ * 품목 · 재료 검색 칸 — 남는 폭을 나눠 늘어 조회 단추 앞이 휑하지 않게 한다(사용자 지시 · #208).
+ * 흐린 안내가 잘리지 않는 폭 아래로는 줄지 않고, 너무 길어지지 않게 위 한도를 둔다.
+ */
+.inspection-sheet-template-search > .filter-bar > :nth-child(3),
+.inspection-sheet-template-search > .filter-bar > :nth-child(4) {
+  flex: 1 1 14rem;
+  min-width: 12rem;
+  max-width: 24rem;
 }
 
 /* 목록 칸 — 표 · 쪽 이동 줄 사이를 띄운다(#208). */

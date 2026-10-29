@@ -10,8 +10,6 @@ export const inspectionLevel = {
     TIGHTENED: 'Nghiêm ngặt',
   } as Record<string, string>,
 
-  rule: 'Chỉ định thủ công · Không tự chuyển theo kết quả IQC; số lượng mẫu và tiêu chuẩn đánh giá được giữ nguyên.',
-
   list: {
     caption: 'Danh sách mức kiểm tra theo vật tư',
     keyword: 'Mã · tên vật tư',

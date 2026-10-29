@@ -294,23 +294,13 @@ export const InspectionLevelScreen = () => {
         style={{ ...split.style, ...layout.style }}
       >
         {/*
-         * 목록 카드 하나에 제목 줄(제목 · 품목 추가) → 검색 줄(품목 · 검사 수준 · 조회) → 규칙 안내 → 표 → 쪽 이동.
+         * 목록 카드 하나에 검색 줄(품목 · 검사 수준 · 조회 | 품목 추가) → 표 → 쪽 이동.
          * 따로 있던 조회 카드를 합쳐 세로 공간을 아낀다(사용자 시안 · #208). 「초기화」는 원래 없던 단추라 두지 않는다.
          */}
         <section
           className="pane inspection-level-list-pane quality-standard-list-pane"
           aria-label={t.title}
         >
-          <div className="inspection-level-card-head">
-            <h2 className="pane-title">{t.title}</h2>
-            <Button
-              variant="filled"
-              leadingIcon={<Icon name="add" size={18} />}
-              onClick={() => openDialog(null)}
-            >
-              {t.list.add}
-            </Button>
-          </div>
           <form
             className="filter-bar inspection-level-search"
             role="search"
@@ -350,12 +340,16 @@ export const InspectionLevelScreen = () => {
             <Button type="submit" variant="filled">
               {messages.common.search}
             </Button>
+            {/* 카드 제목 · 규칙 안내를 걷어(사용자 지시 · #208) 「품목 추가」를 검색 줄 오른쪽 끝에 둔다. */}
+            <Button
+              className="inspection-level-add"
+              variant="filled"
+              leadingIcon={<Icon name="add" size={18} />}
+              onClick={() => openDialog(null)}
+            >
+              {t.list.add}
+            </Button>
           </form>
-          {/* 규칙 안내 — 박스 · 바탕 없는 흐린 보조 글 한 줄(검사표 기준 탭과 같은 모양 · 사용자 지시 · #208). */}
-          <p className="inspection-sheet-template-rule">
-            <Icon name="info" size={16} />
-            {t.rule}
-          </p>
           {list.isError && (
             <AlertBanner variant="error">
               {t.list.loadFailed}{' '}
