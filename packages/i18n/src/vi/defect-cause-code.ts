@@ -82,7 +82,7 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     process: 'Công đoạn',
     nameKo: 'Tên tiếng Hàn',
     nameVi: 'Tên tiếng Việt',
-    referenceCount: 'Đang dùng',
+    referenceCount: 'Hồ sơ đã dùng',
   },
   tree: {
     childCount: (count: number): string => `${String(count)} mã cấp dưới`,
@@ -111,6 +111,8 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     chipInactive: 'Ngừng dùng',
     kindCategory: 'Cấp lớn',
     kindChild: 'Chi tiết',
+    childrenTitle: 'Mã cấp dưới',
+    childrenNone: 'Chưa có mã cấp dưới nào.',
   },
   dialog: {
     createCategoryTitle: (tab: string): string => `Thêm cấp lớn ${tab}`,

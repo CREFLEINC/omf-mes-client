@@ -78,7 +78,7 @@ export const defectCauseCode = {
     process: '공정',
     nameKo: '한국어명',
     nameVi: '베트남어명',
-    referenceCount: '사용 중',
+    referenceCount: '사용된 기록',
   },
   /** 표의 대분류 · 상세 관계(사용자 지시 · #209) */
   tree: {
@@ -112,6 +112,9 @@ export const defectCauseCode = {
     chipInactive: '미사용',
     kindCategory: '대분류',
     kindChild: '상세',
+    /** 대분류 상세 아래 하위 코드 목록(#209) */
+    childrenTitle: '하위 코드',
+    childrenNone: '아직 등록된 하위 코드가 없습니다.',
   },
   /** 등록 · 수정 창(#209). 닫기는 「취소」로 한다. */
   dialog: {

@@ -23,6 +23,7 @@ import {
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 import { toApiError } from '../../patterns/request';
+import { ChildCodeTable } from './child-code-table';
 import { CodeDetailHead } from './code-detail-head';
 import { CodeFilterBar } from './code-filter-bar';
 import { CodeFormPane } from './code-form-pane';
@@ -602,6 +603,20 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
             setIsDeactivateOpen(true);
           }}
         />
+        {/* 대분류를 고르면 딸린 하위 코드를 함께 본다(사용자 지시 · #209). 미사용까지 받은 전체 목록 기준. */}
+        {isCategory(code) && (
+          <ChildCodeTable
+            adapter={adapter}
+            codes={options.items
+              .filter((item) => item.parentId === code.id && item.id !== code.id)
+              .sort((left, right) => left.code.localeCompare(right.code))}
+            processLabelOf={processLabelOf}
+            onSelect={(id) => {
+              setIsEditOpen(false);
+              updateParams({ sel: String(id), mode: null, as: null });
+            }}
+          />
+        )}
       </section>
     );
   };

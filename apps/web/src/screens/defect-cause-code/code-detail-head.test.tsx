@@ -62,7 +62,7 @@ describe('CodeDetailHead (#209)', () => {
     renderHead();
 
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(3);
-    expect(screen.queryByText('사용 중')).not.toBeInTheDocument();
+    expect(screen.queryByText('사용된 기록')).not.toBeInTheDocument();
   });
 
   it('대분류에는 상위 칸이 없다', () => {
