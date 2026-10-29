@@ -119,14 +119,16 @@ export const PqcWebSteps = ({
     return entry === undefined ? undefined : fieldErrors[entry[0]];
   };
 
-  /* 화면이 채운 판정 — 근거가 사라지면 비운다. 사람이 고른 판정은 건드리지 않는다(IQC 와 같다). */
+  /*
+   * 화면이 채운 판정 — 근거가 사라지면 비운다. 사람이 고른 판정 · 저장돼 되살린 판정은 건드리지 않는다(IQC 와 같다).
+   */
   const autoFilled = useRef<string | null>(null);
   const setJudgment = (code: string): void => {
     onJudgmentChange(code);
     if (code !== REJECTED) onDispositionChange(null);
   };
   const applyAuto = (next: QuantityDraft): void => {
-    if (isLocked) return;
+    if (isLocked || (autoFilled.current === null && judgment !== '')) return;
     const expected = autoJudgmentOf(next, inspectedQty);
     if (expected !== null && isKnownCode(judgmentOptions, expected)) {
       autoFilled.current = expected;

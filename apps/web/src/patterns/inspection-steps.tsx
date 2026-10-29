@@ -35,7 +35,13 @@ export const InspectionSteps = ({ steps, showAll = false }: InspectionStepsProps
   const auto = firstNotDone === -1 ? steps.length - 1 : firstNotDone;
   const attention = steps.findIndex((step) => step.attention === true);
   const reached = Math.max(touched?.reached ?? 0, auto, attention);
-  const open = attention !== -1 ? attention : touched === null ? auto : touched.open;
+  /* 서버가 칸을 짚은 그때 한 번만 그 단계를 펼친다 — 그 뒤에는 사용자가 다른 단계로 옮겨 갈 수 있다. */
+  const [seenAttention, setSeenAttention] = useState(-1);
+  if (attention !== seenAttention) {
+    setSeenAttention(attention);
+    if (attention !== -1) setTouched({ open: attention, reached });
+  }
+  const open = touched === null ? auto : touched.open;
 
   const confirm = (index: number): void =>
     setTouched({

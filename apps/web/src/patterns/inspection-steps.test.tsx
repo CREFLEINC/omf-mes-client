@@ -78,6 +78,14 @@ describe('InspectionSteps', () => {
     expect(screen.getByLabelText('수량 칸')).toBeInTheDocument();
   });
 
+  it('서버가 짚어 펼친 뒤에도 사용자가 다른 단계로 옮겨 갈 수 있다', async () => {
+    render(<Harness attention />);
+
+    await userEvent.click(screen.getByRole('button', { name: '다음' }));
+    expect(screen.getByText('판정 칸')).toBeInTheDocument();
+    expect(screen.queryByLabelText('수량 칸')).toBeNull();
+  });
+
   it('잠긴 회차는 단계를 모두 펼쳐 보이고 접는 단추가 없다', () => {
     render(<Harness showAll />);
 
