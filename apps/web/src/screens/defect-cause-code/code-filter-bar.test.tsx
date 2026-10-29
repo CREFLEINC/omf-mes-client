@@ -162,11 +162,11 @@ describe('CodeFilterBar — 조회 조건', () => {
     expect(field).toHaveValue('P-10 · 조립');
   });
 
-  it('원인코드 탭에는 처분 유형 · 공정 조건이 없다', () => {
+  it('원인코드 탭에는 처분 유형이 없고 공정 검색은 있다(불량코드 탭 기준 · #209)', () => {
     renderBar({ adapter: causeCodeAdapter });
 
     expect(screen.queryByRole('combobox', { name: '처분 유형 선택' })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('공정 검색')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('공정 검색')).toHaveAttribute('aria-haspopup', 'dialog');
   });
 
   it('원인코드 탭은 원인코드 검색 라벨을 쓴다', () => {

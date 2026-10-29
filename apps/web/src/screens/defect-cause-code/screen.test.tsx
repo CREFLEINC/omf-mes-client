@@ -268,6 +268,31 @@ describe('DefectCauseCodeScreen — 목록 조회', () => {
     expect(screen.getByText('처분 유형: 폐기')).toBeInTheDocument();
   });
 
+  it('원인코드의 공정 조건은 서버에 싣지 않고 화면이 걸러 그 수로 센다(#209)', async () => {
+    const withProcess = causeCodeFixtures.map((item, index) => ({
+      ...item,
+      processId: index % 2 === 0 ? 3001 : null,
+    }));
+    const { requests } = renderScreen(
+      [
+        {
+          match: (request) => isGet(request, CAUSE_LIST_PATH),
+          respond: () => jsonResponse(listBody(withProcess)),
+        },
+      ],
+      '?proc=3001',
+      TAB_ROUTE.cause,
+    );
+
+    const matched = withProcess.filter((item) => item.processId === 3001);
+    expect(await screen.findByText(`총 ${String(matched.length)}건`)).toBeInTheDocument();
+    expect(
+      requestsTo(requests, CAUSE_LIST_PATH).every(
+        (request) => request.url.searchParams.get('processId') === null,
+      ),
+    ).toBe(true);
+  });
+
   it('주소에 있던 조건이 첫 조회에 그대로 실린다 — 새로고침·공유가 같은 결과를 낸다', async () => {
     const { requests } = renderScreen([defectListRoute()], '?q=DF&inactive=1');
     await screen.findByRole('button', { name: 'DF-10' });

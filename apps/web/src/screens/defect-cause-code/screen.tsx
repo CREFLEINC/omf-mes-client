@@ -168,7 +168,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
         (searchParams.get('disp') === 'REWORKABLE' || searchParams.get('disp') === 'SCRAP')
           ? (searchParams.get('disp') as 'REWORKABLE' | 'SCRAP')
           : '',
-      processId: adapter.hasDisposition ? (searchParams.get('proc') ?? '') : '',
+      processId: searchParams.get('proc') ?? '',
       page: Math.max(1, Number(searchParams.get('page')) || 1),
       size: PAGE_SIZES.find((size) => String(size) === searchParams.get('size')) ?? 20,
     }),

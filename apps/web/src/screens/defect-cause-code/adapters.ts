@@ -68,6 +68,8 @@ export interface CodeAdapter {
   labels: CodeLabels;
   /** 처분 유형(재작업 가능 / 폐기)을 갖는가 — 불량코드만(#209) */
   hasDisposition: boolean;
+  /** 서버 목록이 공정 조건(`processId`)을 받는가 — 불량코드만. 원인코드는 화면이 거른다(#209) */
+  serverProcessFilter: boolean;
   fetchList: (client: Client, filters: CodeFilters) => Promise<CodeListResult>;
   /** 계층 판정과 상위 선택지 전용 목록. 화면의 조회 조건과 무관하게 미사용까지 받는다. */
   fetchAllForOptions: (client: Client) => Promise<CodeListResult>;
@@ -177,6 +179,7 @@ export const defectCodeAdapter: CodeAdapter = {
   },
   serverFields: { code: 'defectCode', name: 'defectName', parentId: 'parentDefectCodeId' },
   hasDisposition: true,
+  serverProcessFilter: true,
   labels: {
     tab: t.tabs.defect,
     code: t.fields.defectCode,
@@ -264,6 +267,7 @@ export const causeCodeAdapter: CodeAdapter = {
   },
   serverFields: { code: 'causeCode', name: 'causeName', parentId: 'parentCauseCodeId' },
   hasDisposition: false,
+  serverProcessFilter: false,
   labels: {
     tab: t.tabs.cause,
     code: t.fields.causeCode,
@@ -278,7 +282,10 @@ export const causeCodeAdapter: CodeAdapter = {
   },
   fetchList: async (client, filters) => {
     const data = await runRequest(() =>
-      client.GET('/quality/cause-codes', { params: { query: listQuery(filters) } }),
+      // 원인코드 목록은 공정 조건을 받지 않는다 — 실으면 계약 밖 쿼리다. 공정은 화면이 거른다(#209).
+      client.GET('/quality/cause-codes', {
+        params: { query: listQuery({ ...filters, processId: '' }) },
+      }),
     );
 
     return { items: data.items.map(causeToHierarchyCode), page: data.page };

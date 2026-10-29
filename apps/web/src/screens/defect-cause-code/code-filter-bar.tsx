@@ -37,8 +37,8 @@ export const CodeFilterBar = ({
 }: CodeFilterBarProps) => {
   const dispositionId = useId();
   const [isProcessPickerOpen, setIsProcessPickerOpen] = useState(false);
-  /* 처분 유형 · 공정 조건은 불량코드 탭에만 둔다(사용자 지시 2026-10-29 · #209). */
-  const showCodeConditions = adapter.hasDisposition;
+  /* 처분 유형은 불량코드 탭에만(원인코드에는 그 값이 없다), 공정 검색은 두 탭 모두(사용자 지시 · #209). */
+  const showDisposition = adapter.hasDisposition;
   const dispositionLabel = (code: CodeFilters['dispositionTypeCode']): string =>
     code === '' ? t.filters.all : t.values.disposition[code];
   const processLabel = (id: string): string =>
@@ -81,7 +81,7 @@ export const CodeFilterBar = ({
     <>
       <div className="filter-bar">
         {/* 순서: 처분 유형 · 불량코드 검색 · 공정 검색 · 미사용 포함(사용자 지시 2026-10-29 · #209). */}
-        {showCodeConditions && (
+        {showDisposition && (
           <div className="field-cell defect-cause-filter-select">
             <span className="field-label">
               <label htmlFor={dispositionId}>{t.filters.disposition}</label>
@@ -122,29 +122,25 @@ export const CodeFilterBar = ({
           onChange={() => undefined}
           onClear={() => setDraft((prev) => ({ ...prev, q: '' }))}
         />
-        {/* 처분 유형 · 공정 — 다른 조건처럼 「조회」를 눌러야 목록에 걸린다(#209). */}
-        {showCodeConditions && (
-          <>
-            {/*
-             * 공정은 많을 수 있어 **창에서 검색해서 고른다** — 불량코드 검색과 같은 조작(사용자 지시 · #209).
-             * 읽기 전용 칸을 누르거나 엔터를 치면 창이 열린다. 지우기는 칸 안의 × 다.
-             */}
-            <SearchInput
-              containerClassName="defect-cause-process-field"
-              label={t.filters.process}
-              placeholder={t.processPicker.fieldPlaceholder}
-              value={processLabel(draft.processId)}
-              readOnly
-              title={draft.processId === '' ? undefined : processLabel(draft.processId)}
-              aria-haspopup="dialog"
-              clearLabel={t.processPicker.clear}
-              onClick={() => setIsProcessPickerOpen(true)}
-              onSearch={() => setIsProcessPickerOpen(true)}
-              onChange={() => undefined}
-              onClear={() => setDraft((prev) => ({ ...prev, processId: '' }))}
-            />
-          </>
-        )}
+        {/* 공정 — 다른 조건처럼 「조회」를 눌러야 목록에 걸린다(#209). */}
+        {/*
+         * 공정은 많을 수 있어 **창에서 검색해서 고른다** — 불량코드 검색과 같은 조작(사용자 지시 · #209).
+         * 읽기 전용 칸을 누르거나 엔터를 치면 창이 열린다. 지우기는 칸 안의 × 다.
+         */}
+        <SearchInput
+          containerClassName="defect-cause-process-field"
+          label={t.filters.process}
+          placeholder={t.processPicker.fieldPlaceholder}
+          value={processLabel(draft.processId)}
+          readOnly
+          title={draft.processId === '' ? undefined : processLabel(draft.processId)}
+          aria-haspopup="dialog"
+          clearLabel={t.processPicker.clear}
+          onClick={() => setIsProcessPickerOpen(true)}
+          onSearch={() => setIsProcessPickerOpen(true)}
+          onChange={() => undefined}
+          onClear={() => setDraft((prev) => ({ ...prev, processId: '' }))}
+        />
         {/* 해제 축이라 변경 즉시 적용한다. */}
         <div className="field-cell field-cell-unlabeled">
           <Checkbox
