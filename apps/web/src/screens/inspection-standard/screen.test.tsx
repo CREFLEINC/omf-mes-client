@@ -393,6 +393,21 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     expect(within(dialog).getByRole('button', { name: t.import.submit })).toBeDisabled();
   });
 
+  /* 파일 고르기 창의 「취소」가 올리는 cancel 사건이 바깥 창을 닫지 않는다(#208). */
+  it('파일 고르기를 취소해도 올리기 창이 닫히지 않는다', async () => {
+    const { user } = renderScreen([planListRoute()]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    fireEvent(
+      within(dialog).getByLabelText(t.import.fileLabel),
+      new Event('cancel', { bubbles: true }),
+    );
+
+    expect(screen.getByRole('dialog', { name: t.import.title })).toBeInTheDocument();
+  });
+
   it('모두 반영되면 창을 닫고 「저장했습니다」를 알린다', async () => {
     const { user } = renderScreen([importRoute(), planListRoute()]);
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
