@@ -28,8 +28,8 @@ export const inspectionLevel = {
   columns: {
     item: 'Vật tư',
     level: 'Mức kiểm tra',
-    updatedAt: 'Thời điểm sửa',
-    actions: 'Thao tác',
+    updatedAt: 'Thời điểm thay đổi',
+    actions: 'Thiết lập',
   },
 
   actions: {
