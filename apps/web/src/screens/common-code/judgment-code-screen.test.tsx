@@ -39,6 +39,8 @@ const CODE_VALUES_PATH = '/mdm/code-values';
 
 const t = messages.judgmentCode;
 const tv = messages.commonCode.codeValue;
+/** 판정 유형 코드 탭 전용 편집기(#209)의 문구 */
+const te = messages.judgmentCode.editor;
 
 /** 판정유형 코드 그룹. **목록의 첫 항목이 아니다** — 첫 항목을 쓰는 구현이 통과하면 안 된다. */
 const JUDGMENT_GROUP: CodeGroup = {
@@ -347,9 +349,10 @@ const codeValueRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
 const codeValueTraffic = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname.startsWith(CODE_VALUES_PATH));
 
-const codeValuePane = (): HTMLElement => screen.getByRole('region', { name: tv.paneTitle });
+const codeValuePane = (): HTMLElement => screen.getByRole('region', { name: te.list });
 
-const codeValueFormPane = (): HTMLElement => screen.getByRole('region', { name: tv.formPaneTitle });
+/** 추가 · 수정은 창에서 한다(#209). */
+const codeValueFormPane = (): HTMLElement => screen.getByRole('dialog');
 
 /**
  * 그 문구를 담은 경고(`role="alert"`). 이 화면에는 경고가 둘 이상 함께 설 수 있어
@@ -431,7 +434,7 @@ describe('JudgmentCodeScreen — 그룹 조회 실패', () => {
     await screen.findByText(messages.httpError.loadTitle);
 
     expect(screen.queryByText(t.empty.groupNotFoundTitle)).not.toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: tv.paneTitle })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: te.list })).not.toBeInTheDocument();
   });
 
   it('권한이 없으면 권한 안내를 낸다', async () => {
@@ -465,7 +468,7 @@ describe('JudgmentCodeScreen — 그룹 없음', () => {
     const { requests } = renderScreen([groupListRoute(DECOY_GROUPS), codeValueListRoute()]);
 
     expect(await screen.findByText(t.empty.groupNotFoundTitle)).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: tv.paneTitle })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: te.list })).not.toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(codeValueTraffic(requests)).toHaveLength(0);
   });
@@ -539,17 +542,18 @@ describe('JudgmentCodeScreen — 주소 키', () => {
     });
   });
 
-  it('등록 폼을 열면 new가 실리고 sel이 지워진다', async () => {
+  /* 등록은 창으로 열리고 뒤 상세 카드는 고른 값을 그대로 보인다(#209) — sel 은 남는다. */
+  it('등록 폼을 열면 new가 실리고 sel은 남는다', async () => {
     const { history, user } = renderScreen(
       [groupListRoute(), codeValueListRoute(), codeValueDetailRoute()],
       '?sel=2101',
     );
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
-    await user.click(screen.getByRole('button', { name: tv.actions.add }));
+    await user.click(screen.getByRole('button', { name: te.actions.add }));
 
     await waitFor(() => {
-      expect(history.search()).toBe('?new=1');
+      expect(history.search()).toBe('?sel=2101&new=1');
     });
   });
 
@@ -593,7 +597,9 @@ describe('JudgmentCodeScreen — 주소 키', () => {
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
     await user.click(
-      within(screen.getByRole('navigation', { name: tv.pageNavLabel })).getByRole('button', {
+      within(
+        screen.getByRole('navigation', { name: messages.screenPatterns.pageNav.label }),
+      ).getByRole('button', {
         name: messages.commonCode.actions.nextPage,
       }),
     );
@@ -657,9 +663,9 @@ describe('JudgmentCodeScreen — 주소 키', () => {
     );
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
-    await user.click(screen.getByRole('button', { name: tv.actions.add }));
+    await user.click(screen.getByRole('button', { name: te.actions.add }));
     await waitFor(() => {
-      expect(history.search()).toBe('?new=1');
+      expect(history.search()).toBe('?sel=2101&new=1');
     });
 
     history.back();
@@ -734,14 +740,14 @@ describe('JudgmentCodeScreen — 주소 키 표의 유지 방향', () => {
     });
   });
 
-  it('등록을 열면 선택만 빠지고 쪽과 미사용 포함은 남는다', async () => {
+  it('등록을 열어도 선택 · 쪽 · 미사용 포함은 남는다(#209)', async () => {
     const { history, user } = renderAt(DEEP_LINK);
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
-    await user.click(screen.getByRole('button', { name: tv.actions.add }));
+    await user.click(screen.getByRole('button', { name: te.actions.add }));
 
     await waitFor(() => {
-      expect(history.search()).toBe('?inactive=1&page=2&new=1');
+      expect(history.search()).toBe(`${DEEP_LINK}&new=1`);
     });
   });
 
@@ -775,7 +781,9 @@ describe('JudgmentCodeScreen — 주소 키 표의 유지 방향', () => {
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
     await user.click(
-      within(screen.getByRole('navigation', { name: tv.pageNavLabel })).getByRole('button', {
+      within(
+        screen.getByRole('navigation', { name: messages.screenPatterns.pageNav.label }),
+      ).getByRole('button', {
         name: messages.commonCode.actions.prevPage,
       }),
     );
@@ -809,10 +817,12 @@ describe('JudgmentCodeScreen — 주소가 조회 조건이 된다', () => {
 });
 
 describe('JudgmentCodeScreen — 안내와 경고', () => {
-  it('편집기가 코드값 어휘를 쓰는 이유를 머리에서 밝힌다', async () => {
+  /* 편집기가 이 탭 전용이 되어(#209) 「판정 유형」 말을 그대로 쓴다 — 「코드값」 어휘 안내를 내지 않는다. */
+  it('편집기 어휘 안내 대신 판정 유형 말을 그대로 쓴다', async () => {
     renderScreen([groupListRoute(), codeValueListRoute()]);
 
-    expect(await screen.findByText(t.notices.editorScope)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: te.actions.add })).toBeInTheDocument();
+    expect(screen.queryByText(t.notices.editorScope)).not.toBeInTheDocument();
   });
 
   it('판정유형 목록이 확정되기 전에는 임시 목록 안내를 낸다', async () => {
@@ -859,7 +869,7 @@ describe('JudgmentCodeScreen — 안내와 경고', () => {
     expect(screen.queryByText(t.notices.provisionalList)).not.toBeInTheDocument();
     expect(screen.queryByText(t.notices.groupInactive)).not.toBeInTheDocument();
     expect(screen.queryByText(t.notices.addAffectsOtherScreens)).not.toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: tv.paneTitle })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: te.list })).not.toBeInTheDocument();
   });
 
   /* 그룹이 꺼져 있어도 값은 그대로 있다 — 편집기를 막으면 왜 막혔는지 알 수 없다. */
@@ -903,7 +913,7 @@ describe('JudgmentCodeScreen — 안내와 경고', () => {
     const { user } = renderScreen([groupListRoute(), codeValueListRoute(), codeValueDetailRoute()]);
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
-    await user.click(screen.getByRole('button', { name: tv.actions.add }));
+    await user.click(screen.getByRole('button', { name: te.actions.add }));
     await waitFor(() => {
       expect(alertWithText(t.notices.addAffectsOtherScreens)).toBeDefined();
     });
@@ -938,7 +948,9 @@ describe('JudgmentCodeScreen — 재사용한 편집기의 동작', () => {
       [groupListRoute(), codeValueListRoute(), codeValueDetailRoute(), ...extraRoutes],
       '?sel=2101',
     );
-    await screen.findByLabelText(tv.fields.codeName);
+    // 상세는 값으로만 보이고 고치기는 「수정」 창에서 한다(#209).
+    await rendered.user.click(await screen.findByRole('button', { name: te.actions.edit }));
+    await screen.findByLabelText(te.fields.name);
 
     return rendered;
   };
@@ -947,7 +959,7 @@ describe('JudgmentCodeScreen — 재사용한 편집기의 동작', () => {
   it('코드 칸이 잠기고 셀 수 없다는 사유가 보인다', async () => {
     await openCodeValueForm();
 
-    expect(screen.getByLabelText(tv.fields.code)).toBeDisabled();
+    expect(screen.getByLabelText(te.fields.code)).toBeDisabled();
     expect(screen.getByText(messages.editability.notCountable(null))).toBeInTheDocument();
   });
 
@@ -955,8 +967,8 @@ describe('JudgmentCodeScreen — 재사용한 편집기의 동작', () => {
   it('정렬 순서를 고쳐 저장하면 그 행 하나만 보낸다', async () => {
     const { requests, user } = await openCodeValueForm([codeValueUpdateRoute()]);
 
-    await user.clear(screen.getByLabelText(tv.fields.displayOrder));
-    await user.type(screen.getByLabelText(tv.fields.displayOrder), '15');
+    await user.clear(screen.getByLabelText(te.fields.displayOrder));
+    await user.type(screen.getByLabelText(te.fields.displayOrder), '15');
     await user.click(
       within(codeValueFormPane()).getByRole('button', { name: messages.common.save }),
     );
@@ -986,10 +998,12 @@ describe('JudgmentCodeScreen — 재사용한 편집기의 동작', () => {
     );
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
-    await user.type(screen.getByLabelText(tv.fields.code), CREATED_CODE_VALUE.code);
-    await user.type(screen.getByLabelText(tv.fields.codeName), CREATED_CODE_VALUE.codeName);
-    await user.type(screen.getByLabelText(tv.fields.displayOrder), '40');
-    await user.click(within(codeValueFormPane()).getByRole('button', { name: tv.actions.add }));
+    await user.type(screen.getByLabelText(te.fields.code), CREATED_CODE_VALUE.code);
+    await user.type(screen.getByLabelText(te.fields.name), CREATED_CODE_VALUE.codeName);
+    await user.type(screen.getByLabelText(te.fields.displayOrder), '40');
+    await user.click(
+      within(codeValueFormPane()).getByRole('button', { name: messages.common.save }),
+    );
 
     await waitFor(() => {
       expect(history.search()).toBe(`?sel=${String(CREATED_CODE_VALUE.codeValueId)}`);

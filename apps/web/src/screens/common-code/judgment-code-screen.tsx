@@ -1,10 +1,17 @@
-import { AlertBanner, Breadcrumb, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Breadcrumb,
+  EmptyState,
+  Icon,
+  PageHeader,
+  SkeletonText,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useCodeGroupList } from './code-group-queries';
-import { CodeValueSection } from './code-value-section';
+import { JudgmentCodeEditor } from './judgment-code-editor';
 import { readPage, readSelectedId } from './filters';
 import {
   JUDGMENT_TYPE_GROUP_CODE,
@@ -98,7 +105,7 @@ export const JudgmentCodeScreen = () => {
    * | # | 조작 | `sel` | `page` | `inactive` | `new` |
    * | :-: | --- | --- | --- | --- | --- |
    * | 1 | 코드값을 고른다 | **설정** | 유지 | 유지 | **지움** |
-   * | 2 | 등록 폼을 연다 | **지움** | 유지 | 유지 | **설정** |
+   * | 2 | 등록 폼을 연다 | 유지(뒤 상세 카드 · #209) | 유지 | 유지 | **설정** |
    * | 3 | 등록 폼을 닫는다 | 유지 | 유지 | 유지 | **지움** |
    * | 4 | 「미사용 포함」을 바꾼다 | **지움** | **지움** | 설정/지움 | **지움** |
    * | 5 | 쪽을 옮긴다 | **지움** | 설정/지움 | 유지 | **지움** |
@@ -134,8 +141,10 @@ export const JudgmentCodeScreen = () => {
   const openCreate = () => {
     patchSearchParams((next) => {
       next.set(URL_KEYS.creating, ON);
-      // 등록 폼과 고른 값의 폼이 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-      next.delete(URL_KEYS.selected);
+      /*
+       * 등록은 창으로 열린다(#209) — 고른 값은 뒤 상세 카드에 그대로 둔다(불량코드 탭과 같다).
+       * 창이 따로 떠 어느 쪽을 고치는지 헷갈리지 않는다.
+       */
     });
   };
 
@@ -215,8 +224,8 @@ export const JudgmentCodeScreen = () => {
     }
 
     return (
-      <div className="pane-stack">
-        <CodeValueSection
+      <>
+        <JudgmentCodeEditor
           codeGroupId={judgmentGroup.codeGroupId}
           selectedCodeValueId={selectedCodeValueId}
           onSelectCodeValue={selectCodeValue}
@@ -228,7 +237,7 @@ export const JudgmentCodeScreen = () => {
           page={page}
           onPageChange={changePage}
         />
-      </div>
+      </>
     );
   };
 
@@ -244,16 +253,9 @@ export const JudgmentCodeScreen = () => {
               aria-label={messages.common.shell.breadcrumb}
             />
           }
-          /*
-           * 편집기 안의 문구는 「코드값」이다 — 공통코드 화면과 한 묶음을 공유해 여기서 바꾸면
-           * 그쪽 화면이 함께 바뀐다. 화면 이름과 편집기 어휘가 다른 이유를 머리에서 밝힌다.
-           */
-          description={t.notices.editorScope}
         />
-      ) : (
-        /* 머리를 세우지 않아도 편집기 어휘 안내는 남긴다 — 문구를 지우지 않는다. */
-        <p className="field-note">{t.notices.editorScope}</p>
-      )}
+      ) : null}
+      {/* 편집기가 이 탭 전용이 되어(#209) 「판정 유형」 말을 그대로 쓴다 — 「코드값」 어휘 안내를 걷었다. */}
 
       {/*
        * 배너 셋은 **편집기 바깥**에 선다. 한 벌에 prop을 더해 안에서 그리면 그 파일이 바뀌고,
@@ -266,10 +268,12 @@ export const JudgmentCodeScreen = () => {
        * `box-sizing` 정규화 때문이며, 감싸지 않으면 배너가 안쪽 여백만큼 컨테이너를 넘친다.
        * **임시 우회다** — `design-system-v2-webui#60`이 반영되면 이 래퍼도 함께 걷는다.
        */}
+      {/* 정보 안내 — 다른 안내와 같은 정보 줄 모양(사용자 지시 · #209). */}
       {judgmentGroup !== null && isProvisionalJudgmentTypeList() && (
-        <div className="banner-slot">
-          <AlertBanner variant="info">{t.notices.provisionalList}</AlertBanner>
-        </div>
+        <p className="iqc-inspection-action-note judgment-code-notice" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {t.notices.provisionalList}
+        </p>
       )}
 
       {judgmentGroup !== null && !judgmentGroup.isActive && (

@@ -504,6 +504,11 @@ main > * + * {
   font: var(--type-label-sm);
 }
 
+.judgment-code-notice {
+  justify-self: start;
+  width: fit-content;
+}
+
 .defect-cause-head-actions {
   display: flex;
   flex-wrap: wrap;

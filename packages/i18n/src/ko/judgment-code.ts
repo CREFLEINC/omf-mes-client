@@ -41,4 +41,57 @@ export const judgmentCode = {
     /* 편집기 문구가 「코드값」으로 남는 이유를 밝힌다 — 화면 이름과 편집기 어휘가 다르다. */
     editorScope: '이 화면은 판정유형 코드 그룹의 코드값을 편집합니다.',
   },
+  /**
+   * 판정 유형 코드 탭 전용 편집기(#209) — 불량코드 탭과 같은 짜임(조회 카드 · 목록 표 · 상세 카드 · 창).
+   * 공통코드 화면의 코드값 편집기는 그대로 두고 이 탭에서만 쓴다.
+   */
+  editor: {
+    fields: {
+      code: '판정 유형 코드',
+      name: '판정 유형명',
+      displayOrder: '정렬 순서',
+      effectiveFrom: '적용 시작일',
+      effectiveTo: '적용 종료일',
+      period: '적용 기간',
+      isActive: '사용 여부',
+      nameKo: '한국어명',
+      nameVi: '베트남어명',
+    },
+    values: {
+      empty: '—',
+      periodAlways: '기간 제한 없음',
+      period: (from: string, to: string): string => `${from} ~ ${to}`,
+      chipActive: '사용',
+      chipInactive: '미사용',
+    },
+    placeholders: {
+      code: '판정 유형 코드를 입력하세요',
+      name: '판정 유형명을 입력하세요',
+      displayOrder: '정렬 순서를 입력하세요',
+    },
+    actions: {
+      add: '판정 유형 추가',
+      edit: '수정',
+    },
+    list: '판정 유형 목록',
+    detailTitle: '판정 유형 코드 상세',
+    createTitle: '판정 유형 추가',
+    editTitle: '판정 유형 수정',
+    empty: {
+      noneTitle: '등록된 판정 유형이 없습니다',
+      noneDescription: '「판정 유형 추가」로 첫 판정 유형을 등록하세요.',
+      notSelectedTitle: '판정 유형을 선택하세요',
+      notSelectedDescription: '목록에서 선택하면 상세 정보가 표시됩니다.',
+    },
+    loading: {
+      list: '판정 유형 목록을 불러오는 중',
+      detail: '판정 유형 정보를 불러오는 중',
+    },
+    deactivate: {
+      title: '사용 중지할까요?',
+      description:
+        '사용 중지하면 새 작업에서 이 판정 유형을 선택할 수 없습니다. 기존 데이터는 유지됩니다.',
+      alreadyInactive: '이미 사용 중지된 판정 유형입니다.',
+    },
+  },
 } as const;
