@@ -284,7 +284,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     count: (total: number, ng: number): string => `${total} serial, NG ${ng}`,
     recordHeading: 'Lịch sử kiểm tra xuất hàng theo serial',
     recordTab: 'Lịch sử kiểm tra theo serial',
-    recordHelp: 'Xem kết quả kiểm tra lần đầu và kiểm tra lại của từng serial.',
     recordEmpty: 'Chưa có lịch sử kiểm tra xuất hàng.',
     recordEmptyDescription: 'Khi có kết quả kiểm tra, lịch sử sẽ hiển thị tại đây.',
     recordCount: (count: number): string => `${String(count)} mục`,

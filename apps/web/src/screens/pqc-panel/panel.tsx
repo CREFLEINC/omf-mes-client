@@ -51,7 +51,7 @@ import { ResultForm } from './result-form';
 import { SplitResultForm } from './split-result-form';
 import { PanelTargetHeader } from './target-header';
 import { WebActions } from './web-actions';
-import { WebItemTable } from './web-item-table';
+import { PqcWebSteps } from './web-steps';
 import { WebSummary } from './web-summary';
 
 const t = messages.pqcInspection;
@@ -437,29 +437,21 @@ export const PqcPanel = ({
           />
         )}
 
-        {planVersionId !== null && (
-          <WebItemTable
-            rows={rows}
-            drafts={drafts}
-            onValueChange={changeMeasurementValue}
-            onJudgmentChange={changeMeasurementJudgment}
-            judgmentOptions={itemJudgmentOptions}
-            uomCodeOf={uomCodeOf}
-            isLoading={itemSpecs.isLoading}
-            isLocked={isInputLocked}
-            inspectionPlanVersionId={planVersionId}
-          />
-        )}
-
         {/*
-         * 검사기준이 없으면 따로 「검사 판정」 구획을 두지 않고 「판정」 안에 합친다(#135 · 담당자 지시) —
-         * 왜 항목표가 없는지는 판정 제목 아래, 「검사 내용」은 판정 칸 아래에 선다.
+         * 입력 단계(사용자 지시 2026-10-29 · #197) — ① 검사 항목별 결과 → ② 검사 수량 입력 → ③ 최종 판정. IQC 와 같은 짜임이다.
+         * 검사기준이 없으면 ① 이 없고, 「검사 내용」은 판정 단계 아래에 선다(#135). 의뢰가 바뀌면 단계를 새로 시작한다.
          */}
-        <ResultForm
-          inspectedDraft={inspectedDraft}
-          onInspectedChange={changeInspected}
+        <PqcWebSteps
+          key={inspectionRequestId}
+          rows={rows}
+          drafts={drafts}
+          onValueChange={changeMeasurementValue}
+          onItemJudgmentChange={changeMeasurementJudgment}
+          itemJudgmentOptions={itemJudgmentOptions}
+          uomCodeOf={uomCodeOf}
+          itemsLoading={itemSpecs.isLoading}
+          inspectionPlanVersionId={planVersionId}
           inspectedQty={inspectedQty}
-          targetQty={storedInspectedQty}
           inspectionRound={savedRound?.inspectionRound ?? null}
           uomCode={uomCodeOf(target.uomId)}
           draft={draft}
@@ -472,7 +464,6 @@ export const PqcPanel = ({
           onJudgmentChange={edited(setJudgment)}
           disposition={disposition}
           onDispositionChange={edited(setDisposition)}
-          onPadFieldChange={() => undefined}
           isLocked={isInputLocked}
           judgmentBelow={
             planVersionId === null ? (

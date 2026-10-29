@@ -477,7 +477,8 @@ export const ResultFormPane = ({
                     </span>
                   )}
                 </span>
-                {state === 'done' && !isOpen && (
+                {/* 접힌 단계는 다 채웠든 아니든 눌러 다시 편다(사용자 지시 2026-10-29). */}
+                {!isOpen && (
                   <span className="iqc-inspection-stepper-change">{t.stepSummary.change}</span>
                 )}
               </>

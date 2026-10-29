@@ -451,7 +451,6 @@ export const oqcInspection = {
     recordHeading: '시리얼별 출하검사 이력',
     /** 참고 정보 탭 이름(#136). */
     recordTab: '시리얼별 검사 이력',
-    recordHelp: '시리얼별 최초 검사와 재검사 결과를 확인할 수 있습니다.',
     recordEmpty: '출하검사 이력이 없습니다.',
     recordEmptyDescription: '검사 결과가 기록되면 이곳에 표시됩니다.',
     recordCount: (count: number): string => `${String(count)}건`,

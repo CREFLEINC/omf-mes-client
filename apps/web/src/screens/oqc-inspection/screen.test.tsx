@@ -227,6 +227,8 @@ const fillJudgment = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(acceptedField(), '480');
   await user.type(screen.getByLabelText(t.result.fields.rejected), '15');
   await user.type(screen.getByLabelText(t.result.fields.held), '5');
+  /* 입력 단계(#197) — ① 수량의 [확정]으로 ② 판정이 열린다. */
+  await user.click(screen.getByRole('button', { name: messages.common.inspectionHub.stepConfirm }));
   await user.click(screen.getByRole('combobox', { name: t.result.judgment }));
   await user.click(screen.getByRole('option', { name: '합격' }));
 };
@@ -507,23 +509,20 @@ describe('OqcInspectionScreen — 저장 이후(V6)', () => {
     });
 
     /*
-     * 「검사수량」 라벨의 «짝»만 읽는다 — 폼에는 잔여·합계에도 같은 숫자가 설 수 있고, 우측
-     * 대상 정보에도 같은 라벨이 있다.
+     * 수량 줄의 「전체 N 중」만 읽는다(#197) — 폼에는 미입력 · 합계에도 같은 숫자가 설 수 있고, 우측 대상 정보에도
+     * 같은 숫자가 있다.
      */
-    const inspectedQtyText = (): string => {
-      const label = within(screen.getByRole('form', { name: t.result.heading })).getByText(
-        t.result.fields.inspectedQty,
-      );
-
-      return label.parentElement?.querySelector('dd')?.textContent ?? '';
-    };
+    const totalOf = (qty: number): string => messages.common.inspectionHub.qtyTotalOf(String(qty));
+    const inspectedQtyText = (): string =>
+      within(screen.getByRole('form', { name: t.result.heading })).getByRole('status')
+        .textContent ?? '';
 
     await screen.findByRole('button', { name: t.result.reinspect });
-    expect(inspectedQtyText()).toBe('300');
+    expect(inspectedQtyText()).toContain(totalOf(300));
 
     await user.click(screen.getByRole('button', { name: t.result.reinspect }));
 
-    expect(inspectedQtyText()).toBe(String(waitingRequest.targetQty));
+    expect(inspectedQtyText()).toContain(totalOf(waitingRequest.targetQty));
   });
 
   it('열어 둔 확인 창은 의뢰를 바꾸면 닫힌다 — 앞 의뢰의 창이 새 번호를 달고 서면 안 된다', async () => {
@@ -785,6 +784,9 @@ describe('OqcInspectionScreen — 합격판정개수 기준 자동 판정(#126)'
     await user.type(acceptedField(), '480');
     await user.type(screen.getByLabelText(t.result.fields.rejected), '15');
     await user.type(screen.getByLabelText(t.result.fields.held), '5');
+    await user.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.stepConfirm }),
+    );
 
     expect(await screen.findByText(new RegExp(change.expected('불합격')))).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.result.judgment })).toHaveTextContent('불합격');

@@ -863,7 +863,7 @@ export const OqcInspectionScreen = () => {
              */
             <PageNav
               meta={queue.data.page}
-              controlSize="md"
+              buttonSize="md"
               disabled={save.isSaving}
               onChangePage={goToPage}
               sizes={LIST_PAGE_SIZES}

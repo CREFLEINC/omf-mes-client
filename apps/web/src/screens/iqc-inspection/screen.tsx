@@ -1270,8 +1270,8 @@ const IqcInspectionScreenBody = () => {
             <PageNav
               meta={queue.data.page}
               sizes={LIST_PAGE_SIZES}
-              /* 목록 단추는 종전 쪽 이동처럼 크게(사용자 지시 2026-10-27 · #197). */
-              controlSize="md"
+              /* 쪽 이동 단추는 종전처럼 크게, 건수 선택은 작게(사용자 지시 2026-10-27 · 2026-10-29 · #197). */
+              buttonSize="md"
               onChangePage={goToPage}
               onChangeSize={(next) => setSearchParams(toPageSizeParams(searchParams, next))}
             />
