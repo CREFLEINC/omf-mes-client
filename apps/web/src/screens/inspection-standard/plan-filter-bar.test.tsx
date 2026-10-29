@@ -19,7 +19,8 @@ const renderBar = (appliedFilters: PlanFilters = DEFAULT_PLAN_FILTERS) => {
 };
 
 describe('PlanFilterBar — 조건', () => {
-  it('조회를 누르면 편집 중이던 조건이 한꺼번에 적용된다', async () => {
+  /* 조건을 바꾸면 「조회」를 누르지 않아도 바로 적용된다(사용자 지시 · #208). */
+  it('검사 유형을 고르면 바로 조회 조건이 적용된다', async () => {
     const { onApplyFilters, user } = renderBar({
       q: 'SYN',
       inspectionTypeCode: '',
@@ -32,9 +33,6 @@ describe('PlanFilterBar — 조건', () => {
 
     await user.click(screen.getByRole('combobox', { name: '검사 유형 선택' }));
     await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
-    expect(onApplyFilters).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({
       q: 'SYN',

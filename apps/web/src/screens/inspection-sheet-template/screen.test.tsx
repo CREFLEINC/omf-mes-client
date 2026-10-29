@@ -199,6 +199,26 @@ describe('검사표 기준', () => {
     expect(screen.queryByRole('row', { name: /AAR4/ })).not.toBeInTheDocument();
   });
 
+  /* 조건을 바꾸면 「조회」를 누르지 않아도 바로 걸린다(사용자 지시 · #208). 재료는 입력을 멈추면 걸린다. */
+  it('재료를 입력하면 조회 단추 없이 바로 걸린다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('row', { name: /AAR4/ });
+
+    await user.type(screen.getByLabelText(t.list.material), '없는재료');
+
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+  });
+
+  it('상태를 고르면 조회 단추 없이 바로 걸린다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('row', { name: /AAR4/ });
+
+    await user.click(screen.getByRole('combobox', { name: t.list.status }));
+    await user.click(screen.getByRole('option', { name: t.statuses.CONFIRMED }));
+
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+  });
+
   /* 상태는 줄(품목의 가장 높은 버전) 기준으로 거른다(#208). */
   it('상태를 확정으로 거르면 작성중인 품목 줄은 빠진다', async () => {
     const { user } = setup(template());

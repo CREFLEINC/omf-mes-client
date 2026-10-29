@@ -14,7 +14,7 @@ import {
 } from '@crefle/web-ui';
 import type { InspectionSheetLayoutCode, InspectionSheetTemplate } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { ItemPickerDialog } from '../../patterns/item-picker';
@@ -113,6 +113,15 @@ const InspectionSheetTemplateScreenBody = () => {
   }>(INITIAL_FILTER);
   /* 확정 일시 정렬 — 걸러 낸 전체 줄을 세운 뒤 쪽을 나눈다(#208). */
   const [sort, setSort] = useState<SortState | null>(null);
+  /* 재료는 입력을 멈추면(0.3초) 바로 조회한다 — 「조회」를 한 번 더 누르지 않게(사용자 지시 · #208). */
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setFilter((prev) =>
+        prev.material === materialInput ? prev : { ...prev, material: materialInput, page: 1 },
+      );
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [materialInput]);
   const [opened, setOpened] = useState<Opened>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [stepCode, setStepCode] = useState<StepDraft['stepCode'] | null>(null);
@@ -323,7 +332,11 @@ const InspectionSheetTemplateScreenBody = () => {
                 })),
               ]}
               value={layoutInput}
-              onChange={(value) => setLayoutInput(value as InspectionSheetLayoutCode | '')}
+              onChange={(value) => {
+                const layout = value as InspectionSheetLayoutCode | '';
+                setLayoutInput(layout);
+                setFilter((prev) => ({ ...prev, layout, page: 1 }));
+              }}
             />
           </div>
           <div className="field-cell inspection-sheet-template-status-filter">
@@ -337,7 +350,11 @@ const InspectionSheetTemplateScreenBody = () => {
                 ...STATUSES.map((code) => ({ value: code, label: t.statuses[code] ?? code })),
               ]}
               value={statusInput}
-              onChange={(value) => setStatusInput(value as TemplateStatusFilter)}
+              onChange={(value) => {
+                const status = value as TemplateStatusFilter;
+                setStatusInput(status);
+                setFilter((prev) => ({ ...prev, status, page: 1 }));
+              }}
             />
           </div>
           {/* 모델 — 읽기 전용 칸을 누르거나 엔터를 치면 품목 선택 창이 열린다(검사 기준 탭의 품목 검색과 같다 · #208). */}
@@ -352,7 +369,10 @@ const InspectionSheetTemplateScreenBody = () => {
             onClick={() => setIsModelPickerOpen(true)}
             onSearch={() => setIsModelPickerOpen(true)}
             onChange={() => undefined}
-            onClear={() => setModelInput(null)}
+            onClear={() => {
+              setModelInput(null);
+              setFilter((prev) => ({ ...prev, itemId: null, page: 1 }));
+            }}
           />
           <div className="field-cell inspection-sheet-template-material-filter">
             <label className="field-label" htmlFor={materialFilterId}>

@@ -40,6 +40,12 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
    * 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다 — 칩은 「적용된 조건」의 표시다.
    */
   const [draft, setDraft] = useState<PlanFilters>(appliedFilters);
+  /* 조건을 바꾸면 바로 조회한다 — 「조회」를 한 번 더 누르지 않게(사용자 지시 · #208). */
+  const applyNow = (patch: Partial<PlanFilters>) => {
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    onApplyFilters(next);
+  };
   const {
     q: appliedQ,
     inspectionTypeCode: appliedInspectionTypeCode,
@@ -90,11 +96,11 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
             id={typeSelectId}
             options={[{ value: '', label: t.filters.typeAll }, ...INSPECTION_TYPE_OPTIONS]}
             value={draft.inspectionTypeCode}
-            onChange={(value) => setDraft((prev) => ({ ...prev, inspectionTypeCode: value }))}
+            onChange={(value) => applyNow({ inspectionTypeCode: value })}
           />
         </div>
 
-        {/* 상태 — 가장 높은 버전의 상태로 거른다(사용자 지시 · #208). 조회를 눌러야 걸린다. */}
+        {/* 상태 — 가장 높은 버전의 상태로 거른다(사용자 지시 · #208). 고르면 바로 조회한다. */}
         <div className="field-cell inspection-standard-status-filter">
           <FieldLabel htmlFor={statusSelectId} label={t.filters.versionStatus} />
           <Select
@@ -107,19 +113,14 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
               })),
             ]}
             value={draft.versionStatus}
-            onChange={(value) =>
-              setDraft((prev) => ({
-                ...prev,
-                versionStatus: value as PlanFilters['versionStatus'],
-              }))
-            }
+            onChange={(value) => applyNow({ versionStatus: value as PlanFilters['versionStatus'] })}
           />
         </div>
 
         {/*
          * 검사 기준은 **창에서 검색해서 고른다** — 검사 조회·판정의 품목 조건과 같은 모양(omf-all-around#196).
          * 읽기 전용 칸을 누르거나 엔터를 치면 창이 열리고, 고른 기준의 코드가 검색어로 들어간다.
-         * 지우기는 값이 있을 때만 칸 안의 × 다. 조회를 눌러야 목록에 걸린다(다른 조건과 같은 트리거).
+         * 지우기는 값이 있을 때만 칸 안의 × 다. 고르거나 지우면 바로 조회한다(#208).
          */}
         <SearchInput
           label={t.filters.searchLabel}
@@ -132,12 +133,12 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
           onClick={openPicker}
           onSearch={openPicker}
           onChange={() => undefined}
-          onClear={() => setDraft((prev) => ({ ...prev, q: '' }))}
+          onClear={() => applyNow({ q: '' })}
         />
 
         {/*
          * 품목 — 검사 조회·판정의 품목 조건과 같은 모양(#196). 읽기 전용 칸을 누르거나 엔터를 치면 품목 선택 창이 열린다.
-         * 조회를 눌러야 목록에 걸린다(다른 조건과 같은 트리거). 지난 기준도 찾게 사용 중지 품목까지 찾는다.
+         * 고르거나 지우면 바로 조회한다(#208). 지난 기준도 찾게 사용 중지 품목까지 찾는다.
          */}
         <SearchInput
           label={t.filters.item}
@@ -150,7 +151,7 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
           onClick={openItemPicker}
           onSearch={openItemPicker}
           onChange={() => undefined}
-          onClear={() => setDraft((prev) => ({ ...prev, itemId: '' }))}
+          onClear={() => applyNow({ itemId: '' })}
         />
 
         {/*
@@ -218,8 +219,7 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
             confirmLabel={t.filters.itemPick}
             onClose={() => setIsItemPickerOpen(false)}
             onConfirm={([item]) => {
-              if (item !== undefined)
-                setDraft((prev) => ({ ...prev, itemId: String(item.itemId) }));
+              if (item !== undefined) applyNow({ itemId: String(item.itemId) });
               setIsItemPickerOpen(false);
             }}
           />,
@@ -232,7 +232,7 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
             includeInactive={appliedFilters.includeInactive || appliedFilters.inactiveOnly}
             onClose={() => setIsPickerOpen(false)}
             onConfirm={(plan) => {
-              setDraft((prev) => ({ ...prev, q: plan.inspectionPlanCode }));
+              applyNow({ q: plan.inspectionPlanCode });
               setIsPickerOpen(false);
             }}
           />,
