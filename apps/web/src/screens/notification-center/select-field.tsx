@@ -2,11 +2,11 @@ import { useId } from 'react';
 
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
-import type { SelectOption } from './types';
+import type { SelectItem } from './types';
 
 export interface SelectFieldProps {
   label: string;
-  options: SelectOption[];
+  options: SelectItem[];
   value: string;
   onChange: (value: string) => void;
   /** 선택지 목록의 한계(불러오기 실패) 안내. 없으면 자리를 만들지 않는다 */
@@ -48,7 +48,7 @@ export const SelectField = ({
    * 선택지에 빈 값(「전체」)이 있으면 **빈 값도 고른 값이다** —
    * 그때는 자리표시로 대신하지 않는다.
    */
-  const hasEmptyOption = options.some((option) => option.value === '');
+  const hasEmptyOption = options.some((option) => 'value' in option && option.value === '');
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>

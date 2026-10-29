@@ -291,6 +291,7 @@ describe('주 메뉴 트리', () => {
       '/system/users-roles → manage_accounts',
       '/system/approval-route → approval',
       '/notification/recipient-settings → notifications_active',
+      '/notification/handover-settings → assignment_ind',
       '/notification/zalo-connection → link',
       '/notification/dispatch-history → history',
       '/master-data/common-code → list_alt',

@@ -40,6 +40,9 @@ export const notificationCenter = {
      * 카드 제목은 원본 코드로 낙하한다. 그래서 화면 전체를 오류로 두지 않고 이 칸만 밝힌다.
      */
     eventsFailed: '알림 유형 목록을 불러오지 못했습니다. 유형으로 좁힐 수 없습니다.',
+    /** 유형 선택지의 묶음 이름 — 기존 6종 뒤에 인계 작업 10종(피처 002, 확정 2026-10-28). */
+    eventGroup: '이벤트',
+    handoverGroup: '인계 작업',
   },
   actions: {
     prevPage: '이전',

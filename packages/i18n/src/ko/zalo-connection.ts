@@ -42,6 +42,16 @@ export const zaloConnection = {
     lastError: (code: string, message: string): string => `${code} ${message}`.trim(),
     conflict: '다른 사람이 먼저 저장했습니다. 다시 불러온 뒤 저장하세요',
   },
+  /** 인계 작업 템플릿 카드(피처 002, FR-010·FR-022). 기존 6종 아래 별도 카드다(확정 2026-10-28). */
+  handover: {
+    title: '인계 작업 템플릿',
+    /** 이벤트 칸의 복사(`copyFor`)와 접근 이름을 가른다 — 같은 화면에 16개가 선다. */
+    copyFor: (typeName: string): string => `${typeName} 템플릿 파라미터 이름 복사`,
+    /* 「MES Handover - …」는 고객사에 전달한 영문 템플릿 이름 접두 그대로다. */
+    notice:
+      // ui-check-ignore: C-13 영문 템플릿 이름 접두
+      '고객사가 Zalo OA 에 「MES Handover - …」 템플릿을 등록하고 받은 ID 를 넣습니다. 비어 있으면 그 작업의 Zalo 는 보내지 않고 발송 이력에 「템플릿 미설정」으로 남습니다(알림센터는 그대로 받습니다).',
+  },
   errors: {
     appId: '앱 ID는 숫자 1~40자입니다.',
     secretRequired: '새 값을 입력하세요. 바꾸지 않으려면 [바꾸지 않기]를 누르세요.',

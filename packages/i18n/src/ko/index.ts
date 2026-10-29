@@ -60,6 +60,7 @@ import { putawayRule } from './putaway-rule';
 import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
 import { alarmRecipientSettings } from './alarm-recipient-settings';
+import { handoverAlertSettings } from './handover-alert-settings';
 import { zaloConnection } from './zalo-connection';
 import { dispatchHistory } from './dispatch-history';
 import { iqcInspection } from './iqc-inspection';
@@ -218,6 +219,7 @@ export const ko = {
   documentProgress,
   notificationCenter,
   alarmRecipientSettings,
+  handoverAlertSettings,
   zaloConnection,
   dispatchHistory,
   iqcInspection,

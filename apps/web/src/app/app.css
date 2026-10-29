@@ -10846,6 +10846,59 @@ button.app-button-neutral {
   gap: var(--space-3);
 }
 
+/* W-CO-12 인계 작업 템플릿(002) — 기존 6종 아래 따로 묶는다(확정 2026-10-28). */
+.zalo-handover {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+/* W-CO-14 인계작업 알림 설정(002) — W-CO-11 의 2단을 그대로 쓰고 「언제」·「처리」 안내만 더한다. */
+.handover-top {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.handover-top > .alarm-department-bar {
+  margin-bottom: 0;
+}
+
+/* 긴 작업 이름(베트남어)은 두 줄로 접는다 — 알림·Zalo·수신자 칸 폭은 줄이지 않는다(시안 상태 C). */
+.handover-type-table .handover-type-button {
+  white-space: normal;
+  text-align: start;
+}
+
+.handover-recipient-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.handover-guide {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.handover-guide > dt {
+  color: var(--on-surface-variant);
+}
+
+.handover-guide > dd {
+  margin: 0;
+}
+
 /* W-CO-12 알림 연결 설정(001) — 상태 · 연결 정보 · 이벤트별 템플릿. */
 .zalo-layout {
   display: grid;
