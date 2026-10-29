@@ -311,10 +311,11 @@ main > * + * {
   grid-column: 1 / -1;
 }
 
-.defect-cause-info-note {
+/* 상위 선택칸과 안내 사이를 띄운다(사용자 지시 · #209). 뒤쪽 공용 규칙(`.iqc-inspection-action-note { margin: 0 }`)보다 무거워야 선다. */
+.defect-cause-form-grid .defect-cause-info-note {
   justify-self: start;
   align-self: flex-start;
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .defect-cause-head-actions {
