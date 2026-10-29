@@ -10,7 +10,7 @@ export const inspectionLevel = {
     TIGHTENED: '엄격',
   } as Record<string, string>,
 
-  rule: '사용자가 정한 수준을 그대로 씁니다 — IQC 판정 결과로 자동 전환하지 않습니다. 샘플 수량과 판정 기준은 바뀌지 않습니다.',
+  rule: '지정한 수준을 그대로 씁니다. IQC 판정 결과로 자동 전환되지 않고, 샘플 수량·판정 기준도 바뀌지 않습니다.',
 
   list: {
     heading: '품목별 검사 수준',

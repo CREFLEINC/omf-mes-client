@@ -17434,11 +17434,6 @@ button.app-button-neutral {
 }
 
 /* 「현재 검사 수준과 동일합니다.」 — 정보 아이콘 + 오류색 한 줄, 선택칸과 한 칸 띄운다(#133). */
-.inspection-level-rule {
-  max-width: none;
-  margin: 0;
-}
-
 .inspection-level-same {
   display: inline-flex;
   align-items: center;
@@ -17526,6 +17521,11 @@ button.app-button-neutral {
 
 .inspection-level-list-pane > .page-nav {
   margin-top: 0;
+}
+
+/* 쪽 이동 단추 사이를 좁혀 한 줄에 간결하게 — 검사표 기준 탭과 같다(사용자 지시 · #208). */
+.inspection-level-list-pane .page-nav-right {
+  gap: var(--space-1);
 }
 
 /* 이력 제목 옆 「품목 … 이력만 보는 중 [전체 보기]」 — 같은 줄(#208). */

@@ -10,7 +10,7 @@ export const inspectionLevel = {
     TIGHTENED: 'Nghiêm ngặt',
   } as Record<string, string>,
 
-  rule: 'Dùng đúng mức người dùng đã chỉ định — không tự động chuyển theo kết quả IQC. Số lượng mẫu và tiêu chuẩn đánh giá không đổi.',
+  rule: 'Dùng đúng mức đã chỉ định, không tự chuyển theo kết quả IQC. Số lượng mẫu và tiêu chuẩn đánh giá không đổi.',
 
   list: {
     heading: 'Mức kiểm tra theo vật tư',

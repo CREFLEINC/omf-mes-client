@@ -148,7 +148,11 @@ export const InspectionLevelScreen = () => {
       align: 'center',
       header: t.columns.updatedAt,
       width: '150px',
-      render: (row) => formatPlantDateTime(row.updatedAt) ?? '',
+      render: (row) => (
+        <span className="inspection-sheet-template-date">
+          {formatPlantDateTime(row.updatedAt) ?? ''}
+        </span>
+      ),
     },
     {
       key: 'actions',
@@ -188,7 +192,11 @@ export const InspectionLevelScreen = () => {
       align: 'center',
       header: t.history.columns.changedAt,
       width: '150px',
-      render: (row) => formatPlantDateTime(row.changedAt) ?? '',
+      render: (row) => (
+        <span className="inspection-sheet-template-date">
+          {formatPlantDateTime(row.changedAt) ?? ''}
+        </span>
+      ),
     },
     {
       key: 'item',
@@ -270,12 +278,10 @@ export const InspectionLevelScreen = () => {
         />
       )}
 
-      {/* 규칙 안내는 한 줄 폭을 다 쓴다 — `.field-note` 의 좁은 폭에 갇혀 세 줄로 꺾였다(#208). */}
-      <p className="field-note inspection-level-rule">{t.rule}</p>
-
       {/*
-       * 조회 조건 — 검사 기준 탭처럼 목록 위 카드 한 줄: 품목 · 검사 수준 → 조회 → 구분선 → 품목 추가(#208).
-       * 「초기화」는 원래 없던 단추라 새로 두지 않는다.
+       * 조회 조건 — 검사 기준 탭처럼 목록 위 카드 한 줄: 품목 · 검사 수준 → 조회 · 품목 추가(#208).
+       * 단추는 구분선 없이 바로 붙인다(검사표 기준 탭과 같다 · 사용자 지시). 「초기화」는 원래 없던 단추라 새로 두지 않는다.
+       * 규칙 안내는 줄 아래 작은 보조 글 한 줄 — 박스 · 바탕 없이(검사표 기준 탭과 같은 모양 · 사용자 지시 · #208).
        */}
       <section ref={aboveRef} className="pane inspection-level-search" role="search">
         <form
@@ -316,7 +322,6 @@ export const InspectionLevelScreen = () => {
             <Button type="submit" variant="filled">
               {messages.common.search}
             </Button>
-            <span className="inspection-standard-filter-divider" aria-hidden />
             <Button
               variant="filled"
               leadingIcon={<Icon name="add" size={18} />}
@@ -326,6 +331,10 @@ export const InspectionLevelScreen = () => {
             </Button>
           </div>
         </form>
+        <p className="inspection-sheet-template-rule">
+          <Icon name="info" size={16} />
+          {t.rule}
+        </p>
       </section>
 
       {/* 품목별 검사 수준(목록) | 전환 이력 — 검사 기준 탭의 목록 | 상세와 같은 분할(#208). */}
@@ -377,9 +386,10 @@ export const InspectionLevelScreen = () => {
             />
           </div>
           {list.data !== undefined && (
+            /* 좁은 목록 칸이라 쪽 이동 단추는 작게 — 검사표 기준 탭과 같다(사용자 지시 · #208). */
             <PageNav
               meta={list.data.page}
-              buttonSize="md"
+              buttonSize="sm"
               onChangePage={(page) => setFilter((prev) => ({ ...prev, page }))}
             />
           )}
@@ -447,7 +457,7 @@ export const InspectionLevelScreen = () => {
             />
           </div>
           {histories.data !== undefined && (
-            <PageNav meta={histories.data.page} buttonSize="md" onChangePage={setHistoryPage} />
+            <PageNav meta={histories.data.page} buttonSize="sm" onChangePage={setHistoryPage} />
           )}
         </section>
       </div>
