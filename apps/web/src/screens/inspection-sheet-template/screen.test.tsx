@@ -177,6 +177,10 @@ describe('검사표 기준', () => {
     expect(row).toHaveTextContent('2');
     expect(row).toHaveTextContent(t.layouts.OP!);
     expect(row).toHaveTextContent(t.statuses.DRAFT!);
+    /* 재료 · 확정자 열(#208) */
+    expect(row).toHaveTextContent('방청 처리');
+    expect(screen.getByRole('columnheader', { name: t.columns.material })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: t.columns.confirmedBy })).toBeInTheDocument();
   });
 
   it('작성중 기준의 단계 이름을 고쳐 저장하면 상세의 ETag 로 잠가 통째로 보낸다', async () => {

@@ -44,6 +44,8 @@ export const inspectionSheetTemplate = {
     layout: 'Mẫu',
     status: 'Trạng thái',
     confirmedAt: 'Thời điểm xác nhận',
+    material: 'Vật liệu',
+    confirmedBy: 'Người xác nhận',
   },
 
   editor: {

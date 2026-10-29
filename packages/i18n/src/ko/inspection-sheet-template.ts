@@ -44,6 +44,8 @@ export const inspectionSheetTemplate = {
     layout: '양식',
     status: '상태',
     confirmedAt: '확정 일시',
+    material: '재료',
+    confirmedBy: '확정자',
   },
 
   editor: {

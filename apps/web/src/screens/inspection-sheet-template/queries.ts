@@ -1,5 +1,5 @@
 import type { InspectionSheetTemplate } from '@omf-mes/api-client';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -77,4 +77,28 @@ export const useBusinessUnitNames = () => {
       );
     },
   });
+};
+
+/** 확정자 이름 — 사용자 상세로 푼다(#208). 못 받으면(권한 · 없는 사용자) 호출부가 번호로 낸다. */
+export const useUserNames = (
+  userIds: readonly (number | null)[],
+): ((userId: number) => string | null) => {
+  const { client } = useApiClient();
+  const ids = [...new Set(userIds.filter((id): id is number => id !== null))];
+
+  const results = useQueries({
+    queries: ids.map((appUserId) => ({
+      queryKey: ['inspection-sheet-template', 'user-name', appUserId] as const,
+      queryFn: async () => {
+        const data = await runRequest(() =>
+          client.GET('/app/users/{appUserId}', { params: { path: { appUserId } } }),
+        );
+        return data.appUser.userName;
+      },
+      retry: false,
+      staleTime: Infinity,
+    })),
+  });
+
+  return (userId) => results[ids.indexOf(userId)]?.data ?? null;
 };

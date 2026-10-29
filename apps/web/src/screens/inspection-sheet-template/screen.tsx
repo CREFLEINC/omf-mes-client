@@ -33,6 +33,7 @@ import {
   useBusinessUnitNames,
   useTemplate,
   useTemplates,
+  useUserNames,
 } from './queries';
 import type { StepDraft } from './draft';
 import { TemplateEditor, TemplateStatusChip } from './template-editor';
@@ -91,6 +92,7 @@ const InspectionSheetTemplateScreenBody = () => {
   const detail = useTemplate(opened?.kind === 'existing' ? opened.id : null);
   const businessUnits = useBusinessUnitNames();
   const rows = list.data?.items ?? [];
+  const userNameOf = useUserNames(rows.map((row) => row.confirmedBy));
   const scopeIds = (session?.scopes ?? []).map((scope) => scope.businessUnitId);
   const names = businessUnits.data ?? new Map<number, string>();
 
@@ -140,6 +142,22 @@ const InspectionSheetTemplateScreenBody = () => {
       header: t.columns.status,
       width: '80px',
       render: (row) => <TemplateStatusChip size="sm" statusCode={row.statusCode} />,
+    },
+    /* 재료 · 확정자 — 목록에서 모델을 가르고 누가 확정했는지 본다(사용자 지시 · #208). */
+    {
+      key: 'material',
+      align: 'center',
+      header: t.columns.material,
+      width: '120px',
+      render: (row) => row.materialText ?? '',
+    },
+    {
+      key: 'confirmedBy',
+      align: 'center',
+      header: t.columns.confirmedBy,
+      width: '112px',
+      render: (row) =>
+        row.confirmedBy === null ? '' : (userNameOf(row.confirmedBy) ?? String(row.confirmedBy)),
     },
     {
       key: 'confirmedAt',
