@@ -12,7 +12,6 @@ import type { SelectOption } from './types';
 
 const t = messages.putawayRule;
 
-const warehouseOptions: SelectOption[] = [{ value: '9201', label: 'SYN-WH-01 · 합성창고 가' }];
 const uomOptions: SelectOption[] = [{ value: '9401', label: 'SYN-UOM-01 · 합성단위 가' }];
 const locationChoices: SelectOption[] = [
   { value: '', label: t.values.warehouseWide },
@@ -37,7 +36,6 @@ const renderPane = (overrides: Partial<RuleFormPaneProps> = {}) => {
       onOpenItemPicker={onOpenItemPicker}
       fieldErrors={{}}
       banner={null}
-      warehouseOptions={warehouseOptions}
       locationChoices={locationChoices}
       locationDisabledReason={null}
       uomOptions={uomOptions}
@@ -79,10 +77,12 @@ describe('RuleFormPane — 등록과 수정이 갈리는 자리', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('등록에서는 창고를 고를 수 있고 품목 찾기 버튼이 선다', () => {
+  /** 창고 상세의 탭이라 등록에서도 창고는 고르지 않는다 — 그 창고가 값으로만 보인다. */
+  it('등록에서는 창고가 값으로만 보이고 품목 찾기 버튼이 선다', () => {
     renderPane();
 
-    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeEnabled();
+    expect(screen.queryByRole('combobox', { name: t.fields.warehouse })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.warehouse)).toHaveTextContent('SYN-WH-01 · 합성창고 가');
     expect(screen.getByRole('button', { name: t.actions.openItemPicker })).toBeInTheDocument();
   });
 
@@ -115,11 +115,11 @@ describe('RuleFormPane — 등록과 수정이 갈리는 자리', () => {
     expect(screen.queryByRole('button', { name: messages.common.save })).not.toBeInTheDocument();
   });
 
-  /** 수정에서 「취소」는 되돌리는 조작이라 고친 것이 있을 때만 뜻이 있다. */
-  it('수정에서 고친 것이 없으면 취소가 잠긴다', () => {
+  /** 편집은 대화상자라 「취소」는 창을 닫는 조작이다 — 수정에서도 고친 것이 없어도 눌러야 한다. */
+  it('수정에서도 고친 것이 없어도 취소를 누를 수 있다', () => {
     renderPane({ mode: 'edit', values: editValues, isDirty: false });
 
-    expect(screen.getByRole('button', { name: messages.common.cancel })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.cancel })).toBeEnabled();
   });
 
   /** 등록에서 「취소」는 폼을 닫는 것이라 고친 것이 없어도 눌러야 한다. */
@@ -286,18 +286,17 @@ describe('RuleFormPane — 저장 자리의 네 상태', () => {
   /**
    * 나가는 중에는 **입력칸도 창 열기도** 잠긴다 — 확인한 것과 다른 것이 저장되면 안 된다.
    *
-   * ⭐ **일곱 자리를 전부 잰다.** 둘만 재면 나머지 다섯의 잠금을 지워도 아무 감지기가 울지
+   * ⭐ **여섯 자리를 전부 잰다.** 둘만 재면 나머지 넷의 잠금을 지워도 아무 감지기가 울지
    * 않는다(검증 V1·V1b가 실측한 자리다). 이 잠금은 전례와 갈린 판단이라 더욱 그렇다 —
    * 갈린 자리는 값으로 고정돼 있어야 다음 사본이 근거 없이 되돌리지 못한다.
    */
-  it('나가는 중에는 일곱 자리가 전부 잠긴다', () => {
+  it('나가는 중에는 여섯 자리가 전부 잠긴다', () => {
     renderPane({ isLocked: true });
 
-    /* 입력칸 다섯 */
+    /* 입력칸 넷 */
     expect(screen.getByLabelText(t.fields.capacity)).toBeDisabled();
     expect(screen.getByLabelText(t.fields.priorityNo)).toBeDisabled();
     expect(screen.getByLabelText(t.fields.remarks)).toBeDisabled();
-    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: t.fields.uom })).toBeDisabled();
     /* 위치 칸은 관리수준으로도 잠기는 자리라 **문자열 검색에 걸리지 않는다** — 따로 잰다. */
     expect(screen.getByRole('combobox', { name: t.fields.location })).toBeDisabled();
@@ -305,14 +304,13 @@ describe('RuleFormPane — 저장 자리의 네 상태', () => {
     expect(screen.getByRole('button', { name: t.actions.openItemPicker })).toBeDisabled();
   });
 
-  /** 잠기지 않은 상태에서는 일곱 자리가 전부 열려 있다(음성 짝 — 늘 잠긴 칸이 있으면 헛통과한다). */
-  it('잠기지 않았으면 일곱 자리가 전부 열려 있다', () => {
+  /** 잠기지 않은 상태에서는 여섯 자리가 전부 열려 있다(음성 짝 — 늘 잠긴 칸이 있으면 헛통과한다). */
+  it('잠기지 않았으면 여섯 자리가 전부 열려 있다', () => {
     renderPane({ isLocked: false });
 
     expect(screen.getByLabelText(t.fields.capacity)).toBeEnabled();
     expect(screen.getByLabelText(t.fields.priorityNo)).toBeEnabled();
     expect(screen.getByLabelText(t.fields.remarks)).toBeEnabled();
-    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeEnabled();
     expect(screen.getByRole('combobox', { name: t.fields.uom })).toBeEnabled();
     expect(screen.getByRole('combobox', { name: t.fields.location })).toBeEnabled();
     expect(screen.getByRole('button', { name: t.actions.openItemPicker })).toBeEnabled();

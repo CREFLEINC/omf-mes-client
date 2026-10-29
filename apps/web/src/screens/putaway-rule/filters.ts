@@ -91,6 +91,19 @@ export const readSelectedRuleId = (params: URLSearchParams): number | null => {
  * **선택(`rule`)을 담지 않는다.** 조건·쪽이 바뀌면 보이는 행이 달라지므로
  * 이 함수의 결과로 주소를 통째로 갈아 끼우면 선택이 자연히 사라진다.
  */
+/**
+ * 적치 규칙 키만 `next` 로 갈아 끼운다 — 이 탭은 창고 상세(창고·Location 화면) 안에 있어 주소에 그 화면의 키(탭 ·
+ * 창고 조건)가 함께 있다. 창고(`wh`)는 두 화면이 같이 쓰므로 자리를 지킨 채 값만 맞춘다.
+ */
+export const mergeRuleParams = (current: URLSearchParams, next: URLSearchParams): URLSearchParams => {
+  const merged = new URLSearchParams(current);
+  for (const key of Object.values(URL_KEYS)) {
+    if (key !== URL_KEYS.warehouseId) merged.delete(key);
+  }
+  for (const [key, value] of next) merged.set(key, value);
+  return merged;
+};
+
 export const toSearchParams = (filters: RuleFilters, page: number): URLSearchParams => {
   const next = new URLSearchParams();
 

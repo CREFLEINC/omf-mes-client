@@ -17,7 +17,7 @@ import {
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
-import { PutawayRuleScreen } from './screen';
+import { PutawayRulePanel } from './screen';
 
 /**
  * 고정 설계의 창고 관리수준에 따른 위치 칸을 화면 배선 수준에서 잰다.
@@ -103,13 +103,13 @@ const formPane = (): HTMLElement => screen.getByRole('region', { name: t.panes.f
 const locationSelect = (): HTMLElement =>
   within(formPane()).getByRole('combobox', { name: t.fields.location });
 
-/** 조건 줄의 창고(9201)로 목록을 세우고 등록 폼을 연다. */
-const openCreateForm = async () => {
+/** 창고 상세가 고른 창고(`wh`)로 목록을 세우고 등록 폼을 연다. */
+const openCreateForm = async (warehouseId = 9201) => {
   const user = userEvent.setup();
 
-  renderWithProviders(<PutawayRuleScreen />, {
+  renderWithProviders(<PutawayRulePanel />, {
     fetch: createStubFetch(routes),
-    route: '/?wh=9201',
+    route: `/?wh=${String(warehouseId)}`,
   });
 
   await waitFor(() =>
@@ -129,7 +129,7 @@ const openCreateForm = async () => {
   return { user };
 };
 
-describe('PutawayRuleScreen — 고정 관리수준에 따른 위치 칸', () => {
+describe('PutawayRulePanel — 고정 관리수준에 따른 위치 칸', () => {
   /**
    * **양성 짝.** 목록에 든 관리수준의 창고에서는 위치 칸이 그대로 열린다 —
    * 「값이 채워지면 무조건 잠긴다」로 배선해도 통과하지 않게 한다.
@@ -147,12 +147,12 @@ describe('PutawayRuleScreen — 고정 관리수준에 따른 위치 칸', () =>
    *
    * 잠긴 칸은 사유와 해제 위치를 함께 말한다(G-10).
    */
-  it('위치를 관리하지 않는 창고로 바꾸면 잠기고 그 창고의 사유가 선다', async () => {
-    const { user } = await openCreateForm();
+  it('위치를 관리하지 않는 창고에서는 잠기고 그 창고의 사유가 선다', async () => {
+    await openCreateForm(UNMANAGED_WAREHOUSE.warehouseId);
 
-    await user.click(within(formPane()).getByRole('combobox', { name: t.fields.warehouse }));
-    await user.click(await screen.findByRole('option', { name: UNMANAGED_WAREHOUSE_LABEL }));
-
+    expect(within(formPane()).getByLabelText(t.fields.warehouse)).toHaveTextContent(
+      UNMANAGED_WAREHOUSE_LABEL,
+    );
     expect(locationSelect()).toBeDisabled();
     expect(within(formPane()).getByText(t.notes.locationNotManaged)).toBeInTheDocument();
     expect(within(formPane()).getByText(/창고·Location 화면/)).toBeInTheDocument();

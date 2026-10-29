@@ -28,7 +28,7 @@ import {
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
-import { PutawayRuleScreen } from './screen';
+import { PutawayRulePanel } from './screen';
 
 const t = messages.putawayRule;
 
@@ -212,6 +212,20 @@ const probeRoute: StubRoute = {
   },
 };
 
+/** 품목 이름은 번호로 하나씩 푼다(`GET /mdm/items/{id}`) — 픽스처에 없는 번호는 404다. */
+const itemDetailRoute: StubRoute = {
+  match: (request) =>
+    request.method === 'GET' && /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
+  respond: (request) => {
+    const itemId = Number(new URL(request.url).pathname.split('/').at(-1));
+    const item = itemFixtures.find((candidate) => candidate.itemId === itemId);
+
+    return item === undefined
+      ? jsonResponse({ message: '' }, { status: 404 })
+      : jsonResponse({ item });
+  },
+};
+
 /**
  * 모든 조회를 세울 수 있는 스텁 한 벌.
  *
@@ -227,6 +241,7 @@ const allRoutes = (overrides: StubRoute[] = []): StubRoute[] => [
   balancesRoute,
   route(WAREHOUSES_PATH, warehouseFixtures),
   locationsRoute,
+  itemDetailRoute,
   route(ITEMS_PATH, itemFixtures),
   route(UOMS_PATH, uomFixtures),
 ];
@@ -362,7 +377,7 @@ const renderScreen = (
   const { fetch, urls, requests, release } = recordingFetch(routes, hold);
   const result = renderWithProviders(
     <>
-      <PutawayRuleScreen />
+      <PutawayRulePanel />
       <LocationProbe />
       <SearchProbe to={navigateTo} />
       <BackProbe />
@@ -373,109 +388,33 @@ const renderScreen = (
   return { ...result, urls, requests, release, user: userEvent.setup() };
 };
 
-const selectWarehouse = async (
-  user: ReturnType<typeof userEvent.setup>,
-  optionLabel = WAREHOUSE_LABEL,
-): Promise<void> => {
-  await user.click(screen.getByRole('combobox', { name: t.fields.warehouse }));
-  await user.click(await screen.findByRole('option', { name: optionLabel }));
-};
-
 /** 목록이 실제로 섰음을 잡는 시점. 음성 단언은 이 시점 뒤에 잰다. */
 const waitForRows = async (): Promise<void> => {
   await screen.findByRole('button', { name: t.actions.selectRow(ITEM_LABEL, LOCATION_LABEL) });
 };
 
-describe('PutawayRuleScreen — 창고를 고르기 전', () => {
-  /**
-   * **C1-1.** 창고 없이 목록을 부르면 전 창고의 규칙이 섞여 오고, 그 목록은 어느 창고의
-   * 사실도 아니다. 「부르지 않는다」를 **경로 전체에서** 센다 — 조건을 만지고 쪽을 옮기고
-   * 다시 조회를 눌러도 그 셋은 한 번도 나가지 않아야 한다.
-   *
-   * **잔액도 같은 잠금을 받는다.** 계약이 「창고·품목·LOT 중 적어도 하나」를 요구하므로
-   * 창고 없는 요청은 성립하지도 않는다 — 세는 자리를 함께 두어 다음 회차가 빠뜨리지 못하게 한다.
-   */
-  it('목록도 규칙 없는 품목도 잔액도 한 번도 부르지 않는다', async () => {
-    const { urls, user } = renderScreen();
+/**
+ * 창고 상세의 탭이라 보통은 늘 창고(`wh`)가 있다. 없이 열리면 창고 없는 목록 조회는 전 창고의 규칙이 섞여 오므로
+ * 아무것도 부르지 않고 안내만 낸다(C1-1).
+ */
+describe('PutawayRulePanel — 창고가 없는 주소', () => {
+  it('안내만 내고 목록도 규칙 없는 품목도 잔액도 부르지 않는다', async () => {
+    const { urls } = renderScreen('/');
 
-    await screen.findByText(t.empty.noWarehouseTitle);
-
-    await user.click(screen.getByRole('checkbox', { name: t.filters.activeOnly }));
-    await user.click(screen.getByRole('button', { name: messages.common.reset }));
-    await user.click(screen.getByRole('button', { name: t.actions.reload }));
-
-    await waitFor(() => {
-      expect(countOf(urls, WAREHOUSES_PATH)).toBeGreaterThan(0);
-    });
-
+    expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.panes.uncovered })).not.toBeInTheDocument();
     expect(countOf(urls, RULES_PATH)).toBe(0);
     expect(countOf(urls, UNCOVERED_PATH)).toBe(0);
     expect(countOf(urls, BALANCES_PATH)).toBe(0);
   });
-
-  /** 위치·품목·단위도 창고를 전제로 선다 — 창고 없이 부르면 헛도는 요청이다. */
-  it('위치·품목·단위 이름 풀이도 부르지 않는다', async () => {
-    const { urls } = renderScreen();
-
-    await screen.findByText(t.empty.noWarehouseTitle);
-    await waitFor(() => {
-      expect(countOf(urls, WAREHOUSES_PATH)).toBe(1);
-    });
-
-    expect(countOf(urls, LOCATIONS_PATH)).toBe(0);
-    expect(countOf(urls, ITEMS_PATH)).toBe(0);
-    expect(countOf(urls, UOMS_PATH)).toBe(0);
-  });
-
-  /** 빈 표를 보이면 「규칙이 없다」로 읽힌다 — 안내와 빈 결과는 다른 사실이다. */
-  it('빈 표가 아니라 창고를 고르라는 안내가 선다', async () => {
-    renderScreen();
-
-    expect(await screen.findByText(t.empty.noWarehouseTitle)).toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    expect(screen.queryByText(t.empty.noResultTitle)).not.toBeInTheDocument();
-  });
-
-  /** 셀 범위가 없으면 0건도 사실이 아니다 — 구획째 두지 않는다. */
-  it('규칙 없는 품목 구획을 두지 않는다', async () => {
-    renderScreen();
-
-    await screen.findByText(t.empty.noWarehouseTitle);
-
-    expect(screen.queryByRole('region', { name: t.panes.uncovered })).not.toBeInTheDocument();
-  });
-
-  it('창고 선택지는 첫 진입에 받는다', async () => {
-    const { user } = renderScreen();
-
-    await user.click(await screen.findByRole('combobox', { name: t.fields.warehouse }));
-
-    expect(await screen.findByRole('option', { name: WAREHOUSE_LABEL })).toBeInTheDocument();
-  });
-
-  /** 미사용 창고를 빼면 그 창고에 남은 규칙을 찾을 길이 사라진다 — 표식만 붙인다. */
-  it('미사용 창고가 표식과 함께 선택지에 남는다', async () => {
-    const { user } = renderScreen();
-
-    await user.click(await screen.findByRole('combobox', { name: t.fields.warehouse }));
-
-    expect(
-      await screen.findByRole('option', {
-        name: `SYN-WH-02 · 합성창고 나${t.values.inactiveSuffix}`,
-      }),
-    ).toBeInTheDocument();
-  });
 });
 
-describe('PutawayRuleScreen — 창고를 고른 뒤', () => {
-  it('창고를 고르면 주소에 실리고 목록이 선다', async () => {
-    const { urls, user } = renderScreen();
-
-    await screen.findByText(t.empty.noWarehouseTitle);
-    await selectWarehouse(user);
+describe('PutawayRulePanel — 창고를 고른 뒤', () => {
+  it('주소의 창고로 목록을 부른다', async () => {
+    const { urls } = renderScreen(WITH_WAREHOUSE);
 
     await waitForRows();
-    expect(currentLocation()).toContain('wh=9201');
     expect(lastOf(urls, RULES_PATH)?.searchParams.get('warehouseId')).toBe('9201');
   });
 
@@ -524,13 +463,11 @@ describe('PutawayRuleScreen — 창고를 고른 뒤', () => {
       expect(lastOf(urls, RULES_PATH)?.searchParams.get('includeInactive')).toBe('false');
     });
 
-    for (const pathname of [ITEMS_PATH, UOMS_PATH]) {
-      const query = lastOf(urls, pathname)?.searchParams;
+    const uomQuery = lastOf(urls, UOMS_PATH)?.searchParams;
 
-      expect(query?.get('includeInactive')).toBe('true');
-      expect(query?.has('itemId')).toBe(false);
-      expect(query?.has('q')).toBe(false);
-    }
+    expect(uomQuery?.get('includeInactive')).toBe('true');
+    expect(uomQuery?.has('itemId')).toBe(false);
+    expect(uomQuery?.has('q')).toBe(false);
 
     /* 위치만 창고로 갈라 받는다 — 좁힘이 아니라 계약이 창고를 필수로 요구해서다. */
     const locationQuery = lastOf(urls, LOCATIONS_PATH)?.searchParams;
@@ -601,7 +538,7 @@ describe('PutawayRuleScreen — 창고를 고른 뒤', () => {
  *
  * 이 자리는 단위 시험(갈래)·부품 시험(표) 어느 쪽도 지나지 않는다. 화면에서 실제 실패 응답으로 잰다.
  */
-describe('PutawayRuleScreen — 이름 풀이만 실패한 갈래', () => {
+describe('PutawayRulePanel — 이름 풀이만 실패한 갈래', () => {
   /**
    * 규칙 표가 실제로 섰음을 잡는 시점. **행이 서기 전에 「없다」를 재면 아직 아무것도 없는
    * 화면에서 항상 통과하는 무의미한 단언이 된다**(사본 체크리스트 9번).
@@ -630,7 +567,16 @@ describe('PutawayRuleScreen — 이름 풀이만 실패한 갈래', () => {
       .map((row) => within(row).getAllByRole('cell')[ITEM_COLUMN_INDEX]?.textContent ?? '');
 
   it('품목 이름 풀이가 실패하면 품목 칸이 실패 문면이 되고 「알 수 없음」으로 보이지 않는다', async () => {
-    renderScreen(WITH_WAREHOUSE, allRoutes([failing(ITEMS_PATH)]));
+    renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([
+        {
+          match: (request) =>
+            request.method === 'GET' && new URL(request.url).pathname.startsWith(`${ITEMS_PATH}/`),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+      ]),
+    );
 
     const table = await waitForRuleTable();
 
@@ -681,7 +627,7 @@ describe('PutawayRuleScreen — 이름 풀이만 실패한 갈래', () => {
  * 밝히지 않으면 잘린 목록으로 이름을 푼 **정상 규칙**이 「알 수 없음」으로 보이고, 그 문구는
  * *값이 잘못됐다*는 뜻이라 사용자가 정확히 반대로 읽는다.
  */
-describe('PutawayRuleScreen — 이름 목록이 잘린 갈래', () => {
+describe('PutawayRulePanel — 이름 목록이 잘린 갈래', () => {
   it('전부 다 왔으면 잘림 안내가 서지 않는다', async () => {
     renderScreen(WITH_WAREHOUSE);
 
@@ -709,19 +655,6 @@ describe('PutawayRuleScreen — 이름 목록이 잘린 갈래', () => {
 
     expect(await screen.findByText(t.notes.nameLookupTruncated)).toBeInTheDocument();
   });
-
-  /**
-   * 창고·품목은 **자기 선택칸**이 잘림을 말한다 — 표 아래 안내가 그 몫까지 가져가면 같은
-   * 사실이 두 자리에 서고, 어느 축이 잘렸는지가 흐려진다.
-   */
-  it('품목 목록이 잘리면 선택칸이 말하고 표 아래 안내는 서지 않는다', async () => {
-    renderScreen(WITH_WAREHOUSE, allRoutes([route(ITEMS_PATH, itemFixtures, { total: 9999 })]));
-
-    await waitForRows();
-
-    expect(await screen.findByText(t.filters.lookupTruncated)).toBeInTheDocument();
-    expect(screen.queryByText(t.notes.nameLookupTruncated)).not.toBeInTheDocument();
-  });
 });
 
 /**
@@ -734,81 +667,22 @@ describe('PutawayRuleScreen — 이름 목록이 잘린 갈래', () => {
  * 세 상태는 **응답 상태로만** 갈린다 — 부품에 `options: []`를 직접 넘기는 시험은 이유를 담을
  * 자리가 원리적으로 없어 이 셋을 가르지 못한다. 그래서 화면 층에서 잰다.
  */
-describe('PutawayRuleScreen — 선택칸 자리표시', () => {
-  const warehouseTrigger = (): HTMLElement =>
-    screen.getByRole('combobox', { name: t.fields.warehouse });
+describe('PutawayRulePanel — 선택칸 자리표시', () => {
   const itemTrigger = (): HTMLElement => screen.getByRole('combobox', { name: t.fields.item });
 
-  it('창고 조회가 0건을 돌려주면 「고를 창고가 없습니다」라고 말한다', async () => {
-    renderScreen('/', allRoutes([route(WAREHOUSES_PATH, [])]));
+  /** 창고 상세의 탭이라 품목 칸은 늘 열려 있다 — 잠긴 사유도 「없다」도 말하지 않는다. */
+  it('품목 칸이 열려 있고 「없다」고 말하지 않는다', async () => {
+    renderScreen(WITH_WAREHOUSE);
 
-    await waitFor(() => {
-      expect(warehouseTrigger()).toHaveTextContent(t.filters.noWarehouseOptions);
-    });
-  });
+    await waitForRows();
 
-  /**
-   * **화면의 첫 그림마다 지나는 자리다.** 응답이 오기 전에 「없다」고 하면 그 순간이 곧 거짓이다.
-   * 양성 기준은 「요청이 실제로 나갔다」 — 「아직 안 보냈다」와 「보냈는데 안 왔다」는 다른 상태다.
-   */
-  it('창고 조회가 아직 오지 않았으면 「없다」고 말하지 않는다', async () => {
-    const { urls } = renderScreen('/', allRoutes(), (request) =>
-      request.url.includes(WAREHOUSES_PATH),
-    );
-
-    await waitFor(() => {
-      expect(countOf(urls, WAREHOUSES_PATH)).toBe(1);
-    });
-
-    expect(warehouseTrigger()).not.toHaveTextContent(t.filters.noWarehouseOptions);
-  });
-
-  /**
-   * 실패에서 「없다」고 말하면 **한 칸 안에서 두 문장이 어긋난다** — 트리거는 「없다」,
-   * 아래 안내는 「못 불러왔다」. 사용자는 컨트롤 안의 글자를 먼저 읽고 마스터가 비었다고 읽는다.
-   */
-  it('창고 조회가 실패하면 「없다」고 말하지 않고 안내만 선다', async () => {
-    renderScreen('/', allRoutes([failing(WAREHOUSES_PATH)]));
-
-    /* 양성 기준 — 실패 안내가 실제로 섰다. 음성 단언은 그 뒤에 잰다. */
-    expect(await screen.findByText(t.filters.lookupFailed)).toBeInTheDocument();
-    expect(warehouseTrigger()).not.toHaveTextContent(t.filters.noWarehouseOptions);
-  });
-
-  /**
-   * 품목은 **창고 전에 조회가 열리지도 않는다.** 열리지 않은 조회는 0건을 확인한 적이 없으므로
-   * 「없다」고 단정할 근거가 없다 — 잠긴 사유는 안내가 따로 말한다.
-   */
-  it('품목 조회가 열리지도 않았으면 「없다」고 말하지 않는다', async () => {
-    const { urls } = renderScreen();
-
-    await screen.findByText(t.empty.noWarehouseTitle);
-
-    expect(countOf(urls, ITEMS_PATH)).toBe(0);
+    expect(itemTrigger()).toBeEnabled();
     expect(itemTrigger()).not.toHaveTextContent(t.filters.noItemOptions);
-    expect(screen.getByText(t.filters.itemNeedsWarehouse)).toBeInTheDocument();
-  });
-
-  it('품목 조회가 0건을 돌려주면 「고를 품목이 없습니다」라고 말한다', async () => {
-    renderScreen(WITH_WAREHOUSE, allRoutes([route(ITEMS_PATH, [])]));
-
-    await waitFor(() => {
-      expect(itemTrigger()).toHaveTextContent(t.filters.noItemOptions);
-    });
-  });
-
-  /** 목록이 왔으면 「전체」가 서고 자리표시는 뜨지 않는다 — 짝이 되는 양성 갈래다. */
-  it('목록이 오면 「전체」가 서고 자리표시가 뜨지 않는다', async () => {
-    renderScreen();
-
-    await waitFor(() => {
-      expect(warehouseTrigger()).toHaveTextContent(t.filters.all);
-    });
-    expect(warehouseTrigger()).not.toHaveTextContent(t.filters.noWarehouseOptions);
+    expect(screen.queryByText(t.filters.itemNeedsWarehouse)).not.toBeInTheDocument();
   });
 });
 
-describe('PutawayRuleScreen — 조건과 쪽', () => {
+describe('PutawayRulePanel — 조건과 쪽', () => {
   it('품목 조건이 조회와 주소에 함께 실린다', async () => {
     const { urls, user } = renderScreen(WITH_WAREHOUSE);
 
@@ -822,29 +696,33 @@ describe('PutawayRuleScreen — 조건과 쪽', () => {
     expect(currentLocation()).toContain('item=9101');
   });
 
-  /** 창고를 바꾸면 앞 창고에서 고른 품목은 이 창고의 조건이 아니다. */
-  it('창고를 바꾸면 품목 조건이 함께 풀린다', async () => {
-    const { user } = renderScreen('/?wh=9201&item=9101');
-
-    await waitForRows();
-    await selectWarehouse(user, `SYN-WH-02 · 합성창고 나${t.values.inactiveSuffix}`);
-
-    await waitFor(() => {
-      expect(currentLocation()).toContain('wh=9202');
-    });
-    expect(currentLocation()).not.toContain('item=');
-  });
-
-  it('초기화가 조건을 전부 되돌린다', async () => {
+  /** 창고는 상세가 고른 것이라 초기화가 풀지 않는다 — 품목 · 사용 중만만 되돌린다. */
+  it('초기화가 창고는 두고 조건을 되돌린다', async () => {
     const { user } = renderScreen('/?wh=9201&item=9101&active=1');
 
     await waitForRows();
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
     await waitFor(() => {
-      expect(currentLocation()).not.toContain('wh=');
+      expect(currentLocation()).not.toContain('item=');
     });
-    expect(await screen.findByText(t.empty.noWarehouseTitle)).toBeInTheDocument();
+    expect(currentLocation()).not.toContain('active=');
+    expect(currentLocation()).toContain('wh=9201');
+  });
+
+  /** 창고·Location 화면의 주소 키(탭 · 창고 조건)는 이 탭의 조건을 바꿔도 남는다. */
+  it('조건을 바꿔도 창고 상세의 주소 키가 남는다', async () => {
+    const { user } = renderScreen('/?wh=9201&tab=putaway&plant=9001');
+
+    await waitForRows();
+    await user.click(screen.getByRole('checkbox', { name: t.filters.activeOnly }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('active=1');
+    });
+    expect(currentLocation()).toContain('tab=putaway');
+    expect(currentLocation()).toContain('plant=9001');
+    expect(currentLocation()).toContain('wh=9201');
   });
 
   it('쪽을 옮기면 주소와 조회에 그 쪽이 실린다', async () => {
@@ -855,6 +733,7 @@ describe('PutawayRuleScreen — 조건과 쪽', () => {
       balancesRoute,
       route(WAREHOUSES_PATH, warehouseFixtures),
       route(LOCATIONS_PATH, locationFixtures),
+      itemDetailRoute,
       route(ITEMS_PATH, itemFixtures),
       route(UOMS_PATH, uomFixtures),
     ]);
@@ -877,6 +756,7 @@ describe('PutawayRuleScreen — 조건과 쪽', () => {
       balancesRoute,
       route(WAREHOUSES_PATH, warehouseFixtures),
       route(LOCATIONS_PATH, locationFixtures),
+      itemDetailRoute,
       route(ITEMS_PATH, itemFixtures),
       route(UOMS_PATH, uomFixtures),
     ]);
@@ -903,7 +783,7 @@ describe('PutawayRuleScreen — 조건과 쪽', () => {
   });
 });
 
-describe('PutawayRuleScreen — 규칙 고르기', () => {
+describe('PutawayRulePanel — 규칙 고르기', () => {
   it('행을 고르면 주소에 실리고 조건·쪽이 그대로 남는다', async () => {
     const { user } = renderScreen('/?wh=9201&item=9101');
 
@@ -955,7 +835,7 @@ describe('PutawayRuleScreen — 규칙 고르기', () => {
  * **현재 적재 배선** — 규칙 표와 재고 잔액은 계약이 다르다(기준정보 대 자재창고).
  * 둘을 잇는 것은 화면이며, 그 이음매가 어긋나면 **규칙이 남의 자리 잔액을 자기 사용률로 읽는다.**
  */
-describe('PutawayRuleScreen — 현재 적재와 사용률', () => {
+describe('PutawayRulePanel — 현재 적재와 사용률', () => {
   const balanceQueries = (urls: URL[]): URLSearchParams[] =>
     urls.filter((url) => url.pathname === BALANCES_PATH).map((url) => url.searchParams);
 
@@ -1127,7 +1007,7 @@ describe('PutawayRuleScreen — 현재 적재와 사용률', () => {
  * **C2-7 배선** — 같은 (품목·창고·위치·우선순위) 활성 규칙이 이 쪽에 둘 이상이면 어느 쪽이
  * 이기는지 데이터가 정하지 않는다. 표식이 없으면 그 사실이 화면 어디에도 드러나지 않는다.
  */
-describe('PutawayRuleScreen — 중복 표식', () => {
+describe('PutawayRulePanel — 중복 표식', () => {
   const twinRules = [
     ruleFixtureAt(9001),
     { ...ruleFixtureAt(9001), putawayRuleId: 9005 },
@@ -1154,7 +1034,7 @@ describe('PutawayRuleScreen — 중복 표식', () => {
   });
 });
 
-describe('PutawayRuleScreen — 실패와 다시 조회', () => {
+describe('PutawayRulePanel — 실패와 다시 조회', () => {
   const failingDuplicateIndex: StubRoute = {
     match: (request) => {
       const url = new URL(request.url);
@@ -1250,16 +1130,9 @@ describe('PutawayRuleScreen — 실패와 다시 조회', () => {
     expect(duplicateIndexCountOf(urls)).toBe(beforeDuplicateIndex + 1);
     expect(countOf(urls, UNCOVERED_PATH)).toBe(beforeUncovered + 1);
   });
-
-  /** 선택지를 못 받았으면 그 사실을 밝힌다 — 감추면 「그런 창고가 없다」로 결론짓는다. */
-  it('창고 선택지 실패를 안내로 밝힌다', async () => {
-    renderScreen('/', allRoutes([failing(WAREHOUSES_PATH)]));
-
-    expect(await screen.findByText(t.filters.lookupFailed)).toBeInTheDocument();
-  });
 });
 
-describe('PutawayRuleScreen — 빈 목록', () => {
+describe('PutawayRulePanel — 빈 목록', () => {
   /** **C1-3.** 0건은 조건을 줄이거나 「사용 중만」을 끄면 나올 수 있다. */
   it('0건이면 빈 상태 문구가 서고 행이 없다', async () => {
     renderScreen(WITH_WAREHOUSE, allRoutes([route(RULES_PATH, [])]));
@@ -1290,6 +1163,26 @@ describe('PutawayRuleScreen — 빈 목록', () => {
 });
 
 /* ── 등록·수정 ───────────────────────────────────────────────────────── */
+
+/** 편집은 대화상자다(창고 상세의 탭). 품목 찾기 · 끄기/켜기 · 파기 확인 창은 그 위에 하나 더 뜬다. */
+const editorDialog = (): HTMLElement | null => screen.queryByRole('dialog', { name: t.panes.form });
+
+/** 편집 대화상자를 뺀 창들 — 품목 찾기 · 전환 확인 · 파기 확인. */
+const otherDialogs = (): HTMLElement[] => {
+  const editor = editorDialog();
+
+  return screen.queryAllByRole('dialog').filter((dialog) => dialog !== editor);
+};
+
+/** 편집 대화상자 위에 뜬 창 하나. */
+const topDialog = (): HTMLElement => {
+  const dialogs = otherDialogs();
+  if (dialogs.length !== 1) throw new Error(`위에 뜬 창이 ${String(dialogs.length)}개입니다.`);
+
+  return dialogs[0] as HTMLElement;
+};
+
+const findTopDialog = (): Promise<HTMLElement> => waitFor(topDialog);
 
 const formPane = (): HTMLElement => screen.getByRole('region', { name: t.panes.form });
 
@@ -1333,27 +1226,14 @@ const updateRoute = (respond?: StubRoute['respond']): StubRoute => ({
 const bodyOf = async (request: Request): Promise<Record<string, unknown>> =>
   (await request.json()) as Record<string, unknown>;
 
-describe('PutawayRuleScreen — 편집 자리가 서는 순서', () => {
-  /** 등록 본문이 창고를 요구한다 — 만들 대상이 정해지기 전에는 폼을 열 자리가 없다. */
-  it('창고를 고르기 전에는 규칙 추가가 사유와 함께 잠긴다', async () => {
-    renderScreen();
+describe('PutawayRulePanel — 편집 자리가 서는 순서', () => {
+  it('창고가 있으면 규칙 추가가 열린다', async () => {
+    renderScreen(WITH_WAREHOUSE);
 
-    await screen.findByText(t.empty.noWarehouseTitle);
-
-    expect(createButton()).toBeDisabled();
-    /* **C4-D** — 잠긴 자리에는 반드시 사유가 붙는다(배치 규범 4). */
-    expect(screen.getByText(t.actionReasons.addNeedsWarehouse)).toBeInTheDocument();
-  });
-
-  /** 짝 방향 — 창고를 고르면 사유가 사라지고 버튼이 열린다. 없으면 「늘 잠긴다」로 그려도 통과한다. */
-  it('창고를 고르면 그 사유가 사라지고 규칙 추가가 열린다', async () => {
-    const { user } = renderScreen();
-
-    await selectWarehouse(user);
     await waitForRows();
 
     expect(createButton()).toBeEnabled();
-    expect(screen.queryByText(t.actionReasons.addNeedsWarehouse)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.addNeedsActiveWarehouse)).not.toBeInTheDocument();
   });
 
   /** 주소를 직접 고쳐 버튼의 진입 가드를 우회해도 미사용 창고에는 등록할 수 없다. */
@@ -1368,12 +1248,14 @@ describe('PutawayRuleScreen — 편집 자리가 서는 순서', () => {
     ).toBeInTheDocument();
   });
 
-  /** 빈 폼을 두면 「값이 없는 규칙」으로 읽힌다 — 고르라는 안내가 정확하다. */
-  it('규칙을 고르기 전에는 안내가 선다', async () => {
+  /** 편집은 대화상자다 — 규칙을 고르거나 추가하기 전에는 열리지 않는다. */
+  it('규칙을 고르기 전에는 편집 창이 없다', async () => {
     renderScreen(WITH_WAREHOUSE);
 
-    expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
-    expect(within(formPane()).queryByLabelText(t.fields.capacity)).not.toBeInTheDocument();
+    await waitForRows();
+
+    expect(screen.queryByRole('dialog', { name: t.panes.form })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.panes.form })).not.toBeInTheDocument();
   });
 
   /** 갈래 21 — 빈 초안이 열리되 **우선순위만** 기본값을 갖는다(생성 타입에서 필수다). */
@@ -1455,7 +1337,7 @@ describe('PutawayRuleScreen — 편집 자리가 서는 순서', () => {
  * 없는 규칙을 가리키는 주소는 **정리하되 히스토리를 늘리지 않는다**(사본 체크리스트 1번).
  * 늘리면 뒤로가기가 없는 규칙으로 되돌아가고 그 자리에서 같은 정리가 되풀이돼 사용자가 갇힌다.
  */
-describe('PutawayRuleScreen — 없는 규칙을 가리키는 주소', () => {
+describe('PutawayRulePanel — 없는 규칙을 가리키는 주소', () => {
   const missingDetail: StubRoute = {
     match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
     respond: () => jsonResponse({ message: '' }, { status: 404 }),
@@ -1523,7 +1405,7 @@ describe('PutawayRuleScreen — 없는 규칙을 가리키는 주소', () => {
   });
 });
 
-describe('PutawayRuleScreen — 폼의 위치 칸 (C3-3 · C3-4)', () => {
+describe('PutawayRulePanel — 폼의 위치 칸 (C3-3 · C3-4)', () => {
   const openCreateForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
     await waitForRows();
     await user.click(createButton());
@@ -1562,17 +1444,18 @@ describe('PutawayRuleScreen — 폼의 위치 칸 (C3-3 · C3-4)', () => {
     expect(within(formPane()).getByRole('combobox', { name: t.fields.location })).toBeEnabled();
   });
 
-  /** 미사용 창고는 과거 규칙 조회에는 남지만 신규 규칙의 참조로 고를 수 없다. */
-  it('신규 폼에서는 미사용 창고를 고를 수 없다', async () => {
+  /** 창고 상세의 탭이라 등록 폼에서도 창고는 고르지 않는다 — 그 창고가 값으로 보인다. */
+  it('신규 폼의 창고는 상세가 고른 창고로 고정된다', async () => {
     const { user } = renderScreen(WITH_WAREHOUSE);
 
     await openCreateForm(user);
-    await user.click(within(formPane()).getByRole('combobox', { name: t.fields.warehouse }));
+
     expect(
-      screen.queryByRole('option', {
-        name: `SYN-WH-02 · 합성창고 나${t.values.inactiveSuffix}`,
-      }),
+      within(formPane()).queryByRole('combobox', { name: t.fields.warehouse }),
     ).not.toBeInTheDocument();
+    expect(within(formPane()).getByLabelText(t.fields.warehouse)).toHaveTextContent(
+      WAREHOUSE_LABEL,
+    );
   });
 
   /**
@@ -1593,7 +1476,7 @@ describe('PutawayRuleScreen — 폼의 위치 칸 (C3-3 · C3-4)', () => {
   });
 });
 
-describe('PutawayRuleScreen — 품목 찾기 (갈래 23)', () => {
+describe('PutawayRulePanel — 품목 찾기 (갈래 23)', () => {
   const openPicker = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
     await waitForRows();
     await user.click(createButton());
@@ -1606,7 +1489,7 @@ describe('PutawayRuleScreen — 품목 찾기 (갈래 23)', () => {
 
     await openPicker(user);
 
-    const dialog = within(screen.getByRole('dialog'));
+    const dialog = within(topDialog());
 
     await user.type(dialog.getByLabelText(t.itemPicker.keywordLabel), '합성');
     await user.click(dialog.getByRole('button', { name: t.actions.searchItems }));
@@ -1619,18 +1502,16 @@ describe('PutawayRuleScreen — 품목 찾기 (갈래 23)', () => {
     expect(within(formPane()).getByLabelText(t.fields.item)).toHaveTextContent(
       'SYN-ITEM-02 · 합성품목 나',
     );
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(otherDialogs()).toHaveLength(0);
   });
 
   it('창을 닫으면 고르지 않는다', async () => {
     const { user } = renderScreen(WITH_WAREHOUSE);
 
     await openPicker(user);
-    await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: messages.common.cancel }),
-    );
+    await user.click(within(topDialog()).getByRole('button', { name: messages.common.cancel }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(otherDialogs()).toHaveLength(0);
     /* 닫기만 했으니 **아직 고르지 않은 상태**다 — 「알 수 없음」(값이 잘못됐다)이 아니다. */
     expect(within(formPane()).getByLabelText(t.fields.item)).toHaveTextContent(
       t.form.itemNotChosen,
@@ -1638,7 +1519,7 @@ describe('PutawayRuleScreen — 품목 찾기 (갈래 23)', () => {
   });
 });
 
-describe('PutawayRuleScreen — 등록 저장 (C3-5 · C3-10)', () => {
+describe('PutawayRulePanel — 등록 저장 (C3-5 · C3-10)', () => {
   /**
    * 품목 9101 · 창고 전체 · 우선순위 100을 고른다 — 픽스처에 **같은 네 축의 활성 규칙이 없어**
    * 중복 판정이 이 시험을 막지 않는다(중복 갈래는 아래 전용 묶음이 잰다).
@@ -1651,7 +1532,7 @@ describe('PutawayRuleScreen — 등록 저장 (C3-5 · C3-10)', () => {
     await within(formPane()).findByLabelText(t.fields.priorityNo);
     await user.click(within(formPane()).getByRole('button', { name: t.actions.openItemPicker }));
 
-    const dialog = within(screen.getByRole('dialog'));
+    const dialog = within(topDialog());
 
     await user.type(dialog.getByLabelText(t.itemPicker.keywordLabel), '합성');
     await user.click(dialog.getByRole('button', { name: t.actions.searchItems }));
@@ -1755,7 +1636,7 @@ describe('PutawayRuleScreen — 등록 저장 (C3-5 · C3-10)', () => {
   });
 });
 
-describe('PutawayRuleScreen — 수정 저장 (C3-11 · C3-12)', () => {
+describe('PutawayRulePanel — 수정 저장 (C3-11 · C3-12)', () => {
   const dirtyForm = async (
     user: ReturnType<typeof userEvent.setup>,
     qty = '600',
@@ -2034,7 +1915,7 @@ describe('PutawayRuleScreen — 수정 저장 (C3-11 · C3-12)', () => {
   });
 });
 
-describe('PutawayRuleScreen — 활성 중복 선검사 (C3-8 · C3-9)', () => {
+describe('PutawayRulePanel — 활성 중복 선검사 (C3-8 · C3-9)', () => {
   /**
    * **C3-8.** 계약이 400으로 막는 조합이다. 화면이 먼저 막는 이유는 *저장을 누르기 전에 이유를
    * 아는 것*이며, 서버의 400과 이중이되 어느 하나를 등가로 보고 지우지 않는다.
@@ -2125,7 +2006,7 @@ describe('PutawayRuleScreen — 활성 중복 선검사 (C3-8 · C3-9)', () => {
   });
 });
 
-describe('PutawayRuleScreen — 위치 자체 용량 (C3-6 · C3-7)', () => {
+describe('PutawayRulePanel — 위치 자체 용량 (C3-6 · C3-7)', () => {
   const selectWarehouseWideRule = async (
     user: ReturnType<typeof userEvent.setup>,
   ): Promise<void> => {
@@ -2222,7 +2103,7 @@ describe('PutawayRuleScreen — 위치 자체 용량 (C3-6 · C3-7)', () => {
  * **나가는 중인 저장**(공유계약 G-30). 막는 것은 **전역**이고 보이는 것은 **대상에만**이다 —
  * 한 축으로 합치면 반드시 한쪽이 틀린다. 그래서 두 벌로 나눠 잰다.
  */
-describe('PutawayRuleScreen — 나가는 중인 저장의 잠금 (C3-13)', () => {
+describe('PutawayRulePanel — 나가는 중인 저장의 잠금 (C3-13)', () => {
   const holdUpdate = (request: Request): boolean =>
     request.method === 'PUT' && isDetailPath(new URL(request.url).pathname);
 
@@ -2323,9 +2204,11 @@ describe('PutawayRuleScreen — 나가는 중인 저장의 잠금 (C3-13)', () =
       expect(writesOf(requests, 'PUT')).toHaveLength(1);
     });
 
-    /* 화면 바깥에서 선택이 풀린 주소로 옮긴다 — 폼이 닫힌다. */
+    /* 화면 바깥에서 선택이 풀린 주소로 옮긴다 — 편집 창이 닫힌다. */
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
-    await screen.findByText(t.empty.noSelectionTitle);
+    await waitFor(() => {
+      expect(editorDialog()).toBeNull();
+    });
 
     // 선행 단언 — 잠금 자체는 살아 있다(요청이 아직 날아가는 중이다).
     expect(createButton()).toBeDisabled();
@@ -2368,7 +2251,7 @@ describe('PutawayRuleScreen — 나가는 중인 저장의 잠금 (C3-13)', () =
  * 「남의 저장으로 진행 표시가 도는」 자리와 「내 저장 중에 다른 저장이 시작되는」 자리 중
  * 하나가 반드시 열린다.
  */
-describe('PutawayRuleScreen — 나가는 중인 저장의 표시 (C3-14)', () => {
+describe('PutawayRulePanel — 나가는 중인 저장의 표시 (C3-14)', () => {
   const holdUpdate = (request: Request): boolean =>
     request.method === 'PUT' && isDetailPath(new URL(request.url).pathname);
 
@@ -2528,7 +2411,7 @@ describe('PutawayRuleScreen — 나가는 중인 저장의 표시 (C3-14)', () =
   });
 });
 
-describe('PutawayRuleScreen — 초안 파기 (C3-15)', () => {
+describe('PutawayRulePanel — 초안 파기 (C3-15)', () => {
   const dirtyForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
     await waitForRows();
     await selectRow(user);
@@ -2586,18 +2469,66 @@ describe('PutawayRuleScreen — 초안 파기 (C3-15)', () => {
     expect(screen.queryByText(t.dialog.discardBody)).not.toBeInTheDocument();
   });
 
-  /** 취소는 **되돌리는** 조작이라 옮겨 가지 않고 기준값으로 돌아간다. */
-  it('취소로 연 확인에서 버리면 제자리에서 값이 되돌아간다', async () => {
+  /** 편집은 대화상자라 취소는 창을 닫는다 — 고친 것이 있으면 버릴지 먼저 묻는다. */
+  it('취소로 연 확인에서 버리면 편집 창이 닫히고 고른 규칙이 풀린다', async () => {
     const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute()]));
 
     await dirtyForm(user);
     await user.click(within(formPane()).getByRole('button', { name: messages.common.cancel }));
     await user.click(await screen.findByRole('button', { name: t.actions.discardDraft }));
 
-    expect(currentLocation()).toContain('rule=9001');
     await waitFor(() => {
-      expect(capacityField()).toHaveValue('500');
+      expect(currentLocation()).not.toContain('rule=');
     });
+    expect(editorDialog()).toBeNull();
+    expect(currentLocation()).toContain('wh=9201');
+  });
+
+  /** 고친 것이 없으면 물을 것도 없다 — 수정 폼의 취소가 곧바로 창을 닫는다. */
+  it('고친 것 없는 수정 폼의 취소는 확인 없이 창을 닫는다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute()]));
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(within(formPane()).getByRole('button', { name: messages.common.cancel }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('rule=');
+    });
+    expect(editorDialog()).toBeNull();
+    expect(screen.queryByText(t.dialog.discardBody)).not.toBeInTheDocument();
+  });
+
+  /** 창 닫기(Escape)도 같은 문을 지난다 — 고친 것이 있으면 버릴지 묻고, 그대로 두면 창이 남는다. */
+  it('고친 채 편집 창을 닫으려 하면 파기 확인이 뜬다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute()]));
+
+    await dirtyForm(user);
+    fireEvent(
+      editorDialog() as HTMLElement,
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    expect(await screen.findByText(t.dialog.discardBody)).toBeInTheDocument();
+    expect(currentLocation()).toContain('rule=9001');
+  });
+
+  it('고친 것 없이 편집 창을 닫으면 고른 규칙이 주소에서 빠진다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute()]));
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    fireEvent(
+      editorDialog() as HTMLElement,
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('rule=');
+    });
+    expect(editorDialog()).toBeNull();
   });
 
   /** 등록 폼의 취소는 **폼을 닫는 것**이다 — 되돌릴 기준값이 없다. */
@@ -2612,6 +2543,7 @@ describe('PutawayRuleScreen — 초안 파기 (C3-15)', () => {
     await waitFor(() => {
       expect(currentLocation()).not.toContain('new=1');
     });
+    expect(editorDialog()).toBeNull();
   });
 });
 
@@ -2622,7 +2554,7 @@ describe('PutawayRuleScreen — 초안 파기 (C3-15)', () => {
  * 그 규율이 **가장 먼저 깨지기 쉬운 자리가 조회가 열리기 전**이다 — 열리지 않은 조회의
  * 상태를 그대로 옮기면 화면이 「시도했으나 실패했다」고 말하게 된다.
  */
-describe('PutawayRuleScreen — 갓 연 등록 폼의 문면', () => {
+describe('PutawayRulePanel — 갓 연 등록 폼의 문면', () => {
   const openCreateForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
     await waitForRows();
     await user.click(createButton());
@@ -2656,7 +2588,7 @@ describe('PutawayRuleScreen — 갓 연 등록 폼의 문면', () => {
     await openCreateForm(user);
     await user.click(within(formPane()).getByRole('button', { name: t.actions.openItemPicker }));
 
-    const dialog = within(screen.getByRole('dialog'));
+    const dialog = within(topDialog());
 
     await user.type(dialog.getByLabelText(t.itemPicker.keywordLabel), '합성');
     await user.click(dialog.getByRole('button', { name: t.actions.searchItems }));
@@ -2719,7 +2651,7 @@ describe('PutawayRuleScreen — 갓 연 등록 폼의 문면', () => {
     await openCreateForm(user);
     await user.click(within(formPane()).getByRole('button', { name: t.actions.openItemPicker }));
 
-    const dialog = within(screen.getByRole('dialog'));
+    const dialog = within(topDialog());
 
     await user.type(dialog.getByLabelText(t.itemPicker.keywordLabel), '합성');
     await user.click(dialog.getByRole('button', { name: t.actions.searchItems }));
@@ -2755,7 +2687,7 @@ describe('PutawayRuleScreen — 갓 연 등록 폼의 문면', () => {
     await openCreateForm(user);
     await user.click(within(formPane()).getByRole('button', { name: t.actions.openItemPicker }));
 
-    const dialog = within(screen.getByRole('dialog'));
+    const dialog = within(topDialog());
 
     await user.type(dialog.getByLabelText(t.itemPicker.keywordLabel), '합성');
     await user.click(dialog.getByRole('button', { name: t.actions.searchItems }));
@@ -2772,7 +2704,7 @@ describe('PutawayRuleScreen — 갓 연 등록 폼의 문면', () => {
   });
 });
 
-describe('PutawayRuleScreen — 같은 주소로는 갱신하지 않는다', () => {
+describe('PutawayRulePanel — 같은 주소로는 갱신하지 않는다', () => {
   /**
    * 화면을 바꾸지 않으면서 히스토리 칸만 늘어나면 **뒤로가기가 아무 일도 하지 않는 것처럼**
    * 보인다. 늘지 않았음은 뒤로 한 번 갔을 때 **그 앞으로** 가는 것으로만 증명된다.
@@ -2804,7 +2736,7 @@ describe('PutawayRuleScreen — 같은 주소로는 갱신하지 않는다', () 
  * 매여 있지 않으면 버려진 초안이 살아남아, 다시 그 규칙으로 돌아왔을 때 **서버 값이 아닌
  * 값**이 폼에 서고 사용자는 그것이 저장된 값이라고 읽는다.
  */
-describe('PutawayRuleScreen — 메뉴로 다시 들어오기', () => {
+describe('PutawayRulePanel — 메뉴로 다시 들어오기', () => {
   const dirtyForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
     await waitForRows();
     await selectRow(user);
@@ -2819,7 +2751,7 @@ describe('PutawayRuleScreen — 메뉴로 다시 들어오기', () => {
     await dirtyForm(user);
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
 
-    expect(await screen.findByText(t.empty.noWarehouseTitle)).toBeInTheDocument();
+    expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
     expect(currentLocation()).toBe('/');
     /*
      * ⚠ **파기 확인을 지나지 않는다** — 메뉴는 이 화면의 문 밖에 있다. 확인 없이 초안이
@@ -2847,7 +2779,7 @@ describe('PutawayRuleScreen — 메뉴로 다시 들어오기', () => {
     const before = currentLocation();
 
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
-    await screen.findByText(t.empty.noWarehouseTitle);
+    await screen.findByText(t.empty.noSelectionTitle);
 
     await user.click(screen.getByRole('button', { name: '뒤로' }));
 
@@ -2865,7 +2797,7 @@ describe('PutawayRuleScreen — 메뉴로 다시 들어오기', () => {
 
 const ACTIVATION_PANE = (): HTMLElement => screen.getByRole('region', { name: t.panes.activation });
 
-const activationDialog = (): HTMLElement => screen.getByRole('dialog');
+const activationDialog = (): HTMLElement => topDialog();
 
 const isActionPath = (pathname: string, action: 'deactivate' | 'activate'): boolean =>
   pathname === `/logistics/putaway-rules/9001:${action}` ||
@@ -2901,7 +2833,7 @@ const selectInactiveRule = async (user: ReturnType<typeof userEvent.setup>): Pro
 const holdDeactivate = (request: Request): boolean =>
   request.method === 'POST' && isActionPath(new URL(request.url).pathname, 'deactivate');
 
-describe('PutawayRuleScreen — 상세 200 뒤에만 전환이 열린다 (C4-1)', () => {
+describe('PutawayRulePanel — 상세 200 뒤에만 전환이 열린다 (C4-1)', () => {
   const holdDetail = (request: Request): boolean =>
     request.method === 'GET' && isDetailPath(new URL(request.url).pathname);
 
@@ -2939,7 +2871,7 @@ describe('PutawayRuleScreen — 상세 200 뒤에만 전환이 열린다 (C4-1)'
   it('규칙을 고르기 전에는 전환 구획을 두지 않는다', async () => {
     renderScreen(WITH_WAREHOUSE);
 
-    await screen.findByText(t.empty.noSelectionTitle);
+    await waitForRows();
 
     expect(screen.queryByRole('region', { name: t.panes.activation })).not.toBeInTheDocument();
   });
@@ -2959,7 +2891,7 @@ describe('PutawayRuleScreen — 상세 200 뒤에만 전환이 열린다 (C4-1)'
   });
 });
 
-describe('PutawayRuleScreen — 끄기 확인 창 (C4-2)', () => {
+describe('PutawayRulePanel — 끄기 확인 창 (C4-2)', () => {
   /**
    * ⭐ **C4-2.** 계약에 `:deactivate`의 400이 아예 없다 — 화면의 경고가 유일한 방어다.
    * 확인 없이 곧바로 나가면 되돌릴 수 있음에도 현장이 그사이 검증 없이 돈다.
@@ -2995,7 +2927,7 @@ describe('PutawayRuleScreen — 끄기 확인 창 (C4-2)', () => {
       within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
     );
 
-    const dialog = within(await screen.findByRole('dialog'));
+    const dialog = within(await findTopDialog());
 
     await waitFor(() => {
       expect(dialog.getByText(t.dialog.deactivateLastRule)).toBeInTheDocument();
@@ -3026,7 +2958,7 @@ describe('PutawayRuleScreen — 끄기 확인 창 (C4-2)', () => {
       within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
     );
 
-    const dialog = within(await screen.findByRole('dialog'));
+    const dialog = within(await findTopDialog());
 
     await waitFor(() => {
       expect(dialog.getByText(t.dialog.deactivateRemaining(1))).toBeInTheDocument();
@@ -3052,7 +2984,7 @@ describe('PutawayRuleScreen — 끄기 확인 창 (C4-2)', () => {
       within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
     );
 
-    const dialog = within(await screen.findByRole('dialog'));
+    const dialog = within(await findTopDialog());
 
     await waitFor(() => {
       expect(dialog.getByText(t.dialog.deactivateCoverageUnknown)).toBeInTheDocument();
@@ -3061,7 +2993,7 @@ describe('PutawayRuleScreen — 끄기 확인 창 (C4-2)', () => {
   });
 });
 
-describe('PutawayRuleScreen — 켜기 전 중복 선검사 (C4-3)', () => {
+describe('PutawayRulePanel — 켜기 전 중복 선검사 (C4-3)', () => {
   /**
    * ⭐ **C4-3.** 계약이 같은 (품목·창고·위치·우선순위) 활성 중복을 400으로 막는다 —
    * 확인 창까지 지나간 뒤 거절을 받으면 사용자는 무엇이 잘못됐는지 알 수 없다.
@@ -3171,7 +3103,7 @@ describe('PutawayRuleScreen — 켜기 전 중복 선검사 (C4-3)', () => {
   });
 });
 
-describe('PutawayRuleScreen — 전환의 헤더 규약 (C4-6)', () => {
+describe('PutawayRulePanel — 전환의 헤더 규약 (C4-6)', () => {
   /**
    * ⭐ **C4-6 · 위험 R2.** 잠금 토큰의 출처가 **상세 경로 하나**임을 값으로 견준다 —
    * 액션 경로에서 꺼내면 언제나 비어 있어 훅이 **요청을 보내지 않고 멈춘다**(눌러도 아무 일이 없다).
@@ -3247,7 +3179,7 @@ describe('PutawayRuleScreen — 전환의 헤더 규약 (C4-6)', () => {
   });
 });
 
-describe('PutawayRuleScreen — 전환의 성공과 실패 (C4-7 · C4-8)', () => {
+describe('PutawayRulePanel — 전환의 성공과 실패 (C4-7 · C4-8)', () => {
   /**
    * ⭐ **C4-8.** 성공 뒤 목록이 다시 서고 그 행의 사용 표식이 바뀐다. 무효화를 빠뜨리면
    * 화면은 끈 규칙을 「사용 중」으로 계속 보이고, 다음 저장은 낡은 토큰으로 조용히 409다.
@@ -3314,7 +3246,7 @@ describe('PutawayRuleScreen — 전환의 성공과 실패 (C4-7 · C4-8)', () =
     );
 
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(otherDialogs()).toHaveLength(0);
     });
   });
 
@@ -3414,7 +3346,7 @@ describe('PutawayRuleScreen — 전환의 성공과 실패 (C4-7 · C4-8)', () =
     await user.click(within(activationDialog()).getByRole('button', { name: t.actions.activate }));
 
     expect(await screen.findByText('합성 중복 거절')).toBeInTheDocument();
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(topDialog()).toBeInTheDocument();
   });
 
   /** 409에는 「최신 불러오기」를 함께 낸다 — 이 쓰기에는 잠글 대상이 있다. */
@@ -3450,7 +3382,7 @@ describe('PutawayRuleScreen — 전환의 성공과 실패 (C4-7 · C4-8)', () =
   });
 });
 
-describe('PutawayRuleScreen — 응답을 받지 못한 요청 (C4-A)', () => {
+describe('PutawayRulePanel — 응답을 받지 못한 요청 (C4-A)', () => {
   const offline = (): Response => {
     throw new Error('합성 네트워크 단절');
   };
@@ -3568,7 +3500,7 @@ describe('PutawayRuleScreen — 응답을 받지 못한 요청 (C4-A)', () => {
   });
 });
 
-describe('PutawayRuleScreen — 전환이 나가는 중 (G-30)', () => {
+describe('PutawayRulePanel — 전환이 나가는 중 (G-30)', () => {
   const startDeactivate = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
     await waitForRows();
     await selectRow(user);
@@ -3718,7 +3650,7 @@ describe('PutawayRuleScreen — 전환이 나가는 중 (G-30)', () => {
 
     fireEvent(activationDialog(), new Event('cancel', { bubbles: false, cancelable: true }));
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(otherDialogs()).toHaveLength(0);
     });
 
     /* ① 공동 잠금이 살아 있다 — 요청은 아직 날아가는 중이다. */
@@ -3771,7 +3703,7 @@ describe('PutawayRuleScreen — 전환이 나가는 중 (G-30)', () => {
   });
 });
 
-describe('PutawayRuleScreen — 확인 창이 열린 사이 상태가 뒤집히면', () => {
+describe('PutawayRulePanel — 확인 창이 열린 사이 상태가 뒤집히면', () => {
   /**
    * **열린 창의 뜻은 열 때 정해지고, 대상의 상태는 그 뒤에도 바뀐다.**
    *
@@ -3814,7 +3746,7 @@ describe('PutawayRuleScreen — 확인 창이 열린 사이 상태가 뒤집히�
     );
 
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(otherDialogs()).toHaveLength(0);
     });
     expect(activationRequests(requests, 'deactivate')).toHaveLength(0);
   });
@@ -3850,7 +3782,7 @@ describe('PutawayRuleScreen — 확인 창이 열린 사이 상태가 뒤집히�
  * 연 「사용 중지」 창이 **규칙 B 위에 그대로 남는다** — 그 규칙은 이미 꺼져 있어 낼 수도 없는
  * 조작이고, 그대로 확인을 누르면 확인 창이 말한 것과 다른 일이 일어난다.
  */
-describe('PutawayRuleScreen — 주소로 대상이 바뀌면', () => {
+describe('PutawayRulePanel — 주소로 대상이 바뀌면', () => {
   it('열려 있던 확인 창이 함께 걷힌다', async () => {
     const { user } = renderScreen(WITH_WAREHOUSE, allRoutes(), undefined, '?wh=9201&rule=9003');
 
@@ -3870,7 +3802,7 @@ describe('PutawayRuleScreen — 주소로 대상이 바뀌면', () => {
     expect(
       await within(ACTIVATION_PANE()).findByRole('button', { name: t.actions.activate }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(otherDialogs()).toHaveLength(0);
   });
 });
 
@@ -3882,7 +3814,7 @@ describe('PutawayRuleScreen — 주소로 대상이 바뀌면', () => {
  * 「아무 일도 없었다」로 읽히는데, 그 다음 조작이 정확히 금지된 조작이다 — 같은 버튼을 다시
  * 누르면 쓰기 훅이 **새 멱등 키**를 만들어 이중 전송이 열린다.
  */
-describe('PutawayRuleScreen — 창이 닫힌 뒤 도착한 전환 실패 (C4-5 실패 축)', () => {
+describe('PutawayRulePanel — 창이 닫힌 뒤 도착한 전환 실패 (C4-5 실패 축)', () => {
   const offline = (): Response => {
     throw new Error('합성 네트워크 단절');
   };
@@ -3909,7 +3841,7 @@ describe('PutawayRuleScreen — 창이 닫힌 뒤 도착한 전환 실패 (C4-5 
 
     fireEvent(activationDialog(), new Event('cancel', { bubbles: false, cancelable: true }));
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(otherDialogs()).toHaveLength(0);
     });
   };
 
@@ -4017,7 +3949,7 @@ describe('PutawayRuleScreen — 창이 닫힌 뒤 도착한 전환 실패 (C4-5 
  * 그래서 **갈래가 뒤집힌 때만** 걷는다. 가르는 값은 이미 있는 `sentIntentRef`이며, 이 짝이
  * 그 값의 두 번째 쓸모를 재는 자리다.
  */
-describe('PutawayRuleScreen — 응답 없음 안내와 갈래 뒤집힘 (C5-A)', () => {
+describe('PutawayRulePanel — 응답 없음 안내와 갈래 뒤집힘 (C5-A)', () => {
   const holdDeactivate = (request: Request): boolean =>
     request.method === 'POST' && isActionPath(new URL(request.url).pathname, 'deactivate');
 
@@ -4070,7 +4002,7 @@ describe('PutawayRuleScreen — 응답 없음 안내와 갈래 뒤집힘 (C5-A)'
 
     fireEvent(activationDialog(), new Event('cancel', { bubbles: false, cancelable: true }));
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(otherDialogs()).toHaveLength(0);
     });
 
     release();
@@ -4178,7 +4110,7 @@ describe('PutawayRuleScreen — 응답 없음 안내와 갈래 뒤집힘 (C5-A)'
   });
 });
 
-describe('PutawayRuleScreen — 전환 성공 문면 (m-2)', () => {
+describe('PutawayRulePanel — 전환 성공 문면 (m-2)', () => {
   /**
    * ⛔ **전환은 폼을 저장하지 않는다.** 이 화면은 **초안이 더러운 채로도 전환할 수 있어**
    * (전환 손잡이에 「고친 것이 있는가」 문이 없다) 저장 축 문면을 그대로 쓰면 사용자가

@@ -13,6 +13,7 @@ export const warehouseLocation = {
   tabs: {
     warehouse: '창고 정보',
     location: 'Location',
+    putaway: '적치 규칙',
   },
   actions: {
     addWarehouse: '창고 추가',

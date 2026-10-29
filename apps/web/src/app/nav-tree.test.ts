@@ -268,7 +268,6 @@ describe('주 메뉴 트리', () => {
       '/equipment/gauge-master → straighten',
       '/equipment/gauge-calibration → straighten',
       '/master-data/warehouse-location → warehouse',
-      '/master-data/putaway-rule → warehouse',
       '/master-data/warehouse-layout → warehouse',
       '/master-data/master-change → history',
       '/equipment/failures → build',

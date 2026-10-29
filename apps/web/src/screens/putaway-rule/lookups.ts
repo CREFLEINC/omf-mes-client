@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequest } from '../../patterns/request';
+import { runRequest, toApiError } from '../../patterns/request';
 import {
   isPutawayStaging,
   locationDisplayName,
@@ -495,8 +495,21 @@ export const useItemLookup = (itemIds: readonly number[]): ReferenceSource => {
   const results = useQueries({
     queries: uniqueIds.map((itemId) => ({
       queryKey: lookupKeys.item(itemId),
-      queryFn: () =>
-        runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } })),
+      /*
+       * 없는 품목(404)은 그 줄만 「알 수 없음」이다 — 실패로 두면 `isError` 가 모든 줄을 덮어 정상 품목까지
+       * 「불러오지 못함」으로 보인다.
+       */
+      queryFn: async () => {
+        try {
+          return await runRequest(() =>
+            client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
+          );
+        } catch (error) {
+          const apiError = toApiError(error);
+          if (apiError.kind === 'http' && apiError.status === 404) return null;
+          throw error;
+        }
+      },
     })),
   });
 

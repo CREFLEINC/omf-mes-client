@@ -845,6 +845,81 @@ const putRoute = (respond: StubRoute['respond']): StubRoute => ({
   respond,
 });
 
+/** 적치 규칙 탭이 부르는 것 — 규칙 목록과 규칙 없는 품목(둘 다 0건이라 품목 이름 풀이는 나가지 않는다). */
+const putawayRoutes = (): StubRoute[] => [
+  {
+    match: (request) => isGet(request, '/logistics/putaway-rules/uncovered-items'),
+    respond: () => jsonResponse(listBody([])),
+  },
+  {
+    match: (request) => isGet(request, '/logistics/putaway-rules'),
+    respond: () => jsonResponse(listBody([])),
+  },
+];
+
+/** 적치 규칙은 창고 상세의 셋째 탭이다(사용자 지시 2026-10-29) — 고른 창고(`wh`)의 규칙을 그 안에서 다룬다. */
+describe('WarehouseLocationScreen — 적치 규칙 탭', () => {
+  it('적치 규칙 탭을 누르면 tab=putaway 로 그 창고의 규칙 목록이 열린다', async () => {
+    let search = '';
+    const Probe = () => {
+      search = useLocation().search;
+      return null;
+    };
+    const { fetch, requests } = createRecordingFetch([
+      warehouseListRoute(),
+      warehouseDetailRoute(warehouseFixtures[0]!),
+      locationListRoute(),
+      ...putawayRoutes(),
+      ...lookupRoutes(),
+    ]);
+    renderWithProviders(
+      <>
+        <WarehouseLocationScreen />
+        <Probe />
+      </>,
+      { fetch, route: `${ROUTE}?wh=1001` },
+    );
+    const user = userEvent.setup();
+
+    await screen.findByLabelText('창고명');
+    await user.click(screen.getByRole('tab', { name: messages.warehouseLocation.tabs.putaway }));
+
+    expect(
+      screen.getByRole('tab', { name: messages.warehouseLocation.tabs.putaway }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await waitFor(() => expect(new URLSearchParams(search).get('tab')).toBe('putaway'));
+    expect(
+      await screen.findByRole('region', { name: messages.putawayRule.panes.list }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        requests
+          .find((request) => request.url.pathname === '/logistics/putaway-rules')
+          ?.url.searchParams.get('warehouseId'),
+      ).toBe('1001');
+    });
+  });
+
+  /** Location 탭만 관리수준으로 잠긴다 — 창고 단위로 관리하는 창고에도 적치 규칙(창고 전체 규칙)은 있다. */
+  it('위치를 관리하지 않는 창고도 tab=putaway 로 열면 적치 규칙 탭이 열린다', async () => {
+    renderScreen(
+      [
+        warehouseListRoute(),
+        warehouseDetailRoute(warehouseFixtures[1]!),
+        locationListRoute(),
+        ...putawayRoutes(),
+        ...lookupRoutes(),
+      ],
+      '?wh=1002&tab=putaway',
+    );
+
+    await screen.findByLabelText('창고명');
+    expect(
+      screen.getByRole('tab', { name: messages.warehouseLocation.tabs.putaway }),
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
 describe('WarehouseLocationScreen — 창고 수정 저장', () => {
   it('기존 Location 계층보다 낮은 관리수준으로 변경하지 못한다', async () => {
     const { requests, user } = renderScreen(

@@ -19,6 +19,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   tabs: {
     warehouse: 'Thông tin kho',
     location: 'Location',
+    putaway: 'Quy tắc cất hàng',
   },
   actions: {
     addWarehouse: 'Thêm kho',

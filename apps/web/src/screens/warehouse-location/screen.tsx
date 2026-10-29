@@ -49,12 +49,16 @@ import type {
   WarehouseFilters,
   WarehouseFormValues,
 } from './types';
+import { PutawayRulePanel } from '../putaway-rule/screen';
 import { WarehouseFormPane } from './warehouse-form-pane';
 import { WarehouseFilterBar } from './warehouse-filter-bar';
 import { WarehouseListPane } from './warehouse-list-pane';
 import { WAREHOUSE_FORM_FIELDS, validateWarehouse } from './warehouse-validation';
 
 const t = messages.warehouseLocation;
+
+/** 적치 규칙 탭이 주소에 두는 키 — 다른 창고로 옮기거나 새 창고를 열면 함께 지운다. */
+const PUTAWAY_PARAMS_CLEARED = { item: null, active: null, page: null, rule: null, new: null };
 
 type WarehouseDetailResponse = components['schemas']['WarehouseDetailResponse'];
 type LocationDetailResponse = components['schemas']['LocationDetailResponse'];
@@ -180,7 +184,9 @@ export const WarehouseLocationScreen = () => {
   const toast = useToast();
   const { client, baseUrl, etags } = useApiClient();
 
-  const requestedTab = searchParams.get('tab') === 'location' ? 'location' : 'warehouse';
+  const tabParam = searchParams.get('tab');
+  const requestedTab =
+    tabParam === 'location' || tabParam === 'putaway' ? tabParam : ('warehouse' as const);
 
   const filters = useMemo<WarehouseFilters>(
     () => ({
@@ -495,7 +501,7 @@ export const WarehouseLocationScreen = () => {
    * 폼에서 값을 바꾸기만 해서는 풀리지 않는다 — 저장 후 다시 받은 상세가 기준이다.
    */
   const locationTabLocked = selectedWarehouse?.managementLevelCode === 'WAREHOUSE';
-  const activeTab = locationTabLocked ? 'warehouse' : requestedTab;
+  const activeTab = locationTabLocked && requestedTab === 'location' ? 'warehouse' : requestedTab;
 
   /* 잠긴 창고를 tab=location 주소로 열면 주소도 창고 정보 탭으로 맞춘다 — 기록을 쌓지 않게 replace. */
   useEffect(() => {
@@ -586,7 +592,7 @@ export const WarehouseLocationScreen = () => {
     setLabelPreviews(null);
     labelSummary.reset();
     labelWrite.reset();
-    updateParams({ mode: 'create', wh: null, tab: 'warehouse' });
+    updateParams({ mode: 'create', wh: null, tab: 'warehouse', ...PUTAWAY_PARAMS_CLEARED });
   };
 
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
@@ -1035,6 +1041,15 @@ export const WarehouseLocationScreen = () => {
                 />
               ),
             },
+            {
+              value: 'putaway',
+              label: t.tabs.putaway,
+              /*
+               * 적치 규칙은 창고 상세 안에서 관리한다(사용자 지시 2026-10-29) — 고르기 · 고치기는 대화상자.
+               * 탭 패널은 숨겨져도 붙어 있으므로 이 탭일 때만 붙인다 — 아니면 다른 탭에서도 규칙 · 잔액 · 위치 조회가 나간다.
+               */
+              content: activeTab === 'putaway' ? <PutawayRulePanel /> : null,
+            },
           ]}
         />
       </div>
@@ -1096,7 +1111,7 @@ export const WarehouseLocationScreen = () => {
                 setLabelPreviews(null);
                 labelSummary.reset();
                 labelWrite.reset();
-                updateParams({ wh: String(warehouseId), mode: null });
+                updateParams({ wh: String(warehouseId), mode: null, ...PUTAWAY_PARAMS_CLEARED });
               }}
               onAddWarehouse={handleAddWarehouse}
               loadError={

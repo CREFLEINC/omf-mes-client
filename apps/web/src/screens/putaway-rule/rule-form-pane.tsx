@@ -25,9 +25,6 @@ export interface RuleFormPaneProps {
   fieldErrors: Record<string, string>;
   /** 저장 실패 배너 슬롯 */
   banner: ReactNode;
-  warehouseOptions: SelectOption[];
-  warehouseNote?: string;
-  warehousePlaceholder?: string;
   /** 위치 선택지. **첫 자리가 빈 값(「창고 전체」)이다** — 그 규칙은 `location-options.ts`가 갖는다. */
   locationChoices: SelectOption[];
   locationNote?: string;
@@ -116,9 +113,6 @@ export const RuleFormPane = ({
   onOpenItemPicker,
   fieldErrors,
   banner,
-  warehouseOptions,
-  warehouseNote,
-  warehousePlaceholder,
   locationChoices,
   locationNote,
   locationDisabledReason,
@@ -197,28 +191,11 @@ export const RuleFormPane = ({
           )}
         </div>
 
-        {/* 창고는 **등록에서만** 고른다. 수정에서는 값 표기로 두고 잠긴 사유를 아래에서 밝힌다. */}
-        {isCreate ? (
-          <SelectField
-            wide
-            required
-            label={t.fields.warehouse}
-            options={warehouseOptions}
-            value={values.warehouseId}
-            note={warehouseNote}
-            error={fieldErrors.warehouseId}
-            placeholder={warehousePlaceholder}
-            disabled={isLocked}
-            onChange={(value) => {
-              onChange({ warehouseId: value });
-            }}
-          />
-        ) : (
-          <div className="field-cell">
-            <FieldLabel htmlFor={warehouseFieldId} label={t.fields.warehouse} />
-            <output id={warehouseFieldId}>{warehouseLabel}</output>
-          </div>
-        )}
+        {/* 창고는 고르지 않는다 — 창고 상세의 탭이라 그 창고의 규칙이다(사용자 지시 2026-10-29). */}
+        <div className="field-cell">
+          <FieldLabel htmlFor={warehouseFieldId} label={t.fields.warehouse} />
+          <output id={warehouseFieldId}>{warehouseLabel}</output>
+        </div>
 
         <SelectField
           wide
@@ -344,17 +321,14 @@ export const RuleFormPane = ({
        */}
 
       <div className="form-actions">
-        {/*
-         * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
-         * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 뜻이 있다.
-         */}
+        {/* 「취소」는 편집 대화상자를 닫는 것이라 등록 · 수정 모두 고친 것이 없어도 눌러야 한다. */}
         {isLocked ? (
           <DisabledAction
             label={messages.common.cancel}
             reason={t.actionReasons.cancelLockedByOtherSave}
           />
         ) : (
-          <Button variant="outlined" disabled={!isCreate && !isDirty} onClick={onCancel}>
+          <Button variant="outlined" onClick={onCancel}>
             {messages.common.cancel}
           </Button>
         )}

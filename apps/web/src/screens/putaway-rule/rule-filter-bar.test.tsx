@@ -6,17 +6,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { DEFAULT_FILTERS } from './filters';
 import { RuleFilterBar } from './rule-filter-bar';
-import type { RuleFilters, SelectOption } from './types';
+import type { RuleFilters } from './types';
 
 const t = messages.putawayRule;
-
-/** 미사용 표식이 붙은 선택지의 이름. **한 파일 안에서 이 문자열을 짓는 자리는 여기 하나다.** */
-const INACTIVE_WAREHOUSE_OPTION_LABEL = `SYN-WH-02 · 합성창고 나${t.values.inactiveSuffix}`;
-
-const warehouseOptions: SelectOption[] = [
-  { value: '9201', label: 'SYN-WH-01 · 합성창고 가' },
-  { value: '9202', label: INACTIVE_WAREHOUSE_OPTION_LABEL },
-];
 
 /** 품목 칸(`ItemSelect`)은 펼칠 때 품목 목록을 쪽 단위로 부른다. */
 const itemRows = [
@@ -41,7 +33,6 @@ const renderBar = (
   renderWithProviders(
     <RuleFilterBar
       appliedFilters={appliedFilters}
-      warehouseOptions={warehouseOptions}
       onApply={onApply}
       onReset={onReset}
       {...overrides}
@@ -74,111 +65,27 @@ describe('RuleFilterBar', () => {
     expect(screen.getByRole('button', { name: '합성 단추' })).toBeInTheDocument();
   });
 
-  it('창고·품목·사용 중만 세 조건이 선다', () => {
-    renderBar();
+  /** 창고 상세의 탭이라 창고는 고르지 않는다 — 품목 · 사용 중만 두 조건만 둔다. */
+  it('품목·사용 중만 두 조건이 서고 창고 칸은 없다', () => {
+    renderBar({ ...DEFAULT_FILTERS, warehouseId: '9201' });
 
-    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: t.fields.warehouse })).not.toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.fields.item })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: t.filters.activeOnly })).toBeInTheDocument();
   });
 
-  /**
-   * 창고를 고르는 것은 이 화면이 서는 조건이므로 **즉시 적용한다** — 「조회」를 한 번 더 눌러야
-   * 목록이 서면, 화면이 비어 있는 이유가 「창고를 안 골랐다」인지 「안 눌렀다」인지 갈린다.
-   */
-  it('창고를 고르면 곧바로 적용한다', async () => {
-    const { onApply, user } = renderBar();
-
-    await selectOption(user, t.fields.warehouse, 'SYN-WH-01 · 합성창고 가');
-
-    expect(onApply).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, warehouseId: '9201' });
-  });
-
-  /** 창고를 바꾸면 앞 창고에서 고른 품목은 이 창고의 조건이 아니다 — 함께 비운다. */
-  it('창고를 바꾸면 품목 조건이 함께 풀린다', async () => {
-    const { onApply, user } = renderBar({
-      warehouseId: '9201',
-      itemId: '9101',
-      activeOnly: false,
-    });
-
-    await selectOption(user, t.fields.warehouse, INACTIVE_WAREHOUSE_OPTION_LABEL);
-
-    expect(onApply).toHaveBeenCalledWith({
-      warehouseId: '9202',
-      itemId: '',
-      activeOnly: false,
-    });
-  });
-
-  /**
-   * **창고를 고르기 전에는 품목 칸이 잠긴다.** 좁힐 대상이 없고, 품목 선택지도 창고를 고른
-   * 뒤에 온다. 잠근 사실만 두면 사용자가 무엇을 하면 풀리는지 모르므로 사유를 함께 낸다.
-   */
-  it('창고를 고르기 전에는 품목 칸이 잠기고 사유가 보인다', () => {
-    renderBar(DEFAULT_FILTERS);
-
-    expect(screen.getByRole('combobox', { name: t.fields.item })).toBeDisabled();
-    expect(screen.getByText(t.filters.itemNeedsWarehouse)).toBeInTheDocument();
-  });
-
-  it('창고를 고른 뒤에는 품목 칸이 열린다', () => {
+  it('품목 칸은 잠기지 않는다', () => {
     renderBar({ warehouseId: '9201', itemId: '', activeOnly: false });
 
     expect(screen.getByRole('combobox', { name: t.fields.item })).toBeEnabled();
+    expect(screen.queryByText(t.filters.itemNeedsWarehouse)).not.toBeInTheDocument();
   });
 
-  /**
-   * **선택지가 0건이면 「전체」도 붙이지 않는다.** 고를 것이 하나도 없는데 「전체」만 있으면
-   * 「전체를 고를 수 있다 = 목록이 준비됐다」로 읽힌다 — 실제로는 값이 하나도 오지 않은 상태다.
-   */
-  it('창고 선택지가 0건이면 「전체」도 붙이지 않는다', async () => {
-    const { user } = renderBar(
-      { warehouseId: '9201', itemId: '', activeOnly: false },
-      { warehouseOptions: [] },
-    );
+  /** 한 번 고른 품목을 해제할 방법이 칸 안에 있어야 한다. */
+  it('품목 선택지에 「전체」가 함께 선다', async () => {
+    const { user } = renderBar({ warehouseId: '9201', itemId: '', activeOnly: false });
 
-    await user.click(screen.getByRole('combobox', { name: t.fields.warehouse }));
-
-    expect(screen.queryByRole('option', { name: t.filters.all })).not.toBeInTheDocument();
-  });
-
-  /**
-   * ⛔ **0건이라는 이유만으로 「없습니다」를 짓지 않는다.**
-   *
-   * 이 부품이 볼 수 있는 것은 배열 길이뿐이고, 그 길이는 **미도착·실패·조회가 열리지도 않은
-   * 상태**에서도 0이다 — 이유를 아는 것은 조회 상태를 든 화면뿐이다. 자리표시를 받지 않았으면
-   * 아무 말도 하지 않아야 하며, 그래야 판정이 화면 한 곳에만 산다.
-   */
-  it('자리표시를 받지 않으면 0건이어도 아무 말도 하지 않는다', () => {
-    renderBar(DEFAULT_FILTERS, { warehouseOptions: [] });
-
-    /* 두 칸 모두 — 어느 축에서도 부품이 문장을 지어내지 않는다. */
-    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).not.toHaveTextContent(
-      t.filters.noWarehouseOptions,
-    );
-    expect(screen.getByRole('combobox', { name: t.fields.item })).not.toHaveTextContent(
-      t.filters.noItemOptions,
-    );
-  });
-
-  /** 받은 자리표시는 그대로 그린다 — 짓지는 않되 전달은 끊기지 않아야 한다. */
-  it('받은 자리표시를 그대로 그린다', () => {
-    renderBar(DEFAULT_FILTERS, {
-      warehouseOptions: [],
-      warehousePlaceholder: t.filters.noWarehouseOptions,
-    });
-
-    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toHaveTextContent(
-      t.filters.noWarehouseOptions,
-    );
-  });
-
-  /** 선택지가 있으면 「전체」가 서야 한다 — 한 번 고른 뒤 해제할 방법이 칸 안에 있어야 한다. */
-  it('선택지가 있으면 「전체」가 함께 선다', async () => {
-    const { user } = renderBar();
-
-    await user.click(screen.getByRole('combobox', { name: t.fields.warehouse }));
+    await user.click(screen.getByRole('combobox', { name: t.fields.item }));
 
     expect(await screen.findByRole('option', { name: t.filters.all })).toBeInTheDocument();
   });
@@ -226,12 +133,5 @@ describe('RuleFilterBar', () => {
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
     expect(onReset).toHaveBeenCalledTimes(1);
-  });
-
-  /** 밝히지 않으면 사용자가 불완전한 목록을 완전한 것으로 읽고 「그런 창고가 없다」로 결론짓는다. */
-  it('선택지의 한계를 안내로 밝힌다', () => {
-    renderBar(DEFAULT_FILTERS, { warehouseNote: t.filters.lookupTruncated });
-
-    expect(screen.getByText(t.filters.lookupTruncated)).toBeInTheDocument();
   });
 });

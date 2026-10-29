@@ -143,28 +143,19 @@ describe('AppLayout', () => {
   });
 
   /*
-   * **W-06-14 · C5-2** — 같은 「창고·위치」 묶음의 **창고·Location 바로 뒤**다. 적치 규칙은
-   * 창고와 위치를 참조해야 성립하고 그 마스터에서 이어지는 화면이라, **인접이 관계를 드러낸다.**
-   * 묶음 안의 차례는 탭 막대의 차례다.
-   *
-   * **앞뒤를 둘 다 잰다** — 창고·Location 다음 칸이면서 창고 배치도보다 앞이다(창고 계열은
-   * 창고·Location → 적치 규칙 → 창고 배치도 차례다). 한쪽만 재면 반대편으로 밀려나도 통과한다.
+   * 적치 규칙은 창고·Location 화면의 창고 상세 탭이 됐다(2026-10-29) — 「창고·위치」 묶음은 창고·Location →
+   * 창고 배치도 두 탭이고, 적치 규칙 탭은 메뉴에 서지 않는다(옛 주소는 그 탭으로 넘긴다).
    */
-  it('창고·위치 탭 막대에서 적치 규칙이 창고·Location 바로 뒤에 있다', () => {
-    renderLayout('본문 내용', { route: '/master-data/putaway-rule' });
+  it('창고·위치 탭 막대에 적치 규칙이 없고 창고 배치도가 창고·Location 바로 뒤에 있다', () => {
+    renderLayout('본문 내용', { route: '/master-data/warehouse-location' });
 
     const tabs = screen.getByRole('navigation', { name: '창고·위치' });
     const links = hubTabHrefs('창고·위치');
 
-    expect(within(tabs).getByRole('link', { name: '적치 규칙' })).toHaveAttribute(
-      'href',
-      '/master-data/putaway-rule',
-    );
-    expect(links.indexOf('/master-data/putaway-rule')).toBe(
-      links.indexOf('/master-data/warehouse-location') + 1,
-    );
+    expect(within(tabs).queryByRole('link', { name: '적치 규칙' })).toBeNull();
+    expect(links).not.toContain('/master-data/putaway-rule');
     expect(links.indexOf('/master-data/warehouse-layout')).toBe(
-      links.indexOf('/master-data/putaway-rule') + 1,
+      links.indexOf('/master-data/warehouse-location') + 1,
     );
   });
 
@@ -1035,11 +1026,7 @@ describe('AppLayout', () => {
       설비: ['/equipment/master', '/equipment/work-calendar', '/equipment/collection-channels'],
       '툴·금형': ['/equipment/tool-master', '/equipment/shot-conversion'],
       계측기: ['/equipment/gauge-master', '/equipment/gauge-calibration'],
-      '창고·위치': [
-        '/master-data/warehouse-location',
-        '/master-data/putaway-rule',
-        '/master-data/warehouse-layout',
-      ],
+      '창고·위치': ['/master-data/warehouse-location', '/master-data/warehouse-layout'],
       '재고 관리': ['/logistics/stock-status', '/logistics/stocktaking', '/logistics/stock-adjust'],
       '출고 관리': [
         '/production/material-issue-requests',
@@ -1937,21 +1924,24 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
    * 못 보는 사람에게 묶음 주소를 그대로 걸면 누르는 순간 막힌 화면이 선다.
    */
   it('탭 묶음의 첫 탭을 볼 수 없으면 묶음 줄이 볼 수 있는 첫 탭을 건다', async () => {
-    await renderWithPermissions(['W-06-14', 'W-CO-08']);
+    await renderWithPermissions(['W-CO-08']);
 
     expect(within(navSidebar()).getByRole('link', { name: '창고·위치' })).toHaveAttribute(
       'href',
-      '/master-data/putaway-rule',
+      '/master-data/warehouse-layout',
     );
   });
 
-  /** 탭 막대에도 볼 수 없는 탭은 서지 않는다 — 누르는 순간 막힌 화면이 서는 탭을 두지 않는다. */
+  /**
+   * 탭 막대에도 볼 수 없는 탭은 서지 않는다 — 누르는 순간 막힌 화면이 서는 탭을 두지 않는다. 「창고·위치」가 두
+   * 탭으로 줄어(적치 규칙은 창고 상세 탭, 2026-10-29) 세 탭 묶음인 「재고 관리」로 잰다.
+   */
   it('탭 막대에는 볼 수 있는 탭만 선다', async () => {
-    await renderWithPermissions(['W-06-14', 'W-CO-08'], { route: '/master-data/putaway-rule' });
+    await renderWithPermissions(['W-01-04', 'W-01-12'], { route: '/logistics/stocktaking' });
 
-    expect(hubTabHrefsOf('창고·위치')).toEqual([
-      '/master-data/putaway-rule',
-      '/master-data/warehouse-layout',
+    expect(hubTabHrefsOf('재고 관리')).toEqual([
+      '/logistics/stocktaking',
+      '/logistics/stock-adjust',
     ]);
   });
 
@@ -1960,12 +1950,12 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
    * 한 줄을 먹는다. 묶음 줄은 그 한 탭을 건 채 남는다.
    */
   it('볼 수 있는 탭이 하나뿐이면 탭 막대가 서지 않는다', async () => {
-    await renderWithPermissions(['W-06-14'], { route: '/master-data/putaway-rule' });
+    await renderWithPermissions(['W-CO-08'], { route: '/master-data/warehouse-layout' });
 
     /* 짝 양성 — 묶음 줄은 남아 그 한 탭을 건다. */
     expect(within(navSidebar()).getByRole('link', { name: '창고·위치' })).toHaveAttribute(
       'href',
-      '/master-data/putaway-rule',
+      '/master-data/warehouse-layout',
     );
     expect(screen.queryByRole('navigation', { name: '창고·위치' })).toBeNull();
   });

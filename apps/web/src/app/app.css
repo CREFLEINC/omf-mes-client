@@ -24961,6 +24961,14 @@ table.col-measuring td {
   margin-left: auto;
 }
 
+/* 창고 상세의 「적치 규칙」 탭(사용자 지시 2026-10-29) — 조건 줄 · 규칙 표 · 규칙 없는 품목을 위에서 아래로. */
+.putaway-rule-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
 /* 오른쪽 구획의 첫 갈래는 구획 위 여백에 바로 붙는다. */
 .po-board-scroll > .board-frame-sub:first-child {
   margin-top: 0;
