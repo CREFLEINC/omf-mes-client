@@ -141,4 +141,7 @@ export type {
   WorkerRecommendationSource,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,
+  SkipBasisCode,
+  InspectionPlanForward,
+  InspectionPlanUpdateForward,
 } from './forward-contract';

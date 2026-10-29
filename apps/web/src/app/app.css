@@ -18634,6 +18634,34 @@ main:has(> .oqc-inspection-panes) {
   gap: var(--space-2);
 }
 
+/*
+ * PQC·IQC 생략 구획(omf-all-around#212) — OQC 생략 구획과 같은 모양(제목 · 단계 상자 · 오른쪽 「생략 요청」).
+ * OQC 구획 규칙은 그 화면 감싸개(`.oqc-inspection-panes`) 안에서만 잡혀 있어, 다른 화면에서 쓸 때 같은 값을 여기 둔다.
+ */
+.inspection-skip-section {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding-block: var(--space-5);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* PQC 관리웹은 요청 정보 카드 아래 간격이 없다 — IQC(카드 아래 간격)와 같은 자리에 구분선이 오게 띄운다. */
+.pqc-web > .inspection-skip-section {
+  margin-top: var(--space-2);
+}
+
+.inspection-skip-section h3 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.inspection-skip-section p {
+  margin: 0;
+}
+
 /* 목록의 시리얼 번호 칸 「미등록」 — 값이 아니라 상태 표시라 보조색. */
 .oqc-inspection-queue-unregistered {
   color: var(--on-surface-muted);

@@ -204,9 +204,21 @@ export interface FourMChangeForward {
   remarks?: string;
 }
 
-/** 서버 선행 P-86(omf-all-around#63) — 의뢰 LOT 의 4M 변경품. */
+/** 서버 선행 P-152(omf-all-around#212) — 생략 근거. 기준의 기본 생략(DEFAULT) · 건별 결재 승인(APPROVAL). */
+export type SkipBasisCode = 'DEFAULT' | 'APPROVAL';
+
+/** 서버 선행 P-86(omf-all-around#63) — 의뢰 LOT 의 4M 변경품. P-152(#212) — 생략 의뢰의 근거. */
 export type InspectionRequestForward = components['schemas']['InspectionRequest'] & {
   fourMChange?: FourMChangeForward;
+  skipBasisCode?: SkipBasisCode | null;
+};
+
+/** 서버 선행 P-152(omf-all-around#212) — 검사 유형 공통 「기본 생략」. `pqcSkipAllowed` 는 같은 값의 호환 칸이다. */
+export type InspectionPlanForward = components['schemas']['InspectionPlan'] & {
+  defaultSkip?: boolean;
+};
+export type InspectionPlanUpdateForward = components['schemas']['InspectionPlanUpdate'] & {
+  defaultSkip?: boolean;
 };
 
 /** 서버 선행 P-86(omf-all-around#63) — LOT 목록·단건(`GET /trace/lots`(+`/{lotId}`))이 4M 변경품을 싣는다. */
@@ -1949,6 +1961,58 @@ export interface ForwardPaths {
         200: {
           headers: { [name: string]: unknown };
           content: { 'application/json': components['schemas']['ShipmentRequest'] };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  /** 서버 선행 P-152(omf-all-around#212) — PQC 생략 요청(결재 상신). 202 승인 요청 id. */
+  '/production/work-orders/{workOrderId}:request-pqc-skip': {
+    parameters: { query?: never; header?: never; path?: never; cookie?: never };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { workOrderId: number };
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': { reason: string } } };
+      responses: {
+        202: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': { approvalRequestId: number } };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  /** 서버 선행 P-152(omf-all-around#212) — 승인된 PQC 생략의 실행. 본문 없음 · 200 작업지시 상세. */
+  '/production/work-orders/{workOrderId}:skip-pqc': {
+    parameters: { query?: never; header?: never; path?: never; cookie?: never };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { workOrderId: number };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': components['schemas']['WorkOrder'] };
         };
       };
     };
