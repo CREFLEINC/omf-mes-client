@@ -21877,12 +21877,22 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
  *    상세 맨 아래에 붙어 따라온다(끝까지 내리면 제자리에 서서 항목을 가리지 않는다).
  * 고른 행은 옅은 중립 배경 + 첫 칸 막대(선례 `.warehouse-location-list-table`).
  */
+/* 규칙 안내 — 조회 카드 안 조건 줄 아래 작은 보조 글 한 줄 + 안내 아이콘. 박스 · 바탕은 두지 않는다(사용자 지시 · #208). */
 .inspection-sheet-template-rule {
-  max-width: none;
-  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
 }
 
-/* 조회 카드(#208) — 검사 기준 탭과 같은 한 줄: 상태 → 조회 | 새 기준 등록. 카드 안 줄의 아래 여백은 걷는다. */
+.inspection-sheet-template-rule > :first-child {
+  flex: 0 0 auto;
+}
+
+/* 조회 카드(#208) — 검사 기준 탭과 같은 한 줄: 상태 → 조회 · 새 기준 등록(구분선 없이). 카드 안 줄의 아래 여백은 걷는다. */
 .inspection-sheet-template-search > .filter-bar {
   margin-bottom: 0;
 }
@@ -21900,13 +21910,6 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   width: 100%;
 }
 
-.inspection-sheet-template-filter-divider {
-  align-self: stretch;
-  width: 1px;
-  margin: 0 var(--space-1);
-  background: var(--outline-variant);
-}
-
 /* 목록 칸 — 표 · 쪽 이동 줄 사이를 띄운다(#208). */
 .inspection-sheet-template-list-pane {
   display: flex;
@@ -21917,6 +21920,17 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 
 .inspection-sheet-template-list-pane > .page-nav {
   margin-top: 0;
+}
+
+/* 쪽 이동 단추 사이를 좁혀 한 줄에 간결하게(사용자 지시 · #208). */
+.inspection-sheet-template-list-pane .page-nav-right {
+  gap: var(--space-1);
+}
+
+/* 확정 일시 — 숫자 폭을 고르게 해 줄마다 자리가 맞게(#208). */
+.inspection-sheet-template-date {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .inspection-sheet-template-caption {

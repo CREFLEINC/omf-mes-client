@@ -3,7 +3,7 @@ export const inspectionSheetTemplate = {
   title: '검사표 기준',
   breadcrumbRoot: '품질 관리',
 
-  rule: '모델마다 확정 판은 하나이며 확정 후에는 고칠 수 없습니다. 새 판은 이후 시작하는 작업지시부터 적용됩니다.',
+  rule: '모델별로 하나의 판만 확정할 수 있습니다. 확정 후 수정할 수 없으며, 새 판은 이후 작업지시부터 적용됩니다.',
 
   layouts: { OP: 'OP향 양식', PP: 'PP향 양식' } as Record<string, string>,
   statuses: { DRAFT: '작성중', CONFIRMED: '확정', OBSOLETE: '폐기' } as Record<string, string>,

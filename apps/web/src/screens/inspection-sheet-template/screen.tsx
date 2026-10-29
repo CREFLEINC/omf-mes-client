@@ -141,8 +141,11 @@ const InspectionSheetTemplateScreenBody = () => {
       header: t.columns.confirmedAt,
       /* 「2026-10-29 10:02」가 잘리지 않는 폭(#208) */
       width: '152px',
-      render: (row) =>
-        row.confirmedAt === null ? '' : (formatPlantDateTime(row.confirmedAt) ?? ''),
+      render: (row) => (
+        <span className="inspection-sheet-template-date">
+          {row.confirmedAt === null ? '' : (formatPlantDateTime(row.confirmedAt) ?? '')}
+        </span>
+      ),
     },
   ];
 
@@ -168,11 +171,10 @@ const InspectionSheetTemplateScreenBody = () => {
           }
         />
       )}
-      <p className="field-note inspection-sheet-template-rule">{t.rule}</p>
-
       {/*
-       * 조회 조건 — 검사 기준 탭처럼 목록 위 카드 한 줄: 상태 → 조회 → 구분선 → 새 기준 등록(#208).
-       * 조건이 상태 하나라 「초기화」는 두지 않는다(없던 단추를 만들지 않는다).
+       * 조회 조건 — 검사 기준 탭처럼 목록 위 카드 한 줄: 상태 → 조회 · 새 기준 등록(#208).
+       * 조건이 하나라 단추를 구분선 없이 바로 붙여 한 작업 줄로 둔다(사용자 지시). 「초기화」는 두지 않는다(없던 단추를 만들지 않는다).
+       * 규칙 안내는 줄 아래 작은 보조 글 한 줄 — 박스 · 바탕 없이(사용자 지시 · #208).
        */}
       <section ref={aboveRef} className="pane inspection-sheet-template-search" role="search">
         <form
@@ -200,7 +202,6 @@ const InspectionSheetTemplateScreenBody = () => {
             <Button type="submit" variant="filled">
               {messages.common.search}
             </Button>
-            <span className="inspection-sheet-template-filter-divider" aria-hidden />
             <Button
               variant="filled"
               leadingIcon={<Icon name="add" size={18} />}
@@ -210,6 +211,10 @@ const InspectionSheetTemplateScreenBody = () => {
             </Button>
           </div>
         </form>
+        <p className="inspection-sheet-template-rule">
+          <Icon name="info" size={16} />
+          {t.rule}
+        </p>
       </section>
 
       <div
@@ -258,9 +263,10 @@ const InspectionSheetTemplateScreenBody = () => {
             />
           </div>
           {list.data !== undefined && (
+            /* 좁은 목록 칸이라 쪽 이동 단추는 작게(사용자 지시 · #208). */
             <PageNav
               meta={list.data.page}
-              buttonSize="md"
+              buttonSize="sm"
               onChangePage={(page) => setFilter((prev) => ({ ...prev, page }))}
             />
           )}

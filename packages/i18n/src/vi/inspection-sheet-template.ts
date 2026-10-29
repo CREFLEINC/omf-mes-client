@@ -3,7 +3,7 @@ export const inspectionSheetTemplate = {
   title: 'Tiêu chuẩn phiếu kiểm tra',
   breadcrumbRoot: 'Quản lý chất lượng',
 
-  rule: 'Mỗi model chỉ có một bản đã xác nhận và không sửa được sau khi xác nhận. Bản mới áp dụng từ các lệnh sản xuất bắt đầu sau đó.',
+  rule: 'Mỗi model chỉ xác nhận được một bản. Sau khi xác nhận không thể sửa, bản mới áp dụng từ các lệnh sản xuất sau đó.',
 
   layouts: { OP: 'Mẫu OP', PP: 'Mẫu PP' } as Record<string, string>,
   statuses: { DRAFT: 'Đang soạn', CONFIRMED: 'Đã xác nhận', OBSOLETE: 'Hủy bỏ' } as Record<
