@@ -26916,6 +26916,7 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 .parts-iqc-drawings {
   display: grid;
+  justify-items: center;
   gap: var(--space-3);
 }
 
