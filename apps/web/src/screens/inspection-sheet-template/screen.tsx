@@ -578,6 +578,8 @@ const InspectionSheetTemplateScreenBody = () => {
                 itemId: picked.itemId,
                 label: `${picked.itemCode} ${picked.itemName}`,
               });
+              /* 「선택」하면 바로 조회한다 — 「조회」를 한 번 더 누르지 않게(사용자 지시 · #208). */
+              setFilter((prev) => ({ ...prev, itemId: picked.itemId, page: 1 }));
             }
           }}
         />
