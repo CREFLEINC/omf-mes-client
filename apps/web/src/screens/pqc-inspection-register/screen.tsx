@@ -229,7 +229,7 @@ export const PqcInspectionRegisterScreen = () => {
           {queue.data !== undefined && (
             <PageNav
               meta={queue.data.page}
-              controlSize="md"
+              buttonSize="md"
               onChangePage={setPage}
               sizes={LIST_PAGE_SIZES}
               onChangeSize={(size) => {

@@ -18456,8 +18456,21 @@ main:has(> .oqc-inspection-panes) {
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
+  /* 파란 안내 상자 — 수량 안내 띠와 같은 색(사용자 시안 2026-10-29 · #197). */
+  border: 1px solid color-mix(in srgb, var(--semantic-info) 45%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--semantic-info-container);
+}
+
+.oqc-inspection-guide-divider {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--semantic-info) 35%, transparent);
+}
+
+.oqc-inspection-guide-line[data-tone='info'],
+.oqc-inspection-guide-line[data-tone='info'] > :first-child {
+  color: color-mix(in srgb, var(--semantic-info) 40%, var(--on-surface));
 }
 
 .oqc-inspection-guide-title {
@@ -19147,6 +19160,8 @@ main:has(> .oqc-inspection-panes) {
   position: relative;
   display: grid;
   gap: var(--space-3);
+  /* 탭 아래 쪽 이동 줄이 상자 테두리에 붙지 않게(사용자 지시 2026-10-29 · #197). */
+  padding-bottom: var(--space-4);
 }
 
 .oqc-inspection-tab-body {
@@ -23579,11 +23594,11 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   flex: 0 0 auto;
 }
 
-/* 조회·초기화는 입하 예정 조회처럼 마지막 칸 바로 뒤에 선다(줄 끝으로 밀지 않는다). */
+/* 조회·초기화는 검색 줄 오른쪽 끝(사용자 지시 2026-10-29 · #197 — 종전 「마지막 칸 바로 뒤」를 바꿨다). */
 .iqc-inspection-search .iqc-inspection-filter-actions,
 .oqc-inspection-search .oqc-inspection-filter-actions,
 .pqc-web-search .pqc-web-filter-actions {
-  margin-left: 0;
+  margin-left: auto;
 }
 
 /* 칸 글자는 입하 예정 조회의 조건 줄(`.po-board-filter`)과 같은 한 단계 작은 본문 글자. */
@@ -26538,6 +26553,27 @@ button.iqc-inspection-step-toggle:focus-visible {
   background: var(--surface-container-high);
 }
 
+/* 칸이 셋 · 넷인 수량 줄(PQC 검사 수량 · OQC 불합격 직접 입력 · #197) — 칸 폭은 IQC 와 같게, 묶음만 넓힌다. */
+.iqc-inspection-qty-group[data-group='manual'][data-count='3'] {
+  flex-basis: 30rem;
+}
+
+.iqc-inspection-qty-group[data-group='manual'][data-count='4'] {
+  flex-basis: 40rem;
+}
+
+.iqc-inspection-qty-group-fields[data-count='3'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.iqc-inspection-qty-group-fields[data-count='4'] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.iqc-inspection-qty-input[data-kind='rejected'] input:nth-child(n):nth-child(n) {
+  color: var(--semantic-error-text);
+}
+
 /* 숫자 색 — 합격 초록 · 보류 노랑 · 불량(불합격) 빨강, 종전 수량 카드와 같다(사용자 지시 2026-10-27 · 2026-10-29). */
 .iqc-inspection-qty-input[data-kind='accepted'] input:nth-child(n):nth-child(n) {
   color: var(--semantic-success-text);
@@ -26694,4 +26730,30 @@ button.iqc-inspection-step-toggle:focus-visible {
     border-top: 0;
     border-left: 1px solid var(--outline-variant);
   }
+}
+
+/* PQC 입력 단계 ① 검사 항목별 결과(사용자 지시 2026-10-29 · #197) — 단계 머리가 제목을 대신한다. 표 아래 오른쪽 끝에 [확정]. */
+.pqc-web-step-items {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pqc-web-step-items > .pqc-web-section-head {
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.inspection-step-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.inspection-step-footer > button {
+  min-width: 5.5rem;
+}
+
+/* 단계들은 상세 기본 정보 아래 한 줄기 — 기본 정보와 단계 사이를 IQC 처럼 띄운다(사용자 지시 2026-10-29). */
+.pqc-web > .inspection-steps {
+  margin: var(--space-5) 0 var(--space-3);
 }
