@@ -121,15 +121,18 @@ export const SelectField = ({
 };
 
 /** 고칠 수 없는 값 — 입력칸 대신 라벨과 글자로 보인다(흐리게 두지 않는다, 사용자 지시 2026-10-29). */
-const ReadOnlyField = ({
+export const ReadOnlyField = ({
   label,
   value,
   error,
+  note,
 }: {
   label: string;
   value: string;
   /** 서버가 이 칸에 붙여 보낸 오류(예: ERP 창고 이름 잠김) — 칸이 글자여도 묻히지 않게 아래에 보인다. */
   error?: string | undefined;
+  /** 값 아래 짧은 도움말. */
+  note?: string | undefined;
 }) => {
   const labelId = useId();
   const errorId = `${labelId}-error`;
@@ -145,6 +148,7 @@ const ReadOnlyField = ({
       >
         {value}
       </output>
+      {note !== undefined && <span className="field-note">{note}</span>}
       {error !== undefined && (
         <span id={errorId} className="field-error">
           {error}

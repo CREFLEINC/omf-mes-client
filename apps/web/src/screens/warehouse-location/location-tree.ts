@@ -1,3 +1,4 @@
+import { compareLocationCodes } from './location-code';
 import type { Location } from './types';
 
 export interface LocationTreeRow {
@@ -6,20 +7,14 @@ export interface LocationTreeRow {
   hasChildren: boolean;
 }
 
-/**
- * 로캘에 따라 결과가 달라지지 않도록 localeCompare 대신 단순 문자열 비교를 쓴다.
- * 정렬 결과가 실행 환경마다 달라지면 표의 순서와 테스트가 어긋난다.
- */
-const byLocationCode = (a: Location, b: Location): number => {
-  if (a.locationCode < b.locationCode) return -1;
-  if (a.locationCode > b.locationCode) return 1;
-  return 0;
-};
+/** 숫자를 수로 읽는 코드 순서 — 랙 `R100` 이 `R99` 뒤에 놓인다. 로캘은 고정이라 환경마다 같다. */
+const byLocationCode = (a: Location, b: Location): number =>
+  compareLocationCodes(a.locationCode, b.locationCode);
 
 /**
  * Location 계층을 표에 그릴 수 있게 깊이 우선으로 평탄화한다.
  *
- * - 형제는 locationCode 오름차순
+ * - 형제는 locationCode 오름차순(숫자는 수로 읽는다)
  * - 접힌 노드(expandedIds에 없는 노드)의 하위는 결과에서 빠지지만 hasChildren은 그대로 참
  * - 부모가 없거나 자기 자신인 항목, 부모가 목록에 없는 고아는 최상위로 올려 반드시 노출한다
  * - 부모-자식 순환이 있어도 무한 루프에 빠지지 않고 모든 항목이 정확히 한 번씩 나온다

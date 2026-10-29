@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import type { LocationLevelFields } from '../../patterns/location-level';
 import { runRequest, toApiError } from '../../patterns/request';
+import { locationShownName } from './mappers';
 import { locationKeys } from './queries';
 import {
   currentRackLayout,
@@ -26,7 +27,8 @@ export interface RackLayoutDialogProps {
   onClose: () => void;
 }
 
-type LocationCreate = components['schemas']['LocationCreate'];
+/* 별칭(`aliasName`)은 계약 사본에 아직 없다 — 서버 #875 가 받는다. */
+type LocationCreate = components['schemas']['LocationCreate'] & { aliasName: string | null };
 
 const t = messages.warehouseLocation;
 
@@ -112,12 +114,12 @@ export const RackLayoutDialog = ({ rack, warehouseId, items, onClose }: RackLayo
       warehouseId,
       parentLocationId,
       locationCode: entry.locationCode,
+      /* 별칭이 이름이다(사용자 지시 2026-10-29). 위치명은 서버가 아직 필수로 받아 같은 값을 싣는다. */
       locationName: entry.locationName,
+      aliasName: entry.locationName,
       locationLevelCode: entry.kind,
-      /* 층 · 셀은 랙의 형태 · 품질구역 · 보관조건 · 혼적 허용을 그대로 물려받는다. */
+      /* 층 · 셀은 랙의 형태 · 혼적 허용을 그대로 물려받는다. */
       locationTypeCode: rack.locationTypeCode,
-      qualityZoneCode: rack.qualityZoneCode ?? null,
-      storageConditionCode: rack.storageConditionCode ?? null,
       allowMixedItem: rack.allowMixedItem,
       allowMixedLot: rack.allowMixedLot,
     };
@@ -186,7 +188,7 @@ export const RackLayoutDialog = ({ rack, warehouseId, items, onClose }: RackLayo
       {rack !== null && (
         <div className="rack-layout">
           <p className="rack-layout-target">
-            {t.rackLayout.target(rack.locationCode, rack.locationName)}
+            {t.rackLayout.target(rack.locationCode, locationShownName(rack))}
           </p>
           <div className="form-grid rack-layout-counts">
             <TextField

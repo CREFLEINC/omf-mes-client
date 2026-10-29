@@ -171,11 +171,6 @@ export const lookupFixtures: LookupOptions = {
     { value: '21', label: '생산본부' },
     { value: '22', label: '물류본부' },
   ],
-  uoms: [
-    { value: '41', label: 'EA' },
-    { value: '42', label: 'BOX' },
-    { value: '43', label: 'PLT' },
-  ],
   warehouseTypes: [
     { value: 'MATERIAL', label: '자재' },
     { value: 'PRODUCT', label: '제품' },
@@ -185,8 +180,6 @@ export const lookupFixtures: LookupOptions = {
     { value: 'RACK', label: '랙' },
     { value: 'FLOOR', label: '바닥' },
   ],
-  qualityZones: [{ value: 'NORMAL', label: '일반구역' }],
-  storageConditions: [{ value: 'AMBIENT', label: '상온' }],
   reissueReasons: [{ value: 'DAMAGED', label: '라벨 훼손' }],
 };
 
@@ -203,16 +196,11 @@ export const warehouseFormInitialValues: WarehouseFormValues = {
 
 export const locationFormInitialValues: LocationFormValues = {
   parentLocationId: '',
-  locationCode: '',
-  locationName: '',
+  locationCode: 'Z01',
   aliasName: '',
   locationTypeCode: 'RACK',
-  qualityZoneCode: '',
-  storageConditionCode: '',
   allowMixedItem: true,
   allowMixedLot: true,
-  capacityQty: '',
-  capacityUomId: '',
 };
 
 /** 입력 오류 표시 확인용 — Phase 1은 검증 함수를 만들지 않고 오류 값을 주입한다. */
@@ -222,5 +210,4 @@ export const warehouseFieldErrorFixtures: Record<string, string> = {
 
 export const locationFieldErrorFixtures: Record<string, string> = {
   locationCode: messages.warehouseLocation.validation.required,
-  capacityQty: messages.warehouseLocation.validation.capacityNeedsUom,
 };

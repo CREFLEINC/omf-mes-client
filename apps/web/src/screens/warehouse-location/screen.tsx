@@ -7,11 +7,13 @@ import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { BoardFrame } from '../../patterns/board-frame';
-import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
+import { LOCATION_LEVEL_CODES } from '../../patterns/location-level';
+import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest, toApiError } from '../../patterns/request';
 import { isPutawayStaging, isSystemLocation } from '../../patterns/system-location';
 import { selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
+import { issueLocationCode } from './location-code';
 import { LocationFormDialog } from './location-form-dialog';
 import { RackLayoutDialog } from './rack-layout-dialog';
 import { LocationLabelDialog, type LocationLabelPreview } from './location-label-dialog';
@@ -23,6 +25,7 @@ import {
   emptyLocationFormValues,
   emptyWarehouseFormValues,
   isSameWarehouseValues,
+  locationOptionLabel,
   locationToFormValues,
   toLocationCreate,
   toLocationUpdate,
@@ -96,39 +99,10 @@ const CLOSED_LOCATION_DIALOG: LocationDialogState = {
 
 /**
  * 위치 계층은 창고가 아니라 위치가 정한다(사용자 결정 2026-10-29 · 서버 위치 계층 계약): 구역(0) › 랙(1) › 층(2) ›
- * 셀(3). 건너뛰기 없이 상위 아래 한 단계씩이라 root 를 0 으로 둘 때 허용 최하위 depth 는 3(셀)이다.
+ * 셀(3). 구역은 늘 창고 바로 밑이고(구역 안에 구역은 없다), 그 밑은 한 단계씩이다.
  */
-const LOCATION_MAX_DEPTH = 3;
 const ZONE_DEPTH = 0;
 const RACK_DEPTH = 1;
-
-/** 노드를 옮길 때 함께 움직이는 하위 트리의 상대 높이. 순환 자료도 한 번씩만 센다. */
-const locationSubtreeHeight = (items: readonly Location[], rootId: number): number => {
-  const children = new Map<number, number[]>();
-  for (const item of items) {
-    if (item.parentLocationId === null || item.parentLocationId === undefined) continue;
-    children.set(item.parentLocationId, [
-      ...(children.get(item.parentLocationId) ?? []),
-      item.locationId,
-    ]);
-  }
-
-  let maxHeight = 0;
-  const visited = new Set<number>([rootId]);
-  const pending: { id: number; height: number }[] = [{ id: rootId, height: 0 }];
-  while (pending.length > 0) {
-    const current = pending.pop();
-    if (current === undefined) break;
-    maxHeight = Math.max(maxHeight, current.height);
-    for (const childId of children.get(current.id) ?? []) {
-      if (visited.has(childId)) continue;
-      visited.add(childId);
-      pending.push({ id: childId, height: current.height + 1 });
-    }
-  }
-
-  return maxHeight;
-};
 
 /**
  * 조회 실패의 원인을 한 줄 안내로 옮긴다.
@@ -322,6 +296,8 @@ export const WarehouseLocationScreen = () => {
 
   const [expansion, setExpansion] = useState<{
     warehouseId: number;
+    /** 이 펼침을 정한 검색어 — 검색어가 바뀌면 다시 정한다. */
+    q: string;
     ids: ReadonlySet<number>;
   } | null>(null);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
@@ -369,7 +345,8 @@ export const WarehouseLocationScreen = () => {
                 'If-Match': locationSourceEtag ?? '',
               },
             },
-            body: toLocationUpdate(values),
+            /* 저장된 위치명 · 별칭과 견줘 위치명을 정한다 — 편집은 상세를 받은 뒤에만 저장할 수 있다. */
+            body: toLocationUpdate(values, locationFormSource?.location ?? { locationName: '' }),
           }),
     etagPath:
       dialogState.mode === 'edit' && dialogState.locationId !== null
@@ -499,10 +476,19 @@ export const WarehouseLocationScreen = () => {
   /* 창고 관리 수준이 없어져(2026-10-29) Location 탭은 늘 열린다 — 위치가 없는 창고는 창고 단위로 관리된다. */
   const activeTab = requestedTab;
 
-  /** 서버가 돌려준 현재 계층에서 하위를 가진 노드를 기본으로 펼친다. */
-  const expandableIds = useMemo(() => {
+  /**
+   * 처음 펼칠 노드. 검색하지 않을 때는 구역(맨 위)만 펼쳐 랙까지 보인다 — 랙이 백 개를 넘으면 층 · 셀까지 다 펼친
+   * 표는 수천 행이 된다(사용자 지시 2026-10-29). 검색 중에는 찾은 위치가 묻히지 않게 하위를 가진 노드를 다 펼친다.
+   */
+  const initialExpandedIds = useMemo(() => {
     const known = new Set(locationItems.map((item) => item.locationId));
     const parents = new Set<number>();
+    const isRoot = (item: Location): boolean =>
+      item.parentLocationId === null ||
+      item.parentLocationId === undefined ||
+      item.parentLocationId === item.locationId ||
+      !known.has(item.parentLocationId);
+    const rootIds = new Set(locationItems.filter(isRoot).map((item) => item.locationId));
 
     for (const item of locationItems) {
       const parentId = item.parentLocationId;
@@ -511,22 +497,27 @@ export const WarehouseLocationScreen = () => {
         parentId !== null &&
         parentId !== undefined &&
         parentId !== item.locationId &&
-        known.has(parentId)
+        known.has(parentId) &&
+        (locationFilterText !== '' || rootIds.has(parentId))
       ) {
         parents.add(parentId);
       }
     }
 
     return parents;
-  }, [locationItems]);
+  }, [locationItems, locationFilterText]);
 
-  // 고른 창고가 바뀌면 펼침 상태를 다시 계산한다. 같은 창고를 다시 조회할 때는 사용자의 접기를 지킨다.
+  // 고른 창고나 검색어가 바뀌면 펼침 상태를 다시 계산한다. 같은 조건을 다시 조회할 때는 사용자의 접기를 지킨다.
   if (
     locations.data !== undefined &&
     selectedWarehouseId !== null &&
-    expansion?.warehouseId !== selectedWarehouseId
+    (expansion?.warehouseId !== selectedWarehouseId || expansion.q !== locationFilterText)
   ) {
-    setExpansion({ warehouseId: selectedWarehouseId, ids: expandableIds });
+    setExpansion({
+      warehouseId: selectedWarehouseId,
+      q: locationFilterText,
+      ids: initialExpandedIds,
+    });
   }
 
   const expandedIds = expansion?.ids ?? NO_EXPANDED_IDS;
@@ -669,16 +660,10 @@ export const WarehouseLocationScreen = () => {
   const formLookups: LookupOptions = {
     plants: selectableOptions(lookups.sources.plants, formValues.plantId),
     businessUnits: selectableOptions(lookups.sources.businessUnits, formValues.businessUnitId),
-    uoms: selectableOptions(lookups.sources.uoms, ''),
     warehouseTypes: selectableOptions(lookups.sources.warehouseTypes, formValues.warehouseTypeCode),
     locationTypes: selectableOptions(
       lookups.sources.locationTypes,
       locationValues.locationTypeCode,
-    ),
-    qualityZones: selectableOptions(lookups.sources.qualityZones, locationValues.qualityZoneCode),
-    storageConditions: selectableOptions(
-      lookups.sources.storageConditions,
-      locationValues.storageConditionCode,
     ),
     reissueReasons: selectableOptions(lookups.sources.reissueReasons, ''),
   };
@@ -697,7 +682,14 @@ export const WarehouseLocationScreen = () => {
     });
   };
 
+  /** 추가 — 상위는 단추가 정한다(구역 추가는 창고 밑, 랙 추가는 고른 구역 밑). 코드는 여기서 발행한다. */
   const openCreateLocation = (parentLocationId: number | null) => {
+    const parent =
+      parentLocationId === null
+        ? null
+        : (hierarchyItems.find((item) => item.locationId === parentLocationId) ?? null);
+    const parentDepth = parent === null ? -1 : (locationDepthById.get(parent.locationId) ?? -1);
+    const level = LOCATION_LEVEL_CODES[parentDepth + 1] ?? 'ZONE';
     locationWrite.reset();
     setLocationFieldErrors({});
     setLocationFormSource(null);
@@ -705,6 +697,7 @@ export const WarehouseLocationScreen = () => {
     setLocationValues({
       ...emptyLocationFormValues(),
       parentLocationId: parentLocationId === null ? '' : String(parentLocationId),
+      locationCode: issueLocationCode(level, parent, hierarchyItems),
     });
     setDialogState({
       open: true,
@@ -742,24 +735,16 @@ export const WarehouseLocationScreen = () => {
 
   const handleSaveLocation = () => {
     const errors = validateLocation(locationValues);
-    const maxDepth = selectedWarehouse === null ? -1 : LOCATION_MAX_DEPTH;
     const parentId = Number(locationValues.parentLocationId) || null;
     const parentDepth = parentId === null ? -1 : locationDepthById.get(parentId);
-    const subtreeHeight =
-      dialogState.locationId === null
-        ? 0
-        : locationSubtreeHeight(hierarchyItems, dialogState.locationId);
-
-    /* 고칠 때 상위는 같은 단계의 다른 상위로만 바꾼다 — 단계가 바뀌면 서버가 거절한다(위치 계층 계약). */
     const currentDepth =
       dialogState.locationId === null ? undefined : locationDepthById.get(dialogState.locationId);
 
+    /* 상위는 같은 단계의 다른 상위로만 바뀐다 — 단계가 바뀌면 서버가 거절한다(위치 계층 계약). */
     if (parentDepth === undefined) {
       errors.parentLocationId = t.validation.parentLocationUnavailable;
     } else if (currentDepth !== undefined && parentDepth + 1 !== currentDepth) {
       errors.parentLocationId = t.validation.locationLevelChanged;
-    } else if (parentDepth + 1 + subtreeHeight > maxDepth) {
-      errors.parentLocationId = t.validation.locationDepthExceeded;
     }
     setLocationFieldErrors(errors);
 
@@ -793,11 +778,10 @@ export const WarehouseLocationScreen = () => {
     return unavailable;
   }, [dialogState.locationId, hierarchyItems]);
 
-  const maxLocationDepth = selectedWarehouse === null ? -1 : LOCATION_MAX_DEPTH;
   const selectedLocationRow = allLocationRows.find(
     (row) => String(row.location.locationId) === selectedLocationIds[0],
   );
-  const canAddRootLocation = maxLocationDepth >= 0 && locationHierarchy.data !== undefined;
+  const canAddRootLocation = selectedWarehouse !== null && locationHierarchy.data !== undefined;
   /*
    * 단추는 단계로 나눈다(사용자 지시 2026-10-29) — 구역은 창고 밑에, 랙은 고른 구역 밑에, 층 · 셀은 고른 랙에서
    * 한꺼번에 짠다. 시스템 자리(창고 전체 · 적치 대기) 밑에는 달 수 없다(서버 400 INVALID).
@@ -823,23 +807,50 @@ export const WarehouseLocationScreen = () => {
         ? t.dialog.createRackTitle
         : undefined;
 
-  const parentOptions = allLocationRows
-    .filter(
-      (row) =>
-        !unavailableParentIds.has(row.location.locationId) &&
-        row.depth < maxLocationDepth &&
-        !isSystemLocation(row.location),
-    )
-    .map((row) => ({
-      value: String(row.location.locationId),
-      label: `${row.location.locationCode} · ${row.location.locationName}`,
-    }));
+  /** 다이얼로그가 어느 창고의 Location을 다루는지 값으로 밝힌다. */
+  const warehouseLabel =
+    selectedWarehouse === null
+      ? ''
+      : `${selectedWarehouse.warehouseCode} · ${selectedWarehouse.warehouseName}`;
+
+  /*
+   * 상위 위치(사용자 지시 2026-10-29 — 「최상위」는 없다). 추가는 단추가 상위를 정해 글자로만 보인다. 구역 · 서버가
+   * 만든 위치는 창고 바로 밑이라 고칠 때도 글자다. 랙 · 층 · 셀을 고칠 때만 지금 상위와 같은 단계(한 단계 위)의
+   * 사람이 만든 위치 가운데서 고른다 — 자기 자신과 하위는 뺀다.
+   */
+  const editingLocation =
+    dialogState.mode === 'edit' && dialogState.locationId !== null
+      ? hierarchyItems.find((item) => item.locationId === dialogState.locationId)
+      : undefined;
+  const editingDepth =
+    dialogState.locationId === null ? undefined : locationDepthById.get(dialogState.locationId);
+  const parentSelectable =
+    dialogState.mode === 'edit' &&
+    editingDepth !== undefined &&
+    editingDepth > ZONE_DEPTH &&
+    (editingLocation === undefined || !isSystemLocation(editingLocation)) &&
+    (locationDetail.data === undefined || !isSystemLocation(locationDetail.data.location));
+
+  const parentOptions = parentSelectable
+    ? allLocationRows
+        .filter(
+          (row) =>
+            !unavailableParentIds.has(row.location.locationId) &&
+            row.depth === (editingDepth ?? 0) - 1 &&
+            !isSystemLocation(row.location),
+        )
+        .map((row) => ({
+          value: String(row.location.locationId),
+          label: locationOptionLabel(row.location),
+        }))
+    : null;
 
   /*
    * 서버 검색 결과나 페이지 한도 때문에 현재 부모가 목록 밖일 수 있다. 이 경우 Select가
    * 빈 값처럼 보이지 않도록 현재 참조를 보존하되, 내부 ID를 업무명처럼 노출하지 않는다.
    */
   if (
+    parentOptions !== null &&
     locationValues.parentLocationId !== '' &&
     !parentOptions.some((option) => option.value === locationValues.parentLocationId)
   ) {
@@ -849,14 +860,19 @@ export const WarehouseLocationScreen = () => {
     });
   }
 
+  const fixedParent =
+    locationValues.parentLocationId === ''
+      ? undefined
+      : hierarchyItems.find((item) => String(item.locationId) === locationValues.parentLocationId);
+  const parentLabel =
+    locationValues.parentLocationId === ''
+      ? warehouseLabel
+      : fixedParent === undefined
+        ? t.values.currentParentOutsideList
+        : locationOptionLabel(fixedParent);
+
   const listPage = warehouseList.data?.page;
   const listTruncated = listPage !== undefined && isTruncated(listPage, warehouses.length);
-
-  /** 다이얼로그가 어느 창고의 Location을 다루는지 값으로 밝힌다. */
-  const warehouseLabel =
-    selectedWarehouse === null
-      ? ''
-      : `${selectedWarehouse.warehouseCode} · ${selectedWarehouse.warehouseName}`;
 
   const renderWarehouseForm = (options: {
     mode: 'create' | 'edit';
@@ -1151,6 +1167,7 @@ export const WarehouseLocationScreen = () => {
         {...(createLocationTitle === undefined ? {} : { createTitle: createLocationTitle })}
         warehouseLabel={warehouseLabel}
         parentOptions={parentOptions}
+        parentLabel={parentLabel}
         values={locationValues}
         onChange={changeLocationValues}
         fieldErrors={{ ...locationWrite.fieldErrors, ...locationFieldErrors }}
@@ -1170,23 +1187,13 @@ export const WarehouseLocationScreen = () => {
             />
           </>
         }
-        codeLockReason={
-          locationDetail.data === undefined
-            ? null
-            : isSystemLocation(locationDetail.data.location)
-              ? t.actionReasons.systemLocation
-              : codeLockMessage(locationDetail.data.editability)
-        }
         systemLocked={
           locationDetail.data !== undefined && isSystemLocation(locationDetail.data.location)
         }
         canToggleActive={
           locationDetail.data === undefined || !isPutawayStaging(locationDetail.data.location)
         }
-        uomOptions={selectableOptions(lookups.sources.uoms, locationValues.capacityUomId)}
         locationTypeOptions={formLookups.locationTypes}
-        qualityZoneOptions={formLookups.qualityZones}
-        storageConditionOptions={formLookups.storageConditions}
         isActive={locationDetail.data?.location.isActive ?? true}
         isReady={
           locationHierarchy.data !== undefined &&

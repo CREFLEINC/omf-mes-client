@@ -30,6 +30,8 @@ export const warehouseLocation = {
     warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
     /* 서버가 창고마다 두는 위치(적치 대기 · 창고 전체) — 별칭만 고친다(서버 #875). */
     systemLocation: '시스템이 만든 위치라 별칭만 바꿀 수 있습니다.',
+    /* 위치 코드는 사람이 치지 않는다(사용자 지시 2026-10-29). */
+    locationCodeIssued: 'MES가 자동으로 발행합니다.',
   },
   loading: {
     warehouses: '창고 목록을 불러오는 중',
@@ -47,7 +49,7 @@ export const warehouseLocation = {
     warehouseNoneTitle: '아직 등록된 창고가 없습니다',
     warehouseNoMatchTitle: '조건에 맞는 결과가 없습니다',
     locationNoneTitle: '등록된 Location이 없습니다',
-    locationNoneDescription: '최상위 Location을 추가해 주세요.',
+    locationNoneDescription: '구역을 추가해 주세요.',
     locationNoMatchTitle: '조건에 맞는 Location이 없습니다',
     locationNoMatchDescription: '검색어를 지우면 전체 계층이 보입니다.',
     /* 창고를 고르기 전 오른쪽 자리 — 제목 + 안내(사용자 지시 2026-09-18 · omf-all-around#17). */
@@ -58,7 +60,7 @@ export const warehouseLocation = {
     searchLabel: '창고 검색',
     searchPlaceholder: '창고 코드 또는 창고명',
     locationSearchLabel: 'Location 검색',
-    locationSearchPlaceholder: '위치 코드 또는 위치명',
+    locationSearchPlaceholder: '위치 코드 또는 별칭',
     plantAll: '전체 공장',
     typeAll: '전체 유형',
   },
@@ -75,22 +77,16 @@ export const warehouseLocation = {
     warehouse: '창고',
     parentLocation: '상위 위치',
     locationCode: '위치 코드',
-    locationName: '위치명',
     locationLevel: '단계',
     aliasName: '별칭',
     locationType: '위치유형',
-    qualityZone: '품질구역',
-    storageCondition: '보관조건',
     allowMixedItem: '품목 혼적 허용',
     allowMixedLot: 'LOT 혼적 허용',
-    capacityQty: '수용량',
-    capacityUom: '수용량 단위',
   },
   /** 값이 비었을 때 선택칸 안에 보이는 안내 — 값·검증과 무관하다. */
   values: {
     active: '사용 중',
     inactive: '미사용',
-    noParent: '없음 (최상위)',
     currentParentOutsideList: '현재 상위 위치 (조회 목록 밖)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
     inactiveSuffix: ' (미사용)',
@@ -101,11 +97,8 @@ export const warehouseLocation = {
     required: '필수 입력 항목입니다.',
     codeBlank: '코드는 공백만으로 지정할 수 없습니다.',
     codeDuplicated: '이미 사용 중인 코드입니다. 다른 코드를 입력하세요.',
-    capacityNeedsUom: '수용량과 단위는 함께 입력하거나 함께 비워야 합니다.',
-    capacityInvalid: '수용량은 0 이상의 숫자로 입력하세요.',
     aliasTooLong: (max: number): string => `별칭은 ${String(max)}자 이하로 입력하세요.`,
     parentLocationUnavailable: '상위 위치를 전체 Location 목록에서 확인할 수 없습니다.',
-    locationDepthExceeded: '셀 아래에는 Location을 둘 수 없습니다(구역 › 랙 › 층 › 셀).',
     locationLevelChanged: '같은 단계의 다른 상위로만 옮길 수 있습니다.',
   },
   locationTable: {

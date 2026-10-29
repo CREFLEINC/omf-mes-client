@@ -35,29 +35,26 @@ export interface WarehouseFormValues {
   isDefect: boolean;
 }
 
+/**
+ * 위치는 수용량 · 수용 단위 · 품질구역 · 보관조건을 다루지 않는다(사용자 지시 2026-10-29) — 칸도 값도 없다.
+ * 위치명은 따로 받지 않고 별칭을 이름으로 쓴다. 코드는 MES 가 발행한다(`location-code.ts`).
+ */
 export interface LocationFormValues {
   parentLocationId: string;
+  /** 발행한 코드 — 사람이 치지 않는다. */
   locationCode: string;
-  locationName: string;
-  /** MES 별칭. 빈 글이면 별칭 없음. */
+  /** MES 별칭 — 위치의 이름이다. 빈 글이면 별칭 없음. */
   aliasName: string;
   locationTypeCode: string;
-  qualityZoneCode: string;
-  storageConditionCode: string;
   allowMixedItem: boolean;
   allowMixedLot: boolean;
-  capacityQty: string;
-  capacityUomId: string;
 }
 
 export interface LookupOptions {
   plants: { value: string; label: string }[];
   businessUnits: { value: string; label: string }[];
-  uoms: { value: string; label: string }[];
   warehouseTypes: { value: string; label: string }[];
   locationTypes: { value: string; label: string }[];
-  qualityZones: { value: string; label: string }[];
-  storageConditions: { value: string; label: string }[];
   reissueReasons: { value: string; label: string }[];
 }
 
@@ -77,7 +74,5 @@ export interface LookupSources {
   uoms: LookupSource<LookupEntry>;
   warehouseTypes: LookupSource<LookupEntry>;
   locationTypes: LookupSource<LookupEntry>;
-  qualityZones: LookupSource<LookupEntry>;
-  storageConditions: LookupSource<LookupEntry>;
   reissueReasons: LookupSource<LookupEntry>;
 }

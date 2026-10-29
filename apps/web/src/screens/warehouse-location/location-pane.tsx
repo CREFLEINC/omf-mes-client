@@ -12,8 +12,8 @@ import { type ReactNode, useId } from 'react';
 
 import { BoardTable } from '../../patterns/board-table';
 import { OneLine } from '../../patterns/po-board';
-import { locationDisplayName } from '../../patterns/system-location';
 import type { LocationTreeRow } from './location-tree';
+import { locationShownName } from './mappers';
 import type { Location } from './types';
 
 export interface LocationPaneProps {
@@ -88,7 +88,7 @@ export const LocationPane = ({
       width: '260px',
       /*
        * 위치 코드만 머리·값 왼쪽(사용자 결정 2026-09-18 · omf-all-around#17) — 가운데로 두면 행마다 따로
-       * 가운데에 서서 깊이 들여쓰기가 상쇄돼 상하위가 읽히지 않았다. 위치명·사용 상태는 가운데.
+       * 가운데에 놓여 깊이 들여쓰기가 상쇄돼 상하위가 읽히지 않았다. 별칭·사용 상태는 가운데.
        */
       render: (row) => {
         const isExpanded = expandedIds.has(row.location.locationId);
@@ -118,11 +118,10 @@ export const LocationPane = ({
       },
     },
     {
+      /* 별칭이 이름이다(사용자 지시 2026-10-29) — 없으면 저장된 위치명. 열 폭 저장 키는 그대로 둔다. */
       key: 'locationName',
-      header: t.fields.locationName,
-      render: (row) => (
-        <OneLine text={locationDisplayName(row.location.locationName, row.location)} />
-      ),
+      header: t.fields.aliasName,
+      render: (row) => <OneLine text={locationShownName(row.location)} />,
     },
     {
       key: 'locationLevel',
@@ -182,7 +181,7 @@ export const LocationPane = ({
     }
 
     return (
-      /* 입고 관리 짜임의 표(사용자 지시 2026-10-29). 폭 없는 열은 위치명 하나. */
+      /* 입고 관리 짜임의 표(사용자 지시 2026-10-29). 폭 없는 열은 별칭 하나. */
       <BoardTable
         label={t.tabs.location}
         className="warehouse-location-location-table"
@@ -204,7 +203,7 @@ export const LocationPane = ({
       {actionBanner}
       {/*
        * 역할별로 묶는다(omf-all-around#17) — 검색(왼쪽) · 등록(오른쪽 끝) · 선택한 Location 작업(구분선 아래).
-       * 최상위 추가의 비활성 사유만 묶음 바로 아래 도움말로 붙인다. 하위 추가는 사유 없이 비활성만 둔다
+       * 구역 추가의 비활성 사유만 묶음 바로 아래 도움말로 붙인다. 하위 추가는 사유 없이 비활성만 둔다
        * (사용자 지시 2026-09-18) — 활성 조건은 그대로다.
        */}
       <div className="filter-bar warehouse-location-location-toolbar">

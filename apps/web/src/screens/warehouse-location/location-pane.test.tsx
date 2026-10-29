@@ -173,7 +173,7 @@ describe('LocationPane', () => {
     expect(onGenerateLabels).toHaveBeenCalledTimes(1);
   });
 
-  it('최상위 추가를 누르면 onAddRoot를 부른다', async () => {
+  it('구역 추가를 누르면 onAddRoot를 부른다', async () => {
     const user = userEvent.setup();
     const { onAddRoot } = renderPane();
 
@@ -224,17 +224,17 @@ describe('LocationPane', () => {
   });
 
   /* Location 탭 정돈(omf-all-around#17 4차) — 문구·배치만, 활성 조건은 그대로. */
-  it('등록할 수 있으면 빈 상태가 최상위 Location 추가를 안내한다', () => {
+  it('등록할 수 있으면 빈 상태가 구역 추가를 안내한다', () => {
     renderPane({ rows: [] });
 
-    expect(screen.getByText('최상위 Location을 추가해 주세요.')).toBeInTheDocument();
+    expect(screen.getByText('구역을 추가해 주세요.')).toBeInTheDocument();
   });
 
-  it('최상위 추가가 막혀 있으면 빈 상태가 추가를 권하지 않고 사유를 보인다', () => {
+  it('구역 추가가 막혀 있으면 빈 상태가 추가를 권하지 않고 사유를 보인다', () => {
     const reason = 'Location 계층을 불러온 뒤 추가할 수 있습니다.';
     renderPane({ rows: [], canAddRoot: false, addRootDisabledReason: reason });
 
-    expect(screen.queryByText('최상위 Location을 추가해 주세요.')).not.toBeInTheDocument();
+    expect(screen.queryByText('구역을 추가해 주세요.')).not.toBeInTheDocument();
     expect(screen.getAllByText(reason).length).toBeGreaterThan(0);
   });
 });

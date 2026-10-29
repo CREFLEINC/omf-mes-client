@@ -24,6 +24,19 @@ const codesOf = (rows: { location: Location }[]): string[] =>
   rows.map((row) => row.location.locationCode);
 
 describe('buildLocationRows', () => {
+  it('형제 코드의 숫자는 수로 읽는다 — R100 이 R99 뒤에 놓인다', () => {
+    const items = [
+      makeLocation(1, 'Z01'),
+      makeLocation(13, 'Z01-R100', 1),
+      makeLocation(12, 'Z01-R99', 1),
+      makeLocation(11, 'Z01-R001', 1),
+    ];
+
+    const rows = buildLocationRows(items, new Set([1]));
+
+    expect(codesOf(rows)).toEqual(['Z01', 'Z01-R001', 'Z01-R99', 'Z01-R100']);
+  });
+
   it('계층을 깊이 우선으로 평탄화하고 형제를 코드 오름차순으로 정렬한다', () => {
     // B가 A보다 먼저 들어와도 형제 정렬은 코드 오름차순이어야 한다.
     const items = [

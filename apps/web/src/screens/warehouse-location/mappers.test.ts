@@ -5,6 +5,7 @@ import {
   emptyLocationFormValues,
   emptyWarehouseFormValues,
   isSameWarehouseValues,
+  locationOptionLabel,
   locationToFormValues,
   toLocationCreate,
   toLocationUpdate,
@@ -128,98 +129,117 @@ describe('toWarehouseCreate', () => {
 describe('locationToFormValues', () => {
   const location: Location = locationFixtures[2]!;
 
-  it('수용량과 단위를 문자열로 옮긴다', () => {
-    const values = locationToFormValues(location);
+  it('코드 · 별칭 · 혼적 허용을 옮기고 수용량 · 보관조건 칸은 없다', () => {
+    const values = locationToFormValues({ ...location, aliasName: '1층' });
 
-    expect(values.capacityQty).toBe('500');
-    expect(values.capacityUomId).toBe('41');
-  });
-
-  it('널 수용량·단위는 빈 문자열이 된다 — 짝 제약을 「둘 다 비었다」로 읽을 수 있어야 한다', () => {
-    const values = locationToFormValues({ ...location, capacityQty: null, capacityUomId: null });
-
-    expect(values.capacityQty).toBe('');
-    expect(values.capacityUomId).toBe('');
-  });
-
-  it('널 품질구역·보관조건은 빈 문자열이 된다', () => {
-    const values = locationToFormValues({
-      ...location,
-      qualityZoneCode: null,
-      storageConditionCode: null,
+    expect(values).toEqual({
+      parentLocationId: '2002',
+      locationCode: 'A-01-01-01',
+      aliasName: '1층',
+      locationTypeCode: 'RACK',
+      allowMixedItem: false,
+      allowMixedLot: false,
     });
-
-    expect(values.qualityZoneCode).toBe('');
-    expect(values.storageConditionCode).toBe('');
   });
 
-  it('코드·명칭·혼적 허용은 그대로 옮긴다', () => {
-    const values = locationToFormValues(location);
-
-    expect(values.locationCode).toBe('A-01-01-01');
-    expect(values.locationName).toBe('A구역 01열 01단');
-    expect(values.allowMixedItem).toBe(false);
-    expect(values.allowMixedLot).toBe(false);
+  it('별칭이 없으면 빈 글이 된다', () => {
+    expect(locationToFormValues({ ...location, aliasName: null }).aliasName).toBe('');
   });
 });
 
-describe('toLocationCreate · toLocationUpdate', () => {
-  const values = locationToFormValues(locationFixtures[2]!);
+/** 수용량 · 수용 단위 · 품질구역 · 보관조건 — 위치가 다루지 않아 보내지 않는다(사용자 지시 2026-10-29). */
+const DROPPED_KEYS = ['capacityQty', 'capacityUomId', 'qualityZoneCode', 'storageConditionCode'];
 
-  it('등록 본문에는 창고와 상위 위치가 함께 실린다', () => {
-    const body = toLocationCreate({ ...values, parentLocationId: '2002' }, 1001);
+describe('toLocationCreate', () => {
+  const values = {
+    ...emptyLocationFormValues(),
+    locationCode: 'Z01-R03',
+    locationTypeCode: 'RACK',
+  };
+
+  it('창고와 상위 위치가 함께 실린다', () => {
+    const body = toLocationCreate({ ...values, parentLocationId: '2001' }, 1001);
 
     expect(body.warehouseId).toBe(1001);
-    expect(body.parentLocationId).toBe(2002);
+    expect(body.parentLocationId).toBe(2001);
+    expect(body.locationCode).toBe('Z01-R03');
   });
 
-  it('최상위 등록이면 상위 위치가 널이다', () => {
-    expect(toLocationCreate({ ...values, parentLocationId: '' }, 1001).parentLocationId).toBeNull();
+  it('위치명은 별칭이다 — 별칭이 없으면 발행한 코드다', () => {
+    expect(toLocationCreate({ ...values, aliasName: ' 원자재 랙 ' }, 1001)).toMatchObject({
+      locationName: '원자재 랙',
+      aliasName: '원자재 랙',
+    });
+    expect(toLocationCreate({ ...values, aliasName: '  ' }, 1001)).toMatchObject({
+      locationName: 'Z01-R03',
+      aliasName: null,
+    });
   });
 
-  it('수정 본문에는 창고가 실리지 않는다 — 등록 후 바꿀 수 없다', () => {
-    expect(toLocationUpdate(values)).not.toHaveProperty('warehouseId');
+  it('수용량 · 보관조건 키를 싣지 않는다', () => {
+    const body = toLocationCreate(values, 1001);
+
+    for (const key of DROPPED_KEYS) expect(body).not.toHaveProperty(key);
+  });
+});
+
+describe('toLocationUpdate', () => {
+  const stored: Location = { ...locationFixtures[1]!, aliasName: '1번 랙' };
+  const values = locationToFormValues(stored);
+
+  it('창고가 실리지 않는다 — 등록 후 바꿀 수 없다', () => {
+    expect(toLocationUpdate(values, stored)).not.toHaveProperty('warehouseId');
   });
 
-  it('수용량을 숫자로 되돌리고 단위를 숫자 id로 보낸다', () => {
-    const body = toLocationUpdate(values);
-
-    expect(body.capacityQty).toBe(500);
-    expect(body.capacityUomId).toBe(41);
+  it('별칭을 고치지 않으면 저장된 위치명을 그대로 보낸다', () => {
+    expect(toLocationUpdate(values, stored).locationName).toBe('A구역 01열');
   });
 
-  it('수용량과 단위를 비우면 둘 다 널로 보낸다 — 짝 제약을 지킨다', () => {
-    const body = toLocationUpdate({ ...values, capacityQty: '', capacityUomId: '' });
-
-    expect(body.capacityQty).toBeNull();
-    expect(body.capacityUomId).toBeNull();
+  it('별칭을 고치면 위치명도 별칭으로, 지우면 코드로 맞춘다', () => {
+    expect(toLocationUpdate({ ...values, aliasName: ' 2번 랙 ' }, stored)).toMatchObject({
+      locationName: '2번 랙',
+      aliasName: '2번 랙',
+    });
+    expect(toLocationUpdate({ ...values, aliasName: '' }, stored)).toMatchObject({
+      locationName: 'A-01-01',
+      aliasName: null,
+    });
   });
 
-  it('별칭은 앞뒤 공백을 떼어 보내고, 비면 널로 보낸다', () => {
-    expect(toLocationUpdate({ ...values, aliasName: ' 입고 대기 ' }).aliasName).toBe('입고 대기');
-    expect(toLocationUpdate({ ...values, aliasName: '  ' }).aliasName).toBeNull();
+  it('서버가 만든 위치는 별칭을 고쳐도 위치명을 바꾸지 않는다', () => {
+    const staging = { ...stored, locationName: '적치 대기', systemRoleCode: 'PUTAWAY_STAGING' };
+
+    expect(toLocationUpdate({ ...values, aliasName: '입고 대기' }, staging).locationName).toBe(
+      '적치 대기',
+    );
   });
 
-  it('고르지 않은 품질구역·보관조건은 널로 보낸다', () => {
-    const body = toLocationUpdate({ ...values, qualityZoneCode: '', storageConditionCode: '' });
+  it('수용량 · 보관조건 키를 싣지 않는다', () => {
+    const body = toLocationUpdate(values, stored);
 
-    expect(body.qualityZoneCode).toBeNull();
-    expect(body.storageConditionCode).toBeNull();
+    for (const key of DROPPED_KEYS) expect(body).not.toHaveProperty(key);
   });
 });
 
 describe('emptyLocationFormValues', () => {
-  it('신규 등록 폼은 코드·명칭·수용량이 비어 있다', () => {
+  it('신규 등록 폼은 코드 · 별칭이 비어 있다', () => {
     const values = emptyLocationFormValues();
 
     expect(values.locationCode).toBe('');
-    expect(values.locationName).toBe('');
-    expect(values.capacityQty).toBe('');
-    expect(values.capacityUomId).toBe('');
+    expect(values.aliasName).toBe('');
   });
 
   it('호출할 때마다 새 객체를 준다', () => {
     expect(emptyLocationFormValues()).not.toBe(emptyLocationFormValues());
+  });
+});
+
+describe('locationOptionLabel', () => {
+  it('별칭이 있으면 별칭을, 없으면 위치명을 코드 뒤에 붙인다', () => {
+    const location = locationFixtures[0]!;
+
+    expect(locationOptionLabel({ ...location, aliasName: '원자재' })).toBe('A-01 · 원자재');
+    expect(locationOptionLabel({ ...location, aliasName: null })).toBe('A-01 · A구역');
   });
 });
 

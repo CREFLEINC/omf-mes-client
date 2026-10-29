@@ -22,8 +22,6 @@ export const defaultWarehouseFilters: WarehouseFilters = {
 export const CODE_GROUPS = {
   warehouseType: 'WAREHOUSE_TYPE',
   locationType: 'LOCATION_TYPE',
-  qualityZone: 'QUALITY_ZONE',
-  storageCondition: 'STORAGE_CONDITION',
   reissueReason: 'REISSUE_REASON',
 } as const;
 

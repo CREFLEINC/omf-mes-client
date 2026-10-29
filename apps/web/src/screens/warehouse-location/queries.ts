@@ -240,6 +240,10 @@ export const useLookupOptions = (): LookupResult => {
       ),
   });
 
+  /*
+   * 위치 칸에서 수용 단위가 빠져(사용자 지시 2026-10-29) 이 화면은 단위를 쓰지 않는다. 단위 공유 캐시 시험(#1240)이
+   * 이 훅으로 창고 화면을 거치므로 그 시험을 고칠 때 함께 걷는다.
+   */
   const uoms = useQuery({
     queryKey: lookupKeys.list('uoms'),
     queryFn: () =>
@@ -259,8 +263,6 @@ export const useLookupOptions = (): LookupResult => {
 
   const warehouseTypes = useCodeGroup(CODE_GROUPS.warehouseType);
   const locationTypes = useCodeGroup(CODE_GROUPS.locationType);
-  const qualityZones = useCodeGroup(CODE_GROUPS.qualityZone);
-  const storageConditions = useCodeGroup(CODE_GROUPS.storageCondition);
   const reissueReasons = useCodeGroup(CODE_GROUPS.reissueReason);
 
   const codeSource = (query: typeof warehouseTypes) => ({
@@ -308,8 +310,6 @@ export const useLookupOptions = (): LookupResult => {
       },
       warehouseTypes: codeSource(warehouseTypes),
       locationTypes: codeSource(locationTypes),
-      qualityZones: codeSource(qualityZones),
-      storageConditions: codeSource(storageConditions),
       reissueReasons: codeSource(reissueReasons),
     },
     truncated:
@@ -318,8 +318,6 @@ export const useLookupOptions = (): LookupResult => {
       isListTruncated(uoms.data) ||
       isListTruncated(warehouseTypes.data) ||
       isListTruncated(locationTypes.data) ||
-      isListTruncated(qualityZones.data) ||
-      isListTruncated(storageConditions.data) ||
       isListTruncated(reissueReasons.data),
     isError:
       plants.isError ||
@@ -327,8 +325,6 @@ export const useLookupOptions = (): LookupResult => {
       uoms.isError ||
       warehouseTypes.isError ||
       locationTypes.isError ||
-      qualityZones.isError ||
-      storageConditions.isError ||
       reissueReasons.isError,
     isLoading:
       plants.isPending ||
@@ -336,8 +332,6 @@ export const useLookupOptions = (): LookupResult => {
       uoms.isPending ||
       warehouseTypes.isPending ||
       locationTypes.isPending ||
-      qualityZones.isPending ||
-      storageConditions.isPending ||
       reissueReasons.isPending,
   };
 };

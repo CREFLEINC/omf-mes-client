@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { useId } from 'react';
 
 import type { LocationFormValues } from './types';
-import { SelectField } from './warehouse-form-pane';
+import { ReadOnlyField, SelectField } from './warehouse-form-pane';
 
 export interface LocationFormDialogProps {
   open: boolean;
@@ -14,13 +14,16 @@ export interface LocationFormDialogProps {
   createTitle?: string;
   /** 어느 창고의 Location인지 — 「창고코드 · 창고명」 */
   warehouseLabel: string;
-  parentOptions: { value: string; label: string }[];
+  /**
+   * 상위 위치 선택지. null 이면 상위를 바꿀 수 없어 `parentLabel` 을 글자로 보인다 — 추가는 단추가 상위를 정하고,
+   * 구역 · 서버가 만든 위치는 창고 바로 밑이다. 랙 · 층 · 셀을 고칠 때만 한 단계 위의 위치 가운데서 고른다.
+   */
+  parentOptions: { value: string; label: string }[] | null;
+  parentLabel: string;
   values: LocationFormValues;
   onChange: (patch: Partial<LocationFormValues>) => void;
   fieldErrors: Record<string, string>;
   banner: ReactNode;
-  /** null이면 위치코드 편집 가능. 잠긴 코드를 고치게 두면 저장 시점에야 거부된다 */
-  codeLockReason: string | null;
   /**
    * 서버가 만든 위치(적치 대기 · 창고 전체)면 참 — 별칭 밖의 칸을 모두 잠근다. 서버는 다른 칸이 바뀌어 오면
    * 칸마다 STATE_LOCKED 로 거부한다(#875).
@@ -28,10 +31,7 @@ export interface LocationFormDialogProps {
   systemLocked: boolean;
   /** 사용 중지 · 다시 사용 단추를 둘지. 적치 대기는 끌 수 없어 단추를 숨긴다. */
   canToggleActive: boolean;
-  uomOptions: { value: string; label: string }[];
   locationTypeOptions: { value: string; label: string }[];
-  qualityZoneOptions: { value: string; label: string }[];
-  storageConditionOptions: { value: string; label: string }[];
   isActive: boolean;
   /** 편집 상세 조회가 끝나 ETag와 현재 상태를 확보했을 때만 쓰기를 허용한다. */
   isReady: boolean;
@@ -49,17 +49,14 @@ export const LocationFormDialog = ({
   createTitle,
   warehouseLabel,
   parentOptions,
+  parentLabel,
   values,
   onChange,
   fieldErrors,
   banner,
-  codeLockReason,
   systemLocked,
   canToggleActive,
-  uomOptions,
   locationTypeOptions,
-  qualityZoneOptions,
-  storageConditionOptions,
   isActive,
   isReady,
   onToggleActive,
@@ -105,32 +102,38 @@ export const LocationFormDialog = ({
           <span className="field-note">{t.actionReasons.warehouseFixedInLocation}</span>
         </div>
 
-        <SelectField
-          label={t.fields.parentLocation}
-          options={[{ value: '', label: t.values.noParent }, ...parentOptions]}
-          value={values.parentLocationId}
-          onChange={(value) => onChange({ parentLocationId: value })}
-          disabled={locked}
-          error={fieldErrors.parentLocationId}
-        />
+        {parentOptions === null ? (
+          <ReadOnlyField
+            label={t.fields.parentLocation}
+            value={parentLabel}
+            error={fieldErrors.parentLocationId}
+          />
+        ) : (
+          <SelectField
+            label={t.fields.parentLocation}
+            options={parentOptions}
+            value={values.parentLocationId}
+            onChange={(value) => onChange({ parentLocationId: value })}
+            disabled={locked}
+            error={fieldErrors.parentLocationId}
+          />
+        )}
 
-        <TextField
+        {/* 위치 코드는 MES 가 발행한다(사용자 지시 2026-10-29) — 치는 칸이 없다. */}
+        <ReadOnlyField
           label={t.fields.locationCode}
           value={values.locationCode}
-          onChange={(event) => onChange({ locationCode: event.target.value })}
-          disabled={locked || codeLockReason !== null}
-          disabledReason={codeLockReason}
           error={fieldErrors.locationCode}
+          note={
+            mode === 'create'
+              ? t.actionReasons.locationCodeIssued
+              : systemLocked
+                ? t.actionReasons.systemLocation
+                : undefined
+          }
         />
 
-        <TextField
-          label={t.fields.locationName}
-          value={values.locationName}
-          onChange={(event) => onChange({ locationName: event.target.value })}
-          disabled={locked}
-          error={fieldErrors.locationName}
-        />
-
+        {/* 별칭이 위치의 이름이다 — 위치명 칸은 따로 두지 않는다. */}
         <TextField
           label={t.fields.aliasName}
           value={values.aliasName}
@@ -146,22 +149,6 @@ export const LocationFormDialog = ({
           onChange={(value) => onChange({ locationTypeCode: value })}
           disabled={locked}
           error={fieldErrors.locationTypeCode}
-        />
-
-        <SelectField
-          label={t.fields.qualityZone}
-          options={qualityZoneOptions}
-          value={values.qualityZoneCode}
-          onChange={(value) => onChange({ qualityZoneCode: value })}
-          disabled={locked}
-        />
-
-        <SelectField
-          label={t.fields.storageCondition}
-          options={storageConditionOptions}
-          value={values.storageConditionCode}
-          onChange={(value) => onChange({ storageConditionCode: value })}
-          disabled={locked}
         />
 
         {/* 간격이 없으면 두 문구가 붙어 「…허용LOT 혼적…」처럼 한 줄로 읽힌다. */}
@@ -181,24 +168,6 @@ export const LocationFormDialog = ({
             {t.fields.allowMixedLot}
           </Checkbox>
         </div>
-
-        <TextField
-          label={t.fields.capacityQty}
-          inputMode="decimal"
-          value={values.capacityQty}
-          onChange={(event) => onChange({ capacityQty: event.target.value })}
-          disabled={locked}
-          error={fieldErrors.capacityQty}
-        />
-
-        <SelectField
-          label={t.fields.capacityUom}
-          options={uomOptions}
-          value={values.capacityUomId}
-          onChange={(value) => onChange({ capacityUomId: value })}
-          disabled={locked}
-          error={fieldErrors.capacityUomId}
-        />
       </div>
     </Dialog>
   );
