@@ -90,7 +90,7 @@ describe('PopScreenNavButton — 남은 작업 배지(피처 002)', () => {
     const dialog = within(await openNav(user));
     const lead = within(dialog.getByRole('region', { name: work.title }));
     expect(lead.getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([
-      work.count('작업 시작', 3),
+      work.count('작업 지시 목록', 3),
       work.count('긴급 W/O', 1),
       work.count('출하 포장', 4),
       work.count('OQC 출하검사 판정', 12),
@@ -110,7 +110,7 @@ describe('PopScreenNavButton — 남은 작업 배지(피처 002)', () => {
     await waitFor(() => expect(counted).toHaveLength(1));
 
     const dialog = within(await openNav(user));
-    const start = dialog.getByRole('option', { name: `작업 시작${work.suffix(3)}` });
+    const start = dialog.getByRole('option', { name: `작업 지시 목록${work.suffix(3)}` });
     expect(within(start).getByText('3')).toBeInTheDocument();
     expect(dialog.getByRole('option', { name: '자재 LOT 라벨 발행' })).toBeInTheDocument();
   });
@@ -143,7 +143,7 @@ describe('PopScreenNavButton — 남은 작업 배지(피처 002)', () => {
     expect(trigger.querySelector('.pop-work-dot')).toBeNull();
     const dialog = within(await openNav(user));
     expect(dialog.queryByRole('region', { name: work.title })).toBeNull();
-    expect(dialog.getByRole('option', { name: '작업 시작' })).toBeInTheDocument();
+    expect(dialog.getByRole('option', { name: '작업 지시 목록' })).toBeInTheDocument();
   });
 
   it('모두 0 이면 묶음도 점도 없다', async () => {
@@ -161,7 +161,7 @@ describe('PopScreenNavButton — 남은 작업 배지(피처 002)', () => {
 
     const dialog = within(await openNav(user));
     expect(dialog.queryByRole('region', { name: work.title })).toBeNull();
-    expect(dialog.getByRole('option', { name: '작업 시작' })).toBeInTheDocument();
+    expect(dialog.getByRole('option', { name: '작업 지시 목록' })).toBeInTheDocument();
   });
 
   it('SC-002 열려 있는 동안 60초마다, 창을 열 때 다시 센다', async () => {

@@ -1,122 +1,128 @@
 import type { ko } from '../ko';
-import { common } from './common';
 import type { Translated } from './translated';
 
-/** P-02-03 자재 투입 스캔·오투입 검증. */
+/** P-02-03 자재 투입. */
 export const materialInputScan: Translated<typeof ko.materialInputScan> = {
   title: 'Đưa vật tư vào',
   panes: {
-    receipt: 'Đã nhận so với kế hoạch',
-    scan: 'Quét',
+    input: 'Vật tư đưa vào',
+    noSelection: 'Vật tư đã chọn',
   },
-  header: {
-    workOrderMissing: 'Chưa chỉ định lệnh sản xuất. Hãy chọn lệnh sản xuất rồi vào lại.',
-    /* ⚠ 머리줄의 작업지시 표기는 화면마다 「W/O」로 통일한다(사용자 지시 2026-09-10). */
-    workOrder: (workOrderId: number): string => `W/O #${String(workOrderId)}`,
-    emergency: 'Khẩn',
-    session: (sessionId: number): string => `Phiên #${String(sessionId)}`,
-    sessionNone: 'Phiên —',
-    terminal: (terminalId: number): string => `Máy trạm #${String(terminalId)}`,
-    terminalUnknown: 'Máy trạm —',
-    unsynced: (count: number): string => `Chờ gửi ${String(count)} mục`,
-    synced: 'Đã gửi xong',
-    offline: common.connection.offline,
-  },
-  table: {
-    item: 'Mặt hàng',
-    lot: 'LOT',
-    issuedQty: 'Xuất kho',
-    receivedQty: 'Đã nhận',
-    varianceQty: 'Chênh lệch',
-    status: 'Trạng thái',
+  pairs: {
+    lotLabel: 'LOT',
+    progressLabel: 'Lượng đưa vào',
+    progress: (recorded: string, issued: string | null, uom: string): string =>
+      `${recorded}${issued === null ? '' : ` / ${issued}`}${uom === '' ? '' : ` ${uom}`}`,
+    remaining: (qty: string): string => `Còn lại ${qty}`,
+    over: (qty: string): string => `Đã đưa vào nhiều hơn lượng cấp phát ${qty}.`,
+    thisInput: 'Lần này',
   },
   receiptStatus: {
-    matched: 'Đã nhận đủ',
+    matched: 'Đã nhận',
     short: 'Nhận thiếu',
     none: 'Chưa nhận',
   },
   loading: {
-    receipt: 'Đang tải lịch sử nhận tại dòng',
+    receipt: 'Đang tải vật tư cấp phát',
   },
   empty: {
-    receiptTitle: 'Không có lịch sử nhận.',
-    notQueriedTitle: 'Chưa tra cứu',
+    receiptTitle: 'Không có vật tư cấp phát. Quét LOT vật tư để thêm vào danh sách.',
+    notQueriedTitle: 'Chưa chỉ định lệnh sản xuất.',
   },
   notes: {
-    shortAllowed: 'Dù nhận thiếu hoặc chưa nhận, vẫn có thể đưa vào số lượng đã nhận.',
-    manualEntry: 'Nếu không quét được, hãy nhập tay mã rồi nhấn Enter.',
-  },
-  receiptSummary: {
-    label: 'Thiếu · chưa nhận',
-    short: (item: string, varianceQty: number): string => `${item} thiếu ${String(varianceQty)}`,
-    none: (item: string): string => `${item} chưa nhận`,
+    shortAllowed: 'Dù có vật tư nhận thiếu hoặc chưa nhận, vẫn có thể đưa vào theo lượng cấp phát.',
   },
   scan: {
-    label: 'LOT vật tư / mã khuôn',
-    manualEntry: 'Nhập tay',
+    label: 'Quét',
+    placeholder: 'LOT vật tư hoặc mã khuôn',
     outcomes: {
-      material: (lotNo: string): string => `Đã thêm ${lotNo}.`,
-      mold: (moldCode: string): string => `Đã chỉ định khuôn ${moldCode}.`,
-      duplicate: (lotNo: string): string => `${lotNo} đã được thêm rồi.`,
-      blockedStatus: (lotNo: string, statusName: string): string =>
-        `${lotNo} đang ở trạng thái 「${statusName}」 nên không thêm được. Chỉ vật tư bình thường mới đầu vào được.`,
-      blockedStatusUnknown: (lotNo: string): string =>
-        `Không xác nhận được trạng thái của ${lotNo} nên không thêm được. Lát nữa hãy đọc lại.`,
+      material: (itemWithObject: string): string => `Đã thêm ${itemWithObject}.`,
+      mold: (moldWithObject: string): string => `Đã chỉ định khuôn ${moldWithObject}.`,
+      again: (item: string): string => `Đã thêm lượt đưa vào bổ sung cho ${item}.`,
+      duplicate: (itemWithTopic: string): string => `${itemWithTopic} đã được thêm rồi.`,
+      blockedStatus: (itemWithTopic: string, statusName: string): string =>
+        `${itemWithTopic} đang ở trạng thái 「${statusName}」 nên không thêm được.`,
+      blockedStatusUnknown: (item: string): string =>
+        `Không xác nhận được trạng thái của ${item}. Vui lòng quét lại.`,
       ambiguous: (count: number): string =>
-        `Tìm thấy cùng lúc ${String(count)} mục. Hãy đọc mã chính xác hơn.`,
-      notFound: (code: string): string => `Không tìm thấy ${code}.`,
-      failed: 'Không tra cứu được. Hãy đọc lại.',
-      offline: 'Mất kết nối nên không tra cứu được vật tư. Hãy đọc lại khi có kết nối.',
+        `Tìm thấy cùng lúc ${String(count)} mục. Vui lòng quét toàn bộ mã trên nhãn.`,
+      notFound: (code: string): string =>
+        `Không có LOT vật tư hoặc khuôn ứng với ${code}. Vui lòng kiểm tra mã.`,
+      failed: 'Không tra cứu được. Vui lòng quét lại.',
+      offline: 'Mất kết nối nên không tra cứu được vật tư. Vui lòng quét lại khi có kết nối.',
+      recorded: (item: string, qty: string): string => `Đưa vào ${item} ${qty}`,
+      undone: (item: string): string => `Đã hủy lượt đưa vào chưa gửi của ${item}.`,
+      allInput: (item: string): string => `${item} đã đưa vào hết lượng cấp phát.`,
+      leftoversSent: (count: number): string =>
+        `Đã gửi ${String(count)} lượt đưa vào chưa gửi đã quét trước đó.`,
     },
   },
   scanned: {
-    materialsLabel: 'Vật tư đã thêm',
-    moldLabel: 'Khuôn đã chỉ định',
-    remove: 'Bỏ',
-    qtyLabel: (lotNo: string): string => `Số lượng đưa vào ${lotNo}`,
-    itemAndQty: (item: string, qty: string, uom: string): string =>
-      uom === '' ? `${item} · ${qty}` : `${item} · ${qty} ${uom}`,
+    materialsLabel: 'Danh sách vật tư',
+    remove: 'Hủy quét',
+    removeMaterial: (lotNo: string): string => `Hủy quét ${lotNo}`,
+    removed: (item: string): string => `Đã hủy quét ${item}.`,
+    pendingHint: 'Sẽ gửi khi quét tiếp hoặc chuyển sang công việc sản xuất.',
+    recordsTitle: 'Lịch sử đưa vào',
+    pendingState: 'Chưa gửi',
+    sentState: 'Đã gửi',
+    cancelRecord: 'Hủy đưa vào',
+    allInput: 'Đã đưa vào hết lượng cấp phát.',
+    extraInput: 'Đưa thêm',
+    undo: 'Hủy',
+    undoMaterial: (lotNo: string): string => `Hủy đưa vào chưa gửi ${lotNo}`,
+    manualReasons: {
+      unknown: 'Không biết lượng cấp phát nên vui lòng tự nhập lượng đưa vào.',
+      none: 'Đã đưa vào hết lượng cấp phát. Muốn đưa thêm vui lòng tự nhập lượng đưa vào.',
+      unit: 'Khác đơn vị nên vui lòng tự nhập lượng đưa vào.',
+    },
+    sentReadOnly: 'Việc đưa vào đã gửi chưa sửa được. Muốn đưa thêm vui lòng quét lại nhãn LOT.',
+    qtyLabel: (lotNo: string): string => `${lotNo} lần này`,
     qtyProblems: {
-      empty: 'Hãy nhập số lượng đưa vào.',
-      format: 'Hãy nhập số lượng đưa vào bằng chữ số.',
-      notPositive: 'Số lượng đưa vào phải lớn hơn 0.',
+      empty: 'Vui lòng nhập số lượng đưa vào lần này.',
+      format: 'Vui lòng nhập số lượng lần này bằng chữ số.',
+      notPositive: 'Số lượng lần này phải lớn hơn 0.',
     },
     unlinkedIssue: 'Xuất kho chưa gán',
-    removeMaterial: (lotNo: string): string => `Bỏ ${lotNo}`,
-    saveHint: 'Nhập số lượng rồi nhấn 「Ghi」.',
     keypadLabel: (lotNo: string): string => `Bàn phím số lượng ${lotNo}`,
-    keypadSubmit: 'Ghi',
+    keypadSubmit: 'Đăng ký đưa vào',
     keypadClear: 'Xóa hết',
     keypadBackspace: 'Xóa một ký tự',
-    recordedMark: 'Đã ghi',
-    recordFailed: 'Không ghi được',
-    empty: 'Chưa thêm vật tư nào.',
-    moldEmpty: 'Chưa chỉ định khuôn nào.',
-    statusLabel: 'Trạng thái',
-    heldMark: 'Đang tạm giữ',
+    summary: (todo: number, done: number): string =>
+      `Cần đưa vào ${String(todo)}, đã xong ${String(done)}`,
+    completeMark: 'Đã đưa vào xong',
+    overMark: (qty: string): string => `Đưa vào quá ${qty}`,
+    pendingMark: 'Đang đưa vào',
+    noSelection: 'Vui lòng chọn vật tư trong danh sách hoặc quét nhãn LOT.',
+    scanToInput: 'Quét nhãn LOT để nhập số lượng lần này.',
+    heldMark: 'Cần kiểm tra tạm giữ',
     fourMChangeMark: 'Hàng thay đổi 4M',
-    statusLabelUnavailable: 'Không tải được tên trạng thái nên hiển thị bằng mã.',
-    shotCount: (current: number, guaranteed: number): string =>
-      `Nhát dập ${current.toLocaleString('ko-KR')} / ${guaranteed.toLocaleString('ko-KR')}`,
-    shotCountUnknown: (current: number): string =>
-      `Nhát dập ${current.toLocaleString('ko-KR')} · chưa có số nhát dập đảm bảo`,
-    shotCountExceeded:
-      'Đã vượt số nhát dập đảm bảo. Không chặn đưa vào, nhưng hãy xem xét thay khuôn.',
+    fourMChangeLine: (detail: string): string => `Thay đổi 4M: ${detail}`,
+    unitMismatch: 'Khác đơn vị',
+    shotCountExceeded: (mold: string): string =>
+      `Khuôn ${mold} đã vượt số nhát dập đảm bảo. Vẫn đưa vào được, nhưng vui lòng xem xét thay khuôn.`,
+  },
+  remaining: {
+    workOrderMissing:
+      'Chưa chỉ định lệnh sản xuất. Vui lòng chọn lệnh sản xuất ở màn hình danh sách lệnh sản xuất',
+    scan: 'Vui lòng quét LOT vật tư',
+    record: (item: string): string => `Vui lòng đăng ký đưa vào ${item}`,
+    recordMany: (count: number): string =>
+      `Vui lòng đăng ký đưa vào ${String(count)} vật tư đã quét`,
+    done: 'Nếu đã đưa vào xong, có thể chuyển sang công việc sản xuất',
+    sending: (item: string, qty: string): string => `Sẽ gửi đưa vào ${item} ${qty} khi quét tiếp`,
   },
   confirm: {
-    action: 'Xác nhận đưa vào',
     reasons: {
-      nothingScanned: 'Xác nhận đưa vào: phải ghi ít nhất một vật tư mới nhấn được.',
-      unavailable: 'Không xác nhận được quyền đưa vào. Hãy thử lại.',
+      unavailable: 'Không xác nhận được quyền đưa vào. Vui lòng nhấn kiểm tra lại quyền đưa vào',
       unidentified:
-        'Chưa xác nhận được máy hoặc công đoạn của lệnh sản xuất này. Hãy chọn lại lệnh sản xuất ở màn hình bắt đầu công việc rồi vào lại.',
-      checking: 'Đang kiểm tra quyền đưa vào.',
-      qtyMissing: 'Còn vật tư chưa ghi. Hãy nhập số lượng để ghi, hoặc bỏ vật tư đó.',
-      workerMissing: 'Chưa xác nhận được công nhân. Hãy xác nhận mã nhân viên rồi vào lại.',
+        'Chưa xác nhận được máy hoặc công đoạn của lệnh sản xuất. Vui lòng chọn lại lệnh sản xuất ở màn hình danh sách lệnh sản xuất rồi vào lại.',
+      checking: 'Đang kiểm tra quyền đưa vào',
+      qtyMissing: 'Còn vật tư chưa đăng ký. Vui lòng nhập lượng đưa vào rồi đăng ký, hoặc hủy quét',
+      workerMissing: 'Vui lòng nhập mã nhân viên',
     },
     retry: 'Kiểm tra lại quyền đưa vào',
-    closed: (count: number): string => `Đã hoàn tất đưa vào với ${String(count)} mục.`,
     goToProductionResult: 'Sang công việc sản xuất',
-    failed: 'Không ghi được việc đưa vào.',
+    failed: 'Không đăng ký được việc đưa vào.',
   },
 };

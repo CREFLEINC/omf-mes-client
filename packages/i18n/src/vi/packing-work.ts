@@ -15,7 +15,7 @@ export const packingWork: Translated<typeof ko.packingWork> = {
 
   entry: {
     missingWorkOrder:
-      'Không biết lệnh sản xuất nên không tải được đối tượng đóng gói. Hãy chọn lệnh sản xuất ở màn hình bắt đầu công việc rồi vào lại.',
+      'Không biết lệnh sản xuất nên không tải được đối tượng đóng gói. Hãy chọn lệnh sản xuất ở màn hình danh sách lệnh sản xuất rồi vào lại.',
     missingWorker:
       'Chưa xác nhận mã nhân viên nên không bắt đầu đóng gói được. Hãy chỉ định công nhân trước.',
   },

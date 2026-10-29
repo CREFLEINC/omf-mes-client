@@ -1,5 +1,7 @@
 import type { ko } from '../ko';
+import { named } from '../named';
 import type { Translated } from './translated';
+import { common } from './common';
 
 /** POP 화면 위에 늘 서 있는 공통 조작 문구 — 모든 POP 화면이 함께 쓴다. */
 export const popChrome: Translated<typeof ko.popChrome> = {
@@ -11,15 +13,52 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     suffix: (count: number): string => `, còn ${String(count)} việc`,
   },
   userSwitch: 'Đổi người dùng',
-  workerMissing: 'Chưa xác nhận mã nhân viên. Hãy xác thực mã nhân viên trước.',
+  header: {
+    terminalUnknown: 'Chưa xác nhận máy trạm',
+    terminalLabel: (code: string): string => `Máy trạm ${code}`,
+    /** 머리줄은 1024 폭에 고정 항목이 다 들어가게 설비 이름만 보인다. 코드는 툴팁(`equipmentTitle`). */
+    equipmentLabel: (code: string, name: string): string =>
+      `Thiết bị ${name.trim() === '' ? code : name}`,
+    equipmentTitle: (code: string, name: string): string => `Thiết bị ${named(name, code)}`,
+    workerUnset: 'Chưa nhập mã nhân viên',
+    workerLabel: (workerNo: string, workerName?: string | null): string =>
+      named(workerName, workerNo),
+    workerTitle: (workerNo: string, workerName?: string | null): string =>
+      `Người làm ${named(workerName, workerNo)}`,
+    workOrderLabel: (workOrderNo: string): string => `W/O ${workOrderNo}`,
+    moldLabel: (mold: string): string => `Khuôn ${mold}`,
+    moldMissing: 'Cần quét khuôn',
+    emergency: 'Khẩn',
+    connected: common.connection.online,
+    disconnected: common.connection.offline,
+    unsent: (count: number): string => `Chờ gửi ${String(count)} mục`,
+  },
+  workerMissing: 'Chưa xác nhận mã nhân viên. Vui lòng xác thực mã nhân viên trước.',
+  workerNoDialog: {
+    title: 'Nhập mã nhân viên',
+    fieldLabel: 'Mã nhân viên',
+    keypadLabel: 'Bàn phím số nhập mã nhân viên',
+    backspace: 'Xóa một ký tự',
+    clear: 'Xóa hết',
+    confirm: 'Xác nhận',
+    cancel: 'Hủy',
+    checking: 'Đang kiểm tra',
+    groupTitle: 'Người làm',
+    empty: 'Chưa nhập mã nhân viên.',
+    open: 'Nhập mã nhân viên',
+    unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này. Vui lòng nhập lại mã nhân viên.',
+    inactive: 'Mã nhân viên này không còn làm việc. Vui lòng nhập lại mã nhân viên.',
+    lookupFailed: 'Không xác nhận được mã nhân viên. Vui lòng thử lại.',
+    retry: 'Thử lại',
+  },
   processGate: {
     denied: (process: string, feature: string, menuPath: string): string =>
-      `Máy này đang tắt «${feature}» của công đoạn ${process}. Hãy nhờ quản trị viên bật «${feature}» của công đoạn ${process} ở ${menuPath} trên web quản lý.`,
+      `Máy này đang tắt «${feature}» của công đoạn ${process}. Vui lòng nhờ quản trị viên bật «${feature}» của công đoạn ${process} ở ${menuPath} trên web quản lý.`,
     checkMapping: (menuPath: string): string =>
-      `Nếu vẫn vậy, hãy nhờ quản trị viên kiểm tra ở ${menuPath} trên web quản lý xem công đoạn của lệnh sản xuất này đã được ánh xạ cho máy này chưa.`,
+      `Nếu vẫn vậy, vui lòng nhờ quản trị viên kiểm tra ở ${menuPath} trên web quản lý xem công đoạn của lệnh sản xuất này đã được ánh xạ cho máy này chưa.`,
     serverReason: (reason: string): string => `(Máy chủ trả lời: ${reason})`,
     deniedUnknownProcess: (feature: string, menuPath: string): string =>
-      `Máy này đang tắt «${feature}» của công đoạn thuộc lệnh sản xuất này. Hãy nhờ quản trị viên bật «${feature}» của công đoạn đó ở ${menuPath} trên web quản lý.`,
+      `Máy này đang tắt «${feature}» của công đoạn thuộc lệnh sản xuất này. Vui lòng nhờ quản trị viên bật «${feature}» của công đoạn đó ở ${menuPath} trên web quản lý.`,
   },
   select: 'Chọn',
 
@@ -32,7 +71,8 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     scanPlaceholder: 'Quét hoặc tìm trong danh sách',
     clearSearch: 'Xóa',
     empty: 'Không có mục nào để hiển thị.',
-    position: (page: number, totalPages: number, count: number): string =>
-      `${String(page)} / ${String(totalPages)} · Tổng ${String(count)} mục`,
+    position: (page: number, totalPages: number): string =>
+      `${String(page)} / ${String(Math.max(totalPages, 1))}`,
+    total: (count: number): string => `Tổng ${String(count)} mục`,
   },
 };

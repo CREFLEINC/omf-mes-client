@@ -38,3 +38,41 @@ export const isHeld = (workOrder: WorkOrder): boolean => {
 
   return code !== '' && HELD_STATUS_CODES.includes(code);
 };
+
+/** 상태 이름의 키. 화면 문구(`list.status`)와 짝이다. */
+export type WorkOrderStatusKey = 'released' | 'inProgress' | 'suspended';
+
+const STATUS_KEYS: Readonly<Record<string, WorkOrderStatusKey>> = {
+  RELEASED: 'released',
+  IN_PROGRESS: 'inProgress',
+  SUSPENDED: 'suspended',
+};
+
+/**
+ * 카드와 선택 묶음에 보일 상태(T-P-W 상태 텍스트). 코드값을 그대로 보이지 않는다(C-13).
+ * 모르는 코드면 `null`이고 상태 칩을 세우지 않는다.
+ */
+export const statusKeyOf = (workOrder: WorkOrder): WorkOrderStatusKey | null =>
+  STATUS_KEYS[(workOrder.statusCode ?? '').trim()] ?? null;
+
+const PICK_ORDER: Readonly<Record<WorkOrderStatusKey, number>> = {
+  inProgress: 0,
+  suspended: 1,
+  released: 2,
+};
+
+/**
+ * 진행 중인 W/O를 위에 둔다(T-P-W). 받은 쪽 안에서만 정렬한다. 같은 순위는 서버 순서를 지킨다.
+ */
+export const sortForPick = (rows: readonly WorkOrder[]): WorkOrder[] =>
+  rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const rank = (row: WorkOrder) => {
+        const key = statusKeyOf(row);
+        return key === null ? 3 : PICK_ORDER[key];
+      };
+
+      return rank(a.row) - rank(b.row) || a.index - b.index;
+    })
+    .map(({ row }) => row);

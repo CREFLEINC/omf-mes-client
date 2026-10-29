@@ -6,7 +6,6 @@ import type { ProcessStepKey } from '../worklist-model';
 /**
  * 처리 화면 단계 판정(T-W-C, C-5). 화면 데이터에서 단계별 완료 여부와 하단 바 문장을 정한다.
  * 처음 여는 단계는 데이터로 정한 첫 미완료 단계다(T-W-C 처음 여는 단계). 사유와 단계의 대응은 구성안 표와 같다.
- * 문장의 `todo`가 참이면 사용자가 할 일이므로 「남은 일:」 머리말을 붙인다(C-5).
  */
 const t = messages.erpWorkOrderFlow.process.remaining;
 
@@ -14,7 +13,6 @@ export const STEP_KEYS: ProcessStepKey[] = ['master', 'plan', 'assign', 'release
 
 export interface Guidance {
   text: string;
-  todo: boolean;
 }
 
 export interface StepJudgment {
@@ -25,9 +23,8 @@ export interface StepJudgment {
   blockedOutside?: 'bom' | 'routing';
 }
 
-const todo = (text: string): Guidance => ({ text, todo: true });
-const info = (text: string): Guidance => ({ text, todo: false });
-const proceed = (next: string): Guidance => info(t.canProceed(josa(next, '으로/로')));
+const say = (text: string): Guidance => ({ text });
+const proceed = (next: string): Guidance => say(t.canProceed(josa(next, '으로/로')));
 
 export const formatQty = (value: number): string =>
   new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
@@ -49,15 +46,14 @@ export interface MasterFacts {
 export const judgeMaster = (facts: MasterFacts, next: string): StepJudgment => {
   if (facts.loading) return { complete: false, guidance: null };
   if (facts.fixedByPlan === true) return { complete: true, guidance: proceed(next) };
-  if (facts.failed) return { complete: false, guidance: todo(t.loadFailed) };
+  if (facts.failed) return { complete: false, guidance: say(t.loadFailed) };
   if (facts.bomCount === 0)
-    return { complete: false, guidance: todo(t.bomMissing), blockedOutside: 'bom' };
+    return { complete: false, guidance: say(t.bomMissing), blockedOutside: 'bom' };
   if (facts.routingCount === 0)
-    return { complete: false, guidance: todo(t.routingMissing), blockedOutside: 'routing' };
-  if (!facts.bomSelected)
-    return { complete: false, guidance: todo(t.select(josa('BOM', '을/를'))) };
+    return { complete: false, guidance: say(t.routingMissing), blockedOutside: 'routing' };
+  if (!facts.bomSelected) return { complete: false, guidance: say(t.select(josa('BOM', '을/를'))) };
   if (!facts.routingSelected)
-    return { complete: false, guidance: todo(t.select(josa('Routing', '을/를'))) };
+    return { complete: false, guidance: say(t.select(josa('Routing', '을/를'))) };
   return { complete: true, guidance: proceed(next) };
 };
 
@@ -82,23 +78,22 @@ export interface PlanJudgment extends StepJudgment {
 
 export const judgePlan = (facts: PlanFacts, next: string): PlanJudgment => {
   if (facts.loading) return { complete: false, canConfirm: false, guidance: null };
-  if (facts.rowCount === 0)
-    return { complete: false, canConfirm: false, guidance: todo(t.addPlan) };
+  if (facts.rowCount === 0) return { complete: false, canConfirm: false, guidance: say(t.addPlan) };
   if (facts.invalid !== null) {
     return {
       complete: false,
       canConfirm: false,
-      guidance: todo(t.enter(facts.invalid.plan, josa(facts.invalid.field, '을/를'))),
+      guidance: say(t.enter(facts.invalid.plan, josa(facts.invalid.field, '을/를'))),
     };
   }
   if (facts.missingLine !== null) {
-    return { complete: false, canConfirm: false, guidance: todo(t.chooseLine(facts.missingLine)) };
+    return { complete: false, canConfirm: false, guidance: say(t.chooseLine(facts.missingLine)) };
   }
   if (facts.totalQty < facts.orderQty) {
     return {
       complete: false,
       canConfirm: false,
-      guidance: todo(t.qtyShort(formatQty(facts.orderQty - facts.totalQty))),
+      guidance: say(t.qtyShort(formatQty(facts.orderQty - facts.totalQty))),
     };
   }
   if (facts.unconfirmed > 0) return { complete: false, canConfirm: true, guidance: proceed(next) };
@@ -106,7 +101,7 @@ export const judgePlan = (facts: PlanFacts, next: string): PlanJudgment => {
     return {
       complete: false,
       canConfirm: false,
-      guidance: todo(t.qtyShort(formatQty(facts.orderQty - facts.confirmedQty))),
+      guidance: say(t.qtyShort(formatQty(facts.orderQty - facts.confirmedQty))),
     };
   }
   return { complete: true, canConfirm: false, guidance: proceed(next) };
@@ -123,23 +118,23 @@ export interface AssignFacts {
 }
 
 export const judgeAssign = (facts: AssignFacts, next: string): StepJudgment => {
-  if (facts.loading) return { complete: false, guidance: info(t.checking) };
+  if (facts.loading) return { complete: false, guidance: say(t.checking) };
   if (facts.unsaved !== null)
-    return { complete: false, guidance: todo(t.saveChanges(facts.unsaved)) };
-  if (facts.pending === 0) return { complete: false, guidance: todo(t.noWorkOrders) };
+    return { complete: false, guidance: say(t.saveChanges(facts.unsaved)) };
+  if (facts.pending === 0) return { complete: false, guidance: say(t.noWorkOrders) };
   if (facts.blocked > 0) {
     const first = facts.firstBlocked;
     const head = t.unassigned(facts.blocked);
-    if (first === null) return { complete: false, guidance: todo(`${head} ${t.pickUnassigned}`) };
+    if (first === null) return { complete: false, guidance: say(`${head} ${t.pickUnassigned}`) };
     if (first.field !== null) {
       return {
         complete: false,
-        guidance: todo(`${head} ${t.choose(first.operation, josa(first.field, '을/를'))}`),
+        guidance: say(`${head} ${t.choose(first.operation, josa(first.field, '을/를'))}`),
       };
     }
     return {
       complete: false,
-      guidance: todo(
+      guidance: say(
         `${head} ${t.resolve(josa(`「${(first.finding ?? '').replace(/\.$/, '')}」`, '을/를'))}`,
       ),
     };
@@ -165,7 +160,7 @@ export const nextIncompleteId = (
 };
 
 export const judgeRelease = (missingLot: string | null): Guidance =>
-  missingLot === null ? info(t.releaseFinal) : todo(t.enterLot(missingLot));
+  missingLot === null ? say(t.releaseFinal) : say(t.enterLot(missingLot));
 
 /** 첫 미완료 단계. 모두 완료면 마지막(배포 확인). */
 export const firstOpenStep = (

@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { setWorkerSession } from '../../patterns/worker-session';
@@ -21,7 +21,7 @@ import {
 const w = messages.workStart;
 const t = messages.workPrecheckGate;
 
-const selectName = (workOrderNo: string): string => `${w.list.select} ${workOrderNo}`;
+const selectName = (workOrderNo: string): string => w.list.select(workOrderNo);
 
 beforeEach(() => {
   setWorkerSession(null);
@@ -38,11 +38,14 @@ const pressStart = async (options: StubOptions = {}) => {
 
   await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
 
+  /* 작업 시작은 사번을 창으로 받는다(P-02-01). */
+  await user.click(screen.getByRole('button', { name: w.worker.open }));
+  const workerDialog = await screen.findByRole('dialog', { name: w.worker.dialogTitle });
   for (const digit of WORKER.workerNo) {
-    await user.click(screen.getByRole('button', { name: digit }));
+    await user.click(within(workerDialog).getByRole('button', { name: digit }));
   }
 
-  await user.click(screen.getByRole('button', { name: w.worker.confirm }));
+  await user.click(within(workerDialog).getByRole('button', { name: w.worker.confirm }));
   await user.click(await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }));
 
   const start = () => screen.getByRole('button', { name: w.actions.start });

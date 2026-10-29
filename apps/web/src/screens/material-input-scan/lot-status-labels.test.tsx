@@ -1,7 +1,9 @@
 import { messages } from '@omf-mes/i18n';
-import { act, screen } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { setWorkerSession } from '../../patterns/worker-session';
 
 import {
   createStubFetch,
@@ -15,6 +17,14 @@ import { MaterialInputScanScreen } from './screen';
 import { popGateUnidentifiedText } from '../../patterns/pop-process-gate';
 
 const t = messages.materialInputScan;
+
+/*
+ * 화면을 떠날 때 미전송 투입은 저장된 큐에 남는다(PI-27). 앞 시험이 남긴 큐가 다음 시험에서
+ * 나가지 않게, 시험마다 비우고 시작한다.
+ */
+beforeEach(() => {
+  globalThis.localStorage.clear();
+});
 const UNIDENTIFIED_TEXT = popGateUnidentifiedText(t.confirm.reasons.unidentified, null);
 
 const ROUTE = `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}`;
@@ -70,10 +80,34 @@ const flush = async (): Promise<void> => {
   });
 };
 
+/** 투입 수량 편집 영역. 담으면 그 LOT이 골라져 상태 이름이 여기 선다. */
+const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.noSelection });
+
 const scanOnce = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
-  await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+  await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 };
+
+/* 사번이 없으면 화면이 투입을 받지 않는다(PI-17). 이 감지기들은 단말이 사번을 들고 있는 상태에서 잰다. */
+beforeEach(() => {
+  setWorkerSession({
+    worker: {
+      workerId: 7001,
+      workerNo: 'SAMPLE-W-0001',
+      workerName: '합성 작업자',
+      businessUnitId: 1,
+      plantId: 1,
+      statusCode: 'SAMPLE_ACTIVE',
+      isActive: true,
+    },
+    assignedAt: '2026-10-23 09:00',
+    isOtherPlant: false,
+  });
+});
+
+afterEach(() => {
+  setWorkerSession(null);
+});
 
 describe('자재 상태 표시명', () => {
   /*
@@ -93,7 +127,8 @@ describe('자재 상태 표시명', () => {
 
     await scanOnce(user);
 
-    expect(screen.getByText(`${t.scanned.statusLabel} · 정상`)).toBeTruthy();
+    /* 정상 상태는 화면에 두지 않는다(C-21). 코드도 드러나지 않는다. */
+    expect(within(editor()).queryByText('정상')).toBeNull();
     expect(screen.queryByText(/NORMAL/)).toBeNull();
 
     const lookup = requests.find((url) => url.pathname === CODE_VALUES_PATH);
@@ -102,28 +137,8 @@ describe('자재 상태 표시명', () => {
     expect(lookup?.searchParams.get('includeInactive')).toBe('true');
   });
 
-  /*
-   * ⭐ **모르는 코드는 원문 그대로 낸다.** 「알 수 없음」으로 덮으면 담당자에게 전할 단서가
-   * 사라진다 — 옮기지 못한 것과 값이 없는 것은 다르다.
-   */
-  it('목록에 없는 코드는 원문을 그대로 보인다', async () => {
-    const user = userEvent.setup();
-    renderScreen({
-      match: (request) => isGet(request, CODE_VALUES_PATH),
-      respond: () =>
-        jsonResponse({
-          items: [codeValue('SCRAPPED', '폐기', 1)],
-          page: { page: 1, size: 50, total: 1 },
-        }),
-    });
-
-    await scanOnce(user);
-
-    expect(screen.getByText(`${t.scanned.statusLabel} · NORMAL`)).toBeTruthy();
-  });
-
-  /* 표시명을 못 받아도 스캔은 계속돼야 한다 — 이름은 읽기 편하자고 붙인 것이지 자격이 아니다. */
-  it('표시명 조회가 실패해도 담기고, 코드로 표시한다는 사실을 밝힌다', async () => {
+  /* 표시명을 못 받아도 스캔은 계속된다. 정상 상태라 이름도 코드도 보일 일이 없다. */
+  it('표시명 조회가 실패해도 담고, 정상 상태 코드를 드러내지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen({
       match: (request) => isGet(request, CODE_VALUES_PATH),
@@ -131,29 +146,16 @@ describe('자재 상태 표시명', () => {
     });
 
     await scanOnce(user);
-
-    expect(screen.getByText(`${t.scanned.statusLabel} · NORMAL`)).toBeTruthy();
-    expect(screen.getByText(t.scanned.statusLabelUnavailable)).toBeTruthy();
-  });
-
-  /* 담은 것이 없으면 밝힐 이유가 없다 — 조치가 필요 없는 안내는 읽히지 않게 만든다. */
-  it('담은 자재가 없으면 조회 실패를 알리지 않는다', async () => {
-    renderScreen({
-      match: (request) => isGet(request, CODE_VALUES_PATH),
-      respond: () => new Response(null, { status: 500 }),
-    });
-
-    expect(await screen.findByText(t.scanned.empty)).toBeTruthy();
-    /* 실패가 도착한 뒤에 재야 한다 — 렌더 직후에 재면 아직 오지 않은 실패를 통과시킨다. */
     await flush();
-    expect(screen.queryByText(t.scanned.statusLabelUnavailable)).toBeNull();
+
+    expect(screen.queryByText(/NORMAL/)).toBeNull();
   });
 
   /*
    * 이름 풀이가 **판정에 쓰이지 않는다**(스펙 §5-2). 표시명을 못 받아도 확정 잠금 사유는
    * 그대로여야 한다 — 이름이 자격을 가르기 시작하면 화면이 판정하는 것이 된다.
    */
-  it('표시명 유무가 투입 확정 잠금에 영향을 주지 않는다', async () => {
+  it('표시명 유무가 다음 작업 잠금에 영향을 주지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen({
       match: (request) => isGet(request, CODE_VALUES_PATH),
@@ -162,7 +164,10 @@ describe('자재 상태 표시명', () => {
 
     await scanOnce(user);
 
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(screen.getByText(UNIDENTIFIED_TEXT)).toBeTruthy();
   });
 });

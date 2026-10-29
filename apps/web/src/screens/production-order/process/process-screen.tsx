@@ -475,7 +475,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
 
   const guidance =
     step === 'done'
-      ? { text: tp.remaining.remainingOrders(actionRequiredCount.data ?? 0), todo: false }
+      ? { text: tp.remaining.remainingOrders(actionRequiredCount.data ?? 0) }
       : step === 'release'
         ? releaseGuidance
         : judgments[step].guidance;
@@ -779,7 +779,6 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       actionBar={
         <ActionBar
           remaining={guidance?.text ?? null}
-          todo={guidance?.todo ?? false}
           remainingLink={remainingLink}
           remainingId={remainingId}
           leading={

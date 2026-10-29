@@ -116,7 +116,7 @@ export const runningChange: Translated<typeof ko.runningChange> = {
     checking: 'Đang kiểm tra quyền thay thế.',
     unavailable: 'Không kiểm tra được quyền thay thế. Lát nữa hãy thử lại.',
     unidentified:
-      'Chưa xác nhận được máy hoặc công đoạn của lệnh sản xuất này nên chưa đăng ký thay thế được. Hãy chọn lại lệnh sản xuất ở màn hình bắt đầu công việc rồi vào lại.',
+      'Chưa xác nhận được máy hoặc công đoạn của lệnh sản xuất này nên chưa đăng ký thay thế được. Hãy chọn lại lệnh sản xuất ở màn hình danh sách lệnh sản xuất rồi vào lại.',
     targetMissing: 'Phải chọn đối tượng thay thế rồi mới đăng ký được.',
   },
 

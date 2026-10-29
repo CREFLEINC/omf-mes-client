@@ -67,18 +67,10 @@
  * .pop-context   표제 옆의 맥락 표시(작업지시 등)
  * .pop-context-right  헤더 오른쪽 끝 — 세션·단말. 지금 어디서 찍고 있는지
  * .scan-manual   스캔 실패의 대체 경로 — 「직접 입력」과 그 설명
- * .receipt-summary  수령 표 아래, 모자란 것만 다시 세우는 자리
- * .numeric-keypad   화면 내장 숫자 키패드(공유계약 D-4) — OS 자판에 의존하지 않는다
- * .scanned-item-facts-line  담은 자재 한 줄의 사실 — 품목 · 수량 단위(스펙 §3)
  * .pop-panes     POP 화면의 좌우 두 구획 — 스캔이 주 입력이라 좌우로 편다
  * .pane-title    구획 표제
  * .scan-row      스캔 칸과 읽기 버튼을 한 줄에 — 버튼 높이를 칸의 라벨 층만큼 내린다
  * .scan-outcome  스캔 한 번의 결과가 서는 자리(늘 자리를 차지한다)
- * .scanned-items 담은 자재 목록
- * .scanned-item  그 한 줄
- * .scanned-code  LOT·금형 코드 — 멀리서 읽는다
- * .scanned-mold  물린 금형 구획
- * .confirm-row   투입 확정 버튼과 잠금 사유
  * .pop-touch-target  현장 단말의 업무 중요도 표식 — 렌더 높이는 관리웹 기본 토큰을 쓴다
  *
  * P-CO-01(작업자 지정) — ⚠ 위 `.pop-shell` 계열과 «다른» 어휘다. 그 화면들은 헤더에 표제를
@@ -106,54 +98,6 @@
   --field-label-layer: calc(16px + var(--space-1));
 }
 
-/*
- * P-02-04 통합 흐름. 공통 POP 밀도는 건드리지 않고 이 화면의 구획 배치만 소유한다.
- *
- * ⛔ **화면째 스크롤하지 않는다**(E-4 「스크롤 구획을 하나 지정한다」). 한때 여기에
- *    `overflow-y: auto` 를 두어 화면 전체가 굴렀는데, 그러면 **머리줄이 위로 밀려 사라진다** —
- *    W/O·품목·사번이 그 줄에만 있어 「지금 무엇을 등록하고 있는가」가 화면에서 없어진다
- *    (실측 · 스크롤 224px). 스크롤은 아래 본문 격자가 맡는다.
- */
-.pop-ui.production-flow {
-  overflow-y: hidden;
-}
-
-.production-flow-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: var(--space-3);
-  padding: var(--space-3);
-}
-
-.production-flow-grid-no-tags {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.production-flow-grid .pop-section {
-  min-width: 0;
-}
-
-.production-flow-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.production-flow-progress,
-.production-flow-scan {
-  grid-column: 1 / -1;
-}
-
-.production-flow-quantity .numeric-keypad {
-  margin-top: var(--space-2);
-}
-
-.production-flow-target-qty,
-.production-flow-count {
-  margin-bottom: var(--space-2);
-}
-
 .production-flow-serials {
   display: flex;
   max-height: 104px;
@@ -179,17 +123,6 @@
 
 .production-flow-completed-pages .field-note {
   margin: 0;
-}
-
-@media (max-width: 900px) {
-  .production-flow-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .production-flow-progress,
-  .production-flow-scan {
-    grid-column: auto;
-  }
 }
 
 html,
@@ -10634,27 +10567,6 @@ button.app-button-neutral {
 }
 
 /*
- * 모자란 것만 다시 세우는 자리(스펙 §3). 표와 붙여 두되 «목록»이라 표와 다른 결로 보인다 —
- * 같은 표의 연장으로 보이면 다시 훑어야 하는 것이 된다.
- */
-.receipt-summary {
-  margin-block-start: var(--space-4);
-}
-
-.receipt-summary-title {
-  margin: 0 0 var(--space-2);
-  font: var(--type-title-sm);
-  color: var(--on-surface);
-}
-
-.receipt-summary-items {
-  margin: 0;
-  padding-inline-start: var(--space-5);
-  display: grid;
-  gap: var(--space-1);
-}
-
-/*
  * 스펙 §3 — **스캔이 주 입력이라 좌우로 편다.** 1024×768에서 세로 여유가 119px뿐이라
  * 위아래로 쌓으면 스캔 칸이 접힌 아래로 내려간다.
  */
@@ -11015,86 +10927,6 @@ button.app-button-neutral {
   margin: var(--space-3) 0 0;
   font: var(--type-body-lg);
   letter-spacing: var(--type-body-lg-tracking);
-}
-
-.scanned-items {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: var(--space-2);
-}
-
-/* 멀리서 읽는 값이라 본문보다 크게 두고, 자릿수가 흔들리지 않게 고정폭으로 그린다. */
-.scanned-code {
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
-  font-variant-numeric: tabular-nums;
-}
-
-.scanned-mold {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.confirm-row {
-  margin-top: var(--space-5);
-  display: grid;
-  gap: var(--space-2);
-  justify-items: start;
-}
-
-/* 품질 판정과 보류는 **다른 축**이라 코드 줄 아래에 따로 세운다(나란히 두면 모순처럼 읽힌다). */
-.scanned-item {
-  display: grid;
-  gap: var(--space-1);
-}
-
-.scanned-item-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.scanned-item-facts {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* 서버가 기록만 한 것을 상태 옆에 붙인다 — 「통과」가 「정상」이 아니다. */
-.scanned-item-notes {
-  display: inline-flex;
-  gap: var(--space-2);
-}
-
-/*
- * 화면 내장 숫자 키패드 — **공유계약 D-4**. 3열 격자로 전화기 배열을 따른다(1이 왼쪽 위).
- * 손이 기억한 위치가 화면마다 달라지면 오조작이 늘어, 배열을 사용처가 바꾸지 못하게 여기서
- * 고정한다.
- */
-.numeric-keypad {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2);
-  max-width: 22rem;
-  margin-block-start: var(--space-3);
-}
-
-/* 「기록」은 되돌릴 수 없는 조작이라 한 줄을 통째로 차지해 다른 키와 섞이지 않는다. */
-.numeric-keypad-submit {
-  grid-column: 1 / -1;
-}
-
-/*
- * 담은 자재의 「무엇을 얼마나」 — 스펙 §3의 `MAT-A  100 EA`. LOT 번호 바로 아래 붙여
- * **한 자재의 사실이 한 덩이로** 읽히게 한다. 상태·보류는 다른 축이라 아래 줄에 따로 선다.
- */
-.scanned-item-facts-line {
-  margin: var(--space-1) 0 0;
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
-  color: var(--on-surface);
 }
 
 /*
@@ -14126,6 +13958,11 @@ button.app-button-neutral {
   margin-right: auto;
 }
 
+/* 줄 안 글자의 문단 여백을 턴다. 여백이 남으면 글자가 버튼과 같은 세로 가운데에 서지 않는다. */
+.pop-page-nav > p {
+  margin-block: 0;
+}
+
 /*
  * 목록에서 한 줄을 고르는 자리 — **칸 전체가 누르는 곳이다.**
  *
@@ -14742,40 +14579,565 @@ button.app-button-neutral {
   }
 }
 /* ------------------------------------------------------------------------ *
- * P-02-01 작업 시작(작업지시 선택)
+ * P-02-03 자재 투입
  *
- * 스펙 §4가 1024×768의 **세로 예산을 슬랙 0으로** 짰다 — 헤더 64 + 본문 616(① 96 · ② 328 ·
- * ③ 160) + 액션바 88. ⚠ 그래서 **스크롤 구획은 ② 하나**이고 ③은 접지 않는다(E-4): 작업 전
- * 점검 통제 결과가 ③에 나오므로 접히면 못 본다.
+ * 화면 구성 규범 T-P-W 작업형(투입 탭)이다. 머리줄, 본문 좌우 2단(왼쪽 투입 자재: 스캔 칸과 자재
+ * 목록, 오른쪽 고른 자재의 편집 영역), 하단 동작 바(공용 `action-bar`). 자재 목록만 제 구획 안에서
+ * 스크롤한다. 하단 바의 주 동작은 LOT을 몇 건 담아도 화면 안에 있다(C-14).
  *
- * ⛔ 클래스 이름을 `work-start-` 로 시작한다 — POP 화면들이 같은 파일에 살아 일반명(`.pop-list`
- * 따위)을 쓰면 다른 화면과 조용히 겹친다.
+ * 현장 화면의 정보와 이름(C-21): 목록 줄과 편집 영역의 첫 줄은 품목 이름, LOT 번호는 목록 줄에만,
+ * 줄은 제목 줄과 정보 영역(「LOT」, 「투입량 30 / 100 KG」과 막대)으로 나누고, 정상 값은 두지 않고
+ * 예외만 칩. 잔량은 편집 영역에만, 음수는 없다(과투입은 칩).
+ *
+ * 클래스 이름을 `material-input-` 로 시작한다. 이름에 `action` 을 넣지 않는다. POP 바닥 띠
+ * 규칙(`[class*='action']`)이 걸린다.
  * ------------------------------------------------------------------------ */
 
-.work-start-screen {
-  /* 본문이 늘어나도 액션바가 밀려 나가지 않게 한 열로 세운다. */
+.material-input-screen {
+  /* 본문이 늘어나도 동작 바가 밀려 나가지 않게 한 열로 세운다. */
   grid-template-columns: 1fr;
 }
 
-/* ① 사번 — 키패드가 붙는 구획이라 안쪽 간격을 따로 준다. */
-.work-start-worker {
-  display: grid;
+.pop-ui > .pop-panes.material-input-panes {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+/* 두 구획 모두 블록 사이를 같은 간격 하나로 띄운다. 제목과 안내 상자의 자기 여백을 턴다. */
+.material-input-list,
+.material-input-qty {
   gap: var(--space-3);
+}
+
+.material-input-list > .pane-title,
+.material-input-list > .banner-slot,
+.material-input-qty > .pane-title,
+.material-input-qty > .field-note,
+.material-input-qty > .banner-slot {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.material-input-scan {
+  display: grid;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+}
+
+/* 목록 위 한 줄: 투입할 자재와 투입 완료 건수(C-21). */
+.material-input-summary {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+/* 자재 목록. 남는 높이를 쓰고 이 목록만 스크롤한다. */
+.material-input-lots {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: var(--space-2);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+/* 자재 한 줄. 행 전체를 눌러 고른다(C-1). 고른 줄은 주 색 테두리와 한 단 올린 면이다. */
+.material-input-lot {
+  border: 1px solid var(--outline-variant);
+  border-inline-start-width: var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+.material-input-lot-selected {
+  border-color: var(--primary);
+  background: var(--surface-container-high);
+}
+
+.pop-ui .material-input-lot-select {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+/* LOT 번호는 라벨과 대조하는 값이다. 저장값 그대로 고정폭 한 줄(C-10, C-21). */
+.material-input-lot-no {
+  color: var(--on-surface);
+  font-family: var(--font-mono);
+  font-size: var(--pop-label);
+  white-space: nowrap;
+}
+
+/*
+ * POP 목록 줄 공용 틀(`patterns/pop-list-row`, C-21). 제목 줄은 이름 왼쪽, 칩 오른쪽 끝이다. 정보
+ * 영역과의 간격은 줄을 감싸는 쪽이 준다. 자재 투입과 작업 지시 목록이 같은 규칙을 쓴다.
+ */
+/*
+ * 제목과 정보는 글자 단계로도 가른다(C-21): 제목 `--type-title-sm` 굵게, 라벨 `--type-label-sm` 약한
+ * 색, 값 `--type-body-sm`. 제목 줄 아래에는 구분선을 둔다.
+ */
+.pop-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+/* 제목은 줄에서 가장 먼저 읽힌다. */
+.pop-row-title {
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  font-weight: 600;
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.pop-row-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1) var(--space-2);
+  margin-inline-start: auto;
+}
+
+/* 정보 영역: 「라벨 값」 쌍을 같은 열에 맞춘다. */
+.pop-row-info {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+}
+
+.pop-row-info-label {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.pop-row-info-value {
+  min-width: 0;
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 두 열 정보 영역: 라벨 값 라벨 값. 왼쪽 값 열은 값 길이만큼(반을 넘지 않게), 오른쪽 값 열이 남는 폭을
+ * 쓴다. 한 줄을 다 쓰는 쌍은 첫 라벨 열에서 시작해 끝까지 간다.
+ */
+.pop-row-info-two {
+  grid-template-columns: max-content fit-content(50%) max-content minmax(0, 1fr);
+}
+
+.pop-row-info-two > .pop-row-info-label.pop-row-info-wide {
+  grid-column: 1;
+}
+
+.pop-row-info-two > .pop-row-info-value.pop-row-info-wide {
+  grid-column: 2 / -1;
+}
+
+/* 「진행 / 기준」 값과 진행 막대(C-21). 막대는 글자 옆에서 남는 폭을 쓴다. */
+.pop-qty-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.pop-qty-progress-text {
+  color: var(--on-surface);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pop-qty-progress-bar {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 끝난 줄(투입 완료, 과투입): 진행 중인 줄과 한눈에 갈리게 면을 한 단 낮춘다. 자리는 바꾸지 않는다. */
+.material-input-lot-done:not(.material-input-lot-selected) {
+  background: var(--surface-container);
+}
+
+.material-input-remaining {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+.material-input-qty-line {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+/*
+ * 편집 영역. 제목 줄(고른 품목 이름, 오른쪽 끝에 예외 칩과 [스캔 취소]), 정보 영역(투입량), 소제목
+ * 「이번 투입」(곁에 잔량) 아래 입력.
+ */
+.material-input-qty-head {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.material-input-qty-head > .pane-title {
+  margin: 0;
+}
+
+.material-input-subtitle {
+  flex: 0 0 auto;
+  margin: var(--space-2) 0 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 사번이 없을 때 편집 영역 자리의 「작업자」 빈 상태(작업 시작의 작업자 묶음과 같은 순서). */
+.material-input-worker {
+  display: grid;
+  flex: 0 0 auto;
+  gap: var(--space-2);
   justify-items: start;
 }
 
-.work-start-worker-confirmed {
+.material-input-worker > .field-note {
   margin: 0;
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
 }
 
-/* 함께 일하는 작업자 — 한 줄에 사람을 늘어놓고 끝에 더하기 단추를 둔다. */
-.work-start-crew {
+.material-input-worker > h3 {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.material-input-qty-row {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+/* 미전송 안내와 [취소], 다 투입한 LOT의 안내와 [추가 투입]을 한 줄에(PI-26, PI-28). */
+.material-input-auto {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.material-input-auto-hint {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+/* 편집 영역의 투입 내역(PI-30). 한 줄에 수량, 시각, 상태 칩. */
+.material-input-records {
+  display: grid;
+  flex: 0 0 auto;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.material-input-record {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.material-input-record-qty {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+.material-input-record-time {
+  color: var(--on-surface-variant);
+}
+
+.material-input-keypad {
+  flex: 0 0 auto;
+}
+
+.material-input-uom {
+  color: var(--on-surface-variant);
+}
+
+/* ------------------------------------------------------------------------ *
+ * P-02-04 생산 작업
+ *
+ * 화면 구성 규범 T-P-W 작업형(실적 탭)이다. 머리줄, 본문 좌우 2단(왼쪽 현재 LOT: 품목 이름 제목 줄,
+ * 「라벨 값」 정보 영역, 단계 표시. 오른쪽 현재 단계 본문: 실적 입력이나 라벨 스캔), 하단 동작 바(공용
+ * `action-bar`). 두 구획은 각자 안에서 스크롤한다(C-14).
+ *
+ * 클래스 이름을 `production-work-` 로 시작한다. 이름에 `action` 을 넣지 않는다. POP 바닥 띠
+ * 규칙(`[class*='action']`)이 걸린다.
+ * ------------------------------------------------------------------------ */
+
+.production-work-screen {
+  /* 본문이 늘어나도 동작 바가 밀려 나가지 않게 한 열로 세운다. */
+  grid-template-columns: 1fr;
+}
+
+.pop-ui > .pop-panes.production-work-panes {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+/* 두 구획 모두 블록 사이를 같은 간격 하나로 띄운다. 제목과 안내 상자의 자기 여백을 턴다. */
+.production-work-lot,
+.production-work-step {
+  gap: var(--space-3);
+}
+
+.production-work-lot > *,
+.production-work-step > * {
+  flex: 0 0 auto;
+}
+
+.production-work-lot > .pane-title,
+.production-work-lot > .banner-slot,
+.production-work-step > .pane-title,
+.production-work-step > .field-note,
+.production-work-step > .banner-slot {
+  margin: 0;
+}
+
+/* 제목 줄: 제목은 왼쪽, 조작은 오른쪽 끝(C-19). 상태에 따라 서는 칩은 그 사이에 둔다. */
+.production-work-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.pop-ui .production-work-head > .pane-title {
+  margin: 0;
+  margin-inline-end: auto;
+}
+
+.production-work-head > .pop-row-chips {
+  margin-inline-start: 0;
+}
+
+/* 정보 영역은 제목 줄과 구분선으로 나눈다(C-21). */
+.production-work-info {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* LOT 번호는 라벨과 대조하는 값이다. 저장값 그대로 고정폭 한 줄(C-10). */
+.production-work-lot-no {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+/* 정보 줄 값 곁의 동작(마감된 LOT [보기], PQC [검사]). 값과 버튼이 한 줄에 선다. */
+.production-work-row-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+/* W/O 단위 보조 동작 줄. 마감할 수 없으면 [작업지시 마감] 곁에 사유가 선다(`wo-close-action`). */
+.production-work-wo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.production-work-group {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.production-work-group > p {
+  margin: 0;
+}
+
+.production-work-subtitle {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.production-work-remaining {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+/* PQC 분할(omf-all-around#107)에서는 반 폭이라 두 구획을 위아래로 두고 그 영역 안에서 스크롤한다. */
+.production-flow-zone > .pop-panes.production-work-panes {
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: max-content;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 영역 전체가 한 번에 스크롤하므로 구획은 제 높이로 선다(구획마다 스크롤이 생기지 않게). */
+.pop-ui .production-flow-zone > .production-work-panes > .pane {
+  overflow: visible;
+}
+
+/* ------------------------------------------------------------------------ *
+ * P-02-01 작업 지시 목록(작업지시를 골라 작업 시작)
+ *
+ * 화면 구성 규범 T-P-S 틀이다. 머리줄, 본문 좌우 2단(왼쪽 작업지시 목록, 오른쪽 작업 확인), 하단
+ * 동작 바(공용 `action-bar`). 스크롤은 왼쪽 목록과 오른쪽 구획이 각자 안에서 한다. 선택한 결과가
+ * 목록을 밀어내지 않는다(C-2, C-14).
+ *
+ * 클래스 이름을 `work-start-` 로 시작한다. POP 화면들이 같은 파일에 살아 일반명을 쓰면 겹친다.
+ * 이름에 `action` 을 넣지 않는다. POP 바닥 띠 규칙(`[class*='action']`)이 걸린다.
+ * ------------------------------------------------------------------------ */
+
+.work-start-screen {
+  /* 본문이 늘어나도 동작 바가 밀려 나가지 않게 한 열로 세운다. */
+  grid-template-columns: 1fr;
+}
+
+/* 좌우 2단. 목록 카드와 확인 묶음이 같은 폭을 쓴다. */
+.work-start-panes {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.work-start-list,
+.work-start-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.work-start-side {
+  gap: var(--space-4);
+}
+
+.work-start-side > .pane-title,
+.work-start-side > .banner-slot {
+  margin: 0;
+}
+
+/*
+ * 목록 제목 줄: 제목은 늘 왼쪽, 설비 칸은 늘 오른쪽 끝(C-19, PG-37). 첫 카드와는 `--space-4` 로
+ * 띄운다. 설비 범위가 바뀌어도 같은 높이와 같은 간격이다.
+ */
+.work-start-list-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+/* 목록만 스크롤한다. 구획이 준 높이를 그대로 쓴다(픽셀 상한을 두지 않는다). */
+.work-start-list .pop-card-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/*
+ * 쪽 이동 줄은 스크롤 영역 아래 제 줄이다. 구분선과 간격으로 목록과 나눠, 잘린 카드가 줄 뒤에 숨은 것처럼
+ * 보이지 않게 한다. 건수, 버튼, 위치 표시는 한 세로 가운데에 선다.
+ */
+.work-start-list-foot {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--outline-variant);
+}
+
+.work-start-list-foot > p {
+  margin-block: 0;
+}
+
+/*
+ * W/O 카드와 「선택한 작업지시」(C-21). 제목 줄(W/O 번호, 오른쪽 끝 칩)과 정보 영역(공용 `pop-row-*`)을
+ * `--space-2` 간격으로 나눈다.
+ */
+.work-start-card-body,
+.work-start-selection {
   display: grid;
   gap: var(--space-2);
 }
 
+.work-start-selection {
+  justify-self: stretch;
+}
+
+/* W/O 번호는 지시서와 대조하는 값이다. 고정폭이고 크기는 제목 단계(`pop-row-title`)를 따른다. */
+.work-start-wo-no {
+  font-family: var(--font-mono);
+}
+
+/*
+ * 제목 줄 오른쪽 묶음: 상태에 따라 서는 [기본 설비로], 오른쪽 끝에 고정한 설비 칸(C-19). 칸 폭은
+ * 최소 폭을 두어 짧은 이름으로 바뀌어도 왼쪽 끝이 덜 흔들린다.
+ */
+.work-start-list-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-inline-start: auto;
+}
+
+.work-start-equipment-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.work-start-equipment-label {
+  color: var(--on-surface-variant);
+}
+
+.work-start-equipment-trigger {
+  min-width: 8rem;
+}
+
+/* 오른쪽 구획 안의 묶음. 상자를 겹치지 않고 소제목과 간격으로 나눈다(C-19). */
+.work-start-group {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.work-start-group-title {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.work-start-group > .banner-slot {
+  justify-self: stretch;
+}
+
+/* 함께 일하는 작업자. 한 줄에 사람을 늘어놓고 끝에 더하기 버튼을 둔다. */
 .work-start-crew-head {
   display: flex;
   align-items: baseline;
@@ -14796,55 +15158,20 @@ button.app-button-neutral {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
 }
 
-.work-start-list-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-/*
- * ② 목록만 스크롤한다 — **구획이 준 높이를 그대로 쓴다.**
- *
- * ⛔ **픽셀 상한을 두지 않는다.** 한때 `max-height: 328px` 였는데 그 값은 도면(§4)이 위에
- *    ① 사번 구획 96 을 두던 때의 몫이다. 사번 입력이 진입 화면·머리줄로 옮겨져 ① 이
- *    사라지자 구획은 447 로 자랐는데 목록만 328 에서 멈춰, **아래 53px 이 빈 채로 남고 네
- *    번째 줄이 잘린 채 걸렸다**(실측 · 사용자 지적). 구획 높이는 이미 화면 예산이 정하므로
- *    상한을 한 번 더 걸면 늘 둘 중 작은 쪽에 끌려간다.
- */
-.work-start-list .pop-card-list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* 지금 목록이 어느 범위인지 말하는 보조 문구 — 제목 바로 아래에 붙는다. */
-.work-start-scope-note {
-  margin: 0 0 var(--space-2);
-}
-
-/*
- * ③ 선택 확인 — ⛔ **접지 않는다**(E-4). 점검 통제 결과가 여기 나오므로 접히면 못 본다.
- * 그래서 이 구획에는 높이 상한도 스크롤도 두지 않는다 — 스크롤 구획은 ② 하나다.
- */
-
-.work-start-actions {
+/* 공용 사번 입력 창(`patterns/worker-no-dialog`, 작업 시작과 자재 투입). 칸, 키패드, 사유 사이를 DS 창의 블록 간격(--space-4)과 같은 값으로 띄운다. */
+.worker-no-dialog {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 /*
- * 액션바 — 되돌릴 수 없는 조작이 오른쪽 끝에 선다. 「다시 선택」과 붙여 두면 장갑 낀 손이
- * 옆 것을 누른다.
+ * 사번 칸의 라벨과 입력 칸 사이(사용자 결정 2026-10-23). DS 칸 기본 간격(--space-1, 4px)이 장갑 낀
+ * 손으로 보는 창에서 붙어 보여 이 창만 --space-2로 띄운다. DS 요청 후보(PG-19).
  */
-.work-start-actions-row {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-4);
+.worker-no-dialog .worker-no-dialog-field {
+  gap: var(--space-2);
 }
 
 /*

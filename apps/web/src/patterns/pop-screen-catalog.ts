@@ -59,7 +59,7 @@ export interface PopScreen {
 export const POP_SCREENS: readonly PopScreen[] = [
   { path: '/pop/material-lot-label', code: 'P-01-01', name: '자재 LOT 라벨 발행' },
   { path: '/pop/goods-issue-qr', code: 'P-01-02', name: '자재 출고 QR 발행' },
-  { path: '/pop/work-start', code: 'P-02-01', name: '작업 시작', countKey: 'workStart' },
+  { path: '/pop/work-start', code: 'P-02-01', name: '작업 지시 목록', countKey: 'workStart' },
   { path: '/pop/material-input', code: 'P-02-03', name: '자재 투입', acceptsWorkOrderId: true },
   {
     path: '/pop/production-result',
@@ -67,10 +67,15 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '생산 작업',
     acceptsWorkOrderId: true,
   },
-  { path: '/pop/packing-work', code: 'P-02-08', name: '생산 포장' },
+  { path: '/pop/packing-work', code: 'P-02-08', name: '생산 포장', acceptsWorkOrderId: true },
   { path: '/pop/packing-label-reprint', code: 'P-02-09', name: '포장 라벨 재출력' },
-  { path: '/pop/work-hold', code: 'P-02-10', name: '작업 중단' },
-  { path: '/pop/running-change', code: 'P-02-11', name: '러닝체인지 부품 교체' },
+  { path: '/pop/work-hold', code: 'P-02-10', name: '작업 중단', acceptsWorkOrderId: true },
+  {
+    path: '/pop/running-change',
+    code: 'P-02-11',
+    name: '러닝체인지 부품 교체',
+    acceptsWorkOrderId: true,
+  },
   {
     path: '/pop/emergency-work-orders',
     code: 'P-02-12',

@@ -112,6 +112,16 @@ export interface StubOptions {
   /** 단말 상세 응답을 덮어쓴다 — 설비가 매핑되지 않은 단말을 재려면 필요하다. */
   terminal?: Record<string, unknown>;
   workOrders?: Record<string, unknown>[];
+  /**
+   * 설비 축 없이(전체 설비) 물었을 때의 줄들. 없으면 `workOrders`와 같다. 기본 목록과 전체 설비
+   * 목록이 다를 때 고른 것이 남는지 재려면 필요하다(PG-30).
+   */
+  allWorkOrders?: Record<string, unknown>[];
+  /** 단말 설비가 아닌 설비를 걸어 물었을 때의 줄들(설비 번호별). */
+  workOrdersByEquipment?: Record<number, Record<string, unknown>[]>;
+  /** 설비 고르기 팝업의 공장 설비 목록. 없으면 이 단말 설비 하나다. */
+  equipments?: Record<string, unknown>[];
+  equipmentsStatus?: number;
   listStatus?: number;
   /** 고른 작업지시의 열린 세션. 기본은 없음. */
   openSessions?: Record<string, unknown>[];
@@ -216,6 +226,21 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
       return jsonResponse({ items: options.processes ?? [OPEN_PROCESS] });
     }
 
+    if (url.pathname === '/mdm/equipments') {
+      if (options.equipmentsStatus !== undefined) {
+        return jsonResponse({ message: '실패' }, { status: options.equipmentsStatus });
+      }
+      const items = options.equipments ?? [
+        {
+          equipmentId: EQUIPMENT_ID,
+          equipmentCode: 'SYN-PRS-01',
+          equipmentName: '합성 프레스 1호기',
+        },
+      ];
+
+      return jsonResponse({ items, page: { page: 1, size: 200, total: items.length } });
+    }
+
     if (url.pathname === '/production/work-orders') {
       if (options.listStatus !== undefined) {
         return jsonResponse({ message: '실패' }, { status: options.listStatus });
@@ -225,7 +250,12 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
       const items =
         listCalls > 1 && options.workOrdersAfter !== undefined
           ? options.workOrdersAfter
-          : (options.workOrders ?? [WORK_ORDER]);
+          : options.allWorkOrders !== undefined && !url.searchParams.has('plannedEquipmentId')
+            ? options.allWorkOrders
+            : (options.workOrdersByEquipment?.[
+                Number(url.searchParams.get('plannedEquipmentId'))
+              ] ??
+              options.workOrders ?? [WORK_ORDER]);
 
       return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
     }

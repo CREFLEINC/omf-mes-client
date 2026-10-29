@@ -1,6 +1,9 @@
 import { messages } from '@omf-mes/i18n';
 import { act, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { setWorkerSession } from '../../patterns/worker-session';
 
 import {
   createStubFetch,
@@ -13,6 +16,14 @@ import { receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
 
 const t = messages.materialInputScan;
+
+/*
+ * 화면을 떠날 때 미전송 투입은 저장된 큐에 남는다(PI-27). 앞 시험이 남긴 큐가 다음 시험에서
+ * 나가지 않게, 시험마다 비우고 시작한다.
+ */
+beforeEach(() => {
+  globalThis.localStorage.clear();
+});
 
 const ROUTE = `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}`;
 const LIST_PATH = '/logistics/shopfloor-receipts';
@@ -92,8 +103,33 @@ const flush = async (): Promise<void> => {
   });
 };
 
-/** 표의 몸통 — 빈 상태 슬롯과 데이터 줄을 같은 잣대로 재지 않도록 행 조회를 한 곳에 모은다. */
-const bodyRows = (): HTMLElement[] => screen.getAllByRole('row').slice(1);
+/** 자재 목록의 줄 — 빈 상태 슬롯과 데이터 줄을 같은 잣대로 재지 않도록 줄 조회를 한 곳에 모은다. */
+const bodyRows = (): HTMLElement[] =>
+  within(screen.getByRole('list', { name: t.scanned.materialsLabel })).getAllByRole('listitem');
+
+/** 투입 수량 편집 영역(고른 줄의 상세). */
+const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.noSelection });
+
+/* 사번이 없으면 화면이 줄 선택을 받지 않는다(PI-17). 이 감지기들은 단말이 사번을 들고 있는 상태에서 잰다. */
+beforeEach(() => {
+  setWorkerSession({
+    worker: {
+      workerId: 7001,
+      workerNo: 'SAMPLE-W-0001',
+      workerName: '합성 작업자',
+      businessUnitId: 1,
+      plantId: 1,
+      statusCode: 'SAMPLE_ACTIVE',
+      isActive: true,
+    },
+    assignedAt: '2026-10-23 09:00',
+    isOtherPlant: false,
+  });
+});
+
+afterEach(() => {
+  setWorkerSession(null);
+});
 
 describe('MaterialInputScanScreen — 계획 대비 수령', () => {
   it('작업지시가 실린 주소면 전표 목록과 상세를 부른다', async () => {
@@ -108,7 +144,12 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
     expect(requests.some((request) => request.url.pathname === detailPath(7001))).toBe(true);
   });
 
-  it('수령 상태 세 갈래를 각 줄에 그린다', async () => {
+  /*
+   * 부족과 미수령만 줄에 칩으로 세운다. 모든 줄에 같은 「수령 완료」가 서면 구분이 사라진다(C-4).
+   * 수령 완료는 그 줄을 고르면 편집 영역의 「수령 상태」가 말한다.
+   */
+  it('덜 받음과 못 받음만 줄에 칩으로 보이고, 받음은 어디에도 두지 않는다', async () => {
+    const user = userEvent.setup();
     renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures)]);
 
     await waitFor(() => {
@@ -116,9 +157,15 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
     });
 
     const rows = bodyRows();
-    expect(within(rows[0] as HTMLElement).getByText(t.receiptStatus.matched)).toBeTruthy();
+    expect(within(rows[0] as HTMLElement).queryByText(t.receiptStatus.matched)).toBeNull();
     expect(within(rows[1] as HTMLElement).getByText(t.receiptStatus.short)).toBeTruthy();
     expect(within(rows[2] as HTMLElement).getByText(t.receiptStatus.none)).toBeTruthy();
+
+    await user.click(within(rows[0] as HTMLElement).getByRole('button'));
+    expect(within(editor()).getByText(t.pairs.progressLabel)).toBeTruthy();
+    /* 정상(받음)과 다른 담당의 값(출고, 차이)은 두지 않는다(C-21). */
+    expect(within(editor()).queryByText(t.receiptStatus.matched)).toBeNull();
+    expect(within(editor()).queryByText(/출고|차이/)).toBeNull();
   });
 
   /*
@@ -157,15 +204,22 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
   });
 
   /*
-   * 부족·미수령이 투입을 막지 않는다는 사실을 화면이 «말해야» 한다.
-   *
-   * ⚠ 한때 [?]를 눌러야 잠깐 뜨는 도움말이었고 시험도 「물어볼 자리가 있는가」를 봤다. 지금은
-   *   구획 이름 아래 상시 한 줄이라(사용자 지시 2026-09-10) **문구 자체**를 본다.
+   * 부족이나 미수령이 투입을 막지 않는다는 사실을 화면이 «말해야» 한다. 그런 줄이 있을 때만
+   * 구획 맨 위 안내 상자로 말한다(C-7, C-19).
    */
-  it('부족·미수령이 있어도 투입할 수 있다고 화면이 말한다', async () => {
+  it('부족이나 미수령이 있으면 투입할 수 있다고 화면이 말한다', async () => {
     renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures)]);
 
     expect(await screen.findByText(t.notes.shortAllowed)).toBeTruthy();
+  });
+
+  it('모두 수령했으면 그 안내를 세우지 않는다', async () => {
+    renderScreen([listRoute(), detailRoute(7001, [receiptLineFixtures[0]])]);
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+    expect(screen.queryByText(t.notes.shortAllowed)).toBeNull();
   });
 
   it('전표가 여럿이면 상세를 각각 불러 줄을 모은다', async () => {
@@ -194,7 +248,9 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
     ]);
 
     expect(await screen.findByText(messages.httpError.loadTitle)).toBeTruthy();
-    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByRole('list', { name: t.scanned.materialsLabel })).toBeNull();
+    /* 실패를 「수령 내역이 없습니다」로 말하지 않는다. */
+    expect(screen.queryByText(t.empty.receiptTitle)).toBeNull();
   });
 
   it('목록 조회가 실패하면 실패 배너를 낸다', async () => {
@@ -276,7 +332,7 @@ describe('MaterialInputScanScreen — 작업지시가 없을 때', () => {
   it('조회를 부르지 않는다', async () => {
     const { requests } = renderScreen([listRoute()], '/pop/material-input');
 
-    expect(await screen.findByText(t.header.workOrderMissing)).toBeTruthy();
+    expect(await screen.findByText(t.remaining.workOrderMissing)).toBeTruthy();
     expect(receiptRequests(requests)).toHaveLength(0);
     /*
      * ⚠ **요청이 0회인 것만으로는 부족하다.** 조회를 막는 겹이 둘인데(`enabled`와 queryFn의
@@ -300,14 +356,14 @@ describe('MaterialInputScanScreen — 작업지시가 없을 때', () => {
   it('작업지시 표시를 세우지 않는다', async () => {
     renderScreen([listRoute()], '/pop/material-input');
 
-    await screen.findByText(t.header.workOrderMissing);
-    expect(screen.queryByText(t.header.workOrder(WORK_ORDER_ID))).toBeNull();
+    await screen.findByText(t.remaining.workOrderMissing);
+    expect(screen.queryByText(/^W\/O /)).toBeNull();
   });
 
   it('있을 수 없는 값이 실려 있어도 조회하지 않는다', async () => {
     const { requests } = renderScreen([listRoute()], '/pop/material-input?workOrderId=0');
 
-    expect(await screen.findByText(t.header.workOrderMissing)).toBeTruthy();
+    expect(await screen.findByText(t.remaining.workOrderMissing)).toBeTruthy();
     expect(receiptRequests(requests)).toHaveLength(0);
     await flush();
     expect(screen.queryByText(messages.httpError.loadTitle)).toBeNull();
@@ -372,38 +428,7 @@ describe('MaterialInputScanScreen — 상세를 기다리는 동안', () => {
 });
 
 /**
- * 스펙 §3 — 표 아래에 **모자란 것만** 다시 세운다.
- *
- * 표는 모든 줄을 같은 무게로 늘어놓아, 스무 줄 중 둘이 모자랄 때 그 둘을 찾는 것이 눈의 일이
- * 된다. 장갑을 낀 채 화면을 훑는 작업자는 그것을 놓친다.
- */
-describe('MaterialInputScanScreen — 수령 요약', () => {
-  it('부족·미수령만 줄로 세운다', async () => {
-    renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures)]);
-
-    /*
-     * 픽스처는 셋 — 수령 완료 하나 · 20 부족 하나 · 미수령 하나. 품목 조회를 스텁하지 않아
-     * **코드를 풀지 못한 상태**이고, 그때는 번호가 그대로 선다(옮기지 못한 것과 값이 없는
-     * 것은 다르다).
-     */
-    expect(await screen.findByText(t.receiptSummary.short('7202', 20))).toBeTruthy();
-    expect(screen.getByText(t.receiptSummary.none('7203'))).toBeTruthy();
-
-    /* 맞아떨어진 줄은 여기 오지 않는다 — 다시 볼 이유가 없다. */
-    expect(screen.queryByText(t.receiptSummary.short('7201', 0))).toBeNull();
-  });
-
-  /* 다 맞으면 구획째 서지 않는다 — 빈 제목만 남으면 무언가 빠진 것처럼 읽힌다. */
-  it('모두 수령했으면 요약을 세우지 않는다', async () => {
-    renderScreen([listRoute(), detailRoute(7001, [receiptLineFixtures[0]])]);
-
-    await screen.findByText(t.receiptStatus.matched);
-    expect(screen.queryByText(t.receiptSummary.label)).toBeNull();
-  });
-});
-
-/**
- * 품목 이름 풀이 — 스펙 §3이 표와 목록을 `MAT-A`로 그렸는데 계약은 **번호만 준다**.
+ * 품목 이름 풀이 — 수령 줄이 품목 코드를 싣지 않으면 계약은 **번호만 준다**.
  *
  * ⚠ **어느 판정에도 쓰이지 않는다.** 투입 가부는 서버가 정하고(§5-2), 이 조회는 읽을 수 있게
  * 하는 데만 쓴다. 그래서 실패해도 화면은 그대로 서야 한다.
@@ -422,12 +447,23 @@ describe('MaterialInputScanScreen — 품목 이름 풀이', () => {
     },
   });
 
-  it('표와 요약이 번호 대신 품목 코드를 보인다', async () => {
+  /* 수령 줄이 품목 코드를 싣지 않으면 품목 조회로 푼 코드를 보인다. */
+  const lineWithoutItemCode = (() => {
+    const { itemCode: _itemCode, ...bare } = receiptLineFixtures[0] as { itemCode?: string };
+
+    return bare;
+  })();
+
+  it('수령 줄에 품목 코드가 없으면 번호 대신 조회한 품목 코드를 「이름 (코드)」로 보인다', async () => {
+    renderScreen([listRoute(), detailRoute(7001, [lineWithoutItemCode]), itemRoute()]);
+
+    expect(await screen.findByText('예시 자재 A (SAMPLE-ITEM-7201)')).toBeTruthy();
+  });
+
+  it('수령 줄이 실은 품목 코드를 그대로 보인다', async () => {
     renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures), itemRoute()]);
 
-    expect(await screen.findByText('SAMPLE-ITEM-7201')).toBeTruthy();
-    /* 요약도 같은 이름을 쓴다 — 표에서 본 것을 요약에서 번호로 다시 보면 눈으로 맞춰야 한다. */
-    expect(screen.getByText(t.receiptSummary.short('SAMPLE-ITEM-7202', 20))).toBeTruthy();
+    expect(await screen.findByText('예시 자재 B (SAMPLE-MAT-B)')).toBeTruthy();
   });
 
   /*
@@ -437,7 +473,7 @@ describe('MaterialInputScanScreen — 품목 이름 풀이', () => {
   it('품목 조회가 실패해도 번호를 그대로 보이고 표는 선다', async () => {
     renderScreen([
       listRoute(),
-      detailRoute(7001, receiptLineFixtures),
+      detailRoute(7001, [lineWithoutItemCode, receiptLineFixtures[1]]),
       {
         match: (request) =>
           request.method === 'GET' && /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
@@ -445,9 +481,9 @@ describe('MaterialInputScanScreen — 품목 이름 풀이', () => {
       },
     ]);
 
-    expect(await screen.findByText('7201')).toBeTruthy();
-    /* 표 자체는 실패로 물들지 않는다 — 이름 풀이는 표의 선행이 아니다. */
-    expect(screen.getByText(t.receiptStatus.matched)).toBeTruthy();
+    expect(await screen.findByText('예시 자재 A (7201)')).toBeTruthy();
+    /* 목록 자체는 실패로 물들지 않는다 — 이름 풀이는 목록의 선행이 아니다. */
+    expect(screen.getByText(t.receiptStatus.short)).toBeTruthy();
   });
 });
 
@@ -458,7 +494,12 @@ describe('MaterialInputScanScreen — 품목 이름 풀이', () => {
 describe('MaterialInputScanScreen — 긴급 표식', () => {
   const workOrderRoute = (workOrderTypeCode: string): StubRoute => ({
     match: (request) => isGet(request, `/production/work-orders/${String(WORK_ORDER_ID)}`),
-    respond: () => jsonResponse({ workOrderId: WORK_ORDER_ID, workOrderTypeCode }),
+    respond: () =>
+      jsonResponse({
+        workOrderId: WORK_ORDER_ID,
+        workOrderNo: 'SAMPLE-WO-0001',
+        workOrderTypeCode,
+      }),
   });
 
   const header = (): HTMLElement => screen.getAllByRole('banner')[0] as HTMLElement;
@@ -466,7 +507,9 @@ describe('MaterialInputScanScreen — 긴급 표식', () => {
   it('긴급 작업지시면 머리줄에 긴급을 세운다', async () => {
     renderScreen([listRoute([]), workOrderRoute('EMERGENCY')]);
 
-    expect(await within(header()).findByText(t.header.emergency)).toBeInTheDocument();
+    expect(
+      await within(header()).findByText(messages.popChrome.header.emergency),
+    ).toBeInTheDocument();
   });
 
   it('긴급이 아니면 세우지 않는다', async () => {
@@ -479,6 +522,8 @@ describe('MaterialInputScanScreen — 긴급 표식', () => {
     });
     await flush();
 
-    expect(within(header()).queryByText(t.header.emergency)).not.toBeInTheDocument();
+    expect(
+      within(header()).queryByText(messages.popChrome.header.emergency),
+    ).not.toBeInTheDocument();
   });
 });

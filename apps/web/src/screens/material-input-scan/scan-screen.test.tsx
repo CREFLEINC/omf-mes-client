@@ -2,9 +2,10 @@ import { messages } from '@omf-mes/i18n';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { popTouchClass } from '../../patterns/pop-touch';
+import { setWorkerSession } from '../../patterns/worker-session';
+
 import {
   createStubFetch,
   jsonResponse,
@@ -24,6 +25,14 @@ import { popGateDeniedText, popGateUnidentifiedText } from '../../patterns/pop-p
 const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial');
 
 const t = messages.materialInputScan;
+
+/*
+ * 화면을 떠날 때 미전송 투입은 저장된 큐에 남는다(PI-27). 앞 시험이 남긴 큐가 다음 시험에서
+ * 나가지 않게, 시험마다 비우고 시작한다.
+ */
+beforeEach(() => {
+  globalThis.localStorage.clear();
+});
 const UNIDENTIFIED_TEXT = popGateUnidentifiedText(t.confirm.reasons.unidentified, null);
 
 /**
@@ -34,12 +43,23 @@ const UNIDENTIFIED_TEXT = popGateUnidentifiedText(t.confirm.reasons.unidentified
  */
 const scannedList = (): HTMLElement => screen.getByRole('list', { name: t.scanned.materialsLabel });
 
-/** 담은 목록에 그 LOT 줄이 서 있는가. **마지막 줄을 빼면 목록 자체가 빈 안내로 바뀐다.** */
+/**
+ * 그 LOT이 스캔으로 담겨 있는가(기록 전, 「투입 중」 칩). 자재 목록에는 불출된 LOT도 서 있으므로 줄이
+ * 있는지가 아니라 그 줄의 진행 칩을 본다.
+ */
 const scannedHas = (lotNo: string): boolean => {
   const list = screen.queryByRole('list', { name: t.scanned.materialsLabel });
+  if (list === null) return false;
 
-  return list !== null && within(list).queryByText(lotNo) !== null;
+  const row = within(list)
+    .queryAllByRole('listitem')
+    .find((item) => within(item).queryByText(lotNo) !== null);
+
+  return row !== undefined && within(row).queryByText(t.scanned.pendingMark) !== null;
 };
+
+/** 투입 수량 편집 영역(고른 LOT의 상세). */
+const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.noSelection });
 
 const ROUTE = `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}`;
 const RECEIPTS_PATH = '/logistics/shopfloor-receipts';
@@ -151,7 +171,14 @@ interface RecordedRequest {
   url: URL;
 }
 
-const renderScreen = (routes: StubRoute[], identity = UNKNOWN_POP_IDENTITY) => {
+/**
+ * 기본은 단말을 모르지만 사번은 있는 상태다. 사번이 없으면 화면이 투입을 받지 않으므로(PI-17) 스캔을
+ * 재는 감지기는 사번을 갖고 시작한다. 사번 없는 갈래는 따로 잰다.
+ */
+const renderScreen = (
+  routes: StubRoute[],
+  identity: PopIdentity = { ...UNKNOWN_POP_IDENTITY, workerNo: WORKER_NO },
+) => {
   const requests: RecordedRequest[] = [];
   const stub = createStubFetch([...receiptRoutes(), ...routes]);
   const fetch: StubFetch = async (request) => {
@@ -188,7 +215,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     await scanCode(user, 'SAMPLE-LOT-0001');
 
-    expect(await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.material('예시 자재 A를'))).toBeTruthy();
 
     const lotRequest = requests.find((request) => request.url.pathname === LOTS_PATH);
     expect(lotRequest?.url.searchParams.get('lotNo')).toBe('SAMPLE-LOT-0001');
@@ -207,7 +234,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
       fireEvent.change(field, { target: { value: code.slice(0, length) } });
     }
 
-    expect(await screen.findByText(t.scan.outcomes.material(code))).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.material('예시 자재 A를'))).toBeTruthy();
   });
 
   /*
@@ -219,7 +246,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
     const { requests } = renderScreen([lotsRoute([lot()])]);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 
     const lotRequests = requests.filter((request) => request.url.pathname === LOTS_PATH);
     expect(lotRequests).toHaveLength(1);
@@ -236,7 +263,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     await scanCode(user, 'SAMPLE-EXT-0001');
 
-    expect(await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.material('예시 자재 A를'))).toBeTruthy();
 
     const lotRequests = requests.filter((request) => request.url.pathname === LOTS_PATH);
     expect(lotRequests.map((request) => request.url.searchParams.has('lotNo'))).toEqual([
@@ -270,7 +297,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     await scanCode(user, 'SAMPLE-MLD-01');
 
-    expect(await screen.findByText(t.scan.outcomes.mold('SAMPLE-MLD-01'))).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.mold('합성 금형 가를'))).toBeTruthy();
     expect(requests.some((request) => request.url.pathname === MOLDS_PATH)).toBe(true);
   });
 
@@ -280,7 +307,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
     const { requests } = renderScreen([lotsRoute([lot()]), moldsRoute([mold()])]);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 
     expect(requests.some((request) => request.url.pathname === MOLDS_PATH)).toBe(false);
   });
@@ -300,7 +327,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     await scanCode(user, '123');
 
-    expect(await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.material('예시 자재 A를'))).toBeTruthy();
     /* 읽은 코드는 결과 줄에 남지 않는다. */
     expect(screen.queryByText(/123/)).toBeNull();
   });
@@ -314,12 +341,37 @@ describe('MaterialInputScanScreen — 스캔', () => {
     renderScreen([lotsRoute([lot()])]);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 
     await scanCode(user, 'SAMPLE-LOT-0001');
 
-    expect(await screen.findByText(t.scan.outcomes.duplicate('SAMPLE-LOT-0001'))).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.duplicate('예시 자재 A는'))).toBeTruthy();
     expect(within(scannedList()).getAllByText('SAMPLE-LOT-0001')).toHaveLength(1);
+  });
+
+  /* 현재 LOT은 하나다(PG-25). 담긴 LOT을 다시 읽으면 편집 영역이 그 LOT으로 옮긴다. */
+  it('이미 담긴 LOT을 다시 읽으면 그 LOT을 편집 영역에 연다', async () => {
+    const user = userEvent.setup();
+    const lots = [lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002' })];
+    renderScreen([
+      {
+        match: (request) => isGet(request, LOTS_PATH),
+        respond: (request) => {
+          const lotNo = new URL(request.url).searchParams.get('lotNo');
+
+          return jsonResponse(listBody(lots.filter((one) => one.lotNo === lotNo)));
+        },
+      },
+    ]);
+
+    await scanCode(user, 'SAMPLE-LOT-0001');
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
+    await scanCode(user, 'SAMPLE-LOT-0002');
+    await within(editor()).findByText('예시 자재 B (SAMPLE-MAT-B)');
+
+    await scanCode(user, 'SAMPLE-LOT-0001');
+
+    expect(await within(editor()).findByText('예시 자재 A (SAMPLE-MAT-A)')).toBeTruthy();
   });
 
   /*
@@ -333,7 +385,8 @@ describe('MaterialInputScanScreen — 스캔', () => {
     await scanCode(user, 'SAMPLE-LOT');
 
     expect(await screen.findByText(t.scan.outcomes.ambiguous(2))).toBeTruthy();
-    expect(screen.getByText(t.scanned.empty)).toBeTruthy();
+    expect(scannedHas('SAMPLE-LOT-0001')).toBe(false);
+    expect(scannedHas('SAMPLE-LOT-0002')).toBe(false);
   });
 
   it('어디에서도 못 찾으면 그 사실을 말한다', async () => {
@@ -343,7 +396,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
     await scanCode(user, 'SAMPLE-X');
 
     expect(await screen.findByText(t.scan.outcomes.notFound('SAMPLE-X'))).toBeTruthy();
-    expect(screen.getByText(t.scanned.empty)).toBeTruthy();
+    expect(screen.queryByText(t.scanned.pendingMark)).toBeNull();
   });
 
   it('조회가 실패하면 실패로 말한다 — 「못 찾았다」로 뭉뚱그리지 않는다', async () => {
@@ -382,7 +435,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
      */
     await user.type(field, 'SAMPLE-LOT-0001{Enter}');
 
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 
     await waitFor(() => {
       expect(document.activeElement).toBe(field);
@@ -421,7 +474,12 @@ describe('MaterialInputScanScreen — 스캔', () => {
       return stub(request);
     };
 
-    renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE });
+    renderWithProviders(
+      <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: WORKER_NO }}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
 
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
 
@@ -432,7 +490,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
     expect(document.activeElement).toBe(screen.getByLabelText(t.scan.label));
 
     releaseLots();
-    expect(await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.material('예시 자재 A를'))).toBeTruthy();
   });
 
   /*
@@ -462,7 +520,12 @@ describe('MaterialInputScanScreen — 스캔', () => {
       return stub(request);
     };
 
-    renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE });
+    renderWithProviders(
+      <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: WORKER_NO }}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
 
     const field = screen.getByLabelText(t.scan.label);
     await user.type(field, 'SAMPLE-LOT-0001{Enter}');
@@ -476,7 +539,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
     expect(requests.filter((request) => request.url.pathname === LOTS_PATH)).toHaveLength(1);
 
     releaseLots();
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
   });
 
   /*
@@ -514,11 +577,16 @@ describe('MaterialInputScanScreen — 스캔', () => {
       return stub(request);
     };
 
-    renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE });
+    renderWithProviders(
+      <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: WORKER_NO }}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
 
     const field = screen.getByLabelText(t.scan.label);
     await user.type(field, 'SAMPLE-LOT-0001{Enter}');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 
     // 둘째 조회를 붙잡아 둔 채로 첫 자재를 뺀다.
     await user.type(field, 'SAMPLE-LOT-0002{Enter}');
@@ -533,7 +601,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
     expect(scannedHas('SAMPLE-LOT-0001')).toBe(false);
 
     releaseSecond();
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0002'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 B를'));
 
     expect(scannedHas('SAMPLE-LOT-0001')).toBe(false);
     expect(scannedHas('SAMPLE-LOT-0002')).toBe(true);
@@ -553,31 +621,132 @@ describe('MaterialInputScanScreen — 스캔', () => {
     renderScreen([lotsRoute([lot()])]);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
+
+    expect(scannedHas('SAMPLE-LOT-0001')).toBe(true);
 
     await user.click(
       screen.getByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }),
     );
 
-    expect(await screen.findByText(t.scanned.empty)).toBeTruthy();
+    await waitFor(() => {
+      expect(scannedHas('SAMPLE-LOT-0001')).toBe(false);
+    });
+    /* 결과 줄이 방금 한 일(스캔 취소)을 말한다(PI-08). */
+    expect(screen.getByText(t.scanned.removed('예시 자재 A'))).toBeTruthy();
+  });
+});
+
+/**
+ * 사번이 없으면 투입을 받지 않는다(사용자 화면 확인 결정 2026-10-23, PI-17). 들어오자마자 사번 입력
+ * 창을 열고, 잠긴 동안 스캔 칸이나 목록을 누르면 다시 연다. 확인되면 같은 W/O에서 이어 간다.
+ */
+describe('MaterialInputScanScreen — 사번 없이 들어왔을 때', () => {
+  const dialogText = messages.popChrome.workerNoDialog;
+  const NO_WORKER: PopIdentity = { ...GATED, workerNo: null };
+
+  const workersRoute = (): StubRoute => ({
+    match: (request) => isGet(request, '/mdm/workers'),
+    respond: (request) => {
+      const workerNo = new URL(request.url).searchParams.get('workerNo');
+
+      return jsonResponse(
+        listBody(
+          workerNo === '7001'
+            ? [
+                {
+                  workerId: 7001,
+                  workerNo: '7001',
+                  workerName: '합성 작업자',
+                  businessUnitId: 1,
+                  plantId: 1,
+                  statusCode: 'SAMPLE_ACTIVE',
+                  isActive: true,
+                },
+              ]
+            : [],
+        ),
+      );
+    },
+  });
+
+  afterEach(() => {
+    setWorkerSession(null);
+  });
+
+  it('들어오자마자 사번 입력 창을 열고, 취소하면 잠긴 채 「사번을 입력하세요」라고 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot()]), gateRoute(true), workersRoute()], NO_WORKER);
+
+    const dialog = await screen.findByRole('dialog', { name: dialogText.title });
+    /* 칸이 곧바로 키보드와 스캐너 입력을 받는다. */
+    expect(document.activeElement).toBe(within(dialog).getByLabelText(dialogText.fieldLabel));
+
+    await user.click(within(dialog).getByRole('button', { name: dialogText.cancel }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: dialogText.title })).toBeNull();
+    });
+
+    expect(screen.getByText(t.confirm.reasons.workerMissing)).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    /* 스캔 칸은 받지 않고, 칠 수도 없다. */
+    expect(screen.getByLabelText(t.scan.label)).toHaveProperty('readOnly', true);
+    expect(screen.queryByRole('button', { name: t.scanned.keypadSubmit })).toBeNull();
+
+    /* 다시 여는 길: 「작업자」 빈 상태의 [사번 입력], 목록 줄, 스캔 칸. */
+    await user.click(screen.getByRole('button', { name: dialogText.open }));
+    expect(await screen.findByRole('dialog', { name: dialogText.title })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: dialogText.cancel }));
+
+    const row = await within(scannedList()).findByText('SAMPLE-LOT-0001');
+    await user.click(row);
+    expect(await screen.findByRole('dialog', { name: dialogText.title })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: t.panes.noSelection })).not.toBeNull();
+  });
+
+  it('사번을 확인하면 창이 닫히고 같은 W/O에서 스캔을 받는다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot()]), gateRoute(true), workersRoute()], NO_WORKER);
+
+    const dialog = await screen.findByRole('dialog', { name: dialogText.title });
+    await user.type(within(dialog).getByLabelText(dialogText.fieldLabel), '7001{Enter}');
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: dialogText.title })).toBeNull();
+    });
+    expect(screen.getByLabelText(t.scan.label)).toHaveProperty('readOnly', false);
+
+    await scanCode(user, 'SAMPLE-LOT-0001');
+    expect(await screen.findByText(t.scan.outcomes.material('예시 자재 A를'))).toBeTruthy();
+    expect(screen.queryByText(t.confirm.reasons.workerMissing)).toBeNull();
+  });
+
+  it('없는 사번이면 창 안에서 사유를 말하고 잠근 채 둔다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot()]), gateRoute(true), workersRoute()], NO_WORKER);
+
+    const dialog = await screen.findByRole('dialog', { name: dialogText.title });
+    await user.type(within(dialog).getByLabelText(dialogText.fieldLabel), '9999{Enter}');
+
+    expect(await within(dialog).findByText(dialogText.unknown)).toBeTruthy();
+    expect(screen.getByLabelText(t.scan.label)).toHaveProperty('readOnly', true);
   });
 });
 
 describe('MaterialInputScanScreen — 터치 타겟', () => {
   /*
-   * ⭐ 착수 이슈 6번이 정한 처리다 — 「위험 등급 버튼은 72px가 필요한데 DS의 `xl`은 60px다.
-   * 12px 부족분은 제품이 임시로 채운다」.
-   *
-   * 장갑 낀 손으로 누르는 것 둘에만 건다. 크기는 `app.css`가 갖고 있고 여기서는 **그 규칙에
-   * 걸리는 표시가 붙어 있는지**를 잰다 — jsdom은 스타일시트를 적용하지 않아 실제 높이를 잴 수
-   * 없다(측정 불가 경로).
+   * 주 동작 [생산 작업으로]는 하단 동작 바에 선다(C-3). 크기는 작업 시작 하단 바와 같은 POP 터치
+   * 규격이고 `pop.css` 바닥 띠 규칙이 맡는다 — jsdom은 스타일시트를 적용하지 않아 높이는 잴 수
+   * 없다(측정 불가 경로). 여기서는 자리만 잰다.
    */
-  it('스캔 보내기와 투입 확정에 현장 단말 치수를 건다', () => {
+  it('주 동작은 하단 동작 바에 선다', () => {
     renderScreen([lotsRoute([lot()])]);
 
-    expect(screen.getByRole('button', { name: t.confirm.action }).className).toContain(
-      'pop-touch-target',
-    );
+    const bar = screen.getByRole('region', { name: messages.screenPatterns.actionBar.region });
+    expect(within(bar).getByRole('button', { name: t.confirm.goToProductionResult })).toBeTruthy();
   });
 
   /*
@@ -589,7 +758,7 @@ describe('MaterialInputScanScreen — 터치 타겟', () => {
     renderScreen([lotsRoute([lot()])]);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 
     expect(
       screen.getByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }).className,
@@ -597,8 +766,11 @@ describe('MaterialInputScanScreen — 터치 타겟', () => {
   });
 });
 
-describe('MaterialInputScanScreen — 금형 타발수', () => {
-  it('타발수를 보이고 넘었으면 경고한다 — 다만 막지 않는다', async () => {
+describe('MaterialInputScanScreen — 금형', () => {
+  const header = (): HTMLElement => screen.getAllByRole('banner')[0] as HTMLElement;
+
+  /* 금형은 W/O 맥락이라 머리줄에 둔다(C-21). 적정 타수를 넘으면 경고하되 막지 않는다. */
+  it('지정한 금형을 머리줄에 보이고, 타수를 넘었으면 경고한다 — 다만 막지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen(
       [
@@ -611,17 +783,19 @@ describe('MaterialInputScanScreen — 금형 타발수', () => {
 
     await scanCode(user, 'SAMPLE-MLD-01');
 
-    expect(await screen.findByText(t.scanned.shotCountExceeded)).toBeTruthy();
-    /*
-     * 경고는 떴는데 「투입 확정」이 그 때문에 잠기지는 않는다 — 잠긴 사유 문구가 하나도
-     * 뜨지 않은 채, 아직 기록된 것이 없어서 잠겨 있어야 한다.
-     */
+    expect(
+      await within(header()).findByText(
+        messages.popChrome.header.moldLabel('합성 금형 가 (SAMPLE-MLD-01)'),
+      ),
+    ).toBeTruthy();
+    expect(await screen.findByText(t.scanned.shotCountExceeded('합성 금형 가'))).toBeTruthy();
     expect(screen.queryByText(DENIED_TEXT)).toBeNull();
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    /* 자재 목록에는 금형 줄이 없다. */
+    expect(within(scannedList()).queryByText(/금형/)).toBeNull();
   });
 
-  /* 적정 타수가 없으면 남은 타수를 낼 수 없다. 0으로 채우면 한도를 넘은 금형으로 보인다. */
-  it('적정 타수가 없으면 산출 불가로 말한다', async () => {
+  /* 정상(적정 타수 안, 또는 적정 타수 미등록)은 따로 말하지 않는다(C-21 정상은 숨김). */
+  it('타수를 넘지 않았으면 경고를 두지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen([
       lotsRoute([]),
@@ -630,9 +804,14 @@ describe('MaterialInputScanScreen — 금형 타발수', () => {
 
     await scanCode(user, 'SAMPLE-MLD-01');
 
-    expect(await screen.findByText(t.scanned.shotCountUnknown(12450))).toBeTruthy();
-    expect(screen.queryByText(t.scanned.shotCountExceeded)).toBeNull();
-    expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(await screen.findByText(t.scan.outcomes.mold('합성 금형 가를'))).toBeTruthy();
+    expect(screen.queryByText(t.scanned.shotCountExceeded('합성 금형 가'))).toBeNull();
+    /* 타발 진행 막대는 두지 않는다. 막대는 자재 줄의 투입량 막대뿐이다. */
+    expect(
+      screen
+        .queryAllByRole('progressbar')
+        .every((bar) => bar.getAttribute('aria-label') === t.pairs.progressLabel),
+    ).toBe(true);
   });
 });
 
@@ -645,17 +824,23 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
   it('단말을 모르면 막고 그 사실을 말한다', async () => {
     renderScreen([lotsRoute([lot()])]);
 
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(screen.getByText(UNIDENTIFIED_TEXT)).toBeTruthy();
   });
 
-  it('사번이 없으면 막고 맨 위 공용 띠로만 말한다', async () => {
+  /* 사번이 없는 사유는 하단 바 「남은 일」 한 곳에서 말한다(C-4). 맨 위 띠를 겹쳐 세우지 않는다. */
+  it('사번이 없으면 막고 「남은 일」로만 말한다', async () => {
     renderScreen([lotsRoute([lot()]), gateRoute(true)], { ...GATED, workerNo: null });
 
-    expect(await screen.findByText(messages.popChrome.workerMissing)).toBeTruthy();
-    await waitFor(() => expect(screen.queryByText(t.confirm.reasons.checking)).toBeNull());
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
-    expect(screen.queryByText(t.confirm.reasons.workerMissing)).toBeNull();
+    expect(await screen.findByText(t.confirm.reasons.workerMissing)).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(screen.queryByText(messages.popChrome.workerMissing)).toBeNull();
   });
 
   it('권한이 닫혀 있으면 막고 관리자를 가리킨다', async () => {
@@ -666,9 +851,12 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
 
     /* 담아도 사유가 바뀌지 않는다 — 담는 것으로 풀리는 문제가 아니다. */
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(screen.getByText(DENIED_TEXT)).toBeTruthy();
   });
 
@@ -735,7 +923,10 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     );
 
     expect(await screen.findByText(DENIED_TEXT)).toBeTruthy();
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 
   /* 권한이 없을 때 「다시 시도」를 두면 작업자가 풀 수 없는 것을 되풀이한다. */
@@ -773,14 +964,20 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     await waitFor(() => {
       expect(screen.getByText(t.confirm.reasons.checking)).toBeTruthy();
     });
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
 
     releaseGate();
     /* 확인이 끝나면 「확인 중」은 사라진다 — 그 뒤로는 담긴 것이 없어 말없이 잠겨 있다. */
     await waitFor(() => {
       expect(screen.queryByText(t.confirm.reasons.checking)).toBeNull();
     });
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 
   /*
@@ -788,28 +985,27 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
    * 유일한 상태다. **수량이 빠진 채로 열리면** 갖춰지지 않은 값이 되돌릴 수 없는 기록에 실린다.
    */
   /*
-   * ⭐ 「투입 확정」은 **목록을 닫는 동작**이라(§5-8) 기록된 것이 있어야 열린다. 담기만 하거나
+   * ⭐ 다음 작업 [생산 작업으로]는 기록된 것이 있어야 열린다(사용자 화면 확인 결정 2026-10-23). 담기만 하거나
    * 수량만 친 상태로 닫으면 그 줄은 아무 데도 남지 않고 사라진다 — 기록은 「기록」이 한다.
    */
-  it('기록된 것이 있어야 확정이 열린다', async () => {
+  it('스캔하기 전에는 다음 작업이 잠기고, 스캔하면 곧 보낼 투입이 생겨 열린다', async () => {
     const user = userEvent.setup();
     renderScreen([lotsRoute([lot()]), gateRoute(true)], GATED);
 
-    expect(await screen.findByRole('button', { name: t.confirm.action })).toHaveProperty(
-      'disabled',
-      true,
-    );
+    expect(
+      await screen.findByRole('button', { name: t.confirm.goToProductionResult }),
+    ).toHaveProperty('disabled', true);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 
-    /* 담기만 해서는 열리지 않는다 — 아직 기록되지 않았다(맨 위 띠는 세우지 않는다 · 2026-09-19). */
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
-    expect(screen.queryByText(t.confirm.reasons.qtyMissing)).toBeNull();
-
-    /* 수량을 쳐도 아직이다 — 「기록」을 눌러야 원장에 남는다. */
-    await user.type(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001')), '12');
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    /* 잔량으로 투입이 잡혔다(PI-26). 누르면 먼저 보내고 옮긴다. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+        'disabled',
+        false,
+      );
+    });
   });
 
   /* 단말을 모르면 조회를 보내지 않는다 — 서버가 거절할 요청을 화면이 한 번 더 만들지 않는다. */
@@ -834,8 +1030,8 @@ describe('MaterialInputScanScreen — 자재 상태 표시', () => {
     await scanCode(user, 'SAMPLE-LOT-0001');
 
     /* 상태 «이름»은 코드값 조회로 받은 것을 쓴다 — 화면이 그 말을 지어내지 않는다. */
-    await screen.findByText(t.scan.outcomes.blockedStatus('SAMPLE-LOT-0001', '검사 대기'));
-    expect(screen.queryByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeNull();
+    await screen.findByText(t.scan.outcomes.blockedStatus('예시 자재 A는', '검사 대기'));
+    expect(screen.queryByText(t.scan.outcomes.material('예시 자재 A를'))).toBeNull();
     /* 담기지 않았으므로 목록은 빈 안내로 남는다. */
     expect(scannedHas('SAMPLE-LOT-0001')).toBe(false);
   });
@@ -845,70 +1041,70 @@ describe('MaterialInputScanScreen — 자재 상태 표시', () => {
     renderScreen([lotsRoute([lot({ statusCode: 'NORMAL', held: true })])]);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 
     const item = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li');
     expect(item).not.toBeNull();
-    expect(within(item as HTMLElement).getByText(/정상/)).toBeTruthy();
     expect(within(item as HTMLElement).getByText(t.scanned.heldMark)).toBeTruthy();
+    /* 정상 상태는 보이지 않고(C-21), 보류만 예외 칩으로 편집 영역에도 선다. */
+    expect(within(editor()).queryByText(/정상/)).toBeNull();
+    expect(within(editor()).getByText(t.scanned.heldMark)).toBeTruthy();
   });
 });
 
 describe('MaterialInputScanScreen — 스캔 실패의 대체 경로', () => {
   /*
-   * ⭐ 공유계약 D-3 — 스캐너가 죽었을 때 **무엇을 눌러야 하는지가 보여야** 한다. 안내 문구만
-   * 두면 장갑을 낀 채 화면을 훑는 작업자에게는 없는 것과 같다.
+   * 스캐너가 죽으면 같은 칸에 코드를 바로 친다(공유계약 D-3). 칸에 칠 수 있으므로 [직접 입력]
+   * 버튼을 두지 않고(C-19 「값을 넣는 칸을 버튼으로 대신하지 않는다」), 받는 대상은 안내 문구에
+   * 적는다(C-13).
    */
-  it('「직접 입력」이 스캔 칸으로 포커스를 옮긴다', async () => {
+  it('칸에 바로 친 코드를 Enter로 담고, 받는 대상을 안내 문구로 알린다', async () => {
     const user = userEvent.setup();
     renderScreen([lotsRoute([lot()])]);
 
-    /*
-     * 포커스를 칸에서 걷어 둔다 — 옮겨 오는 것을 재려면 출발점이 달라야 한다.
-     *
-     * ⚠ 다른 단추로 옮기지 않는다. [읽기]가 없어졌고 남은 [투입 확정]은 처음에 잠겨 있어
-     *   포커스를 받지 못한다.
-     */
-    screen.getByLabelText(t.scan.label).blur();
-    expect(document.activeElement).not.toBe(screen.getByLabelText(t.scan.label));
+    const field = screen.getByLabelText(t.scan.label);
+    expect(field.getAttribute('placeholder')).toBe(t.scan.placeholder);
+    expect(screen.queryByRole('button', { name: '직접 입력' })).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: t.scan.manualEntry }));
+    await user.type(field, 'SAMPLE-LOT-0001{Enter}');
 
-    expect(document.activeElement).toBe(screen.getByLabelText(t.scan.label));
-  });
-
-  /*
-   * 대체 경로도 장갑 낀 손이 누른다 — 터치 등급을 «건다».
-   *
-   * ⚠ **등급은 「일반」이다**(56). 설계가 「큰 타겟」이라고 못박은 것은 [ 투입 확정 ] 하나뿐이고
-   * (§7 DS 매핑), 이 버튼은 그 표에 없다. 한때 72(핵심)로 서서 옆의 [ 읽기 ]와 같은 덩치였다.
-   */
-  it('대체 경로에도 현장 단말 치수를 건다', () => {
-    renderScreen([lotsRoute([lot()])]);
-
-    expect(screen.getByRole('button', { name: t.scan.manualEntry }).className).toContain(
-      popTouchClass('normal'),
-    );
+    expect(await screen.findByText(t.scan.outcomes.material('예시 자재 A를'))).toBeTruthy();
   });
 });
 
-describe('MaterialInputScanScreen — 헤더 맥락', () => {
-  /*
-   * 스펙 §3 — 지금 **어느 구간에서 어느 단말로** 찍고 있는가. 단말 여러 대가 같은 화면을
-   * 띄우므로, 무엇으로 찍었는지가 보이지 않으면 기록을 보고도 그 자리를 되짚을 수 없다.
-   */
-  it('세션과 단말이 없으면 없다고 말한다', async () => {
-    renderScreen([lotsRoute([lot()])]);
-
-    expect(await screen.findByText(t.header.sessionNone)).toBeTruthy();
-    expect(screen.getByText(t.header.terminalUnknown)).toBeTruthy();
+describe('MaterialInputScanScreen — 머리줄', () => {
+  const workOrderRoute = (): StubRoute => ({
+    match: (request) => isGet(request, `/production/work-orders/${String(WORK_ORDER_ID)}`),
+    respond: () =>
+      jsonResponse({
+        workOrderId: WORK_ORDER_ID,
+        workOrderNo: 'SAMPLE-WO-0001',
+        workOrderTypeCode: 'NORMAL',
+        processId: PROCESS_ID,
+        processName: '합성 공정',
+      }),
   });
 
-  /* 단말을 아는 상태에서는 번호가 선다 — 게이팅이 왜 열렸는지의 근거이기도 하다. */
-  it('단말을 알면 그 번호를 보인다', async () => {
-    renderScreen([lotsRoute([lot()]), gateRoute(true)], GATED);
+  const header = (): HTMLElement => screen.getAllByRole('banner')[0] as HTMLElement;
 
-    expect(await screen.findByText(t.header.terminal(TERMINAL_ID))).toBeTruthy();
+  /* C-11 — 현재 W/O와 공정. 작업지시 번호는 사용자가 보는 번호다. */
+  it('현재 W/O 번호와 공정을 보인다', async () => {
+    renderScreen([lotsRoute([lot()]), gateRoute(true), workOrderRoute()], GATED);
+
+    expect(
+      await within(header()).findByText(messages.popChrome.header.workOrderLabel('SAMPLE-WO-0001')),
+    ).toBeTruthy();
+    expect(within(header()).getByText('합성 공정')).toBeTruthy();
+  });
+
+  /* C-13 — 내부 번호(세션 번호, 단말 번호, 작업지시 내부 번호)를 보이지 않는다. */
+  it('내부 번호를 보이지 않는다', async () => {
+    renderScreen([lotsRoute([lot()]), gateRoute(true), workOrderRoute()], GATED);
+
+    await within(header()).findByText('합성 공정');
+    expect(within(header()).queryByText(/#/)).toBeNull();
+    expect(within(header()).queryByText(new RegExp(String(TERMINAL_ID)))).toBeNull();
+    expect(within(header()).queryByText(new RegExp(String(WORK_ORDER_ID)))).toBeNull();
   });
 });
 
@@ -998,7 +1194,7 @@ describe('MaterialInputScanScreen — 게이팅 캐시', () => {
     const stub = createStubFetch([...receiptRoutes(), lotsRoute([lot()]), twoProcesses]);
     renderWithProviders(<SwitchableProcess />, { fetch: stub, route: ROUTE });
 
-    await screen.findByRole('button', { name: t.confirm.action });
+    await screen.findByRole('button', { name: t.confirm.goToProductionResult });
     await user.click(screen.getByRole('button', { name: '공정 바꾸기' }));
 
     expect(await screen.findByText(DENIED_TEXT)).toBeTruthy();
@@ -1041,7 +1237,7 @@ describe('MaterialInputScanScreen — 공정이 여럿인 단말', () => {
     renderScreen([lotsRoute([lot()]), workOrderRoute, mappingRoute(true)], MULTI);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('예시 자재 A를'));
 
     /* 판정의 네 갈래 문구가 하나도 서지 않으면 열린 것이다. */
     await waitFor(() => expect(screen.queryByText(t.confirm.reasons.checking)).toBeNull());
@@ -1111,7 +1307,10 @@ describe('MaterialInputScanScreen — 공정이 여럿인 단말', () => {
     expect(
       await screen.findByText(popGateUnidentifiedText(t.confirm.reasons.unidentified, reason)),
     ).toBeTruthy();
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 
   it('W/O 공정의 자재 투입이 꺼져 있으면 공정 이름과 켜는 곳을 말하며 막는다', async () => {
@@ -1120,6 +1319,9 @@ describe('MaterialInputScanScreen — 공정이 여럿인 단말', () => {
     expect(
       await screen.findByText(popGateDeniedText({ processName: '합성 사출' }, 'canInputMaterial')),
     ).toBeTruthy();
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 });
