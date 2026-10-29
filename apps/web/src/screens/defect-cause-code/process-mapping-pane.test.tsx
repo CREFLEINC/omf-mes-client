@@ -186,6 +186,62 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
     await user.click(screen.getByRole('button', { name: '매핑 해제 3' }));
     expect(screen.queryByRole('rowheader', { name: /DF-11 · 스크래치/ })).not.toBeInTheDocument();
     expect(screen.getByRole('rowheader', { name: /DF-12/ })).toBeInTheDocument();
+
+    // 초기화는 칩도 「전체」로 되돌린다(#209 버그 수정).
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+    expect(screen.getByRole('button', { name: '전체 4' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('rowheader', { name: /DF-11 · 스크래치/ })).toBeInTheDocument();
+  });
+
+  it('상위 대분류만 미사용이어도 상세 코드 줄에 대분류 이름을 낸다(#209)', async () => {
+    const { requests } = renderMapping([
+      {
+        match: (request) =>
+          request.method === 'GET' && new URL(request.url).pathname === DEFECT_LIST_PATH,
+        respond: () =>
+          jsonResponse(
+            listBody([
+              {
+                defectCodeId: 1100,
+                defectCode: 'DF-80',
+                defectName: '중지된 대분류',
+                parentDefectCodeId: null,
+                processId: null,
+                isActive: false,
+              },
+              {
+                defectCodeId: 1101,
+                defectCode: 'DF-81',
+                defectName: '살아 있는 상세',
+                parentDefectCodeId: 1100,
+                processId: null,
+                isActive: true,
+              },
+              {
+                defectCodeId: 1102,
+                defectCode: 'DF-82',
+                defectName: '중지된 상세',
+                parentDefectCodeId: 1100,
+                processId: null,
+                isActive: false,
+              },
+            ]),
+          ),
+      },
+      {
+        match: (request) =>
+          request.method === 'GET' && new URL(request.url).pathname === mappingPath(1101),
+        respond: () => jsonResponse(listBody([])),
+      },
+    ]);
+
+    expect(
+      await screen.findByRole('rowheader', { name: /DF-81 · 살아 있는 상세\s*중지된 대분류/ }),
+    ).toBeInTheDocument();
+    // 미사용 상세는 줄로 세우지 않는다(종전과 같다).
+    expect(screen.queryByRole('rowheader', { name: /DF-82/ })).not.toBeInTheDocument();
+    const list = requests.find((request) => request.url.pathname === DEFECT_LIST_PATH);
+    expect(list?.url.searchParams.get('includeInactive')).toBe('true');
   });
 
   it('빈 셀을 누르면 멱등 키와 공정 번호로 즉시 매핑한다', async () => {

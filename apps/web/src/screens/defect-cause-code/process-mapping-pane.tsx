@@ -141,9 +141,13 @@ export const ProcessMappingPane = () => {
   const defectsQuery = useQuery({
     queryKey: mappingKeys.defects,
     queryFn: () =>
-      runRequest(() => client.GET('/quality/defect-codes', { params: { query: {} } })) as Promise<
-        ListResponse<DefectCode>
-      >,
+      /*
+       * 미사용까지 받는다(#209 버그 수정) — 상위 대분류만 미사용이면 사용 중인 상세 코드가 「상위를 찾을 수 없는 코드」로 보였다.
+       * 표의 줄은 아래에서 사용 중인 상세 코드만 남긴다(종전과 같다).
+       */
+      runRequest(() =>
+        client.GET('/quality/defect-codes', { params: { query: { includeInactive: true } } }),
+      ) as Promise<ListResponse<DefectCode>>,
   });
   const processesQuery = useQuery({
     queryKey: mappingKeys.processes,
@@ -155,7 +159,10 @@ export const ProcessMappingPane = () => {
 
   const allDefects = defectsQuery.data?.items ?? EMPTY_DEFECTS;
   const defects = useMemo(
-    () => allDefects.map(defectToHierarchyCode).filter((item) => item.parentId !== null),
+    () =>
+      allDefects
+        .map(defectToHierarchyCode)
+        .filter((item) => item.parentId !== null && item.isActive),
     [allDefects],
   );
   const processes = processesQuery.data?.items ?? EMPTY_PROCESSES;
@@ -217,9 +224,11 @@ export const ProcessMappingPane = () => {
   const [link, setLink] = useState<MappingLink>('all');
   const [draft, setDraft] = useState<MappingFilters>(EMPTY_MAPPING_FILTERS);
   const [applied, setApplied] = useState<MappingFilters>(EMPTY_MAPPING_FILTERS);
+  /* 초기화는 연결 상태 칩도 「전체」로 되돌린다(#209 버그 수정) — 불량코드 탭의 초기화가 사용 여부 칩을 되돌리는 것과 같다. */
   const resetFilters = (): void => {
     setDraft(EMPTY_MAPPING_FILTERS);
     setApplied(EMPTY_MAPPING_FILTERS);
+    setLink('all');
   };
   const shownProcesses =
     applied.processId === ''
