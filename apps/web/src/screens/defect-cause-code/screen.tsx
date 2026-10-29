@@ -48,6 +48,7 @@ import { isTruncated, useCodeDetail, useCodeList, useCodeOptions } from './queri
 import { ProcessMappingPane } from './process-mapping-pane';
 import { CODE_TABS, resolveTab } from './tabs';
 import type { CodeDetailResult, CodeFilters, CodeFormValues, HierarchyCode } from './types';
+import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.defectCauseCode;
@@ -545,7 +546,7 @@ export const DefectCauseCodeScreen = () => {
 
   return (
     <>
-      {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
+      {/* 탭 묶음 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
       {hub === null && (
         <PageHeader
           title={t.title}
@@ -555,6 +556,11 @@ export const DefectCauseCodeScreen = () => {
               aria-label={messages.common.shell.breadcrumb}
             />
           }
+          /*
+           * 사이드바 한 줄로 따로 선다(#208) — 탭 막대가 없으니 배치 전환(좌우 · 상하)이 들어갈 자리를 머리 오른쪽에
+           * 직접 둔다(LOT 추적과 같은 방식).
+           */
+          actions={<div id={HUB_ACTIONS_ID} className="hub-actions" />}
         />
       )}
       <Tabs
