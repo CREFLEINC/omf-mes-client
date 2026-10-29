@@ -40,6 +40,7 @@ export const DeactivateConfirmDialog = ({
 
   return (
     <Dialog
+      className="location-dialog"
       open={open}
       onClose={onClose}
       size="sm"

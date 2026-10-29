@@ -338,6 +338,7 @@ export const RackCreateDialog = ({
 
   return (
     <Dialog
+      className="location-dialog"
       open={zone !== null}
       onClose={close}
       title={editRack === null ? t.dialog.createRackTitle : t.dialog.editRackTitle}
@@ -401,18 +402,17 @@ export const RackCreateDialog = ({
                 ? []
                 : [{ label: t.fields.warehouse, value: warehouseLabel }]),
               { label: t.fields.parentLocation, value: locationAliasOrCode(zone) },
+              {
+                label: t.fields.aliasName,
+                value: aliasText,
+                error: aliasError,
+                edit: {
+                  onChange: setAliasText,
+                  disabled: saving || (editRack === null && createdRack !== null),
+                },
+              },
             ]}
           />
-
-          <DialogSection title={t.dialog.sections.basic}>
-            <TextField
-              label={t.fields.aliasName}
-              value={aliasText}
-              onChange={(event) => setAliasText(event.target.value)}
-              disabled={saving || (editRack === null && createdRack !== null)}
-              error={aliasError}
-            />
-          </DialogSection>
 
           <DialogSection title={t.dialog.sections.layout}>
             <div className="form-grid rack-layout-counts">

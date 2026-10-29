@@ -1331,6 +1331,13 @@ export interface LocationRackCreate {
   cellCountPerLevel: number;
 }
 
+/** 서버 위치 ⑤ — 위치에 둘 수 있게 지정한 품목 한 줄. 품목코드 순으로 온다. */
+export interface LocationItem {
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+}
+
 export interface ForwardPaths {
   /**
    * 서버 위치 ③b(#893) — 랙 한 번에 만들기. 201 은 만든 랙이다. 계약 사본에 실려 `gen:api` 가 만들면 지운다.
@@ -1355,6 +1362,26 @@ export interface ForwardPaths {
       Params<never, IdemHeader, { locationId: number }>,
       never,
       { 204: { headers: { [name: string]: unknown }; content?: never } }
+    >;
+  };
+  /**
+   * 서버 위치 ⑤ — 위치의 지정 품목. 목록이 있으면 그 위치에는 그 품목만 둔다(하위로 물려주지 않는다). PUT 은 목록을
+   * 통째로 바꾸고 빈 목록이면 제한을 푼다(최대 200건). 400 INVALID(itemIds): 없거나 중지된 품목 ·
+   * 400 STATE_LOCKED(itemIds): 지정 밖 품목의 재고가 그 위치에 있음 · 400 STATE_LOCKED: 서버가 만든 위치.
+   * 계약 사본에 실리면 지운다.
+   */
+  '/mdm/locations/{locationId}/items': Unused & {
+    parameters: NoParameters;
+    post?: never;
+    get: Op<
+      { query?: never; header?: never; path: { locationId: number }; cookie?: never },
+      never,
+      { 200: Json<{ items: LocationItem[] }> }
+    >;
+    put: Op<
+      Params<never, IdemHeader, { locationId: number }>,
+      { content: { 'application/json': { itemIds: number[] } } },
+      { 200: Json<{ items: LocationItem[] }> }
     >;
   };
   /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */

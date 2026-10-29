@@ -175,3 +175,12 @@ export const isSameWarehouseValues = (a: WarehouseFormValues, b: WarehouseFormVa
   a.managementLevelCode === b.managementLevelCode &&
   a.isExternal === b.isExternal &&
   a.isDefect === b.isDefect;
+
+/** 위치 폼의 기준값과 현재 값의 비교 — 수정 창이 「고친 것이 있는가」를 이것과 보관 품목으로 판정한다. */
+export const isSameLocationValues = (a: LocationFormValues, b: LocationFormValues): boolean =>
+  a.parentLocationId === b.parentLocationId &&
+  a.locationCode === b.locationCode &&
+  a.aliasName === b.aliasName &&
+  a.locationTypeCode === b.locationTypeCode &&
+  a.allowMixedItem === b.allowMixedItem &&
+  a.allowMixedLot === b.allowMixedLot;

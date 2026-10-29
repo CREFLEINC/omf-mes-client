@@ -141,6 +141,17 @@ export const LocationPane = ({
             <button type="button" className="link-cell" onClick={() => onEdit(row.location)}>
               {row.location.locationCode}
             </button>
+            {/* 지정한 품목만 두는 위치 — 코드 뒤 작은 자물쇠(사용자 지시 2026-10-29). */}
+            {row.location.hasItemRestriction === true && (
+              <span
+                className="location-restricted-icon"
+                role="img"
+                aria-label={t.itemsSection.restricted}
+                title={t.itemsSection.restricted}
+              >
+                <Icon name="lock" size={16} aria-hidden="true" />
+              </span>
+            )}
           </div>
         );
       },

@@ -85,6 +85,7 @@ export const LocationLabelDialog = ({ previews, baseUrl, onClose }: LocationLabe
 
   return (
     <Dialog
+      className="location-dialog"
       open
       onClose={onClose}
       size="lg"

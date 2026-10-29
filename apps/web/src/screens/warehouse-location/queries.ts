@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, LocationItem } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -109,6 +109,7 @@ export const locationKeys = {
   all: ['locations'] as const,
   list: (warehouseId: number, q: string) => ['locations', 'list', warehouseId, q] as const,
   detail: (locationId: number) => ['locations', 'detail', locationId] as const,
+  items: (locationId: number) => ['locations', 'items', locationId] as const,
 };
 
 /** ETag가 보관된 경로. Location 수정의 If-Match는 여기서 꺼낸다. */
@@ -193,6 +194,31 @@ export const useLocationDetail = (
       return runRequest(() =>
         client.GET('/mdm/locations/{locationId}', { params: { path: { locationId } } }),
       );
+    },
+  });
+};
+
+/**
+ * 위치의 지정 품목(서버 위치 ⑤). 빈 목록이면 품목 무관이다. 수정 창의 맨 아래 위치에서만 부른다 — 제한은 그 위치에만
+ * 걸리고 하위로 물려주지 않는다. 고치는 동안 다시 받아 고친 목록이 덮이지 않게 상세와 같이 창 포커스 갱신을 끈다.
+ */
+export const useLocationItems = (locationId: number | null): UseQueryResult<LocationItem[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: locationKeys.items(locationId ?? 0),
+    enabled: locationId !== null,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    queryFn: async () => {
+      if (locationId === null) {
+        throw new Error('위치를 고르기 전에는 지정 품목을 조회하지 않습니다.');
+      }
+
+      const result = await runRequest(() =>
+        client.GET('/mdm/locations/{locationId}/items', { params: { path: { locationId } } }),
+      );
+      return result.items;
     },
   });
 };

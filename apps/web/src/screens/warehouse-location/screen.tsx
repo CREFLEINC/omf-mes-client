@@ -1,8 +1,8 @@
 import { AlertBanner, Button, EmptyState, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
-import type { ApiError, components } from '@omf-mes/api-client';
+import type { ApiError, components, LocationItem } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMutation } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -17,6 +17,13 @@ import { issueLocationCode } from './location-code';
 import { LocationDeleteDialog } from './location-delete-dialog';
 import { countSubtree } from './location-identity';
 import { LocationFormDialog } from './location-form-dialog';
+import {
+  draftItemIds,
+  isItemsDraftChanged,
+  type LocationItemsDraft,
+  LocationItemsSection,
+} from './location-items-section';
+import { itemTypesForWarehouse } from './item-scope';
 import { RackCreateDialog } from './rack-create-dialog';
 import { LocationLabelDialog, type LocationLabelPreview } from './location-label-dialog';
 import { LocationLabelIssueDialog } from './location-label-issue-dialog';
@@ -27,6 +34,7 @@ import { LOCATION_FORM_FIELDS, validateLocation } from './location-validation';
 import {
   emptyLocationFormValues,
   emptyWarehouseFormValues,
+  isSameLocationValues,
   isSameWarehouseValues,
   locationAliasOrCode,
   locationToFormValues,
@@ -42,6 +50,7 @@ import {
   locationKeys,
   locationLabelKeys,
   useLocationDetail,
+  useLocationItems,
   useLocationList,
   useLookupOptions,
   useWarehouseDetail,
@@ -361,6 +370,20 @@ export const WarehouseLocationScreen = () => {
     invalidateKeys: [locationKeys.all],
     knownFields: LOCATION_FORM_FIELDS,
     onSuccess: (saved) => {
+      /*
+       * 보관 품목도 바꿨으면 이어서 보낸다 — 창은 그것까지 끝나야 닫는다. 위치는 이미 저장됐으니 기준값 · 잠금 토큰을
+       * 응답으로 옮겨 둔다(품목이 거절돼 다시 저장할 때 위치를 또 보내지 않게).
+       */
+      const pendingItems = pendingItemsRef.current;
+      if (dialogState.mode === 'edit' && pendingItems !== null) {
+        setLocationFormSource((prev) => (prev === null ? prev : { ...prev, location: saved }));
+        setLocationSourceEtag(
+          (prev) => etags.ifMatch(locationDetailPath(saved.locationId)) ?? prev,
+        );
+        setLocationValues(locationToFormValues(saved));
+        itemsWrite.write(pendingItems);
+        return;
+      }
       setDialogState(CLOSED_LOCATION_DIALOG);
       setLocationFieldErrors({});
       toast.show({
@@ -645,6 +668,8 @@ export const WarehouseLocationScreen = () => {
   const handleReloadLocationDetail = () => {
     locationWrite.reset();
     locationStatusWrite.reset();
+    resetItemsDraft();
+    void itemsQuery.refetch();
     setLocationFieldErrors({});
     setLocationFormSource(null);
     setLocationSourceEtag(null);
@@ -716,6 +741,7 @@ export const WarehouseLocationScreen = () => {
     const parentDepth = parent === null ? -1 : (locationDepthById.get(parent.locationId) ?? -1);
     const level = LOCATION_LEVEL_CODES[parentDepth + 1] ?? 'ZONE';
     locationWrite.reset();
+    resetItemsDraft();
     setLocationFieldErrors({});
     setLocationFormSource(null);
     setLocationSourceEtag(null);
@@ -743,6 +769,7 @@ export const WarehouseLocationScreen = () => {
       return;
     }
     locationWrite.reset();
+    resetItemsDraft();
     setLocationFieldErrors({});
     setLocationFormSource(null);
     setLocationSourceEtag(null);
@@ -768,13 +795,31 @@ export const WarehouseLocationScreen = () => {
     }
   };
 
+  /**
+   * 저장 하나가 둘을 맡는다 — 위치 칸을 고쳤으면 위치 수정, 보관 품목을 바꿨으면 품목 목록 교체. 둘 다면 위치가 먼저다.
+   * 지정 품목만인데 품목이 없으면 보내지 않고 칸 아래에 알린다(빈 목록은 제한 해제라 뜻이 뒤집힌다).
+   */
   const handleSaveLocation = () => {
-    const errors = validateLocation(locationValues);
+    const errors: Record<string, string> = { ...validateLocation(locationValues) };
+    if (itemsChanged && itemsDraft?.restricted === true && itemsDraft.items.length === 0) {
+      errors.itemIds = t.itemsSection.required;
+    }
     setLocationFieldErrors(errors);
 
     if (Object.keys(errors).length > 0) return;
 
-    locationWrite.write(locationValues);
+    const pendingItems =
+      itemsChanged && itemsDraft !== null && itemsTargetId !== null
+        ? { locationId: itemsTargetId, itemIds: draftItemIds(itemsDraft) }
+        : null;
+    pendingItemsRef.current = pendingItems;
+    itemsWrite.reset();
+
+    if (dialogState.mode === 'create' || locationChanged || pendingItems === null) {
+      locationWrite.write(locationValues);
+      return;
+    }
+    itemsWrite.write(pendingItems);
   };
 
   const selectedLocationId = Number(selectedLocationIds[0] ?? '') || null;
@@ -806,6 +851,99 @@ export const WarehouseLocationScreen = () => {
       (child) =>
         child.isActive && child.parentLocationId === locationId && child.locationId !== locationId,
     );
+  };
+
+  /*
+   * 보관 품목(사용자 지시 2026-10-29) — 고치는 맨 아래 위치에만. 제한은 그 위치에만 걸려 하위로 물려주지 않으므로 하위가
+   * 있는 위치에는 두지 않고, 서버가 만든 자리(적치 대기 · 창고 전체)는 서버가 거절한다(400 STATE_LOCKED).
+   */
+  const editingLocation =
+    dialogState.open && dialogState.mode === 'edit' && dialogState.locationId !== null
+      ? (locationDetail.data?.location ??
+        hierarchyItems.find((item) => item.locationId === dialogState.locationId) ??
+        null)
+      : null;
+  /* 창고 유형이 보관 품목의 유형을 정한다 — 예비품창고는 보관 품목을 두지 않는다(`item-scope.ts`). */
+  const itemTypeScope = itemTypesForWarehouse(selectedWarehouse?.warehouseTypeCode);
+  const itemsTargetId =
+    editingLocation !== null &&
+    itemTypeScope !== null &&
+    !isSystemLocation(editingLocation) &&
+    isLeafLocation(editingLocation.locationId)
+      ? editingLocation.locationId
+      : null;
+  const itemsQuery = useLocationItems(itemsTargetId);
+  const [itemsDraft, setItemsDraft] = useState<LocationItemsDraft | null>(null);
+  /** 위치를 먼저 저장한 뒤 이어 보낼 품목 목록 — 위치 저장의 성공 처리기가 읽는다. */
+  const pendingItemsRef = useRef<{ locationId: number; itemIds: number[] } | null>(null);
+
+  /* 고칠 목록은 받은 목록에서 시작한다 — 다시 받는 중에는 기다려 옛 캐시로 시작하지 않는다. */
+  if (
+    itemsTargetId !== null &&
+    itemsDraft === null &&
+    itemsQuery.data !== undefined &&
+    !itemsQuery.isFetching
+  ) {
+    setItemsDraft({ restricted: itemsQuery.data.length > 0, items: itemsQuery.data });
+  }
+
+  const itemsWrite = useMasterWrite<
+    { locationId: number; itemIds: number[] },
+    { items: LocationItem[] }
+  >({
+    request: ({ locationId, itemIds }, headers) =>
+      client.PUT('/mdm/locations/{locationId}/items', {
+        params: {
+          path: { locationId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { itemIds },
+      }),
+    etagPath: null,
+    /* 목록의 표식(hasItemRestriction)과 품목 목록을 함께 다시 받는다. */
+    invalidateKeys: [locationKeys.all],
+    knownFields: ['itemIds'],
+    onSuccess: () => {
+      pendingItemsRef.current = null;
+      setDialogState(CLOSED_LOCATION_DIALOG);
+      setLocationFieldErrors({});
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /** 창을 열고 닫을 때 · 최신을 다시 받을 때 — 고치던 품목 목록과 그 오류를 버린다. */
+  const resetItemsDraft = (): void => {
+    setItemsDraft(null);
+    pendingItemsRef.current = null;
+    itemsWrite.reset();
+  };
+
+  const itemsChanged =
+    itemsTargetId !== null &&
+    itemsDraft !== null &&
+    itemsQuery.data !== undefined &&
+    isItemsDraftChanged(itemsDraft, itemsQuery.data);
+  const locationChanged =
+    locationFormSource === null ||
+    !isSameLocationValues(locationValues, locationToFormValues(locationFormSource.location));
+
+  /* 지정 밖 품목의 재고가 있다는 거절(STATE_LOCKED · itemIds)은 배너가 아니라 품목 칸 아래에 둔다. */
+  const itemsLockedMessage =
+    itemsWrite.error?.kind === 'stateLocked' &&
+    itemsWrite.error.errors.length > 0 &&
+    itemsWrite.error.errors.every((item) => item.field === 'itemIds')
+      ? itemsWrite.error.errors.map((item) => item.message).join(' ')
+      : undefined;
+
+  const changeItemsDraft = (draft: LocationItemsDraft) => {
+    setItemsDraft(draft);
+    itemsWrite.reset();
+    setLocationFieldErrors((prev) => {
+      if (!('itemIds' in prev)) return prev;
+      const next = { ...prev };
+      delete next.itemIds;
+      return next;
+    });
   };
 
   /** 지울 위치 — 확인 창이 열린다. */
@@ -1232,6 +1370,7 @@ export const WarehouseLocationScreen = () => {
           setDialogState(CLOSED_LOCATION_DIALOG);
           setLocationFormSource(null);
           setLocationSourceEtag(null);
+          resetItemsDraft();
         }}
         mode={dialogState.mode}
         {...(createLocationTitle === undefined ? {} : { createTitle: createLocationTitle })}
@@ -1255,6 +1394,7 @@ export const WarehouseLocationScreen = () => {
               error={locationWrite.error}
               onReload={dialogState.mode === 'edit' ? handleReloadLocationDetail : undefined}
             />
+            {itemsLockedMessage === undefined && <SaveErrorBanner error={itemsWrite.error} />}
           </>
         }
         systemLocked={
@@ -1289,8 +1429,25 @@ export const WarehouseLocationScreen = () => {
           locationStatusWrite.reset();
           setLocationStatusOpen(true);
         }}
-        isSaving={locationWrite.isSaving}
+        isSaving={locationWrite.isSaving || itemsWrite.isSaving}
         onSave={handleSaveLocation}
+        isDirty={locationChanged || itemsChanged}
+        itemsSlot={
+          itemsTargetId === null ? null : (
+            <LocationItemsSection
+              isLoading={itemsQuery.isPending || (itemsDraft === null && itemsQuery.isFetching)}
+              isError={itemsQuery.isError}
+              onRetry={() => void itemsQuery.refetch()}
+              draft={itemsDraft}
+              onChange={changeItemsDraft}
+              error={
+                locationFieldErrors.itemIds ?? itemsWrite.fieldErrors.itemIds ?? itemsLockedMessage
+              }
+              disabled={locationWrite.isSaving || itemsWrite.isSaving}
+              itemTypeCodes={itemTypeScope ?? undefined}
+            />
+          )
+        }
         /* 라벨은 고칠 때만 — 아직 없는 위치에는 발행할 대상이 없다. */
         labelSlot={
           dialogState.mode === 'edit' &&

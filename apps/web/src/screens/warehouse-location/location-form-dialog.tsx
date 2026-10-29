@@ -1,4 +1,4 @@
-import { Button, Dialog, Icon, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -45,6 +45,10 @@ export interface LocationFormDialogProps {
   onDelete?: (() => void) | undefined;
   isSaving: boolean;
   onSave: () => void;
+  /** 고칠 때 바꾼 것이 있는가 — 없으면 저장을 막는다. 추가할 때는 보지 않는다. */
+  isDirty?: boolean;
+  /** 고칠 때 기본 정보와 라벨 사이에 두는 보관 품목(맨 아래 위치만). */
+  itemsSlot?: ReactNode;
   /** 고칠 때 칸 아래에 두는 라벨(사용자 지시 2026-10-29). */
   labelSlot?: ReactNode;
 }
@@ -70,6 +74,8 @@ export const LocationFormDialog = ({
   onDelete,
   isSaving,
   onSave,
+  isDirty = true,
+  itemsSlot,
   labelSlot,
 }: LocationFormDialogProps) => {
   /* 구역 · 서버가 만든 자리는 창고 바로 밑이다 — 상위가 창고와 같아 창고 한 줄만 보인다. */
@@ -88,6 +94,7 @@ export const LocationFormDialog = ({
 
   return (
     <Dialog
+      className="location-dialog"
       open={open}
       onClose={onClose}
       size="lg"
@@ -124,7 +131,11 @@ export const LocationFormDialog = ({
           <Button variant="outlined" onClick={onClose}>
             {messages.common.cancel}
           </Button>
-          <Button loading={isSaving} disabled={!isReady || isSaving} onClick={onSave}>
+          <Button
+            loading={isSaving}
+            disabled={!isReady || isSaving || (mode === 'edit' && !isDirty)}
+            onClick={onSave}
+          >
             {messages.common.save}
           </Button>
         </>
@@ -143,19 +154,20 @@ export const LocationFormDialog = ({
         {fieldErrors.locationCode !== undefined && (
           <span className="field-error">{fieldErrors.locationCode}</span>
         )}
-        <LocationFacts facts={facts} />
+        {/* 별칭은 창고 · 상위 위치와 같은 줄에 — 연필을 눌러 그 자리에서 고친다(사용자 지시 2026-10-29). */}
+        <LocationFacts
+          facts={[
+            ...facts,
+            {
+              label: t.fields.aliasName,
+              value: values.aliasName,
+              error: fieldErrors.aliasName,
+              edit: { onChange: (aliasName) => onChange({ aliasName }), disabled: !isReady },
+            },
+          ]}
+        />
 
-        <DialogSection title={t.dialog.sections.basic}>
-          {/* 별칭이 위치의 이름이다 — 위치명 칸은 따로 두지 않는다. */}
-          <TextField
-            label={t.fields.aliasName}
-            value={values.aliasName}
-            onChange={(event) => onChange({ aliasName: event.target.value })}
-            disabled={!isReady}
-            error={fieldErrors.aliasName}
-          />
-        </DialogSection>
-
+        {itemsSlot}
         {labelSlot}
       </div>
     </Dialog>

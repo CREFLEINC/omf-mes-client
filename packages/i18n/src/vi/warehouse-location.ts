@@ -112,6 +112,24 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     /** 창 안의 묶음 제목 — 짧게. */
     sections: { basic: 'Thông tin cơ bản', layout: 'Bố trí tầng·ô' },
   },
+  /** 위치 수정 창 안의 보관 품목(사용자 지시 2026-10-29) — 품목 무관 · 지정 품목만 둘 중 하나. 안내문 없이. */
+  /** 정보 판에서 연필로 고치는 값(별칭). */
+  factEdit: {
+    start: (label: string): string => `Sửa ${label}`,
+    done: (label: string): string => `Xong sửa ${label}`,
+  },
+  itemsSection: {
+    title: 'Mặt hàng lưu trữ',
+    anyItem: 'Mọi mặt hàng',
+    listedOnly: 'Chỉ mặt hàng chỉ định',
+    addItem: 'Thêm mặt hàng',
+    remove: (itemCode: string): string => `Xóa ${itemCode}`,
+    loading: 'Đang tải mặt hàng lưu trữ',
+    loadFailed: 'Không tải được mặt hàng lưu trữ.',
+    required: 'Hãy chọn ít nhất một mặt hàng.',
+    /** 목록의 위치 코드 옆 표식. */
+    restricted: 'Chỉ mặt hàng chỉ định',
+  },
   /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
   deleteLocation: {
     title: 'Xóa vị trí',

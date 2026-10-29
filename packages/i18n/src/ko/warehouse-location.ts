@@ -108,6 +108,24 @@ export const warehouseLocation = {
     /** 창 안의 묶음 제목 — 짧게. */
     sections: { basic: '기본 정보', layout: '층·셀 구성' },
   },
+  /** 위치 수정 창 안의 보관 품목(사용자 지시 2026-10-29) — 품목 무관 · 지정 품목만 둘 중 하나. 안내문 없이. */
+  /** 정보 판에서 연필로 고치는 값(별칭). */
+  factEdit: {
+    start: (label: string): string => `${label} 수정`,
+    done: (label: string): string => `${label} 수정 완료`,
+  },
+  itemsSection: {
+    title: '보관 품목',
+    anyItem: '품목 무관',
+    listedOnly: '지정 품목만',
+    addItem: '품목 추가',
+    remove: (itemCode: string): string => `${itemCode} 삭제`,
+    loading: '보관 품목을 불러오는 중',
+    loadFailed: '보관 품목을 불러오지 못했습니다.',
+    required: '품목을 하나 이상 선택하세요.',
+    /** 목록의 위치 코드 옆 표식. */
+    restricted: '지정 품목만',
+  },
   /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
   deleteLocation: {
     title: '위치 삭제',

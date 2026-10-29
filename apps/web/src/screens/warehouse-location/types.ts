@@ -13,7 +13,10 @@ export type Warehouse = components['schemas']['Warehouse'];
 /** 서버가 만든 위치의 역할 · 별칭 · 단계(계약 밖, `patterns/system-location.ts` · `location-level.ts`)를 함께 읽는다. */
 export type Location = components['schemas']['Location'] &
   SystemLocationFields &
-  LocationLevelFields;
+  LocationLevelFields & {
+    /** 지정한 품목만 둘 수 있는 위치(서버 위치 ⑤) — 계약 사본에 아직 없다. 없으면 품목 무관. */
+    hasItemRestriction?: boolean;
+  };
 
 export interface WarehouseFilters {
   q: string;

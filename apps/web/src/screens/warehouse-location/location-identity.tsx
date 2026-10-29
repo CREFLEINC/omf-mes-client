@@ -1,6 +1,6 @@
-import { Chip, Icon } from '@crefle/web-ui';
+import { Chip, Icon, IconButton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import type { LocationLevelCode } from '../../patterns/location-level';
 import {
@@ -89,7 +89,75 @@ export interface LocationFact {
   label: string;
   value: string;
   error?: string | undefined;
+  /** 연필로 고치는 값(별칭) — 있으면 값 옆에 연필 단추, 누르면 그 자리에서 입력칸이 된다. */
+  edit?: {
+    onChange: (value: string) => void;
+    disabled?: boolean;
+  };
 }
+
+/** 연필로 고치는 값 — 비었으면 「—」로 자리만. 고친 값은 창의 저장으로 함께 나간다. */
+const EditableFact = ({
+  fact,
+  labelId,
+}: {
+  fact: LocationFact & { edit: NonNullable<LocationFact['edit']> };
+  labelId: string;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [original, setOriginal] = useState(fact.value);
+
+  if (editing) {
+    return (
+      <div className="location-facts-edit">
+        <TextField
+          size="sm"
+          aria-labelledby={labelId}
+          value={fact.value}
+          autoFocus
+          disabled={fact.edit.disabled}
+          error={fact.error}
+          onChange={(event) => fact.edit.onChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') setEditing(false);
+            if (event.key === 'Escape') {
+              /* 창이 닫히지 않게 — Esc 는 고치던 값만 되돌린다. */
+              event.preventDefault();
+              event.stopPropagation();
+              fact.edit.onChange(original);
+              setEditing(false);
+            }
+          }}
+        />
+        <IconButton
+          size="sm"
+          icon="check"
+          aria-label={t.factEdit.done(fact.label)}
+          onClick={() => setEditing(false)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="location-facts-value">
+      <output aria-labelledby={labelId} title={fact.value}>
+        {fact.value.trim() === '' ? messages.common.reference.empty : fact.value}
+      </output>
+      <IconButton
+        size="sm"
+        icon="edit"
+        aria-label={t.factEdit.start(fact.label)}
+        disabled={fact.edit.disabled}
+        onClick={() => {
+          setOriginal(fact.value);
+          setEditing(true);
+        }}
+      />
+      {fact.error !== undefined && <span className="field-error">{fact.error}</span>}
+    </div>
+  );
+};
 
 /** 고칠 수 없는 값 — 옅은 바탕의 한 판에 이름 · 값 두 열로. */
 export const LocationFacts = ({ facts }: { facts: readonly LocationFact[] }) => {
@@ -102,8 +170,16 @@ export const LocationFacts = ({ facts }: { facts: readonly LocationFact[] }) => 
           <div key={fact.label} className="location-facts-row">
             <dt id={id}>{fact.label}</dt>
             <dd>
-              <output aria-labelledby={id}>{fact.value}</output>
-              {fact.error !== undefined && <span className="field-error">{fact.error}</span>}
+              {fact.edit === undefined ? (
+                <output aria-labelledby={id} title={fact.value}>
+                  {fact.value}
+                </output>
+              ) : (
+                <EditableFact fact={{ ...fact, edit: fact.edit }} labelId={id} />
+              )}
+              {fact.error !== undefined && fact.edit === undefined && (
+                <span className="field-error">{fact.error}</span>
+              )}
             </dd>
           </div>
         );

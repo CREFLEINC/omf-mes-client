@@ -29,6 +29,8 @@ export interface ItemSelectProps extends Omit<
   includeInactive?: boolean;
   /** 고른 품목 전체 — 기준단위 등 품목의 다른 값을 함께 채우는 칸의 것. `onChange` 뒤에 부른다. */
   onItemChange?: (item: Item) => void;
+  /** 품목 유형으로 좁힌다 — 여럿이면 쉼표로 묶어 보낸다(서버가 여러 값을 받는다). 없으면 전체. */
+  itemTypeCodes?: readonly string[];
 }
 
 type Item = components['schemas']['Item'];
@@ -40,7 +42,7 @@ type Item = components['schemas']['Item'];
  * 화면은 `options` 없이 `value` · `onChange` 만 넘기면 된다 — 고른 품목의 이름은 이 칸이 번호로 받는다.
  */
 export const ItemSelect = forwardRef<HTMLButtonElement, ItemSelectProps>(function ItemSelect(
-  { includeInactive = false, onItemChange, onChange, selectedOption, ...rest },
+  { includeInactive = false, onItemChange, itemTypeCodes, onChange, selectedOption, ...rest },
   ref,
 ) {
   const { client } = useApiClient();
@@ -73,7 +75,7 @@ export const ItemSelect = forwardRef<HTMLButtonElement, ItemSelectProps>(functio
       {...rest}
       ref={ref}
       selectedOption={resolved}
-      queryKey={['item-select', includeInactive]}
+      queryKey={['item-select', includeInactive, itemTypeCodes?.join(',') ?? '']}
       {...(onChange !== undefined ? { onChange } : {})}
       onOptionChange={(option) => {
         setPicked({ value: option.value, label: option.label });
@@ -87,6 +89,9 @@ export const ItemSelect = forwardRef<HTMLButtonElement, ItemSelectProps>(functio
                 /* 빈 검색어는 축을 싣지 않는다 — 빈 문자열을 검색어로 보내지 않는다. */
                 ...(q === '' ? {} : { q }),
                 ...(includeInactive ? { includeInactive: true } : {}),
+                ...(itemTypeCodes === undefined || itemTypeCodes.length === 0
+                  ? {}
+                  : { itemTypeCode: itemTypeCodes.join(',') }),
                 page,
                 size: ITEM_SELECT_PAGE_SIZE,
               },
