@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { expectedJudgmentOf, needsJudgmentChangeReason } from './judgment-change';
+import { autoJudgmentOf, expectedJudgmentOf, needsJudgmentChangeReason } from './judgment-change';
 
 const draft = (accepted: string, rejected: string, held: string) => ({ accepted, rejected, held });
 
@@ -23,6 +23,27 @@ describe('expectedJudgmentOf', () => {
 
   it('수량이 아닌 값이 있으면 판정하지 않는다', () => {
     expect(expectedJudgmentOf(draft('90', 'x', '0'), 5)).toBeNull();
+  });
+});
+
+/** #197 — 검사 기준(합격판정개수)이 없어도 전량 합격이면 「합격」을 채운다. */
+describe('autoJudgmentOf', () => {
+  it('합격판정개수가 있으면 자동 판정과 같다', () => {
+    expect(autoJudgmentOf(draft('94', '6', '0'), 5, 100)).toBe('REJECTED');
+  });
+
+  it.each([
+    [draft('100', '', ''), 'ACCEPTED'],
+    [draft('100', '0', '0'), 'ACCEPTED'],
+    /* 불량이 하나라도 있으면 불합격 — 합계가 맞지 않아도(사용자 지시 2026-10-29). */
+    [draft('99', '1', '0'), 'REJECTED'],
+    [draft('50', '1', '0'), 'REJECTED'],
+    [draft('99', '0', '1'), null],
+    [draft('99', '', ''), null],
+    [draft('101', '', ''), null],
+    [draft('x', '', ''), null],
+  ])('합격판정개수 없음 · 검사 수량 100 · %o → %s', (quantities, expected) => {
+    expect(autoJudgmentOf(quantities, null, 100)).toBe(expected);
   });
 });
 

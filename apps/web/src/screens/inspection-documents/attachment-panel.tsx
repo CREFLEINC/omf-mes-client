@@ -616,7 +616,7 @@ export const AttachmentPanel = ({
           />
         </div>
       )}
-      {paged && paging.nav !== null && <PageNav {...paging.nav} />}
+      {paged && <PageNav {...paging.nav} />}
       <SaveErrorBanner error={upload.error} />
       {upload.fieldErrors.file !== undefined && (
         <p className="field-note">{upload.fieldErrors.file}</p>

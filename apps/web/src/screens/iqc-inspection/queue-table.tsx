@@ -42,6 +42,8 @@ export interface QueueTableProps {
   itemNames: ItemNameLookup;
   /** 자재 LOT 번호 풀이. **번호가 아니라 LOT 번호를 보인다**(omf-all-around#40). */
   lotNumbers: NameLookup;
+  /** 자재 LOT 의 공급사 이름 풀이(사용자 지시 2026-10-29 · #197). */
+  suppliers: NameLookup;
   /** 고른 의뢰. 없으면 `null` — 아무 줄도 현재가 아니다 */
   selectedId: number | null;
   onSelect: (inspectionRequestId: number) => void;
@@ -54,6 +56,7 @@ const columnsOf = (
   onSelect: (inspectionRequestId: number) => void,
   itemNames: ItemNameLookup,
   lotNumbers: NameLookup,
+  suppliers: NameLookup,
 ): Column<InspectionQueueRow>[] => [
   {
     /* 첫 칸은 자재 LOT — 검사자가 손에 든 LOT 으로 줄을 찾는다(#133 · 담당자 지시). */
@@ -141,6 +144,21 @@ const columnsOf = (
     },
   },
   {
+    /* 공급사(사용자 지시 2026-10-29 · #197) — 한 줄, 넘치면 말줄임 · 전체 이름은 마우스를 올리면 보인다. */
+    key: 'supplier',
+    align: 'center',
+    header: t.columns.supplier,
+    width: '180px',
+    render: (row) => {
+      const name = suppliers.labelOf(row.lotId);
+      return (
+        <span className="iqc-inspection-queue-supplier" title={name}>
+          {name}
+        </span>
+      );
+    },
+  },
+  {
     key: 'statusCode',
     align: 'center',
     header: t.columns.statusCode,
@@ -182,6 +200,7 @@ export const QueueTable = ({
   rows,
   itemNames,
   lotNumbers,
+  suppliers,
   selectedId,
   onSelect,
   empty,
@@ -190,7 +209,7 @@ export const QueueTable = ({
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
   const ordered = useColumnOrder(
     'omf-mes:iqc-inspection:columns:queue:order',
-    columnsOf(selectedId, onSelect, itemNames, lotNumbers),
+    columnsOf(selectedId, onSelect, itemNames, lotNumbers, suppliers),
   );
   const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:queue', ordered, {
     /* 좌우 배치(가로 스크롤)에서는 열이 그 데이터의 가장 긴 폭까지만 넓어진다(사용자 지시 2026-10-26). */

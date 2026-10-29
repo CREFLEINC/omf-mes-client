@@ -7,7 +7,8 @@ export type TabPageSize = (typeof TAB_PAGE_SIZES)[number];
 
 /**
  * 이미 다 받은 줄을 화면에서 쪽으로 나눈다 — 서버 쪽 나누기가 없는 표(측정치 · 첨부 · 이력 · 이전 회차)용.
- * 줄 수가 줄어 지금 쪽이 비면 마지막 쪽을 보인다. 가장 작은 쪽 크기보다 줄이 많을 때만 쪽 이동을 그린다.
+ * 줄 수가 줄어 지금 쪽이 비면 마지막 쪽을 보인다. 쪽 이동은 줄 수와 무관하게 늘 그린다 — 목록 표 아래와 같은
+ * 「총 n건 · 쪽 크기 · [처음] [이전] n/N [다음] [마지막]」 한 줄(사용자 지시 2026-10-28 · #197).
  *
  * 정렬할 열은 `sortAccessors` 로 준다 — 쪽을 나누기 «전에» 전체 줄을 정렬한다(표 부품의 내부 정렬은 받은 쪽 안만 정렬한다).
  * 결과의 `sort` · `onSortChange` 를 표에 그대로 넘긴다. 정렬을 바꾸면 첫 쪽으로 간다.
@@ -40,17 +41,14 @@ export const useClientPage = <T>(
       setSort(next);
       setPage(1);
     },
-    nav:
-      total > TAB_PAGE_SIZES[0]
-        ? {
-            meta: { page: current, size, total },
-            sizes: TAB_PAGE_SIZES,
-            onChangePage: setPage,
-            onChangeSize: (next: TabPageSize) => {
-              setSize(next);
-              setPage(1);
-            },
-          }
-        : null,
+    nav: {
+      meta: { page: current, size, total },
+      sizes: TAB_PAGE_SIZES,
+      onChangePage: setPage,
+      onChangeSize: (next: TabPageSize) => {
+        setSize(next);
+        setPage(1);
+      },
+    },
   };
 };

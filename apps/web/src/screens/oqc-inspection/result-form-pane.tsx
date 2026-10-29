@@ -1,4 +1,4 @@
-import { Button, Icon, Progress, Tabs, TextArea, TextField } from '@crefle/web-ui';
+import { Button, Icon, Progress, Tabs, TextArea, TextField, useToast } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import {
@@ -200,8 +200,16 @@ export const ResultFormPane = ({
    * ⛔ **실패에는 닫지 않는다** — 같은 창에서 다시 눌러야 같은 멱등 키가 나간다. 그래서 「눌렀다」가
    * 아니라 «성공했다»를 신호로 닫으며, 그 신호는 부모가 «겨눈 대상이 그대로일 때만» 켠다.
    */
+  /*
+   * ⛔ **되돌릴 수 없는 쓰기가 끝난 것을 말한다.** 아무 말이 없으면 사용자는 LOT 상태를 전이시키고도 그것이 됐는지 확인할
+   * 문장을 못 찾아 한 번 더 누를 자리를 찾는다 — IQC 처럼 오른쪽 아래 알림으로 낸다(사용자 지시 2026-10-28 · #197).
+   */
+  const toast = useToast();
   useEffect(() => {
-    if (isJustSaved) setOpenedAt(null);
+    if (!isJustSaved) return;
+    setOpenedAt(null);
+    toast.show({ variant: 'success', description: t.saved });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 저장이 막 끝났을 때 한 번만 알린다.
   }, [isJustSaved]);
 
   /**
@@ -491,11 +499,6 @@ export const ResultFormPane = ({
       <div className="oqc-inspection-action-area">
         <div className="oqc-inspection-action-row">
           <div className="oqc-inspection-action-notes">
-            {/*
-             * ⛔ **되돌릴 수 없는 쓰기가 끝난 것을 말한다.** 아무 말이 없으면 사용자는 LOT 상태를
-             * 전이시키고도 그것이 됐는지 확인할 문장을 못 찾아 한 번 더 누를 자리를 찾는다.
-             */}
-            {isJustSaved && <p className="field-note">{t.saved}</p>}
             {!isLocked && showErrors && hasQuantityError(errors) && (
               <p className="field-note">{t.saveBlockedByInvalid}</p>
             )}

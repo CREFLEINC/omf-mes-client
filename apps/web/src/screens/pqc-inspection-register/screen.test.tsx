@@ -342,22 +342,28 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     ).toBeInTheDocument();
   });
 
-  it('상세를 닫을 때 저장하지 않은 입력이 있으면 한 번 묻는다(#135 · #185)', async () => {
+  it('고른 줄을 다시 눌러 상세를 닫을 때 저장하지 않은 입력이 있으면 한 번 묻는다(#135 · #185 · #197)', async () => {
     const user = userEvent.setup();
     renderScreen();
     const pane = await openRequest(user);
 
     await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '1');
+    /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세를 닫는다(#197). */
     await user.click(
-      screen.getByRole('button', { name: messages.common.inspectionHub.closeDetail }),
+      within(screen.getByRole('region', { name: t.queue.heading })).getByText(
+        REQUEST.inspectionRequestNo,
+      ),
     );
     expect(await screen.findByText(t.detail.leaveUnsaved)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.detail.keepEditing }));
     expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('1');
 
+    /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세를 닫는다(#197). */
     await user.click(
-      screen.getByRole('button', { name: messages.common.inspectionHub.closeDetail }),
+      within(screen.getByRole('region', { name: t.queue.heading })).getByText(
+        REQUEST.inspectionRequestNo,
+      ),
     );
     await user.click(await screen.findByRole('button', { name: t.detail.leaveAnyway }));
     /* 상세가 닫히고 고르기 안내가 선다 — 목록은 옆에 그대로다(#185). */
@@ -428,7 +434,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     expect(body.overallJudgmentCode).toBe('ACCEPTED');
   });
 
-  it('⭐ 저장은 서버 답을 받은 뒤에야 「저장했습니다」를 보이고, 기다리는 동안 두 단추를 잠근다(리뷰 m5)', async () => {
+  it('⭐ 저장은 서버 답을 받은 뒤에야 「저장했습니다」 알림을 띄우고, 기다리는 동안 두 단추를 잠근다(리뷰 m5)', async () => {
     const user = userEvent.setup();
     const { saves, releaseSave } = renderScreen({ holdSave: true });
     const pane = await openRequest(user);
@@ -438,12 +444,12 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await user.click(pane.getByRole('button', { name: pqc.result.save }));
 
     await waitFor(() => expect(saves).toHaveLength(1));
-    expect(pane.queryByText(pqc.result.saved)).not.toBeInTheDocument();
+    expect(screen.queryByText(pqc.result.saved)).not.toBeInTheDocument();
     expect(pane.getByRole('button', { name: pqc.result.save })).toBeDisabled();
     expect(pane.getByRole('button', { name: web.actions.confirm })).toBeDisabled();
 
     releaseSave();
-    expect(await pane.findByText(pqc.result.saved)).toBeInTheDocument();
+    expect(await screen.findByText(pqc.result.saved)).toBeInTheDocument();
   });
 
   it('확정이 서버에 닿으면 목록을 다시 묻는다(리뷰 m5)', async () => {
@@ -501,7 +507,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await waitFor(() => expect(pane.getByRole('button', { name: pqc.result.save })).toBeEnabled());
     await user.click(pane.getByRole('button', { name: pqc.result.save }));
 
-    expect(await pane.findByText(pqc.result.saved)).toBeInTheDocument();
+    expect(await screen.findByText(pqc.result.saved)).toBeInTheDocument();
     expect(pane.getByRole('textbox', { name: web.quantity.accepted })).toHaveValue('4');
   });
 });
