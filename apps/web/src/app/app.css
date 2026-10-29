@@ -26796,3 +26796,641 @@ button.iqc-inspection-step-toggle:focus-visible {
 .item-attrs-control-with-note > .field-note {
   margin: 0;
 }
+
+/*
+ * 부품 공장 IQC 수입검사(omf-all-around#211) — 검사 조회·판정과 같은 목록 · 상세 배치(`.inspection-split`). 상세는 레퍼런스 화면:
+ * 검사 대상 → 로트 → 치수 측정 → 기준서 도면 → 외관·XRF → 판정, 바닥에 되돌리기 · 다시 실행 · 비우기 · 제출.
+ */
+
+.parts-iqc-spec > span + span {
+  color: var(--on-surface-variant);
+}
+
+.parts-iqc-detail-body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.parts-iqc-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.parts-iqc-grid-scroll {
+  overflow-x: auto;
+}
+
+.parts-iqc-grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.parts-iqc-grid th,
+.parts-iqc-grid td {
+  padding: var(--space-1);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: center;
+}
+
+.parts-iqc-grid td.parts-iqc-spec,
+.parts-iqc-grid th.parts-iqc-spec {
+  min-width: 7.5rem;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.parts-iqc-spec {
+  display: grid;
+}
+
+.parts-iqc-cell {
+  width: 100%;
+  min-width: 3.5rem;
+  height: var(--control-height-md);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: inherit;
+  text-align: center;
+}
+
+.parts-iqc-cell-ng {
+  border-color: var(--semantic-error-text);
+  background: var(--semantic-error-container);
+  color: var(--on-semantic-error-container);
+}
+
+.parts-iqc-cell-off {
+  background: var(--surface-container-low);
+}
+
+.parts-iqc-verdict {
+  min-width: 4rem;
+  font-weight: 600;
+}
+
+.parts-iqc-verdict-ng {
+  color: var(--semantic-error-text);
+}
+
+.parts-iqc-verdict-ok {
+  color: var(--semantic-success-text);
+  font-weight: 600;
+}
+
+/* 줄의 형편 = 항목 번호 칸의 바탕색(참고: omf-dx-vina 수입검사). 덜 적은 줄과 규격 밖 줄은 내기 전에 손이 가야 해 같은 붉은색이다. */
+.parts-iqc-grid th.parts-iqc-rowno {
+  min-width: 2.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.parts-iqc-grid th.parts-iqc-st-done {
+  background: var(--semantic-success);
+  color: var(--on-primary);
+}
+
+.parts-iqc-grid th.parts-iqc-st-wait,
+.parts-iqc-grid th.parts-iqc-st-err {
+  background: var(--semantic-error);
+  color: var(--on-primary);
+}
+
+.parts-iqc-grid tr.parts-iqc-row-ng > td {
+  background: var(--semantic-error-container);
+}
+
+.parts-iqc-defect-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.parts-iqc-confirm {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.parts-iqc-drawings {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.parts-iqc-drawings img {
+  max-width: 100%;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.parts-iqc-file,
+.parts-iqc-defects,
+.parts-iqc-checks {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.parts-iqc-file {
+  justify-items: start;
+}
+
+.parts-iqc-file-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.parts-iqc-check-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.parts-iqc-check-row > span {
+  flex: 1 1 auto;
+}
+
+.parts-iqc-hint {
+  color: var(--semantic-error-text);
+}
+
+.parts-iqc-verdict-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.parts-iqc-suggested {
+  margin: var(--space-1) 0 0;
+  font-weight: 600;
+}
+
+/*
+ * 저장 줄 — OA 화면(`.oqc-inspection-action-area` · #136)과 같은 규칙. 화면 높이가 낮으면(1024×768 등) 붙이지 않는다 —
+ * 붙은 줄이 입력 칸을 가린다.
+ */
+.parts-iqc-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline: calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+}
+
+@media (min-height: 800px) {
+  /*
+   * 본문(main)의 아래 여백(--space-6)만큼 내려 붙인다 — `bottom: 0` 이면 그 여백 높이의 틈이 남아 줄 아래로 지나가는
+   * 내용(판정 칸 등)이 비친다. 카드 아래 여백(--space-4)은 줄이 채워 끝까지 내려도 줄 아래에 빈 띠가 생기지 않는다.
+   */
+  .parts-iqc-footer {
+    position: sticky;
+    bottom: calc(-1 * var(--space-6));
+    z-index: 1;
+    margin-bottom: calc(-1 * var(--space-4));
+    padding-bottom: calc(var(--space-3) + var(--space-4));
+    border-end-start-radius: var(--radius-lg);
+    border-end-end-radius: var(--radius-lg);
+  }
+}
+
+/* 다시 실행 — 레퍼런스 화면처럼 둥근 테두리 단추다(되돌리기 글자 단추 옆). */
+.parts-iqc-footer .parts-iqc-redo {
+  border: 1px solid var(--outline-variant);
+  border-radius: 999px;
+}
+
+.parts-iqc-footer-gap {
+  flex: 1 1 auto;
+}
+
+.parts-iqc-submit {
+  min-width: 16rem;
+}
+
+@media (max-width: 900px) {
+  .parts-iqc-two,
+  .parts-iqc-kv,
+  .parts-iqc-verdict-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+/* 상세 구획 — 카드 대신 가는 선으로 나눈다(사용자 시안 2026-10-29). 로트 정보만 테두리 상자다. */
+.parts-iqc-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.parts-iqc-block {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-form > .parts-iqc-block:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.parts-iqc-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.parts-iqc-block-head > h3,
+.parts-iqc-lot-box > h4 {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.parts-iqc-muted {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.parts-iqc-target-box {
+  /* 칸 묶음(.field-cell)은 내용을 왼쪽에 붙여 폭을 줄인다 — 상자는 가로 전체를 쓴다. */
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--control-height-md);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+/* 기본 정보 — OQC 상세 `.oqc-inspection-facts` 와 같은 모양(테두리 상자 · 칸 사이 세로선). */
+.parts-iqc-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-3) 0;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+}
+
+.parts-iqc-fact {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+  overflow-wrap: anywhere;
+}
+
+.parts-iqc-fact:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.parts-iqc-fact > dd {
+  margin: 0;
+}
+
+.parts-iqc-fact-key {
+  display: grid;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.parts-iqc-fact-sub {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+.parts-iqc-kv {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.parts-iqc-kv dt {
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.parts-iqc-kv dd {
+  margin: var(--space-1) 0 0;
+  font-weight: 600;
+}
+
+.parts-iqc-kv-wide {
+  grid-column: 1 / -1;
+}
+
+.parts-iqc-lot-no {
+  overflow-wrap: anywhere;
+}
+
+.parts-iqc-lot-inspected {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 날짜 · 시각 칸은 내용 폭만큼 — 상자 가로 전체로 늘이지 않는다(사용자 시안). */
+.parts-iqc-lot-inspected > .date-time-field {
+  max-width: 28rem;
+}
+
+.parts-iqc-lot-box {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.parts-iqc-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.parts-iqc-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.parts-iqc-checks > .parts-iqc-check-row {
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+/* 고른 판정 — OK 는 초록, NG 는 빨강(기본 강조색 하나로 칠하면 OK 도 붉게 읽힌다). */
+.parts-iqc-check-row button[data-judgment='ACCEPTED'][aria-pressed='true'] {
+  border-color: var(--semantic-success);
+  background: var(--semantic-success);
+  color: var(--on-primary);
+}
+
+.parts-iqc-check-row button[data-judgment='REJECTED'][aria-pressed='true'] {
+  border-color: var(--semantic-error);
+  background: var(--semantic-error);
+  color: var(--on-primary);
+}
+
+.parts-iqc-checks > .parts-iqc-check-row:last-child {
+  border-bottom: 0;
+}
+
+/* 외관 · XRF — 테두리 상자(사용자 시안). 구분선 아래 XRF 성적서: 왼쪽 제목 · 첨부 상태, 오른쪽 [파일 첨부]. */
+.parts-iqc-card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.parts-iqc-card .parts-iqc-file {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-file-text {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.parts-iqc-file-title {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 칸 묶음(.field-cell)은 내용을 왼쪽에 붙여 폭을 줄인다 — 입력 칸은 가로 전체를 쓴다. */
+.parts-iqc-stretch {
+  align-items: stretch;
+}
+
+.parts-iqc-defect-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+}
+
+.parts-iqc-defect-qtys {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: var(--space-3);
+}
+
+/* ── 외관·XRF · 기타 검사 · 종합 판정 상자(사용자 시안 2026-10-29) ── */
+.parts-iqc-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.parts-iqc-badge-success {
+  background: var(--semantic-success);
+  color: var(--on-primary);
+}
+
+.parts-iqc-badge-error {
+  background: var(--semantic-error);
+  color: var(--on-primary);
+}
+
+.parts-iqc-badge-warning {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.parts-iqc-visual-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+}
+
+.parts-iqc-inline-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.parts-iqc-inline-field > .field-label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.parts-iqc-visual-line .parts-iqc-inline-field input {
+  width: 8rem;
+}
+
+.parts-iqc-xrf-cell {
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-card .parts-iqc-file-text {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.parts-iqc-attach {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.parts-iqc-check-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.parts-iqc-check-table th,
+.parts-iqc-check-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: start;
+}
+
+.parts-iqc-check-table thead th {
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font-weight: 500;
+}
+
+.parts-iqc-check-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.parts-iqc-check-table th:first-child,
+.parts-iqc-check-table td:first-child {
+  width: 4rem;
+  text-align: center;
+  border-right: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-check-table th:last-child,
+.parts-iqc-check-table td:last-child {
+  width: 10rem;
+  text-align: center;
+  border-left: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-check-table .parts-iqc-check-row {
+  justify-content: center;
+}
+
+/* 검사 항목 글은 왼쪽 — 검사 화면 표의 가운데 정렬 규칙보다 앞서도록 무게를 올린다. */
+.parts-iqc-check-table td:nth-child(2):nth-child(n),
+.parts-iqc-check-table th:nth-child(2):nth-child(n) {
+  text-align: left;
+}
+
+.parts-iqc-card-split {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-defect-head,
+.parts-iqc-defect-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.parts-iqc-defect-head > h3,
+.parts-iqc-sub-title {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.parts-iqc-hint-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.parts-iqc-verdict-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-3) var(--space-5);
+}
+
+.parts-iqc-auto-box {
+  display: flex;
+  flex: 1 1 16rem;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.parts-iqc-auto-box.is-ng {
+  border-color: var(--semantic-error);
+  background: var(--semantic-error-container);
+}
+
+.parts-iqc-auto-box.is-ok {
+  border-color: var(--semantic-success);
+  background: var(--semantic-success-container);
+}
+
+.parts-iqc-auto-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-surface-variant);
+}
+
+.parts-iqc-auto-box.is-ng .parts-iqc-auto-value > strong {
+  color: var(--semantic-error-text);
+  font: var(--type-title-lg);
+}
+
+.parts-iqc-auto-box.is-ok .parts-iqc-auto-value > strong {
+  color: var(--semantic-success-text);
+  font: var(--type-title-lg);
+}
+
+.parts-iqc-overall {
+  flex: 1 1 14rem;
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-overall > button,
+.parts-iqc-overall > div {
+  flex: 1 1 auto;
+  min-width: 10rem;
+}

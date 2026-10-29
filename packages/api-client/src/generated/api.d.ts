@@ -25174,7 +25174,13 @@ export interface paths {
       parameters: {
         query?: {
           /** @description 무엇에 붙은 첨부인가 — WAREHOUSE 창고 도면, NOTICE 공지, BREAKDOWN 설비 고장 사진. BREAKDOWN 등록은 전용 POST /maintenance/breakdowns/{breakdownId}/attachments 에서 작업자와 최대 세 장을 검증한다. */
-          targetTypeCode?: 'WAREHOUSE' | 'NOTICE' | 'BREAKDOWN' | 'LOT' | 'INSPECTION_RESULT';
+          targetTypeCode?:
+            | 'WAREHOUSE'
+            | 'NOTICE'
+            | 'BREAKDOWN'
+            | 'LOT'
+            | 'INSPECTION_RESULT'
+            | 'INSPECTION_PLAN_VERSION';
           targetId?: number;
         };
         header?: never;
@@ -31504,6 +31510,8 @@ export interface paths {
           /** @description 공급사. ⚠ 서버가 푼다 — trace.lot 에 공급사 컬럼이 없어 lot.source_type_code/source_id(다형 참조 = 한 칸이 상황에 따라 여러 표를 가리킨다) → logistics.inbound_receipt.supplier_id 로 2단 조인이다. 화면은 걸 수 없다. 근거: W-01-01 §3 좌단 필터 「품목·공급사」 · omf-mes#170 */
           supplierId?: number;
           lotId?: number;
+          /** @description LOT 의 공장. 부품 공장 IQC 화면이 자기 공장 LOT 만 본다. */
+          plantId?: number;
           workOrderId?: number;
           /** @description 의뢰번호 검색. ⛔ 범위는 inspection_request_no «하나»다 — 공급사·품목은 훑지 않는다(넓히면 인덱스 없는 다형 조인이 검색어마다 돈다). 공급사로 좁히려면 supplierId 를, 품목은 itemId 를 쓴다. 근거: omf-mes#170 질문 2 */
           q?: string;
@@ -41923,6 +41931,11 @@ export interface components {
        */
       measurementCount: number;
       /**
+       * @description 항목별 허용 불량 수(c). 측정한 시료 중 규격을 벗어난 수가 이 값 이하이면 항목 합격이다. 비우면 버전의 합격판정개수(acceptanceNumber)를 따른다.
+       * @example 0
+       */
+      acceptanceNumber?: number | null;
+      /**
        * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_ITEM_SPEC_METHOD 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
        * @example MEASUREMENT
        */
@@ -42011,6 +42024,11 @@ export interface components {
        * @example 3
        */
       measurementCount: number;
+      /**
+       * @description 항목별 허용 불량 수(c). 측정한 시료 중 규격을 벗어난 수가 이 값 이하이면 항목 합격이다. 비우면 버전의 합격판정개수(acceptanceNumber)를 따른다.
+       * @example 0
+       */
+      acceptanceNumber?: number | null;
       /**
        * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_ITEM_SPEC_METHOD 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
        * @example MEASUREMENT
@@ -50929,7 +50947,13 @@ export interface components {
        * @example WAREHOUSE
        * @enum {string}
        */
-      targetTypeCode: 'WAREHOUSE' | 'NOTICE' | 'BREAKDOWN' | 'LOT' | 'INSPECTION_RESULT';
+      targetTypeCode:
+        | 'WAREHOUSE'
+        | 'NOTICE'
+        | 'BREAKDOWN'
+        | 'LOT'
+        | 'INSPECTION_RESULT'
+        | 'INSPECTION_PLAN_VERSION';
       /**
        * Format: int64
        * @example 1001

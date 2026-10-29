@@ -64,6 +64,7 @@ import { handoverAlertSettings } from './handover-alert-settings';
 import { zaloConnection } from './zalo-connection';
 import { dispatchHistory } from './dispatch-history';
 import { iqcInspection } from './iqc-inspection';
+import { partsIqcInspection } from './parts-iqc-inspection';
 import { pqcInspection } from './pqc-inspection';
 import { productionResult } from './production-result';
 import { equipmentMaster } from './equipment-master';
@@ -223,6 +224,7 @@ export const ko = {
   zaloConnection,
   dispatchHistory,
   iqcInspection,
+  partsIqcInspection,
   pqcInspection,
   productionResult,
   equipmentMaster,
