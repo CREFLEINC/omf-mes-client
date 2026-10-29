@@ -26,9 +26,6 @@ export const judgmentCode = {
       `그룹코드가 「${groupCode}」인 코드그룹이 없습니다. 공통코드 화면에서 이 코드그룹을 먼저 등록하세요.`,
   },
   notices: {
-    /** 판정유형 목록이 확정되기 전까지 낸다. 값을 지어내지 않으므로 그 한계를 문구가 밝힌다. */
-    provisionalList:
-      '판정유형은 아직 확정되지 않은 임시 목록입니다. 지금 보이는 값이 전부가 아닐 수 있고, 확정되면 달라질 수 있습니다.',
     /* 그룹이 꺼져 있어도 값은 그대로 있다 — 편집을 막지 않고 사실과 조치할 곳을 함께 밝힌다. */
     groupInactive:
       '이 코드그룹은 미사용 상태입니다. 값은 그대로 고칠 수 있으나, 사용을 다시 열려면 공통코드 화면에서 코드그룹을 확인하세요.',
@@ -73,6 +70,10 @@ export const judgmentCode = {
       add: '판정 유형 추가',
       edit: '수정',
     },
+    search: {
+      label: '판정 유형 검색',
+      placeholder: '판정 유형 코드 또는 판정 유형명을 입력하세요',
+    },
     list: '판정 유형 목록',
     detailTitle: '판정 유형 코드 상세',
     createTitle: '판정 유형 추가',
@@ -82,6 +83,8 @@ export const judgmentCode = {
       noneDescription: '「판정 유형 추가」로 첫 판정 유형을 등록하세요.',
       notSelectedTitle: '판정 유형을 선택하세요',
       notSelectedDescription: '목록에서 선택하면 상세 정보가 표시됩니다.',
+      noMatchTitle: '조건에 맞는 판정 유형이 없습니다',
+      noMatchDescription: '검색어나 사용 여부를 바꾼 뒤 다시 찾으세요.',
     },
     loading: {
       list: '판정 유형 목록을 불러오는 중',

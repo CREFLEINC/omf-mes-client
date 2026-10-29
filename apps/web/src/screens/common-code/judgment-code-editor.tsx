@@ -1,11 +1,11 @@
 import {
   Button,
-  Checkbox,
   Chip,
   type Column,
   Dialog,
   EmptyState,
   Icon,
+  SearchInput,
   SkeletonText,
   Table,
   TextField,
@@ -13,15 +13,18 @@ import {
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
-import { PageNav } from '../../patterns/page-nav';
+import { PageNav, type PageSize } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import { runRequest } from '../../patterns/request';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -34,12 +37,8 @@ import {
   toCodeValueCreate,
   toCodeValueUpdate,
 } from './code-value-mappers';
-import {
-  codeValueDetailPath,
-  codeValueKeys,
-  useCodeValueDetail,
-  useCodeValueList,
-} from './code-value-queries';
+import { type CodeUsage, UsageChips } from '../defect-cause-code/usage-chips';
+import { codeValueDetailPath, codeValueKeys, useCodeValueDetail } from './code-value-queries';
 import type { CodeValue, CodeValueFormValues } from './code-value-types';
 import { CODE_VALUE_FORM_FIELDS, validateCodeValueForm } from './code-value-validation';
 import { DateField } from './date-field';
@@ -69,8 +68,12 @@ export interface JudgmentCodeEditorProps {
   isCreating: boolean;
   onOpenCreate: () => void;
   onCloseCreate: () => void;
-  includeInactive: boolean;
-  onIncludeInactiveChange: (includeInactive: boolean) => void;
+  /** 탭 줄의 사용 여부 칩(전체 · 사용 · 미사용) — 불량코드 탭과 같다(#209). */
+  usage: CodeUsage;
+  onUsageChange: (usage: CodeUsage) => void;
+  /** 적용된 검색어(코드 · 이름 · 한국어명 · 베트남어명) */
+  keyword: string;
+  onKeywordChange: (keyword: string) => void;
   page: number;
   onPageChange: (page: number) => void;
 }
@@ -120,8 +123,10 @@ export const JudgmentCodeEditor = ({
   isCreating,
   onOpenCreate,
   onCloseCreate,
-  includeInactive,
-  onIncludeInactiveChange,
+  usage,
+  onUsageChange,
+  keyword,
+  onKeywordChange,
   page,
   onPageChange,
 }: JudgmentCodeEditorProps) => {
@@ -136,8 +141,47 @@ export const JudgmentCodeEditor = ({
   const split = usePaneSplit('omf-mes:judgment-code:split', 0.45);
   const layout = useSplitOrientation(DEFECT_JUDGMENT_ORIENTATION_KEY);
 
-  const list = useCodeValueList(codeGroupId, includeInactive, page);
-  const codeValues = list.data?.items ?? [];
+  /*
+   * 판정 유형은 몇 건뿐이라 미사용까지 끝까지 받아 화면이 거르고 쪽도 나눈다(#209) —
+   * 칩 건수(전체 · 사용 · 미사용)와 「미사용만」은 서버 조건에 없다. 저장 뒤 무효화는 `codeValueKeys.all` 이 맡는다.
+   */
+  const list = useQuery({
+    queryKey: [...codeValueKeys.all, 'judgment-all', codeGroupId],
+    queryFn: () =>
+      fetchAllPages((nextPage, size) =>
+        runRequest(() =>
+          client.GET('/mdm/code-values', {
+            params: { query: { codeGroupId, includeInactive: true, page: nextPage, size } },
+          }),
+        ),
+      ),
+  });
+  const allValues = list.data?.items ?? [];
+  const usageCounts: Record<CodeUsage, number> | null = list.isSuccess
+    ? {
+        all: allValues.length,
+        active: allValues.filter((row) => row.isActive).length,
+        inactive: allValues.filter((row) => !row.isActive).length,
+      }
+    : null;
+  const needle = keyword.trim().toLowerCase();
+  const matched = allValues.filter(
+    (row) =>
+      (usage === 'all' || row.isActive === (usage === 'active')) &&
+      (needle === '' ||
+        [row.code, row.codeName, row.nameKo ?? '', row.nameVi ?? '']
+          .join(' ')
+          .toLowerCase()
+          .includes(needle)),
+  );
+  const [pageSize, setPageSize] = useState<PageSize>(20);
+  const codeValues = matched.slice((page - 1) * pageSize, page * pageSize);
+
+  /* 조회 카드의 검색어 — 「조회」·Enter 로 적용한다(불량코드 탭과 같은 트리거). */
+  const [draftKeyword, setDraftKeyword] = useState(keyword);
+  useEffect(() => {
+    setDraftKeyword(keyword);
+  }, [keyword]);
 
   /* 수정 창 — 고른 값을 고친다. 등록 창은 바깥(주소)이 연다. */
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -306,7 +350,22 @@ export const JudgmentCodeEditor = ({
       key: 'codeName',
       align: 'center',
       header: t.fields.name,
+      width: '180px',
       render: (row) => <span title={row.codeName}>{row.codeName}</span>,
+    },
+    {
+      key: 'nameKo',
+      align: 'center',
+      header: t.fields.nameKo,
+      width: '140px',
+      render: (row) => orEmpty(row.nameKo),
+    },
+    {
+      key: 'nameVi',
+      align: 'center',
+      header: t.fields.nameVi,
+      width: '140px',
+      render: (row) => orEmpty(row.nameVi),
     },
     {
       key: 'displayOrder',
@@ -335,8 +394,8 @@ export const JudgmentCodeEditor = ({
     },
   ];
 
-  const ordered = useColumnOrder('omf-mes:judgment-code:columns:order', columns);
-  const resizable = useColumnWidths('omf-mes:judgment-code:columns', ordered, {
+  const ordered = useColumnOrder('omf-mes:judgment-code:columns:order:v2', columns);
+  const resizable = useColumnWidths('omf-mes:judgment-code:columns:v2', ordered, {
     fitContent: true,
   });
   const fit = useFitColumns(resizable.columns, { scrollX: true });
@@ -380,8 +439,11 @@ export const JudgmentCodeEditor = ({
                   <Icon name="list_alt" size={20} />
                 </span>
               }
-              title={t.empty.noneTitle}
-              description={t.empty.noneDescription}
+              /* 등록된 값이 있는데 조건에 걸러져 빈 경우는 따로 알린다 — 「등록된 것이 없다」로 읽히지 않게. */
+              title={allValues.length === 0 ? t.empty.noneTitle : t.empty.noMatchTitle}
+              description={
+                allValues.length === 0 ? t.empty.noneDescription : t.empty.noMatchDescription
+              }
             />
           }
         />
@@ -594,6 +656,15 @@ export const JudgmentCodeEditor = ({
 
   return (
     <>
+      {/* 탭 줄 오른쪽 — 사용 여부 칩 다음에 좌우·상하 배치(불량코드 탭과 같다 · #209). */}
+      <UsageChips
+        counts={usageCounts}
+        value={usage}
+        onChange={(next) => {
+          resetEditing();
+          onUsageChange(next);
+        }}
+      />
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
 
       {/* 조회 조건 — 불량코드 탭처럼 목록과 다른 카드에 둔다(#209). */}
@@ -603,18 +674,40 @@ export const JudgmentCodeEditor = ({
         role="search"
       >
         <div className="filter-bar">
-          <div className="field-cell field-cell-unlabeled">
-            <Checkbox
-              checked={includeInactive}
-              onChange={(event) => {
+          {/* 「미사용 포함」 확인칸은 걷었다 — 탭 줄의 사용 여부 칩이 맡는다(불량코드 탭과 같다 · #209). */}
+          <SearchInput
+            containerClassName="judgment-code-search-field"
+            label={t.search.label}
+            placeholder={t.search.placeholder}
+            value={draftKeyword}
+            onChange={(event) => setDraftKeyword(event.target.value)}
+            onSearch={(value) => {
+              resetEditing();
+              onKeywordChange(value.trim());
+            }}
+            clearLabel={messages.common.clear}
+          />
+          <div className="filter-actions field-cell-unlabeled">
+            <Button
+              variant="filled"
+              onClick={() => {
                 resetEditing();
-                onIncludeInactiveChange(event.target.checked);
+                onKeywordChange(draftKeyword.trim());
               }}
             >
-              {messages.common.includeInactive}
-            </Checkbox>
-          </div>
-          <div className="filter-actions field-cell-unlabeled">
+              {messages.common.search}
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                resetEditing();
+                setDraftKeyword('');
+                onKeywordChange('');
+              }}
+            >
+              {messages.common.reset}
+            </Button>
+            <span className="inspection-standard-filter-divider" aria-hidden />
             <Button
               leadingIcon={<Icon name="add" size={18} />}
               disabled={isCreating}
@@ -641,11 +734,16 @@ export const JudgmentCodeEditor = ({
           {listSlot()}
           {!list.isError && !list.isPending && (
             <PageNav
-              meta={list.data?.page ?? { page, size: 20, total: 0 }}
+              meta={{ page, size: pageSize, total: matched.length }}
               buttonSize="md"
               onChangePage={(next) => {
                 resetEditing();
                 onPageChange(next);
+              }}
+              onChangeSize={(next) => {
+                resetEditing();
+                setPageSize(next);
+                onPageChange(1);
               }}
             />
           )}

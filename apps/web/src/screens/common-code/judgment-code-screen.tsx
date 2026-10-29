@@ -1,11 +1,4 @@
-import {
-  AlertBanner,
-  Breadcrumb,
-  EmptyState,
-  Icon,
-  PageHeader,
-  SkeletonText,
-} from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -13,14 +6,11 @@ import { useSearchParams } from 'react-router';
 import { useCodeGroupList } from './code-group-queries';
 import { JudgmentCodeEditor } from './judgment-code-editor';
 import { readPage, readSelectedId } from './filters';
-import {
-  JUDGMENT_TYPE_GROUP_CODE,
-  findJudgmentTypeGroup,
-  isProvisionalJudgmentTypeList,
-} from './judgment-group';
+import { JUDGMENT_TYPE_GROUP_CODE, findJudgmentTypeGroup } from './judgment-group';
 import { LoadErrorBanner } from './load-error-banner';
 import type { CodeGroupFilters } from './types';
 import { usePageHub } from '../../patterns/page-hub';
+import type { CodeUsage } from '../defect-cause-code/usage-chips';
 
 const t = messages.judgmentCode;
 
@@ -37,6 +27,8 @@ const t = messages.judgmentCode;
 
 /** 켜짐을 나타내는 유일한 값. 다른 값은 꺼진 것으로 본다 — 주소는 사람이 고치는 자리다. */
 const ON = '1';
+/** 사용 여부 칩 「미사용」(#209). `inactive=1` 은 종전대로 「전체」다 — 북마크가 산다. */
+const INACTIVE_ONLY = 'only';
 
 /**
  * 이 화면의 주소 키. 공통코드 화면의 키(`val`·`vpage`·`vinactive`·`new=value`)와 이름이 달라도
@@ -46,6 +38,7 @@ const URL_KEYS = {
   selected: 'sel',
   page: 'page',
   includeInactive: 'inactive',
+  keyword: 'q',
   creating: 'new',
 } as const;
 
@@ -88,7 +81,10 @@ export const JudgmentCodeScreen = () => {
 
   const selectedCodeValueId = readSelectedId(searchParams, URL_KEYS.selected);
   const page = readPage(searchParams, URL_KEYS.page);
-  const includeInactive = searchParams.get(URL_KEYS.includeInactive) === ON;
+  const inactiveParam = searchParams.get(URL_KEYS.includeInactive);
+  const usage: CodeUsage =
+    inactiveParam === ON ? 'all' : inactiveParam === INACTIVE_ONLY ? 'inactive' : 'active';
+  const keyword = searchParams.get(URL_KEYS.keyword) ?? '';
 
   /**
    * 등록 폼이 열려 있는가. **그룹을 찾은 뒤에만 성립한다** —
@@ -107,7 +103,7 @@ export const JudgmentCodeScreen = () => {
    * | 1 | 코드값을 고른다 | **설정** | 유지 | 유지 | **지움** |
    * | 2 | 등록 폼을 연다 | 유지(뒤 상세 카드 · #209) | 유지 | 유지 | **설정** |
    * | 3 | 등록 폼을 닫는다 | 유지 | 유지 | 유지 | **지움** |
-   * | 4 | 「미사용 포함」을 바꾼다 | **지움** | **지움** | 설정/지움 | **지움** |
+   * | 4 | 사용 여부 칩 · 검색어를 바꾼다 | **지움** | **지움** | 설정/지움 | **지움** |
    * | 5 | 쪽을 옮긴다 | **지움** | 설정/지움 | 유지 | **지움** |
    *
    * 1이 `new`를 지우는 것은 등록 성공 경로 때문이다 — 한 벌은 등록에 성공하면 **고르기 콜백만
@@ -154,14 +150,27 @@ export const JudgmentCodeScreen = () => {
     });
   };
 
-  const changeIncludeInactive = (nextIncludeInactive: boolean) => {
+  const changeUsage = (nextUsage: CodeUsage) => {
     patchSearchParams((next) => {
-      if (nextIncludeInactive) {
+      if (nextUsage === 'all') {
         next.set(URL_KEYS.includeInactive, ON);
+      } else if (nextUsage === 'inactive') {
+        next.set(URL_KEYS.includeInactive, INACTIVE_ONLY);
       } else {
-        // 계약의 기본값이 꺼짐이다 — 끈 상태를 값으로 실으면 주소가 두 갈래로 갈린다.
+        // 기본값이 「사용」이다 — 기본 상태를 값으로 실으면 주소가 두 갈래로 갈린다.
         next.delete(URL_KEYS.includeInactive);
       }
+
+      next.delete(URL_KEYS.selected);
+      next.delete(URL_KEYS.page);
+      next.delete(URL_KEYS.creating);
+    });
+  };
+
+  const changeKeyword = (nextKeyword: string) => {
+    patchSearchParams((next) => {
+      if (nextKeyword === '') next.delete(URL_KEYS.keyword);
+      else next.set(URL_KEYS.keyword, nextKeyword);
 
       next.delete(URL_KEYS.selected);
       next.delete(URL_KEYS.page);
@@ -232,8 +241,10 @@ export const JudgmentCodeScreen = () => {
           isCreating={isCreating}
           onOpenCreate={openCreate}
           onCloseCreate={closeCreate}
-          includeInactive={includeInactive}
-          onIncludeInactiveChange={changeIncludeInactive}
+          usage={usage}
+          onUsageChange={changeUsage}
+          keyword={keyword}
+          onKeywordChange={changeKeyword}
           page={page}
           onPageChange={changePage}
         />
@@ -268,13 +279,7 @@ export const JudgmentCodeScreen = () => {
        * `box-sizing` 정규화 때문이며, 감싸지 않으면 배너가 안쪽 여백만큼 컨테이너를 넘친다.
        * **임시 우회다** — `design-system-v2-webui#60`이 반영되면 이 래퍼도 함께 걷는다.
        */}
-      {/* 정보 안내 — 다른 안내와 같은 정보 줄 모양(사용자 지시 · #209). */}
-      {judgmentGroup !== null && isProvisionalJudgmentTypeList() && (
-        <p className="iqc-inspection-action-note judgment-code-notice" data-tone="info">
-          <Icon name="info" size={14} aria-hidden />
-          {t.notices.provisionalList}
-        </p>
-      )}
+      {/* 「임시 목록」 안내는 걷었다(사용자 지시 2026-10-29 · #209). */}
 
       {judgmentGroup !== null && !judgmentGroup.isActive && (
         <div className="banner-slot">

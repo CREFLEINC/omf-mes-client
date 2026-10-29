@@ -33,9 +33,6 @@ export const JUDGMENT_TYPE_GROUP_CODE: string = 'JUDGMENT_TYPE';
  */
 export const KNOWN_JUDGMENT_TYPE_CODES: readonly string[] = [];
 
-/** 판정유형 목록이 아직 확정되지 않았는가. 화면은 이때 「임시 목록」 안내를 낸다. */
-export const isProvisionalJudgmentTypeList = (): boolean => KNOWN_JUDGMENT_TYPE_CODES.length === 0;
-
 /**
  * 조회한 코드그룹 목록에서 판정유형 코드 그룹을 고른다. 없으면 `null`이다.
  *

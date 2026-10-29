@@ -18,9 +18,6 @@ export const judgmentCode: Translated<typeof ko.judgmentCode> = {
       `Không có nhóm mã nào có mã nhóm là «${groupCode}». Hãy đăng ký nhóm mã này ở màn hình mã chung trước.`,
   },
   notices: {
-    /* 값을 지어내지 않으므로 그 한계를 문구가 밝힌다. */
-    provisionalList:
-      'Loại đánh giá vẫn là danh sách tạm chưa được chốt. Giá trị đang thấy có thể chưa phải tất cả, và khi chốt thì có thể khác đi.',
     /* 그룹이 꺼져 있어도 값은 그대로 고칠 수 있다 - 사실과 조치할 곳을 함께 밝힌다. */
     groupInactive:
       'Nhóm mã này đang ở trạng thái ngừng dùng. Vẫn sửa được giá trị, nhưng muốn mở dùng lại thì hãy kiểm tra nhóm mã ở màn hình mã chung.',
@@ -58,6 +55,10 @@ export const judgmentCode: Translated<typeof ko.judgmentCode> = {
       add: 'Thêm loại đánh giá',
       edit: 'Sửa',
     },
+    search: {
+      label: 'Tìm loại đánh giá',
+      placeholder: 'Nhập mã hoặc tên loại đánh giá',
+    },
     list: 'Danh sách loại đánh giá',
     detailTitle: 'Chi tiết mã loại đánh giá',
     createTitle: 'Thêm loại đánh giá',
@@ -67,6 +68,8 @@ export const judgmentCode: Translated<typeof ko.judgmentCode> = {
       noneDescription: 'Hãy đăng ký loại đánh giá đầu tiên bằng «Thêm loại đánh giá».',
       notSelectedTitle: 'Hãy chọn loại đánh giá',
       notSelectedDescription: 'Chọn trong danh sách thì thông tin chi tiết sẽ hiện ra.',
+      noMatchTitle: 'Không có loại đánh giá khớp điều kiện',
+      noMatchDescription: 'Hãy đổi từ khóa hoặc trạng thái sử dụng rồi tìm lại.',
     },
     loading: {
       list: 'Đang tải danh sách loại đánh giá',
