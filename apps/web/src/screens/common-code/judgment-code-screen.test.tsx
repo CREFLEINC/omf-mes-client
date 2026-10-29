@@ -855,6 +855,21 @@ describe('JudgmentCodeScreen — 사용 여부 · 검색어(#209)', () => {
     });
   });
 
+  it('판정 유형 선택으로 거르고 주소에 싣는다', async () => {
+    const { history, user } = renderScreen([groupListRoute(), codeValueListRoute()]);
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    await user.click(screen.getByRole('combobox', { name: te.search.typeLabel }));
+    await user.click(screen.getByRole('option', { name: '합성 판정유형 B' }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(history.search()).toBe('?type=SYN-JDG-02');
+    });
+    expect(screen.getByRole('button', { name: 'SYN-JDG-02' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'SYN-JDG-01' })).not.toBeInTheDocument();
+  });
+
   it('표에 한국어명 · 베트남어명 열이 있다', async () => {
     renderScreen([groupListRoute(), codeValueListRoute()]);
     await screen.findByRole('button', { name: 'SYN-JDG-01' });

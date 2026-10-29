@@ -26,6 +26,7 @@ import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns
 import { PageNav, type PageSize } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { runRequest } from '../../patterns/request';
+import { Select } from '../../patterns/select';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -74,7 +75,10 @@ export interface JudgmentCodeEditorProps {
   onUsageChange: (usage: CodeUsage) => void;
   /** 적용된 검색어(코드 · 이름 · 한국어명 · 베트남어명) */
   keyword: string;
-  onKeywordChange: (keyword: string) => void;
+  /** 적용된 판정 유형(코드). 빈 문자열이면 전체 */
+  typeCode: string;
+  /** 조회 · 초기화가 검색어와 판정 유형을 함께 적용한다 */
+  onFiltersChange: (next: { keyword: string; typeCode: string }) => void;
   page: number;
   onPageChange: (page: number) => void;
 }
@@ -127,7 +131,8 @@ export const JudgmentCodeEditor = ({
   usage,
   onUsageChange,
   keyword,
-  onKeywordChange,
+  typeCode,
+  onFiltersChange,
   page,
   onPageChange,
 }: JudgmentCodeEditorProps) => {
@@ -169,6 +174,7 @@ export const JudgmentCodeEditor = ({
   const matched = allValues.filter(
     (row) =>
       (usage === 'all' || row.isActive === (usage === 'active')) &&
+      (typeCode === '' || row.code === typeCode) &&
       (needle === '' ||
         [row.code, row.codeName, row.nameKo ?? '', row.nameVi ?? '']
           .join(' ')
@@ -180,9 +186,14 @@ export const JudgmentCodeEditor = ({
 
   /* 조회 카드의 검색어 — 「조회」·Enter 로 적용한다(불량코드 탭과 같은 트리거). */
   const [draftKeyword, setDraftKeyword] = useState(keyword);
+  const [draftTypeCode, setDraftTypeCode] = useState(typeCode);
   useEffect(() => {
     setDraftKeyword(keyword);
   }, [keyword]);
+  useEffect(() => {
+    setDraftTypeCode(typeCode);
+  }, [typeCode]);
+  const typeFieldId = useId();
 
   /* 수정 창 — 고른 값을 고친다. 등록 창은 바깥(주소)이 연다. */
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -692,6 +703,21 @@ export const JudgmentCodeEditor = ({
       >
         <div className="filter-bar">
           {/* 「미사용 포함」 확인칸은 걷었다 — 탭 줄의 사용 여부 칩이 맡는다(불량코드 탭과 같다 · #209). */}
+          {/* 판정 유형 선택 — 불량코드 탭의 처분 유형 선택과 같은 자리 · 모양(사용자 지시 2026-10-29 · #209). */}
+          <div className="field-cell defect-cause-filter-select">
+            <span className="field-label">
+              <label htmlFor={typeFieldId}>{t.search.typeLabel}</label>
+            </span>
+            <Select
+              id={typeFieldId}
+              options={[
+                { value: '', label: t.search.typeAll },
+                ...allValues.map((row) => ({ value: row.code, label: row.codeName })),
+              ]}
+              value={draftTypeCode}
+              onChange={setDraftTypeCode}
+            />
+          </div>
           <SearchInput
             containerClassName="judgment-code-search-field"
             label={t.search.label}
@@ -700,7 +726,7 @@ export const JudgmentCodeEditor = ({
             onChange={(event) => setDraftKeyword(event.target.value)}
             onSearch={(value) => {
               resetEditing();
-              onKeywordChange(value.trim());
+              onFiltersChange({ keyword: value.trim(), typeCode: draftTypeCode });
             }}
             clearLabel={messages.common.clear}
           />
@@ -709,7 +735,7 @@ export const JudgmentCodeEditor = ({
               variant="filled"
               onClick={() => {
                 resetEditing();
-                onKeywordChange(draftKeyword.trim());
+                onFiltersChange({ keyword: draftKeyword.trim(), typeCode: draftTypeCode });
               }}
             >
               {messages.common.search}
@@ -719,7 +745,8 @@ export const JudgmentCodeEditor = ({
               onClick={() => {
                 resetEditing();
                 setDraftKeyword('');
-                onKeywordChange('');
+                setDraftTypeCode('');
+                onFiltersChange({ keyword: '', typeCode: '' });
               }}
             >
               {messages.common.reset}

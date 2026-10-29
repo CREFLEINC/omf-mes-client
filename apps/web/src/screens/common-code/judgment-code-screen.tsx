@@ -39,6 +39,7 @@ const URL_KEYS = {
   page: 'page',
   includeInactive: 'inactive',
   keyword: 'q',
+  typeCode: 'type',
   creating: 'new',
 } as const;
 
@@ -85,6 +86,7 @@ export const JudgmentCodeScreen = () => {
   const usage: CodeUsage =
     inactiveParam === ON ? 'all' : inactiveParam === INACTIVE_ONLY ? 'inactive' : 'active';
   const keyword = searchParams.get(URL_KEYS.keyword) ?? '';
+  const typeCode = searchParams.get(URL_KEYS.typeCode) ?? '';
 
   /**
    * 등록 폼이 열려 있는가. **그룹을 찾은 뒤에만 성립한다** —
@@ -103,7 +105,7 @@ export const JudgmentCodeScreen = () => {
    * | 1 | 코드값을 고른다 | **설정** | 유지 | 유지 | **지움** |
    * | 2 | 등록 폼을 연다 | 유지(뒤 상세 카드 · #209) | 유지 | 유지 | **설정** |
    * | 3 | 등록 폼을 닫는다 | 유지 | 유지 | 유지 | **지움** |
-   * | 4 | 사용 여부 칩 · 검색어를 바꾼다 | **지움** | **지움** | 설정/지움 | **지움** |
+   * | 4 | 사용 여부 칩 · 판정 유형 · 검색어를 바꾼다 | **지움** | **지움** | 설정/지움 | **지움** |
    * | 5 | 쪽을 옮긴다 | **지움** | 설정/지움 | 유지 | **지움** |
    *
    * 1이 `new`를 지우는 것은 등록 성공 경로 때문이다 — 한 벌은 등록에 성공하면 **고르기 콜백만
@@ -167,10 +169,18 @@ export const JudgmentCodeScreen = () => {
     });
   };
 
-  const changeKeyword = (nextKeyword: string) => {
+  const changeFilters = ({
+    keyword: nextKeyword,
+    typeCode: nextTypeCode,
+  }: {
+    keyword: string;
+    typeCode: string;
+  }) => {
     patchSearchParams((next) => {
       if (nextKeyword === '') next.delete(URL_KEYS.keyword);
       else next.set(URL_KEYS.keyword, nextKeyword);
+      if (nextTypeCode === '') next.delete(URL_KEYS.typeCode);
+      else next.set(URL_KEYS.typeCode, nextTypeCode);
 
       next.delete(URL_KEYS.selected);
       next.delete(URL_KEYS.page);
@@ -244,7 +254,8 @@ export const JudgmentCodeScreen = () => {
           usage={usage}
           onUsageChange={changeUsage}
           keyword={keyword}
-          onKeywordChange={changeKeyword}
+          typeCode={typeCode}
+          onFiltersChange={changeFilters}
           page={page}
           onPageChange={changePage}
         />

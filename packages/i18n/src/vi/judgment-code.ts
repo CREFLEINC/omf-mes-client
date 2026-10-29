@@ -62,6 +62,8 @@ export const judgmentCode: Translated<typeof ko.judgmentCode> = {
       edit: 'Sửa',
     },
     search: {
+      typeLabel: 'Chọn loại đánh giá',
+      typeAll: 'Tất cả',
       label: 'Tìm loại đánh giá',
       placeholder: 'Nhập mã hoặc tên loại đánh giá',
     },

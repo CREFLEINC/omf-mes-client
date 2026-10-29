@@ -75,6 +75,8 @@ export const judgmentCode = {
       edit: '수정',
     },
     search: {
+      typeLabel: '판정 유형 선택',
+      typeAll: '전체',
       label: '판정 유형 검색',
       placeholder: '판정 유형 코드 또는 판정 유형명을 입력하세요',
     },
