@@ -158,7 +158,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   },
   filters: {
     versionStatus: 'Chọn trạng thái',
-    versionStatusAll: 'Tất cả trạng thái',
+    versionStatusAll: 'Tất cả',
     versionStatuses: { draft: 'Đang soạn', confirmed: 'Đã xác nhận', obsolete: 'Đã hủy bỏ' },
     chipVersionStatus: (label: string): string => `Trạng thái: ${label}`,
     chipRemoveVersionStatus: 'Bỏ điều kiện trạng thái',

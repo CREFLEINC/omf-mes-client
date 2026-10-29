@@ -83,7 +83,7 @@ describe('PlanFilterBar — 조건', () => {
 
     expect(
       screen.getByRole('combobox', { name: '검사 유형 선택' }).closest('.field-cell'),
-    ).toHaveClass('wide-select');
+    ).toHaveClass('inspection-standard-type-filter');
   });
 
   it('적용된 조건마다 칩이 하나씩 서고 제거 라벨이 서로 다르다', () => {

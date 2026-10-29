@@ -90,7 +90,7 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
          * 규범 3-2 — 선택지 목록이 트리거 폭에 갇혀 있어(디자인 시스템 이슈 #62) 최소 폭을 주지 않으면
          * 「IQC (수입검사)」가 「IQC (수⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
          */}
-        <div className="field-cell wide-select">
+        <div className="field-cell inspection-standard-type-filter">
           <FieldLabel htmlFor={typeSelectId} label={t.filters.inspectionType} />
           <Select
             id={typeSelectId}

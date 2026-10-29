@@ -168,7 +168,7 @@ export const inspectionStandard = {
   },
   filters: {
     versionStatus: '상태 선택',
-    versionStatusAll: '전체 상태',
+    versionStatusAll: '전체',
     versionStatuses: { draft: '작성중', confirmed: '확정', obsolete: '폐기' },
     chipVersionStatus: (label: string): string => `상태: ${label}`,
     chipRemoveVersionStatus: '상태 조건 제거',
