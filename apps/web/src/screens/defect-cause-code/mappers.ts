@@ -29,6 +29,10 @@ export const defectToHierarchyCode = (raw: DefectCode): HierarchyCode => ({
   name: raw.defectName,
   parentId: foldSelfReference(raw.defectCodeId, raw.parentDefectCodeId),
   isActive: raw.isActive,
+  nameKo: raw.nameKo ?? null,
+  nameVi: raw.nameVi ?? null,
+  processId: raw.processId ?? null,
+  dispositionTypeCode: raw.dispositionTypeCode ?? null,
 });
 
 export const causeToHierarchyCode = (raw: CauseCode): HierarchyCode => ({
@@ -37,6 +41,9 @@ export const causeToHierarchyCode = (raw: CauseCode): HierarchyCode => ({
   name: raw.causeName,
   parentId: foldSelfReference(raw.causeCodeId, raw.parentCauseCodeId),
   isActive: raw.isActive,
+  nameKo: raw.nameKo ?? null,
+  nameVi: raw.nameVi ?? null,
+  processId: raw.processId ?? null,
 });
 
 /** 상세 응답을 폼 값으로 옮긴다. 대분류는 「고르지 않음」인 빈 문자열이 된다. */

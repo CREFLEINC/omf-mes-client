@@ -60,6 +60,8 @@ export interface CodeAdapter {
   /** 서버가 쓰는 필드 이름. 400 응답의 `field`를 폼 입력칸에 잇는 기준이다. */
   serverFields: ServerFieldNames;
   labels: CodeLabels;
+  /** 처분 유형(재작업 가능 / 폐기)을 갖는가 — 불량코드만(#209) */
+  hasDisposition: boolean;
   fetchList: (client: Client, filters: CodeFilters) => Promise<CodeListResult>;
   /** 계층 판정과 상위 선택지 전용 목록. 화면의 조회 조건과 무관하게 미사용까지 받는다. */
   fetchAllForOptions: (client: Client) => Promise<CodeListResult>;
@@ -167,6 +169,7 @@ export const defectCodeAdapter: CodeAdapter = {
     options: ['defect-codes', 'options'],
   },
   serverFields: { code: 'defectCode', name: 'defectName', parentId: 'parentDefectCodeId' },
+  hasDisposition: true,
   labels: {
     tab: t.tabs.defect,
     code: t.fields.code,
@@ -249,6 +252,7 @@ export const causeCodeAdapter: CodeAdapter = {
     options: ['cause-codes', 'options'],
   },
   serverFields: { code: 'causeCode', name: 'causeName', parentId: 'parentCauseCodeId' },
+  hasDisposition: false,
   labels: {
     tab: t.tabs.cause,
     code: t.fields.code,

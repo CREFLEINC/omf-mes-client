@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { defectCodeAdapter } from './adapters';
+import { causeCodeAdapter, defectCodeAdapter } from './adapters';
 import { CodeListPane, type CodeListPaneProps } from './code-list-pane';
 import { hierarchyFixtures } from './fixtures';
 import { indexById, orderForGrouping } from './hierarchy';
@@ -23,6 +23,7 @@ const renderPane = (overrides: Partial<CodeListPaneProps> = {}) => {
     onApplyFilters: vi.fn(),
     selectedId: null,
     onSelect: vi.fn(),
+    processLabelOf: (processId) => (processId === 7001 ? 'P-10 · 조립' : null),
     onAddCategory: vi.fn(),
     pageMeta: { page: 1, size: 20, total: orderedRows.length },
     onChangePage: vi.fn(),
@@ -131,6 +132,40 @@ describe('CodeListPane — 상태별 표시', () => {
       page: 1,
       size: 20,
     });
+  });
+});
+
+describe('CodeListPane — 표에 싣는 값 (#209)', () => {
+  const rich: HierarchyCode[] = [
+    {
+      id: 6001,
+      code: 'DF-50',
+      name: '외관',
+      parentId: null,
+      isActive: true,
+      nameKo: '외관 한글',
+      nameVi: 'Ngoại quan',
+      processId: 7001,
+      dispositionTypeCode: 'REWORKABLE',
+    },
+  ];
+
+  it('불량코드 표는 한국어명 · 베트남어명 · 처분 유형 · 공정을 함께 낸다', () => {
+    renderPane({ rows: rich, byId: indexById(rich) });
+
+    for (const header of ['한국어명', '베트남어명', '처분 유형', '공정']) {
+      expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument();
+    }
+    expect(screen.getByText('외관 한글')).toBeInTheDocument();
+    expect(screen.getByText('Ngoại quan')).toBeInTheDocument();
+    expect(screen.getByText('재작업 가능')).toBeInTheDocument();
+    expect(screen.getByText('P-10 · 조립')).toBeInTheDocument();
+  });
+
+  it('원인코드 표에는 처분 유형 칸이 없다', () => {
+    renderPane({ adapter: causeCodeAdapter, rows: rich, byId: indexById(rich) });
+
+    expect(screen.queryByRole('columnheader', { name: '처분 유형' })).not.toBeInTheDocument();
   });
 });
 

@@ -72,6 +72,11 @@ export const defectCauseCode = {
     parent: '상위 대분류',
     isActive: '사용',
     kind: '구분',
+    disposition: '처분 유형',
+    process: '공정',
+    nameKo: '한국어명',
+    nameVi: '베트남어명',
+    referenceCount: '사용 중',
   },
   /** 상세 카드(omf-all-around#209) — 제목 · 상태 칩 · 이름표 상자, 수정은 창에서. */
   detail: {
@@ -96,6 +101,10 @@ export const defectCauseCode = {
     noParent: '없음 (대분류)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
     inactiveSuffix: ' (미사용)',
+    disposition: { REWORKABLE: '재작업 가능', SCRAP: '폐기' },
+    /** 이 코드를 쓰는 기록 수 — 상세 조회에만 온다(#209) */
+    referenceCount: (count: number): string => `${String(count)}건`,
+    empty: '—',
     /** 그룹 머리글 — 대분류의 코드와 명칭을 함께 낸다. */
     groupHeader: (code: string, name: string): string => `${code} · ${name}`,
   },

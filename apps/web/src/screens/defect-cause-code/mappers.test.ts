@@ -20,6 +20,11 @@ describe('defectToHierarchyCode', () => {
       name: '스크래치',
       parentId: 1001,
       isActive: true,
+      // 목록 · 상세에 값으로만 싣는 칸(#209) — 픽스처에 없으면 null 로 접는다.
+      nameKo: null,
+      nameVi: null,
+      processId: null,
+      dispositionTypeCode: null,
     });
   });
 
@@ -60,6 +65,9 @@ describe('causeToHierarchyCode', () => {
       name: '금형 마모',
       parentId: 2001,
       isActive: true,
+      nameKo: null,
+      nameVi: null,
+      processId: null,
     });
   });
 

@@ -1,6 +1,9 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
+import { runRequest } from '../../patterns/request';
 import type { CodeAdapter } from './adapters';
 import type {
   CodeDetailResult,
@@ -99,5 +102,37 @@ export const useCodeOptions = (adapter: CodeAdapter, enabled: boolean): CodeOpti
     isError: options.isError,
     // 꺼져 있는 동안에는 pending이지만 아무것도 기다리지 않는다.
     isLoading: enabled && options.isPending,
+  };
+};
+
+/**
+ * 공정 번호 → 「공정코드 · 공정명」(#209). 코드 목록 · 상세의 공정 칸을 사람이 읽는 이름으로 낸다.
+ * 끝까지 받아 둔다 — 첫 쪽만 받으면 뒤쪽 공정이 번호로 남는다. 받지 못한 번호는 번호 그대로 낸다.
+ */
+export const useProcessLabels = (): ((processId: number | null | undefined) => string | null) => {
+  const { client } = useApiClient();
+
+  const processes = useQuery({
+    queryKey: ['defect-cause-code', 'process-labels'],
+    queryFn: () =>
+      fetchAllPages((page, size) =>
+        runRequest(() => client.GET('/mdm/processes', { params: { query: { page, size } } })),
+      ),
+  });
+
+  const byId = useMemo(
+    () =>
+      new Map(
+        (processes.data?.items ?? []).map((process) => [
+          process.processId,
+          `${process.processCode} · ${process.processName}`,
+        ]),
+      ),
+    [processes.data],
+  );
+
+  return (processId) => {
+    if (processId === null || processId === undefined) return null;
+    return byId.get(processId) ?? String(processId);
   };
 };

@@ -13,6 +13,10 @@ export interface CodeDetailHeadProps {
   code: HierarchyCode;
   /** 상위 대분류 표시(「코드 · 명칭」). 대분류면 null */
   parentLabel: string | null;
+  /** 공정 표시(「공정코드 · 공정명」). 없으면 null */
+  processLabel: string | null;
+  /** 이 코드를 쓰는 기록 수 — 서버가 셀 수 없으면 null(칸을 내지 않는다) */
+  referenceCount: number | null;
   /** 대분류를 골랐을 때만 — 이 대분류 아래에 상세를 추가하는 창을 연다 */
   onAddChild?: () => void;
   onEdit: () => void;
@@ -28,11 +32,15 @@ export const CodeDetailHead = ({
   adapter,
   code,
   parentLabel,
+  processLabel,
+  referenceCount,
   onAddChild,
   onEdit,
   onDeactivate,
 }: CodeDetailHeadProps) => {
   const deactivateNoteId = useId();
+  const orEmpty = (value: string | null | undefined): string =>
+    value === null || value === undefined || value === '' ? t.values.empty : value;
   const category = isCategory(code);
 
   return (
@@ -81,6 +89,23 @@ export const CodeDetailHead = ({
           { label: adapter.labels.name, value: code.name },
           { label: t.fields.kind, value: category ? t.detail.kindCategory : t.detail.kindChild },
           ...(parentLabel === null ? [] : [{ label: adapter.labels.parent, value: parentLabel }]),
+          { label: t.fields.nameKo, value: orEmpty(code.nameKo) },
+          { label: t.fields.nameVi, value: orEmpty(code.nameVi) },
+          ...(adapter.hasDisposition
+            ? [
+                {
+                  label: t.fields.disposition,
+                  value:
+                    code.dispositionTypeCode === null || code.dispositionTypeCode === undefined
+                      ? t.values.empty
+                      : t.values.disposition[code.dispositionTypeCode],
+                },
+              ]
+            : []),
+          { label: t.fields.process, value: orEmpty(processLabel) },
+          ...(referenceCount === null
+            ? []
+            : [{ label: t.fields.referenceCount, value: t.values.referenceCount(referenceCount) }]),
         ].map((fact) => (
           <div key={fact.label}>
             <dt className="field-label">{fact.label}</dt>

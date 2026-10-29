@@ -174,7 +174,14 @@ const renderScreen = (
   search = '',
   path = ROUTE,
 ): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
-  const { fetch, requests } = createRecordingFetch(routes);
+  /* 공정 칸 이름(#209)용 공정 목록 — 시험이 따로 주지 않으면 빈 목록으로 답한다. 맨 뒤라 시험의 규칙이 먼저 잡는다. */
+  const { fetch, requests } = createRecordingFetch([
+    ...routes,
+    {
+      match: (request) => isGet(request, '/mdm/processes'),
+      respond: () => jsonResponse(listBody([])),
+    },
+  ]);
 
   renderWithProviders(
     <>

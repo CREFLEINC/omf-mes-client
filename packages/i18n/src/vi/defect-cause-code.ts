@@ -76,6 +76,11 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     parent: 'Cấp lớn bên trên',
     isActive: 'Sử dụng',
     kind: 'Phân loại',
+    disposition: 'Loại xử lý',
+    process: 'Công đoạn',
+    nameKo: 'Tên tiếng Hàn',
+    nameVi: 'Tên tiếng Việt',
+    referenceCount: 'Đang dùng',
   },
   detail: {
     title: (tab: string): string => `Chi tiết ${tab}`,
@@ -98,6 +103,9 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     noParent: 'Không có (cấp lớn)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
     inactiveSuffix: ' (ngừng dùng)',
+    disposition: { REWORKABLE: 'Có thể làm lại', SCRAP: 'Hủy bỏ' },
+    referenceCount: (count: number): string => `${String(count)} bản ghi`,
+    empty: '—',
     /** 그룹 머리글 — 대분류의 코드와 명칭을 함께 낸다. */
     groupHeader: (code: string, name: string): string => `${code} · ${name}`,
   },

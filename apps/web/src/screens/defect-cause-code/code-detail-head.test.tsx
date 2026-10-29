@@ -10,6 +10,8 @@ const renderHead = (overrides: Partial<CodeDetailHeadProps> = {}) => {
     adapter: defectCodeAdapter,
     code: { id: 1002, code: 'DF-11', name: '스크래치', parentId: 1001, isActive: true },
     parentLabel: 'DF-10 · 외관',
+    processLabel: null,
+    referenceCount: null,
     onEdit: vi.fn(),
     onDeactivate: vi.fn(),
     ...overrides,
@@ -30,6 +32,37 @@ describe('CodeDetailHead (#209)', () => {
     expect(screen.getByText('스크래치')).toBeInTheDocument();
     expect(screen.getByText('상세')).toBeInTheDocument();
     expect(screen.getByText('DF-10 · 외관')).toBeInTheDocument();
+  });
+
+  it('한국어명 · 베트남어명 · 처분 유형 · 공정 · 사용 중 건수를 이름표 상자에 낸다(#209)', () => {
+    renderHead({
+      code: {
+        id: 1002,
+        code: 'DF-11',
+        name: '스크래치',
+        parentId: 1001,
+        isActive: true,
+        nameKo: '스크래치 한글',
+        nameVi: 'Trầy xước',
+        processId: 7001,
+        dispositionTypeCode: 'SCRAP',
+      },
+      processLabel: 'P-10 · 조립',
+      referenceCount: 3,
+    });
+
+    expect(screen.getByText('스크래치 한글')).toBeInTheDocument();
+    expect(screen.getByText('Trầy xước')).toBeInTheDocument();
+    expect(screen.getByText('폐기')).toBeInTheDocument();
+    expect(screen.getByText('P-10 · 조립')).toBeInTheDocument();
+    expect(screen.getByText('3건')).toBeInTheDocument();
+  });
+
+  it('값이 없으면 「—」, 서버가 셀 수 없는 사용 건수는 칸을 내지 않는다', () => {
+    renderHead();
+
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText('사용 중')).not.toBeInTheDocument();
   });
 
   it('대분류에는 상위 칸이 없다', () => {

@@ -24,6 +24,12 @@ export interface HierarchyCode {
   /** 대분류이면 null. 자기참조도 화면에서는 null로 접는다(mappers.ts). */
   parentId: number | null;
   isActive: boolean;
+  /** 아래는 목록 · 상세에 값으로만 보인다(#209) — 폼은 다루지 않는다. */
+  nameKo?: string | null;
+  nameVi?: string | null;
+  processId?: number | null;
+  /** 불량코드만 — 재작업 가능 / 폐기 */
+  dispositionTypeCode?: 'REWORKABLE' | 'SCRAP' | null;
 }
 
 export interface CodeFilters {

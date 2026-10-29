@@ -45,7 +45,7 @@ import {
   toFormFieldErrors,
   toServerFieldName,
 } from './mappers';
-import { useCodeDetail, useCodeList, useCodeOptions } from './queries';
+import { useCodeDetail, useCodeList, useCodeOptions, useProcessLabels } from './queries';
 import { ProcessMappingPane } from './process-mapping-pane';
 import { resolveTab } from './tabs';
 import type {
@@ -168,6 +168,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const options = useCodeOptions(adapter, true);
   const byId = useMemo(() => indexById([...options.items, ...items]), [options.items, items]);
   const rows = useMemo(() => orderForGrouping(items, byId), [items, byId]);
+  const processLabelOf = useProcessLabels();
 
   const selected = selectedId === null ? null : (byId.get(selectedId) ?? null);
   const canAddChild = selected !== null && isCategory(selected);
@@ -406,6 +407,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       onChangePageSize={(size) =>
         updateParams({ page: null, size: size === 20 ? null : String(size) })
       }
+      processLabelOf={processLabelOf}
       onSelect={(id) => {
         setIsEditOpen(false);
         updateParams({ sel: String(id), mode: null });
@@ -543,6 +545,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
           adapter={adapter}
           code={code}
           parentLabel={parentLabelOf(code)}
+          processLabel={processLabelOf(detail.data.processId)}
+          referenceCount={detail.data.editability.referenceCount ?? null}
           // 대분류를 고르면 상세 카드에서 상세를 추가한다 — 고른 대분류가 상위 초기값이 된다.
           onAddChild={canAddChild ? () => openCreateForm({}) : undefined}
           onEdit={() => {

@@ -31,6 +31,8 @@ export interface CodeListPaneProps {
   onChangePageSize: (size: PageSize) => void;
   selectedId: number | null;
   onSelect: (id: number) => void;
+  /** 공정 번호 → 「공정코드 · 공정명」. 공정이 없으면 null */
+  processLabelOf: (processId: number | null | undefined) => string | null;
   /** 등록된 코드가 없을 때 빈 안내의 단추 */
   onAddCategory: () => void;
   /**
@@ -62,9 +64,13 @@ export const CodeListPane = ({
   onChangePageSize,
   selectedId,
   onSelect,
+  processLabelOf,
   onAddCategory,
   loadError,
 }: CodeListPaneProps) => {
+  const orEmpty = (value: string | null | undefined): string =>
+    value === null || value === undefined || value === '' ? t.values.empty : value;
+
   const groupLabel = (groupKey: string): string => {
     if (groupKey === ORPHAN_GROUP_KEY) return t.groupHeaderOrphan;
 
@@ -101,12 +107,51 @@ export const CodeListPane = ({
       // 폭을 정하지 않는다 — 남는 폭을 이 열이 맡는다(검사 기준 탭과 같다).
       render: (row) => <span title={row.name}>{row.name}</span>,
     },
+    /* 서버가 목록에 주는 값을 모두 싣는다(사용자 지시 · #209) — 한국어명 · 베트남어명 · 처분 유형 · 공정. */
+    {
+      key: 'nameKo',
+      align: 'center',
+      header: t.fields.nameKo,
+      width: '140px',
+      render: (row) => <span title={row.nameKo ?? undefined}>{orEmpty(row.nameKo)}</span>,
+    },
+    {
+      key: 'nameVi',
+      align: 'center',
+      header: t.fields.nameVi,
+      width: '140px',
+      render: (row) => <span title={row.nameVi ?? undefined}>{orEmpty(row.nameVi)}</span>,
+    },
     {
       key: 'kind',
       align: 'center',
       header: t.fields.kind,
       width: '96px',
       render: (row) => (isCategory(row) ? t.detail.kindCategory : t.detail.kindChild),
+    },
+    ...(adapter.hasDisposition
+      ? [
+          {
+            key: 'dispositionTypeCode',
+            align: 'center' as const,
+            header: t.fields.disposition,
+            width: '112px',
+            render: (row: HierarchyCode) =>
+              row.dispositionTypeCode === null || row.dispositionTypeCode === undefined
+                ? t.values.empty
+                : t.values.disposition[row.dispositionTypeCode],
+          },
+        ]
+      : []),
+    {
+      key: 'processId',
+      align: 'center',
+      header: t.fields.process,
+      width: '160px',
+      render: (row) => {
+        const label = processLabelOf(row.processId);
+        return <span title={label ?? undefined}>{orEmpty(label)}</span>;
+      },
     },
     {
       key: 'isActive',
