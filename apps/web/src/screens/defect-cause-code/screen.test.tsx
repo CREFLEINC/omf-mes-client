@@ -148,7 +148,7 @@ const pickCode = async (
   await user.click(screen.getByLabelText(fieldLabel));
   const dialog = await screen.findByRole('dialog');
   await user.type(within(dialog).getByLabelText('검색어'), code);
-  await user.click(within(dialog).getByRole('button', { name: '찾기' }));
+  await user.click(within(dialog).getByRole('button', { name: '검색' }));
   await user.click(await within(dialog).findByRole('checkbox', { name: code }));
   await user.click(within(dialog).getByRole('button', { name: '선택' }));
 };
