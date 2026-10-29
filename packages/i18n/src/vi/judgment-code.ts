@@ -22,10 +22,19 @@ export const judgmentCode: Translated<typeof ko.judgmentCode> = {
     active: 'Sử dụng',
     inactive: 'Ngừng dùng',
   },
+  /** 목록 머리 · 열 이름 · 작업 열 — 사용자 시안 구성(#208). */
+  list: {
+    title: 'Mã loại đánh giá',
+    count: (total: number): string => `${String(total)} mục`,
+    sortNote: 'Theo thứ tự sắp xếp',
+    orderHeader: 'Thứ tự',
+    actionsHeader: 'Thao tác',
+    edit: 'Sửa',
+    editRow: (code: string): string => `Sửa ${code}`,
+  },
   notices: {
     /* 값을 지어내지 않으므로 그 한계를 문구가 밝힌다. */
-    provisionalList:
-      'Loại đánh giá vẫn là danh sách tạm. Khi chốt, giá trị có thể thêm hoặc thay đổi.',
+    provisionalList: 'Danh sách tạm · Khi chốt, giá trị mã có thể được thêm hoặc thay đổi.',
     /* 그룹이 꺼져 있어도 값은 그대로 고칠 수 있다 - 사실과 조치할 곳을 함께 밝힌다. */
     groupInactive:
       'Nhóm mã này đang ở trạng thái ngừng dùng. Vẫn sửa được giá trị, nhưng muốn mở dùng lại thì hãy kiểm tra nhóm mã ở màn hình mã chung.',

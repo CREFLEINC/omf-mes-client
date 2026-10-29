@@ -38,6 +38,9 @@ const hubText = messages.common.inspectionHub;
 /** 목록 상태 열 문구 — 사용/미사용을 코드명 뒤 글이 아니라 따로 칩으로 보인다(#208). */
 const STATUS_COLUMN = t.status;
 
+/** 목록 머리(제목 · 건수 · 정렬 기준) · 「순서」 열 · 「수정」 작업 열 — 사용자 시안 구성(#208). */
+const LIST_HEAD = t.list;
+
 /**
  * W-06-04 판정유형 코드 마스터 — **진입점 하나**다(omf-mes-client#16).
  *
@@ -388,8 +391,9 @@ export const JudgmentCodeScreen = () => {
         pageSize={pageSize}
         onPageSizeChange={changePageSize}
         emptyIcon={EMPTY_ICON}
+        listHead={LIST_HEAD}
         /*
-         * 안내 글 — 「미사용 포함 · 코드값 추가」 줄 아래 작은 보조 글(검사표 기준 탭과 같은 모양 · 박스 · 바탕 없이 · 사용자 지시 · #208).
+         * 안내 글 — 「미사용 포함 · 정렬 순서 기준」 줄 아래 작은 보조 글(검사표 기준 탭과 같은 모양 · 박스 · 바탕 없이 · 사용자 지시 · #208).
          * 편집기 어휘 안내는 늘, 임시 목록 안내는 목록이 확정되기 전까지만 선다.
          */
         filterNote={

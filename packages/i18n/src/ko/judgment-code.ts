@@ -31,9 +31,19 @@ export const judgmentCode = {
     active: '사용',
     inactive: '미사용',
   },
+  /** 목록 머리 · 열 이름 · 작업 열 — 사용자 시안 구성(#208). 편집기 공유 문구(`commonCode.codeValue`)는 건드리지 않는다. */
+  list: {
+    title: '판정 유형 코드',
+    count: (total: number): string => `${String(total)}개`,
+    sortNote: '정렬 순서 기준',
+    orderHeader: '순서',
+    actionsHeader: '작업',
+    edit: '수정',
+    editRow: (code: string): string => `${code} 수정`,
+  },
   notices: {
     /** 판정유형 목록이 확정되기 전까지 낸다. 값을 지어내지 않으므로 그 한계를 문구가 밝힌다. */
-    provisionalList: '판정유형은 아직 임시 목록입니다. 확정되면 값이 늘거나 바뀔 수 있습니다.',
+    provisionalList: '임시 목록 · 확정 시 코드값이 추가되거나 변경될 수 있습니다.',
     /* 그룹이 꺼져 있어도 값은 그대로 있다 — 편집을 막지 않고 사실과 조치할 곳을 함께 밝힌다. */
     groupInactive:
       '이 코드그룹은 미사용 상태입니다. 값은 그대로 고칠 수 있으나, 사용을 다시 열려면 공통코드 화면에서 코드그룹을 확인하세요.',

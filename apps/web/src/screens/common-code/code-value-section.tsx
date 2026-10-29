@@ -7,7 +7,11 @@ import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import type { PageSize } from '../../patterns/page-nav';
 import { CodeValueFormPane } from './code-value-form-pane';
-import { CodeValueListPane, type CodeValueStatusColumn } from './code-value-list-pane';
+import {
+  CodeValueListPane,
+  type CodeValueListHead,
+  type CodeValueStatusColumn,
+} from './code-value-list-pane';
 import {
   codeValueToFormValues,
   emptyCodeValueFormValues,
@@ -92,6 +96,8 @@ export interface CodeValueSectionProps {
   onPageSizeChange?: (size: PageSize) => void;
   /** 목록 · 코드값 정보 빈 상태 아이콘. 주지 않으면 종전 그대로 아이콘 없이(#208). */
   emptyIcon?: ReactNode;
+  /** 목록 머리(제목 · 건수 · 정렬 기준) · 「순서」 열 이름 · 「수정」 작업 열. 주지 않으면 종전 그대로 — 판정유형 코드 탭만 쓴다(사용자 시안 · #208). */
+  listHead?: CodeValueListHead;
 }
 
 /**
@@ -128,6 +134,7 @@ export const CodeValueSection = ({
   pageSize,
   onPageSizeChange,
   emptyIcon,
+  listHead,
 }: CodeValueSectionProps) => {
   const toast = useToast();
   const { client } = useApiClient();
@@ -499,6 +506,7 @@ export const CodeValueSection = ({
       pageMeta={sharedPageNav ? (list.data?.page ?? { page, size: 0, total: 0 }) : undefined}
       onChangePageSize={handlePageSizeChange}
       emptyIcon={emptyIcon}
+      listHead={listHead}
       loadError={
         list.isError ? (
           <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />

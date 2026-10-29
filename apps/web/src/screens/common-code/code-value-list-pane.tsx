@@ -1,5 +1,6 @@
 import {
   AlertBanner,
+  Button,
   Checkbox,
   Chip,
   type Column,
@@ -52,6 +53,23 @@ export interface CodeValueListPaneProps {
   onChangePageSize?: (size: PageSize) => void;
   /** 빈 상태 아이콘. 주지 않으면 종전 그대로 아이콘 없이 — 판정유형 코드 탭만 쓴다(#208). */
   emptyIcon?: ReactNode;
+  /**
+   * 목록 머리 · 작업 열. 주면 제목 줄(제목 · 건수 · 「코드값 추가」) → 조작 줄(「미사용 포함」 · 정렬 기준 표기) 순으로 세우고
+   * 「순서」 열 이름 · 「수정」 작업 열(줄 고르기의 다른 입구)을 쓴다. 주지 않으면(공통코드 화면) 종전 그대로다 — 판정유형 코드 탭만 쓴다(사용자 시안 · #208).
+   */
+  listHead?: CodeValueListHead;
+}
+
+export interface CodeValueListHead {
+  title: string;
+  /** 목록 총 건수 표기(「4개」). */
+  count: (total: number) => string;
+  /** 목록이 정렬 순서로 나온다는 사실 표기 — 새 정렬 기능이 아니다. */
+  sortNote: string;
+  orderHeader: string;
+  actionsHeader: string;
+  edit: string;
+  editRow: (code: string) => string;
 }
 
 export interface CodeValueStatusColumn {
@@ -98,6 +116,7 @@ export const CodeValueListPane = ({
   pageMeta,
   onChangePageSize,
   emptyIcon,
+  listHead,
 }: CodeValueListPaneProps) => {
   const rows = sortForDisplay(codeValues);
 
@@ -127,7 +146,7 @@ export const CodeValueListPane = ({
     },
     {
       key: 'displayOrder',
-      header: t.fields.displayOrder,
+      header: listHead?.orderHeader ?? t.fields.displayOrder,
       width: '96px',
       align: 'end',
       render: (row) => String(row.displayOrder),
@@ -149,6 +168,26 @@ export const CodeValueListPane = ({
               <Chip variant="status" size="sm" status={row.isActive ? 'success' : 'idle'}>
                 {row.isActive ? statusColumn.active : statusColumn.inactive}
               </Chip>
+            ),
+          },
+        ]),
+    ...(listHead === undefined
+      ? []
+      : [
+          {
+            key: 'actions',
+            header: listHead.actionsHeader,
+            width: '80px',
+            /* 줄 고르기와 같은 동작 — 상세(코드값 정보)를 연다(사용자 시안 · #208). */
+            render: (row: CodeValue) => (
+              <Button
+                size="sm"
+                variant="text"
+                aria-label={listHead.editRow(row.code)}
+                onClick={() => onSelect(row.codeValueId)}
+              >
+                {listHead.edit}
+              </Button>
             ),
           },
         ]),
@@ -267,6 +306,16 @@ export const CodeValueListPane = ({
         </div>
       )}
 
+      {listHead !== undefined && (
+        <div className="code-value-list-head">
+          <h2 className="pane-title">{listHead.title}</h2>
+          {pageMeta !== undefined && !isLoading && (
+            <span className="code-value-list-count">{listHead.count(pageMeta.total)}</span>
+          )}
+          {addAction}
+        </div>
+      )}
+
       <div className="filter-bar">
         {/* 해제 축이라 변경 즉시 적용한다. */}
         <div className="field-cell field-cell-unlabeled">
@@ -277,13 +326,16 @@ export const CodeValueListPane = ({
             {messages.common.includeInactive}
           </Checkbox>
         </div>
+        {listHead !== undefined && (
+          <span className="code-value-list-sort-note">{listHead.sortNote}</span>
+        )}
       </div>
 
       {filterNote}
 
       {listSlot()}
 
-      <div className="filter-bar">{addAction}</div>
+      {listHead === undefined && <div className="filter-bar">{addAction}</div>}
     </section>
   );
 };
