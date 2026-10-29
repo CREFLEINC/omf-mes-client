@@ -172,6 +172,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     usageAll: 'Tất cả',
     usageActive: 'Đang dùng',
     usageInactive: 'Ngừng dùng',
+    usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
     item: 'Mặt hàng',
     itemPlaceholder: 'Chọn mặt hàng',
     itemClear: 'Xóa điều kiện mặt hàng',

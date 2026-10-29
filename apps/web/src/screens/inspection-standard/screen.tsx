@@ -76,6 +76,7 @@ import {
   useInspectionItemSpecs,
   useInspectionPlanDetail,
   useInspectionPlanList,
+  usePlanUsageCounts,
   useInspectionPlanVersionDetail,
   useInspectionPlanVersionList,
   useCodeValueOptions,
@@ -256,6 +257,7 @@ export const InspectionStandardScreen = () => {
   const selectedPlanId = Number(searchParams.get('plan') ?? '') || null;
 
   const planList = useInspectionPlanList(filters, page, pageSize);
+  const usageCounts = usePlanUsageCounts(filters, hub !== null);
 
   /** 엑셀 올리기 창. `null` 이면 닫혀 있다 — 파일과 결과는 창이 닫히면 함께 버린다. */
   const [importState, setImportState] = useState<{
@@ -1812,6 +1814,7 @@ export const InspectionStandardScreen = () => {
     <>
       {/* 탭 줄 오른쪽 — 사용 여부 칩 다음에 좌우 · 상하 배치(사용자 지시 · #208). 그린 순서대로 선다. */}
       <UsageChips
+        counts={usageCounts.data ?? null}
         value={usageOf(filters)}
         onChange={(usage) => applyFilters(withUsage(filters, usage))}
       />

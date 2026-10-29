@@ -25,6 +25,8 @@ export const withUsage = (filters: PlanFilters, usage: PlanUsage): PlanFilters =
 });
 
 export interface UsageChipsProps {
+  /** 칩마다 붙일 건수. null 이면 이름만 낸다(아직 세지 못함) */
+  counts: Record<PlanUsage, number> | null;
   value: PlanUsage;
   onChange: (next: PlanUsage) => void;
 }
@@ -34,7 +36,7 @@ export interface UsageChipsProps {
  * 하나만 고른다 — 고른 칩을 다시 눌러도 풀리지 않는다(셋 중 하나는 늘 켜져 있다).
  * 탭 묶음 밖(탭 막대가 없는 화면 · 화면만 그린 시험)에서는 자리가 없어 그리지 않는다.
  */
-export const UsageChips = ({ value, onChange }: UsageChipsProps) => {
+export const UsageChips = ({ counts, value, onChange }: UsageChipsProps) => {
   const target = useHubActionsTarget();
   if (target === null) return null;
 
@@ -52,7 +54,7 @@ export const UsageChips = ({ value, onChange }: UsageChipsProps) => {
               if (value !== option.value) onChange(option.value);
             }}
           >
-            {option.label}
+            {counts === null ? option.label : t.usageCount(option.label, counts[option.value])}
           </Chip>
         ))}
       </div>

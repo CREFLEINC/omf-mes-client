@@ -41,6 +41,7 @@ export const planKeys = {
   list: (filters: PlanFilters, page: number, size: number = DEFAULT_PAGE_SIZE) =>
     ['inspection-plans', 'list', filters, page, size] as const,
   detail: (inspectionPlanId: number) => ['inspection-plans', 'detail', inspectionPlanId] as const,
+  usageCounts: (filters: PlanFilters) => ['inspection-plans', 'usage-counts', filters] as const,
 };
 
 /**
@@ -83,6 +84,53 @@ export const useInspectionPlanList = (
         items: kept.slice((page - 1) * size, page * size),
         page: { page, size, total: kept.length },
       };
+    },
+  });
+};
+
+/** 사용 여부 칩의 건수(#208). */
+export interface PlanUsageCounts {
+  all: number;
+  active: number;
+  inactive: number;
+}
+
+/**
+ * 사용 여부 칩마다 붙일 건수 — 지금 걸린 다른 조건(검색어 · 유형 · 품목 · 미승인)을 그대로 따른다(사용자 지시 · #208).
+ * 미승인이 꺼져 있으면 서버 건수 두 번(전체 · 사용)으로 센다. 켜져 있으면 서버 조건이 없어 전부 받아 센다.
+ */
+export const usePlanUsageCounts = (
+  filters: PlanFilters,
+  /** 칩이 서는 자리(탭 묶음)에서만 센다 — 칩이 없으면 요청도 없다. */
+  enabled: boolean,
+): UseQueryResult<PlanUsageCounts> => {
+  const { client } = useApiClient();
+  const base: PlanFilters = { ...filters, includeInactive: false, inactiveOnly: false };
+
+  return useQuery({
+    queryKey: planKeys.usageCounts(base),
+    enabled,
+    queryFn: async () => {
+      const list = (query: PlanListQuery & { size?: number }) =>
+        runRequest(() => client.GET('/quality/inspection-plans', { params: { query } }));
+
+      if (!base.unapprovedOnly) {
+        const [all, active] = await Promise.all([
+          list({ ...toListQuery({ ...base, includeInactive: true }, 1), size: 1 }),
+          list({ ...toListQuery(base, 1), size: 1 }),
+        ]);
+        return {
+          all: all.page.total,
+          active: active.page.total,
+          inactive: all.page.total - active.page.total,
+        };
+      }
+
+      const plans = (
+        await fetchAllPlans(list, toListQuery({ ...base, includeInactive: true }, 1, ALL_PAGE_SIZE))
+      ).filter((plan) => plan.approvedAt === null || plan.approvedAt === undefined);
+      const active = plans.filter((plan) => plan.isActive).length;
+      return { all: plans.length, active, inactive: plans.length - active };
     },
   });
 };
