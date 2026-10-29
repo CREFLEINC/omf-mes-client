@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { useNavigate } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { INSPECTION_HUB_COUNTS_KEY } from '../patterns/inspection-hub-counts';
 import { SessionProvider } from '../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../test/api-harness';
 import { SYNTHETIC_SESSION } from '../test/session-harness';
@@ -33,7 +34,7 @@ interface Setup {
 
 const setup = (options: Setup = {}) => {
   const counted: URL[] = [];
-  renderWithProviders(
+  const { queryClient } = renderWithProviders(
     <SessionProvider>
       <Go to="/logistics/iqc-inspection" />
       <AppLayout>본문</AppLayout>
@@ -69,7 +70,7 @@ const setup = (options: Setup = {}) => {
       ]),
     },
   );
-  return { counted };
+  return { counted, queryClient };
 };
 
 const sidebar = () => screen.getByRole('navigation', { name: '주 메뉴' });
@@ -130,6 +131,25 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
       ),
     );
     expect(counted.every((url) => url.searchParams.get('pendingOnly') === 'true')).toBe(true);
+  });
+
+  it('판정 저장·확정이 건수 칩을 다시 세면 탭 배지도 새로고침 없이 바뀐다(#216)', async () => {
+    const totalsByType = { IQC: 1, PQC: 0, OQC: 0 };
+    const { queryClient } = setup({
+      route: '/logistics/iqc-inspection',
+      permissions: ['W-01-01', 'W-03-11', 'W-04-03'],
+      totalsByType,
+    });
+
+    const tabs = await screen.findByRole('navigation', { name: INSPECTION_ROW });
+    const iqcTab = within(tabs).getByRole('link', { name: /^IQC/ });
+    expect(await within(iqcTab).findByLabelText(t.iqcPending(1))).toHaveTextContent('1');
+
+    /* 확정으로 대기가 0이 됐다 — 화면은 건수 칩 키만 무효화한다(iqc-inspection/queries.ts). */
+    totalsByType.IQC = 0;
+    await act(() => queryClient.invalidateQueries({ queryKey: INSPECTION_HUB_COUNTS_KEY }));
+
+    await waitFor(() => expect(within(iqcTab).queryByLabelText(t.iqcPending(1))).toBeNull());
   });
 
   it('PQC · OQC 화면 권한이 없으면 그 수를 묻지 않는다', async () => {

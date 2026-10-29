@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import { useApiClient } from '../../patterns/api-context';
+import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
 import { InspectionSkipPane } from '../inspection-skip/skip-pane';
 import { iqcInspectionKeys } from './queries';
 
@@ -53,7 +54,7 @@ export const IqcSkipPane = ({
         })
       }
       queryKeyRoot={iqcInspectionKeys.all}
-      invalidateKeys={[iqcInspectionKeys.all]}
+      invalidateKeys={[iqcInspectionKeys.all, INSPECTION_HUB_COUNTS_KEY]}
       requestBlockedReason={workerNo === null ? t.workerNotLinked : null}
     />
   );
