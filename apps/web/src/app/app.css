@@ -583,6 +583,11 @@ main > * + * {
   font: var(--type-label-sm);
 }
 
+/* 판정 유형 검색 칸은 돋보기를 걷는다(사용자 지시 2026-10-29 · #209). DS SearchInput 에 끄는 값이 없어 앞자리를 숨긴다. */
+.judgment-code-search-field [class*='_leading_'] {
+  display: none;
+}
+
 /* 판정 유형 검색 칸 — 흐린 안내 글이 잘리지 않는 만큼(#209). */
 .inspection-standard-search.defect-cause-search .filter-bar > .judgment-code-search-field {
   flex: 0 1 21rem;
