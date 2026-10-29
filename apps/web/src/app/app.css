@@ -21816,8 +21816,8 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 }
 
 .two-pane.inspection-sheet-template-layout {
-  /* 목록 열이 다섯이라 모델 칸이 읽히는 폭을 준다(#208). */
-  grid-template-columns: minmax(26rem, 34rem) minmax(0, 1fr);
+  /* 목록 열이 다섯이라 모델 칸이 읽히는 폭을 준다 — 넓은 화면에서는 목록 2 : 상세 3(#208). */
+  grid-template-columns: minmax(26rem, 2fr) minmax(0, 3fr);
 }
 
 @media (max-width: 1280px) {
@@ -21835,9 +21835,13 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   align-items: center;
 }
 
-/* 상태 칸 — 「작성중」 같은 짧은 값이라 좁게(#208). */
+/* 상태 칸 — 「작성중」 같은 짧은 값이라 좁게, 선택칸이 칸 폭을 다 써서 「조회」와 사이가 뜨지 않게(#208). */
 .inspection-sheet-template-status-filter {
-  flex: 0 0 10rem;
+  flex: 0 0 8rem;
+}
+
+.inspection-sheet-template-status-filter > :not(label) {
+  width: 100%;
 }
 
 .inspection-sheet-template-filter-divider {
@@ -21989,6 +21993,19 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 .inspection-sheet-template-facts dd {
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+/* 긴 모델 이름은 둘째 줄을 다 쓰고, 짧은 사업부 · 출력 양식이 첫 줄에 나란히 선다(#208). */
+.inspection-sheet-template-facts > div:first-child {
+  flex-basis: 100%;
+  order: 1;
+  padding-left: 0;
+  border-left: 0;
+}
+
+.inspection-sheet-template-facts > div:nth-child(2) {
+  padding-left: 0;
+  border-left: 0;
 }
 
 /* 비고처럼 긴 글 칸은 한 줄을 다 쓴다(#208). */
