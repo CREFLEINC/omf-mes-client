@@ -27151,7 +27151,7 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 /* 날짜 · 시각 칸은 내용 폭만큼 — 상자 가로 전체로 늘이지 않는다(사용자 시안). */
 .parts-iqc-lot-inspected > .date-time-field {
-  max-width: 28rem;
+  max-width: 18rem;
 }
 
 .parts-iqc-lot-box {
