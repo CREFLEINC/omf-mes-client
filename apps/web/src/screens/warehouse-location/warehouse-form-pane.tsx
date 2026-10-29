@@ -178,51 +178,17 @@ export const WarehouseFormPane = ({
     <section className="warehouse-location-form" aria-label={t.tabs.warehouse}>
       {banner}
 
-      <div className="form-grid">
-        {/*
-         * 공장과 사용 상태를 한 칸 안에 나란히 둔다 — 둘 다 「라벨 위 · 값 아래」(사용자 결정 2026-09-18 ·
-         * omf-all-around#17). 사용 상태는 값 표기(칩)이고, 상태를 바꾸는 단추는 바닥글에 있다.
-         */}
-        <div className="warehouse-location-plant-row">
-          {mode === 'edit' ? (
-            <ReadOnlyField
-              label={t.fields.plant}
-              value={
-                lookups.plants.find((option) => option.value === values.plantId)?.label ??
-                values.plantId
-              }
-            />
-          ) : (
-            <SelectField
-              label={t.fields.plant}
-              options={lookups.plants}
-              value={values.plantId}
-              onChange={(value) => onChange({ plantId: value })}
-            />
-          )}
-          <div className="field-cell">
-            <span className="field-label" id={activeLabelId}>
-              {t.fields.isActive}
-            </span>
-            <div className="warehouse-location-status">
-              <Chip aria-labelledby={activeLabelId} status={isActive ? 'success' : 'idle'}>
-                {isActive ? t.values.active : t.values.inactive}
-              </Chip>
-            </div>
-          </div>
-        </div>
-
-        <SelectField
-          label={t.fields.businessUnit}
-          options={lookups.businessUnits}
-          value={values.businessUnitId}
-          onChange={(value) => onChange({ businessUnitId: value })}
-        />
-
-        {/*
-         * 창고 코드 · 창고명은 등록 때만 적는다. 수정에서는 고칠 수 없는 값이라 흐린 입력칸이 아니라 글자로 보인다
-         * (사용자 지시 2026-10-29).
-         */}
+      {/*
+       * 배치(사용자 지시 2026-10-29 「배치를 효율적으로」): 위 줄은 고칠 수 없는 값(코드 · 이름 · 공장 · 상태),
+       * 가운데 줄은 고르는 칸 셋, 아래 줄은 켜고 끄는 둘. 등록에서는 위 줄이 입력칸이다.
+       */}
+      <div
+        className={
+          mode === 'edit'
+            ? 'warehouse-location-form-summary'
+            : 'form-grid warehouse-location-form-identity'
+        }
+      >
         {mode === 'edit' ? (
           <>
             <ReadOnlyField
@@ -235,6 +201,23 @@ export const WarehouseFormPane = ({
               value={values.warehouseName}
               error={fieldErrors.warehouseName}
             />
+            <ReadOnlyField
+              label={t.fields.plant}
+              value={
+                lookups.plants.find((option) => option.value === values.plantId)?.label ??
+                values.plantId
+              }
+            />
+            <div className="field-cell">
+              <span className="field-label" id={activeLabelId}>
+                {t.fields.isActive}
+              </span>
+              <div className="warehouse-location-status">
+                <Chip aria-labelledby={activeLabelId} status={isActive ? 'success' : 'idle'}>
+                  {isActive ? t.values.active : t.values.inactive}
+                </Chip>
+              </div>
+            </div>
           </>
         ) : (
           <>
@@ -252,48 +235,56 @@ export const WarehouseFormPane = ({
               onChange={(event) => onChange({ warehouseName: event.target.value })}
               error={fieldErrors.warehouseName}
             />
+            <SelectField
+              label={t.fields.plant}
+              options={lookups.plants}
+              value={values.plantId}
+              onChange={(value) => onChange({ plantId: value })}
+            />
           </>
         )}
+      </div>
 
+      <div className="form-grid warehouse-location-form-attrs">
+        <SelectField
+          label={t.fields.businessUnit}
+          options={lookups.businessUnits}
+          value={values.businessUnitId}
+          onChange={(value) => onChange({ businessUnitId: value })}
+        />
         <SelectField
           label={t.fields.warehouseType}
           options={lookups.warehouseTypes}
           value={values.warehouseTypeCode}
           onChange={(value) => onChange({ warehouseTypeCode: value })}
           error={fieldErrors.warehouseTypeCode}
-          /*
-           * 외부 창고·불량 창고 토글은 유형·수준 선택칸 오른쪽 같은 줄에 둔다(사용자 결정 2026-09-18 ·
-           * omf-all-around#17). 토글만 따로 쓰던 줄을 없앤다. 켬/끔 글자는 붙이지 않는다.
-           */
-          trailing={
-            <div className="warehouse-location-inline-field">
-              <span id={externalLabelId}>{t.fields.isExternal}</span>
-              <Switch
-                aria-labelledby={externalLabelId}
-                checked={values.isExternal}
-                onChange={(event) => onChange({ isExternal: event.target.checked })}
-              />
-            </div>
-          }
         />
-
         <SelectField
           label={t.fields.managementLevel}
           options={lookups.managementLevels}
           value={values.managementLevelCode}
           onChange={(value) => onChange({ managementLevelCode: value })}
           error={fieldErrors.managementLevelCode}
-          trailing={
-            <div className="warehouse-location-inline-field">
-              <span id={defectLabelId}>{t.fields.isDefect}</span>
-              <Switch
-                aria-labelledby={defectLabelId}
-                checked={values.isDefect}
-                onChange={(event) => onChange({ isDefect: event.target.checked })}
-              />
-            </div>
-          }
         />
+      </div>
+
+      <div className="warehouse-location-form-flags">
+        <div className="warehouse-location-inline-field">
+          <span id={externalLabelId}>{t.fields.isExternal}</span>
+          <Switch
+            aria-labelledby={externalLabelId}
+            checked={values.isExternal}
+            onChange={(event) => onChange({ isExternal: event.target.checked })}
+          />
+        </div>
+        <div className="warehouse-location-inline-field">
+          <span id={defectLabelId}>{t.fields.isDefect}</span>
+          <Switch
+            aria-labelledby={defectLabelId}
+            checked={values.isDefect}
+            onChange={(event) => onChange({ isDefect: event.target.checked })}
+          />
+        </div>
       </div>
 
       <div className="form-actions warehouse-location-form-actions">
