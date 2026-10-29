@@ -1,6 +1,7 @@
 import { Button, Checkbox, Chip, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { ItemPickerDialog } from '../../patterns/item-picker';
 import { Select } from '../../patterns/select';
@@ -162,31 +163,40 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
         </div>
       )}
 
-      {isItemPickerOpen && (
-        <ItemPickerDialog
-          multiple={false}
-          compact
-          includeInactive
-          showAvailability={false}
-          confirmLabel={t.filters.itemPick}
-          onClose={() => setIsItemPickerOpen(false)}
-          onConfirm={([item]) => {
-            if (item !== undefined) setDraft((prev) => ({ ...prev, itemId: String(item.itemId) }));
-            setIsItemPickerOpen(false);
-          }}
-        />
-      )}
+      {/*
+       * 두 검색 창은 조회 카드 밖(body)에 연다 — 카드 안에 두면 카드가 열린 창도 칸 하나로 쳐
+       * 칸 사이 간격만큼 카드 높이가 늘어난다(사용자 지적 · #208).
+       */}
+      {isItemPickerOpen &&
+        createPortal(
+          <ItemPickerDialog
+            multiple={false}
+            compact
+            includeInactive
+            showAvailability={false}
+            confirmLabel={t.filters.itemPick}
+            onClose={() => setIsItemPickerOpen(false)}
+            onConfirm={([item]) => {
+              if (item !== undefined)
+                setDraft((prev) => ({ ...prev, itemId: String(item.itemId) }));
+              setIsItemPickerOpen(false);
+            }}
+          />,
+          document.body,
+        )}
 
-      {isPickerOpen && (
-        <PlanPickerDialog
-          includeInactive={appliedFilters.includeInactive}
-          onClose={() => setIsPickerOpen(false)}
-          onConfirm={(plan) => {
-            setDraft((prev) => ({ ...prev, q: plan.inspectionPlanCode }));
-            setIsPickerOpen(false);
-          }}
-        />
-      )}
+      {isPickerOpen &&
+        createPortal(
+          <PlanPickerDialog
+            includeInactive={appliedFilters.includeInactive}
+            onClose={() => setIsPickerOpen(false)}
+            onConfirm={(plan) => {
+              setDraft((prev) => ({ ...prev, q: plan.inspectionPlanCode }));
+              setIsPickerOpen(false);
+            }}
+          />,
+          document.body,
+        )}
     </>
   );
 };
