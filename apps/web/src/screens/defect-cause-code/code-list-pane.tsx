@@ -225,7 +225,8 @@ export const CodeListPane = ({
   return (
     <>
       {/*
-       * 조회 카드 — 검사 기준 탭처럼 한 줄: 검색 · 미사용 포함 → 조회 · 초기화 → 구분선 → 대분류 추가 · 상세 추가(#208).
+       * 조회 카드 — 검사 기준 탭처럼 한 줄: 검색 · 미사용 포함 → 조회 · 초기화 · 대분류 추가 · 상세 추가(#208).
+       * 단추 사이 구분선은 두지 않는다(검사표 기준 탭과 같다 · 사용자 지시).
        * 결과가 없어도 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다.
        */}
       <section ref={searchRef} className="pane defect-cause-search" role="search">
@@ -260,7 +261,6 @@ export const CodeListPane = ({
             <Button variant="outlined" onClick={() => onApplyFilters(DEFAULT_CODE_FILTERS)}>
               {messages.common.reset}
             </Button>
-            <span className="inspection-standard-filter-divider" aria-hidden />
             <Button
               variant="filled"
               leadingIcon={<Icon name="add" size={18} />}
@@ -324,7 +324,7 @@ export const CodeListPane = ({
           className="pane defect-cause-list-pane quality-standard-list-pane"
           aria-label={t.panes.list(adapter.labels.tab)}
         >
-          <h2 className="pane-title">{t.panes.list(adapter.labels.tab)}</h2>
+          {/* 목록 이름은 바로 위 탭 이름과 겹쳐 화면에 다시 쓰지 않는다 — 칸 이름(aria-label)으로만 남긴다(사용자 지시 · #208). */}
           {listSlot()}
         </section>,
       )}

@@ -25264,8 +25264,9 @@ table.col-measuring td {
  * 불량·원인코드(W-06-03 · omf-all-around#208) — 검사 기준 탭과 같은 조회 카드 한 줄 · 둥근 테두리 표 ·
  * 상세 머리(제목 · 사용 상태 칩 · 사용 중지). 조회 카드 아래 목록 | 상세는 검사 기준 탭과 같은 분할이다.
  */
+/* 조회 카드와 목록 사이 간격은 이 한 번뿐 — 다른 탭(화면 최상위 블록 이음매 20px)과 같게(사용자 지시 · #208). */
 .defect-cause-search {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
 .defect-cause-search > .filter-bar {
@@ -25301,16 +25302,12 @@ table.col-measuring td {
   white-space: nowrap;
 }
 
-/* 목록 칸 — 제목 · 표 사이를 같은 간격으로(#208). */
+/* 목록 칸 — 표 · 안내 사이를 같은 간격으로(#208). */
 .defect-cause-list-pane {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   min-width: 0;
-}
-
-.defect-cause-list-pane > .pane-title {
-  margin: 0;
 }
 
 /*
