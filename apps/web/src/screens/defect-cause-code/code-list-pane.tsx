@@ -15,6 +15,7 @@ import { type ReactNode, type Ref, useEffect, useId, useState } from 'react';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
 import type { CodeAdapter } from './adapters';
 import { DEFAULT_CODE_FILTERS } from './code-options';
 import { ORPHAN_GROUP_KEY, groupKeyOf } from './hierarchy';
@@ -52,6 +53,10 @@ export interface CodeListPaneProps {
    * 주지 않으면 목록 칸만 그린다.
    */
   renderLayout?: (listPane: ReactNode) => ReactNode;
+  /** 쪽 이동 — 받은 줄을 화면이 쪽으로 나눈 위치(사용자 지시 · #208). */
+  pageMeta: PageNavMeta;
+  onChangePage: (page: number) => void;
+  onChangePageSize: (size: PageSize) => void;
 }
 
 const hasAnyFilter = (filters: CodeFilters): boolean => filters.q !== '' || filters.includeInactive;
@@ -82,6 +87,9 @@ export const CodeListPane = ({
   loadError,
   searchRef,
   renderLayout = (listPane) => listPane,
+  pageMeta,
+  onChangePage,
+  onChangePageSize,
 }: CodeListPaneProps) => {
   const addChildNoteId = useId();
 
@@ -326,6 +334,15 @@ export const CodeListPane = ({
         >
           {/* 목록 이름은 바로 위 탭 이름과 겹쳐 화면에 다시 쓰지 않는다 — 칸 이름(aria-label)으로만 남긴다(사용자 지시 · #208). */}
           {listSlot()}
+          {/* 쪽 이동은 품질 기준 정보 다섯 목록이 같은 모양 · 같은 단추 크기(사용자 지시 · #208). */}
+          {(loadError === null || loadError === undefined) && !isLoading && (
+            <PageNav
+              meta={pageMeta}
+              buttonSize="md"
+              onChangePage={onChangePage}
+              onChangeSize={onChangePageSize}
+            />
+          )}
         </section>,
       )}
     </>

@@ -10,7 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { PageNav as SharedPageNav, type PageNavMeta } from '../../patterns/page-nav';
+import { PageNav as SharedPageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
 import { hasDuplicateDisplayOrder, sortForDisplay } from './code-value-order';
 import type { CodeValue } from './code-value-types';
 import { PageNav } from './page-nav';
@@ -48,6 +48,8 @@ export interface CodeValueListPaneProps {
    * 주지 않으면(공통코드 화면) 종전 이전·다음 줄 그대로다 — 판정유형 코드 탭만 쓴다(#208).
    */
   pageMeta?: PageNavMeta;
+  /** 공용 쪽 이동의 건수 선택. 주지 않으면 건수 선택을 그리지 않는다 — 판정유형 코드 탭만 쓴다(#208). */
+  onChangePageSize?: (size: PageSize) => void;
   /** 빈 상태 아이콘. 주지 않으면 종전 그대로 아이콘 없이 — 판정유형 코드 탭만 쓴다(#208). */
   emptyIcon?: ReactNode;
 }
@@ -94,6 +96,7 @@ export const CodeValueListPane = ({
   statusColumn,
   filterNote,
   pageMeta,
+  onChangePageSize,
   emptyIcon,
 }: CodeValueListPaneProps) => {
   const rows = sortForDisplay(codeValues);
@@ -221,7 +224,13 @@ export const CodeValueListPane = ({
         {pageMeta === undefined ? (
           <PageNav view={pageView} onChange={onChangePage} label={t.pageNavLabel} />
         ) : (
-          <SharedPageNav meta={pageMeta} buttonSize="sm" onChangePage={onChangePage} />
+          /* 쪽 이동은 품질 기준 정보 다섯 목록이 같은 모양 · 같은 단추 크기(사용자 지시 · #208). */
+          <SharedPageNav
+            meta={pageMeta}
+            buttonSize="md"
+            onChangePage={onChangePage}
+            onChangeSize={onChangePageSize}
+          />
         )}
       </>
     );

@@ -17523,11 +17523,6 @@ button.app-button-neutral {
   margin-top: 0;
 }
 
-/* 쪽 이동 단추 사이를 좁혀 한 줄에 간결하게 — 검사표 기준 탭과 같다(사용자 지시 · #208). */
-.inspection-level-list-pane .page-nav-right {
-  gap: var(--space-1);
-}
-
 /* 이력 제목 옆 「품목 … 이력만 보는 중 [전체 보기]」 — 같은 줄(#208). */
 .inspection-level-section-head {
   display: flex;
@@ -21922,11 +21917,6 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   margin-top: 0;
 }
 
-/* 쪽 이동 단추 사이를 좁혀 한 줄에 간결하게(사용자 지시 · #208). */
-.inspection-sheet-template-list-pane .page-nav-right {
-  gap: var(--space-1);
-}
-
 /* 확정 일시 — 숫자 폭을 고르게 해 줄마다 자리가 맞게(#208). */
 .inspection-sheet-template-date {
   font-variant-numeric: tabular-nums;
@@ -25540,13 +25530,9 @@ table.col-measuring td {
   margin: 0;
 }
 
-/* 공용 쪽 이동 — 표 바로 아래, 단추 사이는 좁게(검사표 기준 탭과 같다 · 사용자 지시 · #208). */
+/* 공용 쪽 이동 — 표 바로 아래(검사표 기준 탭과 같다 · 사용자 지시 · #208). 단추 사이는 검사 기준 목록과 같은 기본 간격. */
 .judgment-code-screen .po-board-split > section.pane:first-child > .page-nav {
   margin-top: 0;
-}
-
-.judgment-code-screen .page-nav-right {
-  gap: var(--space-1);
 }
 
 /* 코드값 정보 제목 줄 — 제목 옆 사용/미사용 칩(검사 기준 탭과 같다 · #208). */

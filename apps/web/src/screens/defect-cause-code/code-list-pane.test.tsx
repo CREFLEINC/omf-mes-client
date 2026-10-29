@@ -27,6 +27,9 @@ const renderPane = (overrides: Partial<CodeListPaneProps> = {}) => {
     onAddChild: vi.fn(),
     canAddChild: false,
     loadError: null,
+    pageMeta: { page: 1, size: 50, total: orderedRows.length },
+    onChangePage: vi.fn(),
+    onChangePageSize: vi.fn(),
     ...overrides,
   };
 

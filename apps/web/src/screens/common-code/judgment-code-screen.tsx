@@ -19,6 +19,7 @@ import {
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 
+import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
 import { useCodeGroupList } from './code-group-queries';
 import { CodeValueSection } from './code-value-section';
 import { readPage, readSelectedId } from './filters';
@@ -58,6 +59,7 @@ const ON = '1';
 const URL_KEYS = {
   selected: 'sel',
   page: 'page',
+  size: 'size',
   includeInactive: 'inactive',
   creating: 'new',
 } as const;
@@ -89,6 +91,13 @@ const EMPTY_ICON = (
 
 /** 그룹 조회는 첫 쪽만 본다. 그룹코드로 좁힌 조회라 다음 쪽까지 갈 결과가 나오지 않는다. */
 const GROUP_LOOKUP_PAGE = 1;
+
+/** 처음 쪽 크기 — 종전에 싣지 않던 서버 기본(50)과 같아 처음 열 때 결과가 그대로다(사용자 지시 · #208). */
+const DEFAULT_PAGE_SIZE: PageSize = 50;
+
+/** 주소의 쪽 크기. 고를 수 있는 값(20 · 50 · 100)이 아니면 기본으로 본다 — 주소는 사람이 고치는 자리다. */
+const readPageSize = (params: URLSearchParams): PageSize =>
+  PAGE_SIZES.find((size) => String(size) === params.get(URL_KEYS.size)) ?? DEFAULT_PAGE_SIZE;
 
 /**
  * 안내 배너 · 목록 | 코드값 정보 분할 — 검사 기준 탭과 같은 좌우 · 상하 배치, 폭/높이 손잡이, 창 높이 맞춤(사용자 지시 · #208).
@@ -174,6 +183,7 @@ export const JudgmentCodeScreen = () => {
 
   const selectedCodeValueId = readSelectedId(searchParams, URL_KEYS.selected);
   const page = readPage(searchParams, URL_KEYS.page);
+  const pageSize = readPageSize(searchParams);
   const includeInactive = searchParams.get(URL_KEYS.includeInactive) === ON;
 
   /**
@@ -195,6 +205,7 @@ export const JudgmentCodeScreen = () => {
    * | 3 | 등록 폼을 닫는다 | 유지 | 유지 | 유지 | **지움** |
    * | 4 | 「미사용 포함」을 바꾼다 | **지움** | **지움** | 설정/지움 | **지움** |
    * | 5 | 쪽을 옮긴다 | **지움** | 설정/지움 | 유지 | **지움** |
+   * | 6 | 건수(`size`)를 바꾼다 | **지움** | **지움** | 유지 | **지움** |
    *
    * 1이 `new`를 지우는 것은 등록 성공 경로 때문이다 — 한 벌은 등록에 성공하면 **고르기 콜백만
    * 한 번** 부른다. 그 한 번으로 「등록을 끝내고 새 값을 고른 상태」가 되어야 뒤로가기가
@@ -203,7 +214,9 @@ export const JudgmentCodeScreen = () => {
    * 4·5가 선택을 비우는 것은 보이는 행이 통째로 달라지기 때문이다 — 목록에 없는 코드값의 폼이
    * 아래 칸에 남으면 그것이 어디서 왔는지 알 수 없다.
    *
-   * **비우는 자리는 이 다섯뿐이다.** 여섯째가 생기면 이 표에 행을 먼저 더한다.
+   * 6은 5와 같은 이유로 선택을 비우고, 1쪽으로 돌아간다. `size` 는 다른 조작이 건드리지 않는다(#208).
+   *
+   * **비우는 자리는 이 여섯뿐이다.** 일곱째가 생기면 이 표에 행을 먼저 더한다.
    * 그룹을 찾지 못한 경우에도 **주소를 정리하지 않는다** — 그 키들은 아무것도 가리키지 않아
    * 해가 없고, 지우면 그룹이 생겼을 때 공유받은 딥링크가 이미 사라진 뒤다.
    */
@@ -261,6 +274,20 @@ export const JudgmentCodeScreen = () => {
         next.delete(URL_KEYS.page);
       }
 
+      next.delete(URL_KEYS.selected);
+      next.delete(URL_KEYS.creating);
+    });
+  };
+
+  const changePageSize = (nextSize: PageSize) => {
+    patchSearchParams((next) => {
+      if (nextSize === DEFAULT_PAGE_SIZE) {
+        next.delete(URL_KEYS.size);
+      } else {
+        next.set(URL_KEYS.size, String(nextSize));
+      }
+
+      next.delete(URL_KEYS.page);
       next.delete(URL_KEYS.selected);
       next.delete(URL_KEYS.creating);
     });
@@ -358,6 +385,8 @@ export const JudgmentCodeScreen = () => {
         statusColumn={STATUS_COLUMN}
         primaryAdd
         sharedPageNav
+        pageSize={pageSize}
+        onPageSizeChange={changePageSize}
         emptyIcon={EMPTY_ICON}
         /*
          * 안내 글 — 「미사용 포함 · 코드값 추가」 줄 아래 작은 보조 글(검사표 기준 탭과 같은 모양 · 박스 · 바탕 없이 · 사용자 지시 · #208).

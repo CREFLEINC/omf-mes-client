@@ -39,6 +39,7 @@ import { useLevelWrite } from './level-write';
 import { usePageHub } from '../../patterns/page-hub';
 import {
   inspectionLevelKeys,
+  PAGE_SIZE,
   type LevelListFilter,
   useInspectionLevelHistories,
   useInspectionLevels,
@@ -97,13 +98,23 @@ export const InspectionLevelScreen = () => {
 
   const [keyword, setKeyword] = useState('');
   const [levelFilter, setLevelFilter] = useState<InspectionLevelCode | ''>('');
-  const [filter, setFilter] = useState<LevelListFilter>({ q: '', level: '', page: 1 });
+  const [filter, setFilter] = useState<LevelListFilter>({
+    q: '',
+    level: '',
+    page: 1,
+    size: PAGE_SIZE,
+  });
   const [historyItem, setHistoryItem] = useState<ItemInspectionLevel | null>(null);
   const [historyPage, setHistoryPage] = useState(1);
+  const [historySize, setHistorySize] = useState<number>(PAGE_SIZE);
   const [editing, setEditing] = useState<{ row: ItemInspectionLevel | null } | null>(null);
 
   const list = useInspectionLevels(filter);
-  const histories = useInspectionLevelHistories(historyItem?.itemId ?? null, historyPage);
+  const histories = useInspectionLevelHistories(
+    historyItem?.itemId ?? null,
+    historyPage,
+    historySize,
+  );
   const rows = list.data?.items ?? [];
   const historyRows = histories.data?.items ?? [];
 
@@ -288,7 +299,7 @@ export const InspectionLevelScreen = () => {
           className="filter-bar"
           onSubmit={(event) => {
             event.preventDefault();
-            setFilter({ q: keyword.trim(), level: levelFilter, page: 1 });
+            setFilter((prev) => ({ ...prev, q: keyword.trim(), level: levelFilter, page: 1 }));
           }}
         >
           <div className="field-cell inspection-level-keyword">
@@ -386,11 +397,12 @@ export const InspectionLevelScreen = () => {
             />
           </div>
           {list.data !== undefined && (
-            /* 좁은 목록 칸이라 쪽 이동 단추는 작게 — 검사표 기준 탭과 같다(사용자 지시 · #208). */
+            /* 쪽 이동은 다섯 목록이 같은 모양 · 같은 단추 크기 — 검사 기준 목록 기준(사용자 지시 · #208). */
             <PageNav
               meta={list.data.page}
-              buttonSize="sm"
+              buttonSize="md"
               onChangePage={(page) => setFilter((prev) => ({ ...prev, page }))}
+              onChangeSize={(size) => setFilter((prev) => ({ ...prev, size, page: 1 }))}
             />
           )}
         </section>
@@ -457,7 +469,15 @@ export const InspectionLevelScreen = () => {
             />
           </div>
           {histories.data !== undefined && (
-            <PageNav meta={histories.data.page} buttonSize="sm" onChangePage={setHistoryPage} />
+            <PageNav
+              meta={histories.data.page}
+              buttonSize="md"
+              onChangePage={setHistoryPage}
+              onChangeSize={(size) => {
+                setHistorySize(size);
+                setHistoryPage(1);
+              }}
+            />
           )}
         </section>
       </div>

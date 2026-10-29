@@ -23,6 +23,7 @@ export interface CodeValueListQuery {
   codeGroupId: number;
   includeInactive?: boolean;
   page?: number;
+  size?: number;
 }
 
 /**
@@ -37,10 +38,13 @@ export const toCodeValueListQuery = (
   codeGroupId: number,
   includeInactive: boolean,
   page: number,
+  /** 쪽 크기. 주지 않으면 싣지 않는다(서버 기본) — 판정유형 코드 탭만 건수 선택으로 준다(#208). */
+  size?: number,
 ): CodeValueListQuery => ({
   codeGroupId,
   ...(includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
+  ...(size === undefined ? {} : { size }),
 });
 
 /**
@@ -51,8 +55,11 @@ export const toCodeValueListQuery = (
  */
 export const codeValueKeys = {
   all: ['common-code-values'] as const,
-  list: (codeGroupId: number, includeInactive: boolean, page: number) =>
-    ['common-code-values', 'list', codeGroupId, includeInactive, page] as const,
+  /** 쪽 크기를 줄 때만 키 끝에 붙인다 — 주지 않는 공통코드 화면의 키는 종전 그대로다(#208). */
+  list: (codeGroupId: number, includeInactive: boolean, page: number, size?: number) =>
+    size === undefined
+      ? (['common-code-values', 'list', codeGroupId, includeInactive, page] as const)
+      : (['common-code-values', 'list', codeGroupId, includeInactive, page, size] as const),
   detail: (codeValueId: number) => ['common-code-values', 'detail', codeValueId] as const,
 };
 
@@ -64,11 +71,12 @@ export const useCodeValueList = (
   codeGroupId: number | null,
   includeInactive: boolean,
   page: number,
+  size?: number,
 ): UseQueryResult<CodeValueListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: codeValueKeys.list(codeGroupId ?? 0, includeInactive, page),
+    queryKey: codeValueKeys.list(codeGroupId ?? 0, includeInactive, page, size),
     enabled: codeGroupId !== null,
     queryFn: () => {
       if (codeGroupId === null) {
@@ -77,7 +85,7 @@ export const useCodeValueList = (
 
       return runRequest(() =>
         client.GET('/mdm/code-values', {
-          params: { query: toCodeValueListQuery(codeGroupId, includeInactive, page) },
+          params: { query: toCodeValueListQuery(codeGroupId, includeInactive, page, size) },
         }),
       );
     },

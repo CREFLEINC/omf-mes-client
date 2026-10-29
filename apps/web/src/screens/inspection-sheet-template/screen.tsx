@@ -28,6 +28,7 @@ import {
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 import {
+  PAGE_SIZE,
   type TemplateStatusFilter,
   useBusinessUnitNames,
   useTemplate,
@@ -69,9 +70,14 @@ const InspectionSheetTemplateScreenBody = () => {
   const statusId = useId();
   const { session } = useSession();
   const [statusInput, setStatusInput] = useState<TemplateStatusFilter>('');
-  const [filter, setFilter] = useState<{ status: TemplateStatusFilter; page: number }>({
+  const [filter, setFilter] = useState<{
+    status: TemplateStatusFilter;
+    page: number;
+    size: number;
+  }>({
     status: '',
     page: 1,
+    size: PAGE_SIZE,
   });
   const [opened, setOpened] = useState<Opened>(null);
   const [stepCode, setStepCode] = useState<StepDraft['stepCode'] | null>(null);
@@ -81,7 +87,7 @@ const InspectionSheetTemplateScreenBody = () => {
     setStepCode(null);
   };
 
-  const list = useTemplates(filter.status, filter.page);
+  const list = useTemplates(filter.status, filter.page, filter.size);
   const detail = useTemplate(opened?.kind === 'existing' ? opened.id : null);
   const businessUnits = useBusinessUnitNames();
   const rows = list.data?.items ?? [];
@@ -181,7 +187,7 @@ const InspectionSheetTemplateScreenBody = () => {
           className="filter-bar"
           onSubmit={(event) => {
             event.preventDefault();
-            setFilter({ status: statusInput, page: 1 });
+            setFilter((prev) => ({ ...prev, status: statusInput, page: 1 }));
           }}
         >
           <div className="field-cell inspection-sheet-template-status-filter">
@@ -263,11 +269,12 @@ const InspectionSheetTemplateScreenBody = () => {
             />
           </div>
           {list.data !== undefined && (
-            /* 좁은 목록 칸이라 쪽 이동 단추는 작게(사용자 지시 · #208). */
+            /* 쪽 이동은 다섯 목록이 같은 모양 · 같은 단추 크기 — 검사 기준 목록 기준(사용자 지시 · #208). */
             <PageNav
               meta={list.data.page}
-              buttonSize="sm"
+              buttonSize="md"
               onChangePage={(page) => setFilter((prev) => ({ ...prev, page }))}
+              onChangeSize={(size) => setFilter((prev) => ({ ...prev, size, page: 1 }))}
             />
           )}
         </section>

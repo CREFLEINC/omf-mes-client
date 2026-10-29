@@ -17,6 +17,7 @@ import { useSearchParams } from 'react-router';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
 import { toApiError } from '../../patterns/request';
 import {
   PaneHeightSplitter,
@@ -52,6 +53,9 @@ import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.defectCauseCode;
+
+/** 목록 한 쪽의 처음 건수 — 서버 기본 크기(50)와 같아 처음 열면 받은 줄이 한 쪽에 다 선다(#208). */
+const DEFAULT_LIST_SIZE: PageSize = 50;
 const hubText = messages.common.inspectionHub;
 
 /**
@@ -152,6 +156,24 @@ const CodeMasterWorkspace = () => {
   const items = useMemo(() => list.data?.items ?? [], [list.data]);
   const byId = useMemo(() => indexById(items), [items]);
   const rows = useMemo(() => orderForGrouping(items, byId), [items, byId]);
+
+  /*
+   * 쪽 이동 — 받은 줄(대분류별로 묶어 정렬한 뒤)을 화면이 쪽으로 나눈다(사용자 지시 · #208).
+   * 서버 쪽 이동은 쓰지 않는다: 서버는 코드값 순으로 자르므로 대분류와 그 상세가 다른 쪽으로 갈리면
+   * 상세가 「상위 없음」 묶음으로 잘못 보인다. 묶음 머리는 쪽마다 다시 선다(상위 색인은 받은 전체로 판정).
+   * 조회 요청은 종전 그대로(크기 없이 서버 기본)라 받는 줄 · 잘림 안내가 바뀌지 않는다. 기본 50건이라 처음 열면 종전과 같다.
+   */
+  const listSize: PageSize =
+    PAGE_SIZES.find((size) => String(size) === searchParams.get('size')) ?? DEFAULT_LIST_SIZE;
+  const listPageCount = Math.max(1, Math.ceil(rows.length / listSize));
+  const listPageNo = Math.min(
+    Math.max(1, Math.trunc(Number(searchParams.get('page'))) || 1),
+    listPageCount,
+  );
+  const pageRows = useMemo(
+    () => rows.slice((listPageNo - 1) * listSize, listPageNo * listSize),
+    [rows, listPageNo, listSize],
+  );
 
   const selected = selectedId === null ? null : (byId.get(selectedId) ?? null);
   const canAddChild = selected !== null && isCategory(selected);
@@ -263,6 +285,7 @@ const CodeMasterWorkspace = () => {
     updateParams({
       q: next.q === '' ? null : next.q,
       inactive: next.includeInactive ? '1' : null,
+      page: null,
     });
   };
 
@@ -454,8 +477,13 @@ const CodeMasterWorkspace = () => {
   const codeListPane = (
     <CodeListPane
       adapter={adapter}
-      rows={rows}
+      rows={pageRows}
       byId={byId}
+      pageMeta={{ page: listPageNo, size: listSize, total: rows.length }}
+      onChangePage={(page) => updateParams({ page: page > 1 ? String(page) : null })}
+      onChangePageSize={(size) =>
+        updateParams({ size: size === DEFAULT_LIST_SIZE ? null : String(size), page: null })
+      }
       isLoading={list.isPending}
       appliedFilters={filters}
       onApplyFilters={handleApplyFilters}

@@ -4,7 +4,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 
-/** 한 쪽 크기. 모델별 기준이라 한 화면에 넉넉히 본다. */
+/** 처음 쪽 크기. 모델별 기준이라 한 화면에 넉넉히 본다 — 건수 선택으로 바꿀 수 있다(사용자 지시 · #208). */
 export const PAGE_SIZE = 50;
 
 export type TemplateStatusFilter = InspectionSheetTemplate['statusCode'] | '';
@@ -12,8 +12,8 @@ export type TemplateStatusFilter = InspectionSheetTemplate['statusCode'] | '';
 export const templateKeys = {
   /** 무효화용 앞부분 — 저장·확정하면 목록과 상세가 함께 낡는다. */
   all: ['inspection-sheet-template'] as const,
-  list: (status: TemplateStatusFilter, page: number) =>
-    ['inspection-sheet-template', 'list', status, page] as const,
+  list: (status: TemplateStatusFilter, page: number, size: number) =>
+    ['inspection-sheet-template', 'list', status, page, size] as const,
   detail: (id: number) => ['inspection-sheet-template', 'detail', id] as const,
   businessUnits: ['inspection-sheet-template', 'business-units'] as const,
 };
@@ -22,17 +22,21 @@ export const templateKeys = {
 export const templateDetailPath = (id: number): string =>
   `/quality/inspection-sheet-templates/${id}`;
 
-export const useTemplates = (status: TemplateStatusFilter, page: number) => {
+export const useTemplates = (
+  status: TemplateStatusFilter,
+  page: number,
+  size: number = PAGE_SIZE,
+) => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: templateKeys.list(status, page),
+    queryKey: templateKeys.list(status, page, size),
     placeholderData: keepPreviousData,
     queryFn: () =>
       runRequest(() =>
         client.GET('/quality/inspection-sheet-templates', {
           params: {
-            query: { ...(status === '' ? {} : { statusCode: status }), page, size: PAGE_SIZE },
+            query: { ...(status === '' ? {} : { statusCode: status }), page, size },
           },
         }),
       ),

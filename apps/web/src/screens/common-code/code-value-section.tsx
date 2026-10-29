@@ -5,6 +5,7 @@ import { type ReactNode, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
+import type { PageSize } from '../../patterns/page-nav';
 import { CodeValueFormPane } from './code-value-form-pane';
 import { CodeValueListPane, type CodeValueStatusColumn } from './code-value-list-pane';
 import {
@@ -83,6 +84,12 @@ export interface CodeValueSectionProps {
   filterNote?: ReactNode;
   /** 참이면 쪽 이동을 공용 모양(총 건수 · 처음/이전/다음/마지막)으로. 기본은 종전 이전·다음 줄(#208). */
   sharedPageNav?: boolean;
+  /**
+   * 쪽 크기와 그 바꿈. 주면 조회에 `size` 를 싣고 공용 쪽 이동에 건수 선택을 세운다.
+   * 주지 않으면 종전 그대로(서버 기본 크기 · 건수 선택 없음) — 판정유형 코드 탭만 쓴다(사용자 지시 · #208).
+   */
+  pageSize?: number;
+  onPageSizeChange?: (size: PageSize) => void;
   /** 목록 · 코드값 정보 빈 상태 아이콘. 주지 않으면 종전 그대로 아이콘 없이(#208). */
   emptyIcon?: ReactNode;
 }
@@ -118,12 +125,14 @@ export const CodeValueSection = ({
   renderLayout,
   filterNote,
   sharedPageNav = false,
+  pageSize,
+  onPageSizeChange,
   emptyIcon,
 }: CodeValueSectionProps) => {
   const toast = useToast();
   const { client } = useApiClient();
 
-  const list = useCodeValueList(codeGroupId, includeInactive, page);
+  const list = useCodeValueList(codeGroupId, includeInactive, page, pageSize);
   const codeValues = list.data?.items ?? [];
 
   /* 서버가 준 쪽 정보를 정본으로 쓴다. 아직 받지 못했으면 건수를 지어내지 않고 0으로 둔다. */
@@ -282,6 +291,14 @@ export const CodeValueSection = ({
     resetEditing();
     onPageChange(next);
   };
+
+  const handlePageSizeChange =
+    onPageSizeChange === undefined
+      ? undefined
+      : (next: PageSize) => {
+          resetEditing();
+          onPageSizeChange(next);
+        };
 
   const handleAdd = () => {
     resetEditing();
@@ -480,6 +497,7 @@ export const CodeValueSection = ({
       statusColumn={statusColumn}
       filterNote={filterNote}
       pageMeta={sharedPageNav ? (list.data?.page ?? { page, size: 0, total: 0 }) : undefined}
+      onChangePageSize={handlePageSizeChange}
       emptyIcon={emptyIcon}
       loadError={
         list.isError ? (

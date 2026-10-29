@@ -254,6 +254,39 @@ describe('DefectCauseCodeScreen — 목록 조회', () => {
   });
 });
 
+describe('DefectCauseCodeScreen — 쪽 이동', () => {
+  /** 대분류 하나 + 상세 24건 — 20건씩 나누면 묶음이 두 쪽에 걸친다. */
+  const manyCodes = [
+    { ...defectCodeFixtures[0]!, defectCodeId: 5000, defectCode: 'PG-00', defectName: '쪽묶음' },
+    ...Array.from({ length: 24 }, (_, index) => ({
+      ...defectCodeFixtures[1]!,
+      defectCodeId: 5001 + index,
+      defectCode: `PG-${String(index + 1).padStart(2, '0')}`,
+      defectName: `상세${String(index + 1)}`,
+      parentDefectCodeId: 5000,
+    })),
+  ];
+
+  it('받은 줄을 화면이 쪽으로 나누고 묶음 머리는 쪽마다 다시 선다 — 조회에 size 를 싣지 않는다', async () => {
+    const { requests, user } = renderScreen([defectListRoute(manyCodes)], '?size=20');
+
+    expect(await screen.findByText('총 25건')).toBeInTheDocument();
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'PG-19' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'PG-20' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(await screen.findByRole('button', { name: 'PG-24' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'PG-19' })).not.toBeInTheDocument();
+    expect(screen.getByText('PG-00 · 쪽묶음')).toBeInTheDocument();
+    expect(currentLocation()).toContain('page=2');
+    for (const request of requestsTo(requests, DEFECT_LIST_PATH)) {
+      expect(request.url.searchParams.has('size')).toBe(false);
+    }
+  });
+});
+
 describe('DefectCauseCodeScreen — 2계층 표시', () => {
   it('대분류마다 그룹 머리글이 나오고 그 아래 첫 행이 대분류 자신이다', async () => {
     renderScreen([defectListRoute()]);
@@ -1289,7 +1322,9 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(
-      within(dialog).getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
+      within(dialog).getByText(
+        '잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.',
+      ),
     ).toBeInTheDocument();
   });
 
