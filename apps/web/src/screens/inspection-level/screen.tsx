@@ -25,8 +25,15 @@ import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner } from '../../patterns/master';
 import { PageNav } from '../../patterns/page-nav';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
+import {
+  PaneHeightSplitter,
+  QUALITY_STANDARD_ORIENTATION_KEY,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { LEVEL_CODES, LevelDialog } from './level-dialog';
 import { useLevelWrite } from './level-write';
 import { usePageHub } from '../../patterns/page-hub';
@@ -38,6 +45,7 @@ import {
 } from './queries';
 
 const t = messages.inspectionLevel;
+const hubText = messages.common.inspectionHub;
 
 const levelName = (code: string | null): string => (code === null ? '' : (t.levels[code] ?? code));
 
@@ -79,6 +87,10 @@ export const historyReason = (row: ItemInspectionLevelHistory): string => {
  */
 export const InspectionLevelScreen = () => {
   const hub = usePageHub();
+  /* 좌우 · 상하 배치 · 폭/높이 손잡이 · 창 높이 맞춤 — 검사 기준 탭과 같다(사용자 지시 · #208). 배치는 탭 묶음이 함께 쓴다. */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:inspection-level:split', 0.4);
+  const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const toast = useToast();
   const keywordId = useId();
   const levelFilterId = useId();
@@ -244,6 +256,7 @@ export const InspectionLevelScreen = () => {
 
   return (
     <>
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
       {hub === null && (
         <PageHeader
@@ -264,7 +277,7 @@ export const InspectionLevelScreen = () => {
        * 조회 조건 — 검사 기준 탭처럼 목록 위 카드 한 줄: 품목 · 검사 수준 → 조회 → 구분선 → 품목 추가(#208).
        * 「초기화」는 원래 없던 단추라 새로 두지 않는다.
        */}
-      <section className="pane inspection-level-search" role="search">
+      <section ref={aboveRef} className="pane inspection-level-search" role="search">
         <form
           className="filter-bar"
           onSubmit={(event) => {
@@ -315,105 +328,129 @@ export const InspectionLevelScreen = () => {
         </form>
       </section>
 
-      <section className="pane inspection-level-list-pane" aria-label={t.list.heading}>
-        <h2 className="pane-title">{t.list.heading}</h2>
-        {list.isError && (
-          <AlertBanner variant="error">
-            {t.list.loadFailed}{' '}
-            <Button size="sm" variant="text" onClick={() => void list.refetch()}>
-              {t.list.retry}
-            </Button>
-          </AlertBanner>
-        )}
-        <div
-          ref={fit.ref}
-          className="inspection-queue-table inspection-standard-table-box inspection-level-rows"
-          style={resizable.style}
+      {/* 품목별 검사 수준(목록) | 전환 이력 — 검사 기준 탭의 목록 | 상세와 같은 분할(#208). */}
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
+        <section
+          className="pane inspection-level-list-pane quality-standard-list-pane"
+          aria-label={t.list.heading}
         >
-          <Table
-            /* 표 이름은 카드 제목과 겹친다 — 화면에서는 감추고 읽기 도구에만 남긴다(#208). */
-            caption={<span className="inspection-standard-visually-hidden">{t.list.caption}</span>}
-            density="compact"
-            columns={fit.columns}
-            rows={rows}
-            getRowId={(row) => String(row.itemInspectionLevelId)}
-            empty={
-              list.isPending ? (
-                <EmptyState size="sm" live title={t.list.loading} />
-              ) : (
-                <EmptyState
-                  size="sm"
-                  live
-                  icon={emptyIcon}
-                  title={t.list.empty}
-                  description={t.list.emptyHint}
-                />
-              )
-            }
-          />
-        </div>
-        {list.data !== undefined && (
-          <PageNav
-            meta={list.data.page}
-            buttonSize="md"
-            onChangePage={(page) => setFilter((prev) => ({ ...prev, page }))}
-          />
-        )}
-      </section>
-
-      <section className="pane inspection-level-list-pane" aria-label={t.history.heading}>
-        {/* 제목 옆에 「어느 품목만 보는 중 · 전체 보기」를 같은 줄로 — 줄 하나를 아낀다(#208). */}
-        <div className="inspection-level-section-head">
-          <h2 className="pane-title">{t.history.heading}</h2>
-          {historyItem !== null && (
-            <span className="inspection-level-history-filter">
-              {t.history.filteredBy(historyItem.itemCode)}
-              <Button
-                size="sm"
-                variant="outlined"
-                onClick={() => {
-                  setHistoryItem(null);
-                  setHistoryPage(1);
-                }}
-              >
-                {t.history.showAll}
+          <h2 className="pane-title">{t.list.heading}</h2>
+          {list.isError && (
+            <AlertBanner variant="error">
+              {t.list.loadFailed}{' '}
+              <Button size="sm" variant="text" onClick={() => void list.refetch()}>
+                {t.list.retry}
               </Button>
-            </span>
+            </AlertBanner>
           )}
-        </div>
-        {histories.isError && <AlertBanner variant="error">{t.history.loadFailed}</AlertBanner>}
-        <div
-          ref={historyFit.ref}
-          className="inspection-queue-table inspection-standard-table-box inspection-level-rows"
-          style={historyResizable.style}
-        >
-          <Table
-            caption={
-              <span className="inspection-standard-visually-hidden">{t.history.caption}</span>
-            }
-            density="compact"
-            columns={historyFit.columns}
-            rows={historyRows}
-            getRowId={(row) => String(row.itemInspectionLevelHistoryId)}
-            empty={
-              histories.isPending ? (
-                <EmptyState size="sm" live title={t.history.loading} />
-              ) : (
-                <EmptyState
-                  size="sm"
-                  live
-                  icon={emptyIcon}
-                  title={t.history.empty}
-                  description={t.history.emptyHint}
-                />
-              )
-            }
+          <div
+            ref={fit.ref}
+            className="inspection-queue-table inspection-standard-table-box inspection-level-rows"
+            style={resizable.style}
+          >
+            <Table
+              /* 표 이름은 카드 제목과 겹친다 — 화면에서는 감추고 읽기 도구에만 남긴다(#208). */
+              caption={
+                <span className="inspection-standard-visually-hidden">{t.list.caption}</span>
+              }
+              density="compact"
+              columns={fit.columns}
+              rows={rows}
+              getRowId={(row) => String(row.itemInspectionLevelId)}
+              empty={
+                list.isPending ? (
+                  <EmptyState size="sm" live title={t.list.loading} />
+                ) : (
+                  <EmptyState
+                    size="sm"
+                    live
+                    icon={emptyIcon}
+                    title={t.list.empty}
+                    description={t.list.emptyHint}
+                  />
+                )
+              }
+            />
+          </div>
+          {list.data !== undefined && (
+            <PageNav
+              meta={list.data.page}
+              buttonSize="md"
+              onChangePage={(page) => setFilter((prev) => ({ ...prev, page }))}
+            />
+          )}
+        </section>
+
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
           />
-        </div>
-        {histories.data !== undefined && (
-          <PageNav meta={histories.data.page} buttonSize="md" onChangePage={setHistoryPage} />
         )}
-      </section>
+
+        <section
+          className="pane inspection-level-list-pane quality-standard-detail"
+          aria-label={t.history.heading}
+        >
+          {/* 제목 옆에 「어느 품목만 보는 중 · 전체 보기」를 같은 줄로 — 줄 하나를 아낀다(#208). */}
+          <div className="inspection-level-section-head">
+            <h2 className="pane-title">{t.history.heading}</h2>
+            {historyItem !== null && (
+              <span className="inspection-level-history-filter">
+                {t.history.filteredBy(historyItem.itemCode)}
+                <Button
+                  size="sm"
+                  variant="outlined"
+                  onClick={() => {
+                    setHistoryItem(null);
+                    setHistoryPage(1);
+                  }}
+                >
+                  {t.history.showAll}
+                </Button>
+              </span>
+            )}
+          </div>
+          {histories.isError && <AlertBanner variant="error">{t.history.loadFailed}</AlertBanner>}
+          <div
+            ref={historyFit.ref}
+            className="inspection-queue-table inspection-standard-table-box inspection-level-rows"
+            style={historyResizable.style}
+          >
+            <Table
+              caption={
+                <span className="inspection-standard-visually-hidden">{t.history.caption}</span>
+              }
+              density="compact"
+              columns={historyFit.columns}
+              rows={historyRows}
+              getRowId={(row) => String(row.itemInspectionLevelHistoryId)}
+              empty={
+                histories.isPending ? (
+                  <EmptyState size="sm" live title={t.history.loading} />
+                ) : (
+                  <EmptyState
+                    size="sm"
+                    live
+                    icon={emptyIcon}
+                    title={t.history.empty}
+                    description={t.history.emptyHint}
+                  />
+                )
+              }
+            />
+          </div>
+          {histories.data !== undefined && (
+            <PageNav meta={histories.data.page} buttonSize="md" onChangePage={setHistoryPage} />
+          )}
+        </section>
+      </div>
 
       {editing !== null && (
         <LevelDialog

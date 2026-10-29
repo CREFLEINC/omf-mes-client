@@ -10,7 +10,7 @@ import {
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { type ReactNode, type Ref, useEffect, useId, useState } from 'react';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
@@ -45,6 +45,13 @@ export interface CodeListPaneProps {
    * 실패를 「등록된 코드가 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /** 조회 카드 — 화면이 창 높이 맞춤(`useFitToViewport`)의 윗부분으로 잰다(#208). */
+  searchRef?: Ref<HTMLElement>;
+  /**
+   * 목록 칸을 감싸 배치한다 — 화면이 목록 | 상세 분할(좌우 · 상하 배치)을 세운다(#208).
+   * 주지 않으면 목록 칸만 그린다.
+   */
+  renderLayout?: (listPane: ReactNode) => ReactNode;
 }
 
 const hasAnyFilter = (filters: CodeFilters): boolean => filters.q !== '' || filters.includeInactive;
@@ -58,7 +65,7 @@ const emptyIcon = (name: string) => (
 
 /**
  * 조회 카드 + 좌 페인 — 코드를 대분류별로 묶어 보이고 조건으로 좁히는 자리.
- * 조회 카드는 검사 기준 탭처럼 목록·상세 위 한 줄로 선다(#208) — 화면이 두 칸 격자의 첫 줄 전체로 펼친다.
+ * 조회 카드는 검사 기준 탭처럼 목록·상세 위 한 줄로 선다(#208) — 그 아래 목록 | 상세 분할은 화면이 `renderLayout` 으로 세운다.
  */
 export const CodeListPane = ({
   adapter,
@@ -73,6 +80,8 @@ export const CodeListPane = ({
   onAddChild,
   canAddChild,
   loadError,
+  searchRef,
+  renderLayout = (listPane) => listPane,
 }: CodeListPaneProps) => {
   const addChildNoteId = useId();
 
@@ -219,7 +228,7 @@ export const CodeListPane = ({
        * 조회 카드 — 검사 기준 탭처럼 한 줄: 검색 · 미사용 포함 → 조회 · 초기화 → 구분선 → 대분류 추가 · 상세 추가(#208).
        * 결과가 없어도 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다.
        */}
-      <section className="pane defect-cause-search" role="search">
+      <section ref={searchRef} className="pane defect-cause-search" role="search">
         <div className="filter-bar">
           <SearchInput
             label={adapter.labels.searchLabel}
@@ -310,13 +319,15 @@ export const CodeListPane = ({
         )}
       </section>
 
-      <section
-        className="pane defect-cause-list-pane"
-        aria-label={t.panes.list(adapter.labels.tab)}
-      >
-        <h2 className="pane-title">{t.panes.list(adapter.labels.tab)}</h2>
-        {listSlot()}
-      </section>
+      {renderLayout(
+        <section
+          className="pane defect-cause-list-pane quality-standard-list-pane"
+          aria-label={t.panes.list(adapter.labels.tab)}
+        >
+          <h2 className="pane-title">{t.panes.list(adapter.labels.tab)}</h2>
+          {listSlot()}
+        </section>,
+      )}
     </>
   );
 };

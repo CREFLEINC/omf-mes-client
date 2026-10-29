@@ -74,6 +74,11 @@ export interface CodeValueSectionProps {
   statusColumn?: CodeValueStatusColumn;
   /** 참이면 「코드값 추가」를 주 동작(채운 단추 + 더하기 아이콘)으로 보인다. 기본은 종전 외곽선 단추(#208). */
   primaryAdd?: boolean;
+  /**
+   * 목록 · 코드값 정보 두 구획을 감싸 배치한다 — 판정유형 코드 탭만 좌우 · 상하 분할로 쓴다(#208).
+   * 주지 않으면 종전 그대로 두 구획을 이어 그린다.
+   */
+  renderLayout?: (listPane: ReactNode, formPane: ReactNode) => ReactNode;
 }
 
 /**
@@ -104,6 +109,7 @@ export const CodeValueSection = ({
   onPageChange,
   statusColumn,
   primaryAdd = false,
+  renderLayout,
 }: CodeValueSectionProps) => {
   const toast = useToast();
   const { client } = useApiClient();
@@ -430,29 +436,38 @@ export const CodeValueSection = ({
     );
   };
 
+  const listPane = (
+    <CodeValueListPane
+      codeValues={codeValues}
+      // 그룹을 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
+      isLoading={codeGroupId !== null && list.isPending}
+      isGroupSelected={codeGroupId !== null}
+      includeInactive={includeInactive}
+      onIncludeInactiveChange={handleIncludeInactiveChange}
+      pageView={pageView}
+      onChangePage={handlePageChange}
+      selectedCodeValueId={selectedCodeValueId}
+      onSelect={handleSelect}
+      addAction={addAction}
+      statusColumn={statusColumn}
+      loadError={
+        list.isError ? (
+          <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+        ) : null
+      }
+    />
+  );
+
   return (
     <>
-      <CodeValueListPane
-        codeValues={codeValues}
-        // 그룹을 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
-        isLoading={codeGroupId !== null && list.isPending}
-        isGroupSelected={codeGroupId !== null}
-        includeInactive={includeInactive}
-        onIncludeInactiveChange={handleIncludeInactiveChange}
-        pageView={pageView}
-        onChangePage={handlePageChange}
-        selectedCodeValueId={selectedCodeValueId}
-        onSelect={handleSelect}
-        addAction={addAction}
-        statusColumn={statusColumn}
-        loadError={
-          list.isError ? (
-            <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
-          ) : null
-        }
-      />
-
-      {renderFormPane()}
+      {renderLayout === undefined ? (
+        <>
+          {listPane}
+          {renderFormPane()}
+        </>
+      ) : (
+        renderLayout(listPane, renderFormPane())
+      )}
 
       {/*
        * 창은 열 때만 붙인다 — 닫힌 창을 남겨 두면 지난 값이 그대로 살아 있다.

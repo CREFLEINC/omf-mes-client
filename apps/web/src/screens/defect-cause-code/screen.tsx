@@ -16,7 +16,14 @@ import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
+import {
+  PaneHeightSplitter,
+  QUALITY_STANDARD_ORIENTATION_KEY,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { CodeFormPane } from './code-form-pane';
 import { CodeListPane } from './code-list-pane';
 import { selectableCategoryOptions } from './code-options';
@@ -44,6 +51,7 @@ import type { CodeDetailResult, CodeFilters, CodeFormValues, HierarchyCode } fro
 import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.defectCauseCode;
+const hubText = messages.common.inspectionHub;
 
 /**
  * 조회 실패의 원인을 한 줄 안내로 옮긴다.
@@ -111,6 +119,13 @@ interface CodeFormState {
  * 탭·조회 조건·선택을 주소에 둔다.
  */
 const CodeMasterWorkspace = () => {
+  /*
+   * 좌우 · 상하 배치 · 폭/높이 손잡이 · 창 높이 맞춤 — 검사 기준 탭과 같다(사용자 지시 · #208).
+   * 배치는 탭 묶음이 함께 쓰고, 폭 비율은 불량코드 · 원인코드 하위 탭이 함께 쓴다.
+   */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:defect-cause-code:split', 0.4);
+  const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { client } = useApiClient();
@@ -352,29 +367,6 @@ const CodeMasterWorkspace = () => {
       ? childCountOf(items, selectedCode.id)
       : null;
 
-  const codeListPane = (
-    <CodeListPane
-      adapter={adapter}
-      rows={rows}
-      byId={byId}
-      isLoading={list.isPending}
-      appliedFilters={filters}
-      onApplyFilters={handleApplyFilters}
-      selectedId={selectedId}
-      onSelect={(id) => updateParams({ sel: String(id), mode: null })}
-      // 대분류 추가는 선택을 지운다 — 어느 코드의 하위도 아닌 새 축이다.
-      onAddCategory={() => openCreateForm({ sel: null })}
-      // 상세 추가는 고른 대분류를 그대로 남겨 상위 초기값으로 쓴다.
-      onAddChild={() => openCreateForm({})}
-      canAddChild={canAddChild}
-      loadError={
-        list.isError ? (
-          <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
-        ) : null
-      }
-    />
-  );
-
   const renderForm = (formMode: 'create' | 'edit'): ReactNode => (
     <CodeFormPane
       adapter={adapter}
@@ -458,12 +450,47 @@ const CodeMasterWorkspace = () => {
     return renderForm('edit');
   };
 
-  /* 조회 카드는 두 칸 격자의 첫 줄 전체로 펼치고, 그 아래 목록 | 상세가 선다(#208 · 검사 기준 탭과 같다). */
-  const tabContent = (
-    <div className="two-pane defect-cause-layout">
-      {codeListPane}
-      <div className="pane">{renderFormPane()}</div>
-    </div>
+  const codeListPane = (
+    <CodeListPane
+      adapter={adapter}
+      rows={rows}
+      byId={byId}
+      isLoading={list.isPending}
+      appliedFilters={filters}
+      onApplyFilters={handleApplyFilters}
+      selectedId={selectedId}
+      onSelect={(id) => updateParams({ sel: String(id), mode: null })}
+      // 대분류 추가는 선택을 지운다 — 어느 코드의 하위도 아닌 새 축이다.
+      onAddCategory={() => openCreateForm({ sel: null })}
+      // 상세 추가는 고른 대분류를 그대로 남겨 상위 초기값으로 쓴다.
+      onAddChild={() => openCreateForm({})}
+      canAddChild={canAddChild}
+      loadError={
+        list.isError ? (
+          <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+        ) : null
+      }
+      searchRef={aboveRef}
+      /* 조회 카드 아래 목록 | 상세 — 검사 기준 탭과 같은 분할(#208). */
+      renderLayout={(listPane) => (
+        <div
+          ref={splitRef}
+          className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+          style={{ ...split.style, ...layout.style }}
+        >
+          {listPane}
+          <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+          {layout.orientation === 'column' && (
+            <PaneHeightSplitter
+              label={hubText.heightSplitter}
+              height={layout.listHeight}
+              onChange={layout.changeListHeight}
+            />
+          )}
+          <div className="pane quality-standard-detail">{renderFormPane()}</div>
+        </div>
+      )}
+    />
   );
 
   return (
@@ -483,7 +510,8 @@ const CodeMasterWorkspace = () => {
         </div>
       )}
 
-      {tabContent}
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+      {codeListPane}
 
       <DeactivateConfirmDialog
         open={isDeactivateOpen}

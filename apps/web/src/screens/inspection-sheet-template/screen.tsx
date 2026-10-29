@@ -18,8 +18,15 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
 import { PageNav } from '../../patterns/page-nav';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { Select } from '../../patterns/select';
 import { useSession } from '../../patterns/session';
+import {
+  PaneHeightSplitter,
+  QUALITY_STANDARD_ORIENTATION_KEY,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import {
   type TemplateStatusFilter,
   useBusinessUnitNames,
@@ -31,6 +38,7 @@ import { TemplateEditor, TemplateStatusChip } from './template-editor';
 import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.inspectionSheetTemplate;
+const hubText = messages.common.inspectionHub;
 
 const STATUSES: readonly InspectionSheetTemplate['statusCode'][] = [
   'DRAFT',
@@ -54,6 +62,10 @@ export const InspectionSheetTemplateScreen = () => (
 
 const InspectionSheetTemplateScreenBody = () => {
   const hub = usePageHub();
+  /* 좌우 · 상하 배치 · 폭/높이 손잡이 · 창 높이 맞춤 — 검사 기준 탭과 같다(사용자 지시 · #208). 배치는 탭 묶음이 함께 쓴다. */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:inspection-sheet-template:split', 0.4);
+  const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const statusId = useId();
   const { session } = useSession();
   const [statusInput, setStatusInput] = useState<TemplateStatusFilter>('');
@@ -143,6 +155,7 @@ const InspectionSheetTemplateScreenBody = () => {
 
   return (
     <>
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
       {hub === null && (
         <PageHeader
@@ -161,7 +174,7 @@ const InspectionSheetTemplateScreenBody = () => {
        * 조회 조건 — 검사 기준 탭처럼 목록 위 카드 한 줄: 상태 → 조회 → 구분선 → 새 기준 등록(#208).
        * 조건이 상태 하나라 「초기화」는 두지 않는다(없던 단추를 만들지 않는다).
        */}
-      <section className="pane inspection-sheet-template-search" role="search">
+      <section ref={aboveRef} className="pane inspection-sheet-template-search" role="search">
         <form
           className="filter-bar"
           onSubmit={(event) => {
@@ -199,8 +212,15 @@ const InspectionSheetTemplateScreenBody = () => {
         </form>
       </section>
 
-      <div className="two-pane inspection-sheet-template-layout">
-        <section className="pane inspection-sheet-template-list-pane" aria-label={t.list.heading}>
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
+        <section
+          className="pane inspection-sheet-template-list-pane quality-standard-list-pane"
+          aria-label={t.list.heading}
+        >
           {list.isError && (
             <AlertBanner variant="error">
               {t.list.loadFailed}{' '}
@@ -246,7 +266,16 @@ const InspectionSheetTemplateScreenBody = () => {
           )}
         </section>
 
-        <div className="inspection-sheet-template-detail">
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+
+        <div className="inspection-sheet-template-detail quality-standard-detail">
           {opened === null && (
             <section className="pane">
               {/* 둥근 바탕 위 아이콘 · 제목 · 설명 — 검사 기준 탭과 같다(#208). */}

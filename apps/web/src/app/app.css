@@ -1100,6 +1100,68 @@ h2:has(> .inspection-standard-dialog-title) {
   display: none;
 }
 
+/*
+ * 품질 기준 정보 탭 묶음의 다른 탭(검사표 기준 · 불량·원인코드 · 검사 수준 관리)도 검사 기준 탭과 같은 분할을 쓴다
+ * (사용자 지시 · #208) — 분할 상자는 위 `.inspection-standard-split` 규칙을 함께 쓰고, 목록 칸은 표만 상자 안에서 구르며
+ * (머리줄 고정) 오른쪽 칸은 칸 안에서 구른다. 상하 배치면 목록은 정한 높이, 오른쪽은 내용 높이다.
+ */
+.inspection-split > .quality-standard-list-pane {
+  height: auto;
+  max-height: calc(100dvh - 20rem);
+  overflow: hidden;
+}
+
+.quality-standard-list-pane > * {
+  flex: 0 0 auto;
+}
+
+.quality-standard-list-pane > .inspection-standard-table-box {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* DS 표의 자기 감싸개가 세로로 구른다 — 그래야 머리줄이 붙는다(검사 기준 목록과 같다). */
+.quality-standard-list-pane > .inspection-standard-table-box > div {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.quality-standard-list-pane > .inspection-standard-table-box thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.quality-standard-detail {
+  min-width: 0;
+}
+
+@media (min-width: 1440px) {
+  .inspection-split > .quality-standard-list-pane {
+    max-height: none;
+    min-height: 0;
+  }
+
+  .inspection-split > .quality-standard-detail {
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
+.po-board-split.inspection-split.is-stacked > .quality-standard-list-pane {
+  box-sizing: border-box;
+  height: var(--stacked-list-height, auto);
+  min-height: 0;
+  max-height: var(--stacked-list-height, min(28rem, 50dvh));
+}
+
+.po-board-split.inspection-split.is-stacked > .quality-standard-detail {
+  overflow: visible;
+}
+
 .pane-stack {
   display: grid;
   gap: var(--space-5);
@@ -21820,17 +21882,6 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   margin: 0;
 }
 
-.two-pane.inspection-sheet-template-layout {
-  /* 목록 열이 다섯이라 모델 칸이 읽히는 폭을 준다 — 넓은 화면에서는 목록 2 : 상세 3(#208). */
-  grid-template-columns: minmax(26rem, 2fr) minmax(0, 3fr);
-}
-
-@media (max-width: 1280px) {
-  .two-pane.inspection-sheet-template-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 /* 조회 카드(#208) — 검사 기준 탭과 같은 한 줄: 상태 → 조회 | 새 기준 등록. 카드 안 줄의 아래 여백은 걷는다. */
 .inspection-sheet-template-search > .filter-bar {
   margin-bottom: 0;
@@ -25197,10 +25248,10 @@ table.col-measuring td {
 
 /*
  * 불량·원인코드(W-06-03 · omf-all-around#208) — 검사 기준 탭과 같은 조회 카드 한 줄 · 둥근 테두리 표 ·
- * 상세 머리(제목 · 사용 상태 칩 · 사용 중지). 조회 카드는 두 칸 격자의 첫 줄 전체로 펼친다.
+ * 상세 머리(제목 · 사용 상태 칩 · 사용 중지). 조회 카드 아래 목록 | 상세는 검사 기준 탭과 같은 분할이다.
  */
-.two-pane.defect-cause-layout > .defect-cause-search {
-  grid-column: 1 / -1;
+.defect-cause-search {
+  margin-bottom: var(--space-4);
 }
 
 .defect-cause-search > .filter-bar {
@@ -25385,41 +25436,81 @@ table.col-measuring td {
   margin: 0;
 }
 
-.judgment-code-screen > .banner-slot {
+/* 안내 배너 묶음 — 배너가 없으면 자리를 차지하지 않는다(창 높이 맞춤이 이 묶음을 잰다 · #208). */
+.judgment-code-notices {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.judgment-code-notices:empty {
+  display: none;
+}
+
+.judgment-code-notices > .banner-slot {
   margin-bottom: 0;
 }
 
-.judgment-code-screen .pane-stack {
-  gap: var(--space-3);
+/*
+ * 목록 | 코드값 정보 분할(#208) — 검사 기준 탭과 같은 좌우 · 상하 배치. 편집기가 한 벌이라 칸 클래스를 더하지 않고
+ * 첫 칸(목록) · 끝 칸(코드값 정보)으로 고른다. 넓은 화면에서는 두 칸이 각자 칸 안에서 구른다.
+ */
+.judgment-code-screen .po-board-split > section.pane:first-child {
+  max-height: calc(100dvh - 20rem);
+  overflow: auto;
+}
+
+@media (min-width: 1440px) {
+  .judgment-code-screen .po-board-split > section.pane:first-child {
+    max-height: none;
+    min-height: 0;
+  }
+
+  .judgment-code-screen .po-board-split > section.pane:last-child {
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
+.judgment-code-screen .po-board-split.is-stacked > section.pane:first-child {
+  box-sizing: border-box;
+  height: var(--stacked-list-height, auto);
+  min-height: 0;
+  max-height: var(--stacked-list-height, min(28rem, 50dvh));
+}
+
+.judgment-code-screen .po-board-split.is-stacked > section.pane:last-child {
+  overflow: visible;
 }
 
 /* 목록 칸 — 「미사용 포함」(왼쪽) · 「코드값 추가」(오른쪽)를 표 위 한 줄로, 표 · 쪽 이동이 아래로(#208). */
-.judgment-code-screen .pane-stack > section.pane:first-child {
+.judgment-code-screen .po-board-split > section.pane:first-child {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  /* 칸이 분할 높이로 늘어나도 줄 사이가 벌어지지 않게 위로 모은다(#208). */
+  align-content: flex-start;
   gap: var(--space-3);
 }
 
-.judgment-code-screen .pane-stack > section.pane:first-child > * {
+.judgment-code-screen .po-board-split > section.pane:first-child > * {
   flex: 1 0 100%;
   order: 3;
   min-width: 0;
 }
 
-.judgment-code-screen .pane-stack > section.pane:first-child > .banner-slot {
+.judgment-code-screen .po-board-split > section.pane:first-child > .banner-slot {
   order: 0;
   margin-bottom: 0;
 }
 
-.judgment-code-screen .pane-stack > section.pane:first-child > .filter-bar {
+.judgment-code-screen .po-board-split > section.pane:first-child > .filter-bar {
   flex: 1 1 auto;
   order: 1;
   align-items: center;
   margin: 0;
 }
 
-.judgment-code-screen .pane-stack > section.pane:first-child > .filter-bar:last-child {
+.judgment-code-screen .po-board-split > section.pane:first-child > .filter-bar:last-child {
   flex: 0 0 auto;
   order: 2;
 }
@@ -25428,7 +25519,7 @@ table.col-measuring td {
   margin-top: 0;
 }
 
-.judgment-code-screen .pane-stack > section.pane:first-child > .form-actions {
+.judgment-code-screen .po-board-split > section.pane:first-child > .form-actions {
   margin-top: 0;
 }
 

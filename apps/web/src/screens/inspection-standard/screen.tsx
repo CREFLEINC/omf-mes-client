@@ -24,6 +24,7 @@ import { usePageHub } from '../../patterns/page-hub';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
+  QUALITY_STANDARD_ORIENTATION_KEY,
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
@@ -121,11 +122,6 @@ type InspectionPlanVersionDetailResponse =
 
 const t = messages.inspectionStandard;
 const hubText = messages.common.inspectionHub;
-
-/**
- * 좌우 · 상하 배치 — 품질 기준 정보 탭 묶음이 같은 고름을 쓴다(검사 조회·판정과 같은 방식 · omf-all-around#196).
- */
-const QUALITY_STANDARD_ORIENTATION_KEY = 'omf-mes:quality-standard-hub:split-orientation';
 
 /** 폼의 현재 값과 그것이 어디서 나왔는지. 「고친 것이 있는가」는 둘의 비교로 판정한다. */
 interface PlanFormState {

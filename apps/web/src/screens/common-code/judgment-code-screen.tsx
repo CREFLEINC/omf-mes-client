@@ -1,7 +1,16 @@
 import { AlertBanner, Breadcrumb, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
+
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  QUALITY_STANDARD_ORIENTATION_KEY,
+  SplitOrientationToggle,
+  type SplitOrientation,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 
 import { useCodeGroupList } from './code-group-queries';
 import { CodeValueSection } from './code-value-section';
@@ -16,6 +25,7 @@ import type { CodeGroupFilters } from './types';
 import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.judgmentCode;
+const hubText = messages.common.inspectionHub;
 
 /** 목록 상태 열 문구 — 사용/미사용을 코드명 뒤 글이 아니라 따로 칩으로 보인다(#208). */
 const STATUS_COLUMN = t.status;
@@ -66,9 +76,63 @@ const GROUP_LOOKUP_FILTERS: CodeGroupFilters = {
 /** 그룹 조회는 첫 쪽만 본다. 그룹코드로 좁힌 조회라 다음 쪽까지 갈 결과가 나오지 않는다. */
 const GROUP_LOOKUP_PAGE = 1;
 
+/**
+ * 안내 배너 · 목록 | 코드값 정보 분할 — 검사 기준 탭과 같은 좌우 · 상하 배치, 폭/높이 손잡이, 창 높이 맞춤(사용자 지시 · #208).
+ * 분할은 그룹을 찾은 뒤에만 서므로 창 높이 맞춤을 여기서 잰다(화면이 처음 그릴 때는 분할이 없다).
+ * 배너가 서고 지면 분할의 윗변이 움직이므로 배너 묶음을 윗부분으로 잰다.
+ */
+const JudgmentSplit = ({
+  notices,
+  listPane,
+  formPane,
+  orientation,
+  layoutStyle,
+  listHeight,
+  onChangeListHeight,
+  split,
+}: {
+  notices: ReactNode;
+  listPane: ReactNode;
+  formPane: ReactNode;
+  orientation: SplitOrientation;
+  layoutStyle: CSSProperties;
+  listHeight: number | null;
+  onChangeListHeight: (height: number) => void;
+  split: ReturnType<typeof usePaneSplit>;
+}) => {
+  const { splitRef, aboveRef } = useFitToViewport();
+
+  return (
+    <>
+      <section ref={aboveRef} className="judgment-code-notices">
+        {notices}
+      </section>
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split inspection-standard-split${orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layoutStyle }}
+      >
+        {listPane}
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={listHeight}
+            onChange={onChangeListHeight}
+          />
+        )}
+        {formPane}
+      </div>
+    </>
+  );
+};
+
 export const JudgmentCodeScreen = () => {
   const hub = usePageHub();
   const [searchParams, setSearchParams] = useSearchParams();
+  /* 배치는 품질 기준 정보 탭 묶음이 함께 쓴다 — 검사 기준 탭과 같다(#208). */
+  const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
+  const split = usePaneSplit('omf-mes:judgment-code:split', 0.4);
 
   const groupList = useCodeGroupList(GROUP_LOOKUP_FILTERS, GROUP_LOOKUP_PAGE, true);
 
@@ -176,6 +240,44 @@ export const JudgmentCodeScreen = () => {
     });
   };
 
+  const notices = (
+    <>
+      {/*
+       * 배너 셋은 **편집기 바깥**에 선다. 한 벌에 prop을 더해 안에서 그리면 그 파일이 바뀌고,
+       * 그 순간 공통코드 화면이 함께 위험해진다. 소비 화면이 이미 필요한 사실을 전부 갖고 있다.
+       * 분할(`JudgmentSplit`) 바로 위에 선다 — 배너가 서고 지는 것을 창 높이 맞춤이 재야 해서다(#208).
+       *
+       * 셋 다 **그룹을 찾았을 때만** 선다 — 위 `judgmentGroup` 한 값을 본문과 함께 본다.
+       *
+       * `.banner-slot`으로 감싸는 이유는 **이음매가 아니다.** 이 배너들은 화면 최상위 블록이라
+       * 이음매는 `main > * + *`가 이미 준다(배치 규범 1). 슬롯이 필요한 것은 DS `AlertBanner`의
+       * `box-sizing` 정규화 때문이며, 감싸지 않으면 배너가 안쪽 여백만큼 컨테이너를 넘친다.
+       * **임시 우회다** — `design-system-v2-webui#60`이 반영되면 이 래퍼도 함께 걷는다.
+       */}
+      {judgmentGroup !== null && isProvisionalJudgmentTypeList() && (
+        <div className="banner-slot">
+          <AlertBanner variant="info">{t.notices.provisionalList}</AlertBanner>
+        </div>
+      )}
+
+      {judgmentGroup !== null && !judgmentGroup.isActive && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.notices.groupInactive}</AlertBanner>
+        </div>
+      )}
+
+      {/*
+       * 값 추가 경고 — **등록 폼이 열려 있는 동안에만** 낸다. 늘 보이는 경고는 읽히지 않아
+       * 정작 값을 늘리는 순간에 효력이 없다. 경고가 필요한 자리는 그 순간 하나뿐이다.
+       */}
+      {isCreating && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.notices.addAffectsOtherScreens}</AlertBanner>
+        </div>
+      )}
+    </>
+  );
+
   /**
    * 본문 — 그룹 해석의 **네 갈래**다. 넷을 뭉치면 사실과 다른 안내가 된다.
    *
@@ -218,28 +320,39 @@ export const JudgmentCodeScreen = () => {
     }
 
     return (
-      <div className="pane-stack">
-        <CodeValueSection
-          codeGroupId={judgmentGroup.codeGroupId}
-          selectedCodeValueId={selectedCodeValueId}
-          onSelectCodeValue={selectCodeValue}
-          isCreating={isCreating}
-          onOpenCreate={openCreate}
-          onCloseCreate={closeCreate}
-          includeInactive={includeInactive}
-          onIncludeInactiveChange={changeIncludeInactive}
-          page={page}
-          onPageChange={changePage}
-          statusColumn={STATUS_COLUMN}
-          primaryAdd
-        />
-      </div>
+      <CodeValueSection
+        codeGroupId={judgmentGroup.codeGroupId}
+        selectedCodeValueId={selectedCodeValueId}
+        onSelectCodeValue={selectCodeValue}
+        isCreating={isCreating}
+        onOpenCreate={openCreate}
+        onCloseCreate={closeCreate}
+        includeInactive={includeInactive}
+        onIncludeInactiveChange={changeIncludeInactive}
+        page={page}
+        onPageChange={changePage}
+        statusColumn={STATUS_COLUMN}
+        primaryAdd
+        renderLayout={(listPane, formPane) => (
+          <JudgmentSplit
+            notices={notices}
+            listPane={listPane}
+            formPane={formPane}
+            orientation={layout.orientation}
+            layoutStyle={layout.style}
+            listHeight={layout.listHeight}
+            onChangeListHeight={layout.changeListHeight}
+            split={split}
+          />
+        )}
+      />
     );
   };
 
   /* 화면 전용 래퍼 — 스타일을 이 탭에만 묶어 같은 편집기를 쓰는 공통코드 화면에 번지지 않게 한다(#208). */
   return (
     <div className="judgment-code-screen">
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
       {hub === null ? (
         <PageHeader
@@ -259,39 +372,6 @@ export const JudgmentCodeScreen = () => {
       ) : (
         /* 머리를 세우지 않아도 편집기 어휘 안내는 남긴다 — 문구를 지우지 않는다. */
         <p className="field-note">{t.notices.editorScope}</p>
-      )}
-
-      {/*
-       * 배너 셋은 **편집기 바깥**에 선다. 한 벌에 prop을 더해 안에서 그리면 그 파일이 바뀌고,
-       * 그 순간 공통코드 화면이 함께 위험해진다. 소비 화면이 이미 필요한 사실을 전부 갖고 있다.
-       *
-       * 셋 다 **그룹을 찾았을 때만** 선다 — 위 `judgmentGroup` 한 값을 본문과 함께 본다.
-       *
-       * `.banner-slot`으로 감싸는 이유는 **이음매가 아니다.** 이 배너들은 화면 최상위 블록이라
-       * 이음매는 `main > * + *`가 이미 준다(배치 규범 1). 슬롯이 필요한 것은 DS `AlertBanner`의
-       * `box-sizing` 정규화 때문이며, 감싸지 않으면 배너가 안쪽 여백만큼 컨테이너를 넘친다.
-       * **임시 우회다** — `design-system-v2-webui#60`이 반영되면 이 래퍼도 함께 걷는다.
-       */}
-      {judgmentGroup !== null && isProvisionalJudgmentTypeList() && (
-        <div className="banner-slot">
-          <AlertBanner variant="info">{t.notices.provisionalList}</AlertBanner>
-        </div>
-      )}
-
-      {judgmentGroup !== null && !judgmentGroup.isActive && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.notices.groupInactive}</AlertBanner>
-        </div>
-      )}
-
-      {/*
-       * 값 추가 경고 — **등록 폼이 열려 있는 동안에만** 낸다. 늘 보이는 경고는 읽히지 않아
-       * 정작 값을 늘리는 순간에 효력이 없다. 경고가 필요한 자리는 그 순간 하나뿐이다.
-       */}
-      {isCreating && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.notices.addAffectsOtherScreens}</AlertBanner>
-        </div>
       )}
 
       {renderBody()}
