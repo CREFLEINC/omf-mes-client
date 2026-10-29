@@ -1,3 +1,5 @@
+import type { TerminalWorkCountKey } from '@omf-mes/api-client';
+
 /**
  * POP 화면의 **이름표** — 주소 · 화면 코드 · 화면명.
  *
@@ -38,6 +40,11 @@ export interface PopScreen {
    *    주소 읽기(`screen-params`)와 함께 여기에 적는다.
    */
   acceptsWorkOrderId?: true;
+  /**
+   * 남은 작업 수의 키(`/app/terminal-work-counts`, 피처 002). 인계 작업을 처리하는 화면만 갖는다 —
+   * 화면 이동 창이 이 화면 항목 뒤에 수를 붙인다.
+   */
+  countKey?: TerminalWorkCountKey;
 }
 
 /**
@@ -52,7 +59,7 @@ export interface PopScreen {
 export const POP_SCREENS: readonly PopScreen[] = [
   { path: '/pop/material-lot-label', code: 'P-01-01', name: '자재 LOT 라벨 발행' },
   { path: '/pop/goods-issue-qr', code: 'P-01-02', name: '자재 출고 QR 발행' },
-  { path: '/pop/work-start', code: 'P-02-01', name: '작업 시작' },
+  { path: '/pop/work-start', code: 'P-02-01', name: '작업 시작', countKey: 'workStart' },
   { path: '/pop/material-input', code: 'P-02-03', name: '자재 투입', acceptsWorkOrderId: true },
   {
     path: '/pop/production-result',
@@ -64,18 +71,33 @@ export const POP_SCREENS: readonly PopScreen[] = [
   { path: '/pop/packing-label-reprint', code: 'P-02-09', name: '포장 라벨 재출력' },
   { path: '/pop/work-hold', code: 'P-02-10', name: '작업 중단' },
   { path: '/pop/running-change', code: 'P-02-11', name: '러닝체인지 부품 교체' },
-  { path: '/pop/emergency-work-orders', code: 'P-02-12', name: '긴급 W/O' },
+  {
+    path: '/pop/emergency-work-orders',
+    code: 'P-02-12',
+    name: '긴급 W/O',
+    countKey: 'emergencyWorkOrder',
+  },
   { path: '/pop/pqc-inspection', code: 'P-02-13', name: 'PQC 제품 검사' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#108) — 화면 코드는 사용자 결정으로 부여했다. */
   { path: '/pop/material-defect', code: 'P-02-14', name: '자재 불량 등록' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). */
   { path: '/pop/inspection-sheet', code: 'P-02-15', name: '제품 검사표 입력' },
-  { path: '/pop/packing', code: 'P-04-01', name: '출하 포장' },
-  { path: '/pop/rework-results', code: 'P-04-03', name: '재작업 실적 등록' },
+  { path: '/pop/packing', code: 'P-04-01', name: '출하 포장', countKey: 'shipmentPacking' },
+  {
+    path: '/pop/rework-results',
+    code: 'P-04-03',
+    name: '재작업 실적 등록',
+    countKey: 'reworkResult',
+  },
   { path: '/pop/repack-label-issue', code: 'P-04-04', name: '재구성 신규 라벨 발행' },
   { path: '/pop/shipping-units', code: 'P-04-05', name: '출하 단위 구성' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#109) — 화면 코드는 사용자 결정으로 부여했다. */
-  { path: '/pop/oqc-inspection', code: 'P-04-06', name: 'OQC 출하검사 판정' },
+  {
+    path: '/pop/oqc-inspection',
+    code: 'P-04-06',
+    name: 'OQC 출하검사 판정',
+    countKey: 'oqcInspection',
+  },
   { path: '/pop/tool-usage', code: 'P-05-01', name: '툴 사용실적 입력' },
   { path: '/pop/downtime', code: 'P-05-02', name: '비가동 실적 입력' },
   /*

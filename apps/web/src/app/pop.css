@@ -9939,3 +9939,54 @@
   font: var(--type-body-lg);
   letter-spacing: var(--type-body-lg-tracking);
 }
+
+/*
+ * 피처 002 — 화면 이동의 남은 작업(D-10). 색은 중립(차콜)이다 — 빨강은 쓰지 않는다.
+ * 단추의 점, 목록 항목 뒤 배지, 창 맨 위 「남은 작업」 묶음.
+ */
+.pop-select__trigger .pop-work-dot {
+  margin-inline-start: var(--space-2);
+}
+
+.pop-select-dialog__option .pop-work-badge {
+  margin-inline-start: auto;
+}
+
+.pop-work-lead {
+  display: grid;
+  gap: var(--space-1);
+  margin-block-end: var(--space-3);
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+.pop-work-lead > h3 {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.pop-work-lead__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-block-size: var(--control-height-lg);
+  padding-inline: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  cursor: pointer;
+}
+
+.pop-visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

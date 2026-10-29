@@ -1,11 +1,26 @@
+import { Badge } from '@crefle/web-ui';
+import type { TerminalWorkCounts } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
 import { useAccessiblePopScreens } from './pop-access';
 import { useHeaderReservedWidth } from './pop-header-reserve';
+import { usePopIdentity } from './pop-identity';
 import { POP_ENTRY_SCREEN_PATH, type PopScreen } from './pop-screen-catalog';
 import { PopSelect } from './pop-select';
+import { usePopWorkCounts } from './pop-work-counts';
+
+const workText = messages.popChrome.screenNavWork;
+
+/** 한 화면의 남은 수. 셀 수 없는 화면이거나 수를 모르면 0 — 0 은 어디에도 그리지 않는다. */
+const countOf = (screen: PopScreen, counts: TerminalWorkCounts | undefined): number =>
+  screen.countKey === undefined ? 0 : (counts?.[screen.countKey] ?? 0);
+
+/** 남은 작업 배지 — 1~9, 10 이상 「9+」, 중립색(빨강 쓰지 않음). 수는 숨은 글이 읽어 준다. */
+const WorkBadge = ({ count }: { count: number }) => (
+  <Badge count={count} max={9} tone="neutral" className="pop-work-badge" aria-hidden="true" />
+);
 
 /** 머리줄 항목 사이 간격 — `.pop-context-right` 의 `--space-3` 과 같다(사용자 지시 2026-09-10). */
 const HEADER_GAP_PX = 12;
@@ -72,8 +87,10 @@ export const PopScreenNavButton = () => {
   const { pathname, search } = useLocation();
   const navigate = useNavigate();
   const access = useAccessiblePopScreens();
+  const { workerNo } = usePopIdentity();
   const visible = pathname !== POP_ENTRY_SCREEN_PATH;
   const box = useRef<HTMLDivElement>(null);
+  const workNoteId = useId();
 
   /*
    * ⭐ 머리줄이 비울 폭을 문구 길이에 맞춘다(`pop-header-reserve`). 자리 폭에는 상태 칩과의
@@ -83,6 +100,9 @@ export const PopScreenNavButton = () => {
 
   /* 지금 서 있는 화면은 뺀다 — 골라도 아무 일이 일어나지 않아 「눌리지 않는 항목」이 된다. */
   const candidates = access.screens.filter((candidate) => candidate.path !== pathname);
+  /* 피처 002 — 사번이 확인되고 갈 화면이 정해진 뒤에만 센다. */
+  const workCounts = usePopWorkCounts(visible && workerNo !== null && access.state === 'ready');
+  const pending = candidates.filter((candidate) => countOf(candidate, workCounts.counts) > 0);
   const reason =
     access.state === 'unknown'
       ? REASONS.unknown
@@ -104,9 +124,68 @@ export const PopScreenNavButton = () => {
 
   return (
     <div className="pop-screen-nav" ref={box}>
+      {pending.length > 0 && (
+        <span id={workNoteId} className="pop-visually-hidden">
+          {workText.trigger}
+        </span>
+      )}
       <PopSelect
         aria-label={messages.popChrome.screenNav}
+        /* 점은 눈에만 보인다 — 「남은 작업 있음」은 설명으로 읽어 준다. 이름은 그대로 둔다(창 제목이 이름을 쓴다). */
+        aria-describedby={pending.length > 0 ? workNoteId : undefined}
         actionLabel={messages.popChrome.screenNav}
+        /* 남은 작업이 하나라도 있으면 단추에 점(60초 주기로 다시 센다). */
+        actionBadge={
+          pending.length > 0 ? (
+            <Badge dot tone="neutral" className="pop-work-dot" aria-hidden="true" />
+          ) : undefined
+        }
+        onClick={() => {
+          /* 창을 열 때 다시 센다 — 마지막 주기 뒤에 생긴 일도 보인다. */
+          workCounts.refresh();
+        }}
+        /*
+         * 창 맨 위 「남은 작업」 묶음(확정 2026-10-28) — 한 쪽이 다섯 줄이라 뒤쪽 화면의 수는 넘겨야
+         * 보인다. 수가 있는 화면만 모으고, 누르면 목록에서 고른 것과 같은 길로 간다.
+         */
+        dialogLead={
+          pending.length === 0
+            ? undefined
+            : (choose) => (
+                <section className="pop-work-lead" aria-label={workText.title}>
+                  <h3>{workText.title}</h3>
+                  {pending.map((candidate) => (
+                    <button
+                      key={candidate.path}
+                      type="button"
+                      className="pop-work-lead__item"
+                      aria-label={workText.count(
+                        candidate.name,
+                        countOf(candidate, workCounts.counts),
+                      )}
+                      onClick={() => {
+                        choose(candidate.path);
+                      }}
+                    >
+                      <span>{candidate.name}</span>
+                      <WorkBadge count={countOf(candidate, workCounts.counts)} />
+                    </button>
+                  ))}
+                </section>
+              )
+        }
+        optionTrailing={(option) => {
+          const screen = candidates.find((candidate) => candidate.path === option.value);
+          const count = screen === undefined ? 0 : countOf(screen, workCounts.counts);
+          if (count <= 0) return null;
+
+          return (
+            <>
+              <WorkBadge count={count} />
+              <span className="pop-visually-hidden">{workText.suffix(count)}</span>
+            </>
+          );
+        }}
         title={reason ?? undefined}
         disabled={reason !== null || access.state === 'loading'}
         value={null}

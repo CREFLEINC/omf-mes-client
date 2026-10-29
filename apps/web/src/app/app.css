@@ -25044,3 +25044,13 @@ table.col-measuring td {
   color: var(--on-surface-muted);
   font: var(--type-body-md);
 }
+
+/* 피처 002 — 닫힌 묶음 손잡이의 대기 점(IQC 대기, 확정 항목 2). 이름 바로 뒤, 화살표 앞이다. */
+.nav-group-dot {
+  flex: none;
+}
+
+/* 탭 막대의 대기 수 — 탭 이름 뒤에 붙는다(IQC 탭). */
+.hub-tab-badge {
+  margin-inline-start: var(--space-2);
+}
