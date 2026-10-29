@@ -54,7 +54,6 @@ export interface LookupOptions {
   plants: { value: string; label: string }[];
   businessUnits: { value: string; label: string }[];
   warehouseTypes: { value: string; label: string }[];
-  locationTypes: { value: string; label: string }[];
   reissueReasons: { value: string; label: string }[];
 }
 
@@ -73,6 +72,5 @@ export interface LookupSources {
   businessUnits: LookupSource<LookupEntry>;
   uoms: LookupSource<LookupEntry>;
   warehouseTypes: LookupSource<LookupEntry>;
-  locationTypes: LookupSource<LookupEntry>;
   reissueReasons: LookupSource<LookupEntry>;
 }

@@ -25,16 +25,10 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     addWarehouse: 'Thêm kho',
     addZone: 'Thêm khu',
     addRack: 'Thêm kệ',
-    configureRack: 'Thiết lập tầng·ô',
-    generateLabel: 'Tạo ảnh nhãn',
     activate: 'Dùng lại',
   },
   actionReasons: {
     locationHierarchyUnavailable: 'Tải xong phân cấp Location rồi mới thêm được.',
-    generateLabelNeedsSelection: 'Hãy chọn ít nhất một Location.',
-    warehouseFixedInLocation: 'Cố định theo kho đã chọn ở bên trái.',
-    systemLocation: 'Vị trí do hệ thống tạo, chỉ có thể đổi tên gọi khác.',
-    locationCodeIssued: 'MES tự động cấp mã.',
   },
   loading: {
     warehouses: 'Đang tải danh sách kho',
@@ -81,7 +75,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     locationCode: 'Mã vị trí',
     locationLevel: 'Cấp',
     aliasName: 'Tên gọi khác',
-    locationType: 'Loại vị trí',
     allowMixedItem: 'Cho phép xếp lẫn mặt hàng',
     allowMixedLot: 'Cho phép xếp lẫn LOT',
   },
@@ -99,9 +92,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     codeBlank: 'Mã không được chỉ gồm khoảng trắng.',
     codeDuplicated: 'Mã này đang được dùng. Hãy nhập mã khác.',
     aliasTooLong: (max: number): string => `Tên gọi khác tối đa ${String(max)} ký tự.`,
-    parentLocationUnavailable:
-      'Không xác nhận được vị trí cấp trên trong toàn bộ danh sách Location.',
-    locationLevelChanged: 'Chỉ có thể chuyển sang cấp trên khác cùng cấp.',
   },
   locationTable: {
     expand: 'Mở cấp dưới',
@@ -112,50 +102,46 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     createTitle: 'Thêm Location',
     createZoneTitle: 'Thêm khu',
     createRackTitle: 'Thêm kệ',
+    editRackTitle: 'Sửa kệ',
     editTitle: 'Sửa Location',
   },
   /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
-  rackLayout: {
-    title: 'Thiết lập tầng·ô',
-    target: (code: string, name: string): string => `Kệ ${code} · ${name}`,
-    levelCount: 'Số tầng',
-    cellCount: 'Số ô mỗi tầng',
-    countInvalid: (max: number): string => `Nhập số từ 1 đến ${String(max)}.`,
-    cannotShrink: (count: number): string =>
-      `Đã có ${String(count)} tầng. Để giảm, hãy ngừng dùng tầng.`,
-    summary: (levels: number, cells: number): string =>
-      `Sẽ tạo mới ${String(levels)} tầng · ${String(cells)} ô.`,
-    nothingToCreate: 'Không có vị trí nào cần tạo mới.',
-    previewLabel: 'Vị trí sẽ tạo mới',
-    more: (count: number): string => `và ${String(count)} mục khác`,
-    shrinkNote: 'Giữ nguyên tầng·ô đã có. Không giảm tầng có nhiều ô hơn.',
-    submit: 'Tạo',
-    saving: (done: number, total: number): string => `Đang tạo ${String(done)}/${String(total)}`,
-    created: (count: number): string => `Đã tạo ${String(count)} vị trí.`,
-    stopped: (done: number, reason: string): string =>
-      `Đã dừng sau khi tạo ${String(done)} mục. ${reason} Nhấn Tạo lại để chỉ tạo phần còn lại.`,
+  deleteLocation: {
+    title: 'Xóa vị trí',
+    description: (code: string): string => `Xóa ${code} và tất cả vị trí bên dưới?`,
+    confirm: 'Xóa',
+    deleted: 'Đã xóa',
   },
-  labelPreview: {
-    title: 'Xem trước nhãn Location',
-    notice: (count: number): string =>
-      `Đã tạo ${String(count)} bản ghi phát hành. Hãy xem ảnh do máy chủ tạo rồi tải về. Màn hình này không in vật lý.`,
+  rackLayout: {
+    levelCount: 'Hàng (số tầng)',
+    cellCount: 'Cột (số ô mỗi tầng)',
+    countInvalid: (min: number, max: number): string =>
+      `Nhập số từ ${String(min)} đến ${String(max)}.`,
+    previewLabel: 'Bố trí tầng·ô',
+    levelHeader: 'Tầng',
+    rowHeader: (levelNo: number): string => `Tầng ${String(levelNo)}`,
+    columnHeader: (cellNo: number): string => `Cột ${String(cellNo)}`,
+    saving: (done: number, total: number): string => `Đang tạo ${String(done)}/${String(total)}`,
+    stopped: (done: number, reason: string): string =>
+      `Đã dừng sau khi tạo ${String(done)} mục. ${reason} Lưu lại để chỉ tạo phần còn lại.`,
+  },
+  /** 위치 수정 창 안의 라벨(사용자 지시 2026-10-29) — 안내문 없이 그림과 단추만. */
+  labelSection: {
+    title: 'Nhãn',
+    loading: 'Đang tải nhãn',
+    listFailed: 'Không tải được nhãn.',
+    imageFailed: 'Không tải được ảnh nhãn.',
     alt: (locationCode: string, issueSeq: number): string =>
-      `Nhãn Location ${locationCode} lượt ${String(issueSeq)}`,
-    /** 그림 아래 설명. 보이는 글자라 `alt`와 따로 둔다 — 둘은 같은 값이 아니다. */
-    caption: (locationCode: string, issueSeq: number): string =>
-      `${locationCode} · lượt ${String(issueSeq)}`,
+      `Nhãn ${locationCode} lượt ${String(issueSeq)}`,
+    issue: 'Phát hành nhãn',
+    reissue: 'Phát hành lại',
     download: 'Tải ảnh về',
-    loadFailed: 'Không tải được ảnh nhãn.',
-    loadSummary: (success: number, failed: number, pending: number): string =>
-      `Ảnh thành công ${String(success)} · thất bại ${String(failed)} · đang tải ${String(pending)}`,
-    created: (count: number): string => `Đã tạo ${String(count)} nhãn Location.`,
+    issued: 'Đã phát hành nhãn.',
   },
   labelIssue: {
-    title: 'Tạo lại nhãn Location',
-    notice: (count: number): string =>
-      `Trong các Location đã chọn có ${String(count)} mục đã từng phát hành. Hãy chọn lý do tạo lượt mới.`,
+    title: 'Phát hành lại nhãn',
     reason: 'Lý do phát hành lại',
-    confirm: 'Tạo lượt mới',
+    confirm: 'Phát hành lại',
   },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { compareLocationCodes, issueLocationCode, nextFreeLocationCode } from './location-code';
+import { compareLocationCodes, issueLocationCode, locationCodeAt } from './location-code';
 import type { Location } from './types';
 
 const location = (
@@ -30,42 +30,32 @@ describe('issueLocationCode', () => {
     expect(issueLocationCode('ZONE', null, [staging, whole])).toBe('Z01');
   });
 
-  it('구역 번호는 있는 구역 수 + 1 부터 시작한다', () => {
-    const items = [staging, location(1, 'Z01', null), location(2, 'Z02', null)];
+  it('같은 상위 안에서 가장 큰 번호 + 1 — 빈 앞 번호를 채우지 않는다(서버 규칙)', () => {
+    const items = [staging, location(1, 'Z01', null), location(2, 'Z03', null)];
 
-    expect(issueLocationCode('ZONE', null, items)).toBe('Z03');
+    expect(issueLocationCode('ZONE', null, items)).toBe('Z04');
   });
 
-  it('랙은 구역 코드 뒤에 R 번호를 붙인다', () => {
+  it('꺼진 위치도 센다', () => {
     const zone = location(1, 'Z01', null);
-    const items = [zone, location(2, 'Z01-R001', 1)];
+    const off = { ...location(2, 'Z01-R001', 1), isActive: false };
 
-    expect(issueLocationCode('RACK', zone, items)).toBe('Z01-R002');
+    expect(issueLocationCode('RACK', zone, [zone, off])).toBe('Z01-R002');
   });
 
-  it('창고 안에서 이미 쓰는 코드는 건너뛴다', () => {
-    const zone = location(1, 'Z01', null);
-    // 다른 상위 밑에 있어도 코드가 겹치면 쓸 수 없다.
-    const items = [zone, location(2, 'Z02', null), location(3, 'Z01-R001', 2)];
+  it('모양이 다른 옛 코드는 세지 않는다', () => {
+    const zone = location(1, 'LACK', null);
+    const items = [zone, location(2, 'CELL 1', 1), location(3, 'LACK-R002', 1)];
 
-    expect(issueLocationCode('RACK', zone, items)).toBe('Z01-R002');
-  });
-
-  it('앞 번호가 비어도 하위 수 + 1 부터 찾는다', () => {
-    const zone = location(1, 'Z01', null);
-    const items = [zone, location(2, 'Z01-R002', 1)];
-
-    expect(issueLocationCode('RACK', zone, items)).toBe('Z01-R003');
+    expect(issueLocationCode('RACK', zone, items)).toBe('LACK-R003');
   });
 });
 
-describe('nextFreeLocationCode', () => {
-  it('층 · 셀은 L · C 번호를 붙이고 찾은 코드를 쓴 것으로 남긴다', () => {
-    const used = new Set<string>();
-
-    expect(nextFreeLocationCode('LEVEL', 'Z01-R001', 1, used)).toBe('Z01-R001-L01');
-    expect(nextFreeLocationCode('LEVEL', 'Z01-R001', 1, used)).toBe('Z01-R001-L02');
-    expect(nextFreeLocationCode('CELL', 'Z01-R001-L01', 1, used)).toBe('Z01-R001-L01-C01');
+describe('locationCodeAt', () => {
+  it('층 · 셀은 L · C 두 자리, 랙은 R 세 자리', () => {
+    expect(locationCodeAt('LEVEL', 'Z01-R001', 1)).toBe('Z01-R001-L01');
+    expect(locationCodeAt('CELL', 'Z01-R001-L01', 12)).toBe('Z01-R001-L01-C12');
+    expect(locationCodeAt('RACK', 'Z01', 1000)).toBe('Z01-R1000');
   });
 });
 

@@ -19,19 +19,10 @@ export const warehouseLocation = {
     addWarehouse: '창고 추가',
     addZone: '구역 추가',
     addRack: '랙 추가',
-    configureRack: '층·셀 설정',
-    generateLabel: '라벨 이미지 생성',
     activate: '다시 사용',
   },
   actionReasons: {
     locationHierarchyUnavailable: 'Location 계층을 불러온 뒤 추가할 수 있습니다.',
-    generateLabelNeedsSelection: 'Location을 하나 이상 선택해 주세요.',
-    /* 개발 진행 상황이 아니라 지금 되는지만 말한다(omf-all-around#17). */
-    warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
-    /* 서버가 창고마다 두는 위치(적치 대기 · 창고 전체) — 별칭만 고친다(서버 #875). */
-    systemLocation: '시스템이 만든 위치라 별칭만 바꿀 수 있습니다.',
-    /* 위치 코드는 사람이 치지 않는다(사용자 지시 2026-10-29). */
-    locationCodeIssued: 'MES가 자동으로 발행합니다.',
   },
   loading: {
     warehouses: '창고 목록을 불러오는 중',
@@ -79,7 +70,6 @@ export const warehouseLocation = {
     locationCode: '위치 코드',
     locationLevel: '단계',
     aliasName: '별칭',
-    locationType: '위치유형',
     allowMixedItem: '품목 혼적 허용',
     allowMixedLot: 'LOT 혼적 허용',
   },
@@ -98,8 +88,6 @@ export const warehouseLocation = {
     codeBlank: '코드는 공백만으로 지정할 수 없습니다.',
     codeDuplicated: '이미 사용 중인 코드입니다. 다른 코드를 입력하세요.',
     aliasTooLong: (max: number): string => `별칭은 ${String(max)}자 이하로 입력하세요.`,
-    parentLocationUnavailable: '상위 위치를 전체 Location 목록에서 확인할 수 없습니다.',
-    locationLevelChanged: '같은 단계의 다른 상위로만 옮길 수 있습니다.',
   },
   locationTable: {
     expand: '하위 펼치기',
@@ -110,50 +98,46 @@ export const warehouseLocation = {
     createTitle: 'Location 추가',
     createZoneTitle: '구역 추가',
     createRackTitle: '랙 추가',
+    editRackTitle: '랙 수정',
     editTitle: 'Location 수정',
   },
   /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
-  rackLayout: {
-    title: '층·셀 설정',
-    target: (code: string, name: string): string => `랙 ${code} · ${name}`,
-    levelCount: '층 수',
-    cellCount: '층마다 셀 수',
-    countInvalid: (max: number): string => `1부터 ${String(max)}까지 숫자로 입력하세요.`,
-    cannotShrink: (count: number): string =>
-      `이미 ${String(count)}층이 있습니다. 줄이려면 층을 사용 중지하세요.`,
-    summary: (levels: number, cells: number): string =>
-      `층 ${String(levels)}개 · 셀 ${String(cells)}개를 새로 만듭니다.`,
-    nothingToCreate: '새로 만들 위치가 없습니다.',
-    previewLabel: '새로 만들 위치',
-    more: (count: number): string => `외 ${String(count)}건`,
-    shrinkNote: '이미 있는 층·셀은 그대로 둡니다. 셀이 더 많은 층은 줄이지 않습니다.',
-    submit: '만들기',
-    saving: (done: number, total: number): string => `만드는 중 ${String(done)}/${String(total)}`,
-    created: (count: number): string => `위치 ${String(count)}개를 만들었습니다.`,
-    stopped: (done: number, reason: string): string =>
-      `${String(done)}개를 만든 뒤 멈췄습니다. ${reason} 다시 만들기를 누르면 남은 것만 만듭니다.`,
+  deleteLocation: {
+    title: '위치 삭제',
+    description: (code: string): string => `${code} 와 그 밑의 위치를 모두 삭제할까요?`,
+    confirm: '삭제',
+    deleted: '삭제했습니다',
   },
-  labelPreview: {
-    title: 'Location 라벨 미리보기',
-    notice: (count: number): string =>
-      `${String(count)}건의 발행 기록을 만들었습니다. 서버가 생성한 이미지를 확인해 내려받으세요. 물리 인쇄는 이 화면에서 하지 않습니다.`,
+  rackLayout: {
+    levelCount: '행 (층 수)',
+    cellCount: '열 (층마다 셀 수)',
+    countInvalid: (min: number, max: number): string =>
+      `${String(min)}부터 ${String(max)}까지 숫자로 입력하세요.`,
+    previewLabel: '층·셀 배치',
+    levelHeader: '층',
+    rowHeader: (levelNo: number): string => `${String(levelNo)}층`,
+    columnHeader: (cellNo: number): string => `${String(cellNo)}열`,
+    saving: (done: number, total: number): string => `만드는 중 ${String(done)}/${String(total)}`,
+    stopped: (done: number, reason: string): string =>
+      `${String(done)}개를 만든 뒤 멈췄습니다. ${reason} 다시 저장하면 남은 것만 만듭니다.`,
+  },
+  /** 위치 수정 창 안의 라벨(사용자 지시 2026-10-29) — 안내문 없이 그림과 단추만. */
+  labelSection: {
+    title: '라벨',
+    loading: '라벨을 불러오는 중',
+    listFailed: '라벨을 불러오지 못했습니다.',
+    imageFailed: '라벨 이미지를 불러오지 못했습니다.',
     alt: (locationCode: string, issueSeq: number): string =>
-      `${locationCode} Location 라벨 ${String(issueSeq)}회차`,
-    /** 그림 아래 설명. 보이는 글자라 `alt`와 따로 둔다 — 둘은 같은 값이 아니다. */
-    caption: (locationCode: string, issueSeq: number): string =>
-      `${locationCode} · ${String(issueSeq)}회`,
+      `${locationCode} 라벨 ${String(issueSeq)}회차`,
+    issue: '라벨 발행',
+    reissue: '재발행',
     download: '이미지 내려받기',
-    loadFailed: '라벨 이미지를 불러오지 못했습니다.',
-    loadSummary: (success: number, failed: number, pending: number): string =>
-      `이미지 성공 ${String(success)}건 · 실패 ${String(failed)}건 · 불러오는 중 ${String(pending)}건`,
-    created: (count: number): string => `${String(count)}건의 Location 라벨을 생성했습니다.`,
+    issued: '라벨을 발행했습니다.',
   },
   labelIssue: {
-    title: 'Location 라벨 재생성',
-    notice: (count: number): string =>
-      `선택한 Location 중 ${String(count)}건은 발행 이력이 있습니다. 새 회차를 만들 사유를 선택하세요.`,
+    title: '라벨 재발행',
     reason: '재발행 사유',
-    confirm: '새 회차 생성',
+    confirm: '재발행',
   },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {

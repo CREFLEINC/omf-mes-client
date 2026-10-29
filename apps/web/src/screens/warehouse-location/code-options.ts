@@ -21,7 +21,6 @@ export const defaultWarehouseFilters: WarehouseFilters = {
 /** 고정 계약 G-32의 그룹 이름. 채번 id는 환경마다 달라 절대 저장하지 않는다. */
 export const CODE_GROUPS = {
   warehouseType: 'WAREHOUSE_TYPE',
-  locationType: 'LOCATION_TYPE',
   reissueReason: 'REISSUE_REASON',
 } as const;
 

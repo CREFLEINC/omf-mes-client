@@ -90,12 +90,19 @@ export const locationToFormValues = (location: Location): LocationFormValues => 
   allowMixedLot: location.allowMixedLot,
 });
 
+/**
+ * 위치유형 · 품목 혼적 허용 · LOT 혼적 허용은 화면에서 걷었다(사용자 지시 2026-10-29) — 서버도 화면도 판정에 쓰지
+ * 않는다. 서버 계약이 아직 받으므로(수정은 혼적 둘이 필수) 등록에는 아래 값을, 수정에는 저장된 값을 그대로
+ * 돌려보낸다. 서버가 칸을 빼면(위치 ③) 함께 걷는다.
+ */
+const TRANSITIONAL_LOCATION_TYPE = 'RACK';
+
 /** 신규 Location 폼의 초기값. 선택값을 추측하지 않는다. 코드는 여는 쪽이 발행해 채운다. */
 export const emptyLocationFormValues = (): LocationFormValues => ({
   parentLocationId: '',
   locationCode: '',
   aliasName: '',
-  locationTypeCode: '',
+  locationTypeCode: TRANSITIONAL_LOCATION_TYPE,
   allowMixedItem: true,
   allowMixedLot: true,
 });
@@ -104,10 +111,10 @@ export const emptyLocationFormValues = (): LocationFormValues => ({
 export const locationShownName = (location: Pick<Location, 'locationName' | 'aliasName'>): string =>
   location.aliasName?.trim() || location.locationName;
 
-/** 고르는 자리의 라벨 — 「코드 · 이름」. */
-export const locationOptionLabel = (
-  location: Pick<Location, 'locationCode' | 'locationName' | 'aliasName'>,
-): string => `${location.locationCode} · ${locationShownName(location)}`;
+/** 상위 위치 표시 — 별칭이 있으면 별칭, 없으면 위치 코드 하나만(사용자 지시 2026-10-29). */
+export const locationAliasOrCode = (
+  location: Pick<Location, 'locationCode' | 'aliasName'>,
+): string => location.aliasName?.trim() || location.locationCode;
 
 const trimmedAlias = (values: LocationFormValues): string | null =>
   values.aliasName.trim() === '' ? null : values.aliasName.trim();

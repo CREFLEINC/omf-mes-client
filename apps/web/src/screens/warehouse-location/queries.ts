@@ -262,7 +262,6 @@ export const useLookupOptions = (): LookupResult => {
     });
 
   const warehouseTypes = useCodeGroup(CODE_GROUPS.warehouseType);
-  const locationTypes = useCodeGroup(CODE_GROUPS.locationType);
   const reissueReasons = useCodeGroup(CODE_GROUPS.reissueReason);
 
   const codeSource = (query: typeof warehouseTypes) => ({
@@ -309,7 +308,6 @@ export const useLookupOptions = (): LookupResult => {
         isLoading: uoms.isPending,
       },
       warehouseTypes: codeSource(warehouseTypes),
-      locationTypes: codeSource(locationTypes),
       reissueReasons: codeSource(reissueReasons),
     },
     truncated:
@@ -317,21 +315,58 @@ export const useLookupOptions = (): LookupResult => {
       isListTruncated(businessUnits.data) ||
       isListTruncated(uoms.data) ||
       isListTruncated(warehouseTypes.data) ||
-      isListTruncated(locationTypes.data) ||
       isListTruncated(reissueReasons.data),
     isError:
       plants.isError ||
       businessUnits.isError ||
       uoms.isError ||
       warehouseTypes.isError ||
-      locationTypes.isError ||
       reissueReasons.isError,
     isLoading:
       plants.isPending ||
       businessUnits.isPending ||
       uoms.isPending ||
       warehouseTypes.isPending ||
-      locationTypes.isPending ||
       reissueReasons.isPending,
   };
+};
+
+type DocumentIssue = components['schemas']['DocumentIssue'];
+
+/** 위치 라벨 발행 기록의 캐시 키 — 발행 · 재발행 뒤 이것만 다시 받는다. */
+export const locationLabelKeys = {
+  of: (locationId: number) => ['location-labels', locationId] as const,
+};
+
+/**
+ * 위치 하나의 라벨 발행 기록 중 마지막 회차. 없으면 null — 아직 발행하지 않은 위치다.
+ * 한 위치의 회차는 많아야 몇 장이라 한 쪽(50건)만 받는다.
+ */
+export const useLatestLocationLabel = (
+  locationId: number,
+): UseQueryResult<DocumentIssue | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: locationLabelKeys.of(locationId),
+    queryFn: async () => {
+      const result = await runRequest(() =>
+        client.GET('/app/document-issues', {
+          params: {
+            query: {
+              documentTypeCode: 'LOCATION_LABEL',
+              targetTypeCode: 'LOCATION',
+              targetId: locationId,
+              page: 1,
+              size: 50,
+            },
+          },
+        }),
+      );
+      return result.items.reduce<DocumentIssue | null>(
+        (latest, issue) => (latest === null || issue.issueSeq > latest.issueSeq ? issue : latest),
+        null,
+      );
+    },
+  });
 };

@@ -176,10 +176,6 @@ export const lookupFixtures: LookupOptions = {
     { value: 'PRODUCT', label: '제품' },
     { value: 'GENERAL', label: '일반' },
   ],
-  locationTypes: [
-    { value: 'RACK', label: '랙' },
-    { value: 'FLOOR', label: '바닥' },
-  ],
   reissueReasons: [{ value: 'DAMAGED', label: '라벨 훼손' }],
 };
 

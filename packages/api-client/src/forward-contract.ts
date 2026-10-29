@@ -1319,7 +1319,44 @@ export type WarehouseListQueryForward = NonNullable<WarehousesGet['parameters'][
   plantId?: number;
 };
 
+type LocationPath = paths['/mdm/locations/{locationId}'];
+
+/** 서버 위치 ③b(#893) — 랙 하나와 그 밑의 층 · 셀을 한 번에 만든다. 하나라도 틀리면 하나도 안 만든다. 이름은 코드와 같다. */
+export interface LocationRackCreate {
+  /** 사람이 만든 켜진 구역. */
+  parentLocationId: number;
+  /** 1~99. */
+  levelCount: number;
+  /** 0~99 — 0 이면 층이 맨 아래 위치다. */
+  cellCountPerLevel: number;
+}
+
 export interface ForwardPaths {
+  /**
+   * 서버 위치 ③b(#893) — 랙 한 번에 만들기. 201 은 만든 랙이다. 계약 사본에 실려 `gen:api` 가 만들면 지운다.
+   * 400 INVALID(parentLocationId): 사람이 만든 켜진 구역이 아님 · 400 STATE_LOCKED(parentLocationId): 구역에 재고.
+   */
+  '/mdm/locations:rack': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      { query?: never; header: IdemHeader; path?: never; cookie?: never },
+      { content: { 'application/json': LocationRackCreate } },
+      { 201: Json<components['schemas']['Location']> }
+    >;
+  };
+  /**
+   * 서버 위치 ③b(#893) — 위치를 밑의 위치까지 함께 지운다(204). 하나라도 어디서든 쓰였거나 서버가 만든 자리면
+   * 400 STATE_LOCKED 이고 아무것도 안 지운다 — 그때는 사용 중지. 계약 사본에 실리면 지운다.
+   */
+  '/mdm/locations/{locationId}': Omit<LocationPath, 'delete'> & {
+    delete: Op<
+      Params<never, IdemHeader, { locationId: number }>,
+      never,
+      { 204: { headers: { [name: string]: unknown }; content?: never } }
+    >;
+  };
   /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */
   '/quality/concessions': Omit<ConcessionsPath, 'post'> & {
     post: {

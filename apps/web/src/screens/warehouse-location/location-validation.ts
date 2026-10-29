@@ -9,9 +9,6 @@ export const LOCATION_FORM_FIELDS: readonly string[] = [
   'parentLocationId',
   'locationCode',
   'aliasName',
-  'locationTypeCode',
-  'allowMixedItem',
-  'allowMixedLot',
 ];
 
 /** 서버 한도(#875) — 넘으면 400 INVALID 다. */
@@ -28,10 +25,6 @@ export const validateLocation = (values: LocationFormValues): Record<string, str
 
   if (values.aliasName.trim().length > ALIAS_MAX_LENGTH) {
     errors.aliasName = t.aliasTooLong(ALIAS_MAX_LENGTH);
-  }
-
-  if (values.locationTypeCode === '') {
-    errors.locationTypeCode = t.required;
   }
 
   return errors;

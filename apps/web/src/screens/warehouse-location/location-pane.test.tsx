@@ -17,7 +17,6 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
   const onAddRoot = vi.fn();
   const onAddChild = vi.fn();
   const onEdit = vi.fn();
-  const onGenerateLabels = vi.fn();
 
   render(
     <LocationPane
@@ -34,11 +33,7 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
       onAddRoot={onAddRoot}
       canAddChild={false}
       onAddChild={onAddChild}
-      canConfigureRack={false}
-      onConfigureRack={vi.fn()}
       onEdit={onEdit}
-      onGenerateLabels={onGenerateLabels}
-      isGeneratingLabels={false}
       actionBanner={null}
       loadError={null}
       {...overrides}
@@ -52,7 +47,6 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
     onAddRoot,
     onAddChild,
     onEdit,
-    onGenerateLabels,
   };
 };
 
@@ -152,25 +146,11 @@ describe('LocationPane', () => {
     expect(onAddChild).toHaveBeenCalledTimes(1);
   });
 
-  it('선택이 없으면 라벨 이미지 생성이 비활성이고 사유가 보인다', () => {
+  it('라벨 이미지 생성 단추와 선택 안내가 없다 — 라벨은 위치를 눌러 연 창에서 본다', () => {
     renderPane();
 
-    const reason = 'Location을 하나 이상 선택해 주세요.';
-    const button = screen.getByRole('button', { name: '라벨 이미지 생성' });
-
-    expect(button).toBeDisabled();
-    expect(screen.getByText(reason)).toBeInTheDocument();
-    // 화면에 보이는 것과 그 버튼의 설명인 것은 별개 조건이다. 배치를 바꿔도 연결이 끊기면 안 된다.
-    expect(button).toHaveAccessibleDescription(reason);
-  });
-
-  it('선택이 있으면 라벨 이미지 생성을 요청한다', async () => {
-    const user = userEvent.setup();
-    const { onGenerateLabels } = renderPane({ selectedIds: ['2001'] });
-
-    await user.click(screen.getByRole('button', { name: '라벨 이미지 생성' }));
-
-    expect(onGenerateLabels).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: '라벨 이미지 생성' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Location을 하나 이상 선택해 주세요.')).not.toBeInTheDocument();
   });
 
   it('구역 추가를 누르면 onAddRoot를 부른다', async () => {

@@ -27,18 +27,12 @@ describe('validateLocation', () => {
     );
     expect(validateLocation({ ...filled, aliasName: '가'.repeat(200) })).toEqual({});
   });
-
-  it('위치유형을 고르지 않으면 필수 오류다', () => {
-    expect(validateLocation({ ...filled, locationTypeCode: '' }).locationTypeCode).toBe(
-      '필수 입력 항목입니다.',
-    );
-  });
 });
 
 describe('LOCATION_FORM_FIELDS', () => {
-  it('다이얼로그가 소유한 입력칸 이름을 전부 담는다', () => {
-    for (const field of Object.keys(emptyLocationFormValues())) {
-      expect(LOCATION_FORM_FIELDS).toContain(field);
-    }
+  it('화면에 칸이 있는 값만 담는다 — 위치유형 · 혼적 허용은 칸 없이 실려 간다', () => {
+    expect([...LOCATION_FORM_FIELDS].sort()).toEqual(
+      ['aliasName', 'locationCode', 'parentLocationId'].sort(),
+    );
   });
 });

@@ -9775,17 +9775,6 @@ a.erp-send-chips:focus-visible {
   margin-left: auto;
 }
 
-/* 선택한 Location 대상 작업 줄 — 얇은 구분선 아래, 사유 도움말은 왼쪽 끝 · 단추는 오른쪽 끝. 카드를 나누지 않는다. */
-.warehouse-location-location-selection {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--outline-variant);
-}
-
 /* 빈 표 — 머리는 그대로 두고, 빈 안내 칸의 위아래 여백만 줄인다(데이터가 있을 때는 영향 없음). */
 .warehouse-location-location-table tbody td[colspan] {
   padding-block: var(--space-4);
@@ -9803,11 +9792,6 @@ a.erp-send-chips:focus-visible {
  */
 .warehouse-location-location-table thead th:first-child {
   text-align: center;
-}
-
-/* 단추는 도움말이 있든 없든 줄 오른쪽 끝. */
-.warehouse-location-location-selection > :last-child {
-  margin-left: auto;
 }
 
 /*
@@ -9829,47 +9813,72 @@ a.erp-send-chips:focus-visible {
   text-align: start;
 }
 
-.warehouse-location-label-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: var(--space-5);
-  margin-top: var(--space-5);
+.form-grid.warehouse-location-label-reissue-form {
+  grid-template-columns: 1fr;
 }
 
-.warehouse-location-label-preview {
+/* 위치 수정 창 안의 라벨 — 칸들 아래 얇은 선으로 나누고, 그림 아래 단추 둘(사용자 지시 2026-10-29). */
+.location-label-section {
   display: grid;
   gap: var(--space-3);
-  margin: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
 }
 
-.warehouse-location-label-preview img,
-.warehouse-location-label-failed {
+.location-label-title {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.location-label-image {
+  margin: 0;
+}
+
+.location-label-image img,
+.location-label-failed {
+  display: block;
   width: 100%;
-  min-height: 12rem;
+  max-height: 20rem;
+  min-height: 10rem;
   object-fit: contain;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
   background: var(--surface-container-low);
 }
 
-.form-grid.warehouse-location-label-reissue-form {
-  grid-template-columns: 1fr;
-  margin-top: var(--space-5);
-}
-
-.warehouse-location-label-preview figcaption {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  align-items: center;
-}
-
-.warehouse-location-label-failed {
+.location-label-failed {
   display: grid;
   place-content: center;
   justify-items: center;
   gap: var(--space-3);
+}
+
+.location-label-failed p {
+  margin: 0;
+}
+
+.location-label-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* 내려받기는 파일 링크라 a 로 두고 옆 외곽선 단추와 모양만 맞춘다. */
+.location-label-download {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding-inline: var(--space-4);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  color: var(--primary);
+  font: var(--type-label-lg);
+  text-decoration: none;
+}
+
+.location-label-download:hover {
+  background: var(--surface-container-low);
 }
 
 /*
@@ -25013,32 +25022,99 @@ table.col-measuring td {
   min-width: 0;
 }
 
-.rack-layout-target {
-  margin: 0;
-  color: var(--on-surface);
-  font: var(--type-body-lg);
-}
-
 .rack-layout-counts {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.rack-layout-preview {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  max-height: 16rem;
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  overflow-y: auto;
-  list-style: none;
+/* 랙 추가의 층 · 셀 표 — 행이 층(위층이 위), 열이 셀. */
+.rack-layout-grid-wrap {
+  max-height: 22rem;
+  overflow: auto;
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-sm);
+}
+
+.rack-layout-grid {
+  border-collapse: separate;
+  border-spacing: var(--space-1);
   font: var(--type-body-md);
 }
 
-.rack-layout-kind {
-  display: inline-block;
-  min-width: 2.5rem;
+.rack-layout-grid th {
+  position: sticky;
+  top: 0;
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface);
+  color: var(--on-surface-variant);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rack-layout-grid tbody th {
+  left: 0;
+  text-align: left;
+}
+
+.rack-layout-grid td {
+  min-width: 3rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.rack-layout-grid td.is-new {
+  border: 1px dashed var(--primary);
+  background: var(--primary-container);
+}
+
+.rack-layout-grid td.is-removed {
+  border: 1px dashed var(--outline);
+  background: none;
+  color: var(--on-surface-variant);
+  text-decoration: line-through;
+}
+
+.rack-layout-grid td.is-empty {
+  border-color: transparent;
+  background: none;
+}
+
+.rack-layout-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 위치 목록 — 코드 앞 단계 아이콘(사용자 지시 2026-10-29). 단계마다 색을 달리해 줄이 한눈에 갈린다. */
+.location-level-icon {
+  flex: none;
+  margin-right: var(--space-1);
+}
+
+.location-level-icon.is-zone {
+  color: var(--primary);
+}
+
+.location-level-icon.is-rack {
+  color: var(--semantic-info);
+}
+
+.location-level-icon.is-level {
+  color: var(--semantic-success);
+}
+
+.location-level-icon.is-cell {
+  color: var(--semantic-warning);
+}
+
+.location-level-icon.is-system,
+.location-level-icon.is-none {
   color: var(--on-surface-variant);
 }

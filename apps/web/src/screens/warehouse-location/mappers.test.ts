@@ -5,7 +5,7 @@ import {
   emptyLocationFormValues,
   emptyWarehouseFormValues,
   isSameWarehouseValues,
-  locationOptionLabel,
+  locationAliasOrCode,
   locationToFormValues,
   toLocationCreate,
   toLocationUpdate,
@@ -234,12 +234,13 @@ describe('emptyLocationFormValues', () => {
   });
 });
 
-describe('locationOptionLabel', () => {
-  it('별칭이 있으면 별칭을, 없으면 위치명을 코드 뒤에 붙인다', () => {
+describe('locationAliasOrCode', () => {
+  it('별칭이 있으면 별칭, 없으면 위치 코드 하나만', () => {
     const location = locationFixtures[0]!;
 
-    expect(locationOptionLabel({ ...location, aliasName: '원자재' })).toBe('A-01 · 원자재');
-    expect(locationOptionLabel({ ...location, aliasName: null })).toBe('A-01 · A구역');
+    expect(locationAliasOrCode({ ...location, aliasName: '원자재' })).toBe('원자재');
+    expect(locationAliasOrCode({ ...location, aliasName: null })).toBe('A-01');
+    expect(locationAliasOrCode({ ...location, aliasName: '  ' })).toBe('A-01');
   });
 });
 

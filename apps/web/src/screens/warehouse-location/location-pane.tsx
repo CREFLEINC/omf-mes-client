@@ -3,6 +3,7 @@ import {
   Chip,
   type Column,
   EmptyState,
+  Icon,
   IconButton,
   SearchInput,
   SkeletonText,
@@ -11,7 +12,9 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import { BoardTable } from '../../patterns/board-table';
+import type { LocationLevelCode } from '../../patterns/location-level';
 import { OneLine } from '../../patterns/po-board';
+import { isPutawayStaging, isSystemLocation } from '../../patterns/system-location';
 import type { LocationTreeRow } from './location-tree';
 import { locationShownName } from './mappers';
 import type { Location } from './types';
@@ -30,15 +33,10 @@ export interface LocationPaneProps {
   canAddRoot: boolean;
   addRootDisabledReason: string;
   onAddRoot: () => void;
-  /** 구역 하나를 골랐을 때만 — 그 구역 밑에 랙을 단다. */
+  /** 구역 하나를 골랐을 때만 — 그 구역 밑에 랙을 층 · 셀과 함께 단다. */
   canAddChild: boolean;
   onAddChild: () => void;
-  /** 랙 하나를 골랐을 때만 — 그 랙의 층 · 셀을 짠다. */
-  canConfigureRack: boolean;
-  onConfigureRack: () => void;
   onEdit: (location: Location) => void;
-  onGenerateLabels: () => void;
-  isGeneratingLabels: boolean;
   actionBanner: ReactNode;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
@@ -48,6 +46,26 @@ export interface LocationPaneProps {
 }
 
 const t = messages.warehouseLocation;
+
+/**
+ * 단계마다 다른 모양 · 색의 아이콘(사용자 지시 2026-10-29) — 줄마다 어느 단계인지 한눈에 갈리게. 서버가 만든 자리는
+ * 단계가 구역이어도 따로 둔다(창고 전체 · 적치 대기).
+ */
+const LEVEL_ICONS: Record<LocationLevelCode, string> = {
+  ZONE: 'grid_view',
+  RACK: 'shelves',
+  LEVEL: 'layers',
+  CELL: 'crop_square',
+};
+
+const levelIconOf = (location: Location): { name: string; tone: string } => {
+  if (isPutawayStaging(location)) return { name: 'move_to_inbox', tone: 'system' };
+  if (isSystemLocation(location)) return { name: 'warehouse', tone: 'system' };
+  const level = location.locationLevelCode ?? null;
+  return level === null
+    ? { name: 'place', tone: 'none' }
+    : { name: LEVEL_ICONS[level], tone: level.toLowerCase() };
+};
 
 /** 들여쓰기 한 단계의 픽셀 폭. depth에 곱해 쓴다. */
 const INDENT_PX = 20;
@@ -66,16 +84,11 @@ export const LocationPane = ({
   onAddRoot,
   canAddChild,
   onAddChild,
-  canConfigureRack,
-  onConfigureRack,
   onEdit,
-  onGenerateLabels,
-  isGeneratingLabels,
   actionBanner,
   loadError,
 }: LocationPaneProps) => {
   const addRootNoteId = useId();
-  const labelNoteId = useId();
 
   /**
    * DS에 Tree 컴포넌트가 없어 Table + 들여쓰기 + 접기 버튼의 조합으로 계층을 만든다.
@@ -85,7 +98,7 @@ export const LocationPane = ({
     {
       key: 'locationCode',
       header: t.fields.locationCode,
-      width: '260px',
+      width: '380px',
       /*
        * 위치 코드만 머리·값 왼쪽(사용자 결정 2026-09-18 · omf-all-around#17) — 가운데로 두면 행마다 따로
        * 가운데에 놓여 깊이 들여쓰기가 상쇄돼 상하위가 읽히지 않았다. 별칭·사용 상태는 가운데.
@@ -110,6 +123,12 @@ export const LocationPane = ({
             ) : (
               <span aria-hidden="true" style={{ display: 'inline-block', width: '32px' }} />
             )}
+            <Icon
+              name={levelIconOf(row.location).name}
+              size={18}
+              className={`location-level-icon is-${levelIconOf(row.location).tone}`}
+              aria-hidden="true"
+            />
             <button type="button" className="link-cell" onClick={() => onEdit(row.location)}>
               {row.location.locationCode}
             </button>
@@ -202,7 +221,8 @@ export const LocationPane = ({
     <section aria-label={t.tabs.location}>
       {actionBanner}
       {/*
-       * 역할별로 묶는다(omf-all-around#17) — 검색(왼쪽) · 등록(오른쪽 끝) · 선택한 Location 작업(구분선 아래).
+       * 역할별로 묶는다(omf-all-around#17) — 검색(왼쪽) · 등록(오른쪽 끝). 라벨은 위치를 눌러 연 창에서 본다
+       * (사용자 지시 2026-10-29) — 고르기는 랙 추가에서 구역 하나를 고를 때만 쓴다.
        * 구역 추가의 비활성 사유만 묶음 바로 아래 도움말로 붙인다. 하위 추가는 사유 없이 비활성만 둔다
        * (사용자 지시 2026-09-18) — 활성 조건은 그대로다.
        */}
@@ -228,9 +248,6 @@ export const LocationPane = ({
             <Button variant="outlined" disabled={!canAddChild} onClick={onAddChild}>
               {t.actions.addRack}
             </Button>
-            <Button variant="outlined" disabled={!canConfigureRack} onClick={onConfigureRack}>
-              {t.actions.configureRack}
-            </Button>
           </div>
           {!canAddRoot && (
             <span id={addRootNoteId} className="field-note warehouse-location-inline-note">
@@ -238,24 +255,6 @@ export const LocationPane = ({
             </span>
           )}
         </div>
-      </div>
-
-      {/* 선택한 Location 대상 작업 — 도움말은 줄 왼쪽 끝, 단추는 오른쪽 끝(사용자 지시 2026-09-18). */}
-      <div className="warehouse-location-location-selection">
-        {selectedIds.length === 0 && (
-          <span id={labelNoteId} className="field-note warehouse-location-inline-note">
-            {t.actionReasons.generateLabelNeedsSelection}
-          </span>
-        )}
-        <Button
-          variant="outlined"
-          disabled={selectedIds.length === 0 || isGeneratingLabels}
-          loading={isGeneratingLabels}
-          aria-describedby={selectedIds.length === 0 ? labelNoteId : undefined}
-          onClick={onGenerateLabels}
-        >
-          {t.actions.generateLabel}
-        </Button>
       </div>
 
       {listSlot()}
