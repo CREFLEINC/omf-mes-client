@@ -12,7 +12,7 @@ import {
 import { defectCodeFixtures } from './fixtures';
 import { DefectCauseCodeScreen } from './screen';
 
-/* 공정 매핑은 「품질 코드 관리」 탭 막대의 제 주소로 연다(#208). */
+/* 공정 매핑은 「불량·판정 코드」 탭 막대의 제 주소로 연다(#208). */
 const ROUTE = '/master-data/defect-process-mapping';
 const DEFECT_LIST_PATH = '/quality/defect-codes';
 const PROCESS_LIST_PATH = '/mdm/processes';

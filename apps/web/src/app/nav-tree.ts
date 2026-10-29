@@ -299,14 +299,14 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 품질 코드 관리 — 검사 판정 때 고르는 코드 목록(불량·원인코드 · 판정 유형 코드)을 한 묶음으로(사용자 지시 2026-10-29 · omf-all-around#208).
+       * 불량·판정 코드 — 검사 판정 때 고르는 코드 목록(불량·원인코드 · 판정 유형 코드)을 한 묶음으로(사용자 지시 2026-10-29 · omf-all-around#208).
        * 「품질 기준 정보」는 검사를 어떻게 할지 정하는 기준만 남긴다.
        */
       {
         to: '/master-data/defect-cause-code',
         icon: 'report',
-        label: '품질 코드 관리',
-        labelVi: 'Quản lý mã chất lượng',
+        label: '불량·판정 코드',
+        labelVi: 'Mã lỗi · đánh giá',
         tabs: [
           /*
            * 불량·원인코드 화면 안 하위 탭(불량코드 · 원인코드 · 공정 매핑)을 탭 막대 한 줄로 폈다(사용자 지시 · #208).

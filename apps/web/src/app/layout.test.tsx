@@ -241,16 +241,16 @@ describe('AppLayout', () => {
   });
 
   /* 불량·원인코드의 하위 탭을 탭 막대 한 줄로 폈다 — 판정유형 코드는 그 끝이다(#208). */
-  it('품질 코드 관리 탭 막대에 불량코드 · 원인코드 · 공정 매핑 · 판정 유형 코드가 한 줄로 선다', () => {
+  it('불량·판정 코드 탭 막대에 불량코드 · 원인코드 · 공정 매핑 · 판정 유형 코드가 한 줄로 선다', () => {
     renderLayout('본문 내용', { route: '/master-data/judgment-code' });
 
-    const tabs = screen.getByRole('navigation', { name: '품질 코드 관리' });
+    const tabs = screen.getByRole('navigation', { name: '불량·판정 코드' });
 
     expect(within(tabs).getByRole('link', { name: '판정 유형 코드' })).toHaveAttribute(
       'href',
       '/master-data/judgment-code',
     );
-    expect(hubTabHrefs('품질 코드 관리')).toEqual([
+    expect(hubTabHrefs('불량·판정 코드')).toEqual([
       '/master-data/defect-cause-code',
       '/master-data/cause-code',
       '/master-data/defect-process-mapping',
@@ -551,7 +551,7 @@ describe('AppLayout', () => {
       '/logistics/iqc-inspection',
       /* 「품질 기준 정보」 묶음 — 검사기준 → 검사표 기준(W-06-24) → 검사 수준 관리(W-03-12). */
       '/master-data/inspection-standard',
-      /* 「품질 코드 관리」 묶음 — 불량·원인코드 → 판정유형 코드(#208). */
+      /* 「불량·판정 코드」 묶음 — 불량·원인코드 → 판정유형 코드(#208). */
       '/master-data/defect-cause-code',
       '/quality/inspection-results',
       /* W-03-13 — OA 제품 검사표 조회·서명(설계보다 앞선 화면). */
@@ -1058,7 +1058,7 @@ describe('AppLayout', () => {
         '/master-data/inspection-sheet-template',
         '/quality/inspection-levels',
       ],
-      '품질 코드 관리': [
+      '불량·판정 코드': [
         '/master-data/defect-cause-code',
         '/master-data/cause-code',
         '/master-data/defect-process-mapping',
