@@ -564,7 +564,7 @@ export const JudgmentCodeEditor = ({
     return (
       <Dialog
         open
-        size="md"
+        size="lg"
         title={isCreating ? t.createTitle : t.editTitle}
         onClose={closeForm}
         closeOnBackdropClick={false}
@@ -594,17 +594,19 @@ export const JudgmentCodeEditor = ({
          */}
         {isCreating && (
           <div className="banner-slot">
-            <AlertBanner variant="warning">
-              {messages.judgmentCode.notices.addAffectsOtherScreens}
-            </AlertBanner>
+            <AlertBanner variant="warning">{t.form.addWarning}</AlertBanner>
           </div>
         )}
-        <div className="form-grid defect-cause-form-grid">
+        {/*
+         * 첫 줄 판정 코드 · 판정 유형명 · 표시 순서, 둘째 줄 사용 시작일 · 종료일(사용자 지시 2026-10-29 · #209).
+         * 창 문구는 `t.form` — 표 · 상세 카드의 이름은 그대로 둔다.
+         */}
+        <div className="form-grid defect-cause-form-grid judgment-code-form-grid">
           <div className="field-cell">
-            <FieldLabel htmlFor={codeId} label={t.fields.code} required={!codeLocked} />
+            <FieldLabel htmlFor={codeId} label={t.form.code} required={!codeLocked} />
             <TextField
               id={codeId}
-              placeholder={t.placeholders.code}
+              placeholder={t.form.codePlaceholder}
               value={formState.values.code}
               onChange={(event) => changeValues({ code: event.target.value })}
               disabled={codeLocked}
@@ -625,6 +627,19 @@ export const JudgmentCodeEditor = ({
               {...errorProps('codeName')}
             />
           </div>
+          <div className="field-cell">
+            <FieldLabel htmlFor={orderId} label={t.form.displayOrder} required />
+            <TextField
+              id={orderId}
+              type="number"
+              step={1}
+              placeholder={t.form.displayOrderPlaceholder}
+              value={formState.values.displayOrder}
+              onChange={(event) => changeValues({ displayOrder: event.target.value })}
+              aria-required
+              {...errorProps('displayOrder')}
+            />
+          </div>
           {codeLocked && (
             <p
               id={codeLockId}
@@ -635,32 +650,22 @@ export const JudgmentCodeEditor = ({
               {codeLockReason}
             </p>
           )}
-          <div className="field-cell">
-            <FieldLabel htmlFor={orderId} label={t.fields.displayOrder} required />
-            <TextField
-              id={orderId}
-              type="number"
-              step={1}
-              placeholder={t.placeholders.displayOrder}
-              value={formState.values.displayOrder}
-              onChange={(event) => changeValues({ displayOrder: event.target.value })}
-              aria-required
-              {...errorProps('displayOrder')}
+          <div className="judgment-code-form-half">
+            <DateField
+              label={t.form.effectiveFrom}
+              value={formState.values.effectiveFrom}
+              onChange={(effectiveFrom) => changeValues({ effectiveFrom })}
+              error={errors.effectiveFrom}
             />
           </div>
-          <div aria-hidden />
-          <DateField
-            label={t.fields.effectiveFrom}
-            value={formState.values.effectiveFrom}
-            onChange={(effectiveFrom) => changeValues({ effectiveFrom })}
-            error={errors.effectiveFrom}
-          />
-          <DateField
-            label={t.fields.effectiveTo}
-            value={formState.values.effectiveTo}
-            onChange={(effectiveTo) => changeValues({ effectiveTo })}
-            error={errors.effectiveTo}
-          />
+          <div className="judgment-code-form-half">
+            <DateField
+              label={t.form.effectiveTo}
+              value={formState.values.effectiveTo}
+              onChange={(effectiveTo) => changeValues({ effectiveTo })}
+              error={errors.effectiveTo}
+            />
+          </div>
         </div>
       </Dialog>
     );

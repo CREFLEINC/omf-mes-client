@@ -29,12 +29,6 @@ export const judgmentCode = {
     /* 그룹이 꺼져 있어도 값은 그대로 있다 — 편집을 막지 않고 사실과 조치할 곳을 함께 밝힌다. */
     groupInactive:
       '이 코드그룹은 미사용 상태입니다. 값은 그대로 고칠 수 있으나, 사용을 다시 열려면 공통코드 화면에서 코드그룹을 확인하세요.',
-    /*
-     * 값 추가 경고. **등록 폼이 열려 있는 동안에만** 낸다 —
-     * 늘 보이는 경고는 읽히지 않아 정작 값을 늘릴 때 효력이 없다.
-     */
-    addAffectsOtherScreens:
-      '여기서 추가한 판정유형은 판정유형을 쓰는 다른 화면에도 함께 나타납니다. 여러 업무가 같은 목록을 보므로 값을 늘리기 전에 담당자와 확인하세요.',
     /* 편집기 문구가 「코드값」으로 남는 이유를 밝힌다 — 화면 이름과 편집기 어휘가 다르다. */
     editorScope: '이 화면은 판정유형 코드 그룹의 코드값을 편집합니다.',
   },
@@ -60,6 +54,16 @@ export const judgmentCode = {
       period: (from: string, to: string): string => `${from} ~ ${to}`,
       chipActive: '사용',
       chipInactive: '미사용',
+    },
+    /** 추가 · 수정 창 문구(사용자 지시 2026-10-29 · #209) — 표 · 상세 카드 이름은 `fields` 그대로 */
+    form: {
+      code: '판정 코드',
+      codePlaceholder: '판정 코드를 입력하세요',
+      displayOrder: '표시 순서',
+      displayOrderPlaceholder: '표시 순서를 입력하세요',
+      effectiveFrom: '사용 시작일',
+      effectiveTo: '사용 종료일',
+      addWarning: '추가한 판정 유형은 다른 업무에도 적용됩니다.',
     },
     placeholders: {
       code: '판정 유형 코드를 입력하세요',

@@ -21,9 +21,6 @@ export const judgmentCode: Translated<typeof ko.judgmentCode> = {
     /* 그룹이 꺼져 있어도 값은 그대로 고칠 수 있다 - 사실과 조치할 곳을 함께 밝힌다. */
     groupInactive:
       'Nhóm mã này đang ở trạng thái ngừng dùng. Vẫn sửa được giá trị, nhưng muốn mở dùng lại thì hãy kiểm tra nhóm mã ở màn hình mã chung.',
-    /* 늘 보이는 경고는 읽히지 않는다 - 등록 폼이 열려 있는 동안에만 내는 말이다. */
-    addAffectsOtherScreens:
-      'Loại đánh giá thêm ở đây cũng xuất hiện ở các màn hình khác có dùng loại đánh giá. Nhiều nghiệp vụ cùng xem một danh sách nên hãy xác nhận với người phụ trách trước khi thêm giá trị.',
     /* 화면 이름은 「판정유형」인데 편집기 어휘는 「코드값」이다 - 그 어긋남을 밝힌다. */
     editorScope: 'Màn hình này sửa các giá trị mã của nhóm mã loại đánh giá.',
   },
@@ -45,6 +42,15 @@ export const judgmentCode: Translated<typeof ko.judgmentCode> = {
       period: (from: string, to: string): string => `${from} ~ ${to}`,
       chipActive: 'Sử dụng',
       chipInactive: 'Ngừng dùng',
+    },
+    form: {
+      code: 'Mã đánh giá',
+      codePlaceholder: 'Nhập mã đánh giá',
+      displayOrder: 'Thứ tự hiển thị',
+      displayOrderPlaceholder: 'Nhập thứ tự hiển thị',
+      effectiveFrom: 'Ngày bắt đầu sử dụng',
+      effectiveTo: 'Ngày kết thúc sử dụng',
+      addWarning: 'Loại đánh giá đã thêm cũng được áp dụng cho các nghiệp vụ khác.',
     },
     placeholders: {
       code: 'Nhập mã loại đánh giá',

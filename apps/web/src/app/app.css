@@ -311,6 +311,35 @@ main > * + * {
   grid-column: 1 / -1;
 }
 
+/* 판정 유형 추가 · 수정 창(#209) — 첫 줄 세 칸, 둘째 줄 사용 시작일 · 종료일 두 칸이 같은 너비로 줄을 채운다. */
+/* 공용 `.form-grid`(2열)가 이 파일 뒤쪽에 있어 클래스 둘로 무겁게 건다. 좁은 화면(720px 이하)은 한 줄에 하나. */
+.form-grid.judgment-code-form-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .form-grid.judgment-code-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .form-grid.judgment-code-form-grid > *,
+  .form-grid.judgment-code-form-grid > .judgment-code-form-half {
+    grid-column: 1 / -1;
+  }
+}
+
+.judgment-code-form-grid > * {
+  grid-column: span 2;
+}
+
+.judgment-code-form-grid > .judgment-code-form-half {
+  grid-column: span 3;
+}
+
+.judgment-code-form-grid > .defect-cause-form-wide {
+  grid-column: 1 / -1;
+}
+
 /* 상위 선택칸과 안내 사이를 띄운다(사용자 지시 · #209). 뒤쪽 공용 규칙(`.iqc-inspection-action-note { margin: 0 }`)보다 무거워야 선다. */
 .defect-cause-form-grid .defect-cause-info-note {
   justify-self: start;

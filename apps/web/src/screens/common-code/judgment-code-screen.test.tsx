@@ -877,7 +877,7 @@ describe('JudgmentCodeScreen — 안내와 경고', () => {
     renderScreen([groupListRoute(), codeValueListRoute()], '?new=1');
 
     const dialog = await screen.findByRole('dialog', { name: te.createTitle });
-    expect(within(dialog).getByText(t.notices.addAffectsOtherScreens)).toBeInTheDocument();
+    expect(within(dialog).getByText(te.form.addWarning)).toBeInTheDocument();
   });
 
   it('임시 목록 안내를 내지 않는다(사용자 지시 · #209)', async () => {
@@ -903,7 +903,7 @@ describe('JudgmentCodeScreen — 안내와 경고', () => {
 
     /* 스텁이 갈리기 전 상태 — 셋이 실제로 서 있어야 뒤의 부재 단언이 뜻을 갖는다. */
     expect(screen.getByText(t.notices.groupInactive)).toBeInTheDocument();
-    expect(alertWithText(t.notices.addAffectsOtherScreens)).toBeDefined();
+    expect(alertWithText(te.form.addWarning)).toBeDefined();
 
     await act(async () => {
       await queryClient.refetchQueries({ queryKey: codeGroupKeys.all });
@@ -911,7 +911,7 @@ describe('JudgmentCodeScreen — 안내와 경고', () => {
 
     expect(await screen.findByText(messages.httpError.loadTitle)).toBeInTheDocument();
     expect(screen.queryByText(t.notices.groupInactive)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.notices.addAffectsOtherScreens)).not.toBeInTheDocument();
+    expect(screen.queryByText(te.form.addWarning)).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: te.list })).not.toBeInTheDocument();
   });
 
@@ -942,14 +942,14 @@ describe('JudgmentCodeScreen — 안내와 경고', () => {
     renderScreen([groupListRoute(), codeValueListRoute()], '?new=1');
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
-    expect(alertWithText(t.notices.addAffectsOtherScreens)).toBeDefined();
+    expect(alertWithText(te.form.addWarning)).toBeDefined();
   });
 
   it('등록 폼이 닫혀 있으면 값 추가 경고를 내지 않는다', async () => {
     renderScreen([groupListRoute(), codeValueListRoute()]);
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
-    expect(screen.queryByText(t.notices.addAffectsOtherScreens)).not.toBeInTheDocument();
+    expect(screen.queryByText(te.form.addWarning)).not.toBeInTheDocument();
   });
 
   it('등록 폼을 열고 닫으면 경고도 함께 사라진다', async () => {
@@ -958,7 +958,7 @@ describe('JudgmentCodeScreen — 안내와 경고', () => {
 
     await user.click(screen.getByRole('button', { name: te.actions.add }));
     await waitFor(() => {
-      expect(alertWithText(t.notices.addAffectsOtherScreens)).toBeDefined();
+      expect(alertWithText(te.form.addWarning)).toBeDefined();
     });
 
     await user.click(
@@ -966,7 +966,7 @@ describe('JudgmentCodeScreen — 안내와 경고', () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByText(t.notices.addAffectsOtherScreens)).not.toBeInTheDocument();
+      expect(screen.queryByText(te.form.addWarning)).not.toBeInTheDocument();
     });
   });
 
@@ -975,7 +975,7 @@ describe('JudgmentCodeScreen — 안내와 경고', () => {
     renderScreen([groupListRoute(DECOY_GROUPS), codeValueListRoute()], '?new=1');
     await screen.findByText(t.empty.groupNotFoundTitle);
 
-    expect(screen.queryByText(t.notices.addAffectsOtherScreens)).not.toBeInTheDocument();
+    expect(screen.queryByText(te.form.addWarning)).not.toBeInTheDocument();
   });
 });
 
@@ -1002,7 +1002,7 @@ describe('JudgmentCodeScreen — 재사용한 편집기의 동작', () => {
   it('코드 칸이 잠기고 셀 수 없다는 사유가 보인다', async () => {
     await openCodeValueForm();
 
-    expect(screen.getByLabelText(te.fields.code)).toBeDisabled();
+    expect(screen.getByLabelText(te.form.code)).toBeDisabled();
     expect(screen.getByText(messages.editability.notCountable(null))).toBeInTheDocument();
   });
 
@@ -1010,8 +1010,8 @@ describe('JudgmentCodeScreen — 재사용한 편집기의 동작', () => {
   it('정렬 순서를 고쳐 저장하면 그 행 하나만 보낸다', async () => {
     const { requests, user } = await openCodeValueForm([codeValueUpdateRoute()]);
 
-    await user.clear(screen.getByLabelText(te.fields.displayOrder));
-    await user.type(screen.getByLabelText(te.fields.displayOrder), '15');
+    await user.clear(screen.getByLabelText(te.form.displayOrder));
+    await user.type(screen.getByLabelText(te.form.displayOrder), '15');
     await user.click(
       within(codeValueFormPane()).getByRole('button', { name: messages.common.save }),
     );
@@ -1041,9 +1041,9 @@ describe('JudgmentCodeScreen — 재사용한 편집기의 동작', () => {
     );
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
-    await user.type(screen.getByLabelText(te.fields.code), CREATED_CODE_VALUE.code);
+    await user.type(screen.getByLabelText(te.form.code), CREATED_CODE_VALUE.code);
     await user.type(screen.getByLabelText(te.fields.name), CREATED_CODE_VALUE.codeName);
-    await user.type(screen.getByLabelText(te.fields.displayOrder), '40');
+    await user.type(screen.getByLabelText(te.form.displayOrder), '40');
     await user.click(
       within(codeValueFormPane()).getByRole('button', { name: messages.common.save }),
     );
