@@ -127,7 +127,8 @@ const InspectionSheetTemplateScreenBody = () => {
       key: 'confirmedAt',
       align: 'center',
       header: t.columns.confirmedAt,
-      width: '128px',
+      /* 「2026-10-29 10:02」가 잘리지 않는 폭(#208) */
+      width: '152px',
       render: (row) =>
         row.confirmedAt === null ? '' : (formatPlantDateTime(row.confirmedAt) ?? ''),
     },

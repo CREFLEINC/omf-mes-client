@@ -75,7 +75,8 @@ export const StepEditor = ({ step, readOnly, errors, onChange }: StepEditorProps
     {
       key: 'code',
       header: t.editor.itemCode,
-      width: '96px',
+      /* 항목 번호는 30자까지 — 「PROCESS_1-1」 정도가 잘리지 않는 폭(#208). */
+      width: '140px',
       render: (item) => (
         <TextField
           aria-label={t.editor.itemCode}
