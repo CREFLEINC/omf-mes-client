@@ -12,7 +12,8 @@ import {
 import { defectCodeFixtures } from './fixtures';
 import { DefectCauseCodeScreen } from './screen';
 
-const ROUTE = '/master-data/defect-cause-code?tab=mapping';
+/* 공정 매핑은 「불량·판정 코드」 탭 막대의 제 주소로 연다(#208). */
+const ROUTE = '/master-data/defect-process-mapping';
 const DEFECT_LIST_PATH = '/quality/defect-codes';
 const PROCESS_LIST_PATH = '/mdm/processes';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -94,7 +95,7 @@ const baseRoutes = (defectTotal = defectCodeFixtures.length): StubRoute[] => [
 
 const renderMapping = (extraRoutes: StubRoute[] = [], defectTotal?: number) => {
   const { fetch, requests } = createRecordingFetch([...extraRoutes, ...baseRoutes(defectTotal)]);
-  renderWithProviders(<DefectCauseCodeScreen />, { fetch, route: ROUTE });
+  renderWithProviders(<DefectCauseCodeScreen tab="mapping" />, { fetch, route: ROUTE });
   return { requests, user: userEvent.setup() };
 };
 
@@ -102,12 +103,11 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
   it('상세 불량코드와 사용 중인 공정을 매트릭스로 표시한다', async () => {
     const { requests } = renderMapping();
 
-    expect(await screen.findByRole('tab', { name: '공정 매핑' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-    expect(screen.getAllByRole('tab')).toHaveLength(3);
-    expect(screen.getByRole('region', { name: '공정별 상세 불량코드 매핑' })).toBeInTheDocument();
+    /* 하위 탭은 셸 탭 막대(주소)로 고른다 — 화면 안에 탭 줄을 두지 않는다(#208). */
+    expect(
+      await screen.findByRole('region', { name: '공정별 상세 불량코드 매핑' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     expect(await screen.findByRole('columnheader', { name: 'OP-INJ · 사출' })).toBeInTheDocument();
     expect(screen.getByRole('grid', { name: '공정별 상세 불량코드 매핑' })).toBeInTheDocument();
     expect(screen.getByRole('rowheader', { name: /DF-11 · 스크래치/ })).toBeInTheDocument();
