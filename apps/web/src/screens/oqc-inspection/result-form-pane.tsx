@@ -1,4 +1,4 @@
-import { Button, Icon, Progress, Select, Tabs, TextArea, TextField } from '@crefle/web-ui';
+import { Button, Icon, Progress, Tabs, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import {
@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { Select } from '../../patterns/select';
 import { CONFIRMED_STATUS } from './inspection-status';
 import { SaveErrorBanner } from '../../patterns/master';
 

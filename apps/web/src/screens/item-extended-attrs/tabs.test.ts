@@ -4,7 +4,6 @@ import {
   DEFAULT_SUBSIDIARY_TAB_ID,
   DEFAULT_TAB_ID,
   ITEM_DETAIL_TABS,
-  ITEM_EXTENDED_ATTRS_SECTIONS,
   ITEM_EXTENDED_ATTRS_TABS,
   SUBSIDIARY_TABS,
   resolveSubsidiaryTab,
@@ -12,20 +11,16 @@ import {
 } from './tabs';
 
 describe('탭 정의', () => {
-  it('고정 설계의 최상위 구획은 품목과 BOM 둘이다', () => {
-    expect(ITEM_EXTENDED_ATTRS_SECTIONS.map((section) => section.id)).toEqual(['item', 'bom']);
-  });
-
+  /* 품목 / BOM 은 셸 탭 막대가 가른다(주소가 다르다) — 품목 탭 오른쪽 구획에 BOM 을 섞지 않는다. */
   it('품목 세부 탭에는 BOM을 섞지 않는다', () => {
     expect(ITEM_DETAIL_TABS.map((tab) => tab.id)).toEqual(['attrs', 'sub']);
   });
 
   /*
-   * **만든 탭만 넣는다.** 세 탭이 모두 내용을 갖췄으므로 이제 셋이 정본이다 —
-   * 자리만 먼저 둔 탭은 「눌러도 빈 화면」이 되므로 이 배열이 그것을 막는 자리다.
+   * **만든 탭만 넣는다.** 자리만 먼저 둔 탭은 「눌러도 빈 화면」이 되므로 이 배열이 그것을 막는 자리다.
    */
   it('지금 만든 탭만 들어 있다', () => {
-    expect(ITEM_EXTENDED_ATTRS_TABS.map((tab) => tab.id)).toEqual(['attrs', 'sub', 'bom']);
+    expect(ITEM_EXTENDED_ATTRS_TABS.map((tab) => tab.id)).toEqual(['attrs', 'sub']);
   });
 
   it('탭마다 라벨이 있다', () => {
@@ -43,7 +38,6 @@ describe('resolveTab', () => {
   it('아는 값은 그 탭이다', () => {
     expect(resolveTab('attrs').id).toBe('attrs');
     expect(resolveTab('sub').id).toBe('sub');
-    expect(resolveTab('bom').id).toBe('bom');
   });
 
   /* 주소를 손으로 고쳐도 빈 화면이 되지 않아야 한다. */

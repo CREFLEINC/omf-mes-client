@@ -89,7 +89,7 @@ describe('ErpCommonCodeScreen', () => {
     expect(screen.getByRole('button', { name: 'UNIT 코드값 보기' })).toBeInTheDocument();
     expect(screen.queryByText('ITEM_TYPE')).not.toBeInTheDocument();
     expect(screen.getByText('2개 그룹')).toBeInTheDocument();
-    expect(screen.getByText('그룹을 고르면 코드값이 보입니다.')).toBeInTheDocument();
+    expect(screen.getByText('코드 그룹을 고르세요')).toBeInTheDocument();
 
     // 미사용 그룹도 받는다 — 꺼진 ERP 그룹이 사라지지 않게.
     const request = urls.find((url) => url.pathname === GROUPS_PATH);
@@ -127,6 +127,9 @@ describe('ErpCommonCodeScreen', () => {
     expect(await within(pane).findByText('예시 값 B')).toBeInTheDocument();
     expect(within(pane).getByText('미사용')).toBeInTheDocument();
     expect(within(pane).getByText('1–2 / 전체 2건')).toBeInTheDocument();
+    // 한국어·베트남어 명칭 열은 두지 않는다 — 코드명과 겹친다.
+    expect(within(pane).queryByText('한국어 명칭')).not.toBeInTheDocument();
+    expect(within(pane).queryByText('베트남어 명칭')).not.toBeInTheDocument();
 
     const request = urls.find((url) => url.pathname === VALUES_PATH);
     expect(request?.searchParams.get('codeGroupCode')).toBe('PUR_GROUP');
@@ -153,7 +156,7 @@ describe('ErpCommonCodeScreen', () => {
     const { urls } = renderScreen([groupsRoute()], '?group=ITEM_TYPE');
     await screen.findByRole('button', { name: 'PUR_GROUP 코드값 보기' });
 
-    expect(screen.getByText('그룹을 고르면 코드값이 보입니다.')).toBeInTheDocument();
+    expect(screen.getByText('코드 그룹을 고르세요')).toBeInTheDocument();
     expect(urls.some((url) => url.pathname === VALUES_PATH)).toBe(false);
   });
 

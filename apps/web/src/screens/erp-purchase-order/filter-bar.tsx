@@ -1,8 +1,10 @@
-import { Button, Checkbox, SearchInput, Select, TextField } from '@crefle/web-ui';
+import { Button, SearchInput, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { Select } from '../../patterns/select';
 import type { PurchaseOrderFilters } from './filters';
+import { ProgressFilterField } from './progress';
 import type { SelectOption } from './types';
 
 const t = messages.erpPurchaseOrder;
@@ -12,12 +14,13 @@ interface FilterSelectProps {
   options: SelectOption[];
   value: string;
   onChange: (value: string) => void;
+  className?: string;
 }
 
-const FilterSelect = ({ label, options, value, onChange }: FilterSelectProps) => {
+const FilterSelect = ({ label, options, value, onChange, className }: FilterSelectProps) => {
   const id = useId();
   return (
-    <div className="field-cell">
+    <div className={className === undefined ? 'field-cell' : `field-cell ${className}`}>
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
@@ -36,6 +39,8 @@ export interface ErpPurchaseOrderFilterBarProps {
   supplierOptions: SelectOption[];
   plantOptions: SelectOption[];
   statusOptions: SelectOption[];
+  /** 발주 유형 — 공통코드 `ORDER_TYPE` */
+  orderTypeOptions: SelectOption[];
   onSearch: (filters: PurchaseOrderFilters) => void;
   onReset: () => void;
 }
@@ -43,29 +48,31 @@ export interface ErpPurchaseOrderFilterBarProps {
 /**
  * 조건 줄. 고치는 동안은 초안(`draft`)에만 담고 「조회」를 눌러야 주소로 간다 —
  * 칸 하나를 바꿀 때마다 조회가 나가면 기간을 다 고르기도 전에 엉뚱한 결과가 뜬다.
+ * 진행 단추만은 누르는 즉시 건다 — 걸린 조건에 진행만 바꿔 얹고, 고치던 초안은 그대로 둔다.
  */
 export const ErpPurchaseOrderFilterBar = ({
   appliedFilters,
   supplierOptions,
   plantOptions,
   statusOptions,
+  orderTypeOptions,
   onSearch,
   onReset,
 }: ErpPurchaseOrderFilterBarProps) => {
   const [draft, setDraft] = useState(appliedFilters);
   const reasonId = useId();
-  const { q, supplier, plant, status, from, to, openOnly } = appliedFilters;
-  /* 주소가 바뀌면(뒤로가기·초기화) 초안도 따라간다. */
+  const { q, supplier, plant, status, orderType, from, to, progress } = appliedFilters;
+  /* 주소가 바뀌면(뒤로가기·초기화) 초안도 따라간다. 진행은 초안을 거치지 않아 따라가지 않는다. */
   useEffect(
-    () => setDraft({ q, supplier, plant, status, from, to, openOnly }),
-    [q, supplier, plant, status, from, to, openOnly],
+    () => setDraft((current) => ({ ...current, q, supplier, plant, status, orderType, from, to })),
+    [q, supplier, plant, status, orderType, from, to],
   );
 
   const reversed = draft.from !== '' && draft.to !== '' && draft.from > draft.to;
   const update = <K extends keyof PurchaseOrderFilters>(key: K, value: PurchaseOrderFilters[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));
   const search = (): void => {
-    if (!reversed) onSearch(draft);
+    if (!reversed) onSearch({ ...draft, progress });
   };
 
   return (
@@ -100,6 +107,14 @@ export const ErpPurchaseOrderFilterBar = ({
         value={draft.status}
         onChange={(value) => update('status', value)}
       />
+      {/* 발주 유형(사용자 지시 2026-10-28) — 외자 · 내자 · 위탁가공 등을 갈라 본다. */}
+      <FilterSelect
+        label={t.fields.orderType}
+        className="erp-po-order-type-field"
+        options={orderTypeOptions}
+        value={draft.orderType}
+        onChange={(value) => update('orderType', value)}
+      />
       <SearchInput
         label={t.fields.q}
         placeholder={t.values.searchPlaceholder}
@@ -108,15 +123,10 @@ export const ErpPurchaseOrderFilterBar = ({
         onSearch={search}
         clearLabel={messages.common.clear}
       />
-      {/* 확인칸은 라벨이 오른쪽에 붙어 라벨 층이 없다 — 윗선을 맞추려 라벨 없는 셀에 담는다. */}
-      <div className="field-cell field-cell-unlabeled">
-        <Checkbox
-          checked={draft.openOnly}
-          onChange={(event) => update('openOnly', event.target.checked)}
-        >
-          {t.fields.openOnly}
-        </Checkbox>
-      </div>
+      <ProgressFilterField
+        value={progress}
+        onChange={(next) => onSearch({ ...appliedFilters, progress: next })}
+      />
       <div className="field-cell field-cell-unlabeled">
         {reversed && (
           <span id={reasonId} className="field-error">

@@ -1,6 +1,7 @@
 import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { directionName, interfaceName, statusName } from './message-labels';
 import type { PeriodInput } from './period';
 
 /**
@@ -16,7 +17,6 @@ export interface MessageFilters {
   status: string;
   iface: string;
   direction: string;
-  targetType: string;
   /** 「N회 이상」. 정수만 뜻이 있다 — 문자열을 보내면 서버가 400으로 거부한다. */
   retryMin: string;
 }
@@ -25,7 +25,6 @@ export const EMPTY_FILTERS: MessageFilters = {
   status: '',
   iface: '',
   direction: '',
-  targetType: '',
   retryMin: '',
 };
 
@@ -34,7 +33,6 @@ const URL_KEYS: Record<keyof MessageFilters, string> = {
   status: 'status',
   iface: 'iface',
   direction: 'dir',
-  targetType: 'target',
   retryMin: 'retryMin',
 };
 
@@ -47,7 +45,7 @@ export const readFilters = (params: URLSearchParams): MessageFilters => ({
   status: params.get(URL_KEYS.status) ?? '',
   iface: params.get(URL_KEYS.iface) ?? '',
   direction: params.get(URL_KEYS.direction) ?? '',
-  targetType: params.get(URL_KEYS.targetType) ?? '',
+  /* 옛 주소의 `target`(대상 유형)은 읽지 않는다 — 그 칸을 걷어 냈다(사용자 지시 2026-10-27). 숨은 조건이 되면 안 된다. */
   retryMin: readRetryMin(params.get(URL_KEYS.retryMin) ?? ''),
 });
 
@@ -75,7 +73,6 @@ export const toSearchParams = (
     [URL_KEYS.status, filters.status],
     [URL_KEYS.iface, filters.iface],
     [URL_KEYS.direction, filters.direction],
-    [URL_KEYS.targetType, filters.targetType],
     [URL_KEYS.retryMin, readRetryMin(filters.retryMin)],
   ];
 
@@ -109,7 +106,6 @@ export const toFilterQuery = (filters: MessageFilters): MessageFilterQuery => {
     ...(filters.direction === ''
       ? {}
       : { directionCode: filters.direction as MessageQueryParams['directionCode'] }),
-    ...(filters.targetType === '' ? {} : { targetTypeCode: filters.targetType }),
     ...(retryMin === '' ? {} : { retryCountMin: Number(retryMin) }),
   };
 };
@@ -126,23 +122,18 @@ export const toFilterChips = (filters: MessageFilters): FilterChip[] => {
   const candidates: FilterChip[] = [
     {
       key: 'status',
-      label: t.filters.chipStatus(filters.status),
+      label: t.filters.chipStatus(statusName(filters.status)),
       removeLabel: t.filters.chipRemoveStatus,
     },
     {
       key: 'iface',
-      label: t.filters.chipInterface(filters.iface),
+      label: t.filters.chipInterface(interfaceName(filters.iface)),
       removeLabel: t.filters.chipRemoveInterface,
     },
     {
       key: 'direction',
-      label: t.filters.chipDirection(filters.direction),
+      label: t.filters.chipDirection(directionName(filters.direction)),
       removeLabel: t.filters.chipRemoveDirection,
-    },
-    {
-      key: 'targetType',
-      label: t.filters.chipTargetType(filters.targetType),
-      removeLabel: t.filters.chipRemoveTargetType,
     },
     {
       key: 'retryMin',

@@ -1,5 +1,7 @@
-import { Button, Select } from '@crefle/web-ui';
+import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+
+import { Select } from '../select';
 
 /**
  * C-8 페이지 이동 공용 부품. 목록 아래 한 줄: 왼쪽에 총 건수와 페이지 크기, 오른쪽에 [처음] [이전] n/N [다음] [마지막].
@@ -23,6 +25,8 @@ export interface PageNavProps<S extends number = PageSize> {
   onChangeSize?: (size: S) => void;
   /** 고를 페이지 크기. 기본은 `PAGE_SIZES`(20 · 50 · 100). */
   sizes?: readonly S[];
+  /** 처음 · 이전 · 다음 · 마지막 단추 크기. 기본 `sm` — 검사 기준 목록처럼 키워 쓸 화면이 켠다(#196). */
+  buttonSize?: 'sm' | 'md';
 }
 
 export const totalPagesOf = (meta: PageNavMeta): number => {
@@ -36,6 +40,7 @@ export const PageNav = <S extends number = PageSize>({
   onChangePage,
   onChangeSize,
   sizes = PAGE_SIZES as unknown as readonly S[],
+  buttonSize = 'sm',
 }: PageNavProps<S>) => {
   const totalPages = totalPagesOf(meta);
   const page = Math.min(Math.max(1, meta.page), totalPages);
@@ -62,11 +67,16 @@ export const PageNav = <S extends number = PageSize>({
         )}
       </div>
       <div className="page-nav-right">
-        <Button size="sm" variant="outlined" disabled={page <= 1} onClick={() => onChangePage(1)}>
+        <Button
+          size={buttonSize}
+          variant="outlined"
+          disabled={page <= 1}
+          onClick={() => onChangePage(1)}
+        >
           {t.first}
         </Button>
         <Button
-          size="sm"
+          size={buttonSize}
           variant="outlined"
           disabled={page <= 1}
           onClick={() => onChangePage(page - 1)}
@@ -77,7 +87,7 @@ export const PageNav = <S extends number = PageSize>({
           {t.position(page, totalPages)}
         </span>
         <Button
-          size="sm"
+          size={buttonSize}
           variant="outlined"
           disabled={page >= totalPages}
           onClick={() => onChangePage(page + 1)}
@@ -85,7 +95,7 @@ export const PageNav = <S extends number = PageSize>({
           {t.next}
         </Button>
         <Button
-          size="sm"
+          size={buttonSize}
           variant="outlined"
           disabled={page >= totalPages}
           onClick={() => onChangePage(totalPages)}

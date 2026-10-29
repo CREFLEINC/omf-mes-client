@@ -4,7 +4,6 @@ import {
   Button,
   EmptyState,
   PageHeader,
-  Select,
   Skeleton,
   TextField,
   type SelectItems,
@@ -17,6 +16,7 @@ import { DetailDrawer } from '../../patterns/detail-drawer';
 import { handoverTypeName, useHandoverAlertTypes } from '../../patterns/handover-alert-types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
+import { Select } from '../../patterns/select';
 import { DeliveryTable, toDeliveryView } from './delivery-table';
 import { DispatchTable } from './dispatch-table';
 import {

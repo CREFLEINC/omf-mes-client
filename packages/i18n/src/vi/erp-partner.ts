@@ -5,7 +5,10 @@ import type { Translated } from './translated';
 export const erpPartner: Translated<typeof ko.erpPartner> = {
   title: 'Tra cứu đối tác (ERP)',
   breadcrumbRoot: 'Quản trị hệ thống',
-  readOnlyNote: 'Đối tác nhận từ ERP. Không thể sửa trong MES.',
+  panes: {
+    filter: 'Điều kiện tra cứu',
+    list: 'Danh sách đối tác',
+  },
   fields: {
     q: 'Mã·Tên đối tác',
     role: 'Vai trò',
@@ -25,11 +28,6 @@ export const erpPartner: Translated<typeof ko.erpPartner> = {
     subcontractor: 'Nhà gia công',
     disposal: 'Đơn vị xử lý phế thải',
     other: 'Khác',
-  },
-  detail: {
-    label: 'Chi tiết đối tác',
-    openAction: (partnerCode: string): string => `Xem chi tiết ${partnerCode}`,
-    selectHint: 'Chọn một đối tác trong danh sách để xem chi tiết.',
   },
   values: {
     all: 'Tất cả',
@@ -53,12 +51,9 @@ export const erpPartner: Translated<typeof ko.erpPartner> = {
   },
   loading: {
     list: 'Đang tải danh sách đối tác',
-    detail: 'Đang tải chi tiết đối tác',
   },
   empty: {
     noResultTitle: 'Không có đối tác phù hợp',
-    noResultDescription: 'Hãy đổi từ khóa, vai trò hoặc bật bao gồm ngừng sử dụng.',
     beyondLastTitle: 'Trang này không có đối tác',
-    beyondLastDescription: 'Hãy quay về trang đầu.',
   },
 };

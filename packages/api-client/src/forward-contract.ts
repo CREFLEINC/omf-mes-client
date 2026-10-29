@@ -770,14 +770,8 @@ export interface ResourceRecommendations {
   workers?: WorkerRecommendation[];
 }
 
-/** 서버 선행 — 오더 수신 때 계획을 자동으로 만들지 못했거나 확정하지 못한 이유. */
-export type AutoPlanReason =
-  | 'BOM_MISSING'
-  | 'ROUTING_MISSING'
-  | 'ROUTING_AMBIGUOUS'
-  | 'LINE_UNKNOWN'
-  | 'PLAN_NOT_CONFIRMED'
-  | 'QTY_REMAINING';
+/** 오더 수신 때 계획을 자동으로 만들지 못했거나 확정하지 못한 이유. 생성 타입(P-67, P-142)을 그대로 쓴다. */
+export type AutoPlanReason = components['schemas']['AutoPlanReason'];
 
 export type AutoPlanStatus = 'DONE' | 'NEEDS_REVIEW';
 
@@ -785,20 +779,6 @@ export interface ProductionOrderAutoPlan {
   status: AutoPlanStatus;
   reasons: AutoPlanReason[];
 }
-
-/**
- * 서버 선행 — P/O 에 자동 계획 결과를 싣는다. `null` 은 자동 계획을 한 번도 하지 않은 P/O 다
- * (기능 전에 받았거나, 받을 때 납기가 지났거나 수신 상태가 아니라 건너뛰었다) — 계획도 없다.
- */
-export type ProductionOrderForward = components['schemas']['ProductionOrder'] & {
-  autoPlan?: ProductionOrderAutoPlan | null;
-};
-
-export type ProductionOrderListQueryForward = NonNullable<
-  ProductionOrdersGet['parameters']['query']
-> & {
-  autoPlanStatus?: AutoPlanStatus;
-};
 
 /** 서버 선행 — `POST /planning/production-orders/{id}:auto-plan` 의 결과. */
 export interface ProductionOrderAutoPlanResult {
@@ -935,9 +915,6 @@ type WorkOrdersPath = paths['/production/work-orders'];
 type WorkOrdersGet = WorkOrdersPath['get'];
 type WorkOrderPath = paths['/production/work-orders/{workOrderId}'];
 type WorkOrderGet = WorkOrderPath['get'];
-
-type ProductionOrdersGet = paths['/planning/production-orders']['get'];
-type ProductionOrderGet = paths['/planning/production-orders/{productionOrderId}']['get'];
 
 interface NoParameters {
   query?: never;
@@ -2071,39 +2048,6 @@ export interface ForwardPaths {
         };
       };
     };
-  };
-  '/planning/production-orders': Unused & {
-    parameters: NoParameters;
-    get: Omit<ProductionOrdersGet, 'parameters' | 'responses'> & {
-      parameters: Omit<ProductionOrdersGet['parameters'], 'query'> & {
-        query?: ProductionOrderListQueryForward;
-      };
-      responses: Omit<ProductionOrdersGet['responses'], 200> & {
-        200: {
-          headers: { [name: string]: unknown };
-          content: {
-            'application/json': {
-              items: ProductionOrderForward[];
-              page: components['schemas']['PageMeta'];
-            };
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-  };
-  '/planning/production-orders/{productionOrderId}': Unused & {
-    parameters: NoParameters;
-    get: Omit<ProductionOrderGet, 'responses'> & {
-      responses: Omit<ProductionOrderGet['responses'], 200> & {
-        200: Omit<ProductionOrderGet['responses'][200], 'content'> & {
-          content: { 'application/json': ProductionOrderForward };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
   };
   '/planning/production-orders/{productionOrderId}:auto-plan': Unused & {
     parameters: NoParameters;

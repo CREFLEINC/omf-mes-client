@@ -6,7 +6,6 @@ import {
   Dialog,
   EmptyState,
   SearchInput,
-  Select,
   SkeletonText,
   Table,
   TextField,
@@ -25,6 +24,7 @@ import {
   useMasterWrite,
 } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { Select } from '../../patterns/select';
 import {
   emptyProcessFormValues,
   isSameProcessValues,

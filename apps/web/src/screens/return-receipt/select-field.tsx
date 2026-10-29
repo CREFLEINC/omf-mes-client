@@ -1,5 +1,7 @@
-import { Select, type SelectOption, type SelectOptionGroup } from '@crefle/web-ui';
+import { type SelectOption, type SelectOptionGroup } from '@crefle/web-ui';
 import { useId } from 'react';
+
+import { Select } from '../../patterns/select';
 
 export interface SelectFieldProps {
   label: string;

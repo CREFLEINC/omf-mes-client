@@ -7,6 +7,7 @@ import { ScreenNotice } from '../../patterns/screen-notice';
 import { BottomActionBar } from '../../patterns/bottom-action-bar';
 import { Button } from '../../patterns/button';
 import { ChoiceCard } from '../../patterns/choice-card';
+import { ConfirmDialog } from '../../patterns/confirm-dialog';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { displayNameOf } from '../../patterns/code-values';
@@ -39,7 +40,6 @@ import { LotlessLines, LotlessOrderInfo } from './lotless-lines';
 import { shiftIso } from './lotless';
 import { RECEIVED_LEAD_DAYS, useReceivedPurchaseOrders } from './queries';
 import { KEEP_EXCESS, useReceiptFlow } from './use-receipt-flow';
-import { ItemPicker } from '../../patterns/item-picker';
 import './screen.css';
 
 const t = messages.inboundReceipt;
@@ -64,7 +64,7 @@ const SHOW_DELIVERY_NOTE = false;
 const STEP_COUNT = 3;
 
 /** 단계마다 몇 번째인가. 발주 없이 받기는 라인 고르기 자리에 선다. */
-const STEP_INDEX: Record<ReceiptStep, number> = { scan: 1, line: 2, unordered: 2, qty: 3 };
+const STEP_INDEX: Record<ReceiptStep, number> = { scan: 1, line: 2, qty: 3 };
 
 /** 발주 후보를 카드로 늘어놓는 한도. 넘으면 선택칸으로 둔다 — 카드가 라인을 화면 밖으로 민다. */
 const ORDER_CARDS_MAX = 4;
@@ -108,8 +108,9 @@ export const InboundReceiptScreen = () => {
     keypadFor,
     setKeypadFor,
     setShowAllOrders,
+    lotlessOrder,
     lotlessOrderId,
-    setLotlessOrderId,
+    setLotlessOrder,
     lotlessFilter,
     setLotlessFilter,
     lotlessChecked,
@@ -134,12 +135,9 @@ export const InboundReceiptScreen = () => {
     narrowedWithCandidates,
     lines,
     reasons,
-    exceptionTypes,
     item,
     uoms,
     suppliers,
-    pickingItem,
-    setPickingItem,
     plantId,
     started,
     received,
@@ -175,29 +173,8 @@ export const InboundReceiptScreen = () => {
 
   /* 접어 둔 선택 입력(포장 수 · 날짜)을 손으로 펼쳤는가. 화면의 겉 상태라 흐름에 두지 않는다. */
   const [extrasShown, setExtrasShown] = useState(false);
-
-  /*
-   * 찾는 동안에는 폼을 접고 화면을 내준다. 스캔한 번호와 고른 자재 P/O 는 이 화면의 상태라
-   * 그대로 남는다 - 다른 주소로 나갔다 오면 그것들이 사라진다.
-   */
-  if (pickingItem) {
-    return (
-      <ItemPicker
-        onPick={(picked) => {
-          /* 품목이 바뀌면 수량도 그 품목의 것이 아니다 - 라인을 바꿀 때와 같은 이유로 비운다. */
-          patch(
-            picked.itemId === draft.itemId
-              ? { itemId: picked.itemId }
-              : { itemId: picked.itemId, ...LINE_SCOPED_BLANK },
-          );
-          setPickingItem(false);
-        }}
-        onCancel={() => {
-          setPickingItem(false);
-        }}
-      />
-    );
-  }
+  /* 체크한 품목을 한꺼번에 등록하기 전에 묻는 중인가(사용자 지시 2026-10-27). 화면의 겉 상태다. */
+  const [askingBulk, setAskingBulk] = useState(false);
 
   /* 받을 수 없는 값. 구역 아래 한 줄로 선다. */
   const scanError =
@@ -447,20 +424,11 @@ export const InboundReceiptScreen = () => {
     </ul>
   );
 
-  /*
-   * 발주를 고른다. 무발주 갈래를 접는다 — 둘이 함께 서 있으면 고른 발주는 판정에 쓰이는데 실려
-   * 나가는 것은 손으로 고른 값이라, 화면이 보이는 것과 서버에 남는 것이 달라진다.
-   */
+  /* 발주를 고른다. 라인은 그 발주 안에서 다시 고른다. */
   const pickOrder = (picked: PurchaseOrder | undefined) => {
     patch({
       purchaseOrder: picked ?? null,
       purchaseOrderLine: null,
-      unordered: false,
-      supplierId: null,
-      itemId: null,
-      uomId: null,
-      exceptionTypeCode: '',
-      exceptionReason: '',
       ...LINE_SCOPED_BLANK,
     });
   };
@@ -483,8 +451,8 @@ export const InboundReceiptScreen = () => {
           void candidates.refetch();
         }}
         suppliers={suppliers.data}
-        orderId={lotlessOrderId}
-        onOrder={setLotlessOrderId}
+        order={lotlessOrder}
+        onOrder={setLotlessOrder}
         filter={lotlessFilter}
         onFilter={setLotlessFilter}
         checked={lotlessChecked}
@@ -642,164 +610,8 @@ export const InboundReceiptScreen = () => {
             {t.po.clear}
           </Button>
         )}
-        {/*
-         * 발주가 없으면 승계할 곳이 없어 담당자가 고른다. 고르지 않은 것과는 다른 상태다. 라벨 없이
-         * 자재 P/O 의 품목 표를 보는 동안은 두지 않는다 - 그 자재 P/O 로 받는 중이고, 바닥 바가 있다.
-         */}
-        {draft.supplierLotMissing && lotlessOrderId !== null ? null : (
-          <Button
-            variant="outlined"
-            size="lg"
-            leadingIcon={<Icon name="block" size={20} />}
-            onClick={() => {
-              setChangingLine(false);
-              patch({
-                unordered: true,
-                purchaseOrder: null,
-                purchaseOrderLine: null,
-                exceptionTypeCode: '',
-                exceptionReason: '',
-                ...LINE_SCOPED_BLANK,
-              });
-            }}
-          >
-            {t.exception.open}
-          </Button>
-        )}
       </div>
     </StepSection>
-  );
-
-  /* 발주 없이 받기 — 라인 고르기 자리를 대신한다. 품목을 고르면 같은 자리에서 수량까지 적는다. */
-  const unorderedFields = (
-    <>
-      <p className="receipt__note">{t.exception.openNote}</p>
-
-      {plantId === null ? <AlertBanner variant="error" title={t.exception.noPlant} /> : null}
-
-      {suppliers.isPending ? <p role="status">{t.exception.supplierLoading}</p> : null}
-      {suppliers.isError ? (
-        <AlertBanner variant="error" title={t.exception.supplierLoadFailed} />
-      ) : null}
-      {suppliers.isSuccess && suppliers.data.length === 0 ? (
-        <AlertBanner variant="warning" title={t.exception.supplierNone} />
-      ) : null}
-      {suppliers.data === undefined || suppliers.data.length === 0 ? null : (
-        <div className="receipt__field">
-          <label htmlFor="receipt-supplier">{required(t.exception.supplierLabel)}</label>
-          <Select
-            id="receipt-supplier"
-            placeholder={t.exception.supplierPlaceholder}
-            size="xl"
-            value={draft.supplierId === null ? null : String(draft.supplierId)}
-            onChange={(value) => {
-              patch({ supplierId: Number(value) });
-            }}
-            options={suppliers.data.map((each) => ({
-              value: String(each.partnerId),
-              label: each.partnerName,
-            }))}
-          />
-        </div>
-      )}
-
-      {/*
-        마스터가 9,000건인 곳이 있어 목록으로 늘어놓지 않는다. 앞에서 잘린 목록을
-        보이면 있는 품목이 없는 것으로 읽혀, 고르지 못하고도 이유를 알 수 없다.
-      */}
-      <div className="receipt__field">
-        <p>{required(t.exception.itemLabel)}</p>
-        {draft.itemId === null || item.data === undefined ? (
-          <p className="receipt__note">{t.exception.itemNone}</p>
-        ) : (
-          <p>
-            <strong>{`${item.data.itemCode} ${item.data.itemName}`}</strong>
-          </p>
-        )}
-        <Button
-          variant="outlined"
-          size="xl"
-          className="receipt__wide"
-          onClick={() => {
-            setPickingItem(true);
-          }}
-        >
-          {draft.itemId === null ? t.exception.itemPick : t.exception.itemChange}
-        </Button>
-        {/* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. 띠가 아니라 한 줄로 말한다. */}
-        <p className="receipt__note">{`${t.exception.itemUnregistered} ${t.exception.itemUnregisteredWhy}`}</p>
-      </div>
-
-      {uoms.isError ? <AlertBanner variant="error" title={t.exception.uomLoadFailed} /> : null}
-      {uoms.data === undefined ? null : (
-        <div className="receipt__field">
-          <label htmlFor="receipt-uom">{required(t.exception.uomLabel)}</label>
-          <Select
-            id="receipt-uom"
-            placeholder={t.exception.uomPlaceholder}
-            size="xl"
-            value={draft.uomId === null ? null : String(draft.uomId)}
-            onChange={(value) => {
-              patch({ uomId: Number(value) });
-            }}
-            options={[...uoms.data].map(([uomId, code]) => ({
-              value: String(uomId),
-              label: code,
-            }))}
-          />
-        </div>
-      )}
-
-      <div className="receipt__field">
-        <label htmlFor="receipt-unordered-exception-type">{required(t.exception.typeLabel)}</label>
-        <Select
-          id="receipt-unordered-exception-type"
-          placeholder={t.exception.typePlaceholder}
-          size="xl"
-          value={draft.exceptionTypeCode === '' ? null : draft.exceptionTypeCode}
-          onChange={(value) => {
-            patch({ exceptionTypeCode: String(value) });
-          }}
-          options={(exceptionTypes.data ?? []).map((each) => ({
-            value: each.code,
-            label: each.name,
-          }))}
-        />
-        {exceptionTypes.isError ? (
-          <p className="receipt__note">{t.exception.typeLoadFailed}</p>
-        ) : null}
-      </div>
-      <TextField
-        label={required(t.exception.reasonLabel)}
-        size="xl"
-        fullWidth
-        value={draft.exceptionReason}
-        onChange={(event) => {
-          patch({ exceptionReason: event.target.value });
-        }}
-      />
-
-      {/* 예정 수량이 없어 견줄 것이 없다. 판정하지 않는다는 사실을 말한다. */}
-      <p className="receipt__note">{t.exception.noVerdict}</p>
-
-      <Button
-        variant="outlined"
-        size="lg"
-        leadingIcon={<Icon name="undo" size={20} />}
-        onClick={() => {
-          patch({
-            unordered: false,
-            supplierId: null,
-            itemId: null,
-            uomId: null,
-            exceptionTypeCode: '',
-            exceptionReason: '',
-          });
-        }}
-      >
-        {t.exception.close}
-      </Button>
-    </>
   );
 
   /* 판정. 정상은 칩 하나로 — 띠로 세우면 아무 일 없는 것이 가장 크게 보인다. */
@@ -906,7 +718,7 @@ export const InboundReceiptScreen = () => {
    * 작업 카드 「자세히」. 본문에 두면 수량 단계가 한 화면을 넘는 설명 줄들을 이리 모은다 - 등록을
    * 막는 것(잠금 사유)은 본문과 바닥에 그대로 남는다.
    */
-  const showQtyNow = step === 'qty' || (step === 'unordered' && draft.itemId !== null);
+  const showQtyNow = step === 'qty';
   const headerNotes = (
     [
       verdict === UNDER ? t.verdict.underContinueNote : null,
@@ -1129,7 +941,10 @@ export const InboundReceiptScreen = () => {
         primary={{
           /* 체크한 수는 표 위 「(M건 체크 됨)」 이 말한다 - 단추 글자는 고정이다(사용자 지시 2026-10-22). */
           label: t.lotless.bulk.submit,
-          onClick: () => void submitLotless(),
+          /* 여러 건이 한 번에 들어간다 - 누르기 전에 몇 건인지 한 번 묻는다(사용자 지시 2026-10-27). */
+          onClick: () => {
+            setAskingBulk(true);
+          },
           disabled: lotlessLock !== null,
           busy: lotlessBusy,
           lockReason:
@@ -1151,18 +966,31 @@ export const InboundReceiptScreen = () => {
        * 정량분은 자재 P/O 에, 초과분은 초과분 목록에 남는다. 초과분을 받지 않을 때만 정량분만.
        */
       <BottomActionBar
+        /*
+         * 받을 것이 남지 않은 라인이면 전부 초과분이다 - 원 자재 P/O 라인의 초과분으로 받는다.
+         * 발주 없이 받는 길은 두지 않는다(사용자 결정 2026-10-27 · omf-all-around#182).
+         */
+        prompt={
+          splitQuantities.normal > 0 ? undefined : (
+            <p className="receipt__bar-note">{t.verdict.split.noRoom}</p>
+          )
+        }
         primary={{
-          label: t.verdict.split.keepExcess,
+          label:
+            splitQuantities.normal > 0 ? t.verdict.split.keepExcess : t.verdict.split.excessAll,
           onClick: () => void submit(KEEP_EXCESS),
-          disabled: !splitReady || splitQuantities.normal <= 0 || splitQuantities.excess <= 0,
-          /* 비활성은 사유를 함께 보인다(공유계약 G-1). 왜 못 누르는지 알아야 한다. */
-          lockReason: splitQuantities.normal <= 0 ? t.verdict.split.noRoom : undefined,
+          disabled: !splitReady || splitQuantities.excess <= 0,
         }}
-        secondary={{
-          label: t.verdict.split.normalOnly,
-          disabled: !splitReady || splitQuantities.normal <= 0,
-          onClick: () => void submit('NORMAL_ONLY'),
-        }}
+        /* 정량분만은 넣을 정량분이 있을 때만. */
+        secondary={
+          splitQuantities.normal > 0
+            ? {
+                label: t.verdict.split.normalOnly,
+                disabled: !splitReady,
+                onClick: () => void submit('NORMAL_ONLY'),
+              }
+            : undefined
+        }
       />
     )
   ) : verdict === UNDER ? (
@@ -1309,13 +1137,6 @@ export const InboundReceiptScreen = () => {
 
       {step === 'line' ? lineStep : null}
 
-      {step === 'unordered' ? (
-        <StepSection title={t.steps.unordered} index={2} total={STEP_COUNT}>
-          {unorderedFields}
-          {showQty ? qtyFields : null}
-        </StepSection>
-      ) : null}
-
       {step === 'qty' ? (
         /* 라벨 없이 2-2 에서 품목을 눌러 오면 부분 입하 등록이다(사용자 지시 2026-10-22). */
         <StepSection
@@ -1440,6 +1261,22 @@ export const InboundReceiptScreen = () => {
       {bar}
 
       <ScanReplaceDialog field={scanField} />
+
+      <ConfirmDialog
+        open={askingBulk}
+        title={t.lotless.bulk.confirm.title(lotlessPickCount)}
+        cancelLabel={t.lotless.bulk.confirm.cancel}
+        proceedLabel={t.lotless.bulk.confirm.proceed}
+        onCancel={() => {
+          setAskingBulk(false);
+        }}
+        onProceed={() => {
+          setAskingBulk(false);
+          void submitLotless();
+        }}
+      >
+        {t.lotless.bulk.confirm.body}
+      </ConfirmDialog>
 
       {keypadFor === null ? null : (
         <DockedNumberPad

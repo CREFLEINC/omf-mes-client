@@ -6,7 +6,8 @@ import type { components } from '@omf-mes/api-client';
  */
 export type SalesOrderLine = components['schemas']['SalesOrderLine'] & SalesOrderLineErpFields;
 export type SalesOrder = Omit<components['schemas']['SalesOrder'], 'lines'> &
-  SalesOrderErpFields & { lines?: SalesOrderLine[] };
+  SalesOrderErpFields &
+  SalesOrderProgressFields & { lines?: SalesOrderLine[] };
 
 /**
  * ERP 에서 받은 원본 칸 — **계약에 없어 생성 타입에 없다.** 서버 #737(`feat/erp-fields-in-responses`)이
@@ -24,6 +25,19 @@ export interface SalesOrderErpFields {
   erpMovementTypeCode?: string | null;
   /** ERP `SALES_GRP_CD` — 공통코드 `SALE_GROUP` */
   erpSalesGroupCode?: string | null;
+}
+
+/**
+ * 출하 진행 — 서버 #851(장부 P-132)이 싣는 칸이다. 계약 사본에는 아직 없어 여기서 넓힌다.
+ * 계약 사본에 실려 오면 이 교차 타입을 걷는다.
+ */
+export interface SalesOrderProgressFields {
+  /** 출하 진행 — `NOT_STARTED` · `PARTIAL` · `COMPLETED` · `CANCELLED` */
+  shipStatusCode?: string | null;
+  /** 라인 수 */
+  lineCount?: number | null;
+  /** 출하가 끝나지 않은 라인 수 */
+  openLineCount?: number | null;
 }
 
 export interface SalesOrderLineErpFields {

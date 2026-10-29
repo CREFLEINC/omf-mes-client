@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { toDecimalText } from './decimal-text';
 
+type Bom = components['schemas']['Bom'];
 type BomComponent = components['schemas']['BomComponent'];
 
 /**
@@ -58,3 +59,7 @@ export const extensionLabels = (component: BomComponent): string[] => {
  */
 export const componentRowName = (sequenceNo: number, itemLabel: string): string =>
   `${String(sequenceNo)}. ${itemLabel}`;
+
+/** 자재 명세서 하나를 사람이 읽는 한 줄로(「코드 · Rev N」). BOM 고르기와 기본 지정 확인 창이 같은 형태를 쓴다. */
+export const bomName = (bom: Bom): string =>
+  messages.itemExtendedAttrs.bom.values.name(bom.bomCode, bom.bomVersion);

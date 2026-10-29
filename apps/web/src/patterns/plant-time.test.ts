@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   PLANT_TIME_ZONE,
+  formatPlantClock,
   formatPlantDateTime,
   plantToday,
   toPlantDateTimeParts,
@@ -56,5 +57,12 @@ describe('plantToday', () => {
   it('공장 날짜다 — UTC 로 아직 전날이어도 베트남 아침이면 그날이다', () => {
     expect(plantToday(new Date('2026-10-19T18:30:00Z'))).toBe('2026-10-20');
     expect(plantToday(new Date('2026-10-19T16:30:00Z'))).toBe('2026-10-19');
+  });
+});
+
+describe('formatPlantClock', () => {
+  it('공장 시각의 시:분:초다 — 자정 넘은 시각도 24시가 아니라 00시로', () => {
+    expect(formatPlantClock(new Date('2026-10-27T03:04:05Z'))).toBe('10:04:05');
+    expect(formatPlantClock(new Date('2026-10-26T17:00:09Z'))).toBe('00:00:09');
   });
 });

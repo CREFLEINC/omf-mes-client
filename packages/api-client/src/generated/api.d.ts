@@ -6488,7 +6488,7 @@ export interface paths {
     put?: never;
     /**
      * 버전 확정
-     * @description 작성중 → 확정. 이후 in-place 수정은 불가하며 변경은 신규 버전으로만 한다. 검사 항목이 1건 이상이어야 한다(위반 시 400, code=LINE_REQUIRED). 상태≠작성중이면 400(code=STATE_LOCKED). 근거: W-06-02 §5-1 「확정」 · 공유계약 B-2
+     * @description 작성중 → 확정. 이후 in-place 수정은 불가하며 변경은 신규 버전으로만 한다. 검사 항목이 1건 이상이어야 한다(위반 시 400, code=LINE_REQUIRED). 샘플링 방식인데 샘플 비율(%)·샘플 개수가 둘 다 없으면 400(code=REQUIRED, field=samplingRatio) — 엑셀 올리기가 비워 둔 작성중 버전이다(P-140·P-141). 상태≠작성중이면 400(code=STATE_LOCKED). 근거: W-06-02 §5-1 「확정」 · 공유계약 B-2
      */
     post: {
       parameters: {
@@ -6513,7 +6513,7 @@ export interface paths {
             'application/json': components['schemas']['InspectionPlanVersion'];
           };
         };
-        /** @description 검증 실패 — 항목 0건인 채 확정 시도(code=LINE_REQUIRED) 또는 상태≠작성중(code=STATE_LOCKED) */
+        /** @description 검증 실패 — 항목 0건인 채 확정 시도(code=LINE_REQUIRED) · 샘플링 방식인데 비율 없음(code=REQUIRED) 또는 상태≠작성중(code=STATE_LOCKED) */
         400: {
           headers: {
             [name: string]: unknown;
@@ -14630,6 +14630,85 @@ export interface paths {
           };
           content: {
             'application/json': components['schemas']['ConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-plans:import': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 검사기준 엑셀 올리기
+     * @description ⭐ 선행 구현(P-140) — 설계 사본에 서버가 먼저 적은 자리다. 한 행 = 검사 항목 하나, 같은 기준코드 행들이 기준 하나·작성중 버전 하나가 된다. 첫 시트만 읽고 머리글 이름으로 열을 찾는다. 첫 줄이 머리글 표가 아니면 고객사 검사기준서(TCKT) 서식으로 읽는다 — 기준서 한 장이 기준 하나(Code No. 가 여럿이면 품목마다 하나)이고 샘플 비율(%)은 채우지 않는다 — 비율 없는 작성중 버전으로 두고 확정할 때 막는다(omf-all-around#201). 새 기준코드는 기준 등록 → 버전 등록 → 항목 저장, 이미 있는 기준코드는 신규 버전 발행 → 버전 설정 저장 → 항목 저장을 차례로 부른다(각 단계의 검증·오류 문구가 그대로다). 통째로 되돌리지 않는다 — 기준코드 묶음 단위로 성공·실패를 돌려주고, 실패한 묶음이 만든 기준·버전은 지운다. 확정은 하지 않는다. 파일은 보관하지 않는다. 근거: W-06-02 §5-1 「엑셀 업로드」 · omf-all-around#199
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            /**
+             * Format: binary
+             * @description 검사기준 엑셀 파일(.xlsx)
+             */
+            file: string;
+          };
+        };
+      };
+      responses: {
+        /** @description 처리 결과. succeeded 는 반영된 기준코드 수, BatchResult.failed[].index 는 그 묶음 첫 행의 자료 순번(머리글 제외 0부터), key 는 기준코드다 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['BatchResult'];
+          };
+        };
+        /** @description 파일을 읽을 수 없다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
@@ -25821,6 +25900,9 @@ export interface paths {
           withLastChange?: boolean;
           /** @description 자동 계획 상태로 거른다 — 응답 autoPlan.status 와 같은 판정이다. NEEDS_REVIEW 면 「확인 필요」만 낸다. autoPlan 이 null 인 오더는 어느 값에도 걸리지 않는다. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-67) */
           autoPlanStatus?: 'NEEDS_REVIEW' | 'DONE';
+          /** @description 작업지시 목록(W-02-01) 칩 판정으로 거른다 — 응답 worklistState 와 같은 식이다. 칩 건수는 같은 조건에 size=1 을 주고 page.total 로 센다. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-142) */
+          worklistState?:
+            'BEFORE_PLAN' | 'ACTION_REQUIRED' | 'RELEASE_PENDING' | 'RELEASED' | 'CANCELLED';
           page?: number;
           size?: number;
         };
@@ -41016,10 +41098,15 @@ export interface components {
       statusCode: string;
       /**
        * Format: double
-       * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 실제 검사 «수량»은 검사 시점에 로트 크기로 환산되는 파생값이라 여기서 받지 않는다.
+       * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 샘플링 방식이면 샘플 개수(samplingQty)와 둘 중 하나만 지정한다(P-141).
        * @example 30
        */
       samplingRatio?: number | null;
+      /**
+       * @description 샘플 개수. 샘플링 방식이면 샘플 비율(%)과 둘 중 하나만 지정한다 — 1 이상 정수. 검사 수량은 이 개수이되 로트(지시) 수량보다 크면 그 수량이다. 전수검사에는 넣지 않는다.
+       * @example 5
+       */
+      samplingQty?: number | null;
     };
     /** @description 검사기준 버전 최초 등록(버전 1) 요청 — 기준에 버전이 하나도 없을 때만 쓴다. planVersion 은 서버가 항상 1로, statusCode 는 항상 작성중으로 채운다. 근거: W-06-02 §4-B·§5-1 */
     InspectionPlanVersionCreate: {
@@ -41063,10 +41150,15 @@ export interface components {
       frequencyIntervalUomCode?: string | null;
       /**
        * Format: double
-       * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 실제 검사 «수량»은 검사 시점에 로트 크기로 환산되는 파생값이라 여기서 받지 않는다.
+       * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 샘플링 방식이면 샘플 개수(samplingQty)와 둘 중 하나만 지정한다(P-141).
        * @example 30
        */
       samplingRatio?: number | null;
+      /**
+       * @description 샘플 개수. 샘플링 방식이면 샘플 비율(%)과 둘 중 하나만 지정한다 — 1 이상 정수. 검사 수량은 이 개수이되 로트(지시) 수량보다 크면 그 수량이다. 전수검사에는 넣지 않는다.
+       * @example 5
+       */
+      samplingQty?: number | null;
     };
     /** @description 검사기준 버전 수정 요청. 상태=작성중일 때만 허용한다. inspectionPlanId·planVersion·statusCode 는 이 요청에 포함하지 않는다. 근거: W-06-02 §4-B·§5-4 */
     InspectionPlanVersionUpdate: {
@@ -41105,10 +41197,15 @@ export interface components {
       frequencyIntervalUomCode?: string | null;
       /**
        * Format: double
-       * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 실제 검사 «수량»은 검사 시점에 로트 크기로 환산되는 파생값이라 여기서 받지 않는다.
+       * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 샘플링 방식이면 샘플 개수(samplingQty)와 둘 중 하나만 지정한다(P-141).
        * @example 30
        */
       samplingRatio?: number | null;
+      /**
+       * @description 샘플 개수. 샘플링 방식이면 샘플 비율(%)과 둘 중 하나만 지정한다 — 1 이상 정수. 검사 수량은 이 개수이되 로트(지시) 수량보다 크면 그 수량이다. 전수검사에는 넣지 않는다.
+       * @example 5
+       */
+      samplingQty?: number | null;
     };
     InspectionPlanVersionDetailResponse: {
       inspectionPlanVersion: components['schemas']['InspectionPlanVersion'];
@@ -50667,6 +50764,40 @@ export interface components {
        */
       plannedWorkOrderCount?: number;
       autoPlan?: components['schemas']['ProductionOrderAutoPlan'];
+      /**
+       * @description 작업지시 목록(W-02-01) 칩 판정 — 조회 때 계산한다. BEFORE_PLAN 계획 전(자동 계획 시도도 계획도 없음) · ACTION_REQUIRED 조치 필요(자동 계획 확인 필요, 또는 계획은 다 됐는데 W/O 가 없거나 배포 전 W/O 중 생산 라인·기본 위치(WIP·완제품·스크랩)가 비었거나 라인이 다른 공장 것) · RELEASE_PENDING 배포 대기(배포 전 W/O 가 있고 모두 배포 가능) · RELEASED 배포 완료(배포 전 W/O 없음) · CANCELLED 취소된 ERP W/O. 배포 전 W/O = 아직 배포되지 않은 PLANNED·CONFIRMED W/O. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-142)
+       * @example RELEASE_PENDING
+       * @enum {string}
+       */
+      worklistState?:
+        'BEFORE_PLAN' | 'ACTION_REQUIRED' | 'RELEASE_PENDING' | 'RELEASED' | 'CANCELLED';
+      /** @description 조치 필요(worklistState ACTION_REQUIRED)인데 자동 계획은 끝난(autoPlan.status DONE) 까닭. 그 밖에는 키가 없다 — 자동 계획 확인 필요의 까닭은 autoPlan.reasons 다. 화면 문구는 코드로 정한다. NO_LIVE_WORK_ORDER W/O 가 없거나 모두 취소(workOrderCount 0) · WORK_ORDER_LINE_MISSING 배포 전 W/O 중 생산 라인이 빔 · WORK_ORDER_LOCATION_MISSING 배포 전 W/O 중 기본 위치(WIP·완제품·스크랩) 가운데 빈 것이 있음 · LINE_PLANT_MISMATCH 배포 전 W/O 의 라인 공장이 ERP W/O 공장과 다름. W/O 하나가 여러 까닭에 함께 세일 수 있다. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-142) */
+      worklistReasons?: {
+        /**
+         * @example WORK_ORDER_LINE_MISSING
+         * @enum {string}
+         */
+        code:
+          | 'NO_LIVE_WORK_ORDER'
+          | 'WORK_ORDER_LINE_MISSING'
+          | 'WORK_ORDER_LOCATION_MISSING'
+          | 'LINE_PLANT_MISMATCH';
+        /**
+         * @description 그 까닭에 걸린 배포 전 W/O 수
+         * @example 1
+         */
+        workOrderCount: number;
+      }[];
+      /**
+       * @description 배포 전 W/O 수 — 아직 배포되지 않은 PLANNED·CONFIRMED W/O(worklistState 와 같은 정의). W/O 가 없으면 0. 화면 「배포 전 W/O」 열의 분자. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-142)
+       * @example 1
+       */
+      releasePendingWorkOrderCount?: number;
+      /**
+       * @description 취소되지 않은 W/O 수(배포된 것 포함). W/O 가 없거나 모두 취소면 0. 화면 「배포 전 W/O」 열의 분모. ⚠ 개발팀 선행(docs/계약-선행-수정항목.md P-142)
+       * @example 2
+       */
+      liveWorkOrderCount?: number;
       lastChange?: components['schemas']['ProductionOrderChange'];
     };
     /** @description ⚠ 개발팀 선행(P-67). 파생 — 서버가 읽을 때 계산한다. 확정 계획 수량이 오더 수량을 채우면 DONE, 아니면 NEEDS_REVIEW(「확인 필요」)와 그 사유다. 사유가 비어 있는 NEEDS_REVIEW 는 계획이 아직 없고 막는 것도 없다는 뜻이다 — :auto-plan 으로 세운다. ⭐ null = 자동 계획을 시도한 적이 없고 계획도 없다(이 기능 전에 받은 오더 · 받을 때 RECEIVED 가 아니었거나 납기·계획 시작일이 지난 오더) 또는 취소된 오더다 — 화면은 아무것도 보이지 않는다. :auto-plan 을 부르면 상태가 선다. */
@@ -50696,7 +50827,7 @@ export interface components {
       reasons: components['schemas']['AutoPlanReason'][];
     };
     /**
-     * @description ⚠ 개발팀 선행(P-67). BOM_MISSING = 품목의 기본 BOM 이 없다 · ROUTING_MISSING = 쓸 수 있는(확정·유효 기간 안) Routing 이 없다 · ROUTING_AMBIGUOUS = 쓸 수 있는 Routing 이 여럿인데 기본이 없다 · LINE_UNKNOWN = 계획 라인이 없고 기본 매핑 설비도 라인에 속하지 않아 W/O 라인이 정해지지 않는다 · PLAN_NOT_CONFIRMED = 작성중 계획이 있다 · QTY_REMAINING = 확정 계획이 오더 수량에 못 미친다
+     * @description ⚠ 개발팀 선행(P-67). BOM_MISSING = 품목의 기본 BOM 이 없다 · ROUTING_MISSING = 쓸 수 있는(확정·유효 기간 안) Routing 이 없다 · ROUTING_AMBIGUOUS = 쓸 수 있는 Routing 이 여럿인데 기본이 없다 · LINE_UNKNOWN = 계획 라인이 없고 기본 매핑 설비도 라인에 속하지 않아 W/O 라인이 정해지지 않는다 · PLAN_NOT_CONFIRMED = 작성중 계획이 있다 · QTY_REMAINING = 확정 계획이 오더 수량에 못 미친다 · AUTO_PLAN_RERUN_NEEDED = 계획이 없는데 막던 기준정보가 이제 갖춰졌거나, 기준정보는 갖춰졌는데 자동 계획 실행이 실패했다 — 자동 계획을 다시 실행한다(P-142). 확인 필요(NEEDS_REVIEW)는 이유가 늘 하나 이상이다
      * @enum {string}
      */
     AutoPlanReason:
@@ -50705,7 +50836,8 @@ export interface components {
       | 'ROUTING_AMBIGUOUS'
       | 'LINE_UNKNOWN'
       | 'PLAN_NOT_CONFIRMED'
-      | 'QTY_REMAINING';
+      | 'QTY_REMAINING'
+      | 'AUTO_PLAN_RERUN_NEEDED';
     /** @description ⚠ 개발팀 선행(P-30). 생산오더 수기 등록 요청. */
     ProductionOrderCreate: {
       /**

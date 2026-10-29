@@ -59,7 +59,7 @@ describe('ItemFormDialog — 표시', () => {
     renderDialog();
 
     expect(
-      screen.getByText('확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.'),
+      screen.getByText('확인 시 목록에 추가되며, 저장 후 최종 반영됩니다.'),
     ).toBeInTheDocument();
   });
 
@@ -70,10 +70,10 @@ describe('ItemFormDialog — 표시', () => {
   it('자료형과 무관하게 단위·목표값·상하한이 항상 보인다', () => {
     renderDialog({ values: { ...savedDrafts()[0]!, dataTypeCode: '' } });
 
-    expect(screen.getByRole('combobox', { name: '단위' })).toBeInTheDocument();
-    expect(screen.getByLabelText('목표값')).toBeInTheDocument();
-    expect(screen.getByLabelText('하한')).toBeInTheDocument();
-    expect(screen.getByLabelText('상한')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '검사 단위' })).toBeInTheDocument();
+    expect(screen.getByLabelText('기준값')).toBeInTheDocument();
+    expect(screen.getByLabelText('하한값')).toBeInTheDocument();
+    expect(screen.getByLabelText('상한값')).toBeInTheDocument();
   });
 
   it('값을 고치면 그 값만 알린다', () => {
@@ -83,9 +83,25 @@ describe('ItemFormDialog — 표시', () => {
 
     expect(onChange).toHaveBeenCalledWith({ measurementCount: '5' });
   });
+
+  /* 머리의 ✕는 두지 않는다 — 닫기는 「취소」로 한다(사용자 지시 · #196). */
+  it('창 머리에 닫기 단추가 없다', () => {
+    renderDialog();
+
+    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '취소' })).toBeInTheDocument();
+  });
 });
 
 describe('ItemFormDialog — 차단과 경고', () => {
+  /* 비어 있는 필수 칸은 처음부터 테두리만 빨갛다 — 글은 화면 읽기로만 남긴다(검사 조회·판정과 같다 · #196). */
+  it('비어 있는 필수 칸은 확인 전에도 오류 상태다', () => {
+    renderDialog({ values: { ...savedDrafts()[0]!, inspectionItemCode: '' } });
+
+    expect(screen.getByLabelText('항목코드')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('항목명')).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
   it('차단 오류는 그 칸 옆에 낸다', () => {
     renderDialog({
       fieldErrors: {
@@ -116,7 +132,7 @@ describe('ItemFormDialog — 차단과 경고', () => {
     });
 
     expect(
-      screen.getByText('목표값이 하한~상한 밖입니다. 의도한 값인지 확인하세요.'),
+      screen.getByText('기준값이 하한값~상한값 밖입니다. 의도한 값인지 확인하세요.'),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '확인' }));

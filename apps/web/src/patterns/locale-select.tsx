@@ -1,8 +1,8 @@
-import { Select } from '@crefle/web-ui';
 import { activeLocale, LOCALES, type Locale } from '@omf-mes/i18n';
 
 import { rememberLocale } from './locale-preference';
 import { localizedLabel, type LocalizedLabel } from './localized-label';
+import { Select } from './select';
 
 /**
  * 이 칸의 접근명.

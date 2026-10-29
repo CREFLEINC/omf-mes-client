@@ -18,6 +18,7 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemPane>[0]> = {}) => 
     <ItemPane
       drafts={toItemDrafts(inspectionItemSpecFixtures)}
       uomLabel={(uomId) => (uomId === '41' ? 'EA · 개' : uomId)}
+      dataTypeLabel={(code) => (code === 'NUMERIC' ? '수치' : code)}
       isLoading={false}
       isVersionSelected
       loadError={null}
@@ -51,11 +52,14 @@ describe('ItemPane — 표', () => {
   it('화면이 정한 일곱 열을 낸다', () => {
     renderPane();
 
-    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
+    /* 머리칸에는 열 순서 손잡이 아이콘 글자(drag_indicator)가 함께 있다 — 이름만 견준다. */
+    const headers = screen
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
     expect(headers.slice(0, 7)).toEqual([
       '순서',
       '항목',
-      '자료형',
+      '검사값 유형',
       '목표·범위',
       '측정 횟수',
       '판정',
@@ -95,10 +99,12 @@ describe('ItemPane — 표', () => {
     expect(within(itemRows()[1]!).getByText('—')).toBeInTheDocument();
   });
 
-  it('켜진 판정 항목만 이어 내고 없으면 없음으로 낸다', () => {
+  /* 필수는 항목 이름 앞 라벨, 판정 칸은 자동판정 여부만 말한다(검사 조회·판정 표와 같다 · #196). */
+  it('필수 항목에는 이름 앞에 필수 라벨이 서고 판정 칸은 자동판정 여부를 낸다', () => {
     renderPane();
 
-    expect(screen.getByText('필수 · 자동판정')).toBeInTheDocument();
+    expect(screen.getAllByText('필수').length).toBeGreaterThan(0);
+    expect(screen.getByText('자동판정')).toBeInTheDocument();
     expect(screen.getByText('없음')).toBeInTheDocument();
   });
 
@@ -118,7 +124,7 @@ describe('ItemPane — 표', () => {
   it('버전을 고르기 전에는 선택 안내를 낸다', () => {
     renderPane({ drafts: [], isVersionSelected: false });
 
-    expect(screen.getByText('가운데에서 버전을 먼저 고르세요')).toBeInTheDocument();
+    expect(screen.getByText('버전을 선택하세요')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
@@ -155,9 +161,13 @@ describe('ItemPane — 편집', () => {
   it('잠긴 버전에서는 순서 이동 열 자체가 렌더되지 않는다', () => {
     renderPane({ isEditable: false });
 
-    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
-    expect(headers).toHaveLength(7);
+    const headers = screen
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent?.replace('drag_indicator', ''));
+    /* 잠긴 버전에는 편집 열도 없다 — 누를 수 없는 단추만 줄마다 남기지 않는다(#196). */
+    expect(headers).toHaveLength(6);
     expect(headers).not.toContain('순서 변경');
+    expect(headers).not.toContain('편집');
   });
 
   it('편집이 열려 있으면 순서 이동 열이 렌더된다', () => {
@@ -167,16 +177,17 @@ describe('ItemPane — 편집', () => {
     expect(headers).toContain('순서 변경');
   });
 
-  it('잠긴 버전에서는 추가·수정·삭제·저장이 모두 막히고 사유가 보인다', () => {
+  /* 잠긴 버전에서는 누를 수 없는 추가 · 수정 · 삭제 · 저장 단추를 두지 않고, 표 위 안내 줄도 두지 않는다(#196). */
+  it('잠긴 버전에서는 추가·수정·삭제·저장 단추와 표 위 안내 줄이 없다', () => {
     renderPane({ isEditable: false, isDirty: true });
 
-    expect(screen.getByRole('button', { name: '항목 추가' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '1번 항목 수정' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '1번 항목 삭제' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '항목 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '1번 항목 수정' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '1번 항목 삭제' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
     expect(
-      screen.getAllByText('검사 항목은 작성중 버전에서만 편집할 수 있습니다.').length,
-    ).toBeGreaterThan(0);
+      screen.queryByText('검사 항목을 추가하려면 신규 버전을 발행하세요.'),
+    ).not.toBeInTheDocument();
   });
 
   it('저장을 막는 사유가 있으면 비활성이고 사유가 보인다', () => {

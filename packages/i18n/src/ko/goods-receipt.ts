@@ -348,6 +348,38 @@ export const goodsReceipt = {
    * 「입고 처리」 **오른쪽 창** — 입고 관리(입하 예정 조회)의 LOT 줄에서 열린다(사용자 지시 2026-10-22 · 입하·입고 일을
    * 그 화면으로 모은다). 입력 칸·검증·확인 창·결과는 이 화면(W-01-10)의 것을 그대로 쓰고, 창은 LOT 하나로 선다.
    */
+  /**
+   * 「입고 일괄 처리」 창 — 입고 관리에서 체크한 「입고 대기」 LOT 들을 한 번에 입고한다(사용자 지시 2026-10-28).
+   * 입력은 한 벌로 모든 LOT 에 같게 싣고, 입하 전표마다 입고 전표가 하나씩 만들어진다.
+   */
+  batch: {
+    title: (count: number): string => `입고 처리 · LOT ${String(count)}건`,
+    lotsLabel: '입고할 LOT',
+    result: '결과',
+    /** 입력 구획 제목 옆 — 입력 한 벌이 모든 LOT 에 실린다. */
+    sameForAll: '모든 LOT 에 같게 적용',
+    submit: (count: number): string => `${String(count)}건 입고 처리`,
+    retry: '실패한 건 다시 처리',
+    summary: (count: number, destination: string): string =>
+      `LOT ${String(count)}건 → ${destination}`,
+    allDone: (count: number): string => `LOT ${String(count)}건을 입고했습니다.`,
+    done: (goodsReceiptNo: string): string => `입고 ${goodsReceiptNo}`,
+    failed: '실패',
+    failedLot: (lotNo: string): string => `${lotNo} 입고 실패`,
+    loadFailed: '입하 전표를 불러오지 못했습니다. 창을 닫고 다시 여세요.',
+    blocked: {
+      gated: (lotNos: string): string => `지금 입고할 수 없는 LOT 이 있습니다: ${lotNos}`,
+      mixedDefect: '불량 LOT 은 불량창고로만 입고됩니다. 불량 LOT 과 다른 LOT 을 나눠 처리하세요.',
+      mixedPlant: '공장이 다른 LOT 이 섞여 있습니다. 공장별로 나눠 처리하세요.',
+      missingLine: '입하 전표에서 찾지 못한 LOT 이 있습니다. 창을 닫고 다시 여세요.',
+    },
+    confirm: {
+      title: (count: number): string => `LOT ${String(count)}건을 입고합니다`,
+      destination: (destination: string): string => `입고 위치: ${destination}`,
+      when: (datetime: string): string => `입고 일시: ${datetime}`,
+      ok: '입고 처리',
+    },
+  },
   panel: {
     title: '입고 처리',
     guide: {

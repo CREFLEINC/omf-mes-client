@@ -4846,6 +4846,202 @@
   font: var(--type-body-sm);
 }
 
+/*
+ * 입하 기간 네 칸 — 발행 대기만(사용자 지시 2026-10-27). 고른 칸은 차콜이다(개편안 — 빨강은 주 동작과 오류에만).
+ */
+.pop-ui .pop-mlot-periods {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+/* 기간 칸과 동작 바의 발행 단위 칸은 같은 모양이다 — 고른 것은 차콜. */
+.pop-ui .pop-mlot-period,
+.pop-ui .pop-mlot-unit {
+  min-height: var(--space-9);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 500 var(--pop-text) / 24px var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-ui .pop-mlot-period[aria-pressed='true'],
+.pop-ui .pop-mlot-unit[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--brand-charcoal);
+  color: var(--on-primary);
+  font-weight: 700;
+}
+
+.pop-ui .pop-mlot-period:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* 새로 고침 — 표 아래 구석에서 기간 아래로 올렸다. 옆에 마지막으로 받은 시각(초까지)을 둔다. */
+.pop-ui .pop-mlot-refresh {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pop-ui .pop-mlot-refresh-button > svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 서버에 묻는 동안 고리가 돈다 — 눌렀는데 받는 중인지 알 수 있게. */
+.pop-ui .pop-mlot-refresh-button[aria-busy='true'] > svg {
+  animation: pop-mlot-spin 0.8s linear infinite;
+}
+
+@keyframes pop-mlot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop-ui .pop-mlot-refresh-button[aria-busy='true'] > svg {
+    animation: none;
+  }
+}
+
+.pop-ui .pop-mlot-refresh-at {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 지난 입하 미발행 띠 — 기간보다 먼저 들어와 아직 남은 줄을 세어 알린다. 「보기」로 그 줄만 모아 본다.
+ * 경고(주황)다 — 오류는 아니지만 그냥 지나가면 안 된다. 보는 중이면 고른 것처럼 테를 두른다.
+ */
+.pop-ui .pop-mlot-past {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border: 1px solid var(--semantic-warning);
+  border-radius: var(--radius-md);
+  background: var(--semantic-warning-container);
+  color: var(--on-surface);
+}
+
+.pop-ui .pop-mlot-past[data-active='true'] {
+  box-shadow: inset 0 0 0 2px var(--brand-charcoal);
+}
+
+.pop-ui .pop-mlot-past > svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: var(--on-surface);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pop-ui .pop-mlot-past-text {
+  display: grid;
+  min-width: 0;
+}
+
+.pop-ui .pop-mlot-past-text > strong {
+  font: 700 var(--pop-text) / 24px var(--font-sans);
+}
+
+.pop-ui .pop-mlot-past-text > span {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-ui .pop-mlot-past-button {
+  min-height: var(--space-9);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--on-surface);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 700 var(--pop-text) / 24px var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-ui .pop-mlot-past-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/*
+ * 상세 목록 머리의 품목코드 칸 — 왼쪽 찾기 칸과 같은 모양을 받되(`pop-mlot-search`) 머리줄 높이(48)에
+ * 맞추고 공급사 이름과 전체 선택 사이에 선다. 고른 공급사의 줄 안에서만 거른다(사용자 지시 2026-10-27).
+ */
+/*
+ * 좁으면 이 칸이 먼저 준다 — 공급사 이름이 먼저 잘리면 어느 공급사의 목록인지 모른다. 이름은 머리의
+ * 45% 까지 줄지 않고(그보다 길면 거기서 말줄임), 품목코드 칸이 160 까지 준다(1024 실측 2026-10-27).
+ */
+.pop-ui .pop-mlot-work-head > .pop-mlot-work-title {
+  flex: 0 0 auto;
+  max-width: 45%;
+}
+
+.pop-ui .pop-mlot-item-filter {
+  box-sizing: border-box;
+  flex: 0 1 300px;
+  min-width: 160px;
+  min-height: var(--space-9);
+  margin-inline-start: auto;
+}
+
+.pop-ui .pop-mlot-item-filter > .pop-mlot-search-input {
+  height: calc(var(--space-9) - 2px);
+}
+
+/* 동작 바의 발행 단위 — N장마다 멈추고 이어서(`issue-unit`). 이름표는 작게 앞에 둔다. */
+.pop-ui .pop-mlot-units {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-end: var(--space-3);
+}
+
+.pop-ui .pop-mlot-units-label {
+  margin-inline-end: var(--space-1);
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+  white-space: nowrap;
+}
+
+/*
+ * ⚠ 동작 바 안이라 공용 `[class*='action'] button`(8rem × 72)이 걸려 주 동작만큼 커진다. 단위 칸은
+ *   고르는 칸이지 동작이 아니다 — 한 단계 좁혀 겨냥해 56 으로 둔다(`!important` 를 쓰지 않는다).
+ */
+.pop-ui .pop-mlot-units > .pop-mlot-unit {
+  min-width: 72px;
+  min-height: calc(var(--space-9) + var(--space-2));
+  padding: 0 var(--space-3);
+}
+
 .pop-ui .pop-mlot-suppliers {
   display: flex;
   flex: 1 1 auto;
@@ -4971,7 +5167,8 @@
 }
 
 .pop-ui .pop-mlot-select-all,
-.pop-ui .pop-mlot-foot-button {
+.pop-ui .pop-mlot-foot-button,
+.pop-ui .pop-mlot-refresh-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4988,7 +5185,8 @@
 }
 
 .pop-ui .pop-mlot-select-all:disabled,
-.pop-ui .pop-mlot-foot-button:disabled {
+.pop-ui .pop-mlot-foot-button:disabled,
+.pop-ui .pop-mlot-refresh-button:disabled {
   color: var(--on-surface-muted);
   cursor: default;
 }
@@ -5037,10 +5235,13 @@
   padding: 0 var(--space-5) 0 0;
 }
 
-/* 마지막 열(56)은 IQC 다 — 세 보기 모두 같은 자리 · 같은 폭이다. */
+/*
+ * 마지막 열(56)은 IQC 다 — 세 보기 모두 같은 자리 · 같은 폭이다.
+ * 발행 대기의 입하 열(130)은 `yy.mm.dd hh:mm` 이 한 줄에 든다(사용자 지시 2026-10-27).
+ */
 .pop-ui .pop-mlot-table[data-mode='pending'] .pop-mlot-table-head,
 .pop-ui .pop-mlot-table[data-mode='pending'] .pop-mlot-row {
-  grid-template-columns: 64px minmax(120px, 160px) minmax(0, 1fr) minmax(110px, 150px) 110px 56px;
+  grid-template-columns: 64px minmax(120px, 160px) minmax(0, 1fr) minmax(110px, 150px) 130px 56px;
 }
 
 .pop-ui .pop-mlot-table[data-mode='result'] .pop-mlot-table-head,
@@ -5066,7 +5267,7 @@
 
   .pop-ui .pop-mlot-table[data-mode='pending'] .pop-mlot-table-head,
   .pop-ui .pop-mlot-table[data-mode='pending'] .pop-mlot-row {
-    grid-template-columns: 52px 120px minmax(0, 1fr) 100px 100px 48px;
+    grid-template-columns: 52px 120px minmax(0, 1fr) 100px 120px 48px;
   }
 
   .pop-ui .pop-mlot-table[data-mode='result'] .pop-mlot-table-head,

@@ -118,6 +118,20 @@ export const hasStageCounts = (rows: readonly PurchaseOrderSummary[]): boolean =
 export const hasLot = (lot: InboundLotProgress): lot is IssuedLotProgress =>
   lot.lotId !== null && lot.lotNo !== null;
 
+/** 「입고 대기」 LOT 줄인가 — 체크해 한 번에 입고할 수 있는 줄이다. */
+export const isReceiptReady = (lot: InboundLotProgress): lot is IssuedLotProgress =>
+  hasLot(lot) && lot.stageCode === 'RECEIPT_READY';
+
+/** 라벨이 발행된(LOT 이 붙은) 줄이 하나라도 있는 발주 라인 — 행을 눌러 수량을 정해 받지 못한다(`receive-entry.ts` `isEditable`). */
+export const labeledLineIds = (
+  lots: ReadonlyMap<number, readonly InboundLotProgress[]> | undefined,
+): ReadonlySet<number> =>
+  new Set(
+    [...(lots ?? new Map<number, readonly InboundLotProgress[]>()).entries()]
+      .filter(([, own]) => own.some(hasLot))
+      .map(([purchaseOrderLineId]) => purchaseOrderLineId),
+  );
+
 /**
  * LOT 을 발주 라인별로 묶는다. 한 라인 안은 **입하 일시 → LOT 번호** 순이다 — 먼저 들어온 것이 위다.
  * LOT 이 없는 줄(라벨 미부착)은 같은 입하 일시 안에서 입하 라인 순이다.

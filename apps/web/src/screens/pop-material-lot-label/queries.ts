@@ -221,6 +221,10 @@ export interface TargetRowsResult {
   rows: TargetRow[];
   isPending: boolean;
   isError: boolean;
+  /** 서버에 다시 묻는 중 — 새로 고침 단추가 돈다. */
+  isFetching: boolean;
+  /** 마지막으로 받은 때(ms). 아직 못 받았으면 0 — 새로 고침 옆에 「… 받음」으로 적는다. */
+  updatedAt: number;
   refetch: () => void;
 }
 
@@ -256,6 +260,8 @@ export const useLineRows = (
     isPending: results.some((result) => result.isPending),
     // 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다.
     isError: results.some((result) => result.isError),
+    isFetching: results.some((result) => result.isFetching),
+    updatedAt: Math.max(0, ...results.map((result) => result.dataUpdatedAt)),
     refetch: () => {
       for (const result of results) void result.refetch();
     },
@@ -349,6 +355,8 @@ export const useLabelRows = (
       rows: direct.data ?? [],
       isPending: enabled && direct.isPending,
       isError: direct.isError,
+      isFetching: direct.isFetching,
+      updatedAt: direct.dataUpdatedAt,
       refetch: () => {
         void direct.refetch();
       },
@@ -360,6 +368,8 @@ export const useLabelRows = (
     rows: gathered.rows,
     isPending: receiptQuery.isPending || gathered.isPending,
     isError: receiptQuery.isError || gathered.isError,
+    isFetching: receiptQuery.isFetching || gathered.isFetching,
+    updatedAt: Math.max(receiptQuery.dataUpdatedAt, gathered.updatedAt),
     refetch: () => {
       void receiptQuery.refetch();
       gathered.refetch();

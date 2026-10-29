@@ -50,9 +50,12 @@ export interface LotlessLinesProps {
   onEnterOrders: () => void;
   /** 공급사 이름. 못 받았으면 번호로 보인다. */
   suppliers: readonly SupplierSummary[] | undefined;
-  /** 품목을 보고 있는 자재 P/O. 없으면 입고 예정 목록이다. 수량에서 돌아와도 남게 흐름이 붙든다. */
-  orderId: number | null;
-  onOrder: (purchaseOrderId: number | null) => void;
+  /**
+   * 품목을 보고 있는 자재 P/O. 없으면 입고 예정 목록이다. 수량에서 돌아와도 남게 흐름이 붙든다.
+   * 목록에서 번호로 다시 찾지 않는다 - 다 받아 미마감 목록에서 빠져도 품목 표가 남아야 한다.
+   */
+  order: PurchaseOrder | null;
+  onOrder: (order: PurchaseOrder | null) => void;
   /** 입고 예정 목록의 거르기. 흐름이 붙든다. */
   filter: LotlessFilter;
   onFilter: (filter: LotlessFilter) => void;
@@ -120,7 +123,7 @@ export const LotlessLines = ({
   ordersLoading,
   onEnterOrders,
   suppliers,
-  orderId,
+  order: openedOrder,
   onOrder,
   filter,
   onFilter,
@@ -144,7 +147,7 @@ export const LotlessLines = ({
   /* 거르기 칸은 접어 둔다 - 펼쳐 두면 표가 화면 아래로 밀린다. 걸린 조건 수는 단추가 말한다. */
   const [filterOpen, setFilterOpen] = useState(false);
   const [itemFilterOpen, setItemFilterOpen] = useState(false);
-  const order = orderId === null ? undefined : orders.find((o) => o.purchaseOrderId === orderId);
+  const order = openedOrder ?? undefined;
   const loaded = usePurchaseOrdersLines(order === undefined ? [] : [order], { fresh: true });
   /*
    * 입고 예정 목록에서는 자재 P/O 마다 라인을 읽어 입하가 다 끝났는지 본다 - 목록 응답에는 라인
@@ -348,7 +351,7 @@ export const LotlessLines = ({
                           aria-label={done ? `${rowLabel} · ${t.lotless.closed}` : rowLabel}
                           onClick={() => {
                             setQuery('');
-                            onOrder(each.purchaseOrderId);
+                            onOrder(each);
                           }}
                         >
                           {each.purchaseOrderNo}

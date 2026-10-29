@@ -214,6 +214,34 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     erpUnknown:
       'Không xác định được đã đưa vào hàng đợi gửi ERP hay chưa. Phản hồi không kèm giá trị đó.',
   },
+  batch: {
+    title: (count: number): string => `Xử lý nhập kho · ${String(count)} LOT`,
+    lotsLabel: 'LOT cần nhập kho',
+    result: 'Kết quả',
+    sameForAll: 'Áp dụng chung cho mọi LOT',
+    submit: (count: number): string => `Nhập kho ${String(count)} mục`,
+    retry: 'Xử lý lại mục thất bại',
+    summary: (count: number, destination: string): string =>
+      `${String(count)} LOT → ${destination}`,
+    allDone: (count: number): string => `Đã nhập kho ${String(count)} LOT.`,
+    done: (goodsReceiptNo: string): string => `Nhập kho ${goodsReceiptNo}`,
+    failed: 'Thất bại',
+    failedLot: (lotNo: string): string => `Nhập kho ${lotNo} thất bại`,
+    loadFailed: 'Không tải được phiếu nhập hàng. Hãy đóng và mở lại.',
+    blocked: {
+      gated: (lotNos: string): string => `Có LOT chưa thể nhập kho: ${lotNos}`,
+      mixedDefect:
+        'LOT lỗi chỉ được nhập vào kho hàng lỗi. Hãy xử lý LOT lỗi riêng với các LOT khác.',
+      mixedPlant: 'Có LOT thuộc nhà máy khác. Hãy xử lý riêng theo nhà máy.',
+      missingLine: 'Có LOT không tìm thấy trong phiếu nhập hàng. Hãy đóng và mở lại.',
+    },
+    confirm: {
+      title: (count: number): string => `Nhập kho ${String(count)} LOT`,
+      destination: (destination: string): string => `Vị trí nhập kho: ${destination}`,
+      when: (datetime: string): string => `Thời gian nhập kho: ${datetime}`,
+      ok: 'Xử lý nhập kho',
+    },
+  },
   panel: {
     title: 'Xử lý nhập kho',
     guide: {

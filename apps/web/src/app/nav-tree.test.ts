@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { NAV_ENTRIES, NAV_GROUPS, NAV_LEAD, navEntryPaths, type NavEntry } from './nav-tree';
+import {
+  NAV_ENTRIES,
+  NAV_GROUPS,
+  NAV_LEAD,
+  navEntryPaths,
+  navMenuPath,
+  type NavEntry,
+} from './nav-tree';
 
 /**
  * ⚠ **중복은 `indexOf`로 잰다 — `Set.add` 의 반환값으로 가르지 않는다.** 이 감지기의 첫 판은
@@ -208,6 +215,7 @@ describe('주 메뉴 트리', () => {
     expect(allEntries.map((entry) => `${entry.to} → ${entry.icon}`)).toEqual([
       '/dashboard → dashboard',
       '/logistics/inbound-schedule → local_shipping',
+      '/logistics/inbound-excess → local_shipping',
       '/logistics/stock-status → inventory',
       '/logistics/stocktaking → inventory',
       '/logistics/stock-adjust → inventory',
@@ -219,9 +227,10 @@ describe('주 메뉴 트리', () => {
       '/quality/pqc-inspections → troubleshoot',
       '/shipment/oqc-inspection → troubleshoot',
       '/master-data/inspection-standard → rule_settings',
-      '/master-data/inspection-sheet-template → checklist',
-      '/master-data/defect-cause-code → rule',
-      '/master-data/judgment-code → rule',
+      '/master-data/inspection-sheet-template → rule_settings',
+      '/quality/inspection-levels → rule_settings',
+      '/master-data/defect-cause-code → rule_settings',
+      '/master-data/judgment-code → rule_settings',
       '/quality/inspection-results → analytics',
       '/quality/inspection-sheets → assignment',
       '/quality/lot-status → history',
@@ -230,11 +239,11 @@ describe('주 메뉴 트리', () => {
       '/quality/approvals → approval',
       '/logistics/iqc-skip-approval → approval',
       '/quality/dispositions → gavel',
-      '/quality/inspection-levels → tune',
       '/production/production-orders → account_tree',
       '/production/po-change-review → account_tree',
       '/production/emergency-work-orders → bolt',
       '/production/work-order-progress → monitoring',
+      '/production/lot-trace → timeline',
       '/production/work-order-close → archive',
       '/shipment/shipment-request-create → assignment',
       '/shipment/shipment-schedule → event_note',
@@ -249,6 +258,7 @@ describe('주 메뉴 트리', () => {
       '/notification/center → notifications',
       '/notification/notices → campaign',
       '/master-data/item-extended-attrs → category',
+      '/master-data/item-boms → category',
       '/master-data/routing → account_tree',
       '/equipment/master → precision_manufacturing',
       '/equipment/work-calendar → precision_manufacturing',
@@ -268,6 +278,8 @@ describe('주 메뉴 트리', () => {
       '/equipment/tool-pm-result → schedule',
       '/equipment/downtime-summary → timelapse',
       '/master-data/integration-sync → sync_alt',
+      '/master-data/erp-inbound → sync_alt',
+      '/master-data/erp-outbound → sync_alt',
       '/system/erp-data/common-codes → sync_alt',
       '/system/erp-data/employees → sync_alt',
       '/system/erp-data/items → sync_alt',
@@ -285,5 +297,15 @@ describe('주 메뉴 트리', () => {
       '/master-data/common-code → list_alt',
       '/system/terminal-process-map → tablet_android',
     ]);
+  });
+});
+
+describe('navMenuPath', () => {
+  it('주소에 닿는 메뉴의 경로를 사이드바 이름 그대로 만든다', () => {
+    expect(navMenuPath('/system/users-roles')).toBe('시스템 관리 › 사용자·역할·권한');
+  });
+
+  it('사이드바에 없는 주소는 null이다', () => {
+    expect(navMenuPath('/no-such-screen')).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 /**
- * W-02-01 ERP W/O 처리 화면 (W-02-02 W/O 전개와 편성, W-02-03 4M 자원배정, W-02-04 W/O 확정과 배포를 단계로 합침)
+ * W-02-01 작업지시 목록 처리 화면 (W-02-02 W/O 전개와 편성, W-02-03 4M 자원배정, W-02-04 W/O 확정과 배포를 단계로 합침)
  * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
  * 이탈: C-17 「자동」 표시 없음(배정 출처 칸 계약 대기, omf-all-around#129).
  *       C-12 마스터 점검의 BOM, Routing 개정은 그 품목의 개정 목록이라 Select다(구성안 C-20 표).
@@ -16,6 +16,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { ActionBar } from '../../../patterns/action-bar';
 import { useApiClient } from '../../../patterns/api-context';
 import { SaveErrorBanner } from '../../../patterns/master';
+import { josa } from '../../../patterns/josa';
 import { plantToday } from '../../../patterns/plant-time';
 import {
   ProcessPage,
@@ -38,7 +39,8 @@ import { useItemCodeNames } from '../item-lookups';
 import { useAutoPlanMutation } from '../mutations';
 import { useUomReferenceLookup } from '../reference-lookups';
 import { apiErrorText, invalidateFlow, releaseWorkOrder } from '../release-runner';
-import { ProcessStateChip, ReasonChips } from '../worklist-chips';
+import { ForbiddenNotice, isForbidden } from '../forbidden-notice';
+import { ProcessStateChip, ReasonChips, reasonLabel } from '../worklist-chips';
 import {
   processPath,
   readWorklistFilters,
@@ -100,11 +102,16 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
 
   /* 마스터 점검 */
   const boms = useBomReferenceQuery(order.itemId);
-  const routings = useRoutingReferenceQuery(order.itemId, true);
   const lines = useProductionLineReferenceQuery(order.plantId);
   const editor = useProductionPlanEditorSession(order.productionOrderId);
   const planFacts = editor.plans.data?.items ?? [];
   const confirmedPlans = planFacts.filter((plan) => plan.confirmedAt !== null);
+  /*
+   * 확정된 계획이 있으면 개정은 바꿀 수 없다. 그 계획이 쓰는 개정이 지금은 쓸 수 없는(작성중, 기간 밖) 개정이어도
+   * 보여야 하므로, 이때는 쓸 수 있는 것만이 아니라 모든 개정을 받는다.
+   */
+  const fixedByPlan = confirmedPlans.length > 0;
+  const routings = useRoutingReferenceQuery(order.itemId, !fixedByPlan);
   const planBom = confirmedPlans[0]?.bomId ?? planFacts[0]?.bomId;
   const planRouting = confirmedPlans[0]?.routingId ?? planFacts[0]?.routingId;
   const [bomChoice, setBomChoice] = useState<string | null>(null);
@@ -127,6 +134,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       routingCount: routingItems.length,
       bomSelected: bomItems.some((entry) => String(entry.bomId) === bomId),
       routingSelected: routingItems.some((entry) => String(entry.routingId) === routingId),
+      fixedByPlan,
     },
     stepName('plan'),
   );
@@ -294,28 +302,26 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
         variant: result.outcome === 'CONFIRMED' ? 'success' : 'warning',
         description:
           result.outcome === 'NOT_PLANNED'
-            ? `${tp.autoPlanResult.NOT_PLANNED}: ${result.reasons.map((reason) => t.reasons[reason]).join(', ')}`
+            ? `${tp.autoPlanResult.NOT_PLANNED}: ${result.reasons.map(reasonLabel).join(', ')}`
             : tp.autoPlanResult[result.outcome],
       });
       setStep(null);
     },
   });
 
-  const derivedBase = deriveWorklistState(order, {
-    pending: unreleased.data?.length ?? 0,
-    blocked: blockedIds?.size ?? 0,
-  });
-  /* 서버 사유에 없어도 데이터로 보이는 막힘(작성 중 계획의 라인 미정)을 앞에 둔다(T-W-C 처음 여는 단계와 같은 판단). */
+  const derivedBase = deriveWorklistState(order);
+  /* 서버 사유에 없어도 데이터로 보이는 막힘(작성 중 계획의 생산 라인 없음)을 앞에 둔다(T-W-C 처음 여는 단계와 같은 판단). */
   const derived =
-    derivedBase.state === 'NEEDS_REVIEW' &&
+    derivedBase.state === 'ACTION_REQUIRED' &&
+    order.autoPlan?.status === 'NEEDS_REVIEW' &&
     unconfirmedRows.some((row) => row.draft.plannedLineId === '') &&
-    !derivedBase.reasons.includes('LINE_UNKNOWN')
-      ? { ...derivedBase, reasons: ['LINE_UNKNOWN' as const, ...derivedBase.reasons] }
+    !derivedBase.reasons.some((reason) => reason.code === 'LINE_UNKNOWN')
+      ? { ...derivedBase, reasons: [{ code: 'LINE_UNKNOWN' }, ...derivedBase.reasons] }
       : derivedBase;
   const lastSearch = useMemo(() => rememberedWorklistSearch(), []);
   const lastFilters = useMemo(() => readWorklistFilters(lastSearch), [lastSearch]);
   const nextList = useWorklist(lastFilters);
-  const needsReviewCount = useWorklistCount('NEEDS_REVIEW');
+  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED');
   const nextOrder = (() => {
     const items = nextList.data?.items ?? [];
     const index = items.findIndex((entry) => entry.productionOrderNo === order.productionOrderNo);
@@ -469,7 +475,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
 
   const guidance =
     step === 'done'
-      ? { text: tp.remaining.remainingOrders(needsReviewCount.data ?? 0), todo: false }
+      ? { text: tp.remaining.remainingOrders(actionRequiredCount.data ?? 0), todo: false }
       : step === 'release'
         ? releaseGuidance
         : judgments[step].guidance;
@@ -524,7 +530,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
             }}
             bomId={bomId}
             routingId={routingId}
-            locked={confirmedPlans.length > 0}
+            locked={fixedByPlan}
             statusNameOf={codeNames.masterVersionStatus}
             onBomChange={setBomChoice}
             onRoutingChange={setRoutingChoice}
@@ -642,12 +648,12 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     if (step === 'done') {
       return nextOrder === undefined ? (
         <Button onClick={() => void navigate(worklistPath(lastSearch))}>
-          {tp.done.toWorklist}
+          {josa(tp.done.toWorklist, '으로/로')}
         </Button>
       ) : (
         <>
           <Button variant="outlined" onClick={() => void navigate(worklistPath(lastSearch))}>
-            {tp.done.toWorklist}
+            {josa(tp.done.toWorklist, '으로/로')}
           </Button>
           <Button onClick={() => void navigate(processPath(nextOrder.productionOrderNo))}>
             {tp.done.nextOrder}
@@ -707,7 +713,10 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   })();
 
   const dirtyPlans = step === 'plan' && planDirty;
-  const canRerun = derived.state === 'NEEDS_REVIEW' || derived.state === 'NOT_PLANNED';
+  /* 자동 계획을 다시 돌릴 일은 계획 전이거나 자동 계획이 확인 필요로 끝난 건이다. W/O에서 막힌 건은 4M 배정에서 고친다. */
+  const canRerun =
+    order.statusCode !== 'CANCELLED' &&
+    (order.autoPlan === null || order.autoPlan.status === 'NEEDS_REVIEW');
 
   return (
     <ProcessPage
@@ -716,11 +725,17 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       title={order.productionOrderNo}
       badges={
         <>
-          <ProcessStateChip
-            state={derived.state}
-            cancelledName={codeNames.productionOrderStatus('CANCELLED')}
+          <ProcessStateChip state={derived.state} />
+          <ReasonChips
+            reasons={derived.reasons}
+            detail={{
+              orderQty: formatQty(order.orderQty),
+              plannedQty: formatQty(
+                confirmedPlans.reduce((sum, entry) => sum + entry.plannedQty, 0),
+              ),
+              uom: uomLabelOf(order.uomId),
+            }}
           />
-          <ReasonChips reasons={derived.reasons} />
         </>
       }
       summary={
@@ -812,7 +827,14 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   );
 };
 
-export const ProductionOrderProcessScreen = () => {
+export interface ProductionOrderProcessScreenProps {
+  /** 권한 안내가 가리킬 메뉴 경로. 라우트가 사이드바 이름으로 넘긴다. */
+  permissionMenuPath?: string | null;
+}
+
+export const ProductionOrderProcessScreen = ({
+  permissionMenuPath = null,
+}: ProductionOrderProcessScreenProps) => {
   const { productionOrderNo = '' } = useParams();
   const navigate = useNavigate();
   const order = useProductionOrderByNumber(productionOrderNo);
@@ -823,6 +845,9 @@ export const ProductionOrderProcessScreen = () => {
         <SkeletonText lines={6} />
       </div>
     );
+  }
+  if (order.isError && isForbidden(order.error)) {
+    return <ForbiddenNotice menuPath={permissionMenuPath} />;
   }
   if (order.isError || order.data === null) {
     return (

@@ -1,7 +1,8 @@
-import { Button, Select, TextField, type SelectItems } from '@crefle/web-ui';
+import { Button, TextField, type SelectItems } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type JSX, useEffect, useId, useState } from 'react';
 
+import { Select } from '../../patterns/select';
 import { canFilterByJudgment } from './filter-initialization';
 export interface WorkOrderCloseFilterValues {
   productionOrderId: string;

@@ -1,15 +1,8 @@
-import {
-  AlertBanner,
-  Button,
-  type Column,
-  EmptyState,
-  Select,
-  SkeletonText,
-  Table,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
+import { Select } from '../../patterns/select';
 import {
   useInspectionMeasurements,
   useInspectionResultDetail,
