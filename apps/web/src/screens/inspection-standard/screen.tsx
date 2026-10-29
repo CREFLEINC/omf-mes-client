@@ -87,6 +87,7 @@ import {
   useProcessOptions,
   useRoutingOptions,
   useUomOptions,
+  useVersionHistory,
   versionDetailPath,
   versionKeys,
   type InspectionItemSpecListResponse,
@@ -441,6 +442,8 @@ export const InspectionStandardScreen = () => {
   const versionList = useInspectionPlanVersionList(selectedPlanId);
   const versions = versionList.data?.items ?? [];
   const selectedVersionId = Number(searchParams.get('ver') ?? '') || null;
+  /* 고른 버전의 변경 이력 — 「변경 이력」 단추를 이력이 있을 때만 세운다(#208). 창 · 탭과 같은 조회라 한 번만 나간다. */
+  const versionHistory = useVersionHistory(selectedVersionId);
 
   /**
    * 버전 등록 폼의 값. null이면 폼이 닫혀 있다.
@@ -1212,7 +1215,11 @@ export const InspectionStandardScreen = () => {
   const renderVersionBar = (): ReactNode => (
     <VersionBar
       onCompare={versions.length >= 2 ? () => setIsCompareOpen(true) : undefined}
-      onHistory={selectedVersionId === null ? undefined : () => setIsHistoryOpen(true)}
+      onHistory={
+        selectedVersionId === null || (versionHistory.data?.items.length ?? 0) === 0
+          ? undefined
+          : () => setIsHistoryOpen(true)
+      }
       isListOpen={isVersionListOpen}
       onListOpenChange={setIsVersionListOpen}
       versionActions={

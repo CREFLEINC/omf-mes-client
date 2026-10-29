@@ -3,7 +3,6 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import { Select } from '../../patterns/select';
-import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
 import { resolveVersionStatus } from './plan-version-status';
 import { VersionPane, VersionPrimaryAction, type VersionPaneProps } from './version-pane';
@@ -25,9 +24,9 @@ export interface VersionBarProps extends VersionPaneProps {
   onListOpenChange: (open: boolean) => void;
   /** 고른 버전의 일 — 버전 설정 수정 · 확정 · 폐기(줄 오른쪽 끝 · #196) */
   versionActions?: ReactNode;
-  /** 「버전 비교」 창을 연다(#196). 견줄 버전이 2개 미만이면 화면이 넘기지 않는다 — 단추가 사유와 함께 잠긴다. */
+  /** 「버전 비교」 창을 연다(#196). 견줄 버전이 2개 미만이면 화면이 넘기지 않는다 — 단추가 서지 않는다(#208). */
   onCompare?: () => void;
-  /** 「변경 이력」 창을 연다(#196). 버전을 고르기 전에는 화면이 넘기지 않는다. */
+  /** 「변경 이력」 창을 연다(#196). 버전을 고르기 전이거나 이력이 없으면 화면이 넘기지 않는다 — 단추가 서지 않는다(#208). */
   onHistory?: () => void;
 }
 
@@ -108,23 +107,18 @@ export const VersionBar = ({
         </Button>
         {/* 계약에 경로가 없다. 감추지 않고 사유와 함께 비활성으로 둔다(사유는 마우스를 올리면 보인다). */}
         {/* 버전이 2개 이상이면 연다 — 두 버전을 불러 화면이 견준다(사용자 지시 · #196). */}
-        {onCompare === undefined ? (
-          <span title={t.compare.needTwo}>
-            <DisabledAction
-              label={t.actions.compareVersions}
-              reason={t.compare.needTwo}
-              className="inspection-standard-tooltip-reason"
-            />
-          </span>
-        ) : (
+        {/* 견줄 버전이 둘 이상일 때만 선다 — 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208). */}
+        {onCompare !== undefined && (
           <Button variant="outlined" onClick={onCompare}>
             {t.actions.compareVersions}
           </Button>
         )}
-        {/* 고른 버전의 변경 이력 — 서버가 버전 쓰기마다 남긴 감사 이력(#196). */}
-        <Button variant="outlined" disabled={onHistory === undefined} onClick={onHistory}>
-          {t.actions.changeHistory}
-        </Button>
+        {/* 고른 버전에 변경 이력이 있을 때만 선다(사용자 지시 · #208). */}
+        {onHistory !== undefined && (
+          <Button variant="outlined" onClick={onHistory}>
+            {t.actions.changeHistory}
+          </Button>
+        )}
         {/* 오른쪽 끝 — 고른 버전의 일(버전 설정 수정 · 확정 · 폐기), 맨 끝에 「+ 신규 버전 발행」(사용자 시안 · #196). */}
         <div className="inspection-standard-version-actions">
           {versionActions}

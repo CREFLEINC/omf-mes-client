@@ -267,7 +267,6 @@ export const inspectionStandard = {
     yes: '예',
     no: '아니요',
     change: (label: string, before: string, after: string): string => `${label}: ${before} → ${after}`,
-    needTwo: '버전 비교는 버전이 2개 이상일 때 할 수 있습니다.',
     loading: '비교할 버전을 불러오는 중',
   },
   /* 버전 변경 이력(#196) — 서버가 버전 쓰기마다 남긴 감사 이력을 읽는다. 최근 1년만 조회한다(조회 경로가 기간을 요구한다). */

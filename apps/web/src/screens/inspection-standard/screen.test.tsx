@@ -2508,15 +2508,20 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(history?.url.searchParams.get('occurredFrom')).not.toBeNull();
   });
 
-  it('버전이 하나뿐이면 버전 비교가 비활성이고 사유가 보인다', async () => {
-    renderSelectedVersion([versionListRoute([inspectionPlanVersionFixtures[0]!])]);
+  /* 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208) — 버전이 하나면 버전 비교, 이력이 없으면 변경 이력이 서지 않는다. */
+  it('버전이 하나뿐이고 이력이 없으면 버전 비교 · 변경 이력 단추가 없다', async () => {
+    renderSelectedVersion([
+      versionListRoute([inspectionPlanVersionFixtures[0]!]),
+      {
+        match: (request) => isGet(request, '/audit/events'),
+        respond: () => jsonResponse({ items: [], page: { page: 1, size: 100, total: 0 } }),
+      },
+    ]);
 
     await awaitVersionForm();
 
-    expect(screen.getByRole('button', { name: '버전 비교' })).toBeDisabled();
-    expect(
-      screen.getByText('버전 비교는 버전이 2개 이상일 때 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '버전 비교' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '변경 이력' })).not.toBeInTheDocument();
   });
 });
 

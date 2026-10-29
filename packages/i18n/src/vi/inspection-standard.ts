@@ -247,7 +247,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     yes: 'Có',
     no: 'Không',
     change: (label: string, before: string, after: string): string => `${label}: ${before} → ${after}`,
-    needTwo: 'Chỉ so sánh được khi có từ 2 phiên bản trở lên.',
     loading: 'Đang tải phiên bản để so sánh',
   },
   history: {
