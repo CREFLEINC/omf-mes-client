@@ -116,6 +116,15 @@ export const defectCauseCode = {
     select: '선택',
     clear: (tab: string): string => `${tab} 검색 지우기`,
   },
+  /** 공정 검색 창(#209) — 불량코드 검색 창과 같은 모양 */
+  processPicker: {
+    title: '공정 검색',
+    placeholder: '공정코드 또는 공정명을 입력하세요',
+    code: '공정코드',
+    name: '공정명',
+    fieldPlaceholder: '공정을 검색하세요',
+    clear: '공정 검색 지우기',
+  },
   /** 표의 대분류 · 상세 관계(사용자 지시 · #209) */
   tree: {
     childCount: (count: number): string => `하위 코드 ${String(count)}건`,

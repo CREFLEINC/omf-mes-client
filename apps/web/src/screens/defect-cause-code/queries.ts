@@ -170,25 +170,3 @@ export const useProcessLabels = (): ((processId: number | null | undefined) => s
     return byId.get(processId) ?? String(processId);
   };
 };
-
-/** 공정 조건 선택지(#209) — 공정 칸 이름과 같은 조회(캐시)를 쓴다. 「공정코드 · 공정명」 순. */
-export const useProcessOptions = (): { value: string; label: string }[] => {
-  const { client } = useApiClient();
-
-  const processes = useQuery({
-    queryKey: ['defect-cause-code', 'process-labels'],
-    queryFn: () =>
-      fetchAllPages((page, size) =>
-        runRequest(() => client.GET('/mdm/processes', { params: { query: { page, size } } })),
-      ),
-  });
-
-  return useMemo(
-    () =>
-      (processes.data?.items ?? []).map((process) => ({
-        value: String(process.processId),
-        label: `${process.processCode} · ${process.processName}`,
-      })),
-    [processes.data],
-  );
-};

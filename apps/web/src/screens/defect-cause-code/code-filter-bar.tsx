@@ -7,6 +7,7 @@ import { Select } from '../../patterns/select';
 import type { CodeAdapter } from './adapters';
 import { DEFAULT_CODE_FILTERS } from './code-options';
 import { CodePickerDialog } from './code-picker-dialog';
+import { ProcessPickerDialog } from './process-picker-dialog';
 import type { CodeFilters } from './types';
 
 const t = messages.defectCauseCode;
@@ -19,8 +20,8 @@ export interface CodeFilterBarProps {
   onApplyFilters: (next: CodeFilters) => void;
   /** 조회 · 초기화 뒤, 구분선 너머에 서는 화면 단추(대분류 추가 · 상세 추가) */
   actions: ReactNode;
-  /** 공정 조건 선택지(「공정코드 · 공정명」). 불량코드 탭만 조건을 세운다 */
-  processOptions: { value: string; label: string }[];
+  /** 공정 번호 → 「공정코드 · 공정명」. 불량코드 탭의 공정 조건 칸이 고른 공정 이름을 낸다 */
+  processLabelOf: (processId: number | null | undefined) => string | null;
 }
 
 /**
@@ -32,16 +33,16 @@ export const CodeFilterBar = ({
   appliedFilters,
   onApplyFilters,
   actions,
-  processOptions,
+  processLabelOf,
 }: CodeFilterBarProps) => {
   const dispositionId = useId();
-  const processSelectId = useId();
+  const [isProcessPickerOpen, setIsProcessPickerOpen] = useState(false);
   /* 처분 유형 · 공정 조건은 불량코드 탭에만 둔다(사용자 지시 2026-10-29 · #209). */
   const showCodeConditions = adapter.hasDisposition;
   const dispositionLabel = (code: CodeFilters['dispositionTypeCode']): string =>
     code === '' ? t.filters.all : t.values.disposition[code];
   const processLabel = (id: string): string =>
-    processOptions.find((option) => option.value === id)?.label ?? id;
+    id === '' ? '' : (processLabelOf(Number(id)) ?? id);
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   // 편집 중인 값은 draft에만 있고 조건 칩에는 미러하지 않는다.
   const [draft, setDraft] = useState<CodeFilters>(appliedFilters);
@@ -120,17 +121,24 @@ export const CodeFilterBar = ({
                 }
               />
             </div>
-            <div className="field-cell defect-cause-filter-select">
-              <span className="field-label">
-                <label htmlFor={processSelectId}>{t.filters.process}</label>
-              </span>
-              <Select
-                id={processSelectId}
-                options={[{ value: '', label: t.filters.all }, ...processOptions]}
-                value={draft.processId}
-                onChange={(value) => setDraft((prev) => ({ ...prev, processId: value }))}
-              />
-            </div>
+            {/*
+             * 공정은 많을 수 있어 **창에서 검색해서 고른다** — 불량코드 검색과 같은 조작(사용자 지시 · #209).
+             * 읽기 전용 칸을 누르거나 엔터를 치면 창이 열린다. 지우기는 칸 안의 × 다.
+             */}
+            <SearchInput
+              containerClassName="defect-cause-process-field"
+              label={t.filters.process}
+              placeholder={t.processPicker.fieldPlaceholder}
+              value={processLabel(draft.processId)}
+              readOnly
+              title={draft.processId === '' ? undefined : processLabel(draft.processId)}
+              aria-haspopup="dialog"
+              clearLabel={t.processPicker.clear}
+              onClick={() => setIsProcessPickerOpen(true)}
+              onSearch={() => setIsProcessPickerOpen(true)}
+              onChange={() => undefined}
+              onClear={() => setDraft((prev) => ({ ...prev, processId: '' }))}
+            />
           </>
         )}
         {/* 해제 축이라 변경 즉시 적용한다. */}
@@ -212,6 +220,15 @@ export const CodeFilterBar = ({
             </Chip>
           )}
         </div>
+      )}
+      {isProcessPickerOpen && (
+        <ProcessPickerDialog
+          onClose={() => setIsProcessPickerOpen(false)}
+          onConfirm={(process) => {
+            setDraft((prev) => ({ ...prev, processId: String(process.processId) }));
+            setIsProcessPickerOpen(false);
+          }}
+        />
       )}
       {isPickerOpen && (
         <CodePickerDialog

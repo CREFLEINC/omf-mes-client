@@ -47,13 +47,7 @@ import {
   toServerFieldName,
 } from './mappers';
 import { UsageChips } from './usage-chips';
-import {
-  useCodeDetail,
-  useCodeList,
-  useCodeOptions,
-  useProcessLabels,
-  useProcessOptions,
-} from './queries';
+import { useCodeDetail, useCodeList, useCodeOptions, useProcessLabels } from './queries';
 import { ProcessMappingPane } from './process-mapping-pane';
 import { resolveTab } from './tabs';
 import type {
@@ -202,7 +196,6 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const byId = useMemo(() => indexById([...options.items, ...items]), [options.items, items]);
   const rows = useMemo(() => orderForGrouping(items, byId), [items, byId]);
   const processLabelOf = useProcessLabels();
-  const processOptions = useProcessOptions();
 
   const selected = selectedId === null ? null : (byId.get(selectedId) ?? null);
 
@@ -662,7 +655,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
           appliedFilters={filters}
           onApplyFilters={handleApplyFilters}
           actions={filterActions}
-          processOptions={processOptions}
+          processLabelOf={processLabelOf}
         />
       </section>
 

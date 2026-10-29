@@ -22,7 +22,7 @@ const renderBar = (overrides: Partial<CodeFilterBarProps> = {}) => {
     appliedFilters: NO_FILTERS,
     onApplyFilters: vi.fn(),
     actions: <button type="button">대분류 추가</button>,
-    processOptions: [{ value: '7001', label: 'P-10 · 조립' }],
+    processLabelOf: (processId) => (processId === 7001 ? 'P-10 · 조립' : null),
     ...overrides,
   };
 
@@ -135,21 +135,38 @@ describe('CodeFilterBar — 조회 조건', () => {
 
     await user.click(screen.getByRole('combobox', { name: '처분 유형' }));
     await user.click(screen.getByRole('option', { name: '폐기' }));
-    await user.click(screen.getByRole('combobox', { name: '공정' }));
-    await user.click(screen.getByRole('option', { name: 'P-10 · 조립' }));
     expect(props.onApplyFilters).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: '조회' }));
     expect(props.onApplyFilters).toHaveBeenCalledWith(
-      expect.objectContaining({ dispositionTypeCode: 'SCRAP', processId: '7001' }),
+      expect.objectContaining({ dispositionTypeCode: 'SCRAP' }),
     );
+  });
+
+  it('공정 칸은 직접 입력하지 않고 공정 검색 창을 열며, 고른 공정 이름을 보인다(#209)', () => {
+    renderBar({
+      appliedFilters: {
+        q: '',
+        includeInactive: false,
+        inactiveOnly: false,
+        dispositionTypeCode: '',
+        processId: '7001',
+        page: 1,
+        size: 20,
+      },
+    });
+
+    const field = screen.getByLabelText('공정');
+    expect(field).toHaveAttribute('readonly');
+    expect(field).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(field).toHaveValue('P-10 · 조립');
   });
 
   it('원인코드 탭에는 처분 유형 · 공정 조건이 없다', () => {
     renderBar({ adapter: causeCodeAdapter });
 
     expect(screen.queryByRole('combobox', { name: '처분 유형' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('combobox', { name: '공정' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('공정')).not.toBeInTheDocument();
   });
 
   it('원인코드 탭은 원인코드 검색 라벨을 쓴다', () => {

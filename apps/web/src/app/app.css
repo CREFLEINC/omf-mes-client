@@ -509,8 +509,22 @@ main > * + * {
   width: fit-content;
 }
 
-/* 처분 유형 · 공정 조건 칸(#209) — 「재작업 가능」 · 공정 이름이 잘리지 않는 폭. */
+/*
+ * 불량코드 조회 카드(#209) — 조건 칸 사이 빈 폭을 줄인다(사용자 지시 「불필요한 사이 공간」).
+ * 검색 칸은 안내 문구가 읽히는 만큼만, 처분 유형은 「재작업 가능」이 잘리지 않는 만큼만 차지한다.
+ */
+.inspection-standard-search.defect-cause-search .filter-bar > :first-child {
+  flex: 0 1 18rem;
+  min-width: 11rem;
+}
+
 .defect-cause-search .defect-cause-filter-select {
+  flex: 0 0 auto;
+  min-width: 7.5rem;
+}
+
+.defect-cause-search .defect-cause-process-field {
+  flex: 0 1 15rem;
   min-width: 10rem;
 }
 

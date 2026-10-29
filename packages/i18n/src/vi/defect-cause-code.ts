@@ -105,6 +105,14 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     select: 'Chọn',
     clear: (tab: string): string => `Xóa tìm ${tab}`,
   },
+  processPicker: {
+    title: 'Tìm công đoạn',
+    placeholder: 'Nhập mã công đoạn hoặc tên công đoạn',
+    code: 'Mã công đoạn',
+    name: 'Tên công đoạn',
+    fieldPlaceholder: 'Tìm công đoạn',
+    clear: 'Xóa tìm công đoạn',
+  },
   tree: {
     childCount: (count: number): string => `${String(count)} mã cấp dưới`,
     collapse: 'Thu gọn mã cấp dưới',
