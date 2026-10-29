@@ -1,7 +1,7 @@
 import { AlertBanner, Button, type Column, Dialog, Icon, IconButton, Table } from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 
 import { FieldLabel } from './field-label';
 import { PlanActionBanner } from './plan-action-banner';
@@ -71,6 +71,20 @@ export const ImportDialog = ({
   const fileRequiredId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
 
+  /*
+   * 파일 고르기 창의 「취소」는 입력칸에서 `cancel` 사건을 올리고, 그 사건이 위로 번져
+   * 바깥 창(<dialog>)의 닫기로 읽힌다 — 입력칸에서 멈춘다(#208). React 타입에 입력칸 onCancel 이 없어 직접 단다.
+   */
+  useEffect(() => {
+    const input = inputRef.current;
+    if (input === null) return;
+
+    const stop = (event: Event) => event.stopPropagation();
+    input.addEventListener('cancel', stop);
+
+    return () => input.removeEventListener('cancel', stop);
+  }, []);
+
   return (
     <Dialog
       open
@@ -123,11 +137,6 @@ export const ImportDialog = ({
             multiple
             disabled={isSaving}
             className="file-input"
-            /*
-             * 파일 고르기 창의 「취소」는 입력칸에서 `cancel` 사건을 올리고, 그 사건이 위로 번져
-             * 바깥 창(<dialog>)의 닫기로 읽힌다 — 여기서 멈춘다(#208).
-             */
-            onCancel={(event) => event.stopPropagation()}
             onChange={(event) => {
               /* 「파일 추가」 — 고른 목록에 더한다. 같은 이름은 한 번만 둔다. */
               const picked = [...(event.target.files ?? [])];
