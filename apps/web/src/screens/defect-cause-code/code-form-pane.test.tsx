@@ -123,13 +123,15 @@ describe('CodeFormPane — 잠금과 사유', () => {
   it('하위가 있으면 상위 선택칸이 비활성이고 사유가 보인다', () => {
     renderPane({
       mode: 'edit',
-      parentLockReason: '하위 코드가 있어 대분류를 변경할 수 없습니다.',
+      parentLockReason: '이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.',
     });
 
     const parent = screen.getByRole('combobox', { name: '상위 대분류' });
     expect(parent).toBeDisabled();
     expect(parent).toHaveAttribute('aria-describedby');
-    expect(screen.getByText(/하위 코드가 있어 대분류를 변경할 수 없습니다/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다/),
+    ).toBeInTheDocument();
   });
 });
 
@@ -166,19 +168,29 @@ describe('CodeFormPane — 저장·취소', () => {
 
 describe('CodeFormPane — 잠긴 코드 (#209 시안)', () => {
   it('잠긴 코드는 필수 표시 없이 자물쇠와 정보 안내 한 줄로 낸다', () => {
-    renderPane({ mode: 'edit', codeLockReason: '이미 사용된 코드는 변경할 수 없습니다.' });
+    renderPane({
+      mode: 'edit',
+      codeLockReason: '이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.',
+    });
 
     const code = screen.getByLabelText('불량코드');
     expect(code).toBeDisabled();
     expect(code).not.toHaveAttribute('aria-required', 'true');
-    expect(screen.getByText('이미 사용된 코드는 변경할 수 없습니다.')).toBeInTheDocument();
+    expect(
+      screen.getByText('이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.'),
+    ).toBeInTheDocument();
     expect(code).toHaveAttribute('aria-describedby');
   });
 
   it('상위가 잠기면 대분류 임시 목록 안내를 내지 않는다', () => {
-    renderPane({ mode: 'edit', parentLockReason: '하위 코드가 있어 대분류를 변경할 수 없습니다.' });
+    renderPane({
+      mode: 'edit',
+      parentLockReason: '이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.',
+    });
 
-    expect(screen.getByText('하위 코드가 있어 대분류를 변경할 수 없습니다.')).toBeInTheDocument();
+    expect(
+      screen.getByText('이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.'),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText('대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.'),
     ).not.toBeInTheDocument();

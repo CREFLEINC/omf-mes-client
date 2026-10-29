@@ -888,7 +888,9 @@ describe('DefectCauseCodeScreen — 수정 중의 상위 선택', () => {
     await screen.findByLabelText('불량코드');
 
     expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
-    expect(screen.getByText('하위 코드가 있어 대분류를 변경할 수 없습니다.')).toBeInTheDocument();
+    expect(
+      screen.getByText('이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.'),
+    ).toBeInTheDocument();
   });
 
   /* 「미사용 포함」이 꺼져 있어도 상위의 이름이 보여야 한다 — 계층 판정용 목록을 따로 받는 이유다. */
@@ -1130,7 +1132,9 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
     await screen.findByLabelText('불량명');
 
     expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
-    expect(screen.getByText(/하위 코드가 있어 대분류를 변경할 수 없습니다/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다/),
+    ).toBeInTheDocument();
   });
 
   /* 3계층의 막내 DF-42는 상위가 상세 코드다. 그래도 명칭만 고치는 것은 막지 않는다. */

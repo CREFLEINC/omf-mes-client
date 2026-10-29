@@ -26,8 +26,9 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   },
   actionReasons: {
     addChildNeedsCategory: 'Thêm chi tiết chỉ dùng được sau khi chọn một cấp lớn.',
-    parentLockedByChildren: 'Có mã cấp dưới nên không đổi được cấp lớn.',
-    codeLockedReferenced: 'Mã đã được sử dụng nên không thể thay đổi.',
+    parentLockedByChildren:
+      'Cấp lớn này có mã chi tiết bên dưới nên không đổi được cấp lớn bên trên.',
+    codeLockedReferenced: 'Mã này đã được dùng trong hồ sơ khác nên không thể đổi.',
     deactivateNeedsActive: 'Ngừng sử dụng không làm được với mã đã ngừng dùng.',
   },
   loading: {

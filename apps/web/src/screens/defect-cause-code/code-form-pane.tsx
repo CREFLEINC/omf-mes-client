@@ -169,8 +169,13 @@ export const CodeFormPane = ({
          */}
         {/* 코드 잠금 안내 — 두 칸 아래 한 줄 전체 폭(사용자 시안 · #209). */}
         {codeLocked && (
-          <p id={codeLockId} className="field-note defect-cause-form-wide defect-cause-lock-note">
-            <Icon name="info" size={18} aria-hidden />
+          /* 정보 안내 — 검사 조회·판정의 안내 줄과 같은 모양(사용자 지시 · #209). */
+          <p
+            id={codeLockId}
+            className="iqc-inspection-action-note defect-cause-form-wide defect-cause-lock-note"
+            data-tone="info"
+          >
+            <Icon name="info" size={14} aria-hidden />
             {codeLockReason}
           </p>
         )}
@@ -197,7 +202,12 @@ export const CodeFormPane = ({
            * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다.
            */}
           {parentLockReason !== null && (
-            <span id={parentLockId} className="field-note">
+            <span
+              id={parentLockId}
+              className="iqc-inspection-action-note defect-cause-info-note"
+              data-tone="info"
+            >
+              <Icon name="info" size={14} aria-hidden />
               {parentLockReason}
             </span>
           )}

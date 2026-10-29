@@ -24,9 +24,9 @@ export const defectCauseCode = {
   },
   actionReasons: {
     addChildNeedsCategory: '상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.',
-    parentLockedByChildren: '하위 코드가 있어 대분류를 변경할 수 없습니다.',
+    parentLockedByChildren: '이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.',
     /** 다른 기록에서 쓰고 있어 코드가 잠겼을 때(수정 창 · 사용자 시안 #209) */
-    codeLockedReferenced: '이미 사용된 코드는 변경할 수 없습니다.',
+    codeLockedReferenced: '이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.',
     deactivateNeedsActive: '사용 중지는 이미 미사용인 코드에는 할 수 없습니다.',
   },
   loading: {
