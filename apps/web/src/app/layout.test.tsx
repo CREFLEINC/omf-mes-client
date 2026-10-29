@@ -240,21 +240,18 @@ describe('AppLayout', () => {
     );
   });
 
-  /* 판정유형 코드는 「품질 기준 정보」 묶음의 끝 탭이다 — 탭 막대에서 불량·원인코드 바로 뒤에 선다. */
-  /* 불량·원인코드는 사이드바 한 줄로 따로 섰다(#208) — 탭 막대에는 검사 수준 관리 다음이 판정유형 코드다. */
-  it('품질 기준 정보 탭 막대에 판정유형 코드가 검사 수준 관리 뒤에 보인다', () => {
+  /* 판정유형 코드는 「불량·판정 코드」 묶음의 끝 탭이다 — 불량·원인코드 바로 뒤에 선다(#208). */
+  it('불량·판정 코드 탭 막대에 판정유형 코드가 불량·원인코드 뒤에 보인다', () => {
     renderLayout('본문 내용', { route: '/master-data/judgment-code' });
 
-    const tabs = screen.getByRole('navigation', { name: '품질 기준 정보' });
+    const tabs = screen.getByRole('navigation', { name: '불량·판정 코드' });
 
     expect(within(tabs).getByRole('link', { name: '판정 유형 코드' })).toHaveAttribute(
       'href',
       '/master-data/judgment-code',
     );
-    expect(hubTabHrefs('품질 기준 정보')).toEqual([
-      '/master-data/inspection-standard',
-      '/master-data/inspection-sheet-template',
-      '/quality/inspection-levels',
+    expect(hubTabHrefs('불량·판정 코드')).toEqual([
+      '/master-data/defect-cause-code',
       '/master-data/judgment-code',
     ]);
   });
@@ -550,9 +547,9 @@ describe('AppLayout', () => {
 
     const qualityOrder = [
       '/logistics/iqc-inspection',
-      /* 「품질 기준 정보」 묶음 — 검사기준 → 검사표 기준(W-06-24) → 검사 수준 관리(W-03-12) → 판정유형 코드. */
+      /* 「품질 기준 정보」 묶음 — 검사기준 → 검사표 기준(W-06-24) → 검사 수준 관리(W-03-12). */
       '/master-data/inspection-standard',
-      /* 불량·원인코드 — 묶음에서 빼 한 줄로 섰다(#208). */
+      /* 「불량·판정 코드」 묶음 — 불량·원인코드 → 판정유형 코드(#208). */
       '/master-data/defect-cause-code',
       '/quality/inspection-results',
       /* W-03-13 — OA 제품 검사표 조회·서명(설계보다 앞선 화면). */
@@ -1053,8 +1050,8 @@ describe('AppLayout', () => {
         '/master-data/inspection-standard',
         '/master-data/inspection-sheet-template',
         '/quality/inspection-levels',
-        '/master-data/judgment-code',
       ],
+      '불량·판정 코드': ['/master-data/defect-cause-code', '/master-data/judgment-code'],
       'LOT 상태': ['/quality/lot-status', '/quality/lot-status-transition'],
       '작업지시 목록': ['/production/production-orders', '/production/po-change-review'],
       '설비 보전': [
