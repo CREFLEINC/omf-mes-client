@@ -110,6 +110,9 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     chipInactive: 'Ngừng dùng',
     kindCategory: 'Cấp lớn',
     kindChild: 'Chi tiết',
+    childrenTitle: 'Mã chi tiết',
+    childrenCount: (count: number): string => `Mã chi tiết ${String(count)}`,
+    childrenEmpty: 'Chưa có mã chi tiết nào trong cấp lớn này.',
   },
   dialog: {
     createCategoryTitle: (tab: string): string => `Thêm cấp lớn ${tab}`,

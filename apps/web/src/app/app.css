@@ -434,6 +434,17 @@ main > * + * {
   gap: var(--space-2);
 }
 
+/* 대분류 상세 카드 아래의 상세 코드 표(사용자 지시 · #209) — 이름 줄 · 표. */
+.defect-cause-children {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.defect-cause-children > h3 {
+  margin: 0;
+}
+
 .inspection-standard-plan-chips {
   display: flex;
   flex-wrap: wrap;
