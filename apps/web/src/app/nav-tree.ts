@@ -317,8 +317,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           { to: '/master-data/cause-code', label: '원인코드', labelVi: 'Mã nguyên nhân' },
           {
             to: '/master-data/defect-process-mapping',
-            label: '공정 매핑',
-            labelVi: 'Ánh xạ công đoạn',
+            // 탭 이름 「공정 매핑」 → 「불량코드 공정 연결」(사용자 지시 2026-10-29 · #209) — 무엇을 잇는지 드러낸다.
+            label: '불량코드 공정 연결',
+            labelVi: 'Liên kết mã lỗi - công đoạn',
           },
           {
             to: '/master-data/judgment-code',

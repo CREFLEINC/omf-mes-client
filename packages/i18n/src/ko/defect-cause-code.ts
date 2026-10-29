@@ -11,7 +11,7 @@ export const defectCauseCode = {
   tabs: {
     defect: '불량코드',
     cause: '원인코드',
-    mapping: '공정 매핑',
+    mapping: '불량코드 공정 연결',
   },
   panes: {
     list: (tab: string): string => `${tab} 목록`,

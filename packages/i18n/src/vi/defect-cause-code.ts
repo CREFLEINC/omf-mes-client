@@ -13,7 +13,7 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   tabs: {
     defect: 'Mã lỗi',
     cause: 'Mã nguyên nhân',
-    mapping: 'Ánh xạ công đoạn',
+    mapping: 'Liên kết mã lỗi - công đoạn',
   },
   panes: {
     list: (tab: string): string => `Danh sách ${tab}`,
