@@ -10,6 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { PageNav as SharedPageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { hasDuplicateDisplayOrder, sortForDisplay } from './code-value-order';
 import type { CodeValue } from './code-value-types';
 import { PageNav } from './page-nav';
@@ -40,6 +41,15 @@ export interface CodeValueListPaneProps {
    * 주지 않으면(공통코드 화면) 종전 그대로다 — 판정유형 코드 탭만 쓴다(#208).
    */
   statusColumn?: CodeValueStatusColumn;
+  /** 조작 줄(「미사용 포함」) 아래 안내 글. 주지 않으면 그리지 않는다 — 판정유형 코드 탭만 쓴다(#208). */
+  filterNote?: ReactNode;
+  /**
+   * 서버 쪽 정보. 주면 쪽 이동을 공용 모양(「총 N건 · 처음/이전/다음/마지막」)으로 그린다.
+   * 주지 않으면(공통코드 화면) 종전 이전·다음 줄 그대로다 — 판정유형 코드 탭만 쓴다(#208).
+   */
+  pageMeta?: PageNavMeta;
+  /** 빈 상태 아이콘. 주지 않으면 종전 그대로 아이콘 없이 — 판정유형 코드 탭만 쓴다(#208). */
+  emptyIcon?: ReactNode;
 }
 
 export interface CodeValueStatusColumn {
@@ -82,6 +92,9 @@ export const CodeValueListPane = ({
   addAction,
   loadError,
   statusColumn,
+  filterNote,
+  pageMeta,
+  emptyIcon,
 }: CodeValueListPaneProps) => {
   const rows = sortForDisplay(codeValues);
 
@@ -148,6 +161,7 @@ export const CodeValueListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={emptyIcon}
           title={t.empty.beyondLastTitle}
           description={t.empty.beyondLastDescription}
         />
@@ -159,6 +173,7 @@ export const CodeValueListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={emptyIcon}
           title={t.empty.noMatchTitle}
           description={t.empty.noMatchDescription}
         />
@@ -166,7 +181,13 @@ export const CodeValueListPane = ({
     }
 
     return (
-      <EmptyState size="sm" live title={t.empty.noneTitle} description={t.empty.noneDescription} />
+      <EmptyState
+        size="sm"
+        live
+        icon={emptyIcon}
+        title={t.empty.noneTitle}
+        description={t.empty.noneDescription}
+      />
     );
   })();
 
@@ -197,7 +218,11 @@ export const CodeValueListPane = ({
             empty={emptySlot}
           />
         </div>
-        <PageNav view={pageView} onChange={onChangePage} label={t.pageNavLabel} />
+        {pageMeta === undefined ? (
+          <PageNav view={pageView} onChange={onChangePage} label={t.pageNavLabel} />
+        ) : (
+          <SharedPageNav meta={pageMeta} buttonSize="sm" onChangePage={onChangePage} />
+        )}
       </>
     );
   };
@@ -244,6 +269,8 @@ export const CodeValueListPane = ({
           </Checkbox>
         </div>
       </div>
+
+      {filterNote}
 
       {listSlot()}
 

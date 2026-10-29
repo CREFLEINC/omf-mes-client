@@ -1,4 +1,11 @@
-import { AlertBanner, Breadcrumb, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Breadcrumb,
+  EmptyState,
+  Icon,
+  PageHeader,
+  SkeletonText,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { CSSProperties, ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -73,6 +80,13 @@ const GROUP_LOOKUP_FILTERS: CodeGroupFilters = {
   includeInactive: true,
 };
 
+/** 빈 상태의 둥근 바탕 아이콘 — 검사 기준 탭과 같다(사용자 지시 · #208). */
+const EMPTY_ICON = (
+  <span className="inspection-standard-empty-icon">
+    <Icon name="assignment" size={20} />
+  </span>
+);
+
 /** 그룹 조회는 첫 쪽만 본다. 그룹코드로 좁힌 조회라 다음 쪽까지 갈 결과가 나오지 않는다. */
 const GROUP_LOOKUP_PAGE = 1;
 
@@ -107,10 +121,22 @@ const JudgmentSplit = ({
       <section ref={aboveRef} className="judgment-code-notices">
         {notices}
       </section>
+      {/*
+       * 줄 아무 곳이나 눌러도 고른다 — 눌린 줄의 코드 단추로 넘긴다(검사 기준 탭과 같다 · 사용자 지시 · #208).
+       * 편집기(공통코드 화면과 한 벌)는 고치지 않고 이 탭의 분할에서만 받는다. 키보드·화면 낭독기는 그 단추 하나로 고른다.
+       */}
       <div
         ref={splitRef}
         className={`po-board-split inspection-split inspection-standard-split${orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layoutStyle }}
+        onClick={(event) => {
+          const target = event.target as Element;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('.wide-table tbody tr')
+            ?.querySelector<HTMLButtonElement>('.link-cell')
+            ?.click();
+        }}
       >
         {listPane}
         <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
@@ -243,23 +269,19 @@ export const JudgmentCodeScreen = () => {
   const notices = (
     <>
       {/*
-       * 배너 셋은 **편집기 바깥**에 선다. 한 벌에 prop을 더해 안에서 그리면 그 파일이 바뀌고,
+       * 배너는 **편집기 바깥**에 선다. 한 벌에 prop을 더해 안에서 그리면 그 파일이 바뀌고,
        * 그 순간 공통코드 화면이 함께 위험해진다. 소비 화면이 이미 필요한 사실을 전부 갖고 있다.
        * 분할(`JudgmentSplit`) 바로 위에 선다 — 배너가 서고 지는 것을 창 높이 맞춤이 재야 해서다(#208).
        *
-       * 셋 다 **그룹을 찾았을 때만** 선다 — 위 `judgmentGroup` 한 값을 본문과 함께 본다.
+       * 임시 목록 안내는 경고가 아니라 늘 서는 알림이라 배너 대신 목록 조작 줄 아래 보조 글로 옮겼다(`filterNote` · 사용자 지시 · #208).
+       *
+       * 모두 **그룹을 찾았을 때만** 선다 — 위 `judgmentGroup` 한 값을 본문과 함께 본다.
        *
        * `.banner-slot`으로 감싸는 이유는 **이음매가 아니다.** 이 배너들은 화면 최상위 블록이라
        * 이음매는 `main > * + *`가 이미 준다(배치 규범 1). 슬롯이 필요한 것은 DS `AlertBanner`의
        * `box-sizing` 정규화 때문이며, 감싸지 않으면 배너가 안쪽 여백만큼 컨테이너를 넘친다.
        * **임시 우회다** — `design-system-v2-webui#60`이 반영되면 이 래퍼도 함께 걷는다.
        */}
-      {judgmentGroup !== null && isProvisionalJudgmentTypeList() && (
-        <div className="banner-slot">
-          <AlertBanner variant="info">{t.notices.provisionalList}</AlertBanner>
-        </div>
-      )}
-
       {judgmentGroup !== null && !judgmentGroup.isActive && (
         <div className="banner-slot">
           <AlertBanner variant="warning">{t.notices.groupInactive}</AlertBanner>
@@ -311,7 +333,9 @@ export const JudgmentCodeScreen = () => {
         <section className="pane" aria-label={t.title}>
           {/* 설명이 찾던 그룹코드를 밝힌다 — 밝히지 않으면 무엇을 등록해야 하는지 알 수 없다. */}
           <EmptyState
+            size="sm"
             live
+            icon={EMPTY_ICON}
             title={t.empty.groupNotFoundTitle}
             description={t.empty.groupNotFoundDescription(JUDGMENT_TYPE_GROUP_CODE)}
           />
@@ -333,6 +357,26 @@ export const JudgmentCodeScreen = () => {
         onPageChange={changePage}
         statusColumn={STATUS_COLUMN}
         primaryAdd
+        sharedPageNav
+        emptyIcon={EMPTY_ICON}
+        /*
+         * 안내 글 — 「미사용 포함 · 코드값 추가」 줄 아래 작은 보조 글(검사표 기준 탭과 같은 모양 · 박스 · 바탕 없이 · 사용자 지시 · #208).
+         * 편집기 어휘 안내는 늘, 임시 목록 안내는 목록이 확정되기 전까지만 선다.
+         */
+        filterNote={
+          <div className="judgment-code-filter-note">
+            <p className="inspection-sheet-template-rule">
+              <Icon name="info" size={16} />
+              {t.notices.editorScope}
+            </p>
+            {isProvisionalJudgmentTypeList() && (
+              <p className="inspection-sheet-template-rule">
+                <Icon name="info" size={16} />
+                {t.notices.provisionalList}
+              </p>
+            )}
+          </div>
+        }
         renderLayout={(listPane, formPane) => (
           <JudgmentSplit
             notices={notices}
@@ -354,7 +398,11 @@ export const JudgmentCodeScreen = () => {
     <div className="judgment-code-screen">
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
-      {hub === null ? (
+      {/*
+       * 편집기 안의 문구는 「코드값」이다 — 공통코드 화면과 한 묶음을 공유해 여기서 바꾸면 그쪽 화면이 함께 바뀐다.
+       * 그 이유를 밝히는 안내는 목록 조작 줄 아래 보조 글(`filterNote`)로 옮겼다(사용자 지시 · #208).
+       */}
+      {hub === null && (
         <PageHeader
           title={t.title}
           breadcrumb={
@@ -363,15 +411,7 @@ export const JudgmentCodeScreen = () => {
               aria-label={messages.common.shell.breadcrumb}
             />
           }
-          /*
-           * 편집기 안의 문구는 「코드값」이다 — 공통코드 화면과 한 묶음을 공유해 여기서 바꾸면
-           * 그쪽 화면이 함께 바뀐다. 화면 이름과 편집기 어휘가 다른 이유를 머리에서 밝힌다.
-           */
-          description={t.notices.editorScope}
         />
-      ) : (
-        /* 머리를 세우지 않아도 편집기 어휘 안내는 남긴다 — 문구를 지우지 않는다. */
-        <p className="field-note">{t.notices.editorScope}</p>
       )}
 
       {renderBody()}

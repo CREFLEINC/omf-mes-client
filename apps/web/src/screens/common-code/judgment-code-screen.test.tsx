@@ -38,6 +38,7 @@ const CODE_GROUPS_PATH = '/mdm/code-groups';
 const CODE_VALUES_PATH = '/mdm/code-values';
 
 const t = messages.judgmentCode;
+const pageNavText = messages.screenPatterns.pageNav;
 const tv = messages.commonCode.codeValue;
 
 /** 판정유형 코드 그룹. **목록의 첫 항목이 아니다** — 첫 항목을 쓰는 구현이 통과하면 안 된다. */
@@ -553,6 +554,22 @@ describe('JudgmentCodeScreen — 주소 키', () => {
     });
   });
 
+  /* 줄 아무 곳이나 눌러도 고른다 — 검사 기준 탭과 같다(#208). */
+  it('코드값 줄의 이름 칸을 눌러도 그 코드값을 고른다', async () => {
+    const { history, user } = renderScreen([
+      groupListRoute(),
+      codeValueListRoute(),
+      codeValueDetailRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    await user.click(screen.getByText('합성 판정유형 A'));
+
+    await waitFor(() => {
+      expect(history.search()).toBe('?sel=2101');
+    });
+  });
+
   it('등록 폼을 열면 new가 실리고 sel이 지워진다', async () => {
     const { history, user } = renderScreen(
       [groupListRoute(), codeValueListRoute(), codeValueDetailRoute()],
@@ -607,8 +624,9 @@ describe('JudgmentCodeScreen — 주소 키', () => {
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
     await user.click(
-      within(screen.getByRole('navigation', { name: tv.pageNavLabel })).getByRole('button', {
-        name: messages.commonCode.actions.nextPage,
+      /* 공용 쪽 이동 모양(처음/이전/다음/마지막)을 쓴다 — 검사표 기준 탭과 같다(#208). */
+      within(screen.getByRole('navigation', { name: pageNavText.label })).getByRole('button', {
+        name: pageNavText.next,
       }),
     );
 
@@ -789,8 +807,9 @@ describe('JudgmentCodeScreen — 주소 키 표의 유지 방향', () => {
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
     await user.click(
-      within(screen.getByRole('navigation', { name: tv.pageNavLabel })).getByRole('button', {
-        name: messages.commonCode.actions.prevPage,
+      /* 공용 쪽 이동 모양(처음/이전/다음/마지막)을 쓴다 — 검사표 기준 탭과 같다(#208). */
+      within(screen.getByRole('navigation', { name: pageNavText.label })).getByRole('button', {
+        name: pageNavText.prev,
       }),
     );
 

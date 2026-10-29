@@ -25443,10 +25443,6 @@ table.col-measuring td {
   min-width: 0;
 }
 
-.judgment-code-screen > .field-note {
-  margin: 0;
-}
-
 /* 안내 배너 묶음 — 배너가 없으면 자리를 차지하지 않는다(창 높이 맞춤이 이 묶음을 잰다 · #208). */
 .judgment-code-notices {
   display: grid;
@@ -25534,6 +25530,38 @@ table.col-measuring td {
   margin-top: 0;
 }
 
+/* 안내 글 — 조작 줄 바로 아래 작은 보조 글(검사표 기준 탭과 같은 모양 · 사용자 지시 · #208). 줄 사이는 좁게. */
+.judgment-code-filter-note {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.judgment-code-filter-note > .inspection-sheet-template-rule {
+  margin: 0;
+}
+
+/* 공용 쪽 이동 — 표 바로 아래, 단추 사이는 좁게(검사표 기준 탭과 같다 · 사용자 지시 · #208). */
+.judgment-code-screen .po-board-split > section.pane:first-child > .page-nav {
+  margin-top: 0;
+}
+
+.judgment-code-screen .page-nav-right {
+  gap: var(--space-1);
+}
+
+/* 코드값 정보 제목 줄 — 제목 옆 사용/미사용 칩(검사 기준 탭과 같다 · #208). */
+.judgment-code-screen .code-value-form-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.judgment-code-screen .code-value-form-head > .pane-title {
+  margin: 0;
+}
+
 /* 표 — 둥근 테두리 상자, 모든 열 가운데. 열이 다섯뿐이라 공용 최소 폭(58rem)을 줄여 1024px 에서도 가로로 넘기지 않는다. */
 .judgment-code-screen .wide-table {
   overflow: hidden;
@@ -25556,6 +25584,40 @@ table.col-measuring td {
   color: var(--on-surface-variant);
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
+}
+
+/*
+ * 줄 아무 곳이나 눌러 고른다(분할이 받아 코드 단추로 넘긴다) — 올리면 옅게, 코드는 링크 모양 없이 본문 글자(검사 기준 탭과 같다 · #208).
+ */
+.judgment-code-screen .wide-table tbody tr,
+.judgment-code-screen .wide-table tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.judgment-code-screen .wide-table tbody tr:has(.link-cell) {
+  transition: background-color 0.12s ease;
+  cursor: pointer;
+}
+
+.judgment-code-screen .wide-table tbody tr:nth-child(n):has(.link-cell):hover {
+  background: var(--state-hover-neutral);
+}
+
+.judgment-code-screen .wide-table .link-cell {
+  color: var(--on-surface);
+  text-decoration: none;
+}
+
+.judgment-code-screen .wide-table .link-cell:hover {
+  background: none;
+}
+
+.judgment-code-screen .wide-table .link-cell[aria-current='true'] {
+  font-weight: 600;
+}
+
+.judgment-code-screen .wide-table .link-cell:focus-visible {
+  border-radius: var(--radius-sm);
 }
 
 /* 고른 줄 — 바탕 + 왼쪽 강조선(검사 기준 탭 목록과 같다). */

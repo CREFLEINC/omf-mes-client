@@ -33,6 +33,6 @@ export const judgmentCode: Translated<typeof ko.judgmentCode> = {
     addAffectsOtherScreens:
       'Loại đánh giá thêm ở đây cũng xuất hiện ở các màn hình khác có dùng loại đánh giá. Nhiều nghiệp vụ cùng xem một danh sách nên hãy xác nhận với người phụ trách trước khi thêm giá trị.',
     /* 화면 이름은 「판정유형」인데 편집기 어휘는 「코드값」이다 - 그 어긋남을 밝힌다. */
-    editorScope: 'Màn hình này sửa các giá trị mã của nhóm mã loại đánh giá.',
+    editorScope: 'Sửa các giá trị mã của nhóm mã loại đánh giá.',
   },
 };

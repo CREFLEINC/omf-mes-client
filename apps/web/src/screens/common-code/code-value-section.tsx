@@ -1,4 +1,4 @@
-import { Button, EmptyState, Icon, SkeletonText, useToast } from '@crefle/web-ui';
+import { Button, Chip, EmptyState, Icon, SkeletonText, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useState } from 'react';
@@ -79,6 +79,12 @@ export interface CodeValueSectionProps {
    * 주지 않으면 종전 그대로 두 구획을 이어 그린다.
    */
   renderLayout?: (listPane: ReactNode, formPane: ReactNode) => ReactNode;
+  /** 목록 조작 줄 아래 안내 글. 주지 않으면 그리지 않는다 — 판정유형 코드 탭만 쓴다(#208). */
+  filterNote?: ReactNode;
+  /** 참이면 쪽 이동을 공용 모양(총 건수 · 처음/이전/다음/마지막)으로. 기본은 종전 이전·다음 줄(#208). */
+  sharedPageNav?: boolean;
+  /** 목록 · 코드값 정보 빈 상태 아이콘. 주지 않으면 종전 그대로 아이콘 없이(#208). */
+  emptyIcon?: ReactNode;
 }
 
 /**
@@ -110,6 +116,9 @@ export const CodeValueSection = ({
   statusColumn,
   primaryAdd = false,
   renderLayout,
+  filterNote,
+  sharedPageNav = false,
+  emptyIcon,
 }: CodeValueSectionProps) => {
   const toast = useToast();
   const { client } = useApiClient();
@@ -346,6 +355,22 @@ export const CodeValueSection = ({
       </div>
     );
 
+  /**
+   * 코드값 정보 제목 줄 — 상태 열을 쓰는 탭(판정유형 코드)만 그린다: 제목 옆에 목록과 같은 사용/미사용 칩(#208).
+   * 공통코드 화면은 상태 열을 주지 않아 종전 그대로 제목 줄이 없다.
+   */
+  const formHead = (isActive: boolean | null): ReactNode =>
+    statusColumn === undefined ? undefined : (
+      <div className="code-value-form-head">
+        <h2 className="pane-title">{t.formPaneTitle}</h2>
+        {isActive !== null && (
+          <Chip variant="status" size="sm" status={isActive ? 'success' : 'idle'}>
+            {isActive ? statusColumn.active : statusColumn.inactive}
+          </Chip>
+        )}
+      </div>
+    );
+
   const deactivateDisabledReason =
     detail.data?.codeValue.isActive === false ? t.actionReasons.deactivateAlreadyDone : null;
 
@@ -373,6 +398,7 @@ export const CodeValueSection = ({
           onSave={handleSave}
           onCancel={closeCreateForm}
           onDeactivate={() => undefined}
+          head={formHead(null)}
         />
       );
     }
@@ -382,6 +408,7 @@ export const CodeValueSection = ({
         <section className="pane" aria-label={t.formPaneTitle}>
           <EmptyState
             size="sm"
+            icon={emptyIcon}
             title={codeGroupId === null ? t.empty.groupNotSelected : t.empty.notSelected}
           />
         </section>
@@ -432,6 +459,7 @@ export const CodeValueSection = ({
           deactivateWrite.reset();
           setIsDeactivateOpen(true);
         }}
+        head={formHead(detail.data.codeValue.isActive)}
       />
     );
   };
@@ -450,6 +478,9 @@ export const CodeValueSection = ({
       onSelect={handleSelect}
       addAction={addAction}
       statusColumn={statusColumn}
+      filterNote={filterNote}
+      pageMeta={sharedPageNav ? (list.data?.page ?? { page, size: 0, total: 0 }) : undefined}
+      emptyIcon={emptyIcon}
       loadError={
         list.isError ? (
           <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
