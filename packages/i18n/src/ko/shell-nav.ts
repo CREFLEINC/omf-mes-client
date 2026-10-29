@@ -15,6 +15,9 @@ export const shellNav = {
   },
   /** 「검사 조회·판정」 줄·IQC 탭의 대기 배지 접근명(피처 002, US4). 줄이지 않은 실제 수다. */
   iqcPending: (count: number) => `IQC 대기 ${String(count)}건`,
+  /** PQC · OQC 탭의 대기 배지 접근명(사용자 지시 2026-10-29 · #197). */
+  pqcPending: (count: number) => `PQC 대기 ${String(count)}건`,
+  oqcPending: (count: number) => `OQC 대기 ${String(count)}건`,
   group: {
     /*
      * 묶음 손잡이의 접근명. 펼쳤는지는 aria-expanded 가 말하므로 여기 넣지 않는다 -

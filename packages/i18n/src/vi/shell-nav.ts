@@ -14,6 +14,8 @@ export const shellNav: Translated<typeof ko.shellNav> = {
     empty: 'Không có màn hình nào khớp. Hãy thử nhập một phần của tên.',
   },
   iqcPending: (count: number) => `IQC chờ ${String(count)}`,
+  pqcPending: (count: number) => `PQC chờ ${String(count)}`,
+  oqcPending: (count: number) => `OQC chờ ${String(count)}`,
   group: {
     /* 항목 수만 싣는다 - 펼쳤는지는 aria-expanded 가 말한다(원문과 같은 규율). */
     name: (label: string, count: number) => `${label} (${String(count)} màn hình)`,
