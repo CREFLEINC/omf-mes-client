@@ -530,6 +530,14 @@ main > * + * {
   min-width: 7.5rem;
 }
 
+/*
+ * 선택칸이 칸(이름 「처분 유형 선택」 폭) 전체를 채운다 — 이름보다 좁으면 그 차이가 다음 칸과의 빈 공간으로 보인다
+ * (검사 조회·판정과 같다 · 사용자 지시 #209).
+ */
+.defect-cause-search .defect-cause-filter-select > :not(.field-label) {
+  width: 100%;
+}
+
 .defect-cause-search .defect-cause-process-field {
   flex: 0 1 14rem;
   min-width: 10rem;
