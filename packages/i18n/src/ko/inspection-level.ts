@@ -1,6 +1,6 @@
 /** 검사 수준 관리(관리웹 · 품질 관리). 품목별 IQC 검사 수준과 자동 전환 이력. */
 export const inspectionLevel = {
-  title: '검사 수준 관리',
+  title: '검사 수준 설정',
   breadcrumbRoot: '품질 관리',
 
   levels: {

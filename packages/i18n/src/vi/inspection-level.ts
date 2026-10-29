@@ -1,6 +1,6 @@
 /** Quản lý mức kiểm tra (web quản trị · Quản lý chất lượng). */
 export const inspectionLevel = {
-  title: 'Quản lý mức kiểm tra',
+  title: 'Thiết lập mức kiểm tra',
   breadcrumbRoot: 'Quản lý chất lượng',
 
   levels: {

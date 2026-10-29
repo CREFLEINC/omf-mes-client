@@ -293,8 +293,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
           {
             to: '/quality/inspection-levels',
-            label: '검사 수준 관리',
-            labelVi: 'Quản lý mức kiểm tra',
+            label: '검사 수준 설정',
+            labelVi: 'Thiết lập mức kiểm tra',
           },
         ],
       },
