@@ -17680,11 +17680,10 @@ button.app-button-neutral {
   margin-left: auto;
 }
 
-/* 품목 검색 칸 — 흐린 안내가 잘리지 않는 폭부터 늘어난다(#208). */
+/* 품목 검색 칸 — 흐린 안내(「품목 코드 또는 품목명을 입력하세요」)가 꼭 맞는 폭, 창이 좁으면 그만큼 준다(사용자 지시 · #208). */
 .inspection-level-search > .filter-bar > :nth-child(2) {
-  flex: 1 1 18rem;
-  min-width: 14rem;
-  max-width: 28rem;
+  flex: 0 1 19em;
+  min-width: 12rem;
 }
 
 /* 「전체 전환 이력 보기」 — 카드 맨 아래 가운데(사용자 시안 · #208). */
