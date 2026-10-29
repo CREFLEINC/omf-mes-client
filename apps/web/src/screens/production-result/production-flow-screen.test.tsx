@@ -1057,6 +1057,66 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     expect(screen.queryByText(t.overrun.noticeNoRemaining)).toBeNull();
   });
 
+  /*
+   * 계획을 달성해도 LOT이 남으면 [작업지시 마감]이 주 동작이고 [생산 라벨 출력]은 테두리로 남는다.
+   * 그 버튼이 잠기면 「남은 일」이 마감 안내 뒤에 잠긴 사유를 잇는다(C-4).
+   */
+  it('계획을 달성하고 LOT이 남으면 마감이 주 동작이고, 잠긴 라벨 출력의 사유를 「남은 일」이 말한다', async () => {
+    const achieved: StubRoute = {
+      match: (request) => pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+      respond: () =>
+        jsonResponse({
+          workOrderId: WORK_ORDER_ID,
+          workOrderNo: 'WO-SYN-001',
+          productionPlanId: 1,
+          routingOperationId: 1,
+          itemId: 101,
+          itemCode: 'ITEM-SYN-01',
+          orderQty: 12,
+          uomId: 1,
+          workOrderTypeCode: 'NORMAL',
+          statusCode: 'IN_PROGRESS',
+          priorityNo: 1,
+          progress: {
+            goodQty: 12,
+            varianceQty: 0,
+            achievementRate: 1,
+            completionJudgmentCode: 'NORMAL',
+          },
+        }),
+    };
+    const noPrinters: StubRoute = {
+      match: (request) => pathOf(request) === '/app/printers',
+      respond: () => jsonResponse({ items: [] }),
+    };
+    const canClose: StubRoute = {
+      match: (request) => pathOf(request) === '/mdm/terminals/10/processes',
+      respond: () =>
+        jsonResponse({
+          items: [
+            {
+              processId: 20,
+              canInputResult: true,
+              canPrintLabel: true,
+              canCompleteWork: true,
+              canCloseWorkOrder: true,
+            },
+          ],
+        }),
+    };
+    renderScreen([], [achieved, noPrinters, canClose]);
+
+    const close = await screen.findByRole('button', { name: t.flow.woClose.button });
+    await waitFor(() => expect(close).toBeEnabled());
+    const output = screen.getByRole('button', { name: t.flow.output.issue });
+    expect(output).toBeDisabled();
+    await waitFor(() =>
+      expect(output).toHaveAccessibleDescription(
+        `${t.flow.next.planReached}. ${t.flow.next.printer}`,
+      ),
+    );
+  });
+
   it('저장 뒤 판정이 초과면 「초과 달성 n」 칩으로 말하고 초과 안내는 내지 않는다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
@@ -2112,9 +2172,7 @@ describe('ProductionFlowScreen 불량', () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
     renderScreen(writes, defectRoutes);
-    await screen.findByRole('region', { name: t.flow.defects.title });
-
-    const good = screen.getByLabelText(t.flow.quantity.actual);
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
     await waitFor(() => expect(good).toBeEnabled());
     await user.clear(good);
     await user.type(good, '0');
@@ -2135,6 +2193,34 @@ describe('ProductionFlowScreen 불량', () => {
     expect(body).not.toHaveProperty('lotAllocations');
     expect(writes.some((write) => pathOf(write) === '/app/document-issues')).toBe(false);
     expect(within(defectSection()).queryByRole('listitem')).toBeNull();
+  });
+
+  /* 넣을 LOT이 없어도(마지막 LOT을 마감한 뒤 등) 불량만은 등록할 수 있다. */
+  it('생산할 LOT이 없어도 불량만 저장할 수 있다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    const emptyLots: StubRoute = {
+      match: (request) => pathOf(request) === '/trace/lots',
+      respond: () => jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } }),
+    };
+    renderScreen(writes, [emptyLots, ...defectRoutes]);
+    await screen.findByText(NO_LOT_TEXT);
+
+    expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '찍힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+
+    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    await waitFor(() => expect(saveOnly).toBeEnabled());
+    await user.click(saveOnly);
+
+    expect(await screen.findByText(t.flow.defects.saved)).toBeInTheDocument();
+    const body = await savedBody(writes);
+    expect(body).toEqual(
+      expect.objectContaining({ goodQty: 0, defects: [{ defectCodeId: 12, qty: 2 }] }),
+    );
+    expect(body).not.toHaveProperty('lotAllocations');
   });
 
   it('같은 불량 유형을 두 줄에 두면 그 줄을 짚고 저장을 막는다', async () => {

@@ -528,6 +528,15 @@ export const MaterialInputScanScreen = () => {
     if (body === null) return;
 
     /*
+     * 「미전송」인 LOT을 [투입 등록]으로 보내면 그 「미전송」은 여기서 끝난다. 저장소에 남기면 화면을 떠날
+     * 때나 다시 열 때 같은 투입이 한 번 더 나간다.
+     */
+    if (pendingInput !== null && pendingInput.material.lotId === lotId) {
+      removePendingInput(pendingInput.id);
+      setPendingInput(null);
+    }
+
+    /*
      * ⭐ **큐에 담는 것이 곧 성공이다**(C-1 #2 「로컬 저장 후 즉시 성공 피드백 — 통신을
      * 기다리지 않는다」). 서버에 닿지 않은 사실은 **머리줄의 미전송 건수**가 말한다(C-1 #4).
      */
@@ -582,8 +591,13 @@ export const MaterialInputScanScreen = () => {
    * ⭐ **서버가 거부한 건만 되돌린다**(C-2 — 전체 롤백 금지). 그 자재는 원장에 없으므로
    * 목록에서 내려야 §6의 「자재LOT 스캔부터 루프백」이 성립한다.
    */
+  /* 이미 반영한 거부 수. 거부 목록은 쌓이므로 새로 온 거부만 반영한다(같은 LOT을 다시 담았으면 남긴다). */
+  const handledRejections = useRef(0);
   useEffect(() => {
-    const rejected = outbox.rejections.map((one) => one.entry.body.lotId);
+    const rejected = outbox.rejections
+      .slice(handledRejections.current)
+      .map((one) => one.entry.body.lotId);
+    handledRejections.current = outbox.rejections.length;
     if (rejected.length === 0) return;
 
     setDraft((prev) => ({
@@ -793,6 +807,9 @@ export const MaterialInputScanScreen = () => {
   function remainingQtyOf(lotId: number, uomId: number): number | null {
     const line = receipt.lines.find((candidate) => candidate.lotId === lotId);
     if (line === undefined || line.uomId !== uomId) return null;
+
+    /* 기록마다 단위가 다르면 합을 낼 수 없다. 직접 입력으로 돌린다. */
+    if (recorded.byLot.get(lotId)?.hasMixedUom === true) return null;
 
     const done = recordedQtyOf(lotId);
     if (done !== null && done.uomId !== uomId) return null;

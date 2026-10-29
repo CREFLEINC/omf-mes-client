@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -940,6 +940,48 @@ describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
     /* 둘째 LOT이 「미전송」이고 첫째는 보냈다. 두 번 보내지 않는다. */
     expect(storedPending()).toHaveLength(1);
     expect(storedPending()[0]?.material.lotId).toBe(7302);
+  });
+
+  /* 기록마다 단위가 다르면 잔량을 셀 수 없다. 스캔해도 「미전송」을 만들지 않고 직접 입력으로 둔다. */
+  it('지난 투입 기록의 단위가 섞였으면 잔량으로 자동 투입하지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [
+      recordedRoute([
+        consumption(7301, { materialConsumptionId: 9102, inputQty: 3, uomId: 7499 }),
+        consumption(7301, { materialConsumptionId: 9101 }),
+      ]),
+    ]);
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(storedPending()).toHaveLength(0);
+    expect(sent).toHaveLength(0);
+  });
+
+  /* 「미전송」을 [투입 등록]으로 보내면 저장소에서도 지운다. 화면을 떠날 때 같은 투입을 또 보내지 않는다. */
+  it('「미전송」을 고쳐 [투입 등록]하면 한 번만 보내고 저장소에 남기지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(storedPending()).toHaveLength(1);
+
+    await user.clear(field);
+    await user.type(field, '8');
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(storedPending()).toHaveLength(0);
+    expect(screen.queryByText(t.scanned.pendingState)).toBeNull();
+
+    /* 화면을 떠나도(머리줄 이동 등) 저장된 큐에 같은 투입이 다시 실리지 않는다. */
+    cleanup();
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 10));
+    expect(storedOutbox()).toHaveLength(0);
+    expect(sent).toHaveLength(1);
   });
 
   /* 다시 불러와도(같은 W/O, 같은 작업자) 「미전송」이 남아 고치거나 되돌릴 수 있다(PI-31). */

@@ -116,6 +116,8 @@ export const useReceiptLines = (workOrderId: number | null): ReceiptLinesResult 
 export interface RecordedLot {
   qty: number;
   uomId: number;
+  /** 기록마다 단위가 달라 합(`qty`)을 믿을 수 없다. */
+  hasMixedUom: boolean;
   /** 합에 들어간 투입 기록 번호. 화면이 방금 기록한 건이 이미 들어 있는지 가른다. */
   consumptionIds: readonly number[];
   /** 건별 기록(편집 영역의 투입 기록 목록). 수량은 저장 단위 그대로다. */
@@ -167,6 +169,7 @@ export const useRecordedConsumptions = (workOrderId: number | null): RecordedCon
         byLot.set(item.lotId, {
           qty: (prev?.qty ?? 0) + item.inputQty,
           uomId: item.uomId,
+          hasMixedUom: prev !== undefined && (prev.hasMixedUom || prev.uomId !== item.uomId),
           consumptionIds: [...(prev?.consumptionIds ?? []), item.materialConsumptionId],
           items: [
             ...(prev?.items ?? []),

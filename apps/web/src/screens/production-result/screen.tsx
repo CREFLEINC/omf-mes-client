@@ -1341,6 +1341,25 @@ export const ProductionFlowScreen = () => {
           workerNo: entry.workerNo,
         });
 
+  /** 실적 입력 단계의 할 일. [생산 라벨 출력]이 잠긴 사유이기도 하다. */
+  const inputStepText = (): string | null => {
+    const next = t.flow.next;
+    const gate =
+      gateText(gates.input, t.gate.denied) ??
+      (isDefectOnly ? null : gateText(gates.print, t.flow.gate.print));
+    if (gate !== null) return gate;
+    if (isDefectOnly) return defectTodo ?? next.defectOnly;
+    if (parsedQty === null || parsedQty <= 0) return next.qty;
+    if (defectTodo !== null) return defectTodo;
+    if (lotPrinters.isPending) return null;
+    if (lotPrinter === null) return next.printer;
+    if (!lotPrint.isShellAvailable) return next.shell;
+    if (isTagTarget === null) return item.isError ? next.tagUnknown : null;
+    if (!hasTagCountMatch || !hasTagDocuments) return next.tag;
+
+    return canOutput ? next.ready : null;
+  };
+
   const nextText = ((): string | null => {
     const next = t.flow.next;
     if (entry.workOrderId === null) return next.noWorkOrder;
@@ -1351,7 +1370,13 @@ export const ProductionFlowScreen = () => {
     }
     if (currentLot.isError) return t.flow.currentLot.loadFailed;
     if (currentLot.data === undefined) return null;
-    if (isCloseMode) return closeBlock ?? (isPlanAchieved ? next.planReached : next.noLot);
+    if (isCloseMode) {
+      const close = closeBlock ?? (isPlanAchieved ? next.planReached : next.noLot);
+      /* 계획을 달성해도 남은 LOT에 더 만들 수 있다. 테두리 [생산 라벨 출력]이 잠긴 사유를 뒤에 잇는다(C-4). */
+      const outputReason = lot !== null && !canOutput ? inputStepText() : null;
+
+      return outputReason === null ? close : `${close}. ${outputReason}`;
+    }
 
     if (step === 'scan') {
       switch (outputPhase) {
@@ -1374,20 +1399,7 @@ export const ProductionFlowScreen = () => {
       }
     }
 
-    const gate =
-      gateText(gates.input, t.gate.denied) ??
-      (isDefectOnly ? null : gateText(gates.print, t.flow.gate.print));
-    if (gate !== null) return gate;
-    if (isDefectOnly) return defectTodo ?? next.defectOnly;
-    if (parsedQty === null || parsedQty <= 0) return next.qty;
-    if (defectTodo !== null) return defectTodo;
-    if (lotPrinters.isPending) return null;
-    if (lotPrinter === null) return next.printer;
-    if (!lotPrint.isShellAvailable) return next.shell;
-    if (isTagTarget === null) return item.isError ? next.tagUnknown : null;
-    if (!hasTagCountMatch || !hasTagDocuments) return next.tag;
-
-    return canOutput ? next.ready : null;
+    return inputStepText();
   })();
 
   const uomLabel = uom.labelOf(lot?.uomId ?? workOrder.data?.uomId) ?? '';
@@ -1461,6 +1473,118 @@ export const ProductionFlowScreen = () => {
         )}
       </AlertBanner>
     </div>
+  );
+
+  /** 불량 구획. LOT이 있으면 수량 칸 아래, 없으면 안내 아래에 선다(불량만 등록). */
+  const defectSection = (
+    <section className="production-flow-defects" aria-label={t.flow.defects.title}>
+      <div className="production-work-head">
+        <h3 className="production-work-subtitle">{t.flow.defects.title}</h3>
+        <Button
+          type="button"
+          variant="outlined"
+          size="sm"
+          disabled={areDefectsLocked || hasNoProcess}
+          aria-describedby={hasNoProcess ? noProcessId : undefined}
+          onClick={addDefectRow}
+        >
+          {t.flow.defects.add}
+        </Button>
+      </div>
+      {hasNoProcess && (
+        <p id={noProcessId} className="field-note">
+          {t.flow.defects.noProcess}
+        </p>
+      )}
+      {defectRows.length > 0 && (
+        <>
+          {/* 칸 이름은 첫 줄 위에 한 번만 둔다. 줄마다 되풀이하지 않는다. */}
+          <div className="production-flow-defect-head" aria-hidden="true">
+            <span>{t.flow.defects.type}</span>
+            <span>{t.flow.defects.qty}</span>
+          </div>
+          <ul className="production-flow-defect-rows">
+            {defectRows.map((row, index) => {
+              const rowName = t.flow.defects.row(index + 1);
+              const issue = defectIssueOf(row.key);
+              return (
+                <li key={row.key} className="production-flow-defect-row" aria-label={rowName}>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    disabled={areDefectsLocked}
+                    aria-label={`${t.flow.defects.type}: ${
+                      defectLabelOf(defectMajors, row.defectCodeId) ?? t.flow.defects.choose
+                    }`}
+                    onClick={() => {
+                      setActiveQty(row.key);
+                      setPickingRowKey(row.key);
+                    }}
+                  >
+                    {defectLabelOf(defectMajors, row.defectCodeId) ?? t.flow.defects.choose}
+                  </Button>
+                  <TextField
+                    aria-label={t.flow.defects.qty}
+                    aria-invalid={issue === null ? undefined : true}
+                    aria-describedby={issue === null ? undefined : defectIssueId}
+                    value={row.qty}
+                    disabled={areDefectsLocked}
+                    inputMode="decimal"
+                    autoComplete="off"
+                    trailingIcon={uomLabel}
+                    containerClassName={
+                      activeQty === row.key
+                        ? 'production-flow-qty is-active'
+                        : 'production-flow-qty'
+                    }
+                    onFocus={() => setActiveQty(row.key)}
+                    onBlur={() => touchDefectRow(row.key)}
+                    onChange={(event) =>
+                      updateDefectRow(row.key, {
+                        qty: quantityInput(event.target.value),
+                      })
+                    }
+                  />
+                  <IconButton
+                    icon="close"
+                    aria-label={t.flow.defects.remove(rowName)}
+                    disabled={areDefectsLocked}
+                    onClick={() => removeDefectRow(row.key)}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+          {/*
+           * 줄의 문제는 줄 아래가 아니라 목록 아래 한 줄로 말한다. 줄마다 문장이 끼면 줄 간격이
+           * 들쭉날쭉해진다. 손대지 않은 줄은 말하지 않는다(C-7 검증 시점). 할 일은 하단 바가 늘 말한다.
+           */}
+          {firstDefectIssue !== null && (
+            <p id={defectIssueId} className="field-error">
+              {t.flow.defects.rowIssue(firstDefectIssue.rowName, firstDefectIssue.text)}
+            </p>
+          )}
+        </>
+      )}
+      {/* 양품이 없으면 라벨로 이어지지 않는다. 불량만 등록하는 버튼이 선다(테두리, C-3 채움은 하단 바 하나). */}
+      {isDefectOnly && (
+        <Button
+          type="button"
+          variant="outlined"
+          size={POP_TOUCH_SIZE}
+          disabled={!canSaveDefectsOnly}
+          aria-describedby={remainingId}
+          onClick={queueDefectsOnly}
+        >
+          {t.flow.defects.saveOnly}
+        </Button>
+      )}
+      {defectNotice !== null && (
+        <p className="field-note" role="status">
+          {defectNotice === 'saved' ? t.flow.defects.saved : t.flow.defects.queued}
+        </p>
+      )}
+    </section>
   );
 
   return (
@@ -1883,6 +2007,8 @@ export const ProductionFlowScreen = () => {
                         : t.flow.work.noLot}
                   </p>
                   {sessionNote}
+                  {/* 넣을 LOT이 없어도 불량만 등록할 수는 있다(LOT 없이 저장하는 불량, 마감 전). */}
+                  {entry.workOrderId !== null && !isWorkOrderClosed && defectSection}
                 </>
               ) : (
                 <>
@@ -1924,123 +2050,7 @@ export const ProductionFlowScreen = () => {
                     }
                     onChange={(event) => setActualQty(quantityInput(event.target.value))}
                   />
-                  <section className="production-flow-defects" aria-label={t.flow.defects.title}>
-                    <div className="production-work-head">
-                      <h3 className="production-work-subtitle">{t.flow.defects.title}</h3>
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        size="sm"
-                        disabled={areDefectsLocked || hasNoProcess}
-                        aria-describedby={hasNoProcess ? noProcessId : undefined}
-                        onClick={addDefectRow}
-                      >
-                        {t.flow.defects.add}
-                      </Button>
-                    </div>
-                    {hasNoProcess && (
-                      <p id={noProcessId} className="field-note">
-                        {t.flow.defects.noProcess}
-                      </p>
-                    )}
-                    {defectRows.length > 0 && (
-                      <>
-                        {/* 칸 이름은 첫 줄 위에 한 번만 둔다. 줄마다 되풀이하지 않는다. */}
-                        <div className="production-flow-defect-head" aria-hidden="true">
-                          <span>{t.flow.defects.type}</span>
-                          <span>{t.flow.defects.qty}</span>
-                        </div>
-                        <ul className="production-flow-defect-rows">
-                          {defectRows.map((row, index) => {
-                            const rowName = t.flow.defects.row(index + 1);
-                            const issue = defectIssueOf(row.key);
-                            return (
-                              <li
-                                key={row.key}
-                                className="production-flow-defect-row"
-                                aria-label={rowName}
-                              >
-                                <Button
-                                  type="button"
-                                  variant="outlined"
-                                  disabled={areDefectsLocked}
-                                  aria-label={`${t.flow.defects.type}: ${
-                                    defectLabelOf(defectMajors, row.defectCodeId) ??
-                                    t.flow.defects.choose
-                                  }`}
-                                  onClick={() => {
-                                    setActiveQty(row.key);
-                                    setPickingRowKey(row.key);
-                                  }}
-                                >
-                                  {defectLabelOf(defectMajors, row.defectCodeId) ??
-                                    t.flow.defects.choose}
-                                </Button>
-                                <TextField
-                                  aria-label={t.flow.defects.qty}
-                                  aria-invalid={issue === null ? undefined : true}
-                                  aria-describedby={issue === null ? undefined : defectIssueId}
-                                  value={row.qty}
-                                  disabled={areDefectsLocked}
-                                  inputMode="decimal"
-                                  autoComplete="off"
-                                  trailingIcon={uomLabel}
-                                  containerClassName={
-                                    activeQty === row.key
-                                      ? 'production-flow-qty is-active'
-                                      : 'production-flow-qty'
-                                  }
-                                  onFocus={() => setActiveQty(row.key)}
-                                  onBlur={() => touchDefectRow(row.key)}
-                                  onChange={(event) =>
-                                    updateDefectRow(row.key, {
-                                      qty: quantityInput(event.target.value),
-                                    })
-                                  }
-                                />
-                                <IconButton
-                                  icon="close"
-                                  aria-label={t.flow.defects.remove(rowName)}
-                                  disabled={areDefectsLocked}
-                                  onClick={() => removeDefectRow(row.key)}
-                                />
-                              </li>
-                            );
-                          })}
-                        </ul>
-                        {/*
-                         * 줄의 문제는 줄 아래가 아니라 목록 아래 한 줄로 말한다. 줄마다 문장이 끼면 줄 간격이
-                         * 들쭉날쭉해진다. 손대지 않은 줄은 말하지 않는다(C-7 검증 시점). 할 일은 하단 바가 늘 말한다.
-                         */}
-                        {firstDefectIssue !== null && (
-                          <p id={defectIssueId} className="field-error">
-                            {t.flow.defects.rowIssue(
-                              firstDefectIssue.rowName,
-                              firstDefectIssue.text,
-                            )}
-                          </p>
-                        )}
-                      </>
-                    )}
-                    {/* 양품이 없으면 라벨로 이어지지 않는다. 불량만 등록하는 버튼이 선다(테두리, C-3 채움은 하단 바 하나). */}
-                    {isDefectOnly && (
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        size={POP_TOUCH_SIZE}
-                        disabled={!canSaveDefectsOnly}
-                        aria-describedby={remainingId}
-                        onClick={queueDefectsOnly}
-                      >
-                        {t.flow.defects.saveOnly}
-                      </Button>
-                    )}
-                    {defectNotice !== null && (
-                      <p className="field-note" role="status">
-                        {defectNotice === 'saved' ? t.flow.defects.saved : t.flow.defects.queued}
-                      </p>
-                    )}
-                  </section>
+                  {defectSection}
                   <NumericKeypad
                     value={activeDefectRow?.qty ?? actualQty}
                     /* 수를 받는 칸이다 — 앞자리 0 을 쌓지 않는다(사번 칸은 켜지 않는다). */
@@ -2125,6 +2135,7 @@ export const ProductionFlowScreen = () => {
                 variant="outlined"
                 size={POP_TOUCH_SIZE}
                 disabled={!canOutput}
+                aria-describedby={remainingId}
                 onClick={queueOutput}
               >
                 {t.flow.output.issue}

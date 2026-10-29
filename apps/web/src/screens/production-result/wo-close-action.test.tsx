@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -212,6 +212,33 @@ describe('WorkOrderCloseAction — 보내는 순서', () => {
 
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(writes[0]).toMatchObject({ path: CLOSE, body: {} });
+  });
+});
+
+describe('WorkOrderCloseAction — 화면에 남는 마감(생산 작업 하단 바)', () => {
+  it('onClosed 를 주면 마감한 뒤 그것을 부르고 작업 지시 목록으로 옮기지 않는다', async () => {
+    const writes: Recorded[] = [];
+    const user = userEvent.setup();
+    const onClosed = vi.fn();
+    const { router } = renderAction(routes(writes, {}), { onClosed, variant: 'filled' });
+
+    const dialog = await openDialog(user);
+    await within(dialog).findByText(t.judgments.NORMAL);
+    await waitFor(() => expect(confirmOf(dialog)).toBeEnabled());
+    await user.click(confirmOf(dialog));
+
+    await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
+    expect(writes.map((write) => write.path)).toEqual([CLOSE]);
+    expect(router?.state.location.pathname).toBe('/pop/production-result');
+  });
+
+  it('reasonId 를 주면 곁에 사유 문장을 두지 않고 그 문장에 잇는다', () => {
+    renderAction([], { isOnline: false, reasonId: 'remaining-line' });
+
+    const button = screen.getByRole('button', { name: t.button });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-describedby', 'remaining-line');
+    expect(screen.queryByText(t.blocked.offline)).toBeNull();
   });
 });
 
