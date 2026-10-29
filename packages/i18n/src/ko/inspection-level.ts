@@ -12,9 +12,10 @@ export const inspectionLevel = {
 
   list: {
     caption: '품목별 검사 수준 목록',
-    keyword: '품목 코드·이름',
+    keyword: '품목 검색',
     keywordPlaceholder: '품목 코드 또는 이름을 입력하세요',
-    level: '검사 수준',
+    keywordClear: '품목 조건 지우기',
+    level: '수준 선택',
     levelAll: '전체',
     add: '품목 추가',
     empty: '검사 수준을 지정한 품목이 없습니다.',

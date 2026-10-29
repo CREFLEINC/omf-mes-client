@@ -17670,14 +17670,21 @@ button.app-button-neutral {
  * 검사 수준 관리 탭(#208 · 사용자 시안) — 목록 카드 하나에 제목 줄 · 검색 줄 · 안내 · 둥근 테두리 표 · 쪽 이동.
  * 카드 안 검색 줄의 아래 여백은 걷고(카드 간격이 맡는다), 라벨 없는 한 줄이라 가운데로 맞춘다.
  */
-.filter-bar.inspection-level-search {
-  align-items: center;
+/* 조회 카드 — 검사표 기준 탭의 조회 카드와 같다(사용자 지시 · #208). */
+.inspection-level-search > .filter-bar {
   margin-bottom: 0;
 }
 
-/* 「품목 추가」 — 검색 줄 오른쪽 끝(#208). */
-.inspection-level-add {
+.inspection-level-search .filter-actions {
+  align-items: center;
   margin-left: auto;
+}
+
+/* 품목 검색 칸 — 흐린 안내가 잘리지 않는 폭부터 늘어난다(#208). */
+.inspection-level-search > .filter-bar > :nth-child(2) {
+  flex: 1 1 18rem;
+  min-width: 14rem;
+  max-width: 28rem;
 }
 
 /* 「전체 전환 이력 보기」 — 카드 맨 아래 가운데(사용자 시안 · #208). */
@@ -17687,11 +17694,6 @@ button.app-button-neutral {
 }
 
 /* 품목 코드·이름 칸 — 남는 폭을 맡는다, 수준 칸은 짧은 값이라 좁게(사용자 시안 · #208). */
-.inspection-level-keyword {
-  flex: 1 1 14rem;
-  min-width: min(14rem, 100%);
-}
-
 .inspection-level-level-filter {
   flex: 0 0 8rem;
 }

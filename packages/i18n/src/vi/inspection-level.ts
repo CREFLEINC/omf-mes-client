@@ -12,9 +12,10 @@ export const inspectionLevel = {
 
   list: {
     caption: 'Danh sách mức kiểm tra theo vật tư',
-    keyword: 'Mã · tên vật tư',
+    keyword: 'Tìm vật tư',
     keywordPlaceholder: 'Nhập mã hoặc tên vật tư',
-    level: 'Mức kiểm tra',
+    keywordClear: 'Xóa điều kiện vật tư',
+    level: 'Chọn mức',
     levelAll: 'Tất cả',
     add: 'Thêm vật tư',
     empty: 'Chưa có vật tư nào được chỉ định mức kiểm tra.',

@@ -7,9 +7,9 @@ import {
   type Column,
   EmptyState,
   Icon,
+  SearchInput,
   PageHeader,
   Table,
-  TextField,
   useToast,
 } from '@crefle/web-ui';
 import type {
@@ -89,11 +89,10 @@ export const historyReason = (row: ItemInspectionLevelHistory): string => {
 export const InspectionLevelScreen = () => {
   const hub = usePageHub();
   /* 좌우 · 상하 배치 · 폭/높이 손잡이 · 창 높이 맞춤 — 검사 기준 탭과 같다(사용자 지시 · #208). 배치는 탭 묶음이 함께 쓴다. */
-  const { splitRef } = useFitToViewport();
+  const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:inspection-level:split', 0.4);
   const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const toast = useToast();
-  const keywordId = useId();
   const levelFilterId = useId();
 
   const [keyword, setKeyword] = useState('');
@@ -287,6 +286,71 @@ export const InspectionLevelScreen = () => {
         />
       )}
 
+      {/*
+       * 조회 조건 — 검사 기준 · 검사표 기준 탭과 같은 카드 한 줄(사용자 지시 · #208):
+       * 수준 선택 · 품목 검색 → (오른쪽) 조회 · 초기화 | 품목 추가.
+       */}
+      <section ref={aboveRef} className="pane inspection-level-search" role="search">
+        <form
+          className="filter-bar"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setFilter((prev) => ({ ...prev, q: keyword.trim(), level: levelFilter, page: 1 }));
+          }}
+        >
+          {/* 「무검사」·「보통」 같은 짧은 값이라 좁게(#208). */}
+          <div className="field-cell inspection-level-level-filter">
+            <label className="field-label" htmlFor={levelFilterId}>
+              {t.list.level}
+            </label>
+            <Select
+              id={levelFilterId}
+              options={[
+                { value: '', label: t.list.levelAll },
+                ...LEVEL_CODES.map((code) => ({ value: code, label: levelName(code) })),
+              ]}
+              value={levelFilter}
+              onChange={(value) => setLevelFilter(value as InspectionLevelCode | '')}
+            />
+          </div>
+          <SearchInput
+            label={t.list.keyword}
+            placeholder={t.list.keywordPlaceholder}
+            value={keyword}
+            clearLabel={t.list.keywordClear}
+            onChange={(event) => setKeyword(event.target.value)}
+            onSearch={() =>
+              setFilter((prev) => ({ ...prev, q: keyword.trim(), level: levelFilter, page: 1 }))
+            }
+            onClear={() => setKeyword('')}
+          />
+          <div className="filter-actions field-cell-unlabeled">
+            <Button type="submit" variant="filled">
+              {messages.common.search}
+            </Button>
+            {/* 초기화 — 입력과 적용된 조건을 처음으로 되돌린다. 다른 탭과 같다. */}
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setKeyword('');
+                setLevelFilter('');
+                setFilter((prev) => ({ ...prev, q: '', level: '', page: 1 }));
+              }}
+            >
+              {messages.common.reset}
+            </Button>
+            <span className="inspection-standard-filter-divider" aria-hidden />
+            <Button
+              variant="filled"
+              leadingIcon={<Icon name="add" size={18} />}
+              onClick={() => openDialog(null)}
+            >
+              {t.list.add}
+            </Button>
+          </div>
+        </form>
+      </section>
+
       {/* 품목별 검사 수준(목록) | 전환 이력 — 검사 기준 탭의 목록 | 상세와 같은 분할(#208). */}
       <div
         ref={splitRef}
@@ -294,62 +358,12 @@ export const InspectionLevelScreen = () => {
         style={{ ...split.style, ...layout.style }}
       >
         {/*
-         * 목록 카드 하나에 검색 줄(품목 · 검사 수준 · 조회 | 품목 추가) → 표 → 쪽 이동.
-         * 따로 있던 조회 카드를 합쳐 세로 공간을 아낀다(사용자 시안 · #208). 「초기화」는 원래 없던 단추라 두지 않는다.
+         * 목록 카드 — 표 → 쪽 이동. 조회 줄은 위 카드에 따로 둔다(다른 탭과 같다 · #208).
          */}
         <section
           className="pane inspection-level-list-pane quality-standard-list-pane"
           aria-label={t.title}
         >
-          <form
-            className="filter-bar inspection-level-search"
-            role="search"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setFilter((prev) => ({ ...prev, q: keyword.trim(), level: levelFilter, page: 1 }));
-            }}
-          >
-            {/* 시안은 라벨 없는 검색 줄 — 라벨은 읽기 도구에만 남긴다(#208). */}
-            <div className="field-cell inspection-level-keyword">
-              <label className="inspection-standard-visually-hidden" htmlFor={keywordId}>
-                {t.list.keyword}
-              </label>
-              <TextField
-                id={keywordId}
-                fullWidth
-                placeholder={t.list.keywordPlaceholder}
-                value={keyword}
-                onChange={(event) => setKeyword(event.target.value)}
-              />
-            </div>
-            {/* 「무검사」·「보통」 같은 짧은 값이라 좁게(#208). */}
-            <div className="field-cell inspection-level-level-filter">
-              <label className="inspection-standard-visually-hidden" htmlFor={levelFilterId}>
-                {t.list.level}
-              </label>
-              <Select
-                id={levelFilterId}
-                options={[
-                  { value: '', label: t.list.levelAll },
-                  ...LEVEL_CODES.map((code) => ({ value: code, label: levelName(code) })),
-                ]}
-                value={levelFilter}
-                onChange={(value) => setLevelFilter(value as InspectionLevelCode | '')}
-              />
-            </div>
-            <Button type="submit" variant="filled">
-              {messages.common.search}
-            </Button>
-            {/* 카드 제목 · 규칙 안내를 걷어(사용자 지시 · #208) 「품목 추가」를 검색 줄 오른쪽 끝에 둔다. */}
-            <Button
-              className="inspection-level-add"
-              variant="filled"
-              leadingIcon={<Icon name="add" size={18} />}
-              onClick={() => openDialog(null)}
-            >
-              {t.list.add}
-            </Button>
-          </form>
           {list.isError && (
             <AlertBanner variant="error">
               {t.list.loadFailed}{' '}
