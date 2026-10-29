@@ -69,9 +69,7 @@ describe('CodeFormPane — 입력칸', () => {
     renderPane();
 
     expect(
-      screen.getByText(
-        '대분류 목록은 아직 임시입니다. 확정되면 이 항목의 선택지가 바뀔 수 있습니다.',
-      ),
+      screen.getByText('대분류 목록은 아직 임시라 나중에 바뀔 수 있습니다.'),
     ).toBeInTheDocument();
   });
 
@@ -90,22 +88,24 @@ describe('CodeFormPane — 대분류 경고', () => {
     renderPane();
 
     expect(
-      screen.getByText(
-        '대분류는 전사에서 공통으로 쓰는 축입니다. 추가하면 모든 현장에서 함께 쓰이므로 신중히 정하세요.',
-      ),
+      screen.getByText('대분류는 모든 현장이 함께 쓰는 공통 분류입니다. 신중히 추가하세요.'),
     ).toBeInTheDocument();
   });
 
   it('상위를 고른 상세 등록에는 그 경고가 없다', () => {
     renderPane({ values: { code: '', name: '', parentId: '1001' } });
 
-    expect(screen.queryByText(/대분류는 전사에서 공통으로 쓰는 축입니다/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/대분류는 모든 현장이 함께 쓰는 공통 분류입니다/),
+    ).not.toBeInTheDocument();
   });
 
   it('수정에는 그 경고가 없다', () => {
     renderPane({ mode: 'edit' });
 
-    expect(screen.queryByText(/대분류는 전사에서 공통으로 쓰는 축입니다/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/대분류는 모든 현장이 함께 쓰는 공통 분류입니다/),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -198,9 +198,7 @@ describe('CodeFormPane — 사용 여부와 사용 중지', () => {
     const button = screen.getByRole('button', { name: '사용 중지' });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute('aria-describedby');
-    expect(
-      screen.getByText('사용 중지는 이미 미사용인 코드에는 할 수 없습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('이미 미사용인 코드입니다.')).toBeInTheDocument();
   });
 });
 

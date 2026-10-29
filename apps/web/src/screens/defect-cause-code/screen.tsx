@@ -3,6 +3,7 @@ import {
   Breadcrumb,
   Button,
   EmptyState,
+  Icon,
   PageHeader,
   SkeletonText,
   Tabs,
@@ -427,7 +428,19 @@ const CodeMasterWorkspace = () => {
     }
 
     if (selectedId === null) {
-      return <EmptyState size="sm" title={t.empty.codeNotSelected} />;
+      /* 둥근 바탕 아이콘 · 제목 · 설명 — 검사 기준 탭과 같다(#208). */
+      return (
+        <EmptyState
+          size="sm"
+          icon={
+            <span className="inspection-standard-empty-icon">
+              <Icon name="assignment" size={20} />
+            </span>
+          }
+          title={t.empty.codeNotSelectedTitle}
+          description={t.empty.codeNotSelected}
+        />
+      );
     }
 
     if (detail.isError) {
@@ -445,8 +458,9 @@ const CodeMasterWorkspace = () => {
     return renderForm('edit');
   };
 
+  /* 조회 카드는 두 칸 격자의 첫 줄 전체로 펼치고, 그 아래 목록 | 상세가 선다(#208 · 검사 기준 탭과 같다). */
   const tabContent = (
-    <div className="two-pane">
+    <div className="two-pane defect-cause-layout">
       {codeListPane}
       <div className="pane">{renderFormPane()}</div>
     </div>

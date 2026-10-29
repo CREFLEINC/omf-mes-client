@@ -298,7 +298,7 @@ describe('DefectCauseCodeScreen — 2계층 표시', () => {
     await screen.findByRole('button', { name: 'DF-10' });
 
     expect(
-      screen.getByText('왼쪽에서 코드를 고르거나 「대분류 추가」로 시작하세요'),
+      screen.getByText('목록에서 코드를 고르거나 「대분류 추가」로 시작하세요.'),
     ).toBeInTheDocument();
   });
 });
@@ -377,14 +377,10 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
 
     expect(screen.getByLabelText('코드')).toHaveValue('');
     expect(
-      screen.getByText(
-        '대분류는 전사에서 공통으로 쓰는 축입니다. 추가하면 모든 현장에서 함께 쓰이므로 신중히 정하세요.',
-      ),
+      screen.getByText('대분류는 모든 현장이 함께 쓰는 공통 분류입니다. 신중히 추가하세요.'),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        '대분류 목록은 아직 임시입니다. 확정되면 이 항목의 선택지가 바뀔 수 있습니다.',
-      ),
+      screen.getByText('대분류 목록은 아직 임시라 나중에 바뀔 수 있습니다.'),
     ).toBeInTheDocument();
   });
 
@@ -412,9 +408,7 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     await screen.findByRole('button', { name: 'DF-10' });
 
     expect(screen.getByRole('button', { name: '상세 추가' })).toBeDisabled();
-    expect(
-      screen.getByText('상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('대분류를 고르면 상세를 추가할 수 있습니다.')).toBeInTheDocument();
   });
 
   it('상세 코드를 고르면 상세 추가를 쓸 수 없다 — 3계층이 된다', async () => {
@@ -444,7 +438,9 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     await waitFor(() => {
       expect(parent).toHaveTextContent('DF-10 · 외관');
     });
-    expect(screen.queryByText(/대분류는 전사에서 공통으로 쓰는 축입니다/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/대분류는 모든 현장이 함께 쓰는 공통 분류입니다/),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -1322,9 +1318,7 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
     );
 
     expect(await screen.findByRole('button', { name: '사용 중지' })).toBeDisabled();
-    expect(
-      screen.getByText('사용 중지는 이미 미사용인 코드에는 할 수 없습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('이미 미사용인 코드입니다.')).toBeInTheDocument();
   });
 });
 

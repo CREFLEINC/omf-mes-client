@@ -175,9 +175,7 @@ describe('CodeListPane — 등록 액션', () => {
 
     const addChild = screen.getByRole('button', { name: '상세 추가' });
     expect(addChild).toBeDisabled();
-    expect(
-      screen.getByText('상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('대분류를 고르면 상세를 추가할 수 있습니다.')).toBeInTheDocument();
     expect(addChild).toHaveAttribute('aria-describedby');
   });
 
@@ -185,7 +183,7 @@ describe('CodeListPane — 등록 액션', () => {
     const { props, user } = renderPane({ canAddChild: true, selectedId: 1001 });
 
     expect(
-      screen.queryByText('상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.'),
+      screen.queryByText('대분류를 고르면 상세를 추가할 수 있습니다.'),
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '상세 추가' }));
 

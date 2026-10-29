@@ -25,10 +25,10 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     addChild: 'Thêm chi tiết',
   },
   actionReasons: {
-    addChildNeedsCategory: 'Thêm chi tiết chỉ dùng được sau khi chọn một cấp lớn.',
+    addChildNeedsCategory: 'Chọn một cấp lớn thì thêm được chi tiết.',
     parentLockedByChildren:
       'Cấp lớn bên trên không đổi được khi còn mã cấp dưới. Chuyển mã cấp dưới sang cấp lớn khác thì dùng được mục này.',
-    deactivateNeedsActive: 'Ngừng sử dụng không làm được với mã đã ngừng dùng.',
+    deactivateNeedsActive: 'Mã này đã ngừng dùng.',
   },
   loading: {
     codes: 'Đang tải danh sách mã',
@@ -44,15 +44,19 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   /** 상위가 목록에 없는 코드를 모으는 그룹. 감추면 사용자는 코드가 사라진 줄 안다. */
   groupHeaderOrphan: 'Mã không tìm được cấp trên',
   categoryWarning:
-    'Cấp lớn là trục dùng chung toàn công ty. Thêm vào thì mọi hiện trường đều dùng, hãy cân nhắc kỹ.',
-  parentListProvisional:
-    'Danh sách cấp lớn hiện còn là tạm. Khi được chốt thì danh sách chọn của mục này có thể đổi.',
+    'Cấp lớn là phân loại chung mọi hiện trường cùng dùng. Hãy cân nhắc kỹ khi thêm.',
+  parentListProvisional: 'Danh sách cấp lớn hiện còn tạm nên sau này có thể đổi.',
+  placeholders: {
+    code: 'Nhập mã',
+    name: 'Nhập tên',
+  },
   empty: {
     codeNoneTitle: 'Chưa đăng ký mã nào',
     codeNoneDescription: 'Hãy đăng ký cấp lớn đầu tiên bằng «Thêm cấp lớn».',
     codeNoMatchTitle: 'Không có kết quả khớp điều kiện',
     codeNoMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
-    codeNotSelected: 'Hãy chọn mã ở bên trái hoặc bắt đầu bằng «Thêm cấp lớn»',
+    codeNotSelectedTitle: 'Hãy chọn mã',
+    codeNotSelected: 'Chọn mã trong danh sách hoặc bắt đầu bằng «Thêm cấp lớn».',
     mappingNoneTitle: 'Không có mã lỗi chi tiết để ánh xạ',
     mappingNoneDescription: 'Hãy đăng ký mã chi tiết dưới cấp lớn ở tab mã lỗi trước.',
     processNoneTitle: 'Không có công đoạn để ánh xạ',
@@ -101,8 +105,7 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
       `Cấp lớn này có ${count} mã chi tiết cấp dưới theo danh sách đang hiển thị.`,
   },
   mapping: {
-    description:
-      'Hàng là mã lỗi chi tiết, cột là công đoạn. Bấm vào ô thì ánh xạ được gán hoặc thu hồi ngay.',
+    description: 'Hàng là mã lỗi chi tiết, cột là công đoạn. Bấm vào ô thì gán hoặc bỏ ngay.',
     assigned: 'Đã ánh xạ',
     notAssigned: 'Chưa ánh xạ',
     saved: 'Đã áp dụng ánh xạ công đoạn',

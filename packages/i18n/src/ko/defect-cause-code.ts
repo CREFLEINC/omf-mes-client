@@ -23,10 +23,10 @@ export const defectCauseCode = {
     addChild: '상세 추가',
   },
   actionReasons: {
-    addChildNeedsCategory: '상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.',
+    addChildNeedsCategory: '대분류를 고르면 상세를 추가할 수 있습니다.',
     parentLockedByChildren:
       '상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다. 하위 코드를 다른 대분류로 옮기면 이 항목을 쓸 수 있습니다.',
-    deactivateNeedsActive: '사용 중지는 이미 미사용인 코드에는 할 수 없습니다.',
+    deactivateNeedsActive: '이미 미사용인 코드입니다.',
   },
   loading: {
     codes: '코드 목록을 불러오는 중',
@@ -40,16 +40,20 @@ export const defectCauseCode = {
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   /** 상위가 목록에 없는 코드를 모으는 그룹. 감추면 사용자는 코드가 사라진 줄 안다. */
   groupHeaderOrphan: '상위를 찾을 수 없는 코드',
-  categoryWarning:
-    '대분류는 전사에서 공통으로 쓰는 축입니다. 추가하면 모든 현장에서 함께 쓰이므로 신중히 정하세요.',
-  parentListProvisional:
-    '대분류 목록은 아직 임시입니다. 확정되면 이 항목의 선택지가 바뀔 수 있습니다.',
+  categoryWarning: '대분류는 모든 현장이 함께 쓰는 공통 분류입니다. 신중히 추가하세요.',
+  parentListProvisional: '대분류 목록은 아직 임시라 나중에 바뀔 수 있습니다.',
+  /** 입력칸 안내(#208) — 마침표 없이 「~을 입력하세요」. */
+  placeholders: {
+    code: '코드를 입력하세요',
+    name: '명칭을 입력하세요',
+  },
   empty: {
     codeNoneTitle: '아직 등록된 코드가 없습니다',
     codeNoneDescription: '「대분류 추가」로 첫 대분류를 등록하세요.',
     codeNoMatchTitle: '조건에 맞는 결과가 없습니다',
     codeNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-    codeNotSelected: '왼쪽에서 코드를 고르거나 「대분류 추가」로 시작하세요',
+    codeNotSelectedTitle: '코드를 고르세요',
+    codeNotSelected: '목록에서 코드를 고르거나 「대분류 추가」로 시작하세요.',
     mappingNoneTitle: '매핑할 상세 불량코드가 없습니다',
     mappingNoneDescription: '불량코드 탭에서 대분류 아래에 상세 코드를 먼저 등록하세요.',
     processNoneTitle: '매핑할 공정이 없습니다',
@@ -99,8 +103,7 @@ export const defectCauseCode = {
       `이 대분류에는 표시된 목록 기준 하위 상세 코드 ${count}건이 있습니다.`,
   },
   mapping: {
-    description:
-      '행은 상세 불량코드, 열은 공정입니다. 셀을 누르면 매핑이 즉시 부여되거나 회수됩니다.',
+    description: '행은 상세 불량코드, 열은 공정입니다. 칸을 누르면 바로 연결되거나 풀립니다.',
     assigned: '매핑됨',
     notAssigned: '매핑 안 됨',
     saved: '공정 매핑을 반영했습니다',

@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Button,
   EmptyState,
+  Icon,
   MatrixGrid,
   SkeletonText,
   type MatrixColumn,
@@ -24,6 +25,13 @@ type Process = components['schemas']['Process'];
 type PageMeta = components['schemas']['PageMeta'];
 
 const t = messages.defectCauseCode;
+
+/** 빈 상태의 둥근 바탕 아이콘 — 검사 기준 탭과 같다(#208). */
+const emptyIcon = (
+  <span className="inspection-standard-empty-icon">
+    <Icon name="assignment" size={20} />
+  </span>
+);
 const EMPTY_DEFECTS: DefectCode[] = [];
 const EMPTY_PROCESSES: Process[] = [];
 
@@ -243,6 +251,7 @@ export const ProcessMappingPane = () => {
       <EmptyState
         size="sm"
         live
+        icon={emptyIcon}
         title={t.empty.mappingNoneTitle}
         description={t.empty.mappingNoneDescription}
       />
@@ -252,6 +261,7 @@ export const ProcessMappingPane = () => {
       <EmptyState
         size="sm"
         live
+        icon={emptyIcon}
         title={t.empty.processNoneTitle}
         description={t.empty.processNoneDescription}
       />
