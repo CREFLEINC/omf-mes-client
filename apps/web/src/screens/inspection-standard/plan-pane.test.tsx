@@ -151,13 +151,17 @@ describe('PlanPane — 편집', () => {
     expect(onChange).toHaveBeenCalledWith({ inspectionPlanName: '합성 검사기준 AX' });
   });
 
-  it('품목을 고르면 그 값을 알린다', async () => {
-    const { onChange, user } = renderPane();
+  /* 품목은 품목 선택 창에서 고른다(#196) — 고르는 흐름은 화면 시험이 본다. 여기서는 표시와 지우기만. */
+  it('지정된 품목의 이름을 칸에 보이고, 지우면 전 품목 공통으로 알린다', async () => {
+    const { onChange, user } = renderPane({
+      values: { ...planToFormValues(inspectionPlanFixtures[0]!), itemId: '5002' },
+    });
 
-    await user.click(screen.getByRole('combobox', { name: '품목' }));
-    await user.click(screen.getByRole('option', { name: 'SYN-ITEM-02 · 합성 품목 B' }));
+    expect(screen.getByLabelText('품목')).toHaveValue('SYN-ITEM-02 · 합성 품목 B');
 
-    expect(onChange).toHaveBeenCalledWith({ itemId: '5002' });
+    await user.click(screen.getByRole('button', { name: '품목 지우기' }));
+
+    expect(onChange).toHaveBeenCalledWith({ itemId: '' });
   });
 
   it('고친 것이 없으면 저장과 취소가 모두 비활성이다', () => {

@@ -1,7 +1,8 @@
-import { Button, DatePicker, Select } from '@crefle/web-ui';
+import { Button, DatePicker } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { Select } from '../../patterns/select';
 import { isUsable, type ConfirmFilters, type SortKey } from './filters';
 
 const t = messages.shipmentConfirm.filter;

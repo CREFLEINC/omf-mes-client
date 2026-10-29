@@ -16,7 +16,13 @@ const menuPathOf = (to: string, locale: 'ko' | 'vi'): string | null => {
   for (const group of NAV_GROUPS) {
     for (const entry of group.items) {
       const tab = entry.tabs?.find((candidate) => candidate.to === to);
-      if (tab !== undefined) return [name(group), name(entry), name(tab)].join(' › ');
+      /* 첫 탭 이름이 묶음 이름과 같으면 탭 단계는 적지 않는다(브레드크럼과 같다). */
+      if (tab !== undefined)
+        return (
+          name(tab) === name(entry)
+            ? [name(group), name(entry)]
+            : [name(group), name(entry), name(tab)]
+        ).join(' › ');
       if (entry.tabs === undefined && entry.to === to)
         return [name(group), name(entry)].join(' › ');
     }

@@ -1,67 +1,76 @@
 import { describe, expect, it } from 'vitest';
 
-import { readExcessEntry, withExcessEntry, withoutExcessEntry } from './excess-entry';
+import { excessTabHref, readExcessEntry, readLegacyExcessEntry } from './excess-entry';
 
-describe('readExcessEntry — 연결 창은 주소가 연다', () => {
-  it('excess=1 이 없으면 닫혀 있다', () => {
-    expect(readExcessEntry(new URLSearchParams('po=7101'))).toBeNull();
-    expect(readExcessEntry(new URLSearchParams('excess=0'))).toBeNull();
-  });
-
-  it('키가 없으면 고른 것 없이 연다', () => {
-    expect(readExcessEntry(new URLSearchParams('excess=1'))).toEqual({
+describe('readExcessEntry — 탭 주소가 시작 상태를 정한다', () => {
+  it('키가 없으면 고른 것 없이 선다', () => {
+    expect(readExcessEntry(new URLSearchParams(''))).toEqual({
       receiptNo: null,
       inboundReceiptLineId: null,
       purchaseOrderLineId: null,
+      purchaseOrderId: null,
     });
   });
 
-  it('입하번호 · 입하 줄 · 라인을 읽는다', () => {
+  it('입하번호 · 입하 줄 · 라인 · 보던 발주를 읽는다', () => {
     expect(
-      readExcessEntry(
-        new URLSearchParams('excess=1&excessReceipt=IR-1&excessReceiptLine=9411&excessLine=7301'),
-      ),
-    ).toEqual({ receiptNo: 'IR-1', inboundReceiptLineId: 9411, purchaseOrderLineId: 7301 });
+      readExcessEntry(new URLSearchParams('receipt=IR-1&receiptLine=9411&line=7301&po=7101')),
+    ).toEqual({
+      receiptNo: 'IR-1',
+      inboundReceiptLineId: 9411,
+      purchaseOrderLineId: 7301,
+      purchaseOrderId: 7101,
+    });
   });
 
   it('번호가 양의 정수가 아니면 버린다', () => {
-    expect(
-      readExcessEntry(new URLSearchParams('excess=1&excessReceiptLine=abc&excessLine=-3')),
-    ).toMatchObject({ inboundReceiptLineId: null, purchaseOrderLineId: null });
-  });
-
-  it('옛 키(연결됨 탭 · 옛 초과분 번호)는 읽지 않는다', () => {
-    expect(readExcessEntry(new URLSearchParams('excess=1&excessTab=linked&excessId=9501'))).toEqual(
-      { receiptNo: null, inboundReceiptLineId: null, purchaseOrderLineId: null },
-    );
+    expect(readExcessEntry(new URLSearchParams('receiptLine=abc&line=-3&po=0'))).toMatchObject({
+      inboundReceiptLineId: null,
+      purchaseOrderLineId: null,
+      purchaseOrderId: null,
+    });
   });
 });
 
-describe('withExcessEntry · withoutExcessEntry', () => {
-  it('조회 조건과 고른 발주는 그대로 두고 창 키만 얹는다', () => {
-    const next = withExcessEntry(new URLSearchParams('po=7101&q=PO'), {
+describe('excessTabHref', () => {
+  it('빈 값은 키를 싣지 않는다', () => {
+    expect(excessTabHref()).toBe('/logistics/inbound-excess');
+    expect(excessTabHref({ inboundReceiptLineId: null, purchaseOrderLineId: 7301 })).toBe(
+      '/logistics/inbound-excess?line=7301',
+    );
+  });
+
+  it('읽은 값을 그대로 되돌린다', () => {
+    const entry = {
+      receiptNo: 'IR-1',
       inboundReceiptLineId: 9411,
       purchaseOrderLineId: 7301,
-    });
+      purchaseOrderId: 7101,
+    };
+    const href = excessTabHref(entry);
 
-    expect(next.toString()).toBe('po=7101&q=PO&excess=1&excessReceiptLine=9411&excessLine=7301');
+    expect(readExcessEntry(new URLSearchParams(href.split('?')[1]))).toEqual(entry);
+  });
+});
+
+describe('readLegacyExcessEntry — 옛 창 주소', () => {
+  it('excess=1 이 없으면 옮기지 않는다', () => {
+    expect(readLegacyExcessEntry(new URLSearchParams('po=7101'))).toBeNull();
+    expect(readLegacyExcessEntry(new URLSearchParams('excess=0'))).toBeNull();
   });
 
-  it('앞서 얹은 창 키 — 옛 키까지 — 는 새 값으로 갈린다', () => {
-    const next = withExcessEntry(
-      new URLSearchParams('excess=1&excessTab=linked&excessId=1&excessReceiptLine=2'),
-    );
-
-    expect(next.toString()).toBe('excess=1');
-  });
-
-  it('닫으면 창 키만 떼고 나머지는 남는다', () => {
-    const next = withoutExcessEntry(
-      new URLSearchParams(
-        'po=7101&excess=1&excessTab=linked&excessReceipt=IR-1&excessId=9&excessReceiptLine=9411',
+  it('옛 키를 새 시작 상태로 옮긴다', () => {
+    expect(
+      readLegacyExcessEntry(
+        new URLSearchParams(
+          'po=7101&excess=1&excessReceipt=IR-1&excessReceiptLine=9411&excessLine=7301',
+        ),
       ),
-    );
-
-    expect(next.toString()).toBe('po=7101');
+    ).toEqual({
+      receiptNo: 'IR-1',
+      inboundReceiptLineId: 9411,
+      purchaseOrderLineId: 7301,
+      purchaseOrderId: 7101,
+    });
   });
 });

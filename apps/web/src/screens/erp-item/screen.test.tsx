@@ -80,12 +80,6 @@ const listRoute = (items: ErpItem[] = ROWS, total = items.length): StubRoute => 
   respond: () => jsonResponse({ items, page: { page: 1, size: 50, total } }),
 });
 
-const detailRoute: StubRoute = {
-  match: (request) => isGet(request, `${LIST_PATH}/7001`),
-  respond: () =>
-    jsonResponse({ item: ROWS[0], editability: { editable: false, lockedFields: [] } }),
-};
-
 const renderScreen = (routes: StubRoute[], search = '') => {
   const requests: Request[] = [];
   const stub = createStubFetch([...references, ...routes]);
@@ -106,10 +100,8 @@ describe('ErpItemScreen', () => {
   it('ERP 원본 열을 그리고, 이름을 못 찾은 유형·단위는 받은 값을 그대로 낸다', async () => {
     const { requests } = renderScreen([listRoute()]);
 
-    expect(
-      await screen.findByRole('button', { name: t.detail.openAction('SYN-ITEM-001') }),
-    ).toBeInTheDocument();
-    const table = screen.getByRole('table');
+    const table = await screen.findByRole('table');
+    expect(within(table).getByText('SYN-ITEM-001')).toBeInTheDocument();
     expect(await within(table).findByText('합성 제품')).toBeInTheDocument();
     expect(await within(table).findByText('SYN-EA')).toBeInTheDocument();
     expect(within(table).getByText('SYN 10x20')).toBeInTheDocument();
@@ -119,7 +111,8 @@ describe('ErpItemScreen', () => {
     expect(within(table).getByText('8999')).toBeInTheDocument();
     expect(within(table).getByText(t.values.inactive)).toBeInTheDocument();
     expect(within(table).getAllByText(t.values.empty)).toHaveLength(2);
-    expect(screen.getByText(t.readOnlyNote)).toBeInTheDocument();
+    // MES 확장 속성(다국어 명칭 등)은 이 화면에 보이지 않는다.
+    expect(within(table).queryByText('한국어 확장 명칭')).not.toBeInTheDocument();
 
     // 읽기 전용 — 쓰기 요청이 나가지 않고, 고치는 단추도 없다.
     expect(requests.every((request) => request.method === 'GET')).toBe(true);
@@ -147,22 +140,16 @@ describe('ErpItemScreen', () => {
     });
   });
 
-  it('품목코드를 누르면 ERP 에서 온 칸만 상세로 보인다', async () => {
-    const { user, urls } = renderScreen([listRoute(), detailRoute]);
+  it('상세 구획 없이 목록 한 구획만 서고, 줄을 눌러도 상세를 부르지 않는다', async () => {
+    const { user, urls } = renderScreen([listRoute()]);
 
-    // 고르기 전에는 상세를 부르지 않는다.
-    await screen.findByText('합성 품목 B');
-    expect(urls().some((url) => url.pathname === `${LIST_PATH}/7001`)).toBe(false);
+    await user.click(await screen.findByText('SYN-ITEM-001'));
 
-    await user.click(screen.getByRole('button', { name: t.detail.openAction('SYN-ITEM-001') }));
-
-    const group = await screen.findByRole('group', { name: t.detail.label });
-    expect(within(group).getByText(t.table.erpSpec)).toBeInTheDocument();
-    expect(within(group).getByText('SYN 10x20')).toBeInTheDocument();
-    expect(within(group).getByText('SYN-GRP')).toBeInTheDocument();
-    expect(within(group).getByText('합성 제품')).toBeInTheDocument();
-    // MES 확장 속성(다국어 명칭 등)은 이 화면에 보이지 않는다.
-    expect(within(group).queryByText('한국어 확장 명칭')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: t.panes.list })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '품목 상세' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /상세 보기/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    expect(urls().some((url) => url.pathname.startsWith(`${LIST_PATH}/`))).toBe(false);
   });
 
   it('결과가 없으면 빈 상태를 낸다', async () => {

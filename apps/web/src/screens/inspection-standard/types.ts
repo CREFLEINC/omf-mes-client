@@ -22,6 +22,8 @@ export type PageMeta = components['schemas']['PageMeta'];
 export interface PlanFilters {
   q: string;
   inspectionTypeCode: string;
+  /** 품목 번호(문자열). 비면 전 품목 — 품목 선택 창으로 고른다(#196). */
+  itemId: string;
   includeInactive: boolean;
 }
 
@@ -53,6 +55,8 @@ export interface VersionFormValues {
   samplingMethodCode: string;
   /** **비율(%)**이다. 수량이 아니다 — 0 초과 100 이하이며 소수를 받는다(#201). */
   samplingRatio: string;
+  /** 샘플 **개수**(1 이상 정수). 샘플링 방식이면 비율과 둘 중 하나만 넣는다(omf-all-around#201). */
+  samplingQty: string;
   aqlValue: string;
   acceptanceNumber: string;
   rejectionNumber: string;

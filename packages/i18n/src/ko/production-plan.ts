@@ -186,7 +186,7 @@ export const productionPlan = {
   /** 화면 전체가 서지 못하는 자리. ERP W/O 없이는 편성할 것이 없다. */
   screen: {
     unselected: 'ERP W/O를 먼저 선택하세요.',
-    openProductionOrders: 'ERP W/O 처리로 이동',
+    openProductionOrders: '작업지시 목록으로 이동',
     loading: 'ERP W/O를 불러오는 중',
     ownerMismatch: '요청한 ERP W/O와 다른 상세가 반환되었습니다.',
     loadFailed: 'ERP W/O를 불러오지 못했습니다.',

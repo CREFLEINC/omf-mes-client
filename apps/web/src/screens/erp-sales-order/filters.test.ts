@@ -19,6 +19,25 @@ describe('erp-sales-order filters', () => {
     expect(readPage(params)).toBe(3);
   });
 
+  it('진행은 전체면 적지 않고, 미완료·완료를 주소와 쿼리로 옮긴다', () => {
+    expect(toSearchParams(DEFAULT_FILTERS, 1).toString()).toBe('');
+    const params = toSearchParams({ ...DEFAULT_FILTERS, progress: 'done' }, 1);
+    expect(params.toString()).toBe('progress=done');
+    expect(readFilters(params).progress).toBe('done');
+    expect(readFilters(new URLSearchParams('progress=weird')).progress).toBe('all');
+    expect(toListQuery(DEFAULT_FILTERS, 1)).toEqual({ page: 1, size: 25 });
+    expect(toListQuery({ ...DEFAULT_FILTERS, progress: 'open' }, 1)).toEqual({
+      page: 1,
+      size: 25,
+      progress: 'OPEN',
+    });
+    expect(toListQuery({ ...DEFAULT_FILTERS, progress: 'done' }, 1)).toEqual({
+      page: 1,
+      size: 25,
+      progress: 'COMPLETED',
+    });
+  });
+
   it('조건을 바꾸면 고른 건을 놓고, 고르기는 조건을 지키지 않는다', () => {
     const current = new URLSearchParams('q=A&page=2');
     expect(toSelectionSearchParams(current, 9).toString()).toBe('q=A&page=2&sel=9');

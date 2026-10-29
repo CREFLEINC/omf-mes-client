@@ -1,8 +1,9 @@
-import { Button, Dialog, Select, TextField } from '@crefle/web-ui';
+import { Button, Dialog, TextField } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
 
 const t = messages.iqcInspection.result.rejection;

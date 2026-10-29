@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { appRouter } from './index';
 import { NAV_ENTRIES } from '../app/nav-tree';
-import { WEB_SCREENS } from '../patterns/web-screen-catalog';
+import { WEB_SCREEN_TABS, WEB_SCREENS } from '../patterns/web-screen-catalog';
 
 /**
  * 관리웹 화면 이름표(`patterns/web-screen-catalog.ts`)가 사이드바·라우트 표와 어긋나지 않는지 잰다.
@@ -40,7 +40,11 @@ describe('관리웹 화면 이름표', () => {
    * `NAV_ENTRIES` 는 섹션 밖 항목(`NAV_LEAD`)까지 합친 전건이라 그쪽도 함께 걸린다.
    */
   it('사이드바 항목 전부에 화면 코드가 있다', () => {
-    const listed = new Set(WEB_SCREENS.map((screen) => screen.path));
+    /* 묶음 화면에서 뗀 탭(`WEB_SCREEN_TABS`)은 그 화면의 코드를 따른다 — 그 자체로 코드가 있다. */
+    const listed = new Set([
+      ...WEB_SCREENS.map((screen) => screen.path),
+      ...WEB_SCREEN_TABS.map((tab) => tab.path),
+    ]);
     const missing = NAV_ENTRIES.map((entry) => entry.to).filter((to) => !listed.has(to));
 
     expect(missing).toEqual([]);
@@ -86,6 +90,19 @@ describe('관리웹 화면 이름표', () => {
     const malformed = WEB_SCREENS.filter((screen) => !/^W-(?:\d{2}|CO)-\d{2}$/.test(screen.code));
 
     expect(malformed).toEqual([]);
+  });
+
+  /**
+   * 뗀 탭은 **묶음 화면이 이름표에 있고**, 자기 주소는 이름표에 없으며(있으면 코드가 둘이 된다), 라우트가 있다.
+   * 묶음 화면이 빠지면 탭이 따를 코드가 없어 탭이 「모르는 주소」로 늘 보이게 된다.
+   */
+  it('뗀 탭은 이름표에 있는 화면을 따르고, 자기 주소는 이름표에 없으며 라우트가 있다', () => {
+    const screens = new Set(WEB_SCREENS.map((screen) => screen.path));
+    const routed = new Set(routedPaths());
+
+    expect(WEB_SCREEN_TABS.filter((tab) => !screens.has(tab.ownerPath))).toEqual([]);
+    expect(WEB_SCREEN_TABS.filter((tab) => screens.has(tab.path))).toEqual([]);
+    expect(WEB_SCREEN_TABS.filter((tab) => !routed.has(tab.path))).toEqual([]);
   });
 
   /* 이름이 비면 「왜 이 코드인가」를 되짚을 근거가 사라진다 — 코드만 남은 줄은 대조할 수 없다. */

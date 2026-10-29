@@ -1,6 +1,7 @@
-import { Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
+
+import { Select } from '../../patterns/select';
 
 const t = messages.workOrderProgress.filters;
 

@@ -19,6 +19,9 @@ export const common = {
    * 이것은 검색칸 하나만 비운다.
    */
   clear: '지우기',
+  /** 선택지가 많은 선택 칸(`patterns/select.tsx`)의 목록 맨 위 검색창 — 접근명과 빈 결과. */
+  selectSearch: '검색',
+  selectNoMatch: '맞는 항목이 없습니다',
   deactivate: '사용 중지',
   saved: '저장했습니다',
   created: '등록했습니다',

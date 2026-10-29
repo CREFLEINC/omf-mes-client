@@ -1,6 +1,7 @@
 import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
+import { navMenuPath } from '../app/nav-tree';
 import { GuestOnly, RequireSession } from '../patterns/session';
 import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
@@ -20,11 +21,15 @@ import { WorkOrderCloseScreen } from '../screens/work-order-close/screen';
 import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen';
 import { MaterialIssueRequestScreen } from '../screens/material-issue-request/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
+import { LotTraceScreen } from '../screens/lot-trace/screen';
 import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-redirect';
+import { InboundExcessScreen } from '../screens/inbound-schedule/excess-screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
 import { InspectionSheetTemplateScreen } from '../screens/inspection-sheet-template/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
+import { ErpInboundScreen } from '../screens/erp-inbound/screen';
+import { ErpOutboundScreen } from '../screens/erp-outbound/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { ErpBomScreen } from '../screens/erp-bom/screen';
 import { ErpCommonCodeScreen } from '../screens/erp-common-code/screen';
@@ -49,6 +54,7 @@ import { ToolPmResultScreen } from '../screens/tool-pm-result/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
+import { ItemBomScreen } from '../screens/item-extended-attrs/bom-screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
 import { LotStatusHistoryScreen } from '../screens/lot-status-history/screen';
@@ -92,6 +98,19 @@ import { SupplierReturnScreen } from '../screens/supplier-return/screen';
 import { UsersRolesScreen } from '../screens/users-roles/screen';
 import { WarehouseLayoutScreen } from '../screens/warehouse-layout/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
+
+/** LOT 추적의 권한 안내는 사용자와 역할 메뉴를 사이드바의 이름 그대로 가리킨다. 그리는 순간의 언어로 만든다. */
+const LotTraceRoute = () => (
+  <LotTraceScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
+);
+
+/** 작업지시 목록(W-02-01)의 권한 안내도 같은 메뉴를 가리킨다. */
+const ProductionOrderRoute = () => (
+  <ProductionOrderScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
+);
+const ProductionOrderProcessRoute = () => (
+  <ProductionOrderProcessScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
+);
 
 export const appRouter = createBrowserRouter([
   {
@@ -143,6 +162,9 @@ export const appRouter = createBrowserRouter([
       /* W-06-04 — 전용 자원이 아니라 공통코드의 코드값 편집기를 한 그룹으로 고정해 여는 진입점이다. */
       { path: 'master-data/judgment-code', element: <JudgmentCodeScreen /> },
       { path: 'master-data/integration-sync', element: <IntegrationSyncScreen /> },
+      /* W-06-12 — 「ERP 연동 현황·이력」 묶음의 「ERP 송신」 탭. 송신 항목과 고른 항목의 송신 예정 목록이다. */
+      { path: 'master-data/erp-inbound', element: <ErpInboundScreen /> },
+      { path: 'master-data/erp-outbound', element: <ErpOutboundScreen /> },
       /*
        * ERP 에서 받은 데이터 조회(W-06-16~23) — 「ERP 연동 현황·이력」 묶음의 탭이다
        * (`app/nav-tree.ts`). 앞머리는 그 묶음이 선 「시스템 관리」를 따른다.
@@ -156,6 +178,8 @@ export const appRouter = createBrowserRouter([
       { path: 'system/erp-data/sales-orders', element: <ErpSalesOrderScreen /> },
       { path: 'system/erp-data/production-orders', element: <ErpProductionOrderScreen /> },
       { path: 'master-data/item-extended-attrs', element: <ItemExtendedAttrsScreen /> },
+      /* 「품목·BOM 정보」 묶음의 BOM 탭(사용자 지시 2026-10-28). 코드는 W-06-05 를 따른다. */
+      { path: 'master-data/item-boms', element: <ItemBomScreen /> },
       { path: 'master-data/master-change', element: <MasterChangeScreen /> },
       /* W-CO-02 — 기준정보가 아니라 시스템 운영이라 경로 앞머리를 가른다. */
       { path: 'system/users-roles', element: <UsersRolesScreen /> },
@@ -186,6 +210,8 @@ export const appRouter = createBrowserRouter([
        * 낱말로 두어 화면과 계약의 대응이 주소에서 읽히게 한다. 뒤따르는 W-01 화면들이 그대로 쓴다.
        */
       { path: 'logistics/inbound-schedule', element: <InboundScheduleScreen /> },
+      /* 입고 관리 묶음의 둘째 탭 — 초과분 발주 연결(오른쪽 창이던 것 · 사용자 지시 2026-10-28). 코드는 W-01-09 를 따른다. */
+      { path: 'logistics/inbound-excess', element: <InboundExcessScreen /> },
       /*
        * W-01-03 「입하 등록」 — **화면이 아니라 입고 관리의 라인 표에서 바로 한다**(사용자 지시 2026-10-24 · 옛 창은
        * 걷었다). 옛 「초과 입하 분리」 주소는 즐겨찾기가 죽지 않게 입고 관리로 옮겨 준다(고른 발주 `po` 는 그대로).
@@ -332,11 +358,14 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'logistics/document-progress', element: <DocumentProgressScreen /> },
       /* W-02-01 — 생산의 첫 화면이며 주소는 API 리소스가 아니라 화면을 가리킨다. */
-      { path: 'production/production-orders', element: <ProductionOrderScreen /> },
+      {
+        path: 'production/production-orders',
+        element: <ProductionOrderRoute />,
+      },
       /* W-02-01 처리 화면 — 주소에 업무 번호(ERP W/O 번호)를 쓴다. W-02-02~04 를 단계로 합쳤다. */
       {
         path: 'production/production-orders/:productionOrderNo',
-        element: <ProductionOrderProcessScreen />,
+        element: <ProductionOrderProcessRoute />,
       },
       /*
        * W-02-06 — P/O 수신·조회 바로 뒤다. 받은 P/O 가 «바뀌었을 때» 판정하는 자리라
@@ -366,6 +395,11 @@ export const appRouter = createBrowserRouter([
        * 저장 액션이 없는 읽기 전용 화면이다.
        */
       { path: 'production/work-order-progress', element: <WorkOrderProgressScreen /> },
+      /*
+       * W-02-09 — 진행을 본 뒤 그 LOT이 어디서 와서 어디로 갔는지 본다. 조회 자리라 진행현황 바로 뒤다.
+       * 자재 LOT, 제품 LOT, 입출고 현황은 화면 안 탭이다(`?tab=`).
+       */
+      { path: 'production/lot-trace', element: <LotTraceRoute /> },
       /*
        * W-03-01 — Lot Status 계열의 첫 화면이므로 품질관리 섹션을 연다.
        * 계약의 /quality/**와 주소 앞머리가 같지만 근거는 사이드바 업무 섹션이다.

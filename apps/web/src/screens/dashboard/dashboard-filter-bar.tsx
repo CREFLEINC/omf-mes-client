@@ -1,7 +1,8 @@
-import { Button, DatePicker, Icon, Select } from '@crefle/web-ui';
+import { Button, DatePicker, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
 import {
   MAX_PERIOD_DAYS,

@@ -20,6 +20,7 @@ export const versionToFormValues = (version: InspectionPlanVersion): VersionForm
   effectiveTo: version.effectiveTo ?? '',
   samplingMethodCode: version.samplingMethodCode,
   samplingRatio: optionalNumberToText(version.samplingRatio),
+  samplingQty: optionalNumberToText(version.samplingQty),
   aqlValue: optionalNumberToText(version.aqlValue),
   acceptanceNumber: optionalNumberToText(version.acceptanceNumber),
   rejectionNumber: optionalNumberToText(version.rejectionNumber),
@@ -33,6 +34,7 @@ export const emptyVersionFormValues = (): VersionFormValues => ({
   effectiveTo: '',
   samplingMethodCode: '',
   samplingRatio: '',
+  samplingQty: '',
   aqlValue: '',
   acceptanceNumber: '',
   rejectionNumber: '',
@@ -63,6 +65,9 @@ export const toVersionUpdate = (values: VersionFormValues): InspectionPlanVersio
     values.samplingMethodCode === FULL_INSPECTION
       ? null
       : optionalTextToNumber(values.samplingRatio),
+  // 개수도 같은 이유로 전수검사면 싣지 않는다 — 비율과 둘 중 하나만 서버가 받는다(omf-all-around#201).
+  samplingQty:
+    values.samplingMethodCode === FULL_INSPECTION ? null : optionalTextToNumber(values.samplingQty),
   aqlValue: optionalTextToNumber(values.aqlValue),
   acceptanceNumber: optionalTextToNumber(values.acceptanceNumber),
   rejectionNumber: optionalTextToNumber(values.rejectionNumber),

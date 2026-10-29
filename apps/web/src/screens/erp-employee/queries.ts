@@ -30,7 +30,6 @@ export interface WorkerListQuery {
 export const workerKeys = {
   all: ['erp-employee'] as const,
   list: (query: WorkerListQuery) => ['erp-employee', 'list', query] as const,
-  detail: (id: number | null) => ['erp-employee', 'detail', id] as const,
 };
 
 export const useWorkerList = (query: WorkerListQuery): UseQueryResult<WorkerListResult> => {
@@ -39,27 +38,5 @@ export const useWorkerList = (query: WorkerListQuery): UseQueryResult<WorkerList
   return useQuery({
     queryKey: workerKeys.list(query),
     queryFn: () => runRequest(() => client.GET('/mdm/workers', { params: { query } })),
-  });
-};
-
-/** 사원 상세. 고르기 전에는 조회하지 않는다 — 들어오기만 해도 부르면 쓰지 않는 요청이 나간다. */
-export const useWorkerDetail = (id: number | null): UseQueryResult<Worker> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: workerKeys.detail(id),
-    enabled: id !== null,
-    queryFn: async () => {
-      if (id === null) {
-        throw new Error('사원을 고르기 전에는 상세를 조회하지 않습니다.');
-      }
-
-      const data = await runRequest(() =>
-        client.GET('/mdm/workers/{workerId}', { params: { path: { workerId: id } } }),
-      );
-
-      // 편집 가능 여부(editability)는 쓰지 않는다 — 이 화면에는 쓰기가 없다.
-      return data.worker;
-    },
   });
 };

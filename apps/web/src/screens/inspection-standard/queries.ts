@@ -1,11 +1,12 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
-import { runRequest } from '../../patterns/request';
-import { toListQuery } from './filters';
+import { runRequest, toApiError } from '../../patterns/request';
+import { DEFAULT_PAGE_SIZE, toListQuery } from './filters';
+import type { VersionAuditEvent } from './version-history';
 import type {
   InspectionItemSpec,
   InspectionPlan,
@@ -37,8 +38,8 @@ export interface InspectionPlanListResponse {
  */
 export const planKeys = {
   all: ['inspection-plans'] as const,
-  list: (filters: PlanFilters, page: number) =>
-    ['inspection-plans', 'list', filters, page] as const,
+  list: (filters: PlanFilters, page: number, size: number = DEFAULT_PAGE_SIZE) =>
+    ['inspection-plans', 'list', filters, page, size] as const,
   detail: (inspectionPlanId: number) => ['inspection-plans', 'detail', inspectionPlanId] as const,
 };
 
@@ -49,14 +50,17 @@ export const planKeys = {
 export const useInspectionPlanList = (
   filters: PlanFilters,
   page: number,
+  size: number = DEFAULT_PAGE_SIZE,
 ): UseQueryResult<InspectionPlanListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: planKeys.list(filters, page),
+    queryKey: planKeys.list(filters, page, size),
     queryFn: () =>
       runRequest(() =>
-        client.GET('/quality/inspection-plans', { params: { query: toListQuery(filters, page) } }),
+        client.GET('/quality/inspection-plans', {
+          params: { query: toListQuery(filters, page, size) },
+        }),
       ),
   });
 };
@@ -221,6 +225,7 @@ const EMPTY_ENTRIES: LookupEntry[] = [];
 
 export const lookupKeys = {
   items: ['inspection-standard-items'] as const,
+  itemDetail: (itemId: number) => ['inspection-standard-item-detail', itemId] as const,
   processes: ['inspection-standard-processes'] as const,
   routings: (itemId: number) => ['inspection-standard-routings', itemId] as const,
   uoms: ['inspection-standard-uoms'] as const,
@@ -317,11 +322,21 @@ export const useCodeValueOptions = (codeGroupCode: string): LookupResult => {
   };
 };
 
+const isNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 404;
+};
+
 /**
  * 품목 선택 목록. `includeInactive=true`로 한 번 받아 두고 화면이 표시 규칙을 정한다 —
  * 기본 조회는 사용 중인 것만 내려주므로, 미사용 품목을 참조하는 기준을 열면 이름이 비어 보인다.
+ *
+ * ⭐ 목록은 한 쪽만 받는다. 품목이 많은 환경에서는 기준에 지정된 품목이 첫 쪽에 없어
+ * 이름이 「알 수 없음」으로 선다(omf-all-around#200). 그때만 그 품목 하나를 상세로 불러 덧붙인다.
+ * 없는 품목(404)은 실패가 아니라 「알 수 없음」이다.
  */
-export const useItemOptions = (): LookupResult => {
+export const useItemOptions = (selectedItemId: number | null): LookupResult => {
   const { client } = useApiClient();
 
   const items = useQuery({
@@ -331,17 +346,45 @@ export const useItemOptions = (): LookupResult => {
   });
 
   const data = items.data;
+  const isMissingSelected =
+    data !== undefined &&
+    selectedItemId !== null &&
+    !data.items.some((item) => item.itemId === selectedItemId);
+
+  const selectedItem = useQuery({
+    queryKey: lookupKeys.itemDetail(selectedItemId ?? 0),
+    enabled: isMissingSelected,
+    /* 상세 머리의 품목 이름(`useItemNameParts`)과 같은 키다 — 받아 둔 것을 다시 부르지 않는다(#196). */
+    staleTime: Infinity,
+    queryFn: () => {
+      if (selectedItemId === null) {
+        throw new Error('품목을 고르기 전에는 품목 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/items/{itemId}', { params: { path: { itemId: selectedItemId } } }),
+      );
+    },
+  });
+
+  const listed = data?.items ?? [];
+  const extra =
+    isMissingSelected && selectedItem.data !== undefined ? [selectedItem.data.item] : [];
 
   return {
     entries:
-      data?.items.map((item) => ({
-        value: String(item.itemId),
-        label: `${item.itemCode} · ${item.itemName}`,
-        isActive: item.isActive,
-      })) ?? EMPTY_ENTRIES,
+      data === undefined
+        ? EMPTY_ENTRIES
+        : [...listed, ...extra].map((item) => ({
+            value: String(item.itemId),
+            label: `${item.itemCode} · ${item.itemName}`,
+            isActive: item.isActive,
+          })),
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: items.isError,
-    isLoading: items.isPending,
+    isError:
+      items.isError ||
+      (isMissingSelected && selectedItem.isError && !isNotFound(selectedItem.error)),
+    isLoading: items.isPending || (isMissingSelected && selectedItem.isPending),
   };
 };
 
@@ -411,4 +454,134 @@ export const useRoutingOptions = (itemId: number | null): LookupResult => {
     isError: routings.isError,
     isLoading: itemId !== null && routings.isPending,
   };
+};
+
+/** 품목 표시 — 이름과 코드. 부르는 중 · 못 찾음 · 실패면 `code` 가 null 이고 `name` 이 공용 표기다. */
+export interface ItemNameParts {
+  name: string;
+  code: string | null;
+}
+
+/**
+ * 품목 번호 → 「이름 (코드)」(omf-all-around#196). 목록 · 상세 머리가 보이는 품목만 하나씩 상세로 푼다 —
+ * 품목 선택 목록(`useItemOptions`)은 첫 쪽만 받아 그 밖의 품목이 「알 수 없음」으로 섰다.
+ * 부르는 중 · 못 찾음 · 실패는 공용 표기(`messages.common.reference`)로 가른다.
+ */
+export const useItemNameLabels = (
+  itemIds: readonly (number | null | undefined)[],
+): ((itemId: number | null | undefined) => string | null) => {
+  const partsOf = useItemNameParts(itemIds);
+
+  return (itemId) => {
+    const parts = partsOf(itemId);
+    if (parts === null) return null;
+    return parts.code === null ? parts.name : `${parts.name} (${parts.code})`;
+  };
+};
+
+/** 같은 조회를 이름 · 코드로 나눠 준다 — 목록 표가 「이름 코드(흐리게)」로 그린다(사용자 시안 · #196). */
+export const useItemNameParts = (
+  itemIds: readonly (number | null | undefined)[],
+): ((itemId: number | null | undefined) => ItemNameParts | null) => {
+  const { client } = useApiClient();
+  const ids = [...new Set(itemIds.filter((id): id is number => typeof id === 'number'))];
+
+  const results = useQueries({
+    queries: ids.map((itemId) => ({
+      /* 기본 정보 폼의 품목 상세 조회와 같은 키 — 한 품목을 두 번 부르지 않는다(#196). */
+      queryKey: lookupKeys.itemDetail(itemId),
+      queryFn: () =>
+        runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } })),
+      select: (data: components['schemas']['ItemDetailResponse']) => ({
+        name: masterName(data.item, data.item.itemName),
+        code: data.item.itemCode,
+      }),
+      retry: false,
+      staleTime: Infinity,
+    })),
+  });
+
+  return (itemId) => {
+    if (itemId === null || itemId === undefined) return null;
+    const result = results[ids.indexOf(itemId)];
+    if (result === undefined || result.isPending) {
+      return { name: messages.common.reference.loading, code: null };
+    }
+    if (result.isError || result.data === undefined) {
+      return { name: messages.common.reference.unknown, code: null };
+    }
+    return result.data;
+  };
+};
+
+/** 최근 1년 — 감사 이력 조회가 기간을 요구한다(파티션 · 공유계약 B-5). */
+const HISTORY_RANGE_MS = 366 * 24 * 60 * 60 * 1000;
+
+/**
+ * 버전 변경 이력(#196) — 서버가 버전 쓰기마다 남긴 감사 이력. 고를 때마다 새로 받는다(저장 뒤 바로 보이게).
+ * 한 버전의 이력은 소수라 첫 쪽(100건)만 받는다.
+ */
+export const useVersionHistory = (
+  inspectionPlanVersionId: number | null,
+): UseQueryResult<{ items: VersionAuditEvent[] }> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: [...versionKeys.all, 'history', inspectionPlanVersionId ?? 0] as const,
+    enabled: inspectionPlanVersionId !== null,
+    staleTime: 0,
+    queryFn: async () => {
+      if (inspectionPlanVersionId === null) {
+        throw new Error('버전을 고르기 전에는 변경 이력을 조회하지 않습니다.');
+      }
+      const now = Date.now();
+      const data = await runRequest(() =>
+        client.GET('/audit/events', {
+          params: {
+            query: {
+              targetTypeCode: 'INSPECTION_PLAN_VERSION',
+              targetId: inspectionPlanVersionId,
+              occurredFrom: new Date(now - HISTORY_RANGE_MS).toISOString(),
+              occurredTo: new Date(now + 60 * 1000).toISOString(),
+              size: 100,
+            },
+          },
+        }),
+      );
+      return {
+        items: data.items.map((item) => ({
+          auditEventId: item.auditEventId,
+          occurredAt: item.occurredAt,
+          eventTypeCode: item.eventTypeCode,
+          beforeValue: (item.beforeValue ?? null) as Record<string, unknown> | null,
+          afterValue: (item.afterValue ?? null) as Record<string, unknown> | null,
+          performedBy: item.performedBy ?? null,
+        })),
+      };
+    },
+  });
+};
+
+/** 처리자 이름 — 사용자 상세로 푼다. 못 받으면(권한 · 없는 사용자) 호출부가 번호로 낸다. */
+export const useUserNames = (
+  userIds: readonly (number | null)[],
+): ((userId: number) => string | null) => {
+  const { client } = useApiClient();
+  const ids = [...new Set(userIds.filter((id): id is number => id !== null))];
+
+  const results = useQueries({
+    queries: ids.map((appUserId) => ({
+      queryKey: ['inspection-standard', 'user-name', appUserId] as const,
+      queryFn: async () => {
+        const data = await runRequest(() =>
+          client.GET('/app/users/{appUserId}', { params: { path: { appUserId } } }),
+        );
+        return data.appUser.userName;
+      },
+      retry: false,
+      staleTime: Infinity,
+    })),
+  });
+
+  return (userId) => results[ids.indexOf(userId)]?.data ?? null;
 };

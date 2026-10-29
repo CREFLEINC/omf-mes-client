@@ -42,11 +42,11 @@ describe('MessageTable', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
-  it('기간을 정한 뒤 0건이면 조건을 고치라고 안내한다', () => {
+  it('기간을 정한 뒤 0건이면 없다고만 낸다 — 고치라는 안내문은 두지 않는다', () => {
     renderTable({ rows: [] });
 
     expect(screen.getByText('조건에 맞는 기록이 없습니다')).toBeInTheDocument();
-    expect(screen.getByText('기간을 넓히거나 조건을 줄인 뒤 다시 조회하세요.')).toBeInTheDocument();
+    expect(screen.queryByText(/다시 조회하세요/)).toBeNull();
   });
 
   it('기간이 없어 아직 조회하지 않았으면 다른 안내를 낸다 — 결과가 없는 것과 다르다', () => {
@@ -93,7 +93,7 @@ describe('MessageTable', () => {
   it('메시지 키가 상세를 여는 버튼이고 접근 이름에 그 키가 들어간다', async () => {
     const { onOpenDetail, user } = renderTable();
 
-    await user.click(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 상세 열기' }));
+    await user.click(screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 상세 열기' }));
 
     expect(onOpenDetail).toHaveBeenCalledWith(9001);
   });
@@ -104,7 +104,7 @@ describe('MessageTable', () => {
       rows: [messageRow({ statusCode: 'ERROR', lockedBy: 'sync-worker-01' })],
     });
 
-    const button = screen.getByRole('button', { name: 'SAMPLE-KEY-0001 재처리' });
+    const button = screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' });
     expect(button).toBeEnabled();
 
     await user.click(button);
@@ -121,8 +121,12 @@ describe('MessageTable', () => {
       retryingId: 9001,
     });
 
-    expect(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 재처리' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'SAMPLE-KEY-0002 재처리' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0001 재처리' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'IF-SAMPLE-A SAMPLE-KEY-0002 재처리' }),
+    ).toBeEnabled();
   });
 
   it('행마다 선택칸이 있고 고르면 그 식별자가 넘어간다', async () => {

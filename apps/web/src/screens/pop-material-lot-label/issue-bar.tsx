@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import type { IssueFailure } from './failure';
+import { ISSUE_UNITS, type IssueUnit } from './issue-unit';
 
 const t = messages.popMaterialLotLabel.bar;
 const tReprint = messages.popMaterialLotLabel.reprint;
@@ -11,6 +12,8 @@ export type BarState =
       kind: 'pending';
       supplierName: string | null;
       count: number;
+      /** N장마다 멈추고 이어서(`issue-unit`). `null` 은 전체. */
+      unit: IssueUnit;
       /** 사번이 없거나 프린터를 모르면 막는다 — 까닭은 맨 위 띠와 머리줄이 말한다. */
       isBlocked: boolean;
     }
@@ -30,6 +33,14 @@ export type BarState =
       isStopping: boolean;
     }
   | {
+      /** 한 단위를 다 찍고 쉰다 — 작업자가 라벨을 붙인 뒤 「다음 N장 발행」을 누른다. */
+      kind: 'paused';
+      done: number;
+      total: number;
+      remaining: number;
+      next: number;
+    }
+  | {
       kind: 'done';
       printed: number;
       unfinished: number;
@@ -43,9 +54,12 @@ export interface IssueBarProps {
   state: BarState;
   onIssue: () => void;
   onClear: () => void;
+  /** 도는 중이면 이번 장까지 찍고 멈춘다. 쉬는 중이면 남은 단위를 접는다. */
   onStop: () => void;
+  onResume: () => void;
   onConfirm: () => void;
   onRetry: () => void;
+  onUnitChange: (unit: IssueUnit) => void;
 }
 
 const PrintIcon = () => (
@@ -73,8 +87,10 @@ export const IssueBar = ({
   onIssue,
   onClear,
   onStop,
+  onResume,
   onConfirm,
   onRetry,
+  onUnitChange,
 }: IssueBarProps) => {
   if (state.kind === 'running') {
     const ratio = state.total === 0 ? 0 : Math.round((state.done / state.total) * 100);
@@ -112,8 +128,33 @@ export const IssueBar = ({
     );
   }
 
+  if (state.kind === 'paused') {
+    return (
+      <div className="pop-mlot-action-bar" role="region" aria-label={t.issueIdle}>
+        <div className="pop-mlot-bar-text" data-tone="idle" aria-live="polite">
+          <span className="pop-mlot-bar-strong">{t.paused(state.done, state.total)}</span>
+          <span className="pop-mlot-bar-note">{t.pausedNote(state.remaining)}</span>
+        </div>
+        <div className="pop-mlot-bar-actions">
+          <button type="button" className="pop-mlot-bar-button" onClick={onStop}>
+            {t.stop}
+          </button>
+          <button type="button" className="pop-mlot-bar-primary" onClick={onResume}>
+            <PrintIcon />
+            {t.resume(state.next)}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (state.kind === 'done') {
     const isClean = state.unfinished === 0;
+    /*
+     * 일부러 멈춘 끝은 오류가 아니다 — 단위 사이에서 멈추는 것은 정상 흐름이다. 빨간 표시 없이 남은 장을
+     * 이어 찍을 수 있다는 것만 말한다(사용자 지시 2026-10-27). 실패가 하나라도 섞이면 `headline` 이 그 실패다.
+     */
+    const tone = isClean ? 'ok' : state.headline === 'stopped' ? 'idle' : 'error';
     const note =
       state.headline === null
         ? null
@@ -123,8 +164,8 @@ export const IssueBar = ({
 
     return (
       <div className="pop-mlot-action-bar" role="region" aria-label={t.issueIdle}>
-        <div className="pop-mlot-bar-text" data-tone={isClean ? 'ok' : 'error'} aria-live="polite">
-          {isClean ? null : (
+        <div className="pop-mlot-bar-text" data-tone={tone} aria-live="polite">
+          {tone !== 'error' ? null : (
             <span className="pop-mlot-bar-icon">
               <AlertIcon />
             </span>
@@ -170,9 +211,17 @@ export const IssueBar = ({
     : hasSelection
       ? t.issue(state.count)
       : t.issueIdle;
+  const unit = isReprint ? null : state.unit;
+  /* 고른 장수가 단위보다 많을 때만 「N장마다 멈춤」을 덧붙인다 — 한 단위 안이면 멈출 일이 없다. */
+  const unitNote = unit !== null && state.count > unit ? t.unit.note(unit) : null;
+  const supplierName = isReprint ? null : state.supplierName;
+  const pendingNote =
+    supplierName === null || unitNote === null
+      ? (supplierName ?? unitNote)
+      : `${supplierName} · ${unitNote}`;
   const note = isReprint
     ? (blockedReason ?? (reason === null ? tReprint.reasonPrompt : tReprint.summary(reason)))
-    : state.supplierName;
+    : pendingNote;
 
   return (
     <div className="pop-mlot-action-bar" role="region" aria-label={t.issueIdle}>
@@ -187,6 +236,26 @@ export const IssueBar = ({
         )}
       </div>
       <div className="pop-mlot-bar-actions">
+        {isReprint ? null : (
+          <div className="pop-mlot-units" role="group" aria-label={t.unit.label}>
+            <span className="pop-mlot-units-label" aria-hidden="true">
+              {t.unit.label}
+            </span>
+            {ISSUE_UNITS.map((each) => (
+              <button
+                key={each ?? 'all'}
+                type="button"
+                className="pop-mlot-unit"
+                aria-pressed={each === unit}
+                onClick={() => {
+                  onUnitChange(each);
+                }}
+              >
+                {each === null ? t.unit.all : t.unit.each(each)}
+              </button>
+            ))}
+          </div>
+        )}
         {hasSelection ? (
           <button type="button" className="pop-mlot-bar-button" onClick={onClear}>
             {t.clear}

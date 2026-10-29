@@ -23,15 +23,24 @@ describe('ITEM_ATTRS_FORM_FIELDS', () => {
     expect(ITEM_ATTRS_FORM_FIELDS).not.toContain('shelfLifeManaged');
   });
 
-  it('최신 계약의 편집 필드를 담는다', () => {
+  it('화면에 있는 편집 필드를 담는다', () => {
+    for (const field of ['defaultLotStorageUomId', 'defaultProductionLotSize', 'fifoPolicyCode']) {
+      expect(ITEM_ATTRS_FORM_FIELDS).toContain(field);
+    }
+  });
+
+  /* 화면에서 뺀 칸(사용자 지시 2026-10-28)의 서버 오류는 배너로 — 보이지 않는 칸에 붙이면 아무도 못 본다. */
+  it('화면에서 뺀 칸을 담지 않는다', () => {
     for (const field of [
       'nameKo',
       'nameVi',
       'developmentItem',
-      'defaultLotStorageUomId',
-      'defaultProductionLotSize',
+      'serialControlTypeCode',
+      'openedShelfLifeHours',
+      'storageConditionCode',
+      'lotControlled',
     ]) {
-      expect(ITEM_ATTRS_FORM_FIELDS).toContain(field);
+      expect(ITEM_ATTRS_FORM_FIELDS).not.toContain(field);
     }
   });
 });
@@ -62,28 +71,20 @@ describe('validateItemAttrsForm — 필수 코드', () => {
     expect(validateItemAttrsForm(base)).toEqual({});
   });
 
-  it.each(['serialControlTypeCode', 'fifoPolicyCode'] as const)(
-    '%s가 비면 필수 오류다',
-    (field) => {
-      expect(validateItemAttrsForm(withValues({ [field]: '' }))).toHaveProperty(field);
-    },
-  );
+  it.each(['fifoPolicyCode'] as const)('%s가 비면 필수 오류다', (field) => {
+    expect(validateItemAttrsForm(withValues({ [field]: '' }))).toHaveProperty(field);
+  });
 
-  it.each(['serialControlTypeCode', 'fifoPolicyCode'] as const)(
-    '%s가 공백만이면 필수 오류다',
-    (field) => {
-      expect(validateItemAttrsForm(withValues({ [field]: '   ' }))).toHaveProperty(field);
-    },
-  );
+  it.each(['fifoPolicyCode'] as const)('%s가 공백만이면 필수 오류다', (field) => {
+    expect(validateItemAttrsForm(withValues({ [field]: '   ' }))).toHaveProperty(field);
+  });
 
   /* 상한 자체는 허용값이며 그것을 넘을 때만 막는다. */
   it('코드 50자는 통과하고 51자는 막힌다', () => {
-    expect(validateItemAttrsForm(withValues({ serialControlTypeCode: 'a'.repeat(50) }))).toEqual(
-      {},
+    expect(validateItemAttrsForm(withValues({ fifoPolicyCode: 'a'.repeat(50) }))).toEqual({});
+    expect(validateItemAttrsForm(withValues({ fifoPolicyCode: 'a'.repeat(51) }))).toHaveProperty(
+      'fifoPolicyCode',
     );
-    expect(
-      validateItemAttrsForm(withValues({ serialControlTypeCode: 'a'.repeat(51) })),
-    ).toHaveProperty('serialControlTypeCode');
   });
 
   /*
@@ -137,57 +138,18 @@ describe('validateItemAttrsForm — 유효기한 조건부 필수 (M05)', () => 
   });
 });
 
-/**
- * M06 — `openedShelfLifeHours` 0을 거부한다.
- *
- * 계약이 `exclusiveMinimum: 0`으로 두었다 — `shelfLifeDays`의 `minimum: 0`과 **규칙이 다르다.**
- * 둘을 한 규칙으로 뭉치면 반드시 하나가 어긋난다.
- */
-describe('validateItemAttrsForm — 개봉 후 유효시간 (M06)', () => {
-  it('0을 거부한다', () => {
-    expect(validateItemAttrsForm(withValues({ openedShelfLifeHours: '0' }))).toHaveProperty(
-      'openedShelfLifeHours',
-    );
-  });
-
-  it('1은 통과한다', () => {
-    expect(validateItemAttrsForm(withValues({ openedShelfLifeHours: '1' }))).toEqual({});
-  });
-
-  /* 계약이 널을 허용한다 — 비우는 것이 정상 값이다. */
-  it('비우면 통과한다', () => {
-    expect(validateItemAttrsForm(withValues({ openedShelfLifeHours: '' }))).toEqual({});
-  });
-
-  it.each(['-1', '0.5', 'abc'])('%s는 막힌다', (value) => {
-    expect(validateItemAttrsForm(withValues({ openedShelfLifeHours: value }))).toHaveProperty(
-      'openedShelfLifeHours',
-    );
-  });
-
-  /* 같은 입력에서 두 필드의 답이 갈리는 것이 이 규칙의 핵심이다. */
-  it('0에 대해 유효기한(일)과 답이 갈린다', () => {
-    const values = withValues({
-      shelfLifeManaged: true,
-      shelfLifeDays: '0',
-      openedShelfLifeHours: '0',
-    });
-    const errors = validateItemAttrsForm(values);
-
-    expect(errors).not.toHaveProperty('shelfLifeDays');
-    expect(errors).toHaveProperty('openedShelfLifeHours');
-  });
-});
-
-describe('validateItemAttrsForm — 보관 조건', () => {
-  it('비우면 통과한다 — 계약이 널을 허용한다', () => {
-    expect(validateItemAttrsForm(withValues({ storageConditionCode: '' }))).toEqual({});
-  });
-
-  it('50자를 넘으면 막힌다', () => {
+/* 화면에서 뺀 칸은 화면이 검사하지 않는다 — 조회한 값을 그대로 되돌려 싣는다(사용자 지시 2026-10-28). */
+describe('validateItemAttrsForm — 화면에서 뺀 칸', () => {
+  it('시리얼 관리 유형 · 개봉 후 유효시간 · 보관 조건이 무엇이든 막지 않는다', () => {
     expect(
-      validateItemAttrsForm(withValues({ storageConditionCode: 'a'.repeat(51) })),
-    ).toHaveProperty('storageConditionCode');
+      validateItemAttrsForm(
+        withValues({
+          serialControlTypeCode: '',
+          openedShelfLifeHours: '0',
+          storageConditionCode: 'a'.repeat(51),
+        }),
+      ),
+    ).toEqual({});
   });
 });
 

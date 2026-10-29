@@ -79,6 +79,7 @@ describe('layoutColumns', () => {
       widths: { code: '120px', name: undefined, qty: '88px' },
       grow: 0,
       floor: 208,
+      fixed: 208,
     });
   });
 
@@ -87,6 +88,7 @@ describe('layoutColumns', () => {
       widths: { code: '200px', name: undefined, qty: '60px' },
       grow: 52,
       floor: 260,
+      fixed: 260,
     });
   });
 
@@ -95,6 +97,7 @@ describe('layoutColumns', () => {
       widths: { code: '120px', name: undefined, qty: '88px' },
       grow: 0,
       floor: 508,
+      fixed: 208,
     });
   });
 
@@ -111,6 +114,7 @@ describe('layoutColumns', () => {
       widths: { a: '100px', b: undefined, c: '90px' },
       grow: 0,
       floor: 340,
+      fixed: 190,
     });
   });
 });

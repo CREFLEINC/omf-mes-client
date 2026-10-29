@@ -13,6 +13,8 @@ export const common: Translated<typeof ko.common> = {
   confirm: 'Xác nhận',
   close: 'Đóng',
   clear: 'Xóa',
+  selectSearch: 'Tìm kiếm',
+  selectNoMatch: 'Không có mục phù hợp',
   deactivate: 'Ngừng sử dụng',
   saved: 'Đã lưu',
   created: 'Đã đăng ký',

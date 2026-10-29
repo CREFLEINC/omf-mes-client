@@ -15,22 +15,16 @@ const NON_NEGATIVE_INTEGER = /^\d+$/;
  * 배너로 올릴지 가르는 기준이며, 목록에 없는 필드명은 삼키지 않고 배너로 간다.
  *
  * **`isActive`가 없다.** 대응하는 입력칸이 화면에 없으므로 그 필드의 오류는 배너로 올린다 —
- * 보이지 않는 칸에 붙인 오류는 어디에도 표시되지 않는다.
+ * 보이지 않는 칸에 붙인 오류는 어디에도 표시되지 않는다. 화면에서 뺀 칸(다국어 명칭 · 시리얼 관리 유형 · 개발품 ·
+ * 개봉 후 유효시간 · 보관 조건 · LOT 관리 — 사용자 지시 2026-10-28)도 같다. 그 값은 조회한 값 그대로 되돌려 실리고 화면이 검사하지 않는다.
  */
 export const ITEM_ATTRS_FORM_FIELDS: readonly string[] = [
-  'nameKo',
-  'nameVi',
-  'developmentItem',
-  'lotControlled',
   'defaultLotStorageUomId',
   'defaultProductionLotSize',
-  'serialControlTypeCode',
   'shelfLifeDays',
   'inspectionRequired',
   'fifoPolicyCode',
   'negativeStockAllowed',
-  'storageConditionCode',
-  'openedShelfLifeHours',
 ];
 
 /**
@@ -48,13 +42,6 @@ export const ITEM_ATTRS_FORM_FIELDS: readonly string[] = [
  */
 export const validateItemAttrsForm = (values: ItemAttrsFormValues): Record<string, string> => {
   const errors: Record<string, string> = {};
-
-  /* LOT 관리 여부는 스위치라 비거나 길 수 없다 — 검사할 것이 없다. */
-  if (values.serialControlTypeCode.trim() === '') {
-    errors.serialControlTypeCode = t.required;
-  } else if (values.serialControlTypeCode.trim().length > CODE_MAX) {
-    errors.serialControlTypeCode = t.codeTooLong;
-  }
 
   if (values.fifoPolicyCode.trim() === '') {
     errors.fifoPolicyCode = t.required;
@@ -89,19 +76,6 @@ export const validateItemAttrsForm = (values: ItemAttrsFormValues): Record<strin
     } else if (!NON_NEGATIVE_INTEGER.test(shelfLifeDays)) {
       // 0은 허용값이다 — 계약 `minimum: 0`. 「비었다」로 다루지 않는다.
       errors.shelfLifeDays = t.shelfLifeDaysInvalid;
-    }
-  }
-
-  if (values.storageConditionCode.trim().length > CODE_MAX) {
-    errors.storageConditionCode = t.codeTooLong;
-  }
-
-  const openedShelfLifeHours = values.openedShelfLifeHours.trim();
-
-  if (openedShelfLifeHours !== '') {
-    // 계약 `exclusiveMinimum: 0` — **0은 불가**다. `shelfLifeDays`와 규칙이 다르다.
-    if (!NON_NEGATIVE_INTEGER.test(openedShelfLifeHours) || Number(openedShelfLifeHours) <= 0) {
-      errors.openedShelfLifeHours = t.openedShelfLifeHoursInvalid;
     }
   }
 

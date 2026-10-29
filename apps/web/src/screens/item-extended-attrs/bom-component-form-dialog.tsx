@@ -153,11 +153,6 @@ export const BomComponentFormDialog = ({
     >
       {banner}
 
-      {/* 없는 것을 찾다가 「화면이 빠뜨렸다」로 읽지 않게 한다. */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.dialog.originNotice}</AlertBanner>
-      </div>
-
       {body()}
     </Dialog>
   );

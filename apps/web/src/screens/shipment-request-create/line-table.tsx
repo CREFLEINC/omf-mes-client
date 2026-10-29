@@ -1,15 +1,7 @@
-import {
-  Button,
-  Checkbox,
-  Chip,
-  IconButton,
-  Select,
-  Table,
-  TextField,
-  type Column,
-} from '@crefle/web-ui';
+import { Button, Checkbox, Chip, IconButton, Table, TextField, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { Select } from '../../patterns/select';
 import { isShortageLine } from './shortage-banner';
 import {
   describeAvailableQty,
@@ -133,7 +125,9 @@ export const LineTable = ({
        *    ⛔ 지시서 경유는 품목이 지시서가 정한 값이라 바꿀 수 없다 — 누르는 자리를 두지 않는다.
        */
       render: (row, rowIndex) => {
-        const label = describeReference(itemNames.of(row.itemId === '' ? null : Number(row.itemId)));
+        const label = describeReference(
+          itemNames.of(row.itemId === '' ? null : Number(row.itemId)),
+        );
 
         if (isFromOrder) return label;
 

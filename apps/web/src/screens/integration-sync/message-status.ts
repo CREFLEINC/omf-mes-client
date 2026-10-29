@@ -1,24 +1,36 @@
 import type { ChipStatus } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { statusName } from './message-labels';
 import type { IntegrationMessageRow } from './types';
 import { toPlantDateTimeParts, type PlantDateTimeParts } from '../../patterns/plant-time';
 
 /**
  * 상태 열의 표시 산출 — 칩 하나와 보조 한 줄.
  *
- * 계약이 `statusCode`를 「공통코드 — 값 목록 미정」으로 두었다. **실서버의 어휘를 화면이 알 수 없다.**
- * 그래서 모르는 코드에는 이름을 붙이지 않고 코드 문자열을 그대로 낸다.
+ * 상태는 넷이다 — 대기(PENDING) · 처리 중(PROCESSING) · 완료(DONE) · 실패(FAILED)(계약 확정 · 공통코드
+ * INTEGRATION_MESSAGE_STATUS). 이름은 `message-labels.ts` 가 붙이고, 모르는 코드는 코드 그대로 · 색 없이 낸다.
  *
  * 시각 표기도 여기 둔다 — 표·상세가 쓰는 유일한 날짜 표기 지점이라 규칙이 한 곳에 있어야 한다.
  */
 
 const t = messages.integrationSync;
 
-/**
- * 목 서버·계약 예시에서 확인된 값. 확정되면 **이 상수만** 채운다 — 값을 지어내지 않는다.
- */
-export const KNOWN_STATUS = { failed: 'FAILED' } as const;
+/** 계약이 확정한 상태 넷. */
+export const KNOWN_STATUS = {
+  pending: 'PENDING',
+  processing: 'PROCESSING',
+  done: 'DONE',
+  failed: 'FAILED',
+} as const;
+
+/** 상태 칩의 색 — 완료는 초록, 실패는 빨강, 처리 중은 파랑, 대기는 회색. */
+const TONE: Readonly<Record<string, ChipStatus>> = {
+  [KNOWN_STATUS.pending]: 'idle',
+  [KNOWN_STATUS.processing]: 'info',
+  [KNOWN_STATUS.done]: 'success',
+  [KNOWN_STATUS.failed]: 'error',
+};
 
 export interface StatusView {
   /** 디자인 시스템 `Chip`의 상태. 모르는 코드는 색을 정하지 않는다. */
@@ -79,12 +91,8 @@ const toNote = (row: IntegrationMessageRow, now: Date): string | null => {
   return null;
 };
 
-export const toStatusView = (row: IntegrationMessageRow, now: Date): StatusView => {
-  const isFailed = row.statusCode === KNOWN_STATUS.failed;
-
-  return {
-    tone: isFailed ? 'error' : 'idle',
-    label: isFailed ? t.status.failed : row.statusCode,
-    note: toNote(row, now),
-  };
-};
+export const toStatusView = (row: IntegrationMessageRow, now: Date): StatusView => ({
+  tone: TONE[row.statusCode] ?? 'idle',
+  label: statusName(row.statusCode),
+  note: toNote(row, now),
+});

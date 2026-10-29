@@ -103,6 +103,9 @@ export const ItemPanel = ({
     {planVersion?.samplingRatio != null && (
       <p className="field-note">{tDetail.sample(planVersion.samplingRatio)}</p>
     )}
+    {planVersion?.samplingQty != null && (
+      <p className="field-note">{tDetail.sampleQty(planVersion.samplingQty)}</p>
+    )}
 
     {/* ⭐ 무엇이 남았는지가 이 구획의 정보다(§3 「진행 2 / 3」). */}
     <p className="field-note">{t.progress(judgedCount(rows, drafts), rows.length)}</p>
