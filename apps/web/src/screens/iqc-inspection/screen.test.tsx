@@ -1107,6 +1107,27 @@ describe('IqcInspectionScreen', () => {
     expect(screen.queryByLabelText(new RegExp(t.result.judgmentChange.reason))).toBeNull();
   });
 
+  it('자동으로 채운 합격은 근거가 사라지면 비운다 — 보류가 있는 채 합격으로 확정되지 않게(#197 리뷰)', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: null,
+    };
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      { ...draftRound, acceptedQty: 0, rejectedQty: 0, heldQty: 0, overallJudgmentCode: '' },
+    ]);
+
+    await findRound(1);
+    await completeQuantities('500', '0', '0');
+    await waitFor(async () => expect(await judgmentField()).toHaveTextContent(/^합격/));
+
+    await completeQuantities('496', '0', '4');
+
+    await waitFor(async () =>
+      expect(await judgmentField()).toHaveTextContent(t.result.judgmentPlaceholder),
+    );
+  });
+
   it('「기준 조회」는 화면을 옮기지 않고 창으로 기준을 보인다 — [수정]은 창 안에 있다(#197)', async () => {
     samplingVersion = {
       samplingMethodCode: 'FULL_INSPECTION',

@@ -47,7 +47,12 @@ import {
 import { PageNav } from '../../patterns/page-nav';
 import { withDraft, withStatus } from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from './load-error-banner';
-import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
+import {
+  EMPTY_QUANTITY_DRAFT,
+  formatMicro,
+  toSendableNumber,
+  type QuantityDraft,
+} from './quantity-draft';
 import { toPageView } from './pagination';
 import { ClosedSummary } from './closed-summary';
 import { CODE_GROUPS, toCodeOptions } from './code-options';
@@ -86,7 +91,7 @@ import {
   needsJudgmentChangeReason,
 } from './judgment-change';
 import { RejectedLotGuide } from './rejected-lot-guide';
-import { DefectRows, defectSumOf } from './defect-rows';
+import { DefectRows, defectSumOf, hasInvalidDefectQty } from './defect-rows';
 import {
   EMPTY_DEFECT,
   defectDraftOf,
@@ -251,6 +256,11 @@ const IqcInspectionScreenBody = () => {
   const judgmentOptions = toCodeOptions(judgmentValues.data ?? []);
 
   const [judgment, setJudgment] = useState('');
+  /*
+   * 화면이 자동으로 채운 판정 — 근거가 사라지면(예: 전량 합격 뒤 보류를 넣음) 그 판정을 비워 사람이 고르게 한다. 사람이 고른
+   * 판정은 건드리지 않는다(#197 리뷰).
+   */
+  const autoFilledJudgment = useRef<string | null>(null);
 
   /** 방금 확정했는가. **상태가 아니라 결과다** — 고른 의뢰가 바뀌면 지워진다. */
   const [isJustConfirmed, setIsJustConfirmed] = useState(false);
@@ -379,6 +389,7 @@ const IqcInspectionScreenBody = () => {
      * 회차를 만든다. 고른 의뢰가 바뀔 때 풀리는 것도 같은 자리다.
      */
     setIsReinspecting(false);
+    autoFilledJudgment.current = null;
     setJudgment(storedJudgment);
     setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
   }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
@@ -640,12 +651,21 @@ const IqcInspectionScreenBody = () => {
   /* 불량 내역 합계 → 불합격 수량 칸의 글. 0 이면 비운다. */
   const rejectedTextOf = (rows: readonly DefectDraft[]): string => {
     const sum = defectSumOf(rows);
-    return sum > 0 ? String(sum) : '';
+    return sum > 0n ? formatMicro(sum) : '';
+  };
+  const applyAutoJudgment = (next: QuantityDraft): void => {
+    const expected = isOpenRound ? autoJudgmentOf(next, acceptanceNumber, inspectedQty) : null;
+    if (expected !== null) {
+      autoFilledJudgment.current = expected;
+      setJudgment(expected);
+    } else if (autoFilledJudgment.current !== null && judgment === autoFilledJudgment.current) {
+      autoFilledJudgment.current = null;
+      setJudgment('');
+    }
   };
   const changeDraftAndJudge = (next: QuantityDraft): void => {
     changeDraft(next);
-    const expected = isOpenRound ? autoJudgmentOf(next, acceptanceNumber, inspectedQty) : null;
-    if (expected !== null) setJudgment(expected);
+    applyAutoJudgment(next);
   };
   /* 수량 옆 단위 코드(표시 전용). 회차는 의뢰의 단위로 저장되므로(저장 요청의 `uomId`) 의뢰 단위 하나를 쓴다. */
   const uoms = useUomLookup();
@@ -715,13 +735,22 @@ const IqcInspectionScreenBody = () => {
     const unknownOnServer =
       (editingResultId !== null && restoredFor.current !== editingResultId) ||
       (restoredTextOnly.current && rows.length === 0);
-    const defectsBody = unknownOnServer ? undefined : rows;
-    pendingHasDefects.current = unknownOnServer ? savedHasDefects : rows.length > 0;
+    /*
+     * ⛔ 불합격인데 불량 줄이 덜 채워졌으면(코드 · 수량) 불량 키를 싣지 않는다 — 빈 배열을 실으면 서버가 이 회차의 기록을
+     * 지운다(#197 리뷰). 적던 줄은 화면에 그대로 둔다.
+     */
+    const defectsIncomplete = isRejected && hasDefects && 'blocked' in resolvedDefects;
+    const defectsBody = unknownOnServer || defectsIncomplete ? undefined : rows;
+    pendingHasDefects.current = unknownOnServer
+      ? savedHasDefects
+      : defectsIncomplete || rows.length > 0;
     pendingDefects.current = unknownOnServer
       ? savedDefects
-      : rows.length === 0
-        ? [EMPTY_DEFECT]
-        : defects;
+      : defectsIncomplete
+        ? defects
+        : rows.length === 0
+          ? [EMPTY_DEFECT]
+          : defects;
     savingNewRound.current = editingResultId === null;
     save.write({
       inspectionRequestId,
@@ -843,6 +872,8 @@ const IqcInspectionScreenBody = () => {
         />
       ) : (
         <ResultFormPane
+          /* 의뢰마다 단계 진행 · 펼침을 새로 시작한다 — 앞 의뢰의 진행이 남지 않게(#197 리뷰). */
+          key={selectedId}
           /*
            * ⭐ 재검사 중에는 **회차를 넘기지 않는다.** 넘기면 그 회차가 확정본이라 칸이
            * 잠긴 채로 남는다 — 지금 쓰는 것은 확정본이 아니라 «아직 없는 새 회차»다.
@@ -872,7 +903,10 @@ const IqcInspectionScreenBody = () => {
           judgmentOptions={judgmentOptions}
           judgment={judgment}
           /* 불량 내역은 검사 수량 단계의 것이라 판정을 바꿔도 지우지 않는다(#197) — 불합격이 아니면 싣지 않을 뿐이다. */
-          onJudgmentChange={setJudgment}
+          onJudgmentChange={(code) => {
+            autoFilledJudgment.current = null;
+            setJudgment(code);
+          }}
           onConfirm={() => {
             const rows = rejectionRows();
             confirm.write({
@@ -954,20 +988,9 @@ const IqcInspectionScreenBody = () => {
                   : null
           }
           /* ① 수량 [확정]으로 판정 단계로 넘어가며 최종 판정을 자동으로 채운다 — 채울 것이 없으면 그대로 둔다(사용자 지시 2026-10-29). */
-          onQtyConfirm={() => {
-            const expected = isOpenRound
-              ? autoJudgmentOf(draft, acceptanceNumber, inspectedQty)
-              : null;
-            if (expected !== null) setJudgment(expected);
-          }}
+          onQtyConfirm={() => applyAutoJudgment(draft)}
           /* 불량 수량에 수량이 아닌 값이 있으면 합계를 셀 수 없다고 보인다(표시 전용 · #197). */
-          rejectedUncountable={
-            hasDefects &&
-            defects.some((row) => {
-              const raw = row.qty.trim();
-              return raw !== '' && !(Number.isFinite(Number(raw)) && Number(raw) >= 0);
-            })
-          }
+          rejectedUncountable={hasDefects && hasInvalidDefectQty(defects)}
           /* 좌우 · 상하 배치 모두 수량 · 판정을 한 줄로(좁으면 위아래 · 사용자 지시 2026-10-27 · #185). */
           inlineJudgment
           hasJudgmentDetail={needsChangeReason}

@@ -5,6 +5,7 @@ import { useId, useState, type ReactNode } from 'react';
 
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
+import { toMicro, toSendableNumber } from './quantity-draft';
 import { SearchableSelect } from './searchable-select';
 
 const t = messages.iqcInspection.result.rejection;
@@ -153,10 +154,10 @@ export const resolveDefects = (
   for (const draft of drafts) {
     const code = resolveDefectCode(codes, draft);
     if ('blocked' in code) return code;
-    const qty = Number(draft.qty.trim());
-    if (draft.qty.trim() === '' || !Number.isFinite(qty) || qty <= 0) {
-      return { blocked: t.defectQtyRequired };
-    }
+    /* 수량 칸과 같은 규칙(0 이상 · 소수 여섯 자리)으로 읽는다 — `Number` 는 「1e3」 · 「0x10」도 받는다. */
+    const micro = toMicro(draft.qty);
+    if (micro === null || micro <= 0n) return { blocked: t.defectQtyRequired };
+    const qty = toSendableNumber(draft.qty);
     rows.push({
       defectCodeId: code.defectCodeId,
       defectQty: qty,

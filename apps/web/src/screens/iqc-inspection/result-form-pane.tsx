@@ -317,8 +317,15 @@ export const ResultFormPane = ({
     /* [확정]으로 도달한 가장 뒤 단계 — 그 단계까지만 보인다. */
     reached: number;
   }>({ roundKey, view: null, qtyConfirmed: false, reached: 1 });
-  /* 회차가 바뀌면 처음부터 — 단, 첫 임시 저장으로 회차가 막 생긴 것(«new» → 회차)은 같은 회차라 진행을 잇는다. */
-  if (progress.roundKey === 'new' && roundKey !== 'new' && roundKey !== 'reinspect') {
+  /*
+   * 회차가 바뀌면 처음부터 — 단, 첫 임시 저장으로 회차가 막 생긴 것(«new» · 재검사 → 회차)은 같은 회차라 진행을 잇는다.
+   * 다른 의뢰로 옮기면 부르는 쪽이 이 구획을 새로 그린다(`key`).
+   */
+  if (
+    (progress.roundKey === 'new' || progress.roundKey === 'reinspect') &&
+    roundKey !== 'new' &&
+    roundKey !== 'reinspect'
+  ) {
     setProgress({ ...progress, roundKey });
   }
   const sameRound = progress.roundKey === roundKey || progress.roundKey === 'new';

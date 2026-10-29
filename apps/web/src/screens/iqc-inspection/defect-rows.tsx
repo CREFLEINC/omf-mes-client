@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { FieldLabel, unitSuffix } from './field-label';
-import { dropLeadingZeros } from './quantity-draft';
+import { dropLeadingZeros, toMicro } from './quantity-draft';
 import { EMPTY_DEFECT, RejectionReason, type DefectDraft } from './rejection-reason';
 
 const t = messages.iqcInspection.result.rejection;
@@ -12,12 +12,16 @@ const t = messages.iqcInspection.result.rejection;
 type DefectCode = components['schemas']['DefectCode'];
 type CauseCode = components['schemas']['CauseCode'];
 
-/** 불량 내역 수량의 합 — 불합격 수량이 된다(#197). 수가 아닌 칸은 세지 않는다. */
-export const defectSumOf = (rows: readonly DefectDraft[]): number =>
-  rows.reduce((total, row) => {
-    const qty = Number(row.qty.trim());
-    return Number.isFinite(qty) ? total + qty : total;
-  }, 0);
+/**
+ * 불량 내역 수량의 합(마이크로 단위) — 불합격 수량이 된다(#197). 수량이 아닌 칸은 세지 않는다(화면이 「수량 확인 필요」로
+ * 따로 알린다). 부동소수로 더하면 0.1 + 0.2 가 소수 일곱 자리 넘는 값이 되어 수량 칸이 막힌다.
+ */
+export const defectSumOf = (rows: readonly DefectDraft[]): bigint =>
+  rows.reduce((total, row) => total + (toMicro(row.qty) ?? 0n), 0n);
+
+/** 불량 수량 칸에 수량이 아닌 값이 있는가 — 빈 칸은 아직 안 적은 것이라 세지 않는다. */
+export const hasInvalidDefectQty = (rows: readonly DefectDraft[]): boolean =>
+  rows.some((row) => row.qty.trim() !== '' && toMicro(row.qty) === null);
 
 export interface DefectRowsProps {
   /** 「불량 등록」 체크 — 켜야 불량 내역 줄이 선다. */

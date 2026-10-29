@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { DefectRows } from './defect-rows';
+import { DefectRows, defectSumOf, hasInvalidDefectQty } from './defect-rows';
 import { EMPTY_DEFECT, resolveDefects, type DefectDraft } from './rejection-reason';
 
 const t = messages.iqcInspection.result.rejection;
@@ -29,9 +29,32 @@ describe('resolveDefects', () => {
     expect(resolveDefects(codes, [row('1', '2')], 3)).toEqual({ blocked: t.defectSumMismatch });
   });
 
+  it('수량 칸과 같은 규칙으로 읽는다 — 「1e3」 · 「0x10」은 수량이 아니다', () => {
+    expect(resolveDefects(codes, [row('1', '1e3')], 0)).toEqual({ blocked: t.defectQtyRequired });
+    expect(resolveDefects(codes, [row('1', '0x10')], 0)).toEqual({ blocked: t.defectQtyRequired });
+    expect(resolveDefects(codes, [row('1', '0.1'), row('3', '0.2')], 0.3)).toEqual({
+      rows: [
+        { defectCodeId: 1, defectQty: 0.1, defectDescription: null },
+        { defectCodeId: 3, defectQty: 0.2, defectDescription: null },
+      ],
+    });
+  });
+
   it('수량이 비거나 코드가 비면 막는다', () => {
     expect(resolveDefects(codes, [row('1', '')], 3)).toEqual({ blocked: t.defectQtyRequired });
     expect(resolveDefects(codes, [row('', '3')], 3)).toEqual({ blocked: t.required });
+  });
+});
+
+describe('defectSumOf', () => {
+  it('소수도 정확히 더한다 — 부동소수 오차로 수량 칸이 막히지 않게(#197 리뷰)', () => {
+    expect(defectSumOf([row('1', '0.1'), row('3', '0.2')])).toBe(300_000n);
+  });
+
+  it('수량이 아닌 칸은 세지 않고, 그런 칸이 있는지 따로 알린다', () => {
+    expect(defectSumOf([row('1', '2'), row('3', '1e3')])).toBe(2_000_000n);
+    expect(hasInvalidDefectQty([row('1', '2'), row('3', '1e3')])).toBe(true);
+    expect(hasInvalidDefectQty([row('1', '2'), row('3', '')])).toBe(false);
   });
 });
 
