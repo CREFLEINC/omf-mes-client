@@ -38,6 +38,7 @@ const connection = (overrides: Partial<ZaloConnection> = {}): ZaloConnection => 
   paramMaxLength: 100,
   templates: CODES.map((eventCode) => ({ eventCode, templateId: null })),
   deliveryEnabled: true,
+  handoverTemplates: [],
   ...overrides,
 });
 

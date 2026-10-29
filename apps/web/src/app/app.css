@@ -23892,11 +23892,13 @@ body.col-reordering * {
  * 상하 배치 — 목록이 위, 상세가 아래. 가운데 폭 막대는 감춘다. 목록은 정해진 높이 안에서 구르고(머리줄 고정),
  * 상세는 내용 높이로 아래로 이어진다(쪽 전체가 구른다).
  */
-.po-board-split.inspection-split.is-stacked {
+.po-board-split.inspection-split.is-stacked,
+.po-board-split.inspection-split.is-stacked:has(> .po-board-gutter) {
   grid-template-columns: minmax(0, 1fr);
   /*
    * 줄 높이는 내용대로 — 넓은 창의 「목록 2 : 상세 3」 비율(.po-board-split.is-stacked)을 쓰지 않는다. 그 비율이 남으면
-   * 둘째 줄을 높이 막대가 차지해 막대 아래에 큰 빈 칸이 생긴다(#197).
+   * 둘째 줄을 높이 막대가 차지해 막대 아래에 큰 빈 칸이 생긴다(#197). 1440px 이상의 그 규칙은
+   * `.po-board-split.is-stacked:has(> .po-board-gutter)`로도 걸려, 같은 꼴의 선택자를 더해 이긴다(LOT 생산 이력 조회 #73).
    */
   grid-template-rows: none;
   align-items: start;
@@ -25518,7 +25520,7 @@ button.iqc-inspection-step-toggle:focus-visible {
   min-width: 0;
 }
 
-/* ── W-02-09 LOT 추적(입출고 현황) ────────────────────────────────────── */
+/* ── W-02-09 LOT 생산 이력 조회(입출고 현황) ────────────────────────────────────── */
 .lot-trace-kinds {
   display: inline-flex;
   align-items: center;
@@ -25591,6 +25593,43 @@ button.iqc-inspection-step-toggle:focus-visible {
   margin: var(--space-3) 0;
 }
 
+.lot-trace-toolbar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+/* 상세 조건 펼치기 단추 — 글 오른쪽에 펼침 화살표. */
+.lot-trace-more-toggle {
+  gap: var(--space-1);
+}
+
+/* 상세 조건이 접혀 있는데 그 안의 조건이 걸려 있을 때 한 줄로 알린다. */
+/* 기간별 이력에서 고른 줄에 LOT이 여럿일 때 상세 머리의 LOT 고르기 줄. */
+.lot-trace-lot-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.lot-trace-lot-picker > .field-label {
+  margin: 0;
+}
+
+.lot-trace-hidden-summary {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
 .lot-trace-toolbar-start {
   display: flex;
   flex-wrap: wrap;
@@ -25601,18 +25640,6 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 .lot-trace-list-pane {
   margin-top: var(--space-4);
-}
-
-/* 진입점이 없을 때 [조회] 아래 사유 한 줄(C-4) */
-.lot-trace-actions-cell {
-  align-items: flex-end;
-}
-
-.lot-trace-entry-reason {
-  margin-top: var(--space-1);
-  font: var(--type-body-sm);
-  color: var(--on-surface-variant);
-  white-space: nowrap;
 }
 
 .lot-trace-filter-more {
@@ -25646,8 +25673,18 @@ button.iqc-inspection-step-toggle:focus-visible {
   min-height: 0;
 }
 
-/* DS 표가 자기 감싸개(가로 넘침용)를 두므로, 세로로 구르는 상자도 그 감싸개가 맡아야 머리줄이 붙는다. */
+/*
+ * DS 표가 자기 감싸개(가로 넘침용)를 두므로, 세로로 구르는 상자도 그 감싸개가 맡아야 머리줄이 위에 붙는다
+ * (검사 조회·판정 목록의 `.iqc-inspection-queue-rows > div` 와 같은 방법).
+ */
 .lot-trace-list-rows > .selectable-table {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.lot-trace-list-rows > .selectable-table > div {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
@@ -26029,17 +26066,6 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 [data-status='pending'] .lot-trace-stage-jump {
   color: var(--on-surface-muted);
-}
-
-.lot-trace-chip-anchor {
-  display: inline-flex;
-}
-
-.lot-trace-stage-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  white-space: nowrap;
 }
 
 /*

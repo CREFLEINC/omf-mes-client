@@ -458,8 +458,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/production/lot-trace',
         icon: 'timeline',
-        label: 'LOT 추적',
-        labelVi: 'Truy xuất LOT',
+        label: 'LOT 생산 이력 조회',
+        labelVi: 'Tra cứu lịch sử sản xuất LOT',
       },
       /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
       {
