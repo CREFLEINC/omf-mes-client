@@ -22076,6 +22076,11 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   flex: 0 0 auto;
 }
 
+/* 새 검사표 기준 팝업 — 품목 · 사업부 · 출력 양식을 한 열 같은 폭으로 쌓는다(사용자 지시 · #208). */
+.inspection-sheet-template-basic-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* 조회 카드(#208) — 검사 기준 탭과 같은 한 줄: 조건들 → (오른쪽) 조회 · 초기화 | 새 기준 등록. 카드 안 줄의 아래 여백은 걷는다. */
 .inspection-sheet-template-search > .filter-bar {
   margin-bottom: 0;
@@ -22264,13 +22269,6 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   .inspection-sheet-template-grid {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-.inspection-sheet-template-pick {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
 }
 
 /* RoHS 체크는 입력칸 줄에 맞춰 선다(라벨 높이만큼 내린다). */

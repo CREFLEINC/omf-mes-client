@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon, SearchInput } from '@crefle/web-ui';
 import type { InspectionSheetLayoutCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
@@ -42,7 +42,7 @@ export const TemplateBasicDialog = ({
   onConfirm,
   onCancel,
 }: TemplateBasicDialogProps) => {
-  const ids = { bu: useId(), layout: useId() };
+  const ids = { item: useId(), bu: useId(), layout: useId() };
   const [values, setValues] = useState<TemplateBasics>(initial);
   const [itemError, setItemError] = useState('');
   const [isPicking, setIsPicking] = useState(false);
@@ -81,21 +81,29 @@ export const TemplateBasicDialog = ({
           </>
         }
       >
-        <div className="form-grid">
+        {/* 세 칸을 한 열로 같은 폭에 쌓는다(사용자 지시 · #208). */}
+        <div className="form-grid inspection-sheet-template-basic-grid">
+          {/* 품목 — 조회 줄의 「품목 검색」과 같은 칸: 누르거나 엔터를 치면 품목 선택 창이 열린다. */}
           <div className="field-cell">
             <span className="field-label">
-              {t.editor.model}
+              <label htmlFor={ids.item}>{t.editor.model}</label>
               <Required />
             </span>
-            <div className="inspection-sheet-template-pick">
-              <span className="inspection-sheet-ellipsis" title={values.itemLabel || undefined}>
-                {values.itemLabel || '—'}
-              </span>
-              <Button variant="outlined" onClick={() => setIsPicking(true)}>
-                {t.editor.pickModel}
-              </Button>
-            </div>
-            {itemError !== '' && <span className="field-error">{itemError}</span>}
+            <SearchInput
+              id={ids.item}
+              fullWidth
+              placeholder={t.list.modelPlaceholder}
+              value={values.itemLabel}
+              readOnly
+              title={values.itemLabel === '' ? undefined : values.itemLabel}
+              aria-haspopup="dialog"
+              clearLabel={t.list.modelClear}
+              error={itemError === '' ? undefined : itemError}
+              onClick={() => setIsPicking(true)}
+              onSearch={() => setIsPicking(true)}
+              onChange={() => undefined}
+              onClear={() => setValues((prev) => ({ ...prev, itemId: null, itemLabel: '' }))}
+            />
           </div>
           <div className="field-cell">
             <span className="field-label">
@@ -134,8 +142,12 @@ export const TemplateBasicDialog = ({
                 }))
               }
             />
-            <span className="field-note">{t.editor.layoutNote}</span>
           </div>
+          {/* 양식 안내 — 안내 알약(아이콘 + 한 줄 · 사용자 시안 · #208). */}
+          <p className="inspection-standard-notice-label">
+            <Icon name="info" size={18} aria-hidden />
+            {t.editor.layoutNote}
+          </p>
         </div>
       </Dialog>
 
