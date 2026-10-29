@@ -42,8 +42,7 @@ export const defectCauseCode = {
   groupHeaderOrphan: '상위를 찾을 수 없는 코드',
   categoryWarning:
     '대분류는 전사에서 공통으로 쓰는 축입니다. 추가하면 모든 현장에서 함께 쓰이므로 신중히 정하세요.',
-  parentListProvisional:
-    '대분류 목록은 아직 임시입니다. 확정되면 이 항목의 선택지가 바뀔 수 있습니다.',
+  parentListProvisional: '대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.',
   empty: {
     codeNoneTitle: '아직 등록된 코드가 없습니다',
     codeNoneDescription: '「대분류 추가」로 첫 대분류를 등록하세요.',
@@ -105,11 +104,13 @@ export const defectCauseCode = {
   },
   /** 등록 · 수정 창(#209). 닫기는 「취소」로 한다. */
   dialog: {
-    createCategoryTitle: (tab: string): string => `${tab} 대분류 추가`,
-    createChildTitle: (tab: string): string => `${tab} 상세 추가`,
+    createCategoryTitle: (tab: string): string => `대분류 ${tab} 추가`,
+    createChildTitle: (tab: string): string => `상세 ${tab} 추가`,
     editTitle: (tab: string): string => `${tab} 수정`,
-    codePlaceholder: '코드를 입력하세요',
-    namePlaceholder: '명칭을 입력하세요',
+    codePlaceholder: '코드 입력',
+    /** 이름 칸 입력 안내 — 탭마다 「불량명 입력」 · 「원인명 입력」(사용자 시안 · #209) */
+    defectNamePlaceholder: '불량명 입력',
+    causeNamePlaceholder: '원인명 입력',
   },
   values: {
     active: '사용 중',

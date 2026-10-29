@@ -306,6 +306,17 @@ main > * + * {
   padding-inline-end: var(--space-6);
 }
 
+/* 등록 · 수정 창(#209 · 사용자 시안) — 상위 대분류는 줄 전체 폭, 안내는 정보 아이콘 + 한 줄. */
+.defect-cause-form-grid > .defect-cause-form-wide {
+  grid-column: 1 / -1;
+}
+
+.defect-cause-info-note {
+  justify-self: start;
+  align-self: flex-start;
+  margin-top: var(--space-2);
+}
+
 .defect-cause-head-actions {
   display: flex;
   flex-wrap: wrap;

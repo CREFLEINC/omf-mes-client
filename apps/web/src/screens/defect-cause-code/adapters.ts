@@ -47,6 +47,8 @@ export interface CodeLabels {
   /** 표 머리의 코드 · 이름 칸(#209) */
   listCode: string;
   listName: string;
+  /** 등록 · 수정 창의 이름 칸 입력 안내 */
+  namePlaceholder: string;
   parent: string;
   searchLabel: string;
   searchPlaceholder: string;
@@ -182,6 +184,7 @@ export const defectCodeAdapter: CodeAdapter = {
     parent: t.fields.parent,
     searchLabel: t.filters.defectSearchLabel,
     searchPlaceholder: t.filters.defectSearchPlaceholder,
+    namePlaceholder: t.dialog.defectNamePlaceholder,
   },
   fetchList: async (client, filters) => {
     const data = await runRequest(() =>
@@ -267,6 +270,7 @@ export const causeCodeAdapter: CodeAdapter = {
     parent: t.fields.parent,
     searchLabel: t.filters.causeSearchLabel,
     searchPlaceholder: t.filters.causeSearchPlaceholder,
+    namePlaceholder: t.dialog.causeNamePlaceholder,
   },
   fetchList: async (client, filters) => {
     const data = await runRequest(() =>

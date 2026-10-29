@@ -68,9 +68,7 @@ describe('CodeFormPane — 입력칸', () => {
     renderPane();
 
     expect(
-      screen.getByText(
-        '대분류 목록은 아직 임시입니다. 확정되면 이 항목의 선택지가 바뀔 수 있습니다.',
-      ),
+      screen.getByText('대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.'),
     ).toBeInTheDocument();
   });
 
@@ -180,15 +178,23 @@ describe('CodeFormPane — 창 모양 (#209)', () => {
   it('입력 안내가 칸 안에 보인다', () => {
     renderPane();
 
-    expect(screen.getByPlaceholderText('코드를 입력하세요')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('명칭을 입력하세요')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('코드 입력')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('불량명 입력')).toBeInTheDocument();
   });
 
-  it('비어 있는 필수 칸은 글을 띄우지 않고 테두리만 빨갛게 한다', () => {
+  it('처음 열 때는 빨간 테두리 없이 필수 표시만 붙인다', () => {
+    renderPane();
+
+    expect(screen.getByLabelText('코드')).not.toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('명칭')).not.toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getAllByText('*').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('비운 채 저장하면 그 칸은 글을 띄우지 않고 테두리만 빨갛게 한다', () => {
     renderPane({ fieldErrors: { code: '필수 입력 항목입니다.' } });
 
     expect(screen.getByLabelText('코드')).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByLabelText('명칭')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('명칭')).not.toHaveAttribute('aria-invalid', 'true');
     for (const node of screen.queryAllByText('필수 입력 항목입니다.')) {
       expect(node.closest('.inspection-standard-border-only')).not.toBeNull();
     }

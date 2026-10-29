@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
@@ -25,6 +25,8 @@ export interface CodeFormPaneProps {
   parentOptions: CodeOption[];
   /** null이 아니면 상위 선택칸을 잠그고 이 사유를 낸다(차단 R3의 1차 방어) */
   parentLockReason: string | null;
+  /** 상위 대분류에 필수 표시를 붙이는가 — 상세를 추가 · 수정할 때(사용자 시안 · #209). 저장 규칙은 그대로다 */
+  parentRequired?: boolean;
   isDirty: boolean;
   isSaving: boolean;
   onSave: () => void;
@@ -48,6 +50,7 @@ export const CodeFormPane = ({
   codeLockReason,
   parentOptions,
   parentLockReason,
+  parentRequired = false,
   isDirty,
   isSaving,
   onSave,
@@ -57,6 +60,8 @@ export const CodeFormPane = ({
   const parentErrorId = `${parentId}-error`;
   const parentLockId = `${parentId}-lock`;
   const parentNoteId = `${parentId}-note`;
+  const codeId = useId();
+  const nameId = useId();
 
   const parentError = fieldErrors.parentId;
   const describedBy = [
@@ -74,16 +79,30 @@ export const CodeFormPane = ({
   const showCategoryWarning = mode === 'create' && values.parentId === '';
 
   /*
-   * 비어 있는 필수 칸은 처음부터 테두리만 빨갛게 한다 — 「필수 입력 항목입니다」 글은 화면에 띄우지 않고
-   * 화면 읽기로만 남긴다(검사 기준 탭과 같다 · #196). 다른 오류(중복 · 형식)는 글로 낸다.
+   * 처음 열 때는 테두리를 빨갛게 하지 않는다 — 필수는 이름 옆 「*」로 알린다(사용자 시안 · #209).
+   * 비운 채 저장하면 그 칸 테두리만 빨갛게 하고 「필수 입력 항목입니다」 글은 화면 읽기로만 남긴다.
+   * 다른 오류(중복 · 형식)는 글로 낸다.
    */
-  const requiredText = (key: 'code' | 'name', value: string, locked: boolean) => {
+  const requiredText = (key: 'code' | 'name') => {
     const error = fieldErrors[key];
-    if (error !== undefined && error !== t.validation.required) return { error };
-    return !locked && value.trim() === ''
-      ? { error: t.validation.required, containerClassName: 'inspection-standard-border-only' }
-      : {};
+    if (error === undefined) return {};
+    return error === t.validation.required
+      ? { error, containerClassName: 'inspection-standard-border-only' }
+      : { error };
   };
+
+  /** 이름 옆 빨간 「*」 — 화면 읽기는 `aria-required` 로 듣는다(라벨 이름에 섞지 않는다). */
+  const fieldLabel = (htmlFor: string, label: string, required: boolean) => (
+    <span className="field-label">
+      <label htmlFor={htmlFor}>{label}</label>
+      {required && (
+        <span className="required-mark" aria-hidden="true">
+          {' '}
+          *
+        </span>
+      )}
+    </span>
+  );
 
   return (
     <Dialog
@@ -114,34 +133,39 @@ export const CodeFormPane = ({
       )}
 
       <div className="form-grid defect-cause-form-grid">
-        <TextField
-          label={adapter.labels.code}
-          placeholder={t.dialog.codePlaceholder}
-          value={values.code}
-          onChange={(event) => onChange({ code: event.target.value })}
-          disabled={codeLockReason !== null}
-          disabledReason={codeLockReason}
-          aria-required
-          {...requiredText('code', values.code, codeLockReason !== null)}
-        />
+        <div className="field-cell">
+          {fieldLabel(codeId, adapter.labels.code, true)}
+          <TextField
+            id={codeId}
+            placeholder={t.dialog.codePlaceholder}
+            value={values.code}
+            onChange={(event) => onChange({ code: event.target.value })}
+            disabled={codeLockReason !== null}
+            disabledReason={codeLockReason}
+            aria-required
+            {...requiredText('code')}
+          />
+        </div>
 
-        <TextField
-          label={adapter.labels.name}
-          placeholder={t.dialog.namePlaceholder}
-          value={values.name}
-          onChange={(event) => onChange({ name: event.target.value })}
-          aria-required
-          {...requiredText('name', values.name, false)}
-        />
+        <div className="field-cell">
+          {fieldLabel(nameId, adapter.labels.name, true)}
+          <TextField
+            id={nameId}
+            placeholder={adapter.labels.namePlaceholder}
+            value={values.name}
+            onChange={(event) => onChange({ name: event.target.value })}
+            aria-required
+            {...requiredText('name')}
+          />
+        </div>
 
         {/*
          * 디자인 시스템 Select에는 label prop이 없다. 라벨을 직접 만들어 htmlFor로 이어야
          * 스크린리더 접근명과 테스트의 라벨 조회가 함께 성립한다(배치 규범 3).
          */}
-        <div className="field-cell">
-          <span className="field-label">
-            <label htmlFor={parentId}>{adapter.labels.parent}</label>
-          </span>
+        {/* 상위 대분류는 줄 전체 폭(사용자 시안 · #209). */}
+        <div className="field-cell defect-cause-form-wide">
+          {fieldLabel(parentId, adapter.labels.parent, parentRequired)}
           <Select
             id={parentId}
             options={[{ value: '', label: t.values.noParent }, ...parentOptions]}
@@ -166,7 +190,13 @@ export const CodeFormPane = ({
             </span>
           )}
           {/* 대분류 목록이 확정되기 전이라는 사실을 감추지 않는다. */}
-          <span id={parentNoteId} className="field-note">
+          {/* 정보 안내 — 검사 조회·판정의 안내 줄과 같은 모양(사용자 지시 2026-10-29 · #209). */}
+          <span
+            id={parentNoteId}
+            className="iqc-inspection-action-note defect-cause-info-note"
+            data-tone="info"
+          >
+            <Icon name="info" size={14} aria-hidden />
             {t.parentListProvisional}
           </span>
         </div>

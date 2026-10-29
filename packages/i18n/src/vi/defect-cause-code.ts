@@ -45,8 +45,7 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   groupHeaderOrphan: 'Mã không tìm được cấp trên',
   categoryWarning:
     'Cấp lớn là trục dùng chung toàn công ty. Thêm vào thì mọi hiện trường đều dùng, hãy cân nhắc kỹ.',
-  parentListProvisional:
-    'Danh sách cấp lớn hiện còn là tạm. Khi được chốt thì danh sách chọn của mục này có thể đổi.',
+  parentListProvisional: 'Danh sách cấp lớn là tạm thời, có thể thay đổi sau khi chốt.',
   empty: {
     codeNoneTitle: 'Chưa đăng ký mã nào',
     codeNoneDescription: 'Hãy đăng ký cấp lớn đầu tiên bằng «Thêm cấp lớn».',
@@ -109,7 +108,8 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     createChildTitle: (tab: string): string => `Thêm chi tiết ${tab}`,
     editTitle: (tab: string): string => `Sửa ${tab}`,
     codePlaceholder: 'Nhập mã',
-    namePlaceholder: 'Nhập tên',
+    defectNamePlaceholder: 'Nhập tên lỗi',
+    causeNamePlaceholder: 'Nhập tên nguyên nhân',
   },
   values: {
     active: 'Đang dùng',

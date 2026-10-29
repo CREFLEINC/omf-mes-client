@@ -177,6 +177,12 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const canAddChild = selected !== null && isCategory(selected);
 
   const detail = useCodeDetail(adapter, selectedId);
+  /*
+   * 오른쪽 상세 카드가 보이는 코드 — 「상세 추가」 창이 열려 있는 동안에도 고른 대분류를 그대로 보인다(#209 버그 수정).
+   * 수정 · 저장은 `detail` 이 맡는다. 등록이 아니면 같은 키라 요청이 하나 더 나가지 않는다.
+   */
+  const viewId = selectedId ?? createParentSeed;
+  const shown = useCodeDetail(adapter, viewId);
 
   /*
    * 폼의 기준값 출처. 수정은 상세 응답 객체가, 등록은 「어느 탭에서 어느 상위로 여는가」가 정한다.
@@ -474,6 +480,12 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       }
       parentOptions={parentOptions}
       parentLockReason={parentLockReason}
+      // 상세(상위가 있는 코드)를 추가 · 수정할 때만 상위에 필수 표시를 붙인다 — 표시뿐, 저장 규칙은 그대로다.
+      parentRequired={
+        formMode === 'create'
+          ? createParentSeed !== null
+          : (formState?.baseline.parentId ?? '') !== ''
+      }
       isDirty={isDirty}
       isSaving={write.isSaving}
       onSave={handleSave}
@@ -503,7 +515,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
   const renderDetail = (): ReactNode => {
-    if (selectedId === null) {
+    if (viewId === null) {
       return (
         <section className="pane" aria-label={t.detail.title(adapter.labels.tab)}>
           <EmptyState
@@ -521,15 +533,15 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       );
     }
 
-    if (detail.isError) {
+    if (shown.isError) {
       return (
         <section className="pane" aria-label={t.detail.title(adapter.labels.tab)}>
-          <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />
+          <LoadErrorBanner error={shown.error} onRetry={() => void shown.refetch()} />
         </section>
       );
     }
 
-    if (detail.data === undefined) {
+    if (shown.data === undefined) {
       return (
         <section className="pane" aria-label={t.detail.title(adapter.labels.tab)}>
           <div role="status" aria-label={t.loading.codeDetail}>
@@ -539,7 +551,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       );
     }
 
-    const code = detail.data.code;
+    const code = shown.data.code;
     return (
       <section
         className="pane inspection-standard-detail-card"
@@ -549,8 +561,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
           adapter={adapter}
           code={code}
           parentLabel={parentLabelOf(code)}
-          processLabel={processLabelOf(detail.data.processId)}
-          referenceCount={detail.data.editability.referenceCount ?? null}
+          processLabel={processLabelOf(shown.data.processId)}
+          referenceCount={shown.data.editability.referenceCount ?? null}
           // 대분류를 고르면 상세 카드에서 상세를 추가한다 — 고른 대분류가 상위 초기값이 된다.
           onAddChild={canAddChild ? () => openCreateForm({}) : undefined}
           onEdit={() => {

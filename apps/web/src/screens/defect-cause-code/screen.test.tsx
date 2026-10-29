@@ -451,9 +451,7 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        '대분류 목록은 아직 임시입니다. 확정되면 이 항목의 선택지가 바뀔 수 있습니다.',
-      ),
+      screen.getByText('대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.'),
     ).toBeInTheDocument();
   });
 
@@ -507,6 +505,19 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     await screen.findByRole('button', { name: '수정' });
 
     expect(screen.queryByRole('button', { name: '상세 추가' })).not.toBeInTheDocument();
+  });
+
+  it('상세 추가 창이 열려 있어도 뒤의 상세 카드는 고른 대분류를 그대로 보인다(#209 버그 수정)', async () => {
+    const { user } = renderScreen(
+      [defectOptionsRoute(), defectListRoute(activeDefectFixtures), defectDetailRoute()],
+      '?sel=1001',
+    );
+    await user.click(await screen.findByRole('button', { name: '상세 추가' }));
+    await screen.findByRole('dialog', { name: '상세 불량코드 추가' });
+
+    const card = screen.getByRole('region', { name: '불량코드 상세' });
+    expect(within(card).getByText('DF-10')).toBeInTheDocument();
+    expect(screen.queryByText('코드를 선택하세요')).not.toBeInTheDocument();
   });
 
   it('대분류를 고른 뒤 상세 추가를 누르면 상위가 그 대분류로 채워진 폼이 열린다', async () => {
