@@ -422,17 +422,16 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
     );
   });
 
-  it('수정에서는 창고 코드 · 창고명이 읽기 전용이다', async () => {
+  it('수정에서는 창고 코드 · 창고명이 입력칸이 아닌 글자로 보인다', async () => {
     renderScreen(
       [warehouseListRoute(), warehouseDetailRoute(), locationListRoute(), ...lookupRoutes()],
       '?wh=1001',
     );
 
-    expect(await screen.findByLabelText('창고 코드')).toBeDisabled();
-    expect(screen.getByLabelText('창고명')).toBeDisabled();
-    expect(
-      screen.getByText(messages.warehouseLocation.actionReasons.identityFixedAfterCreate),
-    ).toBeInTheDocument();
+    /* 고칠 수 없는 값은 흐린 입력칸이 아니라 글자로 보인다(사용자 지시 2026-10-29). */
+    expect(await screen.findByLabelText('창고 코드')).toHaveTextContent('WH-01');
+    expect(screen.queryByRole('textbox', { name: '창고 코드' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '창고명' })).not.toBeInTheDocument();
   });
 
   it('상세 조회에 실패하면 폼 대신 오류 배너가 나온다', async () => {
@@ -684,7 +683,6 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
 
     await screen.findByLabelText('창고명');
     expect(screen.getByRole('tab', { name: 'Location' })).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByText('Location을 지정하지 않습니다.')).toBeInTheDocument();
   });
 
   it('잠긴 창고를 tab=location 주소로 열면 창고 정보 탭을 보이고 주소를 바꾼다(replace)', async () => {

@@ -76,14 +76,17 @@ describe('WarehouseFormPane', () => {
     expect(screen.getByText(reason)).toBeInTheDocument();
   });
 
-  it('신규 등록 모드가 아니면 공장을 바꿀 수 없고 사유가 보인다', () => {
+  /* 고칠 수 없는 값은 흐린 입력칸이 아니라 글자로 보인다(사용자 지시 2026-10-29). */
+  it('수정에서는 공장 · 창고 코드 · 창고명이 입력칸이 아닌 글자로 보인다', () => {
     renderPane({ mode: 'edit' });
 
-    const reason = '공장은 등록 후 변경할 수 없습니다.';
-    expect(screen.getByLabelText('공장')).toBeDisabled();
-    expect(screen.getByLabelText('공장')).toHaveAccessibleDescription(reason);
-    // 안내는 칸 아래가 아니라 라벨 줄에 둔다(omf-all-around#17 3차).
-    expect(screen.getByText(reason).closest('.field-label')).not.toBeNull();
+    expect(screen.queryByRole('combobox', { name: '공장' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '창고 코드' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '창고명' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('창고 코드')).toHaveTextContent('WH-01');
+    expect(screen.getByLabelText('창고명')).toHaveTextContent('1공장 자재창고');
+    expect(screen.getByLabelText('공장')).toHaveTextContent('1공장');
+    expect(screen.queryByText('공장은 등록 후 변경할 수 없습니다.')).not.toBeInTheDocument();
   });
 
   it('신규 등록 모드에서는 공장을 고를 수 있고 고정 안내가 없다', () => {
@@ -121,16 +124,11 @@ describe('WarehouseFormPane', () => {
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
-  it('변경 이력은 비활성이고 그 사유가 화면 텍스트로 보인다', () => {
+  it('쓸 수 없는 변경 이력 단추와 그 안내가 없다', () => {
     renderPane();
 
-    const reason = '변경 이력은 현재 제공되지 않습니다.';
-    const button = screen.getByRole('button', { name: '변경 이력' });
-
-    expect(button).toBeDisabled();
-    expect(screen.getByText(reason)).toBeInTheDocument();
-    // 화면에 보이는 것과 그 버튼의 설명인 것은 별개 조건이다. 배치를 바꿔도 연결이 끊기면 안 된다.
-    expect(button).toHaveAccessibleDescription(reason);
+    expect(screen.queryByRole('button', { name: '변경 이력' })).not.toBeInTheDocument();
+    expect(screen.queryByText('변경 이력은 현재 제공되지 않습니다.')).not.toBeInTheDocument();
   });
 
   it('사용 중이면 사용 중지를 눌러 onDeactivate를 부른다', async () => {
@@ -153,13 +151,6 @@ describe('WarehouseFormPane', () => {
     renderPane({ mode: 'create', isActive: true });
 
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
-  });
-
-  it('수정에서는 창고 코드 · 창고명이 읽기 전용이다', () => {
-    renderPane({ mode: 'edit' });
-
-    expect(screen.getByLabelText('창고 코드')).toBeDisabled();
-    expect(screen.getByLabelText('창고명')).toBeDisabled();
   });
 
   it('등록에서 창고명을 고치면 바뀐 필드만 담아 onChange를 부른다', async () => {
@@ -191,13 +182,10 @@ describe('WarehouseFormPane', () => {
     ).not.toBeNull();
   });
 
-  it('관리 수준이 창고일 때만 라벨 옆에 Location 안내가 보인다(폼의 현재 값 기준)', () => {
-    const hint = 'Location을 지정하지 않습니다.';
+  it('관리 수준에 안내문을 붙이지 않는다', () => {
     renderPane({ values: { ...warehouseFormInitialValues, managementLevelCode: 'WAREHOUSE' } });
-    expect(screen.getByLabelText('관리 수준')).toHaveAccessibleDescription(hint);
 
-    renderPane({ values: { ...warehouseFormInitialValues, managementLevelCode: 'CELL' } });
-    expect(screen.getAllByText(hint)).toHaveLength(1);
+    expect(screen.queryByText('Location을 지정하지 않습니다.')).not.toBeInTheDocument();
   });
 
   it('거래처 칸이 없다', () => {

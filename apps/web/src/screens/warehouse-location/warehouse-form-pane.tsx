@@ -120,6 +120,40 @@ export const SelectField = ({
   );
 };
 
+/** 고칠 수 없는 값 — 입력칸 대신 라벨과 글자로 보인다(흐리게 두지 않는다, 사용자 지시 2026-10-29). */
+const ReadOnlyField = ({
+  label,
+  value,
+  error,
+}: {
+  label: string;
+  value: string;
+  /** 서버가 이 칸에 붙여 보낸 오류(예: ERP 창고 이름 잠김) — 칸이 글자여도 묻히지 않게 아래에 보인다. */
+  error?: string | undefined;
+}) => {
+  const labelId = useId();
+  const errorId = `${labelId}-error`;
+  return (
+    <div className="field-cell">
+      <span className="field-label" id={labelId}>
+        {label}
+      </span>
+      <output
+        className="warehouse-location-readonly"
+        aria-labelledby={labelId}
+        aria-describedby={error === undefined ? undefined : errorId}
+      >
+        {value}
+      </output>
+      {error !== undefined && (
+        <span id={errorId} className="field-error">
+          {error}
+        </span>
+      )}
+    </div>
+  );
+};
+
 export const WarehouseFormPane = ({
   mode,
   values,
@@ -139,7 +173,6 @@ export const WarehouseFormPane = ({
   const activeLabelId = useId();
   const externalLabelId = useId();
   const defectLabelId = useId();
-  const historyNoteId = useId();
 
   return (
     <section className="warehouse-location-form" aria-label={t.tabs.warehouse}>
@@ -151,14 +184,22 @@ export const WarehouseFormPane = ({
          * omf-all-around#17). 사용 상태는 값 표기(칩)이고, 상태를 바꾸는 단추는 바닥글에 있다.
          */}
         <div className="warehouse-location-plant-row">
-          <SelectField
-            label={t.fields.plant}
-            options={lookups.plants}
-            value={values.plantId}
-            onChange={(value) => onChange({ plantId: value })}
-            disabled={mode === 'edit'}
-            labelHint={mode === 'edit' ? t.actionReasons.plantFixedAfterCreate : undefined}
-          />
+          {mode === 'edit' ? (
+            <ReadOnlyField
+              label={t.fields.plant}
+              value={
+                lookups.plants.find((option) => option.value === values.plantId)?.label ??
+                values.plantId
+              }
+            />
+          ) : (
+            <SelectField
+              label={t.fields.plant}
+              options={lookups.plants}
+              value={values.plantId}
+              onChange={(value) => onChange({ plantId: value })}
+            />
+          )}
           <div className="field-cell">
             <span className="field-label" id={activeLabelId}>
               {t.fields.isActive}
@@ -178,25 +219,41 @@ export const WarehouseFormPane = ({
           onChange={(value) => onChange({ businessUnitId: value })}
         />
 
-        {/* 창고 코드 · 창고명은 등록 때만 적는다 — 수정에서는 읽기 전용(사용자 지시 2026-10-29). */}
-        <TextField
-          label={t.fields.warehouseCode}
-          value={values.warehouseCode}
-          onChange={(event) => onChange({ warehouseCode: event.target.value })}
-          disabled={mode === 'edit' || codeLockReason !== null}
-          disabledReason={
-            mode === 'edit' ? t.actionReasons.identityFixedAfterCreate : codeLockReason
-          }
-          error={fieldErrors.warehouseCode}
-        />
-
-        <TextField
-          label={t.fields.warehouseName}
-          value={values.warehouseName}
-          onChange={(event) => onChange({ warehouseName: event.target.value })}
-          disabled={mode === 'edit'}
-          error={fieldErrors.warehouseName}
-        />
+        {/*
+         * 창고 코드 · 창고명은 등록 때만 적는다. 수정에서는 고칠 수 없는 값이라 흐린 입력칸이 아니라 글자로 보인다
+         * (사용자 지시 2026-10-29).
+         */}
+        {mode === 'edit' ? (
+          <>
+            <ReadOnlyField
+              label={t.fields.warehouseCode}
+              value={values.warehouseCode}
+              error={fieldErrors.warehouseCode}
+            />
+            <ReadOnlyField
+              label={t.fields.warehouseName}
+              value={values.warehouseName}
+              error={fieldErrors.warehouseName}
+            />
+          </>
+        ) : (
+          <>
+            <TextField
+              label={t.fields.warehouseCode}
+              value={values.warehouseCode}
+              onChange={(event) => onChange({ warehouseCode: event.target.value })}
+              disabled={codeLockReason !== null}
+              disabledReason={codeLockReason}
+              error={fieldErrors.warehouseCode}
+            />
+            <TextField
+              label={t.fields.warehouseName}
+              value={values.warehouseName}
+              onChange={(event) => onChange({ warehouseName: event.target.value })}
+              error={fieldErrors.warehouseName}
+            />
+          </>
+        )}
 
         <SelectField
           label={t.fields.warehouseType}
@@ -226,12 +283,6 @@ export const WarehouseFormPane = ({
           value={values.managementLevelCode}
           onChange={(value) => onChange({ managementLevelCode: value })}
           error={fieldErrors.managementLevelCode}
-          /* 폼의 현재 값 기준 — 「창고」를 고르는 순간 Location을 두지 않는다는 것을 알린다(omf-all-around#17). */
-          labelHint={
-            values.managementLevelCode === 'WAREHOUSE'
-              ? t.actionReasons.managementLevelWarehouseNoLocation
-              : undefined
-          }
           trailing={
             <div className="warehouse-location-inline-field">
               <span id={defectLabelId}>{t.fields.isDefect}</span>
@@ -264,13 +315,6 @@ export const WarehouseFormPane = ({
               {isActive ? messages.common.deactivate : t.actions.activate}
             </Button>
           )}
-          <Button variant="outlined" disabled aria-describedby={historyNoteId}>
-            {t.actions.changeHistory}
-          </Button>
-          {/* 버튼 옆 도움말 — 버튼의 설명(aria-describedby)으로 계속 잇는다. */}
-          <span id={historyNoteId} className="field-note warehouse-location-inline-note">
-            {t.actionReasons.changeHistoryUnavailable}
-          </span>
         </div>
         <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
           {messages.common.cancel}

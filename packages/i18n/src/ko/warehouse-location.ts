@@ -20,17 +20,12 @@ export const warehouseLocation = {
     addRootLocation: '최상위 Location 추가',
     addChildLocation: '하위 Location 추가',
     generateLabel: '라벨 이미지 생성',
-    changeHistory: '변경 이력',
     activate: '다시 사용',
   },
   actionReasons: {
     locationHierarchyUnavailable: 'Location 계층을 불러온 뒤 추가할 수 있습니다.',
     generateLabelNeedsSelection: 'Location을 하나 이상 선택해 주세요.',
     /* 개발 진행 상황이 아니라 지금 되는지만 말한다(omf-all-around#17). */
-    changeHistoryUnavailable: '변경 이력은 현재 제공되지 않습니다.',
-    managementLevelWarehouseNoLocation: 'Location을 지정하지 않습니다.',
-    plantFixedAfterCreate: '공장은 등록 후 변경할 수 없습니다.',
-    identityFixedAfterCreate: '창고 코드·창고명은 등록 후 변경할 수 없습니다.',
     warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
     /* 서버가 창고마다 두는 위치(적치 대기 · 창고 전체) — 별칭만 고친다(서버 #875). */
     systemLocation: '시스템이 만든 위치라 별칭만 바꿀 수 있습니다.',

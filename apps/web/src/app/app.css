@@ -24962,6 +24962,15 @@ table.col-measuring td {
 }
 
 /* 창고 상세의 「적치 규칙」 탭(사용자 지시 2026-10-29) — 조건 줄 · 규칙 표 · 규칙 없는 품목을 위에서 아래로. */
+/* 창고 정보에서 고칠 수 없는 값(공장 · 창고 코드 · 창고명) — 입력칸 높이에 맞춘 일반 글자. */
+.warehouse-location-readonly {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height-md);
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+}
+
 .putaway-rule-panel {
   display: flex;
   flex-direction: column;
