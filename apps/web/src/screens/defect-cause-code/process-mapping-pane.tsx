@@ -2,7 +2,9 @@ import {
   AlertBanner,
   Button,
   EmptyState,
+  Icon,
   MatrixGrid,
+  SearchInput,
   SkeletonText,
   type MatrixColumn,
   type MatrixRow,
@@ -11,7 +13,7 @@ import {
 import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
@@ -195,10 +197,38 @@ export const ProcessMappingPane = () => {
 
   const columns: MatrixColumn[] = processes.map((process) => ({
     key: String(process.processId),
-    label: `${process.processCode} · ${process.processName}`,
+    /* 공정명 위 · 공정코드 아래 흐리게(#209). */
+    label: (
+      <span className="defect-mapping-col">
+        <span>{process.processName}</span>
+        <span className="defect-mapping-col-code">{process.processCode}</span>
+      </span>
+    ),
   }));
-  const rows: MatrixRow[] = defects.map((defect) => ({
-    label: `${categories.get(defect.parentId ?? 0)?.name ?? t.groupHeaderOrphan} / ${defect.code} · ${defect.name}`,
+  /* 조회 카드의 검색어(#209) — 화면에 받은 목록 안에서 코드 · 이름 · 대분류 이름으로 거른다. 매핑 저장과 무관하다. */
+  const [draft, setDraft] = useState('');
+  const [keyword, setKeyword] = useState('');
+  const needle = keyword.trim().toLowerCase();
+  const shownDefects =
+    needle === ''
+      ? defects
+      : defects.filter((defect) =>
+          [defect.code, defect.name, categories.get(defect.parentId ?? 0)?.name ?? '']
+            .join(' ')
+            .toLowerCase()
+            .includes(needle),
+        );
+
+  const rows: MatrixRow[] = shownDefects.map((defect) => ({
+    /* 「코드 · 이름」 위, 대분류 이름 아래 흐리게 — 불량코드 탭의 대분류 · 상세 표시와 같은 결(#209). */
+    label: (
+      <span className="defect-mapping-row">
+        <span className="defect-mapping-row-code">{`${defect.code} · ${defect.name}`}</span>
+        <span className="defect-mapping-row-parent">
+          {categories.get(defect.parentId ?? 0)?.name ?? t.groupHeaderOrphan}
+        </span>
+      </span>
+    ),
     cells: processes.map((process) => {
       const assigned = mappedByDefect.get(defect.id)?.has(process.processId) === true;
       return {
@@ -243,6 +273,11 @@ export const ProcessMappingPane = () => {
       <EmptyState
         size="sm"
         live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="list_alt" size={20} />
+          </span>
+        }
         title={t.empty.mappingNoneTitle}
         description={t.empty.mappingNoneDescription}
       />
@@ -252,14 +287,44 @@ export const ProcessMappingPane = () => {
       <EmptyState
         size="sm"
         live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="list_alt" size={20} />
+          </span>
+        }
         title={t.empty.processNoneTitle}
         description={t.empty.processNoneDescription}
+      />
+    );
+  } else if (shownDefects.length === 0) {
+    content = (
+      <EmptyState
+        size="sm"
+        live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="search_off" size={20} />
+          </span>
+        }
+        title={t.mappingView.noMatchTitle}
+        description={t.mappingView.noMatchDescription}
+        action={
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setDraft('');
+              setKeyword('');
+            }}
+          >
+            {messages.common.reset}
+          </Button>
+        }
       />
     );
   } else {
     content = (
       <MatrixGrid
-        size="sm"
+        size="md"
         aria-label={t.panes.mapping}
         aria-busy={write.isSaving}
         columns={columns}
@@ -286,16 +351,66 @@ export const ProcessMappingPane = () => {
   }
 
   return (
-    <section className="pane defect-process-mapping-pane" aria-label={t.panes.mapping}>
-      <h2 className="pane-title">{t.panes.mapping}</h2>
-      <p className="pane-lead">{t.mapping.description}</p>
-      {truncated && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.mapping.truncated}</AlertBanner>
+    <>
+      {/* 조회 조건 — 불량코드 탭처럼 표와 다른 카드에 둔다(#209). */}
+      <section className="pane inspection-standard-search defect-cause-search" role="search">
+        <div className="filter-bar">
+          <SearchInput
+            label={t.mappingView.searchLabel}
+            placeholder={t.mappingView.searchPlaceholder}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onSearch={(value) => setKeyword(value)}
+            clearLabel={messages.common.clear}
+          />
+          <div className="filter-actions field-cell-unlabeled">
+            <Button variant="filled" onClick={() => setKeyword(draft)}>
+              {messages.common.search}
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setDraft('');
+                setKeyword('');
+              }}
+            >
+              {messages.common.reset}
+            </Button>
+          </div>
         </div>
-      )}
-      <SaveErrorBanner error={write.error} />
-      {content}
-    </section>
+      </section>
+
+      <section
+        className="pane defect-process-mapping-pane inspection-standard-detail-card"
+        aria-label={t.panes.mapping}
+      >
+        <div className="inspection-standard-plan-head">
+          <div className="inspection-standard-plan-chips">
+            <h2 className="pane-title">{t.panes.mapping}</h2>
+            {!isLoading && loadError === null && (
+              <span className="defect-cause-child-count">
+                {t.mappingView.counts(shownDefects.length, processes.length)}
+              </span>
+            )}
+          </div>
+          <div className="inspection-hub-counts" aria-hidden>
+            <span className="inspection-hub-count">{t.mappingView.legendAssigned}</span>
+            <span className="inspection-hub-count">{t.mappingView.legendNone}</span>
+          </div>
+        </div>
+        {/* 정보 안내 — 검사 조회·판정의 안내 줄과 같은 모양(#209). */}
+        <p className="iqc-inspection-action-note defect-cause-mapping-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {t.mapping.description}
+        </p>
+        {truncated && (
+          <div className="banner-slot">
+            <AlertBanner variant="warning">{t.mapping.truncated}</AlertBanner>
+          </div>
+        )}
+        <SaveErrorBanner error={write.error} />
+        <div className="defect-mapping-box">{content}</div>
+      </section>
+    </>
   );
 };

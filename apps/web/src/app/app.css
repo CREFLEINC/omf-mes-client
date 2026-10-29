@@ -449,6 +449,61 @@ main > * + * {
   text-align: center;
 }
 
+/* 공정 매핑 탭(#209) — 불량코드 탭과 같은 카드 짜임. 표는 테두리 상자 안에서 가로로 구른다. */
+.defect-process-mapping-pane .defect-cause-mapping-note {
+  justify-self: start;
+}
+
+.defect-mapping-box {
+  overflow-x: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+/* 표를 카드 폭만큼 편다 — DS 매트릭스가 감싸개 안에서 내용 폭으로 줄어든다. */
+.defect-mapping-box table {
+  width: 100%;
+}
+
+.defect-mapping-box > * {
+  width: 100%;
+}
+
+/* 불량코드 칸(행 머리)은 왼쪽 정렬 · 폭 고정, 남는 폭은 공정 칸이 나눈다. 양쪽 끝 여백은 목록 표와 같다. */
+.defect-mapping-box tbody th,
+.defect-mapping-box thead th:first-child {
+  width: 280px;
+  padding-inline-start: var(--space-6);
+  text-align: start;
+}
+
+.defect-mapping-box :is(th, td):last-child {
+  padding-inline-end: var(--space-6);
+}
+
+.defect-mapping-row,
+.defect-mapping-col {
+  display: inline-grid;
+  justify-items: start;
+  gap: 2px;
+  text-align: start;
+}
+
+.defect-mapping-col {
+  justify-items: center;
+  text-align: center;
+}
+
+.defect-mapping-row-code {
+  font-weight: 600;
+}
+
+.defect-mapping-row-parent,
+.defect-mapping-col-code {
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+}
+
 .defect-cause-head-actions {
   display: flex;
   flex-wrap: wrap;

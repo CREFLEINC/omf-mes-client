@@ -108,7 +108,8 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
       await screen.findByRole('region', { name: '공정별 상세 불량코드 매핑' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
-    expect(await screen.findByRole('columnheader', { name: 'OP-INJ · 사출' })).toBeInTheDocument();
+    // 열 머리는 공정명 위 · 공정코드 아래(#209).
+    expect(await screen.findByRole('columnheader', { name: /사출\s*OP-INJ/ })).toBeInTheDocument();
     expect(screen.getByRole('grid', { name: '공정별 상세 불량코드 매핑' })).toBeInTheDocument();
     expect(screen.getByRole('rowheader', { name: /DF-11 · 스크래치/ })).toBeInTheDocument();
     expect(screen.queryByRole('rowheader', { name: /DF-10 · 외관/ })).not.toBeInTheDocument();
@@ -120,6 +121,19 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
       'data-status',
     );
     expect(requests.some((request) => request.url.pathname === '/quality/cause-codes')).toBe(false);
+  });
+
+  it('조회 카드의 검색어로 행을 거르고, 초기화하면 모두 보인다(#209)', async () => {
+    const { user } = renderMapping();
+    await screen.findByRole('rowheader', { name: /DF-11 · 스크래치/ });
+
+    await user.type(screen.getByLabelText('불량코드 검색'), 'DF-12');
+    await user.click(screen.getByRole('button', { name: '조회' }));
+    expect(screen.queryByRole('rowheader', { name: /DF-11 · 스크래치/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: /DF-12/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+    expect(screen.getByRole('rowheader', { name: /DF-11 · 스크래치/ })).toBeInTheDocument();
   });
 
   it('빈 셀을 누르면 멱등 키와 공정 번호로 즉시 매핑한다', async () => {

@@ -18,6 +18,18 @@ export const defectCauseCode = {
     form: (tab: string): string => `${tab} 등록·편집`,
     mapping: '공정별 상세 불량코드 매핑',
   },
+  /** 공정 매핑 탭(#209) — 불량코드 탭과 같은 짜임: 위 조회 카드 · 아래 표 카드 */
+  mappingView: {
+    searchLabel: '불량코드 검색',
+    searchPlaceholder: '불량코드 또는 불량명을 입력하세요',
+    legendAssigned: '✓ 매핑됨',
+    legendNone: '— 매핑 안 됨',
+    rowHeader: '불량코드 / 공정',
+    noMatchTitle: '조건에 맞는 불량코드가 없습니다',
+    noMatchDescription: '검색어를 줄이거나 초기화한 뒤 다시 찾으세요.',
+    counts: (defects: number, processes: number): string =>
+      `상세 불량코드 ${String(defects)}건 · 공정 ${String(processes)}건`,
+  },
   actions: {
     addCategory: '대분류 추가',
     addChild: '하위 코드 추가',
@@ -176,8 +188,7 @@ export const defectCauseCode = {
     childCount: (count: number): string => `연결된 하위 코드 ${String(count)}건이 있습니다.`,
   },
   mapping: {
-    description:
-      '행은 상세 불량코드, 열은 공정입니다. 셀을 누르면 매핑이 즉시 부여되거나 회수됩니다.',
+    description: '칸을 누르면 그 공정에 불량코드가 바로 연결되거나 풀립니다.',
     assigned: '매핑됨',
     notAssigned: '매핑 안 됨',
     saved: '공정 매핑을 반영했습니다',

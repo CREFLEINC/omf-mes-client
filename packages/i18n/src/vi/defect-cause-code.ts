@@ -118,6 +118,17 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     kind: 'Phân loại',
     isActive: 'Sử dụng',
   },
+  mappingView: {
+    searchLabel: 'Tìm mã lỗi',
+    searchPlaceholder: 'Nhập mã lỗi hoặc tên lỗi',
+    legendAssigned: '✓ Đã ánh xạ',
+    legendNone: '— Chưa ánh xạ',
+    rowHeader: 'Mã lỗi / Công đoạn',
+    noMatchTitle: 'Không có mã lỗi khớp điều kiện',
+    noMatchDescription: 'Hãy rút gọn từ khóa hoặc đặt lại rồi tìm lại.',
+    counts: (defects: number, processes: number): string =>
+      `${String(defects)} mã lỗi chi tiết · ${String(processes)} công đoạn`,
+  },
   detail: {
     title: (tab: string): string => `Chi tiết ${tab}`,
     edit: 'Sửa',
@@ -167,8 +178,7 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     childCount: (count: number): string => `Có ${String(count)} mã cấp dưới được liên kết.`,
   },
   mapping: {
-    description:
-      'Hàng là mã lỗi chi tiết, cột là công đoạn. Bấm vào ô thì ánh xạ được gán hoặc thu hồi ngay.',
+    description: 'Bấm ô để gắn hoặc gỡ mã lỗi khỏi công đoạn đó ngay.',
     assigned: 'Đã ánh xạ',
     notAssigned: 'Chưa ánh xạ',
     saved: 'Đã áp dụng ánh xạ công đoạn',
