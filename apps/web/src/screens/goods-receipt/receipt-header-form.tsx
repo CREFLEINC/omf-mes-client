@@ -2,9 +2,18 @@ import { DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
-import { TimeField } from './time-field';
+import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 
 const t = messages.goodsReceipt;
+
+const TIME_LABELS: TimeFieldLabels = {
+  field: t.fields.receiptTime,
+  hourList: t.fields.receiptHour,
+  minuteList: t.fields.receiptMinute,
+  hourHead: t.values.receiptHourLabel,
+  minuteHead: t.values.receiptMinuteLabel,
+  placeholder: t.values.receiptTimePlaceholder,
+};
 
 export interface ReceiptHeaderFormProps {
   /** 입고 일시(`YYYY-MM-DDTHH:mm`). 날짜·시각 중 하나라도 비었으면 빈 문자열이다. */
@@ -42,7 +51,7 @@ const joinDatetime = ({ date, hour, minute }: DatetimeParts): string =>
  * **입고 일시를 날짜와 시각 두 칸으로 받는다**(담당자 지시 — 시스템 표기 `yyyy-MM-dd HH:mm`).
  * 브라우저 기본 `datetime-local` 은 OS 언어를 따라 「연도. 월. 일. 오후 02:05」로 보여 표기를 맞출 수 없다.
  * 날짜는 디자인 시스템 `DatePicker`(표기 `YYYY-MM-DD` 고정 — 다른 화면과 같은 부품), 시각은 칸 하나를 누르면 열리는
- * 시(00~23)·분(00~59) 두 열 팝오버에서 **한 번에 고른다**(`time-field.tsx` · 담당자 지시. DS 에 시각 선택·팝오버
+ * 시(00~23)·분(00~59) 두 열 팝오버에서 **한 번에 고른다**(`patterns/time-field` · 담당자 지시. DS 에 시각 선택·팝오버
  * 부품이 없다. 네이티브 `type="time"` 은 「오후 02:05」로 보인다). **보내는 값과 검증은 그대로다** — 날짜·시·분이 다 골라졌을 때만
  * 지금까지와 같은 `YYYY-MM-DDTHH:mm` 하나를 올리고, 아니면 빈 값을 올린다.
  *
@@ -122,6 +131,7 @@ export const ReceiptHeaderForm = ({
           />
           {/* 시각 — 칸 하나를 누르면 시·분 두 열 팝오버에서 한 번에 고른다(담당자 지시). */}
           <TimeField
+            labels={TIME_LABELS}
             hour={parts.hour}
             minute={parts.minute}
             disabled={isDisabled}

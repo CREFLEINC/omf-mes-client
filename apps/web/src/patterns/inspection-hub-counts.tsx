@@ -35,6 +35,8 @@ export interface InspectionHubCountsProps {
   /** 지금 거르는 상태. 비면 거르지 않는다. */
   active: InspectionHubStatus | null;
   onChange: (next: InspectionHubStatus | null) => void;
+  /** 이 공장 LOT 의 의뢰만 센다 — 부품 공장 IQC 화면(omf-all-around#211). 비면 전체다. */
+  plantId?: number;
 }
 
 /**
@@ -48,18 +50,27 @@ export const InspectionHubCounts = ({
   statuses,
   active,
   onChange,
+  plantId,
 }: InspectionHubCountsProps) => {
   const { client } = useApiClient();
   const target = useHubActionsTarget();
   /* 칩을 세울 자리(탭 막대)가 없으면 세지도 않는다 — 쓰지 않을 조회를 내지 않는다. */
   const counts = useQueries({
     queries: statuses.map((statusCode) => ({
-      queryKey: [...INSPECTION_HUB_COUNTS_KEY, inspectionTypeCode, statusCode],
+      queryKey: [...INSPECTION_HUB_COUNTS_KEY, inspectionTypeCode, statusCode, plantId ?? null],
       /* 한 줄만 받아 쪽 정보의 전체 건수를 쓴다 — 목록을 다 받지 않는다. */
       queryFn: () =>
         runRequest(() =>
           client.GET('/quality/inspection-requests', {
-            params: { query: { inspectionTypeCode, statusCode, page: 1, size: 1 } },
+            params: {
+              query: {
+                inspectionTypeCode,
+                statusCode,
+                ...(plantId === undefined ? {} : { plantId }),
+                page: 1,
+                size: 1,
+              },
+            },
           }),
         ).then((response) => response.page.total),
       staleTime: 30_000,
