@@ -1032,8 +1032,25 @@ h2:has(> .inspection-standard-dialog-title) {
   transform: rotate(180deg);
 }
 
-.inspection-standard-import-guide > p {
-  margin: var(--space-2) 0 0;
+/* 펼친 안내 — 옅은 바탕 상자, 두 줄은 본문 · 마지막 한 줄은 작은 보조 글(사용자 시안 · #208). */
+.inspection-standard-import-guide-body {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  /* 창 바탕(surface-container-high)과 갈리게 한 단계 낮춘다. */
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  font: var(--type-body-md);
+}
+
+.inspection-standard-import-guide-body > p {
+  margin: 0;
+}
+
+.inspection-standard-import-guide-body > p:last-child {
+  color: var(--on-surface-muted);
   font: var(--type-body-sm);
 }
 

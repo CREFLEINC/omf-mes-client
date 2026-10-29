@@ -76,6 +76,8 @@ export const ImportDialog = ({
       open
       onClose={onClose}
       closeOnBackdropClick={false}
+      /* 닫기는 바닥 줄의 「닫기」 하나로 둔다(사용자 지시 · #208). */
+      showCloseButton={false}
       title={t.title}
       footer={
         <>
@@ -172,8 +174,11 @@ export const ImportDialog = ({
             {t.formatGuide}
             <Icon name="expand_more" size={20} aria-hidden />
           </summary>
-          <p>{t.draftNote}</p>
-          <p>{t.columnsNote}</p>
+          <div className="inspection-standard-import-guide-body">
+            <p>{t.guideHeaderRow}</p>
+            <p>{t.guideRequiredColumns}</p>
+            <p>{t.guideTckt}</p>
+          </div>
         </details>
 
         {(outcomes.length > 0 || isSaving) && (

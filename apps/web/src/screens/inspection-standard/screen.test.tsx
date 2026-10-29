@@ -388,7 +388,7 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
 
     expect(within(dialog).getByText(t.import.partialWarningTitle)).toBeInTheDocument();
-    expect(within(dialog).getByText(t.import.draftNote)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.import.guideRequiredColumns)).toBeInTheDocument();
     expect(within(dialog).getByLabelText(t.import.fileLabel)).toHaveAttribute('accept', '.xlsx');
     expect(within(dialog).getByRole('button', { name: t.import.submit })).toBeDisabled();
   });

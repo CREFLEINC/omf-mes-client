@@ -132,13 +132,12 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   },
   import: {
     title: 'Tải lên Excel tiêu chuẩn kiểm tra',
-    partialWarningTitle: 'Không thể hoàn tác tệp đã tải lên trong một lần.',
+    partialWarningTitle: 'Không thể hủy hàng loạt sau khi tải lên.',
     partialWarning:
-      'Mỗi tiêu chuẩn sẽ tạo một phiên bản đang soạn mới, chỉ những mục thành công được lưu.',
-    draftNote:
-      'Sau khi tải lên, mỗi mã tiêu chuẩn có một phiên bản đang soạn. Tiêu chuẩn đã có sẽ tạo phiên bản mới từ phiên bản xác nhận mới nhất và điền hạng mục từ Excel. Việc xác nhận hãy làm trực tiếp trên màn hình.',
-    columnsNote:
-      'Đọc dòng đầu của trang tính đầu tiên làm tiêu đề. Cột bắt buộc: mã tiêu chuẩn · mã hạng mục · tên hạng mục. Cũng có thể tải lên nguyên tệp Bảng tiêu chuẩn kiểm tra (TCKT) — mỗi bảng thành một tiêu chuẩn.',
+      'Mỗi tiêu chuẩn sẽ tạo một phiên bản đang soạn, chỉ những mục thành công được lưu.',
+    guideHeaderRow: 'Dòng đầu của trang tính thứ nhất được dùng làm tiêu đề.',
+    guideRequiredColumns: 'Cột bắt buộc: mã tiêu chuẩn, mã hạng mục, tên hạng mục',
+    guideTckt: 'Cũng có thể tải lên tệp Bảng tiêu chuẩn kiểm tra (TCKT) hiện có.',
     fileLabel: 'Tệp Excel tiêu chuẩn kiểm tra',
     fileHint: '.xlsx · có thể chọn nhiều tệp',
     filePlaceholder: 'Thêm tệp',
