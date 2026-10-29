@@ -149,7 +149,8 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
       },
     ]);
 
-    await user.click(await screen.findByRole('cell', { name: 'DF-12 · 조립 · 매핑 안 됨' }));
+    // 칸 안 둥근 표시(단추)를 누른다 — 사용자 시안(#209).
+    await user.click(await screen.findByRole('button', { name: 'DF-12 · 조립 · 매핑 안 됨' }));
 
     await waitFor(() => {
       expect(
@@ -176,7 +177,7 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
       },
     ]);
 
-    await user.click(await screen.findByRole('cell', { name: 'DF-11 · 사출 · 매핑됨' }));
+    await user.click(await screen.findByRole('button', { name: 'DF-11 · 사출 · 매핑됨' }));
 
     await waitFor(() => {
       expect(

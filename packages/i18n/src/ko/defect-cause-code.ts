@@ -22,9 +22,7 @@ export const defectCauseCode = {
   mappingView: {
     searchLabel: '불량코드 검색',
     searchPlaceholder: '불량코드 또는 불량명을 입력하세요',
-    legendAssigned: '✓ 매핑됨',
-    legendNone: '— 매핑 안 됨',
-    rowHeader: '불량코드 / 공정',
+    rowHeader: '불량코드 · 명칭',
     noMatchTitle: '조건에 맞는 불량코드가 없습니다',
     noMatchDescription: '검색어를 줄이거나 초기화한 뒤 다시 찾으세요.',
     counts: (defects: number, processes: number): string =>

@@ -136,9 +136,7 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   mappingView: {
     searchLabel: 'Tìm mã lỗi',
     searchPlaceholder: 'Nhập mã lỗi hoặc tên lỗi',
-    legendAssigned: '✓ Đã ánh xạ',
-    legendNone: '— Chưa ánh xạ',
-    rowHeader: 'Mã lỗi / Công đoạn',
+    rowHeader: 'Mã lỗi · Tên',
     noMatchTitle: 'Không có mã lỗi khớp điều kiện',
     noMatchDescription: 'Hãy rút gọn từ khóa hoặc đặt lại rồi tìm lại.',
     counts: (defects: number, processes: number): string =>

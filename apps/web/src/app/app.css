@@ -450,8 +450,9 @@ main > * + * {
 }
 
 /* 공정 매핑 탭(#209) — 불량코드 탭과 같은 카드 짜임. 표는 테두리 상자 안에서 가로로 구른다. */
+/* 안내 문구는 제목 줄 맨 오른쪽에 붙인다(사용자 지시 2026-10-29). */
 .defect-process-mapping-pane .defect-cause-mapping-note {
-  justify-self: start;
+  margin: 0 0 0 auto;
 }
 
 .defect-mapping-box {
@@ -496,6 +497,55 @@ main > * + * {
 
 .defect-mapping-row-code {
   font-weight: 600;
+}
+
+/* 사용자 시안 — 줄 사이는 옅은 선, 칸은 가운데 둥근 선택 표시. */
+.defect-mapping-table {
+  border-collapse: collapse;
+}
+
+.defect-mapping-table :is(th, td) {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-body-sm);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.defect-mapping-table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.defect-mapping-table thead th {
+  background: var(--surface-container-low);
+  font-weight: 600;
+}
+
+.defect-mapping-table td {
+  cursor: pointer;
+}
+
+.defect-mapping-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1.5px solid var(--outline);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--on-primary);
+  cursor: pointer;
+}
+
+.defect-mapping-toggle[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.defect-mapping-toggle:disabled {
+  cursor: progress;
+  opacity: 0.6;
 }
 
 .defect-mapping-row-parent,

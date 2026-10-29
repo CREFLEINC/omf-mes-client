@@ -3,11 +3,8 @@ import {
   Button,
   EmptyState,
   Icon,
-  MatrixGrid,
   SearchInput,
   SkeletonText,
-  type MatrixColumn,
-  type MatrixRow,
   useToast,
 } from '@crefle/web-ui';
 import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
@@ -195,16 +192,6 @@ export const ProcessMappingPane = () => {
     [allDefects],
   );
 
-  const columns: MatrixColumn[] = processes.map((process) => ({
-    key: String(process.processId),
-    /* 공정명 위 · 공정코드 아래 흐리게(#209). */
-    label: (
-      <span className="defect-mapping-col">
-        <span>{process.processName}</span>
-        <span className="defect-mapping-col-code">{process.processCode}</span>
-      </span>
-    ),
-  }));
   /* 조회 카드의 검색어(#209) — 화면에 받은 목록 안에서 코드 · 이름 · 대분류 이름으로 거른다. 매핑 저장과 무관하다. */
   const [draft, setDraft] = useState('');
   const [keyword, setKeyword] = useState('');
@@ -218,29 +205,6 @@ export const ProcessMappingPane = () => {
             .toLowerCase()
             .includes(needle),
         );
-
-  const rows: MatrixRow[] = shownDefects.map((defect) => ({
-    /* 「코드 · 이름」 위, 대분류 이름 아래 흐리게 — 불량코드 탭의 대분류 · 상세 표시와 같은 결(#209). */
-    label: (
-      <span className="defect-mapping-row">
-        <span className="defect-mapping-row-code">{`${defect.code} · ${defect.name}`}</span>
-        <span className="defect-mapping-row-parent">
-          {categories.get(defect.parentId ?? 0)?.name ?? t.groupHeaderOrphan}
-        </span>
-      </span>
-    ),
-    cells: processes.map((process) => {
-      const assigned = mappedByDefect.get(defect.id)?.has(process.processId) === true;
-      return {
-        key: `${String(defect.id)}:${String(process.processId)}`,
-        status: assigned ? ('success' as const) : ('none' as const),
-        content: <span aria-hidden>{assigned ? '✓' : '—'}</span>,
-        ariaLabel: `${defect.code} · ${process.processName} · ${
-          assigned ? t.mapping.assigned : t.mapping.notAssigned
-        }`,
-      };
-    }),
-  }));
 
   const firstMappingError = mappingQueries.find((query) => query.isError)?.error;
   const loadError = defectsQuery.error ?? processesQuery.error ?? firstMappingError ?? null;
@@ -322,31 +286,78 @@ export const ProcessMappingPane = () => {
       />
     );
   } else {
+    /* 칸을 누르면 바로 연결 · 해제한다(종전 매트릭스와 같은 동작). 저장 중에는 막는다. */
+    const toggle = (defectCodeId: number, processId: number): void => {
+      if (write.isSaving) return;
+      const assigned = mappedByDefect.get(defectCodeId)?.has(processId) === true;
+      write.write({ defectCodeId, processId, intent: assigned ? 'revoke' : 'assign' });
+    };
+
     content = (
-      <MatrixGrid
-        size="md"
+      /*
+       * 공정별 불량코드 설정 표(사용자 시안 · #209) — 왼쪽 「불량코드 · 명칭」, 공정마다 둥근 선택 표시.
+       * 칸(셀)이 이름(「코드 · 공정 · 매핑됨/안 됨」)과 상태를 갖고, 칸 안 단추가 키보드로 누르는 길이다.
+       */
+      <table
+        className="defect-mapping-table"
+        role="grid"
         aria-label={t.panes.mapping}
         aria-busy={write.isSaving}
-        columns={columns}
-        rows={rows}
-        onCellClick={
-          write.isSaving
-            ? undefined
-            : (_row, _column, cell) => {
-                const [defectPart, processPart] = cell.key.split(':');
-                if (defectPart === undefined || processPart === undefined) return;
-                const defectCodeId = Number(defectPart);
-                const processId = Number(processPart);
-                if (!Number.isInteger(defectCodeId) || !Number.isInteger(processId)) return;
-                const assigned = mappedByDefect.get(defectCodeId)?.has(processId) === true;
-                write.write({
-                  defectCodeId,
-                  processId,
-                  intent: assigned ? 'revoke' : 'assign',
-                });
-              }
-        }
-      />
+      >
+        <thead>
+          <tr>
+            <th scope="col" className="defect-mapping-corner">
+              {t.mappingView.rowHeader}
+            </th>
+            {processes.map((process) => (
+              <th key={process.processId} scope="col">
+                <span className="defect-mapping-col">
+                  <span>{process.processName}</span>
+                  <span className="defect-mapping-col-code">{process.processCode}</span>
+                </span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {shownDefects.map((defect) => (
+            <tr key={defect.id}>
+              <th scope="row">
+                <span className="defect-mapping-row">
+                  <span className="defect-mapping-row-code">{`${defect.code} · ${defect.name}`}</span>
+                  <span className="defect-mapping-row-parent">
+                    {categories.get(defect.parentId ?? 0)?.name ?? t.groupHeaderOrphan}
+                  </span>
+                </span>
+              </th>
+              {processes.map((process) => {
+                const assigned = mappedByDefect.get(defect.id)?.has(process.processId) === true;
+                const label = `${defect.code} · ${process.processName} · ${
+                  assigned ? t.mapping.assigned : t.mapping.notAssigned
+                }`;
+                return (
+                  <td
+                    key={process.processId}
+                    aria-label={label}
+                    data-status={assigned ? 'success' : undefined}
+                    onClick={() => toggle(defect.id, process.processId)}
+                  >
+                    <button
+                      type="button"
+                      className="defect-mapping-toggle"
+                      aria-pressed={assigned}
+                      aria-label={label}
+                      disabled={write.isSaving}
+                    >
+                      {assigned && <Icon name="check" size={16} />}
+                    </button>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     );
   }
 
@@ -393,16 +404,12 @@ export const ProcessMappingPane = () => {
               </span>
             )}
           </div>
-          <div className="inspection-hub-counts" aria-hidden>
-            <span className="inspection-hub-count">{t.mappingView.legendAssigned}</span>
-            <span className="inspection-hub-count">{t.mappingView.legendNone}</span>
-          </div>
+          {/* 안내 문구는 제목 줄 맨 오른쪽(사용자 지시 2026-10-29 · #209). 둥근 표시가 연결 여부를 보여 범례는 두지 않는다. */}
+          <p className="iqc-inspection-action-note defect-cause-mapping-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.mapping.description}
+          </p>
         </div>
-        {/* 정보 안내 — 검사 조회·판정의 안내 줄과 같은 모양(#209). */}
-        <p className="iqc-inspection-action-note defect-cause-mapping-note" data-tone="info">
-          <Icon name="info" size={14} aria-hidden />
-          {t.mapping.description}
-        </p>
         {truncated && (
           <div className="banner-slot">
             <AlertBanner variant="warning">{t.mapping.truncated}</AlertBanner>
