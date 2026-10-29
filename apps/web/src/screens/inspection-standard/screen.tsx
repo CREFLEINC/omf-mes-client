@@ -1490,7 +1490,11 @@ export const InspectionStandardScreen = () => {
             },
             {
               value: 'history',
-              label: t.versionSection.tabHistory,
+              /* 건수는 검사 항목 탭과 같이 붙인다(#208). 받기 전에는 이름만 낸다 — 0건을 지어내지 않는다. */
+              label:
+                versionHistory.data === undefined
+                  ? t.versionSection.tabHistory
+                  : t.versionSection.tabHistoryCount(versionHistory.data.items.length),
               /* 고른 버전의 변경 이력(#196) — 「변경 이력」 창과 같은 표. */
               content:
                 selectedVersionId === null ? null : (

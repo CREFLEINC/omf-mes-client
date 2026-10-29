@@ -207,6 +207,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     editSettings: 'Sửa cài đặt phiên bản',
     tabItemsCount: (count: number): string => `Hạng mục kiểm tra ${String(count)}`,
     tabHistory: 'Lịch sử',
+    tabHistoryCount: (count: number): string => `Lịch sử ${String(count)}`,
     notSet: 'Chưa thiết lập',
   },
   listColumns: {

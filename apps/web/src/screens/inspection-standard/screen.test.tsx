@@ -2436,6 +2436,8 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(history?.url.searchParams.get('targetTypeCode')).toBe('INSPECTION_PLAN_VERSION');
     expect(history?.url.searchParams.get('targetId')).toBe('4002');
     expect(history?.url.searchParams.get('occurredFrom')).not.toBeNull();
+    /* 이력 탭도 검사 항목 탭처럼 건수를 붙인다(#208). */
+    expect(screen.getByRole('tab', { name: '이력 1건' })).toBeInTheDocument();
   });
 
   /* 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208) — 버전이 하나면 버전 비교, 이력이 없으면 변경 이력이 서지 않는다. */

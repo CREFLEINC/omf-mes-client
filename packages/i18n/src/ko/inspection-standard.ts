@@ -225,6 +225,7 @@ export const inspectionStandard = {
     editSettings: '버전 설정 수정',
     tabItemsCount: (count: number): string => `검사 항목 ${String(count)}건`,
     tabHistory: '이력',
+    tabHistoryCount: (count: number): string => `이력 ${String(count)}건`,
     notSet: '미설정',
   },
   /* 검사 기준 목록 표의 추가 열(omf-all-around#196). */
