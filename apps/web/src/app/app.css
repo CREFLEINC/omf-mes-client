@@ -17482,20 +17482,37 @@ button.app-button-neutral {
 }
 
 /*
- * 검사 수준 관리 탭(#208) — 검사 기준 탭과 같은 조회 카드 한 줄 · 둥근 테두리 표 · 쪽 이동.
- * 카드 안 조회 줄의 아래 여백은 걷는다.
+ * 검사 수준 관리 탭(#208 · 사용자 시안) — 목록 카드 하나에 제목 줄 · 검색 줄 · 안내 · 둥근 테두리 표 · 쪽 이동.
+ * 카드 안 검색 줄의 아래 여백은 걷고(카드 간격이 맡는다), 라벨 없는 한 줄이라 가운데로 맞춘다.
  */
-.inspection-level-search > .filter-bar {
+.filter-bar.inspection-level-search {
+  align-items: center;
   margin-bottom: 0;
 }
 
-.inspection-level-search .filter-actions {
+/* 제목 줄 — 왼쪽 카드 제목, 오른쪽 「품목 추가」(#208). */
+.inspection-level-card-head {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
 }
 
-/* 품목 코드·이름 칸 — 안내 문구가 잘리지 않는 폭, 수준 칸은 짧은 값이라 좁게(#208). */
+/* 안내 줄 — 카드의 줄 간격이 띄우므로 자체 위 여백은 걷는다(#208). */
+.inspection-level-list-pane > .inspection-sheet-template-rule {
+  margin-top: 0;
+}
+
+/* 「전체 전환 이력 보기」 — 카드 맨 아래 가운데(사용자 시안 · #208). */
+.inspection-level-card-foot {
+  display: flex;
+  justify-content: center;
+}
+
+/* 품목 코드·이름 칸 — 남는 폭을 맡는다, 수준 칸은 짧은 값이라 좁게(사용자 시안 · #208). */
 .inspection-level-keyword {
-  flex: 0 1 18rem;
+  flex: 1 1 14rem;
   min-width: min(14rem, 100%);
 }
 
@@ -17544,6 +17561,19 @@ button.app-button-neutral {
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
   white-space: nowrap;
+}
+
+/* 품목명/코드 칸 — 위 품목명, 아래 품목 코드를 작고 흐리게 두 줄(사용자 시안 · #208). */
+.inspection-level-item-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.inspection-level-item-code {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
 }
 
 /* 긴 품목명 · 사유는 한 줄 말줄임 — 행 높이를 고르게(#208). 전체 글은 마우스를 올리면 보인다. */

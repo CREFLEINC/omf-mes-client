@@ -10,10 +10,9 @@ export const inspectionLevel = {
     TIGHTENED: '엄격',
   } as Record<string, string>,
 
-  rule: '지정한 수준을 그대로 씁니다. IQC 판정 결과로 자동 전환되지 않고, 샘플 수량·판정 기준도 바뀌지 않습니다.',
+  rule: '수동 지정 · IQC 판정에 따라 자동 전환되지 않으며, 샘플 수량과 판정 기준은 유지됩니다.',
 
   list: {
-    heading: '품목별 검사 수준',
     caption: '품목별 검사 수준 목록',
     keyword: '품목 코드·이름',
     keywordPlaceholder: '품목 코드 또는 이름을 입력하세요',
@@ -28,15 +27,14 @@ export const inspectionLevel = {
   },
 
   columns: {
-    itemCode: '품목 코드',
-    itemName: '품목명',
+    item: '품목명 / 코드',
     level: '현재 수준',
     updatedAt: '수정 일시',
     actions: '작업',
   },
 
   actions: {
-    changeLevel: '수준 변경',
+    changeLevel: '변경',
     changeLevelRow: (itemCode: string) => `${itemCode} 수준 변경`,
     showHistory: '이력',
     showHistoryRow: (itemCode: string) => `${itemCode} 전환 이력 보기`,
@@ -54,14 +52,14 @@ export const inspectionLevel = {
     reason: '사유',
     reasonPlaceholder: '사유를 입력하세요(선택)',
     sameLevel: '현재 검사 수준과 동일합니다.',
-    duplicate: '이미 검사 수준을 지정한 품목입니다. 목록에서 수준 변경을 쓰세요.',
+    duplicate: '이미 검사 수준을 지정한 품목입니다. 목록에서 「변경」을 쓰세요.',
   },
 
   history: {
     heading: '전환 이력',
     caption: '검사 수준 전환 이력',
     filteredBy: (itemCode: string) => `품목 ${itemCode}의 이력만 보는 중`,
-    showAll: '전체 보기',
+    showAll: '전체 전환 이력 보기',
     empty: '전환 이력이 없습니다.',
     emptyHint: '검사 수준을 지정하거나 바꾸면 여기에 남습니다.',
     loading: '전환 이력을 불러오는 중입니다.',

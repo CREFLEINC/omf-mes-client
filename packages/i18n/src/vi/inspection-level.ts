@@ -10,10 +10,9 @@ export const inspectionLevel = {
     TIGHTENED: 'Nghiêm ngặt',
   } as Record<string, string>,
 
-  rule: 'Dùng đúng mức đã chỉ định, không tự chuyển theo kết quả IQC. Số lượng mẫu và tiêu chuẩn đánh giá không đổi.',
+  rule: 'Chỉ định thủ công · Không tự chuyển theo kết quả IQC; số lượng mẫu và tiêu chuẩn đánh giá được giữ nguyên.',
 
   list: {
-    heading: 'Mức kiểm tra theo vật tư',
     caption: 'Danh sách mức kiểm tra theo vật tư',
     keyword: 'Mã · tên vật tư',
     keywordPlaceholder: 'Nhập mã hoặc tên vật tư',
@@ -28,15 +27,14 @@ export const inspectionLevel = {
   },
 
   columns: {
-    itemCode: 'Mã vật tư',
-    itemName: 'Tên vật tư',
+    item: 'Tên / mã vật tư',
     level: 'Mức hiện tại',
     updatedAt: 'Thời điểm sửa',
     actions: 'Thao tác',
   },
 
   actions: {
-    changeLevel: 'Đổi mức',
+    changeLevel: 'Đổi',
     changeLevelRow: (itemCode: string) => `Đổi mức ${itemCode}`,
     showHistory: 'Lịch sử',
     showHistoryRow: (itemCode: string) => `Xem lịch sử chuyển ${itemCode}`,
@@ -54,14 +52,14 @@ export const inspectionLevel = {
     reason: 'Lý do',
     reasonPlaceholder: 'Nhập lý do (không bắt buộc)',
     sameLevel: 'Trùng với mức kiểm tra hiện tại.',
-    duplicate: 'Vật tư này đã được chỉ định mức kiểm tra. Hãy dùng Đổi mức trong danh sách.',
+    duplicate: 'Vật tư này đã được chỉ định mức kiểm tra. Hãy dùng 「Đổi」 trong danh sách.',
   },
 
   history: {
     heading: 'Lịch sử chuyển',
     caption: 'Lịch sử chuyển mức kiểm tra',
     filteredBy: (itemCode: string) => `Đang xem lịch sử của vật tư ${itemCode}`,
-    showAll: 'Xem tất cả',
+    showAll: 'Xem toàn bộ lịch sử chuyển',
     empty: 'Không có lịch sử chuyển.',
     emptyHint: 'Khi chỉ định hoặc đổi mức kiểm tra, lịch sử sẽ hiện ở đây.',
     loading: 'Đang tải lịch sử chuyển.',

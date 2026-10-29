@@ -89,7 +89,7 @@ export const historyReason = (row: ItemInspectionLevelHistory): string => {
 export const InspectionLevelScreen = () => {
   const hub = usePageHub();
   /* 좌우 · 상하 배치 · 폭/높이 손잡이 · 창 높이 맞춤 — 검사 기준 탭과 같다(사용자 지시 · #208). 배치는 탭 묶음이 함께 쓴다. */
-  const { splitRef, aboveRef } = useFitToViewport();
+  const { splitRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:inspection-level:split', 0.4);
   const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const toast = useToast();
@@ -134,18 +134,16 @@ export const InspectionLevelScreen = () => {
   /* 목록 표는 모든 열을 가운데 정렬한다 — 검사 기준 탭과 같다(#208). */
   const columns: Column<ItemInspectionLevel>[] = [
     {
-      key: 'itemCode',
+      key: 'item',
       align: 'center',
-      header: t.columns.itemCode,
-      width: '160px',
-      render: (row) => row.itemCode,
-    },
-    {
-      key: 'itemName',
-      align: 'center',
-      header: t.columns.itemName,
-      /* 폭을 정하지 않는다 — 남는 폭을 품목명 열이 맡는다(검사 기준 탭과 같다 · #208). */
-      render: (row) => <span title={row.itemName}>{row.itemName}</span>,
+      header: t.columns.item,
+      /* 폭을 정하지 않는다 — 남는 폭을 품목명/코드 열이 맡는다. 위 품목명 · 아래 품목 코드(흐리게) 두 줄(사용자 시안 · #208). */
+      render: (row) => (
+        <span className="inspection-level-item-cell">
+          <span title={row.itemName}>{row.itemName}</span>
+          <span className="inspection-level-item-code">{row.itemCode}</span>
+        </span>
+      ),
     },
     {
       key: 'level',
@@ -289,50 +287,22 @@ export const InspectionLevelScreen = () => {
         />
       )}
 
-      {/*
-       * 조회 조건 — 검사 기준 탭처럼 목록 위 카드 한 줄: 품목 · 검사 수준 → 조회 · 품목 추가(#208).
-       * 단추는 구분선 없이 바로 붙인다(검사표 기준 탭과 같다 · 사용자 지시). 「초기화」는 원래 없던 단추라 새로 두지 않는다.
-       * 규칙 안내는 줄 아래 작은 보조 글 한 줄 — 박스 · 바탕 없이(검사표 기준 탭과 같은 모양 · 사용자 지시 · #208).
-       */}
-      <section ref={aboveRef} className="pane inspection-level-search" role="search">
-        <form
-          className="filter-bar"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setFilter((prev) => ({ ...prev, q: keyword.trim(), level: levelFilter, page: 1 }));
-          }}
+      {/* 품목별 검사 수준(목록) | 전환 이력 — 검사 기준 탭의 목록 | 상세와 같은 분할(#208). */}
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
+        {/*
+         * 목록 카드 하나에 제목 줄(제목 · 품목 추가) → 검색 줄(품목 · 검사 수준 · 조회) → 규칙 안내 → 표 → 쪽 이동.
+         * 따로 있던 조회 카드를 합쳐 세로 공간을 아낀다(사용자 시안 · #208). 「초기화」는 원래 없던 단추라 두지 않는다.
+         */}
+        <section
+          className="pane inspection-level-list-pane quality-standard-list-pane"
+          aria-label={t.title}
         >
-          <div className="field-cell inspection-level-keyword">
-            <label className="field-label" htmlFor={keywordId}>
-              {t.list.keyword}
-            </label>
-            <TextField
-              id={keywordId}
-              fullWidth
-              placeholder={t.list.keywordPlaceholder}
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-            />
-          </div>
-          {/* 「무검사」·「보통」 같은 짧은 값이라 좁게(#208). */}
-          <div className="field-cell inspection-level-level-filter">
-            <label className="field-label" htmlFor={levelFilterId}>
-              {t.list.level}
-            </label>
-            <Select
-              id={levelFilterId}
-              options={[
-                { value: '', label: t.list.levelAll },
-                ...LEVEL_CODES.map((code) => ({ value: code, label: levelName(code) })),
-              ]}
-              value={levelFilter}
-              onChange={(value) => setLevelFilter(value as InspectionLevelCode | '')}
-            />
-          </div>
-          <div className="filter-actions field-cell-unlabeled">
-            <Button type="submit" variant="filled">
-              {messages.common.search}
-            </Button>
+          <div className="inspection-level-card-head">
+            <h2 className="pane-title">{t.title}</h2>
             <Button
               variant="filled"
               leadingIcon={<Icon name="add" size={18} />}
@@ -341,24 +311,51 @@ export const InspectionLevelScreen = () => {
               {t.list.add}
             </Button>
           </div>
-        </form>
-        <p className="inspection-sheet-template-rule">
-          <Icon name="info" size={16} />
-          {t.rule}
-        </p>
-      </section>
-
-      {/* 품목별 검사 수준(목록) | 전환 이력 — 검사 기준 탭의 목록 | 상세와 같은 분할(#208). */}
-      <div
-        ref={splitRef}
-        className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
-        style={{ ...split.style, ...layout.style }}
-      >
-        <section
-          className="pane inspection-level-list-pane quality-standard-list-pane"
-          aria-label={t.list.heading}
-        >
-          <h2 className="pane-title">{t.list.heading}</h2>
+          <form
+            className="filter-bar inspection-level-search"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setFilter((prev) => ({ ...prev, q: keyword.trim(), level: levelFilter, page: 1 }));
+            }}
+          >
+            {/* 시안은 라벨 없는 검색 줄 — 라벨은 읽기 도구에만 남긴다(#208). */}
+            <div className="field-cell inspection-level-keyword">
+              <label className="inspection-standard-visually-hidden" htmlFor={keywordId}>
+                {t.list.keyword}
+              </label>
+              <TextField
+                id={keywordId}
+                fullWidth
+                placeholder={t.list.keywordPlaceholder}
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+              />
+            </div>
+            {/* 「무검사」·「보통」 같은 짧은 값이라 좁게(#208). */}
+            <div className="field-cell inspection-level-level-filter">
+              <label className="inspection-standard-visually-hidden" htmlFor={levelFilterId}>
+                {t.list.level}
+              </label>
+              <Select
+                id={levelFilterId}
+                options={[
+                  { value: '', label: t.list.levelAll },
+                  ...LEVEL_CODES.map((code) => ({ value: code, label: levelName(code) })),
+                ]}
+                value={levelFilter}
+                onChange={(value) => setLevelFilter(value as InspectionLevelCode | '')}
+              />
+            </div>
+            <Button type="submit" variant="filled">
+              {messages.common.search}
+            </Button>
+          </form>
+          {/* 규칙 안내 — 박스 · 바탕 없는 흐린 보조 글 한 줄(검사표 기준 탭과 같은 모양 · 사용자 지시 · #208). */}
+          <p className="inspection-sheet-template-rule">
+            <Icon name="info" size={16} />
+            {t.rule}
+          </p>
           {list.isError && (
             <AlertBanner variant="error">
               {t.list.loadFailed}{' '}
@@ -405,6 +402,24 @@ export const InspectionLevelScreen = () => {
               onChangeSize={(size) => setFilter((prev) => ({ ...prev, size, page: 1 }))}
             />
           )}
+          {/*
+           * 시안 맨 아래 「전체 전환 이력 보기」 = 이력 칸의 품목 거르기 해제(종전 「전체 보기」)와 같은 일 —
+           * 시안 자리로 옮긴다. 한 품목만 보는 중일 때만 보인다(새 기능 아님 · 사용자 시안 · #208).
+           */}
+          {historyItem !== null && (
+            <div className="inspection-level-card-foot">
+              <Button
+                size="sm"
+                variant="text"
+                onClick={() => {
+                  setHistoryItem(null);
+                  setHistoryPage(1);
+                }}
+              >
+                {t.history.showAll}
+              </Button>
+            </div>
+          )}
         </section>
 
         <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
@@ -420,22 +435,12 @@ export const InspectionLevelScreen = () => {
           className="pane inspection-level-list-pane quality-standard-detail"
           aria-label={t.history.heading}
         >
-          {/* 제목 옆에 「어느 품목만 보는 중 · 전체 보기」를 같은 줄로 — 줄 하나를 아낀다(#208). */}
+          {/* 제목 옆에 「어느 품목만 보는 중」을 같은 줄로 — 해제는 목록 카드 아래 「전체 전환 이력 보기」(#208). */}
           <div className="inspection-level-section-head">
             <h2 className="pane-title">{t.history.heading}</h2>
             {historyItem !== null && (
               <span className="inspection-level-history-filter">
                 {t.history.filteredBy(historyItem.itemCode)}
-                <Button
-                  size="sm"
-                  variant="outlined"
-                  onClick={() => {
-                    setHistoryItem(null);
-                    setHistoryPage(1);
-                  }}
-                >
-                  {t.history.showAll}
-                </Button>
               </span>
             )}
           </div>
