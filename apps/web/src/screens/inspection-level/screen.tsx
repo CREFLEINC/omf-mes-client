@@ -24,6 +24,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner } from '../../patterns/master';
+import { ItemPickerDialog } from '../../patterns/item-picker';
 import { PageNav } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { formatPlantDateTime } from '../../patterns/plant-time';
@@ -95,10 +96,12 @@ export const InspectionLevelScreen = () => {
   const toast = useToast();
   const levelFilterId = useId();
 
-  const [keyword, setKeyword] = useState('');
+  /* 품목 — 조회 줄의 「품목 검색」 칸을 누르면 품목 선택 창이 열린다(검사표 기준 탭과 같다 · 사용자 지시 · #208). */
+  const [itemInput, setItemInput] = useState<{ itemId: number; label: string } | null>(null);
+  const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
   const [levelFilter, setLevelFilter] = useState<InspectionLevelCode | ''>('');
   const [filter, setFilter] = useState<LevelListFilter>({
-    q: '',
+    itemId: null,
     level: '',
     page: 1,
     size: PAGE_SIZE,
@@ -295,7 +298,12 @@ export const InspectionLevelScreen = () => {
           className="filter-bar"
           onSubmit={(event) => {
             event.preventDefault();
-            setFilter((prev) => ({ ...prev, q: keyword.trim(), level: levelFilter, page: 1 }));
+            setFilter((prev) => ({
+              ...prev,
+              itemId: itemInput?.itemId ?? null,
+              level: levelFilter,
+              page: 1,
+            }));
           }}
         >
           {/* 「무검사」·「보통」 같은 짧은 값이라 좁게(#208). */}
@@ -310,19 +318,29 @@ export const InspectionLevelScreen = () => {
                 ...LEVEL_CODES.map((code) => ({ value: code, label: levelName(code) })),
               ]}
               value={levelFilter}
-              onChange={(value) => setLevelFilter(value as InspectionLevelCode | '')}
+              onChange={(value) => {
+                const level = value as InspectionLevelCode | '';
+                setLevelFilter(level);
+                /* 고르면 바로 조회한다 — 다른 탭 조회 줄과 같다(#208). */
+                setFilter((prev) => ({ ...prev, level, page: 1 }));
+              }}
             />
           </div>
           <SearchInput
             label={t.list.keyword}
             placeholder={t.list.keywordPlaceholder}
-            value={keyword}
+            value={itemInput?.label ?? ''}
+            readOnly
+            title={itemInput?.label}
+            aria-haspopup="dialog"
             clearLabel={t.list.keywordClear}
-            onChange={(event) => setKeyword(event.target.value)}
-            onSearch={() =>
-              setFilter((prev) => ({ ...prev, q: keyword.trim(), level: levelFilter, page: 1 }))
-            }
-            onClear={() => setKeyword('')}
+            onClick={() => setIsItemPickerOpen(true)}
+            onSearch={() => setIsItemPickerOpen(true)}
+            onChange={() => undefined}
+            onClear={() => {
+              setItemInput(null);
+              setFilter((prev) => ({ ...prev, itemId: null, page: 1 }));
+            }}
           />
           <div className="filter-actions field-cell-unlabeled">
             <Button type="submit" variant="filled">
@@ -332,9 +350,9 @@ export const InspectionLevelScreen = () => {
             <Button
               variant="outlined"
               onClick={() => {
-                setKeyword('');
+                setItemInput(null);
                 setLevelFilter('');
-                setFilter((prev) => ({ ...prev, q: '', level: '', page: 1 }));
+                setFilter((prev) => ({ ...prev, itemId: null, level: '', page: 1 }));
               }}
             >
               {messages.common.reset}
@@ -515,6 +533,23 @@ export const InspectionLevelScreen = () => {
             setEditing(null);
           }}
           onSave={(values) => formWrite.write({ row: editing.row, values })}
+        />
+      )}
+
+      {isItemPickerOpen && (
+        <ItemPickerDialog
+          multiple={false}
+          compact
+          showAvailability={false}
+          confirmLabel={t.dialog.pickConfirm}
+          onClose={() => setIsItemPickerOpen(false)}
+          onConfirm={([picked]) => {
+            setIsItemPickerOpen(false);
+            if (picked === undefined) return;
+            setItemInput({ itemId: picked.itemId, label: `${picked.itemCode} ${picked.itemName}` });
+            /* 「선택」하면 바로 조회한다 — 「조회」를 한 번 더 누르지 않게(검사표 기준 탭과 같다 · #208). */
+            setFilter((prev) => ({ ...prev, itemId: picked.itemId, page: 1 }));
+          }}
         />
       )}
     </>

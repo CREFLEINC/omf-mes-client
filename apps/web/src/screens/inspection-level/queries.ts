@@ -20,7 +20,8 @@ export const inspectionLevelKeys = {
 };
 
 export interface LevelListFilter {
-  q: string;
+  /** 품목 선택 창에서 고른 품목 — 없으면 전체(#208). */
+  itemId: number | null;
   level: InspectionLevelCode | '';
   page: number;
   size: number;
@@ -48,7 +49,7 @@ export const useInspectionLevels = (filter: LevelListFilter) => {
         client.GET('/quality/item-inspection-levels', {
           params: {
             query: {
-              ...(filter.q === '' ? {} : { q: filter.q }),
+              ...(filter.itemId === null ? {} : { itemId: filter.itemId }),
               ...(filter.level === '' ? {} : { inspectionLevelCode: filter.level }),
               page: filter.page,
               size: filter.size,
