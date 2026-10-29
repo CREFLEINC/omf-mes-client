@@ -22,7 +22,7 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   },
   actions: {
     addCategory: 'Thêm cấp lớn',
-    addChild: 'Thêm chi tiết',
+    addChild: 'Thêm mã cấp dưới',
   },
   actionReasons: {
     addChildNeedsCategory: 'Thêm chi tiết chỉ dùng được sau khi chọn một cấp lớn.',

@@ -20,10 +20,10 @@ export const defectCauseCode = {
   },
   actions: {
     addCategory: '대분류 추가',
-    addChild: '상세 추가',
+    addChild: '하위 코드 추가',
   },
   actionReasons: {
-    addChildNeedsCategory: '상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.',
+    addChildNeedsCategory: '하위 코드 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.',
     parentLockedByChildren: '이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.',
     /** 다른 기록에서 쓰고 있어 코드가 잠겼을 때(수정 창 · 사용자 시안 #209) */
     codeLockedReferenced: '이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.',
@@ -97,7 +97,7 @@ export const defectCauseCode = {
   },
   /** 표 머리 문구(사용자 지시 2026-10-29 · #209). 폼 · 상세 이름표는 `fields` 를 그대로 쓴다. */
   listColumns: {
-    defectCode: '불량 코드',
+    defectCode: '불량코드',
     defectName: '불량명',
     causeCode: '코드',
     causeName: '명칭',

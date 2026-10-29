@@ -447,7 +447,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       processLabelOf={processLabelOf}
       onSelect={(id) => {
         setIsEditOpen(false);
-        updateParams({ sel: String(id), mode: null, as: null });
+        /* 고른 줄을 한 번 더 누르면 선택을 푼다 — 상세 카드가 닫힌다(사용자 지시 · #209). */
+        updateParams({ sel: id === selectedId ? null : String(id), mode: null, as: null });
       }}
       // 대분류 추가는 선택을 지운다 — 어느 코드의 하위도 아닌 새 축이다.
       onAddCategory={() => openCreateForm({ as: 'category' })}
