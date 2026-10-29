@@ -24953,7 +24953,9 @@ table.col-measuring td {
 .erp-po-order-type-field > :not(label) {
   width: 100%;
   min-width: 0;
+}
 
+/*
  * 선택지가 많은 선택 칸의 검색창(`patterns/select.tsx`) — 펼친 목록 맨 위에 붙어, 목록을 내려도 남는다. 목록 바탕과 같은
  * 색으로 덮어 아래 줄이 비치지 않게 한다.
  */
