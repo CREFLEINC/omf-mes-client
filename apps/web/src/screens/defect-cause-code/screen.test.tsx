@@ -525,19 +525,18 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     expect(screen.queryByRole('button', { name: '하위 코드 추가' })).not.toBeInTheDocument();
   });
 
-  it('대분류를 고르면 상세 카드에 하위 코드 목록이 함께 보이고, 누르면 그 코드를 고른다(#209)', async () => {
-    const { user } = renderScreen(
+  it('대분류를 고르면 상세 카드에 하위 코드 목록이 값으로만 함께 보인다(#209)', async () => {
+    renderScreen(
       [defectOptionsRoute(), defectListRoute(activeDefectFixtures), defectDetailRoute()],
       '?sel=1001',
     );
     await screen.findByRole('button', { name: '수정' });
 
     const children = await screen.findByRole('region', { name: '하위 코드' });
-    expect(within(children).getByRole('button', { name: 'DF-11' })).toBeInTheDocument();
-    expect(within(children).getByRole('button', { name: 'DF-12' })).toBeInTheDocument();
-
-    await user.click(within(children).getByRole('button', { name: 'DF-11' }));
-    expect(currentLocation()).toContain('sel=1002');
+    expect(within(children).getByText('DF-11')).toBeInTheDocument();
+    expect(within(children).getByText('DF-12')).toBeInTheDocument();
+    // 하위 코드는 눌러서 넘어가지 않는다 — 단추가 아니다.
+    expect(within(children).queryByRole('button', { name: 'DF-11' })).not.toBeInTheDocument();
   });
 
   it('대분류 추가 창이 열려 있어도 뒤의 상세 카드는 고른 코드를 그대로 보이고, 상위는 비어 있다(#209 버그 수정)', async () => {

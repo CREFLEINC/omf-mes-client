@@ -611,10 +611,6 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
               .filter((item) => item.parentId === code.id && item.id !== code.id)
               .sort((left, right) => left.code.localeCompare(right.code))}
             processLabelOf={processLabelOf}
-            onSelect={(id) => {
-              setIsEditOpen(false);
-              updateParams({ sel: String(id), mode: null, as: null });
-            }}
           />
         )}
       </section>

@@ -11,19 +11,13 @@ export interface ChildCodeTableProps {
   /** 이 대분류에 딸린 하위 코드(미사용 포함, 코드 순) */
   codes: readonly HierarchyCode[];
   processLabelOf: (processId: number | null | undefined) => string | null;
-  onSelect: (id: number) => void;
 }
 
 /**
  * 대분류 상세 카드 아래 하위 코드 목록(사용자 지시 2026-10-29 · #209) — 대분류를 고르면 딸린 상세 코드를 함께 본다.
- * 값 표기만 한다. 코드를 누르면 그 하위 코드를 고른다(목록에서 고른 것과 같다).
+ * 값 표기만 한다 — 코드를 눌러 하위 코드로 넘어가지 않는다(사용자 지시 · #209).
  */
-export const ChildCodeTable = ({
-  adapter,
-  codes,
-  processLabelOf,
-  onSelect,
-}: ChildCodeTableProps) => {
+export const ChildCodeTable = ({ adapter, codes, processLabelOf }: ChildCodeTableProps) => {
   const orEmpty = (value: string | null | undefined): string =>
     value === null || value === undefined || value === '' ? t.values.empty : value;
 
@@ -32,16 +26,7 @@ export const ChildCodeTable = ({
       key: 'code',
       align: 'center',
       header: adapter.labels.listCode,
-      render: (row) => (
-        <button
-          type="button"
-          className="inspection-standard-plan-open defect-cause-child-open"
-          title={row.code}
-          onClick={() => onSelect(row.id)}
-        >
-          {row.code}
-        </button>
-      ),
+      render: (row) => row.code,
     },
     { key: 'name', align: 'center', header: adapter.labels.listName, render: (row) => row.name },
     ...(adapter.hasDisposition
