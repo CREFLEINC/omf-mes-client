@@ -92,7 +92,6 @@ export const TemplateEditor = ({
   const { client } = useApiClient();
   const toast = useToast();
   const ids = {
-    status: useId(),
     version: useId(),
     material: useId(),
     structure: useId(),
@@ -301,7 +300,6 @@ export const TemplateEditor = ({
             <div className="inspection-standard-version-actions">
               {!readOnly && (
                 <Button
-                  aria-describedby={ids.status}
                   disabled={saving || dirty}
                   onClick={() => setConfirming(true)}
                 >
@@ -487,10 +485,7 @@ export const TemplateEditor = ({
       </div>
 
       <div className="inspection-sheet-template-actions">
-        <p className="inspection-sheet-template-status" id={ids.status} role="status">
-          {!readOnly && dirty && t.editor.dirty}
-          {template !== null && !readOnly && dirty && ` ${t.editor.confirmBlocked}`}
-        </p>
+        {/* 「저장하지 않은 변경…」 안내는 두지 않는다 — 떠날 때 확인 창이 묻는다(사용자 지시 · #208). */}
         {/* 닫기는 테두리 단추 — 검사 기준 탭의 「취소」와 같은 단계(#208). */}
         <Button variant="outlined" onClick={onClose}>
           {t.editor.close}

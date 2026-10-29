@@ -22511,13 +22511,6 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   background: var(--surface-container-low);
 }
 
-.inspection-sheet-template-status {
-  flex: 1 1 12rem;
-  margin: 0;
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-}
-
 /*
  * 제품 검사표 A4 출력(omf-all-around#89 C5) — 고객 종이 양식 B-05-101 과 같은 배치. 화면에는 그리지 않고 인쇄 때만
  * 이 장만 보인다. 양식이 A4 가로라 그대로 맞춘다.

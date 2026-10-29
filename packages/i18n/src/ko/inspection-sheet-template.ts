@@ -152,8 +152,6 @@ export const inspectionSheetTemplate = {
     method: '전수/발취',
     save: '저장',
     confirm: '확정',
-    dirty: '저장하지 않은 변경이 있습니다.',
-    confirmBlocked: '먼저 저장해야 확정할 수 있습니다.',
     copyAsNew: '새 버전 만들기',
     close: '닫기',
     saved: '검사표 기준을 저장했습니다.',

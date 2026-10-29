@@ -153,8 +153,6 @@ export const inspectionSheetTemplate = {
     method: 'Toàn bộ/Rút mẫu',
     save: 'Lưu',
     confirm: 'Xác nhận',
-    dirty: 'Có thay đổi chưa lưu.',
-    confirmBlocked: 'Hãy lưu trước rồi mới xác nhận được.',
     copyAsNew: 'Tạo phiên bản mới',
     close: 'Đóng',
     saved: 'Đã lưu tiêu chuẩn.',
