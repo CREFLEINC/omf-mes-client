@@ -944,6 +944,21 @@ h2:has(> .inspection-standard-dialog-title) {
   margin: 0 auto 0 0;
 }
 
+/* 엑셀 올리기 창의 글자 크기 — 경고 제목 · 파일 상자 · 형식 안내를 한 크기로 맞춘다(사용자 지시 · #208). */
+.inspection-standard-import-text,
+.inspection-standard-import-box-head,
+.inspection-standard-import-file-list,
+.inspection-standard-import-guide > summary,
+.inspection-standard-import-guide-body,
+.inspection-standard-import-guide-body > p:last-child {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.inspection-standard-import-text {
+  font-weight: 600;
+}
+
 /* 엑셀 올리기 창(사용자 시안 · #208) — 라벨 줄(이름 · 형식), 파일 상자(머리 · 구분선 · 목록), 접는 형식 안내. */
 .inspection-standard-import-files {
   display: grid;
@@ -1042,7 +1057,6 @@ h2:has(> .inspection-standard-dialog-title) {
   /* 창 바탕(surface-container-high)과 갈리게 한 단계 낮춘다. */
   background: var(--surface-container-low);
   color: var(--on-surface);
-  font: var(--type-body-md);
 }
 
 .inspection-standard-import-guide-body > p {
@@ -1051,7 +1065,6 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .inspection-standard-import-guide-body > p:last-child {
   color: var(--on-surface-muted);
-  font: var(--type-body-sm);
 }
 
 .inspection-standard-detail {

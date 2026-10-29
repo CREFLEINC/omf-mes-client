@@ -97,7 +97,11 @@ export const ImportDialog = ({
     >
       <div className="form-grid dialog-scroll">
         <div className="form-grid-full">
-          <AlertBanner variant="warning" title={t.partialWarningTitle}>
+          {/* 제목도 창 안 다른 안내와 같은 작은 글자로(사용자 지시 · #208). */}
+          <AlertBanner
+            variant="warning"
+            title={<span className="inspection-standard-import-text">{t.partialWarningTitle}</span>}
+          >
             {t.partialWarning}
           </AlertBanner>
         </div>
