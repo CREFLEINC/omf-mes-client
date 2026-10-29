@@ -1268,11 +1268,12 @@ const dialog = async (): Promise<HTMLElement> =>
 
 /* 승인은 현장 검사에 효력이 없는 기록뿐이라 단추를 걷었다(사용자 지시 · #208). */
 describe('InspectionStandardScreen — 기준 승인 단추 없음', () => {
-  it('기본 정보 수정 창에 승인 단추가 없다', async () => {
+  /* 사용 중지는 창 밖, 상세 상자의 「기본 정보 수정」 옆으로 옮겼다(#208). */
+  it('기본 정보 수정 창에 승인 · 사용 중지 단추가 없다', async () => {
     renderSelectedPlan();
 
     const form = await awaitPlanForm();
-    expect(within(form).getByRole('button', { name: '사용 중지' })).toBeInTheDocument();
+    expect(within(form).queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
     expect(within(form).queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
   });
 
@@ -1294,7 +1295,7 @@ describe('InspectionStandardScreen — 기준 사용 중지', () => {
   it('확인하면 If-Match를 함께 실어 보낸다', async () => {
     const { requests, user } = renderSelectedPlan([planActionRoute('deactivate')]);
 
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '사용 중지' }));
+    await user.click(await screen.findByRole('button', { name: '사용 중지' }));
     await user.click(within(await dialog()).getByRole('button', { name: '사용 중지' }));
 
     await screen.findByText(t.result.deactivated);
@@ -1308,33 +1309,32 @@ describe('InspectionStandardScreen — 기준 사용 중지', () => {
   it('확인 전에는 요청이 나가지 않는다', async () => {
     const { requests, user } = renderSelectedPlan([planActionRoute('deactivate')]);
 
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '사용 중지' }));
+    await user.click(await screen.findByRole('button', { name: '사용 중지' }));
 
     expect(screen.getByText('이 검사기준을 사용 중지할까요?')).toBeInTheDocument();
     expect(requestsTo(requests, DEACTIVATE_PATH)).toHaveLength(0);
   });
 
-  it('이미 미사용인 기준은 사용 중지가 비활성이고 사유가 보인다', async () => {
+  /* 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208). */
+  it('이미 미사용인 기준에는 사용 중지 단추가 없다', async () => {
     renderScreen(
       [planListRoute(), planDetailRoute(inspectionPlanFixtures[2]), ...lookupRoutes()],
       '?plan=3003',
     );
 
-    expect(within(await awaitPlanForm()).getByRole('button', { name: '사용 중지' })).toBeDisabled();
-    expect(
-      screen.getByText('사용 중지는 이미 미사용인 기준에 다시 할 수 없습니다.'),
-    ).toBeInTheDocument();
+    await screen.findByRole('button', { name: '기본 정보 수정' });
+    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
 
   /* 사용 중지에는 409가 있다(계약 실측) — 재조회하면 풀린다. */
-  it('충돌이면 원인 문구와 「최신 불러오기」가 창 안에 나온다', async () => {
+  it('충돌이면 원인 문구와 「최신 불러오기」가 확인 창 안에 나온다', async () => {
     const { user } = renderSelectedPlan([
       planActionRoute('deactivate', () =>
         jsonResponse({ conflictCause: 'workerLease', message: '' }, { status: 409 }),
       ),
     ]);
 
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '사용 중지' }));
+    await user.click(await screen.findByRole('button', { name: '사용 중지' }));
     await user.click(within(await dialog()).getByRole('button', { name: '사용 중지' }));
 
     expect(

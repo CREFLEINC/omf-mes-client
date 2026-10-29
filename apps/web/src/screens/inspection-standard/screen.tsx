@@ -1049,23 +1049,6 @@ export const InspectionStandardScreen = () => {
   const optionsFor = (lookup: LookupResult, selected: string) =>
     selectableOptions(lookup, selected);
 
-  /**
-   * 승인·사용 중지를 막는 사유. 서버가 최종 판정을 하지만(400·403·409)
-   * 이미 끝난 액션은 화면이 먼저 막고 **왜 못 하는지** 알린다.
-   *
-   * 아직 등록하지 않은 기준에는 액션을 걸 대상 자체가 없다 — 감추지 않고 사유와 함께 비활성으로 둔다.
-   */
-  const savedPlan = planDetail.data?.inspectionPlan ?? null;
-
-  const deactivateDisabledReason = ((): string | null => {
-    if (createValues !== null || savedPlan === null) return t.actionReasons.deactivateNeedsPlan;
-    if (!savedPlan.isActive) return t.actionReasons.deactivateAlreadyDone;
-
-    return null;
-  })();
-
-  const isPlanActionRunning = deactivateWrite.isSaving;
-
   /*
    * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
    * 잃기 전에 먼저 막고 무엇을 하면 풀리는지 알린다.
@@ -1253,31 +1236,6 @@ export const InspectionStandardScreen = () => {
     />
   );
 
-  const renderPlanActions = (): ReactNode => (
-    <>
-      {deactivateDisabledReason === null ? (
-        <div className="field-cell form-actions-secondary">
-          <Button
-            variant="outlined"
-            disabled={isPlanActionRunning}
-            onClick={() => {
-              deactivateWrite.reset();
-              setPlanAction('deactivate');
-            }}
-          >
-            {messages.common.deactivate}
-          </Button>
-        </div>
-      ) : (
-        <DisabledAction
-          label={messages.common.deactivate}
-          reason={deactivateDisabledReason}
-          className="form-actions-secondary"
-        />
-      )}
-    </>
-  );
-
   /**
    * 우 상단 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
@@ -1387,6 +1345,16 @@ export const InspectionStandardScreen = () => {
               : lookupDisplayLabel(processOptions, String(planDetail.data.inspectionPlan.processId))
           }
           onEdit={() => setIsPlanEditOpen(true)}
+          /* 사용 중지는 상세 상자의 「기본 정보 수정」 옆(사용자 지시 · #208). 이미 미사용이면 걸 대상이 없어 두지 않는다. */
+          onDeactivate={
+            planDetail.data.inspectionPlan.isActive
+              ? () => {
+                  deactivateWrite.reset();
+                  setPlanAction('deactivate');
+                }
+              : undefined
+          }
+          isDeactivating={deactivateWrite.isSaving}
         />
 
         {renderVersionBar()}
@@ -1420,7 +1388,13 @@ export const InspectionStandardScreen = () => {
               routingOptions={optionsFor(routingOptions, formState.values.routingId)}
               routingDisabledReason={routingDisabledReason}
               // 판정의 주인은 codeEditable이다. reason은 문구 선택에만 쓴다.
-              codeLockReason={codeLockMessage(planDetail.data.editability)}
+              // 다른 자료가 쓰는 기준은 건수 대신 짧은 한 줄로 알린다(사용자 시안 · #208).
+              codeLockReason={
+                !planDetail.data.editability.codeEditable &&
+                planDetail.data.editability.reason === 'REFERENCED'
+                  ? t.values.codeInUseLocked
+                  : codeLockMessage(planDetail.data.editability)
+              }
               isDirty={isPlanDirty}
               isSaving={planWrite.isSaving}
               onSave={handleSavePlan}
@@ -1429,7 +1403,6 @@ export const InspectionStandardScreen = () => {
                 cancelPlanEdit();
                 setIsPlanEditOpen(false);
               }}
-              transitionActions={renderPlanActions()}
             />
           </Dialog>
         )}

@@ -37,9 +37,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   actionReasons: {
     /* 계약의 Routing 조회가 품목을 필수 쿼리로 둔다 — 품목을 비우면 고를 라우팅 자체가 없다. */
     routingNeedsItem: 'Routing chỉ chọn được sau khi đã chọn mặt hàng. Hãy chọn mặt hàng trước.',
-    deactivateAlreadyDone:
-      'Việc ngừng sử dụng không thực hiện lại được với tiêu chuẩn đã ngừng dùng.',
-    deactivateNeedsPlan: 'Việc ngừng sử dụng chỉ thực hiện được sau khi đã đăng ký tiêu chuẩn.',
     /* 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다. */
     newVersionBlockedByUnsaved:
       'Việc phát hành phiên bản mới không thực hiện được khi còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',
@@ -364,8 +361,11 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     automaticJudgment: 'Đánh giá tự động',
   },
   values: {
-    pqcSkipAllowedNote:
-      'Khi bật, PQC của lệnh sản xuất phát hành theo tiêu chuẩn này sẽ được bỏ qua. Khi đăng ký kết quả, LOT trở thành bình thường ngay.',
+    pqcSkipAllowedNote: 'Khi bật, có thể bỏ qua PQC ở lệnh sản xuất áp dụng tiêu chuẩn này.',
+    /* 공정 · 라우팅을 비운 선택지(사용자 시안 · #208). */
+    notSelected: 'Không chọn',
+    /* 다른 자료가 쓰는 기준의 코드 잠금 안내(사용자 시안 · #208). */
+    codeInUseLocked: 'Không thể thay đổi mã đang được sử dụng.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (ngừng dùng)',

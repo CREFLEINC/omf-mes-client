@@ -358,6 +358,24 @@ main > * + * {
   gap: var(--space-3);
 }
 
+/* 상세 상자 머리 오른쪽 — 사용 중지 · 기본 정보 수정(사용자 지시 · #208). */
+.inspection-standard-plan-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 기본 정보 수정 창의 PQC 생략 허용 — 위아래 구분선 사이 한 줄 구획(사용자 시안 · #208). */
+.inspection-standard-pqc-skip {
+  padding: var(--space-3) 0 0;
+  border-top: 1px solid var(--outline-variant);
+}
+
+.inspection-standard-pqc-skip > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
 .inspection-standard-plan-head > .pane-title {
   margin: 0;
 }

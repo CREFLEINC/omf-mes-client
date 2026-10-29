@@ -45,8 +45,6 @@ export const inspectionStandard = {
      * 사용자가 무엇이 막혔는지 모르고, 감추면 「이 화면에는 없는 항목」으로 오해한다.
      */
     routingNeedsItem: '라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.',
-    deactivateAlreadyDone: '사용 중지는 이미 미사용인 기준에 다시 할 수 없습니다.',
-    deactivateNeedsPlan: '사용 중지는 기준을 먼저 등록해야 할 수 있습니다.',
     /*
      * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
      */
@@ -391,8 +389,11 @@ export const inspectionStandard = {
     automaticJudgment: '자동판정',
   },
   values: {
-    pqcSkipAllowedNote:
-      '켜면 이 기준으로 배포한 작업지시의 PQC 를 생략합니다. 실적을 등록하면 LOT 이 바로 정상이 됩니다.',
+    pqcSkipAllowedNote: '활성화하면 해당 기준이 적용된 작업지시에서 PQC를 생략할 수 있습니다.',
+    /* 공정 · 라우팅을 비운 선택지(사용자 시안 · #208). */
+    notSelected: '선택 안 함',
+    /* 다른 자료가 쓰는 기준의 코드 잠금 안내(사용자 시안 · #208). */
+    codeInUseLocked: '사용 중인 코드는 변경할 수 없습니다.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (미사용)',

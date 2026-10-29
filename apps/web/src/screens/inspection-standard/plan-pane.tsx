@@ -1,4 +1,4 @@
-import { Button, Checkbox, Chip, SearchInput, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, Icon, SearchInput, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId, useState } from 'react';
 
@@ -80,6 +80,7 @@ export const PlanPane = ({
   embedded = false,
 }: PlanPaneProps) => {
   const codeId = useId();
+  const codeLockNoteId = useId();
   const nameId = useId();
   const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
   /* 창에서 고른 품목의 이름 — 선택지 목록(첫 쪽)에 없는 품목도 이름이 보이게 둔다(#196). */
@@ -141,10 +142,17 @@ export const PlanPane = ({
             value={values.inspectionPlanCode}
             onChange={(event) => onChange({ inspectionPlanCode: event.target.value })}
             disabled={isCodeLocked}
-            disabledReason={codeLockReason}
+            /* 잠긴 칸은 자물쇠 표시 + 칸 바로 아래 작은 안내 한 줄(사용자 시안 · #208). */
+            trailingIcon={isCodeLocked ? <Icon name="lock" size={18} aria-hidden /> : undefined}
+            aria-describedby={isCodeLocked ? codeLockNoteId : undefined}
             error={fieldErrors.inspectionPlanCode}
             aria-required={!isCodeLocked}
           />
+          {isCodeLocked && (
+            <p id={codeLockNoteId} className="field-note">
+              {codeLockReason}
+            </p>
+          )}
         </div>
 
         <div className="field-cell">
@@ -190,18 +198,18 @@ export const PlanPane = ({
         {/* IQC 에는 공정이 없다 — 비우는 것이 정상 값이다. */}
         <SelectField
           label={t.fields.process}
-          options={[{ value: '', label: t.values.empty }, ...processOptions]}
+          options={[{ value: '', label: t.values.notSelected }, ...processOptions]}
           value={values.processId}
-          placeholder={t.values.empty}
+          placeholder={t.values.notSelected}
           onChange={(processId) => onChange({ processId })}
           error={fieldErrors.processId}
         />
 
         <SelectField
           label={t.fields.routing}
-          options={[{ value: '', label: t.values.empty }, ...routingOptions]}
+          options={[{ value: '', label: t.values.notSelected }, ...routingOptions]}
           value={values.routingId}
-          placeholder={t.values.empty}
+          placeholder={t.values.notSelected}
           onChange={(routingId) => onChange({ routingId })}
           disabled={routingDisabledReason !== null}
           disabledReason={routingDisabledReason ?? undefined}
@@ -210,7 +218,8 @@ export const PlanPane = ({
 
         {/* PQC 생략 허용(omf-all-around#119) — PQC 기준에만 선다. 켜면 이 기준으로 배포한 W/O 의 PQC 가 생략된다. */}
         {values.inspectionTypeCode === 'PQC' && (
-          <div className="field-cell">
+          /* 위아래 구분선을 둔 한 줄 구획(사용자 시안 · #208). */
+          <div className="field-cell form-grid-full inspection-standard-pqc-skip">
             <Checkbox
               checked={values.pqcSkipAllowed}
               onChange={(event) => onChange({ pqcSkipAllowed: event.target.checked })}
