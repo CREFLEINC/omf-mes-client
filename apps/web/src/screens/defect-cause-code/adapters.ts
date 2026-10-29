@@ -148,9 +148,13 @@ const toCauseUpdate = (payload: CodeWritePayload): CauseCodeUpdate => ({
  * `includeInactive=false`를 실어 보내는 것과 싣지 않는 것은 서버에서 같은 뜻이지만,
  * 요청 URL이 조건을 그대로 드러내야 무엇으로 조회했는지 읽을 수 있다.
  */
-const listQuery = (filters: CodeFilters): { q?: string; includeInactive?: boolean } => ({
+const listQuery = (
+  filters: CodeFilters,
+): { q?: string; includeInactive?: boolean; page: number; size: number } => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
+  page: filters.page,
+  size: filters.size,
 });
 
 export const defectCodeAdapter: CodeAdapter = {

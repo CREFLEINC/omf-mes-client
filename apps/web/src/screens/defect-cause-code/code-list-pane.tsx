@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
 import type { CodeAdapter } from './adapters';
 import { DEFAULT_CODE_FILTERS } from './code-options';
 import { ORPHAN_GROUP_KEY, groupKeyOf, isCategory } from './hierarchy';
@@ -24,6 +25,10 @@ export interface CodeListPaneProps {
   appliedFilters: CodeFilters;
   /** 0건 안내의 초기화가 호출한다 */
   onApplyFilters: (next: CodeFilters) => void;
+  /** 서버가 준 쪽 정보 — 공용 쪽 이동(총 건수 · 쪽 크기 · 처음/이전/다음/마지막)이 읽는다(#209). */
+  pageMeta: PageNavMeta;
+  onChangePage: (page: number) => void;
+  onChangePageSize: (size: PageSize) => void;
   selectedId: number | null;
   onSelect: (id: number) => void;
   /** 등록된 코드가 없을 때 빈 안내의 단추 */
@@ -52,6 +57,9 @@ export const CodeListPane = ({
   isLoading,
   appliedFilters,
   onApplyFilters,
+  pageMeta,
+  onChangePage,
+  onChangePageSize,
   selectedId,
   onSelect,
   onAddCategory,
@@ -198,6 +206,15 @@ export const CodeListPane = ({
       aria-label={t.panes.list(adapter.labels.tab)}
     >
       {listSlot()}
+
+      {(loadError === null || loadError === undefined) && !isLoading && (
+        <PageNav
+          meta={pageMeta}
+          buttonSize="md"
+          onChangePage={onChangePage}
+          onChangeSize={onChangePageSize}
+        />
+      )}
     </section>
   );
 };

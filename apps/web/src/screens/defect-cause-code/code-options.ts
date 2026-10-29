@@ -9,7 +9,12 @@ import type { CodeFilters, CodeOption, HierarchyCode } from './types';
  */
 
 /** 화면을 처음 열었을 때의 조회 조건. 예시 데이터가 아니라 화면 상수라 여기가 자리다. */
-export const DEFAULT_CODE_FILTERS: CodeFilters = { q: '', includeInactive: false };
+export const DEFAULT_CODE_FILTERS: CodeFilters = {
+  q: '',
+  includeInactive: false,
+  page: 1,
+  size: 20,
+};
 
 /**
  * 대분류 초기 선택지의 자리표시 상수.

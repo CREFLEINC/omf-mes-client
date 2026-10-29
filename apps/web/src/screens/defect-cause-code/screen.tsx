@@ -10,11 +10,12 @@ import {
 } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
+import { PAGE_SIZES } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
@@ -44,7 +45,7 @@ import {
   toFormFieldErrors,
   toServerFieldName,
 } from './mappers';
-import { isTruncated, useCodeDetail, useCodeList, useCodeOptions } from './queries';
+import { useCodeDetail, useCodeList, useCodeOptions } from './queries';
 import { ProcessMappingPane } from './process-mapping-pane';
 import { resolveTab } from './tabs';
 import type {
@@ -134,7 +135,6 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
 
   const tab = resolveTab(kind);
   const adapter = tab.adapter;
-  const addChildNoteId = useId();
 
   /* 목록 · 상세 배치 — 검사 기준 탭과 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다 · #209). */
   const { splitRef, aboveRef } = useFitToViewport();
@@ -147,6 +147,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     () => ({
       q: searchParams.get('q') ?? '',
       includeInactive: searchParams.get('inactive') === '1',
+      page: Math.max(1, Number(searchParams.get('page')) || 1),
+      size: PAGE_SIZES.find((size) => String(size) === searchParams.get('size')) ?? 20,
     }),
     [searchParams],
   );
@@ -159,16 +161,18 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
 
   const list = useCodeList(adapter, filters);
   const items = useMemo(() => list.data?.items ?? [], [list.data]);
-  const byId = useMemo(() => indexById(items), [items]);
+  /*
+   * 목록은 쪽으로 나뉘어 오므로(#209) 상세 코드의 대분류가 다른 쪽에 있을 수 있다 — 그룹 머리글과 상위 판정은
+   * 선택지용 전체 목록까지 합친 색인으로 한다. 그래야 다른 쪽의 대분류 밑 상세가 「상위를 찾을 수 없는 코드」로 가지 않는다.
+   */
+  const options = useCodeOptions(adapter, true);
+  const byId = useMemo(() => indexById([...options.items, ...items]), [options.items, items]);
   const rows = useMemo(() => orderForGrouping(items, byId), [items, byId]);
 
   const selected = selectedId === null ? null : (byId.get(selectedId) ?? null);
   const canAddChild = selected !== null && isCategory(selected);
 
   const detail = useCodeDetail(adapter, selectedId);
-
-  const isFormOpen = isCreateMode || selectedId !== null;
-  const options = useCodeOptions(adapter, isFormOpen);
 
   /*
    * 폼의 기준값 출처. 수정은 상세 응답 객체가, 등록은 「어느 탭에서 어느 상위로 여는가」가 정한다.
@@ -253,9 +257,6 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     },
   });
 
-  const listPage = list.data?.page;
-  const listTruncated = listPage !== undefined && isTruncated(listPage, items.length);
-
   const updateParams = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);
     for (const [key, value] of Object.entries(patch)) {
@@ -269,10 +270,13 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   };
 
   // 조회 조건은 화면 상태가 아니라 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
+  // 조건을 바꾸면 1쪽으로 돌아간다 — 지난 쪽 번호가 새 결과의 범위 밖일 수 있다(#209).
   const handleApplyFilters = (next: CodeFilters) => {
     updateParams({
       q: next.q === '' ? null : next.q,
       inactive: next.includeInactive ? '1' : null,
+      page: null,
+      size: next.size === 20 ? null : String(next.size),
     });
   };
 
@@ -397,6 +401,11 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       appliedFilters={filters}
       onApplyFilters={handleApplyFilters}
       selectedId={selectedId}
+      pageMeta={list.data?.page ?? { page: filters.page, size: filters.size, total: 0 }}
+      onChangePage={(page) => updateParams({ page: page === 1 ? null : String(page) })}
+      onChangePageSize={(size) =>
+        updateParams({ page: null, size: size === 20 ? null : String(size) })
+      }
       onSelect={(id) => {
         setIsEditOpen(false);
         updateParams({ sel: String(id), mode: null });
@@ -411,30 +420,17 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     />
   );
 
-  /* 조회 · 초기화 뒤 구분선 너머의 화면 단추 — 검사 기준 탭의 「기준 추가」 자리와 같다(#209). */
+  /*
+   * 조회 · 초기화 뒤 구분선 너머의 화면 단추 — 검사 기준 탭의 「기준 추가」 자리와 같다(#209).
+   * 상세 추가는 대분류를 고른 뒤 상세 카드에서 한다(사용자 지시 2026-10-29).
+   */
   const filterActions = (
-    <>
-      {/*
-       * 배치 규범 4 — 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더하고
-       * aria-describedby로 잇는다(사유 글은 조회 카드 아래 줄에 선다).
-       */}
-      <Button
-        variant="outlined"
-        leadingIcon={<Icon name="add" size={18} />}
-        disabled={!canAddChild}
-        aria-describedby={canAddChild ? undefined : addChildNoteId}
-        // 상세 추가는 고른 대분류를 그대로 남겨 상위 초기값으로 쓴다.
-        onClick={() => openCreateForm({})}
-      >
-        {t.actions.addChild}
-      </Button>
-      <Button
-        leadingIcon={<Icon name="add" size={18} />}
-        onClick={() => openCreateForm({ sel: null })}
-      >
-        {t.actions.addCategory}
-      </Button>
-    </>
+    <Button
+      leadingIcon={<Icon name="add" size={18} />}
+      onClick={() => openCreateForm({ sel: null })}
+    >
+      {t.actions.addCategory}
+    </Button>
   );
 
   const formTitle = (): string => {
@@ -547,6 +543,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
           adapter={adapter}
           code={code}
           parentLabel={parentLabelOf(code)}
+          // 대분류를 고르면 상세 카드에서 상세를 추가한다 — 고른 대분류가 상위 초기값이 된다.
+          onAddChild={canAddChild ? () => openCreateForm({}) : undefined}
           onEdit={() => {
             write.reset();
             setLocalFieldErrors({});
@@ -564,20 +562,6 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   return (
     <>
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
-      {/*
-       * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
-       * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
-       *
-       * 화면 최상위 배너라 이음매는 `main > * + *`가 이미 처리하지만, 슬롯으로 감싸
-       * DS 배너의 box-sizing까지 정규화한다 — 감싸지 않으면 배너만 본문 폭을 넘친다.
-       */}
-      {listTruncated && listPage !== undefined && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">
-            {t.listTruncated(items.length, listPage.total)}
-          </AlertBanner>
-        </div>
-      )}
 
       {/* 조회 조건 — 검사 기준 탭처럼 목록과 다른 카드에 둔다(#209). */}
       <section
@@ -591,11 +575,6 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
           onApplyFilters={handleApplyFilters}
           actions={filterActions}
         />
-        {!canAddChild && (
-          <p id={addChildNoteId} className="field-note defect-cause-action-note">
-            {t.actionReasons.addChildNeedsCategory}
-          </p>
-        )}
       </section>
 
       <div

@@ -13,6 +13,8 @@ export interface CodeDetailHeadProps {
   code: HierarchyCode;
   /** 상위 대분류 표시(「코드 · 명칭」). 대분류면 null */
   parentLabel: string | null;
+  /** 대분류를 골랐을 때만 — 이 대분류 아래에 상세를 추가하는 창을 연다 */
+  onAddChild?: () => void;
   onEdit: () => void;
   onDeactivate: () => void;
 }
@@ -26,6 +28,7 @@ export const CodeDetailHead = ({
   adapter,
   code,
   parentLabel,
+  onAddChild,
   onEdit,
   onDeactivate,
 }: CodeDetailHeadProps) => {
@@ -43,6 +46,15 @@ export const CodeDetailHead = ({
           </Chip>
         </div>
         <div className="defect-cause-head-actions">
+          {onAddChild !== undefined && (
+            <Button
+              variant="outlined"
+              leadingIcon={<Icon name="add" size={18} />}
+              onClick={onAddChild}
+            >
+              {t.actions.addChild}
+            </Button>
+          )}
           {/* 이미 미사용인 코드에는 중지할 대상이 없다. 감추지 않고 사유를 밝힌다(배치 규범 4). */}
           <Button
             variant="outlined"

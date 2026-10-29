@@ -31,11 +31,21 @@ export const CodeFilterBar = ({
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   // 편집 중인 값은 draft에만 있고 조건 칩에는 미러하지 않는다.
   const [draft, setDraft] = useState<CodeFilters>(appliedFilters);
-  const { q: appliedQ, includeInactive: appliedIncludeInactive } = appliedFilters;
+  const {
+    q: appliedQ,
+    includeInactive: appliedIncludeInactive,
+    page: appliedPage,
+    size: appliedSize,
+  } = appliedFilters;
 
   useEffect(() => {
-    setDraft({ q: appliedQ, includeInactive: appliedIncludeInactive });
-  }, [appliedQ, appliedIncludeInactive]);
+    setDraft({
+      q: appliedQ,
+      includeInactive: appliedIncludeInactive,
+      page: appliedPage,
+      size: appliedSize,
+    });
+  }, [appliedQ, appliedIncludeInactive, appliedPage, appliedSize]);
 
   return (
     <>
@@ -67,7 +77,10 @@ export const CodeFilterBar = ({
           <Button variant="filled" onClick={() => onApplyFilters(draft)}>
             {messages.common.search}
           </Button>
-          <Button variant="outlined" onClick={() => onApplyFilters(DEFAULT_CODE_FILTERS)}>
+          <Button
+            variant="outlined"
+            onClick={() => onApplyFilters({ ...DEFAULT_CODE_FILTERS, size: appliedFilters.size })}
+          >
             {messages.common.reset}
           </Button>
           <span className="inspection-standard-filter-divider" aria-hidden />

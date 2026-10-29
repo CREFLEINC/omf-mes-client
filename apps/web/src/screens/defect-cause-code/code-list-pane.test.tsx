@@ -8,7 +8,7 @@ import { hierarchyFixtures } from './fixtures';
 import { indexById, orderForGrouping } from './hierarchy';
 import type { CodeFilters, HierarchyCode } from './types';
 
-const NO_FILTERS: CodeFilters = { q: '', includeInactive: false };
+const NO_FILTERS: CodeFilters = { q: '', includeInactive: false, page: 1, size: 20 };
 
 const byId = indexById(hierarchyFixtures);
 const orderedRows = orderForGrouping(hierarchyFixtures, byId);
@@ -24,6 +24,9 @@ const renderPane = (overrides: Partial<CodeListPaneProps> = {}) => {
     selectedId: null,
     onSelect: vi.fn(),
     onAddCategory: vi.fn(),
+    pageMeta: { page: 1, size: 20, total: orderedRows.length },
+    onChangePage: vi.fn(),
+    onChangePageSize: vi.fn(),
     loadError: null,
     ...overrides,
   };
@@ -115,14 +118,19 @@ describe('CodeListPane — 상태별 표시', () => {
   it('조건이 걸린 0건이면 조건을 고치라는 빈 상태를 낸다', async () => {
     const { props, user } = renderPane({
       rows: [],
-      appliedFilters: { q: 'ZZ', includeInactive: false },
+      appliedFilters: { q: 'ZZ', includeInactive: false, page: 1, size: 20 },
     });
 
     expect(screen.getByText('조건에 맞는 결과가 없습니다')).toBeInTheDocument();
     // 필터 바에도 같은 이름의 버튼이 있다 — 빈 상태 안의 것을 고른다.
     await user.click(within(screen.getByRole('table')).getByRole('button', { name: '초기화' }));
 
-    expect(props.onApplyFilters).toHaveBeenCalledWith({ q: '', includeInactive: false });
+    expect(props.onApplyFilters).toHaveBeenCalledWith({
+      q: '',
+      includeInactive: false,
+      page: 1,
+      size: 20,
+    });
   });
 });
 

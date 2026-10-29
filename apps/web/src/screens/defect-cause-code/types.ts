@@ -29,6 +29,9 @@ export interface HierarchyCode {
 export interface CodeFilters {
   q: string;
   includeInactive: boolean;
+  /** 쪽 번호(1부터)와 쪽 크기 — 서버가 나눠 준다(#209). 조건을 바꾸면 1쪽으로 돌아간다. */
+  page: number;
+  size: number;
 }
 
 /**

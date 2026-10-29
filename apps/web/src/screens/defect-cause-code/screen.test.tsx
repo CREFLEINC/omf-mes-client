@@ -130,6 +130,15 @@ const causeListRoute = (items: unknown[] = causeCodeFixtures): StubRoute => ({
   respond: () => jsonResponse(listBody(items)),
 });
 
+/** 쪽 목록 요청만 센다 — 대분류 머리글용 전체 목록(`includeInactive=true`)은 따로 나간다(#209). */
+const pageListRequests = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
+  requests.filter(
+    (request) =>
+      request.url.pathname === pathname &&
+      request.method === 'GET' &&
+      request.url.searchParams.get('includeInactive') !== 'true',
+  );
+
 /** 상세는 값 표기로만 보이고, 고치기는 「수정」 창에서 한다(#209) — 수정 흐름 시험은 먼저 창을 연다. */
 const openEdit = async (): Promise<void> => {
   await userEvent.setup().click(await screen.findByRole('button', { name: '수정' }));
@@ -188,7 +197,7 @@ describe('DefectCauseCodeScreen — 목록 조회', () => {
     const { requests } = renderScreen([defectListRoute()]);
 
     expect(await screen.findByRole('button', { name: 'DF-10' })).toBeInTheDocument();
-    expect(requestsTo(requests, DEFECT_LIST_PATH)).toHaveLength(1);
+    expect(pageListRequests(requests, DEFECT_LIST_PATH)).toHaveLength(1);
   });
 
   it('조건이 없으면 q·includeInactive를 요청에 싣지 않는다', async () => {
@@ -224,12 +233,29 @@ describe('DefectCauseCodeScreen — 목록 조회', () => {
     expect(first?.url.searchParams.get('includeInactive')).toBe('true');
   });
 
-  it('전체 건수가 받은 건수보다 많으면 잘림 안내를 낸다', async () => {
-    renderScreen([defectListRoute(defectCodeFixtures, 120)]);
+  it('표 아래에 총 건수와 쪽 이동이 서고, 다음 쪽을 누르면 그 쪽을 조회한다(#209)', async () => {
+    const { requests, user } = renderScreen([defectListRoute(defectCodeFixtures, 120)]);
 
-    expect(
-      await screen.findByText('전체 120건 중 7건을 표시합니다. 조건을 좁혀 조회하세요.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('총 120건')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '처음' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '이전' })).toBeDisabled();
+    expect(pageListRequests(requests, DEFECT_LIST_PATH).at(-1)?.url.searchParams.get('size')).toBe(
+      '20',
+    );
+
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    await waitFor(() => {
+      expect(
+        pageListRequests(requests, DEFECT_LIST_PATH).at(-1)?.url.searchParams.get('page'),
+      ).toBe('2');
+    });
+    await user.click(screen.getByRole('button', { name: '마지막' }));
+    await waitFor(() => {
+      expect(
+        pageListRequests(requests, DEFECT_LIST_PATH).at(-1)?.url.searchParams.get('page'),
+      ).toBe('6');
+    });
   });
 
   it('전부 받았으면 잘림 안내를 내지 않는다', async () => {
@@ -338,7 +364,7 @@ describe('DefectCauseCodeScreen — 탭', () => {
     await user.click(screen.getByRole('link', { name: '원인코드' }));
 
     expect(await screen.findByRole('button', { name: 'CS-10' })).toBeInTheDocument();
-    expect(requestsTo(requests, CAUSE_LIST_PATH)).toHaveLength(1);
+    expect(pageListRequests(requests, CAUSE_LIST_PATH)).toHaveLength(1);
   });
 
   /*
@@ -375,7 +401,7 @@ describe('DefectCauseCodeScreen — 탭', () => {
     const { requests } = renderScreen([defectListRoute()], '?tab=xyz');
 
     expect(await screen.findByRole('button', { name: 'DF-10' })).toBeInTheDocument();
-    expect(requestsTo(requests, DEFECT_LIST_PATH)).toHaveLength(1);
+    expect(pageListRequests(requests, DEFECT_LIST_PATH)).toHaveLength(1);
   });
 
   it('비활성 탭의 표는 화면에 남지 않는다', async () => {
@@ -424,33 +450,28 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     ).toBeInTheDocument();
   });
 
-  it('폼을 열 때 상위 선택지를 미사용까지 포함해 따로 조회한다', async () => {
-    const { requests, user } = renderScreen([
+  it('대분류 머리글 · 상위 선택지용으로 미사용까지 포함한 목록을 따로 조회한다', async () => {
+    const { requests } = renderScreen([
       defectOptionsRoute(),
       defectListRoute(activeDefectFixtures),
     ]);
     await screen.findByRole('button', { name: 'DF-10' });
 
-    expect(
-      requests.some((request) => request.url.searchParams.get('includeInactive') === 'true'),
-    ).toBe(false);
-
-    await user.click(screen.getByRole('button', { name: '대분류 추가' }));
-    await screen.findByLabelText('코드');
-
-    expect(
-      requests.some((request) => request.url.searchParams.get('includeInactive') === 'true'),
-    ).toBe(true);
+    await waitFor(() => {
+      expect(
+        requests.some((request) => request.url.searchParams.get('includeInactive') === 'true'),
+      ).toBe(true);
+    });
   });
 
-  it('상세 추가는 대분류를 고르기 전에는 비활성이고 사유가 보인다', async () => {
+  it('상세 추가는 조회 카드에 없고, 대분류를 고르기 전에는 보이지 않는다(#209)', async () => {
     renderScreen([defectListRoute(activeDefectFixtures)]);
     await screen.findByRole('button', { name: 'DF-10' });
 
-    expect(screen.getByRole('button', { name: '상세 추가' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '상세 추가' })).not.toBeInTheDocument();
     expect(
-      screen.getByText('상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.'),
-    ).toBeInTheDocument();
+      screen.queryByText('상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.'),
+    ).not.toBeInTheDocument();
   });
 
   it('상세 코드를 고르면 상세 추가를 쓸 수 없다 — 3계층이 된다', async () => {
@@ -462,9 +483,9 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
       ],
       '?sel=1002',
     );
-    await screen.findByRole('button', { name: 'DF-11' });
+    await screen.findByRole('button', { name: '수정' });
 
-    expect(screen.getByRole('button', { name: '상세 추가' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '상세 추가' })).not.toBeInTheDocument();
   });
 
   it('대분류를 고른 뒤 상세 추가를 누르면 상위가 그 대분류로 채워진 폼이 열린다', async () => {
@@ -1416,7 +1437,7 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
 
       expect(await screen.findByRole('button', { name: firstCode })).toBeInTheDocument();
       expect(screen.getByText(groupHeader)).toBeInTheDocument();
-      expect(requestsTo(requests, listPath)).toHaveLength(1);
+      expect(pageListRequests(requests, listPath)).toHaveLength(1);
     });
 
     it('조건이 그 탭의 요청 쿼리에 실린다', async () => {
