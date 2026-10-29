@@ -535,6 +535,8 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     const children = await screen.findByRole('region', { name: '하위 코드' });
     expect(within(children).getByText('DF-11')).toBeInTheDocument();
     expect(within(children).getByText('DF-12')).toBeInTheDocument();
+    expect(within(children).getByText('총 2건')).toBeInTheDocument();
+    expect(within(children).getByRole('button', { name: '처음' })).toBeDisabled();
     // 하위 코드는 눌러서 넘어가지 않는다 — 단추가 아니다.
     expect(within(children).queryByRole('button', { name: 'DF-11' })).not.toBeInTheDocument();
   });

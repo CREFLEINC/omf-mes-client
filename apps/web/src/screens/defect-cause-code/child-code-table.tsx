@@ -1,5 +1,8 @@
 import { Chip, type Column, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
+
+import { PageNav, type PageSize } from '../../patterns/page-nav';
 
 import type { CodeAdapter } from './adapters';
 import type { HierarchyCode } from './types';
@@ -18,6 +21,13 @@ export interface ChildCodeTableProps {
  * 값 표기만 한다 — 코드를 눌러 하위 코드로 넘어가지 않는다(사용자 지시 · #209).
  */
 export const ChildCodeTable = ({ adapter, codes, processLabelOf }: ChildCodeTableProps) => {
+  /* 쪽 이동 — 목록 표와 같은 공용 줄(사용자 지시 · #209). 하위 코드는 이미 다 받아 두었으므로 화면이 나눈다. */
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState<PageSize>(20);
+  const lastPage = Math.max(1, Math.ceil(codes.length / size));
+  const current = Math.min(page, lastPage);
+  const shown = codes.slice((current - 1) * size, current * size);
+
   const orEmpty = (value: string | null | undefined): string =>
     value === null || value === undefined || value === '' ? t.values.empty : value;
 
@@ -70,11 +80,20 @@ export const ChildCodeTable = ({ adapter, codes, processLabelOf }: ChildCodeTabl
         <Table
           density="compact"
           columns={columns}
-          rows={[...codes]}
+          rows={shown}
           getRowId={(row) => String(row.id)}
           empty={<p className="field-note defect-cause-children-empty">{t.detail.childrenNone}</p>}
         />
       </div>
+      <PageNav
+        meta={{ page: current, size, total: codes.length }}
+        buttonSize="md"
+        onChangePage={setPage}
+        onChangeSize={(next) => {
+          setSize(next);
+          setPage(1);
+        }}
+      />
     </section>
   );
 };
