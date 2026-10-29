@@ -1,15 +1,8 @@
-import {
-  Button,
-  type Column,
-  EmptyState,
-  Select,
-  SkeletonText,
-  Table,
-  TextField,
-} from '@crefle/web-ui';
+import { Button, type Column, EmptyState, SkeletonText, Table, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { Select } from '../../patterns/select';
 import { codeNote, codePlaceholder } from './code-options';
 import type { LineRowView } from './line-replace-request';
 import {
@@ -150,7 +143,9 @@ export const buildCountLineColumns = ({
        */
       render: (row) =>
         orEmptyMark(
-          row.line.lotId === null ? null : describeReference(toReference(lotLookup, row.line.lotId)),
+          row.line.lotId === null
+            ? null
+            : describeReference(toReference(lotLookup, row.line.lotId)),
         ),
     },
     ...(isBlind ? [] : [systemQtyColumn]),
@@ -201,7 +196,9 @@ export const buildCountLineColumns = ({
             value={row.reasonCode === '' ? null : row.reasonCode}
             placeholder={codePlaceholder()}
             disabled={isLocked}
-            invalid={row.reason.kind === 'invalid' || (row.isReasonRequired && row.reason.kind === 'none')}
+            invalid={
+              row.reason.kind === 'invalid' || (row.isReasonRequired && row.reason.kind === 'none')
+            }
             onChange={(value) => {
               onChangeReason(row.line.inventoryCountLineId, value);
             }}

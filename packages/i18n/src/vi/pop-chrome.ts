@@ -6,6 +6,12 @@ import { common } from './common';
 /** POP 화면 위에 늘 서 있는 공통 조작 문구 — 모든 POP 화면이 함께 쓴다. */
 export const popChrome: Translated<typeof ko.popChrome> = {
   screenNav: 'Chuyển màn hình',
+  screenNavWork: {
+    trigger: 'Có việc còn lại',
+    title: 'Việc còn lại',
+    count: (name: string, count: number): string => `${name}, còn ${String(count)} việc`,
+    suffix: (count: number): string => `, còn ${String(count)} việc`,
+  },
   userSwitch: 'Đổi người dùng',
   header: {
     terminalUnknown: 'Chưa xác nhận máy trạm',

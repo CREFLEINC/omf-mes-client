@@ -1,6 +1,31 @@
 import { describe, expect, it } from 'vitest';
 
-import { verifyWorkerNo } from './verify';
+import { autoSignInOf, verifyWorkerNo } from './verify';
+
+describe('확인 없이 들어가는 사번', () => {
+  const people = [
+    { workerNo: '100027', workerName: '홍길동' },
+    { workerNo: '1000', workerName: '짧은 사번' },
+    { workerNo: '100028', workerName: '김영수' },
+  ];
+
+  it('명부의 사번 하나와 꼭 같으면 그 사람이다', () => {
+    expect(autoSignInOf(people, '100027')).toEqual({ workerNo: '100027', workerName: '홍길동' });
+  });
+
+  it('치는 중이면 아직 아니다', () => {
+    expect(autoSignInOf(people, '10002')).toBeNull();
+  });
+
+  /* 여기서 넘기면 더 긴 사번을 가진 사람은 들어올 길이 없다. 그때는 「확인」을 누른다. */
+  it('더 쳐서 될 다른 사번이 있으면 넘기지 않는다', () => {
+    expect(autoSignInOf(people, '1000')).toBeNull();
+  });
+
+  it('명부를 받지 못했으면 넘기지 않는다', () => {
+    expect(autoSignInOf(null, '100027')).toBeNull();
+  });
+});
 
 const directory = [
   { workerNo: 'SYN-W-0001', workerName: '작업자 1' },

@@ -1,0 +1,15 @@
+/* 목록 표와 같은 테두리 · 모서리 안에 행 높이만큼의 빈 줄. */
+.list-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.list-loading__row {
+  height: 29px;
+  border-radius: var(--radius-sm);
+}

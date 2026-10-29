@@ -6,11 +6,13 @@ import type { Translated } from './translated';
  * 참조 이름의 세 갈래(미도착·목록에 없음·실패)를 가른다.
  */
 export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
-  title: 'Tra cứu kế hoạch nhập hàng',
+  title: 'Quản lý nhập kho',
   breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   breadcrumbHub: 'Quản lý nhập kho',
   /** 두 표 사이 끌기 막대(키보드 ←·→ 로도 움직인다). */
   splitter: 'Kéo để điều chỉnh độ rộng danh sách·chi tiết',
+  listCollapse: 'Thu gọn danh sách đơn đặt hàng',
+  listExpand: 'Mở danh sách đơn đặt hàng',
   panes: {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách kế hoạch nhập hàng',
@@ -34,6 +36,14 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     selectOrder: (purchaseOrderNo: string): string => `Xem dòng của ${purchaseOrderNo}`,
     register: 'Đăng ký nhập hàng',
     registerRow: (purchaseOrderNo: string): string => `Đăng ký nhập hàng cho ${purchaseOrderNo}`,
+    expandAll: 'Mở tất cả LOT',
+    collapseAll: 'Thu gọn tất cả LOT',
+    expandLine: (lineNo: number): string => `Mở LOT của dòng ${String(lineNo)}`,
+    collapseLine: (lineNo: number): string => `Thu gọn LOT của dòng ${String(lineNo)}`,
+    postReceipt: 'Xử lý nhập kho',
+    postReceiptRow: (lotNo: string): string => `Xử lý nhập kho ${lotNo}`,
+    requestIqc: 'Yêu cầu kiểm tra IQC',
+    requestIqcRow: (lotNo: string): string => `Yêu cầu kiểm tra IQC cho ${lotNo}`,
   },
   reasons: {
     periodInvalid: 'Hạn giao phải là ngày có thật. Hãy chọn lại ngày bắt đầu và ngày kết thúc.',
@@ -59,6 +69,7 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     uom: 'Đơn vị',
     orderDate: 'Ngày đặt hàng',
     storageLocation: 'Kho',
+    progress: 'Tiến độ',
   },
   detail: {
     purchaseOrderNo: 'Số đơn mua',
@@ -75,7 +86,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
   },
   quick: {
     supplier: 'Nhà cung cấp',
-    supplierPlaceholder: 'Nhập tên hoặc ID nhà cung cấp',
     item: 'Mã mặt hàng',
     itemPlaceholder: 'Nhập mã mặt hàng',
     scanNotFound: (value: string): string => `Không có mặt hàng khớp với 「${value}」.`,
@@ -135,34 +145,26 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     inactiveSuffix: ' (không dùng)',
   },
   excess: {
-    entry: 'Liên kết phần vượt',
-    entryCount: (count: number): string => `${String(count)} phần vượt chưa liên kết`,
-    title: 'Liên kết phần vượt với P/O',
-    steps: {
-      label: 'Các bước',
-      pick: 'Chọn phần vượt',
-      line: 'Chọn dòng P/O',
-      link: 'Liên kết',
-    },
-    tabs: {
-      label: 'Phân loại phần vượt',
-      unlinked: 'Chưa liên kết',
-      linked: 'Đã liên kết',
-    },
+    listCount: (count: number): string => `${String(count)} phần vượt chưa liên kết`,
+    splitter: 'Giữa danh sách phần vượt và dòng P/O để liên kết',
+    listCollapse: 'Thu gọn danh sách phần vượt',
+    listExpand: 'Mở rộng danh sách phần vượt',
+    listTitle: 'Phần vượt chưa liên kết',
     table: {
       receiptNo: 'Số nhập hàng',
       receiptDate: 'Ngày nhập hàng',
       supplier: 'Nhà cung cấp',
       item: 'Mặt hàng',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
       lot: 'LOT',
       excessQty: 'Số lượng vượt',
       sourceOrder: 'P/O gốc',
-      linkedOrder: 'P/O liên kết',
-      linkedAt: 'Ngày liên kết',
     },
     candidates: {
       title: 'Dòng P/O để liên kết',
       purchaseOrderNo: 'Số đơn đặt hàng',
+      itemCode: 'Mã mặt hàng',
       orderDate: 'Ngày đặt hàng',
       dueDate: 'Hạn giao',
       ordered: 'Số lượng đặt',
@@ -183,25 +185,16 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     justRegistered: 'Vừa đăng ký',
     actions: {
       link: 'Liên kết',
-      unlink: 'Hủy liên kết',
     },
     confirmLink: (qty: string, order: string): string => `Phần vượt ${qty} → ${order}`,
-    confirmUnlink: (qty: string, order: string): string =>
-      `Hủy liên kết phần vượt ${qty} khỏi ${order}`,
     blocked: {
       noExcess: 'Hãy chọn phần vượt cần liên kết.',
       noLine: 'Hãy chọn dòng P/O cần liên kết.',
-      noLinked: 'Hãy chọn phần vượt cần hủy liên kết.',
     },
     done: {
       linked: (qty: string, order: string): string => `Đã liên kết: phần vượt ${qty} → ${order}`,
-      unlinked: (qty: string, order: string): string =>
-        `Đã hủy liên kết: phần vượt ${qty} khỏi ${order}`,
     },
-    empty: {
-      unlinkedTitle: 'Không có phần vượt chưa liên kết',
-      linkedTitle: 'Không có phần vượt đã liên kết',
-    },
+    emptyTitle: 'Không có phần vượt chưa liên kết',
     truncated: (shown: number, total: number): string =>
       `Chỉ hiển thị ${String(shown)} mục (tổng ${String(total)} mục).`,
     loading: 'Đang tải phần vượt',
@@ -209,8 +202,100 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     lineLinkable: (qty: string): string => `Liên kết ${qty}`,
     lineLinkableLabel: (lineNo: number, qty: string): string =>
       `Liên kết phần vượt ${qty} vào dòng ${String(lineNo)}`,
-    lineLinked: (qty: string): string => `Đã liên kết ${qty}`,
-    lineLinkedLabel: (lineNo: number, qty: string): string =>
-      `Xem phần vượt ${qty} đã liên kết vào dòng ${String(lineNo)}`,
+  },
+  stage: {
+    label: 'Giai đoạn nhập kho',
+    group: {
+      LABEL: 'Chờ phát hành nhãn',
+      INSPECTION: 'Chờ kiểm tra',
+      HELD: 'Tạm giữ',
+      RECEIPT: 'Chờ nhập kho',
+      PUTAWAY: 'Chờ xếp kho',
+    },
+    groupCount: (label: string, count: number): string => `${label} ${String(count)}`,
+    filterOn: (label: string): string => `Chỉ xem đơn ${label}`,
+    filterOff: (label: string): string => `Bỏ điều kiện ${label}`,
+    code: {
+      LABEL_PENDING: 'Chờ phát hành nhãn',
+      INSPECTION_REQUIRED: 'Chưa yêu cầu kiểm tra',
+      INSPECTION_REQUESTED: 'Chờ kiểm tra',
+      INSPECTION_IN_PROGRESS: 'Đang kiểm tra',
+      INSPECTION_HELD: 'Tạm giữ',
+      RECEIPT_READY: 'Chờ nhập kho',
+      PUTAWAY_PENDING: 'Chờ xếp kho',
+      PUTAWAY_TEMPORARY: 'Xếp kho tạm',
+      COMPLETED: 'Hoàn tất',
+      CANCELLED: 'Đã hủy',
+    },
+    beforeReceipt: 'Chưa nhận hàng',
+    summarySeparator: ' · ',
+  },
+  receive: {
+    selectAll: 'Chọn tất cả',
+    selectRow: (lineNo: number): string => `Chọn dòng ${String(lineNo)}`,
+    partialSkipped: (count: number): string => `Đã bỏ qua ${String(count)} mặt hàng nhận một phần.`,
+    submit: 'Đăng ký nhập hàng các mặt hàng đã chọn',
+    checkedCount: (count: number): string => `Đã chọn ${String(count)}`,
+    editRow: (itemCode: string): string => `Nhập số lượng nhận cho ${itemCode}`,
+    qtyLabel: (lineNo: number): string => `Số lượng nhận lần này dòng ${String(lineNo)}`,
+    excessTag: (qty: string): string => `Vượt ${qty}`,
+    submitRow: 'Đăng ký nhập hàng',
+    cancelRow: 'Hủy',
+    errors: {
+      qtyEmpty: 'Hãy nhập số lượng nhận lần này.',
+      qtyNotNumber: 'Số lượng nhận lần này phải là số.',
+      qtyNotPositive: 'Số lượng nhận lần này phải lớn hơn 0.',
+      labelIssued: 'Mặt hàng đã phát hành nhãn không thể nhập hàng với số lượng thay đổi.',
+    },
+    labeledLocked: 'Đã phát hành nhãn · số lượng còn lại hãy chọn để nhập hàng',
+    noReason: 'Không tải được mã lý do không dán nhãn nên không thể đăng ký nhập hàng.',
+    confirm: {
+      title: 'Đăng ký nhập hàng',
+      lead: (count: number): string =>
+        count === 1
+          ? 'Đăng ký 1 mục.'
+          : `Đăng ký ${String(count)} mục. Mỗi mặt hàng có số nhập hàng riêng.`,
+      labelNote:
+        'Đăng ký ở trạng thái không dán nhãn. Nhãn được phát hành tại POP «Đăng ký LOT vật tư · Phát hành nhãn».',
+      irreversible: 'Không thể hoàn tác phiếu nhập hàng tại màn hình này. Việc hủy cần phê duyệt.',
+      itemCode: 'Mã mặt hàng',
+      itemName: 'Tên mặt hàng',
+      qty: 'Số lượng nhận',
+      excess: (qty: string): string => `Phần vượt ${qty}`,
+      back: 'Quay lại',
+      register: 'Đăng ký',
+    },
+    done: (count: number, firstNo: string): string =>
+      count === 1
+        ? `Đã đăng ký nhập hàng: ${firstNo}`
+        : `Đã đăng ký ${String(count)} phiếu nhập hàng: ${firstNo} và ${String(count - 1)} phiếu khác`,
+    goExcess: 'Liên kết phần vượt',
+  },
+  lot: {
+    selectForPost: (lotNo: string): string => `Chọn ${lotNo} để nhập kho`,
+    selectAllForPost: 'Tất cả chờ nhập kho',
+    checkedForPost: (count: number): string => `Đã chọn ${String(count)}`,
+    postChecked: 'Nhập kho các LOT đã chọn',
+    receivedOn: (date: string): string => `Nhận ${date}`,
+    putawayOnPda: 'Xếp kho trên PDA',
+    issueLabelOnPop: 'Phát hành nhãn trên POP',
+    labelMissing: 'Không dán nhãn',
+    evidence: {
+      receiptNo: (inboundReceiptNo: string): string => `Số nhập hàng ${inboundReceiptNo}`,
+      wholeQty: (qty: string, uom: string): string => `Tổng ${qty} ${uom}`,
+      requested: (requestNo: string, date: string): string => `Yêu cầu ${requestNo} · ${date}`,
+      accepted: (date: string): string => `Kiểm tra đạt ${date}`,
+      rejected: 'Kiểm tra không đạt · chỉ kho hàng lỗi',
+      skipped: 'Bỏ qua kiểm tra',
+      noInspection: 'Không kiểm tra',
+      posted: (goodsReceiptNo: string, date: string): string =>
+        `Nhập kho ${goodsReceiptNo} · ${date}`,
+      putawayDone: (date: string): string => `Xếp kho ${date}`,
+      separator: ' · ',
+    },
+    requested: (lotNo: string, requestNo: string): string =>
+      `Đã gửi yêu cầu IQC: ${lotNo} → ${requestNo}`,
+    loading: 'Đang tải tiến độ nhập kho',
+    loadFailed: 'Không tải được tiến độ nhập kho. Các dòng vẫn hiển thị như cũ.',
   },
 };

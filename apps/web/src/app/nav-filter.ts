@@ -30,8 +30,8 @@ const matches = (entry: NavEntry, needle: string): boolean =>
  * 펼친 탭의 보이는 이름 — **묶음 이름을 앞에 붙인다**(「ERP 연동 현황·이력 › ERP W/O」).
  *
  * ⭐ 탭 이름은 묶음 안에서만 홀로 설 수 있다 — 「사원」·「BOM」은 묶음 밖에서 무엇의 사원인지
- * 모르고, 「ERP W/O」는 생산 관리의 묶음 이름과 같아 검색 결과에 **같은 글자의 두 줄이 다른
- * 곳으로 간다.** 걸린 글자(탭 이름)는 그대로 보이므로 「왜 걸렸는가」도 읽힌다.
+ * 모르고, 「ERP W/O」를 치면 생산 관리의 「ERP W/O 변경 확인」 탭과 ERP 연동 현황·이력의 「ERP W/O」
+ * 탭이 함께 걸린다. 걸린 글자(탭 이름)는 그대로 보이므로 「왜 걸렸는가」도 읽힌다.
  */
 const SPREAD_SEPARATOR = ' › ';
 
@@ -145,6 +145,10 @@ export const filterNavGroupsByAccess = (
   );
 };
 
+/** 탭 없는 항목 — 제 주소나, 품은 옛 화면(`alsoFor`) 중 하나라도 볼 수 있으면 선다. */
+const allowsEntry = (entry: NavEntry, access: WebAccess): boolean =>
+  access.allows(entry.to) || (entry.alsoFor ?? []).some((path) => access.allows(path));
+
 /**
  * 항목 하나를 권한으로 좁힌다 — 볼 수 없으면 `null`.
  *
@@ -153,9 +157,11 @@ export const filterNavGroupsByAccess = (
  * 선다.
  */
 const narrowNavEntryByAccess = (entry: NavEntry, access: WebAccess): NavEntry | null => {
-  if (entry.tabs === undefined) return access.allows(entry.to) ? entry : null;
+  if (entry.tabs === undefined) return allowsEntry(entry, access) ? entry : null;
 
-  const tabs = entry.tabs.filter((tab) => access.allows(tab.to));
+  const tabs = entry.tabs.filter(
+    (tab) => access.allows(tab.to) || (tab.alsoFor ?? []).some((path) => access.allows(path)),
+  );
   const [first] = tabs;
 
   return first === undefined ? null : { ...entry, to: first.to, tabs };
@@ -167,4 +173,4 @@ const narrowNavEntryByAccess = (entry: NavEntry, access: WebAccess): NavEntry | 
  * ⛔ **묶음과 따로 묻는다** — `filterNavGroupsByAccess` 와 같은 이유다.
  */
 export const isNavEntryAllowed = (entry: NavEntry, access: WebAccess): boolean =>
-  access.allows(entry.to);
+  allowsEntry(entry, access);

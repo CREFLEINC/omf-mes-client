@@ -11,6 +11,7 @@ import {
   dispositionEntryPath,
 } from '../screens/disposition-decision/filters';
 import { WORK_ORDER_PROGRESS_PATH } from '../screens/work-order-progress/filters';
+import { LOT_STATUS_PATH } from '../screens/lot-trace/lot-detail';
 import { SessionProvider } from '../patterns/session';
 import { expandAllNavGroups } from '../test/nav-groups';
 import {
@@ -612,19 +613,41 @@ describe('appRouter', () => {
   });
 
   /*
-   * W-01-03 은 화면이 아니라 입하 예정 조회의 「입하 등록」 창이다(사용자 지시 2026-10-21). 옛 주소는
-   * 즐겨찾기가 죽지 않게 라우트에 남아 그 창으로 옮겨 준다(`register-redirect.tsx` 가 옮기는 모양을 잰다).
+   * W-01-03 「입하 등록」은 화면이 아니라 입고 관리의 라인 표에서 바로 한다(사용자 지시 2026-10-24 · 옛 창은 걷었다).
+   * 옛 주소는 즐겨찾기가 죽지 않게 라우트에 남아 입고 관리로 옮겨 준다(`register-redirect.test` 가 옮기는 모양을 잰다).
    */
   it('옛 초과 입하 분리 주소가 자재창고 앞머리로 남아 있다', () => {
     expect(routedPaths()).toContain('/logistics/over-receipt-split');
   });
 
   /*
-   * W-01-10의 계약 경로는 `/logistics/goods-receipts`(복수)인데 화면 주소는 단수다 —
-   * 주소는 **계약 리소스가 아니라 화면**을 가리키므로 다른 화면들과 같은 형태를 쓴다.
+   * W-01-10 은 화면이 아니라 입고 관리의 「입고 처리」 창이다(사용자 지시 2026-10-23 탭 합치기). 옛 「자재 입고 처리」
+   * 주소는 즐겨찾기가 죽지 않게 라우트에 남아 입고 관리로 옮겨 준다.
    */
-  it('자재 입고 처리가 자재 관리(/logistics) 앞머리로 등록돼 있다', () => {
+  it('옛 자재 입고 처리 주소가 자재창고 앞머리로 남아 있다', () => {
     expect(routedPaths()).toContain('/logistics/goods-receipt');
+  });
+
+  /* 라우트가 있는 것만으로는 어디로 옮기는지 모른다 — 그 라우트의 요소를 실제로 태워 착지점을 잰다. */
+  it('옛 자재 입고 처리 주소로 들어오면 질의가 붙어도 입고 관리에 조건 없이 착지한다', async () => {
+    const oldRoute = (appRouter.routes[0]?.children ?? []).find(
+      (route) => route.path === 'logistics/goods-receipt',
+    );
+    const OldAddress = () =>
+      useRoutes([
+        { path: '/logistics/goods-receipt', element: oldRoute?.element },
+        { path: '/logistics/inbound-schedule', element: <LocationProbe /> },
+      ]);
+
+    renderWithProviders(<OldAddress />, {
+      fetch: createStubFetch([]),
+      route: '/logistics/goods-receipt?ir=7501&status=RECEIVED',
+      session: SYNTHETIC_SESSION,
+    });
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe('/logistics/inbound-schedule');
+    });
   });
 
   /*
@@ -997,13 +1020,17 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
    * **C33** — 메뉴에 항목이 없다. 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가
    * 같은 화면을 열어도 통과하고, 글자만 보면 이름을 바꿔 단 메뉴가 통과한다.
    */
-  it('사이드바에도 입고 관리 탭 막대에도 이 화면 항목이 없다', async () => {
-    const tabs = await hubTabLinks('입고 관리');
+  it('사이드바에 이 화면 항목이 없다 — 입고 관리는 탭 없는 한 줄이다', () => {
+    renderWithProviders(
+      <SessionProvider>
+        <AppLayout>본문</AppLayout>
+      </SessionProvider>,
+      { session: SYNTHETIC_SESSION },
+    );
+    expandAllNavGroups();
 
-    /* 짝 양성 — 탭 막대는 실제로 그려졌고 첫 화면(입하 예정 조회)은 거기 있다. */
-    expect(tabs).toContainEqual({ name: '입하 예정 조회', href: '/logistics/inbound-schedule' });
-    expect(tabs.map((tab) => tab.href)).not.toContain('/logistics/po-register');
-    expect(tabs.map((tab) => tab.name)).not.toContain('신규 P/O 등록');
+    /* 입고 관리는 탭 묶음이 아니다(2026-10-23 탭 합치기) — 이 화면이 숨을 탭 막대도 없다. */
+    expect(screen.queryByRole('navigation', { name: '입고 관리' })).toBeNull();
 
     const nav = screen.getByRole('navigation', { name: '주 메뉴' });
     const hrefs = within(nav)
@@ -1229,18 +1256,22 @@ describe('appRouter — 계정 로그인의 자리', () => {
  * 실제로 이 화면을 연다.
  */
 describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
+  /* 사이드바는 「검사 조회·판정」 묶음 한 줄이고 그 줄이 IQC 화면을 가리킨다(IQC · PQC · OQC 는 본문 맨 위 탭 · #185). */
   it('사이드바에 이 화면 항목이 있다', () => {
     expect(sidebarHrefs()).toContain('/logistics/iqc-inspection');
 
     const nav = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(nav).getByText(messages.iqcInspection.title)).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: '검사 조회·판정' })).toHaveAttribute(
+      'href',
+      '/logistics/iqc-inspection',
+    );
   });
 
   /**
    * 메뉴 IA 개편으로 검사는 **「품질 관리」 한 곳에 모였다** — IQC(입하) → PQC(공정) → OQC(출하)
-   * 흐름 차례의 첫 자리다. 그래서 「구매 / 자재 관리」의 끝(물류 전표 조회·취소) 바로 뒤에 서고,
-   * IQC 생략 판정(W-01-02)이 바로 뒤따른다.
+   * 흐름 차례의 첫 자리다. 그래서 「구매 / 자재 관리」의 끝(물류 전표 조회·취소) 바로 뒤에 선다.
+   * IQC 생략 판정(W-01-02)은 「품질 승인 처리」의 탭이라 검사기준이 바로 뒤따른다(#144).
    */
   it('품질 관리 섹션의 첫 항목으로 구매 / 자재 관리 바로 뒤에 선다', () => {
     const hrefs = sidebarHrefs();
@@ -1248,20 +1279,20 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
     expect(hrefs.indexOf('/logistics/iqc-inspection')).toBe(
       hrefs.indexOf('/logistics/document-progress') + 1,
     );
-    expect(hrefs.indexOf('/logistics/iqc-skip-approval')).toBe(
+    expect(hrefs.indexOf('/master-data/inspection-standard')).toBe(
       hrefs.indexOf('/logistics/iqc-inspection') + 1,
-    );
-    expect(hrefs.indexOf('/quality/pqc-inspections')).toBeGreaterThan(
-      hrefs.indexOf('/logistics/iqc-skip-approval'),
     );
   });
 
-  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  /**
+   * **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. 묶음 안에서는 제목을 세우지
+   * 않으므로(탭 막대가 화면 이름을 말한다 · #185) 검사 대기 목록 구획으로 잰다.
+   */
   it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
     renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes());
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: messages.iqcInspection.title }),
+      await screen.findByRole('region', { name: messages.iqcInspection.queue.heading }),
     ).toBeInTheDocument();
   });
 
@@ -1277,8 +1308,6 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
    */
   it('첫 진입에 검사 대기 큐가 실제로 그려진다', async () => {
     renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes());
-
-    await screen.findByRole('heading', { level: 1, name: messages.iqcInspection.title });
 
     expect(await screen.findByRole('button', { name: /IR-2026-0001/ })).toBeInTheDocument();
   });
@@ -1409,24 +1438,25 @@ describe('appRouter — 검사실적·검사결과 조회의 진입 경로', () 
   });
 });
 
-describe('appRouter — 특채·한도승인 승인 처리의 진입 경로', () => {
-  it('품질관리 메뉴를 키보드로 열면 정식 주소와 화면 제목·탐색 경로가 선다', async () => {
+describe('appRouter — 품질 승인 처리의 진입 경로', () => {
+  /* 제목·탐색 경로 없이 유형 탭이 맨 위에 선다(#186, 입하 예정 조회와 같은 짜임). */
+  it('품질관리 메뉴를 키보드로 열면 정식 주소와 유형 탭·목록 구획이 선다', async () => {
     const user = userEvent.setup();
     renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...qualityApprovalRoutes()]);
 
-    const link = screen.getByRole('link', { name: '특채·한도승인 승인 처리' });
+    const link = screen.getByRole('link', { name: '품질 승인 처리' });
     link.focus();
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(currentLocation()).toBe('/quality/approvals'));
     expect(
-      screen.getAllByRole('heading', { level: 1, name: '특채·한도승인 승인 처리' }),
-    ).toHaveLength(1);
-    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
-    const items = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
-    expect(items).toHaveLength(2);
-    expect(within(items[0]!).getByText(messages.qualityApproval.breadcrumbRoot)).toBeVisible();
-    expect(within(items[1]!).getByText('특채·한도승인 승인 처리')).toBeVisible();
+      await screen.findByRole('tablist', {
+        name: messages.qualityApproval.fields.approvalTypeCode,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: messages.qualityApproval.panes.list }),
+    ).toBeInTheDocument();
   });
 
   it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {
@@ -1466,6 +1496,11 @@ describe('appRouter — 처분 판정 처리의 진입 경로', () => {
    */
   it('⭐ W/O 진행현황이 아는 자기 주소와 등록된 라우트가 «같다»', () => {
     expect(routedPaths()).toContain(WORK_ORDER_PROGRESS_PATH);
+  });
+
+  /* W-02-09 LOT 추적 상세의 [LOT 상태 보기]가 가는 W-03-01 주소다. 갈리면 조용히 404로 간다. */
+  it('⭐ LOT 추적이 여는 LOT 상태 주소와 등록된 라우트가 «같다»', () => {
+    expect(routedPaths()).toContain(LOT_STATUS_PATH);
   });
 
   it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {
@@ -1512,16 +1547,16 @@ describe('appRouter — W/O 마감·ERP 실적 송신의 진입 경로', () => {
   });
 });
 
-describe('appRouter — ERP W/O 처리 작업함의 진입 경로', () => {
+describe('appRouter — 작업지시 목록 작업함의 진입 경로', () => {
   /*
-   * 생산 관리의 「ERP W/O」 묶음 줄은 첫 탭(ERP W/O 처리)을 건다. W-02-01은 처리형 작업함이다(화면 구성 규범 T-W-C).
+   * 생산 관리의 「작업지시 목록」 묶음 줄은 첫 탭(작업지시 목록)을 건다. W-02-01은 처리형 작업함이다(화면 구성 규범 T-W-C).
    */
-  it('생산 관리 메뉴(ERP W/O)를 키보드로 열면 작업함이 「확인 필요」 조건으로 선다', async () => {
+  it('생산 관리 메뉴(작업지시 목록)를 키보드로 열면 작업함이 「조치 필요」 조건으로 선다', async () => {
     const user = userEvent.setup();
     renderRoutedApp('/quality/lot-status', [...productionOrderRoutes(), ...lotStatusRoutes()]);
 
     const link = within(screen.getByRole('navigation', { name: '주 메뉴' })).getByRole('link', {
-      name: 'ERP W/O',
+      name: '작업지시 목록',
     });
     link.focus();
     await user.keyboard('{Enter}');
@@ -1530,9 +1565,9 @@ describe('appRouter — ERP W/O 처리 작업함의 진입 경로', () => {
     expect(
       screen.getAllByRole('heading', { level: 1, name: messages.erpWorkOrderFlow.title }),
     ).toHaveLength(1);
-    expect(hubTab('ERP W/O', 'ERP W/O 처리')).toHaveAttribute('aria-current', 'page');
+    expect(hubTab('작업지시 목록', '작업지시 목록')).toHaveAttribute('aria-current', 'page');
     expect(
-      await screen.findByText(messages.erpWorkOrderFlow.list.emptyNeedsReviewTitle),
+      await screen.findByText(messages.erpWorkOrderFlow.list.emptyActionRequiredTitle),
     ).toBeVisible();
   });
 
@@ -1545,7 +1580,7 @@ describe('appRouter — ERP W/O 처리 작업함의 진입 경로', () => {
 
 /*
  * W-02-02(전개, 편성), W-02-03(4M 자원배정)은 처리 화면의 단계로, W-02-04(확정, 배포)는 작업함의 일괄 배포와
- * 처리 화면 마지막 단계로 합쳤다. 옛 주소는 살려 두고 ERP W/O 처리로 넘긴다.
+ * 처리 화면 마지막 단계로 합쳤다. 옛 주소는 살려 두고 작업지시 목록으로 넘긴다.
  */
 describe('appRouter — 합친 옛 주소', () => {
   it('대상 없는 전개, 편성 주소는 작업함으로 넘어간다', async () => {
@@ -1559,10 +1594,10 @@ describe('appRouter — 합친 옛 주소', () => {
     await waitFor(() => expect(currentLocation()).toBe('/production/production-orders'));
   });
 
-  it('확정, 배포 주소는 작업함의 「자동 계획 완료」 조건으로 넘어간다', async () => {
+  it('확정, 배포 주소는 작업함의 「배포 대기」 조건으로 넘어간다', async () => {
     renderRoutedApp('/production/work-order-release', productionOrderRoutes());
     await waitFor(() =>
-      expect(currentLocation()).toBe('/production/production-orders?autoPlan=DONE'),
+      expect(currentLocation()).toBe('/production/production-orders?state=RELEASE_PENDING'),
     );
     expect(screen.queryByRole('link', { name: 'W/O 확정·배포·생산LOT 선발행' })).toBeNull();
   });
@@ -1725,7 +1760,18 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
           url.searchParams.get('codeGroupCode') === 'INSPECTION_SHEET_PLANT')
       );
     };
-    expect(requests.filter((request) => !isOaLookup(request))).toHaveLength(0);
+    /* 셸의 IQC 대기 배지(피처 002, omf-all-around#190)도 화면의 조회가 아니다 — 사이드바가 한 번 센다. */
+    const isIqcBadge = (request: Request) => {
+      const url = new URL(request.url);
+      return (
+        url.pathname.endsWith('/quality/inspection-requests') &&
+        url.searchParams.get('inspectionTypeCode') === 'IQC' &&
+        url.searchParams.get('size') === '1'
+      );
+    };
+    expect(
+      requests.filter((request) => !isOaLookup(request) && !isIqcBadge(request)),
+    ).toHaveLength(0);
   });
 
   /*

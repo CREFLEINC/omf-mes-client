@@ -3,10 +3,12 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type FormEvent } from 'react';
 
 import { EMPTY_FILTERS, type QueueFilters } from './filters';
+import { ItemFilterField } from './item-filter-field';
 import {
   EMPTY_DRAFT,
   hasError,
   toDraft,
+  type DraftFilters,
   toFilters,
   validateDraft,
   type QueueDraft,
@@ -22,7 +24,8 @@ import {
  * 아니라 의뢰 생성 시각으로 걸러진다 — 화면은 멀쩡히 돌고 값만 틀린다.
  *
  * ⛔ **번호가 아닌 값을 조용히 무시하지 않는다.** 무시하면 사용자는 자기가 좁혔다고 믿는데
- * 결과는 좁혀지지 않은 상태가 된다.
+ * 결과는 좁혀지지 않은 상태가 된다. 품목은 이제 검색 창에서 고르므로(#136) 틀린 값이 칸에 들어올 길이
+ * 없고, 주소의 틀린 값은 `readFilters` 가 버린다 — 검증은 남겨 두되 칸 오류 글은 서지 않는다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -32,18 +35,21 @@ const t = messages.oqcInspection.filters;
 export interface QueueFilterBarProps {
   /** 주소가 담은 조건. **정본이다** — 편집 중이던 값도 이것이 바뀌면 따라 되돌아간다 */
   appliedFilters: QueueFilters;
-  onSearch: (filters: QueueFilters) => void;
+  onSearch: (filters: DraftFilters) => void;
+  /** 「대기·진행만 보기」를 켜고 끄면 **바로 조회한다**(#185 · PQC 와 같다) — 조회를 누르지 않는다. */
+  onTogglePendingOnly: (pendingOnly: boolean) => void;
   onReset: () => void;
 }
 
-export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilterBarProps) => {
+export const QueueFilterBar = ({
+  appliedFilters,
+  onSearch,
+  onTogglePendingOnly,
+  onReset,
+}: QueueFilterBarProps) => {
   const [draft, setDraft] = useState<QueueDraft>(() => toDraft(appliedFilters));
-  /**
-   * 「대기·진행만 보기」는 초안 타입 밖에 둔다 — boolean 이라 「치는 중」도 「틀린 값」도 없다.
-   * 조회를 누를 때 `toFilters` 가 인자로 받아 조건에 합류한다.
-   */
-  const [pendingOnly, setPendingOnly] = useState(appliedFilters.pendingOnly);
-  const [showErrors, setShowErrors] = useState(false);
+  /* 「대기·진행만 보기」는 누르는 즉시 조회되므로(#185) 편집 상태가 없다 — 주소의 값을 그대로 보인다. */
+  const { pendingOnly } = appliedFilters;
 
   /*
    * 주소가 정본이다 — 뒤로가기·초기화로 주소가 **바뀌면** 편집 중인 값도 그 값으로 되돌아간다.
@@ -52,29 +58,22 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
    * 내용이 같아도 참조가 달라질 수 있고(조회 응답이 도착해 다시 그려질 때가 그렇다), 참조로
    * 판정하면 그때마다 사용자가 치던 값이 사라진다.
    *
-   * ⭐ **`pendingOnly` 를 의존성에 반드시 넣는다.** 빠뜨리면 뒤로가기로 토글만 달라진 주소로
-   * 돌아왔을 때 체크박스가 앞 상태 그대로 서고, 화면은 **목록과 다른 조건을 보이게 된다.**
+   * 체크칸은 주소 값을 바로 보이므로 여기서 되돌리지 않는다 — 체크를 바꿨다고 치던 값이 지워지지 않게.
    */
-  const { itemId, keyword, pendingOnly: appliedPendingOnly } = appliedFilters;
+  const { itemId, keyword } = appliedFilters;
 
   useEffect(() => {
-    setDraft(toDraft({ itemId, keyword, pendingOnly: appliedPendingOnly }));
-    setPendingOnly(appliedPendingOnly);
-    setShowErrors(false);
-  }, [itemId, keyword, appliedPendingOnly]);
+    setDraft(toDraft({ itemId, keyword, pendingOnly: EMPTY_FILTERS.pendingOnly }));
+  }, [itemId, keyword]);
 
   const errors = validateDraft(draft);
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
 
-    /* 틀린 값을 실어 보내지 않는다. 그 대신 어느 칸이 틀렸는지 보인다. */
-    if (hasError(errors)) {
-      setShowErrors(true);
-      return;
-    }
+    /* 틀린 값을 실어 보내지 않는다. */
+    if (hasError(errors)) return;
 
-    setShowErrors(false);
     onSearch(toFilters(draft, pendingOnly));
   };
 
@@ -86,25 +85,17 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
    */
   const reset = (): void => {
     setDraft(EMPTY_DRAFT);
-    /*
-     * ⛔ **기본값을 여기 다시 적지 않는다.** 정본은 `filters.ts` 이고 부모의 `onReset` 도 그쪽을
-     * 쓴다. 손으로 적어 두면 기본값이 뒤집히는 날, **이미 기본 상태인 화면에서 초기화를 누를 때**
-     * 주소가 안 바뀌어 되돌림 effect 도 안 깨어나고 체크박스만 어긋난 채 남는다.
-     */
-    setPendingOnly(EMPTY_FILTERS.pendingOnly);
-    setShowErrors(false);
     onReset();
   };
 
   return (
     <form className="filter-bar" onSubmit={submit}>
-      <TextField
-        label={t.item}
-        placeholder={t.itemPlaceholder}
-        inputMode="numeric"
+      {/* 품목은 검색 창에서 고른다 — 내부 번호를 치지 않는다(IQC #133 과 같은 칸 · omf-all-around#136). */}
+      <ItemFilterField
         value={draft.item}
-        error={showErrors && errors.item ? t.identifierInvalid : undefined}
-        onChange={(event) => setDraft({ ...draft, item: event.target.value })}
+        onChange={(value) => {
+          setDraft({ ...draft, item: value });
+        }}
       />
       <TextField
         label={t.keyword}
@@ -112,17 +103,23 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
         value={draft.keyword}
         onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
       />
-      <div className="field-cell field-cell-unlabeled">
-        <Checkbox checked={pendingOnly} onChange={(event) => setPendingOnly(event.target.checked)}>
+      <div className="field-cell field-cell-unlabeled oqc-inspection-pending-only">
+        <Checkbox
+          checked={pendingOnly}
+          onChange={(event) => onTogglePendingOnly(event.target.checked)}
+        >
           {t.pendingOnly}
         </Checkbox>
       </div>
-      <Button type="submit" variant="filled" size="sm">
-        {t.apply}
-      </Button>
-      <Button type="button" variant="outlined" size="sm" onClick={reset}>
-        {t.reset}
-      </Button>
+      {/* 조회·초기화는 한 덩어리로 그 줄의 오른쪽 끝에 선다(IQC 와 같은 자리). */}
+      <div className="filter-actions field-cell-unlabeled oqc-inspection-filter-actions">
+        <Button type="submit" variant="filled">
+          {t.apply}
+        </Button>
+        <Button type="button" variant="outlined" onClick={reset}>
+          {t.reset}
+        </Button>
+      </div>
     </form>
   );
 };

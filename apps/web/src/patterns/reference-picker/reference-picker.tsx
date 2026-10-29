@@ -1,17 +1,10 @@
-import {
-  Button,
-  Dialog,
-  EmptyState,
-  SearchInput,
-  Select,
-  TextField,
-  type Column,
-} from '@crefle/web-ui';
+import { Button, Dialog, EmptyState, SearchInput, TextField, type Column } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useId, useState, type ReactNode } from 'react';
 
 import { PageNav } from '../page-nav';
+import { Select } from '../select';
 import { SelectableTable } from '../selectable-table';
 
 /**

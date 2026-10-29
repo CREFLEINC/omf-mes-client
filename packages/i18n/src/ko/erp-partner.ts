@@ -7,7 +7,10 @@
 export const erpPartner = {
   title: '거래처 조회 (ERP)',
   breadcrumbRoot: '시스템 관리',
-  readOnlyNote: 'ERP 에서 받은 거래처입니다. MES 에서는 고칠 수 없습니다.',
+  panes: {
+    filter: '조회 조건',
+    list: '거래처 목록',
+  },
   fields: {
     q: '거래처 코드·명',
     role: '역할',
@@ -27,11 +30,6 @@ export const erpPartner = {
     subcontractor: '외주 제작사',
     disposal: '폐기 업체',
     other: '기타',
-  },
-  detail: {
-    label: '거래처 상세',
-    openAction: (partnerCode: string): string => `${partnerCode} 상세 보기`,
-    selectHint: '목록에서 거래처를 고르면 상세가 보입니다.',
   },
   values: {
     all: '전체',
@@ -55,12 +53,9 @@ export const erpPartner = {
   },
   loading: {
     list: '거래처 목록을 불러오는 중',
-    detail: '거래처 상세를 불러오는 중',
   },
   empty: {
     noResultTitle: '조건에 맞는 거래처가 없습니다',
-    noResultDescription: '검색어나 역할을 바꾸거나 미사용 포함을 켜 보세요.',
     beyondLastTitle: '이 쪽에는 거래처가 없습니다',
-    beyondLastDescription: '첫 쪽으로 돌아가 다시 보세요.',
   },
 } as const;

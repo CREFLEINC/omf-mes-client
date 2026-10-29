@@ -11,7 +11,11 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { SessionProvider, type Session } from '../../patterns/session';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { dispositionEntryPath } from '../disposition-decision/filters';
+import { lotStatusEntryPath } from '../lot-status-history/filters';
+import { workOrderProgressEntryPath } from '../work-order-progress/filters';
 import { QualityApprovalScreen } from './screen';
 import {
   concessionDetailPath,
@@ -35,7 +39,8 @@ const requests: ApprovalRequest[] = [
   {
     approvalRequestId: 31,
     approvalRequestNo: 'SYNTH-REQ-031',
-    approvalTypeCode: 'IQC_SKIP',
+    /* 특채 — 연결 조건(특채 조건)을 찾는 갈래를 잰다. IQC·OQC 생략은 조건이 없어 시험마다 따로 세운다(#186). */
+    approvalTypeCode: 'CONCESSION',
     requestedBy: 7,
     requestedByName: '합성 사용자',
     requestedAt: '2026-08-22T09:30:00+09:00',
@@ -198,8 +203,19 @@ const processRoute = (
   respond,
 });
 
+/** 탭 줄 승인·반려 칩의 건수 조회(#186) — 목록 조회와 갈라 센다. 결재 대기 건수는 목록과 같은 조회라 따로 나가지 않는다. */
+const isStatusCount = (url: URL): boolean =>
+  url.pathname === PATH &&
+  ['APPROVED', 'REJECTED'].includes(url.searchParams.get('statusCode') ?? '');
+
+const statusCountRoute = (): StubRoute => ({
+  match: (request) => isStatusCount(new URL(request.url)),
+  respond: () => jsonResponse(listBody([], 0)),
+});
+
 const approvalFetch = (routes: StubRoute[]): StubFetch =>
   createStubFetch([
+    statusCountRoute(),
     ...routes,
     detailRoute(),
     candidateRoute(),
@@ -209,14 +225,19 @@ const approvalFetch = (routes: StubRoute[]): StubFetch =>
     processRoute(),
   ]);
 
-const recordingFetch = (...routes: StubRoute[]): { fetch: StubFetch; urls: URL[] } => {
+const recordingFetch = (
+  ...routes: StubRoute[]
+): { fetch: StubFetch; urls: URL[]; statusCounts: URL[] } => {
   const urls: URL[] = [];
+  const statusCounts: URL[] = [];
   const stub = approvalFetch(routes);
 
   return {
     urls,
+    statusCounts,
     fetch: async (request) => {
-      urls.push(new URL(request.url));
+      const url = new URL(request.url);
+      (isStatusCount(url) ? statusCounts : urls).push(url);
       return stub(request);
     },
   };
@@ -230,6 +251,7 @@ const Controls = () => {
 
   return (
     <>
+      <output aria-label="현재 경로">{location.pathname}</output>
       <output aria-label="현재 주소">{location.search}</output>
       <output aria-label="주소 변경 방식">{navigationType}</output>
       <button
@@ -255,13 +277,14 @@ const renderScreen = (
   fetch: StubFetch,
   route = '/quality/approvals',
   approvalTypeCodes?: readonly string[],
+  session: Session = SYNTHETIC_SESSION,
 ) => {
   const result = renderWithProviders(
-    <>
+    <SessionProvider>
       <Controls />
       <QualityApprovalScreen approvalTypeCodes={approvalTypeCodes} />
-    </>,
-    { fetch, route },
+    </SessionProvider>,
+    { fetch, route, session },
   );
 
   return { ...result, user: userEvent.setup() };
@@ -274,7 +297,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
   it('assignedToMe와 적용된 URL만 보내고 미확정 코드·선택·무관 키는 보내지 않는다', async () => {
     const recorded = recordingFetch(listRoute());
     /* 기준값이 비었을 때의 규율을 잰다 — 기본값에는 특채(CONCESSION · #84)·OQC 생략(OQC_SKIP · #119)이 들어 있어 비운 채로 세운다. */
-    renderScreen(
+    const { user } = renderScreen(
       recorded.fetch,
       '/quality/approvals?ty=UNCONFIRMED&st=UNKNOWN&q=SYNTH&page=2&approvalRequestId=31&view=compact',
       [],
@@ -282,13 +305,21 @@ describe('QualityApprovalScreen query and disclosure', () => {
 
     expect(await findRequest()).toBeInTheDocument();
     expect(screen.getByText(t.scopeWarning)).toBeInTheDocument();
-    expect(recorded.urls.filter((url) => url.pathname === PATH)).toHaveLength(1);
-    expect(Object.fromEntries(recorded.urls[0]?.searchParams ?? [])).toEqual({
-      assignedToMe: 'true',
-      pendingOnly: 'true',
-      q: 'SYNTH',
-      page: '2',
-    });
+    /* 목록 하나 + 탭 줄 「결재 대기 N」 칩의 수(같은 조건의 결재 대기 첫 쪽 · #186). */
+    const sent = recorded.urls
+      .filter((url) => url.pathname === PATH)
+      .map((url) => Object.fromEntries(url.searchParams));
+    /* 기본은 전체 조회라(#186) 목록에는 「결재 대기만」이 실리지 않는다. 결재 대기 칩의 수는 따로 센다. */
+    expect(sent).toHaveLength(2);
+    expect(sent).toContainEqual({ assignedToMe: 'true', q: 'SYNTH', page: '2' });
+    expect(sent).toContainEqual({ assignedToMe: 'true', pendingOnly: 'true', q: 'SYNTH' });
+    /* 승인·반려 칩의 수 — 같은 조건에서 상태만 바꾼 첫 쪽(미확정 상태 `st=UNKNOWN` 은 싣지 않는다). */
+    expect(recorded.statusCounts.map((url) => Object.fromEntries(url.searchParams))).toEqual(
+      expect.arrayContaining([
+        { assignedToMe: 'true', statusCode: 'APPROVED', q: 'SYNTH' },
+        { assignedToMe: 'true', statusCode: 'REJECTED', q: 'SYNTH' },
+      ]),
+    );
   });
 
   it('승인 유형 기준값이 준비되면 넓은 조회 경고를 거두고 해당 유형을 보낸다', async () => {
@@ -297,10 +328,8 @@ describe('QualityApprovalScreen query and disclosure', () => {
 
     expect(await findRequest()).toBeInTheDocument();
     expect(screen.queryByText(t.scopeWarning)).not.toBeInTheDocument();
-    expect(screen.getByText(t.codePending)).toBeInTheDocument();
     expect(Object.fromEntries(recorded.urls[0]?.searchParams ?? [])).toEqual({
       assignedToMe: 'true',
-      pendingOnly: 'true',
       approvalTypeCode: 'IQC_SKIP',
     });
   });
@@ -322,6 +351,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
       '/quality/approvals?page=3&approvalRequestId=31&view=compact',
     );
 
+    /* 상세가 열린 채로도 목록·조건이 옆에 서 있다(#186) — 바로 조건을 적용한다. */
     await findRequest();
     await user.type(screen.getByLabelText(t.fields.q), 'SYNTH-NEW');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
@@ -355,13 +385,19 @@ describe('QualityApprovalScreen query and disclosure', () => {
     );
 
     await findRequest();
-    await user.click(screen.getByRole('checkbox', { name: t.fields.pendingOnly }));
-    await waitFor(() => expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=0'));
+    await user.click(
+      screen.getByRole('button', { name: t.statusChips.filterOn(t.statusLabels.PENDING) }),
+    );
+    await waitFor(() => expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=1'));
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-031') }));
+    /* 목록과 상세가 나란히 서므로(#186) 고른 채 쪽을 넘긴다 — 쪽 이동도 선택을 비운다. */
+    await user.click(await findRequest());
+    await waitFor(() =>
+      expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=1&approvalRequestId=31'),
+    );
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
     await waitFor(() =>
-      expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=0&page=2'),
+      expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?pd=1&page=2'),
     );
   });
 
@@ -372,7 +408,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
       calls += 1;
       return calls === 1 ? jsonResponse(listBody(requests, 40)) : pending;
     };
-    const { user } = renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
+    const { user } = renderScreen(fetch);
 
     await findRequest();
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
@@ -448,12 +484,20 @@ describe('QualityApprovalScreen result states', () => {
     let attempts = 0;
     const { user } = renderScreen(
       approvalFetch([
-        listRoute(() => {
-          attempts += 1;
-          return attempts === 1
-            ? jsonResponse({ message: '' }, { status: 500 })
-            : jsonResponse(listBody());
-        }),
+        /* 목록 조회만 센다 — 결재 대기 칩의 수(`pendingOnly`)는 같은 경로로 따로 나간다(#186). */
+        {
+          match: (request) => {
+            const url = new URL(request.url);
+            return url.pathname === PATH && !url.searchParams.has('pendingOnly');
+          },
+          respond: () => {
+            attempts += 1;
+            return attempts === 1
+              ? jsonResponse({ message: '' }, { status: 500 })
+              : jsonResponse(listBody());
+          },
+        },
+        listRoute(),
       ]),
     );
 
@@ -465,35 +509,30 @@ describe('QualityApprovalScreen result states', () => {
 });
 
 describe('QualityApprovalScreen detail', () => {
-  it('선택 전에는 3구획을 세우되 상세나 /0 요청을 보내지 않는다', async () => {
+  it('선택 전에는 유형 탭·조건·목록과 고르라는 안내만 세우고 상세나 /0 요청을 보내지 않는다', async () => {
     const recorded = recordingFetch(listRoute());
     renderScreen(recorded.fetch);
 
     await findRequest();
 
+    expect(screen.getByRole('region', { name: t.panes.filter })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: t.panes.list })).toBeInTheDocument();
-    expect(
-      within(screen.getByRole('region', { name: t.panes.list })).getByRole('heading', {
-        name: t.panes.list,
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByRole('region', { name: t.panes.detail })).getByRole('heading', {
-        name: t.panes.detail,
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByRole('region', { name: t.panes.progress })).getByRole('heading', {
-        name: t.panes.progress,
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: '요청 상세' })).toHaveTextContent(
-      '승인 요청을 선택하세요',
+    expect(screen.getByRole('separator', { name: t.splitter })).toBeInTheDocument();
+    /* 승인 유형은 목록 위 탭으로 고른다(#144) — 「전체」와 기본 유형이 사용자 용어로 선다. */
+    const tabs = screen.getByRole('tablist', { name: '승인 유형' });
+    expect(within(tabs).getByRole('tab', { name: '전체' })).toHaveAttribute(
+      'aria-selected',
+      'true',
     );
-    expect(screen.getByRole('region', { name: '결재 진행' })).toHaveTextContent(
-      '요청을 선택하면 결재 진행이 표시됩니다',
-    );
-    expect(recorded.urls.map((url) => url.pathname)).toEqual([PATH]);
+    expect(within(tabs).getByRole('tab', { name: '특채' })).toBeInTheDocument();
+    expect(within(tabs).getByRole('tab', { name: 'OQC (출하검사) 생략' })).toBeInTheDocument();
+    /* 상세 · 결재 진행 구획은 선택 전에는 서지 않고, 오른쪽에는 고르라는 안내만 선다(#186). */
+    expect(screen.queryByRole('region', { name: t.panes.detail })).toBeNull();
+    expect(screen.queryByRole('region', { name: t.panes.progress })).toBeNull();
+    expect(screen.getByText(t.detail.noSelectionTitle)).toBeInTheDocument();
+    expect(screen.getByText(t.detail.noSelectionDescription)).toBeInTheDocument();
+    /* 목록과 결재 대기 칩의 수(#186)만 나간다 — 상세는 부르지 않는다. */
+    expect(new Set(recorded.urls.map((url) => url.pathname))).toEqual(new Set([PATH]));
   });
 
   it('상세 정확 경로의 ETag를 잡고 사유 전문·대상만 표시한다', async () => {
@@ -523,12 +562,16 @@ describe('QualityApprovalScreen detail', () => {
     const fetch: StubFetch = async (request) =>
       new URL(request.url).pathname === requestDetailPath(32) ? pending : base(request);
     const { user } = renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
-    const pane = screen.getByRole('region', { name: '요청 상세' });
+    const firstPane = screen.getByRole('region', { name: '요청 상세' });
 
-    expect(await within(pane).findByRole('group', { name: '사유 전문' })).toHaveTextContent(
+    expect(await within(firstPane).findByRole('group', { name: '사유 전문' })).toHaveTextContent(
       '둘째 근거',
     );
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-032') }));
+    /* 다른 요청은 옆에 선 목록에서 바로 고른다(#186). */
+    await user.click(
+      await screen.findByRole('button', { name: t.actions.selectRow('SYNTH-REQ-032') }),
+    );
+    const pane = screen.getByRole('region', { name: '요청 상세' });
 
     expect(
       within(pane).getByRole('status', { name: '승인 요청 상세 불러오는 중' }),
@@ -540,6 +583,28 @@ describe('QualityApprovalScreen detail', () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?approvalRequestId=32');
+  });
+
+  it('행을 고르면 목록은 그대로 두고 옆에 결재 진행·요청 상세·승인 처리가 함께 선다', async () => {
+    const { user } = renderScreen(approvalFetch([listRoute()]));
+
+    await user.click(await findRequest());
+
+    const pane = screen.getByRole('region', { name: t.panes.detail });
+    expect(await within(pane).findByRole('group', { name: '사유 전문' })).toHaveTextContent(
+      '둘째 근거',
+    );
+    expect(screen.getByRole('region', { name: t.panes.progress })).toBeInTheDocument();
+    /* 승인 처리는 요청 상세 카드 안에 선다(#193 컴팩트형). */
+    expect(await within(pane).findByRole('group', { name: t.approval.title })).toBeInTheDocument();
+    /* 목록은 물러나지 않는다 — 고른 행이 그대로 보이고 다른 요청도 바로 고를 수 있다. */
+    const list = screen.getByRole('region', { name: t.panes.list });
+    expect(
+      within(list).getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-031') }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: t.panes.filter })).toBeInTheDocument();
+    expect(screen.queryByText(t.detail.noSelectionTitle)).toBeNull();
+    expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?approvalRequestId=31');
   });
 
   it('상세 403은 선택을 유지하고 재시도를 주지 않는다', async () => {
@@ -574,9 +639,14 @@ describe('QualityApprovalScreen detail', () => {
     );
     expect(screen.getByLabelText('주소 변경 방식')).toHaveTextContent('REPLACE');
     expect(missing.closest('[role="status"]')).not.toBeNull();
-    expect(screen.getByRole('region', { name: t.panes.progress })).toHaveTextContent(
-      t.detail.progressPending,
-    );
+    /* 선택이 풀린 까닭은 목록 안에서 알린다 — 상세 구획 대신 고르라는 안내가 선다(#186). */
+    const list = screen.getByRole('region', { name: t.panes.list });
+    expect(within(list).getByText('요청을 찾을 수 없습니다')).toBeInTheDocument();
+    expect(
+      within(list).getByText('목록을 새로 조회한 뒤 다른 요청을 선택하세요.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.panes.detail })).toBeNull();
+    expect(screen.queryByRole('region', { name: t.panes.progress })).toBeNull();
   });
 
   it('상세 네트워크 오류는 오프라인 안내 후 재시도로 복구한다', async () => {
@@ -617,11 +687,51 @@ describe('QualityApprovalScreen detail', () => {
         name: '사유 전문',
       }),
     ).toHaveTextContent('둘째 근거');
+    /* 목록 실패는 상세 옆 목록 구획에 함께 보인다(#186). */
     expect(
       within(screen.getByRole('region', { name: t.panes.list })).getByText(
         messages.httpError.loadTitle,
       ),
     ).toBeInTheDocument();
+  });
+  it('상세에서도 유형 탭이 서고, 탭을 누르면 고른 요청을 비우고 그 유형 목록으로 돌아간다', async () => {
+    const { user } = renderScreen(
+      approvalFetch([listRoute(), detailRoute()]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    await screen.findByRole('region', { name: '요청 상세' });
+    const tabs = screen.getByRole('tablist', { name: t.fields.approvalTypeCode });
+    await user.click(within(tabs).getByRole('tab', { name: t.typeLabels.CONCESSION }));
+
+    expect(await screen.findByRole('region', { name: t.panes.list })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '요청 상세' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?ty=CONCESSION');
+  });
+
+  it('「IQC (수입검사) 생략」 탭은 OQC 생략 앞에 서고, 누르면 긴급 IQC 생략 한도승인 화면으로 간다', async () => {
+    const { user } = renderScreen(approvalFetch([listRoute()]));
+
+    const tabs = await screen.findByRole('tablist', { name: t.fields.approvalTypeCode });
+    expect(
+      within(tabs)
+        .getAllByRole('tab')
+        .map((tab) => tab.textContent),
+    ).toEqual([t.all, t.typeLabels.CONCESSION, t.typeLabels.IQC_SKIP, t.typeLabels.OQC_SKIP]);
+    await user.click(within(tabs).getByRole('tab', { name: t.typeLabels.IQC_SKIP }));
+
+    expect(screen.getByLabelText('현재 경로')).toHaveTextContent('/logistics/iqc-skip-approval');
+  });
+
+  it('긴급 IQC 생략 한도승인을 볼 권한이 없으면 그 탭을 세우지 않는다', async () => {
+    renderScreen(approvalFetch([listRoute()]), '/quality/approvals', undefined, {
+      ...SYNTHETIC_SESSION,
+      permissions: ['W-03-09'],
+    });
+
+    const tabs = await screen.findByRole('tablist', { name: t.fields.approvalTypeCode });
+    expect(within(tabs).queryByRole('tab', { name: t.typeLabels.IQC_SKIP })).toBeNull();
+    expect(within(tabs).getByRole('tab', { name: t.typeLabels.OQC_SKIP })).toBeInTheDocument();
   });
 });
 
@@ -648,14 +758,27 @@ describe('QualityApprovalScreen conditions', () => {
     const pane = screen.getByRole('region', { name: t.panes.detail });
 
     expect(await within(pane).findByText('SYNTH-CN-501')).toBeInTheDocument();
-    expect(within(pane).getByText('SYNTH-ACTIVE')).toBeInTheDocument();
+    /* 특채 승인 상세(#193) — 특채 상태 칸은 두지 않는다(요청 상태는 머리 배지가 말한다). 잔여 수량을 더한다. */
+    expect(within(pane).queryByText('SYNTH-ACTIVE')).toBeNull();
+    expect(within(pane).getByText('8')).toBeInTheDocument();
     expect(within(pane).getByText(t.condition.unusable)).toBeInTheDocument();
     expect(within(pane).getByText('10')).toBeInTheDocument();
     expect(within(pane).getByText('2')).toBeInTheDocument();
-    expect(within(pane).getByText('2026-08-22 – 2026-09-30')).toBeInTheDocument();
+    expect(within(pane).getByText('2026-08-22 ~ 2026-09-30')).toBeInTheDocument();
     expect(within(pane).getByText('합성 조건 비고')).toBeInTheDocument();
-    expect(await within(pane).findByText('SYNTH-WO-1201')).toBeInTheDocument();
+    const usage = within(pane).getByRole('region', { name: t.condition.usageTitle });
+    /* 허용 작업지시는 적용 제한 칸과 비고 옆 칸 두 곳에 선다(#193). */
+    expect(await within(usage).findAllByText('SYNTH-WO-1201')).toHaveLength(2);
     expect(within(pane).getByText('합성 고객')).toBeInTheDocument();
+    /* 다른 화면에서 여는 줄(#193) — LOT 은 LOT 상태, 허용 작업지시는 W/O 진행현황의 진입 주소다. */
+    expect(within(pane).getByRole('link', { name: t.condition.openLot })).toHaveAttribute(
+      'href',
+      lotStatusEntryPath(concession.lotId),
+    );
+    expect(within(pane).getByRole('link', { name: t.condition.openWorkOrder })).toHaveAttribute(
+      'href',
+      workOrderProgressEntryPath(1201),
+    );
     expect(within(pane).getByText('SYNTH-EA · 합성 낱개')).toBeInTheDocument();
     expect(within(pane).getByText('합성 공정')).toBeInTheDocument();
     for (const internalId of ['901', '1201', '1301', '1401']) {
@@ -719,13 +842,15 @@ describe('QualityApprovalScreen conditions', () => {
         : base(request);
     renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
 
-    const group = await screen.findByRole('group', { name: t.condition.title });
-    expect(within(group).getAllByText(t.condition.reference.loading)).toHaveLength(4);
+    await screen.findByRole('group', { name: t.condition.title });
+    const group = screen.getByRole('region', { name: t.condition.usageTitle });
+    expect(within(group).getAllByText(t.condition.reference.loading)).toHaveLength(5);
     expect(within(group).queryByText('SYNTH-WO-1201')).toBeNull();
   });
 
-  it('OQC 생략 결재는 연결 조건 대신 「실제 생략은 OQC 출하검사 판정에서」를 알리고 그 화면으로 잇는다(#119 · J-8)', async () => {
-    const oqcSkip = {
+  /* OQC 생략(#193) — IQC 생략처럼 승인된 뒤에만 이 화면에 생략 실행 구획이 선다. 연결 조건(특채)은 묻지 않는다. */
+  const oqcSkipRequest = (overrides: Partial<ApprovalRequest> = {}): ApprovalRequest =>
+    ({
       ...requests[0]!,
       approvalTypeCode: 'OQC_SKIP',
       target: {
@@ -734,18 +859,275 @@ describe('QualityApprovalScreen conditions', () => {
         displayName: '출하작업지시',
         openable: false,
       },
-    } as unknown as ApprovalRequest;
+      ...overrides,
+    }) as unknown as ApprovalRequest;
+  const OQC_SKIP_EXECUTE_PATH = '/logistics/shipment-requests/21:skip-oqc';
+
+  it('결재 대기 OQC 생략은 연결 조건도 생략 실행 구획도 세우지 않는다(#193)', async () => {
     renderScreen(
-      approvalFetch([listRoute(), detailRoute(31, () => jsonResponse(detailBody(oqcSkip)))]),
+      approvalFetch([
+        listRoute(),
+        detailRoute(31, () => jsonResponse(detailBody(oqcSkipRequest()))),
+      ]),
       '/quality/approvals?approvalRequestId=31',
     );
 
-    expect(await screen.findByText(t.detail.oqcSkipNote)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: t.detail.openOqcInspection })).toHaveAttribute(
+    expect(await screen.findByRole('region', { name: t.panes.detail })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: t.condition.title })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: t.oqcSkipExecute.heading }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('승인된 OQC 생략은 확인 뒤 생략 실행을 한 번 보내고 실행 완료를 보인다(#193)', async () => {
+    const approved = oqcSkipRequest({
+      statusCode: 'APPROVED',
+      isMyTurn: false,
+      currentStepNo: null,
+    } as Partial<ApprovalRequest>);
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(approved))),
+      {
+        match: (request) => new URL(request.url).pathname === OQC_SKIP_EXECUTE_PATH,
+        respond: () => jsonResponse({}),
+      },
+    );
+    const { user } = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
+    const o = t.oqcSkipExecute;
+
+    const pane = await screen.findByRole('region', { name: o.heading });
+    /* 한 줄 압축형(#193) — 「OQC 생략 · 열린 검사 의뢰 생략 · LOT 이력 기록」과 짧은 「실행」 단추. */
+    expect(pane).toHaveTextContent(o.compact.title);
+    expect(pane).toHaveTextContent(o.compact.summary);
+    await user.click(within(pane).getByRole('button', { name: o.compact.action }));
+    const dialog = await screen.findByRole('dialog', { name: o.dialogTitle });
+    expect(recorded.urls.some((url) => url.pathname === OQC_SKIP_EXECUTE_PATH)).toBe(false);
+
+    await user.click(within(dialog).getByRole('button', { name: o.action }));
+
+    await waitFor(() => {
+      expect(recorded.urls.filter((url) => url.pathname === OQC_SKIP_EXECUTE_PATH)).toHaveLength(1);
+    });
+    expect(await screen.findByText(o.compact.done)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: o.compact.action })).not.toBeInTheDocument();
+  });
+
+  it('OQC 출하검사 판정 권한이 없어도 승인 화면 권한만으로 승인된 OQC 생략을 실행할 수 있다(#193)', async () => {
+    const approved = oqcSkipRequest({
+      statusCode: 'APPROVED',
+      isMyTurn: false,
+      currentStepNo: null,
+    } as Partial<ApprovalRequest>);
+    renderScreen(
+      approvalFetch([listRoute(), detailRoute(31, () => jsonResponse(detailBody(approved)))]),
+      '/quality/approvals?approvalRequestId=31',
+      undefined,
+      { ...SYNTHETIC_SESSION, permissions: ['W-03-09'] },
+    );
+
+    const pane = await screen.findByRole('region', { name: t.oqcSkipExecute.heading });
+    expect(
+      within(pane).getByRole('button', { name: t.oqcSkipExecute.compact.action }),
+    ).toBeEnabled();
+  });
+
+  /* 「전체」 탭에서도 IQC 생략을 처리한다(#186) — 특채 조건을 찾지 않고, 승인되면 생략 실행 구획이 선다. */
+  it('IQC 생략 결재는 특채 조건을 찾지 않고 승인을 막지 않는다', async () => {
+    const iqcSkip = { ...requests[0]!, approvalTypeCode: 'IQC_SKIP' } as unknown as ApprovalRequest;
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(iqcSkip))),
+    );
+    renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
+
+    expect(await screen.findByRole('region', { name: t.panes.detail })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: t.condition.title })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.approval.conditionRequired)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.condition.unsafe)).not.toBeInTheDocument();
+    /* 결재 대기에서는 실행 구획이 서지 않는다 — 승인된 뒤의 일이다. */
+    expect(
+      screen.queryByRole('region', { name: messages.iqcSkipApproval.skipExecute.heading }),
+    ).not.toBeInTheDocument();
+    expect(recorded.urls.some((url) => url.pathname === CONCESSIONS_PATH)).toBe(false);
+  });
+
+  it('IQC 생략 화면 권한이 없으면 승인된 IQC 생략에 실행 단추 대신 안내만 세우고 LOT 도 읽지 않는다(#186 리뷰)', async () => {
+    const approved = {
+      ...requests[0]!,
+      approvalTypeCode: 'IQC_SKIP',
+      statusCode: 'APPROVED',
+      isMyTurn: false,
+      currentStepNo: null,
+    } as unknown as ApprovalRequest;
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(approved))),
+    );
+    renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31', undefined, {
+      ...SYNTHETIC_SESSION,
+      permissions: ['W-03-09'],
+    });
+
+    expect(await screen.findByText(t.detail.iqcSkipNoPermission)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: messages.iqcSkipApproval.skipExecute.heading }),
+    ).not.toBeInTheDocument();
+    expect(recorded.urls.some((url) => url.pathname === '/trace/lots/91')).toBe(false);
+  });
+
+  it('승인된 IQC 생략은 대상 LOT 이 검사 대기면 확인 뒤 생략 실행을 한 번 보낸다', async () => {
+    const approved = {
+      ...requests[0]!,
+      approvalTypeCode: 'IQC_SKIP',
+      statusCode: 'APPROVED',
+      isMyTurn: false,
+      currentStepNo: null,
+    } as unknown as ApprovalRequest;
+    const skipPath = '/trace/lots/91:skip-iqc';
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(approved))),
+      {
+        match: (request) => new URL(request.url).pathname === '/trace/lots/91',
+        respond: () => jsonResponse({ lot: { lotId: 91, statusCode: 'INSPECTION_PENDING' } }),
+      },
+      {
+        match: (request) => new URL(request.url).pathname === skipPath,
+        respond: () => jsonResponse({}),
+      },
+    );
+    const { user } = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
+    const s = messages.iqcSkipApproval.skipExecute;
+
+    const pane = await screen.findByRole('region', { name: s.heading });
+    /* 한 줄 압축형(#193) — 여는 단추는 짧은 「실행」, 확인 창의 단추는 종전 이름 그대로다. */
+    await user.click(await within(pane).findByRole('button', { name: s.compact.action }));
+    const dialog = await screen.findByRole('dialog', { name: s.dialogTitle });
+    expect(recorded.urls.some((url) => url.pathname === skipPath)).toBe(false);
+
+    await user.click(within(dialog).getByRole('button', { name: s.action }));
+
+    await waitFor(() => {
+      expect(recorded.urls.filter((url) => url.pathname === skipPath)).toHaveLength(1);
+    });
+  });
+
+  /* 특채 적용(#193) — IQC·OQC 생략 실행처럼 승인된 특채를 이 화면에서 적용한다. 적용 여부는 특채 상태가 말한다. */
+  const approvedConcessionRequest = {
+    ...requests[0]!,
+    statusCode: 'APPROVED',
+    isMyTurn: false,
+    currentStepNo: null,
+  } as unknown as ApprovalRequest;
+  const APPLY_PATH = `${concessionDetailPath(501)}:apply`;
+
+  it('승인됐지만 적용 전인 특채는 확인 뒤 적용을 한 번 보낸다(#193)', async () => {
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(approvedConcessionRequest))),
+      candidateRoute(() => jsonResponse(candidateBody([concession]))),
+      concessionRoute(() => jsonResponse({ ...concession, statusCode: 'PENDING' })),
+      {
+        match: (request) => new URL(request.url).pathname === APPLY_PATH,
+        respond: () => jsonResponse({ ...concession, statusCode: 'APPROVED' }),
+      },
+    );
+    const { user } = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
+    const a = t.concessionApply;
+
+    const pane = await screen.findByRole('region', { name: a.heading });
+    expect(pane).toHaveTextContent(a.compact.summary);
+    await user.click(within(pane).getByRole('button', { name: a.compact.action }));
+    const dialog = await screen.findByRole('dialog', { name: a.dialogTitle });
+    expect(recorded.urls.some((url) => url.pathname === APPLY_PATH)).toBe(false);
+
+    await user.click(within(dialog).getByRole('button', { name: a.action }));
+    await waitFor(() => {
+      expect(recorded.urls.filter((url) => url.pathname === APPLY_PATH)).toHaveLength(1);
+    });
+  });
+
+  it('이미 적용된 특채는 적용 단추 대신 「적용 완료」를 보인다(#193)', async () => {
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        detailRoute(31, () => jsonResponse(detailBody(approvedConcessionRequest))),
+        candidateRoute(() => jsonResponse(candidateBody([concession]))),
+        concessionRoute(() => jsonResponse({ ...concession, statusCode: 'APPROVED' })),
+      ]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    const pane = await screen.findByRole('region', { name: t.concessionApply.heading });
+    expect(within(pane).getByText(t.concessionApply.compact.done)).toBeInTheDocument();
+    expect(within(pane).queryByRole('button')).toBeNull();
+  });
+
+  it('결재 대기 특채에는 적용 구획을 세우지 않는다(#193)', async () => {
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        candidateRoute(() => jsonResponse(candidateBody([concession]))),
+        concessionRoute(() => jsonResponse({ ...concession, statusCode: 'PENDING' })),
+      ]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    await screen.findByRole('group', { name: t.condition.title });
+    expect(screen.queryByRole('region', { name: t.concessionApply.heading })).toBeNull();
+  });
+
+  /* 「다음 할 일」(#193) — 반려면 다시 요청하거나 정상 검사로 가는 화면을 결재 결과 카드 끝에 잇는다. */
+  it('반려된 OQC 생략은 다음 할 일로 OQC 출하검사 판정을 잇는다(#193)', async () => {
+    const rejected = oqcSkipRequest({
+      statusCode: 'REJECTED',
+      isMyTurn: false,
+      currentStepNo: null,
+    } as Partial<ApprovalRequest>);
+    renderScreen(
+      approvalFetch([listRoute(), detailRoute(31, () => jsonResponse(detailBody(rejected)))]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    const next = await screen.findByRole('group', { name: t.next.heading });
+    expect(next).toHaveTextContent(t.next.oqcRejected);
+    expect(within(next).getByRole('link', { name: t.next.openOqcInspection })).toHaveAttribute(
       'href',
       '/shipment/oqc-inspection',
     );
-    expect(screen.queryByRole('group', { name: t.condition.title })).not.toBeInTheDocument();
+  });
+
+  it('반려된 특채는 다음 할 일로 그 부적합의 처분 판정 처리를 잇는다(#193)', async () => {
+    const rejected = {
+      ...requests[0]!,
+      statusCode: 'REJECTED',
+      isMyTurn: false,
+      currentStepNo: null,
+      target: {
+        targetTypeCode: 'NONCONFORMANCE',
+        targetId: 701,
+        displayName: '부적합',
+        openable: false,
+      },
+    } as unknown as ApprovalRequest;
+    renderScreen(
+      approvalFetch([listRoute(), detailRoute(31, () => jsonResponse(detailBody(rejected)))]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    const next = await screen.findByRole('group', { name: t.next.heading });
+    expect(within(next).getByRole('link', { name: t.next.openDisposition })).toHaveAttribute(
+      'href',
+      dispositionEntryPath(701),
+    );
+  });
+
+  it('결재 대기 요청에는 다음 할 일을 세우지 않는다(#193)', async () => {
+    renderScreen(approvalFetch([listRoute()]), '/quality/approvals?approvalRequestId=31');
+
+    await screen.findByRole('region', { name: t.panes.detail });
+    expect(screen.queryByRole('group', { name: t.next.heading })).toBeNull();
   });
 
   it('⭐ 특채면 「부적합 열기」가 처분 판정 화면의 진입 주소를 가리킨다', async () => {
@@ -765,7 +1147,7 @@ describe('QualityApprovalScreen conditions', () => {
     expect(link).toHaveAttribute('href', dispositionEntryPath(concession.nonconformanceId));
     expect(link).toHaveAttribute('href', expect.stringContaining('nonconformanceId=701'));
     /* ⭐ 어느 부적합인지 옆에 적는다 — 번호 없이 링크만 세우면 무엇을 여는지 모른다. */
-    expect(within(group).getByText(t.condition.nonconformance)).toBeInTheDocument();
+    expect(within(group).getByText(t.condition.nonconformanceHeading)).toBeInTheDocument();
     expect(within(group).getByText('SYNTH-NC-701')).toBeInTheDocument();
   });
 
@@ -820,9 +1202,18 @@ describe('QualityApprovalScreen conditions', () => {
       '/quality/approvals?approvalRequestId=31',
     );
 
-    await waitFor(() => expect(screen.getAllByText(t.condition.reference.failed)).toHaveLength(3));
+    const usage = await screen.findByRole('region', { name: t.condition.usageTitle });
+    await waitFor(() =>
+      /* 세 칸(사용 조건 안 — 작업지시는 적용 제한과 비고 옆 두 곳) + 실패 배너 제목 하나(구획 밖). */
+      expect(within(usage).getAllByText(t.condition.reference.failed)).toHaveLength(3),
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(t.condition.reference.failed);
     await user.click(screen.getByRole('button', { name: messages.common.retry }));
-    expect(await screen.findByText('SYNTH-WO-1201')).toBeInTheDocument();
+    expect(
+      await within(screen.getByRole('region', { name: t.condition.usageTitle })).findAllByText(
+        'SYNTH-WO-1201',
+      ),
+    ).toHaveLength(2);
     expect(screen.getByText('합성 고객')).toBeInTheDocument();
     expect([workOrderAttempts, customerAttempts]).toEqual([2, 2]);
   });
@@ -900,7 +1291,9 @@ describe('QualityApprovalScreen conditions', () => {
     await waitFor(() =>
       expect(within(firstGroup).getAllByText(t.condition.reference.failed)).toHaveLength(2),
     );
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-032') }));
+    await user.click(
+      await screen.findByRole('button', { name: t.actions.selectRow('SYNTH-REQ-032') }),
+    );
 
     const group = await screen.findByRole('group', { name: t.condition.title });
     await waitFor(() => expect(within(group).getByText(t.condition.unrestricted)).toBeVisible());
@@ -928,9 +1321,10 @@ describe('QualityApprovalScreen conditions', () => {
       '/quality/approvals?approvalRequestId=31',
     );
 
-    const group = await screen.findByRole('group', { name: t.condition.title });
+    await screen.findByRole('group', { name: t.condition.title });
+    const group = screen.getByRole('region', { name: t.condition.usageTitle });
     await waitFor(() =>
-      expect(within(group).getAllByText(t.condition.reference.unknown)).toHaveLength(4),
+      expect(within(group).getAllByText(t.condition.reference.unknown)).toHaveLength(5),
     );
     expect(within(group).queryByText('1201')).toBeNull();
     expect(within(group).queryByText('1401')).toBeNull();
@@ -1020,7 +1414,9 @@ describe('QualityApprovalScreen conditions', () => {
 
     await user.click(await screen.findByRole('button', { name: messages.common.retry }));
     expect(await screen.findByText('SYNTH-CN-501')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-032') }));
+    await user.click(
+      await screen.findByRole('button', { name: t.actions.selectRow('SYNTH-REQ-032') }),
+    );
     expect(screen.getByRole('status', { name: t.detail.loading })).toBeInTheDocument();
     expect(screen.queryByText('SYNTH-CN-501')).toBeNull();
   });
@@ -1056,8 +1452,8 @@ describe('QualityApprovalScreen decision action', () => {
   };
   const confirmApproval = (user: ReturnType<typeof userEvent.setup>, comment: string) =>
     confirmDecision(user, comment);
-  const requestButton = (requestNo: string) =>
-    screen.getByRole('button', { name: t.actions.selectRow(requestNo) });
+  const findRequestButton = (requestNo: string) =>
+    screen.findByRole('button', { name: t.actions.selectRow(requestNo) });
   const reloadTargetButton = () => screen.findByRole('button', { name: t.approval.reloadTarget });
 
   it('⭐ OQC 생략 결재는 연결 조건(특채) 없이 승인·반려할 수 있고 특채를 묻지 않는다(#119)', async () => {
@@ -1094,6 +1490,31 @@ describe('QualityApprovalScreen decision action', () => {
     expect(recorded.urls.some((url) => url.pathname === CONCESSIONS_PATH)).toBe(false);
   });
 
+  it('「전체」 탭에서 IQC 생략을 승인하면 IQC 생략 탭의 저장된 조회도 다시 읽게 한다(#186 리뷰)', async () => {
+    const iqcSkip = { ...requests[0]!, approvalTypeCode: 'IQC_SKIP' } as unknown as ApprovalRequest;
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(actionDetail(iqcSkip), { headers: { ETag: '"9"' } })),
+      {
+        match: (request) => new URL(request.url).pathname === APPROVE_PATH,
+        respond: () => jsonResponse(actionDetail({ ...iqcSkip, statusCode: 'APPROVED' })),
+      },
+    );
+    const { queryClient, user } = renderScreen(
+      recorded.fetch,
+      '/quality/approvals?approvalRequestId=31',
+    );
+    /* IQC 생략 탭이 앞서 읽어 둔 목록 — 승인 뒤 낡은 것으로 표시돼야 탭을 옮겼을 때 다시 읽는다. */
+    queryClient.setQueryData(['iqc-skip-approval', 'list', {}], { items: [], page: {} });
+
+    await confirmApproval(user, 'IQC 생략 승인');
+    await waitFor(() =>
+      expect(queryClient.getQueryState(['iqc-skip-approval', 'list', {}])?.isInvalidated).toBe(
+        true,
+      ),
+    );
+  });
+
   it('선택 없음·내 차례 아님·안전한 연결 조건 없음·공백 사유에서는 보내지 않는다', async () => {
     const noSelection = renderScreen(approvalFetch([listRoute()]));
     await findRequest();
@@ -1108,12 +1529,12 @@ describe('QualityApprovalScreen decision action', () => {
       ),
     );
     const locked = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
-    const input = await screen.findByRole('textbox', { name: '결재 사유' });
-    expect(input).toHaveAccessibleDescription(/승인 또는 반려 판단 근거를 입력하세요/);
-    expect(input).toBeDisabled();
-    expect(input).toHaveAccessibleDescription(/지금은 내 결재 차례가 아닙니다/);
-    expect(screen.getByRole('button', { name: '승인' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '반려' })).toBeDisabled();
+    /* 내 차례가 아니면 조회만 한다 — 승인 처리 칸째 서지 않는다(#193). */
+    await screen.findByRole('heading', { name: '요청 상세' });
+    expect(screen.queryByRole('group', { name: '승인 처리' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: '결재 사유' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '승인' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '반려' })).toBeNull();
     expect(recorded.urls.some((url) => url.pathname.endsWith(':approve'))).toBe(false);
     locked.unmount();
 
@@ -1143,6 +1564,78 @@ describe('QualityApprovalScreen decision action', () => {
     expect(blank.urls.some((url) => url.pathname.endsWith(':approve'))).toBe(false);
   });
 
+  /* 필수 결재 사유는 비어 있는 동안만 빨간 테두리를 두고, 잠긴 칸에는 두지 않는다(#193). */
+  /* 상태별 컴팩트형(#193) — 반려된 요청은 「결재 결과」 카드에 반려 줄과 반려 사유 붉은 칸. */
+  it('반려된 요청은 결재 결과 카드에 반려 사유를 보이고 승인 처리 칸을 세우지 않는다', async () => {
+    const rejected = {
+      ...requests[0]!,
+      statusCode: 'REJECTED',
+      isMyTurn: false,
+      currentStepNo: null,
+    } as unknown as ApprovalRequest;
+    const body: ApprovalRequestDetail = {
+      request: rejected,
+      steps: [
+        {
+          stepNo: 1,
+          approverId: 800_004,
+          approverName: '합성 반려자',
+          isMine: false,
+          isCurrent: false,
+          decisionCode: 'REJECTED',
+          decisionAt: '2026-10-22T00:11:00Z',
+          decisionComment: '검사 생략 근거 부족',
+        },
+      ],
+    };
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        detailRoute(31, () => jsonResponse(body, { headers: { ETag: '"9"' } })),
+      ]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    expect(await screen.findByRole('heading', { name: '결재 결과' })).toBeInTheDocument();
+    const progress = screen.getByRole('region', { name: t.panes.progress });
+    expect(within(progress).getByRole('listitem')).toHaveTextContent('합성 반려자');
+    expect(within(progress).getByRole('group', { name: '반려 사유' })).toHaveTextContent(
+      '검사 생략 근거 부족',
+    );
+    expect(screen.queryByRole('group', { name: t.approval.title })).toBeNull();
+  });
+
+  it('결재 사유가 비어 있으면 빨간 테두리를 두고 입력하면 걷는다', async () => {
+    const editable = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(actionDetail(), { headers: { ETag: '"9"' } })),
+      ...safeConditionRoutes(),
+    );
+    const { user, unmount } = renderScreen(
+      editable.fetch,
+      '/quality/approvals?approvalRequestId=31',
+    );
+    const input = await screen.findByRole('textbox', { name: '결재 사유' });
+    /* 판단 근거 안내는 칸 안 흐린 글자로 보인다(#144 · 문구 #193). */
+    expect(input).toHaveAttribute('placeholder', '반려 또는 승인 사유를 입력하세요');
+    const field = input.closest('.quality-approval-comment');
+    expect(field).toHaveClass('is-required-empty');
+    await user.type(input, '   ');
+    expect(field).toHaveClass('is-required-empty');
+    await user.type(input, '확인');
+    expect(field).not.toHaveClass('is-required-empty');
+    unmount();
+
+    /* 내 차례지만 안전한 연결 조건이 없어 잠긴 칸 — 입력할 수 없으니 빨간 테두리도 없다. */
+    renderScreen(
+      approvalFetch([listRoute(), detailRoute()]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+    const lockedInput = await screen.findByRole('textbox', { name: '결재 사유' });
+    expect(lockedInput).toBeDisabled();
+    expect(lockedInput.closest('.quality-approval-comment')).not.toHaveClass('is-required-empty');
+  });
+
   it('반려 확인 뒤 trim 본문·UUID·상세 ETag로 한 번 보내고 응답을 반영한다', async () => {
     let serverDetail = actionDetail();
     let releaseReject: ((response: Response) => void) | undefined;
@@ -1164,7 +1657,7 @@ describe('QualityApprovalScreen decision action', () => {
 
     const dialog = await openConfirm(user, '  합성 반려 사유  ', '반려');
     expect(within(dialog).getByText('요청번호: SYNTH-REQ-031')).toBeInTheDocument();
-    expect(within(dialog).getByText('승인 유형: IQC_SKIP')).toBeInTheDocument();
+    expect(within(dialog).getByText(`승인 유형: ${t.typeLabels.CONCESSION}`)).toBeInTheDocument();
     expect(within(dialog).getByText('대상: 합성 대상')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 반려 사유')).toBeInTheDocument();
     expect(within(dialog).getByText('반려는 상태만 변경합니다')).toBeInTheDocument();
@@ -1231,7 +1724,7 @@ describe('QualityApprovalScreen decision action', () => {
 
     const dialog = await openConfirm(user, '  합성 승인 사유  ');
     expect(within(dialog).getByText('요청번호: SYNTH-REQ-031')).toBeInTheDocument();
-    expect(within(dialog).getByText('승인 유형: IQC_SKIP')).toBeInTheDocument();
+    expect(within(dialog).getByText(`승인 유형: ${t.typeLabels.CONCESSION}`)).toBeInTheDocument();
     expect(within(dialog).getByText('대상: 합성 대상')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 승인 사유')).toBeInTheDocument();
     expect(within(dialog).getByText('승인은 되돌릴 수 없습니다')).toBeInTheDocument();
@@ -1260,8 +1753,16 @@ describe('QualityApprovalScreen decision action', () => {
     expect(await sent[0]!.clone().json()).toEqual({ comment: '합성 승인 사유' });
     expect(sent[0]!.headers.get('If-Match')).toBe('"9"');
     expect(sent[0]!.headers.get('Idempotency-Key')).toMatch(UUID_V4);
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-032') }));
-    expect(await screen.findByText('SYNTH-REQ-032')).toBeInTheDocument();
+    /* 저장 중에도 옆 목록에서 다른 요청을 고를 수 있다(#186). */
+    await user.click(
+      await screen.findByRole('button', { name: t.actions.selectRow('SYNTH-REQ-032') }),
+    );
+    /* 목록에도 같은 번호가 서므로 상세 구획 안에서 찾는다. */
+    expect(
+      await within(screen.getByRole('region', { name: t.panes.detail })).findByText(
+        'SYNTH-REQ-032',
+      ),
+    ).toBeInTheDocument();
     expect(await screen.findByRole('textbox', { name: '결재 사유' })).toHaveAccessibleDescription(
       /결재 요청을 처리하는 중입니다/,
     );
@@ -1405,7 +1906,7 @@ describe('QualityApprovalScreen decision action', () => {
     await rendered.user.click(await reloadTargetButton());
     await waitFor(() => expect(detailCalls).toBeGreaterThan(beforeReload));
     failDetailReload = false;
-    await rendered.user.click(requestButton('SYNTH-REQ-032'));
+    await rendered.user.click(await findRequestButton('SYNTH-REQ-032'));
     expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
     failOtherDetail = false;
     await rendered.user.click(screen.getByRole('button', { name: messages.common.retry }));
@@ -1419,7 +1920,7 @@ describe('QualityApprovalScreen decision action', () => {
     await rendered.user.click(blockedApprove);
     await rendered.user.click(blockedReject);
     expect(sent).toHaveLength(1);
-    await rendered.user.click(await requestButton('SYNTH-REQ-031'));
+    await rendered.user.click(await findRequestButton('SYNTH-REQ-031'));
     beforeReload = detailCalls;
     await rendered.user.click(await reloadTargetButton());
     await waitFor(() => expect(detailCalls).toBeGreaterThan(beforeReload));

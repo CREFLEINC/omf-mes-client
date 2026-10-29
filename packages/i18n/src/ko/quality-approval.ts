@@ -1,25 +1,53 @@
 export const qualityApproval = {
-  title: '특채·한도승인 승인 처리',
+  title: '품질 승인 처리',
   breadcrumbRoot: '품질 관리',
   scopeWarning:
     '승인 유형 기준값이 준비되지 않아 나에게 배정된 모든 유형의 요청을 표시합니다. 승인 유형 원문을 확인하세요.',
   fields: {
     approvalTypeCode: '승인 유형',
     statusCode: '상태',
-    period: '상신일',
+    /** 조회 조건 칸 이름(#144) — 목록·상세의 「상태」와 갈라 쓴다. */
+    periodFrom: '상신 시작일 검색',
+    periodTo: '상신 종료일 검색',
     q: '요청번호 검색',
-    pendingOnly: '결재 대기만 보기',
+    /** 조회 조건 체크 칸(#193) — 지금 내가 결재할 차례인 요청만. */
+    myTurnOnly: '내 결재 차례',
     approvalRequestNo: '요청번호',
     requestedByName: '상신자',
     requestedAt: '상신 일시',
     reason: '사유',
-    request: '요청',
+    request: '요청번호',
     target: '대상',
+    /** 목록 표의 대상 열 머리(#144)·상세의 대상 칸 이름(#186). 확인 창은 「대상」 그대로다. */
+    targetLot: '대상 LOT',
+    /** 목록 대상 열 — OQC 생략 탭은 출하작업지시다(#193). 전체 탭은 위 「대상」. */
+    targetShipmentRequest: '대상 출하작업지시',
+    myTurn: '결재 차례',
   },
-  codePending: '선택할 기준값이 아직 준비되지 않았습니다',
-  codePlaceholder: '기준값 준비 중',
+  /** 탭 줄 오른쪽 상태 칩(#186) — 「결재 대기 3」. 누르면 그 상태만 남고, 다시 누르면 풀린다. */
+  statusChips: {
+    label: '결재 상태',
+    count: (label: string, count: number): string => `${label} ${String(count)}`,
+    filterOn: (label: string): string => `${label}만 보기`,
+    filterOff: (label: string): string => `${label} 조건 해제`,
+  },
   all: '전체',
+  datePlaceholder: '날짜를 선택하세요',
+  qPlaceholder: '요청번호를 입력하세요',
+  /** 승인 유형 코드 → 사용자 용어. 목록 밖 코드는 원문 그대로 보인다(`approvalTypeLabelOf`). */
+  typeLabels: {
+    CONCESSION: '특채',
+    IQC_SKIP: 'IQC (수입검사) 생략',
+    OQC_SKIP: 'OQC (출하검사) 생략',
+  },
+  /** 요청 상태 코드 → 사용자 용어(IQC 생략 화면과 같은 낱말). 색: 대기 주황 · 승인 초록 · 반려 빨강. */
+  statusLabels: { PENDING: '결재 대기', APPROVED: '승인', REJECTED: '반려' },
+  /** 목록 | 상세 사이 끌기 막대(#186) — 입하 예정 조회와 같은 말. */
+  splitter: '끌어서 목록·상세 폭 조절',
+  /** 목록 · 상세 배치 고르기(#186) — 「좌우 배치 | 상하 배치」 두 단추. */
+  layout: { group: '목록·상세 배치', side: '좌우 배치', stack: '상하 배치' },
   panes: {
+    filter: '조회 조건',
     list: '승인 요청 목록',
     detail: '요청 상세',
     progress: '결재 진행',
@@ -33,15 +61,109 @@ export const qualityApproval = {
     goFirstPage: '첫 쪽으로',
   },
   detail: {
-    select: '승인 요청을 선택하세요',
-    progressPending: '요청을 선택하면 결재 진행이 표시됩니다',
+    noSelectionTitle: '요청을 선택하세요',
+    noSelectionDescription: '요청을 선택하면 상세 내용을 확인할 수 있습니다.',
     loading: '승인 요청 상세 불러오는 중',
     notFound: '요청을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 요청을 선택하세요.',
-    /** OQC 생략 결재(omf-all-around#119) — 승인은 잠금만 푼다. 실행은 대상 화면 몫이다(공유계약 J-8). */
-    oqcSkipNote:
-      '승인만으로는 생략되지 않습니다. 실제 생략은 OQC 출하검사 판정 화면에서 실행합니다.',
-    openOqcInspection: 'OQC 출하검사 판정 열기',
+    /** 「전체」·OQC 생략 탭의 승인된 OQC 생략 — 실행 권한이 없을 때(#193). 서버가 W-04-03 권한으로 거른다. */
+    /** 특채 요청의 요청 상세 카드 제목과 요청 정보 묶음(#193). */
+    concessionTitle: '특채 승인 상세',
+    requestInfo: '요청 정보',
+    /** 「전체」 탭의 승인된 IQC 생략 — 실행 권한이 없을 때(#186). */
+    iqcSkipNoPermission: 'IQC 생략 실행은 「긴급 IQC 생략 한도승인」 화면 권한이 있어야 합니다.',
+  },
+  /**
+   * 승인된 OQC 생략의 실행 구획(#193) — IQC 생략 실행과 같은 모양이다. 승인은 잠금만 풀고(공유계약 J-8) 실행이
+   * 그 출하작업지시의 열린 OQC 의뢰를 생략으로 닫는다(omf-all-around#119 · 서버 P-83).
+   */
+  oqcSkipExecute: {
+    heading: 'OQC 생략 실행',
+    note: '승인된 요청입니다. 실행하면 이 출하작업지시의 열린 OQC 검사 의뢰를 생략 처리하고, 피킹한 LOT 에 생략 이력을 남깁니다.',
+    action: 'OQC 생략 실행',
+    dialogTitle: 'OQC 생략을 실행할까요?',
+    dialogBody:
+      '열린 OQC 검사 의뢰가 생략 처리되어 출하할 수 있게 됩니다. 피킹이 끝나지 않았으면 실행되지 않습니다 — 피킹을 먼저 마치세요.',
+    irreversible: '실행한 뒤에는 되돌릴 수 없습니다.',
+    done: 'OQC 생략을 실행했습니다',
+    executed: '생략 실행 완료 — OQC 검사가 생략 처리되었습니다.',
+    /** 한 줄 압축형(#193) — 이름 · 한 줄 요약 · 짧은 단추 · 완료 글. */
+    compact: {
+      title: 'OQC 생략',
+      summary: '열린 검사 의뢰 생략 · LOT 이력 기록',
+      action: '실행',
+      done: '실행 완료',
+    },
+    /* 실행 여부는 출하작업지시의 출하검사 상태로 안다 — 읽는 중 · 실행할 수 없는 상태(#193). */
+    checking: '상태를 확인하는 중입니다.',
+    notPending: (status: string) => `생략을 실행할 수 없는 상태입니다(상태 ${status}).`,
+  },
+  /**
+   * 승인된 특채의 적용 구획(#193) — IQC·OQC 생략 실행과 같은 짜임이다. 승인은 잠금만 풀고(공유계약 J-8), 적용이
+   * 처분 판정(특채)을 남기고 LOT 을 정상으로 바꾸며 수입검사 대기 보류를 푼다(omf-all-around#84 · 서버 P-79).
+   */
+  /**
+   * 「다음 할 일」(#193) — 결재 결과 카드 끝에서 이어서 일할 화면으로 보낸다. 반려면 다시 요청하거나 정상 검사로,
+   * 실행·적용을 마쳤으면 그다음 업무 화면으로 간다.
+   */
+  /**
+   * OQC 생략의 대상 출하작업지시(#193) — IQC 생략의 대상 LOT 처럼 무엇을 생략하는지 보인다. 생략은 지시서 단위라
+   * 피킹한 LOT 이 여럿일 수 있다.
+   */
+  oqcShipment: {
+    shipmentRequest: '출하작업지시',
+    shipDate: '출하 예정일',
+    pickedLots: '피킹 LOT',
+    lotNo: 'LOT 번호',
+    pickedQty: '피킹 수량',
+    noPicks: '아직 피킹한 LOT 이 없습니다.',
+    loading: '출하작업지시를 불러오는 중입니다.',
+    failed: '출하작업지시를 불러오지 못했습니다.',
+    /** 출하검사 상태 — 생략을 실행할 수 없는 사정을 사람 말로(검사 대기 · 합격은 실행 · 완료로 따로 보인다). */
+    inspectionStatus: {
+      NOT_REQUIRED: '출하검사 대상 아님',
+      REJECTED: '출하검사 불합격',
+      HELD: '출하검사 보류',
+    } as Record<string, string>,
+  },
+  next: {
+    heading: '다음 할 일',
+    concessionRejected: '특채가 반려됐습니다 — 처분을 다시 정하거나 특채를 다시 요청하세요',
+    openDisposition: '처분 판정 처리 열기',
+    /** IQC 생략 반려 — 붉은 느낌표 제목 · 할 일 · 정보 표시 안내 세 줄(사용자 지시 2026-10-27). */
+    iqcRejectedTitle: '생략 요청이 반려되었습니다.',
+    iqcRejected: '수입검사를 진행해 주세요.',
+    iqcRejectedNote: '생략 재요청은 PDA에서 가능합니다.',
+    openIqcInspection: 'IQC 수입검사 열기',
+    /** OQC 생략 반려 — 붉은 느낌표 제목 · 할 일 두 줄(사용자 지시 2026-10-27). */
+    oqcRejectedTitle: '출하검사 생략 요청이 반려되었습니다.',
+    oqcRejected: '출하검사를 진행하거나 생략을 다시 요청해 주세요.',
+    openOqcInspection: 'OQC 출하검사 열기',
+    /** IQC 생략 실행 완료 — 초록 체크 제목 · 할 일 두 줄(사용자 지시 2026-10-27). */
+    iqcDoneTitle: '수입검사 생략이 완료되었습니다.',
+    iqcDone: '이어서 자재 입고를 진행해 주세요.',
+    openGoodsReceipt: '정상품 입하 열기',
+    oqcDone: 'OQC 생략을 실행했습니다 — 출하 처리를 이어서 하세요',
+    openShipmentProcessing: '출하 처리 열기',
+  },
+  concessionApply: {
+    heading: '특채 적용',
+    note: '승인된 특채입니다. 적용하면 처분 판정(특채)을 남기고 LOT 을 정상으로 바꾸며 수입검사 대기 보류를 풉니다.',
+    action: '특채 적용',
+    dialogTitle: '특채를 적용할까요?',
+    dialogBody:
+      '처분 판정(특채)이 남고 LOT 이 정상이 됩니다. 남은 수량을 넘거나 LOT 상태가 맞지 않으면 적용되지 않습니다.',
+    irreversible: '적용한 뒤에는 되돌릴 수 없습니다.',
+    done: '특채를 적용했습니다',
+    executed: '적용 완료 — LOT 이 정상 상태입니다.',
+    checking: '특채 상태를 확인하는 중입니다.',
+    notPending: (status: string) => `적용할 수 없는 특채 상태입니다(상태 ${status}).`,
+    compact: {
+      title: '특채 적용',
+      summary: '처분 판정 기록 · LOT 정상 · 검사 대기 보류 해제',
+      action: '적용',
+      done: '적용 완료',
+    },
   },
   condition: {
     title: '연결 조건',
@@ -70,10 +192,26 @@ export const qualityApproval = {
     unusable: '사용 불가',
     usableUnknown: '사용 가능 여부 미제공',
     concessionNoUnknown: '특채번호 미제공',
-    statusUnknown: '상태 미제공',
     remarksEmpty: '등록된 비고가 없습니다',
     openEnded: '종료일 없음',
     unrestricted: '제한 없음',
+    /** 특채 승인 상세 카드(#193)의 묶음 이름 — 수량 요약 · 사용 조건 · 적용 제한 · 연관 부적합. */
+    remainingQty: '잔여 수량',
+    usageTitle: '사용 조건',
+    limits: '적용 제한',
+    limitWorkOrder: '작업지시',
+    limitProcess: '공정',
+    limitCustomer: '고객',
+    limitsNone: '작업지시 · 공정 · 고객 모두 제한 없음',
+    nonconformanceHeading: '연관 부적합',
+    /** 다른 화면으로 여는 줄(#193) — 대상 LOT 은 LOT 상태, 허용 작업지시는 W/O 진행현황에서 연다. */
+    lotHeading: '대상 LOT',
+    lotNoUnknown: 'LOT 번호 미제공',
+    openLot: 'LOT 열기',
+    /** 소제목 옆 작은 보조 단추의 글 — 무엇을 여는지는 소제목이 말하고, 읽기 이름은 「LOT 열기」 등 전체다. */
+    open: '열기',
+    workOrderHeading: '허용 작업지시',
+    openWorkOrder: '작업지시 열기',
     reference: {
       loading: '참조 이름 불러오는 중',
       failed: '참조 이름 조회 실패',
@@ -85,12 +223,13 @@ export const qualityApproval = {
     steps: '결재 단계',
     position: (current: number, total: number): string =>
       `${String(current)} / ${String(total)} 단계`,
-    finished: (total: number): string => `결재 종료 · 전체 ${String(total)}단계`,
-    myTurn: '지금 이 요청을 결재할 차례입니다',
+    myTurn: '결재할 차례입니다',
     notMyTurn: '지금 이 요청을 결재할 차례가 아닙니다',
-    waitingCurrent: '현재 결재 대기',
-    waitingPending: '차례 대기',
-    mine: '내 결재 단계',
+    waitingPending: '대기',
+    /** 끝난 요청의 상태 카드 제목(#193). 결재 대기는 「결재 진행」(panes.progress)이다. */
+    resultTitle: '결재 결과',
+    /** 끝난 단계 아래 결재 의견 줄의 이름 — 「결재 사유: …」. */
+    decisionComment: '결재 사유',
     noSteps: '표시할 결재 단계가 없습니다',
     loading: '결재 진행 불러오는 중',
     unavailable: '결재 진행을 표시할 수 없습니다',
@@ -98,7 +237,7 @@ export const qualityApproval = {
   approval: {
     title: '승인 처리',
     commentLabel: '결재 사유',
-    commentHelp: '승인 또는 반려 판단 근거를 입력하세요.',
+    commentHelp: '반려 또는 승인 사유를 입력하세요',
     commentRequired: '승인 사유를 입력하세요',
     commentHeading: '승인 사유',
     rejectCommentRequired: '반려 사유를 입력하세요',
@@ -123,7 +262,7 @@ export const qualityApproval = {
   loading: '승인 요청 목록 불러오는 중',
   empty: {
     title: '조건에 맞는 승인 요청이 없습니다',
-    description: '조건을 줄이거나 결재 대기만 보기를 꺼 보세요.',
+    description: '조건을 줄이거나 켜 둔 상태 칩을 풀어 보세요.',
     beyondTitle: '이 쪽에 표시할 요청이 없습니다',
     beyondDescription: '첫 쪽으로 돌아가 요청을 확인하세요.',
   },
@@ -138,6 +277,6 @@ export const qualityApproval = {
     unknownRequester: '상신자 이름 없음',
     emptyReason: '등록된 사유가 없습니다',
     unknownApprover: '결재자 이름 없음',
-    myTurn: '내 차례',
+    myTurn: '내 결재 차례',
   },
 } as const;

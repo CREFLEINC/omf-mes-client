@@ -1,7 +1,8 @@
-import { Chip, type Column, IconButton, Select, Table, TextField } from '@crefle/web-ui';
+import { Chip, type Column, IconButton, Table, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { Select } from '../../patterns/select';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import type { LineDraft, SelectOption } from './types';
 import { lineFieldId, type LineFieldName } from './validation';

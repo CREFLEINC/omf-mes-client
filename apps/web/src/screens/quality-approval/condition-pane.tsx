@@ -1,9 +1,20 @@
-import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { Link } from 'react-router';
+import { useState, type ReactNode } from 'react';
 
+import { useApiClient } from '../../patterns/api-context';
+import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
-import { dispositionEntryPath } from '../disposition-decision/filters';
+import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
+import { DISPOSITION_SCREEN_PATH, dispositionEntryPath } from '../disposition-decision/filters';
+import { dispositionKeys } from '../disposition-decision/queries';
+import { SkipExecutePane } from '../iqc-skip-approval/skip-execute-pane';
+import { LOT_STATUS_SCREEN_PATH, lotStatusEntryPath } from '../lot-status-history/filters';
+import {
+  WORK_ORDER_PROGRESS_SCREEN_PATH,
+  workOrderProgressEntryPath,
+} from '../work-order-progress/filters';
 import {
   toConcessionCardinality,
   toConcessionCardView,
@@ -18,14 +29,60 @@ import {
   useConditionWorkOrder,
   useConcessionCandidates,
   useConcessionDetail,
+  qualityApprovalKeys,
 } from './queries';
+import { linkedValue, type DetailPaneProps } from './detail-pane';
 
 export interface ConditionPaneProps {
   approvalRequestId: number | null;
+  /**
+   * 특채 승인 상세 카드의 「요청 정보」(#193) — 수량 요약 바로 아래, 사용 조건 위에 선다. 특채를 아직 못 읽었거나
+   * 못 찾았을 때도 요청 정보는 먼저 보인다(그 아래에 상태 안내가 선다).
+   * 특채를 읽었으면 그 LOT · 연관 부적합과 여는 단추를 넘긴다 — 대상 LOT 칸 · 사유 옆 칸에 선다(권한이 없으면 단추는 빼고).
+   */
+  requestInfo?: (fields?: Pick<DetailPaneProps, 'targetLot' | 'nonconformance'>) => ReactNode;
+  /** 결재 요청의 상태 — 승인(APPROVED)이면 아직 적용 안 한 특채에 적용 구획이 선다(#193). */
+  requestStatusCode?: string;
 }
 
-export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
+/** 특채 상태(서버 P-79) — 적용 전은 PENDING, 적용하면 APPROVED, 반려를 닫으면 REJECTED. */
+const CONCESSION_PENDING = 'PENDING';
+const CONCESSION_APPLIED = 'APPROVED';
+
+export const ConditionPane = ({
+  approvalRequestId,
+  requestInfo = () => null,
+  requestStatusCode,
+}: ConditionPaneProps) => {
   const t = messages.qualityApproval.condition;
+  const { session } = useSession();
+  const access = toWebAccess(session?.permissions);
+  const { client } = useApiClient();
+  const toast = useToast();
+  /*
+   * 승인된 특채의 적용(#193) — IQC·OQC 생략 실행처럼 이 화면에서 한다. 서버 경로는 처분 판정 처리의 적용과 같고,
+   * 서버가 결재 화면(W-03-09) 권한으로도 연다(서버 `manual-permissions` · #193). 적용 여부는 특채 상태가 말한다.
+   */
+  const [applySentId, setApplySentId] = useState<number | null>(null);
+  const applyWrite = useMasterWrite<number, unknown>({
+    request: (concessionId, headers) =>
+      client.POST('/quality/concessions/{concessionId}:apply', {
+        params: {
+          path: { concessionId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    etagPath: null,
+    /* 적용은 특채·LOT·부적합·판정을 함께 바꾼다 — 이 화면과 처분 판정 처리의 뿌리 키를 다시 부른다. */
+    invalidateKeys: [qualityApprovalKeys.all, dispositionKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      toast.show({
+        variant: 'success',
+        description: messages.qualityApproval.concessionApply.done,
+      });
+    },
+  });
   const candidates = useConcessionCandidates(approvalRequestId);
   const cardinality =
     approvalRequestId === null || candidates.data === undefined
@@ -43,9 +100,12 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
   if (approvalRequestId === null) return null;
   if (candidates.isPending) {
     return (
-      <div role="status" aria-label={t.loading}>
-        <SkeletonText lines={2} />
-      </div>
+      <>
+        {requestInfo()}
+        <div role="status" aria-label={t.loading}>
+          <SkeletonText lines={2} />
+        </div>
+      </>
     );
   }
 
@@ -57,32 +117,50 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
         : messages.httpError.description;
     const retry = candidates.error === null ? detail.refetch : candidates.refetch;
     return (
-      <AlertBanner
-        variant="error"
-        title={messages.httpError.loadTitle}
-        action={
-          <Button variant="outlined" size="sm" onClick={() => void retry()}>
-            {messages.common.retry}
-          </Button>
-        }
-      >
-        {description}
-      </AlertBanner>
+      <>
+        {requestInfo()}
+        <AlertBanner
+          variant="error"
+          title={messages.httpError.loadTitle}
+          action={
+            <Button variant="outlined" size="sm" onClick={() => void retry()}>
+              {messages.common.retry}
+            </Button>
+          }
+        >
+          {description}
+        </AlertBanner>
+      </>
     );
   }
 
-  if (cardinality?.kind === 'none') return <EmptyState size="sm" live title={t.none} />;
+  if (cardinality?.kind === 'none') {
+    return (
+      <>
+        {requestInfo()}
+        <EmptyState size="sm" live title={t.none} />
+      </>
+    );
+  }
   if (cardinality?.kind === 'unsafe') {
-    return <AlertBanner variant="error">{t.unsafe}</AlertBanner>;
+    return (
+      <>
+        {requestInfo()}
+        <AlertBanner variant="error">{t.unsafe}</AlertBanner>
+      </>
+    );
   }
   if (detail.isPending) {
     return (
-      <div role="status" aria-label={t.loading}>
-        <SkeletonText lines={2} />
-      </div>
+      <>
+        {requestInfo()}
+        <div role="status" aria-label={t.loading}>
+          <SkeletonText lines={2} />
+        </div>
+      </>
     );
   }
-  if (detail.data === undefined) return null;
+  if (detail.data === undefined) return <>{requestInfo()}</>;
 
   const view = toConcessionCardView(detail.data, {
     ...UNKNOWN_CONDITION_REFERENCES,
@@ -126,54 +204,166 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
       detail.data.allowedProcessId,
     ),
   });
+  /* 수량 요약의 단위 — 단위 이름(「개」)만 붙인다. 못 읽었으면 비운다(아래 「단위」 칸이 사정을 말한다). */
+  const uomName =
+    uoms.data?.items.find((uom) => uom.uomId === detail.data.uomId)?.uomName.trim() ?? '';
   const hasReferenceError =
     workOrder.isError ||
     customer.isError ||
     uoms.isError ||
     (hasProcessReference && processes.isError);
 
+  const facts = (
+    rows: ReadonlyArray<readonly [string, ReactNode, { to: string; label: string }?]>,
+    className: string,
+  ) => (
+    <dl className={className}>
+      {rows.map(([label, value, link]) => (
+        <div className="field-cell" key={label}>
+          <dt className="field-label">{label}</dt>
+          <dd>{linkedValue(value, link)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+
+  /*
+   * 특채 승인 상세(#193) — 수량 요약 → 요청 정보 → 사용 조건(적용 제한) → 연관 부적합 차례다.
+   * 묶음 이름(`aria-label`)은 종전의 「연결 조건」 그대로다 — 이 묶음이 특채 조건을 싣는다는 뜻은 같다.
+   */
   return (
-    <div className="quality-approval-condition" role="group" aria-label={t.title}>
-      <h3>{t.title}</h3>
-      <dl className="quality-approval-condition-facts">
+    <div className="quality-approval-concession" role="group" aria-label={t.title}>
+      <dl className="quality-approval-concession-qty">
         {[
-          [t.concessionNo, view.concessionNo],
           [t.approvedQty, view.approvedQty],
           [t.consumedQty, view.consumedQty],
-          [t.uom, view.uom],
-          [t.validity, view.validity],
-          [messages.qualityApproval.fields.statusCode, view.statusCode],
-          [t.usableLabel, view.usable],
-          [t.remarks, view.remarks],
-          [t.workOrder, view.workOrder],
-          [t.process, view.process],
-          [t.customer, view.customer],
+          [t.remainingQty, view.remainingQty],
         ].map(([label, value]) => (
-          <div className="field-cell" key={label}>
+          <div key={label}>
             <dt className="field-label">{label}</dt>
-            <dd>{value}</dd>
+            <dd>
+              <strong>{value}</strong>
+              {uomName !== '' && <span>{uomName}</span>}
+            </dd>
           </div>
         ))}
       </dl>
-      {/*
-       * ⭐ **「부적합 열기」 — 특채일 때만 선다**(스펙 §5-1). 지목할 부적합 식별자를 특채가
-       * 들고 있어(계약에서 `nonconformanceId`가 필수다) 이 칸이 그 이동의 자리다. 한도승인처럼
-       * 연결 조건이 없는 결재에서는 이 칸 자체가 그려지지 않으므로 갈 곳 없는 컨트롤이 남지 않는다.
-       *
-       * **버튼이 아니라 링크다.** 자리표시 시절에는 잠긴 버튼이라 사유를 `aria-describedby`로
-       * 이어야 했지만, 링크는 포커스를 받고 그 이름이 갈 곳을 그대로 말한다.
-       *
-       * 주소는 **가는 쪽 화면이 만든다** — 키 이름을 여기서 손으로 적으면 그 화면이 키를 바꿀 때
-       * 조용히 끊어진다(진입 규약 omf-mes#194 §3).
-       *
-       * **번호를 링크 «옆에» 둔다** — 링크 이름은 갈 곳을 말하고, 번호는 어느 부적합인지를 말한다.
-       * 번호 없이 링크만 세우면 승인자가 무엇을 여는지 모른 채 화면을 떠난다.
-       */}
-      <div className="field-cell quality-approval-condition-link">
-        <span className="field-label">{t.nonconformance}</span>
-        <span>{view.nonconformanceNo}</span>
-        <Link to={dispositionEntryPath(detail.data.nonconformanceId)}>{t.openNonconformance}</Link>
-      </div>
+      {requestInfo({
+        targetLot: access.allows(LOT_STATUS_SCREEN_PATH)
+          ? {
+              to: lotStatusEntryPath(detail.data.lotId),
+              label: t.openLot,
+              name: detail.data.lotNo?.trim() || t.lotNoUnknown,
+            }
+          : undefined,
+        nonconformance: {
+          name: view.nonconformanceNo,
+          link: access.allows(DISPOSITION_SCREEN_PATH)
+            ? {
+                to: dispositionEntryPath(detail.data.nonconformanceId),
+                label: t.openNonconformance,
+              }
+            : undefined,
+        },
+      })}
+      <section className="quality-approval-concession-section is-usage" aria-label={t.usageTitle}>
+        <h3>{t.usageTitle}</h3>
+        {facts(
+          [
+            [t.concessionNo, view.concessionNo],
+            [t.validity, view.validity],
+            /* 사용 가능 여부는 배지로 강조한다 — 가능 초록 · 불가 빨강 · 모름 회색(#193 · 사용자 지시 2026-10-27). */
+            [
+              t.usableLabel,
+              <Chip
+                variant="status"
+                size="md"
+                status={
+                  detail.data.usable === true
+                    ? 'success'
+                    : detail.data.usable === false
+                      ? 'error'
+                      : 'idle'
+                }
+              >
+                {view.usable}
+              </Chip>,
+            ],
+            [t.uom, view.uom],
+          ],
+          'quality-approval-concession-grid',
+        )}
+        {view.isUnrestricted ? (
+          /* 셋 다 제한이 없으면 한 줄로 줄인다(사용자 지시 2026-10-27). */
+          <div
+            className="quality-approval-concession-limits is-none"
+            role="group"
+            aria-label={t.limits}
+          >
+            <h4>{t.limits}</h4>
+            <span>{t.limitsNone}</span>
+          </div>
+        ) : (
+          <div className="quality-approval-concession-limits" role="group" aria-label={t.limits}>
+            <h4>{t.limits}</h4>
+            {facts(
+              [
+                [t.limitWorkOrder, view.workOrder],
+                [t.limitProcess, view.process],
+                [t.limitCustomer, view.customer],
+              ],
+              'quality-approval-concession-grid is-three',
+            )}
+          </div>
+        )}
+        {/*
+         * 비고 옆에 허용 작업지시 — 값이 있을 때만(특채 필수 값이 아니다) 번호와 「작업지시 열기」 단추를 둔다(#193 ·
+         * 사용자 지시 2026-10-27). W/O 진행현황 권한이 없으면 번호만 둔다.
+         */}
+        {facts(
+          [
+            [t.remarks, view.remarks],
+            ...(detail.data.allowedWorkOrderId == null
+              ? []
+              : [
+                  [
+                    t.workOrderHeading,
+                    view.workOrder,
+                    access.allows(WORK_ORDER_PROGRESS_SCREEN_PATH)
+                      ? {
+                          to: workOrderProgressEntryPath(detail.data.allowedWorkOrderId),
+                          label: t.openWorkOrder,
+                        }
+                      : undefined,
+                  ] as const,
+                ]),
+          ],
+          'quality-approval-concession-grid',
+        )}
+      </section>
+      {requestStatusCode === 'APPROVED' &&
+        (detail.data.statusCode === CONCESSION_PENDING ||
+          detail.data.statusCode === CONCESSION_APPLIED) && (
+          <SkipExecutePane
+            texts={messages.qualityApproval.concessionApply}
+            compact={messages.qualityApproval.concessionApply.compact}
+            state={
+              detail.data.statusCode === CONCESSION_APPLIED
+                ? { kind: 'executed' }
+                : { kind: 'executable' }
+            }
+            isSaving={applySentId === detail.data.concessionId && applyWrite.isSaving}
+            onExecute={() => {
+              setApplySentId(detail.data.concessionId);
+              applyWrite.write(detail.data.concessionId);
+            }}
+            banner={
+              <SaveErrorBanner
+                error={applySentId === detail.data.concessionId ? applyWrite.error : null}
+              />
+            }
+          />
+        )}
       {hasReferenceError ? (
         <AlertBanner
           variant="error"

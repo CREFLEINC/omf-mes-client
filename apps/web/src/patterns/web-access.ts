@@ -1,4 +1,4 @@
-import { WEB_SCREENS } from './web-screen-catalog';
+import { WEB_SCREEN_TABS, WEB_SCREENS } from './web-screen-catalog';
 
 /**
  * **이 사람이 갈 수 있는 관리웹 화면**을 판정한다.
@@ -41,8 +41,15 @@ export interface WebAccess {
   allows: (path: string) => boolean;
 }
 
-/** 주소 → 화면 코드. 감지기가 사이드바 항목 전건이 여기 있음을 못 박는다. */
-const codeByPath = new Map(WEB_SCREENS.map((screen) => [screen.path, screen.code]));
+/**
+ * 주소 → 화면 코드. 감지기가 사이드바 항목 전건이 여기 있음을 못 박는다. 묶음 화면에서 뗀 탭은 그 화면의 코드를
+ * 따른다(`WEB_SCREEN_TABS`).
+ */
+const codeByPath = new Map<string, string>(WEB_SCREENS.map((screen) => [screen.path, screen.code]));
+for (const tab of WEB_SCREEN_TABS) {
+  const ownerCode = codeByPath.get(tab.ownerPath);
+  if (ownerCode !== undefined) codeByPath.set(tab.path, ownerCode);
+}
 
 const ALWAYS_VISIBLE = new Set(ALWAYS_VISIBLE_SCREEN_CODES);
 

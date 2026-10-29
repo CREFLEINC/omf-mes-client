@@ -198,6 +198,11 @@ export const withPage = (current: URLSearchParams, page: number): URLSearchParam
   return next;
 };
 
+/** 이 화면의 진입 주소(W/O 하나를 골라 연다) — 다른 화면이 「작업지시 열기」로 건다(품질 승인 처리 #193). */
+export const WORK_ORDER_PROGRESS_SCREEN_PATH = '/production/work-order-progress';
+export const workOrderProgressEntryPath = (workOrderId: number): string =>
+  `${WORK_ORDER_PROGRESS_SCREEN_PATH}?${KEYS.selected}=${String(workOrderId)}`;
+
 export const withSelectedWorkOrder = (
   current: URLSearchParams,
   workOrderId: number | null,

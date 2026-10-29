@@ -103,6 +103,8 @@ export const workStart: Translated<typeof ko.workStart> = {
   actions: {
     start: 'Bắt đầu sản xuất',
     resume: 'Tiếp tục lại',
+    restart: 'Bắt đầu lại công việc',
+    checking: 'Đang kiểm tra',
     starting: 'Đang bắt đầu',
     continueToSession: 'Tiếp tục công việc',
   },
@@ -113,6 +115,7 @@ export const workStart: Translated<typeof ko.workStart> = {
     ready: 'Có thể bắt đầu công việc',
     resume: 'Có thể tiếp tục lại công việc đã tạm dừng',
     continue: 'Có thể làm tiếp công việc đang thực hiện',
+    restart: 'Có thể bắt đầu lại công việc đã tạm dừng bằng phiên mới',
   },
 
   blocked: {
@@ -150,6 +153,7 @@ export const workStart: Translated<typeof ko.workStart> = {
   result: {
     started: (workOrderNo: string): string => `Đã bắt đầu sản xuất ${workOrderNo}.`,
     resumed: (workOrderNo: string): string => `Đã tiếp tục lại ${workOrderNo}.`,
+    restarted: (workOrderNo: string): string => `Đã bắt đầu lại ${workOrderNo}.`,
     conflict: 'Trạng thái lệnh sản xuất đã thay đổi. Đang tải lại danh sách.',
     notOpened:
       'Kết quả kiểm tra đã được ghi nhận nhưng công việc chưa bắt đầu. Vui lòng bấm lại Bắt đầu sản xuất.',

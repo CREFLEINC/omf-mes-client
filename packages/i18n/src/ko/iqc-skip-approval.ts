@@ -18,6 +18,7 @@ export const iqcSkipApproval = {
   /** 머리는 관리웹 사이드바 묶음을 따른다 — 이 화면은 품질 관리 묶음에 선다. */
   breadcrumbRoot: '품질 관리',
   panes: {
+    filter: '조회 조건',
     list: '승인 요청 목록',
     detail: '고른 요청',
     /**
@@ -61,6 +62,8 @@ export const iqcSkipApproval = {
     approvalTypeCode: '승인 유형',
     /** 대상 문서의 **표시명**. 서버가 만든 이름이라 화면이 짓지 않는다. */
     target: '대상',
+    /** 상세의 대상 칸 이름(#186) — 이 화면의 대상은 LOT 이다. 목록 머리글은 「대상」 그대로다. */
+    targetLot: '대상 LOT',
     reason: '사유',
     requestedByName: '상신자',
     /**
@@ -73,18 +76,11 @@ export const iqcSkipApproval = {
     /** 조건 줄의 기간 라벨. 위 주석의 뒤쪽 근거가 이 자리다. */
     period: '상신일',
     q: '요청번호 검색',
-    /**
-     * 계약 파라미터(`pendingOnly`)를 그대로 드러낸 확인칸이다. **기본이 켜짐**이라
-     * 이 화면에 들어오면 결재 대기부터 보이고, 끄면 끝난 건까지 함께 보인다.
-     */
-    pendingOnly: '결재 대기만 보기',
   },
   actions: {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-    /** 목록을 다시 부른다. 회차가 늘면 그때 늘어난 조회도 **함께** 부른다. */
-    reload: '다시 조회',
     /*
      * 요청번호 하나로 이름이 선다 — 계약이 그 값을 UNIQUE로 두었다.
      * 보이는 글자를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 하고,
@@ -133,7 +129,7 @@ export const iqcSkipApproval = {
      * **왜 아닌지는 말하지 않는다.** 앞 단계가 안 끝난 것인지, 내가 승인자가 아닌 것인지,
      * 이미 끝난 요청인지 화면은 판정할 수 없다 — 아는 것만 말하고 이유를 지어내지 않는다.
      */
-    myTurn: '지금 이 요청을 결재할 차례입니다',
+    myTurn: '결재할 차례입니다',
     notMyTurn: '지금은 이 요청을 결재할 차례가 아닙니다',
     /**
      * 아직 결재되지 않은 단계의 보조 라벨. **디자인 시스템의 상태 낱말이 스크린리더 전용**이라
@@ -155,15 +151,10 @@ export const iqcSkipApproval = {
       '한도 구간은 아직 화면에 표시되지 않습니다. 결재선 단계로 승인 범위를 확인하세요.',
   },
   filters: {
-    all: '전체',
-    /** 상태 선택지가 빈 이유 — 칸 아래 한 줄이라 짧게 쓴다(자리표시가 이미 「준비 중」을 말한다). */
-    statusPendingNote: '상태 목록 확정 전',
-    chipStatus: (value: string): string => `상태: ${value}`,
     chipPeriod: (from: string, to: string): string => `상신일: ${from} ~ ${to}`,
     chipPeriodFrom: (from: string): string => `상신일: ${from}부터`,
     chipPeriodTo: (to: string): string => `상신일: ${to}까지`,
     chipKeyword: (value: string): string => `요청번호: ${value}`,
-    chipRemoveStatus: '상태 조건 제거',
     chipRemovePeriod: '상신일 조건 제거',
     chipRemoveKeyword: '요청번호 조건 제거',
   },
@@ -179,11 +170,11 @@ export const iqcSkipApproval = {
   empty: {
     noResultTitle: '조건에 맞는 승인 요청이 없습니다',
     /** **이 화면에는 탭이 없다** — 넓히는 수단이 확인칸 하나라 그것을 가리킨다. */
-    noResultDescription: '조건을 줄이거나 「결재 대기만 보기」를 꺼 보세요.',
+    noResultDescription: '조건을 줄이거나 켜 둔 상태 칩을 풀어 보세요.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
-    noSelectionTitle: '요청을 고르면 자세한 내용이 보입니다',
-    noSelectionDescription: '위 목록에서 요청번호를 누르세요.',
+    noSelectionTitle: '요청을 선택하세요',
+    noSelectionDescription: '요청을 선택하면 상세 내용을 확인할 수 있습니다.',
     /**
      * 상세가 **404**. 「없는 것」이라 주소에서 고른 번호를 정리한다 —
      * 남겨 두면 새로고침·공유가 같은 빈자리로 되돌아온다.
@@ -301,6 +292,13 @@ export const iqcSkipApproval = {
     notPending: (status: string) =>
       `LOT 이 수입검사 대기가 아니라(상태 ${status}) 생략을 실행할 수 없습니다.`,
     checking: 'LOT 상태를 확인하는 중입니다.',
+    /** 한 줄 압축형(#193) — OQC 생략 실행과 같은 짜임이다. */
+    compact: {
+      title: 'IQC 생략',
+      summary: '수입검사 의뢰 생략 · 검사 대기 보류 해제 · LOT 정상',
+      action: '실행',
+      done: '실행 완료',
+    },
   },
   toast: {
     approved: '승인했습니다',

@@ -1029,6 +1029,24 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     expect(await screen.findByText(t.result.startFailed)).toBeInTheDocument();
   });
 
+  it('시작할 수 없는 상태로 거부되면 서버가 적은 까닭과 조치를 함께 보인다', async () => {
+    const message =
+      '작업을 시작할 수 없는 W/O 입니다 — 배포 전입니다. 관리웹에서 W/O 를 배포한 뒤 시작하세요.';
+    const rendered = renderScreen({ startLockedMessage: message });
+
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    await rendered.user.click(startButton());
+
+    expect(await screen.findByText(`${t.result.startFailed} ${message}`)).toBeInTheDocument();
+  });
+
   /** ⛔ 409 를 「진행 중」으로 읽지 않는다 — 계약이 그 응답을 「충돌」로만 적었다. */
   it('충돌(409)은 상태가 바뀌었다고만 말한다', async () => {
     const rendered = renderScreen({ startStatus: 409 });
@@ -1242,6 +1260,231 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
     expect(
       screen.queryByRole('button', { name: t.actions.continueToSession }),
     ).not.toBeInTheDocument();
+  });
+
+  describe('중단됐지만 열린 세션이 없는 지시', () => {
+    const HELD = { ...WORK_ORDER, statusCode: 'SUSPENDED' };
+    const restartButton = () => screen.getByRole('button', { name: t.actions.restart });
+
+    it('[작업 다시 시작]과 지금 상태를 보인다', async () => {
+      const rendered = renderScreen({ workOrders: [HELD] });
+
+      await selectWorkOrder(rendered);
+
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      expect(screen.getByText(t.remaining.restart)).toBeInTheDocument();
+      expect(screen.queryByText(t.resume.sessionNotFound)).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: t.actions.resume })).not.toBeInTheDocument();
+    });
+
+    it('작업 시작과 같이 점검 판정을 남긴 뒤 새 세션을 열고 다시 시작했다고 알린다', async () => {
+      const rendered = renderScreen({ workOrders: [HELD] });
+
+      await selectWorkOrder(rendered);
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      await rendered.user.click(restartButton());
+
+      expect(
+        await screen.findByText(t.result.restarted(WORK_ORDER.workOrderNo)),
+      ).toBeInTheDocument();
+      const urls = rendered.recorded.bodies.map((sent) => sent.url);
+      expect(urls.indexOf('/production/precheck-decisions')).toBeGreaterThanOrEqual(0);
+      expect(urls.indexOf('/production/precheck-decisions')).toBeLessThan(
+        urls.indexOf('/production/work-sessions'),
+      );
+      expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(1);
+      expect(urls.some((url) => url.includes('/events') || url.includes(':resume'))).toBe(false);
+    });
+
+    it('그사이 다른 곳에서 세션이 열려 거절되면 서버 문구를 보이고 열린 세션을 다시 묻는다', async () => {
+      const message =
+        '이 MES W/O 에 이미 열린 작업 세션이 있습니다. 목록을 새로 고친 뒤 [재개] 또는 [작업 이어하기]로 그 세션을 이어 가세요 — 다른 단말의 세션이면 그 단말에서 재개·종료하거나 관리웹에서 강제 종료하세요.';
+      const rendered = renderScreen({
+        workOrders: [HELD],
+        startOpenSessionMessage: message,
+        openSessionsAfterConflict: [OPEN_SESSION],
+      });
+
+      await selectWorkOrder(rendered);
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      const asked = (): number =>
+        rendered.recorded.urls.filter((url) => url.includes('/production/work-sessions?')).length;
+      const askedBefore = asked();
+      await rendered.user.click(restartButton());
+
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(screen.queryByText(t.result.conflict)).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(asked()).toBeGreaterThan(askedBefore);
+      });
+
+      /* 다시 읽은 열린 세션으로 [재개]가 서도 거절 문구는 그 쓰기의 것이라 남는다. */
+      expect(await screen.findByRole('button', { name: t.actions.resume })).toBeEnabled();
+      expect(screen.getByText(message)).toBeInTheDocument();
+    });
+
+    it('한 W/O 의 다시 시작이 거절된 뒤 다른 W/O 를 다시 시작하는 점검 중에도, 돌아간 뒤에도 앞 거절 문구를 보이지 않는다', async () => {
+      const message = '이 MES W/O 에 이미 열린 작업 세션이 있습니다.';
+      const { plannedEquipmentId: _ignored, ...withoutEquipment } = HELD;
+      const other = { ...HELD, workOrderId: WORK_ORDER.workOrderId + 1, workOrderNo: 'WO-OTHER-1' };
+      const rendered = renderScreen({
+        terminal: { ...TERMINAL, equipmentId: null, equipmentCode: null, equipmentName: null },
+        workOrders: [withoutEquipment, other],
+        startOpenSessionMessage: message,
+        /* 합격 이력이 없어 차단 — 두 번째 W/O 에서 점검 창이 선다. */
+        inspections: [],
+      });
+
+      /* 설비 없는 첫 W/O 는 점검 없이 바로 보내져 거절된다. */
+      await selectWorkOrder(rendered);
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      await rendered.user.click(restartButton());
+      expect(await screen.findByText(message)).toBeInTheDocument();
+
+      await rendered.user.click(
+        screen.getByRole('button', { name: selectName(other.workOrderNo) }),
+      );
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      await rendered.user.click(restartButton());
+
+      const back = await screen.findByRole('button', {
+        name: messages.workPrecheckGate.actions.back,
+      });
+      expect(screen.queryByText(message)).not.toBeInTheDocument();
+
+      await rendered.user.click(back);
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      expect(screen.queryByText(message)).not.toBeInTheDocument();
+    });
+
+    it('그사이 다른 단말이 먼저 다시 시작해 진행 중이 됐으면 서버 문구와 [작업 이어하기]가 선다', async () => {
+      const message =
+        '이 MES W/O 에 이미 열린 작업 세션이 있습니다. 목록을 새로 고친 뒤 [재개] 또는 [작업 이어하기]로 그 세션을 이어 가세요 — 다른 단말의 세션이면 그 단말에서 재개·종료하거나 관리웹에서 강제 종료하세요.';
+      const rendered = renderScreen({
+        workOrders: [HELD],
+        workOrdersAfter: [{ ...WORK_ORDER, statusCode: 'IN_PROGRESS' }],
+        startOpenSessionMessage: message,
+        openSessionsAfterConflict: [{ ...OPEN_SESSION, terminalId: 9194 }],
+      });
+
+      await selectWorkOrder(rendered);
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+      await rendered.user.click(restartButton());
+
+      /* 진행 중인 세션은 중단된 것이 아니라 [재개]가 아니라 이어하기가 길이다. */
+      expect(
+        await screen.findByRole('button', { name: t.actions.continueToSession }),
+      ).toBeEnabled();
+      expect(screen.getByText(message)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: t.actions.start })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: t.actions.resume })).not.toBeInTheDocument();
+    });
+
+    it('지시 수량을 이미 채웠으면 「남은 일」이 마감 안내를 말하고 다시 시작은 막지 않는다', async () => {
+      const rendered = renderScreen({
+        workOrders: [{ ...HELD, progress: { goodQty: 500, achievementRate: 1 } }],
+      });
+
+      await selectWorkOrder(rendered);
+
+      expect(await screen.findByText(t.closing.fulfilled)).toBeInTheDocument();
+      expect(restartButton()).toBeEnabled();
+    });
+
+    it('열린 세션을 확인하는 동안은 재개와 다시 시작 어느 쪽으로도 이름 붙이지 않는다', async () => {
+      let release = (): void => undefined;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const rendered = renderScreen({ workOrders: [HELD], openSessionsGate: gate });
+
+      await selectWorkOrder(rendered);
+
+      expect(await screen.findByRole('button', { name: t.actions.checking })).toBeDisabled();
+      expect(screen.queryByRole('button', { name: t.actions.resume })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: t.actions.restart })).not.toBeInTheDocument();
+
+      release();
+      await waitFor(() => {
+        expect(restartButton()).toBeEnabled();
+      });
+    });
+
+    it('열린 세션 조회가 실패하면 다시 시작으로 보내지 않고 사유를 말한다', async () => {
+      const rendered = renderScreen({ workOrders: [HELD], openSessionsStatus: 500 });
+
+      await selectWorkOrder(rendered);
+
+      expect(await screen.findByText(t.resume.sessionLookupFailed)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: t.actions.restart })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: t.actions.resume })).toBeDisabled();
+      expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(0);
+    });
+  });
+
+  describe('중단 세션이 열린 지시', () => {
+    it('재개하면 다시 읽은 목록에서 그 지시가 진행 중으로 선다', async () => {
+      const rendered = renderScreen({
+        workOrders: [{ ...WORK_ORDER, statusCode: 'SUSPENDED' }],
+        workOrdersAfter: [{ ...WORK_ORDER, statusCode: 'IN_PROGRESS' }],
+        openSessions: [OPEN_SESSION],
+      });
+
+      await selectWorkOrder(rendered);
+      expect(
+        within(screen.getByRole('button', { name: selectName(WORK_ORDER.workOrderNo) })).getByText(
+          t.list.status.suspended,
+        ),
+      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.actions.resume })).toBeEnabled();
+      });
+      const before = listUrls(rendered.recorded.urls).length;
+      await rendered.user.click(screen.getByRole('button', { name: t.actions.resume }));
+
+      expect(await screen.findByText(t.result.resumed(WORK_ORDER.workOrderNo))).toBeInTheDocument();
+      await waitFor(() => {
+        expect(listUrls(rendered.recorded.urls).length).toBeGreaterThan(before);
+      });
+      await waitFor(() => {
+        expect(
+          within(
+            screen.getByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+          ).queryByText(t.list.status.suspended),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it('재개가 거부되면 재개하지 못했다는 말과 서버가 적은 까닭을 함께 보인다', async () => {
+      const message = '이미 종료된 작업 세션입니다. 작업을 계속하려면 작업 시작을 다시 하세요.';
+      const rendered = renderScreen({
+        workOrders: [{ ...WORK_ORDER, statusCode: 'SUSPENDED' }],
+        openSessions: [OPEN_SESSION],
+        resumeLockedMessage: message,
+      });
+
+      await selectWorkOrder(rendered);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.actions.resume })).toBeEnabled();
+      });
+      await rendered.user.click(screen.getByRole('button', { name: t.actions.resume }));
+
+      expect(await screen.findByText(`${t.result.resumeFailed} ${message}`)).toBeInTheDocument();
+    });
   });
 
   /**

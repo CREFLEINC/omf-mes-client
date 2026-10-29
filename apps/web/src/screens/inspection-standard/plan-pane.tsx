@@ -1,6 +1,8 @@
-import { Button, Checkbox, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, SearchInput, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useState } from 'react';
+
+import { ItemPickerDialog } from '../../patterns/item-picker';
 
 import { INSPECTION_TYPE_OPTIONS, ensureOption } from './code-options';
 import { FieldLabel } from './field-label';
@@ -41,6 +43,10 @@ export interface PlanPaneProps {
   onCancel: () => void;
   /** 승인·사용 중지 액션 슬롯. 이 구획 밖의 사실이 조건에 들어가 화면이 판정한다 */
   transitionActions?: ReactNode;
+  /** 버전 고르기 줄 — 기준 상세에 합쳐 둔다(omf-all-around#196). 등록 폼에는 없다 */
+  versionSlot?: ReactNode;
+  /** 「기본 정보 수정」 창 안이다 — 창 제목이 머리를 맡아 제목 · 칩을 두지 않는다(#196). */
+  embedded?: boolean;
 }
 
 /**
@@ -70,16 +76,52 @@ export const PlanPane = ({
   onSave,
   onCancel,
   transitionActions,
+  versionSlot,
+  embedded = false,
 }: PlanPaneProps) => {
   const codeId = useId();
   const nameId = useId();
-  const approvalLabelId = useId();
-  const activeLabelId = useId();
+  const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
+  /* 창에서 고른 품목의 이름 — 선택지 목록(첫 쪽)에 없는 품목도 이름이 보이게 둔다(#196). */
+  const [pickedItemLabels, setPickedItemLabels] = useState<Record<string, string>>({});
+  const itemLabel =
+    values.itemId === ''
+      ? ''
+      : (pickedItemLabels[values.itemId] ??
+        itemOptions.find((option) => option.value === values.itemId)?.label ??
+        '');
 
   const approvedAt = formatApprovedAt(plan?.approvedAt);
+  /* 바꿀 수 없는 칸에는 필수 표시를 두지 않는다 — 고칠 수 없는 칸에 「꼭 채우라」는 뜻이 없다(사용자 지시 · #196). */
+  const isCodeLocked = codeLockReason !== null;
 
   return (
-    <section className="pane" aria-label={t.panes.planForm}>
+    <section
+      className={`${embedded ? '' : 'pane '}inspection-standard-plan-pane`}
+      aria-label={t.panes.planForm}
+    >
+      {/*
+       * 머리 — 제목과 승인 · 사용 상태 칩(omf-all-around#196). 둘 다 전용 액션으로만 바뀌어 값 표기로만 낸다.
+       * 등록 전에는 서버가 채우는 값이 없어 칩을 지어내지 않는다.
+       */}
+      {!embedded && (
+        <div className="inspection-standard-plan-head">
+          <h2 className="pane-title">
+            {mode === 'create' ? t.detail.createTitle : t.detail.title}
+          </h2>
+          {mode === 'edit' && plan !== null && (
+            <div className="inspection-standard-plan-chips">
+              <Chip variant="status" status={approvedAt === null ? 'warning' : 'success'}>
+                {approvedAt === null ? t.detail.chipNotApproved : t.values.approvedAt(approvedAt)}
+              </Chip>
+              <Chip variant="status" status={plan.isActive ? 'success' : 'idle'}>
+                {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
+              </Chip>
+            </div>
+          )}
+        </div>
+      )}
+
       {optionsNotice}
       {banner}
 
@@ -89,15 +131,19 @@ export const PlanPane = ({
          * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={codeId} label={t.fields.inspectionPlanCode} required />
+          <FieldLabel
+            htmlFor={codeId}
+            label={t.fields.inspectionPlanCode}
+            required={!isCodeLocked}
+          />
           <TextField
             id={codeId}
             value={values.inspectionPlanCode}
             onChange={(event) => onChange({ inspectionPlanCode: event.target.value })}
-            disabled={codeLockReason !== null}
+            disabled={isCodeLocked}
             disabledReason={codeLockReason}
             error={fieldErrors.inspectionPlanCode}
-            aria-required
+            aria-required={!isCodeLocked}
           />
         </div>
 
@@ -121,13 +167,24 @@ export const PlanPane = ({
           error={fieldErrors.inspectionTypeCode}
         />
 
-        {/* 비우면 「전 품목 공통 기준」이다 — 계약이 널을 허용한다. */}
-        <SelectField
+        {/*
+         * 비우면 「전 품목 공통 기준」이다 — 계약이 널을 허용한다.
+         * 품목은 **창에서 검색해서 고른다**(#196) — 선택칸은 품목 목록의 첫 쪽만 담아 뒤쪽 품목을 고를 수 없었다.
+         * 읽기 전용 칸을 누르거나 엔터를 치면 품목 선택 창이 열린다. 조회 줄의 품목 조건과 같은 모양이다.
+         */}
+        <SearchInput
           label={t.fields.item}
-          options={[{ value: '', label: t.values.allItems }, ...itemOptions]}
-          value={values.itemId}
-          onChange={(itemId) => onChange({ itemId })}
+          placeholder={t.values.allItems}
+          value={itemLabel}
+          readOnly
+          title={itemLabel === '' ? undefined : itemLabel}
+          aria-haspopup="dialog"
+          clearLabel={t.actions.itemClear}
           error={fieldErrors.itemId}
+          onClick={() => setIsItemPickerOpen(true)}
+          onSearch={() => setIsItemPickerOpen(true)}
+          onChange={() => undefined}
+          onClear={() => onChange({ itemId: '' })}
         />
 
         {/* IQC 에는 공정이 없다 — 비우는 것이 정상 값이다. */}
@@ -135,6 +192,7 @@ export const PlanPane = ({
           label={t.fields.process}
           options={[{ value: '', label: t.values.empty }, ...processOptions]}
           value={values.processId}
+          placeholder={t.values.empty}
           onChange={(processId) => onChange({ processId })}
           error={fieldErrors.processId}
         />
@@ -143,6 +201,7 @@ export const PlanPane = ({
           label={t.fields.routing}
           options={[{ value: '', label: t.values.empty }, ...routingOptions]}
           value={values.routingId}
+          placeholder={t.values.empty}
           onChange={(routingId) => onChange({ routingId })}
           disabled={routingDisabledReason !== null}
           disabledReason={routingDisabledReason ?? undefined}
@@ -161,38 +220,16 @@ export const PlanPane = ({
             <p className="field-note">{t.values.pqcSkipAllowedNote}</p>
           </div>
         )}
-
-        {/*
-         * 등록 전에는 승인·사용 여부가 없다 — 서버가 채우는 값을 미리 지어내 보이지 않는다.
-         * 값을 보여 주기만 하는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다.
-         */}
-        {mode === 'edit' && plan !== null && (
-          <>
-            <div>
-              <span className="field-label" id={approvalLabelId}>
-                {t.fields.approval}
-              </span>
-              <p aria-labelledby={approvalLabelId}>
-                {approvedAt === null ? t.values.notApproved : t.values.approvedAt(approvedAt)}
-              </p>
-            </div>
-
-            <div>
-              <span className="field-label" id={activeLabelId}>
-                {t.fields.active}
-              </span>
-              <p aria-labelledby={activeLabelId}>
-                {plan.isActive ? t.values.active : t.values.inactive}
-              </p>
-            </div>
-          </>
-        )}
       </div>
 
-      <div className="form-actions">
-        {transitionActions}
+      {versionSlot}
 
-        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
+      {/* 아래 단추 줄 — 구분선 아래, 왼쪽 승인 · 사용 중지, 오른쪽 취소 · 저장(#196). */}
+      <div className="form-actions inspection-standard-plan-footer">
+        <div className="inspection-standard-plan-footer-start">{transitionActions}</div>
+
+        {/* 창 안에서는 「취소」가 창을 닫는 길이라 늘 누를 수 있다(고친 값은 버린다 · #196). */}
+        <Button variant="outlined" disabled={!embedded && !isDirty} onClick={onCancel}>
           {messages.common.cancel}
         </Button>
 
@@ -200,6 +237,26 @@ export const PlanPane = ({
           {mode === 'create' ? t.actions.addPlan : messages.common.save}
         </Button>
       </div>
+      {isItemPickerOpen && (
+        <ItemPickerDialog
+          multiple={false}
+          compact
+          showAvailability={false}
+          confirmLabel={t.filters.itemPick}
+          onClose={() => setIsItemPickerOpen(false)}
+          onConfirm={([item]) => {
+            if (item !== undefined) {
+              const itemId = String(item.itemId);
+              setPickedItemLabels((prev) => ({
+                ...prev,
+                [itemId]: `${item.itemCode} · ${item.itemName}`,
+              }));
+              onChange({ itemId });
+            }
+            setIsItemPickerOpen(false);
+          }}
+        />
+      )}
     </section>
   );
 };

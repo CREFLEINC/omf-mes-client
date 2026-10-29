@@ -1365,7 +1365,7 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
                 scope: 'screen',
                 code: 'PERMISSION_DENIED',
                 message:
-                  '이 단말에는 이 W/O 공정의 자재 투입 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「자재 투입」을 켜세요.',
+                  '이 단말에는 이 W/O 공정의 자재 투입 권한이 없습니다. 관리웹 시스템 관리 › 단말기-공정 매핑에서 해당 공정의 「자재 투입」을 켜세요.',
               },
             ],
           },
@@ -1377,7 +1377,7 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
 
     expect(
       await screen.findByText(
-        '이 단말에는 이 W/O 공정의 자재 투입 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「자재 투입」을 켜세요.',
+        '이 단말에는 이 W/O 공정의 자재 투입 권한이 없습니다. 관리웹 시스템 관리 › 단말기-공정 매핑에서 해당 공정의 「자재 투입」을 켜세요.',
         { exact: false },
       ),
     ).toBeTruthy();

@@ -68,7 +68,12 @@ const renderBar = (appliedFilters: QueueFilters = EMPTY_FILTERS, extra: StubRout
   const onReset = vi.fn();
 
   const view = renderWithProviders(
-    <QueueFilterBar appliedFilters={appliedFilters} onSearch={onSearch} onReset={onReset} />,
+    <QueueFilterBar
+      appliedFilters={appliedFilters}
+      onSearch={onSearch}
+      onTogglePendingOnly={vi.fn()}
+      onReset={onReset}
+    />,
     { fetch: createStubFetch([...extra, ...routes()]) },
   );
 
@@ -98,7 +103,7 @@ describe('QueueFilterBar — 조건은 골라서 넣는다', () => {
   });
 
   it('주소로 들어온 품목은 창을 거치지 않아도 이름으로 선다', async () => {
-    renderBar({ itemId: 1001, supplierId: null, keyword: '' });
+    renderBar({ itemId: 1001, supplierId: null, keyword: '', pendingOnly: true, statusCode: null });
 
     await waitFor(() => {
       expect(itemBox()).toHaveValue(ITEM_LABEL);
@@ -108,7 +113,7 @@ describe('QueueFilterBar — 조건은 골라서 넣는다', () => {
   });
 
   it('공급사는 검색 창으로 고른다 — 주소로 들어온 값도 이름으로 선다(#133)', async () => {
-    renderBar({ itemId: null, supplierId: 2002, keyword: '' });
+    renderBar({ itemId: null, supplierId: 2002, keyword: '', pendingOnly: true, statusCode: null });
 
     await waitFor(() => {
       expect(supplierBox()).toHaveValue(SUPPLIER_LABEL);
@@ -151,7 +156,13 @@ describe('QueueFilterBar — 조건은 골라서 넣는다', () => {
   });
 
   it('고른 공급사는 칸 안의 × 로 풀 수 있다', async () => {
-    const { onSearch, user } = renderBar({ itemId: null, supplierId: 2002, keyword: '' });
+    const { onSearch, user } = renderBar({
+      itemId: null,
+      supplierId: 2002,
+      keyword: '',
+      pendingOnly: true,
+      statusCode: null,
+    });
 
     await waitFor(() => {
       expect(supplierBox()).toHaveValue(SUPPLIER_LABEL);
@@ -165,7 +176,13 @@ describe('QueueFilterBar — 조건은 골라서 넣는다', () => {
 
 describe('QueueFilterBar — 의뢰번호와 조회·초기화', () => {
   it('주소가 담은 의뢰번호를 편집 칸에 되돌린다', () => {
-    renderBar({ itemId: null, supplierId: null, keyword: 'IR-1' });
+    renderBar({
+      itemId: null,
+      supplierId: null,
+      keyword: 'IR-1',
+      pendingOnly: true,
+      statusCode: null,
+    });
 
     expect(keywordBox()).toHaveValue('IR-1');
   });
@@ -208,12 +225,23 @@ describe('QueueFilterBar — 의뢰번호와 조회·초기화', () => {
           <button
             type="button"
             onClick={() => {
-              setApplied({ itemId: null, supplierId: null, keyword: 'IR-1' });
+              setApplied({
+                itemId: null,
+                supplierId: null,
+                keyword: 'IR-1',
+                pendingOnly: true,
+                statusCode: null,
+              });
             }}
           >
             주소 바꾸기
           </button>
-          <QueueFilterBar appliedFilters={applied} onSearch={vi.fn()} onReset={vi.fn()} />
+          <QueueFilterBar
+            appliedFilters={applied}
+            onSearch={vi.fn()}
+            onTogglePendingOnly={vi.fn()}
+            onReset={vi.fn()}
+          />
         </>
       );
     };

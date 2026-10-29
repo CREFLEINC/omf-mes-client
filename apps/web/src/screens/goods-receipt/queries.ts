@@ -1,9 +1,15 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import {
+  createIdempotencyKey,
+  type ApiClient,
+  type ApiError,
+  type components,
+} from '@omf-mes/api-client';
+import { useQueries, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import { useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
-import { runRequest } from '../../patterns/request';
+import { runRequest, toApiError } from '../../patterns/request';
 import type { IrFilterQuery } from './filters';
 import {
   toIrLineView,
@@ -12,6 +18,7 @@ import {
   toWarehouseView,
   type IrLineView,
   type IrListResult,
+  type IrView,
   type LocationView,
   type PageMeta,
   type WarehouseView,
@@ -70,6 +77,9 @@ export const irKeys = {
   /** 줄을 고를 때 읽는 자재 LOT — 입고 뒤 재조회와 캐시를 나눠, 재조회가 고를 때의 낡은 값을 보이지 않게 한다. */
   selectedLot: (lotId: number | null) => ['goods-receipt-selected-lot', lotId] as const,
   codeValues: (codeGroupCode: string) => ['goods-receipt-code-values', codeGroupCode] as const,
+  /** 「입고 처리」 창이 읽는 입하 전표 상세(머리 + 라인) — 번호마다 갈린다. */
+  detail: (inboundReceiptId: number | null) =>
+    ['inbound-receipts', 'detail', inboundReceiptId] as const,
 };
 
 export const useGoodsReceiptCodeValues = (
@@ -124,6 +134,61 @@ const fetchInboundReceiptLines = async (
   );
 
   return data.items.map(toIrLineView);
+};
+
+/** 입하 전표 하나 — 머리와 라인을 함께. 「입고 처리」 창이 LOT 하나로 서면서 그 전표의 공장·번호·라인을 여기서 받는다. */
+export interface IrDetail {
+  inboundReceipt: IrView;
+  lines: IrLineView[];
+}
+
+/**
+ * 입하 전표 상세. 「입고 처리」 창(`post-panel.tsx`)이 입고 관리의 LOT 줄에서 열릴 때 부른다 — 그 화면의 진행 자료는
+ * 전표·라인·LOT 번호만 들고 있고, 요청 조립이 요구하는 공장(`plantId`)과 라인 값은 이 상세가 준다.
+ */
+const fetchInboundReceiptDetail = async (
+  client: ApiClient['client'],
+  inboundReceiptId: number,
+): Promise<IrDetail> => {
+  const data = await runRequest(() =>
+    client.GET('/logistics/inbound-receipts/{inboundReceiptId}', {
+      params: { path: { inboundReceiptId } },
+    }),
+  );
+
+  return { inboundReceipt: toIrView(data.inboundReceipt), lines: data.lines.map(toIrLineView) };
+};
+
+export const useInboundReceiptDetail = (
+  inboundReceiptId: number | null,
+): UseQueryResult<IrDetail> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: irKeys.detail(inboundReceiptId),
+    enabled: inboundReceiptId !== null,
+    queryFn: () => {
+      if (inboundReceiptId === null) {
+        throw new Error('입하 전표를 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return fetchInboundReceiptDetail(client, inboundReceiptId);
+    },
+  });
+};
+
+/** 입하 전표 상세 여럿 — 「입고 일괄 처리」 창이 고른 LOT 들의 전표를 함께 읽는다. 캐시는 한 건 상세와 같다. */
+export const useInboundReceiptDetails = (
+  inboundReceiptIds: readonly number[],
+): UseQueryResult<IrDetail>[] => {
+  const { client } = useApiClient();
+
+  return useQueries({
+    queries: inboundReceiptIds.map((inboundReceiptId) => ({
+      queryKey: irKeys.detail(inboundReceiptId),
+      queryFn: () => fetchInboundReceiptDetail(client, inboundReceiptId),
+    })),
+  });
 };
 
 /**
@@ -269,6 +334,28 @@ export interface LotStatusResult {
 }
 
 /**
+ * 자재 LOT 여럿의 지금 상태 — 「입고 일괄 처리」 창이 고를 때 읽는다(`useLotStatus` 의 `select` 와 같은 캐시 · 같은 신선도).
+ * 받기 전이면 `statusCode` 가 `null` 이다.
+ */
+export const useLotStatuses = (lotIds: readonly number[]): LotStatusResult[] => {
+  const { client } = useApiClient();
+  const queries = useQueries({
+    queries: lotIds.map((lotId) => ({
+      queryKey: irKeys.selectedLot(lotId),
+      staleTime: 0,
+      refetchOnWindowFocus: true,
+      queryFn: () =>
+        runRequest(() => client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } })),
+    })),
+  });
+
+  return queries.map((query) => ({
+    statusCode: query.data?.lot.statusCode ?? null,
+    isError: query.isError,
+  }));
+};
+
+/**
  * 자재 LOT의 지금 상태.
  *
  * **입고 처리에 성공한 뒤에만 부른다.** 입고 응답에는 LOT 상태가 없어(실측), 화면 이름의
@@ -316,6 +403,8 @@ type GoodsReceiptDetailResponse = components['schemas']['GoodsReceiptDetailRespo
 export interface GoodsReceiptPostOptions {
   /** 성공 뒤 다시 부를 라인. 그 줄이 입고됐다는 사실이 라인 상태에 반영된다 */
   inboundReceiptId: number | null;
+  /** 함께 다시 읽을 것 — 「입고 처리」 창을 연 화면의 표(입고 관리의 LOT 줄·진행). 이 화면은 비운다. */
+  refreshKeys?: readonly (readonly unknown[])[];
   onSuccess: (data: GoodsReceiptDetailResponse) => void;
 }
 
@@ -351,8 +440,89 @@ export const useGoodsReceiptPost = (
         body,
       }),
     etagPath: null,
-    invalidateKeys: [irKeys.lines(options.inboundReceiptId)],
+    invalidateKeys: [irKeys.lines(options.inboundReceiptId), ...(options.refreshKeys ?? [])],
     knownFields: POST_FORM_FIELDS,
     onSuccess: options.onSuccess,
   });
+};
+
+/** 입고 일괄 처리의 한 건 — 입하 전표 하나의 입고 요청. 열쇠는 그 전표 번호다. */
+export interface BatchPostJob {
+  inboundReceiptId: number;
+  body: GoodsReceiptCreate;
+}
+
+export type BatchPostOutcome =
+  { kind: 'done'; goodsReceiptNo: string } | { kind: 'failed'; error: ApiError };
+
+export interface GoodsReceiptBatchPost {
+  /** 전표마다 결과 — 아직 보내지 않은 전표는 없다. */
+  outcomes: ReadonlyMap<number, BatchPostOutcome>;
+  isSaving: boolean;
+  /** 보낸다 — 이미 입고된 전표는 건너뛴다(실패한 것만 다시 보내는 재시도). */
+  run: (jobs: readonly BatchPostJob[]) => Promise<void>;
+}
+
+/**
+ * 입고 일괄 처리 — 고른 LOT 들을 **입하 전표마다 한 번씩 차례로** 입고한다(입고 요청은 원천 전표가 하나다 · 계약
+ * `sourceDocumentId`). 입고 관리의 입하는 품목마다 전표 하나라 대개 LOT 하나가 한 건이다(사용자 지시 2026-10-28 「입고 요청 일괄 처리」).
+ *
+ * 한 건이 막혀도 나머지는 보낸다 — 건마다 따로 서는 전표라 묶어 막을 까닭이 없다. 결과는 건마다 남고, 다시 누르면
+ * **실패한 건만** 다시 보낸다.
+ *
+ * ⛔ **멱등 키는 건마다 본문이 같으면 그대로 쓴다** — 응답을 잃은 뒤 다시 보내도 서버가 재전송으로 알아본다(한 건 창의
+ * `useGoodsReceiptPost` 가 남겨 둔 위험을 여기서는 지운다). 성공한 건의 키는 버린다.
+ */
+export const useGoodsReceiptBatchPost = (options: {
+  refreshKeys: readonly (readonly unknown[])[];
+}): GoodsReceiptBatchPost => {
+  const { client } = useApiClient();
+  const queryClient = useQueryClient();
+  const [outcomes, setOutcomes] = useState<ReadonlyMap<number, BatchPostOutcome>>(new Map());
+  const [isSaving, setSaving] = useState(false);
+  const keys = useRef(new Map<number, { signature: string; key: string }>());
+
+  const run = async (jobs: readonly BatchPostJob[]): Promise<void> => {
+    setSaving(true);
+    const next = new Map(outcomes);
+
+    for (const job of jobs) {
+      if (next.get(job.inboundReceiptId)?.kind === 'done') continue;
+
+      const signature = JSON.stringify(job.body);
+      const held = keys.current.get(job.inboundReceiptId);
+      const key = held?.signature === signature ? held.key : createIdempotencyKey();
+      keys.current.set(job.inboundReceiptId, { signature, key });
+
+      try {
+        const data = await runRequest(() =>
+          client.POST('/logistics/goods-receipts', {
+            params: { header: { 'Idempotency-Key': key } },
+            body: job.body,
+          }),
+        );
+        next.set(job.inboundReceiptId, {
+          kind: 'done',
+          goodsReceiptNo: data.goodsReceipt.goodsReceiptNo,
+        });
+        keys.current.delete(job.inboundReceiptId);
+      } catch (error) {
+        next.set(job.inboundReceiptId, { kind: 'failed', error: toApiError(error) });
+      }
+      setOutcomes(new Map(next));
+    }
+
+    setSaving(false);
+    await Promise.all(
+      [
+        ...jobs.flatMap((job) => [
+          irKeys.detail(job.inboundReceiptId),
+          irKeys.lines(job.inboundReceiptId),
+        ]),
+        ...options.refreshKeys,
+      ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+    );
+  };
+
+  return { outcomes, isSaving, run };
 };

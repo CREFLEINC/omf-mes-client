@@ -36,10 +36,16 @@ export interface MasterFacts {
   routingCount: number;
   bomSelected: boolean;
   routingSelected: boolean;
+  /**
+   * 확정된 계획이 있다. 확정 뒤에는 개정을 바꿀 수 없으므로 그 계획의 BOM과 Routing으로 통과한다.
+   * 그 개정이 지금은 쓸 수 없는(작성중, 기간 밖) 개정이어도 같다.
+   */
+  fixedByPlan?: boolean;
 }
 
 export const judgeMaster = (facts: MasterFacts, next: string): StepJudgment => {
   if (facts.loading) return { complete: false, guidance: null };
+  if (facts.fixedByPlan === true) return { complete: true, guidance: proceed(next) };
   if (facts.failed) return { complete: false, guidance: say(t.loadFailed) };
   if (facts.bomCount === 0)
     return { complete: false, guidance: say(t.bomMissing), blockedOutside: 'bom' };

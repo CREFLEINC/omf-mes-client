@@ -5,7 +5,7 @@ import { useId } from 'react';
 import type { NotificationFilters } from './filters';
 import type { NotificationPeriod } from './period';
 import { SelectField } from './select-field';
-import type { SelectOption } from './types';
+import type { SelectItem } from './types';
 
 const t = messages.notificationCenter;
 
@@ -14,7 +14,7 @@ export interface NotificationFilterBarProps {
   period: NotificationPeriod;
   filters: NotificationFilters;
   /** 유형 선택지. 「전체」를 포함해 화면이 만들어 넘긴다 */
-  eventOptions: SelectOption[];
+  eventOptions: SelectItem[];
   /** 선택지 목록의 한계 안내(조회 실패). 정상이면 넘기지 않는다 */
   eventNote?: string;
   onChangePeriod: (period: NotificationPeriod) => void;

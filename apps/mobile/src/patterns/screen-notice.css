@@ -1,0 +1,52 @@
+/*
+ * 앱바 바로 아래 알림 자리. 본문 칸(main)은 여백이 없고 화면 뿌리가 16px 을 둔다 - 같은 좌우
+ * 여백으로 선다. 알림이 없으면 자리도 없다. 아래 여백은 화면 뿌리의 위 여백이 맡는다.
+ */
+.screen-notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4) 0;
+}
+
+.screen-notices:empty {
+  display: none;
+}
+
+/* 셸의 한 줄 알림(사번 없음). 경고 바탕에 아이콘 · 말 · 단추가 한 줄로 선다. */
+.shell-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 56px;
+  box-sizing: border-box;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--semantic-warning-container);
+  color: var(--on-surface);
+}
+
+.shell-notice__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
+}
+
+/* 알림 오른쪽의 길(사번 확인). 장갑 낀 손이 짚을 높이를 지킨다. */
+.screen-notice__action {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-lg);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}

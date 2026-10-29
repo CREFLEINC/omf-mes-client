@@ -26,6 +26,8 @@ import { pendingCode } from './pending-code';
 import { warehouseLocation } from './warehouse-location';
 import { routing } from './routing';
 import { defectCauseCode } from './defect-cause-code';
+import { erpInbound } from './erp-inbound';
+import { erpOutbound } from './erp-outbound';
 import { integrationSync } from './integration-sync';
 import { erpBom } from './erp-bom';
 import { erpEmployee } from './erp-employee';
@@ -41,7 +43,6 @@ import { judgmentCode } from './judgment-code';
 import { usersRoles } from './users-roles';
 import { inboundSchedule } from './inbound-schedule';
 import { stockStatus } from './stock-status';
-import { overReceiptSplit } from './over-receipt-split';
 import { goodsIssueQr } from './goods-issue-qr';
 import { goodsReceipt } from './goods-receipt';
 import { stocktaking } from './stocktaking';
@@ -59,6 +60,7 @@ import { putawayRule } from './putaway-rule';
 import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
 import { alarmRecipientSettings } from './alarm-recipient-settings';
+import { handoverAlertSettings } from './handover-alert-settings';
 import { zaloConnection } from './zalo-connection';
 import { dispatchHistory } from './dispatch-history';
 import { iqcInspection } from './iqc-inspection';
@@ -92,6 +94,7 @@ import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { workStart } from './work-start';
 import { workPrecheckGate } from './work-precheck-gate';
 import { workOrderProgress } from './work-order-progress';
+import { lotTrace } from './lot-trace';
 import { materialLocation } from './material-location';
 import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
@@ -134,6 +137,7 @@ import { recycleEntry } from './recycle-entry';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
 import { shellHome } from './shell-home';
+import { taskFlow } from './task-flow';
 import { shellNav } from './shell-nav';
 import { wipHandover } from './wip-handover';
 import { workerAssignment } from './worker-assignment';
@@ -181,6 +185,8 @@ export const ko = {
   warehouseLocation,
   routing,
   defectCauseCode,
+  erpInbound,
+  erpOutbound,
   integrationSync,
   erpBom,
   erpEmployee,
@@ -196,7 +202,6 @@ export const ko = {
   usersRoles,
   inboundSchedule,
   stockStatus,
-  overReceiptSplit,
   goodsIssueQr,
   goodsReceipt,
   stocktaking,
@@ -214,6 +219,7 @@ export const ko = {
   documentProgress,
   notificationCenter,
   alarmRecipientSettings,
+  handoverAlertSettings,
   zaloConnection,
   dispatchHistory,
   iqcInspection,
@@ -245,6 +251,7 @@ export const ko = {
   emergencyWorkOrder,
   emergencyWorkOrderField,
   workOrderProgress,
+  lotTrace,
   materialLocation,
   materialLotScan,
   materialPicking,
@@ -286,6 +293,7 @@ export const ko = {
   temporaryPutaway,
   poChangeReview,
   shellHome,
+  taskFlow,
   shellNav,
   wipHandover,
   workerAssignment,

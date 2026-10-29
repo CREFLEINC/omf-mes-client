@@ -46,9 +46,10 @@ const PLATFORM_VARIABLES = new Set([
 
 /*
  * 디자인 시스템이 아니라 앱이 실행 중에 재어 넣는 값이다. 숫자판이 선 높이를 알려야 그만큼
- * 아래를 비울 수 있는데, 그 높이는 머리줄 길이에 따라 달라져 CSS 에 적어 둘 수 없다.
+ * 아래를 비울 수 있는데, 그 높이는 머리줄 길이에 따라 달라져 CSS 에 적어 둘 수 없다. 확정 바도
+ * 같다 - 화면 오른쪽 아래에 뜨는 단추가 바 바로 위에 선다.
  */
-const MEASURED_VARIABLES = new Set(['--docked-pad-height']);
+const MEASURED_VARIABLES = new Set(['--docked-pad-height', '--bottom-action-bar-height']);
 
 /**
  * 없는 토큰은 조용히 대체값으로 떨어진다.

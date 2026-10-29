@@ -1,3 +1,8 @@
+import {
+  type InspectionHubStatus,
+  toInspectionHubStatus,
+} from '../../patterns/inspection-hub-counts';
+
 /**
  * 좌측 검사 대상 목록의 조회 조건 — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를
  * 내려면 화면 상태가 아니라 주소가 조건을 들고 있어야 한다.
@@ -36,7 +41,9 @@ export const URL_KEYS = {
   itemId: 'it',
   keyword: 'q',
   pendingOnly: 'pd',
+  status: 'st',
   page: 'page',
+  size: 'size',
   selected: 'ir',
 } as const;
 
@@ -52,6 +59,10 @@ export const FIXED_AXES = {
 
 /** 계약이 정한 기본 쪽 크기다(`size` 설명: 기본 50). 주소에 적지 않는다. */
 export const PAGE_SIZE = 50;
+
+/** 목록 쪽 크기 — IQC 목록과 같은 10 · 20 · 50건(사용자 지시 2026-10-28 · #197). 기본은 종전대로 50건이다. */
+export const LIST_PAGE_SIZES = [10, 20, PAGE_SIZE] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
 
 const FIRST_PAGE = 1;
 
@@ -79,6 +90,10 @@ const readIdentifier = (raw: string | null): number | null => {
 export const readPage = (params: URLSearchParams): number =>
   readIdentifier(params.get(URL_KEYS.page)) ?? FIRST_PAGE;
 
+/** 쪽 크기. 고를 수 있는 값이 아니면 기본(50)으로 읽는다. */
+export const readPageSize = (params: URLSearchParams): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(URL_KEYS.size)) ?? PAGE_SIZE;
+
 /** 고른 의뢰. 없거나 식별자가 아니면 아무것도 고르지 않은 상태다. */
 export const readSelectedId = (params: URLSearchParams): number | null =>
   readIdentifier(params.get(URL_KEYS.selected));
@@ -89,13 +104,53 @@ export interface QueueFilters {
   keyword: string;
   /** 「대기·진행만 보기」. **기본이 켜짐이라 꺼졌을 때만 주소에 적는다** */
   pendingOnly: boolean;
+  /** 탭 줄 상태 칩(#185) — 한 상태만 남긴다. 비면 거르지 않는다. */
+  statusCode: InspectionHubStatus | null;
+}
+
+/** 칩으로 거르는 상태 — 대기·진행·완료. */
+export const QUEUE_STATUSES: readonly InspectionHubStatus[] = [
+  'REQUESTED',
+  'IN_PROGRESS',
+  'COMPLETED',
+];
+
+const COMPLETED = 'COMPLETED';
+
+/** 상태 칩과 「대기·진행만 보기」를 함께 가진 조건 — IQC · OQC 가 같은 규칙을 쓴다(#185). */
+export interface StatusFilters {
+  pendingOnly: boolean;
+  statusCode: InspectionHubStatus | null;
 }
 
 export const EMPTY_FILTERS: QueueFilters = {
   itemId: null,
   keyword: '',
   pendingOnly: PENDING_ONLY_DEFAULT,
+  statusCode: null,
 };
+
+/**
+ * 칩을 건다. **「완료」는 「대기·진행만 보기」를 함께 끈다** — 서버가 두 조건을 AND 로 묶어 그대로 두면
+ * 늘 빈 목록이 된다. 끈 것이 조건 줄의 체크칸에 그대로 보인다.
+ */
+export const withStatus = <F extends StatusFilters>(
+  filters: F,
+  statusCode: InspectionHubStatus | null,
+): F => ({
+  ...filters,
+  statusCode,
+  pendingOnly: statusCode === COMPLETED ? false : filters.pendingOnly,
+});
+
+/**
+ * 조건 줄의 조회 — 칩은 그대로 둔다. 단 「대기·진행만 보기」를 다시 켜면 「완료」 칩은 푼다(같은 AND 이유).
+ */
+export const withDraft = <F extends StatusFilters>(filters: F, next: Omit<F, 'statusCode'>): F =>
+  ({
+    ...next,
+    statusCode: next.pendingOnly && filters.statusCode === COMPLETED ? null : filters.statusCode,
+  }) as F;
 
 /**
  * 주소에서 조건을 읽는다.
@@ -107,6 +162,7 @@ export const readFilters = (params: URLSearchParams): QueueFilters => ({
   itemId: readIdentifier(params.get(URL_KEYS.itemId)),
   keyword: params.get(URL_KEYS.keyword) ?? '',
   pendingOnly: params.get(URL_KEYS.pendingOnly) !== PENDING_ONLY_OFF,
+  statusCode: toInspectionHubStatus(params.get(URL_KEYS.status), QUEUE_STATUSES),
 });
 
 /** 서버로 보내는 질의. **비어 있는 조건은 키 자체를 싣지 않는다** — 빈 문자열은 조건이 아니다. */
@@ -114,7 +170,11 @@ export interface QueueListQuery {
   inspectionTypeCode: string;
   pendingOnly: boolean;
   itemId?: number;
+  /** PQC 목록(#135)의 작업지시 검색이 싣는다. OQC 화면은 쓰지 않는다. */
+  workOrderId?: number;
   q?: string;
+  /** 탭 줄 상태 칩(#185). */
+  statusCode?: string;
   page: number;
   size: number;
 }
@@ -125,16 +185,21 @@ export interface QueueListQuery {
  * ⭐ **`pendingOnly` 는 꺼져 있어도 싣는다.** 주소에는 기본값을 적지 않지만 서버에는 늘 값을
  * 준다 — 계약의 기본값이 `false` 라 빼면 「전부」로 읽히고, 이 화면의 기본은 그 반대다.
  */
-export const toListQuery = (filters: QueueFilters, page: number): QueueListQuery => {
+export const toListQuery = (
+  filters: QueueFilters,
+  page: number,
+  size: number = PAGE_SIZE,
+): QueueListQuery => {
   const query: QueueListQuery = {
     inspectionTypeCode: FIXED_AXES.inspectionTypeCode,
     pendingOnly: filters.pendingOnly,
     page,
-    size: PAGE_SIZE,
+    size,
   };
 
   if (filters.itemId !== null) query.itemId = filters.itemId;
   if (filters.keyword !== '') query.q = filters.keyword;
+  if (filters.statusCode !== null) query.statusCode = filters.statusCode;
 
   return query;
 };
@@ -158,6 +223,7 @@ export const toSearchParams = (
   if (filters.keyword !== '') params.set(URL_KEYS.keyword, filters.keyword);
   /* 기본값(켜짐)은 적지 않는다 — 적으면 주소가 길어지고 「끈 사람」과 구분되지 않는다. */
   if (!filters.pendingOnly) params.set(URL_KEYS.pendingOnly, PENDING_ONLY_OFF);
+  if (filters.statusCode !== null) params.set(URL_KEYS.status, filters.statusCode);
   if (page !== FIRST_PAGE) params.set(URL_KEYS.page, String(page));
 
   return params;
@@ -169,6 +235,17 @@ export const toPageParams = (params: URLSearchParams, page: number): URLSearchPa
 
   if (page === FIRST_PAGE) next.delete(URL_KEYS.page);
   else next.set(URL_KEYS.page, String(page));
+
+  return next;
+};
+
+/** 쪽 크기를 바꾼다 — 첫 쪽으로 간다. 기본(50)은 주소에 적지 않는다. 조건과 고른 의뢰는 그대로다. */
+export const toPageSizeParams = (params: URLSearchParams, size: ListPageSize): URLSearchParams => {
+  const next = new URLSearchParams(params);
+
+  next.delete(URL_KEYS.page);
+  if (size === PAGE_SIZE) next.delete(URL_KEYS.size);
+  else next.set(URL_KEYS.size, String(size));
 
   return next;
 };

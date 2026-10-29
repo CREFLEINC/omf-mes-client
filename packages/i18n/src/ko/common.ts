@@ -19,6 +19,9 @@ export const common = {
    * 이것은 검색칸 하나만 비운다.
    */
   clear: '지우기',
+  /** 선택지가 많은 선택 칸(`patterns/select.tsx`)의 목록 맨 위 검색창 — 접근명과 빈 결과. */
+  selectSearch: '검색',
+  selectNoMatch: '맞는 항목이 없습니다',
   deactivate: '사용 중지',
   saved: '저장했습니다',
   created: '등록했습니다',
@@ -45,6 +48,18 @@ export const common = {
     breadcrumb: '탐색 경로',
     /** 모바일 앱바의 홈 단추 이름. 작업 화면에서 작업 목록으로 돌아간다. */
     home: '작업 목록',
+    /** 모바일 앱바의 뒤로 단추 이름. 화면 안에서 지나온 단계로 하나 돌아간다. */
+    back: '이전 단계',
+    /** 되돌릴 단계가 없는 작업 화면의 뒤로 단추 이름. 그 작업이 걸린 업무의 작업 목록으로 간다. */
+    backToArea: (area: string) => `${area} 작업 목록`,
+    /**
+     * 사번 없이 작업 화면에 들어왔을 때 앱바 아래 알림. 화면에 들어서자마자 띄운다 - 다 적고
+     * 등록하려는 순간에 알면 적은 것을 들고 사번 화면을 다녀와야 한다(사용자 지시 2026-10-21).
+     */
+    noWorker: '사번을 먼저 확인하세요',
+    /** 사번 확인 화면으로 가는 길 - 알림의 단추와 앱바의 사번 칩. */
+    signIn: '사번 확인',
+    changeWorker: '사번 바꾸기',
   },
   connection: {
     online: '온라인',
@@ -60,6 +75,28 @@ export const common = {
     stalledTitle: '보낸 기록이 계속 등록되지 않습니다',
     stalledBody: '전송 대기 중인 기록은 그대로 있습니다. 잠시 뒤 다시 보내기를 누르세요.',
     stalledRetry: '다시 보내기',
+  },
+  /** 검사 조회·판정(IQC · PQC · OQC) 탭 줄 오른쪽 건수 칩(omf-all-around#185). */
+  columnOrderHandle: '끌어서 열 순서 바꾸기',
+  inspectionHub: {
+    label: '검사 의뢰 상태',
+    requested: '대기',
+    inProgress: '진행',
+    completed: '완료',
+    count: (label: string, count: number): string => `${label} ${String(count)}`,
+    filterOn: (label: string): string => `${label} 의뢰만 보기`,
+    filterOff: (label: string): string => `${label} 거르기 해제`,
+    pendingOnly: '대기·진행만 보기', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)
+    pickRequest: '검사 의뢰를 선택하세요',
+    pickRequestHint: '검사 의뢰를 선택하면 상세 내용을 확인할 수 있습니다.',
+    close: '닫기',
+    splitter: '목록과 상세 폭 나누기',
+    heightSplitter: '목록과 상세 높이 나누기',
+    layoutLabel: '목록·상세 배치', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)
+    layoutSideBySide: '좌우 배치',
+    layoutStacked: '상하 배치',
+    /** 창이 좁아 좌우 배치를 쓸 수 없을 때 그 단추의 설명(#197). */
+    layoutNarrow: '창이 좁아 상하로 배치됩니다.',
   },
   reference: {
     empty: '—',

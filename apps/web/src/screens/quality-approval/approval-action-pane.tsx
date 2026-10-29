@@ -34,7 +34,6 @@ export const ApprovalActionPane = ({
 
   return (
     <div className="quality-approval-action" role="group" aria-label={t.approval.title}>
-      <h3>{t.approval.title}</h3>
       <SaveErrorBanner error={writeError} onReload={onReload} />
       {writeError?.kind === 'network' && (
         <div className="form-actions">
@@ -49,11 +48,16 @@ export const ApprovalActionPane = ({
         value={comment}
         required
         fullWidth
+        containerClassName={
+          !isLocked && comment.trim() === ''
+            ? 'quality-approval-comment is-required-empty'
+            : 'quality-approval-comment'
+        }
         rows={4}
         disabled={isLocked}
         aria-describedby={isLocked ? lockReasonId : undefined}
         error={commentError}
-        helperText={t.approval.commentHelp}
+        placeholder={t.approval.commentHelp}
         onChange={(event) => onCommentChange(event.target.value)}
       />
       {isLocked && (

@@ -1,11 +1,11 @@
-import type { ProductionOrderForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { ProductionOrderFact } from './types';
 
-type ProductionOrder = ProductionOrderForward;
+type ProductionOrder = components['schemas']['ProductionOrder'];
 
 export const productionOrderKeys = {
   all: ['production-orders'] as const,
@@ -30,6 +30,10 @@ export const toProductionOrderFact = (order: ProductionOrder): ProductionOrderFa
   expandedWorkOrderCount: order.expandedWorkOrderCount ?? null,
   plannedWorkOrderCount: order.plannedWorkOrderCount ?? null,
   autoPlan: order.autoPlan ?? null,
+  worklistState: order.worklistState ?? null,
+  worklistReasons: order.worklistReasons ?? [],
+  releasePendingWorkOrderCount: order.releasePendingWorkOrderCount ?? null,
+  liveWorkOrderCount: order.liveWorkOrderCount ?? null,
 });
 
 /** 선택한 P/O만 정확한 계약 경로에서 읽고 목록과 같은 사실 형태로 쓴다. */

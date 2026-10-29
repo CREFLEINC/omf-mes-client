@@ -50,6 +50,12 @@ export const zaloConnection: Translated<typeof ko.zaloConnection> = {
     lastError: (code: string, message: string): string => `${code} ${message}`.trim(),
     conflict: 'Người khác đã lưu trước. Hãy tải lại rồi lưu',
   },
+  handover: {
+    title: 'Mẫu tin công việc bàn giao',
+    copyFor: (typeName: string): string => `Sao chép tên tham số mẫu ${typeName}`,
+    notice:
+      'Khách hàng đăng ký mẫu «MES Handover - …» trên Zalo OA rồi nhập ID nhận được. Nếu để trống, Zalo của công việc đó sẽ không gửi và lịch sử gửi ghi «chưa thiết lập mẫu» (trung tâm thông báo vẫn nhận).',
+  },
   errors: {
     appId: 'ID ứng dụng gồm 1–40 chữ số.',
     secretRequired: 'Hãy nhập giá trị mới. Nếu không muốn thay đổi, hãy bấm [Không thay đổi].',

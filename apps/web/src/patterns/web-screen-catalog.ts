@@ -98,11 +98,19 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   /* 같은 코드값 편집기를 열지만 **화면은 갈린다** — IA §3-1 「기준정보 > 품질 기준」의 독립 항목이다. */
   { path: '/master-data/judgment-code', code: 'W-06-04', name: '판정유형 코드 마스터' },
   /*
-   * ⚠ **연계(I/F) 3장 중 하나다.** 나머지 둘(`W-06-09` 연계정의 관리 · `W-06-12` 송신 I/F 정의)은
-   * 아직 화면도 메뉴도 없다 — 그 둘이 서면 코드가 헷갈리기 쉬우니 여기 적어 둔다. 이 화면은
-   * **실행 로그를 보고 실패를 재처리**하는 쪽이다.
+   * ⚠ **연계(I/F) 3장 중 하나다.** 나머지 둘은 `W-06-09` 연계정의 관리(아직 화면 없음) · `W-06-12` 송신 I/F 정의(아래
+   * 「ERP 송신」 탭)다 — 코드가 헷갈리기 쉬우니 여기 적어 둔다. 이 화면은 **실행 로그를 보고 실패를 재처리**하는 쪽이다.
    */
   { path: '/master-data/integration-sync', code: 'W-06-10', name: '연계 동기화 현황·실패 재처리' },
+  /*
+   * W-06-12 — 송신 항목(서버 `outbound-item-settings` 가 이 코드의 화면이라고 적었다)과 고른 항목의 송신 예정 목록.
+   * 항목 켜고 끄기는 아직 화면에 없다. 송신 예정은 연계 메시지 목록을 읽는다 — W-06-12 권한으로도 읽힌다(서버 #849).
+   */
+  {
+    path: '/master-data/erp-outbound',
+    code: 'W-06-12',
+    name: 'MES→ERP 송신 I/F 정의(송신 항목 · 송신 예정)',
+  },
   {
     path: '/master-data/item-extended-attrs',
     code: 'W-06-05',
@@ -130,7 +138,7 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 번호(`W-01-01`)는 IQC 수입검사이고, 예정 조회는 나중에 도출돼 09 를 받았다(IA §3-2).
    */
   { path: '/logistics/inbound-schedule', code: 'W-01-09', name: '입하 예정 조회' },
-  /* W-01-03 은 화면이 아니라 입하 예정 조회의 「입하 등록」 창이다 — 옛 주소는 그 창으로 옮겨 준다. */
+  /* W-01-03 은 화면이 아니라 입고 관리 라인 표의 「입하 등록」이다 — 옛 주소는 입고 관리로 옮겨 준다. */
   { path: '/logistics/over-receipt-split', code: 'W-01-03', name: '입하 등록' },
   { path: '/logistics/iqc-inspection', code: 'W-01-01', name: 'IQC 수입검사·판정' },
   {
@@ -177,22 +185,22 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/shipment/product-disposal-request', code: 'W-04-10', name: '제품 폐기 요청' },
 
   /* ── 생산 ─────────────────────────────────────────────────────────────── */
-  { path: '/production/production-orders', code: 'W-02-01', name: 'ERP W/O 처리' },
+  { path: '/production/production-orders', code: 'W-02-01', name: '작업지시 목록' },
   { path: '/production/po-change-review', code: 'W-02-06', name: 'ERP W/O 변경 관리자 확인' },
   /*
-   * 아래 셋은 사이드바에 없는 옛 주소다. 화면은 「ERP W/O 처리」로 합쳤고, 주소는 대상을 찾아 처리 화면이나
+   * 아래 셋은 사이드바에 없는 옛 주소다. 화면은 「작업지시 목록」으로 합쳤고, 주소는 대상을 찾아 처리 화면이나
    * 작업함으로 넘긴다(`production-order/process/legacy-redirects.tsx`, omf-all-around#129).
    */
-  { path: '/production/production-plans', code: 'W-02-02', name: 'ERP W/O 처리 생산계획' },
+  { path: '/production/production-plans', code: 'W-02-02', name: 'W/O 전개와 편성' },
   {
     path: '/production/work-order-assignments',
     code: 'W-02-03',
-    name: 'ERP W/O 처리 4M 배정',
+    name: '4M 자원배정',
   },
   {
     path: '/production/work-order-release',
     code: 'W-02-04',
-    name: 'ERP W/O 처리 일괄 배포',
+    name: 'W/O 확정과 배포',
   },
   { path: '/production/work-order-close', code: 'W-02-05', name: 'W/O 마감·ERP 실적 송신' },
   /*
@@ -210,6 +218,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     code: 'W-02-08',
     name: 'W/O 진행현황 조회(생산 실적 집계 포함)',
   },
+  /* 서버 권한 키 W-02-09 「LOT 추적」. */
+  { path: '/production/lot-trace', code: 'W-02-09', name: 'LOT 추적' },
 
   /* ── 품질관리 ─────────────────────────────────────────────────────────── */
   {
@@ -273,6 +283,11 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 「내 알림을 보는 곳」이고 이것은 관리자가 「누가 받을지」를 정하는 곳이다. v1.5 신설(DR-003).
    */
   { path: '/notification/recipient-settings', code: 'W-CO-11', name: '알림 수신자 설정' },
+  /*
+   * 피처 002(omf-all-around#190) — 공장 × 인계 작업 종류의 담당자. 설계 저장소 생성본에 없는 코드를
+   * 서버가 손으로 더했다(서버 `permissions.ts` 와 같은 값).
+   */
+  { path: '/notification/handover-settings', code: 'W-CO-14', name: '인계작업 알림 설정' },
   /* 001(omf-all-around#160) — Zalo 연결 정보. 알림센터가 정본이고 Zalo 는 부가 전달이다. */
   { path: '/notification/zalo-connection', code: 'W-CO-12', name: '알림 연결 설정' },
   { path: '/notification/dispatch-history', code: 'W-CO-13', name: '알림 발송 이력' },
@@ -292,4 +307,37 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 그래서 권한으로 감추면 안 되는 자리이기도 하다(`nav-tree.ts` 가 같은 사실을 적어 두었다).
    */
   { path: '/system/password-change', code: 'W-CO-10', name: '비밀번호 변경' },
+];
+
+/** 묶음 화면 하나를 탭으로 나눈 자리 — 탭 주소가 **묶음 화면의 코드를 그대로 따른다.** */
+export interface WebScreenTab {
+  /** 탭 주소(`NavEntry.tabs[].to`). */
+  path: string;
+  /** 이 탭이 속한 화면의 주소 — `WEB_SCREENS` 에 있어야 한다. 권한 판정은 그 화면의 코드로 한다. */
+  ownerPath: string;
+}
+
+/**
+ * **설계 화면 하나를 탭 여럿으로 나눴을 때** 뗀 탭의 주소. 설계 화면 코드가 따로 없으므로 새 코드를 지어 붙이지
+ * 않고(코드는 서버 권한과 1:1 이다) 묶음 화면의 코드를 따른다. `WEB_SCREENS` 에 넣지 않는 것은 「주소마다 코드가
+ * 하나, 코드마다 화면이 하나」라는 그쪽 불변식을 지키기 위해서다.
+ *
+ * ⛔ **설계 화면 코드가 있는 탭은 여기 두지 않는다**(ERP 송신 `W-06-12` · ERP 데이터 탭 `W-06-16~23` 처럼 위에 둔다).
+ */
+export const WEB_SCREEN_TABS: readonly WebScreenTab[] = [
+  /*
+   * ERP 수신 — 연동 현황·이력(W-06-10) 위에 접혀 있던 ERP 받기 상태를 탭으로 뗐다(사용자 지시 2026-10-27). 서버도
+   * 그 기능을 「ERP 연동 현황·이력 탭(W-06-10)」의 일로 적었고 「지금 읽기」를 W-06-10 오퍼레이션에 묶었다.
+   */
+  { path: '/master-data/erp-inbound', ownerPath: '/master-data/integration-sync' },
+  /* 초과분 발주 연결 — 입고 관리(W-01-09)의 오른쪽 창이던 것을 탭으로 뗐다(사용자 지시 2026-10-28). */
+  { path: '/logistics/inbound-excess', ownerPath: '/logistics/inbound-schedule' },
+  /* BOM — 「품목·BOM 정보」(W-06-05)의 BOM 구역을 탭으로 뗐다(사용자 지시 2026-10-28 · ERP 연동 현황·이력의 BOM 탭처럼). */
+  { path: '/master-data/item-boms', ownerPath: '/master-data/item-extended-attrs' },
+  /*
+   * 원인코드 · 공정 매핑 — 불량·원인코드(W-06-03) 화면 안 하위 탭을 「불량·판정 코드」 탭 막대로 뗐다
+   * (사용자 지시 2026-10-29 · omf-all-around#208). 불량코드는 종전 주소 그대로다.
+   */
+  { path: '/master-data/cause-code', ownerPath: '/master-data/defect-cause-code' },
+  { path: '/master-data/defect-process-mapping', ownerPath: '/master-data/defect-cause-code' },
 ];

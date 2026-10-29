@@ -9,8 +9,6 @@
  * 적재됐다」이지 「상대 시스템으로 보냈다」가 아니다 — 뭉개면 승인자가 반영된 줄로 오해한다.
  */
 export const goodsReceipt = {
-  title: '정상품 입하 처리',
-  breadcrumbRoot: '구매 / 자재 관리',
   panes: {
     list: '대상 입하 전표 목록',
     lines: '고른 전표의 라인',
@@ -123,19 +121,6 @@ export const goodsReceipt = {
     lineNoLot: '자재 LOT이 생성되지 않았습니다.',
     lineQtyNotPositive: '입하 수량이 0보다 커야 선택할 수 있습니다.',
   },
-  loading: {
-    inboundReceipts: '대상 입하 전표 목록을 불러오는 중',
-    lines: '입하 라인을 불러오는 중',
-  },
-  /** 목록 표의 머리글. 열 구성과 폭의 근거는 screens/goods-receipt/ir-table.tsx에 있다. */
-  table: {
-    inboundReceiptNo: '입하번호',
-    supplier: '공급사',
-    receiptDatetime: '입하일시',
-    deliveryNoteNo: '거래명세서번호',
-    status: '상태',
-    select: '선택',
-  },
   /** 라인 표의 머리글과 칸 문구. 폭의 근거는 screens/goods-receipt/ir-line-table.tsx에 있다. */
   /** 입고 처리 입력 구획의 제목. */
   postTitle: '입고 정보',
@@ -209,32 +194,6 @@ export const goodsReceipt = {
     chipRemovePeriod: '입하일 조건 제거',
     chipRemoveStatus: '상태 조건 제거',
     chipRemoveQ: '검색어 조건 제거',
-  },
-  /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/goods-receipt/page-nav.tsx에 있다. */
-  pageNav: {
-    label: '쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
-    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
-    totalOnly: (total: number): string => `전체 ${String(total)}건`,
-  },
-  /** 빈 상태는 **네 갈래**다. 사용자가 할 조치가 서로 다르다(완료 조건 C07). */
-  empty: {
-    noResultTitle: '조건에 맞는 입하 전표가 없습니다',
-    noResultDescription: '조건을 줄이거나 입하일 범위를 넓힌 뒤 다시 조회하세요.',
-    beyondLastTitle: '이 쪽에는 결과가 없습니다',
-    beyondLastDescription: '첫 쪽으로 이동하세요.',
-    noSelectionTitle: '입하 전표를 선택해 주세요',
-    noSelectionDescription: '목록에서 입하할 전표의 「선택」을 눌러 주세요.',
-    noLinesTitle: '입고할 라인이 없습니다',
-    noLinesDescription: '이 전표에는 입고할 수 있는 품목 라인이 없습니다.',
-    /*
-     * 주소에 고른 전표가 있는데 **목록 조회가 실패한** 자리. 골격(「불러오는 중」)을 내면
-     * 기다리라고 말하는데 기다려서 풀리지 않는다. 라인 값을 받아도 구획을 열 수 없다 —
-     * **제목줄이 쓰는 전표의 값이 목록 응답에만 있다**(W-01-03이 세운 형태).
-     */
-    listFailedTitle: '대상 입하 전표를 불러오지 못해 이 전표를 열 수 없습니다',
-    listFailedDescription: '위의 「다시 시도」로 목록을 불러온 뒤 다시 고르세요.',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
@@ -384,5 +343,76 @@ export const goodsReceipt = {
     erpNotQueued:
       'ERP 송신 대기열에 적재되지 않았습니다. 상대 시스템 반영 여부는 연계 동기화 현황 화면에서 확인하세요.',
     erpUnknown: 'ERP 송신 대기열 적재 여부를 알 수 없습니다. 응답에 그 값이 오지 않았습니다.',
+  },
+  /**
+   * 「입고 처리」 **오른쪽 창** — 입고 관리(입하 예정 조회)의 LOT 줄에서 열린다(사용자 지시 2026-10-22 · 입하·입고 일을
+   * 그 화면으로 모은다). 입력 칸·검증·확인 창·결과는 이 화면(W-01-10)의 것을 그대로 쓰고, 창은 LOT 하나로 선다.
+   */
+  /**
+   * 「입고 일괄 처리」 창 — 입고 관리에서 체크한 「입고 대기」 LOT 들을 한 번에 입고한다(사용자 지시 2026-10-28).
+   * 입력은 한 벌로 모든 LOT 에 같게 싣고, 입하 전표마다 입고 전표가 하나씩 만들어진다.
+   */
+  batch: {
+    title: (count: number): string => `입고 처리 · LOT ${String(count)}건`,
+    lotsLabel: '입고할 LOT',
+    result: '결과',
+    /** 입력 구획 제목 옆 — 입력 한 벌이 모든 LOT 에 실린다. */
+    sameForAll: '모든 LOT 에 같게 적용',
+    submit: (count: number): string => `${String(count)}건 입고 처리`,
+    retry: '실패한 건 다시 처리',
+    summary: (count: number, destination: string): string =>
+      `LOT ${String(count)}건 → ${destination}`,
+    allDone: (count: number): string => `LOT ${String(count)}건을 입고했습니다.`,
+    done: (goodsReceiptNo: string): string => `입고 ${goodsReceiptNo}`,
+    failed: '실패',
+    failedLot: (lotNo: string): string => `${lotNo} 입고 실패`,
+    loadFailed: '입하 전표를 불러오지 못했습니다. 창을 닫고 다시 여세요.',
+    blocked: {
+      gated: (lotNos: string): string => `지금 입고할 수 없는 LOT 이 있습니다: ${lotNos}`,
+      mixedDefect: '불량 LOT 은 불량창고로만 입고됩니다. 불량 LOT 과 다른 LOT 을 나눠 처리하세요.',
+      mixedPlant: '공장이 다른 LOT 이 섞여 있습니다. 공장별로 나눠 처리하세요.',
+      missingLine: '입하 전표에서 찾지 못한 LOT 이 있습니다. 창을 닫고 다시 여세요.',
+    },
+    confirm: {
+      title: (count: number): string => `LOT ${String(count)}건을 입고합니다`,
+      destination: (destination: string): string => `입고 위치: ${destination}`,
+      when: (datetime: string): string => `입고 일시: ${datetime}`,
+      ok: '입고 처리',
+    },
+  },
+  panel: {
+    title: '입고 처리',
+    guide: {
+      label: '진행 단계',
+      steps: {
+        lot: 'LOT 선택',
+        info: '입고 정보',
+        post: '입고 처리',
+      },
+      /** 단계 아래 한 줄 — 지금 할 일. */
+      hint: {
+        loading: '입하 전표를 불러오는 중입니다.',
+        info: '입고 창고와 적치 위치를 고르세요.',
+        ready: '내용을 확인하고 「입고 처리」를 누르세요.',
+        gated: '이 LOT 은 지금 입고할 수 없습니다.',
+        done: '입고 전표가 만들어졌습니다. 창을 닫으면 LOT 줄이 다음 단계로 바뀝니다.',
+      },
+    },
+    /** LOT 머리 카드의 이름표. */
+    head: {
+      lot: 'LOT',
+      purchaseOrderNo: '발주번호',
+      supplier: '공급사',
+      item: '품목',
+      qty: '수량',
+      inboundReceiptNo: '입하번호',
+      inspection: '검사',
+    },
+    /** 아래 띠의 요약 — 「LOT · 수량 → 창고 · 위치」. 아직 고르지 않은 자리는 「—」. */
+    summary: (lot: string, qty: string, destination: string): string =>
+      `${lot} · ${qty} → ${destination}`,
+    loading: '입하 전표를 불러오는 중',
+    /** 진행 자료의 LOT 이 입하 전표에서 안 보인다 — 자료가 바뀌었다. */
+    lineMissing: '이 LOT 의 입하 라인을 찾지 못했습니다. 창을 닫고 다시 조회하세요.',
   },
 } as const;

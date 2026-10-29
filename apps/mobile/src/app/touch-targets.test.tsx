@@ -37,8 +37,15 @@ const screenFiles = (): { name: string; text: string }[] =>
  * 검사를 patterns 까지 넓히며 드러난, 전부터 있던 예외다. 대화상자 바닥에 두 단추가 나란히
  * 서는 자리라 2xl 로 키우면 360dp 한 줄에 들어가는지 실기에서 본 뒤 정한다. 새 예외를 여기에
  * 더하지 않는다.
+ *
+ * 기기 등록 해제 창도 같은 자리다 - 사번 확인 화면(2xl 단추가 함께 있어 검사에 안 걸렸다)에서
+ * 설정으로 옮기며 파일만 나뉘었다(사용자 지시 2026-10-21). 창 단추가 xl 인 것은 그 화면 시험이
+ * 따로 지킨다.
  */
-const KNOWN_EXCEPTIONS = new Set(['patterns/scan-replace-dialog.tsx']);
+const KNOWN_EXCEPTIONS = new Set([
+  'patterns/scan-replace-dialog.tsx',
+  'screens/device-registration/unregister.tsx',
+]);
 
 describe('터치 규격', () => {
   it('핵심 액션 버튼은 2xl 이다', () => {

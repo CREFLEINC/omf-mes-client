@@ -1,7 +1,8 @@
 .material-lot-scan {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5, 20px);
+  /* 한 화면 안에 들도록 구획 사이를 12px 로 둔다(사용자 지시 2026-10-21). */
+  gap: var(--space-3);
   padding: var(--space-4, 16px);
 }
 
@@ -58,4 +59,52 @@
   margin: 0;
   min-width: 0;
   font-variant-numeric: tabular-nums;
+}
+
+.material-lot-scan__zone-button {
+  flex: 0 0 auto;
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 읽은 라벨. 받을 수 있으면 초록 확인 줄, 아니면 바탕만 깐 회색 줄 - 무엇이 틀렸는지는 바로 위
+ * 오류 띠가 말한다. 번호는 고정폭이라 자릿수를 센다.
+ */
+.material-lot-scan__read {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+}
+
+.material-lot-scan__read--ok {
+  background: var(--semantic-success-container);
+  color: var(--on-semantic-success-container);
+}
+
+.material-lot-scan__read .material-lot-scan__scanned {
+  flex: 1 1 0;
+  min-width: 0;
+  font: var(--type-label-lg);
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+}
+
+/* 등록한 줄 — 한 건이 흰 판 하나. */
+.material-lot-scan__list li {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.material-lot-scan__fields dd {
+  font-family: var(--font-mono);
 }

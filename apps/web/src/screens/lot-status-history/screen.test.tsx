@@ -10,8 +10,17 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { SessionProvider, type Session } from '../../patterns/session';
 import { pickRange } from '../../test/date-picker';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { LotStatusHistoryScreen } from './screen';
+
+/** 상세의 [추적 보기]가 세션 권한을 읽는다. */
+const ScreenWithSession = () => (
+  <SessionProvider>
+    <LotStatusHistoryScreen />
+  </SessionProvider>
+);
 
 const route = (path: string, respond: StubRoute['respond']): StubRoute => ({
   match: (request) => request.method === 'GET' && new URL(request.url).pathname === path,
@@ -326,15 +335,17 @@ const renderScreen = (
   typeState: LotTypeState = 'ready',
   currentRoutes = qualityRoutes(),
   itemStatus = 200,
+  session: Session = SYNTHETIC_SESSION,
 ) => {
   const urls: URL[] = [];
   const stubFetch = fetchFor(typeState, currentRoutes, itemStatus);
   const result = renderWithProviders(
     <>
-      <LotStatusHistoryScreen />
+      <ScreenWithSession />
       <LocationProbe />
     </>,
     {
+      session,
       route,
       fetch: async (request) => {
         urls.push(new URL(request.url));
@@ -561,7 +572,8 @@ describe('Lot Status 화면 shell', () => {
 
   it('첫 응답을 기다리는 동안 로딩 상태를 표시한다', () => {
     const baseFetch = fetchFor('ready', holdRoutes());
-    renderWithProviders(<LotStatusHistoryScreen />, {
+    renderWithProviders(<ScreenWithSession />, {
+      session: SYNTHETIC_SESSION,
       route: '/quality/lot-status?mode=history&from=2026-08-01&to=2026-08-07',
       fetch: async (request) =>
         new URL(request.url).pathname === '/quality/lot-hold-events'
@@ -640,7 +652,8 @@ describe('Lot Status 화면 shell', () => {
   });
 
   it('LOT 유형 기준값 요청 중에도 조회는 열려 있다', async () => {
-    renderWithProviders(<LotStatusHistoryScreen />, {
+    renderWithProviders(<ScreenWithSession />, {
+      session: SYNTHETIC_SESSION,
       route: '/quality/lot-status',
       fetch: async () => new Promise<Response>(() => undefined),
     });
@@ -702,7 +715,8 @@ describe('Lot Status 화면 shell', () => {
     ['/quality/lot-status-summary', '현재 상태 요약을 불러오는 중', 'SAMPLE-LOT-001'],
   ])('한쪽만 로딩 중이어도 %s 상태를 독립 표시한다', async (pendingPath, label, success) => {
     const resolvedFetch = fetchFor();
-    renderWithProviders(<LotStatusHistoryScreen />, {
+    renderWithProviders(<ScreenWithSession />, {
+      session: SYNTHETIC_SESSION,
       route: '/quality/lot-status?lotType=SAMPLE_MATERIAL',
       fetch: async (request) =>
         new URL(request.url).pathname === pendingPath
@@ -761,7 +775,8 @@ describe('Lot Status 화면 shell', () => {
       'ready',
       qualityRoutes(200, 200, [{ ...statusRow, itemId: 999 }]),
     );
-    renderWithProviders(<LotStatusHistoryScreen />, {
+    renderWithProviders(<ScreenWithSession />, {
+      session: SYNTHETIC_SESSION,
       route: '/quality/lot-status?lotType=SAMPLE_MATERIAL',
       fetch: async (request) =>
         ITEM_DETAIL_PATH.test(new URL(request.url).pathname)
@@ -867,7 +882,8 @@ describe('Lot Status 화면 shell', () => {
   it('쪽 재조회가 지연돼도 기존 표와 현재 초점을 유지한다', async () => {
     const resolvedFetch = fetchFor();
     let releaseNext: (() => void) | undefined;
-    renderWithProviders(<LotStatusHistoryScreen />, {
+    renderWithProviders(<ScreenWithSession />, {
+      session: SYNTHETIC_SESSION,
       route: '/quality/lot-status?lotType=SAMPLE_MATERIAL',
       fetch: async (request) => {
         const url = new URL(request.url);
@@ -975,7 +991,8 @@ describe('Lot Status 화면 shell', () => {
 
   it('상세가 품목 이름보다 먼저 오면 알 수 없음 대신 로딩 상태를 보인다', async () => {
     const resolvedFetch = fetchFor('ready', detailRoutes());
-    renderWithProviders(<LotStatusHistoryScreen />, {
+    renderWithProviders(<ScreenWithSession />, {
+      session: SYNTHETIC_SESSION,
       route: '/quality/lot-status?lot=401',
       fetch: async (request) =>
         ITEM_DETAIL_PATH.test(new URL(request.url).pathname)
@@ -1075,7 +1092,8 @@ describe('Lot Status 화면 shell', () => {
         page: { page: 3, size: 20, total: 41 },
       });
     let releasePageTwo: (() => void) | undefined;
-    renderWithProviders(<LotStatusHistoryScreen />, {
+    renderWithProviders(<ScreenWithSession />, {
+      session: SYNTHETIC_SESSION,
       route: '/quality/lot-status?lot=401',
       fetch: async (request) => {
         const url = new URL(request.url);
@@ -1147,5 +1165,64 @@ describe('Lot Status 화면 shell', () => {
 
     expect(await within(dialog).findByText(/일부 행위자 이름을 확인하지 못해/)).toBeVisible();
     expect(within(dialog).getByRole('table', { name: '보류 문서' })).toBeVisible();
+  });
+});
+
+describe('LOT 상세의 [추적 보기]', () => {
+  const withPermissions = (permissions: string[]): Session => ({
+    ...SYNTHETIC_SESSION,
+    permissions,
+  });
+
+  it('자재 LOT은 LOT 추적의 정방향으로 그 LOT을 연다', async () => {
+    renderScreen(
+      '/quality/lot-status?lot=401',
+      'ready',
+      detailRoutes(200, { lotTypeCode: 'MATERIAL' }),
+      200,
+      withPermissions(['W-03-01', 'W-02-09']),
+    );
+    const user = userEvent.setup();
+
+    const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
+    await user.click(await within(dialog).findByRole('button', { name: '추적 보기' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent('/production/lot-trace?'),
+    );
+    expect(locationSearch().get('lot')).toBe('SAMPLE-LOT-001');
+    expect(locationSearch().get('selected')).toBe('401');
+    expect(locationSearch().has('tab')).toBe(false);
+  });
+
+  it('생산 LOT은 역방향으로 연다', async () => {
+    renderScreen(
+      '/quality/lot-status?lot=401',
+      'ready',
+      detailRoutes(200, { lotTypeCode: 'PRODUCTION' }),
+      200,
+      withPermissions(['W-03-01', 'W-02-09']),
+    );
+    const user = userEvent.setup();
+
+    const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
+    await user.click(await within(dialog).findByRole('button', { name: '추적 보기' }));
+
+    await waitFor(() => expect(locationSearch().get('tab')).toBe('backward'));
+    expect(locationSearch().get('selected')).toBe('401');
+  });
+
+  it('LOT 추적 권한이 없으면 두지 않는다', async () => {
+    renderScreen(
+      '/quality/lot-status?lot=401',
+      'ready',
+      detailRoutes(200, { lotTypeCode: 'MATERIAL' }),
+      200,
+      withPermissions(['W-03-01']),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
+    expect(await within(dialog).findByText('SAMPLE-LOT-001')).toBeVisible();
+    expect(within(dialog).queryByRole('button', { name: '추적 보기' })).toBeNull();
   });
 });

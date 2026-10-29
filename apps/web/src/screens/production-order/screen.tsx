@@ -1,9 +1,8 @@
 /**
- * W-02-01 ERP W/O 처리 작업함
+ * W-02-01 작업지시 목록 작업함
  * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
- * 이탈: C-17 「자동 계획 완료」는 배포 가능을 뜻하지 않는다. 서버가 배포 가능 여부로 거르고 세지 못해(계약 대기,
- *       omf-all-around#129) 잠정 규칙대로 조건, 건수, 행 칩을 서버 자동 계획 결과로 두고
- *       막힘(라인 미정)은 사유 칩으로만 보인다. C-12 기간 칸의 「시작일부터」 적용은 DS 기간 선택이 지원하지 않아 미구현.
+ * 조건, 건수, 행 칩은 서버 칩 판정(`worklistState`) 하나로 거르고 센다(C-17). 막힌 까닭은 사유 칩이 말한다.
+ * 이탈: C-12 기간 칸의 「시작일부터」 적용은 DS 기간 선택이 지원하지 않아 미구현.
  */
 import {
   AlertBanner,
@@ -27,8 +26,8 @@ import {
 import { PageNav } from '../../patterns/page-nav';
 import { SelectableTable } from '../../patterns/selectable-table';
 import { useWorklistBulk, type BulkKind, type BulkTarget } from './bulk-actions';
+import { ForbiddenNotice, isForbidden } from './forbidden-notice';
 import { WorklistBulkDialog } from './bulk-dialog';
-import { useProductionOrderCodeNames } from './code-names';
 import { useItemCodeNames } from './item-lookups';
 import { useUomReferenceLookup } from './reference-lookups';
 import type { ProductionOrderFact } from './types';
@@ -41,38 +40,49 @@ import {
 } from './worklist-filters';
 import { WorklistFilterBar } from './worklist-filter-bar';
 import { deriveWorklistState, type WorklistDerived } from './worklist-model';
-import {
-  useReleaseBacklog,
-  useWorklist,
-  useWorklistCount,
-  type WorklistFilters,
-} from './worklist-queries';
+import { useWorklist, useWorklistCount, type WorklistFilters } from './worklist-queries';
 import { CountChip, ProcessStateChip, ReasonChips } from './worklist-chips';
 
 const t = messages.erpWorkOrderFlow;
+
+/** 조회 조건 칸(번호, 납기, 품목)에 값이 있는가. 처리 상태 칩은 조건으로 치지 않는다. */
+const hasSearchConditions = (filters: WorklistFilters): boolean =>
+  filters.q !== '' || filters.dueFrom !== '' || filters.dueTo !== '' || filters.item !== '';
+
+/** 칩 건수. 건수를 받지 못했으면(권한 없음, 오류, 불러오는 중) 0으로 보이지 않고 이름만 보인다. */
+const countLabel = (
+  count: number | undefined,
+  withCount: (count: number) => string,
+  name: string,
+): string => (count === undefined ? name : withCount(count));
 const quantity = (value: number): string =>
   new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
 
 export interface WorklistRow {
   fact: ProductionOrderFact;
   derived: WorklistDerived;
-  pending: number | null;
+  uom: string;
   itemCode: string;
   itemName: string;
   qtyLabel: string;
   outcome: BulkOutcome | undefined;
 }
 
-export const ProductionOrderScreen = () => {
+export interface ProductionOrderScreenProps {
+  /** 권한 안내가 가리킬 메뉴 경로(「시스템 관리 › 사용자·역할·권한」). 라우트가 사이드바 이름으로 넘긴다. */
+  permissionMenuPath?: string | null;
+}
+
+export const ProductionOrderScreen = ({
+  permissionMenuPath = null,
+}: ProductionOrderScreenProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const filters = useMemo(() => readWorklistFilters(searchParams), [searchParams]);
   const list = useWorklist(filters);
-  const backlog = useReleaseBacklog();
-  const needsReviewCount = useWorklistCount('NEEDS_REVIEW');
-  const doneCount = useWorklistCount('DONE');
+  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED');
+  const releasePendingCount = useWorklistCount('RELEASE_PENDING');
   const allCount = useWorklistCount('ALL');
-  const codeNames = useProductionOrderCodeNames();
   const uoms = useUomReferenceLookup();
   const bulk = useWorklistBulk();
   const [checked, setChecked] = useState<string[]>([]);
@@ -86,18 +96,12 @@ export const ProductionOrderScreen = () => {
   const itemNames = useItemCodeNames(facts.map((fact) => fact.itemId));
   const outcomes = new Map((bulk.run?.outcomes ?? []).map((item) => [item.id, item]));
   const toRow = (fact: ProductionOrderFact): WorklistRow => {
-    /* 목록이 잘렸거나 받지 못했으면 목록에 없는 건은 판정 불가(undefined)로 둔다. 「배포 완료」로 읽지 않는다. */
-    const entry =
-      backlog.data === undefined
-        ? undefined
-        : (backlog.data.byOrder.get(fact.productionOrderId) ??
-          (backlog.data.complete ? { pending: 0, blocked: 0 } : undefined));
     const item = itemNames.get(fact.itemId);
     const uom = uoms.entries.find((option) => option.value === String(fact.uomId))?.label ?? '';
     return {
       fact,
-      derived: deriveWorklistState(fact, entry),
-      pending: entry?.pending ?? null,
+      derived: deriveWorklistState(fact),
+      uom,
       itemCode: item?.itemCode ?? '',
       itemName: item?.itemName ?? '',
       qtyLabel: `${quantity(fact.orderQty)} ${uom}`.trim(),
@@ -180,17 +184,14 @@ export const ProductionOrderScreen = () => {
       header: t.list.columns.pendingWorkOrders,
       align: 'end',
       render: (row) =>
-        row.pending === null ? (
-          !backlog.isPending &&
-          row.derived.state === 'DONE' &&
-          (row.fact.expandedWorkOrderCount ?? 0) > 0 ? (
-            <span className="nowrap-cell">{t.list.pendingUnknown}</span>
-          ) : (
-            ''
-          )
+        row.fact.releasePendingWorkOrderCount === null || row.fact.liveWorkOrderCount === null ? (
+          ''
         ) : (
           <span className="nowrap-cell">
-            {t.list.pendingWorkOrders(row.pending, row.fact.expandedWorkOrderCount ?? 0)}
+            {t.list.pendingWorkOrders(
+              row.fact.releasePendingWorkOrderCount,
+              row.fact.liveWorkOrderCount,
+            )}
           </span>
         ),
     },
@@ -205,16 +206,21 @@ export const ProductionOrderScreen = () => {
         row.outcome !== undefined ? (
           <BulkOutcomeChip outcome={row.outcome} />
         ) : (
-          <ProcessStateChip
-            state={row.derived.state}
-            cancelledName={codeNames.productionOrderStatus('CANCELLED')}
-          />
+          <ProcessStateChip state={row.derived.state} />
         ),
     },
     {
       key: 'reasons',
       header: t.list.columns.reasons,
-      render: (row) => <ReasonChips reasons={row.derived.reasons} />,
+      render: (row) => (
+        <ReasonChips
+          reasons={row.derived.reasons}
+          detail={{
+            orderQty: quantity(row.fact.orderQty),
+            uom: row.uom,
+          }}
+        />
+      ),
     },
     {
       key: 'open',
@@ -239,25 +245,36 @@ export const ProductionOrderScreen = () => {
           />
         }
         description={
-          <span className="erp-wo-counts">
-            <span className="erp-wo-counts-label">{t.counts.label}</span>
+          /*
+           * 조건 칩은 「전체」를 맨 앞에 두고 나머지는 처리 순서대로 놓는다. 사용자가 처리할 조건만 칩으로 둔다(계획 전,
+           * 배포 완료, 취소는 행 칩으로만 보인다). 보이는 묶음 이름은 두지 않고 접근명만 붙인다.
+           */
+          <span className="erp-wo-counts" role="group" aria-label={t.counts.label}>
             <CountChip
-              state="NEEDS_REVIEW"
-              label={t.counts.needsReview(needsReviewCount.data ?? 0)}
-              selected={filters.autoPlan === 'NEEDS_REVIEW'}
-              onSelect={() => apply({ ...filters, autoPlan: 'NEEDS_REVIEW', page: 1 })}
+              state="BEFORE_PLAN"
+              label={countLabel(allCount.data, t.counts.all, t.counts.allName)}
+              selected={filters.state === 'ALL'}
+              onSelect={() => apply({ ...filters, state: 'ALL', page: 1 })}
             />
             <CountChip
-              state="DONE"
-              label={t.counts.done(doneCount.data ?? 0)}
-              selected={filters.autoPlan === 'DONE'}
-              onSelect={() => apply({ ...filters, autoPlan: 'DONE', page: 1 })}
+              state="ACTION_REQUIRED"
+              label={countLabel(
+                actionRequiredCount.data,
+                t.counts.actionRequired,
+                t.status.ACTION_REQUIRED,
+              )}
+              selected={filters.state === 'ACTION_REQUIRED'}
+              onSelect={() => apply({ ...filters, state: 'ACTION_REQUIRED', page: 1 })}
             />
             <CountChip
-              state="NOT_PLANNED"
-              label={t.counts.all(allCount.data ?? 0)}
-              selected={filters.autoPlan === 'ALL'}
-              onSelect={() => apply({ ...filters, autoPlan: 'ALL', page: 1 })}
+              state="RELEASE_PENDING"
+              label={countLabel(
+                releasePendingCount.data,
+                t.counts.releasePending,
+                t.status.RELEASE_PENDING,
+              )}
+              selected={filters.state === 'RELEASE_PENDING'}
+              onSelect={() => apply({ ...filters, state: 'RELEASE_PENDING', page: 1 })}
             />
           </span>
         }
@@ -305,12 +322,10 @@ export const ProductionOrderScreen = () => {
           }}
         />
       )}
-      {backlog.isError && <AlertBanner variant="info">{t.list.readinessFailed}</AlertBanner>}
-      {backlog.data?.complete === false && (
-        <AlertBanner variant="info">{t.list.readinessTruncated}</AlertBanner>
-      )}
       <section className="pane erp-wo-list-pane" aria-label={t.list.pane}>
-        {list.isError ? (
+        {list.isError && isForbidden(list.error) ? (
+          <ForbiddenNotice menuPath={permissionMenuPath} />
+        ) : list.isError ? (
           <AlertBanner
             variant="error"
             title={t.list.loadFailed}
@@ -344,19 +359,43 @@ export const ProductionOrderScreen = () => {
               checkedIds={checked}
               onCheckedChange={setChecked}
               empty={
-                <EmptyState
-                  size="sm"
-                  title={
-                    filters.autoPlan === 'NEEDS_REVIEW'
-                      ? t.list.emptyNeedsReviewTitle
-                      : t.list.emptyTitle
-                  }
-                  description={
-                    filters.autoPlan === 'NEEDS_REVIEW'
-                      ? t.list.emptyNeedsReviewDescription
-                      : t.list.emptyDescription
-                  }
-                />
+                hasSearchConditions(filters) ? (
+                  /* 조회 조건 때문에 비었으면 조건을 지우는 길을 둔다. 고른 칩(처리 상태)과 쪽 크기는 그대로다. */
+                  <EmptyState
+                    size="sm"
+                    title={t.list.emptyTitle}
+                    description={t.list.emptyDescription}
+                    action={
+                      <Button
+                        size="sm"
+                        variant="outlined"
+                        onClick={() =>
+                          apply({
+                            ...DEFAULT_WORKLIST_FILTERS,
+                            state: filters.state,
+                            size: filters.size,
+                          })
+                        }
+                      >
+                        {messages.common.reset}
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    size="sm"
+                    title={
+                      filters.state === 'ACTION_REQUIRED'
+                        ? t.list.emptyActionRequiredTitle
+                        : t.list.emptyTitle
+                    }
+                    description={
+                      filters.state === 'ACTION_REQUIRED'
+                        ? t.list.emptyActionRequiredDescription
+                        : undefined
+                    }
+                  />
+                )
               }
             />
             {resultFilter === null && (

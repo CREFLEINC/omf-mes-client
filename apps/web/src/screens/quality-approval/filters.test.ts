@@ -43,9 +43,11 @@ describe('quality approval URL filters', () => {
 
   it('적용·범위·쪽 변경은 소유하지 않은 URL을 보존하고 선택을 비운다', () => {
     const current = new URLSearchParams('view=compact&page=4&approvalRequestId=31');
-    const next = toAppliedSearchParams(current, { ...EMPTY_FILTERS, q: '  SYNTH-REQ  ' }, false, 1);
+    const next = toAppliedSearchParams(current, { ...EMPTY_FILTERS, q: '  SYNTH-REQ  ' }, true, 1);
 
-    expect(next.toString()).toBe('view=compact&q=SYNTH-REQ&pd=0');
+    /* 기본(전체 조회 · #186)과 다른 「결재 대기만」만 `pd=1` 로 적는다. */
+    expect(next.toString()).toBe('view=compact&q=SYNTH-REQ&pd=1');
+    expect(toAppliedSearchParams(current, EMPTY_FILTERS, false, 1).toString()).toBe('view=compact');
     expect(current.toString()).toBe('view=compact&page=4&approvalRequestId=31');
   });
 
@@ -61,7 +63,11 @@ describe('quality approval URL filters', () => {
 
 describe('quality approval request query', () => {
   it('고정 축과 적용된 조건만 보내며 빈 승인 유형은 보내지 않는다', () => {
+    /* 기본은 전체 조회다(#186) — 「결재 대기만」을 싣지 않는다. */
     expect(toRequestListQuery(EMPTY_FILTERS, PENDING_ONLY_DEFAULT, 1)).toEqual({
+      assignedToMe: true,
+    });
+    expect(toRequestListQuery(EMPTY_FILTERS, true, 1)).toEqual({
       assignedToMe: true,
       pendingOnly: true,
     });
@@ -90,8 +96,36 @@ describe('quality approval request query', () => {
   });
 
   it('확인칸의 모르는 URL 값은 안전한 기본값으로 읽는다', () => {
-    expect(readPendingOnly(new URLSearchParams())).toBe(true);
+    expect(readPendingOnly(new URLSearchParams())).toBe(false);
+    expect(readPendingOnly(new URLSearchParams('pd=1'))).toBe(true);
+    /* 기본이 켜짐이던 때의 옛 주소(`pd=0`)와 모르는 값은 기본(전체)이다. */
     expect(readPendingOnly(new URLSearchParams('pd=0'))).toBe(false);
-    expect(readPendingOnly(new URLSearchParams('pd=maybe'))).toBe(true);
+    expect(readPendingOnly(new URLSearchParams('pd=maybe'))).toBe(false);
+  });
+});
+
+/* 「내 차례」(#193) — 켠 것만 주소 `mt=1` 로 적고, 서버에는 계약의 `myTurnOnly` 로 싣는다. */
+describe('quality approval my-turn filter', () => {
+  it('켠 것만 주소와 요청에 싣고, 끄면 둘 다에서 빠진다', () => {
+    const on = { ...EMPTY_FILTERS, myTurnOnly: true };
+
+    const params = toAppliedSearchParams(new URLSearchParams(), on, PENDING_ONLY_DEFAULT, 1);
+    expect(params.get('mt')).toBe('1');
+    expect(readFilters(params).myTurnOnly).toBe(true);
+    expect(toRequestListQuery(on, PENDING_ONLY_DEFAULT, 1)).toEqual({
+      assignedToMe: true,
+      myTurnOnly: true,
+    });
+
+    const off = toAppliedSearchParams(params, EMPTY_FILTERS, PENDING_ONLY_DEFAULT, 1);
+    expect(off.has('mt')).toBe(false);
+    expect(readFilters(off).myTurnOnly).toBe(false);
+    expect(toRequestListQuery(EMPTY_FILTERS, PENDING_ONLY_DEFAULT, 1)).not.toHaveProperty(
+      'myTurnOnly',
+    );
+  });
+
+  it('모르는 주소 값은 꺼짐으로 읽는다', () => {
+    expect(readFilters(new URLSearchParams('mt=yes')).myTurnOnly).toBe(false);
   });
 });

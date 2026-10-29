@@ -1,7 +1,8 @@
-import { Button, DatePicker, Select, TextField } from '@crefle/web-ui';
+import { Button, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 
+import { Select } from '../../patterns/select';
 import type { HistoryFilters } from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { validateHistoryPeriod, type HistoryPeriodError } from './period';

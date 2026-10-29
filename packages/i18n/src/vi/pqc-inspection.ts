@@ -22,6 +22,7 @@ export const pqcInspection: Translated<typeof ko.pqcInspection> = {
     },
     planLabel: (code: string, version: number): string => `Tiêu chuẩn ${code} v${String(version)}`,
     sample: (ratio: number): string => `Mẫu ${String(ratio)}%`,
+    sampleQty: (qty: number): string => `Mẫu ${String(qty)} cái`,
   },
   coverage: {
     heading: 'Khoảng sản xuất áp dụng',
@@ -69,8 +70,8 @@ export const pqcInspection: Translated<typeof ko.pqcInspection> = {
     judgmentUnknown: (code: string): string =>
       `Đánh giá đã lưu (${code}) không có trong danh sách.`,
     confirm: 'Xác nhận kiểm tra',
-    confirmBlockedByTotals: 'Tổng số lượng phải khớp với số lượng kiểm tra mới xác nhận được.',
-    confirmBlockedByJudgment: 'Phải chọn đánh giá tổng hợp mới xác nhận được.',
+    confirmBlockedByTotals: 'Tổng số lượng phải khớp với số lượng kiểm tra.',
+    confirmBlockedByJudgment: 'Vui lòng chọn đánh giá cuối cùng.',
     confirmBlockedByItems: 'Phải đánh giá hết hạng mục kiểm tra mới xác nhận được.',
     confirmBlockedByTerminal:
       'Máy trạm này không có quyền nhập kiểm tra ở công đoạn này. Hãy cấp quyền trong cài đặt máy trạm.',

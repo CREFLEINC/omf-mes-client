@@ -356,6 +356,20 @@ describe('RequestListPane — 고르기', () => {
     expect(onSelect).toHaveBeenCalledWith(9001);
   });
 
+  it('줄의 다른 칸을 눌러도 그 요청을 고른다(#186) — 머리칸을 누르면 고르지 않는다', async () => {
+    const { onSelect, user } = renderPane();
+    const row = screen.getByRole('button', { name: /SYNTH-REQ-001/ }).closest('tr');
+    const otherCell = row?.querySelectorAll('td')[2];
+    if (!(otherCell instanceof HTMLElement)) throw new Error('다른 칸이 없다');
+
+    await user.click(screen.getAllByRole('columnheader')[0]!);
+    expect(onSelect).not.toHaveBeenCalled();
+
+    await user.click(otherCell);
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(9001);
+  });
+
   it('고르기 버튼의 이름이 행마다 갈린다 — 계약이 요청번호를 UNIQUE로 두었다', () => {
     renderPane();
 

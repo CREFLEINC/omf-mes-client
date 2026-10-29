@@ -1,15 +1,8 @@
-import {
-  Chip,
-  type Column,
-  EmptyState,
-  IconButton,
-  Select,
-  Table,
-  TextField,
-} from '@crefle/web-ui';
+import { Chip, type Column, EmptyState, IconButton, Table, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
+import { Select } from '../../patterns/select';
 import { isOutsideBom } from './bom-origin';
 import type { ItemLookupResult, LookupResult } from './lookups';
 import type { MaterialIssueLineDraft, SelectOption } from './types';

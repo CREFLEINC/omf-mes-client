@@ -1,17 +1,13 @@
-import {
-  AlertBanner,
-  Card,
-  Chip,
-  type Column,
-  EmptyState,
-  SkeletonText,
-  Table,
-} from '@crefle/web-ui';
+import { AlertBanner, Chip, type Column, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
+import { BoardTable } from '../../patterns/board-table';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { OneLine } from '../../patterns/po-board';
 
-import type { PurchaseOrderDetail, PurchaseOrderLine } from './types';
+import { formatCustomsClearance } from './customs-clearance';
+import { isForeignOrder, type PurchaseOrderDetail, type PurchaseOrderLine } from './types';
 
 const t = messages.erpPurchaseOrder;
 
@@ -41,6 +37,8 @@ export interface ErpPurchaseOrderDetailPaneProps {
   orderTypeNameOf: (code: string | null | undefined) => string;
   purchaseGroupNameOf: (code: string | null | undefined) => string;
   storageLocationNameOf: (code: string | null | undefined) => string;
+  /** 라인 표 머리 오른쪽 — 외자 발주의 [통관번호 받아오기]. 세울지는 화면이 정한다(권한 · 발주 유형). */
+  linesAction?: ReactNode;
 }
 
 /** 라인 취소 표시 — 취소 표지와 ERP 가 취소를 보낸 시각(공장 시각). 취소되지 않았으면 「-」 */
@@ -68,44 +66,36 @@ export const ErpPurchaseOrderDetailPane = ({
   orderTypeNameOf,
   purchaseGroupNameOf,
   storageLocationNameOf,
+  linesAction = null,
 }: ErpPurchaseOrderDetailPaneProps) => {
   if (state.kind === 'idle') {
     return (
-      <section className="pane" aria-label={t.panes.detail}>
-        <h2>{t.panes.detail}</h2>
-        <EmptyState
-          size="sm"
-          title={t.empty.notSelectedTitle}
-          description={t.empty.notSelectedDescription}
-        />
-      </section>
+      <>
+        <h2 className="pane-title">{t.panes.detail}</h2>
+        <EmptyState size="sm" title={t.empty.notSelectedTitle} />
+      </>
     );
   }
 
   if (state.kind === 'loading') {
     return (
-      <section className="pane" aria-label={t.panes.detail}>
-        <div role="status" aria-label={t.loading}>
-          <SkeletonText lines={4} />
-        </div>
-      </section>
+      <div role="status" aria-label={t.loading}>
+        <SkeletonText lines={4} />
+      </div>
     );
   }
 
   if (state.kind === 'failed') {
     return (
-      <section className="pane" aria-label={t.panes.detail}>
-        <AlertBanner variant="error" title={t.detailLoadFailedTitle}>
-          {t.loadFailedDescription}
-        </AlertBanner>
-      </section>
+      <AlertBanner variant="error" title={t.detailLoadFailedTitle}>
+        {t.loadFailedDescription}
+      </AlertBanner>
     );
   }
 
   const { purchaseOrder: header, lines } = state.data;
   const fields = [
     { key: 'no', label: t.fields.purchaseOrderNo, value: header.purchaseOrderNo },
-    { key: 'erp', label: t.fields.erpPurchaseOrderNo, value: displayOr(header.erpPurchaseOrderNo) },
     { key: 'supplier', label: t.fields.supplier, value: supplierNameOf(header.supplierId) },
     { key: 'plant', label: t.fields.plant, value: plantNameOf(header.plantId) },
     { key: 'orderDate', label: t.fields.orderDate, value: header.orderDate },
@@ -131,81 +121,103 @@ export const ErpPurchaseOrderDetailPane = ({
 
   /* 잔량은 서버가 내리지 않는다 — 발주에서 입하를 뺀 값을 표시로만 보인다(0 아래로 내리지 않는다). */
   const columns: Column<PurchaseOrderLine>[] = [
-    { key: 'lineNo', header: t.fields.lineNo, align: 'end' },
-    { key: 'itemId', header: t.fields.item, render: (row) => itemNameOf(row.itemId) },
+    { key: 'lineNo', header: t.fields.lineNo, width: '56px', align: 'end' },
+    {
+      key: 'itemId',
+      header: t.fields.item,
+      render: (row) => <OneLine text={itemNameOf(row.itemId)} />,
+    },
     {
       key: 'orderedQty',
       header: t.fields.orderedQty,
+      width: '88px',
       align: 'end',
       render: (row) => formatQty(row.orderedQty),
     },
     {
       key: 'receivedQty',
       header: t.fields.receivedQty,
+      width: '88px',
       align: 'end',
       render: (row) => formatQty(row.receivedQty),
     },
     {
       key: 'remainingQty',
       header: t.fields.remainingQty,
+      width: '88px',
       align: 'end',
       render: (row) => formatQty(Math.max(0, row.orderedQty - row.receivedQty)),
     },
-    { key: 'uomId', header: t.fields.uom, render: (row) => uomNameOf(row.uomId) },
+    { key: 'uomId', header: t.fields.uom, width: '64px', render: (row) => uomNameOf(row.uomId) },
     {
       key: 'tolerance',
       header: t.fields.tolerance,
+      width: '128px',
       align: 'end',
       render: (row) => `${formatQty(row.toleranceOverQty)} / ${formatQty(row.toleranceUnderQty)}`,
     },
+    /* 통관번호 / 순번 — 외자 발주에만 있는 칸이라 그때만 세운다(omf-all-around#206). */
+    ...(isForeignOrder(header)
+      ? [
+          {
+            key: 'erpCustomsClearanceNo',
+            header: t.fields.customsClearance,
+            width: '152px',
+            render: (row: PurchaseOrderLine) => (
+              <OneLine
+                text={
+                  formatCustomsClearance(row.erpCustomsClearanceNo, row.erpCustomsClearanceSeq) ??
+                  t.values.missing
+                }
+              />
+            ),
+          },
+        ]
+      : []),
     {
       key: 'erpStorageLocationCode',
       header: t.fields.storageLocation,
-      render: (row) => storageLocationNameOf(row.erpStorageLocationCode),
+      width: '104px',
+      render: (row) => <OneLine text={storageLocationNameOf(row.erpStorageLocationCode)} />,
     },
     {
       key: 'cancelledAt',
       header: t.fields.cancelled,
+      width: '184px',
       render: (row) => renderCancelled(row.cancelledAt),
     },
   ];
 
+  /*
+   * 화면 틀(`BoardFrame`)의 오른쪽 구획 내용 — 머리 사실 칸(입고 관리 라인 머리와 같은 모양) 다음 라인 표. 구획이 통째로
+   * 스크롤한다.
+   */
   return (
     <>
-      <section className="pane" aria-label={t.panes.detail}>
-        <h2>{t.panes.detail}</h2>
-        <Card bordered>
-          <Card.Body>
-            <dl>
-              {fields.map((field) => (
-                <div key={field.key}>
-                  <dt className="field-label">{field.label}</dt>
-                  <dd>{field.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </Card.Body>
-        </Card>
-      </section>
-      <section className="pane" aria-label={t.panes.lines}>
-        <h2>{t.panes.lines}</h2>
-        <div className="wide-table">
-          <Table
-            caption={<span className="erp-data-table-caption">{t.panes.lines}</span>}
-            density="compact"
-            columns={columns}
-            rows={lines}
-            getRowId={(row) => String(row.purchaseOrderLineId)}
-            sort={null}
-            empty={
-              <EmptyState
-                size="sm"
-                title={t.empty.linesTitle}
-                description={t.empty.linesDescription}
-              />
-            }
-          />
+      <h2 className="pane-title">{t.panes.detail}</h2>
+      <dl className="po-board-order-facts">
+        {fields.map((field) => (
+          <div key={field.key}>
+            <dt>{field.label}</dt>
+            <dd>{field.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <section className="board-frame-sub" aria-label={t.panes.lines}>
+        <div className="erp-po-lines-head">
+          <h2 className="pane-title">{t.panes.lines}</h2>
+          {linesAction}
         </div>
+        <BoardTable
+          label={t.panes.lines}
+          widthKey="omf-mes:erp-purchase-order:columns:lines"
+          minWidth="60rem"
+          columns={columns}
+          rows={lines}
+          getRowId={(row) => String(row.purchaseOrderLineId)}
+          sort={null}
+          empty={<EmptyState size="sm" title={t.empty.linesTitle} />}
+        />
       </section>
     </>
   );

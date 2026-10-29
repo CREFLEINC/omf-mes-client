@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { confirmedRound, draftRound } from './fixtures';
@@ -57,10 +57,11 @@ describe('RoundHistory', () => {
     expect(screen.getByText(code)).toBeInTheDocument();
   });
 
-  it('누를 것을 두지 않는다 — 읽기 전용이다', () => {
+  it('줄에는 누를 것을 두지 않는다 — 읽기 전용이다(머리칸 정렬 단추만 있다 · #185)', () => {
     render(<RoundHistory rounds={[toInspectionResultRound(confirmedRound)]} uomCode={null} />);
 
-    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    const body = screen.getAllByRole('rowgroup')[1] as HTMLElement;
+    expect(within(body).queryAllByRole('button')).toHaveLength(0);
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
   });
 

@@ -17,6 +17,7 @@ import type { NotificationView } from './types';
  * | `LOT` | ⛔ 재고 현황은 **창고 번호가 함께 있어야** 선택을 읽는다. 알림은 그것을 주지 않는다 |  |
  * | `WORK_ORDER` | ⛔ 생산실행 화면이 아직 없다 |  |
  * | `NONCONFORMANCE` | ⛔ 품질 화면이 아직 없다 |  |
+ * | `INBOUND_RECEIPT` | `/logistics/iqc-inspection` — 인계 T10(피처 002, R-8). IQC 화면은 입하로 거르지 못해 **탭만 연다** | ✅ |
  *
  * 「계약 대응표에는 있는데 이 앱에 화면이 없다」는 스펙이 다루지 않은 제3의 상황이다.
  * A-10 규칙 2의 목적이 **「어디로 갈지 모르면 열지 않는다」**이므로 같은 처리를 적용한다 —
@@ -50,6 +51,7 @@ export interface TargetLink {
  */
 const DESTINATIONS: Record<string, (targetId: number) => string> = {
   APPROVAL_REQUEST: (targetId) => `/approval/inbox?rq=${String(targetId)}`,
+  INBOUND_RECEIPT: () => '/logistics/iqc-inspection',
 };
 
 /**

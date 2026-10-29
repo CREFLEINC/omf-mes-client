@@ -5,7 +5,10 @@ import type { Translated } from './translated';
 export const erpEmployee: Translated<typeof ko.erpEmployee> = {
   title: 'Tra cứu thông tin nhân viên (ERP)',
   breadcrumbRoot: 'Quản trị hệ thống',
-  readOnlyNote: 'Thông tin nhân viên nhận từ ERP. Không thể sửa trong MES.',
+  panes: {
+    filter: 'Điều kiện tra cứu',
+    list: 'Danh sách nhân viên',
+  },
   fields: {
     q: 'Mã NV·Họ tên',
     includeInactive: 'Bao gồm đã nghỉ việc',
@@ -13,19 +16,10 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
   table: {
     workerNo: 'Mã NV',
     workerName: 'Họ tên',
-    nameKo: 'Tên tiếng Hàn',
-    nameVi: 'Tên tiếng Việt',
     plantId: 'Nhà máy',
     departmentId: 'Bộ phận',
     statusCode: 'Trạng thái ERP',
     isActive: 'Đang làm việc',
-  },
-  detail: {
-    label: 'Chi tiết nhân viên',
-    openAction: (workerNo: string): string => `Xem chi tiết ${workerNo}`,
-    businessUnitId: 'Đơn vị kinh doanh',
-    appUserId: 'Người dùng liên kết',
-    selectHint: 'Chọn một nhân viên trong danh sách để xem chi tiết.',
   },
   values: {
     empty: '—',
@@ -45,12 +39,9 @@ export const erpEmployee: Translated<typeof ko.erpEmployee> = {
   },
   loading: {
     list: 'Đang tải danh sách nhân viên',
-    detail: 'Đang tải chi tiết nhân viên',
   },
   empty: {
     noResultTitle: 'Không có nhân viên phù hợp',
-    noResultDescription: 'Hãy đổi từ khóa hoặc bật bao gồm đã nghỉ việc.',
     beyondLastTitle: 'Trang này không có nhân viên',
-    beyondLastDescription: 'Hãy quay về trang đầu.',
   },
 };

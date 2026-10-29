@@ -141,6 +141,9 @@ export const workStart = {
   actions: {
     start: '작업 시작',
     resume: '재개',
+    restart: '작업 다시 시작',
+    /** 중단 W/O 의 열린 세션을 아직 모른다 — 재개인지 다시 시작인지 정하기 전이다. */
+    checking: '확인 중',
     starting: '시작 중',
     /** 이미 진행 중인 작업으로 자리를 옮긴다(쓰기 없음). */
     continueToSession: '작업 이어하기',
@@ -154,6 +157,7 @@ export const workStart = {
     ready: '작업을 시작할 수 있습니다',
     resume: '중단한 작업을 재개할 수 있습니다',
     continue: '진행 중인 작업을 이어서 할 수 있습니다',
+    restart: '중단한 작업을 새 작업으로 다시 시작할 수 있습니다',
   },
 
   /** 시작과 재개를 막는 사유. 무엇이 막혔는지와 할 일을 함께 쓴다. */
@@ -198,6 +202,7 @@ export const workStart = {
   result: {
     started: (workOrderNo: string): string => `${workOrderNo} 작업을 시작했습니다.`,
     resumed: (workOrderNo: string): string => `${workOrderNo} 작업을 재개했습니다.`,
+    restarted: (workOrderNo: string): string => `${workOrderNo} 작업을 다시 시작했습니다.`,
     /** 서버가 충돌로 거절했다. 원인을 지어내지 않는다. 화면이 목록을 스스로 다시 부른다. */
     conflict: '작업지시 상태가 바뀌었습니다. 목록을 새로 불러옵니다.',
     /** 점검 판정은 서버에 남았는데 세션이 열리지 않은 경우. 말없이 끝내지 않는다. */

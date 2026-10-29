@@ -903,7 +903,7 @@ describe('ReworkResultRegisterScreen — 서버 거부', () => {
 
   it('단말 권한으로 서버가 거부하면(401) 서버 문구를 그대로 보인다', async () => {
     const message =
-      '이 단말에는 이 W/O 공정의 실적 입력 권한이 없습니다. 관리웹 단말 관리에서 해당 공정의 「실적 입력」을 켜세요.';
+      '이 단말에는 이 W/O 공정의 실적 입력 권한이 없습니다. 관리웹 시스템 관리 › 단말기-공정 매핑에서 해당 공정의 「실적 입력」을 켜세요.';
     const user = userEvent.setup();
     renderWithProviders(
       <PopIdentityProvider

@@ -1,9 +1,11 @@
-import { AlertBanner, Button, Card, Chip, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
@@ -334,7 +336,6 @@ export const WipHandoverScreen = () => {
           </section>
 
           <section className="handover__section">
-            {worker === null ? <p className="handover__note">{t.noWorker}</p> : null}
             {confirm.isError ? (
               <AlertBanner variant="error" title={t.failed.title}>
                 <Button variant="text" onClick={submit}>

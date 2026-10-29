@@ -1,9 +1,10 @@
-import { Button, Dialog, Icon, Select, TextField } from '@crefle/web-ui';
+import { Button, Dialog, Icon, TextField } from '@crefle/web-ui';
 import type { InspectionLevelCode, ItemInspectionLevel } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId, useState } from 'react';
 
 import { ItemPickerDialog, type ItemRow } from '../../patterns/item-picker';
+import { Select } from '../../patterns/select';
 
 const t = messages.inspectionLevel;
 

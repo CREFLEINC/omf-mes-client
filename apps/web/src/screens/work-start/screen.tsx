@@ -7,6 +7,7 @@ import { useApiClient } from '../../patterns/api-context';
 
 import { PopHeader } from '../../patterns/pop-header';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
+import { serverReasonOf } from '../../patterns/server-reason';
 import { PrecheckGate } from '../work-precheck-gate/gate';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 import { ActionBar } from './action-bar';
@@ -48,8 +49,8 @@ import { verifyWorker } from './worker-verify';
  * 유형: T-P-S 단독형의 틀(머리줄, 본문 좌우 2단, 하단 동작 바). W/O 를 정하는 앞 단계 화면이라
  *       POP 질문표가 유형을 정하지 않는다. 왼쪽 작업지시 목록, 오른쪽 작업 확인(작업자, 선택한
  *       작업지시, 다른 작업), 하단 바 「남은 일」과 주 동작 하나.
- * 이탈: C-3 주 동작 이름이 W/O 상태에 따라 [작업 시작], [재개], [작업 이어하기]로 바뀐다(경로가
- *       다른 세 동작이라 한 이름으로 둘 수 없다). C-11 머리줄을 화면이 조립한다(셸 공용 머리줄은
+ * 이탈: C-3 주 동작 이름이 W/O 상태에 따라 [작업 시작], [재개], [작업 다시 시작], [작업 이어하기]로
+ *       바뀐다(경로가 다른 네 동작이라 한 이름으로 둘 수 없다). C-11 머리줄을 화면이 조립한다(셸 공용 머리줄은
  *       POP 화면 전체 작업, omf-all-around#169). C-10 품목명과 금형은 계약에 없어 보이지 않는다
  *       (C-15 계약 대기).
  *
@@ -193,7 +194,7 @@ export const WorkStartScreen = () => {
    * 세션을 열게 된다.
    */
   const selected = (rows ?? []).find((row) => row.workOrderId === selectedId) ?? null;
-  const isResume = selected !== null && isHeld(selected);
+  const isHeldSelected = selected !== null && isHeld(selected);
 
   /*
    * ⭐ 시작할 수 있는지는 «고른 W/O 의 공정»으로 판정한다 — 단말에 공정이 여럿이어도 W/O 가 어느
@@ -209,6 +210,20 @@ export const WorkStartScreen = () => {
    *    「충돌」로만 적어 두어, 409 를 「진행 중」으로 읽으면 뜻을 지어내는 것이 된다.
    */
   const openSession = useOpenSession(selected?.workOrderId ?? null, selected !== null);
+
+  /*
+   * ⭐ 중단 W/O 라도 열린 세션이 없으면 이어 붙일 세션이 없다 — 작업 시작과 같은 길(점검 게이트를
+   *    지나 새 세션)로 다시 시작하고, W/O 재개는 서버가 같은 요청 안에서 한다.
+   * ⚠ 조회가 끝나기 전(`undefined`)에는 다시 시작으로 읽지 않는다 — 열린 세션이 있을 수 있다.
+   */
+  const isRestart = isHeldSelected && openSession.data === null;
+  const isResume = isHeldSelected && openSession.data != null;
+
+  /*
+   * ⭐ 오류는 «지금 모드»가 아니라 «그 오류를 낸 쓰기»에 묶는다 — 다시 시작이 409 로 거절되면
+   *    열린 세션을 다시 읽어 모드가 재개로 바뀌는데, 그때 모드를 따라가면 거절 문구가 사라진다.
+   */
+  const [writeMode, setWriteMode] = useState<'start' | 'restart' | 'resume' | null>(null);
 
   /*
    * 함께 일하는 작업자. 열린 세션을 고른 동안은 그 세션의 지금 참여자를 넣고 빼고(즉시 반영),
@@ -353,6 +368,8 @@ export const WorkStartScreen = () => {
     scopeCheckRef.current = false;
     if (selectedId !== null && !rows.some((row) => row.workOrderId === selectedId)) {
       submitAtRef.current = null;
+      /* 놓은 W/O 의 거절 문구가 남지 않게 한다. */
+      setWriteMode(null);
       setSelectedId(null);
     }
   }, [rows, selectedId]);
@@ -399,7 +416,7 @@ export const WorkStartScreen = () => {
     onSuccess: () => {
       submitAtRef.current = null;
       setPendingCrew([]);
-      setOutcome(t.result.started(selected?.workOrderNo ?? ''));
+      setOutcome((isRestart ? t.result.restarted : t.result.started)(selected?.workOrderNo ?? ''));
       setSelectedId(null);
 
       /*
@@ -472,10 +489,7 @@ export const WorkStartScreen = () => {
     if (openSession.isError) return other(t.resume.sessionLookupFailed);
     if (openSession.isPending) return other(t.resume.checking);
 
-    if (isResume) {
-      /* 열린 세션이 없으면 재개하지 않는다. 새로 열면 중단 구간이 사라진다. */
-      if (openSession.data === null) return other(t.resume.sessionNotFound);
-    } else if (openSession.data !== null) {
+    if (!isHeldSelected && openSession.data !== null) {
       /*
        * 세션이 이미 열려 있으면 새로 열지 않는다(§6). 이어갈 길은 하단 바 주 동작
        * [작업 이어하기]가 준다(#1148).
@@ -505,7 +519,21 @@ export const WorkStartScreen = () => {
 
   const retryLabel = gate.verdict === 'unavailable' ? t.blocked.retry : null;
 
-  const writeError = isResume ? resumeWork.error : startWork.error;
+  const actionMode = (): 'start' | 'resume' | 'restart' | 'checking' => {
+    if (isResume) return 'resume';
+    if (isRestart) return 'restart';
+    if (!isHeldSelected) return 'start';
+    if (openSession.isPending) return 'checking';
+
+    /*
+     * 조회가 실패한 중단 W/O 는 재개 이름으로 잠가 둔다 — 띠가 「세션을 확인하지 못했다」고
+     * 말하고, 다시 시작으로 이름 붙이면 확인 못 한 것을 새 세션으로 연다고 읽힌다.
+     */
+    return 'resume';
+  };
+
+  const writeError =
+    writeMode === null ? null : writeMode === 'resume' ? resumeWork.error : startWork.error;
 
   /**
    * 서버가 「지금 보고 있는 것이 사실과 다르다」고 답했는가.
@@ -556,6 +584,8 @@ export const WorkStartScreen = () => {
 
   const submit = () => {
     if (selected === null || confirmedNo === null) return;
+    /* 열린 세션을 모르면 재개할지 다시 시작할지 정할 수 없다 — 막힘 사유가 이미 선다. */
+    if (isHeldSelected && !isResume && !isRestart) return;
 
     setOutcome(null);
     setChainError(null);
@@ -563,6 +593,8 @@ export const WorkStartScreen = () => {
     /* 붙들고 있던 시각이 있으면 그대로 쓴다 — 같은 시도의 재시도이기 때문이다. */
     submitAtRef.current ??= terminalNow(new Date());
     const at = submitAtRef.current;
+
+    setWriteMode(isResume ? 'resume' : isRestart ? 'restart' : 'start');
 
     if (isResume) {
       resumeWork.write(toResumeBody(at));
@@ -609,6 +641,13 @@ export const WorkStartScreen = () => {
     writeSession(target, attempt?.at ?? submitAtRef.current ?? terminalNow(new Date()), override);
   };
 
+  /** 지난 쓰기의 오류를 버린다 — 다른 대상을 보는데 앞 대상의 거절 문구가 남지 않게 한다. */
+  const forgetWrite = () => {
+    setWriteMode(null);
+    startWork.reset();
+    resumeWork.reset();
+  };
+
   /**
    * 고른 것을 «비운다» — 시각·판정·결과 문구까지 함께 버린다.
    *
@@ -620,6 +659,7 @@ export const WorkStartScreen = () => {
     setAttempt(null);
     setChainError(null);
     setOutcome(null);
+    forgetWrite();
     setSelectedId(null);
   };
 
@@ -641,6 +681,7 @@ export const WorkStartScreen = () => {
     setAttempt(null);
     setChainError(null);
     setOutcome(null);
+    forgetWrite();
     setSelectedId(workOrder.workOrderId);
 
     /*
@@ -668,7 +709,13 @@ export const WorkStartScreen = () => {
       ? block
       : closeNotice !== null
         ? { text: closeNotice }
-        : (block ?? { text: isResume ? t.remaining.resume : t.remaining.ready });
+        : (block ?? {
+            text: isResume
+              ? t.remaining.resume
+              : isRestart
+                ? t.remaining.restart
+                : t.remaining.ready,
+          });
 
   /* 설비 없는 단말은 이 시작이 쓸 W/O 의 설비를 보인다. 그것도 없으면 「설비 미지정」. */
   const selectionEquipmentText =
@@ -709,6 +756,7 @@ export const WorkStartScreen = () => {
             /* 쪽을 넘기면 고른 것을 놓는다. 다른 쪽의 지시를 고른 채로 두면 화면과 어긋난다. */
             setSelectedId(null);
             submitAtRef.current = null;
+            forgetWrite();
             setListPage(page);
           }}
           scope={scope}
@@ -759,10 +807,17 @@ export const WorkStartScreen = () => {
             <div className="banner-slot">
               <AlertBanner variant="error">
                 {isConflict(writeError)
-                  ? t.result.conflict
-                  : isResume
-                    ? t.result.resumeFailed
-                    : t.result.startFailed}
+                  ? /* 다시 시작이 충돌하는 까닭(이미 열린 세션)과 조치는 서버가 안다. */
+                    writeMode === 'restart'
+                    ? (serverReasonOf(writeError) ?? t.result.conflict)
+                    : t.result.conflict
+                  : /* 시작할 수 없는 상태의 거부는 까닭과 조치를 서버가 적어 보낸다. */
+                    [
+                      writeMode === 'resume' ? t.result.resumeFailed : t.result.startFailed,
+                      serverReasonOf(writeError),
+                    ]
+                      .filter((line) => line !== null)
+                      .join(' ')}
               </AlertBanner>
             </div>
           )}
@@ -808,7 +863,7 @@ export const WorkStartScreen = () => {
       </div>
 
       <ActionBar
-        mode={isContinue ? 'continue' : isResume ? 'resume' : 'start'}
+        mode={isContinue ? 'continue' : actionMode()}
         remaining={remaining.text}
         isBlocked={block !== null && !isContinue}
         /*

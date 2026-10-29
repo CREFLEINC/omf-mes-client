@@ -17,6 +17,8 @@ export const dispatchHistory: Translated<typeof ko.dispatchHistory> = {
     deliveryStatus: 'Trạng thái',
     all: 'Tất cả',
     search: 'Tra cứu',
+    eventGroup: 'Sự kiện',
+    handoverGroup: 'Công việc bàn giao',
   },
   results: { NOTIFIED: 'Đã thông báo', SKIPPED: 'Bỏ qua' },
   skipReasons: {
@@ -61,7 +63,6 @@ export const dispatchHistory: Translated<typeof ko.dispatchHistory> = {
   state: {
     empty: 'Không có thông báo khớp điều kiện',
     deliveriesEmpty: 'Không có lượt gửi Zalo',
-    selectHint: 'Chọn một dòng để xem chi tiết gửi Zalo của sự kiện đó.',
     pageOf: (page: number, totalPages: number): string => `${String(page)} / ${String(totalPages)}`,
   },
   errors: {

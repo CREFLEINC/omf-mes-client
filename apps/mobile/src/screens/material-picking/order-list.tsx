@@ -1,7 +1,8 @@
-import { AlertBanner, Card } from '@crefle/web-ui';
+import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { UseQueryResult } from '@tanstack/react-query';
 
+import { Card } from '../../patterns/card';
 import { displayNameOf, type CodeValue } from '../../patterns/code-values';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';

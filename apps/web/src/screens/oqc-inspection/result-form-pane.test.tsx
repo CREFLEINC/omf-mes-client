@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, within } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -68,7 +68,6 @@ describe('ResultFormPane — 판정 폼', () => {
     renderPane();
 
     expect(screen.getByLabelText(t.fields.accepted)).toHaveValue('');
-    expect(screen.getByText(t.notStarted)).toBeInTheDocument();
   });
 
   it('검사성적서 발행 자리를 감추지 않고 비활성 + 사유로 세운다', () => {
@@ -100,6 +99,13 @@ describe('ResultFormPane — 막힌 사유 네 갈래', () => {
     expect(screen.getByText(t.judgmentUnavailable)).toBeInTheDocument();
     expect(screen.getByText(t.blockedByJudgmentOptions)).toBeInTheDocument();
     expect(screen.queryByText(t.blockedByJudgment)).not.toBeInTheDocument();
+  });
+
+  it('입력으로 풀 수 없는 막힘이면 수량 칸도 잠근다(#135)', () => {
+    renderPane({ draft: MATCHING, judgmentOptions: [], isInputLocked: true });
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.rejected)).toBeDisabled();
   });
 
   it('확정된 회차는 칸이 잠기고 재검사만 열린다', () => {
@@ -204,25 +210,22 @@ describe('ResultFormPane — 서버가 되돌린 것', () => {
 });
 
 describe('ResultFormPane — 전이 경고', () => {
-  it('네 규칙을 담고, 아는 판정에는 방향을 덧붙인다', () => {
+  it('판정 확정 안내 — 되돌릴 수 없음 · 아는 판정의 방향, 수량·고른 판정은 되풀이하지 않는다(#136)', () => {
     renderPane({ draft: MATCHING, judgment: 'ACCEPTED' });
 
-    const banner = screen.getByRole('alert');
+    const guide = screen.getByRole('region', { name: transition.guide.title });
 
-    expect(within(banner).getByText(transition.quantities('480', '15', '5'))).toBeInTheDocument();
-    expect(within(banner).getByText(transition.directionRelease)).toBeInTheDocument();
-    expect(within(banner).getByText(transition.pickingImpact)).toBeInTheDocument();
-    expect(within(banner).getByText(transition.pickedNotReturned)).toBeInTheDocument();
-    expect(within(banner).getByText(transition.noAmendment)).toBeInTheDocument();
-    expect(within(banner).getByText(transition.dispositionPath)).toBeInTheDocument();
+    expect(within(guide).getByText(transition.guide.irreversible)).toBeInTheDocument();
+    expect(within(guide).getByText(transition.directionRelease)).toBeInTheDocument();
+    expect(within(guide).getByText(transition.pickingImpact)).toBeInTheDocument();
+    expect(within(guide).queryByText(/480/)).not.toBeInTheDocument();
   });
 
   it('대상 LOT 이 없는 의뢰(출하작업지시 OQC)는 집은 LOT 의 방향을 말한다 — 경고와 확인 창 모두(omf-all-around#119)', async () => {
     const user = userEvent.setup();
     renderPane({ draft: MATCHING, judgment: 'REJECTED', hasLot: false });
 
-    const banner = screen.getByRole('alert');
-    expect(within(banner).getByText(transition.title)).toBeInTheDocument();
+    const banner = screen.getByRole('region', { name: transition.guide.title });
     expect(within(banner).getByText(transition.pickedDirectionHold)).toBeInTheDocument();
     expect(within(banner).queryByText(transition.directionHold)).not.toBeInTheDocument();
     expect(within(banner).getByText(transition.pickingImpact)).toBeInTheDocument();
@@ -243,7 +246,20 @@ describe('ResultFormPane — 전이 경고', () => {
   it('셀 수 없으면 경고 자체를 그리지 않는다 — 숫자가 거짓이 되는 동안 권하지 않는다', () => {
     renderPane({ draft: { accepted: 'abc', rejected: '15', held: '5' }, judgment: 'ACCEPTED' });
 
-    expect(screen.queryByText(transition.title)).not.toBeInTheDocument();
+    expect(screen.queryByText(transition.guide.title)).not.toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 불합격 사유(선택 · #136)', () => {
+  it('불합격일 때만 칸이 서고, 비워도 저장을 막지 않는다', () => {
+    const onRejectionReasonChange = vi.fn();
+    renderPane({ draft: MATCHING, judgment: 'ACCEPTED', onRejectionReasonChange });
+    expect(screen.queryByLabelText(t.rejectionReason)).not.toBeInTheDocument();
+    cleanup();
+
+    renderPane({ draft: MATCHING, judgment: 'REJECTED', onRejectionReasonChange });
+    expect(screen.getByLabelText(t.rejectionReason)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.save })).toBeEnabled();
   });
 });
 

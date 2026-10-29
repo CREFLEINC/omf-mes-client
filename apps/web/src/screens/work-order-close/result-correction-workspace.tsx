@@ -3,7 +3,6 @@ import {
   Button,
   Dialog,
   EmptyState,
-  Select,
   SkeletonText,
   Table,
   TextArea,
@@ -15,6 +14,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { Select } from '../../patterns/select';
 import { WORK_ORDER_CLOSE_CODE_GROUPS, toWorkOrderCloseCodeLabel } from './code-options';
 import {
   isProductionResultApprovalRequired,

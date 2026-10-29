@@ -41,7 +41,7 @@ export const itemFixtures: Item[] = [
     itemName: '합성 품목 A',
     nameKo: '합성 품목 A 표시명',
     nameVi: 'Ten san pham tong hop A',
-    itemTypeCode: 'SYN-TYPE-A',
+    itemTypeCode: 'FINISHED',
     baseUomId: 7001,
     lotControlled: true,
     developmentItem: true,

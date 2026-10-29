@@ -25,6 +25,18 @@ export const oqcInspection = {
       targetQty: '검사수량',
       statusCode: '상태',
     },
+    /** OQC 목록의 「의뢰 일시」 열(#136). 종전 표(PQC 도 쓴다)의 `columns` 와 따로 둔다. */
+    requestedAtColumn: '의뢰 일시',
+    serialColumn: '시리얼 번호',
+    /** OQC 목록의 수량 열 — IQC 와 같은 띄어쓰기(#136). 종전 표(PQC)의 `columns.targetQty` 는 그대로 둔다. */
+    targetQtyColumn: '검사 수량',
+    serialUnregistered: '미등록',
+    /** 대상 유형 코드의 이름(omf-all-around#136) — POP OQC 와 같은 말. 모르는 코드는 코드 그대로다. */
+    targetTypes: {
+      SHIPMENT_REQUEST: '출하요청',
+    } as Readonly<Record<string, string>>,
+    /** 「출하요청 #12」 — 대상 유형 이름과 대상번호(#136). */
+    target: (typeLabel: string, targetId: number): string => `${typeLabel} #${String(targetId)}`,
     /**
      * 줄의 둘째 행에 서는 대상번호. **머리글이 가리지 못하는 자리라 값이 스스로 이름을 단다** —
      * 좁은 창에 열을 더 세우는 대신 스펙 §3 처럼 한 줄을 두 행으로 쓴다.
@@ -62,18 +74,15 @@ export const oqcInspection = {
    */
   filters: {
     item: '품목',
-    itemPlaceholder: '품목 번호',
-    keyword: '의뢰번호',
-    keywordPlaceholder: '의뢰번호로 검색',
+    itemPlaceholder: '품목을 입력하세요',
+    itemPick: '선택',
+    itemClear: '품목 조건 지우기',
+    keyword: '의뢰번호 검색',
+    keywordPlaceholder: '의뢰번호를 입력하세요',
     /** 기본으로 켜져 있다 — 이 화면에 들어오는 이유가 「아직 판정하지 않은 것」이기 때문이다. */
     pendingOnly: '대기·진행만 보기',
     apply: '조회',
     reset: '초기화',
-    /**
-     * 번호 칸에 번호가 아닌 값이 들어왔다. **조용히 무시하지 않는다** — 무시하면 사용자는
-     * 자기가 좁혔다고 믿는데 결과는 좁혀지지 않은 상태가 된다.
-     */
-    identifierInvalid: '번호는 1 이상의 정수로 넣어 주세요.',
   },
 
   /**
@@ -98,18 +107,29 @@ export const oqcInspection = {
      */
     paneLabel: '판정 대상',
     heading: '대상 정보',
-    /** 아무것도 고르지 않았다. 무엇을 해야 하는지 말한다. */
-    nothingSelected: '왼쪽 목록에서 판정할 의뢰를 고르세요.',
+    /** 상세 맨 위 — 목록으로 돌아간다. 저장하지 않은 입력이 있으면 한 번 묻는다(IQC #133 과 같다 · #136). */
+    backToList: '← 목록',
+    leaveUnsaved: '변경사항을 저장하지 않았습니다',
+    leaveUnsavedNote: '저장하지 않고 이동하면 입력한 내용이 사라집니다.',
+    keepEditing: '계속 작성',
+    leaveAnyway: '저장하지 않고 이동',
+    /** 쪽 머리 경로의 마지막 마디 — 상세(판정)를 열었을 때(#136). */
+    sectionTitle: '검사 기본 정보',
+    /** 검사 이력 접는 줄 오른쪽 끝의 건수(#136). */
+    historyCount: (count: number): string => `${String(count)}건`,
+    /** 검사 이력 탭 안 제목(#136). */
+    historyTitle: '검사 처리 이력',
+    /** 검사 유형 코드 옆에 붙이는 이름(#136) — 모르는 코드는 코드만 보인다. */
+    inspectionTypeNames: { OQC: '출하검사' } as Readonly<Record<string, string>>,
     loading: '의뢰를 불러오는 중입니다.',
     fields: {
       inspectionRequestNo: '의뢰번호',
       inspectionTypeCode: '검사 유형',
-      /** ⚠ 유형 코드 ↔ 대상 대응표가 아직 없다 — 코드를 그대로 보인다. */
-      targetTypeCode: '대상 유형',
-      targetId: '대상번호',
+      /** 대상 유형 · 대상번호를 한 칸으로(「출하요청 #12」 · #136). */
+      target: '대상',
       lotId: '대상 LOT',
       itemId: '품목',
-      targetQty: '검사수량',
+      targetQty: '총 검사 수량',
       /**
        * ⚠ 감추지 않는다. 검사 시점의 기준 버전이 그 검사에 **고정되고** 이후 기준이 바뀌어도
        * 이 검사는 당시 버전으로 남는다. 버전을 감추면 검사자도, 나중에 결과를 읽는 사람도
@@ -118,18 +138,16 @@ export const oqcInspection = {
       inspectionPlanVersionId: '적용 기준',
       requestedAt: '의뢰 일시',
     },
-    /** 기준 버전이 고정된다는 사실을 화면이 말한다 — 숫자만 보이면 왜 중요한지 알 수 없다. */
-    planVersionNote: '검사 시점의 기준 버전으로 고정됩니다.',
     /**
      * 기준이 등록되지 않은 상태에서도 검사를 진행할 수 있어 이 칸이 빌 수 있다.
      * **없는 값과 모르는 값은 다른 모양이어야 한다** — 그래서 일반 빈 값 표시와 다른 글자를 쓴다.
      */
     noPlanVersion: '기준 없음',
-    /**
-     * 단위는 번호로만 오고 표시명이 없다. **수량을 단위 없이 그린다** — 이름을 얻으려고 조회를
-     * 얹으면 그 조회의 실패가 이 창을 통째로 비게 만든다.
-     */
-    uomNote: '수량 단위는 아직 이름으로 표시하지 않습니다.',
+    /** OA 사업부 계정은 대상 LOT 대신 시리얼 번호를 본다(#136). */
+    serialNo: '시리얼 번호',
+    /** 시리얼·피킹 LOT 이 아직 없을 때 — 목록의 「미등록」과 같은 말. */
+    unregistered: '미등록',
+    more: (first: string, rest: number): string => `${first} 외 ${String(rest)}건`,
   },
 
   /** 우측 창 ② — 판정 입력. 합계 제약이 이 구획을 지배한다. */
@@ -138,8 +156,6 @@ export const oqcInspection = {
     round: (round: number): string => `${round}회차`,
     /** 아직 만들어지지 않은 회차다 — 번호를 화면이 세지 않으므로 번호 없이 말한다. */
     reinspectRound: '새 회차 (재검사)',
-    /** 회차가 하나도 없다 — 아직 아무도 판정하지 않은 의뢰다. */
-    notStarted: '아직 입력된 검사 결과가 없습니다.',
     loading: '검사 결과를 불러오는 중입니다.',
     /**
      * 이 회차는 이미 확정됐다. ⛔ **고칠 수 있는 것처럼 보이지 않게 한다** — 판정은 수정하지
@@ -153,24 +169,35 @@ export const oqcInspection = {
     draftElsewhere:
       '이 회차는 다른 곳에서 작성 중이라 이 화면에서는 고칠 수 없습니다. 다시 판정하려면 재검사 회차를 추가합니다.',
     fields: {
-      inspectedQty: '검사수량',
-      accepted: '합격수량',
-      rejected: '불합격수량',
-      held: '보류수량',
+      inspectedQty: '총 검사 수량',
+      accepted: '합격 수량',
+      rejected: '불합격 수량',
+      held: '보류 수량',
     },
     /** 실시간 합계. 어긋난 값을 감추지 않는다. */
-    sum: '합계',
-    remaining: '잔여',
-    matched: '검사수량과 일치합니다.',
-    /** 모자란다. 얼마나 모자란지 함께 말한다 — 사용자가 다시 세지 않게. */
-    short: (remaining: string): string => `검사수량보다 ${remaining} 모자랍니다.`,
+    sum: '입력 완료',
+    remaining: '미입력',
+    /** 합계가 검사 수량을 넘었을 때 오른쪽 상태(#136). */
+    overBy: (over: string): string => `${over} 초과`,
+    /** 입력 현황 막대의 접근 이름(#136). */
+    progressLabel: '검사 수량 대비 입력 합계',
+    /** 검사 수량 구획 · 판정 구획 제목(IQC #133 과 같은 말 · #136). */
+    sectionTitle: '검사 수량 입력',
+    /** 시리얼 판정 의뢰의 입력 탭 이름(#136). */
+    entryTabs: { lot: 'LOT별 검사', serial: '시리얼별 검사' },
+    judgmentSectionTitle: '판정',
+    /** 저장 단추 왼쪽 경고 — 저장이 곧 확정이라 되돌릴 수 없다(#136). */
+    saveNote: '판정 저장 후 수정이 불가합니다.',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
-    over: (over: string): string => `검사수량보다 ${over} 많습니다.`,
+    over: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
     quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
 
     /** 종합 판정. ⛔ 값 목록을 화면에 고정하지 않는다 — 공통코드 조회로 채운다. */
-    judgment: '종합 판정',
-    judgmentPlaceholder: '판정을 고르세요',
+    judgment: '최종 판정',
+    judgmentPlaceholder: '판정을 선택하세요',
+    /** 불합격 사유(선택 · #136) — 저장에는 비고로 실린다. */
+    rejectionReason: '불합격 사유 (선택)',
+    rejectionReasonPlaceholder: '불합격 사유를 입력하세요',
     /**
      * 코드값 시드가 아직 안 들어가 목록이 빌 수 있다. ⛔ **감추지 않고 사유를 밝힌다** —
      * 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
@@ -193,21 +220,20 @@ export const oqcInspection = {
     /**
      * 비활성 사유 — **뭉개지 않는다.** 푸는 방법이 서로 다르다(스펙 §6).
      */
-    blockedByConfirmed: '판정 저장 — 이미 확정된 회차입니다. 재검사로 새 회차를 쌓으세요.',
-    blockedByDraftElsewhere:
-      '판정 저장 — 다른 곳에서 작성 중인 회차입니다. 재검사로 새 회차를 쌓으세요.',
-    blockedByTotals: '판정 저장 — 수량 합계가 검사수량과 맞아야 저장할 수 있습니다.',
+    blockedByConfirmed: '이미 확정된 회차입니다. 재검사로 새 회차를 쌓으세요.',
+    blockedByDraftElsewhere: '다른 곳에서 작성 중인 회차입니다. 재검사로 새 회차를 쌓으세요.',
+    blockedByTotals: '수량 합계가 검사 수량과 일치해야 합니다.',
     blockedByJudgmentOptions:
-      '판정 저장 — 판정 값 목록이 준비되지 않아 저장할 수 없습니다. 담당자에게 문의하세요.',
-    blockedByJudgment: '판정 저장 — 종합 판정을 골라야 저장할 수 있습니다.',
+      '판정 값 목록이 준비되지 않아 저장할 수 없습니다. 담당자에게 문의하세요.',
+    blockedByJudgment: '최종 판정을 선택해주세요.',
     /** 합격판정개수 기준 자동 판정(omf-all-around#126) — 기준에 합격판정개수가 있을 때만 선다. IQC(#125)와 같은 규칙이다. */
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>
         `합격판정개수 ${String(acceptanceNumber)} 기준 자동 판정`,
       expected: (judgment: string): string => `자동 판정: ${judgment}`,
       reason: '판정 변경 사유',
-      reasonPlaceholder: '자동 판정과 다르게 저장하는 이유를 입력해 주세요.',
-      required: '판정 저장 — 자동 판정과 다른 판정은 변경 사유를 입력해야 저장할 수 있습니다.',
+      reasonPlaceholder: '판정 변경 사유를 입력하세요',
+      required: '자동 판정과 다른 판정은 변경 사유를 입력해야 저장 가능합니다.',
       reasonMissing: '판정 변경 사유를 입력하세요.',
     },
 
@@ -280,12 +306,18 @@ export const oqcInspection = {
      */
     dispositionPath:
       '불합격분의 처분(재작업·폐기)은 이 화면에서 정하지 않습니다 — 처분 의뢰 화면이 열리면 그곳에서 합니다.',
+    /** 판정 구획의 「판정 확정 안내」 상자(#136) — 수량 · 고른 판정 · 되돌릴 수 없음 · LOT 영향. */
+    guide: {
+      title: '판정 확정 안내',
+      irreversible: '확정 후에는 판정을 수정할 수 없습니다.',
+      irreversibleHint: '변경이 필요한 경우 재검사를 진행해야 합니다.',
+    },
   },
 
   /** 확인 창 — **쓰기는 이 창의 버튼에서만 나간다.** */
   confirm: {
     title: (inspectionRequestNo: string): string => `${inspectionRequestNo} 판정 저장`,
-    judgment: (label: string): string => `종합 판정: ${label}`,
+    judgment: (label: string): string => `최종 판정: ${label}`,
     /* ⛔ 수량 셋을 여기서 따로 내지 않는다 — 전이 경고 본문의 첫 규칙이 이미 그 세 값이다. */
     irreversible: '저장하면 되돌릴 수 없습니다.',
     cancel: '취소',
@@ -337,11 +369,23 @@ export const oqcInspection = {
    * ⭐ 단위는 출하작업지시 하나다 — 실행하면 그 출하작업지시의 열린 OQC 의뢰가 함께 생략된다.
    */
   skip: {
-    heading: 'OQC 생략',
-    help: '검사를 하지 않고 출하하려면 생략을 요청합니다. 「특채·한도승인 승인 처리」에서 결재한 뒤 여기서 실행합니다. 실행하면 이 출하작업지시의 열린 OQC 의뢰가 모두 생략되고 출하검사가 통과로 바뀝니다.',
+    heading: 'OQC (출하검사) 생략 요청',
+    /** 요청 → 승인 → 실행 단계(#136). */
+    steps: ['1. 생략 요청', '2. 승인 처리', '3. 생략 실행'],
+    /** 실행 뒤 결과 — 무엇이 바뀌는지(#136). */
+    result: '요청 후 생략을 승인하면 남은 출하검사가 생략되고, 검사 결과는 합격으로 처리됩니다.',
     reason: '생략 사유',
+    reasonPlaceholder: '생략 사유를 입력하세요',
+    /** 요청한 그 건의 결재 화면으로(#136) — 「특채·한도승인 승인 처리」. 요청이 결재 대기일 때만 선다. */
+    openApproval: '요청 건 승인 처리로 이동',
+    currentStep: '현재 단계',
+    /** 입력한 글자 수 — 상한은 없다(계약은 비우지만 않으면 된다 · #136). */
+    reasonCount: (count: number): string => `${String(count)}자`,
     reasonRequired: '생략 사유를 입력하세요.',
-    request: 'OQC 생략 요청',
+    /** 구획의 단추 — 사유를 쓰는 창을 연다(#136). */
+    openRequest: '생략 요청',
+    cancel: '취소',
+    request: '생략 승인 요청',
     requesting: '요청하는 중…',
     execute: 'OQC 생략 실행',
     executing: '실행하는 중…',
@@ -359,9 +403,26 @@ export const oqcInspection = {
    * 시리얼 판정은 시리얼당 한 줄로 남는다. 재검 회차는 1차를 그대로 두고 최종만 바꾼다.
    */
   serials: {
-    openByScan: '시리얼로 의뢰 열기',
-    openByScanHelp:
-      '시리얼을 스캔하면 그 LOT 을 피킹한 OQC 의뢰를 엽니다. 대기 또는 진행 중인 의뢰가 없으면 완료된 의뢰를 열어 재검사 회차를 더할 수 있습니다.',
+    openByScanNotFound: '등록되지 않은 시리얼 번호입니다.',
+    /** 관리웹 판정 화면의 「시리얼별 검사 결과」 구획(#136). POP 는 위 공용 키를 그대로 쓴다. */
+    judge: {
+      heading: '시리얼별 검사 결과',
+      inspected: (count: number): string => `검사 ${String(count)}건`,
+      accepted: (count: number): string => `합격 ${String(count)}건`,
+      rejected: (count: number): string => `불합격 ${String(count)}건`,
+      scanLabel: '시리얼 번호 스캔',
+      scanHint: '스캔하면 아래 표에 추가됩니다.',
+      scanPlaceholder: '시리얼 번호 스캔 또는 번호를 입력하세요',
+      notFound: '등록되지 않은 시리얼 번호입니다.',
+      columns: {
+        serialNo: '시리얼 번호',
+        lotNo: 'LOT',
+        previous: '이전 검사 결과',
+        judgment: '판정',
+      },
+      emptyTitle: '등록된 검사 시리얼이 없습니다.',
+      emptyDescription: '위에서 시리얼 번호를 스캔하거나 입력하세요.',
+    },
     scanLabel: '시리얼 스캔',
     scanPlaceholder: '시리얼 번호를 스캔하거나 입력 후 Enter',
     scanning: '시리얼을 확인하는 중…',
@@ -387,17 +448,21 @@ export const oqcInspection = {
     tooMany: '검사한 시리얼 수가 검사 수량보다 많습니다.',
     tooManyNg: 'NG 시리얼 수가 불합격 수량보다 많습니다. 불합격 수량을 확인하세요.',
     count: (total: number, ng: number): string => `시리얼 ${total}대, NG ${ng}대`,
-    recordHeading: '시리얼 출하검사',
-    recordHelp: '시리얼마다 1차 판정은 처음 기록 그대로이고, 재검 회차는 최종 판정만 바꿉니다.',
-    recordEmpty: '기록된 시리얼이 없습니다.',
+    recordHeading: '시리얼별 출하검사 이력',
+    /** 참고 정보 탭 이름(#136). */
+    recordTab: '시리얼별 검사 이력',
+    recordHelp: '시리얼별 최초 검사와 재검사 결과를 확인할 수 있습니다.',
+    recordEmpty: '출하검사 이력이 없습니다.',
+    recordEmptyDescription: '검사 결과가 기록되면 이곳에 표시됩니다.',
+    recordCount: (count: number): string => `${String(count)}건`,
     recordLoading: '시리얼 출하검사를 불러오는 중입니다.',
     recordFailed: '시리얼 출하검사를 불러오지 못했습니다.',
     recordColumns: {
-      serialNo: '시리얼',
+      serialNo: '시리얼 번호',
       lotNo: 'LOT',
-      first: '1차',
-      final: '최종',
-      round: '마지막 회차',
+      first: '최초 판정',
+      final: '최종 판정',
+      round: '검사 회차',
       inspector: '검사자',
       inspectedAt: '검사 시각',
     },

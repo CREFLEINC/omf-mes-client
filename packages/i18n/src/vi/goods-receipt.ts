@@ -6,8 +6,6 @@ import type { Translated } from './translated';
  * 두 낱말을 가려 쓴다. ERP 는 「대기열 적재」까지만 말하고 「전송 완료」라고 쓰지 않는다.
  */
 export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
-  title: 'Xử lý nhập hàng đạt',
-  breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   panes: {
     list: 'Danh sách phiếu nhập hàng',
     lines: 'Các dòng của phiếu đã chọn',
@@ -75,18 +73,6 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     lineNoLot: 'Chưa tạo LOT vật tư.',
     lineQtyNotPositive: 'Số lượng nhập phải lớn hơn 0 mới chọn được.',
   },
-  loading: {
-    inboundReceipts: 'Đang tải danh sách phiếu nhập hàng',
-    lines: 'Đang tải các dòng nhập hàng',
-  },
-  table: {
-    inboundReceiptNo: 'Số nhập hàng',
-    supplier: 'Nhà cung cấp',
-    receiptDatetime: 'Thời điểm nhập hàng',
-    deliveryNoteNo: 'Số phiếu giao hàng',
-    status: 'Trạng thái',
-    select: 'Chọn',
-  },
   postTitle: 'Thông tin nhập kho',
   lineTable: {
     title: 'Dòng nhập hàng',
@@ -138,24 +124,6 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
     chipRemovePeriod: 'Bỏ điều kiện ngày nhập hàng',
     chipRemoveStatus: 'Bỏ điều kiện trạng thái',
     chipRemoveQ: 'Bỏ điều kiện từ khóa',
-  },
-  pageNav: {
-    label: 'Chuyển trang',
-    range: (start: number, end: number, total: number): string =>
-      `${String(start)}–${String(end)} / Tổng ${String(total)} phiếu`,
-    totalOnly: (total: number): string => `Tổng ${String(total)} phiếu`,
-  },
-  empty: {
-    noResultTitle: 'Không có phiếu nhập hàng nào khớp điều kiện',
-    noResultDescription: 'Hãy bớt điều kiện hoặc nới rộng khoảng ngày nhập hàng rồi tra cứu lại.',
-    beyondLastTitle: 'Trang này không có kết quả',
-    beyondLastDescription: 'Hãy về trang đầu.',
-    noSelectionTitle: 'Hãy chọn phiếu nhập hàng',
-    noSelectionDescription: 'Bấm 「Chọn」 ở phiếu cần nhập trong danh sách.',
-    noLinesTitle: 'Không có dòng để nhập kho',
-    noLinesDescription: 'Phiếu này không có dòng mặt hàng nào có thể nhập kho.',
-    listFailedTitle: 'Không tải được danh sách phiếu nhập hàng nên không mở được phiếu này',
-    listFailedDescription: 'Hãy bấm 「Thử lại」 ở trên để tải danh sách rồi chọn lại.',
   },
   values: {
     empty: '—',
@@ -245,5 +213,64 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
       'Chưa được đưa vào hàng đợi gửi ERP. Việc hệ thống bên kia đã cập nhật hay chưa, hãy xem ở màn hình tình trạng đồng bộ liên kết.',
     erpUnknown:
       'Không xác định được đã đưa vào hàng đợi gửi ERP hay chưa. Phản hồi không kèm giá trị đó.',
+  },
+  batch: {
+    title: (count: number): string => `Xử lý nhập kho · ${String(count)} LOT`,
+    lotsLabel: 'LOT cần nhập kho',
+    result: 'Kết quả',
+    sameForAll: 'Áp dụng chung cho mọi LOT',
+    submit: (count: number): string => `Nhập kho ${String(count)} mục`,
+    retry: 'Xử lý lại mục thất bại',
+    summary: (count: number, destination: string): string =>
+      `${String(count)} LOT → ${destination}`,
+    allDone: (count: number): string => `Đã nhập kho ${String(count)} LOT.`,
+    done: (goodsReceiptNo: string): string => `Nhập kho ${goodsReceiptNo}`,
+    failed: 'Thất bại',
+    failedLot: (lotNo: string): string => `Nhập kho ${lotNo} thất bại`,
+    loadFailed: 'Không tải được phiếu nhập hàng. Hãy đóng và mở lại.',
+    blocked: {
+      gated: (lotNos: string): string => `Có LOT chưa thể nhập kho: ${lotNos}`,
+      mixedDefect:
+        'LOT lỗi chỉ được nhập vào kho hàng lỗi. Hãy xử lý LOT lỗi riêng với các LOT khác.',
+      mixedPlant: 'Có LOT thuộc nhà máy khác. Hãy xử lý riêng theo nhà máy.',
+      missingLine: 'Có LOT không tìm thấy trong phiếu nhập hàng. Hãy đóng và mở lại.',
+    },
+    confirm: {
+      title: (count: number): string => `Nhập kho ${String(count)} LOT`,
+      destination: (destination: string): string => `Vị trí nhập kho: ${destination}`,
+      when: (datetime: string): string => `Thời gian nhập kho: ${datetime}`,
+      ok: 'Xử lý nhập kho',
+    },
+  },
+  panel: {
+    title: 'Xử lý nhập kho',
+    guide: {
+      label: 'Các bước',
+      steps: {
+        lot: 'Chọn LOT',
+        info: 'Thông tin nhập kho',
+        post: 'Xử lý nhập kho',
+      },
+      hint: {
+        loading: 'Đang tải phiếu nhập hàng.',
+        info: 'Hãy chọn kho nhập và vị trí xếp kho.',
+        ready: 'Kiểm tra nội dung rồi nhấn 「Xử lý nhập kho」.',
+        gated: 'LOT này hiện chưa thể nhập kho.',
+        done: 'Đã tạo phiếu nhập kho. Đóng cửa sổ để dòng LOT chuyển sang bước tiếp theo.',
+      },
+    },
+    head: {
+      lot: 'LOT',
+      purchaseOrderNo: 'Số đơn đặt hàng',
+      supplier: 'Nhà cung cấp',
+      item: 'Mặt hàng',
+      qty: 'Số lượng',
+      inboundReceiptNo: 'Số nhập hàng',
+      inspection: 'Kiểm tra',
+    },
+    summary: (lot: string, qty: string, destination: string): string =>
+      `${lot} · ${qty} → ${destination}`,
+    loading: 'Đang tải phiếu nhập hàng',
+    lineMissing: 'Không tìm thấy dòng nhập hàng của LOT này. Hãy đóng cửa sổ và tra cứu lại.',
   },
 };

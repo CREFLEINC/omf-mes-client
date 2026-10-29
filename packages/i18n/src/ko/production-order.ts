@@ -1,8 +1,10 @@
+import { erpWorkOrderFlow } from './erp-work-order-flow';
+
 export const productionOrder = {
-  title: 'ERP W/O 처리',
+  title: erpWorkOrderFlow.title,
   breadcrumbRoot: '생산 관리',
   /** 메뉴에서 이 화면까지의 경로 — 다른 화면이 「어디로 가라」고 안내할 때 쓴다. 메뉴 라벨과 같아야 한다(app/nav-menu-path.test.ts). */
-  menuPath: '생산 관리 › ERP W/O › ERP W/O 처리',
+  menuPath: `생산 관리 › ${erpWorkOrderFlow.title}`,
   fields: {
     productionOrderNo: 'ERP W/O 번호',
     erpProductionOrderNo: 'ERP 원번호',
@@ -56,16 +58,16 @@ export const productionOrder = {
     itemFailed: '품목 이름을 불러오지 못했습니다.',
     missingRemarks: '비고 없음',
     autoPlanStatus: {
-      DONE: '완료',
-      NEEDS_REVIEW: '확인 필요',
+      DONE: '배포 대기',
+      NEEDS_REVIEW: '조치 필요',
     },
     autoPlanReasons: {
-      BOM_MISSING: '기본 BOM 없음',
-      ROUTING_MISSING: '사용 가능한 Routing 없음',
-      ROUTING_AMBIGUOUS: 'Routing 여러 개',
-      LINE_UNKNOWN: '라인 미정',
-      PLAN_NOT_CONFIRMED: '확정 전 계획 있음',
-      QTY_REMAINING: '계획 수량 부족',
+      BOM_MISSING: erpWorkOrderFlow.reasons.BOM_MISSING,
+      ROUTING_MISSING: erpWorkOrderFlow.reasons.ROUTING_MISSING,
+      ROUTING_AMBIGUOUS: erpWorkOrderFlow.reasons.ROUTING_AMBIGUOUS,
+      LINE_UNKNOWN: erpWorkOrderFlow.reasons.LINE_UNKNOWN,
+      PLAN_NOT_CONFIRMED: erpWorkOrderFlow.reasons.PLAN_NOT_CONFIRMED,
+      QTY_REMAINING: erpWorkOrderFlow.reasons.QTY_REMAINING,
     },
   },
   autoPlan: {

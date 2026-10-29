@@ -289,6 +289,39 @@ export interface SupplierSummary {
   partnerName: string;
 }
 
+/** 서버가 한 쪽에 내주는 최대 건수. 더 크게 청해도 이만큼만 온다. */
+const PARTNER_PAGE_SIZE = 200;
+
+/**
+ * 한 역할의 거래처를 끝까지 받는다.
+ *
+ * 한 쪽에 다 들지 않는다 - 로컬 실데이터에 공급사 374 · 고객사 639곳이다. 첫 쪽만 받으면 뒤쪽
+ * 거래처는 이름 대신 「공급사 #번호」로 보인다. 쪽 번호는 1 부터다.
+ */
+const fetchPartners = async (
+  client: ItemClient,
+  roleTypeCode: 'SUPPLIER' | 'CUSTOMER',
+): Promise<SupplierSummary[]> => {
+  const partners: SupplierSummary[] = [];
+
+  for (let page = 1; ; page += 1) {
+    const data = await runRequest(() =>
+      client.GET('/mdm/partners', {
+        params: { query: { roleTypeCode, page, size: PARTNER_PAGE_SIZE } },
+      }),
+    );
+
+    for (const partner of data.items) {
+      partners.push({ partnerId: partner.partnerId, partnerName: partner.partnerName });
+    }
+
+    // 덜 찬 쪽이 마지막 쪽이다. total 만 믿으면 그 값이 틀렸을 때 영원히 돈다.
+    if (data.items.length < PARTNER_PAGE_SIZE || partners.length >= data.page.total) {
+      return partners;
+    }
+  }
+};
+
 /**
  * 공급사 후보.
  *
@@ -302,18 +335,7 @@ export const useSuppliers = (enabled: boolean): UseQueryResult<SupplierSummary[]
   return useQuery({
     queryKey: masterKeys.suppliers(),
     enabled,
-    queryFn: async () => {
-      const data = await runRequest(() =>
-        client.GET('/mdm/partners', {
-          params: { query: { roleTypeCode: 'SUPPLIER', size: 200 } },
-        }),
-      );
-
-      return data.items.map((partner) => ({
-        partnerId: partner.partnerId,
-        partnerName: partner.partnerName,
-      }));
-    },
+    queryFn: () => fetchPartners(client, 'SUPPLIER'),
   });
 };
 
@@ -329,13 +351,9 @@ export const useCustomerNames = (enabled: boolean): UseQueryResult<Map<number, s
     queryKey: masterKeys.customers(),
     enabled,
     queryFn: async () => {
-      const data = await runRequest(() =>
-        client.GET('/mdm/partners', {
-          params: { query: { roleTypeCode: 'CUSTOMER', size: 200 } },
-        }),
-      );
+      const customers = await fetchPartners(client, 'CUSTOMER');
 
-      return new Map(data.items.map((partner) => [partner.partnerId, partner.partnerName]));
+      return new Map(customers.map((partner) => [partner.partnerId, partner.partnerName]));
     },
   });
 };

@@ -1,4 +1,4 @@
-import { Button, Checkbox, Chip, Dialog, Select, TextField, useToast } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, Dialog, TextField, useToast } from '@crefle/web-ui';
 import type {
   InspectionSheetLayoutCode,
   InspectionSheetLotSlot,
@@ -10,6 +10,7 @@ import { useId, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { ItemPickerDialog } from '../../patterns/item-picker';
 import { requireIfMatch, SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { Select } from '../../patterns/select';
 import {
   emptyDraft,
   layoutSteps,

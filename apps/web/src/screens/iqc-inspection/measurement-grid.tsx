@@ -1,7 +1,13 @@
-import { AlertBanner, Chip, Icon, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useClientPage } from '../../patterns/client-page';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { FilterChips } from '../../patterns/filter-chips';
+import { PageNav } from '../../patterns/page-nav';
 import { hasCalibrationWarning, type MeasurementRow, type SpecRange } from './measurement-rows';
 
 /**
@@ -39,7 +45,7 @@ const describeLimits = (spec: SpecRange): string | null => {
 };
 
 /** 단위가 있으면 값 뒤에 붙인다(#133). 규격이 없거나(—) 단위를 모르면 그대로다. */
-const withUnit = (text: string, spec: SpecRange | null, unit: string | null): string => {
+export const withUnit = (text: string, spec: SpecRange | null, unit: string | null): string => {
   if (unit === null) return text;
   if (spec !== null && spec.target === null && spec.lower === null && spec.upper === null)
     return text;
@@ -53,7 +59,7 @@ const tidy = (value: number): number => Number(value.toFixed(6));
  * 규격 — 기준값과 상하한이 대칭이면 「100 ± 0.5」, 아니면 범위 뒤에 기준값을 괄호로(#133).
  * 「목표 100 · 99.5 ~ 100.5」보다 한눈에 읽힌다.
  */
-const describeSpec = (spec: SpecRange): string => {
+export const describeSpec = (spec: SpecRange): string => {
   const { target, lower, upper } = spec;
 
   if (target !== null && lower !== null && upper !== null) {
@@ -104,11 +110,16 @@ export interface MeasurementGridProps {
   rows: MeasurementRow[];
   /** 항목을 부르는 중. 표 자리에 그릴 것을 부르는 쪽이 정한다 */
   isLoading: boolean;
+  /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-27 · #185). */
+  scrollX?: boolean;
+  /** 적용 검사 기준 창을 연다 — [기준 조회]와 같다(창의 [수정]으로 검사기준 화면에 간다 · #197). 없으면 단추를 두지 않는다 */
+  onViewPlan?: () => void;
 }
 
 const columns: Column<MeasurementRow>[] = [
   {
     key: 'item',
+    align: 'center',
     header: t.columns.item,
     /*
      * 다섯 열 모두 폭을 주어 표가 카드보다 넓을 때 남는 폭을 폭 비율대로 나눠 갖게 한다
@@ -132,22 +143,23 @@ const columns: Column<MeasurementRow>[] = [
   },
   {
     key: 'spec',
+    align: 'center',
     header: t.columns.spec,
     width: '148px',
     render: (row) => withUnit(describeSpec(row.spec), row.spec, row.unit),
   },
   {
     key: 'sample',
+    align: 'center',
     header: t.columns.sample,
     width: '96px',
-    align: 'end',
     render: (row) => t.sampleOf(row.sampleNo),
   },
   {
     key: 'value',
+    align: 'center',
     header: t.columns.value,
     width: '96px',
-    align: 'end',
     render: (row) => (
       <>
         {describeValue(row)}
@@ -164,6 +176,7 @@ const columns: Column<MeasurementRow>[] = [
   },
   {
     key: 'judgment',
+    align: 'center',
     header: t.columns.judgment,
     width: '96px',
     render: (row) =>
@@ -181,32 +194,107 @@ const columns: Column<MeasurementRow>[] = [
   },
 ];
 
-export const MeasurementGrid = ({ rows, isLoading }: MeasurementGridProps) => (
-  <section className="iqc-inspection-section" aria-label={t.heading}>
-    {/* 다른 구획처럼 왼쪽 제목으로 선다 — 표 제목(caption)은 화면에서 감추고 접근 이름으로 남긴다. */}
-    <h3>{t.caption}</h3>
-    {/*
-     * ⛔ 경고일 뿐 차단이 아니다. 무효화 정책이 미결이라(스펙 §8-6) 화면이 값을 빼거나
-     * 확정을 막지 않는다 — 무엇을 다시 볼지만 알린다.
-     */}
-    {hasCalibrationWarning(rows) && (
-      <div className="banner-slot">
-        <AlertBanner variant="warning" title={t.calibrationWarningTitle}>
-          {t.calibrationWarning}
-        </AlertBanner>
-      </div>
-    )}
+/** 거르기 칩의 판정 — 측정치 판정(`INSPECTION_MEASUREMENT_JUDGMENT`) 두 값. */
+const JUDGMENT_FILTERS = ['ACCEPTED', 'REJECTED'] as const;
 
-    {/* 표 전체를 얇은 테두리 상자로 감싼다(#133). */}
-    <div className="iqc-inspection-table-box">
-      <Table
-        caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
-        density="compact"
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => row.key}
-        empty={<p className="field-note">{isLoading ? t.loading : t.noItems}</p>}
-      />
-    </div>
-  </section>
-);
+export const MeasurementGrid = ({
+  rows,
+  isLoading,
+  scrollX = false,
+  onViewPlan,
+}: MeasurementGridProps) => {
+  /*
+   * 목록 표처럼 동작한다(사용자 지시 2026-10-26 · #185) — 열 순서 끌기 · 폭 조절(브라우저에 기억), 한 줄 행, 상자 폭에 맞춤.
+   */
+  const ordered = useColumnOrder('omf-mes:iqc-inspection:columns:measurements:order', columns);
+  const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:measurements', ordered, {
+    fitContent: scrollX,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX });
+  /* 합격 · 불합격으로 거른 뒤 10 · 20 · 50건씩 쪽으로 나눈다(사용자 지시 2026-10-27 · #185). 칩 건수는 거르기 전 전체에서 센다. */
+  const [judgmentFilter, setJudgmentFilter] = useState<string | null>(null);
+  const countOf = (code: string): number =>
+    rows.filter((row) => row.measured?.judgmentCode === code).length;
+  const paging = useClientPage(
+    judgmentFilter === null
+      ? rows
+      : rows.filter((row) => row.measured?.judgmentCode === judgmentFilter),
+  );
+
+  return (
+    <section className="iqc-inspection-section" aria-label={t.heading}>
+      {/* 다른 구획처럼 왼쪽 제목으로 선다 — 표 제목(caption)은 화면에서 감추고 접근 이름으로 남긴다. */}
+      <h3>{t.caption}</h3>
+      {/*
+       * ⛔ 경고일 뿐 차단이 아니다. 무효화 정책이 미결이라(스펙 §8-6) 화면이 값을 빼거나
+       * 확정을 막지 않는다 — 무엇을 다시 볼지만 알린다.
+       */}
+      {hasCalibrationWarning(rows) && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning" title={t.calibrationWarningTitle}>
+            {t.calibrationWarning}
+          </AlertBanner>
+        </div>
+      )}
+
+      {/* 거르기 칩 줄 오른쪽 끝에 [수정] — 검사 항목은 검사기준에서 정한다(사용자 지시 2026-10-28 · #197). */}
+      <div className="iqc-inspection-measure-toolbar">
+        {rows.length > 0 && (
+          <FilterChips
+            label={t.filterLabel}
+            options={[
+              { value: null, label: t.filterAll },
+              ...JUDGMENT_FILTERS.map((code) => ({
+                value: code,
+                label: t.judgmentNames[code] ?? code,
+              })),
+            ]}
+            value={judgmentFilter}
+            countOf={(code) => (code === null ? rows.length : countOf(code))}
+            onChange={setJudgmentFilter}
+          />
+        )}
+        {onViewPlan !== undefined && (
+          <Button
+            type="button"
+            variant="outlined"
+            size="sm"
+            className="iqc-inspection-measure-edit"
+            onClick={onViewPlan}
+          >
+            {messages.iqcInspection.measurements.viewPlan}
+          </Button>
+        )}
+      </div>
+
+      {/* 표 전체를 얇은 테두리 상자로 감싼다(#133). */}
+      <div
+        ref={fit.ref}
+        className="iqc-inspection-table-box inspection-queue-table"
+        style={resizable.style}
+      >
+        <Table
+          caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
+          density="compact"
+          columns={fit.columns}
+          rows={paging.rows}
+          getRowId={(row) => row.key}
+          empty={
+            isLoading ? (
+              <p className="field-note">{t.loading}</p>
+            ) : (
+              /* 목록의 빈 결과와 같은 모양 — 아이콘 · 한 줄 제목 · 안내(사용자 지시 2026-10-26). */
+              <EmptyState
+                size="sm"
+                icon={<Icon name="content_paste_off" size={32} />}
+                title={t.noItems}
+                description={t.noItemsHint}
+              />
+            )
+          }
+        />
+      </div>
+      <PageNav {...paging.nav} />
+    </section>
+  );
+};

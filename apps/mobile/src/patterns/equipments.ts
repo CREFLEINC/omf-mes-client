@@ -20,7 +20,8 @@ const PAGE_SIZE = 200;
 const fetchEquipments = async (client: Client): Promise<Equipment[]> => {
   const items: Equipment[] = [];
 
-  for (let page = 0; ; page += 1) {
+  // 쪽 번호는 1 부터다. 0 을 청하면 서버가 첫 쪽을 주어 다음 1 쪽과 겹친다.
+  for (let page = 1; ; page += 1) {
     const data = await runRequest(() =>
       client.GET('/mdm/equipments', {
         params: {

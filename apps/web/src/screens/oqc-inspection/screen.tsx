@@ -1,23 +1,43 @@
-import { Breadcrumb, Button, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
+import { useOaAccess } from '../../patterns/oa-access';
+import { LeaveGuardProvider } from '../../patterns/leave-guard';
+import { PageNav } from '../../patterns/page-nav';
 import { toApiError } from '../../patterns/request';
+import { usePageHub } from '../../patterns/page-hub';
+import {
+  InspectionHubCounts,
+  type InspectionHubStatus,
+} from '../../patterns/inspection-hub-counts';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { CODE_GROUPS, labelOfCode, toCodeOptions } from './code-options';
 import {
   EMPTY_FILTERS,
+  LIST_PAGE_SIZES,
+  PAGE_SIZE,
+  QUEUE_STATUSES,
+  withDraft,
+  withStatus,
   readFilters,
   readPage,
+  readPageSize,
   readSelectedId,
   toListQuery,
   toPageParams,
   toSearchParams,
+  toPageSizeParams,
   URL_KEYS,
   type QueueFilters,
 } from './filters';
 import { QueueLoadErrorBanner } from './load-error-banner';
-import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
 import { expectedJudgmentOf, needsJudgmentChangeReason } from './judgment-change';
@@ -27,10 +47,12 @@ import {
   useInspectionQueue,
   useInspectionRequestDetail,
   useInspectionRounds,
+  useOqcSerialRecords,
+  usePickedLotNumbers,
   useSaveInspectionResult,
 } from './queries';
 import { QueueFilterBar } from './queue-filter-bar';
-import { QueueTable } from './queue-table';
+import { QueueListTable } from './queue-list-table';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { RoundHistory } from './round-history';
@@ -45,15 +67,18 @@ import {
   type SerialRow,
 } from './serials';
 import { SkipPane } from './skip-pane';
-import { InspectionHistoryPanel } from '../inspection-history/panel';
+import { InspectionHistoryPanel, useInspectionHistory } from '../inspection-history/panel';
 import { latestRound } from './types';
+import { useItemNames, useLotNumbers } from './reference-lookup';
+import { useUomLookup } from './uom-lookup';
 import { targetSignatureOf, type WriteTargetSignature } from './write-target';
 
 /**
  * W-04-03 OQC 출하검사 판정.
  *
- * 좌우 2단이다 — 왼쪽이 검사 대상 목록(약 1/3), 오른쪽이 고른 한 건의 대상 정보·판정 입력·회차
- * 이력이다(스펙 §3).
+ * 목록과 상세(판정)를 나란히 두지 않고 갈아 끼운다(omf-all-around#136 · IQC #133 과 같은 짜임) — 의뢰를 고르면
+ * (`?ir=`) 대상 정보·판정 입력만 서고, 「← 목록」으로 돌아오면 목록만 선다. 회차 이력 · 시리얼 기록 · 검사 이력은
+ * 판정 아래 접는 구획이다.
  *
  * **주소가 조건의 정본이다.** 조건·쪽·고른 의뢰가 전부 주소에 산다 — 새로고침·뒤로가기·공유가
  * 같은 결과를 내야 하기 때문이다. 읽고 쓰는 규칙은 `filters.ts` 가 소유한다.
@@ -66,15 +91,22 @@ import { targetSignatureOf, type WriteTargetSignature } from './write-target';
  */
 
 const t = messages.oqcInspection;
+const hubText = messages.common.inspectionHub;
+/** 불합격 판정 코드 — 불합격 사유(선택) 칸을 세우고 비고로 싣는 기준(#136 · `judgment-direction.ts` 와 같은 값). */
+const REJECTED = 'REJECTED';
+const referenceT = messages.common.reference;
 
 export const OqcInspectionScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  /* 검사 조회·판정 묶음(사이드바 한 줄 · 제목 아래 탭) 안이면 셸이 준다 — 셸 밖이면 `null`. */
+  const hub = usePageHub();
 
   const filters = readFilters(searchParams);
   const page = readPage(searchParams);
+  const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
 
-  const queue = useInspectionQueue(toListQuery(filters, page));
+  const queue = useInspectionQueue(toListQuery(filters, page, pageSize));
   const detail = useInspectionRequestDetail(selectedId);
   const rounds = useInspectionRounds(selectedId);
 
@@ -118,6 +150,8 @@ export const OqcInspectionScreen = () => {
    */
   const judgmentValues = useCodeValues(CODE_GROUPS.overallJudgment);
   const judgmentOptions = toCodeOptions(judgmentValues.data ?? []);
+  /* 판정 코드가 하나도 없으면 저장할 길이 없다 — 입력 칸도 잠근다(#135). 읽는 중에는 잠그지 않는다. */
+  const isInputLocked = judgmentValues.isSuccess && judgmentOptions.length === 0;
 
   const [judgment, setJudgment] = useState('');
 
@@ -125,11 +159,18 @@ export const OqcInspectionScreen = () => {
    * 판정 변경 사유(omf-all-around#126) — 확정 저장에만 싣는다. 의뢰·회차가 바뀌거나 재검사를 열고 닫으면 비운다.
    */
   const [changeReason, setChangeReason] = useState('');
+  /** 불합격 사유(선택 · #136) — 불합격을 골랐을 때만 칸이 서고, 저장에는 비고로 실린다. */
+  const [rejectionReason, setRejectionReason] = useState('');
 
   /*
    * 검사한 시리얼(omf-all-around#68) — 그 의뢰에 매인다. 다른 의뢰를 고르면 보이지 않고, 시리얼로 연 의뢰는 그 시리얼을 첫 줄로 받는다.
    * 저장에 성공하거나 재검사를 열고 닫으면 비운다.
    */
+  /** 목록에서 마지막으로 스캔한 시리얼과 그 LOT 을 피킹한 의뢰들 — 목록의 시리얼 번호 칸(#136). */
+  const [scannedSerial, setScannedSerial] = useState<{
+    serialNo: string;
+    inspectionRequestIds: number[];
+  } | null>(null);
   const [serialDraft, setSerialDraft] = useState<{
     inspectionRequestId: number | null;
     rows: SerialRow[];
@@ -216,6 +257,7 @@ export const OqcInspectionScreen = () => {
     setIsReinspecting(false);
     setJudgment(storedJudgment);
     setChangeReason('');
+    setRejectionReason('');
     setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
@@ -240,7 +282,23 @@ export const OqcInspectionScreen = () => {
    * 수 있다. 두 일을 `toSearchParams` 가 한 자리에서 한다.
    */
   const applyFilters = (next: QueueFilters): void => {
-    setSearchParams(toSearchParams(next));
+    /* 상세가 목록 옆에 열려 있으면 그대로 둔다(#185) — 조회 한 번에 쓰던 판정 입력이 사라지지 않게. */
+    const params = toSearchParams(next);
+    if (selectedId !== null) params.set(URL_KEYS.selected, String(selectedId));
+    /* 고른 쪽 크기는 조회해도 그대로다(#197). */
+    if (pageSize !== PAGE_SIZE) params.set(URL_KEYS.size, String(pageSize));
+    setSearchParams(params);
+  };
+
+  /**
+   * 탭 줄 상태 칩(#185). 첫 쪽으로 가지만 **고른 의뢰는 그대로 둔다** — 상세에서 눌러도 쓰던 판정 입력을
+   * 잃지 않고, 목록으로 돌아가면 거른 결과가 선다.
+   */
+  const applyStatus = (statusCode: InspectionHubStatus | null): void => {
+    const next = toSearchParams(withStatus(filters, statusCode));
+    if (selectedId !== null) next.set(URL_KEYS.selected, String(selectedId));
+    if (pageSize !== PAGE_SIZE) next.set(URL_KEYS.size, String(pageSize));
+    setSearchParams(next);
   };
 
   /** 쪽만 옮긴다 — 조건과 고른 의뢰는 그대로다. */
@@ -255,15 +313,69 @@ export const OqcInspectionScreen = () => {
   ) => {
     const fits =
       checkScannedSerial(scan, { inspectionRequestId, itemId: scan.itemId, rows: [] }) === null;
-    setSerialDraft({ inspectionRequestId, rows: fits ? [toSerialRow(scan)] : [] });
-    select(inspectionRequestId);
+    /* 시리얼 초안은 옮겨 갈 때 싣는다 — 「계속 작성」을 고르면 지금 의뢰의 초안이 그대로 남아야 한다. */
+    moveTo(inspectionRequestId, () => {
+      setSerialDraft({ inspectionRequestId, rows: fits ? [toSerialRow(scan)] : [] });
+    });
+    setScannedSerial({
+      serialNo: scan.serialNo,
+      inspectionRequestIds: scan.pickedRequests.map((request) => request.inspectionRequestId),
+    });
   };
 
-  const select = (inspectionRequestId: number): void => {
+  /* 고른 의뢰를 주소에 싣거나(`null` 이면) 뺀다 — 검색 조건 · 쪽은 그대로. */
+  const openRequest = (inspectionRequestId: number | null): void => {
     const next = new URLSearchParams(searchParams);
-    next.set(URL_KEYS.selected, String(inspectionRequestId));
+    if (inspectionRequestId === null) next.delete(URL_KEYS.selected);
+    else next.set(URL_KEYS.selected, String(inspectionRequestId));
     setSearchParams(next);
   };
+
+  /*
+   * 목록과 상세가 한 화면에 나란히 선다(#185) — 상세를 쓰는 중에 다른 줄을 누르거나(시리얼 스캔 포함) 상세를 닫으면,
+   * 저장하지 않은 입력이 있을 때 바로 옮기지 않고 한 번 묻는다(#136 의 「목록으로」와 같은 팝업). `to` 가 `null` 이면 닫기다.
+   */
+  const [leaveTo, setLeaveTo] = useState<{
+    to: number | null;
+    apply?: () => void;
+    href?: string;
+  } | null>(null);
+  useEffect(() => {
+    setLeaveTo(null);
+  }, [selectedId]);
+  const go = (to: number | null, apply?: () => void): void => {
+    apply?.();
+    openRequest(to);
+  };
+  /* 다른 화면으로 옮기기(기준 조회 창의 [수정] · #197) — 저장 안 한 입력이 있으면 먼저 묻는다. */
+  const navigate = useNavigate();
+  const leaveFor = (href: string): void => {
+    if (selectedId !== null && hasUnsavedInput) {
+      setLeaveTo({ to: selectedId, href });
+      return;
+    }
+    void navigate(href);
+  };
+  const moveTo = (to: number | null, apply?: () => void): void => {
+    if (to === selectedId) {
+      apply?.();
+      return;
+    }
+    if (selectedId !== null && hasUnsavedInput) {
+      setLeaveTo(apply === undefined ? { to } : { to, apply });
+      return;
+    }
+    go(to, apply);
+  };
+  /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세가 닫힌다(저장 안 한 입력이 있으면 먼저 묻는다 · 사용자 지시 2026-10-28 · #197). */
+  const select = (inspectionRequestId: number): void =>
+    moveTo(inspectionRequestId === selectedId ? null : inspectionRequestId);
+
+  /* 목록 · 상세 배치 — 입하 예정 조회와 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:oqc-inspection:split', 0.45);
+  /* 좌우 · 상하 배치(사용자 지시 2026-10-26) — 세 탭이 같은 고름을 쓴다. */
+  const layout = useSplitOrientation('omf-mes:inspection-hub:split-orientation');
 
   /**
    * 표 자리에 그릴 것. **네 갈래를 가른다** — 실패 · 부르는 중 · 이 쪽에 없음 · 조건에 맞는 것 없음.
@@ -321,6 +433,73 @@ export const OqcInspectionScreen = () => {
     if (expected !== null) setJudgment(expected);
   };
 
+  /*
+   * 떠날 때 물을 입력(#136 · IQC #133 과 같은 규칙) — 열린 회차(회차가 아직 없거나 재검사 중)에 수량 · 판정 · 변경 사유 ·
+   * 검사한 시리얼 중 하나라도 들어 있으면 묻는다. 열린 회차의 기준은 늘 빈 상태다(이 화면은 회차가 있으면 잠근다).
+   * ⛔ 잠긴 회차는 고칠 칸이 없으니 묻지 않는다. 저장 요청 본문 · 저장 조건과는 무관하다 — 묻는 데만 쓴다.
+   */
+  const hasUnsavedInput =
+    isOpenRound &&
+    (draft.accepted !== '' ||
+      draft.rejected !== '' ||
+      draft.held !== '' ||
+      judgment !== '' ||
+      changeReason.trim() !== '' ||
+      /* 불합격 사유는 불합격 판정과 함께만 실린다 — 판정이 있으면 위에서 이미 묻는다(판정을 지워 남은 글은 셈하지 않는다). */
+      serialRows.length > 0);
+
+  /*
+   * 품목·대상 LOT 은 번호마다 하나씩 이름으로 푼다(omf-all-around#40 · #136) — 목록에 선 줄과 고른 의뢰를 함께 넘긴다.
+   * 단위 코드는 수량 옆에 붙이는 표시 전용이다 — 저장 요청의 `uomId` 와 무관하다.
+   */
+  const itemNames = useItemNames([...rows.map((row) => row.itemId), detail.data?.itemId]);
+  const lotNumbers = useLotNumbers([detail.data?.lotId]);
+  const uoms = useUomLookup();
+  const uomCode = uoms.codeOf(detail.data?.uomId);
+
+  /*
+   * 검사 기본 정보의 셋째 칸(#136) — OA 사업부 계정은 시리얼로 검사하므로 시리얼 번호를, 그 밖은 대상 LOT 을 본다.
+   * 출하요청 대상 의뢰에는 LOT 이 없어(편성 때 정해지지 않는다) 그 지시의 피킹 기록에서 읽는다. 둘 다 표시 전용이다.
+   */
+  const oaAccess = useOaAccess();
+  const isOa = oaAccess === 'oa';
+  const isShipmentTarget = detail.data?.targetTypeCode === 'SHIPMENT_REQUEST';
+  const unitRecords = useOqcSerialRecords(selectedId, isOa && isShipmentTarget);
+  /* 「시리얼별 출하검사 이력」 접는 줄의 건수 — 구획 안 표와 같은 조회다(#136). */
+  const serialRecordCount = useOqcSerialRecords(selectedId, isShipmentTarget).data?.length;
+  const pickedLots = usePickedLotNumbers(
+    /* OA 여부를 아직 판단 중이면 부르지 않는다 — OA 계정에 쓰지 않을 조회가 한 번 나가지 않게. */
+    oaAccess !== 'checking' && !isOa && isShipmentTarget && detail.data?.lotId == null
+      ? (detail.data?.targetId ?? null)
+      : null,
+    detail.data?.itemId ?? 0,
+  );
+  const listOrUnregistered = (values: readonly string[]): string => {
+    const [first] = values;
+    if (first === undefined) return t.detail.unregistered;
+    return values.length === 1 ? first : t.detail.more(first, values.length - 1);
+  };
+  const unitFact = ((): { kind: 'serial' | 'lot'; value: string } | undefined => {
+    /* 시리얼은 출하작업지시 의뢰에만 있다 — LOT 대상 의뢰는 OA 계정이어도 대상 LOT 을 그대로 보인다. */
+    if (isOa && isShipmentTarget) {
+      const scanned =
+        selectedId !== null && scannedSerial?.inspectionRequestIds.includes(selectedId) === true
+          ? [scannedSerial.serialNo]
+          : [];
+      const recorded = (unitRecords.data ?? []).map((record) => record.serialNo);
+      const values = [...new Set([...scanned, ...recorded])];
+      if (values.length === 0 && unitRecords.isPending && unitRecords.fetchStatus !== 'idle')
+        return { kind: 'serial', value: referenceT.loading };
+      if (values.length === 0 && unitRecords.isError)
+        return { kind: 'serial', value: referenceT.failed };
+      return { kind: 'serial', value: listOrUnregistered(values) };
+    }
+    if (detail.data?.lotId != null || !isShipmentTarget) return undefined;
+    if (pickedLots.isPending) return { kind: 'lot', value: referenceT.loading };
+    if (pickedLots.isError) return { kind: 'lot', value: referenceT.failed };
+    return { kind: 'lot', value: listOrUnregistered(pickedLots.data) };
+  })();
+
   /**
    * 저장이 보낼 값을 만든다.
    *
@@ -361,6 +540,9 @@ export const OqcInspectionScreen = () => {
       previousResultId,
       /* 자동 판정과 다르게 저장할 때만 싣는다(#126 · 서버 P-70). */
       ...(needsChangeReason ? { judgmentChangeReason: changeReason.trim() } : {}),
+      ...(judgment === REJECTED && rejectionReason.trim() !== ''
+        ? { remarks: rejectionReason.trim() }
+        : {}),
       serials: toSerialInputs(serialRows),
     });
   };
@@ -372,9 +554,8 @@ export const OqcInspectionScreen = () => {
    * 고르는데, 다시 골라도 같은 실패가 온다.
    */
   const detailContent =
-    selectedId === null ? (
-      <p className="field-note">{t.detail.nothingSelected}</p>
-    ) : detail.isError ? (
+    /* 고르지 않았으면 상세가 서지 않는다 — 목록만 선다(#136). 이 갈래는 아래 `selectedId` 를 좁히는 데만 쓴다. */
+    selectedId === null ? null : detail.isError ? (
       <QueueLoadErrorBanner
         error={toApiError(detail.error)}
         onRetry={() => void detail.refetch()}
@@ -383,7 +564,16 @@ export const OqcInspectionScreen = () => {
       <p className="field-note">{t.detail.loading}</p>
     ) : (
       <>
-        <RequestDetailPane detail={detail.data} />
+        {/* 기준 조회 창의 [수정]은 저장 안 한 입력이 있으면 먼저 묻고 옮긴다(#197). */}
+        <LeaveGuardProvider value={leaveFor}>
+          <RequestDetailPane
+            detail={detail.data}
+            uomCode={uomCode}
+            itemNames={itemNames}
+            lotNumbers={lotNumbers}
+            unitFact={unitFact}
+          />
+        </LeaveGuardProvider>
 
         {/* OQC 생략(#119) — 출하작업지시 대상이고 판정이 아직 없을 때만. 확정 회차가 있으면 생략으로 덮지 않는다. */}
         {detail.data.targetTypeCode === 'SHIPMENT_REQUEST' &&
@@ -419,6 +609,7 @@ export const OqcInspectionScreen = () => {
             round={isReinspectingNow ? null : round}
             inspectionRequestNo={detail.data.inspectionRequestNo}
             inspectedQty={inspectedQty}
+            uomCode={uomCode}
             hasLot={detail.data.lotId !== null}
             draft={draft}
             onChange={changeDraftAndJudge}
@@ -441,13 +632,16 @@ export const OqcInspectionScreen = () => {
                   rows={serialRows}
                   onChange={setSerialRows}
                   serverError={save.fieldErrors.serials}
-                  disabled={save.isSaving}
+                  disabled={save.isSaving || isInputLocked}
                 />
               ) : undefined
             }
             serialBlockedReason={serialBlockedReason(serialRows, inspectedQty, draft.rejected)}
+            isInputLocked={isInputLocked}
             changeReason={changeReason}
             onChangeReasonChange={setChangeReason}
+            rejectionReason={rejectionReason}
+            onRejectionReasonChange={setRejectionReason}
             onSave={(inspectedAt) => {
               saveResult(selectedId, detail.data.uomId, inspectedAt);
             }}
@@ -463,6 +657,7 @@ export const OqcInspectionScreen = () => {
               setDraft(EMPTY_QUANTITY_DRAFT);
               setJudgment('');
               setChangeReason('');
+              setRejectionReason('');
               /* 시리얼로 연 완료 의뢰면 그 시리얼이 첫 줄로 남는다 — 재검사하려고 찍은 것이다. */
               setIsReinspecting(true);
             }}
@@ -476,56 +671,164 @@ export const OqcInspectionScreen = () => {
               setDraft(draftOf(round));
               setJudgment(storedJudgment);
               setChangeReason('');
+              setRejectionReason('');
               setSerialDraft({ inspectionRequestId: null, rows: [] });
             }}
           />
         )}
+      </>
+    );
 
+  /*
+   * 참고 정보 — 판정 뒤에, 상세 카드 밖에 구획마다 접는 상자 하나로(#136 · IQC #133 과 같다). 내용과 동작은 그대로다.
+   * 회차 이력은 회차가 둘 이상(재검사 중이면 하나 이상)일 때만 선다 — 서지 않으면 접는 상자도 두지 않는다.
+   */
+  const historyRevision = `${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`;
+  const historyCount = useInspectionHistory(selectedId, historyRevision).data?.events.length;
+  const roundCount = rounds.data?.length ?? 0;
+  const showsRoundHistory = roundCount > 1 || (isReinspectingNow && roundCount > 0);
+
+  const auxContent =
+    selectedId === null || detail.isError || detail.data === undefined ? null : (
+      <div className="oqc-inspection-aux">
         {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */}
-        <RoundHistory
-          rounds={rounds.data ?? []}
-          currentResultId={isReinspectingNow ? null : roundId}
-          isReinspecting={isReinspectingNow}
-          judgmentOptions={judgmentOptions}
-        />
-
-        {/* 시리얼 출하검사(#68) — 출하작업지시 의뢰만. 저장하면 새로 부른다. */}
-        {detail.data.targetTypeCode === 'SHIPMENT_REQUEST' && (
-          <SerialRecords inspectionRequestId={selectedId} />
+        {showsRoundHistory && (
+          <details className="pane oqc-inspection-fold" open>
+            <summary>{t.history.heading}</summary>
+            <RoundHistory
+              rounds={rounds.data ?? []}
+              currentResultId={isReinspectingNow ? null : roundId}
+              isReinspecting={isReinspectingNow}
+              judgmentOptions={judgmentOptions}
+            />
+          </details>
         )}
 
-        {/* 검사 대상 이력(#61) — 회차를 저장·확정하면 새로 부른다. */}
-        <InspectionHistoryPanel
-          key={`${String(selectedId)}-${String(rounds.data?.length ?? 0)}`}
-          inspectionRequestId={selectedId}
-          judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
-          revision={`${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`}
-        />
-      </>
+        {/*
+         * 검사 이력 · 시리얼별 검사 이력을 탭 하나로(#136). 시리얼 탭은 출하작업지시 의뢰만 — 저장하면 둘 다 새로 부른다.
+         * 의뢰를 바꾸면 첫 탭에서 다시 시작한다.
+         */}
+        <section className="pane oqc-inspection-fold oqc-inspection-history-card">
+          <Tabs
+            key={selectedId}
+            aria-label={messages.inspectionHistory.heading}
+            items={[
+              {
+                value: 'history',
+                label: messages.inspectionHistory.heading,
+                content: (
+                  <div className="oqc-inspection-tab-body">
+                    <div className="oqc-inspection-tab-head">
+                      <h3>{t.detail.historyTitle}</h3>
+                      {historyCount !== undefined && (
+                        <span className="oqc-inspection-fold-chip">
+                          {t.detail.historyCount(historyCount)}
+                        </span>
+                      )}
+                    </div>
+                    <InspectionHistoryPanel
+                      hideSourceLot
+                      key={`${String(selectedId)}-${String(roundCount)}`}
+                      inspectionRequestId={selectedId}
+                      judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
+                      revision={historyRevision}
+                    />
+                  </div>
+                ),
+              },
+              ...(detail.data.targetTypeCode === 'SHIPMENT_REQUEST'
+                ? [
+                    {
+                      value: 'serials',
+                      label: t.serials.recordTab,
+                      content: (
+                        <div className="oqc-inspection-tab-body">
+                          <div className="oqc-inspection-tab-head">
+                            <h3>{t.serials.recordHeading}</h3>
+                            {serialRecordCount !== undefined && (
+                              <span className="oqc-inspection-fold-chip">
+                                {t.serials.recordCount(serialRecordCount)}
+                              </span>
+                            )}
+                          </div>
+                          <SerialRecords inspectionRequestId={selectedId} />
+                        </div>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </section>
+      </div>
     );
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
+      {/* 탭 줄 오른쪽 건수 칩(#185) — 탭 묶음 안에서만 선다. */}
+      <InspectionHubCounts
+        inspectionTypeCode="OQC"
+        statuses={QUEUE_STATUSES}
+        active={filters.statusCode}
+        onChange={applyStatus}
       />
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+      {/* 탭 묶음(검사 조회·판정) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(입하 예정 조회와 같다). */}
+      {hub === null && (
+        <PageHeader
+          title={selectedId === null ? t.title : t.detail.sectionTitle}
+          breadcrumb={
+            <Breadcrumb
+              items={[
+                { label: t.breadcrumbRoot },
+                { label: t.title },
+                /* 상세(판정)를 열면 지금 자리를 한 단계 더 보인다(#136). */
+                ...(selectedId === null ? [] : [{ label: t.detail.sectionTitle }]),
+              ]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
 
-      <div className="two-pane">
-        <section className="pane" aria-label={t.queue.heading}>
-          <SerialOpenByScan onOpen={openBySerial} />
+      {/*
+       * 목록과 상세(판정)를 한 화면에 나란히 둔다(#185 · 입하 예정 조회와 같다) — 종전(#136)처럼 상세가 목록을
+       * 갈아 끼우지 않는다. 의뢰를 고르면(`?ir=`) 오른쪽에 상세가 서고, 검색 조건 · 쪽은 주소에 남는다.
+       */}
+      {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). 시리얼 스캔과 조회 조건이 한 줄에 선다. */}
+      <section ref={aboveRef} className="pane oqc-inspection-panes oqc-inspection-search">
+        <SerialOpenByScan
+          onOpen={openBySerial}
+          onFound={(scan) =>
+            setScannedSerial({
+              serialNo: scan.serialNo,
+              inspectionRequestIds: scan.pickedRequests.map(
+                (request) => request.inspectionRequestId,
+              ),
+            })
+          }
+        />
 
-          <QueueFilterBar
-            appliedFilters={filters}
-            onSearch={applyFilters}
-            onReset={() => applyFilters(EMPTY_FILTERS)}
-          />
+        <QueueFilterBar
+          appliedFilters={filters}
+          /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
+          onSearch={(next) => applyFilters(withDraft(filters, next))}
+          onTogglePendingOnly={(next) =>
+            applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
+          }
+          onReset={() => applyFilters(EMPTY_FILTERS)}
+        />
+      </section>
 
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
+        <section
+          className="pane oqc-inspection-panes oqc-inspection-queue-pane"
+          aria-label={t.queue.heading}
+        >
           {queue.isError && (
             <QueueLoadErrorBanner
               error={toApiError(queue.error)}
@@ -533,7 +836,20 @@ export const OqcInspectionScreen = () => {
             />
           )}
 
-          <QueueTable rows={rows} selectedId={selectedId} onSelect={select} empty={emptyContent} />
+          <QueueListTable
+            scrollX={layout.orientation === 'row'}
+            rows={rows}
+            itemNames={itemNames}
+            uomCodeOf={(row) => uoms.codeOf(row.uomId)}
+            serialOf={(row) =>
+              scannedSerial?.inspectionRequestIds.includes(row.inspectionRequestId) === true
+                ? scannedSerial.serialNo
+                : null
+            }
+            selectedId={selectedId}
+            onSelect={select}
+            empty={emptyContent}
+          />
 
           {/*
            * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
@@ -542,16 +858,83 @@ export const OqcInspectionScreen = () => {
           {queue.data !== undefined && (
             /*
              * 저장이 나가 있는 동안 쪽을 잠근다 — 쪽이 바뀌면 목록이 통째로 갈리는데, 그 사이
-             * 돌아온 성공이 다른 목록 위에 서면 무엇에 대한 성공인지 읽을 수 없다.
+             * 돌아온 성공이 다른 목록 위에 서면 무엇에 대한 성공인지 읽을 수 없다. 모양은 IQC 목록과 같은 쪽 이동
+             * — 총 건수 · [처음] [이전] n/N [다음] [마지막](사용자 지시 2026-10-28 · #197).
              */
-            <PageNav view={pageView} disabled={save.isSaving} onChange={goToPage} />
+            <PageNav
+              meta={queue.data.page}
+              controlSize="md"
+              disabled={save.isSaving}
+              onChangePage={goToPage}
+              sizes={LIST_PAGE_SIZES}
+              onChangeSize={(size) => setSearchParams(toPageSizeParams(searchParams, size))}
+            />
           )}
         </section>
 
-        <section className="pane" aria-label={t.detail.paneLabel}>
-          {detailContent}
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+
+        <section
+          className="pane oqc-inspection-panes oqc-inspection-detail"
+          aria-label={t.detail.paneLabel}
+        >
+          {selectedId === null ? (
+            <EmptyState
+              size="sm"
+              title={hubText.pickRequest}
+              description={hubText.pickRequestHint}
+            />
+          ) : (
+            <>
+              {detailContent}
+              {auxContent}
+            </>
+          )}
         </section>
       </div>
+
+      {/*
+       * 저장하지 않고 떠날지 묻는 팝업 — 한 줄 설명, [계속 작성](테두리) [저장하지 않고 이동](채움).
+       * × 는 두지 않는다. Esc·바깥 누름은 «계속 작성»과 같다 — 입력은 그대로 남는다(IQC #133 과 같다).
+       */}
+      {leaveTo !== null && (
+        <Dialog
+          open
+          onClose={() => setLeaveTo(null)}
+          showCloseButton={false}
+          title={t.detail.leaveUnsaved}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                className="app-button-neutral"
+                onClick={() => setLeaveTo(null)}
+              >
+                {t.detail.keepEditing}
+              </Button>
+              <Button
+                variant="filled"
+                onClick={() =>
+                  leaveTo.href === undefined
+                    ? go(leaveTo.to, leaveTo.apply)
+                    : void navigate(leaveTo.href)
+                }
+              >
+                {t.detail.leaveAnyway}
+              </Button>
+            </>
+          }
+        >
+          <p>{t.detail.leaveUnsavedNote}</p>
+        </Dialog>
+      )}
     </>
   );
 };

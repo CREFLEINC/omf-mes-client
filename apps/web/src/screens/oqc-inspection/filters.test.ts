@@ -5,9 +5,11 @@ import {
   PAGE_SIZE,
   readFilters,
   readPage,
+  readPageSize,
   readSelectedId,
   toListQuery,
   toPageParams,
+  toPageSizeParams,
   toSearchParams,
 } from './filters';
 
@@ -67,7 +69,10 @@ describe('toListQuery', () => {
   });
 
   it('비어 있는 조건은 키 자체를 싣지 않는다', () => {
-    const query = toListQuery({ itemId: 2101, keyword: 'IR-OQC', pendingOnly: true }, 2);
+    const query = toListQuery(
+      { itemId: 2101, keyword: 'IR-OQC', pendingOnly: true, statusCode: null },
+      2,
+    );
 
     expect(query.itemId).toBe(2101);
     expect(query.q).toBe('IR-OQC');
@@ -86,7 +91,10 @@ describe('toSearchParams', () => {
   });
 
   it('고른 의뢰를 싣지 않는다 — 조건이 바뀌면 그 의뢰가 목록에 없을 수 있다', () => {
-    const params = toSearchParams({ itemId: 2101, keyword: 'IR', pendingOnly: true }, 3);
+    const params = toSearchParams(
+      { itemId: 2101, keyword: 'IR', pendingOnly: true, statusCode: null },
+      3,
+    );
 
     expect(params.get('it')).toBe('2101');
     expect(params.get('q')).toBe('IR');
@@ -107,5 +115,26 @@ describe('toPageParams', () => {
 
   it('첫 쪽으로 가면 쪽 키를 지운다 — 기본값을 주소에 남기지 않는다', () => {
     expect(toPageParams(new URLSearchParams('page=4'), 1).has('page')).toBe(false);
+  });
+});
+
+describe('목록 쪽 크기(#197)', () => {
+  it('10 · 20 · 50 만 읽고, 그 밖은 기본 50건이다', () => {
+    expect(readPageSize(new URLSearchParams('size=20'))).toBe(20);
+    expect(readPageSize(new URLSearchParams('size=30'))).toBe(PAGE_SIZE);
+    expect(readPageSize(new URLSearchParams())).toBe(PAGE_SIZE);
+  });
+
+  it('고른 크기를 질의에 싣는다', () => {
+    expect(toListQuery(EMPTY_FILTERS, 1, 10).size).toBe(10);
+    expect(toListQuery(EMPTY_FILTERS, 1).size).toBe(PAGE_SIZE);
+  });
+
+  it('크기를 바꾸면 첫 쪽으로 가고, 기본 50건은 주소에 적지 않는다', () => {
+    const next = toPageSizeParams(new URLSearchParams('page=3&ir=5'), 20);
+    expect(next.get('size')).toBe('20');
+    expect(next.has('page')).toBe(false);
+    expect(next.get('ir')).toBe('5');
+    expect(toPageSizeParams(new URLSearchParams('size=20'), PAGE_SIZE).has('size')).toBe(false);
   });
 });

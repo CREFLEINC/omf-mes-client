@@ -7,7 +7,7 @@ import {
   type SelectProps,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 /**
  * 한 쪽에 놓는 항목 수.
@@ -72,6 +72,19 @@ export interface PopSelectProps extends SelectProps {
    * 넘친다(P-02-01, 2026-10-26). 기본은 꺼짐이다.
    */
   hideValue?: boolean;
+  /**
+   * 항목 뒤에 붙일 표시(D-10, 피처 002 — 화면 이동의 남은 작업 수). 항목 단추 안 이름 뒤에 선다.
+   *
+   * ⚠ **주지 않으면 지금과 같다** — 이 부품은 POP 화면 열여덟 곳이 함께 쓴다.
+   */
+  optionTrailing?: (option: SelectOption) => ReactNode;
+  /**
+   * 팝업 맨 위, 목록 앞에 세울 묶음(D-10 — 화면 이동의 「남은 작업」). 받은 `choose` 로 고르면 목록에서
+   * 고른 것과 같은 길로 값을 내고 닫는다. 주지 않으면 지금과 같다.
+   */
+  dialogLead?: (choose: (value: string) => void) => ReactNode;
+  /** 닫힌 단추의 글 뒤에 붙일 표시(점 등). 주지 않으면 지금과 같다. */
+  actionBadge?: ReactNode;
 }
 
 /**
@@ -106,6 +119,9 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
     actionLabel = messages.popChrome.select,
     scannable = false,
     hideValue = false,
+    optionTrailing,
+    dialogLead,
+    actionBadge,
     size: _legacySize,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
@@ -274,6 +290,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
         }}
       >
         {actionLabel}
+        {actionBadge}
       </Button>
 
       {name !== undefined ? <input type="hidden" name={name} value={selectedValue ?? ''} /> : null}
@@ -303,6 +320,11 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
            */
           closeOnBackdropClick={false}
         >
+          {dialogLead?.((chosen) => {
+            const option = flatOptions.find((candidate) => candidate.value === chosen);
+            if (option !== undefined) choose(option);
+          })}
+
           {showSearch && (
             <div className="pop-select-dialog__search">
               <TextField
@@ -360,6 +382,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
                   }}
                 >
                   {option.label}
+                  {optionTrailing?.(option)}
                 </Button>
               ))
             )}

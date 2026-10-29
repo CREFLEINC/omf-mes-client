@@ -50,6 +50,8 @@ export interface ColumnLayout {
   grow: number;
   /** 표가 이보다 좁아지지 않는다(px). */
   floor: number;
+  /** 고정 폭 열(남는 폭을 맡지 않는 열)의 폭 합(px) — 이름 열에 남긴 「적어도 이만큼」은 들지 않는다. */
+  fixed: number;
 }
 
 /** 끈 폭(`overrides`)을 열에 얹는다. 흡수하는 열은 늘 하나 이상 남긴다 — 다 정해지면 첫째 열이 흡수한다. */
@@ -64,6 +66,7 @@ export const layoutColumns = (
   const widths: Record<string, string | undefined> = {};
   let grow = 0;
   let floor = 0;
+  let fixed = 0;
   for (const column of columns) {
     const base = pxOf(column.width);
     const override = overrides[column.key];
@@ -75,20 +78,92 @@ export const layoutColumns = (
     const width = override ?? base ?? COLUMN_MIN;
     widths[column.key] = `${String(width)}px`;
     floor += width;
+    fixed += width;
     if (base !== null) grow += width - base;
   }
 
-  return { widths, grow, floor };
+  return { widths, grow, floor, fixed };
 };
+
+/** 남는 폭을 맡는 열이 다른 열에 밀려도 남기는 폭 — 그 열의 글이 아예 사라지지 않게. */
+const ABSORBER_KEEP = 80;
+
+/** 좌우 배치(목록 | 상세)에서 한 열이 넓어질 수 있는 끝 — 칸 안에서 옆으로 넘겨 보므로 한없이 넓히지 않는다(#186). */
+const SIDE_COLUMN_MAX = 480;
+
+/**
+ * 상하 배치에서 이 열을 넓힐 수 있는 끝(px) — **표 폭을 넓히지 않는 데까지**다(사용자 지시 2026-10-26 · #186 「표가 넘어가는 버그」·
+ * 「좌우·상하 배치 동작은 같아야」). 넓힌 만큼 남는 폭을 맡는 열이 줄어들고, 그 열마다 `ABSORBER_KEEP` 은 남긴다.
+ * 표 폭은 상자 폭과 지금 표 폭 가운데 큰 쪽이다 — 좁은 칸에서 이미 옆으로 넘기는 표도 더 넓어지지 않는다.
+ * 잴 수 없으면(시험 환경) 끝이 없다.
+ */
+const widestOf = (cell: HTMLTableCellElement): number => {
+  const table = cell.closest('table');
+  const box = table?.parentElement;
+  if (!table || !box || box.clientWidth === 0) return Infinity;
+
+  const heads = Array.from(cell.parentElement?.children ?? []);
+  let others = 0;
+  Array.from(table.querySelectorAll('col')).forEach((col, index) => {
+    if (index === cell.cellIndex) return;
+    others +=
+      col.style.width === '' ? ABSORBER_KEEP : (heads[index]?.getBoundingClientRect().width ?? 0);
+  });
+
+  return Math.max(box.clientWidth, table.getBoundingClientRect().width) - others;
+};
+
+/**
+ * 그 열의 내용이 다 보이는 폭 — 표를 잠깐 내용 폭 배치로 바꿔 머리칸 폭을 잰다(그리기 전에 되돌려 눈에 보이지 않는다).
+ * 지금 그려진 줄(이 쪽)의 가장 긴 값 · 머리 이름 기준이다.
+ */
+const contentWidthOf = (cell: HTMLTableCellElement): number | null => {
+  const table = cell.closest('table');
+  if (table === null) return null;
+  table.classList.add('col-measuring');
+  const width = cell.getBoundingClientRect().width;
+  table.classList.remove('col-measuring');
+  return Number.isFinite(width) && width > 0 ? Math.ceil(width) : null;
+};
+
+/** 표를 옆으로 넘기는 상자 — 표에서 위로 올라가며 처음 만나는, 가로로 넘치는 상자. 없으면 `null`. */
+const scrollBoxOf = (table: HTMLTableElement | null): HTMLElement | null => {
+  for (let box = table?.parentElement ?? null; box !== null; box = box.parentElement) {
+    if (box.scrollWidth > box.clientWidth && getComputedStyle(box).overflowX !== 'visible') {
+      return box;
+    }
+  }
+  return null;
+};
+
+/**
+ * 끄는 동안 손잡이를 상자 안에 둔다(사용자 지시 2026-10-28 「품목명 열을 한 번 늘리면 다시 줄여지지 않는다」) — 표가 칸보다
+ * 넓어지면 손잡이가 칸 밖(가로로 넘긴 자리)으로 나가 다시 잡을 수 없었다. 열 끝이 상자 오른쪽을 넘으면 그만큼 옆으로 넘긴다.
+ */
+const keepEdgeInView = (cell: HTMLTableCellElement): void => {
+  const box = scrollBoxOf(cell.closest('table'));
+  if (box === null) return;
+  const over = cell.getBoundingClientRect().right + EDGE_MARGIN - box.getBoundingClientRect().right;
+  if (over > 0) box.scrollLeft += over;
+};
+
+/** 손잡이를 상자 끝에서 이만큼 안쪽에 둔다 — 끝에 붙으면 옆 구획의 막대(`po-board-gutter`)에 가려 잡히지 않는다. */
+const EDGE_MARGIN = 24;
 
 /**
  * 끌기 손잡이 — 머리칸 오른쪽 끝의 세로 막대. 마우스·터치로 끈다. 읽기 도구에는 감춘다 — 머리칸 이름에
  * 섞이지 않게.
  */
 const ColumnResizer = ({
+  fitContent,
+  baseWidth,
   onResize,
   onReset,
 }: {
+  /** 끌어 넓힐 때 그 열 데이터의 가장 긴 폭에서 멈춘다. */
+  fitContent: boolean;
+  /** 저장 단위의 지금 폭(px). 표가 상자에 맞춰 늘거나 줄어 보이면 그린 폭과 다르다 — 없으면 그린 폭이다. */
+  baseWidth: number | null;
   onResize: (width: number) => void;
   onReset: () => void;
 }) => (
@@ -100,9 +175,33 @@ const ColumnResizer = ({
       if (cell === null || event.button !== 0) return;
       event.preventDefault();
       const startX = event.clientX;
-      const startWidth = cell.getBoundingClientRect().width;
+      const drawn = cell.getBoundingClientRect().width;
+      const startWidth = baseWidth ?? drawn;
+      /* 그린 폭과 저장 폭의 비 — 커서가 움직인 만큼 화면의 칸 끝이 따라오게 저장 단위로 옮긴다(#185). */
+      const ratio = drawn > 0 ? startWidth / drawn : 1;
+      /* 데이터의 가장 긴 폭까지만(옵트인 · 사용자 지시 2026-10-26 · #185) — 앞서 더 넓혀 둔 열도 잡으면 그 폭을 넘지 못한다. */
+      const limit = fitContent ? contentWidthOf(cell) : null;
+      /*
+       * 배치 고르기(`po-board.tsx` `usePaneLayout`)가 있는 화면은 #186 사용자 지시대로 — 상하 배치는 표가 칸을 넘지 않는
+       * 데까지, 좌우 배치는 한 열 480px 까지(표는 칸 안에서 옆으로 넘긴다). 배치 고르기가 없는 구획 틀(`board-frame.tsx` —
+       * ERP 데이터 탭 · 품목·BOM 정보)은 표가 칸을 넘지 않는 데까지다(사용자 지시 2026-10-28 「품목명 뒤 열이 잘려 안 보인다」).
+       * 그 밖의 화면은 종전 그대로다.
+       */
+      const split = cell.closest('.po-board-split');
+      const widest =
+        split === null
+          ? Infinity
+          : split.classList.contains('is-side')
+            ? Math.max(SIDE_COLUMN_MAX, drawn)
+            : Math.max(widestOf(cell), drawn);
+      /* 두 끝(그린 폭 단위) 가운데 좁은 쪽을 저장 단위로 바꾼다. */
+      const max = Math.min(limit ?? Infinity, widest) * ratio;
       const move = (moveEvent: PointerEvent): void => {
-        onResize(startWidth + moveEvent.clientX - startX);
+        onResize(Math.min(max, startWidth + (moveEvent.clientX - startX) * ratio));
+        /* 새 폭이 그려진 뒤에 잰다. */
+        requestAnimationFrame(() => {
+          keepEdgeInView(cell);
+        });
       };
       const up = (): void => {
         window.removeEventListener('pointermove', move);
@@ -114,6 +213,13 @@ const ColumnResizer = ({
       window.addEventListener('pointerup', up);
     }}
     onDoubleClick={onReset}
+    /*
+     * 정렬하는 열이면 머리칸 전체가 정렬 단추다 — 손잡이를 끌거나 두 번 누른 것이 단추의 누름으로 올라가 정렬이
+     * 바뀌지 않게 여기서 멈춘다.
+     */
+    onClick={(event) => {
+      event.stopPropagation();
+    }}
   />
 );
 
@@ -121,7 +227,12 @@ const ColumnResizer = ({
  * 열마다 끌기 손잡이를 단 열과, 표를 감싼 상자에 줄 `style` 을 낸다.
  * `storageKey` 는 표마다 다르게 — 같은 열 이름이 다른 표에서 다른 폭이어도 섞이지 않게.
  */
-export const useColumnWidths = <T,>(storageKey: string, columns: Column<T>[]) => {
+export const useColumnWidths = <T,>(
+  storageKey: string,
+  columns: Column<T>[],
+  /** 끌어 넓힐 때 그 열 데이터의 가장 긴 폭에서 멈춘다. 기본은 제한 없음(종전 표). */
+  { fitContent = false }: { fitContent?: boolean } = {},
+) => {
   const [overrides, setOverrides] = useState<ColumnWidths>(() => readWidths(storageKey));
 
   /* 끄는 동안 다른 열은 바뀌지 않는다 — 끌기 시작할 때의 값에 그 열만 얹어도 된다. */
@@ -144,6 +255,8 @@ export const useColumnWidths = <T,>(storageKey: string, columns: Column<T>[]) =>
         <>
           {column.header}
           <ColumnResizer
+            fitContent={fitContent}
+            baseWidth={pxOf(layout.widths[column.key])}
             onResize={(value) => {
               commit({ ...overrides, [column.key]: clampWidth(value) });
             }}
@@ -159,6 +272,7 @@ export const useColumnWidths = <T,>(storageKey: string, columns: Column<T>[]) =>
     style: {
       '--col-grow': `${String(layout.grow)}px`,
       '--col-floor': `${String(layout.floor)}px`,
+      '--col-fixed': `${String(layout.fixed)}px`,
     } as CSSProperties,
   };
 };

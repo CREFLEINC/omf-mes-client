@@ -13,6 +13,9 @@ export const dispatchHistory = {
     deliveryStatus: '상태',
     all: '전체',
     search: '조회',
+    /** 이벤트 선택지의 묶음 이름 — 기존 6종 뒤에 인계 작업 10종(피처 002). */
+    eventGroup: '이벤트',
+    handoverGroup: '인계 작업',
   },
   results: { NOTIFIED: '알림', SKIPPED: '건너뜀' },
   /** 알리지 않은 이유(data-model §5). */
@@ -54,7 +57,6 @@ export const dispatchHistory = {
   state: {
     empty: '조건에 맞는 알림이 없습니다',
     deliveriesEmpty: 'Zalo 발송 건이 없습니다',
-    selectHint: '행을 고르면 그 이벤트의 Zalo 발송 상세가 보입니다.',
     pageOf: (page: number, totalPages: number): string => `${String(page)} / ${String(totalPages)}`,
   },
   errors: {

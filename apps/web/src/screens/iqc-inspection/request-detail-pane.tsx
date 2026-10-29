@@ -2,7 +2,6 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { formatDateTime, type InspectionRequestDetail } from './types';
-import { withUom } from './uom-lookup';
 import type { ItemNameLookup, NameLookup } from './reference-lookup';
 
 /**
@@ -24,30 +23,30 @@ const empty = messages.iqcInspection.queue.emptyValue;
 
 export interface RequestDetailPaneProps {
   detail: InspectionRequestDetail;
-  /** 수량 옆에 붙일 단위 코드. 모르면 `null` — 숫자만 둔다 */
-  uomCode: string | null;
   /** 품목 이름 풀이. **번호가 아니라 이름(위)·코드(아래)를 보인다** — 대기 목록과 같은 모양(omf-all-around#40·#133). */
   itemNames: ItemNameLookup;
   /** 자재 LOT 번호 풀이. 검사자가 손에 든 라벨과 대조하는 값이다. */
   lotNumbers: NameLookup;
   /** 「검사 수준」 칸 — 품목의 현재 수준과 변경 버튼(omf-all-around#133). */
   levelSlot?: ReactNode;
+  /** 「적용 검사 기준」 칸 — 버전과 그 기준으로 이동하는 단추(#185). 기준을 아직 못 읽었으면 비운다. */
+  planSlot?: ReactNode;
 }
 
 export const RequestDetailPane = ({
   detail,
-  uomCode,
   itemNames,
   lotNumbers,
   levelSlot,
+  planSlot,
 }: RequestDetailPaneProps) => {
   const itemParts = itemNames.partsOf(detail.itemId);
   const itemLabel = itemNames.labelOf(detail.itemId);
   const lotNo = lotNumbers.labelOf(detail.lotId);
 
   /*
-   * 첫 줄은 검사 대상을 가리키는 넷(의뢰번호·품목·대상 LOT·검사수량) — 값을 굵게, 먼저 눈에 들어오게.
-   * 둘째 줄은 의뢰의 부가 정보다. 순서가 곧 격자 자리다(4열 · app.css `.iqc-inspection-facts`).
+   * 앞 셋은 검사 대상을 가리킨다(의뢰번호·품목·대상 LOT) — 값을 굵게, 먼저 눈에 들어오게.
+   * 뒤는 의뢰의 부가 정보다(적용 검사 기준 · 의뢰 일시 · 검사 수준). 순서가 곧 격자 자리다(4열 · app.css `.iqc-inspection-facts`).
    */
   const items: {
     key: string;
@@ -91,21 +90,10 @@ export const RequestDetailPane = ({
       ),
       emphasized: true,
     },
-    {
-      key: 'qty',
-      label: t.fields.targetQty,
-      value: withUom(String(detail.targetQty), uomCode),
-      emphasized: true,
-    },
-    /* 둘째 줄 — 의뢰의 부가 정보(검사 유형 · 기준 버전 · 의뢰 일시 · 검사 수준). 값은 굵게 하지 않는다(#133). */
-    {
-      key: 'type',
-      label: t.fields.inspectionTypeCode,
-      value:
-        t.inspectionTypeNames[detail.inspectionTypeCode] === undefined
-          ? detail.inspectionTypeCode
-          : `${detail.inspectionTypeCode} (${t.inspectionTypeNames[detail.inspectionTypeCode]})`,
-    },
+    /*
+     * 「총 검사 수량」은 아래 검사 수량 입력 제목 줄에, 「검사 유형」은 탭(IQC)에 이미 있어 기본 정보에서 뺐다(사용자 결정 2026-10-26 · #185).
+     * 「적용 검사 기준」은 버전과 [기준 보기](그 기준 화면으로 이동)다 — 내부 번호만으로는 무슨 기준인지 읽을 수 없다.
+     */
     {
       key: 'plan',
       label: t.fields.inspectionPlanVersionId,
@@ -113,7 +101,8 @@ export const RequestDetailPane = ({
       value:
         detail.inspectionPlanVersionId === null
           ? t.noPlanVersion
-          : String(detail.inspectionPlanVersionId),
+          : /* 기준을 아직 못 읽었으면 그 번호를 그대로 둔다 — 감추지 않는다(검사 시점에 고정되는 값이다). */
+            (planSlot ?? String(detail.inspectionPlanVersionId)),
     },
     /* 값만 따로 두면 무슨 시각인지 모른다 — 필드(`requestedAt`) 이름을 붙인다. */
     { key: 'at', label: t.fields.requestedAt, value: formatDateTime(detail.requestedAt) },

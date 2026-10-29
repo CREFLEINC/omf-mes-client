@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -20,6 +20,10 @@ import { DefectCauseCodeScreen } from './screen';
 import { CODE_TABS } from './tabs';
 
 const ROUTE = '/master-data/defect-cause-code';
+const CAUSE_ROUTE = '/master-data/cause-code';
+
+/** 하위 탭마다 고유 주소다(#208) — 셸 탭 막대가 이 주소로 옮긴다. */
+const TAB_ROUTE: Record<'defect' | 'cause', string> = { defect: ROUTE, cause: CAUSE_ROUTE };
 
 const DEFECT_LIST_PATH = '/quality/defect-codes';
 const CAUSE_LIST_PATH = '/quality/cause-codes';
@@ -133,18 +137,37 @@ const LocationProbe = () => {
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
+/**
+ * 앱 라우트(routes/index.tsx)처럼 주소에 따라 보일 하위 탭을 넘긴다. 셸 탭 막대 대신 링크 둘을 둔다 —
+ * 하위 탭 전환은 이제 주소 이동이다(#208).
+ */
+const RoutedScreen = () => {
+  const { pathname } = useLocation();
+
+  return (
+    <>
+      <nav aria-label="시험용 탭 막대">
+        <Link to={ROUTE}>불량코드</Link>
+        <Link to={CAUSE_ROUTE}>원인코드</Link>
+      </nav>
+      <DefectCauseCodeScreen tab={pathname === CAUSE_ROUTE ? 'cause' : undefined} />
+    </>
+  );
+};
+
 const renderScreen = (
   routes: StubRoute[],
   search = '',
+  path = ROUTE,
 ): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
   const { fetch, requests } = createRecordingFetch(routes);
 
   renderWithProviders(
     <>
-      <DefectCauseCodeScreen />
+      <RoutedScreen />
       <LocationProbe />
     </>,
-    { fetch, route: `${ROUTE}${search}` },
+    { fetch, route: `${path}${search}` },
   );
 
   return { requests, user: userEvent.setup() };
@@ -308,7 +331,7 @@ describe('DefectCauseCodeScreen — 탭', () => {
     const { requests, user } = renderScreen([defectListRoute(), causeListRoute()]);
     await screen.findByRole('button', { name: 'DF-10' });
 
-    await user.click(screen.getByRole('tab', { name: '원인코드' }));
+    await user.click(screen.getByRole('link', { name: '원인코드' }));
 
     expect(await screen.findByRole('button', { name: 'CS-10' })).toBeInTheDocument();
     expect(requestsTo(requests, CAUSE_LIST_PATH)).toHaveLength(1);
@@ -323,16 +346,25 @@ describe('DefectCauseCodeScreen — 탭', () => {
       [defectListRoute(), causeListRoute()],
       '?q=DF&inactive=1&sel=1001&mode=create',
     );
-    await screen.findByRole('tab', { name: '원인코드' });
+    await screen.findByRole('link', { name: '원인코드' });
 
-    await user.click(screen.getByRole('tab', { name: '원인코드' }));
+    await user.click(screen.getByRole('link', { name: '원인코드' }));
     await screen.findByRole('button', { name: 'CS-10' });
 
-    expect(currentLocation()).toBe(`${ROUTE}?tab=cause`);
+    expect(currentLocation()).toBe(CAUSE_ROUTE);
 
     const causeRequest = requestsTo(requests, CAUSE_LIST_PATH)[0];
     expect(causeRequest?.url.searchParams.has('q')).toBe(false);
     expect(causeRequest?.url.searchParams.has('includeInactive')).toBe(false);
+  });
+
+  /* 종전 주소(`?tab=cause`) 북마크·연결은 새 주소로 옮긴다 — 다른 질의값은 그대로다(#208). */
+  it('종전 주소의 tab=cause 는 원인코드 주소로 옮기고 다른 질의값은 남긴다', async () => {
+    const { requests } = renderScreen([causeListRoute()], '?tab=cause&q=CS&inactive=1');
+
+    expect(await screen.findByRole('button', { name: 'CS-10' })).toBeInTheDocument();
+    expect(currentLocation()).toBe(`${CAUSE_ROUTE}?q=CS&inactive=1`);
+    expect(requestsTo(requests, CAUSE_LIST_PATH)[0]?.url.searchParams.get('q')).toBe('CS');
   });
 
   it('모르는 탭 값이면 첫 탭으로 떨어진다', async () => {
@@ -346,7 +378,7 @@ describe('DefectCauseCodeScreen — 탭', () => {
     const { user } = renderScreen([defectListRoute(), causeListRoute()]);
     await screen.findByRole('button', { name: 'DF-10' });
 
-    await user.click(screen.getByRole('tab', { name: '원인코드' }));
+    await user.click(screen.getByRole('link', { name: '원인코드' }));
     await screen.findByRole('button', { name: 'CS-10' });
 
     expect(screen.queryByText('DF-10 · 외관')).not.toBeInTheDocument();
@@ -1294,7 +1326,9 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(
-      within(dialog).getByText('잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.'),
+      within(dialog).getByText(
+        '잠시 뒤 재시도하세요. 지속적인 요청 불가 시 담당자에게 문의하세요.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -1350,7 +1384,7 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
     ];
 
     it('진입 즉시 그 탭의 목록을 조회하고 대분류로 묶어 그린다', async () => {
-      const { requests } = renderScreen(routes, `?tab=${definition.kind}`);
+      const { requests } = renderScreen(routes, '', TAB_ROUTE[definition.kind]);
 
       expect(await screen.findByRole('button', { name: firstCode })).toBeInTheDocument();
       expect(screen.getByText(groupHeader)).toBeInTheDocument();
@@ -1358,7 +1392,7 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
     });
 
     it('조건이 그 탭의 요청 쿼리에 실린다', async () => {
-      const { requests, user } = renderScreen(routes, `?tab=${definition.kind}`);
+      const { requests, user } = renderScreen(routes, '', TAB_ROUTE[definition.kind]);
       await screen.findByRole('button', { name: firstCode });
 
       await user.type(screen.getByLabelText(definition.adapter.labels.searchLabel), 'X');
@@ -1368,7 +1402,7 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
     });
 
     it('탭 안의 목록 페인에 그 탭의 이름이 붙는다', async () => {
-      renderScreen(routes, `?tab=${definition.kind}`);
+      renderScreen(routes, '', TAB_ROUTE[definition.kind]);
       await screen.findByRole('button', { name: firstCode });
 
       const pane = screen.getByRole('region', {
@@ -1396,7 +1430,8 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
             respond: () => jsonResponse(created, { status: 201 }),
           },
         ],
-        `?tab=${definition.kind}&mode=create`,
+        '?mode=create',
+        TAB_ROUTE[definition.kind],
       );
 
       await user.type(await screen.findByLabelText('코드'), 'X-01');
@@ -1466,7 +1501,8 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
               headers: { ETag: '"10"' },
             }),
         }),
-        `?tab=${definition.kind}&sel=${String(SELECTED_ID)}`,
+        `?sel=${String(SELECTED_ID)}`,
+        TAB_ROUTE[definition.kind],
       );
 
       await user.type(await screen.findByLabelText('명칭'), '가');
@@ -1494,7 +1530,8 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
             request.method === 'POST' && new URL(request.url).pathname === deactivatePath,
           respond: () => jsonResponse(codeRow({ isActive: false })),
         }),
-        `?tab=${definition.kind}&sel=${String(SELECTED_ID)}`,
+        `?sel=${String(SELECTED_ID)}`,
+        TAB_ROUTE[definition.kind],
       );
 
       await user.click(await screen.findByRole('button', { name: '사용 중지' }));

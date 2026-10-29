@@ -2,7 +2,11 @@ import { Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { toStatusBadge } from './status-badge';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
+/* 대기·진행 밖의 상태(완료·생략·취소)도 실린다(#185) — 다섯 값을 다 아는 OQC 표식을 쓴다(PQC 와 같다). */
+import { toStatusBadge } from '../oqc-inspection/status-badge';
 import { formatDateTime, type InspectionQueueRow } from './types';
 import type { ItemNameLookup, NameLookup } from './reference-lookup';
 
@@ -23,12 +27,23 @@ import type { ItemNameLookup, NameLookup } from './reference-lookup';
 
 const t = messages.iqcInspection.queue;
 
+/**
+ * 목록에서는 품목 이름의 「【 … 】」 덧붙임(고객 품번 등)을 뺀 이름만 보인다(사용자 지시 2026-10-27 · #185).
+ * 전체 이름은 마우스를 올리면 보이고, 상세는 그대로다.
+ */
+const shortItemName = (name: string): string =>
+  name.replace(/\s*【[^】]*】\s*/g, ' ').trim() || name;
+
 export interface QueueTableProps {
+  /** 넘치면 줄이지 않고 가로로 구른다 — 좌우 배치(#185). 기본은 상자 폭에 맞춘다. */
+  scrollX?: boolean;
   rows: InspectionQueueRow[];
   /** 품목 풀이. 첫 칸이 **이름과 코드를 두 줄로** 세운다(사용자 지시 2026-09-21). */
   itemNames: ItemNameLookup;
   /** 자재 LOT 번호 풀이. **번호가 아니라 LOT 번호를 보인다**(omf-all-around#40). */
   lotNumbers: NameLookup;
+  /** 자재 LOT 의 공급사 이름 풀이(사용자 지시 2026-10-29 · #197). */
+  suppliers: NameLookup;
   /** 고른 의뢰. 없으면 `null` — 아무 줄도 현재가 아니다 */
   selectedId: number | null;
   onSelect: (inspectionRequestId: number) => void;
@@ -41,12 +56,14 @@ const columnsOf = (
   onSelect: (inspectionRequestId: number) => void,
   itemNames: ItemNameLookup,
   lotNumbers: NameLookup,
+  suppliers: NameLookup,
 ): Column<InspectionQueueRow>[] => [
   {
     /* 첫 칸은 자재 LOT — 검사자가 손에 든 LOT 으로 줄을 찾는다(#133 · 담당자 지시). */
     key: 'lotId',
+    align: 'start',
     header: t.columns.lotId,
-    width: '35%',
+    width: '260px',
     /*
      * 열 폭은 품목 40 · LOT 35 · 상태 10 · 일시 15(%)로 고정한다(#133) — 값 길이로 폭이 흔들리지 않는다.
      * LOT 번호는 한 줄이고, 모자라면 앞 마디만 말줄임이다(`iqc-inspection-lot`).
@@ -86,9 +103,10 @@ const columnsOf = (
   },
   {
     key: 'item',
+    align: 'start',
     header: t.columns.item,
-    /* 「이름 / 코드」. 긴 이름은 두 줄까지 보이고 넘으면 말줄임, 전체 값은 마우스를 올리면 보인다(#133). */
-    width: '40%',
+    /* 「이름 코드」 한 줄 — 넘치면 말줄임, 전체 값은 마우스를 올리면 보인다(#185 · 입하 예정 조회와 같은 한 줄 행). 다른 열처럼 폭을 끌어 바꾼다. */
+    width: '320px',
     /*
      * **이 칸이 곧 「이 줄을 연다」다**(둘째 칸 · #133) — 저장소의 목록 창들과 같은 관용구다. 종전에는 그 자리가
      * 의뢰번호였는데, 고르는 데 필요한 값이 아니고 고른 뒤 우측 창이 먼저 보여 주므로
@@ -117,7 +135,7 @@ const columnsOf = (
             <span className="iqc-inspection-queue-item-name">{label}</span>
           ) : (
             <>
-              <span className="iqc-inspection-queue-item-name">{parts.name}</span>
+              <span className="iqc-inspection-queue-item-name">{shortItemName(parts.name)}</span>
               <span className="iqc-inspection-queue-item-code">{parts.code}</span>
             </>
           )}
@@ -126,9 +144,25 @@ const columnsOf = (
     },
   },
   {
+    /* 공급사(사용자 지시 2026-10-29 · #197) — 한 줄, 넘치면 말줄임 · 전체 이름은 마우스를 올리면 보인다. */
+    key: 'supplier',
+    align: 'center',
+    header: t.columns.supplier,
+    width: '180px',
+    render: (row) => {
+      const name = suppliers.labelOf(row.lotId);
+      return (
+        <span className="iqc-inspection-queue-supplier" title={name}>
+          {name}
+        </span>
+      );
+    },
+  },
+  {
     key: 'statusCode',
+    align: 'center',
     header: t.columns.statusCode,
-    width: '10%',
+    width: '88px',
     render: (row) => {
       const badge = toStatusBadge(row.statusCode);
 
@@ -140,9 +174,18 @@ const columnsOf = (
     },
   },
   {
+    /* 의뢰번호(사용자 지시 2026-10-27 · #185) — 검색 칸으로 찾은 번호를 줄에서도 맞춰 본다. */
+    key: 'inspectionRequestNo',
+    align: 'center',
+    header: t.columns.inspectionRequestNo,
+    width: '170px',
+    render: (row) => row.inspectionRequestNo,
+  },
+  {
     key: 'requestedAt',
+    align: 'center',
     header: t.columns.requestedAt,
-    width: '15%',
+    width: '160px',
     sortable: true,
     /* 정렬은 원문(RFC3339)으로 한다 — 표기용 문자열로 정렬하면 형식이 아닌 값이 섞일 때 어긋난다. */
     sortAccessor: (row) => row.requestedAt,
@@ -157,33 +200,51 @@ export const QueueTable = ({
   rows,
   itemNames,
   lotNumbers,
+  suppliers,
   selectedId,
   onSelect,
   empty,
-}: QueueTableProps) => (
-  /*
-   * 줄 아무 곳이나 눌러도 고른다(omf-all-around#133) — DS 표에 줄 클릭이 없어 눌린 줄의 품목 단추로 넘긴다.
-   * 키보드·화면 낭독기는 종전처럼 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
-   */
-  <div
-    className="iqc-inspection-queue-rows"
-    onClick={(event) => {
-      const target = event.target as Element;
-      if (target.closest('button, a, input, select, textarea') !== null) return;
-      target
-        .closest('tbody tr')
-        ?.querySelector<HTMLButtonElement>('.iqc-inspection-queue-item')
-        ?.click();
-    }}
-  >
-    <Table
-      /* 제목은 화면에서 감추고 표의 접근 이름으로만 남긴다. */
-      caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
-      density="compact"
-      columns={columnsOf(selectedId, onSelect, itemNames, lotNumbers)}
-      rows={rows}
-      getRowId={(row) => String(row.inspectionRequestId)}
-      empty={empty}
-    />
-  </div>
-);
+  scrollX = false,
+}: QueueTableProps) => {
+  /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
+  const ordered = useColumnOrder(
+    'omf-mes:iqc-inspection:columns:queue:order',
+    columnsOf(selectedId, onSelect, itemNames, lotNumbers, suppliers),
+  );
+  const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:queue', ordered, {
+    /* 좌우 배치(가로 스크롤)에서는 열이 그 데이터의 가장 긴 폭까지만 넓어진다(사용자 지시 2026-10-26). */
+    fitContent: scrollX,
+  });
+  /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다(#185 · 반응형). */
+  const fit = useFitColumns(resizable.columns, { scrollX });
+
+  return (
+    /*
+     * 줄 아무 곳이나 눌러도 고른다(omf-all-around#133) — DS 표에 줄 클릭이 없어 눌린 줄의 품목 단추로 넘긴다.
+     * 키보드·화면 낭독기는 종전처럼 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
+     */
+    <div
+      ref={fit.ref}
+      className="iqc-inspection-queue-rows inspection-queue-table"
+      style={resizable.style}
+      onClick={(event) => {
+        const target = event.target as Element;
+        if (target.closest('button, a, input, select, textarea') !== null) return;
+        target
+          .closest('tbody tr')
+          ?.querySelector<HTMLButtonElement>('.iqc-inspection-queue-item')
+          ?.click();
+      }}
+    >
+      <Table
+        /* 제목은 화면에서 감추고 표의 접근 이름으로만 남긴다. */
+        caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
+        density="compact"
+        columns={fit.columns}
+        rows={rows}
+        getRowId={(row) => String(row.inspectionRequestId)}
+        empty={empty}
+      />
+    </div>
+  );
+};

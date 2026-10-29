@@ -24,8 +24,11 @@ export const iqcInspection = {
        */
       item: '품목',
       lotId: '자재 LOT',
+      /** 자재 LOT 의 공급사(사용자 지시 2026-10-29 · #197). */
+      supplier: '공급사',
       statusCode: '상태',
       requestedAt: '의뢰 일시',
+      inspectionRequestNo: '의뢰번호',
     },
     /** 값이 없는 칸. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
     emptyValue: '—',
@@ -150,7 +153,28 @@ export const iqcInspection = {
      * **없는 값과 모르는 값은 다른 모양이어야 한다**(공유계약 G-9) — 그래서 일반 빈 값
      * 표시(`emptyValue`)와 다른 전용 문구를 쓴다.
      */
+    auxTabs: '검사 참고 정보',
     noPlanVersion: '기준 없음',
+    planVersion: (version: number): string => `버전 ${String(version)}`,
+    openPlan: '기준 조회',
+    /** 「기준 조회」 창(#197) — 화면을 옮기지 않고 기준을 보인다. 고치려면 [수정]. */
+    planView: {
+      title: '적용 검사 기준',
+      version: (version: number): string => `버전 ${String(version)}`,
+      samplingLabel: '샘플링',
+      fullInspection: '전수 검사',
+      sampling: (ratio: number): string => `샘플 검사 ${String(ratio)}%`,
+      acceptanceLabel: '합격판정개수',
+      acceptance: (count: number): string => `불합격 ${String(count)}개 이하 합격`,
+      acceptanceNone: '없음',
+      itemsHeading: '검사 항목',
+      itemsCount: (count: number): string => `(${String(count)})`,
+      columns: { no: 'No.', count: '측정 횟수' },
+      count: (count: number): string => `${String(count)}회`,
+      required: '필수',
+      close: '닫기',
+      edit: '수정',
+    },
   },
 
   /** 우측 창 — 수량 판정. 합계 제약이 이 구획을 지배한다. */
@@ -160,13 +184,29 @@ export const iqcInspection = {
     sectionTitle: '검사 수량 입력',
     /** 종합 판정·임시 저장·판정 확정 구획의 제목. */
     judgmentSectionTitle: '판정',
+    judgmentDetailTitle: '판정 상세 입력',
+    judgmentDetailOpen: '판정 상세 입력',
+    judgmentDetailCancel: '취소',
+    judgmentDetailDone: '완료',
+    /** 마친 단계를 접은 한 줄 요약(#197) — 누르면 다시 펼쳐 고친다. */
+    stepSummary: {
+      quantities: (accepted: string, rejected: string, held: string): string =>
+        `합격 ${accepted} · 불량 ${rejected} · 보류 ${held}`, // ui-check-ignore: C-13 사용자 지시 요약 표기(2026-10-29 · #197)
+      fourMChanged: '4M 변경품',
+      fourMNone: '변경 없음',
+      next: '확정',
+      /** ① 검사 수량 단계의 단추 — 저장이 아니라 판정 단계로 넘어간다(사용자 지시 2026-10-29 · #197). */
+      qtyDone: '확정',
+      /** 접힌 단계 머리 오른쪽 — 눌러 다시 펼쳐 고칠 수 있다(#197). */
+      change: '펼쳐서 수정',
+    },
     round: (round: number): string => `${round}회차`,
     loading: '검사 결과를 불러오는 중입니다.',
     /**
      * 이 회차는 이미 확정됐다. ⛔ **고칠 수 있는 것처럼 보이지 않게 한다** — 이전 회차는
      * 정정하지 않고 재검사로 새 회차를 쌓는다.
      */
-    confirmed: '이 회차는 확정되어 고칠 수 없습니다. 다시 검사하려면 재검사 회차를 추가합니다.',
+    confirmed: '확정된 회차입니다. 재검사는 회차를 추가하세요.',
     /** 끝난 의뢰(COMPLETED · 최신 회차 확정)의 읽기 전용 요약 — 입력 칸을 두지 않는다(3단계 검증). */
     closed: {
       title: '검사 완료',
@@ -182,14 +222,21 @@ export const iqcInspection = {
       rejected: '불합격 수량',
       held: '보류 수량',
     },
-    /** 실시간 합계. 어긋난 값을 감추지 않는다. */
-    sum: '입력 완료',
-    remaining: '미입력',
-    overBy: (over: string): string => `${over} 초과`,
     /** 진행 막대의 접근 이름. */
     progressLabel: '검사 수량 대비 입력 합계',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
-    over: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
+    /** 총 검사 수량 옆 넘친 양 — 「+3 EA」. */
+    overDelta: (over: string): string => `+${over}`,
+    /** 수량 줄의 입력 현황 「전체 34 EA 중 34 EA 미입력」 — 앞은 총 검사 수량, 뒤(강조)는 미입력 · 초과 수량(사용자 시안 2026-10-29 · #197). */
+    totalsOf: (total: string): string => `전체 ${total} 중`,
+    shortBy: (short: string): string => `${short} 미입력`,
+    overBy: (over: string): string => `${over} 초과`,
+    /** 수량이 아닌 값이 있어 합계를 셀 수 없다(#197). */
+    totalsUncountable: '수량 확인 필요',
+    /** 불합격 수량은 불량 내역의 합 — 직접 넣지 않는다(#197). */
+    autoSum: '자동 계산',
+    /** 총 검사 수량 옆 모자란 양 — 「-1 EA」. */
+    shortDelta: (short: string): string => `-${short}`,
     quantityInvalid: '0 이상의 숫자로 입력해 주세요. 소수점은 여섯 자리까지 됩니다.',
     /**
      * 임시 저장. ⭐ **합계가 맞지 않아도 눌린다** — 판정을 확정하는 것이 아니라 하던 일을
@@ -229,9 +276,9 @@ export const iqcInspection = {
      * 비활성 사유 — 무엇이 막혔는지와 어떻게 푸는지를 함께 말한다(공유계약 G-23).
      * 단추 바로 아래에 붙으므로 단추 이름을 되풀이하지 않는다.
      */
-    confirmBlockedByTotals: '입력 수량이 총 검사 수량과 같아야 확정 가능합니다.',
+    confirmBlockedByTotals: '수량 합계가 검사 수량과 일치해야 합니다.',
     workerNotLinked:
-      '이 계정에 연결된 작업자가 없어 판정을 저장할 수 없습니다. 사용자 관리에서 작업자를 연결해 주세요.',
+      '이 계정에 연결된 작업자가 없어 판정을 저장할 수 없습니다. 작업자를 연결해 주세요.',
     followUp: {
       title: '불량 LOT 입니다 — 재검사 대신 처분하세요',
       body: '불합격으로 확정된 LOT 은 재검사 회차를 확정할 수 없습니다. 처분 판정에서 재작업(재검)·폐기·정상을 고르거나, 공급사로 반품하세요.',
@@ -241,15 +288,36 @@ export const iqcInspection = {
         '처분을 기다리는 부적합을 찾지 못했습니다. 처분 판정 목록에서 이 LOT 을 찾아 주세요.',
     },
     rejection: {
-      heading: '불합격 사유',
+      heading: '불합격 내용',
       major: '불량 대분류',
       minor: '불량 상세',
-      description: '사유',
-      required: '불합격이면 불량 코드를 골라야 확정할 수 있습니다.',
+      description: '불합격 사유',
+      descriptionPlaceholder: '불합격 사유를 입력하세요',
+      required: '불합격인 경우 판정 상세를 입력해야 합니다.',
       minorRequired: '이 대분류에는 상세 코드가 있습니다. 상세 코드를 고르세요.',
       noCodes: '등록된 불량 코드가 없습니다. 기준정보 > 불량·원인 코드에서 먼저 등록하세요.',
-      majorPlaceholder: '불량 대분류를 선택하세요',
-      minorPlaceholder: '불량 상세를 선택하세요',
+      majorPlaceholder: '선택하세요',
+      minorPlaceholder: '선택하세요',
+      /** 대분류에 상세가 있으면 뜨는 상세 선택 창(#185). */
+      /** 상세 고르는 창 제목 — 고른 대분류는 그 아래 줄에 따로 보인다(사용자 시안 2026-10-29). */
+      minorPickerTitle: '상세 불량 선택',
+      minorPickerClose: '닫기',
+      /** 불량 코드 검색(사용자 지시 2026-10-28 · #197) — 코드 · 이름으로 대분류 · 상세를 한 번에 찾는다. */
+      search: '불량 코드 검색',
+      searchPlaceholder: '코드 또는 이름을 입력하세요',
+      searchEmpty: '일치하는 불량 코드가 없습니다.',
+      /** 불량 내역(사용자 지시 2026-10-28 · #197) — 불합격 수량이 있으면 검사 수량 단계에서 불량 유형별 수량을 받는다. */
+      /** 체크하면 불량 내역을 받는다(사용자 지시 2026-10-28 · #197). */
+      hasDefects: '불량 등록',
+      defectsHeading: '불량 내역',
+      defectQty: '불량 수량',
+      addDefect: '불량 추가',
+      removeDefect: '삭제',
+      /** 불량 내역 표의 유형 열 제목 — 대분류 · 상세를 한 칸에 받는다(#197). */
+      defectType: '불량 유형',
+      defectQtyRequired: '불량 수량을 입력하세요.',
+      defectSumMismatch: '불량 내역 수량 합계가 불합격 수량과 같아야 합니다.',
+      defectsNotSaved: '최종 판정이 불합격일 때만 불량 내역이 저장됩니다.',
       /** 칸 아래 필수 누락 표시 — 확정이 막힌 이유(required·minorRequired)는 확정 단추 곁에 그대로 둔다. */
       majorMissing: '불량 대분류를 선택하세요.',
       minorMissing: '불량 상세를 선택하세요.',
@@ -266,11 +334,16 @@ export const iqcInspection = {
     fourMChange: {
       sectionTitle: '4M 변경 정보',
       label: '4M 변경품',
+      changedLabel: '4M 변경 여부',
       hint: '사람·설비·자재·방법 중 변경 사항이 있는 경우 선택',
       remarks: '비고',
       remarksPlaceholder: '비고를 입력하세요',
-      remarksMissing: '비고를 입력하세요.',
-      blocked: '4M 변경품은 비고를 입력해야 저장할 수 있습니다.',
+      remarksOpen: '비고 입력',
+      remarksEdit: '수정',
+      remarksTitle: '4M 변경 비고 입력',
+      remarksDone: '확정',
+      remarksCancel: '취소',
+      blocked: '4M 변경품일 경우 비고를 입력해야 합니다.',
     },
     judgmentChange: {
       basis: (acceptanceNumber: number): string =>
@@ -280,7 +353,7 @@ export const iqcInspection = {
       required: '자동 판정과 다른 판정은 변경 사유를 입력해야 확정할 수 있습니다.',
       reasonMissing: '판정 변경 사유를 입력하세요.',
     },
-    confirmBlockedByJudgment: '최종 판정을 선택해야 확정할 수 있습니다.',
+    confirmBlockedByJudgment: '최종 판정을 선택해주세요.',
     confirmBlockedByConfirmed: '이미 확정된 회차입니다.',
     /*
      * ⛔ 회차가 아직 없다. 확정은 회차 하나를 지목하는 쓰기라 지목할 것이 없으면 보낼 수
@@ -313,20 +386,15 @@ export const iqcInspection = {
      * 먼저 말한다. 「수정」으로 읽히면 검사자가 앞 판정이 사라지는 줄 알고 망설인다.
      */
     reinspect: '재검사 회차 추가',
-    reinspectCancel: '재검사 그만두기',
+    reinspectCancel: '재검사 취소',
+    reinspectLotNotPending: 'LOT 이 검사 대기 상태가 아니라 재검사할 수 없습니다.',
     /** 아직 만들어지지 않은 회차다 — 번호를 화면이 세지 않으므로 번호 없이 말한다. */
-    reinspectRound: '새 회차 (재검사)',
+    reinspectRound: '재검사',
     /**
      * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 버튼을 두지 않고 첫 임시 저장을 검사 시작
      * 으로 삼은 것과 같은 규율이다 — 누르기만 하고 떠나면 빈 회차가 남지 않는다.
      */
-    reinspectNote: '수량을 넣고 임시 저장하면 새 회차가 만들어집니다. 앞 회차는 그대로 남습니다.',
-    /**
-     * ⛔ **사유를 지어내지 않는다.** 계약은 재검사 사유를 선택으로 받지만 고를 값 목록이
-     * 아직 정해지지 않았다. 칸을 감추지 않고 왜 없는지 밝힌다(공유계약 G-2).
-     */
-    reinspectReasonPending:
-      '재검사 사유는 아직 고를 수 없습니다. 사유 목록이 정해지면 이 자리에 추가됩니다.',
+    reinspectNote: '임시 저장 시 새 검사 회차가 추가되며, 기존 결과는 유지됩니다.',
   },
 
   /**
@@ -334,6 +402,9 @@ export const iqcInspection = {
    */
   history: {
     heading: '이전 회차',
+    /** 최종 판정 거르기 칩(#185). */
+    filterLabel: '최종 판정 거르기',
+    filterAll: '전체',
     caption: '이전 검사 회차',
     columns: {
       round: '회차',
@@ -349,11 +420,14 @@ export const iqcInspection = {
 
   /** 항목별 측정치 그리드(스펙 §4-C). 줄은 「항목 × 샘플」이다. */
   measurements: {
+    /** 검사 항목별 결과 표 오른쪽 위 — 적용 검사 기준 창을 연다(#197). */
+    viewPlan: '검사 항목 조회',
     heading: '점검 항목',
     caption: '검사 항목별 결과',
     loading: '점검 항목을 불러오는 중입니다.',
     /** 기준 버전에 항목이 하나도 없다. 화면이 고칠 수 있는 것이 아니다. */
-    noItems: '이 검사 기준 버전에는 점검 항목이 없습니다. 기준정보 담당자에게 문의하세요.',
+    noItems: '등록된 검사 항목이 없습니다.',
+    noItemsHint: '검사 기준 정보를 확인해 주세요.',
     columns: {
       item: '검사 항목',
       spec: '규격',
@@ -365,6 +439,9 @@ export const iqcInspection = {
     requiredMark: '필수',
     /** 측정치 판정(`INSPECTION_MEASUREMENT_JUDGMENT`)의 화면 이름(#133) — 모르는 코드는 코드 그대로 보인다. */
     judgmentNames: { ACCEPTED: '합격', REJECTED: '불합격' } as Record<string, string>,
+    /** 판정 거르기 칩(#185). */
+    filterLabel: '판정 거르기',
+    filterAll: '전체',
     /** 「2회차」 — 이 항목을 기준이 정한 횟수만큼 잴 때 몇 번째인가(#133). */
     sampleOf: (sampleNo: number): string => `${String(sampleNo)}회차`,
     /** 예/아니오 항목의 결과(#133). */

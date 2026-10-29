@@ -9,10 +9,11 @@ const t = messages.workStart.actions;
 
 export interface ActionBarProps {
   /**
-   * 주 동작의 종류. 시작, 재개, 이어하기는 다른 경로라 이름도 갈린다. 이어하기는 쓰기 없이 자재
-   * 투입으로 자리만 옮긴다.
+   * 주 동작의 종류. 시작, 재개, 다시 시작, 이어하기는 다른 경로라 이름도 갈린다. 재개는 열린 세션에
+   * 사건을 붙이고, 시작과 다시 시작은 새 세션을 연다. 이어하기는 쓰기 없이 자재 투입으로 자리만
+   * 옮긴다. `checking`은 중단 W/O의 열린 세션을 아직 모르는 동안이다.
    */
-  mode: 'start' | 'resume' | 'continue';
+  mode: 'start' | 'resume' | 'restart' | 'checking' | 'continue';
   /** 「남은 일」 문장. 주 동작이 잠기면 이 문장이 사유다(C-4). */
   remaining: string;
   /** 막혀 있는가. 사유는 `remaining`이 말한다. */
@@ -50,13 +51,7 @@ export const ActionBar = ({
         aria-describedby={remainingId}
         onClick={onSubmit}
       >
-        {isSaving
-          ? t.starting
-          : mode === 'resume'
-            ? t.resume
-            : mode === 'continue'
-              ? t.continueToSession
-              : t.start}
+        {isSaving ? t.starting : mode === 'continue' ? t.continueToSession : t[mode]}
       </Button>
     </SharedActionBar>
   );

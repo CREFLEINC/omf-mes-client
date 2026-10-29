@@ -22,6 +22,8 @@ const renderPane = (overrides: Partial<Parameters<typeof VersionFormPane>[0]> = 
       values={versionToFormValues(inspectionPlanVersionFixtures[0]!)}
       onChange={onChange}
       fieldErrors={{}}
+      inspectionFrequencyOptions={[{ value: 'PRODUCTION_LOT', label: '생산 LOT' }]}
+      frequencyIntervalUomOptions={[{ value: 'HOUR', label: '시간' }]}
       banner={null}
       isDirty={false}
       isSaving={false}
@@ -128,12 +130,13 @@ describe('VersionFormPane — 샘플링 방법 (omf-all-around#103)', () => {
   it('전수검사로 바꾸면 비율을 함께 비운다', async () => {
     const { onChange, user } = renderPane();
 
-    await user.click(screen.getByRole('combobox', { name: '샘플링 방법' }));
+    await user.click(screen.getByRole('combobox', { name: '검사 방식' }));
     await user.click(screen.getByRole('option', { name: '전수검사' }));
 
     expect(onChange).toHaveBeenCalledWith({
       samplingMethodCode: 'FULL_INSPECTION',
       samplingRatio: '',
+      samplingQty: '',
     });
   });
 });
@@ -166,7 +169,7 @@ describe('VersionFormPane — 상태 잠금', () => {
     renderPane({ status: resolveVersionStatus('CONFIRMED') });
 
     expect(screen.getByLabelText('샘플 비율(%)')).toBeDisabled();
-    expect(screen.getByLabelText('유효시작')).toBeDisabled();
+    expect(screen.getByLabelText('적용 시작일')).toBeDisabled();
     expect(screen.getByLabelText('AQL')).toBeDisabled();
     expect(screen.getByRole('combobox', { name: '검사 주기' })).toBeDisabled();
     expect(
@@ -193,7 +196,7 @@ describe('VersionFormPane — 상태 잠금', () => {
     renderPane();
 
     expect(screen.getByLabelText('샘플 비율(%)')).toBeEnabled();
-    expect(screen.getByRole('combobox', { name: '샘플링 방법' })).toBeEnabled();
+    expect(screen.getByRole('combobox', { name: '검사 방식' })).toBeEnabled();
   });
 });
 
@@ -207,9 +210,11 @@ describe('VersionFormPane — 편집', () => {
   });
 
   it('필드 오류를 그 칸 옆에 낸다', () => {
-    renderPane({ fieldErrors: { rejectionNumber: '불합격판정개수는 0보다 큰 숫자여야 합니다.' } });
+    renderPane({
+      fieldErrors: { rejectionNumber: '불합격 판정 불량 수는 0보다 큰 숫자여야 합니다.' },
+    });
 
-    expect(screen.getByText('불합격판정개수는 0보다 큰 숫자여야 합니다.')).toBeInTheDocument();
+    expect(screen.getByText('불합격 판정 불량 수는 0보다 큰 숫자여야 합니다.')).toBeInTheDocument();
   });
 
   it('고친 것이 없으면 저장과 취소가 모두 비활성이다', () => {
@@ -219,14 +224,12 @@ describe('VersionFormPane — 편집', () => {
     expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
   });
 
-  /* 값 목록이 확정되지 않았다는 사실을 감추지 않는다. */
-  it('자리표시 선택칸에 준비 중 안내가 붙는다', () => {
-    renderPane();
+  /* 선택지를 받지 못했다는 사실을 감추지 않는다 — 감추면 선택칸이 이유 없이 빈다. */
+  it('공통코드 선택지를 받지 못했으면 선택칸에 안내가 붙는다', () => {
+    renderPane({ codeOptionsNote: messages.inspectionStandard.optionsLoadFailed });
 
     expect(
-      screen.getAllByText(
-        '선택지 준비 중입니다. 코드 목록이 확정되면 이 항목에서 고를 수 있습니다.',
-      ).length,
+      screen.getAllByText(messages.inspectionStandard.optionsLoadFailed).length,
     ).toBeGreaterThan(0);
   });
 });

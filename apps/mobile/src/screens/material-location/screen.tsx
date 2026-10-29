@@ -1,8 +1,10 @@
-import { AlertBanner, Button, Card, EmptyState, TextField } from '@crefle/web-ui';
+import { AlertBanner, EmptyState, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { Button } from '../../patterns/button';
+import { Card } from '../../patterns/card';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useScannedLot } from '../../patterns/lots';
 import { toApiError } from '../../patterns/request';

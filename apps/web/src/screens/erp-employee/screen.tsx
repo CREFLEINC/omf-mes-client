@@ -1,22 +1,22 @@
 import {
   AlertBanner,
-  Breadcrumb,
   Button,
   Checkbox,
   type Column,
   EmptyState,
-  PageHeader,
   SkeletonText,
-  Table,
   TextField,
 } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { BoardFrame } from '../../patterns/board-frame';
+import { BoardTable } from '../../patterns/board-table';
+import { OneLine } from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
-import { useWorkerDetail, useWorkerList, type Worker, type WorkerListQuery } from './queries';
+import { useWorkerList, type Worker, type WorkerListQuery } from './queries';
 
 const t = messages.erpEmployee;
 
@@ -61,7 +61,7 @@ const LoadErrorBanner = ({ error, onRetry }: { error: unknown; onRetry: () => vo
 );
 
 /** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
-const orEmpty = (value: string | number | null | undefined): ReactNode =>
+const orEmpty = (value: string | number | null | undefined): string =>
   value === null || value === undefined || value === '' ? t.values.empty : String(value);
 
 const activeLabel = (isActive: boolean): string => (isActive ? t.values.active : t.values.inactive);
@@ -77,12 +77,11 @@ const readPage = (params: URLSearchParams): number => {
   return Number.isInteger(page) && page > 1 ? page : 1;
 };
 
-const toSearchParams = (filters: Filters, page = 1, sel: number | null = null) => {
+const toSearchParams = (filters: Filters, page = 1) => {
   const next = new URLSearchParams();
   if (filters.q !== '') next.set('q', filters.q);
   if (filters.includeInactive) next.set('inactive', '1');
   if (page > 1) next.set('page', String(page));
-  if (sel !== null) next.set('sel', String(sel));
   return next;
 };
 
@@ -146,69 +145,12 @@ const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
   );
 };
 
-interface DetailPaneProps {
-  selectedId: number | null;
-}
-
-/**
- * 고른 사원의 상세. 목록에 없는 항목(사업장·연결된 사용자)이 여기서 보인다.
- * 사업장·공장·부서는 계약이 식별자만 주므로 번호 그대로 낸다 — 이름을 지어내지 않는다.
- */
-const DetailPane = ({ selectedId }: DetailPaneProps) => {
-  const detail = useWorkerDetail(selectedId);
-
-  if (selectedId === null) {
-    return <p className="field-note">{t.detail.selectHint}</p>;
-  }
-
-  if (detail.isError) {
-    return <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />;
-  }
-
-  if (detail.data === undefined) {
-    return (
-      <div role="status" aria-label={t.loading.detail}>
-        <SkeletonText lines={2} />
-      </div>
-    );
-  }
-
-  const worker = detail.data;
-  const facts = [
-    { key: 'workerNo', label: t.table.workerNo, value: worker.workerNo },
-    { key: 'workerName', label: t.table.workerName, value: worker.workerName },
-    { key: 'nameKo', label: t.table.nameKo, value: orEmpty(worker.nameKo) },
-    { key: 'nameVi', label: t.table.nameVi, value: orEmpty(worker.nameVi) },
-    {
-      key: 'businessUnitId',
-      label: t.detail.businessUnitId,
-      value: orEmpty(worker.businessUnitId),
-    },
-    { key: 'plantId', label: t.table.plantId, value: orEmpty(worker.plantId) },
-    { key: 'departmentId', label: t.table.departmentId, value: orEmpty(worker.departmentId) },
-    { key: 'appUserId', label: t.detail.appUserId, value: orEmpty(worker.appUserId) },
-    { key: 'statusCode', label: t.table.statusCode, value: orEmpty(worker.statusCode) },
-    { key: 'isActive', label: t.table.isActive, value: activeLabel(worker.isActive) },
-  ];
-
-  return (
-    <div role="group" aria-label={t.detail.label}>
-      <dl className="filter-bar">
-        {facts.map((fact) => (
-          <div className="field-cell" key={fact.key}>
-            <dt className="field-label">{fact.label}</dt>
-            <dd>{fact.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
-};
-
 /**
  * 사원정보 조회 (ERP). ERP 가 보낸 작업자를 읽기만 한다 — 쓰기 조작이 하나도 없다.
  *
- * 조건·쪽·고른 사원을 전부 주소에 둔다. 표 아래 상세는 고른 행이 있을 때만 조회한다.
+ * 입고 관리 짜임이다(사용자 지시 2026-10-27): 위에 조회 조건, 아래에 사원 목록 한 구획. 상세는 두지 않는다 — 상세가
+ * 목록 줄과 같은 내용이라(사용자 지시 2026-10-27) 줄을 고르는 일도 없다. 조건·쪽을 전부 주소에 둔다.
+ * 공장·부서는 계약이 식별자만 주므로 번호 그대로 낸다 — 이름을 지어내지 않는다.
  */
 export const ErpEmployeeScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -218,7 +160,6 @@ export const ErpEmployeeScreen = () => {
     includeInactive: searchParams.get('inactive') === '1',
   };
   const page = readPage(searchParams);
-  const selectedId = Number(searchParams.get('sel') ?? '') || null;
 
   const list = useWorkerList(toListQuery(filters, page));
   const rows = list.data?.items ?? [];
@@ -231,47 +172,32 @@ export const ErpEmployeeScreen = () => {
   const start = (shownPage - 1) * size + 1;
   const isBeyondLast = meta.total > 0 && shownPage > totalPages;
 
-  /** 조건·쪽이 바뀌면 상세를 닫는다 — 고른 사원이 새 결과에 없을 수 있다. */
+  /** 조건·쪽을 주소로 옮긴다 — 주소가 바뀌면 목록을 다시 조회한다. */
   const applyQuery = (nextFilters: Filters, nextPage = 1) => {
     setSearchParams(toSearchParams(nextFilters, nextPage));
   };
 
   const columns: Column<Worker>[] = [
+    { key: 'workerNo', header: t.table.workerNo, width: '120px' },
+    /* 남는 폭을 이 열이 다 받는다 — 폭을 주지 않는 열은 이것 하나다. */
     {
-      key: 'workerNo',
-      header: t.table.workerNo,
-      width: '120px',
-      render: (row) => (
-        // 접근 이름에 사번을 넣는다 — 「상세 보기」가 행마다 되풀이되면 어느 사원인지 알 수 없다.
-        <button
-          type="button"
-          className="link-cell"
-          aria-label={t.detail.openAction(row.workerNo)}
-          aria-pressed={row.workerId === selectedId}
-          onClick={() => {
-            setSearchParams(toSearchParams(filters, page, row.workerId));
-          }}
-        >
-          {row.workerNo}
-        </button>
-      ),
+      key: 'workerName',
+      header: t.table.workerName,
+      render: (row) => <OneLine text={row.workerName} />,
     },
-    { key: 'workerName', header: t.table.workerName, width: '140px' },
-    { key: 'nameKo', header: t.table.nameKo, render: (row) => orEmpty(row.nameKo) },
-    { key: 'nameVi', header: t.table.nameVi, render: (row) => orEmpty(row.nameVi) },
-    { key: 'plantId', header: t.table.plantId, width: '88px', align: 'end' },
+    { key: 'plantId', header: t.table.plantId, width: '64px', align: 'end' },
     {
       key: 'departmentId',
       header: t.table.departmentId,
-      width: '88px',
+      width: '64px',
       align: 'end',
       render: (row) => orEmpty(row.departmentId),
     },
-    { key: 'statusCode', header: t.table.statusCode, width: '104px' },
+    { key: 'statusCode', header: t.table.statusCode, width: '96px' },
     {
       key: 'isActive',
       header: t.table.isActive,
-      width: '88px',
+      width: '56px',
       render: (row) => activeLabel(row.isActive),
     },
   ];
@@ -281,7 +207,6 @@ export const ErpEmployeeScreen = () => {
       size="sm"
       live
       title={t.empty.beyondLastTitle}
-      description={t.empty.beyondLastDescription}
       action={
         <Button
           variant="outlined"
@@ -294,93 +219,81 @@ export const ErpEmployeeScreen = () => {
       }
     />
   ) : (
-    <EmptyState
-      size="sm"
-      live
-      title={t.empty.noResultTitle}
-      description={t.empty.noResultDescription}
-    />
+    <EmptyState size="sm" live title={t.empty.noResultTitle} />
   );
 
   return (
-    <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-
-      {list.isError && <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />}
-
-      <section className="pane" aria-label={t.title}>
-        <p className="field-note">{t.readOnlyNote}</p>
-
-        {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-        <FilterBar
-          applied={filters}
-          onSearch={(next) => {
-            applyQuery(next);
-          }}
-          onReset={() => {
-            applyQuery({ q: '', includeInactive: false });
-          }}
-        />
-
-        {/* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 안 된다. */}
-        {!list.isError &&
-          (list.isPending ? (
-            <div role="status" aria-label={t.loading.list}>
-              <SkeletonText lines={3} />
+    <BoardFrame
+      above={{
+        label: t.panes.filter,
+        content: (
+          <>
+            {list.isError && (
+              <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+            )}
+            {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+            <div className="pane po-board-filter">
+              <FilterBar
+                applied={filters}
+                onSearch={(next) => {
+                  applyQuery(next);
+                }}
+                onReset={() => {
+                  applyQuery({ q: '', includeInactive: false });
+                }}
+              />
             </div>
-          ) : (
-            <>
-              <div className="wide-table">
-                <Table
-                  density="compact"
-                  columns={columns}
-                  rows={rows}
-                  getRowId={(row) => String(row.workerId)}
-                  empty={emptySlot}
-                />
-              </div>
-              <nav className="form-actions" aria-label={t.pageNav.label}>
-                <p className="field-note form-actions-secondary">
-                  {rows.length > 0
-                    ? t.pageNav.range(start, start + rows.length - 1, meta.total)
-                    : t.pageNav.totalOnly(meta.total)}
-                </p>
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  disabled={shownPage <= 1}
-                  onClick={() => {
-                    applyQuery(filters, shownPage - 1);
-                  }}
-                >
-                  {t.actions.prevPage}
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  disabled={shownPage >= totalPages}
-                  onClick={() => {
-                    applyQuery(filters, shownPage + 1);
-                  }}
-                >
-                  {t.actions.nextPage}
-                </Button>
-              </nav>
-            </>
-          ))}
-      </section>
-
-      <section className="pane" aria-label={t.detail.label}>
-        <DetailPane selectedId={selectedId} />
-      </section>
-    </>
+          </>
+        ),
+      }}
+      list={{
+        label: t.panes.list,
+        /* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「없습니다」로 보이면 안 된다. */
+        content: list.isError ? null : list.isPending ? (
+          <div role="status" aria-label={t.loading.list}>
+            <SkeletonText lines={3} />
+          </div>
+        ) : (
+          <>
+            <BoardTable
+              label={t.panes.list}
+              widthKey="omf-mes:erp-employee:columns:workers"
+              minWidth="35rem"
+              columns={columns}
+              rows={rows}
+              getRowId={(row) => String(row.workerId)}
+              empty={emptySlot}
+            />
+            <nav className="form-actions" aria-label={t.pageNav.label}>
+              <p className="field-note form-actions-secondary">
+                {rows.length > 0
+                  ? t.pageNav.range(start, start + rows.length - 1, meta.total)
+                  : t.pageNav.totalOnly(meta.total)}
+              </p>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={shownPage <= 1}
+                onClick={() => {
+                  applyQuery(filters, shownPage - 1);
+                }}
+              >
+                {t.actions.prevPage}
+              </Button>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={shownPage >= totalPages}
+                onClick={() => {
+                  applyQuery(filters, shownPage + 1);
+                }}
+              >
+                {t.actions.nextPage}
+              </Button>
+            </nav>
+          </>
+        ),
+      }}
+    />
   );
 };

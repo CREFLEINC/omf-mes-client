@@ -1,0 +1,100 @@
+/*
+ * 적치 지시의 값들. 이름(작게) 아래 값(크게)을 두 칸씩 세운다 - 왼쪽 열은 품목(굵게) · 지시 번호,
+ * 오른쪽 열은 수량 · 권장 위치. 값의 차례(품목 · 지시 번호 · 수량 · 권장 위치)는 그대로 두고 격자를
+ * 위에서 아래로 채워 칸을 정한다 - 낭독기는 원래 차례로 읽는다. 값마다 이름을 붙이는 것은 지키되(형식을 아는 사람만 읽는 줄을 만들지 않는다),
+ * 한 줄에 하나씩 쌓던 것을 칸으로 접어 카드가 절반 높이가 된다.
+ *
+ * 쓰는 쪽은 `dl.task-facts` 아래에 이름과 값을 `div` 로 짝지어 둔다.
+ */
+.task-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  grid-auto-flow: column;
+  gap: var(--space-2) var(--space-3);
+}
+
+.task-facts > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 수량 · 권장처럼 짧은 값은 오른쪽 칸에 오른쪽으로 붙는다. */
+.task-facts > div:nth-child(n + 3) {
+  align-items: flex-end;
+  text-align: end;
+}
+
+.task-facts dt {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.task-facts dd {
+  margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-variant);
+}
+
+/* 실물과 대조하는 품목. 카드에서 가장 굵다. */
+.task-facts strong {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+/* 수량은 두 번째로 크다 - 손에 든 양과 견준다. */
+.task-facts > div:nth-child(3) dd {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 700;
+  color: var(--on-surface);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 지시 번호는 고정폭 - 한 자씩 대조한다. */
+.task-facts > div:nth-child(2) dd {
+  font-family: var(--font-mono);
+}
+
+/*
+ * 어디서 어디로. 위치 코드는 고정폭 칸이고, 가야 할 곳(권장)은 어두운 칸이라 눈이 먼저 간다.
+ * 권장이 없으면 노란 칸이다.
+ */
+.task-route {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.task-route__loc {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
+}
+
+.task-route__loc--to {
+  background: var(--on-surface);
+  color: var(--surface);
+}
+
+.task-route__loc--none {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.task-route__arrow {
+  color: var(--on-surface-muted);
+}

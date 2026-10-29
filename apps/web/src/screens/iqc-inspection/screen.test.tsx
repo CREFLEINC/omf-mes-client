@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { OA_PLANT_GROUP } from '../../patterns/oa-access';
 import { SessionProvider, type Session } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { SYNTHETIC_SESSION, signedInRoute } from '../../test/session-harness';
@@ -168,6 +169,33 @@ const renderScreen = (
             return jsonResponse({ defectRecordId: 1 }, { status: 201 });
           },
         },
+        /* OA 공장 판단 — 이 화면은 OA 공장 전용이다(사용자 지시 2026-10-29). 계정 범위(공장 8401)가 OA 공장이다. */
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/mdm/code-values' &&
+            new URL(request.url).searchParams.get('codeGroupCode') === OA_PLANT_GROUP,
+          respond: () =>
+            jsonResponse({
+              items: [{ code: 'PL13', codeName: 'OA Plant' }],
+              page: { page: 1, size: 100, total: 1 },
+            }),
+        },
+        {
+          match: (request) => new URL(request.url).pathname === '/mdm/plants',
+          respond: () =>
+            jsonResponse({
+              items: [
+                {
+                  plantId: 8401,
+                  plantCode: plantCodeForTest,
+                  plantName: 'OA 공장',
+                  businessUnitId: 8301,
+                  isActive: true,
+                },
+              ],
+              page: { page: 1, size: 100, total: 1 },
+            }),
+        },
         /* 공통코드 — 종합 판정 선택지를 채운다. */
         {
           match: (request) => new URL(request.url).pathname === '/mdm/code-values',
@@ -264,6 +292,8 @@ let samplingVersion: {
   samplingMethodCode: string;
   samplingRatio: number | null;
   acceptanceNumber?: number | null;
+  inspectionPlanId?: number;
+  planVersion?: number;
 } | null = null;
 
 /** 세션 — 기본은 작업자가 연결된 계정이다(검사자를 풀 수 있다 · omf-all-around#104). */
@@ -278,17 +308,21 @@ let lotStatusForTest: string | null = null;
 let draftRecordsForTest: {
   defectRecordId: number;
   defectCodeId: number;
+  defectQty?: number;
   defectDescription?: string;
   suspectedCauseCodeId?: number;
 }[] = [];
 /** 작성중 사유 조회를 실패시킨다(#122 리뷰 M2). */
 let draftRecordsFailForTest = false;
+/** 계정 범위 공장(8401)의 코드 — `PL13` 이면 OA 공장이다. */
+let plantCodeForTest = 'PL13';
 
 beforeEach(() => {
   testSession = LINKED_SESSION;
   lotStatusForTest = null;
   draftRecordsForTest = [];
   draftRecordsFailForTest = false;
+  plantCodeForTest = 'PL13';
   confirmResponder = null;
   samplingVersion = null;
 });
@@ -309,19 +343,135 @@ const findOpenButton = (no: string) =>
   screen.findByRole('button', { name: (accessibleName: string) => accessibleName.includes(no) });
 
 /*
- * #133 — 목록과 상세가 갈아 끼워진다. 상세에서 다른 의뢰로 가려면 「← 목록」으로 돌아가 고른다.
- * 저장 안 한 입력이 있으면 한 번 묻는데, 이 도우미는 「버리고 목록으로」를 고른다.
+ * #185 — 목록과 상세가 나란히 선다. 이 도우미는 목록에서 다른 의뢰를 바로 고른다(상세를 닫는 단추는 없다).
+ * 저장 안 한 입력이 있으면 한 번 묻는데, 이 도우미는 「저장하지 않고 이동」을 고른다.
  */
 const goToRequest = async (no: string): Promise<void> => {
-  await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+  await userEvent.click(await findOpenButton(no));
   const leave = screen.queryByRole('button', { name: t.detail.leaveAnyway });
   if (leave !== null) await userEvent.click(leave);
-  await userEvent.click(await findOpenButton(no));
+};
+
+/* 불합격 사유 글은 판정 줄 끝 입력칸이다(#185). */
+/*
+ * 불량 내역(코드 · 수량 · 원인 · 사유)은 ① 검사 수량 자리에 있다(#197) — 저장된 진행이 뒤 단계면 ① 을 다시 연다.
+ * 도우미는 아래에 있지만 부르는 때는 시험이 돌 때다.
+ */
+const typeReason = async (text: string, { replace = false } = {}): Promise<void> => {
+  await showDefects();
+  const box = await screen.findByLabelText(t.result.rejection.description);
+  if (replace) await userEvent.clear(box);
+  await userEvent.type(box, text);
+};
+const reasonValue = async (): Promise<string> => {
+  await showDefects();
+  return ((await screen.findByLabelText(t.result.rejection.description)) as HTMLInputElement).value;
+};
+
+/*
+ * 단계를 차례로 연다(#197) — 위 가로 단계 줄(`.iqc-inspection-stepper`)이 단계 상태를 보이고, 그 아래에는 지금 단계만 선다.
+ * ① 검사 수량은 창에서 넣는다(단계 줄 ① 의 [입력] · [변경]). 창의 [확정]으로 ② 판정이, ② 의 [확정]으로 ③ 이 열린다.
+ * 확정된 회차는 단계 줄 없이 모두 펼쳐져 있다 — 그때 도우미는 아무것도 하지 않는다.
+ */
+/** 「불합격 존재」를 켜 불량 내역을 연다(#197) — 저장된 불량 기록이 있으면 이미 켜져 있다. */
+const showDefects = async (): Promise<void> => {
+  await openQtyDialog();
+  const box = await screen.findByRole('checkbox', { name: t.result.rejection.hasDefects });
+  if (!(box as HTMLInputElement).checked) await userEvent.click(box);
+};
+/** 불량 내역 첫 줄의 불량 수량(#197). */
+const typeDefectQty = async (value: string): Promise<void> => {
+  await showDefects();
+  const box = await screen.findByLabelText(t.result.rejection.defectQty);
+  await userEvent.clear(box);
+  await userEvent.type(box, value);
+};
+const stepperItems = (): HTMLElement[] => [
+  ...document.querySelectorAll<HTMLElement>('.iqc-inspection-stepper > li'),
+];
+/*
+ * 지금 단계의 입력 자리(#197) — 단계 줄 아래 한 상자(창이 아니다). 이름이 그 단계 제목이다. 마친 단계는 단계 줄 카드의
+ * [변경]으로 다시 연다.
+ */
+const qtyDialog = (): HTMLElement | null =>
+  screen.queryByRole('region', { name: t.result.sectionTitle });
+/** 그 자리의 [확정] — ① 은 [입력 완료](#197). */
+const panelConfirm = (panel: HTMLElement): HTMLButtonElement =>
+  within(panel).getByRole('button', {
+    name: new RegExp(`^(${t.result.stepSummary.next}|${t.result.stepSummary.qtyDone})$`),
+  }) as HTMLButtonElement;
+/** 그 단계 카드의 [변경]을 눌러 입력 자리를 다시 연다 — 마친 단계일 때만 단추가 있다. */
+const reopenStep = async (index: number): Promise<void> => {
+  const item = stepperItems()[index];
+  if (item === undefined) return;
+  const edit = within(item).queryByRole('button');
+  if (edit === null || (edit as HTMLButtonElement).disabled) return;
+  await userEvent.click(edit);
+};
+const openQtyDialog = async (): Promise<void> => {
+  await screen.findByRole('form', { name: t.result.heading });
+  if (qtyDialog() !== null) return;
+  await reopenStep(0);
+};
+/** 수량 자리의 [확정] — 켜져 있으면 눌러 ② 로 넘긴다. */
+const leaveQtyDialog = async (): Promise<void> => {
+  const panel = qtyDialog();
+  if (panel === null) return;
+  const confirm = panelConfirm(panel);
+  if (!confirm.disabled) await userEvent.click(confirm);
+};
+/* ② 판정 자리(#197) — 수량 [확정] 뒤 바로 선다. 불합격 사유 · 판정 변경 사유도 이 자리 안에 있다. */
+const judgmentDialog = (): HTMLElement | null =>
+  screen.queryByRole('region', { name: t.result.judgmentSectionTitle });
+const openJudgmentDialog = async (): Promise<void> => {
+  await screen.findByRole('form', { name: t.result.heading });
+  if (judgmentDialog() !== null) return;
+  /* 수량 자리가 열려 있으면 그 [확정]이 판정 자리를 연다. */
+  if (qtyDialog() !== null) {
+    await leaveQtyDialog();
+    if (judgmentDialog() !== null) return;
+  }
+  await reopenStep(1);
+};
+const showStep = async (step: number): Promise<void> => {
+  await screen.findByRole('form', { name: t.result.heading });
+  if (step === 1) {
+    await openQtyDialog();
+    return;
+  }
+  await openJudgmentDialog();
+  if (step === 2) return;
+  const panel = judgmentDialog();
+  if (panel === null) return;
+  const confirm = panelConfirm(panel);
+  if (!confirm.disabled) await userEvent.click(confirm);
+};
+const qtyField = async (key: keyof typeof t.result.fields): Promise<HTMLElement> => {
+  await openQtyDialog();
+  return screen.getByLabelText(t.result.fields[key]);
+};
+const judgmentField = async (): Promise<HTMLElement> => {
+  await showStep(2);
+  return screen.findByLabelText(t.result.judgment);
+};
+
+/** 세 수량을 합계가 맞게 다시 넣는다(수량 창은 열어 둔다) — 판정 단계는 창의 [확정]을 눌러야 열린다(#197). */
+const completeQuantities = async (accepted: string, rejected: string, held: string) => {
+  for (const [key, value] of [
+    ['held', held],
+    ['accepted', accepted],
+  ] as const) {
+    const box = await qtyField(key);
+    await userEvent.clear(box);
+    await userEvent.type(box, value);
+  }
+  /* 불합격 수량은 불량 내역 수량의 합이다(#197) — 「불량 등록」을 켜 첫 줄 수량으로 넣는다. */
+  if (Number(rejected) > 0) await typeDefectQty(rejected);
 };
 
 /** [임시 저장]은 마지막 저장 상태와 달라진 것이 있을 때만 켜진다 — 누르기 전에 한 칸을 바꾼다. */
 const editQuantity = async (): Promise<void> => {
-  await userEvent.type(screen.getByLabelText(t.result.fields.held), '1');
+  await userEvent.type(await qtyField('held'), '1');
 };
 
 /*
@@ -394,13 +544,18 @@ describe('IqcInspectionScreen', () => {
     expect(lastQuery(sent)?.get('pendingOnly')).toBe('true');
   });
 
-  it('의뢰를 고르면 목록 대신 그 의뢰의 상세가 선다(#133)', async () => {
+  it('의뢰를 고르면 목록 옆에 그 의뢰의 상세가 선다(#185)', async () => {
     renderScreen();
 
     await findOpenButton('IR-2026-0002');
     await userEvent.click(openButton('IR-2026-0002'));
 
-    expect(await screen.findByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
+    /* 목록 머리칸에도 「의뢰번호」가 있다(#185) — 상세의 항목 이름(dt)으로 찾는다. */
+    expect(
+      (await screen.findAllByText(t.detail.fields.inspectionRequestNo)).some(
+        (element) => element.tagName === 'DT',
+      ),
+    ).toBe(true);
     /* 「검사 기본 정보」는 상자 제목이 아니라 경로의 한 단계로만 선다(#133). */
     expect(screen.queryByRole('heading', { name: t.detail.sectionTitle })).not.toBeInTheDocument();
     expect(
@@ -408,11 +563,17 @@ describe('IqcInspectionScreen', () => {
         t.detail.sectionTitle,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.pageNav.next })).not.toBeInTheDocument();
+    /* 목록은 그대로 남는다 — 다른 줄을 바로 고를 수 있다. 상세 탭 표도 같은 쪽 이동 줄을 늘 두므로(#197) 첫 줄이 목록 것이다. */
+    expect(
+      within(
+        screen.getAllByRole('navigation', {
+          name: messages.screenPatterns.pageNav.label,
+        })[0] as HTMLElement,
+      ).getByRole('button', { name: messages.screenPatterns.pageNav.next }),
+    ).toBeInTheDocument();
   });
 
-  it('쪽을 옮겨도 조건은 그대로이고, 상세에서 목록으로 돌아와도 조건이 남는다', async () => {
+  it('쪽을 옮겨도 조건은 그대로이고, 상세를 열어도 조건이 남는다', async () => {
     const { sent } = renderScreen('/?it=1001', () =>
       jsonResponse(queueResponse(queueItems, pageOf(120, 1, 50))),
     );
@@ -424,7 +585,6 @@ describe('IqcInspectionScreen', () => {
     expect(lastQuery(sent)?.get('itemId')).toBe('1001');
 
     await userEvent.click(await findOpenButton('IR-2026-0002'));
-    await userEvent.click(await screen.findByRole('button', { name: t.detail.backToList }));
 
     await findOpenButton('IR-2026-0002');
     expect(lastQuery(sent)?.get('itemId')).toBe('1001');
@@ -469,17 +629,37 @@ describe('IqcInspectionScreen', () => {
     expect(screen.queryByRole('navigation', { name: t.pageNav.label })).not.toBeInTheDocument();
   });
 
-  it('부르는 중에도 총계를 단언하지 않는다', () => {
+  it('계정 범위에 OA 공장이 없으면 안내만 보이고 의뢰를 부르지 않는다(OA 공장 전용 · 2026-10-29)', async () => {
+    plantCodeForTest = 'PL11';
+    const { sent } = renderScreen('/');
+
+    expect(await screen.findByText(messages.common.oaOnly.notice)).toBeInTheDocument();
+    expect(sent.some((url) => url.pathname.includes('inspection-requests'))).toBe(false);
+  });
+
+  it('부르는 중에도 총계를 단언하지 않는다', async () => {
     renderScreen('/', () => jsonResponse(queueResponse()));
 
-    expect(screen.getByText(t.queue.loading)).toBeInTheDocument();
+    /* OA 공장 판단을 마친 뒤에 화면이 선다(OA 공장 전용). */
+    expect(await screen.findByText(t.queue.loading)).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: t.pageNav.label })).not.toBeInTheDocument();
   });
 
-  it('셀 것이 있으면 쪽 이동이 선다', async () => {
+  it('셀 것이 있으면 쪽 이동이 선다 — 상세 탭 표와 같은 모양(10 · 20 · 50건 · 처음 · 마지막 · #197)', async () => {
     renderScreen();
 
-    expect(await screen.findByRole('navigation', { name: t.pageNav.label })).toBeInTheDocument();
+    const nav = await screen.findByRole('navigation', {
+      name: messages.screenPatterns.pageNav.label,
+    });
+    expect(
+      within(nav).getByRole('button', { name: messages.screenPatterns.pageNav.first }),
+    ).toBeInTheDocument();
+    expect(
+      within(nav).getByRole('button', { name: messages.screenPatterns.pageNav.last }),
+    ).toBeInTheDocument();
+    expect(
+      within(nav).getByLabelText(messages.screenPatterns.pageNav.pageSize),
+    ).toBeInTheDocument();
   });
 
   it('처음에는 목록만 선다 — 상세는 의뢰를 고른 뒤에 연다(#133)', async () => {
@@ -489,16 +669,32 @@ describe('IqcInspectionScreen', () => {
     expect(screen.queryByText(t.detail.sectionTitle)).not.toBeInTheDocument();
   });
 
-  it('저장 안 한 입력이 있으면 목록으로 가기 전에 한 번 묻는다', async () => {
+  it('저장 안 한 입력이 있으면 다른 의뢰로 옮기기 전에 한 번 묻는다', async () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
-    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '1');
-    await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+    await userEvent.type(await qtyField('accepted'), '1');
+    await userEvent.click(await findOpenButton('IR-2026-0002'));
 
     expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: t.detail.keepEditing }));
-    expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('1');
+    expect(await qtyField('accepted')).toHaveValue('1');
+  });
+
+  it('저장 안 한 입력이 있으면 목록에서 다른 의뢰를 눌러도 바로 옮기지 않고 묻는다(#185)', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await userEvent.type(await qtyField('accepted'), '1');
+    await userEvent.click(await findOpenButton('IR-2026-0002'));
+
+    expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: t.detail.keepEditing }));
+    expect(await qtyField('accepted')).toHaveValue('1');
+
+    await userEvent.click(openButton('IR-2026-0002'));
+    await userEvent.click(screen.getByRole('button', { name: t.detail.leaveAnyway }));
+    await waitFor(() => expect(screen.queryByText(t.detail.leaveUnsaved)).not.toBeInTheDocument());
   });
 
   it('의뢰를 고르면 그 의뢰의 상세가 선다 — 목록과 상세가 같은 건을 가리킨다', async () => {
@@ -512,19 +708,24 @@ describe('IqcInspectionScreen', () => {
 
     await findRound(1);
 
-    expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('480');
-    expect(screen.getByLabelText(t.result.fields.rejected)).toHaveValue('15');
-    expect(screen.getByLabelText(t.result.fields.held)).toHaveValue('5');
+    expect(await qtyField('accepted')).toHaveValue('480');
+    /* 불합격 수량은 불량 내역 수량으로 돌아온다(#197) — 불량 기록이 없던 회차는 코드 없는 한 줄. */
+    expect(await screen.findByLabelText(t.result.rejection.defectQty)).toHaveValue('15');
+    expect(await qtyField('held')).toHaveValue('5');
   });
 
-  it('되돌아온 수량이 합계 제약을 만족하면 미입력이 0 이다', async () => {
-    renderScreen('/?ir=1001');
+  it('되돌아온 수량이 합계 제약을 만족하면 수량 창의 [확정]이 켜진다 — 1단계를 마칠 수 있다(#197)', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      { ...draftRound, acceptedQty: 500, rejectedQty: 0, heldQty: 0 },
+    ]);
 
-    await waitFor(() =>
-      expect(document.querySelector('.iqc-inspection-progress-status')?.textContent).toBe(
-        `${t.result.remaining} 0`,
-      ),
-    );
+    await findRound(1);
+    await openQtyDialog();
+    const dialog = await screen.findByRole('region', { name: t.result.sectionTitle });
+    expect(within(dialog).getByLabelText(t.result.fields.accepted)).toHaveValue('500');
+    expect(
+      within(dialog).getByRole('button', { name: t.result.stepSummary.qtyDone }),
+    ).toBeEnabled();
   });
 
   /*
@@ -536,12 +737,12 @@ describe('IqcInspectionScreen', () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
-    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '123');
-    expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('123');
+    await userEvent.type(await qtyField('accepted'), '123');
+    expect(await qtyField('accepted')).toHaveValue('123');
 
     await goToRequest('IR-2026-0002');
 
-    await waitFor(() => expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue(''));
+    await waitFor(async () => expect(await qtyField('accepted')).toHaveValue(''));
   });
 
   /* omf-all-around#104 — 검사자는 계정에 연결된 작업자다. 연결이 없으면 누르기 전에 막고 이유를 말한다. */
@@ -550,10 +751,32 @@ describe('IqcInspectionScreen', () => {
     const { writes } = renderScreen('/?ir=1001');
 
     expect(await screen.findByText(t.result.workerNotLinked)).toBeInTheDocument();
-    await userEvent.type(screen.getByLabelText(t.result.fields.held), '1');
+    /*
+     * 입력으로 풀 수 없는 막힘이라 칸도 잠근다(#135) — 지금 단계 자리의 칸 · [확정]이 모두 꺼진다(#197).
+     */
+    const panel = document.querySelector<HTMLElement>('.iqc-inspection-step-panel');
+    expect(panel).not.toBeNull();
+    for (const control of within(panel as HTMLElement).queryAllByRole('textbox'))
+      expect(control).toBeDisabled();
+    for (const button of within(panel as HTMLElement).queryAllByRole('button'))
+      expect(button).toBeDisabled();
     expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
     expect(writes).toHaveLength(0);
+  });
+
+  it('작업자가 연결되지 않았으면 이 화면에서 바로 사번을 잇는 창을 연다(#197)', async () => {
+    testSession = { ...SYNTHETIC_SESSION, worker: null };
+    renderScreen('/?ir=1001');
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: messages.usersRoles.workerLink.connect }),
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: messages.usersRoles.workerLink.connect }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(messages.usersRoles.workerLink.inputLabel)).toBeInTheDocument();
   });
 
   it('옛 서버처럼 세션에 연결 칸이 없으면 막지 않는다 — 모르는 것을 「없음」으로 읽지 않는다', async () => {
@@ -562,6 +785,9 @@ describe('IqcInspectionScreen', () => {
 
     await findRound(1);
     expect(screen.queryByText(t.result.workerNotLinked)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: messages.usersRoles.workerLink.connect }),
+    ).not.toBeInTheDocument();
   });
 
   /* omf-all-around#102 — 샘플 검사는 샘플 수량만 나눠 넣어도 저장된다. */
@@ -571,7 +797,7 @@ describe('IqcInspectionScreen', () => {
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
     expect((await screen.findAllByText(/^50\b/)).length).toBeGreaterThan(0);
-    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '50');
+    await userEvent.type(await qtyField('accepted'), '50');
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -584,7 +810,7 @@ describe('IqcInspectionScreen', () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
-    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '500');
+    await userEvent.type(await qtyField('accepted'), '500');
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -637,59 +863,15 @@ describe('IqcInspectionScreen', () => {
     await waitFor(() => expect(queueCalls(sent).length).toBeGreaterThan(before));
   });
 
-  /*
-   * ⭐ 리뷰가 잡은 자리다. 저장 표시를 값이 바뀌는 자리에서 지우지 않으면, 검사자가 수량을
-   * 고치고 「저장했습니다」를 보고 자리를 떠 고친 값이 사라진다.
-   */
-  it('저장한 뒤 값을 더 고치면 「저장했습니다」를 지운다 — 저장되지 않은 변경이 있다', async () => {
+  it('임시 저장하면 다른 화면처럼 오른쪽 아래 알림으로 알린다 — 폼 안에 글줄을 두지 않는다(#197)', async () => {
     renderScreen('/?ir=1001');
 
     await findRound(1);
     await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
-    await screen.findByText(t.result.saved);
 
-    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '9');
-
-    await waitFor(() => expect(screen.queryByText(t.result.saved)).not.toBeInTheDocument());
-  });
-
-  /*
-   * ⭐ 실검증에서 잡은 자리다(#133). 저장 뒤 다시 부른 회차의 수량이 저장 전과 다르면(= 거의 항상) 회차를 되돌리는
-   * 자리가 「저장했습니다」까지 지워, 저장이 됐는지 화면이 말하지 않았다.
-   */
-  it('저장 뒤 다시 부른 회차 수량이 바뀌어도 「저장했습니다」를 남긴다', async () => {
-    renderScreen('/?ir=1001', undefined, [draftRound], [], itemSpecsResponse(), [
-      {
-        ...draftRound,
-        heldQty: draftRound.heldQty + 1,
-        versionNo: (draftRound.versionNo ?? 1) + 1,
-      },
-    ]);
-
-    await findRound(1);
-    await editQuantity();
-    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
-
-    await screen.findByText(t.result.saved);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    expect(screen.getByText(t.result.saved)).toBeInTheDocument();
-  });
-
-  it('저장한 뒤 판정을 바꾸면 「저장했습니다」를 지운다 — 수량 말고 다른 칸도 저장되지 않은 변경이다', async () => {
-    renderScreen('/?ir=1001');
-
-    await findRound(1);
-    await editQuantity();
-    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
-    await screen.findByText(t.result.saved);
-
-    await userEvent.click(screen.getByLabelText(t.result.judgment));
-    const options = await screen.findAllByRole('option');
-    const other = options.find((option) => option.getAttribute('aria-selected') !== 'true');
-    await userEvent.click(other as HTMLElement);
-
-    await waitFor(() => expect(screen.queryByText(t.result.saved)).not.toBeInTheDocument());
+    const shown = await screen.findByText(t.result.saved);
+    expect(shown.closest('.iqc-inspection-action-notes')).toBeNull();
   });
 
   it('검사 시점에 고정된 기준 버전으로 항목을 부른다 — 최신 기준을 따로 찾지 않는다', async () => {
@@ -742,7 +924,7 @@ describe('IqcInspectionScreen', () => {
   it('종합 판정 그룹을 이름으로 부른다 — 정수 id 를 박지 않는다', async () => {
     const { sent } = renderScreen('/?ir=1001');
 
-    await screen.findByLabelText(t.result.judgment);
+    await judgmentField();
 
     const call = sent.find((url) => url.pathname === '/mdm/code-values');
     expect(call?.searchParams.get('codeGroupCode')).toBe(CODE_GROUPS.overallJudgment);
@@ -752,7 +934,7 @@ describe('IqcInspectionScreen', () => {
   it('항목 판정 그룹을 종합 판정에 쓰지 않는다 — 그쪽에는 보류가 없다', async () => {
     const { sent } = renderScreen('/?ir=1001');
 
-    await screen.findByLabelText(t.result.judgment);
+    await judgmentField();
 
     const groups = sent
       .filter((url) => url.pathname === '/mdm/code-values')
@@ -804,11 +986,15 @@ describe('IqcInspectionScreen', () => {
     const { writes } = renderScreen('/?ir=1001');
 
     await findRound(1);
+    /* 판정 단계는 수량 단계에서 [다음]을 눌러야 열린다(#197). */
+    await showStep(2);
     expect(
       await screen.findByText(new RegExp(t.result.judgmentChange.basis(5))),
     ).toBeInTheDocument();
     const reason = await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason));
-    expect(screen.getByText(t.result.judgmentChange.required)).toBeInTheDocument();
+    /* 판정 창 [확정] 옆과 아래 저장 줄에 같은 사유가 선다(#197). */ expect(
+      screen.getAllByText(t.result.judgmentChange.required).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
 
     await userEvent.type(reason, '  재확인 결과 사용 가능 ');
@@ -833,7 +1019,7 @@ describe('IqcInspectionScreen', () => {
     await findRound(1);
     const reason = await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason));
     await userEvent.type(reason, '재확인');
-    await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+    await userEvent.click(await findOpenButton('IR-2026-0002'));
 
     expect(screen.getByText(t.detail.leaveUnsaved)).toBeInTheDocument();
   });
@@ -858,7 +1044,7 @@ describe('IqcInspectionScreen', () => {
       expect(screen.queryByRole('button', { name: t.result.confirm })).not.toBeInTheDocument(),
     );
 
-    await userEvent.click(screen.getByRole('button', { name: t.detail.backToList }));
+    await userEvent.click(await findOpenButton('IR-2026-0002'));
     expect(screen.queryByText(t.detail.leaveUnsaved)).not.toBeInTheDocument();
   });
 
@@ -876,21 +1062,95 @@ describe('IqcInspectionScreen', () => {
       await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason)),
     ).toBeInTheDocument();
 
-    const held = screen.getByLabelText(t.result.fields.held);
+    const held = await qtyField('held');
     await userEvent.clear(held);
     await userEvent.type(held, '0');
-    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '5');
+    await userEvent.type(await qtyField('accepted'), '5');
 
     await waitFor(() =>
       expect(screen.queryByLabelText(new RegExp(t.result.judgmentChange.reason))).toBeNull(),
     );
-    const rejected = screen.getByLabelText(t.result.fields.rejected);
-    await userEvent.clear(rejected);
-    await userEvent.type(rejected, '25');
-    /* 불합격 25 > 20 — 자동으로 불합격이 되고 불합격 사유 칸이 선다. */
-    expect(await screen.findByText(t.result.rejection.heading)).toBeInTheDocument();
+    /* 불합격 수량은 불량 내역 수량의 합이다(#197). */
+    await typeDefectQty('25');
+    /* 합계를 맞춰야 판정 단계가 열린다(#197) — 합격 475 + 불합격 25 = 500. */
+    const accepted = await qtyField('accepted');
+    await userEvent.clear(accepted);
+    await userEvent.type(accepted, '475');
+    /* 불합격 25 > 20 — 자동으로 불합격이 된다. 불량 내역은 ① 의 「불량 등록」 체크로 연다(#197). */
+    expect(
+      await screen.findByRole('checkbox', { name: t.result.rejection.hasDefects }),
+    ).toBeInTheDocument();
+    await openJudgmentDialog();
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: t.result.judgment })).toHaveTextContent('불합격'),
+    );
     expect(screen.queryByLabelText(new RegExp(t.result.judgmentChange.reason))).toBeNull();
     expect(writes).toHaveLength(0);
+  });
+
+  it('합격판정개수가 없어도 검사 수량 전부가 합격이면 최종 판정에 합격을 채운다(#197)', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: null,
+    };
+    renderScreen('/?ir=1001');
+
+    await findRound(1);
+    await completeQuantities('500', '0', '0');
+
+    await waitFor(async () =>
+      expect(await judgmentField()).toHaveTextContent(
+        new RegExp(messages.iqcInspection.measurements.judgmentNames.ACCEPTED ?? '합격'),
+      ),
+    );
+    expect(screen.queryByLabelText(new RegExp(t.result.judgmentChange.reason))).toBeNull();
+  });
+
+  it('자동으로 채운 합격은 근거가 사라지면 비운다 — 보류가 있는 채 합격으로 확정되지 않게(#197 리뷰)', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: null,
+    };
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      { ...draftRound, acceptedQty: 0, rejectedQty: 0, heldQty: 0, overallJudgmentCode: '' },
+    ]);
+
+    await findRound(1);
+    await completeQuantities('500', '0', '0');
+    await waitFor(async () => expect(await judgmentField()).toHaveTextContent(/^합격/));
+
+    await completeQuantities('496', '0', '4');
+
+    await waitFor(async () =>
+      expect(await judgmentField()).toHaveTextContent(t.result.judgmentPlaceholder),
+    );
+  });
+
+  it('「기준 조회」는 화면을 옮기지 않고 창으로 기준을 보인다 — [수정]은 창 안에 있다(#197)', async () => {
+    samplingVersion = {
+      samplingMethodCode: 'FULL_INSPECTION',
+      samplingRatio: null,
+      acceptanceNumber: 3,
+      inspectionPlanId: 7,
+      planVersion: 2,
+    };
+    renderScreen('/?ir=1001');
+
+    await userEvent.click(await screen.findByRole('button', { name: t.detail.openPlan }));
+
+    const dialog = await screen.findByRole('dialog', { name: new RegExp(t.detail.planView.title) });
+    expect(within(dialog).getByText(t.detail.planView.fullInspection)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.detail.planView.acceptance(3))).toBeInTheDocument();
+    expect(await within(dialog).findByText(/치수/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: t.detail.planView.edit }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: t.detail.planView.close }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('form', { name: t.result.heading })).toBeInTheDocument();
   });
 
   it('합격판정개수가 없는 기준이면 자동 판정·사유 칸이 없다(종전 그대로)', async () => {
@@ -957,7 +1217,7 @@ describe('IqcInspectionScreen', () => {
 
     await findRound(1);
 
-    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await judgmentField());
     await userEvent.click(await screen.findByRole('option', { name: '보류' }));
 
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
@@ -981,15 +1241,14 @@ describe('IqcInspectionScreen', () => {
     renderScreen('/?ir=1001');
 
     /* DS Select 는 트리거 버튼이라 값이 아니라 보이는 라벨로 잰다. */
-    await waitFor(() => expect(screen.getByLabelText(t.result.judgment)).toHaveTextContent('합격'));
+    await waitFor(async () => expect(await judgmentField()).toHaveTextContent('합격'));
   });
 
   it('상세 조회가 실패해도 「고르지 않음」으로 접지 않는다 — 다시 골라도 같은 실패가 온다', async () => {
     renderScreen('/?ir=9999');
 
     expect(await screen.findByRole('button', { name: messages.common.retry })).toBeInTheDocument();
-    /* 실패해도 목록으로 접지 않고 상세 자리에 머문다 — 돌아가는 길은 「← 목록」이다. */
-    expect(screen.getByRole('button', { name: t.detail.backToList })).toBeInTheDocument();
+    /* 실패해도 상세 자리에 머문다 — 다른 의뢰는 옆 목록에서 고른다. */
   });
 
   it('조건에 맞는 것이 없으면 조건을 넓히라고 말한다', async () => {
@@ -1115,7 +1374,7 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
     ]);
 
     await findRound(1);
-    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await judgmentField());
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
 
@@ -1128,7 +1387,7 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
     ]);
 
     await findRound(1);
-    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await judgmentField());
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
     await screen.findByText(t.result.confirmSucceeded);
@@ -1147,8 +1406,10 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
 
   const chooseRejected = async (): Promise<void> => {
     await findRound(1);
-    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await judgmentField());
     await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
+    /* 불량 내역은 ① 검사 수량 자리에서 「불합격 존재」를 켜야 선다(#197). */
+    await showDefects();
   };
 
   it('불합격을 고르면 사유 칸이 서고, 코드를 고르기 전에는 확정이 잠긴다', async () => {
@@ -1158,7 +1419,9 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     expect(
       await screen.findByRole('group', { name: t.result.rejection.heading }),
     ).toBeInTheDocument();
-    expect(screen.getByText(t.result.rejection.required)).toBeInTheDocument();
+    /* 판정 창 [확정] 옆과 아래 저장 줄에 같은 사유가 선다(#197). */ expect(
+      screen.getAllByText(t.result.rejection.required).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
   });
 
@@ -1170,10 +1433,13 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
 
     await userEvent.click(await screen.findByLabelText(t.result.rejection.major));
     await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
-    expect(screen.getByText(t.result.rejection.minorRequired)).toBeInTheDocument();
+    /* 판정 창 [확정] 옆과 아래 저장 줄에 같은 사유가 선다(#197). */ expect(
+      screen.getAllByText(t.result.rejection.minorRequired).length,
+    ).toBeGreaterThan(0);
     await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
     await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
-    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '표면 긁힘');
+    await typeDefectQty('15');
+    await typeReason('표면 긁힘');
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -1202,12 +1468,12 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
     await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
     await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
-    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '처음');
+    await typeDefectQty('15');
+    await typeReason('처음');
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
     await waitFor(() => expect(writes).toHaveLength(1));
 
-    await userEvent.clear(screen.getByLabelText(t.result.rejection.description));
-    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '고친 사유');
+    await typeReason('고친 사유', { replace: true });
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
     await waitFor(() => expect(writes).toHaveLength(2));
 
@@ -1243,7 +1509,8 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
     await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
     await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
-    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '표면 긁힘');
+    await typeDefectQty('15');
+    await typeReason('표면 긁힘');
 
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -1254,7 +1521,7 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
 
     expect(screen.getByLabelText(t.result.rejection.major)).toHaveTextContent('APP · 외관');
     expect(screen.getByLabelText(t.result.rejection.minor)).toHaveTextContent('APP-SCR · 스크래치');
-    expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘');
+    expect(await reasonValue()).toBe('표면 긁힘');
 
     const savedCount = writes.length;
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
@@ -1279,15 +1546,13 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
 
   it('다시 연 작성중 회차의 사유를 대분류·상세·사유 칸에 되살린다', async () => {
     draftRecordsForTest = [
-      { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
+      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
     ];
     const { sent } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       rejectedDraft,
     ]);
 
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
-    );
+    await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
     expect(screen.getByLabelText(t.result.rejection.major)).toHaveTextContent('APP · 외관');
     expect(screen.getByLabelText(t.result.rejection.minor)).toHaveTextContent('APP-SCR · 스크래치');
     const lookup = sent.find((url) => url.pathname === '/quality/defect-records');
@@ -1300,17 +1565,14 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
 
   it('사유만 고쳐도 [임시 저장]이 켜지고, 저장 본문에 고친 사유가 실린다', async () => {
     draftRecordsForTest = [
-      { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
+      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
     ];
     const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       rejectedDraft,
     ]);
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
-    );
+    await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
 
-    await userEvent.clear(screen.getByLabelText(t.result.rejection.description));
-    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '찍힘');
+    await typeReason('찍힘', { replace: true });
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
 
@@ -1324,18 +1586,18 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
   /* omf-all-around#130 — 추정 원인을 고르면 저장 본문에 싣고, 다시 열면 되살린다. */
   it('추정 원인을 고르면 임시 저장 본문에 원인이 실린다', async () => {
     draftRecordsForTest = [
-      { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
+      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
     ];
     const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       rejectedDraft,
     ]);
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
-    );
+    await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
     expect(screen.getByLabelText(t.result.rejection.cause)).toHaveTextContent(
       t.result.rejection.causeNone,
     );
 
+    /* 불량 내역은 ① 검사 수량 자리에 있다(#197). */
+    await showDefects();
     await userEvent.click(screen.getByLabelText(t.result.rejection.cause));
     await userEvent.click(
       await screen.findByRole('option', { name: 'SUP-PRC · 공급사 공정 (공급사)' }),
@@ -1355,6 +1617,7 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
       {
         defectRecordId: 1,
         defectCodeId: 7002,
+        defectQty: 15,
         defectDescription: '표면 긁힘',
         suspectedCauseCodeId: 8009,
       },
@@ -1362,6 +1625,8 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       rejectedDraft,
     ]);
+    /* 불합격 칸은 ② 판정 자리에 있다 — 되살린 뒤 ② 를 다시 연다(#197). */
+    await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
     await waitFor(() =>
       expect(screen.getByLabelText(t.result.rejection.cause)).toHaveTextContent(
         t.result.rejection.causeInactive('OLD · 옛 원인'),
@@ -1395,14 +1660,12 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
 
   it('코드 마스터에 없는 코드라 사유 글만 되살렸으면 코드를 고르기 전 저장은 사유 키를 싣지 않는다', async () => {
     draftRecordsForTest = [
-      { defectRecordId: 1, defectCodeId: 9999, defectDescription: '옛 코드 사유' },
+      { defectRecordId: 1, defectCodeId: 9999, defectQty: 15, defectDescription: '옛 코드 사유' },
     ];
     const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       rejectedDraft,
     ]);
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('옛 코드 사유'),
-    );
+    await waitFor(async () => expect(await reasonValue()).toBe('옛 코드 사유'));
     await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -1412,7 +1675,9 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
 
   /* #122 리뷰 m1 — 첫 저장(POST)이 만든 회차를 되살리면 그새 고친 사유를 덮는다. */
   it('첫 저장으로 회차가 생겨도 사유를 서버 값으로 덮지 않는다', async () => {
-    draftRecordsForTest = [{ defectRecordId: 1, defectCodeId: 7001, defectDescription: '서버 값' }];
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7001, defectQty: 15, defectDescription: '서버 값' },
+    ];
     const { writes } = renderScreen(
       '/?ir=1002',
       () => jsonResponse(queueResponse()),
@@ -1422,14 +1687,18 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
       [rejectedDraft],
     );
     await screen.findByText(t.result.confirmBlockedByUnsaved);
-    await editQuantity();
-    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    /* 판정 단계가 열리게 합계를 맞춘다(#197). */
+    await completeQuantities('485', '15', '0');
+    await userEvent.click(await judgmentField());
     await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
+    /* 불량 내역은 ① 검사 수량 자리에 있다(#197). */
+    await showDefects();
     await userEvent.click(await screen.findByLabelText(t.result.rejection.major));
     await userEvent.click(await screen.findByRole('option', { name: 'APP · 외관' }));
     await userEvent.click(screen.getByLabelText(t.result.rejection.minor));
     await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
-    await userEvent.type(screen.getByLabelText(t.result.rejection.description), '내 사유');
+    await typeDefectQty('15');
+    await typeReason('내 사유');
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
     expect((writes[0] as Request).method).toBe('POST');
@@ -1438,41 +1707,34 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: t.result.confirm })).toBeEnabled(),
     );
-    expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('내 사유');
+    expect(await reasonValue()).toBe('내 사유');
     expect(screen.getByLabelText(t.result.rejection.minor)).toHaveTextContent('APP-SCR · 스크래치');
   });
 
-  it('합격으로 바꿨다가 다시 불합격을 고르면 사유 칸이 비어 있다', async () => {
+  it('판정을 합격으로 바꿔도 불량 내역은 남고, 불합격이 아니면 저장되지 않는다고 알린다(#197)', async () => {
     draftRecordsForTest = [
-      { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
+      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
     ];
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedDraft]);
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
-    );
+    await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
 
-    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await judgmentField());
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));
-    await userEvent.click(screen.getByLabelText(t.result.judgment));
-    await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
 
-    expect(await screen.findByLabelText(t.result.rejection.description)).toHaveValue('');
-    expect(screen.getByLabelText(t.result.rejection.major)).not.toHaveTextContent('APP · 외관');
-    expect(screen.getByText(t.result.rejection.required)).toBeInTheDocument();
+    expect(await reasonValue()).toBe('표면 긁힘');
+    expect(screen.getByText(t.result.rejection.defectsNotSaved)).toBeInTheDocument();
   });
 
   it('합격으로 바꿔 저장하면 빈 사유를 실어 앞서 저장한 사유를 지운다', async () => {
     draftRecordsForTest = [
-      { defectRecordId: 1, defectCodeId: 7002, defectDescription: '표면 긁힘' },
+      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
     ];
     const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       rejectedDraft,
     ]);
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.description)).toHaveValue('표면 긁힘'),
-    );
+    await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
 
-    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await judgmentField());
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -1513,6 +1775,14 @@ describe('IqcInspectionScreen — 불량 LOT 다음 처리', () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedConfirmed]);
 
     expect(await screen.findByRole('button', { name: t.result.reinspect })).toBeInTheDocument();
+    expect(screen.queryByText(t.result.followUp.title)).not.toBeInTheDocument();
+  });
+  it('LOT 이 검사 대기가 아니면(합격 처리로 정상) 재검사 단추 대신 까닭 한 줄이 선다(#185)', async () => {
+    lotStatusForTest = 'NORMAL';
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [rejectedConfirmed]);
+
+    expect(await screen.findByText(t.result.reinspectLotNotPending)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.result.reinspect })).not.toBeInTheDocument();
     expect(screen.queryByText(t.result.followUp.title)).not.toBeInTheDocument();
   });
 });
@@ -1620,10 +1890,10 @@ describe('IqcInspectionScreen — 임시 저장 단추', () => {
     const save = screen.getByRole('button', { name: t.result.save });
     expect(save).toBeDisabled();
 
-    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '3');
+    await userEvent.type(await qtyField('accepted'), '3');
     expect(save).toBeEnabled();
 
-    await userEvent.clear(screen.getByLabelText(t.result.fields.accepted));
+    await userEvent.clear(await qtyField('accepted'));
     expect(save).toBeDisabled();
   });
 });
@@ -1633,11 +1903,11 @@ describe('IqcInspectionScreen — 수량 칸 앞자리 0', () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
-    const accepted = screen.getByLabelText(t.result.fields.accepted);
+    const accepted = await qtyField('accepted');
     await userEvent.type(accepted, '0007');
     expect(accepted).toHaveValue('7');
 
-    const held = screen.getByLabelText(t.result.fields.held);
+    const held = await qtyField('held');
     await userEvent.type(held, '00.5');
     expect(held).toHaveValue('0.5');
 

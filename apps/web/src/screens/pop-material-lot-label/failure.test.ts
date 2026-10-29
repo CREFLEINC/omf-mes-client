@@ -18,6 +18,7 @@ const resultOf = (over: Partial<IssueRunResult>): IssueRunResult => ({
   hasCreatedLot: false,
   hasPrintedLabel: false,
   issue: null,
+  lotId: null,
   error: null,
   iqcLabel: null,
   ...over,

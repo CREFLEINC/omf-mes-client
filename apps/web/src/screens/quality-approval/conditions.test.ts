@@ -83,14 +83,15 @@ describe('toConcessionCardView', () => {
       concessionNo: 'SYNTH-CN-501',
       approvedQty: '10',
       consumedQty: '2',
+      remainingQty: '8',
       uom: 'EA',
-      validity: '2026-08-22 – 2026-09-30',
-      statusCode: 'SYNTH-ACTIVE',
+      validity: '2026-08-22 ~ 2026-09-30',
       usable: '사용 불가',
       remarks: '합성 비고',
       workOrder: 'SYNTH-WO-001',
       process: '합성 공정',
       customer: '합성 고객',
+      isUnrestricted: false,
     });
     expect(JSON.stringify(view)).not.toMatch(/\b(99501|99701|99801|99901|99201|99301|99401)\b/);
     expect(source).toEqual(before);
@@ -166,8 +167,9 @@ describe('toConcessionCardView', () => {
     expect(toConcessionCardView(source, references)).toMatchObject({
       concessionNo: '특채번호 미제공',
       approvedQty: '0',
-      validity: '2020-01-01 – 종료일 없음',
-      statusCode: '상태 미제공',
+      /* 사용이 승인을 넘어도 잔여는 음수로 보이지 않는다(#193). */
+      remainingQty: '0',
+      validity: '2020-01-01 ~ 종료일 없음',
       usable: '사용 가능',
       remarks: '등록된 비고가 없습니다',
     });

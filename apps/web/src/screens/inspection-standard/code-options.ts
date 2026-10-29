@@ -12,6 +12,7 @@ import type { LookupEntry, PlanFilters, SelectOption } from './types';
 export const DEFAULT_PLAN_FILTERS: PlanFilters = {
   q: '',
   inspectionTypeCode: '',
+  itemId: '',
   includeInactive: false,
 };
 
@@ -29,16 +30,6 @@ export const INSPECTION_TYPE_OPTIONS: SelectOption[] = [
   { value: 'IQC', label: messages.inspectionStandard.values.inspectionTypes.iqc },
   { value: 'PQC', label: messages.inspectionStandard.values.inspectionTypes.pqc },
   { value: 'OQC', label: messages.inspectionStandard.values.inspectionTypes.oqc },
-];
-
-/**
- * 값 목록이 확정되지 않은 코드의 자리표시자.
- * 값을 지어내지 않는다 — 화면은 이 선택지와 함께 `messages.pendingCode.note` 안내를 보인다.
- */
-export const PENDING_CODE_VALUE = 'PENDING';
-
-const pendingOptions = (): SelectOption[] => [
-  { value: PENDING_CODE_VALUE, label: messages.pendingCode.placeholder },
 ];
 
 /** 전수검사 — 샘플 비율을 받지 않는다(검사 수량 = 의뢰 수량). */
@@ -60,25 +51,21 @@ export const SAMPLING_METHOD_OPTIONS: SelectOption[] = [
   { value: 'SAMPLE_BY_LOT', label: messages.inspectionStandard.values.samplingMethods.sampleByLot },
 ];
 
-/** 검사 주기 — 공통코드 미확정. */
-export const INSPECTION_FREQUENCY_OPTIONS: SelectOption[] = pendingOptions();
-
 /**
- * 주기 단위 — 공통코드 미확정.
- *
- * `/mdm/uoms`의 `uomCode`와 형태가 같으나 **계약이 그 둘을 잇지 않았다.**
- * 계약이 잇지 않은 것을 화면이 이으면 지어내는 것이므로 자리표시로 둔다.
+ * 아래 넷은 값 목록을 화면에 적지 않고 `GET /mdm/code-values?codeGroupCode=` 로 받는다
+ * (공유계약 G-32 · omf-all-around#194). 서버가 같은 그룹으로 저장 값을 검사한다.
  */
-export const FREQUENCY_INTERVAL_UOM_OPTIONS: SelectOption[] = pendingOptions();
+/** 검사 주기 — 고객이 늘린다(G-31). */
+export const INSPECTION_FREQUENCY_CODE_GROUP = 'INSPECTION_FREQUENCY';
 
-/**
- * 자료형 — 계약 설명이 「수치/텍스트/불리언 **[추정]**」이다.
- * [추정]이므로 3값을 쓰지 않는다. 이 값으로 화면 구조를 가르지도 않는다.
- */
-export const DATA_TYPE_OPTIONS: SelectOption[] = pendingOptions();
+/** 주기 단위 — 시간(HOUR) · 수량(QUANTITY). 품목 기준단위(`/mdm/uoms`)와 다른 축이다. */
+export const FREQUENCY_INTERVAL_UOM_CODE_GROUP = 'INSPECTION_FREQUENCY_INTERVAL_UOM';
 
-/** 검사 방법 — 계약에 설명이 없다. */
-export const INSPECTION_METHOD_OPTIONS: SelectOption[] = pendingOptions();
+/** 자료형 — NUMERIC · TEXT · BOOLEAN. */
+export const DATA_TYPE_CODE_GROUP = 'INSPECTION_ITEM_SPEC_DATA_TYPE';
+
+/** 검사 방법. */
+export const INSPECTION_METHOD_CODE_GROUP = 'INSPECTION_ITEM_SPEC_METHOD';
 
 /** 검사 유형 코드를 사람이 읽는 이름으로. 목록에 없는 값은 코드를 그대로 낸다. */
 export const inspectionTypeLabel = (code: string): string =>

@@ -1,7 +1,8 @@
-import { Button, Checkbox, Select, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { Select } from '../../patterns/select';
 import { periodProblem, type InspectionInsightFilters } from './filters';
 
 const t = messages.inspectionResultInsights.filter;

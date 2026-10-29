@@ -229,8 +229,10 @@ describe('DispatchHistoryScreen', () => {
       ],
     });
 
-    expect(await deliveryPane().findByText(t.state.selectHint)).toBeInTheDocument();
-    await user.click(await dispatchPane().findByRole('button', { name: /2026/ }));
+    /* 고르기 전에는 드로어가 없다 — 목록 아래에 안내 자리도 두지 않는다(C-2). */
+    await dispatchPane().findByText('WO-20261021-001');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await user.click(dispatchPane().getByText('WO-20261021-001'));
 
     await waitFor(() =>
       expect(deliveryQueries.at(-1)?.searchParams.get('notificationEventId')).toBe('9001'),
@@ -248,7 +250,7 @@ describe('DispatchHistoryScreen', () => {
   it('Zalo 상세 상태 필터는 「대기」로 PENDING·SENDING 을 함께 거른다', async () => {
     const user = userEvent.setup();
     setup({
-      route: `${ROUTE}&sel=9001`,
+      route: `${ROUTE}&selected=9001`,
       deliveries: [
         delivery(1),
         delivery(2, { status: 'SENDING' }),
@@ -263,6 +265,32 @@ describe('DispatchHistoryScreen', () => {
     expect(deliveryPane().queryByText('수신자 1')).toBeNull();
     expect(deliveryPane().getByText('수신자 2')).toBeInTheDocument();
     expect(deliveryPane().getByText('수신자 3')).toBeInTheDocument();
+  });
+
+  /** T-W-A — 드로어가 목록을 덮으므로 머리가 어느 건의 상세인지 말해야 한다(omf-all-around#183). */
+  it('행을 고르면 오른쪽 드로어 머리에 대상·이벤트·발생 시각을 보이고 행을 선택으로 표시한다', async () => {
+    const user = userEvent.setup();
+    setup({ dispatches: [dispatch(9001), dispatch(9002, { targetLabel: 'WO-20261021-002' })] });
+
+    await user.click(await dispatchPane().findByText('WO-20261021-002'));
+
+    const drawer = await screen.findByRole('dialog', { name: 'WO-20261021-002' });
+    expect(within(drawer).getByText(/생산 마감, /)).toBeInTheDocument();
+    const row = dispatchPane().getByText('WO-20261021-002').closest('tr') as HTMLElement;
+    expect(row).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('주소의 selected 로 열면 드로어가 열린 채로 오고, 닫으면 선택이 풀린다', async () => {
+    const user = userEvent.setup();
+    setup({ route: `${ROUTE}&selected=9001` });
+
+    const drawer = await screen.findByRole('dialog', { name: 'WO-20261021-001' });
+    await within(drawer).findByText('수신자 1');
+    await user.click(within(drawer).getByRole('button', { name: /닫기|close/i }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const row = dispatchPane().getByText('WO-20261021-001').closest('tr') as HTMLElement;
+    expect(row).not.toHaveAttribute('aria-selected', 'true');
   });
 
   it('결과가 없으면 빈 안내를 보인다', async () => {

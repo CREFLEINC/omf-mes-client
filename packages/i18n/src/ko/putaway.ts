@@ -32,6 +32,8 @@ export const putaway = {
      * 형식을 아는 사람만 읽는다.
      */
     itemLabel: '품목',
+    /** 작업 카드에서 코드 옆에 서는 품목 이름의 이름(낭독기용). */
+    itemNameLabel: '품목명',
     taskNoLabel: '지시 번호',
     qtyLabel: '수량',
     /*
@@ -107,11 +109,22 @@ export const putaway = {
     `품목은 ${itemCondition} 보관인데 이 위치는 ${locationCondition} 입니다`,
   /** 건별로 저장하고 마지막에 한 번 마친다. 연속 작업이라 매 건 화면을 끝내면 손이 더 간다. */
   record1: '이 지시 적치',
+  /**
+   * 「이 지시 적치」가 잠긴 이유(공유계약 G-1). 위에서부터 처음 비어 있는 것 하나만 말한다 -
+   * 위치가 통과해야 LOT 을 묻는 순서와 같다.
+   */
+  locked: {
+    location: '위치 라벨을 스캔하면 진행합니다',
+    noRule: '관리 위치가 없는 품목이면 「여기 적치」를 누르세요',
+    lot: '자재 LOT 라벨을 스캔하면 진행합니다',
+  },
   done: {
     count: (count: string) => `적치됨 ${count}건`,
     row: (lotNo: string, code: string, qty: string) => `${lotNo} → ${code} ${qty}`,
     /** 담기지 않은 건이 없어야 마친다. */
     submit: '적치 완료',
+    /** 마칠 것이 없을 때. 한 건이라도 적치해야 마친다. */
+    locked: '지시를 하나 이상 적치하면 마칠 수 있습니다',
   },
   sent: {
     title: '적치를 기록했습니다',

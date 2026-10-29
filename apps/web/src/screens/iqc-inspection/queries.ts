@@ -9,6 +9,7 @@ import type {
 } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
+import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../../patterns/master';
 import { runRequest, type ApiCallResult } from '../../patterns/request';
@@ -318,11 +319,13 @@ export const useSaveDraft = (
      */
     invalidateKeys:
       editingResultId === null
-        ? [iqcInspectionKeys.rounds(inspectionRequestId ?? 0), ALL_KEY]
+        ? [iqcInspectionKeys.rounds(inspectionRequestId ?? 0), ALL_KEY, INSPECTION_HUB_COUNTS_KEY]
         : [
             iqcInspectionKeys.rounds(inspectionRequestId ?? 0),
             iqcInspectionKeys.round(editingResultId),
             ALL_KEY,
+            /* 첫 저장이 의뢰를 「진행」으로 바꾼다 — 위쪽 건수 칩도 다시 센다(#197). */
+            INSPECTION_HUB_COUNTS_KEY,
           ],
     knownFields: SAVE_FIELDS,
     onSuccess: onSaved,
@@ -411,7 +414,10 @@ export const useSamplingRule = (
       ).then(({ inspectionPlanVersion }) => ({
         samplingMethodCode: inspectionPlanVersion.samplingMethodCode,
         samplingRatio: inspectionPlanVersion.samplingRatio ?? null,
+        samplingQty: inspectionPlanVersion.samplingQty ?? null,
         acceptanceNumber: inspectionPlanVersion.acceptanceNumber ?? null,
+        inspectionPlanId: inspectionPlanVersion.inspectionPlanId,
+        planVersion: inspectionPlanVersion.planVersion,
       })),
     enabled: inspectionPlanVersionId !== null,
   });
@@ -543,7 +549,11 @@ export const useConfirmResult = (
         } satisfies InspectionResultConfirmForward,
       }),
     etagPath: inspectionResultId === null ? null : roundPath(inspectionResultId),
-    invalidateKeys: [iqcInspectionKeys.rounds(inspectionRequestId ?? 0), ALL_KEY],
+    invalidateKeys: [
+      iqcInspectionKeys.rounds(inspectionRequestId ?? 0),
+      ALL_KEY,
+      INSPECTION_HUB_COUNTS_KEY,
+    ],
     knownFields: CONFIRM_FIELDS,
     /* 되돌릴 수 없는 쓰기다 — 실패 뒤 다시 눌러도 서버가 두 번 실행하지 않게 키를 유지한다. */
     keyLifetime: 'until-applied',
@@ -617,6 +627,8 @@ export const useDraftRejectionRecords = (inspectionResultId: number | null) => {
 export interface RejectedLotFollowUp {
   isDefective: boolean;
   nonconformanceId: number | null;
+  /** LOT 이 검사 대기인가 — 서버가 IQC 재검사 회차를 검사 대기 LOT 에만 받는다(`assertIqcReinspectable` · #185). */
+  isInspectionPending: boolean;
 }
 
 /**
@@ -637,7 +649,11 @@ export const useRejectedLotFollowUp = (lotId: number | null, enabled: boolean) =
         client.GET('/trace/lots/{lotId}', { params: { path: { lotId: id } } }),
       );
       if (lot.lot.statusCode !== DEFECTIVE_LOT_STATUS)
-        return { isDefective: false, nonconformanceId: null };
+        return {
+          isDefective: false,
+          nonconformanceId: null,
+          isInspectionPending: lot.lot.statusCode === INSPECTION_PENDING_LOT_STATUS,
+        };
       const open = await runRequest(() =>
         client.GET('/quality/nonconformances', {
           /*
@@ -656,12 +672,17 @@ export const useRejectedLotFollowUp = (lotId: number | null, enabled: boolean) =
           },
         }),
       );
-      return { isDefective: true, nonconformanceId: open.items[0]?.nonconformanceId ?? null };
+      return {
+        isDefective: true,
+        nonconformanceId: open.items[0]?.nonconformanceId ?? null,
+        isInspectionPending: false,
+      };
     },
   });
 };
 
 /** 시드 `LOT_STATUS` 의 불량 · 부적합의 처분 대기 상태. */
 const DEFECTIVE_LOT_STATUS = 'DEFECTIVE';
+const INSPECTION_PENDING_LOT_STATUS = 'INSPECTION_PENDING';
 const PENDING_DECISION = 'PENDING_DECISION';
 const OPENED_FROM_ANY = '2000-01-01T00:00:00.000Z';

@@ -4,14 +4,19 @@ import {
   Button,
   EmptyState,
   PageHeader,
-  Select,
   Skeleton,
   TextField,
+  type SelectItems,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { DetailDrawer } from '../../patterns/detail-drawer';
+import { handoverTypeName, useHandoverAlertTypes } from '../../patterns/handover-alert-types';
+import { formatPlantDateTime } from '../../patterns/plant-time';
+
+import { Select } from '../../patterns/select';
 import { DeliveryTable, toDeliveryView } from './delivery-table';
 import { DispatchTable } from './dispatch-table';
 import {
@@ -30,7 +35,8 @@ const t = messages.dispatchHistory;
 
 /**
  * W-CO-13 알림 발송 이력 — 이벤트 처리 결과(알림/건너뜀과 사유)와 수신자별 Zalo 결과.
- * 조건은 주소가 든다. 행을 고르면 그 건의 Zalo 발송 상세가 아래에 열린다.
+ * 조건은 주소가 든다. 행을 고르면 그 건의 Zalo 발송 상세가 오른쪽 드로어로 열린다
+ * (T-W-A·C-2, omf-all-around#183). 목록 아래에 붙이면 50행 아래로 밀려 누른 자리에서 보이지 않는다.
  */
 export const DispatchHistoryScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -71,12 +77,25 @@ export const DispatchHistoryScreen = () => {
   const dispatches = useDispatches(query);
   const deliveries = useDeliveries(selected, periodQuery);
   const events = useEvents();
+  /* 인계 작업 10종(피처 002) — 이름 풀이와 이벤트 거르기에 기존 6종 뒤로 더한다. 못 받으면 코드 그대로. */
+  const handoverTypes = useHandoverAlertTypes();
   const departments = useDepartments();
 
   const eventName = (code: string): string => {
+    const handover = handoverTypes.data?.find((type) => type.alertTypeCode === code);
+    if (handover !== undefined) return handoverTypeName(handover, code);
     const name = events.data?.find((event) => event.eventCode === code)?.eventName ?? '';
     return name.trim() === '' ? code : name;
   };
+
+  const eventOptions = (events.data ?? []).map((event) => ({
+    value: event.eventCode,
+    label: eventName(event.eventCode),
+  }));
+  const handoverOptions = (handoverTypes.data ?? []).map((type) => ({
+    value: type.alertTypeCode,
+    label: eventName(type.alertTypeCode),
+  }));
 
   const draftReason = validatePeriod(period);
   const search = (): void => {
@@ -92,7 +111,7 @@ export const DispatchHistoryScreen = () => {
     key: string,
     label: string,
     value: string,
-    options: { value: string; label: string }[],
+    options: SelectItems,
     onChange: (value: string) => void,
   ): ReactNode => (
     <div className="field-cell wide-select">
@@ -164,7 +183,6 @@ export const DispatchHistoryScreen = () => {
   };
 
   const deliverySlot = (): ReactNode => {
-    if (selected === null) return <EmptyState size="sm" title={t.state.selectHint} />;
     if (deliveries.isError) return loadError(() => void deliveries.refetch());
     if (deliveries.data === undefined) return <Skeleton variant="rect" height="8rem" />;
 
@@ -183,6 +201,35 @@ export const DispatchHistoryScreen = () => {
         )}
         <DeliveryTable rows={rows} />
       </>
+    );
+  };
+
+  /*
+   * ⭐ **드로어 머리에 대상을 둔다.** 드로어가 목록을 덮으므로 어느 건의 상세인지 머리가 말해야 한다.
+   * 목록의 행이 정본이고, 주소로 바로 열어 그 쪽에 행이 없으면 발송 건이 든 같은 값을 쓴다.
+   */
+  const selectedHead = (): { target: string; summary: string } | null => {
+    const row =
+      dispatches.data?.items.find((item) => item.notificationEventId === selected) ??
+      deliveries.data?.items[0];
+    if (row === undefined) return null;
+    const at = formatPlantDateTime(row.occurredAt) ?? row.occurredAt;
+    return { target: row.targetLabel ?? '—', summary: `${eventName(row.eventCode)}, ${at}` };
+  };
+
+  const deliveryDrawer = (): ReactNode => {
+    if (selected === null) return null;
+    const head = selectedHead();
+    return (
+      <DetailDrawer
+        title={head?.target ?? t.panes.deliveries}
+        summary={head?.summary}
+        onClose={() => go(page, null)}
+        className="dispatch-detail-drawer"
+      >
+        {/* 이름은 구획에 싣고 보이는 제목은 표 caption 하나로 둔다 — 같은 글이 두 번 서지 않게. */}
+        <section aria-label={t.panes.deliveries}>{deliverySlot()}</section>
+      </DetailDrawer>
     );
   };
 
@@ -217,10 +264,14 @@ export const DispatchHistoryScreen = () => {
           'event',
           t.filters.event,
           filters.event,
-          (events.data ?? []).map((event) => ({
-            value: event.eventCode,
-            label: eventName(event.eventCode),
-          })),
+          handoverOptions.length === 0
+            ? eventOptions
+            : [
+                ...(eventOptions.length === 0
+                  ? []
+                  : [{ label: t.filters.eventGroup, options: eventOptions }]),
+                { label: t.filters.handoverGroup, options: handoverOptions },
+              ],
           (value) => setFilters((prev) => ({ ...prev, event: value })),
         )}
         {selectField(
@@ -257,12 +308,7 @@ export const DispatchHistoryScreen = () => {
         {dispatchSlot()}
       </section>
 
-      <section className="pane dispatch-pane" aria-labelledby="delivery-title">
-        <h2 id="delivery-title" className="pane-title">
-          {t.panes.deliveries}
-        </h2>
-        {deliverySlot()}
-      </section>
+      {deliveryDrawer()}
     </>
   );
 };

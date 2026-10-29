@@ -1,18 +1,11 @@
-import {
-  AlertBanner,
-  Breadcrumb,
-  EmptyState,
-  PageHeader,
-  SkeletonText,
-  Tabs,
-  useToast,
-} from '@crefle/web-ui';
+import { AlertBanner, EmptyState, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { BoardFrame } from '../../patterns/board-frame';
 import { SaveErrorBanner, requireIfMatch, useMasterWrite } from '../../patterns/master';
 import {
   createBuMapDraft,
@@ -23,25 +16,6 @@ import {
   upsertBuMapDraft,
   type BuMapDraft,
 } from './bu-map-draft';
-import { componentRowName } from './bom-component-format';
-import { BomComponentFormDialog } from './bom-component-form-dialog';
-import {
-  BOM_COMPONENT_FORM_FIELDS,
-  componentToFormValues,
-  isSameBomComponentValues,
-  toBomComponentUpdate,
-  type BomComponentFormValues,
-} from './bom-component-mappers';
-import { BomComponentPane } from './bom-component-pane';
-import { BomDetailPane } from './bom-detail-pane';
-import { BomListPane, bomName } from './bom-list-pane';
-import {
-  bomComponentDetailPath,
-  bomKeys,
-  useBomComponentDetail,
-  useBomComponents,
-  useBomList,
-} from './bom-queries';
 import { BuMapFormDialog } from './bu-map-form-dialog';
 import { BuMapPane } from './bu-map-pane';
 import {
@@ -55,21 +29,12 @@ import {
 } from './external-code-draft';
 import { ExternalCodeFormDialog } from './external-code-form-dialog';
 import { ExternalCodePane } from './external-code-pane';
-import {
-  BOM_CODE_KEY,
-  BOM_KEY,
-  ITEM_KEY,
-  readBomCodeFilter,
-  readItemFilters,
-  readPage,
-  readSelectedId,
-  toSearchParams,
-} from './filters';
+import { ITEM_KEY, readItemFilters, readPage, readSelectedId, toSearchParams } from './filters';
 import { ItemAttrsPane } from './item-attrs-pane';
 import { isSameItemAttrsValues, itemToAttrsFormValues, toItemUpdate } from './item-attrs-mappers';
 import { ITEM_ATTRS_FORM_FIELDS, validateItemAttrsForm } from './item-attrs-validation';
-import { ItemListPane } from './item-list-pane';
-import { ItemOriginPane } from './item-origin-pane';
+import { ItemFilterBar, ItemListPane } from './item-list-pane';
+import { ItemOriginFacts } from './item-origin-pane';
 import { ItemResourceMapSection } from './item-resource-map-section';
 import {
   itemDetailPath,
@@ -83,15 +48,13 @@ import { LoadErrorBanner } from './load-error-banner';
 import {
   useBusinessUnitOptions,
   usePartnerOptions,
-  useProcessOptions,
-  useRoutingOperationOptions,
+  useUomCodes,
   useUomOptions,
   type LookupResult,
 } from './lookups';
 import { codeValueName, lookupLabel, selectableOptions } from './options';
 import { CODE_GROUPS, useCodeValueOptions } from './code-values';
 import { toPageView } from './pagination';
-import { SetDefaultDialog } from './set-default-dialog';
 import {
   buMapsPath,
   externalCodesPath,
@@ -105,7 +68,6 @@ import {
   DEFAULT_SUBSIDIARY_TAB_ID,
   DEFAULT_TAB_ID,
   ITEM_DETAIL_TABS,
-  ITEM_EXTENDED_ATTRS_SECTIONS,
   SUBSIDIARY_TABS,
   SUBSIDIARY_TAB_KEY,
   TAB_KEY,
@@ -125,9 +87,6 @@ import {
 import { UomConversionFormDialog } from './uom-conversion-form-dialog';
 import { UomConversionPane } from './uom-conversion-pane';
 
-type Bom = components['schemas']['Bom'];
-type BomComponent = components['schemas']['BomComponent'];
-type BomComponentDetailResponse = components['schemas']['BomComponentDetailResponse'];
 type ItemDetailResponse = components['schemas']['ItemDetailResponse'];
 type ItemBuItemMapListResponse = components['schemas']['ItemBuItemMapListResponse'];
 type ItemUomConversionListResponse = components['schemas']['ItemUomConversionListResponse'];
@@ -195,26 +154,14 @@ interface EditingRow<TDraft> {
 }
 
 /**
- * 구성품 확장 열 폼의 현재 값과 그것이 어디서 나왔는지.
+ * W-06-05 「품목·BOM 정보」의 품목 탭. BOM 탭은 `bom-screen.tsx` 다 — 두 탭은 셸 탭 막대가 오간다(`nav-tree.ts`).
  *
- * **출처가 행 상세 응답이다**(목록 행이 아니다). 잠금 토큰이 그 응답에만 오므로,
- * 값과 토큰을 같은 응답에서 받아야 「화면은 최신인데 저장은 충돌로 막히는」 상태가 생기지 않는다.
- */
-interface BomComponentFormState {
-  source: BomComponentDetailResponse;
-  baseline: BomComponentFormValues;
-  values: BomComponentFormValues;
-}
-
-/**
- * W-06-05 컨테이너.
+ * 「ERP 연동 현황·이력」의 품목 · BOM 탭과 같은 짜임이다(사용자 지시 2026-10-28): 위에 조회 조건, 왼쪽 품목 목록 |
+ * 오른쪽 고른 품목의 사실 칸과 확장 속성 / 부속 정보 탭. 제목·경로는 셸 탭 막대가 대신한다.
  *
  * 조회 조건과 선택은 URL이 소유한다(`?tab=&q=&inactive=1&page=&item=`) —
- * 새로고침·뒤로가기·공유가 같은 화면을 낸다.
- *
- * 고정 설계의 품목/BOM 상위 탭이 화면 전체를 가르고, 두 구획은 같은 품목 선택을 공유한다.
- * 품목 안에서는 원본 정보 위에 확장 속성/부속 정보 세부 탭을 둔다. 탭을 옮겨도 조건·선택·초안은
- * 비우지 않아 같은 품목의 다른 면을 오갈 수 있다.
+ * 새로고침·뒤로가기·공유가 같은 화면을 낸다. 탭을 옮겨도 조건·선택·초안은 비우지 않아
+ * 같은 품목의 다른 면을 오갈 수 있다.
  */
 export const ItemExtendedAttrsScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -236,14 +183,6 @@ export const ItemExtendedAttrsScreen = () => {
    */
   const isSubsidiaryTab = tab.id === 'sub';
 
-  /**
-   * 자재 명세서 탭을 보고 있는가.
-   *
-   * 부속 자원과 같은 규칙으로 **탭 단위로** 켠다 — 확장 속성만 보는 동안 자재 명세서를
-   * 받아 둘 이유가 없고, 계약이 `parentItemId`를 필수 쿼리로 두어 품목 없이는 부를 수도 없다.
-   */
-  const isBomTab = tab.id === 'bom';
-
   const itemList = useItemList(filters, page);
   const items = itemList.data?.items ?? [];
   // 유형 선택지를 못 받아도 목록은 그대로 쓴다 — 「전체」와 주소에 실린 코드만 고를 수 있다.
@@ -262,13 +201,15 @@ export const ItemExtendedAttrsScreen = () => {
    * 목록만 훑는 동안 쓰지 않을 목록을 받아 둘 이유가 없다.
    */
   const uomOptions = useUomOptions(selectedItemId !== null);
+  /* 사실 칸은 코드만(「EA」) — 「ERP 연동 현황·이력」의 품목 탭과 같은 표기. 같은 조회라 요청이 늘지 않는다. */
+  const uomCodes = useUomCodes(selectedItemId !== null);
 
   /*
-   * MES 구분(신재·재생재)의 이름. 확장 속성 구획에만 보이므로 그 탭에서 품목을 골랐을 때만 받는다.
+   * MES 구분(신재·재생재)의 이름. 사실 칸에 보이므로 품목을 골랐을 때 받는다.
    * 표시에만 쓰므로 미사용 코드값도 받는다 — 받지 못하면 코드 그대로 낸다.
    */
   const mesCategories = useCodeValueOptions(CODE_GROUPS.mesCategory, {
-    enabled: tab.id === 'attrs' && selectedItemId !== null,
+    enabled: selectedItemId !== null,
     includeInactive: true,
   });
 
@@ -540,171 +481,13 @@ export const ItemExtendedAttrsScreen = () => {
     setEditingExternalCode({ draft, isNew });
   };
 
-  /* ── 자재 명세서 ────────────────────────────────────────────────────────── */
-
-  /** BOM 코드 조건. 고른 품목 아래에 매달린 조건이라 품목이 바뀌면 함께 떨어진다(`filters.ts`) */
-  const bomCodeFilter = readBomCodeFilter(searchParams);
-  const bomList = useBomList(selectedItemId, isBomTab, bomCodeFilter);
-  const boms = bomList.data?.items ?? [];
-
-  /*
-   * 상태 이름은 표시에만 쓴다 — 미사용 코드값도 받아 이미 그 상태인 헤더가 이름을 잃지 않게 한다.
-   * 받지 못하면 코드 그대로 낸다(`codeValueName`). 탭을 볼 때만 받는다.
-   */
-  const bomStatuses = useCodeValueOptions(CODE_GROUPS.masterVersionStatus, {
-    enabled: isBomTab,
-    includeInactive: true,
-  });
-
-  /**
-   * 고른 자재 명세서. **주소의 번호가 아니라 목록에서 찾은 헤더가 정본이다.**
-   *
-   * 헤더 상세를 따로 부르지 않는 이유가 여기 있다(`bom-queries.ts`) — 목록에서 찾으면
-   * `?item=1002&bom=2001`처럼 **다른 품목의 번호를 손으로 넣은 주소**가 저절로 걸러진다.
-   * 상세를 부르면 서버가 그 헤더를 그대로 돌려주어 남의 자재 명세서를 그린다.
-   */
-  const selectedBomId = readSelectedId(searchParams, BOM_KEY);
-  const selectedBom = boms.find((bom) => bom.bomId === selectedBomId) ?? null;
-
-  const bomComponentList = useBomComponents(selectedBom?.bomId ?? null);
-  const bomComponents = bomComponentList.data?.items ?? [];
-
-  /**
-   * 구성품 표에 보이는 이름. **행마다 상세를 부른다**(결정 12) —
-   * 계약에 번호 목록으로 품목을 한꺼번에 받는 수단이 없다. 사업부 매핑의 「대상 품목」과
-   * **같은 캐시 키**를 쓰므로 같은 품목이 두 표에 나와도 한 번만 받는다.
-   */
-  const componentItemIds = useMemo(
-    () => bomComponents.map((component) => component.componentItemId),
-    [bomComponents],
-  );
-  const componentItemNames = useItemNames(componentItemIds);
-
-  /*
-   * 공정 선택 목록 둘은 **구성품 표가 보일 때만** 받는다 — 헤더 목록만 훑는 동안
-   * Rev 목록과 Rev마다의 공정을 받아 둘 이유가 없다.
-   */
-  const isComponentVisible = isBomTab && selectedBom !== null;
-  const routingOperationOptions = useRoutingOperationOptions(selectedItemId, isComponentVisible);
-  const processOptions = useProcessOptions(isComponentVisible);
-
-  /**
-   * 기본 지정을 기다리는 자재 명세서. **확인 창은 이 값이 있을 때만 마운트한다** —
-   * 닫힌 창을 남기면 지난 대상이 살아 있고 표에도 없는 버튼이 검색에 잡힌다.
-   */
-  const [pendingDefaultBom, setPendingDefaultBom] = useState<Bom | null>(null);
-
-  /**
-   * 편집 창을 연 구성품. **창을 여는 것이 곧 행 상세 조회를 켜는 것이다**(§5.3 6행) —
-   * 잠금 토큰이 그 조회에만 오므로 목록만 받은 상태에서는 저장이 성립하지 않는다.
-   */
-  const [editingComponentId, setEditingComponentId] = useState<number | null>(null);
-
-  const componentDetail = useBomComponentDetail(selectedBom?.bomId ?? null, editingComponentId);
-
-  const [componentFormState, setComponentFormState] = useState<BomComponentFormState | null>(null);
-
-  /*
-   * 출처가 그대로면 폼을 다시 세우지 않는다 — 사용자가 고르는 동안 값이 서버 값으로
-   * 되돌아가지 않는다. 확장 속성 폼과 같은 형태다.
-   */
-  const componentSource = componentDetail.data ?? null;
-
-  if (componentSource === null) {
-    if (componentFormState !== null) setComponentFormState(null);
-  } else if (componentFormState?.source !== componentSource) {
-    const seeded = componentToFormValues(componentSource.bomComponent);
-    setComponentFormState({ source: componentSource, baseline: seeded, values: seeded });
-  }
-
-  const componentWrite = useMasterWrite<BomComponentFormValues, BomComponent>({
-    request: (values, headers) =>
-      client.PUT('/planning/boms/{bomId}/components/{bomComponentId}', {
-        params: {
-          path: {
-            bomId: selectedBom?.bomId ?? 0,
-            bomComponentId: editingComponentId ?? 0,
-          },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': headers['If-Match'] ?? '',
-          },
-        },
-        /* **키를 열거해 만든다** — 원본 열을 섞어 보내도 서버가 막지 않는다(실측 P). */
-        body: toBomComponentUpdate(values),
-      }),
-    /*
-     * **행 단위 상세 경로다**(§5.3 표 6행). 목록 조회는 `ETag`를 주지 않으므로
-     * 이 경로 말고는 토큰이 보관된 자리가 없다 — 다른 경로를 주면 저장이 조용히 멈춘다(M24).
-     */
-    etagPath:
-      selectedBom === null || editingComponentId === null
-        ? null
-        : bomComponentDetailPath(selectedBom.bomId, editingComponentId),
-    /*
-     * 구성품 목록 키가 **행 상세 키의 앞부분**이라 둘이 함께 무효화된다.
-     * 행 상세를 빠뜨리면 다음 저장이 낡은 토큰을 쓴다.
-     */
-    invalidateKeys: [bomKeys.components(selectedBom?.bomId ?? 0)],
-    knownFields: BOM_COMPONENT_FORM_FIELDS,
-    onSuccess: () => {
-      setEditingComponentId(null);
-      setComponentFormState(null);
-      toast.show({ variant: 'success', description: messages.common.saved });
-    },
-  });
-
-  const setDefaultWrite = useMasterWrite<number, Bom>({
-    request: (bomId, headers) =>
-      client.POST('/planning/boms/{bomId}:set-default', {
-        params: {
-          path: { bomId },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
-        },
-      }),
-    /*
-     * **반드시 `null`이다**(§5.3 표 5행). 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없고
-     * 헤더 목록·상세 어느 쪽도 `ETag`를 주지 않는다 — 상세 경로를 주면 토큰을 찾지 못해
-     * 요청이 **나가지 않고 멈춘다**(M17과 같은 갈래).
-     */
-    etagPath: null,
-    /*
-     * **헤더 목록만 무효화한다.** 서버가 지정한 줄만 응답으로 돌려주므로(기존 기본의 해제는
-     * 반영되나 응답에 없다) 목록을 다시 받아야 어느 줄이 기본인지 화면이 알 수 있다.
-     * 구성품은 달라지지 않으므로 함께 받지 않는다.
-     */
-    invalidateKeys: [bomKeys.list(selectedItemId ?? 0)],
-    // 대응하는 입력칸이 없다(본문 자체가 없는 요청이다) — 필드 오류도 배너로 올린다.
-    knownFields: [],
-    onSuccess: () => {
-      setPendingDefaultBom(null);
-      toast.show({ variant: 'success', description: messages.common.saved });
-    },
-  });
-
   /* ── 선택 수명 ──────────────────────────────────────────────────────────── */
-
-  /**
-   * 이 자재 명세서에 매달린 편집 상태를 비운다. **정의는 여기 한 곳이다.**
-   *
-   * 열려 있던 편집 창은 앞 자재 명세서의 줄을 가리킨다 — 남기면 사용자가 연 창이 말없이
-   * 다른 표의 행으로 갈아타고, 그 번호가 새 자재 명세서에 없으면 창 안에서 404가 난다.
-   * 쓰기 오류도 낫지 않는다 — 어느 줄에서 난 실패인지 훅이 알지 못한다.
-   */
-  const resetBomComponentEditing = () => {
-    componentWrite.reset();
-    setEditingComponentId(null);
-  };
 
   /**
    * 이 품목에 매달린 편집 상태를 통째로 비운다.
    *
    * 폼과 초안은 조회 응답에서 다시 세워지므로 스스로 낫지만, **쓰기 오류와 열린 창은 낫지 않는다** —
    * 어느 품목에서 난 실패인지 훅이 알지 못해 다음 품목 화면에 그대로 남는다.
-   *
-   * 자재 명세서 축은 **위 함수를 불러** 규칙을 한 곳에 둔다. 대개 품목이 바뀌면 주소의 `bom`도
-   * 함께 떨어져 아래 자재 명세서 효과가 같은 일을 하지만, **주소가 품목만 바꾸는 경로**
-   * (공유된 링크·직접 편집)에서는 그 효과가 돌지 않는다 — 그때는 이 축이 유일한 지점이다.
    */
   const resetItemEditing = () => {
     attrsWrite.reset();
@@ -722,11 +505,6 @@ export const ItemExtendedAttrsScreen = () => {
     externalCodeWrite.reset();
     setExternalCodeState(null);
     setEditingExternalCode(null);
-
-    setDefaultWrite.reset();
-    setPendingDefaultBom(null);
-
-    resetBomComponentEditing();
   };
 
   /*
@@ -746,23 +524,6 @@ export const ItemExtendedAttrsScreen = () => {
   useEffect(() => {
     resetItemEditingRef.current();
   }, [selectedItemId]);
-
-  /*
-   * 자재 명세서 축도 같은 형태를 쓴다 — 참조로 최신 함수를 들고 **고른 자재 명세서에만** 반응한다.
-   */
-  const resetBomComponentEditingRef = useRef(resetBomComponentEditing);
-  resetBomComponentEditingRef.current = resetBomComponentEditing;
-
-  /**
-   * 선택 수명 규칙의 두 번째 실행 지점. **클릭 핸들러가 아니라 고른 자재 명세서에 묶는다.**
-   *
-   * 클릭에만 두면 뒤로가기·앞으로가기·주소 직접 편집처럼 핸들러를 거치지 않는 경로에서
-   * **앞 자재 명세서의 줄을 가리키는 창이 그대로 남는다.** 품목 축이 이미 겪은 자리이고
-   * (r2 개정 1) 이 화면에서 같은 부류가 세 번째다 — 두 경로를 한 지점으로 모은다.
-   */
-  useEffect(() => {
-    resetBomComponentEditingRef.current();
-  }, [selectedBomId]);
 
   /**
    * 주소의 일부만 고친다.
@@ -813,59 +574,7 @@ export const ItemExtendedAttrsScreen = () => {
 
     patchSearchParams((next) => {
       next.set(ITEM_KEY, String(itemId));
-      /*
-       * 고른 자재 명세서는 **품목 아래에 매달린 선택**이다(§5.4 3행). 함께 지우지 않으면
-       * 다른 품목의 번호가 주소에 남고, 그것을 지운 뒤에야 목록이 비어 보이는 순간이 생긴다.
-       * 같은 갱신 안에서 지운다 — 나눠 부르면 뒤로가기가 중간 상태로 떨어진다.
-       * BOM 코드 조건도 같은 수명이다 — 앞 품목의 조건으로 다음 품목의 목록을 거르지 않는다.
-       */
-      next.delete(BOM_KEY);
-      next.delete(BOM_CODE_KEY);
     });
-  };
-
-  /**
-   * 자재 명세서를 고른다. **주소만 바꾼다** — 헤더 목록도 품목도 달라지지 않고,
-   * 부속 초안은 다른 탭의 자료다.
-   *
-   * **편집 창 정리를 여기서 하지 않는다.** 정리는 고른 자재 명세서에 묶여 있고(위 효과),
-   * 핸들러에도 두면 뒤로가기 경로만 새는 것을 알아채지 못한다 — 품목 축이 겪은 그대로다.
-   *
-   * **이미 고른 줄을 다시 눌러도 히스토리를 늘리지 않는다.** 화면이 달라지지 않는 갱신은
-   * 뒤로가기 한 번을 헛돌게 만든다. (`patchSearchParams`가 같은 주소를 이미 걸러 내므로
-   * 이 가드는 지금 중복 방어다 — 열린 창을 지키는 것은 위 효과의 의존성 배열이다.)
-   */
-  /**
-   * BOM 코드 조건을 걸거나 푼다. **고른 자재 명세서를 함께 떨군다** — 보이는 줄이 달라지는데
-   * 선택이 남으면 목록에 없는 자재 명세서의 구성품이 아래에 남는다(품목 조건과 같은 규칙).
-   * 주소 갱신 한 번으로 끝낸다.
-   */
-  const applyBomCodeFilter = (bomCode: string) => {
-    patchSearchParams((next) => {
-      if (bomCode === '') {
-        next.delete(BOM_CODE_KEY);
-      } else {
-        next.set(BOM_CODE_KEY, bomCode);
-      }
-      next.delete(BOM_KEY);
-    });
-  };
-
-  const handleSelectBom = (bomId: number) => {
-    if (bomId === selectedBomId) return;
-
-    patchSearchParams((next) => {
-      next.set(BOM_KEY, String(bomId));
-    });
-  };
-
-  /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
-  const changeComponentValues = (patch: Partial<BomComponentFormValues>) => {
-    setComponentFormState((prev) =>
-      prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
-    );
-
-    for (const field of Object.keys(patch)) componentWrite.clearFieldError(field);
   };
 
   /** 주소의 보기를 옮긴다. 같은 품목의 다른 면이므로 선택과 초안은 비우지 않는다. */
@@ -964,57 +673,6 @@ export const ItemExtendedAttrsScreen = () => {
   };
 
   /**
-   * 우 칸 머리 — 품목 원본 정보. **쓰기 경로가 없다**(결정 1).
-   * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다 — 빈 값을 보이면 자료로 읽힌다.
-   */
-  const renderOriginPane = (): ReactNode => {
-    if (selectedItemId === null) {
-      return (
-        <section className="pane" aria-labelledby="item-origin-title">
-          <h2 id="item-origin-title" className="pane-title">
-            {t.panes.itemOrigin}
-          </h2>
-          <EmptyState size="sm" title={t.empty.notSelected} />
-        </section>
-      );
-    }
-
-    if (itemDetail.isError) {
-      return (
-        <section className="pane" aria-labelledby="item-origin-title">
-          <h2 id="item-origin-title" className="pane-title">
-            {t.panes.itemOrigin}
-          </h2>
-          <LoadErrorBanner error={itemDetail.error} onRetry={() => void itemDetail.refetch()} />
-        </section>
-      );
-    }
-
-    if (itemDetail.data === undefined) {
-      return (
-        <section className="pane" aria-labelledby="item-origin-title">
-          <h2 id="item-origin-title" className="pane-title">
-            {t.panes.itemOrigin}
-          </h2>
-          <div role="status" aria-label={t.loading.itemDetail}>
-            <SkeletonText lines={4} />
-          </div>
-        </section>
-      );
-    }
-
-    return (
-      <ItemOriginPane
-        item={itemDetail.data.item}
-        uomEntries={uomOptions.entries}
-        isUomLoading={uomOptions.isLoading}
-        isUomError={uomOptions.isError}
-        itemTypeOptions={itemTypeNames.data}
-      />
-    );
-  };
-
-  /**
    * 탭① — 확장 속성. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다.
    *
    * 조회 실패·불러오는 중은 원본 구획이 이미 알리므로 여기서 되풀이하지 않는다 —
@@ -1026,12 +684,7 @@ export const ItemExtendedAttrsScreen = () => {
     return (
       <ItemAttrsPane
         values={formState.values}
-        /* 되돌려 싣는 값과 화면에 내는 값이 **같은 출처**여야 한다. */
-        isActive={formState.source.item.isActive}
-        mesCategoryName={codeValueName(
-          mesCategories.data,
-          formState.source.item.mesCategoryCode ?? '',
-        )}
+        itemTypeCode={formState.source.item.itemTypeCode}
         uomOptions={selectableOptions(uomOptions, formState.values.defaultLotStorageUomId)}
         onChange={changeAttrsValues}
         // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
@@ -1201,104 +854,6 @@ export const ItemExtendedAttrsScreen = () => {
     />
   );
 
-  /**
-   * 탭③ — 자재 명세서. 지금은 헤더 목록과 기본 지정만 있다.
-   *
-   * **여기서 서버로 보내지 않는다.** 표의 버튼은 확인 창을 열기만 하고, 지정은 그 창의
-   * 확인이 `:set-default` **한 번**으로 끝낸다(결정 9).
-   */
-  const renderBomPane = (): ReactNode => (
-    <section className="pane-stack">
-      <BomListPane
-        boms={boms}
-        isLoading={bomList.isPending}
-        loadError={
-          bomList.isError ? (
-            <LoadErrorBanner error={bomList.error} onRetry={() => void bomList.refetch()} />
-          ) : null
-        }
-        /*
-         * **실패 배너를 여기 두지 않는다.** 이 페인의 유일한 쓰기가 확인 창 안에서 일어나므로
-         * 실패한 이유도 그 창에 낸다 — 두 자리에 두면 창이 열린 채 같은 문구가 둘로 보인다(F1).
-         */
-        selectedBomId={selectedBomId}
-        onSelect={handleSelectBom}
-        statusOptions={bomStatuses.data}
-        bomCodeFilter={bomCodeFilter}
-        onApplyBomCodeFilter={applyBomCodeFilter}
-        onRequestSetDefault={(bom) => {
-          setDefaultWrite.reset();
-          setPendingDefaultBom(bom);
-        }}
-      />
-
-      {/*
-       * 고르기 전에는 헤더 구획도 구성품 표도 만들지 않는다 —
-       * 빈 폼·빈 표를 보이면 사용자가 그것을 자료로 읽는다.
-       */}
-      {selectedBom === null ? (
-        <section className="pane" aria-labelledby="bom-detail-title">
-          <h2 id="bom-detail-title" className="pane-title">
-            {t.bom.detailPaneTitle}
-          </h2>
-          <EmptyState size="sm" title={t.bom.empty.notSelected} />
-        </section>
-      ) : (
-        <>
-          <BomDetailPane
-            bom={selectedBom}
-            statusOptions={bomStatuses.data}
-            uomEntries={uomOptions.entries}
-            isUomLoading={uomOptions.isLoading}
-            isUomError={uomOptions.isError}
-          />
-
-          <BomComponentPane
-            components={bomComponents}
-            isLoading={bomComponentList.isPending}
-            itemNameEntries={componentItemNames.entries}
-            isItemNameLoading={componentItemNames.isLoading}
-            isItemNameError={componentItemNames.isError}
-            uomEntries={uomOptions.entries}
-            isUomLoading={uomOptions.isLoading}
-            isUomError={uomOptions.isError}
-            routingOperationEntries={routingOperationOptions.entries}
-            isRoutingOperationLoading={routingOperationOptions.isLoading}
-            isRoutingOperationError={routingOperationOptions.isError}
-            processEntries={processOptions.entries}
-            isProcessLoading={processOptions.isLoading}
-            isProcessError={processOptions.isError}
-            /*
-             * 이름 조회 실패는 **표시만의 문제라** 편집을 막지 않는다 —
-             * 선택 목록의 잘림·실패와 같은 자리에 다른 문구로 낸다.
-             */
-            optionsNotice={
-              componentItemNames.isError ? (
-                <div className="banner-slot">
-                  <AlertBanner variant="warning">{t.component.itemNamesLoadFailed}</AlertBanner>
-                </div>
-              ) : (
-                renderOptionsNotice([routingOperationOptions, processOptions])
-              )
-            }
-            loadError={
-              bomComponentList.isError ? (
-                <LoadErrorBanner
-                  error={bomComponentList.error}
-                  onRetry={() => void bomComponentList.refetch()}
-                />
-              ) : null
-            }
-            onEdit={(bomComponentId) => {
-              componentWrite.reset();
-              setEditingComponentId(bomComponentId);
-            }}
-          />
-        </>
-      )}
-    </section>
-  );
-
   const subTabContentOf = (subTabId: string): ReactNode => {
     if (subTabId === 'bu') return renderBuMapPane();
     if (subTabId === 'uom') return renderUomConversionPane();
@@ -1341,95 +896,94 @@ export const ItemExtendedAttrsScreen = () => {
     return null;
   };
 
-  const renderItemListPane = (): ReactNode => (
-    <ItemListPane
-      items={items}
-      isLoading={itemList.isPending}
-      appliedFilters={filters}
-      onApplyFilters={applyFilters}
-      pageView={pageView}
-      onChangePage={changePage}
-      selectedItemId={selectedItemId}
-      onSelect={handleSelectItem}
-      itemTypeOptions={itemTypes.data}
-      loadError={
-        itemList.isError ? (
-          <LoadErrorBanner error={itemList.error} onRetry={() => void itemList.refetch()} />
-        ) : null
-      }
-    />
-  );
+  /**
+   * 오른쪽 구획 — 고른 품목의 사실 칸과 확장 속성 / 부속 정보 탭. **원본에 쓰기 경로가 없다**(결정 1).
+   * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다 — 빈 값을 보이면 자료로 읽힌다.
+   */
+  const renderDetail = (): ReactNode => {
+    if (selectedItemId === null) return <EmptyState size="sm" title={t.empty.notSelected} />;
 
-  const renderItemSection = (): ReactNode => (
-    <div className="two-pane item-extended-layout">
-      {renderItemListPane()}
-      <div className="pane-stack">
-        {selectedItemId !== null && renderOptionsNotice([uomOptions])}
-        {renderOriginPane()}
-        {selectedItemId !== null && (
-          <Tabs
-            aria-label={t.tabs.label}
-            value={tab.id}
-            onChange={changeTab}
-            items={ITEM_DETAIL_TABS.map((definition) => ({
-              value: definition.id,
-              label: definition.label,
-              content: definition.id === tab.id ? tabContentOf(definition.id) : null,
-            }))}
-          />
-        )}
-      </div>
-    </div>
-  );
+    if (itemDetail.isError) {
+      return <LoadErrorBanner error={itemDetail.error} onRetry={() => void itemDetail.refetch()} />;
+    }
 
-  const renderBomSection = (): ReactNode => (
-    <div className="two-pane item-extended-layout">
-      {renderItemListPane()}
-      {selectedItemId === null ? (
-        <section className="pane" aria-labelledby="bom-list-title">
-          <h2 id="bom-list-title" className="pane-title">
-            {t.bom.paneTitle}
-          </h2>
-          <EmptyState size="sm" title={t.empty.notSelected} />
-        </section>
-      ) : (
-        renderBomPane()
-      )}
-    </div>
-  );
+    if (itemDetail.data === undefined) {
+      return (
+        <div role="status" aria-label={t.loading.itemDetail}>
+          <SkeletonText lines={4} />
+        </div>
+      );
+    }
 
-  const sectionId = tab.id === 'bom' ? 'bom' : 'item';
-  const changeSection = (value: string) => changeTab(value === 'bom' ? 'bom' : DEFAULT_TAB_ID);
+    return (
+      <>
+        {renderOptionsNotice([uomOptions])}
+        <ItemOriginFacts
+          item={itemDetail.data.item}
+          uomEntries={uomCodes.entries}
+          isUomLoading={uomCodes.isLoading}
+          isUomError={uomCodes.isError}
+          itemTypeOptions={itemTypeNames.data}
+          mesCategoryName={codeValueName(
+            mesCategories.data,
+            itemDetail.data.item.mesCategoryCode ?? '',
+          )}
+        />
+        <Tabs
+          aria-label={t.tabs.label}
+          value={tab.id}
+          onChange={changeTab}
+          items={ITEM_DETAIL_TABS.map((definition) => ({
+            value: definition.id,
+            label: definition.label,
+            content: definition.id === tab.id ? tabContentOf(definition.id) : null,
+          }))}
+        />
+      </>
+    );
+  };
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
+      <BoardFrame
+        splitKey="omf-mes:item-extended-attrs:split"
+        initialRatio={0.35}
+        splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
+        above={{
+          label: t.panes.filter,
+          content: (
+            <div className="pane po-board-filter">
+              <ItemFilterBar
+                applied={filters}
+                onApply={applyFilters}
+                itemTypeOptions={itemTypes.data}
+              />
+            </div>
+          ),
+        }}
+        list={{
+          label: t.panes.item,
+          content: (
+            <ItemListPane
+              items={items}
+              isLoading={itemList.isPending}
+              appliedFilters={filters}
+              onApplyFilters={applyFilters}
+              pageView={pageView}
+              onChangePage={changePage}
+              selectedItemId={selectedItemId}
+              onSelect={handleSelectItem}
+              itemTypeOptions={itemTypes.data}
+              loadError={
+                itemList.isError ? (
+                  <LoadErrorBanner error={itemList.error} onRetry={() => void itemList.refetch()} />
+                ) : null
+              }
+            />
+          ),
+        }}
+        detail={{ label: t.panes.detail, content: renderDetail() }}
       />
-
-      <div className="item-extended-sections">
-        <Tabs
-          aria-label={t.sections.label}
-          value={sectionId}
-          onChange={changeSection}
-          items={ITEM_EXTENDED_ATTRS_SECTIONS.map((definition) => ({
-            value: definition.id,
-            label: definition.label,
-            content:
-              definition.id === sectionId
-                ? definition.id === 'item'
-                  ? renderItemSection()
-                  : renderBomSection()
-                : null,
-          }))}
-        />
-      </div>
 
       {/*
        * **열 때만 마운트한다.** 디자인 시스템 `Dialog`는 닫혀도 내용이 DOM에 남아,
@@ -1488,89 +1042,6 @@ export const ItemExtendedAttrsScreen = () => {
           onConfirm={(next) => {
             changeExternalCodeDrafts((drafts) => upsertExternalCodeDraft(drafts, next));
             setEditingExternalCode(null);
-          }}
-        />
-      )}
-
-      {/*
-       * 구성품 확장 열 편집. **열 때만 마운트한다** — 닫힌 창을 남기면 지난 값이 살아 있고,
-       * 창을 여는 것이 곧 행 상세 조회를 켜는 것이라 닫힌 창이 요청을 붙잡고 있게 된다.
-       */}
-      {editingComponentId !== null && selectedBom !== null && (
-        <BomComponentFormDialog
-          rowName={componentRowName(
-            bomComponents.find((row) => row.bomComponentId === editingComponentId)?.sequenceNo ?? 0,
-            lookupLabel(
-              componentItemNames.entries,
-              bomComponents.find((row) => row.bomComponentId === editingComponentId)
-                ?.componentItemId,
-              componentItemNames.isLoading,
-              componentItemNames.isError,
-            ),
-          )}
-          loadError={
-            componentDetail.isError ? (
-              <LoadErrorBanner
-                error={componentDetail.error}
-                onRetry={() => void componentDetail.refetch()}
-              />
-            ) : null
-          }
-          values={componentFormState?.values ?? null}
-          onChange={changeComponentValues}
-          routingOperationOptions={(selected) =>
-            selectableOptions(routingOperationOptions, selected)
-          }
-          /*
-           * 이 품목에 공정 흐름이 하나도 없으면 고를 값이 없다 — 빈 선택칸을 두면
-           * 사용자가 목록이 안 나오는 것으로 읽는다. **감추지 않고 사유를 붙인다**(배치 규범 4).
-           */
-          routingOperationDisabledReason={
-            routingOperationOptions.isLoading || routingOperationOptions.entries.length > 0
-              ? undefined
-              : t.component.actionReasons.routingOperationEmpty
-          }
-          processOptions={(selected) => selectableOptions(processOptions, selected)}
-          fieldErrors={componentWrite.fieldErrors}
-          /*
-           * 400 `STATE_LOCKED`·403·409가 전부 이 공통 배너로 온다.
-           * **이 화면 전용 문구를 만들지 않는다** — 원인 구분은 공통 규약 문구가 이미 갖고 있다.
-           * 「최신 불러오기」를 주지 않는다: 창을 닫았다 다시 여는 것이 곧 재조회이고,
-           * 창 안에 또 하나의 되돌리기를 두면 무엇이 사라지는지 흐려진다.
-           */
-          banner={<SaveErrorBanner error={componentWrite.error} />}
-          isDirty={
-            componentFormState !== null &&
-            !isSameBomComponentValues(componentFormState.values, componentFormState.baseline)
-          }
-          isSaving={componentWrite.isSaving}
-          onSave={() => {
-            if (componentFormState === null) return;
-
-            componentWrite.write(componentFormState.values);
-          }}
-          onClose={() => {
-            componentWrite.reset();
-            setEditingComponentId(null);
-          }}
-        />
-      )}
-
-      {/*
-       * 기본 지정 확인. **여기서만 서버로 나가고, 나가는 요청은 하나뿐이다**(결정 9) —
-       * 기존 기본의 해제를 화면이 따로 부르면 그 사이에 기본이 하나도 없는 순간이 생긴다.
-       */}
-      {pendingDefaultBom !== null && (
-        <SetDefaultDialog
-          bomName={bomName(pendingDefaultBom)}
-          isSaving={setDefaultWrite.isSaving}
-          banner={<SaveErrorBanner error={setDefaultWrite.error} />}
-          onClose={() => {
-            setDefaultWrite.reset();
-            setPendingDefaultBom(null);
-          }}
-          onConfirm={() => {
-            setDefaultWrite.write(pendingDefaultBom.bomId);
           }}
         />
       )}
