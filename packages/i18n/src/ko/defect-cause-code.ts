@@ -78,6 +78,13 @@ export const defectCauseCode = {
     nameVi: '베트남어명',
     referenceCount: '사용 중',
   },
+  /** 탭 줄 오른쪽 사용 여부 칩(사용자 지시 2026-10-29 · #209) */
+  usage: {
+    label: '사용 여부로 거르기',
+    all: '전체',
+    active: '사용',
+    inactive: '미사용',
+  },
   /** 표 머리 문구(사용자 지시 2026-10-29 · #209). 폼 · 상세 이름표는 `fields` 를 그대로 쓴다. */
   listColumns: {
     defectCode: '불량 코드',

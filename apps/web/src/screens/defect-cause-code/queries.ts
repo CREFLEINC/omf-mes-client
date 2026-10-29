@@ -32,8 +32,32 @@ export const useCodeList = (
 
   return useQuery({
     queryKey: adapter.keys.list(filters),
-    queryFn: () => adapter.fetchList(client, filters),
+    queryFn: () =>
+      filters.inactiveOnly
+        ? fetchInactiveOnly(adapter, client, filters)
+        : adapter.fetchList(client, filters),
   });
+};
+
+/**
+ * 「미사용」 칩(#209) — 서버에 미사용만 거르는 조건이 없어 미사용 포함으로 끝까지 받아 화면이 거르고,
+ * 쪽도 화면이 나눈다. 코드 마스터라 건수가 적어 끝까지 받아도 부담이 작다.
+ */
+const fetchInactiveOnly = async (
+  adapter: CodeAdapter,
+  client: Parameters<CodeAdapter['fetchList']>[0],
+  filters: CodeFilters,
+): Promise<CodeListResult> => {
+  const all = await fetchAllPages((page, size) =>
+    adapter.fetchList(client, { ...filters, includeInactive: true, page, size }),
+  );
+  const inactive = all.items.filter((item) => !item.isActive);
+  const start = (filters.page - 1) * filters.size;
+
+  return {
+    items: inactive.slice(start, start + filters.size),
+    page: { page: filters.page, size: filters.size, total: inactive.length },
+  };
 };
 
 /**

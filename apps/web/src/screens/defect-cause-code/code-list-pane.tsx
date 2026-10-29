@@ -166,14 +166,21 @@ export const CodeListPane = ({
     },
   ];
 
-  /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다 — 검사 기준 탭과 같다(#209). 탭마다 따로 남긴다. */
+  /*
+   * 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다 — 검사 기준 탭과 같다(#209). 탭마다 따로 남긴다.
+   * `:v2` — 한국어명 · 베트남어명 · 처분 유형 · 공정 칸을 더한 뒤라, 그 전에 남은 순서를 버리고 새로 시작한다.
+   */
   const ordered = useColumnOrder(
-    `omf-mes:defect-cause-code:columns:${adapter.kind}:order`,
+    `omf-mes:defect-cause-code:columns:${adapter.kind}:order:v2`,
     columns,
   );
-  const resizable = useColumnWidths(`omf-mes:defect-cause-code:columns:${adapter.kind}`, ordered, {
-    fitContent: true,
-  });
+  const resizable = useColumnWidths(
+    `omf-mes:defect-cause-code:columns:${adapter.kind}:v2`,
+    ordered,
+    {
+      fitContent: true,
+    },
+  );
   /* 상자 폭을 넘지 않는다 — 넓혀 둔 열이 많으면 비율대로 줄여 맞춘다. 더 넓히면 표 안에서 가로로 구른다. */
   const fit = useFitColumns(resizable.columns, { scrollX: true });
 

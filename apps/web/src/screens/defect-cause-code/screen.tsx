@@ -45,6 +45,7 @@ import {
   toFormFieldErrors,
   toServerFieldName,
 } from './mappers';
+import { UsageChips } from './usage-chips';
 import { useCodeDetail, useCodeList, useCodeOptions, useProcessLabels } from './queries';
 import { ProcessMappingPane } from './process-mapping-pane';
 import { resolveTab } from './tabs';
@@ -147,6 +148,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     () => ({
       q: searchParams.get('q') ?? '',
       includeInactive: searchParams.get('inactive') === '1',
+      // `usage=off` 는 미사용만 — 미사용 포함이 켜져 있을 때만 뜻이 있다(#209).
+      inactiveOnly: searchParams.get('inactive') === '1' && searchParams.get('usage') === 'off',
       page: Math.max(1, Number(searchParams.get('page')) || 1),
       size: PAGE_SIZES.find((size) => String(size) === searchParams.get('size')) ?? 20,
     }),
@@ -276,6 +279,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     updateParams({
       q: next.q === '' ? null : next.q,
       inactive: next.includeInactive ? '1' : null,
+      usage: next.includeInactive && next.inactiveOnly ? 'off' : null,
       page: null,
       size: next.size === 20 ? null : String(next.size),
     });
@@ -565,6 +569,17 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
 
   return (
     <>
+      {/* 탭 줄 오른쪽 — 사용 여부 칩 다음에 좌우·상하 배치(사용자 지시 · #209). 그린 순서대로 선다. */}
+      <UsageChips
+        value={filters.inactiveOnly ? 'inactive' : filters.includeInactive ? 'all' : 'active'}
+        onChange={(usage) =>
+          handleApplyFilters({
+            ...filters,
+            includeInactive: usage !== 'active',
+            inactiveOnly: usage === 'inactive',
+          })
+        }
+      />
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
 
       {/* 조회 조건 — 검사 기준 탭처럼 목록과 다른 카드에 둔다(#209). */}

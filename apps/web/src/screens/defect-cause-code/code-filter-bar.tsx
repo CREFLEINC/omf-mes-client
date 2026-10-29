@@ -34,6 +34,7 @@ export const CodeFilterBar = ({
   const {
     q: appliedQ,
     includeInactive: appliedIncludeInactive,
+    inactiveOnly: appliedInactiveOnly,
     page: appliedPage,
     size: appliedSize,
   } = appliedFilters;
@@ -42,10 +43,11 @@ export const CodeFilterBar = ({
     setDraft({
       q: appliedQ,
       includeInactive: appliedIncludeInactive,
+      inactiveOnly: appliedInactiveOnly,
       page: appliedPage,
       size: appliedSize,
     });
-  }, [appliedQ, appliedIncludeInactive, appliedPage, appliedSize]);
+  }, [appliedQ, appliedIncludeInactive, appliedInactiveOnly, appliedPage, appliedSize]);
 
   return (
     <>
@@ -63,7 +65,12 @@ export const CodeFilterBar = ({
           <Checkbox
             checked={appliedFilters.includeInactive}
             onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
+              // 끄면 「미사용만」도 함께 풀린다 — 미사용을 빼고 미사용만 볼 수는 없다.
+              onApplyFilters({
+                ...appliedFilters,
+                includeInactive: event.target.checked,
+                inactiveOnly: event.target.checked && appliedFilters.inactiveOnly,
+              })
             }
           >
             {messages.common.includeInactive}
@@ -103,7 +110,9 @@ export const CodeFilterBar = ({
             <Chip
               variant="status"
               removeLabel={t.filters.chipRemoveIncludeInactive}
-              onRemove={() => onApplyFilters({ ...appliedFilters, includeInactive: false })}
+              onRemove={() =>
+                onApplyFilters({ ...appliedFilters, includeInactive: false, inactiveOnly: false })
+              }
             >
               {messages.common.includeInactive}
             </Chip>

@@ -6,7 +6,13 @@ import { causeCodeAdapter, defectCodeAdapter } from './adapters';
 import { CodeFilterBar, type CodeFilterBarProps } from './code-filter-bar';
 import type { CodeFilters } from './types';
 
-const NO_FILTERS: CodeFilters = { q: '', includeInactive: false, page: 1, size: 20 };
+const NO_FILTERS: CodeFilters = {
+  q: '',
+  includeInactive: false,
+  inactiveOnly: false,
+  page: 1,
+  size: 20,
+};
 
 const renderBar = (overrides: Partial<CodeFilterBarProps> = {}) => {
   const props: CodeFilterBarProps = {
@@ -32,6 +38,7 @@ describe('CodeFilterBar — 조회 조건', () => {
     expect(props.onApplyFilters).toHaveBeenCalledWith({
       q: 'DF-1',
       includeInactive: false,
+      inactiveOnly: false,
       page: 1,
       size: 20,
     });
@@ -45,6 +52,7 @@ describe('CodeFilterBar — 조회 조건', () => {
     expect(props.onApplyFilters).toHaveBeenCalledWith({
       q: '',
       includeInactive: true,
+      inactiveOnly: false,
       page: 1,
       size: 20,
     });
@@ -52,7 +60,7 @@ describe('CodeFilterBar — 조회 조건', () => {
 
   it('초기화는 조건을 모두 비운다', async () => {
     const { props, user } = renderBar({
-      appliedFilters: { q: 'DF-1', includeInactive: true, page: 1, size: 20 },
+      appliedFilters: { q: 'DF-1', includeInactive: true, inactiveOnly: false, page: 1, size: 20 },
     });
 
     await user.click(screen.getByRole('button', { name: '초기화' }));
@@ -60,6 +68,7 @@ describe('CodeFilterBar — 조회 조건', () => {
     expect(props.onApplyFilters).toHaveBeenCalledWith({
       q: '',
       includeInactive: false,
+      inactiveOnly: false,
       page: 1,
       size: 20,
     });
@@ -67,7 +76,7 @@ describe('CodeFilterBar — 조회 조건', () => {
 
   it('적용된 조건은 칩으로 보이고 칩을 지우면 그 조건만 풀린다', async () => {
     const { props, user } = renderBar({
-      appliedFilters: { q: 'DF-1', includeInactive: true, page: 1, size: 20 },
+      appliedFilters: { q: 'DF-1', includeInactive: true, inactiveOnly: false, page: 1, size: 20 },
     });
 
     expect(screen.getByText('검색어: DF-1')).toBeInTheDocument();
@@ -76,6 +85,7 @@ describe('CodeFilterBar — 조회 조건', () => {
     expect(props.onApplyFilters).toHaveBeenCalledWith({
       q: '',
       includeInactive: true,
+      inactiveOnly: false,
       page: 1,
       size: 20,
     });

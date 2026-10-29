@@ -457,6 +457,20 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     ).toBeInTheDocument();
   });
 
+  it('「미사용」만 보기(usage=off)는 미사용 포함으로 받아 미사용만 그리고 그 수로 센다(#209)', async () => {
+    renderScreen([defectListRoute(defectCodeFixtures)], '?inactive=1&usage=off');
+
+    const inactive = defectCodeFixtures.filter((item) => !item.isActive);
+    expect(await screen.findByText(`총 ${String(inactive.length)}건`)).toBeInTheDocument();
+    for (const item of defectCodeFixtures) {
+      if (item.isActive) {
+        expect(screen.queryByRole('button', { name: item.defectCode })).not.toBeInTheDocument();
+      } else {
+        expect(screen.getByRole('button', { name: item.defectCode })).toBeInTheDocument();
+      }
+    }
+  });
+
   it('대분류 머리글 · 상위 선택지용으로 미사용까지 포함한 목록을 따로 조회한다', async () => {
     const { requests } = renderScreen([
       defectOptionsRoute(),

@@ -12,6 +12,7 @@ import type { CodeFilters, CodeOption, HierarchyCode } from './types';
 export const DEFAULT_CODE_FILTERS: CodeFilters = {
   q: '',
   includeInactive: false,
+  inactiveOnly: false,
   page: 1,
   size: 20,
 };

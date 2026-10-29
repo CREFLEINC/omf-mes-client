@@ -35,6 +35,11 @@ export interface HierarchyCode {
 export interface CodeFilters {
   q: string;
   includeInactive: boolean;
+  /**
+   * 미사용만 보기(탭 줄의 「미사용」 칩 · #209). 서버에 「미사용만」 조건이 없어 미사용 포함으로 끝까지 받아
+   * 화면이 거른다 — 그래서 쪽 나눔도 화면이 한다. 켜면 `includeInactive` 도 켜져 있다.
+   */
+  inactiveOnly: boolean;
   /** 쪽 번호(1부터)와 쪽 크기 — 서버가 나눠 준다(#209). 조건을 바꾸면 1쪽으로 돌아간다. */
   page: number;
   size: number;

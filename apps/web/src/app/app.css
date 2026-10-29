@@ -290,6 +290,22 @@ main > * + * {
 }
 
 /* 불량·원인코드 상세 머리의 단추 줄 — 상세 추가 · 사용 중지 · 수정(omf-all-around#209). */
+/*
+ * 불량·원인코드 목록 표 — 양쪽 끝에 같은 폭의 빈자리를 둔다(사용자 지시 2026-10-29 · #209).
+ * 첫 칸(그룹 머리글 포함)의 왼쪽과 마지막 칸의 오른쪽 안쪽 여백을 같게 넓힌다.
+ */
+/*
+ * 공용 표 규칙(`.inspection-queue-table table th:first-child:nth-child(n):nth-child(n)` — 첫 칸 여백을 다른 칸과 같게)보다
+ * 무거워야 왼쪽 여백이 선다. 자리(첫 칸 · 끝 칸) 기준이라 열을 옮겨도 양쪽 끝 여백은 그대로다.
+ */
+.inspection-queue-table.defect-cause-rows table :is(th, td):first-child:nth-child(n):nth-child(n) {
+  padding-inline-start: var(--space-6);
+}
+
+.inspection-queue-table.defect-cause-rows table :is(th, td):last-child:nth-child(n):nth-child(n) {
+  padding-inline-end: var(--space-6);
+}
+
 .defect-cause-head-actions {
   display: flex;
   flex-wrap: wrap;
