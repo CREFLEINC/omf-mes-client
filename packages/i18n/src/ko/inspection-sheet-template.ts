@@ -162,7 +162,7 @@ export const inspectionSheetTemplate = {
     obsolete: '폐기',
     history: '변경 이력',
     discarded: '작성중 버전이 취소됐습니다.',
-    obsoleted: '버전을 폐기했습니다.',
+    obsoleted: '폐기했습니다.',
     historyChanged: '변경',
   },
 
