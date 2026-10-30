@@ -185,7 +185,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     title: 'Chi tiết LOT',
     loading: 'Đang tải chi tiết LOT',
     failed: 'Không tải được chi tiết LOT.',
-    close: 'Đóng',
+    pick: 'Hãy chọn LOT',
+    pickHint: 'Bấm số LOT trong danh sách thì chi tiết sẽ hiện ở đây.',
     trace: 'Xem truy xuất',
     attributes: 'Thuộc tính LOT',
     fields: {
@@ -200,7 +201,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     },
     transition: 'Xử lý đánh giá · chuyển đổi',
     transitionNote:
-      'Không dùng được trong cửa sổ này. Hãy thực hiện ở màn hình 「Xử lý đánh giá · chuyển đổi Lot Status」.',
+      'Không dùng được ở đây. Hãy thực hiện ở màn hình 「Xử lý đánh giá · chuyển đổi Lot Status」.',
     suspiciousNote: 'Hãy đăng ký vật tư nghi ngờ ở màn hình 「Đăng ký vật tư nghi ngờ」.',
   },
   holdDocuments: {

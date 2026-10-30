@@ -193,7 +193,9 @@ export const lotStatusHistory = {
     title: 'LOT 상세',
     loading: 'LOT 상세를 불러오는 중',
     failed: 'LOT 상세를 불러오지 못했습니다.',
-    close: '닫기',
+    /** 아직 고른 LOT 이 없을 때 상세 칸 안내. */
+    pick: 'LOT을 고르세요',
+    pickHint: '목록에서 LOT 번호를 누르면 상세가 여기에 보입니다.',
     trace: '추적 보기',
     attributes: 'LOT 속성',
     fields: {
@@ -209,7 +211,7 @@ export const lotStatusHistory = {
     transition: '판정·전이 처리',
     /** 화면 코드 대신 메뉴에 보이는 화면 이름으로 안내한다(사용자 지시 2026-09-19). */
     transitionNote:
-      '이 창에서는 사용할 수 없습니다. 「Lot Status 판정·전이 처리」 화면에서 진행하세요.',
+      '여기서는 사용할 수 없습니다. 「Lot Status 판정·전이 처리」 화면에서 진행하세요.',
     suspiciousNote: '의심자재 등록은 「의심자재 등록」 화면에서 진행하세요.',
   },
   holdDocuments: {

@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, Dialog, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 import { useNavigate } from 'react-router';
@@ -28,19 +28,17 @@ const formatDateTime = (value: string | null): string => {
 const labelOf = (options: readonly FilterOption[], value: string): string =>
   options.find((option) => option.value === value)?.label ?? t.values.unlisted(value);
 
-interface LotDetailDialogProps {
+interface LotDetailPaneProps {
   lotId: number;
   lotTypeOptions: readonly FilterOption[];
   statusOptions: readonly FilterOption[];
-  onClose: () => void;
 }
 
-export const LotDetailDialog = ({
-  lotId,
-  lotTypeOptions,
-  statusOptions,
-  onClose,
-}: LotDetailDialogProps) => {
+/**
+ * LOT 상세 — 목록 옆(상하 배치면 아래) 칸에 선다(검사 조회·판정과 같은 짜임 · 사용자 2026-10-30).
+ * 종전에는 창(Dialog)으로 떴다. 목록에서 다른 LOT 을 고르면 이 칸이 그 LOT 으로 바뀐다.
+ */
+export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetailPaneProps) => {
   const detail = useLotDetail(lotId);
   const navigate = useNavigate();
   const { session } = useSession();
@@ -73,26 +71,18 @@ export const LotDetailDialog = ({
   );
 
   return (
-    <Dialog
-      className="lot-status-detail-dialog"
-      open
-      onClose={onClose}
-      title={t.detail.title}
-      size="lg"
-      footer={
-        <>
-          {/* LOT 생산 이력 조회로 간다. 자재 LOT은 자재 LOT 탭, 생산 LOT은 제품 LOT 탭에서 연다. */}
-          {traceHref !== null && (
-            <Button variant="outlined" onClick={() => void navigate(traceHref)}>
-              {t.detail.trace}
-            </Button>
-          )}
-          <Button variant="outlined" onClick={onClose}>
-            {t.detail.close}
+    <>
+      <div className="lot-status-pane-head lot-status-detail-head">
+        <h2 className="pane-title" id="lot-status-detail-title">
+          {t.detail.title}
+        </h2>
+        {/* LOT 생산 이력 조회로 간다. 자재 LOT은 자재 LOT 탭, 생산 LOT은 제품 LOT 탭에서 연다. */}
+        {traceHref !== null && (
+          <Button variant="outlined" size="sm" onClick={() => void navigate(traceHref)}>
+            {t.detail.trace}
           </Button>
-        </>
-      }
-    >
+        )}
+      </div>
       {detail.isPending && (
         <div role="status" aria-label={t.detail.loading}>
           <SkeletonText lines={3} />
@@ -174,6 +164,6 @@ export const LotDetailDialog = ({
         </div>
         <p className="field-note">{t.detail.suspiciousNote}</p>
       </div>
-    </Dialog>
+    </>
   );
 };

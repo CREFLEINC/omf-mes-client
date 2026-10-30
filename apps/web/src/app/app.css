@@ -23903,6 +23903,20 @@ body.col-reordering * {
   max-height: calc(100dvh - 20rem);
 }
 
+/* LOT 상태 조회 목록 · LOT 상세 — 검사 조회·판정과 같은 높이 규칙(사용자 2026-10-30). */
+.lot-status-split > .lot-status-pane {
+  height: auto;
+  max-height: calc(100dvh - 20rem);
+  overflow: auto;
+}
+
+@media (min-width: 1440px) {
+  .lot-status-split > .lot-status-pane {
+    max-height: none;
+    min-height: 0;
+  }
+}
+
 @media (min-width: 1440px) {
   .inspection-split > .iqc-inspection-queue-pane,
   .inspection-split > .oqc-inspection-queue-pane,
