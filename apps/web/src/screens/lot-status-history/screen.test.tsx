@@ -917,7 +917,7 @@ describe('Lot Status 화면 shell', () => {
     const user = userEvent.setup();
 
     expect(await screen.findByText('1 / 3')).toBeVisible();
-    expect(screen.getAllByText('총 101건')).toHaveLength(2);
+    expect(screen.getAllByText('총 101건')).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: '다음' }));
     await waitFor(() => expect(locationSearch().get('page')).toBe('2'));
     expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('page')).toBe('2');

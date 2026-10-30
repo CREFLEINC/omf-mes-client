@@ -302,10 +302,8 @@ export const CurrentResults = ({
       )}
 
       <div className="lot-status-pane-head">
+        {/* 총 건수는 표 아래 쪽 이동 줄에만 둔다(사용자 2026-10-30). */}
         <h3 className="lot-status-list-title">{t.current.list.title}</h3>
-        {meta !== undefined && (
-          <span className="field-note">{t.current.list.total(quantity(meta.total))}</span>
-        )}
       </div>
       {list.isPending && (
         <div role="status" aria-label={t.current.list.loading}>
