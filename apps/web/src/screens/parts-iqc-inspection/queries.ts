@@ -285,7 +285,8 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
     },
     etagPath: null,
     invalidateKeys: [ALL_KEY, ['iqc-inspection']],
-    knownFields: ['judgmentChangeReason', 'defectRecords', 'X-Worker-No'],
+    // `defects` — 서버가 불량 수량 합계 ≠ 불합격 수량을 400 으로 돌려준다(omf-all-around#205 · P-156). 불량 유형 칸 아래에 붙인다.
+    knownFields: ['judgmentChangeReason', 'defectRecords', 'defects', 'X-Worker-No'],
     keyLifetime: 'until-applied',
     onSuccess: () => {
       saved.current = null;

@@ -474,11 +474,11 @@ const InspectionForm = (props: FormProps) => {
     <div className="parts-iqc-form">
       {props.inspector === null && (
         <AlertBanner variant="warning">
-          {/* 버튼은 문구와 같은 줄 오른쪽 끝, 테두리 없이(사용자 지시 2026-10-30) — DS `action` 자리는 문구 아래 줄이라 쓰지 않는다. */}
+          {/* 버튼은 문구와 같은 줄 오른쪽 끝(사용자 지시 2026-10-30) — DS `action` 자리는 문구 아래 줄이라 쓰지 않는다. 테두리는 둔다(버튼으로 보이게). */}
           <div className="parts-iqc-worker-alert">
             <span>{t.dialog.workerMissing}</span>
             {props.appUserId !== null && (
-              <Button variant="text" size="sm" onClick={() => setConnectOpen(true)}>
+              <Button variant="outlined" size="sm" onClick={() => setConnectOpen(true)}>
                 {messages.usersRoles.workerLink.connect}
               </Button>
             )}
@@ -822,6 +822,13 @@ const InspectionForm = (props: FormProps) => {
                   : defectResult.blocked === 'qty'
                     ? t.visual.defectQtyRequired
                     : t.visual.defectSumMismatch(defectTarget)}
+              </p>
+            )}
+            {/* 서버가 불량 유형을 거부한 까닭(합계 불일치 등) — 화면 검사를 지나 온 경우다(#205). */}
+            {submit.fieldErrors.defects !== undefined && (
+              <p className="parts-iqc-hint parts-iqc-hint-inline" role="alert">
+                <Icon name="error" />
+                {submit.fieldErrors.defects}
               </p>
             )}
           </div>
