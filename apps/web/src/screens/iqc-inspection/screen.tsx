@@ -349,11 +349,6 @@ const IqcInspectionScreenBody = () => {
     : resolveDefects([], [], 0);
   /* 불량 내역을 싣는 회차 — 불합격 판정이거나 불합격 수량이 있다(#205). 불량 수량 합계 = 불합격 수량은 확정 전에 맞춘다. */
   const keepsDefects = isRejected || toSendableNumber(draft.rejected) > 0;
-  /*
-   * 합격·보류에서 불량 내역을 «적기 시작했는가» — 코드를 하나라도 골랐다. 불량 기록 없이 수량만 있던 예전 회차는 코드 없는 줄로
-   * 열리는데(위 되살리기), 그 줄만으로 합격 확정을 막지 않는다(#205 — 합격·보류의 불량 내역은 서버가 받기만 한다).
-   */
-  const defectsStarted = hasDefects && defects.some((row) => row.majorId !== '' || row.minorId !== '');
 
   const roundId = round?.inspectionResultId ?? null;
   const { acceptedQty, rejectedQty, heldQty } = round ?? {
@@ -997,8 +992,8 @@ const IqcInspectionScreenBody = () => {
             ) : null
           }
           confirmOnlyBlockedReason={
-            /* 불합격 판정은 불량 내역이 필수다. 합격·보류는 불량 내역을 켰을 때만 다 채우게 막는다(#205 — 서버는 받기만 한다). */
-            (isRejected || (keepsDefects && defectsStarted)) && 'blocked' in resolvedDefects
+            /* 불량이 있으면(불합격 판정 · 불합격 수량) 불량 내역이 필수다(#205 · 사용자 결정 2026-10-30). */
+            keepsDefects && 'blocked' in resolvedDefects
               ? resolvedDefects.blocked
               : needsChangeReason && changeReason.trim() === ''
                 ? t.result.judgmentChange.required

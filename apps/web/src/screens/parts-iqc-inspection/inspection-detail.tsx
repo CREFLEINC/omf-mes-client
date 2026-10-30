@@ -379,11 +379,11 @@ const InspectionForm = (props: FormProps) => {
   );
   const overall = chosen ?? suggested;
   /*
-   * 불량 유형을 싣는 회차 — 불합격 판정(필수)이거나, 합격·보류여도 불합격 수량이 있고 유형을 골랐다(#205 — 서버는 받기만 한다).
+   * 불량이 있으면 불량 유형이 필수다 — 불합격 판정이거나, 합격·보류여도 불합격 수량이 있다(#205 · 사용자 결정 2026-10-30).
    * 고른 유형은 합계까지 맞아야 낸다.
    */
-  const defectsRequired = overall === 'REJECTED';
-  const defectsSent = defectsRequired || (rejectedQty > 0 && form.defectCodeIds.length > 0);
+  const defectsRequired = overall === 'REJECTED' || rejectedQty > 0;
+  const defectsSent = defectsRequired;
   const expected = serverExpectedOf(rejectedQty, versionAcceptance);
   const needsReason = overall !== null && expected !== null && overall !== expected;
   const leafCodes = props.defectCodes.filter(

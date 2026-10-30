@@ -948,6 +948,10 @@ describe('IqcInspectionScreen', () => {
    * 수량·종합 판정만으로 확정할 수 있어야 한다(항목 규격을 부르지 않는다).
    */
   it('검사기준이 없는 의뢰도 항목 없이 수량·판정으로 확정한다', async () => {
+    /* 작성중 회차는 불합격 15 — 불량이 있으면 불량 유형이 필수라(#205 · 사용자 결정 2026-10-30) 임시 저장된 불량 기록을 둔다. */
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
+    ];
     const { sent, writes } = renderScreen('/?ir=1004');
 
     await findRound(1);
@@ -959,6 +963,10 @@ describe('IqcInspectionScreen', () => {
   });
 
   it('확정하면 되돌릴 수 없는 쓰기가 잠금 토큰과 함께 나간다', async () => {
+    /* 작성중 회차는 불합격 15 — 불량이 있으면 불량 유형이 필수라(#205 · 사용자 결정 2026-10-30) 임시 저장된 불량 기록을 둔다. */
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
+    ];
     const { writes } = renderScreen('/?ir=1001');
 
     await findRound(1);
@@ -970,7 +978,10 @@ describe('IqcInspectionScreen', () => {
     expect(new URL(request.url).pathname).toContain(':confirm');
     expect(request.headers.get('If-Match')).toBe('W/"7"');
     expect(request.headers.get('Idempotency-Key')).not.toBeNull();
-    expect(await bodyOf(request)).toEqual({ overallJudgmentCode: 'ACCEPTED' });
+    expect(await bodyOf(request)).toEqual({
+      overallJudgmentCode: 'ACCEPTED',
+      defects: [{ defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' }],
+    });
   });
 
   /*
@@ -978,6 +989,10 @@ describe('IqcInspectionScreen', () => {
    * 작성중 회차(draftRound)는 합격 480 · 불합격 15 · 보류 5 · 판정 합격이다.
    */
   it('합격판정개수 5 · 불합격 15 인데 합격이면 변경 사유 칸이 서고, 사유를 넣어야 확정되며 사유가 실린다', async () => {
+    /* 작성중 회차는 불합격 15 — 불량이 있으면 불량 유형이 필수라(#205 · 사용자 결정 2026-10-30) 임시 저장된 불량 기록을 둔다. */
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
+    ];
     samplingVersion = {
       samplingMethodCode: 'FULL_INSPECTION',
       samplingRatio: null,
@@ -1004,6 +1019,7 @@ describe('IqcInspectionScreen', () => {
     expect(await bodyOf(writes[0] as Request)).toEqual({
       overallJudgmentCode: 'ACCEPTED',
       judgmentChangeReason: '재확인 결과 사용 가능',
+      defects: [{ defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' }],
     });
   });
 
@@ -1026,6 +1042,10 @@ describe('IqcInspectionScreen', () => {
 
   /* 확정 직전에 고른 값이 「바뀐 것」으로 남아도 이미 확정에 실렸다 — 확정 뒤 목록으로 갈 때 묻지 않는다(#133 실검증). */
   it('판정 확정 뒤에는 목록으로 갈 때 묻지 않는다', async () => {
+    /* 작성중 회차는 불합격 15 — 불량이 있으면 불량 유형이 필수라(#205 · 사용자 결정 2026-10-30) 임시 저장된 불량 기록을 둔다. */
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
+    ];
     samplingVersion = {
       samplingMethodCode: 'FULL_INSPECTION',
       samplingRatio: null,
@@ -1154,6 +1174,10 @@ describe('IqcInspectionScreen', () => {
   });
 
   it('합격판정개수가 없는 기준이면 자동 판정·사유 칸이 없다(종전 그대로)', async () => {
+    /* 작성중 회차는 불합격 15 — 불량이 있으면 불량 유형이 필수라(#205 · 사용자 결정 2026-10-30) 임시 저장된 불량 기록을 둔다. */
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
+    ];
     samplingVersion = {
       samplingMethodCode: 'FULL_INSPECTION',
       samplingRatio: null,
@@ -1168,7 +1192,10 @@ describe('IqcInspectionScreen', () => {
     expect(
       screen.queryByText(new RegExp(t.result.judgmentChange.basis(0).replace('0', '\\d+'))),
     ).toBeNull();
-    expect(await bodyOf(writes[0] as Request)).toEqual({ overallJudgmentCode: 'ACCEPTED' });
+    expect(await bodyOf(writes[0] as Request)).toEqual({
+      overallJudgmentCode: 'ACCEPTED',
+      defects: [{ defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' }],
+    });
   });
 
   /*
@@ -1177,6 +1204,10 @@ describe('IqcInspectionScreen', () => {
    * 보고 두 번 실행할 수 있다. 그래서 수명을 until-applied 로 고른다(#263).
    */
   it('확정이 실패한 뒤 다시 눌러도 같은 멱등 키를 쓴다 — 두 번 실행되면 되돌릴 수 없다', async () => {
+    /* 작성중 회차는 불합격 15 — 불량이 있으면 불량 유형이 필수라(#205 · 사용자 결정 2026-10-30) 임시 저장된 불량 기록을 둔다. */
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
+    ];
     let shouldFail = true;
 
     const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [draftRound]);
