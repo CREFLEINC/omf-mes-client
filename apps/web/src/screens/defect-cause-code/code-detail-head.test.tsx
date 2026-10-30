@@ -91,33 +91,18 @@ describe('CodeDetailHead (#209)', () => {
     expect(props.onDeactivate).toHaveBeenCalled();
   });
 
-  it('이미 미사용이면 사용 중지가 비활성이고 사유가 보인다', () => {
-    renderHead({
-      code: { id: 1002, code: 'DF-11', name: '스크래치', parentId: 1001, isActive: false },
-    });
-
-    const button = screen.getByRole('button', { name: '사용 중지' });
-    expect(button).toBeDisabled();
-    expect(button).toHaveAttribute('aria-describedby');
-    expect(screen.getByText('미사용')).toBeInTheDocument();
-    expect(
-      screen.getByText('사용 중지는 이미 미사용인 코드에는 할 수 없습니다.'),
-    ).toBeInTheDocument();
-  });
-
-  it('미사용 대분류는 하위 코드 추가가 비활성이고 사유가 보인다(#209)', () => {
+  it('미사용 대분류에는 하위 코드 추가 · 사용 중지 단추와 안내 문구가 없다(#209)', () => {
     renderHead({
       code: { id: 1001, code: 'DF-10', name: '외관', parentId: null, isActive: false },
       parentLabel: null,
       onAddChild: vi.fn(),
     });
 
-    const button = screen.getByRole('button', { name: '하위 코드 추가' });
-    expect(button).toBeDisabled();
-    expect(button).toHaveAttribute('aria-describedby');
-    expect(
-      screen.getByText('미사용 대분류 아래에는 하위 코드를 추가할 수 없습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('미사용')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '하위 코드 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/할 수 없습니다/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '수정' })).toBeInTheDocument();
   });
 
   it('사용 중인 대분류는 하위 코드 추가를 누를 수 있다', async () => {

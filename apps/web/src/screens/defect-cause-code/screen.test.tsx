@@ -1536,16 +1536,14 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
     expect(within(dialog).getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
   });
 
-  it('이미 미사용인 코드에서는 사용 중지를 쓸 수 없다', async () => {
+  it('이미 미사용인 코드에는 사용 중지 단추가 없다(#209)', async () => {
     renderScreen(
       [defectOptionsRoute(), defectListRoute(), defectDetailRoute(defectCodeFixtures[5])],
       '?inactive=1&sel=1006',
     );
 
-    expect(await screen.findByRole('button', { name: '사용 중지' })).toBeDisabled();
-    expect(
-      screen.getByText('사용 중지는 이미 미사용인 코드에는 할 수 없습니다.'),
-    ).toBeInTheDocument();
+    await screen.findByRole('button', { name: '수정' });
+    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
 });
 

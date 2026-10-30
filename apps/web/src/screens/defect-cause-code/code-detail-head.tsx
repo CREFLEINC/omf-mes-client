@@ -1,6 +1,5 @@
 import { Button, Chip, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
 
 import type { CodeAdapter } from './adapters';
 import { isCategory } from './hierarchy';
@@ -38,8 +37,6 @@ export const CodeDetailHead = ({
   onEdit,
   onDeactivate,
 }: CodeDetailHeadProps) => {
-  const deactivateNoteId = useId();
-  const addChildNoteId = useId();
   const orEmpty = (value: string | null | undefined): string =>
     value === null || value === undefined || value === '' ? t.values.empty : value;
   const category = isCategory(code);
@@ -55,43 +52,27 @@ export const CodeDetailHead = ({
           </Chip>
         </div>
         <div className="defect-cause-head-actions">
-          {onAddChild !== undefined && (
+          {/* 미사용 코드에는 하위 코드 추가 · 사용 중지를 내지 않는다 — 안내 문구도 두지 않는다(사용자 지시 · #209). */}
+          {code.isActive && onAddChild !== undefined && (
             /* 상세 추가는 이 카드의 주 동작 — 채운 빨강(사용자 지시 · #209). */
             <Button
               variant="filled"
               leadingIcon={<Icon name="add" size={18} />}
-              /* 미사용 대분류 아래에는 새 코드를 두지 않는다 — 감추지 않고 사유를 밝힌다(사용자 지시 · #209). */
-              disabled={!code.isActive}
-              aria-describedby={code.isActive ? undefined : addChildNoteId}
               onClick={onAddChild}
             >
               {t.actions.addChild}
             </Button>
           )}
-          {/* 이미 미사용인 코드에는 중지할 대상이 없다. 감추지 않고 사유를 밝힌다(배치 규범 4). */}
-          <Button
-            variant="outlined"
-            disabled={!code.isActive}
-            aria-describedby={code.isActive ? undefined : deactivateNoteId}
-            onClick={onDeactivate}
-          >
-            {messages.common.deactivate}
-          </Button>
+          {code.isActive && (
+            <Button variant="outlined" onClick={onDeactivate}>
+              {messages.common.deactivate}
+            </Button>
+          )}
           <Button variant="outlined" leadingIcon={<Icon name="edit" size={18} />} onClick={onEdit}>
             {t.detail.edit}
           </Button>
         </div>
       </div>
-      {!code.isActive && (
-        <span id={deactivateNoteId} className="field-note">
-          {t.actionReasons.deactivateNeedsActive}
-        </span>
-      )}
-      {!code.isActive && onAddChild !== undefined && (
-        <span id={addChildNoteId} className="field-note">
-          {t.actionReasons.addChildNeedsActive}
-        </span>
-      )}
       {/* 이름표를 단 값들 — 검사 기준 탭의 기준 정보 상자와 같은 모양(#196). */}
       <dl className="inspection-standard-facts-line inspection-standard-plan-facts">
         {[
