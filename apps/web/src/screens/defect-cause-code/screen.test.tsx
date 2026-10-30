@@ -594,6 +594,60 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
     expect(within(children).queryByRole('button', { name: 'DF-11' })).not.toBeInTheDocument();
   });
 
+  it('하위 코드 표는 선택지 목록을 끝까지 받아 뒤쪽 쪽의 하위도 센다(#209 버그 수정)', async () => {
+    const lateChild = {
+      defectCodeId: 1011,
+      defectCode: 'DF-15',
+      defectName: '뒤쪽 하위',
+      parentDefectCodeId: 1001,
+      processId: null,
+      isActive: true,
+    };
+    const { requests } = renderScreen(
+      [
+        {
+          match: (request) =>
+            isGet(request, DEFECT_LIST_PATH) &&
+            new URL(request.url).searchParams.get('includeInactive') === 'true',
+          respond: (request) => {
+            const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+            return jsonResponse({
+              items: page === 1 ? defectCodeFixtures : [lateChild],
+              page: { page, size: defectCodeFixtures.length, total: defectCodeFixtures.length + 1 },
+            });
+          },
+        },
+        defectListRoute(activeDefectFixtures),
+        defectDetailRoute(),
+      ],
+      '?sel=1001',
+    );
+    await screen.findByRole('button', { name: '수정' });
+
+    const children = await screen.findByRole('region', { name: '하위 코드' });
+    expect(await within(children).findByText('DF-15')).toBeInTheDocument();
+    expect(within(children).getByText('총 3건')).toBeInTheDocument();
+    expect(
+      requests.some(
+        (request) =>
+          request.url.pathname === DEFECT_LIST_PATH &&
+          request.url.searchParams.get('includeInactive') === 'true' &&
+          request.url.searchParams.get('page') === '2',
+      ),
+    ).toBe(true);
+  });
+
+  it('주소의 공정 값이 숫자가 아니면 조건에서 뺀다(#209 버그 수정)', async () => {
+    const { requests } = renderScreen([defectListRoute()], '?proc=abc');
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    expect(
+      pageListRequests(requests, DEFECT_LIST_PATH).every(
+        (request) => !request.url.searchParams.has('processId'),
+      ),
+    ).toBe(true);
+  });
+
   it('대분류 추가 창이 열려 있어도 뒤의 상세 카드는 고른 코드를 그대로 보이고, 상위는 비어 있다(#209 버그 수정)', async () => {
     const { user } = renderScreen(
       [defectOptionsRoute(), defectListRoute(activeDefectFixtures), defectDetailRoute()],

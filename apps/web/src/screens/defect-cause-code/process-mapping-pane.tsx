@@ -348,9 +348,13 @@ export const ProcessMappingPane = () => {
       />
     );
   } else {
-    /* 칸을 누르면 바로 연결 · 해제한다(종전 매트릭스와 같은 동작). 저장 중에는 막는다. */
+    /*
+     * 칸을 누르면 바로 연결 · 해제한다(종전 매트릭스와 같은 동작). 저장 중에는 막는다.
+     * 저장 뒤 연결 상태를 다시 받는 동안에도 막는다(#209 버그 수정) — 옛 상태로 같은 요청이 한 번 더 나갔다.
+     */
+    const isBusy = write.isSaving || mappingQueries.some((query) => query.isFetching);
     const toggle = (defectCodeId: number, processId: number): void => {
-      if (write.isSaving) return;
+      if (isBusy) return;
       const assigned = mappedByDefect.get(defectCodeId)?.has(processId) === true;
       write.write({ defectCodeId, processId, intent: assigned ? 'revoke' : 'assign' });
     };
@@ -410,7 +414,7 @@ export const ProcessMappingPane = () => {
                         className="defect-mapping-toggle"
                         aria-pressed={assigned}
                         aria-label={label}
-                        disabled={write.isSaving}
+                        disabled={isBusy}
                       >
                         {assigned && <Icon name="check" size={16} />}
                       </button>
@@ -561,7 +565,12 @@ export const ProcessMappingPane = () => {
             includeInactive={false}
             onClose={() => setIsPickerOpen(false)}
             onConfirm={(code) => {
-              setDraft((prev) => ({ ...prev, q: code.code }));
+              /* 대분류를 고르면 대분류 조건으로 건다 — 표의 줄은 상세 코드라 대분류 코드로는 걸리지 않는다(#209 버그 수정). */
+              setDraft((prev) =>
+                code.parentId === null
+                  ? { ...prev, categoryId: String(code.id), q: '' }
+                  : { ...prev, q: code.code },
+              );
               setIsPickerOpen(false);
             }}
           />,

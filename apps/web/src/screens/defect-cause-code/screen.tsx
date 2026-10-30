@@ -168,7 +168,10 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
         (searchParams.get('disp') === 'REWORKABLE' || searchParams.get('disp') === 'SCRAP')
           ? (searchParams.get('disp') as 'REWORKABLE' | 'SCRAP')
           : '',
-      processId: searchParams.get('proc') ?? '',
+      // 숫자가 아닌 값은 버린다 — 그대로 보내면 서버가 거절해 목록이 실패한다(#209 버그 수정).
+      processId: /^\d+$/.test(searchParams.get('proc') ?? '')
+        ? (searchParams.get('proc') ?? '')
+        : '',
       page: Math.max(1, Number(searchParams.get('page')) || 1),
       size: PAGE_SIZES.find((size) => String(size) === searchParams.get('size')) ?? 20,
     }),
@@ -329,7 +332,13 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   // 조회 조건은 화면 상태가 아니라 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
   // 조건을 바꾸면 1쪽으로 돌아간다 — 지난 쪽 번호가 새 결과의 범위 밖일 수 있다(#209).
   const handleApplyFilters = (next: CodeFilters) => {
-    recheckSelection.current = true;
+    // 조건이 실제로 바뀔 때만 본다 — 같은 조건으로 조회하면 목록이 그대로라 확인이 남아 쪽 이동 때 선택이 풀렸다(#209 버그 수정).
+    recheckSelection.current =
+      next.q !== filters.q ||
+      next.includeInactive !== filters.includeInactive ||
+      next.inactiveOnly !== filters.inactiveOnly ||
+      next.dispositionTypeCode !== filters.dispositionTypeCode ||
+      next.processId !== filters.processId;
     updateParams({
       q: next.q === '' ? null : next.q,
       inactive: next.includeInactive ? '1' : null,

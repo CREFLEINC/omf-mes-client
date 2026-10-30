@@ -2,6 +2,7 @@ import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { WriteHeaders } from '../../patterns/master';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest, type ApiCallResult } from '../../patterns/request';
 import {
   causeToHierarchyCode,
@@ -214,9 +215,14 @@ export const defectCodeAdapter: CodeAdapter = {
 
     return { items: data.items.map(defectToHierarchyCode), page: data.page };
   },
+  // 끝까지 받는다(#209 버그 수정) — 칩 건수 · 하위 코드 표 · 사용 중지 하위 건수가 이 목록을 전체로 본다.
   fetchAllForOptions: async (client) => {
-    const data = await runRequest(() =>
-      client.GET('/quality/defect-codes', { params: { query: { includeInactive: true } } }),
+    const data = await fetchAllPages((page, size) =>
+      runRequest(() =>
+        client.GET('/quality/defect-codes', {
+          params: { query: { includeInactive: true, page, size } },
+        }),
+      ),
     );
 
     return { items: data.items.map(defectToHierarchyCode), page: data.page };
@@ -318,9 +324,14 @@ export const causeCodeAdapter: CodeAdapter = {
 
     return { items: data.items.map(causeToHierarchyCode), page: data.page };
   },
+  // 끝까지 받는다(#209 버그 수정) — 칩 건수 · 하위 코드 표 · 사용 중지 하위 건수가 이 목록을 전체로 본다.
   fetchAllForOptions: async (client) => {
-    const data = await runRequest(() =>
-      client.GET('/quality/cause-codes', { params: { query: { includeInactive: true } } }),
+    const data = await fetchAllPages((page, size) =>
+      runRequest(() =>
+        client.GET('/quality/cause-codes', {
+          params: { query: { includeInactive: true, page, size } },
+        }),
+      ),
     );
 
     return { items: data.items.map(causeToHierarchyCode), page: data.page };

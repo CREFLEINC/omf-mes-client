@@ -196,6 +196,23 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
     expect(screen.getByRole('rowheader', { name: /DF-11 · 스크래치/ })).toBeInTheDocument();
   });
 
+  it('검색 창에서 대분류를 고르면 대분류 조건으로 걸린다(#209 버그 수정)', async () => {
+    const { user } = renderMapping();
+    await screen.findByRole('rowheader', { name: /DF-11 · 스크래치/ });
+
+    await user.click(screen.getByLabelText('불량코드 검색'));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('검색어'), 'DF-20');
+    await user.click(within(dialog).getByRole('button', { name: '검색' }));
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'DF-20' }));
+    await user.click(within(dialog).getByRole('button', { name: '선택' }));
+
+    expect(screen.getByLabelText('불량코드 검색')).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: '조회' }));
+    expect(screen.queryByRole('rowheader', { name: /DF-11 · 스크래치/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: /DF-21/ })).toBeInTheDocument();
+  });
+
   it('대분류 · 공정 선택으로 행과 열을 거르고, 연결 상태는 칩으로 바로 거른다(#209)', async () => {
     const { user } = renderMapping();
     await screen.findByRole('rowheader', { name: /DF-11 · 스크래치/ });
