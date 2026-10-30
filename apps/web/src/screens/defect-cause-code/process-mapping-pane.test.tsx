@@ -124,6 +124,54 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
     expect(requests.some((request) => request.url.pathname === '/quality/cause-codes')).toBe(false);
   });
 
+  it('불량코드 · 공정 목록을 끝까지 받아 뒤쪽 쪽의 코드 · 공정도 표에 낸다(#209 버그 수정)', async () => {
+    const lateDefect = {
+      defectCodeId: 1010,
+      defectCode: 'DF-19',
+      defectName: '뒤쪽 코드',
+      parentDefectCodeId: 1001,
+      processId: null,
+      isActive: true,
+    };
+    const lateProcess = {
+      processId: 3009,
+      processCode: 'OP-PKG',
+      processName: '포장',
+      processTypeCode: 'ASSEMBLY',
+      isActive: true,
+    };
+    const paged = (pathname: string, first: unknown[], second: unknown[]): StubRoute => ({
+      match: (request) => request.method === 'GET' && new URL(request.url).pathname === pathname,
+      respond: (request) => {
+        const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+        const total = first.length + second.length;
+        return jsonResponse({
+          items: page === 1 ? first : second,
+          page: { page, size: first.length, total },
+        });
+      },
+    });
+    const { requests } = renderMapping([
+      paged(DEFECT_LIST_PATH, defectCodeFixtures, [lateDefect]),
+      paged(PROCESS_LIST_PATH, processFixtures, [lateProcess]),
+      {
+        match: (request) =>
+          request.method === 'GET' && new URL(request.url).pathname === mappingPath(1010),
+        respond: () => jsonResponse(listBody([])),
+      },
+    ]);
+
+    expect(await screen.findByRole('rowheader', { name: /DF-19 · 뒤쪽 코드/ })).toBeInTheDocument();
+    expect(await screen.findByRole('columnheader', { name: /포장\s*OP-PKG/ })).toBeInTheDocument();
+    expect(
+      requests.some(
+        (request) =>
+          request.url.pathname === DEFECT_LIST_PATH && request.url.searchParams.get('page') === '2',
+      ),
+    ).toBe(true);
+    expect(screen.queryByText(/일부만 표시되어/)).not.toBeInTheDocument();
+  });
+
   it('조회 카드의 검색어로 행을 거르고, 초기화하면 모두 보인다(#209)', async () => {
     const { user } = renderMapping();
     await screen.findByRole('rowheader', { name: /DF-11 · 스크래치/ });

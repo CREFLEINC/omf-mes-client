@@ -1048,6 +1048,26 @@ describe('DefectCauseCodeScreen — 수정 중의 상위 선택', () => {
 });
 
 describe('DefectCauseCodeScreen — 수정 저장', () => {
+  it('상세 코드 수정 창의 상위 대분류에는 필수 표시가 없다 — 비워 대분류로 되돌릴 수 있다(#209 버그 수정)', async () => {
+    renderScreen(editFlowRoutes(defectDetailRoute(defectCodeFixtures[1])), '?sel=1002');
+
+    await openEdit();
+    const dialog = await screen.findByRole('dialog');
+    const parentLabel = within(dialog).getByText('상위 대분류').closest('.field-label');
+    expect(parentLabel?.querySelector('.required-mark')).toBeNull();
+  });
+
+  it('상세 추가 창의 상위 대분류에는 필수 표시가 있다', async () => {
+    renderScreen(
+      createFlowRoutes(defectCreateRoute(() => jsonResponse(CREATED_DEFECT, { status: 201 }))),
+      '?sel=1001&mode=create',
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    const parentLabel = within(dialog).getByText('상위 대분류').closest('.field-label');
+    expect(parentLabel?.querySelector('.required-mark')).not.toBeNull();
+  });
+
   it('저장된 한국어명 · 베트남어명이 수정 창에 채워지고, 지우면 null 로 보낸다(#209)', async () => {
     const withNames = { ...defectCodeFixtures[0], nameKo: '외관 한글', nameVi: 'Ngoại quan' };
     const { requests, user } = renderScreen(
@@ -1493,6 +1513,24 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('사용 중지할까요?')).toBeInTheDocument();
     expect(within(dialog).getByText('연결된 하위 코드 2건이 있습니다.')).toBeInTheDocument();
+  });
+
+  it('하위 건수는 사용 중인 하위만 센다 — 이미 미사용인 하위는 빼고(#209 버그 수정)', async () => {
+    const withInactiveChild = defectCodeFixtures.map((item) =>
+      item.defectCodeId === 1003 ? { ...item, isActive: false } : item,
+    );
+    await openDialog(
+      [
+        defectOptionsRoute(withInactiveChild),
+        defectListRoute(withInactiveChild.filter((item) => item.isActive)),
+        defectDetailRoute(),
+        defectDeactivateRoute(1001, () => jsonResponse(defectCodeFixtures[0]!)),
+      ],
+      '?sel=1001',
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('연결된 하위 코드 1건이 있습니다.')).toBeInTheDocument();
   });
 
   it('하위가 없는 코드에는 건수 문장이 나오지 않는다', async () => {

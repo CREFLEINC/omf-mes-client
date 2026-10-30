@@ -15,6 +15,7 @@ import { useId, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest, toApiError, type ApiCallResult } from '../../patterns/request';
@@ -147,17 +148,27 @@ export const ProcessMappingPane = () => {
       /*
        * 미사용까지 받는다(#209 버그 수정) — 상위 대분류만 미사용이면 사용 중인 상세 코드가 「상위를 찾을 수 없는 코드」로 보였다.
        * 표의 줄은 아래에서 사용 중인 상세 코드만 남긴다(종전과 같다).
+       * 끝까지 받는다(#209 버그 수정) — 첫 쪽만 받으면 미사용 · 대분류가 칸을 차지해 사용 중인 상세 코드가 표에서 빠졌다.
        */
-      runRequest(() =>
-        client.GET('/quality/defect-codes', { params: { query: { includeInactive: true } } }),
-      ) as Promise<ListResponse<DefectCode>>,
+      fetchAllPages(
+        (page, size) =>
+          runRequest(() =>
+            client.GET('/quality/defect-codes', {
+              params: { query: { includeInactive: true, page, size } },
+            }),
+          ) as Promise<ListResponse<DefectCode>>,
+      ),
   });
   const processesQuery = useQuery({
     queryKey: mappingKeys.processes,
     queryFn: () =>
-      runRequest(() => client.GET('/mdm/processes', { params: { query: {} } })) as Promise<
-        ListResponse<Process>
-      >,
+      // 공정도 끝까지 받는다 — 첫 쪽만 받으면 뒤쪽 공정 열이 빠진다(#209 버그 수정).
+      fetchAllPages(
+        (page, size) =>
+          runRequest(() =>
+            client.GET('/mdm/processes', { params: { query: { page, size } } }),
+          ) as Promise<ListResponse<Process>>,
+      ),
   });
 
   const allDefects = defectsQuery.data?.items ?? EMPTY_DEFECTS;

@@ -445,15 +445,18 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
 
   /*
    * 하위가 딸린 대분류를 중지하면 영향 범위가 넓다. 누르기 전에 그 건수를 보인다.
-   * 표가 쪽으로 나뉘므로(#209) 쪽 목록이 아니라 미사용까지 받은 전체 목록으로 센다.
+   * 표가 쪽으로 나뉘므로(#209) 쪽 목록이 아니라 미사용까지 받은 전체 목록에서 **사용 중인 하위만** 센다
+   * (#209 버그 수정 — 이미 미사용인 하위는 중지 영향이 없다).
    */
   const selectedCode = selected ?? detail.data?.code ?? null;
-  const deactivateChildCount =
-    selectedCode !== null &&
-    isCategory(selectedCode) &&
-    childCountOf(options.items, selectedCode.id) > 0
-      ? childCountOf(options.items, selectedCode.id)
-      : null;
+  const activeChildCount =
+    selectedCode !== null && isCategory(selectedCode)
+      ? childCountOf(
+          options.items.filter((item) => item.isActive),
+          selectedCode.id,
+        )
+      : 0;
+  const deactivateChildCount = activeChildCount > 0 ? activeChildCount : null;
 
   /* 탭 줄 사용 여부 칩의 건수(사용자 지시 · #209) — 미사용까지 받은 전체 목록으로 센다. 받기 전이면 건수 없이 낸다. */
   const usageCounts = options.isLoading
@@ -541,12 +544,11 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       }
       parentOptions={parentOptions}
       parentLockReason={parentLockReason}
-      // 상세(상위가 있는 코드)를 추가 · 수정할 때만 상위에 필수 표시를 붙인다 — 표시뿐, 저장 규칙은 그대로다.
-      parentRequired={
-        formMode === 'create'
-          ? createParentSeed !== null
-          : (formState?.baseline.parentId ?? '') !== ''
-      }
+      /*
+       * 상세를 추가할 때만 상위에 필수 표시를 붙인다 — 표시뿐, 저장 규칙은 그대로다.
+       * 수정에서는 붙이지 않는다 — 상위를 비워 대분류로 되돌리는 것이 허용되므로 표시와 규칙이 어긋난다(#209 버그 수정).
+       */
+      parentRequired={formMode === 'create' && createParentSeed !== null}
       isDirty={isDirty}
       isSaving={write.isSaving}
       onSave={handleSave}
