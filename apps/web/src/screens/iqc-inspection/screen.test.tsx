@@ -1711,7 +1711,7 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     expect(screen.getByLabelText(t.result.rejection.minor)).toHaveTextContent('APP-SCR · 스크래치');
   });
 
-  it('판정을 합격으로 바꿔도 불량 내역은 남고, 불합격이 아니면 저장되지 않는다고 알린다(#197)', async () => {
+  it('판정을 합격으로 바꿔도 불량 내역은 남고, 「저장되지 않는다」 안내는 없다(#197 · #205)', async () => {
     draftRecordsForTest = [
       { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
     ];
@@ -1722,10 +1722,10 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));
 
     expect(await reasonValue()).toBe('표면 긁힘');
-    expect(screen.getByText(t.result.rejection.defectsNotSaved)).toBeInTheDocument();
+    expect(screen.queryByText(/불합격일 때만 불량 내역이 저장/)).not.toBeInTheDocument();
   });
 
-  it('합격으로 바꿔 저장하면 빈 사유를 실어 앞서 저장한 사유를 지운다', async () => {
+  it('불합격 수량이 있으면 합격으로 바꿔 저장해도 불량 내역을 싣는다(#205)', async () => {
     draftRecordsForTest = [
       { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
     ];
@@ -1741,7 +1741,8 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
 
     expect(await bodyOf(writes[0] as Request)).toMatchObject({
       overallJudgmentCode: 'ACCEPTED',
-      defects: [],
+      rejectedQty: 15,
+      defects: [{ defectCodeId: 7002, defectQty: 15 }],
     });
   });
 });

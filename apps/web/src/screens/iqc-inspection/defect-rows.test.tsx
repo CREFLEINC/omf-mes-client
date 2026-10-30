@@ -72,7 +72,6 @@ describe('DefectRows', () => {
         onChange={setRows}
         uomCode="EA"
         disabled={false}
-        notSaved={false}
       />
     );
   };
