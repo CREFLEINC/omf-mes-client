@@ -83,7 +83,7 @@ export const LotTimelineTable = ({
   const columns: Column<LotTimelineEntry>[] = [
     {
       key: 'occurredAt',
-      header: t.history.columns.occurredAt,
+      header: isDetail ? t.timeline.columns.occurredAt : t.history.columns.occurredAt,
       align: 'center',
       width: isDetail ? '172px' : '220px',
       render: (entry) => formatDateTime(entry.occurredAt),
@@ -100,7 +100,7 @@ export const LotTimelineTable = ({
         ]),
     {
       key: 'event',
-      header: t.history.columns.event,
+      header: isDetail ? t.timeline.columns.event : t.history.columns.event,
       align: 'center',
       width: isDetail ? '104px' : '120px',
       render: (entry) =>
@@ -114,17 +114,22 @@ export const LotTimelineTable = ({
           </Chip>
         ),
     },
-    { key: 'change', header: t.history.columns.change, align: 'center', render: changeText },
+    {
+      key: 'change',
+      header: isDetail ? t.timeline.columns.change : t.history.columns.change,
+      align: 'center',
+      render: changeText,
+    },
     {
       key: 'actor',
-      header: t.history.columns.actor,
+      header: isDetail ? t.timeline.columns.actor : t.history.columns.actor,
       align: 'center',
       width: isDetail ? '140px' : undefined,
       render: actorName,
     },
     {
       key: 'reason',
-      header: t.history.columns.reason,
+      header: isDetail ? t.timeline.columns.reason : t.history.columns.reason,
       align: 'center',
       width: isDetail ? '160px' : '224px',
       render: (entry) => reasonText(entry, reasons.data?.items),

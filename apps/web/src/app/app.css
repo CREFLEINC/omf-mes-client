@@ -3937,7 +3937,9 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-top: var(--space-5);
 }
 
-.lot-status-detail-dialog section > h3 {
+/* 구획 제목 줄 — 오른쪽 끝에 총 건수(2026-10-30 시안). */
+.lot-status-detail-dialog section > h3,
+.lot-status-detail-dialog section > .lot-status-pane-head > h3 {
   margin: 0;
   color: var(--on-surface);
   font: var(--type-title-md);
@@ -4011,6 +4013,25 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .lot-hold-times dd {
   margin: 0;
+}
+
+/* 불러오기 실패 상자 — [재시도]는 줄 오른쪽 끝에 선다(2026-10-30 시안, 생산계획 실패 상자와 같은 풀이). */
+.lot-detail-failure-banner > [class*='content'] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
+}
+
+.lot-detail-failure-banner > [class*='content'] > * {
+  grid-column: 1;
+}
+
+.lot-detail-failure-banner > [class*='content'] > [class*='action'] {
+  grid-column: 2;
+  grid-row: 1;
+  margin-top: 0;
 }
 
 /* 가능한 작업 — 막힌 단추와 그 까닭을 한 줄로 붙이고, 참고 안내는 그 아래 작은 글씨로 따로 둔다. */

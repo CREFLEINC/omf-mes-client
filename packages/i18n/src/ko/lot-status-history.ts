@@ -115,7 +115,6 @@ export const lotStatusHistory = {
       failed: '품목 목록 조회 실패',
       unknown: '알 수 없음',
     },
-    openDetail: (lotNo: string): string => `${lotNo} 상세 보기`,
     summary: {
       pane: '현재 상태 요약',
       loading: '현재 상태 요약을 불러오는 중',
@@ -194,16 +193,27 @@ export const lotStatusHistory = {
   },
   /** LOT 상세의 이력. 표 모양은 「이력으로 찾기」와 같고 LOT 열만 없다. */
   timeline: {
-    pane: 'LOT 이력',
+    pane: 'LOT 변경 이력',
     loading: 'LOT 이력을 불러오는 중',
     failed: 'LOT 이력을 불러오지 못했습니다.',
     empty: '기록된 이력이 없습니다',
     truncated: '보류 사건이 많아 일부만 표시합니다.',
+    /** LOT 상세의 이력 표 머리 — 「이력으로 찾기」 표는 종전 이름 그대로다. */
+    columns: {
+      occurredAt: '처리 일시',
+      event: '처리 유형',
+      change: '변경 내용',
+      actor: '처리자',
+      reason: '처리 사유',
+    },
   },
   detail: {
-    title: 'LOT 상세',
+    title: 'LOT 상세 정보',
     loading: 'LOT 상세를 불러오는 중',
-    failed: 'LOT 상세를 불러오지 못했습니다.',
+    failed: 'LOT 정보를 불러오지 못했습니다.',
+    /** LOT 상세 안의 다시 부르기 단추. */
+    retry: '재시도',
+    retryLabel: (name: string): string => `${name} 재시도`,
     /** 아직 고른 LOT 이 없을 때 상세 칸 안내. */
     pick: '목록에서 LOT을 선택해 주세요.',
     trace: '추적 보기',
@@ -218,18 +228,14 @@ export const lotStatusHistory = {
       manufacturedAt: '제조 시각',
       fourMChange: '4M 변경품',
     },
-    transition: '판정·전이 처리',
-    /** 화면 코드 대신 메뉴에 보이는 화면 이름으로 안내한다(사용자 지시 2026-09-19). */
-    transitionNote:
-      '여기서는 사용할 수 없습니다. 「Lot Status 판정·전이 처리」 화면에서 진행하세요.',
-    suspiciousNote: '의심자재 등록은 「의심자재 등록」 화면에서 진행하세요.',
+    transition: 'LOT 상태 변경',
   },
   holdDocuments: {
-    pane: '보류 문서',
+    pane: 'LOT 보류 이력',
     columns: {
-      times: '등록·해제',
+      times: '처리 내역',
       reason: '사유',
-      holdStatus: '보류 건 상태',
+      holdStatus: '보류 상태',
       holdQty: '보류 수량',
       releaseCondition: '해제 조건',
     },

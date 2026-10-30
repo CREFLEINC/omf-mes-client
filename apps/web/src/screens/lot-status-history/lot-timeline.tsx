@@ -24,7 +24,14 @@ export const LotTimeline = ({ lotId, statusOptions }: LotTimelineProps) => {
 
   return (
     <section aria-labelledby="lot-timeline-title">
-      <h3 id="lot-timeline-title">{t.timeline.pane}</h3>
+      <div className="lot-status-pane-head">
+        <h3 id="lot-timeline-title">{t.timeline.pane}</h3>
+        {timeline.data !== undefined && (
+          <span className="field-note">
+            {t.current.list.total(String(timeline.data.entries.length))}
+          </span>
+        )}
+      </div>
       {timeline.isPending && (
         <div role="status" aria-label={t.timeline.loading}>
           <SkeletonText lines={3} />
@@ -32,16 +39,17 @@ export const LotTimeline = ({ lotId, statusOptions }: LotTimelineProps) => {
       )}
       {timeline.isError && (
         <AlertBanner
+          className="lot-detail-failure-banner"
           variant="error"
           title={t.timeline.failed}
           action={
             <Button
               variant="outlined"
               size="sm"
-              aria-label={t.actions.retryLabel(t.timeline.pane)}
+              aria-label={t.detail.retryLabel(t.timeline.pane)}
               onClick={() => void timeline.refetch()}
             >
-              {t.actions.retry}
+              {t.detail.retry}
             </Button>
           }
         />

@@ -132,7 +132,12 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
 
   return (
     <section aria-labelledby="lot-hold-documents-title">
-      <h3 id="lot-hold-documents-title">{t.holdDocuments.pane}</h3>
+      <div className="lot-status-pane-head">
+        <h3 id="lot-hold-documents-title">{t.holdDocuments.pane}</h3>
+        {meta !== undefined && (
+          <span className="field-note">{t.current.list.total(String(meta.total))}</span>
+        )}
+      </div>
       {holds.isPending && (
         <div role="status" aria-label={t.holdDocuments.loading}>
           <SkeletonText lines={3} />
@@ -140,16 +145,17 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
       )}
       {holds.isError && (
         <AlertBanner
+          className="lot-detail-failure-banner"
           variant="error"
           title={t.holdDocuments.failed}
           action={
             <Button
               variant="outlined"
               size="sm"
-              aria-label={t.actions.retryLabel(t.holdDocuments.pane)}
+              aria-label={t.detail.retryLabel(t.holdDocuments.pane)}
               onClick={() => void holds.refetch()}
             >
-              {t.actions.retry}
+              {t.detail.retry}
             </Button>
           }
         />
@@ -171,7 +177,8 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
               empty={<EmptyState size="sm" title={t.holdDocuments.empty} />}
             />
           </div>
-          {meta !== undefined && (
+          {/* 총 건수는 제목 줄에 있다 — 쪽이 둘 이상일 때만 이동 줄을 둔다(2026-10-30 시안). */}
+          {meta !== undefined && totalPages > 1 && (
             <nav className="form-actions" aria-label={t.holdDocuments.pagination}>
               <p className="field-note form-actions-secondary">{range}</p>
               <Button

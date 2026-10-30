@@ -1,6 +1,5 @@
 import { AlertBanner, Button, Chip, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
 import { useNavigate } from 'react-router';
 
 import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
@@ -50,7 +49,6 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
           lotTypeCode: detail.data.lotTypeCode,
         })
       : null;
-  const transitionNoteId = useId();
   const fourMTypeLabel = useFourMChangeTypeLabel();
   const itemId = detail.data?.itemId;
   const itemNames = useItemNameSources(itemId === undefined ? [] : [itemId]);
@@ -63,10 +61,10 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
     <Button
       variant="outlined"
       size="sm"
-      aria-label={t.actions.retryLabel(t.detail.title)}
+      aria-label={t.detail.retryLabel(t.detail.title)}
       onClick={() => void detail.refetch()}
     >
-      {t.actions.retry}
+      {t.detail.retry}
     </Button>
   );
 
@@ -88,7 +86,14 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
           <SkeletonText lines={3} />
         </div>
       )}
-      {detail.isError && <AlertBanner variant="error" title={t.detail.failed} action={retry} />}
+      {detail.isError && (
+        <AlertBanner
+          className="lot-detail-failure-banner"
+          variant="error"
+          title={t.detail.failed}
+          action={retry}
+        />
+      )}
       {/*
        * 기본 정보 — 긴 값(LOT 번호·품목)은 첫 줄에 넓게, 짧은 값은 둘째 줄에 좁게 둔다
        * (사용자 지시 2026-09-19). 칸 배치는 app.css .lot-detail-fields.
@@ -152,17 +157,11 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
 
       <LotHoldDocuments key={lotId} lotId={lotId} />
 
-      {/* 가능한 작업 — 막힌 단추와 그 까닭을 한 묶음으로, 참고 안내는 따로 둔다. */}
+      {/* 가능한 작업 — 안내 문구는 뺐다(사용자 2026-10-30). */}
       <div className="lot-detail-actions">
         <div className="lot-detail-action">
-          <Button disabled aria-describedby={transitionNoteId}>
-            {t.detail.transition}
-          </Button>
-          <span id={transitionNoteId} className="field-note">
-            {t.detail.transitionNote}
-          </span>
+          <Button disabled>{t.detail.transition}</Button>
         </div>
-        <p className="field-note">{t.detail.suspiciousNote}</p>
       </div>
     </>
   );
