@@ -1332,43 +1332,38 @@ describe('appRouter — Lot Status 현황·변경이력 조회의 진입 경로'
     });
   });
 
+  /* 탭 묶음 안이라 탭 막대가 화면 이름을 말한다 — 제목·탐색 경로를 세우지 않는다(omf-all-around#210). */
   it('그 주소로 들어가면 LOT 조회의 첫 상태가 선다', async () => {
     renderRoutedApp('/quality/lot-status', lotStatusRoutes());
 
-    expect(
-      await screen.findByRole('heading', {
-        level: 1,
-        name: 'Lot Status 현황·변경이력 조회',
-      }),
-    ).toBeInTheDocument();
     expect(await screen.findByText('LOT 유형 기준값이 준비되지 않았습니다.')).toBeVisible();
+    expect(hubTab('LOT 상태', 'LOT 상태 조회')).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
+    expect(screen.queryByRole('navigation', { name: '탐색 경로' })).toBeNull();
   });
 });
 
 describe('appRouter — Lot Status 판정·전이 처리의 진입 경로', () => {
-  it('품질 관리 메뉴(LOT 상태 판정)를 키보드로 열면 breadcrumb와 실제 후보 첫 상태가 선다', async () => {
+  it('품질 관리 메뉴(LOT 상태 판정)를 키보드로 열면 탭이 켜지고 실제 후보 첫 상태가 선다', async () => {
     const user = userEvent.setup();
     renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...lotStatusTransitionRoutes()]);
 
-    /* 메뉴 이름은 「LOT 상태 판정」으로 줄었고 화면 제목은 그대로다. 「LOT 상태」 묶음의 탭이다. */
+    /* 메뉴 이름은 「LOT 상태 판정」으로 줄었다. 「LOT 상태」 묶음의 탭이다. */
     const link = hubTab('LOT 상태', 'LOT 상태 판정');
     link.focus();
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(currentLocation()).toBe('/quality/lot-status-transition'));
-    expect(
-      screen.getAllByRole('heading', { level: 1, name: 'Lot Status 판정·전이 처리' }),
-    ).toHaveLength(1);
-    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
-    const items = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
-    expect(items).toHaveLength(2);
-    expect(within(items[0]!).getByText(messages.lotStatusTransition.breadcrumbRoot)).toBeVisible();
-    expect(within(items[1]!).getByText('Lot Status 판정·전이 처리')).toBeVisible();
+    expect(hubTab('LOT 상태', 'LOT 상태 판정')).toHaveAttribute('aria-current', 'page');
     expect(await screen.findByRole('button', { name: 'SYN-LOT-ENTRY 선택' })).toBeVisible();
     expect(screen.getByText('전이 이력은 별도의 이력으로 저장되지 않습니다')).toBeVisible();
-    /* 변경 이력 이동은 머리의 보조 단추다(UI 정돈 2026-09-18) — 가는 곳은 그대로 W-03-01 이다. */
-    await user.click(screen.getByRole('button', { name: 'Lot Status 변경 이력 보기' }));
-    await waitFor(() => expect(currentLocation()).toBe('/quality/lot-status'));
+    /*
+     * 탭 묶음 안이라 머리(제목·탐색 경로·변경 이력 단추)를 세우지 않는다 — 변경 이력은 「LOT 상태 조회」 탭이
+     * 대신한다(omf-all-around#210).
+     */
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
+    expect(screen.queryByRole('navigation', { name: '탐색 경로' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Lot Status 변경 이력 보기' })).toBeNull();
   });
 
   it('화면 주소는 API 리소스가 아니라 정확한 공개 route다', () => {
@@ -1378,29 +1373,23 @@ describe('appRouter — Lot Status 판정·전이 처리의 진입 경로', () =
 });
 
 describe('appRouter — 의심자재 등록의 진입 경로', () => {
-  it('품질관리 메뉴를 키보드로 열면 정식 화면 제목과 탐색 경로가 선다', async () => {
+  /* 「LOT 상태」 묶음의 셋째 탭이다(omf-all-around#210) — 탭 막대가 화면 이름을 말해 제목·탐색 경로를 세우지 않는다. */
+  it('LOT 상태 묶음의 의심자재 등록 탭을 키보드로 열면 탭이 켜지고 첫 상태가 선다', async () => {
     const user = userEvent.setup();
     renderRoutedApp('/quality/lot-status-transition', suspiciousMaterialHoldRoutes());
 
-    const link = screen.getByRole('link', { name: messages.suspiciousMaterialHold.title });
+    const link = hubTab('LOT 상태', messages.suspiciousMaterialHold.title);
     link.focus();
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(currentLocation()).toBe('/quality/suspicious-material-hold'));
-    expect(
-      screen.getAllByRole('heading', {
-        level: 1,
-        name: messages.suspiciousMaterialHold.title,
-      }),
-    ).toHaveLength(1);
-    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
-    const items = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
-    expect(items).toHaveLength(2);
-    expect(
-      within(items[0]!).getByText(messages.suspiciousMaterialHold.breadcrumbRoot),
-    ).toBeVisible();
-    expect(within(items[1]!).getByText(messages.suspiciousMaterialHold.title)).toBeVisible();
+    expect(hubTab('LOT 상태', messages.suspiciousMaterialHold.title)).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     expect(await screen.findByText('조건에 맞는 LOT이 없습니다.')).toBeVisible();
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
+    expect(screen.queryByRole('navigation', { name: '탐색 경로' })).toBeNull();
   });
 
   it('화면 주소는 보류 API 컬렉션이 아니라 exact 공개 route다', () => {
@@ -1411,25 +1400,34 @@ describe('appRouter — 의심자재 등록의 진입 경로', () => {
 });
 
 describe('appRouter — 검사실적·검사결과 조회의 진입 경로', () => {
-  it('품질관리 메뉴를 키보드로 열면 공개 화면과 탐색 경로가 선다', async () => {
+  /* 「검사 이력 조회」 묶음 줄이 첫 탭(검사실적)을 연다(omf-all-around#210). */
+  it('품질관리 메뉴의 검사 이력 조회 줄을 키보드로 열면 첫 탭(검사실적)이 선다', async () => {
     const user = userEvent.setup();
     renderRoutedApp('/quality/suspicious-material-hold', [
       ...suspiciousMaterialHoldRoutes(),
       ...inspectionResultRoutes(),
     ]);
 
-    const link = screen.getByRole('link', { name: '검사실적·검사결과 조회' });
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+    const link = within(nav).getByRole('link', { name: '검사 이력 조회' });
     link.focus();
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(currentLocation()).toBe('/quality/inspection-results'));
-    expect(
-      screen.getAllByRole('heading', { level: 1, name: '검사실적·검사결과 조회' }),
-    ).toHaveLength(1);
-    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
-    expect(
-      within(breadcrumb).getByText(messages.inspectionResultInsights.breadcrumbRoot),
-    ).toBeVisible();
+    /*
+     * 셸의 OA 판단은 이 시험에서 판단 근거를 받지 못해(`unknown`) 제품 검사표 탭을 감추지 않는다 — 탭이 둘이라
+     * 탭 막대가 서고, 화면은 제목·탐색 경로를 세우지 않는다.
+     */
+    expect(hubTab('검사 이력 조회', '검사실적·검사결과 조회')).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(hubTab('검사 이력 조회', '제품 검사표 조회')).toHaveAttribute(
+      'href',
+      '/quality/inspection-sheets',
+    );
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
+    expect(screen.queryByRole('navigation', { name: '탐색 경로' })).toBeNull();
   });
 
   it('목록과 측정치 상세가 같은 공개 route 계층에 선다', () => {
@@ -1769,9 +1767,9 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
         url.searchParams.get('size') === '1'
       );
     };
-    expect(
-      requests.filter((request) => !isOaLookup(request) && !isIqcBadge(request)),
-    ).toHaveLength(0);
+    expect(requests.filter((request) => !isOaLookup(request) && !isIqcBadge(request))).toHaveLength(
+      0,
+    );
   });
 
   /*

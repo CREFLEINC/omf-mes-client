@@ -326,20 +326,29 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
         ],
       },
+      /*
+       * 검사 이력 조회 — 끝난 검사의 결과를 찾아보는 두 화면을 사이드바 한 줄 · 본문 위 탭으로 묶는다(omf-all-around#210).
+       * 제품 검사표 탭(W-03-13 · OA 전용 · omf-all-around#89)은 OA 공장이 없는 계정에서 셸이 거른다(`OA_ONLY_PATHS`).
+       */
       {
         to: '/quality/inspection-results',
         icon: 'analytics',
-        label: '검사실적·검사결과 조회',
-        labelVi: 'Tra cứu thực hiện · kết quả kiểm tra',
+        label: '검사 이력 조회',
+        labelVi: 'Tra cứu lịch sử kiểm tra',
+        tabs: [
+          {
+            to: '/quality/inspection-results',
+            label: '검사실적·검사결과 조회',
+            labelVi: 'Tra cứu thực hiện · kết quả kiểm tra',
+          },
+          {
+            to: '/quality/inspection-sheets',
+            label: '제품 검사표 조회',
+            labelVi: 'Tra cứu phiếu kiểm tra sản phẩm',
+          },
+        ],
       },
-      /* W-03-13 — OA 제품 검사표(시리얼별) 조회·서명(omf-all-around#89). 검사실적 조회 바로 뒤 — 같은 「조회」 갈래다. */
-      {
-        to: '/quality/inspection-sheets',
-        icon: 'assignment',
-        label: '제품 검사표 조회',
-        labelVi: 'Tra cứu phiếu kiểm tra sản phẩm',
-      },
-      /* LOT 상태 — 조회에서 찾은 LOT 을 판정·전이한다. */
+      /* LOT 상태 — 조회에서 찾은 LOT 을 판정·전이하고, 의심 자재 LOT 을 보류한다(omf-all-around#210). */
       {
         to: '/quality/lot-status',
         icon: 'history',
@@ -352,13 +361,12 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: 'LOT 상태 판정',
             labelVi: 'Đánh giá trạng thái LOT',
           },
+          {
+            to: '/quality/suspicious-material-hold',
+            label: '의심자재 등록',
+            labelVi: 'Đăng ký vật tư nghi ngờ',
+          },
         ],
-      },
-      {
-        to: '/quality/suspicious-material-hold',
-        icon: 'report_problem',
-        label: '의심자재 등록',
-        labelVi: 'Đăng ký vật tư nghi ngờ',
       },
       /*
        * 품질 승인 처리 — 긴급 IQC 생략 한도승인(W-01-02)을 유형 탭 하나로 품는다(#144). 탭은 화면이 유형 탭

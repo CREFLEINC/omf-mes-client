@@ -23,6 +23,7 @@ import { createPortal } from 'react-dom';
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
+import { usePageHub } from '../../patterns/page-hub';
 import { Select } from '../../patterns/select';
 import { useSession } from '../../patterns/session';
 import { PageNav } from '../oqc-inspection/page-nav';
@@ -89,6 +90,7 @@ export const InspectionSheetScreen = () => (
 );
 
 const InspectionSheetScreenBody = () => {
+  const hub = usePageHub();
   const toast = useToast();
   const { session } = useSession();
   const ids = {
@@ -229,15 +231,18 @@ const InspectionSheetScreenBody = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+      {/* 탭 묶음 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(omf-all-around#210). */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
       <p className="field-note">{t.rule}</p>
 
       <section className="pane" aria-label={t.list.heading}>

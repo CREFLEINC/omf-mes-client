@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { usePageHub } from '../../patterns/page-hub';
 import {
   EMPTY_HISTORY_FILTERS,
   EMPTY_LOT_FILTERS,
@@ -188,6 +189,7 @@ const HistoryMode = ({ filters, page, onSearch, onReset, onPageChange }: History
 };
 
 export const LotStatusHistoryScreen = () => {
+  const hub = usePageHub();
   const [searchParams, setSearchParams] = useSearchParams();
   const mode = readMode(searchParams);
   const filters = useMemo(() => readLotFilters(searchParams), [searchParams]);
@@ -245,15 +247,18 @@ export const LotStatusHistoryScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+      {/* 탭 묶음 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(omf-all-around#210). */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
       <Tabs aria-label={t.modes.label} items={tabs} value={mode} onChange={changeMode} />
     </>
   );
