@@ -7,9 +7,9 @@ export const lotGenealogy = {
     columns: { item: 'Vật tư', lot: 'LOT vật tư', fourM: 'Thay đổi 4M' },
   },
   usage: {
-    heading: 'Sản phẩm đã dùng',
-    loading: 'Đang tải sản phẩm đã dùng.',
-    loadFailed: 'Không tải được sản phẩm đã dùng.',
+    heading: 'Lịch sử đưa vào sản xuất',
+    loading: 'Đang tải lịch sử đưa vào sản xuất.',
+    loadFailed: 'Không tải được lịch sử đưa vào sản xuất.',
     none: 'Chưa có ghi chép đưa LOT này vào sản xuất.',
     lotsCaption: 'LOT sản xuất đã dùng',
     serialsCaption: 'Số sê-ri đã dùng',

@@ -5,6 +5,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { PageNav, type PageSize } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { runRequest } from '../../patterns/request';
 import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
@@ -95,6 +96,9 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
   const { client } = useApiClient();
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(true);
+  /* 투입 이력 표는 화면에서 쪽을 나눈다 — 서버가 한 번에 다 준다(LOT 목록과 같은 쪽 이동 · 사용자 2026-10-30). */
+  const [lotPage, setLotPage] = useState(1);
+  const [lotPageSize, setLotPageSize] = useState<PageSize>(20);
   const lots = useQuery({
     queryKey: lotGenealogyKeys.lots(lotId),
     queryFn: () =>
@@ -132,11 +136,6 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
             {t.usage.heading}
           </button>
         </h3>
-        {lots.data !== undefined && (
-          <span className="field-note">
-            {shared.current.list.total(String(lots.data.items.length))}
-          </span>
-        )}
       </div>
       <div id="lot-usage-body" hidden={!open}>
         {lots.isPending && (
@@ -168,7 +167,7 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
               <Table
                 density="comfortable"
                 caption={t.usage.lotsCaption}
-                rows={lots.data.items}
+                rows={lots.data.items.slice((lotPage - 1) * lotPageSize, lotPage * lotPageSize)}
                 getRowId={(row) => String(row.lotId)}
                 columns={[
                   {
@@ -187,6 +186,14 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
                 empty={<EmptyState size="sm" title={t.usage.none} />}
               />
             </div>
+            <PageNav
+              meta={{ page: lotPage, size: lotPageSize, total: lots.data.items.length }}
+              onChangePage={setLotPage}
+              onChangeSize={(size) => {
+                setLotPageSize(size);
+                setLotPage(1);
+              }}
+            />
             {serials.isError ? (
               <p className="field-error">{t.usage.loadFailed}</p>
             ) : serials.data !== undefined && serials.data.items.length > 0 ? (

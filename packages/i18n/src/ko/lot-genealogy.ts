@@ -8,9 +8,9 @@ export const lotGenealogy = {
     columns: { item: '자재', lot: '자재 LOT', fourM: '4M 변경' },
   },
   usage: {
-    heading: '들어간 제품',
-    loading: '들어간 제품을 불러오는 중입니다.',
-    loadFailed: '들어간 제품을 불러오지 못했습니다.',
+    heading: '투입 이력',
+    loading: '투입 이력을 불러오는 중입니다.',
+    loadFailed: '투입 이력을 불러오지 못했습니다.',
     none: '이 LOT 이 투입된 기록이 없습니다.',
     lotsCaption: '들어간 생산 LOT',
     serialsCaption: '들어간 시리얼',
