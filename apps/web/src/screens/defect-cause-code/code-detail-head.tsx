@@ -20,7 +20,7 @@ export interface CodeDetailHeadProps {
   onAddChild?: () => void;
   onEdit: () => void;
   onDeactivate: () => void;
-  /** 미사용 코드를 다시 사용으로 바꾸는 확인 창을 연다(#209) */
+  /** 미사용 코드를 재사용으로 바꾸는 확인 창을 연다(#209) */
   onActivate: () => void;
 }
 
@@ -55,7 +55,7 @@ export const CodeDetailHead = ({
           </Chip>
         </div>
         <div className="defect-cause-head-actions">
-          {/* 미사용 코드에는 하위 코드 추가 · 사용 중지를 내지 않는다(대신 다시 사용) — 안내 문구도 두지 않는다(사용자 지시 · #209). */}
+          {/* 미사용 코드에는 하위 코드 추가 · 사용 중지를 내지 않는다(대신 재사용) — 안내 문구도 두지 않는다(사용자 지시 · #209). */}
           {code.isActive && onAddChild !== undefined && (
             /* 상세 추가는 이 카드의 주 동작 — 채운 빨강(사용자 지시 · #209). */
             <Button
@@ -66,7 +66,7 @@ export const CodeDetailHead = ({
               {t.actions.addChild}
             </Button>
           )}
-          {/* 사용 중이면 사용 중지, 미사용이면 같은 자리에 다시 사용(사용자 지시 · #209). */}
+          {/* 사용 중이면 사용 중지, 미사용이면 같은 자리에 재사용(사용자 지시 · #209). */}
           {code.isActive ? (
             <Button variant="outlined" onClick={onDeactivate}>
               {messages.common.deactivate}

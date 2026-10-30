@@ -106,19 +106,19 @@ describe('CodeDetailHead (#209)', () => {
     expect(screen.getByRole('button', { name: '수정' })).toBeInTheDocument();
   });
 
-  it('미사용 코드는 사용 중지 자리에 다시 사용 단추를 낸다(#209)', async () => {
+  it('미사용 코드는 사용 중지 자리에 재사용 단추를 낸다(#209)', async () => {
     const { props, user } = renderHead({
       code: { id: 1002, code: 'DF-11', name: '스크래치', parentId: 1001, isActive: false },
     });
 
-    await user.click(screen.getByRole('button', { name: '다시 사용' }));
+    await user.click(screen.getByRole('button', { name: '재사용' }));
     expect(props.onActivate).toHaveBeenCalledTimes(1);
   });
 
-  it('사용 중인 코드에는 다시 사용 단추가 없다', () => {
+  it('사용 중인 코드에는 재사용 단추가 없다', () => {
     renderHead();
 
-    expect(screen.queryByRole('button', { name: '다시 사용' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '재사용' })).not.toBeInTheDocument();
   });
 
   it('사용 중인 대분류는 하위 코드 추가를 누를 수 있다', async () => {

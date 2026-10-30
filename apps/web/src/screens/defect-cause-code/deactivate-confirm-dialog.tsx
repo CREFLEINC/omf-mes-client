@@ -9,7 +9,7 @@ const texts = {
 
 export interface DeactivateConfirmDialogProps {
   open: boolean;
-  /** 사용 중지 · 다시 사용(#209). 기본은 사용 중지 */
+  /** 사용 중지 · 재사용(#209). 기본은 사용 중지 */
   mode?: 'deactivate' | 'activate';
   onClose: () => void;
   onConfirm: () => void;

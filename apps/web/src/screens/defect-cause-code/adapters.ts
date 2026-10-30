@@ -93,7 +93,7 @@ export interface CodeAdapter {
     id: number,
     headers: WriteHeaders,
   ) => Promise<ApiCallResult<HierarchyCode>>;
-  /** 미사용 코드를 다시 사용으로 바꾼다(#209). */
+  /** 미사용 코드를 재사용으로 바꾼다(#209). */
   activate: (
     client: Client,
     id: number,

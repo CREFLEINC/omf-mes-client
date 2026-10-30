@@ -272,7 +272,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   });
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
-  /* 확인 창이 사용 중지인지 다시 사용인지 — 고른 코드의 사용 여부가 정한다(#209). */
+  /* 확인 창이 사용 중지인지 재사용인지 — 고른 코드의 사용 여부가 정한다(#209). */
   const statusMode: 'deactivate' | 'activate' =
     detail.data?.code.isActive === false ? 'activate' : 'deactivate';
 

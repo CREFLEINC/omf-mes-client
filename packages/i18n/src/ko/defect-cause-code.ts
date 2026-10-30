@@ -206,11 +206,11 @@ export const defectCauseCode = {
      */
     childCount: (count: number): string => `연결된 하위 코드 ${String(count)}건이 있습니다.`,
   },
-  /** 미사용 코드를 다시 사용으로 바꾸는 확인 창(사용자 지시 · #209) */
+  /** 미사용 코드를 재사용으로 바꾸는 확인 창(사용자 지시 · #209) */
   activate: {
-    title: '다시 사용할까요?',
-    description: '다시 사용하면 새 작업에서 이 코드를 다시 선택할 수 있습니다.',
-    confirm: '다시 사용',
+    title: '재사용할까요?',
+    description: '재사용하면 새 작업에서 이 코드를 다시 선택할 수 있습니다.',
+    confirm: '재사용',
   },
   mapping: {
     description: '선택하면 연결되고, 다시 선택하면 해제됩니다.',
