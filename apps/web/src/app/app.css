@@ -22798,7 +22798,7 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 
 .erp-wo-summary {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-4);
   margin: 0;
   font: var(--type-body-sm);
@@ -22806,7 +22806,14 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 
 .erp-wo-summary > div {
   display: flex;
+  align-items: baseline;
   gap: var(--space-1);
+}
+
+/* 처리하는 내내 확인하는 값(품목, 주문 수량)은 소제목 단계로 키운다. 번호는 제목이 이미 보인다. */
+.erp-wo-summary > .is-key dd {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 .erp-wo-summary dt {

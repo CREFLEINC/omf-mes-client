@@ -52,6 +52,8 @@ interface World {
   /** 서버 칩 판정. 시험 도중 바꿔 머리가 다시 읽는지 본다. */
   worklistState?: string;
   worklistReasons?: { code: string; workOrderCount: number }[];
+  /** 주문의 ERP 원번호. 주지 않으면 제목 번호와 다른 `ERP-701`이다. */
+  erpOrderNo?: string | null;
   /** Routing 21이 작성중(쓸 수 없는) 개정이라 usableOnly 목록에 없다 */
   routingDraft?: boolean;
   /** 이 경로를 403으로 거절한다 */
@@ -95,7 +97,7 @@ const LINE = {
 const orderBody = (state: World) => ({
   productionOrderId: 701,
   productionOrderNo: ORDER_NO,
-  erpOrderNo: 'ERP-701',
+  erpOrderNo: state.erpOrderNo === undefined ? 'ERP-701' : state.erpOrderNo,
   plantId: 1,
   itemId: 7101,
   orderQty: 300,
@@ -336,6 +338,19 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [] }));
     await currentStep(tp.steps.master);
     expect(document.body).toHaveTextContent(tp.remaining.bomMissing);
+  });
+
+  it('ERP 원번호는 제목 번호와 다를 때만 머리에 보인다', async () => {
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], erpOrderNo: 'ERP-701' }));
+    await currentStep(tp.steps.master);
+    expect(screen.getByText(tp.summary.erpNo)).toBeVisible();
+    expect(screen.getByText('ERP-701')).toBeVisible();
+  });
+
+  it.each([ORDER_NO, '', null])('ERP 원번호가 %j 이면 머리에 보이지 않는다', async (erpOrderNo) => {
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], erpOrderNo }));
+    await currentStep(tp.steps.master);
+    expect(screen.queryByText(tp.summary.erpNo)).toBeNull();
   });
 
   it('작성 중 계획이 있으면 생산계획 단계로 열고, 라인 칸은 「계획 번호 라인」 이름을 가진다', async () => {

@@ -740,11 +740,11 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       }
       summary={
         <dl className="erp-wo-summary">
-          <div>
+          <div className="is-key">
             <dt>{tp.summary.item}</dt>
             <dd>{item === undefined ? '' : named(item.itemName, item.itemCode)}</dd>
           </div>
-          <div>
+          <div className="is-key">
             <dt>{tp.summary.orderQty}</dt>
             <dd>{`${formatQty(order.orderQty)} ${uomLabelOf(order.uomId)}`}</dd>
           </div>
@@ -754,12 +754,15 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
               <dd>{order.dueDate}</dd>
             </div>
           )}
-          {order.erpOrderNo !== null && (
-            <div>
-              <dt>{tp.summary.erpNo}</dt>
-              <dd>{order.erpOrderNo}</dd>
-            </div>
-          )}
+          {/* 제목 번호와 같은 값은 되풀이일 뿐이다. 수기 등록 오더만 번호가 다를 수 있다. */}
+          {order.erpOrderNo !== null &&
+            order.erpOrderNo !== '' &&
+            order.erpOrderNo !== order.productionOrderNo && (
+              <div>
+                <dt>{tp.summary.erpNo}</dt>
+                <dd>{order.erpOrderNo}</dd>
+              </div>
+            )}
         </dl>
       }
       headerActions={
