@@ -15,7 +15,7 @@ const renderPane = (overrides: Partial<CodeFormPaneProps> = {}) => {
     adapter: defectCodeAdapter,
     mode: 'create',
     title: '불량코드 대분류 추가',
-    values: { code: '', name: '', parentId: '' },
+    values: { code: '', name: '', nameKo: '', nameVi: '', parentId: '' },
     onChange: vi.fn(),
     fieldErrors: {},
     banner: null,
@@ -47,7 +47,9 @@ describe('CodeFormPane — 입력칸', () => {
   });
 
   it('상위 선택지 맨 앞에 대분류로 두는 선택지가 있다', async () => {
-    const { props, user } = renderPane({ values: { code: 'A', name: '가', parentId: '1001' } });
+    const { props, user } = renderPane({
+      values: { code: 'A', name: '가', nameKo: '', nameVi: '', parentId: '1001' },
+    });
 
     await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
     await user.click(screen.getByRole('option', { name: '없음 (대분류)' }));
@@ -90,7 +92,7 @@ describe('CodeFormPane — 대분류 경고', () => {
   });
 
   it('상위를 고른 상세 등록에는 그 경고가 없다', () => {
-    renderPane({ values: { code: '', name: '', parentId: '1001' } });
+    renderPane({ values: { code: '', name: '', nameKo: '', nameVi: '', parentId: '1001' } });
 
     expect(
       screen.queryByText(/대분류는 모든 현장에서 공통으로 사용됩니다/),

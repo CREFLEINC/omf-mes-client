@@ -128,18 +128,23 @@ const toWriteResult = <TRaw>(
 const toDefectCreate = (payload: CodeWritePayload): DefectCodeCreate => ({
   defectCode: payload.code,
   defectName: payload.name,
+  ...(payload.nameKo === null ? {} : { nameKo: payload.nameKo }),
+  ...(payload.nameVi === null ? {} : { nameVi: payload.nameVi }),
   ...(payload.parentId === null ? {} : { parentDefectCodeId: payload.parentId }),
 });
 
 const toCauseCreate = (payload: CodeWritePayload): CauseCodeCreate => ({
   causeCode: payload.code,
   causeName: payload.name,
+  ...(payload.nameKo === null ? {} : { nameKo: payload.nameKo }),
+  ...(payload.nameVi === null ? {} : { nameVi: payload.nameVi }),
   ...(payload.parentId === null ? {} : { parentCauseCodeId: payload.parentId }),
 });
 
 /**
  * 수정 본문. 수정은 전체 치환이므로 화면이 아는 값을 모두 실어 보낸다.
  *
+ * - 상위 · 한국어명 · 베트남어명은 **`null`도 명시해** 보낸다(비운 칸을 지울 수 있게 · #209).
  * - 상위는 **`null`도 명시해** 보낸다. 키를 빼면 서버가 이전 값을 남길 수 있어
  *   상세 코드를 대분류로 되돌릴 수 없다. 등록과 달리 「없음」을 뜻이 있는 값으로 보내야 한다
  * - 공정 번호는 상세 응답에서 받은 값이 숫자일 때만 싣는다. 화면에 입력칸이 없는 값이라
@@ -148,6 +153,8 @@ const toCauseCreate = (payload: CodeWritePayload): CauseCodeCreate => ({
 const toDefectUpdate = (payload: CodeWritePayload): DefectCodeUpdate => ({
   defectCode: payload.code,
   defectName: payload.name,
+  nameKo: payload.nameKo,
+  nameVi: payload.nameVi,
   parentDefectCodeId: payload.parentId,
   ...(payload.processId === null ? {} : { processId: payload.processId }),
 });
@@ -155,6 +162,8 @@ const toDefectUpdate = (payload: CodeWritePayload): DefectCodeUpdate => ({
 const toCauseUpdate = (payload: CodeWritePayload): CauseCodeUpdate => ({
   causeCode: payload.code,
   causeName: payload.name,
+  nameKo: payload.nameKo,
+  nameVi: payload.nameVi,
   parentCauseCodeId: payload.parentId,
   ...(payload.processId === null ? {} : { processId: payload.processId }),
 });

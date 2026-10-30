@@ -50,6 +50,8 @@ export const causeToHierarchyCode = (raw: CauseCode): HierarchyCode => ({
 export const codeToFormValues = (code: HierarchyCode): CodeFormValues => ({
   code: code.code,
   name: code.name,
+  nameKo: code.nameKo ?? '',
+  nameVi: code.nameVi ?? '',
   parentId: code.parentId === null ? '' : String(code.parentId),
 });
 
@@ -57,17 +59,26 @@ export const codeToFormValues = (code: HierarchyCode): CodeFormValues => ({
 export const emptyCodeFormValues = (parentId = ''): CodeFormValues => ({
   code: '',
   name: '',
+  nameKo: '',
+  nameVi: '',
   parentId,
 });
 
 /** 기준값과 현재 값의 비교. 「고친 것이 있는가」의 판정 근거다. */
 export const isSameCodeValues = (a: CodeFormValues, b: CodeFormValues): boolean =>
-  a.code === b.code && a.name === b.name && a.parentId === b.parentId;
+  a.code === b.code &&
+  a.name === b.name &&
+  a.nameKo === b.nameKo &&
+  a.nameVi === b.nameVi &&
+  a.parentId === b.parentId;
 
 /** 쓰기 요청의 화면 쪽 표현. 계약 필드 이름으로 옮기는 것은 어댑터가 한다. */
 export interface CodeWritePayload {
   code: string;
   name: string;
+  /** 비운 칸은 null — DB가 빈 문자열을 받지 않는다(app.name_t). */
+  nameKo: string | null;
+  nameVi: string | null;
   parentId: number | null;
   /** 화면에 입력칸이 없는 값. 수정에서만 채워 보낸다. */
   processId: number | null;
@@ -86,6 +97,8 @@ export const toWritePayload = (
 ): CodeWritePayload => ({
   code: values.code.trim(),
   name: values.name.trim(),
+  nameKo: values.nameKo.trim() === '' ? null : values.nameKo.trim(),
+  nameVi: values.nameVi.trim() === '' ? null : values.nameVi.trim(),
   parentId: values.parentId === '' ? null : Number(values.parentId),
   processId: preservedProcessId,
 });
@@ -124,5 +137,9 @@ export const toServerFieldName = (
       return serverFields.name;
     case 'parentId':
       return serverFields.parentId;
+    // 한국어명 · 베트남어명은 불량 · 원인 모두 계약 이름이 같다(#209).
+    case 'nameKo':
+    case 'nameVi':
+      return field;
   }
 };

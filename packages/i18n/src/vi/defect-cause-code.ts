@@ -164,6 +164,8 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     defectNamePlaceholder: 'Nhập tên lỗi',
     causeCodePlaceholder: 'Nhập mã nguyên nhân',
     causeNamePlaceholder: 'Nhập tên nguyên nhân',
+    nameKoPlaceholder: 'Nhập tên tiếng Hàn',
+    nameViPlaceholder: 'Nhập tên tiếng Việt',
   },
   values: {
     active: 'Đang dùng',

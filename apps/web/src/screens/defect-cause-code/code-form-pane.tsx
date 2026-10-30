@@ -63,6 +63,8 @@ export const CodeFormPane = ({
   const codeId = useId();
   const codeLockId = `${codeId}-lock`;
   const nameId = useId();
+  const nameKoId = useId();
+  const nameViId = useId();
   const codeLocked = codeLockReason !== null;
 
   const parentError = fieldErrors.parentId;
@@ -179,6 +181,29 @@ export const CodeFormPane = ({
             {codeLockReason}
           </p>
         )}
+
+        {/* 한국어명 · 베트남어명 — 고르지 않아도 된다(설계 W-06-03 · 사용자 지시 #209). */}
+        <div className="field-cell">
+          {fieldLabel(nameKoId, t.fields.nameKo, false)}
+          <TextField
+            id={nameKoId}
+            placeholder={t.dialog.nameKoPlaceholder}
+            value={values.nameKo}
+            onChange={(event) => onChange({ nameKo: event.target.value })}
+            maxLength={200}
+          />
+        </div>
+
+        <div className="field-cell">
+          {fieldLabel(nameViId, t.fields.nameVi, false)}
+          <TextField
+            id={nameViId}
+            placeholder={t.dialog.nameViPlaceholder}
+            value={values.nameVi}
+            onChange={(event) => onChange({ nameVi: event.target.value })}
+            maxLength={200}
+          />
+        </div>
 
         {/* 상위 대분류는 줄 전체 폭(사용자 시안 · #209). */}
         <div className="field-cell defect-cause-form-wide">

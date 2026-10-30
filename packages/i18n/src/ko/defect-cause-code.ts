@@ -173,6 +173,8 @@ export const defectCauseCode = {
     defectNamePlaceholder: '불량명을 입력하세요',
     causeCodePlaceholder: '원인코드를 입력하세요',
     causeNamePlaceholder: '원인명을 입력하세요',
+    nameKoPlaceholder: '한국어명을 입력하세요',
+    nameViPlaceholder: '베트남어명을 입력하세요',
   },
   values: {
     active: '사용 중',

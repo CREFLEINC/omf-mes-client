@@ -56,6 +56,9 @@ export interface CodeFilters {
 export interface CodeFormValues {
   code: string;
   name: string;
+  /** 한국어명 · 베트남어명(설계 W-06-03 · 사용자 지시 #209). 비우면 값 없음 */
+  nameKo: string;
+  nameVi: string;
   parentId: string;
 }
 

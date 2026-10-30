@@ -737,6 +737,28 @@ describe('DefectCauseCodeScreen — 등록 저장', () => {
     expect(body).toEqual({ defectCode: 'DF-30', defectName: '신규' });
   });
 
+  it('한국어명 · 베트남어명을 넣으면 등록 본문에 실린다(#209)', async () => {
+    const { requests, user } = renderScreen(
+      createFlowRoutes(defectCreateRoute(() => jsonResponse(CREATED_DEFECT, { status: 201 }))),
+      '?mode=create',
+    );
+
+    await user.type(await screen.findByLabelText('불량코드'), 'DF-30');
+    await user.type(screen.getByLabelText('불량명'), '신규');
+    await user.type(screen.getByLabelText('한국어명'), ' 신규 한글 ');
+    await user.type(screen.getByLabelText('베트남어명'), 'Mới');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('등록했습니다');
+
+    const post = requests.find((request) => request.method === 'POST');
+    expect(JSON.parse(post?.body ?? '{}')).toEqual({
+      defectCode: 'DF-30',
+      defectName: '신규',
+      nameKo: '신규 한글',
+      nameVi: 'Mới',
+    });
+  });
+
   it('상세로 등록하면 상위 번호가 본문에 실린다', async () => {
     const { requests, user } = renderScreen(
       createFlowRoutes(
@@ -1026,6 +1048,30 @@ describe('DefectCauseCodeScreen — 수정 중의 상위 선택', () => {
 });
 
 describe('DefectCauseCodeScreen — 수정 저장', () => {
+  it('저장된 한국어명 · 베트남어명이 수정 창에 채워지고, 지우면 null 로 보낸다(#209)', async () => {
+    const withNames = { ...defectCodeFixtures[0], nameKo: '외관 한글', nameVi: 'Ngoại quan' };
+    const { requests, user } = renderScreen(
+      editFlowRoutes(
+        defectDetailRoute(withNames),
+        defectUpdateRoute(1001, () =>
+          jsonResponse({ ...withNames, nameVi: null }, { headers: { ETag: '"8"' } }),
+        ),
+      ),
+      '?sel=1001',
+    );
+
+    await openEdit();
+    expect(await screen.findByLabelText('한국어명')).toHaveValue('외관 한글');
+    expect(screen.getByLabelText('베트남어명')).toHaveValue('Ngoại quan');
+
+    await user.clear(screen.getByLabelText('베트남어명'));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    const put = requests.find((request) => request.method === 'PUT');
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({ nameKo: '외관 한글', nameVi: null });
+  });
+
   it('저장하면 멱등 키와 상세 경로의 If-Match가 함께 실리고 공정 번호가 보존된다', async () => {
     const { requests, user } = renderScreen(
       editFlowRoutes(
@@ -1052,6 +1098,9 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
     expect(JSON.parse(put?.body ?? '{}')).toEqual({
       defectCode: 'DF-10',
       defectName: '외관가',
+      // 한국어명 · 베트남어명은 비운 칸도 null 로 보낸다(#209).
+      nameKo: null,
+      nameVi: null,
       parentDefectCodeId: null,
       processId: 3001,
     });
@@ -1728,6 +1777,8 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
       expect(JSON.parse(put?.body ?? '{}')).toEqual({
         [editFields.code]: 'X-10',
         [editFields.name]: '대분류가',
+        nameKo: null,
+        nameVi: null,
         [editFields.parentId]: null,
         processId: PRESERVED_PROCESS_ID,
       });
