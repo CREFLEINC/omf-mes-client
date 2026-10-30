@@ -27248,6 +27248,19 @@ button.iqc-inspection-step-toggle:focus-visible {
   border-top: 1px solid var(--outline-variant);
 }
 
+/* 작업자 미연결 경고 — 문구 왼쪽 · 「작업자 연결」 오른쪽 끝, 한 줄(사용자 지시 2026-10-30). */
+.parts-iqc-worker-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.parts-iqc-worker-alert > button {
+  flex: none;
+  color: currentColor;
+}
+
 /* 검사 수량 — 검사일시 옆, 숫자 몇 자리 폭(사용자 지시 2026-10-30). */
 .parts-iqc-inspected-qty input {
   width: 6rem;

@@ -473,17 +473,16 @@ const InspectionForm = (props: FormProps) => {
   return (
     <div className="parts-iqc-form">
       {props.inspector === null && (
-        <AlertBanner
-          variant="warning"
-          action={
-            props.appUserId === null ? undefined : (
-              <Button variant="outlined" size="sm" onClick={() => setConnectOpen(true)}>
+        <AlertBanner variant="warning">
+          {/* 버튼은 문구와 같은 줄 오른쪽 끝, 테두리 없이(사용자 지시 2026-10-30) — DS `action` 자리는 문구 아래 줄이라 쓰지 않는다. */}
+          <div className="parts-iqc-worker-alert">
+            <span>{t.dialog.workerMissing}</span>
+            {props.appUserId !== null && (
+              <Button variant="text" size="sm" onClick={() => setConnectOpen(true)}>
                 {messages.usersRoles.workerLink.connect}
               </Button>
-            )
-          }
-        >
-          {t.dialog.workerMissing}
+            )}
+          </div>
         </AlertBanner>
       )}
       {/* 경고 안에서 바로 사번을 잇는다(사용자 지시 2026-10-30) — OA 화면의 연결 창과 같다. 성공하면 세션을 다시 읽어 경고가 걷힌다. */}
