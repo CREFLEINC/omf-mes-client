@@ -56,6 +56,8 @@ interface LotTimelineTableProps {
    */
   variant: 'history' | 'detail';
   empty: ReactNode;
+  /** 다시 받는 중 — 표 상자에 `aria-busy` 로 싣는다. */
+  busy?: boolean;
 }
 
 export const LotTimelineTable = ({
@@ -65,6 +67,7 @@ export const LotTimelineTable = ({
   appUserName,
   variant,
   empty,
+  busy = false,
 }: LotTimelineTableProps) => {
   const reasons = useLotHoldReasonOptions();
   const isDetail = variant === 'detail';
@@ -151,23 +154,33 @@ export const LotTimelineTable = ({
     },
   ];
 
-  /* 열 너비 끌기 · 열 순서 바꾸기는 LOT 상세 탭에만 — LOT 목록 표와 같다(사용자 2026-10-30). */
-  const ordered = useColumnOrder('omf-mes:lot-status:columns:timeline:order', columns);
-  const resizable = useColumnWidths('omf-mes:lot-status:columns:timeline', ordered, {
+  /* 열 너비 끌기 · 열 순서 바꾸기 — LOT 목록 표와 같다(사용자 2026-10-30). 두 표는 너비·순서를 따로 기억한다. */
+  const storageKey = isDetail
+    ? 'omf-mes:lot-status:columns:timeline'
+    : 'omf-mes:lot-status:columns:history';
+  const ordered = useColumnOrder(`${storageKey}:order`, columns);
+  const resizable = useColumnWidths(storageKey, ordered, {
     fitContent: true,
   });
   const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   if (!isDetail) {
     return (
-      <Table
-        density="compact"
-        caption={caption}
-        columns={columns}
-        rows={rows}
-        getRowId={(entry) => entry.key}
-        empty={empty}
-      />
+      <div
+        ref={fit.ref}
+        className="wide-table lot-status-table"
+        style={resizable.style}
+        aria-busy={busy}
+      >
+        <Table
+          density="compact"
+          caption={caption}
+          columns={fit.columns}
+          rows={rows}
+          getRowId={(entry) => entry.key}
+          empty={empty}
+        />
+      </div>
     );
   }
 

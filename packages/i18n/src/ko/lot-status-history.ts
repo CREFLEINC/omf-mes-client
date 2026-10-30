@@ -147,7 +147,7 @@ export const lotStatusHistory = {
     pane: 'LOT 이력',
     columns: {
       occurredAt: '일시',
-      lot: 'LOT',
+      lot: 'LOT 번호',
       event: '구분',
       change: '상태 변경',
       actor: '행위자',

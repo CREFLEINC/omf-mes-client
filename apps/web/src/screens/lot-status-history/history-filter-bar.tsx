@@ -113,7 +113,7 @@ export const HistoryFilterBar = ({
       <TextField
         containerClassName="lot-status-filter-lot-no"
         label={t.historyFilter.fields.lot}
-        placeholder={t.lotFilter.lotNoPlaceholder}
+        placeholder={t.lotFilter.lotNoScanPlaceholder}
         value={draft.lot}
         onChange={(event) => setDraft((current) => ({ ...current, lot: event.target.value }))}
       />

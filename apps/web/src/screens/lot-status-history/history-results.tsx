@@ -1,6 +1,8 @@
 import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
 
+import { PageNav, type PageSize } from '../../patterns/page-nav';
 import type { HistoryFilters } from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { LotTimelineTable } from './lot-timeline-table';
@@ -32,6 +34,8 @@ export const HistoryResults = ({
   onPageChange,
 }: HistoryResultsProps) => {
   const history = useLotHistoryTimeline(filters, offsetMinutes);
+  /* 쪽 크기는 LOT 목록처럼 20 · 50 · 100 에서 고른다(사용자 2026-10-30 · 디자인 통일). */
+  const [pageSize, setPageSize] = useState<PageSize>(HISTORY_PAGE_SIZE);
   const hasValidPeriod = validateHistoryPeriod({ from: filters.from, to: filters.to }) === null;
 
   const retry = (
@@ -46,14 +50,10 @@ export const HistoryResults = ({
   );
   const entries = history.data?.entries ?? [];
   const total = entries.length;
-  const totalPages = Math.max(1, Math.ceil(total / HISTORY_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(Math.max(page, 1), totalPages);
-  const start = (currentPage - 1) * HISTORY_PAGE_SIZE;
-  const rows = entries.slice(start, start + HISTORY_PAGE_SIZE);
-  const rangeLabel =
-    rows.length === 0
-      ? t.range.total(quantity(total))
-      : t.range.span(quantity(start + 1), quantity(start + rows.length), quantity(total));
+  const start = (currentPage - 1) * pageSize;
+  const rows = entries.slice(start, start + pageSize);
 
   return (
     <section
@@ -88,40 +88,33 @@ export const HistoryResults = ({
       )}
       {hasValidPeriod && history.data !== undefined && (
         <>
-          <div className="wide-table lot-status-table" aria-busy={history.isFetching}>
-            <LotTimelineTable
-              caption={t.history.pane}
-              entries={rows}
-              statusOptions={statusOptions}
-              appUserName={appUserName}
-              variant="history"
-              empty={
-                <EmptyState
-                  size="sm"
-                  live
-                  title={t.history.empty.title}
-                  description={t.history.empty.description}
-                />
-              }
-            />
-          </div>
-          <nav className="form-actions" aria-label={t.history.pagination}>
-            <p className="field-note form-actions-secondary">{rangeLabel}</p>
-            <Button
-              variant="outlined"
-              disabled={currentPage <= 1}
-              onClick={() => onPageChange(currentPage - 1)}
-            >
-              {t.actions.previousPage}
-            </Button>
-            <Button
-              variant="outlined"
-              disabled={currentPage >= totalPages}
-              onClick={() => onPageChange(currentPage + 1)}
-            >
-              {t.actions.nextPage}
-            </Button>
-          </nav>
+          <LotTimelineTable
+            caption={t.history.pane}
+            entries={rows}
+            statusOptions={statusOptions}
+            appUserName={appUserName}
+            variant="history"
+            busy={history.isFetching}
+            empty={
+              <EmptyState
+                size="sm"
+                live
+                title={t.history.empty.title}
+                description={t.history.empty.description}
+              />
+            }
+          />
+          {/* 총 건수는 표 아래 쪽 이동 줄에만 — LOT 목록과 같다(사용자 2026-10-30). */}
+          <PageNav
+            meta={{ page: currentPage, size: pageSize, total }}
+            onChangePage={onPageChange}
+            onChangeSize={(size) => {
+              setPageSize(size);
+              onPageChange(1);
+            }}
+            controlSize="sm"
+            buttonSize="md"
+          />
         </>
       )}
     </section>

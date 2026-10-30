@@ -557,8 +557,8 @@ describe('Lot Status 화면 shell', () => {
     expect(
       within(table)
         .getAllByRole('columnheader')
-        .map((header) => header.textContent),
-    ).toEqual(['일시', 'LOT', '구분', '상태 변경', '행위자', '사유']);
+        .map((header) => (header.textContent ?? '').replace('drag_indicator', '')),
+    ).toEqual(['일시', 'LOT 번호', '구분', '상태 변경', '행위자', '사유']);
     const rows = within(table).getAllByRole('row');
     // 일시는 공장 시각(UTC+7)이다(omf-all-around#20). 최신이 위.
     // 행위자 필터(601)가 상태 변경 줄에도 걸린다 — 응답의 상태 변경은 601 이 한 것이라 남는다.
@@ -571,7 +571,7 @@ describe('Lot Status 화면 shell', () => {
     expect(rows[4]).toHaveTextContent('2026-08-19 06:00SAMPLE-LOT-002보류 등록');
     expect(within(table).getByText('사건 응답 이름')).toBeVisible();
     expect(within(table).getByText('이름 미확인')).toBeVisible();
-    expect(screen.getByText('1–4 / 전체 4건')).toBeVisible();
+    expect(screen.getByText('총 4건')).toBeVisible();
 
     const holdRequest = lastRequest(urls, '/quality/lot-hold-events');
     expect(holdRequest?.searchParams.get('actorId')).toBe('601');
@@ -593,7 +593,7 @@ describe('Lot Status 화면 shell', () => {
     // 보류 사건 스텁은 조건을 무시하고 3건을 준다. 상태 변경(행위자 601)만 화면이 걸러 뺀다.
     expect(within(table).queryByRole('cell', { name: '상태 변경' })).not.toBeInTheDocument();
     expect(within(table).queryByText('불합격')).not.toBeInTheDocument();
-    expect(screen.getByText('1–3 / 전체 3건')).toBeVisible();
+    expect(screen.getByText('총 3건')).toBeVisible();
   });
 
   it('기간 미적용·오류·빈 결과를 밝힌다', async () => {
@@ -657,13 +657,14 @@ describe('Lot Status 화면 shell', () => {
     );
     const user = userEvent.setup();
 
-    expect(await screen.findByText('1–20 / 전체 21건')).toBeVisible();
+    expect(await screen.findByText('총 21건')).toBeVisible();
+    expect(screen.getByText('1 / 2')).toBeVisible();
     // 최신(20시)이 맨 위, 최초 등록 전이는 이전 상태가 「최초」다.
     expect(screen.getAllByRole('row')[1]).toHaveTextContent(
       'SAMPLE-LOT-120상태 변경최초 → 합성 정상',
     );
     await user.click(screen.getByRole('button', { name: '다음' }));
-    expect(await screen.findByText('21–21 / 전체 21건')).toBeVisible();
+    expect(await screen.findByText('2 / 2')).toBeVisible();
     expect(locationSearch().get('historyPage')).toBe('2');
     expect(screen.getByText('SAMPLE-LOT-100')).toBeVisible();
     expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
