@@ -149,7 +149,18 @@ export const ItemPickerDialog = ({
   const [picked, setPicked] = useState<ItemRow[]>([]);
 
   const types = useItemTypeOptions(true);
-  const search = useItemSearch(submitted, itemTypeCode, page, includeInactive, hasRouting, size);
+  /*
+   * 뺀 유형은 결과에서도 뺀다 — 「전체」면 남은 유형을 모두 싣는다(서버가 쉼표로 이은 여러 유형을 받는다 · IQC 의 제품 유형 ·
+   * 사용자 지시 2026-10-30). 유형 목록을 받기 전에는 빼지 못하니 그대로 찾는다.
+   */
+  const searchTypeCode =
+    itemTypeCode === '' && excludeItemTypeCodes.length > 0 && types.data !== undefined
+      ? types.data
+          .map((option) => option.code)
+          .filter((code) => !excludeItemTypeCodes.includes(code))
+          .join(',')
+      : itemTypeCode;
+  const search = useItemSearch(submitted, searchTypeCode, page, includeInactive, hasRouting, size);
   const rows = search.data?.rows ?? [];
   const total = search.data?.total ?? 0;
   const availabilityOf = useItemAvailability(showAvailability ? rows.map((row) => row.itemId) : []);

@@ -28299,9 +28299,12 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 /* 부품 IQC 검색 묶음 — 첫 줄 LOT 스캔(넓게) · [검색] · [오늘 입고], 구분선 아래 조회 조건 줄(사용자 시안 2026-10-30). */
 .parts-iqc-search.iqc-inspection-search {
-  display: grid;
-  align-items: stretch;
-  gap: var(--space-4);
+  /* 조회 조건을 모두 한 줄에 — LOT 스캔 · 검색 · 오늘 입고 다음에 품목 · 공급사 · 의뢰번호 · 대기·진행 · 조회 · 초기화
+     (사용자 지시 2026-10-30). 좁으면 다음 줄로 넘긴다. */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
 }
 
 .parts-iqc-scan-row {
@@ -28312,8 +28315,9 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 .parts-iqc-scan-row > form.form-actions {
   display: grid;
-  flex: 1 1 auto;
-  grid-template-columns: minmax(0, 1fr) auto;
+  flex: 0 1 auto;
+  /* LOT 스캔 칸은 흐린 안내 글이 다 보이는 폭까지만(사용자 지시 2026-10-30). */
+  grid-template-columns: minmax(0, 24rem) auto;
   align-items: end;
   gap: var(--space-1) var(--space-3);
   min-width: 0;
@@ -28331,8 +28335,8 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 .parts-iqc-search.iqc-inspection-search > .filter-bar {
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* 작업자 미연결 경고 — 문구 왼쪽 · 「작업자 연결」 오른쪽 끝, 한 줄(사용자 지시 2026-10-30). */
