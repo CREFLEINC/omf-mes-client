@@ -27820,15 +27820,72 @@ button.iqc-inspection-step-toggle:focus-visible {
 /* 검사 기준 버전 상세 「도면」 탭(omf-all-around#208 · patterns/inspection-drawings.tsx) — 그림을 위아래로, 칸 폭에 맞춰 줄인다. */
 .inspection-drawings {
   display: grid;
-  justify-items: center;
   gap: var(--space-3);
+  outline: none;
 }
 
-.inspection-drawings img {
-  max-width: 100%;
-  height: auto;
+/* 도면 틀 — 한 장씩, 같은 높이 안에 원본 비율로 맞춘다. 남는 양옆은 어두운 바탕(사용자 시안 · #208). */
+.inspection-drawings-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(240px, 46vh, 520px);
+  padding: var(--space-3) var(--space-12);
   border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container-low);
+}
+
+.inspection-drawings:focus-visible .inspection-drawings-stage {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.inspection-drawings-stage > img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background: #fff;
+}
+
+.inspection-drawings-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid var(--outline-variant);
+  border-radius: 999px;
+  background: var(--surface-container);
+}
+
+.inspection-drawings-nav.is-prev {
+  left: var(--space-2);
+}
+
+.inspection-drawings-nav.is-next {
+  right: var(--space-2);
+}
+
+/* 몇 번째 도면인지 — 지금 장은 길쭉한 빨간 점(사용자 시안 · #208). */
+.inspection-drawings-dots {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.inspection-drawings-dots > button {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--outline);
+  cursor: pointer;
+}
+
+.inspection-drawings-dots > button[aria-current='true'] {
+  width: 28px;
+  background: var(--primary);
 }
 
 .parts-iqc-drawings {

@@ -254,6 +254,8 @@ export const inspectionStandard = {
     drawingsNone: '등록된 도면이 없습니다',
     drawingsNoneHint: '기준서(TCKT) 엑셀을 올리면 도면이 함께 붙습니다.',
     drawingAlt: (index: number): string => `도면 ${String(index)}`,
+    drawingPrev: '이전 도면',
+    drawingNext: '다음 도면',
     notSet: '미설정',
   },
   /* 검사 기준 목록 표의 추가 열(omf-all-around#196). */

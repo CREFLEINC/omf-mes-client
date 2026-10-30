@@ -39,5 +39,11 @@ export const VersionDrawings = ({
       />
     );
   }
-  return <InspectionDrawingImages drawings={drawings.data} altOf={t.drawingAlt} />;
+  return (
+    <InspectionDrawingImages
+      drawings={drawings.data}
+      altOf={t.drawingAlt}
+      labels={{ prev: t.drawingPrev, next: t.drawingNext }}
+    />
+  );
 };

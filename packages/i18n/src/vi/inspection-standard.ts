@@ -230,6 +230,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     drawingsNone: 'Chưa có bản vẽ',
     drawingsNoneHint: 'Tải lên tệp Excel tiêu chuẩn (TCKT) thì bản vẽ được đính kèm cùng.',
     drawingAlt: (index: number): string => `Bản vẽ ${String(index)}`,
+    drawingPrev: 'Bản vẽ trước',
+    drawingNext: 'Bản vẽ sau',
     notSet: 'Chưa thiết lập',
   },
   listColumns: {
