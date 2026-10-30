@@ -373,7 +373,9 @@ export const CurrentResults = ({
               meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
               onChangePage={onPageChange}
               onChangeSize={onPageSizeChange}
-              controlSize="md"
+              /* 쪽 크기 선택은 작게, 처음~마지막 단추는 크게 — 화면 안 쪽 이동을 같은 크기로(사용자 2026-10-30). */
+              controlSize="sm"
+              buttonSize="md"
             />
           )}
         </>

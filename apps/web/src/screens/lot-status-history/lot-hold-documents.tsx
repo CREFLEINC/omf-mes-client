@@ -180,6 +180,8 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
             />
           </div>
           <PageNav
+            controlSize="sm"
+            buttonSize="md"
             meta={{
               page: currentPage,
               size: meta.size > 0 ? meta.size : pageSize,

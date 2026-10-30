@@ -194,6 +194,8 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
               />
             </div>
             <PageNav
+              controlSize="sm"
+              buttonSize="md"
               meta={{ page: lotPage, size: lotPageSize, total: lots.data.items.length }}
               onChangePage={setLotPage}
               onChangeSize={(size) => {

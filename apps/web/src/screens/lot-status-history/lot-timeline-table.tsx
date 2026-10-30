@@ -195,6 +195,8 @@ export const LotTimelineTable = ({
         />
       </div>
       <PageNav
+        controlSize="sm"
+        buttonSize="md"
         meta={{ page: shownPage, size: pageSize, total: rows.length }}
         onChangePage={setPage}
         onChangeSize={(size) => {
