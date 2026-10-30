@@ -745,16 +745,17 @@ export const createSeed = (now = new Date()) => {
       ['CONFIRMED', '확정'],
       ['CANCELLED', '취소'],
     ],
+    /* 셋째 값은 베트남어 이름(nameVi) — 없으면 화면이 한국어 이름을 쓴다(LOT 현황 · 2026-10-30). */
     LOT_TYPE: [
-      ['MATERIAL', '자재'],
-      ['PRODUCTION', '생산'],
-      ['PRODUCT', '제품'],
+      ['MATERIAL', '자재', 'Vật tư'],
+      ['PRODUCTION', '생산', 'Sản xuất'],
+      ['PRODUCT', '제품', 'Thành phẩm'],
     ],
     LOT_STATUS: [
-      ['NORMAL', '정상'],
-      ['DEFECTIVE', '불량'],
-      ['INSPECTION_PENDING', '검사 대기'],
-      ['SCRAPPED', '폐기'],
+      ['NORMAL', '정상', 'Bình thường'],
+      ['DEFECTIVE', '불량', 'Lỗi'],
+      ['INSPECTION_PENDING', '검사 대기', 'Chờ kiểm tra'],
+      ['SCRAPPED', '폐기', 'Hủy bỏ'],
     ],
     /*
      * 출고 유형 — ✅ **값 목록 확정 2026-08-31(사용자)** · 넷이다.
@@ -781,10 +782,10 @@ export const createSeed = (now = new Date()) => {
       ['OTHER', '기타'],
     ],
     LOT_HOLD_REASON: [
-      ['INSPECTION_PENDING', '수입검사 대기'],
-      ['SUSPECT', '의심 자재'],
+      ['INSPECTION_PENDING', '수입검사 대기', 'Chờ kiểm tra nhập'],
+      ['SUSPECT', '의심 자재', 'Vật tư nghi ngờ'],
       /* 제품 LOT 의 보류 사유. 자재 쪽 값만 두면 제품 피킹이 쓸 값이 없다. */
-      ['SHIPPING_INSPECTION_PENDING', '출하검사 대기'],
+      ['SHIPPING_INSPECTION_PENDING', '출하검사 대기', 'Chờ kiểm tra xuất hàng'],
     ],
     /* W-03-02 — 해제 사유는 등록 사유와 대칭인 필수 축(고객 시드 4값). */
     LOT_HOLD_RELEASE_REASON: [
