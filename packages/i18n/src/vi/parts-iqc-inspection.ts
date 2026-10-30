@@ -8,12 +8,11 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   plant: 'Nhà máy',
 
   /** Lịch sử kiểm tra · nhập hôm nay (2026-10-30). */
-  tabs: { input: 'Nhập kiểm tra', history: 'Lịch sử kiểm tra' },
+  tabs: { input: 'Tiến hành kiểm tra', history: 'Lịch sử kiểm tra' },
   history: {
     loading: 'Đang tải lịch sử kiểm tra.',
     failed: 'Không tải được lịch sử kiểm tra.',
-    empty: 'Chưa có lần kiểm tra nào.',
-    emptyHint: 'Sau khi gửi hoặc lưu tạm, các lần kiểm tra sẽ hiện ở đây.',
+    empty: 'Chưa có lịch sử kiểm tra.',
     round: 'Lần',
     roundNo: (n: number) => `Lần ${String(n)}`,
     inspectedAt: 'Thời gian kiểm tra',

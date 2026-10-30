@@ -1,4 +1,4 @@
-import { Chip, EmptyState } from '@crefle/web-ui';
+import { Chip, EmptyState, Icon } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { Fragment, useState } from 'react';
@@ -38,7 +38,10 @@ export const InspectionHistory = ({ inspectionRequestId, specs, defectCodes }: H
   if (history.isPending) return <p className="field-note">{t.history.loading}</p>;
   if (history.isError) return <p className="field-note">{t.history.failed}</p>;
   if (history.data.length === 0)
-    return <EmptyState size="sm" title={t.history.empty} description={t.history.emptyHint} />;
+    /* 아이콘 + 한 줄(사용자 시안 2026-10-30) */
+    return (
+      <EmptyState size="sm" icon={<Icon name="assignment" size={24} />} title={t.history.empty} />
+    );
 
   return (
     <div className="parts-iqc-grid-scroll">

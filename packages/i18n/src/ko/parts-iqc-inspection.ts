@@ -5,12 +5,11 @@ export const partsIqcInspection = {
   plant: '공장',
 
   /** 검사 이력 · 오늘 입고(사용자 지시 2026-10-30). */
-  tabs: { input: '검사 입력', history: '검사 이력' },
+  tabs: { input: '검사 진행', history: '검사 이력' },
   history: {
     loading: '검사 이력을 불러오는 중입니다.',
     failed: '검사 이력을 불러오지 못했습니다.',
-    empty: '아직 검사한 기록이 없습니다.',
-    emptyHint: '제출하거나 임시 저장하면 여기에 회차가 쌓입니다.',
+    empty: '검사 이력이 없습니다.',
     round: '회차',
     roundNo: (n: number) => `${String(n)}회차`,
     inspectedAt: '검사일시',

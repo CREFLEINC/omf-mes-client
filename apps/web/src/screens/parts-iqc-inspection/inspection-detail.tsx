@@ -199,7 +199,7 @@ export const InspectionDetail = ({
       {/* 검사 입력 · 검사 이력(사용자 지시 2026-10-30) — 이력은 이 의뢰의 회차를 읽기 전용으로 */}
       <Tabs
         className="parts-iqc-detail-tabs"
-        size="sm"
+        size="md"
         aria-label={t.dialog.title}
         value={tab}
         onChange={(next) => setPicked({ requestId: inspectionRequestId, tab: next })}
