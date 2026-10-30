@@ -1,5 +1,7 @@
 import type { paths } from '@omf-mes/api-client';
 
+import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
+
 export type ScreenMode = 'lot' | 'history';
 
 type LotStatusListQuery = NonNullable<
@@ -63,6 +65,7 @@ const URL_KEYS = {
   location: 'location',
   sort: 'sort',
   lotPage: 'page',
+  lotPageSize: 'size',
   selectedLot: 'lot',
   historyFrom: 'from',
   historyTo: 'to',
@@ -110,6 +113,21 @@ export const readHistoryFilters = (params: URLSearchParams): HistoryFilters => (
 
 export const readLotPage = (params: URLSearchParams): number =>
   readPositiveInteger(params.get(URL_KEYS.lotPage)) ?? FIRST_PAGE;
+
+/** 한 쪽 LOT 수 — 고를 수 있는 값(20 · 50 · 100)만 받고, 없으면 서버 기본과 같은 50이다. */
+export const DEFAULT_LOT_PAGE_SIZE: PageSize = 50;
+export const readLotPageSize = (params: URLSearchParams): PageSize =>
+  PAGE_SIZES.find((size) => String(size) === params.get(URL_KEYS.lotPageSize)) ??
+  DEFAULT_LOT_PAGE_SIZE;
+
+/** 한 쪽 LOT 수를 바꾸면 첫 쪽으로 간다. */
+export const withLotPageSize = (current: URLSearchParams, size: PageSize): URLSearchParams => {
+  const next = new URLSearchParams(current);
+  if (size === DEFAULT_LOT_PAGE_SIZE) next.delete(URL_KEYS.lotPageSize);
+  else next.set(URL_KEYS.lotPageSize, String(size));
+  next.delete(URL_KEYS.lotPage);
+  return next;
+};
 
 export const readHistoryPage = (params: URLSearchParams): number =>
   readPositiveInteger(params.get(URL_KEYS.historyPage)) ?? FIRST_PAGE;

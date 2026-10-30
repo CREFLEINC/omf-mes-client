@@ -53,6 +53,7 @@ export const toLotStatusSummaryQuery = (filters: LotFilters): LotStatusSummaryQu
 export const toLotStatusListQuery = (
   filters: LotFilters,
   page: number,
+  size: number,
 ): LotStatusListQuery | null => {
   const commonQuery = toLotStatusSummaryQuery(filters);
   if (commonQuery === null) return null;
@@ -60,6 +61,7 @@ export const toLotStatusListQuery = (
   const query: LotStatusListQuery = {
     ...commonQuery,
     sort: filters.sort,
+    size,
   };
   const validPage = toPage(page);
 

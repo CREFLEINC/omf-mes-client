@@ -257,11 +257,8 @@ export const LotFilterBar = ({
       </div>
       {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
       <div id={detailId} hidden={!isDetailOpen}>
+        {/* 창고 → 위치 → 품목 순(사용자 2026-10-30). */}
         <div className="filter-bar lot-status-filter">
-          <ItemFilterField
-            value={filters.item}
-            onChange={(item) => setFilters((current) => ({ ...current, item }))}
-          />
           <SelectField
             className="lot-status-filter-place"
             label={t.lotFilter.labels.warehouse}
@@ -285,6 +282,10 @@ export const LotFilterBar = ({
             note={locationNote}
             disabled={isLocationLocked}
             onChange={(location) => setFilters((current) => ({ ...current, location }))}
+          />
+          <ItemFilterField
+            value={filters.item}
+            onChange={(item) => setFilters((current) => ({ ...current, item }))}
           />
         </div>
       </div>

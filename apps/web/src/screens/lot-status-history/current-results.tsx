@@ -19,6 +19,7 @@ import { useLotStatusList, useLotStatusSummary } from './queries';
 import { useItemNameSources } from './reference-options';
 import { lotStatusRowKey, type LotStatusRow } from './types';
 import { useColumnOrder } from '../../patterns/column-grip-order';
+import { PageNav, type PageSize } from '../../patterns/page-nav';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
@@ -53,6 +54,9 @@ interface CurrentResultsProps {
   statusOptions: readonly FilterOption[];
   onSortChange: (sort: LotStatusSort) => void;
   onPageChange: (page: number) => void;
+  /** 한 쪽에 보일 LOT 수(20 · 50 · 100) — 바꾸면 첫 쪽으로 간다. */
+  pageSize: PageSize;
+  onPageSizeChange: (size: PageSize) => void;
   onSelectLot: (lotId: number) => void;
   /** 지금 상세에 연 LOT — 그 줄을 파란 바탕으로 표시한다. */
   selectedLotId: number | null;
@@ -64,6 +68,8 @@ export const CurrentResults = ({
   statusOptions,
   onSortChange,
   onPageChange,
+  pageSize: requestedPageSize,
+  onPageSizeChange,
   onSelectLot,
   selectedLotId,
 }: CurrentResultsProps) => {
@@ -73,7 +79,7 @@ export const CurrentResults = ({
    */
   const query: LotFilters =
     filters.lotType === '' ? { ...filters, lotType: ALL_LOT_TYPES } : filters;
-  const list = useLotStatusList(query, page);
+  const list = useLotStatusList(query, page, requestedPageSize);
   const summary = useLotStatusSummary(query);
   const reasons = useLotHoldReasonOptions();
   const uomCodeOf = useUomCodeOf();
@@ -88,8 +94,8 @@ export const CurrentResults = ({
     return source.isError ? t.current.itemLabel.failed : t.current.itemLabel.unknown;
   };
   /*
-   * 열 짜임은 검사 조회·판정 대기 목록을 따른다(사용자 2026-10-30) — 찾는 값(LOT · 품목)이 앞에서 왼쪽 정렬로 넓게,
-   * 상태 · 수량 · 사유는 가운데로 좁게, 일시는 맨 끝이다. 폭은 px 로 두고 사용자가 끌어 바꾼 폭 · 순서는 브라우저에
+   * 열 짜임은 검사 조회·판정 대기 목록을 따른다(사용자 2026-10-30) — 찾는 값(LOT · 품목)이 앞에 넓게, 상태 · 수량 ·
+   * 사유는 좁게, 일시는 맨 끝이다. 모든 열은 가운데 정렬이다(사용자 2026-10-30). 폭은 px 로 두고 사용자가 끌어 바꾼 폭 · 순서는 브라우저에
    * 남는다(useColumnWidths · useColumnOrder). 긴 값은 칸 안에서 말줄임하고 전체 값은 title 로 보인다.
    *   LOT 260 · 품목 320 · 현재 상태 88 · 보유 수량 120 · 사유 160 · 최근 상태 변경 160
    */
@@ -97,28 +103,23 @@ export const CurrentResults = ({
     {
       key: 'lotNo',
       header: t.current.columns.lot,
-      align: 'start',
+      align: 'center',
       width: '260px',
       sortable: true,
       render: (row) => (
-        <Button
-          className="lot-status-lot-no"
-          variant="text"
-          size="sm"
+        <span
+          className="lot-status-one-line"
           title={row.lotNo}
-          aria-label={t.current.openDetail(row.lotNo)}
           aria-current={row.lotId === selectedLotId ? 'true' : undefined}
-          onClick={() => onSelectLot(row.lotId)}
         >
-          {/* 말줄임은 안쪽 글자에 건다 — 단추가 가운데 정렬 flex 라 단추에 걸면 앞부분부터 잘린다. */}
-          <span className="lot-status-lot-no-text">{row.lotNo}</span>
-        </Button>
+          {row.lotNo}
+        </span>
       ),
     },
     {
       key: 'item',
       header: t.current.columns.item,
-      align: 'start',
+      align: 'center',
       width: '320px',
       sortable: true,
       render: (row) => <OneLine text={itemLabel(row.itemId)} />,
@@ -218,16 +219,9 @@ export const CurrentResults = ({
   ];
   const meta = list.data?.page;
   const currentPage = meta !== undefined && meta.page > 0 ? meta.page : page;
-  const pageSize = meta !== undefined && meta.size > 0 ? meta.size : 1;
+  const pageSize = meta !== undefined && meta.size > 0 ? meta.size : requestedPageSize;
   const totalPages = Math.ceil((meta?.total ?? 0) / pageSize);
   const isBeyondLast = meta !== undefined && meta.total > 0 && currentPage > totalPages;
-  const start = (currentPage - 1) * pageSize + 1;
-  const rangeLabel =
-    meta === undefined
-      ? ''
-      : rows.length === 0
-        ? t.range.total(quantity(meta.total))
-        : t.range.span(quantity(start), quantity(start + rows.length - 1), quantity(meta.total));
 
   return (
     <section className="pane lot-status-pane" aria-labelledby="lot-current-results-title">
@@ -312,8 +306,8 @@ export const CurrentResults = ({
       {list.data !== undefined && (
         <>
           {/*
-           * 줄 아무 곳이나 눌러도 그 LOT 상세를 연다 — 검사 조회·판정 대기 목록처럼 눌린 줄의 LOT 번호 단추로 넘긴다.
-           * 고른 줄은 파란 바탕이다(`.inspection-queue-table`).
+           * 줄 아무 곳이나 눌러 그 LOT 상세를 연다 — LOT 번호를 따로 누르는 길은 두지 않는다(사용자 2026-10-30, PQC
+           * 검사 대기 목록과 같다). 고른 줄은 파란 바탕이다(`.inspection-queue-table`).
            */}
           <div
             ref={fit.ref}
@@ -321,12 +315,10 @@ export const CurrentResults = ({
             style={resizable.style}
             aria-busy={list.isFetching}
             onClick={(event) => {
-              const target = event.target as Element;
-              if (target.closest('button, a, input, select, textarea') !== null) return;
-              target
-                .closest('tbody tr')
-                ?.querySelector<HTMLButtonElement>('.lot-status-lot-no')
-                ?.click();
+              const row = (event.target as Element).closest('tbody tr');
+              if (row === null || row.parentElement === null) return;
+              const picked = rows[Array.from(row.parentElement.children).indexOf(row)];
+              if (picked !== undefined) onSelectLot(picked.lotId);
             }}
           >
             <Table
@@ -358,23 +350,11 @@ export const CurrentResults = ({
             />
           </div>
           {meta !== undefined && (
-            <nav className="form-actions" aria-label={t.current.list.pagination}>
-              <p className="field-note form-actions-secondary">{rangeLabel}</p>
-              <Button
-                variant="outlined"
-                disabled={currentPage <= 1}
-                onClick={() => onPageChange(currentPage - 1)}
-              >
-                {t.actions.previousPage}
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={currentPage >= totalPages}
-                onClick={() => onPageChange(currentPage + 1)}
-              >
-                {t.actions.nextPage}
-              </Button>
-            </nav>
+            <PageNav
+              meta={{ page: currentPage, size: pageSize, total: meta.total }}
+              onChangePage={onPageChange}
+              onChangeSize={onPageSizeChange}
+            />
           )}
         </>
       )}

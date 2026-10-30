@@ -58,7 +58,7 @@ describe('현재 LOT 상태 조회 hooks', () => {
     };
     const { result } = renderHookWithProviders(
       () => ({
-        list: useLotStatusList(EMPTY_LOT_FILTERS, 1),
+        list: useLotStatusList(EMPTY_LOT_FILTERS, 1, 50),
         summary: useLotStatusSummary(EMPTY_LOT_FILTERS),
       }),
       { fetch },
@@ -79,7 +79,7 @@ describe('현재 LOT 상태 조회 hooks', () => {
       return stub(request);
     };
     const { result } = renderHookWithProviders(
-      () => ({ list: useLotStatusList(FILTERS, 3), summary: useLotStatusSummary(FILTERS) }),
+      () => ({ list: useLotStatusList(FILTERS, 3, 50), summary: useLotStatusSummary(FILTERS) }),
       { fetch },
     );
 
@@ -90,7 +90,7 @@ describe('현재 LOT 상태 조회 hooks', () => {
     const summaryUrl = urls.find((url) => url.pathname === SUMMARY_PATH);
     expect(listUrl?.searchParams.get('page')).toBe('3');
     expect(listUrl?.searchParams.get('sort')).toBe('itemDesc');
-    expect(listUrl?.searchParams.has('size')).toBe(false);
+    expect(listUrl?.searchParams.get('size')).toBe('50');
     expect(summaryUrl?.searchParams.has('page')).toBe(false);
     expect(summaryUrl?.searchParams.has('sort')).toBe(false);
     for (const key of [
@@ -107,7 +107,7 @@ describe('현재 LOT 상태 조회 hooks', () => {
 
   it('목록 행·페이지와 요약을 화면 표시 모델로 옮긴다', async () => {
     const { result } = renderHookWithProviders(
-      () => ({ list: useLotStatusList(FILTERS, 3), summary: useLotStatusSummary(FILTERS) }),
+      () => ({ list: useLotStatusList(FILTERS, 3, 50), summary: useLotStatusSummary(FILTERS) }),
       {
         fetch: createStubFetch([route(LIST_PATH, listBody), route(SUMMARY_PATH, summaryBody)]),
       },
@@ -123,7 +123,7 @@ describe('현재 LOT 상태 조회 hooks', () => {
 
   it('목록 실패가 요약 성공을 가리지 않는다', async () => {
     const { result } = renderHookWithProviders(
-      () => ({ list: useLotStatusList(FILTERS, 3), summary: useLotStatusSummary(FILTERS) }),
+      () => ({ list: useLotStatusList(FILTERS, 3, 50), summary: useLotStatusSummary(FILTERS) }),
       {
         fetch: createStubFetch([
           route(LIST_PATH, { message: '' }, 500),

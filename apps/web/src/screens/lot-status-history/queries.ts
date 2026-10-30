@@ -99,12 +99,13 @@ const fetchLotStatuses = async (
 export const useLotStatusList = (
   filters: LotFilters,
   page: number,
+  size: number,
 ): UseQueryResult<LotStatusListResult> => {
   const { client } = useApiClient();
-  const query = toLotStatusListQuery(filters, page);
+  const query = toLotStatusListQuery(filters, page, size);
 
   return useQuery({
-    queryKey: lotStatusKeys.list(filters, page),
+    queryKey: lotStatusKeys.list(filters, page, size),
     enabled: query !== null,
     placeholderData: keepPreviousData,
     queryFn: () => {

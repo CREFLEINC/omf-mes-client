@@ -851,10 +851,8 @@ describe('Lot Status 화면 shell', () => {
     const row = await within(table).findByRole('row', { name: /SAMPLE-LOT-Z/ });
     await user.click(within(row).getAllByRole('cell')[2]!);
     await waitFor(() => expect(locationSearch().get('lot')).toBe('401'));
-    expect(within(row).getByRole('button', { name: 'SAMPLE-LOT-Z 상세 보기' })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
+    expect(within(row).queryByRole('button')).toBeNull();
+    expect(within(row).getByText('SAMPLE-LOT-Z')).toHaveAttribute('aria-current', 'true');
   });
 
   it('세 열만 서버 정렬하고 정렬 변경 시 첫 쪽으로 돌아간다', async () => {
@@ -910,14 +908,28 @@ describe('Lot Status 화면 shell', () => {
     const { urls } = renderScreen('/quality/lot-status?lotType=SAMPLE_MATERIAL');
     const user = userEvent.setup();
 
-    expect(await screen.findByText('1–1 / 전체 101건')).toBeVisible();
-    expect(screen.getByText('총 101건')).toBeVisible();
+    expect(await screen.findByText('1 / 3')).toBeVisible();
+    expect(screen.getAllByText('총 101건')).toHaveLength(2);
     await user.click(screen.getByRole('button', { name: '다음' }));
     await waitFor(() => expect(locationSearch().get('page')).toBe('2'));
     expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('page')).toBe('2');
     expect(requestCount(urls, '/quality/lot-status-summary')).toBe(1);
     await user.click(screen.getByRole('button', { name: '이전' }));
     await waitFor(() => expect(locationSearch().get('page')).toBeNull());
+    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('page')).toBeNull();
+  });
+
+  it('쪽 크기를 바꾸면 그 크기로 첫 쪽을 다시 부른다', async () => {
+    const { urls } = renderScreen('/quality/lot-status?lotType=SAMPLE_MATERIAL&page=2');
+    const user = userEvent.setup();
+
+    await screen.findByText('2 / 3');
+    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('size')).toBe('50');
+    await user.click(screen.getByRole('combobox', { name: '페이지 크기' }));
+    await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: /100건$/ }));
+    await waitFor(() => expect(locationSearch().get('size')).toBe('100'));
+    expect(locationSearch().get('page')).toBeNull();
+    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('size')).toBe('100');
     expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('page')).toBeNull();
   });
 
@@ -929,7 +941,8 @@ describe('Lot Status 화면 shell', () => {
     );
     const user = userEvent.setup();
 
-    expect(await screen.findByText('21–21 / 전체 31건')).toBeVisible();
+    expect(await screen.findByText('2 / 2')).toBeVisible();
+    expect(screen.getByRole('combobox', { name: '페이지 크기' })).toHaveTextContent('20건');
     expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: '이전' }));
     await waitFor(() => expect(locationSearch().get('page')).toBeNull());
@@ -957,7 +970,7 @@ describe('Lot Status 화면 shell', () => {
     });
     const user = userEvent.setup();
 
-    await screen.findByText('1–1 / 전체 101건');
+    await screen.findByText('1 / 3');
     const next = screen.getByRole('button', { name: '다음' });
     await user.click(next);
     await waitFor(() => expect(releaseNext).toBeDefined());
@@ -967,7 +980,7 @@ describe('Lot Status 화면 shell', () => {
       screen.getByRole('table', { name: '현재 LOT 상태' }).closest('[aria-busy]'),
     ).toHaveAttribute('aria-busy', 'true');
     releaseNext?.();
-    expect(await screen.findByText('51–51 / 전체 101건')).toBeVisible();
+    expect(await screen.findByText('2 / 3')).toBeVisible();
     expect(screen.queryByRole('status', { name: 'LOT 목록 갱신 중' })).not.toBeInTheDocument();
   });
 
@@ -993,7 +1006,7 @@ describe('Lot Status 화면 shell', () => {
     );
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'SAMPLE-LOT-001 상세 보기' }));
+    await user.click(await screen.findByText('SAMPLE-LOT-001'));
     await waitFor(() => expect(locationSearch().get('lot')).toBe('401'));
     expect(locationSearch().get('sort')).toBe('lotNoAsc');
     expect(locationSearch().get('from')).toBe('2026-08-01');

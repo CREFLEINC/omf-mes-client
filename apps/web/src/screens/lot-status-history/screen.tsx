@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { usePageHub } from '../../patterns/page-hub';
+import type { PageSize } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
@@ -19,11 +20,13 @@ import {
   readHistoryPage,
   readLotFilters,
   readLotPage,
+  readLotPageSize,
   readMode,
   readSelectedLotId,
   toAppliedHistorySearchParams,
   toAppliedLotSearchParams,
   toModeSearchParams,
+  withLotPageSize,
   withSelectedLot,
   type HistoryFilters,
   type LotFilters,
@@ -154,6 +157,8 @@ interface LotModeProps {
   onReset: () => void;
   onSortChange: (sort: LotStatusSort) => void;
   onPageChange: (page: number) => void;
+  pageSize: PageSize;
+  onPageSizeChange: (size: PageSize) => void;
   onSelectLot: (lotId: number | null) => void;
 }
 
@@ -166,6 +171,8 @@ const LotMode = ({
   onReset,
   onSortChange,
   onPageChange,
+  pageSize,
+  onPageSizeChange,
   onSelectLot,
 }: LotModeProps) => {
   const lotTypes = useLotTypeOptions();
@@ -240,6 +247,8 @@ const LotMode = ({
           statusOptions={toCodeOptions(lotStatuses.data?.items)}
           onSortChange={onSortChange}
           onPageChange={onPageChange}
+          pageSize={pageSize}
+          onPageSizeChange={onPageSizeChange}
           onSelectLot={onSelectLot}
           selectedLotId={selectedLotId}
         />
@@ -351,6 +360,7 @@ export const LotStatusHistoryScreen = () => {
   const filters = useMemo(() => readLotFilters(searchParams), [searchParams]);
   const historyFilters = useMemo(() => readHistoryFilters(searchParams), [searchParams]);
   const page = readLotPage(searchParams);
+  const pageSize = readLotPageSize(searchParams);
   const historyPage = readHistoryPage(searchParams);
   const selectedLotId = readSelectedLotId(searchParams);
 
@@ -395,6 +405,8 @@ export const LotStatusHistoryScreen = () => {
         onReset={() => apply(EMPTY_LOT_FILTERS)}
         onSortChange={changeSort}
         onPageChange={changePage}
+        pageSize={pageSize}
+        onPageSizeChange={(size) => setSearchParams((current) => withLotPageSize(current, size))}
         onSelectLot={(lotId) => setSearchParams((current) => withSelectedLot(current, lotId))}
       />
     ) : (

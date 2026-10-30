@@ -10,8 +10,8 @@ import { lotStatusKeys } from './query-keys';
 
 describe('lotStatusKeys.list', () => {
   it('같은 LOT 조건이라도 페이지가 다르면 목록 캐시를 분리한다', () => {
-    expect(lotStatusKeys.list(EMPTY_LOT_FILTERS, 1)).not.toEqual(
-      lotStatusKeys.list(EMPTY_LOT_FILTERS, 2),
+    expect(lotStatusKeys.list(EMPTY_LOT_FILTERS, 1, 50)).not.toEqual(
+      lotStatusKeys.list(EMPTY_LOT_FILTERS, 2, 50),
     );
   });
 
@@ -26,13 +26,17 @@ describe('lotStatusKeys.list', () => {
     const changed = { ...EMPTY_LOT_FILTERS, [key]: value };
 
     expect(lotStatusKeys.summary(EMPTY_LOT_FILTERS)).not.toEqual(lotStatusKeys.summary(changed));
-    expect(lotStatusKeys.list(EMPTY_LOT_FILTERS, 1)).not.toEqual(lotStatusKeys.list(changed, 1));
+    expect(lotStatusKeys.list(EMPTY_LOT_FILTERS, 1, 50)).not.toEqual(
+      lotStatusKeys.list(changed, 1, 50),
+    );
   });
 
   it('서버 정렬이 다르면 목록 캐시만 분리한다', () => {
     const changed: LotFilters = { ...EMPTY_LOT_FILTERS, sort: 'lotNoAsc' };
 
-    expect(lotStatusKeys.list(EMPTY_LOT_FILTERS, 1)).not.toEqual(lotStatusKeys.list(changed, 1));
+    expect(lotStatusKeys.list(EMPTY_LOT_FILTERS, 1, 50)).not.toEqual(
+      lotStatusKeys.list(changed, 1, 50),
+    );
     expect(lotStatusKeys.summary(EMPTY_LOT_FILTERS)).toEqual(lotStatusKeys.summary(changed));
   });
 
@@ -41,12 +45,12 @@ describe('lotStatusKeys.list', () => {
     const second: LotFilters = { ...EMPTY_LOT_FILTERS, lotType: 'TYPE_A', item: '101' };
 
     expect(lotStatusKeys.summary(first)).toEqual(lotStatusKeys.summary(second));
-    expect(lotStatusKeys.list(first, 3)).toEqual(lotStatusKeys.list(second, 3));
+    expect(lotStatusKeys.list(first, 3, 50)).toEqual(lotStatusKeys.list(second, 3, 50));
   });
 
   it('호출자가 필터 객체를 바꿔도 이미 만든 캐시 키는 변하지 않는다', () => {
     const filters: LotFilters = { ...EMPTY_LOT_FILTERS, location: '303' };
-    const key = lotStatusKeys.list(filters, 1);
+    const key = lotStatusKeys.list(filters, 1, 50);
 
     filters.location = '404';
 
@@ -63,6 +67,7 @@ describe('lotStatusKeys.list', () => {
         sort: 'latestTransitionDesc',
       },
       1,
+      50,
     ]);
   });
 });
