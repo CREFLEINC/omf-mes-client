@@ -3681,7 +3681,7 @@ h2:has(> .inspection-standard-dialog-title) {
 
 /*
  * 조회 조건 카드 — 맨 위 조회 방식(LOT 번호 · 이력), 가는 선, 그 아래 조건 줄(사용자 시안 2026-10-30).
- * 조건 칸 폭은 종전대로 값 길이별이고(아래 규칙), 조회 · 초기화는 마지막 칸 바로 뒤에 붙는다.
+ * 조건 칸 폭은 종전대로 값 길이별이고(아래 규칙), 조회 · 초기화는 줄을 넘겨도 늘 그 줄 오른쪽 끝이다(사용자 2026-10-30).
  */
 .lot-status-search {
   display: grid;
@@ -3699,10 +3699,6 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .lot-status-mode > .field-label {
   margin: 0 var(--space-1) 0 0;
-}
-
-.lot-status-search .filter-bar.lot-status-filter > .lot-status-filter-actions {
-  margin-left: 0;
 }
 
 .filter-bar.lot-status-filter {
