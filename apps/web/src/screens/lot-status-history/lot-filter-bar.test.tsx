@@ -151,6 +151,7 @@ describe('LOT 현재 조회 조건', () => {
     });
 
     await choose(user, 'LOT 유형 선택', '합성 자재');
+    await user.click(screen.getByRole('button', { name: '상세 조건 펼치기' }));
     // 품목은 검색 창에서 고른다 — 중지 품목까지 찾고 가용 재고는 부르지 않는다.
     itemSearchQueries.length = 0;
     await user.click(screen.getByLabelText('품목 검색'));
@@ -188,8 +189,40 @@ describe('LOT 현재 조회 조건', () => {
   });
 
   /* 잠긴 까닭은 칸 안 글자로 둔다(사용자 2026-10-30). */
+  /* 상세 조건은 접혀 들어오지만, 걸린 상세 조건이 있으면 펼친 채로 들어온다(입하 예정 조회와 같다 · 사용자 2026-10-30). */
+  it('품목 · 창고 · 위치는 접힌 상세 조건이고, 걸린 값이 있으면 펼쳐 들어온다', () => {
+    const { unmount } = renderBar();
+    expect(screen.getByRole('button', { name: '상세 조건 펼치기' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.getByLabelText('창고 선택')).not.toBeVisible();
+    unmount();
+
+    renderBar({ appliedFilters: filters({ warehouse: '101' }) });
+    expect(screen.getByRole('button', { name: '상세 조건 접기' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByLabelText('창고 선택')).toBeVisible();
+  });
+
+  /* 펼친 목록은 칸과 같은 폭이다(사용자 2026-10-30) — 긴 「코드 · 이름」이 칸 밖으로 넓어지지 않는다. */
+  it('선택 목록을 칸 폭에 맞춘다', async () => {
+    const { user } = renderBar();
+    const trigger = screen.getByLabelText('LOT 유형 선택');
+    await user.click(trigger);
+    const listbox = await screen.findByRole('listbox');
+
+    await waitFor(() => expect(listbox).toHaveClass('lot-status-fit-listbox'));
+    const width = `${String(trigger.getBoundingClientRect().width)}px`;
+    expect(listbox.style.width).toBe(width);
+    expect(listbox.style.maxWidth).toBe(width);
+  });
+
   it('창고를 고르기 전에는 위치를 잠그고 칸 안에 까닭을 둔다', async () => {
     const { user } = renderBar();
+    await user.click(screen.getByRole('button', { name: '상세 조건 펼치기' }));
     const location = screen.getByLabelText(/^위치/);
 
     expect(location).toBeDisabled();

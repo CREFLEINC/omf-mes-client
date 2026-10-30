@@ -387,7 +387,19 @@ describe('Lot Status 화면 shell', () => {
     expect(within(modes).getByRole('button', { name: '이력', pressed: false })).toBeVisible();
     expect(screen.queryByRole('heading', { name: 'LOT 조회 조건' })).toBeNull();
     expect(screen.getByRole('heading', { level: 2, name: '현재 LOT 상태' })).toBeVisible();
+    /* 조회를 누르지 않아도 목록이 바로 선다(사용자 2026-10-30) — 주소에는 아직 조건이 없다. */
+    expect(await screen.findByRole('table', { name: '현재 LOT 상태' })).toBeVisible();
+    expect(locationSearch().get('lotType')).toBeNull();
+    /* 품목 · 창고 · 위치는 접힌 상세 조건 줄이다(입하 예정 조회와 같다). */
+    const detailToggle = screen.getByRole('button', { name: '상세 조건 펼치기' });
+    expect(detailToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByLabelText('창고 선택')).not.toBeVisible();
     await choose(user, 'LOT 유형 선택', '합성 자재');
+    await user.click(detailToggle);
+    expect(screen.getByRole('button', { name: '상세 조건 접기' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
     await choose(user, '창고 선택', 'SAMPLE-WH-01 · 합성 창고 (미사용)');
     await user.type(screen.getByLabelText('LOT 번호 스캔'), 'SAMPLE-LOT-001');
     expect(await screen.findByText('일부 LOT 유형만 표시됩니다.')).toBeVisible();

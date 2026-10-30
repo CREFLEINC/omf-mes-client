@@ -3715,6 +3715,12 @@ h2:has(> .inspection-standard-dialog-title) {
   margin: 0;
 }
 
+/* 칸 폭에 맞춘 선택 목록(lot-filter-bar.tsx) — 긴 값은 잘리지 않게 목록 안에서 줄을 바꾼다. */
+.lot-status-fit-listbox [role='option'] {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 /*
  * 탭 막대 오른쪽 자리 — 현재 상태 단추가 좌우 · 상하 배치 단추 앞(왼쪽)에 선다(사용자 2026-10-30). 사이 간격은
  * 배치 단추의 구분선 여백만 쓴다(검사 조회·판정과 같은 간격).
@@ -3834,12 +3840,7 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-left: auto;
 }
 
-.lot-status-empty-pane {
-  min-height: 14rem;
-}
-
 /* 빈 화면 안내는 한 줄로 — DS 설명 폭(42자)에서 꺾이지 않게 한다(사용자 지시 2026-09-19). */
-.lot-status-empty-pane p,
 .lot-status-history-pane p {
   max-width: none;
 }

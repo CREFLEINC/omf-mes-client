@@ -52,6 +52,8 @@ export const lotStatusHistory = {
     lotNoScanPlaceholder: 'LOT 바코드 스캔 또는 번호를 입력하세요',
     /** LOT 번호 칸 옆 단추 — 그 번호로 바로 조회한다. */
     lotNoSearch: '검색',
+    detailOpen: '상세 조건 펼치기',
+    detailClose: '상세 조건 접기',
     /** 품목은 검색해서 고른다 — 품목 선택 창을 여는 단추와 고른 값을 지우는 단추. */
     itemPlaceholder: '품목을 입력하세요',
     itemClear: '품목 지우기',
@@ -99,9 +101,6 @@ export const lotStatusHistory = {
   },
   current: {
     pane: '현재 LOT 상태',
-    beforeSearch: {
-      title: '조회 후 LOT 상태가 표시됩니다.',
-    },
     columns: {
       lot: 'LOT',
       item: '품목',

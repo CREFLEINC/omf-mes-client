@@ -50,6 +50,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     },
     lotNoScanPlaceholder: 'Quét mã vạch LOT hoặc nhập số',
     lotNoSearch: 'Tìm',
+    detailOpen: 'Mở điều kiện chi tiết',
+    detailClose: 'Thu gọn điều kiện chi tiết',
     itemPlaceholder: 'Nhập mặt hàng',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',
@@ -92,9 +94,6 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
   },
   current: {
     pane: 'Trạng thái LOT hiện tại',
-    beforeSearch: {
-      title: 'Trạng thái LOT sẽ hiện ra sau khi tra cứu.',
-    },
     columns: {
       lot: 'LOT',
       item: 'Mặt hàng',

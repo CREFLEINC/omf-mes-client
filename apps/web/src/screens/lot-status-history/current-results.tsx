@@ -4,7 +4,6 @@ import {
   Chip,
   type Column,
   EmptyState,
-  Icon,
   SkeletonText,
   StatCard,
   Table,
@@ -12,7 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 
 import { toLotStatusSort, toTableSort } from './current-sort';
-import type { LotFilters, LotStatusSort } from './filters';
+import { ALL_LOT_TYPES, type LotFilters, type LotStatusSort } from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { codeName, lotStatusTone, useLotHoldReasonOptions } from './options';
 import { useUomCodeOf, withUom } from './uoms';
@@ -62,30 +61,17 @@ export const CurrentResults = ({
   onPageChange,
   onSelectLot,
 }: CurrentResultsProps) => {
-  const list = useLotStatusList(filters, page);
-  const summary = useLotStatusSummary(filters);
+  /*
+   * 들어오자마자 목록을 띄운다(사용자 2026-10-30) — 아직 조회 단추를 누르지 않았으면(유형이 빈 값) 「전체」 유형으로
+   * 부른다. 조회 단추를 눌렀을 때와 같은 조건이다.
+   */
+  const query: LotFilters =
+    filters.lotType === '' ? { ...filters, lotType: ALL_LOT_TYPES } : filters;
+  const list = useLotStatusList(query, page);
+  const summary = useLotStatusSummary(query);
   const reasons = useLotHoldReasonOptions();
   const uomCodeOf = useUomCodeOf();
   const itemNames = useItemNameSources(list.data?.rows.map((row) => row.itemId) ?? []);
-
-  if (filters.lotType === '') {
-    return (
-      <section
-        className="pane lot-status-pane lot-status-empty-pane"
-        aria-labelledby="lot-current-results-title"
-      >
-        <h2 className="pane-title" id="lot-current-results-title">
-          {t.current.pane}
-        </h2>
-        {/* 조회 전 안내 — 아이콘과 한 줄(사용자 시안 2026-10-30). */}
-        <EmptyState
-          size="sm"
-          icon={<Icon name="search" size={24} />}
-          title={t.current.beforeSearch.title}
-        />
-      </section>
-    );
-  }
 
   const itemLabel = (itemId: number): string => {
     const source = itemNames.get(itemId);

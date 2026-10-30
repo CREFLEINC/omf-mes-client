@@ -38,6 +38,51 @@ interface SelectFieldProps {
   onChange: (value: string) => void;
 }
 
+/**
+ * 펼친 선택 목록을 칸과 같은 폭으로 맞춘다(사용자 2026-10-30) — 디자인 시스템 목록(`{id}-listbox`)은 body 에 떠서
+ * 긴 값(「창고코드 · 창고명」)만큼 칸보다 넓어진다. 긴 값은 목록 안에서 줄을 바꾼다(app.css).
+ */
+const useListboxWidthOfTrigger = (id: string): void => {
+  useEffect(() => {
+    const trigger = document.getElementById(id);
+    if (trigger === null) return;
+    let waiting: MutationObserver | null = null;
+    const stopWaiting = (): void => {
+      waiting?.disconnect();
+      waiting = null;
+    };
+    const apply = (): boolean => {
+      const listbox = document.getElementById(`${id}-listbox`);
+      if (listbox === null) return false;
+      const box = trigger.getBoundingClientRect();
+      const width = `${String(box.width)}px`;
+      listbox.classList.add('lot-status-fit-listbox');
+      listbox.style.width = width;
+      listbox.style.minWidth = width;
+      listbox.style.maxWidth = width;
+      /* 오른쪽 끝에서 왼쪽으로 펼친 목록은 줄어든 만큼 밀린다 — 칸 왼쪽 선에 다시 맞춘다. */
+      const shift = box.left - listbox.getBoundingClientRect().left;
+      if (shift !== 0)
+        listbox.style.left = `${String(parseFloat(listbox.style.left || '0') + shift)}px`;
+      return true;
+    };
+    const fit = (): void => {
+      stopWaiting();
+      if (trigger.getAttribute('aria-expanded') !== 'true' || apply()) return;
+      waiting = new MutationObserver(() => {
+        if (apply()) stopWaiting();
+      });
+      waiting.observe(document.body, { childList: true, subtree: true });
+    };
+    const observer = new MutationObserver(fit);
+    observer.observe(trigger, { attributes: true, attributeFilter: ['aria-expanded'] });
+    return () => {
+      observer.disconnect();
+      stopWaiting();
+    };
+  }, [id]);
+};
+
 const SelectField = ({
   label,
   options,
@@ -50,6 +95,7 @@ const SelectField = ({
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
+  useListboxWidthOfTrigger(id);
 
   return (
     <div className={`field-cell ${className}`}>
@@ -122,6 +168,15 @@ export const LotFilterBar = ({
     appliedSort,
   ]);
 
+  /*
+   * 상세 조건(품목 · 창고 · 위치)은 접어 둔다 — **걸린 상세 조건이 있으면 펼친 채로 들어온다**. 접혀 있으면 무엇으로
+   * 걸렀는지 칸에서 보이지 않는다(입하 예정 조회와 같다).
+   */
+  const detailId = useId();
+  const [isDetailOpen, setIsDetailOpen] = useState(
+    appliedItem !== '' || appliedWarehouse !== '' || appliedLocation !== '',
+  );
+
   const locations = useLocationReferenceOptions(toIdentifier(filters.warehouse));
   const locationOptions =
     locations.data?.entries.map((entry) => ({
@@ -148,72 +203,91 @@ export const LotFilterBar = ({
     onSearch({ ...filters, lotType, location: filters.warehouse === '' ? '' : filters.location });
 
   return (
-    <div className="filter-bar lot-status-filter">
-      <SelectField
-        className="lot-status-filter-lot-type"
-        label={t.lotFilter.labels.lotType}
-        options={[{ value: ALL_LOT_TYPES, label: t.values.all }, ...lotTypeOptions]}
-        value={lotType}
-        note={lotTypeNote}
-        onChange={(lotType) => setFilters((current) => ({ ...current, lotType }))}
-      />
+    <>
       {/*
-       * LOT 번호 스캔 — 검사 조회·판정의 LOT 스캔 칸처럼 입력칸 옆 [검색] 단추(사용자 2026-10-30). 스캐너의 Enter 와
-       * [검색] 모두 지금 조건으로 바로 조회한다. 번호가 비면 단추는 잠긴다.
+       * 첫 줄 — LOT 유형 · LOT 번호 스캔 · 조회/초기화/상세 조건 펼치기. 품목 · 창고 · 위치는 아래 줄(상세 조건)로
+       * 접어 둔다 — 입하 예정 조회와 같다(사용자 2026-10-30). 현재 상태는 탭 막대의 상태 단추가 맡는다.
        */}
-      <div className="lot-status-filter-lot-no-scan">
-        <TextField
-          containerClassName="lot-status-filter-lot-no"
-          label={t.lotFilter.labels.lotNo}
-          placeholder={t.lotFilter.lotNoScanPlaceholder}
-          value={filters.q}
-          onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.nativeEvent.isComposing) search();
-          }}
+      <div className="filter-bar lot-status-filter">
+        <SelectField
+          className="lot-status-filter-lot-type"
+          label={t.lotFilter.labels.lotType}
+          options={[{ value: ALL_LOT_TYPES, label: t.values.all }, ...lotTypeOptions]}
+          value={lotType}
+          note={lotTypeNote}
+          onChange={(lotType) => setFilters((current) => ({ ...current, lotType }))}
         />
-        <Button variant="outlined" size="md" disabled={filters.q.trim() === ''} onClick={search}>
-          {t.lotFilter.lotNoSearch}
-        </Button>
+        {/*
+         * LOT 번호 스캔 — 검사 조회·판정의 LOT 스캔 칸처럼 입력칸 옆 [검색] 단추(사용자 2026-10-30). 스캐너의 Enter 와
+         * [검색] 모두 지금 조건으로 바로 조회한다. 번호가 비면 단추는 잠긴다.
+         */}
+        <div className="lot-status-filter-lot-no-scan">
+          <TextField
+            containerClassName="lot-status-filter-lot-no"
+            label={t.lotFilter.labels.lotNo}
+            placeholder={t.lotFilter.lotNoScanPlaceholder}
+            value={filters.q}
+            onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.nativeEvent.isComposing) search();
+            }}
+          />
+          <Button variant="outlined" size="md" disabled={filters.q.trim() === ''} onClick={search}>
+            {t.lotFilter.lotNoSearch}
+          </Button>
+        </div>
+        {/* 조회·초기화 — [조회](주 동작) → [초기화], 상세 조건 펼치기는 초기화 오른쪽(입하 예정 조회와 같다). */}
+        <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
+          <Button variant="filled" onClick={search}>
+            {t.actions.search}
+          </Button>
+          <Button variant="outlined" onClick={onReset}>
+            {t.actions.reset}
+          </Button>
+          <Button
+            variant="text"
+            size="sm"
+            aria-expanded={isDetailOpen}
+            aria-controls={detailId}
+            onClick={() => setIsDetailOpen((open) => !open)}
+          >
+            {isDetailOpen ? t.lotFilter.detailClose : t.lotFilter.detailOpen}
+          </Button>
+        </div>
       </div>
-      <ItemFilterField
-        value={filters.item}
-        onChange={(item) => setFilters((current) => ({ ...current, item }))}
-      />
-      {/* 현재 상태는 카드 위쪽 상태 단추가 맡는다(사용자 2026-10-30) — 조건 줄에는 두지 않는다. */}
-      <SelectField
-        className="lot-status-filter-place"
-        label={t.lotFilter.labels.warehouse}
-        options={withAll(warehouseOptions)}
-        value={filters.warehouse}
-        note={warehouseNote}
-        onChange={(warehouse) =>
-          setFilters((current) => ({
-            ...current,
-            warehouse,
-            location: warehouse === current.warehouse ? current.location : '',
-          }))
-        }
-      />
-      <SelectField
-        className="lot-status-filter-place lot-status-filter-location"
-        label={t.lotFilter.labels.location}
-        options={isLocationLocked ? [] : withAll(locationOptions)}
-        placeholder={t.lotFilter.notes.locationNeedsWarehouse}
-        value={filters.location}
-        note={locationNote}
-        disabled={isLocationLocked}
-        onChange={(location) => setFilters((current) => ({ ...current, location }))}
-      />
-      {/* 조회·초기화는 조건과 같은 줄 끝에 한 덩어리로 — 검사 조회·판정처럼 [조회](주 동작) → [초기화](사용자 2026-10-30). */}
-      <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
-        <Button variant="filled" onClick={search}>
-          {t.actions.search}
-        </Button>
-        <Button variant="outlined" onClick={onReset}>
-          {t.actions.reset}
-        </Button>
+      {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+      <div id={detailId} hidden={!isDetailOpen}>
+        <div className="filter-bar lot-status-filter">
+          <ItemFilterField
+            value={filters.item}
+            onChange={(item) => setFilters((current) => ({ ...current, item }))}
+          />
+          <SelectField
+            className="lot-status-filter-place"
+            label={t.lotFilter.labels.warehouse}
+            options={withAll(warehouseOptions)}
+            value={filters.warehouse}
+            note={warehouseNote}
+            onChange={(warehouse) =>
+              setFilters((current) => ({
+                ...current,
+                warehouse,
+                location: warehouse === current.warehouse ? current.location : '',
+              }))
+            }
+          />
+          <SelectField
+            className="lot-status-filter-place lot-status-filter-location"
+            label={t.lotFilter.labels.location}
+            options={isLocationLocked ? [] : withAll(locationOptions)}
+            placeholder={t.lotFilter.notes.locationNeedsWarehouse}
+            value={filters.location}
+            note={locationNote}
+            disabled={isLocationLocked}
+            onChange={(location) => setFilters((current) => ({ ...current, location }))}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 };
