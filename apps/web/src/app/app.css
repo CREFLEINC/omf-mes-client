@@ -28173,10 +28173,6 @@ button.iqc-inspection-step-toggle:focus-visible {
   font-weight: 600;
 }
 
-.parts-iqc-kv-wide {
-  grid-column: 1 / -1;
-}
-
 .parts-iqc-lot-no {
   overflow-wrap: anywhere;
 }
@@ -28226,7 +28222,7 @@ button.iqc-inspection-step-toggle:focus-visible {
   font: var(--type-title-sm);
 }
 
-/* 항목 표 — 왼쪽 맞춤, 머리글은 작은 글자, 숫자 열은 가운데 */
+/* 항목 표 — 왼쪽 맞춤, 머리글은 작은 글자, 숫자 열은 오른쪽. 선은 머리줄 아래 하나(사용자 시안 2026-10-30). */
 .parts-iqc-plan-table {
   width: 100%;
   border-collapse: collapse;
@@ -28235,8 +28231,11 @@ button.iqc-inspection-step-toggle:focus-visible {
 .parts-iqc-plan-table th,
 .parts-iqc-plan-table td {
   padding: var(--space-2) var(--space-3) var(--space-2) 0;
-  border-bottom: 1px solid var(--outline-variant);
   text-align: start;
+}
+
+.parts-iqc-plan-table thead th {
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .parts-iqc-plan-table th {
@@ -28245,7 +28244,11 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 .parts-iqc-plan-table .is-num {
-  text-align: center;
+  text-align: end;
+}
+
+.parts-iqc-plan-table .is-num:last-child {
+  padding-right: 0;
 }
 
 .parts-iqc-plan-table td:nth-child(4) {
