@@ -20,6 +20,8 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { BulkResult, type BulkResultFilter } from '../../patterns/bulk-result';
 import { PageNav } from '../../patterns/page-nav';
 import { SelectableTable } from '../../patterns/selectable-table';
+import { useSession } from '../../patterns/session';
+import { plantNote, usePlantOptions, type DataScope } from '../dashboard/lookups';
 import { useWorklistBulk, type BulkKind, type BulkTarget } from './bulk-actions';
 import { ForbiddenNotice, isForbidden } from './forbidden-notice';
 import { WorklistBulkDialog } from './bulk-dialog';
@@ -40,9 +42,18 @@ import { CountChip, ProcessStateChip, ReasonChips } from './worklist-chips';
 
 const t = messages.erpWorkOrderFlow;
 
-/** 조회 조건 칸(번호, 납기, 품목)에 값이 있는가. 처리 상태 칩은 조건으로 치지 않는다. */
+const NO_SCOPES: readonly DataScope[] = [];
+
+/** 공장 선택지 이름은 「코드 · 이름」이다(dashboard `usePlantOptions`). 표에는 앞의 코드만 쓴다. */
+const PLANT_LABEL_SEPARATOR = ' · ';
+
+/** 조회 조건 칸(번호, 납기, 품목, 고른 공장)에 값이 있는가. 처리 상태 칩과 정해진 공장은 조건으로 치지 않는다. */
 const hasSearchConditions = (filters: WorklistFilters): boolean =>
-  filters.q !== '' || filters.dueFrom !== '' || filters.dueTo !== '' || filters.item !== '';
+  filters.q !== '' ||
+  filters.dueFrom !== '' ||
+  filters.dueTo !== '' ||
+  filters.item !== '' ||
+  filters.plant !== '';
 
 /** 칩 건수. 건수를 받지 못했으면(권한 없음, 오류, 불러오는 중) 0으로 보이지 않고 이름만 보인다. */
 const countLabel = (
@@ -73,10 +84,18 @@ export const ProductionOrderScreen = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const filters = useMemo(() => readWorklistFilters(searchParams), [searchParams]);
-  const list = useWorklist(filters);
-  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED');
-  const releasePendingCount = useWorklistCount('RELEASE_PENDING');
-  const allCount = useWorklistCount('ALL');
+  const { session } = useSession();
+  const plants = usePlantOptions(session?.scopes ?? NO_SCOPES);
+  /* 범위 안 공장이 하나뿐이면 그 공장으로 정해지고 바꿀 수 없다. 주소에는 남기지 않는다. 범위가 없거나 여럿이면 고른다. */
+  const lockedPlant =
+    (session?.scopes ?? NO_SCOPES).length > 0 && plants.entries.length === 1
+      ? plants.entries[0]?.value
+      : undefined;
+  const plant = lockedPlant ?? filters.plant;
+  const list = useWorklist({ ...filters, plant });
+  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED', plant);
+  const releasePendingCount = useWorklistCount('RELEASE_PENDING', plant);
+  const allCount = useWorklistCount('ALL', plant);
   const uoms = useUomReferenceLookup();
   const bulk = useWorklistBulk();
   const [checked, setChecked] = useState<string[]>([]);
@@ -119,7 +138,9 @@ export const ProductionOrderScreen = ({
     bulk.clear();
     setResultFilter(null);
     setChecked([]);
-    const params = toWorklistSearchParams(next);
+    const params = toWorklistSearchParams(
+      lockedPlant === undefined ? next : { ...next, plant: '' },
+    );
     rememberWorklistSearch(params);
     setSearchParams(params);
   };
@@ -143,6 +164,25 @@ export const ProductionOrderScreen = ({
       header: t.list.columns.orderNo,
       render: (row) => <span className="nowrap-cell mono-cell">{row.fact.productionOrderNo}</span>,
     },
+    /* 공장이 정해져 있으면 모든 행이 같은 공장이라 열을 두지 않는다. 표가 좁아 코드만 보이고 이름은 마우스를 올리면 나온다. */
+    ...(plant === ''
+      ? [
+          {
+            key: 'plant',
+            header: t.list.columns.plant,
+            render: (row: WorklistRow) => {
+              const label =
+                plants.entries.find((entry) => entry.value === String(row.fact.plantId))?.label ??
+                '';
+              return (
+                <span className="nowrap-cell" title={label}>
+                  {label.split(PLANT_LABEL_SEPARATOR)[0]}
+                </span>
+              );
+            },
+          },
+        ]
+      : []),
     {
       key: 'itemCode',
       header: t.list.columns.itemCode,
@@ -285,7 +325,10 @@ export const ProductionOrderScreen = ({
       />
       <section className="pane erp-wo-filter-pane" aria-label={t.filters.pane}>
         <WorklistFilterBar
-          applied={filters}
+          applied={{ ...filters, plant }}
+          plantOptions={plants.entries.map(({ value, label }) => ({ value, label }))}
+          plantLocked={lockedPlant !== undefined}
+          plantNote={plantNote(plants)}
           onSearch={(draft) => apply({ ...filters, ...draft, page: 1 })}
           onReset={() => apply(DEFAULT_WORKLIST_FILTERS)}
         />

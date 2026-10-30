@@ -1,4 +1,4 @@
-import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
+import { Button, DatePicker, SearchInput, type SelectOption } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useState } from 'react';
 
@@ -9,15 +9,22 @@ import {
   type ReferenceSource,
 } from '../../patterns/reference-picker';
 import { runRequest } from '../../patterns/request';
+import { Select } from '../../patterns/select';
 import { useItemCodeNames } from './item-lookups';
 import type { WorklistFilters } from './worklist-queries';
 
 const t = messages.erpWorkOrderFlow.filters;
 
-type Draft = Pick<WorklistFilters, 'q' | 'dueFrom' | 'dueTo' | 'item'>;
+type Draft = Pick<WorklistFilters, 'q' | 'dueFrom' | 'dueTo' | 'item' | 'plant'>;
 
 export interface WorklistFilterBarProps {
   applied: Draft;
+  /** 세션 데이터 범위 안 공장. 「전체」는 이 컴포넌트가 앞에 붙인다. */
+  plantOptions: SelectOption[];
+  /** 범위 안 공장이 하나뿐이라 그 공장으로 정해져 있고 바꿀 수 없다. */
+  plantLocked: boolean;
+  /** 공장 목록이 잘렸거나 못 불러왔을 때의 안내 */
+  plantNote?: string;
   onSearch: (draft: Draft) => void;
   onReset: () => void;
 }
@@ -62,12 +69,21 @@ const useItemSource = (): ReferenceSource => {
  * 칸 폭은 C-19의 세 가지(배치 클래스 filter-field-*), 간격은 하나다. Enter로도 조회한다.
  * 자동 계획 조건은 페이지 머리의 상태별 건수 칩이 맡는다(C-17). 1280×800에서 네 칸과 버튼이 한 줄에 들어가지 않아서다(G-41).
  */
-export const WorklistFilterBar = ({ applied, onSearch, onReset }: WorklistFilterBarProps) => {
+export const WorklistFilterBar = ({
+  applied,
+  plantOptions,
+  plantLocked,
+  plantNote,
+  onSearch,
+  onReset,
+}: WorklistFilterBarProps) => {
   const [draft, setDraft] = useState<Draft>(applied);
   const dueId = useId();
+  const plantId = useId();
+  const plantNoteId = useId();
   const itemSource = useItemSource();
-  const { q, dueFrom, dueTo, item } = applied;
-  useEffect(() => setDraft({ q, dueFrom, dueTo, item }), [q, dueFrom, dueTo, item]);
+  const { q, dueFrom, dueTo, item, plant } = applied;
+  useEffect(() => setDraft({ q, dueFrom, dueTo, item, plant }), [q, dueFrom, dueTo, item, plant]);
   const itemNames = useItemCodeNames(draft.item === '' ? [] : [Number(draft.item)]);
   const [pickedLabel, setPickedLabel] = useState<{ id: string; label: string } | null>(null);
   const known = draft.item === '' ? undefined : itemNames.get(Number(draft.item));
@@ -89,6 +105,26 @@ export const WorklistFilterBar = ({ applied, onSearch, onReset }: WorklistFilter
         onSearch(draft);
       }}
     >
+      <div className="field-cell filter-field-sm">
+        <label className="field-label" htmlFor={plantId}>
+          {t.plant}
+        </label>
+        <Select
+          id={plantId}
+          value={draft.plant}
+          disabled={plantLocked}
+          options={
+            plantLocked ? plantOptions : [{ value: '', label: t.allPlants }, ...plantOptions]
+          }
+          aria-describedby={plantNote === undefined ? undefined : plantNoteId}
+          onChange={(value) => setDraft((current) => ({ ...current, plant: value }))}
+        />
+        {plantNote !== undefined && (
+          <span id={plantNoteId} className="field-error" role="alert">
+            {plantNote}
+          </span>
+        )}
+      </div>
       <div className="field-cell filter-field-md">
         <SearchInput
           fullWidth

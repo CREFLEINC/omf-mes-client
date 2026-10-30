@@ -134,6 +134,8 @@ export const erpWorkOrderFlow = {
     qPlaceholder: 'ERP W/O 번호',
     due: '납기 기간',
     duePlaceholder: '시작일 ~ 종료일',
+    plant: '공장',
+    allPlants: '전체',
     item: '품목',
     itemPicker: '품목 선택',
     itemCode: '품목 코드',
@@ -145,6 +147,7 @@ export const erpWorkOrderFlow = {
     caption: SCREEN_NAME,
     columns: {
       orderNo: 'ERP W/O 번호',
+      plant: '공장',
       itemCode: '품목 코드',
       itemName: '품목명',
       orderQty: '주문 수량',

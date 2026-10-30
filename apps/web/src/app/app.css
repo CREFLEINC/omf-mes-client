@@ -21996,8 +21996,9 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   color: var(--on-surface-variant);
 }
 
+/* 공장, 번호, 납기, 품목 네 칸과 버튼은 1280px 한 줄에 들어가지 않는다. 칸 폭을 줄이지 않고 버튼을 다음 줄 오른쪽 끝으로 내린다. */
 .filter-bar.erp-wo-filter-bar {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: var(--space-3);
   margin-bottom: 0;
 }

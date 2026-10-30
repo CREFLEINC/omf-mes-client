@@ -2,10 +2,12 @@ import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider, type Session } from '../../patterns/session';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { ProductionOrderScreen } from './screen';
 import { reasonHelpText, reasonLabel } from './worklist-chips';
 
@@ -76,12 +78,15 @@ interface Options {
   released?: number[];
   /** 목록과 건수 조회를 403(오류 봉투)으로 거절한다 */
   forbidden?: boolean;
+  /** `/mdm/plants` 응답. 범위 안 공장 선택지와 공장 열의 이름이 된다. */
+  plants?: { plantId: number; plantCode: string; plantName: string; isActive: boolean }[];
 }
 
 const stub = ({
   orders,
   released = [],
   forbidden = false,
+  plants = [],
 }: Options): { fetch: StubFetch; requests: Request[] } => {
   const requests: Request[] = [];
   /* 9004는 배포 시각이 없지만 취소된 W/O다. 배포 전 W/O로 세지 않는다. */
@@ -153,6 +158,7 @@ const stub = ({
       return jsonResponse(page([{ uomId: 8101, uomCode: 'EA', uomName: '개', isActive: true }]));
     }
     if (path(request) === '/mdm/code-values') return jsonResponse(page([]));
+    if (path(request) === '/mdm/plants') return jsonResponse(page(plants));
     throw new Error(`unexpected request: ${request.method} ${request.url}`);
   };
   return { fetch, requests };
@@ -163,17 +169,60 @@ const Location = () => {
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
-const render = (options: Options, route = '/production/production-orders') => {
+/** 화면이 세션의 데이터 범위로 공장 선택지를 정한다. 범위 줄이 없으면 전체 공장(admin)이다. */
+const renderInSession = (
+  ui: ReactNode,
+  options: Parameters<typeof renderWithProviders>[1],
+  scopes: Session['scopes'] = [],
+) =>
+  renderWithProviders(<SessionProvider>{ui}</SessionProvider>, {
+    session: { ...SYNTHETIC_SESSION, scopes },
+    ...options,
+  });
+
+const render = (
+  options: Options,
+  route = '/production/production-orders',
+  scopes: Session['scopes'] = [],
+) => {
   const harness = stub(options);
-  renderWithProviders(
+  renderInSession(
     <>
       <ProductionOrderScreen />
       <Location />
     </>,
     { fetch: harness.fetch, route },
+    scopes,
   );
   return harness;
 };
+
+const SYN_PLANTS = [
+  {
+    plantId: 8401,
+    plantCode: 'SYN-P1',
+    plantName: '합성 공장 가',
+    isActive: true,
+    businessUnitId: 8301,
+  },
+  {
+    plantId: 8402,
+    plantCode: 'SYN-P2',
+    plantName: '합성 공장 나',
+    isActive: true,
+    businessUnitId: 8301,
+  },
+];
+
+const listQueries = (requests: Request[], size: string) =>
+  requests
+    .filter((request) => path(request) === '/planning/production-orders')
+    .map((request) => new URL(request.url).searchParams)
+    .filter((query) => query.get('size') === size);
+const listPlantIds = (requests: Request[]) =>
+  listQueries(requests, '20').map((query) => query.get('plantId'));
+const countPlantIds = (requests: Request[]) =>
+  listQueries(requests, '1').map((query) => query.get('plantId'));
 
 describe('작업지시 목록 작업함', () => {
   it('기본 조건은 「조치 필요」이고 사유를 첫 칩과 「외 N」으로 목록에 보인다(C-17)', async () => {
@@ -382,7 +431,7 @@ describe('작업지시 목록 작업함', () => {
 
   it('권한 안내는 라우트가 넘긴 메뉴 경로를 가리킨다', async () => {
     const harness = stub({ orders: [REVIEW], forbidden: true });
-    renderWithProviders(<ProductionOrderScreen permissionMenuPath="시스템 관리 › 권한" />, {
+    renderInSession(<ProductionOrderScreen permissionMenuPath="시스템 관리 › 권한" />, {
       fetch: harness.fetch,
       route: '/production/production-orders',
     });
@@ -539,6 +588,46 @@ describe('작업지시 목록 작업함', () => {
     ).toBeVisible();
   });
 
+  it('범위가 없으면 공장은 「전체」로 열려 고를 수 있고, 고른 공장은 주소와 조회에 실린다', async () => {
+    const user = userEvent.setup();
+    const { requests } = render({
+      orders: [{ ...REVIEW, plantId: 8402 }],
+      plants: SYN_PLANTS,
+    });
+
+    const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
+    expect(within(row).getByText('SYN-P2')).toHaveAttribute('title', 'SYN-P2 · 합성 공장 나');
+    const plant = screen.getByLabelText(t.filters.plant);
+    expect(plant).toBeEnabled();
+    expect(plant).toHaveTextContent(t.filters.allPlants);
+
+    await user.click(plant);
+    await user.click(await screen.findByRole('option', { name: 'SYN-P2 · 합성 공장 나' }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('plant=8402'));
+    await waitFor(() => expect(listPlantIds(requests)).toContain('8402'));
+    expect(listPlantIds(requests)[0]).toBeNull();
+  });
+
+  it('범위 안 공장이 하나면 그 공장으로 정해지고 바꿀 수 없으며, 공장 열과 주소 값은 없다', async () => {
+    const { requests } = render(
+      { orders: [{ ...REVIEW, plantId: 8401 }], plants: SYN_PLANTS },
+      '/production/production-orders',
+      [{ businessUnitId: 8301, plantId: 8401 }],
+    );
+
+    await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
+    const plant = screen.getByLabelText(t.filters.plant);
+    await waitFor(() => expect(plant).toHaveTextContent('SYN-P1 · 합성 공장 가'));
+    expect(plant).toBeDisabled();
+    expect(screen.queryByRole('columnheader', { name: t.list.columns.plant })).toBeNull();
+    expect(screen.getByTestId('location')).not.toHaveTextContent('plant=');
+    /* 목록과 칩 건수가 모두 그 공장으로 걸린다. */
+    await waitFor(() => expect(listPlantIds(requests).at(-1)).toBe('8401'));
+    expect(countPlantIds(requests).slice(-3)).toEqual(['8401', '8401', '8401']);
+  });
+
   it('일괄 배포 중에 다른 화면으로 갔다 돌아와도 결과가 남는다', async () => {
     const user = userEvent.setup();
     const harness = stub({ orders: [DONE_READY] });
@@ -553,7 +642,7 @@ describe('작업지시 목록 작업함', () => {
         </>
       );
     };
-    renderWithProviders(<Toggle />, {
+    renderInSession(<Toggle />, {
       fetch: harness.fetch,
       route: '/production/production-orders?state=RELEASE_PENDING',
     });

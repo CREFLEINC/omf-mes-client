@@ -15,18 +15,23 @@ export interface WorklistFilters {
   dueFrom: string;
   dueTo: string;
   item: string;
+  /** 공장 번호. 빈 값은 전체(세션 데이터 범위 안 전부)다. */
+  plant: string;
   page: number;
   size: number;
 }
 
 export const worklistKeys = {
   list: (filters: WorklistFilters) => ['production-orders', 'worklist', filters] as const,
-  count: (state: WorklistFilter) => ['production-orders', 'worklist-count', state] as const,
+  count: (state: WorklistFilter, plant: string) =>
+    ['production-orders', 'worklist-count', state, plant] as const,
   byNumber: (orderNo: string) => ['production-orders', 'by-number', orderNo] as const,
 };
 
 /** 「전체」는 거르지 않는다. 나머지는 서버 칩 판정(`worklistState`)으로 거른다. */
 const stateQuery = (state: WorklistFilter) => (state === 'ALL' ? {} : { worklistState: state });
+
+const plantQuery = (plant: string) => (plant === '' ? {} : { plantId: Number(plant) });
 
 export const useWorklist = (filters: WorklistFilters) => {
   const { client } = useApiClient();
@@ -42,6 +47,7 @@ export const useWorklist = (filters: WorklistFilters) => {
               ...(filters.dueFrom === '' ? {} : { dueDateFrom: filters.dueFrom }),
               ...(filters.dueTo === '' ? {} : { dueDateTo: filters.dueTo }),
               ...(filters.item === '' ? {} : { itemId: Number(filters.item) }),
+              ...plantQuery(filters.plant),
               page: filters.page,
               size: filters.size,
             },
@@ -53,15 +59,15 @@ export const useWorklist = (filters: WorklistFilters) => {
   });
 };
 
-/** 페이지 머리 상태별 건수. 목록과 같은 조건에 쪽 크기 1을 주고 서버 총계를 쓴다. */
-export const useWorklistCount = (state: WorklistFilter) => {
+/** 페이지 머리 상태별 건수. 목록과 같은 공장 조건에 쪽 크기 1을 주고 서버 총계를 쓴다. */
+export const useWorklistCount = (state: WorklistFilter, plant: string) => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: worklistKeys.count(state),
+    queryKey: worklistKeys.count(state, plant),
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/planning/production-orders', {
-          params: { query: { ...stateQuery(state), size: 1 } },
+          params: { query: { ...stateQuery(state), ...plantQuery(plant), size: 1 } },
         }),
       );
       return data.page.total;

@@ -9,6 +9,7 @@ export const DEFAULT_WORKLIST_FILTERS: WorklistFilters = {
   dueFrom: '',
   dueTo: '',
   item: '',
+  plant: '',
   page: 1,
   size: 20,
 };
@@ -42,6 +43,7 @@ export const readWorklistFilters = (params: URLSearchParams): WorklistFilters =>
     dueFrom: datePattern.test(params.get('dueFrom') ?? '') ? (params.get('dueFrom') ?? '') : '',
     dueTo: datePattern.test(params.get('dueTo') ?? '') ? (params.get('dueTo') ?? '') : '',
     item: String(positive(params.get('item')) ?? ''),
+    plant: String(positive(params.get('plant')) ?? ''),
     page: positive(params.get('page')) ?? 1,
     size: size !== null && (PAGE_SIZES as readonly number[]).includes(size) ? size : 20,
   };
@@ -54,6 +56,7 @@ export const toWorklistSearchParams = (filters: WorklistFilters): URLSearchParam
   if (filters.dueFrom !== '') next.set('dueFrom', filters.dueFrom);
   if (filters.dueTo !== '') next.set('dueTo', filters.dueTo);
   if (filters.item !== '') next.set('item', filters.item);
+  if (filters.plant !== '') next.set('plant', filters.plant);
   if (filters.page > 1) next.set('page', String(filters.page));
   if (filters.size !== 20) next.set('size', String(filters.size));
   return next;
