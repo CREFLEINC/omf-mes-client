@@ -319,6 +319,8 @@ export type InspectionResultListQueryForward = NonNullable<
   InspectionResultsGet['parameters']['query']
 > & { lotId?: number };
 type DefectRecordsGet = paths['/quality/defect-records']['get'];
+type AuditEventsGet = paths['/audit/events']['get'];
+type AuditEventsQuery = NonNullable<AuditEventsGet['parameters']['query']>;
 
 /**
  * 서버 선행 P-42 — 검사 결과 하나로 좁히면(`inspectionResultId`) 기간이 필요 없다. 작성중 회차의 기록도 돌려준다(P-48).
@@ -2109,10 +2111,15 @@ export interface ForwardPaths {
       { 201: Json<InspectionSheetTemplate> }
     >;
   };
-  /** 서버 선행 P-102 — 검사표 기준 상세(ETag)·수정(작성중만). */
-  '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}': Unused & {
+  /** 서버 선행 P-102 — 검사표 기준 상세(ETag)·수정(작성중만). 작성 취소(작성중만 지운다)는 omf-all-around#214. */
+  '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}': Omit<Unused, 'delete'> & {
     parameters: NoParameters;
     post?: never;
+    delete: Op<
+      { query?: never; header: IdemHeader; path: TemplateId; cookie?: never },
+      never,
+      { 204: { headers: { [name: string]: unknown }; content?: never } }
+    >;
     get: Op<
       { query?: never; header?: never; path: TemplateId; cookie?: never },
       never,
@@ -2130,6 +2137,26 @@ export interface ForwardPaths {
     get?: never;
     put?: never;
     post: Op<Params<never, LockHeader, TemplateId>, never, { 200: Json<InspectionSheetTemplate> }>;
+  };
+  /** 서버 선행 omf-all-around#214 — 검사표 기준 폐기(확정만). */
+  '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}:obsolete': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<Params<never, LockHeader, TemplateId>, never, { 200: Json<InspectionSheetTemplate> }>;
+  };
+  /**
+   * 서버 선행 omf-all-around#214 — 감사 대상에 검사표 기준 버전(`INSPECTION_SHEET_TEMPLATE`)을 더한다.
+   * 계약에 실려 `gen:api` 가 만들면 이 자리를 지운다.
+   */
+  '/audit/events': Omit<paths['/audit/events'], 'get'> & {
+    get: Omit<AuditEventsGet, 'parameters'> & {
+      parameters: Omit<AuditEventsGet['parameters'], 'query'> & {
+        query: Omit<AuditEventsQuery, 'targetTypeCode'> & {
+          targetTypeCode?: AuditEventsQuery['targetTypeCode'] | 'INSPECTION_SHEET_TEMPLATE';
+        };
+      };
+    };
   };
   /** 서버 선행 P-102 — 시리얼로 검사표 열기(없으면 만든다). */
   '/quality/inspection-sheets:open-by-serial': Unused & {

@@ -157,6 +157,27 @@ export const inspectionSheetTemplate = {
     saved: '검사표 기준을 저장했습니다.',
     confirmed: '검사표 기준을 확정했습니다. 이 품목의 앞 확정 버전은 폐기됐습니다.',
     copied: '새 버전을 만들었습니다.',
+    /* 작성 취소 · 폐기 · 변경 이력 — 검사 기준 탭과 같은 단추(omf-all-around#214). */
+    discard: '작성 취소',
+    obsolete: '폐기',
+    history: '변경 이력',
+    discarded: '작성중 버전을 취소했습니다.',
+    obsoleted: '버전을 폐기했습니다.',
+    historyChanged: '변경',
+  },
+
+  discardDialog: {
+    title: '이 작성중 버전을 취소할까요?',
+    body: (itemCode: string, version: number) =>
+      `${itemCode} 버전 ${version}과 검사 단계 · 항목이 삭제되며 되돌릴 수 없습니다. 저장하지 않은 변경도 함께 사라집니다.`,
+    ok: '작성 취소',
+  },
+
+  obsoleteDialog: {
+    title: '이 버전을 폐기할까요?',
+    body: (itemCode: string, version: number) =>
+      `${itemCode} 버전 ${version}을 폐기합니다. 새 버전을 확정할 때까지 이 품목의 검사표를 새로 만들 수 없습니다. 기존 검사표는 유지됩니다.`,
+    ok: '폐기',
   },
 
   confirmDialog: {

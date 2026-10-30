@@ -158,6 +158,26 @@ export const inspectionSheetTemplate = {
     saved: 'Đã lưu tiêu chuẩn.',
     confirmed: 'Đã xác nhận tiêu chuẩn. Phiên bản xác nhận trước của mặt hàng này đã bị hủy bỏ.',
     copied: 'Đã tạo phiên bản mới.',
+    discard: 'Hủy bản nháp',
+    obsolete: 'Hủy bỏ',
+    history: 'Lịch sử thay đổi',
+    discarded: 'Đã hủy phiên bản đang soạn.',
+    obsoleted: 'Đã hủy bỏ phiên bản.',
+    historyChanged: 'Thay đổi',
+  },
+
+  discardDialog: {
+    title: 'Hủy phiên bản đang soạn này?',
+    body: (itemCode: string, version: number) =>
+      `${itemCode} phiên bản ${version} cùng các công đoạn · hạng mục kiểm tra sẽ bị xóa và không thể khôi phục. Thay đổi chưa lưu cũng mất.`,
+    ok: 'Hủy bản nháp',
+  },
+
+  obsoleteDialog: {
+    title: 'Hủy bỏ phiên bản này?',
+    body: (itemCode: string, version: number) =>
+      `Hủy bỏ ${itemCode} phiên bản ${version}. Cho đến khi xác nhận phiên bản mới, không thể tạo phiếu kiểm tra mới cho mặt hàng này. Phiếu kiểm tra hiện có được giữ nguyên.`,
+    ok: 'Hủy bỏ',
   },
 
   confirmDialog: {

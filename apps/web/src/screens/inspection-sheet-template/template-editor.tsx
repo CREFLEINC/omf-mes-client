@@ -18,7 +18,8 @@ import {
   validateDraft,
 } from './draft';
 import { TemplateBasicDialog, type TemplateBasics } from './basic-dialog';
-import { templateDetailPath, templateKeys } from './queries';
+import { TemplateHistoryDialog } from './history-dialog';
+import { templateDetailPath, templateKeys, useTemplateHistory } from './queries';
 import { TemplateVersionCompareDialog } from './version-compare-dialog';
 import { TemplateVersionListDialog } from './version-list-dialog';
 import { StepEditor, StepList } from './step-editor';
@@ -114,6 +115,10 @@ export const TemplateEditor = ({
   const [isBasicOpen, setIsBasicOpen] = useState(false);
   const [isVersionListOpen, setIsVersionListOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
+  /* 작성 취소 · 폐기 확인 창, 「변경 이력」 창 — 검사 기준 탭과 같다(omf-all-around#214). */
+  const [transition, setTransition] = useState<'discard' | 'obsolete' | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const history = useTemplateHistory(template?.inspectionSheetTemplateId ?? null);
   /* 같은 품목의 버전 — 높은 버전이 위. 받기 전에는 연 버전 하나로 둔다. */
   const sortedVersions = [
     ...(versions.length > 0 ? versions : template === null ? [] : [template]),
@@ -192,8 +197,54 @@ export const TemplateEditor = ({
     },
   });
 
-  const saving = create.isSaving || update.isSaving || confirm.isSaving;
-  const writeError = create.error ?? update.error ?? confirm.error;
+  const obsolete = useMasterWrite<{ id: number }, InspectionSheetTemplate>({
+    request: ({ id }, headers) =>
+      client.POST('/quality/inspection-sheet-templates/{inspectionSheetTemplateId}:obsolete', {
+        params: {
+          path: { inspectionSheetTemplateId: id },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': requireIfMatch(headers),
+          },
+        },
+      }),
+    etagPath: template === null ? null : templateDetailPath(template.inspectionSheetTemplateId),
+    invalidateKeys: [templateKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      setTransition(null);
+      toast.show({ variant: 'success', description: t.editor.obsoleted });
+    },
+  });
+
+  /* 작성 취소는 버전을 지운다 — 지운 버전에 머물면 상세가 404 다. 남은 가장 높은 버전으로, 없으면 상세를 닫는다. */
+  const discard = useMasterWrite<{ id: number }, unknown>({
+    request: ({ id }, headers) =>
+      client.DELETE('/quality/inspection-sheet-templates/{inspectionSheetTemplateId}', {
+        params: {
+          path: { inspectionSheetTemplateId: id },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    // 계약이 이 경로에 If-Match 를 요구하지 않는다.
+    etagPath: null,
+    invalidateKeys: [templateKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      setTransition(null);
+      const remaining = sortedVersions.find(
+        (version) => version.inspectionSheetTemplateId !== template?.inspectionSheetTemplateId,
+      );
+      if (remaining === undefined || onSelectVersion === undefined) onClose();
+      else onSelectVersion(remaining.inspectionSheetTemplateId);
+      toast.show({ variant: 'success', description: t.editor.discarded });
+    },
+  });
+
+  const saving =
+    create.isSaving || update.isSaving || confirm.isSaving || obsolete.isSaving || discard.isSaving;
+  const writeError =
+    create.error ?? update.error ?? confirm.error ?? obsolete.error ?? discard.error;
 
   const save = () => {
     const found = validateDraft(draft);
@@ -297,12 +348,34 @@ export const TemplateEditor = ({
                 {t.versionBar.compare}
               </Button>
             )}
+            {/* 고른 버전에 변경 이력이 있을 때만 선다(검사 기준 탭과 같다 · #214). */}
+            {(history.data?.items.length ?? 0) > 0 && (
+              <Button variant="outlined" onClick={() => setIsHistoryOpen(true)}>
+                {t.editor.history}
+              </Button>
+            )}
             <div className="inspection-standard-version-actions">
+              {/* 작성중 버전은 「작성 취소」, 확정 버전은 「폐기」 — 검사 기준 탭과 같은 자리(#214). */}
               {!readOnly && (
                 <Button
-                  disabled={saving || dirty}
-                  onClick={() => setConfirming(true)}
+                  variant="outlined"
+                  disabled={saving}
+                  onClick={() => setTransition('discard')}
                 >
+                  {t.editor.discard}
+                </Button>
+              )}
+              {template.statusCode === 'CONFIRMED' && (
+                <Button
+                  variant="outlined"
+                  disabled={saving}
+                  onClick={() => setTransition('obsolete')}
+                >
+                  {t.editor.obsolete}
+                </Button>
+              )}
+              {!readOnly && (
+                <Button disabled={saving || dirty} onClick={() => setConfirming(true)}>
                   {t.editor.confirm}
                 </Button>
               )}
@@ -335,6 +408,8 @@ export const TemplateEditor = ({
           create.reset();
           update.reset();
           confirm.reset();
+          obsolete.reset();
+          discard.reset();
         }}
       />
 
@@ -521,6 +596,48 @@ export const TemplateEditor = ({
         >
           <p>{t.confirmDialog.body(template.itemCode, template.templateVersion)}</p>
         </Dialog>
+      )}
+
+      {transition !== null && template !== null && (
+        <Dialog
+          open
+          onClose={() => setTransition(null)}
+          title={transition === 'discard' ? t.discardDialog.title : t.obsoleteDialog.title}
+          closeOnBackdropClick={false}
+          showCloseButton={false}
+          footer={
+            <>
+              <Button variant="outlined" disabled={saving} onClick={() => setTransition(null)}>
+                {messages.common.cancel}
+              </Button>
+              <Button
+                disabled={saving}
+                loading={saving}
+                onClick={() =>
+                  (transition === 'discard' ? discard : obsolete).write({
+                    id: template.inspectionSheetTemplateId,
+                  })
+                }
+              >
+                {transition === 'discard' ? t.discardDialog.ok : t.obsoleteDialog.ok}
+              </Button>
+            </>
+          }
+        >
+          <p>
+            {(transition === 'discard' ? t.discardDialog : t.obsoleteDialog).body(
+              template.itemCode,
+              template.templateVersion,
+            )}
+          </p>
+        </Dialog>
+      )}
+
+      {isHistoryOpen && template !== null && (
+        <TemplateHistoryDialog
+          events={history.data?.items}
+          onClose={() => setIsHistoryOpen(false)}
+        />
       )}
 
       {isBasicOpen && (

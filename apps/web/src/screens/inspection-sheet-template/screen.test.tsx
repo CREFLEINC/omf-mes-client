@@ -72,7 +72,11 @@ interface Recorded {
   body: string;
 }
 
-const setup = (detail: InspectionSheetTemplate, plantCode = 'PL13') => {
+const setup = (
+  detail: InspectionSheetTemplate,
+  plantCode = 'PL13',
+  auditEvents: Record<string, unknown>[] = [],
+) => {
   const requests: Recorded[] = [];
   const stub = createStubFetch([
     /* OA 공장 판단(omf-all-around#89) — 계정 범위(사업부 8301 전체)가 덮는 공장의 코드. */
@@ -132,6 +136,23 @@ const setup = (detail: InspectionSheetTemplate, plantCode = 'PL13') => {
     {
       match: (r) => r.method === 'POST' && new URL(r.url).pathname.endsWith(':confirm'),
       respond: () => jsonResponse(detail),
+    },
+    /* 작성 취소 · 폐기 · 변경 이력(omf-all-around#214) */
+    {
+      match: (r) => r.method === 'POST' && new URL(r.url).pathname.endsWith(':obsolete'),
+      respond: () => jsonResponse({ ...detail, statusCode: 'OBSOLETE' }),
+    },
+    {
+      match: (r) => r.method === 'DELETE',
+      respond: () => new Response(null, { status: 204 }),
+    },
+    {
+      match: (r) => new URL(r.url).pathname.endsWith('/audit/events'),
+      respond: () =>
+        jsonResponse({
+          items: auditEvents,
+          page: { page: 1, size: 100, total: auditEvents.length },
+        }),
     },
     {
       match: (r) => r.method === 'POST',
@@ -401,5 +422,68 @@ describe('검사표 기준', () => {
 
     expect(await screen.findByText(messages.common.oaOnly.notice)).toBeInTheDocument();
     expect(requests.some((r) => r.path.endsWith(LIST))).toBe(false);
+  });
+
+  describe('작성 취소 · 폐기 · 변경 이력 (omf-all-around#214)', () => {
+    it('작성중 버전은 「작성 취소」만 서고, 확인 뒤 DELETE 를 보낸다', async () => {
+      const { user, requests } = setup(template());
+      await openRow(user);
+
+      expect(screen.queryByRole('button', { name: t.editor.obsolete })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: t.editor.discard }));
+      const dialog = await screen.findByRole('dialog', { name: t.discardDialog.title });
+      await user.click(within(dialog).getByRole('button', { name: t.discardDialog.ok }));
+
+      await waitFor(() => expect(requests.some((r) => r.method === 'DELETE')).toBe(true));
+      expect(requests.find((r) => r.method === 'DELETE')!.path).toMatch(/\/11$/);
+    });
+
+    it('확정 버전은 「폐기」만 서고, 확인 뒤 :obsolete 를 잠금 버전과 함께 보낸다', async () => {
+      const { user, requests } = setup(
+        template({ statusCode: 'CONFIRMED', confirmedBy: 1, confirmedAt: '2026-10-21T01:00:00Z' }),
+      );
+      await openRow(user);
+
+      expect(screen.queryByRole('button', { name: t.editor.discard })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: t.editor.obsolete }));
+      const dialog = await screen.findByRole('dialog', { name: t.obsoleteDialog.title });
+      await user.click(within(dialog).getByRole('button', { name: t.obsoleteDialog.ok }));
+
+      await waitFor(() => expect(requests.some((r) => r.path.endsWith(':obsolete'))).toBe(true));
+      expect(requests.find((r) => r.path.endsWith(':obsolete'))!.headers.get('If-Match')).toBe(
+        '"4"',
+      );
+    });
+
+    it('변경 이력이 없으면 「변경 이력」 단추가 서지 않는다', async () => {
+      const { user } = setup(template());
+      await openRow(user);
+
+      expect(screen.queryByRole('button', { name: t.editor.history })).not.toBeInTheDocument();
+    });
+
+    it('「변경 이력」 창은 구분과 바뀐 칸의 전후 값을 보인다', async () => {
+      const { user, requests } = setup(template(), 'PL13', [
+        {
+          auditEventId: 1,
+          occurredAt: '2026-10-30T01:00:00Z',
+          targetTypeCode: 'INSPECTION_SHEET_TEMPLATE',
+          targetId: 11,
+          eventTypeCode: 'UPDATE',
+          beforeValue: { remarks: null, steps: [] },
+          afterValue: { remarks: '새 비고', steps: [{ stepCode: 'PROCESS_1' }] },
+          performedBy: null,
+        },
+      ]);
+      await openRow(user);
+
+      await user.click(await screen.findByRole('button', { name: t.editor.history }));
+      const dialog = await screen.findByRole('dialog');
+      expect(within(dialog).getByText(t.editor.remarks)).toBeInTheDocument();
+      expect(within(dialog).getByText('새 비고')).toBeInTheDocument();
+      expect(within(dialog).getByText(t.editor.stepSection)).toBeInTheDocument();
+      const audit = requests.find((r) => r.path.endsWith('/audit/events'))!;
+      expect(audit).toBeDefined();
+    });
   });
 });

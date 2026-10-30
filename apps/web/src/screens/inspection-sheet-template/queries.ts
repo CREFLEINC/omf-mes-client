@@ -1,8 +1,9 @@
 import type { InspectionSheetTemplate } from '@omf-mes/api-client';
-import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import type { VersionAuditEvent } from '../inspection-standard/version-history';
 
 /** 처음 쪽 크기. 모델별 기준이라 한 화면에 넉넉히 본다 — 건수 선택으로 바꿀 수 있다(사용자 지시 · #208). */
 export const PAGE_SIZE = 50;
@@ -120,4 +121,49 @@ export const useUserNames = (
   });
 
   return (userId) => results[ids.indexOf(userId)]?.data ?? null;
+};
+
+/** 최근 1년 — 감사 이력 조회가 기간을 요구한다(검사 기준 탭과 같다). */
+const HISTORY_RANGE_MS = 366 * 24 * 60 * 60 * 1000;
+
+/**
+ * 버전 변경 이력(omf-all-around#214) — 서버가 기준 쓰기(등록 · 수정 · 확정 · 폐기 · 작성 취소)마다 남긴 감사 이력.
+ * 고를 때마다 새로 받는다(저장 뒤 바로 보이게). 한 버전의 이력은 소수라 첫 쪽(100건)만 받는다.
+ */
+export const useTemplateHistory = (
+  inspectionSheetTemplateId: number | null,
+): UseQueryResult<{ items: VersionAuditEvent[] }> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: [...templateKeys.all, 'history', inspectionSheetTemplateId ?? 0] as const,
+    enabled: inspectionSheetTemplateId !== null,
+    staleTime: 0,
+    queryFn: async () => {
+      const now = Date.now();
+      const data = await runRequest(() =>
+        client.GET('/audit/events', {
+          params: {
+            query: {
+              targetTypeCode: 'INSPECTION_SHEET_TEMPLATE',
+              targetId: inspectionSheetTemplateId ?? 0,
+              occurredFrom: new Date(now - HISTORY_RANGE_MS).toISOString(),
+              occurredTo: new Date(now + 60 * 1000).toISOString(),
+              size: 100,
+            },
+          },
+        }),
+      );
+      return {
+        items: data.items.map((item) => ({
+          auditEventId: item.auditEventId,
+          occurredAt: item.occurredAt,
+          eventTypeCode: item.eventTypeCode,
+          beforeValue: (item.beforeValue ?? null) as Record<string, unknown> | null,
+          afterValue: (item.afterValue ?? null) as Record<string, unknown> | null,
+          performedBy: item.performedBy ?? null,
+        })),
+      };
+    },
+  });
 };
