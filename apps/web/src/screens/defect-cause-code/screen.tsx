@@ -10,7 +10,7 @@ import {
 } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -258,8 +258,8 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       setLocalFieldErrors({});
 
       if (isCreateMode) {
-        // 이어서 한 건 더 등록할 수 있게 폼을 기준값으로 되돌린다.
-        setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+        // 등록하면 창을 닫고 등록한 코드를 고른다 — 판정 유형 탭과 같다(사용자 지시 · #209).
+        updateParams({ mode: null, as: null, sel: String(saved.id) });
         toast.show({ variant: 'success', description: messages.common.created });
         return;
       }
@@ -302,9 +302,28 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     setSearchParams(next);
   };
 
+  /*
+   * 조건을 바꿔 고른 코드가 새 결과에서 빠지면 선택을 푼다 — 목록에 없는 코드가 상세 카드에 남지 않게(#209 버그 수정).
+   * 새 결과를 다 받은 뒤에 한 번만 본다. 쪽 이동은 조건 변경이 아니므로 보지 않는다.
+   */
+  const recheckSelection = useRef(false);
+  useEffect(() => {
+    if (!recheckSelection.current || list.isPending || list.isFetching || list.isError) return;
+    recheckSelection.current = false;
+    if (selectedId !== null && !items.some((item) => item.id === selectedId)) {
+      setIsEditOpen(false);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('sel');
+        return next;
+      });
+    }
+  }, [list.isPending, list.isFetching, list.isError, items, selectedId, setSearchParams]);
+
   // 조회 조건은 화면 상태가 아니라 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
   // 조건을 바꾸면 1쪽으로 돌아간다 — 지난 쪽 번호가 새 결과의 범위 밖일 수 있다(#209).
   const handleApplyFilters = (next: CodeFilters) => {
+    recheckSelection.current = true;
     updateParams({
       q: next.q === '' ? null : next.q,
       inactive: next.includeInactive ? '1' : null,

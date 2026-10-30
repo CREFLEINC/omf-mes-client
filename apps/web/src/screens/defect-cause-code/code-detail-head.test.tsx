@@ -104,4 +104,30 @@ describe('CodeDetailHead (#209)', () => {
       screen.getByText('사용 중지는 이미 미사용인 코드에는 할 수 없습니다.'),
     ).toBeInTheDocument();
   });
+
+  it('미사용 대분류는 하위 코드 추가가 비활성이고 사유가 보인다(#209)', () => {
+    renderHead({
+      code: { id: 1001, code: 'DF-10', name: '외관', parentId: null, isActive: false },
+      parentLabel: null,
+      onAddChild: vi.fn(),
+    });
+
+    const button = screen.getByRole('button', { name: '하위 코드 추가' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-describedby');
+    expect(
+      screen.getByText('미사용 대분류 아래에는 하위 코드를 추가할 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('사용 중인 대분류는 하위 코드 추가를 누를 수 있다', async () => {
+    const { props, user } = renderHead({
+      code: { id: 1001, code: 'DF-10', name: '외관', parentId: null, isActive: true },
+      parentLabel: null,
+      onAddChild: vi.fn(),
+    });
+
+    await user.click(screen.getByRole('button', { name: '하위 코드 추가' }));
+    expect(props.onAddChild).toHaveBeenCalledTimes(1);
+  });
 });

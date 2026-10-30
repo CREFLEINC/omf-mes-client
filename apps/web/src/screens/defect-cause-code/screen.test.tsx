@@ -756,7 +756,7 @@ describe('DefectCauseCodeScreen — 등록 저장', () => {
     expect(JSON.parse(post?.body ?? '{}')).toMatchObject({ parentDefectCodeId: 1001 });
   });
 
-  it('등록에 성공하면 목록을 다시 조회하고 폼이 비워진다', async () => {
+  it('등록에 성공하면 목록을 다시 조회하고 창이 닫힌다', async () => {
     const { requests, user } = renderScreen(
       createFlowRoutes(defectCreateRoute(() => jsonResponse(CREATED_DEFECT, { status: 201 }))),
       '?mode=create',
@@ -770,8 +770,8 @@ describe('DefectCauseCodeScreen — 등록 저장', () => {
     await screen.findByText('등록했습니다');
 
     expect(requests.filter((request) => request.method === 'GET').length).toBeGreaterThan(before);
-    expect(screen.getByLabelText('불량코드')).toHaveValue('');
-    expect(screen.getByLabelText('불량명')).toHaveValue('');
+    // 판정 유형 탭과 같게 저장하면 창을 닫는다(사용자 지시 · #209).
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
   it('코드·명칭이 공백만이면 요청을 보내지 않고 인라인 오류만 보인다', async () => {
@@ -1737,3 +1737,44 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
     });
   },
 );
+
+describe('DefectCauseCodeScreen — 조건 변경과 선택(#209 버그 수정)', () => {
+  const applyScrapOnly = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await user.click(screen.getByRole('combobox', { name: '처분 유형 선택' }));
+    await user.click(screen.getByRole('option', { name: '폐기' }));
+    await user.click(screen.getByRole('button', { name: '조회' }));
+  };
+
+  it('조건을 바꿔 고른 코드가 결과에서 빠지면 선택을 풀고 상세 카드를 비운다', async () => {
+    // 처분 유형이 없는 목록 — 「폐기」로 거르면 1001이 빠진다.
+    const { user } = renderScreen(
+      [defectOptionsRoute(), defectListRoute(defectCodeFixtures), defectDetailRoute()],
+      '?sel=1001',
+    );
+    await screen.findByRole('button', { name: '수정' });
+
+    await applyScrapOnly(user);
+
+    await waitFor(() => expect(currentLocation()).not.toContain('sel='));
+    expect(currentLocation()).toContain('disp=SCRAP');
+    expect(screen.queryByRole('button', { name: '수정' })).not.toBeInTheDocument();
+  });
+
+  it('조건을 바꿔도 고른 코드가 결과에 남으면 선택을 그대로 둔다', async () => {
+    const withScrap = defectCodeFixtures.map((item) =>
+      item.defectCodeId === 1001 ? { ...item, dispositionTypeCode: 'SCRAP' } : item,
+    );
+    const { user } = renderScreen(
+      [defectOptionsRoute(withScrap), defectListRoute(withScrap), defectDetailRoute()],
+      '?sel=1001',
+    );
+    await screen.findByRole('button', { name: '수정' });
+
+    await applyScrapOnly(user);
+
+    await waitFor(() => expect(currentLocation()).toContain('disp=SCRAP'));
+    await screen.findByText('총 1건');
+    expect(currentLocation()).toContain('sel=1001');
+    expect(screen.getByRole('button', { name: '수정' })).toBeInTheDocument();
+  });
+});

@@ -39,6 +39,7 @@ export const CodeDetailHead = ({
   onDeactivate,
 }: CodeDetailHeadProps) => {
   const deactivateNoteId = useId();
+  const addChildNoteId = useId();
   const orEmpty = (value: string | null | undefined): string =>
     value === null || value === undefined || value === '' ? t.values.empty : value;
   const category = isCategory(code);
@@ -59,6 +60,9 @@ export const CodeDetailHead = ({
             <Button
               variant="filled"
               leadingIcon={<Icon name="add" size={18} />}
+              /* 미사용 대분류 아래에는 새 코드를 두지 않는다 — 감추지 않고 사유를 밝힌다(사용자 지시 · #209). */
+              disabled={!code.isActive}
+              aria-describedby={code.isActive ? undefined : addChildNoteId}
               onClick={onAddChild}
             >
               {t.actions.addChild}
@@ -81,6 +85,11 @@ export const CodeDetailHead = ({
       {!code.isActive && (
         <span id={deactivateNoteId} className="field-note">
           {t.actionReasons.deactivateNeedsActive}
+        </span>
+      )}
+      {!code.isActive && onAddChild !== undefined && (
+        <span id={addChildNoteId} className="field-note">
+          {t.actionReasons.addChildNeedsActive}
         </span>
       )}
       {/* 이름표를 단 값들 — 검사 기준 탭의 기준 정보 상자와 같은 모양(#196). */}
