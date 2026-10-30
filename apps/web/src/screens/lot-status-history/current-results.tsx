@@ -258,17 +258,21 @@ export const CurrentResults = ({
         <>
           {/*
            * 상태별 건수는 상자 없이 한 줄로 편다 — 이름 아래 큰 숫자 · 단위(2026-10-30 시안). 집계를 못 낸 상태는
-           * 「— 미확정」이다.
+           * 「미확정」 글만 보인다.
            */}
           <div className="lot-status-summary-grid" role="group" aria-label={t.current.summary.pane}>
             {summaryCells.map((cell) => (
               <div key={cell.key} className="lot-status-stat" role="group" aria-label={cell.label}>
                 <span className="lot-status-stat-label">{cell.label}</span>
                 <span className="lot-status-stat-value">
-                  {cell.value === null ? EMPTY : quantity(cell.value)}
-                  <span className="lot-status-stat-unit">
-                    {cell.value === null ? t.current.summary.unknownCount : t.current.summary.unit}
-                  </span>
+                  {cell.value === null ? (
+                    <span className="lot-status-stat-unit">{t.current.summary.unknownCount}</span>
+                  ) : (
+                    <>
+                      {quantity(cell.value)}
+                      <span className="lot-status-stat-unit">{t.current.summary.unit}</span>
+                    </>
+                  )}
                 </span>
               </div>
             ))}
