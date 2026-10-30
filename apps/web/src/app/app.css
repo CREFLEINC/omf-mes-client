@@ -22027,17 +22027,26 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   cursor: help;
 }
 
-/*
- * 사유 도움말은 사유마다 한 줄이다. DS 툴팁은 한 줄용이라 폭을 따로 주지 않으면 칩 폭으로 눌린다.
- * 아래로 연다: 표 영역의 위쪽으로 나간 부분은 스크롤로도 볼 수 없지만 아래쪽은 스크롤로 닿는다.
- */
-.reason-help {
+/* 사유 도움말 말풍선: 사유마다 한 줄. 모양은 DS 툴팁과 같고, 위치는 `ReasonHelpBubble`이 정한다. */
+.reason-help-bubble {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   width: max-content;
   max-width: 22rem;
-  white-space: normal;
+  padding: var(--space-1) var(--space-2);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-2);
+  pointer-events: none;
 }
 
 .erp-wo-summary {
