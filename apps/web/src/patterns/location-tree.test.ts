@@ -1,7 +1,14 @@
+import type { components } from '@omf-mes/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { buildLocationRows } from './location-tree';
-import type { Location } from './types';
+import {
+  buildLocationRows,
+  compareLocationCodes,
+  initialExpandedLocationIds,
+  parentLocationIds,
+} from './location-tree';
+
+type Location = components['schemas']['Location'];
 
 /** 필수 필드를 채운 팩토리 — 회피 캐스팅(as never) 없이 계약 타입을 그대로 만족시킨다. */
 const makeLocation = (
@@ -111,5 +118,43 @@ describe('buildLocationRows', () => {
     expect(codesOf(rows)).toContain('Z');
     expect(codesOf(rows)).toContain('C-1');
     expect(codesOf(rows)).toContain('C-2');
+  });
+});
+
+describe('compareLocationCodes', () => {
+  it('숫자를 수로 읽어 R100 이 R99 뒤에 놓인다', () => {
+    // 자리 수가 섞인 옛 코드도 수의 차례로 놓인다.
+    const codes = ['Z01-R100', 'Z01-R99', 'Z01-R2', 'Z01-R010'];
+
+    expect([...codes].sort(compareLocationCodes)).toEqual([
+      'Z01-R2',
+      'Z01-R010',
+      'Z01-R99',
+      'Z01-R100',
+    ]);
+  });
+});
+
+describe('처음 펼칠 노드', () => {
+  // Z01 › R001 › L01, Z02(하위 없음)
+  const items = [
+    makeLocation(1, 'Z01'),
+    makeLocation(2, 'Z01-R001', 1),
+    makeLocation(3, 'Z01-R001-L01', 2),
+    makeLocation(4, 'Z02'),
+  ];
+
+  it('맨 위만 펼친다 — 하위가 있는 구역만', () => {
+    expect([...initialExpandedLocationIds(items)]).toEqual([1]);
+  });
+
+  it('검색 중에는 하위를 가진 노드를 다 펼친다', () => {
+    expect([...initialExpandedLocationIds(items, true)].sort((a, b) => a - b)).toEqual([1, 2]);
+  });
+
+  it('전체 펼치기는 하위를 가진 노드 전부다 — 자기참조는 부모로 세지 않는다', () => {
+    expect(
+      [...parentLocationIds([...items, makeLocation(5, 'X', 5)])].sort((a, b) => a - b),
+    ).toEqual([1, 2]);
   });
 });

@@ -11,12 +11,31 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { MarkerOverlay, type OverlayMarker } from '@omf-mes/ui';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { BoardFrame } from '../../patterns/board-frame';
-import { BoardTable } from '../../patterns/board-table';
+import { BoardTable, BoardTablePickButton } from '../../patterns/board-table';
+import {
+  buildLocationRows,
+  initialExpandedLocationIds,
+  locationShownName,
+  parentLocationIds,
+  type LocationTreeRow,
+} from '../../patterns/location-tree';
+import {
+  LocationTreeCell,
+  LocationTreeHeader,
+  levelNameOf,
+} from '../../patterns/location-tree-cell';
 import { SaveErrorBanner } from '../../patterns/master';
+import { Select } from '../../patterns/select';
+import {
+  defaultWarehouseFilters,
+  useWarehouseFilterOptions,
+  WarehouseFilterBar,
+  type WarehouseFilters,
+} from '../../patterns/warehouse-filter-bar';
 import { OneLine } from '../../patterns/po-board';
 import {
   checkDrawingFile,
@@ -25,13 +44,14 @@ import {
   isDirty,
   placeMarker,
   removeMarker,
+  shapeMarker,
   toReplaceBody,
   type LayoutDraft,
 } from './layout-draft';
 import { LoadErrorBanner } from './load-error-banner';
+import { MarkerShapeFields } from './marker-shape-fields';
 import { lookupNote, useWarehouseOptions } from './lookups';
 import { useDrawingContent, useLayout, useLayoutReplace, useLocations } from './queries';
-import { SelectField } from './select-field';
 import type { LocationView, SelectOption } from './types';
 import { useDrawingReplace } from './use-drawing-replace';
 import { useObjectUrl } from './use-object-url';
@@ -40,6 +60,7 @@ const t = messages.warehouseLayout;
 
 const EMPTY_MARKERS: LayoutDraft = [];
 const EMPTY_LOCATIONS: LocationView[] = [];
+const NO_EXPANDED_IDS: ReadonlySet<number> = new Set();
 
 /** 파일 고르기 창이 미리 걸러 줄 형식 — **막지는 못한다.** 판정은 `checkDrawingFile` 과 서버다. */
 const DRAWING_ACCEPT = DRAWING_MIME_TYPES.join(',');
@@ -84,13 +105,55 @@ export const WarehouseLayoutScreen = () => {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   const fileInput = useRef<HTMLInputElement>(null);
+  const warehouseNoteId = useId();
 
-  const warehouses = useWarehouseOptions();
+  /* 창고 조회 조건 — 창고·Location 과 같은 조건 상자(사용자 지시 2026-10-30). 화면을 떠나면 처음 값으로 돌아간다. */
+  const [filters, setFilters] = useState<WarehouseFilters>(defaultWarehouseFilters);
+  const filterOptions = useWarehouseFilterOptions(filters);
+  const warehouses = useWarehouseOptions(filters);
+  /*
+   * 고른 창고가 조건에 걸러져 빠져도 선택칸이 비지 않게 — 한 번 본 창고의 이름을 기억해 두고 선택지 끝에 남긴다.
+   */
+  const seenWarehouseLabels = useRef(new Map<string, string>());
+  for (const entry of warehouses.entries) seenWarehouseLabels.current.set(entry.value, entry.label);
   const layout = useLayout(warehouseId);
   const locations = useLocations(warehouseId, includeInactive);
 
   const original = layout.data?.markers ?? EMPTY_MARKERS;
   const rows = locations.data ?? EMPTY_LOCATIONS;
+
+  /*
+   * 위치 목록은 창고·Location 의 Location 목록과 같은 계층이다(사용자 지시 2026-10-30) — 처음엔 구역만 펼쳐 랙까지
+   * 보이고, 창고가 바뀌면 다시 정한다. 「중지된 위치도 보기」를 켜고 꺼도 사용자가 펼친 것은 지킨다.
+   */
+  const [expansion, setExpansion] = useState<{
+    warehouseId: number;
+    ids: ReadonlySet<number>;
+  } | null>(null);
+
+  if (
+    locations.data !== undefined &&
+    warehouseId !== null &&
+    expansion?.warehouseId !== warehouseId
+  ) {
+    setExpansion({ warehouseId, ids: initialExpandedLocationIds(locations.data) });
+  }
+
+  const expandedIds = expansion?.ids ?? NO_EXPANDED_IDS;
+  const treeRows = useMemo(() => buildLocationRows(rows, expandedIds), [rows, expandedIds]);
+
+  const toggleExpand = (locationId: number): void => {
+    setExpansion((prev) => {
+      if (prev === null) return prev;
+      const next = new Set(prev.ids);
+      if (next.has(locationId)) {
+        next.delete(locationId);
+      } else {
+        next.add(locationId);
+      }
+      return { ...prev, ids: next };
+    });
+  };
   const drawingAttachmentId = layout.data?.drawingAttachmentId ?? null;
 
   /*
@@ -160,18 +223,22 @@ export const WarehouseLayoutScreen = () => {
     return found === undefined ? t.locations.unknown(locationId) : found.locationCode;
   };
 
-  /** ⚠ 목록에서 이름을 찾지 못한 표식이 있는가 — 중지·삭제된 위치일 수 있다. */
-  const hasOrphan =
-    !locations.isPending &&
-    draft.some((marker) => !rows.some((row) => row.locationId === marker.locationId));
-
   const overlayMarkers: OverlayMarker[] = draft.map((marker) => ({
     id: String(marker.locationId),
     x: marker.x,
     y: marker.y,
     label: nameOf(marker.locationId),
     selected: marker.locationId === selectedLocation,
+    width: marker.width,
+    height: marker.height,
+    rotation: marker.rotation,
   }));
+
+  /** 고른 위치의 표식 — 있으면 크기 · 회전 칸이 보인다. */
+  const selectedMarker =
+    selectedLocation === null
+      ? undefined
+      : draft.find((marker) => marker.locationId === selectedLocation);
 
   const place = (x: number, y: number): void => {
     if (selectedLocation === null) {
@@ -222,24 +289,71 @@ export const WarehouseLayoutScreen = () => {
     setPendingFile(file);
   };
 
-  const columns: Column<LocationView>[] = [
+  const pickLocation = (locationId: number): void => {
+    setSelectedLocation(locationId);
+    setHint(null);
+  };
+
+  /**
+   * 계층 칸 · 머리는 창고·Location 과 같은 부품이다(`patterns/location-tree-cell`). 코드 칸에 펼치기 단추가 있어
+   * 칸을 통째로 고르는 단추로 감쌀 수 없다 — 고르는 단추는 코드 글자만 감싼다(`BoardTablePickButton`).
+   */
+  const columns: Column<LocationTreeRow>[] = [
     {
       key: 'code',
-      header: t.locations.code,
-      width: '140px',
-      render: (row) => row.locationCode,
+      header: (
+        <LocationTreeHeader
+          rows={treeRows}
+          expandedIds={expandedIds}
+          onCollapseAll={() => {
+            setExpansion((prev) => (prev === null ? prev : { ...prev, ids: new Set() }));
+          }}
+          onExpandAll={() => {
+            setExpansion((prev) =>
+              prev === null ? prev : { ...prev, ids: parentLocationIds(rows) },
+            );
+          }}
+        >
+          {t.locations.code}
+        </LocationTreeHeader>
+      ),
+      width: '280px',
+      render: (row) => (
+        <LocationTreeCell
+          row={row}
+          expanded={expandedIds.has(row.location.locationId)}
+          onToggle={toggleExpand}
+        >
+          <BoardTablePickButton
+            id={String(row.location.locationId)}
+            label={row.location.locationCode}
+            current={selectedLocation === row.location.locationId}
+          >
+            {row.location.locationCode}
+          </BoardTablePickButton>
+        </LocationTreeCell>
+      ),
     },
     {
       key: 'name',
       header: t.locations.name,
-      render: (row) => <OneLine text={row.locationName} />,
+      render: (row) => <OneLine text={locationShownName(row.location)} />,
+    },
+    {
+      key: 'level',
+      header: t.locations.level,
+      /* 서버가 만든 위치는 역할 이름(창고 전체 · 적치 대기) — Location 목록의 「구분」과 같다. */
+      align: 'center',
+      width: '88px',
+      render: (row) => levelNameOf(row.location) ?? messages.common.reference.empty,
     },
     {
       key: 'placed',
       header: t.locations.placed,
-      width: '120px',
+      align: 'center',
+      width: '80px',
       render: (row) =>
-        hasMarker(draft, row.locationId) ? (
+        hasMarker(draft, row.location.locationId) ? (
           <Chip size="sm" status="success">
             {t.locations.onMap}
           </Chip>
@@ -249,8 +363,21 @@ export const WarehouseLayoutScreen = () => {
     },
   ];
 
-  const toOptions = (entries: { value: string; label: string }[]): SelectOption[] =>
-    entries.map((entry) => ({ value: entry.value, label: entry.label }));
+  /** 창고 칸 밑의 한 줄 — 도는 동안 잠근 사유, 아니면 목록의 한계(불러오기 실패 · 잘림). */
+  const warehouseNote = drawing.isBusy
+    ? busyLabel
+    : lookupNote(warehouses, t.warehouse.lookupFailed);
+
+  const toOptions = (entries: { value: string; label: string }[]): SelectOption[] => {
+    const options = entries.map((entry) => ({ value: entry.value, label: entry.label }));
+    const keptLabel = seenWarehouseLabels.current.get(warehouseParam);
+
+    return warehouseParam === '' ||
+      keptLabel === undefined ||
+      options.some((option) => option.value === warehouseParam)
+      ? options
+      : [...options, { value: warehouseParam, label: keptLabel }];
+  };
 
   const canSave = warehouseId !== null && !layout.isPending && !layout.isError && !replace.isSaving;
 
@@ -285,41 +412,36 @@ export const WarehouseLayoutScreen = () => {
     <>
       <BoardFrame
         splitKey="omf-mes:warehouse-layout:split"
-        initialRatio={0.35}
+        initialRatio={0.45}
         splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
-        above={{
-          label: t.warehouse.select,
-          content: (
-            <>
-              {flash !== null && (
-                <div className="banner-slot">
-                  <AlertBanner
-                    variant="success"
-                    onDismiss={() => {
-                      setFlash(null);
-                    }}
-                    dismissLabel={messages.common.close}
-                  >
-                    {flash}
-                  </AlertBanner>
-                </div>
-              )}
-              <div className="pane po-board-filter">
-                <div className="filter-bar">
-                  <SelectField
-                    label={t.warehouse.select}
-                    options={toOptions(warehouses.entries)}
-                    value={warehouseParam}
-                    /* ⛔ 도는 동안 창고를 바꾸면 결과가 엉뚱한 화면에 떨어진다 — 사유와 함께 잠근다. */
-                    disabled={drawing.isBusy}
-                    note={
-                      drawing.isBusy ? busyLabel : lookupNote(warehouses, t.warehouse.lookupFailed)
-                    }
-                    placeholder={t.warehouse.selectPlaceholder}
-                    wide
-                    onChange={selectWarehouse}
-                  />
-                  <div className="field-cell field-cell-unlabeled check-group">
+        list={{
+          label: t.panes.locations,
+          content:
+            (
+              /*
+               * 창고·Location 과 같은 짜임(사용자 지시 2026-10-30) — 조회 조건은 왼쪽 구획 위에 좁게, 그 아래 위치 계층이
+               * 늘 보인다. 표는 구획의 바로 아래 자식이라 남은 높이에서 스크롤한다.
+               */
+              <>
+                <WarehouseFilterBar
+                  appliedFilters={filters}
+                  onApplyFilters={setFilters}
+                  plantOptions={filterOptions.plantOptions}
+                  warehouseTypeOptions={filterOptions.warehouseTypeOptions}
+                />
+                {/* 걸러진 창고 가운데 하나를 고르면 그 아래 위치 계층이 늘 보인다. */}
+                <div className="warehouse-location-filter">
+                  <div className="warehouse-location-filter-row">
+                    <Select
+                      aria-label={t.warehouse.select}
+                      aria-describedby={warehouseNote === undefined ? undefined : warehouseNoteId}
+                      options={toOptions(warehouses.entries)}
+                      value={warehouseParam === '' ? null : warehouseParam}
+                      placeholder={t.warehouse.selectPlaceholder}
+                      /* ⛔ 도는 동안 창고를 바꾸면 결과가 엉뚱한 화면에 떨어진다 — 사유와 함께 잠근다. */
+                      disabled={drawing.isBusy}
+                      onChange={selectWarehouse}
+                    />
                     <Checkbox
                       checked={includeInactive}
                       disabled={drawing.isBusy}
@@ -330,30 +452,16 @@ export const WarehouseLayoutScreen = () => {
                       {t.locations.includeInactive}
                     </Checkbox>
                   </div>
+                  {warehouseNote !== undefined && (
+                    <span id={warehouseNoteId} className="field-note">
+                      {warehouseNote}
+                    </span>
+                  )}
                 </div>
-              </div>
-              {/* ⭐ 잠금 토큰이 이 조회에서 온다 — 실패하면 저장을 보낼 수 없다. */}
-              {layout.isError && <p className="field-note">{t.map.lockFailed}</p>}
-              {warehouseId !== null && layout.isPending && (
-                <p className="field-note">{t.map.lockLoading}</p>
-              )}
-            </>
-          ),
-        }}
-        list={{
-          label: t.panes.locations,
-          content:
-            warehouseId === null ? (
-              <EmptyState
-                size="sm"
-                title={t.warehouse.emptyTitle}
-                description={t.warehouse.empty}
-              />
-            ) : (
-              <>
-                <p className="pane-lead">{t.map.placeHint}</p>
 
-                {locations.isError ? (
+                {warehouseId === null ? (
+                  <EmptyState size="sm" title={t.warehouse.emptyTitle} />
+                ) : locations.isError ? (
                   <LoadErrorBanner
                     error={locations.error}
                     onRetry={() => {
@@ -363,36 +471,24 @@ export const WarehouseLayoutScreen = () => {
                 ) : locations.isPending ? (
                   <Skeleton variant="rect" height="12rem" />
                 ) : (
-                  <div>
-                    <BoardTable
-                      label={t.panes.locations}
-                      columns={columns}
-                      rows={rows}
-                      getRowId={(row) => String(row.locationId)}
-                      widthKey="omf-mes:warehouse-layout:location-widths"
-                      minWidth="420px"
-                      pick={{
-                        columnKey: 'code',
-                        label: (row) => row.locationCode,
-                        currentId: selectedLocation === null ? null : String(selectedLocation),
-                        onPick: (row) => {
-                          setSelectedLocation(row.locationId);
-                          setHint(null);
-                        },
-                      }}
-                      empty={
-                        <EmptyState
-                          size="sm"
-                          live
-                          title={t.locations.emptyTitle}
-                          description={t.locations.empty}
-                        />
-                      }
-                    />
-                  </div>
+                  <BoardTable
+                    label={t.panes.locations}
+                    className="location-tree-table"
+                    columns={columns}
+                    rows={treeRows}
+                    getRowId={(row) => String(row.location.locationId)}
+                    widthKey="omf-mes:warehouse-layout:location-tree-widths"
+                    minWidth="540px"
+                    pick={{
+                      label: (row) => row.location.locationCode,
+                      currentId: selectedLocation === null ? null : String(selectedLocation),
+                      onPick: (row) => {
+                        pickLocation(row.location.locationId);
+                      },
+                    }}
+                    empty={<EmptyState size="sm" live title={t.locations.emptyTitle} />}
+                  />
                 )}
-                {/* ⚠ 이름을 못 찾은 표식이 있으면 그 사실을 적는다 — 코드만 보이는 이유다. */}
-                {hasOrphan && <p className="field-note">{t.locations.orphanNote}</p>}
               </>
             ),
         }}
@@ -401,10 +497,22 @@ export const WarehouseLayoutScreen = () => {
           content:
             warehouseId === null ? null : (
               <>
-                {/* ⭐ 비율이라는 사실과 통째로 바뀐다는 사실을 판 위에 먼저 적는다. */}
-                <p className="pane-lead">{t.map.ratioNote}</p>
-                <p className="pane-lead">{t.map.replaceNote}</p>
-
+                {flash !== null && (
+                  <div className="banner-slot">
+                    <AlertBanner
+                      variant="success"
+                      onDismiss={() => {
+                        setFlash(null);
+                      }}
+                      dismissLabel={messages.common.close}
+                    >
+                      {flash}
+                    </AlertBanner>
+                  </div>
+                )}
+                {/* ⭐ 잠금 토큰이 배치도 조회에서 온다 — 받기 전 · 못 받으면 저장을 보낼 수 없다. */}
+                {layout.isError && <p className="field-note">{t.map.lockFailed}</p>}
+                {layout.isPending && <p className="field-note">{t.map.lockLoading}</p>}
                 {/* 점 저장의 실패 — 충돌이면 다시 읽어 최신 배치 위에서 다시 정하게 한다. */}
                 <SaveErrorBanner
                   error={replace.error}
@@ -437,10 +545,6 @@ export const WarehouseLayoutScreen = () => {
                         >
                           {drawingOverwrites ? t.map.overwriteDrawing : t.map.retrySaveDrawing}
                         </Button>
-                        {/* ⛔ 덮는다는 사실을 버튼 바로 옆에 적는다 — 누르기 전에 읽혀야 한다. */}
-                        {drawingOverwrites && (
-                          <span className="field-note">{t.map.overwriteDrawingNote}</span>
-                        )}
                       </div>
                     )}
                   </>
@@ -467,11 +571,13 @@ export const WarehouseLayoutScreen = () => {
                         readOnly={replace.isSaving || drawing.isBusy}
                         onPlace={place}
                         onSelect={(id) => {
-                          setSelectedLocation(Number(id));
-                          setHint(null);
+                          pickLocation(Number(id));
                         }}
                         onMove={(id, x, y) => {
                           setDraft(placeMarker(draft, Number(id), x, y));
+                        }}
+                        onShape={(id, shape) => {
+                          setDraft(shapeMarker(draft, Number(id), shape));
                         }}
                         /* ⭐ 낭독 문구는 화면이 준다 — 판 부품은 표현 전용이라 사람의 말을 갖지 않는다. */
                         describePosition={t.map.markerPosition}
@@ -497,8 +603,18 @@ export const WarehouseLayoutScreen = () => {
                       )}
                     </div>
 
-                    <p className="field-note">{t.map.move}</p>
                     {hint !== null && <p className="field-error">{hint}</p>}
+
+                    {/* 고른 표식의 크기 · 회전 — 자판으로도 바꾼다(판의 손잡이는 포인터 전용). */}
+                    {selectedMarker !== undefined && (
+                      <MarkerShapeFields
+                        shape={selectedMarker}
+                        disabled={replace.isSaving || drawing.isBusy}
+                        onChange={(shape) => {
+                          setDraft(shapeMarker(draft, selectedMarker.locationId, shape));
+                        }}
+                      />
+                    )}
 
                     <div className="form-actions">
                       {replace.isSaving && (
@@ -618,7 +734,8 @@ export const WarehouseLayoutScreen = () => {
             </>
           }
         >
-          <p className="dialog-lead">{t.map.replaceDrawingLead(original.length)}</p>
+          {/* 본문 설명 없이 대상만 — 고른 파일. */}
+          <p className="dialog-lead">{pendingFile.name}</p>
         </Dialog>
       )}
     </>

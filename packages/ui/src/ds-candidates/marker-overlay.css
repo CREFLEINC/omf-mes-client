@@ -85,6 +85,80 @@
 }
 
 /*
+ * 사각형 표식 — 크기 · 회전을 가진다(사용자 지시 2026-10-30). 크기는 판에 대한 비율이라 쓰는 쪽이 `width` · `height` 를
+ * 백분율로 주고, 회전은 `transform` 으로 준다. 글자는 상자 안에서 말줄임한다.
+ */
+.marker-overlay-box {
+  justify-content: center;
+  padding: 0 0.25rem;
+  border-width: 2px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+}
+
+.marker-overlay-box .marker-overlay-pin-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.marker-overlay-box.marker-overlay-pin-selected {
+  background: color-mix(in srgb, var(--primary, #2563eb) 85%, transparent);
+}
+
+/* 크기 손잡이 — 모서리 넷. 표식과 함께 돈다. */
+.marker-overlay-handle,
+.marker-overlay-rotate {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--primary, #2563eb);
+  background: var(--surface);
+  touch-action: none;
+}
+
+.marker-overlay-handle-nw {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}
+
+.marker-overlay-handle-ne {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+
+.marker-overlay-handle-se {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+
+.marker-overlay-handle-sw {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+
+/* 회전 손잡이 — 위 가운데에서 조금 떨어진 동그라미, 상자와 짧은 선으로 잇는다. */
+.marker-overlay-rotate {
+  top: -26px;
+  left: calc(50% - 6px);
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.marker-overlay-rotate::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 2px;
+  height: 12px;
+  border-left: 2px solid var(--primary, #2563eb);
+}
+
+/*
  * 듣는 사람에게만 주는 말(표식의 자리·옮긴 결과).
  *
  * ⛔ **`display: none` 이나 `visibility: hidden` 으로 숨기지 않는다** — 그러면 낭독기에서도

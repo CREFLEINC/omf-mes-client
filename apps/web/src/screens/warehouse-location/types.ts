@@ -12,13 +12,8 @@ export type Location = components['schemas']['Location'];
 /** 위치에 둘 수 있게 지정한 품목 한 줄(서버 위치 ⑤). 품목코드 순으로 온다. */
 export type LocationItem = components['schemas']['LocationItem'];
 
-export interface WarehouseFilters {
-  q: string;
-  /** 공장 번호를 문자열로 — DS Select 값과 같은 모양이다. 빈 문자열이면 공장으로 거르지 않는다. */
-  plantId: string;
-  warehouseTypeCode: string;
-  includeInactive: boolean;
-}
+/** 창고 조회 조건 — 창고 배치도와 함께 쓰는 조건 상자의 것(`patterns/warehouse-filter-bar`). */
+export type { WarehouseFilters } from '../../patterns/warehouse-filter-bar';
 
 /** 폼 값이 전부 문자열인 이유: DS Select·TextField가 문자열 값을 다룬다. 숫자 변환은 Phase 2의 저장 경로가 맡는다. */
 export interface WarehouseFormValues {
@@ -27,7 +22,6 @@ export interface WarehouseFormValues {
   warehouseCode: string;
   warehouseName: string;
   warehouseTypeCode: string;
-  isExternal: boolean;
   isDefect: boolean;
 }
 

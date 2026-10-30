@@ -25,7 +25,6 @@ export const warehouseToFormValues = (warehouse: Warehouse): WarehouseFormValues
   warehouseCode: warehouse.warehouseCode,
   warehouseName: warehouse.warehouseName,
   warehouseTypeCode: warehouse.warehouseTypeCode,
-  isExternal: warehouse.isExternal,
   isDefect: warehouse.isDefect,
 });
 
@@ -38,7 +37,6 @@ export const emptyWarehouseFormValues = (): WarehouseFormValues => ({
   warehouseCode: '',
   warehouseName: '',
   warehouseTypeCode: '',
-  isExternal: false,
   /* 신규 창고는 불량창고가 아니다 — 그렇게 정하는 자리가 화면에 없으므로 꺼진 값으로 낸다. */
   isDefect: false,
 });
@@ -56,11 +54,6 @@ export const toWarehouseUpdate = (values: WarehouseFormValues): WarehouseUpdate 
   warehouseCode: values.warehouseCode.trim(),
   warehouseName: values.warehouseName.trim(),
   warehouseTypeCode: values.warehouseTypeCode,
-  /*
-   * 외부 창고는 MES 가 관리할 대상이 아니라 화면에 칸이 없다(사용자 지시 2026-10-30). 계약상 수정 본문의 필수 칸이라
-   * 받은 값을 그대로 돌려보낸다(등록은 꺼진 값) — 서버에 칸 제거를 요청 중이다. partnerId 는 서버가 받지 않아 싣지 않는다.
-   */
-  isExternal: values.isExternal,
   /* 화면이 고치지 않은 값을 그대로 되돌려 보낸다 — 여기서 지어내면 서버 값이 덮인다. */
   isDefect: values.isDefect,
 });
@@ -86,10 +79,6 @@ export const emptyLocationFormValues = (): LocationFormValues => ({
   locationCode: '',
   aliasName: '',
 });
-
-/** 위치를 사람에게 부르는 이름 — 별칭이 이름이다(사용자 지시 2026-10-29). 별칭이 없으면 저장된 위치명. */
-export const locationShownName = (location: Pick<Location, 'locationName' | 'aliasName'>): string =>
-  location.aliasName?.trim() || location.locationName;
 
 /** 상위 위치 표시 — 별칭이 있으면 별칭, 없으면 위치 코드 하나만(사용자 지시 2026-10-29). */
 export const locationAliasOrCode = (
@@ -148,7 +137,6 @@ export const isSameWarehouseValues = (a: WarehouseFormValues, b: WarehouseFormVa
   a.warehouseCode === b.warehouseCode &&
   a.warehouseName === b.warehouseName &&
   a.warehouseTypeCode === b.warehouseTypeCode &&
-  a.isExternal === b.isExternal &&
   a.isDefect === b.isDefect;
 
 /** 위치 폼의 기준값과 현재 값의 비교 — 수정 창이 「고친 것이 있는가」를 이것과 보관 품목으로 판정한다. */

@@ -26,7 +26,6 @@ const warehouse: components['schemas']['Warehouse'] = {
   warehouseCode: 'SAMPLE-WH-01',
   warehouseName: '합성 창고',
   warehouseTypeCode: 'SAMPLE_TYPE',
-  isExternal: false,
   isDefect: false,
   isActive: true,
 };
@@ -63,6 +62,8 @@ const item: components['schemas']['Item'] = {
   itemCode: 'SAMPLE-ITEM-01',
   itemName: '합성 품목',
   itemTypeCode: 'SAMPLE_TYPE',
+  erpSpec: null,
+  erpItemGroupCode: null,
   baseUomId: 401,
   lotControlled: true,
   serialControlTypeCode: 'SAMPLE_SERIAL',

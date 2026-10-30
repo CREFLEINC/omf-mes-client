@@ -9738,27 +9738,46 @@ a.erp-send-chips:focus-visible {
   text-align: center;
 }
 
+/* 창고 배치도 — 고른 표식의 크기 · 회전 칸(사용자 지시 2026-10-30). 숫자 셋이 한 줄에 좁게. */
+.marker-shape-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.marker-shape-fields > * {
+  flex: 0 1 7rem;
+  min-width: 0;
+}
+
 /*
- * 위치 코드 머리 — 행과 같이 [펼치기 단추 자리 32px + 간격 --space-2] 뒤에서 글자가 시작한다. 머리의 단추 자리에는
+ * 위치 계층 표(`patterns/location-tree-cell`) — 창고·Location 의 Location 목록과 창고 배치도의 위치 목록이 같이 쓴다.
+ * 코드 머리는 행과 같이 [펼치기 단추 자리 32px + 간격 --space-2] 뒤에서 글자가 시작한다. 머리의 단추 자리에는
  * 전체 접기 · 펼치기(IconButton sm)가 놓여 행의 펼치기 단추와 세로로 맞는다.
  */
-.warehouse-location-location-table .tree-toggle-header {
+.location-tree-table .tree-toggle-header {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.warehouse-location-location-table .tree-toggle-header > :first-child {
+.location-tree-table .tree-toggle-header > :first-child {
   flex: none;
 }
 
 /* 펼치기 단추 자리는 줄지 않는다 — 긴 코드가 폭을 먹으면 32px 빈칸이 눌려 깊이 들여쓰기가 어긋났다. */
-.warehouse-location-location-table .tree-toggle > :first-child {
+.location-tree-table .tree-toggle > :first-child {
   flex: none;
 }
 
+/* 하위가 없는 줄의 펼치기 단추 자리 — 단추(IconButton sm)와 같은 폭. */
+.location-tree-spacer {
+  display: inline-block;
+  width: 32px;
+}
+
 /* 긴 위치 코드가 접혀도 왼쪽 기준을 지킨다(계층 들여쓰기와 같은 기준선). */
-.warehouse-location-location-table .link-cell {
+.location-tree-table .link-cell {
   text-align: start;
 }
 

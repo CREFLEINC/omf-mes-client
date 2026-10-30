@@ -1,5 +1,60 @@
-import { compareLocationCodes } from './location-code';
-import type { Location } from './types';
+import type { components } from '@omf-mes/api-client';
+
+type Location = components['schemas']['Location'];
+
+/**
+ * 위치 계층 — 창고·Location 의 Location 목록과 창고 배치도의 위치 목록이 같은 계층을 그린다(사용자 지시 2026-10-30).
+ * 평탄화 · 처음 펼칠 노드 · 코드 순서 · 보이는 이름을 여기 한 벌로 둔다. 칸 모양은 `location-tree-cell.tsx`.
+ */
+
+/**
+ * 코드 순서 — 숫자를 수로 읽는다. 랙 `R100` 이 `R99` 뒤에, 자리 수가 섞인 옛 코드도 차례대로 놓인다.
+ * 로캘을 `en` 으로 묶어 실행 환경마다 순서가 달라지지 않게 한다.
+ */
+export const compareLocationCodes = (a: string, b: string): number =>
+  a.localeCompare(b, 'en', { numeric: true });
+
+/** 위치를 사람에게 부르는 이름 — 별칭이 이름이다(사용자 지시 2026-10-29). 별칭이 없으면 저장된 위치명. */
+export const locationShownName = (location: Pick<Location, 'locationName' | 'aliasName'>): string =>
+  location.aliasName?.trim() || location.locationName;
+
+/** 부모가 없거나 · 자기 자신이거나 · 목록에 없으면 최상위다 — `buildLocationRows` 와 같은 판정. */
+const parentInList = (item: Location, known: ReadonlySet<number>): number | null => {
+  const parentId = item.parentLocationId;
+  return parentId === null ||
+    parentId === undefined ||
+    parentId === item.locationId ||
+    !known.has(parentId)
+    ? null
+    : parentId;
+};
+
+/** 하위를 가진 노드 전부 — 전체 펼치기가 이것을 펼친다. */
+export const parentLocationIds = (items: readonly Location[]): Set<number> => {
+  const known = new Set(items.map((item) => item.locationId));
+  const parents = new Set<number>();
+  for (const item of items) {
+    const parentId = parentInList(item, known);
+    if (parentId !== null) parents.add(parentId);
+  }
+  return parents;
+};
+
+/**
+ * 처음 펼칠 노드 — 맨 위(구역)만 펼쳐 랙까지 보인다. 랙이 백 개를 넘으면 층 · 셀까지 다 펼친 표는 수천 행이 된다
+ * (사용자 지시 2026-10-29). `all` 이면(검색 중) 찾은 위치가 묻히지 않게 하위를 가진 노드를 다 펼친다.
+ */
+export const initialExpandedLocationIds = (
+  items: readonly Location[],
+  all = false,
+): Set<number> => {
+  if (all) return parentLocationIds(items);
+  const known = new Set(items.map((item) => item.locationId));
+  const rootIds = new Set(
+    items.filter((item) => parentInList(item, known) === null).map((item) => item.locationId),
+  );
+  return new Set([...parentLocationIds(items)].filter((id) => rootIds.has(id)));
+};
 
 export interface LocationTreeRow {
   location: Location;
@@ -20,7 +75,7 @@ const byLocationCode = (a: Location, b: Location): number =>
  * - 부모-자식 순환이 있어도 무한 루프에 빠지지 않고 모든 항목이 정확히 한 번씩 나온다
  */
 export const buildLocationRows = (
-  items: Location[],
+  items: readonly Location[],
   expandedIds: ReadonlySet<number>,
 ): LocationTreeRow[] => {
   const byId = new Map<number, Location>(items.map((item) => [item.locationId, item]));

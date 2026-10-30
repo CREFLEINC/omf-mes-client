@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { locationFixtures } from './fixtures';
 import { LocationPane } from './location-pane';
-import { buildLocationRows } from './location-tree';
+import { buildLocationRows } from '../../patterns/location-tree';
 
 const expandedIds = new Set([2001, 2002]);
 const rows = buildLocationRows(locationFixtures, expandedIds);

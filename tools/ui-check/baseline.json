@@ -3217,10 +3217,6 @@
       "n": 1,
       "text": "가운뎃점: '「사용자·역할·권한 관리」 권한을 가진 사람이 한 명도 남지 않아 저장하지 않았습니다. 다른 역할에 이 권한을 먼저 준 뒤 다시 거두세요.',"
     },
-    "C-13|packages/i18n/src/ko/warehouse-layout.ts|182351eafd18": {
-      "n": 1,
-      "text": "가운뎃점: empty: '이 창고에 등록된 위치가 없습니다. 창고·Location 화면에서 먼저 등록하세요.',"
-    },
     "C-13|packages/i18n/src/ko/warehouse-location.ts|4f55aa0e9918": {
       "n": 1,
       "text": "가운뎃점: `이미지 성공 ${String(success)}건 · 실패 ${String(failed)}건 · 불러오는 중 ${String(pending)}건`,"
@@ -4476,10 +4472,6 @@
     "C-8|apps/web/src/screens/warehouse-layout/load-error-banner.tsx|da6b22b0db5e": {
       "n": 1,
       "text": "load-error-banner.tsx"
-    },
-    "C-8|apps/web/src/screens/warehouse-layout/select-field.tsx|7925b44059cd": {
-      "n": 1,
-      "text": "select-field.tsx"
     },
     "C-8|apps/web/src/screens/work-calendar/load-error-banner.tsx|da6b22b0db5e": {
       "n": 1,

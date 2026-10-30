@@ -4,14 +4,13 @@ import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 
 import { LOCATION_LEVEL_CODES } from '../../patterns/location-level';
+import { levelIconOf, levelNameOf } from '../../patterns/location-tree-cell';
 import { Select } from '../../patterns/select';
 import {
   ConfirmTarget,
   IdentityHeader,
   type LocationFact,
   LocationFacts,
-  levelIconOf,
-  levelNameOf,
 } from './location-identity';
 import { summarizeLocations } from './location-summary';
 import type { Location, LookupOptions, WarehouseFormValues } from './types';

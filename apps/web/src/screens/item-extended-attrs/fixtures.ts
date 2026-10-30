@@ -42,6 +42,8 @@ export const itemFixtures: Item[] = [
     nameKo: '합성 품목 A 표시명',
     nameVi: 'Ten san pham tong hop A',
     itemTypeCode: 'FINISHED',
+    erpSpec: null,
+    erpItemGroupCode: null,
     baseUomId: 7001,
     lotControlled: true,
     developmentItem: true,
@@ -64,6 +66,8 @@ export const itemFixtures: Item[] = [
     nameKo: null,
     nameVi: null,
     itemTypeCode: '',
+    erpSpec: null,
+    erpItemGroupCode: null,
     baseUomId: 7002,
     lotControlled: true,
     developmentItem: false,
@@ -85,6 +89,8 @@ export const itemFixtures: Item[] = [
     nameKo: '합성 품목 C 표시명',
     nameVi: null,
     itemTypeCode: 'SYN-TYPE-B',
+    erpSpec: null,
+    erpItemGroupCode: null,
     baseUomId: 9999,
     lotControlled: false,
     developmentItem: false,
@@ -320,6 +326,7 @@ export const bomComponentFixtures: BomComponent[] = [
     lotTraceRequired: true,
     backflushAllowed: true,
     sequenceNo: 1,
+    erpChildItemSeq: null,
   },
   {
     bomComponentId: 7002,
@@ -334,6 +341,7 @@ export const bomComponentFixtures: BomComponent[] = [
     lotTraceRequired: false,
     backflushAllowed: false,
     sequenceNo: 2,
+    erpChildItemSeq: null,
   },
   {
     bomComponentId: 7003,
@@ -348,6 +356,7 @@ export const bomComponentFixtures: BomComponent[] = [
     lotTraceRequired: false,
     backflushAllowed: true,
     sequenceNo: 3,
+    erpChildItemSeq: null,
   },
 ];
 

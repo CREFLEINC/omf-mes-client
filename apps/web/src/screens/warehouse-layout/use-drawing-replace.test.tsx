@@ -8,6 +8,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { useLayout } from './queries';
+import { DEFAULT_MARKER_SHAPE } from './layout-draft';
 import { useDrawingReplace } from './use-drawing-replace';
 
 /**
@@ -267,7 +268,10 @@ describe('useDrawingReplace — 올리기와 저장을 잇는다', () => {
     expect(puts[0]?.headers.get('If-Match')).toBe('"7"');
     expect(puts[0]?.headers.get(KEY_HEADER)).not.toBeNull();
     expect(puts[0]?.body.drawingAttachmentId).toBe(NEW_ATTACHMENT_ID);
-    expect(puts[0]?.body.markers).toEqual([{ locationId: 7, x: 0.1, y: 0.2 }]);
+    /* 응답에 크기 · 회전이 없으면 화면 기본값으로 실린다(서버 확정 2026-10-30). */
+    expect(puts[0]?.body.markers).toEqual([
+      { locationId: 7, x: 0.1, y: 0.2, ...DEFAULT_MARKER_SHAPE },
+    ]);
 
     expect(onReplaced).toHaveBeenCalledTimes(1);
     expect(result.current.replace.pendingAttachmentId).toBeNull();

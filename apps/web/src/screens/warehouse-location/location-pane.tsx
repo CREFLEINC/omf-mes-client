@@ -4,7 +4,6 @@ import {
   type Column,
   EmptyState,
   Icon,
-  IconButton,
   SearchInput,
   SkeletonText,
 } from '@crefle/web-ui';
@@ -12,10 +11,13 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import { BoardTable } from '../../patterns/board-table';
+import { locationShownName, type LocationTreeRow } from '../../patterns/location-tree';
+import {
+  LocationTreeCell,
+  LocationTreeHeader,
+  levelNameOf,
+} from '../../patterns/location-tree-cell';
 import { OneLine } from '../../patterns/po-board';
-import { levelIconOf, levelNameOf } from './location-identity';
-import type { LocationTreeRow } from './location-tree';
-import { locationShownName } from './mappers';
 import type { Location } from './types';
 
 export interface LocationPaneProps {
@@ -53,9 +55,6 @@ export interface LocationPaneProps {
 
 const t = messages.warehouseLocation;
 
-/** 들여쓰기 한 단계의 픽셀 폭. depth에 곱해 쓴다. */
-const INDENT_PX = 20;
-
 export const LocationPane = ({
   rows,
   isLoading,
@@ -80,81 +79,49 @@ export const LocationPane = ({
   loadError,
 }: LocationPaneProps) => {
   const addRootNoteId = useId();
-  /* 하나라도 펼쳐 있으면 접기, 다 접혀 있으면 펼치기. */
-  const anyExpanded = rows.some(
-    (row) => row.hasChildren && expandedIds.has(row.location.locationId),
-  );
-  const toggleAllLabel = anyExpanded ? t.locationTable.collapseAll : t.locationTable.expandAll;
 
-  /**
-   * DS에 Tree 컴포넌트가 없어 Table + 들여쓰기 + 접기 버튼의 조합으로 계층을 만든다.
-   * 이 조합은 화면 슬라이스가 소유한다 — 조합물은 디자인 시스템으로 올리지 않는다.
-   */
+  /** 계층 칸 · 머리는 창고 배치도와 같은 부품이다(`patterns/location-tree-cell`). */
   const columns: Column<LocationTreeRow>[] = [
     {
       key: 'locationCode',
       /* 전체 접기 · 펼치기는 머리의 펼치기 단추 자리에(사용자 지시 2026-10-29) — 행의 펼치기 단추와 한 줄로 선다. */
       header: (
-        <span className="tree-toggle-header">
-          <IconButton
-            size="sm"
-            icon={anyExpanded ? 'unfold_less' : 'unfold_more'}
-            aria-label={toggleAllLabel}
-            title={toggleAllLabel}
-            disabled={!rows.some((row) => row.hasChildren)}
-            onClick={anyExpanded ? onCollapseAll : onExpandAll}
-          />
+        <LocationTreeHeader
+          rows={rows}
+          expandedIds={expandedIds}
+          onCollapseAll={onCollapseAll}
+          onExpandAll={onExpandAll}
+        >
           {t.fields.locationCode}
-        </span>
+        </LocationTreeHeader>
       ),
       width: '380px',
       /*
        * 위치 코드만 머리·값 왼쪽(사용자 결정 2026-09-18 · omf-all-around#17) — 가운데로 두면 행마다 따로
        * 가운데에 놓여 깊이 들여쓰기가 상쇄돼 상하위가 읽히지 않았다. 별칭·사용 상태는 가운데.
        */
-      render: (row) => {
-        const isExpanded = expandedIds.has(row.location.locationId);
-
-        return (
-          <div
-            className="tree-toggle"
-            data-depth={row.depth}
-            // depth는 데이터에서 오는 값이라 클래스로 미리 정의할 수 없다.
-            style={{ paddingLeft: `${row.depth * INDENT_PX}px` }}
-          >
-            {row.hasChildren ? (
-              <IconButton
-                size="sm"
-                icon={isExpanded ? 'expand_more' : 'chevron_right'}
-                aria-label={isExpanded ? t.locationTable.collapse : t.locationTable.expand}
-                onClick={() => onToggleExpand(row.location.locationId)}
-              />
-            ) : (
-              <span aria-hidden="true" style={{ display: 'inline-block', width: '32px' }} />
-            )}
-            <Icon
-              name={levelIconOf(row.location).name}
-              size={18}
-              className={`location-level-icon is-${levelIconOf(row.location).tone}`}
-              aria-hidden="true"
-            />
-            <button type="button" className="link-cell" onClick={() => onEdit(row.location)}>
-              {row.location.locationCode}
-            </button>
-            {/* 지정한 품목만 두는 위치 — 코드 뒤 작은 자물쇠(사용자 지시 2026-10-29). */}
-            {row.location.hasItemRestriction && (
-              <span
-                className="location-restricted-icon"
-                role="img"
-                aria-label={t.itemsSection.restricted}
-                title={t.itemsSection.restricted}
-              >
-                <Icon name="lock" size={16} aria-hidden="true" />
-              </span>
-            )}
-          </div>
-        );
-      },
+      render: (row) => (
+        <LocationTreeCell
+          row={row}
+          expanded={expandedIds.has(row.location.locationId)}
+          onToggle={onToggleExpand}
+        >
+          <button type="button" className="link-cell" onClick={() => onEdit(row.location)}>
+            {row.location.locationCode}
+          </button>
+          {/* 지정한 품목만 두는 위치 — 코드 뒤 작은 자물쇠(사용자 지시 2026-10-29). */}
+          {row.location.hasItemRestriction && (
+            <span
+              className="location-restricted-icon"
+              role="img"
+              aria-label={t.itemsSection.restricted}
+              title={t.itemsSection.restricted}
+            >
+              <Icon name="lock" size={16} aria-hidden="true" />
+            </span>
+          )}
+        </LocationTreeCell>
+      ),
     },
     {
       /* 별칭이 이름이다(사용자 지시 2026-10-29) — 없으면 저장된 위치명. 열 폭 저장 키는 그대로 둔다. */
@@ -221,7 +188,7 @@ export const LocationPane = ({
       /* 입고 관리 짜임의 표(사용자 지시 2026-10-29). 폭 없는 열은 별칭 하나. */
       <BoardTable
         label={t.tabs.location}
-        className="warehouse-location-location-table"
+        className="location-tree-table warehouse-location-location-table"
         columns={columns}
         rows={rows}
         getRowId={(row) => String(row.location.locationId)}

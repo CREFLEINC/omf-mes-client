@@ -1,4 +1,5 @@
-import { compareLocationCodes, locationCodeAt, maxLocationSequence } from './location-code';
+import { compareLocationCodes } from '../../patterns/location-tree';
+import { locationCodeAt, maxLocationSequence } from './location-code';
 import type { Location } from './types';
 
 /**

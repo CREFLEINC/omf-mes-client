@@ -1,11 +1,27 @@
+import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { defaultWarehouseFilters } from './code-options';
-import { lookupFixtures } from './fixtures';
-import type { WarehouseFilters } from './types';
-import { WarehouseFilterBar } from './warehouse-filter-bar';
+import {
+  defaultWarehouseFilters,
+  WarehouseFilterBar,
+  type WarehouseFilters,
+  warehouseListQuery,
+} from './warehouse-filter-bar';
+
+/* 조건 상자의 선택지 — 화면 픽스처에 기대지 않는다(패턴은 화면을 모른다). */
+const lookupFixtures = {
+  plants: [
+    { value: '11', label: '1공장' },
+    { value: '12', label: '2공장' },
+  ],
+  warehouseTypes: [
+    { value: 'MATERIAL', label: '자재' },
+    { value: 'PRODUCT', label: '제품' },
+    { value: 'GENERAL', label: '일반' },
+  ],
+};
 
 const renderPane = (overrides: Partial<Parameters<typeof WarehouseFilterBar>[0]> = {}) => {
   const onApplyFilters = vi.fn();
@@ -88,5 +104,31 @@ describe('WarehouseFilterBar', () => {
     await user.click(screen.getByRole('button', { name: '창고 추가' }));
 
     expect(onAddWarehouse).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('창고 배치도에서 쓰는 조건 상자', () => {
+  it('창고 등록을 주지 않으면 그 단추가 없다', () => {
+    renderPane({ onAddWarehouse: undefined });
+
+    expect(
+      screen.queryByRole('button', { name: messages.warehouseLocation.actions.addWarehouse }),
+    ).toBeNull();
+  });
+
+  it('조건을 서버 질의로 옮긴다 — 빈 조건은 싣지 않고, 숫자가 아닌 공장은 버린다', () => {
+    expect(warehouseListQuery(defaultWarehouseFilters)).toEqual({ includeInactive: false });
+    expect(
+      warehouseListQuery({
+        q: 'WH',
+        plantId: 'abc',
+        warehouseTypeCode: 'MATERIAL',
+        includeInactive: true,
+      }),
+    ).toEqual({ q: 'WH', warehouseTypeCode: 'MATERIAL', includeInactive: true });
+    expect(warehouseListQuery({ ...defaultWarehouseFilters, plantId: '11' })).toEqual({
+      plantId: 11,
+      includeInactive: false,
+    });
   });
 });

@@ -26,13 +26,6 @@ const LEVEL_DIGITS: Record<LocationLevelCode, number> = {
   CELL: 2,
 };
 
-/**
- * 코드 순서 — 숫자를 수로 읽는다. 랙 `R100` 이 `R99` 뒤에, 자리 수가 섞인 옛 코드도 차례대로 놓인다.
- * 로캘을 `en` 으로 묶어 실행 환경마다 순서가 달라지지 않게 한다.
- */
-export const compareLocationCodes = (a: string, b: string): number =>
-  a.localeCompare(b, 'en', { numeric: true });
-
 /** `n` 번째 코드 — 구역은 창고 바로 밑이라 상위 코드를 붙이지 않는다. */
 export const locationCodeAt = (
   level: LocationLevelCode,

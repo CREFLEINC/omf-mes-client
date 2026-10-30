@@ -41,10 +41,6 @@ describe('validateWarehouse', () => {
     expect(errors.warehouseTypeCode).toBe('필수 입력 항목입니다.');
   });
 
-  it('외부창고를 켜도 거래처를 묻지 않는다', () => {
-    expect(validateWarehouse({ ...filled, isExternal: true }, 'edit')).toEqual({});
-  });
-
   it('신규 등록에서 공장이 비면 필수 오류다', () => {
     expect(validateWarehouse({ ...filled, plantId: '' }, 'create').plantId).toBe(
       '필수 입력 항목입니다.',

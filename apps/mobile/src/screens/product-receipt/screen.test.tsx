@@ -98,7 +98,6 @@ const routes = (options: Options = {}): StubRoute[] => [
             warehouseCode: 'FG',
             warehouseName: '완제품창고',
             warehouseTypeCode: 'PRODUCT',
-            isExternal: false,
             isDefect: false,
             isActive: true,
           },

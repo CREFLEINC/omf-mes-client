@@ -22,7 +22,6 @@ const base: Warehouse = {
   warehouseCode: 'WH-01',
   warehouseName: '1공장 자재창고',
   warehouseTypeCode: 'MATERIAL',
-  isExternal: false,
   isDefect: false,
   isActive: true,
 };
@@ -47,14 +46,12 @@ describe('warehouseToFormValues', () => {
   it('코드·명칭·스위치 값은 그대로 옮긴다', () => {
     const values = warehouseToFormValues({
       ...base,
-      isExternal: true,
       warehouseName: '외부 보관창고',
     });
 
     expect(values.warehouseCode).toBe('WH-01');
     expect(values.warehouseName).toBe('외부 보관창고');
     expect(values.warehouseTypeCode).toBe('MATERIAL');
-    expect(values.isExternal).toBe(true);
   });
 });
 
@@ -65,7 +62,6 @@ describe('emptyWarehouseFormValues', () => {
     expect(values.plantId).toBe('');
     expect(values.warehouseCode).toBe('');
     expect(values.warehouseName).toBe('');
-    expect(values.isExternal).toBe(false);
   });
 
   it('호출할 때마다 새 객체를 준다 — 이전 입력이 남지 않는다', () => {
@@ -269,8 +265,6 @@ describe('isSameWarehouseValues', () => {
     const values = warehouseToFormValues(warehouseFixtures[0]!);
 
     expect(isSameWarehouseValues(values, { ...values, warehouseName: '바뀐 이름' })).toBe(false);
-    expect(isSameWarehouseValues(values, { ...values, isExternal: !values.isExternal })).toBe(
-      false,
-    );
+    expect(isSameWarehouseValues(values, { ...values, isDefect: !values.isDefect })).toBe(false);
   });
 });

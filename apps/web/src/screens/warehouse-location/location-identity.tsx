@@ -2,50 +2,13 @@ import { Chip, Icon, IconButton, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId, useState } from 'react';
 
-import type { LocationLevelCode } from '../../patterns/location-level';
+import { levelIconOf, levelNameOf } from '../../patterns/location-tree-cell';
 import { Select } from '../../patterns/select';
-import {
-  isPutawayStaging,
-  isSystemLocation,
-  SYSTEM_LOCATION_ROLE,
-} from '../../patterns/system-location';
 import type { Location } from './types';
 
 const t = messages.warehouseLocation;
 
-/**
- * 단계마다 다른 모양 · 색의 아이콘(사용자 지시 2026-10-29) — 줄마다 어느 단계인지 한눈에 갈리게. 서버가 만든 자리는
- * 단계가 구역이어도 따로 둔다(창고 전체 · 적치 대기). 목록과 수정 창이 같은 아이콘을 쓴다.
- */
-const LEVEL_ICONS: Record<LocationLevelCode, string> = {
-  ZONE: 'grid_view',
-  RACK: 'shelves',
-  LEVEL: 'layers',
-  CELL: 'crop_square',
-};
-
 type LevelSubject = Pick<Location, 'locationLevelCode' | 'systemRoleCode'>;
-
-export const levelIconOf = (location: LevelSubject): { name: string; tone: string } => {
-  if (isPutawayStaging(location)) return { name: 'move_to_inbox', tone: 'system' };
-  if (isSystemLocation(location)) return { name: 'warehouse', tone: 'system' };
-  const level = location.locationLevelCode;
-  return level === null
-    ? { name: 'place', tone: 'none' }
-    : { name: LEVEL_ICONS[level], tone: level.toLowerCase() };
-};
-
-/** 단계 이름 — 서버가 만든 자리는 그 역할 이름(창고 전체 · 적치 대기). */
-export const levelNameOf = (location: LevelSubject): string | null => {
-  if (location.systemRoleCode === SYSTEM_LOCATION_ROLE.putawayStaging) {
-    return t.values.systemRoles.PUTAWAY_STAGING;
-  }
-  if (location.systemRoleCode === SYSTEM_LOCATION_ROLE.warehouseWhole) {
-    return t.values.systemRoles.WAREHOUSE_WHOLE;
-  }
-  const level = location.locationLevelCode;
-  return level === null || level === undefined ? null : t.values.locationLevels[level];
-};
 
 export interface LocationIdentityProps {
   subject: LevelSubject;

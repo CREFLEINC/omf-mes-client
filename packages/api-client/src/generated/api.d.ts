@@ -8730,7 +8730,7 @@ export interface paths {
     };
     /**
      * 거래처 목록
-     * @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 화면이 쓰는 것은 partnerId·partnerName 이다. countryCode·erpPartnerCode 는 이 10화면이 표시하지 않는다 — 물리 모델 1:1 유지(00-설계 §3-2 규칙 2)로 옮겼을 뿐이며 서버가 목록에서 빼도 화면은 영향받지 않는다. 근거: W-06-07 §4-A 외부창고 거래처(조건부 필수 ck_external_warehouse_partner) · W-06-05 §4-D 외부코드 거래처
+     * @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 화면이 쓰는 것은 partnerId·partnerName 이다. countryCode·erpPartnerCode 는 이 10화면이 표시하지 않는다 — 물리 모델 1:1 유지(00-설계 §3-2 규칙 2)로 옮겼을 뿐이며 서버가 목록에서 빼도 화면은 영향받지 않는다. 근거: W-06-05 §4-D 외부코드 거래처
      */
     get: {
       parameters: {
@@ -14916,7 +14916,7 @@ export interface paths {
     put?: never;
     /**
      * 검사기준 엑셀 올리기
-     * @description ⭐ 선행 구현(P-140) — 설계 사본에 서버가 먼저 적은 자리다. 한 행 = 검사 항목 하나, 같은 기준코드 행들이 기준 하나·작성중 버전 하나가 된다. 첫 시트만 읽고 머리글 이름으로 열을 찾는다. 첫 줄이 머리글 표가 아니면 고객사 검사기준서(TCKT) 서식으로 읽는다 — 기준서 한 장이 기준 하나(Code No. 가 여럿이면 품목마다 하나)이고 샘플 비율(%)은 채우지 않는다 — 비율 없는 작성중 버전으로 두고 확정할 때 막는다(omf-all-around#201). 새 기준코드는 기준 등록 → 버전 등록 → 항목 저장, 이미 있는 기준코드는 신규 버전 발행 → 버전 설정 저장 → 항목 저장을 차례로 부른다(각 단계의 검증·오류 문구가 그대로다). 통째로 되돌리지 않는다 — 기준코드 묶음 단위로 성공·실패를 돌려주고, 실패한 묶음이 만든 기준·버전은 지운다. 확정은 하지 않는다. 파일은 보관하지 않는다. 근거: W-06-02 §5-1 「엑셀 업로드」 · omf-all-around#199
+     * @description ⭐ 선행 구현(P-140) — 설계 사본에 서버가 먼저 적은 자리다. 한 행 = 검사 항목 하나, 같은 기준코드 행들이 기준 하나·작성중 버전 하나가 된다. 첫 시트만 읽고 머리글 이름으로 열을 찾는다. 첫 줄이 머리글 표가 아니면 고객사 검사기준서(TCKT) 서식으로 읽는다 — 기준서 한 장이 기준 하나(Code No. 가 여럿이면 품목마다 하나)이고 샘플 비율(%)은 채우지 않는다 — 비율 없는 작성중 버전으로 두고 확정할 때 막는다(omf-all-around#201). 새 기준코드는 기준 등록 → 버전 등록 → 항목 저장, 이미 있는 기준코드는 신규 버전 발행 → 버전 설정 저장 → 항목 저장을 차례로 부른다(각 단계의 검증·오류 문구가 그대로다). 통째로 되돌리지 않는다 — 기준코드 묶음 단위로 성공·실패를 돌려주고, 실패한 묶음이 만든 기준·버전은 지운다. 확정은 하지 않는다 — 응답 `created` 에 묶음마다 만든 작성중 버전 id 를 실어, 화면이 이어서 [확정](`:confirm`)을 부른다(omf-all-around#208). 기준서의 「Bản vẽ」 아래 · 항목 표 왼쪽 그림(PNG·JPEG)을 만든 버전의 도면으로 붙인다(다시 올리면 바꾼다 · 장부 P-155 · omf-all-around#211). 가로·세로가 모두 100px 보다 작은 그림(동그라미 번호·측정 기호)은 도면으로 붙이지 않는다(omf-all-around#208). 파일은 보관하지 않는다. 근거: W-06-02 §5-1 「엑셀 업로드」 · omf-all-around#199
      */
     post: {
       parameters: {
@@ -14940,13 +14940,13 @@ export interface paths {
         };
       };
       responses: {
-        /** @description 처리 결과. succeeded 는 반영된 기준코드 수, BatchResult.failed[].index 는 그 묶음 첫 행의 자료 순번(머리글 제외 0부터), key 는 기준코드다 */
+        /** @description 처리 결과. succeeded 는 반영된 기준코드 수, BatchResult.failed[].index 는 그 묶음 첫 행의 자료 순번(머리글 제외 0부터), key 는 기준코드다. created 는 반영된 묶음마다 만든 작성중 버전이다(index·key 는 failed 와 같은 뜻) */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': components['schemas']['BatchResult'];
+            'application/json': components['schemas']['InspectionPlanImportResult'];
           };
         };
         /** @description 파일을 읽을 수 없다 */
@@ -17909,6 +17909,83 @@ export interface paths {
         };
         /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
         401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/goods-receipts:defaults': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 입고 기본값
+     * @description 입고 처리 화면(W-01-10·W-04-06)이 LOT 마다 입고 칸을 미리 채운다 — 입고는 사람이 한다. 창고는 LOT 이 걸린 발주 라인의 ERP 창고와 같은 코드의 활성 MES 창고(입하와 같은 공장 · ERP 구매입고 송신도 같은 값), 불량 LOT 은 입하 공장의 활성 불량창고다. 위치는 그 창고의 적치 대기 자리. 상태는 정상 → NORMAL·AVAILABLE, 불량 → DEFECTIVE·ON_HOLD. 못 채운 칸은 null 이고 issues 가 까닭이다. 영업일·입고 시각은 화면이 채운다(공유계약 C-8). 근거: 사용자 결정 2026-10-29 · 장부 P-150
+     */
+    get: {
+      parameters: {
+        query: {
+          /**
+           * @description 쉼표로 이은 LOT id · 같은 id 는 한 번만 낸다 · 입력 순서대로
+           * @example [
+           *       1001,
+           *       1002
+           *     ]
+           */
+          lotIds: number[];
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description LOT 마다 한 줄 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['ReceiptDefaults'][];
+            };
+          };
+        };
+        /** @description lotIds 가 없거나 틀리거나 100개를 넘는다 — 틀린 값을 무시하면 빠진 LOT 이 없는 것처럼 보인다 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — 입고 처리(POST /logistics/goods-receipts)와 같은 권한 */
+        403: {
           headers: {
             [name: string]: unknown;
           };
@@ -33274,7 +33351,7 @@ export interface paths {
             'application/json': components['schemas']['InspectionResult'];
           };
         };
-        /** @description 검증 실패. 고쳐야 풀린다 ⭐ IQC 불합격(REJECTED) 확정은 그 결과에 불량 기록이 1건 이상 있어야 한다 — 없으면 field=defectRecords, code=REQUIRED(서버 선행 · 장부 P-42). */
+        /** @description 검증 실패. 고쳐야 풀린다 ⭐ IQC 확정은 불합격(REJECTED) 판정이거나 불합격 수량이 0 보다 크면 그 결과에 불량 기록이 1건 이상 있어야 한다 — 없으면 field=defects, code=REQUIRED(서버 선행 · 장부 P-42 · omf-all-around#205). */
         400: {
           headers: {
             [name: string]: unknown;
@@ -40779,6 +40856,18 @@ export interface components {
       succeeded: number;
       failed: components['schemas']['BatchFailure'][];
     };
+    /** @description 검사기준 엑셀 올리기 결과 — BatchResult 에 만든 버전 목록을 더한다 */
+    InspectionPlanImportResult: components['schemas']['BatchResult'] & {
+      /** @description 반영된 묶음마다 만든 작성중 버전 — 화면이 올린 직후 확정한다(omf-all-around#208) */
+      created: {
+        /** @description 그 묶음 첫 행의 자료 순번(머리글 제외 0부터) */
+        index: number;
+        /** @description 기준코드 */
+        key: string;
+        /** Format: int64 */
+        inspectionPlanVersionId: number;
+      }[];
+    };
     /** @description 코드 필드 수정 가능 여부. 근거: 공유계약 B-4 — 참조 건수가 0일 때만 수정 허용. 화면이 별도 호출로 세면 화면마다 다르게 구현된다 */
     Editability: {
       /** @example false */
@@ -40837,22 +40926,11 @@ export interface components {
        */
       warehouseTypeCode: string;
       /**
-       * @default false
-       * @example false
-       */
-      isExternal: boolean;
-      /**
-       * @description 불량창고 여부. isExternal 을 대체하지 않고 보완한다 — 창고 유형(자재·제품·반제품·상품·생산) 축과 별개로, 불량은 자재 불량창고도 제품 불량창고도 받을 수 있는 세 번째(품질) 축이다. W-01-06 §3의 창고 선택이 isDefect=true 로 걸러진다. 근거: DR-012 확정 3-C(2026-08-13) · 공유계약 §I-42 · omf-mes#147
+       * @description 불량창고 여부. 창고 유형(자재·제품·반제품·상품·생산) 축과 별개로, 불량은 자재 불량창고도 제품 불량창고도 받을 수 있는 품질 축이다. W-01-06 §3의 창고 선택이 isDefect=true 로 걸러진다. 근거: DR-012 확정 3-C(2026-08-13) · 공유계약 §I-42 · omf-mes#147
        * @default false
        * @example false
        */
       isDefect: boolean;
-      /**
-       * Format: int64
-       * @description 외부창고이면 반드시 있다 — 외부창고가 아니면 비어 있다. 수정 화면이 지금 지정된 거래처를 그대로 보이는 데 쓴다.
-       * @example 1001
-       */
-      partnerId?: number | null;
       /**
        * @default true
        * @example true
@@ -40885,22 +40963,11 @@ export interface components {
        */
       warehouseTypeCode: string;
       /**
-       * @default false
-       * @example false
-       */
-      isExternal?: boolean;
-      /**
        * @description 불량창고 여부. 근거: DR-012 확정 3-C · omf-mes#147
        * @default false
        * @example false
        */
       isDefect?: boolean;
-      /**
-       * Format: int64
-       * @description ck_external_warehouse_partner — isExternal 이 참이면 필수
-       * @example 1001
-       */
-      partnerId?: number | null;
     };
     /** @description 창고 수정 요청. plantId 는 신규만(편집 불가) — 근거: W-06-07 §4-A 편집 열. isActive 는 별도 사용 중지 액션(:deactivate)으로만 바꾼다 — 근거: W-06-07 §5-1. 낙관적 잠금은 공유계약 B-1. */
     WarehouseUpdate: {
@@ -40921,19 +40988,11 @@ export interface components {
        * @example MATERIAL
        */
       warehouseTypeCode: string;
-      /** @example false */
-      isExternal: boolean;
       /**
        * @description 불량창고 여부. 근거: DR-012 확정 3-C · omf-mes#147
        * @example false
        */
       isDefect: boolean;
-      /**
-       * Format: int64
-       * @description ck_external_warehouse_partner — isExternal 이 참이면 필수
-       * @example 1001
-       */
-      partnerId?: number | null;
     };
     WarehouseDetailResponse: {
       warehouse: components['schemas']['Warehouse'];
@@ -42037,7 +42096,7 @@ export interface components {
     WorkerQualificationListResponse: {
       items: components['schemas']['WorkerQualification'][];
     };
-    /** @description ERP 수신본. 원본 필드(itemCode·itemName·itemTypeCode·baseUomId)는 읽기 전용이고 MES 확장 속성만 편집한다 — QA #34. 원본 필드는 편집 본문(ItemUpdate)에 자리 자체를 두지 않아, 행 단위 출처 표시가 없어도 잠금이 성립한다. */
+    /** @description ERP 수신본. 원본 필드(itemCode·itemName·itemTypeCode·baseUomId·erpSpec·erpItemGroupCode)는 읽기 전용이고 MES 확장 속성만 편집한다 — QA #34. 원본 필드는 편집 본문(ItemUpdate)에 자리 자체를 두지 않아, 행 단위 출처 표시가 없어도 잠금이 성립한다. */
     Item: {
       /**
        * Format: int64
@@ -42140,6 +42199,16 @@ export interface components {
        * @example 500
        */
       defaultProductionLotSize?: number | null;
+      /**
+       * @description ERP 규격(SPEC) — 받은 그대로다. ERP 가 비워 보냈거나 ERP 에서 받지 않은 품목은 null
+       * @example PC, LD7700, V-2, NATURAL
+       */
+      erpSpec: string | null;
+      /**
+       * @description ERP 품목그룹(ITEM_GROUP_CD). ERP 가 비워 보냈거나 ERP 에서 받지 않은 품목은 null
+       * @example ZZ400
+       */
+      erpItemGroupCode: string | null;
     };
     /** @description 품목 MES 확장 속성 수정 요청. 원본 4열(itemCode·itemName·itemTypeCode·baseUomId)은 이 요청에 포함하지 않는다 — 항상 읽기 전용(ERP 수신본). 근거: W-06-05 §4-B·§5-1 */
     ItemUpdate: {
@@ -42387,7 +42456,7 @@ export interface components {
     BomListResponse: {
       items: components['schemas']['Bom'][];
     };
-    /** @description ERP 원본 열(sequenceNo·componentItemId·requiredQty·uomId·scrapRate·isMandatory)과 MES 확장 열(routingOperationId·actualUseProcessId·lotTraceRequired·backflushAllowed) 이 한 행에 섞인다 — W-06-05 §4-F. MES 확장 4열만 PUT 으로 편집한다. scrapRate 는 0~1 비율이며 퍼센트가 아니다(A-8) */
+    /** @description ERP 원본 열(sequenceNo·componentItemId·requiredQty·uomId·scrapRate·isMandatory·erpChildItemSeq)과 MES 확장 열(routingOperationId·actualUseProcessId·lotTraceRequired·backflushAllowed) 이 한 행에 섞인다 — W-06-05 §4-F. MES 확장 4열만 PUT 으로 편집한다. scrapRate 는 0~1 비율이며 퍼센트가 아니다(A-8) */
     BomComponent: {
       /**
        * Format: int64
@@ -42418,7 +42487,7 @@ export interface components {
        */
       actualUseProcessId?: number | null;
       /**
-       * @description ERP 원본 · qty_t · CHECK > 0
+       * @description ERP 원본 · qty_t · ERP 가 0 을 보낸다(2026-10-20 제약 제거)
        * @example 500
        */
       requiredQty: number;
@@ -42458,6 +42527,11 @@ export interface components {
        * @example 1
        */
       sequenceNo: number;
+      /**
+       * @description ERP 자품목 순번(CHILD_ITEM_SEQ) — 받은 그대로다. 0 도 온다 — 1 이상인 sequenceNo 와 따로 둔다. ERP 순번을 받지 않은 구성품은 null
+       * @example 10
+       */
+      erpChildItemSeq: number | null;
     };
     /** @description BOM 구성품 MES 확장 열 수정 요청 — 편집 가능한 4열만 담는다. 근거: W-06-05 §4-F·§5-1 */
     BomComponentUpdate: {
@@ -43614,7 +43688,7 @@ export interface components {
        */
       isActive: boolean;
     };
-    /** @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 화면이 쓰는 것은 partnerId·partnerName 이다. countryCode·erpPartnerCode 는 이 10화면이 표시하지 않는다 — 물리 모델 1:1 유지(00-설계 §3-2 규칙 2)로 옮겼을 뿐이며 서버가 목록에서 빼도 화면은 영향받지 않는다. 근거: W-06-07 §4-A 외부창고 거래처(조건부 필수 ck_external_warehouse_partner) · W-06-05 §4-D 외부코드 거래처 */
+    /** @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 화면이 쓰는 것은 partnerId·partnerName 이다. countryCode·erpPartnerCode 는 이 10화면이 표시하지 않는다 — 물리 모델 1:1 유지(00-설계 §3-2 규칙 2)로 옮겼을 뿐이며 서버가 목록에서 빼도 화면은 영향받지 않는다. 근거: W-06-05 §4-D 외부코드 거래처 */
     Partner: {
       /**
        * Format: int64
@@ -44213,10 +44287,67 @@ export interface components {
        * @example 1001
        */
       locationId: number;
-      /** @example 0.42 */
+      /**
+       * @description 표식 중심점의 가로 위치 — 도면 폭 대비 비율
+       * @example 0.42
+       */
       x: number;
-      /** @example 0.18 */
+      /**
+       * @description 표식 중심점의 세로 위치 — 도면 높이 대비 비율
+       * @example 0.18
+       */
       y: number;
+      /**
+       * @description 표식 너비 — 도면 폭 대비 비율(x 와 같은 단위). 기본값 0.05
+       * @example 0.05
+       */
+      width: number;
+      /**
+       * @description 표식 높이 — 도면 높이 대비 비율(y 와 같은 단위). 기본값 0.05
+       * @example 0.05
+       */
+      height: number;
+      /**
+       * @description 회전 각도(도) — 시계 방향 · 중심점(x, y) 기준. 기본값 0
+       * @example 0
+       */
+      rotation: number;
+    };
+    /** @description WarehouseLayoutMarker 에서 width·height·rotation 을 선택으로 바꾼 저장 요청 항목. 빼면 서버가 기본값(0.05 · 0.05 · 0)을 채워 저장한다 */
+    WarehouseLayoutMarkerUpsert: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      locationId: number;
+      /**
+       * @description 표식 중심점의 가로 위치 — 도면 폭 대비 비율
+       * @example 0.42
+       */
+      x: number;
+      /**
+       * @description 표식 중심점의 세로 위치 — 도면 높이 대비 비율
+       * @example 0.18
+       */
+      y: number;
+      /**
+       * @description 표식 너비 — 도면 폭 대비 비율(x 와 같은 단위). 기본값 0.05
+       * @default 0.05
+       * @example 0.05
+       */
+      width?: number;
+      /**
+       * @description 표식 높이 — 도면 높이 대비 비율(y 와 같은 단위). 기본값 0.05
+       * @default 0.05
+       * @example 0.05
+       */
+      height?: number;
+      /**
+       * @description 회전 각도(도) — 시계 방향 · 중심점(x, y) 기준. 기본값 0
+       * @default 0
+       * @example 0
+       */
+      rotation?: number;
     };
     /** @description 도면과 점을 통째로 바꾼다 — 화면의 저장이 그 단위다. */
     WarehouseLayoutReplace: {
@@ -44225,7 +44356,7 @@ export interface components {
        * @example 1001
        */
       drawingAttachmentId?: number;
-      markers: components['schemas']['WarehouseLayoutMarker'][];
+      markers: components['schemas']['WarehouseLayoutMarkerUpsert'][];
     };
     /** @description 설비 그룹. 화면이 「설비 그룹」이라 부르는 것과 저장처가 같은 자원이다 — Equipment.productionLineId 가 가리키는 것이 이 equipmentGroupId 다. 계층은 parentGroupId 자기참조이며 순환은 서버가 막는다. 근거: W-05-12 §3·§4-A */
     EquipmentGroup: {
@@ -46760,6 +46891,102 @@ export interface components {
     };
     GoodsReceiptLineListResponse: {
       items: components['schemas']['GoodsReceiptLine'][];
+    };
+    /** @description LOT 하나의 입고 칸 기본값 — 칸 이름은 POST /logistics/goods-receipts 와 같다. 장부 P-150 */
+    ReceiptDefaults: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      lotId: number;
+      /**
+       * @description 없는 LOT 이면 null
+       * @example LOT-20261029-0001
+       */
+      lotNo: string | null;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      itemId: number | null;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      uomId: number | null;
+      /**
+       * Format: int64
+       * @description 입하 공장
+       * @example 1001
+       */
+      plantId: number | null;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      inboundReceiptId: number | null;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      inboundReceiptLineId: number | null;
+      /**
+       * @description 늘 MATERIAL
+       * @example MATERIAL
+       */
+      receiptTypeCode: string;
+      /**
+       * @description 입고 가능 수량
+       * @example 30
+       */
+      receiptQty: number | null;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      warehouseId: number | null;
+      /** @example WH-01 */
+      warehouseCode: string | null;
+      /** @example 1공장 자재창고 */
+      warehouseName: string | null;
+      /**
+       * Format: int64
+       * @description 그 창고의 적치 대기 자리
+       * @example 1001
+       */
+      destinationLocationId: number | null;
+      /** @example SYS-STAGING */
+      destinationLocationCode: string | null;
+      /**
+       * @description NORMAL · DEFECTIVE
+       * @example NORMAL
+       */
+      qualityStatusCode: string | null;
+      /**
+       * @description AVAILABLE · ON_HOLD
+       * @example AVAILABLE
+       */
+      inventoryStatusCode: string | null;
+      /** @description 못 채운 까닭 — 비었으면 다 채웠다 */
+      issues: {
+        /**
+         * @description NOT_FOUND 는 lotId·receiptTypeCode 밖의 칸을 비우고, NOT_RECEIPT_READY 는 lotNo·itemId·uomId 까지 싣는다. 입고 대기 = 입하가 취소·취소 요청이 아니고 LOT 이 정상·불량이고 입고 가능 수량이 남음. 그 밖의 까닭은 창고·위치 칸만 비운다(NO_STAGING_LOCATION 은 위치만)
+         * @example NO_MES_WAREHOUSE
+         * @enum {string}
+         */
+        code:
+          | 'NOT_FOUND'
+          | 'NOT_RECEIPT_READY'
+          | 'NO_ERP_WAREHOUSE'
+          | 'MULTIPLE_ERP_WAREHOUSES'
+          | 'NO_MES_WAREHOUSE'
+          | 'OTHER_PLANT_WAREHOUSE'
+          | 'NO_DEFECT_WAREHOUSE'
+          | 'MULTIPLE_DEFECT_WAREHOUSES'
+          | 'NO_STAGING_LOCATION';
+        /** @example ERP 창고의 MES 창고가 없거나 꺼져 있습니다 — ERP 연동 현황의 창고에서 만듭니다. */
+        message: string;
+      }[];
     };
     /** @description 취급 단위(파렛트 등). 자기 자신을 상위로 둘 수 없다. 근거: M-01-10 · P-01-02 */
     HandlingUnit: {
@@ -53151,6 +53378,21 @@ export interface components {
        */
       liveWorkOrderCount?: number;
       lastChange?: components['schemas']['ProductionOrderChange'];
+      /**
+       * @description ERP 공정번호(OPR_NO) — 받은 그대로다(010 과 1 이 섞여 와 숫자로 바꾸지 않는다). 연계로 들어온 건에만 있다
+       * @example 010
+       */
+      erpOperationNo?: string;
+      /**
+       * @description ERP 창고(SL_CD) — 공통코드 SL_TYPE 의 코드. ERP 가 비워 보냈거나 연계로 들어오지 않은 건은 키가 없다
+       * @example S510
+       */
+      erpStorageLocationCode?: string;
+      /**
+       * @description ERP 재작업 여부(RE_WORK_FLG) — 받은 그대로다. ERP 가 비워 보냈거나 연계로 들어오지 않은 건은 키가 없다
+       * @example N
+       */
+      erpReworkFlag?: string;
     };
     /** @description ⚠ 개발팀 선행(P-67). 파생 — 서버가 읽을 때 계산한다. 확정 계획 수량이 오더 수량을 채우면 DONE, 아니면 NEEDS_REVIEW(「확인 필요」)와 그 사유다. 사유가 비어 있는 NEEDS_REVIEW 는 계획이 아직 없고 막는 것도 없다는 뜻이다 — :auto-plan 으로 세운다. ⭐ null = 자동 계획을 시도한 적이 없고 계획도 없다(이 기능 전에 받은 오더 · 받을 때 RECEIVED 가 아니었거나 납기·계획 시작일이 지난 오더) 또는 취소된 오더다 — 화면은 아무것도 보이지 않는다. :auto-plan 을 부르면 상태가 선다. */
     ProductionOrderAutoPlan: {
@@ -57345,6 +57587,21 @@ export interface components {
       lines?: components['schemas']['SalesOrderLine'][];
       /** @example 1 */
       versionNo?: number;
+      /**
+       * @description ERP 수주유형(SO_TYPE_CD) — 공통코드 SO_TYPE 의 코드. 연계로 들어온 건에만 있다. 이름은 싣지 않는다 — 화면이 공통코드에서 찾는다
+       * @example ESOA
+       */
+      erpOrderTypeCode?: string;
+      /**
+       * @description ERP 수불유형(MOV_TYPE). 연계로 들어온 건에만 있다
+       * @example I44
+       */
+      erpMovementTypeCode?: string;
+      /**
+       * @description ERP 영업그룹(SALES_GRP_CD) — 공통코드 SALE_GROUP 의 코드. 연계로 들어온 건이라도 ERP 가 비워 보냈으면 없다
+       * @example S22
+       */
+      erpSalesGroupCode?: string;
     };
     SalesOrderLine: {
       /**
@@ -57380,6 +57637,16 @@ export interface components {
        * @example 120
        */
       shippedQty: number;
+      /**
+       * @description ERP 출고창고(SL_CD) — 공통코드 SL_TYPE 의 코드. 연계로 들어온 라인에만 있다
+       * @example S510
+       */
+      erpStorageLocationCode?: string;
+      /**
+       * Format: date-time
+       * @description ERP 가 이 라인을 취소한 시각(CREATE_TYPE=C 를 받은 시각). 취소된 라인은 출하할 수 없다. 취소되지 않은 라인은 키가 없다
+       */
+      cancelledAt?: string;
     };
     /** @description 실물 출하. ⭐ 2026-08-07 「출하 2단 확정」으로 ERP 송신 적재가 W-04-12 확정 시점으로 갔다 — 이 리소스를 만드는 것은 미확정 출하까지이고, 실물이 나갔으므로 재고는 그 시점에 차감한다(W-04-04 §5-1) */
     Shipment: {

@@ -725,9 +725,7 @@ on('POST', '/mdm/warehouses', (_params, _query, body, headers) =>
     const warehouse = {
       ...body,
       warehouseId: newId(),
-      isExternal: body?.isExternal ?? false,
       isDefect: body?.isDefect ?? false,
-      partnerId: body?.partnerId ?? null,
       isActive: true,
     };
     state.warehouses.push(warehouse);
@@ -864,7 +862,13 @@ on('PUT', '/mdm/warehouses/{warehouseId}/layout', (params, _query, body, headers
     const layout = {
       warehouseId,
       drawingAttachmentId: drawingAttachmentId ?? undefined,
-      markers: body?.markers ?? [],
+      /* 빠진 크기 · 회전은 서버처럼 기본값(0.05 · 0.05 · 0)으로 채운다(#930). */
+      markers: (body?.markers ?? []).map((marker) => ({
+        width: 0.05,
+        height: 0.05,
+        rotation: 0,
+        ...marker,
+      })),
     };
     layoutsByWarehouse.set(warehouseId, layout);
     bumpVersion(layoutVersions, warehouseId);

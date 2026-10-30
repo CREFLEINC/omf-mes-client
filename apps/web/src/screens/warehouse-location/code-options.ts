@@ -1,5 +1,5 @@
 import { type LookupSource, selectableLookupOptions } from '../../patterns/lookup-display';
-import type { LookupEntry, WarehouseFilters } from './types';
+import type { LookupEntry } from './types';
 
 /**
  * 공통코드 그룹 이름과 화면 기본값을 한 파일에 격리한다.
@@ -10,13 +10,8 @@ export interface CodeOption {
   label: string;
 }
 
-/** 화면을 처음 열었을 때의 조회 조건. 예시 데이터가 아니라 화면 상수라 여기가 자리다. */
-export const defaultWarehouseFilters: WarehouseFilters = {
-  q: '',
-  plantId: '',
-  warehouseTypeCode: '',
-  includeInactive: false,
-};
+/** 화면을 처음 열었을 때의 조회 조건 — 창고 배치도와 같은 값(`patterns/warehouse-filter-bar`). */
+export { defaultWarehouseFilters } from '../../patterns/warehouse-filter-bar';
 
 /** 고정 계약 G-32의 그룹 이름. 채번 id는 환경마다 달라 절대 저장하지 않는다. */
 export const CODE_GROUPS = {

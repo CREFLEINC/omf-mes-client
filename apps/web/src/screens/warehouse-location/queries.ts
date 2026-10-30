@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { warehouseListQuery } from '../../patterns/warehouse-filter-bar';
 import { runRequest } from '../../patterns/request';
 import { CODE_GROUPS } from './code-options';
 import type { Location, LocationItem, LookupEntry, LookupSources, WarehouseFilters } from './types';
@@ -36,18 +37,6 @@ export const warehouseDetailPath = (warehouseId: number): string =>
   `/mdm/warehouses/${String(warehouseId)}`;
 
 /**
- * 주소에서 온 공장 조건을 숫자로 읽는다. **읽을 수 없으면 조건이 없는 것으로 다룬다.**
- *
- * 조회 조건을 URL이 소유하므로 손으로 고친 주소(`?plant=abc`)가 그대로 들어온다. 거르지 않으면
- * 정수가 아닌 `plantId` 가 실려 서버가 400 으로 거절하고, 사용자는 조회 실패만 본다.
- */
-const plantIdQuery = (value: string): { plantId: number } | Record<string, never> => {
-  if (value === '') return {};
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? { plantId: parsed } : {};
-};
-
-/**
  * 창고 목록. 조건은 서버로 보낸다 — 클라이언트에서 거르면 서버가 자른 뒤의 결과만 걸러진다.
  * size는 보내지 않고 서버 기본값을 따른다. 잘림은 page.total로 드러내 안내한다.
  */
@@ -62,14 +51,8 @@ export const useWarehouseList = (
       runRequest(() =>
         client.GET('/mdm/warehouses', {
           params: {
-            query: {
-              ...(filters.q === '' ? {} : { q: filters.q }),
-              ...plantIdQuery(filters.plantId),
-              ...(filters.warehouseTypeCode === ''
-                ? {}
-                : { warehouseTypeCode: filters.warehouseTypeCode }),
-              includeInactive: filters.includeInactive,
-            },
+            /* 조건 → 질의는 조건 상자와 한 벌(`patterns/warehouse-filter-bar`) — 창고 배치도도 같은 질의를 보낸다. */
+            query: warehouseListQuery(filters),
           },
         }),
       ),

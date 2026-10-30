@@ -25,7 +25,6 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseCode: 'WH-01',
     warehouseName: '1공장 자재창고',
     warehouseTypeCode: 'MATERIAL',
-    isExternal: false,
     isDefect: false,
     isActive: true,
   },
@@ -36,7 +35,6 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseCode: 'WH-02',
     warehouseName: '1공장 제품창고',
     warehouseTypeCode: 'PRODUCT',
-    isExternal: false,
     isDefect: false,
     isActive: true,
   },
@@ -47,7 +45,6 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseCode: 'WH-03',
     warehouseName: '외부 보관창고',
     warehouseTypeCode: 'GENERAL',
-    isExternal: true,
     isDefect: false,
     isActive: false,
   },
@@ -174,7 +171,6 @@ export const warehouseFormInitialValues: WarehouseFormValues = {
   warehouseCode: 'WH-01',
   warehouseName: '1공장 자재창고',
   warehouseTypeCode: 'MATERIAL',
-  isExternal: false,
   isDefect: false,
 };
 

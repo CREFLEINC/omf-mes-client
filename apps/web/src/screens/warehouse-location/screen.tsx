@@ -8,9 +8,15 @@ import { useSearchParams } from 'react-router';
 import { useApiClient } from '../../patterns/api-context';
 import { BoardFrame } from '../../patterns/board-frame';
 import { LOCATION_LEVEL_CODES } from '../../patterns/location-level';
+import {
+  buildLocationRows,
+  initialExpandedLocationIds,
+  parentLocationIds,
+} from '../../patterns/location-tree';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { ApiRequestError, runRequest, toApiError } from '../../patterns/request';
 import { isPutawayStaging, isSystemLocation } from '../../patterns/system-location';
+import { WarehouseFilterBar } from '../../patterns/warehouse-filter-bar';
 import { selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { issueLocationCode } from './location-code';
@@ -29,7 +35,6 @@ import { LocationLabelDialog, type LocationLabelPreview } from './location-label
 import { LocationLabelIssueDialog } from './location-label-issue-dialog';
 import { LocationLabelSection } from './location-label-section';
 import { LocationPane } from './location-pane';
-import { buildLocationRows } from './location-tree';
 import { LOCATION_FORM_FIELDS, validateLocation } from './location-validation';
 import {
   emptyLocationFormValues,
@@ -69,7 +74,6 @@ import type {
   WarehouseFormValues,
 } from './types';
 import { WarehouseFormPane } from './warehouse-form-pane';
-import { WarehouseFilterBar } from './warehouse-filter-bar';
 import { WarehouseListPane } from './warehouse-list-pane';
 import { WAREHOUSE_FORM_FIELDS, validateWarehouse } from './warehouse-validation';
 
@@ -557,32 +561,10 @@ export const WarehouseLocationScreen = () => {
    * 처음 펼칠 노드. 검색하지 않을 때는 구역(맨 위)만 펼쳐 랙까지 보인다 — 랙이 백 개를 넘으면 층 · 셀까지 다 펼친
    * 표는 수천 행이 된다(사용자 지시 2026-10-29). 검색 중에는 찾은 위치가 묻히지 않게 하위를 가진 노드를 다 펼친다.
    */
-  const initialExpandedIds = useMemo(() => {
-    const known = new Set(locationItems.map((item) => item.locationId));
-    const parents = new Set<number>();
-    const isRoot = (item: Location): boolean =>
-      item.parentLocationId === null ||
-      item.parentLocationId === undefined ||
-      item.parentLocationId === item.locationId ||
-      !known.has(item.parentLocationId);
-    const rootIds = new Set(locationItems.filter(isRoot).map((item) => item.locationId));
-
-    for (const item of locationItems) {
-      const parentId = item.parentLocationId;
-      // 자기참조는 부모로 세지 않는다 — buildLocationRows가 그것을 최상위로 올린다.
-      if (
-        parentId !== null &&
-        parentId !== undefined &&
-        parentId !== item.locationId &&
-        known.has(parentId) &&
-        (locationFilterText !== '' || rootIds.has(parentId))
-      ) {
-        parents.add(parentId);
-      }
-    }
-
-    return parents;
-  }, [locationItems, locationFilterText]);
+  const initialExpandedIds = useMemo(
+    () => initialExpandedLocationIds(locationItems, locationFilterText !== ''),
+    [locationItems, locationFilterText],
+  );
 
   // 고른 창고나 검색어가 바뀌면 펼침 상태를 다시 계산한다. 같은 조건을 다시 조회할 때는 사용자의 접기를 지킨다.
   if (
@@ -1235,20 +1217,7 @@ export const WarehouseLocationScreen = () => {
                   }
                   onExpandAll={() =>
                     setExpansion((prev) =>
-                      prev === null
-                        ? prev
-                        : {
-                            ...prev,
-                            ids: new Set(
-                              locationItems.flatMap((item) =>
-                                item.parentLocationId === null ||
-                                item.parentLocationId === undefined ||
-                                item.parentLocationId === item.locationId
-                                  ? []
-                                  : [item.parentLocationId],
-                              ),
-                            ),
-                          },
+                      prev === null ? prev : { ...prev, ids: parentLocationIds(locationItems) },
                     )
                   }
                   selectedIds={selectedLocationIds}

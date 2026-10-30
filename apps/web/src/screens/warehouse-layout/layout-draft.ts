@@ -10,18 +10,40 @@ import type { components } from '@omf-mes/api-client';
  * ⭐ **저장은 도면과 점을 통째로 바꾼다.** 보내는 것은 「이 창고의 배치 전체」이고 ⛔ **지도에서
  * 뺀 위치는 지워진다** — 점을 하나씩 저장하는 경로가 없다.
  *
+ * ⭐ **표식은 크기 · 회전을 가진 사각형이다**(사용자 지시 2026-10-30). 크기도 도면 폭 · 높이에 대한 비율이라 도면을
+ * 갈아도 같은 상대 크기다. `x` · `y` 는 사각형의 중심점, 회전은 도(0 이상 360 미만, 시계 방향).
+ *
  * **순수 함수만 둔다.** 「지금」을 읽지 않는다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-type WarehouseLayoutReplace = components['schemas']['WarehouseLayoutReplace'];
+export interface MarkerShape {
+  /** 도면 폭에 대한 비율 — `MARKER_MIN_SIZE` 이상 1 이하. */
+  width: number;
+  /** 도면 높이에 대한 비율 — `MARKER_MIN_SIZE` 이상 1 이하. */
+  height: number;
+  /** 도, 0 이상 360 미만, 시계 방향. */
+  rotation: number;
+}
 
-export interface MarkerDraft {
+export interface MarkerDraft extends MarkerShape {
   locationId: number;
   x: number;
   y: number;
 }
+
+/**
+ * 새로 찍는 표식의 모양. 서버 기본값(0.05 · 0.05 · 0)보다 넓다 — 서버 기본 크기면 위치 코드가 잘린다(사용자 지시 2026-10-30).
+ * 저장 본문에 늘 실어 보내 서버 기본값이 쓰이지 않는다.
+ */
+export const DEFAULT_MARKER_SHAPE: MarkerShape = { width: 0.12, height: 0.05, rotation: 0 };
+
+/**
+ * 이보다 작게는 줄이지 않는다 — 손잡이로 잡을 수 없을 만큼 작아진다. 서버 범위(0 초과 1 이하) 안이다 — 밖이면 서버가
+ * 400(`markers[i].width` 식)으로 막는다.
+ */
+export const MARKER_MIN_SIZE = 0.02;
 
 export type LayoutDraft = MarkerDraft[];
 
@@ -44,22 +66,67 @@ export const toRatio = (value: number): number => {
   return round(Math.min(1, Math.max(0, value)));
 };
 
+/** 크기 비율로 묶는다 — `MARKER_MIN_SIZE` 이상 1 이하. 수가 아니면 기본값의 그 칸. */
+export const toSize = (value: number, fallback: number): number => {
+  if (!Number.isFinite(value)) return fallback;
+
+  return round(Math.min(1, Math.max(MARKER_MIN_SIZE, value)));
+};
+
+/** 회전을 0 이상 360 미만으로 접는다(360 은 0) — 소수 첫째 자리까지. 서버 범위와 같다. */
+export const toRotation = (value: number): number => {
+  if (!Number.isFinite(value)) return 0;
+
+  const folded = Math.round((((value % 360) + 360) % 360) * 10) / 10;
+
+  return folded === 360 ? 0 : folded;
+};
+
+/** 서버가 준 모양을 화면 범위로 접는다. */
+export const toShape = (source: MarkerShape): MarkerShape => ({
+  width: toSize(source.width, DEFAULT_MARKER_SHAPE.width),
+  height: toSize(source.height, DEFAULT_MARKER_SHAPE.height),
+  rotation: toRotation(source.rotation),
+});
+
 export const hasMarker = (draft: LayoutDraft, locationId: number): boolean =>
   draft.some((marker) => marker.locationId === locationId);
 
-/** 위치 하나를 도면에 찍는다. **이미 찍혀 있으면 자리를 옮긴다** — 같은 위치를 두 번 찍지 않는다. */
+/**
+ * 위치 하나를 도면에 찍는다. **이미 찍혀 있으면 자리를 옮긴다** — 같은 위치를 두 번 찍지 않는다. 옮길 때 크기 · 회전은
+ * 그대로, 새로 찍으면 기본 모양.
+ */
 export const placeMarker = (
   draft: LayoutDraft,
   locationId: number,
   x: number,
   y: number,
 ): LayoutDraft => {
-  const next = { locationId, x: toRatio(x), y: toRatio(y) };
+  if (!hasMarker(draft, locationId)) {
+    return [...draft, { locationId, x: toRatio(x), y: toRatio(y), ...DEFAULT_MARKER_SHAPE }];
+  }
 
-  if (!hasMarker(draft, locationId)) return [...draft, next];
-
-  return draft.map((marker) => (marker.locationId === locationId ? next : marker));
+  return draft.map((marker) =>
+    marker.locationId === locationId ? { ...marker, x: toRatio(x), y: toRatio(y) } : marker,
+  );
 };
+
+/** 찍힌 표식의 크기 · 회전을 바꾼다 — 준 칸만. 자리(중심)는 그대로. 없는 위치면 그대로 돌려준다. */
+export const shapeMarker = (
+  draft: LayoutDraft,
+  locationId: number,
+  shape: Partial<MarkerShape>,
+): LayoutDraft =>
+  draft.map((marker) =>
+    marker.locationId === locationId
+      ? {
+          ...marker,
+          ...(shape.width === undefined ? {} : { width: toSize(shape.width, marker.width) }),
+          ...(shape.height === undefined ? {} : { height: toSize(shape.height, marker.height) }),
+          ...(shape.rotation === undefined ? {} : { rotation: toRotation(shape.rotation) }),
+        }
+      : marker,
+  );
 
 export const removeMarker = (draft: LayoutDraft, locationId: number): LayoutDraft =>
   draft.filter((marker) => marker.locationId !== locationId);
@@ -79,7 +146,13 @@ export const isDirty = (draft: LayoutDraft, original: LayoutDraft): boolean => {
 
     if (before === undefined) return true;
 
-    return before.x !== marker.x || before.y !== marker.y;
+    return (
+      before.x !== marker.x ||
+      before.y !== marker.y ||
+      before.width !== marker.width ||
+      before.height !== marker.height ||
+      before.rotation !== marker.rotation
+    );
   });
 };
 
@@ -94,11 +167,14 @@ export const isDirty = (draft: LayoutDraft, original: LayoutDraft): boolean => {
 export const toReplaceBody = (
   draft: LayoutDraft,
   drawingAttachmentId: number | null,
-): WarehouseLayoutReplace => ({
+): components['schemas']['WarehouseLayoutReplace'] => ({
   markers: draft.map((marker) => ({
     locationId: marker.locationId,
     x: marker.x,
     y: marker.y,
+    width: marker.width,
+    height: marker.height,
+    rotation: marker.rotation,
   })),
   ...(drawingAttachmentId === null ? {} : { drawingAttachmentId }),
 });

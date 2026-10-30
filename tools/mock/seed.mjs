@@ -267,7 +267,6 @@ export const createSeed = (now = new Date()) => {
     ...warehouse,
     plantId: PLANT_ID,
     businessUnitId: BUSINESS_UNIT_ID,
-    isExternal: false,
     isActive: true,
   }));
 
@@ -415,8 +414,8 @@ export const createSeed = (now = new Date()) => {
       warehouseId: 1001,
       drawingAttachmentId: 9701,
       markers: [
-        { locationId: 3001, x: 0.28, y: 0.32 },
-        { locationId: 3002, x: 0.64, y: 0.6 },
+        { locationId: 3001, x: 0.28, y: 0.32, width: 0.05, height: 0.05, rotation: 0 },
+        { locationId: 3002, x: 0.64, y: 0.6, width: 0.05, height: 0.05, rotation: 0 },
       ],
     },
   ];

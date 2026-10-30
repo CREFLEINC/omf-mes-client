@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { compareLocationCodes, issueLocationCode, locationCodeAt } from './location-code';
+import { issueLocationCode, locationCodeAt } from './location-code';
 import type { Location } from './types';
 
 const location = (
@@ -56,20 +56,6 @@ describe('locationCodeAt', () => {
     expect(locationCodeAt('LEVEL', 'Z01-R001', 1)).toBe('Z01-R001-L01');
     expect(locationCodeAt('CELL', 'Z01-R001-L01', 12)).toBe('Z01-R001-L01-C12');
     expect(locationCodeAt('RACK', 'Z01', 1000)).toBe('Z01-R1000');
-  });
-});
-
-describe('compareLocationCodes', () => {
-  it('숫자를 수로 읽어 R100 이 R99 뒤에 놓인다', () => {
-    // 자리 수가 섞인 옛 코드도 수의 차례로 놓인다.
-    const codes = ['Z01-R100', 'Z01-R99', 'Z01-R2', 'Z01-R010'];
-
-    expect([...codes].sort(compareLocationCodes)).toEqual([
-      'Z01-R2',
-      'Z01-R010',
-      'Z01-R99',
-      'Z01-R100',
-    ]);
   });
 });
 
