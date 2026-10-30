@@ -335,9 +335,7 @@ export const TemplateEditor = ({
                 id={ids.version}
                 options={sortedVersions.map((version) => ({
                   value: String(version.inspectionSheetTemplateId),
-                  label: `${t.editor.versionChip(version.templateVersion)} · ${
-                    t.statuses[version.statusCode] ?? version.statusCode
-                  }`,
+                  label: t.editor.versionChip(version.templateVersion),
                 }))}
                 value={String(template.inspectionSheetTemplateId)}
                 disabled={sortedVersions.length < 2 || onSelectVersion === undefined}
@@ -407,7 +405,13 @@ export const TemplateEditor = ({
           </div>
         </div>
       )}
-      {readOnly && <p className="field-note">{t.editor.readOnly}</p>}
+      {/* 고칠 수 없는 버전 — 정보 아이콘 + 파란 바탕 한 줄 라벨(사용자 지시 2026-10-30). */}
+      {readOnly && (
+        <p className="iqc-inspection-action-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {t.editor.readOnly}
+        </p>
+      )}
       <SaveErrorBanner
         error={writeError}
         onReload={() => {
@@ -560,7 +564,8 @@ export const TemplateEditor = ({
           {errors.steps && <p className="field-error">{errors.steps}</p>}
           <div className="inspection-sheet-template-steps">
             <StepList
-              steps={draft.steps}
+              /* 고칠 수 없는 버전은 쓰는 단계만 보인다(사용자 지시 2026-10-30). */
+              steps={readOnly ? draft.steps.filter((step) => step.enabled) : draft.steps}
               selected={currentStep.stepCode}
               isInvalid={(step) => stepInvalid(step, errors)}
               onSelect={onStepChange}
@@ -712,6 +717,7 @@ export const TemplateEditor = ({
       {picking !== null && (
         <ItemPickerDialog
           multiple={false}
+          compact
           showAvailability={false}
           confirmLabel={t.editor.pickLotConfirm}
           onClose={() => setPicking(null)}

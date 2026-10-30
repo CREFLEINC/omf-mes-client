@@ -154,6 +154,7 @@ export const TemplateBasicDialog = ({
       {isPicking && (
         <ItemPickerDialog
           multiple={false}
+          compact
           showAvailability={false}
           confirmLabel={t.editor.pickConfirm}
           onClose={() => setIsPicking(false)}

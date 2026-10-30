@@ -215,7 +215,14 @@ const InspectionSheetTemplateScreenBody = () => {
           title={`${row.itemCode} ${row.itemName}`}
           aria-label={t.list.openRow(row.itemCode)}
           aria-current={row.itemId === openedItemId ? 'true' : undefined}
-          onClick={() => open({ kind: 'existing', id: row.inspectionSheetTemplateId })}
+          /* 열린 줄을 다시 누르면 상세를 닫는다(사용자 지시 2026-10-30). */
+          onClick={() =>
+            open(
+              row.itemId === openedItemId
+                ? null
+                : { kind: 'existing', id: row.inspectionSheetTemplateId },
+            )
+          }
         >
           <span className="inspection-sheet-template-open-code">{row.itemCode}</span>
           <span className="inspection-sheet-template-muted">{row.itemName}</span>

@@ -120,6 +120,16 @@ describe('구조 및 중량 칸 (사용자 지시 2026-10-30)', () => {
     expect(parseStructure('')).toEqual({ w: '', d: '', h: '', weight: '' });
   });
 
+  it('「2.3kg」처럼 띄어쓰기 없이 쓴 글도 칸으로 푼다', () => {
+    expect(parseStructure('2.3kg')).toEqual({ w: '', d: '', h: '', weight: '2.3' });
+    expect(parseStructure('w300 x d200 x h150mm/2.3kg')).toEqual({
+      w: '300',
+      d: '200',
+      h: '150',
+      weight: '2.3',
+    });
+  });
+
   it('예전에 손으로 쓴 글은 칸으로 풀지 않는다', () => {
     expect(parseStructure('강판 1.2t, 약 3kg')).toBeNull();
   });

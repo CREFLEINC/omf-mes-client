@@ -195,8 +195,9 @@ export interface StructureParts {
   weight: string;
 }
 
+/* 띄어쓰기 · 대소문자 · × 대신 x 는 너그럽게 — 「2.3kg」처럼 손으로 쓴 글도 칸으로 푼다(사용자 지시 2026-10-30). */
 const STRUCTURE_PATTERN =
-  /^(?:W (\d*\.?\d*) × D (\d*\.?\d*) × H (\d*\.?\d*) mm)?(?: \/ )?(?:(\d+\.?\d*) kg)?$/;
+  /^(?:W\s*(\d*\.?\d*)\s*[×xX*]\s*D\s*(\d*\.?\d*)\s*[×xX*]\s*H\s*(\d*\.?\d*)\s*mm)?\s*\/?\s*(?:(\d+\.?\d*)\s*kg)?$/i;
 
 /** 「W 300 × D 200 × H 150 mm / 2.3 kg」 — 빈 칸은 빼고 합친다. 네 칸이 모두 비면 빈 글. */
 export const composeStructure = ({ w, d, h, weight }: StructureParts): string => {

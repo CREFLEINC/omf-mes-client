@@ -41,6 +41,15 @@ export const StepList = ({ steps, selected, isInvalid, onSelect }: StepListProps
           ].join(', ')
         : t.editor.stepUnused;
       const invalid = step.enabled && isInvalid(step);
+      /* 고를 단계가 하나뿐이면 단추가 아니라 이름표다 — 누르는 모양 · 동작이 없다(사용자 지시 2026-10-30). */
+      if (steps.length === 1)
+        return (
+          <li key={step.stepCode}>
+            <span className="inspection-sheet-template-step-tag" title={summary}>
+              {step.enabled ? step.nameKo || label : label}
+            </span>
+          </li>
+        );
       return (
         <li key={step.stepCode}>
           <button

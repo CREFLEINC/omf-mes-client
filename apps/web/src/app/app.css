@@ -23466,6 +23466,20 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   font-weight: 600;
 }
 
+/* 하나뿐인 단계의 이름표 — 누르는 모양(손가락 · 눌림 색 · 테두리 단추)은 없다. */
+.inspection-sheet-template-step-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  border-radius: 999px;
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  font: var(--type-body-md);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .inspection-sheet-template-step-list button[aria-invalid='true'] {
   border-color: var(--semantic-error-text);
 }
