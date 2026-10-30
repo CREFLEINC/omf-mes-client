@@ -23165,23 +23165,6 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   white-space: nowrap;
 }
 
-/* 좁은 화면 — 단계 목록을 항목 위 한 줄(넘치면 다음 줄)로 올려 항목 표가 폭을 다 쓰게 한다. */
-@media (max-width: 1280px) {
-  .inspection-sheet-template-steps {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .inspection-sheet-template-steps > .inspection-sheet-template-step-list {
-    position: static;
-    display: flex;
-    flex-wrap: wrap;
-  }
-
-  .inspection-sheet-template-steps > .inspection-sheet-template-step-list button {
-    width: auto;
-  }
-}
-
 .inspection-sheet-template-caption {
   position: absolute;
   width: 1px;
@@ -23303,17 +23286,13 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   overflow-wrap: anywhere;
 }
 
-/* 긴 모델 이름은 둘째 줄을 다 쓰고, 짧은 사업부 · 출력 양식이 첫 줄에 나란히 선다(#208). */
-.inspection-sheet-template-facts > div:first-child {
-  flex-basis: 100%;
-  order: 1;
-  padding-left: 0;
-  border-left: 0;
+/* 품목 · 사업부 · 출력 양식을 한 줄에(사용자 지시 2026-10-30) — 긴 품목 이름은 그 칸 안에서 줄을 넘긴다. */
+.inspection-sheet-template-facts {
+  flex-wrap: nowrap;
 }
 
-.inspection-sheet-template-facts > div:nth-child(2) {
-  padding-left: 0;
-  border-left: 0;
+.inspection-sheet-template-facts > div {
+  flex: 1 1 0;
 }
 
 /* 비고처럼 긴 글 칸은 한 줄을 다 쓴다(#208). */
@@ -23321,10 +23300,10 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   grid-column: 1 / -1;
 }
 
-/* 기본 정보와 상단 정보가 같은 칸 폭으로 선다. */
+/* 상단 표시 정보 — 재료 · 구조 두 칸, RoHS · 비고는 한 줄씩(사용자 시안 2026-10-30). */
 .inspection-sheet-template-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
   align-items: start;
 }
@@ -23335,21 +23314,58 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   }
 }
 
-/* RoHS 체크는 입력칸 줄에 맞춰 선다(라벨 높이만큼 내린다). */
+/* RoHS 체크는 한 줄을 다 쓴다. */
 .inspection-sheet-template-check {
-  padding-top: calc(var(--space-5) + var(--space-1));
+  grid-column: 1 / -1;
 }
 
+/* 세 단락을 한 상자에, 단락 사이 구분선. */
+.inspection-sheet-template-body {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.inspection-sheet-template-section {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.inspection-sheet-template-section + .inspection-sheet-template-section {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.inspection-sheet-template-section > .pane-subtitle {
+  margin: 0;
+}
+
+/* LOT 표시 항목 — 세 칸 나란히, 칸마다 이름 아래 「미등록 · 고른 자재」와 [추가]. */
 .inspection-sheet-template-lots {
   display: grid;
-  gap: var(--space-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
 }
 
 .inspection-sheet-template-lot-row {
   display: grid;
-  grid-template-columns: 9rem minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
+}
+
+.inspection-sheet-template-lot-title {
+  grid-column: 1 / -1;
+  font-weight: 600;
+}
+
+@media (max-width: 960px) {
+  .inspection-sheet-template-lots {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .inspection-sheet-template-chips {
@@ -23381,37 +23397,29 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   text-overflow: ellipsis;
 }
 
-/* 검사 단계 — 왼쪽 단계 목록은 필요한 폭만, 오른쪽 항목 편집이 나머지를 다 쓴다. */
+/* 검사 단계 — 위에 단계 단추 줄, 아래 고른 단계 편집(사용자 시안 2026-10-30). */
 .inspection-sheet-template-steps {
   display: grid;
-  grid-template-columns: minmax(9rem, max-content) minmax(0, 1fr);
   gap: var(--space-4);
-  align-items: start;
 }
 
-/* 항목이 많아 길게 내려도 단계 목록은 보이는 자리에 남는다. */
 .inspection-sheet-template-step-list {
-  position: sticky;
-  top: var(--space-4);
-  display: grid;
-  gap: var(--space-1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .inspection-sheet-template-step-list button {
-  display: grid;
-  gap: 2px;
-  width: 100%;
-  min-height: 44px;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: 999px;
   background: transparent;
   color: var(--on-surface);
-  font: var(--type-body-sm);
-  text-align: left;
+  font: var(--type-body-md);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -23420,27 +23428,19 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   background: var(--state-hover-neutral);
 }
 
-.inspection-sheet-template-step-list
-  button[data-enabled='false']
-  .inspection-sheet-template-step-name {
+.inspection-sheet-template-step-list button[data-enabled='false'] {
   color: var(--on-surface-variant);
 }
 
 .inspection-sheet-template-step-list button[aria-current='true'] {
-  border-color: var(--outline-variant);
-  background: var(--state-hover-neutral);
-  box-shadow: inset 3px 0 0 var(--primary);
-}
-
-.inspection-sheet-template-step-list
-  button[aria-current='true']
-  .inspection-sheet-template-step-name {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
   font-weight: 600;
 }
 
-.inspection-sheet-template-step-list .inspection-sheet-template-muted,
-.inspection-sheet-template-step-list .field-error {
-  font: var(--type-body-sm);
+.inspection-sheet-template-step-list button[aria-invalid='true'] {
+  border-color: var(--semantic-error-text);
 }
 
 .inspection-sheet-template-step {
@@ -23457,24 +23457,36 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   padding: 0;
 }
 
+/* 사용 · 관리자 서명 체크 줄, 오른쪽 끝에 「항목 추가」, 아래 구분선. */
+.inspection-sheet-template-step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  width: 100%;
+}
+
+.inspection-sheet-template-step-head:has(.inspection-sheet-template-add-item),
+.inspection-sheet-template-step-head:has(+ .inspection-sheet-template-step-fields) {
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.inspection-sheet-template-add-item {
+  margin-left: auto;
+}
+
 .inspection-sheet-template-step-fields {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-3);
-  align-items: center;
+  align-items: start;
 }
 
 @media (max-width: 720px) {
   .inspection-sheet-template-step-fields {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-.inspection-sheet-template-items-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
 }
 
 .inspection-sheet-template-items table {

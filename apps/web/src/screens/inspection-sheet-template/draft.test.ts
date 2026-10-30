@@ -47,7 +47,7 @@ describe('검사표 기준 입력 모양', () => {
               },
             ],
           }
-        : step,
+        : { ...step, enabled: false },
     );
 
     const body = toBody(draft);
@@ -64,9 +64,18 @@ describe('검사표 기준 입력 모양', () => {
     ]);
   });
 
+  it('새 기준은 공정검사1을 켠 채로 시작한다(사용자 지시 2026-10-30)', () => {
+    const draft = emptyDraft(2);
+    expect(draft.steps.filter((step) => step.enabled).map((step) => step.stepCode)).toEqual([
+      'PROCESS_1',
+    ]);
+  });
+
   it('모델·단계·항목 번호·항목 이름이 비면 칸 오류를 낸다', () => {
     const draft = emptyDraft(2);
-    expect(validateDraft(draft)).toMatchObject({
+    expect(
+      validateDraft({ ...draft, steps: draft.steps.map((step) => ({ ...step, enabled: false })) }),
+    ).toMatchObject({
       item: expect.any(String),
       steps: expect.any(String),
     });

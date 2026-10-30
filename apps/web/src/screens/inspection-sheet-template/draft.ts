@@ -94,7 +94,10 @@ export const emptyDraft = (businessUnitId: number | null): TemplateDraft => ({
   motorText: '',
   remarks: '',
   lotSources: [],
-  steps: layoutSteps('OP'),
+  /* 새 기준은 공정검사1을 켠 채로 시작한다(사용자 지시 2026-10-30). */
+  steps: layoutSteps('OP').map((step) =>
+    step.stepCode === 'PROCESS_1' ? { ...step, enabled: true } : step,
+  ),
 });
 
 export const toDraft = (template: InspectionSheetTemplate): TemplateDraft => {
