@@ -17,7 +17,8 @@ import type { LotHoldView } from './types';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
-import { PageNav, type PageSize } from '../../patterns/page-nav';
+import { PageNav } from '../../patterns/page-nav';
+import { LOT_PAGE_SIZES, type LotPageSize } from './filters';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.lotStatusHistory;
@@ -30,7 +31,7 @@ const formatDateTime = (value: string | null): string => {
 
 export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<PageSize>(20);
+  const [pageSize, setPageSize] = useState<LotPageSize>(20);
   const holds = useLotHolds(lotId, page, pageSize);
   const actors = useLotActorOptions(true);
   const reasons = useLotHoldReasonOptions();
@@ -180,6 +181,7 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
             />
           </div>
           <PageNav
+            sizes={LOT_PAGE_SIZES}
             controlSize="sm"
             buttonSize="md"
             meta={{

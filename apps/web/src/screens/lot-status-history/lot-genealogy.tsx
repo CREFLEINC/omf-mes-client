@@ -13,7 +13,8 @@ import { useApiClient } from '../../patterns/api-context';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
-import { PageNav, type PageSize } from '../../patterns/page-nav';
+import { PageNav } from '../../patterns/page-nav';
+import { LOT_PAGE_SIZES, type LotPageSize } from './filters';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { runRequest } from '../../patterns/request';
 import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
@@ -106,7 +107,7 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
   const [page, setPage] = useState(1);
   /* 투입 이력 표는 화면에서 쪽을 나눈다 — 서버가 한 번에 다 준다(LOT 목록과 같은 쪽 이동 · 사용자 2026-10-30). */
   const [lotPage, setLotPage] = useState(1);
-  const [lotPageSize, setLotPageSize] = useState<PageSize>(20);
+  const [lotPageSize, setLotPageSize] = useState<LotPageSize>(20);
   const lots = useQuery({
     queryKey: lotGenealogyKeys.lots(lotId),
     queryFn: () =>
@@ -194,6 +195,7 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
               />
             </div>
             <PageNav
+              sizes={LOT_PAGE_SIZES}
               controlSize="sm"
               buttonSize="md"
               meta={{ page: lotPage, size: lotPageSize, total: lots.data.items.length }}

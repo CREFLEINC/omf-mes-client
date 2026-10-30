@@ -11,7 +11,13 @@ import {
 import { messages } from '@omf-mes/i18n';
 
 import { toLotStatusSort, toTableSort } from './current-sort';
-import { ALL_LOT_TYPES, type LotFilters, type LotStatusSort } from './filters';
+import {
+  ALL_LOT_TYPES,
+  type LotFilters,
+  type LotStatusSort,
+  LOT_PAGE_SIZES,
+  type LotPageSize,
+} from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { codeName, lotStatusTone, useLotHoldReasonOptions } from './options';
 import { RefreshStatus } from './refresh-status';
@@ -20,7 +26,7 @@ import { useLotStatusList, useLotStatusSummary } from './queries';
 import { useItemNameSources } from './reference-options';
 import { lotStatusRowKey, type LotStatusRow } from './types';
 import { useColumnOrder } from '../../patterns/column-grip-order';
-import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
+import { PageNav } from '../../patterns/page-nav';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
@@ -57,8 +63,8 @@ interface CurrentResultsProps {
   onSortChange: (sort: LotStatusSort) => void;
   onPageChange: (page: number) => void;
   /** 한 쪽에 보일 LOT 수(20 · 50 · 100) — 바꾸면 첫 쪽으로 간다. */
-  pageSize: PageSize;
-  onPageSizeChange: (size: PageSize) => void;
+  pageSize: LotPageSize;
+  onPageSizeChange: (size: LotPageSize) => void;
   onSelectLot: (lotId: number) => void;
   /** 지금 상세에 연 LOT — 그 줄을 파란 바탕으로 표시한다. */
   selectedLotId: number | null;
@@ -234,7 +240,8 @@ export const CurrentResults = ({
   const pageSize = meta !== undefined && meta.size > 0 ? meta.size : requestedPageSize;
   const totalPages = Math.ceil((meta?.total ?? 0) / pageSize);
   /* 고를 수 없는 크기(20 · 50 · 100 밖)를 서버가 돌려주면 크기 칸이 비므로 고른 크기를 보인다. */
-  const shownPageSize: PageSize = PAGE_SIZES.find((size) => size === pageSize) ?? requestedPageSize;
+  const shownPageSize: LotPageSize =
+    LOT_PAGE_SIZES.find((size) => size === pageSize) ?? requestedPageSize;
   const isBeyondLast = meta !== undefined && meta.total > 0 && currentPage > totalPages;
 
   return (
@@ -370,6 +377,7 @@ export const CurrentResults = ({
           </div>
           {meta !== undefined && (
             <PageNav
+              sizes={LOT_PAGE_SIZES}
               meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
               onChangePage={onPageChange}
               onChangeSize={onPageSizeChange}

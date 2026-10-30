@@ -5,7 +5,6 @@ import { useSearchParams } from 'react-router';
 
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { usePageHub } from '../../patterns/page-hub';
-import type { PageSize } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
@@ -21,6 +20,7 @@ import {
   readLotFilters,
   readLotPage,
   readLotPageSize,
+  type LotPageSize,
   readMode,
   readSelectedLotId,
   toAppliedHistorySearchParams,
@@ -167,8 +167,8 @@ interface LotModeProps {
   onReset: () => void;
   onSortChange: (sort: LotStatusSort) => void;
   onPageChange: (page: number) => void;
-  pageSize: PageSize;
-  onPageSizeChange: (size: PageSize) => void;
+  pageSize: LotPageSize;
+  onPageSizeChange: (size: LotPageSize) => void;
   onSelectLot: (lotId: number | null) => void;
 }
 

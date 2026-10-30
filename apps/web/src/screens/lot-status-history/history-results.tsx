@@ -2,8 +2,8 @@ import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
-import { PageNav, type PageSize } from '../../patterns/page-nav';
-import type { HistoryFilters } from './filters';
+import { PageNav } from '../../patterns/page-nav';
+import { type HistoryFilters, LOT_PAGE_SIZES, type LotPageSize } from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { LotTimelineTable } from './lot-timeline-table';
 import { validateHistoryPeriod } from './period';
@@ -35,7 +35,7 @@ export const HistoryResults = ({
 }: HistoryResultsProps) => {
   const history = useLotHistoryTimeline(filters, offsetMinutes);
   /* 쪽 크기는 LOT 목록처럼 20 · 50 · 100 에서 고른다(사용자 2026-10-30 · 디자인 통일). */
-  const [pageSize, setPageSize] = useState<PageSize>(HISTORY_PAGE_SIZE);
+  const [pageSize, setPageSize] = useState<LotPageSize>(HISTORY_PAGE_SIZE);
   const hasValidPeriod = validateHistoryPeriod({ from: filters.from, to: filters.to }) === null;
 
   const retry = (
@@ -106,6 +106,7 @@ export const HistoryResults = ({
           />
           {/* 총 건수는 표 아래 쪽 이동 줄에만 — LOT 목록과 같다(사용자 2026-10-30). */}
           <PageNav
+            sizes={LOT_PAGE_SIZES}
             meta={{ page: currentPage, size: pageSize, total }}
             onChangePage={onPageChange}
             onChangeSize={(size) => {

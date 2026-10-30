@@ -8,7 +8,8 @@ import type { LotTimelineEntry } from './timeline';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
-import { PageNav, type PageSize } from '../../patterns/page-nav';
+import { PageNav } from '../../patterns/page-nav';
+import { LOT_PAGE_SIZES, type LotPageSize } from './filters';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.lotStatusHistory;
@@ -80,7 +81,7 @@ export const LotTimelineTable = ({
   const rows = isDetail && sort.direction === 'ascending' ? [...entries].reverse() : [...entries];
   /* LOT 상세 탭에서는 화면이 쪽을 나눈다 — 받은 이력을 한 번에 다 갖고 있다(사용자 2026-10-30). */
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<PageSize>(20);
+  const [pageSize, setPageSize] = useState<LotPageSize>(20);
   const actorName = (entry: LotTimelineEntry): string => {
     if (entry.kind === 'hold') return entry.event.actorName?.trim() || t.history.actorUnknown;
     const id = entry.event.changedBy;
@@ -208,6 +209,7 @@ export const LotTimelineTable = ({
         />
       </div>
       <PageNav
+        sizes={LOT_PAGE_SIZES}
         controlSize="sm"
         buttonSize="md"
         meta={{ page: shownPage, size: pageSize, total: rows.length }}

@@ -138,7 +138,7 @@ const qualityRoutes = (
   route('/quality/lot-statuses', (request) => {
     const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
     return jsonResponse(
-      { items: rows, page: { page, size: 50, total, ...pageOverride } },
+      { items: rows, page: { page, size: 20, total, ...pageOverride } },
       { status: listStatus },
     );
   }),
@@ -930,7 +930,7 @@ describe('Lot Status 화면 shell', () => {
     const { urls } = renderScreen('/quality/lot-status?lotType=SAMPLE_MATERIAL');
     const user = userEvent.setup();
 
-    expect(await screen.findByText('1 / 3')).toBeVisible();
+    expect(await screen.findByText('1 / 6')).toBeVisible();
     expect(screen.getAllByText('총 101건')).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: '다음' }));
     await waitFor(() => expect(locationSearch().get('page')).toBe('2'));
@@ -945,13 +945,13 @@ describe('Lot Status 화면 shell', () => {
     const { urls } = renderScreen('/quality/lot-status?lotType=SAMPLE_MATERIAL&page=2');
     const user = userEvent.setup();
 
-    await screen.findByText('2 / 3');
-    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('size')).toBe('50');
+    await screen.findByText('2 / 6');
+    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('size')).toBe('20');
     await user.click(screen.getByRole('combobox', { name: '페이지 크기' }));
-    await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: /100건$/ }));
-    await waitFor(() => expect(locationSearch().get('size')).toBe('100'));
+    await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: /60건$/ }));
+    await waitFor(() => expect(locationSearch().get('size')).toBe('60'));
     expect(locationSearch().get('page')).toBeNull();
-    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('size')).toBe('100');
+    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('size')).toBe('60');
     expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('page')).toBeNull();
   });
 
@@ -983,7 +983,7 @@ describe('Lot Status 화면 shell', () => {
           return new Promise<Response>((resolve) => {
             releaseNext = () =>
               resolve(
-                jsonResponse({ items: [statusRow], page: { page: 2, size: 50, total: 101 } }),
+                jsonResponse({ items: [statusRow], page: { page: 2, size: 20, total: 101 } }),
               );
           });
         }
@@ -992,7 +992,7 @@ describe('Lot Status 화면 shell', () => {
     });
     const user = userEvent.setup();
 
-    await screen.findByText('1 / 3');
+    await screen.findByText('1 / 6');
     const next = screen.getByRole('button', { name: '다음' });
     await user.click(next);
     await waitFor(() => expect(releaseNext).toBeDefined());
@@ -1003,13 +1003,13 @@ describe('Lot Status 화면 shell', () => {
       'true',
     );
     releaseNext?.();
-    expect(await screen.findByText('2 / 3')).toBeVisible();
+    expect(await screen.findByText('2 / 6')).toBeVisible();
     expect(screen.queryByRole('status', { name: 'LOT 목록 갱신 중' })).not.toBeInTheDocument();
   });
 
   it('전체 범위 밖 쪽은 첫 쪽 복구 동작을 제공한다', async () => {
     const { urls } = renderScreen(
-      '/quality/lot-status?lotType=SAMPLE_MATERIAL&page=4',
+      '/quality/lot-status?lotType=SAMPLE_MATERIAL&page=7',
       'ready',
       qualityRoutes(200, 200, [], 101),
     );
