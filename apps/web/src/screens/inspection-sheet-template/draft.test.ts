@@ -64,8 +64,11 @@ describe('검사표 기준 입력 모양', () => {
     ]);
   });
 
-  it('새 기준은 공정검사1을 켠 채로 시작한다(사용자 지시 2026-10-30)', () => {
+  it('새 기준은 공정검사1을 켜고 재료 기본 글을 채운 채로 시작한다(사용자 지시 2026-10-30)', () => {
     const draft = emptyDraft(2);
+    expect(draft.materialText).toBe(
+      '프레임 및 기타 금속 부품은 통상 상태에서 위험하지 않은 재료를 사용하고 방청 처리함',
+    );
     expect(draft.steps.filter((step) => step.enabled).map((step) => step.stepCode)).toEqual([
       'PROCESS_1',
     ]);

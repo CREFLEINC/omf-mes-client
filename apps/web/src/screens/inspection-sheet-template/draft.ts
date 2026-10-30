@@ -81,12 +81,16 @@ export const layoutSteps = (
       },
   );
 
+/** 새 기준의 재료 기본 글 — 검사표에 그대로 찍히는 글이라 화면 언어와 상관없이 이 글이다(사용자 지시 2026-10-30). */
+export const DEFAULT_MATERIAL_TEXT =
+  '프레임 및 기타 금속 부품은 통상 상태에서 위험하지 않은 재료를 사용하고 방청 처리함';
+
 export const emptyDraft = (businessUnitId: number | null): TemplateDraft => ({
   itemId: null,
   itemLabel: '',
   businessUnitId,
   formLayoutCode: 'OP',
-  materialText: '',
+  materialText: DEFAULT_MATERIAL_TEXT,
   structureText: '',
   rohsFlag: true,
   productNameText: '',
