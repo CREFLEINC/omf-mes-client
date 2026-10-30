@@ -179,7 +179,6 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
         )}
         {lots.data !== undefined && (
           <>
-            {lots.data.items.length > 0 && <BasisNote basis={lots.data.basis} />}
             <div
               ref={fit.ref}
               className="wide-table lot-status-table lot-detail-table"
