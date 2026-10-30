@@ -55,6 +55,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     itemPlaceholder: 'Nhập mặt hàng',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',
+    /** 창고는 검색 팝업에서 고른다(사용자 2026-10-30). */
+    warehousePicker: { title: 'Chọn kho', code: 'Mã kho', name: 'Tên kho' },
     fields: {
       lotType: 'Loại LOT',
       lotNo: 'Số LOT',

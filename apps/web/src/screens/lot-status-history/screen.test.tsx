@@ -367,6 +367,14 @@ const requestCount = (urls: URL[], path: string): number =>
 const lastRequest = (urls: URL[], path: string): URL | undefined =>
   urls.filter(({ pathname }) => pathname === path).at(-1);
 
+/** 창고는 검색 팝업에서 코드를 눌러 고른다(사용자 2026-10-30). */
+const pickWarehouse = async (user: ReturnType<typeof userEvent.setup>, code: string) => {
+  await user.click(screen.getByLabelText('창고 선택'));
+  const dialog = await screen.findByRole('dialog', { name: '창고 선택' });
+  await user.click(await within(dialog).findByText(code));
+  await user.click(within(dialog).getByRole('button', { name: '선택' }));
+};
+
 const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, option: string) => {
   await user.click(screen.getByLabelText(label));
   await user.click(await screen.findByRole('option', { name: option }));
@@ -405,7 +413,7 @@ describe('Lot Status 화면 shell', () => {
       'aria-expanded',
       'true',
     );
-    await choose(user, '창고 선택', 'SAMPLE-WH-01 · 합성 창고 (미사용)');
+    await pickWarehouse(user, 'SAMPLE-WH-01');
     await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
     expect(await screen.findByText('일부 LOT 유형만 표시됩니다.')).toBeVisible();
     expect(await screen.findByText('일부 창고만 표시됩니다.')).toBeVisible();

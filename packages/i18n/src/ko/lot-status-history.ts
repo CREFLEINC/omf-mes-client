@@ -58,6 +58,8 @@ export const lotStatusHistory = {
     itemPlaceholder: '품목을 입력하세요',
     itemClear: '품목 지우기',
     itemPick: '선택',
+    /** 창고는 검색 팝업에서 고른다(사용자 2026-10-30). */
+    warehousePicker: { title: '창고 선택', code: '창고 코드', name: '창고명' },
     fields: {
       lotType: 'LOT 유형',
       lotNo: 'LOT 번호',

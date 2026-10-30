@@ -107,6 +107,14 @@ const AppliedProbe = ({ initial }: { initial: LotFilters }) => {
   );
 };
 
+/** 창고는 검색 팝업에서 코드를 눌러 고른다(사용자 2026-10-30). */
+const pickWarehouse = async (user: ReturnType<typeof userEvent.setup>, code: string) => {
+  await user.click(screen.getByLabelText('창고 선택'));
+  const dialog = await screen.findByRole('dialog', { name: '창고 선택' });
+  await user.click(await within(dialog).findByText(code));
+  await user.click(within(dialog).getByRole('button', { name: '선택' }));
+};
+
 const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, option: string) => {
   await user.click(screen.getByLabelText(label));
   await user.click(await screen.findByRole('option', { name: option }));
@@ -168,7 +176,7 @@ describe('LOT 현재 조회 조건', () => {
     // 지우기는 값이 있을 때만 칸 안에 선다.
     expect(screen.getByRole('button', { name: '품목 지우기' })).toBeInTheDocument();
     expect(screen.queryByLabelText('현재 상태')).not.toBeInTheDocument();
-    await choose(user, '창고 선택', 'SAMPLE-WH-01 · 합성 창고 가');
+    await pickWarehouse(user, 'SAMPLE-WH-01');
     await choose(user, '위치 선택', 'SAMPLE-LOC-01 · 합성 위치');
     await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
     expect(onSearch).not.toHaveBeenCalled();
@@ -227,7 +235,7 @@ describe('LOT 현재 조회 조건', () => {
 
     expect(location).toBeDisabled();
     expect(location).toHaveTextContent('창고를 먼저 선택하세요');
-    await choose(user, '창고 선택', 'SAMPLE-WH-01 · 합성 창고 가');
+    await pickWarehouse(user, 'SAMPLE-WH-01');
     expect(screen.getByLabelText(/^위치/)).toBeEnabled();
     expect(screen.getByLabelText(/^위치/)).not.toHaveTextContent('창고를 먼저 선택하세요');
   });
@@ -238,7 +246,7 @@ describe('LOT 현재 조회 조건', () => {
       appliedFilters: filters({ lotType: 'SAMPLE_MATERIAL', warehouse: '101', location: '102' }),
     });
 
-    await choose(user, '창고 선택', 'SAMPLE-WH-09 · 합성 창고 나');
+    await pickWarehouse(user, 'SAMPLE-WH-09');
     await waitFor(() => expect(locationWarehouseIds).toContain('109'));
     await user.click(screen.getByRole('button', { name: '조회' }));
 

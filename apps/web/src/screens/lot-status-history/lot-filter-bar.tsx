@@ -2,6 +2,11 @@ import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import {
+  ReferenceField,
+  REFERENCE_PAGE_SIZE,
+  type ReferenceSource,
+} from '../../patterns/reference-picker';
 import { Select } from '../../patterns/select';
 import { ALL_LOT_TYPES, type LotFilters } from './filters';
 import { ItemFilterField } from './item-filter-field';
@@ -187,6 +192,28 @@ export const LotFilterBar = ({
    * ⭐ 위치는 창고를 고른 뒤에 연다(사용자 지시 2026-09-19) — 그 전에는 잠그고 까닭은 칸 안 글자로 둔다
    * (사용자 2026-10-30 · 조회 줄을 한 줄로 펴면서 라벨 옆 글자가 칸을 넘친다).
    */
+  /* 창고 목록은 이미 받아 두었다 — 팝업은 그 안에서 코드·이름으로 찾는다. 「코드 · 이름」 표시명을 나눠 열에 싣는다. */
+  const warehouseSource: ReferenceSource = {
+    title: t.lotFilter.warehousePicker.title,
+    key: ['lot-status-history', 'warehouse-picker', warehouseOptions.length],
+    columns: { code: t.lotFilter.warehousePicker.code, name: t.lotFilter.warehousePicker.name },
+    search: (term, page) => {
+      const keyword = term.trim().toLowerCase();
+      const rows = warehouseOptions
+        .map((option) => {
+          const [code = option.label, ...rest] = option.label.split(' · ');
+          return { id: Number(option.value), code, name: rest.join(' · ') };
+        })
+        .filter(
+          (row) => keyword === '' || `${row.code} ${row.name}`.toLowerCase().includes(keyword),
+        );
+      const start = (page - 1) * REFERENCE_PAGE_SIZE;
+      return Promise.resolve({
+        items: rows.slice(start, start + REFERENCE_PAGE_SIZE),
+        total: rows.length,
+      });
+    },
+  };
   const isLocationLocked = filters.warehouse === '';
   const locationNote = isLocationLocked
     ? undefined
@@ -259,20 +286,25 @@ export const LotFilterBar = ({
       <div id={detailId} hidden={!isDetailOpen}>
         {/* 창고 → 위치 → 품목 순(사용자 2026-10-30). */}
         <div className="filter-bar lot-status-filter">
-          <SelectField
-            className="lot-status-filter-place"
-            label={t.lotFilter.labels.warehouse}
-            options={withAll(warehouseOptions)}
-            value={filters.warehouse}
-            note={warehouseNote}
-            onChange={(warehouse) =>
-              setFilters((current) => ({
-                ...current,
-                warehouse,
-                location: warehouse === current.warehouse ? current.location : '',
-              }))
-            }
-          />
+          {/* 창고는 검색 팝업에서 고른다(사용자 2026-10-30). 고르면 위치 조건은 비운다. */}
+          <div className="field-cell lot-status-filter-place">
+            <ReferenceField
+              label={t.lotFilter.labels.warehouse}
+              valueLabel={
+                warehouseOptions.find((option) => option.value === filters.warehouse)?.label ?? ''
+              }
+              source={warehouseSource}
+              onPick={(row) =>
+                setFilters((current) => ({
+                  ...current,
+                  warehouse: String(row.id),
+                  location: String(row.id) === current.warehouse ? current.location : '',
+                }))
+              }
+              onClear={() => setFilters((current) => ({ ...current, warehouse: '', location: '' }))}
+            />
+            {warehouseNote !== undefined && <span className="field-note">{warehouseNote}</span>}
+          </div>
           <SelectField
             className="lot-status-filter-place lot-status-filter-location"
             label={t.lotFilter.labels.location}
