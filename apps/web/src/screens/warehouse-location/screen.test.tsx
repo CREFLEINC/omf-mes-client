@@ -206,6 +206,23 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     expect(screen.getByRole('status', { name: '창고 목록을 불러오는 중' })).toBeInTheDocument();
   });
 
+  /* 사용자 결정 2026-10-30 · 서버 #932 — 외부 창고는 숨기고, 「미사용 포함」이면 외부 표시를 달고 보인다. */
+  it('외부 창고는 목록에 없고, 미사용 포함을 켜면 외부 표시로 보인다', async () => {
+    const external = { ...warehouseFixtures[1]!, isExternal: true };
+    const { user } = renderScreen([
+      warehouseListRoute([warehouseFixtures[0]!, external]),
+      ...lookupRoutes(),
+    ]);
+    await screen.findByRole('button', { name: 'WH-01' });
+    expect(screen.queryByRole('button', { name: external.warehouseCode })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
+
+    const row = (await screen.findByRole('button', { name: external.warehouseCode })).closest('tr');
+    expect(row).not.toBeNull();
+    expect(within(row!).getByText('외부 창고')).toBeInTheDocument();
+  });
+
   it('조건을 적용하면 요청 URL에 q·warehouseTypeCode·includeInactive가 실린다', async () => {
     const { requests, user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
     await screen.findByRole('button', { name: 'WH-01' });
@@ -899,6 +916,7 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
     expect(put?.headers.get('If-Match')).toBe('"7"');
     expect(JSON.parse(put?.body ?? '{}')).toMatchObject({
       warehouseName: '1공장 자재창고',
+      isExternal: false,
       isDefect: true,
       businessUnitId: 21,
     });
@@ -2869,7 +2887,7 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
     },
   ];
 
-  it('머리에 창고 코드 · 창고명 · 상태가 보이고 외부 창고 칸은 없다', async () => {
+  it('머리에 창고 코드 · 창고명 · 상태가 보이고, 내부 창고면 외부 표시가 없다', async () => {
     renderScreen(
       [warehouseListRoute(), warehouseDetailRoute(), locationListRoute(), ...lookupRoutes()],
       '?wh=1001',
@@ -2879,8 +2897,8 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
     expect(await within(form).findByLabelText('창고 코드')).toHaveTextContent('WH-01');
     expect(within(form).getByLabelText('창고명')).toHaveTextContent('1공장 자재창고');
     expect(within(form).getByText('사용 중')).toBeInTheDocument();
-    expect(within(form).queryByRole('switch', { name: '외부 창고' })).not.toBeInTheDocument();
-    expect(within(form).queryByText('외부 창고')).not.toBeInTheDocument();
+    expect(within(form).getByRole('switch', { name: '외부 창고' })).not.toBeChecked();
+    expect(form.querySelector('.location-identity')?.textContent ?? '').not.toContain('외부 창고');
   });
 
   it('Location 묶음은 Location 탭과 같은 목록으로 센다 — 요청이 한 번이고, 옆 탭을 연다', async () => {
@@ -3015,7 +3033,7 @@ describe('WarehouseLocationScreen — 창고 정보 (안 A)', () => {
       expect(within(form).getByRole('combobox', { name: '공장' })).toHaveTextContent('1공장'),
     );
     expect(within(form).getByRole('button', { name: '취소' })).toBeDisabled();
-    expect(within(form).queryByRole('switch', { name: '외부 창고' })).not.toBeInTheDocument();
+    expect(within(form).getByRole('switch', { name: '외부 창고' })).not.toBeChecked();
   });
 
   it('등록에서 공장이 둘 이상이면 비워 둔다', async () => {

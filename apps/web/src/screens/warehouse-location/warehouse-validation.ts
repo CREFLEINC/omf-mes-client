@@ -14,6 +14,7 @@ export const WAREHOUSE_FORM_FIELDS: readonly string[] = [
   'warehouseCode',
   'warehouseName',
   'warehouseTypeCode',
+  'isExternal',
   'isDefect',
 ];
 

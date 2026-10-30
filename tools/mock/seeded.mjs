@@ -725,6 +725,7 @@ on('POST', '/mdm/warehouses', (_params, _query, body, headers) =>
     const warehouse = {
       ...body,
       warehouseId: newId(),
+      isExternal: body?.isExternal ?? false,
       isDefect: body?.isDefect ?? false,
       isActive: true,
     };

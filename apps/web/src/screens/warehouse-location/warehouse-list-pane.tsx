@@ -79,11 +79,17 @@ export const WarehouseListPane = ({
       align: 'center',
       width: '90px',
       /* 상태는 기존 칩으로 — 사용 중 success · 미사용 idle(W-CO 단말 공정 매핑과 같은 규칙). */
-      render: (row) => (
-        <Chip size="sm" status={row.isActive ? 'success' : 'idle'}>
-          {row.isActive ? t.values.active : t.values.inactive}
-        </Chip>
-      ),
+      /* 외부 창고는 「미사용 포함」일 때만 보인다 — 상태 자리에 외부 표시를 둔다. */
+      render: (row) =>
+        row.isExternal ? (
+          <Chip size="sm" status="idle">
+            {t.fields.isExternal}
+          </Chip>
+        ) : (
+          <Chip size="sm" status={row.isActive ? 'success' : 'idle'}>
+            {row.isActive ? t.values.active : t.values.inactive}
+          </Chip>
+        ),
     },
   ];
 

@@ -254,6 +254,7 @@ const DETAILS = [
     (body) =>
       typeof body.warehouse.businessUnitId === 'number' &&
       typeof body.warehouse.warehouseTypeCode === 'string' &&
+      typeof body.warehouse.isExternal === 'boolean' &&
       typeof body.warehouse.isDefect === 'boolean',
   ],
   [
@@ -396,6 +397,7 @@ for (const [name, path, check] of DETAILS) {
     warehouseCode: 'SMOKE-WH',
     warehouseName: '목업 검증 창고',
     warehouseTypeCode: 'GENERAL',
+    isExternal: false,
     isDefect: false,
   };
   const warehouseCreate = await fetch(`${BASE}/mdm/warehouses`, {
@@ -420,6 +422,7 @@ for (const [name, path, check] of DETAILS) {
       warehouseCode: 'SMOKE-WH',
       warehouseName: '검색 가능한 목업 창고',
       warehouseTypeCode: 'GENERAL',
+      isExternal: false,
       isDefect: false,
     }),
   });

@@ -47,6 +47,15 @@ export const warehouseListQuery = (filters: WarehouseFilters) => ({
   includeInactive: filters.includeInactive,
 });
 
+/**
+ * 보일 창고 — 외부 창고는 숨긴다(사용자 결정 2026-10-30 · 서버 #932). 「미사용 포함」을 켜면 외부 창고도 보인다 — 숨긴 창고를
+ * 다시 내부로 되돌릴 길이다. 서버에 외부를 빼는 질의가 없어 받은 쪽 안에서 거른다.
+ */
+export const visibleWarehouses = <T extends { isExternal: boolean }>(
+  items: readonly T[],
+  filters: Pick<WarehouseFilters, 'includeInactive'>,
+): T[] => (filters.includeInactive ? [...items] : items.filter((item) => !item.isExternal));
+
 const EMPTY_ENTRIES: LookupEntry[] = [];
 
 /** 창고 유형 공통코드 그룹(고정 계약 G-32). */

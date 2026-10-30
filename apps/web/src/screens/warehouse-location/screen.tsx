@@ -16,7 +16,7 @@ import {
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { ApiRequestError, runRequest, toApiError } from '../../patterns/request';
 import { isPutawayStaging, isSystemLocation } from '../../patterns/system-location';
-import { WarehouseFilterBar } from '../../patterns/warehouse-filter-bar';
+import { visibleWarehouses, WarehouseFilterBar } from '../../patterns/warehouse-filter-bar';
 import { selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { issueLocationCode } from './location-code';
@@ -194,7 +194,10 @@ export const WarehouseLocationScreen = () => {
   const selectedWarehouseId = isCreateMode ? null : Number(searchParams.get('wh') ?? '') || null;
 
   const warehouseList = useWarehouseList(filters);
-  const warehouses = warehouseList.data?.items ?? [];
+  const warehouses = useMemo(
+    () => visibleWarehouses(warehouseList.data?.items ?? [], filters),
+    [warehouseList.data, filters],
+  );
   const detail = useWarehouseDetail(selectedWarehouseId);
   const lookups = useLookupOptions();
 
@@ -1074,7 +1077,9 @@ export const WarehouseLocationScreen = () => {
   })();
 
   const listPage = warehouseList.data?.page;
-  const listTruncated = listPage !== undefined && isTruncated(listPage, warehouses.length);
+  /* 서버가 자른 것인지는 받은 줄 수로 본다 — 외부 창고를 숨긴 뒤의 수로 보면 잘리지 않았는데도 잘렸다고 한다. */
+  const receivedCount = warehouseList.data?.items.length ?? 0;
+  const listTruncated = listPage !== undefined && isTruncated(listPage, receivedCount);
 
   const renderWarehouseForm = (options: {
     mode: 'create' | 'edit';
@@ -1293,7 +1298,7 @@ export const WarehouseLocationScreen = () => {
             <>
               {listTruncated && listPage !== undefined && (
                 <AlertBanner variant="warning">
-                  {t.listTruncated(warehouses.length, listPage.total)}
+                  {t.listTruncated(receivedCount, listPage.total)}
                 </AlertBanner>
               )}
               <WarehouseFilterBar

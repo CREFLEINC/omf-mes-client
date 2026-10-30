@@ -5,8 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   defaultWarehouseFilters,
-  WarehouseFilterBar,
   type WarehouseFilters,
+  visibleWarehouses,
+  WarehouseFilterBar,
   warehouseListQuery,
 } from './warehouse-filter-bar';
 
@@ -130,5 +131,24 @@ describe('창고 배치도에서 쓰는 조건 상자', () => {
       plantId: 11,
       includeInactive: false,
     });
+  });
+});
+
+describe('visibleWarehouses', () => {
+  const rows = [
+    { warehouseId: 1, isExternal: false },
+    { warehouseId: 2, isExternal: true },
+  ];
+
+  it('외부 창고는 숨긴다', () => {
+    expect(
+      visibleWarehouses(rows, { includeInactive: false }).map((row) => row.warehouseId),
+    ).toEqual([1]);
+  });
+
+  it('「미사용 포함」이면 외부 창고도 보인다 — 다시 내부로 되돌릴 길이다', () => {
+    expect(
+      visibleWarehouses(rows, { includeInactive: true }).map((row) => row.warehouseId),
+    ).toEqual([1, 2]);
   });
 });

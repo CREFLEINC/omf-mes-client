@@ -3,7 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { type WarehouseFilters, warehouseListQuery } from '../../patterns/warehouse-filter-bar';
+import {
+  type WarehouseFilters,
+  visibleWarehouses,
+  warehouseListQuery,
+} from '../../patterns/warehouse-filter-bar';
 import type { LookupEntry } from './types';
 
 /**
@@ -51,7 +55,7 @@ export const useWarehouseOptions = (filters: WarehouseFilters): LookupResult => 
 
   return {
     entries:
-      data?.items.map((item) => ({
+      (data === undefined ? undefined : visibleWarehouses(data.items, filters))?.map((item) => ({
         value: String(item.warehouseId),
         label: `${item.warehouseCode} · ${item.warehouseName}`,
         isActive: item.isActive,

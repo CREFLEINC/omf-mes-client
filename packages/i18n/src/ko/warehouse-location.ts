@@ -29,6 +29,11 @@ export const warehouseLocation = {
     systemLocations: '서버가 만든 위치',
   },
   /** 정보 판의 불량 창고 스위치 — 바꾸기 전에 한 번 묻는다(사용자 지시 2026-10-30). 설명문 없이 제목만. */
+  externalConfirm: {
+    on: '외부 창고로 바꿀까요?',
+    off: '외부 창고에서 해제할까요?',
+    hiddenNote: '외부 창고는 목록에 나타나지 않습니다. 「미사용 포함」을 켜면 다시 보입니다.',
+  },
   defectConfirm: {
     on: '불량 창고로 바꿀까요?',
     off: '불량 창고에서 해제할까요?',

@@ -40926,6 +40926,12 @@ export interface components {
        */
       warehouseTypeCode: string;
       /**
+       * @description 외부 창고 여부. ERP 에서 받은 창고도 false 로 들어오고 사람이 화면에서 켠다 — 사용자 결정 2026-10-30
+       * @default false
+       * @example false
+       */
+      isExternal: boolean;
+      /**
        * @description 불량창고 여부. 창고 유형(자재·제품·반제품·상품·생산) 축과 별개로, 불량은 자재 불량창고도 제품 불량창고도 받을 수 있는 품질 축이다. W-01-06 §3의 창고 선택이 isDefect=true 로 걸러진다. 근거: DR-012 확정 3-C(2026-08-13) · 공유계약 §I-42 · omf-mes#147
        * @default false
        * @example false
@@ -40963,6 +40969,11 @@ export interface components {
        */
       warehouseTypeCode: string;
       /**
+       * @default false
+       * @example false
+       */
+      isExternal?: boolean;
+      /**
        * @description 불량창고 여부. 근거: DR-012 확정 3-C · omf-mes#147
        * @default false
        * @example false
@@ -40988,6 +40999,8 @@ export interface components {
        * @example MATERIAL
        */
       warehouseTypeCode: string;
+      /** @example false */
+      isExternal: boolean;
       /**
        * @description 불량창고 여부. 근거: DR-012 확정 3-C · omf-mes#147
        * @example false
@@ -43544,6 +43557,11 @@ export interface components {
         plantName: string;
         /** @example 1공장 자재창고 */
         warehouseName: string;
+        /**
+         * @description 외부 창고 여부 — true 인 창고는 화면이 숨긴다. 사용자 결정 2026-10-30
+         * @example false
+         */
+        isExternal: boolean;
         /** @example true */
         isActive: boolean;
       } | null;

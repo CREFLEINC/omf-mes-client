@@ -22,6 +22,7 @@ export interface WarehouseFormValues {
   warehouseCode: string;
   warehouseName: string;
   warehouseTypeCode: string;
+  isExternal: boolean;
   isDefect: boolean;
 }
 

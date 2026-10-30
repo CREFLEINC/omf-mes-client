@@ -22,6 +22,7 @@ const base: Warehouse = {
   warehouseCode: 'WH-01',
   warehouseName: '1공장 자재창고',
   warehouseTypeCode: 'MATERIAL',
+  isExternal: false,
   isDefect: false,
   isActive: true,
 };
@@ -52,6 +53,7 @@ describe('warehouseToFormValues', () => {
     expect(values.warehouseCode).toBe('WH-01');
     expect(values.warehouseName).toBe('외부 보관창고');
     expect(values.warehouseTypeCode).toBe('MATERIAL');
+    expect(values.isExternal).toBe(false);
   });
 });
 
@@ -266,5 +268,8 @@ describe('isSameWarehouseValues', () => {
 
     expect(isSameWarehouseValues(values, { ...values, warehouseName: '바뀐 이름' })).toBe(false);
     expect(isSameWarehouseValues(values, { ...values, isDefect: !values.isDefect })).toBe(false);
+    expect(isSameWarehouseValues(values, { ...values, isExternal: !values.isExternal })).toBe(
+      false,
+    );
   });
 });

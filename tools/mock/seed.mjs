@@ -267,6 +267,7 @@ export const createSeed = (now = new Date()) => {
     ...warehouse,
     plantId: PLANT_ID,
     businessUnitId: BUSINESS_UNIT_ID,
+    isExternal: false,
     isActive: true,
   }));
 

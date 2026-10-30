@@ -67,11 +67,19 @@ const renderPaneWithRerender = (initial: Partial<Parameters<typeof WarehouseForm
 };
 
 describe('WarehouseFormPane', () => {
-  /* 안 A(사용자 결정 2026-10-30) — 코드 · 창고명은 머리, 공장은 글자, 사업부 · 유형은 연필, 불량 창고는 스위치. */
+  /* 안 A(사용자 결정 2026-10-30) — 코드 · 창고명은 머리, 공장은 글자, 사업부 · 유형은 연필, 외부 · 불량 창고는 스위치. */
   it('수정에서는 값을 접근성 이름으로 찾을 수 있고 고칠 값만 연필이 있다', () => {
     renderPane();
 
-    for (const label of ['공장', '창고 코드', '창고명', '사업부', '창고 유형', '불량 창고']) {
+    for (const label of [
+      '공장',
+      '창고 코드',
+      '창고명',
+      '사업부',
+      '창고 유형',
+      '외부 창고',
+      '불량 창고',
+    ]) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
     expect(screen.getByRole('button', { name: '사업부 수정' })).toBeInTheDocument();
@@ -80,7 +88,7 @@ describe('WarehouseFormPane', () => {
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
-  it('등록은 「창고 추가」 머리 아래 필수 칸을 둔다 — 외부 창고 칸은 없다', () => {
+  it('등록은 「창고 추가」 머리 아래 필수 칸과 외부 · 불량 스위치를 둔다', () => {
     renderPane({ mode: 'create' });
 
     expect(screen.getByRole('heading', { name: '창고 추가' })).toBeInTheDocument();
@@ -90,7 +98,7 @@ describe('WarehouseFormPane', () => {
     expect(screen.getByRole('textbox', { name: '창고 코드' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '창고명' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: '불량 창고' })).toBeInTheDocument();
-    expect(screen.queryByRole('switch', { name: '외부 창고' })).not.toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: '외부 창고' })).not.toBeChecked();
     // 선택칸 셋은 직접 그린 별표, 입력칸 둘은 디자인 시스템이 required 로 그린다.
     expect(document.querySelectorAll('.required-mark')).toHaveLength(3);
     expect(screen.getByRole('textbox', { name: '창고 코드' })).toBeRequired();
@@ -250,12 +258,26 @@ describe('WarehouseFormPane', () => {
     });
   });
 
-  /* 외부 창고는 MES 가 관리할 대상이 아니다(사용자 지시 2026-10-30). */
-  it('불량 창고 토글만 있고 외부 창고 토글은 없다', () => {
-    renderPane();
+  /* 외부로 바꾸면 목록에서 숨는다(사용자 결정 2026-10-30 · 서버 #932) — 확인 창이 그 뒤를 알린다. */
+  it('외부 창고도 확인한 뒤에만 onChange를 부르고, 켤 때는 숨겨진다고 알린다', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderPane();
 
-    expect(screen.queryByRole('switch', { name: '외부 창고' })).not.toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: '불량 창고' })).toBeInTheDocument();
+    await user.click(screen.getByRole('switch', { name: '외부 창고' }));
+    expect(onChange).not.toHaveBeenCalled();
+
+    const dialog = screen.getByRole('dialog', { name: '외부 창고로 바꿀까요?' });
+    expect(within(dialog).getByText(/목록에 나타나지 않습니다/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+
+    expect(onChange).toHaveBeenCalledWith({ isExternal: true });
+  });
+
+  it('외부 창고는 머리에 표시가 붙는다', () => {
+    renderPane({ values: { ...warehouseFormInitialValues, isExternal: true } });
+
+    expect(screen.getByRole('switch', { name: '외부 창고' })).toBeChecked();
+    expect(document.querySelector('.location-identity')?.textContent ?? '').toContain('외부 창고');
   });
 
   it('사용 상태는 칩으로, 사용 중지는 단추로 따로 보인다', () => {

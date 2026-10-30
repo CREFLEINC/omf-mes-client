@@ -25,6 +25,7 @@ export const warehouseToFormValues = (warehouse: Warehouse): WarehouseFormValues
   warehouseCode: warehouse.warehouseCode,
   warehouseName: warehouse.warehouseName,
   warehouseTypeCode: warehouse.warehouseTypeCode,
+  isExternal: warehouse.isExternal,
   isDefect: warehouse.isDefect,
 });
 
@@ -37,6 +38,8 @@ export const emptyWarehouseFormValues = (): WarehouseFormValues => ({
   warehouseCode: '',
   warehouseName: '',
   warehouseTypeCode: '',
+  /* ERP 창고도 내부로 등록하고 사람이 외부로 바꾼다(사용자 결정 2026-10-30 · 서버 #932). */
+  isExternal: false,
   /* 신규 창고는 불량창고가 아니다 — 그렇게 정하는 자리가 화면에 없으므로 꺼진 값으로 낸다. */
   isDefect: false,
 });
@@ -54,6 +57,7 @@ export const toWarehouseUpdate = (values: WarehouseFormValues): WarehouseUpdate 
   warehouseCode: values.warehouseCode.trim(),
   warehouseName: values.warehouseName.trim(),
   warehouseTypeCode: values.warehouseTypeCode,
+  isExternal: values.isExternal,
   /* 화면이 고치지 않은 값을 그대로 되돌려 보낸다 — 여기서 지어내면 서버 값이 덮인다. */
   isDefect: values.isDefect,
 });
@@ -137,6 +141,7 @@ export const isSameWarehouseValues = (a: WarehouseFormValues, b: WarehouseFormVa
   a.warehouseCode === b.warehouseCode &&
   a.warehouseName === b.warehouseName &&
   a.warehouseTypeCode === b.warehouseTypeCode &&
+  a.isExternal === b.isExternal &&
   a.isDefect === b.isDefect;
 
 /** 위치 폼의 기준값과 현재 값의 비교 — 수정 창이 「고친 것이 있는가」를 이것과 보관 품목으로 판정한다. */

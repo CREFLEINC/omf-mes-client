@@ -221,6 +221,7 @@ const warehouseResponse = (overrides: Partial<WarehouseResponse> = {}): Warehous
   warehouseCode: 'SAMPLE-WH-01',
   warehouseName: '합성 창고 가',
   warehouseTypeCode: 'SAMPLE_WH_TYPE_A',
+  isExternal: false,
   isDefect: false,
   isActive: true,
   ...overrides,

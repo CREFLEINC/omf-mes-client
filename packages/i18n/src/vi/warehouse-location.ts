@@ -31,6 +31,12 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   warehouseInfo: {
     systemLocations: 'Vị trí do máy chủ tạo',
   },
+  externalConfirm: {
+    on: 'Chuyển thành kho bên ngoài?',
+    off: 'Bỏ đánh dấu kho bên ngoài?',
+    hiddenNote:
+      'Kho bên ngoài không hiển thị trong danh sách. Bật 「Gồm cả mục ngừng dùng」 để xem lại.',
+  },
   defectConfirm: {
     on: 'Chuyển thành kho hàng lỗi?',
     off: 'Bỏ kho hàng lỗi?',

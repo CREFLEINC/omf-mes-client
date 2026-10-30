@@ -205,11 +205,14 @@ const WarehouseCreateFields = ({
         error={fieldErrors.warehouseTypeCode}
         placeholder={t.values.selectPlaceholder}
       />
-      {/*
-       * 불량 창고는 유형 옆 칸에 — 등록 때는 아직 창고가 없어 묻지 않고 바로 바뀐다. 외부 창고는 MES 가 관리할 대상이
-       * 아니라 칸이 없다(사용자 지시 2026-10-30).
-       */}
+      {/* 외부 · 불량 창고는 유형 옆 칸에 — 등록 때는 아직 창고가 없어 묻지 않고 바로 바뀐다. */}
       <div className="warehouse-info-create-flags">
+        <Switch
+          label={t.fields.isExternal}
+          labelPlacement="start"
+          checked={values.isExternal}
+          onChange={(event) => onChange({ isExternal: event.target.checked })}
+        />
         <Switch
           label={t.fields.isDefect}
           labelPlacement="start"
@@ -222,6 +225,17 @@ const WarehouseCreateFields = ({
 );
 
 const STAT_ICON_SIZE = 18;
+
+interface PendingFlag {
+  field: 'isExternal' | 'isDefect';
+  value: boolean;
+}
+
+const flagConfirmTitle = ({ field, value }: PendingFlag): string => {
+  const confirm = field === 'isExternal' ? t.externalConfirm : t.defectConfirm;
+
+  return value ? confirm.on : confirm.off;
+};
 
 /** 창고 정보의 Location 묶음 — 위치 수 · 단계별 수 · 사용 중지 수 · 서버가 만든 위치 · 옆 탭으로. */
 const WarehouseLocationSummary = ({
@@ -355,7 +369,8 @@ export const WarehouseFormPane = ({
    * 보내지 않는다: 수정 본문은 칸 전부를 싣는 PUT 이라 연필로 고쳐 둔 다른 값까지 함께 나가거나, 그것을 빼려면 저장된
    * 값과 섞은 본문을 따로 지어야 한다. 바꾼 값은 다른 값과 같이 점으로 보이고 저장 · 취소로 한꺼번에 다룬다.
    */
-  const [pendingDefect, setPendingDefect] = useState<boolean | null>(null);
+  /* 외부 · 불량 스위치는 한 번 묻고 바꾼다(사용자 지시 2026-10-30). */
+  const [pendingFlag, setPendingFlag] = useState<PendingFlag | null>(null);
   /* 취소하면 열어 둔 연필 칸도 닫는다 — 정보 판을 새로 그린다. */
   const [resetCount, setResetCount] = useState(0);
 
@@ -385,6 +400,18 @@ export const WarehouseFormPane = ({
       },
     },
     {
+      label: t.fields.isExternal,
+      value: '',
+      changed: changed('isExternal'),
+      control: (
+        <Switch
+          aria-label={t.fields.isExternal}
+          checked={values.isExternal}
+          onChange={(event) => setPendingFlag({ field: 'isExternal', value: event.target.checked })}
+        />
+      ),
+    },
+    {
       label: t.fields.isDefect,
       value: '',
       changed: changed('isDefect'),
@@ -392,7 +419,7 @@ export const WarehouseFormPane = ({
         <Switch
           aria-label={t.fields.isDefect}
           checked={values.isDefect}
-          onChange={(event) => setPendingDefect(event.target.checked)}
+          onChange={(event) => setPendingFlag({ field: 'isDefect', value: event.target.checked })}
         />
       ),
     },
@@ -428,10 +455,19 @@ export const WarehouseFormPane = ({
             name={values.warehouseName}
             nameLabel={t.fields.warehouseName}
             chips={
-              values.isDefect ? (
-                <Chip size="sm" status="error">
-                  {t.fields.isDefect}
-                </Chip>
+              values.isExternal || values.isDefect ? (
+                <>
+                  {values.isExternal && (
+                    <Chip size="sm" status="idle">
+                      {t.fields.isExternal}
+                    </Chip>
+                  )}
+                  {values.isDefect && (
+                    <Chip size="sm" status="error">
+                      {t.fields.isDefect}
+                    </Chip>
+                  )}
+                </>
               ) : undefined
             }
             isActive={isActive}
@@ -482,20 +518,20 @@ export const WarehouseFormPane = ({
 
       <Dialog
         className="location-dialog"
-        open={pendingDefect !== null}
-        onClose={() => setPendingDefect(null)}
+        open={pendingFlag !== null}
+        onClose={() => setPendingFlag(null)}
         size="sm"
-        title={pendingDefect === true ? t.defectConfirm.on : t.defectConfirm.off}
+        title={pendingFlag === null ? '' : flagConfirmTitle(pendingFlag)}
         closeOnBackdropClick={false}
         footer={
           <>
-            <Button variant="outlined" onClick={() => setPendingDefect(null)}>
+            <Button variant="outlined" onClick={() => setPendingFlag(null)}>
               {messages.common.cancel}
             </Button>
             <Button
               onClick={() => {
-                if (pendingDefect !== null) onChange({ isDefect: pendingDefect });
-                setPendingDefect(null);
+                if (pendingFlag !== null) onChange({ [pendingFlag.field]: pendingFlag.value });
+                setPendingFlag(null);
               }}
             >
               {messages.common.confirm}
@@ -508,7 +544,11 @@ export const WarehouseFormPane = ({
           icon="warning"
           code={values.warehouseCode}
           name={values.warehouseName}
-        />
+        >
+          {pendingFlag?.field === 'isExternal' && pendingFlag.value && (
+            <p className="location-confirm-line">{t.externalConfirm.hiddenNote}</p>
+          )}
+        </ConfirmTarget>
       </Dialog>
     </section>
   );
