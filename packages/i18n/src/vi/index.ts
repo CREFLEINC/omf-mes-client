@@ -120,7 +120,6 @@ import { erpCommonCode } from './erp-common-code';
 import { productionPlan } from './production-plan';
 import { productionResult } from './production-result';
 import { putaway } from './putaway';
-import { putawayRule } from './putaway-rule';
 import { qualityApproval } from './quality-approval';
 import { recycleEntry } from './recycle-entry';
 import { repackLabelIssue } from './repack-label-issue';
@@ -280,7 +279,6 @@ export const vi: Translated<Messages> = {
   productReceipt,
   productStockStatus,
   putaway,
-  putawayRule,
   qualityApproval,
   recycleEntry,
   repackLabelIssue,

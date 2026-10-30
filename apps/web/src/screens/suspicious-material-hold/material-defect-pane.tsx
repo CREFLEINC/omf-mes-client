@@ -1,5 +1,5 @@
 import { Button, Chip, Table, TextField, type Column } from '@crefle/web-ui';
-import type { AffectedProductionLots } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -20,6 +20,8 @@ import {
   useRecordMaterialDefect,
 } from '../material-defect/queries';
 import type { SelectedLotSnapshot } from './candidate-model';
+
+type AffectedProductionLots = components['schemas']['AffectedProductionLots'];
 
 const t = messages.materialDefect;
 

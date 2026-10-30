@@ -1,4 +1,4 @@
-import type { components, LineDefaultLocations } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 
 import { isMeasurement } from './inspection-item-validation';
 import type {
@@ -11,9 +11,8 @@ import type {
   InspectionItemFormValues,
 } from './types';
 
-/* 기본 위치 셋은 생성 타입에 없어 덧댄다 — `LineDefaultLocations` 를 지울 때 함께 지운다. */
-type EquipmentGroupCreate = components['schemas']['EquipmentGroupCreate'] & LineDefaultLocations;
-type EquipmentGroupUpdate = components['schemas']['EquipmentGroupUpdate'] & LineDefaultLocations;
+type EquipmentGroupCreate = components['schemas']['EquipmentGroupCreate'];
+type EquipmentGroupUpdate = components['schemas']['EquipmentGroupUpdate'];
 type EquipmentCreate = components['schemas']['EquipmentCreate'];
 type EquipmentUpdate = components['schemas']['EquipmentUpdate'];
 
@@ -38,9 +37,9 @@ export const groupToFormValues = (group: EquipmentGroup): GroupFormValues => ({
   groupName: group.groupName,
   groupTypeCode: group.groupTypeCode,
   parentGroupId: optionalIdToText(group.parentGroupId),
-  defaultWipLocationId: optionalIdToText((group as LineDefaultLocations).defaultWipLocationId),
-  defaultFgLocationId: optionalIdToText((group as LineDefaultLocations).defaultFgLocationId),
-  defaultScrapLocationId: optionalIdToText((group as LineDefaultLocations).defaultScrapLocationId),
+  defaultWipLocationId: optionalIdToText(group.defaultWipLocationId),
+  defaultFgLocationId: optionalIdToText(group.defaultFgLocationId),
+  defaultScrapLocationId: optionalIdToText(group.defaultScrapLocationId),
   departmentId: optionalIdToText(group.departmentId),
 });
 

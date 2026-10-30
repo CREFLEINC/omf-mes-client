@@ -31,10 +31,15 @@ export interface DraftErrors {
 export interface ValidationInput {
   draft: ReinstatementDraft;
   maxQty: number | null;
-  locationRequired: boolean;
+  /**
+   * 고른 창고에서 재고를 둘 수 있는 위치 수(P-153). 아직 모르면 null.
+   * 둘 이상일 때만 위치를 고르게 하고, 하나면 서버가 그 위치로 넣는다. 0 이면 이 창고로는 못 넣는다.
+   */
+  stockableLocationCount: number | null;
   releaseReasonsReady: boolean;
   text: {
     warehouseRequired: string;
+    noStockableLocation: string;
     locationRequired: string;
     holdRequired: string;
     qtyRequired: string;
@@ -49,7 +54,13 @@ export const validateDraft = (input: ValidationInput): DraftErrors => {
   const qty = Number(input.draft.qty);
 
   if (input.draft.toWarehouseId === '') errors.toWarehouseId = input.text.warehouseRequired;
-  if (input.locationRequired && input.draft.toLocationId === '') {
+  else if (input.stockableLocationCount === 0)
+    errors.toWarehouseId = input.text.noStockableLocation;
+  if (
+    input.stockableLocationCount !== null &&
+    input.stockableLocationCount >= 2 &&
+    input.draft.toLocationId === ''
+  ) {
     errors.toLocationId = input.text.locationRequired;
   }
   if (input.draft.lotHoldId === '') errors.lotHoldId = input.text.holdRequired;

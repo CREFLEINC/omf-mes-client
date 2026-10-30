@@ -1,8 +1,7 @@
-import type {
-  ItemResourceMap,
-  ItemResourceMapCreate,
-  ItemResourceMapUpdate,
-} from '@omf-mes/api-client';
+import type { components, ItemResourceMap } from '@omf-mes/api-client';
+
+type ItemResourceMapCreate = components['schemas']['ItemResourceMapCreate'];
+type ItemResourceMapUpdate = components['schemas']['ItemResourceMapUpdate'];
 
 /**
  * 설비·금형 매핑 편집 창의 값과 요청 본문 사이의 유일한 통로.

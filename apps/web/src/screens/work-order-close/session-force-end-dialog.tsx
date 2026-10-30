@@ -1,5 +1,5 @@
 import { Button, Dialog, TextArea, useToast } from '@crefle/web-ui';
-import type { components, WorkSessionForceEnd } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { type JSX, useEffect, useId, useRef, useState } from 'react';
@@ -8,6 +8,8 @@ import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { workOrderCloseKeys, type WorkOrderCloseOpenSessionView } from './queries';
+
+type WorkSessionForceEnd = components['schemas']['WorkSessionForceEnd'];
 
 const t = messages.workOrderClose.forceEnd;
 /** 서버가 받는 사유 길이의 상한 */

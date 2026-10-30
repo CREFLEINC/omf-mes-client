@@ -1,4 +1,4 @@
-import type { HandoverTemplate } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -8,6 +8,8 @@ import { HANDOVER_ALERT_ORDER } from '../../patterns/handover-alert-types';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { ZaloConnectionScreen } from './screen';
 import type { Connection } from './types';
+
+type HandoverTemplate = components['schemas']['ZaloConnection']['handoverTemplates'][number];
 
 const t = messages.zaloConnection;
 

@@ -39,7 +39,6 @@ import {
   useObservations,
   usePlantLookup,
   useUomCodeById,
-  useScopeItemLookup,
   useScopeProcessLookup,
   useUomLookup,
 } from './queries';
@@ -204,7 +203,6 @@ export const CollectionChannelScreen = () => {
   const equipments = useEquipmentList(equipmentFilters);
   const channels = useChannelList(selectedEquipmentId, channelFilters.includeInactive);
   const plantLookup = usePlantLookup();
-  const scopeItems = useScopeItemLookup();
   const scopeProcesses = useScopeProcessLookup();
   const uomLookup = useUomLookup();
 
@@ -591,10 +589,8 @@ export const CollectionChannelScreen = () => {
             />
           }
           unitOptions={uomLookup.uoms}
-          itemOptions={scopeItems.entries}
           processOptions={scopeProcesses.entries}
           unitOptionsNote={unitNote}
-          itemOptionsNote={limitNoteOf(scopeItems)}
           processOptionsNote={limitNoteOf(scopeProcesses)}
           isSaving={write.isSaving}
           inspectionPlanId={pickerPath.inspectionPlanId}

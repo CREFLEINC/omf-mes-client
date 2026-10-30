@@ -1,7 +1,10 @@
-import type { TerminalCreateForward, TerminalUpdateForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { TerminalView } from './types';
+
+type TerminalCreateForward = components['schemas']['TerminalCreate'];
+type TerminalUpdateForward = components['schemas']['TerminalUpdate'];
 
 /**
  * 단말 등록·수정 폼의 편집 상태.

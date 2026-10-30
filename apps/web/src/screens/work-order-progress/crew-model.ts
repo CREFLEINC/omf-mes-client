@@ -1,9 +1,8 @@
 import { masterName } from '../../patterns/master-name';
-import type {
-  ProductionResultForward,
-  WorkSessionWorkerForward,
-  components,
-} from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
+
+type ProductionResult = components['schemas']['ProductionResult'];
+type WorkSessionWorker = components['schemas']['WorkSessionWorker'];
 
 type WorkSession = components['schemas']['WorkSession'];
 
@@ -52,7 +51,7 @@ const byJoinedAt = (left: ParticipantRow, right: ParticipantRow): number =>
 /** 세션마다 남아 있는 사람과 떠난 사람을 합쳐 참여 순으로 놓는다. */
 export const toSessionViews = (
   sessions: readonly WorkSession[],
-  workersBySession: ReadonlyMap<number, readonly WorkSessionWorkerForward[]>,
+  workersBySession: ReadonlyMap<number, readonly WorkSessionWorker[]>,
 ): SessionView[] =>
   [...sessions]
     .sort((left, right) => left.sessionNo - right.sessionNo)
@@ -84,9 +83,7 @@ export interface DefectTypeRow {
 }
 
 /** 정정되지 않은 잎 실적 — 정정은 덧붙는 레코드라 원본과 정정본이 둘 다 온다. */
-const leafResults = (
-  results: readonly ProductionResultForward[],
-): readonly ProductionResultForward[] => {
+const leafResults = (results: readonly ProductionResult[]): readonly ProductionResult[] => {
   const corrected = new Set(
     results.flatMap((result) =>
       result.correctsProductionResultId === undefined ? [] : [result.correctsProductionResultId],
@@ -101,7 +98,7 @@ const leafResults = (
  * ⚠ 서버는 유형 없이 불량 수량만 받기도 한다 — 실적의 불량 수량에서 유형별 합을 뺀 나머지를
  *   「유형 없음」 한 줄로 모아, 합계가 「작업자별 실적」의 불량과 맞게 한다.
  */
-export const toDefectTypes = (results: readonly ProductionResultForward[]): DefectTypeRow[] => {
+export const toDefectTypes = (results: readonly ProductionResult[]): DefectTypeRow[] => {
   const rows = new Map<number | null, DefectTypeRow>();
   const add = (defectCodeId: number | null, label: string | null, qty: number) => {
     rows.set(defectCodeId, { defectCodeId, label, qty: (rows.get(defectCodeId)?.qty ?? 0) + qty });
@@ -139,7 +136,7 @@ export const toDefectTypes = (results: readonly ProductionResultForward[]): Defe
  * ⚠ 서버는 그 구간에 참여하지 않은 세션 참여자도 0 몫으로 싣는다 — 몫이 없는 줄은 세지 않는다.
  */
 export const toWorkerResults = (
-  results: readonly ProductionResultForward[],
+  results: readonly ProductionResult[],
   known: readonly ParticipantRow[],
 ): WorkerResultRow[] => {
   const rows = new Map<number, WorkerResultRow>();

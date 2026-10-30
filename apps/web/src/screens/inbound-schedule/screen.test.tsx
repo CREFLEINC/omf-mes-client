@@ -48,10 +48,9 @@ const CODE_VALUES_PATH = '/mdm/code-values';
 const ITEM_PATH_PREFIX = '/mdm/items/';
 /** 초과분 발주 연결(서버 장부 P-115 입하 ↔ P/O 배정) — 계약 밖 경로 셋. */
 const EXCESS_PATH = '/logistics/inbound-unallocated';
-/** 입고 진행(계약 대기) — 발주 하나의 LOT 단계 · 묶음별 수 · IQC 의뢰. */
+/** 입고 진행 — 발주 하나의 LOT 단계 · 묶음별 수. */
 const PROGRESS_PATH = /^\/logistics\/purchase-orders\/(\d+)\/inbound-progress$/;
 const STAGE_COUNTS_PATH = '/logistics/purchase-orders:inbound-stage-counts';
-const IQC_REQUEST_PATH = '/quality/inspection-requests';
 
 /** 참조 목록이 만드는 표시 이름 —「코드 · 이름」이다. 화면이 이 형태로 푼다. */
 const SUPPLIER_LABEL = 'SAMPLE-SUP-01 · 합성 공급사 가';
@@ -193,20 +192,6 @@ const stageCountsRoute = (counts: unknown = stageCountsFixture): StubRoute => ({
 const failingStageCountsRoute = (status: number): StubRoute => ({
   match: (request) => isGet(request, STAGE_COUNTS_PATH),
   respond: () => jsonResponse({ message: '' }, { status }),
-});
-
-/** `POST /quality/inspection-requests` — 본문을 모은다. */
-const iqcRequestRoute = (bodies: unknown[]): StubRoute => ({
-  match: (request) =>
-    request.method === 'POST' && new URL(request.url).pathname === IQC_REQUEST_PATH,
-  respond: async (request) => {
-    bodies.push(JSON.parse(await request.clone().text()));
-
-    return jsonResponse(
-      { inspectionRequestId: 7899, inspectionRequestNo: 'SAMPLE-IQ-0099', statusCode: 'REQUESTED' },
-      { status: 201 },
-    );
-  },
 });
 
 /**
@@ -975,7 +960,7 @@ describe('InboundScheduleScreen — 두 표', () => {
     expect(within(linesPane()).getByText('SAMPLE-PO-0002')).toBeInTheDocument();
   });
 
-  it('왼쪽 표는 상태·납기·발주번호·공급사명·미입고 품목이다', async () => {
+  it('왼쪽 표는 상태·납기·발주번호·진행·공급사명·미입고 품목이다', async () => {
     renderScreen([listRoute(), ...lookupRoutes()]);
 
     await screen.findByText('SAMPLE-PO-0001');
@@ -988,40 +973,14 @@ describe('InboundScheduleScreen — 두 표', () => {
       t.table.receiptStatus,
       t.table.expectedReceiptDate,
       t.table.purchaseOrderNo,
+      t.table.progress,
       t.table.supplierName,
       t.table.openLines,
       t.table.orderDate,
     ]);
-    expect(cellsOf(rowOf('SAMPLE-PO-0002')).slice(3, 5)).toEqual(['합성 공급사 다', '1 / 3']);
+    expect(cellsOf(rowOf('SAMPLE-PO-0002')).slice(4, 6)).toEqual(['합성 공급사 다', '1 / 3']);
     // 납기는 YYYY.MM.DD(사용자 지시 2026-10-21).
     expect(cellsOf(rowOf('SAMPLE-PO-0002'))[1]).toMatch(/^\d{4}\.\d{2}\.\d{2}$/);
-  });
-
-  /* 회귀 — #762 앞선 서버는 묶음 칸·이름 칸을 아예 주지 않는다. 화면이 죽지 않고 「—」로 남는다. */
-  it('묶음 칸·이름 칸이 없는 응답에서도 죽지 않고 「—」를 낸다', async () => {
-    const bare = {
-      purchaseOrderId: 7101,
-      purchaseOrderNo: 'SAMPLE-PO-0001',
-      supplierId: 8101,
-      plantId: 8201,
-      orderDate: '2026-10-01',
-      expectedReceiptDate: TODAY,
-      statusCode: 'CONFIRMED',
-    };
-    const bareLine = { ...LINES[0], itemCode: undefined, itemName: undefined, uomCode: undefined };
-    renderScreen([listRoute([bare]), linesRoute([bareLine]), ...lookupRoutes()]);
-
-    await screen.findByRole('button', { name: t.actions.selectOrder('SAMPLE-PO-0001') });
-
-    const cells = cellsOf(rowOf('SAMPLE-PO-0001'));
-    expect(cells[0]).toBe(t.values.empty);
-    expect(cells.slice(3, 5)).toEqual([t.values.empty, t.values.empty]);
-    const lineTable = await within(linesPane()).findByRole('table');
-    /* 첫 칸은 체크 칸이다. */
-    expect(cellsOf(within(lineTable).getAllByRole('row')[1] as HTMLElement).slice(3, 5)).toEqual([
-      t.values.empty,
-      t.values.empty,
-    ]);
   });
 
   it('발주번호를 누르면 주소에 실리고 오른쪽에 그 발주의 라인이 다 보인다', async () => {
@@ -1137,10 +1096,17 @@ describe('InboundScheduleScreen — 두 표', () => {
     expect(marked[0]?.closest('tr')).toHaveTextContent('SAMPLE-ITEM-01');
   });
 
-  it('공급사 목록을 못 받으면 공급업체 칸 아래에 알린다', async () => {
-    renderScreen([listRoute(), failingLookupRoute(PARTNERS_PATH), ...lookupRoutes()]);
+  /* 공급업체 칸은 펼칠 때 쪽 단위로 받는다(사용자 지시 2026-10-29) — 못 받으면 펼친 목록 안에서 알린다. */
+  it('공급사 목록을 못 받으면 공급업체 칸을 펼쳤을 때 알린다', async () => {
+    const { user } = renderScreen([
+      listRoute(),
+      failingLookupRoute(PARTNERS_PATH),
+      ...lookupRoutes(),
+    ]);
 
-    expect(await screen.findByText(t.filters.lookupFailed)).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: t.quick.supplier }));
+
+    expect(await screen.findByText(messages.common.selectLoadFailed)).toBeInTheDocument();
   });
 
   /* #44 — 두 표 어디에도 내부 번호(7100·7300·8100대)가 글자로 서지 않는다. */
@@ -1429,7 +1395,6 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
   ];
   const progressRoutes = (
     rows: unknown[] = ROWS_WITH_STAGES,
-    bodies: unknown[] = [],
     items: unknown[] = progressFixtures,
     counts: unknown = stageCountsFixture,
   ): StubRoute[] => [
@@ -1447,7 +1412,6 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     ]),
     progressRoute(items),
     stageCountsRoute(counts),
-    iqcRequestRoute(bodies),
     listRoute(rows),
     ...lookupRoutes(),
   ];
@@ -1458,20 +1422,19 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     return row;
   };
 
-  it('서버가 진행 경로를 모르면(404) 라인만 선다 — 단계 칩 · 진행 열 · 다음 할 일 열 · 실패 안내가 없다', async () => {
+  it('서버가 진행 경로를 모르면(404) 라인만 선다 — 단계 칩 · 다음 할 일 열 · 실패 안내가 없다', async () => {
     renderScreen([listRoute(), ...lookupRoutes()], '?po=7101');
 
     await screen.findByText('SAMPLE-ITEM-01');
 
     expect(screen.queryByRole('group', { name: t.stage.label })).toBeNull();
-    expect(within(listTable()).queryByRole('columnheader', { name: t.table.progress })).toBeNull();
     expect(within(linesPane()).queryByRole('button', { name: /LOT/ })).toBeNull();
     expect(screen.queryByText(t.lot.loadFailed)).toBeNull();
   });
 
   it('라벨이 발행된(LOT 이 붙은) 라인은 행을 눌러 수량을 넣지 못한다 — LOT 없는 라인은 그대로다', async () => {
     const progressWithoutLine2 = progressFixtures.filter((lot) => lot.purchaseOrderLineId !== 7302);
-    renderScreen(progressRoutes(ROWS_WITH_STAGES, [], progressWithoutLine2), '?po=7101');
+    renderScreen(progressRoutes(ROWS_WITH_STAGES, progressWithoutLine2), '?po=7101');
 
     await within(linesPane()).findByText('SAMPLE|LOT|0003');
 
@@ -1519,7 +1482,7 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
       inboundReceiptLineId: 7613,
     };
     const { user } = renderScreen(
-      progressRoutes(ROWS_WITH_STAGES, [], [...progressFixtures, extraReady]),
+      progressRoutes(ROWS_WITH_STAGES, [...progressFixtures, extraReady]),
       '?po=7101',
     );
 
@@ -1593,13 +1556,10 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     expect(
       within(pane).getByRole('button', { name: t.actions.postReceiptRow('SAMPLE|LOT|0003') }),
     ).toBeInTheDocument();
-    expect(
-      within(pane).getByRole('button', { name: t.actions.requestIqcRow('SAMPLE|LOT|0002') }),
-    ).toBeInTheDocument();
-    /* 줄 단추 둘과, 발주 머리의 「체크한 LOT 입고 처리」(입고 대기 LOT 이 있어 선다 · 체크 전이라 잠김). */
-    expect(within(pane).getAllByRole('button', { name: /입고 처리|IQC 의뢰 요청/ })).toHaveLength(
-      3,
-    );
+    /* 검사 의뢰 전 LOT 에도 단추가 없다 — 의뢰는 입하 등록 때 서버가 만든다(#909). */
+    expect(within(lotRow('SAMPLE|LOT|0002')).queryByRole('button')).toBeNull();
+    /* 줄 단추 하나와, 발주 머리의 「체크한 LOT 입고 처리」(입고 대기 LOT 이 있어 나타난다 · 체크 전이라 잠김). */
+    expect(within(pane).getAllByRole('button', { name: /입고 처리/ })).toHaveLength(2);
     expect(within(pane).getByRole('button', { name: t.lot.postChecked })).toBeDisabled();
     expect(within(pane).queryByRole('link')).toBeNull();
 
@@ -1611,7 +1571,7 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
 
   it('라벨 미부착 입하 줄은 「라벨 발행 대기」 · 「라벨 미부착」 · 입하번호 · 「POP에서 라벨 발행」으로 서고 단추가 없다', async () => {
     renderScreen(
-      progressRoutes(ROWS_WITH_STAGES, [], [...progressFixtures, labelPendingProgress()], {
+      progressRoutes(ROWS_WITH_STAGES, [...progressFixtures, labelPendingProgress()], {
         ...stageCountsFixture,
         LABEL: 1,
       }),
@@ -1760,7 +1720,7 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
       allocatedQty: 100,
       receivableQty: 1425,
     });
-    renderScreen(progressRoutes(ROWS_WITH_STAGES, [], [linked]), '?po=7101');
+    renderScreen(progressRoutes(ROWS_WITH_STAGES, [linked]), '?po=7101');
 
     await screen.findByText('SAMPLE|LOT|0009');
 
@@ -1899,29 +1859,6 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     ).toBe(true);
   });
 
-  it('「IQC 의뢰 요청」을 누르면 그 LOT 하나의 수입검사 의뢰를 보내고 결과를 표 위에 알린다', async () => {
-    const bodies: unknown[] = [];
-    const { user } = renderScreen(progressRoutes(ROWS_WITH_STAGES, bodies), '?po=7101');
-
-    await screen.findByText('SAMPLE|LOT|0002');
-    await user.click(
-      screen.getByRole('button', { name: t.actions.requestIqcRow('SAMPLE|LOT|0002') }),
-    );
-
-    await waitFor(() => {
-      expect(bodies).toHaveLength(1);
-    });
-    expect(bodies[0]).toMatchObject({
-      inspectionTypeCode: 'IQC',
-      targetTypeCode: 'LOT',
-      targetId: 7702,
-      businessDate: TODAY,
-    });
-    expect(
-      await screen.findByText(t.lot.requested('SAMPLE|LOT|0002', 'SAMPLE-IQ-0099')),
-    ).toBeInTheDocument();
-  });
-
   it('「입고 처리」를 누르면 그 LOT 의 창이 주소로 열리고, 취소하면 주소에서 빠진다', async () => {
     const detailRoute: StubRoute = {
       match: (request) => isGet(request, '/logistics/inbound-receipts/7501'),
@@ -1987,7 +1924,7 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     });
   });
 
-  it('입고 처리 권한(W-01-10)이 없으면 「입고 처리」 단추가 없고 「IQC 의뢰 요청」은 남는다', async () => {
+  it('입고 처리 권한(W-01-10)이 없으면 「입고 처리」 단추가 없다', async () => {
     renderScreen(progressRoutes(), '?po=7101', {
       ...SYNTHETIC_SESSION,
       permissions: ['W-01-09', 'W-01-03'],
@@ -1998,8 +1935,5 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     expect(
       screen.queryByRole('button', { name: t.actions.postReceiptRow('SAMPLE|LOT|0003') }),
     ).toBeNull();
-    expect(
-      screen.getByRole('button', { name: t.actions.requestIqcRow('SAMPLE|LOT|0002') }),
-    ).toBeInTheDocument();
   });
 });

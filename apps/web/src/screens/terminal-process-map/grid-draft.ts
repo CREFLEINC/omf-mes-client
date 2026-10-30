@@ -1,4 +1,4 @@
-import type { ApiError, components, TerminalProcessReplaceForward } from '@omf-mes/api-client';
+import type { ApiError, components } from '@omf-mes/api-client';
 
 import { ALL_CLOSED, FLAG_KEYS, OPEN_BY_DEFAULT, type FlagKey } from './flags';
 import type { ProcessRowView } from './types';
@@ -18,7 +18,7 @@ import type { ProcessRowView } from './types';
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-type TerminalProcessReplace = TerminalProcessReplaceForward;
+type TerminalProcessReplace = components['schemas']['TerminalProcessReplace'];
 
 export type GridDraft = ProcessRowView[];
 

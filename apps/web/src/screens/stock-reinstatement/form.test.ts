@@ -37,12 +37,12 @@ describe('재고 재등록 본문', () => {
     expect(body).not.toHaveProperty('remarks');
   });
 
-  it('위치 관리 창고와 수량 상한, 필수 해제 사유를 함께 검증한다', () => {
+  it('재고를 둘 위치가 여럿인 창고와 수량 상한, 필수 해제 사유를 함께 검증한다', () => {
     expect(
       validateDraft({
         draft: { ...EMPTY_DRAFT, toWarehouseId: '202', lotHoldId: '71001', qty: '201' },
         maxQty: 200,
-        locationRequired: true,
+        stockableLocationCount: 2,
         releaseReasonsReady: true,
         text: t.form,
       }),
@@ -51,5 +51,41 @@ describe('재고 재등록 본문', () => {
       qty: t.form.qtyExceeded(200),
       releaseReasonCode: t.form.releaseReasonRequired,
     });
+  });
+
+  it('재고를 둘 위치가 하나면 위치를 묻지 않는다 — 서버가 그 위치로 넣는다', () => {
+    expect(
+      validateDraft({
+        draft: {
+          ...EMPTY_DRAFT,
+          toWarehouseId: '202',
+          lotHoldId: '71001',
+          qty: '10',
+          releaseReasonCode: 'RETEST_PASS',
+        },
+        maxQty: 200,
+        stockableLocationCount: 1,
+        releaseReasonsReady: true,
+        text: t.form,
+      }),
+    ).toEqual({});
+  });
+
+  it('재고를 둘 위치가 없는 창고는 창고 칸에서 막는다', () => {
+    expect(
+      validateDraft({
+        draft: {
+          ...EMPTY_DRAFT,
+          toWarehouseId: '202',
+          lotHoldId: '71001',
+          qty: '10',
+          releaseReasonCode: 'RETEST_PASS',
+        },
+        maxQty: 200,
+        stockableLocationCount: 0,
+        releaseReasonsReady: true,
+        text: t.form,
+      }),
+    ).toEqual({ toWarehouseId: t.form.noStockableLocation });
   });
 });

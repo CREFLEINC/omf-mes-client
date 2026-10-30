@@ -2,10 +2,11 @@ import type { components, paths } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import type { LayoutView, LocationView } from './types';
-import { toLayoutView, toLocationView } from './types';
+import { toLayoutView } from './types';
 
 /**
  * 이 화면의 오퍼레이션 — 배치도 하나, 위치 목록 하나, 배치도 저장 하나, 도면 첨부 둘.
@@ -29,8 +30,6 @@ type Attachment = components['schemas']['Attachment'];
 /** 첨부 올리기 본문 — 계약이 `multipart/form-data` 로 정의한 그 모양. */
 type AttachmentUpload =
   paths['/app/attachments']['post']['requestBody']['content']['multipart/form-data'];
-
-export const LOCATION_PAGE_SIZE = 200;
 
 export const layoutKeys = {
   all: ['warehouse-layout'] as const,
@@ -64,10 +63,10 @@ export const useLayout = (warehouseId: number | null): UseQueryResult<LayoutView
 };
 
 /**
- * 이 창고의 위치들.
+ * 이 창고의 위치들 — 끝 쪽까지 다 받는다.
  *
- * ⭐ **한 쪽에 다 담는다.** 창고 하나의 위치는 목록이자 지도의 범례라, 쪽을 나누면 2쪽의
- * 위치를 도면에서 고를 수 없다.
+ * ⭐ **쪽으로 자르지 않는다.** 위치 목록은 계층(창고·Location 의 Location 목록과 같은 표)이자 지도의 범례라,
+ * 부모와 자식이 다 있어야 계층이 맞고, 쪽을 나누면 다음 쪽의 위치를 도면에서 고를 수 없다.
  */
 export const useLocations = (
   warehouseId: number | null,
@@ -78,21 +77,25 @@ export const useLocations = (
   return useQuery({
     queryKey: layoutKeys.locations(warehouseId, includeInactive),
     enabled: warehouseId !== null,
-    queryFn: () => {
+    queryFn: async () => {
       if (warehouseId === null) throw new Error('창고를 고르기 전에는 위치를 조회하지 않습니다.');
 
-      return runRequest(() =>
-        client.GET('/mdm/locations', {
-          params: {
-            query: {
-              warehouseId,
-              ...(includeInactive ? { includeInactive: true } : {}),
-              page: 1,
-              size: LOCATION_PAGE_SIZE,
+      const all = await fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/locations', {
+            params: {
+              query: {
+                warehouseId,
+                ...(includeInactive ? { includeInactive: true } : {}),
+                page,
+                size,
+              },
             },
-          },
-        }),
-      ).then((data) => data.items.map(toLocationView));
+          }),
+        ),
+      );
+
+      return all.items;
     },
   });
 };

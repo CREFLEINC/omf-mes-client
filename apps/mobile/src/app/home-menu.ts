@@ -1,5 +1,7 @@
-import type { TerminalWorkCountKey } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+
+type TerminalWorkCountKey = keyof components['schemas']['TerminalWorkCounts'];
 
 const t = messages.shellHome;
 

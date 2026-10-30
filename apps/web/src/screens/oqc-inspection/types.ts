@@ -1,5 +1,8 @@
-import type { components, InspectionRequestForward, SkipBasisCode } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+
+type InspectionRequestForward = components['schemas']['InspectionRequest'];
+type SkipBasisCode = NonNullable<components['schemas']['InspectionRequest']['skipBasisCode']>;
 
 /**
  * W-04-03 이 그리는 값 — **계약 응답을 그대로 그리지 않는다.**

@@ -54,17 +54,6 @@ import {
   uomFixtures,
 } from '../screens/po-register/fixtures';
 import {
-  ITEM_LABEL as putawayItemLabel,
-  LOCATION_LABEL as putawayLocationLabel,
-  balanceFixtures as putawayBalanceFixtures,
-  itemFixtures as putawayItemFixtures,
-  locationFixtures as putawayLocationFixtures,
-  ruleFixtures as putawayRuleFixtures,
-  uncoveredItemFixtures as putawayUncoveredFixtures,
-  uomFixtures as putawayUomFixtures,
-  warehouseFixtures as putawayWarehouseFixtures,
-} from '../screens/putaway-rule/fixtures';
-import {
   countFixtures as adjustCountFixtures,
   itemFixtures as adjustItemFixtures,
   locationFixtures as adjustLocationFixtures,
@@ -90,7 +79,6 @@ import { appRouter } from './index';
  */
 
 const t = messages.poRegister;
-const putaway = messages.putawayRule;
 
 /** 라우터가 실제로 받는 경로. 자식 라우트의 `path`는 앞머리 `/`가 없다. */
 const routedPaths = (): string[] =>
@@ -270,15 +258,12 @@ const stockAdjustRoutes = (): StubRoute[] => [
   lookupRoute('/trace/lots', adjustLotFixtures),
 ];
 
-/** W-06-14가 창고를 고른 주소에서 부르는 것들 — 목록·규칙 없는 품목·잔액과 이름 풀이 넷. */
-const putawayRuleRoutes = (): StubRoute[] => [
-  lookupRoute('/logistics/putaway-rules/uncovered-items', putawayUncoveredFixtures),
-  lookupRoute('/logistics/putaway-rules', putawayRuleFixtures),
-  lookupRoute('/inventory/balances', putawayBalanceFixtures),
-  lookupRoute('/mdm/warehouses', putawayWarehouseFixtures),
-  lookupRoute('/mdm/locations', putawayLocationFixtures),
-  lookupRoute('/mdm/items', putawayItemFixtures),
-  lookupRoute('/mdm/uoms', putawayUomFixtures),
+/** 옛 적치 규칙 주소가 넘겨 주는 창고·Location 화면이 첫 진입에 부르는 이름 풀이. */
+const warehouseLocationRoutes = (): StubRoute[] => [
+  lookupRoute('/mdm/warehouses', []),
+  lookupRoute('/mdm/locations', []),
+  lookupRoute('/mdm/items', []),
+  lookupRoute('/mdm/uoms', []),
 ];
 
 /** W-CO-03이 첫 진입에 부르는 것들 — 목록·유형 목록·안 읽은 수. */
@@ -756,14 +741,6 @@ describe('appRouter', () => {
     expect(routedPaths()).not.toContain('/logistics/stock-status/adjust');
   });
 
-  /*
-   * **W-06-14 · C5-1** — 계약 경로는 `/logistics/putaway-rules`인데 주소 앞머리는
-   * `/master-data/`다. 근거는 여기서도 **섹션**이다: 적치 규칙은 물건이 오가는 일이 아니라
-   * 「어디에 둘지 미리 정해 두는 것」이라 창고·품목과 같은 기준정보 마스터다. 그 섹션 안에서
-   * 저 혼자 계약 앞머리를 쓰면 사용자도 개발자도 섹션과 주소를 대응시킬 수 없다.
-   *
-   * **주소는 단수, 계약 리소스는 복수다** — 주소가 가리키는 것은 리소스가 아니라 **화면**이다.
-   */
   /**
    * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 **사이드바 섹션**을 따른다.
    * 알림은 자기 섹션을 가지므로 앞머리도 그 이름이다.
@@ -779,15 +756,9 @@ describe('appRouter', () => {
     expect(routedPaths()).not.toContain('/system/notification-center');
   });
 
-  it('적치 규칙이 기준정보 앞머리로 등록돼 있다', () => {
-    expect(routedPaths()).toContain('/master-data/putaway-rule');
-  });
-
   /** ⭐ 창고·Location 이 만든 위치를 이 화면이 도면에 얹는다 — 같은 묶음이다. */
   it('W-CO-08 창고 배치도를 기준정보 아래에 둔다', () => {
     expect(routedPaths()).toContain('/master-data/warehouse-layout');
-    expect(routedPaths()).not.toContain('/logistics/putaway-rules');
-    expect(routedPaths()).not.toContain('/logistics/putaway-rule');
   });
 
   /*
@@ -810,119 +781,26 @@ describe('appRouter', () => {
   });
 });
 
-/**
- * **W-06-14는 진입 경로가 사이드바 하나뿐이다** — 다른 화면에서 넘어오는 링크가 없다.
- *
- * **다섯 PR이 함께 여는 자리다.** 목록·사용률·등록/수정·끄기/켜기가 다 서기 전에는 라우트를
- * 두지 않았다(정책 §5.2) — 끄지 못하는 마스터를 노출하면 잘못 만든 규칙을 지울 수도 끌 수도
- * 없다. 그래서 이 describe가 **여는 쪽을 양쪽에서** 잰다: 메뉴에 있고, 그 메뉴가 가리키는
- * 주소가 실제로 이 화면을 연다.
- */
-describe('appRouter — 적치 규칙의 진입 경로', () => {
-  /** 목록이 실제로 섰음을 잡는 시점. 조건이 실린 주소에서만 선다. */
-  const waitForRules = async (): Promise<HTMLElement> =>
-    screen.findByRole('button', {
-      name: putaway.actions.selectRow(putawayItemLabel, putawayLocationLabel),
-    });
+/** 없어진 적치 규칙(omf-mes-server #907) — 메뉴에 없고, 옛 주소는 창고·Location 화면으로 넘어간다. */
+describe('appRouter — 옛 적치 규칙 주소', () => {
+  it('사이드바의 창고·위치 묶음에 적치 규칙 탭이 없다', async () => {
+    const links = await hubTabLinks('창고·위치');
 
-  /*
-   * **C5-2** — 메뉴에 항목이 있다. 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른
-   * 메뉴가 같은 화면을 열어도 통과하고, 글자만 보면 이름만 같고 다른 곳으로 가는 메뉴가 통과한다.
-   */
-  it('사이드바의 창고·위치 묶음에서 이 화면 탭으로 닿는다', async () => {
-    expect(await hubTabLinks('창고·위치')).toContainEqual({
-      name: '적치 규칙',
-      href: '/master-data/putaway-rule',
+    /* 짝 양성 — 묶음 탭은 실제로 읽혔다. */
+    expect(links).toContainEqual({
+      name: '창고·Location',
+      href: '/master-data/warehouse-location',
     });
+    expect(links.map((link) => link.href)).not.toContain('/master-data/putaway-rule');
   });
 
-  /*
-   * **C5-1** — 그 주소로 들어가면 화면이 선다. **실제 라우트 표를 태우므로** 라우트 줄이
-   * 없거나 다른 화면을 가리키면 여기서 운다.
-   */
-  it('그 주소로 들어가면 적치 규칙 화면이 첫 상태로 선다', async () => {
-    renderRoutedApp('/master-data/putaway-rule', putawayRuleRoutes());
-
-    expect(
-      await screen.findByRole('heading', { level: 1, name: putaway.title }),
-    ).toBeInTheDocument();
-    /* 빈 표가 아니라 안내가 선다 — 화면이 자기 첫 상태로 섰다는 사실이다. */
-    expect(screen.getByText(putaway.empty.noWarehouseTitle)).toBeInTheDocument();
-  });
-
-  /*
-   * ⭐ **메뉴와 라우트 표를 잇는 이음매.** 둘은 서로 다른 파일에 있고 서로를 참조하지
-   * 않는다 — 한쪽만 고치면 죽은 링크가 남는데, 메뉴 시험은 `href` 글자만 보고 화면 시험은
-   * 라우터를 거치지 않아 **어느 쪽도 그 어긋남을 보지 못한다.** 그래서 **누른다.**
-   *
-   * 조건이 실린 주소에서 누르는 것은 우연이 아니다 — 이 회차가 처음 열어 준 길이
-   * **「같은 라우트에 질의만 다른 이동」**이고, 메뉴가 바로 그 길이다. 이 화면은 「창고·위치」
-   * 묶음의 탭이라 그 길은 이제 **탭 막대의 「적치 규칙」 탭**이다.
-   */
-  it('탭 막대의 이 화면 탭을 누르면 그 주소로 가고 화면이 첫 상태로 돌아온다', async () => {
-    const user = userEvent.setup();
-
-    renderRoutedApp('/master-data/putaway-rule?wh=9201', putawayRuleRoutes());
-
-    /* 짝 양성 — 조건이 실린 자리에서 목록이 실제로 섰다. */
-    await waitForRules();
-
-    await user.click(hubTab('창고·위치', '적치 규칙'));
+  /* **실제 라우트 표를 태운다** — 옛 라우트 줄이 빠지면 와일드카드가 대시보드로 보내 여기서 운다. */
+  it('옛 주소로 들어가면 창고·Location 화면으로 넘어간다', async () => {
+    renderRoutedApp('/master-data/putaway-rule?wh=9201', warehouseLocationRoutes());
 
     await waitFor(() => {
-      expect(currentLocation()).toBe('/master-data/putaway-rule');
+      expect(currentLocation()).toBe('/master-data/warehouse-location');
     });
-    expect(await screen.findByText(putaway.empty.noWarehouseTitle)).toBeInTheDocument();
-  });
-
-  /*
-   * **히스토리가 한 칸이다.** 메뉴 이동이 칸을 둘 이상 늘리면 사용자는 뒤로 눌러도 보던
-   * 자리로 돌아오지 못한다 — 이 화면은 조건도 고른 규칙도 전부 주소에 싣는다.
-   */
-  it('메뉴로 들어간 뒤 뒤로가기 한 번이면 앞 자리로 돌아온다', async () => {
-    const user = userEvent.setup();
-
-    renderRoutedApp('/master-data/putaway-rule?wh=9201', putawayRuleRoutes());
-
-    await waitForRules();
-
-    const before = currentLocation();
-
-    await user.click(hubTab('창고·위치', '적치 규칙'));
-    await waitFor(() => {
-      expect(currentLocation()).toBe('/master-data/putaway-rule');
-    });
-
-    await user.click(screen.getByRole('button', { name: '뒤로' }));
-
-    await waitFor(() => {
-      expect(currentLocation()).toBe(before);
-    });
-    /* 돌아온 자리가 **그 조건의 화면**이다 — 주소만 되돌고 화면이 비면 돌아온 것이 아니다. */
-    await waitForRules();
-  });
-
-  /*
-   * ⛔ **내부 번호는 주소에만 산다**(`omf-mes#44`). 이 화면은 조건·고른 규칙을 전부 번호로
-   * 주소에 싣는데, 그 번호가 글자로 새면 사용자가 읽을 수 없는 값이 화면의 사실이 된다.
-   *
-   * **주소에 실려 있음을 먼저 확인한 뒤** 글자에서 센다 — 값이 없어서 통과하는 일이 없게.
-   */
-  it('메뉴와 화면 어디에도 내부 번호가 글자로 나오지 않는다', async () => {
-    renderRoutedApp('/master-data/putaway-rule?wh=9201', putawayRuleRoutes());
-
-    await waitForRules();
-
-    /* 짝 양성 — 그 번호는 주소에 실제로 실려 있다. */
-    expect(currentLocation()).toContain('wh=9201');
-
-    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
-    const main = screen.getByRole('main');
-
-    for (const internalId of ['9201', '9101', '9301', '9401', '9001']) {
-      expect(nav.textContent).not.toContain(internalId);
-      expect(main.textContent).not.toContain(internalId);
-    }
   });
 });
 

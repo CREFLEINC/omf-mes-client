@@ -1,7 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
-import type { Location } from '../../patterns/locations';
+import { isStockableLocation, type Location } from '../../patterns/locations';
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 import { businessDateOf, type PutawayTask } from '../putaway/putaway';
 
@@ -11,33 +11,12 @@ export type PutawayTaskCompleteTemporary = components['schemas']['PutawayTaskCom
 export const PUTAWAY_TASK_TEMPORARY_REASON = 'PUTAWAY_TASK_TEMPORARY_REASON';
 
 /**
- * 임시 위치를 가려내는 위치 유형.
+ * 고를 수 있는 자리 — 재고를 둘 수 있는 맨 아래 위치. 적치 대기는 뺀다(거기서 막 나온 물건이다).
  *
- * 정위치에 임시 적치를 적으면 옮길 대상 목록에 오르는데 이미 제자리에 있어, 다음 사람이
- * 무엇을 옮겨야 하는지 알 수 없다.
+ * 위치 유형(임시 TEMP)은 서버 #890 에서 없어졌다 — 임시로 둘 자리는 작업자가 고른다.
  */
-export const TEMPORARY_LOCATION_TYPE = 'TEMP';
-
-export const isTemporaryLocation = (location: Location): boolean =>
-  location.locationTypeCode === TEMPORARY_LOCATION_TYPE;
-
-/**
- * 고를 수 있는 임시 위치와, 가려내는 데 성공했는지.
- *
- * 고객이 이 유형을 지우면 한 자리도 남지 않는다. 그때 목록을 비우면 임시 적치 자체를 못 해
- * 포화된 현장이 선다 - 가려내지 못한 것을 알리고 전체를 보인다.
- *
- * 둘을 따로 세면 한쪽만 고쳤을 때 화면이 「가려냈다」고 말하면서 전체를 보인다.
- */
-export const temporaryLocationsOf = (
-  locations: Location[],
-): { pickable: Location[]; filtered: boolean } => {
-  const temporary = locations.filter(isTemporaryLocation);
-
-  return temporary.length === 0
-    ? { pickable: locations, filtered: false }
-    : { pickable: temporary, filtered: true };
-};
+export const temporaryLocationsOf = (locations: Location[]): Location[] =>
+  locations.filter(isStockableLocation);
 
 /**
  * 이 지시가 이미 어딘가에 적치돼 있는가.

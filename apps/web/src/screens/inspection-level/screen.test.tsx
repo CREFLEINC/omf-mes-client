@@ -1,4 +1,4 @@
-import type { ItemInspectionLevel, ItemInspectionLevelHistory } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -11,6 +11,9 @@ import {
   type StubFetch,
 } from '../../test/api-harness';
 import { InspectionLevelScreen } from './screen';
+
+type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
+type ItemInspectionLevelHistory = components['schemas']['ItemInspectionLevelHistory'];
 
 const t = messages.inspectionLevel;
 

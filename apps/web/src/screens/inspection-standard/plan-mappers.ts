@@ -1,7 +1,9 @@
-import type { components, InspectionPlanUpdateForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 
 import type { InspectionPlan, PlanFormValues } from './types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+
+type InspectionPlanUpdateForward = components['schemas']['InspectionPlanUpdate'];
 
 type InspectionPlanCreate = components['schemas']['InspectionPlanCreate'] & {
   defaultSkip?: boolean;

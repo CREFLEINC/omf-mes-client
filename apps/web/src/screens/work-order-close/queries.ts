@@ -1,10 +1,12 @@
-import type { components, WorkOrderForward, WorkSessionForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { toWorkOrderFact, type WorkOrderFact } from '../work-order/queries';
 import { toProductionResultRow, type ProductionResultRow } from './result-correction-model';
+
+type WorkSession = components['schemas']['WorkSession'];
 
 type WorkOrder = components['schemas']['WorkOrder'];
 type WorkOrderProgress = components['schemas']['WorkOrderProgress'];
@@ -140,7 +142,7 @@ export const workOrderCloseKeys = {
 export const workOrderCloseDetailPath = (workOrderId: number): string =>
   `/production/work-orders/${workOrderId}`;
 
-export const toWorkOrderCloseFact = (workOrder: WorkOrderForward): WorkOrderCloseFact => ({
+export const toWorkOrderCloseFact = (workOrder: WorkOrder): WorkOrderCloseFact => ({
   ...toWorkOrderFact(workOrder),
   completedAt: workOrder.completedAt ?? null,
   completionVarianceReasonCode: workOrder.completionVarianceReasonCode ?? null,
@@ -255,7 +257,7 @@ export const useWorkOrderCloseOpenSession = (
           params: { query: { open: true, workOrderId, page: 1, size: OPEN_SESSION_PAGE_SIZE } },
         }),
       );
-      const items = data.items as WorkSessionForward[];
+      const items = data.items as WorkSession[];
 
       return {
         hasOpenSession: items.length > 0,

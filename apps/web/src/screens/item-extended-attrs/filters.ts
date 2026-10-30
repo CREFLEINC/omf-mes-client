@@ -125,7 +125,8 @@ export const toSearchParams = (
 /** 계약이 쓰는 쿼리 이름. 값이 없는 조건은 키 자체를 넣지 않는다. */
 export interface ItemListQuery {
   q?: string;
-  itemTypeCode?: string;
+  /** 서버 #905 부터 여러 값을 받는다. 이 화면은 하나만 고른다. */
+  itemTypeCode?: string[];
   includeInactive?: boolean;
   /**
    * IQC 대상만(true) · 비대상만(false). 계약 사본에 아직 없다 — 서버에 요청함(2026-10-28, hasBom 과 같은 모양).
@@ -147,7 +148,7 @@ export interface ItemListQuery {
  */
 export const toItemListQuery = (filters: ItemFilters, page: number): ItemListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
-  ...(filters.itemType === '' ? {} : { itemTypeCode: filters.itemType }),
+  ...(filters.itemType === '' ? {} : { itemTypeCode: [filters.itemType] }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(filters.iqc === '' ? {} : { inspectionRequired: filters.iqc === 'Y' }),
   ...(page > 1 ? { page } : {}),

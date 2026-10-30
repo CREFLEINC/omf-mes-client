@@ -1,4 +1,6 @@
-import type { components, InspectionPlanForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
+
+type InspectionPlanForward = components['schemas']['InspectionPlan'];
 
 /**
  * W-06-02 화면 슬라이스의 계약.

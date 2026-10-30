@@ -113,7 +113,8 @@ export const expeditedShipment = {
     warehouseNote: '장부상 입고 창고입니다. 물건은 이 창고를 거치지 않습니다.',
     warehouseAmbiguous:
       '활성 창고가 여러 곳이라 화면이 고르게 두었습니다. 어디로 기록할지 고르세요.',
-    warehouseNone: '활성 창고가 없어 진행할 수 없습니다. 창고 기준정보를 먼저 등록하세요.',
+    warehouseNone:
+      '위치를 고르지 않고 쓸 수 있는 창고가 없어 진행할 수 없습니다. 창고 기준정보를 확인하세요.',
     warehouseFailed: '창고 목록을 불러오지 못했습니다',
     warehouseLoading: '창고 불러오는 중',
   },

@@ -1,26 +1,45 @@
 export const warehouseLocation = {
   title: '창고·Location',
   breadcrumbRoot: '기준정보 관리',
+  /* 입고 관리 짜임(사용자 지시 2026-10-29) — 위 조건 상자 · 왼쪽 창고 목록 | 오른쪽 상세. */
+  splitter: '끌어서 목록·상세 폭 조절',
+  listCollapse: '창고 목록 접기',
+  listExpand: '창고 목록 펼치기',
+  panes: {
+    filters: '창고 조회 조건',
+    list: '창고 목록',
+    detail: '창고 상세',
+  },
   tabs: {
     warehouse: '창고 정보',
     location: 'Location',
   },
   actions: {
     addWarehouse: '창고 추가',
-    addRootLocation: '최상위 Location 추가',
-    addChildLocation: '하위 Location 추가',
-    generateLabel: '라벨 이미지 생성',
-    changeHistory: '변경 이력',
+    addZone: '구역 추가',
+    addRack: '랙 추가',
+    printLabels: '라벨 일괄 출력',
     activate: '다시 사용',
+    /** 창고 정보의 Location 묶음에서 옆 탭을 연다. */
+    viewLocations: 'Location 탭에서 보기',
+  },
+  /** 창고 정보 탭(안 A, 사용자 결정 2026-10-30) — 위치 창과 같은 머리 · 정보 판 · Location 묶음. */
+  warehouseInfo: {
+    /** Location 묶음의 서버가 만든 위치 목록 — 접근성 이름. */
+    systemLocations: '서버가 만든 위치',
+  },
+  /** 정보 판의 불량 창고 스위치 — 바꾸기 전에 한 번 묻는다(사용자 지시 2026-10-30). 설명문 없이 제목만. */
+  externalConfirm: {
+    on: '외부 창고로 바꿀까요?',
+    off: '외부 창고에서 해제할까요?',
+    hiddenNote: '외부 창고는 목록에 나타나지 않습니다. 「미사용 포함」을 켜면 다시 보입니다.',
+  },
+  defectConfirm: {
+    on: '불량 창고로 바꿀까요?',
+    off: '불량 창고에서 해제할까요?',
   },
   actionReasons: {
     locationHierarchyUnavailable: 'Location 계층을 불러온 뒤 추가할 수 있습니다.',
-    generateLabelNeedsSelection: 'Location을 하나 이상 선택해 주세요.',
-    /* 개발 진행 상황이 아니라 지금 되는지만 말한다(omf-all-around#17). */
-    changeHistoryUnavailable: '변경 이력은 현재 제공되지 않습니다.',
-    managementLevelWarehouseNoLocation: 'Location을 지정하지 않습니다.',
-    plantFixedAfterCreate: '공장은 등록 후 변경할 수 없습니다.',
-    warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
   },
   loading: {
     warehouses: '창고 목록을 불러오는 중',
@@ -36,11 +55,9 @@ export const warehouseLocation = {
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   empty: {
     warehouseNoneTitle: '아직 등록된 창고가 없습니다',
-    warehouseNoneDescription: '「창고 추가」로 첫 창고를 등록하세요.',
     warehouseNoMatchTitle: '조건에 맞는 결과가 없습니다',
-    warehouseNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
     locationNoneTitle: '등록된 Location이 없습니다',
-    locationNoneDescription: '최상위 Location을 추가해 주세요.',
+    locationNoneDescription: '구역을 추가해 주세요.',
     locationNoMatchTitle: '조건에 맞는 Location이 없습니다',
     locationNoMatchDescription: '검색어를 지우면 전체 계층이 보입니다.',
     /* 창고를 고르기 전 오른쪽 자리 — 제목 + 안내(사용자 지시 2026-09-18 · omf-all-around#17). */
@@ -51,16 +68,9 @@ export const warehouseLocation = {
     searchLabel: '창고 검색',
     searchPlaceholder: '창고 코드 또는 창고명',
     locationSearchLabel: 'Location 검색',
-    locationSearchPlaceholder: '위치 코드 또는 위치명',
+    locationSearchPlaceholder: '위치 코드 또는 별칭',
     plantAll: '전체 공장',
     typeAll: '전체 유형',
-    chipRemoveKeyword: '검색어 조건 제거',
-    chipRemovePlant: '공장 조건 제거',
-    chipRemoveType: '창고 유형 조건 제거',
-    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
-    chipKeyword: (value: string): string => `검색어: ${value}`,
-    chipPlant: (label: string): string => `공장: ${label}`,
-    chipType: (label: string): string => `창고 유형: ${label}`,
   },
   fields: {
     plant: '공장',
@@ -68,89 +78,138 @@ export const warehouseLocation = {
     warehouseCode: '창고 코드',
     warehouseName: '창고명',
     warehouseType: '창고 유형',
-    managementLevel: '관리 수준',
     isExternal: '외부 창고',
-    partner: '거래처',
     isDefect: '불량 창고',
 
     isActive: '사용 상태',
     warehouse: '창고',
     parentLocation: '상위 위치',
     locationCode: '위치 코드',
-    locationName: '위치명',
-    locationType: '위치유형',
-    qualityZone: '품질구역',
-    storageCondition: '보관조건',
-    allowMixedItem: '품목 혼적 허용',
-    allowMixedLot: 'LOT 혼적 허용',
-    capacityQty: '수용량',
-    capacityUom: '수용량 단위',
+    locationLevel: '구분',
+    aliasName: '별칭',
   },
   /** 값이 비었을 때 선택칸 안에 보이는 안내 — 값·검증과 무관하다. */
-  placeholders: {
-    partner: '거래처를 선택하세요',
-  },
   values: {
+    /** 등록 선택칸이 비었을 때. */
+    selectPlaceholder: '선택',
     active: '사용 중',
     inactive: '미사용',
-    noParent: '없음 (최상위)',
     currentParentOutsideList: '현재 상위 위치 (조회 목록 밖)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
     inactiveSuffix: ' (미사용)',
+    /** 위치 단계(서버 `locationLevelCode`) — 창고 › 구역 › 랙 › 층 › 셀. */
+    locationLevels: { ZONE: '구역', RACK: '랙', LEVEL: '층', CELL: '셀' },
+    /** 서버가 만든 자리의 역할 이름 — 수정 창 머리에 단계 대신 보인다. */
+    systemRoles: { PUTAWAY_STAGING: '적치 대기', WAREHOUSE_WHOLE: '창고 전체' },
   },
   validation: {
     required: '필수 입력 항목입니다.',
     codeBlank: '코드는 공백만으로 지정할 수 없습니다.',
     codeDuplicated: '이미 사용 중인 코드입니다. 다른 코드를 입력하세요.',
-    partnerRequiredForExternal: '외부 창고이면 거래처를 지정해야 합니다.',
-    capacityNeedsUom: '수용량과 단위는 함께 입력하거나 함께 비워야 합니다.',
-    capacityInvalid: '수용량은 0 이상의 숫자로 입력하세요.',
-    locationsDisabledByManagementLevel: '현재 창고 관리 수준에서는 Location을 저장할 수 없습니다.',
-    parentLocationUnavailable: '상위 위치를 전체 Location 목록에서 확인할 수 없습니다.',
-    locationDepthExceeded: '현재 창고 관리 수준에서 허용하는 계층 깊이를 넘었습니다.',
-    locationHierarchyUnavailable: 'Location 계층을 불러온 뒤 관리 수준을 변경할 수 있습니다.',
-    managementLevelTooShallow: '기존 Location 계층보다 낮은 관리 수준으로 변경할 수 없습니다.',
+    aliasTooLong: (max: number): string => `별칭은 ${String(max)}자 이하로 입력하세요.`,
   },
   locationTable: {
     expand: '하위 펼치기',
     collapse: '하위 접기',
+    collapseAll: '전체 접기',
+    expandAll: '전체 펼치기',
     selectionLabel: 'Location 선택',
   },
   dialog: {
     createTitle: 'Location 추가',
+    createZoneTitle: '구역 추가',
+    createRackTitle: '랙 추가',
+    editRackTitle: '랙 수정',
     editTitle: 'Location 수정',
+    /** 창 안의 묶음 제목 — 짧게. */
+    sections: { basic: '기본 정보', layout: '층·셀 구성' },
   },
-  labelPreview: {
-    title: 'Location 라벨 미리보기',
-    notice: (count: number): string =>
-      `${String(count)}건의 발행 기록을 만들었습니다. 서버가 생성한 이미지를 확인해 내려받으세요. 물리 인쇄는 이 화면에서 하지 않습니다.`,
+  /** 위치 수정 창 안의 보관 품목(사용자 지시 2026-10-29) — 품목 무관 · 지정 품목만 둘 중 하나. 안내문 없이. */
+  /** 정보 판에서 연필로 고치는 값(별칭). */
+  factEdit: {
+    start: (label: string): string => `${label} 수정`,
+    done: (label: string): string => `${label} 수정 완료`,
+  },
+  itemsSection: {
+    title: '보관 품목',
+    anyItem: '품목 무관',
+    listedOnly: '지정 품목만',
+    addItem: '품목 추가',
+    remove: (itemCode: string): string => `${itemCode} 삭제`,
+    loading: '보관 품목을 불러오는 중',
+    loadFailed: '보관 품목을 불러오지 못했습니다.',
+    required: '품목을 하나 이상 선택하세요.',
+    /** 목록의 위치 코드 옆 표식. */
+    restricted: '지정 품목만',
+  },
+  /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
+  deleteLocation: {
+    title: '위치 삭제',
+    /** 그 위치와 밑의 위치 수. */
+    count: (count: number): string =>
+      count > 1 ? `위치 ${String(count)}개가 함께 삭제됩니다.` : '위치 1개가 삭제됩니다.',
+    confirm: '삭제',
+    deleted: '삭제했습니다',
+  },
+  rackLayout: {
+    levelCount: '행 (층 수)',
+    cellCount: '열 (층마다 셀 수)',
+    countInvalid: (min: number, max: number): string =>
+      `${String(min)}부터 ${String(max)}까지 숫자로 입력하세요.`,
+    previewLabel: '층·셀 배치',
+    levelHeader: '층',
+    rowHeader: (levelNo: number): string => `${String(levelNo)}층`,
+    columnHeader: (cellNo: number): string => `${String(cellNo)}열`,
+    saving: (done: number, total: number): string => `만드는 중 ${String(done)}/${String(total)}`,
+    stopped: (done: number, reason: string): string =>
+      `${String(done)}개를 만든 뒤 멈췄습니다. ${reason} 다시 저장하면 남은 것만 만듭니다.`,
+  },
+  /** 위치 수정 창 안의 라벨(사용자 지시 2026-10-29) — 안내문 없이 그림과 단추만. */
+  labelSection: {
+    title: '라벨',
+    loading: '라벨을 불러오는 중',
+    listFailed: '라벨을 불러오지 못했습니다.',
+    imageFailed: '라벨 이미지를 불러오지 못했습니다.',
     alt: (locationCode: string, issueSeq: number): string =>
-      `${locationCode} Location 라벨 ${String(issueSeq)}회차`,
-    /** 그림 아래 설명. 보이는 글자라 `alt`와 따로 둔다 — 둘은 같은 값이 아니다. */
-    caption: (locationCode: string, issueSeq: number): string =>
-      `${locationCode} · ${String(issueSeq)}회`,
+      `${locationCode} 라벨 ${String(issueSeq)}회차`,
+    issue: '라벨 발행',
+    reissue: '재발행',
     download: '이미지 내려받기',
-    loadFailed: '라벨 이미지를 불러오지 못했습니다.',
-    loadSummary: (success: number, failed: number, pending: number): string =>
-      `이미지 성공 ${String(success)}건 · 실패 ${String(failed)}건 · 불러오는 중 ${String(pending)}건`,
-    created: (count: number): string => `${String(count)}건의 Location 라벨을 생성했습니다.`,
+    issued: '라벨을 발행했습니다.',
   },
   labelIssue: {
-    title: 'Location 라벨 재생성',
-    notice: (count: number): string =>
-      `선택한 Location 중 ${String(count)}건은 발행 이력이 있습니다. 새 회차를 만들 사유를 선택하세요.`,
+    title: '라벨 재발행',
+    alreadyIssued: (count: number): string => `${String(count)}건은 이미 발행했습니다.`,
     reason: '재발행 사유',
-    confirm: '새 회차 생성',
+    confirm: '재발행',
+  },
+  /** 라벨 일괄 출력(사용자 지시 2026-10-29) — 발행한 그림을 모아 보고 인쇄한다. */
+  labelPreview: {
+    title: '라벨 출력',
+    seq: (issueSeq: number): string => `${String(issueSeq)}회`,
+    print: '인쇄',
   },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
     title: '사용 중지할까요?',
     description: '삭제하지 않습니다. 사용 중지하면 새 작업에서 고를 수 없게 됩니다.',
     confirm: '사용 중지',
+    count: (count: number): string =>
+      count > 1 ? `위치 ${String(count)}개가 함께 사용 중지됩니다.` : '위치 1개가 사용 중지됩니다.',
+    warehouseTitle: '창고 사용 중지',
+    warehouseLine: '새 작업에서 이 창고를 고를 수 없게 됩니다.',
+    /** 창고를 끄기 전 남은 재고(사용자 지시 2026-10-30) — 막지 않고 알린다. 단위가 섞여 수량 합계는 보이지 않는다. */
+    stockLeft: (itemCount: number, lotCount: number): string =>
+      `남은 재고: 품목 ${String(itemCount)}, LOT ${String(lotCount)}`,
+    stockCheckFailed: '재고를 확인하지 못했습니다.',
   },
   activate: {
     title: '다시 사용할까요?',
     description: '다시 사용하면 새 작업에서 이 항목을 선택할 수 있습니다.',
     confirm: '다시 사용',
+    count: (count: number): string =>
+      count > 1 ? `위치 ${String(count)}개를 함께 다시 사용합니다.` : '위치 1개를 다시 사용합니다.',
+    warehouseTitle: '창고 다시 사용',
+    warehouseLine: '새 작업에서 이 창고를 다시 고를 수 있습니다.',
   },
 } as const;

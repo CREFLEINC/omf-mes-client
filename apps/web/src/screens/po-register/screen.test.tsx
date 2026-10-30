@@ -1005,7 +1005,7 @@ describe('등록 확인 창(C13)', () => {
     await user.click(screen.getByRole('button', { name: t.actions.addLine }));
     await user.click(screen.getByLabelText(t.lineTable.itemLabel(2)));
     await user.click(
-      screen.getByRole('option', { name: 'SAMPLE-ITEM-03 · 합성 품목 다 (미사용)' }),
+      await screen.findByRole('option', { name: 'SAMPLE-ITEM-03 · 합성 품목 다 (미사용)' }),
     );
     await user.click(screen.getByLabelText(t.lineTable.uomLabel(2)));
     await user.click(screen.getByRole('option', { name: 'SAMPLE-EA · 합성 단위 개' }));
@@ -1100,7 +1100,7 @@ describe('등록 요청(C14~C18)', () => {
       await user.click(screen.getByRole('button', { name: t.actions.addLine }));
       await user.click(screen.getByLabelText(t.lineTable.itemLabel(lineNo)));
       await user.click(
-        screen.getByRole('option', { name: 'SAMPLE-ITEM-03 · 합성 품목 다 (미사용)' }),
+        await screen.findByRole('option', { name: 'SAMPLE-ITEM-03 · 합성 품목 다 (미사용)' }),
       );
       await user.click(screen.getByLabelText(t.lineTable.uomLabel(lineNo)));
       await user.click(screen.getByRole('option', { name: 'SAMPLE-EA · 합성 단위 개' }));

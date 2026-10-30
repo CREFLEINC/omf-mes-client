@@ -1,12 +1,13 @@
-import type {
-  components,
-  TerminalProcessForward,
-  TerminalRegistrationStatusCode,
-  TerminalWarehouseForward,
-} from '@omf-mes/api-client';
+import type { components, TerminalRegistrationStatusCode } from '@omf-mes/api-client';
 
 import { ALL_CLOSED, FLAG_KEYS, OPEN_BY_DEFAULT, type FlagKey } from './flags';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+
+type TerminalProcessForward = components['schemas']['TerminalProcess'];
+type TerminalWarehouseForward = Pick<
+  components['schemas']['Terminal'],
+  'warehouseId' | 'warehouseName'
+>;
 
 /**
  * W-CO-06 이 다루는 모양들.
@@ -128,7 +129,7 @@ export const toTerminalView = (source: TerminalWithRegistration): TerminalView =
  * 응답에 없는 플래그는 **닫힘**으로 읽는다 — 없는 것을 열린 것으로 읽지 않는다. 기본이 열림인
  * 플래그만 서버와 같이 열림으로 읽는다.
  */
-export const toProcessRowView = (source: TerminalProcessForward): ProcessRowView => {
+export const toProcessRowView = (source: TerminalProcess): ProcessRowView => {
   const row = {
     processId: source.processId,
     processName: source.processName ?? String(source.processId),

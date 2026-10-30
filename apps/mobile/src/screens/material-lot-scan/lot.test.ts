@@ -27,6 +27,8 @@ const line = (overrides: Partial<InboundReceiptLine> = {}): InboundReceiptLine =
   inspectionRequired: true,
   statusCode: 'REGISTERED',
   lotId: null,
+  allocations: [],
+  unallocatedQty: 480,
   ...overrides,
 });
 

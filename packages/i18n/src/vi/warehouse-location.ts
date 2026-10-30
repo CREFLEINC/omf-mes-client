@@ -8,25 +8,41 @@ import type { Translated } from './translated';
 export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   title: 'Kho · Location',
   breadcrumbRoot: 'Quản lý dữ liệu gốc',
+  splitter: 'Kéo để chỉnh độ rộng danh sách · chi tiết',
+  listCollapse: 'Thu gọn danh sách kho',
+  listExpand: 'Mở danh sách kho',
+  panes: {
+    filters: 'Điều kiện tra cứu kho',
+    list: 'Danh sách kho',
+    detail: 'Chi tiết kho',
+  },
   tabs: {
     warehouse: 'Thông tin kho',
     location: 'Location',
   },
   actions: {
     addWarehouse: 'Thêm kho',
-    addRootLocation: 'Thêm Location cấp trên cùng',
-    addChildLocation: 'Thêm Location cấp dưới',
-    generateLabel: 'Tạo ảnh nhãn',
-    changeHistory: 'Lịch sử thay đổi',
+    addZone: 'Thêm khu',
+    addRack: 'Thêm kệ',
+    printLabels: 'In nhãn hàng loạt',
     activate: 'Dùng lại',
+    viewLocations: 'Xem ở tab Location',
+  },
+  warehouseInfo: {
+    systemLocations: 'Vị trí do máy chủ tạo',
+  },
+  externalConfirm: {
+    on: 'Chuyển thành kho bên ngoài?',
+    off: 'Bỏ đánh dấu kho bên ngoài?',
+    hiddenNote:
+      'Kho bên ngoài không hiển thị trong danh sách. Bật 「Gồm cả mục ngừng dùng」 để xem lại.',
+  },
+  defectConfirm: {
+    on: 'Chuyển thành kho hàng lỗi?',
+    off: 'Bỏ kho hàng lỗi?',
   },
   actionReasons: {
     locationHierarchyUnavailable: 'Tải xong phân cấp Location rồi mới thêm được.',
-    generateLabelNeedsSelection: 'Hãy chọn ít nhất một Location.',
-    changeHistoryUnavailable: 'Hiện chưa cung cấp lịch sử thay đổi.',
-    managementLevelWarehouseNoLocation: 'Không chỉ định Location.',
-    plantFixedAfterCreate: 'Không thể đổi nhà máy sau khi đăng ký.',
-    warehouseFixedInLocation: 'Cố định theo kho đã chọn ở bên trái.',
   },
   loading: {
     warehouses: 'Đang tải danh sách kho',
@@ -42,11 +58,9 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   optionsLoadFailed: 'Không tải được danh sách chọn. Chỉ hiển thị giá trị đang lưu.',
   empty: {
     warehouseNoneTitle: 'Chưa đăng ký kho nào',
-    warehouseNoneDescription: 'Hãy đăng ký kho đầu tiên bằng «Thêm kho».',
     warehouseNoMatchTitle: 'Không có kết quả khớp điều kiện',
-    warehouseNoMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
     locationNoneTitle: 'Chưa đăng ký Location',
-    locationNoneDescription: 'Hãy thêm Location cấp trên cùng.',
+    locationNoneDescription: 'Hãy thêm khu.',
     locationNoMatchTitle: 'Không có Location khớp điều kiện',
     locationNoMatchDescription: 'Xóa từ khóa thì thấy lại toàn bộ phân cấp.',
     warehouseNotSelectedTitle: 'Thông tin kho',
@@ -56,16 +70,9 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     searchLabel: 'Tìm kho',
     searchPlaceholder: 'Mã kho hoặc tên kho',
     locationSearchLabel: 'Tìm Location',
-    locationSearchPlaceholder: 'Mã vị trí hoặc tên vị trí',
+    locationSearchPlaceholder: 'Mã vị trí hoặc tên gọi khác',
     plantAll: 'Tất cả nhà máy',
     typeAll: 'Tất cả loại',
-    chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
-    chipRemovePlant: 'Bỏ điều kiện nhà máy',
-    chipRemoveType: 'Bỏ điều kiện loại kho',
-    chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
-    chipKeyword: (value: string): string => `Từ khóa: ${value}`,
-    chipPlant: (label: string): string => `Nhà máy: ${label}`,
-    chipType: (label: string): string => `Loại kho: ${label}`,
   },
   fields: {
     plant: 'Nhà máy',
@@ -73,90 +80,135 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     warehouseCode: 'Mã kho',
     warehouseName: 'Tên kho',
     warehouseType: 'Loại kho',
-    managementLevel: 'Mức quản lý',
     isExternal: 'Kho bên ngoài',
-    partner: 'Đối tác',
     isDefect: 'Kho hàng lỗi',
 
     isActive: 'Trạng thái sử dụng',
     warehouse: 'Kho',
     parentLocation: 'Vị trí cấp trên',
     locationCode: 'Mã vị trí',
-    locationName: 'Tên vị trí',
-    locationType: 'Loại vị trí',
-    qualityZone: 'Khu vực chất lượng',
-    storageCondition: 'Điều kiện bảo quản',
-    allowMixedItem: 'Cho phép xếp lẫn mặt hàng',
-    allowMixedLot: 'Cho phép xếp lẫn LOT',
-    capacityQty: 'Sức chứa',
-    capacityUom: 'Đơn vị sức chứa',
-  },
-  placeholders: {
-    partner: 'Hãy chọn đối tác',
+    locationLevel: 'Phân loại',
+    aliasName: 'Tên gọi khác',
   },
   values: {
+    selectPlaceholder: 'Chọn',
     active: 'Đang dùng',
     inactive: 'Ngừng dùng',
-    noParent: 'Không có (cấp trên cùng)',
     currentParentOutsideList: 'Vị trí cấp trên hiện tại (ngoài danh sách tra cứu)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
     inactiveSuffix: ' (ngừng dùng)',
+    /** 위치 단계(서버 `locationLevelCode`) — 창고 › 구역 › 랙 › 층 › 셀. */
+    locationLevels: { ZONE: 'Khu', RACK: 'Kệ', LEVEL: 'Tầng', CELL: 'Ô' },
+    /** 서버가 만든 자리의 역할 이름 — 수정 창 머리에 단계 대신 보인다. */
+    systemRoles: { PUTAWAY_STAGING: 'Chờ cất hàng', WAREHOUSE_WHOLE: 'Toàn kho' },
   },
   validation: {
     required: 'Đây là mục bắt buộc.',
     codeBlank: 'Mã không được chỉ gồm khoảng trắng.',
     codeDuplicated: 'Mã này đang được dùng. Hãy nhập mã khác.',
-    partnerRequiredForExternal: 'Là kho bên ngoài thì phải chỉ định đối tác.',
-    capacityNeedsUom: 'Sức chứa và đơn vị phải cùng nhập hoặc cùng để trống.',
-    capacityInvalid: 'Hãy nhập sức chứa bằng số từ 0 trở lên.',
-    locationsDisabledByManagementLevel: 'Ở mức quản lý kho hiện tại không lưu được Location.',
-    parentLocationUnavailable:
-      'Không xác nhận được vị trí cấp trên trong toàn bộ danh sách Location.',
-    locationDepthExceeded: 'Đã vượt độ sâu phân cấp mà mức quản lý kho hiện tại cho phép.',
-    locationHierarchyUnavailable: 'Tải xong phân cấp Location rồi mới đổi được mức quản lý.',
-    managementLevelTooShallow:
-      'Không đổi sang mức quản lý thấp hơn phân cấp Location hiện có được.',
+    aliasTooLong: (max: number): string => `Tên gọi khác tối đa ${String(max)} ký tự.`,
   },
   locationTable: {
     expand: 'Mở cấp dưới',
     collapse: 'Thu cấp dưới',
+    collapseAll: 'Thu gọn tất cả',
+    expandAll: 'Mở rộng tất cả',
     selectionLabel: 'Chọn Location',
   },
   dialog: {
     createTitle: 'Thêm Location',
+    createZoneTitle: 'Thêm khu',
+    createRackTitle: 'Thêm kệ',
+    editRackTitle: 'Sửa kệ',
     editTitle: 'Sửa Location',
+    /** 창 안의 묶음 제목 — 짧게. */
+    sections: { basic: 'Thông tin cơ bản', layout: 'Bố trí tầng·ô' },
   },
-  labelPreview: {
-    title: 'Xem trước nhãn Location',
-    notice: (count: number): string =>
-      `Đã tạo ${String(count)} bản ghi phát hành. Hãy xem ảnh do máy chủ tạo rồi tải về. Màn hình này không in vật lý.`,
+  /** 위치 수정 창 안의 보관 품목(사용자 지시 2026-10-29) — 품목 무관 · 지정 품목만 둘 중 하나. 안내문 없이. */
+  /** 정보 판에서 연필로 고치는 값(별칭). */
+  factEdit: {
+    start: (label: string): string => `Sửa ${label}`,
+    done: (label: string): string => `Xong sửa ${label}`,
+  },
+  itemsSection: {
+    title: 'Mặt hàng lưu trữ',
+    anyItem: 'Mọi mặt hàng',
+    listedOnly: 'Chỉ mặt hàng chỉ định',
+    addItem: 'Thêm mặt hàng',
+    remove: (itemCode: string): string => `Xóa ${itemCode}`,
+    loading: 'Đang tải mặt hàng lưu trữ',
+    loadFailed: 'Không tải được mặt hàng lưu trữ.',
+    required: 'Hãy chọn ít nhất một mặt hàng.',
+    /** 목록의 위치 코드 옆 표식. */
+    restricted: 'Chỉ mặt hàng chỉ định',
+  },
+  /** 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29). */
+  deleteLocation: {
+    title: 'Xóa vị trí',
+    /** 그 위치와 밑의 위치 수. */
+    count: (count: number): string =>
+      count > 1 ? `${String(count)} vị trí sẽ cùng bị xóa.` : '1 vị trí sẽ bị xóa.',
+    confirm: 'Xóa',
+    deleted: 'Đã xóa',
+  },
+  rackLayout: {
+    levelCount: 'Hàng (số tầng)',
+    cellCount: 'Cột (số ô mỗi tầng)',
+    countInvalid: (min: number, max: number): string =>
+      `Nhập số từ ${String(min)} đến ${String(max)}.`,
+    previewLabel: 'Bố trí tầng·ô',
+    levelHeader: 'Tầng',
+    rowHeader: (levelNo: number): string => `Tầng ${String(levelNo)}`,
+    columnHeader: (cellNo: number): string => `Cột ${String(cellNo)}`,
+    saving: (done: number, total: number): string => `Đang tạo ${String(done)}/${String(total)}`,
+    stopped: (done: number, reason: string): string =>
+      `Đã dừng sau khi tạo ${String(done)} mục. ${reason} Lưu lại để chỉ tạo phần còn lại.`,
+  },
+  /** 위치 수정 창 안의 라벨(사용자 지시 2026-10-29) — 안내문 없이 그림과 단추만. */
+  labelSection: {
+    title: 'Nhãn',
+    loading: 'Đang tải nhãn',
+    listFailed: 'Không tải được nhãn.',
+    imageFailed: 'Không tải được ảnh nhãn.',
     alt: (locationCode: string, issueSeq: number): string =>
-      `Nhãn Location ${locationCode} lượt ${String(issueSeq)}`,
-    /** 그림 아래 설명. 보이는 글자라 `alt`와 따로 둔다 — 둘은 같은 값이 아니다. */
-    caption: (locationCode: string, issueSeq: number): string =>
-      `${locationCode} · lượt ${String(issueSeq)}`,
+      `Nhãn ${locationCode} lượt ${String(issueSeq)}`,
+    issue: 'Phát hành nhãn',
+    reissue: 'Phát hành lại',
     download: 'Tải ảnh về',
-    loadFailed: 'Không tải được ảnh nhãn.',
-    loadSummary: (success: number, failed: number, pending: number): string =>
-      `Ảnh thành công ${String(success)} · thất bại ${String(failed)} · đang tải ${String(pending)}`,
-    created: (count: number): string => `Đã tạo ${String(count)} nhãn Location.`,
+    issued: 'Đã phát hành nhãn.',
   },
   labelIssue: {
-    title: 'Tạo lại nhãn Location',
-    notice: (count: number): string =>
-      `Trong các Location đã chọn có ${String(count)} mục đã từng phát hành. Hãy chọn lý do tạo lượt mới.`,
+    title: 'Phát hành lại nhãn',
+    alreadyIssued: (count: number): string => `${String(count)} mục đã được phát hành.`,
     reason: 'Lý do phát hành lại',
-    confirm: 'Tạo lượt mới',
+    confirm: 'Phát hành lại',
+  },
+  /** 라벨 일괄 출력(사용자 지시 2026-10-29) — 발행한 그림을 모아 보고 인쇄한다. */
+  labelPreview: {
+    title: 'In nhãn',
+    seq: (issueSeq: number): string => `lượt ${String(issueSeq)}`,
+    print: 'In',
   },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
     title: 'Ngừng sử dụng?',
     description: 'Không xóa. Ngừng sử dụng thì không chọn được ở công việc mới.',
     confirm: 'Ngừng sử dụng',
+    count: (count: number): string =>
+      count > 1 ? `${String(count)} vị trí sẽ cùng ngừng sử dụng.` : '1 vị trí sẽ ngừng sử dụng.',
+    warehouseTitle: 'Ngừng sử dụng kho',
+    warehouseLine: 'Không chọn được kho này ở công việc mới.',
+    stockLeft: (itemCount: number, lotCount: number): string =>
+      `Tồn kho còn lại: ${String(itemCount)} mặt hàng, ${String(lotCount)} LOT`,
+    stockCheckFailed: 'Không kiểm tra được tồn kho.',
   },
   activate: {
     title: 'Dùng lại?',
     description: 'Dùng lại thì có thể chọn mục này ở công việc mới.',
     confirm: 'Dùng lại',
+    count: (count: number): string =>
+      count > 1 ? `${String(count)} vị trí sẽ cùng được dùng lại.` : '1 vị trí sẽ được dùng lại.',
+    warehouseTitle: 'Dùng lại kho',
+    warehouseLine: 'Có thể chọn lại kho này ở công việc mới.',
   },
 };

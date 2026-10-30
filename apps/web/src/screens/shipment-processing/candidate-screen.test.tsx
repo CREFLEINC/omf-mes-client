@@ -232,7 +232,6 @@ const baseRoutes = (): StubRoute[] => [
         warehouseCode: 'WH-01',
         warehouseName: 'Synthetic Warehouse',
         warehouseTypeCode: 'PRODUCT',
-        managementLevelCode: 'STANDARD',
         isExternal: false,
         isDefect: false,
         isActive: true,

@@ -31,10 +31,10 @@ import {
 } from './lookups';
 import { toPageView } from './pagination';
 import { usePurchaseOrderDetail, usePurchaseOrderList } from './queries';
-import { isForeignOrder, type PurchaseOrder } from './types';
+import { isForeignOrder, type PurchaseOrderListItem } from './types';
 
 const t = messages.erpPurchaseOrder;
-const EMPTY_ROWS: PurchaseOrder[] = [];
+const EMPTY_ROWS: PurchaseOrderListItem[] = [];
 
 /** 통관번호 받아오기의 권한 화면 — 「지금 읽기」와 같이 W-06-10(연동 현황·이력)에 묶였다(서버 장부 P-143). */
 const ERP_SYNC_PATH = '/master-data/integration-sync';
@@ -107,7 +107,6 @@ export const ErpPurchaseOrderScreen = () => {
             <div className="pane po-board-filter">
               <ErpPurchaseOrderFilterBar
                 appliedFilters={filters}
-                supplierOptions={suppliers.options}
                 plantOptions={plants.options}
                 statusOptions={status.options}
                 orderTypeOptions={orderTypes.options}

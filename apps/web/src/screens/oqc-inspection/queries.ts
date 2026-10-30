@@ -1,11 +1,4 @@
-import type {
-  ApiClient,
-  components,
-  InspectionResultCreateForward,
-  OqcSerialJudgmentInput,
-  OqcSerialRecord,
-  OqcSerialScan,
-} from '@omf-mes/api-client';
+import type { ApiClient, components, InspectionResultCreateForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
@@ -24,6 +17,10 @@ import {
   type InspectionRequestDetail,
   type InspectionResultRound,
 } from './types';
+
+type InspectionSerialJudgmentInput = components['schemas']['InspectionSerialJudgmentInput'];
+type OqcSerialRecord = components['schemas']['OqcSerialRecord'];
+type OqcSerialScan = components['schemas']['OqcSerialScan'];
 
 /**
  * 이 화면의 요청 — **조회 넷과 쓰기 하나다.**
@@ -245,7 +242,7 @@ export interface SaveResultVariables {
    */
   judgmentChangeReason?: string;
   /** 검사한 시리얼별 판정(omf-all-around#68 · 서버 P-101). 비어 있으면 싣지 않는다 — LOT 판정만 저장한다. */
-  serials?: OqcSerialJudgmentInput[];
+  serials?: InspectionSerialJudgmentInput[];
   /**
    * 불합격 사유(선택 · #136) — 계약의 비고(`remarks`)에 싣는다. 불량 코드(`defects`)는 서버가 IQC 결과에만 받는다.
    * 불합격이고 무언가 썼을 때만 싣는다.

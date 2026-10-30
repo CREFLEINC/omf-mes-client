@@ -1,9 +1,11 @@
-import type { HandoverAlertType } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { activeLocale } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
 import { runRequest } from './request';
+
+type HandoverAlertType = components['schemas']['HandoverAlertType'];
 
 /**
  * 인계 작업 종류 10종(피처 002, omf-all-around#190) — 기존 알림 이벤트 6종과 **다른 목록**이다(research R-1).

@@ -1,4 +1,4 @@
-import type { InspectionResultListQueryForward, paths } from '@omf-mes/api-client';
+import type { paths } from '@omf-mes/api-client';
 
 import {
   isCalendarDate,
@@ -7,8 +7,12 @@ import {
   type InspectionResultSort,
 } from './filters';
 
+type InspectionResultListQuery = NonNullable<
+  paths['/quality/inspection-results']['get']['parameters']['query']
+>;
+
 /** 서버 선행 P-76 — `lotId` 질의를 더한 목록 질의(omf-all-around#85). */
-export type InspectionListQuery = InspectionResultListQueryForward;
+export type InspectionListQuery = InspectionResultListQuery;
 export type InspectionSummaryQuery = NonNullable<
   NonNullable<paths['/quality/inspection-results/summary']['get']>['parameters']['query']
 >;

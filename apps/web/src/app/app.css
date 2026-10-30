@@ -191,12 +191,14 @@ main > * + * {
  * ⚠ DS 빌드의 클래스 이름(`_root_f6a42_*`)으로 고른다 — 다른 수단으로는 「제목이 있는 띠」를 가릴 수 없다.
  *   DS 를 올려 이름이 바뀌면 이 규칙은 조용히 빠지고 DS 기본 모양으로 돌아간다(깨지지는 않는다).
  */
-[class*='_root_f6a42_'] > [class*='_icon_f6a42_'] {
+[class*="_root_f6a42_"] > [class*="_icon_f6a42_"] {
   margin-top: 0;
 }
 
-[class*='_root_f6a42_']:has(> [class*='_content_f6a42_'] > [class*='_title_f6a42_'])
-  > [class*='_icon_f6a42_'] {
+[class*="_root_f6a42_"]:has(
+    > [class*="_content_f6a42_"] > [class*="_title_f6a42_"]
+  )
+  > [class*="_icon_f6a42_"] {
   margin-top: 2px;
 }
 
@@ -220,7 +222,10 @@ main > * + * {
  */
 .three-pane {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(200px, 1fr) minmax(480px, 2fr);
+  grid-template-columns: minmax(240px, 1fr) minmax(200px, 1fr) minmax(
+      480px,
+      2fr
+    );
   gap: var(--space-5);
   align-items: start;
 }
@@ -264,7 +269,9 @@ main > * + * {
  * 검사 기준 검색 칸 — 흐린 안내(「기준 코드 또는 기준명을 입력하세요」)가 잘리지 않는 폭을 기본으로 하고,
  * 창이 좁으면 그만큼 줄어든다(사용자 지시 2026-10-27 · #196).
  */
-.inspection-standard-search:not(.defect-cause-search) > .filter-bar:first-child > :nth-child(3) {
+.inspection-standard-search:not(.defect-cause-search)
+  > .filter-bar:first-child
+  > :nth-child(3) {
   flex: 0 1 19.5em;
   min-width: 12rem;
 }
@@ -294,7 +301,9 @@ main > * + * {
 
 /* 검사 기준 탭 조회 줄만(같은 카드 클래스를 쓰는 품질 코드 관리 조회 줄에는 걸지 않는다 — 단추 묶음이 4번째라 눌려 삐져나왔다). */
 /* 품목 칸은 고른 품목 이름 길이로 늘지 않는다 — 늘면 조회 · 초기화가 아랫줄로 밀린다(#208). 전체 이름은 title 로 본다. */
-.inspection-standard-search:not(.defect-cause-search) > .filter-bar:first-child > :nth-child(4) {
+.inspection-standard-search:not(.defect-cause-search)
+  > .filter-bar:first-child
+  > :nth-child(4) {
   flex: 0 1 11.5em;
   min-width: 10rem;
 }
@@ -346,11 +355,15 @@ main > * + * {
  * 공용 표 규칙(`.inspection-queue-table table th:first-child:nth-child(n):nth-child(n)` — 첫 칸 여백을 다른 칸과 같게)보다
  * 무거워야 왼쪽 여백이 선다. 자리(첫 칸 · 끝 칸) 기준이라 열을 옮겨도 양쪽 끝 여백은 그대로다.
  */
-.inspection-queue-table.defect-cause-rows table :is(th, td):first-child:nth-child(n):nth-child(n) {
+.inspection-queue-table.defect-cause-rows
+  table
+  :is(th, td):first-child:nth-child(n):nth-child(n) {
   padding-inline-start: var(--space-6);
 }
 
-.inspection-queue-table.defect-cause-rows table :is(th, td):last-child:nth-child(n):nth-child(n) {
+.inspection-queue-table.defect-cause-rows
+  table
+  :is(th, td):last-child:nth-child(n):nth-child(n) {
   padding-inline-end: var(--space-6);
 }
 
@@ -404,7 +417,10 @@ main > * + * {
  * 불량·원인코드 표의 대분류 · 상세 관계(사용자 지시 · #209) — 대분류 줄이 묶음 머리(접기 단추 · 굵은 코드 ·
  * 「하위 코드 N건」), 상세 줄은 왼쪽 선으로 대분류에 잇는다. 선은 칸(td) 기준으로 그어 줄 사이가 끊기지 않는다.
  */
-.inspection-queue-table.defect-cause-rows tbody tr:has(.defect-cause-tree-head) > td {
+.inspection-queue-table.defect-cause-rows
+  tbody
+  tr:has(.defect-cause-tree-head)
+  > td {
   background: var(--surface-container);
 }
 
@@ -478,7 +494,7 @@ main > * + * {
 
 .defect-cause-tree-child::before,
 .defect-cause-tree-child::after {
-  content: '';
+  content: "";
   position: absolute;
   left: var(--tree-x);
   pointer-events: none;
@@ -490,7 +506,7 @@ main > * + * {
   border-left: 1px solid var(--outline);
 }
 
-.defect-cause-tree-child[data-last='true']::before {
+.defect-cause-tree-child[data-last="true"]::before {
   bottom: 50%;
 }
 
@@ -615,7 +631,7 @@ main > * + * {
   cursor: pointer;
 }
 
-.defect-mapping-toggle[aria-pressed='true'] {
+.defect-mapping-toggle[aria-pressed="true"] {
   border-color: var(--primary);
   background: var(--primary);
 }
@@ -632,12 +648,14 @@ main > * + * {
 }
 
 /* 판정 유형 검색 칸은 돋보기를 걷는다(사용자 지시 2026-10-29 · #209). DS SearchInput 에 끄는 값이 없어 앞자리를 숨긴다. */
-.judgment-code-search-field [class*='_leading_'] {
+.judgment-code-search-field [class*="_leading_"] {
   display: none;
 }
 
 /* 판정 유형 검색 칸 — 흐린 안내 글이 잘리지 않는 만큼(#209). */
-.inspection-standard-search.defect-cause-search .filter-bar > .judgment-code-search-field {
+.inspection-standard-search.defect-cause-search
+  .filter-bar
+  > .judgment-code-search-field {
   flex: 0 1 21rem;
   min-width: 11rem;
 }
@@ -646,7 +664,9 @@ main > * + * {
  * 불량코드 조회 카드(#209) — 조건 칸 사이 빈 폭을 줄인다(사용자 지시 「불필요한 사이 공간」).
  * 검색 칸은 안내 문구가 읽히는 만큼만, 처분 유형은 「재작업 가능」이 잘리지 않는 만큼만 차지한다.
  */
-.inspection-standard-search.defect-cause-search .filter-bar > .defect-cause-code-field {
+.inspection-standard-search.defect-cause-search
+  .filter-bar
+  > .defect-cause-code-field {
   flex: 0 1 18.5rem;
   min-width: 11rem;
 }
@@ -658,7 +678,9 @@ main > * + * {
 }
 
 /* 맨 앞 칸이 되어도 공용 「첫 칸 19.5em」 규칙(`.inspection-standard-search .filter-bar > :first-child`)을 받지 않는다 — 내용 폭. */
-.inspection-standard-search.defect-cause-search .filter-bar > .defect-cause-filter-select {
+.inspection-standard-search.defect-cause-search
+  .filter-bar
+  > .defect-cause-filter-select {
   flex: 0 0 auto;
   min-width: 7.5rem;
 }
@@ -672,7 +694,9 @@ main > * + * {
 }
 
 /* 공정 매핑 검색 칸 — 「불량코드 또는 불량명을 입력하세요」가 잘리지 않는 만큼만(#209). */
-.inspection-standard-search.defect-cause-search .filter-bar > .defect-mapping-search-field {
+.inspection-standard-search.defect-cause-search
+  .filter-bar
+  > .defect-mapping-search-field {
   flex: 0 1 16.5rem;
   min-width: 11rem;
 }
@@ -952,11 +976,11 @@ main > * + * {
   color: var(--semantic-success);
 }
 
-.inspection-standard-history-note[data-tone='added'] {
+.inspection-standard-history-note[data-tone="added"] {
   color: var(--semantic-success);
 }
 
-.inspection-standard-history-note[data-tone='removed'] {
+.inspection-standard-history-note[data-tone="removed"] {
   color: var(--semantic-error);
 }
 
@@ -1081,7 +1105,7 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 .inspection-standard-compare-legend > li::before {
-  content: '';
+  content: "";
   display: inline-block;
   width: 8px;
   height: 8px;
@@ -1092,26 +1116,32 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 칸 색 — 바뀜 파랑 · 추가 초록 · 삭제 빨강. 칸(td)을 칠하고 왼쪽에 굵은 선을 둔다. */
-.inspection-standard-compare-legend > [data-tone='changed'],
-.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='changed']) {
+.inspection-standard-compare-legend > [data-tone="changed"],
+.inspection-standard-compare-table
+  td:has(.inspection-standard-compare-cell[data-tone="changed"]) {
   --compare-tone: var(--semantic-info);
   --compare-fill: var(--semantic-info-container);
 }
 
-.inspection-standard-compare-legend > [data-tone='added'],
-.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='added']) {
+.inspection-standard-compare-legend > [data-tone="added"],
+.inspection-standard-compare-table
+  td:has(.inspection-standard-compare-cell[data-tone="added"]) {
   --compare-tone: var(--semantic-success);
   --compare-fill: var(--semantic-success-container);
 }
 
-.inspection-standard-compare-legend > [data-tone='removed'],
-.inspection-standard-compare-table td:has(.inspection-standard-compare-cell[data-tone='removed']) {
+.inspection-standard-compare-legend > [data-tone="removed"],
+.inspection-standard-compare-table
+  td:has(.inspection-standard-compare-cell[data-tone="removed"]) {
   --compare-tone: var(--semantic-error);
   --compare-fill: var(--semantic-error-container);
 }
 
 /* 짝수 줄 바탕 규칙보다 무거워야 한다 — `tr:nth-child(n)` 로 무게를 올린다. */
-.inspection-standard-compare-table tbody tr:nth-child(n) td:has(.inspection-standard-compare-cell) {
+.inspection-standard-compare-table
+  tbody
+  tr:nth-child(n)
+  td:has(.inspection-standard-compare-cell) {
   background: var(--compare-fill);
   box-shadow: inset 3px 0 0 var(--compare-tone);
 }
@@ -1198,7 +1228,7 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 .inspection-standard-version-bar-row > .chip,
-.inspection-standard-version-bar-row > [class*='chip'] {
+.inspection-standard-version-bar-row > [class*="chip"] {
   align-self: center;
   margin-top: var(--space-5);
 }
@@ -1219,7 +1249,9 @@ h2:has(> .inspection-standard-dialog-title) {
   padding-top: var(--space-3);
 }
 
-.inspection-standard-version-dialog > .inspection-standard-section-head > .pane-title {
+.inspection-standard-version-dialog
+  > .inspection-standard-section-head
+  > .pane-title {
   margin: 0;
 }
 
@@ -1229,7 +1261,9 @@ h2:has(> .inspection-standard-dialog-title) {
   background: none;
 }
 
-.inspection-standard-version-dialog > .inspection-standard-section-head > .pane-title {
+.inspection-standard-version-dialog
+  > .inspection-standard-section-head
+  > .pane-title {
   color: var(--on-surface);
   font: var(--type-title-lg);
 }
@@ -1476,8 +1510,14 @@ h2:has(> .inspection-standard-dialog-title) {
   position: relative;
 }
 
-.inspection-queue-table.inspection-standard-plan-rows thead th[data-align] .col-grip,
-.inspection-queue-table.inspection-standard-item-rows thead th[data-align] .col-grip {
+.inspection-queue-table.inspection-standard-plan-rows
+  thead
+  th[data-align]
+  .col-grip,
+.inspection-queue-table.inspection-standard-item-rows
+  thead
+  th[data-align]
+  .col-grip {
   position: absolute;
   top: 50%;
   left: calc(100% + var(--space-1));
@@ -1486,7 +1526,8 @@ h2:has(> .inspection-standard-dialog-title) {
 
 /* 검사 기준 검색 창의 검색어 칸 — 안내 문구가 잘리지 않는 폭(사용자 지시 · #196). */
 /* 공용 창의 「첫 칸 12rem」 규칙(`.item-picker-controls > .field-cell:first-child`)보다 앞서야 한다. */
-.item-picker-controls > .field-cell.inspection-standard-picker-keyword:first-child {
+.item-picker-controls
+  > .field-cell.inspection-standard-picker-keyword:first-child {
   flex: 1 1 22em;
   min-width: min(22em, 100%);
 }
@@ -1522,13 +1563,13 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .inspection-standard-plan-rows
   tbody
-  tr:nth-child(n):has(.inspection-standard-plan-open[aria-current='true']) {
+  tr:nth-child(n):has(.inspection-standard-plan-open[aria-current="true"]) {
   background: var(--surface-container-high);
 }
 
 .inspection-standard-plan-rows
   tbody
-  tr:has(.inspection-standard-plan-open[aria-current='true'])
+  tr:has(.inspection-standard-plan-open[aria-current="true"])
   > td:first-child {
   box-shadow: inset 3px 0 0 var(--primary);
 }
@@ -1937,7 +1978,7 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 「선택됨」 배지만 줄의 오른쪽 끝으로 — 자동 선택 안내는 제목 옆에 붙는다. */
-.production-plan-master-card-header > [class*='chip'] {
+.production-plan-master-card-header > [class*="chip"] {
   margin-inline-start: auto;
 }
 
@@ -1975,8 +2016,8 @@ h2:has(> .inspection-standard-dialog-title) {
  */
 .production-plan-editor-table input:disabled,
 .production-plan-editor-table textarea:disabled,
-.production-plan-editor-table [class*='select'] [aria-disabled='true'],
-.production-plan-editor-table button:disabled[class*='select'] {
+.production-plan-editor-table [class*="select"] [aria-disabled="true"],
+.production-plan-editor-table button:disabled[class*="select"] {
   border-color: transparent;
   background: none;
   color: var(--on-surface);
@@ -2050,7 +2091,7 @@ h2:has(> .inspection-standard-dialog-title) {
 
 /* 잠긴 칸도 글자는 또렷하게 — 화면 전체가 꺼진 것처럼 보이지 않게 한다. */
 .production-plan-editor-table button:disabled,
-.production-plan-editor-table [aria-disabled='true'] {
+.production-plan-editor-table [aria-disabled="true"] {
   opacity: 1;
 }
 
@@ -2076,7 +2117,7 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 표식(20px)을 제목 줄(24px) 가운데에 맞춘다 — 브라우저 실측으로 잡은 값이다. */
-.production-plan-summary-banner > [class*='icon'] {
+.production-plan-summary-banner > [class*="icon"] {
   align-self: start;
   margin-top: 2px;
 }
@@ -2147,7 +2188,7 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 실패 배너의 「다시 시도」는 줄의 오른쪽 끝에 선다(사용자 지시 2026-09-20). */
-.production-plan-failure-banner > [class*='content'] {
+.production-plan-failure-banner > [class*="content"] {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -2155,11 +2196,11 @@ h2:has(> .inspection-standard-dialog-title) {
   row-gap: var(--space-1);
 }
 
-.production-plan-failure-banner > [class*='content'] > * {
+.production-plan-failure-banner > [class*="content"] > * {
   grid-column: 1;
 }
 
-.production-plan-failure-banner > [class*='content'] > [class*='action'] {
+.production-plan-failure-banner > [class*="content"] > [class*="action"] {
   grid-column: 2;
   grid-row: 1;
   margin-top: 0;
@@ -2240,7 +2281,7 @@ h2:has(> .inspection-standard-dialog-title) {
  * 주의 문구는 본문보다 크지 않게 둔다 — 상자가 눈에 띄므로 글자까지 키울 일이 없다
  * (사용자 지시 2026-09-21). 굵기는 남겨 본문과 구분한다.
  */
-.production-plan-confirm-warning [class*='title'] {
+.production-plan-confirm-warning [class*="title"] {
   font: var(--type-body-sm);
   font-weight: 600;
   letter-spacing: var(--type-body-sm-tracking);
@@ -2291,7 +2332,9 @@ h2:has(> .inspection-standard-dialog-title) {
  * `.production-plan-table-value` 는 flex 라 머리글이 가운데여도 글자는 왼쪽에 붙었다 — 확정된 줄의
  * 수량·비고가 머리글과 어긋나 보이던 까닭이다.
  */
-.production-plan-editor-table td[data-align='center'] .production-plan-table-value {
+.production-plan-editor-table
+  td[data-align="center"]
+  .production-plan-table-value {
   justify-content: center;
   text-align: center;
 }
@@ -2415,11 +2458,11 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-bottom: 0;
 }
 
-.production-order-detail-field[data-tier='secondary'] > dd {
+.production-order-detail-field[data-tier="secondary"] > dd {
   font-weight: 400;
 }
 
-.production-order-detail-field[data-tier='note'] > dd {
+.production-order-detail-field[data-tier="note"] > dd {
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
@@ -2472,11 +2515,17 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* ERP W/O 목록 — 지금 고른 행을 행 전체로 드러낸다. */
-.production-order-list-table tbody tr:has(.link-cell[aria-current='true']) > td {
+.production-order-list-table
+  tbody
+  tr:has(.link-cell[aria-current="true"])
+  > td {
   background: var(--primary-container);
 }
 
-.production-order-list-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+.production-order-list-table
+  tbody
+  tr:has(.link-cell[aria-current="true"])
+  > td:first-child {
   box-shadow: inset 3px 0 0 var(--primary);
 }
 
@@ -2566,7 +2615,7 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 도움말 단추는 열 이름 높이에 맞춘 작은 표식이다 — 원형 배경으로 강조하지 않는다. */
-.production-order-progress-header [class*='iconButton'] {
+.production-order-progress-header [class*="iconButton"] {
   width: auto;
   min-width: 0;
   height: auto;
@@ -2590,7 +2639,7 @@ h2:has(> .inspection-standard-dialog-title) {
  * ERP 수신본 안내 띠 — 표식을 글자 줄에 맞춘다. DS 는 표식을 제목 줄에 맞추려 위 여백 4px 을
  * 주는데, 제목 없이 설명 한 줄만 내는 이 띠에서는 그 여백이 어긋남이 된다.
  */
-.production-order-erp-notice > [class*='icon'] {
+.production-order-erp-notice > [class*="icon"] {
   margin-block-start: 0;
 }
 
@@ -2787,8 +2836,10 @@ h2:has(> .inspection-standard-dialog-title) {
   text-align: center;
 }
 
-.work-order-priority-field:not(:focus-within):not(:hover) input:not([aria-invalid='true']),
-.work-order-priority-field:not(:focus-within):not(:hover) > div:not([class*='error']) {
+.work-order-priority-field:not(:focus-within):not(:hover)
+  input:not([aria-invalid="true"]),
+.work-order-priority-field:not(:focus-within):not(:hover)
+  > div:not([class*="error"]) {
   border-color: transparent;
   background: none;
   box-shadow: none;
@@ -2862,8 +2913,8 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 안내는 제목 바로 옆에, 결과 칩만 오른쪽 끝으로 민다. */
-.work-order-validation-heading > [class*='chip'],
-.work-order-validation-heading > span[class*='_chip'] {
+.work-order-validation-heading > [class*="chip"],
+.work-order-validation-heading > span[class*="_chip"] {
   margin-inline-start: auto;
 }
 
@@ -2928,7 +2979,7 @@ h2:has(> .inspection-standard-dialog-title) {
   padding-block: var(--space-3);
 }
 
-.work-order-release-status-banner > [class*='content'] {
+.work-order-release-status-banner > [class*="content"] {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -2936,17 +2987,19 @@ h2:has(> .inspection-standard-dialog-title) {
   row-gap: var(--space-1);
 }
 
-.work-order-release-status-banner > [class*='content'] > * {
+.work-order-release-status-banner > [class*="content"] > * {
   grid-column: 1;
 }
 
-.work-order-release-status-banner > [class*='content'] > [class*='action'] {
+.work-order-release-status-banner > [class*="content"] > [class*="action"] {
   grid-column: 2;
   grid-row: 1;
   margin-top: 0;
 }
 
-.work-order-release-status-banner > [class*='content']:has(> [class*='title']) > [class*='action'] {
+.work-order-release-status-banner
+  > [class*="content"]:has(> [class*="title"])
+  > [class*="action"] {
   grid-row: 1 / span 2;
 }
 
@@ -3063,13 +3116,13 @@ h2:has(> .inspection-standard-dialog-title) {
  * LOT 크기는 이 카드의 핵심 입력이다 — 잠겨 있어도 이름은 또렷하게, 필수 표시는 빨갛게 둔다
  * (사용자 지시 2026-09-20). 디자인 시스템은 잠김 상태에서 둘 다 흐리게 만든다.
  */
-.work-order-release-input-pane [data-disabled] [class*='requiredMark'],
-.work-order-release-input-pane [class*='requiredMark'] {
+.work-order-release-input-pane [data-disabled] [class*="requiredMark"],
+.work-order-release-input-pane [class*="requiredMark"] {
   color: var(--semantic-error-text);
 }
 
-.work-order-release-input-pane [data-disabled] label[class*='label'],
-.work-order-release-input-pane label[class*='label'] {
+.work-order-release-input-pane [data-disabled] label[class*="label"],
+.work-order-release-input-pane label[class*="label"] {
   color: var(--on-surface);
 }
 
@@ -3095,6 +3148,7 @@ h2:has(> .inspection-standard-dialog-title) {
 
 /* 필수 표시 — 디자인 시스템 내장 라벨의 표시와 같은 토큰(빨강). 직접 만든 라벨에 붙인다. */
 .field-label > .required-mark,
+.warehouse-location-field-label .required-mark,
 .production-plan-required-header > .required-mark {
   color: var(--semantic-error-text);
 }
@@ -3230,7 +3284,7 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 고른 줄은 배경으로 알린다 — 어느 W/O 를 보고 있는지 목록에서 바로 읽힌다. */
-.work-order-assignment-list-pane tbody tr:has([aria-current='true']) {
+.work-order-assignment-list-pane tbody tr:has([aria-current="true"]) {
   background: var(--surface-container-high);
 }
 
@@ -3292,8 +3346,8 @@ h2:has(> .inspection-standard-dialog-title) {
   padding-block: var(--space-2);
 }
 
-.work-order-resource-rule > [class*='icon'],
-.work-order-plan-rule > [class*='icon'] {
+.work-order-resource-rule > [class*="icon"],
+.work-order-plan-rule > [class*="icon"] {
   align-self: start;
   /* 아이콘 상자가 글 상자보다 4px 내려와 선다 — 첫 줄에 맞춘다(브라우저 실측). */
   margin-top: -2px;
@@ -3578,7 +3632,7 @@ h2:has(> .inspection-standard-dialog-title) {
   box-shadow: var(--focus-ring);
 }
 
-.work-order-close-daily-toggle[aria-expanded='false'] > * {
+.work-order-close-daily-toggle[aria-expanded="false"] > * {
   transform: rotate(-90deg);
 }
 
@@ -3648,8 +3702,8 @@ h2:has(> .inspection-standard-dialog-title) {
   align-items: center;
 }
 
-.emergency-work-order-pane > .banner-slot > * > [aria-hidden='true'],
-.emergency-work-order-workspace > .banner-slot > * > [aria-hidden='true'] {
+.emergency-work-order-pane > .banner-slot > * > [aria-hidden="true"],
+.emergency-work-order-workspace > .banner-slot > * > [aria-hidden="true"] {
   margin-top: 0;
 }
 
@@ -3753,7 +3807,7 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 아직 안 고른 상태의 「—」는 값이 아니라 빈 자리다. */
-.emergency-work-order-form-item[data-empty='true'] > strong {
+.emergency-work-order-form-item[data-empty="true"] > strong {
   color: var(--on-surface-variant);
 }
 
@@ -4474,7 +4528,7 @@ h2:has(> .inspection-standard-dialog-title) {
   grid-column: span 2;
 }
 
-.lot-detail-field[data-size='wide'] {
+.lot-detail-field[data-size="wide"] {
   grid-column: span 5;
 }
 
@@ -4491,7 +4545,7 @@ h2:has(> .inspection-standard-dialog-title) {
   overflow-wrap: anywhere;
 }
 
-.lot-detail-field[data-size='short'] > dd {
+.lot-detail-field[data-size="short"] > dd {
   font-weight: 400;
 }
 
@@ -4647,11 +4701,11 @@ h2:has(> .inspection-standard-dialog-title) {
  * 한 줄 안내라 아이콘을 글자 줄 가운데에 맞춘다. 공용 배너는 제목 줄 기준으로 아이콘을 내려
  * 두어, 제목 없이 본문 한 줄만 쓰면 아이콘이 글자보다 아래로 처진다. 이 화면 안에서만 바로잡는다.
  */
-.lot-status-transition-notice > [role='alert'] {
+.lot-status-transition-notice > [role="alert"] {
   align-items: center;
 }
 
-.lot-status-transition-notice > [role='alert'] > [aria-hidden='true'] {
+.lot-status-transition-notice > [role="alert"] > [aria-hidden="true"] {
   margin-top: 0;
 }
 
@@ -4738,7 +4792,8 @@ h2:has(> .inspection-standard-dialog-title) {
  * 조회·초기화 묶음은 줄의 오른쪽 끝에 선다 — 한 줄에 다 들어가지 않아 다음 줄로 넘어갈 때
  * 왼쪽 끝에 혼자 떨어지지 않게 한다(사용자 지시 2026-09-18).
  */
-.filter-bar.lot-status-transition-filter > .lot-status-transition-filter-actions {
+.filter-bar.lot-status-transition-filter
+  > .lot-status-transition-filter-actions {
   margin-left: auto;
 }
 
@@ -4800,7 +4855,9 @@ h2:has(> .inspection-standard-dialog-title) {
  * 고른 LOT 의 행을 왼쪽 막대로 표시해, 아래 구획이 어느 행의 것인지 표에서도 보이게 한다.
  * 배경을 칠하지 않는 이유: 품질 상태 배지와 같은 바탕이 되어 배지가 묻힌다.
  */
-.lot-status-transition-table tr:has(.link-cell[aria-current='true']) > td:first-child {
+.lot-status-transition-table
+  tr:has(.link-cell[aria-current="true"])
+  > td:first-child {
   box-shadow: inset 3px 0 0 var(--primary);
 }
 
@@ -4911,7 +4968,7 @@ h2:has(> .inspection-standard-dialog-title) {
   margin: 0;
 }
 
-.lot-status-transition-pane .link-cell[aria-current='true'] {
+.lot-status-transition-pane .link-cell[aria-current="true"] {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   background: var(--primary-container);
@@ -4942,7 +4999,8 @@ h2:has(> .inspection-standard-dialog-title) {
  * 검사 수준 관리 목록 카드는 표 위에 제목 · 검색 · 안내 세 줄을 더 담는다 — 세 탭이 같이 쓰는 목록 높이를 그대로 쓰면
  * 표 자리가 한 줄로 줄어든다(#208). 그 세 줄 만큼 더 준다.
  */
-.po-board-split.inspection-split.is-stacked > .inspection-level-list-pane:first-child {
+.po-board-split.inspection-split.is-stacked
+  > .inspection-level-list-pane:first-child {
   height: calc(var(--stacked-list-height, 20rem) + 9rem);
   max-height: calc(var(--stacked-list-height, min(28rem, 50dvh)) + 9rem);
 }
@@ -5317,7 +5375,7 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 비활성 쿼리도 DS Skeleton을 pending으로 그리므로, 조건 적용 전에는 탭 본문만 감춘다. */
-.inspection-results-insights-pane-empty [role='tabpanel'] {
+.inspection-results-insights-pane-empty [role="tabpanel"] {
   display: none;
 }
 
@@ -5366,19 +5424,19 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 탭 목록이 따로 긋는 선은 걷는다 — 줄 전체의 선 하나만 남긴다. */
-.quality-approval-type-tabs [role='tablist'] {
+.quality-approval-type-tabs [role="tablist"] {
   gap: 0;
   padding: 0;
   box-shadow: none;
 }
 
-.quality-approval-type-tabs [role='tab'] {
+.quality-approval-type-tabs [role="tab"] {
   height: auto;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
-.quality-approval-type-tabs [role='tab']::after {
+.quality-approval-type-tabs [role="tab"]::after {
   right: 0;
   bottom: 0;
   left: 0;
@@ -5402,17 +5460,17 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 켜진 칩은 목록의 상태 배지와 같은 색이다(대기 노랑 · 승인 초록 · 반려 빨강 — `statusBadgeOf`). */
-.quality-approval-status-chip.is-warning[aria-pressed='true'] {
+.quality-approval-status-chip.is-warning[aria-pressed="true"] {
   background: var(--semantic-warning-container);
   color: var(--on-semantic-warning-container);
 }
 
-.quality-approval-status-chip.is-success[aria-pressed='true'] {
+.quality-approval-status-chip.is-success[aria-pressed="true"] {
   background: var(--semantic-success-container);
   color: var(--on-semantic-success-container);
 }
 
-.quality-approval-status-chip.is-error[aria-pressed='true'] {
+.quality-approval-status-chip.is-error[aria-pressed="true"] {
   background: var(--semantic-error-container);
   color: var(--on-semantic-error-container);
 }
@@ -6030,7 +6088,9 @@ main:has(.iqc-skip-approval-detail) {
     grid-column: 1 / -1;
   }
 
-  .po-board-split.is-stacked .quality-approval-concession > .quality-approval-concession-qty {
+  .po-board-split.is-stacked
+    .quality-approval-concession
+    > .quality-approval-concession-qty {
     grid-row: 1;
     grid-column: 1;
   }
@@ -6324,7 +6384,7 @@ main:has(.iqc-skip-approval-detail) {
 
 /* 결재 사유는 필수다 — DS 글 칸은 별표를 그리지 않아 라벨 뒤에 같은 색 별표를 붙인다(#144). */
 .quality-approval-comment label::after {
-  content: ' *';
+  content: " *";
   color: var(--semantic-error-text);
 }
 
@@ -6690,7 +6750,7 @@ main:has(.iqc-skip-approval-detail) {
   border: 0;
 }
 
-.equipment-master-detail-pane > [role='tablist'] {
+.equipment-master-detail-pane > [role="tablist"] {
   margin-top: calc(var(--space-1) * -1);
 }
 
@@ -6916,7 +6976,7 @@ main:has(.iqc-skip-approval-detail) {
  * 필수 * 는 **언제나 빨강**(사용자 지정 2026-09-22) — 디자인 시스템은 잠긴 칸의 * 를 회색으로
  * 바꾼다. 라벨 바로 뒤의 표식을 짚어 내부 클래스 이름에 기대지 않는다.
  */
-.tool-form label + [aria-hidden='true'] {
+.tool-form label + [aria-hidden="true"] {
   color: var(--semantic-error-text);
 }
 
@@ -7207,8 +7267,8 @@ main:has(.iqc-skip-approval-detail) {
   .filter-bar.tool-master-filter {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-areas:
-      'search search actions'
-      'plant type sort';
+      "search search actions"
+      "plant type sort";
   }
 
   .filter-bar.tool-master-filter > :nth-child(1) {
@@ -7969,7 +8029,9 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 .filter-bar.maintenance-result-part-row {
-  grid-template-columns: minmax(10rem, 1fr) minmax(9rem, 0.5fr) minmax(20rem, 1fr) auto;
+  grid-template-columns:
+    minmax(10rem, 1fr) minmax(9rem, 0.5fr) minmax(20rem, 1fr)
+    auto;
 }
 
 .maintenance-result-part-picker > *,
@@ -8381,7 +8443,7 @@ main:has(.iqc-skip-approval-detail) {
   max-width: 100%;
 }
 
-.approval-inbox-filter [role='combobox'],
+.approval-inbox-filter [role="combobox"],
 .approval-inbox-filter .field-cell > button {
   width: 100%;
   max-width: 100%;
@@ -8499,7 +8561,10 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 .filter-bar.notification-center-filter {
   display: grid;
-  grid-template-columns: minmax(18rem, 1.4fr) minmax(10rem, max-content) minmax(13rem, 1fr);
+  grid-template-columns: minmax(18rem, 1.4fr) minmax(10rem, max-content) minmax(
+      13rem,
+      1fr
+    );
   gap: var(--space-4);
   margin-bottom: 0;
 }
@@ -8715,7 +8780,10 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 아래 화면별 규칙(발주 목록 · 라인 표)이 뒤에 서서 이긴다.
  */
 .wide-table.board-table table {
-  min-width: max(var(--board-table-min, 38rem) + var(--col-grow, 0px), var(--col-floor, 0px));
+  min-width: max(
+    var(--board-table-min, 38rem) + var(--col-grow, 0px),
+    var(--col-floor, 0px)
+  );
 }
 
 /*
@@ -8891,7 +8959,10 @@ dl.filter-bar.approval-inbox-detail-facts {
      * 발주 목록 : 상세 — 기본 1 : 2, 가운데 막대를 끌어 바꾼다(사용자 지시 2026-10-21).
      * 비율은 `usePaneSplit` 이 `--split-left`·`--split-right` 로 싣는다. 막대가 없는 화면은 기본값이다.
      */
-    grid-template-columns: minmax(0, var(--split-left, 1fr)) minmax(0, var(--split-right, 2fr));
+    grid-template-columns: minmax(0, var(--split-left, 1fr)) minmax(
+        0,
+        var(--split-right, 2fr)
+      );
   }
 
   .po-board-split:has(> .po-board-gutter) {
@@ -8970,7 +9041,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   }
 
   .po-board-gutter > .po-board-splitter::before {
-    content: '';
+    content: "";
     position: absolute;
     top: var(--space-2);
     bottom: var(--space-2);
@@ -8982,7 +9053,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   }
 
   .po-board-gutter > .po-board-splitter::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 50%;
     left: 50%;
@@ -8992,8 +9063,8 @@ dl.filter-bar.approval-inbox-detail-facts {
     border: 1px solid var(--outline);
     border-radius: var(--radius-full);
     background:
-      radial-gradient(circle, var(--on-surface-variant) 1.5px, transparent 2px) center / 4px 8px
-        repeat-y,
+      radial-gradient(circle, var(--on-surface-variant) 1.5px, transparent 2px)
+        center / 4px 8px repeat-y,
       var(--surface);
     box-shadow: var(--elevation-1);
   }
@@ -9032,7 +9103,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /* 지금 배치는 다시 눌러도 바뀌지 않는다 — 이 화면 묶음에만(검사 조회·판정은 그대로). */
-.po-board-layout-toggle > .split-orientation-option[aria-pressed='true'] {
+.po-board-layout-toggle > .split-orientation-option[aria-pressed="true"] {
   cursor: default;
 }
 
@@ -9186,19 +9257,34 @@ body.po-board-resizing.is-row-resize {
  * 올렸다 떼도 남도록 hover 보다 우선한다(사용자 지시 2026-10-21 「선택 행 하이라이트 유지」).
  */
 /* 붉은 계열(primary)은 쓰지 않는다 — 문제가 있다는 뜻으로 읽힌다(사용자 지시 2026-10-21). 정보 파랑이다. */
-.board-table tbody tr:has(.board-table-pick[aria-current='true']) > td,
-.board-table tbody tr:has(.board-table-pick[aria-current='true']):hover > td,
-.quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
-.quality-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td,
-.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
-.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td {
+.board-table tbody tr:has(.board-table-pick[aria-current="true"]) > td,
+.board-table tbody tr:has(.board-table-pick[aria-current="true"]):hover > td,
+.quality-approval-table tbody tr:has(.link-cell[aria-current="true"]) > td,
+.quality-approval-table
+  tbody
+  tr:has(.link-cell[aria-current="true"]):hover
+  > td,
+.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current="true"]) > td,
+.iqc-skip-approval-table
+  tbody
+  tr:has(.link-cell[aria-current="true"]):hover
+  > td {
   background: var(--semantic-info-container);
 }
 
 /* 품질 승인 처리 목록(#186)도 같은 표시다 — 고른 요청이 입하 예정 조회의 고른 발주처럼 보인다. */
-.board-table tbody tr:has(.board-table-pick[aria-current='true']) > td:first-child,
-.quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child,
-.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+.board-table
+  tbody
+  tr:has(.board-table-pick[aria-current="true"])
+  > td:first-child,
+.quality-approval-table
+  tbody
+  tr:has(.link-cell[aria-current="true"])
+  > td:first-child,
+.iqc-skip-approval-table
+  tbody
+  tr:has(.link-cell[aria-current="true"])
+  > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
@@ -9242,7 +9328,7 @@ body.po-board-resizing.is-row-resize {
 
 /* 머리칸 사이의 가는 세로선 — 끌 수 있는 자리가 마우스를 올리기 전에도 보인다(두 표 사이 막대와 같은 판단). */
 .col-resizer::after {
-  content: '';
+  content: "";
   position: absolute;
   top: var(--space-2);
   right: 0;
@@ -9379,7 +9465,7 @@ th:hover > .col-drag {
 }
 
 /* 접힌 손잡이는 오른쪽을 본다. */
-.po-board-tree-toggle[aria-expanded='false'] > * {
+.po-board-tree-toggle[aria-expanded="false"] > * {
   transform: rotate(-90deg);
 }
 
@@ -9397,8 +9483,11 @@ th:hover > .col-drag {
 }
 
 /* 세로 안내선 — 손잡이 가운데. 칸 안쪽 여백(--space-3)에 손잡이 반폭(12px)을 더한 자리다. */
-.po-board-lines tbody tr:has([data-lot-row]) > td:has(> [data-lot-row])::before {
-  content: '';
+.po-board-lines
+  tbody
+  tr:has([data-lot-row])
+  > td:has(> [data-lot-row])::before {
+  content: "";
   position: absolute;
   top: 0;
   bottom: 0;
@@ -9410,7 +9499,7 @@ th:hover > .col-drag {
 
 /* 가지 — 줄 가운데에서 다음 칸(단계 칩) 쪽으로 칸 끝까지. 계층 열이 상태 열과 나뉜 뒤(2026-10-24)의 모양이다. */
 .po-board-lines tbody tr:has([data-lot-row]) > td:has(> [data-lot-row])::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: calc(var(--space-3) + 12px);
@@ -9420,7 +9509,10 @@ th:hover > .col-drag {
 }
 
 /* 마지막 LOT 줄 — 세로선이 가운데에서 갈고리로 꺾여 끝난다. 가지는 갈고리에 녹는다(갈고리도 칸 끝까지). */
-.po-board-lines tbody tr:has([data-lot-row][data-last]) > td:has(> [data-lot-row])::before {
+.po-board-lines
+  tbody
+  tr:has([data-lot-row][data-last])
+  > td:has(> [data-lot-row])::before {
   right: 0;
   width: auto;
   bottom: 50%;
@@ -9428,7 +9520,10 @@ th:hover > .col-drag {
   border-bottom-left-radius: var(--radius-sm);
 }
 
-.po-board-lines tbody tr:has([data-lot-row][data-last]) > td:has(> [data-lot-row])::after {
+.po-board-lines
+  tbody
+  tr:has([data-lot-row][data-last])
+  > td:has(> [data-lot-row])::after {
   display: none;
 }
 
@@ -9480,7 +9575,7 @@ th:hover > .col-drag {
   text-align: end;
 }
 
-.po-board-receive-qty[aria-invalid='true'] {
+.po-board-receive-qty[aria-invalid="true"] {
   border-color: var(--semantic-error-text);
 }
 
@@ -9552,7 +9647,7 @@ th:hover > .col-drag {
   color: var(--on-surface-variant);
 }
 
-/* 「IQC 의뢰 요청」을 보낸 뒤 표 위의 한 줄 — 결과를 그 자리에서 알린다. */
+/* 입고한 뒤 표 위의 한 줄 — 결과를 그 자리에서 알린다. */
 .po-board-lines-status {
   margin: 0 0 var(--space-2);
   font: var(--type-body-sm);
@@ -9628,10 +9723,10 @@ th:hover > .col-drag {
   align-self: stretch;
 }
 
-.bom-tree-rail[data-line='pass']::before,
-.bom-tree-rail[data-line='tee']::before,
-.bom-tree-rail[data-line='elbow']::before {
-  content: '';
+.bom-tree-rail[data-line="pass"]::before,
+.bom-tree-rail[data-line="tee"]::before,
+.bom-tree-rail[data-line="elbow"]::before {
+  content: "";
   position: absolute;
   top: calc(-1 * var(--bom-tree-bleed-top));
   bottom: calc(-1 * var(--bom-tree-bleed-bottom));
@@ -9640,14 +9735,14 @@ th:hover > .col-drag {
 }
 
 /* └ — 마지막 형제는 세로선이 이 줄 가운데에서 멈춘다. */
-.bom-tree-rail[data-line='elbow']::before {
+.bom-tree-rail[data-line="elbow"]::before {
   bottom: 50%;
 }
 
 /* ├ · └ 의 가로선 — 이 줄의 단추 · 이름 쪽으로. */
-.bom-tree-rail[data-line='tee']::after,
-.bom-tree-rail[data-line='elbow']::after {
-  content: '';
+.bom-tree-rail[data-line="tee"]::after,
+.bom-tree-rail[data-line="elbow"]::after {
+  content: "";
   position: absolute;
   top: 50%;
   right: 0;
@@ -9667,8 +9762,8 @@ th:hover > .col-drag {
 }
 
 /* 하위 구성이 없는 줄 — 가지선을 이름 앞까지 끌어온다. */
-.bom-tree-spacer[data-branch='true']::after {
-  content: '';
+.bom-tree-spacer[data-branch="true"]::after {
+  content: "";
   position: absolute;
   top: 50%;
   right: var(--space-1);
@@ -9677,8 +9772,8 @@ th:hover > .col-drag {
 }
 
 /* 펼친 줄 — 단추 아래에서 줄 끝까지 세로선을 내려 첫 자식의 가지선과 잇는다. */
-.bom-tree-toggle[aria-expanded='true']::after {
-  content: '';
+.bom-tree-toggle[aria-expanded="true"]::after {
+  content: "";
   position: absolute;
   top: 100%;
   left: 11px;
@@ -9760,7 +9855,7 @@ dd.bom-tree-code,
    * 를 두는 화면만이다. 비율은 `usePaneSplit` 의 `--split-upper`·`--split-lower`. 막대는 막대 자리(gutter) 안에 선다.
    */
   .po-board-split.is-stacked:has(
-      > .po-board-gutter > .po-board-splitter[aria-orientation='horizontal']
+      > .po-board-gutter > .po-board-splitter[aria-orientation="horizontal"]
     ) {
     grid-template-rows:
       minmax(0, var(--split-upper, 2fr)) var(--space-5)
@@ -9769,7 +9864,9 @@ dd.bom-tree-code,
   }
 
   .po-board-split.is-stacked
-    > .po-board-gutter:has(> .po-board-splitter[aria-orientation='horizontal']) {
+    > .po-board-gutter:has(
+      > .po-board-splitter[aria-orientation="horizontal"]
+    ) {
     position: relative;
     display: block;
     align-self: stretch;
@@ -9777,7 +9874,7 @@ dd.bom-tree-code,
 
   .po-board-split.is-stacked
     > .po-board-gutter
-    > .po-board-splitter[aria-orientation='horizontal'] {
+    > .po-board-splitter[aria-orientation="horizontal"] {
     position: absolute;
     inset: 0;
     display: block;
@@ -9790,8 +9887,8 @@ dd.bom-tree-code,
 
   .po-board-split.is-stacked
     > .po-board-gutter
-    > .po-board-splitter[aria-orientation='horizontal']::before {
-    content: '';
+    > .po-board-splitter[aria-orientation="horizontal"]::before {
+    content: "";
     position: absolute;
     top: 50%;
     bottom: auto;
@@ -9806,8 +9903,8 @@ dd.bom-tree-code,
 
   .po-board-split.is-stacked
     > .po-board-gutter
-    > .po-board-splitter[aria-orientation='horizontal']::after {
-    content: '';
+    > .po-board-splitter[aria-orientation="horizontal"]::after {
+    content: "";
     position: absolute;
     top: 50%;
     bottom: auto;
@@ -9818,28 +9915,28 @@ dd.bom-tree-code,
     border: 1px solid var(--outline);
     border-radius: var(--radius-full);
     background:
-      radial-gradient(circle, var(--on-surface-variant) 1.5px, transparent 2px) center / 8px 4px
-        repeat-x,
+      radial-gradient(circle, var(--on-surface-variant) 1.5px, transparent 2px)
+        center / 8px 4px repeat-x,
       var(--surface);
     box-shadow: var(--elevation-1);
   }
 
   .po-board-split.is-stacked
     > .po-board-gutter
-    > .po-board-splitter[aria-orientation='horizontal']:hover::before,
+    > .po-board-splitter[aria-orientation="horizontal"]:hover::before,
   .po-board-split.is-stacked
     > .po-board-gutter
-    > .po-board-splitter[aria-orientation='horizontal']:focus-visible::before {
+    > .po-board-splitter[aria-orientation="horizontal"]:focus-visible::before {
     height: 4px;
     background: var(--semantic-info);
   }
 
   .po-board-split.is-stacked
     > .po-board-gutter
-    > .po-board-splitter[aria-orientation='horizontal']:hover::after,
+    > .po-board-splitter[aria-orientation="horizontal"]:hover::after,
   .po-board-split.is-stacked
     > .po-board-gutter
-    > .po-board-splitter[aria-orientation='horizontal']:focus-visible::after {
+    > .po-board-splitter[aria-orientation="horizontal"]:focus-visible::after {
     border-color: var(--semantic-info);
   }
 }
@@ -10171,50 +10268,9 @@ a.erp-send-chips:focus-visible {
   gap: var(--space-2);
 }
 
-/*
- * 창고·Location — 목록을 조금 넓혀(2:3 → 9:11) 코드·유형·상태 열이 줄바꿈되지 않게 한다
- * (omf-all-around#17). 상세는 2열 폼이라 이 폭에서도 칸이 좁아지지 않는다. 접힘 기준(1280px)은
- * 공용 `.two-pane` 그대로다.
- */
-.two-pane.warehouse-location-layout {
-  grid-template-columns: minmax(26rem, 9fr) minmax(0, 11fr);
-}
-
-/* 공용 `.two-pane` 의 접힘(1280px 이하 한 칸)을 그대로 따른다 — 위 규칙이 덮지 않게 다시 적는다. */
-@media (max-width: 1280px) {
-  .two-pane.warehouse-location-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* 조회·초기화 묶음은 필터 줄 오른쪽 끝 — 줄이 넘쳐 다음 줄로 가도 오른쪽에 붙는다. */
-.warehouse-location-filter-actions {
+/* 창고·Location(입고 관리 짜임, 사용자 지시 2026-10-29) — 「창고 추가」는 조건 줄 오른쪽 끝. */
+.warehouse-location-add {
   margin-left: auto;
-}
-
-/* 코드·공장·유형·상태는 한 줄로 — 줄을 바꾸는 것은 긴 창고명뿐이다. */
-.warehouse-location-list-table td:nth-child(1),
-.warehouse-location-list-table td:nth-child(3),
-.warehouse-location-list-table td:nth-child(4),
-.warehouse-location-list-table td:nth-child(5),
-.warehouse-location-list-table th {
-  white-space: nowrap;
-}
-
-/*
- * 고른 창고의 행 — 왼쪽 막대 + 옅은 중립 배경. 붉은 바탕을 깔지 않는다(사용자 지시 2026-09-18).
- * 선례: `.production-order-list-table`(막대), `.lot-status-transition-table`.
- */
-.warehouse-location-list-table tbody tr:has(.link-cell[aria-current='true']) > td {
-  background: var(--state-hover-neutral);
-}
-
-.warehouse-location-list-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
-}
-
-.warehouse-location-list-table .link-cell[aria-current='true'] {
-  font-weight: 600;
 }
 
 /*
@@ -10265,21 +10321,6 @@ a.erp-send-chips:focus-visible {
   margin-top: 0;
 }
 
-/* 공장 칸 안의 두 칸 — 공장(남은 폭) · 사용 상태(내용 폭). 라벨 줄과 값 줄이 각각 같은 높이에 선다. */
-.warehouse-location-plant-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
-/* 사용 상태 값 줄 — 입력칸 높이에 맞춰 칩을 세로 가운데에 둔다. 라벨과 칩의 왼쪽 끝이 같다. */
-.warehouse-location-status {
-  display: flex;
-  align-items: center;
-  min-height: var(--control-height-md);
-}
-
 /* 선택칸 + 오른쪽 부속(토글 묶음) 한 줄 — 선택칸이 남은 폭을 채우고, 부속은 세로 가운데. */
 .warehouse-location-field-row {
   display: flex;
@@ -10293,19 +10334,6 @@ a.erp-send-chips:focus-visible {
   min-width: 0;
 }
 
-/* 선택칸 옆 묶음(토글·사용 상태) — 라벨 글자 + 토글/칩. 줄바꿈하지 않는다(좁은 폭에서는 선택칸이 줄어든다). */
-.warehouse-location-inline-field {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: var(--space-2);
-  white-space: nowrap;
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-  color: var(--on-surface-variant);
-}
-
-/* 세로 간격을 한 단계 좁힌다(16px → 12px). 가로 간격은 그대로 둔다. */
 .warehouse-location-form .form-grid {
   row-gap: var(--space-3);
 }
@@ -10319,11 +10347,6 @@ a.erp-send-chips:focus-visible {
   margin-top: var(--space-4);
   padding-top: var(--space-4);
   border-top: 1px solid var(--outline-variant);
-}
-
-/* 사용 중지(상태 액션)와 변경 이력(조회 액션) 사이를 조금 더 띄운다. */
-.warehouse-location-status-action {
-  margin-right: var(--space-2);
 }
 
 .warehouse-location-form-actions .form-actions-secondary {
@@ -10345,17 +10368,6 @@ a.erp-send-chips:focus-visible {
   margin-left: auto;
 }
 
-/* 선택한 Location 대상 작업 줄 — 얇은 구분선 아래, 사유 도움말은 왼쪽 끝 · 단추는 오른쪽 끝. 카드를 나누지 않는다. */
-.warehouse-location-location-selection {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--outline-variant);
-}
-
 /* 빈 표 — 머리는 그대로 두고, 빈 안내 칸의 위아래 여백만 줄인다(데이터가 있을 때는 영향 없음). */
 .warehouse-location-location-table tbody td[colspan] {
   padding-block: var(--space-4);
@@ -10375,71 +10387,175 @@ a.erp-send-chips:focus-visible {
   text-align: center;
 }
 
-/* 단추는 도움말이 있든 없든 줄 오른쪽 끝. */
-.warehouse-location-location-selection > :last-child {
-  margin-left: auto;
+/* 창고 배치도 — 고른 표식의 크기 · 회전 칸(사용자 지시 2026-10-30). 숫자 셋이 한 줄에 좁게. */
+.marker-shape-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.marker-shape-fields > * {
+  flex: 0 1 7rem;
+  min-width: 0;
 }
 
 /*
- * 위치 코드 머리 — 값 칸은 [펼치기 단추 자리 32px + 간격 --space-2] 뒤에서 코드 글자가 시작한다.
- * 머리 글자를 그만큼 밀어 depth 0 코드 글자와 왼쪽 끝을 맞춘다(단추는 그 여백 자리에 선다).
- * 32px 은 location-pane 의 단추 자리(IconButton sm·빈칸) 폭, 12px(--space-3)은 compact 표의 칸 여백.
+ * 위치 계층 표(`patterns/location-tree-cell`) — 창고·Location 의 Location 목록과 창고 배치도의 위치 목록이 같이 쓴다.
+ * 코드 머리는 행과 같이 [펼치기 단추 자리 32px + 간격 --space-2] 뒤에서 글자가 시작한다. 머리의 단추 자리에는
+ * 전체 접기 · 펼치기(IconButton sm)가 놓여 행의 펼치기 단추와 세로로 맞는다.
  */
-.warehouse-location-location-table thead th:nth-child(2) {
-  padding-left: calc(var(--space-3) + 32px + var(--space-2));
+.location-tree-table .tree-toggle-header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-/* 펼치기 단추 자리는 줄지 않는다 — 긴 코드가 폭을 먹으면 32px 빈칸이 눌려 깊이 들여쓰기가 어긋났다. */
-.warehouse-location-location-table .tree-toggle > :first-child {
+.location-tree-table .tree-toggle-header > :first-child {
   flex: none;
 }
 
+/* 펼치기 단추 자리는 줄지 않는다 — 긴 코드가 폭을 먹으면 32px 빈칸이 눌려 깊이 들여쓰기가 어긋났다. */
+.location-tree-table .tree-toggle > :first-child {
+  flex: none;
+}
+
+/* 하위가 없는 줄의 펼치기 단추 자리 — 단추(IconButton sm)와 같은 폭. */
+.location-tree-spacer {
+  display: inline-block;
+  width: 32px;
+}
+
 /* 긴 위치 코드가 접혀도 왼쪽 기준을 지킨다(계층 들여쓰기와 같은 기준선). */
-.warehouse-location-location-table .link-cell {
+.location-tree-table .link-cell {
   text-align: start;
-}
-
-.warehouse-location-label-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: var(--space-5);
-  margin-top: var(--space-5);
-}
-
-.warehouse-location-label-preview {
-  display: grid;
-  gap: var(--space-3);
-  margin: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
-}
-
-.warehouse-location-label-preview img,
-.warehouse-location-label-failed {
-  width: 100%;
-  min-height: 12rem;
-  object-fit: contain;
-  background: var(--surface-container-low);
 }
 
 .form-grid.warehouse-location-label-reissue-form {
   grid-template-columns: 1fr;
-  margin-top: var(--space-5);
 }
 
-.warehouse-location-label-preview figcaption {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  align-items: center;
+/* 위치 수정 창 안의 라벨 — 흰 카드 위 그림, 아래 오른쪽에 아이콘 단추(사용자 지시 2026-10-29). */
+.location-label-section .location-label-image {
+  margin: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
 
-.warehouse-location-label-failed {
+.location-label-image img,
+.location-label-failed {
+  display: block;
+  width: 100%;
+  max-height: 18rem;
+  min-height: 9rem;
+  object-fit: contain;
+}
+
+/* 수정 창 안 라벨은 작게(사용자 지시 2026-10-29) — 보관 품목 목록에 자리를 넘긴다. */
+.location-label-section .location-label-image img,
+.location-label-section .location-label-failed {
+  max-height: 7.5rem;
+  min-height: 5rem;
+}
+
+.location-label-failed {
   display: grid;
   place-content: center;
   justify-items: center;
   gap: var(--space-3);
+  color: var(--on-surface-variant);
+}
+
+.location-label-failed p {
+  margin: 0;
+}
+
+.location-label-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* 내려받기는 파일 링크라 a 로 두고 옆 외곽선 단추와 모양만 맞춘다. */
+.location-label-download {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding-inline: var(--space-4);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  color: var(--primary);
+  font: var(--type-label-lg);
+  text-decoration: none;
+}
+
+.location-label-download:hover {
+  background: var(--surface-container-low);
+}
+
+/* 라벨 일괄 출력 창 — 흰 카드 격자, 카드 아래 코드 · 회차 · 내려받기 아이콘. */
+.location-label-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: var(--space-4);
+}
+
+.location-label-card {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.location-label-card img,
+.location-label-card .location-label-failed {
+  display: block;
+  width: 100%;
+  height: 9rem;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.location-label-card figcaption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.location-label-card-code {
+  overflow: hidden;
+  font: var(--type-label-lg);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-label-card-seq {
+  flex: none;
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+.location-label-card-download {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  border-radius: var(--radius-full);
+  color: var(--primary);
+}
+
+.location-label-card-download:hover {
+  background: var(--surface-container);
 }
 
 /*
@@ -10599,7 +10715,7 @@ a.erp-send-chips:focus-visible {
  * ⚠ 이 규칙은 **감지기가 없다.** 시험 환경은 외부 스타일시트를 적용하지 않아 잴 수단이 없고,
  * 잣대는 브라우저 확인(C-8)이다.
  */
-.notification-list [role='button']:focus-visible {
+.notification-list [role="button"]:focus-visible {
   box-shadow: var(--focus-ring);
 }
 
@@ -10727,15 +10843,18 @@ a.erp-send-chips:focus-visible {
  * 짚는다. 채운 색(`--primary-container`)은 목록에서 너무 강해 옅은 상태 배경 + 줄 앞 막대 +
  * 굵은 로그인 ID 로 짚는다 — 막대가 있어 배경이 옅어도 선택이 흐려지지 않는다.
  */
-.users-roles-list tbody tr:has(.link-cell[aria-current='true']) {
+.users-roles-list tbody tr:has(.link-cell[aria-current="true"]) {
   background: var(--state-hover);
 }
 
-.users-roles-list tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+.users-roles-list
+  tbody
+  tr:has(.link-cell[aria-current="true"])
+  > td:first-child {
   box-shadow: inset 3px 0 var(--primary);
 }
 
-.users-roles-list .link-cell[aria-current='true'] {
+.users-roles-list .link-cell[aria-current="true"] {
   color: inherit;
   font-weight: 600;
   text-decoration: none;
@@ -10791,7 +10910,10 @@ a.erp-send-chips:focus-visible {
 
 @container (min-width: 40rem) {
   .form-grid.users-roles-user-form {
-    grid-template-columns: minmax(13rem, 3fr) minmax(11rem, 4fr) minmax(13rem, 5fr);
+    grid-template-columns: minmax(13rem, 3fr) minmax(11rem, 4fr) minmax(
+        13rem,
+        5fr
+      );
   }
 
   .form-grid.users-roles-user-form.urf-create {
@@ -11470,7 +11592,9 @@ button.app-button-neutral {
 
 .zalo-templates > li {
   display: grid;
-  grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1fr) minmax(0, 2fr) auto;
+  grid-template-columns:
+    minmax(10rem, 1fr) minmax(12rem, 1fr) minmax(0, 2fr)
+    auto;
   align-items: center;
   gap: var(--space-3);
 }
@@ -11934,7 +12058,7 @@ button.app-button-neutral {
 .dash-recent-link::after {
   position: absolute;
   inset: 0;
-  content: '';
+  content: "";
 }
 
 .dash-recent-link:focus-visible {
@@ -12245,8 +12369,8 @@ button.app-button-neutral {
 }
 
 /* 기록 없는 날(⭐ 사용자 지시 2026-10-19) — DS 의 선 · 점을 숨기고 `TrendGapLayer` 가 같은 색으로 다시 그린다. */
-.dash-trend-gapped svg[class] [class*='_line_'],
-.dash-trend-gapped svg[class] [class*='_point_'] {
+.dash-trend-gapped svg[class] [class*="_line_"],
+.dash-trend-gapped svg[class] [class*="_point_"] {
   display: none;
 }
 
@@ -12398,7 +12522,9 @@ button.app-button-neutral {
     --dash-kpi-cols: 2;
   }
 
-  .dash-tab .dash-kpis.dash-kpis:not(.dash-kpis-overview) > :last-child:nth-child(odd) {
+  .dash-tab
+    .dash-kpis.dash-kpis:not(.dash-kpis-overview)
+    > :last-child:nth-child(odd) {
     grid-column: 1 / -1;
   }
 }
@@ -12761,22 +12887,38 @@ button.app-button-neutral {
  * 진한 바탕에 글자가 묻혔고 같은 색 배지가 바탕에 녹아 줄이 들여 쓴 것처럼 보였다).
  */
 .dash-eq-stopped {
-  background: color-mix(in srgb, var(--semantic-error-container) 35%, var(--surface));
+  background: color-mix(
+    in srgb,
+    var(--semantic-error-container) 35%,
+    var(--surface)
+  );
   border-inline-start: 3px solid var(--app-error);
 }
 
 .dash-eq-waiting {
-  background: color-mix(in srgb, var(--semantic-warning-container) 35%, var(--surface));
+  background: color-mix(
+    in srgb,
+    var(--semantic-warning-container) 35%,
+    var(--surface)
+  );
   border-inline-start: 3px solid var(--semantic-warning);
 }
 
 .dash-eq-changeover {
-  background: color-mix(in srgb, var(--semantic-info-container) 35%, var(--surface));
+  background: color-mix(
+    in srgb,
+    var(--semantic-info-container) 35%,
+    var(--surface)
+  );
   border-inline-start: 3px solid var(--app-info);
 }
 
 .dash-eq-idle {
-  background: color-mix(in srgb, var(--semantic-idle-container) 35%, var(--surface));
+  background: color-mix(
+    in srgb,
+    var(--semantic-idle-container) 35%,
+    var(--surface)
+  );
   border-inline-start: 3px solid var(--semantic-idle);
 }
 
@@ -13037,7 +13179,7 @@ button.app-button-neutral {
 }
 
 .dash-stopped-button::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
@@ -13258,7 +13400,10 @@ button.app-button-neutral {
   container-type: inline-size;
   display: grid;
   /* 각 열 폭을 넉넉히 — 설비명 · 사유 · 경과 시간 사이를 벌린다(사용자 지시 2026-10-19). */
-  grid-template-columns: minmax(9rem, max-content) minmax(16rem, 1fr) minmax(7rem, max-content);
+  grid-template-columns: minmax(9rem, max-content) minmax(16rem, 1fr) minmax(
+      7rem,
+      max-content
+    );
   column-gap: var(--space-6);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
@@ -14048,7 +14193,7 @@ button.app-button-neutral {
  * 대시보드 탭 줄 — 좁은 폭에서 6개가 넘치면 가로 스크롤로 숨지 않고 다음 줄로 감싼다(사용자 점검 2026-10-16 —
  * 780 폭에서 「부적합 현황」이 안 보였고 스크롤된다는 표시도 없었다). 공용 Tabs 는 그대로, 이 화면만 덮는다.
  */
-.dash-tabs [role='tablist'] {
+.dash-tabs [role="tablist"] {
   flex-wrap: wrap;
   overflow-x: visible;
 }
@@ -14273,11 +14418,11 @@ button.app-button-neutral {
 }
 
 /* W-CO-06 단말기-공정 매핑 — 지금 고른 단말을 행 전체로 드러낸다. 목록 → 정보 → 기능 구성이 이어 읽힌다. */
-.terminal-map-list tbody tr:has(button[aria-current='true']) > td {
+.terminal-map-list tbody tr:has(button[aria-current="true"]) > td {
   background: var(--primary-container);
 }
 
-.terminal-map-list tbody tr:has(button[aria-current='true']) > td:first-child {
+.terminal-map-list tbody tr:has(button[aria-current="true"]) > td:first-child {
   box-shadow: inset 3px 0 0 var(--primary);
 }
 
@@ -14348,14 +14493,18 @@ button.app-button-neutral {
   }
 
   .terminal-map-panes > .pane::after {
-    content: '';
+    content: "";
     flex: 1 0 0;
     order: 1;
   }
 
   .terminal-map-panes
     > .pane
-    > :is(.terminal-map-pagenav, .terminal-map-info-footer, .terminal-map-form-actions) {
+    > :is(
+      .terminal-map-pagenav,
+      .terminal-map-info-footer,
+      .terminal-map-form-actions
+    ) {
     order: 2;
   }
 }
@@ -15198,6 +15347,7 @@ button.app-button-neutral {
     overflow-y: visible;
   }
 }
+
 /* ------------------------------------------------------------------------ *
  * P-02-03 자재 투입
  *
@@ -17038,7 +17188,7 @@ button.app-button-neutral {
   box-shadow: var(--focus-ring);
 }
 
-.hub-tab[aria-current='page'] {
+.hub-tab[aria-current="page"] {
   color: var(--primary-text);
   box-shadow: inset 0 -2px 0 var(--primary-text);
 }
@@ -17141,7 +17291,7 @@ button.app-button-neutral {
 }
 
 .nav-group-items:not(:empty)::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   bottom: calc(var(--control-height-md) / 2);
@@ -17179,27 +17329,27 @@ button.app-button-neutral {
  * 선택된 항목 — **배경과 글자색만 바꾼다.** DS 의 왼쪽 표시선(2px)은 지운다 — 안내선이 이미 왼쪽에
  * 서 있어 겹치면 선이 두 줄로 읽힌다. 따로 선을 긋지 않는다(사용자 2026-10-20).
  */
-.nav-group-items .nav-child[aria-current='page'] {
+.nav-group-items .nav-child[aria-current="page"] {
   background: var(--surface-container-high);
   box-shadow: none;
 }
 
-.nav-group-items .nav-child[aria-current='page']:focus-visible {
+.nav-group-items .nav-child[aria-current="page"]:focus-visible {
   box-shadow: var(--focus-ring);
 }
 
-.nav-group-items .nav-child[aria-current='page'] > :nth-child(2) {
+.nav-group-items .nav-child[aria-current="page"] > :nth-child(2) {
   color: var(--primary-text);
 }
 
 /* 섹션 밖 맨 위 항목(대시보드)도 같은 선택 표시를 쓴다 — 한 사이드바에 선택 모양이 둘이면 안 된다. */
-.sidebar-lead[aria-current='page'] {
+.sidebar-lead[aria-current="page"] {
   background: var(--surface-container-high);
   box-shadow: none;
 }
 
-.sidebar-lead[aria-current='page'] > :first-child,
-.sidebar-lead[aria-current='page'] > :nth-child(2) {
+.sidebar-lead[aria-current="page"] > :first-child,
+.sidebar-lead[aria-current="page"] > :nth-child(2) {
   color: var(--primary-text);
 }
 
@@ -17439,14 +17589,14 @@ button.app-button-neutral {
 
 .iqc-inspection-queue-rows
   tbody
-  tr:nth-child(n):has(.iqc-inspection-queue-item[aria-current='true']) {
+  tr:nth-child(n):has(.iqc-inspection-queue-item[aria-current="true"]) {
   background: var(--surface-container-high);
 }
 
 /* 표 줄(tr)에는 그림자가 안 그려진다 — 강조선은 첫 칸에 긋는다. */
 .iqc-inspection-queue-rows
   tbody
-  tr:has(.iqc-inspection-queue-item[aria-current='true'])
+  tr:has(.iqc-inspection-queue-item[aria-current="true"])
   > td:first-child {
   box-shadow: inset 3px 0 0 var(--primary);
 }
@@ -17529,7 +17679,9 @@ button.app-button-neutral {
   min-width: 0;
 }
 
-.iqc-inspection-panes .iqc-inspection-lot-cell > :last-child:not(.iqc-inspection-lot) {
+.iqc-inspection-panes
+  .iqc-inspection-lot-cell
+  > :last-child:not(.iqc-inspection-lot) {
   flex: none;
 }
 
@@ -17802,17 +17954,17 @@ button.app-button-neutral {
   font-weight: 600;
 }
 
-.iqc-inspection-progress[data-state='done'] .iqc-inspection-progress-status {
+.iqc-inspection-progress[data-state="done"] .iqc-inspection-progress-status {
   color: var(--semantic-success-text);
 }
 
-.iqc-inspection-progress[data-state='over'] .iqc-inspection-progress-status,
-.iqc-inspection-progress[data-state='over'] > .field-note {
+.iqc-inspection-progress[data-state="over"] .iqc-inspection-progress-status,
+.iqc-inspection-progress[data-state="over"] > .field-note {
   color: var(--semantic-error-text);
 }
 
 /* DS 입력칸 테두리는 감싸개의 안쪽 그림자다 — 그 색만 오류색으로 바꾼다. */
-.iqc-inspection-qty[data-over] [class*='_inputWrap'] {
+.iqc-inspection-qty[data-over] [class*="_inputWrap"] {
   box-shadow: inset 0 0 0 1px var(--semantic-error-text);
 }
 
@@ -17842,16 +17994,16 @@ button.app-button-neutral {
  * 빨간 안내 글 왼쪽에 오류 아이콘(#133) — 이 화면이 직접 그리는 `.field-error` 와 수량 초과 안내.
  */
 .iqc-inspection-detail .field-error,
-.iqc-inspection-progress[data-state='over'] > .field-note {
+.iqc-inspection-progress[data-state="over"] > .field-note {
   display: flex;
   align-items: center;
   gap: var(--space-1);
 }
 
 .iqc-inspection-detail .field-error::before,
-.iqc-inspection-progress[data-state='over'] > .field-note::before {
-  content: 'error';
-  font-family: 'Material Symbols Rounded';
+.iqc-inspection-progress[data-state="over"] > .field-note::before {
+  content: "error";
+  font-family: "Material Symbols Rounded";
   font-size: 16px;
   line-height: 1;
 }
@@ -17925,13 +18077,17 @@ button.app-button-neutral {
   white-space: nowrap;
 }
 
-.iqc-inspection-fold [class*='_emptyCell'] > td {
+.iqc-inspection-fold [class*="_emptyCell"] > td {
   height: auto;
   padding-block: var(--space-2);
 }
 
 /* 첨부 파일이 없을 때의 줄 — 파일 줄(파일 이름 단추 높이)과 같은 높이로(#133). */
-.iqc-inspection-fold .inspection-documents [class*='_emptyCell'] > td .field-note {
+.iqc-inspection-fold
+  .inspection-documents
+  [class*="_emptyCell"]
+  > td
+  .field-note {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -17952,11 +18108,11 @@ button.app-button-neutral {
   vertical-align: middle;
 }
 
-.iqc-inspection-measured-flag[data-ok='true'] > :first-child {
+.iqc-inspection-measured-flag[data-ok="true"] > :first-child {
   color: var(--semantic-success);
 }
 
-.iqc-inspection-measured-flag[data-ok='false'] > :first-child {
+.iqc-inspection-measured-flag[data-ok="false"] > :first-child {
   color: var(--semantic-error);
 }
 
@@ -17967,7 +18123,10 @@ button.app-button-neutral {
  */
 .iqc-inspection-item-cell {
   display: grid;
-  grid-template-columns: minmax(2.75rem, 1fr) minmax(0, auto) minmax(2.75rem, 1fr);
+  grid-template-columns: minmax(2.75rem, 1fr) minmax(0, auto) minmax(
+      2.75rem,
+      1fr
+    );
   align-items: center;
   column-gap: var(--space-2);
 }
@@ -17985,7 +18144,7 @@ button.app-button-neutral {
 }
 
 /* 빈 표 안내는 줄 높이 한가운데에 — 공용 안내 글의 위·아래 여백을 뺀다(#133). */
-.iqc-inspection-fold [class*='_emptyCell'] > td .field-note {
+.iqc-inspection-fold [class*="_emptyCell"] > td .field-note {
   margin-block: 0;
 }
 
@@ -18043,9 +18202,9 @@ button.app-button-neutral {
 .iqc-inspection-fold .inspection-history-events > li {
   grid-template-columns: 2rem minmax(0, 1fr);
   grid-template-areas:
-    'icon title'
-    'icon detail'
-    'icon at';
+    "icon title"
+    "icon detail"
+    "icon at";
   align-items: center;
   row-gap: var(--space-1);
   padding-block: var(--space-3);
@@ -18055,22 +18214,28 @@ button.app-button-neutral {
 .iqc-inspection-fold .inspection-history-events > li::before {
   grid-area: icon;
   color: var(--on-surface-muted);
-  font-family: 'Material Symbols Rounded';
+  font-family: "Material Symbols Rounded";
   font-size: 20px;
   line-height: 1;
-  content: 'assignment_turned_in';
+  content: "assignment_turned_in";
 }
 
-.iqc-inspection-fold .inspection-history-events > li[data-event='RESULT_SAVED']::before {
-  content: 'save';
+.iqc-inspection-fold
+  .inspection-history-events
+  > li[data-event="RESULT_SAVED"]::before {
+  content: "save";
 }
 
-.iqc-inspection-fold .inspection-history-events > li[data-event='RESULT_CONFIRMED']::before {
-  content: 'task_alt';
+.iqc-inspection-fold
+  .inspection-history-events
+  > li[data-event="RESULT_CONFIRMED"]::before {
+  content: "task_alt";
 }
 
-.iqc-inspection-fold .inspection-history-events > li[data-event='LOT_STATUS_CHANGED']::before {
-  content: 'swap_horiz';
+.iqc-inspection-fold
+  .inspection-history-events
+  > li[data-event="LOT_STATUS_CHANGED"]::before {
+  content: "swap_horiz";
 }
 
 .iqc-inspection-fold .inspection-history-events > li > .field-label {
@@ -18204,7 +18369,8 @@ button.app-button-neutral {
   gap: var(--space-1);
 }
 
-.iqc-inspection-minor-picker-title > .iqc-inspection-minor-picker-major:nth-child(n) {
+.iqc-inspection-minor-picker-title
+  > .iqc-inspection-minor-picker-major:nth-child(n) {
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
 }
@@ -18254,11 +18420,13 @@ button.app-button-neutral {
   border-radius: 50%;
 }
 
-.iqc-inspection-minor-option[aria-checked='true'] .iqc-inspection-minor-option-name {
+.iqc-inspection-minor-option[aria-checked="true"]
+  .iqc-inspection-minor-option-name {
   color: var(--primary);
 }
 
-.iqc-inspection-minor-option[aria-checked='true'] .iqc-inspection-minor-option-mark {
+.iqc-inspection-minor-option[aria-checked="true"]
+  .iqc-inspection-minor-option-mark {
   border-color: var(--primary);
   background: radial-gradient(circle, var(--primary) 0 40%, transparent 45%);
 }
@@ -18361,15 +18529,15 @@ button.app-button-neutral {
   font-weight: 600;
 }
 
-.iqc-inspection-judgment-field[data-judgment='ACCEPTED'] {
+.iqc-inspection-judgment-field[data-judgment="ACCEPTED"] {
   --judgment-tone: var(--semantic-success);
 }
 
-.iqc-inspection-judgment-field[data-judgment='REJECTED'] {
+.iqc-inspection-judgment-field[data-judgment="REJECTED"] {
   --judgment-tone: var(--semantic-error);
 }
 
-.iqc-inspection-judgment-field[data-judgment='HELD'] {
+.iqc-inspection-judgment-field[data-judgment="HELD"] {
   --judgment-tone: var(--semantic-warning);
 }
 
@@ -18615,7 +18783,9 @@ button.app-button-neutral {
 
 @container (min-width: 48rem) {
   .iqc-inspection-facts {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 2fr) minmax(0, 0.8fr);
+    grid-template-columns:
+      minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 2fr)
+      minmax(0, 0.8fr);
   }
 }
 
@@ -18768,12 +18938,12 @@ button.app-button-neutral {
   border-radius: var(--radius-sm);
 }
 
-.iqc-inspection-action-note[data-tone='info'] {
+.iqc-inspection-action-note[data-tone="info"] {
   background: var(--semantic-info-container);
   color: var(--on-semantic-info-container);
 }
 
-.iqc-inspection-action-note[data-tone='warning'] {
+.iqc-inspection-action-note[data-tone="warning"] {
   background: var(--semantic-warning-container);
   color: var(--on-semantic-warning-container);
 }
@@ -18987,13 +19157,13 @@ button.app-button-neutral {
 
 .oqc-inspection-queue-rows
   tbody
-  tr:nth-child(n):has(.oqc-inspection-queue-open[aria-current='true']) {
+  tr:nth-child(n):has(.oqc-inspection-queue-open[aria-current="true"]) {
   background: var(--surface-container-high);
 }
 
 .oqc-inspection-queue-rows
   tbody
-  tr:has(.oqc-inspection-queue-open[aria-current='true'])
+  tr:has(.oqc-inspection-queue-open[aria-current="true"])
   > td:first-child {
   box-shadow: inset 3px 0 0 var(--primary);
 }
@@ -19083,7 +19253,9 @@ button.app-button-neutral {
 
 @container (min-width: 48rem) {
   .oqc-inspection-facts {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(0, 0.8fr);
+    grid-template-columns:
+      minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1.5fr)
+      minmax(0, 0.8fr);
   }
 }
 
@@ -19131,8 +19303,8 @@ button.app-button-neutral {
 }
 
 /* 스캔 결과 문구는 칸 바로 아래에 붙인다 — 문단 기본 여백(위아래 14px)이 남으면 아래 조회 줄과 너무 벌어진다. */
-.oqc-inspection-serial-scan [class*='_error_srzap_'],
-.oqc-inspection-scan-search [class*='_error_srzap_'] {
+.oqc-inspection-serial-scan [class*="_error_srzap_"],
+.oqc-inspection-scan-search [class*="_error_srzap_"] {
   margin: var(--space-1) 0 0;
 }
 
@@ -19230,11 +19402,12 @@ main:has(> .oqc-inspection-panes) {
 .oqc-inspection-guide-divider {
   margin: 0;
   border: 0;
-  border-top: 1px solid color-mix(in srgb, var(--semantic-info) 35%, transparent);
+  border-top: 1px solid
+    color-mix(in srgb, var(--semantic-info) 35%, transparent);
 }
 
-.oqc-inspection-guide-line[data-tone='info'],
-.oqc-inspection-guide-line[data-tone='info'] > :first-child {
+.oqc-inspection-guide-line[data-tone="info"],
+.oqc-inspection-guide-line[data-tone="info"] > :first-child {
   color: color-mix(in srgb, var(--semantic-info) 40%, var(--on-surface));
 }
 
@@ -19263,12 +19436,12 @@ main:has(> .oqc-inspection-panes) {
   letter-spacing: var(--type-label-lg-tracking);
 }
 
-.oqc-inspection-guide-chips > [data-tone='accepted'] {
+.oqc-inspection-guide-chips > [data-tone="accepted"] {
   background: var(--semantic-success-container);
   color: var(--semantic-success-text);
 }
 
-.oqc-inspection-guide-chips > [data-tone='rejected'] {
+.oqc-inspection-guide-chips > [data-tone="rejected"] {
   background: var(--semantic-error-container);
   color: var(--semantic-error-text);
 }
@@ -19288,12 +19461,12 @@ main:has(> .oqc-inspection-panes) {
   margin-top: 2px;
 }
 
-.oqc-inspection-guide-line[data-tone='warning'] {
+.oqc-inspection-guide-line[data-tone="warning"] {
   color: var(--on-surface);
   font-weight: 600;
 }
 
-.oqc-inspection-guide-line[data-tone='warning'] > :first-child {
+.oqc-inspection-guide-line[data-tone="warning"] > :first-child {
   color: var(--semantic-warning);
 }
 
@@ -19334,7 +19507,7 @@ main:has(> .oqc-inspection-panes) {
 }
 
 /* 지금 단계 — 주 색으로 채워 어디까지 왔는지 보인다(#136). */
-.oqc-inspection-skip-steps > li[aria-current='step'] {
+.oqc-inspection-skip-steps > li[aria-current="step"] {
   background: var(--primary);
   color: var(--on-primary);
 }
@@ -19471,7 +19644,7 @@ main:has(> .oqc-inspection-panes) {
   text-align: center;
 }
 
-.oqc-inspection-qty[data-over] [class*='_inputWrap'] {
+.oqc-inspection-qty[data-over] [class*="_inputWrap"] {
   box-shadow: inset 0 0 0 1px var(--semantic-error-text);
 }
 
@@ -19515,30 +19688,30 @@ main:has(> .oqc-inspection-panes) {
   font-weight: 400;
 }
 
-.oqc-inspection-progress[data-state='done'] .oqc-inspection-progress-status {
+.oqc-inspection-progress[data-state="done"] .oqc-inspection-progress-status {
   color: var(--semantic-success-text);
 }
 
-.oqc-inspection-progress[data-state='over'] .oqc-inspection-progress-status,
-.oqc-inspection-progress[data-state='over'] > .field-note {
+.oqc-inspection-progress[data-state="over"] .oqc-inspection-progress-status,
+.oqc-inspection-progress[data-state="over"] > .field-note {
   color: var(--semantic-error-text);
 }
 
 .oqc-inspection-detail .field-error,
-.oqc-inspection-serial-scan [class*='_error_srzap_'],
-.oqc-inspection-scan-search [class*='_error_srzap_'],
-.oqc-inspection-progress[data-state='over'] > .field-note {
+.oqc-inspection-serial-scan [class*="_error_srzap_"],
+.oqc-inspection-scan-search [class*="_error_srzap_"],
+.oqc-inspection-progress[data-state="over"] > .field-note {
   display: flex;
   align-items: center;
   gap: var(--space-1);
 }
 
 .oqc-inspection-detail .field-error::before,
-.oqc-inspection-serial-scan [class*='_error_srzap_']::before,
-.oqc-inspection-scan-search [class*='_error_srzap_']::before,
-.oqc-inspection-progress[data-state='over'] > .field-note::before {
-  content: 'error';
-  font-family: 'Material Symbols Rounded';
+.oqc-inspection-serial-scan [class*="_error_srzap_"]::before,
+.oqc-inspection-scan-search [class*="_error_srzap_"]::before,
+.oqc-inspection-progress[data-state="over"] > .field-note::before {
+  content: "error";
+  font-family: "Material Symbols Rounded";
   font-size: 16px;
   line-height: 1;
 }
@@ -19556,15 +19729,15 @@ main:has(> .oqc-inspection-panes) {
   font-weight: 600;
 }
 
-.oqc-inspection-judgment-field[data-judgment='ACCEPTED'] {
+.oqc-inspection-judgment-field[data-judgment="ACCEPTED"] {
   --judgment-tone: var(--semantic-success);
 }
 
-.oqc-inspection-judgment-field[data-judgment='REJECTED'] {
+.oqc-inspection-judgment-field[data-judgment="REJECTED"] {
   --judgment-tone: var(--semantic-error);
 }
 
-.oqc-inspection-judgment-field[data-judgment='HELD'] {
+.oqc-inspection-judgment-field[data-judgment="HELD"] {
   --judgment-tone: var(--semantic-warning);
 }
 
@@ -19631,12 +19804,12 @@ main:has(> .oqc-inspection-panes) {
   font: var(--type-body-md);
 }
 
-.oqc-inspection-action-note[data-tone='info'] {
+.oqc-inspection-action-note[data-tone="info"] {
   background: var(--semantic-info-container);
   color: var(--on-semantic-info-container);
 }
 
-.oqc-inspection-action-note[data-tone='warning'] {
+.oqc-inspection-action-note[data-tone="warning"] {
   background: var(--semantic-warning-container);
   color: var(--on-semantic-warning-container);
 }
@@ -19654,11 +19827,13 @@ main:has(> .oqc-inspection-panes) {
   letter-spacing: var(--type-label-sm-tracking);
 }
 
-.oqc-inspection-detail .oqc-inspection-action-note[data-tone='warning']:nth-child(n) {
+.oqc-inspection-detail
+  .oqc-inspection-action-note[data-tone="warning"]:nth-child(n) {
   border: 1px solid color-mix(in srgb, var(--semantic-warning) 35%, transparent);
 }
 
-.oqc-inspection-detail .oqc-inspection-action-note[data-tone='info']:nth-child(n) {
+.oqc-inspection-detail
+  .oqc-inspection-action-note[data-tone="info"]:nth-child(n) {
   border: 1px solid color-mix(in srgb, var(--semantic-info) 35%, transparent);
 }
 
@@ -19696,7 +19871,8 @@ main:has(> .oqc-inspection-panes) {
     overflow-wrap: normal;
   }
 
-  .oqc-inspection-detail .oqc-inspection-fact:has(.oqc-inspection-fact-ellipsis) {
+  .oqc-inspection-detail
+    .oqc-inspection-fact:has(.oqc-inspection-fact-ellipsis) {
     flex-shrink: 1;
     min-width: 0;
   }
@@ -19733,8 +19909,10 @@ main:has(> .oqc-inspection-panes) {
   border-color: var(--primary);
 }
 
-.oqc-inspection-detail .oqc-inspection-qty-field:has([aria-invalid='true']),
-.oqc-inspection-detail .oqc-inspection-qty[data-over] > .oqc-inspection-qty-field {
+.oqc-inspection-detail .oqc-inspection-qty-field:has([aria-invalid="true"]),
+.oqc-inspection-detail
+  .oqc-inspection-qty[data-over]
+  > .oqc-inspection-qty-field {
   border-color: var(--semantic-error);
 }
 
@@ -19769,8 +19947,13 @@ main:has(> .oqc-inspection-panes) {
 }
 
 /* 입력 칸 테두리(그림자)는 어떤 상태에서도 끈다 — 상태는 카드 테두리가 대신 보인다. */
-.oqc-inspection-detail .oqc-inspection-qty-field > div > :has(> input):nth-child(n):nth-child(n),
-.oqc-inspection-detail .oqc-inspection-qty[data-over] [class*='_inputWrap']:nth-child(n) {
+.oqc-inspection-detail
+  .oqc-inspection-qty-field
+  > div
+  > :has(> input):nth-child(n):nth-child(n),
+.oqc-inspection-detail
+  .oqc-inspection-qty[data-over]
+  [class*="_inputWrap"]:nth-child(n) {
   box-shadow: none;
 }
 
@@ -19873,9 +20056,9 @@ main:has(> .oqc-inspection-panes) {
 .oqc-inspection-fold .inspection-history-events > li {
   grid-template-columns: 2rem minmax(0, 1fr);
   grid-template-areas:
-    'icon title'
-    'icon detail'
-    'icon at';
+    "icon title"
+    "icon detail"
+    "icon at";
   align-items: center;
   row-gap: var(--space-1);
   padding-block: var(--space-3);
@@ -19885,22 +20068,28 @@ main:has(> .oqc-inspection-panes) {
 .oqc-inspection-fold .inspection-history-events > li::before {
   grid-area: icon;
   color: var(--on-surface-muted);
-  font-family: 'Material Symbols Rounded';
+  font-family: "Material Symbols Rounded";
   font-size: 20px;
   line-height: 1;
-  content: 'assignment_turned_in';
+  content: "assignment_turned_in";
 }
 
-.oqc-inspection-fold .inspection-history-events > li[data-event='RESULT_SAVED']::before {
-  content: 'save';
+.oqc-inspection-fold
+  .inspection-history-events
+  > li[data-event="RESULT_SAVED"]::before {
+  content: "save";
 }
 
-.oqc-inspection-fold .inspection-history-events > li[data-event='RESULT_CONFIRMED']::before {
-  content: 'task_alt';
+.oqc-inspection-fold
+  .inspection-history-events
+  > li[data-event="RESULT_CONFIRMED"]::before {
+  content: "task_alt";
 }
 
-.oqc-inspection-fold .inspection-history-events > li[data-event='LOT_STATUS_CHANGED']::before {
-  content: 'swap_horiz';
+.oqc-inspection-fold
+  .inspection-history-events
+  > li[data-event="LOT_STATUS_CHANGED"]::before {
+  content: "swap_horiz";
 }
 
 .oqc-inspection-fold .inspection-history-events > li > .field-label {
@@ -20008,21 +20197,23 @@ main:has(> .oqc-inspection-panes) {
   white-space: nowrap;
 }
 
-.oqc-inspection-history-card .inspection-history-events > li:not(:first-child)::after {
+.oqc-inspection-history-card
+  .inspection-history-events
+  > li:not(:first-child)::after {
   position: absolute;
   top: calc(var(--space-3) + 26px);
   bottom: calc(-1 * var(--space-3) + 2px);
   left: 9px;
   width: 1px;
   background: var(--outline-variant);
-  content: '';
+  content: "";
 }
 
 .oqc-inspection-history-card
   .inspection-history-events
-  > li[data-event='RESULT_CONFIRMED']::before {
+  > li[data-event="RESULT_CONFIRMED"]::before {
   color: var(--semantic-success-text);
-  content: 'check_circle';
+  content: "check_circle";
 }
 
 /*
@@ -20206,7 +20397,7 @@ main:has(> .oqc-inspection-panes) {
 }
 
 /* 고른 줄의 제목줄은 라인 표 아래 한 칸 띄운다. */
-.goods-receipt-line-table + [role='group'] {
+.goods-receipt-line-table + [role="group"] {
   margin-top: var(--space-4);
 }
 
@@ -20220,13 +20411,19 @@ main:has(> .oqc-inspection-panes) {
  * 고른 전표·고른 라인 표시 — W-CO-06 단말기-공정 매핑(`.terminal-map-list`)과 같은 모양: 안쪽 「선택 해제」
  * 단추의 `aria-current` 로 행을 짚고, 행 배경(--primary-container) + 줄 앞 3px 막대로 드러낸다.
  */
-.goods-receipt-ir-table tbody tr:has(button[aria-current='true']) > td,
-.goods-receipt-line-table tbody tr:has(button[aria-current='true']) > td {
+.goods-receipt-ir-table tbody tr:has(button[aria-current="true"]) > td,
+.goods-receipt-line-table tbody tr:has(button[aria-current="true"]) > td {
   background: var(--primary-container);
 }
 
-.goods-receipt-ir-table tbody tr:has(button[aria-current='true']) > td:first-child,
-.goods-receipt-line-table tbody tr:has(button[aria-current='true']) > td:first-child {
+.goods-receipt-ir-table
+  tbody
+  tr:has(button[aria-current="true"])
+  > td:first-child,
+.goods-receipt-line-table
+  tbody
+  tr:has(button[aria-current="true"])
+  > td:first-child {
   box-shadow: inset 3px 0 0 var(--primary);
 }
 
@@ -20324,21 +20521,25 @@ main:has(> .oqc-inspection-panes) {
   color: var(--on-surface-muted);
 }
 
-.goods-receipt-post-form[data-current-step='warehouse'] .goods-receipt-step-warehouse .field-label,
-.goods-receipt-post-form[data-current-step='location'] .goods-receipt-step-location .field-label,
-.goods-receipt-post-form[data-current-step='receiptType']
+.goods-receipt-post-form[data-current-step="warehouse"]
+  .goods-receipt-step-warehouse
+  .field-label,
+.goods-receipt-post-form[data-current-step="location"]
+  .goods-receipt-step-location
+  .field-label,
+.goods-receipt-post-form[data-current-step="receiptType"]
   .goods-receipt-step-receiptType
   .field-label,
-.goods-receipt-post-form[data-current-step='sourceDocumentType']
+.goods-receipt-post-form[data-current-step="sourceDocumentType"]
   .goods-receipt-step-sourceDocumentType
   .field-label,
-.goods-receipt-post-form[data-current-step='qualityStatus']
+.goods-receipt-post-form[data-current-step="qualityStatus"]
   .goods-receipt-step-qualityStatus
   .field-label,
-.goods-receipt-post-form[data-current-step='inventoryStatus']
+.goods-receipt-post-form[data-current-step="inventoryStatus"]
   .goods-receipt-step-inventoryStatus
   .field-label,
-.goods-receipt-post-form[data-current-step='receiptDatetime']
+.goods-receipt-post-form[data-current-step="receiptDatetime"]
   .goods-receipt-step-receiptDatetime
   .field-label {
   color: var(--primary-text);
@@ -20562,7 +20763,7 @@ main:has(> .oqc-inspection-panes) {
   outline: 1px solid var(--outline-variant);
 }
 
-.time-picker-popup[data-placement='up'] {
+.time-picker-popup[data-placement="up"] {
   top: auto;
   bottom: calc(100% + var(--space-1));
 }
@@ -20596,7 +20797,7 @@ main:has(> .oqc-inspection-panes) {
   cursor: pointer;
 }
 
-.time-picker-option:hover:not([aria-disabled='true']) {
+.time-picker-option:hover:not([aria-disabled="true"]) {
   background: var(--state-hover-neutral);
 }
 
@@ -20605,13 +20806,13 @@ main:has(> .oqc-inspection-panes) {
   outline-offset: -2px;
 }
 
-.time-picker-option[aria-selected='true'] {
+.time-picker-option[aria-selected="true"] {
   color: var(--primary-text);
   font-weight: 600;
   background: var(--surface);
 }
 
-.time-picker-option[aria-disabled='true'] {
+.time-picker-option[aria-disabled="true"] {
   cursor: default;
   color: var(--state-disabled-text);
 }
@@ -20685,7 +20886,7 @@ main:has(> .oqc-inspection-panes) {
   background: var(--surface);
 }
 
-.goods-receipt-post-form .goods-receipt-code-empty button[role='combobox'] {
+.goods-receipt-post-form .goods-receipt-code-empty button[role="combobox"] {
   box-shadow: none;
   outline: 1px dashed var(--outline);
   outline-offset: -1px;
@@ -20696,7 +20897,7 @@ main:has(> .oqc-inspection-panes) {
  * (`--surface-container-high`)이 페인 바탕과 거의 같은 회색이고 그림자가 옅어, 아래 칸을 일부 덮을 때 목록 경계가
  * 흐려 아래 칸이 «비쳐» 보인다(브라우저 실측). 이 화면이 떠 있을 때만 목록에 윤곽선을 더한다. 공용 부품은 그대로다.
  */
-body:has(.goods-receipt-post-form) > [role='listbox'] {
+body:has(.goods-receipt-post-form) > [role="listbox"] {
   outline: 1px solid var(--outline-variant);
 }
 
@@ -20818,7 +21019,9 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 /* 최근 사유 — 이름이 낱말 단위로 접힌다(글자 중간에서 끊지 않는다). */
-.lot-status-transition-status-grid .lot-status-transition-current-latestReason dd {
+.lot-status-transition-status-grid
+  .lot-status-transition-current-latestReason
+  dd {
   overflow-wrap: normal;
   word-break: keep-all;
 }
@@ -21081,7 +21284,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   grid-template-columns: 1fr;
 }
 
-.shipment-schedule-plant-form .field-cell > [class*='select'],
+.shipment-schedule-plant-form .field-cell > [class*="select"],
 .shipment-schedule-plant-form .field-cell > button {
   width: 100%;
 }
@@ -21189,7 +21392,8 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 .dash-dayout-grid {
   position: absolute;
   inset-inline: 0;
-  border-block-start: 1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent);
+  border-block-start: 1px solid
+    color-mix(in srgb, var(--outline-variant) 60%, transparent);
   pointer-events: none;
 }
 
@@ -21261,7 +21465,9 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 /* PQC 설비별 불량률 TOP 8(사용자 지시 2026-10-19) — 설비 | 막대(남는 폭) | 불량률 | 불량 수량, 열 폭 고정 · 줄 높이 같게. */
 .dash-eqrate {
   display: grid;
-  grid-template-columns: minmax(4.5rem, max-content) minmax(2rem, 1fr) 3.5rem 5.5rem;
+  grid-template-columns:
+    minmax(4.5rem, max-content) minmax(2rem, 1fr)
+    3.5rem 5.5rem;
   column-gap: var(--space-3);
   row-gap: var(--space-2);
   align-items: center;
@@ -21344,7 +21550,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   cursor: pointer;
 }
 
-.dash-seg-button[aria-pressed='true'] {
+.dash-seg-button[aria-pressed="true"] {
   background: var(--surface-container-high, var(--surface-container));
   color: var(--on-surface);
   font-weight: 700;
@@ -21451,7 +21657,8 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 .dash-axisbars-grid {
   position: absolute;
   inset-block: calc(-1 * var(--space-2));
-  border-inline-start: 1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent);
+  border-inline-start: 1px solid
+    color-mix(in srgb, var(--outline-variant) 60%, transparent);
   pointer-events: none;
 }
 
@@ -21700,7 +21907,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   --app-error-text: var(--semantic-error);
 }
 
-[data-theme='dark'] {
+[data-theme="dark"] {
   /* 정보 파랑 · 오류 빨강 그림(점 · 막대 · 기준선 · 누적선) — #2A2D33 위 각 6.2:1 · 3.9:1. */
   --app-info: #8ab4f8;
   --app-error: #e5534b;
@@ -21708,7 +21915,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   --app-error-text: var(--semantic-error-text);
 }
 
-[data-theme='dark'] .dash-tabs {
+[data-theme="dark"] .dash-tabs {
   /* 차트 1번(생산 추이 선 등) — DS 다크에 빠져 있어 오류 빨강과 같은 밝은 톤으로. */
   --chart-1: #e5534b;
   /* 보조 글 — DS 다크 #8A8D94 는 카드(#2A2D33) 위 4.0:1 로 본문 기준(4.5:1)에 못 미쳤다 → 5.0:1. */
@@ -21716,7 +21923,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 }
 
 /* 대시보드 증감 표시(좋음 · 나쁨 · 같음) — 라이트 진한 톤은 다크 카드 위 3:1 안팎이었다(`.dash-delta` 에서 정의돼 거기서 바꾼다). */
-[data-theme='dark'] .dash-delta {
+[data-theme="dark"] .dash-delta {
   --dash-delta-good: #81c995;
   --dash-delta-bad: #f2a65a;
   --dash-delta-flat: #a2a5ac;
@@ -21760,7 +21967,10 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
 .filter-bar.iqc-skip-approval-filter {
   display: grid;
   /* 칸마다 상한을 둔다 — 넓은 창에서 칸이 늘어나지 않고, 남는 폭은 단추 칸이 받아 단추를 오른쪽 끝에 둔다(#193). */
-  grid-template-columns: minmax(10rem, 12rem) minmax(12rem, 16rem) minmax(max-content, 1fr);
+  grid-template-columns: minmax(10rem, 12rem) minmax(12rem, 16rem) minmax(
+      max-content,
+      1fr
+    );
   align-items: start;
   gap: var(--space-3);
 }
@@ -21922,7 +22132,9 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   min-width: 0;
 }
 
-.iqc-skip-approval-detail > .iqc-skip-approval-section + .iqc-skip-approval-section {
+.iqc-skip-approval-detail
+  > .iqc-skip-approval-section
+  + .iqc-skip-approval-section {
   padding-top: var(--space-4);
   border-top: 1px solid var(--outline-variant);
 }
@@ -22076,7 +22288,9 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   background: var(--semantic-success-container);
 }
 
-.iqc-skip-approval-execute.is-done .iqc-skip-approval-execute-text > .iqc-skip-approval-heading {
+.iqc-skip-approval-execute.is-done
+  .iqc-skip-approval-execute-text
+  > .iqc-skip-approval-heading {
   color: var(--semantic-success-text);
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
@@ -22305,7 +22519,7 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
   max-width: 100%;
 }
 
-.filter-field-sm [role='combobox'],
+.filter-field-sm [role="combobox"],
 .filter-field-sm button[aria-haspopup],
 .filter-field-md button[aria-haspopup] {
   width: 100%;
@@ -22419,7 +22633,10 @@ body:has(.goods-receipt-post-form) > [role='listbox'] {
  * 쪽 크기 선택 — 고른 값의 체크 표시는 항목 오른쪽 끝에(사용자 지시 2026-10-27 · #185).
  * 펼친 목록은 부품이 문서 끝에 따로 그려 선택 상자 안에서 고를 수 없다 — 이 선택 상자가 펼쳐져 있을 때만 건다.
  */
-body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option'] > :first-child {
+body:has(.page-nav-size [aria-expanded="true"])
+  [role="listbox"]
+  > [role="option"]
+  > :first-child {
   order: 1;
   margin-inline-start: auto;
 }
@@ -22537,7 +22754,9 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   gap: var(--space-3);
 }
 
-.process-page-past:not(.is-stacked) > .process-past-group + .process-past-group {
+.process-page-past:not(.is-stacked)
+  > .process-past-group
+  + .process-past-group {
   margin-left: var(--space-3);
   padding-left: var(--space-3);
   border-left: 1px solid var(--outline-variant);
@@ -23193,7 +23412,10 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   position: relative;
 }
 
-.inspection-queue-table.inspection-sheet-template-rows thead th[data-align] .col-grip {
+.inspection-queue-table.inspection-sheet-template-rows
+  thead
+  th[data-align]
+  .col-grip {
   position: absolute;
   top: 50%;
   left: calc(100% + var(--space-1));
@@ -23216,13 +23438,13 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 
 .inspection-sheet-template-rows
   tbody
-  tr:nth-child(n):has(.inspection-sheet-template-open[aria-current='true']) {
+  tr:nth-child(n):has(.inspection-sheet-template-open[aria-current="true"]) {
   background: var(--surface-container-high);
 }
 
 .inspection-sheet-template-rows
   tbody
-  tr:has(.inspection-sheet-template-open[aria-current='true'])
+  tr:has(.inspection-sheet-template-open[aria-current="true"])
   > td:first-child {
   box-shadow: inset 3px 0 0 var(--primary);
 }
@@ -23253,7 +23475,8 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   text-overflow: ellipsis;
 }
 
-.inspection-sheet-template-open[aria-current='true'] > .inspection-sheet-template-open-code {
+.inspection-sheet-template-open[aria-current="true"]
+  > .inspection-sheet-template-open-code {
   font-weight: 600;
 }
 
@@ -23455,11 +23678,11 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   background: var(--state-hover-neutral);
 }
 
-.inspection-sheet-template-step-list button[data-enabled='false'] {
+.inspection-sheet-template-step-list button[data-enabled="false"] {
   color: var(--on-surface-variant);
 }
 
-.inspection-sheet-template-step-list button[aria-current='true'] {
+.inspection-sheet-template-step-list button[aria-current="true"] {
   border-color: var(--primary);
   background: var(--primary);
   color: var(--on-primary);
@@ -23480,7 +23703,7 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   white-space: nowrap;
 }
 
-.inspection-sheet-template-step-list button[aria-invalid='true'] {
+.inspection-sheet-template-step-list button[aria-invalid="true"] {
   border-color: var(--semantic-error-text);
 }
 
@@ -23508,7 +23731,9 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 }
 
 .inspection-sheet-template-step-head:has(.inspection-sheet-template-add-item),
-.inspection-sheet-template-step-head:has(+ .inspection-sheet-template-step-fields) {
+.inspection-sheet-template-step-head:has(
+  + .inspection-sheet-template-step-fields
+) {
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--outline-variant);
 }
@@ -23608,7 +23833,7 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   height: 196mm;
   column-gap: 2mm;
   width: 285mm;
-  font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
   font-size: 7.5pt;
   line-height: 1.25;
   color: #000; /* ui-check-ignore: COLOR 인쇄 전용 — 종이 양식은 테마와 무관하게 흑백(제목 칸만 양식의 하늘색) */
@@ -23950,7 +24175,10 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 
 @container (min-width: 48rem) {
   .pqc-web-facts {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) minmax(0, 0.8fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) minmax(
+        0,
+        0.8fr
+      );
   }
 }
 
@@ -23994,7 +24222,10 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 
 .pqc-web-item-cell {
   display: grid;
-  grid-template-columns: minmax(2.75rem, 1fr) minmax(0, auto) minmax(2.75rem, 1fr);
+  grid-template-columns: minmax(2.75rem, 1fr) minmax(0, auto) minmax(
+      2.75rem,
+      1fr
+    );
   align-items: center;
   column-gap: var(--space-2);
 }
@@ -24047,7 +24278,7 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   text-align: center;
 }
 
-.pqc-web-qty[data-over] [class*='_inputWrap'] {
+.pqc-web-qty[data-over] [class*="_inputWrap"] {
   box-shadow: inset 0 0 0 1px var(--semantic-error-text);
 }
 
@@ -24090,25 +24321,25 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   font-weight: 400;
 }
 
-.pqc-web-progress[data-state='done'] .pqc-web-progress-status {
+.pqc-web-progress[data-state="done"] .pqc-web-progress-status {
   color: var(--semantic-success-text);
 }
 
-.pqc-web-progress[data-state='over'] .pqc-web-progress-status,
-.pqc-web-progress[data-state='over'] > .field-note {
+.pqc-web-progress[data-state="over"] .pqc-web-progress-status,
+.pqc-web-progress[data-state="over"] > .field-note {
   color: var(--semantic-error-text);
 }
 
-.pqc-web-progress[data-state='over'] > .field-note {
+.pqc-web-progress[data-state="over"] > .field-note {
   display: flex;
   align-items: center;
   gap: var(--space-1);
   max-width: none;
 }
 
-.pqc-web-progress[data-state='over'] > .field-note::before {
-  content: 'error';
-  font-family: 'Material Symbols Rounded';
+.pqc-web-progress[data-state="over"] > .field-note::before {
+  content: "error";
+  font-family: "Material Symbols Rounded";
   font-size: 16px;
   line-height: 1;
 }
@@ -24156,15 +24387,15 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-.pqc-web-judgment-field[data-judgment='ACCEPTED'] button[role='combobox'] {
+.pqc-web-judgment-field[data-judgment="ACCEPTED"] button[role="combobox"] {
   box-shadow: inset 3px 0 0 var(--semantic-success);
 }
 
-.pqc-web-judgment-field[data-judgment='REJECTED'] button[role='combobox'] {
+.pqc-web-judgment-field[data-judgment="REJECTED"] button[role="combobox"] {
   box-shadow: inset 3px 0 0 var(--semantic-error);
 }
 
-.pqc-web-judgment-field[data-judgment='HELD'] button[role='combobox'] {
+.pqc-web-judgment-field[data-judgment="HELD"] button[role="combobox"] {
   box-shadow: inset 3px 0 0 var(--semantic-warning);
 }
 
@@ -24231,12 +24462,12 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   font: var(--type-body-md);
 }
 
-.pqc-web-action-note[data-tone='info'] {
+.pqc-web-action-note[data-tone="info"] {
   background: var(--semantic-info-container);
   color: var(--on-semantic-info-container);
 }
 
-.pqc-web-action-note[data-tone='warning'] {
+.pqc-web-action-note[data-tone="warning"] {
   background: var(--semantic-warning-container);
   color: var(--on-semantic-warning-container);
 }
@@ -24327,7 +24558,7 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   border-color: var(--primary);
 }
 
-.pqc-web .pqc-web-qty-field:has([aria-invalid='true']),
+.pqc-web .pqc-web-qty-field:has([aria-invalid="true"]),
 .pqc-web .pqc-web-qty[data-over] > .pqc-web-qty-field {
   border-color: var(--semantic-error);
 }
@@ -24364,7 +24595,7 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
 
 /* 입력 칸 테두리(그림자)는 어떤 상태에서도 끈다 — 상태는 카드 테두리가 대신 보인다. */
 .pqc-web .pqc-web-qty-field > div > :has(> input):nth-child(n):nth-child(n),
-.pqc-web .pqc-web-qty[data-over] [class*='_inputWrap']:nth-child(n) {
+.pqc-web .pqc-web-qty[data-over] [class*="_inputWrap"]:nth-child(n) {
   box-shadow: none;
 }
 
@@ -24402,11 +24633,11 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   letter-spacing: var(--type-label-sm-tracking);
 }
 
-.pqc-web .pqc-web-action-note[data-tone='warning']:nth-child(n) {
+.pqc-web .pqc-web-action-note[data-tone="warning"]:nth-child(n) {
   border: 1px solid color-mix(in srgb, var(--semantic-warning) 35%, transparent);
 }
 
-.pqc-web .pqc-web-action-note[data-tone='info']:nth-child(n) {
+.pqc-web .pqc-web-action-note[data-tone="info"]:nth-child(n) {
   border: 1px solid color-mix(in srgb, var(--semantic-info) 35%, transparent);
 }
 
@@ -24530,7 +24761,9 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   flex-basis: 21rem;
 }
 
-.pqc-web-search > .pqc-web-filter-bar > :not(.pqc-web-filter-check, .pqc-web-filter-actions) {
+.pqc-web-search
+  > .pqc-web-filter-bar
+  > :not(.pqc-web-filter-check, .pqc-web-filter-actions) {
   flex: 0 1 13rem;
 }
 
@@ -24691,7 +24924,11 @@ th.col-drop-after {
   padding: 0 var(--space-3);
   border: 1px solid var(--semantic-info);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--surface-container-high) 85%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--surface-container-high) 85%,
+    transparent
+  );
   color: var(--on-surface);
   font: var(--type-label-lg);
   box-shadow: var(--elevation-2);
@@ -24791,16 +25028,22 @@ body.col-reordering * {
  * 고른 의뢰 줄 — 입하 예정 조회와 같은 정보 파랑 바탕 + 첫 칸 왼쪽 파란 선(사용자 지시 2026-10-26 · #185).
  * 칸(td)에 칠한다(표 부품이 칸 배경을 따로 칠한다). 마우스를 올렸다 떼도 남는다.
  */
-.inspection-queue-table tbody tr:nth-child(n):has([aria-current='true']) > td,
-.inspection-queue-table tbody tr:nth-child(n):has([aria-current='true']):hover > td {
+.inspection-queue-table tbody tr:nth-child(n):has([aria-current="true"]) > td,
+.inspection-queue-table
+  tbody
+  tr:nth-child(n):has([aria-current="true"]):hover
+  > td {
   background: var(--semantic-info-container);
 }
 
-.inspection-queue-table tbody tr:nth-child(n):has([aria-current='true']) > td:first-child {
+.inspection-queue-table
+  tbody
+  tr:nth-child(n):has([aria-current="true"])
+  > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
-.inspection-queue-table tbody tr:nth-child(n):has([aria-current='true']) {
+.inspection-queue-table tbody tr:nth-child(n):has([aria-current="true"]) {
   background: none;
 }
 
@@ -24810,8 +25053,10 @@ body.col-reordering * {
  * 화면마다 앞서 둔 위치 기준 정렬(IQC 전부 가운데 · PQC 다섯째부터 가운데)보다 앞선다.
  */
 /* 위치 기준 규칙(`:nth-child`)보다 앞서도록 `:nth-child(n)` 을 겹쳐 무게를 올린다 — 고르는 칸은 같다. */
-.inspection-queue-table table th[data-align='center']:nth-child(n):nth-child(n),
-.inspection-queue-table table td[data-align='center']:nth-child(n):nth-child(n) {
+.inspection-queue-table table th[data-align="center"]:nth-child(n):nth-child(n),
+.inspection-queue-table
+  table
+  td[data-align="center"]:nth-child(n):nth-child(n) {
   text-align: center;
 }
 
@@ -24893,22 +25138,22 @@ body.col-reordering * {
  * (좁은 칸에서 어긋나던 문제 · 사용자 지시 2026-10-27 · #185). 끌기 손잡이는 늘 이름 바로 오른쪽이다(사용자 지시
  * 2026-10-27 · #197) — 이름 묶음을 기준으로 그 오른쪽 끝 바깥에 선다.
  */
-.inspection-queue-table thead th[data-align='center'] .col-head {
+.inspection-queue-table thead th[data-align="center"] .col-head {
   position: relative;
 }
 
-.inspection-queue-table thead th[data-align='center'] .col-grip {
+.inspection-queue-table thead th[data-align="center"] .col-grip {
   position: absolute;
   top: 50%;
   left: calc(100% + var(--space-1));
   transform: translateY(-50%);
 }
 
-.inspection-queue-table thead th[data-align='center'] > button {
+.inspection-queue-table thead th[data-align="center"] > button {
   padding-inline: 6px;
 }
 
-.inspection-queue-table thead th[data-align='center'] > button > svg {
+.inspection-queue-table thead th[data-align="center"] > button > svg {
   position: absolute;
   top: 50%;
   right: 12px;
@@ -25009,12 +25254,12 @@ body.col-reordering * {
   color: var(--on-surface-variant);
 }
 
-.split-orientation-option[aria-pressed='true'] {
+.split-orientation-option[aria-pressed="true"] {
   border-color: color-mix(in srgb, var(--primary) 60%, transparent);
   background: color-mix(in srgb, var(--primary) 16%, transparent);
 }
 
-.split-orientation-option[aria-pressed='true'] > :first-child {
+.split-orientation-option[aria-pressed="true"] > :first-child {
   color: var(--primary);
 }
 
@@ -25030,7 +25275,7 @@ body.col-reordering * {
 }
 
 .inspection-height-splitter::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: var(--space-2);
@@ -25042,7 +25287,7 @@ body.col-reordering * {
 }
 
 .inspection-height-splitter::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -25052,8 +25297,8 @@ body.col-reordering * {
   border: 1px solid var(--outline);
   border-radius: var(--radius-full);
   background:
-    radial-gradient(circle, var(--on-surface-variant) 1.5px, transparent 2px) center / 8px 4px
-      repeat-x,
+    radial-gradient(circle, var(--on-surface-variant) 1.5px, transparent 2px)
+      center / 8px 4px repeat-x,
     var(--surface);
   box-shadow: var(--elevation-1);
 }
@@ -25110,7 +25355,9 @@ table.col-measuring td {
 
   /* PQC · OQC 의 품목 · 작업지시 · 의뢰번호 칸도 IQC 와 같은 폭(사용자 지시 2026-10-28 · #197). */
   .iqc-inspection-search > .filter-bar > :not(.field-cell-unlabeled),
-  .pqc-web-search > .pqc-web-filter-bar > :not(.pqc-web-filter-check, .pqc-web-filter-actions),
+  .pqc-web-search
+    > .pqc-web-filter-bar
+    > :not(.pqc-web-filter-check, .pqc-web-filter-actions),
   .oqc-inspection-search > .filter-bar > :not(.field-cell-unlabeled) {
     flex: 0 1 12rem;
   }
@@ -25188,7 +25435,7 @@ table.col-measuring td {
 }
 
 .iqc-inspection-collapsible > summary::before {
-  content: '';
+  content: "";
   align-self: center;
   width: 0;
   height: 0;
@@ -25232,7 +25479,9 @@ table.col-measuring td {
   }
 
   .iqc-inspection-judgment-section
-    .iqc-inspection-collapsible-body:has(> .iqc-inspection-judgment-detail:empty)
+    .iqc-inspection-collapsible-body:has(
+      > .iqc-inspection-judgment-detail:empty
+    )
     > .iqc-inspection-judgment-main {
     grid-column: 1 / -1;
   }
@@ -25330,7 +25579,8 @@ table.col-measuring td {
     overflow-wrap: normal;
   }
 
-  .inspection-basic-card .iqc-inspection-fact:has(.iqc-inspection-fact-item, .iqc-inspection-lot) {
+  .inspection-basic-card
+    .iqc-inspection-fact:has(.iqc-inspection-fact-item, .iqc-inspection-lot) {
     flex-shrink: 1;
     min-width: 0;
   }
@@ -25401,13 +25651,17 @@ table.col-measuring td {
   letter-spacing: var(--type-label-sm-tracking);
 }
 
-.iqc-inspection-progress[data-state='done'] .iqc-inspection-progress-badge {
-  border-color: color-mix(in srgb, var(--semantic-success-text) 45%, transparent);
+.iqc-inspection-progress[data-state="done"] .iqc-inspection-progress-badge {
+  border-color: color-mix(
+    in srgb,
+    var(--semantic-success-text) 45%,
+    transparent
+  );
   background: color-mix(in srgb, var(--semantic-success-text) 14%, transparent);
   color: var(--semantic-success-text);
 }
 
-.iqc-inspection-progress[data-state='over'] .iqc-inspection-progress-badge {
+.iqc-inspection-progress[data-state="over"] .iqc-inspection-progress-badge {
   border-color: color-mix(in srgb, var(--semantic-error-text) 45%, transparent);
   color: var(--semantic-error-text);
 }
@@ -25504,11 +25758,11 @@ table.col-measuring td {
   letter-spacing: var(--type-label-sm-tracking);
 }
 
-.iqc-inspection-action-note[data-tone='warning']:nth-child(n) {
+.iqc-inspection-action-note[data-tone="warning"]:nth-child(n) {
   border: 1px solid color-mix(in srgb, var(--semantic-warning) 35%, transparent);
 }
 
-.iqc-inspection-action-note[data-tone='info']:nth-child(n) {
+.iqc-inspection-action-note[data-tone="info"]:nth-child(n) {
   border: 1px solid color-mix(in srgb, var(--semantic-info) 35%, transparent);
 }
 
@@ -25517,9 +25771,13 @@ table.col-measuring td {
  * 첫 칸이 그 칸 폭만큼 넓어진다.
  */
 @container (min-width: 48rem) {
-  .iqc-inspection-judgment-section .iqc-inspection-collapsible-body:nth-child(n):nth-child(n) {
+  .iqc-inspection-judgment-section
+    .iqc-inspection-collapsible-body:nth-child(n):nth-child(n) {
     /* 최종 판정 · 불량 대분류 · 불량 상세 · 추정 원인 · 사유(남는 폭 · 사용자 지시 2026-10-26). */
-    grid-template-columns: max-content repeat(3, minmax(9rem, 14rem)) minmax(12rem, 1fr);
+    grid-template-columns: max-content repeat(3, minmax(9rem, 14rem)) minmax(
+        12rem,
+        1fr
+      );
   }
 }
 
@@ -25567,12 +25825,16 @@ table.col-measuring td {
   grid-column: 1 / -1;
 }
 
-.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) > .iqc-inspection-qty {
+.iqc-inspection-qty-judgment-row
+  .iqc-inspection-qty-body:nth-child(n)
+  > .iqc-inspection-qty {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
-.iqc-inspection-qty-judgment-row .iqc-inspection-qty-body:nth-child(n) > .iqc-inspection-progress {
+.iqc-inspection-qty-judgment-row
+  .iqc-inspection-qty-body:nth-child(n)
+  > .iqc-inspection-progress {
   grid-column: 1;
 }
 
@@ -25601,13 +25863,15 @@ table.col-measuring td {
  * 그 아래 지금 단계가 펼쳐진다.
  */
 .iqc-inspection-qty-judgment-row[data-sequential],
-.iqc-inspection-qty-judgment-row[data-sequential]:has(> .iqc-inspection-inline-four-m) {
+.iqc-inspection-qty-judgment-row[data-sequential]:has(
+    > .iqc-inspection-inline-four-m
+  ) {
   grid-template-columns: minmax(0, 1fr);
   row-gap: var(--space-2);
 }
 
 .iqc-inspection-qty-judgment-row
-  > .iqc-inspection-section[data-step-view='summary']
+  > .iqc-inspection-section[data-step-view="summary"]
   .iqc-inspection-step-head {
   margin-bottom: 0;
 }
@@ -25702,19 +25966,26 @@ table.col-measuring td {
   font: var(--type-label-sm);
 }
 
-.iqc-inspection-plan-view-table thead th:not([data-align='end'], [data-align='center']),
-.iqc-inspection-plan-view-table tbody td:not([data-align='end'], [data-align='center']) {
+.iqc-inspection-plan-view-table
+  thead
+  th:not([data-align="end"], [data-align="center"]),
+.iqc-inspection-plan-view-table
+  tbody
+  td:not([data-align="end"], [data-align="center"]) {
   text-align: left;
 }
 
-.iqc-inspection-plan-view-table thead th[data-align='center'],
-.iqc-inspection-plan-view-table tbody td[data-align='center'] {
+.iqc-inspection-plan-view-table thead th[data-align="center"],
+.iqc-inspection-plan-view-table tbody td[data-align="center"] {
   text-align: center;
   white-space: nowrap;
 }
 
 /* 마지막 줄 아래 선은 두지 않는다(사용자 시안 2026-10-28 · #197). */
-.iqc-inspection-plan-view-table.iqc-inspection-plan-view-table tbody tr:last-child > td {
+.iqc-inspection-plan-view-table.iqc-inspection-plan-view-table
+  tbody
+  tr:last-child
+  > td {
   border-bottom: none;
 }
 
@@ -25841,11 +26112,11 @@ button.iqc-inspection-step-toggle:focus-visible {
   outline-offset: -2px;
 }
 
-.iqc-inspection-stepper > li[data-step-state='current'] {
+.iqc-inspection-stepper > li[data-step-state="current"] {
   border-color: var(--primary);
 }
 
-.iqc-inspection-stepper > li[data-step-state='todo'] {
+.iqc-inspection-stepper > li[data-step-state="todo"] {
   opacity: 0.55;
 }
 
@@ -25855,7 +26126,9 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 /* 마친 단계 번호는 중립색 — 강조색 · 체크는 수량 일치 · 저장 완료로 읽힐 수 있다(사용자 지시 2026-10-29 · #197). */
-.iqc-inspection-stepper > li[data-step-state='current'] .iqc-inspection-step-no {
+.iqc-inspection-stepper
+  > li[data-step-state="current"]
+  .iqc-inspection-step-no {
   background: var(--primary);
   color: var(--on-primary);
 }
@@ -25881,7 +26154,8 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 /* 차례로 열 때 단계 상자는 제 내용 높이만 — 옆 상자와 높이를 맞출 일이 없다. */
-.iqc-inspection-qty-judgment-row[data-sequential] .iqc-inspection-step-box:nth-child(n) {
+.iqc-inspection-qty-judgment-row[data-sequential]
+  .iqc-inspection-step-box:nth-child(n) {
   min-height: 0;
 }
 
@@ -25913,7 +26187,9 @@ button.iqc-inspection-step-toggle:focus-visible {
 /* ② 판정 — 최종 판정 칸은 불합격 사유 칸들과 같은 폭으로 둔다. */
 .iqc-inspection-step-panel .iqc-inspection-judgment-field:nth-child(n),
 .iqc-inspection-step-panel .iqc-inspection-judgment-field > div,
-.iqc-inspection-step-panel .iqc-inspection-judgment-field button[role='combobox'] {
+.iqc-inspection-step-panel
+  .iqc-inspection-judgment-field
+  button[role="combobox"] {
   width: 100%;
 }
 
@@ -25938,12 +26214,16 @@ button.iqc-inspection-step-toggle:focus-visible {
   justify-self: start;
 }
 
-.iqc-inspection-step-panel .iqc-inspection-four-m > .iqc-inspection-four-m-edit {
+.iqc-inspection-step-panel
+  .iqc-inspection-four-m
+  > .iqc-inspection-four-m-edit {
   grid-column: 2;
   grid-row: 1;
 }
 
-.iqc-inspection-step-panel .iqc-inspection-four-m > .iqc-inspection-four-m-remarks {
+.iqc-inspection-step-panel
+  .iqc-inspection-four-m
+  > .iqc-inspection-four-m-remarks {
   grid-column: 1 / -1;
   grid-row: 2;
 }
@@ -26030,12 +26310,16 @@ button.iqc-inspection-step-toggle:focus-visible {
   background: var(--primary);
 }
 
-.iqc-inspection-qty-judgment-row > .iqc-inspection-section:last-child .iqc-inspection-step-line {
+.iqc-inspection-qty-judgment-row
+  > .iqc-inspection-section:last-child
+  .iqc-inspection-step-line {
   visibility: hidden;
 }
 
 /* 판정 · 4M 입력을 담는 테두리 상자 — 같은 줄의 상자끼리 높이를 맞추고 내용은 위에서부터. */
-.iqc-inspection-qty-judgment-row > .iqc-inspection-section > .iqc-inspection-static {
+.iqc-inspection-qty-judgment-row
+  > .iqc-inspection-section
+  > .iqc-inspection-static {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -26050,7 +26334,9 @@ button.iqc-inspection-step-toggle:focus-visible {
    * 단추([판정 상세 입력] · [비고 입력])가 선 때의 높이를 늘 잡아 둔다 — 단추가 나타나고 사라져도 상자 크기가 변하지 않는다
    * (사용자 지시 2026-10-27 · #185). 내용 높이 = 라벨 층 + 입력 칸 + 간격 + 단추(여백 · 테두리는 따로 붙는다).
    */
-  min-height: calc(var(--field-label-layer) + 2 * var(--control-height-md) + var(--space-2));
+  min-height: calc(
+    var(--field-label-layer) + 2 * var(--control-height-md) + var(--space-2)
+  );
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
@@ -26101,7 +26387,8 @@ button.iqc-inspection-step-toggle:focus-visible {
   border-color: var(--primary);
 }
 
-.iqc-inspection-qty-judgment-row .iqc-inspection-qty-field:has([aria-invalid='true']) {
+.iqc-inspection-qty-judgment-row
+  .iqc-inspection-qty-field:has([aria-invalid="true"]) {
   border-color: var(--semantic-error);
 }
 
@@ -26123,7 +26410,10 @@ button.iqc-inspection-step-toggle:focus-visible {
   white-space: nowrap;
 }
 
-.iqc-inspection-qty-judgment-row .iqc-inspection-qty-field > div > :has(> input) {
+.iqc-inspection-qty-judgment-row
+  .iqc-inspection-qty-field
+  > div
+  > :has(> input) {
   display: flex;
   grid-row: 1;
   grid-column: 2;
@@ -26212,11 +26502,13 @@ button.iqc-inspection-step-toggle:focus-visible {
  * 확정된 회차 — 판정 · 4M 상자는 수량 쪽([재검사 회차 추가] 줄 포함)만큼 늘지 않고 제 내용 높이만, 단추가 나타날 일이 없어
  * 단추 자리도 잡지 않는다(사용자 지시 2026-10-27 · #185).
  */
-.iqc-inspection-qty-judgment-row[data-locked] > .iqc-inspection-section:not(:first-child) {
+.iqc-inspection-qty-judgment-row[data-locked]
+  > .iqc-inspection-section:not(:first-child) {
   align-self: start;
 }
 
-.iqc-inspection-qty-judgment-row[data-locked] .iqc-inspection-step-box:nth-child(n):nth-child(n) {
+.iqc-inspection-qty-judgment-row[data-locked]
+  .iqc-inspection-step-box:nth-child(n):nth-child(n) {
   min-height: calc(var(--field-label-layer) + var(--control-height-md));
 }
 
@@ -26271,11 +26563,15 @@ button.iqc-inspection-step-toggle:focus-visible {
   .iqc-inspection-qty-field
   > div
   > :first-child:nth-child(n),
-.iqc-inspection-qty-judgment-row[data-reinspect] .iqc-inspection-qty-field > dt:nth-child(n) {
+.iqc-inspection-qty-judgment-row[data-reinspect]
+  .iqc-inspection-qty-field
+  > dt:nth-child(n) {
   grid-column: 1 / -1;
 }
 
-.iqc-inspection-qty-judgment-row[data-reinspect] .iqc-inspection-qty-field > dd:nth-child(n) {
+.iqc-inspection-qty-judgment-row[data-reinspect]
+  .iqc-inspection-qty-field
+  > dd:nth-child(n) {
   grid-row: 2;
   grid-column: 1 / -1;
   justify-content: space-between;
@@ -26293,19 +26589,19 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 /* 수량 카드 숫자 색 — 합격 초록 · 불합격 빨강 · 보류 노랑, 총 검사 수량은 기본색(사용자 지시 2026-10-27 · #185). */
 .iqc-inspection-qty-judgment-row
-  .iqc-inspection-qty-field[data-kind='accepted']
+  .iqc-inspection-qty-field[data-kind="accepted"]
   input:nth-child(n):nth-child(n) {
   color: var(--semantic-success-text);
 }
 
 .iqc-inspection-qty-judgment-row
-  .iqc-inspection-qty-field[data-kind='rejected']
+  .iqc-inspection-qty-field[data-kind="rejected"]
   input:nth-child(n):nth-child(n) {
   color: var(--semantic-error-text);
 }
 
 .iqc-inspection-qty-judgment-row
-  .iqc-inspection-qty-field[data-kind='held']
+  .iqc-inspection-qty-field[data-kind="held"]
   input:nth-child(n):nth-child(n) {
   color: var(--semantic-warning);
 }
@@ -26314,7 +26610,9 @@ button.iqc-inspection-step-toggle:focus-visible {
  * 총 검사 수량 — 「10 EA」 · 「-10 EA」는 각각 끊지 않는다. 카드가 좁으면 넘친 · 모자란 양만 아래 줄로 내려간다
  * (사용자 지시 2026-10-27 · #185 — 「10 / EA」로 끊기던 것을 고친다).
  */
-.iqc-inspection-qty-judgment-row .iqc-inspection-qty-total > dd:nth-child(n):nth-child(n) {
+.iqc-inspection-qty-judgment-row
+  .iqc-inspection-qty-total
+  > dd:nth-child(n):nth-child(n) {
   flex-wrap: wrap;
   justify-content: flex-end;
   height: auto;
@@ -26345,7 +26643,9 @@ button.iqc-inspection-step-toggle:focus-visible {
  * 4M 체크 줄의 겹친 위 여백 제거, 저장 줄 위아래 8px.
  */
 .iqc-inspection-work > .iqc-inspection-section,
-.iqc-inspection-work > .iqc-inspection-qty-judgment-row > .iqc-inspection-section {
+.iqc-inspection-work
+  > .iqc-inspection-qty-judgment-row
+  > .iqc-inspection-section {
   padding-block: var(--space-3);
 }
 
@@ -26366,7 +26666,9 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 .iqc-inspection-inline-judgment .iqc-inspection-judgment-field > div,
-.iqc-inspection-inline-judgment .iqc-inspection-judgment-field button[role='combobox'],
+.iqc-inspection-inline-judgment
+  .iqc-inspection-judgment-field
+  button[role="combobox"],
 .iqc-inspection-judgment-detail-action > button,
 .iqc-inspection-inline-four-m .iqc-inspection-four-m > button {
   width: 100%;
@@ -26430,7 +26732,8 @@ button.iqc-inspection-step-toggle:focus-visible {
   }
 }
 
-.iqc-inspection-judgment-section[data-inline] .iqc-inspection-judgment-main:empty {
+.iqc-inspection-judgment-section[data-inline]
+  .iqc-inspection-judgment-main:empty {
   display: none;
 }
 
@@ -26452,7 +26755,9 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 /* 비고 칸이 섰을 때만 이름표 높이만큼 내린다 — 체크 전에는 위 빈자리가 생기지 않게. */
-.iqc-inspection-four-m-block .iqc-inspection-four-m:has(> .field-cell) > :first-child {
+.iqc-inspection-four-m-block
+  .iqc-inspection-four-m:has(> .field-cell)
+  > :first-child {
   margin-top: var(--field-label-layer);
 }
 
@@ -27002,11 +27307,11 @@ button.iqc-inspection-step-toggle:focus-visible {
   font: var(--type-body-sm);
 }
 
-[aria-current='step'] .lot-trace-stage-jump {
+[aria-current="step"] .lot-trace-stage-jump {
   font-weight: 700;
 }
 
-[data-status='pending'] .lot-trace-stage-jump {
+[data-status="pending"] .lot-trace-stage-jump {
   color: var(--on-surface-muted);
 }
 
@@ -27051,87 +27356,718 @@ button.iqc-inspection-step-toggle:focus-visible {
   min-width: 0;
 }
 
-.erp-po-order-type-field > :not(label) {
+/*
+ * 선택지가 많은 선택 칸의 검색창(`patterns/select.tsx`) — 펼친 목록 맨 위에 붙어, 목록을 내려도 남는다. 목록 바탕과 같은
+ * 색으로 덮어 아래 줄이 비치지 않게 한다.
+ */
+.select-search {
+  box-sizing: border-box;
+  position: sticky;
+  top: calc(-1 * var(--space-1));
+  z-index: 1;
+  margin-top: calc(-1 * var(--space-1));
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  background: var(--surface-container-high);
+}
+
+.select-search-input {
+  box-sizing: border-box;
   width: 100%;
+  min-width: 10rem;
+  height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--type-body-md);
+}
+
+.select-search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.select-search-empty {
+  margin: 0;
+  padding: var(--space-2) var(--space-1) var(--space-1);
+  color: var(--on-surface-muted);
+  font: var(--type-body-md);
+}
+
+/* 오른쪽 구획의 첫 갈래는 구획 위 여백에 바로 붙는다. */
+.po-board-scroll > .board-frame-sub:first-child {
+  margin-top: 0;
+}
+
+/* 랙의 층 · 셀 설정 대화상자(사용자 지시 2026-10-29) — 대상 랙 · 두 수 · 만들 위치 미리보기. */
+.rack-layout {
+  min-width: 0;
+}
+
+.rack-layout-counts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* 랙의 층 · 셀 표 — 행이 층(위층이 위), 열이 셀. 머리는 옅은 글자, 칸은 같은 크기. */
+.rack-layout-grid-wrap {
+  max-height: 22rem;
+  overflow: auto;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+.rack-layout-grid {
+  border-collapse: separate;
+  border-spacing: 6px;
+  font: var(--type-label-lg);
+}
+
+.rack-layout-grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0 var(--space-1);
+  background: var(--surface-container-low);
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+  white-space: nowrap;
+}
+
+.rack-layout-grid tbody th {
+  left: 0;
+  padding-right: var(--space-2);
+  text-align: right;
+}
+
+.rack-layout-grid td {
+  width: 4.5rem;
+  min-width: 4.5rem;
+  height: 2.75rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* 새로 생길 칸 — 초록 점선, 앞에 + 표시. */
+.rack-layout-grid td.is-new {
+  border: 1.5px dashed var(--semantic-success);
+  background: var(--semantic-success-container);
+  color: var(--semantic-success-text);
+  font-weight: 600;
+}
+
+.rack-layout-grid td.is-new::before {
+  content: "+";
+  margin-right: 2px;
+}
+
+/* 지울 칸 — 붉은 바탕에 줄 긋기. */
+.rack-layout-grid td.is-removed {
+  border: 1px solid var(--semantic-error);
+  background: var(--semantic-error-container);
+  color: var(--semantic-error-text);
+  text-decoration: line-through;
+}
+
+.rack-layout-grid td.is-empty {
+  border-color: transparent;
+  background: none;
+}
+
+.rack-layout-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 위치 수정 · 추가 창 — 머리(단계 · 코드 · 별칭 · 상태) · 고칠 수 없는 값 판 · 제목 붙은 묶음(사용자 지시 2026-10-29). */
+.location-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.location-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.location-identity-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.location-identity-icon.is-zone {
+  color: var(--primary);
+}
+
+.location-identity-icon.is-rack {
+  color: var(--semantic-info);
+}
+
+.location-identity-icon.is-level {
+  color: var(--semantic-success);
+}
+
+.location-identity-icon.is-cell {
+  color: var(--semantic-warning);
+}
+
+.location-identity-icon.is-system,
+.location-identity-icon.is-none {
+  color: var(--on-surface-variant);
+}
+
+.location-identity-text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.location-identity-level {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+.location-identity-name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.location-identity-code {
+  font: var(--type-title-md);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.location-identity-alias {
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 고칠 수 없는 값 — 옅은 판 하나에 이름 · 값 두 열. */
+.location-facts {
+  display: grid;
+  /* 값 수만큼 한 줄에 고르게(창고 · 상위 위치 · 별칭). */
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+.location-facts-row {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* 값이 하나면(구역 · 시스템 위치의 창고) 두 열을 다 쓴다 — 긴 창고명이 반쪽에서 잘리지 않게. */
+.location-facts-row:only-child {
+  grid-column: 1 / -1;
+}
+
+.location-facts dt {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+.location-facts dd {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  font: var(--type-body-sm);
+}
+
+/* 긴 창고명도 한 줄 — 넘치면 말줄임(사용자 지시 2026-10-29). */
+.location-facts output {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.location-section-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  font-weight: 600;
+}
+
+/* 보관 품목 — 품목 무관 · 지정 품목만 묶음 단추, 고른 품목 줄(코드 · 이름 · 삭제). */
+.location-items-section .location-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.location-items-count {
+  min-width: 20px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+  text-align: center;
+}
+
+.location-items-mode {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 2px;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.location-items-mode-option {
+  height: 28px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.location-items-mode-option:hover:not(:disabled) {
+  background: var(--surface-container-high);
+}
+
+.location-items-mode-option:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.location-items-mode-option[aria-pressed="true"] {
+  background: var(--surface);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 60%, transparent);
+  color: var(--primary);
+}
+
+.location-items-mode-option:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.location-items-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  /* 품목 목록은 고정 높이(사용자 지시 2026-10-29) — 품목 수에 따라 창이 늘고 줄지 않는다. 넘치면 안에서 스크롤. */
+  align-content: start;
+  height: 15rem;
+  overflow-y: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  list-style: none;
+}
+
+.location-items-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+}
+
+.location-items-row + .location-items-row {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.location-items-code {
+  flex: none;
+  font: var(--type-label-lg);
+  font-weight: 600;
+}
+
+.location-items-name {
+  flex: 1;
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 위치 목록 — 지정 품목만 두는 위치의 코드 뒤 자물쇠. */
+.location-restricted-icon {
+  display: inline-flex;
+  margin-left: var(--space-1);
+  color: var(--on-surface-variant);
+}
+
+/* 창 바닥 — 지우기 · 끄기는 왼쪽에 모아 저장 · 취소와 떨어뜨린다. */
+.location-dialog-footer-start {
+  display: flex;
+  gap: var(--space-2);
+  margin-right: auto;
+}
+
+/* DS 외곽선 단추의 테두리는 box-shadow 다 — 같은 자리에 붉은 선을 둔다. */
+.location-danger-button:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+  color: var(--semantic-error-text);
+}
+
+/* 사용 중지 · 다시 사용은 지우기보다 낮게 — 무채색 글자 단추. */
+.location-state-button:not(:disabled) {
+  color: var(--on-surface-variant);
+}
+
+.location-danger-filled:not(:disabled) {
+  background: var(--semantic-error);
+  color: var(--on-primary);
+}
+
+/* 삭제 · 사용 중지 확인 — 둥근 바탕의 경고 아이콘 · 대상 코드 · 바뀌는 위치 수. */
+.location-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.location-confirm-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+}
+
+.location-confirm-icon.is-danger {
+  background: var(--semantic-error-container);
+  color: var(--semantic-error);
+}
+
+.location-confirm-icon.is-warning {
+  background: var(--semantic-warning-container);
+  color: var(--semantic-warning);
+}
+
+.location-confirm-icon.is-success {
+  background: var(--semantic-success-container);
+  color: var(--semantic-success);
+}
+
+.location-confirm-text {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  padding-top: var(--space-1);
+}
+
+.location-confirm-text p {
+  margin: 0;
+}
+
+.location-confirm-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font: var(--type-title-md);
+}
+
+.location-confirm-target strong {
+  font-weight: 700;
+}
+
+.location-confirm-alias {
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+}
+
+.location-confirm-line {
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+}
+
+/* 위치 목록 — 코드 앞 단계 아이콘(사용자 지시 2026-10-29). 단계마다 색을 달리해 줄이 한눈에 갈린다. */
+.location-level-icon {
+  flex: none;
+  margin-right: var(--space-1);
+}
+
+.location-level-icon.is-zone {
+  color: var(--primary);
+}
+
+.location-level-icon.is-rack {
+  color: var(--semantic-info);
+}
+
+.location-level-icon.is-level {
+  color: var(--semantic-success);
+}
+
+.location-level-icon.is-cell {
+  color: var(--semantic-warning);
+}
+
+.location-level-icon.is-system,
+.location-level-icon.is-none {
+  color: var(--on-surface-variant);
+}
+
+/* 창고·Location 왼쪽 — 조회 조건을 목록 위에 좁게(사용자 지시 2026-10-29). 윗줄 검색 · 조회 · 창고 추가는 한 줄을 지킨다. */
+.warehouse-location-filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.warehouse-location-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.warehouse-location-filter-row:first-child {
+  flex-wrap: nowrap;
+}
+
+.warehouse-location-filter-row button {
+  flex: none;
+  white-space: nowrap;
+}
+
+.warehouse-location-filter-row:first-child > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.warehouse-location-filter-row:last-child > :nth-child(-n + 2) {
+  flex: 1 1 8rem;
   min-width: 0;
 }
 
 /*
- * 선택지가 많은 선택 칸의 검색창(`patterns/select.tsx`) — 펼친 목록 맨 위에 붙어, 목록을 내려도 남는다. 목록 바탕과 같은
- * 색으로 덮어 아래 줄이 비치지 않게 한다.
+ * 위치 창의 입력칸 — 창 바탕(--surface-container-high)과 같은 투명 바탕이라 꺼진 칸처럼 보였다(사용자 지시 2026-10-29).
+ * 고를 수 있는 칸(Select 트리거)과 같은 밝은 바탕을 준다. 꺼진 칸은 그대로 둔다.
  */
-.select-search {
-  box-sizing: border-box;
-  position: sticky;
-  top: calc(-1 * var(--space-1));
-  z-index: 1;
-  margin-top: calc(-1 * var(--space-1));
-  padding: var(--space-2) var(--space-2) var(--space-1);
-  background: var(--surface-container-high);
+.location-dialog-body div:has(> input:not([type="checkbox"]):not(:disabled)) {
+  background: var(--surface);
+}
+
+/* 정보 판의 연필 값(별칭) — 값 · 연필이 한 줄, 고칠 때는 그 자리의 입력칸 · 완료. */
+.location-facts-value,
+.location-facts-edit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.location-facts-value {
+  flex-wrap: wrap;
+}
+
+.location-facts-value > output {
+  min-width: 0;
+}
+
+.location-facts-edit > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 연필로 연 선택칸은 남은 폭을 다 쓴다. */
+.location-facts-edit > :first-child > button {
+  width: 100%;
+}
+
+/* 저장 전에 바꾼 값 — 이름 옆에 점(사용자 결정 2026-10-30, 창고 정보 안 A). */
+.location-facts-row.is-changed dt::after {
+  content: " ·";
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* 머리 오른쪽 칩 — 불량 창고 · 상태. */
+.location-identity-chips {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 창고를 끄기 전 남은 재고 — 막지 않는 경고 한 줄. */
+.location-confirm-line.is-warning {
+  justify-self: start;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--semantic-warning-container);
+  color: var(--on-surface);
+  font-weight: 600;
 }
 
 /*
- * 선택지가 많은 선택 칸의 검색창(`patterns/select.tsx`) — 펼친 목록 맨 위에 붙어, 목록을 내려도 남는다. 목록 바탕과 같은
- * 색으로 덮어 아래 줄이 비치지 않게 한다.
+ * 창고 정보 탭(안 A, 사용자 결정 2026-10-30) — 위치 창과 같은 짜임: 머리 · 옅은 정보 판 · Location 묶음 · 바닥.
+ * 정보 판은 공장 · 사업부 · 창고 유형 · 불량 창고 넷을 한 줄에, 선택칸이 열리는 유형 칸을 조금 넓게.
  */
-.select-search {
-  box-sizing: border-box;
-  position: sticky;
-  top: calc(-1 * var(--space-1));
-  z-index: 1;
-  margin-top: calc(-1 * var(--space-1));
-  padding: var(--space-2) var(--space-2) var(--space-1);
-  background: var(--surface-container-high);
+.warehouse-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
-.select-search-input {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 10rem;
-  height: var(--control-height-sm);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--on-surface);
-  font: var(--type-body-md);
+.warehouse-info .location-facts {
+  grid-auto-flow: row;
+  grid-template-columns: 1fr 1.3fr 1.5fr 0.8fr;
 }
 
-.select-search-input {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 10rem;
-  height: var(--control-height-sm);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--on-surface);
-  font: var(--type-body-md);
+/* 연필 칸이 선택칸으로 바뀌어도 줄 높이가 뛰지 않게. */
+.warehouse-info .location-facts dd {
+  align-content: center;
+  min-height: 28px;
 }
 
-.select-search-input:focus {
-  outline: none;
-  border-color: var(--primary);
+.warehouse-info .warehouse-location-form-actions {
+  margin-top: var(--space-1);
+  padding-top: var(--space-3);
 }
 
-.select-search-input:focus {
-  outline: none;
-  border-color: var(--primary);
+.warehouse-info-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-.select-search-empty {
+.warehouse-info-section-head .location-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.warehouse-info-section-head > button {
+  margin-left: auto;
+}
+
+/* 단계별 수 — 구역 · 랙 · 층 · 셀 · 사용 중지 다섯 칸. */
+.warehouse-info-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-2);
   margin: 0;
-  padding: var(--space-2) var(--space-1) var(--space-1);
-  color: var(--on-surface-muted);
-  font: var(--type-body-md);
 }
 
-.select-search-empty {
+.warehouse-info-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.warehouse-info-stat .location-identity-icon,
+.warehouse-info-system .location-identity-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.warehouse-info-stat-text {
+  display: grid;
+  min-width: 0;
+}
+
+.warehouse-info-stat-text dt {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+.warehouse-info-stat-text dd {
   margin: 0;
-  padding: var(--space-2) var(--space-1) var(--space-1);
-  color: var(--on-surface-muted);
-  font: var(--type-body-md);
+  font: var(--type-title-sm);
+  font-weight: 700;
+}
+
+.warehouse-info-stat.is-muted dd {
+  color: var(--on-surface-variant);
+}
+
+/* 서버가 만든 위치 — 한두 줄이라 보관 품목 목록의 고정 높이를 풀어 준다. */
+.warehouse-info-system {
+  height: auto;
+}
+
+.warehouse-info-system .location-items-row {
+  padding: var(--space-2) var(--space-3);
+}
+
+/* 창고 추가 — 머리 · 세 칸씩 두 줄(공장 · 코드 · 창고명 / 사업부 · 유형 · 불량 창고). */
+.warehouse-info-create-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.warehouse-info-create-title {
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+}
+
+.warehouse-info-create-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.warehouse-info-create-flags {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: var(--space-2);
+  white-space: nowrap;
+}
+
+/*
+ * 위치 창 — 머리(제목)와 본문을 또렷이 가른다(사용자 지시 2026-10-29). 창 바탕(--surface-container-high)은 머리 · 바닥에
+ * 남기고 본문만 밝은 바탕으로, 머리 아래에 선을 긋는다. DS 창은 dialog > 판 > 머리 · 본문 · 바닥 차례다.
+ */
+.location-dialog > div > :first-child {
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.location-dialog > div > :nth-child(2) {
+  padding-top: var(--space-4);
+  background: var(--surface);
 }
 
 @media (min-width: 1440px) {
@@ -27278,7 +28214,7 @@ button.iqc-inspection-step-toggle:focus-visible {
   background: var(--state-hover-neutral);
 }
 
-.searchable-select-list > li[aria-selected='true'] {
+.searchable-select-list > li[aria-selected="true"] {
   color: var(--primary-text);
 }
 
@@ -27336,8 +28272,8 @@ button.iqc-inspection-step-toggle:focus-visible {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 7.5rem auto;
   grid-template-areas:
-    'type type qty del'
-    'cause desc desc desc';
+    "type type qty del"
+    "cause desc desc desc";
   gap: var(--space-2);
   align-items: end;
   padding: var(--space-2) 0;
@@ -27348,7 +28284,8 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 .iqc-inspection-defect-row .iqc-inspection-rejection:nth-child(n):nth-child(n),
-.iqc-inspection-defect-row .form-grid.iqc-inspection-rejection-codes:nth-child(n) {
+.iqc-inspection-defect-row
+  .form-grid.iqc-inspection-rejection-codes:nth-child(n) {
   display: contents;
 }
 
@@ -27422,7 +28359,7 @@ button.iqc-inspection-step-toggle:focus-visible {
     grid-template-columns:
       minmax(0, 1.3fr) 6rem minmax(8.5rem, 1fr) minmax(0, 2.1fr)
       var(--control-height-md);
-    grid-template-areas: 'type qty cause desc del';
+    grid-template-areas: "type qty cause desc del";
     align-items: center;
   }
 
@@ -27482,11 +28419,11 @@ button.iqc-inspection-step-toggle:focus-visible {
   min-width: 0;
 }
 
-.iqc-inspection-qty-group[data-group='manual'] {
+.iqc-inspection-qty-group[data-group="manual"] {
   flex: 0 1 20rem;
 }
 
-.iqc-inspection-qty-group[data-group='auto'] {
+.iqc-inspection-qty-group[data-group="auto"] {
   flex: 0 1 auto;
 }
 
@@ -27531,42 +28468,45 @@ button.iqc-inspection-step-toggle:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-.iqc-inspection-qty-input [class*='_inputWrap'] {
+.iqc-inspection-qty-input [class*="_inputWrap"] {
   min-height: 2.75rem;
   background: var(--surface-container-high);
 }
 
 /* 칸이 셋 · 넷인 수량 줄(PQC 검사 수량 · OQC 불합격 직접 입력 · #197) — 칸 폭은 IQC 와 같게, 묶음만 넓힌다. */
-.iqc-inspection-qty-group[data-group='manual'][data-count='3'] {
+.iqc-inspection-qty-group[data-group="manual"][data-count="3"] {
   flex-basis: 30rem;
 }
 
-.iqc-inspection-qty-group[data-group='manual'][data-count='4'] {
+.iqc-inspection-qty-group[data-group="manual"][data-count="4"] {
   flex-basis: 40rem;
 }
 
-.iqc-inspection-qty-group-fields[data-count='3'] {
+.iqc-inspection-qty-group-fields[data-count="3"] {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.iqc-inspection-qty-group-fields[data-count='4'] {
+.iqc-inspection-qty-group-fields[data-count="4"] {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.iqc-inspection-qty-input[data-kind='rejected'] input:nth-child(n):nth-child(n) {
+.iqc-inspection-qty-input[data-kind="rejected"]
+  input:nth-child(n):nth-child(n) {
   color: var(--semantic-error-text);
 }
 
 /* 숫자 색 — 합격 초록 · 보류 노랑 · 불량(불합격) 빨강, 종전 수량 카드와 같다(사용자 지시 2026-10-27 · 2026-10-29). */
-.iqc-inspection-qty-input[data-kind='accepted'] input:nth-child(n):nth-child(n) {
+.iqc-inspection-qty-input[data-kind="accepted"]
+  input:nth-child(n):nth-child(n) {
   color: var(--semantic-success-text);
 }
 
-.iqc-inspection-qty-input[data-kind='held'] input:nth-child(n):nth-child(n) {
+.iqc-inspection-qty-input[data-kind="held"] input:nth-child(n):nth-child(n) {
   color: var(--semantic-warning);
 }
 
-.iqc-inspection-qty-computed[data-kind='rejected'] .iqc-inspection-qty-computed-value {
+.iqc-inspection-qty-computed[data-kind="rejected"]
+  .iqc-inspection-qty-computed-value {
   color: var(--semantic-error-text);
 }
 
@@ -27664,11 +28604,11 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 /* 정보색을 글자색 쪽으로 섞어 합격(초록) · 보류(노랑) · 불량(빨강) 숫자처럼 부드럽게(사용자 지시 2026-10-29). */
-.iqc-inspection-qty-status[data-tone='info'] > strong {
+.iqc-inspection-qty-status[data-tone="info"] > strong {
   color: color-mix(in srgb, var(--semantic-info) 40%, var(--on-surface));
 }
 
-.iqc-inspection-qty-status[data-tone='error'] > strong {
+.iqc-inspection-qty-status[data-tone="error"] > strong {
   color: var(--semantic-error-text);
 }
 
@@ -28001,7 +28941,7 @@ button.iqc-inspection-step-toggle:focus-visible {
   cursor: pointer;
 }
 
-.inspection-drawings-dots > button[aria-current='true'] {
+.inspection-drawings-dots > button[aria-current="true"] {
   width: 28px;
   background: var(--primary);
 }
@@ -28392,13 +29332,13 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 /* 고른 판정 — OK 는 초록, NG 는 빨강(기본 강조색 하나로 칠하면 OK 도 붉게 읽힌다). */
-.parts-iqc-check-row button[data-judgment='ACCEPTED'][aria-pressed='true'] {
+.parts-iqc-check-row button[data-judgment="ACCEPTED"][aria-pressed="true"] {
   border-color: var(--semantic-success);
   background: var(--semantic-success);
   color: var(--on-primary);
 }
 
-.parts-iqc-check-row button[data-judgment='REJECTED'][aria-pressed='true'] {
+.parts-iqc-check-row button[data-judgment="REJECTED"][aria-pressed="true"] {
   border-color: var(--semantic-error);
   background: var(--semantic-error);
   color: var(--on-primary);

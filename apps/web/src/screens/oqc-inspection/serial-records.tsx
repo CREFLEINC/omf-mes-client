@@ -1,11 +1,13 @@
 import { EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
-import type { OqcSerialRecord } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { useClientPage } from '../../patterns/client-page';
 import { PageNav } from '../../patterns/page-nav';
 import { useOqcSerialRecords } from './queries';
 import { formatDateTime } from './types';
+
+type OqcSerialRecord = components['schemas']['OqcSerialRecord'];
 
 const t = messages.oqcInspection.serials;
 

@@ -1,4 +1,7 @@
-import type { ZaloConnectionForward, ZaloConnectionReplaceForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
+
+type ZaloConnectionForward = components['schemas']['ZaloConnection'];
+type ZaloConnectionReplaceForward = components['schemas']['ZaloConnectionReplace'];
 
 /**
  * W-CO-12 알림 연결 설정. api-client 는 `import type` 으로만 참조한다.

@@ -1,4 +1,4 @@
-import type { TerminalWorkCounts } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -9,6 +9,8 @@ import { createStubFetch, jsonResponse, renderWithProviders } from '../test/api-
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from './pop-identity';
 import { PopScreenNavButton } from './pop-screen-nav';
 import { POP_WORK_COUNT_INTERVAL_MS } from './pop-work-counts';
+
+type TerminalWorkCounts = components['schemas']['TerminalWorkCounts'];
 
 const work = messages.popChrome.screenNavWork;
 

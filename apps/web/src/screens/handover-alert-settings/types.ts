@@ -1,11 +1,11 @@
-import type {
-  components,
-  HandoverAlertSetting,
-  HandoverAlertSettingReplace,
-  HandoverAlertSettingSummary,
-  HandoverAlertSettingSummaryItem,
-  HandoverAlertType,
-} from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
+
+type HandoverAlertSetting = components['schemas']['HandoverAlertSetting'];
+type HandoverAlertSettingReplace = components['schemas']['HandoverAlertSettingReplace'];
+type HandoverAlertSettingSummary = components['schemas']['HandoverAlertSettingSummary'];
+type HandoverAlertSettingSummaryItem =
+  components['schemas']['HandoverAlertSettingSummary']['items'][number];
+type HandoverAlertType = components['schemas']['HandoverAlertType'];
 
 /**
  * W-CO-14 — 공장 × 인계 작업 종류 알림 설정(피처 002). 수신자는 최대 5명이다(FR-007).

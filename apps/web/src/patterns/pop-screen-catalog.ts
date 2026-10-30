@@ -1,4 +1,6 @@
-import type { TerminalWorkCountKey } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
+
+type TerminalWorkCountKey = keyof components['schemas']['TerminalWorkCounts'];
 
 /**
  * POP 화면의 **이름표** — 주소 · 화면 코드 · 화면명.

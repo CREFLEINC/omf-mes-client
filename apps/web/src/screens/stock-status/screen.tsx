@@ -342,8 +342,10 @@ export const StockStatusScreen = () => {
     () => [
       ...rows.map((row) => row.itemId),
       ...(transactionDetail.data?.lines ?? []).map((line) => line.itemId),
+      /* 품목 조건 칩도 — 선택칸은 쪽으로 받아 고른 품목이 첫 쪽 목록에 없을 수 있다. */
+      ...(itemId === null ? [] : [itemId]),
     ],
-    [rows, transactionDetail.data],
+    [rows, transactionDetail.data, itemId],
   );
   const itemNames = useItemNames(shownItemIds);
   /*
@@ -801,7 +803,6 @@ export const StockStatusScreen = () => {
         <BalanceFilterBar
           appliedFilters={filters}
           warehouseOptions={toSelectOptions(warehouses)}
-          itemOptions={toSelectOptions(items)}
           lotOptions={toSelectOptions(lots)}
           locationOptions={toSelectOptions(locations)}
           qualityStatusOptions={toCodeOptions(
@@ -824,12 +825,13 @@ export const StockStatusScreen = () => {
           )}
           chipNames={{
             warehouse: describeReference(toReference(warehouses, warehouseId)),
-            item: describeReference(toReference(items, itemId)),
+            item: describeReference(
+              toReference(itemId === null ? items : (itemNames.get(itemId) ?? items), itemId),
+            ),
             lot: describeReference(toReference(lots, toLookupId(filters.lot))),
             location: describeReference(toReference(locations, toLookupId(filters.location))),
           }}
           warehouseNote={lookupNote(warehouses)}
-          itemNote={lookupNote(items)}
           /* 매달린 조건이 비어 선택지가 없는 것을 「그런 값이 없다」로 읽지 않게 한다. */
           lotNote={lotNote}
           locationNote={

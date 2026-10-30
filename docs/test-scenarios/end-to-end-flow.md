@@ -175,7 +175,7 @@ bash <잡 디렉터리>/build-local-backend-3100.sh
 | 기대 | 재고가 그 위치로 선다. 웹 재고 현황에서 보인다 |
 | 실제 | |
 
-위치 규칙이 없으면 임시 적치로 보낸다. 임시 적치는 **사유 코드나 비고 중 하나가 필수**다.
+지시가 싣는 보관 위치에 둘 수 없으면 임시 적치로 보낸다. 임시 적치는 **사유 코드나 비고 중 하나가 필수**다.
 
 ### 9. 작업지시 배포 · 자재 출고요청
 
@@ -309,7 +309,7 @@ bash <잡 디렉터리>/build-local-backend-3100.sh
 | 공급사·품목·발주 | 웹 `/logistics/po-register` | 5단계 고를 것이 없다 |
 | LOT 이 안 붙은 입하 라인 | 5단계가 만든다 | 6단계가 401 로 떨어진다 |
 | `IQC_SKIP` 결재선 + 단계 | 웹 `/system/approval-route` | 7-b 가 `ROUTE_NOT_FOUND` |
-| 적치 규칙 | 웹 `/master-data/putaway-rule` | 8단계가 늘 임시 적치로 간다 |
+| 위치의 보관 품목 | 웹 `/master-data/warehouse-location` | 8단계가 보관 위치를 안내하지 않는다(창고 어디든 받는다) |
 | 설비 점검 항목 | 웹 `/equipment/master` | 설비 점검 화면이 빈다 |
 | 불량 코드 | 웹 `/master-data/defect-cause-code` | 수리 왕복에서 이름이 안 뜬다 |
 | 오늘 날짜 출하 요청 | 웹 14단계 | 15단계 화면이 빈다 |

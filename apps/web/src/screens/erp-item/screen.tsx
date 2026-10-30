@@ -93,7 +93,7 @@ const toSearchParams = (filters: Filters, page = 1) => {
 
 const toListQuery = (filters: Filters, page: number): ErpItemListQuery => ({
   ...(filters.q !== '' ? { q: filters.q } : {}),
-  ...(filters.itemTypeCode !== '' ? { itemTypeCode: filters.itemTypeCode } : {}),
+  ...(filters.itemTypeCode !== '' ? { itemTypeCode: [filters.itemTypeCode] } : {}),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
 });

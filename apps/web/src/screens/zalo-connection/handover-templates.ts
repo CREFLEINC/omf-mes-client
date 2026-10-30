@@ -1,6 +1,9 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { HandoverTemplate, ZaloConnectionForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
+
+type HandoverTemplate = components['schemas']['ZaloConnection']['handoverTemplates'][number];
+type ZaloConnectionForward = components['schemas']['ZaloConnection'];
 
 const t = messages.zaloConnection.errors;
 

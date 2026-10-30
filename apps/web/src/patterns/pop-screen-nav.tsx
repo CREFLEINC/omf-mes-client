@@ -1,5 +1,5 @@
 import { Badge } from '@crefle/web-ui';
-import type { TerminalWorkCounts } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -10,6 +10,8 @@ import { usePopIdentity } from './pop-identity';
 import { POP_ENTRY_SCREEN_PATH, type PopScreen } from './pop-screen-catalog';
 import { PopSelect } from './pop-select';
 import { usePopWorkCounts } from './pop-work-counts';
+
+type TerminalWorkCounts = components['schemas']['TerminalWorkCounts'];
 
 const workText = messages.popChrome.screenNavWork;
 

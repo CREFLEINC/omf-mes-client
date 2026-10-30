@@ -1,5 +1,5 @@
 import { Button, Table } from '@crefle/web-ui';
-import type { InputMaterials, TraceBasis, UsedSerials } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -8,6 +8,10 @@ import { useApiClient } from '../../patterns/api-context';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { runRequest } from '../../patterns/request';
 import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
+
+type InputMaterials = components['schemas']['InputMaterials'];
+type TraceBasis = components['schemas']['InputMaterials']['basis'];
+type UsedSerials = components['schemas']['UsedSerials'];
 
 const t = messages.lotGenealogy;
 /** 시리얼은 수천 건일 수 있다 — 쪽으로 나눠 받는다. */

@@ -1,4 +1,4 @@
-import type { TerminalWarehouseForward, TerminalWorkCounts } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../patterns/api-context';
@@ -7,6 +7,12 @@ import { runRequest } from '../patterns/request';
 import { readTerminalIdFromToken } from '../patterns/token-claims';
 import { useWorkerSession } from '../patterns/worker-session';
 import type { HomeScreen } from './home-menu';
+
+type TerminalWarehouseForward = Pick<
+  components['schemas']['Terminal'],
+  'warehouseId' | 'warehouseName'
+>;
+type TerminalWorkCounts = components['schemas']['TerminalWorkCounts'];
 
 /** 홈에 머무는 동안 다시 세는 간격(FR-015, SC-002 — 열려 있으면 60초 안). */
 export const WORK_COUNT_INTERVAL_MS = 60_000;
