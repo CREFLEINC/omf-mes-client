@@ -15,7 +15,7 @@ import { pickRange } from '../../test/date-picker';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { LotStatusHistoryScreen } from './screen';
 
-/** 상세의 [추적 보기]가 세션 권한을 읽는다. */
+/** 상세의 [생산 이력 조회]가 세션 권한을 읽는다. */
 const ScreenWithSession = () => (
   <SessionProvider>
     <LotStatusHistoryScreen />
@@ -413,17 +413,17 @@ describe('Lot Status 화면 shell', () => {
     /* 현재 상태는 카드 위쪽 단추로 고르고, 누르면 바로 거른다(사용자 2026-10-30). 조건 줄에는 칸이 없다. */
     expect(screen.getByLabelText('현재 상태')).toHaveAttribute('role', 'group');
     const statuses = within(screen.getByRole('group', { name: '현재 상태' }));
-    expect(statuses.getByRole('button', { name: '전체', pressed: true })).toBeVisible();
-    await user.click(await statuses.findByRole('button', { name: '합성 정상 (미사용)' }));
+    expect(statuses.getByRole('button', { name: /^전체\s*\d*$/, pressed: true })).toBeVisible();
+    await user.click(await statuses.findByRole('button', { name: /^합성 정상 \(미사용\)\s*\d*$/ }));
     await waitFor(() => expect(locationSearch().get('status')).toBe('SAMPLE_NORMAL'));
     expect(
-      statuses.getByRole('button', { name: '합성 정상 (미사용)', pressed: true }),
+      statuses.getByRole('button', { name: /^합성 정상 \(미사용\)\s*\d*$/, pressed: true }),
     ).toBeVisible();
     expect(locationSearch().get('lotType')).toBe('SAMPLE_MATERIAL');
     expect(locationSearch().get('q')).toBe('SAMPLE-LOT-001');
     expect(locationSearch().get('warehouse')).toBe('101');
     expect(locationSearch().get('from')).toBe('2026-08-01');
-    expect(await screen.findByText('7')).toBeVisible();
+    expect((await screen.findAllByText('7'))[0]).toBeVisible();
     const summary = within(screen.getByRole('group', { name: '현재 상태 요약' }));
     expect(summary.getAllByText('건')).toHaveLength(3);
     const cardLabels = summary.getAllByRole('group').map((card) => card.getAttribute('aria-label'));
@@ -726,7 +726,7 @@ describe('Lot Status 화면 shell', () => {
     const user = userEvent.setup();
 
     expect(await screen.findByText('LOT 목록을 불러오지 못했습니다.')).toBeVisible();
-    expect(screen.getByText('7')).toBeVisible();
+    expect(screen.getAllByText('7')[0]).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'LOT 목록 다시 시도' }));
     await waitFor(() => expect(requestCount(urls, '/quality/lot-statuses')).toBe(2));
     expect(requestCount(urls, '/quality/lot-status-summary')).toBe(1);
@@ -1254,7 +1254,7 @@ describe('Lot Status 화면 shell', () => {
   });
 });
 
-describe('LOT 상세의 [추적 보기]', () => {
+describe('LOT 상세의 [생산 이력 조회]', () => {
   const withPermissions = (permissions: string[]): Session => ({
     ...SYNTHETIC_SESSION,
     permissions,
@@ -1271,7 +1271,7 @@ describe('LOT 상세의 [추적 보기]', () => {
     const user = userEvent.setup();
 
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
-    await user.click(await within(detail).findByRole('button', { name: '추적 보기' }));
+    await user.click(await within(detail).findByRole('button', { name: '생산 이력 조회' }));
 
     await waitFor(() =>
       expect(screen.getByTestId('location')).toHaveTextContent('/production/lot-trace?'),
@@ -1293,7 +1293,7 @@ describe('LOT 상세의 [추적 보기]', () => {
     const user = userEvent.setup();
 
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
-    await user.click(await within(detail).findByRole('button', { name: '추적 보기' }));
+    await user.click(await within(detail).findByRole('button', { name: '생산 이력 조회' }));
 
     await waitFor(() => expect(locationSearch().get('plot')).toBe('SAMPLE-LOT-001'));
     expect(locationSearch().get('selected')).toBe('401');
@@ -1310,6 +1310,6 @@ describe('LOT 상세의 [추적 보기]', () => {
 
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
     expect(await within(detail).findByText('SAMPLE-LOT-001')).toBeVisible();
-    expect(within(detail).queryByRole('button', { name: '추적 보기' })).toBeNull();
+    expect(within(detail).queryByRole('button', { name: '생산 이력 조회' })).toBeNull();
   });
 });

@@ -40,7 +40,7 @@ import { LotDetailPane } from './lot-detail-pane';
 import { LotFilterBar, type FilterOption } from './lot-filter-bar';
 import { useLotStatusOptions, useLotTypeOptions, type LotCodeOption } from './options';
 import { useWarehouseReferenceOptions, type ReferenceOption } from './reference-options';
-import { useLotActorOptions } from './queries';
+import { useLotActorOptions, useLotStatusSummary } from './queries';
 
 const t = messages.lotStatusHistory;
 const hubText = messages.common.inspectionHub;
@@ -52,6 +52,8 @@ const LOT_STATUS_ORIENTATION_KEY = 'omf-mes:lot-status:split-orientation';
 
 interface StatusChipsProps {
   options: readonly FilterOption[];
+  /** 상태별 LOT 건수(상태 조건을 뺀 같은 조회). 아직 모르면 `undefined` — 건수 없이 이름만. */
+  counts: ReadonlyMap<string, number> | undefined;
   value: string;
   note?: string;
   onChange: (status: string) => void;
@@ -61,7 +63,7 @@ interface StatusChipsProps {
  * 현재 상태 단추 — 조회 카드 위쪽 줄에서 누르면 바로 그 상태로 거른다(사용자 2026-10-30). 조건 줄의 현재 상태 칸을
  * 대신한다. 「전체」는 상태 조건을 푼다.
  */
-const StatusChips = ({ options, value, note, onChange }: StatusChipsProps) => (
+const StatusChips = ({ options, counts, value, note, onChange }: StatusChipsProps) => (
   /* 눈에 보이는 「현재 상태」 글자는 두지 않는다(사용자 2026-10-30) — 이름은 화면 읽기용으로만 남긴다. */
   <div className="lot-status-status-chips" role="group" aria-label={t.lotFilter.fields.status}>
     {[{ value: '', label: t.values.all }, ...options].map((option) => (
@@ -75,6 +77,14 @@ const StatusChips = ({ options, value, note, onChange }: StatusChipsProps) => (
         }}
       >
         {option.label}
+        {/* 건수도 함께(사용자 2026-10-30). 「전체」는 상태별 합이다. */}
+        {counts !== undefined && (
+          <span className="lot-status-chip-count">
+            {option.value === ''
+              ? [...counts.values()].reduce((sum, count) => sum + count, 0)
+              : (counts.get(option.value) ?? 0)}
+          </span>
+        )}
       </Chip>
     ))}
     {note !== undefined && <span className="field-note">{note}</span>}
@@ -188,10 +198,25 @@ const LotMode = ({
       ? t.lotFilter.notes.lotStatusUnseeded
       : optionNote(lotStatuses, t.lotFilter.fields.status);
 
+  /* 칩 건수는 상태 조건만 뺀 같은 조회의 요약이다 — 한 상태를 골라도 다른 상태 건수가 0 이 되지 않게. */
+  const chipSummary = useLotStatusSummary({
+    ...filters,
+    status: '',
+    lotType: filters.lotType === '' ? ALL_LOT_TYPES : filters.lotType,
+  });
+  const chipCounts = useMemo(() => {
+    if (chipSummary.data === undefined) return undefined;
+    const counts = new Map<string, number>();
+    for (const row of chipSummary.data.counts) {
+      counts.set(row.statusCode, (counts.get(row.statusCode) ?? 0) + row.lotCount);
+    }
+    return counts;
+  }, [chipSummary.data]);
   const hubTarget = useHubActionsTarget();
   const statusChips = (
     <StatusChips
       options={toCodeOptions(lotStatuses.data?.items)}
+      counts={chipCounts}
       value={filters.status}
       note={lotStatusNote}
       onChange={(status) =>

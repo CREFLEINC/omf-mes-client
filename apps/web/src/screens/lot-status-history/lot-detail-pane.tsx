@@ -76,7 +76,7 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
         <h2 className="pane-title" id="lot-status-detail-title">
           {t.detail.title}
         </h2>
-        {/* LOT 생산 이력 조회로 간다. 자재 LOT은 자재 LOT 탭, 생산 LOT은 제품 LOT 탭에서 연다. */}
+        {/* LOT 생산 이력 조회로 간다(제목 줄 오른쪽 끝). 자재 LOT은 자재 LOT 탭, 생산 LOT은 제품 LOT 탭에서 연다. */}
         {traceHref !== null && (
           <Button variant="outlined" size="sm" onClick={() => void navigate(traceHref)}>
             {t.detail.trace}

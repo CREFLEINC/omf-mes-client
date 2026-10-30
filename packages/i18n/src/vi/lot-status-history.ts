@@ -202,7 +202,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     retry: 'Thử lại',
     retryLabel: (name: string): string => `Thử lại ${name}`,
     pick: 'Hãy chọn LOT trong danh sách.',
-    trace: 'Xem truy xuất',
+    trace: 'Tra cứu lịch sử sản xuất',
     attributes: 'Thuộc tính LOT',
     fields: {
       lotNo: 'Số LOT',

@@ -4228,6 +4228,18 @@ h2:has(> .inspection-standard-dialog-title) {
   margin: 0 0 0 auto;
 }
 
+/* LOT 상세 제목 줄의 「생산 이력 조회」 — 오른쪽 끝(사용자 2026-10-30). */
+.lot-status-detail-head > button {
+  margin-left: auto;
+}
+
+/* 상태 칩 건수 — 이름 뒤 숫자. */
+.lot-status-chip-count {
+  margin-left: var(--space-1);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
 /* 상태별 건수 — 상자 없이 이름 아래 큰 숫자와 작은 단위(2026-10-30 시안). */
 .lot-status-stat {
   display: flex;

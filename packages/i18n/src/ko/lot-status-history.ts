@@ -218,7 +218,7 @@ export const lotStatusHistory = {
     retryLabel: (name: string): string => `${name} 재시도`,
     /** 아직 고른 LOT 이 없을 때 상세 칸 안내. */
     pick: '목록에서 LOT을 선택해 주세요.',
-    trace: '추적 보기',
+    trace: '생산 이력 조회',
     attributes: 'LOT 속성',
     fields: {
       lotNo: 'LOT 번호',
