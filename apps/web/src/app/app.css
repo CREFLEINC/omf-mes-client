@@ -27248,8 +27248,7 @@ button.iqc-inspection-step-toggle:focus-visible {
   font-weight: 600;
 }
 
-/* 항목 번호는 숫자만 — 줄 형편 바탕색은 걷는다(실검증 2026-10-30). 규격 밖 줄은 아래 붉은 줄 바탕이 알린다. */
-
+/* 항목 번호는 숫자만(번호 칸 바탕색은 걷었다 · 실검증 2026-10-30) — 규격 밖 줄은 줄 바탕이 붉다. */
 .parts-iqc-grid tr.parts-iqc-row-ng > td {
   background: var(--semantic-error-container);
 }
