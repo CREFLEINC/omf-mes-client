@@ -43,8 +43,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     unlisted: (value: string): string => `${value} (chưa có trong danh sách)`,
   },
   lotFilter: {
-    lotNoPlaceholder: 'Tìm số LOT',
-    itemPlaceholder: 'Tìm mã · tên',
+    itemPlaceholder: 'Tìm theo mã · tên',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',
     fields: {
@@ -59,7 +58,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       lotTypeTruncated: 'Chỉ hiển thị một phần loại LOT.',
       lotTypeUnseeded: 'Giá trị gốc của loại LOT chưa sẵn sàng.',
       lotStatusUnseeded: 'Giá trị gốc của trạng thái hiện tại chưa sẵn sàng.',
-      locationNeedsWarehouse: 'Chọn kho trước',
+      locationNeedsWarehouse: 'Chọn kho rồi mới chọn được vị trí.',
       locationFailed: 'Không tải được danh sách vị trí.',
       locationTruncated: 'Chỉ hiển thị một phần vị trí.',
     },

@@ -3696,19 +3696,60 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /*
- * 조회 조건은 카드 폭을 3칸으로 나눠 채운다(사용자 시안 2026-10-30 — 종전의 값 길이별 칸 폭을 대신한다).
- * 조회·초기화는 칸 아래 줄의 오른쪽 끝이다.
+ * 조회 조건은 공용 필터 바(규범 2·2-1)를 그대로 쓴다 — 칸마다 값 길이에 맞는 폭을 갖고 왼쪽부터
+ * 쌓이며 좁아지면 줄을 넘긴다. 예전에는 칸을 카드 폭에 균등하게 늘려 값보다 칸이 훨씬 넓었고
+ * 오른쪽이 비었다(사용자 지시 2026-09-19). 칸 폭은 아래 규칙이 정한다.
  */
-.filter-bar.lot-status-filter {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
-  gap: var(--space-3) var(--space-4);
+
+/*
+ * 칸 폭은 값의 길이대로 차등을 둔다(사용자 지시 2026-09-19). 짧은 선택지는 가장 긴 값을 담는
+ * 트리거 폭(규범 3-2 식: 16 + 16px×글자수 + 12 + 20 + 16)만, 긴 값(LOT 번호·품목)은 넉넉히.
+ */
+
+/* LOT 유형 — 값이 두 글자(전체·자재·생산·제품): 16 + 32 + 12 + 20 + 16 = 96px 에 여유를 둔 7rem. */
+.field-cell.lot-status-filter-lot-type {
+  align-items: stretch;
+  width: 7rem;
+}
+
+/* LOT 번호 — 번호가 길다(「품번|차수|날짜|…」 30자 안팎). 입력 중인 앞부분이 보이는 폭. */
+.lot-status-filter-lot-no {
+  width: 16rem;
+}
+
+/* 품목 — 「코드 · 이름」이라 가장 길다. 검색 입력 하나가 묶음이다(넘치면 칸 안에서 말줄임). */
+.lot-status-filter-item {
+  width: 20rem;
 }
 
 .lot-status-filter-item input {
   cursor: pointer;
   text-overflow: ellipsis;
+}
+
+/* 현재 상태 — 가장 긴 값 「검사 대기」를 담는 폭(W-03-02 품질 상태와 같은 9rem). */
+.field-cell.lot-status-filter-status {
+  align-items: stretch;
+  width: 9rem;
+}
+
+/* 창고·위치 — 이름이 중간 길이다. */
+.field-cell.lot-status-filter-place {
+  align-items: stretch;
+  width: 12rem;
+}
+
+/*
+ * 위치가 잠긴 동안 — 라벨 옆에 옅은 안내 글자를 붙인다(칩 모양 없이 · 사용자 지시 2026-09-19).
+ * 라벨 줄 높이는 다른 칸 라벨과 같게 두어 선택 상자들의 윗선이 어긋나지 않게 한다.
+ * 칸은 칩 폭만큼 넓어지고, 선택 상자는 창고와 같은 12rem 을 지킨다.
+ */
+.field-cell.lot-status-filter-location {
+  width: auto;
+}
+
+.field-cell.lot-status-filter-location > div:last-of-type {
+  width: 12rem;
 }
 
 /* 기간 — 안내 글자가 라벨 옆으로 가면 칸이 그만큼 넓어진다. 날짜 상자는 17rem 을 지킨다. */
@@ -3750,10 +3791,9 @@ h2:has(> .inspection-standard-dialog-title) {
   max-width: 100%;
 }
 
-/* 조회·초기화 묶음은 칸 아래 줄의 오른쪽 끝. */
+/* 조회·초기화 묶음은 줄의 오른쪽 끝 — 줄을 넘겨도 왼쪽에 혼자 떨어지지 않는다(W-03-02와 같다). */
 .filter-bar.lot-status-filter > .lot-status-filter-actions {
-  grid-column: 1 / -1;
-  justify-self: end;
+  margin-left: auto;
 }
 
 /* 조회 결과 — 같은 카드 안의 아래 구획. */
@@ -27001,6 +27041,7 @@ button.iqc-inspection-step-toggle:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
 
 /* 상세 구획 — 카드 대신 가는 선으로 나눈다(사용자 시안 2026-10-29). 로트 정보만 테두리 상자다. */
 .parts-iqc-detail-head {
