@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { usePageHub } from '../../patterns/page-hub';
 import { PaneSplitter, usePaneSplit } from '../../patterns/po-board';
 import {
@@ -181,26 +182,36 @@ const LotMode = ({
       ? t.lotFilter.notes.lotStatusUnseeded
       : optionNote(lotStatuses, t.lotFilter.fields.status);
 
+  const hubTarget = useHubActionsTarget();
+  const statusChips = (
+    <StatusChips
+      options={toCodeOptions(lotStatuses.data?.items)}
+      value={filters.status}
+      note={lotStatusNote}
+      onChange={(status) =>
+        onSearch({
+          ...filters,
+          status,
+          /* 아직 조회 전이면 유형은 「전체」로 조회한다 — 조회 단추와 같다. */
+          lotType: filters.lotType === '' ? ALL_LOT_TYPES : filters.lotType,
+        })
+      }
+    />
+  );
+
   return (
     <div className="lot-status-workspace">
+      {/*
+       * 현재 상태 단추는 탭 막대 오른쪽, 좌우 · 상하 배치 단추 왼쪽이다(사용자 2026-10-30). 탭 막대가 없으면(묶음 밖)
+       * 조회 카드 위쪽 줄에 둔다.
+       */}
+      {hubTarget !== null && <HubActions target={hubTarget}>{statusChips}</HubActions>}
       {/* 좌우 · 상하 배치 단추 — 탭 막대 오른쪽 끝(검사 조회·판정과 같다 · 사용자 2026-10-30). */}
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       <section className="pane lot-status-search" aria-label={t.lotFilter.pane}>
         <div className="lot-status-search-head">
           {modeSwitch}
-          <StatusChips
-            options={toCodeOptions(lotStatuses.data?.items)}
-            value={filters.status}
-            note={lotStatusNote}
-            onChange={(status) =>
-              onSearch({
-                ...filters,
-                status,
-                /* 아직 조회 전이면 유형은 「전체」로 조회한다 — 조회 단추와 같다. */
-                lotType: filters.lotType === '' ? ALL_LOT_TYPES : filters.lotType,
-              })
-            }
-          />
+          {hubTarget === null && statusChips}
         </div>
         <LotFilterBar
           appliedFilters={filters}

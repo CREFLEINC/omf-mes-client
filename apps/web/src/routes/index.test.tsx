@@ -1338,6 +1338,22 @@ describe('appRouter — Lot Status 현황·변경이력 조회의 진입 경로'
 
     expect(await screen.findByText('LOT 유형 기준값이 준비되지 않았습니다.')).toBeVisible();
     expect(hubTab('LOT 상태', 'LOT 상태 조회')).toHaveAttribute('aria-current', 'page');
+    /* 현재 상태 단추는 탭 막대 오른쪽, 좌우 · 상하 배치 단추 왼쪽이다(사용자 2026-10-30). */
+    const hubActions = document.getElementById('hub-actions');
+    const statusGroup = await screen.findByRole('group', { name: '현재 상태' });
+    const layoutGroup = await screen.findByRole('group', {
+      name: messages.common.inspectionHub.layoutLabel,
+    });
+    expect(hubActions).toContainElement(statusGroup);
+    expect(hubActions).toContainElement(layoutGroup);
+    expect(
+      statusGroup.compareDocumentPosition(layoutGroup) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      within(screen.getByRole('region', { name: 'LOT 조회 조건' })).queryByRole('group', {
+        name: '현재 상태',
+      }),
+    ).toBeNull();
     expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
     expect(screen.queryByRole('navigation', { name: '탐색 경로' })).toBeNull();
   });

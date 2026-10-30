@@ -3716,6 +3716,12 @@ h2:has(> .inspection-standard-dialog-title) {
   margin: 0;
 }
 
+/* 탭 막대 오른쪽 자리 — 현재 상태 단추가 좌우 · 상하 배치 단추 앞(왼쪽)에 선다(사용자 2026-10-30). */
+.hub-actions > .lot-status-status-chips {
+  order: -1;
+  margin-right: var(--space-3);
+}
+
 .filter-bar.lot-status-filter {
   margin-bottom: 0;
 }
