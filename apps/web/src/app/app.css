@@ -22707,6 +22707,12 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   gap: var(--space-3);
 }
 
+/* 팝업에는 조건 칸이 키워드 하나뿐이라 고정 폭 대신 남는 폭을 채운다. */
+.reference-picker-keyword {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .date-time-field {
   align-items: stretch;
   min-width: 0;
