@@ -104,15 +104,15 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
         <dl className="lot-detail-fields" aria-label={t.detail.attributes}>
           {(
             [
-              /* LOT 유형은 번호 옆 라벨로 보인다 — 목록의 LOT 번호 칸과 같게(사용자 2026-10-30). */
+              /* LOT 유형은 번호 왼쪽 라벨로 보인다 — 목록의 LOT 번호 칸과 같게(사용자 2026-10-30). */
               [
                 'wide',
                 t.detail.fields.lotNo,
                 <span className="lot-no-with-type">
-                  {detail.data.lotNo}
                   <Chip variant="status" size="sm">
                     {labelOf(lotTypeOptions, detail.data.lotTypeCode)}
                   </Chip>
+                  {detail.data.lotNo}
                 </span>,
               ],
               [

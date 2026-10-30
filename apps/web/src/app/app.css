@@ -4477,7 +4477,7 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
 }
 
-.lot-no-with-type > :last-child:not(.lot-status-one-line) {
+.lot-no-with-type > :first-child:not(.lot-status-one-line) {
   flex: none;
 }
 

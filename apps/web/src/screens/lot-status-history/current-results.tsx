@@ -111,6 +111,13 @@ export const CurrentResults = ({
       sortable: true,
       render: (row) => (
         <span className="lot-no-with-type">
+          {/* LOT 유형 라벨 — 번호 왼쪽(사용자 2026-10-30). */}
+          {row.lotTypeCode !== null && (
+            <Chip variant="status" size="sm">
+              {lotTypeOptions.find((option) => option.value === row.lotTypeCode)?.label ??
+                t.values.unlisted(row.lotTypeCode)}
+            </Chip>
+          )}
           <span
             className="lot-status-one-line"
             title={row.lotNo}
@@ -118,13 +125,6 @@ export const CurrentResults = ({
           >
             {row.lotNo}
           </span>
-          {/* LOT 유형 라벨 — 번호 오른쪽(사용자 2026-10-30). */}
-          {row.lotTypeCode !== null && (
-            <Chip variant="status" size="sm">
-              {lotTypeOptions.find((option) => option.value === row.lotTypeCode)?.label ??
-                t.values.unlisted(row.lotTypeCode)}
-            </Chip>
-          )}
         </span>
       ),
     },
