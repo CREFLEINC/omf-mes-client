@@ -387,9 +387,9 @@ describe('Lot Status 화면 shell', () => {
     expect(within(modes).getByRole('button', { name: '이력', pressed: false })).toBeVisible();
     expect(screen.queryByRole('heading', { name: 'LOT 조회 조건' })).toBeNull();
     expect(screen.getByRole('heading', { level: 2, name: '현재 LOT 상태' })).toBeVisible();
-    await choose(user, 'LOT 유형', '합성 자재');
-    await choose(user, '창고', 'SAMPLE-WH-01 · 합성 창고 (미사용)');
-    await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
+    await choose(user, 'LOT 유형 선택', '합성 자재');
+    await choose(user, '창고 선택', 'SAMPLE-WH-01 · 합성 창고 (미사용)');
+    await user.type(screen.getByLabelText('LOT 번호 스캔'), 'SAMPLE-LOT-001');
     expect(await screen.findByText('일부 LOT 유형만 표시됩니다.')).toBeVisible();
     expect(await screen.findByText('일부 창고만 표시됩니다.')).toBeVisible();
     expect(locationSearch().get('lotType')).toBeNull();

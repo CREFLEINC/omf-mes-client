@@ -151,23 +151,31 @@ export const LotFilterBar = ({
     <div className="filter-bar lot-status-filter">
       <SelectField
         className="lot-status-filter-lot-type"
-        label={t.lotFilter.fields.lotType}
+        label={t.lotFilter.labels.lotType}
         options={[{ value: ALL_LOT_TYPES, label: t.values.all }, ...lotTypeOptions]}
         value={lotType}
         note={lotTypeNote}
         onChange={(lotType) => setFilters((current) => ({ ...current, lotType }))}
       />
-      {/* 돋보기 없는 입력칸 — 이력 방식의 LOT 번호 칸과 같다(사용자 시안 2026-10-30). Enter 로 조회한다. */}
-      <TextField
-        containerClassName="lot-status-filter-lot-no"
-        label={t.lotFilter.fields.lotNo}
-        placeholder={t.lotFilter.lotNoPlaceholder}
-        value={filters.q}
-        onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && !event.nativeEvent.isComposing) search();
-        }}
-      />
+      {/*
+       * LOT 번호 스캔 — 검사 조회·판정의 LOT 스캔 칸처럼 입력칸 옆 [검색] 단추(사용자 2026-10-30). 스캐너의 Enter 와
+       * [검색] 모두 지금 조건으로 바로 조회한다. 번호가 비면 단추는 잠긴다.
+       */}
+      <div className="lot-status-filter-lot-no-scan">
+        <TextField
+          containerClassName="lot-status-filter-lot-no"
+          label={t.lotFilter.labels.lotNo}
+          placeholder={t.lotFilter.lotNoScanPlaceholder}
+          value={filters.q}
+          onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) search();
+          }}
+        />
+        <Button variant="outlined" size="md" disabled={filters.q.trim() === ''} onClick={search}>
+          {t.lotFilter.lotNoSearch}
+        </Button>
+      </div>
       <ItemFilterField
         value={filters.item}
         onChange={(item) => setFilters((current) => ({ ...current, item }))}
@@ -175,7 +183,7 @@ export const LotFilterBar = ({
       {/* 현재 상태는 카드 위쪽 상태 단추가 맡는다(사용자 2026-10-30) — 조건 줄에는 두지 않는다. */}
       <SelectField
         className="lot-status-filter-place"
-        label={t.lotFilter.fields.warehouse}
+        label={t.lotFilter.labels.warehouse}
         options={withAll(warehouseOptions)}
         value={filters.warehouse}
         note={warehouseNote}
@@ -189,7 +197,7 @@ export const LotFilterBar = ({
       />
       <SelectField
         className="lot-status-filter-place lot-status-filter-location"
-        label={t.lotFilter.fields.location}
+        label={t.lotFilter.labels.location}
         options={isLocationLocked ? [] : withAll(locationOptions)}
         placeholder={t.lotFilter.notes.locationNeedsWarehouse}
         value={filters.location}

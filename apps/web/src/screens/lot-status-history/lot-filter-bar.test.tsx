@@ -113,10 +113,26 @@ const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, o
 };
 
 describe('LOT 현재 조회 조건', () => {
+  /* LOT 번호 스캔 칸 옆 [검색] — 검사 조회·판정의 LOT 스캔처럼 번호가 비면 잠기고, 누르면 바로 조회한다(사용자 2026-10-30). */
+  it('LOT 번호를 넣으면 [검색]으로 바로 조회한다', async () => {
+    const { onSearch, user } = renderBar();
+    const find = screen.getByRole('button', { name: '검색' });
+
+    expect(screen.getByLabelText('LOT 번호 스캔')).toHaveAttribute(
+      'placeholder',
+      'LOT 바코드 스캔 또는 번호를 입력하세요',
+    );
+    expect(find).toBeDisabled();
+    await user.type(screen.getByLabelText('LOT 번호 스캔'), 'SAMPLE-LOT-001');
+    await user.click(find);
+
+    expect(onSearch).toHaveBeenCalledWith(expect.objectContaining({ q: 'SAMPLE-LOT-001' }));
+  });
+
   it('LOT 유형을 고르지 않아도 「전체」로 조회한다', async () => {
     const { onSearch, user } = renderBar();
 
-    expect(screen.getByLabelText('LOT 유형')).toHaveTextContent('전체');
+    expect(screen.getByLabelText('LOT 유형 선택')).toHaveTextContent('전체');
     await user.click(screen.getByRole('button', { name: '조회' }));
     expect(onSearch).toHaveBeenCalledWith(expect.objectContaining({ lotType: 'ALL' }));
   });
@@ -134,10 +150,10 @@ describe('LOT 현재 조회 조건', () => {
       appliedFilters: filters({ sort: 'lotNoAsc', status: 'SAMPLE_NORMAL' }),
     });
 
-    await choose(user, 'LOT 유형', '합성 자재');
+    await choose(user, 'LOT 유형 선택', '합성 자재');
     // 품목은 검색 창에서 고른다 — 중지 품목까지 찾고 가용 재고는 부르지 않는다.
     itemSearchQueries.length = 0;
-    await user.click(screen.getByLabelText('품목'));
+    await user.click(screen.getByLabelText('품목 검색'));
     const picker = await screen.findByRole('dialog', { name: '품목 검색' });
     /* 오른쪽 위 × 와 「품목을 고르면 누를 수 있습니다.」 안내가 없는 창이다(사용자 2026-10-30). */
     expect(within(picker).queryByText('품목을 고르면 누를 수 있습니다.')).not.toBeInTheDocument();
@@ -151,9 +167,9 @@ describe('LOT 현재 조회 조건', () => {
     // 지우기는 값이 있을 때만 칸 안에 선다.
     expect(screen.getByRole('button', { name: '품목 지우기' })).toBeInTheDocument();
     expect(screen.queryByLabelText('현재 상태')).not.toBeInTheDocument();
-    await choose(user, '창고', 'SAMPLE-WH-01 · 합성 창고 가');
-    await choose(user, '위치', 'SAMPLE-LOC-01 · 합성 위치');
-    await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
+    await choose(user, '창고 선택', 'SAMPLE-WH-01 · 합성 창고 가');
+    await choose(user, '위치 선택', 'SAMPLE-LOC-01 · 합성 위치');
+    await user.type(screen.getByLabelText('LOT 번호 스캔'), 'SAMPLE-LOT-001');
     expect(onSearch).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: '조회' }));
 
@@ -177,10 +193,10 @@ describe('LOT 현재 조회 조건', () => {
     const location = screen.getByLabelText(/^위치/);
 
     expect(location).toBeDisabled();
-    expect(location).toHaveTextContent('창고 선택 후 지정');
-    await choose(user, '창고', 'SAMPLE-WH-01 · 합성 창고 가');
+    expect(location).toHaveTextContent('창고를 먼저 선택하세요');
+    await choose(user, '창고 선택', 'SAMPLE-WH-01 · 합성 창고 가');
     expect(screen.getByLabelText(/^위치/)).toBeEnabled();
-    expect(screen.getByLabelText(/^위치/)).not.toHaveTextContent('창고 선택 후 지정');
+    expect(screen.getByLabelText(/^위치/)).not.toHaveTextContent('창고를 먼저 선택하세요');
   });
 
   it('창고를 바꾸면 앞 창고의 위치 초안을 제거한다', async () => {
@@ -189,7 +205,7 @@ describe('LOT 현재 조회 조건', () => {
       appliedFilters: filters({ lotType: 'SAMPLE_MATERIAL', warehouse: '101', location: '102' }),
     });
 
-    await choose(user, '창고', 'SAMPLE-WH-09 · 합성 창고 나');
+    await choose(user, '창고 선택', 'SAMPLE-WH-09 · 합성 창고 나');
     await waitFor(() => expect(locationWarehouseIds).toContain('109'));
     await user.click(screen.getByRole('button', { name: '조회' }));
 
@@ -203,10 +219,10 @@ describe('LOT 현재 조회 조건', () => {
     renderWithProviders(<AppliedProbe initial={applied} />, { fetch: locationFetch });
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText('LOT 번호'), '작성 중');
+    await user.type(screen.getByLabelText('LOT 번호 스캔'), '작성 중');
     await user.click(screen.getByRole('button', { name: '같은 적용' }));
 
-    expect(screen.getByLabelText('LOT 번호')).toHaveValue('작성 중');
+    expect(screen.getByLabelText('LOT 번호 스캔')).toHaveValue('작성 중');
   });
 
   it('적용값이 실제로 바뀌면 초안도 그 값으로 되돌린다', async () => {
@@ -215,10 +231,10 @@ describe('LOT 현재 조회 조건', () => {
     });
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText('LOT 번호'), '작성 중');
+    await user.type(screen.getByLabelText('LOT 번호 스캔'), '작성 중');
     await user.click(screen.getByRole('button', { name: '다른 적용' }));
 
-    expect(screen.getByLabelText('LOT 번호')).toHaveValue('적용값');
+    expect(screen.getByLabelText('LOT 번호 스캔')).toHaveValue('적용값');
   });
 
   it('초기화는 상위에 한 번 알린다', async () => {

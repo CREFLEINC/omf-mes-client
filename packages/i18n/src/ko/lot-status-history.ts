@@ -39,10 +39,21 @@ export const lotStatusHistory = {
   },
   lotFilter: {
     pane: 'LOT 조회 조건',
-    /** 칸 안 안내 글자(사용자 시안 2026-10-30). */
+    /** 칸 안 안내 글자(사용자 시안 2026-10-30). 이력 방식의 LOT 번호 칸이 쓴다. */
     lotNoPlaceholder: 'LOT 번호',
+    /** 조회 조건 칸 이름 — 검사 조회·판정 조회 줄과 같은 말투(사용자 2026-10-30). */
+    labels: {
+      lotType: 'LOT 유형 선택',
+      lotNo: 'LOT 번호 스캔',
+      item: '품목 검색',
+      warehouse: '창고 선택',
+      location: '위치 선택',
+    },
+    lotNoScanPlaceholder: 'LOT 바코드 스캔 또는 번호를 입력하세요',
+    /** LOT 번호 칸 옆 단추 — 그 번호로 바로 조회한다. */
+    lotNoSearch: '검색',
     /** 품목은 검색해서 고른다 — 품목 선택 창을 여는 단추와 고른 값을 지우는 단추. */
-    itemPlaceholder: '코드·이름 검색',
+    itemPlaceholder: '품목을 입력하세요',
     itemClear: '품목 지우기',
     itemPick: '선택',
     fields: {
@@ -57,7 +68,7 @@ export const lotStatusHistory = {
       lotTypeTruncated: '일부 LOT 유형만 표시됩니다.',
       lotTypeUnseeded: 'LOT 유형 기준값이 준비되지 않았습니다.',
       lotStatusUnseeded: '현재 상태 기준값이 준비되지 않았습니다.',
-      locationNeedsWarehouse: '창고 선택 후 지정',
+      locationNeedsWarehouse: '창고를 먼저 선택하세요',
       locationFailed: '위치 목록을 불러오지 못했습니다.',
       locationTruncated: '일부 위치만 표시됩니다.',
     },

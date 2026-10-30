@@ -39,7 +39,7 @@ export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
   return (
     <>
       <SearchInput
-        label={t.lotFilter.fields.item}
+        label={t.lotFilter.labels.item}
         containerClassName="lot-status-filter-item"
         value={label}
         readOnly
