@@ -243,6 +243,7 @@ export const erpWorkOrderFlow = {
     retry: '다시 시도',
     summary: {
       item: '품목',
+      itemGroup: '품목그룹',
       orderQty: '주문 수량',
       dueDate: '납기일',
       erpNo: 'ERP 원번호',

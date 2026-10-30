@@ -744,6 +744,12 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
             <dt>{tp.summary.item}</dt>
             <dd>{item === undefined ? '' : named(item.itemName, item.itemCode)}</dd>
           </div>
+          {item?.erpItemGroupCode != null && item.erpItemGroupCode !== '' && (
+            <div>
+              <dt>{tp.summary.itemGroup}</dt>
+              <dd>{item.erpItemGroupCode}</dd>
+            </div>
+          )}
           <div className="is-key">
             <dt>{tp.summary.orderQty}</dt>
             <dd>{`${formatQty(order.orderQty)} ${uomLabelOf(order.uomId)}`}</dd>
