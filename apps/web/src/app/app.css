@@ -27416,6 +27416,21 @@ button.iqc-inspection-step-toggle:focus-visible {
   gap: var(--space-3);
 }
 
+/* XRF 성적서 여러 건 — 파일 이름 · 빼기 단추를 한 줄씩(사용자 지시 2026-10-30). */
+.parts-iqc-file-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.parts-iqc-file-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .parts-iqc-check-table {
   width: 100%;
   border-collapse: separate;

@@ -103,7 +103,7 @@ export const partsIqcInspection = {
     xrf: { NOT_DONE: '미실시', OK: 'OK', NG: 'NG' },
     xrfReport: 'XRF 성적서',
     pickFile: '파일 첨부',
-    clearFile: '파일 빼기',
+    removeFile: (name: string) => `${name} 빼기`,
     defectType: '외관 불량 유형',
     defectPick: '권장',
     defectPicked: (n: number) => `${String(n)}종`,

@@ -106,7 +106,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     xrf: { NOT_DONE: 'Chưa thực hiện', OK: 'OK', NG: 'NG' },
     xrfReport: 'Báo cáo XRF',
     pickFile: 'Đính kèm tệp',
-    clearFile: 'Bỏ tệp',
+    removeFile: (name: string) => `Bỏ ${name}`,
     defectType: 'Loại lỗi ngoại quan',
     defectPick: 'Nên chọn',
     defectPicked: (n: number) => `${String(n)} loại`,

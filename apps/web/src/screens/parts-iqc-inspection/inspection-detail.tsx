@@ -333,7 +333,7 @@ const InspectionForm = (props: FormProps) => {
   const [chosen, setChosen] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
-  const [xrfReport, setXrfReport] = useState<File | null>(null);
+  const [xrfReports, setXrfReports] = useState<File[]>([]);
   const [ask, setAsk] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
   const submit = useSubmitInspection(props.onSubmitted);
@@ -455,7 +455,7 @@ const InspectionForm = (props: FormProps) => {
           : [],
       ...(needsReason ? { judgmentChangeReason: reason.trim() } : {}),
       remarks: form.remarks,
-      xrfReport,
+      xrfReports,
     });
   };
 
@@ -678,30 +678,52 @@ const InspectionForm = (props: FormProps) => {
           <div className="parts-iqc-file">
             <div className="parts-iqc-file-text">
               <span className="parts-iqc-file-title">{t.visual.xrfReport}</span>
-              <span className="parts-iqc-muted">
-                {xrfReport === null ? t.visual.noFile : xrfReport.name}
-              </span>
+              {xrfReports.length === 0 ? (
+                <span className="parts-iqc-muted">{t.visual.noFile}</span>
+              ) : (
+                /* 여러 건(사용자 지시 2026-10-30) — 파일마다 이름과 빼기 */
+                <ul className="parts-iqc-file-list">
+                  {xrfReports.map((file, index) => (
+                    <li key={`${file.name}-${String(file.size)}-${String(file.lastModified)}`}>
+                      <span>{file.name}</span>
+                      <IconButton
+                        icon="close"
+                        size="sm"
+                        aria-label={t.visual.removeFile(file.name)}
+                        disabled={submit.isSaving}
+                        onClick={() => setXrfReports(xrfReports.filter((_, i) => i !== index))}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <input
               ref={fileRef}
               type="file"
               hidden
+              multiple
               accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.doc,.docx,.csv,.txt"
-              onChange={(event) => setXrfReport(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const picked = Array.from(event.target.files ?? []);
+                /* 같은 파일을 다시 고르면 한 번만 둔다. 칸을 비워 같은 파일을 빼고 다시 고를 수 있게 한다. */
+                const same = (a: File, b: File) =>
+                  a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
+                setXrfReports([
+                  ...xrfReports,
+                  ...picked.filter((file) => !xrfReports.some((kept) => same(kept, file))),
+                ]);
+                event.target.value = '';
+              }}
             />
-            {xrfReport === null ? (
-              <Button
-                variant="outlined"
-                leadingIcon={<Icon name="upload" />}
-                onClick={() => fileRef.current?.click()}
-              >
-                {t.visual.pickFile}
-              </Button>
-            ) : (
-              <Button variant="text" onClick={() => setXrfReport(null)}>
-                {t.visual.clearFile}
-              </Button>
-            )}
+            <Button
+              variant="outlined"
+              leadingIcon={<Icon name="upload" />}
+              disabled={submit.isSaving}
+              onClick={() => fileRef.current?.click()}
+            >
+              {t.visual.pickFile}
+            </Button>
           </div>
         )}
       </section>
@@ -1012,7 +1034,7 @@ const InspectionForm = (props: FormProps) => {
             change(cleared);
             setChosen(null);
             setReason('');
-            setXrfReport(null);
+            setXrfReports([]);
           }}
         >
           {t.footer.clear}
