@@ -54,6 +54,8 @@ export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
       />
       {isPickerOpen && (
         <ItemPickerDialog
+          /* 오른쪽 위 × 와 「품목을 고르면 누를 수 있습니다.」 안내를 뺀 정돈된 창(사용자 2026-10-30) — 이 화면만 켠다. */
+          compact
           multiple={false}
           includeInactive
           showAvailability={false}

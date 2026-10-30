@@ -388,7 +388,6 @@ describe('Lot Status 화면 shell', () => {
     expect(screen.queryByRole('heading', { name: 'LOT 조회 조건' })).toBeNull();
     expect(screen.getByRole('heading', { level: 2, name: '현재 LOT 상태' })).toBeVisible();
     await choose(user, 'LOT 유형', '합성 자재');
-    await choose(user, '현재 상태', '합성 정상 (미사용)');
     await choose(user, '창고', 'SAMPLE-WH-01 · 합성 창고 (미사용)');
     await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
     expect(await screen.findByText('일부 LOT 유형만 표시됩니다.')).toBeVisible();
@@ -398,7 +397,18 @@ describe('Lot Status 화면 shell', () => {
     await user.click(screen.getByRole('button', { name: '조회' }));
     expect(locationSearch().get('lotType')).toBe('SAMPLE_MATERIAL');
     expect(locationSearch().get('q')).toBe('SAMPLE-LOT-001');
-    expect(locationSearch().get('status')).toBe('SAMPLE_NORMAL');
+    expect(locationSearch().get('status')).toBeNull();
+    /* 현재 상태는 카드 위쪽 단추로 고르고, 누르면 바로 거른다(사용자 2026-10-30). 조건 줄에는 칸이 없다. */
+    expect(screen.getByLabelText('현재 상태')).toHaveAttribute('role', 'group');
+    const statuses = within(screen.getByRole('group', { name: '현재 상태' }));
+    expect(statuses.getByRole('button', { name: '전체', pressed: true })).toBeVisible();
+    await user.click(await statuses.findByRole('button', { name: '합성 정상 (미사용)' }));
+    await waitFor(() => expect(locationSearch().get('status')).toBe('SAMPLE_NORMAL'));
+    expect(
+      statuses.getByRole('button', { name: '합성 정상 (미사용)', pressed: true }),
+    ).toBeVisible();
+    expect(locationSearch().get('lotType')).toBe('SAMPLE_MATERIAL');
+    expect(locationSearch().get('q')).toBe('SAMPLE-LOT-001');
     expect(locationSearch().get('warehouse')).toBe('101');
     expect(locationSearch().get('from')).toBe('2026-08-01');
     expect(await screen.findByText('7')).toBeVisible();

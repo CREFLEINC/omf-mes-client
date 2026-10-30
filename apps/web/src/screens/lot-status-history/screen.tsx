@@ -11,6 +11,7 @@ import {
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 import {
+  ALL_LOT_TYPES,
   EMPTY_HISTORY_FILTERS,
   EMPTY_LOT_FILTERS,
   readHistoryFilters,
@@ -44,6 +45,39 @@ const MODES: readonly ScreenMode[] = ['lot', 'history'];
 
 /* 좌우 · 상하 배치는 검사 조회·판정 묶음과 따로 기억한다. */
 const LOT_STATUS_ORIENTATION_KEY = 'omf-mes:lot-status:split-orientation';
+
+interface StatusChipsProps {
+  options: readonly FilterOption[];
+  value: string;
+  note?: string;
+  onChange: (status: string) => void;
+}
+
+/**
+ * 현재 상태 단추 — 조회 카드 위쪽 줄에서 누르면 바로 그 상태로 거른다(사용자 2026-10-30). 조건 줄의 현재 상태 칸을
+ * 대신한다. 「전체」는 상태 조건을 푼다.
+ */
+const StatusChips = ({ options, value, note, onChange }: StatusChipsProps) => (
+  <div className="lot-status-status-chips" role="group" aria-labelledby="lot-status-status-label">
+    <span className="field-label" id="lot-status-status-label">
+      {t.lotFilter.fields.status}
+    </span>
+    {[{ value: '', label: t.values.all }, ...options].map((option) => (
+      <Chip
+        key={option.value}
+        variant="filter"
+        size="sm"
+        selected={value === option.value}
+        onSelectedChange={() => {
+          if (value !== option.value) onChange(option.value);
+        }}
+      >
+        {option.label}
+      </Chip>
+    ))}
+    {note !== undefined && <span className="field-note">{note}</span>}
+  </div>
+);
 
 interface ModeSwitchProps {
   mode: ScreenMode;
@@ -152,11 +186,25 @@ const LotMode = ({
       {/* 좌우 · 상하 배치 단추 — 탭 막대 오른쪽 끝(검사 조회·판정과 같다 · 사용자 2026-10-30). */}
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       <section className="pane lot-status-search" aria-label={t.lotFilter.pane}>
-        {modeSwitch}
+        <div className="lot-status-search-head">
+          {modeSwitch}
+          <StatusChips
+            options={toCodeOptions(lotStatuses.data?.items)}
+            value={filters.status}
+            note={lotStatusNote}
+            onChange={(status) =>
+              onSearch({
+                ...filters,
+                status,
+                /* 아직 조회 전이면 유형은 「전체」로 조회한다 — 조회 단추와 같다. */
+                lotType: filters.lotType === '' ? ALL_LOT_TYPES : filters.lotType,
+              })
+            }
+          />
+        </div>
         <LotFilterBar
           appliedFilters={filters}
           lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
-          lotStatusOptions={toCodeOptions(lotStatuses.data?.items)}
           warehouseOptions={toReferenceOptions(warehouses.data?.entries)}
           lotTypeNote={
             lotTypes.data?.isSeeded === false
@@ -165,7 +213,6 @@ const LotMode = ({
                 ? t.lotFilter.notes.lotTypeTruncated
                 : optionNote(lotTypes, t.lotFilter.fields.lotType)
           }
-          lotStatusNote={lotStatusNote}
           warehouseNote={optionNote(warehouses, t.lotFilter.fields.warehouse)}
           onSearch={onSearch}
           onReset={onReset}
@@ -264,7 +311,7 @@ const HistoryMode = ({
   return (
     <div className="lot-status-workspace">
       <section className="pane lot-status-search" aria-label={t.historyFilter.pane}>
-        {modeSwitch}
+        <div className="lot-status-search-head">{modeSwitch}</div>
         <HistoryFilterBar
           appliedFilters={filters}
           actorOptions={actorOptions}

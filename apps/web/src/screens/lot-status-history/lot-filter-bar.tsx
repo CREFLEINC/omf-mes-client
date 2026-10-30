@@ -1,4 +1,4 @@
-import { Button, SearchInput } from '@crefle/web-ui';
+import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -17,10 +17,8 @@ export interface FilterOption {
 export interface LotFilterBarProps {
   appliedFilters: LotFilters;
   lotTypeOptions: readonly FilterOption[];
-  lotStatusOptions: readonly FilterOption[];
   warehouseOptions: readonly FilterOption[];
   lotTypeNote?: string;
-  lotStatusNote?: string;
   warehouseNote?: string;
   onSearch: (filters: LotFilters) => void;
   onReset: () => void;
@@ -86,10 +84,8 @@ const toIdentifier = (value: string): number | null => (value === '' ? null : Nu
 export const LotFilterBar = ({
   appliedFilters,
   lotTypeOptions,
-  lotStatusOptions,
   warehouseOptions,
   lotTypeNote,
-  lotStatusNote,
   warehouseNote,
   onSearch,
   onReset,
@@ -161,27 +157,22 @@ export const LotFilterBar = ({
         note={lotTypeNote}
         onChange={(lotType) => setFilters((current) => ({ ...current, lotType }))}
       />
-      <SearchInput
+      {/* 돋보기 없는 입력칸 — 이력 방식의 LOT 번호 칸과 같다(사용자 시안 2026-10-30). Enter 로 조회한다. */}
+      <TextField
         containerClassName="lot-status-filter-lot-no"
         label={t.lotFilter.fields.lotNo}
         placeholder={t.lotFilter.lotNoPlaceholder}
         value={filters.q}
         onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
-        onSearch={search}
-        clearLabel={messages.common.clear}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.nativeEvent.isComposing) search();
+        }}
       />
       <ItemFilterField
         value={filters.item}
         onChange={(item) => setFilters((current) => ({ ...current, item }))}
       />
-      <SelectField
-        className="lot-status-filter-status"
-        label={t.lotFilter.fields.status}
-        options={withAll(lotStatusOptions)}
-        value={filters.status}
-        note={lotStatusNote}
-        onChange={(status) => setFilters((current) => ({ ...current, status }))}
-      />
+      {/* 현재 상태는 카드 위쪽 상태 단추가 맡는다(사용자 2026-10-30) — 조건 줄에는 두지 않는다. */}
       <SelectField
         className="lot-status-filter-place"
         label={t.lotFilter.fields.warehouse}

@@ -11,7 +11,6 @@ const TYPES = [
   { value: 'SAMPLE_MATERIAL', label: '합성 자재' },
   { value: 'SAMPLE_PRODUCT', label: '합성 제품' },
 ];
-const STATUSES = [{ value: 'SAMPLE_NORMAL', label: '합성 정상' }];
 const WAREHOUSES = [
   { value: '101', label: 'SAMPLE-WH-01 · 합성 창고 가' },
   { value: '109', label: 'SAMPLE-WH-09 · 합성 창고 나' },
@@ -78,7 +77,6 @@ const filters = (overrides: Partial<LotFilters> = {}): LotFilters => ({
 const props = (overrides: Partial<LotFilterBarProps> = {}): LotFilterBarProps => ({
   appliedFilters: EMPTY_LOT_FILTERS,
   lotTypeOptions: TYPES,
-  lotStatusOptions: STATUSES,
   warehouseOptions: WAREHOUSES,
   onSearch: vi.fn(),
   onReset: vi.fn(),
@@ -130,9 +128,10 @@ describe('LOT 현재 조회 조건', () => {
     expect(screen.getByRole('button', { name: '조회' })).toBeEnabled();
   });
 
-  it('초안을 모아 조회할 때 적용값과 기존 정렬을 함께 넘긴다', async () => {
+  /* 현재 상태는 카드 위쪽 상태 단추가 정한다(사용자 2026-10-30) — 조회는 적용된 상태를 그대로 넘긴다. */
+  it('초안을 모아 조회할 때 적용값과 기존 정렬·현재 상태를 함께 넘긴다', async () => {
     const { onSearch, user } = renderBar({
-      appliedFilters: filters({ sort: 'lotNoAsc' }),
+      appliedFilters: filters({ sort: 'lotNoAsc', status: 'SAMPLE_NORMAL' }),
     });
 
     await choose(user, 'LOT 유형', '합성 자재');
@@ -140,6 +139,9 @@ describe('LOT 현재 조회 조건', () => {
     itemSearchQueries.length = 0;
     await user.click(screen.getByLabelText('품목'));
     const picker = await screen.findByRole('dialog', { name: '품목 검색' });
+    /* 오른쪽 위 × 와 「품목을 고르면 누를 수 있습니다.」 안내가 없는 창이다(사용자 2026-10-30). */
+    expect(within(picker).queryByText('품목을 고르면 누를 수 있습니다.')).not.toBeInTheDocument();
+    expect(within(picker).queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
     await user.click(await within(picker).findByRole('checkbox', { name: 'SAMPLE-ITEM-01' }));
     expect(within(picker).getByText(/합성 품목 · 미사용/)).toBeInTheDocument();
     expect(within(picker).queryByRole('columnheader', { name: '가용' })).not.toBeInTheDocument();
@@ -148,7 +150,7 @@ describe('LOT 현재 조회 조건', () => {
     expect(await screen.findByDisplayValue('SAMPLE-ITEM-01 · 합성 품목')).toBeInTheDocument();
     // 지우기는 값이 있을 때만 칸 안에 선다.
     expect(screen.getByRole('button', { name: '품목 지우기' })).toBeInTheDocument();
-    await choose(user, '현재 상태', '합성 정상');
+    expect(screen.queryByLabelText('현재 상태')).not.toBeInTheDocument();
     await choose(user, '창고', 'SAMPLE-WH-01 · 합성 창고 가');
     await choose(user, '위치', 'SAMPLE-LOC-01 · 합성 위치');
     await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
