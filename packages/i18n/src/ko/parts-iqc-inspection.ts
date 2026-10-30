@@ -4,6 +4,29 @@ export const partsIqcInspection = {
   breadcrumbRoot: '품질 관리',
   plant: '공장',
 
+  /** 검사 이력 · 오늘 입고(사용자 지시 2026-10-30). */
+  tabs: { input: '검사 입력', history: '검사 이력' },
+  history: {
+    loading: '검사 이력을 불러오는 중입니다.',
+    failed: '검사 이력을 불러오지 못했습니다.',
+    empty: '아직 검사한 기록이 없습니다.',
+    emptyHint: '제출하거나 임시 저장하면 여기에 회차가 쌓입니다.',
+    round: '회차',
+    roundNo: (n: number) => `${String(n)}회차`,
+    inspectedAt: '검사일시',
+    inspector: '검사자',
+    inspectedQty: '검사 수량',
+    rejectedQty: '불합격 수량',
+    judgment: '판정',
+    status: '상태',
+    statusOf: { DRAFT: '작성 중', CONFIRMED: '확정' } as Record<string, string>,
+    noMeasurements: '기록된 측정값이 없습니다.',
+    defects: '불량 유형',
+  },
+  today: '오늘 입고',
+  todayOn: '오늘 입고만 보기 켜짐 — 누르면 끕니다',
+  todayOff: '오늘 들어온 검사 건만 봅니다',
+
   dialog: {
     title: 'IQC 수입검사',
     loading: '검사 정보를 불러오는 중입니다.',
@@ -40,6 +63,8 @@ export const partsIqcInspection = {
     lotNo: 'LOT 번호',
     qty: 'LOT 수량',
     receivedAt: '입고일시',
+    inspectedQty: '검사 수량',
+    invalidInspectedQty: '1 이상 정수를 입력하세요.',
     inspectedAt: '검사일시',
     inspectedTime: '검사 시각',
     inspectedHour: '검사 시각(시)',
@@ -54,7 +79,10 @@ export const partsIqcInspection = {
     progress: (done: number, total: number) => `${String(done)}/${String(total)} 항목`,
     item: '항목',
     spec: '규격',
-    sample: (n: number) => `n${String(n)}`,
+    sampleTab: (n: number) => `n=${String(n)}`,
+    sampleValue: (n: number) => `n=${String(n)} 측정값`,
+    tabOut: (count: number) => `규격 밖 ${String(count)}칸`,
+    tabDone: '다 적음',
     judgment: '판정',
     cell: (seq: number, n: number) => `항목 ${String(seq)} n${String(n)} 측정값`,
     state: { err: '규격 밖', empty: '미입력', wait: '덜 적음', done: '완료' },
@@ -69,7 +97,6 @@ export const partsIqcInspection = {
 
   visual: {
     heading: '외관 · XRF 검사',
-    inspectedQty: '외관 검사 수',
     defectQty: '외관 불량 수',
     unit: '개',
     xrfResult: 'XRF 결과',
@@ -95,7 +122,7 @@ export const partsIqcInspection = {
     xrfChoice: { NOT_DONE: '미실시', OK: '합격', NG: '불합격' },
     xrfState: { NOT_DONE: 'XRF 미실시', OK: 'XRF 합격', NG: 'XRF 불합격' },
     invalidQty: '0 이상 정수를 입력하세요.',
-    overQty: '외관 검사 수보다 클 수 없습니다.',
+    overQty: '검사 수량보다 클 수 없습니다.',
   },
 
   verdict: {

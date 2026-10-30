@@ -1,8 +1,10 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { plantsInScope } from '../../patterns/oa-access';
 import { MeasurementTable, specLines } from './measurement-table';
+import { plantTodayRange } from './today';
 
 const scoped = vi.hoisted(() => ({ value: { status: 'checking' } as unknown, access: 'checking' }));
 
@@ -97,7 +99,8 @@ describe('치수 측정 표', () => {
     ]);
   });
 
-  it('⭐ 열은 가장 많이 재는 항목의 시료 수, 항목마다 자기 시료 수까지만 칸이 열리고 벗어난 값은 표시된다', () => {
+  it('⭐ 시료마다 탭 하나(n=1 … 가장 많이 재는 항목의 시료 수), 탭에는 그 시료를 재는 항목만 서고 벗어난 값은 표시된다', async () => {
+    const user = userEvent.setup();
     render(
       <MeasurementTable
         items={[item({}), item({ inspectionItemSpecId: 12, sequenceNo: 2, measurementCount: 5 })]}
@@ -107,18 +110,20 @@ describe('치수 측정 표', () => {
         onChange={() => undefined}
       />,
     );
+    /* 탭 이름 뒤에 표시(규격 밖 수 · ✓)가 붙는다 — 이름만 본다. */
+    expect(
+      screen.getAllByRole('tab').map((tab) => /^n=\d+/.exec(tab.textContent ?? '')?.[0]),
+    ).toEqual(['n=1', 'n=2', 'n=3', 'n=4', 'n=5']);
     expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
       '항목',
       '규격',
-      'n1',
-      'n2',
-      'n3',
-      'n4',
-      'n5',
+      'n=1 측정값',
       '판정',
     ]);
-    expect(screen.queryByRole('textbox', { name: '항목 1 n4 측정값' })).toBeNull();
-    expect(screen.getByRole('textbox', { name: '항목 2 n5 측정값' })).toBeInTheDocument();
+    /* n=2 의 6.9 는 규격 밖 — 탭 이름 옆에 붉은 1 */
+    expect(screen.getByLabelText('규격 밖 1칸')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: /^n=2/ }));
     expect(screen.getByRole('textbox', { name: '항목 1 n2 측정값' })).toHaveAttribute(
       'aria-invalid',
       'true',
@@ -126,5 +131,51 @@ describe('치수 측정 표', () => {
     const [first] = screen.getAllByRole('row').slice(1);
     expect(within(first as HTMLElement).getByText('NG')).toBeInTheDocument();
     expect(screen.getByText('1/2 항목')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: /^n=4/ }));
+    expect(screen.queryByRole('textbox', { name: '항목 1 n4 측정값' })).toBeNull();
+    expect(screen.getByRole('textbox', { name: '항목 2 n4 측정값' })).toBeInTheDocument();
+  });
+
+  it('Enter 는 아래 칸으로, 탭의 마지막 칸에서는 다음 탭의 첫 칸으로 간다', async () => {
+    const user = userEvent.setup();
+    render(
+      <MeasurementTable
+        items={[item({}), item({ inspectionItemSpecId: 12, sequenceNo: 2 })]}
+        values={{}}
+        versionAcceptance={0}
+        disabled={false}
+        onChange={() => undefined}
+      />,
+    );
+    await user.click(screen.getByRole('textbox', { name: '항목 1 n1 측정값' }));
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('textbox', { name: '항목 2 n1 측정값' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByRole('textbox', { name: '항목 1 n2 측정값' })).toHaveFocus();
+  });
+
+  it('시료가 하나뿐이면 탭 없이 표 하나다', () => {
+    render(
+      <MeasurementTable
+        items={[item({ measurementCount: 1 })]}
+        values={{}}
+        versionAcceptance={0}
+        disabled={false}
+        onChange={() => undefined}
+      />,
+    );
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(screen.getByRole('textbox', { name: '항목 1 n1 측정값' })).toBeInTheDocument();
+  });
+});
+
+describe('오늘 입고 — 공장 하루', () => {
+  it('공장 시간(+07:00) 기준 오늘 0시부터 다음 날 0시 전까지다', () => {
+    /* UTC 10/29 18:00 = 공장 10/30 01:00 — UTC 날짜로 자르면 전날이 된다 */
+    expect(plantTodayRange(new Date('2026-10-29T18:00:00Z'))).toEqual({
+      requestedAtFrom: '2026-10-30T00:00:00+07:00',
+      requestedAtTo: '2026-10-30T17:00:00.000Z',
+    });
   });
 });

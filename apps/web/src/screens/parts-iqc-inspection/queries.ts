@@ -190,8 +190,8 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
         inspectedAt: v.inspectedAt,
         overallJudgmentCode: v.overallJudgmentCode,
         measurements: v.measurements,
-        // 불합격이 아니면 빈 배열 — 앞서 임시 저장한 사유를 지운다.
-        defects: v.overallJudgmentCode === 'REJECTED' ? v.defects : [],
+        // 불합격 판정이거나 불합격 수량이 있으면 그 불량 유형(#205), 아니면 빈 배열 — 앞서 임시 저장한 사유를 지운다.
+        defects: v.defects,
       };
       const prior = saved.current?.requestId === v.inspectionRequestId ? saved.current : null;
       // 남은 작성중 회차는 지금 판 번호를 읽어 고친다(잠금 토큰).
@@ -292,5 +292,27 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
       void queryClient.invalidateQueries({ queryKey: ALL_KEY });
       onDone();
     },
+  });
+};
+
+type InspectionResultRow = components['schemas']['InspectionResult'];
+
+/**
+ * 검사 이력(사용자 지시 2026-10-30) — 이 의뢰의 회차 전부. 검사일시 · 검사자까지 보이려고 회차 목록의 원본 줄을 그대로 쓴다
+ * (OA 화면의 `useInspectionRounds` 는 그 칸을 걷는다). 큰 회차가 위다.
+ */
+export const useRoundHistory = (requestId: number | null) => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: [...ALL_KEY, 'history', requestId ?? 0] as const,
+    enabled: requestId !== null,
+    queryFn: (): Promise<InspectionResultRow[]> =>
+      runRequest(() =>
+        client.GET('/quality/inspection-results', {
+          params: { query: { inspectionRequestId: requestId as number, page: 1, size: 50 } },
+        }),
+      ).then((response) =>
+        [...response.items].sort((a, b) => b.inspectionRound - a.inspectionRound),
+      ),
   });
 };

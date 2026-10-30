@@ -26902,6 +26902,101 @@ button.iqc-inspection-step-toggle:focus-visible {
   background: var(--semantic-error-container);
 }
 
+/* 「오늘 입고」 칩 — LOT 스캔 칸과 같은 줄 아래 끝에 맞춘다. */
+.parts-iqc-today {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: var(--space-1);
+}
+
+/* 검사 이력(사용자 지시 2026-10-30) — 회차 줄, 누르면 아래에 그 회차의 측정값 · 불량 유형이 펼쳐진다. */
+.parts-iqc-history {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.parts-iqc-history th,
+.parts-iqc-history td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.parts-iqc-history tbody tr:not(.parts-iqc-history-detail) {
+  cursor: pointer;
+}
+
+.parts-iqc-history tbody tr.is-open > td {
+  background: var(--surface-container-low);
+}
+
+.parts-iqc-history-detail > td {
+  text-align: start;
+  white-space: normal;
+  background: var(--surface-container-lowest, var(--surface));
+}
+
+.parts-iqc-history-body {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.parts-iqc-history-items {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.parts-iqc-history-items > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 14rem) 1fr;
+  gap: var(--space-2);
+}
+
+.parts-iqc-history-items dt {
+  color: var(--on-surface-variant);
+}
+
+.parts-iqc-history-items dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.parts-iqc-history-ng {
+  color: var(--semantic-error-text);
+  font-weight: 600;
+}
+
+.parts-iqc-history-defects {
+  margin: 0;
+}
+
+/* 시료 탭(n=1 · n=2 …) 이름 옆 표시 — 규격 밖 칸 수는 붉은 숫자, 다 적은 탭은 초록 ✓(사용자 지시 2026-10-30). */
+.parts-iqc-tab-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.parts-iqc-tab-mark.is-ng {
+  background: var(--semantic-error);
+  color: var(--on-primary);
+}
+
+.parts-iqc-tab-mark.is-ok {
+  color: var(--semantic-success-text);
+}
+
 .parts-iqc-defect-head {
   display: flex;
   align-items: center;

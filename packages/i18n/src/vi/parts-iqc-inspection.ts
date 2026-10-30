@@ -7,6 +7,29 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   breadcrumbRoot: 'Quản lý chất lượng',
   plant: 'Nhà máy',
 
+  /** Lịch sử kiểm tra · nhập hôm nay (2026-10-30). */
+  tabs: { input: 'Nhập kiểm tra', history: 'Lịch sử kiểm tra' },
+  history: {
+    loading: 'Đang tải lịch sử kiểm tra.',
+    failed: 'Không tải được lịch sử kiểm tra.',
+    empty: 'Chưa có lần kiểm tra nào.',
+    emptyHint: 'Sau khi gửi hoặc lưu tạm, các lần kiểm tra sẽ hiện ở đây.',
+    round: 'Lần',
+    roundNo: (n: number) => `Lần ${String(n)}`,
+    inspectedAt: 'Thời gian kiểm tra',
+    inspector: 'Người kiểm tra',
+    inspectedQty: 'SL kiểm tra',
+    rejectedQty: 'SL không đạt',
+    judgment: 'Phán định',
+    status: 'Trạng thái',
+    statusOf: { DRAFT: 'Đang nhập', CONFIRMED: 'Đã xác nhận' } as Record<string, string>,
+    noMeasurements: 'Không có giá trị đo.',
+    defects: 'Loại lỗi',
+  },
+  today: 'Nhập hôm nay',
+  todayOn: 'Đang chỉ xem hàng nhập hôm nay — bấm để tắt',
+  todayOff: 'Chỉ xem các lô nhập hôm nay',
+
   dialog: {
     title: 'Kiểm tra đầu vào IQC',
     loading: 'Đang tải thông tin kiểm tra.',
@@ -43,6 +66,8 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     lotNo: 'Số LOT',
     qty: 'Số lượng LOT',
     receivedAt: 'Thời gian nhập kho',
+    inspectedQty: 'Số lượng kiểm tra',
+    invalidInspectedQty: 'Nhập số nguyên từ 1 trở lên.',
     inspectedAt: 'Thời gian kiểm tra',
     inspectedTime: 'Giờ kiểm tra',
     inspectedHour: 'Giờ kiểm tra (giờ)',
@@ -57,7 +82,10 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     progress: (done: number, total: number) => `${String(done)}/${String(total)} hạng mục`,
     item: 'Hạng mục',
     spec: 'Quy cách',
-    sample: (n: number) => `n${String(n)}`,
+    sampleTab: (n: number) => `n=${String(n)}`,
+    sampleValue: (n: number) => `Giá trị đo n=${String(n)}`,
+    tabOut: (count: number) => `${String(count)} ô ngoài quy cách`,
+    tabDone: 'Đã nhập đủ',
     judgment: 'Phán định',
     cell: (seq: number, n: number) => `Giá trị đo hạng mục ${String(seq)} n${String(n)}`,
     state: { err: 'Ngoài quy cách', empty: 'Chưa nhập', wait: 'Nhập chưa đủ', done: 'Hoàn thành' },
@@ -72,7 +100,6 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
 
   visual: {
     heading: 'Kiểm tra ngoại quan · XRF',
-    inspectedQty: 'Số lượng kiểm tra ngoại quan',
     defectQty: 'Số lượng lỗi ngoại quan',
     unit: 'cái',
     xrfResult: 'Kết quả XRF',
@@ -98,7 +125,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     xrfChoice: { NOT_DONE: 'Chưa thực hiện', OK: 'Đạt', NG: 'Không đạt' },
     xrfState: { NOT_DONE: 'XRF chưa thực hiện', OK: 'XRF đạt', NG: 'XRF không đạt' },
     invalidQty: 'Nhập số nguyên từ 0 trở lên.',
-    overQty: 'Không được lớn hơn số lượng kiểm tra ngoại quan.',
+    overQty: 'Không được lớn hơn số lượng kiểm tra.',
   },
 
   verdict: {

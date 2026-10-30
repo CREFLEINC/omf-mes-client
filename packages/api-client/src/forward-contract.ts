@@ -1334,6 +1334,21 @@ export type WarehouseListQueryForward = NonNullable<WarehousesGet['parameters'][
   plantId?: number;
 };
 
+type InspectionRequestsPath = paths['/quality/inspection-requests'];
+type InspectionRequestsGet = InspectionRequestsPath['get'];
+
+/**
+ * ⚠ 서버 선행 P-156(omf-all-around#205) — 의뢰 시각 반열림 구간 `[requestedAtFrom, requestedAtTo)`. 오프셋이 붙은
+ * 시각이어야 한다(없으면 400). 부품 IQC 「오늘 입고」가 공장 하루의 경계를 셈해 보낸다.
+ * 계약 사본에 실려 `gen:api` 가 만들면 이 타입과 `ForwardPaths['/quality/inspection-requests']` 를 지운다.
+ */
+export type InspectionRequestListQueryForward = NonNullable<
+  InspectionRequestsGet['parameters']['query']
+> & {
+  requestedAtFrom?: string;
+  requestedAtTo?: string;
+};
+
 /**
  * 피처 002(omf-all-around#190) 인계 작업 알림 — 서버 선행 P-124·P-125 를 설계 계약
  * (`specs/002-terminal-task-alerts/contracts/handover-alert-api.md`)대로 먼저 적는다.
@@ -2407,6 +2422,14 @@ export interface ForwardPaths {
   '/quality/inspection-sheets/{inspectionSheetId}:approve': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:check': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:reopen': SheetAction<SheetId, { reason: string }>;
+  /** 검사 의뢰 목록(GET)에 의뢰 시각 구간을 더한다 — 서버 선행 P-156(omf-all-around#205). */
+  '/quality/inspection-requests': Omit<InspectionRequestsPath, 'get'> & {
+    get: Omit<InspectionRequestsGet, 'parameters'> & {
+      parameters: Omit<InspectionRequestsGet['parameters'], 'query'> & {
+        query?: InspectionRequestListQueryForward;
+      };
+    };
+  };
   /** 창고 조회(GET)에 공장 질의(`plantId`)를 더한다 — 서버 선행 P-109(omf-mes-server#809). 등록(POST)은 그대로다. */
   '/mdm/warehouses': Omit<WarehousesPath, 'get'> & {
     get: Omit<WarehousesGet, 'parameters'> & {

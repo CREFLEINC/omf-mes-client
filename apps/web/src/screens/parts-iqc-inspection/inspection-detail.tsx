@@ -9,6 +9,7 @@ import {
   Icon,
   Radio,
   RadioGroup,
+  Tabs,
   TextArea,
   TextField,
 } from '@crefle/web-ui';
@@ -33,6 +34,7 @@ import { useItemNames, useLotNumbers } from '../iqc-inspection/reference-lookup'
 import { sampleQtyOf } from '../iqc-inspection/sample-qty';
 import { latestRound } from '../iqc-inspection/types';
 import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
+import { InspectionHistory } from './history';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
   countOf,
@@ -177,6 +179,12 @@ export const InspectionDetail = ({
     );
   };
 
+  /* 고른 탭은 의뢰마다 처음부터 — 확정이 끝난 의뢰는 이력부터 연다(입력 탭에는 「확정됨」 안내뿐이다). */
+  const confirmed = round !== null && round.statusCode === 'CONFIRMED';
+  const [picked, setPicked] = useState<{ requestId: number; tab: string } | null>(null);
+  const tab =
+    picked?.requestId === inspectionRequestId ? picked.tab : confirmed ? 'history' : 'input';
+
   /* 목록 아래(또는 옆) 상세 구획에 선다 — 기존 검사 조회·판정과 같은 배치(팝업이 아니다 · 사용자 지시 2026-10-29). */
   return (
     <div className="parts-iqc-detail-body">
@@ -188,7 +196,33 @@ export const InspectionDetail = ({
           </Chip>
         )}
       </div>
-      {body()}
+      {/* 검사 입력 · 검사 이력(사용자 지시 2026-10-30) — 이력은 이 의뢰의 회차를 읽기 전용으로 */}
+      <Tabs
+        className="parts-iqc-detail-tabs"
+        size="sm"
+        aria-label={t.dialog.title}
+        value={tab}
+        onChange={(next) => setPicked({ requestId: inspectionRequestId, tab: next })}
+        items={[
+          { value: 'input', label: t.tabs.input, content: tab === 'input' ? body() : null },
+          {
+            value: 'history',
+            label: t.tabs.history,
+            badge:
+              rounds.data === undefined || rounds.data.length === 0 ? undefined : (
+                <span className="parts-iqc-muted">{rounds.data.length}</span>
+              ),
+            content:
+              tab === 'history' ? (
+                <InspectionHistory
+                  inspectionRequestId={inspectionRequestId}
+                  specs={[...(specs.data ?? [])].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+                  defectCodes={(defectCodes.data ?? []) as DefectCode[]}
+                />
+              ) : null,
+          },
+        ]}
+      />
     </div>
   );
 };
@@ -329,7 +363,8 @@ const InspectionForm = (props: FormProps) => {
   };
   const suggested = suggestedJudgmentOf(input);
   const rejectedQty = rejectedQtyOf(input);
-  const defectTarget = (visualDefectQty ?? 0) > 0 ? (visualDefectQty ?? 0) : rejectedQty;
+  /* 불량 수량 합계 = 불합격 수량(omf-all-around#205 · 서버 장부 P-156) — 서버가 확정에서 같은 합계를 대조한다. */
+  const defectTarget = rejectedQty;
   const defectResult = resolveDefectRows(form.defectCodeIds, form.defectQtys, defectTarget);
   const dimensionStates = dimensions.map((item, index) =>
     rowStateOf(
@@ -341,6 +376,12 @@ const InspectionForm = (props: FormProps) => {
     ),
   );
   const overall = chosen ?? suggested;
+  /*
+   * 불량 유형을 싣는 회차 — 불합격 판정(필수)이거나, 합격·보류여도 불합격 수량이 있고 유형을 골랐다(#205 — 서버는 받기만 한다).
+   * 고른 유형은 합계까지 맞아야 낸다.
+   */
+  const defectsRequired = overall === 'REJECTED';
+  const defectsSent = defectsRequired || (rejectedQty > 0 && form.defectCodeIds.length > 0);
   const expected = serverExpectedOf(rejectedQty, versionAcceptance);
   const needsReason = overall !== null && expected !== null && overall !== expected;
   const leafCodes = props.defectCodes.filter(
@@ -393,7 +434,7 @@ const InspectionForm = (props: FormProps) => {
     inspectedQty === null ||
     inspectedQty <= 0 ||
     visualDefectQty === null ||
-    (overall === 'REJECTED' && 'blocked' in defectResult) ||
+    (defectsSent && 'blocked' in defectResult) ||
     (needsReason && reason.trim() === '');
 
   const onSubmit = () => {
@@ -409,7 +450,7 @@ const InspectionForm = (props: FormProps) => {
       overallJudgmentCode: overall,
       measurements: measurementsOf(),
       defects:
-        overall === 'REJECTED' && 'rows' in defectResult
+        defectsSent && 'rows' in defectResult
           ? defectResult.rows.map((row) => ({ ...row, defectDescription: null }))
           : [],
       ...(needsReason ? { judgmentChangeReason: reason.trim() } : {}),
@@ -550,6 +591,22 @@ const InspectionForm = (props: FormProps) => {
                 />
               </div>
             </div>
+            {/* 검사 수량 — 이 회차에 실제로 검사한 수(사용자 지시 2026-10-30). 기본은 검사기준의 시료 수, 고칠 수 있다. */}
+            <div className="parts-iqc-inline-field">
+              <FieldLabel htmlFor="parts-iqc-inspected-qty" label={t.lot.inspectedQty} required />
+              <TextField
+                id="parts-iqc-inspected-qty"
+                inputMode="numeric"
+                value={form.visualInspectedQty}
+                trailingIcon={<span>{t.visual.unit}</span>}
+                error={
+                  form.visualInspectedQty !== '' && (inspectedQty === null || inspectedQty <= 0)
+                    ? t.lot.invalidInspectedQty
+                    : undefined
+                }
+                onChange={(event) => change({ ...form, visualInspectedQty: event.target.value })}
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -575,21 +632,6 @@ const InspectionForm = (props: FormProps) => {
           )}
         </div>
         <div className="parts-iqc-visual-line">
-          <div className="parts-iqc-inline-field">
-            <FieldLabel htmlFor="parts-iqc-visual-qty" label={t.visual.inspectedQty} required />
-            <TextField
-              id="parts-iqc-visual-qty"
-              inputMode="numeric"
-              value={form.visualInspectedQty}
-              trailingIcon={<span>{t.visual.unit}</span>}
-              error={
-                form.visualInspectedQty !== '' && inspectedQty === null
-                  ? t.visual.invalidQty
-                  : undefined
-              }
-              onChange={(event) => change({ ...form, visualInspectedQty: event.target.value })}
-            />
-          </div>
           <div className="parts-iqc-inline-field">
             <FieldLabel htmlFor="parts-iqc-visual-defect" label={t.visual.defectQty} required />
             <TextField
@@ -731,7 +773,7 @@ const InspectionForm = (props: FormProps) => {
           <div className="parts-iqc-defect-head">
             <h3 id="parts-iqc-defect-type">
               {t.visual.defectType}
-              {overall === 'REJECTED' && (
+              {defectsRequired && (
                 <span className="required-mark" aria-hidden="true">
                   {' *'}
                 </span>
@@ -772,7 +814,7 @@ const InspectionForm = (props: FormProps) => {
                 ))}
               </div>
             )}
-            {overall === 'REJECTED' && 'blocked' in defectResult && (
+            {defectsSent && 'blocked' in defectResult && (
               <p className="parts-iqc-hint parts-iqc-hint-inline">
                 <Icon name="error" />
                 {defectResult.blocked === 'required'
@@ -783,7 +825,7 @@ const InspectionForm = (props: FormProps) => {
               </p>
             )}
           </div>
-          {/* 둘 이상 고르면 유형마다 수량 — 합계가 외관 불량 수(없으면 불합격 수량)와 같아야 한다 */}
+          {/* 둘 이상 고르면 유형마다 수량 — 합계가 불합격 수량과 같아야 한다(#205) */}
           {form.defectCodeIds.length > 1 && (
             <div className="parts-iqc-defect-qtys">
               {form.defectCodeIds.map((id) => {
