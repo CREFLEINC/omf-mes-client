@@ -29,6 +29,25 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   todayOn: 'Đang chỉ xem hàng nhập hôm nay — bấm để tắt',
   todayOff: 'Chỉ xem các lô nhập hôm nay',
 
+  /** Xem tiêu chuẩn kiểm tra (2026-10-30). */
+  plan: {
+    open: 'Xem tiêu chuẩn',
+    title: 'Tiêu chuẩn kiểm tra',
+    edit: 'Sửa',
+    version: 'Phiên bản',
+    versionValue: (no: number, from: string) => `Bản ${String(no)} · từ ${from}`,
+    sampling: 'Lấy mẫu',
+    full: 'Toàn bộ',
+    ratio: (r: number) => `${String(r)}% của LOT`,
+    qty: (n: number) => `${String(n)} cái`,
+    aqlAcceptance: 'AQL · Số chấp nhận',
+    method: 'Phương pháp',
+    methodOf: { MEASUREMENT: 'Đo', VISUAL: 'Ngoại quan', FUNCTIONAL: 'Chức năng' } as Record<string, string>,
+    count: 'Số mẫu (n)',
+    acceptance: 'Lỗi cho phép (c)',
+    okNg: 'OK / NG',
+  },
+
   dialog: {
     title: 'Kiểm tra đầu vào IQC',
     loading: 'Đang tải thông tin kiểm tra.',

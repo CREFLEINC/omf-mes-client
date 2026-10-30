@@ -26,6 +26,25 @@ export const partsIqcInspection = {
   todayOn: '오늘 입고만 보기 켜짐 — 누르면 끕니다',
   todayOff: '오늘 들어온 검사 건만 봅니다',
 
+  /** 검사 기준 조회 팝업(사용자 지시 2026-10-30). */
+  plan: {
+    open: '기준 보기',
+    title: '검사 기준',
+    edit: '수정',
+    version: '버전',
+    versionValue: (no: number, from: string) => `${String(no)}판 · ${from} 부터`,
+    sampling: '샘플링',
+    full: '전수',
+    ratio: (r: number) => `LOT 의 ${String(r)}%`,
+    qty: (n: number) => `${String(n)}개`,
+    aqlAcceptance: 'AQL · 합격판정개수',
+    method: '방법',
+    methodOf: { MEASUREMENT: '측정', VISUAL: '육안', FUNCTIONAL: '기능' } as Record<string, string>,
+    count: '시료 수(n)',
+    acceptance: '허용 불량(c)',
+    okNg: 'OK / NG',
+  },
+
   dialog: {
     title: 'IQC 수입검사',
     loading: '검사 정보를 불러오는 중입니다.',

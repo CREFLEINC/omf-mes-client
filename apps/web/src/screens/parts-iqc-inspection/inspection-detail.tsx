@@ -35,6 +35,7 @@ import { sampleQtyOf } from '../iqc-inspection/sample-qty';
 import { latestRound } from '../iqc-inspection/types';
 import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
 import { InspectionHistory } from './history';
+import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
   countOf,
@@ -336,6 +337,7 @@ const InspectionForm = (props: FormProps) => {
   const [xrfReports, setXrfReports] = useState<File[]>([]);
   const [ask, setAsk] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
   const submit = useSubmitInspection(props.onSubmitted);
 
   const inspectedQty = countOf(form.visualInspectedQty);
@@ -486,6 +488,19 @@ const InspectionForm = (props: FormProps) => {
         </AlertBanner>
       )}
       {/* 경고 안에서 바로 사번을 잇는다(사용자 지시 2026-10-30) — OA 화면의 연결 창과 같다. 성공하면 세션을 다시 읽어 경고가 걷힌다. */}
+      {planOpen && (
+        <PlanDialog
+          planCode={props.planLabel}
+          planName={props.planName}
+          itemLabel={
+            props.itemParts === null ? '-' : `${props.itemParts.code} · ${props.itemParts.name}`
+          }
+          version={version}
+          specs={specs}
+          drawings={<DrawingImages drawings={props.drawings} />}
+          onClose={() => setPlanOpen(false)}
+        />
+      )}
       {connectOpen && props.appUserId !== null && (
         <WorkerConnectDialog appUserId={props.appUserId} onClose={() => setConnectOpen(false)} />
       )}
@@ -516,7 +531,13 @@ const InspectionForm = (props: FormProps) => {
           </div>
           <div className="parts-iqc-fact">
             <dt className="field-label">{t.target.plan}</dt>
-            <dd>{props.planLabel}</dd>
+            <dd className="parts-iqc-plan-cell">
+              {props.planLabel}
+              {/* 검사 기준 조회 팝업(사용자 지시 2026-10-30) */}
+              <Button variant="outlined" size="sm" onClick={() => setPlanOpen(true)}>
+                {t.plan.open}
+              </Button>
+            </dd>
           </div>
           <div className="parts-iqc-fact">
             <dt className="field-label">{t.target.planName}</dt>
