@@ -23314,6 +23314,33 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   }
 }
 
+/* 구조 및 중량 — W · D · H · 중량 네 칸이 한 줄(사용자 지시 2026-10-30). */
+.inspection-sheet-template-structure {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.inspection-sheet-template-structure > legend {
+  padding: 0;
+}
+
+.inspection-sheet-template-structure-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 720px) {
+  .inspection-sheet-template-structure-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* RoHS 체크는 한 줄을 다 쓴다. */
 .inspection-sheet-template-check {
   grid-column: 1 / -1;

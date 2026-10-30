@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { emptyDraft, layoutSteps, toBody, validateDraft } from './draft';
+import {
+  composeStructure,
+  emptyDraft,
+  layoutSteps,
+  parseStructure,
+  toBody,
+  validateDraft,
+} from './draft';
 
 describe('검사표 기준 입력 모양', () => {
   it('양식의 단계를 모두 줄로 두고 꺼 둔다 — 서명은 기본으로 켜고, 이름은 두 언어로 채운다', () => {
@@ -100,5 +107,20 @@ describe('검사표 기준 입력 모양', () => {
       'k1.code',
       'k1.name',
     ]);
+  });
+});
+
+describe('구조 및 중량 칸 (사용자 지시 2026-10-30)', () => {
+  it('W · D · H · 중량을 한 글로 합치고 다시 칸으로 푼다', () => {
+    const text = composeStructure({ w: '300', d: '200', h: '150', weight: '2.3' });
+    expect(text).toBe('W 300 × D 200 × H 150 mm / 2.3 kg');
+    expect(parseStructure(text)).toEqual({ w: '300', d: '200', h: '150', weight: '2.3' });
+    expect(composeStructure({ w: '', d: '', h: '', weight: '1.5' })).toBe('1.5 kg');
+    expect(parseStructure('1.5 kg')).toEqual({ w: '', d: '', h: '', weight: '1.5' });
+    expect(parseStructure('')).toEqual({ w: '', d: '', h: '', weight: '' });
+  });
+
+  it('예전에 손으로 쓴 글은 칸으로 풀지 않는다', () => {
+    expect(parseStructure('강판 1.2t, 약 3kg')).toBeNull();
   });
 });

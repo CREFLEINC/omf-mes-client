@@ -186,3 +186,29 @@ export const validateDraft = (draft: TemplateDraft): Record<string, string> => {
   }
   return errors;
 };
+
+/** 구조 및 중량 — 화면은 W · D · H(mm) · 중량(kg) 네 칸으로 받고, 저장은 기존 한 글 칸에 합쳐 넣는다(사용자 결정 2026-10-30). */
+export interface StructureParts {
+  w: string;
+  d: string;
+  h: string;
+  weight: string;
+}
+
+const STRUCTURE_PATTERN =
+  /^(?:W (\d*\.?\d*) × D (\d*\.?\d*) × H (\d*\.?\d*) mm)?(?: \/ )?(?:(\d+\.?\d*) kg)?$/;
+
+/** 「W 300 × D 200 × H 150 mm / 2.3 kg」 — 빈 칸은 빼고 합친다. 네 칸이 모두 비면 빈 글. */
+export const composeStructure = ({ w, d, h, weight }: StructureParts): string => {
+  const size =
+    w.trim() || d.trim() || h.trim() ? `W ${w.trim()} × D ${d.trim()} × H ${h.trim()} mm` : '';
+  const mass = weight.trim() ? `${weight.trim()} kg` : '';
+  return [size, mass].filter((part) => part !== '').join(' / ');
+};
+
+/** 이 화면이 합친 글이면 네 칸으로 되돌린다. 예전에 손으로 쓴 글이면 null — 화면은 그 글을 따로 보여 준다. */
+export const parseStructure = (text: string): StructureParts | null => {
+  const match = STRUCTURE_PATTERN.exec(text.trim());
+  if (match === null) return null;
+  return { w: match[1] ?? '', d: match[2] ?? '', h: match[3] ?? '', weight: match[4] ?? '' };
+};

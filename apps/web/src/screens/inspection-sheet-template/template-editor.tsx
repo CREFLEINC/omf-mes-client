@@ -23,6 +23,7 @@ import { templateDetailPath, templateKeys, useTemplateHistory } from './queries'
 import { TemplateVersionCompareDialog } from './version-compare-dialog';
 import { TemplateVersionListDialog } from './version-list-dialog';
 import { StepEditor, StepList } from './step-editor';
+import { StructureFields } from './structure-fields';
 
 const t = messages.inspectionSheetTemplate;
 
@@ -95,7 +96,6 @@ export const TemplateEditor = ({
   const ids = {
     version: useId(),
     material: useId(),
-    structure: useId(),
     remarks: useId(),
   };
   const pp = { name: useId(), power: useId(), motor: useId() };
@@ -422,33 +422,35 @@ export const TemplateEditor = ({
         <section className="inspection-sheet-template-section">
           <h3 className="pane-subtitle">{t.editor.headerSection}</h3>
           <div className="inspection-sheet-template-grid">
-            <TextField
-              label={t.editor.materialText}
-              id={ids.material}
-              value={draft.materialText}
-              placeholder={t.editor.materialPlaceholder}
-              maxLength={500}
-              disabled={readOnly}
-              onChange={(e) => patch({ materialText: e.target.value })}
-            />
-            <TextField
-              label={t.editor.structureText}
-              id={ids.structure}
-              value={draft.structureText}
-              placeholder={t.editor.structurePlaceholder}
-              maxLength={500}
-              disabled={readOnly}
-              onChange={(e) => patch({ structureText: e.target.value })}
-            />
-            <div className="field-cell inspection-sheet-template-check">
-              <Checkbox
-                checked={draft.rohsFlag}
+            <div className="inspection-sheet-template-wide">
+              <TextField
+                fullWidth
+                label={t.editor.materialText}
+                id={ids.material}
+                value={draft.materialText}
+                placeholder={t.editor.materialPlaceholder}
+                maxLength={500}
                 disabled={readOnly}
-                onChange={(e) => patch({ rohsFlag: e.target.checked })}
-              >
-                {t.editor.rohsFlag}
-              </Checkbox>
+                onChange={(e) => patch({ materialText: e.target.value })}
+              />
             </div>
+            <StructureFields
+              text={draft.structureText}
+              disabled={readOnly}
+              onChange={(structureText) => patch({ structureText })}
+            />
+            {/* OP향 양식은 RoHS 체크를 두지 않는다(사용자 지시 2026-10-30) — 값은 그대로 둔다. */}
+            {draft.formLayoutCode === 'PP' && (
+              <div className="field-cell inspection-sheet-template-check">
+                <Checkbox
+                  checked={draft.rohsFlag}
+                  disabled={readOnly}
+                  onChange={(e) => patch({ rohsFlag: e.target.checked })}
+                >
+                  {t.editor.rohsFlag}
+                </Checkbox>
+              </div>
+            )}
             {draft.formLayoutCode === 'PP' && (
               <>
                 <TextField
