@@ -114,7 +114,7 @@ export const MeasurementTable = ({
                   {t.dimension.spec}
                 </th>
                 {Array.from({ length: columns }, (_, i) => (
-                  <th key={i} scope="col" className="parts-iqc-sample-head">
+                  <th key={i} scope="col">
                     {t.dimension.sample(i + 1)}
                   </th>
                 ))}

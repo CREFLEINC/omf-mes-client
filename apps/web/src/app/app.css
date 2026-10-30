@@ -27190,20 +27190,14 @@ button.iqc-inspection-step-toggle:focus-visible {
   background: var(--surface-container-low);
 }
 
-/* 시료 머리(n1 …)는 칸 왼쪽에 붙인다 — 시안. */
-.parts-iqc-grid thead th.parts-iqc-sample-head {
-  text-align: start;
-}
-
 .parts-iqc-grid th.parts-iqc-item {
   width: 4rem;
 }
 
-/* 규격은 두 줄 「목표 ±공차」 · 「하한 ~ 상한」, 오른쪽 맞춤. */
+/* 규격은 두 줄 「목표 ±공차」 · 「하한 ~ 상한」. 글은 모두 가운데(실검증 2026-10-30). */
 .parts-iqc-grid td.parts-iqc-spec,
 .parts-iqc-grid th.parts-iqc-spec {
   width: 10rem;
-  text-align: end;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
