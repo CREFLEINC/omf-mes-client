@@ -20,6 +20,11 @@ describe('defectToHierarchyCode', () => {
       name: '스크래치',
       parentId: 1001,
       isActive: true,
+      // 목록 · 상세에 값으로만 싣는 칸(#209) — 픽스처에 없으면 null 로 접는다.
+      nameKo: null,
+      nameVi: null,
+      processId: null,
+      dispositionTypeCode: null,
     });
   });
 
@@ -60,6 +65,9 @@ describe('causeToHierarchyCode', () => {
       name: '금형 마모',
       parentId: 2001,
       isActive: true,
+      nameKo: null,
+      nameVi: null,
+      processId: null,
     });
   });
 
@@ -78,7 +86,13 @@ describe('causeToHierarchyCode', () => {
 
 describe('emptyCodeFormValues', () => {
   it('대분류 등록은 상위가 비어 있다', () => {
-    expect(emptyCodeFormValues()).toEqual({ code: '', name: '', parentId: '' });
+    expect(emptyCodeFormValues()).toEqual({
+      code: '',
+      name: '',
+      nameKo: '',
+      nameVi: '',
+      parentId: '',
+    });
   });
 
   it('상세 등록은 고른 대분류가 상위로 채워진다', () => {
@@ -88,7 +102,7 @@ describe('emptyCodeFormValues', () => {
 
 describe('isSameCodeValues', () => {
   it('세 값이 모두 같아야 같다고 본다', () => {
-    const values = { code: 'DF-10', name: '외관', parentId: '' };
+    const values = { code: 'DF-10', name: '외관', nameKo: '', nameVi: '', parentId: '' };
 
     expect(isSameCodeValues(values, { ...values })).toBe(true);
     expect(isSameCodeValues(values, { ...values, name: '외관 불량' })).toBe(false);
@@ -98,18 +112,27 @@ describe('isSameCodeValues', () => {
 
 describe('toWritePayload', () => {
   it('앞뒤 공백을 떼어 낸다 — 눈으로 구분되지 않는 다른 코드가 되면 안 된다', () => {
-    const payload = toWritePayload({ code: '  DF-10 ', name: ' 외관 ', parentId: '' }, null);
+    const payload = toWritePayload(
+      { code: '  DF-10 ', name: ' 외관 ', nameKo: '', nameVi: '', parentId: '' },
+      null,
+    );
 
     expect(payload.code).toBe('DF-10');
     expect(payload.name).toBe('외관');
   });
 
   it('상위가 비어 있으면 대분류다', () => {
-    expect(toWritePayload({ code: 'A', name: '가', parentId: '' }, null).parentId).toBeNull();
+    expect(
+      toWritePayload({ code: 'A', name: '가', nameKo: '', nameVi: '', parentId: '' }, null)
+        .parentId,
+    ).toBeNull();
   });
 
   it('상위 문자열을 숫자로 옮긴다', () => {
-    expect(toWritePayload({ code: 'A', name: '가', parentId: '1001' }, null).parentId).toBe(1001);
+    expect(
+      toWritePayload({ code: 'A', name: '가', nameKo: '', nameVi: '', parentId: '1001' }, null)
+        .parentId,
+    ).toBe(1001);
   });
 
   /*
@@ -117,8 +140,14 @@ describe('toWritePayload', () => {
    * 조용히 지워진다 — 화면에 없는 값이 소리 없이 사라지는 것이 가장 나쁜 결과다.
    */
   it('보존해야 할 공정 번호를 그대로 들고 간다', () => {
-    expect(toWritePayload({ code: 'A', name: '가', parentId: '' }, 3001).processId).toBe(3001);
-    expect(toWritePayload({ code: 'A', name: '가', parentId: '' }, null).processId).toBeNull();
+    expect(
+      toWritePayload({ code: 'A', name: '가', nameKo: '', nameVi: '', parentId: '' }, 3001)
+        .processId,
+    ).toBe(3001);
+    expect(
+      toWritePayload({ code: 'A', name: '가', nameKo: '', nameVi: '', parentId: '' }, null)
+        .processId,
+    ).toBeNull();
   });
 });
 
@@ -148,9 +177,9 @@ describe('toFormFieldErrors · toServerFieldName', () => {
 
   /* 화면이 모르는 이름은 여기서 버리지 않는다 — useMasterWrite가 배너로 올린다. */
   it('화면이 모르는 필드 이름은 폼 필드로 옮기지 않는다', () => {
-    expect(toFormFieldErrors({ 문자열: '알 수 없는 오류' }, defectCodeAdapter.serverFields)).toEqual(
-      {},
-    );
+    expect(
+      toFormFieldErrors({ 문자열: '알 수 없는 오류' }, defectCodeAdapter.serverFields),
+    ).toEqual({});
   });
 
   it('폼 필드 이름을 서버 필드 이름으로 되돌린다', () => {

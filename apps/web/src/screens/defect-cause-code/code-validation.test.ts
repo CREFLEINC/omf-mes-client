@@ -17,6 +17,8 @@ const context = (editingId: number | null, savedParentId = ''): CodeHierarchyCon
 const values = (patch: Partial<CodeFormValues> = {}): CodeFormValues => ({
   code: 'DF-30',
   name: '신규',
+  nameKo: '',
+  nameVi: '',
   parentId: '',
   ...patch,
 });
@@ -114,7 +116,7 @@ describe('validateCode — R3는 상위를 바꾸려 할 때만 발동한다', (
 
   it('상위를 그대로 둔 채 명칭만 고치는 것은 막지 않는다', () => {
     const errors = validateCode(
-      { code: 'DF-41', name: '체결 불량', parentId: '4001' },
+      { code: 'DF-41', name: '체결 불량', nameKo: '', nameVi: '', parentId: '4001' },
       legacyContext('4001'),
     );
 
@@ -123,31 +125,38 @@ describe('validateCode — R3는 상위를 바꾸려 할 때만 발동한다', (
 
   it('상위를 다른 값으로 바꾸려 하면 막는다', () => {
     const errors = validateCode(
-      { code: 'DF-41', name: '체결', parentId: '4003' },
+      { code: 'DF-41', name: '체결', nameKo: '', nameVi: '', parentId: '4003' },
       legacyContext('4001'),
     );
 
-    expect(errors.parentId).toBe('하위 코드가 있어 상위를 지정할 수 없습니다. 계층은 2단계까지입니다.');
+    expect(errors.parentId).toBe(
+      '하위 코드가 있어 상위를 지정할 수 없습니다. 계층은 2단계까지입니다.',
+    );
   });
 
   it('상위를 비우는 것은 막지 않는다 — 계층이 얕아지는 방향이다', () => {
     expect(
-      validateCode({ code: 'DF-41', name: '체결', parentId: '' }, legacyContext('4001')),
+      validateCode(
+        { code: 'DF-41', name: '체결', nameKo: '', nameVi: '', parentId: '' },
+        legacyContext('4001'),
+      ),
     ).toEqual({});
   });
 
   it('저장된 상위가 없던 코드에 상위를 새로 붙이면 여전히 막힌다', () => {
     const errors = validateCode(
-      { code: 'DF-40', name: '조립', parentId: '4003' },
+      { code: 'DF-40', name: '조립', nameKo: '', nameVi: '', parentId: '4003' },
       { items: legacyThreeLevelFixtures, editingId: 4001, savedParentId: '' },
     );
 
-    expect(errors.parentId).toBe('하위 코드가 있어 상위를 지정할 수 없습니다. 계층은 2단계까지입니다.');
+    expect(errors.parentId).toBe(
+      '하위 코드가 있어 상위를 지정할 수 없습니다. 계층은 2단계까지입니다.',
+    );
   });
 
   it('상위를 그대로 둬도 자기참조이면 막는다 — R1이 먼저다', () => {
     const errors = validateCode(
-      { code: 'DF-41', name: '체결', parentId: '4002' },
+      { code: 'DF-41', name: '체결', nameKo: '', nameVi: '', parentId: '4002' },
       legacyContext('4002'),
     );
 
@@ -171,34 +180,47 @@ describe('validateCode — R2도 상위를 바꾸려 할 때만 발동한다', (
 
   it('상위가 상세 코드여도 그대로 둔 채 명칭만 고치는 것은 막지 않는다', () => {
     expect(
-      validateCode({ code: 'DF-53', name: '미세 기포 다수', parentId: '5003' }, deepContext(5004, '5003')),
+      validateCode(
+        { code: 'DF-53', name: '미세 기포 다수', nameKo: '', nameVi: '', parentId: '5003' },
+        deepContext(5004, '5003'),
+      ),
     ).toEqual({});
   });
 
   it('상위를 다른 상세 코드로 바꾸려 하면 막는다', () => {
     expect(
-      validateCode({ code: 'DF-53', name: '미세 기포', parentId: '5002' }, deepContext(5004, '5003'))
-        .parentId,
+      validateCode(
+        { code: 'DF-53', name: '미세 기포', nameKo: '', nameVi: '', parentId: '5002' },
+        deepContext(5004, '5003'),
+      ).parentId,
     ).toBe('상위는 대분류만 지정할 수 있습니다. 계층은 2단계까지입니다.');
   });
 
   it('대분류를 새로 상위로 지정하는 정상 흐름은 통과한다', () => {
     expect(
-      validateCode({ code: 'DF-53', name: '미세 기포', parentId: '5001' }, deepContext(5004, '5003')),
+      validateCode(
+        { code: 'DF-53', name: '미세 기포', nameKo: '', nameVi: '', parentId: '5001' },
+        deepContext(5004, '5003'),
+      ),
     ).toEqual({});
   });
 
   /** 이번 사고의 그 조합 — R2와 R3가 함께 걸리는 유일한 행이다. */
   it('상위가 상세 코드이면서 하위도 가진 행도 명칭만 고칠 수 있다', () => {
     expect(
-      validateCode({ code: 'DF-52', name: '기포 다수', parentId: '5002' }, deepContext(5003, '5002')),
+      validateCode(
+        { code: 'DF-52', name: '기포 다수', nameKo: '', nameVi: '', parentId: '5002' },
+        deepContext(5003, '5002'),
+      ),
     ).toEqual({});
   });
 
   it('그 행이 상위를 바꾸려 하면 하위가 있다는 사유로 막힌다', () => {
     expect(
-      validateCode({ code: 'DF-52', name: '기포', parentId: '5001' }, deepContext(5003, '5002'))
-        .parentId,
+      validateCode(
+        { code: 'DF-52', name: '기포', nameKo: '', nameVi: '', parentId: '5001' },
+        deepContext(5003, '5002'),
+      ).parentId,
     ).toBe('하위 코드가 있어 상위를 지정할 수 없습니다. 계층은 2단계까지입니다.');
   });
 });
@@ -217,40 +239,57 @@ describe('validateCode — 등록에서는 저장된 상위를 보지 않는다'
 
   it('씨앗이 상세 코드이면 그 값을 그대로 넘겨도 R2가 막는다', () => {
     expect(
-      validateCode({ code: 'DF-99', name: '신규', parentId: '1002' }, createContext('1002'))
-        .parentId,
+      validateCode(
+        { code: 'DF-99', name: '신규', nameKo: '', nameVi: '', parentId: '1002' },
+        createContext('1002'),
+      ).parentId,
     ).toBe('상위는 대분류만 지정할 수 있습니다. 계층은 2단계까지입니다.');
   });
 
   it('씨앗을 빈 값으로 넘겨도 같은 결과다 — 호출자에 기대지 않는다', () => {
     expect(
-      validateCode({ code: 'DF-99', name: '신규', parentId: '1002' }, createContext('')).parentId,
+      validateCode(
+        { code: 'DF-99', name: '신규', nameKo: '', nameVi: '', parentId: '1002' },
+        createContext(''),
+      ).parentId,
     ).toBe('상위는 대분류만 지정할 수 있습니다. 계층은 2단계까지입니다.');
   });
 
   it('대분류를 씨앗으로 한 상세 등록은 통과한다', () => {
     expect(
-      validateCode({ code: 'DF-99', name: '신규', parentId: '1001' }, createContext('1001')),
+      validateCode(
+        { code: 'DF-99', name: '신규', nameKo: '', nameVi: '', parentId: '1001' },
+        createContext('1001'),
+      ),
     ).toEqual({});
   });
 
   /* 하위가 있는 대분류 밑에 상세를 하나 더 만드는 것은 2계층 그대로다 — R3의 대상이 아니다. */
   it('씨앗이 하위를 가진 대분류여도 등록은 통과한다', () => {
     expect(
-      validateCode({ code: 'DF-13', name: '눌림' , parentId: '1001' }, createContext('1001')),
+      validateCode(
+        { code: 'DF-13', name: '눌림', nameKo: '', nameVi: '', parentId: '1001' },
+        createContext('1001'),
+      ),
     ).toEqual({});
   });
 
   it('상위를 비운 대분류 등록은 그대로 통과한다', () => {
-    expect(validateCode({ code: 'DF-99', name: '신규', parentId: '' }, createContext(''))).toEqual(
-      {},
-    );
+    expect(
+      validateCode(
+        { code: 'DF-99', name: '신규', nameKo: '', nameVi: '', parentId: '' },
+        createContext(''),
+      ),
+    ).toEqual({});
   });
 });
 
 describe('validateCode — 여러 오류', () => {
   it('입력 오류와 계층 차단을 함께 낸다', () => {
-    const errors = validateCode(values({ code: '', name: '  ', parentId: '1002' }), context(null));
+    const errors = validateCode(
+      values({ code: '', name: '  ', nameKo: '', nameVi: '', parentId: '1002' }),
+      context(null),
+    );
 
     expect(errors.code).toBe('필수 입력 항목입니다.');
     expect(errors.name).toBe('필수 입력 항목입니다.');

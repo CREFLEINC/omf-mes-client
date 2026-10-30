@@ -13,7 +13,9 @@ import {
 } from './hierarchy';
 import type { HierarchyCode } from './types';
 
-const code = (partial: Partial<HierarchyCode> & Pick<HierarchyCode, 'id' | 'code'>): HierarchyCode =>
+const code = (
+  partial: Partial<HierarchyCode> & Pick<HierarchyCode, 'id' | 'code'>,
+): HierarchyCode =>
   ({
     name: partial.code,
     parentId: null,

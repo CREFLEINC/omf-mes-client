@@ -2,7 +2,10 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DeactivateConfirmDialog, type DeactivateConfirmDialogProps } from './deactivate-confirm-dialog';
+import {
+  DeactivateConfirmDialog,
+  type DeactivateConfirmDialogProps,
+} from './deactivate-confirm-dialog';
 
 const renderDialog = (overrides: Partial<DeactivateConfirmDialogProps> = {}) => {
   const props: DeactivateConfirmDialogProps = {
@@ -26,7 +29,9 @@ describe('DeactivateConfirmDialog', () => {
 
     expect(screen.getByText('사용 중지할까요?')).toBeInTheDocument();
     expect(
-      screen.getByText('삭제하지 않습니다. 사용 중지하면 새 작업에서 고를 수 없게 됩니다.'),
+      screen.getByText(
+        '사용 중지하면 새 작업에서 이 코드를 선택할 수 없습니다. 기존 데이터는 유지됩니다.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -45,9 +50,7 @@ describe('DeactivateConfirmDialog', () => {
   it('하위가 있는 대분류이면 그 건수를 함께 보인다', () => {
     renderDialog({ childCount: 3 });
 
-    expect(
-      screen.getByText('이 대분류에는 표시된 목록 기준 하위 상세 코드 3건이 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('연결된 하위 코드 3건이 있습니다.')).toBeInTheDocument();
   });
 
   it('하위가 없으면 건수 문장이 나오지 않는다', () => {

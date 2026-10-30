@@ -4,7 +4,6 @@ import {
   JUDGMENT_TYPE_GROUP_CODE,
   KNOWN_JUDGMENT_TYPE_CODES,
   findJudgmentTypeGroup,
-  isProvisionalJudgmentTypeList,
 } from './judgment-group';
 import type { CodeGroup } from './types';
 
@@ -82,9 +81,5 @@ describe('findJudgmentTypeGroup', () => {
 describe('판정유형 자리표시 상수', () => {
   it('비어 있다 — 값을 지어내지 않는다', () => {
     expect(KNOWN_JUDGMENT_TYPE_CODES).toHaveLength(0);
-  });
-
-  it('상수가 비어 있는 동안 임시 목록이다', () => {
-    expect(isProvisionalJudgmentTypeList()).toBe(true);
   });
 });
