@@ -24372,6 +24372,23 @@ body.col-reordering * {
   }
 }
 
+/*
+ * 상하 배치 — 가운데 막대로 목록 높이를 정한다(다른 검사 화면과 같다). 목록 칸이 이 높이를 읽지 않아 막대를 끌어도
+ * 바뀌지 않았다(사용자 2026-10-30).
+ */
+.po-board-split.lot-status-split.is-stacked > .lot-status-pane:not(.lot-status-detail-dialog) {
+  box-sizing: border-box;
+  height: var(--stacked-list-height, auto);
+  min-height: 0;
+  max-height: var(--stacked-list-height, min(28rem, 50dvh));
+  overflow: auto;
+}
+
+.po-board-split.lot-status-split.is-stacked > .lot-status-detail-dialog {
+  max-height: none;
+  overflow: visible;
+}
+
 @media (min-width: 1440px) {
   .inspection-split > .iqc-inspection-queue-pane,
   .inspection-split > .oqc-inspection-queue-pane,
