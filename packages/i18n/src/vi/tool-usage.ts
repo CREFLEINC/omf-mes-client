@@ -73,7 +73,7 @@ export const toolUsage: Translated<typeof ko.toolUsage> = {
     saving: 'Đang lưu.',
     noShot: 'Hãy nhập số nhát dập từ 1 trở lên.',
     noEntry:
-      'Cần có lệnh sản xuất và mã nhân viên mới lưu được. Hãy vào từ màn hình Bắt đầu sản xuất.',
+      'Cần có lệnh sản xuất và mã nhân viên mới lưu được. Hãy vào từ màn hình Danh sách lệnh sản xuất.',
     offline: 'Mất kết nối nên không lưu được. Khi có kết nối lại, hãy lưu lại.',
   },
 

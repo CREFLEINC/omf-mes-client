@@ -1193,14 +1193,6 @@
       "n": 1,
       "text": "가운뎃점: label: `${code.defectCode} · ${code.defectName}`,"
     },
-    "C-13|apps/web/src/screens/material-input-scan/scanned-list.tsx|011ae369e9bc": {
-      "n": 1,
-      "text": "가운뎃점: .join(' · ')}"
-    },
-    "C-13|apps/web/src/screens/material-input-scan/scanned-list.tsx|381d6de55b6f": {
-      "n": 2,
-      "text": "가운뎃점: {t.scanned.statusLabel} · {statusLabels.describe(material.statusCode)}"
-    },
     "C-13|apps/web/src/screens/material-input-scan/terminal-gating.ts|7e176a98f3f3": {
       "n": 1,
       "text": "가운뎃점: throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');"
@@ -1333,25 +1325,9 @@
       "n": 1,
       "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
     },
-    "C-13|apps/web/src/screens/production-result/defect-picker.tsx|c25bf7d6079a": {
-      "n": 1,
-      "text": "가운뎃점: title={major === null ? t.pickerTitle : `${t.pickerTitle} · ${major.name}`}"
-    },
     "C-13|apps/web/src/screens/production-result/flow-gating.ts|ebdf7662a399": {
       "n": 1,
       "text": "가운뎃점: throw new Error('단말·공정을 모르면 기능 구성을 조회하지 않습니다.');"
-    },
-    "C-13|apps/web/src/screens/production-result/screen.tsx|2c63ae6670e6": {
-      "n": 1,
-      "text": "가운뎃점: {`${t.flow.header.erpWorkOrder} ${workOrder.data.productionOrderNo ?? '—'} · ${t.flow.header.workOrder} ${workOrde"
-    },
-    "C-13|apps/web/src/screens/production-result/screen.tsx|6e774ceac997": {
-      "n": 1,
-      "text": "가운뎃점: {`${serial.serialNo} · ${t.flow.tag.printOutcome[outcome]}`}"
-    },
-    "C-13|apps/web/src/screens/production-result/session.ts|8353813ef506": {
-      "n": 1,
-      "text": "가운뎃점: throw new Error('작업지시·단말을 모르면 세션을 조회하지 않습니다.');"
     },
     "C-13|apps/web/src/screens/putaway-rule/fixtures.ts|031a19d980f1": {
       "n": 1,
@@ -1768,26 +1744,6 @@
     "C-13|apps/web/src/screens/work-start/gating.ts|7e176a98f3f3": {
       "n": 1,
       "text": "가운뎃점: throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');"
-    },
-    "C-13|apps/web/src/screens/work-start/selection-card.tsx|381d6de55b6f": {
-      "n": 2,
-      "text": "가운뎃점: {workOrder.workOrderNo} · {itemText(workOrder)} ·{' '}"
-    },
-    "C-13|apps/web/src/screens/work-start/selection-card.tsx|af1eb26a5685": {
-      "n": 1,
-      "text": "가운뎃점: {`${"
-    },
-    "C-13|apps/web/src/screens/work-start/work-order-list.tsx|381d6de55b6f": {
-      "n": 1,
-      "text": "가운뎃점: {row.workOrderNo} · {itemText(row)}"
-    },
-    "C-13|apps/web/src/screens/work-start/work-order-list.tsx|4517966a565a": {
-      "n": 1,
-      "text": "가운뎃점: {`${qtyText(row.orderQty, uomCodeOf(row.uomId))} · ${t.columns.plannedStart} ${dateTimeText("
-    },
-    "C-13|apps/web/src/screens/work-start/work-order-list.tsx|890365e35604": {
-      "n": 1,
-      "text": "가운뎃점: : `${t.title} · ${isShowingAll ? t.scopeAll : t.scopeEquipment}`}"
     },
     "C-13|apps/web/src/screens/worker-assignment/worker-card.tsx|2e44056a79b7": {
       "n": 1,
@@ -2569,26 +2525,6 @@
       "n": 1,
       "text": "개발 사정 표현: '대상 종류·사건 종류는 아직 확정되지 않은 임시 목록입니다. 조회한 기간의 기록에서 만들어, 한 번도 기록되지 않았거나 이 기간에 없는 값은 목록에 없습니다.',"
     },
-    "C-13|packages/i18n/src/ko/material-input-scan.ts|05688d566d61": {
-      "n": 1,
-      "text": "가운뎃점: shortAllowed: '부족·미수령이 있어도 수령한 양으로 투입할 수 있습니다.',"
-    },
-    "C-13|packages/i18n/src/ko/material-input-scan.ts|44c76ee51258": {
-      "n": 1,
-      "text": "가운뎃점: uom === '' ? `${item} · ${qty}` : `${item} · ${qty} ${uom}`,"
-    },
-    "C-13|packages/i18n/src/ko/material-input-scan.ts|5a8db673c947": {
-      "n": 1,
-      "text": "가운뎃점: label: '부족·미수령',"
-    },
-    "C-13|packages/i18n/src/ko/material-input-scan.ts|908e6dcdf143": {
-      "n": 1,
-      "text": "가운뎃점: `타발 ${current.toLocaleString('ko-KR')} · 적정 타수 없음`,"
-    },
-    "C-13|packages/i18n/src/ko/material-input-scan.ts|9a39f88c10c1": {
-      "n": 1,
-      "text": "가운뎃점: uom === '' ? `${item} · ${qty}` : `${item} · ${qty} ${uom}`,"
-    },
     "C-13|packages/i18n/src/ko/material-issue-request.ts|0face1a340c5": {
       "n": 1,
       "text": "가운뎃점: `${workOrderNo} · ${operation} · ${itemCode}`,"
@@ -2729,10 +2665,6 @@
       "n": 1,
       "text": "가운뎃점: '공급사·사업부·공장·품목·단위 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',"
     },
-    "C-13|packages/i18n/src/ko/pop-chrome.ts|80488a82dc80": {
-      "n": 1,
-      "text": "가운뎃점: `${String(page)} / ${String(totalPages)} · 전체 ${String(count)}건`,"
-    },
     "C-13|packages/i18n/src/ko/pop-location-label.ts|d00f945c2cab": {
       "n": 1,
       "text": "가운뎃점: `인쇄 성공 ${String(printed)}건 · 실패 ${String(failed)}건`,"
@@ -2864,38 +2796,6 @@
     "C-13|packages/i18n/src/ko/product-stock-status.ts|66df9fcd432f": {
       "n": 1,
       "text": "가운뎃점: '창고·품목 이름을 불러오지 못했습니다. 선택지 자리에 사유가 표시됩니다.',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|2ec29c116ab2": {
-      "n": 1,
-      "text": "가운뎃점: printing: '생산 실적 저장 완료 · 라벨 인쇄 중',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|36fef52a0810": {
-      "n": 1,
-      "text": "가운뎃점: issuing: '생산 실적 저장 완료 · 라벨 발행 중',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|666a31e0cb76": {
-      "n": 1,
-      "text": "가운뎃점: completed: 'LOT 마감 완료 · 다음 LOT으로 전환합니다.',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|668f11b810d7": {
-      "n": 1,
-      "text": "가운뎃점: queued: '불량을 저장했습니다 · 연결되면 보냅니다.',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|709d2cf5dc62": {
-      "n": 1,
-      "text": "가운뎃점: splitNote: '검사 수량 · 판정 · 결과 확정',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|733697ddc4a9": {
-      "n": 1,
-      "text": "가운뎃점: note: 'LOT 진행 · 수량 입력 · 라벨 발행',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|c8cfff05f44c": {
-      "n": 1,
-      "text": "가운뎃점: mismatchBlocked: '실적·라벨 상태 확인 필요',"
-    },
-    "C-13|packages/i18n/src/ko/production-result.ts|d1009391f930": {
-      "n": 1,
-      "text": "가운뎃점: printed: '생산 LOT 라벨 인쇄 완료 · 부착한 라벨을 스캔하세요.',"
     },
     "C-13|packages/i18n/src/ko/putaway-rule.ts|18c6896b38bb": {
       "n": 1,
@@ -3365,10 +3265,6 @@
       "n": 1,
       "text": "가운뎃점: scope: (equipment: string, from: string): string => `설비 ${equipment} · 주기 내(${from}~)`,"
     },
-    "C-13|packages/i18n/src/ko/work-start.ts|5f89e520ad35": {
-      "n": 1,
-      "text": "가운뎃점: '이 단말에 매핑된 공정이 없습니다. 관리웹 단말·공정 매핑에서 공정을 지정해 주세요.',"
-    },
     "C-13|packages/i18n/src/ko/worker-assignment.ts|7e4a9c311fc8": {
       "n": 1,
       "text": "개발 사정 표현: preparing: '단말 등록 확인 및 업무 준비 중…',"
@@ -3464,10 +3360,6 @@
     "C-4|apps/mobile/src/screens/temporary-putaway/screen.tsx|60e16b40e87c": {
       "n": 1,
       "text": "<Button className=\"temporary__wide\" variant=\"filled\" size=\"2xl\" disabl"
-    },
-    "C-4|apps/web/src/ds-candidates/numeric-keypad.tsx|93da827721f1": {
-      "n": 1,
-      "text": "<Button type=\"button\" variant=\"filled\" size=\"xl\" className=\"pop-touch-target n"
     },
     "C-4|apps/web/src/patterns/item-picker/dialog.tsx|334aa3d6ecaf": {
       "n": 1,
@@ -3701,29 +3593,9 @@
       "n": 1,
       "text": "<Button disabled={submitLock !== undefined} /* ⭐ 되돌릴 수 없는 쓰기라 «누르기 전»에 한 겹을 둔다 — 창이 무엇"
     },
-    "C-4|apps/web/src/screens/production-result/screen.tsx|8e876326ddab": {
-      "n": 1,
-      "text": "<Button disabled={lot === null || entry.workerNo === null} onClick={retryLotIssue}>"
-    },
     "C-4|apps/web/src/screens/production-result/screen.tsx|a6922078522a": {
       "n": 1,
       "text": "<Button disabled={ IDENTIFICATION_TAG_ISSUE_LOCKED || tagReissue"
-    },
-    "C-4|apps/web/src/screens/production-result/screen.tsx|be1c872850b3": {
-      "n": 1,
-      "text": "<Button disabled={!canOutput} /* * ⛔ **초과라고 단추를 끄지도, 되묻"
-    },
-    "C-4|apps/web/src/screens/production-result/screen.tsx|bf89ce998ea7": {
-      "n": 1,
-      "text": "<Button disabled>"
-    },
-    "C-4|apps/web/src/screens/production-result/screen.tsx|e5d1db9686f1": {
-      "n": 1,
-      "text": "<Button disabled={ IDENTIFICATION_TAG_ISSUE_LOCKED ||"
-    },
-    "C-4|apps/web/src/screens/production-result/screen.tsx|fcacf1b55b68": {
-      "n": 1,
-      "text": "<Button onClick={retrySessionEnd} disabled={sessionEnd.isSaving}>"
     },
     "C-4|apps/web/src/screens/repack-label-issue/pending-pane.tsx|e7341b2a9a88": {
       "n": 1,
@@ -3872,18 +3744,6 @@
     "C-4|apps/web/src/screens/work-precheck-gate/gate.tsx|513f5b920173": {
       "n": 1,
       "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} d"
-    },
-    "C-4|apps/web/src/screens/work-start/action-bar.tsx|47acf2c41427": {
-      "n": 1,
-      "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} disabled={isBlock"
-    },
-    "C-4|apps/web/src/screens/work-start/crew-panel.tsx|029ccd7b5519": {
-      "n": 1,
-      "text": "<Button size={POP_TOUCH_SIZE} disabled={draft.trim() === '' || isChecking}"
-    },
-    "C-4|apps/web/src/screens/work-start/worker-panel.tsx|f014290beb01": {
-      "n": 1,
-      "text": "<Button type=\"button\" variant=\"filled\" size={POP_TOUCH_SIZE} disabled="
     },
     "C-4|apps/web/src/screens/worker-assignment/keypad-panel.tsx|cbb446075c64": {
       "n": 1,
@@ -4240,10 +4100,6 @@
     "C-8|apps/web/src/screens/master-change/pagination.ts|21542e9d817f": {
       "n": 1,
       "text": "pagination.ts"
-    },
-    "C-8|apps/web/src/screens/material-input-scan/load-error-banner.tsx|da6b22b0db5e": {
-      "n": 1,
-      "text": "load-error-banner.tsx"
     },
     "C-8|apps/web/src/screens/material-issue-request/load-error-banner.tsx|da6b22b0db5e": {
       "n": 1,
@@ -4609,18 +4465,6 @@
       "n": 1,
       "text": "background: rgb(220 80 70 / 18%);"
     },
-    "COLOR|apps/web/src/app/pop.css|7479a1ebe10c": {
-      "n": 1,
-      "text": "background: #b3261e;"
-    },
-    "COLOR|apps/web/src/app/pop.css|8aa19e5952e9": {
-      "n": 1,
-      "text": "background: #8f1d17;"
-    },
-    "COLOR|apps/web/src/app/pop.css|f949b42b61a6": {
-      "n": 2,
-      "text": "color: #fff;"
-    },
     "TOKEN|apps/web/src/app/app.css|0854cc647aa0": {
       "n": 1,
       "text": "border-bottom: 1px solid var(--outline-subtle, rgb(0 0 0 / 8%));"
@@ -4688,10 +4532,6 @@
     "TOKEN|apps/web/src/app/pop.css|b741de1ed0f9": {
       "n": 1,
       "text": "border-inline-start-color: var(--color-danger, rgb(220 80 70));"
-    },
-    "TOKEN|apps/web/src/app/pop.css|cc5efc716a9b": {
-      "n": 1,
-      "text": "grid-auto-rows: minmax(var(--pop-touch-min, 48px), 1fr);"
     },
     "TOKEN|packages/ui/src/ds-candidates/marker-overlay.css|22cb8c648609": {
       "n": 1,

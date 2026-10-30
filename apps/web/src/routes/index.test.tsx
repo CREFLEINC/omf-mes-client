@@ -1498,8 +1498,8 @@ describe('appRouter — 처분 판정 처리의 진입 경로', () => {
     expect(routedPaths()).toContain(WORK_ORDER_PROGRESS_PATH);
   });
 
-  /* W-02-09 LOT 추적 상세의 [LOT 상태 보기]가 가는 W-03-01 주소다. 갈리면 조용히 404로 간다. */
-  it('⭐ LOT 추적이 여는 LOT 상태 주소와 등록된 라우트가 «같다»', () => {
+  /* W-02-09 LOT 생산 이력 조회 상세의 [LOT 상태 보기]가 가는 W-03-01 주소다. 갈리면 조용히 404로 간다. */
+  it('⭐ LOT 생산 이력 조회가 여는 LOT 상태 주소와 등록된 라우트가 «같다»', () => {
     expect(routedPaths()).toContain(LOT_STATUS_PATH);
   });
 
@@ -1760,7 +1760,18 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
           url.searchParams.get('codeGroupCode') === 'INSPECTION_SHEET_PLANT')
       );
     };
-    expect(requests.filter((request) => !isOaLookup(request))).toHaveLength(0);
+    /* 셸의 IQC 대기 배지(피처 002, omf-all-around#190)도 화면의 조회가 아니다 — 사이드바가 한 번 센다. */
+    const isIqcBadge = (request: Request) => {
+      const url = new URL(request.url);
+      return (
+        url.pathname.endsWith('/quality/inspection-requests') &&
+        url.searchParams.get('inspectionTypeCode') === 'IQC' &&
+        url.searchParams.get('size') === '1'
+      );
+    };
+    expect(
+      requests.filter((request) => !isOaLookup(request) && !isIqcBadge(request)),
+    ).toHaveLength(0);
   });
 
   /*

@@ -12,10 +12,22 @@ import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 
+import {
+  HANDOVER_ALERT_ORDER,
+  handoverTypeName,
+  useHandoverAlertTypes,
+} from '../../patterns/handover-alert-types';
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import {
+  sameHandover,
+  toHandoverBody,
+  toHandoverValues,
+  validateHandover,
+  type HandoverTemplateValues,
+} from './handover-templates';
 import { useConnection, useEventNames, useReplaceConnection, zaloConnectionKeys } from './queries';
-import { paramsOf } from './template-params';
+import { handoverParamsOf, paramsOf } from './template-params';
 import type { Connection, ConnectionFormValues } from './types';
 import { sameValues, toFormValues, toReplaceBody, validateConnection } from './validation';
 
@@ -40,19 +52,26 @@ export const ZaloConnectionScreen = () => {
   const queryClient = useQueryClient();
   const connection = useConnection();
   const events = useEventNames();
+  const handoverTypes = useHandoverAlertTypes();
   const [values, setValues] = useState<ConnectionFormValues | null>(null);
   const [baseline, setBaseline] = useState<ConnectionFormValues | null>(null);
+  const [handover, setHandover] = useState<HandoverTemplateValues>({});
+  const [handoverBaseline, setHandoverBaseline] = useState<HandoverTemplateValues>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [flash, setFlash] = useState<string | null>(null);
 
-  const seed = (next: ConnectionFormValues): void => {
+  const seed = (data: Connection): void => {
+    const next = toFormValues(data);
+    const nextHandover = toHandoverValues(data, HANDOVER_ALERT_ORDER);
     setValues(next);
     setBaseline(next);
+    setHandover(nextHandover);
+    setHandoverBaseline(nextHandover);
     setErrors({});
   };
 
   useEffect(() => {
-    if (connection.data !== undefined) seed(toFormValues(connection.data));
+    if (connection.data !== undefined) seed(connection.data);
   }, [connection.data]);
 
   const replace = useReplaceConnection((saved) => {
@@ -61,16 +80,31 @@ export const ZaloConnectionScreen = () => {
      * 첫 조회(미설정)가 새로 고칠 때까지 남는다(G2 실측).
      */
     queryClient.setQueryData(zaloConnectionKeys.connection, saved);
-    seed(toFormValues(saved));
+    seed(saved);
     setFlash(t.state.saved);
   });
 
-  const change = (patch: Partial<ConnectionFormValues>): void => {
-    setValues((current) => (current === null ? current : { ...current, ...patch }));
+  const touched = (): void => {
     setErrors({});
     setFlash(null);
     replace.reset();
   };
+
+  const change = (patch: Partial<ConnectionFormValues>): void => {
+    setValues((current) => (current === null ? current : { ...current, ...patch }));
+    touched();
+  };
+
+  const changeHandover = (code: string, templateId: string): void => {
+    setHandover((current) => ({ ...current, [code]: templateId }));
+    touched();
+  };
+
+  const handoverName = (code: string): string =>
+    handoverTypeName(
+      handoverTypes.data?.find((type) => type.alertTypeCode === code),
+      code,
+    );
 
   const eventOrder = connection.data?.templates.map((item) => item.eventCode) ?? [];
   const eventName = (code: string): string => {
@@ -80,23 +114,26 @@ export const ZaloConnectionScreen = () => {
 
   const save = (): void => {
     if (values === null) return;
-    const found = validateConnection(values);
+    const found = { ...validateConnection(values), ...validateHandover(handover) };
     setErrors(found);
     if (Object.keys(found).length > 0) return;
-    replace.write(toReplaceBody(values, eventOrder));
+    replace.write({
+      ...toReplaceBody(values, eventOrder),
+      handoverTemplates: toHandoverBody(handover, HANDOVER_ALERT_ORDER),
+    });
   };
 
   const reload = (): void => {
     replace.reset();
     void connection.refetch().then((result) => {
-      if (result.data !== undefined) seed(toFormValues(result.data));
+      if (result.data !== undefined) seed(result.data);
     });
   };
 
-  const copy = async (code: string): Promise<void> => {
+  const copy = async (params: string): Promise<void> => {
     /* 보안 연결이 아니면 클립보드가 없다 — 파라미터는 화면에 보이므로 조용히 둔다. */
     try {
-      await navigator.clipboard.writeText(paramsOf(code));
+      await navigator.clipboard.writeText(params);
       setFlash(t.state.copied);
     } catch {
       setFlash(null);
@@ -162,7 +199,9 @@ export const ZaloConnectionScreen = () => {
     if (connection.isPending || values === null) return <Skeleton variant="rect" height="20rem" />;
 
     const data = connection.data;
-    const isDirty = baseline !== null && !sameValues(values, baseline);
+    const isDirty =
+      (baseline !== null && !sameValues(values, baseline)) ||
+      !sameHandover(handover, handoverBaseline);
 
     return (
       <>
@@ -245,7 +284,7 @@ export const ZaloConnectionScreen = () => {
                   variant="text"
                   size="sm"
                   aria-label={t.actions.copyFor(eventName(code))}
-                  onClick={() => void copy(code)}
+                  onClick={() => void copy(paramsOf(code))}
                 >
                   {t.actions.copy}
                 </Button>
@@ -253,12 +292,42 @@ export const ZaloConnectionScreen = () => {
             ))}
           </ul>
 
+          <section className="zalo-handover" aria-labelledby="zalo-handover-title">
+            <h3 id="zalo-handover-title" className="zalo-subtitle">
+              {t.handover.title}
+            </h3>
+            <AlertBanner variant="info">{t.handover.notice}</AlertBanner>
+            <ul className="zalo-templates">
+              {HANDOVER_ALERT_ORDER.map((code) => (
+                <li key={code}>
+                  <span className="zalo-template-name">{handoverName(code)}</span>
+                  <TextField
+                    aria-label={t.fields.templateId(handoverName(code))}
+                    value={handover[code] ?? ''}
+                    onChange={(event) => changeHandover(code, event.target.value)}
+                    error={fieldError(`handoverTemplates.${code}`)}
+                  />
+                  <span className="field-note">{`${t.fields.params}: ${handoverParamsOf(code)}`}</span>
+                  <Button
+                    variant="text"
+                    size="sm"
+                    aria-label={t.handover.copyFor(handoverName(code))}
+                    onClick={() => void copy(handoverParamsOf(code))}
+                  >
+                    {t.actions.copy}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </section>
+
           <div className="form-actions">
             <Button
               variant="outlined"
               disabled={!isDirty}
               onClick={() => {
                 if (baseline !== null) change(baseline);
+                setHandover(handoverBaseline);
               }}
             >
               {t.actions.revert}

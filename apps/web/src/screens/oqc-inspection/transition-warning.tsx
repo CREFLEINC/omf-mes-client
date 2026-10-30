@@ -82,11 +82,11 @@ export const JudgmentGuide = ({ preview, hasLot = true }: JudgmentGuideProps) =>
   const g = t.guide;
 
   return (
+    /*
+     * 경고 한 줄(굵게) · 그 아래 보조 문장 · 구분선 · LOT 이 어떻게 되는지 한 줄 — 파란 안내 상자(사용자 시안 2026-10-29 · #197).
+     * 제목은 화면에 세우지 않고 구획 이름(화면 읽기)으로만 남긴다.
+     */
     <section className="oqc-inspection-guide" aria-label={g.title}>
-      <h4 className="oqc-inspection-guide-title">
-        <Icon name="info" size={20} aria-hidden="true" />
-        {g.title}
-      </h4>
       <p className="oqc-inspection-guide-line" data-tone="warning">
         <Icon name="warning" size={18} aria-hidden="true" />
         <span>
@@ -94,7 +94,8 @@ export const JudgmentGuide = ({ preview, hasLot = true }: JudgmentGuideProps) =>
           <span className="oqc-inspection-guide-sub">{g.irreversibleHint}</span>
         </span>
       </p>
-      <p className="oqc-inspection-guide-line">
+      <hr className="oqc-inspection-guide-divider" />
+      <p className="oqc-inspection-guide-line" data-tone="info">
         <Icon name="info" size={18} aria-hidden="true" />
         <span>
           <span>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</span>{' '}

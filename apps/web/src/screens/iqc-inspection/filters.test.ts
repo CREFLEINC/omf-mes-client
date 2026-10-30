@@ -7,7 +7,9 @@ import {
   readFilters,
   readPage,
   readSelectedId,
+  readPageSize,
   toListQuery,
+  toPageSizeParams,
   toPageParams,
   toSearchParams,
 } from './filters';
@@ -191,5 +193,26 @@ describe('상태 칩(#185)', () => {
     expect(toListQuery(filters, 1).pendingOnly).toBe(false);
     expect(readFilters(paramsOf('pd=0')).pendingOnly).toBe(false);
     expect(readFilters(paramsOf('')).pendingOnly).toBe(true);
+  });
+});
+
+/** #197 — 목록 쪽 크기 10 · 20 · 50건. 기본 50건은 주소에 적지 않는다. */
+describe('목록 쪽 크기', () => {
+  it('고를 수 없는 값이면 기본 50건으로 읽는다', () => {
+    expect(readPageSize(new URLSearchParams('size=20'))).toBe(20);
+    expect(readPageSize(new URLSearchParams('size=30'))).toBe(50);
+    expect(readPageSize(new URLSearchParams(''))).toBe(50);
+  });
+
+  it('쪽 크기를 바꾸면 첫 쪽으로 가고 고른 의뢰는 남는다', () => {
+    const next = toPageSizeParams(new URLSearchParams('page=3&ir=7'), 10);
+    expect(next.get('page')).toBeNull();
+    expect(next.get('size')).toBe('10');
+    expect(next.get('ir')).toBe('7');
+    expect(toPageSizeParams(next, 50).get('size')).toBeNull();
+  });
+
+  it('조회 요청에 쪽 크기를 싣는다', () => {
+    expect(toListQuery(EMPTY_FILTERS, 1, 20).size).toBe(20);
   });
 });

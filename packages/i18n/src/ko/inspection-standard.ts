@@ -209,7 +209,7 @@ export const inspectionStandard = {
     chipInactive: '미사용',
     editBasic: '기본 정보 수정',
     itemUnset: '품목 미지정',
-    pqcSkipOn: '허용',
+    pqcSkipOn: '켜짐',
     close: '닫기',
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
@@ -271,6 +271,7 @@ export const inspectionStandard = {
     no: '아니요',
     change: (label: string, before: string, after: string): string =>
       `${label}: ${before} → ${after}`,
+    needTwo: '버전 비교는 버전이 2개 이상일 때 할 수 있습니다.',
     loading: '비교할 버전을 불러오는 중',
   },
   /* 버전 변경 이력(#196) — 서버가 버전 쓰기마다 남긴 감사 이력을 읽는다. 최근 1년만 조회한다(조회 경로가 기간을 요구한다). */
@@ -359,8 +360,8 @@ export const inspectionStandard = {
     item: '품목',
     process: '공정',
     routing: '라우팅',
-    /** omf-all-around#119 — PQC 기준에만 선다. */
-    pqcSkipAllowed: 'PQC 생략 허용',
+    /** omf-all-around#212 — 검사 유형 공통(옛 「PQC 생략 허용」 #119). */
+    defaultSkip: '기본 생략',
     approval: '승인',
     active: '사용',
     planVersion: '버전',
@@ -401,11 +402,22 @@ export const inspectionStandard = {
     automaticJudgment: '자동판정',
   },
   values: {
-    pqcSkipAllowedNote: '활성화하면 해당 기준이 적용된 작업지시에서 PQC를 생략할 수 있습니다.',
     /* 공정 · 라우팅을 비운 선택지(사용자 시안 · #208). */
     notSelected: '선택 안 함',
     /* 다른 자료가 쓰는 기준의 코드 잠금 안내(사용자 시안 · #208). */
     codeInUseLocked: '사용 중인 코드는 변경할 수 없습니다.',
+    /** 검사 유형마다 무엇이 생략되는지(#212). */
+    defaultSkipNote: (inspectionTypeCode: string): string =>
+      inspectionTypeCode === 'IQC'
+        ? '켜면 이 기준이 걸리는 입하 LOT 은 수입검사 없이 바로 정상이 됩니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.'
+        : inspectionTypeCode === 'OQC'
+          ? '켜면 이 기준이 걸리는 출하작업지시는 출하검사 없이 통과합니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.'
+          : '켜면 이 기준이 걸리는 작업지시는 PQC 없이 진행하고, 실적을 등록하면 LOT 이 바로 정상이 됩니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.',
+    defaultSkipAllItemsNote:
+      '품목을 비운 IQC 기준이라 자기 기준이 없는 모든 품목의 수입검사가 생략됩니다.',
+    /** 품목 전용 IQC 기준 — 품목 기준정보 「IQC 대상」과 연동된다(omf-all-around#215). */
+    defaultSkipItemSyncNote:
+      '품목 기준정보의 ‘IQC 대상’과 함께 바뀝니다. 기본 생략을 켜면 그 품목의 IQC 대상이 꺼집니다.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (미사용)',

@@ -14,6 +14,20 @@ export {
 export type { components, paths } from './generated/api';
 export type {
   AppUserWorker,
+  HandoverAlertRecipient,
+  HandoverAlertSetting,
+  HandoverAlertSettingReplace,
+  HandoverAlertSettingSummary,
+  HandoverAlertSettingSummaryItem,
+  HandoverAlertType,
+  HandoverTemplate,
+  TerminalCreateForward,
+  TerminalUpdateForward,
+  TerminalWarehouseForward,
+  TerminalWorkCountKey,
+  TerminalWorkCounts,
+  ZaloConnectionForward,
+  ZaloConnectionReplaceForward,
   LineDefaultLocations,
   AttachmentTargetType,
   InspectionHistory,
@@ -127,4 +141,7 @@ export type {
   WorkerRecommendationSource,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,
+  SkipBasisCode,
+  InspectionPlanForward,
+  InspectionPlanUpdateForward,
 } from './forward-contract';

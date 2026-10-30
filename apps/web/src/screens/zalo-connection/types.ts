@@ -1,8 +1,11 @@
-import type { components } from '@omf-mes/api-client';
+import type { ZaloConnectionForward, ZaloConnectionReplaceForward } from '@omf-mes/api-client';
 
-/** W-CO-12 알림 연결 설정. api-client 는 `import type` 으로만 참조한다. */
-export type Connection = components['schemas']['ZaloConnection'];
-export type ConnectionReplace = components['schemas']['ZaloConnectionReplace'];
+/**
+ * W-CO-12 알림 연결 설정. api-client 는 `import type` 으로만 참조한다.
+ * 인계 템플릿 칸(`handoverTemplates`, 피처 002)은 서버 병합 전까지 덧댄 타입이다.
+ */
+export type Connection = ZaloConnectionForward;
+export type ConnectionReplace = ZaloConnectionReplaceForward;
 
 /**
  * 폼 값. 비밀값은 `null` 이면 「바꾸지 않음」이다 — 원문은 다시 내려오지 않으므로(FR-028)

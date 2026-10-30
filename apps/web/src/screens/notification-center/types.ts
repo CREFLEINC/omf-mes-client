@@ -41,6 +41,9 @@ export interface SelectOption {
   label: string;
 }
 
+/** 선택칸 항목 또는 이름 붙은 묶음(유형 선택지의 「이벤트」·「인계 작업」, 피처 002). */
+export type SelectItem = SelectOption | { label: string; options: SelectOption[] };
+
 export interface NotificationListResult {
   items: NotificationView[];
   page: PageMeta;

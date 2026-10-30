@@ -31,6 +31,8 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
   filters: {
     all: 'Tất cả',
     eventsFailed: 'Không tải được danh sách loại thông báo. Không thể lọc theo loại.',
+    eventGroup: 'Sự kiện',
+    handoverGroup: 'Công việc bàn giao',
   },
   actions: {
     prevPage: 'Trước',

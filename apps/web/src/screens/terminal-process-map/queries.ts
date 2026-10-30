@@ -1,4 +1,9 @@
-import type { components, TerminalProcessReplaceForward } from '@omf-mes/api-client';
+import type {
+  components,
+  TerminalCreateForward,
+  TerminalProcessReplaceForward,
+  TerminalUpdateForward,
+} from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -32,8 +37,9 @@ import {
  */
 
 type Terminal = components['schemas']['Terminal'];
-type TerminalCreate = components['schemas']['TerminalCreate'];
-type TerminalUpdate = components['schemas']['TerminalUpdate'];
+/* 피처 002 — 본문에 `warehouseId?` 를 더한 덧댐(서버 P-126). */
+type TerminalCreate = TerminalCreateForward;
+type TerminalUpdate = TerminalUpdateForward;
 type TerminalProcessReplace = TerminalProcessReplaceForward;
 type TerminalRegistrationToken = components['schemas']['TerminalRegistrationToken'];
 
@@ -129,6 +135,7 @@ const TERMINAL_FIELDS = [
   'terminalTypeCode',
   'statusCode',
   'equipmentId',
+  'warehouseId',
 ] as const;
 
 export const useTerminalCreate = (

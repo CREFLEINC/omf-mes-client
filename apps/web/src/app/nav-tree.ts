@@ -458,8 +458,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/production/lot-trace',
         icon: 'timeline',
-        label: 'LOT 추적',
-        labelVi: 'Truy xuất LOT',
+        label: 'LOT 생산 이력 조회',
+        labelVi: 'Tra cứu lịch sử sản xuất LOT',
       },
       /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
       {
@@ -850,6 +850,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'notifications_active',
         label: '알림 수신자 설정',
         labelVi: 'Thiết lập người nhận thông báo',
+      },
+      /* W-CO-14 — 인계 작업(피처 002)의 담당자. 「알림」 묶음이 없어 W-CO-11 바로 다음 줄이다(확정 2026-10-27). */
+      {
+        to: '/notification/handover-settings',
+        icon: 'assignment_ind',
+        label: '인계작업 알림 설정',
+        labelVi: 'Thiết lập thông báo công việc bàn giao',
       },
       /* W-CO-12 — 알림이 «어디로» 나가는지. 받을 사람을 정한 다음이다(001). */
       {

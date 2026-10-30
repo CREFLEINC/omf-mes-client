@@ -9,6 +9,7 @@ import type {
 } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
+import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../../patterns/master';
 import { runRequest, type ApiCallResult } from '../../patterns/request';
@@ -318,11 +319,13 @@ export const useSaveDraft = (
      */
     invalidateKeys:
       editingResultId === null
-        ? [iqcInspectionKeys.rounds(inspectionRequestId ?? 0), ALL_KEY]
+        ? [iqcInspectionKeys.rounds(inspectionRequestId ?? 0), ALL_KEY, INSPECTION_HUB_COUNTS_KEY]
         : [
             iqcInspectionKeys.rounds(inspectionRequestId ?? 0),
             iqcInspectionKeys.round(editingResultId),
             ALL_KEY,
+            /* 첫 저장이 의뢰를 「진행」으로 바꾼다 — 위쪽 건수 칩도 다시 센다(#197). */
+            INSPECTION_HUB_COUNTS_KEY,
           ],
     knownFields: SAVE_FIELDS,
     onSuccess: onSaved,
@@ -546,7 +549,11 @@ export const useConfirmResult = (
         } satisfies InspectionResultConfirmForward,
       }),
     etagPath: inspectionResultId === null ? null : roundPath(inspectionResultId),
-    invalidateKeys: [iqcInspectionKeys.rounds(inspectionRequestId ?? 0), ALL_KEY],
+    invalidateKeys: [
+      iqcInspectionKeys.rounds(inspectionRequestId ?? 0),
+      ALL_KEY,
+      INSPECTION_HUB_COUNTS_KEY,
+    ],
     knownFields: CONFIRM_FIELDS,
     /* 되돌릴 수 없는 쓰기다 — 실패 뒤 다시 눌러도 서버가 두 번 실행하지 않게 키를 유지한다. */
     keyLifetime: 'until-applied',

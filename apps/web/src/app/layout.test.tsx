@@ -756,8 +756,8 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/work-order-progress')).toBe(
       links.indexOf('/production/emergency-work-orders') + 1,
     );
-    /* W-02-09 LOT 추적 — 「W/O 진행현황 조회」 바로 아래. */
-    expect(within(sidebar).getByRole('link', { name: 'LOT 추적' })).toHaveAttribute(
+    /* W-02-09 LOT 생산 이력 조회 — 「W/O 진행현황 조회」 바로 아래. */
+    expect(within(sidebar).getByRole('link', { name: 'LOT 생산 이력 조회' })).toHaveAttribute(
       'href',
       '/production/lot-trace',
     );
@@ -885,10 +885,14 @@ describe('AppLayout', () => {
     expect(links.indexOf('/notification/recipient-settings')).toBe(
       links.indexOf('/system/approval-route') + 1,
     );
+    /* W-CO-14 — 인계 작업의 담당자(002). 「알림」 묶음이 없어 W-CO-11 바로 다음 줄이다. */
+    expect(links.indexOf('/notification/handover-settings')).toBe(
+      links.indexOf('/notification/recipient-settings') + 1,
+    );
     /* 시스템 공통 설정 — 결재·알림 설정 뒤에 공통코드·조직, 그리고 단말 매핑이 선다. */
     /* W-CO-12 — 받을 사람 다음에 «어디로» 나가는지(001). */
     expect(links.indexOf('/notification/zalo-connection')).toBe(
-      links.indexOf('/notification/recipient-settings') + 1,
+      links.indexOf('/notification/handover-settings') + 1,
     );
     expect(links.indexOf('/notification/dispatch-history')).toBe(
       links.indexOf('/notification/zalo-connection') + 1,
@@ -985,7 +989,7 @@ describe('AppLayout', () => {
       '/quality/suspicious-material-hold',
       '/quality/approvals',
       '/quality/dispositions',
-      /* 생산 관리 — 작업지시 목록(작업함, 변경 확인) → (긴급) → 진행 → LOT 추적 → 마감. */
+      /* 생산 관리 — 작업지시 목록(작업함, 변경 확인) → (긴급) → 진행 → LOT 생산 이력 조회 → 마감. */
       '/production/production-orders' /* ← 작업지시 목록 */,
       '/production/emergency-work-orders',
       '/production/work-order-progress',
@@ -1018,6 +1022,7 @@ describe('AppLayout', () => {
       '/system/users-roles',
       '/system/approval-route',
       '/notification/recipient-settings',
+      '/notification/handover-settings',
       '/notification/zalo-connection',
       '/notification/dispatch-history',
       '/master-data/common-code',
@@ -1648,7 +1653,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
   });
 
   /*
@@ -1698,7 +1703,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

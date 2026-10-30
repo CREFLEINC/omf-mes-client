@@ -58,6 +58,7 @@ import { erpEmployee } from './erp-employee';
 import { erpItem } from './erp-item';
 import { erpProductionOrder } from './erp-production-order';
 import { iqcInspection } from './iqc-inspection';
+import { partsIqcInspection } from './parts-iqc-inspection';
 import { iqcSkipApproval } from './iqc-skip-approval';
 import { iqcSkipRequest } from './iqc-skip-request';
 import { itemExtendedAttrs } from './item-extended-attrs';
@@ -170,10 +171,12 @@ import { workStart } from './work-start';
 import { workerAssignment } from './worker-assignment';
 import { zaloConnection } from './zalo-connection';
 import { dispatchHistory } from './dispatch-history';
+import { handoverAlertSettings } from './handover-alert-settings';
 
 export const vi: Translated<Messages> = {
   ...ko,
   alarmRecipientSettings,
+  handoverAlertSettings,
   approvalInbox,
   approvalRoute,
   collectionChannel,
@@ -215,6 +218,7 @@ export const vi: Translated<Messages> = {
   erpItem,
   erpProductionOrder,
   iqcInspection,
+  partsIqcInspection,
   iqcSkipApproval,
   iqcSkipRequest,
   itemExtendedAttrs,

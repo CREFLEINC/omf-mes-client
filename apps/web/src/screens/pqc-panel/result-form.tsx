@@ -60,6 +60,84 @@ const REJECTED_JUDGMENT = 'REJECTED';
 const toDisposition = (value: string): DispositionState =>
   value === 'REWORK' || value === 'SCRAP' ? value : null;
 
+export interface PqcJudgmentFieldsProps {
+  judgmentOptions: CodeOption[];
+  judgment: string;
+  onJudgmentChange: (code: string) => void;
+  disposition: DispositionState;
+  onDispositionChange: (choice: DispositionState) => void;
+  /** 불합격 수량 칸의 글 — 처분을 고를 수 있는지 정한다. */
+  rejected: string;
+  isLocked: boolean;
+}
+
+/** 최종 판정 · 불합격 처분(#135) — 판정 구획과 단계(#197)가 함께 쓴다. 규칙은 그대로다. */
+export const PqcJudgmentFields = ({
+  judgmentOptions,
+  judgment,
+  onJudgmentChange,
+  disposition,
+  onDispositionChange,
+  rejected,
+  isLocked,
+}: PqcJudgmentFieldsProps) => {
+  const judgmentId = useId();
+  const dispositionName = useId();
+  const dispositionLabelId = useId();
+  const canChoose = canChooseDisposition(rejectedMicro(rejected));
+
+  return (
+    <div className="pqc-web-judgment">
+      <div className="field-cell pqc-web-judgment-field" data-judgment={judgment || undefined}>
+        <span className="field-label">
+          <label htmlFor={judgmentId}>{t.judgment.label}</label>
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </span>
+        <Select
+          id={judgmentId}
+          options={judgmentOptions}
+          value={judgment}
+          placeholder={
+            judgmentOptions.length === 0 ? tResult.judgmentUnavailable : t.judgment.placeholder
+          }
+          disabled={isLocked || judgmentOptions.length === 0}
+          onChange={(code) => {
+            onJudgmentChange(code);
+            /* 불합격이 아니면 처분 칸이 사라진다 — 앞서 고른 처분이 숨은 채 남지 않게 거둔다. */
+            if (code !== REJECTED_JUDGMENT) onDispositionChange(null);
+          }}
+        />
+        {judgmentOptions.length > 0 && !isKnownCode(judgmentOptions, judgment) && (
+          <p className="field-note">{tResult.judgmentUnknown(judgment)}</p>
+        )}
+      </div>
+
+      {/* 불합격 처분은 판정이 「불합격」일 때만 보인다. 고를 수 있는 조건(불합격 수량)은 그대로다. */}
+      {judgment === REJECTED_JUDGMENT && (
+        <div className="field-cell pqc-web-disposition-field">
+          <span className="field-label" id={dispositionLabelId}>
+            {tDisposition.heading}
+          </span>
+          <span className="pqc-web-disposition-note">{tDisposition.note}</span>
+          <RadioGroup
+            className="pqc-web-disposition"
+            name={dispositionName}
+            value={disposition ?? ''}
+            disabled={isLocked || !canChoose}
+            aria-labelledby={dispositionLabelId}
+            onChange={(value) => onDispositionChange(value === '' ? null : toDisposition(value))}
+          >
+            <Radio value="REWORK">{tDisposition.rework}</Radio>
+            <Radio value="SCRAP">{tDisposition.scrap}</Radio>
+          </RadioGroup>
+        </div>
+      )}
+    </div>
+  );
+};
+
 /**
  * W-03-11 관리웹 결과 입력(omf-all-around#135) — IQC 판정 화면(#133)과 같은 짜임이다.
  * 「검사 수량 입력」(검사 수량 · 합격 · 불합격 · 보류 + 입력 현황 막대) → 「판정」(최종 판정 · 불합격 처분).
@@ -86,13 +164,9 @@ export const ResultForm = ({
   isLocked,
   judgmentBelow,
 }: ResultFormProps) => {
-  const judgmentId = useId();
-  const dispositionName = useId();
-  const dispositionLabelId = useId();
   const errors = validateQuantities(draft);
   const totals = toTotals(draft, inspectedQty);
   const inspectedInvalid = inspectedDraft.trim() !== '' && toMicro(inspectedDraft) === null;
-  const canChoose = canChooseDisposition(rejectedMicro(draft.rejected));
 
   const serverErrorOf = (key: keyof QuantityDraft): string | undefined => {
     const entry = Object.entries(FIELD_OF).find(([, local]) => local === key);
@@ -215,56 +289,15 @@ export const ResultForm = ({
       <section className="pqc-web-section" aria-label={t.judgment.heading}>
         <h3>{t.judgment.heading}</h3>
 
-        <div className="pqc-web-judgment">
-          <div className="field-cell pqc-web-judgment-field" data-judgment={judgment || undefined}>
-            <span className="field-label">
-              <label htmlFor={judgmentId}>{t.judgment.label}</label>
-              <span className="required-mark" aria-hidden="true">
-                {' *'}
-              </span>
-            </span>
-            <Select
-              id={judgmentId}
-              options={judgmentOptions}
-              value={judgment}
-              placeholder={
-                judgmentOptions.length === 0 ? tResult.judgmentUnavailable : t.judgment.placeholder
-              }
-              disabled={isLocked || judgmentOptions.length === 0}
-              onChange={(code) => {
-                onJudgmentChange(code);
-                /* 불합격이 아니면 처분 칸이 사라진다 — 앞서 고른 처분이 숨은 채 남지 않게 거둔다. */
-                if (code !== REJECTED_JUDGMENT) onDispositionChange(null);
-              }}
-            />
-            {judgmentOptions.length > 0 && !isKnownCode(judgmentOptions, judgment) && (
-              <p className="field-note">{tResult.judgmentUnknown(judgment)}</p>
-            )}
-          </div>
-
-          {/* 불합격 처분은 판정이 「불합격」일 때만 보인다. 고를 수 있는 조건(불합격 수량)은 그대로다. */}
-          {judgment === REJECTED_JUDGMENT && (
-            <div className="field-cell pqc-web-disposition-field">
-              <span className="field-label" id={dispositionLabelId}>
-                {tDisposition.heading}
-              </span>
-              <span className="pqc-web-disposition-note">{tDisposition.note}</span>
-              <RadioGroup
-                className="pqc-web-disposition"
-                name={dispositionName}
-                value={disposition ?? ''}
-                disabled={isLocked || !canChoose}
-                aria-labelledby={dispositionLabelId}
-                onChange={(value) =>
-                  onDispositionChange(value === '' ? null : toDisposition(value))
-                }
-              >
-                <Radio value="REWORK">{tDisposition.rework}</Radio>
-                <Radio value="SCRAP">{tDisposition.scrap}</Radio>
-              </RadioGroup>
-            </div>
-          )}
-        </div>
+        <PqcJudgmentFields
+          judgmentOptions={judgmentOptions}
+          judgment={judgment}
+          onJudgmentChange={onJudgmentChange}
+          disposition={disposition}
+          onDispositionChange={onDispositionChange}
+          rejected={draft.rejected}
+          isLocked={isLocked}
+        />
         {judgmentBelow}
       </section>
     </>

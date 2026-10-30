@@ -37,7 +37,7 @@ export const DefectPicker = ({
     <Dialog
       open={open}
       onClose={close}
-      title={major === null ? t.pickerTitle : `${t.pickerTitle} · ${major.name}`}
+      title={major === null ? t.pickerTitle : t.pickerTitleFor(major.name)}
       showCloseButton={false}
       /* 터치 단말의 오조작 — 바깥을 눌러 닫히지 않는다. */
       closeOnBackdropClick={false}

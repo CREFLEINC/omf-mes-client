@@ -36,6 +36,7 @@ import {
   lookupNote,
   useEquipmentOptions,
   usePlantOptions,
+  useWarehouseOptions,
   useProcessOptions,
   useTerminalCodeNames,
 } from './lookups';
@@ -123,6 +124,8 @@ export const TerminalProcessMapScreen = () => {
   const equipments = useEquipmentOptions();
   const processes = useProcessOptions();
   const codeNames = useTerminalCodeNames();
+  /* 피처 002 — 폼이 고른 공장의 창고. 공장을 고르기 전에는 부르지 않는다. */
+  const warehouses = useWarehouseOptions(terminalDraft.plant);
 
   const terminals = useTerminals(filters);
   const detail = useTerminalDetail(selectedId);
@@ -289,6 +292,11 @@ export const TerminalProcessMapScreen = () => {
       key: 'equipment',
       header: t.list.equipment,
       render: (row) => row.equipmentLabel ?? t.list.notAvailable,
+    },
+    {
+      key: 'warehouse',
+      header: t.list.warehouse,
+      render: (row) => row.warehouseName ?? t.list.warehouseAll,
     },
     {
       key: 'active',
@@ -507,6 +515,7 @@ export const TerminalProcessMapScreen = () => {
               fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
               plants={plants}
               equipments={equipments}
+              warehouses={warehouses}
               codeNames={codeNames}
               onChange={(patch) => {
                 setTerminalDraft((prev) => ({ ...prev, ...patch }));

@@ -193,7 +193,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     chipInactive: 'Ngừng dùng',
     editBasic: 'Sửa thông tin cơ bản',
     itemUnset: 'Chưa chỉ định mặt hàng',
-    pqcSkipOn: 'Cho phép',
+    pqcSkipOn: 'Bật',
     close: 'Đóng',
   },
   versionSection: {
@@ -250,6 +250,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     no: 'Không',
     change: (label: string, before: string, after: string): string =>
       `${label}: ${before} → ${after}`,
+    needTwo: 'Chỉ so sánh được khi có từ 2 phiên bản trở lên.',
     loading: 'Đang tải phiên bản để so sánh',
   },
   history: {
@@ -334,7 +335,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     item: 'Mặt hàng',
     process: 'Công đoạn',
     routing: 'Routing',
-    pqcSkipAllowed: 'Cho phép bỏ qua PQC',
+    defaultSkip: 'Bỏ qua mặc định',
     approval: 'Phê duyệt',
     active: 'Sử dụng',
     planVersion: 'Phiên bản',
@@ -373,11 +374,20 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     automaticJudgment: 'Đánh giá tự động',
   },
   values: {
-    pqcSkipAllowedNote: 'Khi bật, có thể bỏ qua PQC ở lệnh sản xuất áp dụng tiêu chuẩn này.',
     /* 공정 · 라우팅을 비운 선택지(사용자 시안 · #208). */
     notSelected: 'Không chọn',
     /* 다른 자료가 쓰는 기준의 코드 잠금 안내(사용자 시안 · #208). */
     codeInUseLocked: 'Không thể thay đổi mã đang được sử dụng.',
+    defaultSkipNote: (inspectionTypeCode: string): string =>
+      inspectionTypeCode === 'IQC'
+        ? 'Khi bật, LOT nhập theo tiêu chuẩn này trở thành bình thường ngay mà không kiểm tra đầu vào. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».'
+        : inspectionTypeCode === 'OQC'
+          ? 'Khi bật, lệnh xuất hàng theo tiêu chuẩn này được thông qua mà không kiểm tra xuất hàng. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».'
+          : 'Khi bật, lệnh sản xuất theo tiêu chuẩn này chạy không cần PQC; khi đăng ký kết quả, LOT trở thành bình thường ngay. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».',
+    defaultSkipAllItemsNote:
+      'Tiêu chuẩn IQC không chọn mặt hàng nên mọi mặt hàng không có tiêu chuẩn riêng đều được bỏ qua kiểm tra đầu vào.',
+    defaultSkipItemSyncNote:
+      'Thay đổi cùng với ‘Đối tượng IQC’ trong thông tin mặt hàng. Khi bật bỏ qua mặc định, mặt hàng đó sẽ không còn là đối tượng IQC.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (ngừng dùng)',

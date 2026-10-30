@@ -92,7 +92,7 @@ describe('PlanPane — 표시', () => {
         itemId: '',
         processId: '',
         routingId: '',
-        pqcSkipAllowed: false,
+        defaultSkip: false,
       },
     });
 
@@ -187,24 +187,60 @@ describe('PlanPane — 편집', () => {
   });
 });
 
-describe('PlanPane — PQC 생략 허용(omf-all-around#119)', () => {
+describe('PlanPane — 기본 생략(omf-all-around#212)', () => {
   const t = messages.inspectionStandard;
 
-  it('PQC 기준이면 체크가 서고 저장된 값으로 켜져 있으며, 누르면 그 값을 바꾼다', async () => {
+  it('PQC 기준이면 저장된 값(옛 생략 허용)으로 켜져 있고, 누르면 그 값을 바꾼다', async () => {
     const pqc = inspectionPlanFixtures[1]!;
     const { onChange, user } = renderPane({ plan: pqc, values: planToFormValues(pqc) });
 
-    const box = screen.getByRole('checkbox', { name: t.fields.pqcSkipAllowed });
+    const box = screen.getByRole('checkbox', { name: t.fields.defaultSkip });
     expect(box).toBeChecked();
-    expect(screen.getByText(t.values.pqcSkipAllowedNote)).toBeInTheDocument();
+    expect(screen.getByText(t.values.defaultSkipNote('PQC'))).toBeInTheDocument();
     await user.click(box);
-    expect(onChange).toHaveBeenCalledWith({ pqcSkipAllowed: false });
+    expect(onChange).toHaveBeenCalledWith({ defaultSkip: false });
   });
 
-  it('PQC 가 아닌 기준에는 체크가 없다', () => {
-    renderPane();
-    expect(
-      screen.queryByRole('checkbox', { name: t.fields.pqcSkipAllowed }),
-    ).not.toBeInTheDocument();
+  it.each(['IQC', 'OQC'])('%s 기준에도 체크가 선다', (code) => {
+    const plan = inspectionPlanFixtures.find((row) => row.inspectionTypeCode === code)!;
+    renderPane({ plan, values: planToFormValues(plan) });
+    expect(screen.getByRole('checkbox', { name: t.fields.defaultSkip })).toBeInTheDocument();
+    expect(screen.getByText(t.values.defaultSkipNote(code))).toBeInTheDocument();
+  });
+
+  it('품목을 비운 IQC 기준을 켜면 전 품목 공통이라는 안내가 선다', () => {
+    const iqc = inspectionPlanFixtures[0]!;
+    renderPane({ plan: iqc, values: { ...planToFormValues(iqc), itemId: '', defaultSkip: true } });
+    expect(screen.getByText(t.values.defaultSkipAllItemsNote)).toBeInTheDocument();
+  });
+
+  /* #215 — 품목 전용 IQC 기준은 품목 「IQC 대상」과 함께 바뀐다고 알린다. 공통 기준에는 서지 않는다. */
+  it('품목이 지정된 IQC 기준에는 품목 IQC 대상과 연동된다는 안내가 선다', () => {
+    const iqc = inspectionPlanFixtures[0]!;
+    renderPane({ plan: iqc, values: planToFormValues(iqc) });
+    expect(screen.getByText(t.values.defaultSkipItemSyncNote)).toBeInTheDocument();
+  });
+
+  it('품목을 비운 IQC 기준에는 연동 안내가 없다', () => {
+    const iqc = inspectionPlanFixtures[0]!;
+    renderPane({ plan: iqc, values: { ...planToFormValues(iqc), itemId: '' } });
+    expect(screen.queryByText(t.values.defaultSkipItemSyncNote)).not.toBeInTheDocument();
+  });
+
+  it('검사 유형을 고르기 전에는 체크가 없다', () => {
+    renderPane({
+      mode: 'create',
+      plan: null,
+      values: {
+        inspectionPlanCode: '',
+        inspectionPlanName: '',
+        inspectionTypeCode: '',
+        itemId: '',
+        processId: '',
+        routingId: '',
+        defaultSkip: false,
+      },
+    });
+    expect(screen.queryByRole('checkbox', { name: t.fields.defaultSkip })).not.toBeInTheDocument();
   });
 });

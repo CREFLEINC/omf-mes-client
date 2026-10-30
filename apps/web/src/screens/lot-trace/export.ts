@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import { toCsvText, type CsvColumn } from '../../patterns/csv';
-import type { LotTraceFilters, MovementKind } from './filters';
+import type { LotTraceFilters } from './filters';
 import type { MovementRow } from './rows';
 
 /**
@@ -20,7 +20,7 @@ export interface ExportProgress {
   received: number;
 }
 
-/** 한 쪽 — 줄과 쪽 정보. 입출고 현황과 두 추적 목록이 같은 모양으로 넘긴다. */
+/** 한 쪽 — 줄과 쪽 정보. */
 export interface RowPage<Row> {
   rows: Row[];
   page: { total: number };
@@ -47,24 +47,13 @@ export const fetchAllRows = async <Row>(
   }
 };
 
-const partnerHeaders = (kind: MovementKind): { code: string; name: string } | null =>
-  kind === 'MATERIAL'
-    ? { code: t.filters.supplierCode, name: t.filters.supplierName }
-    : kind === 'SHIPMENT'
-      ? { code: t.filters.customerCode, name: t.filters.customerName }
-      : null;
-
-/** 화면 열에 코드 열(창고, 공급사 또는 고객)과 일시, 줄 번호, LOT 수를 더한다. 수량과 단위는 칸을 나눈다. */
-const columnsFor = (
-  kind: MovementKind,
-  statusName: (code: string) => string,
-): CsvColumn<MovementRow>[] => {
+/** 화면 열에 일시, 줄 번호, 품목, 창고, 공급사 또는 고객, W/O 번호, 상태를 더한다. 수량과 단위는 칸을 나눈다. */
+const columnsFor = (statusName: (row: MovementRow) => string): CsvColumn<MovementRow>[] => {
   const c = t.list.columns;
-  const partner = partnerHeaders(kind);
   return [
     { header: c.kind, value: (row) => t.kinds[row.kind] },
     { header: t.export.datetime, value: (row) => `${row.date} ${row.time}`.trim() },
-    { header: kind === 'SHIPMENT' ? c.shipmentNo : c.receiptNo, value: (row) => row.documentNo },
+    { header: c.documentNo, value: (row) => row.documentNo },
     { header: t.detail.lineNo, value: (row) => String(row.lineNo) },
     { header: c.itemCode, value: (row) => row.item.code },
     { header: c.itemName, value: (row) => row.item.name },
@@ -72,23 +61,19 @@ const columnsFor = (
     { header: t.export.lotCount, value: (row) => String(row.lotCount) },
     { header: c.qty, value: (row) => String(row.qty) },
     { header: t.export.uom, value: (row) => row.uomCode },
-    { header: t.filters.warehouseCode, value: (row) => row.warehouse.code },
-    { header: t.filters.warehouseName, value: (row) => row.warehouse.name },
-    ...(partner === null
-      ? [{ header: c.workOrder, value: (row: MovementRow) => row.workOrderNo ?? '' }]
-      : [
-          { header: partner.code, value: (row: MovementRow) => row.partner?.code ?? '' },
-          { header: partner.name, value: (row: MovementRow) => row.partner?.name ?? '' },
-        ]),
-    { header: c.status, value: (row) => statusName(row.statusCode) },
+    { header: t.filters.warehouseCode, value: (row) => row.warehouse?.code ?? '' },
+    { header: t.filters.warehouseName, value: (row) => row.warehouse?.name ?? '' },
+    { header: t.export.partnerCode, value: (row) => row.partner?.code ?? '' },
+    { header: t.export.partnerName, value: (row) => row.partner?.name ?? '' },
+    { header: c.workOrder, value: (row) => row.workOrderNo ?? '' },
+    { header: c.status, value: statusName },
   ];
 };
 
 export const toCsv = (
-  kind: MovementKind,
   rows: readonly MovementRow[],
-  statusName: (code: string) => string,
-): string => toCsvText(columnsFor(kind, statusName), rows);
+  statusName: (row: MovementRow) => string,
+): string => toCsvText(columnsFor(statusName), rows);
 
 export const exportFileName = (filters: LotTraceFilters): string =>
   t.export.fileName(t.kinds[filters.kind], filters.from, filters.to);

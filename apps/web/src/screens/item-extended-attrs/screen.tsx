@@ -7,6 +7,7 @@ import { useSearchParams } from 'react-router';
 import { useApiClient } from '../../patterns/api-context';
 import { BoardFrame } from '../../patterns/board-frame';
 import { SaveErrorBanner, requireIfMatch, useMasterWrite } from '../../patterns/master';
+import { planKeys } from '../inspection-standard/queries';
 import {
   createBuMapDraft,
   isSameBuMapDrafts,
@@ -270,7 +271,8 @@ export const ItemExtendedAttrsScreen = () => {
      * 성공 응답에 `ETag`가 오지만 상세까지 무효화한다 —
      * 다른 필드가 서버에서 바뀌었을 수 있고, 무효화를 빠뜨리면 다음 저장이 낡은 토큰을 쓴다.
      */
-    invalidateKeys: [itemKeys.all],
+    /* 「IQC 대상」은 그 품목 IQC 검사 기준의 기본 생략을 함께 바꾼다(#215) — 검사 기준 화면 자료도 다시 읽게 한다. */
+    invalidateKeys: [itemKeys.all, planKeys.all],
     knownFields: ITEM_ATTRS_FORM_FIELDS,
     onSuccess: (saved) => {
       setAttrsFieldErrors({});

@@ -118,7 +118,7 @@ const columnsOf = (
     header: t.columns.statusCode,
     width: '88px',
     render: (row) => {
-      const badge = toStatusBadge(row.statusCode);
+      const badge = toStatusBadge(row.statusCode, row.skipBasisCode);
 
       return (
         <Chip variant="status" size="sm" status={badge.tone}>

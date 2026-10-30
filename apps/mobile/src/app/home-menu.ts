@@ -1,3 +1,4 @@
+import type { TerminalWorkCountKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 const t = messages.shellHome;
@@ -9,6 +10,8 @@ export interface HomeScreen {
   icon: string;
   /** 무엇을 하는 화면인지 한 줄. 업무 화면의 행에 이름 아래로 선다. */
   description: string;
+  /** 남은 작업 수의 키(`/app/terminal-work-counts`, 피처 002). 인계 작업 화면만 갖는다. */
+  countKey?: TerminalWorkCountKey;
 }
 
 export interface HomeArea {
@@ -80,6 +83,7 @@ export const homeAreas: HomeArea[] = [
     screens: [
       {
         to: '/putaway',
+        countKey: 'putaway',
         label: messages.putaway.title,
         icon: 'shelves',
         description: t.screens.putaway,
@@ -92,12 +96,14 @@ export const homeAreas: HomeArea[] = [
       },
       {
         to: '/stock-transfer',
+        countKey: 'stockTransferArrival',
         label: messages.stockTransfer.title,
         icon: 'swap_horiz',
         description: t.screens.stockTransfer,
       },
       {
         to: '/material-picking',
+        countKey: 'materialPicking',
         label: messages.materialPicking.title,
         icon: 'outbox',
         description: t.screens.materialPicking,
@@ -168,6 +174,7 @@ export const homeAreas: HomeArea[] = [
       },
       {
         to: '/product-picking',
+        countKey: 'shipmentPicking',
         label: messages.productPicking.title,
         icon: 'inventory',
         description: t.screens.productPicking,

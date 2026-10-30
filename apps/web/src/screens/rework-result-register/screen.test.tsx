@@ -316,7 +316,7 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
 
     expect(await screen.findByText('SYN-WO-R013')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: messages.popPageNav.pageDown }));
+    await user.click(screen.getByRole('button', { name: messages.popPageNav.next }));
 
     expect(await screen.findByText('SYN-WO-R099')).toBeInTheDocument();
     expect(screen.queryByText('SYN-WO-R013')).toBeNull();

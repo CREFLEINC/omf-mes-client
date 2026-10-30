@@ -204,9 +204,21 @@ export interface FourMChangeForward {
   remarks?: string;
 }
 
-/** 서버 선행 P-86(omf-all-around#63) — 의뢰 LOT 의 4M 변경품. */
+/** 서버 선행 P-152(omf-all-around#212) — 생략 근거. 기준의 기본 생략(DEFAULT) · 건별 결재 승인(APPROVAL). */
+export type SkipBasisCode = 'DEFAULT' | 'APPROVAL';
+
+/** 서버 선행 P-86(omf-all-around#63) — 의뢰 LOT 의 4M 변경품. P-152(#212) — 생략 의뢰의 근거. */
 export type InspectionRequestForward = components['schemas']['InspectionRequest'] & {
   fourMChange?: FourMChangeForward;
+  skipBasisCode?: SkipBasisCode | null;
+};
+
+/** 서버 선행 P-152(omf-all-around#212) — 검사 유형 공통 「기본 생략」. `pqcSkipAllowed` 는 같은 값의 호환 칸이다. */
+export type InspectionPlanForward = components['schemas']['InspectionPlan'] & {
+  defaultSkip?: boolean;
+};
+export type InspectionPlanUpdateForward = components['schemas']['InspectionPlanUpdate'] & {
+  defaultSkip?: boolean;
 };
 
 /** 서버 선행 P-86(omf-all-around#63) — LOT 목록·단건(`GET /trace/lots`(+`/{lotId}`))이 4M 변경품을 싣는다. */
@@ -330,9 +342,12 @@ export type DefectRecordListQueryForward = Omit<
   'detectedFrom' | 'detectedTo'
 > & { inspectionResultId?: number; detectedFrom?: string; detectedTo?: string };
 
-/** 서버 선행 P-57(omf-all-around#58) — 첨부 대상에 검사 문서(LOT·검사 결과)를 더한다. */
+/**
+ * 서버 선행 P-57(omf-all-around#58) — 첨부 대상에 검사 문서(LOT·검사 결과)를 더한다.
+ * P-155(omf-all-around#211) — 검사기준 버전 도면(읽기만 · 기준서 엑셀 올리기가 붙인다).
+ */
 export type AttachmentTargetType =
-  'WAREHOUSE' | 'NOTICE' | 'BREAKDOWN' | 'LOT' | 'INSPECTION_RESULT';
+  'WAREHOUSE' | 'NOTICE' | 'BREAKDOWN' | 'LOT' | 'INSPECTION_RESULT' | 'INSPECTION_PLAN_VERSION';
 
 type AttachmentsPath = paths['/app/attachments'];
 type AttachmentsListQuery = NonNullable<AttachmentsPath['get']['parameters']['query']>;
@@ -1321,7 +1336,164 @@ export type WarehouseListQueryForward = NonNullable<WarehousesGet['parameters'][
   plantId?: number;
 };
 
+/**
+ * 피처 002(omf-all-around#190) 인계 작업 알림 — 서버 선행 P-124·P-125 를 설계 계약
+ * (`specs/002-terminal-task-alerts/contracts/handover-alert-api.md`)대로 먼저 적는다.
+ * 서버 병합 뒤 `gen:api` 가 만들면 아래 타입과 `ForwardPaths` 의 같은 경로를 지운다(D-12).
+ */
+export interface HandoverAlertType {
+  alertTypeCode: string;
+  name: string;
+  nameVi: string;
+  description?: string;
+  targetTypeCode: string;
+}
+
+export interface HandoverAlertSettingSummaryItem {
+  alertTypeCode: string;
+  enabled: boolean;
+  zaloEnabled: boolean;
+  recipientCount: number;
+  noPhoneCount: number;
+  inactiveCount: number;
+}
+
+export interface HandoverAlertSettingSummary {
+  items: HandoverAlertSettingSummaryItem[];
+  /** 계약 §A 에 없는 칸 — 서버가 W-CO-11 요약처럼 실으면 연결 경고에 쓴다. 없으면 경고를 두지 않는다. */
+  zaloStatus?: components['schemas']['ZaloConnection']['status'];
+}
+
+export interface HandoverAlertRecipient {
+  userId: number;
+  name: string;
+  loginId: string;
+  hasPhone: boolean;
+  active: boolean;
+  /** 계약 §A 에 없는 칸 — 실려 오면 이름 옆에 부서를 보인다. */
+  departmentName?: string | null;
+}
+
+export interface HandoverAlertSetting {
+  enabled: boolean;
+  zaloEnabled: boolean;
+  recipients: HandoverAlertRecipient[];
+  version: number;
+}
+
+export interface HandoverAlertSettingReplace {
+  enabled: boolean;
+  zaloEnabled: boolean;
+  recipientUserIds: number[];
+}
+
+export interface HandoverTemplate {
+  alertTypeCode: string;
+  templateId: string | null;
+}
+
+/** P-125 — 기존 `templates`(6종)는 그대로, 인계 10종은 새 칸. 병합 전 서버는 칸을 싣지 않는다. */
+export type ZaloConnectionForward = components['schemas']['ZaloConnection'] & {
+  handoverTemplates?: HandoverTemplate[];
+};
+
+export type ZaloConnectionReplaceForward = components['schemas']['ZaloConnectionReplace'] & {
+  handoverTemplates?: HandoverTemplate[];
+};
+
+/**
+ * 피처 002 P-127 — 단말 작업 수. 단말 유형에 맞는 키만 온다(모바일 넷 · POP 다섯). 각 수는 같은
+ * 화면 목록의 건수다(research R-5). 모르는 키가 와도 무시한다.
+ */
+export interface TerminalWorkCounts {
+  putaway?: number;
+  materialPicking?: number;
+  stockTransferArrival?: number;
+  shipmentPicking?: number;
+  shipmentPacking?: number;
+  workStart?: number;
+  emergencyWorkOrder?: number;
+  reworkResult?: number;
+  oqcInspection?: number;
+}
+
+export type TerminalWorkCountKey = keyof TerminalWorkCounts;
+
+/**
+ * 피처 002 P-126 — 단말 창고. 응답에 `warehouseId`·`warehouseName`, 등록·수정 본문에 `warehouseId?`
+ * (null = 비움 = 공장 전체). 병합 전 서버는 싣지 않으므로 응답 칸은 선택으로 읽는다.
+ */
+export interface TerminalWarehouseForward {
+  warehouseId?: number | null;
+  warehouseName?: string | null;
+}
+
+export type TerminalCreateForward = components['schemas']['TerminalCreate'] & {
+  warehouseId?: number | null;
+};
+
+export type TerminalUpdateForward = components['schemas']['TerminalUpdate'] & {
+  warehouseId?: number | null;
+};
+
+type ZaloConnectionPath = paths['/app/zalo-connection'];
+type HandoverSettingPathParams = { plantId: number; alertTypeCode: string };
+
 export interface ForwardPaths {
+  /** 피처 002 P-127 — 단말 토큰(POP·MOBILE)으로 부른다. */
+  '/app/terminal-work-counts': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<NoParameters, never, { 200: Json<TerminalWorkCounts> }>;
+  };
+  /** 피처 002 P-124 — 인계 작업 종류 10종(기존 `/app/notification-events` 와 별개). */
+  '/app/handover-alert-types': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<NoParameters, never, { 200: Json<{ items: HandoverAlertType[] }> }>;
+  };
+  /** 피처 002 P-124 — 공장의 10종 요약(행이 없으면 꺼짐·0). */
+  '/app/handover-alert-settings': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query: { plantId: number }; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<HandoverAlertSettingSummary> }
+    >;
+  };
+  /** 피처 002 P-124 — 공장 × 종류 상세(ETag)와 저장(If-Match, 행이 없으면 생략). */
+  '/app/handover-alert-settings/{plantId}/{alertTypeCode}': Unused & {
+    parameters: NoParameters;
+    post?: never;
+    get: Op<
+      { query?: never; header?: never; path: HandoverSettingPathParams; cookie?: never },
+      never,
+      { 200: Json<HandoverAlertSetting> }
+    >;
+    put: Op<
+      Params<never, { 'Idempotency-Key': string; 'If-Match'?: string }, HandoverSettingPathParams>,
+      { content: { 'application/json': HandoverAlertSettingReplace } },
+      { 200: Json<HandoverAlertSetting> }
+    >;
+  };
+  /** 피처 002 P-125 — 응답·본문에 `handoverTemplates` 를 더한다. */
+  '/app/zalo-connection': Omit<ZaloConnectionPath, 'get' | 'put'> & {
+    get: Omit<ZaloConnectionPath['get'], 'responses'> & {
+      responses: Omit<ZaloConnectionPath['get']['responses'], 200> & {
+        200: Json<ZaloConnectionForward>;
+      };
+    };
+    put: Omit<ZaloConnectionPath['put'], 'requestBody' | 'responses'> & {
+      requestBody: { content: { 'application/json': ZaloConnectionReplaceForward } };
+      responses: Omit<ZaloConnectionPath['put']['responses'], 200> & {
+        200: Json<ZaloConnectionForward>;
+      };
+    };
+  };
   /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */
   '/quality/concessions': Omit<ConcessionsPath, 'post'> & {
     post: {
@@ -1794,6 +1966,58 @@ export interface ForwardPaths {
         200: {
           headers: { [name: string]: unknown };
           content: { 'application/json': components['schemas']['ShipmentRequest'] };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  /** 서버 선행 P-152(omf-all-around#212) — PQC 생략 요청(결재 상신). 202 승인 요청 id. */
+  '/production/work-orders/{workOrderId}:request-pqc-skip': {
+    parameters: { query?: never; header?: never; path?: never; cookie?: never };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { workOrderId: number };
+        cookie?: never;
+      };
+      requestBody: { content: { 'application/json': { reason: string } } };
+      responses: {
+        202: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': { approvalRequestId: number } };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  /** 서버 선행 P-152(omf-all-around#212) — 승인된 PQC 생략의 실행. 본문 없음 · 200 작업지시 상세. */
+  '/production/work-orders/{workOrderId}:skip-pqc': {
+    parameters: { query?: never; header?: never; path?: never; cookie?: never };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: { 'Idempotency-Key': string };
+        path: { workOrderId: number };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': components['schemas']['WorkOrder'] };
         };
       };
     };

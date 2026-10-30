@@ -11,6 +11,8 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { Select } from '../select';
+import { type TabPageSize, TAB_PAGE_SIZES } from '../client-page';
+import { PageNav } from '../page-nav';
 import {
   ITEM_PAGE_SIZE,
   useItemAvailability,
@@ -100,6 +102,11 @@ export interface ItemPickerDialogProps {
    * 자리(W-01-09 빠른 조회)에서 사용자가 같은 값을 다시 치지 않게 한다.
    */
   initialKeyword?: string;
+  /**
+   * 쪽 이동을 목록 표 아래와 같은 줄(총 건수 · 쪽 크기 · [처음] [이전] n/N [다음] [마지막])로 그린다 — 검사 조회·판정 세 탭이
+   * 켠다(사용자 지시 2026-10-28 · #197). 기본 false — 이 창을 나눠 쓰는 다른 화면은 종전 [이전] [다음] 그대로다.
+   */
+  pageNav?: boolean;
 }
 
 const describeAvailability = (state: AvailabilityState): string => {
@@ -127,6 +134,7 @@ export const ItemPickerDialog = ({
   compact = false,
   emptyText,
   initialKeyword = '',
+  pageNav = false,
 }: ItemPickerDialogProps) => {
   const keywordId = useId();
   const typeId = useId();
@@ -136,11 +144,12 @@ export const ItemPickerDialog = ({
   const [submitted, setSubmitted] = useState(initialKeyword);
   const [itemTypeCode, setItemTypeCode] = useState(defaultItemTypeCode);
   const [page, setPage] = useState(1);
+  const [size, setSize] = useState<TabPageSize>(ITEM_PAGE_SIZE);
   /** 고른 품목을 **줄 그대로** 들고 있는다 — 쪽을 넘겨도 고름이 남고, 확인할 때 다시 찾지 않는다. */
   const [picked, setPicked] = useState<ItemRow[]>([]);
 
   const types = useItemTypeOptions(true);
-  const search = useItemSearch(submitted, itemTypeCode, page, includeInactive, hasRouting);
+  const search = useItemSearch(submitted, itemTypeCode, page, includeInactive, hasRouting, size);
   const rows = search.data?.rows ?? [];
   const total = search.data?.total ?? 0;
   const availabilityOf = useItemAvailability(showAvailability ? rows.map((row) => row.itemId) : []);
@@ -229,9 +238,9 @@ export const ItemPickerDialog = ({
       : []),
   ];
 
-  const from = (page - 1) * ITEM_PAGE_SIZE + 1;
-  const to = Math.min(page * ITEM_PAGE_SIZE, total);
-  const hasNext = page * ITEM_PAGE_SIZE < total;
+  const from = (page - 1) * size + 1;
+  const to = Math.min(page * size, total);
+  const hasNext = page * size < total;
 
   return (
     <Dialog
@@ -359,32 +368,47 @@ export const ItemPickerDialog = ({
           />
         </div>
 
-        {/*
-         * ⛔ **쪽 이동 줄은 늘 선다.** 결과가 있을 때만 그리면 검색할 때마다 표의 아래 경계가
-         *    움직인다 — 창 크기를 고정한 뜻이 반감된다. 건수 글만 있을 때 없고, 단추는 못 쓸 때
-         *    잠긴다.
-         */}
-        <div className="item-picker-pager">
-          {total > 0 && <span className="field-note">{t.page.range(from, to, total)}</span>}
-          <Button
-            variant="outlined"
-            disabled={page <= 1}
-            onClick={() => {
-              setPage((prev) => Math.max(1, prev - 1));
+        {pageNav ? (
+          /* 목록 표 아래와 같은 쪽 이동 줄 — 총 건수 · 10 · 20 · 50건 · [처음] [이전] n/N [다음] [마지막](#197). */
+          <PageNav
+            meta={{ page, size, total }}
+            sizes={TAB_PAGE_SIZES}
+            onChangePage={setPage}
+            onChangeSize={(next) => {
+              setSize(next);
+              setPage(1);
             }}
-          >
-            {t.page.previous}
-          </Button>
-          <Button
-            variant="outlined"
-            disabled={!hasNext}
-            onClick={() => {
-              setPage((prev) => prev + 1);
-            }}
-          >
-            {t.page.next}
-          </Button>
-        </div>
+          />
+        ) : (
+          <>
+            {/*
+             * ⛔ **쪽 이동 줄은 늘 선다.** 결과가 있을 때만 그리면 검색할 때마다 표의 아래 경계가
+             *    움직인다 — 창 크기를 고정한 뜻이 반감된다. 건수 글만 있을 때 없고, 단추는 못 쓸 때
+             *    잠긴다.
+             */}
+            <div className="item-picker-pager">
+              {total > 0 && <span className="field-note">{t.page.range(from, to, total)}</span>}
+              <Button
+                variant="outlined"
+                disabled={page <= 1}
+                onClick={() => {
+                  setPage((prev) => Math.max(1, prev - 1));
+                }}
+              >
+                {t.page.previous}
+              </Button>
+              <Button
+                variant="outlined"
+                disabled={!hasNext}
+                onClick={() => {
+                  setPage((prev) => prev + 1);
+                }}
+              >
+                {t.page.next}
+              </Button>
+            </div>
+          </>
+        )}
       </div>
     </Dialog>
   );

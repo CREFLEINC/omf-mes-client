@@ -1,4 +1,9 @@
-import type { components, FourMChangeForward, InspectionRequestForward } from '@omf-mes/api-client';
+import type {
+  components,
+  FourMChangeForward,
+  InspectionRequestForward,
+  SkipBasisCode,
+} from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 /**
@@ -36,6 +41,8 @@ export interface InspectionQueueRow {
   requestedAt: string;
   /** 의뢰 LOT 이 4M 변경품인가(omf-all-around#63 · 서버 선행 P-86). */
   isFourMChange: boolean;
+  /** 생략 근거 — 기본 생략(DEFAULT)·결재 승인(APPROVAL). 생략이 아니면 `null`(omf-all-around#212). */
+  skipBasisCode: SkipBasisCode | null;
 }
 
 export interface InspectionQueueResult {
@@ -59,6 +66,7 @@ export const toInspectionQueueRow = (item: InspectionRequestResponse): Inspectio
   targetQty: item.targetQty,
   requestedAt: item.requestedAt,
   isFourMChange: item.fourMChange !== undefined,
+  skipBasisCode: item.skipBasisCode ?? null,
 });
 
 export const toInspectionQueueResult = (response: {
@@ -113,6 +121,8 @@ export interface InspectionRequestDetail {
   requestedAt: string;
   /** 의뢰 LOT 의 4M 변경품 기록. 변경품이 아니면 `null`(omf-all-around#63 · 서버 선행 P-86). */
   fourMChange: FourMChangeForward | null;
+  /** 생략 근거(omf-all-around#212) — 생략 구획이 「기본 설정」인지 「결재 승인」인지 가른다. */
+  skipBasisCode: SkipBasisCode | null;
 }
 
 export const toInspectionRequestDetail = (
@@ -129,6 +139,7 @@ export const toInspectionRequestDetail = (
   statusCode: item.statusCode,
   requestedAt: item.requestedAt,
   fourMChange: item.fourMChange ?? null,
+  skipBasisCode: item.skipBasisCode ?? null,
 });
 
 /**
