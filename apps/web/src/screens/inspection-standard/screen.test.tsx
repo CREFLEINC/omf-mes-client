@@ -447,6 +447,94 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     expect(screen.queryByRole('dialog', { name: t.import.title })).not.toBeInTheDocument();
   });
 
+  /* 올린 기준은 바로 확정한다(#208) — 서버가 돌려준 작성중 버전마다 확정을 부른다. */
+  const confirmRoute = (respond: StubRoute['respond']): StubRoute => ({
+    match: (request) =>
+      request.method === 'POST' &&
+      /\/quality\/inspection-plan-versions\/\d+:confirm$/.test(new URL(request.url).pathname),
+    respond,
+  });
+
+  it('올린 뒤 만든 버전마다 멱등 키로 확정하고, 모두 되면 창을 닫는다(#208)', async () => {
+    const { requests, user } = renderScreen([
+      importRoute(() =>
+        jsonResponse({
+          succeeded: 2,
+          failed: [],
+          created: [
+            { index: 0, key: 'P-A', inspectionPlanVersionId: 901 },
+            { index: 5, key: 'P-B', inspectionPlanVersionId: 902 },
+          ],
+        }),
+      ),
+      confirmRoute(() => jsonResponse({})),
+      planListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: t.import.title })).not.toBeInTheDocument();
+    const confirms = requests.filter((request) => request.url.pathname.endsWith(':confirm'));
+    expect(confirms.map((request) => request.url.pathname)).toEqual([
+      '/quality/inspection-plan-versions/901:confirm',
+      '/quality/inspection-plan-versions/902:confirm',
+    ]);
+    expect(
+      confirms.every((request) => UUID_PATTERN.test(request.headers.get('Idempotency-Key') ?? '')),
+    ).toBe(true);
+  });
+
+  it('확정에 실패한 기준은 파일 줄에 사유를 남기고 창을 닫지 않는다(#208)', async () => {
+    const { user } = renderScreen([
+      importRoute(() =>
+        jsonResponse({
+          succeeded: 2,
+          failed: [],
+          created: [
+            { index: 0, key: 'P-A', inspectionPlanVersionId: 901 },
+            { index: 5, key: 'P-B', inspectionPlanVersionId: 902 },
+          ],
+        }),
+      ),
+      confirmRoute((request) =>
+        new URL(request.url).pathname.includes('/902:')
+          ? jsonResponse(
+              {
+                errors: [
+                  {
+                    scope: 'screen',
+                    code: 'STATE_LOCKED',
+                    message: '검사 항목이 없어 확정할 수 없습니다.',
+                  },
+                ],
+              },
+              { status: 422 },
+            )
+          : jsonResponse({}),
+      ),
+      planListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+
+    expect(
+      await within(dialog).findByText(
+        t.import.confirmFailed('P-B', '검사 항목이 없어 확정할 수 없습니다.'),
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText(/^P-A — /)).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.import.title })).toBeInTheDocument();
+  });
+
   it('올리면 파일을 멱등 키와 함께 보내고, 성공·실패 기준과 사유를 창 안에 남긴다', async () => {
     const { requests, user } = renderScreen([
       importRoute(() =>

@@ -141,7 +141,8 @@ export const inspectionStandard = {
   import: {
     title: '검사기준 엑셀 올리기',
     partialWarningTitle: '업로드 후 일괄 취소가 불가합니다.',
-    partialWarning: '기준별로 작성중인 버전이 생성되며, 성공 항목만 저장됩니다.',
+    // 올린 기준은 바로 확정된다(#208) — 확정하지 못한 기준만 작성중으로 남는다.
+    partialWarning: '기준별로 새 버전이 만들어져 바로 확정되며, 성공 항목만 저장됩니다.',
     guideHeaderRow: '첫 번째 시트의 첫 행을 제목으로 사용합니다.',
     guideRequiredColumns: '필수 열: 기준코드, 항목코드, 항목명',
     guideTckt: '기존 검사기준서(TCKT) 파일도 업로드할 수 있습니다.',
@@ -165,6 +166,9 @@ export const inspectionStandard = {
       reason: '사유',
     },
     keyUnknown: '기준코드 없음',
+    /** 올린 뒤 바로 확정하지 못한 기준(#208) — 버전은 작성중으로 남는다 */
+    confirmFailed: (key: string, reason: string): string =>
+      `${key} — 올렸으나 확정하지 못함: ${reason}`,
   },
   filters: {
     versionStatus: '상태 선택',

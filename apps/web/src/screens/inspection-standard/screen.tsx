@@ -30,6 +30,7 @@ import {
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 import { runRequest, toApiError } from '../../patterns/request';
+import { serverReasonOf } from '../../patterns/server-reason';
 import { itemKeys } from '../item-extended-attrs/item-queries';
 import {
   DATA_TYPE_CODE_GROUP,
@@ -58,7 +59,12 @@ import { LoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
 import { PlanActionBanner } from './plan-action-banner';
 import { PlanActionDialog, type PlanActionKind } from './plan-action-dialog';
-import { ImportDialog, type ImportOutcome } from './import-dialog';
+import {
+  type ConfirmFailure,
+  ImportDialog,
+  type ImportOutcome,
+  type InspectionPlanImportResult,
+} from './import-dialog';
 import { PlanDetailHead } from './plan-detail-head';
 import { PlanFilterBar } from './plan-filter-bar';
 import { PlanListPane } from './plan-list-pane';
@@ -288,16 +294,43 @@ export const InspectionStandardScreen = () => {
       const form = new FormData();
       form.append('file', file);
       try {
-        const result = await runRequest(() =>
+        const result = (await runRequest(() =>
           client.POST('/quality/inspection-plans:import', {
             params: { header: { 'Idempotency-Key': createIdempotencyKey() } },
             body: form as unknown as { file: string },
           }),
-        );
-        outcomes.push({ fileName: file.name, result, error: null });
+        )) as InspectionPlanImportResult;
+        /*
+         * 올린 기준은 바로 확정한다(사용자 승인 · #208) — 서버가 만든 작성중 버전마다 확정을 차례로 부른다.
+         * 확정에 실패하면 그 버전은 작성중으로 남기고 사유를 파일 줄에 적는다.
+         */
+        const confirmFailures: ConfirmFailure[] = [];
+        for (const created of result.created ?? []) {
+          try {
+            await runRequest(() =>
+              client.POST('/quality/inspection-plan-versions/{inspectionPlanVersionId}:confirm', {
+                params: {
+                  path: { inspectionPlanVersionId: created.inspectionPlanVersionId },
+                  header: { 'Idempotency-Key': createIdempotencyKey() },
+                },
+              }),
+            );
+          } catch (cause) {
+            confirmFailures.push({
+              key: created.key,
+              reason: serverReasonOf(toApiError(cause)) ?? messages.httpError.description,
+            });
+          }
+        }
+        outcomes.push({ fileName: file.name, result, error: null, confirmFailures });
       } catch (cause) {
         // 한 파일이 거절돼도 나머지는 올린다 — 이유는 그 파일 자리에 남긴다.
-        outcomes.push({ fileName: file.name, result: null, error: toApiError(cause) });
+        outcomes.push({
+          fileName: file.name,
+          result: null,
+          error: toApiError(cause),
+          confirmFailures: [],
+        });
       }
       const done = [...outcomes];
       setImportState((prev) => (prev === null ? prev : { ...prev, outcomes: done }));
@@ -311,7 +344,10 @@ export const InspectionStandardScreen = () => {
 
     // 오류가 없으면 창을 닫고 알린다. 하나라도 실패·거절이면 사유를 봐야 하므로 창을 남긴다.
     const hasError = outcomes.some(
-      (outcome) => outcome.result === null || outcome.result.failed.length > 0,
+      (outcome) =>
+        outcome.result === null ||
+        outcome.result.failed.length > 0 ||
+        outcome.confirmFailures.length > 0,
     );
     if (!hasError) {
       setImportState(null);

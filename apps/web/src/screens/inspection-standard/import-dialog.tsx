@@ -11,11 +11,27 @@ const t = messages.inspectionStandard.import;
 export type BatchResult = components['schemas']['BatchResult'];
 type BatchFailure = components['schemas']['BatchFailure'];
 
+/**
+ * 올리기 결과 — `BatchResult` 에 반영된 기준마다 만든 작성중 버전을 더한다(계약 `InspectionPlanImportResult` · #208).
+ * forward-contract: 서버 계약이 들어오면 생성 타입으로 바꾼다. 옛 서버는 `created` 를 주지 않는다.
+ */
+export type InspectionPlanImportResult = BatchResult & {
+  created?: { index: number; key: string; inspectionPlanVersionId: number }[];
+};
+
+/** 올린 뒤 확정하지 못한 기준 하나 — 버전은 작성중으로 남는다. */
+export interface ConfirmFailure {
+  key: string;
+  reason: string;
+}
+
 /** 파일 하나를 올린 결과. 서버가 받았으면 `result`, 파일째 거절됐으면(읽을 수 없다·권한 없음) `error` */
 export interface ImportOutcome {
   fileName: string;
   result: BatchResult | null;
   error: ApiError | null;
+  /** 올린 뒤 바로 확정하다 실패한 기준(#208) — 그 파일 줄에 사유를 남긴다 */
+  confirmFailures: ConfirmFailure[];
 }
 
 /** 서버가 .xlsx 만 연다 — .xls 를 고르게 두면 「파일을 열 수 없습니다」로만 돌아온다. */
@@ -221,6 +237,12 @@ export const ImportDialog = ({
                         ? t.allSucceeded
                         : t.failed(outcome.result.failed.length)}
                     </p>
+                    {/* 올렸으나 확정하지 못한 기준 — 작성중 버전으로 남는다(#208). */}
+                    {outcome.confirmFailures.map((failure) => (
+                      <p key={failure.key} className="field-error">
+                        {t.confirmFailed(failure.key, failure.reason)}
+                      </p>
+                    ))}
                     {outcome.result.failed.length > 0 && (
                       <div className="wide-table">
                         <Table

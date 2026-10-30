@@ -131,7 +131,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     title: 'Tải lên Excel tiêu chuẩn kiểm tra',
     partialWarningTitle: 'Không thể hủy hàng loạt sau khi tải lên.',
     partialWarning:
-      'Mỗi tiêu chuẩn sẽ tạo một phiên bản đang soạn, chỉ những mục thành công được lưu.',
+      'Mỗi tiêu chuẩn sẽ tạo phiên bản mới và xác nhận ngay, chỉ những mục thành công được lưu.',
     guideHeaderRow: 'Dòng đầu của trang tính thứ nhất được dùng làm tiêu đề.',
     guideRequiredColumns: 'Cột bắt buộc: mã tiêu chuẩn, mã hạng mục, tên hạng mục',
     guideTckt: 'Cũng có thể tải lên tệp Bảng tiêu chuẩn kiểm tra (TCKT) hiện có.',
@@ -155,6 +155,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       reason: 'Lý do',
     },
     keyUnknown: 'Không có mã tiêu chuẩn',
+    confirmFailed: (key: string, reason: string): string =>
+      `${key} — Đã tải lên nhưng chưa xác nhận được: ${reason}`,
   },
   filters: {
     versionStatus: 'Chọn trạng thái',
