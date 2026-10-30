@@ -290,7 +290,14 @@ export const CurrentResults = ({
            */}
           <div className="lot-status-summary-grid" role="group" aria-label={t.current.summary.pane}>
             {summaryCells.map((cell) => (
-              <div key={cell.key} className="lot-status-stat" role="group" aria-label={cell.label}>
+              <div
+                key={cell.key}
+                className="lot-status-stat"
+                role="group"
+                aria-label={cell.label}
+                /* 숫자 색 — 정상 초록 · 검사 대기 노랑 · 불량 빨강(사용자 2026-10-30). */
+                data-tone={lotStatusTone(cell.key)}
+              >
                 <span className="lot-status-stat-label">{cell.label}</span>
                 <span className="lot-status-stat-value">
                   {cell.value === null ? (

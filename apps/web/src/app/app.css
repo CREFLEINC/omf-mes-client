@@ -4264,6 +4264,24 @@ h2:has(> .inspection-standard-dialog-title) {
   font-variant-numeric: tabular-nums;
 }
 
+/* 상태별 숫자 색 — 정상 초록 · 검사 대기 노랑 · 불량 빨강(사용자 2026-10-30). 폐기는 그대로. */
+.lot-status-stat[data-tone='success'] .lot-status-stat-value {
+  color: var(--semantic-success-text);
+}
+
+.lot-status-stat[data-tone='warning'] .lot-status-stat-value {
+  color: var(--semantic-warning);
+}
+
+.lot-status-stat[data-tone='error'] .lot-status-stat-value {
+  color: var(--semantic-error-text);
+}
+
+/* LOT 상세 탭 — 탭과 표 사이에 탭 묶음 간격만 남긴다(구역 기본 위 여백을 뺀다 · 사용자 2026-10-30). */
+.lot-status-detail-dialog [role='tabpanel'] > section {
+  margin-top: 0;
+}
+
 .lot-status-stat-unit {
   color: var(--on-surface-variant);
   font: var(--type-body-md);
