@@ -241,6 +241,7 @@ const LotMode = ({
           onSortChange={onSortChange}
           onPageChange={onPageChange}
           onSelectLot={onSelectLot}
+          selectedLotId={selectedLotId}
         />
         <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
         {layout.orientation === 'column' && (

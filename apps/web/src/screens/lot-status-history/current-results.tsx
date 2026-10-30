@@ -18,6 +18,9 @@ import { useUomCodeOf, withUom } from './uoms';
 import { useLotStatusList, useLotStatusSummary } from './queries';
 import { useItemNameSources } from './reference-options';
 import { lotStatusRowKey, type LotStatusRow } from './types';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.lotStatusHistory;
@@ -51,6 +54,8 @@ interface CurrentResultsProps {
   onSortChange: (sort: LotStatusSort) => void;
   onPageChange: (page: number) => void;
   onSelectLot: (lotId: number) => void;
+  /** 지금 상세에 연 LOT — 그 줄을 파란 바탕으로 표시한다. */
+  selectedLotId: number | null;
 }
 
 export const CurrentResults = ({
@@ -60,6 +65,7 @@ export const CurrentResults = ({
   onSortChange,
   onPageChange,
   onSelectLot,
+  selectedLotId,
 }: CurrentResultsProps) => {
   /*
    * 들어오자마자 목록을 띄운다(사용자 2026-10-30) — 아직 조회 단추를 누르지 않았으면(유형이 빈 값) 「전체」 유형으로
@@ -82,18 +88,17 @@ export const CurrentResults = ({
     return source.isError ? t.current.itemLabel.failed : t.current.itemLabel.unknown;
   };
   /*
-   * ⭐ 열 폭은 값의 성격대로 나눈다(사용자 지시 2026-09-19). 표는 고정 배치(app.css
-   * .lot-status-list-table)라 비율이 그대로 지켜지고, 넓은 모니터에서도 한 열이 남는 폭을
-   * 독차지하지 않는다. 긴 값은 칸 안에서 말줄임하고 전체 값은 title 로 보인다.
-   *   LOT 22% · 품목 27%(긴 이름) — 넓게 / 상태 9% · 수량 9% — 좁게 / 최근 상태 변경 15% · 사유 18% — 중간
-   * 정렬: ⭐ 모든 열 가운데(사용자 지시 2026-09-19).
+   * 열 짜임은 검사 조회·판정 대기 목록을 따른다(사용자 2026-10-30) — 찾는 값(LOT · 품목)이 앞에서 왼쪽 정렬로 넓게,
+   * 상태 · 수량 · 사유는 가운데로 좁게, 일시는 맨 끝이다. 폭은 px 로 두고 사용자가 끌어 바꾼 폭 · 순서는 브라우저에
+   * 남는다(useColumnWidths · useColumnOrder). 긴 값은 칸 안에서 말줄임하고 전체 값은 title 로 보인다.
+   *   LOT 260 · 품목 320 · 현재 상태 88 · 보유 수량 120 · 사유 160 · 최근 상태 변경 160
    */
   const columns: Column<LotStatusRow>[] = [
     {
       key: 'lotNo',
       header: t.current.columns.lot,
-      align: 'center',
-      width: '22%',
+      align: 'start',
+      width: '260px',
       sortable: true,
       render: (row) => (
         <Button
@@ -102,6 +107,7 @@ export const CurrentResults = ({
           size="sm"
           title={row.lotNo}
           aria-label={t.current.openDetail(row.lotNo)}
+          aria-current={row.lotId === selectedLotId ? 'true' : undefined}
           onClick={() => onSelectLot(row.lotId)}
         >
           {/* 말줄임은 안쪽 글자에 건다 — 단추가 가운데 정렬 flex 라 단추에 걸면 앞부분부터 잘린다. */}
@@ -112,8 +118,8 @@ export const CurrentResults = ({
     {
       key: 'item',
       header: t.current.columns.item,
-      align: 'center',
-      width: '27%',
+      align: 'start',
+      width: '320px',
       sortable: true,
       render: (row) => <OneLine text={itemLabel(row.itemId)} />,
     },
@@ -121,7 +127,7 @@ export const CurrentResults = ({
       key: 'lotStatusCode',
       header: t.current.columns.status,
       align: 'center',
-      width: '9%',
+      width: '88px',
       render: (row) => (
         <Chip variant="status" status={lotStatusTone(row.lotStatusCode)} size="sm">
           {statusLabel(statusOptions, row.lotStatusCode)}
@@ -132,7 +138,7 @@ export const CurrentResults = ({
       key: 'onHandQty',
       header: t.current.columns.onHand,
       align: 'center',
-      width: '9%',
+      width: '120px',
       render: (row) => (
         <OneLine
           text={
@@ -142,18 +148,10 @@ export const CurrentResults = ({
       ),
     },
     {
-      key: 'latestTransitionAt',
-      header: t.current.columns.latestTransition,
-      align: 'center',
-      width: '15%',
-      sortable: true,
-      render: (row) => <OneLine text={formatDateTime(row.latestTransitionAt)} />,
-    },
-    {
       key: 'latestReasonCode',
       header: t.current.columns.reason,
       align: 'center',
-      width: '18%',
+      width: '160px',
       render: (row) => (
         <OneLine
           text={
@@ -164,7 +162,21 @@ export const CurrentResults = ({
         />
       ),
     },
+    {
+      key: 'latestTransitionAt',
+      header: t.current.columns.latestTransition,
+      align: 'center',
+      width: '160px',
+      sortable: true,
+      render: (row) => <OneLine text={formatDateTime(row.latestTransitionAt)} />,
+    },
   ];
+  const ordered = useColumnOrder('omf-mes:lot-status:columns:current:order', columns);
+  /* 좌우 배치에서는 열을 줄이지 않고 표 안에서 가로로 구른다 — 검사 조회·판정 대기 목록과 같다. */
+  const resizable = useColumnWidths('omf-mes:lot-status:columns:current', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   const retry = (query: typeof list | typeof summary, label: string) => (
     <Button
@@ -282,14 +294,28 @@ export const CurrentResults = ({
       )}
       {list.data !== undefined && (
         <>
+          {/*
+           * 줄 아무 곳이나 눌러도 그 LOT 상세를 연다 — 검사 조회·판정 대기 목록처럼 눌린 줄의 LOT 번호 단추로 넘긴다.
+           * 고른 줄은 파란 바탕이다(`.inspection-queue-table`).
+           */}
           <div
-            className="wide-table lot-status-table lot-status-list-table"
+            ref={fit.ref}
+            className="wide-table lot-status-table lot-status-list-table inspection-queue-table"
+            style={resizable.style}
             aria-busy={list.isFetching}
+            onClick={(event) => {
+              const target = event.target as Element;
+              if (target.closest('button, a, input, select, textarea') !== null) return;
+              target
+                .closest('tbody tr')
+                ?.querySelector<HTMLButtonElement>('.lot-status-lot-no')
+                ?.click();
+            }}
           >
             <Table
               density="compact"
               caption={t.current.pane}
-              columns={columns}
+              columns={fit.columns}
               rows={rows}
               getRowId={lotStatusRowKey}
               sort={toTableSort(filters.sort)}

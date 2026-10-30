@@ -833,6 +833,30 @@ describe('Lot Status 화면 shell', () => {
     expect(listUrl?.searchParams.get('page')).toBe(page);
   });
 
+  /* 열 순서 · 줄 누르기 · 고른 줄 표시는 검사 조회·판정 대기 목록을 따른다(사용자 2026-10-30). */
+  it('LOT · 품목 · 상태 · 수량 · 사유 · 일시 순서이고 줄 아무 곳이나 눌러 고른다', async () => {
+    const rows = [{ ...statusRow, lotId: 401, lotNo: 'SAMPLE-LOT-Z' }];
+    renderScreen('/quality/lot-status?lotType=SAMPLE_MATERIAL', 'ready', [
+      ...qualityRoutes(200, 200, rows, 1),
+      ...detailRoutes(),
+    ]);
+    const user = userEvent.setup();
+    const table = await screen.findByRole('table', { name: '현재 LOT 상태' });
+
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((header) => (header.textContent ?? '').replace('drag_indicator', '')),
+    ).toEqual(['LOT', '품목', '현재 상태', '보유 수량', '사유', '최근 상태 변경']);
+    const row = await within(table).findByRole('row', { name: /SAMPLE-LOT-Z/ });
+    await user.click(within(row).getAllByRole('cell')[2]!);
+    await waitFor(() => expect(locationSearch().get('lot')).toBe('401'));
+    expect(within(row).getByRole('button', { name: 'SAMPLE-LOT-Z 상세 보기' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
   it('세 열만 서버 정렬하고 정렬 변경 시 첫 쪽으로 돌아간다', async () => {
     const rows = [
       { ...statusRow, lotId: 401, lotNo: 'SAMPLE-LOT-Z' },
@@ -845,16 +869,19 @@ describe('Lot Status 화면 shell', () => {
     );
     const user = userEvent.setup();
     const table = await screen.findByRole('table', { name: '현재 LOT 상태' });
+    /* 머리칸에는 열 옮기기 손잡이 아이콘(글자 이름 drag_indicator)이 함께 선다 — 검사 조회·판정 목록과 같다. */
+    const headerText = (element: Element): string =>
+      (element.textContent ?? '').replace('drag_indicator', '');
     const itemHeader = within(table)
       .getAllByRole('columnheader')
-      .find((header) => header.textContent === '품목');
+      .find((header) => headerText(header) === '품목');
 
     expect(itemHeader).toHaveAttribute('aria-sort', 'descending');
     expect(
       within(table)
         .getAllByRole('button')
         .filter((button) => button.closest('th') !== null)
-        .map((button) => button.textContent),
+        .map(headerText),
     ).toEqual(['LOT', '품목', '최근 상태 변경']);
     await user.click(within(table).getByRole('button', { name: 'LOT' }));
     await waitFor(() => expect(locationSearch().get('sort')).toBe('lotNoAsc'));
@@ -871,7 +898,7 @@ describe('Lot Status 화면 shell', () => {
     await waitFor(() => expect(locationSearch().get('sort')).toBeNull());
     const latestHeader = screen
       .getAllByRole('columnheader')
-      .find((header) => header.textContent === '최근 상태 변경');
+      .find((header) => headerText(header) === '최근 상태 변경');
     expect(latestHeader).toHaveAttribute('aria-sort', 'descending');
     expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('sort')).toBe(
       'latestTransitionDesc',
