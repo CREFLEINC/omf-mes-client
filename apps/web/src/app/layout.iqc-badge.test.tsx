@@ -99,7 +99,7 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
 
     await user.click(groupToggle(QUALITY_GROUP));
     const row = within(sidebar()).getByRole('link', { name: new RegExp(`^${INSPECTION_ROW}`) });
-    expect(await within(row).findByLabelText(t.iqcPending(4))).toHaveTextContent('4');
+    expect(await within(row).findByLabelText(t.inspectionPending(4))).toHaveTextContent('4');
   });
 
   it('US4-1 IQC 탭에도 같은 수가 붙는다', async () => {
@@ -110,7 +110,7 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
     expect(await within(iqcTab).findByLabelText(t.iqcPending(4))).toHaveTextContent('4');
   });
 
-  it('PQC · OQC 탭에도 그 검사의 대기 수가 붙고, 사이드바 줄은 IQC 수 그대로다(#197)', async () => {
+  it('PQC · OQC 탭에도 그 검사의 대기 수가 붙고, 사이드바 줄은 세 탭의 합이다(#197 · 2026-10-30)', async () => {
     const { counted } = setup({
       route: '/logistics/iqc-inspection',
       permissions: ['W-01-01', 'W-03-11', 'W-04-03'],
@@ -123,7 +123,7 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
     /* 0건이면 배지가 없다. */
     const oqcTab = within(tabs).getByRole('link', { name: /^OQC/ });
     expect(within(oqcTab).queryByLabelText(t.oqcPending(0))).toBeNull();
-    expect(within(sidebar()).getByLabelText(t.iqcPending(4))).toBeInTheDocument();
+    expect(await within(sidebar()).findByLabelText(t.inspectionPending(16))).toHaveTextContent('9+');
     /* 유형마다 목록과 같은 조건(대기만 · size 1)으로 묻는다. */
     await waitFor(() =>
       expect(new Set(counted.map((url) => url.searchParams.get('inspectionTypeCode')))).toEqual(
@@ -177,7 +177,7 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
 
     await user.click(groupToggle(QUALITY_GROUP));
     const row = within(sidebar()).getByRole('link', { name: new RegExp(`^${INSPECTION_ROW}`) });
-    expect(await within(row).findByLabelText(t.iqcPending(23))).toHaveTextContent('9+');
+    expect(await within(row).findByLabelText(t.inspectionPending(23))).toHaveTextContent('9+');
   });
 
   it('0건이면 수도 점도 없다', async () => {
@@ -189,7 +189,7 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
       within(groupToggle(QUALITY_GROUP)).queryByRole('img', { name: t.group.hasWork }),
     ).toBeNull();
     await user.click(groupToggle(QUALITY_GROUP));
-    expect(within(sidebar()).queryByLabelText(/^IQC 대기/)).toBeNull();
+    expect(within(sidebar()).queryByLabelText(/^검사 대기/)).toBeNull();
   });
 
   it('FR-018 조회가 실패하면 수·점을 그리지 않고 메뉴는 그대로다', async () => {
