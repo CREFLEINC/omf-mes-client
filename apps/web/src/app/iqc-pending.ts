@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 
 import { useApiClient } from '../patterns/api-context';
+import { INSPECTION_HUB_COUNTS_KEY } from '../patterns/inspection-hub-counts';
 import { runRequest } from '../patterns/request';
 
 /** IQC 화면(W-01-01). 이 화면을 볼 수 있을 때만 수를 묻고 보인다(US4-3). */
@@ -14,15 +15,14 @@ export const OQC_PATH = '/shipment/oqc-inspection';
 /** 다시 세는 간격 — 백그라운드 탭에서는 멈춘다(react-query 기본, 대시보드 선례). */
 export const IQC_PENDING_INTERVAL_MS = 60_000;
 
-export const iqcPendingKeys = { count: ['iqc-pending-count'] as const };
-
 type InspectionTypeCode = 'IQC' | 'PQC' | 'OQC';
 
-/* IQC 는 종전 키를 그대로 쓴다 — 다른 유형은 유형을 붙인다. */
+/*
+ * 건수 칩과 같은 앞머리에 둔다 — 판정 저장·확정·생략 실행이 칩을 다시 셀 때 배지도 함께 다시 센다.
+ * 따로 두면 화면을 옮기거나 60초가 지나야 배지가 바뀐다(omf-all-around#216).
+ */
 const pendingKeyOf = (inspectionTypeCode: InspectionTypeCode) =>
-  inspectionTypeCode === 'IQC'
-    ? iqcPendingKeys.count
-    : (['inspection-pending-count', inspectionTypeCode] as const);
+  [...INSPECTION_HUB_COUNTS_KEY, 'pending', inspectionTypeCode] as const;
 
 /**
  * 대기·진행 중 검사 의뢰 수(피처 002, US4-1) — 그 검사 화면 목록과 같은 조건의 `page.total`. 서버 변경 없음.

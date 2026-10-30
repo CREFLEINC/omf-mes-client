@@ -723,7 +723,8 @@ describe('ApprovalRouteScreen — 목록', () => {
 
     await user.click(screen.getByRole('combobox', { name: t.fields.approvalTypeCode }));
 
-    expect(screen.getAllByRole('option')).toHaveLength(10); // 전체 + 고정 enum 9개
+    expect(screen.getAllByRole('option')).toHaveLength(11); // 전체 + 고정 enum 9개 + PQC 생략(#212)
+    expect(screen.getByRole('option', { name: 'PQC_SKIP' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'IQC_SKIP' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'PRODUCTION_RESULT_CORRECT' })).toBeInTheDocument();
     expect(screen.queryByText(messages.pendingCode.note)).toBeNull();

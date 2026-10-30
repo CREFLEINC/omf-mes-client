@@ -582,6 +582,7 @@ export const OqcInspectionScreen = () => {
             <SkipPane
               shipmentRequestId={detail.data.targetId}
               requestStatusCode={detail.data.statusCode}
+              skipBasisCode={detail.data.skipBasisCode}
             />
           )}
 
@@ -863,7 +864,7 @@ export const OqcInspectionScreen = () => {
              */
             <PageNav
               meta={queue.data.page}
-              controlSize="md"
+              buttonSize="md"
               disabled={save.isSaving}
               onChangePage={goToPage}
               sizes={LIST_PAGE_SIZES}

@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, InspectionPlanForward } from '@omf-mes/api-client';
 
 /**
  * W-06-02 화면 슬라이스의 계약.
@@ -8,7 +8,8 @@ import type { components } from '@omf-mes/api-client';
  * 리소스 이름이 박힌 타입을 공유하면 한 화면의 계약 변화가 다른 화면을 끌고 간다.
  */
 
-export type InspectionPlan = components['schemas']['InspectionPlan'];
+/** 서버 선행 P-152(omf-all-around#212) — `defaultSkip` 을 싣는다. */
+export type InspectionPlan = InspectionPlanForward;
 export type InspectionPlanVersion = components['schemas']['InspectionPlanVersion'];
 export type InspectionItemSpec = components['schemas']['InspectionItemSpec'];
 export type PageMeta = components['schemas']['PageMeta'];
@@ -42,10 +43,10 @@ export interface PlanFormValues {
   /** 품목을 고른 뒤에만 고를 수 있다 — 계약의 라우팅 조회가 품목을 필수로 둔다. */
   routingId: string;
   /**
-   * PQC 생략 허용(omf-all-around#119) — 켜면 이 기준으로 배포한 W/O 의 PQC 가 «생략»으로 서고 실적이 곧 정상이다.
-   * PQC 기준에만 뜻이 있다 — 다른 유형으로 저장하면 끈 채로 보낸다.
+   * 기본 생략(omf-all-around#212 · 옛 「PQC 생략 허용」 #119) — 검사 유형 공통. 켜면 이 기준이 걸리는 입하 LOT(IQC)·
+   * 작업지시(PQC)·출하작업지시(OQC)의 검사가 의뢰 없이 「생략(기본 설정)」으로 넘어간다.
    */
-  pqcSkipAllowed: boolean;
+  defaultSkip: boolean;
 }
 
 /** 버전 헤더 폼 값. 마찬가지로 전부 문자열이며 변환은 `version-mappers.ts`가 맡는다. */

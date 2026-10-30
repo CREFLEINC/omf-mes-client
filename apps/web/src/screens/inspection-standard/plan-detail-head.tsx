@@ -61,10 +61,10 @@ export const PlanDetailHead = ({ plan, itemLabel, processLabel, onEdit }: PlanDe
             <dd>{fact.value}</dd>
           </div>
         ))}
-        {/* PQC 생략 허용(omf-all-around#119) — 켜진 PQC 기준에만 붙인다. 이 기준으로 배포한 W/O 의 PQC 가 생략된다. */}
-        {plan.inspectionTypeCode === 'PQC' && plan.pqcSkipAllowed === true && (
+        {/* 기본 생략(omf-all-around#212) — 켜진 기준에만 붙인다. 이 기준이 걸리는 건은 검사 의뢰 없이 넘어간다. */}
+        {(plan.defaultSkip ?? plan.pqcSkipAllowed) === true && (
           <div>
-            <dt className="field-label">{t.fields.pqcSkipAllowed}</dt>
+            <dt className="field-label">{t.fields.defaultSkip}</dt>
             <dd>
               <Chip variant="status" size="sm" status="info">
                 {t.detail.pqcSkipOn}

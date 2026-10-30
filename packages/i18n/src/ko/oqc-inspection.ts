@@ -96,6 +96,9 @@ export const oqcInspection = {
     inProgress: '진행',
     completed: '완료',
     skipped: '생략',
+    /** 생략 근거(omf-all-around#212) — 검사 기준의 기본 생략 · 건별 결재 승인. */
+    skippedDefault: '생략(기본 설정)',
+    skippedApproval: '생략(결재 승인)',
     cancelled: '취소',
   },
 
@@ -395,6 +398,8 @@ export const oqcInspection = {
     rejected: '직전 생략 요청이 반려됐습니다. 다시 요청할 수 있습니다.',
     executed: 'OQC 를 생략했습니다. 출하검사가 통과로 바뀌었습니다.',
     skipped: '이 의뢰는 OQC 생략으로 닫혔습니다.',
+    /** 검사 기준의 기본 생략으로 만들어진 의뢰(omf-all-around#212) — 결재 없이 처음부터 생략이다. */
+    skippedDefault: '검사 기준이 ‘기본 생략’으로 설정되어 OQC 검사 없이 출하 처리되었습니다.',
     loading: '생략 결재 상태를 불러오는 중입니다.',
     loadFailed: '생략 결재 상태를 불러오지 못했습니다.',
   },
@@ -451,7 +456,6 @@ export const oqcInspection = {
     recordHeading: '시리얼별 출하검사 이력',
     /** 참고 정보 탭 이름(#136). */
     recordTab: '시리얼별 검사 이력',
-    recordHelp: '시리얼별 최초 검사와 재검사 결과를 확인할 수 있습니다.',
     recordEmpty: '출하검사 이력이 없습니다.',
     recordEmptyDescription: '검사 결과가 기록되면 이곳에 표시됩니다.',
     recordCount: (count: number): string => `${String(count)}건`,

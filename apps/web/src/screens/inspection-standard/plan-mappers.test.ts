@@ -18,7 +18,7 @@ const filled: PlanFormValues = {
   itemId: '5001',
   processId: '9001',
   routingId: '7003',
-  pqcSkipAllowed: false,
+  defaultSkip: false,
 };
 
 describe('planToFormValues', () => {
@@ -30,7 +30,7 @@ describe('planToFormValues', () => {
       itemId: '5001',
       processId: '9001',
       routingId: '7003',
-      pqcSkipAllowed: true,
+      defaultSkip: true,
     });
   });
 
@@ -53,7 +53,7 @@ describe('emptyPlanFormValues', () => {
       itemId: '',
       processId: '',
       routingId: '',
-      pqcSkipAllowed: false,
+      defaultSkip: false,
     });
   });
 });
@@ -67,18 +67,24 @@ describe('toPlanUpdate', () => {
       itemId: 5001,
       processId: 9001,
       routingId: 7003,
-      pqcSkipAllowed: false,
+      defaultSkip: false,
     });
   });
 
-  /* #119 — 생략 허용은 PQC 기준에만 뜻이 있다. 다른 유형으로 바꿔 저장하면 끈 채로 보낸다. */
-  it('PQC 생략 허용은 PQC 기준일 때만 싣고, 다른 유형이면 끈다', () => {
+  /* #212 — 기본 생략은 검사 유형 공통이다. 옛 칸(`pqcSkipAllowed`)은 보내지 않는다 — 서버가 같은 값을 채운다. */
+  it('기본 생략은 어느 검사 유형이든 그대로 싣는다', () => {
     expect(
-      toPlanUpdate({ ...filled, inspectionTypeCode: 'PQC', pqcSkipAllowed: true }).pqcSkipAllowed,
+      toPlanUpdate({ ...filled, inspectionTypeCode: 'IQC', defaultSkip: true }).defaultSkip,
     ).toBe(true);
     expect(
-      toPlanUpdate({ ...filled, inspectionTypeCode: 'IQC', pqcSkipAllowed: true }).pqcSkipAllowed,
-    ).toBe(false);
+      toPlanUpdate({ ...filled, inspectionTypeCode: 'OQC', defaultSkip: true }).defaultSkip,
+    ).toBe(true);
+    expect('pqcSkipAllowed' in toPlanUpdate(filled)).toBe(false);
+  });
+
+  it('옛 서버가 defaultSkip 을 안 실으면 pqcSkipAllowed 로 읽는다', () => {
+    const { defaultSkip: _omit, ...legacy } = inspectionPlanFixtures[1]!;
+    expect(planToFormValues(legacy).defaultSkip).toBe(true);
   });
 
   it('비운 선택 값은 널로 보낸다', () => {

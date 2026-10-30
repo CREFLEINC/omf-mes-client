@@ -1,15 +1,10 @@
-import { Button, Icon, Progress, Tabs, TextArea, TextField, useToast } from '@crefle/web-ui';
+import { Button, Icon, Tabs, TextArea, useToast } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import {
-  useEffect,
-  useId,
-  useState,
-  type FormEvent,
-  type ReactElement,
-  type ReactNode,
-} from 'react';
+import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 
+import { InspectionQtyLine, type InspectionQtyStatus } from '../../patterns/inspection-qty-line';
+import { InspectionSteps } from '../../patterns/inspection-steps';
 import { Select } from '../../patterns/select';
 import { CONFIRMED_STATUS } from './inspection-status';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -21,7 +16,6 @@ import { JudgmentChange } from './judgment-change';
 import {
   canConfirm,
   formatMicro,
-  fromServerQty,
   hasQuantityError,
   toTotals,
   validateQuantities,
@@ -58,7 +52,7 @@ import { withUom } from './uom-lookup';
  */
 
 const t = messages.oqcInspection.result;
-const unknownValue = messages.oqcInspection.queue.emptyValue;
+const tHub = messages.common.inspectionHub;
 
 export interface ResultFormPaneProps {
   /** 지금 다루는 회차. 아직 아무도 판정하지 않았거나 재검사 중이면 `null` */
@@ -249,57 +243,28 @@ export const ResultFormPane = ({
     fieldErrors[FIELD_OF[key]];
 
   /*
-   * 입력 현황(omf-all-around#136 · IQC #133 과 같은 모양) — 「입력 완료 15 / 20 EA」 · 「미입력 5 EA」 · 막대.
-   * 맞거나 모자랄 때는 오른쪽 상태가 이미 말하므로 문장을 두지 않고, 넘쳤을 때만 한 줄을 낸다.
-   *
-   * ⛔ **셀 수 없으면 아무 말도 하지 않는다.** 한 칸이라도 수량이 아니면 합계는 알 수 없는
-   * 것이고, 그때 「일치」든 「모자람」이든 내면 **거짓을 말하는 것**이다.
+   * 수량 줄(사용자 지시 2026-10-29 · #197) — IQC 와 같은 모양. 「전체 20 EA 중 5 EA 미입력 · 초과」, 셀 수 없으면 「수량 확인
+   * 필요」. 계산 · 검증은 그대로다.
    */
-  const isOver = totals.kind === 'counted' && totals.remaining < 0n;
-  const overText = isOver ? withUom(formatMicro(-totals.remaining), uomCode) : '';
-  const totalsNote = isOver ? t.over(overText) : null;
-  const inspectedMicro = fromServerQty(inspectedQty);
-  const progress =
-    totals.kind === 'uncountable'
-      ? { value: 0, tone: 'idle' as const }
-      : totals.matches
-        ? { value: 100, tone: 'success' as const }
-        : totals.remaining < 0n
-          ? { value: 100, tone: 'error' as const }
-          : {
-              value: inspectedMicro > 0n ? Number((totals.sum * 10000n) / inspectedMicro) / 100 : 0,
-              tone: 'warning' as const,
-            };
-  const sumText = totals.kind === 'counted' ? formatMicro(totals.sum) : unknownValue;
   const inspectedText = withUom(String(inspectedQty), uomCode);
-  const statusText: ReactNode = isOver ? (
-    t.overBy(overText)
-  ) : (
-    <>
-      <span className="oqc-inspection-progress-label">{t.remaining} </span>
-      {totals.kind === 'counted' ? withUom(formatMicro(totals.remaining), uomCode) : unknownValue}
-    </>
-  );
-
-  const field = (key: keyof QuantityDraft, label: string, invalid: boolean): ReactElement => (
-    /* 단위 코드는 칸 바로 옆 글자로 — 입력값 자체에는 넣지 않는다. 모르면 붙이지 않는다(#136). */
-    <div className="oqc-inspection-qty-field">
-      <TextField
-        label={label}
-        inputMode="decimal"
-        value={draft[key]}
-        disabled={isLocked || isSaving || isInputLocked}
-        /*
-         * ⭐ **묶음에 한 번 낸 사유를 세 칸이 «가리킨다».** 디자인 시스템의 `disabledReason` 은
-         * 사유를 보이면서 `aria-describedby` 로도 이어 주는데, 같은 문장을 세 번 내지 않으려고
-         * 접으면서 그 연결이 함께 사라졌다 — 보이는 문장과 접근 이름 중 하나를 고를 필요가 없다.
-         */
-        aria-describedby={isLocked ? lockNoteId : undefined}
-        /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
-        error={serverErrorOf(key) ?? (showErrors && invalid ? t.quantityInvalid : undefined)}
-        onChange={(event) => onChange({ ...draft, [key]: event.target.value })}
-      />
-      {uomCode !== null && <span className="oqc-inspection-qty-unit">{uomCode}</span>}
+  const qtyStatus: InspectionQtyStatus =
+    totals.kind !== 'counted'
+      ? { kind: 'uncountable' }
+      : {
+          kind: totals.remaining < 0n ? 'over' : 'short',
+          total: inspectedText,
+          amount: withUom(
+            formatMicro(totals.remaining < 0n ? -totals.remaining : totals.remaining),
+            uomCode,
+          ),
+          isZero: totals.remaining === 0n,
+        };
+  const qtyText = (raw: string): string => withUom(raw.trim() === '' ? '0' : raw, uomCode);
+  const confirmButton = (confirm: () => void): ReactNode => (
+    <div className="inspection-step-footer">
+      <Button type="button" size="md" onClick={confirm}>
+        {tHub.stepConfirm}
+      </Button>
     </div>
   );
 
@@ -309,24 +274,38 @@ export const ResultFormPane = ({
    */
   const banner = <SaveErrorBanner error={saveError} onReload={onReload} />;
 
-  /* ── 검사 수량 — 검사수량을 합격·불합격·보류로 나눈 결과와 그 입력 현황 ── */
-  const quantitySection = (
-    <section className="oqc-inspection-section">
-      <div className="oqc-inspection-section-head">
-        <h3>{t.sectionTitle}</h3>
-        {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 저장 단추 옆이 말한다). */}
-        {isReinspecting ? (
-          <p className="field-note">{t.reinspectRound}</p>
-        ) : round !== null ? (
-          <p className="field-note">{t.round(round.inspectionRound)}</p>
-        ) : null}
-        {/* 기준값(검사수량)은 제목 줄 오른쪽 끝에 — 세 칸은 이 값을 나눈 결과다. */}
-        <dl className="oqc-inspection-qty-base">
-          <dt className="oqc-inspection-progress-label">{t.fields.inspectedQty}</dt>
-          <dd>{inspectedText}</dd>
-        </dl>
-      </div>
-
+  /* ── ① 검사 수량 — 검사수량을 합격 · 불합격 · 보류로 나눈 결과(잠긴 회차는 [확정] 없이 보이기만) ── */
+  const quantityLine = (confirm: (() => void) | null): ReactNode => (
+    <InspectionQtyLine
+      uomCode={uomCode}
+      disabled={isLocked || isSaving || isInputLocked}
+      status={qtyStatus}
+      describedBy={isLocked ? lockNoteId : undefined}
+      /* 수량이 아닌 값이 남으면 넘어가지 않는다 — 합계가 덜 맞아도 넘어간다(IQC 와 같다). */
+      confirmDisabled={totals.kind !== 'counted'}
+      onConfirm={confirm}
+      fields={(
+        [
+          ['accepted', t.fields.accepted],
+          ['rejected', t.fields.rejected],
+          ['held', t.fields.held],
+        ] as const
+      ).map(([key, label]) => ({
+        key,
+        kind: key,
+        label,
+        value: draft[key],
+        onChange: (raw: string) => onChange({ ...draft, [key]: raw }),
+        /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
+        error: serverErrorOf(key) ?? (showErrors && errors[key] ? t.quantityInvalid : undefined),
+      }))}
+    >
+      {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 저장 단추 옆이 말한다). */}
+      {isReinspecting ? (
+        <p className="field-note">{t.reinspectRound}</p>
+      ) : round !== null ? (
+        <p className="field-note">{t.round(round.inspectionRound)}</p>
+      ) : null}
       {/*
        * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 대응 코드 그룹이
        * 어디에도 없다. 감추지 않고 왜 없는지 밝힌다(공유계약 G-2).
@@ -337,48 +316,89 @@ export const ResultFormPane = ({
           <p className="field-note">{t.reinspectReasonPending}</p>
         </>
       )}
-
-      <div className="oqc-inspection-qty" data-over={isOver ? '' : undefined}>
-        {field('accepted', t.fields.accepted, errors.accepted)}
-        {field('rejected', t.fields.rejected, errors.rejected)}
-        {field('held', t.fields.held, errors.held)}
-      </div>
-
-      {/*
-       * 잠긴 이유를 **묶음에 한 번** 낸다.
-       *
-       * ⛔ 칸마다 `disabledReason` 을 달면 같은 문장이 세 번 연달아 선다 — 세 칸이 «각각 다른»
-       * 이유로 잠긴 것처럼 읽힌다. 잠긴 것은 칸 하나가 아니라 이 회차라 이유도 묶음의 것이다.
-       */}
+      {/* 잠긴 이유를 **묶음에 한 번** 낸다 — 잠긴 것은 칸 하나가 아니라 이 회차다. */}
       {isLocked && (
         <p className="field-note" id={lockNoteId}>
           {isConfirmed ? t.confirmed : t.draftElsewhere}
         </p>
       )}
+    </InspectionQtyLine>
+  );
 
-      {/* 입력 현황 — 「입력 완료 / 검사수량」 · 미입력 · 막대. 계산은 그대로다. 셀 수 없을 때 0으로 읽은 합을 보이지 않는다. */}
+  /* ── ② 판정 — 종합 판정을 고르고, 자동 판정과 다르면 사유를 받는다 ── */
+  const judgmentFields = (
+    <>
+      {/*
+       * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고, 목록이
+       * 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2).
+       * 고른 판정을 테두리 색으로 바로 알아보게 한다(합격 초록 · 불합격 빨강 · 보류 주황 — app.css `[data-judgment]`).
+       */}
       <div
-        className="oqc-inspection-progress"
-        data-state={
-          isOver ? 'over' : totals.kind === 'counted' && totals.matches ? 'done' : undefined
-        }
+        className="field-cell oqc-inspection-judgment-field"
+        data-judgment={judgment === '' ? undefined : judgment}
       >
-        <div className="oqc-inspection-progress-row">
-          <span className="oqc-inspection-progress-sum">
-            <span className="oqc-inspection-progress-label">{t.sum} </span>
-            {totals.kind === 'counted' ? `${sumText} / ${inspectedText}` : sumText}
-          </span>
-          <span className="oqc-inspection-progress-status">{statusText}</span>
-        </div>
-        <Progress
-          value={progress.value}
-          tone={progress.tone}
-          label={t.progressLabel}
-          valueText={`${sumText} / ${inspectedText}`}
+        <FieldLabel
+          htmlFor={judgmentId}
+          label={t.judgment}
+          required
+          /* 합격판정개수 기준과 자동 판정(omf-all-around#126) — 기준에 합격판정개수가 있고 열린 회차일 때만 라벨 옆 한 줄로. */
+          hint={
+            acceptanceNumber !== null && !isLocked
+              ? `${t.judgmentChange.basis(acceptanceNumber)}${
+                  expectedJudgmentLabel === null
+                    ? ''
+                    : ` · ${t.judgmentChange.expected(expectedJudgmentLabel)}` // ui-check-ignore: C-13 종전 표기(#126) — 단계로 옮기며 들여쓰기만 바뀌었다
+                }`
+              : undefined
+          }
         />
-        {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
+        <Select
+          id={judgmentId}
+          options={judgmentOptions}
+          value={judgment}
+          placeholder={t.judgmentPlaceholder}
+          disabled={isLocked || isSaving || judgmentOptions.length === 0}
+          onChange={onJudgmentChange}
+        />
+        {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
+        {/*
+         * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
+         * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
+         */}
+        {!isKnownCode(judgmentOptions, judgment) && (
+          <p className="field-note">{t.judgmentUnknown(judgment)}</p>
+        )}
       </div>
-    </section>
+
+      {/* 판정 변경 사유(omf-all-around#126) — 최종 판정 바로 아래, 자동 판정과 다르게 고를 때만. */}
+      {acceptanceNumber !== null && !isLocked && (
+        <JudgmentChange
+          needsReason={needsChangeReason}
+          reason={changeReason}
+          onReasonChange={onChangeReasonChange}
+          disabled={isSaving || isInputLocked}
+        />
+      )}
+
+      {/* 불합격 사유(선택 · #136) — 불합격을 골랐을 때만. 비워도 저장된다. */}
+      {!isLocked && judgment === 'REJECTED' && onRejectionReasonChange !== undefined && (
+        <TextArea
+          label={t.rejectionReason}
+          placeholder={t.rejectionReasonPlaceholder}
+          rows={2}
+          fullWidth
+          value={rejectionReason}
+          onChange={(event) => onRejectionReasonChange(event.target.value)}
+          disabled={isSaving}
+        />
+      )}
+
+      {/*
+       * ⛔ **되돌릴 수 없는 쓰기가 무엇을 하는지 누르기 «전»에 보인다.** 확인 창에도 같은 본문이
+       * 다시 서지만, 창을 열기 전에 이미 보고 판단할 수 있어야 한다.
+       */}
+      {!isLocked && <JudgmentGuide preview={preview} hasLot={hasLot} />}
+    </>
   );
 
   return (
@@ -390,103 +410,60 @@ export const ResultFormPane = ({
        */}
       <div className="oqc-inspection-work">
         {/*
-         * ── 검사 수량 입력 · 시리얼별 검사 결과 — 시리얼 판정을 쓰는 의뢰(출하작업지시 · 열린 회차)는 탭으로 전환한다(#136).
-         * 어느 탭이든 아래 최종 판정과 함께 저장된다 — 탭을 바꿔도 입력한 값은 남는다.
+         * 입력 단계(사용자 지시 2026-10-29 · #197) — ① 검사 수량 입력 → ② 판정. IQC 와 같은 짜임이다. 시리얼 판정을 쓰는
+         * 의뢰(출하작업지시 · 열린 회차)는 ① 안에서 [LOT | 시리얼] 탭으로 전환한다(#136) — 어느 탭이든 판정과 함께 저장된다.
+         * 잠긴 회차는 단계를 모두 펼쳐 보이기만 한다. 의뢰 · 회차가 바뀌면 단계를 새로 시작한다.
          */}
-        {!isLocked && serialSection !== undefined ? (
-          <section className="oqc-inspection-section oqc-inspection-entry-tabs">
-            <Tabs
-              key={inspectionRequestNo}
-              aria-label={t.sectionTitle}
-              items={[
-                { value: 'quantity', label: t.entryTabs.lot, content: quantitySection },
-                {
-                  value: 'serials',
-                  label: t.entryTabs.serial,
-                  content: serialSection,
-                },
-              ]}
-            />
-          </section>
-        ) : (
-          quantitySection
-        )}
-
-        {/* ── 판정 — 종합 판정을 고르고, 자동 판정과 다르면 사유를 받는다 ── */}
-        <section className="oqc-inspection-section">
-          <h3>{t.judgmentSectionTitle}</h3>
-
-          {/*
-           * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고, 목록이
-           * 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2).
-           * 고른 판정을 테두리 색으로 바로 알아보게 한다(합격 초록 · 불합격 빨강 · 보류 주황 — app.css `[data-judgment]`).
-           */}
-          <div
-            className="field-cell oqc-inspection-judgment-field"
-            data-judgment={judgment === '' ? undefined : judgment}
-          >
-            <FieldLabel
-              htmlFor={judgmentId}
-              label={t.judgment}
-              required
-              /* 합격판정개수 기준과 자동 판정(omf-all-around#126) — 기준에 합격판정개수가 있고 열린 회차일 때만 라벨 옆 한 줄로. */
-              hint={
-                acceptanceNumber !== null && !isLocked
-                  ? `${t.judgmentChange.basis(acceptanceNumber)}${
-                      expectedJudgmentLabel === null
-                        ? ''
-                        : ` · ${t.judgmentChange.expected(expectedJudgmentLabel)}`
-                    }`
-                  : undefined
-              }
-            />
-            <Select
-              id={judgmentId}
-              options={judgmentOptions}
-              value={judgment}
-              placeholder={t.judgmentPlaceholder}
-              disabled={isLocked || isSaving || judgmentOptions.length === 0}
-              onChange={onJudgmentChange}
-            />
-            {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
-            {/*
-             * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
-             * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
-             */}
-            {!isKnownCode(judgmentOptions, judgment) && (
-              <p className="field-note">{t.judgmentUnknown(judgment)}</p>
-            )}
-          </div>
-
-          {/* 판정 변경 사유(omf-all-around#126) — 최종 판정 바로 아래, 자동 판정과 다르게 고를 때만. */}
-          {acceptanceNumber !== null && !isLocked && (
-            <JudgmentChange
-              needsReason={needsChangeReason}
-              reason={changeReason}
-              onReasonChange={onChangeReasonChange}
-              disabled={isSaving || isInputLocked}
-            />
-          )}
-
-          {/* 불합격 사유(선택 · #136) — 불합격을 골랐을 때만. 비워도 저장된다. */}
-          {!isLocked && judgment === 'REJECTED' && onRejectionReasonChange !== undefined && (
-            <TextArea
-              label={t.rejectionReason}
-              placeholder={t.rejectionReasonPlaceholder}
-              rows={2}
-              fullWidth
-              value={rejectionReason}
-              onChange={(event) => onRejectionReasonChange(event.target.value)}
-              disabled={isSaving}
-            />
-          )}
-
-          {/*
-           * ⛔ **되돌릴 수 없는 쓰기가 무엇을 하는지 누르기 «전»에 보인다.** 확인 창에도 같은 본문이
-           * 다시 서지만, 창을 열기 전에 이미 보고 판단할 수 있어야 한다.
-           */}
-          {!isLocked && <JudgmentGuide preview={preview} hasLot={hasLot} />}
-        </section>
+        <InspectionSteps
+          key={`${inspectionRequestNo}:${String(round?.inspectionResultId ?? 'new')}:${String(isReinspecting)}`}
+          /* 잠긴 회차 · 입력으로 풀 수 없는 막힘 — 고칠 것이 없어 단계를 모두 펼쳐 보이기만 한다. */
+          showAll={isLocked || isInputLocked}
+          steps={[
+            {
+              title: t.sectionTitle,
+              done: canConfirm(totals),
+              attention: Object.values(FIELD_OF).some((name) => fieldErrors[name] !== undefined),
+              summary: tHub.qtySummary(
+                qtyText(draft.accepted),
+                qtyText(draft.rejected),
+                qtyText(draft.held),
+              ),
+              render: (confirm) =>
+                !isLocked && serialSection !== undefined ? (
+                  <div className="oqc-inspection-entry-tabs">
+                    <Tabs
+                      aria-label={t.sectionTitle}
+                      items={[
+                        {
+                          value: 'quantity',
+                          label: t.entryTabs.lot,
+                          content: quantityLine(confirm),
+                        },
+                        {
+                          value: 'serials',
+                          label: t.entryTabs.serial,
+                          content: (
+                            <>
+                              {serialSection}
+                              {confirmButton(confirm)}
+                            </>
+                          ),
+                        },
+                      ]}
+                    />
+                  </div>
+                ) : (
+                  quantityLine(isLocked ? null : confirm)
+                ),
+            },
+            {
+              title: t.judgmentSectionTitle,
+              done: judgment !== '',
+              summary: judgment === '' ? '' : labelOfCode(judgmentOptions, judgment),
+              render: () => judgmentFields,
+            },
+          ]}
+        />
       </div>
 
       {/* 창이 열려 있는 동안에는 배너를 창 안에서 낸다 — 밖에 내면 창에 가려 보이지 않는다. */}
@@ -498,6 +475,23 @@ export const ResultFormPane = ({
        */}
       <div className="oqc-inspection-action-area">
         <div className="oqc-inspection-action-row">
+          {/*
+           * 검사성적서 발행 — 저장 줄 왼쪽 끝(사용자 지시 2026-10-29 · #197). ⚠ **자리를 두되 비활성으로 시작한다.** 감추면 이 화면에 그 갈래가 «없는 것»이 된다
+           * (공유계약 G-10·G-23). 「아직 열리지 않았다」는 늘 같은 말이라 단추의 설명(마우스를 올리면 보이는 글 · 화면 읽기)으로 둔다.
+           */}
+          <Button
+            type="button"
+            variant="outlined"
+            size="md"
+            disabled
+            title={t.coaPending}
+            aria-describedby={coaNoteId}
+          >
+            {t.coaIssue}
+          </Button>
+          <span id={coaNoteId} className="oqc-inspection-visually-hidden">
+            {t.coaPending}
+          </span>
           <div className="oqc-inspection-action-notes">
             {!isLocked && showErrors && hasQuantityError(errors) && (
               <p className="field-note">{t.saveBlockedByInvalid}</p>
@@ -522,23 +516,6 @@ export const ResultFormPane = ({
           </div>
 
           <div className="oqc-inspection-action-buttons">
-            {/*
-             * 검사성적서 발행 — ⚠ **자리를 두되 비활성으로 시작한다.** 감추면 이 화면에 그 갈래가 «없는 것»이 된다
-             * (공유계약 G-10·G-23). 「아직 열리지 않았다」는 늘 같은 말이라 단추의 설명(마우스를 올리면 보이는 글 · 화면 읽기)으로 둔다.
-             */}
-            <Button
-              type="button"
-              variant="outlined"
-              size="md"
-              disabled
-              title={t.coaPending}
-              aria-describedby={coaNoteId}
-            >
-              {t.coaIssue}
-            </Button>
-            <span id={coaNoteId} className="oqc-inspection-visually-hidden">
-              {t.coaPending}
-            </span>
             {/*
              * ⛔ **확정된 회차에는 저장 자리를 만들지 않는다**(공유계약 G-23). 거기서 유일하게 할 수 있는 일이
              * 재검사다 — 잠긴 사유만 내고 길을 내지 않으면 쌓을 자리가 화면에 없다.

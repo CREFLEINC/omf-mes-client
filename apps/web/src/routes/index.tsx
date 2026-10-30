@@ -53,7 +53,7 @@ import { TerminalProcessMapScreen } from '../screens/terminal-process-map/screen
 import { ToolPmResultScreen } from '../screens/tool-pm-result/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
-import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
+import { IqcInspectionRoute } from '../screens/parts-iqc-inspection/iqc-route';
 import { ItemBomScreen } from '../screens/item-extended-attrs/bom-screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
@@ -256,7 +256,8 @@ export const appRouter = createBrowserRouter([
        * 입하·검사」**에 두었고 형제 화면(W-01-02 긴급 IQC 생략 한도승인)이 이미 이 섹션에
        * 서 있다. 품질 섹션은 Lot Status 계열(W-03-xx)이 들어올 때 그 화면들이 연다.
        */
-      { path: 'logistics/iqc-inspection', element: <IqcInspectionScreen /> },
+      /* 계정 공장에 따라 OA·부품 화면을 고른다(omf-all-around#211). */
+      { path: 'logistics/iqc-inspection', element: <IqcInspectionRoute /> },
       /*
        * W-01-10 「입고 처리」 — **화면이 아니라 입고 관리의 LOT 줄에서 여는 창이다**(사용자 지시 2026-10-23 탭 합치기).
        * 옛 「자재 입고 처리」 주소는 즐겨찾기가 죽지 않게 입고 관리로 옮겨 준다. 옛 주소는 입하 전표를 골랐지만

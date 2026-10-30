@@ -28,6 +28,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     target: 'Đối tượng',
     targetLot: 'LOT đối tượng',
     targetShipmentRequest: 'Lệnh xuất hàng đối tượng',
+    targetWorkOrder: 'Lệnh sản xuất đối tượng',
     myTurn: 'Lượt phê duyệt',
   },
   /** 탭 줄 오른쪽 상태 칩(#186) — 「결재 대기 3」. 누르면 그 상태만 남고, 다시 누르면 풀린다. */
@@ -43,6 +44,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
   typeLabels: {
     CONCESSION: 'Đặc cách',
     IQC_SKIP: 'Bỏ qua IQC (kiểm tra đầu vào)',
+    PQC_SKIP: 'Bỏ qua PQC (kiểm tra công đoạn)',
     OQC_SKIP: 'Bỏ qua OQC (kiểm tra xuất hàng)',
   },
   statusLabels: { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Trả lại' },
@@ -77,6 +79,26 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     requestInfo: 'Thông tin yêu cầu',
     iqcSkipNoPermission:
       'Cần quyền màn hình 「Phê duyệt bỏ qua IQC khẩn cấp」 để thực hiện bỏ qua IQC.',
+  },
+  pqcSkipExecute: {
+    heading: 'Thực hiện bỏ qua PQC',
+    note: 'Yêu cầu đã được duyệt. Khi thực hiện, các yêu cầu kiểm tra PQC đang mở của lệnh sản xuất này sẽ được bỏ qua và LOT sản phẩm đang chờ kiểm tra trở thành bình thường.',
+    action: 'Thực hiện bỏ qua PQC',
+    dialogTitle: 'Thực hiện bỏ qua PQC?',
+    dialogBody:
+      'Các yêu cầu kiểm tra PQC đang mở sẽ được bỏ qua, và LOT của các kết quả đăng ký sau đó cũng trở thành bình thường mà không cần kiểm tra.',
+    irreversible: 'Sau khi thực hiện thì không thể hoàn tác.',
+    done: 'Đã thực hiện bỏ qua PQC',
+    executed: 'Đã thực hiện bỏ qua — kiểm tra PQC đã được bỏ qua.',
+    compact: {
+      title: 'Bỏ qua PQC',
+      summary: 'Bỏ qua yêu cầu kiểm tra đang mở · LOT chờ kiểm tra thành bình thường',
+      action: 'Thực hiện',
+      done: 'Đã thực hiện',
+    },
+    checking: 'Đang kiểm tra trạng thái.',
+    notPending: (status: string) =>
+      `Trạng thái này không thể thực hiện bỏ qua (trạng thái ${status}).`,
   },
   oqcSkipExecute: {
     heading: 'Thực hiện bỏ qua OQC',

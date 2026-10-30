@@ -10,8 +10,13 @@ export interface CodeOption {
  * 서버 기준값 통지가 오기 전에는 값을 추측해 채우지 않는다.
  * ⭐ 특채(`CONCESSION`)는 서버가 정한 값이다(omf-all-around#84 · 서버 장부 P-79) — 처분 판정 처리(W-03-10)가 요청한다.
  * ⭐ OQC 생략(`OQC_SKIP`)은 서버가 정한 값이다(omf-all-around#119 · 서버 장부 P-83) — OQC 출하검사 판정(W-04-03)이 요청한다.
+ * ⭐ PQC 생략(`PQC_SKIP`)도 서버가 정한 값이다(omf-all-around#212 · 서버 장부 P-152) — PQC 검사 조회·판정(W-03-11)이 요청한다.
  */
-export const QUALITY_APPROVAL_TYPE_CODES: readonly string[] = ['CONCESSION', 'OQC_SKIP'];
+export const QUALITY_APPROVAL_TYPE_CODES: readonly string[] = [
+  'CONCESSION',
+  'PQC_SKIP',
+  'OQC_SKIP',
+];
 
 /** 승인 유형 코드 → 사용자 용어(`CONCESSION` → 「특채」). 모르는 코드는 원문 그대로 둔다. */
 export const approvalTypeLabelOf = (code: string): string =>

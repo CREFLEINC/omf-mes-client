@@ -192,6 +192,24 @@ const renderScreen = (options: RenderOptions = {}) => {
 };
 
 const web = t.web;
+const hub = messages.common.inspectionHub;
+
+/* 입력 단계(#197) — ② 수량의 [확정]으로 ③ 판정이 열린다. */
+const confirmQuantities = async (
+  user: ReturnType<typeof userEvent.setup>,
+  pane: ReturnType<typeof within>,
+): Promise<void> => {
+  await user.click(pane.getByRole('button', { name: hub.stepConfirm }));
+};
+/* 저장된 회차가 수량을 다 채웠으면 ② 가 접혀 선다 — 되살린 뒤 펼친다. */
+const expandQuantities = async (
+  user: ReturnType<typeof userEvent.setup>,
+  pane: ReturnType<typeof within>,
+): Promise<void> => {
+  const toggle = await pane.findByRole('button', { name: new RegExp(`^${web.quantity.heading}`) });
+  await waitFor(() => expect(toggle).toHaveTextContent(hub.stepChange));
+  await user.click(toggle);
+};
 
 /* 목록 줄의 의뢰번호 단추로 상세를 연다(#135 — 목록과 상세가 나뉜 화면). */
 const openRequest = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -376,13 +394,17 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const pane = await openRequest(user);
 
     const quantity = await pane.findByRole('region', { name: web.quantity.heading });
-    await waitFor(() => expect(quantity).toHaveTextContent(`${web.quantity.targetQty}5`));
+    /* 총 검사 수량은 수량 줄 오른쪽 「전체 5 EA 중」으로 선다(#197). */
+    await waitFor(() =>
+      expect(quantity).toHaveTextContent(new RegExp(hub.qtyTotalOf('5(?: \\S+)?'))),
+    );
   });
 
   it('작성중 회차가 있으면 검사 수량 입력 제목 줄에 회차를 보인다(#135)', async () => {
     const user = userEvent.setup();
     renderScreen({ rounds: [ROUND] });
     const pane = await openRequest(user);
+    await expandQuantities(user, pane);
 
     const quantity = await pane.findByRole('region', { name: web.quantity.heading });
     await waitFor(() => expect(quantity).toHaveTextContent(web.quantity.round(1)));
@@ -396,10 +418,11 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
       pane.queryByRole('radio', { name: pqc.disposition.scrap });
 
     await user.type(await pane.findByRole('textbox', { name: web.quantity.rejected }), '2');
-    expect(disposition()).toBeNull();
+    await confirmQuantities(user, pane);
+    /* 불합격이 있으면 [확정] 때 최종 판정이 「불합격」으로 채워지고 처분 칸이 선다(#197). 처분은 아직 고르지 않았다. */
+    expect(pane.getByRole('combobox', { name: web.judgment.label })).toHaveTextContent('불합격');
+    expect(disposition()).not.toBeChecked();
 
-    await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
-    await user.click(await screen.findByRole('option', { name: '불합격' }));
     await user.click(await pane.findByRole('radio', { name: pqc.disposition.scrap }));
     expect(disposition()).toBeChecked();
 
@@ -421,6 +444,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '5');
     await user.type(pane.getByRole('textbox', { name: web.quantity.rejected }), '0');
     await user.type(pane.getByRole('textbox', { name: web.quantity.held }), '0');
+    await confirmQuantities(user, pane);
     await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
     await user.click(await screen.findByRole('option', { name: '합격' }));
     await user.click(pane.getByRole('button', { name: web.actions.confirm }));
@@ -460,6 +484,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '5');
     await user.type(pane.getByRole('textbox', { name: web.quantity.rejected }), '0');
     await user.type(pane.getByRole('textbox', { name: web.quantity.held }), '0');
+    await confirmQuantities(user, pane);
     await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
     await user.click(await screen.findByRole('option', { name: '합격' }));
     const before = queueQueries.length;
@@ -498,6 +523,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
       rounds: () => (saved ? [{ ...ROUND, acceptedQty: 9, versionNo: 2 }] : [ROUND]),
     });
     const pane = await openRequest(user);
+    await expandQuantities(user, pane);
 
     const accepted = await pane.findByRole('textbox', { name: web.quantity.accepted });
     await waitFor(() => expect(accepted).toHaveValue('3'));

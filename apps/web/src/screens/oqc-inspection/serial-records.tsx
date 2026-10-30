@@ -44,7 +44,6 @@ export const SerialRecords = ({ inspectionRequestId }: { inspectionRequestId: nu
   return (
     <section className="oqc-inspection-records" aria-label={t.recordHeading}>
       {/* 제목은 접는 줄(건수 칩과 함께)이 맡는다 — 여기서는 설명만(#136). */}
-      <p className="field-note">{t.recordHelp}</p>
       {records.isError ? (
         <p className="field-note">{t.recordFailed}</p>
       ) : records.isPending ? (

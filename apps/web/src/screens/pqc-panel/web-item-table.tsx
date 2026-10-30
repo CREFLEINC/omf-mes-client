@@ -1,5 +1,6 @@
 import { Button, Chip, Table, TextField, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { useClientPage } from '../../patterns/client-page';
 import { PageNav } from '../../patterns/page-nav';
@@ -34,6 +35,9 @@ export interface WebItemTableProps {
   isLocked: boolean;
   /** 적용 검사 기준 버전 — 제목 줄 오른쪽 [검사 항목 조회]가 그 기준 창을 연다(IQC 와 같다 · #197). */
   inspectionPlanVersionId: number;
+  /** 단계 안에 선다(#197) — 단계 머리가 제목을 대신해 제목 줄을 그리지 않고, 표 아래 오른쪽에 `footer`([확정])를 둔다. */
+  inStep?: boolean;
+  footer?: ReactNode;
 }
 
 /** 부동소수 뺄셈 찌꺼기를 지운다 — 규격 값은 소수 여섯째 자리를 넘지 않는다. */
@@ -89,6 +93,8 @@ export const WebItemTable = ({
   isLoading,
   isLocked,
   inspectionPlanVersionId,
+  inStep = false,
+  footer = null,
 }: WebItemTableProps) => {
   /* 목록 표 아래와 같은 쪽 이동 줄 — 10 · 20 · 50건(사용자 지시 2026-10-28 · #197). 적은 값은 쪽을 옮겨도 남는다(`drafts`). */
   const paging = useClientPage(rows);
@@ -195,9 +201,9 @@ export const WebItemTable = ({
   ];
 
   return (
-    <section className="pqc-web-section" aria-label={t.heading}>
+    <section className={inStep ? 'pqc-web-step-items' : 'pqc-web-section'} aria-label={t.heading}>
       <div className="pqc-web-section-head">
-        <h3>{t.heading}</h3>
+        {!inStep && <h3>{t.heading}</h3>}
         {/* 무엇이 남았는지가 이 구획의 정보다 — 제목 줄 오른쪽 끝에. */}
         {rows.length > 0 && (
           <span className="pqc-web-section-meta">
@@ -222,6 +228,7 @@ export const WebItemTable = ({
         />
       </div>
       <PageNav {...paging.nav} />
+      {footer !== null && <div className="inspection-step-footer">{footer}</div>}
     </section>
   );
 };
