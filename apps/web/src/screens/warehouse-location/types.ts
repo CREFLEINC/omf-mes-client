@@ -1,8 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 
 import type { LookupSource } from '../../patterns/lookup-display';
-import type { LocationLevelFields } from '../../patterns/location-level';
-import type { SystemLocationFields } from '../../patterns/system-location';
 
 /**
  * W-06-07 화면 슬라이스의 계약. Phase 2(데이터 연동)가 이 이름을 그대로 소비한다.
@@ -10,13 +8,9 @@ import type { SystemLocationFields } from '../../patterns/system-location';
  */
 
 export type Warehouse = components['schemas']['Warehouse'];
-/** 서버가 만든 위치의 역할 · 별칭 · 단계(계약 밖, `patterns/system-location.ts` · `location-level.ts`)를 함께 읽는다. */
-export type Location = components['schemas']['Location'] &
-  SystemLocationFields &
-  LocationLevelFields & {
-    /** 지정한 품목만 둘 수 있는 위치(서버 위치 ⑤) — 계약 사본에 아직 없다. 없으면 품목 무관. */
-    hasItemRestriction?: boolean;
-  };
+export type Location = components['schemas']['Location'];
+/** 위치에 둘 수 있게 지정한 품목 한 줄(서버 위치 ⑤). 품목코드 순으로 온다. */
+export type LocationItem = components['schemas']['LocationItem'];
 
 export interface WarehouseFilters {
   q: string;
@@ -33,7 +27,6 @@ export interface WarehouseFormValues {
   warehouseCode: string;
   warehouseName: string;
   warehouseTypeCode: string;
-  managementLevelCode: string;
   isExternal: boolean;
   isDefect: boolean;
 }
@@ -48,9 +41,6 @@ export interface LocationFormValues {
   locationCode: string;
   /** MES 별칭 — 위치의 이름이다. 빈 글이면 별칭 없음. */
   aliasName: string;
-  locationTypeCode: string;
-  allowMixedItem: boolean;
-  allowMixedLot: boolean;
 }
 
 export interface LookupOptions {

@@ -1,5 +1,7 @@
-import type { components, FourMChangeForward, InspectionRequestForward } from '@omf-mes/api-client';
+import type { components, FourMChangeForward } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+
+type InspectionRequest = components['schemas']['InspectionRequest'];
 
 /**
  * W-01-01 의 검사 대기 큐가 그리는 값.
@@ -16,7 +18,7 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-export type InspectionRequestResponse = InspectionRequestForward;
+export type InspectionRequestResponse = InspectionRequest;
 export type InspectionResultResponse = components['schemas']['InspectionResult'];
 export type PageMetaResponse = components['schemas']['PageMeta'];
 

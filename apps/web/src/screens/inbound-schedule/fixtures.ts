@@ -54,6 +54,9 @@ const BASE_LINE: InboundScheduleLine = {
   toleranceUnderQty: 0,
   erpStorageLocationCode: 'SAMPLE-SL1',
   cancelledAt: null,
+  erpCustomsClearanceNo: null,
+  erpCustomsClearanceSeq: null,
+  erpCustomsClearanceFetchedAt: null,
   receiptStatusCode: 'NOT_STARTED',
 };
 
@@ -122,10 +125,14 @@ const BASE_ORDER: PurchaseOrderSummary = {
   purchaseOrderNo: 'SAMPLE-PO-0001',
   erpPurchaseOrderNo: 'SAMPLE-ERP-0001',
   supplierId: 8101,
+  businessUnitId: 8401,
   plantId: 8201,
   orderDate: '2026-10-01',
   expectedReceiptDate: '2026-10-10',
   statusCode: 'CONFIRMED',
+  erpOrderTypeCode: null,
+  erpPurchaseGroupCode: null,
+  erpIoTypeCode: null,
   supplierCode: 'SAMPLE-SUP-01',
   supplierName: '합성 공급사 가',
   lineCount: 2,
@@ -137,6 +144,7 @@ const BASE_ORDER: PurchaseOrderSummary = {
   receivedQtyTotal: 0,
   remainingQtyTotal: 150,
   receiptStatusCode: 'NOT_STARTED',
+  inboundStageCounts: {},
 };
 
 /** 한 항목만 다른 발주 묶음을 만든다. */
@@ -280,7 +288,7 @@ export const candidateFixture = (overrides: Partial<ExcessCandidate> = {}): Exce
 });
 
 /**
- * 입고 진행(계약 대기) — 한 발주의 LOT 줄. 내부 번호는 7500대(입하 전표) · 7600대(입하 라인) · 7700대(LOT) ·
+ * 입고 진행 — 한 발주의 LOT 줄. 내부 번호는 7500대(입하 전표) · 7600대(입하 라인) · 7700대(LOT) ·
  * 7800대(검사 의뢰·입고 전표·적치 작업)다. LOT 번호는 합성값이고 「|」 구분자를 그대로 둔다(C-16 예외를 재는 데 쓴다).
  */
 const BASE_LOT: InboundLotProgress = {
@@ -292,6 +300,7 @@ const BASE_LOT: InboundLotProgress = {
   lotId: 7701,
   lotNo: 'SAMPLE|LOT|0001',
   receivedQty: 60,
+  allocatedQty: 60,
   receivableQty: 60,
   uomCode: 'SAMPLE-EA',
   lotStatusCode: 'INSPECTION_PENDING',
@@ -310,8 +319,10 @@ const BASE_LOT: InboundLotProgress = {
   putaway: null,
 };
 
+/** 이 발주 몫(`allocatedQty`)은 따로 주지 않으면 줄 전체(`receivedQty`)와 같다 — 초과분 연결이 없는 보통 줄이다. */
 export const lotProgress = (overrides: Partial<InboundLotProgress> = {}): InboundLotProgress => ({
   ...BASE_LOT,
+  allocatedQty: overrides.receivedQty ?? BASE_LOT.receivedQty,
   ...overrides,
 });
 
@@ -349,7 +360,7 @@ export const progressFixtures: InboundLotProgress[] = [
     receivableQty: 10,
     lotStatusCode: 'NORMAL',
     stageCode: 'INSPECTION_REQUIRED',
-    nextActionCode: 'REQUEST_IQC',
+    nextActionCode: null,
     inspection: null,
   }),
   lotProgress({
@@ -402,7 +413,7 @@ export const progressFixtures: InboundLotProgress[] = [
 ];
 
 /**
- * 라벨 미부착 입하 줄(계약 대기) — LOT 이 아직 없다. 입하 라인 7606 · 7607 이 라인 7301 아래로 선다.
+ * 라벨 미부착 입하 줄 — LOT 이 아직 없다. 입하 라인 7606 · 7607 이 라인 7301 아래로 선다.
  * 서버는 `lotId` · `lotNo` · `lotStatusCode` 를 `null` 로 싣는다.
  */
 export const labelPendingProgress = (

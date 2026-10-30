@@ -1,15 +1,11 @@
 import { AlertBanner, Button, Dialog, Icon, TextField, useToast } from '@crefle/web-ui';
-import {
-  type components,
-  createIdempotencyKey,
-  type LocationRackCreate,
-} from '@omf-mes/api-client';
+import { type components, createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import type { LocationLevelCode, LocationLevelFields } from '../../patterns/location-level';
+import type { LocationLevelCode } from '../../patterns/location-level';
 import { runRequest, toApiError } from '../../patterns/request';
 import { issueLocationCode } from './location-code';
 import { DialogSection, LocationFacts, LocationIdentity } from './location-identity';
@@ -47,23 +43,13 @@ export interface RackCreateDialogProps {
   isActive?: boolean;
 }
 
-/* 별칭(`aliasName`)은 계약 사본에 아직 없다 — 서버 #875 가 받는다. */
-type LocationCreate = components['schemas']['LocationCreate'] & { aliasName: string | null };
+type LocationCreate = components['schemas']['LocationCreate'];
+type LocationRackCreate = components['schemas']['LocationRackCreate'];
 
 const t = messages.warehouseLocation;
 
 /** 서버 한도(#875) — 넘으면 400 INVALID 다. */
 const ALIAS_MAX_LENGTH = 200;
-
-/**
- * 칸에서 빠진 값(위치유형 · 혼적 허용, 사용자 지시 2026-10-29) — 서버 계약이 아직 받아 정해진 값을 싣는다.
- * 서버가 칸을 빼면(위치 ③) 함께 걷는다.
- */
-const TRANSITIONAL_FIELDS = {
-  locationTypeCode: 'RACK',
-  allowMixedItem: true,
-  allowMixedLot: true,
-} as const;
 
 /** 표 칸에는 코드의 끝 마디만(`C01`) — 전체 코드는 칸에 올리면 보인다. */
 const lastSegment = (code: string): string => code.slice(code.lastIndexOf('-') + 1);
@@ -153,14 +139,13 @@ export const RackCreateDialog = ({
   const aliasError =
     alias.length > ALIAS_MAX_LENGTH ? t.validation.aliasTooLong(ALIAS_MAX_LENGTH) : undefined;
 
-  /* 만들 랙 — 이미 만든 것이 있으면 그것, 아니면 코드를 발행한 새 랙(번호 0). */
+  /* 만들 랙 — 이미 만든 것이 있으면 그것, 아니면 서버가 발행할 코드를 미리 지어 보인 새 랙(번호 0). */
   const rackCode =
     createdRack?.locationCode ?? (zone === null ? '' : issueLocationCode('RACK', zone, items));
   const rack: Location | null =
     zone === null
       ? null
-      : (createdRack ??
-        ({
+      : (createdRack ?? {
           locationId: 0,
           warehouseId,
           parentLocationId: zone.locationId,
@@ -168,8 +153,11 @@ export const RackCreateDialog = ({
           locationName: alias === '' ? rackCode : alias,
           aliasName: alias === '' ? null : alias,
           isActive: true,
-          ...TRANSITIONAL_FIELDS,
-        } as Location));
+          locationLevelCode: 'RACK',
+          isLeaf: true,
+          systemRoleCode: null,
+          hasItemRestriction: false,
+        });
   /* 이미 만든 랙이면 새로 받은 목록에서 그 밑을 본다. 새 랙이면 밑이 비어 있다. */
   const plan =
     rack === null || levelCount === null || cellCount === null
@@ -207,16 +195,14 @@ export const RackCreateDialog = ({
     locationCode: string,
     name: string | null,
   ): Promise<Location> => {
-    /* 코드는 서버가 발행한다(위치 ③a) — 실어도 쓰지 않는다. 계약 사본이 아직 필수로 적어 미리 지은 값을 싣는다. */
-    const body: LocationCreate & LocationLevelFields = {
+    /* 코드는 서버가 발행한다(위치 ③a) — 미리 지은 코드는 별칭이 없을 때의 위치명으로만 쓴다. */
+    const body: LocationCreate = {
       warehouseId,
       parentLocationId,
-      locationCode,
       /* 별칭이 이름이다(사용자 지시 2026-10-29). */
       locationName: name ?? locationCode,
       aliasName: name,
       locationLevelCode: level,
-      ...TRANSITIONAL_FIELDS,
     };
     return runRequest(() =>
       client.POST('/mdm/locations', {
@@ -391,7 +377,7 @@ export const RackCreateDialog = ({
       {zone !== null && (
         <div className="location-dialog-body rack-layout">
           <LocationIdentity
-            subject={{ locationLevelCode: 'RACK' }}
+            subject={{ locationLevelCode: 'RACK', systemRoleCode: null }}
             code={rackCode}
             alias={aliasText}
             isActive={editRack === null ? undefined : isActive}

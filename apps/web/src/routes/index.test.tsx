@@ -54,15 +54,6 @@ import {
   uomFixtures,
 } from '../screens/po-register/fixtures';
 import {
-  balanceFixtures as putawayBalanceFixtures,
-  itemFixtures as putawayItemFixtures,
-  locationFixtures as putawayLocationFixtures,
-  ruleFixtures as putawayRuleFixtures,
-  uncoveredItemFixtures as putawayUncoveredFixtures,
-  uomFixtures as putawayUomFixtures,
-  warehouseFixtures as putawayWarehouseFixtures,
-} from '../screens/putaway-rule/fixtures';
-import {
   countFixtures as adjustCountFixtures,
   itemFixtures as adjustItemFixtures,
   locationFixtures as adjustLocationFixtures,
@@ -267,15 +258,12 @@ const stockAdjustRoutes = (): StubRoute[] => [
   lookupRoute('/trace/lots', adjustLotFixtures),
 ];
 
-/** W-06-14가 창고를 고른 주소에서 부르는 것들 — 목록·규칙 없는 품목·잔액과 이름 풀이 넷. */
-const putawayRuleRoutes = (): StubRoute[] => [
-  lookupRoute('/logistics/putaway-rules/uncovered-items', putawayUncoveredFixtures),
-  lookupRoute('/logistics/putaway-rules', putawayRuleFixtures),
-  lookupRoute('/inventory/balances', putawayBalanceFixtures),
-  lookupRoute('/mdm/warehouses', putawayWarehouseFixtures),
-  lookupRoute('/mdm/locations', putawayLocationFixtures),
-  lookupRoute('/mdm/items', putawayItemFixtures),
-  lookupRoute('/mdm/uoms', putawayUomFixtures),
+/** 옛 적치 규칙 주소가 넘겨 주는 창고·Location 화면이 첫 진입에 부르는 이름 풀이. */
+const warehouseLocationRoutes = (): StubRoute[] => [
+  lookupRoute('/mdm/warehouses', []),
+  lookupRoute('/mdm/locations', []),
+  lookupRoute('/mdm/items', []),
+  lookupRoute('/mdm/uoms', []),
 ];
 
 /** W-CO-03이 첫 진입에 부르는 것들 — 목록·유형 목록·안 읽은 수. */
@@ -753,14 +741,6 @@ describe('appRouter', () => {
     expect(routedPaths()).not.toContain('/logistics/stock-status/adjust');
   });
 
-  /*
-   * **W-06-14 · C5-1** — 계약 경로는 `/logistics/putaway-rules`인데 주소 앞머리는
-   * `/master-data/`다. 근거는 여기서도 **섹션**이다: 적치 규칙은 물건이 오가는 일이 아니라
-   * 「어디에 둘지 미리 정해 두는 것」이라 창고·품목과 같은 기준정보 마스터다. 그 섹션 안에서
-   * 저 혼자 계약 앞머리를 쓰면 사용자도 개발자도 섹션과 주소를 대응시킬 수 없다.
-   *
-   * **주소는 단수, 계약 리소스는 복수다** — 주소가 가리키는 것은 리소스가 아니라 **화면**이다.
-   */
   /**
    * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 **사이드바 섹션**을 따른다.
    * 알림은 자기 섹션을 가지므로 앞머리도 그 이름이다.
@@ -776,15 +756,9 @@ describe('appRouter', () => {
     expect(routedPaths()).not.toContain('/system/notification-center');
   });
 
-  it('적치 규칙이 기준정보 앞머리로 등록돼 있다', () => {
-    expect(routedPaths()).toContain('/master-data/putaway-rule');
-  });
-
   /** ⭐ 창고·Location 이 만든 위치를 이 화면이 도면에 얹는다 — 같은 묶음이다. */
   it('W-CO-08 창고 배치도를 기준정보 아래에 둔다', () => {
     expect(routedPaths()).toContain('/master-data/warehouse-layout');
-    expect(routedPaths()).not.toContain('/logistics/putaway-rules');
-    expect(routedPaths()).not.toContain('/logistics/putaway-rule');
   });
 
   /*
@@ -807,12 +781,8 @@ describe('appRouter', () => {
   });
 });
 
-/**
- * **W-06-14는 창고·Location 화면의 창고 상세 탭이 됐다**(사용자 지시 2026-10-29). 메뉴의 「적치 규칙」 탭은
- * 사라지고, 옛 주소(`/master-data/putaway-rule`)는 북마크 · 알림 링크가 끊기지 않게 라우트에 남아 같은 조건으로
- * 그 탭을 연다.
- */
-describe('appRouter — 적치 규칙의 진입 경로', () => {
+/** 없어진 적치 규칙(omf-mes-server #907) — 메뉴에 없고, 옛 주소는 창고·Location 화면으로 넘어간다. */
+describe('appRouter — 옛 적치 규칙 주소', () => {
   it('사이드바의 창고·위치 묶음에 적치 규칙 탭이 없다', async () => {
     const links = await hubTabLinks('창고·위치');
 
@@ -824,22 +794,13 @@ describe('appRouter — 적치 규칙의 진입 경로', () => {
     expect(links.map((link) => link.href)).not.toContain('/master-data/putaway-rule');
   });
 
-  /*
-   * **실제 라우트 표를 태운다** — 옛 라우트 줄이 빠지거나 다른 곳으로 넘기면 여기서 운다. 조건(창고 · 품목)은
-   * 그대로 실려 가고 탭만 더해진다.
-   */
-  it('옛 주소로 들어가면 같은 조건으로 창고·Location 화면의 적치 규칙 탭으로 넘어간다', async () => {
-    renderRoutedApp('/master-data/putaway-rule?wh=9201&item=9101', putawayRuleRoutes());
+  /* **실제 라우트 표를 태운다** — 옛 라우트 줄이 빠지면 와일드카드가 대시보드로 보내 여기서 운다. */
+  it('옛 주소로 들어가면 창고·Location 화면으로 넘어간다', async () => {
+    renderRoutedApp('/master-data/putaway-rule?wh=9201', warehouseLocationRoutes());
 
     await waitFor(() => {
-      expect(currentLocation()).toMatch(/^\/master-data\/warehouse-location\?/u);
+      expect(currentLocation()).toBe('/master-data/warehouse-location');
     });
-
-    const query = new URLSearchParams(currentLocation().split('?')[1]);
-
-    expect(query.get('tab')).toBe('putaway');
-    expect(query.get('wh')).toBe('9201');
-    expect(query.get('item')).toBe('9101');
   });
 });
 

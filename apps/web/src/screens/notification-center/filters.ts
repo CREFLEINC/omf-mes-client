@@ -18,9 +18,9 @@ const OFF = '0';
  * ⭐ **켜진 채로 시작한다**(화면 스펙 §4의 배치). 알림은 계속 쌓이므로 「아직 안 본 것」이
  * 먼저 보여야 이 화면이 하는 일과 맞는다.
  *
- * ⚠ **형제 화면들의 boolean 조건과 기본값이 반대다.** `stocktaking`의 `inProgressOnly`와
- * `putaway-rule`의 `activeOnly`는 `params.get(key) === ON` 한 줄로 읽는데, **그 형태가 참인
- * 이유는 그 화면들의 기본값이 꺼짐이기 때문**이다. 여기서 그 줄을 그대로 베끼면 기본값이
+ * ⚠ **형제 화면의 boolean 조건과 기본값이 반대다.** `stocktaking`의 `inProgressOnly`는
+ * `params.get(key) === ON` 한 줄로 읽는데, **그 형태가 참인 이유는 그 화면의 기본값이
+ * 꺼짐이기 때문**이다. 여기서 그 줄을 그대로 베끼면 기본값이
  * 조용히 뒤집힌다. 그래서 읽기를 갈래 함수로 두고 **기본값을 이 상수 한 곳**에 모은다.
  */
 export const DEFAULT_UNREAD_ONLY = true;

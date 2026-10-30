@@ -91,7 +91,7 @@ export const ItemSelect = forwardRef<HTMLButtonElement, ItemSelectProps>(functio
                 ...(includeInactive ? { includeInactive: true } : {}),
                 ...(itemTypeCodes === undefined || itemTypeCodes.length === 0
                   ? {}
-                  : { itemTypeCode: itemTypeCodes.join(',') }),
+                  : { itemTypeCode: [...itemTypeCodes] }),
                 page,
                 size: ITEM_SELECT_PAGE_SIZE,
               },

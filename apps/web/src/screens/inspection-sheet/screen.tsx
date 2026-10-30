@@ -11,11 +11,7 @@ import {
   TextField,
   useToast,
 } from '@crefle/web-ui';
-import type {
-  InspectionSheet,
-  InspectionSheetListQuery,
-  InspectionSheetSummary,
-} from '@omf-mes/api-client';
+import type { components, InspectionSheet, paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -33,6 +29,11 @@ import type { PrintLang } from './print-layout';
 import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
 import { SheetDetail } from './sheet-detail';
 import { SheetPrint } from './sheet-print';
+
+type InspectionSheetListQuery = NonNullable<
+  paths['/quality/inspection-sheets']['get']['parameters']['query']
+>;
+type InspectionSheetSummary = components['schemas']['InspectionSheetSummary'];
 
 const t = messages.inspectionSheet;
 

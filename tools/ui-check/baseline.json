@@ -1353,50 +1353,6 @@
       "n": 1,
       "text": "가운뎃점: throw new Error('작업지시·단말을 모르면 세션을 조회하지 않습니다.');"
     },
-    "C-13|apps/web/src/screens/putaway-rule/fixtures.ts|031a19d980f1": {
-      "n": 1,
-      "text": "가운뎃점: export const WAREHOUSE_LABEL = 'SYN-WH-01 · 합성창고 가';"
-    },
-    "C-13|apps/web/src/screens/putaway-rule/fixtures.ts|33532e6ca7c1": {
-      "n": 1,
-      "text": "가운뎃점: export const INACTIVE_LOCATION_LABEL = 'SYN-LOC-02 · 합성위치 나';"
-    },
-    "C-13|apps/web/src/screens/putaway-rule/fixtures.ts|7d0f04caba78": {
-      "n": 1,
-      "text": "가운뎃점: export const UOM_LABEL = 'SYN-UOM-01 · 합성단위 가';"
-    },
-    "C-13|apps/web/src/screens/putaway-rule/fixtures.ts|8fd8bd4fddd8": {
-      "n": 1,
-      "text": "가운뎃점: export const LOCATION_LABEL = 'SYN-LOC-01 · 합성위치 가';"
-    },
-    "C-13|apps/web/src/screens/putaway-rule/fixtures.ts|92b52747881b": {
-      "n": 1,
-      "text": "가운뎃점: export const ITEM_LABEL = 'SYN-ITEM-01 · 합성품목 가';"
-    },
-    "C-13|apps/web/src/screens/putaway-rule/item-picker-dialog.tsx|ad92d70faf73": {
-      "n": 1,
-      "text": "가운뎃점: aria-label={t.actions.chooseItem(`${row.itemCode} · ${row.itemName}`)}"
-    },
-    "C-13|apps/web/src/screens/putaway-rule/lookups.ts|33b257507ffc": {
-      "n": 1,
-      "text": "가운뎃점: label: `${item.uomCode} · ${item.uomName}`,"
-    },
-    "C-13|apps/web/src/screens/putaway-rule/lookups.ts|bf1633609103": {
-      "n": 1,
-      "text": "가운뎃점: label: `${item.locationCode} · ${item.locationName}`,"
-    },
-    "C-13|apps/web/src/screens/putaway-rule/lookups.ts|e0419041a666": {
-      "n": 1,
-      "text": "가운뎃점: label: `${item.warehouseCode} · ${item.warehouseName}`,"
-    },
-    "C-13|apps/web/src/screens/putaway-rule/lookups.ts|fff28782881e": {
-      "n": 1,
-      "text": "가운뎃점: label: `${item.itemCode} · ${item.itemName}`,"
-    },
-    "C-13|apps/web/src/screens/putaway-rule/screen.tsx|02b5fe2ffbc8": {
-      "n": 1,
-      "text": "가운뎃점: pickedItemLabel: `${picked.itemCode} · ${picked.itemName}`,"
-    },
     "C-13|apps/web/src/screens/quality-approval/condition-pane.tsx|ed0d7168d85d": {
       "n": 1,
       "text": "가운뎃점: : `${uom.uomCode} · ${uom.uomName}`,"
@@ -2897,42 +2853,6 @@
       "n": 1,
       "text": "가운뎃점: printed: '생산 LOT 라벨 인쇄 완료 · 부착한 라벨을 스캔하세요.',"
     },
-    "C-13|packages/i18n/src/ko/putaway-rule.ts|18c6896b38bb": {
-      "n": 1,
-      "text": "가운뎃점: `${itemLabel} · ${locationLabel} 규칙을 다시 사용합니다.`,"
-    },
-    "C-13|packages/i18n/src/ko/putaway-rule.ts|2367b7c23cc3": {
-      "n": 1,
-      "text": "가운뎃점: '이 창고는 위치를 관리하지 않습니다. 창고·Location 화면에서 관리수준을 변경할 수 있습니다.',"
-    },
-    "C-13|packages/i18n/src/ko/putaway-rule.ts|36ac27150a88": {
-      "n": 2,
-      "text": "가운뎃점: `같은 품목·창고·위치·우선순위의 사용 중인 규칙이 이미 ${String(count)}건 있습니다. 지금 보는 쪽에 없을 수 있습니다.`,"
-    },
-    "C-13|packages/i18n/src/ko/putaway-rule.ts|749ada643b41": {
-      "n": 1,
-      "text": "가운뎃점: `${qty} ${uomLabel} · ${percent}%`,"
-    },
-    "C-13|packages/i18n/src/ko/putaway-rule.ts|7e973b0749f0": {
-      "n": 1,
-      "text": "가운뎃점: keywordLabel: '품목코드·품목명',"
-    },
-    "C-13|packages/i18n/src/ko/putaway-rule.ts|840f3c454806": {
-      "n": 1,
-      "text": "가운뎃점: '보내는 중인 요청이 끝날 때까지 다른 규칙으로 옮기거나 새 저장·사용 전환을 시작할 수 없습니다.',"
-    },
-    "C-13|packages/i18n/src/ko/putaway-rule.ts|ce6504f2cb0c": {
-      "n": 1,
-      "text": "가운뎃점: `${itemLabel} · ${locationLabel} 규칙을 사용 중지합니다.`,"
-    },
-    "C-13|packages/i18n/src/ko/putaway-rule.ts|eb09e0f1570a": {
-      "n": 1,
-      "text": "가운뎃점: `${itemLabel} · ${locationLabel} 선택`,"
-    },
-    "C-13|packages/i18n/src/ko/putaway.ts|73db23f6a870": {
-      "n": 1,
-      "text": "가운뎃점: `수용량 ${capacity} · 현재 ${held} + ${adding}`,"
-    },
     "C-13|packages/i18n/src/ko/putaway.ts|8d8a8f3ee30b": {
       "n": 1,
       "text": "가운뎃점: title: '적치·입고 완료',"
@@ -4346,22 +4266,6 @@
       "text": "pagination.ts"
     },
     "C-8|apps/web/src/screens/product-stock-status/select-field.tsx|7925b44059cd": {
-      "n": 1,
-      "text": "select-field.tsx"
-    },
-    "C-8|apps/web/src/screens/putaway-rule/load-error-banner.tsx|da6b22b0db5e": {
-      "n": 1,
-      "text": "load-error-banner.tsx"
-    },
-    "C-8|apps/web/src/screens/putaway-rule/page-nav.tsx|578be1d8b21c": {
-      "n": 1,
-      "text": "page-nav.tsx"
-    },
-    "C-8|apps/web/src/screens/putaway-rule/pagination.ts|21542e9d817f": {
-      "n": 1,
-      "text": "pagination.ts"
-    },
-    "C-8|apps/web/src/screens/putaway-rule/select-field.tsx|7925b44059cd": {
       "n": 1,
       "text": "select-field.tsx"
     },

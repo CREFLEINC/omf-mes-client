@@ -111,7 +111,13 @@ export const LocationDeleteDialog = ({
     >
       {failure !== null && <AlertBanner variant="error" title={failure} />}
       {target !== null && (
-        <ConfirmTarget tone="danger" icon="warning" target={target} line={t.count(count)} />
+        <ConfirmTarget
+          tone="danger"
+          icon="warning"
+          code={target.locationCode}
+          name={target.aliasName}
+          line={t.count(count)}
+        />
       )}
     </Dialog>
   );

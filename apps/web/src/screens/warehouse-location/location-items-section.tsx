@@ -1,8 +1,8 @@
 import { AlertBanner, Button, IconButton, Skeleton } from '@crefle/web-ui';
-import type { LocationItem } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { ItemSelect } from '../../patterns/item-select';
+import type { LocationItem } from './types';
 
 const t = messages.warehouseLocation.itemsSection;
 

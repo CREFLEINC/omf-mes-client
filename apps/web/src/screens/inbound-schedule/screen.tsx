@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
-import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
@@ -47,7 +46,6 @@ import {
   progressKeys,
   useInboundProgress,
   useInboundStageCounts,
-  useRequestIqc,
 } from './progress-queries';
 import { QuickLookupBar, type QuickLookupHandle } from './quick-lookup-bar';
 import { toPageView } from './pagination';
@@ -215,7 +213,7 @@ export const InboundScheduleScreen = () => {
   const lines = usePurchaseOrderLines(selectedOrder?.purchaseOrderId ?? null);
 
   /*
-   * 고른 발주의 LOT 진행(계약 대기). 서버가 경로를 모르면(404)·권한이 없으면(403) 라인만 선다 — 지금의 두 표 그대로다.
+   * 고른 발주의 LOT 진행. 서버가 경로를 모르면(404)·권한이 없으면(403) 라인만 선다 — 지금의 두 표 그대로다.
    * 다른 실패는 라인 아래 한 줄로 알리고 라인은 그대로 둔다.
    */
   const progress = useInboundProgress(selectedOrder?.purchaseOrderId ?? null);
@@ -293,7 +291,7 @@ export const InboundScheduleScreen = () => {
     excess: { receiptNo: string; inboundReceiptLineId: number | null } | null;
   } | null>(null);
   const [receiveProblem, setReceiveProblem] = useState<string | null>(null);
-  /* 되먹임은 제출한 렌더의 닫힘을 들고 있다 — 보낸 줄은 ref 에 적는다(IQC 의뢰와 같은 길). */
+  /* 되먹임은 제출한 렌더의 닫힘을 들고 있다 — 보낸 줄은 ref 에 적는다. */
   const sentPicksRef = useRef<ReceivePick[]>([]);
   /*
    * ⛔ **입하 일시는 처음 누른 순간을 붙든다.** 본문에 실리는 값이라 누를 때마다 바뀌면 본문 지문이 달라져 멱등 키가
@@ -441,48 +439,9 @@ export const InboundScheduleScreen = () => {
     );
   };
 
-  /*
-   * 「IQC 의뢰 요청」 — LOT 줄의 단추가 바로 보낸다(되돌릴 수 있는 쓰기라 확인 창이 없다). 보내는 동안 그 단추만 돌고,
-   * 결과는 표 위 한 줄로 알린다. 실패는 같은 자리의 배너다. 발주를 바꾸면 둘 다 걷는다.
-   */
-  const [pendingIqcLot, setPendingIqcLot] = useState<IssuedLotProgress | null>(null);
-  /* 되먹임(`onSuccess`)은 제출한 렌더의 닫힘을 들고 있어 그 렌더의 옛 상태를 본다 — 보낸 LOT 은 ref 에 적는다. */
-  const pendingIqcLotRef = useRef<IssuedLotProgress | null>(null);
-  const [iqcNote, setIqcNote] = useState<string | null>(null);
-  const requestIqc = useRequestIqc({
-    purchaseOrderId: selectedOrder?.purchaseOrderId ?? 0,
-    onSuccess: (data) => {
-      const sent = pendingIqcLotRef.current;
-      setIqcNote(sent === null ? null : t.lot.requested(sent.lotNo, data.inspectionRequestNo));
-      pendingIqcLotRef.current = null;
-      setPendingIqcLot(null);
-    },
-  });
-  const sendIqcRequest = (lot: IssuedLotProgress): void => {
-    setIqcNote(null);
-    setPendingIqcLot(lot);
-    pendingIqcLotRef.current = lot;
-    requestIqc.write({
-      inspectionTypeCode: 'IQC',
-      targetTypeCode: 'LOT',
-      targetId: lot.lotId,
-      businessDate: today,
-      occurredAt: new Date().toISOString(),
-    });
-  };
-  const requestingLotId = requestIqc.isSaving ? (pendingIqcLot?.lotId ?? null) : null;
   const linesNotice =
-    requestIqc.error !== null ||
-    iqcNote !== null ||
-    receiveNote !== null ||
-    receiveProblem !== null ? (
+    receiveNote !== null || receiveProblem !== null ? (
       <>
-        <SaveErrorBanner error={requestIqc.error} />
-        {iqcNote !== null && (
-          <p className="po-board-lines-status" role="status">
-            {iqcNote}
-          </p>
-        )}
         {receiveProblem !== null && (
           <p className="field-error" role="alert">
             {receiveProblem}
@@ -525,13 +484,11 @@ export const InboundScheduleScreen = () => {
       </div>
     ) : null;
 
-  /** 발주를 고른다 — 조건·쪽은 그대로 두고 `po` 만 바꾼다. 앞 발주의 IQC 의뢰 결과·실패는 걷는다. */
+  /** 발주를 고른다 — 조건·쪽은 그대로 두고 `po` 만 바꾼다. 앞 발주의 입고 결과·실패는 걷는다. */
   const selectOrder = (purchaseOrderId: number): void => {
     const next = toSearchParams(period, filters, page, fallbackPeriod);
     next.set('po', String(purchaseOrderId));
     setSearchParams(next);
-    setIqcNote(null);
-    requestIqc.reset();
     setReceiveNote(null);
     setReceiveProblem(null);
   };
@@ -699,7 +656,6 @@ export const InboundScheduleScreen = () => {
               {...(progressUnavailable || lotsByLine === undefined ? {} : { lots: lotsByLine })}
               progressFailed={progress.isError && !progressUnavailable}
               {...(linesNotice === undefined ? {} : { notice: linesNotice })}
-              requestingLotId={requestingLotId}
               {...(canPost ? { onPostReceipt: openPost } : {})}
               {...(canPost
                 ? {
@@ -712,7 +668,6 @@ export const InboundScheduleScreen = () => {
                     },
                   }
                 : {})}
-              onRequestIqc={sendIqcRequest}
             />
           )}
         </section>

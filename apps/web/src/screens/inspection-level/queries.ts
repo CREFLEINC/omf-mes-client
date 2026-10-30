@@ -1,12 +1,12 @@
-import type {
-  InspectionLevelCode,
-  ItemInspectionLevel,
-  ItemInspectionLevelHistory,
-} from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+
+type InspectionLevelCode = components['schemas']['ItemInspectionLevel']['inspectionLevelCode'];
+type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
+type ItemInspectionLevelHistory = components['schemas']['ItemInspectionLevelHistory'];
 
 /** 한 쪽 크기. 품목별 기준정보라 한 화면에 넉넉히 본다. */
 export const PAGE_SIZE = 50;

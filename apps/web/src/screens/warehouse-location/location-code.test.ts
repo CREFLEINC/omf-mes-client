@@ -7,20 +7,20 @@ const location = (
   locationId: number,
   locationCode: string,
   parentLocationId: number | null,
-  systemRoleCode: string | null = null,
-): Location =>
-  ({
-    locationId,
-    warehouseId: 1,
-    parentLocationId,
-    locationCode,
-    locationName: locationCode,
-    locationTypeCode: 'RACK',
-    allowMixedItem: true,
-    allowMixedLot: true,
-    isActive: true,
-    systemRoleCode,
-  }) as Location;
+  systemRoleCode: Location['systemRoleCode'] = null,
+): Location => ({
+  locationId,
+  warehouseId: 1,
+  parentLocationId,
+  locationCode,
+  locationName: locationCode,
+  isActive: true,
+  aliasName: null,
+  locationLevelCode: null,
+  isLeaf: true,
+  systemRoleCode,
+  hasItemRestriction: false,
+});
 
 const staging = location(90, 'SYS-STAGING', null, 'PUTAWAY_STAGING');
 const whole = location(91, 'SYS-WHOLE', null, 'WAREHOUSE_WHOLE');

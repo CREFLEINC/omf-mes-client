@@ -22,7 +22,6 @@ const base: Warehouse = {
   warehouseCode: 'WH-01',
   warehouseName: '1공장 자재창고',
   warehouseTypeCode: 'MATERIAL',
-  managementLevelCode: 'CELL',
   isExternal: false,
   isDefect: false,
   isActive: true,
@@ -129,16 +128,13 @@ describe('toWarehouseCreate', () => {
 describe('locationToFormValues', () => {
   const location: Location = locationFixtures[2]!;
 
-  it('코드 · 별칭 · 혼적 허용을 옮기고 수용량 · 보관조건 칸은 없다', () => {
+  it('상위 · 코드 · 별칭만 옮긴다 — 위치유형 · 혼적 · 수용량 · 보관조건 칸은 없다', () => {
     const values = locationToFormValues({ ...location, aliasName: '1층' });
 
     expect(values).toEqual({
       parentLocationId: '2002',
       locationCode: 'A-01-01-01',
       aliasName: '1층',
-      locationTypeCode: 'RACK',
-      allowMixedItem: false,
-      allowMixedLot: false,
     });
   });
 
@@ -147,14 +143,25 @@ describe('locationToFormValues', () => {
   });
 });
 
-/** 수용량 · 수용 단위 · 품질구역 · 보관조건 — 위치가 다루지 않아 보내지 않는다(사용자 지시 2026-10-29). */
-const DROPPED_KEYS = ['capacityQty', 'capacityUomId', 'qualityZoneCode', 'storageConditionCode'];
+/**
+ * 수용량 · 수용 단위 · 품질구역 · 보관조건 · 위치유형 · 혼적 허용 — 위치가 다루지 않아 보내지 않는다(사용자 지시
+ * 2026-10-29). 코드는 서버가 발행한다.
+ */
+const DROPPED_KEYS = [
+  'capacityQty',
+  'capacityUomId',
+  'qualityZoneCode',
+  'storageConditionCode',
+  'locationTypeCode',
+  'allowMixedItem',
+  'allowMixedLot',
+  'locationCode',
+];
 
 describe('toLocationCreate', () => {
   const values = {
     ...emptyLocationFormValues(),
     locationCode: 'Z01-R03',
-    locationTypeCode: 'RACK',
   };
 
   it('창고와 상위 위치가 함께 실린다', () => {
@@ -162,10 +169,9 @@ describe('toLocationCreate', () => {
 
     expect(body.warehouseId).toBe(1001);
     expect(body.parentLocationId).toBe(2001);
-    expect(body.locationCode).toBe('Z01-R03');
   });
 
-  it('위치명은 별칭이다 — 별칭이 없으면 발행한 코드다', () => {
+  it('위치명은 별칭이다 — 별칭이 없으면 미리 지어 보인 코드다', () => {
     expect(toLocationCreate({ ...values, aliasName: ' 원자재 랙 ' }, 1001)).toMatchObject({
       locationName: '원자재 랙',
       aliasName: '원자재 랙',
@@ -176,7 +182,7 @@ describe('toLocationCreate', () => {
     });
   });
 
-  it('수용량 · 보관조건 키를 싣지 않는다', () => {
+  it('코드 · 위치유형 · 혼적 · 수용량 · 보관조건 키를 싣지 않는다', () => {
     const body = toLocationCreate(values, 1001);
 
     for (const key of DROPPED_KEYS) expect(body).not.toHaveProperty(key);
@@ -187,8 +193,12 @@ describe('toLocationUpdate', () => {
   const stored: Location = { ...locationFixtures[1]!, aliasName: '1번 랙' };
   const values = locationToFormValues(stored);
 
-  it('창고가 실리지 않는다 — 등록 후 바꿀 수 없다', () => {
-    expect(toLocationUpdate(values, stored)).not.toHaveProperty('warehouseId');
+  it('창고 · 상위 · 코드가 실리지 않는다 — 등록 후 바꿀 수 없다', () => {
+    const body = toLocationUpdate(values, stored);
+
+    expect(body).not.toHaveProperty('warehouseId');
+    expect(body).not.toHaveProperty('parentLocationId');
+    expect(body).not.toHaveProperty('locationCode');
   });
 
   it('별칭을 고치지 않으면 저장된 위치명을 그대로 보낸다', () => {
@@ -207,14 +217,18 @@ describe('toLocationUpdate', () => {
   });
 
   it('서버가 만든 위치는 별칭을 고쳐도 위치명을 바꾸지 않는다', () => {
-    const staging = { ...stored, locationName: '적치 대기', systemRoleCode: 'PUTAWAY_STAGING' };
+    const staging: Location = {
+      ...stored,
+      locationName: '적치 대기',
+      systemRoleCode: 'PUTAWAY_STAGING',
+    };
 
     expect(toLocationUpdate({ ...values, aliasName: '입고 대기' }, staging).locationName).toBe(
       '적치 대기',
     );
   });
 
-  it('수용량 · 보관조건 키를 싣지 않는다', () => {
+  it('코드 · 위치유형 · 혼적 · 수용량 · 보관조건 키를 싣지 않는다', () => {
     const body = toLocationUpdate(values, stored);
 
     for (const key of DROPPED_KEYS) expect(body).not.toHaveProperty(key);

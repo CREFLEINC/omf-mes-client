@@ -1,7 +1,9 @@
-import type { ProductionResultDefectInput, components } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 
 import { masterName } from '../../patterns/master-name';
 import { parseGoodQty } from './quantity-draft';
+
+type ProductionResultDefectInput = components['schemas']['ProductionResultDefectInput'];
 
 /**
  * 공정에 매핑된 불량 코드. 서버가 상세의 대분류 이름을 함께 싣거나 대분류 줄을 함께 내리는

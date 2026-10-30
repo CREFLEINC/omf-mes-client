@@ -17,14 +17,8 @@ import type { InboundScheduleLine } from './types';
  */
 export type InboundReceiptCreate = components['schemas']['InboundReceiptCreate'];
 
-type ReceiptLine = InboundReceiptCreate['lines'][number] & {
-  /** 서버 장부 P-100 · P-115 — `receivedQty` 중 P/O 라인에 넣지 않는 몫(초과분). 계약 사본 밖이라 생성 타입에 없다. */
-  excessQty?: number;
-  /** 계약에는 있으나 생성 타입에 아직 없다(입하 등록 창과 같은 넓힘). */
-  supplierLotLabelAttached?: boolean;
-};
-
-export type ReceiveBody = Omit<InboundReceiptCreate, 'lines'> & { lines: ReceiptLine[] };
+/** 줄의 `excessQty`(서버 장부 P-100 · P-115)는 `receivedQty` 중 P/O 라인에 넣지 않는 몫(초과분)이다. */
+export type ReceiveBody = InboundReceiptCreate;
 
 /** 라벨 미부착의 기본 사유 — 공통 코드 `SUBSTITUTE_LOT_REASON` 의 「라벨 없음」(PDA 와 같다). */
 export const DEFAULT_SUBSTITUTE_LOT_REASON = 'NO_LABEL';

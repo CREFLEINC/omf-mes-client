@@ -1,4 +1,4 @@
-import type { ApiError, WorkOrderForward } from '@omf-mes/api-client';
+import type { ApiError, components } from '@omf-mes/api-client';
 import { AlertBanner, Button, Card, Icon, Progress, Table, TextField } from '@crefle/web-ui';
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -41,6 +41,8 @@ import {
   type QuantityKey,
 } from './result';
 import { useUomLookup } from './uom-lookup';
+
+type WorkOrder = components['schemas']['WorkOrder'];
 
 const quantityKeys: QuantityKey[] = ['goodQty', 'defectQty', 'holdQty', 'scrapQty'];
 
@@ -92,7 +94,7 @@ export const ReworkResultRegisterScreen = () => {
    * 고른 W/O 의 공정으로 「실적 입력」을 판정한다 — 단말에 공정이 여럿이어도 그 W/O 가 어느 공정의
    * 일인지 안다. 고르기 전에는 판정할 공정이 없으므로 막지도 말하지도 않는다.
    */
-  const selectedWorkOrder: WorkOrderForward | null = selected;
+  const selectedWorkOrder: WorkOrder | null = selected;
   const gate = usePopProcessGate({
     terminalId: identity.terminalId,
     processId: popGateProcessId(selectedWorkOrder?.processId, identity.processes),

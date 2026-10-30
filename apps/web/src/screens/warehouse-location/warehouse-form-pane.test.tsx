@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  locationFixtures,
   lookupFixtures,
   warehouseFieldErrorFixtures,
   warehouseFormInitialValues,
@@ -39,24 +40,109 @@ const renderPane = (overrides: Partial<Parameters<typeof WarehouseFormPane>[0]> 
   return { onChange, onSave, onCancel, onDeactivate, onActivate };
 };
 
-const FIELD_LABELS = [
-  '공장',
-  '사업부',
-  '창고 코드',
-  '창고명',
-  '창고 유형',
-  '외부 창고',
-  '불량 창고',
-  '사용 상태',
-];
+/** 같은 창에 값만 바꿔 다시 그린다 — 받는 중 → 받음. */
+const renderPaneWithRerender = (initial: Partial<Parameters<typeof WarehouseFormPane>[0]>) => {
+  const props: Parameters<typeof WarehouseFormPane>[0] = {
+    mode: 'edit',
+    values: warehouseFormInitialValues,
+    onChange: vi.fn(),
+    fieldErrors: {},
+    banner: null,
+    codeLockReason: null,
+    isActive: true,
+    isDirty: false,
+    isSaving: false,
+    lookups: lookupFixtures,
+    onSave: vi.fn(),
+    onCancel: vi.fn(),
+    onDeactivate: vi.fn(),
+    onActivate: vi.fn(),
+    ...initial,
+  };
+  const view = render(<WarehouseFormPane {...props} />);
+  return {
+    rerender: (next: Partial<Parameters<typeof WarehouseFormPane>[0]>) =>
+      view.rerender(<WarehouseFormPane {...props} {...next} />),
+  };
+};
 
 describe('WarehouseFormPane', () => {
-  it('8개 필드를 각각 접근성 라벨로 조회할 수 있다', () => {
+  /* 안 A(사용자 결정 2026-10-30) — 코드 · 창고명은 머리, 공장은 글자, 사업부 · 유형은 연필, 불량 창고는 스위치. */
+  it('수정에서는 값을 접근성 이름으로 찾을 수 있고 고칠 값만 연필이 있다', () => {
     renderPane();
 
-    for (const label of FIELD_LABELS) {
+    for (const label of ['공장', '창고 코드', '창고명', '사업부', '창고 유형', '불량 창고']) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
+    expect(screen.getByRole('button', { name: '사업부 수정' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '창고 유형 수정' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '공장 수정' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  });
+
+  it('등록은 「창고 추가」 머리 아래 필수 칸을 둔다 — 외부 창고 칸은 없다', () => {
+    renderPane({ mode: 'create' });
+
+    expect(screen.getByRole('heading', { name: '창고 추가' })).toBeInTheDocument();
+    for (const label of ['공장', '사업부', '창고 유형']) {
+      expect(screen.getByRole('combobox', { name: label })).toBeInTheDocument();
+    }
+    expect(screen.getByRole('textbox', { name: '창고 코드' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '창고명' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: '불량 창고' })).toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: '외부 창고' })).not.toBeInTheDocument();
+    // 선택칸 셋은 직접 그린 별표, 입력칸 둘은 디자인 시스템이 required 로 그린다.
+    expect(document.querySelectorAll('.required-mark')).toHaveLength(3);
+    expect(screen.getByRole('textbox', { name: '창고 코드' })).toBeRequired();
+  });
+
+  it('저장된 값과 다른 칸만 이름 옆에 점을 찍는다', () => {
+    renderPane({
+      baseline: warehouseFormInitialValues,
+      values: { ...warehouseFormInitialValues, warehouseTypeCode: 'GENERAL' },
+    });
+
+    expect(screen.getByText('창고 유형').closest('.location-facts-row')).toHaveClass('is-changed');
+    expect(screen.getByText('사업부').closest('.location-facts-row')).not.toHaveClass('is-changed');
+    expect(screen.getByText('일반')).toBeInTheDocument();
+  });
+
+  it('연필로 연 선택칸에서 고르면 그 칸만 담아 onChange를 부른다', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderPane();
+
+    await user.click(screen.getByRole('button', { name: '사업부 수정' }));
+    await user.click(screen.getByRole('combobox', { name: '사업부' }));
+    await user.click(screen.getByRole('option', { name: '물류본부' }));
+
+    expect(onChange).toHaveBeenCalledWith({ businessUnitId: '22' });
+  });
+
+  it('불량 창고는 확인한 뒤에만 onChange를 부른다', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderPane();
+
+    await user.click(screen.getByRole('switch', { name: '불량 창고' }));
+    expect(onChange).not.toHaveBeenCalled();
+
+    const dialog = screen.getByRole('dialog', { name: '불량 창고로 바꿀까요?' });
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+
+    expect(onChange).toHaveBeenCalledWith({ isDefect: true });
+  });
+
+  it('Location 묶음은 목록을 받는 동안 자리만 잡고, 받으면 위치 수를 보인다', () => {
+    const { rerender } = renderPaneWithRerender({ locations: { items: null, error: null } });
+
+    expect(screen.getByRole('status', { name: 'Location을 불러오는 중' })).toBeInTheDocument();
+
+    rerender({ locations: { items: locationFixtures, error: null } });
+    expect(screen.getByLabelText('사용 중지')).toHaveTextContent('0');
+    expect(
+      within(screen.getByRole('region', { name: 'Location' })).getByText(
+        String(locationFixtures.length),
+      ),
+    ).toBeInTheDocument();
   });
 
   it('fieldErrors를 주입하면 창고코드의 인라인 오류가 화면에 보인다', () => {
@@ -139,11 +225,12 @@ describe('WarehouseFormPane', () => {
     expect(onDeactivate).toHaveBeenCalledTimes(1);
   });
 
-  it('이미 미사용이면 사용 중지를 내지 않고 현재 값을 표기한다', () => {
+  it('이미 미사용이면 사용 중지 대신 다시 사용을 내고 머리에 미사용을 표기한다', () => {
     renderPane({ isActive: false });
 
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('사용 상태')).toHaveTextContent('미사용');
+    expect(screen.getByRole('button', { name: '다시 사용' })).toBeInTheDocument();
+    expect(screen.getByText('미사용')).toBeInTheDocument();
   });
 
   it('신규 등록 폼에는 사용 중지가 없다 — 아직 만들어지지 않은 창고다', () => {
@@ -163,11 +250,11 @@ describe('WarehouseFormPane', () => {
     });
   });
 
-  /* 화면 정돈(omf-all-around#17) — 라벨 위·컨트롤 아래, 상태 칩과 액션 단추를 가른다. */
-  it('외부창고·불량창고 토글은 칸 위 라벨로 이름을 갖는다', () => {
+  /* 외부 창고는 MES 가 관리할 대상이 아니다(사용자 지시 2026-10-30). */
+  it('불량 창고 토글만 있고 외부 창고 토글은 없다', () => {
     renderPane();
 
-    expect(screen.getByRole('switch', { name: '외부 창고' })).toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: '외부 창고' })).not.toBeInTheDocument();
     expect(screen.getByRole('switch', { name: '불량 창고' })).toBeInTheDocument();
   });
 
@@ -179,13 +266,6 @@ describe('WarehouseFormPane', () => {
     expect(
       screen.getByRole('button', { name: '사용 중지' }).closest('.form-actions'),
     ).not.toBeNull();
-  });
-
-  /* 위치 계층은 위치가 정한다 — 창고에서 관리 수준을 고르지 않는다(사용자 결정 2026-10-29). */
-  it('관리 수준 칸이 없다', () => {
-    renderPane({ mode: 'create' });
-
-    expect(screen.queryByRole('combobox', { name: '관리 수준' })).not.toBeInTheDocument();
   });
 
   it('거래처 칸이 없다', () => {

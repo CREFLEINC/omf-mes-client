@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ANYWHERE,
+  CHECKING,
   MATCHED,
-  NO_RULE,
+  NOT_ALLOWED,
   canSubmit,
   destinationOf,
   differsFromExpected,
@@ -12,6 +14,7 @@ import {
   queuedForLotsOf,
   toPutawayDraft,
   toReceiptDraft,
+  verdictOf,
   type DraftLine,
   type Location,
   type Warehouse,
@@ -24,7 +27,6 @@ const warehouse = (overrides: Partial<Warehouse> = {}): Warehouse => ({
   warehouseCode: 'FG',
   warehouseName: '완제품창고',
   warehouseTypeCode: 'PRODUCT',
-  managementLevelCode: 'CELL',
   isExternal: false,
   isDefect: false,
   isActive: true,
@@ -36,9 +38,11 @@ const location = (overrides: Partial<Location> = {}): Location => ({
   warehouseId: 1002,
   locationCode: 'FG-A-02-01',
   locationName: 'A구역 02열 01단',
-  locationTypeCode: 'RACK',
-  allowMixedItem: true,
-  allowMixedLot: true,
+  aliasName: null,
+  locationLevelCode: 'CELL',
+  isLeaf: true,
+  systemRoleCode: null,
+  hasItemRestriction: false,
   isActive: true,
   ...overrides,
 });
@@ -95,54 +99,60 @@ describe('인식표 수량과의 차이', () => {
     expect(
       canSubmit({
         warehouse: warehouse(),
+        managed: true,
         destination: location(),
         lines: [line({ qty: '498' })],
         hasWorker: true,
         plantId: 1001,
         queuedForLots: 0,
         verdict: MATCHED,
-        confirmedNoRule: false,
         stocked: new Map(),
       }),
     ).toBe(true);
   });
 });
 
-describe('위치 관리 여부', () => {
-  it('창고까지만 관리하면 위치를 관리하지 않는다', () => {
-    expect(managesLocations(warehouse({ managementLevelCode: 'WAREHOUSE' }))).toBe(false);
+describe('위치 나눔', () => {
+  const whole = location({
+    locationId: 3199,
+    locationCode: 'SYS-WHOLE',
+    systemRoleCode: 'WAREHOUSE_WHOLE',
   });
 
-  it('셀까지 관리하면 위치를 관리한다', () => {
-    expect(managesLocations(warehouse({ managementLevelCode: 'CELL' }))).toBe(true);
+  it('사람이 만든 켜진 위치가 있으면 나눈 창고다', () => {
+    expect(managesLocations([whole, location()])).toBe(true);
+  });
+
+  it('서버가 둔 위치뿐이거나 사람이 만든 위치가 꺼져 있으면 나누지 않은 창고다', () => {
+    expect(managesLocations([whole])).toBe(false);
+    expect(managesLocations([whole, location({ isActive: false })])).toBe(false);
   });
 });
 
 describe('목적지 위치', () => {
   const rack = location();
-  const fallback = location({ locationId: 3199, locationCode: 'FG-DEFAULT' });
-  const withDefault = [rack, { ...fallback, locationTypeCode: 'DEFAULT' }];
-
-  it('위치를 관리하면 스캔한 자리다', () => {
-    expect(destinationOf(warehouse(), rack, withDefault)?.locationId).toBe(3101);
+  const whole = location({
+    locationId: 3199,
+    locationCode: 'SYS-WHOLE',
+    systemRoleCode: 'WAREHOUSE_WHOLE',
   });
 
-  it('위치를 관리하는데 아직 안 스캔했으면 목적지가 없다', () => {
-    expect(destinationOf(warehouse(), null, withDefault)).toBeNull();
+  it('나눈 창고면 스캔한 자리다', () => {
+    expect(destinationOf(warehouse(), rack, [rack, whole])?.locationId).toBe(3101);
   });
 
-  /* 계약이 목적지를 필수로 요구한다. 비워 보낼 수 없어 흡수용 자리로 들어간다. */
-  it('위치를 관리하지 않으면 대표 위치다', () => {
-    const unmanaged = warehouse({ managementLevelCode: 'WAREHOUSE' });
-
-    expect(destinationOf(unmanaged, null, withDefault)?.locationId).toBe(3199);
+  it('나눈 창고인데 아직 안 스캔했으면 목적지가 없다', () => {
+    expect(destinationOf(warehouse(), null, [rack, whole])).toBeNull();
   });
 
-  /* 아무 위치나 골라 넣으면 재고가 남의 자리에 선다. */
-  it('대표 위치가 없으면 지어내지 않는다', () => {
-    const unmanaged = warehouse({ managementLevelCode: 'WAREHOUSE' });
+  /* 계약이 목적지를 필수로 요구한다. 나누지 않은 창고는 「창고 전체」로 들어간다. */
+  it('나누지 않은 창고면 「창고 전체」다', () => {
+    expect(destinationOf(warehouse(), null, [whole])?.locationId).toBe(3199);
+  });
 
-    expect(destinationOf(unmanaged, null, [rack])).toBeNull();
+  /* 아무 위치나 골라 넣으면 재고가 남의 자리에 들어간다. */
+  it('「창고 전체」가 없으면 지어내지 않는다', () => {
+    expect(destinationOf(warehouse(), null, [])).toBeNull();
   });
 });
 
@@ -153,13 +163,13 @@ describe('완료 가능 여부', () => {
     expect(
       canSubmit({
         warehouse: null,
+        managed: true,
         destination: location(),
         lines: lines,
         hasWorker: true,
         plantId: 1001,
         queuedForLots: 0,
         verdict: MATCHED,
-        confirmedNoRule: false,
         stocked: new Map(),
       }),
     ).toBe(false);
@@ -169,13 +179,13 @@ describe('완료 가능 여부', () => {
     expect(
       canSubmit({
         warehouse: warehouse(),
+        managed: true,
         destination: null,
         lines: lines,
         hasWorker: true,
         plantId: 1001,
         queuedForLots: 0,
         verdict: MATCHED,
-        confirmedNoRule: false,
         stocked: new Map(),
       }),
     ).toBe(false);
@@ -185,13 +195,13 @@ describe('완료 가능 여부', () => {
     expect(
       canSubmit({
         warehouse: warehouse(),
+        managed: true,
         destination: location(),
         lines: lines,
         hasWorker: false,
         plantId: 1001,
         queuedForLots: 0,
         verdict: MATCHED,
-        confirmedNoRule: false,
         stocked: new Map(),
       }),
     ).toBe(false);
@@ -201,13 +211,13 @@ describe('완료 가능 여부', () => {
     expect(
       canSubmit({
         warehouse: warehouse(),
+        managed: true,
         destination: location(),
         lines: lines,
         hasWorker: true,
         plantId: null,
         queuedForLots: 0,
         verdict: MATCHED,
-        confirmedNoRule: false,
         stocked: new Map(),
       }),
     ).toBe(false);
@@ -217,13 +227,13 @@ describe('완료 가능 여부', () => {
     expect(
       canSubmit({
         warehouse: warehouse(),
+        managed: true,
         destination: location(),
         lines: [],
         hasWorker: true,
         plantId: 1001,
         queuedForLots: 0,
         verdict: MATCHED,
-        confirmedNoRule: false,
         stocked: new Map(),
       }),
     ).toBe(false);
@@ -233,13 +243,13 @@ describe('완료 가능 여부', () => {
     expect(
       canSubmit({
         warehouse: warehouse(),
+        managed: true,
         destination: location(),
         lines: [line({ qty: '0' })],
         hasWorker: true,
         plantId: 1001,
         queuedForLots: 0,
         verdict: MATCHED,
-        confirmedNoRule: false,
         stocked: new Map(),
       }),
     ).toBe(false);
@@ -250,13 +260,13 @@ describe('완료 가능 여부', () => {
     expect(
       canSubmit({
         warehouse: warehouse(),
+        managed: true,
         destination: location(),
         lines: lines,
         hasWorker: true,
         plantId: 1001,
         queuedForLots: 1,
         verdict: MATCHED,
-        confirmedNoRule: false,
         stocked: new Map(),
       }),
     ).toBe(false);
@@ -266,13 +276,13 @@ describe('완료 가능 여부', () => {
     expect(
       canSubmit({
         warehouse: warehouse(),
+        managed: true,
         destination: location(),
         lines: lines,
         hasWorker: true,
         plantId: 1001,
         queuedForLots: 0,
         verdict: MATCHED,
-        confirmedNoRule: false,
         stocked: new Map(),
       }),
     ).toBe(true);
@@ -345,34 +355,55 @@ describe('보낼 것', () => {
   });
 
   it('적치 완료는 실제 위치를 싣는다', () => {
-    const draft = toPutawayDraft(7701, location(), MATCHED, false, now, '100028');
+    const draft = toPutawayDraft(7701, location(), now, '100028');
     const body = draft.body as { actualLocationId: number };
 
     expect(draft.path).toBe('/logistics/putaway-tasks/7701:complete');
     expect(body.actualLocationId).toBe(3101);
   });
 
-  /*
-   * 권장 위치가 없는 품목은 작업자가 확인했다는 표시가 있어야 서버가 적치를 받는다. 싣지 않으면
-   * 입고는 서고 적치만 되돌아와, 물건이 어디 있는지가 남지 않는다.
-   */
-  it('권장 위치가 없는 품목을 확인했으면 그 확인을 싣는다', () => {
-    const draft = toPutawayDraft(7701, location(), NO_RULE, true, now, '100028');
+  /* 서버 #906 이 확인 표식을 없앴다. */
+  it('확인 표식을 싣지 않는다', () => {
+    expect(toPutawayDraft(7701, location(), now, '100028').body).not.toHaveProperty(
+      'confirmedNoRule',
+    );
+  });
+});
 
-    expect((draft.body as { confirmedNoRule?: boolean }).confirmedNoRule).toBe(true);
+describe('위치의 보관 품목', () => {
+  it('보관 품목이면 받는다', () => {
+    expect(verdictOf([2003], [2003])).toBe(MATCHED);
   });
 
-  it('확인하지 않았으면 싣지 않는다', () => {
-    const draft = toPutawayDraft(7701, location(), NO_RULE, false, now, '100028');
-
-    expect((draft.body as { confirmedNoRule?: boolean }).confirmedNoRule).toBe(false);
+  /* 인식표에 품목이 여럿이면 전부 보관 품목이어야 한다. */
+  it('하나라도 보관 품목이 아니면 막는다', () => {
+    expect(verdictOf([2003], [2003, 2004])).toBe(NOT_ALLOWED);
   });
 
-  /* 계약이 권장 위치가 없을 때만 참을 보내라고 정한다. */
-  it('권장 위치와 맞으면 확인 표시가 남아 있어도 싣지 않는다', () => {
-    const draft = toPutawayDraft(7701, location(), MATCHED, true, now, '100028');
+  it('보관 품목을 정하지 않은 위치는 어디든 받는다', () => {
+    expect(verdictOf([], [2003])).toBe(ANYWHERE);
+  });
 
-    expect((draft.body as { confirmedNoRule?: boolean }).confirmedNoRule).toBe(false);
+  /* 모르는 채 통과시키면 막아야 할 자리가 잠깐 열린다. */
+  it('묻는 중이면 아직 판정하지 않는다', () => {
+    expect(verdictOf(undefined, [2003])).toBe(CHECKING);
+  });
+
+  it('묻는 중이거나 다른 품목 전용이면 완료할 수 없다', () => {
+    const base = {
+      warehouse: warehouse(),
+      managed: true,
+      destination: location(),
+      lines: [line()],
+      hasWorker: true,
+      plantId: 1001,
+      queuedForLots: 0,
+      stocked: new Map(),
+    };
+
+    expect(canSubmit({ ...base, verdict: CHECKING })).toBe(false);
+    expect(canSubmit({ ...base, verdict: NOT_ALLOWED })).toBe(false);
+    expect(canSubmit({ ...base, verdict: ANYWHERE })).toBe(true);
   });
 });
 

@@ -1,10 +1,13 @@
-import type { AffectedProductionLots, DefectRecordCreate } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import type { DefectCode } from './defect-code';
+
+type AffectedProductionLots = components['schemas']['AffectedProductionLots'];
+type DefectRecordCreate = components['schemas']['DefectRecordCreate'];
 
 /** 불량 기록 원천 — 투입 뒤 발견한 자재 불량(서버 선행 P-52). */
 export const MATERIAL_SOURCE = 'MATERIAL';

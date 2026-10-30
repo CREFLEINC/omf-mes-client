@@ -1,5 +1,5 @@
 import { AlertBanner, Button, EmptyState, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
-import type { ApiError, components, LocationItem } from '@omf-mes/api-client';
+import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -9,7 +9,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { BoardFrame } from '../../patterns/board-frame';
 import { LOCATION_LEVEL_CODES } from '../../patterns/location-level';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
-import { runRequest, toApiError } from '../../patterns/request';
+import { ApiRequestError, runRequest, toApiError } from '../../patterns/request';
 import { isPutawayStaging, isSystemLocation } from '../../patterns/system-location';
 import { selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
@@ -55,27 +55,25 @@ import {
   useLookupOptions,
   useWarehouseDetail,
   useWarehouseList,
+  useWarehouseStockSummary,
   warehouseDetailPath,
   warehouseKeys,
 } from './queries';
 import type {
   Location,
   LocationFormValues,
+  LocationItem,
   LookupOptions,
   Warehouse,
   WarehouseFilters,
   WarehouseFormValues,
 } from './types';
-import { PutawayRulePanel } from '../putaway-rule/screen';
 import { WarehouseFormPane } from './warehouse-form-pane';
 import { WarehouseFilterBar } from './warehouse-filter-bar';
 import { WarehouseListPane } from './warehouse-list-pane';
 import { WAREHOUSE_FORM_FIELDS, validateWarehouse } from './warehouse-validation';
 
 const t = messages.warehouseLocation;
-
-/** 적치 규칙 탭이 주소에 두는 키 — 다른 창고로 옮기거나 새 창고를 열면 함께 지운다. */
-const PUTAWAY_PARAMS_CLEARED = { item: null, active: null, page: null, rule: null, new: null };
 
 type WarehouseDetailResponse = components['schemas']['WarehouseDetailResponse'];
 type LocationDetailResponse = components['schemas']['LocationDetailResponse'];
@@ -175,8 +173,8 @@ export const WarehouseLocationScreen = () => {
   const { client, etags, baseUrl } = useApiClient();
 
   const tabParam = searchParams.get('tab');
-  const requestedTab =
-    tabParam === 'location' || tabParam === 'putaway' ? tabParam : ('warehouse' as const);
+  /* 옛 `tab=putaway`(없어진 적치 규칙 탭)는 기본 탭으로 연다. */
+  const requestedTab = tabParam === 'location' ? tabParam : ('warehouse' as const);
 
   const filters = useMemo<WarehouseFilters>(
     () => ({
@@ -213,6 +211,28 @@ export const WarehouseLocationScreen = () => {
         ? emptyWarehouseFormValues()
         : warehouseToFormValues(formSource.warehouse);
     setFormState({ source: formSource, baseline: seeded, values: seeded });
+  }
+
+  /*
+   * 등록에서 고를 공장이 하나뿐이면 미리 채운다 — 선택 목록이 늦게 와도 아직 고르지 않았을 때만. 기준값에도 넣어
+   * 손대지 않은 등록 폼이 「고친 것」으로 읽히지 않게 한다.
+   */
+  const onlyPlant = (() => {
+    const plants = selectableOptions(lookups.sources.plants, '');
+    return plants.length === 1 ? plants[0]!.value : null;
+  })();
+  if (
+    formState !== null &&
+    formState.source === CREATE_FORM_SOURCE &&
+    onlyPlant !== null &&
+    formState.values.plantId === '' &&
+    formState.baseline.plantId === ''
+  ) {
+    setFormState({
+      ...formState,
+      baseline: { ...formState.baseline, plantId: onlyPlant },
+      values: { ...formState.values, plantId: onlyPlant },
+    });
   }
 
   const formValues = formState?.values ?? emptyWarehouseFormValues();
@@ -264,6 +284,11 @@ export const WarehouseLocationScreen = () => {
   });
 
   const [warehouseStatusOpen, setWarehouseStatusOpen] = useState(false);
+  /* 창고를 끄기 전 남은 재고 — 사용 중지 확인 창을 열 때만 묻는다(사용자 지시 2026-10-30). */
+  const stockSummary = useWarehouseStockSummary(
+    selectedWarehouseId,
+    warehouseStatusOpen && detail.data?.warehouse.isActive === true,
+  );
 
   const warehouseStatusWrite = useMasterWrite<void, Warehouse>({
     request: (_variables, headers) =>
@@ -361,7 +386,14 @@ export const WarehouseLocationScreen = () => {
               },
             },
             /* 저장된 위치명 · 별칭과 견줘 위치명을 정한다 — 편집은 상세를 받은 뒤에만 저장할 수 있다. */
-            body: toLocationUpdate(values, locationFormSource?.location ?? { locationName: '' }),
+            body: toLocationUpdate(
+              values,
+              locationFormSource?.location ?? {
+                locationName: '',
+                aliasName: null,
+                systemRoleCode: null,
+              },
+            ),
           }),
     etagPath:
       dialogState.mode === 'edit' && dialogState.locationId !== null
@@ -518,7 +550,7 @@ export const WarehouseLocationScreen = () => {
 
   const selectedWarehouse = detail.data?.warehouse ?? null;
 
-  /* 창고 관리 수준이 없어져(2026-10-29) Location 탭은 늘 열린다 — 위치가 없는 창고는 창고 단위로 관리된다. */
+  /* Location 탭은 늘 열린다 — 사람이 만든 위치가 없는 창고는 서버가 둔 「창고 전체」 하나로 관리된다. */
   const activeTab = requestedTab;
 
   /**
@@ -613,7 +645,7 @@ export const WarehouseLocationScreen = () => {
     setDialogState(CLOSED_LOCATION_DIALOG);
     setLocationFormSource(null);
     setLocationSourceEtag(null);
-    updateParams({ mode: 'create', wh: null, tab: 'warehouse', ...PUTAWAY_PARAMS_CLEARED });
+    updateParams({ mode: 'create', wh: null, tab: 'warehouse' });
   };
 
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
@@ -732,7 +764,10 @@ export const WarehouseLocationScreen = () => {
     });
   };
 
-  /** 추가 — 상위는 단추가 정한다(구역 추가는 창고 밑, 랙 추가는 고른 구역 밑). 코드는 여기서 발행한다. */
+  /**
+   * 추가 — 상위는 단추가 정한다(구역 추가는 창고 밑, 랙 추가는 고른 구역 밑). 코드는 서버가 발행한다 — 여기서는
+   * 같은 규칙으로 미리 지어 보이기만 하고 본문에 싣지 않는다.
+   */
   const openCreateLocation = (parentLocationId: number | null) => {
     const parent =
       parentLocationId === null
@@ -842,11 +877,11 @@ export const WarehouseLocationScreen = () => {
   const canAddChildLocation = selectedUserLocationDepth === ZONE_DEPTH;
   /**
    * 라벨은 맨 아래 위치에만(사용자 결정 2026-10-29) — 재고는 하위가 없는 위치에만 둘 수 있어(서버 위치 ④) 하위가 있는
-   * 구역 · 랙 · 층의 라벨은 찍어도 쓸 데가 없다. 서버 `isLeaf` 를 따르고, 없으면 목록에서 켜진 하위가 있는지 본다.
+   * 구역 · 랙 · 층의 라벨은 찍어도 쓸 데가 없다. 서버 `isLeaf` 를 따르고, 목록에 없으면 켜진 하위가 있는지 본다.
    */
   const isLeafLocation = (locationId: number): boolean => {
     const item = hierarchyItems.find((candidate) => candidate.locationId === locationId);
-    if (item?.isLeaf !== undefined) return item.isLeaf;
+    if (item !== undefined) return item.isLeaf;
     return !hierarchyItems.some(
       (child) =>
         child.isActive && child.parentLocationId === locationId && child.locationId !== locationId,
@@ -960,14 +995,12 @@ export const WarehouseLocationScreen = () => {
       if (parentId === null || parentId === undefined || parentId === item.locationId) continue;
       children.set(parentId, [...(children.get(parentId) ?? []), item]);
     }
-    const leafOf = (item: Location): boolean =>
-      item.isLeaf ?? !(children.get(item.locationId) ?? []).some((child) => child.isActive);
     const picked = new Set<number>();
     const visit = (item: Location, seen: Set<number>): void => {
       if (seen.has(item.locationId)) return;
       seen.add(item.locationId);
       if (!item.isActive || isPutawayStaging(item)) return;
-      if (leafOf(item)) {
+      if (item.isLeaf) {
         picked.add(item.locationId);
         return;
       }
@@ -1024,15 +1057,39 @@ export const WarehouseLocationScreen = () => {
       ? (locationDetail.data?.location ??
         hierarchyItems.find((item) => item.locationId === dialogState.locationId) ?? {
           locationLevelCode: null,
+          systemRoleCode: null,
         })
       : {
           locationLevelCode:
             createParentDepth === undefined
               ? null
               : (LOCATION_LEVEL_CODES[createParentDepth + 1] ?? null),
+          systemRoleCode: null,
         };
   /* 사용 중지 · 다시 사용 확인의 대상 — 랙 창이 열려 있으면 그 랙, 아니면 수정 창의 위치. */
   const statusTarget = statusSource?.location ?? null;
+
+  /*
+   * 남은 재고 — 있으면 품목 수 · LOT 수 한 줄(막지 않는다), 묻지 못했으면 그 사실 한 줄, 권한이 없으면(403) 아무것도
+   * 보이지 않는다. 단위가 섞여 수량 합계는 보이지 않는다.
+   */
+  const warehouseStockNotice = (() => {
+    if (selectedWarehouse?.isActive !== true || stockSummary.isFetching) return null;
+    if (stockSummary.isError) {
+      const forbidden =
+        stockSummary.error instanceof ApiRequestError && stockSummary.error.httpStatus === 403;
+      return forbidden ? null : (
+        <p className="location-confirm-line">{t.deactivate.stockCheckFailed}</p>
+      );
+    }
+    const stock = stockSummary.data;
+    if (stock === undefined || (stock.lotCount <= 0 && stock.onHandQty <= 0)) return null;
+    return (
+      <p className="location-confirm-line is-warning">
+        {t.deactivate.stockLeft(stock.itemCount, stock.lotCount)}
+      </p>
+    );
+  })();
 
   const listPage = warehouseList.data?.page;
   const listTruncated = listPage !== undefined && isTruncated(listPage, warehouses.length);
@@ -1059,6 +1116,22 @@ export const WarehouseLocationScreen = () => {
       }
       codeLockReason={options.codeLockReason}
       isActive={options.isActive}
+      baseline={formState?.baseline}
+      /* Location 탭과 같은 목록(같은 열쇠)으로 센다 — 따로 묻지 않는다. */
+      locations={
+        options.mode === 'edit'
+          ? {
+              items: locationHierarchy.data?.items ?? null,
+              error: locationHierarchy.isError ? (
+                <LoadErrorBanner
+                  error={locationHierarchy.error}
+                  onRetry={() => void locationHierarchy.refetch()}
+                />
+              ) : null,
+            }
+          : undefined
+      }
+      onOpenLocations={() => updateParams({ tab: 'location' })}
       isDirty={isDirty}
       isSaving={warehouseWrite.isSaving}
       lookups={formLookups}
@@ -1232,15 +1305,6 @@ export const WarehouseLocationScreen = () => {
                 />
               ),
             },
-            {
-              value: 'putaway',
-              label: t.tabs.putaway,
-              /*
-               * 적치 규칙은 창고 상세 안에서 관리한다(사용자 지시 2026-10-29) — 고르기 · 고치기는 대화상자.
-               * 탭 패널은 숨겨져도 붙어 있으므로 이 탭일 때만 붙인다 — 아니면 다른 탭에서도 규칙 · 잔액 · 위치 조회가 나간다.
-               */
-              content: activeTab === 'putaway' ? <PutawayRulePanel /> : null,
-            },
           ]}
         />
       </div>
@@ -1288,7 +1352,7 @@ export const WarehouseLocationScreen = () => {
                   setDialogState(CLOSED_LOCATION_DIALOG);
                   setLocationFormSource(null);
                   setLocationSourceEtag(null);
-                  updateParams({ wh: String(warehouseId), mode: null, ...PUTAWAY_PARAMS_CLEARED });
+                  updateParams({ wh: String(warehouseId), mode: null });
                 }}
                 onAddWarehouse={handleAddWarehouse}
                 loadError={
@@ -1317,6 +1381,13 @@ export const WarehouseLocationScreen = () => {
         onConfirm={() => warehouseStatusWrite.write(undefined)}
         isSaving={warehouseStatusWrite.isSaving}
         mode={selectedWarehouse?.isActive === false ? 'activate' : 'deactivate'}
+        warehouse={
+          selectedWarehouse === null
+            ? undefined
+            : { code: selectedWarehouse.warehouseCode, name: selectedWarehouse.warehouseName }
+        }
+        notice={warehouseStockNotice}
+        confirmDisabled={selectedWarehouse?.isActive === true && stockSummary.isFetching}
         // 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다.
         banner={
           <SaveErrorBanner error={warehouseStatusWrite.error} onReload={handleReloadDetail} />

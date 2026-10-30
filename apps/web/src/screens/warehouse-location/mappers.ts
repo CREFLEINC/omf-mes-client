@@ -5,9 +5,8 @@ import type { Location, LocationFormValues, Warehouse, WarehouseFormValues } fro
 
 type WarehouseCreate = components['schemas']['WarehouseCreate'];
 type WarehouseUpdate = components['schemas']['WarehouseUpdate'];
-/* 별칭(`aliasName`)은 계약 사본에 아직 없다 — 서버 #875 가 받는다. */
-type LocationCreate = components['schemas']['LocationCreate'] & { aliasName: string | null };
-type LocationUpdate = components['schemas']['LocationUpdate'] & { aliasName: string | null };
+type LocationCreate = components['schemas']['LocationCreate'];
+type LocationUpdate = components['schemas']['LocationUpdate'];
 
 /**
  * 계약 표현과 폼 표현 사이의 변환.
@@ -26,7 +25,6 @@ export const warehouseToFormValues = (warehouse: Warehouse): WarehouseFormValues
   warehouseCode: warehouse.warehouseCode,
   warehouseName: warehouse.warehouseName,
   warehouseTypeCode: warehouse.warehouseTypeCode,
-  managementLevelCode: warehouse.managementLevelCode,
   isExternal: warehouse.isExternal,
   isDefect: warehouse.isDefect,
 });
@@ -34,20 +32,12 @@ export const warehouseToFormValues = (warehouse: Warehouse): WarehouseFormValues
 /**
  * 신규 등록 폼의 초기값. 공통코드 선택은 서버가 준 목록에서 사용자가 직접 고른다.
  */
-/**
- * 창고 관리 수준은 화면에서 없앴다(사용자 결정 2026-10-29 — 위치 계층은 위치가 정한다). 계약 사본이 아직 필수로
- * 두어 등록에 값을 실어야 하는데, 서버는 이 값을 검사도 판단도 하지 않는다(서버 위치 계층 계약 ①). 가장 깊은 값을
- * 실어 이행 전 서버에서도 위치를 막지 않게 한다. 계약이 바뀌면 걷는다.
- */
-const TRANSITIONAL_MANAGEMENT_LEVEL = 'CELL';
-
 export const emptyWarehouseFormValues = (): WarehouseFormValues => ({
   plantId: '',
   businessUnitId: '',
   warehouseCode: '',
   warehouseName: '',
   warehouseTypeCode: '',
-  managementLevelCode: TRANSITIONAL_MANAGEMENT_LEVEL,
   isExternal: false,
   /* 신규 창고는 불량창고가 아니다 — 그렇게 정하는 자리가 화면에 없으므로 꺼진 값으로 낸다. */
   isDefect: false,
@@ -66,7 +56,10 @@ export const toWarehouseUpdate = (values: WarehouseFormValues): WarehouseUpdate 
   warehouseCode: values.warehouseCode.trim(),
   warehouseName: values.warehouseName.trim(),
   warehouseTypeCode: values.warehouseTypeCode,
-  managementLevelCode: values.managementLevelCode,
+  /*
+   * 외부 창고는 MES 가 관리할 대상이 아니라 화면에 칸이 없다(사용자 지시 2026-10-30). 계약상 수정 본문의 필수 칸이라
+   * 받은 값을 그대로 돌려보낸다(등록은 꺼진 값) — 서버에 칸 제거를 요청 중이다. partnerId 는 서버가 받지 않아 싣지 않는다.
+   */
   isExternal: values.isExternal,
   /* 화면이 고치지 않은 값을 그대로 되돌려 보낸다 — 여기서 지어내면 서버 값이 덮인다. */
   isDefect: values.isDefect,
@@ -85,26 +78,13 @@ export const locationToFormValues = (location: Location): LocationFormValues => 
   parentLocationId: optionalIdToText(location.parentLocationId),
   locationCode: location.locationCode,
   aliasName: location.aliasName ?? '',
-  locationTypeCode: location.locationTypeCode,
-  allowMixedItem: location.allowMixedItem,
-  allowMixedLot: location.allowMixedLot,
 });
-
-/**
- * 위치유형 · 품목 혼적 허용 · LOT 혼적 허용은 화면에서 걷었다(사용자 지시 2026-10-29) — 서버도 화면도 판정에 쓰지
- * 않는다. 서버 계약이 아직 받으므로(수정은 혼적 둘이 필수) 등록에는 아래 값을, 수정에는 저장된 값을 그대로
- * 돌려보낸다. 서버가 칸을 빼면(위치 ③) 함께 걷는다.
- */
-const TRANSITIONAL_LOCATION_TYPE = 'RACK';
 
 /** 신규 Location 폼의 초기값. 선택값을 추측하지 않는다. 코드는 여는 쪽이 발행해 채운다. */
 export const emptyLocationFormValues = (): LocationFormValues => ({
   parentLocationId: '',
   locationCode: '',
   aliasName: '',
-  locationTypeCode: TRANSITIONAL_LOCATION_TYPE,
-  allowMixedItem: true,
-  allowMixedLot: true,
 });
 
 /** 위치를 사람에게 부르는 이름 — 별칭이 이름이다(사용자 지시 2026-10-29). 별칭이 없으면 저장된 위치명. */
@@ -120,18 +100,12 @@ const trimmedAlias = (values: LocationFormValues): string | null =>
   values.aliasName.trim() === '' ? null : values.aliasName.trim();
 
 /**
- * 수용량 · 수용 단위 · 품질구역 · 보관조건은 싣지 않는다(사용자 지시 2026-10-29). 서버는 빠진 키를 건드리지 않는다.
- * warehouseId는 등록 후 바꿀 수 없어 수정 본문에 실리지 않는다.
+ * 수정 본문은 위치명과 별칭뿐이다 — 상위 · 코드 · 창고는 등록 후 바꿀 수 없다.
  */
 const locationBody = (values: LocationFormValues, locationName: string): LocationUpdate => ({
-  parentLocationId: textToOptionalId(values.parentLocationId),
-  locationCode: values.locationCode.trim(),
   locationName,
   /* 빈 글은 「별칭 없음」이다 — 서버도 빈 글을 없음으로 받지만 null 로 보내 뜻을 하나로 둔다. */
   aliasName: trimmedAlias(values),
-  locationTypeCode: values.locationTypeCode,
-  allowMixedItem: values.allowMixedItem,
-  allowMixedLot: values.allowMixedLot,
 });
 
 /**
@@ -153,7 +127,8 @@ export const toLocationUpdate = (
 };
 
 /**
- * Location 등록 요청 본문. 위치명은 별칭, 별칭이 없으면 발행한 코드다.
+ * Location 등록 요청 본문. 코드는 서버가 발행하고 단계는 상위로 정해 싣지 않는다. 위치명은 별칭, 별칭이 없으면
+ * 화면이 미리 지어 보인 코드다(서버가 발행할 코드와 같은 규칙).
  *
  * ⚠ 서버가 위치명을 선택으로 바꾸면 위치명을 싣지 않는다.
  */
@@ -163,6 +138,7 @@ export const toLocationCreate = (
 ): LocationCreate => ({
   ...locationBody(values, trimmedAlias(values) ?? values.locationCode.trim()),
   warehouseId,
+  parentLocationId: textToOptionalId(values.parentLocationId),
 });
 
 /** 기준값과 현재 값의 비교. 「고친 것이 있는가」의 판정 근거다. */
@@ -172,7 +148,6 @@ export const isSameWarehouseValues = (a: WarehouseFormValues, b: WarehouseFormVa
   a.warehouseCode === b.warehouseCode &&
   a.warehouseName === b.warehouseName &&
   a.warehouseTypeCode === b.warehouseTypeCode &&
-  a.managementLevelCode === b.managementLevelCode &&
   a.isExternal === b.isExternal &&
   a.isDefect === b.isDefect;
 
@@ -180,7 +155,4 @@ export const isSameWarehouseValues = (a: WarehouseFormValues, b: WarehouseFormVa
 export const isSameLocationValues = (a: LocationFormValues, b: LocationFormValues): boolean =>
   a.parentLocationId === b.parentLocationId &&
   a.locationCode === b.locationCode &&
-  a.aliasName === b.aliasName &&
-  a.locationTypeCode === b.locationTypeCode &&
-  a.allowMixedItem === b.allowMixedItem &&
-  a.allowMixedLot === b.allowMixedLot;
+  a.aliasName === b.aliasName;

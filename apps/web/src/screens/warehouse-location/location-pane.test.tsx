@@ -95,6 +95,33 @@ describe('LocationPane', () => {
     expect(screen.getByRole('cell', { name: '—' })).toBeInTheDocument();
   });
 
+  /* 서버가 만든 위치는 단계가 구역으로 와도 역할 이름으로 — 수정 창 머리와 같다. */
+  it('서버가 만든 위치의 단계 칸은 역할 이름(창고 전체 · 적치 대기)이다', () => {
+    const [zone] = locationFixtures;
+    if (zone === undefined) throw new Error('fixture');
+    const system = [
+      {
+        ...zone,
+        locationId: 2901,
+        locationCode: 'SYS-WHOLE',
+        locationLevelCode: 'ZONE' as const,
+        systemRoleCode: 'WAREHOUSE_WHOLE' as const,
+      },
+      {
+        ...zone,
+        locationId: 2902,
+        locationCode: 'SYS-STAGING',
+        locationLevelCode: 'ZONE' as const,
+        systemRoleCode: 'PUTAWAY_STAGING' as const,
+      },
+    ];
+    renderPane({ rows: buildLocationRows(system, new Set()) });
+
+    expect(screen.getByRole('cell', { name: '창고 전체' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '적치 대기' })).toBeInTheDocument();
+    expect(screen.queryByRole('cell', { name: '구역' })).not.toBeInTheDocument();
+  });
+
   it('접기·펴기 버튼에 상태에 맞는 접근성 이름이 있다', () => {
     renderPane();
 

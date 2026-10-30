@@ -1,14 +1,26 @@
-import { Button, Chip, Switch, TextField } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Icon, SkeletonText, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
+import { LOCATION_LEVEL_CODES } from '../../patterns/location-level';
 import { Select } from '../../patterns/select';
-import type { LookupOptions, WarehouseFormValues } from './types';
+import {
+  ConfirmTarget,
+  IdentityHeader,
+  type LocationFact,
+  LocationFacts,
+  levelIconOf,
+  levelNameOf,
+} from './location-identity';
+import { summarizeLocations } from './location-summary';
+import type { Location, LookupOptions, WarehouseFormValues } from './types';
 
 export interface WarehouseFormPaneProps {
   mode: 'create' | 'edit';
   values: WarehouseFormValues;
+  /** 저장된 값 — 고칠 때 바꾼 칸 이름 옆에 점을 찍는 기준. 없으면 점을 찍지 않는다. */
+  baseline?: WarehouseFormValues | undefined;
   onChange: (patch: Partial<WarehouseFormValues>) => void;
   /** 필드별 인라인 오류. Phase 1은 fixture로 주입한다 */
   fieldErrors: Record<string, string>;
@@ -24,6 +36,13 @@ export interface WarehouseFormPaneProps {
   onCancel: () => void;
   onDeactivate: () => void;
   onActivate: () => void;
+  /**
+   * 고칠 때의 Location 묶음 — Location 탭이 받는 목록(미사용 포함). `items` 가 null 이면 아직 받는 중, `error` 는
+   * 받지 못했을 때 그 자리에 둘 배너.
+   */
+  locations?: { items: readonly Location[] | null; error: ReactNode } | undefined;
+  /** 「Location 탭에서 보기」 — 옆 탭을 연다. */
+  onOpenLocations?: (() => void) | undefined;
 }
 
 const t = messages.warehouseLocation;
@@ -88,7 +107,11 @@ export const SelectField = ({
       <span className="field-label warehouse-location-field-label">
         <span>
           <label htmlFor={id}>{label}</label>
-          {required && <span aria-hidden="true"> *</span>}
+          {required && (
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          )}
         </span>
         {/* 라벨 옆 도움말 — 문구는 자르지 않는다. */}
         {labelHint && (
@@ -120,47 +143,199 @@ export const SelectField = ({
   );
 };
 
-/** 고칠 수 없는 값 — 입력칸 대신 라벨과 글자로 보인다(흐리게 두지 않는다, 사용자 지시 2026-10-29). */
-export const ReadOnlyField = ({
-  label,
-  value,
-  error,
-  note,
-}: {
-  label: string;
-  value: string;
-  /** 서버가 이 칸에 붙여 보낸 오류(예: ERP 창고 이름 잠김) — 칸이 글자여도 묻히지 않게 아래에 보인다. */
-  error?: string | undefined;
-  /** 값 아래 짧은 도움말. */
-  note?: string | undefined;
-}) => {
-  const labelId = useId();
-  const errorId = `${labelId}-error`;
-  return (
-    <div className="field-cell">
-      <span className="field-label" id={labelId}>
-        {label}
+const labelOf = (options: { value: string; label: string }[], value: string): string =>
+  options.find((option) => option.value === value)?.label ?? value;
+
+/** 창고 추가 — 머리 · 필수 칸 · 바닥. 값 순서는 보기와 같다(공장 · 코드 · 창고명 / 사업부 · 유형 · 불량 · 외부). */
+const WarehouseCreateFields = ({
+  values,
+  onChange,
+  fieldErrors,
+  codeLockReason,
+  lookups,
+}: Pick<
+  WarehouseFormPaneProps,
+  'values' | 'onChange' | 'fieldErrors' | 'codeLockReason' | 'lookups'
+>) => (
+  <>
+    <div className="warehouse-info-create-head">
+      <span className="location-identity-icon is-zone">
+        <Icon name="add_business" size={24} />
       </span>
-      <output
-        className="warehouse-location-readonly"
-        aria-labelledby={labelId}
-        aria-describedby={error === undefined ? undefined : errorId}
-      >
-        {value}
-      </output>
-      {note !== undefined && <span className="field-note">{note}</span>}
-      {error !== undefined && (
-        <span id={errorId} className="field-error">
-          {error}
-        </span>
-      )}
+      <h3 className="warehouse-info-create-title">{t.actions.addWarehouse}</h3>
     </div>
+    <div className="form-grid warehouse-info-create-grid">
+      <SelectField
+        label={t.fields.plant}
+        required
+        options={lookups.plants}
+        value={values.plantId}
+        onChange={(value) => onChange({ plantId: value })}
+        error={fieldErrors.plantId}
+      />
+      <TextField
+        label={t.fields.warehouseCode}
+        required
+        value={values.warehouseCode}
+        onChange={(event) => onChange({ warehouseCode: event.target.value })}
+        disabled={codeLockReason !== null}
+        disabledReason={codeLockReason}
+        error={fieldErrors.warehouseCode}
+      />
+      <TextField
+        label={t.fields.warehouseName}
+        required
+        value={values.warehouseName}
+        onChange={(event) => onChange({ warehouseName: event.target.value })}
+        error={fieldErrors.warehouseName}
+      />
+      <SelectField
+        label={t.fields.businessUnit}
+        required
+        options={lookups.businessUnits}
+        value={values.businessUnitId}
+        onChange={(value) => onChange({ businessUnitId: value })}
+        error={fieldErrors.businessUnitId}
+      />
+      <SelectField
+        label={t.fields.warehouseType}
+        required
+        options={lookups.warehouseTypes}
+        value={values.warehouseTypeCode}
+        onChange={(value) => onChange({ warehouseTypeCode: value })}
+        error={fieldErrors.warehouseTypeCode}
+        placeholder={t.values.selectPlaceholder}
+      />
+      {/*
+       * 불량 창고는 유형 옆 칸에 — 등록 때는 아직 창고가 없어 묻지 않고 바로 바뀐다. 외부 창고는 MES 가 관리할 대상이
+       * 아니라 칸이 없다(사용자 지시 2026-10-30).
+       */}
+      <div className="warehouse-info-create-flags">
+        <Switch
+          label={t.fields.isDefect}
+          labelPlacement="start"
+          checked={values.isDefect}
+          onChange={(event) => onChange({ isDefect: event.target.checked })}
+        />
+      </div>
+    </div>
+  </>
+);
+
+const STAT_ICON_SIZE = 18;
+
+/** 창고 정보의 Location 묶음 — 위치 수 · 단계별 수 · 사용 중지 수 · 서버가 만든 위치 · 옆 탭으로. */
+const WarehouseLocationSummary = ({
+  locations,
+  onOpenLocations,
+}: {
+  locations: NonNullable<WarehouseFormPaneProps['locations']>;
+  onOpenLocations: WarehouseFormPaneProps['onOpenLocations'];
+}) => {
+  const baseId = useId();
+  const summary = locations.items === null ? null : summarizeLocations(locations.items);
+  const stats =
+    summary === null
+      ? []
+      : [
+          ...LOCATION_LEVEL_CODES.map((level) => ({
+            key: level,
+            label: t.values.locationLevels[level],
+            icon: levelIconOf({ locationLevelCode: level, systemRoleCode: null }),
+            count: summary.levels[level],
+          })),
+          {
+            key: 'inactive',
+            label: messages.common.deactivate,
+            icon: { name: 'block', tone: 'none' },
+            count: summary.inactive,
+          },
+        ];
+
+  return (
+    <section className="location-section" aria-label={t.tabs.location}>
+      <div className="warehouse-info-section-head">
+        <h3 className="location-section-title">
+          {t.tabs.location}
+          {summary !== null && <span className="location-items-count">{summary.total}</span>}
+        </h3>
+        {onOpenLocations !== undefined && (
+          <Button
+            variant="text"
+            className="location-state-button"
+            leadingIcon={<Icon name="arrow_forward" size={18} />}
+            onClick={onOpenLocations}
+          >
+            {t.actions.viewLocations}
+          </Button>
+        )}
+      </div>
+      {locations.error}
+      {summary === null ? (
+        locations.error === null && (
+          <div role="status" aria-label={t.loading.locations}>
+            <SkeletonText lines={2} />
+          </div>
+        )
+      ) : (
+        <>
+          <dl className="warehouse-info-stats">
+            {stats.map((stat) => {
+              const id = `${baseId}-${stat.key}`;
+              return (
+                <div
+                  key={stat.key}
+                  className={
+                    stat.count === 0 ? 'warehouse-info-stat is-muted' : 'warehouse-info-stat'
+                  }
+                >
+                  <span className={`location-identity-icon is-${stat.icon.tone}`}>
+                    <Icon name={stat.icon.name} size={STAT_ICON_SIZE} />
+                  </span>
+                  <div className="warehouse-info-stat-text">
+                    <dt id={id}>{stat.label}</dt>
+                    <dd>
+                      <output aria-labelledby={id}>{stat.count}</output>
+                    </dd>
+                  </div>
+                </div>
+              );
+            })}
+          </dl>
+          {summary.system.length > 0 && (
+            <ul
+              className="location-items-list warehouse-info-system"
+              aria-label={t.warehouseInfo.systemLocations}
+            >
+              {summary.system.map((location) => {
+                const icon = levelIconOf(location);
+                return (
+                  <li key={location.locationId} className="location-items-row">
+                    <span className={`location-identity-icon is-${icon.tone}`}>
+                      <Icon name={icon.name} size={STAT_ICON_SIZE} />
+                    </span>
+                    <span className="location-items-code">{location.locationCode}</span>
+                    <span className="location-items-name">{levelNameOf(location)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
   );
 };
 
+/**
+ * 창고 정보 탭(안 A, 사용자 결정 2026-10-30) — 위치 수정 창과 같은 짜임: 머리(창고 · 코드 · 창고명 · 칩) · 옅은 정보 판
+ * (고칠 값만 연필, 불량 · 외부는 스위치) · Location 묶음 · 바닥(왼쪽 상태 단추, 오른쪽 취소 · 저장). 등록은 머리와 필수
+ * 칸만.
+ */
 export const WarehouseFormPane = ({
   mode,
   values,
+  baseline,
   onChange,
   fieldErrors,
   banner,
@@ -173,144 +348,169 @@ export const WarehouseFormPane = ({
   onCancel,
   onDeactivate,
   onActivate,
+  locations,
+  onOpenLocations,
 }: WarehouseFormPaneProps) => {
-  const activeLabelId = useId();
-  const externalLabelId = useId();
-  const defectLabelId = useId();
+  /*
+   * 불량 창고는 바꾸기 전에 한 번 묻는다(사용자 지시 2026-10-30) — 확인하면 값이 바뀌고 저장이 켜진다. 확인을 곧 저장으로
+   * 보내지 않는다: 수정 본문은 칸 전부를 싣는 PUT 이라 연필로 고쳐 둔 다른 값까지 함께 나가거나, 그것을 빼려면 저장된
+   * 값과 섞은 본문을 따로 지어야 한다. 바꾼 값은 다른 값과 같이 점으로 보이고 저장 · 취소로 한꺼번에 다룬다.
+   */
+  const [pendingDefect, setPendingDefect] = useState<boolean | null>(null);
+  /* 취소하면 열어 둔 연필 칸도 닫는다 — 정보 판을 새로 그린다. */
+  const [resetCount, setResetCount] = useState(0);
+
+  const changed = (field: keyof WarehouseFormValues): boolean =>
+    baseline !== undefined && values[field] !== baseline[field];
+
+  const facts: LocationFact[] = [
+    { label: t.fields.plant, value: labelOf(lookups.plants, values.plantId) },
+    {
+      label: t.fields.businessUnit,
+      value: labelOf(lookups.businessUnits, values.businessUnitId),
+      error: fieldErrors.businessUnitId,
+      changed: changed('businessUnitId'),
+      edit: {
+        onChange: (value) => onChange({ businessUnitId: value }),
+        select: { value: values.businessUnitId, options: lookups.businessUnits },
+      },
+    },
+    {
+      label: t.fields.warehouseType,
+      value: labelOf(lookups.warehouseTypes, values.warehouseTypeCode),
+      error: fieldErrors.warehouseTypeCode,
+      changed: changed('warehouseTypeCode'),
+      edit: {
+        onChange: (value) => onChange({ warehouseTypeCode: value }),
+        select: { value: values.warehouseTypeCode, options: lookups.warehouseTypes },
+      },
+    },
+    {
+      label: t.fields.isDefect,
+      value: '',
+      changed: changed('isDefect'),
+      control: (
+        <Switch
+          aria-label={t.fields.isDefect}
+          checked={values.isDefect}
+          onChange={(event) => setPendingDefect(event.target.checked)}
+        />
+      ),
+    },
+  ];
+
+  /* 코드 · 창고명은 고칠 수 없어 머리로 올린다. 서버가 그 칸에 붙여 보낸 오류는 머리 밑에 둔다. */
+  const identityErrors = [fieldErrors.warehouseCode, fieldErrors.warehouseName].filter(
+    (error): error is string => error !== undefined,
+  );
 
   return (
-    <section className="warehouse-location-form" aria-label={t.tabs.warehouse}>
+    <section
+      className="warehouse-location-form warehouse-info"
+      aria-label={mode === 'create' ? t.actions.addWarehouse : t.tabs.warehouse}
+    >
       {banner}
 
-      {/*
-       * 배치(사용자 지시 2026-10-29 「배치를 효율적으로」): 위 줄은 고칠 수 없는 값(코드 · 이름 · 공장 · 상태),
-       * 가운데 줄은 고르는 칸 셋, 아래 줄은 켜고 끄는 둘. 등록에서는 위 줄이 입력칸이다.
-       */}
-      <div
-        className={
-          mode === 'edit'
-            ? 'warehouse-location-form-summary'
-            : 'form-grid warehouse-location-form-identity'
-        }
-      >
-        {mode === 'edit' ? (
-          <>
-            <ReadOnlyField
-              label={t.fields.warehouseCode}
-              value={values.warehouseCode}
-              error={fieldErrors.warehouseCode}
-            />
-            <ReadOnlyField
-              label={t.fields.warehouseName}
-              value={values.warehouseName}
-              error={fieldErrors.warehouseName}
-            />
-            <ReadOnlyField
-              label={t.fields.plant}
-              value={
-                lookups.plants.find((option) => option.value === values.plantId)?.label ??
-                values.plantId
-              }
-            />
-            <div className="field-cell">
-              <span className="field-label" id={activeLabelId}>
-                {t.fields.isActive}
-              </span>
-              <div className="warehouse-location-status">
-                <Chip aria-labelledby={activeLabelId} status={isActive ? 'success' : 'idle'}>
-                  {isActive ? t.values.active : t.values.inactive}
+      {mode === 'create' ? (
+        <WarehouseCreateFields
+          values={values}
+          onChange={onChange}
+          fieldErrors={fieldErrors}
+          codeLockReason={codeLockReason}
+          lookups={lookups}
+        />
+      ) : (
+        <>
+          <IdentityHeader
+            icon={{ name: 'warehouse', tone: 'zone' }}
+            kind={t.fields.warehouse}
+            code={values.warehouseCode}
+            codeLabel={t.fields.warehouseCode}
+            name={values.warehouseName}
+            nameLabel={t.fields.warehouseName}
+            chips={
+              values.isDefect ? (
+                <Chip size="sm" status="error">
+                  {t.fields.isDefect}
                 </Chip>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <TextField
-              label={t.fields.warehouseCode}
-              value={values.warehouseCode}
-              onChange={(event) => onChange({ warehouseCode: event.target.value })}
-              disabled={codeLockReason !== null}
-              disabledReason={codeLockReason}
-              error={fieldErrors.warehouseCode}
-            />
-            <TextField
-              label={t.fields.warehouseName}
-              value={values.warehouseName}
-              onChange={(event) => onChange({ warehouseName: event.target.value })}
-              error={fieldErrors.warehouseName}
-            />
-            <SelectField
-              label={t.fields.plant}
-              options={lookups.plants}
-              value={values.plantId}
-              onChange={(value) => onChange({ plantId: value })}
-            />
-          </>
-        )}
-      </div>
-
-      <div className="form-grid warehouse-location-form-attrs">
-        <SelectField
-          label={t.fields.businessUnit}
-          options={lookups.businessUnits}
-          value={values.businessUnitId}
-          onChange={(value) => onChange({ businessUnitId: value })}
-        />
-        <SelectField
-          label={t.fields.warehouseType}
-          options={lookups.warehouseTypes}
-          value={values.warehouseTypeCode}
-          onChange={(value) => onChange({ warehouseTypeCode: value })}
-          error={fieldErrors.warehouseTypeCode}
-        />
-      </div>
-
-      <div className="warehouse-location-form-flags">
-        <div className="warehouse-location-inline-field">
-          <span id={externalLabelId}>{t.fields.isExternal}</span>
-          <Switch
-            aria-labelledby={externalLabelId}
-            checked={values.isExternal}
-            onChange={(event) => onChange({ isExternal: event.target.checked })}
+              ) : undefined
+            }
+            isActive={isActive}
           />
-        </div>
-        <div className="warehouse-location-inline-field">
-          <span id={defectLabelId}>{t.fields.isDefect}</span>
-          <Switch
-            aria-labelledby={defectLabelId}
-            checked={values.isDefect}
-            onChange={(event) => onChange({ isDefect: event.target.checked })}
-          />
-        </div>
-      </div>
+          {identityErrors.map((error) => (
+            <span key={error} className="field-error">
+              {error}
+            </span>
+          ))}
+          <LocationFacts key={`${values.warehouseCode}-${String(resetCount)}`} facts={facts} />
+          {locations !== undefined && (
+            <WarehouseLocationSummary locations={locations} onOpenLocations={onOpenLocations} />
+          )}
+        </>
+      )}
 
       <div className="form-actions warehouse-location-form-actions">
         {/*
-         * 사유가 붙은 보조 액션은 줄 왼쪽에, 주 액션(취소·저장)은 오른쪽에 남긴다.
-         * variant는 outlined여야 한다 — text는 비활성일 때 흐린 글자만 남아 버튼으로 읽히지 않는다.
+         * 상태를 바꾸는 단추는 바닥 왼쪽 — 오른쪽의 취소 · 저장과 가른다(omf-all-around#17). 위치 창과 같은 아이콘 ·
+         * 글자 단추다. 아직 등록되지 않은 창고에는 사용 중지할 대상이 없다.
          */}
         <div className="field-cell form-actions-secondary">
-          {/*
-           * 상태를 바꾸는 액션은 바닥글 왼쪽 맨 앞 — 오른쪽의 폼 저장 액션(취소·저장)과 가른다
-           * (사용자 지시 2026-09-18 · omf-all-around#17). 아직 등록되지 않은 창고에는 사용 중지할 대상이 없다.
-           */}
           {mode === 'edit' && (
             <Button
-              className="warehouse-location-status-action"
-              variant="outlined"
+              variant="text"
+              className="location-state-button"
+              leadingIcon={<Icon name={isActive ? 'block' : 'restart_alt'} size={18} />}
               onClick={isActive ? onDeactivate : onActivate}
             >
               {isActive ? messages.common.deactivate : t.actions.activate}
             </Button>
           )}
         </div>
-        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
+        <Button
+          variant="outlined"
+          disabled={!isDirty}
+          onClick={() => {
+            setResetCount((count) => count + 1);
+            onCancel();
+          }}
+        >
           {messages.common.cancel}
         </Button>
         <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
           {messages.common.save}
         </Button>
       </div>
+
+      <Dialog
+        className="location-dialog"
+        open={pendingDefect !== null}
+        onClose={() => setPendingDefect(null)}
+        size="sm"
+        title={pendingDefect === true ? t.defectConfirm.on : t.defectConfirm.off}
+        closeOnBackdropClick={false}
+        footer={
+          <>
+            <Button variant="outlined" onClick={() => setPendingDefect(null)}>
+              {messages.common.cancel}
+            </Button>
+            <Button
+              onClick={() => {
+                if (pendingDefect !== null) onChange({ isDefect: pendingDefect });
+                setPendingDefect(null);
+              }}
+            >
+              {messages.common.confirm}
+            </Button>
+          </>
+        }
+      >
+        <ConfirmTarget
+          tone="warning"
+          icon="warning"
+          code={values.warehouseCode}
+          name={values.warehouseName}
+        />
+      </Dialog>
     </section>
   );
 };

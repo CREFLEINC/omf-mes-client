@@ -1,10 +1,12 @@
-import type { ItemInspectionLevel } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite } from '../../patterns/master';
 import type { LevelDialogValues } from './level-dialog';
 import { inspectionLevelKeys } from './queries';
+
+type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
 
 const t = messages.inspectionLevel;
 

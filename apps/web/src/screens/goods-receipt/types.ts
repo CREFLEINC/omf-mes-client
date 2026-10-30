@@ -1,10 +1,6 @@
-import type {
-  components,
-  InboundReceiptLineForward,
-  InboundReceiptSplitLot,
-} from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
-import { locationDisplayName, type SystemLocationFields } from '../../patterns/system-location';
+import { locationDisplayName } from '../../patterns/system-location';
 
 /**
  * W-01-10 화면 슬라이스의 계약.
@@ -21,6 +17,7 @@ import { locationDisplayName, type SystemLocationFields } from '../../patterns/s
 
 type InboundReceiptResponse = components['schemas']['InboundReceipt'];
 type InboundReceiptLineResponse = components['schemas']['InboundReceiptLine'];
+type InboundReceiptSplitLot = NonNullable<InboundReceiptLineResponse['splitLots']>[number];
 type WarehouseResponse = components['schemas']['Warehouse'];
 type LocationResponse = components['schemas']['Location'];
 type GoodsReceiptResponse = components['schemas']['GoodsReceipt'];
@@ -97,9 +94,7 @@ export interface IrLineView {
 }
 
 /** 라인 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
-export const toIrLineView = (
-  data: InboundReceiptLineResponse & InboundReceiptLineForward,
-): IrLineView => ({
+export const toIrLineView = (data: InboundReceiptLineResponse): IrLineView => ({
   inboundReceiptLineId: data.inboundReceiptLineId,
   inboundReceiptId: data.inboundReceiptId,
   lineNo: data.lineNo,
@@ -180,8 +175,8 @@ export interface LocationView {
   locationName: string;
 }
 
-/** 이름에 MES 별칭을 함께 싣는다 — 별칭은 계약 사본에 아직 없다(`patterns/system-location.ts`). */
-export const toLocationView = (data: LocationResponse & SystemLocationFields): LocationView => ({
+/** 이름에 MES 별칭을 함께 싣는다(`patterns/system-location.ts`). */
+export const toLocationView = (data: LocationResponse): LocationView => ({
   locationId: data.locationId,
   parentLocationId: data.parentLocationId ?? null,
   locationCode: data.locationCode,

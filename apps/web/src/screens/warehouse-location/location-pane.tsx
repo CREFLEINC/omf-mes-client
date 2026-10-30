@@ -13,7 +13,7 @@ import { type ReactNode, useId } from 'react';
 
 import { BoardTable } from '../../patterns/board-table';
 import { OneLine } from '../../patterns/po-board';
-import { levelIconOf } from './location-identity';
+import { levelIconOf, levelNameOf } from './location-identity';
 import type { LocationTreeRow } from './location-tree';
 import { locationShownName } from './mappers';
 import type { Location } from './types';
@@ -142,7 +142,7 @@ export const LocationPane = ({
               {row.location.locationCode}
             </button>
             {/* 지정한 품목만 두는 위치 — 코드 뒤 작은 자물쇠(사용자 지시 2026-10-29). */}
-            {row.location.hasItemRestriction === true && (
+            {row.location.hasItemRestriction && (
               <span
                 className="location-restricted-icon"
                 role="img"
@@ -165,15 +165,13 @@ export const LocationPane = ({
     {
       key: 'locationLevel',
       header: t.fields.locationLevel,
-      /* 단계는 서버가 상위를 보고 정한다(P-154) — 화면은 읽기만 한다. 넷보다 깊던 옛 위치는 비어 온다. */
+      /*
+       * 단계는 서버가 상위를 보고 정한다(P-154) — 화면은 읽기만 한다. 넷보다 깊던 옛 위치는 비어 온다. 서버가 만든
+       * 위치는 단계가 구역이어도 역할 이름(적치 대기 · 창고 전체)으로 — 수정 창 머리와 같은 이름.
+       */
       align: 'center',
-      width: '72px',
-      render: (row) => {
-        const code = row.location.locationLevelCode;
-        return code === null || code === undefined
-          ? messages.common.reference.empty
-          : t.values.locationLevels[code];
-      },
+      width: '88px',
+      render: (row) => levelNameOf(row.location) ?? messages.common.reference.empty,
     },
     {
       key: 'isActive',

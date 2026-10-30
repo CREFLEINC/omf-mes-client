@@ -26,7 +26,6 @@ const warehouse: components['schemas']['Warehouse'] = {
   warehouseCode: 'SAMPLE-WH-01',
   warehouseName: '합성 창고',
   warehouseTypeCode: 'SAMPLE_TYPE',
-  managementLevelCode: 'SAMPLE_LEVEL',
   isExternal: false,
   isDefect: false,
   isActive: true,
@@ -44,10 +43,12 @@ const location: components['schemas']['Location'] = {
   warehouseId: 101,
   locationCode: 'SAMPLE-LOC-01',
   locationName: '합성 위치',
-  locationTypeCode: 'SAMPLE_TYPE',
-  allowMixedItem: true,
-  allowMixedLot: true,
   isActive: true,
+  aliasName: null,
+  locationLevelCode: null,
+  isLeaf: true,
+  systemRoleCode: null,
+  hasItemRestriction: false,
 };
 const earlierLocation: components['schemas']['Location'] = {
   ...location,

@@ -128,7 +128,7 @@ export const useItemSearch = (
             query: {
               /* 빈 검색어는 축을 아예 싣지 않는다 — 빈 문자열을 검색어로 보내지 않는다. */
               ...(trimmed === '' ? {} : { q: trimmed }),
-              ...(itemTypeCode === '' ? {} : { itemTypeCode }),
+              ...(itemTypeCode === '' ? {} : { itemTypeCode: [itemTypeCode] }),
               ...(includeInactive ? { includeInactive: true } : {}),
               ...(hasRouting ? { hasRouting: true } : {}),
               page,

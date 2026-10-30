@@ -1,4 +1,4 @@
-import { AlertBanner, Chip, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -21,17 +21,17 @@ import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure, useQueryErrorOf } from '../../patterns/load-failure';
 import {
   useHandlingUnitByNo,
+  useLocationItemIds,
   useLots,
-  usePutawayRules,
   useStockedLots,
   useUnitContents,
   useWarehouses,
 } from './queries';
 import {
+  ANYWHERE,
   INSPECTION_PENDING,
   MATCHED,
-  NOT_RECOMMENDED,
-  NO_RULE,
+  NOT_ALLOWED,
   RECEIPT_LABEL,
   canSubmit,
   destinationOf,
@@ -40,7 +40,6 @@ import {
   putawayTaskIdsOf,
   qtyProblemOf,
   queuedForLotsOf,
-  recommendedOf,
   stockedLines,
   toPutawayDraft,
   toReceiptDraft,
@@ -74,7 +73,6 @@ export const ProductReceiptScreen = () => {
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
-  const [confirmedNoRule, setConfirmedNoRule] = useState(false);
   /* 키패드는 지금 적는 줄 아래에만 선다(공유계약 D-4). 줄마다 두면 화면이 키패드로 찬다. */
   const [keypadFor, setKeypadFor] = useState<number | null>(null);
   /* 같은 라벨을 다시 읽으면 상태는 그대로라 소리가 다시 나지 않는다. 회차를 함께 센다. */
@@ -98,28 +96,22 @@ export const ProductReceiptScreen = () => {
 
   const locations = useLocations(warehouseId);
   const atLocation = useLocationByCode(warehouseId, scannedLocation);
+  const managed = managesLocations(locations.data ?? []);
   const destination = destinationOf(warehouse, atLocation.data ?? null, locations.data ?? []);
 
   const itemCode = useItemCodes(lines.map((line) => line.itemId));
   const plantId = currentPlantId();
 
   /*
-   * 적치 지시는 입고 응답에서야 생긴다. 스캔한 위치가 맞는지는 그 전에 알아야 하므로 규칙을
-   * 직접 묻는다.
-   *
-   * 한 인식표에 품목이 여럿이면 어느 규칙으로 재야 할지 정해진 것이 없다. 첫 줄로 재면 다른
-   * 품목의 옳은 자리를 막아 현장이 선다 - 그때는 규칙 없는 갈래로 물러나 확인을 받는다.
+   * 적치 지시는 입고 응답에서야 생긴다. 스캔한 위치가 이 품목을 받는지는 그 전에 알아야 하므로
+   * 위치의 보관 품목을 직접 묻는다. 묻지 못했으면 막지 않는다 - 서버가 다시 판정한다.
    */
   const itemIds = [...new Set(lines.map((line) => line.itemId))];
-  const ruledItemId = itemIds.length === 1 ? (itemIds[0] ?? null) : null;
-  const rules = usePutawayRules(warehouseId, ruledItemId);
-  const recommended = recommendedOf(rules.data ?? []);
-  const verdict = verdictOf(recommended, atLocation.data ?? null);
+  const designated = useLocationItemIds(atLocation.data?.locationId ?? null);
+  const verdict = designated.isError ? ANYWHERE : verdictOf(designated.data, itemIds);
   const stocked = useStockedLots(lines.map((line) => line.lotId));
   const alreadyStocked = stockedLines(lines, stocked);
   const unverified = unverifiedLines(lines, stocked);
-  const recommendedCode =
-    (locations.data ?? []).find((each) => each.locationId === recommended)?.locationCode ?? '';
 
   /*
    * 큐에 담긴 것은 서버 응답에 없다. 읽기 전에는 담긴 것이 없는 것과 구별되지 않아 같은
@@ -134,13 +126,13 @@ export const ProductReceiptScreen = () => {
 
   const ready = canSubmit({
     warehouse,
+    managed,
     destination,
     lines,
     hasWorker: worker !== null,
     plantId,
     queuedForLots,
     verdict,
-    confirmedNoRule,
     stocked,
   });
 
@@ -151,7 +143,7 @@ export const ProductReceiptScreen = () => {
   const scanMissed =
     (scannedUnit !== null && unit.isSuccess && unit.data === null) ||
     (scannedLocation !== null && atLocation.isSuccess && atLocation.data === null) ||
-    (scannedLocation !== null && verdict === NOT_RECOMMENDED);
+    (atLocation.data != null && verdict === NOT_ALLOWED);
 
   useEffect(() => {
     if (scanMissed) {
@@ -161,7 +153,7 @@ export const ProductReceiptScreen = () => {
 
   /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
   useAdvanceTo(lines.length > 0, contentsSection);
-  useAdvanceTo(lines.length > 0 && managesLocations(warehouse), locationSection);
+  useAdvanceTo(lines.length > 0 && managed, locationSection);
 
   /* 담긴 것을 화면이 적을 자리로 옮긴다. 수량은 인식표가 말한 것으로 채우고 고칠 수 있게 둔다. */
   useEffect(() => {
@@ -195,7 +187,6 @@ export const ProductReceiptScreen = () => {
   const locationScan = useScanField({
     onScan: (value) => {
       setScannedLocation(value.trim());
-      setConfirmedNoRule(false);
       setScanSeq((seq) => seq + 1);
     },
   });
@@ -208,7 +199,6 @@ export const ProductReceiptScreen = () => {
     setScannedUnit(null);
     setScannedLocation(null);
     setLines([]);
-    setConfirmedNoRule(false);
     setKeypadFor(null);
     unitScan.focus();
   });
@@ -232,7 +222,6 @@ export const ProductReceiptScreen = () => {
     setLines([]);
     setOutcome(null);
     setSaveFailed(false);
-    setConfirmedNoRule(false);
     setKeypadFor(null);
     unitScan.focus();
   };
@@ -294,7 +283,7 @@ export const ProductReceiptScreen = () => {
       }
 
       const putawayDrafts = taskIds.map((taskId) =>
-        toPutawayDraft(taskId, destination, verdict, confirmedNoRule, now, worker.workerNo),
+        toPutawayDraft(taskId, destination, now, worker.workerNo),
       );
 
       for (const putawayDraft of putawayDrafts) {
@@ -498,15 +487,8 @@ export const ProductReceiptScreen = () => {
 
           <section className="product-receipt__section" ref={locationSection}>
             <h2>{t.location.legend}</h2>
-            {managesLocations(warehouse) ? (
+            {managed ? (
               <>
-                {/* 권장 자리를 먼저 보인다. 다 스캔한 뒤에 막히면 물건을 들고 되돌아온다. */}
-                {rules.isError ? (
-                  <AlertBanner variant="warning" title={t.location.rulesLoadFailed} />
-                ) : null}
-                {recommended === null ? null : (
-                  <Chip>{t.location.recommended(recommendedCode)}</Chip>
-                )}
                 <TextField
                   ref={locationScan.ref}
                   label={required(t.location.scanLabel)}
@@ -534,25 +516,19 @@ export const ProductReceiptScreen = () => {
                   <AlertBanner variant="error" title={t.location.notFound(scannedLocation)} />
                 ) : null}
 
+                {designated.isError ? (
+                  <AlertBanner variant="warning" title={t.location.itemsLoadFailed} />
+                ) : null}
                 {atLocation.data == null ? null : verdict === MATCHED ? (
                   <AlertBanner variant="success" title={t.location.matched} />
-                ) : verdict === NOT_RECOMMENDED ? (
-                  <AlertBanner variant="error" title={t.location.notRecommended(recommendedCode)} />
-                ) : (
-                  <>
-                    <AlertBanner variant="warning" title={t.location.noRule} />
-                    <Button
-                      className="product-receipt__wide"
-                      variant={confirmedNoRule ? 'filled' : 'outlined'}
-                      size="xl"
-                      onClick={() => {
-                        setConfirmedNoRule(true);
-                      }}
-                    >
-                      {t.location.noRuleConfirm}
-                    </Button>
-                  </>
-                )}
+                ) : verdict === NOT_ALLOWED ? (
+                  <AlertBanner
+                    variant="error"
+                    title={t.location.notAllowed(atLocation.data.locationCode)}
+                  />
+                ) : verdict === ANYWHERE && !designated.isError ? (
+                  <AlertBanner variant="info" title={t.location.anywhere} />
+                ) : null}
               </>
             ) : (
               <>

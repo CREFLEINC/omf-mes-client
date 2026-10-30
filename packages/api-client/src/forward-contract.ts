@@ -3,28 +3,11 @@ import type { components, paths } from './generated/api';
 /** P-7/P-10 선행 계약: 공식 설계 사본이 갱신될 때 동등성을 대조하고 제거한다. */
 export type TerminalRegistrationStatusCode = 'UNREGISTERED' | 'REGISTERED';
 
-/**
- * 생산라인(설비 그룹)의 기본 위치 셋 — 서버가 계약보다 먼저 연 칸이라 생성 타입에 없다. 계약 사본에
- * 실려 `gen:api` 가 만들면 이 타입과 덧댄 자리를 지운다. 본문에서 생략 = 유지, null = 비움.
- */
-export interface LineDefaultLocations {
-  defaultWipLocationId?: number | null;
-  defaultFgLocationId?: number | null;
-  defaultScrapLocationId?: number | null;
-}
-
 export interface TerminalRegistrationConfirmation {
   terminalId: number;
   tokenVersion: number;
   registrationStatusCode: 'REGISTERED';
   registrationConfirmedAt: string;
-}
-
-/** 서버 선행 P-38(omf-all-around#104) — 계정에 연결된 작업자. 연결이 없으면 세 칸이 모두 null. */
-export interface AppUserWorker {
-  workerId: number | null;
-  workerNo: string | null;
-  workerName: string | null;
 }
 
 /** 서버 선행 P-38 — `Session.worker`. 서버가 «언제나» 싣고 연결이 없으면 null 이다. */
@@ -34,169 +17,13 @@ export interface SessionWorker {
   workerName: string;
 }
 
-interface AppUserWorkerPath {
-  parameters: {
-    query?: never;
-    header?: never;
-    path?: never;
-    cookie?: never;
-  };
-  get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: { appUserId: number };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: { [name: string]: unknown };
-        content: { 'application/json': AppUserWorker };
-      };
-    };
-  };
-  put: {
-    parameters: {
-      query?: never;
-      header: { 'Idempotency-Key': string };
-      path: { appUserId: number };
-      cookie?: never;
-    };
-    requestBody: { content: { 'application/json': { workerId: number | null } } };
-    responses: {
-      200: {
-        headers: { [name: string]: unknown };
-        content: { 'application/json': AppUserWorker };
-      };
-    };
-  };
-  post?: never;
-  delete?: never;
-  options?: never;
-  head?: never;
-  patch?: never;
-  trace?: never;
-}
-
-/** 서버 선행 P-42(omf-all-around#106·#108) — 불량 기록 등록 본문. 공정 2칸은 `sourceCode=IQC` 이면 생략. */
-export interface DefectRecordCreate {
-  sourceCode: string;
-  defectCodeId: number;
-  defectQty: number;
-  uomId: number;
-  detectedAt: string;
-  occurrenceProcessId?: number | null;
-  detectionProcessId?: number | null;
-  inspectionResultId?: number | null;
-  productionResultId?: number | null;
-  workOrderId?: number | null;
-  lotId?: number | null;
-  suspectedCauseCodeId?: number | null;
-  defectDescription?: string | null;
-  equipmentId?: number | null;
-  moldId?: number | null;
-  occurredAt?: string | null;
-}
-
-/**
- * 서버 선행 P-107(omf-all-around#166) — 무엇으로 셌는가. 둘 다 추정이다: 투입 시각 기준 계보 ·
- * 계보가 없는 작업지시(배포 전)의 작업지시 단위.
- */
-export type TraceBasis = 'LOT_GENEALOGY_ESTIMATE' | 'WORK_ORDER_ESTIMATE';
-
-/** 서버 선행 P-107 — 생산 LOT·시리얼에 들어간 자재 LOT 한 줄. */
-export interface InputMaterial {
-  lotId: number;
-  lotNo: string;
-  itemId: number;
-  itemCode: string;
-  itemName: string;
-  fourMChange?: { changeTypeCode?: string; remarks?: string };
-}
-
-export interface InputMaterials {
-  basis: TraceBasis;
-  items: InputMaterial[];
-}
-
-/** 서버 선행 P-107 — 자재 LOT 이 들어간 시리얼(쪽). */
-export interface UsedSerials {
-  basis: TraceBasis;
-  items: {
-    serialNumberId: number;
-    serialNo: string;
-    lotId: number;
-    lotNo: string;
-    producedAt?: string;
-  }[];
-  page: { page: number; size: number; total: number };
-}
-
-/** 서버 선행 P-52(omf-all-around#108) — 자재 LOT 이 들어간 생산 LOT(P-107 부터 계보 기준). */
-export interface AffectedProductionLots {
-  basis: TraceBasis;
-  workOrders: { workOrderId: number; workOrderNo: string }[];
-  items: {
-    lotId: number;
-    lotNo: string;
-    itemId: number;
-    statusCode: string;
-    workOrderId: number;
-    workOrderNo: string;
-  }[];
-}
-
-/** 서버 선행 P-56(omf-all-around#108) — 입하 라인 LOT 에서 선별로 떼어 낸 자식 LOT(불량분). */
-export interface InboundReceiptSplitLot {
-  lotId: number;
-  lotNo: string;
-  statusCode: string;
-  receivableQty: number;
-}
-
-/**
- * 서버 선행 P-56 — 입하 라인(`GET …/lines`)에 더해진 두 칸. 입고 가능 수량은 선별로 떼어 낸 불량분·이미 입고한 수량을 뺀
- * 값이고 서버 입고 상한과 같다. 옛 서버는 싣지 않는다(그때 화면은 입하 수량을 쓴다).
- */
-export interface InboundReceiptLineForward {
-  receivableQty?: number | null;
-  splitLots?: InboundReceiptSplitLot[];
-}
-
-/** 서버 선행 P-53(omf-all-around#108) — 처분 «선별». 양품은 정상, 불량분은 자식 LOT·새 부적합. */
-export type DispositionDecisionCreateForward = Omit<
-  components['schemas']['DispositionDecisionCreate'],
-  'dispositionTypeCode'
-> & {
-  dispositionTypeCode:
-    components['schemas']['DispositionDecisionCreate']['dispositionTypeCode'] | 'SORT';
-  acceptedQty?: number;
-  rejectedQty?: number;
-  businessDate?: string;
-};
-
-export interface DispositionSortResult {
-  splitLotId: number;
-  splitLotNo: string;
-  splitNonconformanceId: number;
-  splitNonconformanceNo: string;
-}
-
-type DecisionsPath = paths['/quality/nonconformances/{nonconformanceId}/disposition-decisions'];
-
-/** 서버 선행 P-47(omf-all-around#121) — 확정 본문의 IQC 불합격 사유 한 줄. */
-export interface InspectionDefectInput {
-  defectCodeId: number;
-  defectQty: number;
-  defectDescription?: string | null;
-  suspectedCauseCodeId?: number | null;
-}
-
-/** 서버 선행 P-47 — 사유를 실으면 서버가 확정과 한 트랜잭션에서 그 회차의 불량 기록을 이 값으로 갈아 끼운다. */
 /**
  * 서버 선행 P-86(omf-all-around#63) — IQC 판정 때 자재 LOT 의 4M 변경품(변경 종류 = 공통코드 `FOUR_M_CHANGE_TYPE`).
  * 쓰기 본문에서 생략하면 그대로, `null` 이면 변경품 아님. 조회(의뢰·LOT 목록)는 변경품일 때만 키가 있다.
+ *
+ * 전달본 2026-10-29-2 는 검사 결과 쓰기 본문(`InspectionResultConfirm`·`Create`·`Update`)의 `fourMChange.remarks` 를
+ * 필수로 적어 이 모양(둘 다 선택)과 다르다 — 맞춰질 때까지 `fourMChange` 만 덮는다. 불합격 사유(`defects`)·판정 변경
+ * 사유(`judgmentChangeReason`)·시리얼 판정(`serials`)은 생성 타입이 갖는다.
  */
 export interface FourMChangeForward {
   /** omf-all-around#133 — IQC 입력에서 변경 종류를 받지 않는다. 예전 기록에만 있다. */
@@ -204,161 +31,42 @@ export interface FourMChangeForward {
   remarks?: string;
 }
 
-/** 서버 선행 P-86(omf-all-around#63) — 의뢰 LOT 의 4M 변경품. */
-export type InspectionRequestForward = components['schemas']['InspectionRequest'] & {
-  fourMChange?: FourMChangeForward;
-};
-
-/** 서버 선행 P-86(omf-all-around#63) — LOT 목록·단건(`GET /trace/lots`(+`/{lotId}`))이 4M 변경품을 싣는다. */
-export type LotForward = components['schemas']['Lot'] & {
-  fourMChange?: FourMChangeForward;
-};
-
-/** 서버 선행 P-86(omf-all-around#63 2단계) — 자재 투입이 투입 LOT 의 4M 변경품을 싣는다. */
-export type MaterialConsumptionForward = components['schemas']['MaterialConsumption'] & {
-  fourMChange?: FourMChangeForward;
-};
-
 export type InspectionResultConfirmForward = Omit<
   components['schemas']['InspectionResultConfirm'],
   'fourMChange'
 > & {
-  defects?: InspectionDefectInput[];
-  /** 서버 선행 P-70(omf-all-around#125·#126) — IQC·OQC 판정이 합격판정개수 기준 자동 판정과 다르면 필수(maxLength 500). */
-  judgmentChangeReason?: string;
   fourMChange?: FourMChangeForward | null;
 };
 
 type InspectionConfirmPath = paths['/quality/inspection-results/{inspectionResultId}:confirm'];
 
-/**
- * 서버 선행 P-42·P-48(omf-all-around#122) — 작성중 저장도 IQC 불합격 사유를 싣는다. 실으면 그 회차의 불량 기록을
- * 갈아 끼우고(빈 배열 = 지움), 생략하면 손대지 않는다.
- */
 export type InspectionResultCreateForward = Omit<
   components['schemas']['InspectionResultCreate'],
   'fourMChange'
 > & {
-  defects?: InspectionDefectInput[];
-  /** 서버 선행 P-70(omf-all-around#125·#126) — statusCode=CONFIRMED 저장의 판정 변경 사유(IQC·OQC). `:confirm` 과 같은 규칙. */
-  judgmentChangeReason?: string;
   fourMChange?: FourMChangeForward | null;
-  /** 서버 선행 P-101(omf-all-around#68) — 출하작업지시 OQC 확정 저장의 시리얼별 판정. 시리얼당 한 줄로 남는다. */
-  serials?: OqcSerialJudgmentInput[];
 };
 
-/** 서버 선행 P-101(omf-all-around#68) — 시리얼 한 대의 출하검사 판정. */
-export interface OqcSerialJudgmentInput {
-  serialNumberId: number;
-  judgmentCode: 'OK' | 'NG';
-}
-
-/**
- * 서버 선행 P-101 — 시리얼의 OQC 기록. ⚠ 시리얼당 한 줄이라 재검 회차가 덮는다: 1차는 처음 값, 최종과 마지막 회차만 바뀐다.
- */
-export interface OqcSerialStep {
-  firstJudgmentCode: 'OK' | 'NG';
-  finalJudgmentCode: 'OK' | 'NG';
-  inspectedAt: string;
-  inspectorName?: string;
-  inspectionResultId?: number;
-  inspectionRound?: number;
-}
-
-/** 서버 선행 P-101 — `GET /quality/oqc-serials/{serialNo}` 스캔 한 번의 답. */
-export interface OqcSerialScan {
-  serialNumberId: number;
-  serialNo: string;
-  itemId: number;
-  itemCode: string;
-  itemName: string;
-  lotId: number;
-  lotNo: string;
-  producedAt?: string;
-  workOrderId?: number;
-  shipmentStep?: OqcSerialStep;
-  /**
-   * 이 시리얼의 LOT 을 피킹한 OQC 의뢰 — 대기·진행·완료(생략은 빠진다). 완료도 담는 것은 재검 회차가 같은 시리얼을
-   * 다시 찍기 때문이다. 시리얼로 의뢰를 열 때는 대기·진행만 고른다.
-   */
-  pickedRequests: {
-    inspectionRequestId: number;
-    inspectionRequestNo: string;
-    shipmentRequestId: number;
-    /** `REQUESTED` · `IN_PROGRESS` · `COMPLETED`. */
-    statusCode: string;
-  }[];
-}
-
-/** 서버 선행 P-101 — 의뢰 하나의 시리얼 판정 한 줄. */
-export type OqcSerialRecord = OqcSerialStep & {
-  serialNumberId: number;
-  serialNo: string;
-  lotId: number;
-  lotNo: string;
-};
 export type InspectionResultUpdateForward = Omit<
   components['schemas']['InspectionResultUpdate'],
   'fourMChange'
 > & {
-  defects?: InspectionDefectInput[];
   fourMChange?: FourMChangeForward | null;
 };
 
 type InspectionResultsPath = paths['/quality/inspection-results'];
 type InspectionResultPath = paths['/quality/inspection-results/{inspectionResultId}'];
-type InspectionResultsGet = InspectionResultsPath['get'];
 
-/** 서버 선행 P-76(omf-all-around#85) — 응답이 검사자(작업자) 이름을 함께 내린다. */
-export type InspectionResultForward = components['schemas']['InspectionResult'] & {
-  inspectorName?: string;
-};
-
-/** 서버 선행 P-76(omf-all-around#85) — LOT 하나로 좁히면(`lotId`) 기간이 필요 없다(그 LOT 의 전 이력). */
-export type InspectionResultListQueryForward = NonNullable<
-  InspectionResultsGet['parameters']['query']
-> & { lotId?: number };
 type DefectRecordsGet = paths['/quality/defect-records']['get'];
 
 /**
  * 서버 선행 P-42 — 검사 결과 하나로 좁히면(`inspectionResultId`) 기간이 필요 없다. 작성중 회차의 기록도 돌려준다(P-48).
+ * `inspectionResultId` 는 생성 타입에 들어왔지만 기간(`detectedFrom`·`detectedTo`)은 아직 필수라 그 둘만 덮는다.
  */
 export type DefectRecordListQueryForward = Omit<
   DefectRecordsGet['parameters']['query'],
   'detectedFrom' | 'detectedTo'
-> & { inspectionResultId?: number; detectedFrom?: string; detectedTo?: string };
-
-/** 서버 선행 P-57(omf-all-around#58) — 첨부 대상에 검사 문서(LOT·검사 결과)를 더한다. */
-export type AttachmentTargetType =
-  'WAREHOUSE' | 'NOTICE' | 'BREAKDOWN' | 'LOT' | 'INSPECTION_RESULT';
-
-type AttachmentsPath = paths['/app/attachments'];
-type AttachmentsListQuery = NonNullable<AttachmentsPath['get']['parameters']['query']>;
-
-/** 서버 선행 P-55(omf-all-around#61) — 검사 대상 이력. */
-export interface InspectionHistoryEvent {
-  occurredAt: string;
-  eventTypeCode: 'REQUESTED' | 'RESULT_SAVED' | 'RESULT_CONFIRMED' | 'LOT_STATUS_CHANGED';
-  actorName?: string;
-  inspectionResultNo?: string;
-  inspectionRound?: number;
-  overallJudgmentCode?: string;
-  acceptedQty?: number;
-  rejectedQty?: number;
-  heldQty?: number;
-  previousStatusCode?: string;
-  newStatusCode?: string;
-  transitionCode?: string;
-  lotNo?: string;
-}
-
-export interface InspectionHistory {
-  inspectionRequestId: number;
-  inspectionRequestNo: string;
-  inspectionTypeCode: string;
-  source: { targetTypeCode: string; targetId: number; documentNo?: string; lotNo?: string };
-  events: InspectionHistoryEvent[];
-}
+> & { detectedFrom?: string; detectedTo?: string };
 
 /**
  * 대시보드 2차 응답 규격(omf-all-around#118 코멘트 「2차 응답 규격」 · 2026-10-16 확정, 같은 날 서버 대조로
@@ -665,6 +373,9 @@ type DashboardSummaryGet = paths['/app/dashboard-summary']['get'];
 /**
  * 서버 선행 — 품목–공정–설비–금형 매핑. 계획 확정 전개가 기본 매핑의 설비·금형을 W/O 에 배정하고
  * 4M 추천이 읽는다. 공정이 null 이면 품목 공통(설비·금형이 필요한 공정에만 쓰인다).
+ *
+ * 전달본 2026-10-29-2 의 `ItemResourceMap` 은 이름 칸(공정·설비·금형 코드·이름, 라인, 비고)을 선택으로 적어 이
+ * 모양(늘 싣고 없으면 null)과 다르다 — 맞춰질 때까지 응답만 덮는다. 등록·수정 본문은 생성 타입을 쓴다.
  */
 export interface ItemResourceMap {
   itemResourceMapId: number;
@@ -688,28 +399,6 @@ export interface ItemResourceMap {
   versionNo: number;
 }
 
-export interface ItemResourceMapCreate {
-  plantId: number;
-  itemId: number;
-  processId?: number | null;
-  equipmentId?: number | null;
-  moldId?: number | null;
-  isDefault?: boolean;
-  priorityNo?: number;
-  remarks?: string | null;
-}
-
-/** 생략 = 유지, null = 비움. 공장·품목은 바꾸지 않는다. */
-export interface ItemResourceMapUpdate {
-  processId?: number | null;
-  equipmentId?: number | null;
-  moldId?: number | null;
-  isDefault?: boolean;
-  priorityNo?: number;
-  isActive?: boolean;
-  remarks?: string | null;
-}
-
 export interface ItemResourceMapListQuery {
   plantId?: number;
   itemId?: number;
@@ -717,204 +406,6 @@ export interface ItemResourceMapListQuery {
   moldId?: number;
   includeInactive?: boolean;
 }
-
-/** 서버 선행 — 4M 설비·금형 추천. 기본 매핑 → 그 밖의 매핑 → 같은 품목·공정의 최근 사용 순이다. */
-export type ResourceRecommendationSource = 'DEFAULT' | 'MAPPED' | 'RECENT';
-
-export interface EquipmentRecommendation {
-  equipmentId: number;
-  equipmentCode: string;
-  equipmentName: string;
-  productionLineId: number | null;
-  source: ResourceRecommendationSource;
-  inService: boolean;
-  /** 같은 시간대의 다른 W/O 에 이미 배정됐다 — 4M 점검의 설비 중복 배정과 같은 판정. */
-  busy: boolean;
-}
-
-export interface MoldRecommendation {
-  moldId: number;
-  moldCode: string;
-  moldName: string;
-  source: ResourceRecommendationSource;
-  inService: boolean;
-}
-
-/** 공장의 사용 중인 교대. busy = 같은 설비에 같은 근무일 이 교대의 W/O 가 이미 있다. */
-export interface ShiftRecommendation {
-  shiftId: number;
-  shiftCode: string;
-  shiftName: string;
-  startTime: string;
-  endTime: string;
-  busy: boolean;
-}
-
-/** 작업자를 고른 근거 — 같은 설비·라인·공정에서 일한 이력이거나 자격 보유. */
-export type WorkerRecommendationSource = 'EQUIPMENT' | 'LINE' | 'PROCESS' | 'QUALIFIED';
-
-/** busy = 같은 근무일 같은 교대에 이미 담당자다. */
-export interface WorkerRecommendation {
-  workerId: number;
-  workerNo: string;
-  workerName: string;
-  source: WorkerRecommendationSource;
-  busy: boolean;
-}
-
-export interface ResourceRecommendations {
-  equipments: EquipmentRecommendation[];
-  molds: MoldRecommendation[];
-  /** 서버 선행 — 교대·작업자 추천. 이를 싣지 않는 서버가 있어 선택으로 둔다(없으면 후보 없음). */
-  shifts?: ShiftRecommendation[];
-  workers?: WorkerRecommendation[];
-}
-
-/** 오더 수신 때 계획을 자동으로 만들지 못했거나 확정하지 못한 이유. 생성 타입(P-67, P-142)을 그대로 쓴다. */
-export type AutoPlanReason = components['schemas']['AutoPlanReason'];
-
-export type AutoPlanStatus = 'DONE' | 'NEEDS_REVIEW';
-
-export interface ProductionOrderAutoPlan {
-  status: AutoPlanStatus;
-  reasons: AutoPlanReason[];
-}
-
-/** 서버 선행 — `POST /planning/production-orders/{id}:auto-plan` 의 결과. */
-export interface ProductionOrderAutoPlanResult {
-  productionOrderId: number;
-  outcome: 'CONFIRMED' | 'DRAFT' | 'NOT_PLANNED';
-  productionPlanId: number | null;
-  reasons: AutoPlanReason[];
-}
-
-/**
- * 서버 선행 — W/O 가 자기 공정(라우팅 공정)을 싣는다. 단말 게이팅이 단말의 공정 대신 고른 W/O 의
- * 공정으로 판정한다. 싣지 않는 서버가 있어 선택으로 둔다.
- */
-export type WorkOrderForward = components['schemas']['WorkOrder'] & {
-  processId?: number;
-  processCode?: string;
-  processName?: string;
-  /** 계획 설비의 코드·이름 — 설비 없는 단말이 W/O 의 설비로 점검·시작할 때 그 설비를 보인다. */
-  plannedEquipmentCode?: string | null;
-  plannedEquipmentName?: string | null;
-  /** 서버 선행 P-108 — 미달 마감에서 고른 잔량 처분. 이월이어도 잔량 W/O 는 만들어지지 않는다. */
-  closeDispositionCode?: 'CARRY_OVER' | 'WRITE_OFF';
-  /** 서버 선행 P-108 — POP 에서 마감한 작업자. 관리웹 마감이면 없다. */
-  closedWorkerId?: number;
-  closedWorkerNo?: string;
-  closedWorkerName?: string;
-  /** 서버 선행 P-108 — 관리웹에서 마감한 계정. POP 마감이면 없다. */
-  closedByUserId?: number;
-  closedByUserName?: string;
-  /** 서버 선행 P-108 — 마감 시점 판정. `progress` 는 «지금» 판정이라 마감 뒤 지연 실적으로 바뀐다. */
-  closeJudgmentCode?: 'UNDER' | 'NORMAL' | 'OVER';
-  /** 서버 선행 P-108 — 마감으로 폐번된 선발행 LOT 수. 상세의 마감된 W/O 에만 있다. */
-  voidedLotCount?: number;
-};
-
-/**
- * 서버 선행 P-108 — 단말 공정 매핑의 작업지시 마감 권한. 다른 권한과 달리 생략하면 열림이다.
- * 싣지 않는 옛 서버가 있어 선택으로 둔다.
- */
-export type TerminalProcessForward = components['schemas']['TerminalProcess'] & {
-  canCloseWorkOrder?: boolean;
-};
-
-/** 서버 선행 P-108 — 매핑 저장 줄의 작업지시 마감 권한. 생략하면 서버가 열림으로 둔다. */
-export type TerminalProcessReplaceForward = {
-  items: (components['schemas']['TerminalProcessReplace']['items'][number] & {
-    canCloseWorkOrder?: boolean;
-  })[];
-};
-
-/** 서버 선행 P-108 — 세션 강제 종료 본문. */
-export interface WorkSessionForceEnd {
-  reason: string;
-}
-
-/** 서버 선행 P-108 — 세션 조회(목록·단건)가 단말 코드와 주작업자를 싣는다. */
-export type WorkSessionForward = components['schemas']['WorkSession'] & {
-  terminalCode?: string;
-  workerId?: number;
-  workerNo?: string;
-  workerName?: string;
-};
-
-/**
- * 서버 선행 — 세션 참여자에 사번·이름·참여 분(서버 계산, 참여 구간마다)을 싣는다. 계약 사본에
- * 오르기 전 서버는 싣지 않을 수 있어 선택으로 둔다. 역할의 옛 값 `OPERATOR` 는 부로 읽는다.
- */
-export type WorkSessionWorkerForward = components['schemas']['WorkSessionWorker'] & {
-  workerNo?: string;
-  workerName?: string;
-  participatedMinutes?: number;
-};
-
-/** 서버 선행 — 실적을 참여자에게 나눈 몫. 배분이 없으면 빈 배열이다. */
-export interface ProductionResultWorkerAllocation {
-  workerId: number;
-  workerNo: string;
-  workerName: string;
-  workerRoleCode: string;
-  participatedMinutes: number;
-  shareRatio: number;
-  goodQty: number;
-  defectQty: number;
-  holdQty: number;
-  scrapQty: number;
-  reworkQty: number;
-}
-
-/** 서버 선행 — 실적과 함께 적는 불량 한 줄. 코드는 W/O 공정에 매핑된 상세 코드다. */
-export interface ProductionResultDefectInput {
-  defectCodeId: number;
-  qty: number;
-}
-
-/**
- * 서버 선행 — 실적에 붙은 불량 기록. 이름은 불량 코드의 기본 이름이다. 대분류 칸은 상세 코드일
- * 때만 실린다(관리웹에서 대분류로 단 옛 기록에는 없다).
- */
-export interface ProductionResultDefect {
-  defectRecordId: number;
-  defectCodeId: number;
-  defectCode: string;
-  defectName: string;
-  nameKo?: string | null;
-  nameVi?: string | null;
-  parentDefectCodeId?: number | null;
-  parentDefectCode?: string | null;
-  parentDefectName?: string | null;
-  parentNameKo?: string | null;
-  parentNameVi?: string | null;
-  qty: number;
-}
-
-/** 서버 선행 — `defects` 만 보내면 서버가 `defectQty` 를 그 합으로 채운다. 양품 0 도 받는다. */
-export type ProductionResultCreateForward = components['schemas']['ProductionResultCreate'] & {
-  defects?: ProductionResultDefectInput[];
-};
-
-/* `defects` 는 전달본 2026-10-21 에 실려(P-95) 생성 타입이 갖는다 — 덧대면 두 모양이 겹쳐 충돌한다. */
-export type ProductionResultForward = components['schemas']['ProductionResult'] & {
-  workerAllocations?: ProductionResultWorkerAllocation[];
-};
-
-type DefectCodesPath = paths['/quality/defect-codes'];
-type DefectCodesGet = DefectCodesPath['get'];
-
-type SessionWorkersPath = paths['/production/work-sessions/{workSessionId}/workers'];
-type SessionWorkerLeavePath =
-  paths['/production/work-sessions/{workSessionId}/workers/{workSessionWorkerId}:leave'];
-type ProductionResultsPath = paths['/production/production-results'];
-type ProductionResultsGet = ProductionResultsPath['get'];
-
-type WorkOrdersPath = paths['/production/work-orders'];
-type WorkOrdersGet = WorkOrdersPath['get'];
-type WorkOrderPath = paths['/production/work-orders/{workOrderId}'];
-type WorkOrderGet = WorkOrderPath['get'];
 
 interface NoParameters {
   query?: never;
@@ -929,94 +420,6 @@ interface Unused {
   head?: never;
   patch?: never;
   trace?: never;
-}
-
-/** 서버 선행 P-79(omf-all-around#84) — 특채 요청 본문. */
-export interface ConcessionCreate {
-  nonconformanceId: number;
-  lotId: number;
-  approvedQty: number;
-  uomId: number;
-  validFrom: string;
-  validTo?: string | null;
-  allowedWorkOrderId?: number | null;
-  allowedProcessId?: number | null;
-  allowedCustomerId?: number | null;
-  reason: string;
-}
-
-type ConcessionsPath = paths['/quality/concessions'];
-type ConcessionResponse = {
-  headers: { [name: string]: unknown };
-  content: { 'application/json': components['schemas']['Concession'] };
-};
-
-/** 서버 선행 P-87(omf-all-around#64) — IQC 검사 수준. 무검사·수월·보통·엄격. */
-export type InspectionLevelCode = 'NONE' | 'REDUCED' | 'NORMAL' | 'TIGHTENED';
-
-/** 서버 선행 P-87 — 품목별 검사 수준과 자동 전환 상태. */
-export interface ItemInspectionLevel {
-  itemInspectionLevelId: number;
-  itemId: number;
-  itemCode: string;
-  itemName: string;
-  inspectionLevelCode: InspectionLevelCode;
-  autoSwitchEnabled: boolean;
-  /** 지금 수준에서의 연속 합격 LOT 수. */
-  consecutiveAcceptCount: number;
-  updatedAt: string;
-  /** 수정의 If-Match 값 — 목록 행마다 실린다. */
-  versionNo: number;
-}
-
-export interface ItemInspectionLevelCreate {
-  itemId: number;
-  inspectionLevelCode: InspectionLevelCode;
-  autoSwitchEnabled?: boolean;
-  /** 선택 — 비우면 이력의 사유가 null. */
-  reason?: string;
-}
-
-/** 생략 = 유지. 수준이 바뀌면 사유 필수. */
-export interface ItemInspectionLevelUpdate {
-  inspectionLevelCode?: InspectionLevelCode;
-  autoSwitchEnabled?: boolean;
-  reason?: string;
-}
-
-export interface ItemInspectionLevelListQuery {
-  itemId?: number;
-  inspectionLevelCode?: InspectionLevelCode;
-  q?: string;
-  page?: number;
-  size?: number;
-}
-
-/** 서버 선행 P-87 — 전환 이력. 자동은 연속 합격 수 또는 불합격 의뢰, 수동은 사유를 싣는다. */
-export interface ItemInspectionLevelHistory {
-  itemInspectionLevelHistoryId: number;
-  itemId: number;
-  itemCode: string;
-  itemName: string;
-  /** 최초 지정이면 null. */
-  fromLevelCode: InspectionLevelCode | null;
-  toLevelCode: InspectionLevelCode;
-  changeTypeCode: 'AUTO' | 'MANUAL';
-  consecutiveAcceptCount: number | null;
-  inspectionRequestId: number | null;
-  inspectionRequestNo: string | null;
-  reason: string | null;
-  changedAt: string;
-  changedByName: string | null;
-}
-
-export interface ItemInspectionLevelHistoryQuery {
-  itemId?: number;
-  changeTypeCode?: 'AUTO' | 'MANUAL';
-  from?: string;
-  to?: string;
-  page?: number;
-  size?: number;
 }
 
 type PageMeta = components['schemas']['PageMeta'];
@@ -1239,39 +642,6 @@ export interface InspectionSheetStepWrite {
   items: { inspectionSheetTemplateItemId: number; judgmentCode: InspectionSheetJudgment }[];
 }
 
-/** 서버 선행 P-102 S3 — 제품 검사표 목록 한 줄. */
-export interface InspectionSheetSummary {
-  inspectionSheetId: number;
-  serialNo: string;
-  itemCode: string;
-  itemName: string;
-  lotNo: string;
-  workOrderNo: string | null;
-  statusCode: InspectionSheet['statusCode'];
-  recordedStepCount: number;
-  stepCount: number;
-  /** 1차 판정이 NG 였던 단계 수. */
-  ngStepCount: number;
-  writtenWorkerName: string | null;
-  approvedByName: string | null;
-  checkedByName: string | null;
-  createdAt: string;
-}
-
-export interface InspectionSheetListQuery {
-  serialNo?: string;
-  lotNo?: string;
-  workOrderId?: number;
-  itemId?: number;
-  statusCode?: InspectionSheet['statusCode'];
-  /** 작성 시각(UTC) — 이상. */
-  createdFrom?: string;
-  /** 작성 시각(UTC) — 미만. */
-  createdTo?: string;
-  page?: number;
-  size?: number;
-}
-
 type Json<T> = { headers: { [name: string]: unknown }; content: { 'application/json': T } };
 type Op<P, B, R> = { parameters: P; responses: R } & ([B] extends [never]
   ? { requestBody?: never }
@@ -1307,217 +677,7 @@ type SheetPut<Path, B> = Unused & {
   >;
 };
 
-type WarehousesPath = paths['/mdm/warehouses'];
-type WarehousesGet = WarehousesPath['get'];
-
-/**
- * ⚠ 서버 선행 P-109(omf-mes-server#809) — 창고 목록을 공장으로 거른다(질의 `plantId`). 정수가 아니면 400 이다.
- * 계약 사본에 실려 `gen:api` 가 만들면 이 타입과 `ForwardPaths['/mdm/warehouses']` 를 지운다.
- * P-109 전 서버는 이 질의를 모른 채 무시하고 모든 공장의 창고를 낸다.
- */
-export type WarehouseListQueryForward = NonNullable<WarehousesGet['parameters']['query']> & {
-  plantId?: number;
-};
-
-type LocationPath = paths['/mdm/locations/{locationId}'];
-
-/** 서버 위치 ③b(#893) — 랙 하나와 그 밑의 층 · 셀을 한 번에 만든다. 하나라도 틀리면 하나도 안 만든다. 이름은 코드와 같다. */
-export interface LocationRackCreate {
-  /** 사람이 만든 켜진 구역. */
-  parentLocationId: number;
-  /** 1~99. */
-  levelCount: number;
-  /** 0~99 — 0 이면 층이 맨 아래 위치다. */
-  cellCountPerLevel: number;
-}
-
-/** 서버 위치 ⑤ — 위치에 둘 수 있게 지정한 품목 한 줄. 품목코드 순으로 온다. */
-export interface LocationItem {
-  itemId: number;
-  itemCode: string;
-  itemName: string;
-}
-
 export interface ForwardPaths {
-  /**
-   * 서버 위치 ③b(#893) — 랙 한 번에 만들기. 201 은 만든 랙이다. 계약 사본에 실려 `gen:api` 가 만들면 지운다.
-   * 400 INVALID(parentLocationId): 사람이 만든 켜진 구역이 아님 · 400 STATE_LOCKED(parentLocationId): 구역에 재고.
-   */
-  '/mdm/locations:rack': Unused & {
-    parameters: NoParameters;
-    get?: never;
-    put?: never;
-    post: Op<
-      { query?: never; header: IdemHeader; path?: never; cookie?: never },
-      { content: { 'application/json': LocationRackCreate } },
-      { 201: Json<components['schemas']['Location']> }
-    >;
-  };
-  /**
-   * 서버 위치 ③b(#893) — 위치를 밑의 위치까지 함께 지운다(204). 하나라도 어디서든 쓰였거나 서버가 만든 자리면
-   * 400 STATE_LOCKED 이고 아무것도 안 지운다 — 그때는 사용 중지. 계약 사본에 실리면 지운다.
-   */
-  '/mdm/locations/{locationId}': Omit<LocationPath, 'delete'> & {
-    delete: Op<
-      Params<never, IdemHeader, { locationId: number }>,
-      never,
-      { 204: { headers: { [name: string]: unknown }; content?: never } }
-    >;
-  };
-  /**
-   * 서버 위치 ⑤ — 위치의 지정 품목. 목록이 있으면 그 위치에는 그 품목만 둔다(하위로 물려주지 않는다). PUT 은 목록을
-   * 통째로 바꾸고 빈 목록이면 제한을 푼다(최대 200건). 400 INVALID(itemIds): 없거나 중지된 품목 ·
-   * 400 STATE_LOCKED(itemIds): 지정 밖 품목의 재고가 그 위치에 있음 · 400 STATE_LOCKED: 서버가 만든 위치.
-   * 계약 사본에 실리면 지운다.
-   */
-  '/mdm/locations/{locationId}/items': Unused & {
-    parameters: NoParameters;
-    post?: never;
-    get: Op<
-      { query?: never; header?: never; path: { locationId: number }; cookie?: never },
-      never,
-      { 200: Json<{ items: LocationItem[] }> }
-    >;
-    put: Op<
-      Params<never, IdemHeader, { locationId: number }>,
-      { content: { 'application/json': { itemIds: number[] } } },
-      { 200: Json<{ items: LocationItem[] }> }
-    >;
-  };
-  /** 특채 조회(GET)에 요청(POST)을 더한다 — 서버 선행 P-79. */
-  '/quality/concessions': Omit<ConcessionsPath, 'post'> & {
-    post: {
-      parameters: {
-        query?: never;
-        header: { 'Idempotency-Key': string };
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: { content: { 'application/json': ConcessionCreate } };
-      responses: { 201: ConcessionResponse };
-    };
-  };
-  /** 특채 적용 — 서버 선행 P-79. */
-  '/quality/concessions/{concessionId}:apply': {
-    parameters: { query?: never; header?: never; path: { concessionId: number }; cookie?: never };
-    get?: never;
-    put?: never;
-    post: {
-      parameters: {
-        query?: never;
-        header: { 'Idempotency-Key': string };
-        path: { concessionId: number };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: { 200: ConcessionResponse };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/quality/nonconformances/{nonconformanceId}/disposition-decisions': Omit<
-    DecisionsPath,
-    'post'
-  > & {
-    post: Omit<DecisionsPath['post'], 'requestBody' | 'responses'> & {
-      requestBody: { content: { 'application/json': DispositionDecisionCreateForward } };
-      responses: Omit<DecisionsPath['post']['responses'], 201> & {
-        201: {
-          headers: { [name: string]: unknown };
-          content: {
-            'application/json': components['schemas']['DispositionDecision'] & {
-              sortResult?: DispositionSortResult | null;
-            };
-          };
-        };
-      };
-    };
-  };
-  '/trace/lots/{lotId}/affected-production-lots': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: { lotId: number };
-      cookie?: never;
-    };
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: { lotId: number };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': AffectedProductionLots };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  /** 생산 LOT 투입 자재 — 서버 선행 P-107. */
-  '/trace/lots/{lotId}/input-materials': {
-    parameters: { query?: never; header?: never; path: { lotId: number }; cookie?: never };
-    get: {
-      parameters: { query?: never; header?: never; path: { lotId: number }; cookie?: never };
-      requestBody?: never;
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': InputMaterials };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  /** 자재 LOT 이 들어간 시리얼 — 서버 선행 P-107. */
-  '/trace/lots/{lotId}/used-serials': {
-    parameters: {
-      query?: { page?: number; size?: number };
-      header?: never;
-      path: { lotId: number };
-      cookie?: never;
-    };
-    get: {
-      parameters: {
-        query?: { page?: number; size?: number };
-        header?: never;
-        path: { lotId: number };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': UsedSerials };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   /** 시리얼 투입 자재 — 서버 선행 P-107. */
   '/trace/serial-numbers/{serialNo}/input-materials': {
     parameters: { query?: never; header?: never; path: { serialNo: string }; cookie?: never };
@@ -1527,7 +687,7 @@ export interface ForwardPaths {
       responses: {
         200: {
           headers: { [name: string]: unknown };
-          content: { 'application/json': InputMaterials };
+          content: { 'application/json': components['schemas']['InputMaterials'] };
         };
       };
     };
@@ -1604,7 +764,7 @@ export interface ForwardPaths {
     patch?: never;
     trace?: never;
   };
-  /** 확정 본문에 불합격 사유(`defects`)를 더한다 — 서버 선행 P-47. */
+  /** 검사 결과 쓰기 셋은 본문의 `fourMChange` 만 덮는다 — `FourMChangeForward` 참고. */
   '/quality/inspection-results/{inspectionResultId}:confirm': Omit<
     InspectionConfirmPath,
     'post'
@@ -1613,13 +773,7 @@ export interface ForwardPaths {
       requestBody: { content: { 'application/json': InspectionResultConfirmForward } };
     };
   };
-  /** 작성중 저장 본문에 불합격 사유(`defects`)를 더한다 — 서버 선행 P-48. 조회는 `lotId` 질의를 더한다 — P-76. */
-  '/quality/inspection-results': Omit<InspectionResultsPath, 'get' | 'post'> & {
-    get: Omit<InspectionResultsGet, 'parameters'> & {
-      parameters: Omit<InspectionResultsGet['parameters'], 'query'> & {
-        query?: InspectionResultListQueryForward;
-      };
-    };
+  '/quality/inspection-results': Omit<InspectionResultsPath, 'post'> & {
     post: Omit<InspectionResultsPath['post'], 'requestBody'> & {
       requestBody: { content: { 'application/json': InspectionResultCreateForward } };
     };
@@ -1629,121 +783,14 @@ export interface ForwardPaths {
       requestBody: { content: { 'application/json': InspectionResultUpdateForward } };
     };
   };
-  /** 기존 조회(GET)에 등록(POST)을 더한다 — 서버 선행 P-42. 조회는 `inspectionResultId` 질의를 더한다. */
-  '/quality/defect-records': Omit<paths['/quality/defect-records'], 'get' | 'post'> & {
+  /** 조회에 `inspectionResultId` 질의를 더하고 그때 기간을 생략할 수 있게 한다 — 서버 선행 P-42. */
+  '/quality/defect-records': Omit<paths['/quality/defect-records'], 'get'> & {
     get: Omit<DefectRecordsGet, 'parameters'> & {
       parameters: Omit<DefectRecordsGet['parameters'], 'query'> & {
         query: DefectRecordListQueryForward;
       };
     };
-    post: {
-      parameters: {
-        query?: never;
-        header: { 'Idempotency-Key': string };
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: { content: { 'application/json': DefectRecordCreate } };
-      responses: {
-        201: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': components['schemas']['DefectRecord'] };
-        };
-      };
-    };
   };
-  /** 시리얼 OQC 스캔 — 서버 선행 P-101. */
-  '/quality/oqc-serials/{serialNo}': {
-    parameters: { query?: never; header?: never; path: { serialNo: string }; cookie?: never };
-    get: {
-      parameters: { query?: never; header?: never; path: { serialNo: string }; cookie?: never };
-      requestBody?: never;
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': OqcSerialScan };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  /** 의뢰의 시리얼 판정 — 서버 선행 P-101. */
-  '/quality/inspection-requests/{inspectionRequestId}/oqc-serials': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: { inspectionRequestId: number };
-      cookie?: never;
-    };
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: { inspectionRequestId: number };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': { items: OqcSerialRecord[] } };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/quality/inspection-requests/{inspectionRequestId}/history': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: { inspectionRequestId: number };
-      cookie?: never;
-    };
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: { inspectionRequestId: number };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': InspectionHistory };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/app/attachments': Omit<AttachmentsPath, 'get'> & {
-    get: Omit<AttachmentsPath['get'], 'parameters'> & {
-      parameters: Omit<AttachmentsPath['get']['parameters'], 'query'> & {
-        query?: Omit<AttachmentsListQuery, 'targetTypeCode'> & {
-          targetTypeCode?: AttachmentTargetType;
-        };
-      };
-    };
-  };
-  '/app/users/{appUserId}/worker': AppUserWorkerPath;
   '/mdm/item-resource-maps': Unused & {
     parameters: NoParameters;
     get: {
@@ -1769,7 +816,9 @@ export interface ForwardPaths {
         path?: never;
         cookie?: never;
       };
-      requestBody: { content: { 'application/json': ItemResourceMapCreate } };
+      requestBody: {
+        content: { 'application/json': components['schemas']['ItemResourceMapCreate'] };
+      };
       responses: {
         201: {
           headers: { [name: string]: unknown };
@@ -1788,7 +837,9 @@ export interface ForwardPaths {
         path: { itemResourceMapId: number };
         cookie?: never;
       };
-      requestBody: { content: { 'application/json': ItemResourceMapUpdate } };
+      requestBody: {
+        content: { 'application/json': components['schemas']['ItemResourceMapUpdate'] };
+      };
       responses: {
         200: {
           headers: { [name: string]: unknown };
@@ -1797,230 +848,6 @@ export interface ForwardPaths {
       };
     };
     post?: never;
-  };
-  '/production/work-orders/{workOrderId}/resource-recommendations': Unused & {
-    parameters: NoParameters;
-    get: {
-      parameters: { query?: never; header?: never; path: { workOrderId: number }; cookie?: never };
-      requestBody?: never;
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': ResourceRecommendations };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-  };
-  /** 서버 선행 P-83(omf-all-around#119) — OQC 생략 요청(결재 상신). 202 승인 요청 id. */
-  '/logistics/shipment-requests/{shipmentRequestId}:request-oqc-skip': {
-    parameters: { query?: never; header?: never; path?: never; cookie?: never };
-    get?: never;
-    put?: never;
-    post: {
-      parameters: {
-        query?: never;
-        header: { 'Idempotency-Key': string };
-        path: { shipmentRequestId: number };
-        cookie?: never;
-      };
-      requestBody: { content: { 'application/json': { reason: string } } };
-      responses: {
-        202: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': { approvalRequestId: number } };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  /** 서버 선행 P-83(omf-all-around#119) — 승인된 OQC 생략의 실행. 본문 없음 · 200 출하작업지시 상세. */
-  '/logistics/shipment-requests/{shipmentRequestId}:skip-oqc': {
-    parameters: { query?: never; header?: never; path?: never; cookie?: never };
-    get?: never;
-    put?: never;
-    post: {
-      parameters: {
-        query?: never;
-        header: { 'Idempotency-Key': string };
-        path: { shipmentRequestId: number };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': components['schemas']['ShipmentRequest'] };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  /** 서버 선행 P-36(omf-all-around#105) — 승인된 IQC 생략의 실행. 본문 없음 · 200 LOT 상세. */
-  '/trace/lots/{lotId}:skip-iqc': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post: {
-      parameters: {
-        query?: never;
-        header: { 'Idempotency-Key': string };
-        path: { lotId: number };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': components['schemas']['LotDetailResponse'] };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  /** 참여·이탈에 현장 작업자 사번 헤더를 더한다. 단말 토큰으로 부르면 서버가 필수로 본다. */
-  '/production/work-sessions/{workSessionId}/workers': Omit<SessionWorkersPath, 'get' | 'post'> & {
-    get: Omit<SessionWorkersPath['get'], 'responses'> & {
-      responses: Omit<SessionWorkersPath['get']['responses'], 200> & {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': WorkSessionWorkerForward[] };
-        };
-      };
-    };
-    post: Omit<SessionWorkersPath['post'], 'parameters' | 'responses'> & {
-      parameters: Omit<SessionWorkersPath['post']['parameters'], 'header'> & {
-        header: SessionWorkersPath['post']['parameters']['header'] & { 'X-Worker-No'?: string };
-      };
-      responses: Omit<SessionWorkersPath['post']['responses'], 201> & {
-        201: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': WorkSessionWorkerForward };
-        };
-      };
-    };
-  };
-  '/production/work-sessions/{workSessionId}/workers/{workSessionWorkerId}:leave': Omit<
-    SessionWorkerLeavePath,
-    'post'
-  > & {
-    post: Omit<SessionWorkerLeavePath['post'], 'parameters' | 'responses'> & {
-      parameters: Omit<SessionWorkerLeavePath['post']['parameters'], 'header'> & {
-        header: SessionWorkerLeavePath['post']['parameters']['header'] & { 'X-Worker-No'?: string };
-      };
-      responses: Omit<SessionWorkerLeavePath['post']['responses'], 200> & {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': WorkSessionWorkerForward };
-        };
-      };
-    };
-  };
-  /** 공정에 매핑된 불량 코드만 받는 `processId` 를 더한다 — 서버 선행. */
-  '/quality/defect-codes': Omit<DefectCodesPath, 'get'> & {
-    get: Omit<DefectCodesGet, 'parameters'> & {
-      parameters: Omit<DefectCodesGet['parameters'], 'query'> & {
-        query?: NonNullable<DefectCodesGet['parameters']['query']> & { processId?: number };
-      };
-    };
-  };
-  '/production/production-results': Omit<ProductionResultsPath, 'get' | 'post'> & {
-    post: Omit<ProductionResultsPath['post'], 'requestBody' | 'responses'> & {
-      requestBody: { content: { 'application/json': ProductionResultCreateForward } };
-      responses: Omit<ProductionResultsPath['post']['responses'], 201> & {
-        201: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': ProductionResultForward };
-        };
-      };
-    };
-    get: Omit<ProductionResultsGet, 'responses'> & {
-      responses: Omit<ProductionResultsGet['responses'], 200> & {
-        200: {
-          headers: { [name: string]: unknown };
-          content: {
-            'application/json': {
-              items: ProductionResultForward[];
-              page: components['schemas']['PageMeta'];
-            };
-          };
-        };
-      };
-    };
-  };
-  '/production/work-orders': Omit<WorkOrdersPath, 'get'> & {
-    get: Omit<WorkOrdersGet, 'parameters' | 'responses'> & {
-      /**
-       * 서버 선행 — `includeUnplannedEquipment` 를 `plannedEquipmentId` 와 함께 보내면 「그 설비 또는
-       * 설비 미지정」이다.
-       */
-      parameters: Omit<WorkOrdersGet['parameters'], 'query'> & {
-        query?: NonNullable<WorkOrdersGet['parameters']['query']> & {
-          includeUnplannedEquipment?: boolean;
-        };
-      };
-      responses: Omit<WorkOrdersGet['responses'], 200> & {
-        200: Omit<WorkOrdersGet['responses'][200], 'content'> & {
-          content: {
-            'application/json': Omit<
-              WorkOrdersGet['responses'][200]['content']['application/json'],
-              'items'
-            > & { items: WorkOrderForward[] };
-          };
-        };
-      };
-    };
-  };
-  '/production/work-orders/{workOrderId}': Omit<WorkOrderPath, 'get'> & {
-    get: Omit<WorkOrderGet, 'responses'> & {
-      responses: Omit<WorkOrderGet['responses'], 200> & {
-        200: Omit<WorkOrderGet['responses'][200], 'content'> & {
-          content: { 'application/json': WorkOrderForward };
-        };
-      };
-    };
-  };
-  '/planning/production-orders/{productionOrderId}:auto-plan': Unused & {
-    parameters: NoParameters;
-    get?: never;
-    put?: never;
-    post: {
-      parameters: {
-        query?: never;
-        header: { 'Idempotency-Key': string };
-        path: { productionOrderId: number };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': ProductionOrderAutoPlanResult };
-        };
-        409: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': components['schemas']['ProductionConflictResponse'] };
-        };
-      };
-    };
   };
   '/mdm/terminals/{terminalId}/accessible-screens': {
     parameters: {
@@ -2080,83 +907,6 @@ export interface ForwardPaths {
     head?: never;
     patch?: never;
     trace?: never;
-  };
-  /** 서버 선행 P-87(omf-all-around#64) — 품목 검사 수준 목록·지정. */
-  '/quality/item-inspection-levels': Unused & {
-    parameters: NoParameters;
-    get: {
-      parameters: {
-        query?: ItemInspectionLevelListQuery;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': { items: ItemInspectionLevel[]; page: PageMeta } };
-        };
-      };
-    };
-    put?: never;
-    post: {
-      parameters: {
-        query?: never;
-        header: { 'Idempotency-Key': string };
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: { content: { 'application/json': ItemInspectionLevelCreate } };
-      responses: {
-        201: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': ItemInspectionLevel };
-        };
-      };
-    };
-  };
-  /** 서버 선행 P-87 — 수동 변경. */
-  '/quality/item-inspection-levels/{itemInspectionLevelId}': Unused & {
-    parameters: NoParameters;
-    get?: never;
-    put: {
-      parameters: {
-        query?: never;
-        header: { 'Idempotency-Key': string; 'If-Match': string };
-        path: { itemInspectionLevelId: number };
-        cookie?: never;
-      };
-      requestBody: { content: { 'application/json': ItemInspectionLevelUpdate } };
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': ItemInspectionLevel };
-        };
-      };
-    };
-    post?: never;
-  };
-  /** 서버 선행 P-87 — 전환 이력. */
-  '/quality/item-inspection-level-histories': Unused & {
-    parameters: NoParameters;
-    get: {
-      parameters: {
-        query?: ItemInspectionLevelHistoryQuery;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': { items: ItemInspectionLevelHistory[]; page: PageMeta } };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
   };
   /** 서버 선행 P-102(omf-all-around#89) — 검사표 기준 목록·등록. */
   '/quality/inspection-sheet-templates': Unused & {
@@ -2229,17 +979,6 @@ export interface ForwardPaths {
     SheetId,
     { ngs: InspectionSheetNgWrite[] }
   >;
-  /** 서버 선행 P-102 S3 — 목록(LOT·시리얼·W/O). */
-  '/quality/inspection-sheets': Unused & {
-    parameters: NoParameters;
-    put?: never;
-    post?: never;
-    get: Op<
-      { query?: InspectionSheetListQuery; header?: never; path?: never; cookie?: never },
-      never,
-      { 200: Json<{ items: InspectionSheetSummary[]; page: PageMeta }> }
-    >;
-  };
   /** 서버 선행 P-102 S3 — 단계 서명 · 승인 · 확인 · 승인 취소(W-03-14). */
   '/quality/inspection-sheets/{inspectionSheetId}/steps/{stepCode}:sign': SheetAction<
     SheetId & { stepCode: InspectionSheetStepCode }
@@ -2247,34 +986,7 @@ export interface ForwardPaths {
   '/quality/inspection-sheets/{inspectionSheetId}:approve': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:check': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:reopen': SheetAction<SheetId, { reason: string }>;
-  /** 창고 조회(GET)에 공장 질의(`plantId`)를 더한다 — 서버 선행 P-109(omf-mes-server#809). 등록(POST)은 그대로다. */
-  '/mdm/warehouses': Omit<WarehousesPath, 'get'> & {
-    get: Omit<WarehousesGet, 'parameters'> & {
-      parameters: Omit<WarehousesGet['parameters'], 'query'> & {
-        query?: WarehouseListQueryForward;
-      };
-    };
-  };
-  /** 서버 선행 P-108 — 관리웹에서 열린(중단 포함) 작업 세션을 닫는다. 사유는 기록으로 남아 필수다. */
-  '/production/work-sessions/{workSessionId}:force-end': Unused & {
-    parameters: NoParameters;
-    post: {
-      parameters: {
-        query?: never;
-        header: { 'Idempotency-Key': string };
-        path: { workSessionId: number };
-        cookie?: never;
-      };
-      requestBody: { content: { 'application/json': WorkSessionForceEnd } };
-      responses: {
-        200: {
-          headers: { [name: string]: unknown };
-          content: { 'application/json': components['schemas']['WorkSession'] };
-        };
-      };
-    };
-  };
 }
 
-/** 같은 경로를 forward 가 다시 적으면 그쪽이 이긴다 — 교집합이면 좁은 쪽 enum 이 남는다(omf-all-around#58 첨부 대상). */
+/** 같은 경로를 forward 가 다시 적으면 그쪽이 이긴다. */
 export type ApiPaths = Omit<paths, keyof ForwardPaths> & ForwardPaths;

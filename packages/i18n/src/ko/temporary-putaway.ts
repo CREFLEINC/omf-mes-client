@@ -37,8 +37,8 @@ export const temporaryPutaway = {
     qtyLabel: '수량',
     /** 어디가 막혀서 여기 왔는지가 대상 정보의 일부다. */
     origin: (code: string) => `원 지시 ${code}`,
-    recommended: (code: string) => `권장 위치 ${code}`,
-    noRule: '권장 위치 없음',
+    /** 보관 위치를 정하지 않은 품목. 정한 품목은 보관 위치 코드가 그대로 선다. */
+    anywhere: '창고 내 아무 위치',
     /** 실제 적치 위치는 완료된 건에만 채워진다. 또 적으면 두 기록이 남는다. */
     already: '이미 임시 적치되었습니다',
     alreadyAt: (code: string) => `현재 위치 ${code}`,
@@ -57,18 +57,11 @@ export const temporaryPutaway = {
     none: '이 창고에 등록된 위치가 없습니다',
     notFound: (code: string) => `${code} 위치를 이 창고에서 찾지 못했습니다`,
     chosen: (code: string, name: string) => `${code} ${name}`,
-    /** 임시 유형으로 가려낸 자리가 하나도 없을 때만 전체를 보인다. */
-    unfiltered: '임시 유형으로 등록된 위치가 없어 전체 위치를 보입니다',
     pickAction: '목록에서 선택',
-    /*
-     * 선택칸은 임시 유형만 담고 스캔은 창고 전체를 받는다. 손 입력이 없으면 라벨이 상한
-     * 자리가 임시 유형이 아닐 때 정할 방법이 사라진다.
-     */
     /** 위치가 정해진 뒤의 스캔 대기 줄. */
     standby: '다른 위치면 다시 스캔',
     manual: '직접 입력',
     manualSubmit: '입력한 위치로',
-    capacity: (qty: string) => `수용량 ${qty} — 임시 위치라 막지 않습니다`,
     /** 「임시 적치 등록」이 잠긴 이유(공유계약 G-1) — 자리가 아직 없다. */
     locked: '임시 위치를 스캔하거나 목록에서 고르면 진행합니다',
   },

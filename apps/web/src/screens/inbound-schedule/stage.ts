@@ -5,7 +5,6 @@ import type {
   InboundStageCode,
   InboundStageCounts,
   InboundStageGroup,
-  PurchaseOrderSummary,
 } from './types';
 
 /**
@@ -56,8 +55,8 @@ export type StageTone = 'idle' | 'info' | 'success' | 'error' | 'warning';
 const TONE_OF: Record<InboundStageCode, StageTone> = {
   /* 라벨 발행은 POP 의 일 — 적치(PDA)와 같은 「다른 곳의 할 일」 색이다. */
   LABEL_PENDING: 'idle',
-  /* 검사 의뢰 전은 **이 화면의 할 일**(IQC 의뢰 요청)이라 입고 대기와 같은 파랑이다. */
-  INSPECTION_REQUIRED: 'info',
+  /* 검사 의뢰 전 — 의뢰는 입하 등록 때 서버가 만든다(#909). 이 화면의 할 일이 아니라 기다림 색이다. */
+  INSPECTION_REQUIRED: 'warning',
   INSPECTION_REQUESTED: 'warning',
   INSPECTION_IN_PROGRESS: 'warning',
   INSPECTION_HELD: 'error',
@@ -109,10 +108,6 @@ export const stageLead = (counts: InboundStageCounts): StageLead | null => {
 
   return { group: first, count: counts[first] ?? 0, others: groups.length - 1 };
 };
-
-/** 왼쪽 표에 「진행」 열을 세울 것인가 — 서버가 한 줄에라도 묶음 수를 실었는가. 앞선 서버면 열이 없다. */
-export const hasStageCounts = (rows: readonly PurchaseOrderSummary[]): boolean =>
-  rows.some((row) => row.inboundStageCounts !== undefined);
 
 /** LOT 이 붙은 줄인가 — 라벨 미부착 입하 줄(`LABEL_PENDING`)은 LOT 이 없다. */
 export const hasLot = (lot: InboundLotProgress): lot is IssuedLotProgress =>

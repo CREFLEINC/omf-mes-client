@@ -2567,6 +2567,7 @@ h2:has(> .inspection-standard-dialog-title) {
 
 /* 필수 표시 — 디자인 시스템 내장 라벨의 표시와 같은 토큰(빨강). 직접 만든 라벨에 붙인다. */
 .field-label > .required-mark,
+.warehouse-location-field-label .required-mark,
 .production-plan-required-header > .required-mark {
   color: var(--semantic-error-text);
 }
@@ -9102,7 +9103,7 @@ th:hover > .col-drag {
   color: var(--on-surface-variant);
 }
 
-/* 「IQC 의뢰 요청」을 보낸 뒤 표 위의 한 줄 — 결과를 그 자리에서 알린다. */
+/* 입고한 뒤 표 위의 한 줄 — 결과를 그 자리에서 알린다. */
 .po-board-lines-status {
   margin: 0 0 var(--space-2);
   font: var(--type-body-sm);
@@ -9671,13 +9672,6 @@ a.erp-send-chips:focus-visible {
   margin-top: 0;
 }
 
-/* 사용 상태 값 줄 — 입력칸 높이에 맞춰 칩을 세로 가운데에 둔다. 라벨과 칩의 왼쪽 끝이 같다. */
-.warehouse-location-status {
-  display: flex;
-  align-items: center;
-  min-height: var(--control-height-md);
-}
-
 /* 선택칸 + 오른쪽 부속(토글 묶음) 한 줄 — 선택칸이 남은 폭을 채우고, 부속은 세로 가운데. */
 .warehouse-location-field-row {
   display: flex;
@@ -9689,51 +9683,6 @@ a.erp-send-chips:focus-visible {
 .warehouse-location-field-row > :first-child {
   flex: 1 1 auto;
   min-width: 0;
-}
-
-/* 선택칸 옆 묶음(토글·사용 상태) — 라벨 글자 + 토글/칩. 줄바꿈하지 않는다(좁은 폭에서는 선택칸이 줄어든다). */
-.warehouse-location-inline-field {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: var(--space-2);
-  white-space: nowrap;
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-  color: var(--on-surface-variant);
-}
-
-/* 세로 간격을 한 단계 좁힌다(16px → 12px). 가로 간격은 그대로 둔다. */
-/* 창고 정보 배치(2026-10-29) — 위 줄 고칠 수 없는 값 넷, 가운데 줄 선택 칸 셋, 아래 줄 토글 둘. 좁으면 접힌다. */
-.warehouse-location-form-identity,
-.warehouse-location-form-attrs {
-  display: grid;
-  gap: var(--space-3) var(--space-4);
-  min-width: 0;
-}
-
-.warehouse-location-form-identity {
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-}
-
-/* 수정의 위 줄은 글자 값 넷 — 칸을 펴지 않고 왼쪽부터 내용 폭으로 붙인다(사용자 지시 2026-10-29). */
-.warehouse-location-form-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3) var(--space-8);
-  min-width: 0;
-}
-
-.warehouse-location-form-attrs {
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  margin-top: var(--space-3);
-}
-
-.warehouse-location-form-flags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-6);
-  margin-top: var(--space-4);
 }
 
 .warehouse-location-form .form-grid {
@@ -9749,11 +9698,6 @@ a.erp-send-chips:focus-visible {
   margin-top: var(--space-4);
   padding-top: var(--space-4);
   border-top: 1px solid var(--outline-variant);
-}
-
-/* 사용 중지(상태 액션)와 변경 이력(조회 액션) 사이를 조금 더 띄운다. */
-.warehouse-location-status-action {
-  margin-right: var(--space-2);
 }
 
 .warehouse-location-form-actions .form-actions-secondary {
@@ -25049,31 +24993,6 @@ table.col-measuring td {
   font: var(--type-body-md);
 }
 
-/* 적치 규칙(입고 관리 짜임, 사용자 지시 2026-10-29) — 규칙 추가 · 다시 조회는 조건 줄 오른쪽 끝. */
-.putaway-rule-actions {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  margin-left: auto;
-}
-
-/* 창고 상세의 「적치 규칙」 탭(사용자 지시 2026-10-29) — 조건 줄 · 규칙 표 · 규칙 없는 품목을 위에서 아래로. */
-/* 창고 정보에서 고칠 수 없는 값(공장 · 창고 코드 · 창고명) — 입력칸 높이에 맞춘 일반 글자. */
-.warehouse-location-readonly {
-  display: flex;
-  align-items: center;
-  min-height: var(--control-height-md);
-  color: var(--on-surface);
-  font: var(--type-body-lg);
-}
-
-.putaway-rule-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
 /* 오른쪽 구획의 첫 갈래는 구획 위 여백에 바로 붙는다. */
 .po-board-scroll > .board-frame-sub:first-child {
   margin-top: 0;
@@ -25583,6 +25502,156 @@ table.col-measuring td {
 .location-facts-edit > :first-child {
   flex: 1;
   min-width: 0;
+}
+
+/* 연필로 연 선택칸은 남은 폭을 다 쓴다. */
+.location-facts-edit > :first-child > button {
+  width: 100%;
+}
+
+/* 저장 전에 바꾼 값 — 이름 옆에 점(사용자 결정 2026-10-30, 창고 정보 안 A). */
+.location-facts-row.is-changed dt::after {
+  content: ' ·';
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* 머리 오른쪽 칩 — 불량 창고 · 상태. */
+.location-identity-chips {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 창고를 끄기 전 남은 재고 — 막지 않는 경고 한 줄. */
+.location-confirm-line.is-warning {
+  justify-self: start;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--semantic-warning-container);
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+/*
+ * 창고 정보 탭(안 A, 사용자 결정 2026-10-30) — 위치 창과 같은 짜임: 머리 · 옅은 정보 판 · Location 묶음 · 바닥.
+ * 정보 판은 공장 · 사업부 · 창고 유형 · 불량 창고 넷을 한 줄에, 선택칸이 열리는 유형 칸을 조금 넓게.
+ */
+.warehouse-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.warehouse-info .location-facts {
+  grid-auto-flow: row;
+  grid-template-columns: 1fr 1.3fr 1.5fr 0.8fr;
+}
+
+/* 연필 칸이 선택칸으로 바뀌어도 줄 높이가 뛰지 않게. */
+.warehouse-info .location-facts dd {
+  align-content: center;
+  min-height: 28px;
+}
+
+.warehouse-info .warehouse-location-form-actions {
+  margin-top: var(--space-1);
+  padding-top: var(--space-3);
+}
+
+.warehouse-info-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.warehouse-info-section-head .location-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.warehouse-info-section-head > button {
+  margin-left: auto;
+}
+
+/* 단계별 수 — 구역 · 랙 · 층 · 셀 · 사용 중지 다섯 칸. */
+.warehouse-info-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.warehouse-info-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.warehouse-info-stat .location-identity-icon,
+.warehouse-info-system .location-identity-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.warehouse-info-stat-text {
+  display: grid;
+  min-width: 0;
+}
+
+.warehouse-info-stat-text dt {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+.warehouse-info-stat-text dd {
+  margin: 0;
+  font: var(--type-title-sm);
+  font-weight: 700;
+}
+
+.warehouse-info-stat.is-muted dd {
+  color: var(--on-surface-variant);
+}
+
+/* 서버가 만든 위치 — 한두 줄이라 보관 품목 목록의 고정 높이를 풀어 준다. */
+.warehouse-info-system {
+  height: auto;
+}
+
+.warehouse-info-system .location-items-row {
+  padding: var(--space-2) var(--space-3);
+}
+
+/* 창고 추가 — 머리 · 세 칸씩 두 줄(공장 · 코드 · 창고명 / 사업부 · 유형 · 불량 창고). */
+.warehouse-info-create-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.warehouse-info-create-title {
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+}
+
+.warehouse-info-create-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.warehouse-info-create-flags {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: var(--space-2);
+  white-space: nowrap;
 }
 
 /*

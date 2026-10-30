@@ -14,10 +14,12 @@ const makeLocation = (
   parentLocationId,
   locationCode,
   locationName: `${locationCode} 위치`,
-  locationTypeCode: 'PLACEHOLDER',
-  allowMixedItem: true,
-  allowMixedLot: true,
   isActive: true,
+  aliasName: null,
+  locationLevelCode: null,
+  isLeaf: true,
+  systemRoleCode: null,
+  hasItemRestriction: false,
 });
 
 const codesOf = (rows: { location: Location }[]): string[] =>

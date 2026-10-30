@@ -19,7 +19,6 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   tabs: {
     warehouse: 'Thông tin kho',
     location: 'Location',
-    putaway: 'Quy tắc cất hàng',
   },
   actions: {
     addWarehouse: 'Thêm kho',
@@ -27,6 +26,14 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     addRack: 'Thêm kệ',
     printLabels: 'In nhãn hàng loạt',
     activate: 'Dùng lại',
+    viewLocations: 'Xem ở tab Location',
+  },
+  warehouseInfo: {
+    systemLocations: 'Vị trí do máy chủ tạo',
+  },
+  defectConfirm: {
+    on: 'Chuyển thành kho hàng lỗi?',
+    off: 'Bỏ kho hàng lỗi?',
   },
   actionReasons: {
     locationHierarchyUnavailable: 'Tải xong phân cấp Location rồi mới thêm được.',
@@ -74,12 +81,11 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     warehouse: 'Kho',
     parentLocation: 'Vị trí cấp trên',
     locationCode: 'Mã vị trí',
-    locationLevel: 'Cấp',
+    locationLevel: 'Phân loại',
     aliasName: 'Tên gọi khác',
-    allowMixedItem: 'Cho phép xếp lẫn mặt hàng',
-    allowMixedLot: 'Cho phép xếp lẫn LOT',
   },
   values: {
+    selectPlaceholder: 'Chọn',
     active: 'Đang dùng',
     inactive: 'Ngừng dùng',
     currentParentOutsideList: 'Vị trí cấp trên hiện tại (ngoài danh sách tra cứu)',
@@ -184,6 +190,11 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     confirm: 'Ngừng sử dụng',
     count: (count: number): string =>
       count > 1 ? `${String(count)} vị trí sẽ cùng ngừng sử dụng.` : '1 vị trí sẽ ngừng sử dụng.',
+    warehouseTitle: 'Ngừng sử dụng kho',
+    warehouseLine: 'Không chọn được kho này ở công việc mới.',
+    stockLeft: (itemCount: number, lotCount: number): string =>
+      `Tồn kho còn lại: ${String(itemCount)} mặt hàng, ${String(lotCount)} LOT`,
+    stockCheckFailed: 'Không kiểm tra được tồn kho.',
   },
   activate: {
     title: 'Dùng lại?',
@@ -191,5 +202,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     confirm: 'Dùng lại',
     count: (count: number): string =>
       count > 1 ? `${String(count)} vị trí sẽ cùng được dùng lại.` : '1 vị trí sẽ được dùng lại.',
+    warehouseTitle: 'Dùng lại kho',
+    warehouseLine: 'Có thể chọn lại kho này ở công việc mới.',
   },
 };

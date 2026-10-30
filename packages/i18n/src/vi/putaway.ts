@@ -1,7 +1,7 @@
 import type { ko } from '../ko';
 import type { Translated } from './translated';
 
-/** M-01-05 적치·입고 완료. 권장 위치가 아닌 자리는 확인을 받고 통과시킨다. */
+/** M-01-05 적치·입고 완료. 지시가 둬도 되는 위치 중 아무 데나 받는다. */
 export const putaway: Translated<typeof ko.putaway> = {
   title: 'Cất hàng và hoàn tất nhập kho',
   record: 'Xong cất hàng',
@@ -17,17 +17,15 @@ export const putaway: Translated<typeof ko.putaway> = {
     none: 'Chưa nhận lệnh cất hàng nào',
     count: (count: string) => `${count} lệnh chờ cất hàng`,
     from: (code: string) => `Hiện tại ${code}`,
-    recommended: (code: string) => `Vị trí đề xuất ${code}`,
     itemLabel: 'Mặt hàng',
     itemNameLabel: 'Tên mặt hàng',
     taskNoLabel: 'Số lệnh',
     qtyLabel: 'Số lượng',
-    ruleLabel: 'Vị trí đề xuất',
-    ruleYes: 'Có',
-    ruleNo: 'Không có',
-    hasRule: 'Có vị trí đề xuất',
-    noRule: 'Không có vị trí đề xuất',
-    rule: (priority: string) => `Ưu tiên quy tắc cất hàng ${priority}`,
+    allowedLabel: 'Vị trí bảo quản',
+    allowed: (codes: string) => `Vị trí bảo quản ${codes}`,
+    allowedMore: (first: string, rest: string) => `${first} và ${rest} vị trí khác`,
+    allowedAll: (codes: string) => `Vị trí bảo quản (chỗ nào cũng được) ${codes}`,
+    anywhere: 'Bất kỳ vị trí nào trong kho',
     change: 'Chọn lệnh khác',
   },
   location: {
@@ -62,27 +60,16 @@ export const putaway: Translated<typeof ko.putaway> = {
   },
   verdict: {
     /** 판정(보조 정보) — 제목의 위치 아래에 선다. */
-    matched: 'Trùng vị trí đề xuất',
+    matched: 'Đây là vị trí bảo quản của mặt hàng này',
     temporary: 'Nếu phải để tạm, hãy sang màn hình cất hàng vào vị trí tạm',
     /** 임시로 두는 화면으로 가는 버튼 — 안내 문구와 갈라 둔다. */
     temporaryMove: 'Chuyển sang xếp tạm',
-    notRecommended: (recommended: string) => `Không phải vị trí đề xuất ${recommended}`,
-    noRule: 'Mặt hàng này không có vị trí quản lý. Cất hàng ở đây chứ?',
-    noRuleConfirm: 'Cất hàng ở đây',
+    notAllowed: (allowed: string) => `Không phải vị trí bảo quản của mặt hàng này (${allowed})`,
+    anywhere: 'Mặt hàng chưa định vị trí bảo quản. Có thể cất ở bất kỳ đâu trong kho này',
   },
-  mix: {
-    item: 'Vị trí này chỉ chứa một mặt hàng',
-    lot: 'Vị trí này chỉ chứa một LOT',
-    temporary: 'Nếu phải để tạm, hãy sang màn hình cất hàng vào vị trí tạm',
-  },
-  overCapacity: (capacity: string, held: string, adding: string) =>
-    `Sức chứa ${capacity} · Hiện có ${held} + ${adding}`,
-  storageMismatch: (itemCondition: string, locationCondition: string) =>
-    `Mặt hàng cần bảo quản ${itemCondition} nhưng chỗ này là ${locationCondition}`,
   record1: 'Cất hàng theo lệnh này',
   locked: {
     location: 'Quét nhãn vị trí để tiếp tục',
-    noRule: 'Nếu mặt hàng không có vị trí quản lý, hãy bấm xác nhận cất tại đây',
     lot: 'Quét nhãn LOT vật tư để tiếp tục',
   },
   done: {

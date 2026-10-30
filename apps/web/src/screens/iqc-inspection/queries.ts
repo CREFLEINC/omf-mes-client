@@ -2,7 +2,6 @@ import type {
   ApiClient,
   components,
   FourMChangeForward,
-  InspectionDefectInput,
   InspectionResultConfirmForward,
   InspectionResultCreateForward,
   InspectionResultUpdateForward,
@@ -24,6 +23,8 @@ import {
   type InspectionRequestDetail,
   type InspectionResultRound,
 } from './types';
+
+type InspectionDefectInput = components['schemas']['InspectionDefectInput'];
 
 /**
  * 이 회차의 요청 — **읽기 하나다.**

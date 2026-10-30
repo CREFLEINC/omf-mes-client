@@ -142,10 +142,7 @@ describe('AppLayout', () => {
     expect(within(sidebar).queryByRole('link', { name: '창고·Location' })).toBeNull();
   });
 
-  /*
-   * 적치 규칙은 창고·Location 화면의 창고 상세 탭이 됐다(2026-10-29) — 「창고·위치」 묶음은 창고·Location →
-   * 창고 배치도 두 탭이고, 적치 규칙 탭은 메뉴에 서지 않는다(옛 주소는 그 탭으로 넘긴다).
-   */
+  /* 「창고·위치」 묶음은 창고·Location → 창고 배치도 두 탭이다(적치 규칙은 omf-mes-server #907 로 없어졌다). */
   it('창고·위치 탭 막대에 적치 규칙이 없고 창고 배치도가 창고·Location 바로 뒤에 있다', () => {
     renderLayout('본문 내용', { route: '/master-data/warehouse-location' });
 
@@ -1732,7 +1729,7 @@ describe('AppLayout — 검색 중 손잡이', () => {
     await user.click(groupToggle('기준정보 관리'));
     expect(groupToggle('기준정보 관리')).toHaveAttribute('aria-expanded', 'true');
 
-    await typeQuery(user, '규칙');
+    await typeQuery(user, '배치도');
     await user.click(groupToggle('기준정보 관리')).catch(() => undefined);
     await user.clear(
       within(navSidebar()).getByRole('searchbox', { name: messages.shellNav.search.label }),
@@ -1934,7 +1931,7 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
 
   /**
    * 탭 막대에도 볼 수 없는 탭은 서지 않는다 — 누르는 순간 막힌 화면이 서는 탭을 두지 않는다. 「창고·위치」가 두
-   * 탭으로 줄어(적치 규칙은 창고 상세 탭, 2026-10-29) 세 탭 묶음인 「재고 관리」로 잰다.
+   * 탭이라 세 탭 묶음인 「재고 관리」로 잰다.
    */
   it('탭 막대에는 볼 수 있는 탭만 선다', async () => {
     await renderWithPermissions(['W-01-04', 'W-01-12'], { route: '/logistics/stocktaking' });

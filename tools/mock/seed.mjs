@@ -194,7 +194,6 @@ export const createSeed = (now = new Date()) => {
       itemName: '수지A',
       labelName: 'PC RESIN BLK',
       fifoPolicyCode: 'FEFO',
-      /* 자리의 같은 값과 어긋나야 적치의 보관조건 경고를 실기에서 볼 수 있다. */
       storageConditionCode: 'REFRIGERATED',
     },
     {
@@ -242,14 +241,12 @@ export const createSeed = (now = new Date()) => {
       warehouseCode: 'WH-01',
       warehouseName: '1공장 자재창고',
       warehouseTypeCode: 'MATERIAL',
-      managementLevelCode: 'ZONE',
     },
     {
       warehouseId: 1002,
       warehouseCode: 'WH-02',
       warehouseName: '1공장 완제품창고',
       warehouseTypeCode: 'PRODUCT',
-      managementLevelCode: 'ZONE',
     },
     /* 불량창고 — W-04-07 판정 대기 대상이 들어오는 자리. `GET /mdm/warehouses?isDefect=true` 가 준다. */
     {
@@ -257,7 +254,6 @@ export const createSeed = (now = new Date()) => {
       warehouseCode: 'WH-03',
       warehouseName: '1공장 불량창고',
       warehouseTypeCode: 'GENERAL',
-      managementLevelCode: 'RACK',
       isDefect: true,
     },
     {
@@ -265,7 +261,6 @@ export const createSeed = (now = new Date()) => {
       warehouseCode: 'WH-04',
       warehouseName: '위치 미관리 창고',
       warehouseTypeCode: 'GENERAL',
-      managementLevelCode: 'WAREHOUSE',
     },
   ].map((warehouse) => ({
     isDefect: false,
@@ -276,14 +271,17 @@ export const createSeed = (now = new Date()) => {
     isActive: true,
   }));
 
+  /*
+   * 위치(서버 #890) — 단계는 상위로 정해진다: 상위 없음 → 구역(ZONE) · 구역 밑 → 랙(RACK).
+   * `isLeaf`·`hasItemRestriction` 은 저장값이 아니라 응답 때 센다(seeded.mjs `locationView`).
+   * 수용량·보관조건·위치 유형·섞어 담기 칸은 계약에서 빠졌다.
+   */
   const locations = [
     {
       locationId: 3001,
       warehouseId: 1001,
       locationCode: 'A-01-03',
       locationName: 'A구역 01열 03단',
-      /* 이미 800 이 있는 자리다. 적치 지시가 이 한도를 넘겨야 초과 경고를 밟아 볼 수 있다. */
-      capacityQty: 900,
     },
     {
       locationId: 3002,
@@ -291,13 +289,11 @@ export const createSeed = (now = new Date()) => {
       locationCode: 'A-01-04',
       locationName: 'A구역 01열 04단',
     },
-    /* 상온 자리. 냉장 품목을 여기로 스캔하면 경고가 선다. */
     {
       locationId: 3010,
       warehouseId: 1001,
       locationCode: 'A-01-05',
       locationName: 'A구역 01열 05단',
-      storageConditionCode: 'ROOM_TEMPERATURE',
     },
     {
       locationId: 3003,
@@ -311,18 +307,23 @@ export const createSeed = (now = new Date()) => {
       locationCode: 'FG-A-02-01',
       locationName: '완제품 A구역 02열 01단',
     },
-    /* 완제품 창고의 둘째 자리. 하나뿐이면 권장이 아닌 곳을 스캔하는 갈래를 만들 수 없다. */
+    /* 완제품 창고의 둘째 자리 — 보관 품목을 걸지 않았다. 지정 위치와 «어디든» 갈래를 함께 본다. */
     {
       locationId: 3009,
       warehouseId: 1002,
       locationCode: 'FG-A-02-02',
       locationName: '완제품 A구역 02열 02단',
     },
+    /*
+     * 사람이 위치를 나누지 않은 창고의 「창고 전체」(장부 P-149 · P-153). 서버가 만든 자리라
+     * 라벨이 없다 — 단말 적치는 이 하나뿐이면 스캔하지 않고 고른다.
+     */
     {
       locationId: 3007,
       warehouseId: 1004,
-      locationCode: 'LEGACY-01',
-      locationName: '과거 위치 관리 자리',
+      locationCode: 'SYS-WHOLE',
+      locationName: '창고 전체',
+      systemRoleCode: 'WAREHOUSE_WHOLE',
     },
     {
       locationId: 3008,
@@ -342,16 +343,39 @@ export const createSeed = (now = new Date()) => {
     },
   ].map((location) => ({
     parentLocationId: null,
+    aliasName: null,
+    systemRoleCode: null,
     ...location,
-    locationTypeCode: location.locationCode.startsWith('TMP') ? 'TEMP' : 'RACK',
-    qualityZoneCode: null,
-    storageConditionCode: 'ROOM_TEMPERATURE',
-    allowMixedItem: !location.locationCode.endsWith('04'),
-    allowMixedLot: true,
-    capacityQty: location.capacityQty ?? 1000,
-    capacityUomId: 1001,
+    locationLevelCode: (location.parentLocationId ?? null) === null ? 'ZONE' : 'RACK',
     isActive: location.isActive ?? true,
   }));
+
+  /*
+   * 위치 보관 품목(서버 #901 · GET/PUT /mdm/locations/{locationId}/items) — 지워진 적치 규칙이
+   * 가리키던 위치·품목을 옮겼다. 걸어 둔 위치에는 그 품목만 들어온다.
+   *
+   * - 3004 ← 2003: 완제품 입고(M-04-04)가 스캔한 위치의 보관 품목을 묻는다. 3009 는 비워 둬
+   *   「품목을 가리지 않는 위치」 갈래도 남긴다.
+   * - 3001 ← 2001·2002, 3002 ← 2001: 적치 지시의 둬도 되는 위치(아래 putawayTasks)와 맞춘다.
+   */
+  const locationItems = [
+    { locationId: 3001, itemId: 2001 },
+    { locationId: 3001, itemId: 2002 },
+    { locationId: 3002, itemId: 2001 },
+    { locationId: 3004, itemId: 2003 },
+  ];
+
+  /** 적치 지시의 둬도 되는 위치 한 칸(계약 `PutawayAllowedLocation`). */
+  const allowedLocation = (locationId) => {
+    const location = locations.find((row) => row.locationId === locationId);
+
+    return {
+      locationId,
+      locationCode: location.locationCode,
+      locationName: location.locationName,
+      locationLevelCode: location.locationLevelCode,
+    };
+  };
 
   /*
    * W-CO-08 창고 배치도 — 도면 한 장(WH-01)과 그 위의 점 둘.
@@ -395,77 +419,6 @@ export const createSeed = (now = new Date()) => {
         { locationId: 3002, x: 0.64, y: 0.6 },
       ],
     },
-  ];
-
-  /** W-06-14 — 활성·미사용·창고 전체 갈래를 한 화면에서 확인하는 적치 규칙. */
-  const putawayRules = [
-    {
-      putawayRuleId: 5101,
-      itemId: 2001,
-      warehouseId: 1001,
-      locationId: 3001,
-      capacityQty: 500,
-      uomId: 1001,
-      priorityNo: 10,
-      remarks: '합성 적치 규칙',
-      isActive: true,
-    },
-    /*
-     * 완제품 창고의 규칙. 없으면 제품 입고가 늘 정해진 자리가 없는 쪽으로 떨어져 권장 일치와
-     * 권장 불일치 갈래를 실기에서 한 번도 볼 수 없다.
-     */
-    {
-      putawayRuleId: 5103,
-      itemId: 2003,
-      warehouseId: 1002,
-      locationId: 3004,
-      capacityQty: 2000,
-      uomId: 1001,
-      priorityNo: 10,
-      remarks: '합성 적치 규칙',
-      isActive: true,
-    },
-    {
-      putawayRuleId: 5102,
-      itemId: 2002,
-      warehouseId: 1001,
-      locationId: null,
-      capacityQty: 1000,
-      uomId: 1001,
-      priorityNo: 100,
-      remarks: null,
-      isActive: true,
-    },
-    {
-      putawayRuleId: 5103,
-      itemId: 2004,
-      warehouseId: 1001,
-      locationId: 3002,
-      capacityQty: 300,
-      uomId: 1001,
-      priorityNo: 200,
-      remarks: null,
-      isActive: false,
-    },
-    /* 과거 미정 기간에 생긴 WAREHOUSE+Location 참조 — 수정 때 조용히 지우지 않는다. */
-    {
-      putawayRuleId: 5104,
-      itemId: 2001,
-      warehouseId: 1004,
-      locationId: 3007,
-      capacityQty: 100,
-      uomId: 1001,
-      priorityNo: 100,
-      remarks: '과거 위치 참조',
-      isActive: false,
-    },
-  ];
-
-  /** 입고 이력이 있는 품목 후보. 활성 규칙이 생기면 uncovered 응답에서 빠진다. */
-  const putawayCandidates = [
-    { warehouseId: 1001, itemId: 2001, lastReceivedAt: iso(-3, 9) },
-    { warehouseId: 1001, itemId: 2002, lastReceivedAt: iso(-2, 9) },
-    { warehouseId: 1001, itemId: 2004, lastReceivedAt: iso(-1, 9) },
   ];
 
   const partners = [
@@ -648,18 +601,19 @@ export const createSeed = (now = new Date()) => {
       ['SPARE_PART', '예비품'],
       ['GENERAL', '일반'],
     ],
-    MANAGEMENT_LEVEL: [
-      ['WAREHOUSE', '창고'],
-      ['ZONE', '구역'],
-      ['RACK', '랙'],
-      ['CELL', '셀'],
-    ],
     LOCATION_TYPE: [
       ['RACK', '랙'],
       ['FLOOR', '바닥'],
       ['TEMP', '임시'],
       ['HOPPER', '호퍼'],
       ['DEFAULT', '대표'],
+    ],
+    /* 위치 단계(서버 #890) — 계약 `Location.locationLevelCode` 의 이름 목록. 순서가 계층 깊이다. */
+    LOCATION_LEVEL: [
+      ['ZONE', '구역'],
+      ['RACK', '랙'],
+      ['LEVEL', '층'],
+      ['CELL', '셀'],
     ],
     QUALITY_ZONE: [],
     STORAGE_CONDITION: [
@@ -1460,11 +1414,9 @@ export const createSeed = (now = new Date()) => {
       taskQty: 200,
       uomId: 1001,
       fromLocationId: 3003,
-      recommendedLocationId: 3001,
-      appliedPutawayRuleId: 5102,
+      allowedLocations: [allowedLocation(3001)],
       actualLocationId: null,
       warehouseId: 1001,
-      warehouseManagementLevelCode: 'ZONE',
       priorityNo: 1,
       statusCode: 'PENDING',
       assignedWorkerId: 1001,
@@ -1479,12 +1431,14 @@ export const createSeed = (now = new Date()) => {
       taskQty: 120,
       uomId: 1001,
       fromLocationId: 3003,
-      /* 권장 위치가 없는 품목 — 확인 후 통과 갈래를 이 지시로 시험한다. */
-      recommendedLocationId: null,
-      appliedPutawayRuleId: null,
+      /*
+       * 둬도 되는 위치가 빈 지시 — 이 창고 어디든 두는 갈래를 이 지시로 시험한다.
+       * ⚠ 서버는 읽을 때 보관 품목으로 계산하므로 같은 품목(2002)이면 9401 과 같은 목록이 나온다.
+       * 목은 갈래를 남기려고 지시마다 박아 둔다.
+       */
+      allowedLocations: [],
       actualLocationId: null,
       warehouseId: 1001,
-      warehouseManagementLevelCode: 'ZONE',
       priorityNo: 2,
       statusCode: 'PENDING',
       assignedWorkerId: 1001,
@@ -1503,11 +1457,9 @@ export const createSeed = (now = new Date()) => {
       taskQty: 300,
       uomId: 1001,
       fromLocationId: 3003,
-      recommendedLocationId: 3002,
-      appliedPutawayRuleId: 5101,
+      allowedLocations: [allowedLocation(3002)],
       actualLocationId: null,
       warehouseId: 1001,
-      warehouseManagementLevelCode: 'ZONE',
       priorityNo: 3,
       statusCode: 'PENDING',
       assignedWorkerId: 1001,
@@ -1522,19 +1474,17 @@ export const createSeed = (now = new Date()) => {
       taskQty: 120,
       uomId: 1001,
       fromLocationId: 3003,
-      recommendedLocationId: 3001,
-      appliedPutawayRuleId: 5102,
+      allowedLocations: [allowedLocation(3001)],
       actualLocationId: null,
       warehouseId: 1001,
-      warehouseManagementLevelCode: 'ZONE',
       priorityNo: 4,
       statusCode: 'PENDING',
       assignedWorkerId: 1001,
       completedAt: null,
     },
     /*
-     * 위치를 관리하지 않는 창고의 지시. 이 갈래는 위치를 스캔하지 않고 고르므로, 관리 창고
-     * 지시만 있으면 화면의 절반을 밟아 볼 수 없다.
+     * 사람이 위치를 나누지 않은 창고의 지시 — 둘 곳이 「창고 전체」 하나라 위치를 스캔하지 않고
+     * 고른다. 이 지시가 없으면 화면의 그 갈래를 밟아 볼 수 없다.
      */
     {
       putawayTaskId: 9405,
@@ -1545,11 +1495,9 @@ export const createSeed = (now = new Date()) => {
       taskQty: 60,
       uomId: 1001,
       fromLocationId: 3003,
-      recommendedLocationId: null,
-      appliedPutawayRuleId: null,
+      allowedLocations: [allowedLocation(3007)],
       actualLocationId: null,
       warehouseId: 1004,
-      warehouseManagementLevelCode: 'WAREHOUSE',
       priorityNo: 5,
       statusCode: 'PENDING',
       assignedWorkerId: 1001,
@@ -3399,8 +3347,7 @@ export const createSeed = (now = new Date()) => {
     locations,
     attachments,
     warehouseLayouts,
-    putawayRules,
-    putawayCandidates,
+    locationItems,
     partners,
     equipments,
     inspectionItems,

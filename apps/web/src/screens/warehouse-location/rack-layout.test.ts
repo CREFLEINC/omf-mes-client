@@ -15,9 +15,6 @@ const location = (
     parentLocationId,
     locationCode,
     locationName,
-    locationTypeCode: 'RACK',
-    allowMixedItem: true,
-    allowMixedLot: true,
     isActive: true,
   }) as Location;
 

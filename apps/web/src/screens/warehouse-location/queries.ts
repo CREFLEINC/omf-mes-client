@@ -1,18 +1,15 @@
-import type { components, LocationItem } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { CODE_GROUPS } from './code-options';
-import type { Location, LookupEntry, LookupSources, WarehouseFilters } from './types';
+import type { Location, LocationItem, LookupEntry, LookupSources, WarehouseFilters } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
 type Warehouse = components['schemas']['Warehouse'];
 type WarehouseDetailResponse = components['schemas']['WarehouseDetailResponse'];
-/* 위치는 서버가 만든 위치의 역할 · 별칭(계약 밖)까지 읽는다 — `./types` 의 `Location`. */
-type LocationDetailResponse = Omit<components['schemas']['LocationDetailResponse'], 'location'> & {
-  location: Location;
-};
+type LocationDetailResponse = components['schemas']['LocationDetailResponse'];
 
 export interface WarehouseListResponse {
   items: Warehouse[];
@@ -53,8 +50,6 @@ const plantIdQuery = (value: string): { plantId: number } | Record<string, never
 /**
  * 창고 목록. 조건은 서버로 보낸다 — 클라이언트에서 거르면 서버가 자른 뒤의 결과만 걸러진다.
  * size는 보내지 않고 서버 기본값을 따른다. 잘림은 page.total로 드러내 안내한다.
- *
- * 공장(`plantId`)은 서버 선행 P-109(omf-mes-server#809) 질의다 — 타입은 `WarehouseListQueryForward` 가 덧댄다.
  */
 export const useWarehouseList = (
   filters: WarehouseFilters,
@@ -110,6 +105,38 @@ export const locationKeys = {
   list: (warehouseId: number, q: string) => ['locations', 'list', warehouseId, q] as const,
   detail: (locationId: number) => ['locations', 'detail', locationId] as const,
   items: (locationId: number) => ['locations', 'items', locationId] as const,
+};
+
+/** 창고를 끄기 전 남은 재고 — 다른 화면의 재고 조회와 열쇠가 겹치지 않게 이 화면 이름을 앞에 둔다. */
+export const warehouseStockKeys = {
+  summary: (warehouseId: number) => ['warehouse-location', 'stock-summary', warehouseId] as const,
+};
+
+/**
+ * 창고의 남은 재고 합계(품목 수 · LOT 수 · 보유 …) — 사용 중지 확인 창을 열 때만 묻는다. 한 줄만 받아 `summary` 만
+ * 쓴다(0 인 잔액은 서버가 빼고 센다). 열 때마다 새로 묻고, 권한 없음(403)은 다시 묻지 않는다.
+ */
+export const useWarehouseStockSummary = (
+  warehouseId: number | null,
+  enabled: boolean,
+): UseQueryResult<components['schemas']['InventoryBalanceSummary']> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: warehouseStockKeys.summary(warehouseId ?? 0),
+    enabled: enabled && warehouseId !== null,
+    staleTime: 0,
+    retry: false,
+    queryFn: async () => {
+      if (warehouseId === null) {
+        throw new Error('창고를 고르기 전에는 재고를 조회하지 않습니다.');
+      }
+      const page = await runRequest(() =>
+        client.GET('/inventory/balances', { params: { query: { warehouseId, size: 1 } } }),
+      );
+      return page.summary;
+    },
+  });
 };
 
 /** ETag가 보관된 경로. Location 수정의 If-Match는 여기서 꺼낸다. */

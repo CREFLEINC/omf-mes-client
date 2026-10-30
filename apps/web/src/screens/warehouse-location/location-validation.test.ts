@@ -7,7 +7,6 @@ import type { LocationFormValues } from './types';
 const filled: LocationFormValues = {
   ...emptyLocationFormValues(),
   locationCode: 'Z01',
-  locationTypeCode: 'RACK',
 };
 
 describe('validateLocation', () => {

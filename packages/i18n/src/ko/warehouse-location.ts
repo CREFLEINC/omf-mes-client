@@ -13,7 +13,6 @@ export const warehouseLocation = {
   tabs: {
     warehouse: '창고 정보',
     location: 'Location',
-    putaway: '적치 규칙',
   },
   actions: {
     addWarehouse: '창고 추가',
@@ -21,6 +20,18 @@ export const warehouseLocation = {
     addRack: '랙 추가',
     printLabels: '라벨 일괄 출력',
     activate: '다시 사용',
+    /** 창고 정보의 Location 묶음에서 옆 탭을 연다. */
+    viewLocations: 'Location 탭에서 보기',
+  },
+  /** 창고 정보 탭(안 A, 사용자 결정 2026-10-30) — 위치 창과 같은 머리 · 정보 판 · Location 묶음. */
+  warehouseInfo: {
+    /** Location 묶음의 서버가 만든 위치 목록 — 접근성 이름. */
+    systemLocations: '서버가 만든 위치',
+  },
+  /** 정보 판의 불량 창고 스위치 — 바꾸기 전에 한 번 묻는다(사용자 지시 2026-10-30). 설명문 없이 제목만. */
+  defectConfirm: {
+    on: '불량 창고로 바꿀까요?',
+    off: '불량 창고에서 해제할까요?',
   },
   actionReasons: {
     locationHierarchyUnavailable: 'Location 계층을 불러온 뒤 추가할 수 있습니다.',
@@ -69,13 +80,13 @@ export const warehouseLocation = {
     warehouse: '창고',
     parentLocation: '상위 위치',
     locationCode: '위치 코드',
-    locationLevel: '단계',
+    locationLevel: '구분',
     aliasName: '별칭',
-    allowMixedItem: '품목 혼적 허용',
-    allowMixedLot: 'LOT 혼적 허용',
   },
   /** 값이 비었을 때 선택칸 안에 보이는 안내 — 값·검증과 무관하다. */
   values: {
+    /** 등록 선택칸이 비었을 때. */
+    selectPlaceholder: '선택',
     active: '사용 중',
     inactive: '미사용',
     currentParentOutsideList: '현재 상위 위치 (조회 목록 밖)',
@@ -180,6 +191,12 @@ export const warehouseLocation = {
     confirm: '사용 중지',
     count: (count: number): string =>
       count > 1 ? `위치 ${String(count)}개가 함께 사용 중지됩니다.` : '위치 1개가 사용 중지됩니다.',
+    warehouseTitle: '창고 사용 중지',
+    warehouseLine: '새 작업에서 이 창고를 고를 수 없게 됩니다.',
+    /** 창고를 끄기 전 남은 재고(사용자 지시 2026-10-30) — 막지 않고 알린다. 단위가 섞여 수량 합계는 보이지 않는다. */
+    stockLeft: (itemCount: number, lotCount: number): string =>
+      `남은 재고: 품목 ${String(itemCount)}, LOT ${String(lotCount)}`,
+    stockCheckFailed: '재고를 확인하지 못했습니다.',
   },
   activate: {
     title: '다시 사용할까요?',
@@ -187,5 +204,7 @@ export const warehouseLocation = {
     confirm: '다시 사용',
     count: (count: number): string =>
       count > 1 ? `위치 ${String(count)}개를 함께 다시 사용합니다.` : '위치 1개를 다시 사용합니다.',
+    warehouseTitle: '창고 다시 사용',
+    warehouseLine: '새 작업에서 이 창고를 다시 고를 수 있습니다.',
   },
 } as const;

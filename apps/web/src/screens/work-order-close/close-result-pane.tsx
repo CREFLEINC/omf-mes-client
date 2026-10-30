@@ -1,10 +1,12 @@
 import { AlertBanner, Button, SkeletonText } from '@crefle/web-ui';
-import type { WorkOrderForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { JSX } from 'react';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import type { WorkOrderCloseDetailFact } from './queries';
+
+type WorkOrder = components['schemas']['WorkOrder'];
 
 const t = messages.workOrderClose.closeResult;
 
@@ -40,7 +42,7 @@ const closerFields = (detail: WorkOrderCloseDetailFact): [string, string][] => {
   ];
 };
 
-const dispositionLabel = (code: WorkOrderForward['closeDispositionCode'] | null): string =>
+const dispositionLabel = (code: WorkOrder['closeDispositionCode'] | null): string =>
   code === null || code === undefined
     ? t.values.none
     : messages.workOrderClose.input.remainder[code];

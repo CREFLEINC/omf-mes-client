@@ -15,7 +15,8 @@ import type { ErpItemListResult, SelectOption } from './types';
 /** 값이 있을 때만 키가 실린다 — 요청 URL이 조건을 그대로 드러내야 무엇으로 조회했는지 읽힌다. */
 export interface ErpItemListQuery {
   q?: string;
-  itemTypeCode?: string;
+  /** 서버 #905 부터 여러 값을 받는다. 이 화면은 하나만 고른다. */
+  itemTypeCode?: string[];
   includeInactive?: boolean;
   /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
   page?: number;
