@@ -1430,6 +1430,23 @@ describe('appRouter — 검사실적·검사결과 조회의 진입 경로', () 
     expect(screen.queryByRole('navigation', { name: '탐색 경로' })).toBeNull();
   });
 
+  /* 측정치 상세는 「검사 이력 조회」 묶음의 검사실적 탭 아래다 — 탭 막대가 경로를 말해 탐색 경로는 세우지 않는다(#210). */
+  it('측정치 상세는 묶음 안에서 검사실적 탭을 켜고 제목만 세운다', async () => {
+    renderRoutedApp('/quality/inspection-results/1/measurements', inspectionResultRoutes());
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: messages.inspectionResultInsights.measurementRoute.title,
+      }),
+    ).toBeInTheDocument();
+    expect(hubTab('검사 이력 조회', '검사실적·검사결과 조회')).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.queryByRole('navigation', { name: '탐색 경로' })).toBeNull();
+  });
+
   it('목록과 측정치 상세가 같은 공개 route 계층에 선다', () => {
     expect(routedPaths()).toContain('/quality/inspection-results');
     expect(routedPaths()).toContain('/quality/inspection-results/:inspectionResultId/measurements');
