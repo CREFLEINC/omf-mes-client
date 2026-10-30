@@ -4014,6 +4014,8 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .lot-status-pane {
   display: grid;
+  /* 한 열을 칸 폭에 맞춘다 — 안의 긴 줄(LOT 상세 기본 정보 등)이 칸을 밀어 넓히지 않게. */
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   /* 검사 조회·판정 카드와 같은 안쪽 여백·간격(사용자 2026-10-30) — 기본 카드(.pane) 여백을 그대로 쓴다. */
   gap: var(--space-3);

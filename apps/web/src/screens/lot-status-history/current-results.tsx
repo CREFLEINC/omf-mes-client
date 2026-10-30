@@ -113,7 +113,7 @@ export const CurrentResults = ({
         <span className="lot-no-with-type">
           {/* LOT 유형 라벨 — 번호 왼쪽(사용자 2026-10-30). */}
           {row.lotTypeCode !== null && (
-            <Chip variant="status" size="sm">
+            <Chip variant="status" status="info" size="sm">
               {lotTypeOptions.find((option) => option.value === row.lotTypeCode)?.label ??
                 t.values.unlisted(row.lotTypeCode)}
             </Chip>

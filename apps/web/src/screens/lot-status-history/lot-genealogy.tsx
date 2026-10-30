@@ -1,4 +1,4 @@
-import { Button, Table } from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import type { InputMaterials, TraceBasis, UsedSerials } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import { runRequest } from '../../patterns/request';
 import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
 
 const t = messages.lotGenealogy;
+const shared = messages.lotStatusHistory;
 /** 시리얼은 수천 건일 수 있다 — 쪽으로 나눠 받는다. */
 const SERIAL_PAGE = 50;
 
@@ -111,60 +112,103 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
       ),
   });
 
+  /*
+   * LOT 변경 이력 · 보류 이력과 같은 짜임 — 제목 줄에 총 건수, 기록이 없어도 표를 세우고 표 안에 없다고 적는다
+   * (사용자 2026-10-30).
+   */
   return (
-    <section aria-label={t.usage.heading} className="four-m-inputs">
-      <h3>{t.usage.heading}</h3>
-      {lots.isPending ? (
-        <p className="field-note">{t.usage.loading}</p>
-      ) : lots.isError ? (
-        <p className="field-error">{t.usage.loadFailed}</p>
-      ) : lots.data.workOrders.length === 0 ? (
-        <p className="field-note">{t.usage.none}</p>
-      ) : (
+    <section aria-labelledby="lot-usage-title">
+      <div className="lot-status-pane-head">
+        <h3 id="lot-usage-title">{t.usage.heading}</h3>
+        {lots.data !== undefined && (
+          <span className="field-note">
+            {shared.current.list.total(String(lots.data.items.length))}
+          </span>
+        )}
+      </div>
+      {lots.isPending && (
+        <div role="status" aria-label={t.usage.loading}>
+          <SkeletonText lines={3} />
+        </div>
+      )}
+      {lots.isError && (
+        <AlertBanner
+          className="lot-detail-failure-banner"
+          variant="error"
+          title={t.usage.loadFailed}
+          action={
+            <Button
+              variant="outlined"
+              size="sm"
+              aria-label={shared.detail.retryLabel(t.usage.heading)}
+              onClick={() => void lots.refetch()}
+            >
+              {shared.detail.retry}
+            </Button>
+          }
+        />
+      )}
+      {lots.data !== undefined && (
         <>
-          <BasisNote basis={lots.data.basis} />
-          <Table
-            caption={<span className="four-m-inputs-caption">{t.usage.lotsCaption}</span>}
-            density="compact"
-            zebra={false}
-            rows={lots.data.items}
-            getRowId={(row) => String(row.lotId)}
-            columns={[
-              { key: 'lotNo', header: t.usage.lotColumns.lotNo, render: (row) => row.lotNo },
-              {
-                key: 'workOrderNo',
-                header: t.usage.lotColumns.workOrderNo,
-                render: (row) => row.workOrderNo,
-              },
-            ]}
-          />
+          {lots.data.items.length > 0 && <BasisNote basis={lots.data.basis} />}
+          <div className="lot-genealogy-table">
+            <Table
+              density="comfortable"
+              caption={t.usage.lotsCaption}
+              rows={lots.data.items}
+              getRowId={(row) => String(row.lotId)}
+              columns={[
+                {
+                  key: 'lotNo',
+                  header: t.usage.lotColumns.lotNo,
+                  align: 'center',
+                  render: (row) => row.lotNo,
+                },
+                {
+                  key: 'workOrderNo',
+                  header: t.usage.lotColumns.workOrderNo,
+                  align: 'center',
+                  render: (row) => row.workOrderNo,
+                },
+              ]}
+              empty={<EmptyState size="sm" title={t.usage.none} />}
+            />
+          </div>
           {serials.isError ? (
             <p className="field-error">{t.usage.loadFailed}</p>
           ) : serials.data !== undefined && serials.data.items.length > 0 ? (
             <>
-              <Table
-                caption={<span className="four-m-inputs-caption">{t.usage.serialsCaption}</span>}
-                density="compact"
-                zebra={false}
-                rows={serials.data.items}
-                getRowId={(row) => String(row.serialNumberId)}
-                columns={[
-                  {
-                    key: 'serialNo',
-                    header: t.usage.serialColumns.serialNo,
-                    render: (row) => row.serialNo,
-                  },
-                  { key: 'lotNo', header: t.usage.serialColumns.lotNo, render: (row) => row.lotNo },
-                  {
-                    key: 'producedAt',
-                    header: t.usage.serialColumns.producedAt,
-                    render: (row) =>
-                      row.producedAt === undefined
-                        ? t.empty
-                        : (formatPlantDateTime(row.producedAt) ?? row.producedAt),
-                  },
-                ]}
-              />
+              <div className="lot-genealogy-table">
+                <Table
+                  density="comfortable"
+                  caption={t.usage.serialsCaption}
+                  rows={serials.data.items}
+                  getRowId={(row) => String(row.serialNumberId)}
+                  columns={[
+                    {
+                      key: 'serialNo',
+                      header: t.usage.serialColumns.serialNo,
+                      align: 'center',
+                      render: (row) => row.serialNo,
+                    },
+                    {
+                      key: 'lotNo',
+                      header: t.usage.serialColumns.lotNo,
+                      align: 'center',
+                      render: (row) => row.lotNo,
+                    },
+                    {
+                      key: 'producedAt',
+                      header: t.usage.serialColumns.producedAt,
+                      align: 'center',
+                      render: (row) =>
+                        row.producedAt === undefined
+                          ? t.empty
+                          : (formatPlantDateTime(row.producedAt) ?? row.producedAt),
+                    },
+                  ]}
+                />
+              </div>
               <div className="lot-genealogy-pager">
                 <span className="field-note">
                   {t.usage.serialRange(

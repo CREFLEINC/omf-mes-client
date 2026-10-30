@@ -109,7 +109,7 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
                 'wide',
                 t.detail.fields.lotNo,
                 <span className="lot-no-with-type">
-                  <Chip variant="status" size="sm">
+                  <Chip variant="status" status="info" size="sm">
                     {labelOf(lotTypeOptions, detail.data.lotTypeCode)}
                   </Chip>
                   {detail.data.lotNo}
