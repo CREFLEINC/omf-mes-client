@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MAX_AUTO_ATTEMPTS, retryDelayOf } from '../../patterns/outbox-policy';
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { useOutbox } from './outbox';
+import { appendToStoredOutbox, useOutbox } from './outbox';
 
 /**
  * 이 큐가 지키는 것은 **되돌릴 수 없는 쓰기**다 — 투입은 재고를 움직인다.
@@ -104,5 +104,47 @@ describe('useOutbox — 끝나지 않는 장애에서 멈추되 담긴 것은 �
     expect(sent.at(-1)?.headers.get('Idempotency-Key')).toBe(
       sent[0]?.headers.get('Idempotency-Key'),
     );
+  });
+});
+
+/*
+ * 화면을 떠날 때 「미전송」을 저장된 큐에 옮기는 길(PI-27). 다음에 훅이 뜨면 그 큐를 읽어 보낸다.
+ */
+describe('appendToStoredOutbox — 화면을 떠날 때 저장된 큐에 덧붙인다', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  it('덧붙인 항목을 다음에 뜬 훅이 읽어 한 번 보낸다', async () => {
+    appendToStoredOutbox('SAMPLE-W-0001', BODY);
+    const stored = JSON.parse(
+      globalThis.localStorage.getItem('omf-mes.material-input-scan.outbox') ?? '[]',
+    ) as { idempotencyKey: string; workerNo: string; body: unknown }[];
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.workerNo).toBe('SAMPLE-W-0001');
+    expect(stored[0]?.idempotencyKey).not.toBe('');
+
+    const sent: Request[] = [];
+    const { result } = renderHookWithProviders(() => useOutbox(), {
+      fetch: createStubFetch([
+        {
+          match: (request: Request) =>
+            new URL(request.url).pathname === '/production/material-consumptions',
+          respond: (request: Request) => {
+            sent.push(request);
+
+            return jsonResponse(
+              { ...BODY, materialConsumptionId: 1, consumptionNo: 'SAMPLE-MC-1' },
+              { status: 201 },
+            );
+          },
+        },
+      ]),
+    });
+
+    await vi.waitFor(() => {
+      expect(result.current.pendingCount).toBe(0);
+    });
+    expect(sent).toHaveLength(1);
   });
 });

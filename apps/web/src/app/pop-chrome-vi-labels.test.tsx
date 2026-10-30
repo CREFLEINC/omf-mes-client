@@ -84,13 +84,9 @@ describe('POP 공통 조작 문구 — 베트남어', () => {
     expect(
       screen.getByRole('button', { name: viMessages.popChrome.selectDialog.clearSearch }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: viMessages.popPageNav.pageDown }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(viMessages.popChrome.selectDialog.position(1, 2, 7)),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/검색어 지우기|페이지 아래|전체 7건/u)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: viMessages.popPageNav.next })).toBeInTheDocument();
+    expect(screen.getByText(viMessages.popChrome.selectDialog.total(7))).toBeInTheDocument();
+    expect(screen.queryByText(/검색어 지우기|다음|총 7건/u)).not.toBeInTheDocument();
   });
 
   it('비가동 시간 표시가 베트남어 단위로 선다', () => {

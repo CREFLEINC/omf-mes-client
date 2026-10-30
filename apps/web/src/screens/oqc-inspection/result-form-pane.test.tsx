@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { cleanup, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -12,6 +12,15 @@ import { toInspectionResultRound } from './types';
 
 const t = messages.oqcInspection.result;
 const transition = messages.oqcInspection.transition;
+const hub = messages.common.inspectionHub;
+
+/* 입력 단계(#197) — ① 수량의 [확정]으로 ② 판정이 열리고, 마친 단계는 머리를 눌러 다시 편다. */
+const confirmQuantities = (): void => {
+  fireEvent.click(screen.getByRole('button', { name: hub.stepConfirm }));
+};
+const reopenQuantities = (): void => {
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${t.sectionTitle}`) }));
+};
 const confirm = messages.oqcInspection.confirm;
 
 const options = toCodeOptions(overallJudgmentCodeValues);
@@ -59,6 +68,7 @@ describe('ResultFormPane — 판정 폼', () => {
     expect(screen.getByLabelText(t.fields.accepted)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.rejected)).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.held)).toBeInTheDocument();
+    confirmQuantities();
     expect(screen.getByRole('combobox', { name: t.judgment })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.save })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '임시 저장' })).not.toBeInTheDocument();
@@ -166,6 +176,8 @@ describe('ResultFormPane — 재검사 갈래', () => {
 
   it('재검사 중에는 칸이 열리고 사유 목록이 없다는 사실을 밝힌다', () => {
     renderPane({ round: null, isReinspecting: true, draft: MATCHING, judgment: 'ACCEPTED' });
+    /* 수량 · 판정을 다 채운 회차라 ① 이 접혀 있다 — 펼쳐 본다. */
+    reopenQuantities();
 
     expect(screen.getByLabelText(t.fields.accepted)).toBeEnabled();
     expect(screen.getByText(t.reinspectRound)).toBeInTheDocument();

@@ -923,10 +923,15 @@ export interface ForwardPaths {
       { 201: Json<InspectionSheetTemplate> }
     >;
   };
-  /** 서버 선행 P-102 — 검사표 기준 상세(ETag)·수정(작성중만). */
-  '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}': Unused & {
+  /** 서버 선행 P-102 — 검사표 기준 상세(ETag)·수정(작성중만). 작성 취소(작성중만 지운다)는 omf-all-around#214. */
+  '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}': Omit<Unused, 'delete'> & {
     parameters: NoParameters;
     post?: never;
+    delete: Op<
+      { query?: never; header: IdemHeader; path: TemplateId; cookie?: never },
+      never,
+      { 204: { headers: { [name: string]: unknown }; content?: never } }
+    >;
     get: Op<
       { query?: never; header?: never; path: TemplateId; cookie?: never },
       never,
@@ -940,6 +945,13 @@ export interface ForwardPaths {
   };
   /** 서버 선행 P-102 — 검사표 기준 확정. */
   '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}:confirm': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<Params<never, LockHeader, TemplateId>, never, { 200: Json<InspectionSheetTemplate> }>;
+  };
+  /** 서버 선행 omf-all-around#214 — 검사표 기준 폐기(확정만). */
+  '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}:obsolete': Unused & {
     parameters: NoParameters;
     get?: never;
     put?: never;

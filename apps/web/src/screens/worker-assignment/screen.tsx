@@ -266,8 +266,8 @@ export const WorkerAssignmentScreen = () => {
          */}
         <Button
           type="button"
-          /* ⚠ [사용자 전환]과 «같은» 변형·크기다 — 생김새를 한 벌로 두기로 했다. */
-          variant="filled"
+          /* ⚠ [사용자 전환]과 «같은» 변형·크기다. 보조 동작이라 테두리다(C-3, C-19). */
+          variant="outlined"
           size="md"
           className="pop-terminal-header__reregister"
           onClick={restart}

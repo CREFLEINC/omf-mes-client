@@ -67,4 +67,14 @@ export const shellHome = {
     rejected: '전송 실패',
     count: (count: number) => `${String(count)}건`,
   },
+  /**
+   * 남은 작업 배지(피처 002). 수는 기기(단말)의 창고(없으면 공장) 기준이고 그 화면 목록 건수와 같다.
+   * 접근 이름에는 줄이지 않은 실제 수를 싣는다(「9+」가 아니라 「12건」).
+   */
+  workCount: {
+    left: '남은 작업',
+    label: (name: string, count: number) => `${name}, 남은 작업 ${String(count)}건`,
+    basisWarehouse: (warehouseName: string) => `이 기기: ${warehouseName} 기준`,
+    basisPlant: '이 기기: 공장 전체 기준',
+  },
 } as const;

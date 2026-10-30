@@ -1,6 +1,8 @@
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { PlanViewLauncher } from '../iqc-inspection/plan-view-launcher';
+import { useSamplingRule } from '../iqc-inspection/queries';
 import type { ItemNameLookup, NameLookup } from './reference-lookup';
 import { formatDateTime, type InspectionRequestDetail } from './types';
 import { withUom } from './uom-lookup';
@@ -51,6 +53,7 @@ export const RequestDetailPane = ({
   const itemParts = itemNames.partsOf(detail.itemId);
   const lotNo = unitFact?.value ?? lotNumbers.labelOf(detail.lotId);
   const typeName = t.inspectionTypeNames[detail.inspectionTypeCode];
+  const planRule = useSamplingRule(detail.inspectionPlanVersionId);
 
   const items: { key: string; label: string; value: ReactNode; emphasized?: boolean }[] = [
     {
@@ -115,10 +118,23 @@ export const RequestDetailPane = ({
       key: 'plan',
       label: t.fields.inspectionPlanVersionId,
       /* 없는 값(기준 미등록)과 모르는 값은 다른 모양이어야 한다(공유계약 G-9 · client#589). */
+      /* IQC 와 같이 「버전 N」 + [기준 조회](사용자 지시 2026-10-28 · #197) — 내부 번호를 내지 않는다. */
       value:
-        detail.inspectionPlanVersionId === null
-          ? t.noPlanVersion
-          : String(detail.inspectionPlanVersionId),
+        detail.inspectionPlanVersionId === null ? (
+          t.noPlanVersion
+        ) : (
+          <span className="iqc-inspection-plan-cell">
+            <span>
+              {planRule.data === undefined
+                ? '…'
+                : messages.iqcInspection.detail.planVersion(planRule.data.planVersion)}
+            </span>
+            <PlanViewLauncher
+              inspectionPlanVersionId={detail.inspectionPlanVersionId}
+              label={messages.iqcInspection.detail.openPlan}
+            />
+          </span>
+        ),
     },
     { key: 'requestedAt', label: t.fields.requestedAt, value: formatDateTime(detail.requestedAt) },
   ];

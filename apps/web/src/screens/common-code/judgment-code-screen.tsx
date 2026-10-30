@@ -4,15 +4,13 @@ import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useCodeGroupList } from './code-group-queries';
-import { CodeValueSection } from './code-value-section';
+import { JudgmentCodeEditor } from './judgment-code-editor';
 import { readPage, readSelectedId } from './filters';
-import {
-  JUDGMENT_TYPE_GROUP_CODE,
-  findJudgmentTypeGroup,
-  isProvisionalJudgmentTypeList,
-} from './judgment-group';
+import { JUDGMENT_TYPE_GROUP_CODE, findJudgmentTypeGroup } from './judgment-group';
 import { LoadErrorBanner } from './load-error-banner';
 import type { CodeGroupFilters } from './types';
+import { usePageHub } from '../../patterns/page-hub';
+import type { CodeUsage } from '../defect-cause-code/usage-chips';
 
 const t = messages.judgmentCode;
 
@@ -29,6 +27,8 @@ const t = messages.judgmentCode;
 
 /** 켜짐을 나타내는 유일한 값. 다른 값은 꺼진 것으로 본다 — 주소는 사람이 고치는 자리다. */
 const ON = '1';
+/** 사용 여부 칩 「미사용」(#209). `inactive=1` 은 종전대로 「전체」다 — 북마크가 산다. */
+const INACTIVE_ONLY = 'only';
 
 /**
  * 이 화면의 주소 키. 공통코드 화면의 키(`val`·`vpage`·`vinactive`·`new=value`)와 이름이 달라도
@@ -38,6 +38,8 @@ const URL_KEYS = {
   selected: 'sel',
   page: 'page',
   includeInactive: 'inactive',
+  keyword: 'q',
+  typeCode: 'type',
   creating: 'new',
 } as const;
 
@@ -63,6 +65,7 @@ const GROUP_LOOKUP_FILTERS: CodeGroupFilters = {
 const GROUP_LOOKUP_PAGE = 1;
 
 export const JudgmentCodeScreen = () => {
+  const hub = usePageHub();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const groupList = useCodeGroupList(GROUP_LOOKUP_FILTERS, GROUP_LOOKUP_PAGE, true);
@@ -79,7 +82,11 @@ export const JudgmentCodeScreen = () => {
 
   const selectedCodeValueId = readSelectedId(searchParams, URL_KEYS.selected);
   const page = readPage(searchParams, URL_KEYS.page);
-  const includeInactive = searchParams.get(URL_KEYS.includeInactive) === ON;
+  const inactiveParam = searchParams.get(URL_KEYS.includeInactive);
+  const usage: CodeUsage =
+    inactiveParam === ON ? 'all' : inactiveParam === INACTIVE_ONLY ? 'inactive' : 'active';
+  const keyword = searchParams.get(URL_KEYS.keyword) ?? '';
+  const typeCode = searchParams.get(URL_KEYS.typeCode) ?? '';
 
   /**
    * 등록 폼이 열려 있는가. **그룹을 찾은 뒤에만 성립한다** —
@@ -96,9 +103,9 @@ export const JudgmentCodeScreen = () => {
    * | # | 조작 | `sel` | `page` | `inactive` | `new` |
    * | :-: | --- | --- | --- | --- | --- |
    * | 1 | 코드값을 고른다 | **설정** | 유지 | 유지 | **지움** |
-   * | 2 | 등록 폼을 연다 | **지움** | 유지 | 유지 | **설정** |
+   * | 2 | 등록 폼을 연다 | 유지(뒤 상세 카드 · #209) | 유지 | 유지 | **설정** |
    * | 3 | 등록 폼을 닫는다 | 유지 | 유지 | 유지 | **지움** |
-   * | 4 | 「미사용 포함」을 바꾼다 | **지움** | **지움** | 설정/지움 | **지움** |
+   * | 4 | 사용 여부 칩 · 판정 유형 · 검색어를 바꾼다 | **지움** | **지움** | 설정/지움 | **지움** |
    * | 5 | 쪽을 옮긴다 | **지움** | 설정/지움 | 유지 | **지움** |
    *
    * 1이 `new`를 지우는 것은 등록 성공 경로 때문이다 — 한 벌은 등록에 성공하면 **고르기 콜백만
@@ -132,8 +139,10 @@ export const JudgmentCodeScreen = () => {
   const openCreate = () => {
     patchSearchParams((next) => {
       next.set(URL_KEYS.creating, ON);
-      // 등록 폼과 고른 값의 폼이 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-      next.delete(URL_KEYS.selected);
+      /*
+       * 등록은 창으로 열린다(#209) — 고른 값은 뒤 상세 카드에 그대로 둔다(불량코드 탭과 같다).
+       * 창이 따로 떠 어느 쪽을 고치는지 헷갈리지 않는다.
+       */
     });
   };
 
@@ -143,14 +152,35 @@ export const JudgmentCodeScreen = () => {
     });
   };
 
-  const changeIncludeInactive = (nextIncludeInactive: boolean) => {
+  const changeUsage = (nextUsage: CodeUsage) => {
     patchSearchParams((next) => {
-      if (nextIncludeInactive) {
+      if (nextUsage === 'all') {
         next.set(URL_KEYS.includeInactive, ON);
+      } else if (nextUsage === 'inactive') {
+        next.set(URL_KEYS.includeInactive, INACTIVE_ONLY);
       } else {
-        // 계약의 기본값이 꺼짐이다 — 끈 상태를 값으로 실으면 주소가 두 갈래로 갈린다.
+        // 기본값이 「사용」이다 — 기본 상태를 값으로 실으면 주소가 두 갈래로 갈린다.
         next.delete(URL_KEYS.includeInactive);
       }
+
+      next.delete(URL_KEYS.selected);
+      next.delete(URL_KEYS.page);
+      next.delete(URL_KEYS.creating);
+    });
+  };
+
+  const changeFilters = ({
+    keyword: nextKeyword,
+    typeCode: nextTypeCode,
+  }: {
+    keyword: string;
+    typeCode: string;
+  }) => {
+    patchSearchParams((next) => {
+      if (nextKeyword === '') next.delete(URL_KEYS.keyword);
+      else next.set(URL_KEYS.keyword, nextKeyword);
+      if (nextTypeCode === '') next.delete(URL_KEYS.typeCode);
+      else next.set(URL_KEYS.typeCode, nextTypeCode);
 
       next.delete(URL_KEYS.selected);
       next.delete(URL_KEYS.page);
@@ -213,39 +243,41 @@ export const JudgmentCodeScreen = () => {
     }
 
     return (
-      <div className="pane-stack">
-        <CodeValueSection
+      <>
+        <JudgmentCodeEditor
           codeGroupId={judgmentGroup.codeGroupId}
           selectedCodeValueId={selectedCodeValueId}
           onSelectCodeValue={selectCodeValue}
           isCreating={isCreating}
           onOpenCreate={openCreate}
           onCloseCreate={closeCreate}
-          includeInactive={includeInactive}
-          onIncludeInactiveChange={changeIncludeInactive}
+          usage={usage}
+          onUsageChange={changeUsage}
+          keyword={keyword}
+          typeCode={typeCode}
+          onFiltersChange={changeFilters}
           page={page}
           onPageChange={changePage}
         />
-      </div>
+      </>
     );
   };
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        /*
-         * 편집기 안의 문구는 「코드값」이다 — 공통코드 화면과 한 묶음을 공유해 여기서 바꾸면
-         * 그쪽 화면이 함께 바뀐다. 화면 이름과 편집기 어휘가 다른 이유를 머리에서 밝힌다.
-         */
-        description={t.notices.editorScope}
-      />
+      {/* 탭 묶음 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
+      {hub === null ? (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      ) : null}
+      {/* 편집기가 이 탭 전용이 되어(#209) 「판정 유형」 말을 그대로 쓴다 — 「코드값」 어휘 안내를 걷었다. */}
 
       {/*
        * 배너 셋은 **편집기 바깥**에 선다. 한 벌에 prop을 더해 안에서 그리면 그 파일이 바뀌고,
@@ -258,11 +290,7 @@ export const JudgmentCodeScreen = () => {
        * `box-sizing` 정규화 때문이며, 감싸지 않으면 배너가 안쪽 여백만큼 컨테이너를 넘친다.
        * **임시 우회다** — `design-system-v2-webui#60`이 반영되면 이 래퍼도 함께 걷는다.
        */}
-      {judgmentGroup !== null && isProvisionalJudgmentTypeList() && (
-        <div className="banner-slot">
-          <AlertBanner variant="info">{t.notices.provisionalList}</AlertBanner>
-        </div>
-      )}
+      {/* 「임시 목록」 안내는 걷었다(사용자 지시 2026-10-29 · #209). */}
 
       {judgmentGroup !== null && !judgmentGroup.isActive && (
         <div className="banner-slot">
@@ -270,16 +298,7 @@ export const JudgmentCodeScreen = () => {
         </div>
       )}
 
-      {/*
-       * 값 추가 경고 — **등록 폼이 열려 있는 동안에만** 낸다. 늘 보이는 경고는 읽히지 않아
-       * 정작 값을 늘리는 순간에 효력이 없다. 경고가 필요한 자리는 그 순간 하나뿐이다.
-       */}
-      {isCreating && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.notices.addAffectsOtherScreens}</AlertBanner>
-        </div>
-      )}
-
+      {/* 값 추가 경고는 판정 유형 추가 창 안에 둔다(사용자 지시 2026-10-29 · #209) — `judgment-code-editor.tsx`. */}
       {renderBody()}
     </>
   );

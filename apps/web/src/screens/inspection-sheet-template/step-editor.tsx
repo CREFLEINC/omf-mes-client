@@ -1,4 +1,4 @@
-import { Button, Checkbox, type Column, Table, TextArea, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, type Column, Icon, Table, TextArea, TextField } from '@crefle/web-ui';
 import type { InspectionSheetMethodCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
@@ -26,35 +26,41 @@ export interface StepListProps {
   onSelect: (stepCode: StepDraft['stepCode']) => void;
 }
 
-/** 단계 목록 — 사용 여부·이름·항목 수·서명 필요를 한눈에 보고, 고른 단계를 오른쪽에서 고친다. */
+/**
+ * 단계 목록 — 가로 단추 줄(사용자 시안 2026-10-30). 쓰지 않는 단계는 흐리게, 입력을 고쳐야 할 단계는 붉은 테두리.
+ * 항목 수 · 서명 여부는 단추 풍선 글(title)로 남긴다.
+ */
 export const StepList = ({ steps, selected, isInvalid, onSelect }: StepListProps) => (
   <ul className="inspection-sheet-template-step-list" aria-label={t.editor.stepList}>
     {steps.map((step) => {
       const label = t.steps[step.stepCode] ?? step.stepCode;
+      const summary = step.enabled
+        ? [
+            step.items.length === 0 ? t.editor.noItemsShort : t.editor.itemCount(step.items.length),
+            ...(step.signRequired ? [t.editor.signShort] : []),
+          ].join(', ')
+        : t.editor.stepUnused;
+      const invalid = step.enabled && isInvalid(step);
+      /* 고를 단계가 하나뿐이면 단추가 아니라 이름표다 — 누르는 모양 · 동작이 없다(사용자 지시 2026-10-30). */
+      if (steps.length === 1)
+        return (
+          <li key={step.stepCode}>
+            <span className="inspection-sheet-template-step-tag" title={summary}>
+              {step.enabled ? step.nameKo || label : label}
+            </span>
+          </li>
+        );
       return (
         <li key={step.stepCode}>
           <button
             type="button"
             aria-current={step.stepCode === selected ? 'true' : undefined}
+            aria-invalid={invalid || undefined}
             data-enabled={step.enabled}
+            title={invalid ? `${summary} · ${t.editor.stepInvalid}` : summary}
             onClick={() => onSelect(step.stepCode)}
           >
-            <span className="inspection-sheet-template-step-name">
-              {step.enabled ? step.nameKo || label : label}
-            </span>
-            <span className="inspection-sheet-template-muted">
-              {step.enabled
-                ? [
-                    step.items.length === 0
-                      ? t.editor.noItemsShort
-                      : t.editor.itemCount(step.items.length),
-                    ...(step.signRequired ? [t.editor.signShort] : []),
-                  ].join(', ')
-                : t.editor.stepUnused}
-            </span>
-            {step.enabled && isInvalid(step) && (
-              <span className="field-error">{t.editor.stepInvalid}</span>
-            )}
+            {step.enabled ? step.nameKo || label : label}
           </button>
         </li>
       );
@@ -75,7 +81,8 @@ export const StepEditor = ({ step, readOnly, errors, onChange }: StepEditorProps
     {
       key: 'code',
       header: t.editor.itemCode,
-      width: '96px',
+      /* 항목 번호는 30자까지 — 「PROCESS_1-1」 정도가 잘리지 않는 폭(#208). */
+      width: '140px',
       render: (item) => (
         <TextField
           aria-label={t.editor.itemCode}
@@ -142,7 +149,7 @@ export const StepEditor = ({ step, readOnly, errors, onChange }: StepEditorProps
           {
             key: 'remove',
             header: '',
-            width: '76px',
+            width: '64px',
             render: (item: ItemDraft) => (
               <Button
                 variant="text"
@@ -169,7 +176,8 @@ export const StepEditor = ({ step, readOnly, errors, onChange }: StepEditorProps
 
   return (
     <fieldset className="inspection-sheet-template-step">
-      <legend>
+      {/* 사용 · 관리자 서명 체크와 「항목 추가」가 한 줄, 아래 구분선 뒤에 단계 이름 칸(사용자 시안 2026-10-30). */}
+      <legend className="inspection-sheet-template-step-head">
         <Checkbox
           checked={step.enabled}
           disabled={readOnly}
@@ -177,13 +185,34 @@ export const StepEditor = ({ step, readOnly, errors, onChange }: StepEditorProps
         >
           {t.editor.stepUse(stepLabel)}
         </Checkbox>
+        {step.enabled && (
+          <Checkbox
+            checked={step.signRequired}
+            disabled={readOnly}
+            onChange={(event) => onChange({ ...step, signRequired: event.target.checked })}
+          >
+            {t.editor.signRequired}
+          </Checkbox>
+        )}
+        {step.enabled && !readOnly && (
+          <Button
+            variant="outlined"
+            className="inspection-sheet-template-add-item"
+            leadingIcon={<Icon name="add" size={18} />}
+            onClick={addItem}
+          >
+            {t.editor.addItem}
+          </Button>
+        )}
       </legend>
-      {step.enabled && (
+      {!step.enabled ? (
+        <p className="inspection-sheet-template-muted">{t.editor.stepOff}</p>
+      ) : (
         <>
           <div className="inspection-sheet-template-step-fields">
             <TextField
+              label={t.editor.stepNameKo}
               aria-label={`${stepLabel} ${t.editor.stepNameKo}`}
-              placeholder={t.editor.stepNameKo}
               value={step.nameKo}
               maxLength={100}
               disabled={readOnly}
@@ -191,33 +220,20 @@ export const StepEditor = ({ step, readOnly, errors, onChange }: StepEditorProps
               onChange={(event) => onChange({ ...step, nameKo: event.target.value })}
             />
             <TextField
+              label={t.editor.stepNameVi}
               aria-label={`${stepLabel} ${t.editor.stepNameVi}`}
-              placeholder={t.editor.stepNameVi}
               value={step.nameVi}
               maxLength={100}
               disabled={readOnly}
               onChange={(event) => onChange({ ...step, nameVi: event.target.value })}
             />
-            <Checkbox
-              checked={step.signRequired}
-              disabled={readOnly}
-              onChange={(event) => onChange({ ...step, signRequired: event.target.checked })}
-            >
-              {t.editor.signRequired}
-            </Checkbox>
           </div>
-          <div className="inspection-sheet-template-items-head">
-            <span className="field-label">
-              {step.items.length === 0 ? t.editor.noItems : t.editor.itemCount(step.items.length)}
-            </span>
-            {!readOnly && (
-              <Button variant="outlined" onClick={addItem}>
-                {t.editor.addItem}
-              </Button>
-            )}
-          </div>
+          {step.items.length === 0 && (
+            <p className="inspection-sheet-template-muted">{t.editor.noItems}</p>
+          )}
           {step.items.length > 0 && (
-            <div className="inspection-sheet-template-items">
+            /* 표는 둥근 테두리 상자 안에 — 검사 기준 탭 항목 표와 같다(#208). */
+            <div className="inspection-sheet-template-items inspection-standard-table-box">
               <Table
                 caption={
                   <span className="inspection-sheet-template-caption">

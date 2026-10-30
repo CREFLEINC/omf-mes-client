@@ -3,6 +3,9 @@ import { messages } from '@omf-mes/i18n';
 
 import type { TerminalView } from './types';
 
+type TerminalCreateForward = components['schemas']['TerminalCreate'];
+type TerminalUpdateForward = components['schemas']['TerminalUpdate'];
+
 /**
  * 단말 등록·수정 폼의 편집 상태.
  *
@@ -20,8 +23,8 @@ import type { TerminalView } from './types';
 const t = messages.terminalProcessMap;
 const NEW_TERMINAL_STATUS = 'RUNNING';
 
-type TerminalCreate = components['schemas']['TerminalCreate'];
-type TerminalUpdate = components['schemas']['TerminalUpdate'];
+type TerminalCreate = TerminalCreateForward;
+type TerminalUpdate = TerminalUpdateForward;
 
 export interface TerminalDraft {
   terminalCode: string;
@@ -30,6 +33,8 @@ export interface TerminalDraft {
   statusCode: string;
   /** 빈 문자열이 「설비에 붙이지 않음」이다 — 0을 쓰지 않는다. */
   equipment: string;
+  /** 빈 문자열이 「공장 전체」다(피처 002). 공장을 바꾸면 비운다 — 다른 공장 창고는 서버가 막는다. */
+  warehouse: string;
 }
 
 export const EMPTY_TERMINAL: TerminalDraft = {
@@ -38,6 +43,7 @@ export const EMPTY_TERMINAL: TerminalDraft = {
   terminalTypeCode: '',
   statusCode: '',
   equipment: '',
+  warehouse: '',
 };
 
 export const toTerminalDraft = (view: TerminalView): TerminalDraft => ({
@@ -46,6 +52,7 @@ export const toTerminalDraft = (view: TerminalView): TerminalDraft => ({
   terminalTypeCode: view.terminalTypeCode,
   statusCode: view.statusCode,
   equipment: view.equipmentId === null ? '' : String(view.equipmentId),
+  warehouse: view.warehouseId === null ? '' : String(view.warehouseId),
 });
 
 export type TerminalErrors = Partial<Record<keyof TerminalDraft, string>>;
@@ -81,6 +88,8 @@ export const toCreateBody = (draft: TerminalDraft): TerminalCreate => ({
   terminalTypeCode: draft.terminalTypeCode.trim(),
   statusCode: NEW_TERMINAL_STATUS,
   ...equipmentField(draft),
+  /* 새 단말은 비우면 칸을 싣지 않는다 — 생략과 null 이 같은 「공장 전체」다. */
+  ...(draft.warehouse === '' ? {} : { warehouseId: Number(draft.warehouse) }),
 });
 
 /** ⛔ 단말 코드를 싣지 않는다 — 계약이 받지 않는다. */
@@ -89,4 +98,6 @@ export const toUpdateBody = (draft: TerminalDraft): TerminalUpdate => ({
   terminalTypeCode: draft.terminalTypeCode.trim(),
   statusCode: draft.statusCode.trim(),
   ...equipmentField(draft),
+  /* ⭐ 수정은 비우면 null 을 싣는다 — 빼면 「고치지 않음」으로 읽혀 지정한 창고를 뗄 수 없다. */
+  warehouseId: draft.warehouse === '' ? null : Number(draft.warehouse),
 });

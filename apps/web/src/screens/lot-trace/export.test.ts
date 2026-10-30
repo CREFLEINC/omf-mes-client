@@ -38,20 +38,21 @@ describe('엑셀 내보내기 파일(CSV)', () => {
     expect(escapeCsvField('5"')).toBe('"5"""');
   });
 
-  it('머리와 줄을 만든다 — 코드 열과 LOT 수를 더하고 상태는 이름으로', () => {
-    const csv = toCsv('MATERIAL', [row(1)], (code) => (code === 'POSTED' ? '전기완료' : code));
+  it('머리와 줄을 만든다 — 구분, 코드 열, LOT 수, 공급사 또는 고객, W/O 번호, 상태 이름', () => {
+    const csv = toCsv([row(1)], (line) =>
+      line.statusCode === 'POSTED' ? '전기완료' : line.statusCode,
+    );
     const [header, line] = csv.split('\r\n');
     expect(header).toBe(
-      '구분,일시,입고 번호,줄 번호,품목 코드,품목명,LOT 번호,LOT 수,수량,단위,창고 코드,창고명,공급사 코드,공급사명,상태',
+      '구분,일시,문서번호,줄 번호,품목 코드,품목명,LOT 번호,LOT 수,수량,단위,창고 코드,창고명,공급사 또는 고객 코드,공급사 또는 고객명,W/O 번호,상태',
     );
     expect(line).toBe(
-      '자재 입고,2026-10-23 15:00,GR-SYN-0001,1,ITEM-A,품목 A,ITEM-A|500|261023|SUP-A|1,1,500,KG,WH-A,창고 A,SUP-A,공급사 A,전기완료',
+      '자재 입고,2026-10-23 15:00,GR-SYN-0001,1,ITEM-A,품목 A,ITEM-A|500|261023|SUP-A|1,1,500,KG,WH-A,창고 A,SUP-A,공급사 A,,전기완료',
     );
   });
 
   it('사람이 적은 이름이 수식으로 시작하면 글자로 남기고, 수량은 숫자 그대로 둔다', () => {
     const csv = toCsv(
-      'MATERIAL',
       [
         row(1, {
           qty: -5,
@@ -59,7 +60,7 @@ describe('엑셀 내보내기 파일(CSV)', () => {
           partner: { id: 3, code: 'SUP-A', name: '@공급사' },
         }),
       ],
-      (code) => code,
+      (line) => line.statusCode,
     );
     const line = csv.split('\r\n')[1] ?? '';
     expect(line).toContain(`,"'=HYPERLINK(""x"")",`);
@@ -67,13 +68,11 @@ describe('엑셀 내보내기 파일(CSV)', () => {
     expect(line).toContain(',-5,KG,');
   });
 
-  it('제품입고는 상대 대신 W/O 번호 열이다', () => {
+  it('제품입고 줄은 W/O 번호를 싣는다', () => {
     const csv = toCsv(
-      'PRODUCT',
       [row(1, { kind: 'PRODUCT', partner: null, workOrderNo: 'WO-SYN-1' })],
-      (c) => c,
+      (line) => line.statusCode,
     );
-    expect(csv.split('\r\n')[0]).toContain('창고명,W/O 번호,상태');
     expect(csv.split('\r\n')[1]).toContain(',WO-SYN-1,');
   });
 });
@@ -124,9 +123,12 @@ describe('내보낸 파일 이름', () => {
       exportFileName(
         readFilters(new URLSearchParams('kind=PRODUCT&from=2026-10-20&to=2026-10-27')),
       ),
-    ).toBe('LOT추적_제품입고_2026-10-20_2026-10-27.csv');
+    ).toBe('LOT생산이력조회_제품입고_2026-10-20_2026-10-27.csv');
+    expect(exportFileName(readFilters(new URLSearchParams('from=2026-10-20&to=2026-10-27')))).toBe(
+      'LOT생산이력조회_전체_2026-10-20_2026-10-27.csv',
+    );
     const name = messages.lotTrace.export.fileName;
-    expect(name('자재 LOT', '', '')).toBe('LOT추적_자재 LOT_전체.csv');
-    expect(name('자재 LOT', '2026-10-01', '')).toBe('LOT추적_자재 LOT_2026-10-01_이후.csv');
+    expect(name('자재 LOT', '', '')).toBe('LOT생산이력조회_자재 LOT_전체.csv');
+    expect(name('자재 LOT', '2026-10-01', '')).toBe('LOT생산이력조회_자재 LOT_2026-10-01_이후.csv');
   });
 });

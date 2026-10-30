@@ -14,6 +14,7 @@ import {
   type NotificationFilters,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
+import { useHandoverEventEntries } from './handover-lookups';
 import { describeEvent, useNotificationEventOptions, withCurrentEvent } from './lookups';
 import { NotificationRow } from './notification-row';
 import { PageNav } from './page-nav';
@@ -27,7 +28,7 @@ import {
 } from './period';
 import { useMarkAllRead, useMarkRead, useNotificationList, useUnreadCount } from './queries';
 import { EMPTY_READ_STATE, isRead, withRead, type ReadState } from './read-state';
-import type { NotificationView, SelectOption } from './types';
+import type { NotificationView, SelectItem } from './types';
 import { WriteErrorBanner, writeFailureTitle } from './write-error-banner';
 
 const t = messages.notificationCenter;
@@ -164,6 +165,10 @@ export const NotificationCenterScreen = () => {
    * 좁힘 인자가 없는 경로라(실측) 한 조회로 둘 다 쓰는 것이 위험을 만들지 않는다.
    */
   const events = useNotificationEventOptions();
+  /* 인계 작업 10종(피처 002) — 기존 6종 뒤에 이름 풀이·선택지로만 더한다. */
+  const handoverEntries = useHandoverEventEntries();
+  const allEntries =
+    handoverEntries.length === 0 ? events.entries : [...events.entries, ...handoverEntries];
 
   /**
    * 「이 회차에 읽음 처리한 번호」 — **목록을 다시 부르지 않고 표시만 바꾸는 수단**이다
@@ -272,13 +277,27 @@ export const NotificationCenterScreen = () => {
    * **주소로 들어온 값이 목록에 없으면 맨 앞에 남긴다**(`withCurrentEvent`) — 남기지 않으면
    * 그 조건을 푸는 수단이 사라진다. 목록 조회가 실패한 동안에도 같은 일이 일어난다.
    */
-  const eventOptions: SelectOption[] = [
-    { value: '', label: t.filters.all },
-    ...withCurrentEvent(events.entries, filters.eventCode).map((entry) => ({
-      value: entry.value,
-      label: entry.label,
-    })),
-  ];
+  const eventOptions: SelectItem[] =
+    handoverEntries.length === 0
+      ? [
+          { value: '', label: t.filters.all },
+          ...withCurrentEvent(events.entries, filters.eventCode).map((entry) => ({
+            value: entry.value,
+            label: entry.label,
+          })),
+        ]
+      : [
+          { value: '', label: t.filters.all },
+          /* 두 목록 어디에도 없는 주소 값은 묶음 밖 맨 앞에 남긴다(`withCurrentEvent` 와 같은 까닭). */
+          ...(filters.eventCode === '' ||
+          allEntries.some((entry) => entry.value === filters.eventCode)
+            ? []
+            : [{ value: filters.eventCode, label: filters.eventCode }]),
+          ...(events.entries.length === 0
+            ? []
+            : [{ label: t.filters.eventGroup, options: [...events.entries] }]),
+          { label: t.filters.handoverGroup, options: [...handoverEntries] },
+        ];
 
   /** 목록 구획. 다섯 중 하나만 낸다 — 사용자가 할 조치가 서로 다르다. */
   const listPane = (): ReactNode => {
@@ -354,7 +373,7 @@ export const NotificationCenterScreen = () => {
           <li key={view.notificationId}>
             <NotificationRow
               view={view}
-              title={describeEvent(view.eventCode, events.entries)}
+              title={describeEvent(view.eventCode, allEntries)}
               isRead={isRead(view, readState)}
               isPending={markRead.pendingIds.has(view.notificationId) || markAllRead.isSubmitting}
               onRead={markRead.markRead}

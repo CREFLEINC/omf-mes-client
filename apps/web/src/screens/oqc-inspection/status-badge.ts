@@ -40,6 +40,17 @@ const BADGE_OF: Record<string, StatusBadge> = {
   CANCELLED: { label: messages.oqcInspection.status.cancelled, tone: 'error' },
 };
 
-export const toStatusBadge = (statusCode: string): StatusBadge =>
-  /* 모르는 값 — 지어내지 않고 서버가 준 코드를 그대로 보인다. */
-  BADGE_OF[statusCode] ?? { label: statusCode, tone: 'idle' };
+/**
+ * 생략은 근거로 한 번 더 가른다(omf-all-around#212) — 기준의 기본 생략과 건별 결재 승인은 «왜 검사를 안 했나»가 다르다.
+ * 근거가 없으면(옛 서버) 종전대로 「생략」 하나다.
+ */
+const SKIPPED_OF: Record<string, StatusBadge> = {
+  DEFAULT: { label: messages.oqcInspection.status.skippedDefault, tone: 'warning' },
+  APPROVAL: { label: messages.oqcInspection.status.skippedApproval, tone: 'warning' },
+};
+
+export const toStatusBadge = (statusCode: string, skipBasisCode?: string | null): StatusBadge =>
+  (statusCode === 'SKIPPED' && skipBasisCode != null ? SKIPPED_OF[skipBasisCode] : undefined) ??
+  BADGE_OF[statusCode] ??
+    /* 모르는 값 — 지어내지 않고 서버가 준 코드를 그대로 보인다. */
+    { label: statusCode, tone: 'idle' };

@@ -6,6 +6,7 @@ import { GuestOnly, RequireSession } from '../patterns/session';
 import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { AlarmRecipientSettingsScreen } from '../screens/alarm-recipient-settings/screen';
+import { HandoverAlertSettingsScreen } from '../screens/handover-alert-settings/screen';
 import { ZaloConnectionScreen } from '../screens/zalo-connection/screen';
 import { DispatchHistoryScreen } from '../screens/dispatch-history/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
@@ -52,7 +53,7 @@ import { TerminalProcessMapScreen } from '../screens/terminal-process-map/screen
 import { ToolPmResultScreen } from '../screens/tool-pm-result/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
-import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
+import { IqcInspectionRoute } from '../screens/parts-iqc-inspection/iqc-route';
 import { ItemBomScreen } from '../screens/item-extended-attrs/bom-screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
@@ -97,7 +98,7 @@ import { UsersRolesScreen } from '../screens/users-roles/screen';
 import { WarehouseLayoutScreen } from '../screens/warehouse-layout/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 
-/** LOT 추적의 권한 안내는 사용자와 역할 메뉴를 사이드바의 이름 그대로 가리킨다. 그리는 순간의 언어로 만든다. */
+/** LOT 생산 이력 조회의 권한 안내는 사용자와 역할 메뉴를 사이드바의 이름 그대로 가리킨다. 그리는 순간의 언어로 만든다. */
 const LotTraceRoute = () => (
   <LotTraceScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
 );
@@ -149,6 +150,12 @@ export const appRouter = createBrowserRouter([
       /* W-06-24 — 검사표 기준(omf-all-around#89 · 설계보다 앞선 화면). OA 제품 검사표의 모델별 단계·항목. */
       { path: 'master-data/inspection-sheet-template', element: <InspectionSheetTemplateScreen /> },
       { path: 'master-data/defect-cause-code', element: <DefectCauseCodeScreen /> },
+      /* 불량·원인코드 화면의 하위 탭을 탭 막대로 뗀 주소(#208) — 같은 화면이 보일 탭만 받는다. */
+      { path: 'master-data/cause-code', element: <DefectCauseCodeScreen tab="cause" /> },
+      {
+        path: 'master-data/defect-process-mapping',
+        element: <DefectCauseCodeScreen tab="mapping" />,
+      },
       { path: 'master-data/common-code', element: <CommonCodeScreen /> },
       /* W-06-04 — 전용 자원이 아니라 공통코드의 코드값 편집기를 한 그룹으로 고정해 여는 진입점이다. */
       { path: 'master-data/judgment-code', element: <JudgmentCodeScreen /> },
@@ -241,7 +248,8 @@ export const appRouter = createBrowserRouter([
        * 입하·검사」**에 두었고 형제 화면(W-01-02 긴급 IQC 생략 한도승인)이 이미 이 섹션에
        * 서 있다. 품질 섹션은 Lot Status 계열(W-03-xx)이 들어올 때 그 화면들이 연다.
        */
-      { path: 'logistics/iqc-inspection', element: <IqcInspectionScreen /> },
+      /* 계정 공장에 따라 OA·부품 화면을 고른다(omf-all-around#211). */
+      { path: 'logistics/iqc-inspection', element: <IqcInspectionRoute /> },
       /*
        * W-01-10 「입고 처리」 — **화면이 아니라 입고 관리의 LOT 줄에서 여는 창이다**(사용자 지시 2026-10-23 탭 합치기).
        * 옛 「자재 입고 처리」 주소는 즐겨찾기가 죽지 않게 입고 관리로 옮겨 준다. 옛 주소는 입하 전표를 골랐지만
@@ -601,6 +609,8 @@ export const appRouter = createBrowserRouter([
       { path: 'notification/center', element: <NotificationCenterScreen /> },
       /* W-CO-11 — 알림 이벤트별 수신 규칙을 관리한다. 이벤트 목록 자체는 계약이 소유한다. */
       { path: 'notification/recipient-settings', element: <AlarmRecipientSettingsScreen /> },
+      /* W-CO-14 — 인계 작업 종류별 담당자(피처 002). 종류 목록은 계약이 소유한다. */
+      { path: 'notification/handover-settings', element: <HandoverAlertSettingsScreen /> },
       /* W-CO-12 — Zalo 연결 정보(001). */
       { path: 'notification/zalo-connection', element: <ZaloConnectionScreen /> },
       /* W-CO-13 — 이벤트 처리 결과와 Zalo 발송 이력(001). */

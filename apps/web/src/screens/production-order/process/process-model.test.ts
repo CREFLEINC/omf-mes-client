@@ -37,13 +37,12 @@ describe('처리 화면 단계 판정(C-5)', () => {
   it('BOM이나 Routing이 없으면 화면에서 고칠 수 없는 사유와 담당을 할 일로 말한다', () => {
     expect(judgeMaster({ ...master, bomCount: 0 }, '생산계획')).toEqual({
       complete: false,
-      guidance: { text: r.bomMissing, todo: true },
+      guidance: { text: r.bomMissing },
       blockedOutside: 'bom',
     });
     expect(judgeMaster({ ...master, routingCount: 0 }, '생산계획').blockedOutside).toBe('routing');
     expect(judgeMaster({ ...master, bomSelected: false }, '생산계획').guidance).toEqual({
       text: 'BOM을 고르세요',
-      todo: true,
     });
   });
 
@@ -55,14 +54,13 @@ describe('처리 화면 단계 판정(C-5)', () => {
       ),
     ).toEqual({
       complete: true,
-      guidance: { text: '생산계획으로 진행할 수 있습니다', todo: false },
+      guidance: { text: '생산계획으로 진행할 수 있습니다' },
     });
   });
 
   it('막힘이 없으면 「남은 일」 없이 다음 단계 문장을 쓰고 조사를 받침에 맞춘다', () => {
     expect(judgeMaster(master, '생산계획').guidance).toEqual({
       text: '생산계획으로 진행할 수 있습니다',
-      todo: false,
     });
     expect(judgeMaster(master, '4M 배정').guidance?.text).toBe('4M 배정으로 진행할 수 있습니다');
   });
@@ -76,7 +74,7 @@ describe('처리 화면 단계 판정(C-5)', () => {
       ).guidance?.text,
     ).toBe('신규 계획 1의 계획 수량을 입력하세요');
     const noLine = judgePlan({ ...plan, unconfirmed: 1, missingLine: 'PP-1' }, '4M 배정');
-    expect(noLine.guidance).toEqual({ text: 'PP-1의 라인을 고르세요', todo: true });
+    expect(noLine.guidance).toEqual({ text: 'PP-1의 라인을 고르세요' });
     expect(noLine.canConfirm).toBe(false);
     expect(judgePlan({ ...plan, unconfirmed: 1, totalQty: 300 }, '4M 배정').guidance?.text).toBe(
       r.qtyShort('200'),
@@ -114,13 +112,13 @@ describe('처리 화면 단계 판정(C-5)', () => {
     expect(judgeAssign({ ...assign, pending: 0 }, '배포 확인').guidance?.text).toBe(r.noWorkOrders);
     expect(judgeAssign(assign, '배포 확인')).toEqual({
       complete: true,
-      guidance: { text: '배포 확인으로 진행할 수 있습니다', todo: false },
+      guidance: { text: '배포 확인으로 진행할 수 있습니다' },
     });
   });
 
   it('배포 확인은 LOT 크기가 비면 처음부터 할 일로, 아니면 머리말 없이 「확정 후 수정 불가」다', () => {
-    expect(judgeRelease('WO-1')).toEqual({ text: 'WO-1의 LOT 크기를 입력하세요', todo: true });
-    expect(judgeRelease(null)).toEqual({ text: r.releaseFinal, todo: false });
+    expect(judgeRelease('WO-1')).toEqual({ text: 'WO-1의 LOT 크기를 입력하세요' });
+    expect(judgeRelease(null)).toEqual({ text: r.releaseFinal });
   });
 
   it('처음 여는 단계는 첫 미완료 단계이고, 앞 단계가 끝나야 뒤 단계로 갈 수 있다', () => {

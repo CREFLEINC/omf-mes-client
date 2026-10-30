@@ -4,8 +4,11 @@ import { useId } from 'react';
 
 import { FieldLabel } from './field-label';
 import {
+  fromServerQty,
   hasQuantityError,
+  toMicro,
   toSendableNumber,
+  toTotals,
   validateQuantities,
   type QuantityDraft,
 } from './quantity-draft';
@@ -41,6 +44,27 @@ export const expectedJudgmentOf = (
   if (toSendableNumber(draft.rejected) > acceptanceNumber) return 'REJECTED';
   if (toSendableNumber(draft.held) > 0) return 'HELD';
   return 'ACCEPTED';
+};
+
+/**
+ * 최종 판정 칸에 채울 판정 — 합격판정개수가 있으면 위 자동 판정이다. 없으면 불량(불합격 수량)이 하나라도 있으면
+ * 「불합격」, 검사 수량 전부가 합격이면 「합격」, 그 밖(보류 등)은 사람이 고른다(사용자 지시 2026-10-27 · 2026-10-29 · #197).
+ * 기준 없이 채운 판정은 판정 변경 사유를 받지 않는다 — 서버는 합격판정개수가 있을 때만 사유를 본다.
+ */
+export const autoJudgmentOf = (
+  draft: QuantityDraft,
+  acceptanceNumber: number | null,
+  inspectedQty: number,
+): ExpectedJudgment | null => {
+  if (acceptanceNumber !== null) return expectedJudgmentOf(draft, acceptanceNumber);
+  if (hasQuantityError(validateQuantities(draft))) return null;
+  if ((toMicro(draft.rejected) ?? 0n) > 0n) return 'REJECTED';
+  const totals = toTotals(draft, inspectedQty);
+  const allAccepted =
+    totals.kind === 'counted' &&
+    totals.matches &&
+    toMicro(draft.accepted) === fromServerQty(inspectedQty);
+  return allAccepted ? 'ACCEPTED' : null;
 };
 
 /** 고른 판정이 자동 판정과 다른가 — 다르면 변경 사유가 있어야 확정할 수 있다. */

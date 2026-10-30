@@ -31,7 +31,7 @@ export const validatePeriod = ({ from, to }: Period): string | null => {
   return (toUtcMs(to) - toUtcMs(from)) / DAY_MS + 1 > MAX_PERIOD_DAYS ? t.tooLong : null;
 };
 
-/** 공장 날짜 오늘을 끝으로 오늘을 포함해 `days`일(입출고 현황 7일, 추적 30일). */
+/** 공장 날짜 오늘을 끝으로 오늘을 포함해 `days`일(세 탭 모두 7일). */
 export const defaultPeriod = (today: string, days = DEFAULT_PERIOD_DAYS): Period => ({
   from: formatUtc(toUtcMs(today) - (days - 1) * DAY_MS),
   to: today,

@@ -53,4 +53,10 @@ export const shellHome: Translated<typeof ko.shellHome> = {
     rejected: 'Gửi thất bại',
     count: (count: number) => `${String(count)} bản ghi`,
   },
+  workCount: {
+    left: 'Việc còn lại',
+    label: (name: string, count: number) => `${name}, còn ${String(count)} việc`,
+    basisWarehouse: (warehouseName: string) => `Máy này: theo ${warehouseName}`,
+    basisPlant: 'Máy này: theo toàn nhà máy',
+  },
 };

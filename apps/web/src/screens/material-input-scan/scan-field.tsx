@@ -1,9 +1,8 @@
-import { AlertBanner, Button, TextField } from '@crefle/web-ui';
+import { AlertBanner, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { useScannerSubmit } from '../../patterns/pop-scanner-submit';
-import { popTouchClass } from '../../patterns/pop-touch';
 import { normalizeScanCode } from './scan';
 
 const t = messages.materialInputScan;
@@ -22,6 +21,17 @@ export interface ScanFieldProps {
   onScan: (code: string) => void;
   /** 직전 스캔의 결과. 아직 읽은 것이 없으면 `null` — 자리는 그대로 둔다(아래 참조). */
   outcome: ScanOutcomeView | null;
+  /**
+   * 바뀔 때마다 칸에 포커스를 되돌린다. 키패드로 수량을 넣고 기록한 뒤 다음 스캔이 칸으로
+   * 들어가게 부르는 쪽이 값을 올린다(PG-21).
+   */
+  focusRequest?: number;
+  /**
+   * 사번이 없어 스캔을 받지 않는다(PI-17). 칸은 읽기 전용이고 포커스를 붙들지 않으며, 누르면
+   * `onLockedPress`로 사번 입력 창을 연다.
+   */
+  isLocked?: boolean;
+  onLockedPress?: () => void;
 }
 
 /**
@@ -38,7 +48,14 @@ export interface ScanFieldProps {
  * ⛔ **숫자 키패드를 여기 두지 않는다.** 그 부품은 다른 화면(`P-CO-01`)이 소유하고 있고,
  * 여기서 또 만들면 같은 것이 둘이 된다.
  */
-export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
+export const ScanField = ({
+  isScanning,
+  onScan,
+  outcome,
+  focusRequest = 0,
+  isLocked = false,
+  onLockedPress,
+}: ScanFieldProps) => {
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -53,8 +70,8 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
    * 조회가 끝난 시점을, `submit`은 버튼으로 보낸 직후를 맡는다.
    */
   useEffect(() => {
-    if (!isScanning) inputRef.current?.focus();
-  }, [isScanning]);
+    if (!isScanning && !isLocked) inputRef.current?.focus();
+  }, [isScanning, focusRequest, isLocked]);
 
   /*
    * ⭐ **스캔 한 번에 보낸다**(omf-all-around#35). 실기에서 LOT 을 읽고도 Enter 를 한 번 더
@@ -68,7 +85,7 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
      * 막아 주어 「평소에는 걸릴 일이 없다」고 적어 두었으나, 그 단추가 사라졌다. 겹친 조회가
      * 나가면 **뒤 조회가 앞 조회의 후보 목록을 보고 중복을 판정해** 같은 자재가 두 줄로 담긴다.
      */
-    if (isScanning) return;
+    if (isScanning || isLocked) return;
 
     const code = normalizeScanCode(raw);
     if (code === null) return;
@@ -96,76 +113,40 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
   };
 
   return (
-    <form onSubmit={submit}>
-      <div className="scan-row">
-        <TextField
-          size="xl"
-          ref={inputRef}
-          label={t.scan.label}
-          value={value}
-          fullWidth
-          autoComplete="off"
-          /*
-           * ⛔ **조회 중에도 칸을 잠그지 않는다.** 잠그면 그 순간 포커스가 칸을 떠나고, 되돌려
-           * 놓기 전에 읽힌 코드가 사라진다 — 스캐너는 사람이 기다려 주지 않는다. 두 번 보내는
-           * 것은 `submit`의 진행 중 검사가 막는다.
-           */
-          onKeyDown={scanner.onKeyDown}
-          onChange={(event) => {
-            setValue(event.target.value);
-            scanner.noteInput(event.target.value);
-          }}
-        />
-        {/*
-         * 스캔 실패의 대체 경로(스펙 §3 · D-3). **칸으로 포커스를 옮기는 것이 전부다** — 코드는
-         * 이미 손으로 칠 수 있고, 없던 것은 「어디를 눌러야 하는가」였다. 터치 단말에서는 이
-         * 포커스가 화면 자판을 함께 띄운다.
-         *
-         * ⭐ **칸 오른쪽에 선다**(사용자 지시 2026-09-11 · 자매 화면 P-02-08 · P-04-01 과 같은
-         *    자리). 아랫줄로 내리면 눈이 칸을 지나쳐 내려갔다가 다시 올라온다 — 이 단추가
-         *    하는 일은 바로 그 칸으로 돌아가는 것이다.
-         *
-         * ⛔ 별도 입력창을 열지 않는다. 스캐너가 살아 있을 때 그 창이 스캔값을 가로챈다.
-         *
-         * ⛔ **[ 읽기 ] 단추를 두지 않는다**(설계 §3 도면 · 사용자 지시 2026-09-11). 스캐너는
-         *    코드 끝에 Enter 를 붙여 보내고(칸이 하나뿐인 폼은 Enter 로 제출된다), 손으로 칠
-         *    때도 Enter 가 같은 길이다.
-         *
-         * ⚠ 없애지 않는다 — 스캐너가 죽은 단말에서 이 길이 유일한 입력 경로다(스펙 §3 · D-3).
-         */}
-        <Button
-          type="button"
-          variant="outlined"
-          size="xl"
-          className={popTouchClass('normal')}
-          onClick={() => {
-            inputRef.current?.focus();
-          }}
-        >
-          {t.scan.manualEntry}
-        </Button>
-      </div>
-
-      <p className="field-note">{t.notes.manualEntry}</p>
+    <form onSubmit={submit} className="material-input-scan">
+      {/*
+       * 칸 하나가 스캐너와 손 입력을 함께 받는다. 칸에 바로 칠 수 있으므로 [직접 입력] 버튼과
+       * 안내 문장을 두지 않는다(C-19 「값을 넣는 칸을 버튼으로 대신하지 않는다」). 받는 대상은
+       * 안내 문구(placeholder)에 적는다(C-13).
+       */}
+      <TextField
+        size="xl"
+        ref={inputRef}
+        label={t.scan.label}
+        placeholder={t.scan.placeholder}
+        value={value}
+        fullWidth
+        autoComplete="off"
+        readOnly={isLocked}
+        onClick={isLocked ? onLockedPress : undefined}
+        /*
+         * ⛔ **조회 중에도 칸을 잠그지 않는다.** 잠그면 그 순간 포커스가 칸을 떠나고, 되돌려
+         * 놓기 전에 읽힌 코드가 사라진다 — 스캐너는 사람이 기다려 주지 않는다. 두 번 보내는
+         * 것은 `send`의 진행 중 검사가 막는다.
+         */
+        onKeyDown={scanner.onKeyDown}
+        onChange={(event) => {
+          setValue(event.target.value);
+          scanner.noteInput(event.target.value);
+        }}
+      />
 
       {/*
-       * 결과 — **대체 경로 줄 아래**에 선다.
-       *
-       * 칸 바로 밑에 두면 읽을 때마다 그 줄이 나타났다 사라지면서 아래의 안내·버튼이 밀린다.
-       * 입력 묶음(칸 · 읽기 · 직접 입력 · 안내)을 먼저 한 덩어리로 닫고, 그 «다음»에 결과가
-       * 선다 — 무엇에 대한 답인지는 바로 위 묶음이 말해 준다.
-       *
-       * ⛔ **없을 때도 자리를 지운다.** 뜨고 지면 아래의 목록·버튼이 위아래로 움직이고, 다음
-       * 코드를 읽으려던 손이 옆 것을 누른다(이 슬라이스가 `.worker-no-notice` 에서 같은 문제를
-       * 같은 방법으로 막고 있다). 그래서 «내용»만 바뀌고 상자는 늘 서 있다 — 높이는 `pop.css`
-       * 가 잡는다.
-       *
-       * ⭐ **다른 POP 화면의 알림과 같은 모양으로 낸다**(`AlertBanner` · 사용자 지시
-       * 2026-09-10). 한때 ✓ 표식을 붙인 글줄이었는데, 같은 뜻을 화면마다 다른 모양으로 내면
-       * 작업자가 매번 「이건 무슨 표시인가」를 다시 읽는다.
+       * 결과 — 칸 바로 아래 한 줄. **없을 때도 자리를 지운다.** 뜨고 지면 아래 목록이 위아래로
+       * 움직이고, 다음 코드를 읽으려던 손이 옆 것을 누른다. 높이는 `pop.css` 가 잡는다.
        *
        * 부품이 무게에 따라 `role="status"`·`alert` 를 붙여 준다 — 화면을 보지 않는 작업자도
-       * 읽힌 결과를 듣는다. 이 화면의 사용자는 손과 눈이 자재에 가 있다.
+       * 읽힌 결과를 듣는다.
        */}
       <div className="scan-outcome">
         {outcome !== null && <AlertBanner variant={outcome.tone} title={outcome.text} />}

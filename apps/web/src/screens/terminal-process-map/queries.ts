@@ -15,6 +15,10 @@ import {
   type TokenView,
 } from './types';
 
+type TerminalCreateForward = components['schemas']['TerminalCreate'];
+type TerminalProcessReplaceForward = components['schemas']['TerminalProcessReplace'];
+type TerminalUpdateForward = components['schemas']['TerminalUpdate'];
+
 /**
  * 이 화면의 오퍼레이션.
  *
@@ -32,9 +36,10 @@ import {
  */
 
 type Terminal = components['schemas']['Terminal'];
-type TerminalCreate = components['schemas']['TerminalCreate'];
-type TerminalUpdate = components['schemas']['TerminalUpdate'];
-type TerminalProcessReplace = components['schemas']['TerminalProcessReplace'];
+/* 피처 002 — 본문에 `warehouseId?` 를 더한 덧댐(서버 P-126). */
+type TerminalCreate = TerminalCreateForward;
+type TerminalUpdate = TerminalUpdateForward;
+type TerminalProcessReplace = TerminalProcessReplaceForward;
 type TerminalRegistrationToken = components['schemas']['TerminalRegistrationToken'];
 
 export const PAGE_SIZE = 20;
@@ -129,6 +134,7 @@ const TERMINAL_FIELDS = [
   'terminalTypeCode',
   'statusCode',
   'equipmentId',
+  'warehouseId',
 ] as const;
 
 export const useTerminalCreate = (

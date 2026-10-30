@@ -13,9 +13,15 @@ export const shellNav: Translated<typeof ko.shellNav> = {
     placeholder: 'Tìm theo tên màn hình',
     empty: 'Không có màn hình nào khớp. Hãy thử nhập một phần của tên.',
   },
+  iqcPending: (count: number) => `IQC chờ ${String(count)}`,
+  pqcPending: (count: number) => `PQC chờ ${String(count)}`,
+  oqcPending: (count: number) => `OQC chờ ${String(count)}`,
+  /** 「검사 조회·판정」 메뉴 줄 — IQC · PQC · OQC 대기 합(사용자 지시 2026-10-30). */
+  inspectionPending: (count: number) => `Chờ kiểm tra ${String(count)}`,
   group: {
     /* 항목 수만 싣는다 - 펼쳤는지는 aria-expanded 가 말한다(원문과 같은 규율). */
     name: (label: string, count: number) => `${label} (${String(count)} màn hình)`,
+    hasWork: 'Có việc đang chờ',
   },
   version: {
     release: (version: string) => `Phiên bản ${version}`,

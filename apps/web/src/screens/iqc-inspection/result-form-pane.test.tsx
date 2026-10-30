@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { cleanup, screen } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -33,7 +33,6 @@ const renderPane = (
       onChange={onChange}
       onSave={onSave}
       isSaving={false}
-      isSaved={false}
       fieldErrors={{}}
       saveError={null}
       onReload={vi.fn()}
@@ -184,12 +183,6 @@ describe('ResultFormPane', () => {
 
     expect(screen.getByLabelText(t.fields.accepted)).toBeDisabled();
     expect(screen.getByRole('button', { name: t.saving })).toBeDisabled();
-  });
-
-  it('저장하면 결과를 알린다 — 눌렀는데 아무 일도 없어 보이지 않게', () => {
-    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isSaved: true });
-
-    expect(screen.getByText(t.saved)).toBeInTheDocument();
   });
 
   it('서버가 칸을 짚어 주면 그 칸에 낸다', () => {
@@ -433,11 +426,50 @@ describe('ResultFormPane — 입력 현황(#185)', () => {
   });
 });
 
+/** 검사 수량을 다 채운 초안 — 수량 창의 [확정]이 켜진다(#197). */
+const FULL_DRAFT: QuantityDraft = { accepted: '500', rejected: '0', held: '0' };
+
+/** 단계 상태 — 펼친 단계는 open, 나머지는 마침(done) · 덜 채운 첫 단계(current) · 남음(todo)(#197). */
+const stepStates = (): string[] =>
+  [...document.querySelectorAll('.iqc-inspection-stepper > li')].map((item) =>
+    item.hasAttribute('data-open') ? 'open' : (item.getAttribute('data-step-state') ?? ''),
+  );
+const stepItem = (step: number): HTMLElement =>
+  document.querySelectorAll<HTMLElement>('.iqc-inspection-stepper > li')[step - 1] as HTMLElement;
+
+/** 단계 줄 아래에 펼쳐 그린 단계 구획 — 차례로 열 때는 없다(입력은 단계 줄 아래 한 자리). */
+const renderedSteps = (): string[] =>
+  [...document.querySelectorAll('.iqc-inspection-qty-judgment-row > .iqc-inspection-section')].map(
+    (section) => section.getAttribute('data-step') ?? '',
+  );
+
+/* 지금 단계의 입력 자리(#197) — 창이 아니라 단계 줄 아래 한 상자이고, 이름이 그 단계 제목이다. */
+const qtyPanel = () => screen.queryByRole('region', { name: t.sectionTitle });
+const judgmentPanel = () => screen.queryByRole('region', { name: t.judgmentSectionTitle });
+const fourMPanel = () => screen.queryByRole('region', { name: t.fourMChange.sectionTitle });
+/** 그 자리의 [확정] — ① 은 불량 내역을 쓰는 화면이면 [입력 완료]다(#197). */
+const nextOf = (panel: HTMLElement | null): HTMLElement =>
+  within(panel as HTMLElement).getByRole('button', {
+    name: new RegExp(`^(${t.stepSummary.next}|${t.stepSummary.qtyDone})$`),
+  });
+/** 수량 자리의 [확정] — ② 판정 자리가 같은 곳에 선다. */
+const toJudgmentStep = async (): Promise<HTMLElement> => {
+  await userEvent.click(nextOf(qtyPanel()));
+  return judgmentPanel() as HTMLElement;
+};
+/** 판정 자리의 [확정] — ③ 으로 넘어간다. */
+const confirmJudgment = async (): Promise<void> => {
+  await userEvent.click(nextOf(judgmentPanel()));
+};
+/** 아직 저장된 진행이 없는 새 검사 — 처음 ① 부터 연다. */
+const NEW: InspectionResultRound | null = null;
+
 describe('ResultFormPane — 상하 배치 판정(#185)', () => {
-  it('「판정 상세 입력」 창의 [취소]는 열 때 값으로 되돌리게 알린다', async () => {
+  /* 「판정 상세 입력」 창은 모두 펼칠 때(확정된 회차)만 남았다 — 차례로 열 때는 판정 자리 안에 칸이 선다(#197). */
+  it('「판정 상세 입력」 창의 [취소]는 열 때 값으로 되돌리게 알린다(모두 펼칠 때)', async () => {
     const onJudgmentDetailOpen = vi.fn();
     const onJudgmentDetailCancel = vi.fn();
-    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, {
+    renderPane(FULL_DRAFT, toInspectionResultRound(confirmedRound), 500, {
       inlineJudgment: true,
       hasJudgmentDetail: true,
       judgmentDetail: <p>불합격 칸</p>,
@@ -451,59 +483,195 @@ describe('ResultFormPane — 상하 배치 판정(#185)', () => {
     expect(onJudgmentDetailCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('지금 단계는 입력에 따라 넘어간다 — 수량이 맞으면 2단계, 판정까지 채우면 3단계', () => {
-    const current = () =>
-      [...document.querySelectorAll('.iqc-inspection-step-head')].findIndex((head) =>
-        head.hasAttribute('data-current'),
-      ) + 1;
+  it('입력만으로는 넘어가지 않는다 — 수량 [확정]으로 판정, 판정 [확정]으로 3단계(#197)', async () => {
     const fourMSlot = <p>4M 칸</p>;
 
-    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, { inlineJudgment: true, fourMSlot });
-    expect(current()).toBe(1);
-    cleanup();
+    renderPane(FULL_DRAFT, NEW, 500, { inlineJudgment: true, fourMSlot, judgmentDone: true });
+    /* 합계가 맞고 판정까지 채워져 있어도 ① 에 머문다 — [확정]을 눌러야 넘어가고, 그 전에는 뒤 단계가 보이지 않는다. */
+    expect(stepStates()).toEqual(['open']);
+    expect(qtyPanel()).not.toBeNull();
+    await toJudgmentStep();
+    expect(stepStates()).toEqual(['done', 'open']);
+    await confirmJudgment();
+    expect(judgmentPanel()).toBeNull();
+    expect(stepStates()).toEqual(['done', 'done', 'open']);
+    expect(within(fourMPanel() as HTMLElement).getByText('4M 칸')).toBeInTheDocument();
+  });
 
-    renderPane({ accepted: '500', rejected: '0', held: '0' }, savedRound, 500, {
+  it('최종 판정은 판정 자리에 서고, 적을 것이 없으면 판정 상세 칸 · 「판정 상세 입력」이 없다', async () => {
+    renderPane(FULL_DRAFT, NEW, 500, { inlineJudgment: true });
+
+    const panel = await toJudgmentStep();
+    expect(within(stepItem(2)).getByText(t.judgmentSectionTitle)).toBeInTheDocument();
+    expect(within(panel).getByRole('combobox', { name: t.judgment })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.judgmentDetailOpen })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t.judgmentDetailTitle })).not.toBeInTheDocument();
+  });
+
+  it('불합격 · 판정 변경 사유가 있으면 그 칸이 판정 자리 안에 바로 선다 — 창을 띄우지 않는다(#197)', async () => {
+    renderPane(FULL_DRAFT, NEW, 500, {
+      inlineJudgment: true,
+      hasJudgmentDetail: true,
+      judgmentBelow: <p>변경 사유 칸</p>,
+      judgmentDetail: <p>불합격 칸</p>,
+    });
+
+    const panel = await toJudgmentStep();
+    expect(within(panel).getByText('불합격 칸')).toBeInTheDocument();
+    expect(within(panel).getByText('변경 사유 칸')).toBeInTheDocument();
+    expect(screen.getAllByText('불합격 칸')).toHaveLength(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 단계를 차례로 연다(#197)', () => {
+  const fourMSlot = <p>4M 칸</p>;
+
+  it('처음에는 ① 수량 입력만 바로 서고, 뒤 단계는 보이지 않는다 — 창도 [입력]도 없다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, NEW, 500, { inlineJudgment: true, fourMSlot });
+
+    expect(stepStates()).toEqual(['open']);
+    expect(renderedSteps()).toEqual([]);
+    expect(within(qtyPanel() as HTMLElement).getByLabelText(t.fields.accepted)).toBeInTheDocument();
+    expect(judgmentPanel()).toBeNull();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    /* 남은 단계(판정 · 4M)는 아예 그리지 않는다. */
+    expect(screen.queryByText('4M 칸')).not.toBeInTheDocument();
+  });
+
+  it('합계가 맞지 않아도 [확정]으로 판정 단계에 넘어간다 — 임시 저장 흐름(#197)', async () => {
+    const pane = renderPane({ accepted: '400', rejected: '', held: '' }, NEW, 500, {
       inlineJudgment: true,
       fourMSlot,
     });
-    expect(current()).toBe(2);
+
+    const next = nextOf(qtyPanel());
+    expect(next).toBeEnabled();
+    await userEvent.click(next);
+    expect(judgmentPanel()).not.toBeNull();
+    expect(stepStates()).toEqual(['done', 'open']);
+    expect(pane.onSave).not.toHaveBeenCalled();
+  });
+
+  it('수량 칸이 수량이 아니면 [확정]이 꺼져 있다(#197)', () => {
+    renderPane({ accepted: 'abc', rejected: '', held: '' }, NEW, 500, {
+      inlineJudgment: true,
+      fourMSlot,
+    });
+
+    expect(nextOf(qtyPanel())).toBeDisabled();
+  });
+
+  it('수량 칸 Enter 는 합계가 맞지 않아도 판정 단계로 넘기며, 저장하지 않는다(#197)', async () => {
+    const short = renderPane({ accepted: '400', rejected: '', held: '' }, NEW, 500, {
+      inlineJudgment: true,
+      fourMSlot,
+    });
+    await userEvent.type(screen.getByLabelText(t.fields.accepted), '{Enter}');
+    expect(qtyPanel()).toBeNull();
+    expect(judgmentPanel()).not.toBeNull();
+    expect(stepStates()).toEqual(['done', 'open']);
+    expect(short.onSave).not.toHaveBeenCalled();
+  });
+
+  it('수량 [확정] 뒤 ① 카드에 요약과 [변경]이 선다', async () => {
+    renderPane({ accepted: '480', rejected: '15', held: '5' }, NEW, 500, {
+      inlineJudgment: true,
+      fourMSlot,
+    });
+
+    const panel = await toJudgmentStep();
+    expect(qtyPanel()).toBeNull();
+    expect(within(panel).getByRole('combobox', { name: t.judgment })).toBeInTheDocument();
+    expect(stepStates()).toEqual(['done', 'open']);
+    expect(
+      within(stepItem(1)).getByText(t.stepSummary.quantities('480', '15', '5')),
+    ).toBeInTheDocument();
+    expect(within(stepItem(1)).getByRole('button', { expanded: false })).toBeInTheDocument();
+  });
+
+  it('판정 [확정]은 판정을 채운 뒤에만 켜지고, 누르면 ③ 4M 이 같은 자리에 선다', async () => {
+    renderPane(FULL_DRAFT, NEW, 500, { inlineJudgment: true, fourMSlot });
+    const empty = await toJudgmentStep();
+    expect(nextOf(empty)).toBeDisabled();
     cleanup();
 
-    renderPane({ accepted: '500', rejected: '0', held: '0' }, savedRound, 500, {
+    renderPane(FULL_DRAFT, NEW, 500, {
+      inlineJudgment: true,
+      fourMSlot,
+      judgmentDone: true,
+      fourMSummary: t.stepSummary.fourMNone,
+    });
+    await toJudgmentStep();
+    await confirmJudgment();
+    expect(judgmentPanel()).toBeNull();
+    expect(stepStates()).toEqual(['done', 'done', 'open']);
+    expect(renderedSteps()).toEqual([]);
+    expect(within(fourMPanel() as HTMLElement).getByText('4M 칸')).toBeInTheDocument();
+    /* ③ 은 선택이라 [확정]이 없다 — 마무리는 아래 [임시 저장] · [판정 확정]이다. */
+    expect(within(fourMPanel() as HTMLElement).queryByRole('button')).toBeNull();
+    expect(screen.getAllByRole('button', { expanded: false })).toHaveLength(2);
+  });
+
+  it('4M 이 없으면 판정 [확정] 뒤 모든 카드가 마침이고 입력 자리가 없다', async () => {
+    renderPane(FULL_DRAFT, NEW, 500, { inlineJudgment: true, judgmentDone: true });
+
+    await toJudgmentStep();
+    await confirmJudgment();
+    expect(stepStates()).toEqual(['done', 'done']);
+    expect(document.querySelector('.iqc-inspection-step-panel')).toBeNull();
+  });
+
+  it('마친 카드의 [변경] — 그 단계 입력이 같은 자리에 다시 서고, 적은 값과 완료 표시는 그대로다', async () => {
+    renderPane(FULL_DRAFT, NEW, 500, {
       inlineJudgment: true,
       fourMSlot,
       judgmentDone: true,
     });
-    expect(current()).toBe(3);
+    await toJudgmentStep();
+    await confirmJudgment();
+
+    await userEvent.click(within(stepItem(2)).getByRole('button'));
+    expect(judgmentPanel()).not.toBeNull();
+    expect(stepStates()).toEqual(['done', 'open', 'current']);
+
+    await userEvent.click(within(stepItem(1)).getByRole('button'));
+    expect(within(qtyPanel() as HTMLElement).getByLabelText(t.fields.accepted)).toHaveValue('500');
+    /* 단계를 옮겨 봤다고 완료가 풀리지 않는다. */
+    expect(stepStates()).toEqual(['open', 'done', 'current']);
   });
 
-  it('4M 은 판정 오른쪽에 「4M 변경 정보」 제목으로 따로 선다', () => {
-    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, {
+  it('펼친 단계 머리를 다시 누르면 접히고, 다시 누르면 펼쳐진다(#197)', async () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, NEW, 500, { inlineJudgment: true, fourMSlot });
+
+    const head = within(stepItem(1)).getByRole('button', { expanded: true });
+    await userEvent.click(head);
+    expect(qtyPanel()).toBeNull();
+    expect(stepStates()).toEqual(['current']);
+    await userEvent.click(within(stepItem(1)).getByRole('button', { expanded: false }));
+    expect(qtyPanel()).not.toBeNull();
+  });
+
+  it('다시 열면 저장된 진행으로 단계를 정한다 — 수량 · 판정까지 저장된 회차는 ③ 을 연다', () => {
+    renderPane(FULL_DRAFT, savedRound, 500, {
       inlineJudgment: true,
-      fourMSlot: <p>4M 칸</p>,
+      fourMSlot,
+      judgmentDone: true,
     });
 
-    expect(screen.getByText('4M 칸')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.fourMChange.sectionTitle })).toBeInTheDocument();
+    expect(stepStates()).toEqual(['done', 'done', 'open']);
+    expect(fourMPanel()).not.toBeNull();
   });
 
-  it('최종 판정은 수량 구획 오른쪽 「판정」 절반에 서고, 적을 것이 없으면 「판정 상세 입력」 구획을 두지 않는다', () => {
-    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, { inlineJudgment: true });
-
-    expect(screen.getByRole('heading', { name: t.judgmentSectionTitle })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: t.judgment })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: t.judgmentDetailTitle })).not.toBeInTheDocument();
-  });
-
-  it('불합격 · 판정 변경 사유가 있으면 [상세 입력]이 서고, 누르면 「판정 상세 입력」 창에 그 칸이 선다', async () => {
-    renderPane(EMPTY_QUANTITY_DRAFT, savedRound, 500, {
+  it('확정된 회차는 단계 줄 없이 모든 단계를 펼친다 — 수량도 창이 아니라 그 자리에 선다', () => {
+    renderPane(FULL_DRAFT, toInspectionResultRound(confirmedRound), 500, {
       inlineJudgment: true,
-      hasJudgmentDetail: true,
-      judgmentDetail: <p>불합격 칸</p>,
+      fourMSlot,
     });
 
-    await userEvent.click(screen.getByRole('button', { name: t.judgmentDetailOpen }));
-    expect(await screen.findByRole('dialog', { name: t.judgmentDetailTitle })).toBeInTheDocument();
-    expect(screen.getByText('불합격 칸')).toBeInTheDocument();
+    expect(stepStates()).toEqual([]);
+    expect(renderedSteps()).toEqual(['1', '2', '3']);
+    expect(screen.getByLabelText(t.fields.accepted)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.stepSummary.next })).not.toBeInTheDocument();
   });
 });

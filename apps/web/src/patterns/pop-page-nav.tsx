@@ -2,7 +2,8 @@ import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 /**
- * POP 목록의 쪽 넘김 — **[페이지 위] · [페이지 아래]**(공유계약 G-34).
+ * POP 목록의 쪽 넘김 — **[이전]과 [다음]**(공유계약 G-34). 관리웹 페이지 이동(`patterns/page-nav`)과 같은 이름과
+ * 위치 표시(「1 / 3」)를 쓴다. 목록은 스크롤로 움직이므로 스크롤로 읽히는 이름(위, 아래)을 쓰지 않는다.
  *
  * ## 왜 필요한가
  *
@@ -35,7 +36,7 @@ export interface PageMetaLike {
 /**
  * 받은 쪽 정보로 넘길 수 있는지 판정한다.
  *
- * ⚠ **`size` 가 0 으로 와도 나누지 않는다** — 쪽 수가 무한이 되어 [페이지 아래]가 영영 열린다.
+ * ⚠ **`size` 가 0 으로 와도 나누지 않는다** — 쪽 수가 무한이 되어 [다음]이 영영 열린다.
  */
 export const pageBoundaryOf = (meta: PageMetaLike | undefined): PageBoundary => {
   if (meta === undefined) {
@@ -70,7 +71,7 @@ export const PopPageNav = ({ boundary, label, onChange }: PopPageNavProps) => {
           onChange(Math.max(1, boundary.page - 1));
         }}
       >
-        {t.pageUp}
+        {t.prev}
       </Button>
       <p className="field-note">{t.position(boundary.page, boundary.totalPages)}</p>
       <Button
@@ -80,7 +81,7 @@ export const PopPageNav = ({ boundary, label, onChange }: PopPageNavProps) => {
           onChange(boundary.page + 1);
         }}
       >
-        {t.pageDown}
+        {t.next}
       </Button>
     </nav>
   );

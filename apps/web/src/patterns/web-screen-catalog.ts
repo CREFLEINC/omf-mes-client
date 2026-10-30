@@ -216,8 +216,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     code: 'W-02-08',
     name: 'W/O 진행현황 조회(생산 실적 집계 포함)',
   },
-  /* 서버 권한 키 W-02-09 「LOT 추적」. */
-  { path: '/production/lot-trace', code: 'W-02-09', name: 'LOT 추적' },
+  /* 서버 권한 키 W-02-09 「LOT 생산 이력 조회」. */
+  { path: '/production/lot-trace', code: 'W-02-09', name: 'LOT 생산 이력 조회' },
 
   /* ── 품질관리 ─────────────────────────────────────────────────────────── */
   {
@@ -281,6 +281,11 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 「내 알림을 보는 곳」이고 이것은 관리자가 「누가 받을지」를 정하는 곳이다. v1.5 신설(DR-003).
    */
   { path: '/notification/recipient-settings', code: 'W-CO-11', name: '알림 수신자 설정' },
+  /*
+   * 피처 002(omf-all-around#190) — 공장 × 인계 작업 종류의 담당자. 설계 저장소 생성본에 없는 코드를
+   * 서버가 손으로 더했다(서버 `permissions.ts` 와 같은 값).
+   */
+  { path: '/notification/handover-settings', code: 'W-CO-14', name: '인계작업 알림 설정' },
   /* 001(omf-all-around#160) — Zalo 연결 정보. 알림센터가 정본이고 Zalo 는 부가 전달이다. */
   { path: '/notification/zalo-connection', code: 'W-CO-12', name: '알림 연결 설정' },
   { path: '/notification/dispatch-history', code: 'W-CO-13', name: '알림 발송 이력' },
@@ -327,4 +332,10 @@ export const WEB_SCREEN_TABS: readonly WebScreenTab[] = [
   { path: '/logistics/inbound-excess', ownerPath: '/logistics/inbound-schedule' },
   /* BOM — 「품목·BOM 정보」(W-06-05)의 BOM 구역을 탭으로 뗐다(사용자 지시 2026-10-28 · ERP 연동 현황·이력의 BOM 탭처럼). */
   { path: '/master-data/item-boms', ownerPath: '/master-data/item-extended-attrs' },
+  /*
+   * 원인코드 · 공정 매핑 — 불량·원인코드(W-06-03) 화면 안 하위 탭을 「품질 코드 관리」 탭 막대로 뗐다
+   * (사용자 지시 2026-10-29 · omf-all-around#208). 불량코드는 종전 주소 그대로다.
+   */
+  { path: '/master-data/cause-code', ownerPath: '/master-data/defect-cause-code' },
+  { path: '/master-data/defect-process-mapping', ownerPath: '/master-data/defect-cause-code' },
 ];

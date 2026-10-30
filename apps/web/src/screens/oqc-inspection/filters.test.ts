@@ -5,9 +5,11 @@ import {
   PAGE_SIZE,
   readFilters,
   readPage,
+  readPageSize,
   readSelectedId,
   toListQuery,
   toPageParams,
+  toPageSizeParams,
   toSearchParams,
 } from './filters';
 
@@ -113,5 +115,26 @@ describe('toPageParams', () => {
 
   it('첫 쪽으로 가면 쪽 키를 지운다 — 기본값을 주소에 남기지 않는다', () => {
     expect(toPageParams(new URLSearchParams('page=4'), 1).has('page')).toBe(false);
+  });
+});
+
+describe('목록 쪽 크기(#197)', () => {
+  it('10 · 20 · 50 만 읽고, 그 밖은 기본 50건이다', () => {
+    expect(readPageSize(new URLSearchParams('size=20'))).toBe(20);
+    expect(readPageSize(new URLSearchParams('size=30'))).toBe(PAGE_SIZE);
+    expect(readPageSize(new URLSearchParams())).toBe(PAGE_SIZE);
+  });
+
+  it('고른 크기를 질의에 싣는다', () => {
+    expect(toListQuery(EMPTY_FILTERS, 1, 10).size).toBe(10);
+    expect(toListQuery(EMPTY_FILTERS, 1).size).toBe(PAGE_SIZE);
+  });
+
+  it('크기를 바꾸면 첫 쪽으로 가고, 기본 50건은 주소에 적지 않는다', () => {
+    const next = toPageSizeParams(new URLSearchParams('page=3&ir=5'), 20);
+    expect(next.get('size')).toBe('20');
+    expect(next.has('page')).toBe(false);
+    expect(next.get('ir')).toBe('5');
+    expect(toPageSizeParams(new URLSearchParams('size=20'), PAGE_SIZE).has('size')).toBe(false);
   });
 });

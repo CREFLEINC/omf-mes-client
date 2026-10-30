@@ -22,6 +22,8 @@ export const qualityApproval = {
     targetLot: '대상 LOT',
     /** 목록 대상 열 — OQC 생략 탭은 출하작업지시다(#193). 전체 탭은 위 「대상」. */
     targetShipmentRequest: '대상 출하작업지시',
+    /** 목록 대상 열 — PQC 생략 탭은 작업지시다(omf-all-around#212). */
+    targetWorkOrder: '대상 작업지시',
     myTurn: '결재 차례',
   },
   /** 탭 줄 오른쪽 상태 칩(#186) — 「결재 대기 3」. 누르면 그 상태만 남고, 다시 누르면 풀린다. */
@@ -38,6 +40,7 @@ export const qualityApproval = {
   typeLabels: {
     CONCESSION: '특채',
     IQC_SKIP: 'IQC (수입검사) 생략',
+    PQC_SKIP: 'PQC (공정검사) 생략',
     OQC_SKIP: 'OQC (출하검사) 생략',
   },
   /** 요청 상태 코드 → 사용자 용어(IQC 생략 화면과 같은 낱말). 색: 대기 주황 · 승인 초록 · 반려 빨강. */
@@ -77,6 +80,26 @@ export const qualityApproval = {
    * 승인된 OQC 생략의 실행 구획(#193) — IQC 생략 실행과 같은 모양이다. 승인은 잠금만 풀고(공유계약 J-8) 실행이
    * 그 출하작업지시의 열린 OQC 의뢰를 생략으로 닫는다(omf-all-around#119 · 서버 P-83).
    */
+  /** 승인된 PQC 생략의 실행(omf-all-around#212) — OQC 생략 실행과 같은 짜임이다. 단위는 작업지시다. */
+  pqcSkipExecute: {
+    heading: 'PQC 생략 실행',
+    note: '승인된 요청입니다. 실행하면 이 작업지시의 열린 PQC 검사 의뢰를 생략 처리하고, 검사 대기인 생산 LOT 을 정상으로 바꿉니다.',
+    action: 'PQC 생략 실행',
+    dialogTitle: 'PQC 생략을 실행할까요?',
+    dialogBody:
+      '열린 PQC 검사 의뢰가 생략 처리되고, 앞으로 등록하는 실적의 LOT 도 검사 없이 정상이 됩니다.',
+    irreversible: '실행한 뒤에는 되돌릴 수 없습니다.',
+    done: 'PQC 생략을 실행했습니다',
+    executed: '생략 실행 완료 — PQC 검사가 생략 처리되었습니다.',
+    compact: {
+      title: 'PQC 생략',
+      summary: '열린 검사 의뢰 생략 · 검사 대기 LOT 정상',
+      action: '실행',
+      done: '실행 완료',
+    },
+    checking: '상태를 확인하는 중입니다.',
+    notPending: (status: string) => `생략을 실행할 수 없는 상태입니다(상태 ${status}).`,
+  },
   oqcSkipExecute: {
     heading: 'OQC 생략 실행',
     note: '승인된 요청입니다. 실행하면 이 출하작업지시의 열린 OQC 검사 의뢰를 생략 처리하고, 피킹한 LOT 에 생략 이력을 남깁니다.',

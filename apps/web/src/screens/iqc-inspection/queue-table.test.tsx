@@ -49,6 +49,10 @@ const lotNumbers: NameLookup = {
   labelOf: (id) => (id === null || id === undefined ? '—' : LOT_NO(id)),
 };
 
+const suppliers: NameLookup = {
+  labelOf: (id) => (id === null || id === undefined ? '—' : '(주)합성공급'),
+};
+
 const renderTable = (overrides: Partial<Parameters<typeof QueueTable>[0]> = {}) => {
   const onSelect = vi.fn();
 
@@ -57,6 +61,7 @@ const renderTable = (overrides: Partial<Parameters<typeof QueueTable>[0]> = {}) 
       rows={rows}
       itemNames={itemNames}
       lotNumbers={lotNumbers}
+      suppliers={suppliers}
       selectedId={null}
       onSelect={onSelect}
       empty={<p>{t.empty}</p>}
@@ -157,7 +162,8 @@ describe('QueueTable', () => {
 
     const row = openButton('IR-2026-0003').closest('tr');
     expect(row).not.toBeNull();
-    expect(within(row as HTMLElement).getByText(t.emptyValue)).toBeInTheDocument();
+    /* LOT 칸 · 공급사 칸(LOT 으로 푼다) 둘 다 없음 표시다(#197). */
+    expect(within(row as HTMLElement).getAllByText(t.emptyValue)).toHaveLength(2);
   });
 
   it('대기와 진행을 서로 다른 문구로 가른다', () => {
@@ -216,6 +222,14 @@ describe('QueueTable — 자재 LOT 표기', () => {
 
     const table = screen.getByRole('table');
 
-    expect(within(table).getAllByText('—').length).toBe(rows.length);
+    /* LOT 칸 · 공급사 칸(LOT 으로 푼다) 둘 다(#197). */
+    expect(within(table).getAllByText('—').length).toBe(rows.length * 2);
+  });
+
+  it('공급사 열이 자재 LOT 의 공급사 이름을 보인다(#197)', () => {
+    renderTable();
+
+    expect(screen.getByRole('columnheader', { name: t.columns.supplier })).toBeInTheDocument();
+    expect(screen.getAllByText('(주)합성공급').length).toBeGreaterThan(0);
   });
 });

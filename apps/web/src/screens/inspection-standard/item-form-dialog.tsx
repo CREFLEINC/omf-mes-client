@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Checkbox, Dialog, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -234,10 +234,11 @@ export const ItemFormDialog = ({
         />
       </div>
 
-      {/* 안내는 다른 화면과 같은 공용 안내 상자로 낸다(#196). */}
-      <AlertBanner variant="info" className="inspection-standard-item-local-note">
+      {/* 안내 알약 — 품질 기준 정보 탭의 안내와 같은 모양(사용자 시안 · #208). */}
+      <p className="inspection-standard-notice-label inspection-standard-item-local-note">
+        <Icon name="info" size={18} aria-hidden />
         {t.dialog.itemLocalNote}
-      </AlertBanner>
+      </p>
     </Dialog>
   );
 };

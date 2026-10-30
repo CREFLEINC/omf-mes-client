@@ -1,10 +1,12 @@
 import { Button, Dialog, TextField } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
+import { toMicro, toSendableNumber } from './quantity-draft';
+import { SearchableSelect } from './searchable-select';
 
 const t = messages.iqcInspection.result.rejection;
 
@@ -115,6 +117,61 @@ export const resolveDefectCode = (
   return { defectCodeId: Number(draft.minorId === '' ? draft.majorId : draft.minorId) };
 };
 
+/** 불량 내역 한 줄(#197) — 불량 코드 · 추정 원인 · 사유에 그 유형의 수량을 더했다. 수량은 친 글 그대로다. */
+export interface DefectDraft extends RejectionDraft {
+  qty: string;
+}
+
+export const EMPTY_DEFECT: DefectDraft = { ...EMPTY_REJECTION, qty: '' };
+
+/** 임시 저장된 불량 기록 → 불량 내역 한 줄. */
+export const defectDraftOf = (
+  codes: readonly DefectCode[],
+  record: Parameters<typeof rejectionDraftOf>[1] & { defectQty?: number | null },
+): DefectDraft => ({
+  ...rejectionDraftOf(codes, record),
+  qty: record.defectQty == null ? '' : String(record.defectQty),
+});
+
+export interface DefectRecordInput {
+  defectCodeId: number;
+  defectQty: number;
+  defectDescription: string | null;
+  suspectedCauseCodeId?: number;
+}
+
+/**
+ * 불량 내역 → 요청에 실을 불량 기록(#197). 줄마다 코드를 다 골랐고 수량이 0 보다 커야 하며, 불합격 수량이 있으면 그 합계가
+ * 불합격 수량과 같아야 한다. 안 되면 막힌 사유 하나를 낸다.
+ */
+export const resolveDefects = (
+  codes: readonly DefectCode[],
+  drafts: readonly DefectDraft[],
+  rejectedQty: number,
+): { rows: DefectRecordInput[] } | { blocked: string } => {
+  if (drafts.length === 0) return { blocked: t.required };
+  const rows: DefectRecordInput[] = [];
+  for (const draft of drafts) {
+    const code = resolveDefectCode(codes, draft);
+    if ('blocked' in code) return code;
+    /* 수량 칸과 같은 규칙(0 이상 · 소수 여섯 자리)으로 읽는다 — `Number` 는 「1e3」 · 「0x10」도 받는다. */
+    const micro = toMicro(draft.qty);
+    if (micro === null || micro <= 0n) return { blocked: t.defectQtyRequired };
+    const qty = toSendableNumber(draft.qty);
+    rows.push({
+      defectCodeId: code.defectCodeId,
+      defectQty: qty,
+      defectDescription: draft.description.trim() === '' ? null : draft.description.trim(),
+      /* 추정 원인(omf-all-around#130) — 골랐을 때만 싣는다. 서버가 회차의 기록을 통째로 갈아 끼우므로 빼면 비워진다. */
+      ...(draft.causeId === '' ? {} : { suspectedCauseCodeId: Number(draft.causeId) }),
+    });
+  }
+  const sum = rows.reduce((total, row) => total + row.defectQty, 0);
+  if (rejectedQty > 0 && Math.abs(sum - rejectedQty) > 1e-9)
+    return { blocked: t.defectSumMismatch };
+  return { rows };
+};
+
 export interface RejectionReasonProps {
   codes: readonly DefectCode[];
   /** 추정 원인 마스터(사용 중지 포함 — 고른 값이 사용 중지돼도 보이게). */
@@ -122,6 +179,8 @@ export interface RejectionReasonProps {
   draft: RejectionDraft;
   onChange: (draft: RejectionDraft) => void;
   disabled: boolean;
+  /** 불량 코드 칸 다음에 더 세울 칸 — 불량 내역 줄의 수량(#197). */
+  extraFields?: ReactNode;
 }
 
 /**
@@ -137,6 +196,7 @@ export const RejectionReason = ({
   draft,
   onChange,
   disabled,
+  extraFields = null,
 }: RejectionReasonProps) => {
   const majorId = useId();
   const minorId = useId();
@@ -162,52 +222,63 @@ export const RejectionReason = ({
     <div className="iqc-inspection-rejection" role="group" aria-label={t.heading}>
       {majors.length === 0 && <p className="field-note">{t.noCodes}</p>}
       <div className="form-grid iqc-inspection-rejection-codes">
-        <div className="field-cell">
-          <FieldLabel htmlFor={majorId} label={t.major} required />
-          <Select
-            id={majorId}
-            options={majors.map(optionOf)}
-            value={draft.majorId}
-            placeholder={t.majorPlaceholder}
-            invalid={majorMissing}
-            aria-describedby={majorMissing ? `${majorId}-error` : undefined}
-            disabled={disabled || majors.length === 0}
-            onChange={(value) => {
-              onChange({ ...draft, majorId: value, minorId: '' });
-              if (minorsOf(codes, value).length > 0) setIsPickingMinor(true);
-            }}
-          />
-          {majorMissing && (
-            <span id={`${majorId}-error`} className="iqc-inspection-visually-hidden">
-              {t.majorMissing}
-            </span>
-          )}
-        </div>
-        {/* 상세는 고른 대분류에 상세 코드가 있을 때만 선다(사용자 지시 2026-10-27 · #185). */}
-        {hasMinors && (
+        {/* 불량 유형 — 대분류 · 상세를 한 칸 안에 둔다. 상세가 생겨도 옆 칸이 밀리지 않는다(사용자 지시 2026-10-29 · #197). */}
+        <div className="iqc-inspection-rejection-type" data-has-minor={hasMinors ? '' : undefined}>
           <div className="field-cell">
-            <FieldLabel htmlFor={minorId} label={t.minor} required />
-            <Select
-              id={minorId}
-              options={minors.map(optionOf)}
-              value={draft.minorId}
-              placeholder={t.minorPlaceholder}
-              invalid={minorMissing}
-              aria-describedby={minorMissing ? `${minorId}-error` : undefined}
-              disabled={disabled}
+            <FieldLabel htmlFor={majorId} label={t.major} required />
+            {/* 코드가 많아도 고르게 — 목록 맨 위 검색 칸으로 좁히거나 그대로 고른다(사용자 지시 2026-10-28 · #197). */}
+            <SearchableSelect
+              id={majorId}
+              options={majors.map(optionOf)}
+              value={draft.majorId}
+              placeholder={t.majorPlaceholder}
+              searchLabel={t.search}
+              searchPlaceholder={t.searchPlaceholder}
+              emptyText={t.searchEmpty}
+              invalid={majorMissing}
+              aria-describedby={majorMissing ? `${majorId}-error` : undefined}
+              disabled={disabled || majors.length === 0}
               onChange={(value) => {
-                onChange({ ...draft, minorId: value });
+                onChange({ ...draft, majorId: value, minorId: '' });
+                if (minorsOf(codes, value).length > 0) setIsPickingMinor(true);
               }}
             />
-            {minorMissing && (
-              <span id={`${minorId}-error`} className="iqc-inspection-visually-hidden">
-                {t.minorMissing}
+            {majorMissing && (
+              <span id={`${majorId}-error`} className="iqc-inspection-visually-hidden">
+                {t.majorMissing}
               </span>
             )}
           </div>
-        )}
-        {/* 추정 원인 — 선택 입력(omf-all-around#130). 같은 2열의 다음 줄 왼쪽 칸에 선다. */}
-        <div className="field-cell">
+          {/* 상세는 고른 대분류에 상세 코드가 있을 때만 선다(사용자 지시 2026-10-27 · #185). */}
+          {hasMinors && (
+            <div className="field-cell">
+              <FieldLabel htmlFor={minorId} label={t.minor} required />
+              <SearchableSelect
+                id={minorId}
+                options={minors.map(optionOf)}
+                value={draft.minorId}
+                placeholder={t.minorPlaceholder}
+                searchLabel={t.search}
+                searchPlaceholder={t.searchPlaceholder}
+                emptyText={t.searchEmpty}
+                invalid={minorMissing}
+                aria-describedby={minorMissing ? `${minorId}-error` : undefined}
+                disabled={disabled}
+                onChange={(value) => {
+                  onChange({ ...draft, minorId: value });
+                }}
+              />
+              {minorMissing && (
+                <span id={`${minorId}-error`} className="iqc-inspection-visually-hidden">
+                  {t.minorMissing}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        {extraFields}
+        {/* 추정 원인 — 선택 입력(omf-all-around#130). */}
+        <div className="field-cell iqc-inspection-rejection-cause">
           <FieldLabel htmlFor={causeId} label={t.cause} />
           <Select
             id={causeId}
@@ -238,29 +309,49 @@ export const RejectionReason = ({
         open={isPickingMinor && hasMinors}
         onClose={() => setIsPickingMinor(false)}
         size="sm"
-        title={t.minorPickerTitle(pickedMajor === undefined ? '' : optionOf(pickedMajor).label)}
+        title={
+          /* 제목 아래 고른 대분류 한 줄 · 상세는 「코드 | 이름」 줄과 오른쪽 동그라미(사용자 시안 2026-10-29). */
+          <span className="iqc-inspection-minor-picker-title">
+            {t.minorPickerTitle}
+            {pickedMajor !== undefined && (
+              <span className="iqc-inspection-minor-picker-major">
+                {optionOf(pickedMajor).label}
+              </span>
+            )}
+          </span>
+        }
         showCloseButton={false}
         footer={
-          <Button variant="text" size="md" onClick={() => setIsPickingMinor(false)}>
+          <Button variant="tonal" size="md" onClick={() => setIsPickingMinor(false)}>
             {t.minorPickerClose}
           </Button>
         }
       >
-        <div className="iqc-inspection-minor-picker" role="list">
-          {minors.map((code) => (
-            <Button
-              key={code.defectCodeId}
-              role="listitem"
-              variant={String(code.defectCodeId) === draft.minorId ? 'tonal' : 'outlined'}
-              size="md"
-              onClick={() => {
-                onChange({ ...draft, minorId: String(code.defectCodeId) });
-                setIsPickingMinor(false);
-              }}
-            >
-              {optionOf(code).label}
-            </Button>
-          ))}
+        <div
+          className="iqc-inspection-minor-picker"
+          role="radiogroup"
+          aria-label={t.minorPickerTitle}
+        >
+          {minors.map((code) => {
+            const isPicked = String(code.defectCodeId) === draft.minorId;
+            return (
+              <button
+                key={code.defectCodeId}
+                type="button"
+                role="radio"
+                aria-checked={isPicked}
+                className="iqc-inspection-minor-option"
+                onClick={() => {
+                  onChange({ ...draft, minorId: String(code.defectCodeId) });
+                  setIsPickingMinor(false);
+                }}
+              >
+                <span className="iqc-inspection-minor-option-code">{code.defectCode}</span>
+                <span className="iqc-inspection-minor-option-name">{code.defectName}</span>
+                <span className="iqc-inspection-minor-option-mark" aria-hidden />
+              </button>
+            );
+          })}
         </div>
       </Dialog>
     </div>

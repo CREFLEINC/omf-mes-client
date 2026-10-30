@@ -1,8 +1,8 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   createStubFetch,
@@ -19,6 +19,24 @@ import { popGateDeniedText } from '../../patterns/pop-process-gate';
 const DENIED_TEXT = popGateDeniedText({ processName: null }, 'canInputMaterial');
 
 const t = messages.materialInputScan;
+
+/*
+ * 화면을 떠날 때 미전송 투입은 저장된 큐에 남는다(PI-27). 앞 시험이 남긴 큐가 다음 시험에서
+ * 나가지 않게, 시험마다 비우고 시작한다.
+ */
+beforeEach(() => {
+  globalThis.localStorage.clear();
+});
+const unsent = messages.popChrome.header.unsent;
+
+/** 수량 한 줄의 한 칸(「투입량 12 EA」). 이름과 값이 다른 요소라 칸 전체 글자로 찾는다. */
+const qtyPart =
+  (text: string) =>
+  (_content: string, element: Element | null): boolean =>
+    element?.classList.contains('pop-qty-progress-text') === true && element.textContent === text;
+
+/** 투입량이 0보다 큰 줄의 값(「12 / 100 EA」). 투입한 것이 있다는 표시다. */
+const RECORDED = /^[1-9]\d* \/ /;
 
 const TERMINAL_ID = 7901;
 const PROCESS_ID = 7902;
@@ -41,6 +59,38 @@ const CONSUMPTIONS_PATH = '/production/material-consumptions';
 const TERMINAL_PROCESSES_PATH = `/mdm/terminals/${String(TERMINAL_ID)}/processes`;
 const WORK_SESSIONS_PATH = '/production/work-sessions';
 const WORK_SESSION_ID = 7601;
+
+const PENDING_KEY = 'omf-mes.material-input-scan.pending';
+const OUTBOX_KEY = 'omf-mes.material-input-scan.outbox';
+
+/** 단말 저장소의 「미전송」. */
+const storedPending = (): { material: { lotId: number } }[] =>
+  JSON.parse(globalThis.localStorage.getItem(PENDING_KEY) ?? '[]') as {
+    material: { lotId: number };
+  }[];
+
+/** outbox 의 저장된 큐(화면을 떠날 때 옮긴 것). */
+const storedOutbox = (): { body: unknown }[] =>
+  JSON.parse(globalThis.localStorage.getItem(OUTBOX_KEY) ?? '[]') as { body: unknown }[];
+
+/** 다시 불러오기 전에 남아 있던 「미전송」 한 건(SAMPLE-LOT-0001, 7 EA). */
+const pendingItem = (workOrderId: number) => ({
+  id: 'sample-pending-1',
+  workOrderId,
+  workerNo: WORKER_NO,
+  workSessionId: null,
+  material: {
+    lotId: 7301,
+    lotNo: 'SAMPLE-LOT-0001',
+    itemId: 7201,
+    uomId: 7401,
+    statusCode: 'NORMAL',
+    isHeld: false,
+    fourMChange: null,
+  },
+  qty: '7',
+  scannedAt: '2026-10-26T09:00:00.000Z',
+});
 
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
@@ -182,7 +232,18 @@ const Here = () => {
 };
 
 /** 담은 자재 목록. 화면에 목록이 여럿이라 이름으로 집는다. */
+/** 투입 수량 편집 영역. */
+const editor = (): HTMLElement => screen.getByRole('region', { name: t.panes.noSelection });
+
 const scannedList = (): HTMLElement => screen.getByRole('list', { name: t.scanned.materialsLabel });
+
+/**
+ * 담긴 LOT이 하나도 없는가. 자재 목록에는 수령한 LOT이 「스캔 전」으로 남으므로, 「기록 전」과
+ * 「기록됨」이 하나도 없는지를 본다.
+ */
+const nothingScanned = (): boolean =>
+  within(scannedList()).queryByText(t.scanned.pendingMark) === null &&
+  within(scannedList()).queryByText(RECORDED) === null;
 
 const okRoute = (bodies: unknown[]): StubRoute => {
   let call = 0;
@@ -208,7 +269,8 @@ const prepare = async (
 ): Promise<void> => {
   for (const [code, qty] of entries) {
     await user.type(screen.getByLabelText(t.scan.label), `${code}{Enter}`);
-    await screen.findByText(t.scan.outcomes.material(code));
+    await screen.findByLabelText(t.scanned.qtyLabel(code));
+    await user.clear(screen.getByLabelText(t.scanned.qtyLabel(code)));
     await user.type(screen.getByLabelText(t.scanned.qtyLabel(code)), qty);
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
   }
@@ -221,11 +283,13 @@ const prepareWithoutRecord = async (
   qty: string,
 ): Promise<void> => {
   await user.type(screen.getByLabelText(t.scan.label), `${code}{Enter}`);
-  await screen.findByText(t.scan.outcomes.material(code));
+  await screen.findByLabelText(t.scanned.qtyLabel(code));
+  /* 스캔하면 수령 − 기록 양이 미리 채워진다(PI-05). 감지기가 재는 값으로 바꿔 넣는다. */
+  await user.clear(screen.getByLabelText(t.scanned.qtyLabel(code)));
   if (qty !== '') await user.type(screen.getByLabelText(t.scanned.qtyLabel(code)), qty);
 };
 
-describe('투입 확정 — 무엇이 나가는가', () => {
+describe('투입 기록 — 무엇이 나가는가', () => {
   /*
    * ⭐ 계약이 필수로 두는 여섯만 실린다. **보내지 않는 세 칸**(투입 유형·작업자·단말)이
    * 본문에 섞이면 스펙 §5-8을 어긴 것이고, 특히 투입 유형은 승인된 적 없는 값이 되돌릴 수
@@ -304,7 +368,7 @@ describe('투입 확정 — 무엇이 나가는가', () => {
   });
 });
 
-describe('투입 확정 — 결과를 어떻게 말하는가', () => {
+describe('투입 기록 — 결과를 어떻게 말하는가', () => {
   /*
    * 스펙 §5-3 — 막는 것은 BOM 불일치 하나뿐이고, **출고 미귀속은 통과하되 기록된다.**
    * 「통과」가 「정상」이 아니라서 화면이 그 구분을 보여야 한다.
@@ -315,7 +379,7 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
 
-    expect(await screen.findByText(t.scanned.unlinkedIssue)).toBeTruthy();
+    expect(await within(scannedList()).findByText(t.scanned.unlinkedIssue)).toBeTruthy();
   });
 
   /*
@@ -331,11 +395,13 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301, { shopfloorReceiptLineId: 7101 })]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(RECORDED);
 
     const item = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li');
     expect(item).not.toBeNull();
-    expect((item as HTMLElement).querySelector('.scanned-item-notes')?.textContent).toBe('');
+    /* 줄에 서는 표시는 「기록됨」 하나뿐이다. */
+    expect(within(item as HTMLElement).queryByText(t.scanned.unlinkedIssue)).toBeNull();
+    expect(within(item as HTMLElement).getByText(RECORDED)).toBeTruthy();
   });
 
   /*
@@ -347,7 +413,7 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301, { shopfloorReceiptLineId: 7101 })]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(RECORDED);
 
     expect(screen.queryByText(t.scanned.unlinkedIssue)).toBeNull();
   });
@@ -358,27 +424,30 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
 
-    expect(await screen.findByText(t.scanned.recordedMark)).toBeTruthy();
+    expect(await within(scannedList()).findByText(RECORDED)).toBeTruthy();
   });
 
   /*
-   * ⛔ **기록된 줄은 잠근다.** 투입은 정정이 아니라 새 기록으로만 고칠 수 있는데(B-3) 계약에
-   * 그 경로가 없다(§8 미결 9) — 빼거나 고칠 수 있는 것처럼 두면 작업자가 그렇게 했다고 믿는다.
+   * ⛔ **지난 기록은 고치지 않는다**(B-3). 기록하면 칸을 비워 같은 양이 한 번 더 나가지 않게 하고,
+   * 기록 전이 아니므로 [스캔 취소]도 없다. 더 넣으려면 다시 스캔하거나 줄을 누른다(PI-18).
    */
-  it('기록된 줄은 빼거나 고칠 수 없다', async () => {
+  it('보낸 투입은 칸 없이 고칠 수 없다고 말한다', async () => {
     const user = userEvent.setup();
     renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(RECORDED);
+    /* 결과 한 줄은 품목 이름과 방금 한 일이다. LOT 번호를 다시 쓰지 않는다(C-21). */
+    expect(screen.getByText(t.scan.outcomes.recorded('예시 자재 A', '12 EA'))).toBeTruthy();
+    expect(screen.queryByText(/SAMPLE-LOT-0001 /)).toBeNull();
 
+    /* 보낸 투입은 고치지 않는다(서버 취소 미구현). 칸과 [투입 등록], [스캔 취소]가 없고 안내 한 줄. */
     expect(
       screen.queryByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }),
     ).toBeNull();
-    expect(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toHaveProperty(
-      'readOnly',
-      true,
-    );
+    expect(screen.queryByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toBeNull();
+    expect(screen.queryByRole('button', { name: t.scanned.keypadSubmit })).toBeNull();
+    expect(within(editor()).getByText(t.scanned.sentReadOnly)).toBeTruthy();
   });
 
   /*
@@ -390,7 +459,7 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(RECORDED);
 
     expect(within(scannedList()).getByText('SAMPLE-LOT-0001')).toBeTruthy();
   });
@@ -412,14 +481,14 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
      * ⭐ **거절된 자재는 목록에서 빠진다** — 서버가 받지 않았으므로 원장에 없다. 남겨 두면
      * 기록된 것처럼 보이고, §6의 「자재LOT 스캔부터 루프백」이 성립하지 않는다.
      */
-    expect(screen.queryByText(t.scanned.recordedMark)).toBeNull();
+    expect(within(scannedList()).queryByText(RECORDED)).toBeNull();
     await waitFor(() => {
-      expect(screen.getByText(t.scanned.empty)).toBeTruthy();
+      expect(nothingScanned()).toBe(true);
     });
   });
 });
 
-describe('투입 확정 — 보내지 않는 경우', () => {
+describe('투입 기록 — 보내지 않는 경우', () => {
   /*
    * ⭐ **버튼 잠금과 별개의 겹이다.** 잠금이 뚫려도 갖춰지지 않은 값이 되돌릴 수 없는 기록에
    * 실리지 않아야 한다 — 보내는 자리에서 본문을 다시 만들고, 만들 수 없으면 보내지 않는다.
@@ -434,7 +503,10 @@ describe('투입 확정 — 보내지 않는 경우', () => {
     expect(sent).toHaveLength(0);
 
     /* 확정은 잠긴 채다. 「기록되지 않은 자재」 띠는 맨 위에 세우지 않는다(사용자 지시 2026-09-19). */
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(screen.queryByText(t.confirm.reasons.qtyMissing)).toBeNull();
   });
 
@@ -445,7 +517,7 @@ describe('투입 확정 — 보내지 않는 경우', () => {
    * 실제로 막는 층은 **버튼 잠금**이다. 보내는 자리의 진행 중 검사는 버튼을 지나지 않는
    * 호출을 막는 둘째 겹이라 이 경로에서는 떼어내도 결과가 같다(등가).
    */
-  it('담긴 자재는 다시 담기지 않는다', async () => {
+  it('기록한 직후 같은 칸으로 한 번 더 기록되지 않는다', async () => {
     const user = userEvent.setup();
 
     let releasePost = (): void => undefined;
@@ -475,11 +547,11 @@ describe('투입 확정 — 보내지 않는 경우', () => {
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
     /* 큐에 담기는 즉시 「기록됨」이다(C-1 #2) — 통신을 기다리지 않는다. */
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(RECORDED);
 
     /*
-     * 담긴 뒤에는 키패드가 사라지므로 다시 담을 길이 없다. 큐에 같은 자재가 두 번 들어가면
-     * 같은 자재가 두 번 투입되고, 되돌릴 수 없다.
+     * 기록하면 칸이 비어 [투입 등록]이 잠긴다. 같은 칸으로 한 번 더 눌러 같은 양이 두 번 들어가지
+     * 않는다(추가 투입은 다시 스캔해 잔량을 채운 뒤의 새 기록이다, PI-18).
      */
     expect(screen.queryByRole('button', { name: t.scanned.keypadSubmit })).toBeNull();
 
@@ -503,7 +575,7 @@ describe('투입 확정 — 보내지 않는 경우', () => {
   });
 });
 
-describe('투입 확정 — 담은 목록의 표시', () => {
+describe('투입 기록 — 담은 목록의 표시', () => {
   it('기록 전에는 기록 표시가 붙지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen([lot()], okRoute([consumption(7301)]));
@@ -589,80 +661,606 @@ describe('MaterialInputScanScreen — 세션', () => {
 });
 
 /**
- * 「투입 확정」 — **그날 목록을 닫는 완료 동작**이지 저장을 모아 보내는 버튼이 아니다(§5-8).
- *
- * 기록은 이미 건별로 끝나 있으므로 이 버튼은 서버를 부르지 않는다. 계약에 대응하는
- * 오퍼레이션이 없는 것도 그래서다.
+ * 저장은 LOT마다 [투입 등록] 하나다. 따로 닫는 확정 동작은 없고(사용자 화면 확인 결정 2026-10-23),
+ * 하단 바 주 동작은 같은 작업지시의 생산 작업으로 가는 [생산 작업으로]다(C-9).
  */
-describe('MaterialInputScanScreen — 목록 닫기', () => {
-  it('확정은 서버를 부르지 않고 목록만 닫는다', async () => {
-    const user = userEvent.setup();
-    const sent = renderScreen([lot()], okRoute([consumption(7301)]));
+describe('MaterialInputScanScreen — 투입 기록과 다음 작업', () => {
+  /** 이 W/O에 이미 기록된 투입 목록. 인자로 줄을 준다. */
+  const recordedRoute = (items: unknown[], onCall?: () => void): StubRoute => ({
+    match: (request) => isGet(request, CONSUMPTIONS_PATH),
+    respond: () => {
+      onCall?.();
 
-    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
-    expect(sent).toHaveLength(1);
-
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
-
-    /* 닫아도 요청이 더 나가지 않는다 — 기록은 이미 끝나 있다. */
-    expect(sent).toHaveLength(1);
-    expect(await screen.findByText(t.confirm.closed(1))).toBeTruthy();
-    expect(screen.getByText(t.scanned.empty)).toBeTruthy();
+      return jsonResponse({ items, page: { page: 1, size: 200, total: items.length } });
+    },
   });
 
-  /*
-   * ⭐ **투입을 마치면 다음 걸음을 그 자리에서 연다.** 작업자의 다음 일은 같은 작업지시의 생산
-   *    실적 등록인데 이 화면에 그리로 가는 길이 없었다 — 머리줄의 [화면 이동]은 작업지시를 싣지
-   *    않아 그 길로 들어가면 「작업지시를 받지 못했다」로 막혔고, 작업 시작 화면까지 되돌아가야
-   *    했다(WIP-CHAIN-01 D10 · 사용자 승인 2026-09-15).
-   *
-   * ⛔ **작업지시를 주소로 싣는다** — 실적 화면은 그 값을 주소에서만 읽는다.
-   */
-  it('닫은 뒤 같은 작업지시의 생산 작업으로 가는 길을 준다', async () => {
+  it('기록하면 그것으로 끝나고 [생산 작업으로]가 열린다', async () => {
     const user = userEvent.setup();
-    renderScreen([lot()], okRoute([consumption(7301)]));
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    const next = await screen.findByRole('button', { name: t.confirm.goToProductionResult });
+    expect(next).toHaveProperty('disabled', true);
+    expect(await screen.findByText(t.remaining.scan)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '투입 확정' })).toBeNull();
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
+    await within(scannedList()).findByText(RECORDED);
+    expect(sent).toHaveLength(1);
 
-    /* 닫기 전에는 없다 — 기록되지 않은 줄을 남긴 채 화면을 뜨는 길이 되면 안 된다. */
-    expect(screen.queryByRole('button', { name: t.confirm.goToProductionResult })).toBeNull();
+    expect(next).toHaveProperty('disabled', false);
+    expect(screen.getByText(t.remaining.done)).toBeTruthy();
 
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
-    await screen.findByText(t.confirm.closed(1));
-
-    await user.click(screen.getByRole('button', { name: t.confirm.goToProductionResult }));
-
+    /* ⛔ 작업지시를 주소로 싣는다 — 실적 화면은 그 값을 주소에서만 읽는다. */
+    await user.click(next);
     expect(
       screen.getByText(`지금: /pop/production-result?workOrderId=${String(WORK_ORDER_ID)}`),
     ).toBeInTheDocument();
+    expect(sent).toHaveLength(1);
   });
 
+  /* 스캔했지만 기록하지 않은 LOT이 있으면 다음 작업으로 가지 않는다. 남은 일은 품목 이름으로 말한다. */
   /*
-   * ⭐ **기록되지 않은 줄을 남긴 채 닫지 않는다.** 확정은 서버를 부르지 않으므로 닫는 순간
-   * 그 줄은 아무 데도 남지 않고 사라진다 — 작업자는 다 넣었다고 믿는다.
+   * 스캔하면 잔량으로 투입이 잡히고 잠시 뒤 보낸다(PI-26). 그 창에 있는 LOT은 [생산 작업으로]를
+   * 막지 않는다 — 누르면 먼저 보내고 옮긴다.
    */
-  it('기록되지 않은 줄이 남으면 닫지 못한다', async () => {
+  it('미전송 투입은 다음 작업을 막지 않고 「다음 스캔 때 전송합니다」라고 말한다', async () => {
     const user = userEvent.setup();
     renderScreen(
-      [lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002' })],
-      okRoute([consumption(7301), consumption(7302)]),
+      [lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002', itemId: 7202 })],
+      okRoute([consumption(7301)]),
+      [recordedRoute([])],
     );
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.recordedMark);
-
-    /* 둘째를 담기만 하고 기록하지 않는다. */
+    await within(scannedList()).findByText(RECORDED);
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0002', '5');
 
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
-    expect(screen.queryByText(t.confirm.reasons.qtyMissing)).toBeNull();
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      false,
+    );
+    expect(screen.getByText(t.remaining.sending('예시 자재 B', '5 EA'))).toBeTruthy();
+  });
+
+  /*
+   * 불출량을 모르면(받은 줄이 없는 LOT) 자동으로 보내지 않고 직접 입력으로 돌린다(PI-28). 그 LOT은
+   * 기록 전이라 다음 작업을 막는다.
+   */
+  it('불출량을 모르는 LOT은 직접 입력으로 돌리고 다음 작업을 막는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen(
+      [lot({ lotId: 7399, lotNo: 'SAMPLE-LOT-0099' })],
+      okRoute([consumption(7399)]),
+      [recordedRoute([])],
+    );
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0099{Enter}');
+    expect(await within(editor()).findByText(t.scanned.manualReasons.unknown)).toBeTruthy();
+    expect(screen.queryByText(t.scanned.pendingHint)).toBeNull();
+    expect(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0099'))).toHaveProperty(
+      'value',
+      '',
+    );
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(sent).toHaveLength(0);
+  });
+
+  /*
+   * 이 W/O에 이미 기록된 투입(PI-13). 화면을 다시 열어도 그 LOT은 「기록됨」과 투입 합으로 서고,
+   * 스캔하면 투입 수량 칸에 수령 − 기록 양이 미리 채워진다(PI-05).
+   */
+  it('이미 기록된 투입을 줄에 보이고, 스캔하면 남은 수령 양을 미리 채운다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], okRoute([consumption(7301)]), [
+      recordedRoute([consumption(7301, { inputQty: 30 })]),
+    ]);
+
+    const row = (): HTMLElement =>
+      within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li') as HTMLElement;
+    expect(await screen.findByText(qtyPart('30 / 100 EA'))).toBeTruthy();
+    expect(within(row()).getByText(RECORDED)).toBeTruthy();
+    /* 이미 기록된 것이 있으니 다음 작업으로 갈 수 있다. */
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      false,
+    );
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(field).toHaveProperty('value', '70');
+    /* 편집 영역에 투입량과 잔량이 선다. */
+    expect(within(editor()).getByText(t.pairs.progressLabel)).toBeTruthy();
+    expect(within(editor()).getByText(qtyPart('30 / 100 EA'))).toBeTruthy();
+    expect(within(editor()).getByText(t.pairs.remaining('70 EA'))).toBeTruthy();
+  });
+
+  it('기록 목록을 못 받으면 수령 수량을 미리 채운다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], okRoute([consumption(7301)]), [
+      {
+        match: (request) => isGet(request, CONSUMPTIONS_PATH),
+        respond: () => new Response(null, { status: 500 }),
+      },
+    ]);
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    await waitFor(() => {
+      expect(field).toHaveProperty('value', '100');
+    });
+  });
+
+  /*
+   * 추가 투입(PI-18). 기록된 LOT을 다시 스캔하면 잔량(수령 − 누계)을 채우고, 기록하면 새 기록이
+   * 덧붙어 누계가 는다. 지난 기록은 고치지 않는다(B-3).
+   */
+  it('기록된 LOT을 다시 스캔하면 잔량을 채우고, 다시 기록하면 누계가 는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301), consumption(7301)]), [
+      recordedRoute([]),
+    ]);
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    expect(await within(scannedList()).findByText(qtyPart('12 / 100 EA'))).toBeTruthy();
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    expect(await screen.findByText(t.scan.outcomes.again('예시 자재 A'))).toBeTruthy();
+    const field = screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(field).toHaveProperty('value', '88');
+    expect(within(editor()).getByText(qtyPart('12 / 100 EA'))).toBeTruthy();
+    expect(within(editor()).getByText(t.pairs.remaining('88 EA'))).toBeTruthy();
+    /* 다시 스캔하면 같은 규칙으로 잔량을 곧 보낸다(PI-26). */
+    expect(screen.getByText(t.remaining.sending('예시 자재 A', '88 EA'))).toBeTruthy();
+
+    await user.clear(field);
+    await user.type(field, '8');
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
+
+    expect(await within(scannedList()).findByText(qtyPart('20 / 100 EA'))).toBeTruthy();
+    await waitFor(() => {
+      expect(sent).toHaveLength(2);
+    });
+    /* 지난 기록은 그대로이고 새 기록이 덧붙었다. */
+    expect(sent.map((one) => (one.body as { inputQty: number }).inputQty)).toEqual([12, 8]);
+    expect(screen.getByRole('button', { name: t.confirm.goToProductionResult })).toHaveProperty(
+      'disabled',
+      false,
+    );
+  });
+
+  /*
+   * 줄만 눌러 연 기록된 LOT은 기록 전이 아니다. 다음 작업을 막는 것은 다시 스캔한(더 넣으려는) LOT
+   * 뿐이다(PI-18, 사용자 확인 2026-10-23).
+   */
+  it('기록된 LOT의 줄을 누르기만 하면 보이기만 하고 다음 작업을 막지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    await within(scannedList()).findByText(RECORDED);
+
+    const row = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('button') as HTMLElement;
+    await user.click(row);
+    /* 입력은 스캔에서만 시작한다(PI-29). */
+    expect(screen.queryByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toBeNull();
+    expect(within(editor()).getByText(t.scanned.sentReadOnly)).toBeTruthy();
+    const next = screen.getByRole('button', { name: t.confirm.goToProductionResult });
+    expect(next).toHaveProperty('disabled', false);
+    expect(screen.getByText(t.remaining.done)).toBeTruthy();
+  });
+
+  /* 자동 투입 창(PI-26): 다음 스캔이 앞 LOT을 보내고, 창 안에서 고친 양이 나간다. */
+  it('스캔하면 잔량으로 잡고, 다음 스캔에서 (고친 양으로) 보낸다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen(
+      [lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002', itemId: 7202 })],
+      okRoute([consumption(7301), consumption(7302)]),
+      [recordedRoute([])],
+    );
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(field).toHaveProperty('value', '100');
+    expect(within(editor()).getByText(t.scanned.pendingHint)).toBeTruthy();
+    expect(
+      within(editor()).getByRole('button', { name: t.scanned.undoMaterial('SAMPLE-LOT-0001') }),
+    ).toBeTruthy();
+    /* 창 안에서는 아직 보내지 않는다. */
+    expect(sent).toHaveLength(0);
+
+    await user.clear(field);
+    await user.type(field, '30');
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0002{Enter}');
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect((sent[0]?.body as { lotId: number; inputQty: number }).inputQty).toBe(30);
+    expect((sent[0]?.body as { lotId: number }).lotId).toBe(7301);
+  });
+
+  it('[취소]는 창의 투입을 보내지 않고 버린다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    await user.click(
+      await screen.findByRole('button', { name: t.scanned.undoMaterial('SAMPLE-LOT-0001') }),
+    );
+
+    expect(await screen.findByText(t.scan.outcomes.undone('예시 자재 A'))).toBeTruthy();
+    expect(within(scannedList()).queryByText(t.scanned.pendingMark)).toBeNull();
+    expect(sent).toHaveLength(0);
+  });
+
+  it('[생산 작업으로]는 창의 투입을 먼저 보내고 옮긴다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    await user.click(screen.getByRole('button', { name: t.confirm.goToProductionResult }));
+
+    expect(
+      await screen.findByText(`지금: /pop/production-result?workOrderId=${String(WORK_ORDER_ID)}`),
+    ).toBeInTheDocument();
+    /* 화면을 떠나면 그 화면의 큐는 저장소에 남아 다음에 보낸다. 여기서는 큐에 담겼는지를 본다. */
+    await waitFor(() => {
+      const stored = JSON.parse(
+        globalThis.localStorage.getItem('omf-mes.material-input-scan.outbox') ?? '[]',
+      ) as unknown[];
+      expect(stored.length + sent.length).toBe(1);
+    });
+  });
+
+  /* 「미전송」은 단말 저장소에 남는다(PI-26). 다음 스캔에서 보내고 저장소에서 지운다. */
+  it('스캔하면 「미전송」으로 저장하고, 다음 스캔에서 보내며 지운다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen(
+      [lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002', itemId: 7202 })],
+      okRoute([consumption(7301)]),
+      [recordedRoute([])],
+    );
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(storedPending()).toHaveLength(1);
+    /* 투입 내역에 「미전송」 한 줄이 선다. */
+    expect(within(editor()).getByText(t.scanned.pendingState)).toBeTruthy();
+    expect(sent).toHaveLength(0);
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0002{Enter}');
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    /* 둘째 LOT이 「미전송」이고 첫째는 보냈다. 두 번 보내지 않는다. */
+    expect(storedPending()).toHaveLength(1);
+    expect(storedPending()[0]?.material.lotId).toBe(7302);
+  });
+
+  /* 기록마다 단위가 다르면 잔량을 셀 수 없다. 스캔해도 「미전송」을 만들지 않고 직접 입력으로 둔다. */
+  it('지난 투입 기록의 단위가 섞였으면 잔량으로 자동 투입하지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [
+      recordedRoute([
+        consumption(7301, { materialConsumptionId: 9102, inputQty: 3, uomId: 7499 }),
+        consumption(7301, { materialConsumptionId: 9101 }),
+      ]),
+    ]);
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(storedPending()).toHaveLength(0);
+    expect(sent).toHaveLength(0);
+  });
+
+  /* 「미전송」을 [투입 등록]으로 보내면 저장소에서도 지운다. 화면을 떠날 때 같은 투입을 또 보내지 않는다. */
+  it('「미전송」을 고쳐 [투입 등록]하면 한 번만 보내고 저장소에 남기지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(storedPending()).toHaveLength(1);
+
+    await user.clear(field);
+    await user.type(field, '8');
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(storedPending()).toHaveLength(0);
+    expect(screen.queryByText(t.scanned.pendingState)).toBeNull();
+
+    /* 화면을 떠나도(머리줄 이동 등) 저장된 큐에 같은 투입이 다시 실리지 않는다. */
+    cleanup();
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 10));
+    expect(storedOutbox()).toHaveLength(0);
+    expect(sent).toHaveLength(1);
+  });
+
+  /* 다시 불러와도(같은 W/O, 같은 작업자) 「미전송」이 남아 고치거나 되돌릴 수 있다(PI-31). */
+  it('다시 불러온 「미전송」은 그대로 남고 [취소]로 버릴 수 있다', async () => {
+    const user = userEvent.setup();
+    globalThis.localStorage.setItem(PENDING_KEY, JSON.stringify([pendingItem(WORK_ORDER_ID)]));
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    const field = await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(field).toHaveProperty('value', '7');
+    expect(await screen.findByText(t.remaining.sending('예시 자재 A', '7 EA'))).toBeTruthy();
+
+    await user.click(
+      screen.getByRole('button', { name: t.scanned.undoMaterial('SAMPLE-LOT-0001') }),
+    );
+    expect(storedPending()).toHaveLength(0);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('다시 불러온 「미전송」은 다음 동작([생산 작업으로])에서 보낸다', async () => {
+    const user = userEvent.setup();
+    globalThis.localStorage.setItem(PENDING_KEY, JSON.stringify([pendingItem(WORK_ORDER_ID)]));
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    await screen.findByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    await user.click(screen.getByRole('button', { name: t.confirm.goToProductionResult }));
+
+    await waitFor(() => {
+      expect(storedPending()).toHaveLength(0);
+    });
+    await waitFor(() => {
+      expect(sent.length + storedOutbox().length).toBe(1);
+    });
+    const body = (sent[0]?.body ?? storedOutbox()[0]?.body) as { inputQty: number; lotId: number };
+    expect(body.inputQty).toBe(7);
+  });
+
+  /* 다른 W/O에서 남은 「미전송」은 화면이 열릴 때 보내고 한 번 알린다(PI-31). */
+  it('다른 W/O에서 남은 「미전송」은 열 때 보내고 한 번 알린다', async () => {
+    globalThis.localStorage.setItem(PENDING_KEY, JSON.stringify([pendingItem(WORK_ORDER_ID + 1)]));
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [recordedRoute([])]);
+
+    expect(await screen.findByText(t.scan.outcomes.leftoversSent(1))).toBeTruthy();
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect((sent[0]?.body as { workOrderId: number }).workOrderId).toBe(WORK_ORDER_ID + 1);
+    expect(storedPending()).toHaveLength(0);
+  });
+
+  /* 다 투입한 LOT(남은 0)은 정보만 보이고 다음 작업을 막지 않는다(PI-28 다시). */
+  it('다 투입한 LOT을 스캔하면 정보만 보이고, [추가 투입]을 눌러야 입력이 열리며 그때 막는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [
+      recordedRoute([consumption(7301, { inputQty: 100 })]),
+    ]);
+
+    await screen.findByText(qtyPart('100 / 100 EA'));
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+
+    expect(await screen.findByText(t.scan.outcomes.allInput('예시 자재 A'))).toBeTruthy();
+    expect(within(editor()).getByText(t.scanned.allInput)).toBeTruthy();
+    expect(screen.queryByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toBeNull();
+    const next = screen.getByRole('button', { name: t.confirm.goToProductionResult });
+    expect(next).toHaveProperty('disabled', false);
+    expect(storedPending()).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: t.scanned.extraInput }));
+    const field = screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'));
+    expect(next).toHaveProperty('disabled', true);
+    expect(screen.getByText(t.remaining.record('예시 자재 A'))).toBeTruthy();
+
+    await user.type(field, '3');
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(next).toHaveProperty('disabled', false);
+  });
+
+  /*
+   * 수량은 「투입량 N / 불출량」과 막대(C-21). 불출량에 닿은 줄은 「투입 완료」, 넘은 줄은 「과투입 N」
+   * 경고 칩이고 음수는 어디에도 없다. 잔량은 편집 영역의 이번 투입 곁에만 있다.
+   */
+  it('완료와 과투입을 칩으로 보이고 음수를 보이지 않으며, 잔량은 편집 영역에만 둔다', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002', itemId: 7202 })],
+      okRoute([consumption(7301)]),
+      [
+        recordedRoute([
+          consumption(7301, { inputQty: 30 }),
+          consumption(7302, { materialConsumptionId: 6999, lotId: 7302, inputQty: 185 }),
+          consumption(7303, { materialConsumptionId: 6998, lotId: 7303, inputQty: 0.5 }),
+        ]),
+      ],
+    );
+
+    const rowOf = (lotNo: string): HTMLElement =>
+      within(scannedList()).getByText(lotNo).closest('li') as HTMLElement;
+
+    /* 진행 중: 칩 없음, 「30 / 100 EA」. */
+    expect(await screen.findByText(qtyPart('30 / 100 EA'))).toBeTruthy();
+    expect(within(rowOf('SAMPLE-LOT-0001')).queryByText(t.scanned.completeMark)).toBeNull();
+    /* 불출량 180, 투입량 185: 과투입 5, 막대는 가득. */
+    expect(within(rowOf('SAMPLE-LOT-0002')).getByText(t.scanned.overMark('5 EA'))).toBeTruthy();
+    /* 불출량 0(못 받음)에 투입 0.5: 과투입. */
+    expect(within(rowOf('SAMPLE-LOT-0003')).getByText(t.scanned.overMark('0.5 EA'))).toBeTruthy();
+    /* 음수는 어디에도 없다. 잔량도 목록 줄에는 없다. */
+    expect(screen.queryByText(/(^|\s|\/)-\d/)).toBeNull();
+    expect(within(scannedList()).queryByText(/잔량/)).toBeNull();
+
+    /* 과투입한 줄을 고르면 편집 영역이 한 줄로 말한다. */
+    await user.click(within(rowOf('SAMPLE-LOT-0002')).getByRole('button'));
+    expect(within(editor()).getByText(t.pairs.over('5 EA'))).toBeTruthy();
+
+    /* 진행 중인 LOT을 스캔하면 이번 투입 곁에 잔량. */
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    expect(await within(editor()).findByText(t.pairs.remaining('70 EA'))).toBeTruthy();
+  });
+
+  it('불출량에 닿은 줄은 「투입 완료」다', async () => {
+    renderScreen([lot()], okRoute([consumption(7301)]), [
+      recordedRoute([consumption(7301, { inputQty: 100 })]),
+    ]);
+
+    const row = (
+      await within(await screen.findByRole('list', { name: t.scanned.materialsLabel })).findByText(
+        'SAMPLE-LOT-0001',
+      )
+    ).closest('li') as HTMLElement;
+    expect(await within(row).findByText(t.scanned.completeMark)).toBeTruthy();
+    expect(within(row).getByText(qtyPart('100 / 100 EA'))).toBeTruthy();
+  });
+
+  /*
+   * 목록 순서(C-21, PI-32): 할 일이 남은 줄이 위, 투입 완료가 아래. 다시 정렬은 화면을 열 때와 다음
+   * 스캔에서만 한다. 방금 끝낸 줄은 그 자리에 있다. 목록 위에 건수 한 줄.
+   */
+  it('할 일이 남은 줄을 위에 두고, 방금 끝낸 줄은 다음 스캔까지 제자리에 둔다', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [
+        lot(),
+        lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002', itemId: 7202 }),
+        lot({ lotId: 7303, lotNo: 'SAMPLE-LOT-0003', itemId: 7203 }),
+      ],
+      okRoute([consumption(7302)]),
+      [
+        recordedRoute([
+          consumption(7301, { inputQty: 100 }),
+          consumption(7302, { materialConsumptionId: 6999, lotId: 7302, inputQty: 30 }),
+        ]),
+      ],
+    );
+
+    const order = (): string[] =>
+      within(scannedList())
+        .getAllByRole('listitem')
+        .map((item) => within(item).getByText(/^SAMPLE-LOT-/).textContent ?? '');
+
+    await waitFor(() => {
+      expect(order()).toEqual(['SAMPLE-LOT-0002', 'SAMPLE-LOT-0003', 'SAMPLE-LOT-0001']);
+    });
+    expect(screen.getByText(t.scanned.summary(2, 1))).toBeTruthy();
+
+    /* 0002를 마저 넣어 투입 완료가 되어도 자리는 그대로다. 건수는 바로 바뀐다. */
+    await prepare(user, [['SAMPLE-LOT-0002', '150']]);
+    await within(scannedList()).findByText(qtyPart('180 / 180 EA'));
+    expect(order()).toEqual(['SAMPLE-LOT-0002', 'SAMPLE-LOT-0003', 'SAMPLE-LOT-0001']);
+    expect(screen.getByText(t.scanned.summary(1, 2))).toBeTruthy();
+    /* 고른 줄도 그대로다. */
+    expect(
+      within(scannedList()).getByText('SAMPLE-LOT-0002').closest('li')?.querySelector('button'),
+    ).toHaveProperty('ariaPressed', 'true');
+
+    /* 다음 스캔에서 다시 정렬한다. 끝난 줄은 원래 순서대로 아래로. */
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0003{Enter}');
+    await waitFor(() => {
+      expect(order()).toEqual(['SAMPLE-LOT-0003', 'SAMPLE-LOT-0001', 'SAMPLE-LOT-0002']);
+    });
+  });
+
+  /*
+   * 스캔한 줄은 「투입 중」으로 맨 위에 선다. 다음 스캔에서 앞 줄을 전송해 투입 완료가 되면 아래로
+   * 내려가고, 새로 스캔한 줄이 맨 위에 골라진다(C-21, PI-32).
+   */
+  it('투입 중인 줄을 맨 위에 두고, 다음 스캔에서 끝난 줄을 아래로 내린다', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002', itemId: 7202 })],
+      okRoute([consumption(7302, { materialConsumptionId: 6999, lotId: 7302, inputQty: 180 })]),
+      [recordedRoute([consumption(7301, { inputQty: 30 })])],
+    );
+
+    const order = (): string[] =>
+      within(scannedList())
+        .getAllByRole('listitem')
+        .map((item) => within(item).getByText(/^SAMPLE-LOT-/).textContent ?? '');
+    const rowOf = (lotNo: string): HTMLElement =>
+      within(scannedList()).getByText(lotNo).closest('li') as HTMLElement;
+
+    await screen.findByText(qtyPart('30 / 100 EA'));
+    await waitFor(() => {
+      expect(order()).toEqual(['SAMPLE-LOT-0001', 'SAMPLE-LOT-0002', 'SAMPLE-LOT-0003']);
+    });
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0002{Enter}');
+    await waitFor(() => {
+      expect(order()).toEqual(['SAMPLE-LOT-0002', 'SAMPLE-LOT-0001', 'SAMPLE-LOT-0003']);
+    });
+    expect(within(rowOf('SAMPLE-LOT-0002')).getByText(t.scanned.pendingMark)).toBeTruthy();
+    expect(screen.getByText(t.scanned.summary(3, 0))).toBeTruthy();
+
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    await waitFor(() => {
+      expect(order()).toEqual(['SAMPLE-LOT-0001', 'SAMPLE-LOT-0003', 'SAMPLE-LOT-0002']);
+    });
+    expect(within(rowOf('SAMPLE-LOT-0002')).getByText(t.scanned.completeMark)).toBeTruthy();
+    expect(within(rowOf('SAMPLE-LOT-0001')).getByRole('button', { pressed: true })).toBeTruthy();
+    expect(screen.getByText(t.scanned.summary(2, 1))).toBeTruthy();
+  });
+
+  /*
+   * 목록 줄과 편집 영역은 제목 줄(이름과 칩)과 정보 영역(「라벨 값」)으로 나뉜다(C-21). LOT 번호는
+   * 목록 줄의 정보 영역에만 있다.
+   */
+  it('목록 줄과 편집 영역을 제목 줄과 정보 영역으로 나눈다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], okRoute([consumption(7301)]), [
+      recordedRoute([consumption(7301, { inputQty: 100 })]),
+    ]);
+
+    await screen.findByText(qtyPart('100 / 100 EA'));
+    const row = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li') as HTMLElement;
+    const head = row.querySelector('.pop-row-head') as HTMLElement;
+    const info = row.querySelector('.pop-row-info') as HTMLElement;
+    expect(within(head).getByText(/^예시 자재 A/)).toBeTruthy();
+    expect(within(head).getByText(t.scanned.completeMark)).toBeTruthy();
+    expect(within(head).queryByText('SAMPLE-LOT-0001')).toBeNull();
+    expect(within(info).getByText(t.pairs.lotLabel)).toBeTruthy();
+    expect(within(info).getByText('SAMPLE-LOT-0001')).toBeTruthy();
+    expect(within(info).getByText(t.pairs.progressLabel)).toBeTruthy();
+    expect(within(info).getByText(qtyPart('100 / 100 EA'))).toBeTruthy();
+    expect(within(info).getByRole('progressbar')).toBeTruthy();
+
+    await user.click(within(row).getByRole('button'));
+    const editHead = editor().querySelector('.material-input-qty-head') as HTMLElement;
+    expect(within(editHead).getByRole('heading', { name: /^예시 자재 A/ })).toBeTruthy();
+    const editInfo = editor().querySelector('.pop-row-info') as HTMLElement;
+    expect(within(editInfo).getByText(t.pairs.progressLabel)).toBeTruthy();
+    expect(within(editInfo).getByText(qtyPart('100 / 100 EA'))).toBeTruthy();
+    expect(within(editor()).queryByText('SAMPLE-LOT-0001')).toBeNull();
+  });
+
+  /* 서버가 받아 준 기록이 늘면 투입 합을 다시 읽는다. */
+  it('기록이 받아들여지면 투입 기록을 다시 읽는다', async () => {
+    const user = userEvent.setup();
+    let reads = 0;
+    renderScreen([lot()], okRoute([consumption(7301)]), [
+      recordedRoute([], () => {
+        reads += 1;
+      }),
+    ]);
+
+    await waitFor(() => {
+      expect(reads).toBe(1);
+    });
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+
+    await waitFor(() => {
+      expect(reads).toBeGreaterThanOrEqual(2);
+    });
   });
 });
 
 /**
  * 담은 자재 한 줄이 **무엇을 얼마나**인지 말한다 — 스펙 §3의 `LOT-…0031  MAT-A  100 EA`.
+ * 줄에는 LOT 번호, 품목 코드, 수령 수량, 투입 수량이 「라벨 값」으로 선다(가운뎃점 없음, C-10).
  *
  * LOT 번호만 보이면 잘못 읽힌 자재를 작업자가 알아채지 못한다. 스캔은 번호의 일부나 외부
  * 식별자로도 걸리므로 **읽은 것과 담긴 것이 다를 수 있다.**
@@ -674,9 +1272,11 @@ describe('MaterialInputScanScreen — 담은 자재의 품목·수량', () => {
 
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
 
-    expect(
-      await screen.findByText(t.scanned.itemAndQty('SAMPLE-ITEM-7201', '12', 'EA')),
-    ).toBeTruthy();
+    const row = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li') as HTMLElement;
+    /* 한 줄 안의 품목은 「이름 (코드)」다(C-10). */
+    expect(within(row).getByText('예시 자재 A (SAMPLE-MAT-A)')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
+    expect(await within(row).findByText(qtyPart('12 / 100 EA'))).toBeTruthy();
   });
 
   /* 단위를 못 풀면 **빈 자리로 둔다** — 수량 뒤에 번호가 붙으면 그것이 값처럼 읽힌다. */
@@ -691,9 +1291,9 @@ describe('MaterialInputScanScreen — 담은 자재의 품목·수량', () => {
 
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
 
-    expect(
-      await screen.findByText(t.scanned.itemAndQty('SAMPLE-ITEM-7201', '12', '')),
-    ).toBeTruthy();
+    const row = within(scannedList()).getByText('SAMPLE-LOT-0001').closest('li') as HTMLElement;
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
+    expect(await within(row).findByText(qtyPart('12 / 100'))).toBeTruthy();
     expect(screen.queryByText(/7401/)).toBeNull();
   });
 });
@@ -728,18 +1328,21 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
       { fetch, route: ROUTE },
     );
 
-    /* 담기 전에는 보낼 것이 없다. */
-    expect(await screen.findByText(t.header.synced)).toBeTruthy();
+    /* 담기 전에는 보낼 것이 없다. 미전송이 없으면 칩을 세우지 않는다(PG-24). */
+    await screen.findByLabelText(t.scan.label);
+    expect(screen.queryByText(unsent(1))).toBeNull();
 
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
     /* 담는 즉시 성공이고(C-1 #2), 아직 닿지 않았다는 사실은 건수가 말한다(C-1 #4). */
-    expect(await screen.findByText(t.scanned.recordedMark)).toBeTruthy();
-    expect(await screen.findByText(t.header.unsynced(1))).toBeTruthy();
+    expect(await within(scannedList()).findByText(RECORDED)).toBeTruthy();
+    expect(await screen.findByText(unsent(1))).toBeTruthy();
 
     releasePost();
-    expect(await screen.findByText(t.header.synced)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.queryByText(unsent(1))).toBeNull();
+    });
   });
 
   /*
@@ -777,7 +1380,7 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
     /* 끊긴 건은 큐에 남는다 — 재전송을 유발한다. */
-    await screen.findByText(t.header.unsynced(1));
+    await screen.findByText(unsent(1));
     globalThis.dispatchEvent(new Event('online'));
 
     await waitFor(() => {
@@ -861,9 +1464,14 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
       ['SAMPLE-LOT-0002', '5'],
     ]);
 
-    /* 거부된 둘째는 원장에 없으므로 목록에서 내려간다 — §6 「자재LOT 스캔부터 루프백」. */
+    /*
+     * 거부된 둘째는 원장에 없으므로 담은 자재에서 내려간다 — §6 「자재LOT 스캔부터 루프백」.
+     * 수령한 LOT이라 목록에는 「스캔 전」으로 돌아간다.
+     */
+    const rowOf = (lotNo: string): HTMLElement =>
+      within(scannedList()).getByText(lotNo).closest('li') as HTMLElement;
     await waitFor(() => {
-      expect(within(scannedList()).queryByText('SAMPLE-LOT-0002')).toBeNull();
+      expect(within(rowOf('SAMPLE-LOT-0002')).queryByText(t.scanned.pendingMark)).toBeNull();
     });
 
     /*
@@ -871,7 +1479,7 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
      * 받아들여진 첫 건은 목록에 그대로 남아 있어야 한다.
      */
     expect(within(scannedList()).getByText('SAMPLE-LOT-0001')).toBeTruthy();
-    expect(screen.getByText(t.scanned.recordedMark)).toBeTruthy();
+    expect(within(scannedList()).getByText(RECORDED)).toBeTruthy();
   });
 });
 
@@ -919,7 +1527,7 @@ describe('MaterialInputScanScreen — 게이트와 쓰기', () => {
 
     await user.click(record);
     expect(sent).toHaveLength(0);
-    expect(screen.queryByText(t.scanned.recordedMark)).toBeNull();
+    expect(within(scannedList()).queryByText(RECORDED)).toBeNull();
   });
 
   /*
@@ -1038,28 +1646,6 @@ describe('MaterialInputScanScreen — 큐가 살아남는가', () => {
   }, 15_000);
 });
 
-/** 회차를 닫은 뒤 같은 자재를 다시 담았을 때, 지난 회차의 결과가 딸려오지 않아야 한다. */
-describe('MaterialInputScanScreen — 회차 격리(리뷰 확인)', () => {
-  it('닫고 같은 LOT을 다시 담아도 표시가 겹치지 않는다', async () => {
-    const user = userEvent.setup();
-    /* 표지는 **줄마다 하나만 서는 표시**면 된다 — 여기서는 「출고 미귀속」을 쓴다. */
-    renderScreen([lot()], okRoute([consumption(7301), consumption(7301)]));
-
-    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await screen.findByText(t.scanned.unlinkedIssue);
-
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
-    await screen.findByText(t.scanned.empty);
-
-    /* 새 회차 — 같은 LOT을 다시 담는다. */
-    await prepare(user, [['SAMPLE-LOT-0001', '7']]);
-
-    await waitFor(() => {
-      expect(screen.getAllByText(t.scanned.unlinkedIssue)).toHaveLength(1);
-    });
-  });
-});
-
 /**
  * 저장소에서 되살린 큐 — **끝에 있는 것이 되돌릴 수 없는 원장 쓰기**라 모양을 확인한다.
  *
@@ -1097,8 +1683,10 @@ describe('MaterialInputScanScreen — 저장소에서 되살린 큐', () => {
     });
     expect(sent[0]?.headers.get('Idempotency-Key')).toBe('sound-1');
 
-    /* 깨진 둘은 큐에서 사라져 헤더가 「전송 완료」로 돌아온다 — 맨 앞에서 막히지 않는다. */
-    expect(await screen.findByText(t.header.synced)).toBeTruthy();
+    /* 깨진 둘은 큐에서 사라져 머리줄의 미전송 칩이 없어진다 — 맨 앞에서 막히지 않는다. */
+    await waitFor(() => {
+      expect(screen.queryByText(/미전송/)).toBeNull();
+    });
 
     globalThis.localStorage.clear();
   });

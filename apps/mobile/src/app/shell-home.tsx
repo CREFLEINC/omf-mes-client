@@ -1,4 +1,4 @@
-import { Icon } from '@crefle/web-ui';
+import { Badge, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
@@ -10,6 +10,7 @@ import { useResumableTasks } from '../patterns/task-draft';
 import { useWorkerSession } from '../patterns/worker-session';
 import { useFrequentScreens } from './frequent-screens';
 import { areaOf, homeAreas, screenOf, type HomeScreen } from './home-menu';
+import { countOf, sumOf, useCountBasis, useWorkCounts } from './work-counts';
 import './shell-home.css';
 
 const t = messages.shellHome;
@@ -17,14 +18,38 @@ const t = messages.shellHome;
 /** 「자주 쓰는 작업」에 세우는 수. 두 줄 두 칸 — 스크롤 없이 업무 묶음까지 보인다. */
 const FREQUENT_LIMIT = 4;
 
+/**
+ * 남은 작업 배지(피처 002). 1~9 그대로, 10 이상 「9+」, 0 이면 그리지 않는다(DS `Badge`). 색은 중립이다 —
+ * 빨강은 「이어서 하기」 전용이다. 수는 낭독기용 이름이 따로 들므로 배지 자체는 숨긴다.
+ */
+const CountBadge = ({ count }: { count: number | undefined }) =>
+  count === undefined || count <= 0 ? null : (
+    <Badge count={count} max={9} tone="neutral" className="shell-home__badge" aria-hidden="true" />
+  );
+
+/** 남은 일이 있을 때만 이름에 실제 수를 싣는다. 없으면 보이는 글자가 이름이다. */
+const countLabel = (label: string, count: number | undefined): string | undefined =>
+  count === undefined || count <= 0 ? undefined : t.workCount.label(label, count);
+
 /** 자주 쓰는 작업. 한 번에 들어가는 지름길이라 이름과 아이콘만 단 낮은 칩이다. */
-const ScreenChips = ({ screens }: { screens: HomeScreen[] }) => (
+const ScreenChips = ({
+  screens,
+  counts,
+}: {
+  screens: HomeScreen[];
+  counts: ReturnType<typeof useWorkCounts>;
+}) => (
   <ul className="shell-home__chips">
     {screens.map((screen) => (
       <li key={screen.to}>
-        <Link to={screen.to} className="shell-home__chip">
+        <Link
+          to={screen.to}
+          className="shell-home__chip"
+          aria-label={countLabel(screen.label, countOf(screen, counts))}
+        >
           <Icon name={screen.icon} size={20} />
           <span>{screen.label}</span>
+          <CountBadge count={countOf(screen, counts)} />
         </Link>
       </li>
     ))}
@@ -36,17 +61,31 @@ const ScreenChips = ({ screens }: { screens: HomeScreen[] }) => (
  * 이름에 섞이면 낭독기가 행마다 긴 문장을 이름으로 읽는다.
  */
 /* 이름 한 줄 - 이름 아래 설명은 두지 않는다(사용자 지시 2026-10-21). */
-const ScreenRow = ({ screen }: { screen: HomeScreen }) => (
-  <Link to={screen.to} className="shell-home__row">
+const ScreenRow = ({ screen, count }: { screen: HomeScreen; count: number | undefined }) => (
+  <Link to={screen.to} className="shell-home__row" aria-label={countLabel(screen.label, count)}>
     <span className="shell-home__tile-icon">
       <Icon name={screen.icon} size={24} />
     </span>
     <span className="shell-home__text">
       <strong>{screen.label}</strong>
     </span>
+    <CountBadge count={count} />
     <Icon name="chevron_right" size={24} className="shell-home__chevron" />
   </Link>
 );
+
+/** 수의 기준 한 줄 — 「이 단말: <창고> 기준」 / 「공장 전체 기준」. 수를 모르면 서지 않는다. */
+const CountBasis = ({ counts }: { counts: ReturnType<typeof useWorkCounts> }) => {
+  const basis = useCountBasis(counts !== undefined);
+  if (counts === undefined || basis === undefined) return null;
+
+  return (
+    <p className="shell-home__basis">
+      <Icon name="warehouse" size={20} />
+      <span>{basis === null ? t.workCount.basisPlant : t.workCount.basisWarehouse(basis)}</span>
+    </p>
+  );
+};
 
 /**
  * 작업 목록의 첫 화면.
@@ -70,6 +109,7 @@ export const ShellHome = () => {
   const { pending, rejected } = useOutbox();
   const { signOut } = useWorkerSession();
   const navigate = useNavigate();
+  const counts = useWorkCounts();
   const frequent = useFrequentScreens(FREQUENT_LIMIT)
     .map(screenOf)
     .filter((screen): screen is HomeScreen => screen !== undefined);
@@ -144,19 +184,38 @@ export const ShellHome = () => {
       <section className="shell-home__group">
         <h2>{t.areas.label}</h2>
         <ul className="shell-home__areas">
-          {homeAreas.map((area) => (
-            <li key={area.id}>
-              {/* 업무는 한 줄 목록이다(사용자 지시 2026-10-21) - 아이콘 · 이름 · 작업 수 · 화살표. */}
-              <Link to={`/screens/${area.id}`} className="shell-home__area">
-                <span className="shell-home__tile-icon">
-                  <Icon name={area.icon} size={24} />
-                </span>
-                <strong>{area.label}</strong>
-                <span className="shell-home__area-count">{t.areas.count(area.screens.length)}</span>
-                <Icon name="chevron_right" size={24} className="shell-home__chevron" />
-              </Link>
-            </li>
-          ))}
+          {homeAreas.map((area) => {
+            /* 남은 일이 있으면 「작업 N개」 자리에 「남은 작업 [합]」(확정 2026-10-28). 0·실패면 지금처럼. */
+            const left = sumOf(area.screens, counts);
+            const hasLeft = left !== undefined && left > 0;
+
+            return (
+              <li key={area.id}>
+                {/* 업무는 한 줄 목록이다(사용자 지시 2026-10-21) - 아이콘 · 이름 · 작업 수 · 화살표. */}
+                <Link
+                  to={`/screens/${area.id}`}
+                  className="shell-home__area"
+                  aria-label={countLabel(area.label, left)}
+                >
+                  <span className="shell-home__tile-icon">
+                    <Icon name={area.icon} size={24} />
+                  </span>
+                  <strong>{area.label}</strong>
+                  {hasLeft ? (
+                    <span className="shell-home__area-count shell-home__area-left">
+                      {t.workCount.left}
+                      <CountBadge count={left} />
+                    </span>
+                  ) : (
+                    <span className="shell-home__area-count">
+                      {t.areas.count(area.screens.length)}
+                    </span>
+                  )}
+                  <Icon name="chevron_right" size={24} className="shell-home__chevron" />
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </section>
 
@@ -164,7 +223,7 @@ export const ShellHome = () => {
       {frequent.length === 0 ? null : (
         <section className="shell-home__group">
           <h2>{t.frequent}</h2>
-          <ScreenChips screens={frequent} />
+          <ScreenChips screens={frequent} counts={counts} />
         </section>
       )}
 
@@ -174,6 +233,8 @@ export const ShellHome = () => {
        *   가면 「사번 바꾸기」를 한 번 더 눌러야 한다.
        * - 설정: 기기 등록 해제처럼 드물게 쓰는 것. 업무가 아니라 목록 행이 아닌 단추로 둔다.
        */}
+      <CountBasis counts={counts} />
+
       <div className="shell-home__tools">
         <Button
           variant="outlined"
@@ -208,6 +269,7 @@ export const ShellHome = () => {
  */
 export const HomeAreaScreen = () => {
   const area = areaOf(useParams().area);
+  const counts = useWorkCounts();
   useScreenTitle(area?.label ?? t.label);
 
   /* 없는 업무 주소는 첫 화면으로 돌린다. 빈 목록을 세우면 어디로 가야 할지 모른다. */
@@ -225,7 +287,7 @@ export const HomeAreaScreen = () => {
       <ul className="shell-home__rows">
         {area.screens.map((screen) => (
           <li key={screen.to}>
-            <ScreenRow screen={screen} />
+            <ScreenRow screen={screen} count={countOf(screen, counts)} />
           </li>
         ))}
       </ul>

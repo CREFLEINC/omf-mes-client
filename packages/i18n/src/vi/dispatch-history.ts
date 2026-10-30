@@ -17,6 +17,8 @@ export const dispatchHistory: Translated<typeof ko.dispatchHistory> = {
     deliveryStatus: 'Trạng thái',
     all: 'Tất cả',
     search: 'Tra cứu',
+    eventGroup: 'Sự kiện',
+    handoverGroup: 'Công việc bàn giao',
   },
   results: { NOTIFIED: 'Đã thông báo', SKIPPED: 'Bỏ qua' },
   skipReasons: {

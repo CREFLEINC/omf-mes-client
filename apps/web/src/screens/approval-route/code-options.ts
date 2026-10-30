@@ -18,6 +18,8 @@ export const PLACEHOLDER_APPROVAL_TYPE_CODES = [
   'SHIPMENT_CANCEL',
   'IQC_SKIP',
   'PRODUCTION_RESULT_CORRECT',
+  // 서버 선행 P-152(omf-all-around#212) — PQC 생략 결재선을 이 화면에서 등록한다.
+  'PQC_SKIP',
 ] as const;
 
 /**

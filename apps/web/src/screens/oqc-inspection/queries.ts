@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { CONFIRMED_STATUS } from './inspection-status';
+import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../../patterns/master';
 import { runRequest, toApiError, type ApiCallResult } from '../../patterns/request';
@@ -380,6 +381,8 @@ export const useSaveInspectionResult = (
       oqcInspectionKeys.detail(inspectionRequestId ?? 0),
       oqcInspectionKeys.queues(),
       oqcInspectionKeys.serialRecords(inspectionRequestId ?? 0),
+      /* 저장 · 확정이 의뢰 상태를 바꾼다 — 위쪽 건수 칩도 다시 센다(#197). */
+      INSPECTION_HUB_COUNTS_KEY,
     ],
     knownFields: SAVE_FIELDS,
     keyLifetime: 'until-applied',

@@ -3,6 +3,12 @@ import type { components, TerminalRegistrationStatusCode } from '@omf-mes/api-cl
 import { ALL_CLOSED, FLAG_KEYS, OPEN_BY_DEFAULT, type FlagKey } from './flags';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
+type TerminalProcessForward = components['schemas']['TerminalProcess'];
+type TerminalWarehouseForward = Pick<
+  components['schemas']['Terminal'],
+  'warehouseId' | 'warehouseName'
+>;
+
 /**
  * W-CO-06 이 다루는 모양들.
  *
@@ -43,6 +49,9 @@ export interface TerminalView {
   equipmentId: number | null;
   /** 설비 코드·이름은 짝이다 — 헤더가 「코드 · 이름」으로 그리므로 함께 내려온다. */
   equipmentLabel: string | null;
+  /** 피처 002 — 단말 창고. 없으면 공장 전체 기준이다(FR-016). */
+  warehouseId: number | null;
+  warehouseName: string | null;
   /**
    * 재발급 세대. 계약이 「재발급마다 서버가 +1 하고 이전 토큰을 거부한다」로 둔다 —
    * 화면은 읽지도 보내지도 않지만, 재발급 경고 문구가 이 사실 위에 서 있다.
@@ -90,6 +99,7 @@ const equipmentLabelOf = (source: Terminal): string | null => {
 };
 
 type TerminalWithRegistration = Terminal &
+  TerminalWarehouseForward &
   Partial<{
     registrationStatusCode: TerminalRegistrationStatusCode;
     registrationConfirmedAt: string | null;
@@ -110,6 +120,8 @@ export const toTerminalView = (source: TerminalWithRegistration): TerminalView =
   isActive: source.isActive,
   equipmentId: nullable(source.equipmentId),
   equipmentLabel: equipmentLabelOf(source),
+  warehouseId: nullable(source.warehouseId),
+  warehouseName: nullable(source.warehouseName),
   tokenVersion: nullable(source.tokenVersion),
 });
 

@@ -1,4 +1,4 @@
-import { Icon } from '@crefle/web-ui';
+import { Badge, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
@@ -23,6 +23,11 @@ export interface NavGroupProps {
    */
   isLocked?: boolean;
   onToggle: () => void;
+  /**
+   * 닫혀 있을 때 안에 대기 작업이 있다(피처 002 — IQC 대기, 확정 항목 2). 열리면 항목의 배지가 말하므로
+   * 점은 닫혔을 때만 선다.
+   */
+  hasWork?: boolean;
   /** 열렸을 때만 넘어온다 — 부르는 쪽이 닫힌 묶음의 항목을 **만들지도 않는다**. */
   children: ReactNode;
 }
@@ -50,6 +55,7 @@ export const NavGroup = ({
   isOpen,
   isLocked = false,
   onToggle,
+  hasWork = false,
   children,
 }: NavGroupProps) => {
   /*
@@ -79,6 +85,9 @@ export const NavGroup = ({
         {/* 장식이다 — 이름이 접근명을 진다. DS `Icon` 은 `label` 이 없으면 스스로 `aria-hidden` 이 된다. */}
         <Icon name={icon} size={24} className="nav-group-icon" />
         <span className="nav-group-label">{label}</span>
+        {hasWork && !isOpen ? (
+          <Badge dot className="nav-group-dot" aria-label={t.group.hasWork} role="img" />
+        ) : null}
         {/*
          * 펼침 화살표는 **오른쪽 끝**이다 — 왼쪽은 묶음 아이콘이 서서 이름의 시작을 항목들과 맞춘다.
          * 펼침 여부는 `aria-expanded` 가 말하므로 이것도 장식이다.
