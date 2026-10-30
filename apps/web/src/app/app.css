@@ -3652,7 +3652,14 @@ h2:has(> .inspection-standard-dialog-title) {
   }
 }
 
-/* Lot Status 현황·변경이력 — 두 조회 방식의 조건과 결과를 한 카드에 담는다(사용자 시안 2026-10-30). */
+/* Lot Status 현황·변경이력 — 두 조회 모드의 조건과 결과를 같은 카드 흐름으로 맞춘다. */
+.lot-status-workspace {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
 .lot-status-pane {
   display: grid;
   align-content: start;
@@ -3661,38 +3668,31 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
 }
 
-.lot-status-pane > .banner-slot {
-  margin-bottom: 0;
-}
-
-.filter-bar.lot-status-filter {
-  margin-bottom: 0;
-}
-
-/* 카드 머리 — 왼쪽 제목, 오른쪽 조회 방식(LOT 번호 · 이력) 단추. */
-.lot-status-card-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.lot-status-card-head > .pane-title {
+.lot-status-pane > .pane-title {
   margin: 0;
   color: var(--on-surface);
   font: var(--type-title-lg);
   letter-spacing: var(--type-title-lg-tracking);
 }
 
+.lot-status-pane > .banner-slot {
+  margin-bottom: 0;
+}
+
+/* 조회 방식(LOT 번호 · 이력) — 조회 조건 카드 오른쪽 위(사용자 시안 2026-10-30). */
 .lot-status-mode {
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: var(--space-2);
 }
 
 .lot-status-mode > .field-label {
   margin: 0 var(--space-1) 0 0;
+}
+
+.filter-bar.lot-status-filter {
+  margin-bottom: 0;
 }
 
 /*
@@ -3796,21 +3796,6 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-left: auto;
 }
 
-/* 조회 결과 — 같은 카드 안의 아래 구획. */
-.lot-status-results {
-  display: grid;
-  align-content: start;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
-.lot-status-results-title {
-  margin: 0;
-  color: var(--on-surface);
-  font: var(--type-title-md);
-  letter-spacing: var(--type-title-md-tracking);
-}
-
 .lot-status-empty-pane {
   min-height: 14rem;
 }
@@ -3835,6 +3820,13 @@ h2:has(> .inspection-standard-dialog-title) {
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-2) var(--space-4);
+}
+
+.lot-status-pane-head > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
 }
 
 .lot-status-pane-head > .field-note {

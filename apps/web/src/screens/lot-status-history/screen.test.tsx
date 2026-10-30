@@ -379,12 +379,14 @@ describe('Lot Status 화면 shell', () => {
 
     expect(screen.getByRole('heading', { name: 'Lot Status 현황·변경이력 조회' })).toBeVisible();
     expect(screen.getByRole('navigation', { name: '탐색 경로' })).toBeVisible();
-    /* 조건과 결과가 한 카드 — 조회 방식은 카드 머리의 단추로 고른다(사용자 시안 2026-10-30). */
-    const modes = screen.getByRole('group', { name: '조회 방식' });
+    /* 조회 방식은 조회 조건 카드 오른쪽 위 단추다 — 카드 제목은 두지 않는다(검사 조회·판정과 같다 · 사용자 2026-10-30). */
+    const modes = within(screen.getByRole('region', { name: 'LOT 조회 조건' })).getByRole('group', {
+      name: '조회 방식',
+    });
     expect(within(modes).getByRole('button', { name: 'LOT 번호', pressed: true })).toBeVisible();
     expect(within(modes).getByRole('button', { name: '이력', pressed: false })).toBeVisible();
-    expect(screen.getByRole('heading', { level: 2, name: 'LOT 조회' })).toBeVisible();
-    expect(screen.getByRole('heading', { level: 3, name: '조회 결과' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'LOT 조회 조건' })).toBeNull();
+    expect(screen.getByRole('heading', { level: 2, name: '현재 LOT 상태' })).toBeVisible();
     await choose(user, 'LOT 유형', '합성 자재');
     await choose(user, '현재 상태', '합성 정상 (미사용)');
     await choose(user, '창고', 'SAMPLE-WH-01 · 합성 창고 (미사용)');
@@ -420,15 +422,15 @@ describe('Lot Status 화면 shell', () => {
     renderScreen('/quality/lot-status?lotType=SAMPLE_MATERIAL&lot=404&from=2026-08-01');
     const user = userEvent.setup();
 
-    await user.click(
-      within(screen.getByRole('group', { name: '조회 방식' })).getByRole('button', {
-        name: '이력',
-      }),
-    );
+    await user.click(screen.getByRole('button', { name: '이력' }));
     await waitFor(() => expect(locationSearch().get('mode')).toBe('history'));
-    expect(screen.getByRole('button', { name: '이력', pressed: true })).toBeVisible();
-    expect(screen.getByRole('heading', { level: 2, name: 'LOT 조회' })).toBeVisible();
-    expect(screen.getByRole('heading', { level: 3, name: '조회 결과' })).toBeVisible();
+    expect(
+      within(screen.getByRole('region', { name: '이력 조회 조건' })).getByRole('button', {
+        name: '이력',
+        pressed: true,
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole('heading', { level: 2, name: 'LOT 이력' })).toBeVisible();
     expect(locationSearch().get('lotType')).toBe('SAMPLE_MATERIAL');
     expect(locationSearch().get('from')).toBe('2026-08-01');
     expect(locationSearch().get('lot')).toBeNull();

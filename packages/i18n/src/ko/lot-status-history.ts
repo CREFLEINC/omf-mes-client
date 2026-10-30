@@ -2,16 +2,11 @@
 export const lotStatusHistory = {
   title: 'Lot Status 현황·변경이력 조회',
   breadcrumbRoot: '품질 관리',
-  /** 조회 방식 — 카드 머리 오른쪽의 두 단추로 고른다(사용자 시안 2026-10-30). */
+  /** 조회 방식 — 조회 조건 카드 오른쪽 위의 두 단추로 고른다(사용자 시안 2026-10-30). */
   modes: {
     label: '조회 방식',
     lot: 'LOT 번호',
     history: '이력',
-  },
-  /** 조건과 결과를 한 카드에 담는다 — 카드 제목과 결과 구획 제목. */
-  query: {
-    title: 'LOT 조회',
-    results: '조회 결과',
   },
   /** 두 조회 모드가 함께 쓰는 컨트롤 이름. */
   actions: {
@@ -43,6 +38,7 @@ export const lotStatusHistory = {
     unlisted: (value: string): string => `${value} (목록 미확정)`,
   },
   lotFilter: {
+    pane: 'LOT 조회 조건',
     /** 품목은 검색해서 고른다 — 품목 선택 창을 여는 단추와 고른 값을 지우는 단추. */
     itemPlaceholder: '코드·이름으로 검색',
     itemClear: '품목 지우기',
@@ -65,6 +61,7 @@ export const lotStatusHistory = {
     },
   },
   historyFilter: {
+    pane: '이력 조회 조건',
     fields: {
       period: '기간',
       actor: '행위자',
@@ -90,7 +87,8 @@ export const lotStatusHistory = {
   current: {
     pane: '현재 LOT 상태',
     beforeSearch: {
-      title: '조건을 설정하고 조회해 주세요.',
+      title: '조회 조건을 선택하고 조회하세요',
+      description: '조회 조건을 적용하면 현재 상태 요약과 LOT 목록이 표시됩니다.',
     },
     columns: {
       lot: 'LOT',

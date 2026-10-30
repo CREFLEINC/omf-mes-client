@@ -1,6 +1,6 @@
 import { Breadcrumb, Chip, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { usePageHub } from '../../patterns/page-hub';
@@ -35,6 +35,33 @@ const t = messages.lotStatusHistory;
 
 const MODES: readonly ScreenMode[] = ['lot', 'history'];
 
+interface ModeSwitchProps {
+  mode: ScreenMode;
+  onChange: (mode: ScreenMode) => void;
+}
+
+/** 조회 방식(LOT 번호 · 이력) — 조회 조건 카드 오른쪽 위 단추(검사 조회·판정 화면처럼 카드 제목 없이 · 사용자 2026-10-30). */
+const ModeSwitch = ({ mode, onChange }: ModeSwitchProps) => (
+  <div className="lot-status-mode" role="group" aria-labelledby="lot-status-mode-label">
+    <span className="field-label" id="lot-status-mode-label">
+      {t.modes.label}
+    </span>
+    {MODES.map((value) => (
+      <Chip
+        key={value}
+        variant="filter"
+        size="sm"
+        selected={mode === value}
+        onSelectedChange={() => {
+          if (value !== mode) onChange(value);
+        }}
+      >
+        {t.modes[value]}
+      </Chip>
+    ))}
+  </div>
+);
+
 const inactiveLabel = (label: string, isActive: boolean): string =>
   isActive ? label : t.values.inactive(label);
 
@@ -64,6 +91,7 @@ const optionNote = (state: OptionState, name: string): string | undefined => {
 };
 
 interface LotModeProps {
+  modeSwitch: ReactNode;
   filters: LotFilters;
   page: number;
   selectedLotId: number | null;
@@ -75,6 +103,7 @@ interface LotModeProps {
 }
 
 const LotMode = ({
+  modeSwitch,
   filters,
   page,
   selectedLotId,
@@ -94,24 +123,27 @@ const LotMode = ({
       : optionNote(lotStatuses, t.lotFilter.fields.status);
 
   return (
-    <>
-      <LotFilterBar
-        appliedFilters={filters}
-        lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
-        lotStatusOptions={toCodeOptions(lotStatuses.data?.items)}
-        warehouseOptions={toReferenceOptions(warehouses.data?.entries)}
-        lotTypeNote={
-          lotTypes.data?.isSeeded === false
-            ? t.lotFilter.notes.lotTypeUnseeded
-            : lotTypes.data?.isTruncated === true
-              ? t.lotFilter.notes.lotTypeTruncated
-              : optionNote(lotTypes, t.lotFilter.fields.lotType)
-        }
-        lotStatusNote={lotStatusNote}
-        warehouseNote={optionNote(warehouses, t.lotFilter.fields.warehouse)}
-        onSearch={onSearch}
-        onReset={onReset}
-      />
+    <div className="lot-status-workspace">
+      <section className="pane lot-status-pane" aria-label={t.lotFilter.pane}>
+        {modeSwitch}
+        <LotFilterBar
+          appliedFilters={filters}
+          lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
+          lotStatusOptions={toCodeOptions(lotStatuses.data?.items)}
+          warehouseOptions={toReferenceOptions(warehouses.data?.entries)}
+          lotTypeNote={
+            lotTypes.data?.isSeeded === false
+              ? t.lotFilter.notes.lotTypeUnseeded
+              : lotTypes.data?.isTruncated === true
+                ? t.lotFilter.notes.lotTypeTruncated
+                : optionNote(lotTypes, t.lotFilter.fields.lotType)
+          }
+          lotStatusNote={lotStatusNote}
+          warehouseNote={optionNote(warehouses, t.lotFilter.fields.warehouse)}
+          onSearch={onSearch}
+          onReset={onReset}
+        />
+      </section>
       <CurrentResults
         filters={filters}
         page={page}
@@ -128,11 +160,12 @@ const LotMode = ({
           onClose={() => onSelectLot(null)}
         />
       )}
-    </>
+    </div>
   );
 };
 
 interface HistoryModeProps {
+  modeSwitch: ReactNode;
   filters: HistoryFilters;
   page: number;
   onSearch: (filters: HistoryFilters) => void;
@@ -140,7 +173,14 @@ interface HistoryModeProps {
   onPageChange: (page: number) => void;
 }
 
-const HistoryMode = ({ filters, page, onSearch, onReset, onPageChange }: HistoryModeProps) => {
+const HistoryMode = ({
+  modeSwitch,
+  filters,
+  page,
+  onSearch,
+  onReset,
+  onPageChange,
+}: HistoryModeProps) => {
   const actors = useLotActorOptions(true);
   const lotStatuses = useLotStatusOptions();
   const appUserName = (appUserId: number): string | null => {
@@ -164,14 +204,17 @@ const HistoryMode = ({ filters, page, onSearch, onReset, onPageChange }: History
           : undefined;
 
   return (
-    <>
-      <HistoryFilterBar
-        appliedFilters={filters}
-        actorOptions={actorOptions}
-        actorNote={actorNote}
-        onSearch={onSearch}
-        onReset={onReset}
-      />
+    <div className="lot-status-workspace">
+      <section className="pane lot-status-pane" aria-label={t.historyFilter.pane}>
+        {modeSwitch}
+        <HistoryFilterBar
+          appliedFilters={filters}
+          actorOptions={actorOptions}
+          actorNote={actorNote}
+          onSearch={onSearch}
+          onReset={onReset}
+        />
+      </section>
       <HistoryResults
         filters={filters}
         page={page}
@@ -180,7 +223,7 @@ const HistoryMode = ({ filters, page, onSearch, onReset, onPageChange }: History
         appUserName={appUserName}
         onPageChange={onPageChange}
       />
-    </>
+    </div>
   );
 };
 
@@ -206,12 +249,37 @@ export const LotStatusHistoryScreen = () => {
   const changeMode = (next: ScreenMode): void => {
     setSearchParams((current) => toModeSearchParams(current, next));
   };
+  const modeSwitch = <ModeSwitch mode={mode} onChange={changeMode} />;
   const applyHistory = (next: HistoryFilters): void => {
     setSearchParams((current) => toAppliedHistorySearchParams(current, next, 1));
   };
   const changeHistoryPage = (nextPage: number): void => {
     setSearchParams((current) => toAppliedHistorySearchParams(current, historyFilters, nextPage));
   };
+
+  const content =
+    mode === 'lot' ? (
+      <LotMode
+        modeSwitch={modeSwitch}
+        filters={filters}
+        page={page}
+        selectedLotId={selectedLotId}
+        onSearch={apply}
+        onReset={() => apply(EMPTY_LOT_FILTERS)}
+        onSortChange={changeSort}
+        onPageChange={changePage}
+        onSelectLot={(lotId) => setSearchParams((current) => withSelectedLot(current, lotId))}
+      />
+    ) : (
+      <HistoryMode
+        modeSwitch={modeSwitch}
+        filters={historyFilters}
+        page={historyPage}
+        onSearch={applyHistory}
+        onReset={() => applyHistory(EMPTY_HISTORY_FILTERS)}
+        onPageChange={changeHistoryPage}
+      />
+    );
 
   return (
     <>
@@ -227,55 +295,7 @@ export const LotStatusHistoryScreen = () => {
           }
         />
       )}
-      {/*
-       * 조건과 결과를 한 카드에 담고, 조회 방식(LOT 번호 · 이력)은 카드 머리 오른쪽 단추로 고른다(사용자 시안 2026-10-30).
-       * 고른 방식은 종전처럼 주소(`mode`)에 남는다.
-       */}
-      <section className="pane lot-status-pane" aria-labelledby="lot-query-title">
-        <div className="lot-status-card-head">
-          <h2 className="pane-title" id="lot-query-title">
-            {t.query.title}
-          </h2>
-          <div className="lot-status-mode" role="group" aria-labelledby="lot-query-mode-label">
-            <span className="field-label" id="lot-query-mode-label">
-              {t.modes.label}
-            </span>
-            {MODES.map((value) => (
-              <Chip
-                key={value}
-                variant="filter"
-                size="sm"
-                selected={mode === value}
-                onSelectedChange={() => {
-                  if (value !== mode) changeMode(value);
-                }}
-              >
-                {t.modes[value]}
-              </Chip>
-            ))}
-          </div>
-        </div>
-        {mode === 'lot' ? (
-          <LotMode
-            filters={filters}
-            page={page}
-            selectedLotId={selectedLotId}
-            onSearch={apply}
-            onReset={() => apply(EMPTY_LOT_FILTERS)}
-            onSortChange={changeSort}
-            onPageChange={changePage}
-            onSelectLot={(lotId) => setSearchParams((current) => withSelectedLot(current, lotId))}
-          />
-        ) : (
-          <HistoryMode
-            filters={historyFilters}
-            page={historyPage}
-            onSearch={applyHistory}
-            onReset={() => applyHistory(EMPTY_HISTORY_FILTERS)}
-            onPageChange={changeHistoryPage}
-          />
-        )}
-      </section>
+      {content}
     </>
   );
 };

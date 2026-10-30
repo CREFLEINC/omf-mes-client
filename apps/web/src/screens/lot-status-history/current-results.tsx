@@ -4,7 +4,6 @@ import {
   Chip,
   type Column,
   EmptyState,
-  Icon,
   SkeletonText,
   StatCard,
   Table,
@@ -71,16 +70,16 @@ export const CurrentResults = ({
   if (filters.lotType === '') {
     return (
       <section
-        className="lot-status-results lot-status-empty-pane"
+        className="pane lot-status-pane lot-status-empty-pane"
         aria-labelledby="lot-current-results-title"
       >
-        <h3 className="lot-status-results-title" id="lot-current-results-title">
-          {t.query.results}
-        </h3>
+        <h2 className="pane-title" id="lot-current-results-title">
+          {t.current.pane}
+        </h2>
         <EmptyState
           size="sm"
-          icon={<Icon name="search" size={24} />}
           title={t.current.beforeSearch.title}
+          description={t.current.beforeSearch.description}
         />
       </section>
     );
@@ -231,12 +230,12 @@ export const CurrentResults = ({
         : t.range.span(quantity(start), quantity(start + rows.length - 1), quantity(meta.total));
 
   return (
-    <section className="lot-status-results" aria-labelledby="lot-current-results-title">
+    <section className="pane lot-status-pane" aria-labelledby="lot-current-results-title">
       {/* ⭐ 기준 시각은 제목 옆 — 숫자보다 낮은 위계로(사용자 지시 2026-09-19). */}
       <div className="lot-status-pane-head">
-        <h3 className="lot-status-results-title" id="lot-current-results-title">
-          {t.query.results}
-        </h3>
+        <h2 className="pane-title" id="lot-current-results-title">
+          {t.current.pane}
+        </h2>
         {summary.data !== undefined && (
           <span className="field-note">
             {t.current.summary.asOf(formatDateTime(summary.data.asOf))}
@@ -275,7 +274,7 @@ export const CurrentResults = ({
         </>
       )}
 
-      <h4 className="lot-status-list-title">{t.current.list.title}</h4>
+      <h3 className="lot-status-list-title">{t.current.list.title}</h3>
       {list.isPending && (
         <div role="status" aria-label={t.current.list.loading}>
           <SkeletonText lines={3} />

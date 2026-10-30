@@ -1,4 +1,4 @@
-import { AlertBanner, Button, EmptyState, Icon, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import type { HistoryFilters } from './filters';
@@ -57,16 +57,15 @@ export const HistoryResults = ({
 
   return (
     <section
-      className="lot-status-results lot-status-history-pane"
+      className="pane lot-status-pane lot-status-history-pane"
       aria-labelledby="lot-history-title"
     >
-      <h3 className="lot-status-results-title" id="lot-history-title">
-        {t.query.results}
-      </h3>
+      <h2 className="pane-title" id="lot-history-title">
+        {t.history.pane}
+      </h2>
       {!hasValidPeriod && (
         <EmptyState
           size="sm"
-          icon={<Icon name="search" size={24} />}
           title={t.history.beforeSearch.title}
           description={t.history.beforeSearch.description}
         />

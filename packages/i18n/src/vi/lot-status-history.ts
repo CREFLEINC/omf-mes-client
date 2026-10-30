@@ -15,10 +15,6 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     lot: 'Số LOT',
     history: 'Lịch sử',
   },
-  query: {
-    title: 'Tra cứu LOT',
-    results: 'Kết quả tra cứu',
-  },
   actions: {
     search: 'Tra cứu',
     reset: 'Đặt lại',
@@ -43,6 +39,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     unlisted: (value: string): string => `${value} (chưa có trong danh sách)`,
   },
   lotFilter: {
+    pane: 'Điều kiện tra cứu LOT',
     itemPlaceholder: 'Tìm theo mã · tên',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',
@@ -64,6 +61,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     },
   },
   historyFilter: {
+    pane: 'Điều kiện tra cứu lịch sử',
     fields: {
       period: 'Khoảng thời gian',
       actor: 'Người thực hiện',
@@ -85,7 +83,9 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
   current: {
     pane: 'Trạng thái LOT hiện tại',
     beforeSearch: {
-      title: 'Hãy đặt điều kiện rồi tra cứu.',
+      title: 'Hãy chọn điều kiện tra cứu rồi tra cứu',
+      description:
+        'Áp dụng điều kiện tra cứu thì tóm tắt trạng thái hiện tại và danh sách LOT sẽ hiện ra.',
     },
     columns: {
       lot: 'LOT',
