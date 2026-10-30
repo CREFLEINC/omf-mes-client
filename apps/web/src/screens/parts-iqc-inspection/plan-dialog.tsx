@@ -135,9 +135,9 @@ export const PlanDialog = ({
                     </td>
                     <td>
                       {spec.dataTypeCode === 'NUMERIC'
-                        ? [nominal, range]
-                            .filter((text, i) => text !== '' && (i === 0 || text !== nominal))
-                            .join(' / ')
+                        ? nominal === '' || range === nominal
+                          ? nominal || range
+                          : `${nominal} (${range})`
                         : t.plan.okNg}
                     </td>
                     <td>{spec.measurementCount}</td>

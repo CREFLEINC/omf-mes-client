@@ -78,7 +78,7 @@ describe('검사 기준 조회 팝업 (사용자 지시 2026-10-30)', () => {
     expect(screen.getByText('2판 · 2026-01-01 부터')).toBeInTheDocument();
     expect(screen.getByText('LOT 의 10%')).toBeInTheDocument();
     expect(screen.getByText('AQL 0.65 · C=1')).toBeInTheDocument();
-    expect(screen.getByText('4 ±0.1 / 3.9 ~ 4.1')).toBeInTheDocument();
+    expect(screen.getByText('4 ±0.1 (3.9 ~ 4.1)')).toBeInTheDocument();
     expect(screen.getByText('OK / NG')).toBeInTheDocument();
   });
 

@@ -26835,8 +26835,16 @@ button.iqc-inspection-step-toggle:focus-visible {
 .parts-iqc-grid td.parts-iqc-spec,
 .parts-iqc-grid th.parts-iqc-spec {
   min-width: 7.5rem;
+  /* 규격 한 줄 · 측정값 칸과 사이를 둔다(사용자 지시 2026-10-30) */
+  padding-right: var(--space-6);
   text-align: end;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+/* 측정값 칸은 숫자 몇 자리 폭 — 열 전체로 늘이지 않는다(사용자 지시 2026-10-30). */
+.parts-iqc-grid .parts-iqc-cell {
+  width: 8rem;
 }
 
 .parts-iqc-spec {

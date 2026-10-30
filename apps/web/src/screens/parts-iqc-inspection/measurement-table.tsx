@@ -160,10 +160,9 @@ export const MeasurementTable = ({
                 >
                   {position + 1}
                 </th>
+                {/* 규격은 한 줄 — 「목표 ±공차 (하한 ~ 상한)」(사용자 지시 2026-10-30). 공차 표기가 없으면 범위만. */}
                 <td className="parts-iqc-spec">
-                  <span>{nominal || range}</span>
-                  {/* 공차 표기가 없는 규격은 위 줄이 이미 범위다 — 같은 말을 두 번 적지 않는다 */}
-                  {nominal !== '' && range !== nominal && <span>{range}</span>}
+                  {nominal === '' || range === nominal ? nominal || range : `${nominal} (${range})`}
                 </td>
                 <td>
                   <input
