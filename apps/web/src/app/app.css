@@ -27177,34 +27177,43 @@ button.iqc-inspection-step-toggle:focus-visible {
   border-collapse: collapse;
 }
 
+/* 엑셀 같은 칸 — 항목 · 규격 · n1~nN · 판정, 모든 칸에 얇은 선(사용자 시안 2026-10-30). */
 .parts-iqc-grid th,
 .parts-iqc-grid td {
   padding: var(--space-1);
-  border-bottom: 1px solid var(--outline-variant);
+  border: 1px solid var(--outline-variant);
   text-align: center;
   vertical-align: middle;
 }
 
+.parts-iqc-grid thead th {
+  background: var(--surface-container-low);
+}
+
+/* 시료 머리(n1 …)는 칸 왼쪽에 붙인다 — 시안. */
+.parts-iqc-grid thead th.parts-iqc-sample-head {
+  text-align: start;
+}
+
+.parts-iqc-grid th.parts-iqc-item {
+  width: 4rem;
+}
+
+/* 규격은 두 줄 「목표 ±공차」 · 「하한 ~ 상한」, 오른쪽 맞춤. */
 .parts-iqc-grid td.parts-iqc-spec,
 .parts-iqc-grid th.parts-iqc-spec {
-  min-width: 7.5rem;
-  /* 규격 한 줄 · 측정값 칸과 사이를 둔다(사용자 지시 2026-10-30) */
-  padding-right: var(--space-6);
-  /* 남는 폭은 규격 칸이 받는다 — 항목 · 측정값 · 판정 칸이 양 끝으로 벌어지지 않게(실검증 「선이 안 맞아」 2026-10-30). */
-  width: 100%;
+  width: 10rem;
   text-align: end;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
-/* 측정값 칸은 숫자 몇 자리 폭 — 열 전체로 늘이지 않는다(사용자 지시 2026-10-30). */
-.parts-iqc-grid .parts-iqc-cell {
-  width: 8rem;
-}
-
-/* 규격 두 줄은 글자에만 건다 — 칸에 grid 를 걸면 표 칸에서 빠져 밑줄 높이가 옆 칸과 어긋난다. */
 .parts-iqc-spec > span {
   display: block;
+}
+
+.parts-iqc-grid th.parts-iqc-verdict-head {
+  width: 5rem;
 }
 
 .parts-iqc-cell {
@@ -27245,22 +27254,7 @@ button.iqc-inspection-step-toggle:focus-visible {
   font-weight: 600;
 }
 
-/* 줄의 형편 = 항목 번호 칸의 바탕색(참고: omf-dx-vina 수입검사). 덜 적은 줄과 규격 밖 줄은 내기 전에 손이 가야 해 같은 붉은색이다. */
-.parts-iqc-grid th.parts-iqc-rowno {
-  min-width: 2.5rem;
-  border-radius: var(--radius-sm);
-}
-
-.parts-iqc-grid th.parts-iqc-st-done {
-  background: var(--semantic-success);
-  color: var(--on-primary);
-}
-
-.parts-iqc-grid th.parts-iqc-st-wait,
-.parts-iqc-grid th.parts-iqc-st-err {
-  background: var(--semantic-error);
-  color: var(--on-primary);
-}
+/* 항목 번호는 숫자만 — 줄 형편 바탕색은 걷는다(실검증 2026-10-30). 규격 밖 줄은 아래 붉은 줄 바탕이 알린다. */
 
 .parts-iqc-grid tr.parts-iqc-row-ng > td {
   background: var(--semantic-error-container);
@@ -27330,28 +27324,6 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 .parts-iqc-history-defects {
   margin: 0;
-}
-
-/* 시료 탭(n=1 · n=2 …) 이름 옆 표시 — 규격 밖 칸 수는 붉은 숫자, 다 적은 탭은 초록 ✓(사용자 지시 2026-10-30). */
-.parts-iqc-tab-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.125rem;
-  height: 1.125rem;
-  padding: 0 var(--space-1);
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.parts-iqc-tab-mark.is-ng {
-  background: var(--semantic-error);
-  color: var(--on-primary);
-}
-
-.parts-iqc-tab-mark.is-ok {
-  color: var(--semantic-success-text);
 }
 
 .parts-iqc-defect-head {
