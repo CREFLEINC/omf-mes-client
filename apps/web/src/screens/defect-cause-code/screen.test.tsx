@@ -1545,6 +1545,33 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
     await screen.findByRole('button', { name: '수정' });
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
+
+  it('미사용 코드는 다시 사용 확인 뒤 :activate 를 잠금 토큰과 함께 보낸다(#209)', async () => {
+    const { requests, user } = renderScreen(
+      [
+        defectOptionsRoute(),
+        {
+          match: (request) =>
+            request.method === 'POST' &&
+            new URL(request.url).pathname === '/quality/defect-codes/1006:activate',
+          respond: () => jsonResponse({ ...defectCodeFixtures[5], isActive: true }),
+        },
+        defectListRoute(),
+        defectDetailRoute(defectCodeFixtures[5]),
+      ],
+      '?inactive=1&sel=1006',
+    );
+
+    await user.click(await screen.findByRole('button', { name: '다시 사용' }));
+    const dialog = await screen.findByRole('dialog', { name: '다시 사용할까요?' });
+    await user.click(within(dialog).getByRole('button', { name: '다시 사용' }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    const post = requests.find((request) => request.method === 'POST');
+    expect(post?.url.pathname).toBe('/quality/defect-codes/1006:activate');
+    expect(post?.headers.get('If-Match')).toBe('"7"');
+    expect(requests.some((request) => request.url.pathname.endsWith(':deactivate'))).toBe(false);
+  });
 });
 
 /*

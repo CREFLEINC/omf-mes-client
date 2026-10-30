@@ -272,9 +272,15 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   });
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+  /* 확인 창이 사용 중지인지 다시 사용인지 — 고른 코드의 사용 여부가 정한다(#209). */
+  const statusMode: 'deactivate' | 'activate' =
+    detail.data?.code.isActive === false ? 'activate' : 'deactivate';
 
   const deactivateWrite = useMasterWrite<void, HierarchyCode>({
-    request: (_variables, headers) => adapter.deactivate(client, selectedId ?? 0, headers),
+    request: (_variables, headers) =>
+      statusMode === 'activate'
+        ? adapter.activate(client, selectedId ?? 0, headers)
+        : adapter.deactivate(client, selectedId ?? 0, headers),
     /*
      * 잠금 토큰은 상세 경로에 보관돼 있다. 요청 경로(`…:deactivate`)로 꺼내면 언제나 비어 있어
      * 사용 중지가 전부 실패한다.
@@ -630,6 +636,10 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
             deactivateWrite.reset();
             setIsDeactivateOpen(true);
           }}
+          onActivate={() => {
+            deactivateWrite.reset();
+            setIsDeactivateOpen(true);
+          }}
         />
         {/* 대분류를 고르면 딸린 하위 코드를 함께 본다(사용자 지시 · #209). 미사용까지 받은 전체 목록 기준. */}
         {isCategory(code) && (
@@ -701,6 +711,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
 
       <DeactivateConfirmDialog
         open={isDeactivateOpen}
+        mode={statusMode}
         onClose={() => setIsDeactivateOpen(false)}
         onConfirm={() => deactivateWrite.write(undefined)}
         isSaving={deactivateWrite.isSaving}

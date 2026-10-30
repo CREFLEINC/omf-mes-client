@@ -93,6 +93,12 @@ export interface CodeAdapter {
     id: number,
     headers: WriteHeaders,
   ) => Promise<ApiCallResult<HierarchyCode>>;
+  /** 미사용 코드를 다시 사용으로 바꾼다(#209). */
+  activate: (
+    client: Client,
+    id: number,
+    headers: WriteHeaders,
+  ) => Promise<ApiCallResult<HierarchyCode>>;
 }
 
 const t = messages.defectCauseCode;
@@ -254,6 +260,19 @@ export const defectCodeAdapter: CodeAdapter = {
       }),
       defectToHierarchyCode,
     ),
+  activate: async (client, id, headers) =>
+    toWriteResult(
+      await client.POST('/quality/defect-codes/{defectCodeId}:activate', {
+        params: {
+          path: { defectCodeId: id },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+      defectToHierarchyCode,
+    ),
 };
 
 export const causeCodeAdapter: CodeAdapter = {
@@ -333,6 +352,19 @@ export const causeCodeAdapter: CodeAdapter = {
   deactivate: async (client, id, headers) =>
     toWriteResult(
       await client.POST('/quality/cause-codes/{causeCodeId}:deactivate', {
+        params: {
+          path: { causeCodeId: id },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+      causeToHierarchyCode,
+    ),
+  activate: async (client, id, headers) =>
+    toWriteResult(
+      await client.POST('/quality/cause-codes/{causeCodeId}:activate', {
         params: {
           path: { causeCodeId: id },
           header: {
