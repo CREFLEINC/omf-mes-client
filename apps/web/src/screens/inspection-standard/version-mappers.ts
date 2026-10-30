@@ -32,7 +32,8 @@ export const versionToFormValues = (version: InspectionPlanVersion): VersionForm
 export const emptyVersionFormValues = (): VersionFormValues => ({
   effectiveFrom: '',
   effectiveTo: '',
-  samplingMethodCode: '',
+  /* 새 버전의 검사 방식은 전수검사로 시작한다 — 샘플 비율 · 수량 칸은 잠긴다(사용자 지시 · #208). */
+  samplingMethodCode: FULL_INSPECTION,
   samplingRatio: '',
   samplingQty: '',
   aqlValue: '',

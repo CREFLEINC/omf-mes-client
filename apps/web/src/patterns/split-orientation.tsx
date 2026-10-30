@@ -6,6 +6,12 @@ import { HubActions, useHubActionsTarget } from './hub-actions';
 
 const t = messages.common.inspectionHub;
 
+/**
+ * 품질 기준 정보 탭 묶음(검사 기준 · 검사표 기준 · 검사 수준 관리 · 불량·원인코드 · 판정 유형 코드)이 함께 쓰는 배치 저장 키 —
+ * 한 탭에서 고른 배치가 다른 탭에도 이어진다(omf-all-around#196 · #208).
+ */
+export const QUALITY_STANDARD_ORIENTATION_KEY = 'omf-mes:quality-standard-hub:split-orientation';
+
 /** 목록 · 상세 배치 — 좌우(`row`) 또는 상하(`column`). */
 export type SplitOrientation = 'row' | 'column';
 

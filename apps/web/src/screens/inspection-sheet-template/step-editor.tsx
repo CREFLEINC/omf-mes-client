@@ -1,4 +1,4 @@
-import { Button, Checkbox, type Column, Table, TextArea, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, type Column, Icon, Table, TextArea, TextField } from '@crefle/web-ui';
 import type { InspectionSheetMethodCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
@@ -75,7 +75,8 @@ export const StepEditor = ({ step, readOnly, errors, onChange }: StepEditorProps
     {
       key: 'code',
       header: t.editor.itemCode,
-      width: '96px',
+      /* 항목 번호는 30자까지 — 「PROCESS_1-1」 정도가 잘리지 않는 폭(#208). */
+      width: '140px',
       render: (item) => (
         <TextField
           aria-label={t.editor.itemCode}
@@ -142,7 +143,7 @@ export const StepEditor = ({ step, readOnly, errors, onChange }: StepEditorProps
           {
             key: 'remove',
             header: '',
-            width: '76px',
+            width: '64px',
             render: (item: ItemDraft) => (
               <Button
                 variant="text"
@@ -211,13 +212,18 @@ export const StepEditor = ({ step, readOnly, errors, onChange }: StepEditorProps
               {step.items.length === 0 ? t.editor.noItems : t.editor.itemCount(step.items.length)}
             </span>
             {!readOnly && (
-              <Button variant="outlined" onClick={addItem}>
+              <Button
+                variant="outlined"
+                leadingIcon={<Icon name="add" size={18} />}
+                onClick={addItem}
+              >
                 {t.editor.addItem}
               </Button>
             )}
           </div>
           {step.items.length > 0 && (
-            <div className="inspection-sheet-template-items">
+            /* 표는 둥근 테두리 상자 안에 — 검사 기준 탭 항목 표와 같다(#208). */
+            <div className="inspection-sheet-template-items inspection-standard-table-box">
               <Table
                 caption={
                   <span className="inspection-sheet-template-caption">

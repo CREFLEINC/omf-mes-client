@@ -11,6 +11,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { PageNav, type PageSize } from '../../patterns/page-nav';
+import { DEFAULT_PLAN_FILTERS } from './code-options';
 import { useInspectionPlanList } from './queries';
 import type { InspectionPlan } from './types';
 
@@ -41,7 +42,7 @@ export const PlanPickerDialog = ({
   const [picked, setPicked] = useState<InspectionPlan | null>(null);
 
   const search = useInspectionPlanList(
-    { q: submitted, inspectionTypeCode: '', itemId: '', includeInactive },
+    { ...DEFAULT_PLAN_FILTERS, q: submitted, includeInactive },
     page,
     size,
   );

@@ -14,13 +14,23 @@ export interface PlanDetailHeadProps {
   /** 공정 표시 이름. 없으면 적지 않는다 */
   processLabel: string | null;
   onEdit: () => void;
+  /** 사용 중인 기준에만 — 「기본 정보 수정」 옆 「사용 중지」(#208) */
+  onDeactivate?: () => void;
+  isDeactivating?: boolean;
 }
 
 /**
  * 검사 기준 상세 카드의 머리(omf-all-around#196) — 기준명 · 기준 코드 · 승인/사용 칩 · 「유형 · 품목」 한 줄.
  * 기본 정보(코드 · 이름 · 유형 · 품목 · 공정 · 라우팅)는 「기본 정보 수정」 창에서 고친다.
  */
-export const PlanDetailHead = ({ plan, itemLabel, processLabel, onEdit }: PlanDetailHeadProps) => {
+export const PlanDetailHead = ({
+  plan,
+  itemLabel,
+  processLabel,
+  onEdit,
+  onDeactivate,
+  isDeactivating = false,
+}: PlanDetailHeadProps) => {
   const approvedAt = formatApprovedAt(plan.approvedAt);
 
   return (
@@ -40,9 +50,16 @@ export const PlanDetailHead = ({ plan, itemLabel, processLabel, onEdit }: PlanDe
             {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
           </Chip>
         </div>
-        <Button variant="outlined" leadingIcon={<Icon name="edit" size={18} />} onClick={onEdit}>
-          {t.detail.editBasic}
-        </Button>
+        <div className="inspection-standard-plan-head-actions">
+          {onDeactivate !== undefined && (
+            <Button variant="outlined" disabled={isDeactivating} onClick={onDeactivate}>
+              {messages.common.deactivate}
+            </Button>
+          )}
+          <Button variant="outlined" leadingIcon={<Icon name="edit" size={18} />} onClick={onEdit}>
+            {t.detail.editBasic}
+          </Button>
+        </div>
       </div>
       {/*
        * 이름표를 단 값들 — 한 줄로 이으면 무엇이 품목이고 무엇이 유형인지 알 수 없다(사용자 지시 · #196).
