@@ -76,6 +76,7 @@ const setup = (
   detail: InspectionSheetTemplate,
   plantCode = 'PL13',
   auditEvents: Record<string, unknown>[] = [],
+  discardError: Record<string, unknown> | null = null,
 ) => {
   const requests: Recorded[] = [];
   const stub = createStubFetch([
@@ -144,7 +145,10 @@ const setup = (
     },
     {
       match: (r) => r.method === 'DELETE',
-      respond: () => new Response(null, { status: 204 }),
+      respond: () =>
+        discardError === null
+          ? new Response(null, { status: 204 })
+          : jsonResponse(discardError, { status: 400 }),
     },
     {
       match: (r) => new URL(r.url).pathname.endsWith('/audit/events'),
@@ -436,6 +440,28 @@ describe('검사표 기준', () => {
 
       await waitFor(() => expect(requests.some((r) => r.method === 'DELETE')).toBe(true));
       expect(requests.find((r) => r.method === 'DELETE')!.path).toMatch(/\/11$/);
+    });
+
+    it('작성 취소가 거부되면 확인 창이 닫히지 않고 창 안에 이유를 보인다', async () => {
+      const { user } = setup(template(), 'PL13', [], {
+        errors: [
+          {
+            scope: 'screen',
+            code: 'STATE_LOCKED',
+            message: '이 기준으로 만든 검사표가 있어 작성을 취소할 수 없습니다.',
+          },
+        ],
+      });
+      await openRow(user);
+
+      await user.click(screen.getByRole('button', { name: t.editor.discard }));
+      const dialog = await screen.findByRole('dialog', { name: t.discardDialog.title });
+      await user.click(within(dialog).getByRole('button', { name: t.discardDialog.ok }));
+
+      expect(
+        await within(dialog).findByText(/이 기준으로 만든 검사표가 있어 작성을 취소할 수 없습니다/),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: t.discardDialog.title })).toBeInTheDocument();
     });
 
     it('확정 버전은 「폐기」만 서고, 확인 뒤 :obsolete 를 잠금 버전과 함께 보낸다', async () => {

@@ -243,8 +243,14 @@ export const TemplateEditor = ({
 
   const saving =
     create.isSaving || update.isSaving || confirm.isSaving || obsolete.isSaving || discard.isSaving;
-  const writeError =
-    create.error ?? update.error ?? confirm.error ?? obsolete.error ?? discard.error;
+  /* 작성 취소 · 폐기의 실패는 그 확인 창 안에서 알린다 — 창이 열린 채라 뒤 배너는 보이지 않는다(#214). */
+  const writeError = create.error ?? update.error ?? confirm.error;
+  const transitionWrite = transition === 'discard' ? discard : obsolete;
+  const closeTransition = () => {
+    setTransition(null);
+    obsolete.reset();
+    discard.reset();
+  };
 
   const save = () => {
     const found = validateDraft(draft);
@@ -408,8 +414,6 @@ export const TemplateEditor = ({
           create.reset();
           update.reset();
           confirm.reset();
-          obsolete.reset();
-          discard.reset();
         }}
       />
 
@@ -601,29 +605,27 @@ export const TemplateEditor = ({
       {transition !== null && template !== null && (
         <Dialog
           open
-          onClose={() => setTransition(null)}
+          onClose={closeTransition}
           title={transition === 'discard' ? t.discardDialog.title : t.obsoleteDialog.title}
           closeOnBackdropClick={false}
           showCloseButton={false}
           footer={
             <>
-              <Button variant="outlined" disabled={saving} onClick={() => setTransition(null)}>
+              <Button variant="outlined" disabled={saving} onClick={closeTransition}>
                 {messages.common.cancel}
               </Button>
               <Button
                 disabled={saving}
                 loading={saving}
-                onClick={() =>
-                  (transition === 'discard' ? discard : obsolete).write({
-                    id: template.inspectionSheetTemplateId,
-                  })
-                }
+                onClick={() => transitionWrite.write({ id: template.inspectionSheetTemplateId })}
               >
                 {transition === 'discard' ? t.discardDialog.ok : t.obsoleteDialog.ok}
               </Button>
             </>
           }
         >
+          {/* 400 STATE_LOCKED · 409 잠금 충돌을 창 안에서 알린다. 「최신 불러오기」는 창을 닫고 상세를 다시 받게 한다. */}
+          <SaveErrorBanner error={transitionWrite.error} onReload={closeTransition} />
           <p>
             {(transition === 'discard' ? t.discardDialog : t.obsoleteDialog).body(
               template.itemCode,

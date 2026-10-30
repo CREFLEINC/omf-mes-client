@@ -1,4 +1,7 @@
 /** 검사표 기준(관리웹 · 품질 관리). OA 제품 검사표의 모델별 단계·항목·머리 문구(omf-all-around#89). */
+/** 숫자를 읽을 때 끝에 받침이 없는가 — 끝자리 2 · 4 · 5 · 9(이 · 사 · 오 · 구)만 받침이 없다(조사 와/과 · 를/을). */
+const noFinal = (version: number): boolean => [2, 4, 5, 9].includes(version % 10);
+
 export const inspectionSheetTemplate = {
   title: '검사표 기준',
   breadcrumbRoot: '품질 관리',
@@ -169,21 +172,21 @@ export const inspectionSheetTemplate = {
   discardDialog: {
     title: '이 작성중 버전을 취소할까요?',
     body: (itemCode: string, version: number) =>
-      `${itemCode} 버전 ${version}과 검사 단계 · 항목이 삭제되며 되돌릴 수 없습니다. 저장하지 않은 변경도 함께 사라집니다.`,
+      `${itemCode} 버전 ${version}${noFinal(version) ? '와' : '과'} 검사 단계 · 항목이 삭제되며 되돌릴 수 없습니다. 저장하지 않은 변경도 함께 사라집니다.`,
     ok: '작성 취소',
   },
 
   obsoleteDialog: {
     title: '이 버전을 폐기할까요?',
     body: (itemCode: string, version: number) =>
-      `${itemCode} 버전 ${version}을 폐기합니다. 새 버전을 확정할 때까지 이 품목의 검사표를 새로 만들 수 없습니다. 기존 검사표는 유지됩니다.`,
+      `${itemCode} 버전 ${version}${noFinal(version) ? '를' : '을'} 폐기합니다. 새 버전을 확정할 때까지 이 품목의 검사표를 새로 만들 수 없습니다. 기존 검사표는 유지됩니다.`,
     ok: '폐기',
   },
 
   confirmDialog: {
     title: '검사표 기준 확정',
     body: (itemCode: string, version: number) =>
-      `${itemCode} 버전 ${version}을 확정합니다. 확정하면 고칠 수 없고, 이 품목의 앞 확정 버전은 폐기됩니다.`,
+      `${itemCode} 버전 ${version}${noFinal(version) ? '를' : '을'} 확정합니다. 확정하면 고칠 수 없고, 이 품목의 앞 확정 버전은 폐기됩니다.`,
     ok: '확정',
   },
 
