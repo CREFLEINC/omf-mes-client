@@ -40,7 +40,7 @@ interface ModeSwitchProps {
   onChange: (mode: ScreenMode) => void;
 }
 
-/** 조회 방식(LOT 번호 · 이력) — 조회 조건 카드 오른쪽 위 단추(검사 조회·판정 화면처럼 카드 제목 없이 · 사용자 2026-10-30). */
+/** 조회 방식(LOT 번호 · 이력) — 조회 조건 줄 아래 단추(검사 조회·판정 화면처럼 카드 제목 없이 · 사용자 2026-10-30). */
 const ModeSwitch = ({ mode, onChange }: ModeSwitchProps) => (
   <div className="lot-status-mode" role="group" aria-labelledby="lot-status-mode-label">
     <span className="field-label" id="lot-status-mode-label">
@@ -124,8 +124,7 @@ const LotMode = ({
 
   return (
     <div className="lot-status-workspace">
-      <section className="pane lot-status-pane" aria-label={t.lotFilter.pane}>
-        {modeSwitch}
+      <section className="pane lot-status-search" aria-label={t.lotFilter.pane}>
         <LotFilterBar
           appliedFilters={filters}
           lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
@@ -143,6 +142,7 @@ const LotMode = ({
           onSearch={onSearch}
           onReset={onReset}
         />
+        {modeSwitch}
       </section>
       <CurrentResults
         filters={filters}
@@ -205,8 +205,7 @@ const HistoryMode = ({
 
   return (
     <div className="lot-status-workspace">
-      <section className="pane lot-status-pane" aria-label={t.historyFilter.pane}>
-        {modeSwitch}
+      <section className="pane lot-status-search" aria-label={t.historyFilter.pane}>
         <HistoryFilterBar
           appliedFilters={filters}
           actorOptions={actorOptions}
@@ -214,6 +213,7 @@ const HistoryMode = ({
           onSearch={onSearch}
           onReset={onReset}
         />
+        {modeSwitch}
       </section>
       <HistoryResults
         filters={filters}
