@@ -40,8 +40,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
   },
   lotFilter: {
     pane: 'Điều kiện tra cứu LOT',
-    lotNoPlaceholder: 'Nhập số LOT',
-    itemPlaceholder: 'Nhập mặt hàng',
+    lotNoPlaceholder: 'Số LOT',
+    itemPlaceholder: 'Tìm mã · tên',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',
     fields: {
@@ -56,7 +56,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       lotTypeTruncated: 'Chỉ hiển thị một phần loại LOT.',
       lotTypeUnseeded: 'Giá trị gốc của loại LOT chưa sẵn sàng.',
       lotStatusUnseeded: 'Giá trị gốc của trạng thái hiện tại chưa sẵn sàng.',
-      locationNeedsWarehouse: 'Hãy chọn kho trước',
+      locationNeedsWarehouse: 'Chọn sau khi chọn kho',
       locationFailed: 'Không tải được danh sách vị trí.',
       locationTruncated: 'Chỉ hiển thị một phần vị trí.',
     },
@@ -84,9 +84,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
   current: {
     pane: 'Trạng thái LOT hiện tại',
     beforeSearch: {
-      title: 'Hãy chọn điều kiện tra cứu rồi tra cứu',
-      description:
-        'Áp dụng điều kiện tra cứu thì tóm tắt trạng thái hiện tại và danh sách LOT sẽ hiện ra.',
+      title: 'Trạng thái LOT sẽ hiện ra sau khi tra cứu.',
     },
     columns: {
       lot: 'LOT',
@@ -185,8 +183,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     title: 'Chi tiết LOT',
     loading: 'Đang tải chi tiết LOT',
     failed: 'Không tải được chi tiết LOT.',
-    pick: 'Hãy chọn LOT',
-    pickHint: 'Bấm số LOT trong danh sách thì chi tiết sẽ hiện ở đây.',
+    pick: 'Hãy chọn LOT trong danh sách.',
     trace: 'Xem truy xuất',
     attributes: 'Thuộc tính LOT',
     fields: {

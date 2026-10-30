@@ -4,6 +4,7 @@ import {
   Chip,
   type Column,
   EmptyState,
+  Icon,
   SkeletonText,
   StatCard,
   Table,
@@ -76,10 +77,11 @@ export const CurrentResults = ({
         <h2 className="pane-title" id="lot-current-results-title">
           {t.current.pane}
         </h2>
+        {/* 조회 전 안내 — 아이콘과 한 줄(사용자 시안 2026-10-30). */}
         <EmptyState
           size="sm"
+          icon={<Icon name="search" size={24} />}
           title={t.current.beforeSearch.title}
-          description={t.current.beforeSearch.description}
         />
       </section>
     );

@@ -175,10 +175,10 @@ describe('LOT 현재 조회 조건', () => {
     const location = screen.getByLabelText(/^위치/);
 
     expect(location).toBeDisabled();
-    expect(location).toHaveTextContent('창고를 먼저 선택하세요');
+    expect(location).toHaveTextContent('창고 선택 후 지정');
     await choose(user, '창고', 'SAMPLE-WH-01 · 합성 창고 가');
     expect(screen.getByLabelText(/^위치/)).toBeEnabled();
-    expect(screen.getByLabelText(/^위치/)).not.toHaveTextContent('창고를 먼저 선택하세요');
+    expect(screen.getByLabelText(/^위치/)).not.toHaveTextContent('창고 선택 후 지정');
   });
 
   it('창고를 바꾸면 앞 창고의 위치 초안을 제거한다', async () => {

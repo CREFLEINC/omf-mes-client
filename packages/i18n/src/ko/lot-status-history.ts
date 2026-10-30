@@ -2,7 +2,7 @@
 export const lotStatusHistory = {
   title: 'Lot Status 현황·변경이력 조회',
   breadcrumbRoot: '품질 관리',
-  /** 조회 방식 — 조회 조건 카드 오른쪽 위의 두 단추로 고른다(사용자 시안 2026-10-30). */
+  /** 조회 방식 — 조회 조건 카드 맨 위의 두 단추로 고른다(사용자 시안 2026-10-30). */
   modes: {
     label: '조회 방식',
     lot: 'LOT 번호',
@@ -39,10 +39,10 @@ export const lotStatusHistory = {
   },
   lotFilter: {
     pane: 'LOT 조회 조건',
-    /** 칸 안 안내 글자 — 검사 조회·판정 조회 줄과 같은 말투(사용자 2026-10-30). */
-    lotNoPlaceholder: 'LOT 번호를 입력하세요',
+    /** 칸 안 안내 글자(사용자 시안 2026-10-30). */
+    lotNoPlaceholder: 'LOT 번호',
     /** 품목은 검색해서 고른다 — 품목 선택 창을 여는 단추와 고른 값을 지우는 단추. */
-    itemPlaceholder: '품목을 입력하세요',
+    itemPlaceholder: '코드·이름 검색',
     itemClear: '품목 지우기',
     itemPick: '선택',
     fields: {
@@ -57,7 +57,7 @@ export const lotStatusHistory = {
       lotTypeTruncated: '일부 LOT 유형만 표시됩니다.',
       lotTypeUnseeded: 'LOT 유형 기준값이 준비되지 않았습니다.',
       lotStatusUnseeded: '현재 상태 기준값이 준비되지 않았습니다.',
-      locationNeedsWarehouse: '창고를 먼저 선택하세요',
+      locationNeedsWarehouse: '창고 선택 후 지정',
       locationFailed: '위치 목록을 불러오지 못했습니다.',
       locationTruncated: '일부 위치만 표시됩니다.',
     },
@@ -89,8 +89,7 @@ export const lotStatusHistory = {
   current: {
     pane: '현재 LOT 상태',
     beforeSearch: {
-      title: '조회 조건을 선택하고 조회하세요',
-      description: '조회 조건을 적용하면 현재 상태 요약과 LOT 목록이 표시됩니다.',
+      title: '조회 후 LOT 상태가 표시됩니다.',
     },
     columns: {
       lot: 'LOT',
@@ -194,8 +193,7 @@ export const lotStatusHistory = {
     loading: 'LOT 상세를 불러오는 중',
     failed: 'LOT 상세를 불러오지 못했습니다.',
     /** 아직 고른 LOT 이 없을 때 상세 칸 안내. */
-    pick: 'LOT을 고르세요',
-    pickHint: '목록에서 LOT 번호를 누르면 상세가 여기에 보입니다.',
+    pick: '목록에서 LOT을 선택해 주세요.',
     trace: '추적 보기',
     attributes: 'LOT 속성',
     fields: {

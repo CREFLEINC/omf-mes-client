@@ -1,10 +1,10 @@
-import { Breadcrumb, Chip, EmptyState, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Chip, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { usePageHub } from '../../patterns/page-hub';
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import { PaneSplitter, usePaneSplit } from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -53,7 +53,7 @@ interface ModeSwitchProps {
   onFocused: () => void;
 }
 
-/** 조회 방식(LOT 번호 · 이력) — 조회 조건 줄 아래 단추(검사 조회·판정 화면처럼 카드 제목 없이 · 사용자 2026-10-30). */
+/** 조회 방식(LOT 번호 · 이력) — 조회 조건 카드 맨 위, 아래 조건 줄과 선으로 가른다(사용자 시안 2026-10-30). */
 const ModeSwitch = ({ mode, onChange, focusOnMount, onFocused }: ModeSwitchProps) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -139,7 +139,6 @@ const LotMode = ({
   const lotStatuses = useLotStatusOptions();
   const warehouses = useWarehouseReferenceOptions();
 
-  const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:lot-status:split', 0.5);
   const layout = useSplitOrientation(LOT_STATUS_ORIENTATION_KEY);
 
@@ -152,7 +151,8 @@ const LotMode = ({
     <div className="lot-status-workspace">
       {/* 좌우 · 상하 배치 단추 — 탭 막대 오른쪽 끝(검사 조회·판정과 같다 · 사용자 2026-10-30). */}
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
-      <section ref={aboveRef} className="pane lot-status-search" aria-label={t.lotFilter.pane}>
+      <section className="pane lot-status-search" aria-label={t.lotFilter.pane}>
+        {modeSwitch}
         <LotFilterBar
           appliedFilters={filters}
           lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
@@ -170,11 +170,9 @@ const LotMode = ({
           onSearch={onSearch}
           onReset={onReset}
         />
-        {modeSwitch}
       </section>
       {/* 목록과 LOT 상세를 나란히(상하 배치면 위아래로) 둔다 — 종전에는 상세가 창으로 떴다(사용자 2026-10-30). */}
       <div
-        ref={splitRef}
         className={`po-board-split inspection-split lot-status-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
       >
@@ -196,11 +194,20 @@ const LotMode = ({
         )}
         <section
           className="pane lot-status-pane lot-status-detail-dialog"
-          aria-labelledby={selectedLotId === null ? undefined : 'lot-status-detail-title'}
-          aria-label={selectedLotId === null ? t.detail.title : undefined}
+          aria-labelledby="lot-status-detail-title"
         >
           {selectedLotId === null ? (
-            <EmptyState size="sm" title={t.detail.pick} description={t.detail.pickHint} />
+            /* 고른 LOT 이 없어도 칸 제목은 선다 — 안내는 아이콘과 한 줄(사용자 시안 2026-10-30). */
+            <>
+              <h2 className="pane-title" id="lot-status-detail-title">
+                {t.detail.title}
+              </h2>
+              <EmptyState
+                size="sm"
+                icon={<Icon name="arrow_selector_tool" size={24} />}
+                title={t.detail.pick}
+              />
+            </>
           ) : (
             <LotDetailPane
               key={selectedLotId}
@@ -257,6 +264,7 @@ const HistoryMode = ({
   return (
     <div className="lot-status-workspace">
       <section className="pane lot-status-search" aria-label={t.historyFilter.pane}>
+        {modeSwitch}
         <HistoryFilterBar
           appliedFilters={filters}
           actorOptions={actorOptions}
@@ -264,7 +272,6 @@ const HistoryMode = ({
           onSearch={onSearch}
           onReset={onReset}
         />
-        {modeSwitch}
       </section>
       <HistoryResults
         filters={filters}
