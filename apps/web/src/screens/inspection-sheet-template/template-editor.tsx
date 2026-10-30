@@ -23,6 +23,7 @@ import { templateDetailPath, templateKeys, useTemplateHistory } from './queries'
 import { TemplateVersionCompareDialog } from './version-compare-dialog';
 import { TemplateVersionListDialog } from './version-list-dialog';
 import { StepEditor, StepList } from './step-editor';
+import { StructureFields } from './structure-fields';
 
 const t = messages.inspectionSheetTemplate;
 
@@ -95,7 +96,6 @@ export const TemplateEditor = ({
   const ids = {
     version: useId(),
     material: useId(),
-    structure: useId(),
     remarks: useId(),
   };
   const pp = { name: useId(), power: useId(), motor: useId() };
@@ -335,9 +335,7 @@ export const TemplateEditor = ({
                 id={ids.version}
                 options={sortedVersions.map((version) => ({
                   value: String(version.inspectionSheetTemplateId),
-                  label: `${t.editor.versionChip(version.templateVersion)} · ${
-                    t.statuses[version.statusCode] ?? version.statusCode
-                  }`,
+                  label: t.editor.versionChip(version.templateVersion),
                 }))}
                 value={String(template.inspectionSheetTemplateId)}
                 disabled={sortedVersions.length < 2 || onSelectVersion === undefined}
@@ -407,7 +405,13 @@ export const TemplateEditor = ({
           </div>
         </div>
       )}
-      {readOnly && <p className="field-note">{t.editor.readOnly}</p>}
+      {/* 고칠 수 없는 버전 — 정보 아이콘 + 파란 바탕 한 줄 라벨(사용자 지시 2026-10-30). */}
+      {readOnly && (
+        <p className="iqc-inspection-action-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {t.editor.readOnly}
+        </p>
+      )}
       <SaveErrorBanner
         error={writeError}
         onReload={() => {
@@ -417,150 +421,164 @@ export const TemplateEditor = ({
         }}
       />
 
-      <h3 className="pane-subtitle">{t.editor.headerSection}</h3>
-      <p className="field-note">{t.editor.headerNote}</p>
-      <div className="inspection-sheet-template-grid">
-        <TextField
-          label={t.editor.materialText}
-          id={ids.material}
-          value={draft.materialText}
-          maxLength={500}
-          disabled={readOnly}
-          onChange={(e) => patch({ materialText: e.target.value })}
-        />
-        <TextField
-          label={t.editor.structureText}
-          id={ids.structure}
-          value={draft.structureText}
-          maxLength={500}
-          disabled={readOnly}
-          onChange={(e) => patch({ structureText: e.target.value })}
-        />
-        <div className="field-cell inspection-sheet-template-check">
-          <Checkbox
-            checked={draft.rohsFlag}
-            disabled={readOnly}
-            onChange={(e) => patch({ rohsFlag: e.target.checked })}
-          >
-            {t.editor.rohsFlag}
-          </Checkbox>
-        </div>
-        {draft.formLayoutCode === 'PP' && (
-          <>
-            <TextField
-              label={t.editor.productNameText}
-              id={pp.name}
-              value={draft.productNameText}
-              maxLength={200}
-              disabled={readOnly}
-              onChange={(e) => patch({ productNameText: e.target.value })}
-            />
-            <TextField
-              label={t.editor.powerText}
-              id={pp.power}
-              value={draft.powerText}
-              maxLength={200}
-              disabled={readOnly}
-              onChange={(e) => patch({ powerText: e.target.value })}
-            />
-            <TextField
-              label={t.editor.motorText}
-              id={pp.motor}
-              value={draft.motorText}
-              maxLength={200}
-              disabled={readOnly}
-              onChange={(e) => patch({ motorText: e.target.value })}
-            />
-          </>
-        )}
-        {/* 비고는 글이 길다(500자) — 한 줄을 다 쓴다(#208). */}
-        <div className="inspection-sheet-template-wide">
-          <TextField
-            label={t.editor.remarks}
-            id={ids.remarks}
-            value={draft.remarks}
-            maxLength={500}
-            disabled={readOnly}
-            fullWidth
-            onChange={(e) => patch({ remarks: e.target.value })}
-          />
-        </div>
-      </div>
-
-      <h3 className="pane-subtitle">{t.editor.lotSection}</h3>
-      <p className="field-note">{t.editor.lotNote}</p>
-      <div className="inspection-sheet-template-lots">
-        {LOT_SLOTS.map((slot) => {
-          const sources = draft.lotSources.filter((source) => source.slotCode === slot);
-          return (
-            <div className="inspection-sheet-template-lot-row" key={slot}>
-              <span className="field-label">{t.slots[slot]}</span>
-              <ul className="inspection-sheet-template-chips">
-                {sources.length === 0 && (
-                  <li className="inspection-sheet-template-muted">{t.editor.noLotItem}</li>
-                )}
-                {sources.map((source) => {
-                  const [code, name] = splitLabel(source.label);
-                  const content = (
-                    <span className="inspection-sheet-template-chip" title={source.label}>
-                      <strong>{code}</strong>
-                      {name && <span className="inspection-sheet-template-muted">{name}</span>}
-                    </span>
-                  );
-                  return (
-                    <li key={source.itemId}>
-                      {readOnly ? (
-                        <Chip size="sm">{content}</Chip>
-                      ) : (
-                        <Chip
-                          size="sm"
-                          removeLabel={t.editor.removeLotItem(source.label)}
-                          onRemove={() =>
-                            patch({
-                              lotSources: draft.lotSources.filter(
-                                (row) => !(row.slotCode === slot && row.itemId === source.itemId),
-                              ),
-                            })
-                          }
-                        >
-                          {content}
-                        </Chip>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-              {!readOnly && (
-                <Button
-                  variant="outlined"
-                  leadingIcon={<Icon name="add" size={18} />}
-                  aria-label={t.editor.addLotItem(t.slots[slot] ?? slot)}
-                  onClick={() => setPicking({ kind: 'lot', slot })}
-                >
-                  {t.editor.addLot}
-                </Button>
-              )}
+      {/* 상단 표시 정보 · LOT 표시 항목 · 검사 단계 및 항목을 한 상자에, 사이는 구분선(사용자 시안 2026-10-30). */}
+      <div className="inspection-sheet-template-body">
+        <section className="inspection-sheet-template-section">
+          <h3 className="pane-subtitle">{t.editor.headerSection}</h3>
+          <div className="inspection-sheet-template-grid">
+            <div className="inspection-sheet-template-wide">
+              <TextField
+                fullWidth
+                label={t.editor.materialText}
+                id={ids.material}
+                value={draft.materialText}
+                placeholder={t.editor.materialPlaceholder}
+                maxLength={500}
+                disabled={readOnly}
+                onChange={(e) => patch({ materialText: e.target.value })}
+              />
             </div>
-          );
-        })}
-      </div>
+            <StructureFields
+              text={draft.structureText}
+              disabled={readOnly}
+              onChange={(structureText) => patch({ structureText })}
+            />
+            {/* OP향 양식은 RoHS 체크를 두지 않는다(사용자 지시 2026-10-30) — 값은 그대로 둔다. */}
+            {draft.formLayoutCode === 'PP' && (
+              <div className="field-cell inspection-sheet-template-check">
+                <Checkbox
+                  checked={draft.rohsFlag}
+                  disabled={readOnly}
+                  onChange={(e) => patch({ rohsFlag: e.target.checked })}
+                >
+                  {t.editor.rohsFlag}
+                </Checkbox>
+              </div>
+            )}
+            {draft.formLayoutCode === 'PP' && (
+              <>
+                <TextField
+                  label={t.editor.productNameText}
+                  id={pp.name}
+                  value={draft.productNameText}
+                  maxLength={200}
+                  disabled={readOnly}
+                  onChange={(e) => patch({ productNameText: e.target.value })}
+                />
+                <TextField
+                  label={t.editor.powerText}
+                  id={pp.power}
+                  value={draft.powerText}
+                  maxLength={200}
+                  disabled={readOnly}
+                  onChange={(e) => patch({ powerText: e.target.value })}
+                />
+                <TextField
+                  label={t.editor.motorText}
+                  id={pp.motor}
+                  value={draft.motorText}
+                  maxLength={200}
+                  disabled={readOnly}
+                  onChange={(e) => patch({ motorText: e.target.value })}
+                />
+              </>
+            )}
+            {/* 비고는 글이 길다(500자) — 한 줄을 다 쓴다(#208). */}
+            <div className="inspection-sheet-template-wide">
+              <TextField
+                label={t.editor.remarks}
+                id={ids.remarks}
+                value={draft.remarks}
+                placeholder={t.editor.remarksPlaceholder}
+                maxLength={500}
+                disabled={readOnly}
+                fullWidth
+                onChange={(e) => patch({ remarks: e.target.value })}
+              />
+            </div>
+          </div>
+        </section>
 
-      <h3 className="pane-subtitle">{t.editor.stepSection}</h3>
-      {errors.steps && <p className="field-error">{errors.steps}</p>}
-      <div className="inspection-sheet-template-steps">
-        <StepList
-          steps={draft.steps}
-          selected={currentStep.stepCode}
-          isInvalid={(step) => stepInvalid(step, errors)}
-          onSelect={onStepChange}
-        />
-        <StepEditor
-          key={currentStep.stepCode}
-          step={currentStep}
-          readOnly={readOnly}
-          errors={errors}
-          onChange={setStep}
-        />
+        <section className="inspection-sheet-template-section">
+          <h3 className="pane-subtitle">{t.editor.lotSection}</h3>
+          <div className="inspection-sheet-template-lots">
+            {LOT_SLOTS.map((slot) => {
+              const sources = draft.lotSources.filter((source) => source.slotCode === slot);
+              return (
+                <div className="inspection-sheet-template-lot-row" key={slot}>
+                  <span className="inspection-sheet-template-lot-title">{t.slots[slot]}</span>
+                  <ul className="inspection-sheet-template-chips">
+                    {sources.length === 0 && (
+                      <li className="inspection-sheet-template-muted">{t.editor.noLotItem}</li>
+                    )}
+                    {sources.map((source) => {
+                      const [code, name] = splitLabel(source.label);
+                      const content = (
+                        <span className="inspection-sheet-template-chip" title={source.label}>
+                          <strong>{code}</strong>
+                          {name && <span className="inspection-sheet-template-muted">{name}</span>}
+                        </span>
+                      );
+                      return (
+                        <li key={source.itemId}>
+                          {readOnly ? (
+                            <Chip size="sm">{content}</Chip>
+                          ) : (
+                            <Chip
+                              size="sm"
+                              removeLabel={t.editor.removeLotItem(source.label)}
+                              onRemove={() =>
+                                patch({
+                                  lotSources: draft.lotSources.filter(
+                                    (row) =>
+                                      !(row.slotCode === slot && row.itemId === source.itemId),
+                                  ),
+                                })
+                              }
+                            >
+                              {content}
+                            </Chip>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {!readOnly && (
+                    <Button
+                      variant="outlined"
+                      leadingIcon={<Icon name="add" size={18} />}
+                      aria-label={t.editor.addLotItem(t.slots[slot] ?? slot)}
+                      onClick={() => setPicking({ kind: 'lot', slot })}
+                    >
+                      {t.editor.addLot}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="inspection-sheet-template-section">
+          <h3 className="pane-subtitle">{t.editor.stepSection}</h3>
+          {errors.steps && <p className="field-error">{errors.steps}</p>}
+          <div className="inspection-sheet-template-steps">
+            <StepList
+              /* 고칠 수 없는 버전은 쓰는 단계만 보인다(사용자 지시 2026-10-30). */
+              steps={readOnly ? draft.steps.filter((step) => step.enabled) : draft.steps}
+              selected={currentStep.stepCode}
+              isInvalid={(step) => stepInvalid(step, errors)}
+              onSelect={onStepChange}
+            />
+            <StepEditor
+              key={currentStep.stepCode}
+              step={currentStep}
+              readOnly={readOnly}
+              errors={errors}
+              onChange={setStep}
+            />
+          </div>
+        </section>
       </div>
 
       <div className="inspection-sheet-template-actions">
@@ -699,6 +717,7 @@ export const TemplateEditor = ({
       {picking !== null && (
         <ItemPickerDialog
           multiple={false}
+          compact
           showAvailability={false}
           confirmLabel={t.editor.pickLotConfirm}
           onClose={() => setPicking(null)}

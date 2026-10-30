@@ -81,12 +81,16 @@ export const layoutSteps = (
       },
   );
 
+/** 새 기준의 재료 기본 글 — 검사표에 그대로 찍히는 글이라 화면 언어와 상관없이 이 글이다(사용자 지시 2026-10-30). */
+export const DEFAULT_MATERIAL_TEXT =
+  '프레임 및 기타 금속 부품은 통상 상태에서 위험하지 않은 재료를 사용하고 방청 처리함';
+
 export const emptyDraft = (businessUnitId: number | null): TemplateDraft => ({
   itemId: null,
   itemLabel: '',
   businessUnitId,
   formLayoutCode: 'OP',
-  materialText: '',
+  materialText: DEFAULT_MATERIAL_TEXT,
   structureText: '',
   rohsFlag: true,
   productNameText: '',
@@ -94,7 +98,10 @@ export const emptyDraft = (businessUnitId: number | null): TemplateDraft => ({
   motorText: '',
   remarks: '',
   lotSources: [],
-  steps: layoutSteps('OP'),
+  /* 새 기준은 공정검사1을 켠 채로 시작한다(사용자 지시 2026-10-30). */
+  steps: layoutSteps('OP').map((step) =>
+    step.stepCode === 'PROCESS_1' ? { ...step, enabled: true } : step,
+  ),
 });
 
 export const toDraft = (template: InspectionSheetTemplate): TemplateDraft => {
@@ -178,4 +185,31 @@ export const validateDraft = (draft: TemplateDraft): Record<string, string> => {
     }
   }
   return errors;
+};
+
+/** 구조 및 중량 — 화면은 W · D · H(mm) · 중량(kg) 네 칸으로 받고, 저장은 기존 한 글 칸에 합쳐 넣는다(사용자 결정 2026-10-30). */
+export interface StructureParts {
+  w: string;
+  d: string;
+  h: string;
+  weight: string;
+}
+
+/* 띄어쓰기 · 대소문자 · × 대신 x 는 너그럽게 — 「2.3kg」처럼 손으로 쓴 글도 칸으로 푼다(사용자 지시 2026-10-30). */
+const STRUCTURE_PATTERN =
+  /^(?:W\s*(\d*\.?\d*)\s*[×xX*]\s*D\s*(\d*\.?\d*)\s*[×xX*]\s*H\s*(\d*\.?\d*)\s*mm)?\s*\/?\s*(?:(\d+\.?\d*)\s*kg)?$/i;
+
+/** 「W 300 × D 200 × H 150 mm / 2.3 kg」 — 빈 칸은 빼고 합친다. 네 칸이 모두 비면 빈 글. */
+export const composeStructure = ({ w, d, h, weight }: StructureParts): string => {
+  const size =
+    w.trim() || d.trim() || h.trim() ? `W ${w.trim()} × D ${d.trim()} × H ${h.trim()} mm` : '';
+  const mass = weight.trim() ? `${weight.trim()} kg` : '';
+  return [size, mass].filter((part) => part !== '').join(' / ');
+};
+
+/** 이 화면이 합친 글이면 네 칸으로 되돌린다. 예전에 손으로 쓴 글이면 null — 화면은 그 글을 따로 보여 준다. */
+export const parseStructure = (text: string): StructureParts | null => {
+  const match = STRUCTURE_PATTERN.exec(text.trim());
+  if (match === null) return null;
+  return { w: match[1] ?? '', d: match[2] ?? '', h: match[3] ?? '', weight: match[4] ?? '' };
 };

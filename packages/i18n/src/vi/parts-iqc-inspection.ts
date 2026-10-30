@@ -35,22 +35,25 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     title: 'Chi tiết tiêu chuẩn kiểm tra',
     edit: 'Sửa',
     version: 'Phiên bản',
-    versionValue: (no: number, from: string) => `Bản ${String(no)} · áp dụng ${from}`,
-    sampling: 'Lấy mẫu',
-    full: 'Toàn bộ',
+    versionValue: (no: number, from: string) => `Bản ${String(no)} · áp dụng từ ${from}`,
+    sampling: 'Phương thức kiểm tra',
+    full: 'Kiểm tra toàn bộ',
     ratio: (r: number) => `${String(r)}% của LOT`,
     qty: (n: number) => `${String(n)} cái`,
     aqlAcceptance: 'Tiêu chuẩn chấp nhận',
+    no: 'STT',
     method: 'Phương pháp',
+    methodNone: 'Chưa đăng ký',
     methodOf: { MEASUREMENT: 'Đo', VISUAL: 'Ngoại quan', FUNCTIONAL: 'Chức năng' } as Record<
       string,
       string
     >,
     count: 'Số mẫu',
-    acceptance: 'Lỗi cho phép',
+    acceptance: 'Số lỗi cho phép',
     okNg: 'OK / NG',
     aqlAcceptanceValue: (aql: string, c: number | null) =>
       `AQL ${aql} · lỗi cho phép ${c === null ? '-' : String(c)}`,
+    aqlAcceptanceNone: 'Không áp dụng',
     items: 'Hạng mục kiểm tra',
     itemCount: (n: number) => `(${String(n)})`,
   },
@@ -118,6 +121,8 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     heading: 'Bản vẽ tiêu chuẩn',
     alt: (n: number) => `Bản vẽ tiêu chuẩn kiểm tra ${String(n)}`,
     none: 'Chưa có bản vẽ',
+    prev: 'Bản vẽ trước',
+    next: 'Bản vẽ sau',
   },
 
   visual: {
@@ -162,7 +167,11 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   },
 
   judgment: { ACCEPTED: 'Đạt', REJECTED: 'Không đạt', HELD: 'Giữ lại' },
-  requestStatus: { REQUESTED: 'Chờ kiểm tra', IN_PROGRESS: 'Đang kiểm tra' },
+  requestStatus: {
+    REQUESTED: 'Chờ kiểm tra',
+    IN_PROGRESS: 'Đang kiểm tra',
+    SKIPPED: 'Bỏ qua kiểm tra',
+  },
   ok: 'OK',
   ng: 'NG',
 

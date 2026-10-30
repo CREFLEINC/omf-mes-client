@@ -17,6 +17,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 
+import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { FieldLabel } from '../iqc-inspection/field-label';
@@ -34,6 +35,7 @@ import { useItemNames, useLotNumbers } from '../iqc-inspection/reference-lookup'
 import { sampleQtyOf } from '../iqc-inspection/sample-qty';
 import { latestRound } from '../iqc-inspection/types';
 import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
+import { IqcSkipPane } from '../iqc-inspection/skip-pane';
 import { InspectionHistory } from './history';
 import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
@@ -59,6 +61,7 @@ import {
 } from './judgment';
 import { MeasurementTable, rowStateOf } from './measurement-table';
 import {
+  partsIqcKeys,
   useDrawings,
   useInboundInfo,
   useInspectionPlan,
@@ -137,6 +140,8 @@ export const InspectionDetail = ({
     if (loading) return <p className="field-note">{t.dialog.loading}</p>;
     if (failed || detail.data === undefined)
       return <AlertBanner variant="error">{t.dialog.loadFailed}</AlertBanner>;
+    /* 생략으로 닫힌 의뢰는 입력할 것이 없다 — 위 「IQC 생략」 구획이 그 사실을 말한다. */
+    if (detail.data.statusCode === 'SKIPPED') return null;
     if (round !== null && round.statusCode === 'CONFIRMED') {
       return (
         <AlertBanner variant="info">
@@ -197,6 +202,19 @@ export const InspectionDetail = ({
           </Chip>
         )}
       </div>
+      {/* IQC 생략(OA 화면 #212 와 같은 구획 · 사용자 지시 2026-10-30) — 확정 회차가 있으면 생략으로 덮지 않는다. */}
+      {detail.data !== undefined &&
+        detail.data.lotId !== null &&
+        rounds.data !== undefined &&
+        rounds.data.every((row) => row.statusCode !== 'CONFIRMED') && (
+          <IqcSkipPane
+            lotId={detail.data.lotId}
+            requestStatusCode={detail.data.statusCode}
+            skipBasisCode={detail.data.skipBasisCode}
+            workerNo={session?.worker?.workerNo ?? null}
+            alsoInvalidate={[partsIqcKeys.all]}
+          />
+        )}
       {/* 검사 입력 · 검사 이력(사용자 지시 2026-10-30) — 이력은 이 의뢰의 회차를 읽기 전용으로 */}
       <Tabs
         className="parts-iqc-detail-tabs"
@@ -265,30 +283,22 @@ interface FormProps {
   onDirtyChange: (dirty: boolean) => void;
 }
 
-const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: Blob }[] }) => {
-  /* 주소는 효과 안에서 만들고 거둔다 — 렌더에서 만들면 개발 모드의 효과 두 번 실행이 그 주소를 먼저 거둬 그림이 깨진다. */
-  const [urls, setUrls] = useState<string[]>([]);
-  useEffect(() => {
-    const made = drawings.map((d) => URL.createObjectURL(d.blob));
-    setUrls(made);
-    return () => made.forEach((url) => URL.revokeObjectURL(url));
-  }, [drawings]);
-  return (
-    <section className="parts-iqc-block" aria-label={t.drawing.heading}>
-      <div className="parts-iqc-block-head">
-        <h3>{t.drawing.heading}</h3>
-        {urls.length === 0 && <span className="parts-iqc-muted">{t.drawing.none}</span>}
-      </div>
-      {urls.length === 0 ? null : (
-        <div className="parts-iqc-drawings">
-          {urls.map((url, index) => (
-            <img key={url} src={url} alt={t.drawing.alt(index + 1)} />
-          ))}
-        </div>
-      )}
-    </section>
-  );
-};
+/** 기준서 도면 — 품질 기준 정보 「도면」 탭과 같은 보기(한 장씩 좌우로 넘김 · 사용자 지시 2026-10-30). */
+const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: Blob }[] }) => (
+  <section className="parts-iqc-block" aria-label={t.drawing.heading}>
+    <div className="parts-iqc-block-head">
+      <h3>{t.drawing.heading}</h3>
+      {drawings.length === 0 && <span className="parts-iqc-muted">{t.drawing.none}</span>}
+    </div>
+    {drawings.length === 0 ? null : (
+      <InspectionDrawingImages
+        drawings={drawings}
+        altOf={t.drawing.alt}
+        labels={{ prev: t.drawing.prev, next: t.drawing.next }}
+      />
+    )}
+  </section>
+);
 
 const InspectionForm = (props: FormProps) => {
   const { request, version, specs, draft } = props;
@@ -640,6 +650,63 @@ const InspectionForm = (props: FormProps) => {
         onChange={(itemId, index, text) => change(withValue(form, itemId, index, text))}
       />
 
+      {/* 종합 판정 — 치수 측정 바로 아래(사용자 지시 2026-10-30). 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}
+      <section className="parts-iqc-card" aria-labelledby="parts-iqc-verdict">
+        <h3 id="parts-iqc-verdict" className="parts-iqc-sub-title">
+          {t.verdict.overall}
+        </h3>
+        <div className="parts-iqc-verdict-line">
+          <div
+            className={`parts-iqc-auto-box${suggested === 'REJECTED' ? ' is-ng' : suggested === 'ACCEPTED' ? ' is-ok' : ''}`}
+          >
+            <span className="parts-iqc-auto-label">
+              {t.verdict.suggested}
+            </span>
+            {suggested === null ? (
+              <span className="parts-iqc-muted">{t.verdict.pending}</span>
+            ) : (
+              <span className="parts-iqc-auto-value">
+                <strong>{t.judgment[suggested] ?? suggested}</strong>
+                {` ${t.verdict.rejectedQty(rejectedQty)}`}
+              </span>
+            )}
+          </div>
+          <div className="parts-iqc-inline-field parts-iqc-overall">
+            <span className="field-label" id="parts-iqc-overall">
+              {t.verdict.overall}
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
+            </span>
+            <Select
+              aria-labelledby="parts-iqc-overall"
+              value={overall}
+              disabled={suggested === null}
+              options={['ACCEPTED', 'REJECTED', 'HELD'].map((value) => ({
+                value,
+                label: t.judgment[value] ?? value,
+              }))}
+              onChange={(value) => setChosen(value)}
+            />
+          </div>
+        </div>
+        {needsReason && (
+          <div className="field-cell parts-iqc-stretch">
+            <FieldLabel htmlFor="parts-iqc-reason" label={t.verdict.reason} required />
+            <TextArea
+              id="parts-iqc-reason"
+              fullWidth
+              helperText={t.verdict.reasonHint}
+              value={reason}
+              maxLength={500}
+              rows={2}
+              error={submit.fieldErrors.judgmentChangeReason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </div>
+        )}
+      </section>
+
       <DrawingImages drawings={props.drawings} />
 
       {/* 외관 · XRF — 한 줄에 수량 둘 · 세로선 · XRF 결과, 구분선 아래 XRF 성적서(사용자 시안 2026-10-29) */}
@@ -923,63 +990,6 @@ const InspectionForm = (props: FormProps) => {
             onChange={(event) => change({ ...form, remarks: event.target.value })}
           />
         </div>
-      </section>
-
-      {/* 종합 판정 — 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}
-      <section className="parts-iqc-card" aria-labelledby="parts-iqc-verdict">
-        <h3 id="parts-iqc-verdict" className="parts-iqc-sub-title">
-          {t.verdict.overall}
-        </h3>
-        <div className="parts-iqc-verdict-line">
-          <div
-            className={`parts-iqc-auto-box${suggested === 'REJECTED' ? ' is-ng' : suggested === 'ACCEPTED' ? ' is-ok' : ''}`}
-          >
-            <span className="parts-iqc-auto-label">
-              {t.verdict.suggested}
-            </span>
-            {suggested === null ? (
-              <span className="parts-iqc-muted">{t.verdict.pending}</span>
-            ) : (
-              <span className="parts-iqc-auto-value">
-                <strong>{t.judgment[suggested] ?? suggested}</strong>
-                {` ${t.verdict.rejectedQty(rejectedQty)}`}
-              </span>
-            )}
-          </div>
-          <div className="parts-iqc-inline-field parts-iqc-overall">
-            <span className="field-label" id="parts-iqc-overall">
-              {t.verdict.overall}
-              <span className="required-mark" aria-hidden="true">
-                {' *'}
-              </span>
-            </span>
-            <Select
-              aria-labelledby="parts-iqc-overall"
-              value={overall}
-              disabled={suggested === null}
-              options={['ACCEPTED', 'REJECTED', 'HELD'].map((value) => ({
-                value,
-                label: t.judgment[value] ?? value,
-              }))}
-              onChange={(value) => setChosen(value)}
-            />
-          </div>
-        </div>
-        {needsReason && (
-          <div className="field-cell parts-iqc-stretch">
-            <FieldLabel htmlFor="parts-iqc-reason" label={t.verdict.reason} required />
-            <TextArea
-              id="parts-iqc-reason"
-              fullWidth
-              helperText={t.verdict.reasonHint}
-              value={reason}
-              maxLength={500}
-              rows={2}
-              error={submit.fieldErrors.judgmentChangeReason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </div>
-        )}
       </section>
 
       {ask && (
