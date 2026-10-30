@@ -32,6 +32,7 @@ import {
 import { useItemNames, useLotNumbers } from '../iqc-inspection/reference-lookup';
 import { sampleQtyOf } from '../iqc-inspection/sample-qty';
 import { latestRound } from '../iqc-inspection/types';
+import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
   countOf,
@@ -159,6 +160,7 @@ export const InspectionDetail = ({
         defectCodes={(defectCodes.data ?? []) as DefectCode[]}
         defectCodesFailed={defectCodes.isError}
         inspector={session?.worker ?? null}
+        appUserId={session?.userId ?? null}
         draft={
           draftRound === null
             ? null
@@ -211,6 +213,8 @@ interface FormProps {
   defectCodes: DefectCode[];
   defectCodesFailed: boolean;
   inspector: { workerName: string } | null;
+  /** 작업자 연결 창이 이을 계정 — 세션이 없으면 버튼을 두지 않는다. */
+  appUserId: number | null;
   draft: {
     inspectionResultId: number;
     inspectedQty: number;
@@ -297,6 +301,7 @@ const InspectionForm = (props: FormProps) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [xrfReport, setXrfReport] = useState<File | null>(null);
   const [ask, setAsk] = useState(false);
+  const [connectOpen, setConnectOpen] = useState(false);
   const submit = useSubmitInspection(props.onSubmitted);
 
   const inspectedQty = countOf(form.visualInspectedQty);
@@ -427,7 +432,22 @@ const InspectionForm = (props: FormProps) => {
   return (
     <div className="parts-iqc-form">
       {props.inspector === null && (
-        <AlertBanner variant="warning">{t.dialog.workerMissing}</AlertBanner>
+        <AlertBanner
+          variant="warning"
+          action={
+            props.appUserId === null ? undefined : (
+              <Button variant="outlined" size="sm" onClick={() => setConnectOpen(true)}>
+                {messages.usersRoles.workerLink.connect}
+              </Button>
+            )
+          }
+        >
+          {t.dialog.workerMissing}
+        </AlertBanner>
+      )}
+      {/* 경고 안에서 바로 사번을 잇는다(사용자 지시 2026-10-30) — OA 화면의 연결 창과 같다. 성공하면 세션을 다시 읽어 경고가 걷힌다. */}
+      {connectOpen && props.appUserId !== null && (
+        <WorkerConnectDialog appUserId={props.appUserId} onClose={() => setConnectOpen(false)} />
       )}
 
       <section className="parts-iqc-block" aria-labelledby="parts-iqc-target">
