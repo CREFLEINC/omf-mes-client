@@ -27240,8 +27240,17 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 .parts-iqc-lot-inspected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
   padding-top: var(--space-3);
   border-top: 1px solid var(--outline-variant);
+}
+
+/* 검사 수량 — 검사일시 옆, 숫자 몇 자리 폭(사용자 지시 2026-10-30). */
+.parts-iqc-inspected-qty input {
+  width: 6rem;
 }
 
 /* 날짜 · 시각 칸은 내용 폭만큼 — 상자 가로 전체로 늘이지 않는다(사용자 시안). */

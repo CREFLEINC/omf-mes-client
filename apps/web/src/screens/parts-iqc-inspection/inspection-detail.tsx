@@ -591,8 +591,9 @@ const InspectionForm = (props: FormProps) => {
                 />
               </div>
             </div>
-            {/* 검사 수량 — 이 회차에 실제로 검사한 수(사용자 지시 2026-10-30). 기본은 검사기준의 시료 수, 고칠 수 있다. */}
-            <div className="parts-iqc-inline-field">
+            {/* 검사 수량 — 이 회차에 실제로 검사한 수(사용자 지시 2026-10-30). 기본은 검사기준의 시료 수, 고칠 수 있다.
+                검사일시와 한 줄, 칸 이름은 위에(검사일시와 같은 모양 · 사용자 지시 2026-10-30). */}
+            <div className="field-cell parts-iqc-inspected-qty">
               <FieldLabel htmlFor="parts-iqc-inspected-qty" label={t.lot.inspectedQty} required />
               <TextField
                 id="parts-iqc-inspected-qty"
