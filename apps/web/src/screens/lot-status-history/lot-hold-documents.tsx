@@ -26,6 +26,7 @@ const formatDateTime = (value: string | null): string => {
 
 export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
   const [page, setPage] = useState(1);
+  const [open, setOpen] = useState(true);
   const holds = useLotHolds(lotId, page);
   const actors = useLotActorOptions(true);
   const reasons = useLotHoldReasonOptions();
@@ -133,73 +134,86 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
   return (
     <section aria-labelledby="lot-hold-documents-title">
       <div className="lot-status-pane-head">
-        <h3 id="lot-hold-documents-title">{t.holdDocuments.pane}</h3>
+        <h3 id="lot-hold-documents-title">
+          {/* 이력이 길 수 있어 접었다 펼 수 있게 한다(사용자 2026-10-30). 처음에는 펼쳐 둔다. */}
+          <button
+            type="button"
+            className="lot-section-toggle"
+            aria-expanded={open}
+            aria-controls="lot-hold-documents-body"
+            onClick={() => setOpen((value) => !value)}
+          >
+            {t.holdDocuments.pane}
+          </button>
+        </h3>
         {meta !== undefined && (
           <span className="field-note">{t.current.list.total(String(meta.total))}</span>
         )}
       </div>
-      {holds.isPending && (
-        <div role="status" aria-label={t.holdDocuments.loading}>
-          <SkeletonText lines={3} />
-        </div>
-      )}
-      {holds.isError && (
-        <AlertBanner
-          className="lot-detail-failure-banner"
-          variant="error"
-          title={t.holdDocuments.failed}
-          action={
-            <Button
-              variant="outlined"
-              size="sm"
-              aria-label={t.detail.retryLabel(t.holdDocuments.pane)}
-              onClick={() => void holds.refetch()}
-            >
-              {t.detail.retry}
-            </Button>
-          }
-        />
-      )}
-      {holds.data !== undefined && (
-        <>
-          {holds.isFetching && (
-            <p className="field-note" role="status">
-              {t.holdDocuments.refreshingText}
-            </p>
-          )}
-          <div className="wide-table" aria-busy={holds.isFetching}>
-            <Table
-              density="comfortable"
-              caption={t.holdDocuments.pane}
-              columns={columns}
-              rows={rows}
-              getRowId={(row) => String(row.lotHoldId)}
-              empty={<EmptyState size="sm" title={t.holdDocuments.empty} />}
-            />
+      <div id="lot-hold-documents-body" hidden={!open}>
+        {holds.isPending && (
+          <div role="status" aria-label={t.holdDocuments.loading}>
+            <SkeletonText lines={3} />
           </div>
-          {/* 총 건수는 제목 줄에 있다 — 쪽이 둘 이상일 때만 이동 줄을 둔다(2026-10-30 시안). */}
-          {meta !== undefined && totalPages > 1 && (
-            <nav className="form-actions" aria-label={t.holdDocuments.pagination}>
-              <p className="field-note form-actions-secondary">{range}</p>
+        )}
+        {holds.isError && (
+          <AlertBanner
+            className="lot-detail-failure-banner"
+            variant="error"
+            title={t.holdDocuments.failed}
+            action={
               <Button
                 variant="outlined"
-                disabled={currentPage <= 1}
-                onClick={() => setPage(currentPage - 1)}
+                size="sm"
+                aria-label={t.detail.retryLabel(t.holdDocuments.pane)}
+                onClick={() => void holds.refetch()}
               >
-                {t.actions.previousPage}
+                {t.detail.retry}
               </Button>
-              <Button
-                variant="outlined"
-                disabled={currentPage >= totalPages}
-                onClick={() => setPage(currentPage + 1)}
-              >
-                {t.actions.nextPage}
-              </Button>
-            </nav>
-          )}
-        </>
-      )}
-      {actorsLimited && <p className="field-note">{t.holdDocuments.actorsLimited}</p>}
+            }
+          />
+        )}
+        {holds.data !== undefined && (
+          <>
+            {holds.isFetching && (
+              <p className="field-note" role="status">
+                {t.holdDocuments.refreshingText}
+              </p>
+            )}
+            <div className="wide-table" aria-busy={holds.isFetching}>
+              <Table
+                density="comfortable"
+                caption={t.holdDocuments.pane}
+                columns={columns}
+                rows={rows}
+                getRowId={(row) => String(row.lotHoldId)}
+                empty={<EmptyState size="sm" title={t.holdDocuments.empty} />}
+              />
+            </div>
+            {/* 총 건수는 제목 줄에 있다 — 쪽이 둘 이상일 때만 이동 줄을 둔다(2026-10-30 시안). */}
+            {meta !== undefined && totalPages > 1 && (
+              <nav className="form-actions" aria-label={t.holdDocuments.pagination}>
+                <p className="field-note form-actions-secondary">{range}</p>
+                <Button
+                  variant="outlined"
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage(currentPage - 1)}
+                >
+                  {t.actions.previousPage}
+                </Button>
+                <Button
+                  variant="outlined"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage(currentPage + 1)}
+                >
+                  {t.actions.nextPage}
+                </Button>
+              </nav>
+            )}
+          </>
+        )}
+        {actorsLimited && <p className="field-note">{t.holdDocuments.actorsLimited}</p>}
+      </div>
     </section>
   );
 };

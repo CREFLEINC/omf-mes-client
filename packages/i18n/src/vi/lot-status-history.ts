@@ -95,7 +95,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
   current: {
     pane: 'Tình hình LOT',
     columns: {
-      lot: 'LOT',
+      lot: 'Số LOT',
       item: 'Mặt hàng',
       status: 'Trạng thái',
       onHand: 'Số lượng đang giữ',
@@ -208,7 +208,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       lotNo: 'Số LOT',
       item: 'Mặt hàng',
       lotType: 'Loại LOT',
-      status: 'Trạng thái hiện tại',
+      status: 'Trạng thái',
       initialQty: 'Số lượng ban đầu',
       expiryDate: 'Hạn sử dụng',
       manufacturedAt: 'Thời điểm sản xuất',

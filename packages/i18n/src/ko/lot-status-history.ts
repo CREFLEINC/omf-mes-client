@@ -102,7 +102,7 @@ export const lotStatusHistory = {
   current: {
     pane: 'LOT 현황',
     columns: {
-      lot: 'LOT',
+      lot: 'LOT 번호',
       item: '품목',
       status: '상태',
       onHand: '보유 수량',
@@ -224,7 +224,7 @@ export const lotStatusHistory = {
       lotNo: 'LOT 번호',
       item: '품목',
       lotType: 'LOT 유형',
-      status: '현재 상태',
+      status: '상태',
       initialQty: '초기 수량',
       expiryDate: '유효기한',
       manufacturedAt: '제조 시각',

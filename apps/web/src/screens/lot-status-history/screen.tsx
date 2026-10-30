@@ -245,6 +245,7 @@ const LotMode = ({
           filters={filters}
           page={page}
           statusOptions={toCodeOptions(lotStatuses.data?.items)}
+          lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
           onSortChange={onSortChange}
           onPageChange={onPageChange}
           pageSize={pageSize}

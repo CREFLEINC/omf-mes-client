@@ -855,7 +855,7 @@ describe('Lot Status 화면 shell', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((header) => (header.textContent ?? '').replace('drag_indicator', '')),
-    ).toEqual(['LOT', '품목', '상태', '보유 수량', '상태 사유', '최종 변경일']);
+    ).toEqual(['LOT 번호', '품목', '상태', '보유 수량', '상태 사유', '최종 변경일']);
     const row = await within(table).findByRole('row', { name: /SAMPLE-LOT-Z/ });
     await user.click(within(row).getAllByRole('cell')[2]!);
     await waitFor(() => expect(locationSearch().get('lot')).toBe('401'));
@@ -888,8 +888,8 @@ describe('Lot Status 화면 shell', () => {
         .getAllByRole('button')
         .filter((button) => button.closest('th') !== null)
         .map(headerText),
-    ).toEqual(['LOT', '품목', '최종 변경일']);
-    await user.click(within(table).getByRole('button', { name: 'LOT' }));
+    ).toEqual(['LOT 번호', '품목', '최종 변경일']);
+    await user.click(within(table).getByRole('button', { name: 'LOT 번호' }));
     await waitFor(() => expect(locationSearch().get('sort')).toBe('lotNoAsc'));
     await waitFor(() => expect(requestCount(urls, '/quality/lot-statuses')).toBe(2));
     expect(locationSearch().get('page')).toBeNull();
@@ -898,9 +898,9 @@ describe('Lot Status 화면 shell', () => {
     expect(
       within(screen.getByRole('table', { name: 'LOT 현황' })).getAllByRole('row')[1],
     ).toHaveTextContent('SAMPLE-LOT-Z');
-    await user.click(screen.getByRole('button', { name: 'LOT' }));
+    await user.click(within(table).getByRole('button', { name: 'LOT 번호' }));
     await waitFor(() => expect(locationSearch().get('sort')).toBe('lotNoDesc'));
-    await user.click(screen.getByRole('button', { name: 'LOT' }));
+    await user.click(within(table).getByRole('button', { name: 'LOT 번호' }));
     await waitFor(() => expect(locationSearch().get('sort')).toBeNull());
     const latestHeader = screen
       .getAllByRole('columnheader')

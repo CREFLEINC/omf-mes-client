@@ -53,6 +53,7 @@ interface CurrentResultsProps {
   filters: LotFilters;
   page: number;
   statusOptions: readonly FilterOption[];
+  lotTypeOptions: readonly FilterOption[];
   onSortChange: (sort: LotStatusSort) => void;
   onPageChange: (page: number) => void;
   /** 한 쪽에 보일 LOT 수(20 · 50 · 100) — 바꾸면 첫 쪽으로 간다. */
@@ -67,6 +68,7 @@ export const CurrentResults = ({
   filters,
   page,
   statusOptions,
+  lotTypeOptions,
   onSortChange,
   onPageChange,
   pageSize: requestedPageSize,
@@ -108,12 +110,21 @@ export const CurrentResults = ({
       width: '260px',
       sortable: true,
       render: (row) => (
-        <span
-          className="lot-status-one-line"
-          title={row.lotNo}
-          aria-current={row.lotId === selectedLotId ? 'true' : undefined}
-        >
-          {row.lotNo}
+        <span className="lot-no-with-type">
+          <span
+            className="lot-status-one-line"
+            title={row.lotNo}
+            aria-current={row.lotId === selectedLotId ? 'true' : undefined}
+          >
+            {row.lotNo}
+          </span>
+          {/* LOT 유형 라벨 — 번호 오른쪽(사용자 2026-10-30). */}
+          {row.lotTypeCode !== null && (
+            <Chip variant="status" size="sm">
+              {lotTypeOptions.find((option) => option.value === row.lotTypeCode)?.label ??
+                t.values.unlisted(row.lotTypeCode)}
+            </Chip>
+          )}
         </span>
       ),
     },

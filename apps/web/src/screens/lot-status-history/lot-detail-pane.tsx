@@ -11,6 +11,7 @@ import { MaterialLotUsage, ProductionLotInputs } from './lot-genealogy';
 import { lotStatusTone } from './options';
 import { useLotDetail } from './queries';
 import { useItemNameSources } from './reference-options';
+import { useUomCodeOf, withUom } from './uoms';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
@@ -50,6 +51,7 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
         })
       : null;
   const fourMTypeLabel = useFourMChangeTypeLabel();
+  const uomCodeOf = useUomCodeOf();
   const itemId = detail.data?.itemId;
   const itemNames = useItemNameSources(itemId === undefined ? [] : [itemId]);
   const itemSource: LookupSource = (itemId === undefined ? undefined : itemNames.get(itemId)) ?? {
@@ -102,7 +104,17 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
         <dl className="lot-detail-fields" aria-label={t.detail.attributes}>
           {(
             [
-              ['wide', t.detail.fields.lotNo, detail.data.lotNo],
+              /* LOT 유형은 번호 옆 라벨로 보인다 — 목록의 LOT 번호 칸과 같게(사용자 2026-10-30). */
+              [
+                'wide',
+                t.detail.fields.lotNo,
+                <span className="lot-no-with-type">
+                  {detail.data.lotNo}
+                  <Chip variant="status" size="sm">
+                    {labelOf(lotTypeOptions, detail.data.lotTypeCode)}
+                  </Chip>
+                </span>,
+              ],
               [
                 'wide',
                 t.detail.fields.item,
@@ -115,8 +127,11 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
                   {labelOf(statusOptions, detail.data.statusCode)}
                 </Chip>,
               ],
-              ['short', t.detail.fields.lotType, labelOf(lotTypeOptions, detail.data.lotTypeCode)],
-              ['short', t.detail.fields.initialQty, String(detail.data.initialQty)],
+              [
+                'short',
+                t.detail.fields.initialQty,
+                withUom(String(detail.data.initialQty), uomCodeOf(detail.data.uomId)),
+              ],
               ['short', t.detail.fields.expiryDate, detail.data.expiryDate ?? EMPTY],
               ['short', t.detail.fields.manufacturedAt, formatDateTime(detail.data.manufacturedAt)],
               /* IQC 에서 적은 4M 변경품 — 변경품일 때만 줄을 둔다(omf-all-around#63). */
