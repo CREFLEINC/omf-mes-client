@@ -37,4 +37,21 @@ describe('InspectionDrawingImages (omf-all-around#208)', () => {
     expect(revoke).toHaveBeenCalledWith('blob:test/2');
     expect(revoke).not.toHaveBeenCalledWith('blob:test/3');
   });
+
+  /* 도면 3건이면 그림 3장 — 작은 그림(기준서 안 기호 등)도 빠지지 않고 선다(실검증 「3건인데 1장」 확인 · #208). */
+  it('도면 3건이면 그림 3장을 차례대로 그린다', () => {
+    let seq = 0;
+    vi.spyOn(URL, 'createObjectURL').mockImplementation(() => `blob:three/${String(++seq)}`);
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+
+    render(
+      <InspectionDrawingImages drawings={[drawing(1), drawing(2), drawing(3)]} altOf={altOf} />,
+    );
+
+    expect(screen.getAllByRole('img').map((img) => img.getAttribute('alt'))).toEqual([
+      '도면 1',
+      '도면 2',
+      '도면 3',
+    ]);
+  });
 });
