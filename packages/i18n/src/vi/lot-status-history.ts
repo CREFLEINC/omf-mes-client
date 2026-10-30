@@ -11,9 +11,13 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
   title: 'Tra cứu Lot Status · lịch sử thay đổi',
   breadcrumbRoot: 'Quản lý chất lượng',
   modes: {
-    label: 'Chế độ tra cứu Lot Status',
-    lot: 'Tìm theo LOT',
-    history: 'Tìm theo lịch sử',
+    label: 'Cách tra cứu',
+    lot: 'Số LOT',
+    history: 'Lịch sử',
+  },
+  query: {
+    title: 'Tra cứu LOT',
+    results: 'Kết quả tra cứu',
   },
   actions: {
     search: 'Tra cứu',
@@ -39,8 +43,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     unlisted: (value: string): string => `${value} (chưa có trong danh sách)`,
   },
   lotFilter: {
-    pane: 'Điều kiện tra cứu LOT',
-    itemPlaceholder: 'Tìm theo mã · tên',
+    lotNoPlaceholder: 'Tìm số LOT',
+    itemPlaceholder: 'Tìm mã · tên',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',
     fields: {
@@ -55,13 +59,12 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       lotTypeTruncated: 'Chỉ hiển thị một phần loại LOT.',
       lotTypeUnseeded: 'Giá trị gốc của loại LOT chưa sẵn sàng.',
       lotStatusUnseeded: 'Giá trị gốc của trạng thái hiện tại chưa sẵn sàng.',
-      locationNeedsWarehouse: 'Chọn kho rồi mới chọn được vị trí.',
+      locationNeedsWarehouse: 'Chọn kho trước',
       locationFailed: 'Không tải được danh sách vị trí.',
       locationTruncated: 'Chỉ hiển thị một phần vị trí.',
     },
   },
   historyFilter: {
-    pane: 'Điều kiện tra cứu lịch sử',
     fields: {
       period: 'Khoảng thời gian',
       actor: 'Người thực hiện',
@@ -83,9 +86,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
   current: {
     pane: 'Trạng thái LOT hiện tại',
     beforeSearch: {
-      title: 'Hãy chọn điều kiện tra cứu rồi tra cứu',
-      description:
-        'Áp dụng điều kiện tra cứu thì tóm tắt trạng thái hiện tại và danh sách LOT sẽ hiện ra.',
+      title: 'Hãy đặt điều kiện rồi tra cứu.',
     },
     columns: {
       lot: 'LOT',

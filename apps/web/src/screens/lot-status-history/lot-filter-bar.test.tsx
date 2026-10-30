@@ -169,15 +169,16 @@ describe('LOT 현재 조회 조건', () => {
     );
   });
 
-  it('창고를 고르기 전에는 위치를 잠그고 칸 아래에 까닭을 둔다', async () => {
+  /* 잠긴 까닭은 칸 안 자리 글자로 둔다(사용자 시안 2026-10-30). */
+  it('창고를 고르기 전에는 위치를 잠그고 칸 안에 까닭을 둔다', async () => {
     const { user } = renderBar();
     const location = screen.getByLabelText(/^위치/);
 
     expect(location).toBeDisabled();
-    expect(screen.getByText('창고 선택 후 위치를 선택할 수 있습니다.')).toBeInTheDocument();
+    expect(location).toHaveTextContent('창고 선택 후 지정');
     await choose(user, '창고', 'SAMPLE-WH-01 · 합성 창고 가');
     expect(screen.getByLabelText(/^위치/)).toBeEnabled();
-    expect(screen.queryByText('창고 선택 후 위치를 선택할 수 있습니다.')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/^위치/)).not.toHaveTextContent('창고 선택 후 지정');
   });
 
   it('창고를 바꾸면 앞 창고의 위치 초안을 제거한다', async () => {

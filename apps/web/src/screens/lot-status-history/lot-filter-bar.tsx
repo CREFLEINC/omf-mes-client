@@ -35,8 +35,8 @@ interface SelectFieldProps {
   className: string;
   /** 먼저 골라야 할 것이 남아 잠겨 있다. */
   disabled?: boolean;
-  /** 잠긴 까닭 — 라벨 옆에 옅은 안내 글자로 둔다. */
-  labelHint?: string;
+  /** 고를 값이 없을 때 칸 안에 보이는 글자 — 잠긴 까닭을 여기에 둔다. */
+  placeholder?: string;
   onChange: (value: string) => void;
 }
 
@@ -47,40 +47,25 @@ const SelectField = ({
   note,
   className,
   disabled = false,
-  labelHint,
+  placeholder,
   onChange,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
-  const hintId = `${id}-hint`;
-  const describedBy = [labelHint === undefined ? '' : hintId, note === undefined ? '' : noteId]
-    .filter((part) => part !== '')
-    .join(' ');
 
   return (
     <div className={`field-cell ${className}`}>
-      {labelHint === undefined ? (
-        <label className="field-label" htmlFor={id}>
-          {label}
-        </label>
-      ) : (
-        /* ⭐ 안내는 라벨 옆에 옅은 글자로만 — 칩 모양은 쓰지 않는다(사용자 지시 2026-09-19). */
-        <div className="lot-status-filter-label-row">
-          <label className="field-label" htmlFor={id}>
-            {label}
-          </label>
-          <span id={hintId} className="field-note">
-            {labelHint}
-          </span>
-        </div>
-      )}
+      <label className="field-label" htmlFor={id}>
+        {label}
+      </label>
       <Select
         id={id}
         options={[...options]}
         value={value}
+        placeholder={placeholder}
         disabled={disabled}
         onChange={onChange}
-        aria-describedby={describedBy === '' ? undefined : describedBy}
+        aria-describedby={note === undefined ? undefined : noteId}
       />
       {note !== undefined && (
         <span id={noteId} className="field-note">
@@ -148,8 +133,8 @@ export const LotFilterBar = ({
       label: entry.isActive ? entry.label : t.values.inactive(entry.label),
     })) ?? [];
   /*
-   * ⭐ 위치는 창고를 고른 뒤에 연다 — 그 전에는 잠그고 까닭은 라벨 옆 안내 글자로 둔다
-   * (사용자 지시 2026-09-19).
+   * ⭐ 위치는 창고를 고른 뒤에 연다(사용자 지시 2026-09-19) — 그 전에는 잠그고 까닭은 칸 안 자리 글자로 둔다
+   * (사용자 시안 2026-10-30).
    */
   const isLocationLocked = filters.warehouse === '';
   const locationNote = isLocationLocked
@@ -179,6 +164,7 @@ export const LotFilterBar = ({
       <SearchInput
         containerClassName="lot-status-filter-lot-no"
         label={t.lotFilter.fields.lotNo}
+        placeholder={t.lotFilter.lotNoPlaceholder}
         value={filters.q}
         onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
         onSearch={search}
@@ -213,11 +199,11 @@ export const LotFilterBar = ({
       <SelectField
         className="lot-status-filter-place lot-status-filter-location"
         label={t.lotFilter.fields.location}
-        options={withAll(locationOptions)}
+        options={isLocationLocked ? [] : withAll(locationOptions)}
+        placeholder={t.lotFilter.notes.locationNeedsWarehouse}
         value={filters.location}
         note={locationNote}
         disabled={isLocationLocked}
-        labelHint={isLocationLocked ? t.lotFilter.notes.locationNeedsWarehouse : undefined}
         onChange={(location) => setFilters((current) => ({ ...current, location }))}
       />
       {/* 조회·초기화는 조건과 같은 줄 끝에 한 덩어리로(규범 2-1). 조회가 주 동작이라 오른쪽 끝. */}
