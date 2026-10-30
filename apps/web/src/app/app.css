@@ -27953,18 +27953,6 @@ button.iqc-inspection-step-toggle:focus-visible {
   background: var(--primary);
 }
 
-.parts-iqc-drawings {
-  display: grid;
-  justify-items: center;
-  gap: var(--space-3);
-}
-
-.parts-iqc-drawings img {
-  max-width: 100%;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-}
-
 .parts-iqc-file,
 .parts-iqc-defects,
 .parts-iqc-checks {

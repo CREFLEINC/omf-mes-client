@@ -121,6 +121,8 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     heading: 'Bản vẽ tiêu chuẩn',
     alt: (n: number) => `Bản vẽ tiêu chuẩn kiểm tra ${String(n)}`,
     none: 'Chưa có bản vẽ',
+    prev: 'Bản vẽ trước',
+    next: 'Bản vẽ sau',
   },
 
   visual: {

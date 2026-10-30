@@ -17,6 +17,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 
+import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { FieldLabel } from '../iqc-inspection/field-label';
@@ -282,30 +283,22 @@ interface FormProps {
   onDirtyChange: (dirty: boolean) => void;
 }
 
-const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: Blob }[] }) => {
-  /* 주소는 효과 안에서 만들고 거둔다 — 렌더에서 만들면 개발 모드의 효과 두 번 실행이 그 주소를 먼저 거둬 그림이 깨진다. */
-  const [urls, setUrls] = useState<string[]>([]);
-  useEffect(() => {
-    const made = drawings.map((d) => URL.createObjectURL(d.blob));
-    setUrls(made);
-    return () => made.forEach((url) => URL.revokeObjectURL(url));
-  }, [drawings]);
-  return (
-    <section className="parts-iqc-block" aria-label={t.drawing.heading}>
-      <div className="parts-iqc-block-head">
-        <h3>{t.drawing.heading}</h3>
-        {urls.length === 0 && <span className="parts-iqc-muted">{t.drawing.none}</span>}
-      </div>
-      {urls.length === 0 ? null : (
-        <div className="parts-iqc-drawings">
-          {urls.map((url, index) => (
-            <img key={url} src={url} alt={t.drawing.alt(index + 1)} />
-          ))}
-        </div>
-      )}
-    </section>
-  );
-};
+/** 기준서 도면 — 품질 기준 정보 「도면」 탭과 같은 보기(한 장씩 좌우로 넘김 · 사용자 지시 2026-10-30). */
+const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: Blob }[] }) => (
+  <section className="parts-iqc-block" aria-label={t.drawing.heading}>
+    <div className="parts-iqc-block-head">
+      <h3>{t.drawing.heading}</h3>
+      {drawings.length === 0 && <span className="parts-iqc-muted">{t.drawing.none}</span>}
+    </div>
+    {drawings.length === 0 ? null : (
+      <InspectionDrawingImages
+        drawings={drawings}
+        altOf={t.drawing.alt}
+        labels={{ prev: t.drawing.prev, next: t.drawing.next }}
+      />
+    )}
+  </section>
+);
 
 const InspectionForm = (props: FormProps) => {
   const { request, version, specs, draft } = props;
