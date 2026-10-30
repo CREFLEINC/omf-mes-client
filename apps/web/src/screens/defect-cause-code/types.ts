@@ -24,11 +24,29 @@ export interface HierarchyCode {
   /** 대분류이면 null. 자기참조도 화면에서는 null로 접는다(mappers.ts). */
   parentId: number | null;
   isActive: boolean;
+  /** 아래는 목록 · 상세에 값으로만 보인다(#209) — 폼은 다루지 않는다. */
+  nameKo?: string | null;
+  nameVi?: string | null;
+  processId?: number | null;
+  /** 불량코드만 — 재작업 가능 / 폐기 */
+  dispositionTypeCode?: 'REWORKABLE' | 'SCRAP' | null;
 }
 
 export interface CodeFilters {
   q: string;
   includeInactive: boolean;
+  /**
+   * 미사용만 보기(탭 줄의 「미사용」 칩 · #209). 서버에 「미사용만」 조건이 없어 미사용 포함으로 끝까지 받아
+   * 화면이 거른다 — 그래서 쪽 나눔도 화면이 한다. 켜면 `includeInactive` 도 켜져 있다.
+   */
+  inactiveOnly: boolean;
+  /** 처분 유형 조건(불량코드 탭 · #209). 서버에 조건이 없어 끝까지 받아 화면이 거른다. 비면 거르지 않는다 */
+  dispositionTypeCode: '' | 'REWORKABLE' | 'SCRAP';
+  /** 공정 조건(공정 번호, #209) — 서버가 받는다(`processId`). 비면 거르지 않는다 */
+  processId: string;
+  /** 쪽 번호(1부터)와 쪽 크기 — 서버가 나눠 준다(#209). 조건을 바꾸면 1쪽으로 돌아간다. */
+  page: number;
+  size: number;
 }
 
 /**
@@ -38,6 +56,9 @@ export interface CodeFilters {
 export interface CodeFormValues {
   code: string;
   name: string;
+  /** 한국어명 · 베트남어명(설계 W-06-03 · 사용자 지시 #209). 비우면 값 없음 */
+  nameKo: string;
+  nameVi: string;
   parentId: string;
 }
 

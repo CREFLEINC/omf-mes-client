@@ -317,7 +317,6 @@ export const iqcInspection = {
       defectType: '불량 유형',
       defectQtyRequired: '불량 수량을 입력하세요.',
       defectSumMismatch: '불량 내역 수량 합계가 불합격 수량과 같아야 합니다.',
-      defectsNotSaved: '최종 판정이 불합격일 때만 불량 내역이 저장됩니다.',
       /** 칸 아래 필수 누락 표시 — 확정이 막힌 이유(required·minorRequired)는 확정 단추 곁에 그대로 둔다. */
       majorMissing: '불량 대분류를 선택하세요.',
       minorMissing: '불량 상세를 선택하세요.',

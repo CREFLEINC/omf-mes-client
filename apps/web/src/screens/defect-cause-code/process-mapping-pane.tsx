@@ -1,21 +1,27 @@
 import {
   AlertBanner,
   Button,
+  Chip,
   EmptyState,
-  MatrixGrid,
+  Icon,
+  SearchInput,
   SkeletonText,
-  type MatrixColumn,
-  type MatrixRow,
   useToast,
 } from '@crefle/web-ui';
 import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useMemo, type ReactNode } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest, toApiError, type ApiCallResult } from '../../patterns/request';
+import { Select } from '../../patterns/select';
+import { defectCodeAdapter } from './adapters';
+import { CodePickerDialog } from './code-picker-dialog';
 import { defectToHierarchyCode } from './mappers';
 
 type DefectCode = components['schemas']['DefectCode'];
@@ -31,6 +37,18 @@ interface ListResponse<T> {
   items: T[];
   page: PageMeta;
 }
+
+/** 조회 카드 조건(#209) — 대분류 · 공정 · 검색어. 「조회」를 눌러야 표에 걸린다. */
+interface MappingFilters {
+  q: string;
+  categoryId: string;
+  processId: string;
+}
+
+const EMPTY_MAPPING_FILTERS: MappingFilters = { q: '', categoryId: '', processId: '' };
+
+/** 연결 상태 — 탭 줄 오른쪽 칩으로 고른다(사용자 지시 2026-10-29 · #209). 누르면 바로 걸린다. */
+type MappingLink = 'all' | 'linked' | 'unlinked';
 
 interface MappingToggle {
   defectCodeId: number;
@@ -127,21 +145,38 @@ export const ProcessMappingPane = () => {
   const defectsQuery = useQuery({
     queryKey: mappingKeys.defects,
     queryFn: () =>
-      runRequest(() => client.GET('/quality/defect-codes', { params: { query: {} } })) as Promise<
-        ListResponse<DefectCode>
-      >,
+      /*
+       * 미사용까지 받는다(#209 버그 수정) — 상위 대분류만 미사용이면 사용 중인 상세 코드가 「상위를 찾을 수 없는 코드」로 보였다.
+       * 표의 줄은 아래에서 사용 중인 상세 코드만 남긴다(종전과 같다).
+       * 끝까지 받는다(#209 버그 수정) — 첫 쪽만 받으면 미사용 · 대분류가 칸을 차지해 사용 중인 상세 코드가 표에서 빠졌다.
+       */
+      fetchAllPages(
+        (page, size) =>
+          runRequest(() =>
+            client.GET('/quality/defect-codes', {
+              params: { query: { includeInactive: true, page, size } },
+            }),
+          ) as Promise<ListResponse<DefectCode>>,
+      ),
   });
   const processesQuery = useQuery({
     queryKey: mappingKeys.processes,
     queryFn: () =>
-      runRequest(() => client.GET('/mdm/processes', { params: { query: {} } })) as Promise<
-        ListResponse<Process>
-      >,
+      // 공정도 끝까지 받는다 — 첫 쪽만 받으면 뒤쪽 공정 열이 빠진다(#209 버그 수정).
+      fetchAllPages(
+        (page, size) =>
+          runRequest(() =>
+            client.GET('/mdm/processes', { params: { query: { page, size } } }),
+          ) as Promise<ListResponse<Process>>,
+      ),
   });
 
   const allDefects = defectsQuery.data?.items ?? EMPTY_DEFECTS;
   const defects = useMemo(
-    () => allDefects.map(defectToHierarchyCode).filter((item) => item.parentId !== null),
+    () =>
+      allDefects
+        .map(defectToHierarchyCode)
+        .filter((item) => item.parentId !== null && item.isActive),
     [allDefects],
   );
   const processes = processesQuery.data?.items ?? EMPTY_PROCESSES;
@@ -193,24 +228,51 @@ export const ProcessMappingPane = () => {
     [allDefects],
   );
 
-  const columns: MatrixColumn[] = processes.map((process) => ({
-    key: String(process.processId),
-    label: `${process.processCode} · ${process.processName}`,
-  }));
-  const rows: MatrixRow[] = defects.map((defect) => ({
-    label: `${categories.get(defect.parentId ?? 0)?.name ?? t.groupHeaderOrphan} / ${defect.code} · ${defect.name}`,
-    cells: processes.map((process) => {
-      const assigned = mappedByDefect.get(defect.id)?.has(process.processId) === true;
-      return {
-        key: `${String(defect.id)}:${String(process.processId)}`,
-        status: assigned ? ('success' as const) : ('none' as const),
-        content: <span aria-hidden>{assigned ? '✓' : '—'}</span>,
-        ariaLabel: `${defect.code} · ${process.processName} · ${
-          assigned ? t.mapping.assigned : t.mapping.notAssigned
-        }`,
-      };
-    }),
-  }));
+  /*
+   * 조회 카드 조건(#209) — 화면에 받은 목록 안에서 거른다. 매핑 저장과 무관하다.
+   * 공정을 고르면 그 공정 열만 보이고, 연결 상태도 보이는 공정 기준으로 판단한다.
+   */
+  const hubTarget = useHubActionsTarget();
+  const categoryFieldId = useId();
+  const processFieldId = useId();
+  const [link, setLink] = useState<MappingLink>('all');
+  const [draft, setDraft] = useState<MappingFilters>(EMPTY_MAPPING_FILTERS);
+  const [applied, setApplied] = useState<MappingFilters>(EMPTY_MAPPING_FILTERS);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  /* 초기화는 연결 상태 칩도 「전체」로 되돌린다(#209 버그 수정) — 불량코드 탭의 초기화가 사용 여부 칩을 되돌리는 것과 같다. */
+  const resetFilters = (): void => {
+    setDraft(EMPTY_MAPPING_FILTERS);
+    setApplied(EMPTY_MAPPING_FILTERS);
+    setLink('all');
+  };
+  const shownProcesses =
+    applied.processId === ''
+      ? processes
+      : processes.filter((process) => String(process.processId) === applied.processId);
+  const needle = applied.q.trim().toLowerCase();
+  const isLinked = (defectId: number): boolean => {
+    const mapped = mappedByDefect.get(defectId);
+    return shownProcesses.some((process) => mapped?.has(process.processId) === true);
+  };
+  /* 칩 건수는 조회 조건까지 거른 코드 기준이다 — 칩끼리 더하면 「전체」가 된다. */
+  const searchedDefects = defects.filter((defect) => {
+    if (applied.categoryId !== '' && String(defect.parentId) !== applied.categoryId) return false;
+    if (needle === '') return true;
+    return [defect.code, defect.name, categories.get(defect.parentId ?? 0)?.name ?? '']
+      .join(' ')
+      .toLowerCase()
+      .includes(needle);
+  });
+  const linkedCount = searchedDefects.filter((defect) => isLinked(defect.id)).length;
+  const linkCounts: Record<MappingLink, number> = {
+    all: searchedDefects.length,
+    linked: linkedCount,
+    unlinked: searchedDefects.length - linkedCount,
+  };
+  const shownDefects =
+    link === 'all'
+      ? searchedDefects
+      : searchedDefects.filter((defect) => isLinked(defect.id) === (link === 'linked'));
 
   const firstMappingError = mappingQueries.find((query) => query.isError)?.error;
   const loadError = defectsQuery.error ?? processesQuery.error ?? firstMappingError ?? null;
@@ -243,6 +305,11 @@ export const ProcessMappingPane = () => {
       <EmptyState
         size="sm"
         live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="list_alt" size={20} />
+          </span>
+        }
         title={t.empty.mappingNoneTitle}
         description={t.empty.mappingNoneDescription}
       />
@@ -252,50 +319,263 @@ export const ProcessMappingPane = () => {
       <EmptyState
         size="sm"
         live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="list_alt" size={20} />
+          </span>
+        }
         title={t.empty.processNoneTitle}
         description={t.empty.processNoneDescription}
       />
     );
-  } else {
+  } else if (shownDefects.length === 0) {
     content = (
-      <MatrixGrid
+      <EmptyState
         size="sm"
-        aria-label={t.panes.mapping}
-        aria-busy={write.isSaving}
-        columns={columns}
-        rows={rows}
-        onCellClick={
-          write.isSaving
-            ? undefined
-            : (_row, _column, cell) => {
-                const [defectPart, processPart] = cell.key.split(':');
-                if (defectPart === undefined || processPart === undefined) return;
-                const defectCodeId = Number(defectPart);
-                const processId = Number(processPart);
-                if (!Number.isInteger(defectCodeId) || !Number.isInteger(processId)) return;
-                const assigned = mappedByDefect.get(defectCodeId)?.has(processId) === true;
-                write.write({
-                  defectCodeId,
-                  processId,
-                  intent: assigned ? 'revoke' : 'assign',
-                });
-              }
+        live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="search_off" size={20} />
+          </span>
+        }
+        title={t.mappingView.noMatchTitle}
+        description={t.mappingView.noMatchDescription}
+        action={
+          <Button variant="outlined" onClick={resetFilters}>
+            {messages.common.reset}
+          </Button>
         }
       />
     );
+  } else {
+    /*
+     * 칸을 누르면 바로 연결 · 해제한다(종전 매트릭스와 같은 동작). 저장 중에는 막는다.
+     * 저장 뒤 연결 상태를 다시 받는 동안에도 막는다(#209 버그 수정) — 옛 상태로 같은 요청이 한 번 더 나갔다.
+     */
+    const isBusy = write.isSaving || mappingQueries.some((query) => query.isFetching);
+    const toggle = (defectCodeId: number, processId: number): void => {
+      if (isBusy) return;
+      const assigned = mappedByDefect.get(defectCodeId)?.has(processId) === true;
+      write.write({ defectCodeId, processId, intent: assigned ? 'revoke' : 'assign' });
+    };
+
+    content =
+      (
+        /*
+         * 공정별 불량코드 설정 표(사용자 시안 · #209) — 왼쪽 「불량코드 · 명칭」, 공정마다 둥근 선택 표시.
+         * 칸(셀)이 이름(「코드 · 공정 · 매핑됨/안 됨」)과 상태를 갖고, 칸 안 단추가 키보드로 누르는 길이다.
+         */
+        <table
+          className="defect-mapping-table"
+          role="grid"
+          aria-label={t.panes.mapping}
+          aria-busy={write.isSaving}
+        >
+          <thead>
+            <tr>
+              <th scope="col" className="defect-mapping-corner">
+                {t.mappingView.rowHeader}
+              </th>
+              {shownProcesses.map((process) => (
+                <th key={process.processId} scope="col">
+                  <span className="defect-mapping-col">
+                    <span>{process.processName}</span>
+                    <span className="defect-mapping-col-code">{process.processCode}</span>
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {shownDefects.map((defect) => (
+              <tr key={defect.id}>
+                <th scope="row">
+                  <span className="defect-mapping-row">
+                    <span className="defect-mapping-row-code">{`${defect.code} · ${defect.name}`}</span>
+                    <span className="defect-mapping-row-parent">
+                      {categories.get(defect.parentId ?? 0)?.name ?? t.groupHeaderOrphan}
+                    </span>
+                  </span>
+                </th>
+                {shownProcesses.map((process) => {
+                  const assigned = mappedByDefect.get(defect.id)?.has(process.processId) === true;
+                  const label = `${defect.code} · ${process.processName} · ${
+                    assigned ? t.mapping.assigned : t.mapping.notAssigned
+                  }`;
+                  return (
+                    <td
+                      key={process.processId}
+                      aria-label={label}
+                      data-status={assigned ? 'success' : undefined}
+                      onClick={() => toggle(defect.id, process.processId)}
+                    >
+                      <button
+                        type="button"
+                        className="defect-mapping-toggle"
+                        aria-pressed={assigned}
+                        aria-label={label}
+                        disabled={isBusy}
+                      >
+                        {assigned && <Icon name="check" size={16} />}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
   }
 
+  const linkOptions: readonly { value: MappingLink; label: string }[] = [
+    { value: 'all', label: t.usage.all },
+    { value: 'linked', label: t.mappingView.linked },
+    { value: 'unlinked', label: t.mappingView.unlinked },
+  ];
+
   return (
-    <section className="pane defect-process-mapping-pane" aria-label={t.panes.mapping}>
-      <h2 className="pane-title">{t.panes.mapping}</h2>
-      <p className="pane-lead">{t.mapping.description}</p>
-      {truncated && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.mapping.truncated}</AlertBanner>
-        </div>
+    <>
+      {/* 연결 상태 칩 — 불량코드 탭의 사용 여부 칩과 같은 자리 · 모양(사용자 지시 2026-10-29 · #209). */}
+      {hubTarget !== null && (
+        <HubActions target={hubTarget}>
+          <div
+            className="inspection-hub-counts defect-cause-usage"
+            role="group"
+            aria-label={t.mappingView.linkLabel}
+          >
+            {linkOptions.map((option) => (
+              <Chip
+                key={option.value}
+                variant="filter"
+                size="sm"
+                selected={link === option.value}
+                aria-pressed={link === option.value}
+                onSelectedChange={() => {
+                  if (link !== option.value) setLink(option.value);
+                }}
+              >
+                {isLoading || loadError !== null
+                  ? option.label
+                  : t.usage.count(option.label, linkCounts[option.value])}
+              </Chip>
+            ))}
+          </div>
+        </HubActions>
       )}
-      <SaveErrorBanner error={write.error} />
-      {content}
-    </section>
+      {/* 조회 조건 — 불량코드 탭처럼 표와 다른 카드에 둔다(#209). */}
+      <section className="pane inspection-standard-search defect-cause-search" role="search">
+        <div className="filter-bar">
+          {/* 순서: 대분류 선택 · 공정 선택 · 불량코드 검색(사용자 지시 2026-10-29 · #209). */}
+          <div className="field-cell defect-cause-filter-select">
+            <span className="field-label">
+              <label htmlFor={categoryFieldId}>{t.mappingView.categoryLabel}</label>
+            </span>
+            <Select
+              id={categoryFieldId}
+              options={[
+                { value: '', label: t.filters.all },
+                ...[...categories.values()].map((category) => ({
+                  value: String(category.id),
+                  label: category.name,
+                })),
+              ]}
+              value={draft.categoryId}
+              onChange={(value) => setDraft((prev) => ({ ...prev, categoryId: value }))}
+            />
+          </div>
+          <div className="field-cell defect-cause-filter-select">
+            <span className="field-label">
+              <label htmlFor={processFieldId}>{t.mappingView.processLabel}</label>
+            </span>
+            <Select
+              id={processFieldId}
+              options={[
+                { value: '', label: t.filters.all },
+                ...processes.map((process) => ({
+                  value: String(process.processId),
+                  label: process.processName,
+                })),
+              ]}
+              value={draft.processId}
+              onChange={(value) => setDraft((prev) => ({ ...prev, processId: value }))}
+            />
+          </div>
+          {/* 흐린 안내 글이 잘리지 않는 폭(사용자 지시 2026-10-29 · #209). */}
+          {/*
+           * 불량코드는 **창에서 검색해서 고른다** — 불량코드 탭의 검색 칸과 같은 조작(사용자 지시 · #209).
+           * 읽기 전용 칸을 누르거나 엔터를 치면 창이 열리고, 고른 코드가 검색어로 들어간다. 조회를 눌러야 걸린다.
+           */}
+          <SearchInput
+            containerClassName="defect-mapping-search-field"
+            label={t.mappingView.searchLabel}
+            placeholder={t.mappingView.searchPlaceholder}
+            value={draft.q}
+            readOnly
+            title={draft.q === '' ? undefined : draft.q}
+            aria-haspopup="dialog"
+            clearLabel={t.picker.clear(defectCodeAdapter.labels.tab)}
+            onClick={() => setIsPickerOpen(true)}
+            onSearch={() => setIsPickerOpen(true)}
+            onChange={() => undefined}
+            onClear={() => setDraft((prev) => ({ ...prev, q: '' }))}
+          />
+          <div className="filter-actions field-cell-unlabeled">
+            <Button variant="filled" onClick={() => setApplied(draft)}>
+              {messages.common.search}
+            </Button>
+            <Button variant="outlined" onClick={resetFilters}>
+              {messages.common.reset}
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="pane defect-process-mapping-pane inspection-standard-detail-card"
+        aria-label={t.panes.mapping}
+      >
+        <div className="inspection-standard-plan-head">
+          <div className="inspection-standard-plan-chips">
+            <h2 className="pane-title">{t.panes.mapping}</h2>
+            {!isLoading && loadError === null && (
+              <span className="defect-cause-child-count">
+                {t.mappingView.counts(shownDefects.length, shownProcesses.length)}
+              </span>
+            )}
+          </div>
+          {/* 안내 문구는 제목 줄 맨 오른쪽(사용자 지시 2026-10-29 · #209). 둥근 표시가 연결 여부를 보여 범례는 두지 않는다. */}
+          <p className="iqc-inspection-action-note defect-cause-mapping-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.mapping.description}
+          </p>
+        </div>
+        {truncated && (
+          <div className="banner-slot">
+            <AlertBanner variant="warning">{t.mapping.truncated}</AlertBanner>
+          </div>
+        )}
+        <SaveErrorBanner error={write.error} />
+        <div className="defect-mapping-box">{content}</div>
+      </section>
+      {isPickerOpen &&
+        createPortal(
+          <CodePickerDialog
+            adapter={defectCodeAdapter}
+            includeInactive={false}
+            onClose={() => setIsPickerOpen(false)}
+            onConfirm={(code) => {
+              /* 대분류를 고르면 대분류 조건으로 건다 — 표의 줄은 상세 코드라 대분류 코드로는 걸리지 않는다(#209 버그 수정). */
+              setDraft((prev) =>
+                code.parentId === null
+                  ? { ...prev, categoryId: String(code.id), q: '' }
+                  : { ...prev, q: code.code },
+              );
+              setIsPickerOpen(false);
+            }}
+          />,
+          document.body,
+        )}
+    </>
   );
 };

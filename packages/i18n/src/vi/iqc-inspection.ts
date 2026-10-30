@@ -199,7 +199,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       defectType: 'Loại lỗi',
       defectQtyRequired: 'Hãy nhập số lượng lỗi.',
       defectSumMismatch: 'Tổng số lượng lỗi phải bằng số lượng không đạt.',
-      defectsNotSaved: 'Chi tiết lỗi chỉ được lưu khi phán định cuối là không đạt.',
       majorMissing: 'Hãy chọn nhóm lỗi.',
       minorMissing: 'Hãy chọn mã lỗi chi tiết.',
       cause: 'Nguyên nhân dự đoán',

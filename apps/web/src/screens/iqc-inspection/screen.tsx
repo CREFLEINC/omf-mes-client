@@ -277,7 +277,7 @@ const IqcInspectionScreenBody = () => {
    */
   /*
    * 불량 내역(사용자 지시 2026-10-28 · #197) — 불합격 수량이 있으면 검사 수량 단계에서 불량 유형별로 받는다(여러 줄). 서버는
-   * 최종 판정이 불합격일 때만 받으므로 그때만 싣는다.
+   * 최종 판정이 불합격이거나 불합격 수량이 있으면 받는다(omf-all-around#205 · 서버 장부 P-156) — 합격·보류로 확정해도 남는다.
    */
   const [defects, setDefects] = useState<DefectDraft[]>([EMPTY_DEFECT]);
   /* 「불합격 존재」 체크(사용자 지시 2026-10-28 · #197) — 켜야 불량 내역을 받고 싣는다. 저장된 불량 기록이 있으면 켠 채로 연다. */
@@ -347,6 +347,8 @@ const IqcInspectionScreenBody = () => {
   const resolvedDefects = hasDefects
     ? resolveDefects(defectCodes.data ?? [], defects, toSendableNumber(draft.rejected))
     : resolveDefects([], [], 0);
+  /* 불량 내역을 싣는 회차 — 불합격 판정이거나 불합격 수량이 있다(#205). 불량 수량 합계 = 불합격 수량은 확정 전에 맞춘다. */
+  const keepsDefects = isRejected || toSendableNumber(draft.rejected) > 0;
 
   const roundId = round?.inspectionResultId ?? null;
   const { acceptedQty, rejectedQty, heldQty } = round ?? {
@@ -467,7 +469,7 @@ const IqcInspectionScreenBody = () => {
     draft.rejected !== savedDraft.rejected ||
     draft.held !== savedDraft.held ||
     judgment !== savedJudgment ||
-    (isRejected &&
+    (keepsDefects &&
       (hasDefects !== savedHasDefects ||
         (hasDefects && JSON.stringify(defects) !== JSON.stringify(savedDefects)))) ||
     fourMChanged;
@@ -721,11 +723,11 @@ const IqcInspectionScreenBody = () => {
    * 아니라 렌더 조건에 있어서, 단언으로 메우면 그 조건이 바뀔 때 조용히 어긋난다.
    */
   /**
-   * 요청에 실을 불량 기록 — 불합격이고 불량 내역을 다 채웠으면 그 줄들, 아니면 빈 배열이다(#197). 서버는 불합격 판정에만
-   * 불량 기록을 받는다 — 합격 · 보류면 빈 배열이 그 회차의 기록을 지운다.
+   * 요청에 실을 불량 기록 — 불합격 판정이거나 불합격 수량이 있고 불량 내역을 다 채웠으면 그 줄들, 아니면 빈 배열이다(#197 · #205).
+   * 불합격 수량 0 인 합격 · 보류면 빈 배열이 그 회차의 기록을 지운다.
    */
   const rejectionRows = (): DefectRecordInput[] =>
-    !isRejected || !('rows' in resolvedDefects) ? [] : resolvedDefects.rows;
+    !keepsDefects || !('rows' in resolvedDefects) ? [] : resolvedDefects.rows;
 
   const saveDraft = (inspectionRequestId: number, inspected: number, uomId: number): void => {
     const rows = rejectionRows();
@@ -740,7 +742,7 @@ const IqcInspectionScreenBody = () => {
      * ⛔ 불합격인데 불량 줄이 덜 채워졌으면(코드 · 수량) 불량 키를 싣지 않는다 — 빈 배열을 실으면 서버가 이 회차의 기록을
      * 지운다(#197 리뷰). 적던 줄은 화면에 그대로 둔다.
      */
-    const defectsIncomplete = isRejected && hasDefects && 'blocked' in resolvedDefects;
+    const defectsIncomplete = keepsDefects && hasDefects && 'blocked' in resolvedDefects;
     const defectsBody = unknownOnServer || defectsIncomplete ? undefined : rows;
     pendingHasDefects.current = unknownOnServer
       ? savedHasDefects
@@ -952,7 +954,6 @@ const IqcInspectionScreenBody = () => {
                     }}
                     uomCode={uomCode}
                     disabled={confirm.isSaving || workerMissing}
-                    notSaved={judgment !== '' && !isRejected}
                   />
                 )
               : null
@@ -991,7 +992,8 @@ const IqcInspectionScreenBody = () => {
             ) : null
           }
           confirmOnlyBlockedReason={
-            isRejected && 'blocked' in resolvedDefects
+            /* 불량이 있으면(불합격 판정 · 불합격 수량) 불량 내역이 필수다(#205 · 사용자 결정 2026-10-30). */
+            keepsDefects && 'blocked' in resolvedDefects
               ? resolvedDefects.blocked
               : needsChangeReason && changeReason.trim() === ''
                 ? t.result.judgmentChange.required

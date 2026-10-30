@@ -1,8 +1,10 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { plantsInScope } from '../../patterns/oa-access';
 import { MeasurementTable, specLines } from './measurement-table';
+import { plantTodayRange } from './today';
 
 const scoped = vi.hoisted(() => ({ value: { status: 'checking' } as unknown, access: 'checking' }));
 
@@ -97,7 +99,7 @@ describe('치수 측정 표', () => {
     ]);
   });
 
-  it('⭐ 열은 가장 많이 재는 항목의 시료 수, 항목마다 자기 시료 수까지만 칸이 열리고 벗어난 값은 표시된다', () => {
+  it('⭐ 한 표에 n1~nN 열(가장 많이 재는 항목의 시료 수), 항목마다 자기 시료 수까지만 칸이 열리고 벗어난 값은 표시된다', () => {
     render(
       <MeasurementTable
         items={[item({}), item({ inspectionItemSpecId: 12, sequenceNo: 2, measurementCount: 5 })]}
@@ -107,6 +109,7 @@ describe('치수 측정 표', () => {
         onChange={() => undefined}
       />,
     );
+    expect(screen.queryByRole('tab')).toBeNull();
     expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
       '항목',
       '규격',
@@ -117,8 +120,6 @@ describe('치수 측정 표', () => {
       'n5',
       '판정',
     ]);
-    expect(screen.queryByRole('textbox', { name: '항목 1 n4 측정값' })).toBeNull();
-    expect(screen.getByRole('textbox', { name: '항목 2 n5 측정값' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '항목 1 n2 측정값' })).toHaveAttribute(
       'aria-invalid',
       'true',
@@ -126,5 +127,35 @@ describe('치수 측정 표', () => {
     const [first] = screen.getAllByRole('row').slice(1);
     expect(within(first as HTMLElement).getByText('NG')).toBeInTheDocument();
     expect(screen.getByText('1/2 항목')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '항목 1 n4 측정값' })).toBeNull();
+    expect(screen.getByRole('textbox', { name: '항목 2 n4 측정값' })).toBeInTheDocument();
+  });
+
+  it('Enter 는 같은 시료의 아래 칸으로, 열의 마지막 칸에서는 다음 시료 열의 첫 칸으로 간다', async () => {
+    const user = userEvent.setup();
+    render(
+      <MeasurementTable
+        items={[item({}), item({ inspectionItemSpecId: 12, sequenceNo: 2 })]}
+        values={{}}
+        versionAcceptance={0}
+        disabled={false}
+        onChange={() => undefined}
+      />,
+    );
+    await user.click(screen.getByRole('textbox', { name: '항목 1 n1 측정값' }));
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('textbox', { name: '항목 2 n1 측정값' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('textbox', { name: '항목 1 n2 측정값' })).toHaveFocus();
+  });
+});
+
+describe('오늘 입고 — 공장 하루', () => {
+  it('공장 시간(+07:00) 기준 오늘 0시부터 다음 날 0시 전까지다', () => {
+    /* UTC 10/29 18:00 = 공장 10/30 01:00 — UTC 날짜로 자르면 전날이 된다 */
+    expect(plantTodayRange(new Date('2026-10-29T18:00:00Z'))).toEqual({
+      requestedAtFrom: '2026-10-30T00:00:00+07:00',
+      requestedAtTo: '2026-10-30T17:00:00.000Z',
+    });
   });
 });

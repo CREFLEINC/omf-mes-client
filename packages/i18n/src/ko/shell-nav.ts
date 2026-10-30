@@ -18,6 +18,8 @@ export const shellNav = {
   /** PQC · OQC 탭의 대기 배지 접근명(사용자 지시 2026-10-29 · #197). */
   pqcPending: (count: number) => `PQC 대기 ${String(count)}건`,
   oqcPending: (count: number) => `OQC 대기 ${String(count)}건`,
+  /** 「검사 조회·판정」 메뉴 줄 — IQC · PQC · OQC 대기 합(사용자 지시 2026-10-30). */
+  inspectionPending: (count: number) => `검사 대기 ${String(count)}건`,
   group: {
     /*
      * 묶음 손잡이의 접근명. 펼쳤는지는 aria-expanded 가 말하므로 여기 넣지 않는다 -

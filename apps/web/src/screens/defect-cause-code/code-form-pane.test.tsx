@@ -14,19 +14,18 @@ const renderPane = (overrides: Partial<CodeFormPaneProps> = {}) => {
   const props: CodeFormPaneProps = {
     adapter: defectCodeAdapter,
     mode: 'create',
-    values: { code: '', name: '', parentId: '' },
+    title: '불량코드 대분류 추가',
+    values: { code: '', name: '', nameKo: '', nameVi: '', parentId: '' },
     onChange: vi.fn(),
     fieldErrors: {},
     banner: null,
     codeLockReason: null,
     parentOptions: PARENT_OPTIONS,
     parentLockReason: null,
-    isActive: true,
     isDirty: false,
     isSaving: false,
     onSave: vi.fn(),
     onCancel: vi.fn(),
-    onDeactivate: vi.fn(),
     ...overrides,
   };
 
@@ -39,8 +38,8 @@ describe('CodeFormPane — 입력칸', () => {
   it('코드·명칭·상위 대분류를 입력할 수 있다', async () => {
     const { props, user } = renderPane();
 
-    await user.type(screen.getByLabelText('코드'), 'D');
-    await user.type(screen.getByLabelText('명칭'), '가');
+    await user.type(screen.getByLabelText('불량코드'), 'D');
+    await user.type(screen.getByLabelText('불량명'), '가');
 
     expect(props.onChange).toHaveBeenCalledWith({ code: 'D' });
     expect(props.onChange).toHaveBeenCalledWith({ name: '가' });
@@ -48,7 +47,9 @@ describe('CodeFormPane — 입력칸', () => {
   });
 
   it('상위 선택지 맨 앞에 대분류로 두는 선택지가 있다', async () => {
-    const { props, user } = renderPane({ values: { code: 'A', name: '가', parentId: '1001' } });
+    const { props, user } = renderPane({
+      values: { code: 'A', name: '가', nameKo: '', nameVi: '', parentId: '1001' },
+    });
 
     await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
     await user.click(screen.getByRole('option', { name: '없음 (대분류)' }));
@@ -69,9 +70,7 @@ describe('CodeFormPane — 입력칸', () => {
     renderPane();
 
     expect(
-      screen.getByText(
-        '대분류 목록은 아직 임시입니다. 확정되면 이 항목의 선택지가 바뀔 수 있습니다.',
-      ),
+      screen.getByText('대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.'),
     ).toBeInTheDocument();
   });
 
@@ -89,23 +88,23 @@ describe('CodeFormPane — 대분류 경고', () => {
   it('상위를 비운 채 등록하면 전사 공통 축이라는 경고가 보인다', () => {
     renderPane();
 
-    expect(
-      screen.getByText(
-        '대분류는 전사에서 공통으로 쓰는 축입니다. 추가하면 모든 현장에서 함께 쓰이므로 신중히 정하세요.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('대분류는 모든 현장에서 공통으로 사용됩니다.')).toBeInTheDocument();
   });
 
   it('상위를 고른 상세 등록에는 그 경고가 없다', () => {
-    renderPane({ values: { code: '', name: '', parentId: '1001' } });
+    renderPane({ values: { code: '', name: '', nameKo: '', nameVi: '', parentId: '1001' } });
 
-    expect(screen.queryByText(/대분류는 전사에서 공통으로 쓰는 축입니다/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/대분류는 모든 현장에서 공통으로 사용됩니다/),
+    ).not.toBeInTheDocument();
   });
 
   it('수정에는 그 경고가 없다', () => {
     renderPane({ mode: 'edit' });
 
-    expect(screen.queryByText(/대분류는 전사에서 공통으로 쓰는 축입니다/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/대분류는 모든 현장에서 공통으로 사용됩니다/),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -116,7 +115,7 @@ describe('CodeFormPane — 잠금과 사유', () => {
       codeLockReason: '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.',
     });
 
-    expect(screen.getByLabelText('코드')).toBeDisabled();
+    expect(screen.getByLabelText('불량코드')).toBeDisabled();
     expect(
       screen.getByText('이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.'),
     ).toBeInTheDocument();
@@ -126,25 +125,24 @@ describe('CodeFormPane — 잠금과 사유', () => {
   it('하위가 있으면 상위 선택칸이 비활성이고 사유가 보인다', () => {
     renderPane({
       mode: 'edit',
-      parentLockReason:
-        '상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다. 하위 코드를 다른 대분류로 옮기면 이 항목을 쓸 수 있습니다.',
+      parentLockReason: '이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.',
     });
 
     const parent = screen.getByRole('combobox', { name: '상위 대분류' });
     expect(parent).toBeDisabled();
     expect(parent).toHaveAttribute('aria-describedby');
     expect(
-      screen.getByText(/상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다/),
+      screen.getByText(/이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다/),
     ).toBeInTheDocument();
   });
 });
 
 describe('CodeFormPane — 저장·취소', () => {
-  it('고친 것이 없으면 저장과 취소를 쓸 수 없다', () => {
+  it('고친 것이 없으면 저장을 쓸 수 없다 — 취소는 창을 닫으므로 언제나 쓸 수 있다', () => {
     renderPane();
 
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '취소' })).toBeEnabled();
   });
 
   it('고친 것이 있으면 저장할 수 있다', async () => {
@@ -161,7 +159,7 @@ describe('CodeFormPane — 저장·취소', () => {
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
-  it('취소하면 입력 전으로 되돌린다', async () => {
+  it('취소하면 고친 값을 버리고 창을 닫는다', async () => {
     const { props, user } = renderPane({ isDirty: true });
 
     await user.click(screen.getByRole('button', { name: '취소' }));
@@ -170,45 +168,76 @@ describe('CodeFormPane — 저장·취소', () => {
   });
 });
 
-describe('CodeFormPane — 사용 여부와 사용 중지', () => {
-  it('수정에서는 지금 사용 여부를 값으로 보인다', () => {
-    renderPane({ mode: 'edit', isActive: false });
+describe('CodeFormPane — 잠긴 코드 (#209 시안)', () => {
+  it('잠긴 코드는 필수 표시 없이 자물쇠와 정보 안내 한 줄로 낸다', () => {
+    renderPane({
+      mode: 'edit',
+      codeLockReason: '이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.',
+    });
 
-    expect(screen.getByText('미사용')).toBeInTheDocument();
+    const code = screen.getByLabelText('불량코드');
+    expect(code).toBeDisabled();
+    expect(code).not.toHaveAttribute('aria-required', 'true');
+    expect(
+      screen.getByText('이 코드는 이미 다른 기록에서 쓰이고 있어서 바꿀 수 없습니다.'),
+    ).toBeInTheDocument();
+    expect(code).toHaveAttribute('aria-describedby');
   });
 
-  it('등록에는 아직 사용 여부도 사용 중지도 없다', () => {
+  it('상위가 잠기면 대분류 임시 목록 안내를 내지 않는다', () => {
+    renderPane({
+      mode: 'edit',
+      parentLockReason: '이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.',
+    });
+
+    expect(
+      screen.getByText('이 대분류 아래에 상세 코드가 있어서 상위 대분류를 바꿀 수 없습니다.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('대분류 목록은 임시이며, 확정 후 변경될 수 있습니다.'),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('CodeFormPane — 창 모양 (#209)', () => {
+  it('머리 ✕ 없이 「취소」로 닫는다', () => {
     renderPane();
 
-    expect(screen.queryByText('사용 중')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /닫기/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '취소' })).toBeInTheDocument();
   });
 
-  it('사용 중인 코드는 사용 중지를 시작할 수 있다', async () => {
-    const { props, user } = renderPane({ mode: 'edit', isActive: true });
+  it('입력 안내가 칸 안에 보인다', () => {
+    renderPane();
 
-    await user.click(screen.getByRole('button', { name: '사용 중지' }));
-
-    expect(props.onDeactivate).toHaveBeenCalled();
+    expect(screen.getByPlaceholderText('불량코드를 입력하세요')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('불량명을 입력하세요')).toBeInTheDocument();
   });
 
-  it('이미 미사용이면 사용 중지가 비활성이고 사유가 보인다', () => {
-    renderPane({ mode: 'edit', isActive: false });
+  it('처음 열 때는 빨간 테두리 없이 필수 표시만 붙인다', () => {
+    renderPane();
 
-    const button = screen.getByRole('button', { name: '사용 중지' });
-    expect(button).toBeDisabled();
-    expect(button).toHaveAttribute('aria-describedby');
-    expect(
-      screen.getByText('사용 중지는 이미 미사용인 코드에는 할 수 없습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText('불량코드')).not.toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('불량명')).not.toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getAllByText('*').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('비운 채 저장하면 그 칸은 글을 띄우지 않고 테두리만 빨갛게 한다', () => {
+    renderPane({ fieldErrors: { code: '필수 입력 항목입니다.' } });
+
+    expect(screen.getByLabelText('불량코드')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('불량명')).not.toHaveAttribute('aria-invalid', 'true');
+    for (const node of screen.queryAllByText('필수 입력 항목입니다.')) {
+      expect(node.closest('.inspection-standard-border-only')).not.toBeNull();
+    }
   });
 });
 
 describe('CodeFormPane — 탭', () => {
-  it('폼에 그 탭의 이름이 붙는다', () => {
-    renderPane({ adapter: causeCodeAdapter });
+  it('창 제목이 붙는다', () => {
+    renderPane({ adapter: causeCodeAdapter, mode: 'edit', title: '원인코드 수정' });
 
-    expect(screen.getByRole('region', { name: '원인코드 등록·편집' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '원인코드 수정' })).toBeInTheDocument();
   });
 
   it('배너 슬롯을 그대로 낸다', () => {

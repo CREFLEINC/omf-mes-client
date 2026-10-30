@@ -299,14 +299,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 불량·판정 코드 — 검사 판정 때 고르는 코드 목록(불량·원인코드 · 판정 유형 코드)을 한 묶음으로(사용자 지시 2026-10-29 · omf-all-around#208).
+       * 품질 코드 관리 — 검사 판정 때 고르는 코드 목록(불량·원인코드 · 판정 유형 코드)을 한 묶음으로(사용자 지시 2026-10-29 · omf-all-around#208).
+       * 묶음 이름은 「불량·판정 코드」에서 「품질 코드 관리」로 바꿨다(사용자 지시 2026-10-29 · #209).
        * 「품질 기준 정보」는 검사를 어떻게 할지 정하는 기준만 남긴다.
        */
       {
         to: '/master-data/defect-cause-code',
         icon: 'report',
-        label: '불량·판정 코드',
-        labelVi: 'Mã lỗi · đánh giá',
+        label: '품질 코드 관리',
+        labelVi: 'Quản lý mã chất lượng',
         tabs: [
           /*
            * 불량·원인코드 화면 안 하위 탭(불량코드 · 원인코드 · 공정 매핑)을 탭 막대 한 줄로 폈다(사용자 지시 · #208).
@@ -316,13 +317,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           { to: '/master-data/cause-code', label: '원인코드', labelVi: 'Mã nguyên nhân' },
           {
             to: '/master-data/defect-process-mapping',
-            label: '공정 매핑',
-            labelVi: 'Ánh xạ công đoạn',
+            // 탭 이름 「공정 매핑」 → 「불량코드 공정 연결」(사용자 지시 2026-10-29 · #209) — 무엇을 잇는지 드러낸다.
+            label: '불량코드 공정 연결',
+            labelVi: 'Liên kết mã lỗi - công đoạn',
           },
           {
             to: '/master-data/judgment-code',
-            label: '판정 유형 코드',
-            labelVi: 'Mã loại đánh giá',
+            // 「판정 유형 코드」 → 「판정 유형」(사용자 지시 2026-10-29 · #209)
+            label: '판정 유형',
+            labelVi: 'Loại đánh giá',
           },
         ],
       },

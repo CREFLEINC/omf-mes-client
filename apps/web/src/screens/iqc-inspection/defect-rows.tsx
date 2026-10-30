@@ -33,8 +33,6 @@ export interface DefectRowsProps {
   onChange: (rows: DefectDraft[]) => void;
   uomCode: string | null;
   disabled: boolean;
-  /** 최종 판정이 불합격이 아니면 저장되지 않는다는 안내를 붙인다(서버가 불합격 판정에만 불량 기록을 받는다). */
-  notSaved: boolean;
 }
 
 /**
@@ -50,7 +48,6 @@ export const DefectRows = ({
   onChange,
   uomCode,
   disabled,
-  notSaved,
 }: DefectRowsProps) => {
   const idPrefix = useId();
   const update = (index: number, next: DefectDraft): void =>
@@ -83,12 +80,6 @@ export const DefectRows = ({
           )}
         </div>
       </div>
-      {checked && notSaved && (
-        <p className="iqc-inspection-action-note" data-tone="info">
-          <Icon name="info" size={14} aria-hidden />
-          {t.defectsNotSaved}
-        </p>
-      )}
       {checked && (
         <div className="iqc-inspection-defect-table">
           {/*
