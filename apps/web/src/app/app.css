@@ -27727,22 +27727,37 @@ button.iqc-inspection-step-toggle:focus-visible {
   border-collapse: collapse;
 }
 
+/* 엑셀 같은 칸 — 항목 · 규격 · n1~nN · 판정, 모든 칸에 얇은 선(사용자 시안 2026-10-30). */
 .parts-iqc-grid th,
 .parts-iqc-grid td {
   padding: var(--space-1);
-  border-bottom: 1px solid var(--outline-variant);
+  border: 1px solid var(--outline-variant);
   text-align: center;
+  vertical-align: middle;
 }
 
+.parts-iqc-grid thead th {
+  background: var(--surface-container-low);
+}
+
+.parts-iqc-grid th.parts-iqc-item {
+  width: 4rem;
+}
+
+/* 규격은 두 줄 「목표 ±공차」 · 「하한 ~ 상한」. 글은 모두 가운데(실검증 2026-10-30). */
 .parts-iqc-grid td.parts-iqc-spec,
 .parts-iqc-grid th.parts-iqc-spec {
-  min-width: 7.5rem;
-  text-align: end;
+  width: 10rem;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
-.parts-iqc-spec {
-  display: grid;
+.parts-iqc-spec > span {
+  display: block;
+}
+
+.parts-iqc-grid th.parts-iqc-verdict-head {
+  width: 5rem;
 }
 
 .parts-iqc-cell {
@@ -27783,25 +27798,75 @@ button.iqc-inspection-step-toggle:focus-visible {
   font-weight: 600;
 }
 
-/* 줄의 형편 = 항목 번호 칸의 바탕색(참고: omf-dx-vina 수입검사). 덜 적은 줄과 규격 밖 줄은 내기 전에 손이 가야 해 같은 붉은색이다. */
-.parts-iqc-grid th.parts-iqc-rowno {
-  min-width: 2.5rem;
-  border-radius: var(--radius-sm);
-}
-
-.parts-iqc-grid th.parts-iqc-st-done {
-  background: var(--semantic-success);
-  color: var(--on-primary);
-}
-
-.parts-iqc-grid th.parts-iqc-st-wait,
-.parts-iqc-grid th.parts-iqc-st-err {
-  background: var(--semantic-error);
-  color: var(--on-primary);
-}
-
+/* 항목 번호는 숫자만(번호 칸 바탕색은 걷었다 · 실검증 2026-10-30) — 규격 밖 줄은 줄 바탕이 붉다. */
 .parts-iqc-grid tr.parts-iqc-row-ng > td {
   background: var(--semantic-error-container);
+}
+
+/* 검사 이력(사용자 지시 2026-10-30) — 회차 줄, 누르면 아래에 그 회차의 측정값 · 불량 유형이 펼쳐진다. */
+.parts-iqc-history {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.parts-iqc-history th,
+.parts-iqc-history td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.parts-iqc-history tbody tr:not(.parts-iqc-history-detail) {
+  cursor: pointer;
+}
+
+.parts-iqc-history tbody tr.is-open > td {
+  background: var(--surface-container-low);
+}
+
+.parts-iqc-history-detail > td {
+  text-align: start;
+  white-space: normal;
+  background: var(--surface-container-lowest, var(--surface));
+}
+
+.parts-iqc-history-body {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.parts-iqc-history-items {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.parts-iqc-history-items > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 14rem) 1fr;
+  gap: var(--space-2);
+}
+
+.parts-iqc-history-items dt {
+  color: var(--on-surface-variant);
+}
+
+.parts-iqc-history-items dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.parts-iqc-history-ng {
+  color: var(--semantic-error-text);
+  font-weight: 600;
+}
+
+.parts-iqc-history-defects {
+  margin: 0;
 }
 
 .parts-iqc-defect-head {
@@ -28116,9 +28181,131 @@ button.iqc-inspection-step-toggle:focus-visible {
   overflow-wrap: anywhere;
 }
 
+/* 검사일시 · 검사 수량 — 위 LOT 정보와 같은 두 칸 격자에 맞춘다(검사일시 = LOT 번호 열 · 검사 수량 = 공급업체 열 · 사용자 지시 2026-10-30). */
 .parts-iqc-lot-inspected {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-3) var(--space-4);
   padding-top: var(--space-3);
   border-top: 1px solid var(--outline-variant);
+}
+
+/* 칸 이름도 위 LOT 정보의 이름(dt)과 같은 글자 */
+.parts-iqc-lot-inspected .field-label {
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+/* 검사 기준 조회 팝업 — 기준서 칸의 [기준 보기], 팝업 안 정보 · 항목 표 · 도면(사용자 지시 2026-10-30). */
+.parts-iqc-plan-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.parts-iqc-plan {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* 팝업 정보 — 세 칸 격자, 아래 구분선(사용자 시안 2026-10-30) */
+.parts-iqc-kv.parts-iqc-plan-facts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-plan-items {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.parts-iqc-plan-items h3 {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+/* 항목 표 — 왼쪽 맞춤, 머리글은 작은 글자, 숫자 열은 가운데 */
+.parts-iqc-plan-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.parts-iqc-plan-table th,
+.parts-iqc-plan-table td {
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: start;
+}
+
+.parts-iqc-plan-table th {
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.parts-iqc-plan-table .is-num {
+  text-align: center;
+}
+
+.parts-iqc-plan-table td:nth-child(4) {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 부품 IQC 검색 묶음 — 첫 줄 LOT 스캔(넓게) · [검색] · [오늘 입고], 구분선 아래 조회 조건 줄(사용자 시안 2026-10-30). */
+.parts-iqc-search.iqc-inspection-search {
+  display: grid;
+  align-items: stretch;
+  gap: var(--space-4);
+}
+
+.parts-iqc-scan-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.parts-iqc-scan-row > form.form-actions {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+  margin: 0;
+}
+
+.parts-iqc-scan-row > form.form-actions > .field-note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.parts-iqc-scan-row button {
+  flex: none;
+  padding-inline: var(--space-4);
+}
+
+.parts-iqc-search.iqc-inspection-search > .filter-bar {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 작업자 미연결 경고 — 문구 왼쪽 · 「작업자 연결」 오른쪽 끝, 한 줄(사용자 지시 2026-10-30). */
+.parts-iqc-worker-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.parts-iqc-worker-alert > button {
+  flex: none;
+}
+
+/* 검사 수량 — 검사일시 옆, 숫자 몇 자리 폭(사용자 지시 2026-10-30). */
+.parts-iqc-inspected-qty input {
+  width: 6rem;
 }
 
 /* 날짜 · 시각 칸은 내용 폭만큼 — 상자 가로 전체로 늘이지 않는다(사용자 시안). */
@@ -28270,6 +28457,21 @@ button.iqc-inspection-step-toggle:focus-visible {
   display: flex;
   align-items: baseline;
   gap: var(--space-3);
+}
+
+/* XRF 성적서 여러 건 — 파일 이름 · 빼기 단추를 한 줄씩(사용자 지시 2026-10-30). */
+.parts-iqc-file-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.parts-iqc-file-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .parts-iqc-check-table {

@@ -1,6 +1,6 @@
 import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -19,6 +19,11 @@ export interface LotScanProps {
   matchBy?: 'lot' | 'workOrder';
   /** 대기 의뢰가 없을 때의 말. 기본은 수입검사 문구다. */
   noRequestMessage?: string;
+  /**
+   * 바뀔 때마다 칸을 비우고 커서를 둔다 — 부품 IQC 가 제출한 뒤 다음 LOT 을 바로 스캔하게(사용자 지시 2026-10-30).
+   * 처음 그릴 때(0)는 건드리지 않는다.
+   */
+  focusSignal?: number;
 }
 
 /** 생산 LOT 의 원천 유형 — 서버 `WORK_ORDER_LOT_SOURCE` 와 같은 값이다. */
@@ -38,12 +43,19 @@ export const LotScan = ({
   onFound,
   matchBy = 'lot',
   noRequestMessage = t.noRequest,
+  focusSignal = 0,
 }: LotScanProps) => {
   const { client } = useApiClient();
   const [value, setValue] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [isFinding, setIsFinding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (focusSignal === 0) return;
+    setValue('');
+    setMessage(null);
+    inputRef.current?.focus();
+  }, [focusSignal]);
 
   /* 실패한 번호를 골라 둔다 — 다음 스캔이 그 자리를 덮어쓴다. */
   const fail = (text: string): void => {
