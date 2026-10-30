@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router';
 
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { usePageHub } from '../../patterns/page-hub';
-import { PaneSplitter, usePaneSplit } from '../../patterns/po-board';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -174,6 +174,7 @@ const LotMode = ({
   const lotStatuses = useLotStatusOptions();
   const warehouses = useWarehouseReferenceOptions();
 
+  const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:lot-status:split', 0.5);
   const layout = useSplitOrientation(LOT_STATUS_ORIENTATION_KEY);
 
@@ -208,7 +209,7 @@ const LotMode = ({
       {hubTarget !== null && <HubActions target={hubTarget}>{statusChips}</HubActions>}
       {/* 좌우 · 상하 배치 단추 — 탭 막대 오른쪽 끝(검사 조회·판정과 같다 · 사용자 2026-10-30). */}
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
-      <section className="pane lot-status-search" aria-label={t.lotFilter.pane}>
+      <section ref={aboveRef} className="pane lot-status-search" aria-label={t.lotFilter.pane}>
         <div className="lot-status-search-head">
           {modeSwitch}
           {hubTarget === null && statusChips}
@@ -231,6 +232,7 @@ const LotMode = ({
       </section>
       {/* 목록과 LOT 상세를 나란히(상하 배치면 위아래로) 둔다 — 종전에는 상세가 창으로 떴다(사용자 2026-10-30). */}
       <div
+        ref={splitRef}
         className={`po-board-split inspection-split lot-status-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
       >

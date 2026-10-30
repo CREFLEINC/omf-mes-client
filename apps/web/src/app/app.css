@@ -3663,8 +3663,8 @@ h2:has(> .inspection-standard-dialog-title) {
 .lot-status-pane {
   display: grid;
   align-content: start;
-  gap: var(--space-4);
-  padding: var(--space-5);
+  /* 검사 조회·판정 카드와 같은 안쪽 여백·간격(사용자 2026-10-30) — 기본 카드(.pane) 여백을 그대로 쓴다. */
+  gap: var(--space-3);
   min-width: 0;
 }
 
@@ -3685,7 +3685,7 @@ h2:has(> .inspection-standard-dialog-title) {
  */
 .lot-status-search {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-3);
   min-width: 0;
 }
 
@@ -3847,11 +3847,12 @@ h2:has(> .inspection-standard-dialog-title) {
   gap: var(--space-2) var(--space-4);
 }
 
-.lot-status-pane-head > .pane-title {
+.lot-status-pane-head > .pane-title,
+.lot-status-pane > .pane-title {
   margin: 0;
   color: var(--on-surface);
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
 }
 
 .lot-status-pane-head > .field-note {
@@ -23875,8 +23876,8 @@ body.col-reordering * {
 }
 
 /*
- * LOT 상태 조회 목록 · LOT 상세 — 창 바닥까지 늘이지 않고 내용 높이만 쓴다(빈 안내가 긴 빈 칸으로 서지 않게 ·
- * 사용자 시안 2026-10-30). 줄이 많으면 칸 안에서 구른다.
+ * LOT 상태 조회 목록 · LOT 상세 — 검사 조회·판정과 같이 창 크기에 맞춘다(사용자 2026-10-30). 넓은 창(1440px 이상)은
+ * 나란히 서서 창 바닥에서 멈추고 칸 안에서 구르며, 좁은 창은 위아래로 쌓이고 목록은 창 높이 안에서 구른다.
  */
 .lot-status-split > .lot-status-pane {
   height: auto;
@@ -23885,10 +23886,9 @@ body.col-reordering * {
 }
 
 @media (min-width: 1440px) {
-  .po-board-split.lot-status-split {
-    height: auto;
+  .lot-status-split > .lot-status-pane {
+    max-height: none;
     min-height: 0;
-    align-items: start;
   }
 }
 
