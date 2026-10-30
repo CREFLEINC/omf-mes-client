@@ -650,6 +650,63 @@ const InspectionForm = (props: FormProps) => {
         onChange={(itemId, index, text) => change(withValue(form, itemId, index, text))}
       />
 
+      {/* 종합 판정 — 치수 측정 바로 아래(사용자 지시 2026-10-30). 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}
+      <section className="parts-iqc-card" aria-labelledby="parts-iqc-verdict">
+        <h3 id="parts-iqc-verdict" className="parts-iqc-sub-title">
+          {t.verdict.overall}
+        </h3>
+        <div className="parts-iqc-verdict-line">
+          <div
+            className={`parts-iqc-auto-box${suggested === 'REJECTED' ? ' is-ng' : suggested === 'ACCEPTED' ? ' is-ok' : ''}`}
+          >
+            <span className="parts-iqc-auto-label">
+              {t.verdict.suggested}
+            </span>
+            {suggested === null ? (
+              <span className="parts-iqc-muted">{t.verdict.pending}</span>
+            ) : (
+              <span className="parts-iqc-auto-value">
+                <strong>{t.judgment[suggested] ?? suggested}</strong>
+                {` ${t.verdict.rejectedQty(rejectedQty)}`}
+              </span>
+            )}
+          </div>
+          <div className="parts-iqc-inline-field parts-iqc-overall">
+            <span className="field-label" id="parts-iqc-overall">
+              {t.verdict.overall}
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
+            </span>
+            <Select
+              aria-labelledby="parts-iqc-overall"
+              value={overall}
+              disabled={suggested === null}
+              options={['ACCEPTED', 'REJECTED', 'HELD'].map((value) => ({
+                value,
+                label: t.judgment[value] ?? value,
+              }))}
+              onChange={(value) => setChosen(value)}
+            />
+          </div>
+        </div>
+        {needsReason && (
+          <div className="field-cell parts-iqc-stretch">
+            <FieldLabel htmlFor="parts-iqc-reason" label={t.verdict.reason} required />
+            <TextArea
+              id="parts-iqc-reason"
+              fullWidth
+              helperText={t.verdict.reasonHint}
+              value={reason}
+              maxLength={500}
+              rows={2}
+              error={submit.fieldErrors.judgmentChangeReason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </div>
+        )}
+      </section>
+
       <DrawingImages drawings={props.drawings} />
 
       {/* 외관 · XRF — 한 줄에 수량 둘 · 세로선 · XRF 결과, 구분선 아래 XRF 성적서(사용자 시안 2026-10-29) */}
@@ -933,63 +990,6 @@ const InspectionForm = (props: FormProps) => {
             onChange={(event) => change({ ...form, remarks: event.target.value })}
           />
         </div>
-      </section>
-
-      {/* 종합 판정 — 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}
-      <section className="parts-iqc-card" aria-labelledby="parts-iqc-verdict">
-        <h3 id="parts-iqc-verdict" className="parts-iqc-sub-title">
-          {t.verdict.overall}
-        </h3>
-        <div className="parts-iqc-verdict-line">
-          <div
-            className={`parts-iqc-auto-box${suggested === 'REJECTED' ? ' is-ng' : suggested === 'ACCEPTED' ? ' is-ok' : ''}`}
-          >
-            <span className="parts-iqc-auto-label">
-              {t.verdict.suggested}
-            </span>
-            {suggested === null ? (
-              <span className="parts-iqc-muted">{t.verdict.pending}</span>
-            ) : (
-              <span className="parts-iqc-auto-value">
-                <strong>{t.judgment[suggested] ?? suggested}</strong>
-                {` ${t.verdict.rejectedQty(rejectedQty)}`}
-              </span>
-            )}
-          </div>
-          <div className="parts-iqc-inline-field parts-iqc-overall">
-            <span className="field-label" id="parts-iqc-overall">
-              {t.verdict.overall}
-              <span className="required-mark" aria-hidden="true">
-                {' *'}
-              </span>
-            </span>
-            <Select
-              aria-labelledby="parts-iqc-overall"
-              value={overall}
-              disabled={suggested === null}
-              options={['ACCEPTED', 'REJECTED', 'HELD'].map((value) => ({
-                value,
-                label: t.judgment[value] ?? value,
-              }))}
-              onChange={(value) => setChosen(value)}
-            />
-          </div>
-        </div>
-        {needsReason && (
-          <div className="field-cell parts-iqc-stretch">
-            <FieldLabel htmlFor="parts-iqc-reason" label={t.verdict.reason} required />
-            <TextArea
-              id="parts-iqc-reason"
-              fullWidth
-              helperText={t.verdict.reasonHint}
-              value={reason}
-              maxLength={500}
-              rows={2}
-              error={submit.fieldErrors.judgmentChangeReason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </div>
-        )}
       </section>
 
       {ask && (
