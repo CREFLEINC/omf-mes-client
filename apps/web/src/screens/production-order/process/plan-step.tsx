@@ -12,7 +12,7 @@ import { formatQty } from './process-model';
 import { useLineSource } from './reference-sources';
 
 /**
- * 생산계획 단계 본문. 한 행 입력 칸은 계획일, 계획 수량, 라인, 비고 넷(C-16). BOM과 Routing은 마스터 점검 단계에서 정한다.
+ * 생산계획 단계 본문. 한 행 입력 칸은 계획일, 계획 수량, 라인, 비고 넷(C-16). BOM과 Routing은 BOM·Routing 단계에서 정한다.
  * 행에는 저장과 확정 버튼이 없다. 하단 바 [전개 확정]이 바뀐 줄을 함께 저장하고 확정한다(T-W-C 중간 단계의 확정).
  * 행 동작은 작성 중 계획의 [삭제] 하나(오른쪽 고정 열, C-1).
  */

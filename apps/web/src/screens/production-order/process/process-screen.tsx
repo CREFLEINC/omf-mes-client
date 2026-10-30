@@ -2,7 +2,7 @@
  * W-02-01 작업지시 목록 처리 화면 (W-02-02 W/O 전개와 편성, W-02-03 4M 자원배정, W-02-04 W/O 확정과 배포를 단계로 합침)
  * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
  * 이탈: C-17 「자동」 표시 없음(배정 출처 칸 계약 대기, omf-all-around#129).
- *       C-12 마스터 점검의 BOM, Routing 개정은 그 품목의 개정 목록이라 Select다(구성안 C-20 표).
+ *       C-12 BOM·Routing 단계의 BOM, Routing 개정은 그 품목의 개정 목록이라 Select다(구성안 C-20 표).
  *       T-W-C 4M 편집 영역은 위치 묶음을 펼치면(라인에 기본 위치가 없을 때) 1280×800에 들어가지 않아
  *       편집 영역 안에서만 스크롤하고 머리를 고정한다(높이가 모자랄 때 ②, 구성안 8장).
  */
@@ -100,7 +100,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   const item = useItemCodeNames([order.itemId]).get(order.itemId);
   const stepName = (key: ProcessStepKey) => tp.steps[key];
 
-  /* 마스터 점검 */
+  /* BOM·Routing */
   const boms = useBomReferenceQuery(order.itemId);
   const lines = useProductionLineReferenceQuery(order.plantId);
   const editor = useProductionPlanEditorSession(order.productionOrderId);
@@ -139,7 +139,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     stepName('plan'),
   );
 
-  /* 생산계획: 확정 전 줄은 마스터 점검의 BOM, Routing을 따른다. */
+  /* 생산계획: 확정 전 줄은 BOM·Routing 단계의 BOM, Routing을 따른다. */
   const { change } = editor;
   useEffect(() => {
     editor.rows.forEach((row) => {

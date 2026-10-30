@@ -2198,7 +2198,7 @@ h2:has(> .inspection-standard-dialog-title) {
   overflow-x: auto;
 }
 
-/* C-16 가로 넘침 금지 — BOM과 Routing을 마스터 점검 단계로 옮겨 한 행 입력 칸을 4개로 줄였다. 행 동작은 오른쪽 고정. */
+/* C-16 가로 넘침 금지 — BOM과 Routing을 BOM·Routing 단계로 옮겨 한 행 입력 칸을 4개로 줄였다. 행 동작은 오른쪽 고정. */
 .wide-table.production-plan-table table {
   min-width: 0;
 }

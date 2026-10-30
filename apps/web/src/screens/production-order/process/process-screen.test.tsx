@@ -474,7 +474,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(screen.queryByText(t.reasons.WORK_ORDER_LOCATION_MISSING)).toBeNull();
   });
 
-  it('확정된 계획이 쓰는 Routing 개정이 이제 쓸 수 없어도 마스터 점검은 그 개정으로 통과한다', async () => {
+  it('확정된 계획이 쓰는 Routing 개정이 이제 쓸 수 없어도 BOM·Routing 단계는 그 개정으로 통과한다', async () => {
     renderAt(
       `${WORKLIST}/${ORDER_NO}`,
       world({
