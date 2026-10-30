@@ -364,7 +364,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         labelVi: 'Đăng ký vật tư nghi ngờ',
       },
       /*
-       * 품질 승인 처리 — 긴급 IQC 생략 한도승인(W-01-02)을 유형 탭 하나로 품는다(#144). 탭은 화면이 유형 탭
+       * 품질 승인 처리 — 긴급 IQC 생략 한도승인(W-01-02)과 처분 판정 처리(W-03-10)를 유형 탭 하나씩으로 품는다(#144 · #223). 탭은 화면이 유형 탭
        * 줄에 직접 그린다(`inlineTabs`) — 셸 탭 막대까지 서면 탭 줄이 둘이 된다.
        */
       {
@@ -384,14 +384,12 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: 'IQC (수입검사) 생략',
             labelVi: 'Bỏ qua IQC (kiểm tra đầu vào)',
           },
+          /*
+           * W-03-10 — 특채는 여기서 요청 → 승인 탭에서 결재 → 여기서 적용하는 한 흐름이라 같은 묶음에 둔다(omf-all-around#223).
+           * 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다.
+           */
+          { to: '/quality/dispositions', label: '처분 판정 처리', labelVi: 'Ra quyết định xử lý' },
         ],
-      },
-      /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
-      {
-        to: '/quality/dispositions',
-        icon: 'gavel',
-        label: '처분 판정 처리',
-        labelVi: 'Ra quyết định xử lý',
       },
     ],
   },

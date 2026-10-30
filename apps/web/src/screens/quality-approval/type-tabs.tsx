@@ -9,19 +9,33 @@ export const QUALITY_APPROVALS_PATH = '/quality/approvals';
 /** 긴급 IQC 생략 한도승인 화면(W-01-02) — 「IQC (수입검사) 생략」 탭이 이 화면이다(#144). */
 export const IQC_SKIP_APPROVAL_PATH = '/logistics/iqc-skip-approval';
 export const IQC_SKIP_TYPE_CODE = 'IQC_SKIP';
+/** 처분 판정 처리(W-03-10) — 같은 유형 탭 줄 끝의 탭 하나다(omf-all-around#223). */
+export const DISPOSITION_PATH = '/quality/dispositions';
+/** 처분 판정 처리 탭의 값 — 승인 유형 코드가 아니라 화면이다. 누르면 그 주소로 간다. */
+export const DISPOSITION_TAB = 'DISPOSITION';
 
 /**
  * 유형 탭 선택지 — 이 화면의 유형에 IQC 생략 탭을 PQC·OQC 생략 앞에 끼운다(IQC → PQC → OQC 흐름 차례 · #212).
  * 그 화면을 볼 권한이 없으면(`withIqcSkip` 거짓) 끼우지 않는다 — 누르는 순간 막힌 화면이 선다.
  */
-export const toTypeTabOptions = (codes: readonly string[], withIqcSkip = true): CodeOption[] => {
-  if (!withIqcSkip) return toTypeOptions(codes);
+export const toTypeTabOptions = (
+  codes: readonly string[],
+  withIqcSkip = true,
+  /** 끝에 처분 판정 처리 탭을 더한다 — 그 화면을 볼 권한이 있을 때만 켠다(omf-all-around#223). */
+  withDisposition = false,
+): CodeOption[] => {
   const at = codes.findIndex((code) => code === 'PQC_SKIP' || code === 'OQC_SKIP');
-  const ordered =
-    at === -1
+  const ordered = !withIqcSkip
+    ? codes
+    : at === -1
       ? [...codes, IQC_SKIP_TYPE_CODE]
       : [...codes.slice(0, at), IQC_SKIP_TYPE_CODE, ...codes.slice(at)];
-  return toTypeOptions(ordered);
+  return [
+    ...toTypeOptions(ordered),
+    ...(withDisposition
+      ? [{ value: DISPOSITION_TAB, label: messages.qualityApproval.dispositionTab }]
+      : []),
+  ];
 };
 
 export interface TypeTabsProps {

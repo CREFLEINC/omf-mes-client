@@ -3,11 +3,22 @@ import { Breadcrumb, PageHeader, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { requireIfMatch, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
+import { QUALITY_APPROVAL_TYPE_CODES } from '../quality-approval/code-options';
+import {
+  DISPOSITION_TAB,
+  IQC_SKIP_APPROVAL_PATH,
+  IQC_SKIP_TYPE_CODE,
+  QUALITY_APPROVALS_PATH,
+  TypeTabs,
+  toTypeTabOptions,
+} from '../quality-approval/type-tabs';
 import {
   EMPTY_DECISION_FORM,
   hasDecisionInput,
@@ -108,6 +119,12 @@ export const DispositionDecisionScreen = ({
   today,
   offsetMinutes,
 }: DispositionDecisionScreenProps = {}) => {
+  const navigate = useNavigate();
+  const { session } = useSession();
+  /* 품질 승인 처리 묶음의 탭 줄(omf-all-around#223) — 셸 탭 막대 대신 화면이 그리므로 권한도 여기서 본다. */
+  const access = toWebAccess(session?.permissions);
+  const canOpenQualityApprovals = access.allows(QUALITY_APPROVALS_PATH);
+  const canOpenIqcSkip = access.allows(IQC_SKIP_APPROVAL_PATH);
   const t = messages.dispositionDecision;
   const [searchParams, setSearchParams] = useSearchParams();
   const baseDate = useMemo(() => today ?? new Date(), [today]);
@@ -342,15 +359,36 @@ export const DispositionDecisionScreen = ({
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+      {/*
+       * 품질 승인 처리 묶음의 탭 하나(omf-all-around#223) — 그 화면의 유형 탭 줄을 같이 세우고 이 탭이 켜진다.
+       * 다른 탭을 누르면 품질 승인 처리(또는 IQC 생략)의 그 유형으로 간다. 품질 승인 처리를 못 보면 묶음이 아니다 —
+       * 종전처럼 제목 · 경로를 세운다.
+       */}
+      {canOpenQualityApprovals ? (
+        <TypeTabs
+          options={toTypeTabOptions(QUALITY_APPROVAL_TYPE_CODES, canOpenIqcSkip, true)}
+          value={DISPOSITION_TAB}
+          onChange={(code) => {
+            if (code === DISPOSITION_TAB) return;
+            if (code === IQC_SKIP_TYPE_CODE) {
+              void navigate(IQC_SKIP_APPROVAL_PATH);
+              return;
+            }
+            const query = code === '' ? '' : `?${new URLSearchParams({ ty: code }).toString()}`;
+            void navigate(`${QUALITY_APPROVALS_PATH}${query}`);
+          }}
+        />
+      ) : (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
       <Tabs
         aria-label={t.tabs.label}
         value={tab}

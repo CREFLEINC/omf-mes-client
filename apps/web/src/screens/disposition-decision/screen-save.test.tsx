@@ -3,7 +3,9 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import {
   conflictResponseFixture,
   dispositionStub,
@@ -23,8 +25,14 @@ type User = ReturnType<typeof userEvent.setup>;
 
 const renderScreen = (options: Parameters<typeof dispositionStub>[0] = {}): { user: User } => {
   renderWithProviders(
-    <DispositionDecisionScreen today={TODAY} offsetMinutes={KST} dispositionTypeCodes={[CODE]} />,
-    { fetch: dispositionStub(options), route: '/quality/dispositions?nonconformanceId=41' },
+    <SessionProvider>
+      <DispositionDecisionScreen today={TODAY} offsetMinutes={KST} dispositionTypeCodes={[CODE]} />
+    </SessionProvider>,
+    {
+      session: SYNTHETIC_SESSION,
+      fetch: dispositionStub(options),
+      route: '/quality/dispositions?nonconformanceId=41',
+    },
   );
 
   return { user: userEvent.setup() };
@@ -333,12 +341,18 @@ describe('DispositionDecisionScreen 판정 저장', () => {
 describe('DispositionDecisionScreen 선별', () => {
   const renderSort = (options: Parameters<typeof dispositionStub>[0] = {}): { user: User } => {
     renderWithProviders(
-      <DispositionDecisionScreen
-        today={TODAY}
-        offsetMinutes={KST}
-        dispositionTypeCodes={['REWORK', 'SORT']}
-      />,
-      { fetch: dispositionStub(options), route: '/quality/dispositions?nonconformanceId=41' },
+      <SessionProvider>
+        <DispositionDecisionScreen
+          today={TODAY}
+          offsetMinutes={KST}
+          dispositionTypeCodes={['REWORK', 'SORT']}
+        />
+      </SessionProvider>,
+      {
+        session: SYNTHETIC_SESSION,
+        fetch: dispositionStub(options),
+        route: '/quality/dispositions?nonconformanceId=41',
+      },
     );
     return { user: userEvent.setup() };
   };

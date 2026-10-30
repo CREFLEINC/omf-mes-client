@@ -15,6 +15,8 @@ import {
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import {
+  DISPOSITION_PATH,
+  DISPOSITION_TAB,
   IQC_SKIP_TYPE_CODE,
   QUALITY_APPROVALS_PATH,
   StatusChips,
@@ -164,6 +166,7 @@ export const IqcSkipApprovalScreen = () => {
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다 — 품질 승인 처리를 못 보면 탭을 세우지 않는다. */
   const access = toWebAccess(session?.permissions);
   const canOpenQualityApprovals = access.allows(QUALITY_APPROVALS_PATH);
+  const canOpenDisposition = access.allows(DISPOSITION_PATH);
 
   /**
    * **주소 키의 수명 — 무엇이 바뀔 때 무엇을 비우는가.**
@@ -980,11 +983,20 @@ export const IqcSkipApprovalScreen = () => {
        * 「결재 대기 N」 칩은 권한과 상관없이 탭 줄 오른쪽에 선다 — 이 화면의 조회 조건이다.
        */}
       <TypeTabs
-        options={canOpenQualityApprovals ? toTypeTabOptions(QUALITY_APPROVAL_TYPE_CODES) : []}
+        options={
+          canOpenQualityApprovals
+            ? toTypeTabOptions(QUALITY_APPROVAL_TYPE_CODES, true, canOpenDisposition)
+            : []
+        }
         value={IQC_SKIP_TYPE_CODE}
         onChange={(code) => {
           /* 결재 전송 중에는 대상을 바꾸지 않는다 — 목록 행·쪽과 같은 잠금이다. */
           if (code === IQC_SKIP_TYPE_CODE || isLocked) return;
+          /* 「처분 판정 처리」 탭은 그 화면 주소다(omf-all-around#223). */
+          if (code === DISPOSITION_TAB) {
+            void navigate(DISPOSITION_PATH);
+            return;
+          }
           const search = toAppliedSearchParams(
             new URLSearchParams(),
             { ...QUALITY_APPROVAL_EMPTY_FILTERS, approvalTypeCode: code },

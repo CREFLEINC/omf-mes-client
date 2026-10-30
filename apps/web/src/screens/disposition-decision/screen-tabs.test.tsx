@@ -3,7 +3,9 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { renderWithProviders } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { dispositionStub, requestedPaths } from './fixtures';
 import { DispositionDecisionScreen } from './screen';
 
@@ -14,10 +16,12 @@ const KST = 540;
 type User = ReturnType<typeof userEvent.setup>;
 
 const renderScreen = (route = '/quality/dispositions'): { user: User } => {
-  renderWithProviders(<DispositionDecisionScreen today={TODAY} offsetMinutes={KST} />, {
-    fetch: dispositionStub({ decidedQty: 200 }),
-    route,
-  });
+  renderWithProviders(
+    <SessionProvider>
+      <DispositionDecisionScreen today={TODAY} offsetMinutes={KST} />
+    </SessionProvider>,
+    { session: SYNTHETIC_SESSION, fetch: dispositionStub({ decidedQty: 200 }), route },
+  );
 
   return { user: userEvent.setup() };
 };

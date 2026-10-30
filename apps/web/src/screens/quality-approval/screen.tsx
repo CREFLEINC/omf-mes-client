@@ -63,6 +63,8 @@ import {
 } from './queries';
 import { RequestList } from './request-list';
 import {
+  DISPOSITION_PATH,
+  DISPOSITION_TAB,
   IQC_SKIP_APPROVAL_PATH,
   QUALITY_APPROVALS_PATH,
   IQC_SKIP_TYPE_CODE,
@@ -146,6 +148,7 @@ export const QualityApprovalScreen = ({
   /* 셸 탭 막대 대신 이 화면이 탭을 그리므로 권한 거르기도 여기서 한다(`inlineTabs`). */
   const canOpenIqcSkip = toWebAccess(session?.permissions).allows(IQC_SKIP_APPROVAL_PATH);
   const canOpenLotStatus = toWebAccess(session?.permissions).allows(LOT_STATUS_SCREEN_PATH);
+  const canOpenDisposition = toWebAccess(session?.permissions).allows(DISPOSITION_PATH);
   const filters = useMemo(
     /* 상태 조건은 탭 줄 승인·반려 칩(#186)이 건다 — 그 두 값만 주소에서 읽는다(결재 대기는 `pd=1`). */
     () => readFilters(searchParams, approvalTypeCodes, STATUS_FILTER_CODES),
@@ -774,10 +777,15 @@ export const QualityApprovalScreen = ({
        * 유형 탭을 누르면 고른 요청을 비우고(`apply`) 그 유형의 목록을 연다.
        */}
       <TypeTabs
-        options={toTypeTabOptions(approvalTypeCodes, canOpenIqcSkip)}
+        options={toTypeTabOptions(approvalTypeCodes, canOpenIqcSkip, canOpenDisposition)}
         value={typeCode}
         onChange={(code) => {
           if (code === typeCode) return;
+          /* 「처분 판정 처리」 탭은 그 화면 주소다(omf-all-around#223). */
+          if (code === DISPOSITION_TAB) {
+            void navigate(DISPOSITION_PATH);
+            return;
+          }
           /* 「IQC (수입검사) 생략」 탭은 긴급 IQC 생략 한도승인 주소다(W-01-02) — 같은 화면을 그 유형 고정으로 연다. */
           if (code === IQC_SKIP_TYPE_CODE) {
             void navigate(IQC_SKIP_APPROVAL_PATH);

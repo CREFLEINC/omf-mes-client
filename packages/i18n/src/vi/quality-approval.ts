@@ -39,6 +39,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     filterOff: (label: string): string => `Bỏ lọc ${label}`,
   },
   all: 'Tất cả',
+  dispositionTab: 'Ra quyết định xử lý',
   datePlaceholder: 'Hãy chọn ngày',
   qPlaceholder: 'Hãy nhập số yêu cầu',
   typeLabels: {
