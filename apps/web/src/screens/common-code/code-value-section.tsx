@@ -1,17 +1,12 @@
-import { Button, Chip, EmptyState, Icon, SkeletonText, useToast } from '@crefle/web-ui';
+import { Button, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
-import type { PageSize } from '../../patterns/page-nav';
 import { CodeValueFormPane } from './code-value-form-pane';
-import {
-  CodeValueListPane,
-  type CodeValueListHead,
-  type CodeValueStatusColumn,
-} from './code-value-list-pane';
+import { CodeValueListPane } from './code-value-list-pane';
 import {
   codeValueToFormValues,
   emptyCodeValueFormValues,
@@ -75,29 +70,6 @@ export interface CodeValueSectionProps {
   onIncludeInactiveChange: (includeInactive: boolean) => void;
   page: number;
   onPageChange: (page: number) => void;
-  /** 목록 상태 열 문구. 주지 않으면 종전 그대로(코드명 뒤 「(미사용)」) — 판정유형 코드 탭만 쓴다(#208). */
-  statusColumn?: CodeValueStatusColumn;
-  /** 참이면 「코드값 추가」를 주 동작(채운 단추 + 더하기 아이콘)으로 보인다. 기본은 종전 외곽선 단추(#208). */
-  primaryAdd?: boolean;
-  /**
-   * 목록 · 코드값 정보 두 구획을 감싸 배치한다 — 판정유형 코드 탭만 좌우 · 상하 분할로 쓴다(#208).
-   * 주지 않으면 종전 그대로 두 구획을 이어 그린다.
-   */
-  renderLayout?: (listPane: ReactNode, formPane: ReactNode) => ReactNode;
-  /** 목록 조작 줄 아래 안내 글. 주지 않으면 그리지 않는다 — 판정유형 코드 탭만 쓴다(#208). */
-  filterNote?: ReactNode;
-  /** 참이면 쪽 이동을 공용 모양(총 건수 · 처음/이전/다음/마지막)으로. 기본은 종전 이전·다음 줄(#208). */
-  sharedPageNav?: boolean;
-  /**
-   * 쪽 크기와 그 바꿈. 주면 조회에 `size` 를 싣고 공용 쪽 이동에 건수 선택을 세운다.
-   * 주지 않으면 종전 그대로(서버 기본 크기 · 건수 선택 없음) — 판정유형 코드 탭만 쓴다(사용자 지시 · #208).
-   */
-  pageSize?: number;
-  onPageSizeChange?: (size: PageSize) => void;
-  /** 목록 · 코드값 정보 빈 상태 아이콘. 주지 않으면 종전 그대로 아이콘 없이(#208). */
-  emptyIcon?: ReactNode;
-  /** 목록 머리(제목 · 건수 · 정렬 기준) · 「순서」 열 이름 · 「수정」 작업 열. 주지 않으면 종전 그대로 — 판정유형 코드 탭만 쓴다(사용자 시안 · #208). */
-  listHead?: CodeValueListHead;
 }
 
 /**
@@ -126,20 +98,11 @@ export const CodeValueSection = ({
   onIncludeInactiveChange,
   page,
   onPageChange,
-  statusColumn,
-  primaryAdd = false,
-  renderLayout,
-  filterNote,
-  sharedPageNav = false,
-  pageSize,
-  onPageSizeChange,
-  emptyIcon,
-  listHead,
 }: CodeValueSectionProps) => {
   const toast = useToast();
   const { client } = useApiClient();
 
-  const list = useCodeValueList(codeGroupId, includeInactive, page, pageSize);
+  const list = useCodeValueList(codeGroupId, includeInactive, page);
   const codeValues = list.data?.items ?? [];
 
   /* 서버가 준 쪽 정보를 정본으로 쓴다. 아직 받지 못했으면 건수를 지어내지 않고 0으로 둔다. */
@@ -299,14 +262,6 @@ export const CodeValueSection = ({
     onPageChange(next);
   };
 
-  const handlePageSizeChange =
-    onPageSizeChange === undefined
-      ? undefined
-      : (next: PageSize) => {
-          resetEditing();
-          onPageSizeChange(next);
-        };
-
   const handleAdd = () => {
     resetEditing();
     onOpenCreate();
@@ -368,30 +323,9 @@ export const CodeValueSection = ({
       <DisabledAction label={t.actions.add} reason={t.actionReasons.addNeedsGroup} />
     ) : (
       <div className="field-cell">
-        <Button
-          variant={primaryAdd ? 'filled' : 'outlined'}
-          leadingIcon={primaryAdd ? <Icon name="add" size={18} /> : undefined}
-          disabled={isCreating}
-          onClick={handleAdd}
-        >
+        <Button variant="outlined" disabled={isCreating} onClick={handleAdd}>
           {t.actions.add}
         </Button>
-      </div>
-    );
-
-  /**
-   * 코드값 정보 제목 줄 — 상태 열을 쓰는 탭(판정유형 코드)만 그린다: 제목 옆에 목록과 같은 사용/미사용 칩(#208).
-   * 공통코드 화면은 상태 열을 주지 않아 종전 그대로 제목 줄이 없다.
-   */
-  const formHead = (isActive: boolean | null): ReactNode =>
-    statusColumn === undefined ? undefined : (
-      <div className="code-value-form-head">
-        <h2 className="pane-title">{t.formPaneTitle}</h2>
-        {isActive !== null && (
-          <Chip variant="status" size="sm" status={isActive ? 'success' : 'idle'}>
-            {isActive ? statusColumn.active : statusColumn.inactive}
-          </Chip>
-        )}
       </div>
     );
 
@@ -422,7 +356,6 @@ export const CodeValueSection = ({
           onSave={handleSave}
           onCancel={closeCreateForm}
           onDeactivate={() => undefined}
-          head={formHead(null)}
         />
       );
     }
@@ -432,7 +365,6 @@ export const CodeValueSection = ({
         <section className="pane" aria-label={t.formPaneTitle}>
           <EmptyState
             size="sm"
-            icon={emptyIcon}
             title={codeGroupId === null ? t.empty.groupNotSelected : t.empty.notSelected}
           />
         </section>
@@ -483,48 +415,32 @@ export const CodeValueSection = ({
           deactivateWrite.reset();
           setIsDeactivateOpen(true);
         }}
-        head={formHead(detail.data.codeValue.isActive)}
       />
     );
   };
 
-  const listPane = (
-    <CodeValueListPane
-      codeValues={codeValues}
-      // 그룹을 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
-      isLoading={codeGroupId !== null && list.isPending}
-      isGroupSelected={codeGroupId !== null}
-      includeInactive={includeInactive}
-      onIncludeInactiveChange={handleIncludeInactiveChange}
-      pageView={pageView}
-      onChangePage={handlePageChange}
-      selectedCodeValueId={selectedCodeValueId}
-      onSelect={handleSelect}
-      addAction={addAction}
-      statusColumn={statusColumn}
-      filterNote={filterNote}
-      pageMeta={sharedPageNav ? (list.data?.page ?? { page, size: 0, total: 0 }) : undefined}
-      onChangePageSize={handlePageSizeChange}
-      emptyIcon={emptyIcon}
-      listHead={listHead}
-      loadError={
-        list.isError ? (
-          <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
-        ) : null
-      }
-    />
-  );
-
   return (
     <>
-      {renderLayout === undefined ? (
-        <>
-          {listPane}
-          {renderFormPane()}
-        </>
-      ) : (
-        renderLayout(listPane, renderFormPane())
-      )}
+      <CodeValueListPane
+        codeValues={codeValues}
+        // 그룹을 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
+        isLoading={codeGroupId !== null && list.isPending}
+        isGroupSelected={codeGroupId !== null}
+        includeInactive={includeInactive}
+        onIncludeInactiveChange={handleIncludeInactiveChange}
+        pageView={pageView}
+        onChangePage={handlePageChange}
+        selectedCodeValueId={selectedCodeValueId}
+        onSelect={handleSelect}
+        addAction={addAction}
+        loadError={
+          list.isError ? (
+            <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+          ) : null
+        }
+      />
+
+      {renderFormPane()}
 
       {/*
        * 창은 열 때만 붙인다 — 닫힌 창을 남겨 두면 지난 값이 그대로 살아 있다.

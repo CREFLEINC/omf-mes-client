@@ -1,8 +1,6 @@
 import {
   AlertBanner,
-  Button,
   Checkbox,
-  Chip,
   type Column,
   EmptyState,
   SkeletonText,
@@ -11,7 +9,6 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { PageNav as SharedPageNav, type PageNavMeta, type PageSize } from '../../patterns/page-nav';
 import { hasDuplicateDisplayOrder, sortForDisplay } from './code-value-order';
 import type { CodeValue } from './code-value-types';
 import { PageNav } from './page-nav';
@@ -37,45 +34,6 @@ export interface CodeValueListPaneProps {
    * 실패를 「등록된 코드값이 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
-  /**
-   * 상태 열 문구. 주면 「사용/미사용」을 글자 + 색 칩 열로 따로 보이고 코드명 뒤 「(미사용)」을 붙이지 않는다.
-   * 주지 않으면(공통코드 화면) 종전 그대로다 — 판정유형 코드 탭만 쓴다(#208).
-   */
-  statusColumn?: CodeValueStatusColumn;
-  /** 조작 줄(「미사용 포함」) 아래 안내 글. 주지 않으면 그리지 않는다 — 판정유형 코드 탭만 쓴다(#208). */
-  filterNote?: ReactNode;
-  /**
-   * 서버 쪽 정보. 주면 쪽 이동을 공용 모양(「총 N건 · 처음/이전/다음/마지막」)으로 그린다.
-   * 주지 않으면(공통코드 화면) 종전 이전·다음 줄 그대로다 — 판정유형 코드 탭만 쓴다(#208).
-   */
-  pageMeta?: PageNavMeta;
-  /** 공용 쪽 이동의 건수 선택. 주지 않으면 건수 선택을 그리지 않는다 — 판정유형 코드 탭만 쓴다(#208). */
-  onChangePageSize?: (size: PageSize) => void;
-  /** 빈 상태 아이콘. 주지 않으면 종전 그대로 아이콘 없이 — 판정유형 코드 탭만 쓴다(#208). */
-  emptyIcon?: ReactNode;
-  /**
-   * 목록 머리 · 작업 열. 주면 제목 줄(제목 · 건수 · 「코드값 추가」) → 조작 줄(「미사용 포함」 · 정렬 기준 표기) 순으로 세우고
-   * 「순서」 열 이름 · 「수정」 작업 열(줄 고르기의 다른 입구)을 쓴다. 주지 않으면(공통코드 화면) 종전 그대로다 — 판정유형 코드 탭만 쓴다(사용자 시안 · #208).
-   */
-  listHead?: CodeValueListHead;
-}
-
-export interface CodeValueListHead {
-  title: string;
-  /** 목록 총 건수 표기(「4개」). */
-  count: (total: number) => string;
-  /** 목록이 정렬 순서로 나온다는 사실 표기 — 새 정렬 기능이 아니다. */
-  sortNote: string;
-  orderHeader: string;
-  actionsHeader: string;
-  edit: string;
-  editRow: (code: string) => string;
-}
-
-export interface CodeValueStatusColumn {
-  header: string;
-  active: string;
-  inactive: string;
 }
 
 /** 유효기간 표기. 한쪽만 있는 것도 계약이 허용한다 — 없는 쪽을 지어내지 않고 자리를 비운다. */
@@ -111,12 +69,6 @@ export const CodeValueListPane = ({
   onSelect,
   addAction,
   loadError,
-  statusColumn,
-  filterNote,
-  pageMeta,
-  onChangePageSize,
-  emptyIcon,
-  listHead,
 }: CodeValueListPaneProps) => {
   const rows = sortForDisplay(codeValues);
 
@@ -139,14 +91,11 @@ export const CodeValueListPane = ({
     {
       key: 'codeName',
       header: t.fields.codeName,
-      render: (row) =>
-        row.isActive || statusColumn !== undefined
-          ? row.codeName
-          : `${row.codeName}${t.values.inactiveSuffix}`,
+      render: (row) => (row.isActive ? row.codeName : `${row.codeName}${t.values.inactiveSuffix}`),
     },
     {
       key: 'displayOrder',
-      header: listHead?.orderHeader ?? t.fields.displayOrder,
+      header: t.fields.displayOrder,
       width: '96px',
       align: 'end',
       render: (row) => String(row.displayOrder),
@@ -157,40 +106,6 @@ export const CodeValueListPane = ({
       width: '200px',
       render: (row) => formatPeriod(row.effectiveFrom, row.effectiveTo),
     },
-    ...(statusColumn === undefined
-      ? []
-      : [
-          {
-            key: 'isActive',
-            header: statusColumn.header,
-            width: '88px',
-            render: (row: CodeValue) => (
-              <Chip variant="status" size="sm" status={row.isActive ? 'success' : 'idle'}>
-                {row.isActive ? statusColumn.active : statusColumn.inactive}
-              </Chip>
-            ),
-          },
-        ]),
-    ...(listHead === undefined
-      ? []
-      : [
-          {
-            key: 'actions',
-            header: listHead.actionsHeader,
-            width: '80px',
-            /* 줄 고르기와 같은 동작 — 상세(코드값 정보)를 연다(사용자 시안 · #208). */
-            render: (row: CodeValue) => (
-              <Button
-                size="sm"
-                variant="text"
-                aria-label={listHead.editRow(row.code)}
-                onClick={() => onSelect(row.codeValueId)}
-              >
-                {listHead.edit}
-              </Button>
-            ),
-          },
-        ]),
   ];
 
   /**
@@ -203,7 +118,6 @@ export const CodeValueListPane = ({
         <EmptyState
           size="sm"
           live
-          icon={emptyIcon}
           title={t.empty.beyondLastTitle}
           description={t.empty.beyondLastDescription}
         />
@@ -215,7 +129,6 @@ export const CodeValueListPane = ({
         <EmptyState
           size="sm"
           live
-          icon={emptyIcon}
           title={t.empty.noMatchTitle}
           description={t.empty.noMatchDescription}
         />
@@ -223,13 +136,7 @@ export const CodeValueListPane = ({
     }
 
     return (
-      <EmptyState
-        size="sm"
-        live
-        icon={emptyIcon}
-        title={t.empty.noneTitle}
-        description={t.empty.noneDescription}
-      />
+      <EmptyState size="sm" live title={t.empty.noneTitle} description={t.empty.noneDescription} />
     );
   })();
 
@@ -260,17 +167,7 @@ export const CodeValueListPane = ({
             empty={emptySlot}
           />
         </div>
-        {pageMeta === undefined ? (
-          <PageNav view={pageView} onChange={onChangePage} label={t.pageNavLabel} />
-        ) : (
-          /* 쪽 이동은 품질 기준 정보 다섯 목록이 같은 모양 · 같은 단추 크기(사용자 지시 · #208). */
-          <SharedPageNav
-            meta={pageMeta}
-            buttonSize="md"
-            onChangePage={onChangePage}
-            onChangeSize={onChangePageSize}
-          />
-        )}
+        <PageNav view={pageView} onChange={onChangePage} label={t.pageNavLabel} />
       </>
     );
   };
@@ -306,16 +203,6 @@ export const CodeValueListPane = ({
         </div>
       )}
 
-      {listHead !== undefined && (
-        <div className="code-value-list-head">
-          <h2 className="pane-title">{listHead.title}</h2>
-          {pageMeta !== undefined && !isLoading && (
-            <span className="code-value-list-count">{listHead.count(pageMeta.total)}</span>
-          )}
-          {addAction}
-        </div>
-      )}
-
       <div className="filter-bar">
         {/* 해제 축이라 변경 즉시 적용한다. */}
         <div className="field-cell field-cell-unlabeled">
@@ -326,16 +213,11 @@ export const CodeValueListPane = ({
             {messages.common.includeInactive}
           </Checkbox>
         </div>
-        {listHead !== undefined && (
-          <span className="code-value-list-sort-note">{listHead.sortNote}</span>
-        )}
       </div>
-
-      {filterNote}
 
       {listSlot()}
 
-      {listHead === undefined && <div className="filter-bar">{addAction}</div>}
+      <div className="filter-bar">{addAction}</div>
     </section>
   );
 };

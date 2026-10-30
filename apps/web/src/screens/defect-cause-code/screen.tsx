@@ -10,20 +10,22 @@ import {
 } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
+import { PAGE_SIZES } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
-import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
-import { toApiError } from '../../patterns/request';
 import {
   PaneHeightSplitter,
-  QUALITY_STANDARD_ORIENTATION_KEY,
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
+import { toApiError } from '../../patterns/request';
+import { ChildCodeTable } from './child-code-table';
+import { CodeDetailHead } from './code-detail-head';
+import { CodeFilterBar } from './code-filter-bar';
 import { CodeFormPane } from './code-form-pane';
 import { CodeListPane } from './code-list-pane';
 import { selectableCategoryOptions } from './code-options';
@@ -44,24 +46,35 @@ import {
   toFormFieldErrors,
   toServerFieldName,
 } from './mappers';
-import { isTruncated, useCodeDetail, useCodeList, useCodeOptions } from './queries';
+import { UsageChips } from './usage-chips';
+import { useCodeDetail, useCodeList, useCodeOptions, useProcessLabels } from './queries';
 import { ProcessMappingPane } from './process-mapping-pane';
 import { resolveTab } from './tabs';
 import type {
   CodeDetailResult,
+  Editability,
   CodeFilters,
   CodeFormValues,
   CodeKind,
   HierarchyCode,
 } from './types';
-import { HUB_ACTIONS_ID } from '../../patterns/hub-actions';
 import { usePageHub } from '../../patterns/page-hub';
 
 const t = messages.defectCauseCode;
-
-/** 목록 한 쪽의 처음 건수 — 서버 기본 크기(50)와 같아 처음 열면 받은 줄이 한 쪽에 다 선다(#208). */
-const DEFAULT_LIST_SIZE: PageSize = 50;
 const hubText = messages.common.inspectionHub;
+
+/**
+ * 코드 잠금 사유 — 다른 기록에서 쓰는 코드는 짧은 한 줄로(사용자 시안 · #209), 그 밖(ERP 수신 등)은 공용 문구 그대로.
+ * 잠김 판정의 주인은 `codeEditable` 이다(공용 문구가 정한다).
+ */
+const codeLockReasonOf = (editability: Editability): string | null => {
+  const message = codeLockMessage(editability);
+  if (message === null) return null;
+  return editability.reason === 'REFERENCED' ? t.actionReasons.codeLockedReferenced : message;
+};
+
+/** 목록 · 상세 배치는 「품질 코드 관리」 묶음의 탭끼리 함께 쓴다(#209). */
+const DEFECT_JUDGMENT_ORIENTATION_KEY = 'omf-mes:defect-judgment-hub:split-orientation';
 
 /**
  * 조회 실패의 원인을 한 줄 안내로 옮긴다.
@@ -129,13 +142,6 @@ interface CodeFormState {
  * 조회 조건·선택을 주소에 둔다. 어느 코드를 다룰지는 주소(경로)가 정한다(#208).
  */
 const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
-  /*
-   * 좌우 · 상하 배치 · 폭/높이 손잡이 · 창 높이 맞춤 — 검사 기준 탭과 같다(사용자 지시 · #208).
-   * 배치는 탭 묶음이 함께 쓰고, 폭 비율은 불량코드 · 원인코드 하위 탭이 함께 쓴다.
-   */
-  const { splitRef, aboveRef } = useFitToViewport();
-  const split = usePaneSplit('omf-mes:defect-cause-code:split', 0.4);
-  const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { client } = useApiClient();
@@ -143,50 +149,66 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
   const tab = resolveTab(kind);
   const adapter = tab.adapter;
 
+  /* 목록 · 상세 배치 — 검사 기준 탭과 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다 · #209). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:defect-cause-code:split', 0.45);
+  const layout = useSplitOrientation(DEFECT_JUDGMENT_ORIENTATION_KEY);
+  /* 「수정」 창 — 고른 코드의 값을 고친다(#209). 등록 창은 주소(`mode=create`)가 연다. */
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
   const filters = useMemo<CodeFilters>(
     () => ({
       q: searchParams.get('q') ?? '',
       includeInactive: searchParams.get('inactive') === '1',
+      // `usage=off` 는 미사용만 — 미사용 포함이 켜져 있을 때만 뜻이 있다(#209).
+      inactiveOnly: searchParams.get('inactive') === '1' && searchParams.get('usage') === 'off',
+      // 처분 유형 · 공정 조건(불량코드 탭 · #209) — 주소가 소유한다(새로고침 · 공유가 같은 결과).
+      dispositionTypeCode:
+        adapter.hasDisposition &&
+        (searchParams.get('disp') === 'REWORKABLE' || searchParams.get('disp') === 'SCRAP')
+          ? (searchParams.get('disp') as 'REWORKABLE' | 'SCRAP')
+          : '',
+      // 숫자가 아닌 값은 버린다 — 그대로 보내면 서버가 거절해 목록이 실패한다(#209 버그 수정).
+      processId: /^\d+$/.test(searchParams.get('proc') ?? '')
+        ? (searchParams.get('proc') ?? '')
+        : '',
+      page: Math.max(1, Number(searchParams.get('page')) || 1),
+      size: PAGE_SIZES.find((size) => String(size) === searchParams.get('size')) ?? 20,
     }),
-    [searchParams],
+    [searchParams, adapter.hasDisposition],
   );
 
   const isCreateMode = searchParams.get('mode') === 'create';
   const selectedParam = Number(searchParams.get('sel') ?? '') || null;
   const selectedId = isCreateMode ? null : selectedParam;
   /** 「상세 추가」로 열면 그때 고른 대분류가 상위 초기값이 된다. */
-  const createParentSeed = isCreateMode ? selectedParam : null;
+  /*
+   * 「대분류 추가」는 `as=category` 로 연다 — 고른 코드(`sel`)는 뒤 상세 카드에 그대로 두고, 상위 씨앗으로는 쓰지 않는다
+   * (#209 버그 수정: 대분류 추가를 누르면 상세 카드가 비던 문제).
+   */
+  const isCategoryCreate = isCreateMode && searchParams.get('as') === 'category';
+  const createParentSeed = isCreateMode && !isCategoryCreate ? selectedParam : null;
 
   const list = useCodeList(adapter, filters);
   const items = useMemo(() => list.data?.items ?? [], [list.data]);
-  const byId = useMemo(() => indexById(items), [items]);
-  const rows = useMemo(() => orderForGrouping(items, byId), [items, byId]);
-
   /*
-   * 쪽 이동 — 받은 줄(대분류별로 묶어 정렬한 뒤)을 화면이 쪽으로 나눈다(사용자 지시 · #208).
-   * 서버 쪽 이동은 쓰지 않는다: 서버는 코드값 순으로 자르므로 대분류와 그 상세가 다른 쪽으로 갈리면
-   * 상세가 「상위 없음」 묶음으로 잘못 보인다. 묶음 머리는 쪽마다 다시 선다(상위 색인은 받은 전체로 판정).
-   * 조회 요청은 종전 그대로(크기 없이 서버 기본)라 받는 줄 · 잘림 안내가 바뀌지 않는다. 기본 50건이라 처음 열면 종전과 같다.
+   * 목록은 쪽으로 나뉘어 오므로(#209) 상세 코드의 대분류가 다른 쪽에 있을 수 있다 — 그룹 머리글과 상위 판정은
+   * 선택지용 전체 목록까지 합친 색인으로 한다. 그래야 다른 쪽의 대분류 밑 상세가 「상위를 찾을 수 없는 코드」로 가지 않는다.
    */
-  const listSize: PageSize =
-    PAGE_SIZES.find((size) => String(size) === searchParams.get('size')) ?? DEFAULT_LIST_SIZE;
-  const listPageCount = Math.max(1, Math.ceil(rows.length / listSize));
-  const listPageNo = Math.min(
-    Math.max(1, Math.trunc(Number(searchParams.get('page'))) || 1),
-    listPageCount,
-  );
-  const pageRows = useMemo(
-    () => rows.slice((listPageNo - 1) * listSize, listPageNo * listSize),
-    [rows, listPageNo, listSize],
-  );
+  const options = useCodeOptions(adapter, true);
+  const byId = useMemo(() => indexById([...options.items, ...items]), [options.items, items]);
+  const rows = useMemo(() => orderForGrouping(items, byId), [items, byId]);
+  const processLabelOf = useProcessLabels();
 
   const selected = selectedId === null ? null : (byId.get(selectedId) ?? null);
-  const canAddChild = selected !== null && isCategory(selected);
 
   const detail = useCodeDetail(adapter, selectedId);
-
-  const isFormOpen = isCreateMode || selectedId !== null;
-  const options = useCodeOptions(adapter, isFormOpen);
+  /*
+   * 오른쪽 상세 카드가 보이는 코드 — 「상세 추가」 창이 열려 있는 동안에도 고른 대분류를 그대로 보인다(#209 버그 수정).
+   * 수정 · 저장은 `detail` 이 맡는다. 등록이 아니면 같은 키라 요청이 하나 더 나가지 않는다.
+   */
+  const viewId = isCreateMode ? selectedParam : selectedId;
+  const shown = useCodeDetail(adapter, viewId);
 
   /*
    * 폼의 기준값 출처. 수정은 상세 응답 객체가, 등록은 「어느 탭에서 어느 상위로 여는가」가 정한다.
@@ -239,22 +261,29 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       setLocalFieldErrors({});
 
       if (isCreateMode) {
-        // 이어서 한 건 더 등록할 수 있게 폼을 기준값으로 되돌린다.
-        setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+        // 등록하면 창을 닫고 등록한 코드를 고른다 — 판정 유형 탭과 같다(사용자 지시 · #209).
+        updateParams({ mode: null, as: null, sel: String(saved.id) });
         toast.show({ variant: 'success', description: messages.common.created });
         return;
       }
 
       const next = codeToFormValues(saved);
       setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      setIsEditOpen(false);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+  /* 확인 창이 사용 중지인지 재사용인지 — 고른 코드의 사용 여부가 정한다(#209). */
+  const statusMode: 'deactivate' | 'activate' =
+    detail.data?.code.isActive === false ? 'activate' : 'deactivate';
 
   const deactivateWrite = useMasterWrite<void, HierarchyCode>({
-    request: (_variables, headers) => adapter.deactivate(client, selectedId ?? 0, headers),
+    request: (_variables, headers) =>
+      statusMode === 'activate'
+        ? adapter.activate(client, selectedId ?? 0, headers)
+        : adapter.deactivate(client, selectedId ?? 0, headers),
     /*
      * 잠금 토큰은 상세 경로에 보관돼 있다. 요청 경로(`…:deactivate`)로 꺼내면 언제나 비어 있어
      * 사용 중지가 전부 실패한다.
@@ -270,9 +299,6 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     },
   });
 
-  const listPage = list.data?.page;
-  const listTruncated = listPage !== undefined && isTruncated(listPage, items.length);
-
   const updateParams = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);
     for (const [key, value] of Object.entries(patch)) {
@@ -285,19 +311,59 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
     setSearchParams(next);
   };
 
+  /*
+   * 조건을 바꿔 고른 코드가 새 결과에서 빠지면 선택을 푼다 — 목록에 없는 코드가 상세 카드에 남지 않게(#209 버그 수정).
+   * 새 결과를 다 받은 뒤에 한 번만 본다. 쪽 이동은 조건 변경이 아니므로 보지 않는다.
+   */
+  const recheckSelection = useRef(false);
+  useEffect(() => {
+    if (!recheckSelection.current || list.isPending || list.isFetching || list.isError) return;
+    recheckSelection.current = false;
+    if (selectedId !== null && !items.some((item) => item.id === selectedId)) {
+      setIsEditOpen(false);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('sel');
+        return next;
+      });
+    }
+  }, [list.isPending, list.isFetching, list.isError, items, selectedId, setSearchParams]);
+
   // 조회 조건은 화면 상태가 아니라 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
+  // 조건을 바꾸면 1쪽으로 돌아간다 — 지난 쪽 번호가 새 결과의 범위 밖일 수 있다(#209).
   const handleApplyFilters = (next: CodeFilters) => {
+    // 조건이 실제로 바뀔 때만 본다 — 같은 조건으로 조회하면 목록이 그대로라 확인이 남아 쪽 이동 때 선택이 풀렸다(#209 버그 수정).
+    recheckSelection.current =
+      next.q !== filters.q ||
+      next.includeInactive !== filters.includeInactive ||
+      next.inactiveOnly !== filters.inactiveOnly ||
+      next.dispositionTypeCode !== filters.dispositionTypeCode ||
+      next.processId !== filters.processId;
     updateParams({
       q: next.q === '' ? null : next.q,
       inactive: next.includeInactive ? '1' : null,
+      usage: next.includeInactive && next.inactiveOnly ? 'off' : null,
+      disp: next.dispositionTypeCode === '' ? null : next.dispositionTypeCode,
+      proc: next.processId === '' ? null : next.processId,
       page: null,
+      size: next.size === 20 ? null : String(next.size),
     });
   };
 
   const openCreateForm = (patch: Record<string, string | null>) => {
     write.reset();
     setLocalFieldErrors({});
-    updateParams({ mode: 'create', ...patch });
+    setIsEditOpen(false);
+    updateParams({ mode: 'create', as: null, ...patch });
+  };
+
+  /** 창의 「취소」 — 고친 값을 버리고 닫는다. 등록 창은 주소에서 `mode` 를 지워 닫는다. */
+  const closeForm = () => {
+    setLocalFieldErrors({});
+    write.reset();
+    setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+    setIsEditOpen(false);
+    if (isCreateMode) updateParams({ mode: null, as: null });
   };
 
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
@@ -388,18 +454,82 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
 
   /*
    * 하위가 딸린 대분류를 중지하면 영향 범위가 넓다. 누르기 전에 그 건수를 보인다.
-   * 세는 대상은 지금 화면에 그려진 목록이라 문구가 「표시된 목록 기준」이라고 밝힌다.
+   * 표가 쪽으로 나뉘므로(#209) 쪽 목록이 아니라 미사용까지 받은 전체 목록에서 **사용 중인 하위만** 센다
+   * (#209 버그 수정 — 이미 미사용인 하위는 중지 영향이 없다).
    */
   const selectedCode = selected ?? detail.data?.code ?? null;
-  const deactivateChildCount =
-    selectedCode !== null && isCategory(selectedCode) && childCountOf(items, selectedCode.id) > 0
-      ? childCountOf(items, selectedCode.id)
-      : null;
+  const activeChildCount =
+    selectedCode !== null && isCategory(selectedCode)
+      ? childCountOf(
+          options.items.filter((item) => item.isActive),
+          selectedCode.id,
+        )
+      : 0;
+  const deactivateChildCount = activeChildCount > 0 ? activeChildCount : null;
+
+  /* 탭 줄 사용 여부 칩의 건수(사용자 지시 · #209) — 미사용까지 받은 전체 목록으로 센다. 받기 전이면 건수 없이 낸다. */
+  const usageCounts = options.isLoading
+    ? null
+    : {
+        all: options.items.length,
+        active: options.items.filter((item) => item.isActive).length,
+        inactive: options.items.filter((item) => !item.isActive).length,
+      };
+
+  const codeListPane = (
+    <CodeListPane
+      adapter={adapter}
+      rows={rows}
+      byId={byId}
+      isLoading={list.isPending}
+      appliedFilters={filters}
+      onApplyFilters={handleApplyFilters}
+      selectedId={selectedId}
+      pageMeta={list.data?.page ?? { page: filters.page, size: filters.size, total: 0 }}
+      onChangePage={(page) => updateParams({ page: page === 1 ? null : String(page) })}
+      onChangePageSize={(size) =>
+        updateParams({ page: null, size: size === 20 ? null : String(size) })
+      }
+      processLabelOf={processLabelOf}
+      onSelect={(id) => {
+        setIsEditOpen(false);
+        updateParams({ sel: String(id), mode: null, as: null });
+      }}
+      // 대분류 추가는 선택을 지운다 — 어느 코드의 하위도 아닌 새 축이다.
+      onAddCategory={() => openCreateForm({ as: 'category' })}
+      loadError={
+        list.isError ? (
+          <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+        ) : null
+      }
+    />
+  );
+
+  /*
+   * 조회 · 초기화 뒤 구분선 너머의 화면 단추 — 검사 기준 탭의 「기준 추가」 자리와 같다(#209).
+   * 상세 추가는 대분류를 고른 뒤 상세 카드에서 한다(사용자 지시 2026-10-29).
+   */
+  const filterActions = (
+    <Button
+      leadingIcon={<Icon name="add" size={18} />}
+      onClick={() => openCreateForm({ as: 'category' })}
+    >
+      {t.actions.addCategory}
+    </Button>
+  );
+
+  const formTitle = (): string => {
+    if (!isCreateMode) return t.dialog.editTitle(adapter.labels.tab);
+    return createParentSeed === null
+      ? t.dialog.createCategoryTitle(adapter.labels.tab)
+      : t.dialog.createChildTitle(adapter.labels.tab);
+  };
 
   const renderForm = (formMode: 'create' | 'edit'): ReactNode => (
     <CodeFormPane
       adapter={adapter}
       mode={formMode}
+      title={formTitle()}
       values={formValues}
       onChange={changeFormValues}
       // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
@@ -418,137 +548,181 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
       }
       codeLockReason={
         formMode === 'edit' && detail.data !== undefined
-          ? codeLockMessage(detail.data.editability)
+          ? codeLockReasonOf(detail.data.editability)
           : null
       }
       parentOptions={parentOptions}
       parentLockReason={parentLockReason}
-      isActive={detail.data?.code.isActive ?? true}
+      /*
+       * 상세를 추가할 때만 상위에 필수 표시를 붙인다 — 표시뿐, 저장 규칙은 그대로다.
+       * 수정에서는 붙이지 않는다 — 상위를 비워 대분류로 되돌리는 것이 허용되므로 표시와 규칙이 어긋난다(#209 버그 수정).
+       */
+      parentRequired={formMode === 'create' && createParentSeed !== null}
       isDirty={isDirty}
       isSaving={write.isSaving}
       onSave={handleSave}
-      onCancel={() => {
-        setLocalFieldErrors({});
-        write.reset();
-        setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
-      }}
-      onDeactivate={() => {
-        deactivateWrite.reset();
-        setIsDeactivateOpen(true);
-      }}
+      onCancel={closeForm}
     />
   );
 
-  /**
-   * 우 페인. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
-   * 선택 전·등록·불러오는 중·실패를 각각 다른 화면으로 낸다.
-   */
-  const renderFormPane = (): ReactNode => {
-    if (isCreateMode) {
-      return formState === null ? null : renderForm('create');
-    }
-
-    if (selectedId === null) {
-      /* 둥근 바탕 아이콘 · 제목 · 설명 — 검사 기준 탭과 같다(#208). */
-      return (
-        <EmptyState
-          size="sm"
-          icon={
-            <span className="inspection-standard-empty-icon">
-              <Icon name="assignment" size={20} />
-            </span>
-          }
-          title={t.empty.codeNotSelectedTitle}
-          description={t.empty.codeNotSelected}
-        />
-      );
-    }
-
-    if (detail.isError) {
-      return <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />;
-    }
-
-    if (detail.data === undefined || formState === null) {
-      return (
-        <div role="status" aria-label={t.loading.codeDetail}>
-          <SkeletonText lines={4} />
-        </div>
-      );
-    }
-
-    return renderForm('edit');
+  /** 창은 열 때만 붙인다 — 닫힌 창을 남겨 두면 지난 값이 그대로 살아 있다. */
+  const renderFormDialog = (): ReactNode => {
+    if (isCreateMode) return formState === null ? null : renderForm('create');
+    if (isEditOpen && detail.data !== undefined && formState !== null) return renderForm('edit');
+    return null;
   };
 
-  const codeListPane = (
-    <CodeListPane
-      adapter={adapter}
-      rows={pageRows}
-      byId={byId}
-      pageMeta={{ page: listPageNo, size: listSize, total: rows.length }}
-      onChangePage={(page) => updateParams({ page: page > 1 ? String(page) : null })}
-      onChangePageSize={(size) =>
-        updateParams({ size: size === DEFAULT_LIST_SIZE ? null : String(size), page: null })
-      }
-      isLoading={list.isPending}
-      appliedFilters={filters}
-      onApplyFilters={handleApplyFilters}
-      selectedId={selectedId}
-      onSelect={(id) => updateParams({ sel: String(id), mode: null })}
-      // 대분류 추가는 선택을 지운다 — 어느 코드의 하위도 아닌 새 축이다.
-      onAddCategory={() => openCreateForm({ sel: null })}
-      // 상세 추가는 고른 대분류를 그대로 남겨 상위 초기값으로 쓴다.
-      onAddChild={() => openCreateForm({})}
-      canAddChild={canAddChild}
-      loadError={
-        list.isError ? (
-          <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
-        ) : null
-      }
-      searchRef={aboveRef}
-      /* 조회 카드 아래 목록 | 상세 — 검사 기준 탭과 같은 분할(#208). */
-      renderLayout={(listPane) => (
-        <div
-          ref={splitRef}
-          className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
-          style={{ ...split.style, ...layout.style }}
-        >
-          {listPane}
-          <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
-          {layout.orientation === 'column' && (
-            <PaneHeightSplitter
-              label={hubText.heightSplitter}
-              height={layout.listHeight}
-              onChange={layout.changeListHeight}
-            />
-          )}
-          <div className="pane quality-standard-detail">{renderFormPane()}</div>
-        </div>
-      )}
-    />
-  );
+  /** 상위 대분류의 표시(「코드 · 명칭」). 목록이 조건으로 걸러져도 찾게 선택지 목록까지 본다. */
+  const parentLabelOf = (code: HierarchyCode): string | null => {
+    if (code.parentId === null) return null;
+    const parent =
+      byId.get(code.parentId) ?? options.items.find((item) => item.id === code.parentId);
+    return parent === undefined
+      ? String(code.parentId)
+      : t.values.groupHeader(parent.code, parent.name);
+  };
+
+  /**
+   * 우 칸. 상세를 받지 못한 상태에서 빈 카드를 보이면 사용자가 그것을 자료로 읽는다 —
+   * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
+   */
+  const renderDetail = (): ReactNode => {
+    if (viewId === null) {
+      return (
+        <section className="pane" aria-label={t.detail.title(adapter.labels.tab)}>
+          <EmptyState
+            size="sm"
+            /* 둥근 바탕 위 아이콘 · 제목 · 설명 — 검사 기준 탭과 같은 모양(#196). */
+            icon={
+              <span className="inspection-standard-empty-icon">
+                <Icon name="layers" size={20} />
+              </span>
+            }
+            title={t.empty.codeNotSelectedTitle}
+            description={t.empty.codeNotSelectedDescription}
+          />
+        </section>
+      );
+    }
+
+    if (shown.isError) {
+      return (
+        <section className="pane" aria-label={t.detail.title(adapter.labels.tab)}>
+          <LoadErrorBanner error={shown.error} onRetry={() => void shown.refetch()} />
+        </section>
+      );
+    }
+
+    if (shown.data === undefined) {
+      return (
+        <section className="pane" aria-label={t.detail.title(adapter.labels.tab)}>
+          <div role="status" aria-label={t.loading.codeDetail}>
+            <SkeletonText lines={4} />
+          </div>
+        </section>
+      );
+    }
+
+    const code = shown.data.code;
+    return (
+      <section
+        className="pane inspection-standard-detail-card"
+        aria-label={t.detail.title(adapter.labels.tab)}
+      >
+        <CodeDetailHead
+          adapter={adapter}
+          code={code}
+          parentLabel={parentLabelOf(code)}
+          processLabel={processLabelOf(shown.data.processId)}
+          referenceCount={shown.data.editability.referenceCount ?? null}
+          // 대분류를 고르면 상세 카드에서 상세를 추가한다 — 고른 대분류가 상위 초기값이 된다.
+          // 창이 열려 있는 동안에도 뒤 카드의 단추는 그대로 둔다 — 보이는 코드(`viewId`)로 판정한다(#209 버그 수정).
+          onAddChild={isCategory(code) ? () => openCreateForm({}) : undefined}
+          onEdit={() => {
+            write.reset();
+            setLocalFieldErrors({});
+            setIsEditOpen(true);
+          }}
+          onDeactivate={() => {
+            deactivateWrite.reset();
+            setIsDeactivateOpen(true);
+          }}
+          onActivate={() => {
+            deactivateWrite.reset();
+            setIsDeactivateOpen(true);
+          }}
+        />
+        {/* 대분류를 고르면 딸린 하위 코드를 함께 본다(사용자 지시 · #209). 미사용까지 받은 전체 목록 기준. */}
+        {isCategory(code) && (
+          <ChildCodeTable
+            // 다른 대분류를 고르면 쪽을 1로 되돌린다.
+            key={code.id}
+            adapter={adapter}
+            codes={options.items
+              .filter((item) => item.parentId === code.id && item.id !== code.id)
+              .sort((left, right) => left.code.localeCompare(right.code))}
+            processLabelOf={processLabelOf}
+          />
+        )}
+      </section>
+    );
+  };
 
   return (
     <>
-      {/*
-       * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
-       * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
-       *
-       * 화면 최상위 배너라 이음매는 `main > * + *`가 이미 처리하지만, 슬롯으로 감싸
-       * DS 배너의 box-sizing까지 정규화한다 — 감싸지 않으면 배너만 본문 폭을 넘친다.
-       */}
-      {listTruncated && listPage !== undefined && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">
-            {t.listTruncated(items.length, listPage.total)}
-          </AlertBanner>
-        </div>
-      )}
-
+      {/* 탭 줄 오른쪽 — 사용 여부 칩 다음에 좌우·상하 배치(사용자 지시 · #209). 그린 순서대로 선다. */}
+      <UsageChips
+        counts={usageCounts}
+        value={filters.inactiveOnly ? 'inactive' : filters.includeInactive ? 'all' : 'active'}
+        onChange={(usage) =>
+          handleApplyFilters({
+            ...filters,
+            includeInactive: usage !== 'active',
+            inactiveOnly: usage === 'inactive',
+          })
+        }
+      />
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
-      {codeListPane}
+
+      {/* 조회 조건 — 검사 기준 탭처럼 목록과 다른 카드에 둔다(#209). */}
+      <section
+        ref={aboveRef}
+        className="pane inspection-standard-search defect-cause-search"
+        role="search"
+      >
+        <CodeFilterBar
+          adapter={adapter}
+          appliedFilters={filters}
+          onApplyFilters={handleApplyFilters}
+          actions={filterActions}
+          processLabelOf={processLabelOf}
+        />
+      </section>
+
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split inspection-standard-split defect-cause-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
+        {codeListPane}
+
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+
+        <div className="inspection-standard-detail">{renderDetail()}</div>
+      </div>
+
+      {renderFormDialog()}
 
       <DeactivateConfirmDialog
         open={isDeactivateOpen}
+        mode={statusMode}
         onClose={() => setIsDeactivateOpen(false)}
         onConfirm={() => deactivateWrite.write(undefined)}
         isSaving={deactivateWrite.isSaving}
@@ -562,7 +736,7 @@ const CodeMasterWorkspace = ({ kind }: { kind: CodeKind }) => {
 
 type ScreenTab = 'defect' | 'cause' | 'mapping';
 
-/** 하위 탭마다 고유 주소 — 「불량·판정 코드」 탭 막대 한 줄에 선다(사용자 지시 · #208). */
+/** 하위 탭마다 고유 주소 — 「품질 코드 관리」 탭 막대 한 줄에 선다(사용자 지시 · #208). */
 const TAB_PATHS: Record<ScreenTab, string> = {
   defect: '/master-data/defect-cause-code',
   cause: '/master-data/cause-code',
@@ -612,10 +786,6 @@ export const DefectCauseCodeScreen = ({ tab }: DefectCauseCodeScreenProps) => {
               aria-label={messages.common.shell.breadcrumb}
             />
           }
-          /*
-           * 탭 막대가 없으니 배치 전환(좌우 · 상하)이 들어갈 자리를 머리 오른쪽에 직접 둔다(LOT 추적과 같은 방식).
-           */
-          actions={<div id={HUB_ACTIONS_ID} className="hub-actions" />}
         />
       )}
       {/* key — 하위 탭을 옮기면 폼·선택 상태를 새로 세운다. 탭끼리 상태가 섞이지 않는다. */}

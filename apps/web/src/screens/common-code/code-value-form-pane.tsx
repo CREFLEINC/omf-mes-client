@@ -29,8 +29,6 @@ export interface CodeValueFormPaneProps {
   onSave: () => void;
   onCancel: () => void;
   onDeactivate: () => void;
-  /** 맨 위 제목 줄(제목 · 상태 칩). 주지 않으면 종전 그대로 그리지 않는다 — 판정유형 코드 탭만 쓴다(#208). */
-  head?: ReactNode;
 }
 
 /**
@@ -60,7 +58,6 @@ export const CodeValueFormPane = ({
   onSave,
   onCancel,
   onDeactivate,
-  head,
 }: CodeValueFormPaneProps) => {
   const codeId = useId();
   const nameId = useId();
@@ -68,7 +65,6 @@ export const CodeValueFormPane = ({
 
   return (
     <section className="pane" aria-label={t.formPaneTitle}>
-      {head}
       {banner}
 
       <div className="form-grid">

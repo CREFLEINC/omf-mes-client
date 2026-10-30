@@ -1,11 +1,16 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-const t = messages.defectCauseCode.deactivate;
+const texts = {
+  deactivate: messages.defectCauseCode.deactivate,
+  activate: messages.defectCauseCode.activate,
+};
 
 export interface DeactivateConfirmDialogProps {
   open: boolean;
+  /** 사용 중지 · 재사용(#209). 기본은 사용 중지 */
+  mode?: 'deactivate' | 'activate';
   onClose: () => void;
   onConfirm: () => void;
   isSaving: boolean;
@@ -27,34 +32,45 @@ export interface DeactivateConfirmDialogProps {
  */
 export const DeactivateConfirmDialog = ({
   open,
+  mode = 'deactivate',
   onClose,
   onConfirm,
   isSaving,
   childCount,
   banner,
-}: DeactivateConfirmDialogProps) => (
-  <Dialog
-    open={open}
-    onClose={onClose}
-    size="sm"
-    title={t.title}
-    closeOnBackdropClick={false}
-    /* 닫기는 「취소」로 한다 — 머리의 ✕는 두지 않는다(검사 기준 탭과 같다 · #208). */
-    showCloseButton={false}
-    footer={
-      <>
-        <Button variant="outlined" onClick={onClose}>
-          {messages.common.cancel}
-        </Button>
-        <Button variant="filled" loading={isSaving} disabled={isSaving} onClick={onConfirm}>
-          {t.confirm}
-        </Button>
-      </>
-    }
-  >
-    {banner}
-    <p>{t.description}</p>
-    {/* 하위가 딸린 대분류를 중지하면 영향 범위가 넓다. 누르기 전에 그 사실을 보인다. */}
-    {childCount !== null && <p>{t.childCount(childCount)}</p>}
-  </Dialog>
-);
+}: DeactivateConfirmDialogProps) => {
+  const t = texts[mode];
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      size="sm"
+      title={t.title}
+      closeOnBackdropClick={false}
+      /* 닫기는 「취소」로 한다 — 머리의 ✕는 두지 않는다(검사 기준 탭과 같다 · #209). */
+      showCloseButton={false}
+      footer={
+        <>
+          <Button variant="outlined" onClick={onClose}>
+            {messages.common.cancel}
+          </Button>
+          <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
+            {t.confirm}
+          </Button>
+        </>
+      }
+    >
+      {banner}
+      <p>{t.description}</p>
+      {/* 하위가 딸린 대분류를 중지하면 영향 범위가 넓다. 누르기 전에 그 사실을 보인다. */}
+      {/* 정보 안내 — 검사 조회·판정의 안내 줄과 같은 모양(사용자 지시 · #209). */}
+      {mode === 'deactivate' && childCount !== null && (
+        <p className="iqc-inspection-action-note defect-cause-dialog-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {texts.deactivate.childCount(childCount)}
+        </p>
+      )}
+    </Dialog>
+  );
+};

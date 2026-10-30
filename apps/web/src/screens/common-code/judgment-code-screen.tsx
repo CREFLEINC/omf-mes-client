@@ -1,45 +1,18 @@
-import {
-  AlertBanner,
-  Breadcrumb,
-  EmptyState,
-  Icon,
-  PageHeader,
-  SkeletonText,
-} from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
-import {
-  PaneHeightSplitter,
-  QUALITY_STANDARD_ORIENTATION_KEY,
-  SplitOrientationToggle,
-  type SplitOrientation,
-  useSplitOrientation,
-} from '../../patterns/split-orientation';
-
-import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
 import { useCodeGroupList } from './code-group-queries';
-import { CodeValueSection } from './code-value-section';
+import { JudgmentCodeEditor } from './judgment-code-editor';
 import { readPage, readSelectedId } from './filters';
-import {
-  JUDGMENT_TYPE_GROUP_CODE,
-  findJudgmentTypeGroup,
-  isProvisionalJudgmentTypeList,
-} from './judgment-group';
+import { JUDGMENT_TYPE_GROUP_CODE, findJudgmentTypeGroup } from './judgment-group';
 import { LoadErrorBanner } from './load-error-banner';
 import type { CodeGroupFilters } from './types';
 import { usePageHub } from '../../patterns/page-hub';
+import type { CodeUsage } from '../defect-cause-code/usage-chips';
 
 const t = messages.judgmentCode;
-const hubText = messages.common.inspectionHub;
-
-/** 목록 상태 열 문구 — 사용/미사용을 코드명 뒤 글이 아니라 따로 칩으로 보인다(#208). */
-const STATUS_COLUMN = t.status;
-
-/** 목록 머리(제목 · 건수 · 정렬 기준) · 「순서」 열 · 「수정」 작업 열 — 사용자 시안 구성(#208). */
-const LIST_HEAD = t.list;
 
 /**
  * W-06-04 판정유형 코드 마스터 — **진입점 하나**다(omf-mes-client#16).
@@ -54,6 +27,8 @@ const LIST_HEAD = t.list;
 
 /** 켜짐을 나타내는 유일한 값. 다른 값은 꺼진 것으로 본다 — 주소는 사람이 고치는 자리다. */
 const ON = '1';
+/** 사용 여부 칩 「미사용」(#209). `inactive=1` 은 종전대로 「전체」다 — 북마크가 산다. */
+const INACTIVE_ONLY = 'only';
 
 /**
  * 이 화면의 주소 키. 공통코드 화면의 키(`val`·`vpage`·`vinactive`·`new=value`)와 이름이 달라도
@@ -62,8 +37,9 @@ const ON = '1';
 const URL_KEYS = {
   selected: 'sel',
   page: 'page',
-  size: 'size',
   includeInactive: 'inactive',
+  keyword: 'q',
+  typeCode: 'type',
   creating: 'new',
 } as const;
 
@@ -85,92 +61,12 @@ const GROUP_LOOKUP_FILTERS: CodeGroupFilters = {
   includeInactive: true,
 };
 
-/** 빈 상태의 둥근 바탕 아이콘 — 검사 기준 탭과 같다(사용자 지시 · #208). */
-const EMPTY_ICON = (
-  <span className="inspection-standard-empty-icon">
-    <Icon name="assignment" size={20} />
-  </span>
-);
-
 /** 그룹 조회는 첫 쪽만 본다. 그룹코드로 좁힌 조회라 다음 쪽까지 갈 결과가 나오지 않는다. */
 const GROUP_LOOKUP_PAGE = 1;
-
-/** 처음 쪽 크기 — 종전에 싣지 않던 서버 기본(50)과 같아 처음 열 때 결과가 그대로다(사용자 지시 · #208). */
-const DEFAULT_PAGE_SIZE: PageSize = 50;
-
-/** 주소의 쪽 크기. 고를 수 있는 값(20 · 50 · 100)이 아니면 기본으로 본다 — 주소는 사람이 고치는 자리다. */
-const readPageSize = (params: URLSearchParams): PageSize =>
-  PAGE_SIZES.find((size) => String(size) === params.get(URL_KEYS.size)) ?? DEFAULT_PAGE_SIZE;
-
-/**
- * 안내 배너 · 목록 | 코드값 정보 분할 — 검사 기준 탭과 같은 좌우 · 상하 배치, 폭/높이 손잡이, 창 높이 맞춤(사용자 지시 · #208).
- * 분할은 그룹을 찾은 뒤에만 서므로 창 높이 맞춤을 여기서 잰다(화면이 처음 그릴 때는 분할이 없다).
- * 배너가 서고 지면 분할의 윗변이 움직이므로 배너 묶음을 윗부분으로 잰다.
- */
-const JudgmentSplit = ({
-  notices,
-  listPane,
-  formPane,
-  orientation,
-  layoutStyle,
-  listHeight,
-  onChangeListHeight,
-  split,
-}: {
-  notices: ReactNode;
-  listPane: ReactNode;
-  formPane: ReactNode;
-  orientation: SplitOrientation;
-  layoutStyle: CSSProperties;
-  listHeight: number | null;
-  onChangeListHeight: (height: number) => void;
-  split: ReturnType<typeof usePaneSplit>;
-}) => {
-  const { splitRef, aboveRef } = useFitToViewport();
-
-  return (
-    <>
-      <section ref={aboveRef} className="judgment-code-notices">
-        {notices}
-      </section>
-      {/*
-       * 줄 아무 곳이나 눌러도 고른다 — 눌린 줄의 코드 단추로 넘긴다(검사 기준 탭과 같다 · 사용자 지시 · #208).
-       * 편집기(공통코드 화면과 한 벌)는 고치지 않고 이 탭의 분할에서만 받는다. 키보드·화면 낭독기는 그 단추 하나로 고른다.
-       */}
-      <div
-        ref={splitRef}
-        className={`po-board-split inspection-split inspection-standard-split${orientation === 'column' ? ' is-stacked' : ''}`}
-        style={{ ...split.style, ...layoutStyle }}
-        onClick={(event) => {
-          const target = event.target as Element;
-          if (target.closest('button, a, input, select, textarea') !== null) return;
-          target
-            .closest('.wide-table tbody tr')
-            ?.querySelector<HTMLButtonElement>('.link-cell')
-            ?.click();
-        }}
-      >
-        {listPane}
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
-        {orientation === 'column' && (
-          <PaneHeightSplitter
-            label={hubText.heightSplitter}
-            height={listHeight}
-            onChange={onChangeListHeight}
-          />
-        )}
-        {formPane}
-      </div>
-    </>
-  );
-};
 
 export const JudgmentCodeScreen = () => {
   const hub = usePageHub();
   const [searchParams, setSearchParams] = useSearchParams();
-  /* 배치는 품질 기준 정보 탭 묶음이 함께 쓴다 — 검사 기준 탭과 같다(#208). */
-  const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
-  const split = usePaneSplit('omf-mes:judgment-code:split', 0.4);
 
   const groupList = useCodeGroupList(GROUP_LOOKUP_FILTERS, GROUP_LOOKUP_PAGE, true);
 
@@ -186,8 +82,11 @@ export const JudgmentCodeScreen = () => {
 
   const selectedCodeValueId = readSelectedId(searchParams, URL_KEYS.selected);
   const page = readPage(searchParams, URL_KEYS.page);
-  const pageSize = readPageSize(searchParams);
-  const includeInactive = searchParams.get(URL_KEYS.includeInactive) === ON;
+  const inactiveParam = searchParams.get(URL_KEYS.includeInactive);
+  const usage: CodeUsage =
+    inactiveParam === ON ? 'all' : inactiveParam === INACTIVE_ONLY ? 'inactive' : 'active';
+  const keyword = searchParams.get(URL_KEYS.keyword) ?? '';
+  const typeCode = searchParams.get(URL_KEYS.typeCode) ?? '';
 
   /**
    * 등록 폼이 열려 있는가. **그룹을 찾은 뒤에만 성립한다** —
@@ -204,11 +103,10 @@ export const JudgmentCodeScreen = () => {
    * | # | 조작 | `sel` | `page` | `inactive` | `new` |
    * | :-: | --- | --- | --- | --- | --- |
    * | 1 | 코드값을 고른다 | **설정** | 유지 | 유지 | **지움** |
-   * | 2 | 등록 폼을 연다 | **지움** | 유지 | 유지 | **설정** |
+   * | 2 | 등록 폼을 연다 | 유지(뒤 상세 카드 · #209) | 유지 | 유지 | **설정** |
    * | 3 | 등록 폼을 닫는다 | 유지 | 유지 | 유지 | **지움** |
-   * | 4 | 「미사용 포함」을 바꾼다 | **지움** | **지움** | 설정/지움 | **지움** |
+   * | 4 | 사용 여부 칩 · 판정 유형 · 검색어를 바꾼다 | **지움** | **지움** | 설정/지움 | **지움** |
    * | 5 | 쪽을 옮긴다 | **지움** | 설정/지움 | 유지 | **지움** |
-   * | 6 | 건수(`size`)를 바꾼다 | **지움** | **지움** | 유지 | **지움** |
    *
    * 1이 `new`를 지우는 것은 등록 성공 경로 때문이다 — 한 벌은 등록에 성공하면 **고르기 콜백만
    * 한 번** 부른다. 그 한 번으로 「등록을 끝내고 새 값을 고른 상태」가 되어야 뒤로가기가
@@ -217,9 +115,7 @@ export const JudgmentCodeScreen = () => {
    * 4·5가 선택을 비우는 것은 보이는 행이 통째로 달라지기 때문이다 — 목록에 없는 코드값의 폼이
    * 아래 칸에 남으면 그것이 어디서 왔는지 알 수 없다.
    *
-   * 6은 5와 같은 이유로 선택을 비우고, 1쪽으로 돌아간다. `size` 는 다른 조작이 건드리지 않는다(#208).
-   *
-   * **비우는 자리는 이 여섯뿐이다.** 일곱째가 생기면 이 표에 행을 먼저 더한다.
+   * **비우는 자리는 이 다섯뿐이다.** 여섯째가 생기면 이 표에 행을 먼저 더한다.
    * 그룹을 찾지 못한 경우에도 **주소를 정리하지 않는다** — 그 키들은 아무것도 가리키지 않아
    * 해가 없고, 지우면 그룹이 생겼을 때 공유받은 딥링크가 이미 사라진 뒤다.
    */
@@ -243,8 +139,10 @@ export const JudgmentCodeScreen = () => {
   const openCreate = () => {
     patchSearchParams((next) => {
       next.set(URL_KEYS.creating, ON);
-      // 등록 폼과 고른 값의 폼이 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-      next.delete(URL_KEYS.selected);
+      /*
+       * 등록은 창으로 열린다(#209) — 고른 값은 뒤 상세 카드에 그대로 둔다(불량코드 탭과 같다).
+       * 창이 따로 떠 어느 쪽을 고치는지 헷갈리지 않는다.
+       */
     });
   };
 
@@ -254,14 +152,35 @@ export const JudgmentCodeScreen = () => {
     });
   };
 
-  const changeIncludeInactive = (nextIncludeInactive: boolean) => {
+  const changeUsage = (nextUsage: CodeUsage) => {
     patchSearchParams((next) => {
-      if (nextIncludeInactive) {
+      if (nextUsage === 'all') {
         next.set(URL_KEYS.includeInactive, ON);
+      } else if (nextUsage === 'inactive') {
+        next.set(URL_KEYS.includeInactive, INACTIVE_ONLY);
       } else {
-        // 계약의 기본값이 꺼짐이다 — 끈 상태를 값으로 실으면 주소가 두 갈래로 갈린다.
+        // 기본값이 「사용」이다 — 기본 상태를 값으로 실으면 주소가 두 갈래로 갈린다.
         next.delete(URL_KEYS.includeInactive);
       }
+
+      next.delete(URL_KEYS.selected);
+      next.delete(URL_KEYS.page);
+      next.delete(URL_KEYS.creating);
+    });
+  };
+
+  const changeFilters = ({
+    keyword: nextKeyword,
+    typeCode: nextTypeCode,
+  }: {
+    keyword: string;
+    typeCode: string;
+  }) => {
+    patchSearchParams((next) => {
+      if (nextKeyword === '') next.delete(URL_KEYS.keyword);
+      else next.set(URL_KEYS.keyword, nextKeyword);
+      if (nextTypeCode === '') next.delete(URL_KEYS.typeCode);
+      else next.set(URL_KEYS.typeCode, nextTypeCode);
 
       next.delete(URL_KEYS.selected);
       next.delete(URL_KEYS.page);
@@ -281,54 +200,6 @@ export const JudgmentCodeScreen = () => {
       next.delete(URL_KEYS.creating);
     });
   };
-
-  const changePageSize = (nextSize: PageSize) => {
-    patchSearchParams((next) => {
-      if (nextSize === DEFAULT_PAGE_SIZE) {
-        next.delete(URL_KEYS.size);
-      } else {
-        next.set(URL_KEYS.size, String(nextSize));
-      }
-
-      next.delete(URL_KEYS.page);
-      next.delete(URL_KEYS.selected);
-      next.delete(URL_KEYS.creating);
-    });
-  };
-
-  const notices = (
-    <>
-      {/*
-       * 배너는 **편집기 바깥**에 선다. 한 벌에 prop을 더해 안에서 그리면 그 파일이 바뀌고,
-       * 그 순간 공통코드 화면이 함께 위험해진다. 소비 화면이 이미 필요한 사실을 전부 갖고 있다.
-       * 분할(`JudgmentSplit`) 바로 위에 선다 — 배너가 서고 지는 것을 창 높이 맞춤이 재야 해서다(#208).
-       *
-       * 임시 목록 안내는 경고가 아니라 늘 서는 알림이라 배너 대신 목록 조작 줄 아래 보조 글로 옮겼다(`filterNote` · 사용자 지시 · #208).
-       *
-       * 모두 **그룹을 찾았을 때만** 선다 — 위 `judgmentGroup` 한 값을 본문과 함께 본다.
-       *
-       * `.banner-slot`으로 감싸는 이유는 **이음매가 아니다.** 이 배너들은 화면 최상위 블록이라
-       * 이음매는 `main > * + *`가 이미 준다(배치 규범 1). 슬롯이 필요한 것은 DS `AlertBanner`의
-       * `box-sizing` 정규화 때문이며, 감싸지 않으면 배너가 안쪽 여백만큼 컨테이너를 넘친다.
-       * **임시 우회다** — `design-system-v2-webui#60`이 반영되면 이 래퍼도 함께 걷는다.
-       */}
-      {judgmentGroup !== null && !judgmentGroup.isActive && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.notices.groupInactive}</AlertBanner>
-        </div>
-      )}
-
-      {/*
-       * 값 추가 경고 — **등록 폼이 열려 있는 동안에만** 낸다. 늘 보이는 경고는 읽히지 않아
-       * 정작 값을 늘리는 순간에 효력이 없다. 경고가 필요한 자리는 그 순간 하나뿐이다.
-       */}
-      {isCreating && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.notices.addAffectsOtherScreens}</AlertBanner>
-        </div>
-      )}
-    </>
-  );
 
   /**
    * 본문 — 그룹 해석의 **네 갈래**다. 넷을 뭉치면 사실과 다른 안내가 된다.
@@ -363,9 +234,7 @@ export const JudgmentCodeScreen = () => {
         <section className="pane" aria-label={t.title}>
           {/* 설명이 찾던 그룹코드를 밝힌다 — 밝히지 않으면 무엇을 등록해야 하는지 알 수 없다. */}
           <EmptyState
-            size="sm"
             live
-            icon={EMPTY_ICON}
             title={t.empty.groupNotFoundTitle}
             description={t.empty.groupNotFoundDescription(JUDGMENT_TYPE_GROUP_CODE)}
           />
@@ -374,68 +243,30 @@ export const JudgmentCodeScreen = () => {
     }
 
     return (
-      <CodeValueSection
-        codeGroupId={judgmentGroup.codeGroupId}
-        selectedCodeValueId={selectedCodeValueId}
-        onSelectCodeValue={selectCodeValue}
-        isCreating={isCreating}
-        onOpenCreate={openCreate}
-        onCloseCreate={closeCreate}
-        includeInactive={includeInactive}
-        onIncludeInactiveChange={changeIncludeInactive}
-        page={page}
-        onPageChange={changePage}
-        statusColumn={STATUS_COLUMN}
-        primaryAdd
-        sharedPageNav
-        pageSize={pageSize}
-        onPageSizeChange={changePageSize}
-        emptyIcon={EMPTY_ICON}
-        listHead={LIST_HEAD}
-        /*
-         * 안내 글 — 「미사용 포함 · 정렬 순서 기준」 줄 아래 작은 보조 글(검사표 기준 탭과 같은 모양 · 박스 · 바탕 없이 · 사용자 지시 · #208).
-         * 편집기 어휘 안내는 늘, 임시 목록 안내는 목록이 확정되기 전까지만 선다.
-         */
-        filterNote={
-          <div className="judgment-code-filter-note">
-            <p className="inspection-sheet-template-rule">
-              <Icon name="info" size={16} />
-              {t.notices.editorScope}
-            </p>
-            {isProvisionalJudgmentTypeList() && (
-              <p className="inspection-sheet-template-rule">
-                <Icon name="info" size={16} />
-                {t.notices.provisionalList}
-              </p>
-            )}
-          </div>
-        }
-        renderLayout={(listPane, formPane) => (
-          <JudgmentSplit
-            notices={notices}
-            listPane={listPane}
-            formPane={formPane}
-            orientation={layout.orientation}
-            layoutStyle={layout.style}
-            listHeight={layout.listHeight}
-            onChangeListHeight={layout.changeListHeight}
-            split={split}
-          />
-        )}
-      />
+      <>
+        <JudgmentCodeEditor
+          codeGroupId={judgmentGroup.codeGroupId}
+          selectedCodeValueId={selectedCodeValueId}
+          onSelectCodeValue={selectCodeValue}
+          isCreating={isCreating}
+          onOpenCreate={openCreate}
+          onCloseCreate={closeCreate}
+          usage={usage}
+          onUsageChange={changeUsage}
+          keyword={keyword}
+          typeCode={typeCode}
+          onFiltersChange={changeFilters}
+          page={page}
+          onPageChange={changePage}
+        />
+      </>
     );
   };
 
-  /* 화면 전용 래퍼 — 스타일을 이 탭에만 묶어 같은 편집기를 쓰는 공통코드 화면에 번지지 않게 한다(#208). */
   return (
-    <div className="judgment-code-screen">
-      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
-      {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
-      {/*
-       * 편집기 안의 문구는 「코드값」이다 — 공통코드 화면과 한 묶음을 공유해 여기서 바꾸면 그쪽 화면이 함께 바뀐다.
-       * 그 이유를 밝히는 안내는 목록 조작 줄 아래 보조 글(`filterNote`)로 옮겼다(사용자 지시 · #208).
-       */}
-      {hub === null && (
+    <>
+      {/* 탭 묶음 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#208 · 검사 기준 탭과 같다). */}
+      {hub === null ? (
         <PageHeader
           title={t.title}
           breadcrumb={
@@ -445,9 +276,30 @@ export const JudgmentCodeScreen = () => {
             />
           }
         />
+      ) : null}
+      {/* 편집기가 이 탭 전용이 되어(#209) 「판정 유형」 말을 그대로 쓴다 — 「코드값」 어휘 안내를 걷었다. */}
+
+      {/*
+       * 배너 셋은 **편집기 바깥**에 선다. 한 벌에 prop을 더해 안에서 그리면 그 파일이 바뀌고,
+       * 그 순간 공통코드 화면이 함께 위험해진다. 소비 화면이 이미 필요한 사실을 전부 갖고 있다.
+       *
+       * 셋 다 **그룹을 찾았을 때만** 선다 — 위 `judgmentGroup` 한 값을 본문과 함께 본다.
+       *
+       * `.banner-slot`으로 감싸는 이유는 **이음매가 아니다.** 이 배너들은 화면 최상위 블록이라
+       * 이음매는 `main > * + *`가 이미 준다(배치 규범 1). 슬롯이 필요한 것은 DS `AlertBanner`의
+       * `box-sizing` 정규화 때문이며, 감싸지 않으면 배너가 안쪽 여백만큼 컨테이너를 넘친다.
+       * **임시 우회다** — `design-system-v2-webui#60`이 반영되면 이 래퍼도 함께 걷는다.
+       */}
+      {/* 「임시 목록」 안내는 걷었다(사용자 지시 2026-10-29 · #209). */}
+
+      {judgmentGroup !== null && !judgmentGroup.isActive && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.notices.groupInactive}</AlertBanner>
+        </div>
       )}
 
+      {/* 값 추가 경고는 판정 유형 추가 창 안에 둔다(사용자 지시 2026-10-29 · #209) — `judgment-code-editor.tsx`. */}
       {renderBody()}
-    </div>
+    </>
   );
 };
