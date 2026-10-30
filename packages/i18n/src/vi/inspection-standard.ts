@@ -153,6 +153,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       success: 'Thành công',
       failed: 'Thất bại',
       partial: 'Thất bại một phần',
+      unknown: 'Cần kiểm tra',
     },
     criteriaCounts: (succeeded: number, failed: number): string =>
       `Tiêu chuẩn thành công ${String(succeeded)} · thất bại ${String(failed)}`,
@@ -162,6 +163,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       `${key} · Đã tải lên nhưng chưa xác nhận được: ${reason}`,
     partialNote:
       'Có tiêu chuẩn đã thành công nên bỏ khỏi thử lại. Hãy tải riêng các tiêu chuẩn thất bại.',
+    unknownNote:
+      'Lỗi khi xử lý nên chưa xác nhận được kết quả. Một số tiêu chuẩn có thể đã được áp dụng nên bỏ khỏi thử lại. Hãy kiểm tra trong danh sách.',
     confirmNote:
       'Phiên bản chưa xác nhận vẫn ở trạng thái đang soạn. Hãy kiểm tra và xác nhận trong danh sách.',
   },

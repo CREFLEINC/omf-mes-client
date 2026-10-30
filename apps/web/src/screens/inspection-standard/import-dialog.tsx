@@ -35,16 +35,25 @@ export interface ImportOutcome {
   confirmFailures: ConfirmFailure[];
 }
 
-export type ImportStatus = 'pending' | 'running' | 'success' | 'failed' | 'partial';
+export type ImportStatus = 'pending' | 'running' | 'success' | 'failed' | 'partial' | 'unknown';
 
 /**
  * 파일 하나의 상태(#208).
  * - 실패: 파일째 거절됐거나 반영된 기준이 하나도 없다 — 서버에 남은 것이 없어 **다시 올려도 안전하다**.
  * - 일부 실패: 반영된 기준이 있는데 실패 · 확정 실패가 섞였다 — 다시 올리면 성공한 기준이 한 번 더 만들어진다.
+ * - 확인 필요: 서버 오류(5xx) · 연결 끊김 — 서버가 앞 기준을 이미 넣었을 수 있어(되돌리지 않는다) 결과를 모른다.
+ *   다시 올리면 버전이 겹칠 수 있어 재시도에서 뺀다(#208 리뷰 반영).
  */
 export const importStatusOf = (
   outcome: ImportOutcome,
 ): Exclude<ImportStatus, 'pending' | 'running'> => {
+  const { error } = outcome;
+  if (
+    error !== null &&
+    (error.kind === 'network' || (error.kind === 'http' && error.status >= 500))
+  ) {
+    return 'unknown';
+  }
   if (outcome.result === null || outcome.result.succeeded === 0) return 'failed';
   if (outcome.result.failed.length > 0 || outcome.confirmFailures.length > 0) return 'partial';
   return 'success';
@@ -56,12 +65,14 @@ const STATUS_CHIP: Record<ImportStatus, 'idle' | 'success' | 'error' | 'warning'
   success: 'success',
   failed: 'error',
   partial: 'error',
+  unknown: 'error',
 };
 
 /** 결과가 난 파일을 위로 — 실패 · 일부 실패, 그다음 대기 · 처리 중, 성공은 아래(사용자 지시 · #208). */
 const STATUS_ORDER: Record<ImportStatus, number> = {
   failed: 0,
   partial: 0,
+  unknown: 0,
   running: 1,
   pending: 1,
   success: 2,
@@ -157,7 +168,7 @@ export const ImportDialog = ({
   const hasResults = outcomes.length > 0;
   const succeededCount = rows.filter((row) => row.status === 'success').length;
   const failedCount = rows.filter(
-    (row) => row.status === 'failed' || row.status === 'partial',
+    (row) => row.status === 'failed' || row.status === 'partial' || row.status === 'unknown',
   ).length;
   /* 결과가 난 뒤 남은 대상이 모두 실패 파일이면 「실패 파일 재시도」, 새로 고른 파일이 있으면 「올리기」 */
   const submitLabel =
@@ -293,6 +304,7 @@ export const ImportDialog = ({
                               {line}
                             </p>
                           ))}
+                          {status === 'unknown' && <p>{t.unknownNote}</p>}
                           {status === 'partial' && (
                             <p>
                               {outcome !== undefined && outcome.confirmFailures.length > 0

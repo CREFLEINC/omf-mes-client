@@ -132,6 +132,17 @@ const InspectionSheetTemplateScreenBody = () => {
   /* 상태는 줄(품목의 가장 높은 버전) 기준으로 거른다 — 서버의 버전 상태 조건으로 거르면 품목 줄이 다른 버전으로 바뀐다(#208). */
   const list = useTemplates('', filter.itemId);
   const detail = useTemplate(opened?.kind === 'existing' ? opened.id : null);
+  /*
+   * 편집기를 다시 세우는 기준 — 받은 상세가 «실제로 바뀔 때만» 올린다(#208 버그 수정).
+   * 받은 시각(`dataUpdatedAt`)으로 세우면 같은 버전을 다시 받기만 해도(버전 비교 창이 같은 상세를 구독) 편집기가
+   * 새로 서서 고치던 값과 열린 창이 사라졌다. 조회 라이브러리는 내용이 같으면 같은 객체를 돌려준다.
+   */
+  const [editorSource, setEditorSource] = useState(detail.data);
+  const [editorRevision, setEditorRevision] = useState(0);
+  if (detail.data !== editorSource) {
+    setEditorSource(detail.data);
+    setEditorRevision((revision) => revision + 1);
+  }
   const businessUnits = useBusinessUnitNames();
   /*
    * 사용 여부 · 양식 · 재료는 화면이 거른다 — 조건에 맞는 기준을 전부 받아 두었다(#208).
@@ -144,24 +155,24 @@ const InspectionSheetTemplateScreenBody = () => {
     filter.status !== '' ||
     filter.itemId !== null ||
     filter.usage !== 'active';
-  const matched = (list.data ?? []).filter(
-    (row) =>
-      (filter.layout === '' || row.formLayoutCode === filter.layout) &&
-      (materialKeyword === '' || (row.materialText ?? '').toLowerCase().includes(materialKeyword)),
-  );
   /*
    * 표는 품목마다 한 줄 — 검사 기준 탭처럼 버전은 상세에서 고른다(사용자 지시 · #208).
    * 줄은 그 품목의 가장 높은 버전으로 그린다. 사용 여부 · 건수도 그 줄 기준이다.
+   * 양식 · 재료 · 상태 조건은 가장 높은 버전을 고른 «뒤에» 건다(#208 리뷰 반영) — 먼저 걸면 옛 버전이 그 품목의 줄로 나왔다.
    */
   const latestByItem = new Map<number, InspectionSheetTemplate>();
-  for (const row of matched) {
+  for (const row of list.data ?? []) {
     const prev = latestByItem.get(row.itemId);
     if (prev === undefined || row.templateVersion > prev.templateVersion) {
       latestByItem.set(row.itemId, row);
     }
   }
   const itemRows = [...latestByItem.values()].filter(
-    (row) => filter.status === '' || row.statusCode === filter.status,
+    (row) =>
+      (filter.layout === '' || row.formLayoutCode === filter.layout) &&
+      (materialKeyword === '' ||
+        (row.materialText ?? '').toLowerCase().includes(materialKeyword)) &&
+      (filter.status === '' || row.statusCode === filter.status),
   );
   const usageCounts: Record<TemplateUsage, number> = {
     all: itemRows.length,
@@ -530,7 +541,7 @@ const InspectionSheetTemplateScreenBody = () => {
           {opened?.kind === 'existing' && detail.data !== undefined && (
             <TemplateEditor
               /* 저장·확정 뒤 다시 받은 상세로 입력을 새로 채운다 — 서버가 정한 순번·상태가 화면과 같아지게. */
-              key={`${opened.id}-${detail.dataUpdatedAt}`}
+              key={`${opened.id}-${String(editorRevision)}`}
               template={detail.data}
               versions={itemVersions.data ?? []}
               onSelectVersion={(id) => open({ kind: 'existing', id })}

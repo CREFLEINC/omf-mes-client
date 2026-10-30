@@ -77,6 +77,8 @@ const setup = (
   plantCode = 'PL13',
   auditEvents: Record<string, unknown>[] = [],
   discardError: Record<string, unknown> | null = null,
+  /** 목록 응답 — 없으면 상세 하나 */
+  listRows: InspectionSheetTemplate[] = [detail],
 ) => {
   const requests: Recorded[] = [];
   const stub = createStubFetch([
@@ -109,7 +111,8 @@ const setup = (
     },
     {
       match: (r) => r.method === 'GET' && new URL(r.url).pathname.endsWith(LIST),
-      respond: () => jsonResponse({ items: [detail], page: { page: 1, size: 50, total: 1 } }),
+      respond: () =>
+        jsonResponse({ items: listRows, page: { page: 1, size: 50, total: listRows.length } }),
     },
     {
       match: (r) => r.method === 'GET' && new URL(r.url).pathname.endsWith(`${LIST}/11`),
@@ -263,6 +266,24 @@ describe('검사표 기준', () => {
 
     await user.type(screen.getByLabelText(t.list.material), '없는재료');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /AAR4/ })).not.toBeInTheDocument();
+  });
+
+  /* 양식 · 재료 조건은 품목의 가장 높은 버전에 건다(#208 리뷰 반영) — 옛 버전이 그 품목의 줄로 나오지 않게. */
+  it('옛 버전만 재료 조건에 맞으면 그 품목은 걸리지 않는다', async () => {
+    const latest = template();
+    const old = template({
+      inspectionSheetTemplateId: 10,
+      templateVersion: 1,
+      statusCode: 'CONFIRMED',
+      materialText: '옛재료',
+    });
+    const { user } = setup(latest, 'PL13', [], null, [old, latest]);
+    await screen.findByRole('row', { name: /AAR4/ });
+
+    await user.type(screen.getByLabelText(t.list.material), '옛재료');
 
     expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
     expect(screen.queryByRole('row', { name: /AAR4/ })).not.toBeInTheDocument();

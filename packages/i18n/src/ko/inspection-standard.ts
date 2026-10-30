@@ -166,6 +166,7 @@ export const inspectionStandard = {
       success: '성공',
       failed: '실패',
       partial: '일부 실패',
+      unknown: '확인 필요',
     },
     /** 파일 안 기준 단위 건수 — 한 파일에 기준이 여럿일 수 있다 */
     criteriaCounts: (succeeded: number, failed: number): string =>
@@ -177,6 +178,9 @@ export const inspectionStandard = {
       `${key} · 올렸으나 확정하지 못함: ${reason}`,
     /** 다시 올리면 성공한 기준이 한 번 더 만들어지는 파일 — 재시도에서 뺀다 */
     partialNote: '성공한 기준이 있어 재시도에서 뺍니다. 실패한 기준만 담아 따로 올리세요.',
+    /** 서버 오류 · 연결 끊김 — 일부가 이미 들어갔을 수 있다(#208) */
+    unknownNote:
+      '처리 중 오류로 결과를 확인하지 못했습니다. 일부 기준이 이미 반영됐을 수 있어 재시도에서 뺍니다. 목록에서 확인하세요.',
     confirmNote: '확정하지 못한 버전은 작성중으로 남았습니다. 목록에서 확인 후 확정하세요.',
   },
   filters: {

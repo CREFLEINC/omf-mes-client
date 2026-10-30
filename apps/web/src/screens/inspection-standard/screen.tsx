@@ -1906,6 +1906,7 @@ export const InspectionStandardScreen = () => {
               <Button
                 variant="outlined"
                 leadingIcon={<Icon name="table_chart" size={18} />}
+                disabled={importProgress !== null}
                 onClick={() => setImportState({ files: [], outcomes: [] })}
               >
                 {t.actions.excelUpload}
@@ -2044,7 +2045,10 @@ export const InspectionStandardScreen = () => {
           }
           outcomes={importState.outcomes}
           progress={importProgress}
-          onClose={() => setImportState(null)}
+          // 올리는 중에는 닫지 않는다 — Esc 도 닫기로 오므로 여기서 막는다(#208 리뷰 반영).
+          onClose={() => {
+            if (importProgress === null) setImportState(null);
+          }}
           onSubmit={() => void runImport(importState.files, importState.outcomes)}
         />
       )}

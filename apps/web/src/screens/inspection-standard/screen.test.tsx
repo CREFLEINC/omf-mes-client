@@ -652,6 +652,54 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     expect(requestsTo(requests, IMPORT_PATH)).toHaveLength(3);
   });
 
+  /* 서버 오류 · 연결 끊김은 앞 기준이 이미 들어갔을 수 있다 — 재시도에서 뺀다(#208 리뷰 반영). */
+  it('서버 오류로 끝난 파일은 「확인 필요」로 남기고 재시도하지 않는다', async () => {
+    const { requests, user } = renderScreen([
+      importRoute(() => jsonResponse({ errors: [] }, { status: 500 })),
+      planListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+
+    const row = await within(dialog).findByRole('listitem', { name: '검사기준.xlsx' });
+    expect(await within(row).findByText(t.import.status.unknown)).toBeInTheDocument();
+    expect(within(row).getByText(t.import.unknownNote)).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: t.import.retry })).not.toBeInTheDocument();
+    expect(requestsTo(requests, IMPORT_PATH)).toHaveLength(1);
+  });
+
+  /* 올리는 중에 Esc 로 창이 닫히면 결과를 볼 곳이 없다(#208 리뷰 반영). */
+  it('올리는 중에는 Esc 로 창이 닫히지 않는다', async () => {
+    let release: (() => void) | undefined;
+    const { user } = renderScreen([
+      importRoute(
+        () =>
+          new Promise<Response>((resolve) => {
+            release = () => resolve(jsonResponse({ succeeded: 0, failed: [] }));
+          }),
+      ),
+      planListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+    await within(dialog).findByRole('status');
+
+    fireEvent(dialog, new Event('cancel', { cancelable: true }));
+    expect(screen.getByRole('dialog', { name: t.import.title })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '엑셀 올리기' })).toBeDisabled();
+
+    release?.();
+    expect(await within(dialog).findByText(t.import.status.failed)).toBeInTheDocument();
+  });
+
   it('파일을 읽을 수 없으면 창을 닫지 않고 사유를 배너로 낸다', async () => {
     const { user } = renderScreen([
       importRoute(() =>
