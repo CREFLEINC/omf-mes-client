@@ -1,5 +1,6 @@
-import { AlertBanner, Button, Chip, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, SkeletonText, Tabs } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
@@ -18,6 +19,8 @@ import { toWebAccess } from '../../patterns/web-access';
 import { LOT_TRACE_PATH, lotTraceHref } from '../lot-trace/trace-filters';
 
 const t = messages.lotStatusHistory;
+const genealogyText = messages.lotGenealogy;
+type HistoryTab = 'usage' | 'timeline' | 'holds';
 const EMPTY = '—';
 
 const formatDateTime = (value: string | null): string => {
@@ -52,6 +55,7 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
       : null;
   const fourMTypeLabel = useFourMChangeTypeLabel();
   const uomCodeOf = useUomCodeOf();
+  const [historyTab, setHistoryTab] = useState<HistoryTab>('usage');
   const itemId = detail.data?.itemId;
   const itemNames = useItemNameSources(itemId === undefined ? [] : [itemId]);
   const itemSource: LookupSource = (itemId === undefined ? undefined : itemNames.get(itemId)) ?? {
@@ -166,11 +170,33 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
 
       {/* 투입 자재 계보(omf-all-around#166) — 생산 LOT 은 들어간 자재, 모든 LOT 은 그 LOT 이 들어간 제품. */}
       {detail.data?.sourceTypeCode === 'WORK_ORDER' && <ProductionLotInputs lotId={lotId} />}
-      {detail.data !== undefined && <MaterialLotUsage lotId={lotId} />}
-
-      <LotTimeline lotId={lotId} statusOptions={statusOptions} />
-
-      <LotHoldDocuments key={lotId} lotId={lotId} />
+      {/* 투입 이력 · LOT 변경 이력 · 보류 이력은 탭으로 묶는다(사용자 2026-10-30). */}
+      {/* LOT 상세를 못 받아도 이력 탭은 선다 — 각 탭이 따로 부르고 따로 실패한다. */}
+      <Tabs
+        aria-label={t.detail.historyTabs}
+        value={historyTab}
+        onChange={(value) => setHistoryTab(value as HistoryTab)}
+        items={[
+          {
+            value: 'usage',
+            label: genealogyText.usage.heading,
+            content: historyTab === 'usage' ? <MaterialLotUsage lotId={lotId} /> : null,
+          },
+          {
+            value: 'timeline',
+            label: t.timeline.pane,
+            content:
+              historyTab === 'timeline' ? (
+                <LotTimeline lotId={lotId} statusOptions={statusOptions} embedded />
+              ) : null,
+          },
+          {
+            value: 'holds',
+            label: t.holdDocuments.pane,
+            content: historyTab === 'holds' ? <LotHoldDocuments key={lotId} lotId={lotId} /> : null,
+          },
+        ]}
+      />
     </>
   );
 };

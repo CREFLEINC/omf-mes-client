@@ -198,7 +198,7 @@ export const lotStatusHistory = {
     pane: 'LOT 변경 이력',
     loading: 'LOT 이력을 불러오는 중',
     failed: 'LOT 이력을 불러오지 못했습니다.',
-    empty: '기록된 이력이 없습니다',
+    empty: '변경 이력이 없습니다',
     truncated: '보류 사건이 많아 일부만 표시합니다.',
     /** LOT 상세의 이력 표 머리 — 「이력으로 찾기」 표는 종전 이름 그대로다. */
     columns: {
@@ -219,6 +219,8 @@ export const lotStatusHistory = {
     /** 아직 고른 LOT 이 없을 때 상세 칸 안내. */
     pick: '목록에서 LOT을 선택해 주세요.',
     trace: '생산 이력 조회',
+    /** LOT 상세 아래 이력 탭 묶음 이름(화면 읽기용). */
+    historyTabs: 'LOT 이력',
     attributes: 'LOT 속성',
     fields: {
       lotNo: 'LOT 번호',

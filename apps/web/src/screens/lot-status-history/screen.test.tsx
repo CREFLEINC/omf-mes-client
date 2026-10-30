@@ -372,6 +372,11 @@ const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, o
   await user.click(await screen.findByRole('option', { name: option }));
 };
 
+/** LOT 상세 아래 이력 탭(투입 이력 · LOT 변경 이력 · 보류 이력)을 고른다(사용자 2026-10-30). */
+const openHistoryTab = async (detail: HTMLElement, name: string): Promise<void> => {
+  await userEvent.click(await within(detail).findByRole('tab', { name }));
+};
+
 describe('Lot Status 화면 shell', () => {
   it('기본 모드에서 초안을 주소에 쓰지 않고 조회할 때만 적용한다', async () => {
     const { urls } = renderScreen('/quality/lot-status?from=2026-08-01');
@@ -1088,6 +1093,7 @@ describe('Lot Status 화면 shell', () => {
     const user = userEvent.setup();
 
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    await openHistoryTab(detail, '보류 이력');
     expect(await within(detail).findByText('LOT 상세 정보를 불러오지 못했습니다.')).toBeVisible();
     expect(await within(detail).findByRole('table', { name: '보류 이력' })).toBeVisible();
     await user.click(within(detail).getByRole('button', { name: 'LOT 상세 재시도' }));
@@ -1102,12 +1108,13 @@ describe('Lot Status 화면 shell', () => {
       ...eventRoutes(),
     ]);
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    await openHistoryTab(detail, 'LOT 변경 이력');
     const timeline = await within(detail).findByRole('table', { name: 'LOT 변경 이력' });
 
     expect(
       within(timeline)
         .getAllByRole('columnheader')
-        .map((header) => header.textContent),
+        .map((header) => (header.textContent ?? '').replace('drag_indicator', '')),
     ).toEqual(['처리 일시', '처리 유형', '변경 내용', '처리자', '사유']);
     const rows = within(timeline).getAllByRole('row');
     expect(rows[1]).toHaveTextContent('2026-08-21 09:00상태 변경합성 대기 → 합성 불량');
@@ -1138,6 +1145,7 @@ describe('Lot Status 화면 shell', () => {
     ]);
     const user = userEvent.setup();
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    await openHistoryTab(detail, '보류 이력');
     const holds = await within(detail).findByRole('table', { name: '보류 이력' });
 
     expect(within(holds).getAllByRole('columnheader')).toHaveLength(5);
@@ -1151,12 +1159,13 @@ describe('Lot Status 화면 shell', () => {
     expect(within(holds).getAllByText(/· 합성 등록자$/)).toHaveLength(2);
     expect(within(holds).getByText(/· 합성 해제자$/)).toBeVisible();
     expect(within(holds).getAllByText('등록')).toHaveLength(2);
-    expect(within(detail).getByText('1–2 / 전체 51건')).toBeVisible();
+    expect(within(detail).getByText('총 51건')).toBeVisible();
+    expect(within(detail).getByText('1 / 2')).toBeVisible();
     expect(lastRequest(urls, '/quality/lot-holds')?.searchParams.get('open')).toBe('false');
     expect(lastRequest(urls, '/app/users')?.searchParams.get('includeInactive')).toBe('true');
 
     await user.click(within(detail).getByRole('button', { name: '다음' }));
-    expect(await within(detail).findByText('51–51 / 전체 51건')).toBeVisible();
+    expect(await within(detail).findByText('2 / 2')).toBeVisible();
     expect(lastRequest(urls, '/quality/lot-holds')?.searchParams.get('page')).toBe('2');
     expect(requestCount(urls, '/trace/lots/401')).toBe(1);
   });
@@ -1197,7 +1206,8 @@ describe('Lot Status 화면 shell', () => {
     });
     const user = userEvent.setup();
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
-    await within(detail).findByText('1–2 / 전체 51건');
+    await openHistoryTab(detail, '보류 이력');
+    await within(detail).findByText('총 51건');
     const next = within(detail).getByRole('button', { name: '다음' });
 
     await user.click(next);
@@ -1207,12 +1217,13 @@ describe('Lot Status 화면 shell', () => {
     expect(
       within(detail).getByRole('table', { name: '보류 이력' }).closest('[aria-busy]'),
     ).toHaveAttribute('aria-busy', 'true');
-    expect(within(detail).getByText('1–2 / 전체 51건')).toBeVisible();
+    expect(within(detail).getByText('총 51건')).toBeVisible();
     releasePageTwo?.();
     await waitFor(() =>
       expect(lastRequest(urls, '/quality/lot-holds')?.searchParams.get('page')).toBe('3'),
     );
-    expect(within(detail).getByText('41–41 / 전체 41건')).toBeVisible();
+    expect(within(detail).getByText('총 41건')).toBeVisible();
+    expect(within(detail).getByText('3 / 3')).toBeVisible();
     expect(within(detail).getByRole('button', { name: '다음' })).toBeDisabled();
   });
 
@@ -1223,6 +1234,7 @@ describe('Lot Status 화면 shell', () => {
     ]);
     const user = userEvent.setup();
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    await openHistoryTab(detail, '보류 이력');
 
     expect(await within(detail).findByText('보류 문서를 불러오지 못했습니다.')).toBeVisible();
     expect(within(detail).getByText('SAMPLE-LOT-001')).toBeVisible();
@@ -1237,6 +1249,7 @@ describe('Lot Status 화면 shell', () => {
       ...holdRoutes(200, 500),
     ]);
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    await openHistoryTab(detail, '보류 이력');
 
     expect(await within(detail).findByText(/사용자 번호를 표시합니다/)).toBeVisible();
     expect(within(detail).getByRole('table', { name: '보류 이력' })).toHaveTextContent('601');
@@ -1248,6 +1261,7 @@ describe('Lot Status 화면 shell', () => {
       ...holdRoutes(200, 200, 3),
     ]);
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    await openHistoryTab(detail, '보류 이력');
 
     expect(await within(detail).findByText(/일부 행위자 이름을 확인하지 못해/)).toBeVisible();
     expect(within(detail).getByRole('table', { name: '보류 이력' })).toBeVisible();

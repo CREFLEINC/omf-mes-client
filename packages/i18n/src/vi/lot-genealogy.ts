@@ -10,7 +10,7 @@ export const lotGenealogy = {
     heading: 'Lịch sử đưa vào sản xuất',
     loading: 'Đang tải lịch sử đưa vào sản xuất.',
     loadFailed: 'Không tải được lịch sử đưa vào sản xuất.',
-    none: 'Chưa có ghi chép đưa LOT này vào sản xuất.',
+    none: 'Không có lịch sử đưa vào sản xuất',
     lotsCaption: 'LOT sản xuất đã dùng',
     serialsCaption: 'Số sê-ri đã dùng',
     lotColumns: { lotNo: 'LOT sản xuất', workOrderNo: 'Lệnh sản xuất' },

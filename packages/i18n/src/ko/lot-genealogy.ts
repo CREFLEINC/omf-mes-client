@@ -11,7 +11,7 @@ export const lotGenealogy = {
     heading: '투입 이력',
     loading: '투입 이력을 불러오는 중입니다.',
     loadFailed: '투입 이력을 불러오지 못했습니다.',
-    none: '이 LOT 이 투입된 기록이 없습니다.',
+    none: '투입 이력이 없습니다',
     lotsCaption: '들어간 생산 LOT',
     serialsCaption: '들어간 시리얼',
     lotColumns: { lotNo: '생산 LOT', workOrderNo: '작업지시' },

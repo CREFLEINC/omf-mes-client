@@ -5,6 +5,10 @@ import { useState, type ReactNode } from 'react';
 import type { FilterOption } from './lot-filter-bar';
 import { codeName, useLotHoldReasonOptions, type LotCodeOption } from './options';
 import type { LotTimelineEntry } from './timeline';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav, type PageSize } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.lotStatusHistory;
@@ -71,6 +75,9 @@ export const LotTimelineTable = ({
    */
   const [sort, setSort] = useState<SortState>({ key: 'occurredAt', direction: 'descending' });
   const rows = isDetail && sort.direction === 'ascending' ? [...entries].reverse() : [...entries];
+  /* LOT 상세 탭에서는 화면이 쪽을 나눈다 — 받은 이력을 한 번에 다 갖고 있다(사용자 2026-10-30). */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<PageSize>(20);
   const actorName = (entry: LotTimelineEntry): string => {
     if (entry.kind === 'hold') return entry.event.actorName?.trim() || t.history.actorUnknown;
     const id = entry.event.changedBy;
@@ -144,21 +151,57 @@ export const LotTimelineTable = ({
     },
   ];
 
+  /* 열 너비 끌기 · 열 순서 바꾸기는 LOT 상세 탭에만 — LOT 목록 표와 같다(사용자 2026-10-30). */
+  const ordered = useColumnOrder('omf-mes:lot-status:columns:timeline:order', columns);
+  const resizable = useColumnWidths('omf-mes:lot-status:columns:timeline', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
+
+  if (!isDetail) {
+    return (
+      <Table
+        density="compact"
+        caption={caption}
+        columns={columns}
+        rows={rows}
+        getRowId={(entry) => entry.key}
+        empty={empty}
+      />
+    );
+  }
+
+  const lastPage = Math.max(1, Math.ceil(rows.length / pageSize));
+  const shownPage = Math.min(page, lastPage);
   return (
-    <Table
-      density={isDetail ? 'comfortable' : 'compact'}
-      caption={caption}
-      columns={columns}
-      rows={rows}
-      getRowId={(entry) => entry.key}
-      empty={empty}
-      {...(isDetail
-        ? {
-            sort,
-            onSortChange: (next: SortState | null) =>
-              setSort(next ?? { key: 'occurredAt', direction: 'ascending' }),
-          }
-        : {})}
-    />
+    <>
+      <div
+        ref={fit.ref}
+        className="wide-table lot-status-table lot-detail-table"
+        style={resizable.style}
+      >
+        <Table
+          density="comfortable"
+          caption={caption}
+          columns={fit.columns}
+          rows={rows.slice((shownPage - 1) * pageSize, shownPage * pageSize)}
+          getRowId={(entry) => entry.key}
+          empty={empty}
+          sort={sort}
+          onSortChange={(next: SortState | null) => {
+            setSort(next ?? { key: 'occurredAt', direction: 'ascending' });
+            setPage(1);
+          }}
+        />
+      </div>
+      <PageNav
+        meta={{ page: shownPage, size: pageSize, total: rows.length }}
+        onChangePage={setPage}
+        onChangeSize={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+      />
+    </>
   );
 };

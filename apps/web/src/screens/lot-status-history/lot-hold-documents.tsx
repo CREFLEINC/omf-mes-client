@@ -14,6 +14,10 @@ import { codeName, useLotHoldReasonOptions } from './options';
 import { useUomCodeOf, withUom } from './uoms';
 import { useLotActorOptions, useLotHolds } from './queries';
 import type { LotHoldView } from './types';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav, type PageSize } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.lotStatusHistory;
@@ -26,8 +30,8 @@ const formatDateTime = (value: string | null): string => {
 
 export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
   const [page, setPage] = useState(1);
-  const [open, setOpen] = useState(true);
-  const holds = useLotHolds(lotId, page);
+  const [pageSize, setPageSize] = useState<PageSize>(20);
+  const holds = useLotHolds(lotId, page, pageSize);
   const actors = useLotActorOptions(true);
   const reasons = useLotHoldReasonOptions();
   const uomCodeOf = useUomCodeOf();
@@ -118,102 +122,78 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
     }
   }, [holds.isPlaceholderData, page, serverPage]);
   const currentPage = meta !== undefined && meta.page > 0 ? meta.page : page;
-  const pageSize = meta !== undefined && meta.size > 0 ? meta.size : 1;
-  const totalPages = Math.max(1, Math.ceil((meta?.total ?? 0) / pageSize));
-  const start = (currentPage - 1) * pageSize + 1;
-  const range =
-    meta === undefined
-      ? ''
-      : rows.length === 0
-        ? t.range.total(String(meta.total))
-        : t.range.span(String(start), String(start + rows.length - 1), String(meta.total));
+  /* 열 너비 끌기 · 열 순서 바꾸기 — LOT 목록 표와 같다(사용자 2026-10-30). */
+  const ordered = useColumnOrder('omf-mes:lot-status:columns:holds:order', columns);
+  const resizable = useColumnWidths('omf-mes:lot-status:columns:holds', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
   const actorsLimited =
     actors.isError ||
     (actors.data !== undefined && actors.data.page.total > actors.data.items.length);
 
+  /* LOT 상세의 탭 하나 — 제목은 탭이 단다(사용자 2026-10-30). */
   return (
-    <section aria-labelledby="lot-hold-documents-title">
-      <div className="lot-status-pane-head">
-        <h3 id="lot-hold-documents-title">
-          {/* 이력이 길 수 있어 접었다 펼 수 있게 한다(사용자 2026-10-30). 처음에는 펼쳐 둔다. */}
-          <button
-            type="button"
-            className="lot-section-toggle"
-            aria-expanded={open}
-            aria-controls="lot-hold-documents-body"
-            onClick={() => setOpen((value) => !value)}
+    <section aria-label={t.holdDocuments.pane}>
+      {holds.isPending && (
+        <div role="status" aria-label={t.holdDocuments.loading}>
+          <SkeletonText lines={3} />
+        </div>
+      )}
+      {holds.isError && (
+        <AlertBanner
+          className="lot-detail-failure-banner"
+          variant="error"
+          title={t.holdDocuments.failed}
+          action={
+            <Button
+              variant="outlined"
+              size="sm"
+              aria-label={t.detail.retryLabel(t.holdDocuments.pane)}
+              onClick={() => void holds.refetch()}
+            >
+              {t.detail.retry}
+            </Button>
+          }
+        />
+      )}
+      {holds.data !== undefined && meta !== undefined && (
+        <>
+          {holds.isFetching && (
+            <p className="field-note" role="status">
+              {t.holdDocuments.refreshingText}
+            </p>
+          )}
+          <div
+            ref={fit.ref}
+            className="wide-table lot-status-table lot-detail-table"
+            style={resizable.style}
+            aria-busy={holds.isFetching}
           >
-            {t.holdDocuments.pane}
-          </button>
-        </h3>
-        {meta !== undefined && (
-          <span className="field-note">{t.current.list.total(String(meta.total))}</span>
-        )}
-      </div>
-      <div id="lot-hold-documents-body" hidden={!open}>
-        {holds.isPending && (
-          <div role="status" aria-label={t.holdDocuments.loading}>
-            <SkeletonText lines={3} />
+            <Table
+              density="comfortable"
+              caption={t.holdDocuments.pane}
+              columns={fit.columns}
+              rows={rows}
+              getRowId={(row) => String(row.lotHoldId)}
+              empty={<EmptyState size="sm" title={t.holdDocuments.empty} />}
+            />
           </div>
-        )}
-        {holds.isError && (
-          <AlertBanner
-            className="lot-detail-failure-banner"
-            variant="error"
-            title={t.holdDocuments.failed}
-            action={
-              <Button
-                variant="outlined"
-                size="sm"
-                aria-label={t.detail.retryLabel(t.holdDocuments.pane)}
-                onClick={() => void holds.refetch()}
-              >
-                {t.detail.retry}
-              </Button>
-            }
+          <PageNav
+            meta={{
+              page: currentPage,
+              size: meta.size > 0 ? meta.size : pageSize,
+              total: meta.total,
+            }}
+            onChangePage={setPage}
+            onChangeSize={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
           />
-        )}
-        {holds.data !== undefined && (
-          <>
-            {holds.isFetching && (
-              <p className="field-note" role="status">
-                {t.holdDocuments.refreshingText}
-              </p>
-            )}
-            <div className="wide-table" aria-busy={holds.isFetching}>
-              <Table
-                density="comfortable"
-                caption={t.holdDocuments.pane}
-                columns={columns}
-                rows={rows}
-                getRowId={(row) => String(row.lotHoldId)}
-                empty={<EmptyState size="sm" title={t.holdDocuments.empty} />}
-              />
-            </div>
-            {/* 총 건수는 제목 줄에 있다 — 쪽이 둘 이상일 때만 이동 줄을 둔다(2026-10-30 시안). */}
-            {meta !== undefined && totalPages > 1 && (
-              <nav className="form-actions" aria-label={t.holdDocuments.pagination}>
-                <p className="field-note form-actions-secondary">{range}</p>
-                <Button
-                  variant="outlined"
-                  disabled={currentPage <= 1}
-                  onClick={() => setPage(currentPage - 1)}
-                >
-                  {t.actions.previousPage}
-                </Button>
-                <Button
-                  variant="outlined"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setPage(currentPage + 1)}
-                >
-                  {t.actions.nextPage}
-                </Button>
-              </nav>
-            )}
-          </>
-        )}
-        {actorsLimited && <p className="field-note">{t.holdDocuments.actorsLimited}</p>}
-      </div>
+        </>
+      )}
+      {actorsLimited && <p className="field-note">{t.holdDocuments.actorsLimited}</p>}
     </section>
   );
 };

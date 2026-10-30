@@ -1,10 +1,18 @@
-import { AlertBanner, Button, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
-import type { InputMaterials, TraceBasis, UsedSerials } from '@omf-mes/api-client';
+import { AlertBanner, Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import type {
+  AffectedProductionLots,
+  InputMaterials,
+  TraceBasis,
+  UsedSerials,
+} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav, type PageSize } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { runRequest } from '../../patterns/request';
@@ -12,6 +20,7 @@ import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
 
 const t = messages.lotGenealogy;
 const shared = messages.lotStatusHistory;
+type AffectedLot = AffectedProductionLots['items'][number];
 /** 시리얼은 수천 건일 수 있다 — 쪽으로 나눠 받는다. */
 const SERIAL_PAGE = 50;
 
@@ -95,7 +104,6 @@ export const ProductionLotInputs = ({ lotId }: { lotId: number }) => {
 export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
   const { client } = useApiClient();
   const [page, setPage] = useState(1);
-  const [open, setOpen] = useState(true);
   /* 투입 이력 표는 화면에서 쪽을 나눈다 — 서버가 한 번에 다 준다(LOT 목록과 같은 쪽 이동 · 사용자 2026-10-30). */
   const [lotPage, setLotPage] = useState(1);
   const [lotPageSize, setLotPageSize] = useState<PageSize>(20);
@@ -117,27 +125,35 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
       ),
   });
 
+  /* 열 너비 끌기 · 열 순서 바꾸기 — LOT 목록 표와 같다(사용자 2026-10-30). */
+  const lotColumns: Column<AffectedLot>[] = [
+    {
+      key: 'lotNo',
+      header: t.usage.lotColumns.lotNo,
+      align: 'center',
+      render: (row) => row.lotNo,
+    },
+    {
+      key: 'workOrderNo',
+      header: t.usage.lotColumns.workOrderNo,
+      align: 'center',
+      render: (row) => row.workOrderNo,
+    },
+  ];
+  const ordered = useColumnOrder('omf-mes:lot-status:columns:usage:order', lotColumns);
+  const resizable = useColumnWidths('omf-mes:lot-status:columns:usage', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
+
   /*
    * LOT 변경 이력 · 보류 이력과 같은 짜임 — 제목 줄에 총 건수, 기록이 없어도 표를 세우고 표 안에 없다고 적는다
    * (사용자 2026-10-30).
    */
   return (
-    <section aria-labelledby="lot-usage-title">
-      <div className="lot-status-pane-head">
-        <h3 id="lot-usage-title">
-          {/* 변경 이력 · 보류 이력처럼 접었다 편다(사용자 2026-10-30). 처음에는 펼쳐 둔다. */}
-          <button
-            type="button"
-            className="lot-section-toggle"
-            aria-expanded={open}
-            aria-controls="lot-usage-body"
-            onClick={() => setOpen((value) => !value)}
-          >
-            {t.usage.heading}
-          </button>
-        </h3>
-      </div>
-      <div id="lot-usage-body" hidden={!open}>
+    /* LOT 상세의 탭 하나 — 제목·접기는 탭이 대신한다(사용자 2026-10-30). */
+    <section aria-label={t.usage.heading}>
+      <div>
         {lots.isPending && (
           <div role="status" aria-label={t.usage.loading}>
             <SkeletonText lines={3} />
@@ -163,26 +179,17 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
         {lots.data !== undefined && (
           <>
             {lots.data.items.length > 0 && <BasisNote basis={lots.data.basis} />}
-            <div className="lot-genealogy-table">
+            <div
+              ref={fit.ref}
+              className="wide-table lot-status-table lot-detail-table"
+              style={resizable.style}
+            >
               <Table
                 density="comfortable"
                 caption={t.usage.lotsCaption}
                 rows={lots.data.items.slice((lotPage - 1) * lotPageSize, lotPage * lotPageSize)}
                 getRowId={(row) => String(row.lotId)}
-                columns={[
-                  {
-                    key: 'lotNo',
-                    header: t.usage.lotColumns.lotNo,
-                    align: 'center',
-                    render: (row) => row.lotNo,
-                  },
-                  {
-                    key: 'workOrderNo',
-                    header: t.usage.lotColumns.workOrderNo,
-                    align: 'center',
-                    render: (row) => row.workOrderNo,
-                  },
-                ]}
+                columns={fit.columns}
                 empty={<EmptyState size="sm" title={t.usage.none} />}
               />
             </div>

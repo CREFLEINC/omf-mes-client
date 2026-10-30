@@ -185,7 +185,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     pane: 'Lịch sử thay đổi LOT',
     loading: 'Đang tải lịch sử LOT',
     failed: 'Không tải được lịch sử LOT.',
-    empty: 'Không có lịch sử nào được ghi lại',
+    empty: 'Không có lịch sử thay đổi',
     truncated: 'Có nhiều sự kiện tạm giữ nên chỉ hiển thị một phần.',
     columns: {
       occurredAt: 'Thời điểm xử lý',
@@ -203,6 +203,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     retryLabel: (name: string): string => `Thử lại ${name}`,
     pick: 'Hãy chọn LOT trong danh sách.',
     trace: 'Tra cứu lịch sử sản xuất',
+    /** LOT 상세 아래 이력 탭 묶음 이름(화면 읽기용). */
+    historyTabs: 'Lịch sử LOT',
     attributes: 'Thuộc tính LOT',
     fields: {
       lotNo: 'Số LOT',
