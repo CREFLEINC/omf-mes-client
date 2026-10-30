@@ -27182,6 +27182,7 @@ button.iqc-inspection-step-toggle:focus-visible {
   padding: var(--space-1);
   border-bottom: 1px solid var(--outline-variant);
   text-align: center;
+  vertical-align: middle;
 }
 
 .parts-iqc-grid td.parts-iqc-spec,
@@ -27189,6 +27190,8 @@ button.iqc-inspection-step-toggle:focus-visible {
   min-width: 7.5rem;
   /* 규격 한 줄 · 측정값 칸과 사이를 둔다(사용자 지시 2026-10-30) */
   padding-right: var(--space-6);
+  /* 남는 폭은 규격 칸이 받는다 — 항목 · 측정값 · 판정 칸이 양 끝으로 벌어지지 않게(실검증 「선이 안 맞아」 2026-10-30). */
+  width: 100%;
   text-align: end;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -27199,8 +27202,9 @@ button.iqc-inspection-step-toggle:focus-visible {
   width: 8rem;
 }
 
-.parts-iqc-spec {
-  display: grid;
+/* 규격 두 줄은 글자에만 건다 — 칸에 grid 를 걸면 표 칸에서 빠져 밑줄 높이가 옆 칸과 어긋난다. */
+.parts-iqc-spec > span {
+  display: block;
 }
 
 .parts-iqc-cell {
