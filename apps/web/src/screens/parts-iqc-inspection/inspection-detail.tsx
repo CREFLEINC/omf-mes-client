@@ -34,6 +34,7 @@ import { useItemNames, useLotNumbers } from '../iqc-inspection/reference-lookup'
 import { sampleQtyOf } from '../iqc-inspection/sample-qty';
 import { latestRound } from '../iqc-inspection/types';
 import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
+import { IqcSkipPane } from '../iqc-inspection/skip-pane';
 import { InspectionHistory } from './history';
 import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
@@ -59,6 +60,7 @@ import {
 } from './judgment';
 import { MeasurementTable, rowStateOf } from './measurement-table';
 import {
+  partsIqcKeys,
   useDrawings,
   useInboundInfo,
   useInspectionPlan,
@@ -137,6 +139,8 @@ export const InspectionDetail = ({
     if (loading) return <p className="field-note">{t.dialog.loading}</p>;
     if (failed || detail.data === undefined)
       return <AlertBanner variant="error">{t.dialog.loadFailed}</AlertBanner>;
+    /* 생략으로 닫힌 의뢰는 입력할 것이 없다 — 위 「IQC 생략」 구획이 그 사실을 말한다. */
+    if (detail.data.statusCode === 'SKIPPED') return null;
     if (round !== null && round.statusCode === 'CONFIRMED') {
       return (
         <AlertBanner variant="info">
@@ -197,6 +201,19 @@ export const InspectionDetail = ({
           </Chip>
         )}
       </div>
+      {/* IQC 생략(OA 화면 #212 와 같은 구획 · 사용자 지시 2026-10-30) — 확정 회차가 있으면 생략으로 덮지 않는다. */}
+      {detail.data !== undefined &&
+        detail.data.lotId !== null &&
+        rounds.data !== undefined &&
+        rounds.data.every((row) => row.statusCode !== 'CONFIRMED') && (
+          <IqcSkipPane
+            lotId={detail.data.lotId}
+            requestStatusCode={detail.data.statusCode}
+            skipBasisCode={detail.data.skipBasisCode}
+            workerNo={session?.worker?.workerNo ?? null}
+            alsoInvalidate={[partsIqcKeys.all]}
+          />
+        )}
       {/* 검사 입력 · 검사 이력(사용자 지시 2026-10-30) — 이력은 이 의뢰의 회차를 읽기 전용으로 */}
       <Tabs
         className="parts-iqc-detail-tabs"

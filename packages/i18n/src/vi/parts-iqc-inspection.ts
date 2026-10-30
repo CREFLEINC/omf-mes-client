@@ -162,7 +162,11 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   },
 
   judgment: { ACCEPTED: 'Đạt', REJECTED: 'Không đạt', HELD: 'Giữ lại' },
-  requestStatus: { REQUESTED: 'Chờ kiểm tra', IN_PROGRESS: 'Đang kiểm tra' },
+  requestStatus: {
+    REQUESTED: 'Chờ kiểm tra',
+    IN_PROGRESS: 'Đang kiểm tra',
+    SKIPPED: 'Bỏ qua kiểm tra',
+  },
   ok: 'OK',
   ng: 'NG',
 

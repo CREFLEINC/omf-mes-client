@@ -156,7 +156,11 @@ export const partsIqcInspection = {
   },
 
   judgment: { ACCEPTED: '합격', REJECTED: '불합격', HELD: '보류' } as Record<string, string>,
-  requestStatus: { REQUESTED: '검사 대기', IN_PROGRESS: '검사 진행 중' } as Record<string, string>,
+  requestStatus: {
+    REQUESTED: '검사 대기',
+    IN_PROGRESS: '검사 진행 중',
+    SKIPPED: '검사 생략',
+  } as Record<string, string>,
   ok: 'OK',
   ng: 'NG',
 
