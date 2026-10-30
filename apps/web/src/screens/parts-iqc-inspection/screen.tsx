@@ -1,13 +1,4 @@
-import {
-  Breadcrumb,
-  Button,
-  Chip,
-  Dialog,
-  EmptyState,
-  Icon,
-  PageHeader,
-  useToast,
-} from '@crefle/web-ui';
+import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -212,7 +203,11 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
         />
       )}
 
-      <section ref={aboveRef} className="pane iqc-inspection-panes iqc-inspection-search">
+      {/* 첫 줄 LOT 스캔 · [검색] · [오늘 입고], 구분선 아래 조회 조건 줄(사용자 시안 2026-10-30) */}
+      <section
+        ref={aboveRef}
+        className="pane iqc-inspection-panes iqc-inspection-search parts-iqc-search"
+      >
         {plants.length > 1 && (
           <div className="field-cell parts-iqc-plant">
             <span className="field-label" id="parts-iqc-plant">
@@ -229,17 +224,17 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
             />
           </div>
         )}
-        <LotScan inspectionTypeCode="IQC" onFound={select} focusSignal={scanFocus} />
-        <div className="parts-iqc-today">
-          <Chip
-            variant="filter"
-            selected={todayOnly}
+        <div className="parts-iqc-scan-row">
+          <LotScan inspectionTypeCode="IQC" onFound={select} focusSignal={scanFocus} />
+          {/* 켜지면 채운 단추 — 걸려 있는지 한눈에 */}
+          <Button
+            variant={todayOnly ? 'filled' : 'outlined'}
             aria-pressed={todayOnly}
             aria-label={todayOnly ? t.todayOn : t.todayOff}
-            onSelectedChange={toggleToday}
+            onClick={() => toggleToday(!todayOnly)}
           >
             {t.today}
-          </Chip>
+          </Button>
         </div>
         <QueueFilterBar
           appliedFilters={filters}

@@ -29,20 +29,24 @@ export const partsIqcInspection = {
   /** 검사 기준 조회 팝업(사용자 지시 2026-10-30). */
   plan: {
     open: '기준 보기',
-    title: '검사 기준',
+    title: '검사 기준 상세',
     edit: '수정',
     version: '버전',
-    versionValue: (no: number, from: string) => `${String(no)}판 · ${from} 부터`,
+    versionValue: (no: number, from: string) => `${String(no)}판 · ${from} 적용`,
     sampling: '샘플링',
     full: '전수',
     ratio: (r: number) => `LOT 의 ${String(r)}%`,
     qty: (n: number) => `${String(n)}개`,
-    aqlAcceptance: 'AQL · 합격판정개수',
+    aqlAcceptance: '합격 판정 기준',
     method: '방법',
     methodOf: { MEASUREMENT: '측정', VISUAL: '육안', FUNCTIONAL: '기능' } as Record<string, string>,
-    count: '시료 수(n)',
-    acceptance: '허용 불량(c)',
+    count: '시료 수',
+    acceptance: '허용 불량',
     okNg: 'OK / NG',
+    aqlAcceptanceValue: (aql: string, c: number | null) =>
+      `AQL ${aql} · 허용 불량 ${c === null ? '-' : `${String(c)}개`}`,
+    items: '검사 항목',
+    itemCount: (n: number) => `(${String(n)}개)`,
   },
 
   dialog: {

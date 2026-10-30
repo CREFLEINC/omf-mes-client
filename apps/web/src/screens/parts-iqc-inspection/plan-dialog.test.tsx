@@ -8,6 +8,12 @@ vi.mock('../../patterns/session', async (importOriginal) => ({
   useSession: () => ({ session: { permissions: session.permissions } }),
 }));
 
+const navigate = vi.hoisted(() => vi.fn());
+vi.mock('react-router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react-router')>()),
+  useNavigate: () => navigate,
+}));
+
 const { PlanDialog } = await import('./plan-dialog');
 
 const version = {
@@ -75,22 +81,17 @@ describe('검사 기준 조회 팝업 (사용자 지시 2026-10-30)', () => {
   it('기준 · 버전 · 샘플링 · 항목별 규격 · n · c 를 보인다', () => {
     renderDialog();
     expect(screen.getByText('IQC-AA205-1')).toBeInTheDocument();
-    expect(screen.getByText('2판 · 2026-01-01 부터')).toBeInTheDocument();
+    expect(screen.getByText('2판 · 2026-01-01 적용')).toBeInTheDocument();
     expect(screen.getByText('LOT 의 10%')).toBeInTheDocument();
-    expect(screen.getByText('AQL 0.65 · C=1')).toBeInTheDocument();
+    expect(screen.getByText('AQL 0.65 · 허용 불량 1개')).toBeInTheDocument();
     expect(screen.getByText('4 ±0.1 (3.9 ~ 4.1)')).toBeInTheDocument();
     expect(screen.getByText('OK / NG')).toBeInTheDocument();
   });
 
-  it('「수정」은 검사 기준 화면을 새 탭으로 그 기준 · 버전에 연다', async () => {
-    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+  it('「수정」은 새 창 없이 검사 기준 화면으로 옮겨 그 기준 · 버전을 연다', async () => {
     renderDialog();
     await userEvent.click(screen.getByRole('button', { name: '수정' }));
-    expect(open).toHaveBeenCalledWith(
-      '/master-data/inspection-standard?plan=7&ver=11',
-      '_blank',
-      'noopener',
-    );
+    expect(navigate).toHaveBeenCalledWith('/master-data/inspection-standard?plan=7&ver=11');
   });
 
   it('검사 기준 화면 권한이 없으면 「수정」이 없다', () => {

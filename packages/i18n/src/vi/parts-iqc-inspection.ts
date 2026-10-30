@@ -32,20 +32,27 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   /** Xem tiêu chuẩn kiểm tra (2026-10-30). */
   plan: {
     open: 'Xem tiêu chuẩn',
-    title: 'Tiêu chuẩn kiểm tra',
+    title: 'Chi tiết tiêu chuẩn kiểm tra',
     edit: 'Sửa',
     version: 'Phiên bản',
-    versionValue: (no: number, from: string) => `Bản ${String(no)} · từ ${from}`,
+    versionValue: (no: number, from: string) => `Bản ${String(no)} · áp dụng ${from}`,
     sampling: 'Lấy mẫu',
     full: 'Toàn bộ',
     ratio: (r: number) => `${String(r)}% của LOT`,
     qty: (n: number) => `${String(n)} cái`,
-    aqlAcceptance: 'AQL · Số chấp nhận',
+    aqlAcceptance: 'Tiêu chuẩn chấp nhận',
     method: 'Phương pháp',
-    methodOf: { MEASUREMENT: 'Đo', VISUAL: 'Ngoại quan', FUNCTIONAL: 'Chức năng' } as Record<string, string>,
-    count: 'Số mẫu (n)',
-    acceptance: 'Lỗi cho phép (c)',
+    methodOf: { MEASUREMENT: 'Đo', VISUAL: 'Ngoại quan', FUNCTIONAL: 'Chức năng' } as Record<
+      string,
+      string
+    >,
+    count: 'Số mẫu',
+    acceptance: 'Lỗi cho phép',
     okNg: 'OK / NG',
+    aqlAcceptanceValue: (aql: string, c: number | null) =>
+      `AQL ${aql} · lỗi cho phép ${c === null ? '-' : String(c)}`,
+    items: 'Hạng mục kiểm tra',
+    itemCount: (n: number) => `(${String(n)})`,
   },
 
   dialog: {
