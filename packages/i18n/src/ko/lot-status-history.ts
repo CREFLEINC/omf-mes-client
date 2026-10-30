@@ -52,7 +52,7 @@ export const lotStatusHistory = {
     lotNoScanPlaceholder: 'LOT 번호 입력 또는 스캔',
     /** LOT 번호 칸 옆 단추 — 그 번호로 바로 조회한다. */
     lotNoSearch: '검색',
-    detailOpen: '상세 검색',
+    detailOpen: '상세 검색 펼치기',
     detailClose: '상세 검색 접기',
     /** 품목은 검색해서 고른다 — 품목 선택 창을 여는 단추와 고른 값을 지우는 단추. */
     itemPlaceholder: '품목을 입력하세요',

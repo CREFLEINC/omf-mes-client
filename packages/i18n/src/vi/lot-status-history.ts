@@ -50,7 +50,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     },
     lotNoScanPlaceholder: 'Nhập hoặc quét số LOT',
     lotNoSearch: 'Tìm',
-    detailOpen: 'Tìm kiếm chi tiết',
+    detailOpen: 'Mở tìm kiếm chi tiết',
     detailClose: 'Thu gọn tìm kiếm chi tiết',
     itemPlaceholder: 'Nhập mặt hàng',
     itemClear: 'Xóa mặt hàng',

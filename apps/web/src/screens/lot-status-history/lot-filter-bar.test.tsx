@@ -151,7 +151,7 @@ describe('LOT 현재 조회 조건', () => {
     });
 
     await choose(user, 'LOT 유형', '합성 자재');
-    await user.click(screen.getByRole('button', { name: '상세 검색' }));
+    await user.click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
     // 품목은 검색 창에서 고른다 — 중지 품목까지 찾고 가용 재고는 부르지 않는다.
     itemSearchQueries.length = 0;
     await user.click(screen.getByLabelText('품목 검색'));
@@ -192,7 +192,7 @@ describe('LOT 현재 조회 조건', () => {
   /* 상세 조건은 접혀 들어오지만, 걸린 상세 조건이 있으면 펼친 채로 들어온다(입하 예정 조회와 같다 · 사용자 2026-10-30). */
   it('품목 · 창고 · 위치는 접힌 상세 조건이고, 걸린 값이 있으면 펼쳐 들어온다', () => {
     const { unmount } = renderBar();
-    expect(screen.getByRole('button', { name: '상세 검색' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: '상세 검색 펼치기' })).toHaveAttribute(
       'aria-expanded',
       'false',
     );
@@ -222,7 +222,7 @@ describe('LOT 현재 조회 조건', () => {
 
   it('창고를 고르기 전에는 위치를 잠그고 칸 안에 까닭을 둔다', async () => {
     const { user } = renderBar();
-    await user.click(screen.getByRole('button', { name: '상세 검색' }));
+    await user.click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
     const location = screen.getByLabelText(/^위치/);
 
     expect(location).toBeDisabled();

@@ -391,7 +391,7 @@ describe('Lot Status 화면 shell', () => {
     expect(await screen.findByRole('table', { name: 'LOT 현황' })).toBeVisible();
     expect(locationSearch().get('lotType')).toBeNull();
     /* 품목 · 창고 · 위치는 접힌 상세 조건 줄이다(입하 예정 조회와 같다). */
-    const detailToggle = screen.getByRole('button', { name: '상세 검색' });
+    const detailToggle = screen.getByRole('button', { name: '상세 검색 펼치기' });
     expect(detailToggle).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByLabelText('창고 선택')).not.toBeVisible();
     await choose(user, 'LOT 유형', '합성 자재');
