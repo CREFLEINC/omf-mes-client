@@ -579,7 +579,7 @@ describe('AppLayout', () => {
 
     const tabs = screen.getByRole('navigation', { name: 'LOT 상태' });
 
-    expect(within(tabs).getByRole('link', { name: 'LOT 상태 조회' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: 'LOT 현황' })).toHaveAttribute(
       'href',
       '/quality/lot-status',
     );

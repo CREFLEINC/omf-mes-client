@@ -1327,7 +1327,7 @@ describe('appRouter — Lot Status 현황·변경이력 조회의 진입 경로'
 
   it('LOT 상태 묶음의 첫 탭이 LOT 상태 조회다', async () => {
     expect((await hubTabLinks('LOT 상태'))[0]).toEqual({
-      name: 'LOT 상태 조회',
+      name: 'LOT 현황',
       href: '/quality/lot-status',
     });
   });
@@ -1337,7 +1337,7 @@ describe('appRouter — Lot Status 현황·변경이력 조회의 진입 경로'
     renderRoutedApp('/quality/lot-status', lotStatusRoutes());
 
     expect(await screen.findByText('LOT 유형 기준값이 준비되지 않았습니다.')).toBeVisible();
-    expect(hubTab('LOT 상태', 'LOT 상태 조회')).toHaveAttribute('aria-current', 'page');
+    expect(hubTab('LOT 상태', 'LOT 현황')).toHaveAttribute('aria-current', 'page');
     /* 현재 상태 단추는 탭 막대 오른쪽, 좌우 · 상하 배치 단추 왼쪽이다(사용자 2026-10-30). */
     const hubActions = document.getElementById('hub-actions');
     const statusGroup = await screen.findByRole('group', { name: '현재 상태' });

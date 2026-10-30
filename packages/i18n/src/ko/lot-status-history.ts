@@ -4,9 +4,9 @@ export const lotStatusHistory = {
   breadcrumbRoot: '품질 관리',
   /** 조회 방식 — 조회 조건 카드 맨 위의 두 단추로 고른다(사용자 시안 2026-10-30). */
   modes: {
-    label: '조회 방식',
+    label: '검색 기준',
     lot: 'LOT 번호',
-    history: '이력',
+    history: '변경 이력',
   },
   /** 두 조회 모드가 함께 쓰는 컨트롤 이름. */
   actions: {
@@ -43,17 +43,17 @@ export const lotStatusHistory = {
     lotNoPlaceholder: 'LOT 번호',
     /** 조회 조건 칸 이름 — 검사 조회·판정 조회 줄과 같은 말투(사용자 2026-10-30). */
     labels: {
-      lotType: 'LOT 유형 선택',
-      lotNo: 'LOT 번호 스캔',
+      lotType: 'LOT 유형',
+      lotNo: 'LOT 번호',
       item: '품목 검색',
       warehouse: '창고 선택',
       location: '위치 선택',
     },
-    lotNoScanPlaceholder: 'LOT 바코드 스캔 또는 번호를 입력하세요',
+    lotNoScanPlaceholder: 'LOT 번호 입력 또는 스캔',
     /** LOT 번호 칸 옆 단추 — 그 번호로 바로 조회한다. */
     lotNoSearch: '검색',
-    detailOpen: '상세 조건 펼치기',
-    detailClose: '상세 조건 접기',
+    detailOpen: '상세 검색',
+    detailClose: '상세 검색 접기',
     /** 품목은 검색해서 고른다 — 품목 선택 창을 여는 단추와 고른 값을 지우는 단추. */
     itemPlaceholder: '품목을 입력하세요',
     itemClear: '품목 지우기',
@@ -100,14 +100,14 @@ export const lotStatusHistory = {
     },
   },
   current: {
-    pane: '현재 LOT 상태',
+    pane: 'LOT 현황',
     columns: {
       lot: 'LOT',
       item: '품목',
-      status: '현재 상태',
+      status: '상태',
       onHand: '보유 수량',
-      latestTransition: '최근 상태 변경',
-      reason: '사유',
+      latestTransition: '최종 변경일',
+      reason: '상태 사유',
     },
     /** 품목 이름을 아직 못 붙였을 때 왜 못 붙였는지를 칸에 그대로 적는다. */
     itemLabel: {
@@ -119,11 +119,11 @@ export const lotStatusHistory = {
       pane: '현재 상태 요약',
       loading: '현재 상태 요약을 불러오는 중',
       failed: '현재 상태 요약을 불러오지 못했습니다.',
-      unknownCount: '미확정',
+      unknownCount: '집계 불가',
       unit: '건',
-      asOf: (at: string): string => `기준 시각 ${at}`,
+      asOf: (at: string): string => `조회 기준 ${at}`,
       outOfScope: (count: number): string =>
-        `권한 범위 밖의 LOT ${String(count)}건은 목록에서 제외되었습니다.`,
+        `조회 권한이 없는 LOT ${String(count)}건을 제외했습니다.`,
     },
     list: {
       title: 'LOT 목록',
@@ -204,13 +204,13 @@ export const lotStatusHistory = {
       event: '처리 유형',
       change: '변경 내용',
       actor: '처리자',
-      reason: '처리 사유',
+      reason: '사유',
     },
   },
   detail: {
-    title: 'LOT 상세 정보',
+    title: 'LOT 상세',
     loading: 'LOT 상세를 불러오는 중',
-    failed: 'LOT 정보를 불러오지 못했습니다.',
+    failed: 'LOT 상세 정보를 불러오지 못했습니다.',
     /** LOT 상세 안의 다시 부르기 단추. */
     retry: '재시도',
     retryLabel: (name: string): string => `${name} 재시도`,
@@ -228,15 +228,14 @@ export const lotStatusHistory = {
       manufacturedAt: '제조 시각',
       fourMChange: '4M 변경품',
     },
-    transition: 'LOT 상태 변경',
   },
   holdDocuments: {
-    pane: 'LOT 보류 이력',
+    pane: '보류 이력',
     columns: {
-      times: '처리 내역',
+      times: '등록·해제 내역',
       reason: '사유',
-      holdStatus: '보류 상태',
-      holdQty: '보류 수량',
+      holdStatus: '상태',
+      holdQty: '수량',
       releaseCondition: '해제 조건',
     },
     /** 등록·해제 칸의 줄 이름. */

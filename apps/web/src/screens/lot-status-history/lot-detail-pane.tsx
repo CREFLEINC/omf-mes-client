@@ -156,13 +156,6 @@ export const LotDetailPane = ({ lotId, lotTypeOptions, statusOptions }: LotDetai
       <LotTimeline lotId={lotId} statusOptions={statusOptions} />
 
       <LotHoldDocuments key={lotId} lotId={lotId} />
-
-      {/* 가능한 작업 — 안내 문구는 뺐다(사용자 2026-10-30). */}
-      <div className="lot-detail-actions">
-        <div className="lot-detail-action">
-          <Button disabled>{t.detail.transition}</Button>
-        </div>
-      </div>
     </>
   );
 };

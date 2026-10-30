@@ -19,7 +19,7 @@ import { useLotStatusList, useLotStatusSummary } from './queries';
 import { useItemNameSources } from './reference-options';
 import { lotStatusRowKey, type LotStatusRow } from './types';
 import { useColumnOrder } from '../../patterns/column-grip-order';
-import { PageNav, type PageSize } from '../../patterns/page-nav';
+import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
@@ -221,6 +221,8 @@ export const CurrentResults = ({
   const currentPage = meta !== undefined && meta.page > 0 ? meta.page : page;
   const pageSize = meta !== undefined && meta.size > 0 ? meta.size : requestedPageSize;
   const totalPages = Math.ceil((meta?.total ?? 0) / pageSize);
+  /* 고를 수 없는 크기(20 · 50 · 100 밖)를 서버가 돌려주면 크기 칸이 비므로 고른 크기를 보인다. */
+  const shownPageSize: PageSize = PAGE_SIZES.find((size) => size === pageSize) ?? requestedPageSize;
   const isBeyondLast = meta !== undefined && meta.total > 0 && currentPage > totalPages;
 
   return (
@@ -351,9 +353,10 @@ export const CurrentResults = ({
           </div>
           {meta !== undefined && (
             <PageNav
-              meta={{ page: currentPage, size: pageSize, total: meta.total }}
+              meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
               onChangePage={onPageChange}
               onChangeSize={onPageSizeChange}
+              controlSize="md"
             />
           )}
         </>

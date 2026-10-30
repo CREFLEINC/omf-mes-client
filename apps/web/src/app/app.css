@@ -4034,27 +4034,6 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-top: 0;
 }
 
-/* 가능한 작업 — 막힌 단추와 그 까닭을 한 줄로 붙이고, 참고 안내는 그 아래 작은 글씨로 따로 둔다. */
-.lot-detail-actions {
-  display: grid;
-  gap: var(--space-2);
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.lot-detail-action {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.lot-detail-actions .field-note {
-  max-width: none;
-  margin: 0;
-}
-
 /* 일시는 한 줄 — 넓은 행 간격(comfortable)에서 날짜와 시각이 갈라지지 않게 한다. */
 .lot-status-detail-dialog td:first-child {
   white-space: nowrap;

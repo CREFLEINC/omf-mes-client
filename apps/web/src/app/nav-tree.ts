@@ -355,7 +355,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: 'LOT 상태',
         labelVi: 'Trạng thái LOT',
         tabs: [
-          { to: '/quality/lot-status', label: 'LOT 상태 조회', labelVi: 'Tra cứu trạng thái LOT' },
+          { to: '/quality/lot-status', label: 'LOT 현황', labelVi: 'Tình hình LOT' },
           {
             to: '/quality/lot-status-transition',
             label: 'LOT 상태 판정',
