@@ -68,6 +68,7 @@ export const ReasonChips = ({
   return (
     <>
       <Tooltip
+        placement="bottom"
         content={
           <span className="reason-help">
             {help.map((line, index) => (

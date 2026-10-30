@@ -22027,11 +22027,16 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   cursor: help;
 }
 
-/* 사유 도움말은 사유마다 한 줄이다. */
+/*
+ * 사유 도움말은 사유마다 한 줄이다. DS 툴팁은 한 줄용이라 폭을 따로 주지 않으면 칩 폭으로 눌린다.
+ * 아래로 연다: 표 영역의 위쪽으로 나간 부분은 스크롤로도 볼 수 없지만 아래쪽은 스크롤로 닿는다.
+ */
 .reason-help {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  width: max-content;
+  max-width: 22rem;
   white-space: normal;
 }
 

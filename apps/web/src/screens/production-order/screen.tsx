@@ -17,12 +17,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
-import {
-  BulkOutcomeChip,
-  BulkResult,
-  type BulkOutcome,
-  type BulkResultFilter,
-} from '../../patterns/bulk-result';
+import { BulkResult, type BulkResultFilter } from '../../patterns/bulk-result';
 import { PageNav } from '../../patterns/page-nav';
 import { SelectableTable } from '../../patterns/selectable-table';
 import { useWorklistBulk, type BulkKind, type BulkTarget } from './bulk-actions';
@@ -65,7 +60,6 @@ export interface WorklistRow {
   itemCode: string;
   itemName: string;
   qtyLabel: string;
-  outcome: BulkOutcome | undefined;
 }
 
 export interface ProductionOrderScreenProps {
@@ -105,7 +99,6 @@ export const ProductionOrderScreen = ({
       itemCode: item?.itemCode ?? '',
       itemName: item?.itemName ?? '',
       qtyLabel: `${quantity(fact.orderQty)} ${uom}`.trim(),
-      outcome: outcomes.get(String(fact.productionOrderId)),
     };
   };
   const liveRows = facts.map(toRow);
@@ -118,12 +111,8 @@ export const ProductionOrderScreen = ({
           )
           .map(
             (row) =>
-              liveRows.find(
-                (live) => live.fact.productionOrderId === row.fact.productionOrderId,
-              ) ?? {
-                ...row,
-                outcome: outcomes.get(String(row.fact.productionOrderId)),
-              },
+              liveRows.find((live) => live.fact.productionOrderId === row.fact.productionOrderId) ??
+              row,
           );
 
   const apply = (next: WorklistFilters) => {
@@ -198,16 +187,8 @@ export const ProductionOrderScreen = ({
     {
       key: 'status',
       header: t.list.columns.status,
-      /*
-       * 일괄 결과가 있는 행은 결과 칩을 상태 칩 자리에 보인다. 칩을 둘 놓으면 칸이 넓어져 이동 표시 열이 밀린다(C-16, G-49).
-       * 결과를 닫으면 상태 칩으로 돌아간다.
-       */
-      render: (row) =>
-        row.outcome !== undefined ? (
-          <BulkOutcomeChip outcome={row.outcome} />
-        ) : (
-          <ProcessStateChip state={row.derived.state} />
-        ),
+      /* 일괄 동작 결과를 여기 대신 보이면 오더의 실제 상태(예: 조치 필요)가 가려진다. 건별 결과와 사유는 결과 영역(C-18)이 보인다. */
+      render: (row) => <ProcessStateChip state={row.derived.state} />,
     },
     {
       key: 'reasons',

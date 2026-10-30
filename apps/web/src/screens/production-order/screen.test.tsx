@@ -473,7 +473,7 @@ describe('작업지시 목록 작업함', () => {
     ).toBeVisible();
   });
 
-  it('일괄 배포는 실행과 같은 판정으로 예고하고, 일부 처리를 따로 세며, 결과 칩을 상태 칩 자리에 보인다(C-16, C-18)', async () => {
+  it('일괄 배포는 실행과 같은 판정으로 예고하고, 일부 처리를 따로 세며, 처리 상태 칸은 결과가 아니라 실제 상태를 보인다(C-16, C-18)', async () => {
     const user = userEvent.setup();
     render({ orders: [DONE_BLOCKED, DONE_READY] }, '/production/production-orders?state=ALL');
 
@@ -510,12 +510,13 @@ describe('작업지시 목록 작업함', () => {
     );
     const narrowed = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-702') });
     expect(
-      within(narrowed).getByText(messages.screenPatterns.bulkResult.outcome.partial),
-    ).toBeVisible();
+      within(narrowed).queryByText(messages.screenPatterns.bulkResult.outcome.partial),
+    ).toBeNull();
+    expect(within(narrowed).getByText(new RegExp(Object.values(t.status).join('|')))).toBeVisible();
     expect(screen.queryByRole('link', { name: t.list.openRow('SYN-PO-703') })).toBeNull();
   });
 
-  it('모든 대상이 건너뛸 것이면 확인 창의 [배포]를 잠그고 이유를 적는다(C-18)', async () => {
+  it('모든 대상이 처리되지 않을 것이면 확인 창의 [배포]를 잠그고 이유를 적는다(C-18)', async () => {
     const user = userEvent.setup();
     render({ orders: [DONE_BLOCKED], released: [9002] }, '/production/production-orders?state=ALL');
 

@@ -188,7 +188,7 @@ export const erpWorkOrderFlow = {
         '피킹 지시(투입 자재가 있을 때)',
         '공정검사(PQC) 의뢰(검사 공정일 때)',
       ],
-      skipTitle: '건너뛰는 조건',
+      skipTitle: '처리하지 않는 조건',
       skipConditions: [
         '생산 라인이나 기본 위치가 정해지지 않은 W/O',
         '품목 기본 LOT 크기가 등록되지 않은 W/O',
@@ -196,9 +196,9 @@ export const erpWorkOrderFlow = {
       ],
       forecastTitle: '실행 예고',
       forecast: (processed: number, partial: number, skipped: number, workOrders: number): string =>
-        `처리 ${String(processed)}건, 일부 처리 ${String(partial)}건, 건너뜀 ${String(skipped)}건(W/O ${String(workOrders)}건 배포 예정)`,
+        `처리 ${String(processed)}건, 일부 처리 ${String(partial)}건, 미처리 ${String(skipped)}건(W/O ${String(workOrders)}건 배포 예정)`,
       forecasting: '배포할 W/O를 확인하는 중입니다',
-      nothing: '모든 대상이 건너뛰어집니다. 처리 화면에서 4M 배정을 마친 뒤 배포하세요',
+      nothing: '모든 대상이 처리되지 않습니다. 처리 화면에서 4M 배정을 마친 뒤 배포하세요',
       irreversible: '배포 후에는 수정할 수 없습니다. W/O 취소로 처리합니다.',
       confirm: '배포',
     },
@@ -211,7 +211,7 @@ export const erpWorkOrderFlow = {
        * 그것이 필요한 첫 공정에만 붙는다(서버 `resource-assign.ts`).
        */
       effects: ['생산계획 작성과 확정', 'W/O 전개', '품목에 ★로 지정한 설비와 금형 자동 배정'],
-      skipTitle: '건너뛰는 조건',
+      skipTitle: '처리하지 않는 조건',
       /* 확정 계획이 있으면 자동 계획은 남은 수량을 채우지 않는다(서버 `act`: 작성 중 계획이 없으면 NOT_PLANNED). */
       skipConditions: [
         '기본 BOM이나 Routing이 없거나 하나로 정해지지 않은 ERP W/O',
