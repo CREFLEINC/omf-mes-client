@@ -120,13 +120,15 @@ export const lotStatusHistory = {
       pane: '현재 상태 요약',
       loading: '현재 상태 요약을 불러오는 중',
       failed: '현재 상태 요약을 불러오지 못했습니다.',
-      unknownCount: '집계 미확정',
+      unknownCount: '미확정',
       unit: '건',
       asOf: (at: string): string => `기준 시각 ${at}`,
-      outOfScope: (count: number): string => `권한 범위 밖 ${String(count)}건이 제외되었습니다.`,
+      outOfScope: (count: number): string =>
+        `권한 범위 밖의 LOT ${String(count)}건은 목록에서 제외되었습니다.`,
     },
     list: {
       title: 'LOT 목록',
+      total: (total: string): string => `총 ${total}건`,
       loading: 'LOT 목록을 불러오는 중',
       failed: 'LOT 목록을 불러오지 못했습니다.',
       refreshing: 'LOT 목록 갱신 중',

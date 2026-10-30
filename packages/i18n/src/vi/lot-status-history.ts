@@ -112,13 +112,15 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       pane: 'Tóm tắt trạng thái hiện tại',
       loading: 'Đang tải tóm tắt trạng thái hiện tại',
       failed: 'Không tải được tóm tắt trạng thái hiện tại.',
-      unknownCount: 'Chưa chốt số liệu',
+      unknownCount: 'Chưa chốt',
       unit: 'mục',
       asOf: (at: string): string => `Thời điểm cơ sở ${at}`,
-      outOfScope: (count: number): string => `Đã loại ${String(count)} mục ngoài phạm vi quyền.`,
+      outOfScope: (count: number): string =>
+        `Đã loại ${String(count)} LOT ngoài phạm vi quyền khỏi danh sách.`,
     },
     list: {
       title: 'Danh sách LOT',
+      total: (total: string): string => `Tổng ${total} mục`,
       loading: 'Đang tải danh sách LOT',
       failed: 'Không tải được danh sách LOT.',
       refreshing: 'Đang làm mới danh sách LOT',

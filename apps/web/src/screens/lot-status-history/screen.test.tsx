@@ -425,14 +425,14 @@ describe('Lot Status 화면 shell', () => {
     expect(locationSearch().get('from')).toBe('2026-08-01');
     expect(await screen.findByText('7')).toBeVisible();
     const summary = within(screen.getByRole('group', { name: '현재 상태 요약' }));
-    expect(summary.getAllByText('건')).toHaveLength(4);
+    expect(summary.getAllByText('건')).toHaveLength(3);
     const cardLabels = summary.getAllByRole('group').map((card) => card.getAttribute('aria-label'));
     expect(cardLabels.join()).toBe('합성 정상 (미사용),합성 불량,합성 대기,합성 폐기');
     expect(summary.getByText('0')).toBeVisible();
-    expect(summary.getByText('집계 미확정')).toBeVisible();
+    expect(summary.getByText('미확정')).toBeVisible();
     expect(screen.getByText('SAMPLE_UNKNOWN (목록 미확정)')).toBeVisible();
     expect(screen.getByText('SAMPLE-ITEM-01 · 합성 품목 (미사용)')).toBeVisible();
-    expect(screen.getByText('권한 범위 밖 2건이 제외되었습니다.')).toBeVisible();
+    expect(screen.getByText('권한 범위 밖의 LOT 2건은 목록에서 제외되었습니다.')).toBeVisible();
     // 표시 시각은 공장 시각(UTC+7) — +09:00 13:00 은 공장 11:00 이다(omf-all-around#20).
     expect(screen.getByText('기준 시각 2026-08-21 11:00')).toBeVisible();
     const table = screen.getByRole('table', { name: '현재 LOT 상태' });
@@ -774,7 +774,7 @@ describe('Lot Status 화면 shell', () => {
       expect(within(table).getByText(itemMessage)).toBeVisible();
       expect(within(table).getByText('—')).toBeVisible();
       expect(within(table).queryByText('999')).not.toBeInTheDocument();
-      expect(screen.queryByText(/권한 범위 밖 .*건이 제외/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/권한 범위 밖의 LOT .*건은 목록에서 제외/)).not.toBeInTheDocument();
     },
   );
 
@@ -911,6 +911,7 @@ describe('Lot Status 화면 shell', () => {
     const user = userEvent.setup();
 
     expect(await screen.findByText('1–1 / 전체 101건')).toBeVisible();
+    expect(screen.getByText('총 101건')).toBeVisible();
     await user.click(screen.getByRole('button', { name: '다음' }));
     await waitFor(() => expect(locationSearch().get('page')).toBe('2'));
     expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('page')).toBe('2');

@@ -4,8 +4,8 @@ import {
   Chip,
   type Column,
   EmptyState,
+  Icon,
   SkeletonText,
-  StatCard,
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -231,7 +231,7 @@ export const CurrentResults = ({
 
   return (
     <section className="pane lot-status-pane" aria-labelledby="lot-current-results-title">
-      {/* ⭐ 기준 시각은 제목 옆 — 숫자보다 낮은 위계로(사용자 지시 2026-09-19). */}
+      {/* 기준 시각은 제목 줄 오른쪽 끝 — 숫자보다 낮은 위계로(사용자 지시 2026-09-19 · 2026-10-30 시안). */}
       <div className="lot-status-pane-head">
         <h2 className="pane-title" id="lot-current-results-title">
           {t.current.pane}
@@ -256,25 +256,38 @@ export const CurrentResults = ({
       )}
       {summary.data !== undefined && (
         <>
+          {/*
+           * 상태별 건수는 상자 없이 한 줄로 편다 — 이름 아래 큰 숫자 · 단위(2026-10-30 시안). 집계를 못 낸 상태는
+           * 「— 미확정」이다.
+           */}
           <div className="lot-status-summary-grid" role="group" aria-label={t.current.summary.pane}>
             {summaryCells.map((cell) => (
-              <StatCard
-                key={cell.key}
-                label={cell.label}
-                value={cell.value === null ? t.current.summary.unknownCount : String(cell.value)}
-                unit={t.current.summary.unit}
-              />
+              <div key={cell.key} className="lot-status-stat" role="group" aria-label={cell.label}>
+                <span className="lot-status-stat-label">{cell.label}</span>
+                <span className="lot-status-stat-value">
+                  {cell.value === null ? EMPTY : quantity(cell.value)}
+                  <span className="lot-status-stat-unit">
+                    {cell.value === null ? t.current.summary.unknownCount : t.current.summary.unit}
+                  </span>
+                </span>
+              </div>
             ))}
           </div>
           {summary.data.outOfScopeCount !== null && summary.data.outOfScopeCount > 0 && (
-            <AlertBanner variant="info">
+            <p className="iqc-inspection-action-note lot-status-scope-note" data-tone="info">
+              <Icon name="info" size={14} aria-hidden />
               {t.current.summary.outOfScope(summary.data.outOfScopeCount)}
-            </AlertBanner>
+            </p>
           )}
         </>
       )}
 
-      <h3 className="lot-status-list-title">{t.current.list.title}</h3>
+      <div className="lot-status-pane-head">
+        <h3 className="lot-status-list-title">{t.current.list.title}</h3>
+        {meta !== undefined && (
+          <span className="field-note">{t.current.list.total(quantity(meta.total))}</span>
+        )}
+      </div>
       {list.isPending && (
         <div role="status" aria-label={t.current.list.loading}>
           <SkeletonText lines={3} />
