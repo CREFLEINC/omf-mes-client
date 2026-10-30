@@ -948,10 +948,10 @@ describe('Lot Status 화면 shell', () => {
     await screen.findByText('2 / 6');
     expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('size')).toBe('20');
     await user.click(screen.getByRole('combobox', { name: '페이지 크기' }));
-    await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: /60건$/ }));
-    await waitFor(() => expect(locationSearch().get('size')).toBe('60'));
+    await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: /50건$/ }));
+    await waitFor(() => expect(locationSearch().get('size')).toBe('50'));
     expect(locationSearch().get('page')).toBeNull();
-    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('size')).toBe('60');
+    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('size')).toBe('50');
     expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('page')).toBeNull();
   });
 
