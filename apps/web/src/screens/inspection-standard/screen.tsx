@@ -64,6 +64,7 @@ import {
   ImportDialog,
   type ImportOutcome,
   type InspectionPlanImportResult,
+  importStatusOf,
 } from './import-dialog';
 import { PlanDetailHead } from './plan-detail-head';
 import { PlanFilterBar } from './plan-filter-bar';
@@ -274,7 +275,12 @@ export const InspectionStandardScreen = () => {
     files: File[];
     outcomes: ImportOutcome[];
   } | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
+  /** 올리는 중인 파일과 진행. 올리는 중이 아니면 null */
+  const [importProgress, setImportProgress] = useState<{
+    running: File;
+    done: number;
+    total: number;
+  } | null>(null);
   const queryClient = useQueryClient();
 
   /**
@@ -284,13 +290,19 @@ export const InspectionStandardScreen = () => {
    *    있는 기준이면 신규 버전이 둘 선다. 서버가 묶음을 차례로 넣는 것과 같은 이유다.
    * ⛔ 파일마다 새 멱등 키를 쓴다 — `File` 은 값 지문에서 `{}` 가 되어, 키를 이어 쓰면 다른 파일에
    *    앞 파일의 결과가 되돌아온다.
+   * ⛔ 대상은 아직 안 올린 파일과 서버에 남은 것이 없는 실패 파일뿐이다(#208) — 반영된 파일은 다시 보내지 않는다.
    * ⚠ 생성된 타입이 `file: string` 이다(openapi-typescript 가 `format: binary` 를 문자열로 옮긴다).
    *    실제로 보낼 것은 `FormData` 라 단언을 여기 한 곳에 가둔다 — 경계 문자열은 브라우저가 정한다.
    */
-  const runImport = async (files: File[]): Promise<void> => {
-    setIsImporting(true);
-    const outcomes: ImportOutcome[] = [];
-    for (const file of files) {
+  const runImport = async (files: File[], previous: ImportOutcome[]): Promise<void> => {
+    const targets = files.filter((file) => {
+      const outcome = previous.find((item) => item.file === file);
+      return outcome === undefined || importStatusOf(outcome) === 'failed';
+    });
+    let outcomes = previous.filter((item) => files.includes(item.file));
+    for (const [done, file] of targets.entries()) {
+      setImportProgress({ running: file, done, total: targets.length });
+      let outcome: ImportOutcome;
       const form = new FormData();
       form.append('file', file);
       try {
@@ -322,34 +334,29 @@ export const InspectionStandardScreen = () => {
             });
           }
         }
-        outcomes.push({ fileName: file.name, result, error: null, confirmFailures });
+        outcome = { file, result, error: null, confirmFailures };
       } catch (cause) {
         // 한 파일이 거절돼도 나머지는 올린다 — 이유는 그 파일 자리에 남긴다.
-        outcomes.push({
-          fileName: file.name,
-          result: null,
-          error: toApiError(cause),
-          confirmFailures: [],
-        });
+        outcome = { file, result: null, error: toApiError(cause), confirmFailures: [] };
       }
-      const done = [...outcomes];
-      setImportState((prev) => (prev === null ? prev : { ...prev, outcomes: done }));
+      // 다시 올린 파일은 앞 결과를 새 결과로 바꾼다.
+      outcomes = [...outcomes.filter((item) => item.file !== file), outcome];
+      const next = outcomes;
+      setImportState((prev) => (prev === null ? prev : { ...prev, outcomes: next }));
     }
     // 새 기준·새 버전이 생긴다 — 목록과 버전 목록을 함께 다시 받는다.
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: planKeys.all }),
       queryClient.invalidateQueries({ queryKey: versionKeys.all }),
     ]);
-    setIsImporting(false);
+    setImportProgress(null);
 
-    // 오류가 없으면 창을 닫고 알린다. 하나라도 실패·거절이면 사유를 봐야 하므로 창을 남긴다.
-    const hasError = outcomes.some(
-      (outcome) =>
-        outcome.result === null ||
-        outcome.result.failed.length > 0 ||
-        outcome.confirmFailures.length > 0,
-    );
-    if (!hasError) {
+    // 모든 파일이 성공하면 창을 닫고 알린다. 하나라도 실패·일부 실패면 사유를 봐야 하므로 창을 남긴다.
+    const allSucceeded = files.every((file) => {
+      const outcome = outcomes.find((item) => item.file === file);
+      return outcome !== undefined && importStatusOf(outcome) === 'success';
+    });
+    if (allSucceeded) {
       setImportState(null);
       toast.show({ variant: 'success', description: messages.common.saved });
     }
@@ -2028,14 +2035,17 @@ export const InspectionStandardScreen = () => {
       {importState !== null && (
         <ImportDialog
           files={importState.files}
-          onSelectFiles={(files) => setImportState({ files, outcomes: [] })}
+          // 뺀 파일의 결과는 함께 버린다 — 남은 파일의 결과는 그대로 둔다.
+          onSelectFiles={(files) =>
+            setImportState({
+              files,
+              outcomes: importState.outcomes.filter((item) => files.includes(item.file)),
+            })
+          }
           outcomes={importState.outcomes}
-          isSaving={isImporting}
+          progress={importProgress}
           onClose={() => setImportState(null)}
-          onSubmit={() => {
-            setImportState({ files: importState.files, outcomes: [] });
-            void runImport(importState.files);
-          }}
+          onSubmit={() => void runImport(importState.files, importState.outcomes)}
         />
       )}
 

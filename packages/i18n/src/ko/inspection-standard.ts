@@ -139,36 +139,45 @@ export const inspectionStandard = {
   },
   /** 엑셀 올리기 창(#199). 툴 엑셀 올리기와 같이 «올리기 전에» 되돌리지 않음을 말한다. */
   import: {
-    title: '검사기준 엑셀 올리기',
-    partialWarningTitle: '업로드 후 일괄 취소가 불가합니다.',
-    // 올린 기준은 바로 확정된다(#208) — 확정하지 못한 기준만 작성중으로 남는다.
-    partialWarning: '기준별로 새 버전이 만들어져 바로 확정되며, 성공 항목만 저장됩니다.',
+    title: '검사 기준 엑셀 업로드',
+    // 올린 기준은 바로 확정된다(#208) — 되돌릴 수 없다는 뜻을 한 줄로.
+    partialWarning: '업로드하면 기준별로 새 버전이 바로 확정되며, 일괄 취소할 수 없습니다.',
     guideHeaderRow: '첫 번째 시트의 첫 행을 제목으로 사용합니다.',
     guideRequiredColumns: '필수 열: 기준코드, 항목코드, 항목명',
     guideTckt: '기존 검사기준서(TCKT) 파일도 업로드할 수 있습니다.',
-    fileLabel: '검사기준 엑셀 파일',
+    fileLabel: '엑셀 파일',
     fileHint: '.xlsx · 여러 파일 선택 가능',
     filePlaceholder: '파일 추가',
     fileRequired: '올릴 파일을 먼저 선택하세요.',
-    fileCount: (count: number): string => `${String(count)}개 파일 선택됨`,
+    fileCount: (count: number): string => `선택한 파일 ${String(count)}개`,
     removeFile: (name: string): string => `${name} 빼기`,
     progress: (done: number, total: number): string =>
       `${String(total)}개 중 ${String(done)}개를 처리했습니다. 창을 닫지 마세요.`,
     formatGuide: '엑셀 작성 형식 안내',
     submit: '올리기',
-    resultTitle: '올리기 결과',
-    succeeded: (count: number): string => `기준 ${String(count)}건을 반영했습니다.`,
-    noneSucceeded: '반영된 기준이 없습니다.',
-    failed: (count: number): string => `기준 ${String(count)}건이 실패했습니다.`,
-    allSucceeded: '실패한 기준이 없습니다.',
-    fields: {
-      key: '기준코드',
-      reason: '사유',
+    /** 실패한 파일만 다시 올린다(#208) */
+    retry: '실패 파일 재시도',
+    /** 파일 단위 요약 — 일부 실패한 파일은 실패로 센다 */
+    summary: (total: number, succeeded: number, failed: number): string =>
+      `전체 ${String(total)}개 · 성공 ${String(succeeded)}개 · 실패 ${String(failed)}개`,
+    status: {
+      pending: '대기',
+      running: '처리 중',
+      success: '성공',
+      failed: '실패',
+      partial: '일부 실패',
     },
+    /** 파일 안 기준 단위 건수 — 한 파일에 기준이 여럿일 수 있다 */
+    criteriaCounts: (succeeded: number, failed: number): string =>
+      `기준 성공 ${String(succeeded)}건 · 실패 ${String(failed)}건`,
+    failureLine: (key: string, reason: string): string => `${key} · ${reason}`,
     keyUnknown: '기준코드 없음',
     /** 올린 뒤 바로 확정하지 못한 기준(#208) — 버전은 작성중으로 남는다 */
     confirmFailed: (key: string, reason: string): string =>
-      `${key} — 올렸으나 확정하지 못함: ${reason}`,
+      `${key} · 올렸으나 확정하지 못함: ${reason}`,
+    /** 다시 올리면 성공한 기준이 한 번 더 만들어지는 파일 — 재시도에서 뺀다 */
+    partialNote: '성공한 기준이 있어 재시도에서 뺍니다. 실패한 기준만 담아 따로 올리세요.',
+    confirmNote: '확정하지 못한 버전은 작성중으로 남았습니다. 목록에서 확인 후 확정하세요.',
   },
   filters: {
     versionStatus: '상태 선택',

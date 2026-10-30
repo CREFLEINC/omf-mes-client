@@ -413,7 +413,7 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
 
-    expect(within(dialog).getByText(t.import.partialWarningTitle)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.import.partialWarning)).toBeInTheDocument();
     expect(within(dialog).getByText(t.import.guideRequiredColumns)).toBeInTheDocument();
     expect(within(dialog).getByLabelText(t.import.fileLabel)).toHaveAttribute('accept', '.xlsx');
     expect(within(dialog).getByRole('button', { name: t.import.submit })).toBeDisabled();
@@ -531,11 +531,14 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
         t.import.confirmFailed('P-B', '검사 항목이 없어 확정할 수 없습니다.'),
       ),
     ).toBeInTheDocument();
-    expect(within(dialog).queryByText(/^P-A — /)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/^P-A · /)).not.toBeInTheDocument();
+    // 확정 실패가 섞이면 일부 실패 — 다시 올리면 P-A 가 한 번 더 만들어져 재시도 대상이 아니다.
+    expect(within(dialog).getByText(t.import.confirmNote)).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: t.import.retry })).not.toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: t.import.title })).toBeInTheDocument();
   });
 
-  it('올리면 파일을 멱등 키와 함께 보내고, 성공·실패 기준과 사유를 창 안에 남긴다', async () => {
+  it('일부 기준만 실패한 파일은 「일부 실패」로 기준 건수 · 사유를 남기고 재시도에서 뺀다(#208)', async () => {
     const { requests, user } = renderScreen([
       importRoute(() =>
         jsonResponse({
@@ -560,10 +563,17 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
     await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
 
-    expect(await within(dialog).findByText(t.import.succeeded(1))).toBeInTheDocument();
-    expect(within(dialog).getByText(t.import.failed(1))).toBeInTheDocument();
-    expect(within(dialog).getByText('P-BAD')).toBeInTheDocument();
-    expect(within(dialog).getByText('엑셀 4행: 없는 코드입니다: EA2')).toBeInTheDocument();
+    const row = await within(dialog).findByRole('listitem', { name: '검사기준.xlsx' });
+    expect(within(row).getByText(t.import.status.partial)).toBeInTheDocument();
+    expect(within(row).getByText(t.import.criteriaCounts(1, 1))).toBeInTheDocument();
+    expect(
+      within(row).getByText(t.import.failureLine('P-BAD', '엑셀 4행: 없는 코드입니다: EA2')),
+    ).toBeInTheDocument();
+    expect(within(row).getByText(t.import.partialNote)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.import.summary(1, 0, 1))).toBeInTheDocument();
+    // 다시 보낼 파일이 없으니 올리기 단추가 사라진다 — 반영된 기준을 한 번 더 만들지 않게.
+    expect(within(dialog).queryByRole('button', { name: t.import.submit })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: t.import.retry })).not.toBeInTheDocument();
 
     const posts = requestsTo(requests, IMPORT_PATH);
     expect(posts).toHaveLength(1);
@@ -571,12 +581,12 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     expect(posts[0]?.body).toContain('name="file"');
   });
 
-  it('여러 파일을 차례로 하나씩, 파일마다 새 멱등 키로 올리고 결과를 파일별로 남긴다', async () => {
+  it('여러 파일을 차례로 하나씩 새 멱등 키로 올리고, 실패 파일만 다시 올려 모두 성공하면 닫는다(#208)', async () => {
     let call = 0;
     const { requests, user } = renderScreen([
       importRoute(() => {
         call += 1;
-        return call === 1
+        return call !== 2
           ? jsonResponse({ succeeded: 2, failed: [] })
           : jsonResponse(
               {
@@ -616,16 +626,30 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     expect(within(dialog).getByText(t.import.fileCount(2))).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
 
-    const first = await within(dialog).findByRole('region', { name: 'A.xlsx' });
-    expect(within(first).getByText(t.import.succeeded(2))).toBeInTheDocument();
-    const second = await within(dialog).findByRole('region', { name: 'B.xlsx' });
+    // 결과는 파일 목록 한 곳에 — 실패 파일이 위, 사유는 그 줄 바로 아래.
+    expect(await within(dialog).findByText(t.import.summary(2, 1, 1))).toBeInTheDocument();
+    const rows = within(dialog).getAllByRole('listitem');
+    expect(rows.map((item) => item.getAttribute('aria-label'))).toEqual(['B.xlsx', 'A.xlsx']);
+    expect(within(rows[0]!).getByText(t.import.status.failed)).toBeInTheDocument();
     expect(
-      within(second).getByText('엑셀 파일을 열 수 없습니다. .xlsx 파일인지 확인하세요.'),
+      within(rows[0]!).getByText('엑셀 파일을 열 수 없습니다. .xlsx 파일인지 확인하세요.'),
     ).toBeInTheDocument();
+    expect(within(rows[1]!).getByText(t.import.status.success)).toBeInTheDocument();
+    // 성공 파일은 뺄 수 없다.
+    expect(
+      within(dialog).queryByRole('button', { name: t.import.removeFile('A.xlsx') }),
+    ).not.toBeInTheDocument();
 
     const keys = requestsTo(requests, IMPORT_PATH).map((r) => r.headers.get('Idempotency-Key'));
     expect(keys).toHaveLength(2);
     expect(keys[0]).not.toBe(keys[1]);
+
+    // 재시도는 실패 파일(B)만 보낸다 — 모두 성공하면 창을 닫는다.
+    await user.click(within(dialog).getByRole('button', { name: t.import.retry }));
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: t.import.title })).not.toBeInTheDocument();
+    // 성공한 A 는 다시 보내지 않는다 — 재시도로 나간 요청은 하나뿐이다.
+    expect(requestsTo(requests, IMPORT_PATH)).toHaveLength(3);
   });
 
   it('파일을 읽을 수 없으면 창을 닫지 않고 사유를 배너로 낸다', async () => {

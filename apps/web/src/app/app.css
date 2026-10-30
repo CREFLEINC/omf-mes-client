@@ -1327,24 +1327,49 @@ h2:has(> .inspection-standard-dialog-title) {
   padding: var(--space-3) 0 0;
   border-top: 1px solid var(--outline-variant);
   list-style: none;
+  /* 파일이 많으면 목록 안에서만 스크롤한다 — 창이 화면 밖으로 늘지 않게(사용자 지시 · #208). */
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
-.inspection-standard-import-file-list > li {
+/* 파일 줄 — 아이콘 · 이름 · 상태(성공/실패 글자 칩) · 빼기(#208). */
+.inspection-standard-import-file-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.inspection-standard-import-file-list > li > :first-child {
+.inspection-standard-import-file-row > :first-child {
   color: var(--semantic-success);
 }
 
-.inspection-standard-import-file-list > li > :nth-child(2) {
+.inspection-standard-import-file-row > :nth-child(2) {
   flex: 1 1 auto;
   min-width: 0;
   color: var(--on-surface);
   text-align: left;
   overflow-wrap: anywhere;
+}
+
+/* 실패 사유는 그 파일 줄 바로 아래, 이름 칸에 맞춰 들여 쓴다(#208). */
+.inspection-standard-import-reasons {
+  display: grid;
+  gap: 2px;
+  margin: 2px 0 var(--space-2);
+  padding-left: calc(18px + var(--space-2));
+  color: var(--on-surface-muted);
+  text-align: left;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.inspection-standard-import-reasons > p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.inspection-standard-import-progress {
+  margin: var(--space-2) 0 0;
 }
 
 .inspection-standard-import-guide {

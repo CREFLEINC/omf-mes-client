@@ -129,13 +129,12 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   },
   import: {
     title: 'Tải lên Excel tiêu chuẩn kiểm tra',
-    partialWarningTitle: 'Không thể hủy hàng loạt sau khi tải lên.',
     partialWarning:
-      'Mỗi tiêu chuẩn sẽ tạo phiên bản mới và xác nhận ngay, chỉ những mục thành công được lưu.',
+      'Khi tải lên, mỗi tiêu chuẩn tạo phiên bản mới và xác nhận ngay, không thể hủy hàng loạt.',
     guideHeaderRow: 'Dòng đầu của trang tính thứ nhất được dùng làm tiêu đề.',
     guideRequiredColumns: 'Cột bắt buộc: mã tiêu chuẩn, mã hạng mục, tên hạng mục',
     guideTckt: 'Cũng có thể tải lên tệp Bảng tiêu chuẩn kiểm tra (TCKT) hiện có.',
-    fileLabel: 'Tệp Excel tiêu chuẩn kiểm tra',
+    fileLabel: 'Tệp Excel',
     fileHint: '.xlsx · có thể chọn nhiều tệp',
     filePlaceholder: 'Thêm tệp',
     fileRequired: 'Hãy chọn tệp cần tải lên trước.',
@@ -145,18 +144,26 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       `Đã xử lý ${String(done)}/${String(total)} tệp. Đừng đóng cửa sổ.`,
     formatGuide: 'Hướng dẫn định dạng Excel',
     submit: 'Tải lên',
-    resultTitle: 'Kết quả tải lên',
-    succeeded: (count: number): string => `Đã áp dụng ${String(count)} tiêu chuẩn.`,
-    noneSucceeded: 'Không có tiêu chuẩn nào được áp dụng.',
-    failed: (count: number): string => `${String(count)} tiêu chuẩn thất bại.`,
-    allSucceeded: 'Không có tiêu chuẩn nào thất bại.',
-    fields: {
-      key: 'Mã tiêu chuẩn',
-      reason: 'Lý do',
+    retry: 'Thử lại tệp thất bại',
+    summary: (total: number, succeeded: number, failed: number): string =>
+      `Tổng ${String(total)} · Thành công ${String(succeeded)} · Thất bại ${String(failed)}`,
+    status: {
+      pending: 'Chờ',
+      running: 'Đang xử lý',
+      success: 'Thành công',
+      failed: 'Thất bại',
+      partial: 'Thất bại một phần',
     },
+    criteriaCounts: (succeeded: number, failed: number): string =>
+      `Tiêu chuẩn thành công ${String(succeeded)} · thất bại ${String(failed)}`,
+    failureLine: (key: string, reason: string): string => `${key} · ${reason}`,
     keyUnknown: 'Không có mã tiêu chuẩn',
     confirmFailed: (key: string, reason: string): string =>
-      `${key} — Đã tải lên nhưng chưa xác nhận được: ${reason}`,
+      `${key} · Đã tải lên nhưng chưa xác nhận được: ${reason}`,
+    partialNote:
+      'Có tiêu chuẩn đã thành công nên bỏ khỏi thử lại. Hãy tải riêng các tiêu chuẩn thất bại.',
+    confirmNote:
+      'Phiên bản chưa xác nhận vẫn ở trạng thái đang soạn. Hãy kiểm tra và xác nhận trong danh sách.',
   },
   filters: {
     versionStatus: 'Chọn trạng thái',
