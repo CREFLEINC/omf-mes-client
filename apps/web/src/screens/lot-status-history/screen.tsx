@@ -59,10 +59,8 @@ interface StatusChipsProps {
  * 대신한다. 「전체」는 상태 조건을 푼다.
  */
 const StatusChips = ({ options, value, note, onChange }: StatusChipsProps) => (
-  <div className="lot-status-status-chips" role="group" aria-labelledby="lot-status-status-label">
-    <span className="field-label" id="lot-status-status-label">
-      {t.lotFilter.fields.status}
-    </span>
+  /* 눈에 보이는 「현재 상태」 글자는 두지 않는다(사용자 2026-10-30) — 이름은 화면 읽기용으로만 남긴다. */
+  <div className="lot-status-status-chips" role="group" aria-label={t.lotFilter.fields.status}>
     {[{ value: '', label: t.values.all }, ...options].map((option) => (
       <Chip
         key={option.value}
