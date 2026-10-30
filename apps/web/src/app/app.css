@@ -3903,8 +3903,34 @@ h2:has(> .inspection-standard-dialog-title) {
   font: var(--type-body-md);
 }
 
-.lot-status-scope-note {
-  align-self: flex-start;
+/* 권한 밖 제외 안내 — 「LOT 현황」 제목 바로 옆에 글 길이만큼만(사용자 2026-10-30). */
+.lot-status-pane-head > .lot-status-scope-note {
+  flex: 0 1 auto;
+  align-self: center;
+  min-width: 0;
+}
+
+/* 마지막 갱신 + [갱신] — 제목 줄 오른쪽 끝. 대시보드 조건 줄 오른쪽 묶음과 같은 모양(사용자 2026-10-30). */
+.lot-status-refresh {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  align-self: center;
+  margin-left: auto;
+}
+
+.lot-status-refresh-status {
+  margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.lot-status-refresh .lot-status-refresh-button {
+  height: var(--control-height-md);
+  border-radius: var(--radius-sm);
+  color: var(--on-surface);
+  box-shadow: inset 0 0 0 1px var(--outline);
 }
 
 /*

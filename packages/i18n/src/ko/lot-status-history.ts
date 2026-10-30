@@ -121,7 +121,9 @@ export const lotStatusHistory = {
       failed: '현재 상태 요약을 불러오지 못했습니다.',
       unknownCount: '집계 불가',
       unit: '건',
-      asOf: (at: string): string => `조회 기준 ${at}`,
+      /** 마지막으로 조회가 성공한 시각과 다시 부르는 단추 — 대시보드와 같은 문구(자동 갱신은 없다). */
+      lastUpdated: (at: string): string => `마지막 갱신 ${at}`,
+      refresh: '갱신',
       outOfScope: (count: number): string =>
         `조회 권한이 없는 LOT ${String(count)}건을 제외했습니다.`,
     },

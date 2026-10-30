@@ -14,6 +14,7 @@ import { toLotStatusSort, toTableSort } from './current-sort';
 import { ALL_LOT_TYPES, type LotFilters, type LotStatusSort } from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { codeName, lotStatusTone, useLotHoldReasonOptions } from './options';
+import { RefreshStatus } from './refresh-status';
 import { useUomCodeOf, withUom } from './uoms';
 import { useLotStatusList, useLotStatusSummary } from './queries';
 import { useItemNameSources } from './reference-options';
@@ -227,16 +228,29 @@ export const CurrentResults = ({
 
   return (
     <section className="pane lot-status-pane" aria-labelledby="lot-current-results-title">
-      {/* 기준 시각은 제목 줄 오른쪽 끝 — 숫자보다 낮은 위계로(사용자 지시 2026-09-19 · 2026-10-30 시안). */}
       <div className="lot-status-pane-head">
         <h2 className="pane-title" id="lot-current-results-title">
           {t.current.pane}
         </h2>
-        {summary.data !== undefined && (
-          <span className="field-note">
-            {t.current.summary.asOf(formatDateTime(summary.data.asOf))}
-          </span>
+        {/* 권한 밖 제외 안내는 제목 바로 옆, 글 길이만큼만(사용자 2026-10-30). */}
+        {summary.data?.outOfScopeCount != null && summary.data.outOfScopeCount > 0 && (
+          <p className="iqc-inspection-action-note lot-status-scope-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.current.summary.outOfScope(summary.data.outOfScopeCount)}
+          </p>
         )}
+        {/*
+         * 오른쪽 끝 — 마지막 갱신 + [갱신](사용자 2026-10-30). 요약과 목록을 함께 다시 부른다. 「조회 기준」 자리를
+         * 이어받는다(두 시각을 나란히 두면 헷갈린다).
+         */}
+        <RefreshStatus
+          updatedAt={Math.max(list.dataUpdatedAt, summary.dataUpdatedAt)}
+          isRefreshing={list.isFetching || summary.isFetching}
+          onRefresh={() => {
+            void list.refetch();
+            void summary.refetch();
+          }}
+        />
       </div>
       {summary.isPending && (
         <div role="status" aria-label={t.current.summary.loading}>
@@ -273,12 +287,6 @@ export const CurrentResults = ({
               </div>
             ))}
           </div>
-          {summary.data.outOfScopeCount !== null && summary.data.outOfScopeCount > 0 && (
-            <p className="iqc-inspection-action-note lot-status-scope-note" data-tone="info">
-              <Icon name="info" size={14} aria-hidden />
-              {t.current.summary.outOfScope(summary.data.outOfScopeCount)}
-            </p>
-          )}
         </>
       )}
 

@@ -433,8 +433,16 @@ describe('Lot Status 화면 shell', () => {
     expect(screen.getByText('SAMPLE_UNKNOWN (목록 미확정)')).toBeVisible();
     expect(screen.getByText('SAMPLE-ITEM-01 · 합성 품목 (미사용)')).toBeVisible();
     expect(screen.getByText('조회 권한이 없는 LOT 2건을 제외했습니다.')).toBeVisible();
-    // 표시 시각은 공장 시각(UTC+7) — +09:00 13:00 은 공장 11:00 이다(omf-all-around#20).
-    expect(screen.getByText('조회 기준 2026-08-21 11:00')).toBeVisible();
+    // 오른쪽 끝은 마지막 갱신 + [갱신] — 자동 갱신 안내는 없다(사용자 2026-10-30).
+    expect(screen.getByText(/^마지막 갱신 /)).toBeVisible();
+    expect(screen.queryByText(/자동 갱신/)).not.toBeInTheDocument();
+    const summaryCalls = requestCount(urls, '/quality/lot-status-summary');
+    const listCalls = requestCount(urls, '/quality/lot-statuses');
+    await user.click(screen.getByRole('button', { name: '갱신' }));
+    await waitFor(() =>
+      expect(requestCount(urls, '/quality/lot-status-summary')).toBe(summaryCalls + 1),
+    );
+    expect(requestCount(urls, '/quality/lot-statuses')).toBe(listCalls + 1);
     const table = screen.getByRole('table', { name: 'LOT 현황' });
     expect(within(table).getAllByRole('columnheader')).toHaveLength(6);
     expect(within(table).getByText('0')).toBeVisible();
@@ -740,7 +748,7 @@ describe('Lot Status 화면 shell', () => {
   });
 
   it.each([
-    ['/quality/lot-statuses', 'LOT 목록을 불러오는 중', '조회 기준 2026-08-21 11:00'],
+    ['/quality/lot-statuses', 'LOT 목록을 불러오는 중', '조회 권한이 없는 LOT 2건을 제외했습니다.'],
     ['/quality/lot-status-summary', '현재 상태 요약을 불러오는 중', 'SAMPLE-LOT-001'],
   ])('한쪽만 로딩 중이어도 %s 상태를 독립 표시한다', async (pendingPath, label, success) => {
     const resolvedFetch = fetchFor();
@@ -1104,6 +1112,18 @@ describe('Lot Status 화면 shell', () => {
     const rows = within(timeline).getAllByRole('row');
     expect(rows[1]).toHaveTextContent('2026-08-21 09:00상태 변경합성 대기 → 합성 불량');
     expect(rows[2]).toHaveTextContent('2026-08-21 08:00보류 해제');
+    // 처리 일시로 오름·내림차순을 고른다 — 처음은 최신순.
+    const occurredAt = within(timeline).getByRole('columnheader', { name: /처리 일시/ });
+    expect(occurredAt).toHaveAttribute('aria-sort', 'descending');
+    const user = userEvent.setup();
+    const occurredAtHeader = () =>
+      within(timeline).getByRole('columnheader', { name: /처리 일시/ });
+    await user.click(within(occurredAtHeader()).getByRole('button'));
+    expect(occurredAtHeader()).toHaveAttribute('aria-sort', 'ascending');
+    const ascending = within(timeline).getAllByRole('row');
+    expect(ascending[ascending.length - 1]).toHaveTextContent('2026-08-21 09:00상태 변경');
+    await user.click(within(occurredAtHeader()).getByRole('button'));
+    expect(occurredAtHeader()).toHaveAttribute('aria-sort', 'descending');
     expect(lastRequest(urls, '/trace/lot-status-events')?.searchParams.get('lotId')).toBe('401');
     expect(lastRequest(urls, '/quality/lot-hold-events')?.searchParams.get('lotId')).toBe('401');
     expect(

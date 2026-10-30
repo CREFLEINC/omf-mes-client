@@ -1,6 +1,6 @@
-import { Chip, type ChipStatus, type Column, Table } from '@crefle/web-ui';
+import { Chip, type ChipStatus, type Column, type SortState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import type { FilterOption } from './lot-filter-bar';
 import { codeName, useLotHoldReasonOptions, type LotCodeOption } from './options';
@@ -64,6 +64,13 @@ export const LotTimelineTable = ({
 }: LotTimelineTableProps) => {
   const reasons = useLotHoldReasonOptions();
   const isDetail = variant === 'detail';
+  /*
+   * LOT 상세에서는 처리 일시로 오름·내림차순을 고른다(사용자 2026-10-30). 받은 줄은 이미 최신순이라 오름차순은
+   * 뒤집기만 한다 — 같은 시각의 줄 순서도 그대로 거꾸로 선다. 머리를 누를 때마다 두 순서를 오간다
+   * (표 부품은 내림차순 다음에 정렬 해제를 주므로 그것을 오름차순으로 받는다).
+   */
+  const [sort, setSort] = useState<SortState>({ key: 'occurredAt', direction: 'descending' });
+  const rows = isDetail && sort.direction === 'ascending' ? [...entries].reverse() : [...entries];
   const actorName = (entry: LotTimelineEntry): string => {
     if (entry.kind === 'hold') return entry.event.actorName?.trim() || t.history.actorUnknown;
     const id = entry.event.changedBy;
@@ -86,6 +93,7 @@ export const LotTimelineTable = ({
       header: isDetail ? t.timeline.columns.occurredAt : t.history.columns.occurredAt,
       align: 'center',
       width: isDetail ? '172px' : '220px',
+      sortable: isDetail,
       render: (entry) => formatDateTime(entry.occurredAt),
     },
     ...(isDetail
@@ -141,9 +149,16 @@ export const LotTimelineTable = ({
       density={isDetail ? 'comfortable' : 'compact'}
       caption={caption}
       columns={columns}
-      rows={[...entries]}
+      rows={rows}
       getRowId={(entry) => entry.key}
       empty={empty}
+      {...(isDetail
+        ? {
+            sort,
+            onSortChange: (next: SortState | null) =>
+              setSort(next ?? { key: 'occurredAt', direction: 'ascending' }),
+          }
+        : {})}
     />
   );
 };

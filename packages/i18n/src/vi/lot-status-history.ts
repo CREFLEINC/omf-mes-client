@@ -113,7 +113,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       failed: 'Không tải được tóm tắt trạng thái hiện tại.',
       unknownCount: 'Không tổng hợp được',
       unit: 'mục',
-      asOf: (at: string): string => `Thời điểm tra cứu ${at}`,
+      lastUpdated: (at: string): string => `Cập nhật lần cuối ${at}`,
+      refresh: 'Làm mới',
       outOfScope: (count: number): string => `Đã loại ${String(count)} LOT không có quyền tra cứu.`,
     },
     list: {
