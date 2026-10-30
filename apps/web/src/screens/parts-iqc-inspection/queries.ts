@@ -162,7 +162,8 @@ export interface SubmitVariables {
   defects: DefectInput[];
   judgmentChangeReason?: string;
   remarks: string;
-  xrfReport: File | null;
+  /** XRF 성적서 — 여러 건(사용자 지시 2026-10-30). 비면 올리지 않는다. */
+  xrfReports: File[];
 }
 
 /**
@@ -178,7 +179,8 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
     requestId: number;
     resultId: number;
     versionNo: number;
-    uploaded: boolean;
+    /** 올린 성적서 수 — 확정이 실패해 다시 누르면 남은 파일부터 올린다(같은 파일을 두 번 붙이지 않는다). */
+    uploaded: number;
   } | null>(null);
 
   return useMasterWrite<SubmitVariables, InspectionResult>({
@@ -190,8 +192,8 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
         inspectedAt: v.inspectedAt,
         overallJudgmentCode: v.overallJudgmentCode,
         measurements: v.measurements,
-        // 불합격이 아니면 빈 배열 — 앞서 임시 저장한 사유를 지운다.
-        defects: v.overallJudgmentCode === 'REJECTED' ? v.defects : [],
+        // 불합격 판정이거나 불합격 수량이 있으면 그 불량 유형(#205), 아니면 빈 배열 — 앞서 임시 저장한 사유를 지운다.
+        defects: v.defects,
       };
       const prior = saved.current?.requestId === v.inspectionRequestId ? saved.current : null;
       // 남은 작성중 회차는 지금 판 번호를 읽어 고친다(잠금 토큰).
@@ -210,7 +212,7 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
                     }),
                   )
                 ).versionNo ?? 0,
-              uploaded: false,
+              uploaded: 0,
             });
       const draft =
         existing === null
@@ -247,22 +249,23 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
         requestId: v.inspectionRequestId,
         resultId: result.inspectionResultId,
         versionNo: result.versionNo ?? 0,
-        uploaded: existing?.uploaded ?? false,
+        uploaded: existing?.uploaded ?? 0,
       };
       saved.current = current;
 
-      if (v.xrfReport !== null && !current.uploaded) {
+      /* 성적서는 한 건씩 차례로 — 하나가 실패하면 거기서 멈추고, 다시 누르면 그 파일부터 올린다. */
+      for (const file of v.xrfReports.slice(current.uploaded)) {
         const form = new FormData();
         form.append('targetTypeCode', 'INSPECTION_RESULT');
         form.append('targetId', String(result.inspectionResultId));
-        form.append('file', v.xrfReport);
+        form.append('file', file);
         const uploaded = await client.POST('/app/attachments', {
           params: { header: { 'Idempotency-Key': createIdempotencyKey() } },
           body: form as unknown as AttachmentUpload,
         });
         if (uploaded.error !== undefined)
           return uploaded as unknown as ApiCallResult<InspectionResult>;
-        current.uploaded = true;
+        current.uploaded += 1;
       }
 
       const remarks = v.remarks.trim();
@@ -285,12 +288,35 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
     },
     etagPath: null,
     invalidateKeys: [ALL_KEY, ['iqc-inspection']],
-    knownFields: ['judgmentChangeReason', 'defectRecords', 'X-Worker-No'],
+    // `defects` — 서버가 불량 수량 합계 ≠ 불합격 수량을 400 으로 돌려준다(omf-all-around#205 · P-156). 불량 유형 칸 아래에 붙인다.
+    knownFields: ['judgmentChangeReason', 'defectRecords', 'defects', 'X-Worker-No'],
     keyLifetime: 'until-applied',
     onSuccess: () => {
       saved.current = null;
       void queryClient.invalidateQueries({ queryKey: ALL_KEY });
       onDone();
     },
+  });
+};
+
+type InspectionResultRow = components['schemas']['InspectionResult'];
+
+/**
+ * 검사 이력(사용자 지시 2026-10-30) — 이 의뢰의 회차 전부. 검사일시 · 검사자까지 보이려고 회차 목록의 원본 줄을 그대로 쓴다
+ * (OA 화면의 `useInspectionRounds` 는 그 칸을 걷는다). 큰 회차가 위다.
+ */
+export const useRoundHistory = (requestId: number | null) => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: [...ALL_KEY, 'history', requestId ?? 0] as const,
+    enabled: requestId !== null,
+    queryFn: (): Promise<InspectionResultRow[]> =>
+      runRequest(() =>
+        client.GET('/quality/inspection-results', {
+          params: { query: { inspectionRequestId: requestId as number, page: 1, size: 50 } },
+        }),
+      ).then((response) =>
+        [...response.items].sort((a, b) => b.inspectionRound - a.inspectionRound),
+      ),
   });
 };

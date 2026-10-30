@@ -1,5 +1,7 @@
+import { Tabs } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import { numberOf } from './form-state';
 import { acceptanceOf, judgeDimension, judgeValue } from './judgment';
@@ -53,8 +55,10 @@ export interface MeasurementTableProps {
 }
 
 /**
- * 치수 측정(레퍼런스 화면) — 열은 가장 많이 재는 항목의 시료 수만큼 n1~nN, 항목마다 자기 시료 수까지만 칸이 열린다.
- * 규격을 벗어난 값은 그 칸이 붉다. 판정은 시료를 다 재야 낸다(덜 적은 줄은 「3/5」처럼 잰 수를 보인다).
+ * 치수 측정(레퍼런스 화면) — 시료마다 탭 하나(n=1 · n=2 …, 사용자 지시 2026-10-30 「엑셀 시트처럼」). 탭 안에는 그 시료를 재는
+ * 항목이 세로로 선다 — 항목마다 자기 시료 수까지만 탭에 나온다. 규격을 벗어난 값은 그 칸이 붉고, 탭 이름 옆에 그 시료의
+ * 규격 밖 수(붉은 숫자) 또는 다 적었음(✓)이 붙는다. 판정 칸은 그 항목의 모든 시료 기준이다 — 덜 적은 줄은 「3/5」처럼 잰 수.
+ * Enter 는 아래 칸으로, 탭의 마지막 칸에서는 다음 탭의 첫 칸으로 간다(스캐너·키보드 입력 흐름).
  */
 export const MeasurementTable = ({
   items,
@@ -64,9 +68,141 @@ export const MeasurementTable = ({
   onChange,
 }: MeasurementTableProps) => {
   const columns = Math.max(1, ...items.map((item) => item.measurementCount));
+  const [active, setActive] = useState(1);
+  const shown = Math.min(active, columns);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  /* 다음 탭으로 넘어간 뒤 첫 칸에 커서를 둔다 — 탭이 그려진 «다음»이라 효과에서 한다. */
+  const focusFirst = useRef(false);
+  useEffect(() => {
+    if (!focusFirst.current) return;
+    focusFirst.current = false;
+    bodyRef.current?.querySelector<HTMLInputElement>('input.parts-iqc-cell')?.focus();
+  }, [shown]);
+
   const filled = items.filter((item) =>
     (values[item.inspectionItemSpecId] ?? []).some((text) => numberOf(text) !== null),
   ).length;
+
+  /* 탭 이름 옆 표시 — 그 시료의 규격 밖 칸 수, 없고 다 적었으면 ✓. */
+  const tabMark = (n: number): ReactNode => {
+    const inTab = items.filter((item) => item.measurementCount >= n);
+    const texts = inTab.map((item) => values[item.inspectionItemSpecId]?.[n - 1]);
+    const out = inTab.filter(
+      (item, i) => judgeValue(numberOf(texts[i]), item) === 'REJECTED',
+    ).length;
+    if (out > 0)
+      return (
+        <span className="parts-iqc-tab-mark is-ng" aria-label={t.dimension.tabOut(out)}>
+          {out}
+        </span>
+      );
+    return texts.every((text) => numberOf(text) !== null) ? (
+      <span className="parts-iqc-tab-mark is-ok" aria-label={t.dimension.tabDone}>
+        ✓
+      </span>
+    ) : null;
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
+    if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    const cells = Array.from(
+      bodyRef.current?.querySelectorAll<HTMLInputElement>('input.parts-iqc-cell') ?? [],
+    );
+    const next = cells[cells.indexOf(event.currentTarget) + 1];
+    if (next !== undefined) next.focus();
+    else if (shown < columns) {
+      focusFirst.current = true;
+      setActive(shown + 1);
+    }
+  };
+
+  const table = (n: number) => (
+    <div className="parts-iqc-grid-scroll" ref={n === shown ? bodyRef : undefined}>
+      <table className="parts-iqc-grid">
+        <thead>
+          <tr>
+            <th scope="col">{t.dimension.item}</th>
+            <th scope="col" className="parts-iqc-spec">
+              {t.dimension.spec}
+            </th>
+            <th scope="col">{t.dimension.sampleValue(n)}</th>
+            <th scope="col">{t.dimension.judgment}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, position) => {
+            if (item.measurementCount < n) return null;
+            const row = values[item.inspectionItemSpecId] ?? [];
+            const numbers = Array.from({ length: item.measurementCount }, (_, i) =>
+              numberOf(row[i]),
+            );
+            const { outCount } = judgeDimension(numbers, item, versionAcceptance);
+            const put = numbers.filter((value) => value !== null).length;
+            const state = rowStateOf(
+              put,
+              item.measurementCount,
+              outCount,
+              acceptanceOf(item, versionAcceptance),
+            );
+            const [nominal, range] = specLines(item);
+            const cellNg = judgeValue(numbers[n - 1] ?? null, item) === 'REJECTED';
+            return (
+              <tr
+                key={item.inspectionItemSpecId}
+                className={state === 'err' ? 'parts-iqc-row-ng' : undefined}
+              >
+                {/* 치수 항목 차례(①②…) — 도면 풍선 번호와 맞춘다. 기준서 순번은 외관 등 앞 항목까지 세어 어긋난다. */}
+                <th
+                  scope="row"
+                  className={`parts-iqc-rowno parts-iqc-st-${state}`}
+                  title={t.dimension.state[state]}
+                >
+                  {position + 1}
+                </th>
+                {/* 규격은 한 줄 — 「목표 ±공차 (하한 ~ 상한)」(사용자 지시 2026-10-30). 공차 표기가 없으면 범위만. */}
+                <td className="parts-iqc-spec">
+                  {nominal === '' || range === nominal ? nominal || range : `${nominal} (${range})`}
+                </td>
+                <td>
+                  <input
+                    className={cellNg ? 'parts-iqc-cell parts-iqc-cell-ng' : 'parts-iqc-cell'}
+                    inputMode="decimal"
+                    aria-label={t.dimension.cell(position + 1, n)}
+                    aria-invalid={cellNg || undefined}
+                    value={row[n - 1] ?? ''}
+                    disabled={disabled}
+                    onFocus={(event) => event.currentTarget.select()}
+                    onKeyDown={onKeyDown}
+                    onChange={(event) =>
+                      onChange(item.inspectionItemSpecId, n - 1, event.target.value)
+                    }
+                  />
+                </td>
+                <td
+                  className={
+                    state === 'err'
+                      ? 'parts-iqc-verdict parts-iqc-verdict-ng'
+                      : state === 'done'
+                        ? 'parts-iqc-verdict parts-iqc-verdict-ok'
+                        : 'parts-iqc-verdict'
+                  }
+                >
+                  {state === 'empty'
+                    ? '-'
+                    : state === 'err'
+                      ? t.ng
+                      : state === 'wait'
+                        ? `${String(put)}/${String(item.measurementCount)}`
+                        : t.ok}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 
   return (
     <section className="parts-iqc-block" aria-labelledby="parts-iqc-dimension">
@@ -83,105 +219,22 @@ export const MeasurementTable = ({
           {items.length === 0 ? t.dimension.none : t.dimension.progress(filled, items.length)}
         </span>
       </div>
-      {items.length === 0 ? null : (
-        <div className="parts-iqc-grid-scroll">
-          <table className="parts-iqc-grid">
-            <thead>
-              <tr>
-                <th scope="col">{t.dimension.item}</th>
-                <th scope="col" className="parts-iqc-spec">
-                  {t.dimension.spec}
-                </th>
-                {Array.from({ length: columns }, (_, i) => (
-                  <th key={i} scope="col">
-                    {t.dimension.sample(i + 1)}
-                  </th>
-                ))}
-                <th scope="col">{t.dimension.judgment}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, position) => {
-                const row = values[item.inspectionItemSpecId] ?? [];
-                const numbers = Array.from({ length: item.measurementCount }, (_, i) =>
-                  numberOf(row[i]),
-                );
-                const { outCount } = judgeDimension(numbers, item, versionAcceptance);
-                const put = numbers.filter((value) => value !== null).length;
-                const state = rowStateOf(
-                  put,
-                  item.measurementCount,
-                  outCount,
-                  acceptanceOf(item, versionAcceptance),
-                );
-                const [nominal, range] = specLines(item);
-                return (
-                  <tr
-                    key={item.inspectionItemSpecId}
-                    className={state === 'err' ? 'parts-iqc-row-ng' : undefined}
-                  >
-                    {/* 치수 항목 차례(①②…) — 도면 풍선 번호와 맞춘다. 기준서 순번은 외관 등 앞 항목까지 세어 어긋난다. */}
-                    <th
-                      scope="row"
-                      className={`parts-iqc-rowno parts-iqc-st-${state}`}
-                      title={t.dimension.state[state]}
-                    >
-                      {position + 1}
-                    </th>
-                    <td className="parts-iqc-spec">
-                      <span>{nominal || range}</span>
-                      {/* 공차 표기가 없는 규격은 위 줄이 이미 범위다 — 같은 말을 두 번 적지 않는다 */}
-                      {nominal !== '' && range !== nominal && <span>{range}</span>}
-                    </td>
-                    {Array.from({ length: columns }, (_, i) =>
-                      i < item.measurementCount ? (
-                        <td key={i}>
-                          <input
-                            className={
-                              judgeValue(numbers[i] ?? null, item) === 'REJECTED'
-                                ? 'parts-iqc-cell parts-iqc-cell-ng'
-                                : 'parts-iqc-cell'
-                            }
-                            inputMode="decimal"
-                            aria-label={t.dimension.cell(position + 1, i + 1)}
-                            aria-invalid={
-                              judgeValue(numbers[i] ?? null, item) === 'REJECTED' || undefined
-                            }
-                            value={row[i] ?? ''}
-                            disabled={disabled}
-                            onFocus={(event) => event.currentTarget.select()}
-                            onChange={(event) =>
-                              onChange(item.inspectionItemSpecId, i, event.target.value)
-                            }
-                          />
-                        </td>
-                      ) : (
-                        <td key={i} className="parts-iqc-cell-off" aria-hidden="true" />
-                      ),
-                    )}
-                    <td
-                      className={
-                        state === 'err'
-                          ? 'parts-iqc-verdict parts-iqc-verdict-ng'
-                          : state === 'done'
-                            ? 'parts-iqc-verdict parts-iqc-verdict-ok'
-                            : 'parts-iqc-verdict'
-                      }
-                    >
-                      {state === 'empty'
-                        ? '-'
-                        : state === 'err'
-                          ? t.ng
-                          : state === 'wait'
-                            ? `${String(put)}/${String(item.measurementCount)}`
-                            : t.ok}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {items.length === 0 ? null : columns === 1 ? (
+        table(1)
+      ) : (
+        <Tabs
+          className="parts-iqc-sample-tabs"
+          size="sm"
+          aria-label={t.dimension.heading}
+          value={String(shown)}
+          onChange={(value) => setActive(Number(value))}
+          items={Array.from({ length: columns }, (_, i) => ({
+            value: String(i + 1),
+            label: t.dimension.sampleTab(i + 1),
+            badge: tabMark(i + 1),
+            content: i + 1 === shown ? table(i + 1) : null,
+          }))}
+        />
       )}
     </section>
   );

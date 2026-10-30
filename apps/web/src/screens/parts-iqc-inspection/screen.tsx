@@ -43,6 +43,7 @@ import { useItemNames, useLotNumbers, useLotSuppliers } from '../iqc-inspection/
 import { withDraft, withStatus } from '../oqc-inspection/filters';
 import { InspectionDetail } from './inspection-detail';
 import { usePartsQueue } from './queries';
+import { plantTodayRange } from './today';
 
 const t = messages.partsIqcInspection;
 /* 목록 · 검색 조건은 OA 화면과 같은 부품 · 같은 말이다(사용자 지시 2026-10-29). */
@@ -50,6 +51,8 @@ const oa = messages.iqcInspection;
 const hubText = messages.common.inspectionHub;
 /* 공장 고름은 주소에 싣는다 — 새로고침해도 같은 공장 목록이 선다. 공장이 하나면 싣지 않는다. */
 const PLANT_KEY = 'pl';
+/* 「오늘 입고」(사용자 지시 2026-10-30) — 켜면 주소에 싣는다. */
+const TODAY_KEY = 'td';
 
 export interface PartsIqcInspectionScreenProps {
   /** 계정 범위의 부품 공장 — 하나면 고르는 칸이 없다. */
@@ -71,10 +74,15 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
   const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
   const plantParam = Number(searchParams.get(PLANT_KEY));
+  const todayOnly = searchParams.get(TODAY_KEY) === '1';
   const plantId =
     plants.find((plant) => plant.plantId === plantParam)?.plantId ?? plants[0]?.plantId ?? 0;
 
-  const queue = usePartsQueue({ ...toListQuery(filters, page, pageSize), plantId });
+  const queue = usePartsQueue({
+    ...toListQuery(filters, page, pageSize),
+    plantId,
+    ...(todayOnly ? plantTodayRange() : {}),
+  });
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
   const itemNames = useItemNames(rows.map((row) => row.itemId));
@@ -86,7 +94,16 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
     if (selectedId !== null) params.set(URL_KEYS.selected, String(selectedId));
     if (pageSize !== PAGE_SIZE) params.set(URL_KEYS.size, String(pageSize));
     if (plants.length > 1) params.set(PLANT_KEY, String(plantId));
+    if (todayOnly) params.set(TODAY_KEY, '1');
     return params;
+  };
+
+  /* 조건 줄의 다른 조건 · 고른 의뢰는 그대로 두고 첫 쪽으로 간다. */
+  const toggleToday = (on: boolean): void => {
+    const params = keep(toSearchParams(filters));
+    if (on) params.set(TODAY_KEY, '1');
+    else params.delete(TODAY_KEY);
+    setSearchParams(params);
   };
 
   const applyFilters = (next: QueueFilters): void => {
@@ -112,6 +129,7 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
   const changePlant = (next: number): void => {
     const params = toSearchParams(filters);
     params.set(PLANT_KEY, String(next));
+    if (todayOnly) params.set(TODAY_KEY, '1');
     if (pageSize !== PAGE_SIZE) params.set(URL_KEYS.size, String(pageSize));
     setSearchParams(params);
   };
@@ -125,6 +143,8 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
 
   /* 입력이 있는 채로 다른 의뢰를 고르거나 닫으면 한 번 묻는다 — OA 화면의 「저장하지 않고 이동」과 같다. */
   const [dirty, setDirty] = useState(false);
+  /* 제출 뒤 LOT 스캔 칸으로 커서를 옮기는 신호(사용자 지시 2026-10-30). */
+  const [scanFocus, setScanFocus] = useState(0);
   const [leaveTo, setLeaveTo] = useState<{ to: number | null } | null>(null);
   const onDirtyChange = useCallback((next: boolean) => setDirty(next), []);
   const moveTo = (to: number | null): void => {
@@ -183,7 +203,11 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
         />
       )}
 
-      <section ref={aboveRef} className="pane iqc-inspection-panes iqc-inspection-search">
+      {/* 첫 줄 LOT 스캔 · [검색] · [오늘 입고], 구분선 아래 조회 조건 줄(사용자 시안 2026-10-30) */}
+      <section
+        ref={aboveRef}
+        className="pane iqc-inspection-panes iqc-inspection-search parts-iqc-search"
+      >
         {plants.length > 1 && (
           <div className="field-cell parts-iqc-plant">
             <span className="field-label" id="parts-iqc-plant">
@@ -200,7 +224,18 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
             />
           </div>
         )}
-        <LotScan inspectionTypeCode="IQC" onFound={select} />
+        <div className="parts-iqc-scan-row">
+          <LotScan inspectionTypeCode="IQC" onFound={select} focusSignal={scanFocus} />
+          {/* 켜지면 채운 단추 — 걸려 있는지 한눈에 */}
+          <Button
+            variant={todayOnly ? 'filled' : 'outlined'}
+            aria-pressed={todayOnly}
+            aria-label={todayOnly ? t.todayOn : t.todayOff}
+            onClick={() => toggleToday(!todayOnly)}
+          >
+            {t.today}
+          </Button>
+        </div>
         <QueueFilterBar
           appliedFilters={filters}
           onSearch={(next) =>
@@ -276,6 +311,7 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
               onSubmitted={() => {
                 setDirty(false);
                 openRequest(null);
+                setScanFocus((n) => n + 1);
                 toast.show({ variant: 'success', description: t.footer.submitted });
               }}
             />

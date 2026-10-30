@@ -347,7 +347,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       <Badge count={iqcCount} max={9} aria-label={t.iqcPending(iqcCount)} />
     ) : null;
   /*
-   * PQC · OQC 탭에도 대기 수(사용자 지시 2026-10-29 · #197) — 탭에만 붙인다. 「검사 조회·판정」 줄 · 묶음 점은 종전대로 IQC 수다(D-10).
+   * PQC · OQC 탭에도 대기 수(사용자 지시 2026-10-29 · #197). 「검사 조회·판정」 줄 · 묶음 점은 세 탭의 합이다
+   * (사용자 지시 2026-10-30 — IQC 1 · PQC 1 이면 메뉴에 2).
    */
   const pqcCount = useInspectionPendingCount('PQC', access.allows(PQC_PATH));
   const oqcCount = useInspectionPendingCount('OQC', access.allows(OQC_PATH));
@@ -363,8 +364,13 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         : path === OQC_PATH
           ? pendingBadge(oqcCount, t.oqcPending)
           : null;
+  /* 볼 수 없는 탭은 세지 않는다(위 훅이 묻지 않아 `undefined`). 못 센 탭은 0 으로 더한다 — 아는 수만 보인다. */
+  const hubCount = (iqcCount ?? 0) + (pqcCount ?? 0) + (oqcCount ?? 0);
+  const hubBadge = pendingBadge(hubCount, t.inspectionPending);
   const badgeOf = (paths: readonly string[]): ReactNode =>
-    paths.includes(IQC_PATH) ? iqcBadge : null;
+    paths.includes(IQC_PATH) || paths.includes(PQC_PATH) || paths.includes(OQC_PATH)
+      ? hubBadge
+      : null;
   const isLeadAllowed = isNavEntryAllowed(NAV_LEAD, access);
 
   /* 「검색 결과 없음」의 기준도 **볼 수 있는 것**이다 — 못 보는 항목이 걸렸다고 말할 수 없다. */

@@ -116,7 +116,7 @@ export const WorkerConnectDialog = ({ appUserId, onClose }: WorkerConnectDialogP
       <form className="users-roles-worker-dialog" onSubmit={(event) => void submit(event)}>
         {write.error !== null && <SaveErrorBanner error={write.error} />}
         <div className="users-roles-worker-dialog-field">
-          <FieldLabel htmlFor={inputId} label={t.inputLabel} />
+          <FieldLabel htmlFor={inputId} label={t.inputLabel} required />
           <TextField
             ref={inputRef}
             id={inputId}
