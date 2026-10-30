@@ -12,12 +12,15 @@ import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useId, useMemo, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { useApiClient } from '../../patterns/api-context';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest, toApiError, type ApiCallResult } from '../../patterns/request';
 import { Select } from '../../patterns/select';
+import { defectCodeAdapter } from './adapters';
+import { CodePickerDialog } from './code-picker-dialog';
 import { defectToHierarchyCode } from './mappers';
 
 type DefectCode = components['schemas']['DefectCode'];
@@ -224,6 +227,7 @@ export const ProcessMappingPane = () => {
   const [link, setLink] = useState<MappingLink>('all');
   const [draft, setDraft] = useState<MappingFilters>(EMPTY_MAPPING_FILTERS);
   const [applied, setApplied] = useState<MappingFilters>(EMPTY_MAPPING_FILTERS);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   /* 초기화는 연결 상태 칩도 「전체」로 되돌린다(#209 버그 수정) — 불량코드 탭의 초기화가 사용 여부 칩을 되돌리는 것과 같다. */
   const resetFilters = (): void => {
     setDraft(EMPTY_MAPPING_FILTERS);
@@ -483,14 +487,23 @@ export const ProcessMappingPane = () => {
             />
           </div>
           {/* 흐린 안내 글이 잘리지 않는 폭(사용자 지시 2026-10-29 · #209). */}
+          {/*
+           * 불량코드는 **창에서 검색해서 고른다** — 불량코드 탭의 검색 칸과 같은 조작(사용자 지시 · #209).
+           * 읽기 전용 칸을 누르거나 엔터를 치면 창이 열리고, 고른 코드가 검색어로 들어간다. 조회를 눌러야 걸린다.
+           */}
           <SearchInput
             containerClassName="defect-mapping-search-field"
             label={t.mappingView.searchLabel}
             placeholder={t.mappingView.searchPlaceholder}
             value={draft.q}
-            onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-            onSearch={(value) => setApplied({ ...draft, q: value })}
-            clearLabel={messages.common.clear}
+            readOnly
+            title={draft.q === '' ? undefined : draft.q}
+            aria-haspopup="dialog"
+            clearLabel={t.picker.clear(defectCodeAdapter.labels.tab)}
+            onClick={() => setIsPickerOpen(true)}
+            onSearch={() => setIsPickerOpen(true)}
+            onChange={() => undefined}
+            onClear={() => setDraft((prev) => ({ ...prev, q: '' }))}
           />
           <div className="filter-actions field-cell-unlabeled">
             <Button variant="filled" onClick={() => setApplied(draft)}>
@@ -530,6 +543,19 @@ export const ProcessMappingPane = () => {
         <SaveErrorBanner error={write.error} />
         <div className="defect-mapping-box">{content}</div>
       </section>
+      {isPickerOpen &&
+        createPortal(
+          <CodePickerDialog
+            adapter={defectCodeAdapter}
+            includeInactive={false}
+            onClose={() => setIsPickerOpen(false)}
+            onConfirm={(code) => {
+              setDraft((prev) => ({ ...prev, q: code.code }));
+              setIsPickerOpen(false);
+            }}
+          />,
+          document.body,
+        )}
     </>
   );
 };

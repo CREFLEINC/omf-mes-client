@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -128,7 +128,18 @@ describe('DefectCauseCodeScreen — 공정 매핑', () => {
     const { user } = renderMapping();
     await screen.findByRole('rowheader', { name: /DF-11 · 스크래치/ });
 
-    await user.type(screen.getByLabelText('불량코드 검색'), 'DF-12');
+    // 검색 칸은 직접 입력하지 않고 불량코드 검색 창에서 골라 넣는다(사용자 지시 · #209).
+    const field = screen.getByLabelText('불량코드 검색');
+    expect(field).toHaveAttribute('readonly');
+    await user.click(field);
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('검색어'), 'DF-12');
+    await user.click(within(dialog).getByRole('button', { name: '검색' }));
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'DF-12' }));
+    await user.click(within(dialog).getByRole('button', { name: '선택' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(field).toHaveValue('DF-12');
+
     await user.click(screen.getByRole('button', { name: '조회' }));
     expect(screen.queryByRole('rowheader', { name: /DF-11 · 스크래치/ })).not.toBeInTheDocument();
     expect(screen.getByRole('rowheader', { name: /DF-12/ })).toBeInTheDocument();
