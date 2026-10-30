@@ -18,6 +18,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useInspectionDrawings } from '../../patterns/inspection-drawings';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { usePageHub } from '../../patterns/page-hub';
@@ -114,6 +115,7 @@ import {
 import type { CompareLabels } from './version-compare';
 import { VersionCompareDialog } from './version-compare-dialog';
 import { UsageChips, usageOf, withUsage } from './usage-chips';
+import { VersionDrawings } from './version-drawings';
 import { VersionHistoryTable } from './version-history-table';
 import { VersionBar } from './version-bar';
 import { VersionSummary } from './version-summary';
@@ -440,6 +442,8 @@ export const InspectionStandardScreen = () => {
   const selectedVersionId = Number(searchParams.get('ver') ?? '') || null;
   /* 고른 버전의 변경 이력 — 「변경 이력」 단추를 이력이 있을 때만 세운다(#208). 창 · 탭과 같은 조회라 한 번만 나간다. */
   const versionHistory = useVersionHistory(selectedVersionId);
+  /* 고른 버전의 기준서 도면(#208) — 「도면」 탭의 건수와 내용이 같은 조회다. */
+  const versionDrawings = useInspectionDrawings(selectedVersionId);
 
   /**
    * 버전 등록 폼의 값. null이면 폼이 닫혀 있다.
@@ -1486,6 +1490,16 @@ export const InspectionStandardScreen = () => {
                     showRange
                   />
                 ),
+            },
+            {
+              value: 'drawings',
+              /* 기준서 도면(#208) — 건수는 받은 뒤에만 붙인다(이력 탭과 같다). */
+              label:
+                versionDrawings.data === undefined
+                  ? t.versionSection.tabDrawings
+                  : t.versionSection.tabDrawingsCount(versionDrawings.data.length),
+              content:
+                selectedVersionId === null ? null : <VersionDrawings drawings={versionDrawings} />,
             },
           ]}
         />

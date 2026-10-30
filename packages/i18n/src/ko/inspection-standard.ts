@@ -234,6 +234,13 @@ export const inspectionStandard = {
     tabItemsCount: (count: number): string => `검사 항목 ${String(count)}건`,
     tabHistory: '이력',
     tabHistoryCount: (count: number): string => `이력 ${String(count)}건`,
+    /* 기준서 도면 탭(omf-all-around#208). */
+    tabDrawings: '도면',
+    tabDrawingsCount: (count: number): string => `도면 ${String(count)}건`,
+    drawingsLoading: '도면을 불러오는 중',
+    drawingsNone: '등록된 도면이 없습니다',
+    drawingsNoneHint: '기준서(TCKT) 엑셀을 올리면 도면이 함께 붙습니다.',
+    drawingAlt: (index: number): string => `도면 ${String(index)}`,
     notSet: '미설정',
   },
   /* 검사 기준 목록 표의 추가 열(omf-all-around#196). */

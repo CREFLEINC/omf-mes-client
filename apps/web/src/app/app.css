@@ -27851,6 +27851,20 @@ button.iqc-inspection-step-toggle:focus-visible {
   padding-left: var(--space-5);
 }
 
+/* 검사 기준 버전 상세 「도면」 탭(omf-all-around#208 · patterns/inspection-drawings.tsx) — 그림을 위아래로, 칸 폭에 맞춰 줄인다. */
+.inspection-drawings {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+}
+
+.inspection-drawings img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
 .parts-iqc-drawings {
   display: grid;
   justify-items: center;

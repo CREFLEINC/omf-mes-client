@@ -215,6 +215,12 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     tabItemsCount: (count: number): string => `Hạng mục kiểm tra ${String(count)}`,
     tabHistory: 'Lịch sử',
     tabHistoryCount: (count: number): string => `Lịch sử ${String(count)}`,
+    tabDrawings: 'Bản vẽ',
+    tabDrawingsCount: (count: number): string => `Bản vẽ ${String(count)}`,
+    drawingsLoading: 'Đang tải bản vẽ',
+    drawingsNone: 'Chưa có bản vẽ',
+    drawingsNoneHint: 'Tải lên tệp Excel tiêu chuẩn (TCKT) thì bản vẽ được đính kèm cùng.',
+    drawingAlt: (index: number): string => `Bản vẽ ${String(index)}`,
     notSet: 'Chưa thiết lập',
   },
   listColumns: {
