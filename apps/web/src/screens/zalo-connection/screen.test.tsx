@@ -83,7 +83,7 @@ const setup = (
 };
 
 describe('ZaloConnectionScreen', () => {
-  it('제목 아래 부제와 상태 Chip, 이벤트 6행의 고정 파라미터를 보인다', async () => {
+  it('제목 아래 부제와 상태 Chip, 이벤트 6행의 템플릿 파라미터를 보인다', async () => {
     setup();
 
     expect(await screen.findByRole('heading', { level: 1, name: t.title })).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe('ZaloConnectionScreen', () => {
       await screen.findByRole('textbox', { name: t.fields.templateId('생산 중단') }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(`${t.fields.params}: wo_no, item, process, line, reason, event_time, actor`),
+      screen.getByText(`${t.fields.params}: line, work_order, event_time, reason`),
     ).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /파라미터 복사$/ })).toHaveLength(6);
   });
